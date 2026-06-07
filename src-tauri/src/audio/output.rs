@@ -1,11 +1,13 @@
 use std::sync::Arc;
 
-use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
-use cpal::{BufferSize, OutputCallbackInfo, SampleFormat, Stream, StreamConfig, SupportedBufferSize};
 use anyhow::{anyhow, Context, Result};
+use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
+use cpal::{
+    BufferSize, OutputCallbackInfo, SampleFormat, Stream, StreamConfig, SupportedBufferSize,
+};
 
-use crate::audio::ring::SpscRingBuffer;
 use crate::audio::clock::RealtimeClock;
+use crate::audio::ring::SpscRingBuffer;
 
 /// Abstract audio playback stream so tests can inject a fake sink.
 pub trait AudioStream: Send + Sync {
@@ -245,7 +247,9 @@ pub(crate) fn write_output<T: OutputSample>(
         // callback lock-free; the producer thread reads these to log throttled.
         if read < temp_slice.len() {
             let silent_frames = ((temp_slice.len() - read) / channels) as u64;
-            clock.underrun_events.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+            clock
+                .underrun_events
+                .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
             clock
                 .underrun_frames
                 .fetch_add(silent_frames, std::sync::atomic::Ordering::Relaxed);
@@ -258,9 +262,10 @@ pub(crate) fn write_output<T: OutputSample>(
     clock
         .frames_written
         .fetch_add(frames as u64, std::sync::atomic::Ordering::AcqRel);
-    clock
-        .output_latency_bits
-        .store(output_latency_sec(info).to_bits(), std::sync::atomic::Ordering::Release);
+    clock.output_latency_bits.store(
+        output_latency_sec(info).to_bits(),
+        std::sync::atomic::Ordering::Release,
+    );
 }
 
 pub(crate) fn output_latency_sec(info: &OutputCallbackInfo) -> f64 {
@@ -288,7 +293,9 @@ mod tests {
     #[test]
     fn output_clock_advances_on_underrun_to_prevent_drift() {
         let clock = RealtimeClock::default();
-        clock.playing.store(true, std::sync::atomic::Ordering::Release);
+        clock
+            .playing
+            .store(true, std::sync::atomic::Ordering::Release);
         let ring = SpscRingBuffer::new(256);
         let channels = 2;
         let mut data = vec![1.0f32; 128 * channels];
@@ -310,7 +317,9 @@ mod tests {
     #[test]
     fn output_callback_copies_multichannel_ring_samples() {
         let clock = RealtimeClock::default();
-        clock.playing.store(true, std::sync::atomic::Ordering::Release);
+        clock
+            .playing
+            .store(true, std::sync::atomic::Ordering::Release);
         let ring = SpscRingBuffer::new(512);
         let channels = 6;
         let frames = 4;
@@ -333,7 +342,9 @@ mod tests {
     #[test]
     fn output_callback_copies_mono_ring_samples() {
         let clock = RealtimeClock::default();
-        clock.playing.store(true, std::sync::atomic::Ordering::Release);
+        clock
+            .playing
+            .store(true, std::sync::atomic::Ordering::Release);
         let ring = SpscRingBuffer::new(16);
         ring.push_slice(&[0.25, -0.25, 0.5, -0.5]);
         let mut data = vec![0.0f32; 4];

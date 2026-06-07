@@ -26,19 +26,21 @@ use crate::compositor::Compositor;
 use crate::monitor::scene::MonitorScene;
 
 use super::ffmpeg_utils::*;
-use super::types::HwAccelMode;
 use super::processing::{now_millis, spawn_stderr_drain, NativeMediaTasks};
+use super::types::HwAccelMode;
 
-pub mod options;
-pub mod ffmpeg_args_builder;
 pub mod audio;
+pub mod ffmpeg_args_builder;
+pub mod options;
 #[cfg(test)]
 mod tests;
 
-pub use options::NativeExportOptions;
 pub use audio::temp_audio_path;
+pub use options::NativeExportOptions;
 
-use ffmpeg_args_builder::{build_ffmpeg_args, export_uses_alpha, resolve_export_hw_mode, is_gpu_render_error};
+use ffmpeg_args_builder::{
+    build_ffmpeg_args, export_uses_alpha, is_gpu_render_error, resolve_export_hw_mode,
+};
 
 /// Kill the export if ffmpeg makes no progress for this long. A stall guard rather
 /// than a wall-clock cap, so a legitimately long encode that keeps streaming frames

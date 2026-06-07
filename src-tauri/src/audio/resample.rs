@@ -7,7 +7,10 @@ use anyhow::{anyhow, Result};
 /// wrong.
 pub(crate) const RESAMPLER_CHUNK_SIZE: usize = 1024;
 
-pub(crate) fn make_sinc_resampler(ratio: f64, num_channels: usize) -> Result<rubato::SincFixedIn<f32>> {
+pub(crate) fn make_sinc_resampler(
+    ratio: f64,
+    num_channels: usize,
+) -> Result<rubato::SincFixedIn<f32>> {
     use rubato::{SincFixedIn, SincInterpolationParameters, SincInterpolationType, WindowFunction};
     let params = SincInterpolationParameters {
         // sinc_len was 256; lowered to 128 for preview to cut CPU load in half.

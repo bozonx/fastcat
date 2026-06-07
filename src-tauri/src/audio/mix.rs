@@ -6,9 +6,9 @@ use std::sync::Arc;
 use anyhow::Context;
 use parking_lot::{Condvar, Mutex};
 
-use crate::monitor::scene::{AudioFadeCurve, SceneAudioLayer, SceneAudioTrack};
-use crate::audio::shared::{AudioShared, CHUNK_DURATION_SEC};
 use crate::audio::decode::decode_audio_chunk;
+use crate::audio::shared::{AudioShared, CHUNK_DURATION_SEC};
+use crate::monitor::scene::{AudioFadeCurve, SceneAudioLayer, SceneAudioTrack};
 
 /// Renders the audio scene to an f32 WAV file.
 ///

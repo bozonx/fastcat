@@ -1,11 +1,11 @@
 pub mod engine;
 pub mod peaks;
 
-mod ring;
 mod clock;
-mod shared;
+mod decode;
+mod mix;
 mod output;
 mod producer;
-mod mix;
-mod decode;
 mod resample;
+mod ring;
+mod shared;

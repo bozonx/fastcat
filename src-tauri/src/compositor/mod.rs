@@ -22,6 +22,9 @@ pub mod transitions;
 
 #[allow(clippy::module_inception)]
 mod compositor;
-pub use compositor::{Compositor, PipelinedReadback};
+pub use compositor::Compositor;
+
+mod readback;
+pub use readback::PipelinedReadback;
 
 mod gpu_utils;

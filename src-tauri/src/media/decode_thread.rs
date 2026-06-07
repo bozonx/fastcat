@@ -20,7 +20,7 @@ use std::thread::JoinHandle;
 
 use anyhow::{anyhow, Context, Result};
 
-use super::decode::{MediaInfo, VideoFrame, VideoDecoderFactory, FfmpegNextDecoderFactory};
+use super::decode::{FfmpegNextDecoderFactory, MediaInfo, VideoDecoderFactory, VideoFrame};
 use super::types::HwAccelMode;
 
 // Размер очереди декодированных кадров. Каждый кадр = ширина × высота × 4 байта.

@@ -25,7 +25,8 @@ use crate::compositor::Compositor;
 
 use super::clock::{Clock, PlaybackClock};
 use super::handle::{MonitorCommand, MonitorMode, SendableRawHandle};
-use super::runtime::{emit_layer_failed, BgLayerResult, LayerRuntimeManager};
+use super::layer_runtime::{emit_layer_failed, BgLayerResult};
+use super::runtime::LayerRuntimeManager;
 use super::scene::{MonitorScene, SceneAudioLayer, SceneAudioTrack};
 use tauri::ipc::{Channel, InvokeResponseBody};
 

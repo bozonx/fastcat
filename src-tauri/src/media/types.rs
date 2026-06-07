@@ -1,7 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[derive(Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub enum HwAccelMode {
     #[serde(rename = "none")]
     #[default]
@@ -15,7 +14,6 @@ pub enum HwAccelMode {
     #[serde(rename = "nvenc")]
     Nvenc,
 }
-
 
 impl HwAccelMode {
     #[allow(clippy::should_implement_trait)]

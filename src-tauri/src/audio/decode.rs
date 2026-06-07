@@ -4,8 +4,14 @@ use std::sync::Arc;
 use anyhow::{anyhow, Context, Result};
 use parking_lot::{Condvar, Mutex};
 
-use crate::audio::shared::{AudioShared, AudioSourceMetadata, CachedAudioDecoder, decoded_cache_key, MAX_CACHEABLE_FILE_BYTES};
-use crate::audio::resample::{planar_to_interleaved, resample_planar_with_speed, resample_planar_cached, make_sinc_resampler, RESAMPLER_CHUNK_SIZE};
+use crate::audio::resample::{
+    make_sinc_resampler, planar_to_interleaved, resample_planar_cached, resample_planar_with_speed,
+    RESAMPLER_CHUNK_SIZE,
+};
+use crate::audio::shared::{
+    decoded_cache_key, AudioShared, AudioSourceMetadata, CachedAudioDecoder,
+    MAX_CACHEABLE_FILE_BYTES,
+};
 
 /// Fraction of the current source chunk tolerated as scheduling jitter before
 /// the streaming decoder treats the request as a discontinuity and reseeks.

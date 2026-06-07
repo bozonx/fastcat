@@ -15,8 +15,8 @@ use crate::media::decode::probe_rotation;
 use crate::media::decode_gate::decoder_load_gate;
 use crate::media::ffmpeg_args::*;
 use crate::media::ffmpeg_utils::*;
-use crate::media::types::HwAccelMode;
 use crate::media::timeline_render::encode_rgba_as_webp;
+use crate::media::types::HwAccelMode;
 
 const DEFAULT_VIDEO_WIDTH: u32 = 1920;
 const DEFAULT_VIDEO_HEIGHT: u32 = 1080;
@@ -416,7 +416,10 @@ pub fn convert_media(
                 "-c:v".into(),
                 video_codec.to_string(),
                 "-b:v".into(),
-                options.video_bitrate_bps.unwrap_or(DEFAULT_VIDEO_BITRATE_BPS).to_string(),
+                options
+                    .video_bitrate_bps
+                    .unwrap_or(DEFAULT_VIDEO_BITRATE_BPS)
+                    .to_string(),
             ]);
 
             if options.audio.unwrap_or(true) {
@@ -586,7 +589,9 @@ pub fn extract_video_frame_webps(
     };
 
     for (orig_idx, target_time) in sorted_times {
-        let needs_seek = last_pts < 0.0 || target_time < last_pts || (target_time - last_pts) > SEEK_THRESHOLD_SEC;
+        let needs_seek = last_pts < 0.0
+            || target_time < last_pts
+            || (target_time - last_pts) > SEEK_THRESHOLD_SEC;
         if needs_seek {
             if let Err(e) = decoder.seek(target_time) {
                 log::warn!(
@@ -641,7 +646,8 @@ pub fn extract_video_frame_webps(
                                     rotated.width(),
                                     rotated.height(),
                                     webp_quality,
-                                )}
+                                )
+                            }
                             180 => {
                                 let rotated = image::imageops::rotate180(&buf);
                                 encode_rgba_as_webp(
@@ -649,7 +655,8 @@ pub fn extract_video_frame_webps(
                                     rotated.width(),
                                     rotated.height(),
                                     webp_quality,
-                                )}
+                                )
+                            }
                             270 => {
                                 let rotated = image::imageops::rotate270(&buf);
                                 encode_rgba_as_webp(
@@ -657,14 +664,16 @@ pub fn extract_video_frame_webps(
                                     rotated.width(),
                                     rotated.height(),
                                     webp_quality,
-                                )}
+                                )
+                            }
                             _ => unreachable!(),
                         }
                     } else {
                         Err(anyhow!("failed to create image buffer for rotation"))
                     }
                 } else {
-                    encode_rgba_as_webp(&frame.pixels, frame.width, frame.height, webp_quality)};
+                    encode_rgba_as_webp(&frame.pixels, frame.width, frame.height, webp_quality)
+                };
 
             match encode_res {
                 Ok(bytes) => {

@@ -40,7 +40,12 @@ pub fn push_video_encode_filter_args(
             } else {
                 "format=nv12|vaapi,hwupload".to_string()
             };
-            args.extend(["-vf".to_string(), vf, "-pix_fmt".to_string(), "vaapi".to_string()]);
+            args.extend([
+                "-vf".to_string(),
+                vf,
+                "-pix_fmt".to_string(),
+                "vaapi".to_string(),
+            ]);
         }
         HwAccelMode::Nvdec | HwAccelMode::Nvenc => {
             let vf = if has_scale {
@@ -48,7 +53,12 @@ pub fn push_video_encode_filter_args(
             } else {
                 "format=yuv420p".to_string()
             };
-            args.extend(["-vf".to_string(), vf, "-pix_fmt".to_string(), "yuv420p".to_string()]);
+            args.extend([
+                "-vf".to_string(),
+                vf,
+                "-pix_fmt".to_string(),
+                "yuv420p".to_string(),
+            ]);
         }
         HwAccelMode::None | HwAccelMode::Auto => {
             if has_scale {

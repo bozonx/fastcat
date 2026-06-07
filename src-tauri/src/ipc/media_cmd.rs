@@ -60,7 +60,11 @@ impl NativeMediaService {
         }
     }
 
-    pub fn probe_media(&self, path: &std::path::Path, ffprobe_path: &str) -> anyhow::Result<NativeMediaMetadata> {
+    pub fn probe_media(
+        &self,
+        path: &std::path::Path,
+        ffprobe_path: &str,
+    ) -> anyhow::Result<NativeMediaMetadata> {
         probe_media(path, ffprobe_path)
     }
 
@@ -132,7 +136,15 @@ impl NativeMediaService {
         quality: f32,
         hw: crate::FfmpegHardwareSettings,
     ) -> anyhow::Result<Vec<u8>> {
-        extract_video_frame_webp(source_path, time_sec, position_fraction, max_width, max_height, quality, hw)
+        extract_video_frame_webp(
+            source_path,
+            time_sec,
+            position_fraction,
+            max_width,
+            max_height,
+            quality,
+            hw,
+        )
     }
 
     pub fn extract_video_frame_webps(
@@ -143,7 +155,8 @@ impl NativeMediaService {
         max_height: u32,
         quality: f32,
     ) -> anyhow::Result<Vec<u8>> {
-        let frames = extract_video_frame_webps(source_path, times_sec, max_width, max_height, quality)?;
+        let frames =
+            extract_video_frame_webps(source_path, times_sec, max_width, max_height, quality)?;
         Ok(pack_webp_frames(frames))
     }
 
@@ -163,10 +176,7 @@ pub async fn native_media_metadata(
     hw_settings: State<'_, parking_lot::RwLock<crate::FfmpegHardwareSettings>>,
 ) -> Result<NativeMediaMetadata, String> {
     let path = PathBuf::from(path);
-    let ffprobe_path = hw_settings
-        .read()
-        .ffprobe_path
-        .clone();
+    let ffprobe_path = hw_settings.read().ffprobe_path.clone();
     tokio::task::spawn_blocking(move || probe_media(&path, &ffprobe_path))
         .await
         .map_err(|e| e.to_string())?
@@ -186,9 +196,7 @@ pub async fn native_media_generate_proxy(
     let source_path = PathBuf::from(source_path);
     let target_path = PathBuf::from(target_path);
 
-    let hw = hw_settings
-        .read()
-        .clone();
+    let hw = hw_settings.read().clone();
     options.apply_hw_settings(&hw);
 
     tokio::task::spawn_blocking(move || {
@@ -212,9 +220,7 @@ pub async fn native_media_convert(
     let source_path = PathBuf::from(source_path);
     let target_path = PathBuf::from(target_path);
 
-    let hw = hw_settings
-        .read()
-        .clone();
+    let hw = hw_settings.read().clone();
     options.apply_hw_settings(&hw);
 
     tokio::task::spawn_blocking(move || {
@@ -250,27 +256,19 @@ pub async fn native_timeline_export(
     let service = service.inner().clone();
     let target_path = PathBuf::from(target_path);
 
-    let hw = hw_settings
-        .read()
-        .clone();
+    let hw = hw_settings.read().clone();
     options.apply_hw_settings(&hw);
 
     tokio::task::spawn_blocking(move || {
-        service.export_timeline(
-            &task_id,
-            scene,
-            options,
-            &target_path,
-            &|progress| {
-                let _ = app.emit(
-                    "native-timeline-export:progress",
-                    NativeTimelineExportProgress {
-                        task_id: &task_id,
-                        progress,
-                    },
-                );
-            },
-        )
+        service.export_timeline(&task_id, scene, options, &target_path, &|progress| {
+            let _ = app.emit(
+                "native-timeline-export:progress",
+                NativeTimelineExportProgress {
+                    task_id: &task_id,
+                    progress,
+                },
+            );
+        })
     })
     .await
     .map_err(|e| e.to_string())?
@@ -322,9 +320,7 @@ pub async fn native_video_frame_webp(
     hw_settings: tauri::State<'_, parking_lot::RwLock<crate::FfmpegHardwareSettings>>,
 ) -> Result<Vec<u8>, String> {
     let source_path = PathBuf::from(source_path);
-    let hw = hw_settings
-        .read()
-        .clone();
+    let hw = hw_settings.read().clone();
     tokio::task::spawn_blocking(move || {
         extract_video_frame_webp(
             &source_path,

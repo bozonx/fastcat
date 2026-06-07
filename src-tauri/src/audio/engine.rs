@@ -5,12 +5,12 @@ use std::thread::JoinHandle;
 use anyhow::{Context, Result};
 use parking_lot::{Condvar, Mutex};
 
-use crate::audio::ring::SpscRingBuffer;
 use crate::audio::clock::RealtimeClock;
-use crate::audio::shared::{AudioShared, compute_timing_sig, CHUNK_DURATION_SEC, PREBUFFER_CHUNKS};
-use crate::audio::output::{AudioBackend, AudioStream, CpalAudioBackend};
-use crate::audio::producer::{spawn_producer_thread, audible_pts_sec};
 use crate::audio::mix::sanitize_master_gain;
+use crate::audio::output::{AudioBackend, AudioStream, CpalAudioBackend};
+use crate::audio::producer::{audible_pts_sec, spawn_producer_thread};
+use crate::audio::ring::SpscRingBuffer;
+use crate::audio::shared::{compute_timing_sig, AudioShared, CHUNK_DURATION_SEC, PREBUFFER_CHUNKS};
 
 pub use crate::audio::mix::render_scene_to_wav;
 
@@ -302,9 +302,9 @@ impl Drop for NativeAudioEngine {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::audio::clock::RealtimeClock;
     use crate::audio::output::{AudioBackend, AudioStream};
     use crate::audio::ring::SpscRingBuffer;
-    use crate::audio::clock::RealtimeClock;
     use std::sync::Arc;
 
     struct MockAudioStream;
@@ -347,11 +347,9 @@ mod tests {
             sample_rate: 48000,
             channels: 2,
         };
-        let engine = NativeAudioEngine::new_with_backend(
-            &AudioEngineSettings::default(),
-            Box::new(backend),
-        )
-        .unwrap();
+        let engine =
+            NativeAudioEngine::new_with_backend(&AudioEngineSettings::default(), Box::new(backend))
+                .unwrap();
 
         assert_eq!(engine.sample_rate, 48000);
         assert_eq!(engine.device_channels, 2);

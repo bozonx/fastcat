@@ -14,176 +14,25 @@ use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 use std::sync::mpsc::Sender;
 use std::sync::Arc;
-use std::time::Instant;
 
-use tauri::{AppHandle, Emitter};
-use vello::peniko::{Blob, Color, ImageAlphaType, ImageData, ImageFormat};
+use tauri::AppHandle;
 use winit::event_loop::EventLoopProxy;
 
-use crate::compositor::scene::{LayerKind as CompLayerKind, RasterSource, Scene};
-use crate::media::decode::VideoFrame;
+use crate::compositor::scene::Scene;
 use crate::media::decode_gate::decoder_load_gate;
 use crate::media::decode_thread::DecodePump;
 use crate::media::image_decode::decode_image;
 use crate::media::types::HwAccelMode;
 
-use super::frame_cache::{DecodedVideoFrame, VideoFrameCache};
 use super::handle::MonitorCommand;
+use super::layer_runtime::*;
 use super::scene::{LayerKind, MonitorScene, PreviewSyncMode, SceneLayer};
-use super::scene_build::{
-    build_virtual_kind, finalize_layer, layer_with_auto_source_rotation, rasterize_svg,
-};
+use super::scene_build::{build_compositor_scene, rasterize_svg};
 
-const EVT_LAYER_FAILED: &str = "monitor:layer_failed";
 const STRICT_VIDEO_SYNC_LAG_FRAMES: f64 = 2.0;
 const STRICT_VIDEO_SYNC_LAG_SEC: f64 = 0.08;
 const BALANCED_VIDEO_SYNC_LAG_FRAMES: f64 = 6.0;
 const BALANCED_VIDEO_SYNC_LAG_SEC: f64 = 0.22;
-
-/// Если ближайший кешированный кадр дальше этого от цели — декодер стоит не там
-/// (reverse / fast-forward / большой скачок) и нужна репозиция. Меньшие промахи —
-/// транзиентный стол декодера на 1×, их не трогаем.
-const RESEEK_MISS_DISTANCE_SEC: f64 = 0.5;
-/// Минимальный интервал между репозициями одного слоя, чтобы in-flight seek успел
-/// долететь и не было storm'а команд декодеру.
-const RESEEK_COOLDOWN_SEC: f64 = 0.15;
-
-// ---------------------------------------------------------------------------
-// Результаты фоновой загрузки
-// ---------------------------------------------------------------------------
-
-pub enum BgLayerResult {
-    VideoOk {
-        id: String,
-        pump: DecodePump,
-        media_size: (u32, u32),
-        source_rotation: i32,
-    },
-    VideoErr {
-        id: String,
-        error: String,
-    },
-    ImageOk {
-        id: String,
-        image: ImageData,
-        size: (u32, u32),
-    },
-    ImageErr {
-        id: String,
-        error: String,
-    },
-    SvgOk {
-        id: String,
-        image: ImageData,
-        size: (u32, u32),
-    },
-    SvgErr {
-        id: String,
-        error: String,
-    },
-}
-
-// ---------------------------------------------------------------------------
-// Рантаймы слоёв
-// ---------------------------------------------------------------------------
-
-pub enum LayerRuntime {
-    Video(VideoLayerRt),
-    Image(ImageLayerRt),
-    /// Фоновый поток загрузки запущен — результат ещё не пришёл.
-    Loading,
-    /// Открытие не удалось. Удаляется следующим `apply_scene` для retry.
-    Failed,
-}
-
-pub struct VideoLayerRt {
-    pub pump: DecodePump,
-    pub media_size: (u32, u32),
-    pub source_rotation: i32,
-    /// Текущий отображаемый кадр (последний с PTS ≤ target из кеша).
-    pub current: Option<DecodedVideoFrame>,
-    /// Кеш декодированных кадров для дешёвого скраба назад без респауна ffmpeg.
-    cache: VideoFrameCache,
-    /// Время последней репозиции декодера по cache-miss (троттлинг reseek).
-    last_reseek: Option<Instant>,
-}
-
-impl VideoLayerRt {
-    fn new(pump: DecodePump, media_size: (u32, u32), source_rotation: i32) -> Self {
-        let fps = pump.info.fps;
-        let frame_bytes = (media_size.0 as usize)
-            .saturating_mul(media_size.1 as usize)
-            .saturating_mul(4);
-        Self {
-            cache: VideoFrameCache::new(fps, frame_bytes),
-            pump,
-            media_size,
-            source_rotation,
-            current: None,
-            last_reseek: None,
-        }
-    }
-
-    /// Декодер не там, где нужно (reverse / fast-forward / промах кеша): репозиционируем
-    /// его на `target` и сразу показываем ближайший доступный кадр, чтобы экран не застывал.
-    /// Троттлится `RESEEK_COOLDOWN_SEC`; реагирует только на «дальние» промахи.
-    fn maybe_reseek_on_miss(&mut self, target_clip_local: f64) {
-        let far_miss = match self.cache.nearest_distance_sec(target_clip_local) {
-            Some(dist) => dist > RESEEK_MISS_DISTANCE_SEC,
-            None => true,
-        };
-        if !far_miss {
-            return;
-        }
-        let now = Instant::now();
-        if let Some(last) = self.last_reseek {
-            if now.duration_since(last).as_secs_f64() < RESEEK_COOLDOWN_SEC {
-                return;
-            }
-        }
-        self.last_reseek = Some(now);
-        if let Err(e) = self.pump.seek(target_clip_local) {
-            log::error!("[monitor] reseek-on-miss seek: {e:?}");
-        }
-        if let Some(frame) = self.cache.frame_nearest(target_clip_local) {
-            self.current = Some(frame);
-        }
-    }
-
-    /// Сливает все доступные кадры из декодера в кеш (неблокирующе).
-    fn pull_into_cache(&mut self) {
-        let live_gen = self.pump.current_generation();
-        while let Some(msg) = self.pump.try_recv_frame() {
-            if msg.generation != live_gen {
-                continue;
-            }
-            // GPU-текстура кадра живёт в самом кадре (Arc); вытеснение освобождает её
-            // дропом — отдельной синхронизации с внешним texture-кешем больше нет.
-            self.cache.insert(video_frame_to_cached(msg.frame));
-        }
-    }
-
-    /// Выбирает отображаемый кадр: ближайший с PTS ≤ target из кеша (если есть).
-    fn update_display(&mut self, target_clip_local: f64, max_lag_sec: Option<f64>) -> bool {
-        let frame = match max_lag_sec {
-            Some(max_lag) => self.cache.frame_le_with_max_lag(target_clip_local, max_lag),
-            None => self.cache.frame_le(target_clip_local),
-        };
-        match frame {
-            Some(frame) => {
-                self.current = Some(frame);
-                true
-            }
-            None => false,
-        }
-    }
-}
-
-pub struct ImageLayerRt {
-    pub image: ImageData,
-    pub size: (u32, u32),
-    pub is_svg: bool,
-}
 
 // ---------------------------------------------------------------------------
 // LayerRuntimeManager
@@ -608,7 +457,7 @@ impl LayerRuntimeManager {
             if let Some(LayerRuntime::Video(rt)) = self.runtimes.get_mut(&layer.id) {
                 rt.pull_into_cache();
                 // Пауза + попадание в кеш → показываем кадр без перезапуска ffmpeg.
-                if !playing && rt.cache.has_near(clip_local, 1) {
+                if !playing && rt.has_cached_near(clip_local, 1) {
                     rt.update_display(clip_local, None);
                     continue;
                 }
@@ -651,118 +500,7 @@ impl LayerRuntimeManager {
 
     /// Строит снимок доменной сцены в момент `t` для передачи в `Compositor`.
     pub fn build_compositor_scene(&self, t: f64) -> Scene {
-        let (scene_w, scene_h) = self.resolved_scene_size();
-
-        let mut active_indices = std::collections::HashSet::new();
-        for i in 0..self.scene.len() {
-            if self.scene[i].covers(t) {
-                active_indices.insert(i);
-
-                if let Some(t_in) = &self.scene[i].transition_in {
-                    let local_t = t - self.scene[i].timeline_start_sec;
-                    // Любой шейдерный переход (включая dissolve) читает from-слой —
-                    // включаем его в активные индексы сцены на время перехода.
-                    if local_t < t_in.duration_sec && local_t >= 0.0 {
-                        if let Some(from_id) = &t_in.from_layer_id {
-                            if let Some(from_idx) =
-                                (0..self.scene.len()).find(|&idx| &self.scene[idx].id == from_id)
-                            {
-                                active_indices.insert(from_idx);
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        let mut indices: Vec<usize> = active_indices.into_iter().collect();
-        indices.sort_by_key(|&i| self.scene[i].z);
-
-        let mut layers = Vec::with_capacity(indices.len());
-        for i in indices {
-            let sl = &self.scene[i];
-            if sl.opacity.clamp(0.0, 1.0) <= 0.0 {
-                continue;
-            }
-            // Растровые kind'ы резолвим из кеша рантаймов; виртуальные (bg/shape/text)
-            // строит общий `scene_build`.
-            let layer_kind = match sl.kind {
-                LayerKind::Video | LayerKind::Image | LayerKind::Svg => {
-                    let Some(rt) = self.runtimes.get(&sl.id) else {
-                        continue;
-                    };
-                    match rt {
-                        LayerRuntime::Video(v) => match v.current.as_ref() {
-                            Some(f) => CompLayerKind::Raster {
-                                // GPU-текстура живёт в самом кадре (Arc) → хэндл валиден,
-                                // пока кадр показывается. CPU-blob — только запасной путь,
-                                // когда у декодера не было wgpu device (GPU-аплоад не сделан).
-                                source: match (&f.texture, &f.image) {
-                                    (Some(texture), _) => RasterSource::GpuTexture(texture.clone()),
-                                    (None, Some(image)) => RasterSource::Image(image.clone()),
-                                    (None, None) => continue,
-                                },
-                                natural_size: v.media_size,
-                            },
-                            None => continue,
-                        },
-                        LayerRuntime::Image(im) => CompLayerKind::Raster {
-                            source: RasterSource::Image(im.image.clone()),
-                            natural_size: im.size,
-                        },
-                        LayerRuntime::Loading | LayerRuntime::Failed => continue,
-                    }
-                }
-                LayerKind::Background | LayerKind::Shape | LayerKind::Text => {
-                    match build_virtual_kind(sl, (scene_w, scene_h)) {
-                        Some(kind) => kind,
-                        None => continue,
-                    }
-                }
-            };
-
-            let layer = match self.runtimes.get(&sl.id) {
-                Some(LayerRuntime::Video(v)) => {
-                    layer_with_auto_source_rotation(sl, v.source_rotation)
-                }
-                _ => sl.clone(),
-            };
-            layers.push(finalize_layer(&layer, layer_kind, (scene_w, scene_h), t));
-        }
-
-        Scene {
-            width: scene_w,
-            height: scene_h,
-            time: t,
-            background: Color::TRANSPARENT,
-            layers,
-        }
-    }
-
-    /// Размер сцены: из MonitorScene.width/height или bounding box рантаймов.
-    fn resolved_scene_size(&self) -> (u32, u32) {
-        if self.scene_size.0 > 0 && self.scene_size.1 > 0 {
-            return self.scene_size;
-        }
-        let mut w = 0u32;
-        let mut h = 0u32;
-        for layer in self.scene.iter() {
-            let Some(rt) = self.runtimes.get(&layer.id) else {
-                continue;
-            };
-            let (mw, mh) = match rt {
-                LayerRuntime::Video(v) => v.media_size,
-                LayerRuntime::Image(im) => im.size,
-                LayerRuntime::Loading | LayerRuntime::Failed => continue,
-            };
-            w = w.max(mw);
-            h = h.max(mh);
-        }
-        if w == 0 || h == 0 {
-            (1920, 1080)
-        } else {
-            (w, h)
-        }
+        build_compositor_scene(&self.scene, self.scene_size, &self.runtimes, t)
     }
 }
 
@@ -807,41 +545,6 @@ fn svg_target_long_edge(scene_size: (u32, u32), preview_scale: Option<f32>) -> u
 // ---------------------------------------------------------------------------
 // Вспомогательные функции
 // ---------------------------------------------------------------------------
-
-fn video_frame_to_cached(mut frame: VideoFrame) -> DecodedVideoFrame {
-    let width = frame.width;
-    let height = frame.height;
-    let pts_sec = frame.pts_sec;
-    // GPU-текстуру забираем из кадра во владение Arc'а. CPU-пиксели держим ТОЛЬКО если
-    // GPU-аплоада не было (нет device): иначе это чистый дубль GPU-кадра — не копим его.
-    let texture = std::mem::take(&mut frame.texture).map(Arc::new);
-    let image = if texture.is_some() {
-        None
-    } else {
-        Some(ImageData {
-            data: Blob::new(Arc::new(std::mem::take(&mut frame.pixels))),
-            format: ImageFormat::Rgba8,
-            alpha_type: ImageAlphaType::Alpha,
-            width,
-            height,
-        })
-    };
-    DecodedVideoFrame {
-        pts_sec,
-        image,
-        texture,
-    }
-}
-
-pub fn emit_layer_failed(app: &AppHandle, id: &str, kind: &str, error: &str) {
-    #[derive(serde::Serialize, Clone)]
-    struct Payload<'a> {
-        id: &'a str,
-        kind: &'a str,
-        error: &'a str,
-    }
-    let _ = app.emit(EVT_LAYER_FAILED, Payload { id, kind, error });
-}
 
 /// Сравнение scale с трактовкой `None == Some(1.0)` (нет даунскейла).
 /// Без этого первый приход `Some(1.0)` после `None` сбрасывал бы живые декодеры.

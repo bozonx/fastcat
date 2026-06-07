@@ -7,10 +7,12 @@ use std::time::Duration;
 use anyhow::{Context, Result};
 use parking_lot::{Condvar, Mutex};
 
-use crate::audio::ring::SpscRingBuffer;
 use crate::audio::clock::RealtimeClock;
-use crate::audio::shared::{AudioShared, PRODUCER_RESYNC_THRESHOLD_SEC, CHUNK_DURATION_SEC, PREBUFFER_CHUNKS};
 use crate::audio::mix::mix_chunk;
+use crate::audio::ring::SpscRingBuffer;
+use crate::audio::shared::{
+    AudioShared, CHUNK_DURATION_SEC, PREBUFFER_CHUNKS, PRODUCER_RESYNC_THRESHOLD_SEC,
+};
 
 pub(crate) fn spawn_producer_thread(
     shared: Arc<(Mutex<AudioShared>, Condvar)>,
@@ -56,7 +58,11 @@ pub(crate) fn producer_loop(
 
     // Cached clones of the scene/tracks, refreshed only when `scene_serial`
     // changes, so a static timeline doesn't re-clone the whole scene 20×/sec.
-    let mut cached: Option<(u64, Vec<crate::monitor::scene::SceneAudioLayer>, Vec<crate::monitor::scene::SceneAudioTrack>)> = None;
+    let mut cached: Option<(
+        u64,
+        Vec<crate::monitor::scene::SceneAudioLayer>,
+        Vec<crate::monitor::scene::SceneAudioTrack>,
+    )> = None;
 
     // Throttled underrun reporting. The real-time callback only bumps the atomic
     // counters; here we log at most once per second when new underruns appear, so

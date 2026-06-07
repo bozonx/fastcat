@@ -707,7 +707,8 @@ mod tests {
             .join("test/fixtures/media/sample-1s-720p.mp4");
         // Requesting VAAPI on a build without a driver should still open and
         // decode frames because we fall back to software decode.
-        let mut decoder = FfmpegNextDecoder::open(&fixture, None, HwAccelMode::Vaapi, None).unwrap();
+        let mut decoder =
+            FfmpegNextDecoder::open(&fixture, None, HwAccelMode::Vaapi, None).unwrap();
         let frame = decoder.next_frame().unwrap().unwrap();
         assert_eq!(frame.width, 1280);
         assert_eq!(frame.height, 720);
@@ -745,7 +746,9 @@ mod tests {
             .unwrap()
             .join("test/fixtures/media/sample-1s-720p.mp4");
         let factory = FfmpegNextDecoderFactory;
-        let mut decoder = factory.open(&fixture, None, HwAccelMode::None, None).unwrap();
+        let mut decoder = factory
+            .open(&fixture, None, HwAccelMode::None, None)
+            .unwrap();
         let frame = decoder.next_frame().unwrap().unwrap();
 
         assert_eq!(decoder.info().width, 1280);

@@ -1,8 +1,8 @@
 use std::path::Path;
 
-use super::options::NativeExportOptions;
-use super::ffmpeg_args_builder::{build_ffmpeg_args, export_uses_alpha};
 use super::super::ffmpeg_utils::resolve_audio_encoder;
+use super::ffmpeg_args_builder::{build_ffmpeg_args, export_uses_alpha};
+use super::options::NativeExportOptions;
 
 fn base_options() -> NativeExportOptions {
     NativeExportOptions {

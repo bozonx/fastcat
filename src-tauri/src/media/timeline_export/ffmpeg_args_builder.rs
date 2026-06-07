@@ -1,9 +1,9 @@
 use std::path::Path;
 
-use super::options::NativeExportOptions;
 use super::super::ffmpeg_args::*;
 use super::super::ffmpeg_utils::*;
 use super::super::types::HwAccelMode;
+use super::options::NativeExportOptions;
 
 pub(crate) fn build_ffmpeg_args(
     options: &NativeExportOptions,
@@ -71,7 +71,9 @@ pub(crate) fn build_ffmpeg_args(
         if is_cbr {
             let bitrate = options.video_bitrate_bps.max(1).to_string();
             match hw_mode {
-                HwAccelMode::Nvdec | HwAccelMode::Nvenc => args.extend(["-rc".to_string(), "cbr".to_string()]),
+                HwAccelMode::Nvdec | HwAccelMode::Nvenc => {
+                    args.extend(["-rc".to_string(), "cbr".to_string()])
+                }
                 HwAccelMode::Vaapi => args.extend(["-rc_mode".to_string(), "CBR".to_string()]),
                 // Software encoders only get a *cap* from maxrate/bufsize; add an equal
                 // floor so the rate is constant rather than merely bounded above.
@@ -183,10 +185,19 @@ pub(crate) fn resolve_export_hw_mode(options: &NativeExportOptions) -> HwAccelMo
     if !options.enable_hardware_encoding.unwrap_or(false) || export_uses_alpha(options) {
         return HwAccelMode::None;
     }
-    let hw_accel = options.hardware_acceleration_mode.as_deref().unwrap_or("none");
-    let vaapi_device = options.vaapi_device.as_deref().unwrap_or(DEFAULT_VAAPI_DEVICE);
+    let hw_accel = options
+        .hardware_acceleration_mode
+        .as_deref()
+        .unwrap_or("none");
+    let vaapi_device = options
+        .vaapi_device
+        .as_deref()
+        .unwrap_or(DEFAULT_VAAPI_DEVICE);
     let mode = resolve_hw_decode_mode(hw_accel, vaapi_device);
-    if mode == HwAccelMode::None && hw_accel == "auto" && std::path::Path::new("/dev/nvidia0").exists() {
+    if mode == HwAccelMode::None
+        && hw_accel == "auto"
+        && std::path::Path::new("/dev/nvidia0").exists()
+    {
         // No VAAPI render node, but an NVIDIA device is present — use NVENC
         // instead of silently dropping to software.
         HwAccelMode::Nvdec

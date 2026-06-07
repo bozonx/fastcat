@@ -234,6 +234,6 @@ pub fn run() {
         });
     let result = builder.run(tauri::generate_context!());
     if let Err(e) = result {
-            log::error!("error while running tauri application: {e}");
-        }
+        log::error!("error while running tauri application: {e}");
+    }
 }

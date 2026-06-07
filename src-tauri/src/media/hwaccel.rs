@@ -64,7 +64,10 @@ pub fn init_hwaccel(
     }
 
     #[cfg(target_os = "linux")]
-    if matches!(hw_mode, HwAccelMode::Auto | HwAccelMode::Vaapi | HwAccelMode::Nvdec) {
+    if matches!(
+        hw_mode,
+        HwAccelMode::Auto | HwAccelMode::Vaapi | HwAccelMode::Nvdec
+    ) {
         match try_vaapi(codec_ctx, vaapi_device) {
             Ok(ctx) => return Some(ctx),
             Err(e) => log::warn!("[hwaccel] VAAPI init failed: {e}"),

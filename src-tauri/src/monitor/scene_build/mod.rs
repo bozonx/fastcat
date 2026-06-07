@@ -11,12 +11,14 @@
 //! только «виртуальные» слои (`Background | Shape | Text`) и финализирует любой
 //! `CompLayerKind` в `Layer` (transform + opacity + blend).
 
+pub mod compositor_scene;
 pub mod ipc_parsers;
 pub mod layer_builder;
 pub mod svg_raster;
 pub mod transform;
 pub mod transition;
 
+pub use compositor_scene::*;
 pub use ipc_parsers::*;
 pub use layer_builder::*;
 pub use svg_raster::*;

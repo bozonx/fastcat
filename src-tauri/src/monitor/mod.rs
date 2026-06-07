@@ -12,6 +12,7 @@ mod app;
 mod clock;
 mod frame_cache;
 mod handle;
+pub mod layer_runtime;
 pub mod runtime;
 pub mod scene;
 pub mod scene_build;
