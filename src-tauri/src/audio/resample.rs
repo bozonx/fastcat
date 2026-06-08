@@ -197,50 +197,92 @@ pub(crate) fn resample_planar_cached(
     Ok(output)
 }
 
-/// Varispeed-resamples an interleaved buffer to exactly `out_frames` frames.
+/// Continuous (streaming) varispeed resampler for the realtime producer's global
+/// playback-speed path (speed != 1). The mixer renders a `speed×` longer timeline
+/// span at normal pitch; this compresses (speed > 1) or stretches (speed < 1) it
+/// back to the device rate, shifting pitch like tape varispeed.
 ///
-/// Used by the realtime producer ONLY when global playback speed != 1: the mixer
-/// renders a `speed×` longer timeline span into `interleaved`, and this compresses
-/// (speed > 1) or stretches (speed < 1) it back to the device chunk size, shifting
-/// pitch like tape varispeed. Each call builds a self-contained resampler and
-/// flushes its tail, so chunks stay independent (no carried delay-line state); the
-/// output is force-fit to `out_frames` (zero-padded / truncated) so the producer's
-/// frame↔timeline accounting stays exact.
-pub(crate) fn resample_interleaved_to_frames(
-    interleaved: &[f32],
-    channels: usize,
-    sample_rate: u32,
-    speed: f64,
-    out_frames: usize,
-) -> Vec<f32> {
-    if channels == 0 || out_frames == 0 {
-        return vec![0.0; out_frames * channels];
-    }
-    let in_frames = interleaved.len() / channels;
-    if in_frames == 0 {
-        return vec![0.0; out_frames * channels];
-    }
+/// CRITICAL: a SINGLE resampler instance is kept alive across chunks, carrying its
+/// delay-line state plus an unconsumed-input remainder and a surplus-output FIFO.
+/// Building a fresh per-chunk resampler (with a zero-padded delay line) injected a
+/// discontinuity at every 50 ms chunk boundary — heard as periodic crackle. The
+/// caller MUST `reset()` on any source discontinuity (seek / flush / speed change),
+/// otherwise stale delay-line content would bleed across the cut.
+pub(crate) struct VarispeedResampler {
+    cached: Option<Box<rubato::SincFixedIn<f32>>>,
+    in_remainder: Vec<Vec<f32>>,
+    /// Interleaved resampled output produced beyond what `drain` has taken.
+    out_fifo: Vec<f32>,
+}
 
-    let mut planar = vec![vec![0.0f32; in_frames]; channels];
-    for f in 0..in_frames {
-        let base = f * channels;
-        for (ch, plane) in planar.iter_mut().enumerate() {
-            plane[f] = interleaved[base + ch];
+impl VarispeedResampler {
+    pub(crate) fn new() -> Self {
+        Self {
+            cached: None,
+            in_remainder: Vec::new(),
+            out_fifo: Vec::new(),
         }
     }
 
-    let resampled = match resample_planar_with_speed(planar, sample_rate, sample_rate, speed, channels)
-    {
-        Ok(r) => r,
-        Err(e) => {
-            log::warn!("[audio] varispeed resample failed: {e:?}");
-            return vec![0.0; out_frames * channels];
-        }
-    };
+    /// Drops all carried state. Call on seek / flush / speed change so the next
+    /// `feed` starts a fresh, click-free stream.
+    pub(crate) fn reset(&mut self) {
+        self.cached = None;
+        self.in_remainder.clear();
+        self.out_fifo.clear();
+    }
 
-    let mut out = planar_to_interleaved(&resampled, channels);
-    out.resize(out_frames * channels, 0.0);
-    out
+    /// Feeds one interleaved, normal-pitch mixed buffer (rendered at `sample_rate`
+    /// over a `speed×` timeline span) into the streaming resampler, appending the
+    /// pitch-shifted output to the internal FIFO.
+    pub(crate) fn feed(
+        &mut self,
+        interleaved: &[f32],
+        channels: usize,
+        sample_rate: u32,
+        speed: f64,
+    ) {
+        if channels == 0 {
+            return;
+        }
+        let in_frames = interleaved.len() / channels;
+        if in_frames == 0 {
+            return;
+        }
+
+        let mut planar = vec![vec![0.0f32; in_frames]; channels];
+        for f in 0..in_frames {
+            let base = f * channels;
+            for (ch, plane) in planar.iter_mut().enumerate() {
+                plane[f] = interleaved[base + ch];
+            }
+        }
+
+        match resample_planar_cached(ResamplePlanarCachedParams {
+            input: planar,
+            source_rate: sample_rate,
+            target_rate: sample_rate,
+            speed,
+            num_channels: channels,
+            cached_resampler: &mut self.cached,
+            remainder: &mut self.in_remainder,
+        }) {
+            Ok(out_planar) => {
+                let interleaved = planar_to_interleaved(&out_planar, channels);
+                self.out_fifo.extend_from_slice(&interleaved);
+            }
+            Err(e) => log::warn!("[audio] varispeed resample failed: {e:?}"),
+        }
+    }
+
+    /// Removes and returns exactly `n_samples` interleaved samples once available,
+    /// or `None` while the FIFO is still priming (resampler group delay / startup).
+    pub(crate) fn drain(&mut self, n_samples: usize) -> Option<Vec<f32>> {
+        if self.out_fifo.len() < n_samples {
+            return None;
+        }
+        Some(self.out_fifo.drain(0..n_samples).collect())
+    }
 }
 
 /// Converts planar channel buffers into an interleaved buffer with exactly
@@ -373,6 +415,49 @@ mod tests {
         let planar = vec![vec![0.5; 100], vec![-0.5; 100]];
         let resampled = resample_planar_with_speed(planar.clone(), 44100, 44100, 1.0, 2).unwrap();
         assert_eq!(resampled, planar);
+    }
+
+    #[test]
+    fn varispeed_streams_full_chunks_without_boundary_gaps() {
+        // Feeding sequential 2× spans must, in steady state, yield full device chunks
+        // back-to-back. A continuous (non-reset) stream never inserts the zero gaps a
+        // per-chunk resampler would at boundaries — the source of the crackle.
+        let mut vs = VarispeedResampler::new();
+        let channels = 2;
+        let sr = 48_000;
+        let speed = 2.0;
+        let chunk_frames = 2_400; // 50 ms
+        let in_frames = (chunk_frames as f64 * speed) as usize; // 2× span
+        let span = vec![0.5f32; in_frames * channels];
+
+        let mut chunks = 0;
+        for _ in 0..20 {
+            vs.feed(&span, channels, sr, speed);
+            if let Some(out) = vs.drain(chunk_frames * channels) {
+                assert_eq!(out.len(), chunk_frames * channels);
+                // Once primed, a steady DC input resamples to ~constant output (no
+                // zero-padding holes at chunk boundaries).
+                if chunks > 2 {
+                    let silent = out.iter().filter(|s| s.abs() < 1e-6).count();
+                    assert!(
+                        silent < out.len() / 10,
+                        "unexpected silence in resampled chunk: {silent}/{}",
+                        out.len()
+                    );
+                }
+                chunks += 1;
+            }
+        }
+        assert!(chunks >= 18, "expected steady full-chunk output, got {chunks}");
+    }
+
+    #[test]
+    fn varispeed_reset_clears_carried_state() {
+        let mut vs = VarispeedResampler::new();
+        vs.feed(&vec![0.5f32; 4_800 * 2], 2, 48_000, 2.0);
+        vs.reset();
+        // After reset the FIFO is empty: a drain for a full chunk must report priming.
+        assert!(vs.drain(2_400 * 2).is_none());
     }
 
     #[test]

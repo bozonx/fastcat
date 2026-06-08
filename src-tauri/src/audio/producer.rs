@@ -93,6 +93,14 @@ pub(crate) fn producer_loop(
     // frames (see `service_scrub_preview`).
     let mut scrub_end_frame: Option<u64> = None;
 
+    // Streaming varispeed resampler for global playback speed != 1. Producer-local
+    // (not shared). One instance lives across chunks so there is no per-chunk
+    // delay-line reset (which crackled at every boundary); it is reset only on a
+    // timeline discontinuity (seek/flush via `seek_serial`) or a speed change.
+    let mut varispeed = crate::audio::resample::VarispeedResampler::new();
+    let mut varispeed_serial = u64::MAX;
+    let mut varispeed_speed = 1.0f64;
+
     while running.load(Ordering::Relaxed) {
         // Forward-scrub preview is a one-shot snippet played while NOT in normal
         // playback. Handled here so every ring write/clear stays on this single
@@ -229,7 +237,10 @@ pub(crate) fn producer_loop(
         let mix_duration = chunk_duration_sec * speed;
 
         let mix_started = std::time::Instant::now();
-        let chunk = match panic::catch_unwind(AssertUnwindSafe(|| {
+        // Mix the (possibly `speed×` longer) timeline span at normal pitch. The
+        // varispeed pitch-shift happens further down through the streaming resampler.
+        let mix_frames = (mix_duration * sample_rate as f64).round().max(1.0) as usize;
+        let mixed = match panic::catch_unwind(AssertUnwindSafe(|| {
             mix_chunk(
                 scene,
                 tracks,
@@ -240,25 +251,13 @@ pub(crate) fn producer_loop(
                 &shared,
             )
         })) {
-            Ok(mixed) => {
-                if is_varispeed {
-                    crate::audio::resample::resample_interleaved_to_frames(
-                        &mixed,
-                        output_channels,
-                        sample_rate,
-                        speed,
-                        chunk_frames,
-                    )
-                } else {
-                    mixed
-                }
-            }
+            Ok(mixed) => mixed,
             Err(error) => {
                 log::error!(
                     "[audio] producer skipped chunk at {chunk_start:.3}s after panic: {}",
                     panic_payload_message(&error)
                 );
-                vec![0.0; chunk_frames * output_channels]
+                vec![0.0; mix_frames * output_channels]
             }
         };
 
@@ -281,6 +280,24 @@ pub(crate) fn producer_loop(
             last_budget_log = std::time::Instant::now();
         }
 
+        // Varispeed: stream the mixed span through the persistent resampler BEFORE
+        // re-locking (resampling is CPU-heavy and must not block engine commands).
+        // The resampler is producer-local, so if this span turns out stale (seek
+        // raced us) the next iteration's reset discards whatever we fed here.
+        let device_chunk = if is_varispeed {
+            if varispeed_serial != seek_serial || (varispeed_speed - speed).abs() > 1e-9 {
+                varispeed.reset();
+                varispeed_serial = seek_serial;
+                varispeed_speed = speed;
+            }
+            varispeed.feed(&mixed, output_channels, sample_rate, speed);
+            // `None` only while the resampler is still priming (group delay) right
+            // after a (re)start — a one-off; steady state always yields a full chunk.
+            varispeed.drain(chunk_frames * output_channels)
+        } else {
+            Some(mixed)
+        };
+
         let mut state = shared.0.lock();
         // Only a seek/flush (or stop) invalidates an in-flight chunk. A pure
         // mix-param change bumps scene_serial but not seek_serial, so we keep the
@@ -288,15 +305,22 @@ pub(crate) fn producer_loop(
         if state.seek_serial != seek_serial || !state.playing {
             continue;
         }
-        if ring.len() < limit_samples {
-            ring.push_slice(&chunk);
-            // Advance by the timeline span actually mixed into this chunk. At 1×
-            // this is exactly the chunk duration; at speed != 1 it is `speed×` longer.
+        // Advance the mix read cursor by the timeline span we just consumed. At 1×
+        // this is exactly the chunk duration; at speed != 1 it is `speed×` longer.
+        // For varispeed the advance is decoupled from the push: input is consumed
+        // into the resampler even on a priming iteration that emits no chunk yet.
+        if let Some(chunk) = device_chunk {
+            if ring.len() < limit_samples {
+                ring.push_slice(&chunk);
+                state.producer_pts_sec += mix_duration;
+                // Start the real-time output clock once a tiny startup prebuffer has
+                // accumulated (see `arm_output_clock_after_prebuffer`). Until armed the
+                // cpal callback emits silence without counting a (false) underrun.
+                arm_output_clock_after_prebuffer(&clock, ring.len(), start_prebuffer_samples);
+            }
+        } else {
+            // Priming iteration (varispeed only): input consumed, no output yet.
             state.producer_pts_sec += mix_duration;
-            // Start the real-time output clock once a tiny startup prebuffer has
-            // accumulated (see `arm_output_clock_after_prebuffer`). Until armed the
-            // cpal callback emits silence without counting a (false) underrun.
-            arm_output_clock_after_prebuffer(&clock, ring.len(), start_prebuffer_samples);
         }
     }
 }
