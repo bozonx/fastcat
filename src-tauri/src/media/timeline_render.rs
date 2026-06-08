@@ -264,8 +264,10 @@ impl ThumbnailRenderer {
         height: u32,
         target_path: &Path,
         quality: f32,
+        hw_mode: HwAccelMode,
+        vaapi_device: Option<String>,
     ) -> Result<()> {
-        let mut cache = VideoDecoderCache::new();
+        let mut cache = VideoDecoderCache::new_with_hw_decode(hw_mode, vaapi_device);
         let compositor_scene = build_export_scene(
             &scene,
             time_sec,
@@ -290,8 +292,10 @@ impl ThumbnailRenderer {
         width: u32,
         height: u32,
         quality: f32,
+        hw_mode: HwAccelMode,
+        vaapi_device: Option<String>,
     ) -> Result<Vec<u8>> {
-        let mut cache = VideoDecoderCache::new();
+        let mut cache = VideoDecoderCache::new_with_hw_decode(hw_mode, vaapi_device);
         let compositor_scene = build_export_scene(
             &scene,
             time_sec,
@@ -319,8 +323,10 @@ pub fn render_timeline_frame_to_file(
     height: u32,
     target_path: &Path,
     quality: f32,
+    hw_mode: HwAccelMode,
+    vaapi_device: Option<String>,
 ) -> Result<()> {
-    GLOBAL_RENDERER.render_to_file(scene, time_sec, width, height, target_path, quality)
+    GLOBAL_RENDERER.render_to_file(scene, time_sec, width, height, target_path, quality, hw_mode, vaapi_device)
 }
 
 pub fn render_timeline_frame_to_webp(
@@ -329,8 +335,10 @@ pub fn render_timeline_frame_to_webp(
     width: u32,
     height: u32,
     quality: f32,
+    hw_mode: HwAccelMode,
+    vaapi_device: Option<String>,
 ) -> Result<Vec<u8>> {
-    GLOBAL_RENDERER.render_to_webp(scene, time_sec, width, height, quality)
+    GLOBAL_RENDERER.render_to_webp(scene, time_sec, width, height, quality, hw_mode, vaapi_device)
 }
 
 /// JS callers pass WebP quality as a 0..1 fraction, but [`encode_rgba_as_webp`]

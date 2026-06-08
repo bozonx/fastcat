@@ -10,6 +10,7 @@ use crate::media::processing::{
 };
 use crate::media::timeline_export::{export_timeline, NativeExportOptions};
 use crate::media::timeline_render::{render_timeline_frame_to_file, render_timeline_frame_to_webp};
+use crate::media::types::HwAccelMode;
 use crate::monitor::MonitorScene;
 
 /// Trait for structs that carry per-request hardware acceleration overrides.
@@ -117,8 +118,10 @@ impl NativeMediaService {
         height: u32,
         target_path: &std::path::Path,
         quality: f32,
+        hw_mode: HwAccelMode,
+        vaapi_device: Option<String>,
     ) -> anyhow::Result<()> {
-        render_timeline_frame_to_file(scene, time_sec, width, height, target_path, quality)
+        render_timeline_frame_to_file(scene, time_sec, width, height, target_path, quality, hw_mode, vaapi_device)
     }
 
     pub fn render_timeline_frame_to_webp(
@@ -128,8 +131,10 @@ impl NativeMediaService {
         width: u32,
         height: u32,
         quality: f32,
+        hw_mode: HwAccelMode,
+        vaapi_device: Option<String>,
     ) -> anyhow::Result<Vec<u8>> {
-        render_timeline_frame_to_webp(scene, time_sec, width, height, quality)
+        render_timeline_frame_to_webp(scene, time_sec, width, height, quality, hw_mode, vaapi_device)
     }
 
     pub fn extract_video_frame_webp(
@@ -146,9 +151,10 @@ impl NativeMediaService {
         max_width: u32,
         max_height: u32,
         quality: f32,
+        hw_settings: &crate::FfmpegHardwareSettings,
     ) -> anyhow::Result<Vec<u8>> {
         let frames =
-            extract_video_frame_webps(source_path, times_sec, max_width, max_height, quality)?;
+            extract_video_frame_webps(source_path, times_sec, max_width, max_height, quality, hw_settings)?;
         Ok(pack_webp_frames(frames))
     }
 
@@ -312,10 +318,21 @@ pub async fn native_timeline_render_frame_to_file(
     height: u32,
     target_path: String,
     quality: f32,
+    hw_settings: State<'_, parking_lot::RwLock<crate::FfmpegHardwareSettings>>,
 ) -> Result<(), String> {
     let target_path = PathBuf::from(target_path);
+    let hw = hw_settings.read().clone();
     tokio::task::spawn_blocking(move || {
-        render_timeline_frame_to_file(scene, time_sec, width, height, &target_path, quality)
+        render_timeline_frame_to_file(
+            scene,
+            time_sec,
+            width,
+            height,
+            &target_path,
+            quality,
+            hw.hardware_acceleration_mode,
+            Some(hw.vaapi_device),
+        )
     })
     .await
     .map_err(|e| e.to_string())?
@@ -329,9 +346,19 @@ pub async fn native_timeline_render_frame_webp(
     width: u32,
     height: u32,
     quality: f32,
+    hw_settings: State<'_, parking_lot::RwLock<crate::FfmpegHardwareSettings>>,
 ) -> Result<Vec<u8>, String> {
+    let hw = hw_settings.read().clone();
     tokio::task::spawn_blocking(move || {
-        render_timeline_frame_to_webp(scene, time_sec, width, height, quality)
+        render_timeline_frame_to_webp(
+            scene,
+            time_sec,
+            width,
+            height,
+            quality,
+            hw.hardware_acceleration_mode,
+            Some(hw.vaapi_device),
+        )
     })
     .await
     .map_err(|e| e.to_string())?
@@ -373,6 +400,7 @@ pub async fn native_video_frame_webps(
     max_width: u32,
     max_height: u32,
     quality: f32,
+    hw_settings: State<'_, parking_lot::RwLock<crate::FfmpegHardwareSettings>>,
 ) -> Result<Vec<u8>, String> {
     if times_sec.len() > 1000 {
         return Err("too many frames requested (max 1000)".into());
@@ -384,8 +412,9 @@ pub async fn native_video_frame_webps(
         return Err("quality must be a finite number".into());
     }
     let source_path = PathBuf::from(source_path);
+    let hw = hw_settings.read().clone();
     let frames = tokio::task::spawn_blocking(move || {
-        extract_video_frame_webps(&source_path, &times_sec, max_width, max_height, quality)
+        extract_video_frame_webps(&source_path, &times_sec, max_width, max_height, quality, &hw)
     })
     .await
     .map_err(|e| e.to_string())?

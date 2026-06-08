@@ -674,14 +674,24 @@ pub fn extract_video_frame_webps(
     max_width: u32,
     max_height: u32,
     quality: f32,
+    hw_settings: &crate::FfmpegHardwareSettings,
 ) -> Result<Vec<Option<Vec<u8>>>> {
     let mut sorted_times: Vec<(usize, f64)> = times_sec.iter().copied().enumerate().collect();
     sorted_times.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal));
 
     let max_edge = max_width.max(max_height);
+    let hw_decode = resolve_hw_decode_mode(
+        &hw_settings.hardware_acceleration_mode,
+        &hw_settings.vaapi_device,
+    );
     let mut decoder = {
         let _permit = decoder_load_gate().acquire();
-        crate::media::decode::open(source_path, Some(max_edge), HwAccelMode::None, None)?
+        crate::media::decode::open(
+            source_path,
+            Some(max_edge),
+            hw_decode,
+            Some(&hw_settings.vaapi_device),
+        )?
     };
     let mut results = vec![None; times_sec.len()];
 
