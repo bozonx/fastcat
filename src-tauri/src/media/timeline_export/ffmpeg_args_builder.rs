@@ -76,8 +76,14 @@ pub(crate) fn build_ffmpeg_args(
                 }
                 HwAccelMode::Vaapi => args.extend(["-rc_mode".to_string(), "CBR".to_string()]),
                 // Software encoders only get a *cap* from maxrate/bufsize; add an equal
-                // floor so the rate is constant rather than merely bounded above.
-                _ => args.extend(["-minrate".to_string(), bitrate.clone()]),
+                // floor so the rate is constant rather than merely bounded above. Only
+                // x264/x265 honour `-minrate` as a true CBR floor; libsvtav1/libvpx-vp9
+                // ignore it (and warn), so for those we keep just the maxrate/bufsize cap
+                // rather than emitting a flag that does nothing.
+                _ if video_codec == "libx264" || video_codec == "libx265" => {
+                    args.extend(["-minrate".to_string(), bitrate.clone()])
+                }
+                _ => {}
             }
             args.extend([
                 "-maxrate".to_string(),

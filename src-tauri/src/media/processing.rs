@@ -521,6 +521,11 @@ fn build_convert_ffmpeg_args(
                 width,
                 height,
                 false,
+                // Convert is a single-clip transcode where the user picks an output
+                // resolution that may not match the source aspect ratio; fit instead
+                // of stretching. (Proxy pre-computes an aspect-matched size, so it
+                // keeps the exact-scale path via push_video_encode_filter_args.)
+                true,
                 &[format!("fps={fps}")],
             );
 

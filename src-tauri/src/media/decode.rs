@@ -111,6 +111,13 @@ pub struct FfmpegNextDecoder {
     yuv_scaler_input_height: u32,
     stream_index: usize,
     stream_time_base: ffmpeg::Rational,
+    /// Stream start PTS in seconds. Containers like MPEG-TS, or MP4s with an edit
+    /// list, begin at a non-zero PTS; we subtract it so reported `pts_sec` is
+    /// 0-based (timeline-relative) and add it back when seeking. Without this the
+    /// export/monitor would request frame `t` but the decoder, reporting raw PTS
+    /// `start + t`, would think it had already passed every target and freeze on
+    /// the first frame for `start` seconds.
+    start_time_sec: f64,
     eof_sent: bool,
     /// Frame-accurate seek target (stream-time seconds). After `seek`, libav lands on
     /// the nearest key frame ≤ target; `next_frame` drops frames with PTS noticeably
@@ -140,6 +147,7 @@ impl FfmpegNextDecoder {
             .ok_or_else(|| anyhow!("no video stream"))?;
         let stream_index = input.index();
         let stream_time_base = input.time_base();
+        let start_time_sec = stream_start_time_sec(&input, stream_time_base);
         let fps = rational_to_f64(input.avg_frame_rate())
             .or_else(|| rational_to_f64(input.rate()))
             .unwrap_or(0.0);
@@ -214,6 +222,7 @@ impl FfmpegNextDecoder {
             yuv_scaler_input_height: 0,
             stream_index,
             stream_time_base,
+            start_time_sec,
             eof_sent: false,
             seek_target: None,
             hwaccel,
@@ -229,12 +238,14 @@ impl FfmpegNextDecoder {
         }
     }
 
-    /// PTS of the decoded frame in stream-time seconds.
+    /// PTS of the decoded frame in 0-based (timeline-relative) seconds. The
+    /// container's stream start time is subtracted so a file that begins at a
+    /// non-zero PTS still reports its first frame at ~0s.
     fn frame_pts_sec(&self, decoded: &ffmpeg::util::frame::Video) -> f64 {
         decoded
             .timestamp()
             .or_else(|| decoded.pts())
-            .map(|pts| pts as f64 * rational_as_f64(self.stream_time_base))
+            .map(|pts| pts as f64 * rational_as_f64(self.stream_time_base) - self.start_time_sec)
             .unwrap_or(0.0)
     }
 
@@ -459,7 +470,11 @@ impl VideoDecoder for FfmpegNextDecoder {
 
     fn seek(&mut self, time_sec: f64) -> Result<()> {
         let target = time_sec.max(0.0);
-        let ts = (target * 1_000_000.0).round() as i64;
+        // `avformat_seek_file` (stream index -1) takes an absolute timestamp in
+        // AV_TIME_BASE units, so add the stream start offset back: the caller works
+        // in 0-based seconds but the container's frames live at `start + target`.
+        let absolute = target + self.start_time_sec;
+        let ts = (absolute * 1_000_000.0).round() as i64;
         self.ictx.seek(ts, ..ts).with_context(|| {
             format!(
                 "failed to seek ffmpeg-next decoder for {}",
@@ -536,6 +551,18 @@ fn init_ffmpeg() -> Result<()> {
     match result {
         Ok(()) => Ok(()),
         Err(e) => Err(anyhow!("failed to initialize ffmpeg-next: {e}")),
+    }
+}
+
+/// Stream start time in seconds, or 0 when unset. `start_time` is `AV_NOPTS_VALUE`
+/// (`i64::MIN`) when the demuxer doesn't expose one; a negative start (some edit
+/// lists) is treated as 0 so seeking never targets before the file begins.
+fn stream_start_time_sec(stream: &ffmpeg::Stream<'_>, time_base: ffmpeg::Rational) -> f64 {
+    let start = stream.start_time();
+    if start == i64::MIN || start <= 0 {
+        0.0
+    } else {
+        start as f64 * rational_as_f64(time_base)
     }
 }
 

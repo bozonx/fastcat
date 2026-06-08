@@ -28,19 +28,35 @@ pub fn push_video_encode_filter_args(
     height: u32,
     export_alpha: bool,
 ) {
-    push_video_encode_filter_args_with_extra(args, hw_mode, width, height, export_alpha, &[]);
+    push_video_encode_filter_args_with_extra(args, hw_mode, width, height, export_alpha, false, &[]);
+}
+
+/// Builds the `scale=W:H[...]` filter. When `preserve_aspect` is set, the target
+/// is treated as a bounding box: the source is fitted into `W×H` without changing
+/// its aspect ratio (`force_original_aspect_ratio=decrease`) and rounded to even
+/// dimensions (`force_divisible_by=2`, required by yuv420p). Without it the source
+/// is stretched to exactly `W×H` — correct only when the caller already picked an
+/// aspect-matching size (e.g. the proxy path).
+fn scale_filter(width: u32, height: u32, preserve_aspect: bool, extra_opts: &str) -> String {
+    let aspect = if preserve_aspect {
+        ":force_original_aspect_ratio=decrease:force_divisible_by=2"
+    } else {
+        ""
+    };
+    format!("scale={}:{}{aspect}{extra_opts}", even(width), even(height))
 }
 
 /// Same as [`push_video_encode_filter_args`], but prepends additional software
 /// filters before the scale/format/hwupload step. Useful for CFR conversion:
 /// `fps=...` must run before hardware upload, otherwise VAAPI/NVENC paths cannot
-/// see CPU frames.
+/// see CPU frames. `preserve_aspect` letterboxes-by-fit instead of stretching.
 pub fn push_video_encode_filter_args_with_extra(
     args: &mut Vec<String>,
     hw_mode: HwAccelMode,
     width: u32,
     height: u32,
     export_alpha: bool,
+    preserve_aspect: bool,
     extra_filters: &[String],
 ) {
     let has_scale = width > 0 && height > 0;
@@ -57,9 +73,8 @@ pub fn push_video_encode_filter_args_with_extra(
         HwAccelMode::Vaapi => {
             let tail = if has_scale {
                 format!(
-                    "scale={}:{}:format=nv12|vaapi,hwupload",
-                    even(width),
-                    even(height)
+                    "{},hwupload",
+                    scale_filter(width, height, preserve_aspect, ":format=nv12|vaapi")
                 )
             } else {
                 "format=nv12|vaapi,hwupload".to_string()
@@ -74,7 +89,7 @@ pub fn push_video_encode_filter_args_with_extra(
         }
         HwAccelMode::Nvdec | HwAccelMode::Nvenc => {
             let tail = if has_scale {
-                format!("scale={}:{}:format=yuv420p", even(width), even(height))
+                scale_filter(width, height, preserve_aspect, ":format=yuv420p")
             } else {
                 "format=yuv420p".to_string()
             };
@@ -89,7 +104,7 @@ pub fn push_video_encode_filter_args_with_extra(
         HwAccelMode::None | HwAccelMode::Auto => {
             let mut filters = extra_filters.to_vec();
             if has_scale {
-                filters.push(format!("scale={}:{}", even(width), even(height)));
+                filters.push(scale_filter(width, height, preserve_aspect, ""));
             }
             if !filters.is_empty() {
                 args.extend(["-vf".to_string(), filters.join(",")]);
@@ -112,4 +127,60 @@ pub fn push_vaapi_init_device_args(args: &mut Vec<String>, vaapi_device: &str) {
         "-filter_hw_device".to_string(),
         "gpu".to_string(),
     ]);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn scale_filter_exact_stretches_to_target() {
+        assert_eq!(scale_filter(1280, 720, false, ""), "scale=1280:720");
+    }
+
+    #[test]
+    fn scale_filter_preserve_fits_and_keeps_even() {
+        assert_eq!(
+            scale_filter(1280, 720, true, ""),
+            "scale=1280:720:force_original_aspect_ratio=decrease:force_divisible_by=2"
+        );
+    }
+
+    #[test]
+    fn scale_filter_preserve_keeps_trailing_format_option() {
+        assert_eq!(
+            scale_filter(1920, 1080, true, ":format=nv12|vaapi"),
+            "scale=1920:1080:force_original_aspect_ratio=decrease:force_divisible_by=2:format=nv12|vaapi"
+        );
+    }
+
+    #[test]
+    fn convert_software_scale_preserves_aspect() {
+        let mut args = Vec::new();
+        push_video_encode_filter_args_with_extra(
+            &mut args,
+            HwAccelMode::None,
+            1280,
+            720,
+            false,
+            true,
+            &["fps=24".to_string()],
+        );
+        let vf = args.windows(2).find(|p| p[0] == "-vf").map(|p| p[1].clone());
+        let vf = vf.expect("expected -vf");
+        assert!(vf.contains("fps=24"));
+        assert!(vf.contains("scale=1280:720:force_original_aspect_ratio=decrease:force_divisible_by=2"));
+    }
+
+    #[test]
+    fn exact_scale_path_has_no_aspect_preservation() {
+        let mut args = Vec::new();
+        push_video_encode_filter_args(&mut args, HwAccelMode::None, 1920, 1080, false);
+        let vf = args
+            .windows(2)
+            .find(|p| p[0] == "-vf")
+            .map(|p| p[1].clone())
+            .expect("expected -vf");
+        assert_eq!(vf, "scale=1920:1080");
+    }
 }

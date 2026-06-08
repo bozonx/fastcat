@@ -155,6 +155,17 @@ pub fn export_timeline(
             return Err(anyhow!("audio-only export has no audio input"));
         }
 
+        // Background fill for the rendered frames. With alpha export the canvas stays
+        // transparent (VP9 yuva420p carries it). Without alpha, ffmpeg discards the
+        // alpha channel on RGBA→yuv420p, so clear to opaque black up front: uncovered
+        // regions become black *and* semi-transparent edges blend correctly onto it,
+        // instead of straight-alpha pixels being flattened over an implicit zero.
+        let frame_background = if export_uses_alpha(opts) {
+            vello::peniko::Color::TRANSPARENT
+        } else {
+            vello::peniko::Color::BLACK
+        };
+
         let args = build_ffmpeg_args(
             opts,
             audio_input.as_deref(),
@@ -245,13 +256,14 @@ pub fn export_timeline(
                             return Err(anyhow!("cancelled"));
                         }
                         let time = start + i as f64 / fps;
-                        let frame_scene = super::timeline_render::build_export_scene(
+                        let mut frame_scene = super::timeline_render::build_export_scene(
                             &scene,
                             time,
                             (width, height),
                             &mut cache,
                             Some(on_warning),
                         )?;
+                        frame_scene.background = frame_background;
                         if let Some(pixels) = compositor
                             .render_scene_to_pixels_pipelined(&mut pipeline, &frame_scene)?
                         {
