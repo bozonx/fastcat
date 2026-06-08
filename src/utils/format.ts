@@ -51,6 +51,24 @@ export function formatFps(fps: number | undefined | null): string {
 }
 
 /**
+ * Formats a render duration in milliseconds to a human-readable string.
+ * Shows seconds when under a minute, otherwise MM:SS or H:MM:SS.
+ */
+export function formatRenderDuration(totalMs: number): string {
+  const totalSeconds = Math.round(totalMs / 1000);
+  if (totalSeconds < 60) {
+    return `${Math.max(1, totalSeconds)}s`;
+  }
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+  if (hours > 0) {
+    return `${hours}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+  }
+  return `${minutes}:${String(seconds).padStart(2, '0')}`;
+}
+
+/**
  * Truncates a string from the middle, replacing the omitted part with an ellipsis.
  */
 export function middleEllipsis(text: string, maxLen: number = 50): string {

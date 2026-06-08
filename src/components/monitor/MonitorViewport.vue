@@ -100,11 +100,19 @@ const selectionRangeText = computed(() => {
   return `${start} / ${end}`;
 });
 
+const selectionRangeDurationText = computed(() => {
+  const range = timelineStore.selectionRange;
+  if (!range) return '';
+  const fps = timelineStore.timelineFormat?.fps ?? timelineStore.fps;
+  const durationUs = range.endUs - range.startUs;
+  return formatTimecode(durationUs, fps);
+});
+
 const markersBottomClass = computed(() => {
   if (props.effectiveFullscreen) {
-    return hasActiveSelectionRange.value ? 'bottom-40 right-8' : 'bottom-32 right-8';
+    return hasActiveSelectionRange.value ? 'bottom-48 right-8' : 'bottom-32 right-8';
   }
-  return hasActiveSelectionRange.value ? 'bottom-20 right-3' : 'bottom-11 right-3';
+  return hasActiveSelectionRange.value ? 'bottom-28 right-3' : 'bottom-11 right-3';
 });
 
 defineExpose({
@@ -194,16 +202,17 @@ defineExpose({
         </div>
 
         <!-- Selection Range Timecode -->
-        <span
+        <div
           v-if="showTimecode && hasActiveSelectionRange"
-          class="absolute text-xs text-blue-400 font-mono tabular-nums bg-ui-bg-elevated/85 backdrop-blur-sm px-2 py-1 rounded transition-all duration-300 select-none min-h-7"
+          class="absolute flex flex-col items-end gap-0.5 text-xs font-mono tabular-nums bg-ui-bg-elevated/85 backdrop-blur-sm px-2 py-1 rounded transition-all duration-300 select-none"
           :class="[
             effectiveFullscreen ? 'bottom-28 right-8' : 'bottom-[2.25rem] right-3',
             effectiveFullscreen && isIdle ? 'opacity-0' : 'opacity-100',
           ]"
         >
-          {{ selectionRangeText }}
-        </span>
+          <span class="text-blue-400">{{ selectionRangeText }}</span>
+          <span class="text-[10px] text-ui-text-muted">{{ selectionRangeDurationText }}</span>
+        </div>
 
         <!-- Timecode -->
         <span

@@ -6,6 +6,8 @@ export function useExportState() {
   const exportError = ref<string | null>(null);
   const exportPhase = ref<'preparing' | 'encoding' | 'saving' | null>(null);
   const exportWarnings = ref<string[]>([]);
+  const exportDurationMs = ref<number | null>(null);
+  const lastExportStatus = ref<'success' | 'error' | null>(null);
 
   const cancelRequested = ref(false);
   const activeExportTaskId = ref<string | null>(null);
@@ -15,6 +17,8 @@ export function useExportState() {
     exportError.value = null;
     exportPhase.value = null;
     exportWarnings.value = [];
+    exportDurationMs.value = null;
+    lastExportStatus.value = null;
     cancelRequested.value = false;
     if (!isExporting.value) {
       activeExportTaskId.value = null;
@@ -27,6 +31,8 @@ export function useExportState() {
     exportError,
     exportPhase,
     exportWarnings,
+    exportDurationMs,
+    lastExportStatus,
     cancelRequested,
     activeExportTaskId,
     resetExportState,

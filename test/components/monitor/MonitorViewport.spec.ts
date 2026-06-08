@@ -4,6 +4,9 @@ import MonitorViewport from '~/components/monitor/MonitorViewport.vue';
 import { ref } from 'vue';
 
 const mockShowTransparencyGrid = ref(false);
+const mockSelectionRange = ref<{ startUs: number; endUs: number } | null>(null);
+const mockFps = ref(30);
+const mockTimelineFormat = ref<{ fps: number } | null>(null);
 
 vi.mock('~/composables/monitor/useMonitorSettings', () => ({
   useMonitorSettings: () => ({ showTimecode: ref(true), showTransparencyGrid: mockShowTransparencyGrid }),
@@ -14,7 +17,12 @@ vi.mock('~/stores/project.store', () => ({
 }));
 
 vi.mock('~/stores/timeline.store', () => ({
-  useTimelineStore: () => ({ markers: [] }),
+  useTimelineStore: () => ({
+    markers: [],
+    get selectionRange() { return mockSelectionRange.value; },
+    get fps() { return mockFps.value; },
+    get timelineFormat() { return mockTimelineFormat.value; },
+  }),
 }));
 
 // Mock the composable
@@ -44,6 +52,9 @@ vi.mock('~/composables/monitor/useMonitorGestures', () => ({
 describe('MonitorViewport', () => {
   beforeEach(() => {
     mockShowTransparencyGrid.value = false;
+    mockSelectionRange.value = null;
+    mockFps.value = 30;
+    mockTimelineFormat.value = null;
   });
 
   it('renders slots correctly', () => {
@@ -164,5 +175,26 @@ describe('MonitorViewport', () => {
 
     const canvasWrapper = wrapper.find('.shrink-0');
     expect(canvasWrapper.classes()).not.toContain('checkerboard-bg');
+  });
+
+  it('renders selection range and duration when selectionRange is active', () => {
+    mockSelectionRange.value = { startUs: 1_000_000, endUs: 4_000_000 };
+    mockFps.value = 30;
+
+    const wrapper = mount(MonitorViewport, {
+      props: {
+        renderWidth: 100,
+        renderHeight: 100,
+      },
+    });
+
+    const overlay = wrapper.find('.text-blue-400');
+    expect(overlay.exists()).toBe(true);
+    expect(overlay.text()).toContain('00:00:01:00');
+    expect(overlay.text()).toContain('00:00:04:00');
+
+    const duration = wrapper.find('.text-ui-text-muted');
+    expect(duration.exists()).toBe(true);
+    expect(duration.text()).toBe('00:00:03:00');
   });
 });

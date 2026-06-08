@@ -376,114 +376,173 @@ pub(crate) fn decode_symphonia_chunk(params: DecodeSymphoniaChunkParams<'_>) -> 
     }
     state_val.last_resample_ratio = current_ratio;
 
-    let mut prime_source_frames = 0usize;
-    if resampling_active {
-        if state_val.resampler.is_none() {
-            state_val.resampler = Some(Box::new(make_sinc_resampler(
-                current_ratio,
-                state_val.channels,
-            )?));
-            state_val.resample_remainder = vec![Vec::new(); state_val.channels];
-            state_val.resampler_primed = false;
-        }
-        if !state_val.resampler_primed {
-            let delay = {
-                use rubato::Resampler;
-                state_val
-                    .resampler
-                    .as_ref()
-                    .map(|r| r.output_delay())
-                    .unwrap_or(0)
-            };
-            prime_source_frames =
-                (delay as f64 / current_ratio).ceil() as usize + RESAMPLER_CHUNK_SIZE + 1;
-        }
+    if resampling_active && state_val.resampler.is_none() {
+        state_val.resampler = Some(Box::new(make_sinc_resampler(
+            current_ratio,
+            state_val.channels,
+        )?));
+        state_val.resample_remainder = vec![Vec::new(); state_val.channels];
+        state_val.resampler_primed = false;
     }
 
-    let source_frames_needed = (timeline_duration_sec * speed * state_val.source_rate as f64)
-        .round() as usize
-        + prime_source_frames;
+    // Source frames spanning this chunk's timeline duration. Used only to size the
+    // per-iteration decode batch and to advance the logical decode cursor — the
+    // amount we actually decode is driven by how much OUTPUT we still need.
+    let chunk_source_frames =
+        (timeline_duration_sec * speed * state_val.source_rate as f64).round() as usize;
 
-    let mut planar_buffers = vec![Vec::new(); state_val.channels];
-    let mut collected_frames = 0;
-    let mut break_loop = false;
+    // Output already buffered from previous chunks' resampler surplus. The decode
+    // loop tops this up to a full chunk; the surplus is carried to the next chunk.
+    let mut combined = std::mem::take(&mut state_val.resample_output_remainder);
 
-    loop {
-        if break_loop {
-            break;
-        }
+    // Decode source in blocks and resample until we have a full chunk of OUTPUT
+    // (or hit end-of-stream). This is the core invariant that prevents periodic
+    // silent chunks: `SincFixedIn` only emits output once a full input block
+    // accumulates, so for an upsampled source (rate well below the device rate,
+    // e.g. an 8 kHz clip on a 48 kHz device → only ~400 source frames per 50 ms
+    // chunk) a block fills just once every few chunks. Decoding a FIXED per-chunk
+    // source amount and zero-padding the shortfall therefore dropped a fully-silent
+    // 50 ms chunk in every inter-burst valley (heard as glitchy/"fast" playback
+    // until the background precache swapped in the gap-free whole-file decode).
+    // Driving the decode by an OUTPUT target instead guarantees every chunk is
+    // filled; the resampler's variable per-block surplus is carried in `combined`
+    // so the source read-ahead stays bounded (≈ one block) rather than growing.
+    let mut total_collected = 0usize;
+    let mut hit_eof = false;
+    // Drop the resampler's group-delay region exactly once, on the first resample
+    // after a (re)prime, so the first emitted chunk isn't short by the resampler
+    // latency. Queried after the first resample (the resampler may have just been
+    // created) and carried across batches in case the first batch is shorter than
+    // the delay.
+    let mut needs_delay_drop = resampling_active && !state_val.resampler_primed;
+    let mut pending_delay_samples = 0usize;
 
-        let packet = match state_val.format.next_packet() {
-            Ok(packet) => packet,
-            Err(symphonia::core::errors::Error::IoError(ref err))
-                if err.kind() == std::io::ErrorKind::UnexpectedEof =>
-            {
-                break;
-            }
-            Err(err) => return Err(err).context("failed to read next packet"),
-        };
+    while combined.len() < target_samples {
+        // Batch large enough to cross at least one resampler input block so each
+        // iteration makes guaranteed progress (covers the chunk span plus read-ahead).
+        let batch_target = chunk_source_frames.max(RESAMPLER_CHUNK_SIZE);
+        let mut planar_buffers = vec![Vec::new(); state_val.channels];
+        let mut batch_collected = 0usize;
+        let mut batch_full = false;
 
-        if packet.track_id() != state_val.track_id {
-            continue;
-        }
-
-        match state_val.decoder.decode(&packet) {
-            Ok(audio_buf) => {
-                let spec = *audio_buf.spec();
-                let duration = audio_buf.frames() as u64;
-                let mut sample_buf =
-                    symphonia::core::audio::SampleBuffer::<f32>::new(duration, spec);
-                sample_buf.copy_interleaved_ref(audio_buf);
-
-                let samples = sample_buf.samples();
-                let num_channels = spec.channels.count();
-                let num_frames = samples.len() / num_channels;
-                if num_channels > state_val.channels {
-                    for _ in state_val.channels..num_channels {
-                        planar_buffers.push(vec![0.0; collected_frames]);
-                    }
-                    state_val.channels = num_channels;
-                    state_val.resampler = None;
-                    state_val.resample_remainder = vec![Vec::new(); state_val.channels];
-                    state_val.resample_output_remainder.clear();
-                    state_val.last_resample_ratio = current_ratio;
-                    state_val.resampler_primed = false;
+        while !batch_full {
+            let packet = match state_val.format.next_packet() {
+                Ok(packet) => packet,
+                Err(symphonia::core::errors::Error::IoError(ref err))
+                    if err.kind() == std::io::ErrorKind::UnexpectedEof =>
+                {
+                    hit_eof = true;
+                    break;
                 }
+                Err(err) => return Err(err).context("failed to read next packet"),
+            };
 
-                for frame in 0..num_frames {
-                    if discard_frames_remaining > 0 {
-                        discard_frames_remaining -= 1;
-                        continue;
-                    }
-                    if collected_frames >= source_frames_needed {
-                        break_loop = true;
-                        break;
-                    }
-                    for ch in 0..state_val.channels {
-                        let sample = if ch < num_channels {
-                            samples[frame * num_channels + ch]
-                        } else {
-                            0.0
-                        };
-                        planar_buffers[ch].push(sample);
-                    }
-                    collected_frames += 1;
-                }
-            }
-            Err(symphonia::core::errors::Error::IoError(ref err))
-                if err.kind() == std::io::ErrorKind::UnexpectedEof =>
-            {
-                break;
-            }
-            Err(symphonia::core::errors::Error::DecodeError(err)) => {
-                log::warn!("[audio] symphonia chunk decode error: {:?}", err);
+            if packet.track_id() != state_val.track_id {
                 continue;
             }
-            Err(err) => return Err(err).context("failed to decode packet"),
+
+            match state_val.decoder.decode(&packet) {
+                Ok(audio_buf) => {
+                    let spec = *audio_buf.spec();
+                    let duration = audio_buf.frames() as u64;
+                    let mut sample_buf =
+                        symphonia::core::audio::SampleBuffer::<f32>::new(duration, spec);
+                    sample_buf.copy_interleaved_ref(audio_buf);
+
+                    let samples = sample_buf.samples();
+                    let num_channels = spec.channels.count();
+                    let num_frames = samples.len() / num_channels;
+                    if num_channels > state_val.channels {
+                        for _ in state_val.channels..num_channels {
+                            planar_buffers.push(vec![0.0; batch_collected]);
+                        }
+                        state_val.channels = num_channels;
+                        state_val.resampler = None;
+                        state_val.resample_remainder = vec![Vec::new(); state_val.channels];
+                        state_val.last_resample_ratio = current_ratio;
+                        // Channel layout changed mid-stream: the old resampler and any
+                        // already-collected output are invalid. Restart this chunk's
+                        // accumulation cleanly and re-prime.
+                        combined.clear();
+                        needs_delay_drop = resampling_active;
+                        pending_delay_samples = 0;
+                    }
+
+                    for frame in 0..num_frames {
+                        if discard_frames_remaining > 0 {
+                            discard_frames_remaining -= 1;
+                            continue;
+                        }
+                        if batch_collected >= batch_target {
+                            batch_full = true;
+                            break;
+                        }
+                        for ch in 0..state_val.channels {
+                            let sample = if ch < num_channels {
+                                samples[frame * num_channels + ch]
+                            } else {
+                                0.0
+                            };
+                            planar_buffers[ch].push(sample);
+                        }
+                        batch_collected += 1;
+                    }
+                }
+                Err(symphonia::core::errors::Error::IoError(ref err))
+                    if err.kind() == std::io::ErrorKind::UnexpectedEof =>
+                {
+                    hit_eof = true;
+                    break;
+                }
+                Err(symphonia::core::errors::Error::DecodeError(err)) => {
+                    log::warn!("[audio] symphonia chunk decode error: {:?}", err);
+                    continue;
+                }
+                Err(err) => return Err(err).context("failed to decode packet"),
+            }
+        }
+
+        if batch_collected == 0 {
+            hit_eof = true;
+            break;
+        }
+        total_collected += batch_collected;
+
+        let resampled =
+            resample_planar_cached(crate::audio::resample::ResamplePlanarCachedParams {
+                input: planar_buffers,
+                source_rate: state_val.source_rate,
+                target_rate: target_sample_rate,
+                speed,
+                num_channels: state_val.channels,
+                cached_resampler: &mut state_val.resampler,
+                remainder: &mut state_val.resample_remainder,
+            })?;
+        if needs_delay_drop {
+            use rubato::Resampler;
+            pending_delay_samples = state_val
+                .resampler
+                .as_ref()
+                .map(|r| r.output_delay())
+                .unwrap_or(0)
+                * output_channels;
+            needs_delay_drop = false;
+        }
+
+        let mut interleaved = planar_to_interleaved(&resampled, output_channels);
+        if pending_delay_samples > 0 {
+            let drop = pending_delay_samples.min(interleaved.len());
+            interleaved.drain(0..drop);
+            pending_delay_samples -= drop;
+        }
+        combined.extend_from_slice(&interleaved);
+
+        if hit_eof {
+            break;
         }
     }
 
-    if collected_frames == 0 {
+    if total_collected == 0 && combined.is_empty() {
         state_val.last_decode_end_sec = source_start_sec;
         {
             let mut state = shared.0.lock();
@@ -492,40 +551,6 @@ pub(crate) fn decode_symphonia_chunk(params: DecodeSymphoniaChunkParams<'_>) -> 
         return Ok(vec![0.0f32; target_samples]);
     }
 
-    let resampled = resample_planar_cached(crate::audio::resample::ResamplePlanarCachedParams {
-        input: planar_buffers,
-        source_rate: state_val.source_rate,
-        target_rate: target_sample_rate,
-        speed,
-        num_channels: state_val.channels,
-        cached_resampler: &mut state_val.resampler,
-        remainder: &mut state_val.resample_remainder,
-    })?;
-    let drop_delay_samples = if resampling_active && !state_val.resampler_primed {
-        let delay_frames = {
-            use rubato::Resampler;
-            state_val
-                .resampler
-                .as_ref()
-                .map(|r| r.output_delay())
-                .unwrap_or(0)
-        };
-        delay_frames * output_channels
-    } else {
-        0
-    };
-
-    let interleaved = planar_to_interleaved(&resampled, output_channels);
-
-    let mut combined = std::mem::take(&mut state_val.resample_output_remainder);
-    combined.extend_from_slice(&interleaved);
-    if drop_delay_samples > 0 {
-        if combined.len() > drop_delay_samples {
-            combined.drain(0..drop_delay_samples);
-        } else {
-            combined.clear();
-        }
-    }
     let out = if combined.len() >= target_samples {
         state_val.resample_output_remainder = combined.split_off(target_samples);
         combined
@@ -535,8 +560,15 @@ pub(crate) fn decode_symphonia_chunk(params: DecodeSymphoniaChunkParams<'_>) -> 
     };
     state_val.resampler_primed = true;
 
+    // Advance the logical cursor by exactly one chunk on a complete decode. The
+    // loop may have read AHEAD of this (its surplus is buffered in
+    // `resample_output_remainder`), so the cursor tracks the logical timeline
+    // position, not the physical reader position — the next sequential chunk's
+    // `source_start` then matches and skips a reseek. On EOF the source ran out
+    // before a full chunk, so leave the cursor put (the producer's next advance
+    // will exceed the seek tolerance and reseek, as before).
     let logical_source_end_sec = source_start_sec + source_advance_sec;
-    state_val.last_decode_end_sec = if collected_frames < source_frames_needed {
+    state_val.last_decode_end_sec = if hit_eof {
         source_start_sec
     } else {
         logical_source_end_sec
@@ -990,6 +1022,66 @@ mod tests {
         );
         drop(state);
         let _ = std::fs::remove_file(path);
+        Ok(())
+    }
+
+    /// Streaming an upsampled (source rate << device rate) clip must never emit a
+    /// fully-silent chunk. Before the fix, `SincFixedIn`'s 1024-frame input blocks
+    /// meant the output FIFO underflowed in the valleys between resampler bursts,
+    /// producing a periodic silent 50 ms chunk (heard as glitchy/"fast" playback
+    /// until the background precache took over). Covers several low source rates.
+    #[test]
+    fn streaming_upsampled_source_never_emits_silent_chunk() -> anyhow::Result<()> {
+        let chunk_sec = 0.05;
+        let chunk_frames = (chunk_sec * 48000.0) as usize;
+        let n = 60; // 3s of continuous streaming
+        for src_rate in [8000u32, 11025, 16000, 22050] {
+            // 5s source so the 3s stream (plus the loop's read-ahead) never hits EOF.
+            let path = write_temp_f32_wav(src_rate, 1, src_rate as usize * 5)?;
+            let path_str = path.to_string_lossy().to_string();
+            let shared = Arc::new((Mutex::new(AudioShared::default()), Condvar::new()));
+            for k in 0..n {
+                let src = k as f64 * chunk_sec;
+                let c = decode_symphonia_chunk(DecodeSymphoniaChunkParams {
+                    layer_id: "diag",
+                    path: &path_str,
+                    source_start_sec: src,
+                    timeline_duration_sec: chunk_sec,
+                    speed: 1.0,
+                    target_sample_rate: 48000,
+                    output_channels: 2,
+                    reverse: false,
+                    shared: &shared,
+                })?;
+                assert_eq!(c.len(), chunk_frames * 2);
+                // Skip the very first chunk (resampler group-delay region may be
+                // partially silent by design); every subsequent chunk must carry audio.
+                if k == 0 {
+                    continue;
+                }
+                let peak = c.iter().fold(0.0f32, |a, &b| a.max(b.abs()));
+                assert!(
+                    peak > 0.01,
+                    "src_rate {src_rate}: chunk {k} is silent (peak {peak}) — resampler FIFO underflow"
+                );
+                // Frequency must stay ~440Hz (no time-compression/skip): measure
+                // zero-crossings of this chunk's left channel.
+                let mut zc = 0usize;
+                for f in 1..chunk_frames {
+                    let a = c[(f - 1) * 2];
+                    let b = c[f * 2];
+                    if (a <= 0.0 && b > 0.0) || (a >= 0.0 && b < 0.0) {
+                        zc += 1;
+                    }
+                }
+                let freq = zc as f64 / 2.0 / chunk_sec;
+                assert!(
+                    (freq - 440.0).abs() < 40.0,
+                    "src_rate {src_rate}: chunk {k} freq {freq} != ~440Hz (content distorted)"
+                );
+            }
+            let _ = std::fs::remove_file(path);
+        }
         Ok(())
     }
 
