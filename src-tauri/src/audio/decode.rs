@@ -1,4 +1,5 @@
 use std::path::Path;
+use std::process::Command;
 use std::sync::Arc;
 
 use anyhow::{anyhow, Context, Result};
@@ -9,8 +10,8 @@ use crate::audio::resample::{
     RESAMPLER_CHUNK_SIZE,
 };
 use crate::audio::shared::{
-    decoded_cache_key, AudioRenderTarget, AudioShared, AudioSourceMetadata, CachedAudioDecoder,
-    MAX_CACHEABLE_FILE_BYTES, MAX_DECODED_CACHE_BYTES,
+    decoded_cache_key, find_audio_track, AudioRenderTarget, AudioShared, AudioSourceMetadata,
+    CachedAudioDecoder, MAX_CACHEABLE_FILE_BYTES, MAX_DECODED_CACHE_BYTES,
 };
 
 /// Fraction of the current source chunk tolerated as scheduling jitter before
@@ -51,11 +52,8 @@ fn open_symphonia_format(
 pub(crate) fn probe_audio_source_metadata(path: &str) -> Result<AudioSourceMetadata> {
     let format = open_symphonia_format(path, "metadata")?;
 
-    let track = format
-        .tracks()
-        .iter()
-        .find(|t| t.codec_params.codec != symphonia::core::codecs::CODEC_TYPE_NULL)
-        .ok_or_else(|| anyhow!("no active audio track found"))?;
+    let track =
+        find_audio_track(format.tracks()).ok_or_else(|| anyhow!("no active audio track found"))?;
     let sample_rate = track
         .codec_params
         .sample_rate
@@ -97,15 +95,20 @@ pub(crate) fn decode_entire_file_symphonia(
     use symphonia::core::codecs::DecoderOptions;
 
     let mut format = open_symphonia_format(path, "decode")?;
-    let track = format
-        .tracks()
-        .iter()
-        .find(|t| t.codec_params.codec != symphonia::core::codecs::CODEC_TYPE_NULL)
-        .ok_or_else(|| anyhow!("no active audio track found"))?;
+    let track =
+        find_audio_track(format.tracks()).ok_or_else(|| anyhow!("no active audio track found"))?;
 
-    let mut decoder = symphonia::default::get_codecs()
+    let mut decoder = match symphonia::default::get_codecs()
         .make(&track.codec_params, &DecoderOptions::default())
-        .context("failed to create decoder")?;
+    {
+        Ok(decoder) => decoder,
+        Err(_) if track.codec_params.codec == symphonia::core::codecs::CODEC_TYPE_OPUS => {
+            log::warn!("[audio] symphonia cannot decode Opus; falling back to ffmpeg: {path}");
+            return decode_entire_file_ffmpeg(path, target_sample_rate, output_channels)
+                .context("failed to decode Opus audio via ffmpeg");
+        }
+        Err(err) => return Err(err).context("failed to create decoder"),
+    };
 
     let track_id = track.id;
     let source_rate = track.codec_params.sample_rate.unwrap_or(target_sample_rate);
@@ -183,6 +186,48 @@ pub(crate) fn decode_entire_file_symphonia(
     Ok(interleaved)
 }
 
+fn decode_entire_file_ffmpeg(
+    path: &str,
+    target_sample_rate: u32,
+    output_channels: usize,
+) -> Result<Vec<f32>> {
+    let channels = output_channels.max(1).to_string();
+    let sample_rate = target_sample_rate.max(1).to_string();
+    let output = Command::new("ffmpeg")
+        .args([
+            "-v",
+            "error",
+            "-i",
+            path,
+            "-vn",
+            "-f",
+            "f32le",
+            "-ac",
+            &channels,
+            "-ar",
+            &sample_rate,
+            "pipe:1",
+        ])
+        .output()
+        .with_context(|| format!("failed to run ffmpeg for audio decode: {path}"))?;
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        return Err(anyhow!(
+            "ffmpeg audio decode failed with status {}: {}",
+            output.status,
+            stderr.trim()
+        ));
+    }
+
+    let mut samples = Vec::with_capacity(output.stdout.len() / std::mem::size_of::<f32>());
+    for chunk in output.stdout.chunks_exact(std::mem::size_of::<f32>()) {
+        samples.push(f32::from_le_bytes([chunk[0], chunk[1], chunk[2], chunk[3]]));
+    }
+
+    Ok(samples)
+}
+
 pub(crate) struct DecodeSymphoniaChunkParams<'a> {
     pub layer_id: &'a str,
     pub path: &'a str,
@@ -219,10 +264,7 @@ pub(crate) fn decode_symphonia_chunk(params: DecodeSymphoniaChunkParams<'_>) -> 
         use symphonia::core::codecs::DecoderOptions;
 
         let format = open_symphonia_format(path, "chunk decode")?;
-        let track = format
-            .tracks()
-            .iter()
-            .find(|t| t.codec_params.codec != symphonia::core::codecs::CODEC_TYPE_NULL)
+        let track = find_audio_track(format.tracks())
             .ok_or_else(|| anyhow!("no active audio track found"))?;
 
         let decoder = symphonia::default::get_codecs()
@@ -720,10 +762,7 @@ fn background_precache(
 /// no frame count (then we don't risk a background full-decode).
 fn estimate_decoded_bytes(path: &str, target_rate: u32, output_channels: usize) -> Option<usize> {
     let format = open_symphonia_format(path, "precache size estimate").ok()?;
-    let track = format
-        .tracks()
-        .iter()
-        .find(|t| t.codec_params.codec != symphonia::core::codecs::CODEC_TYPE_NULL)?;
+    let track = find_audio_track(format.tracks())?;
     let n_frames = track.codec_params.n_frames?;
     let source_rate = track.codec_params.sample_rate.unwrap_or(target_rate).max(1);
     let decoded_frames =
@@ -813,6 +852,46 @@ mod tests {
         );
         let samples = decode_entire_file_symphonia(path, 48000, 2)?;
         assert!(!samples.is_empty(), "Decoded sample buffer is empty");
+        Ok(())
+    }
+
+    #[test]
+    fn test_decode_entire_file_webm_opus_uses_ffmpeg_fallback() -> anyhow::Result<()> {
+        let wav_path = write_temp_f32_wav(48_000, 2, 4_800)?;
+        let mut webm_path = wav_path.clone();
+        webm_path.set_extension("webm");
+
+        let status = Command::new("ffmpeg")
+            .args([
+                "-v",
+                "error",
+                "-y",
+                "-i",
+                wav_path.to_string_lossy().as_ref(),
+                "-c:a",
+                "libopus",
+                webm_path.to_string_lossy().as_ref(),
+            ])
+            .status();
+
+        let Ok(status) = status else {
+            let _ = std::fs::remove_file(wav_path);
+            return Ok(());
+        };
+        if !status.success() {
+            let _ = std::fs::remove_file(wav_path);
+            let _ = std::fs::remove_file(webm_path);
+            return Ok(());
+        }
+
+        let samples = decode_entire_file_symphonia(&webm_path.to_string_lossy(), 48_000, 2)?;
+        assert!(
+            samples.len() >= 4_800 * 2,
+            "decoded Opus fallback should produce PCM samples"
+        );
+
+        let _ = std::fs::remove_file(wav_path);
+        let _ = std::fs::remove_file(webm_path);
         Ok(())
     }
 

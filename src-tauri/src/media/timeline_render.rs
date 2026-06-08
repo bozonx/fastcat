@@ -326,7 +326,16 @@ pub fn render_timeline_frame_to_file(
     hw_mode: HwAccelMode,
     vaapi_device: Option<String>,
 ) -> Result<()> {
-    GLOBAL_RENDERER.render_to_file(scene, time_sec, width, height, target_path, quality, hw_mode, vaapi_device)
+    GLOBAL_RENDERER.render_to_file(
+        scene,
+        time_sec,
+        width,
+        height,
+        target_path,
+        quality,
+        hw_mode,
+        vaapi_device,
+    )
 }
 
 pub fn render_timeline_frame_to_webp(
@@ -338,7 +347,15 @@ pub fn render_timeline_frame_to_webp(
     hw_mode: HwAccelMode,
     vaapi_device: Option<String>,
 ) -> Result<Vec<u8>> {
-    GLOBAL_RENDERER.render_to_webp(scene, time_sec, width, height, quality, hw_mode, vaapi_device)
+    GLOBAL_RENDERER.render_to_webp(
+        scene,
+        time_sec,
+        width,
+        height,
+        quality,
+        hw_mode,
+        vaapi_device,
+    )
 }
 
 /// JS callers pass WebP quality as a 0..1 fraction, but [`encode_rgba_as_webp`]
@@ -703,7 +720,13 @@ mod tests {
         let export = build_export_scene(&scene, 2.5, (1920, 1080), &mut cache, None).unwrap();
 
         let ids: Vec<_> = export.layers.iter().map(|l| l.id.as_str()).collect();
-        assert!(ids.contains(&"from"), "from_layer must be present during transition");
-        assert!(ids.contains(&"to"), "to_layer must be present during transition");
+        assert!(
+            ids.contains(&"from"),
+            "from_layer must be present during transition"
+        );
+        assert!(
+            ids.contains(&"to"),
+            "to_layer must be present during transition"
+        );
     }
 }

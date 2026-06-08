@@ -1041,7 +1041,10 @@ mod tests {
 
     #[test]
     fn thumbnail_seek_threshold_defaults_to_thumbnail_value() {
-        assert_eq!(sanitize_seek_threshold_sec(None), THUMBNAIL_SEEK_THRESHOLD_SEC);
+        assert_eq!(
+            sanitize_seek_threshold_sec(None),
+            THUMBNAIL_SEEK_THRESHOLD_SEC
+        );
         assert_eq!(
             sanitize_seek_threshold_sec(Some(f64::NAN)),
             THUMBNAIL_SEEK_THRESHOLD_SEC

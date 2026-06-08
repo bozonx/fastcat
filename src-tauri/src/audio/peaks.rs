@@ -6,6 +6,8 @@ use symphonia::core::formats::{FormatOptions, FormatReader};
 use symphonia::core::meta::MetadataOptions;
 use symphonia::core::probe::Hint;
 
+use crate::audio::shared::find_audio_track;
+
 const MAX_PEAK_LENGTH: usize = 500_000;
 
 /// How many intermediate ("mip") buckets we keep relative to the requested
@@ -44,11 +46,8 @@ fn open_audio_decoder(path: &Path) -> Result<AudioDecoderState> {
         .context("failed to probe media format")?;
 
     let format = probed.format;
-    let track = format
-        .tracks()
-        .iter()
-        .find(|t| t.codec_params.codec != symphonia::core::codecs::CODEC_TYPE_NULL)
-        .ok_or_else(|| anyhow!("no active audio track found"))?;
+    let track =
+        find_audio_track(format.tracks()).ok_or_else(|| anyhow!("no active audio track found"))?;
 
     let decoder = symphonia::default::get_codecs()
         .make(&track.codec_params, &DecoderOptions::default())

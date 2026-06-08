@@ -121,7 +121,16 @@ impl NativeMediaService {
         hw_mode: HwAccelMode,
         vaapi_device: Option<String>,
     ) -> anyhow::Result<()> {
-        render_timeline_frame_to_file(scene, time_sec, width, height, target_path, quality, hw_mode, vaapi_device)
+        render_timeline_frame_to_file(
+            scene,
+            time_sec,
+            width,
+            height,
+            target_path,
+            quality,
+            hw_mode,
+            vaapi_device,
+        )
     }
 
     pub fn render_timeline_frame_to_webp(
@@ -134,7 +143,15 @@ impl NativeMediaService {
         hw_mode: HwAccelMode,
         vaapi_device: Option<String>,
     ) -> anyhow::Result<Vec<u8>> {
-        render_timeline_frame_to_webp(scene, time_sec, width, height, quality, hw_mode, vaapi_device)
+        render_timeline_frame_to_webp(
+            scene,
+            time_sec,
+            width,
+            height,
+            quality,
+            hw_mode,
+            vaapi_device,
+        )
     }
 
     pub fn extract_video_frame_webp(
@@ -154,8 +171,15 @@ impl NativeMediaService {
         seek_threshold_sec: Option<f64>,
         hw_settings: &crate::FfmpegHardwareSettings,
     ) -> anyhow::Result<Vec<u8>> {
-        let frames =
-            extract_video_frame_webps(source_path, times_sec, max_width, max_height, quality, seek_threshold_sec, hw_settings)?;
+        let frames = extract_video_frame_webps(
+            source_path,
+            times_sec,
+            max_width,
+            max_height,
+            quality,
+            seek_threshold_sec,
+            hw_settings,
+        )?;
         Ok(pack_webp_frames(frames))
     }
 

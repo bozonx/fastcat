@@ -2,6 +2,8 @@ use std::collections::{HashMap, HashSet};
 
 use crate::monitor::scene::{SceneAudioLayer, SceneAudioTrack};
 
+use symphonia::core::formats::Track;
+
 pub(crate) const CHUNK_DURATION_SEC: f64 = 0.05;
 /// Minimum fill before the real-time output callback starts consuming after a
 /// play/seek. This is intentionally much smaller than `PREBUFFER_CHUNKS`: it
@@ -29,6 +31,16 @@ pub(crate) const PRODUCER_RESYNC_THRESHOLD_SEC: f64 = 0.12;
 /// Upper bound on a forward-scrub audio preview snippet. The frontend asks for
 /// ~90 ms; this caps it so a stray request can't queue a long burst.
 pub(crate) const MAX_SCRUB_PREVIEW_SEC: f64 = 0.5;
+
+pub(crate) fn find_audio_track(tracks: &[Track]) -> Option<&Track> {
+    tracks.iter().find(|track| {
+        let params = &track.codec_params;
+        params.codec != symphonia::core::codecs::CODEC_TYPE_NULL
+            && (params.sample_rate.is_some()
+                || params.channels.is_some()
+                || params.sample_format.is_some())
+    })
+}
 
 /// A one-shot forward-scrub audio preview requested by the UI while NOT playing.
 /// The producer mixes `[from_sec, from_sec + duration_sec)` once and plays it out,
@@ -293,6 +305,26 @@ mod tests {
         assert_eq!(export.channels, 2);
         assert_eq!(export.mode, AudioRenderMode::Export);
         assert!(export.is_export());
+    }
+
+    #[test]
+    fn find_audio_track_skips_non_audio_track_before_audio() {
+        use symphonia::core::audio::Channels;
+        use symphonia::core::codecs::{CodecParameters, CODEC_TYPE_OPUS};
+
+        let mut non_audio_params = CodecParameters::new();
+        non_audio_params.for_codec(CODEC_TYPE_OPUS);
+
+        let mut audio_params = CodecParameters::new();
+        audio_params
+            .for_codec(CODEC_TYPE_OPUS)
+            .with_sample_rate(48_000)
+            .with_channels(Channels::FRONT_LEFT | Channels::FRONT_RIGHT);
+
+        let tracks = vec![Track::new(7, non_audio_params), Track::new(8, audio_params)];
+
+        let track = find_audio_track(&tracks).expect("audio track");
+        assert_eq!(track.id, 8);
     }
 
     #[test]

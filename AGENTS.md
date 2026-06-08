@@ -48,4 +48,4 @@ The project uses a custom `src/` directory. Besides the standard Nuxt folders (`
 ## Dependencies
 - Use only official, well-maintained libraries.
 - Rely on the latest stable versions and official documentation.
-- Always use Context7 for code generation, setup, or retrieving documentation for libraries/APIs.
+

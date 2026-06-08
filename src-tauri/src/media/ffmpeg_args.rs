@@ -28,7 +28,15 @@ pub fn push_video_encode_filter_args(
     height: u32,
     export_alpha: bool,
 ) {
-    push_video_encode_filter_args_with_extra(args, hw_mode, width, height, export_alpha, false, &[]);
+    push_video_encode_filter_args_with_extra(
+        args,
+        hw_mode,
+        width,
+        height,
+        export_alpha,
+        false,
+        &[],
+    );
 }
 
 /// Builds the `scale=W:H[...]` filter. When `preserve_aspect` is set, the target
@@ -166,10 +174,15 @@ mod tests {
             true,
             &["fps=24".to_string()],
         );
-        let vf = args.windows(2).find(|p| p[0] == "-vf").map(|p| p[1].clone());
+        let vf = args
+            .windows(2)
+            .find(|p| p[0] == "-vf")
+            .map(|p| p[1].clone());
         let vf = vf.expect("expected -vf");
         assert!(vf.contains("fps=24"));
-        assert!(vf.contains("scale=1280:720:force_original_aspect_ratio=decrease:force_divisible_by=2"));
+        assert!(
+            vf.contains("scale=1280:720:force_original_aspect_ratio=decrease:force_divisible_by=2")
+        );
     }
 
     #[test]

@@ -421,6 +421,21 @@ export function useEntryPreview(params: {
           }
 
           if (previewState.currentUrl) {
+            if (entry.path) {
+              try {
+                nextFileInfo.metadata = params.getMetadata
+                  ? await params.getMetadata({
+                      file: new File([], entry.name),
+                      entry,
+                      path: entry.path,
+                    })
+                  : await params.mediaStore.getOrFetchMetadataByPath(entry.path);
+              } catch (e) {
+                log.error('Failed to fetch metadata for preview:', e);
+              }
+              if (requestId !== loadRequestId) return;
+            }
+
             applyResolvedState({
               currentUrl: previewState.currentUrl,
               mediaType: nextMediaType,
