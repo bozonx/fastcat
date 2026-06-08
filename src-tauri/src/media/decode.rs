@@ -162,7 +162,7 @@ impl FfmpegNextDecoder {
             let codec_ctx = unsafe { context_decoder.as_mut_ptr() };
             init_hwaccel_context(codec_ctx, hw_mode, vaapi_device)
         };
-        let decoder = if codec == "vp9" {
+        let decoder = if codec == "vp9" && hwaccel.is_none() {
             if let Some(libvpx) = ffmpeg::decoder::find_by_name("libvpx-vp9") {
                 context_decoder
                     .decoder()
