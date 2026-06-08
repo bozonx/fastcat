@@ -10,8 +10,8 @@ use parley::StyleProperty;
 use vello::peniko::Color;
 
 use crate::compositor::scene::{
-    Layer, LayerKind as CompLayerKind, ShapeGeometry, ShapeLayer, TextLayer, Transform,
-    TransitionInfo,
+    Layer, LayerKind as CompLayerKind, ShapeGeometry, ShapeLayer, TextLayer, TextRenderMode,
+    Transform, TransitionInfo,
 };
 use crate::media::ffmpeg_utils::is_quarter_turn;
 
@@ -385,6 +385,7 @@ pub fn build_text_layer(sl: &SceneLayer, scene_size: (u32, u32)) -> TextLayer {
         text_block_height: text_block_height_px,
 
         natural_size: (natural_width, natural_height),
+        render_mode: TextRenderMode::Full,
     }
 }
 

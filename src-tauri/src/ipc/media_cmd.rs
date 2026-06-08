@@ -9,8 +9,9 @@ use crate::media::processing::{
     NativeProxyOptions,
 };
 use crate::media::timeline_export::{export_timeline, NativeExportOptions};
-use crate::media::timeline_render::{render_timeline_frame_to_file, render_timeline_frame_to_webp};
-use crate::media::types::HwAccelMode;
+use crate::media::timeline_render::{
+    render_timeline_frame_to_file, render_timeline_frame_to_webp, TimelineFrameRequest,
+};
 use crate::monitor::MonitorScene;
 
 /// Trait for structs that carry per-request hardware acceleration overrides.
@@ -108,79 +109,6 @@ impl NativeMediaService {
             progress,
             warning,
         )
-    }
-
-    pub fn render_timeline_frame_to_file(
-        &self,
-        scene: MonitorScene,
-        time_sec: f64,
-        width: u32,
-        height: u32,
-        target_path: &std::path::Path,
-        quality: f32,
-        hw_mode: HwAccelMode,
-        vaapi_device: Option<String>,
-    ) -> anyhow::Result<()> {
-        render_timeline_frame_to_file(
-            scene,
-            time_sec,
-            width,
-            height,
-            target_path,
-            quality,
-            hw_mode,
-            vaapi_device,
-        )
-    }
-
-    pub fn render_timeline_frame_to_webp(
-        &self,
-        scene: MonitorScene,
-        time_sec: f64,
-        width: u32,
-        height: u32,
-        quality: f32,
-        hw_mode: HwAccelMode,
-        vaapi_device: Option<String>,
-    ) -> anyhow::Result<Vec<u8>> {
-        render_timeline_frame_to_webp(
-            scene,
-            time_sec,
-            width,
-            height,
-            quality,
-            hw_mode,
-            vaapi_device,
-        )
-    }
-
-    pub fn extract_video_frame_webp(
-        &self,
-        params: crate::media::processing::ExtractWebpParams<'_>,
-    ) -> anyhow::Result<Vec<u8>> {
-        extract_video_frame_webp(params)
-    }
-
-    pub fn extract_video_frame_webps(
-        &self,
-        source_path: &std::path::Path,
-        times_sec: &[f64],
-        max_width: u32,
-        max_height: u32,
-        quality: f32,
-        seek_threshold_sec: Option<f64>,
-        hw_settings: &crate::FfmpegHardwareSettings,
-    ) -> anyhow::Result<Vec<u8>> {
-        let frames = extract_video_frame_webps(
-            source_path,
-            times_sec,
-            max_width,
-            max_height,
-            quality,
-            seek_threshold_sec,
-            hw_settings,
-        )?;
-        Ok(pack_webp_frames(frames))
     }
 
     pub fn extract_peaks(
@@ -349,14 +277,16 @@ pub async fn native_timeline_render_frame_to_file(
     let hw = hw_settings.read().clone();
     tokio::task::spawn_blocking(move || {
         render_timeline_frame_to_file(
-            scene,
-            time_sec,
-            width,
-            height,
+            TimelineFrameRequest {
+                scene,
+                time_sec,
+                width,
+                height,
+                quality,
+                hw_mode: hw.hardware_acceleration_mode,
+                vaapi_device: Some(hw.vaapi_device),
+            },
             &target_path,
-            quality,
-            hw.hardware_acceleration_mode,
-            Some(hw.vaapi_device),
         )
     })
     .await
@@ -375,15 +305,15 @@ pub async fn native_timeline_render_frame_webp(
 ) -> Result<Vec<u8>, String> {
     let hw = hw_settings.read().clone();
     tokio::task::spawn_blocking(move || {
-        render_timeline_frame_to_webp(
+        render_timeline_frame_to_webp(TimelineFrameRequest {
             scene,
             time_sec,
             width,
             height,
             quality,
-            hw.hardware_acceleration_mode,
-            Some(hw.vaapi_device),
-        )
+            hw_mode: hw.hardware_acceleration_mode,
+            vaapi_device: Some(hw.vaapi_device),
+        })
     })
     .await
     .map_err(|e| e.to_string())?

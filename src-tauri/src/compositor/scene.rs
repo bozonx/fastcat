@@ -311,6 +311,14 @@ pub struct TextLayer {
     pub text_block_height: f32,
 
     pub natural_size: (u32, u32),
+    pub render_mode: TextRenderMode,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum TextRenderMode {
+    Full,
+    WithoutTextShadow,
+    TextShadowMask,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -556,80 +564,24 @@ fn build_shape_path(
     }
 }
 
+/// Per-line metrics precomputed once and shared by the shadow and main-text
+/// passes so glyph counts / advances aren't recomputed per pass.
+struct LineDrawInfo {
+    glyph_count: usize,
+    adjusted_width: f32,
+}
+
 fn draw_text(scene: &mut VelloScene, spec: &TextLayer, xform: Affine) {
     let frame_x = spec.border_width + spec.shadow_left;
     let frame_y = spec.border_width + spec.shadow_top;
 
-    // 1. Draw Background Shadow — настоящий гауссов blur нативной примитивой vello
-    // (`draw_blurred_rounded_rect`), а не 9 смещённых копий, как раньше.
-    if spec.bg_shadow_enabled && spec.bg_shadow_color.to_rgba8().a > 0 {
-        let shadow_x = frame_x + spec.bg_shadow_offset_x;
-        let shadow_y = frame_y + spec.bg_shadow_offset_y;
-
-        let ext = text_background_shadow_outset(spec);
-        let rect = Rect::new(
-            (shadow_x - ext) as f64,
-            (shadow_y - ext) as f64,
-            (shadow_x + spec.frame_width + ext) as f64,
-            (shadow_y + spec.frame_height + ext) as f64,
-        );
-        let radius = (spec.background_radius + ext as f64).max(0.0);
-
-        if spec.bg_shadow_blur > 0.0 {
-            // CSS-подобный blur-radius → σ ≈ blur/2. Один точный гауссов примитив,
-            // полная альфа (без раздачи по проходам).
-            let std_dev = (spec.bg_shadow_blur as f64) * 0.5;
-            scene.draw_blurred_rounded_rect(xform, rect, spec.bg_shadow_color, radius, std_dev);
-        } else {
-            let path = RoundedRect::new(rect.x0, rect.y0, rect.x1, rect.y1, radius).to_path(0.1);
-            scene.fill(
-                Fill::NonZero,
-                xform,
-                Brush::Solid(spec.bg_shadow_color),
-                None,
-                &path,
-            );
-        }
-    }
-
-    // 2. Draw Background
-    if spec.background_enabled && spec.background_color.to_rgba8().a > 0 {
-        let rect = RoundedRect::new(
-            frame_x as f64,
-            frame_y as f64,
-            (frame_x + spec.frame_width) as f64,
-            (frame_y + spec.frame_height) as f64,
-            spec.background_radius,
-        )
-        .to_path(0.1);
-        scene.fill(
-            Fill::NonZero,
-            xform,
-            Brush::Solid(spec.background_color),
-            None,
-            &rect,
-        );
-    }
-
-    // 3. Draw Border
-    if spec.border_enabled && spec.border_width > 0.0 && spec.border_color.to_rgba8().a > 0 {
-        let inset = spec.border_width / 2.0;
-        let border_rect = RoundedRect::new(
-            (frame_x - inset) as f64,
-            (frame_y - inset) as f64,
-            (frame_x + spec.frame_width + inset) as f64,
-            (frame_y + spec.frame_height + inset) as f64,
-            (spec.background_radius + inset as f64).max(0.0),
-        )
-        .to_path(0.1);
-
-        scene.stroke(
-            &Stroke::new(spec.border_width as f64),
-            xform,
-            Brush::Solid(spec.border_color),
-            None,
-            &border_rect,
-        );
+    if matches!(
+        spec.render_mode,
+        TextRenderMode::Full | TextRenderMode::WithoutTextShadow
+    ) {
+        draw_text_background_shadow(scene, spec, xform, frame_x, frame_y);
+        draw_text_background(scene, spec, xform, frame_x, frame_y);
+        draw_text_border(scene, spec, xform, frame_x, frame_y);
     }
 
     // 4. Layout Text
@@ -662,186 +614,330 @@ fn draw_text(scene: &mut VelloScene, spec: &TextLayer, xform: Affine) {
         .map(|w| (w - spec.padding_left - spec.padding_right).max(1.0));
     layout.break_all_lines(content_width_px);
 
-    // Compute vertical positioning
+    let text_block_top_px = text_block_top(spec, frame_y);
+    let lines_info = compute_line_infos(&layout);
+
+    if matches!(
+        spec.render_mode,
+        TextRenderMode::Full | TextRenderMode::TextShadowMask
+    ) {
+        draw_text_shadows(
+            scene,
+            spec,
+            xform,
+            &layout,
+            &lines_info,
+            frame_x,
+            text_block_top_px,
+        );
+    }
+
+    if matches!(
+        spec.render_mode,
+        TextRenderMode::Full | TextRenderMode::WithoutTextShadow
+    ) {
+        draw_main_text(
+            scene,
+            spec,
+            xform,
+            &layout,
+            &lines_info,
+            frame_x,
+            text_block_top_px,
+        );
+    }
+}
+
+/// Background shadow — настоящий гауссов blur нативной примитивой vello
+/// (`draw_blurred_rounded_rect`), а не 9 смещённых копий, как раньше.
+fn draw_text_background_shadow(
+    scene: &mut VelloScene,
+    spec: &TextLayer,
+    xform: Affine,
+    frame_x: f32,
+    frame_y: f32,
+) {
+    if !(spec.bg_shadow_enabled && spec.bg_shadow_color.to_rgba8().a > 0) {
+        return;
+    }
+    let shadow_x = frame_x + spec.bg_shadow_offset_x;
+    let shadow_y = frame_y + spec.bg_shadow_offset_y;
+
+    let ext = text_background_shadow_outset(spec);
+    let rect = Rect::new(
+        (shadow_x - ext) as f64,
+        (shadow_y - ext) as f64,
+        (shadow_x + spec.frame_width + ext) as f64,
+        (shadow_y + spec.frame_height + ext) as f64,
+    );
+    let radius = (spec.background_radius + ext as f64).max(0.0);
+
+    if spec.bg_shadow_blur > 0.0 {
+        // CSS-подобный blur-radius → σ ≈ blur/2. Один точный гауссов примитив,
+        // полная альфа (без раздачи по проходам).
+        let std_dev = (spec.bg_shadow_blur as f64) * 0.5;
+        scene.draw_blurred_rounded_rect(xform, rect, spec.bg_shadow_color, radius, std_dev);
+    } else {
+        let path = RoundedRect::new(rect.x0, rect.y0, rect.x1, rect.y1, radius).to_path(0.1);
+        scene.fill(
+            Fill::NonZero,
+            xform,
+            Brush::Solid(spec.bg_shadow_color),
+            None,
+            &path,
+        );
+    }
+}
+
+fn draw_text_background(
+    scene: &mut VelloScene,
+    spec: &TextLayer,
+    xform: Affine,
+    frame_x: f32,
+    frame_y: f32,
+) {
+    if !(spec.background_enabled && spec.background_color.to_rgba8().a > 0) {
+        return;
+    }
+    let rect = RoundedRect::new(
+        frame_x as f64,
+        frame_y as f64,
+        (frame_x + spec.frame_width) as f64,
+        (frame_y + spec.frame_height) as f64,
+        spec.background_radius,
+    )
+    .to_path(0.1);
+    scene.fill(
+        Fill::NonZero,
+        xform,
+        Brush::Solid(spec.background_color),
+        None,
+        &rect,
+    );
+}
+
+fn draw_text_border(
+    scene: &mut VelloScene,
+    spec: &TextLayer,
+    xform: Affine,
+    frame_x: f32,
+    frame_y: f32,
+) {
+    if !(spec.border_enabled && spec.border_width > 0.0 && spec.border_color.to_rgba8().a > 0) {
+        return;
+    }
+    let inset = spec.border_width / 2.0;
+    let border_rect = RoundedRect::new(
+        (frame_x - inset) as f64,
+        (frame_y - inset) as f64,
+        (frame_x + spec.frame_width + inset) as f64,
+        (frame_y + spec.frame_height + inset) as f64,
+        (spec.background_radius + inset as f64).max(0.0),
+    )
+    .to_path(0.1);
+
+    scene.stroke(
+        &Stroke::new(spec.border_width as f64),
+        xform,
+        Brush::Solid(spec.border_color),
+        None,
+        &border_rect,
+    );
+}
+
+/// Vertical offset of the text block, honoring `vertical_align` when the layer
+/// has an explicit height to align within.
+fn text_block_top(spec: &TextLayer, frame_y: f32) -> f32 {
     let content_top_px = frame_y + spec.padding_top;
+    if spec.explicit_height.is_none() {
+        return content_top_px;
+    }
     let content_height_px = (spec.frame_height - spec.padding_top - spec.padding_bottom).max(1.0);
+    match spec.vertical_align {
+        TextVerticalAlign::Top => content_top_px,
+        TextVerticalAlign::Middle => {
+            content_top_px + (content_height_px - spec.text_block_height) * 0.5
+        }
+        TextVerticalAlign::Bottom => content_top_px + content_height_px - spec.text_block_height,
+    }
+}
 
-    let mut text_block_top_px = content_top_px;
-    if spec.explicit_height.is_some() {
-        match spec.vertical_align {
-            TextVerticalAlign::Top => {}
-            TextVerticalAlign::Middle => {
-                text_block_top_px += (content_height_px - spec.text_block_height) * 0.5;
+fn compute_line_infos(layout: &parley::Layout<[u8; 4]>) -> Vec<LineDrawInfo> {
+    layout
+        .lines()
+        .map(|line| {
+            let glyph_count = line
+                .items()
+                .filter_map(|item| match item {
+                    PositionedLayoutItem::GlyphRun(run) => Some(run.positioned_glyphs().count()),
+                    _ => None,
+                })
+                .sum();
+            LineDrawInfo {
+                glyph_count,
+                // `advance` already accounts for letter-spacing (shaped by parley above).
+                adjusted_width: line.metrics().advance,
             }
-            TextVerticalAlign::Bottom => {
-                text_block_top_px += content_height_px - spec.text_block_height;
-            }
+        })
+        .collect()
+}
+
+/// Horizontal start offset of a line, honoring `align` within the padded frame.
+fn line_x_offset(spec: &TextLayer, frame_x: f32, line_width: f32) -> f32 {
+    let base = frame_x + spec.padding_left;
+    match spec.align {
+        TextAlign::Left => base,
+        TextAlign::Center => {
+            let content = (spec.frame_width - spec.padding_left - spec.padding_right).max(0.0);
+            base + (content - line_width) * 0.5
+        }
+        TextAlign::Right => {
+            let content = (spec.frame_width - spec.padding_left - spec.padding_right).max(0.0);
+            base + content - line_width
         }
     }
+}
 
-    // Precalculate lines metrics for custom alignment and letter spacing
-    struct LineDrawInfo {
-        glyph_count: usize,
-        adjusted_width: f32,
-    }
+/// Draws a single glyph run, optionally with a stroked outline pass (used for
+/// shadow spread). Letter-spacing is baked into glyph positions by parley, so
+/// glyph offsets are used as-is (bidi / mixed runs / emoji handled natively).
+fn draw_glyph_run(
+    scene: &mut VelloScene,
+    run: &parley::layout::GlyphRun<'_, [u8; 4]>,
+    run_xform: Affine,
+    brush: Color,
+    stroke_spread: f32,
+) {
+    let glyphs = run
+        .positioned_glyphs()
+        .map(|g| Glyph {
+            id: g.id,
+            x: g.x,
+            y: g.y,
+        })
+        .collect::<Vec<_>>();
 
-    let mut lines_info = Vec::new();
-    for line in layout.lines() {
-        let mut glyph_count = 0;
-        for item in line.items() {
-            if let PositionedLayoutItem::GlyphRun(run) = item {
-                glyph_count += run.positioned_glyphs().count();
-            }
-        }
-        // `advance` already accounts for letter-spacing (shaped by parley above).
-        let adjusted_width = line.metrics().advance;
-        lines_info.push(LineDrawInfo {
-            glyph_count,
-            adjusted_width,
-        });
-    }
-
-    // 5. Draw Text Shadows (if enabled)
-    if spec.text_shadow_enabled && spec.text_shadow_color.to_rgba8().a > 0 {
-        let base_alpha = spec.text_shadow_color.to_rgba8().a as f32 / 255.0;
-        let base_color = spec.text_shadow_color.to_rgba8();
-
-        let mut draw_shadow_pass = |dx: f32, dy: f32, weight: f32| {
-            let shadow_color = Color::from_rgba8(
-                base_color.r,
-                base_color.g,
-                base_color.b,
-                ((base_alpha * weight) * 255.0).clamp(0.0, 255.0) as u8,
+    if stroke_spread > 0.0 {
+        scene
+            .draw_glyphs(run.run().font())
+            .font_size(run.run().font_size())
+            .brush(brush)
+            .transform(run_xform)
+            .draw(
+                &Stroke::new(stroke_spread as f64),
+                glyphs.clone().into_iter(),
             );
+    }
 
-            for (line_idx, line) in layout.lines().enumerate() {
-                let info = &lines_info[line_idx];
-                if info.glyph_count == 0 {
-                    continue;
-                }
+    scene
+        .draw_glyphs(run.run().font())
+        .font_size(run.run().font_size())
+        .brush(brush)
+        .transform(run_xform)
+        .draw(Fill::NonZero, glyphs.into_iter());
+}
 
-                let line_x_offset = match spec.align {
-                    TextAlign::Left => frame_x + spec.padding_left,
-                    TextAlign::Center => {
-                        let frame_content_width =
-                            (spec.frame_width - spec.padding_left - spec.padding_right).max(0.0);
-                        frame_x
-                            + spec.padding_left
-                            + (frame_content_width - info.adjusted_width) * 0.5
-                    }
-                    TextAlign::Right => {
-                        let frame_content_width =
-                            (spec.frame_width - spec.padding_left - spec.padding_right).max(0.0);
-                        frame_x + spec.padding_left + frame_content_width - info.adjusted_width
-                    }
-                };
+#[allow(clippy::too_many_arguments)]
+fn draw_text_shadows(
+    scene: &mut VelloScene,
+    spec: &TextLayer,
+    xform: Affine,
+    layout: &parley::Layout<[u8; 4]>,
+    lines_info: &[LineDrawInfo],
+    frame_x: f32,
+    text_block_top_px: f32,
+) {
+    if !(spec.text_shadow_enabled && spec.text_shadow_color.to_rgba8().a > 0) {
+        return;
+    }
+    let base_color = spec.text_shadow_color.to_rgba8();
+    let base_alpha = base_color.a as f32 / 255.0;
 
-                // Letter-spacing is baked into glyph positions by parley, so glyph
-                // offsets are used as-is (bidi / mixed runs / emoji handled natively).
-                for item in line.items() {
-                    let PositionedLayoutItem::GlyphRun(run) = item else {
-                        continue;
-                    };
+    let draw_shadow_pass = |scene: &mut VelloScene, dx: f32, dy: f32, weight: f32| {
+        let shadow_color = Color::from_rgba8(
+            base_color.r,
+            base_color.g,
+            base_color.b,
+            ((base_alpha * weight) * 255.0).clamp(0.0, 255.0) as u8,
+        );
 
-                    let run_xform = xform
-                        * Affine::translate((
-                            (line_x_offset + dx) as f64,
-                            (text_block_top_px + dy) as f64,
-                        ));
-
-                    let glyphs = run
-                        .positioned_glyphs()
-                        .map(|g| Glyph {
-                            id: g.id,
-                            x: g.x,
-                            y: g.y,
-                        })
-                        .collect::<Vec<_>>();
-
-                    if spec.text_shadow_spread > 0.0 {
-                        scene
-                            .draw_glyphs(run.run().font())
-                            .font_size(run.run().font_size())
-                            .brush(shadow_color)
-                            .transform(run_xform)
-                            .draw(
-                                &Stroke::new(spec.text_shadow_spread as f64),
-                                glyphs.clone().into_iter(),
-                            );
-                    }
-
-                    scene
-                        .draw_glyphs(run.run().font())
-                        .font_size(run.run().font_size())
-                        .brush(shadow_color)
-                        .transform(run_xform)
-                        .draw(Fill::NonZero, glyphs.into_iter());
-                }
+        for (line_idx, line) in layout.lines().enumerate() {
+            let info = &lines_info[line_idx];
+            if info.glyph_count == 0 {
+                continue;
             }
-        };
+            let x_offset = line_x_offset(spec, frame_x, info.adjusted_width);
 
-        if spec.text_shadow_blur > 0.0 {
-            // У глифов нет нативного blur'а в vello, поэтому аппроксимируем гауссиану
-            // ДИСКРЕТНОЙ СВЁРТКОЙ силуэта: сетка отсчётов в пределах ±2σ с весами
-            // exp(-(x²+y²)/2σ²), нормированными к сумме 1. Это 2D-ядро вместо кольца из
-            // 8 копий на одном радиусе (которое давало «8 призраков» при крупном blur).
-            for (dx, dy, w) in gaussian_kernel_taps(spec.text_shadow_blur * 0.5) {
-                draw_shadow_pass(
-                    spec.text_shadow_offset_x + dx,
-                    spec.text_shadow_offset_y + dy,
-                    w,
+            for item in line.items() {
+                let PositionedLayoutItem::GlyphRun(run) = item else {
+                    continue;
+                };
+                let run_xform = xform
+                    * Affine::translate(((x_offset + dx) as f64, (text_block_top_px + dy) as f64));
+                draw_glyph_run(
+                    scene,
+                    &run,
+                    run_xform,
+                    shadow_color,
+                    spec.text_shadow_spread,
                 );
             }
-        } else {
-            // 1 проход
-            draw_shadow_pass(spec.text_shadow_offset_x, spec.text_shadow_offset_y, 1.0);
         }
-    }
+    };
 
-    // 6. Draw Main Text
+    if matches!(spec.render_mode, TextRenderMode::TextShadowMask) {
+        draw_shadow_pass(
+            scene,
+            spec.text_shadow_offset_x,
+            spec.text_shadow_offset_y,
+            1.0,
+        );
+    } else if spec.text_shadow_blur > 0.0 {
+        // У глифов нет нативного blur'а в vello, поэтому аппроксимируем гауссиану
+        // ДИСКРЕТНОЙ СВЁРТКОЙ силуэта: сетка отсчётов в пределах ±2σ с весами
+        // exp(-(x²+y²)/2σ²), нормированными к сумме 1. Это 2D-ядро вместо кольца из
+        // 8 копий на одном радиусе (которое давало «8 призраков» при крупном blur).
+        for (dx, dy, w) in gaussian_kernel_taps(spec.text_shadow_blur * 0.5) {
+            draw_shadow_pass(
+                scene,
+                spec.text_shadow_offset_x + dx,
+                spec.text_shadow_offset_y + dy,
+                w,
+            );
+        }
+    } else {
+        draw_shadow_pass(
+            scene,
+            spec.text_shadow_offset_x,
+            spec.text_shadow_offset_y,
+            1.0,
+        );
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
+fn draw_main_text(
+    scene: &mut VelloScene,
+    spec: &TextLayer,
+    xform: Affine,
+    layout: &parley::Layout<[u8; 4]>,
+    lines_info: &[LineDrawInfo],
+    frame_x: f32,
+    text_block_top_px: f32,
+) {
     for (line_idx, line) in layout.lines().enumerate() {
         let info = &lines_info[line_idx];
         if info.glyph_count == 0 {
             continue;
         }
-
-        let line_x_offset = match spec.align {
-            TextAlign::Left => frame_x + spec.padding_left,
-            TextAlign::Center => {
-                let frame_content_width =
-                    (spec.frame_width - spec.padding_left - spec.padding_right).max(0.0);
-                frame_x + spec.padding_left + (frame_content_width - info.adjusted_width) * 0.5
-            }
-            TextAlign::Right => {
-                let frame_content_width =
-                    (spec.frame_width - spec.padding_left - spec.padding_right).max(0.0);
-                frame_x + spec.padding_left + frame_content_width - info.adjusted_width
-            }
-        };
+        let x_offset = line_x_offset(spec, frame_x, info.adjusted_width);
 
         for item in line.items() {
             let PositionedLayoutItem::GlyphRun(run) = item else {
                 continue;
             };
-
-            let run_xform =
-                xform * Affine::translate((line_x_offset as f64, text_block_top_px as f64));
-
-            let glyphs = run
-                .positioned_glyphs()
-                .map(|g| Glyph {
-                    id: g.id,
-                    x: g.x,
-                    y: g.y,
-                })
-                .collect::<Vec<_>>();
-
-            scene
-                .draw_glyphs(run.run().font())
-                .font_size(run.run().font_size())
-                .brush(spec.color)
-                .transform(run_xform)
-                .draw(Fill::NonZero, glyphs.into_iter());
+            let run_xform = xform * Affine::translate((x_offset as f64, text_block_top_px as f64));
+            draw_glyph_run(scene, &run, run_xform, spec.color, 0.0);
         }
     }
 }
@@ -1084,6 +1180,7 @@ mod tests {
             frame_height: 40.0,
             text_block_height: 40.0,
             natural_size: (100, 40),
+            render_mode: TextRenderMode::Full,
         }
     }
 

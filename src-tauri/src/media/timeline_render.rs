@@ -256,106 +256,63 @@ impl ThumbnailRenderer {
         compositor.render_scene_to_pixels(dev_id, scene, width.max(1), height.max(1))
     }
 
-    pub fn render_to_file(
-        &self,
-        scene: MonitorScene,
-        time_sec: f64,
-        width: u32,
-        height: u32,
-        target_path: &Path,
-        quality: f32,
-        hw_mode: HwAccelMode,
-        vaapi_device: Option<String>,
-    ) -> Result<()> {
-        let mut cache = VideoDecoderCache::new_with_hw_decode(hw_mode, vaapi_device);
+    fn render_request_pixels(&self, req: &TimelineFrameRequest) -> Result<Vec<u8>> {
+        let mut cache =
+            VideoDecoderCache::new_with_hw_decode(req.hw_mode, req.vaapi_device.clone());
         let compositor_scene = build_export_scene(
-            &scene,
-            time_sec,
-            (width.max(1), height.max(1)),
+            &req.scene,
+            req.time_sec,
+            (req.width.max(1), req.height.max(1)),
             &mut cache,
             None,
         )?;
-        let pixels = self.render(&compositor_scene, width, height)?;
+        self.render(&compositor_scene, req.width, req.height)
+    }
+
+    pub fn render_to_file(&self, req: TimelineFrameRequest, target_path: &Path) -> Result<()> {
+        let pixels = self.render_request_pixels(&req)?;
         save_rgba_as_webp(
             target_path,
             &pixels,
-            width.max(1),
-            height.max(1),
-            webp_quality_percent(quality),
+            req.width.max(1),
+            req.height.max(1),
+            webp_quality_percent(req.quality),
         )
     }
 
-    pub fn render_to_webp(
-        &self,
-        scene: MonitorScene,
-        time_sec: f64,
-        width: u32,
-        height: u32,
-        quality: f32,
-        hw_mode: HwAccelMode,
-        vaapi_device: Option<String>,
-    ) -> Result<Vec<u8>> {
-        let mut cache = VideoDecoderCache::new_with_hw_decode(hw_mode, vaapi_device);
-        let compositor_scene = build_export_scene(
-            &scene,
-            time_sec,
-            (width.max(1), height.max(1)),
-            &mut cache,
-            None,
-        )?;
-        let pixels = self.render(&compositor_scene, width, height)?;
+    pub fn render_to_webp(&self, req: TimelineFrameRequest) -> Result<Vec<u8>> {
+        let pixels = self.render_request_pixels(&req)?;
         encode_rgba_as_webp(
             &pixels,
-            width.max(1),
-            height.max(1),
-            webp_quality_percent(quality),
+            req.width.max(1),
+            req.height.max(1),
+            webp_quality_percent(req.quality),
         )
     }
+}
+
+/// Parameters for rendering a single timeline frame. Bundled into one struct so
+/// the render entry points stay readable instead of taking a long positional
+/// argument list.
+pub struct TimelineFrameRequest {
+    pub scene: MonitorScene,
+    pub time_sec: f64,
+    pub width: u32,
+    pub height: u32,
+    pub quality: f32,
+    pub hw_mode: HwAccelMode,
+    pub vaapi_device: Option<String>,
 }
 
 static GLOBAL_RENDERER: std::sync::LazyLock<ThumbnailRenderer> =
     std::sync::LazyLock::new(ThumbnailRenderer::new);
 
-pub fn render_timeline_frame_to_file(
-    scene: MonitorScene,
-    time_sec: f64,
-    width: u32,
-    height: u32,
-    target_path: &Path,
-    quality: f32,
-    hw_mode: HwAccelMode,
-    vaapi_device: Option<String>,
-) -> Result<()> {
-    GLOBAL_RENDERER.render_to_file(
-        scene,
-        time_sec,
-        width,
-        height,
-        target_path,
-        quality,
-        hw_mode,
-        vaapi_device,
-    )
+pub fn render_timeline_frame_to_file(req: TimelineFrameRequest, target_path: &Path) -> Result<()> {
+    GLOBAL_RENDERER.render_to_file(req, target_path)
 }
 
-pub fn render_timeline_frame_to_webp(
-    scene: MonitorScene,
-    time_sec: f64,
-    width: u32,
-    height: u32,
-    quality: f32,
-    hw_mode: HwAccelMode,
-    vaapi_device: Option<String>,
-) -> Result<Vec<u8>> {
-    GLOBAL_RENDERER.render_to_webp(
-        scene,
-        time_sec,
-        width,
-        height,
-        quality,
-        hw_mode,
-        vaapi_device,
-    )
+pub fn render_timeline_frame_to_webp(req: TimelineFrameRequest) -> Result<Vec<u8>> {
+    GLOBAL_RENDERER.render_to_webp(req)
 }
 
 /// JS callers pass WebP quality as a 0..1 fraction, but [`encode_rgba_as_webp`]

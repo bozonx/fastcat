@@ -255,11 +255,23 @@ mod tests {
         let mut host = PluginHost::new();
         let fx = spec("fx1");
 
-        host.apply_effects("layer-1", &mut [1.0f32; 4], 48_000, 2, &[fx.clone()]);
+        host.apply_effects(
+            "layer-1",
+            &mut [1.0f32; 4],
+            48_000,
+            2,
+            std::slice::from_ref(&fx),
+        );
         assert_eq!(host.instances.len(), 1);
 
         // Same key reuses the cached instance.
-        host.apply_effects("layer-1", &mut [1.0f32; 4], 48_000, 2, &[fx.clone()]);
+        host.apply_effects(
+            "layer-1",
+            &mut [1.0f32; 4],
+            48_000,
+            2,
+            std::slice::from_ref(&fx),
+        );
         assert_eq!(host.instances.len(), 1);
 
         // Different id → new instance.
@@ -271,12 +283,24 @@ mod tests {
     fn param_change_reuses_instance_and_pushes_new_params() {
         let mut host = PluginHost::new();
         let mut fx = spec("fx1");
-        host.apply_effects("layer-1", &mut [1.0f32; 4], 48_000, 2, &[fx.clone()]);
+        host.apply_effects(
+            "layer-1",
+            &mut [1.0f32; 4],
+            48_000,
+            2,
+            std::slice::from_ref(&fx),
+        );
         assert_eq!(host.instances.len(), 1);
 
         // Tweak a parameter: the instance must be kept (stable key), not rebuilt.
         fx.params.insert("gain".into(), serde_json::json!(0.5));
-        host.apply_effects("layer-1", &mut [1.0f32; 4], 48_000, 2, &[fx.clone()]);
+        host.apply_effects(
+            "layer-1",
+            &mut [1.0f32; 4],
+            48_000,
+            2,
+            std::slice::from_ref(&fx),
+        );
         assert_eq!(host.instances.len(), 1);
 
         let cached = host.instances.values().next().unwrap();
@@ -290,8 +314,20 @@ mod tests {
     fn separate_instance_per_sample_rate() {
         let mut host = PluginHost::new();
         let fx = spec("fx1");
-        host.apply_effects("layer-1", &mut [1.0f32; 4], 48_000, 2, &[fx.clone()]);
-        host.apply_effects("layer-1", &mut [1.0f32; 4], 44_100, 2, &[fx.clone()]);
+        host.apply_effects(
+            "layer-1",
+            &mut [1.0f32; 4],
+            48_000,
+            2,
+            std::slice::from_ref(&fx),
+        );
+        host.apply_effects(
+            "layer-1",
+            &mut [1.0f32; 4],
+            44_100,
+            2,
+            std::slice::from_ref(&fx),
+        );
         assert_eq!(host.instances.len(), 2);
     }
 

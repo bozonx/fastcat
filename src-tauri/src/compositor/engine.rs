@@ -26,7 +26,10 @@ use winit::window::Window;
 use super::effects::{EffectPipeline, EffectSource, EffectSpec};
 use super::gpu_utils::image_pixels_rgba8;
 use super::readback::*;
-use super::scene::{BlendMode, Layer, LayerKind, RasterGpuSource, RasterSource, Transform};
+use super::scene::{
+    BlendMode, Layer, LayerKind, RasterGpuSource, RasterSource, TextLayer, TextRenderMode,
+    Transform,
+};
 use super::transitions::TransitionPipeline;
 
 /// Закешированный таргет offscreen-рендера. Пересоздаётся только при изменении размера.
@@ -441,6 +444,7 @@ impl Compositor {
         }
 
         layers.retain(|l| !to_remove.contains(&l.id));
+        self.materialize_text_shadow_blurs(dev_id, scene, device, queue, &mut layers)?;
 
         // 2. Применяем эффекты к оставшимся слоям
         let mut final_layers = Vec::with_capacity(layers.len());
@@ -501,13 +505,180 @@ impl Compositor {
         device: &wgpu::Device,
         queue: &wgpu::Queue,
     ) -> Result<EffectSource> {
-        let base = self.layer_to_effect_source(dev_id, scene, layer)?;
+        let base = if Self::text_layer_needs_gpu_shadow(layer) {
+            let texture =
+                self.render_text_layer_with_gpu_shadow(dev_id, scene, layer, device, queue)?;
+            EffectSource::Gpu(Arc::new(texture))
+        } else {
+            self.layer_to_effect_source(dev_id, scene, layer)?
+        };
         if layer.effects.is_empty() {
             return Ok(base);
         }
         let processed =
             self.apply_effects_to_texture(dev_id, device, queue, &base, &layer.effects)?;
         Ok(EffectSource::Gpu(processed))
+    }
+
+    fn materialize_text_shadow_blurs(
+        &mut self,
+        dev_id: usize,
+        scene: &super::scene::Scene,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        layers: &mut [Layer],
+    ) -> Result<()> {
+        for layer in layers {
+            if !Self::text_layer_needs_gpu_shadow(layer) {
+                continue;
+            }
+
+            let render_scale = Self::vector_effect_render_scale(layer);
+            match self.render_text_layer_with_gpu_shadow(dev_id, scene, layer, device, queue) {
+                Ok(texture) => {
+                    layer.kind = LayerKind::Raster {
+                        natural_size: (texture.width(), texture.height()),
+                        source: RasterSource::GpuTexture(Arc::new(texture)),
+                    };
+                    layer.transform.scale_x /= render_scale.0;
+                    layer.transform.scale_y /= render_scale.1;
+                }
+                Err(error) => {
+                    log::warn!("[compositor] gpu text shadow skipped: {error:?}");
+                }
+            }
+        }
+        Ok(())
+    }
+
+    fn text_layer_needs_gpu_shadow(layer: &Layer) -> bool {
+        let LayerKind::Text(spec) = &layer.kind else {
+            return false;
+        };
+        spec.text_shadow_enabled
+            && spec.text_shadow_blur > 0.0
+            && spec.text_shadow_color.to_rgba8().a > 0
+    }
+
+    fn render_text_layer_with_gpu_shadow(
+        &mut self,
+        dev_id: usize,
+        scene: &super::scene::Scene,
+        layer: &Layer,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+    ) -> Result<wgpu::Texture> {
+        let LayerKind::Text(spec) = &layer.kind else {
+            return Err(anyhow!("gpu text shadow requested for non-text layer"));
+        };
+        let render_scale = Self::vector_effect_render_scale(layer);
+
+        let mut shadow_spec = spec.clone();
+        shadow_spec.render_mode = TextRenderMode::TextShadowMask;
+        shadow_spec.text_shadow_blur = 0.0;
+        let shadow_mask = self.render_text_spec_to_texture(
+            dev_id,
+            scene.time,
+            layer.id.as_str(),
+            shadow_spec,
+            render_scale,
+        )?;
+        let blur_scale = ((render_scale.0 + render_scale.1) * 0.5) as f32;
+        let blurred_shadow = self.apply_effects_to_texture(
+            dev_id,
+            device,
+            queue,
+            &EffectSource::Gpu(Arc::new(shadow_mask)),
+            &[EffectSpec::GaussianBlurPixels {
+                radius: spec.text_shadow_blur * blur_scale,
+            }],
+        )?;
+
+        let mut base_spec = spec.clone();
+        base_spec.render_mode = TextRenderMode::WithoutTextShadow;
+        let base = self.render_text_spec_to_texture(
+            dev_id,
+            scene.time,
+            layer.id.as_str(),
+            base_spec,
+            render_scale,
+        )?;
+
+        let width = base.width();
+        let height = base.height();
+        let composite = super::scene::Scene {
+            width,
+            height,
+            time: scene.time,
+            background: Color::TRANSPARENT,
+            layers: vec![
+                Self::gpu_texture_layer(
+                    format!("{}:gpu-text-shadow", layer.id),
+                    blurred_shadow,
+                    (width, height),
+                ),
+                Self::gpu_texture_layer(
+                    format!("{}:gpu-text-base", layer.id),
+                    Arc::new(base),
+                    (width, height),
+                ),
+            ],
+        };
+        self.render_domain_scene_to_owned_texture(
+            dev_id,
+            &composite,
+            width,
+            height,
+            Color::TRANSPARENT,
+        )
+    }
+
+    fn render_text_spec_to_texture(
+        &mut self,
+        dev_id: usize,
+        time: f64,
+        layer_id: &str,
+        spec: TextLayer,
+        scale: (f64, f64),
+    ) -> Result<wgpu::Texture> {
+        let layer = Layer {
+            id: layer_id.to_string(),
+            kind: LayerKind::Text(spec),
+            transform: Transform::identity(),
+            opacity: 1.0,
+            blend: BlendMode::Normal,
+            mask: None,
+            effects: Vec::new(),
+            transition: None,
+        };
+        let scene = super::scene::Scene {
+            width: layer.kind.natural_size().0,
+            height: layer.kind.natural_size().1,
+            time,
+            background: Color::TRANSPARENT,
+            layers: Vec::new(),
+        };
+        self.render_layer_to_texture(dev_id, &scene, &layer, scale)
+    }
+
+    fn gpu_texture_layer(
+        id: String,
+        texture: Arc<wgpu::Texture>,
+        natural_size: (u32, u32),
+    ) -> Layer {
+        Layer {
+            id,
+            kind: LayerKind::Raster {
+                source: RasterSource::GpuTexture(texture),
+                natural_size,
+            },
+            transform: Transform::identity(),
+            opacity: 1.0,
+            blend: BlendMode::Normal,
+            mask: None,
+            effects: Vec::new(),
+            transition: None,
+        }
     }
 
     fn layer_to_effect_source(
@@ -844,6 +1015,27 @@ impl Compositor {
             )
             .map_err(|e| anyhow!("vello render: {e:?}"))?;
         Ok(texture)
+    }
+
+    fn render_domain_scene_to_owned_texture(
+        &mut self,
+        dev_id: usize,
+        scene: &super::scene::Scene,
+        width: u32,
+        height: u32,
+        base_color: Color,
+    ) -> Result<wgpu::Texture> {
+        let mut registered_images = Vec::new();
+        let vello = self.build_vello_scene_from_materialized(
+            dev_id,
+            scene,
+            width,
+            height,
+            &mut registered_images,
+        )?;
+        let result = self.render_to_owned_texture(dev_id, &vello, width, height, base_color);
+        self.unregister_images(dev_id, &mut registered_images);
+        result
     }
 
     fn ensure_renderer(&mut self, dev_id: usize) -> Result<()> {

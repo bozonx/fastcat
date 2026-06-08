@@ -21,6 +21,12 @@ pub enum EffectSpec {
     GaussianBlur {
         radius: f32,
     },
+    /// Internal compositor-space blur. Unlike `GaussianBlur`, the radius is
+    /// already expressed in the target texture's pixels and is not normalized
+    /// against the frame height.
+    GaussianBlurPixels {
+        radius: f32,
+    },
     Brightness {
         value: f32,
     },
@@ -656,6 +662,33 @@ fn build_passes(effects: &[EffectSpec], width: u32, height: u32) -> Vec<EffectPa
                     });
                 }
             }
+            EffectSpec::GaussianBlurPixels { radius } => {
+                let clamped_r = radius.clamp(0.0, MAX_BLUR_RADIUS);
+                if clamped_r > 0.0 {
+                    passes.push(EffectPass {
+                        uniform: EffectUniform {
+                            mode: 4,
+                            width,
+                            height,
+                            seed: 0,
+                            p0: clamped_r,
+                            ..Default::default()
+                        },
+                        custom_source: None,
+                    });
+                    passes.push(EffectPass {
+                        uniform: EffectUniform {
+                            mode: 14,
+                            width,
+                            height,
+                            seed: 0,
+                            p0: clamped_r,
+                            ..Default::default()
+                        },
+                        custom_source: None,
+                    });
+                }
+            }
             EffectSpec::Bloom {
                 threshold,
                 strength,
@@ -749,7 +782,7 @@ fn effect_to_pass(effect: &EffectSpec, width: u32, height: u32) -> Option<Effect
         EffectSpec::Saturation { value } => {
             Some(base(3, value.clamp(0.0, 2.0), 0.0, 0.0, 0.0, 0.0, 0.0, 0))
         }
-        EffectSpec::GaussianBlur { .. } => None, // Handled in build_passes
+        EffectSpec::GaussianBlur { .. } | EffectSpec::GaussianBlurPixels { .. } => None, // Handled in build_passes
         EffectSpec::Sharpen { amount } => {
             Some(base(5, amount.clamp(0.0, 1.0), 0.0, 0.0, 0.0, 0.0, 0.0, 0))
         }
@@ -1136,6 +1169,20 @@ mod tests {
         assert_eq!(passes.len(), 2);
         assert_eq!(passes[0].uniform.mode, 4); // Horizontal
         assert_eq!(passes[1].uniform.mode, 14); // Vertical
+        assert_eq!(passes[0].uniform.p0, 10.0);
+        assert_eq!(passes[1].uniform.p0, 10.0);
+    }
+
+    #[test]
+    fn build_passes_gaussian_blur_pixels_keeps_texture_pixel_radius() {
+        let passes = build_passes(
+            &[EffectSpec::GaussianBlurPixels { radius: 10.0 }],
+            1920,
+            540,
+        );
+        assert_eq!(passes.len(), 2);
+        assert_eq!(passes[0].uniform.mode, 4);
+        assert_eq!(passes[1].uniform.mode, 14);
         assert_eq!(passes[0].uniform.p0, 10.0);
         assert_eq!(passes[1].uniform.p0, 10.0);
     }
