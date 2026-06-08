@@ -79,10 +79,14 @@ pub fn push_video_encode_filter_args_with_extra(
     };
     match hw_mode {
         HwAccelMode::Vaapi => {
+            // `format` must be its own filter, not a `scale` option: the scale filter has
+            // no `format` option (ffmpeg errors "Option not found"), so the conversion to
+            // an upload-able pixel format goes in a separate `format=...` step before
+            // `hwupload`. This is the same recipe as the no-scale branch below.
             let tail = if has_scale {
                 format!(
-                    "{},hwupload",
-                    scale_filter(width, height, preserve_aspect, ":format=nv12|vaapi")
+                    "{},format=nv12|vaapi,hwupload",
+                    scale_filter(width, height, preserve_aspect, "")
                 )
             } else {
                 "format=nv12|vaapi,hwupload".to_string()
@@ -183,6 +187,31 @@ mod tests {
         assert!(
             vf.contains("scale=1280:720:force_original_aspect_ratio=decrease:force_divisible_by=2")
         );
+    }
+
+    #[test]
+    fn vaapi_scale_emits_format_as_separate_filter() {
+        // Regression: the scale filter has no `format` option on ffmpeg 8.x, so the
+        // pixel-format conversion must be a standalone `format=...` filter before
+        // `hwupload` — not `scale=...:format=...` (which errors "Option not found").
+        let mut args = Vec::new();
+        push_video_encode_filter_args_with_extra(
+            &mut args,
+            HwAccelMode::Vaapi,
+            1920,
+            1080,
+            false,
+            true,
+            &["fps=30".to_string()],
+        );
+        let vf = args
+            .windows(2)
+            .find(|p| p[0] == "-vf")
+            .map(|p| p[1].clone())
+            .expect("expected -vf");
+        assert!(!vf.contains(":format="), "format must not be a scale option: {vf}");
+        assert!(vf.contains(",format=nv12|vaapi,hwupload"), "got: {vf}");
+        assert!(vf.starts_with("fps=30,scale=1920:1080"), "got: {vf}");
     }
 
     #[test]

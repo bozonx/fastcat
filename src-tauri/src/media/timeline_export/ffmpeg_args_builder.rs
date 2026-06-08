@@ -56,62 +56,89 @@ pub(crate) fn build_ffmpeg_args(
 
     if is_video {
         let video_codec = ffmpeg_video_codec_hw(&options.video_codec, hw_mode);
-        args.extend([
-            "-c:v".to_string(),
-            video_codec.to_string(),
-            "-b:v".to_string(),
-            options.video_bitrate_bps.max(1).to_string(),
-        ]);
-
-        // Bitrate mode. CBR must actually pin the rate, not just select a mode flag
-        // on one backend and a peak cap on another. Combine the backend-specific
-        // rate-control selector with a shared HRD buffer (maxrate == bufsize ==
-        // bitrate) so every encoder targets the same constant rate.
-        let is_cbr = options.bitrate_mode.as_deref() == Some("constant");
-        if is_cbr {
-            let bitrate = options.video_bitrate_bps.max(1).to_string();
-            match hw_mode {
-                HwAccelMode::Nvdec | HwAccelMode::Nvenc => {
-                    args.extend(["-rc".to_string(), "cbr".to_string()])
-                }
-                HwAccelMode::Vaapi => args.extend(["-rc_mode".to_string(), "CBR".to_string()]),
-                // Software encoders only get a *cap* from maxrate/bufsize; add an equal
-                // floor so the rate is constant rather than merely bounded above. Only
-                // x264/x265 honour `-minrate` as a true CBR floor; libsvtav1/libvpx-vp9
-                // ignore it (and warn), so for those we keep just the maxrate/bufsize cap
-                // rather than emitting a flag that does nothing.
-                _ if video_codec == "libx264" || video_codec == "libx265" => {
-                    args.extend(["-minrate".to_string(), bitrate.clone()])
-                }
-                _ => {}
-            }
-            args.extend([
-                "-maxrate".to_string(),
-                bitrate.clone(),
-                "-bufsize".to_string(),
-                bitrate,
-            ]);
-        }
-
-        // Keyframe interval
-        if let Some(interval_sec) = options.keyframe_interval_sec {
-            if interval_sec.is_finite() && interval_sec > 0.0 {
-                let gop = (fps * interval_sec).round() as u32;
-                if gop > 0 {
-                    args.extend(["-g".to_string(), gop.to_string()]);
-                }
-            }
-        }
-
-        if export_alpha && video_codec == "libvpx-vp9" {
-            args.extend(["-auto-alt-ref".to_string(), "0".to_string()]);
-        }
-
+        push_video_codec_rate_args(&mut args, options, hw_mode, fps, video_codec);
         push_video_encode_filter_args(&mut args, hw_mode, 0, 0, export_alpha);
     } else {
         args.push("-vn".to_string());
     }
 
+    push_audio_metadata_output_tail(&mut args, options, is_video, has_audio, target_path);
+    args
+}
+
+/// Pushes `-c:v`/`-b:v` plus rate-control, keyframe-interval and alpha flags. Shared
+/// by the rawvideo-stdin export path and the direct-transcode fast path so the two
+/// can never disagree on how a codec is configured.
+fn push_video_codec_rate_args(
+    args: &mut Vec<String>,
+    options: &NativeExportOptions,
+    hw_mode: HwAccelMode,
+    fps: f64,
+    video_codec: &str,
+) {
+    let export_alpha = export_uses_alpha(options);
+    args.extend([
+        "-c:v".to_string(),
+        video_codec.to_string(),
+        "-b:v".to_string(),
+        options.video_bitrate_bps.max(1).to_string(),
+    ]);
+
+    // Bitrate mode. CBR must actually pin the rate, not just select a mode flag
+    // on one backend and a peak cap on another. Combine the backend-specific
+    // rate-control selector with a shared HRD buffer (maxrate == bufsize ==
+    // bitrate) so every encoder targets the same constant rate.
+    let is_cbr = options.bitrate_mode.as_deref() == Some("constant");
+    if is_cbr {
+        let bitrate = options.video_bitrate_bps.max(1).to_string();
+        match hw_mode {
+            HwAccelMode::Nvdec | HwAccelMode::Nvenc => {
+                args.extend(["-rc".to_string(), "cbr".to_string()])
+            }
+            HwAccelMode::Vaapi => args.extend(["-rc_mode".to_string(), "CBR".to_string()]),
+            // Software encoders only get a *cap* from maxrate/bufsize; add an equal
+            // floor so the rate is constant rather than merely bounded above. Only
+            // x264/x265 honour `-minrate` as a true CBR floor; libsvtav1/libvpx-vp9
+            // ignore it (and warn), so for those we keep just the maxrate/bufsize cap
+            // rather than emitting a flag that does nothing.
+            _ if video_codec == "libx264" || video_codec == "libx265" => {
+                args.extend(["-minrate".to_string(), bitrate.clone()])
+            }
+            _ => {}
+        }
+        args.extend([
+            "-maxrate".to_string(),
+            bitrate.clone(),
+            "-bufsize".to_string(),
+            bitrate,
+        ]);
+    }
+
+    // Keyframe interval
+    if let Some(interval_sec) = options.keyframe_interval_sec {
+        if interval_sec.is_finite() && interval_sec > 0.0 {
+            let gop = (fps * interval_sec).round() as u32;
+            if gop > 0 {
+                args.extend(["-g".to_string(), gop.to_string()]);
+            }
+        }
+    }
+
+    if export_alpha && video_codec == "libvpx-vp9" {
+        args.extend(["-auto-alt-ref".to_string(), "0".to_string()]);
+    }
+}
+
+/// Pushes the audio encoder, metadata and container-finalisation flags plus the
+/// output path. Shared by both export paths. Audio always rides as a separate input
+/// (the rendered mix), so this never reads from the source's own audio stream.
+fn push_audio_metadata_output_tail(
+    args: &mut Vec<String>,
+    options: &NativeExportOptions,
+    is_video: bool,
+    has_audio: bool,
+    target_path: &Path,
+) {
     if has_audio {
         let (codec, substituted) =
             resolve_audio_encoder(options.audio_codec.as_deref(), &options.format);
@@ -168,6 +195,87 @@ pub(crate) fn build_ffmpeg_args(
     }
 
     args.push(target_path.display().to_string());
+}
+
+/// Builds the ffmpeg invocation for the direct-transcode fast path: the source video
+/// is decoded, trimmed to the export range, resized to the output frame and re-encoded
+/// in one process — no per-frame vello compositing or raw RGBA streaming. Audio still
+/// comes from the pre-rendered mix (`audio_input`). Only valid when the scene passed
+/// [`super::direct::plan_direct`], i.e. a single untouched, aspect-matching video clip.
+pub(crate) fn build_direct_ffmpeg_args(
+    options: &NativeExportOptions,
+    plan: &super::direct::DirectPlan,
+    audio_input: Option<&Path>,
+    width: u32,
+    height: u32,
+    fps: f64,
+    target_path: &Path,
+) -> Vec<String> {
+    let hw_encode = resolve_export_hw_mode(options);
+    let vaapi_dev = options
+        .vaapi_device
+        .as_deref()
+        .unwrap_or(DEFAULT_VAAPI_DEVICE);
+    let hw_decode = resolve_hw_decode_mode(
+        options
+            .hardware_acceleration_mode
+            .as_ref()
+            .unwrap_or(&HwAccelMode::None),
+        vaapi_dev,
+    );
+    let has_audio = audio_input.is_some();
+    let mut args = Vec::new();
+
+    if hw_encode == HwAccelMode::Vaapi {
+        push_vaapi_init_device_args(&mut args, vaapi_dev);
+    }
+    args.extend([
+        "-y".to_string(),
+        "-loglevel".to_string(),
+        "error".to_string(),
+        // Machine-readable progress on stdout: drives the UI and keeps the stall
+        // watchdog fed (stderr stays near-silent at -loglevel error).
+        "-progress".to_string(),
+        "pipe:1".to_string(),
+    ]);
+
+    push_hw_accel_decode_args(&mut args, hw_decode, vaapi_dev);
+    // `-ss` before `-i` is a fast keyframe seek followed by decode-and-discard, so it
+    // stays frame-accurate while skipping the bulk of the file.
+    args.extend([
+        "-ss".to_string(),
+        format_time(plan.source_start_sec),
+        "-i".to_string(),
+        plan.source.display().to_string(),
+    ]);
+    if let Some(audio) = audio_input {
+        args.extend(["-i".to_string(), audio.display().to_string()]);
+    }
+    // Output duration cap so the encode covers exactly the export range.
+    args.extend(["-t".to_string(), format_time(plan.duration_sec)]);
+    // Explicit mapping: video from the source, audio from the rendered mix (input 1).
+    args.extend(["-map".to_string(), "0:v:0".to_string()]);
+    if has_audio {
+        args.extend(["-map".to_string(), "1:a:0".to_string()]);
+    }
+
+    let video_codec = ffmpeg_video_codec_hw(&options.video_codec, hw_encode);
+    push_video_codec_rate_args(&mut args, options, hw_encode, fps, video_codec);
+    args.extend(["-fps_mode".to_string(), "cfr".to_string()]);
+    // `preserve_aspect` fits-by-decrease; the planner guarantees the source aspect
+    // already matches the frame, so this resolves to an exact `scale=W:H`. `fps` runs
+    // before any hwupload so VAAPI/NVENC see CPU frames.
+    push_video_encode_filter_args_with_extra(
+        &mut args,
+        hw_encode,
+        width,
+        height,
+        false,
+        true,
+        &[format!("fps={}", format_fps(fps))],
+    );
+
+    push_audio_metadata_output_tail(&mut args, options, true, has_audio, target_path);
     args
 }
 

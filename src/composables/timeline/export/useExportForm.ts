@@ -47,6 +47,8 @@ export function useExportForm() {
     exportError,
     exportPhase,
     exportWarnings,
+    exportDurationMs,
+    lastExportStatus,
     outputFilename,
     filenameError,
     outputFormat,
@@ -392,6 +394,9 @@ export function useExportForm() {
     exportProgress.value = 0;
     exportError.value = null;
     exportWarnings.value = [];
+    exportDurationMs.value = null;
+    lastExportStatus.value = null;
+    const startTime = performance.now();
 
     try {
       const exportDir = await ensureExportDir();
@@ -523,6 +528,9 @@ export function useExportForm() {
 
         exportSuccess = true;
         exportProgress.value = 1;
+        const durationMs = Math.round(performance.now() - startTime);
+        exportDurationMs.value = durationMs;
+        lastExportStatus.value = 'success';
 
         if (saveAsDefaults.value) {
           try {
@@ -562,10 +570,12 @@ export function useExportForm() {
           });
         }
 
+        const durationText = formatRenderDuration(durationMs);
         toast.add({
           title: t('videoEditor.export.successTitle'),
-          description: t('videoEditor.export.successDesc', {
+          description: t('videoEditor.export.successDescWithDuration', {
             file: outputFilename.value,
+            duration: durationText,
           }),
           color: 'success',
           icon: 'i-heroicons-check-circle',
@@ -586,11 +596,21 @@ export function useExportForm() {
         }
       }
     } catch (err: unknown) {
+      const durationMs = Math.round(performance.now() - startTime);
+      exportDurationMs.value = durationMs;
+      lastExportStatus.value = 'error';
       log.error('Export failed:', err);
       if (err instanceof Error && err.name === 'AbortError') {
         exportError.value = t('videoEditor.export.errorCancelled');
       } else {
         exportError.value = err instanceof Error ? err.message : t('videoEditor.export.error');
+        const durationText = formatRenderDuration(durationMs);
+        toast.add({
+          title: t('videoEditor.export.error'),
+          description: t('videoEditor.export.errorDescWithDuration', { duration: durationText }),
+          color: 'error',
+          icon: 'i-heroicons-exclamation-triangle',
+        });
       }
     } finally {
       isExporting.value = false;
@@ -819,6 +839,8 @@ export function useExportForm() {
     exportError,
     exportPhase,
     exportWarnings,
+    exportDurationMs,
+    lastExportStatus,
     cancelRequested,
     outputFilename,
     filenameError,

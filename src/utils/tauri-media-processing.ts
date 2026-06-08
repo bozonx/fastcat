@@ -128,6 +128,26 @@ export async function nativeCancelMediaTask(taskId: string): Promise<boolean> {
   return await invoke<boolean>('native_media_cancel', { taskId });
 }
 
+export interface NativeFfmpegHardwareSettings {
+  ffmpegPath: string;
+  ffprobePath: string;
+  hardwareAccelerationMode: string;
+  vaapiDevice: string;
+  enableHardwareEncoding: boolean;
+}
+
+/**
+ * Pushes the user's ffmpeg / hardware-acceleration settings to the native backend,
+ * which stores them as the single source of truth applied to every export, proxy and
+ * convert job. Must run at startup (not only when the settings panel mounts), otherwise
+ * an export started before the panel is ever opened falls back to software decode/encode.
+ */
+export async function nativeUpdateFfmpegSettings(
+  settings: NativeFfmpegHardwareSettings,
+): Promise<void> {
+  await invoke('native_update_ffmpeg_settings', { settings });
+}
+
 export interface NativeTimelineExportOptions {
   width: number;
   height: number;

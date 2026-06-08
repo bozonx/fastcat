@@ -10,6 +10,7 @@ import {
   type ResolvedStorageTopology,
 } from '~/utils/storage-topology';
 import { resolveTauriAppPaths, type TauriAppPaths } from '~/utils/tauri-paths';
+import { isTauriRuntime } from '~/utils/runtime';
 import { isModelDownloaded } from '~/utils/transcription/model-storage';
 
 import { createWorkspaceSettingsModule } from '~/stores/workspace/workspaceSettings';
@@ -266,6 +267,23 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   const isApiSupported = workspaceProvider.isSupported;
   const workspaceProviderId = workspaceProvider.id;
 
+  async function syncFfmpegSettingsToNative() {
+    if (!isTauriRuntime()) return;
+    try {
+      const { nativeUpdateFfmpegSettings } = await import('~/utils/tauri-media-processing');
+      const opt = userSettings.value.optimization;
+      await nativeUpdateFfmpegSettings({
+        ffmpegPath: opt.ffmpegPath,
+        ffprobePath: opt.ffprobePath,
+        hardwareAccelerationMode: opt.hardwareAccelerationMode,
+        vaapiDevice: opt.vaapiDevice,
+        enableHardwareEncoding: opt.enableHardwareEncoding,
+      });
+    } catch (e) {
+      log.warn('Failed to sync ffmpeg settings to native backend:', e);
+    }
+  }
+
   async function setupWorkspace(handle: FileSystemDirectoryHandle) {
     workspaceHandle.value = handle;
     settingsRepo.value = createWorkspaceSettingsRepository({ vfs: useVfs() });
@@ -299,6 +317,10 @@ export const useWorkspaceStore = defineStore('workspace', () => {
       loadUserSettingsFromDisk(),
       loadWorkspaceStateFromDisk(),
     ]);
+    // Push the persisted hardware-acceleration settings to the native backend up front.
+    // Without this the backend keeps its software defaults until the Settings → Video
+    // panel is opened, so an export started beforehand would run fully in software.
+    await syncFfmpegSettingsToNative();
     if (workspaceState.value.ui.lastProjectName !== null) {
       lastProjectName.value = workspaceState.value.ui.lastProjectName;
     } else if (lastProjectName.value !== null) {

@@ -18,7 +18,7 @@ import {
   BASE_AUDIO_CODEC_OPTIONS,
   VIDEO_FORMAT_OPTIONS,
 } from '~/utils/webcodecs';
-import { formatFps, middleEllipsis } from '~/utils/format';
+import { formatFps, middleEllipsis, formatRenderDuration } from '~/utils/format';
 import { useExportForm } from '~/composables/timeline/export/useExportForm';
 
 const props = defineProps<{
@@ -43,6 +43,8 @@ const {
   exportProgress,
   exportError,
   exportWarnings,
+  exportDurationMs,
+  lastExportStatus,
   cancelRequested,
   outputFilename,
   filenameError,
@@ -515,10 +517,20 @@ async function onConfirm() {
         </label>
 
         <div
+          v-if="lastExportStatus === 'success' && exportDurationMs !== null"
+          class="p-3 text-sm text-success-400 bg-success-400/10 rounded-md border border-success-400/20"
+        >
+          {{ t('videoEditor.export.successMessage', { duration: formatRenderDuration(exportDurationMs) }) }}
+        </div>
+
+        <div
           v-if="exportError"
           class="p-3 text-sm text-error-400 bg-error-400/10 rounded-md border border-error-400/20"
         >
-          {{ exportError }}
+          <div>{{ exportError }}</div>
+          <div v-if="exportDurationMs !== null" class="mt-1 text-xs text-error-300">
+            {{ t('videoEditor.export.durationLabel', { duration: formatRenderDuration(exportDurationMs) }) }}
+          </div>
         </div>
 
         <div

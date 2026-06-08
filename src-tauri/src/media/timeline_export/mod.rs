@@ -30,6 +30,7 @@ use super::processing::{now_millis, spawn_stderr_drain, NativeMediaTasks};
 use super::types::HwAccelMode;
 
 pub mod audio;
+pub mod direct;
 pub mod ffmpeg_args_builder;
 pub mod options;
 #[cfg(test)]
@@ -38,8 +39,10 @@ mod tests;
 pub use audio::temp_audio_path;
 pub use options::NativeExportOptions;
 
+use direct::plan_direct;
 use ffmpeg_args_builder::{
-    build_ffmpeg_args, export_uses_alpha, is_gpu_render_error, resolve_export_hw_mode,
+    build_direct_ffmpeg_args, build_ffmpeg_args, export_uses_alpha, is_gpu_render_error,
+    resolve_export_hw_mode,
 };
 
 /// Kill the export if ffmpeg makes no progress for this long. A stall guard rather
@@ -148,12 +151,31 @@ pub fn export_timeline(
         None
     };
 
+    // Fast path: a single untouched, frame-filling video clip needs no compositing, so
+    // skip the per-frame vello render/readback entirely and let ffmpeg decode→scale→encode
+    // the source in one pass. `None` keeps the full pipeline. Audio still rides as the
+    // pre-rendered mix below.
+    let direct_plan = plan_direct(
+        &scene,
+        &options,
+        width,
+        height,
+        start,
+        end,
+        fps,
+        frame_count,
+    );
+    if direct_plan.is_some() {
+        log::info!("[native-export] using direct transcode (single untouched clip)");
+    }
+
     // One export attempt with the given options. The caller owns temp_audio cleanup.
     let run_attempt = |opts: &NativeExportOptions| -> Result<()> {
         let is_video = opts.video_enabled.unwrap_or(true);
         if !is_video && audio_input.is_none() {
             return Err(anyhow!("audio-only export has no audio input"));
         }
+        let direct = direct_plan.as_ref().filter(|_| is_video);
 
         // Background fill for the rendered frames. With alpha export the canvas stays
         // transparent (VP9 yuva420p carries it). Without alpha, ffmpeg discards the
@@ -166,24 +188,41 @@ pub fn export_timeline(
             vello::peniko::Color::BLACK
         };
 
-        let args = build_ffmpeg_args(
-            opts,
-            audio_input.as_deref(),
-            width,
-            height,
-            fps,
-            target_path,
-        );
+        let args = match direct {
+            Some(plan) => build_direct_ffmpeg_args(
+                opts,
+                plan,
+                audio_input.as_deref(),
+                width,
+                height,
+                fps,
+                target_path,
+            ),
+            None => build_ffmpeg_args(
+                opts,
+                audio_input.as_deref(),
+                width,
+                height,
+                fps,
+                target_path,
+            ),
+        };
         let ffmpeg_cmd = opts.ffmpeg_path.as_deref().unwrap_or("ffmpeg");
         verify_ffmpeg_binary(ffmpeg_cmd).context("ffmpeg binary check failed")?;
         let mut child = Command::new(ffmpeg_cmd)
             .args(&args)
-            .stdin(if is_video {
+            // Direct path reads the source file itself (no rawvideo stdin) and reports
+            // progress on stdout; the vello path streams RGBA into stdin.
+            .stdin(if is_video && direct.is_none() {
                 Stdio::piped()
             } else {
                 Stdio::null()
             })
-            .stdout(Stdio::null())
+            .stdout(if direct.is_some() {
+                Stdio::piped()
+            } else {
+                Stdio::null()
+            })
             .stderr(Stdio::piped())
             .spawn()
             .context("failed to spawn ffmpeg for timeline export")?;
@@ -224,7 +263,43 @@ pub fn export_timeline(
         };
 
         let io_result = (|| -> Result<()> {
-            let render_result = if is_video {
+            let render_result = if let Some(plan) = direct {
+                // Direct transcode: ffmpeg owns decode/scale/encode. We only relay its
+                // `-progress` stdout to the UI and the stall watchdog until it finishes.
+                let stdout = child
+                    .lock()
+                    .stdout
+                    .take()
+                    .ok_or_else(|| anyhow!("ffmpeg stdout unavailable"))?;
+                let total_sec = plan.duration_sec;
+                let reader = std::io::BufReader::new(stdout);
+                let mut result = Ok(());
+                for line in std::io::BufRead::lines(reader) {
+                    let line = match line {
+                        Ok(line) => line,
+                        Err(e) => {
+                            result = Err(anyhow!("reading ffmpeg progress: {e}"));
+                            break;
+                        }
+                    };
+                    if tasks.was_cancelled(task_id) {
+                        result = Err(anyhow!("cancelled"));
+                        break;
+                    }
+                    last_activity.store(now_millis(), Ordering::Release);
+                    if let Some(rest) = line.strip_prefix("out_time_us=") {
+                        if let Ok(us) = rest.trim().parse::<i64>() {
+                            if total_sec > 0.0 && us >= 0 {
+                                let frac = (us as f64 / 1_000_000.0 / total_sec).clamp(0.0, 1.0);
+                                on_progress(frac);
+                            }
+                        }
+                    } else if line.starts_with("progress=end") {
+                        on_progress(1.0);
+                    }
+                }
+                result
+            } else if is_video {
                 let mut stdin = child
                     .lock()
                     .stdin

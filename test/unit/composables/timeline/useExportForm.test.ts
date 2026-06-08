@@ -1,6 +1,7 @@
 /** @vitest-environment node */
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { nextTick, ref } from 'vue';
+import { useToast } from '#ui/composables/useToast';
 import { useExportForm } from '~/composables/timeline/export/useExportForm';
 
 const selectionRangeMock = ref<{ startUs: number; endUs: number } | null>(null);
@@ -127,6 +128,8 @@ vi.mock('~/composables/timeline/export', () => ({
     exportError: ref<string | null>(null),
     exportPhase: ref<string | null>(null),
     exportWarnings: ref<string[]>([]),
+    exportDurationMs: ref<number | null>(null),
+    lastExportStatus: ref<'success' | 'error' | null>(null),
     outputFilename: ref(''),
     filenameError: ref<string | null>(null),
     outputFormat: ref<'mp4' | 'webm' | 'mkv'>('mp4'),
@@ -466,5 +469,60 @@ describe('useExportForm', () => {
       format: 'mp4',
       exportAlpha: false,
     });
+  });
+
+  it('записывает длительность и статус успеха после экспорта', async () => {
+    const form = useExportForm();
+    await form.initializeExportForm();
+    await form.handleStartExport();
+
+    expect(form.lastExportStatus.value).toBe('success');
+    expect(form.exportDurationMs.value).not.toBeNull();
+    expect(form.exportDurationMs.value).toBeGreaterThanOrEqual(0);
+  });
+
+  it('показывает тост успеха с длительностью экспорта', async () => {
+    const toastAddMock = vi.fn();
+    vi.mocked(useToast).mockReturnValue({ add: toastAddMock, remove: vi.fn() });
+
+    const form = useExportForm();
+    await form.initializeExportForm();
+    await form.handleStartExport();
+
+    expect(toastAddMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        color: 'success',
+        description: expect.stringContaining('videoEditor.export.successDescWithDuration'),
+      }),
+    );
+  });
+
+  it('записывает длительность и статус ошибки при неудачном экспорте', async () => {
+    exportTimelineToFileMock.mockRejectedValueOnce(new Error('Codec error'));
+
+    const form = useExportForm();
+    await form.initializeExportForm();
+    await form.handleStartExport();
+
+    expect(form.lastExportStatus.value).toBe('error');
+    expect(form.exportDurationMs.value).not.toBeNull();
+    expect(form.exportDurationMs.value).toBeGreaterThanOrEqual(0);
+  });
+
+  it('показывает тост ошибки с длительностью при неудачном экспорте', async () => {
+    exportTimelineToFileMock.mockRejectedValueOnce(new Error('Codec error'));
+    const toastAddMock = vi.fn();
+    vi.mocked(useToast).mockReturnValue({ add: toastAddMock, remove: vi.fn() });
+
+    const form = useExportForm();
+    await form.initializeExportForm();
+    await form.handleStartExport();
+
+    expect(toastAddMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        color: 'error',
+        description: expect.stringContaining('videoEditor.export.errorDescWithDuration'),
+      }),
+    );
   });
 });

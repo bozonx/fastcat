@@ -288,6 +288,186 @@ fn test_alpha_mkv_vp9_emits_yuva() {
     assert!(args.windows(2).any(|pair| pair == ["-auto-alt-ref", "0"]));
 }
 
+fn video_layer() -> crate::monitor::scene::SceneLayer {
+    crate::monitor::scene::SceneLayer {
+        id: "v".into(),
+        kind: crate::monitor::scene::LayerKind::Video,
+        path: "/tmp/clip.mp4".into(),
+        timeline_start_sec: 0.0,
+        timeline_end_sec: 10.0,
+        source_start_sec: 0.0,
+        source_range_duration_sec: 10.0,
+        speed: 1.0,
+        freeze_frame_source_sec: None,
+        source_orientation: None,
+        z: 0,
+        opacity: 1.0,
+        blend_mode: crate::compositor::scene::BlendMode::Normal,
+        background_color: None,
+        text: None,
+        style: None,
+        shape_type: None,
+        fill_color: None,
+        stroke_color: None,
+        stroke_width: None,
+        shape_config: None,
+        transform: None,
+        transition_in: None,
+        transition_out: None,
+        effects: Vec::new(),
+    }
+}
+
+fn one_clip_scene(layer: crate::monitor::scene::SceneLayer) -> crate::monitor::scene::MonitorScene {
+    crate::monitor::scene::MonitorScene {
+        layers: vec![layer],
+        audio_layers: vec![],
+        audio_tracks: vec![],
+        audio_master_gain: 1.0,
+        audio_master_muted: false,
+        width: 1920,
+        height: 1080,
+        preview_scale: None,
+        preview_fps: 30.0,
+        preview_sync_mode: crate::monitor::scene::PreviewSyncMode::Balanced,
+    }
+}
+
+/// These cases must reject *before* the source probe (no real file needed): the fast
+/// path may only engage on a single untouched, frame-filling clip.
+#[test]
+fn plan_direct_rejects_non_trivial_scenes() {
+    use super::direct::plan_direct;
+    let opts = base_options();
+    let call = |scene: &crate::monitor::scene::MonitorScene| {
+        plan_direct(scene, &opts, 1920, 1080, 0.0, 10.0, 30.0, 300).is_some()
+    };
+
+    // An effect forces real compositing.
+    let mut l = video_layer();
+    l.effects
+        .push(crate::compositor::effects::EffectSpec::Brightness { value: 1.0 });
+    assert!(!call(&one_clip_scene(l)));
+
+    // An explicit transform (scale/crop/reposition) can't be reproduced by a plain resize.
+    let mut l = video_layer();
+    l.transform = Some(crate::monitor::scene::SceneLayerTransform {
+        x: 0.0,
+        y: 0.0,
+        scale_x: 1.0,
+        scale_y: 1.0,
+        rotation_deg: 0.0,
+        anchor_x: 0.5,
+        anchor_y: 0.5,
+        crop_top: 0.0,
+        crop_bottom: 0.0,
+        crop_left: 0.0,
+        crop_right: 0.0,
+    });
+    assert!(!call(&one_clip_scene(l)));
+
+    // Speed change needs retiming.
+    let mut l = video_layer();
+    l.speed = 2.0;
+    assert!(!call(&one_clip_scene(l)));
+
+    // Two layers must be composited.
+    let scene = crate::monitor::scene::MonitorScene {
+        layers: vec![video_layer(), video_layer()],
+        ..one_clip_scene(video_layer())
+    };
+    assert!(!call(&scene));
+
+    // Export viewport differs from the scene (vello's scene→viewport fit is non-trivial).
+    assert!(!plan_direct(
+        &one_clip_scene(video_layer()),
+        &opts,
+        1280,
+        720,
+        0.0,
+        10.0,
+        30.0,
+        300
+    )
+    .is_some());
+}
+
+#[test]
+fn build_direct_args_software_resizes_trims_and_maps_streams() {
+    use super::ffmpeg_args_builder::build_direct_ffmpeg_args;
+    let plan = super::direct::DirectPlan {
+        source: std::path::PathBuf::from("/tmp/clip.mp4"),
+        source_start_sec: 2.0,
+        duration_sec: 5.0,
+    };
+    let options = base_options();
+    let args = build_direct_ffmpeg_args(
+        &options,
+        &plan,
+        Some(Path::new("/tmp/mix.wav")),
+        1920,
+        1080,
+        30.0,
+        Path::new("out.mp4"),
+    );
+    // Input seek + the source as input 0, audio mix as input 1, trimmed to the range.
+    assert!(args.windows(2).any(|p| p == ["-ss", "2.000000"]));
+    assert!(args.windows(2).any(|p| p == ["-i", "/tmp/clip.mp4"]));
+    assert!(args.windows(2).any(|p| p == ["-i", "/tmp/mix.wav"]));
+    assert!(args.windows(2).any(|p| p == ["-t", "5.000000"]));
+    assert!(args.windows(2).any(|p| p == ["-map", "0:v:0"]));
+    assert!(args.windows(2).any(|p| p == ["-map", "1:a:0"]));
+    // No rawvideo stdin input in the direct path.
+    assert!(!args.iter().any(|a| a == "rawvideo"));
+    // Progress on stdout drives the UI + watchdog.
+    assert!(args.windows(2).any(|p| p == ["-progress", "pipe:1"]));
+    // Software encode: libx264 with a CFR scale+fps filter to the output frame.
+    assert!(args.windows(2).any(|p| p == ["-c:v", "libx264"]));
+    assert!(args.windows(2).any(|p| p == ["-fps_mode", "cfr"]));
+    let vf = args
+        .iter()
+        .position(|a| a == "-vf")
+        .map(|i| args[i + 1].clone())
+        .expect("direct path must set a -vf filter");
+    assert!(vf.contains("fps=30"));
+    assert!(vf.contains("scale=1920:1080"));
+}
+
+#[test]
+fn build_direct_args_vaapi_uploads_for_hardware_encode() {
+    use super::ffmpeg_args_builder::build_direct_ffmpeg_args;
+    let plan = super::direct::DirectPlan {
+        source: std::path::PathBuf::from("/tmp/clip.mp4"),
+        source_start_sec: 0.0,
+        duration_sec: 3.0,
+    };
+    let options = NativeExportOptions {
+        hardware_acceleration_mode: Some(crate::media::types::HwAccelMode::Vaapi),
+        enable_hardware_encoding: Some(true),
+        vaapi_device: Some("/dev/dri/renderD128".into()),
+        ..base_options()
+    };
+    let args = build_direct_ffmpeg_args(
+        &options,
+        &plan,
+        None,
+        1920,
+        1080,
+        30.0,
+        Path::new("out.mp4"),
+    );
+    // Hardware decode + encode, with a software fps/scale step uploaded before the encoder.
+    assert!(args.windows(2).any(|p| p == ["-hwaccel", "vaapi"]));
+    assert!(args.windows(2).any(|p| p == ["-c:v", "h264_vaapi"]));
+    let vf = args
+        .iter()
+        .position(|a| a == "-vf")
+        .map(|i| args[i + 1].clone())
+        .expect("vaapi direct path must set a -vf filter");
+    assert!(vf.contains("hwupload"));
+    assert!(vf.contains("fps=30"));
+}
+
 #[test]
 fn test_mp4_flac_request_remaps_to_aac() {
     // mp4/mov can't carry FLAC/PCM — those must remap to AAC.

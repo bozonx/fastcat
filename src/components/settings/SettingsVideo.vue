@@ -119,15 +119,13 @@ async function loadTauriDiagnostics() {
 async function syncFfmpegSettings() {
   if (!isTauri.value) return;
   try {
-    const { invoke } = await import('@tauri-apps/api/core');
-    await invoke('native_update_ffmpeg_settings', {
-      settings: {
-        ffmpegPath: workspaceStore.userSettings.optimization.ffmpegPath,
-        ffprobePath: workspaceStore.userSettings.optimization.ffprobePath,
-        hardwareAccelerationMode: workspaceStore.userSettings.optimization.hardwareAccelerationMode,
-        vaapiDevice: workspaceStore.userSettings.optimization.vaapiDevice,
-        enableHardwareEncoding: workspaceStore.userSettings.optimization.enableHardwareEncoding,
-      },
+    const { nativeUpdateFfmpegSettings } = await import('~/utils/tauri-media-processing');
+    await nativeUpdateFfmpegSettings({
+      ffmpegPath: workspaceStore.userSettings.optimization.ffmpegPath,
+      ffprobePath: workspaceStore.userSettings.optimization.ffprobePath,
+      hardwareAccelerationMode: workspaceStore.userSettings.optimization.hardwareAccelerationMode,
+      vaapiDevice: workspaceStore.userSettings.optimization.vaapiDevice,
+      enableHardwareEncoding: workspaceStore.userSettings.optimization.enableHardwareEncoding,
     });
   } catch (err) {
     log.error('Failed to sync ffmpeg settings to backend:', err);

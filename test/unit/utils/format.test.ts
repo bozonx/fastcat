@@ -1,6 +1,12 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest';
-import { formatBitrate, formatBytes, formatDurationSeconds, formatFps } from '~/utils/format';
+import {
+  formatBitrate,
+  formatBytes,
+  formatDurationSeconds,
+  formatFps,
+  formatRenderDuration,
+} from '~/utils/format';
 
 describe('utils/format', () => {
   it('formatBytes formats using base 1024 and fixed units', () => {
@@ -31,5 +37,14 @@ describe('utils/format', () => {
     expect(formatFps(23.976023)).toBe('23.98');
     expect(formatFps(undefined)).toBe('0');
     expect(formatFps(null)).toBe('0');
+  });
+
+  it('formatRenderDuration shows seconds under a minute and MM:SS / H:MM:SS above', () => {
+    expect(formatRenderDuration(0)).toBe('1s');
+    expect(formatRenderDuration(500)).toBe('1s');
+    expect(formatRenderDuration(59_000)).toBe('59s');
+    expect(formatRenderDuration(60_000)).toBe('1:00');
+    expect(formatRenderDuration(125_000)).toBe('2:05');
+    expect(formatRenderDuration(3_661_000)).toBe('1:01:01');
   });
 });
