@@ -197,6 +197,52 @@ pub(crate) fn resample_planar_cached(
     Ok(output)
 }
 
+/// Varispeed-resamples an interleaved buffer to exactly `out_frames` frames.
+///
+/// Used by the realtime producer ONLY when global playback speed != 1: the mixer
+/// renders a `speed×` longer timeline span into `interleaved`, and this compresses
+/// (speed > 1) or stretches (speed < 1) it back to the device chunk size, shifting
+/// pitch like tape varispeed. Each call builds a self-contained resampler and
+/// flushes its tail, so chunks stay independent (no carried delay-line state); the
+/// output is force-fit to `out_frames` (zero-padded / truncated) so the producer's
+/// frame↔timeline accounting stays exact.
+pub(crate) fn resample_interleaved_to_frames(
+    interleaved: &[f32],
+    channels: usize,
+    sample_rate: u32,
+    speed: f64,
+    out_frames: usize,
+) -> Vec<f32> {
+    if channels == 0 || out_frames == 0 {
+        return vec![0.0; out_frames * channels];
+    }
+    let in_frames = interleaved.len() / channels;
+    if in_frames == 0 {
+        return vec![0.0; out_frames * channels];
+    }
+
+    let mut planar = vec![vec![0.0f32; in_frames]; channels];
+    for f in 0..in_frames {
+        let base = f * channels;
+        for (ch, plane) in planar.iter_mut().enumerate() {
+            plane[f] = interleaved[base + ch];
+        }
+    }
+
+    let resampled = match resample_planar_with_speed(planar, sample_rate, sample_rate, speed, channels)
+    {
+        Ok(r) => r,
+        Err(e) => {
+            log::warn!("[audio] varispeed resample failed: {e:?}");
+            return vec![0.0; out_frames * channels];
+        }
+    };
+
+    let mut out = planar_to_interleaved(&resampled, channels);
+    out.resize(out_frames * channels, 0.0);
+    out
+}
+
 /// Converts planar channel buffers into an interleaved buffer with exactly
 /// `out_channels` channels, applying a sensible down/up-mix:
 /// - equal channel counts: copied 1:1;

@@ -64,6 +64,14 @@ export const nativeMonitorIpc = {
     return invoke('monitor_seek', { timeSec });
   },
   /**
+   * Global transport playback speed (timeline-time multiplier). `1` is normal,
+   * `2` plays at 2× (pitch-shifted audio), negative values play in reverse with
+   * muted audio.
+   */
+  setSpeed(speed: number): Promise<void> {
+    return invoke('monitor_set_speed', { speed });
+  },
+  /**
    * Forward-scrub audio preview: play a one-shot snippet at `fromSec` of length
    * `durationSec`. Plays only while not in normal playback and does not move the
    * transport playhead.

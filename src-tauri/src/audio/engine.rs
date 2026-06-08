@@ -166,8 +166,13 @@ impl NativeAudioEngine {
 
         if needs_flush {
             state.pending_ring_clear = true;
-            state.producer_pts_sec =
-                state.origin_pts_sec + self.clock.frames() as f64 / self.sample_rate as f64;
+            let speed = if state.global_speed > 0.0 {
+                state.global_speed
+            } else {
+                1.0
+            };
+            state.producer_pts_sec = state.origin_pts_sec
+                + self.clock.frames() as f64 / self.sample_rate as f64 * speed;
             // Discontinuous output: invalidate in-flight chunks and force decoders
             // to reseek to the new positions.
             state.seek_serial = state.seek_serial.wrapping_add(1);
@@ -272,6 +277,43 @@ impl NativeAudioEngine {
         self.shared.1.notify_all();
     }
 
+    /// Sets the global transport speed (timeline-time multiplier). `anchor_sec` is
+    /// the authoritative master-clock position to continue from (the caller's
+    /// `PlaybackClock`, which stays correct across reverse spans where audio is
+    /// silent); `playing` reflects whether the master transport is running.
+    ///
+    /// Forward speeds (>0) varispeed the output (pitch shifts); a value <=0 means
+    /// reverse/stopped, where audio is intentionally muted (the producer renders
+    /// nothing). Changing speed while playing re-anchors the mix origin and flushes
+    /// the buffered output (which was mixed at the old rate), exactly like a seek,
+    /// so the new rate starts cleanly.
+    pub fn set_speed(&self, speed: f64, anchor_sec: f64, playing: bool) {
+        self.restart_finished_producer();
+        let speed = if speed.is_finite() && speed != 0.0 {
+            speed
+        } else {
+            1.0
+        };
+        let mut state = self.shared.0.lock();
+        if (state.global_speed - speed).abs() < 1e-9 {
+            return;
+        }
+
+        let current = anchor_sec.max(0.0);
+        state.global_speed = speed;
+        state.origin_pts_sec = current;
+        state.producer_pts_sec = current;
+        state.seek_serial = state.seek_serial.wrapping_add(1);
+
+        if playing && state.playing {
+            // Discard output mixed at the old rate and re-arm the clock for the new one.
+            self.clock.reset_frames();
+            state.pending_ring_clear = true;
+            self.clock.playing.store(false, Ordering::Release);
+        }
+        self.shared.1.notify_all();
+    }
+
     /// Requests a one-shot forward-scrub audio preview of `[from_sec, from_sec +
     /// duration_sec)`. Plays only while NOT in normal playback and does not move
     /// the master transport. The actual mixing + ring writes happen on the
@@ -306,6 +348,11 @@ impl NativeAudioEngine {
         self.restart_finished_producer();
         let state = self.shared.0.lock();
         if !state.playing {
+            return None;
+        }
+        // Reverse / non-positive speed: audio is muted and produces nothing, so it
+        // is NOT the master clock — let the caller's PlaybackClock free-run instead.
+        if state.global_speed <= 0.0 {
             return None;
         }
         if !self.clock.playing.load(Ordering::Acquire) {
@@ -478,6 +525,48 @@ mod tests {
             "a real scrub during playback must reseek"
         );
         assert_eq!(engine.shared.0.lock().origin_pts_sec, 25.0);
+    }
+
+    #[test]
+    fn set_speed_anchors_origin_and_flushes() {
+        let engine = mock_engine();
+        engine.play(10.0);
+        let before = seek_serial(&engine);
+
+        // Switch to 2× while playing, anchored at 12.0 (master-clock position).
+        engine.set_speed(2.0, 12.0, true);
+
+        let state = engine.shared.0.lock();
+        assert_eq!(state.global_speed, 2.0);
+        assert_eq!(state.origin_pts_sec, 12.0);
+        assert_eq!(state.producer_pts_sec, 12.0);
+        drop(state);
+        assert_eq!(
+            seek_serial(&engine),
+            before.wrapping_add(1),
+            "speed change must flush (bump seek_serial)"
+        );
+    }
+
+    #[test]
+    fn reverse_speed_mutes_audio_clock() {
+        let engine = mock_engine();
+        engine.play(10.0);
+        // Reverse: audio is intentionally silent, so it is not the master clock.
+        engine.set_speed(-1.0, 10.0, true);
+        assert!(
+            engine.current_pts().is_none(),
+            "reverse playback must report no audible pts"
+        );
+        assert!(engine.shared.0.lock().global_speed < 0.0);
+    }
+
+    #[test]
+    fn set_speed_zero_falls_back_to_one() {
+        let engine = mock_engine();
+        engine.play(10.0);
+        engine.set_speed(0.0, 10.0, true);
+        assert_eq!(engine.shared.0.lock().global_speed, 1.0);
     }
 
     #[test]

@@ -263,6 +263,18 @@ impl ApplicationHandler<MonitorCommand> for MonitorApp {
                     s.window.request_redraw();
                 }
             }
+            MonitorCommand::SetSpeed(speed) => {
+                if let Some(s) = self.state.as_mut() {
+                    let playing = s.clock.is_playing();
+                    s.set_speed(speed);
+                    // Реверс/изменение скорости должны немедленно тикать клок — пере-взводим
+                    // дедлайн, иначе при ранее остановленном таймере кадр не обновится.
+                    if playing {
+                        self.next_redraw_at = Some(Instant::now());
+                    }
+                    s.window.request_redraw();
+                }
+            }
             MonitorCommand::ScrubPreview {
                 from_sec,
                 duration_sec,
@@ -578,14 +590,34 @@ impl WindowState {
         self.layers.resync_active_videos(self.clock.current_pts());
     }
 
+    /// Глобальная скорость транспорта. Переанкоривает мастер-клок и аудио-движок на
+    /// текущую позицию, чтобы переключение было бесшовным. Реверс (<0) и не-1× аудио
+    /// обрабатываются ниже по тракту (клок/producer).
+    fn set_speed(&mut self, speed: f64) {
+        let playing = self.clock.is_playing();
+        self.clock.set_speed(speed);
+        // The clock is the authoritative timeline position and stays correct even
+        // across reverse spans (where audio is silent), so anchor audio to it.
+        let anchor = self.clock.current_pts().max(0.0);
+        if let Some(audio) = self.audio.as_ref() {
+            audio.set_speed(speed, anchor, playing);
+        }
+    }
+
     fn pause(&mut self) {
+        // На реверсе/не-аудибельной скорости аудио молчит и мастер-клок — это сам
+        // PlaybackClock, поэтому замораживаем его позицию. На обычном forward-аудио
+        // источник истины — звуковой ринг, поэтому подтягиваемся к audible-позиции.
+        let reverse = self.clock.speed() < 0.0;
         if let Some(audio) = self.audio.as_ref() {
             let audio_pts = audio.pause();
             // Stop the clock first, then sync its paused position to audio.
             // Using seek() alone leaves wall_origin set, so the clock keeps
             // ticking and the event loop never stops emitting monitor:time.
             self.clock.pause();
-            self.clock.seek(audio_pts);
+            if !reverse {
+                self.clock.seek(audio_pts);
+            }
         } else {
             self.clock.pause();
         }
@@ -617,8 +649,18 @@ impl WindowState {
         }
         let t = self.clock.current_pts();
 
-        // Детектируем конец сцены во время воспроизведения.
-        if self.clock.is_playing() {
+        // Реверс достиг начала таймлайна — останавливаемся на нуле.
+        if self.clock.is_playing() && self.clock.speed() < 0.0 && t <= 0.0 {
+            self.clock.seek(0.0);
+            self.pause();
+            let _ = self.app.emit(EVT_ENDED, ());
+            self.emit_time(0.0);
+            self.render(0.0);
+            return;
+        }
+
+        // Детектируем конец сцены во время воспроизведения (только forward).
+        if self.clock.is_playing() && self.clock.speed() > 0.0 {
             let video_end = self.layers.scene_end();
             let audio_end = self
                 .audio

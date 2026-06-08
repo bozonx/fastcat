@@ -120,6 +120,10 @@ pub(crate) struct AudioShared {
     pub(crate) tracks: Vec<SceneAudioTrack>,
     pub(crate) master_gain: f64,
     pub(crate) playing: bool,
+    /// Глобальная скорость транспорта (мультипликатор таймлайн-времени). >0 —
+    /// вперёд (1.0 норма, !=1 даёт варипитч-ресемпл), <=0 — реверс/стоп: producer
+    /// не миксует (аудио молчит), мастер-клок ведёт само видео.
+    pub(crate) global_speed: f64,
     pub(crate) origin_pts_sec: f64,
     pub(crate) producer_pts_sec: f64,
     pub(crate) seek_serial: u64,
@@ -177,6 +181,7 @@ impl Default for AudioShared {
             tracks: Vec::new(),
             master_gain: 1.0,
             playing: false,
+            global_speed: 1.0,
             origin_pts_sec: 0.0,
             producer_pts_sec: 0.0,
             seek_serial: 0,

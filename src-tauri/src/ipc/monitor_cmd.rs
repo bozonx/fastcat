@@ -44,6 +44,14 @@ pub async fn monitor_seek(time_sec: f64, engine: State<'_, VideoEngine>) -> Resu
     send_monitor_cmd(&engine, MonitorCommand::Seek(time_sec))
 }
 
+/// Sets the global transport playback speed (timeline-time multiplier). `1.0` is
+/// normal, `2.0` plays at 2× (pitch-shifted audio), negative values play in
+/// reverse with muted audio.
+#[tauri::command]
+pub async fn monitor_set_speed(speed: f64, engine: State<'_, VideoEngine>) -> Result<(), String> {
+    send_monitor_cmd(&engine, MonitorCommand::SetSpeed(speed))
+}
+
 /// Forward-scrub audio preview: play a one-shot snippet at `from_sec` of length
 /// `duration_sec`, only while not in normal playback (does not move transport).
 #[tauri::command]

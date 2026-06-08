@@ -163,7 +163,14 @@ pub(crate) fn producer_loop(
                     ring.clear();
                     continue;
                 }
-                if state.playing && !state.scene.is_empty() && ring.len() < limit_samples {
+                // Reverse / non-positive global speed: audio is intentionally muted,
+                // the producer renders nothing and the master clock (video) free-runs.
+                let speed_positive = state.global_speed > 0.0;
+                if speed_positive
+                    && state.playing
+                    && !state.scene.is_empty()
+                    && ring.len() < limit_samples
+                {
                     // Refresh the cached scene clone only on a real change.
                     if cached.as_ref().map(|(s, _, _)| *s) != Some(state.scene_serial) {
                         cached = Some((
@@ -176,33 +183,50 @@ pub(crate) fn producer_loop(
                     // Realign the mix position with the audible playhead. After an
                     // output underrun the callback advanced `frames_written` over
                     // silence; without this the producer would keep emitting audio
-                    // for an already-past position, lagging permanently.
+                    // for an already-past position, lagging permanently. At speed != 1
+                    // each consumed/buffered device frame maps to `speed` timeline
+                    // seconds (varispeed), so scale the elapsed span accordingly.
                     let buffered_frames = (ring.len() / output_channels) as f64;
                     let expected_pts = state.origin_pts_sec
-                        + (clock.frames() as f64 + buffered_frames) / sample_rate as f64;
+                        + (clock.frames() as f64 + buffered_frames) / sample_rate as f64
+                            * state.global_speed;
                     if state.producer_pts_sec + PRODUCER_RESYNC_THRESHOLD_SEC < expected_pts {
                         state.producer_pts_sec = expected_pts;
                     }
 
-                    break Some((state.master_gain, state.producer_pts_sec, state.seek_serial));
+                    break Some((
+                        state.master_gain,
+                        state.producer_pts_sec,
+                        state.seek_serial,
+                        state.global_speed,
+                    ));
                 }
                 // Short 1 ms sleep instead of 50 ms: the producer must wake quickly
                 // when the ring drops below the prebuffer limit to avoid underruns.
                 let wait_res = shared.1.wait_for(&mut state, Duration::from_millis(1));
                 if wait_res.timed_out()
-                    && (!state.playing || state.scene.is_empty() || ring.len() >= limit_samples)
+                    && (!speed_positive
+                        || !state.playing
+                        || state.scene.is_empty()
+                        || ring.len() >= limit_samples)
                 {
                     break None;
                 }
             }
         };
 
-        let Some((master_gain, chunk_start, seek_serial)) = snapshot else {
+        let Some((master_gain, chunk_start, seek_serial, speed)) = snapshot else {
             continue;
         };
         let Some((_, scene, tracks)) = cached.as_ref() else {
             continue;
         };
+
+        // At speed != 1 we mix a `speed×` longer timeline span and varispeed-resample
+        // it back to one device chunk (pitch shifts like tape). The 1× path is left
+        // byte-for-byte untouched so normal playback carries zero regression risk.
+        let is_varispeed = (speed - 1.0).abs() > 1e-6;
+        let mix_duration = chunk_duration_sec * speed;
 
         let mix_started = std::time::Instant::now();
         let chunk = match panic::catch_unwind(AssertUnwindSafe(|| {
@@ -211,12 +235,24 @@ pub(crate) fn producer_loop(
                 tracks,
                 master_gain,
                 chunk_start,
-                chunk_duration_sec,
+                mix_duration,
                 target,
                 &shared,
             )
         })) {
-            Ok(chunk) => chunk,
+            Ok(mixed) => {
+                if is_varispeed {
+                    crate::audio::resample::resample_interleaved_to_frames(
+                        &mixed,
+                        output_channels,
+                        sample_rate,
+                        speed,
+                        chunk_frames,
+                    )
+                } else {
+                    mixed
+                }
+            }
             Err(error) => {
                 log::error!(
                     "[audio] producer skipped chunk at {chunk_start:.3}s after panic: {}",
@@ -254,7 +290,9 @@ pub(crate) fn producer_loop(
         }
         if ring.len() < limit_samples {
             ring.push_slice(&chunk);
-            state.producer_pts_sec += chunk_duration_sec;
+            // Advance by the timeline span actually mixed into this chunk. At 1×
+            // this is exactly the chunk duration; at speed != 1 it is `speed×` longer.
+            state.producer_pts_sec += mix_duration;
             // Start the real-time output clock once a tiny startup prebuffer has
             // accumulated (see `arm_output_clock_after_prebuffer`). Until armed the
             // cpal callback emits silence without counting a (false) underrun.
@@ -402,7 +440,15 @@ pub(crate) fn audible_pts_sec(state: &AudioShared, clock: &RealtimeClock, sample
     let hw_latency_frames =
         (clock.output_latency_sec().max(0.0) * sample_rate as f64).round() as u64;
     let audible_frames = clock.frames().saturating_sub(hw_latency_frames);
-    state.origin_pts_sec + audible_frames as f64 / sample_rate as f64
+    // At global speed != 1 the producer rendered `speed×` of timeline into every
+    // device frame (varispeed), so each consumed frame advances the timeline by
+    // `speed / sample_rate`. At speed == 1 this collapses to the plain mapping.
+    let speed = if state.global_speed > 0.0 {
+        state.global_speed
+    } else {
+        1.0
+    };
+    state.origin_pts_sec + audible_frames as f64 / sample_rate as f64 * speed
 }
 
 /// SCHED_FIFO priority for the audio mixer thread on Linux. Deliberately modest:

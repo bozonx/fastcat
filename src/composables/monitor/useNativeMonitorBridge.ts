@@ -83,7 +83,6 @@ export function useNativeMonitorBridge(): void {
 
   let lastSceneJson = '';
   let suppressSeekFromTimeUpdate = false;
-  let lastSentTime = 0;
   let lastNativeTimeStoreSyncMs = 0;
   // Expected-playback-position anchor. The native engine is the master clock but
   // only emits `monitor:time` a handful of times per second; the timeline store
@@ -214,6 +213,27 @@ export function useNativeMonitorBridge(): void {
     },
   );
 
+  // Глобальная скорость воспроизведения (мультипликатор таймлайн-времени). Натив —
+  // мастер-клок, он сам разгоняет/тормозит/реверсирует время и аудио по этой команде.
+  // immediate: держим нативную скорость в синхроне с момента маунта (даже на паузе),
+  // чтобы старт воспроизведения сразу шёл на нужной скорости.
+  watch(
+    () => timelineStore.playbackSpeed,
+    (speed) => {
+      // Re-pin the expected-position anchor: a speed change re-bases how fast the
+      // playhead is expected to move, otherwise the seek watcher below would read
+      // the next local tick as a jump and echo a spurious seek.
+      playbackAnchorUs = timelineStore.currentTime;
+      playbackAnchorWallMs = performance.now();
+      if (isNativeMonitorDisabled()) return;
+      const s = Number(speed);
+      void nativeMonitorIpc
+        .setSpeed(Number.isFinite(s) && s !== 0 ? s : 1)
+        .catch((err) => warnMonitorFailure('monitor_set_speed failed', err));
+    },
+    { immediate: true },
+  );
+
   // Manual seek (когда не подавлено апдейтом от натива).
   let seekThrottleId: ReturnType<typeof setTimeout> | null = null;
   let pendingSeekTimeSec = 0;
@@ -222,23 +242,25 @@ export function useNativeMonitorBridge(): void {
     () => timelineStore.currentTime,
     async (t) => {
       if (suppressSeekFromTimeUpdate) {
-        lastSentTime = t;
         return;
       }
 
       if (timelineStore.isPlaying) {
         // Where playback should be by now, extrapolated from the last native
-        // (master-clock) anchor. Local interpolation that simply follows the
-        // master clock stays within the window → NOT a seek. A genuine scrub
-        // jumps off this trajectory and exceeds the window → real seek.
-        const expectedUs = playbackAnchorUs + (performance.now() - playbackAnchorWallMs) * 1000;
+        // (master-clock) anchor at the current playback speed (negative = reverse).
+        // Local interpolation that simply follows the master clock stays within the
+        // window → NOT a seek. A genuine scrub jumps off this trajectory and exceeds
+        // the window → real seek.
+        const speed = Number.isFinite(timelineStore.playbackSpeed)
+          ? timelineStore.playbackSpeed
+          : 1;
+        const expectedUs =
+          playbackAnchorUs + (performance.now() - playbackAnchorWallMs) * 1000 * speed;
         if (Math.abs(t - expectedUs) <= PLAYING_SEEK_IGNORE_US) {
-          lastSentTime = t;
           return;
         }
       }
 
-      lastSentTime = t;
       if (isNativeMonitorDisabled()) return;
 
       pendingSeekTimeSec = t / 1_000_000;

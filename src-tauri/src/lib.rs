@@ -231,6 +231,7 @@ pub fn run() {
             ipc::monitor_cmd::monitor_play,
             ipc::monitor_cmd::monitor_pause,
             ipc::monitor_cmd::monitor_seek,
+            ipc::monitor_cmd::monitor_set_speed,
             ipc::monitor_cmd::monitor_scrub_preview,
             ipc::monitor_cmd::monitor_stop_scrub_preview,
             ipc::monitor_cmd::monitor_set_viewport,
