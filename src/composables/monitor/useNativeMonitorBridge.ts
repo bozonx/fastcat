@@ -5,6 +5,7 @@ import { nativeMonitorIpc, onMonitorTime, onMonitorEnded } from './native-monito
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useProjectStore } from '~/stores/project.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
+import { useProxyStore } from '~/stores/proxy.store';
 import type { TimelineDocument, TimelineTrack } from '~/timeline/types';
 import { createDevLogger } from '~/utils/dev-logger';
 import { isTauriRuntime } from '~/utils/runtime';
@@ -80,6 +81,7 @@ export function useNativeMonitorBridge(): void {
   const timelineStore = useTimelineStore();
   const projectStore = useProjectStore();
   const workspaceStore = useWorkspaceStore();
+  const proxyStore = useProxyStore();
 
   let lastSceneJson = '';
   let suppressSeekFromTimeUpdate = false;
@@ -133,6 +135,9 @@ export function useNativeMonitorBridge(): void {
       masterMuted: timelineStore.audioMuted,
       previewScale,
       fallbackFormat: timelineStore.timelineFormat,
+      useProxyInMonitor: projectStore.activeMonitor?.useProxy !== false,
+      existingProxies: proxyStore.existingProxies,
+      getProxyNativePath: proxyStore.getProxyNativePath,
     });
   }
 
@@ -185,6 +190,8 @@ export function useNativeMonitorBridge(): void {
       () => timelineStore.masterGain,
       () => timelineStore.audioMuted,
       () => projectStore.activeMonitor?.previewResolution,
+      () => projectStore.activeMonitor?.useProxy,
+      () => proxyStore.existingProxies,
       () => workspaceStore.userSettings.optimization.nativeMonitorSyncMode,
     ],
     () => {

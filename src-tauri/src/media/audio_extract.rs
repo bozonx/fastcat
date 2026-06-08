@@ -22,7 +22,7 @@ pub fn extract_audio_stream(
         .ok_or_else(|| anyhow!("source has no audio stream"))?;
 
     let args = build_extract_audio_args(source_path, target_path);
-    run_ffmpeg_task(tasks, task_id, ffmpeg_path, args, None)?;
+    run_ffmpeg_task(tasks, task_id, ffmpeg_path, args, None, None, None)?;
     if !target_path.exists() {
         return Err(anyhow!(
             "ffmpeg audio extraction did not produce output file: {}",

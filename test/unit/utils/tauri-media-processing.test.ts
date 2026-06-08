@@ -7,8 +7,10 @@ vi.mock('@tauri-apps/api/core', () => ({
   invoke: invokeMock,
 }));
 
+const listenMock = vi.hoisted(() => vi.fn());
+
 vi.mock('@tauri-apps/api/event', () => ({
-  listen: vi.fn(),
+  listen: listenMock,
 }));
 
 describe('tauri media processing byte handling', () => {
@@ -85,5 +87,46 @@ describe('tauri media processing byte handling', () => {
       sourcePath: '/tmp/in.mp4',
       targetPath: '/tmp/out.m4a',
     });
+  });
+
+  it('listens for progress events when onProgress is provided', async () => {
+    const { nativeGenerateProxy } = await import('~/utils/tauri-media-processing');
+    const unlisten = vi.fn();
+    const handlerRef = { current: null as ((event: { payload: { taskId: string; progress: number } }) => void) | null };
+
+    listenMock.mockImplementation(async (eventName: string, handler: any) => {
+      if (eventName === 'native-media-generate-proxy:progress') {
+        handlerRef.current = handler;
+      }
+      return unlisten;
+    });
+
+    invokeMock.mockImplementation(async () => {
+      handlerRef.current?.({ payload: { taskId: 'proxy-1', progress: 0.5 } });
+      return undefined;
+    });
+
+    const onProgress = vi.fn();
+
+    await nativeGenerateProxy({
+      taskId: 'proxy-1',
+      sourcePath: '/tmp/in.mp4',
+      targetPath: '/tmp/out.mp4',
+      options: {
+        maxPixels: 640 * 360,
+        videoBitrateBps: 1_000_000,
+        audioBitrateBps: 128_000,
+        videoCodec: 'h264',
+        copyOpusAudio: false,
+      },
+      onProgress,
+    });
+
+    expect(listenMock).toHaveBeenCalledWith(
+      'native-media-generate-proxy:progress',
+      expect.any(Function),
+    );
+    expect(onProgress).toHaveBeenCalledWith(0.5);
+    expect(unlisten).toHaveBeenCalled();
   });
 });

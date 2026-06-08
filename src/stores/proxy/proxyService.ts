@@ -301,12 +301,16 @@ export function createProxyService(params: {
                   videoCodec: optimization.proxyVideoCodec,
                   copyOpusAudio: optimization.proxyCopyOpusAudio,
                 },
+                onProgress: (progress) => {
+                  const nextProgress = new Map(params.proxyProgress.value);
+                  nextProgress.set(projectRelativePath, progress * 100);
+                  params.proxyProgress.value = nextProgress;
+                  const bgTaskId = params.bgTaskIdsByPath.value.get(projectRelativePath);
+                  if (bgTaskId) {
+                    params.backgroundTasksStore.updateTaskProgress(bgTaskId, progress);
+                  }
+                },
               });
-              params.proxyProgress.value = new Map(params.proxyProgress.value).set(
-                projectRelativePath,
-                100,
-              );
-              params.backgroundTasksStore.updateTaskProgress(bgTaskId, 1);
               params.existingProxies.value = new Set([
                 ...params.existingProxies.value,
                 projectRelativePath,

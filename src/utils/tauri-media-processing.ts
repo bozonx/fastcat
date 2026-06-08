@@ -83,19 +83,34 @@ export async function nativeGenerateProxy(params: {
   sourcePath: string;
   targetPath: string;
   options: NativeProxyOptions;
+  onProgress?: (progress: number) => void;
 }): Promise<void> {
-  await invoke('native_media_generate_proxy', {
-    taskId: params.taskId,
-    sourcePath: params.sourcePath,
-    targetPath: params.targetPath,
-    options: {
-      maxPixels: params.options.maxPixels,
-      videoBitrateBps: params.options.videoBitrateBps,
-      audioBitrateBps: params.options.audioBitrateBps,
-      videoCodec: params.options.videoCodec,
-      copyOpusAudio: params.options.copyOpusAudio,
-    },
-  });
+  const unlisten = params.onProgress
+    ? await listen<{ taskId: string; progress: number }>(
+        'native-media-generate-proxy:progress',
+        (event) => {
+          if (event.payload.taskId !== params.taskId) return;
+          params.onProgress?.(event.payload.progress);
+        },
+      )
+    : null;
+
+  try {
+    await invoke('native_media_generate_proxy', {
+      taskId: params.taskId,
+      sourcePath: params.sourcePath,
+      targetPath: params.targetPath,
+      options: {
+        maxPixels: params.options.maxPixels,
+        videoBitrateBps: params.options.videoBitrateBps,
+        audioBitrateBps: params.options.audioBitrateBps,
+        videoCodec: params.options.videoCodec,
+        copyOpusAudio: params.options.copyOpusAudio,
+      },
+    });
+  } finally {
+    unlisten?.();
+  }
 }
 
 export async function nativeConvertMedia(params: {

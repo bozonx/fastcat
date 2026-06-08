@@ -230,7 +230,7 @@ pub fn export_timeline(
         // Drain stderr in background to avoid pipe deadlock, recording the last time
         // ffmpeg emitted anything so the watchdog can tell a true stall from a slow
         // but otherwise healthy encode.
-        let (stderr_handle, last_activity) = spawn_stderr_drain(&mut child);
+        let (stderr_handle, last_activity, _stderr_buf) = spawn_stderr_drain(&mut child);
 
         // Register the process so `native_media_cancel(task_id)` can stop it.
         let child = tasks.insert(task_id, child);

@@ -10,6 +10,8 @@ import { createProxyService } from '~/stores/proxy/proxyService';
 import { useBackgroundTasksStore } from '~/stores/background-tasks.store';
 import { useVfs } from '~/composables/useVfs';
 import { ensureResolvedProjectProxiesDir } from '~/utils/storage-handles';
+import { isTauriRuntime } from '~/utils/runtime';
+import { getNativeFileHandlePath } from '~/utils/tauri-media-processing';
 
 export const useProxyStore = defineStore('proxy', () => {
   const workspaceStore = useWorkspaceStore();
@@ -69,6 +71,23 @@ export const useProxyStore = defineStore('proxy', () => {
     }
   }
 
+  /**
+   * Resolve the absolute on-disk path of a clip's proxy for the native (Tauri)
+   * monitor/exporter. Returns null on web (no native paths) or when no proxy
+   * exists for the source. The native monitor decodes by absolute path, so it
+   * cannot go through the VFS `getProxyFile()` File-stream path the web monitor
+   * uses — it needs the real filesystem path of the proxy mp4.
+   */
+  async function getProxyNativePath(projectRelativePath: string): Promise<string | null> {
+    if (!isTauriRuntime()) return null;
+    if (!existingProxies.value.has(projectRelativePath)) return null;
+    const proxyVfsPath = await fsModule.getProxyFilePath(projectRelativePath);
+    if (!proxyVfsPath) return null;
+    const handle = await getWriteFileHandle(proxyVfsPath);
+    if (!handle) return null;
+    return getNativeFileHandlePath(handle);
+  }
+
   const service = createProxyService({
     videoExtensions,
     generatingProxies,
@@ -110,5 +129,6 @@ export const useProxyStore = defineStore('proxy', () => {
     renameProxyDir: service.renameProxyDir,
     getProxyFileHandle: service.getProxyFileHandle,
     getProxyFile: service.getProxyFile,
+    getProxyNativePath,
   };
 });

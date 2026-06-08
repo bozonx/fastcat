@@ -66,8 +66,9 @@ impl NativeMediaService {
         source_path: &std::path::Path,
         target_path: &std::path::Path,
         options: NativeProxyOptions,
+        on_progress: Option<&(dyn Fn(f64) + Send + Sync)>,
     ) -> anyhow::Result<()> {
-        generate_proxy(&self.tasks, task_id, source_path, target_path, options)
+        generate_proxy(&self.tasks, task_id, source_path, target_path, options, on_progress)
     }
 
     pub fn convert_media(
@@ -159,6 +160,7 @@ pub async fn native_media_generate_proxy(
     source_path: String,
     target_path: String,
     mut options: NativeProxyOptions,
+    app: AppHandle,
     service: State<'_, NativeMediaService>,
     hw_settings: State<'_, parking_lot::RwLock<crate::FfmpegHardwareSettings>>,
 ) -> Result<(), String> {
@@ -170,7 +172,21 @@ pub async fn native_media_generate_proxy(
     options.apply_hw_settings(&hw);
 
     tokio::task::spawn_blocking(move || {
-        service.generate_proxy(&task_id, &source_path, &target_path, options)
+        service.generate_proxy(
+            &task_id,
+            &source_path,
+            &target_path,
+            options,
+            Some(&|progress: f64| {
+                let _ = app.emit(
+                    "native-media-generate-proxy:progress",
+                    NativeMediaGenerateProxyProgress {
+                        task_id: &task_id,
+                        progress,
+                    },
+                );
+            }),
+        )
     })
     .await
     .map_err(|e| e.to_string())?
@@ -260,6 +276,13 @@ struct NativeTimelineExportProgress<'a> {
 struct NativeMediaWarning<'a> {
     task_id: &'a str,
     message: &'a str,
+}
+
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct NativeMediaGenerateProxyProgress<'a> {
+    task_id: &'a str,
+    progress: f64,
 }
 
 #[tauri::command]

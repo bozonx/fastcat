@@ -64,6 +64,40 @@ export interface BuildNativeMonitorSceneParams {
   fallbackFormat?: TimelineFormatInput;
   includeAudio?: boolean;
   onWarning?: (message: string) => void;
+  /** When true, media clips that have a proxy are decoded from the proxy. */
+  useProxyInMonitor?: boolean;
+  /** Source paths (project-relative) that have a generated proxy. */
+  existingProxies?: Set<string>;
+  /** Resolves a clip's proxy to its absolute on-disk path, or null if none. */
+  getProxyNativePath?: (projectRelativePath: string) => Promise<string | null>;
+}
+
+interface ProxyResolution {
+  useProxyInMonitor: boolean;
+  existingProxies?: Set<string>;
+  getProxyNativePath?: (projectRelativePath: string) => Promise<string | null>;
+}
+
+/**
+ * Resolve a media clip's project-relative source path to the absolute path the
+ * native engine should decode. When the monitor proxy toggle is on and a proxy
+ * exists for this source, the proxy's absolute path is returned; otherwise the
+ * original source resolves as usual.
+ */
+async function resolveMediaSourceAbsolutePath(
+  projectRelativePath: string,
+  projectStore: ReturnType<typeof useProjectStore>,
+  proxy: ProxyResolution | undefined,
+): Promise<string> {
+  if (
+    proxy?.useProxyInMonitor &&
+    proxy.getProxyNativePath &&
+    proxy.existingProxies?.has(projectRelativePath)
+  ) {
+    const proxyPath = await proxy.getProxyNativePath(projectRelativePath);
+    if (proxyPath) return proxyPath;
+  }
+  return resolveProjectAbsolutePath(projectRelativePath, projectStore);
 }
 
 function extOf(path: string): string {
@@ -431,6 +465,7 @@ async function buildAudioLayers(params: {
   workspaceStore: ReturnType<typeof useWorkspaceStore>;
   fallbackFormat: TimelineFormatInput;
   onWarning?: (message: string) => void;
+  proxy?: ProxyResolution;
 }): Promise<NativeSceneAudioLayer[]> {
   const audioTracks = params.timelineDoc.tracks.filter((track) => track.kind === 'audio');
   const videoTracks = params.timelineDoc.tracks.filter((track) => track.kind === 'video');
@@ -462,7 +497,7 @@ async function buildAudioLayers(params: {
     layers.push({
       id: clip.id,
       track_id: clip.trackId,
-      path: await resolveProjectAbsolutePath(path, params.projectStore),
+      path: await resolveMediaSourceAbsolutePath(path, params.projectStore, params.proxy),
       timeline_start_sec: startUs / 1_000_000,
       timeline_end_sec: (startUs + durationUs) / 1_000_000,
       source_start_sec: clip.sourceRange.startUs / 1_000_000,
@@ -499,6 +534,11 @@ export async function buildNativeMonitorScene(
   const fallbackFormat = params.fallbackFormat ?? format;
   const sceneWidth = format.width;
   const sceneHeight = format.height;
+  const proxy: ProxyResolution = {
+    useProxyInMonitor: params.useProxyInMonitor ?? false,
+    existingProxies: params.existingProxies,
+    getProxyNativePath: params.getProxyNativePath,
+  };
   const nestedDocCache = new Map<string, TimelineDocument>();
   const builtVideo = await buildVideoWorkerPayloadFromTracks({
     tracks: params.timelineDoc.tracks,
@@ -522,7 +562,7 @@ export async function buildNativeMonitorScene(
       layers.push({
         ...base,
         kind: isSvgLayer(clip) ? 'svg' : isImageLayer(clip) ? 'image' : 'video',
-        path: await resolveProjectAbsolutePath(path, params.projectStore),
+        path: await resolveMediaSourceAbsolutePath(path, params.projectStore, proxy),
       });
       continue;
     }
@@ -593,6 +633,7 @@ export async function buildNativeMonitorScene(
             workspaceStore: params.workspaceStore,
             fallbackFormat,
             onWarning: params.onWarning,
+            proxy,
           }),
     audio_tracks,
     audio_master_gain: Math.max(0, finite(params.masterGain, 1)),

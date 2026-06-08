@@ -224,6 +224,7 @@ pub fn generate_proxy(
     source_path: &Path,
     target_path: &Path,
     options: NativeProxyOptions,
+    on_progress: Option<&(dyn Fn(f64) + Send + Sync)>,
 ) -> Result<()> {
     let ffprobe_cmd = options.ffprobe_path.as_deref().unwrap_or("ffprobe");
     let metadata = probe_media(source_path, ffprobe_cmd)?;
@@ -231,6 +232,8 @@ pub fn generate_proxy(
         .video
         .as_ref()
         .ok_or_else(|| anyhow!("source has no video stream"))?;
+
+    let duration = metadata.duration.max(0.0);
 
     let hw_accel = options
         .hardware_acceleration_mode
@@ -259,7 +262,7 @@ pub fn generate_proxy(
     )?;
 
     let ffmpeg_cmd = options.ffmpeg_path.as_deref().unwrap_or("ffmpeg");
-    match run_ffmpeg_task(tasks, task_id, ffmpeg_cmd, args, None) {
+    match run_ffmpeg_task(tasks, task_id, ffmpeg_cmd, args, None, on_progress, Some(duration)) {
         Ok(()) => {
             if !target_path.exists() {
                 return Err(anyhow!(
@@ -273,7 +276,7 @@ pub fn generate_proxy(
             log::warn!("[native-media] HW proxy failed ({e}), falling back to software encoding");
             let mut sw_options = options.clone();
             sw_options.enable_hardware_encoding = Some(false);
-            generate_proxy(tasks, task_id, source_path, target_path, sw_options)
+            generate_proxy(tasks, task_id, source_path, target_path, sw_options, on_progress)
         }
         Err(e) => Err(e),
     }
@@ -324,7 +327,7 @@ pub fn convert_media_with_warnings(
     )?;
 
     let ffmpeg_cmd = options.ffmpeg_path.as_deref().unwrap_or("ffmpeg");
-    match run_ffmpeg_task(tasks, task_id, ffmpeg_cmd, args, on_warning) {
+    match run_ffmpeg_task(tasks, task_id, ffmpeg_cmd, args, on_warning, None, None) {
         Ok(()) => {
             if !target_path.exists() {
                 return Err(anyhow!(
@@ -366,7 +369,19 @@ fn build_proxy_ffmpeg_args(
         .video
         .as_ref()
         .ok_or_else(|| anyhow!("proxy args require video metadata"))?;
-    let (width, height) = scaled_even_size(video.width, video.height, options.max_pixels);
+    // ffmpeg auto-rotates via the display matrix before the scale filter, so the
+    // frame the scale target must match is the *display* (rotated) size. For a
+    // quarter-turn (90/270) clip the stored dims are swapped relative to what the
+    // filter chain sees; compute the proxy size from the display orientation,
+    // otherwise the exact-stretch scale squishes a portrait clip into landscape.
+    let rotation_deg = video.rotation.rem_euclid(360).abs();
+    let is_quarter = rotation_deg == 90 || rotation_deg == 270;
+    let (display_w, display_h) = if is_quarter {
+        (video.height, video.width)
+    } else {
+        (video.width, video.height)
+    };
+    let (width, height) = scaled_even_size(display_w, display_h, options.max_pixels);
     let mut args = Vec::new();
 
     if hw_encode == HwAccelMode::Vaapi {
@@ -974,6 +989,57 @@ mod tests {
         assert!(args.windows(2).any(|pair| pair == ["-map", "0:a:0?"]));
         assert!(args.contains(&"-sn".to_string()));
         assert!(args.contains(&"-dn".to_string()));
+    }
+
+    #[test]
+    fn proxy_args_scale_follows_display_orientation_for_rotated_source() {
+        // Phone-shot portrait clip: stored landscape (1920x1080) with a 90° display
+        // matrix. ffmpeg auto-rotates before the scale filter, so the scale target
+        // must be portrait — otherwise the exact-stretch squishes it to landscape.
+        let metadata = NativeMediaMetadata {
+            duration: 10.0,
+            container: "mov".into(),
+            video: Some(NativeVideoMetadata {
+                width: 1920,
+                height: 1080,
+                fps: 30.0,
+                codec: "h264".into(),
+                bitrate: None,
+                rotation: 90,
+            }),
+            audio: None,
+        };
+        let options = NativeProxyOptions {
+            max_pixels: 1920 * 1080,
+            video_bitrate_bps: 2_000_000,
+            audio_bitrate_bps: 128_000,
+            video_codec: "h264".into(),
+            copy_opus_audio: false,
+            ffmpeg_path: None,
+            ffprobe_path: None,
+            hardware_acceleration_mode: None,
+            vaapi_device: None,
+            enable_hardware_encoding: None,
+        };
+
+        let args = build_proxy_ffmpeg_args(
+            Path::new("in.mov"),
+            Path::new("out.mp4"),
+            &metadata,
+            &options,
+            HwAccelMode::None,
+            HwAccelMode::None,
+            DEFAULT_VAAPI_DEVICE,
+        )
+        .expect("proxy args build");
+
+        // Source area is within budget, so dims pass through unscaled but swapped
+        // to display (portrait) orientation: scale=1080:1920, never 1920:1080.
+        let scale = args
+            .iter()
+            .find(|a| a.starts_with("scale="))
+            .expect("scale filter present");
+        assert_eq!(scale, "scale=1080:1920");
     }
 
     #[test]
