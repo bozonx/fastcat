@@ -139,7 +139,12 @@ defineExpose({
           <div
             class="shrink-0 relative"
             :class="{ 'checkerboard-bg': showTransparencyGrid }"
-            :style="{ width: `${renderWidth}px`, height: `${renderHeight}px`, overflow: 'hidden' }"
+            :style="{
+              width: `${renderWidth}px`,
+              height: `${renderHeight}px`,
+              overflow: 'hidden',
+              backgroundColor: showTransparencyGrid ? 'transparent' : 'black',
+            }"
             @pointerdown="onPreviewPointerDown"
           >
             <!-- Canvas content slot (WebGL container, placeholder div, etc.) -->
