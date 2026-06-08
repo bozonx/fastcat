@@ -26,6 +26,19 @@ pub(crate) const MAX_CACHEABLE_FILE_BYTES: u64 = 16 * 1024 * 1024;
 /// realign instead of permanently lagging.
 pub(crate) const PRODUCER_RESYNC_THRESHOLD_SEC: f64 = 0.12;
 
+/// Upper bound on a forward-scrub audio preview snippet. The frontend asks for
+/// ~90 ms; this caps it so a stray request can't queue a long burst.
+pub(crate) const MAX_SCRUB_PREVIEW_SEC: f64 = 0.5;
+
+/// A one-shot forward-scrub audio preview requested by the UI while NOT playing.
+/// The producer mixes `[from_sec, from_sec + duration_sec)` once and plays it out,
+/// without touching the master transport (origin/playing stay put).
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct ScrubRequest {
+    pub(crate) from_sec: f64,
+    pub(crate) duration_sec: f64,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum AudioRenderMode {
     /// Realtime monitor/preview. The render rate and channel layout are dictated
@@ -140,6 +153,11 @@ pub(crate) struct AudioShared {
     /// callback → crackle). When a streaming clip is first seen we spawn one
     /// background decode and keep streaming until it lands in `decoded_cache`;
     /// this set stops us from spawning a second thread for the same key.
+    /// Pending forward-scrub preview to start (set by the UI thread, consumed by
+    /// the producer so all ring writes stay on the single producer thread).
+    pub(crate) scrub_request: Option<ScrubRequest>,
+    /// Set by the UI thread to stop an in-progress scrub preview (drag ended).
+    pub(crate) scrub_cancel: bool,
     pub(crate) decoding_in_flight: HashSet<String>,
     /// Decoded-cache keys we deliberately will NOT background-cache (too large to
     /// fit the cache budget, or no declared frame count to size-gate them). Kept
@@ -170,6 +188,8 @@ impl Default for AudioShared {
             decoders: HashMap::new(),
             timing_sig: 0,
             pending_ring_clear: false,
+            scrub_request: None,
+            scrub_cancel: false,
             decoding_in_flight: HashSet::new(),
             precache_skip: HashSet::new(),
         }

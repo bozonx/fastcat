@@ -50,6 +50,12 @@ pub enum MonitorCommand {
     Pause,
     /// Seek по timeline-времени (секунды).
     Seek(f64),
+    /// Превью звука при скрабинге вперёд: одноразовый сниппет
+    /// `[from_sec, from_sec + duration_sec)`, играется только когда не идёт
+    /// обычное воспроизведение и не двигает транспорт.
+    ScrubPreview { from_sec: f64, duration_sec: f64 },
+    /// Остановить текущее превью скрабинга (перетаскивание закончилось).
+    StopScrubPreview,
     Close,
     /// Обновление настроек нативного аудио-движка.
     SetAudioSettings(crate::audio::engine::AudioEngineSettings),

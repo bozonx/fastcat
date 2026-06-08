@@ -11,7 +11,7 @@ use crate::audio::clock::RealtimeClock;
 use crate::audio::mix::mix_chunk;
 use crate::audio::ring::SpscRingBuffer;
 use crate::audio::shared::{
-    AudioRenderTarget, AudioShared, CHUNK_DURATION_SEC, PREBUFFER_CHUNKS,
+    AudioRenderTarget, AudioShared, CHUNK_DURATION_SEC, MAX_SCRUB_PREVIEW_SEC, PREBUFFER_CHUNKS,
     PRODUCER_RESYNC_THRESHOLD_SEC, START_PREBUFFER_CHUNKS,
 };
 
@@ -88,7 +88,25 @@ pub(crate) fn producer_loop(
     // on >2% deviation. Resets (seek/arm zero the counter) are skipped.
     let mut last_consumed: Option<(u64, std::time::Instant)> = None;
 
+    // Active forward-scrub preview: `Some(end_frame)` while a one-shot snippet is
+    // playing out. The snippet is done once the device has consumed `end_frame`
+    // frames (see `service_scrub_preview`).
+    let mut scrub_end_frame: Option<u64> = None;
+
     while running.load(Ordering::Relaxed) {
+        // Forward-scrub preview is a one-shot snippet played while NOT in normal
+        // playback. Handled here so every ring write/clear stays on this single
+        // producer thread (the SPSC ring has exactly one writer).
+        service_scrub_preview(
+            &shared,
+            &ring,
+            &clock,
+            target,
+            chunk_duration_sec,
+            output_channels,
+            &mut scrub_end_frame,
+        );
+
         if last_underrun_log.elapsed() >= Duration::from_secs(1) {
             if clock.playing.load(Ordering::Acquire) {
                 let now = std::time::Instant::now();
@@ -259,6 +277,105 @@ fn arm_output_clock_after_prebuffer(
     true
 }
 
+/// Services the forward-scrub audio preview. Called once per producer iteration.
+///
+/// Contract:
+/// - Real playback always wins: while `state.playing`, any scrub is abandoned and
+///   the output clock/ring are left to the normal playback path.
+/// - On a cancel (drag ended) while not playing, the snippet is silenced.
+/// - A new request mixes `[from, from+dur)` ONCE (off the state lock, since
+///   `mix_chunk` re-locks) and publishes it: clear ring → push → reset+arm the
+///   output clock. The transport (origin/playing) is never touched.
+/// - The snippet auto-stops once the device has consumed all its frames.
+///
+/// All ring writes/clears happen here on the producer thread, preserving the
+/// SPSC ring's single-writer invariant.
+fn service_scrub_preview(
+    shared: &Arc<(Mutex<AudioShared>, Condvar)>,
+    ring: &SpscRingBuffer,
+    clock: &RealtimeClock,
+    target: AudioRenderTarget,
+    chunk_duration_sec: f64,
+    output_channels: usize,
+    scrub_end_frame: &mut Option<u64>,
+) {
+    {
+        let mut state = shared.0.lock();
+
+        if state.playing {
+            // Normal playback owns the output; drop any scrub bookkeeping and let
+            // the playback path manage the clock/ring.
+            state.scrub_cancel = false;
+            state.scrub_request = None;
+            *scrub_end_frame = None;
+            return;
+        }
+
+        if state.scrub_cancel {
+            state.scrub_cancel = false;
+            let was_active = scrub_end_frame.take().is_some();
+            drop(state);
+            if was_active {
+                clock.playing.store(false, Ordering::Release);
+                ring.clear();
+            }
+            return;
+        }
+
+        // A new request supersedes any in-progress snippet so rapid dragging stays
+        // responsive instead of waiting for the previous ~90 ms snippet to finish.
+        if let Some(req) = state.scrub_request.take() {
+            let scene = state.scene.clone();
+            let tracks = state.tracks.clone();
+            let master_gain = state.master_gain;
+            drop(state);
+
+            // Mix the snippet off the lock (mix_chunk re-locks internally).
+            let dur = req.duration_sec.clamp(0.0, MAX_SCRUB_PREVIEW_SEC);
+            let mut samples = Vec::new();
+            let mut offset = 0.0;
+            while offset < dur {
+                let piece_dur = chunk_duration_sec.min(dur - offset);
+                if piece_dur <= 0.0 {
+                    break;
+                }
+                let mut piece = mix_chunk(
+                    &scene,
+                    &tracks,
+                    master_gain,
+                    req.from_sec + offset,
+                    piece_dur,
+                    target,
+                    shared,
+                );
+                samples.append(&mut piece);
+                offset += piece_dur;
+            }
+
+            let frames = (samples.len() / output_channels.max(1)) as u64;
+            if frames > 0 && !shared.0.lock().playing {
+                // Publish the snippet and start the output clock. Tiny prebuffer
+                // is irrelevant here: the whole snippet is queued atomically.
+                ring.clear();
+                ring.push_slice(&samples);
+                clock.reset_frames();
+                clock.playing.store(true, Ordering::Release);
+                *scrub_end_frame = Some(frames);
+            }
+            return;
+        }
+    }
+
+    // Auto-stop once the snippet has fully played out.
+    if let Some(end) = *scrub_end_frame {
+        if clock.frames() >= end {
+            clock.playing.store(false, Ordering::Release);
+            ring.clear();
+            *scrub_end_frame = None;
+        }
+    }
+}
+
 pub(crate) fn panic_payload_message(error: &Box<dyn std::any::Any + Send>) -> String {
     if let Some(message) = error.downcast_ref::<&str>() {
         return (*message).to_string();
@@ -366,6 +483,95 @@ fn set_producer_realtime_priority() {}
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::audio::ring::SpscRingBuffer;
+    use crate::audio::shared::ScrubRequest;
+
+    fn scrub_fixture() -> (
+        Arc<(Mutex<AudioShared>, Condvar)>,
+        SpscRingBuffer,
+        RealtimeClock,
+        AudioRenderTarget,
+    ) {
+        let shared = Arc::new((Mutex::new(AudioShared::default()), Condvar::new()));
+        let ring = SpscRingBuffer::new(48_000 * 2);
+        let clock = RealtimeClock::default();
+        let target = AudioRenderTarget::monitor(48_000, 2);
+        (shared, ring, clock, target)
+    }
+
+    #[test]
+    fn scrub_preview_publishes_snippet_and_arms_output() {
+        let (shared, ring, clock, target) = scrub_fixture();
+        shared.0.lock().scrub_request = Some(ScrubRequest {
+            from_sec: 0.0,
+            duration_sec: 0.1,
+        });
+        let mut scrub_end = None;
+
+        service_scrub_preview(&shared, &ring, &clock, target, 0.05, 2, &mut scrub_end);
+
+        // 0.1 s at 48 kHz = 4800 frames queued, the output clock armed, request taken.
+        assert_eq!(scrub_end, Some(4800));
+        assert!(clock.playing.load(Ordering::Acquire));
+        assert!(ring.len() > 0);
+        assert!(shared.0.lock().scrub_request.is_none());
+    }
+
+    #[test]
+    fn scrub_preview_cancel_silences_output() {
+        let (shared, ring, clock, target) = scrub_fixture();
+        shared.0.lock().scrub_request = Some(ScrubRequest {
+            from_sec: 0.0,
+            duration_sec: 0.1,
+        });
+        let mut scrub_end = None;
+        service_scrub_preview(&shared, &ring, &clock, target, 0.05, 2, &mut scrub_end);
+        assert!(scrub_end.is_some());
+
+        shared.0.lock().scrub_cancel = true;
+        service_scrub_preview(&shared, &ring, &clock, target, 0.05, 2, &mut scrub_end);
+
+        assert_eq!(scrub_end, None);
+        assert!(!clock.playing.load(Ordering::Acquire));
+        assert_eq!(ring.len(), 0);
+    }
+
+    #[test]
+    fn scrub_preview_abandoned_when_playback_takes_over() {
+        let (shared, ring, clock, target) = scrub_fixture();
+        let mut scrub_end = Some(4800);
+        clock.playing.store(true, Ordering::Release);
+        {
+            let mut state = shared.0.lock();
+            state.playing = true;
+            state.scrub_request = Some(ScrubRequest {
+                from_sec: 0.0,
+                duration_sec: 0.1,
+            });
+        }
+
+        service_scrub_preview(&shared, &ring, &clock, target, 0.05, 2, &mut scrub_end);
+
+        // Real playback owns the output: scrub bookkeeping is dropped and the clock
+        // is left untouched for the playback path to manage.
+        assert_eq!(scrub_end, None);
+        assert!(shared.0.lock().scrub_request.is_none());
+        assert!(clock.playing.load(Ordering::Acquire));
+    }
+
+    #[test]
+    fn scrub_preview_auto_stops_when_played_out() {
+        let (shared, ring, clock, target) = scrub_fixture();
+        let mut scrub_end = Some(4800);
+        clock.playing.store(true, Ordering::Release);
+        // Device consumed the whole snippet.
+        clock.frames_written.store(4800, Ordering::Release);
+
+        service_scrub_preview(&shared, &ring, &clock, target, 0.05, 2, &mut scrub_end);
+
+        assert_eq!(scrub_end, None);
+        assert!(!clock.playing.load(Ordering::Acquire));
+    }
 
     #[test]
     fn panic_payload_message_extracts_string_payloads() {

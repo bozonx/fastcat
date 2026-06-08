@@ -1,4 +1,5 @@
 import { listen, type UnlistenFn } from '@tauri-apps/api/event';
+import { nativeMonitorIpc } from '~/composables/monitor/native-monitor-ipc';
 import { createDevLogger } from '~/utils/dev-logger';
 import { AudioScheduler } from '~/utils/video-editor/AudioScheduler';
 import type { AudioEngineClip } from '~/utils/video-editor/audio-engine.types';
@@ -22,9 +23,10 @@ const EVT_TIME = 'monitor:time';
  */
 export class TauriAudioEngine implements IAudioEngine {
   // Output, scrubbing, peaks and metering are owned by the Rust native engine,
-  // not the Web Audio API, so these JS-side features are intentionally absent.
+  // not the Web Audio API. Forward-scrub preview is plumbed through to the native
+  // engine (monitor_scrub_preview); peaks/metering remain native-side concerns.
   readonly capabilities: AudioEngineCapabilities = {
-    scrubPreview: false,
+    scrubPreview: true,
     peaksExtraction: false,
     levelMetering: false,
   };
@@ -107,24 +109,29 @@ export class TauriAudioEngine implements IAudioEngine {
   }
 
   async previewScrubForward(
-    _fromUs: number,
-    _toUs: number,
-    _maxPreviewDurationUs = 90_000,
+    fromUs: number,
+    toUs: number,
+    maxPreviewDurationUs = 90_000,
   ): Promise<void> {
-    // Scrub-forward audio preview is not yet implemented in Tauri native mode
-    // (capabilities.scrubPreview === false). It cannot be faked with the existing
-    // monitor_play/monitor_pause transport: the native engine only starts the
-    // output clock after a ~100 ms startup prebuffer, which is longer than a scrub
-    // snippet, so a brief play→pause would emit no sound and would move the
-    // transport playhead. A correct implementation needs a dedicated native
-    // bounded-snippet command (decode [from, from+dur] off the realtime producer
-    // and play it once with a minimal prebuffer, without disturbing the master
-    // transport). Tracked as a follow-up.
-    logger.debug('previewScrubForward is a no-op in Tauri mode (needs native scrub command)');
+    // Play a one-shot audio snippet at the scrub position via the native engine.
+    // The native side mixes [from, from+dur) once and plays it out without moving
+    // the transport (see NativeAudioEngine::scrub_preview). Reverse scrubbing
+    // (toUs <= fromUs) stays silent — only forward scrub previews audio.
+    const spanUs = toUs - fromUs;
+    if (spanUs <= 0) return;
+    const durationSec = Math.min(spanUs, maxPreviewDurationUs) / 1_000_000;
+    if (durationSec <= 0) return;
+    try {
+      await nativeMonitorIpc.scrubPreview(fromUs / 1_000_000, durationSec);
+    } catch (error) {
+      logger.debug('previewScrubForward failed', error);
+    }
   }
 
   stopScrubPreview() {
-    // No-op in Tauri mode.
+    void nativeMonitorIpc.stopScrubPreview().catch((error) => {
+      logger.debug('stopScrubPreview failed', error);
+    });
   }
 
   async extractPeaks(

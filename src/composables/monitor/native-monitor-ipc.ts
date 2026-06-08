@@ -63,6 +63,18 @@ export const nativeMonitorIpc = {
   seek(timeSec: number): Promise<void> {
     return invoke('monitor_seek', { timeSec });
   },
+  /**
+   * Forward-scrub audio preview: play a one-shot snippet at `fromSec` of length
+   * `durationSec`. Plays only while not in normal playback and does not move the
+   * transport playhead.
+   */
+  scrubPreview(fromSec: number, durationSec: number): Promise<void> {
+    return invoke('monitor_scrub_preview', { fromSec, durationSec });
+  },
+  /** Stop an in-progress forward-scrub preview (drag ended). */
+  stopScrubPreview(): Promise<void> {
+    return invoke('monitor_stop_scrub_preview');
+  },
   /** Position/size of the embedded child window, physical pixels. */
   setViewport(args: MonitorViewportArgs): Promise<void> {
     const { x, y, width, height, visible } = args;

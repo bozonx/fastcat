@@ -254,15 +254,51 @@ impl NativeAudioEngine {
             }
         }
 
+        let was_playing = state.playing;
         state.origin_pts_sec = pts;
-        self.clock.reset_frames();
         state.producer_pts_sec = pts;
-        state.pending_ring_clear = true;
-        state.playing = playing;
-        // If playback should continue, the producer will re-arm the output clock
-        // after it has queued the startup prebuffer for the new position.
-        self.clock.playing.store(false, Ordering::Release);
         state.seek_serial = state.seek_serial.wrapping_add(1);
+        state.playing = playing;
+        if playing || was_playing {
+            // Entering, continuing, or stopping real playback: discard buffered
+            // output and let the producer re-arm the clock for the new position.
+            self.clock.reset_frames();
+            state.pending_ring_clear = true;
+            self.clock.playing.store(false, Ordering::Release);
+        }
+        // A purely paused seek (paused → paused) leaves the output untouched so a
+        // concurrent forward-scrub preview — which owns the ring/clock while
+        // paused — is not wiped by a transport seek the UI sends alongside it.
+        self.shared.1.notify_all();
+    }
+
+    /// Requests a one-shot forward-scrub audio preview of `[from_sec, from_sec +
+    /// duration_sec)`. Plays only while NOT in normal playback and does not move
+    /// the master transport. The actual mixing + ring writes happen on the
+    /// producer thread (see `producer_loop`) to keep the SPSC ring single-writer.
+    pub fn scrub_preview(&self, from_sec: f64, duration_sec: f64) {
+        self.restart_finished_producer();
+        if duration_sec <= 0.0 {
+            return;
+        }
+        let mut state = self.shared.0.lock();
+        // Never scrub over real playback — the transport owns the output then.
+        if state.playing {
+            return;
+        }
+        state.scrub_request = Some(crate::audio::shared::ScrubRequest {
+            from_sec: from_sec.max(0.0),
+            duration_sec,
+        });
+        state.scrub_cancel = false;
+        self.shared.1.notify_all();
+    }
+
+    /// Stops an in-progress forward-scrub preview (e.g. the drag ended).
+    pub fn stop_scrub_preview(&self) {
+        let mut state = self.shared.0.lock();
+        state.scrub_request = None;
+        state.scrub_cancel = true;
         self.shared.1.notify_all();
     }
 

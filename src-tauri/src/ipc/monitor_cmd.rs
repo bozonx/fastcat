@@ -44,6 +44,28 @@ pub async fn monitor_seek(time_sec: f64, engine: State<'_, VideoEngine>) -> Resu
     send_monitor_cmd(&engine, MonitorCommand::Seek(time_sec))
 }
 
+/// Forward-scrub audio preview: play a one-shot snippet at `from_sec` of length
+/// `duration_sec`, only while not in normal playback (does not move transport).
+#[tauri::command]
+pub async fn monitor_scrub_preview(
+    from_sec: f64,
+    duration_sec: f64,
+    engine: State<'_, VideoEngine>,
+) -> Result<(), String> {
+    send_monitor_cmd(
+        &engine,
+        MonitorCommand::ScrubPreview {
+            from_sec,
+            duration_sec,
+        },
+    )
+}
+
+#[tauri::command]
+pub async fn monitor_stop_scrub_preview(engine: State<'_, VideoEngine>) -> Result<(), String> {
+    send_monitor_cmd(&engine, MonitorCommand::StopScrubPreview)
+}
+
 /// Position / size of the embedded monitor child window. Coordinates are in physical pixels
 /// relative to the client area of the main window (== webview viewport on desktop).
 #[tauri::command]

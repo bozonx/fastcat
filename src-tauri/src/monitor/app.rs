@@ -263,6 +263,19 @@ impl ApplicationHandler<MonitorCommand> for MonitorApp {
                     s.window.request_redraw();
                 }
             }
+            MonitorCommand::ScrubPreview {
+                from_sec,
+                duration_sec,
+            } => {
+                if let Some(audio) = self.state.as_ref().and_then(|s| s.audio.as_ref()) {
+                    audio.scrub_preview(from_sec, duration_sec);
+                }
+            }
+            MonitorCommand::StopScrubPreview => {
+                if let Some(audio) = self.state.as_ref().and_then(|s| s.audio.as_ref()) {
+                    audio.stop_scrub_preview();
+                }
+            }
             MonitorCommand::SetAudioSettings(settings) => {
                 self.audio_settings = settings.clone();
                 if let Some(s) = self.state.as_mut() {
