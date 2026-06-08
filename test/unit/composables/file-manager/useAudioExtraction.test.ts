@@ -4,14 +4,23 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { useAudioExtraction } from '~/composables/file-manager/useAudioExtraction';
 import type { FsEntry } from '~/types/fs';
 
-const { extractMetadata, extractAudio, setExportHostApi, createVideoCoreHostApi } = vi.hoisted(
-  () => ({
-    extractMetadata: vi.fn(),
-    extractAudio: vi.fn(),
-    setExportHostApi: vi.fn(),
-    createVideoCoreHostApi: vi.fn(() => ({})),
-  }),
-);
+const {
+  extractMetadata,
+  extractAudio,
+  setExportHostApi,
+  createVideoCoreHostApi,
+  isTauriRuntimeMock,
+  nativeMediaMetadata,
+  nativeExtractAudio,
+} = vi.hoisted(() => ({
+  extractMetadata: vi.fn(),
+  extractAudio: vi.fn(),
+  setExportHostApi: vi.fn(),
+  createVideoCoreHostApi: vi.fn(() => ({})),
+  isTauriRuntimeMock: vi.fn(() => false),
+  nativeMediaMetadata: vi.fn(),
+  nativeExtractAudio: vi.fn(),
+}));
 const useI18nMock = vi.fn(() => ({ t: (key: string) => key }));
 const toastAdd = vi.fn();
 
@@ -87,6 +96,19 @@ vi.mock('~/utils/video-editor/createVideoCoreHostApi', () => ({
   createVideoCoreHostApi,
 }));
 
+vi.mock('~/utils/runtime', () => ({
+  isTauriRuntime: isTauriRuntimeMock,
+}));
+
+vi.mock('~/utils/tauri-media-processing', () => ({
+  getNativeFileHandlePath: (handle: unknown) =>
+    typeof handle === 'object' && handle && 'path' in handle
+      ? ((handle as { path?: string }).path ?? null)
+      : null,
+  nativeExtractAudio,
+  nativeMediaMetadata,
+}));
+
 vi.mock('~/stores/project.store', () => ({
   useProjectStore: () => projectStore,
 }));
@@ -130,6 +152,9 @@ describe('useAudioExtraction', () => {
       audio: { codec: 'aac' },
     });
     extractAudio.mockResolvedValue(undefined);
+    isTauriRuntimeMock.mockReturnValue(false);
+    nativeMediaMetadata.mockResolvedValue({ audio: { codec: 'aac' } });
+    nativeExtractAudio.mockResolvedValue(undefined);
     workspaceStore.workspaceHandle = null;
     fileManagerStore.openFolder.mockReset();
     fileManagerStore.selectItem.mockReset();
@@ -236,5 +261,38 @@ describe('useAudioExtraction', () => {
       'computer',
       true,
     );
+  });
+
+  it('uses native audio extraction in Tauri runtime', async () => {
+    isTauriRuntimeMock.mockReturnValue(true);
+    projectStore.getFileHandleByPath.mockResolvedValue({
+      path: '/workspace/project/media/clip.mp4',
+    });
+    projectStore.getDirectoryHandleByPath.mockResolvedValue({
+      getFileHandle: vi.fn().mockResolvedValue({
+        path: '/workspace/project/media/clip_extracted.m4a',
+      }),
+    });
+    nativeMediaMetadata.mockResolvedValue({
+      audio: { codec: 'aac' },
+    });
+
+    const entry: FsEntry = {
+      kind: 'file',
+      name: 'clip.mp4',
+      path: 'media/clip.mp4',
+    };
+
+    const composable = useAudioExtraction();
+    await composable.extractAudio(entry);
+
+    expect(nativeMediaMetadata).toHaveBeenCalledWith('/workspace/project/media/clip.mp4');
+    expect(nativeExtractAudio).toHaveBeenCalledWith({
+      taskId: expect.stringMatching(/^audio-extract-/),
+      sourcePath: '/workspace/project/media/clip.mp4',
+      targetPath: '/workspace/project/media/clip_extracted.m4a',
+    });
+    expect(extractAudio).not.toHaveBeenCalled();
+    expect(fileManager.reloadDirectory).toHaveBeenCalledWith('media');
   });
 });

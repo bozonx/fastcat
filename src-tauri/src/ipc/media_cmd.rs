@@ -3,6 +3,7 @@ use std::path::PathBuf;
 use serde::Serialize;
 use tauri::{AppHandle, Emitter, State};
 
+use crate::media::audio_extract::extract_audio_stream;
 use crate::media::processing::{
     convert_media_with_warnings, extract_video_frame_webp, extract_video_frame_webps,
     generate_proxy, probe_media, NativeConvertOptions, NativeMediaMetadata, NativeMediaTasks,
@@ -84,6 +85,24 @@ impl NativeMediaService {
             target_path,
             options,
             warning,
+        )
+    }
+
+    pub fn extract_audio(
+        &self,
+        task_id: &str,
+        source_path: &std::path::Path,
+        target_path: &std::path::Path,
+        ffmpeg_path: &str,
+        ffprobe_path: &str,
+    ) -> anyhow::Result<()> {
+        extract_audio_stream(
+            &self.tasks,
+            task_id,
+            source_path,
+            target_path,
+            ffmpeg_path,
+            ffprobe_path,
         )
     }
 
@@ -190,6 +209,33 @@ pub async fn native_media_convert(
                     },
                 );
             }),
+        )
+    })
+    .await
+    .map_err(|e| e.to_string())?
+    .map_err(|e| format!("{e:?}"))
+}
+
+#[tauri::command]
+pub async fn native_media_extract_audio(
+    task_id: String,
+    source_path: String,
+    target_path: String,
+    service: State<'_, NativeMediaService>,
+    hw_settings: State<'_, parking_lot::RwLock<crate::FfmpegHardwareSettings>>,
+) -> Result<(), String> {
+    let service = service.inner().clone();
+    let source_path = PathBuf::from(source_path);
+    let target_path = PathBuf::from(target_path);
+    let hw = hw_settings.read().clone();
+
+    tokio::task::spawn_blocking(move || {
+        service.extract_audio(
+            &task_id,
+            &source_path,
+            &target_path,
+            &hw.ffmpeg_path,
+            &hw.ffprobe_path,
         )
     })
     .await

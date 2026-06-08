@@ -10,6 +10,12 @@ import { useFileManager } from '~/composables/file-manager/useFileManager';
 import { useFileManagerStore } from '~/stores/file-manager.store';
 import { withFileIoSlot } from '~/utils/io/io-governor';
 import { isTauriRuntime } from '~/utils/runtime';
+import {
+  getNativeFileHandlePath,
+  nativeExtractAudio,
+  nativeMediaMetadata,
+} from '~/utils/tauri-media-processing';
+import { randomToken } from '~/utils/ids';
 const log = createDevLogger('useAudioExtraction');
 
 interface AudioExtractionSelectionContext {
@@ -66,16 +72,6 @@ export function useAudioExtraction() {
     if (isExtracting.value) return;
     if (!entry.path) return;
 
-    // Audio extraction via web-worker is not supported in the Tauri runtime.
-    if (isTauriRuntime()) {
-      toast.add({
-        color: 'warning',
-        title: t('videoEditor.fileManager.extractAudio.failed'),
-        description: 'Audio extraction is not available in the desktop app yet.',
-      });
-      return;
-    }
-
     isExtracting.value = true;
     try {
       const selectedEntityBeforeNavigation = selectionStore.selectedEntity;
@@ -93,58 +89,70 @@ export function useAudioExtraction() {
       };
       const vfs = fileManager.vfs;
       const isExternal = context.isExternal === true;
+      const useNativeExtraction = isTauriRuntime();
 
-      // For workspace file manager (isExternal), resolve from workspace root directly.
-      // For project file manager, use projectStore which resolves from project dir.
-      let sourceFile: File | null = null;
-      if (isExternal) {
-        const handle = await getWorkspaceFileHandle(entry.path);
-        if (handle) {
-          try {
-            sourceFile = await withFileIoSlot(() => handle.getFile());
-          } catch {
-            /* fall through */
+      let sourceNativePath: string | null = null;
+      let meta: { audio?: { codec?: string | null } | null };
+      if (useNativeExtraction) {
+        const sourceHandle = isExternal
+          ? await getWorkspaceFileHandle(entry.path)
+          : await projectStore.getFileHandleByPath(entry.path);
+        sourceNativePath = getNativeFileHandlePath(sourceHandle);
+        if (!sourceNativePath) throw new Error('Failed to resolve native source path');
+        meta = await nativeMediaMetadata(sourceNativePath);
+      } else {
+        // For workspace file manager (isExternal), resolve from workspace root directly.
+        // For project file manager, use projectStore which resolves from project dir.
+        let sourceFile: File | null = null;
+        if (isExternal) {
+          const handle = await getWorkspaceFileHandle(entry.path);
+          if (handle) {
+            try {
+              sourceFile = await withFileIoSlot(() => handle.getFile());
+            } catch {
+              /* fall through */
+            }
           }
         }
-      }
-      if (!sourceFile) {
-        sourceFile = await projectStore.getFileByPath(entry.path);
-      }
-      if (!sourceFile) throw new Error('Failed to access source file');
+        if (!sourceFile) {
+          sourceFile = await projectStore.getFileByPath(entry.path);
+        }
+        if (!sourceFile) throw new Error('Failed to access source file');
 
-      const { client } = getExportWorkerClient();
+        const { client } = getExportWorkerClient();
 
-      // Worker host API must return native FileSystemFileHandle (clonable via postMessage).
-      // For workspace context: resolve from workspace root directly to avoid
-      // projectStore resolving into the project directory.
-      // For project context: use projectStore (original behavior).
-      setExportHostApi(
-        createVideoCoreHostApi({
-          getCurrentProjectId: () => projectStore.currentProjectId,
-          getWorkspaceHandle: () => workspaceStore.workspaceHandle,
-          getResolvedStorageTopology: () => workspaceStore.resolvedStorageTopology,
-          getFileHandleByPath: async (path) =>
-            isExternal
-              ? ((await getWorkspaceFileHandle(path)) ?? projectStore.getFileHandleByPath(path))
-              : projectStore.getFileHandleByPath(path),
-          getFileByPath: async (path) => {
-            if (isExternal) {
-              const handle = await getWorkspaceFileHandle(path);
-              if (handle) {
-                try {
-                  return await withFileIoSlot(() => handle.getFile());
-                } catch {
-                  /* fall through */
+        // Worker host API must return native FileSystemFileHandle (clonable via postMessage).
+        // For workspace context: resolve from workspace root directly to avoid
+        // projectStore resolving into the project directory.
+        // For project context: use projectStore (original behavior).
+        setExportHostApi(
+          createVideoCoreHostApi({
+            getCurrentProjectId: () => projectStore.currentProjectId,
+            getWorkspaceHandle: () => workspaceStore.workspaceHandle,
+            getResolvedStorageTopology: () => workspaceStore.resolvedStorageTopology,
+            getFileHandleByPath: async (path) =>
+              isExternal
+                ? ((await getWorkspaceFileHandle(path)) ?? projectStore.getFileHandleByPath(path))
+                : projectStore.getFileHandleByPath(path),
+            getFileByPath: async (path) => {
+              if (isExternal) {
+                const handle = await getWorkspaceFileHandle(path);
+                if (handle) {
+                  try {
+                    return await withFileIoSlot(() => handle.getFile());
+                  } catch {
+                    /* fall through */
+                  }
                 }
               }
-            }
-            return projectStore.getFileByPath(path);
-          },
-          onExportProgress: () => {},
-        }),
-      );
+              return projectStore.getFileByPath(path);
+            },
+            onExportProgress: () => {},
+          }),
+        );
 
-      const meta = await client.extractMetadata(sourceFile);
+        meta = await client.extractMetadata(sourceFile);
+      }
       if (!meta.audio) throw new Error('No audio track found in file');
 
       const codec = meta.audio.codec || '';
@@ -175,16 +183,30 @@ export function useAudioExtraction() {
       // Pre-create the target file in the correct directory.
       // Workspace context: create via workspace handle directly.
       // Project context: create via projectStore.
+      let targetHandle: FileSystemFileHandle | null = null;
       if (isExternal) {
-        await getWorkspaceFileHandle(targetPath, { create: true });
+        targetHandle = await getWorkspaceFileHandle(targetPath, { create: true });
       } else {
         const dirHandle = await projectStore.getDirectoryHandleByPath(dirPath);
         if (dirHandle) {
-          await dirHandle.getFileHandle(newFileName, { create: true });
+          targetHandle = await dirHandle.getFileHandle(newFileName, { create: true });
         }
       }
 
-      await client.extractAudio(entry.path, targetPath);
+      if (useNativeExtraction) {
+        const targetNativePath = getNativeFileHandlePath(targetHandle);
+        if (!sourceNativePath || !targetNativePath) {
+          throw new Error('Failed to resolve native audio extraction paths');
+        }
+        await nativeExtractAudio({
+          taskId: `audio-extract-${Date.now()}-${randomToken()}`,
+          sourcePath: sourceNativePath,
+          targetPath: targetNativePath,
+        });
+      } else {
+        const { client } = getExportWorkerClient();
+        await client.extractAudio(entry.path, targetPath);
+      }
 
       toast.add({
         title: t('videoEditor.fileManager.extractAudio.success'),

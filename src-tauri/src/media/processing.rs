@@ -1,20 +1,16 @@
 use anyhow::{anyhow, Context, Result};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use std::collections::{HashMap, HashSet};
 use std::path::Path;
-use std::process::{Child, Command, Stdio};
-use std::sync::atomic::{AtomicU64, Ordering};
-use std::sync::Arc;
-use std::thread::JoinHandle;
-use std::time::{Duration, SystemTime};
-
-use parking_lot::Mutex;
+use std::process::{Command, Stdio};
 
 use crate::media::decode::probe_rotation;
 use crate::media::decode_gate::decoder_load_gate;
 use crate::media::ffmpeg_args::*;
+use crate::media::ffmpeg_runner::{emit_media_warning, run_ffmpeg_task};
+pub(crate) use crate::media::ffmpeg_runner::{now_millis, spawn_stderr_drain};
 use crate::media::ffmpeg_utils::*;
+pub use crate::media::tasks::NativeMediaTasks;
 use crate::media::timeline_render::encode_rgba_as_webp;
 use crate::media::types::HwAccelMode;
 
@@ -24,54 +20,6 @@ const DEFAULT_VIDEO_FPS: f64 = 30.0;
 const DEFAULT_VIDEO_BITRATE_BPS: u32 = 5_000_000;
 const DEFAULT_WEBP_QUALITY: f32 = 75.0;
 const THUMBNAIL_SEEK_THRESHOLD_SEC: f64 = 1.0;
-
-#[derive(Clone, Default)]
-pub struct NativeMediaTasks {
-    children: Arc<Mutex<HashMap<String, Arc<Mutex<Child>>>>>,
-    /// Task ids that were explicitly cancelled, so a non-zero exit can be reported
-    /// as a cancellation rather than an opaque ffmpeg failure.
-    cancelled: Arc<Mutex<HashSet<String>>>,
-}
-
-impl NativeMediaTasks {
-    pub(crate) fn insert(&self, task_id: &str, child: Child) -> Arc<Mutex<Child>> {
-        let child = Arc::new(Mutex::new(child));
-        self.cancelled.lock().remove(task_id);
-        // Reusing a task id while a previous process is still registered would
-        // orphan that process (cancel only ever sees the latest). Kill the old one.
-        let previous = self
-            .children
-            .lock()
-            .insert(task_id.to_string(), child.clone());
-        if let Some(previous) = previous {
-            let mut guard = previous.lock();
-            let _ = guard.kill();
-            let _ = guard.wait();
-        }
-        child
-    }
-
-    pub(crate) fn remove(&self, task_id: &str) {
-        self.children.lock().remove(task_id);
-        self.cancelled.lock().remove(task_id);
-    }
-
-    pub(crate) fn was_cancelled(&self, task_id: &str) -> bool {
-        self.cancelled.lock().contains(task_id)
-    }
-
-    pub fn cancel(&self, task_id: &str) -> bool {
-        self.cancelled.lock().insert(task_id.to_string());
-        let child = self.children.lock().get(task_id).cloned();
-        let Some(child) = child else {
-            return false;
-        };
-        let mut child = child.lock();
-        let _ = child.kill();
-        let _ = child.wait();
-        true
-    }
-}
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -806,103 +754,6 @@ fn should_seek_for_thumbnail_time(last_pts: f64, target_time: f64, threshold_sec
     last_pts < 0.0 || target_time < last_pts || (target_time - last_pts) > threshold_sec
 }
 
-/// Kill a job if ffmpeg makes no progress (no stderr output) for this long. A
-/// stall guard rather than a wall-clock cap, so a legitimately long encode that
-/// keeps emitting progress is never killed mid-run.
-const FFMPEG_STALL_TIMEOUT: Duration = Duration::from_secs(300);
-
-pub(crate) fn now_millis() -> u64 {
-    SystemTime::now()
-        .duration_since(SystemTime::UNIX_EPOCH)
-        .unwrap_or_default()
-        .as_millis() as u64
-}
-
-pub(crate) fn spawn_stderr_drain(
-    child: &mut Child,
-) -> (Option<JoinHandle<Vec<u8>>>, Arc<AtomicU64>) {
-    let last_activity = Arc::new(AtomicU64::new(now_millis()));
-    let activity = last_activity.clone();
-    let handle = child.stderr.take().map(|mut stderr| {
-        std::thread::spawn(move || {
-            let mut buf = Vec::new();
-            let mut chunk = [0u8; 4096];
-            loop {
-                match std::io::Read::read(&mut stderr, &mut chunk) {
-                    Ok(0) => break,
-                    Ok(n) => {
-                        activity.store(now_millis(), Ordering::Release);
-                        buf.extend_from_slice(&chunk[..n]);
-                    }
-                    Err(_) => break,
-                }
-            }
-            buf
-        })
-    });
-    (handle, last_activity)
-}
-
-fn run_ffmpeg_task(
-    tasks: &NativeMediaTasks,
-    task_id: &str,
-    ffmpeg_path: &str,
-    args: Vec<String>,
-    on_warning: Option<&(dyn Fn(String) + Send + Sync)>,
-) -> Result<()> {
-    verify_ffmpeg_binary(ffmpeg_path).context("ffmpeg binary check failed")?;
-    let mut child = Command::new(ffmpeg_path)
-        .args(&args)
-        .stdin(Stdio::null())
-        .stdout(Stdio::null())
-        .stderr(Stdio::piped())
-        .spawn()
-        .context("failed to spawn ffmpeg")?;
-
-    let (stderr_handle, last_activity) = spawn_stderr_drain(&mut child);
-    let child = tasks.insert(task_id, child);
-
-    loop {
-        let mut guard = child.lock();
-        if let Some(status) = guard.try_wait().context("failed to poll ffmpeg")? {
-            let stderr_text = match stderr_handle {
-                Some(handle) => {
-                    String::from_utf8_lossy(&handle.join().unwrap_or_default()).to_string()
-                }
-                None => String::new(),
-            };
-            drop(guard);
-            let cancelled = tasks.was_cancelled(task_id);
-            tasks.remove(task_id);
-            if status.success() {
-                let stderr_text = stderr_text.trim();
-                if !stderr_text.is_empty() {
-                    emit_media_warning(on_warning, format!("ffmpeg warning: {stderr_text}"));
-                }
-                return Ok(());
-            }
-            if cancelled {
-                return Err(anyhow!("cancelled"));
-            }
-            return Err(anyhow!("ffmpeg failed: {}", stderr_text.trim()));
-        }
-        drop(guard);
-        std::thread::sleep(Duration::from_millis(100));
-        let idle_ms = now_millis().saturating_sub(last_activity.load(Ordering::Acquire));
-        if idle_ms > FFMPEG_STALL_TIMEOUT.as_millis() as u64 {
-            let mut guard = child.lock();
-            let _ = guard.kill();
-            let _ = guard.wait();
-            drop(guard);
-            tasks.remove(task_id);
-            return Err(anyhow!(
-                "ffmpeg stalled: no progress for {} seconds",
-                FFMPEG_STALL_TIMEOUT.as_secs()
-            ));
-        }
-    }
-}
-
 fn audio_args(
     options: &NativeConvertOptions,
     on_warning: Option<&(dyn Fn(String) + Send + Sync)>,
@@ -932,12 +783,6 @@ fn audio_args(
         args.extend(["-ar".into(), sample_rate.max(1).to_string()]);
     }
     args
-}
-
-fn emit_media_warning(on_warning: Option<&(dyn Fn(String) + Send + Sync)>, message: String) {
-    if let Some(callback) = on_warning {
-        callback(message);
-    }
 }
 
 fn scaled_even_size(width: u32, height: u32, max_pixels: u32) -> (u32, u32) {

@@ -241,6 +241,7 @@ pub fn run() {
             ipc::media_cmd::native_media_extract_peaks,
             ipc::media_cmd::native_media_generate_proxy,
             ipc::media_cmd::native_media_convert,
+            ipc::media_cmd::native_media_extract_audio,
             ipc::media_cmd::native_media_cancel,
             ipc::media_cmd::native_timeline_export,
             ipc::media_cmd::native_timeline_render_frame_to_file,

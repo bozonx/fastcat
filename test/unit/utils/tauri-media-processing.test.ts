@@ -69,4 +69,21 @@ describe('tauri media processing byte handling', () => {
       expect.arrayContaining([expect.closeTo(0.3), expect.closeTo(0.4)]),
     );
   });
+
+  it('invokes native audio extraction with task and filesystem paths', async () => {
+    const { nativeExtractAudio } = await import('~/utils/tauri-media-processing');
+    invokeMock.mockResolvedValueOnce(undefined);
+
+    await nativeExtractAudio({
+      taskId: 'audio-extract-1',
+      sourcePath: '/tmp/in.mp4',
+      targetPath: '/tmp/out.m4a',
+    });
+
+    expect(invokeMock).toHaveBeenCalledWith('native_media_extract_audio', {
+      taskId: 'audio-extract-1',
+      sourcePath: '/tmp/in.mp4',
+      targetPath: '/tmp/out.m4a',
+    });
+  });
 });

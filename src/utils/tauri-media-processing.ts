@@ -124,6 +124,18 @@ export async function nativeConvertMedia(params: {
   }
 }
 
+export async function nativeExtractAudio(params: {
+  taskId: string;
+  sourcePath: string;
+  targetPath: string;
+}): Promise<void> {
+  await invoke('native_media_extract_audio', {
+    taskId: params.taskId,
+    sourcePath: params.sourcePath,
+    targetPath: params.targetPath,
+  });
+}
+
 export async function nativeCancelMediaTask(taskId: string): Promise<boolean> {
   return await invoke<boolean>('native_media_cancel', { taskId });
 }
