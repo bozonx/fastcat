@@ -256,7 +256,10 @@ impl NativeAudioEngine {
         state.origin_pts_sec = pts_sec.max(0.0);
         state.producer_pts_sec = state.origin_pts_sec;
         self.clock.reset_frames();
-        self.clock.playing.store(true, Ordering::Release);
+        // The producer arms the real-time output clock after a tiny startup
+        // prebuffer. Until then the cpal callback emits silence without counting
+        // an underrun for an intentionally empty ring.
+        self.clock.playing.store(false, Ordering::Release);
         state.pending_ring_clear = true;
         state.seek_serial = state.seek_serial.wrapping_add(1);
         self.shared.1.notify_all();
@@ -324,7 +327,9 @@ impl NativeAudioEngine {
         state.producer_pts_sec = pts;
         state.pending_ring_clear = true;
         state.playing = playing;
-        self.clock.playing.store(playing, Ordering::Release);
+        // If playback should continue, the producer will re-arm the output clock
+        // after it has queued the startup prebuffer for the new position.
+        self.clock.playing.store(false, Ordering::Release);
         state.seek_serial = state.seek_serial.wrapping_add(1);
         self.shared.1.notify_all();
     }
@@ -333,6 +338,9 @@ impl NativeAudioEngine {
         self.restart_finished_producer();
         let state = self.shared.0.lock();
         if !state.playing {
+            return None;
+        }
+        if !self.clock.playing.load(Ordering::Acquire) {
             return None;
         }
         Some(audible_pts_sec(
@@ -447,6 +455,32 @@ mod tests {
 
     fn seek_serial(engine: &NativeAudioEngine) -> u64 {
         engine.shared.0.lock().seek_serial
+    }
+
+    #[test]
+    fn play_defers_output_clock_until_producer_prebuffers() {
+        let engine = mock_engine();
+
+        engine.play(10.0);
+
+        assert!(engine.shared.0.lock().playing);
+        assert!(!engine.clock.playing.load(Ordering::Acquire));
+        assert_eq!(engine.current_pts(), None);
+    }
+
+    #[test]
+    fn playing_seek_defers_output_clock_until_producer_prebuffers() {
+        let engine = mock_engine();
+        engine.play(10.0);
+
+        engine.seek(25.0, true);
+
+        let state = engine.shared.0.lock();
+        assert!(state.playing);
+        assert_eq!(state.origin_pts_sec, 25.0);
+        drop(state);
+        assert!(!engine.clock.playing.load(Ordering::Acquire));
+        assert_eq!(engine.current_pts(), None);
     }
 
     #[test]

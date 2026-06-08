@@ -19,7 +19,10 @@ use crate::audio::shared::{
 const SEEK_TOLERANCE_CHUNK_FRACTION: f64 = 0.25;
 const SEEK_TOLERANCE_MIN_SEC: f64 = 0.001;
 
-fn open_symphonia_format(path: &str, context: &str) -> Result<Box<dyn symphonia::core::formats::FormatReader>> {
+fn open_symphonia_format(
+    path: &str,
+    context: &str,
+) -> Result<Box<dyn symphonia::core::formats::FormatReader>> {
     use symphonia::core::formats::FormatOptions;
     use symphonia::core::meta::MetadataOptions;
     use symphonia::core::probe::Hint;
@@ -34,7 +37,12 @@ fn open_symphonia_format(path: &str, context: &str) -> Result<Box<dyn symphonia:
     }
 
     let probed = symphonia::default::get_probe()
-        .format(&hint, mss, &FormatOptions::default(), &MetadataOptions::default())
+        .format(
+            &hint,
+            mss,
+            &FormatOptions::default(),
+            &MetadataOptions::default(),
+        )
         .with_context(|| format!("failed to probe media format for {context}: {path}"))?;
 
     Ok(probed.format)
@@ -187,9 +195,7 @@ pub(crate) struct DecodeSymphoniaChunkParams<'a> {
     pub shared: &'a Arc<(Mutex<AudioShared>, Condvar)>,
 }
 
-pub(crate) fn decode_symphonia_chunk(
-    params: DecodeSymphoniaChunkParams<'_>,
-) -> Result<Vec<f32>> {
+pub(crate) fn decode_symphonia_chunk(params: DecodeSymphoniaChunkParams<'_>) -> Result<Vec<f32>> {
     let DecodeSymphoniaChunkParams {
         layer_id,
         path,
@@ -201,6 +207,9 @@ pub(crate) fn decode_symphonia_chunk(
         reverse,
         shared,
     } = params;
+    let target_frames =
+        (timeline_duration_sec.max(0.0) * target_sample_rate as f64).round() as usize;
+    let target_samples = target_frames * output_channels;
     let mut decoder_state = {
         let mut state = shared.0.lock();
         state.decoders.remove(layer_id)
@@ -249,8 +258,8 @@ pub(crate) fn decode_symphonia_chunk(
         });
     }
 
-    let mut state_val = decoder_state
-        .ok_or_else(|| anyhow!("decoder state missing for layer {}", layer_id))?;
+    let mut state_val =
+        decoder_state.ok_or_else(|| anyhow!("decoder state missing for layer {}", layer_id))?;
 
     let source_advance_sec = timeline_duration_sec * speed;
     let seek_tolerance_sec =
@@ -261,19 +270,25 @@ pub(crate) fn decode_symphonia_chunk(
     let current_ratio = target_sample_rate as f64 / (state_val.source_rate as f64 * speed);
 
     let (_actual_sec, discard_frames_remaining) = if needs_seek {
-        let seeked_to = state_val
-            .format
-            .seek(
-                symphonia::core::formats::SeekMode::Accurate,
-                symphonia::core::formats::SeekTo::Time {
-                    time: symphonia::core::units::Time {
-                        seconds: source_start_sec.floor() as u64,
-                        frac: source_start_sec.fract(),
-                    },
-                    track_id: Some(state_val.track_id),
+        let seeked_to = match state_val.format.seek(
+            symphonia::core::formats::SeekMode::Accurate,
+            symphonia::core::formats::SeekTo::Time {
+                time: symphonia::core::units::Time {
+                    seconds: source_start_sec.floor() as u64,
+                    frac: source_start_sec.fract(),
                 },
-            )
-            .context("failed to seek in format reader")?;
+                track_id: Some(state_val.track_id),
+            },
+        ) {
+            Ok(seeked_to) => seeked_to,
+            Err(error) if is_audio_seek_past_end(&error) => {
+                state_val.last_decode_end_sec = source_start_sec;
+                let mut state = shared.0.lock();
+                state.decoders.insert(layer_id.to_string(), state_val);
+                return Ok(vec![0.0f32; target_samples]);
+            }
+            Err(error) => return Err(error).context("failed to seek in format reader"),
+        };
 
         state_val.decoder.reset();
         if state_val.resampler.is_some()
@@ -426,9 +441,6 @@ pub(crate) fn decode_symphonia_chunk(
         }
     }
 
-    let target_frames = (timeline_duration_sec * target_sample_rate as f64).round() as usize;
-    let target_samples = target_frames * output_channels;
-
     if collected_frames == 0 {
         state_val.last_decode_end_sec = source_start_sec;
         {
@@ -438,17 +450,15 @@ pub(crate) fn decode_symphonia_chunk(
         return Ok(vec![0.0f32; target_samples]);
     }
 
-    let resampled = resample_planar_cached(
-        crate::audio::resample::ResamplePlanarCachedParams {
-            input: planar_buffers,
-            source_rate: state_val.source_rate,
-            target_rate: target_sample_rate,
-            speed,
-            num_channels: state_val.channels,
-            cached_resampler: &mut state_val.resampler,
-            remainder: &mut state_val.resample_remainder,
-        },
-    )?;
+    let resampled = resample_planar_cached(crate::audio::resample::ResamplePlanarCachedParams {
+        input: planar_buffers,
+        source_rate: state_val.source_rate,
+        target_rate: target_sample_rate,
+        speed,
+        num_channels: state_val.channels,
+        cached_resampler: &mut state_val.resampler,
+        remainder: &mut state_val.resample_remainder,
+    })?;
     let drop_delay_samples = if resampling_active && !state_val.resampler_primed {
         let delay_frames = {
             use rubato::Resampler;
@@ -508,9 +518,7 @@ pub(crate) struct DecodeAudioChunkParams<'a> {
     pub shared: &'a Arc<(Mutex<AudioShared>, Condvar)>,
 }
 
-pub(crate) fn decode_audio_chunk(
-    params: DecodeAudioChunkParams<'_>,
-) -> Result<Vec<f32>> {
+pub(crate) fn decode_audio_chunk(params: DecodeAudioChunkParams<'_>) -> Result<Vec<f32>> {
     let DecodeAudioChunkParams {
         layer_id,
         path,
@@ -611,6 +619,19 @@ pub(crate) fn decode_audio_chunk(
     })
 }
 
+fn is_audio_seek_past_end(error: &symphonia::core::errors::Error) -> bool {
+    matches!(
+        error,
+        symphonia::core::errors::Error::IoError(err)
+            if err.kind() == std::io::ErrorKind::UnexpectedEof
+    ) || matches!(
+        error,
+        symphonia::core::errors::Error::SeekError(
+            symphonia::core::errors::SeekErrorKind::OutOfRange,
+        )
+    )
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -670,7 +691,10 @@ mod tests {
 
     #[test]
     fn test_decode_entire_file_symphonia() -> anyhow::Result<()> {
-        let path = concat!(env!("CARGO_MANIFEST_DIR"), "/../test/fixtures/media/sample-1s-audio.mp3");
+        let path = concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../test/fixtures/media/sample-1s-audio.mp3"
+        );
         let samples = decode_entire_file_symphonia(path, 48000, 2)?;
         assert!(!samples.is_empty(), "Decoded sample buffer is empty");
         Ok(())
@@ -678,7 +702,10 @@ mod tests {
 
     #[test]
     fn test_decode_symphonia_chunk() -> anyhow::Result<()> {
-        let path = concat!(env!("CARGO_MANIFEST_DIR"), "/../test/fixtures/media/sample-1s-audio.mp3");
+        let path = concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../test/fixtures/media/sample-1s-audio.mp3"
+        );
         let shared = Arc::new((Mutex::new(AudioShared::default()), Condvar::new()));
         let samples = decode_symphonia_chunk(DecodeSymphoniaChunkParams {
             layer_id: "layer-1",
@@ -771,7 +798,10 @@ mod tests {
 
     #[test]
     fn decode_chunk_primes_resampler_no_tail_silence_after_seek() -> anyhow::Result<()> {
-        let path = concat!(env!("CARGO_MANIFEST_DIR"), "/../test/fixtures/media/sample-1s-audio.mp3");
+        let path = concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../test/fixtures/media/sample-1s-audio.mp3"
+        );
         let shared = Arc::new((Mutex::new(AudioShared::default()), Condvar::new()));
         let chunk = decode_symphonia_chunk(DecodeSymphoniaChunkParams {
             layer_id: "seek-layer",
@@ -803,7 +833,10 @@ mod tests {
 
     #[test]
     fn decode_chunk_reverse_resampled_stays_full() -> anyhow::Result<()> {
-        let path = concat!(env!("CARGO_MANIFEST_DIR"), "/../test/fixtures/media/sample-1s-audio.mp3");
+        let path = concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../test/fixtures/media/sample-1s-audio.mp3"
+        );
         let shared = Arc::new((Mutex::new(AudioShared::default()), Condvar::new()));
         let expected_frames = (0.05f64 * 44100.0).round() as usize;
         for i in 0..3 {
@@ -946,7 +979,10 @@ mod tests {
 
     #[test]
     fn decode_chunk_tail_eof_keeps_cursor_on_clamped_source_start() -> anyhow::Result<()> {
-        let path = concat!(env!("CARGO_MANIFEST_DIR"), "/../test/fixtures/media/sample-1s-audio.mp3");
+        let path = concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../test/fixtures/media/sample-1s-audio.mp3"
+        );
         let shared = Arc::new((Mutex::new(AudioShared::default()), Condvar::new()));
         let source_start = 0.999;
         let chunk = decode_symphonia_chunk(DecodeSymphoniaChunkParams {
@@ -976,6 +1012,31 @@ mod tests {
             (decoder.last_decode_end_sec - source_start).abs() < 1e-9,
             "EOF tail cursor should stay at clamped source start"
         );
+        Ok(())
+    }
+
+    #[test]
+    fn decode_chunk_seek_past_end_returns_silence() -> anyhow::Result<()> {
+        let path = concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../test/fixtures/media/sample-1s-audio.mp3"
+        );
+        let shared = Arc::new((Mutex::new(AudioShared::default()), Condvar::new()));
+        let chunk = decode_symphonia_chunk(DecodeSymphoniaChunkParams {
+            layer_id: "past-end-layer",
+            path,
+            source_start_sec: 999.0,
+            timeline_duration_sec: 0.05,
+            speed: 1.0,
+            target_sample_rate: 44100,
+            output_channels: 2,
+            reverse: false,
+            shared: &shared,
+        })?;
+
+        let expected_samples = (0.05f64 * 44100.0).round() as usize * 2;
+        assert_eq!(chunk.len(), expected_samples);
+        assert!(chunk.iter().all(|sample| *sample == 0.0));
         Ok(())
     }
 }

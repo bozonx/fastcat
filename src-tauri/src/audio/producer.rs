@@ -12,7 +12,7 @@ use crate::audio::mix::mix_chunk;
 use crate::audio::ring::SpscRingBuffer;
 use crate::audio::shared::{
     AudioRenderTarget, AudioShared, CHUNK_DURATION_SEC, PREBUFFER_CHUNKS,
-    PRODUCER_RESYNC_THRESHOLD_SEC,
+    PRODUCER_RESYNC_THRESHOLD_SEC, START_PREBUFFER_CHUNKS,
 };
 
 pub(crate) fn spawn_producer_thread(
@@ -56,6 +56,7 @@ pub(crate) fn producer_loop(
     let chunk_frames = (CHUNK_DURATION_SEC * sample_rate as f64).round().max(1.0) as usize;
     let chunk_duration_sec = chunk_frames as f64 / sample_rate as f64;
     let limit_samples = chunk_frames * output_channels * PREBUFFER_CHUNKS;
+    let start_prebuffer_samples = chunk_frames * output_channels * START_PREBUFFER_CHUNKS;
 
     // Cached clones of the scene/tracks, refreshed only when `scene_serial`
     // changes, so a static timeline doesn't re-clone the whole scene 20×/sec.
@@ -89,6 +90,7 @@ pub(crate) fn producer_loop(
     let mut min_ring_frames = usize::MAX;
     let mut loop_iters = 0u64;
     let target_ring_frames = limit_samples / output_channels.max(1);
+    let mut skip_next_ring_health_log = false;
 
     // Chunk fate accounting: a producer that runs often yet can't fill the ring is
     // having its chunks thrown away. `discarded` = mixed a chunk but `seek_serial`
@@ -134,7 +136,9 @@ pub(crate) fn producer_loop(
             if clock.playing.load(Ordering::Acquire) && min_ring_frames != usize::MAX {
                 let min_ms = min_ring_frames as f64 / sample_rate as f64 * 1000.0;
                 let target_ms = target_ring_frames as f64 / sample_rate as f64 * 1000.0;
-                if min_ring_frames * 4 < target_ring_frames {
+                if skip_next_ring_health_log {
+                    skip_next_ring_health_log = false;
+                } else if min_ring_frames * 4 < target_ring_frames {
                     log::warn!(
                         "[audio] ring drained to {min_ring_frames} frames (~{min_ms:.0}ms) of \
                          {target_ring_frames} (~{target_ms:.0}ms target) in the last ~1s over \
@@ -259,8 +263,28 @@ pub(crate) fn producer_loop(
             ring.push_slice(&chunk);
             state.producer_pts_sec += chunk_duration_sec;
             chunks_pushed += 1;
+            if state.playing
+                && arm_output_clock_after_prebuffer(&clock, ring.len(), start_prebuffer_samples)
+            {
+                skip_next_ring_health_log = true;
+                min_ring_frames = usize::MAX;
+            }
         }
     }
+}
+
+fn arm_output_clock_after_prebuffer(
+    clock: &RealtimeClock,
+    ring_samples: usize,
+    start_prebuffer_samples: usize,
+) -> bool {
+    if ring_samples < start_prebuffer_samples || clock.playing.load(Ordering::Acquire) {
+        return false;
+    }
+
+    clock.reset_frames();
+    clock.playing.store(true, Ordering::Release);
+    true
 }
 
 pub(crate) fn panic_payload_message(error: &Box<dyn std::any::Any + Send>) -> String {
@@ -397,5 +421,33 @@ mod tests {
         // only pipeline latency should be subtracted (0.02 s = 960 frames).
         // 48000 - 960 = 47040 → 47040/48000 = 0.98 s → pts = 10.98
         assert!((pts - 10.98).abs() < 1e-9);
+    }
+
+    #[test]
+    fn output_clock_arms_only_after_start_prebuffer() {
+        let clock = RealtimeClock::default();
+        clock.frames_written.store(123, Ordering::Release);
+        let start_samples = 2_000;
+
+        assert!(!arm_output_clock_after_prebuffer(
+            &clock,
+            start_samples - 1,
+            start_samples,
+        ));
+        assert!(!clock.playing.load(Ordering::Acquire));
+
+        assert!(arm_output_clock_after_prebuffer(
+            &clock,
+            start_samples,
+            start_samples,
+        ));
+        assert!(clock.playing.load(Ordering::Acquire));
+        assert_eq!(clock.frames(), 0);
+
+        assert!(!arm_output_clock_after_prebuffer(
+            &clock,
+            start_samples * 2,
+            start_samples,
+        ));
     }
 }

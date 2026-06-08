@@ -3,6 +3,10 @@ use std::collections::HashMap;
 use crate::monitor::scene::{SceneAudioLayer, SceneAudioTrack};
 
 pub(crate) const CHUNK_DURATION_SEC: f64 = 0.05;
+/// Minimum fill before the real-time output callback starts consuming after a
+/// play/seek. This is intentionally much smaller than `PREBUFFER_CHUNKS`: it
+/// avoids a startup underrun without making monitor playback feel delayed.
+pub(crate) const START_PREBUFFER_CHUNKS: usize = 2;
 /// Target fill of the playback ring buffer, in `CHUNK_DURATION_SEC` chunks. This
 /// is the real defence against crackle: it sits upstream of the cpal device
 /// buffer and absorbs scheduler jitter / decode spikes when the producer thread
