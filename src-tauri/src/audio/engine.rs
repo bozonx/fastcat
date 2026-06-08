@@ -1,7 +1,6 @@
-use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::thread::JoinHandle;
-use std::time::Instant;
 
 use anyhow::{Context, Result};
 use parking_lot::{Condvar, Mutex};
@@ -36,18 +35,6 @@ pub struct NativeAudioEngine {
     settings: AudioEngineSettings,
     _stream: Box<dyn AudioStream>,
     producer: Mutex<Option<JoinHandle<()>>>,
-    /// Diagnostics: how often `set_scene` is called and how often it forces a
-    /// flush (ring clear + decoder reseek) WHILE PLAYING. A flush mid-playback
-    /// resets the streaming resampler and re-decodes already-played audio, which
-    /// is heard as periodic crackle/echo. If the frontend re-pushes a jittery
-    /// scene every frame this counter exposes it; logged throttled (≤1/s).
-    scene_calls_while_playing: AtomicU64,
-    scene_flushes_while_playing: AtomicU64,
-    last_scene_diag_log: Mutex<Instant>,
-    /// Count of redundant in-place seeks ignored during playback (master-clock
-    /// echoes). Logged throttled so the guard's effect is observable.
-    ignored_echo_seeks: AtomicU64,
-    last_seek_diag_log: Mutex<Instant>,
 }
 
 /// A seek to within this of the current playback position, while already playing,
@@ -98,11 +85,6 @@ impl NativeAudioEngine {
             settings: settings.clone(),
             _stream: stream,
             producer: Mutex::new(Some(producer)),
-            scene_calls_while_playing: AtomicU64::new(0),
-            scene_flushes_while_playing: AtomicU64::new(0),
-            last_scene_diag_log: Mutex::new(Instant::now()),
-            ignored_echo_seeks: AtomicU64::new(0),
-            last_seek_diag_log: Mutex::new(Instant::now()),
         })
     }
 
@@ -172,34 +154,6 @@ impl NativeAudioEngine {
         let new_sig = compute_timing_sig(layers);
         let needs_flush = new_sig != state.timing_sig;
         state.timing_sig = new_sig;
-
-        // Surface mid-playback flush churn: a flush here re-decodes already-played
-        // audio and resets the resampler (periodic crackle/echo). See field docs.
-        if state.playing {
-            self.scene_calls_while_playing.fetch_add(1, Ordering::Relaxed);
-            if needs_flush {
-                self.scene_flushes_while_playing
-                    .fetch_add(1, Ordering::Relaxed);
-            }
-            let mut last = self.last_scene_diag_log.lock();
-            if last.elapsed().as_secs_f64() >= 1.0 {
-                let calls = self.scene_calls_while_playing.swap(0, Ordering::Relaxed);
-                let flushes = self.scene_flushes_while_playing.swap(0, Ordering::Relaxed);
-                // Even flush-free calls matter: each one locks `shared.0` and does
-                // O(scene) clone/retain work, contending with the real-time producer
-                // for the lock. A high call rate during playback can starve the
-                // producer (priority inversion) and drain the ring.
-                if calls > 0 {
-                    log::warn!(
-                        "[audio] set_scene during playback: {calls} call(s)/s ({flushes} forced a \
-                         flush+reseek). Each call locks the shared audio state and clones the \
-                         scene, contending with the producer; flushes also reset the resampler \
-                         (crackle/echo)"
-                    );
-                }
-                *last = Instant::now();
-            }
-        }
 
         state.scene = layers.to_vec();
         state.tracks = tracks.to_vec();
@@ -296,16 +250,6 @@ impl NativeAudioEngine {
         if playing && state.playing {
             let current = audible_pts_sec(&state, &self.clock, self.sample_rate);
             if (pts - current).abs() < SEEK_IGNORE_SEC {
-                self.ignored_echo_seeks.fetch_add(1, Ordering::Relaxed);
-                let mut last = self.last_seek_diag_log.lock();
-                if last.elapsed().as_secs_f64() >= 5.0 {
-                    let n = self.ignored_echo_seeks.swap(0, Ordering::Relaxed);
-                    log::debug!(
-                        "[audio] ignored {n} redundant in-place seek(s) during playback in the \
-                         last ~5s (master-clock echo; kept the ring intact)"
-                    );
-                    *last = Instant::now();
-                }
                 return;
             }
         }

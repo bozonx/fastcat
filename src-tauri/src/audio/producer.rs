@@ -81,27 +81,6 @@ pub(crate) fn producer_loop(
     let mut worst_chunk_ms = 0.0f64;
     let mut last_budget_log = std::time::Instant::now();
 
-    // Ring-occupancy health. The over-budget timer only measures `mix_chunk`
-    // compute time; it cannot see the producer THREAD being descheduled between
-    // iterations (priority inversion on the shared lock, RT throttling, CPU
-    // starvation). If the ring drains toward empty while `mix_chunk` stays fast,
-    // the producer isn't getting scheduled often enough — a different fault than
-    // slow decode. Track the minimum fill and loop rate while playing.
-    let mut min_ring_frames = usize::MAX;
-    let mut loop_iters = 0u64;
-    let target_ring_frames = limit_samples / output_channels.max(1);
-    let mut skip_next_ring_health_log = false;
-
-    // Chunk fate accounting: a producer that runs often yet can't fill the ring is
-    // having its chunks thrown away. `discarded` = mixed a chunk but `seek_serial`
-    // changed before we could push it (a seek/flush landed mid-mix → ring also
-    // cleared). A high discard rate during playback means something is calling
-    // seek()/flush repeatedly (e.g. the frontend echoing the native clock back as
-    // a seek), which both wipes the prebuffer and resets decoders → crackle.
-    let mut chunks_pushed = 0u64;
-    let mut chunks_discarded = 0u64;
-    let mut ring_clears = 0u64;
-
     // Effective output-rate check. The device must consume ~`sample_rate` frames
     // per wall-second; if it consumes a different rate (e.g. the audio graph runs
     // at 48000 while we opened 44100), every clip plays fast/slow and pitch-shifted
@@ -110,14 +89,6 @@ pub(crate) fn producer_loop(
     let mut last_consumed: Option<(u64, std::time::Instant)> = None;
 
     while running.load(Ordering::Relaxed) {
-        loop_iters += 1;
-        {
-            let playing = clock.playing.load(Ordering::Acquire);
-            if playing {
-                let frames_now = ring.len() / output_channels.max(1);
-                min_ring_frames = min_ring_frames.min(frames_now);
-            }
-        }
         if last_underrun_log.elapsed() >= Duration::from_secs(1) {
             if clock.playing.load(Ordering::Acquire) {
                 let now = std::time::Instant::now();
@@ -160,30 +131,6 @@ pub(crate) fn producer_loop(
                 );
                 last_underrun_events = events;
             }
-            // Ring health: if min fill fell far below target while playing, the
-            // producer thread was starved (not slow). ~0 frames = it lost the CPU
-            // long enough to drain the entire prebuffer → silence gap (crackle).
-            if clock.playing.load(Ordering::Acquire) && min_ring_frames != usize::MAX {
-                let min_ms = min_ring_frames as f64 / sample_rate as f64 * 1000.0;
-                let target_ms = target_ring_frames as f64 / sample_rate as f64 * 1000.0;
-                if skip_next_ring_health_log {
-                    skip_next_ring_health_log = false;
-                } else if min_ring_frames * 4 < target_ring_frames {
-                    log::warn!(
-                        "[audio] ring drained to {min_ring_frames} frames (~{min_ms:.0}ms) of \
-                         {target_ring_frames} (~{target_ms:.0}ms target) in the last ~1s over \
-                         {loop_iters} loop iters; pushed={chunks_pushed} discarded={chunks_discarded} \
-                         ring_clears={ring_clears} — high discarded/ring_clears = seek/flush spam \
-                         wiping the prebuffer (frontend echoing the clock back as a seek); else \
-                         the producer thread is starved/blocked between iterations"
-                    );
-                }
-            }
-            min_ring_frames = usize::MAX;
-            loop_iters = 0;
-            chunks_pushed = 0;
-            chunks_discarded = 0;
-            ring_clears = 0;
             last_underrun_log = std::time::Instant::now();
         }
 
@@ -196,7 +143,6 @@ pub(crate) fn producer_loop(
                 if state.pending_ring_clear {
                     state.pending_ring_clear = false;
                     ring.clear();
-                    ring_clears += 1;
                     continue;
                 }
                 if state.playing && !state.scene.is_empty() && ring.len() < limit_samples {
@@ -286,19 +232,15 @@ pub(crate) fn producer_loop(
         // mix-param change bumps scene_serial but not seek_serial, so we keep the
         // chunk — the new params just apply from the following one.
         if state.seek_serial != seek_serial || !state.playing {
-            chunks_discarded += 1;
             continue;
         }
         if ring.len() < limit_samples {
             ring.push_slice(&chunk);
             state.producer_pts_sec += chunk_duration_sec;
-            chunks_pushed += 1;
-            if state.playing
-                && arm_output_clock_after_prebuffer(&clock, ring.len(), start_prebuffer_samples)
-            {
-                skip_next_ring_health_log = true;
-                min_ring_frames = usize::MAX;
-            }
+            // Start the real-time output clock once a tiny startup prebuffer has
+            // accumulated (see `arm_output_clock_after_prebuffer`). Until armed the
+            // cpal callback emits silence without counting a (false) underrun.
+            arm_output_clock_after_prebuffer(&clock, ring.len(), start_prebuffer_samples);
         }
     }
 }

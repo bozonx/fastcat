@@ -111,8 +111,16 @@ export class TauriAudioEngine implements IAudioEngine {
     _toUs: number,
     _maxPreviewDurationUs = 90_000,
   ): Promise<void> {
-    // Scrub preview is not implemented in Tauri native mode.
-    logger.debug('previewScrubForward is a no-op in Tauri mode');
+    // Scrub-forward audio preview is not yet implemented in Tauri native mode
+    // (capabilities.scrubPreview === false). It cannot be faked with the existing
+    // monitor_play/monitor_pause transport: the native engine only starts the
+    // output clock after a ~100 ms startup prebuffer, which is longer than a scrub
+    // snippet, so a brief play→pause would emit no sound and would move the
+    // transport playhead. A correct implementation needs a dedicated native
+    // bounded-snippet command (decode [from, from+dur] off the realtime producer
+    // and play it once with a minimal prebuffer, without disturbing the master
+    // transport). Tracked as a follow-up.
+    logger.debug('previewScrubForward is a no-op in Tauri mode (needs native scrub command)');
   }
 
   stopScrubPreview() {

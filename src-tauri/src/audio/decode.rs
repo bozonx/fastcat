@@ -877,6 +877,46 @@ mod tests {
     }
 
     #[test]
+    fn background_precache_fills_decoded_cache_off_thread() -> anyhow::Result<()> {
+        // Drives the worker the background thread runs, synchronously, so the test
+        // is deterministic: a streaming (rate-mismatched) clip ends up in the PCM
+        // cache and the in-flight marker is cleared.
+        let path = write_temp_f32_wav(8000, 1, 8000)?;
+        let path_str = path.to_string_lossy().to_string();
+        let shared = Arc::new((Mutex::new(AudioShared::default()), Condvar::new()));
+        let cache_key = decoded_cache_key(&path_str, 48000, 2);
+        shared.0.lock().decoding_in_flight.insert(cache_key.clone());
+
+        background_precache(shared.clone(), path_str.clone(), 48000, 2, cache_key.clone());
+
+        let state = shared.0.lock();
+        assert!(
+            !state.decoding_in_flight.contains(&cache_key),
+            "in-flight marker must be cleared when the worker finishes"
+        );
+        assert!(
+            state.decoded_cache.contains(&cache_key),
+            "decoded PCM must land in the cache so the producer stops streaming"
+        );
+        drop(state);
+        let _ = std::fs::remove_file(path);
+        Ok(())
+    }
+
+    #[test]
+    fn estimate_decoded_bytes_scales_source_frames_to_target() -> anyhow::Result<()> {
+        // 8000 frames of 8 kHz mono → at 48 kHz stereo f32 that is
+        // 8000 * (48000/8000) = 48000 frames * 2 ch * 4 bytes = 384000 bytes.
+        let path = write_temp_f32_wav(8000, 1, 8000)?;
+        let path_str = path.to_string_lossy().to_string();
+        let bytes = estimate_decoded_bytes(&path_str, 48000, 2)
+            .ok_or_else(|| anyhow::anyhow!("wav must declare a frame count"))?;
+        assert_eq!(bytes, 48000 * 2 * 4);
+        let _ = std::fs::remove_file(path);
+        Ok(())
+    }
+
+    #[test]
     fn streaming_resampler_drops_initial_filter_delay() -> anyhow::Result<()> {
         let path = write_temp_f32_wav(8000, 1, 8000)?;
         let path_str = path.to_string_lossy().to_string();
