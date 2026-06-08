@@ -1,5 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import { mapTimelineBlendModeToNative } from '~/utils/native-monitor-scene';
+import {
+  buildNativeAudioEffectSpecs,
+  mapTimelineBlendModeToNative,
+} from '~/utils/native-monitor-scene';
 
 // Reproduce the private helpers inline so the test does not depend on
 // module internals (they are not exported).
@@ -80,5 +83,58 @@ describe('mapTimelineBlendModeToNative', () => {
     expect(mapTimelineBlendModeToNative('color-burn')).toBe('color_burn');
     expect(mapTimelineBlendModeToNative('hard-light')).toBe('hard_light');
     expect(mapTimelineBlendModeToNative('soft-light')).toBe('soft_light');
+  });
+});
+
+describe('buildNativeAudioEffectSpecs', () => {
+  it('keeps enabled audio effects and packs effect params for native audio layers', () => {
+    expect(
+      buildNativeAudioEffectSpecs([
+        {
+          id: 'audio-1',
+          type: 'echo',
+          enabled: true,
+          target: 'audio',
+          wet: 0.4,
+          delayMs: 120,
+        },
+        {
+          id: 'audio-disabled',
+          type: 'reverb',
+          enabled: false,
+          target: 'audio',
+          room: 0.8,
+        },
+        {
+          id: 'video-1',
+          type: 'blur',
+          enabled: true,
+          target: 'video',
+          radius: 5,
+        },
+        {
+          id: 'audio-default-wet',
+          type: 'compressor',
+          enabled: true,
+          target: 'audio',
+          threshold: -12,
+        },
+      ]),
+    ).toEqual([
+      {
+        id: 'audio-1',
+        type: 'echo',
+        enabled: true,
+        wet: 0.4,
+        params: { delayMs: 120 },
+      },
+      {
+        id: 'audio-default-wet',
+        type: 'compressor',
+        enabled: true,
+        wet: 1,
+        params: { threshold: -12 },
+      },
+    ]);
   });
 });

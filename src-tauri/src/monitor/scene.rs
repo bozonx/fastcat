@@ -229,6 +229,8 @@ pub struct SceneAudioLayer {
     pub audio_fade_in_curve: AudioFadeCurve,
     #[serde(default)]
     pub audio_fade_out_curve: AudioFadeCurve,
+    #[serde(default)]
+    pub audio_effects: Vec<crate::audio::plugins::AudioEffectSpec>,
 }
 
 impl SceneAudioLayer {
@@ -478,6 +480,7 @@ mod tests {
             audio_fade_out_sec: 0.0,
             audio_fade_in_curve: AudioFadeCurve::Linear,
             audio_fade_out_curve: AudioFadeCurve::Linear,
+            audio_effects: vec![],
         }
     }
 

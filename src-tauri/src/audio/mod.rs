@@ -35,6 +35,7 @@
 
 pub mod engine;
 pub mod peaks;
+pub mod plugins;
 
 mod clock;
 mod decode;

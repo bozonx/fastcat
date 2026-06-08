@@ -205,6 +205,17 @@ impl NativeAudioEngine {
         state
             .decoders
             .retain(|layer_id, _| scene_clone.iter().any(|l| l.id == *layer_id));
+        let plugin_host = state.plugin_host.clone();
+        let plugin_specs: Vec<_> = scene_clone
+            .iter()
+            .map(|layer| (layer.id.clone(), layer.audio_effects.clone()))
+            .collect();
+        drop(state);
+        plugin_host.lock().retain_scene_specs(
+            plugin_specs
+                .iter()
+                .map(|(layer_id, specs)| (layer_id.as_str(), specs.as_slice())),
+        );
         self.shared.1.notify_all();
     }
 

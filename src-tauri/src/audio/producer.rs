@@ -100,6 +100,7 @@ pub(crate) fn producer_loop(
     let mut varispeed = crate::audio::resample::VarispeedResampler::new();
     let mut varispeed_serial = u64::MAX;
     let mut varispeed_speed = 1.0f64;
+    let mut plugin_seek_serial = u64::MAX;
 
     while running.load(Ordering::Relaxed) {
         // Forward-scrub preview is a one-shot snippet played while NOT in normal
@@ -229,6 +230,12 @@ pub(crate) fn producer_loop(
         let Some((_, scene, tracks)) = cached.as_ref() else {
             continue;
         };
+
+        if plugin_seek_serial != seek_serial {
+            let plugin_host = { shared.0.lock().plugin_host.clone() };
+            plugin_host.lock().reset_all();
+            plugin_seek_serial = seek_serial;
+        }
 
         // At speed != 1 we mix a `speed×` longer timeline span and varispeed-resample
         // it back to one device chunk (pitch shifts like tape). The 1× path is left
@@ -396,6 +403,8 @@ fn service_scrub_preview(
             let dur = req.duration_sec.clamp(0.0, MAX_SCRUB_PREVIEW_SEC);
             let mut samples = Vec::new();
             let mut offset = 0.0;
+            let plugin_host = { shared.0.lock().plugin_host.clone() };
+            plugin_host.lock().reset_all();
             while offset < dur {
                 let piece_dur = chunk_duration_sec.min(dur - offset);
                 if piece_dur <= 0.0 {

@@ -327,6 +327,20 @@ fn mix_layer_into(params: MixLayerParams<'_>) -> bool {
         reverse_frames(&mut decoded, output_channels);
     }
 
+    // Apply audio effects (LV2/CLAP/VST3 or native) before mixing.
+    // The PluginHost has its own mutex, so plugin processing does not block
+    // transport commands, cache updates, or producer state publication.
+    if !layer.audio_effects.is_empty() {
+        let plugin_host = { shared.0.lock().plugin_host.clone() };
+        plugin_host.lock().apply_effects(
+            &layer.id,
+            &mut decoded,
+            sample_rate,
+            output_channels,
+            &layer.audio_effects,
+        );
+    }
+
     let frames_to_write = frames_to_write.min(decoded.len() / output_channels);
     debug_assert!(
         write_start_frame + frames_to_write <= buffer.len() / output_channels,
@@ -646,6 +660,7 @@ mod tests {
             audio_fade_out_sec: 2.0,
             audio_fade_in_curve: AudioFadeCurve::Linear,
             audio_fade_out_curve: AudioFadeCurve::Linear,
+            audio_effects: vec![],
         }
     }
 
@@ -979,6 +994,7 @@ mod tests {
             audio_fade_out_sec: 0.0,
             audio_fade_in_curve: AudioFadeCurve::Linear,
             audio_fade_out_curve: AudioFadeCurve::Linear,
+            audio_effects: vec![],
         };
         let segment_end = 0.05;
         let source_start = l.source_pts_at(segment_end);
@@ -1006,6 +1022,7 @@ mod tests {
             audio_fade_out_sec: 0.0,
             audio_fade_in_curve: AudioFadeCurve::Linear,
             audio_fade_out_curve: AudioFadeCurve::Linear,
+            audio_effects: vec![],
         };
         let shared = Arc::new((Mutex::new(AudioShared::default()), Condvar::new()));
         let preview_result = mix_layer_into(MixLayerParams {
@@ -1040,6 +1057,7 @@ mod tests {
             audio_fade_out_sec: 0.0,
             audio_fade_in_curve: AudioFadeCurve::Linear,
             audio_fade_out_curve: AudioFadeCurve::Linear,
+            audio_effects: vec![],
         };
         let shared = Arc::new((Mutex::new(AudioShared::default()), Condvar::new()));
         let export_result = mix_layer_into(MixLayerParams {

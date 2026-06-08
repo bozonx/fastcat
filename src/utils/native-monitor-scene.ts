@@ -14,6 +14,7 @@ import type {
 import type { BlendMode } from '../../src-tauri/bindings/BlendMode';
 import type { MonitorScene } from '~/types/generated/native-monitor/MonitorScene';
 import type { SceneLayer } from '~/types/generated/native-monitor/SceneLayer';
+import type { AudioEffectSpec } from '~/types/generated/native-monitor/AudioEffectSpec';
 import type { SceneAudioLayer } from '~/types/generated/native-monitor/SceneAudioLayer';
 import type { SceneAudioTrack } from '~/types/generated/native-monitor/SceneAudioTrack';
 import type { TimelineFormatInput } from '~/timeline/format';
@@ -99,6 +100,24 @@ export function mapTimelineBlendModeToNative(mode: TimelineBlendMode | undefined
     default:
       return mode ?? 'normal';
   }
+}
+
+export function buildNativeAudioEffectSpecs(effects?: ClipEffect[]): AudioEffectSpec[] {
+  if (!Array.isArray(effects) || effects.length === 0) {
+    return [];
+  }
+  return effects
+    .filter((e): e is ClipEffect & Record<string, unknown> => Boolean(e?.enabled && e.target === 'audio'))
+    .map((e) => {
+      const { id, type: effectType, enabled, target: _target, wet, ...rest } = e;
+      return {
+        id,
+        type: effectType,
+        enabled: Boolean(enabled),
+        wet: typeof wet === 'number' ? wet : 1,
+        params: rest as Record<string, unknown>,
+      };
+    });
 }
 
 function sanitizeAudioSpeed(value: unknown): number {
@@ -467,6 +486,7 @@ async function buildAudioLayers(params: {
       audio_fade_out_sec: Math.max(0, finite(clip.audioFadeOutUs, 0) / 1_000_000),
       audio_fade_in_curve: clip.audioFadeInCurve ?? 'linear',
       audio_fade_out_curve: clip.audioFadeOutCurve ?? 'linear',
+      audio_effects: buildNativeAudioEffectSpecs(clip.effects),
     });
   }
   return layers;

@@ -140,6 +140,7 @@ pub(crate) struct AudioShared {
     pub(crate) producer_pts_sec: f64,
     pub(crate) seek_serial: u64,
     pub(crate) scene_serial: u64,
+    pub(crate) plugin_host: std::sync::Arc<parking_lot::Mutex<crate::audio::plugins::PluginHost>>,
     pub(crate) decoded_cache: lru::LruCache<String, std::sync::Arc<Vec<f32>>>,
     /// Total bytes held by `decoded_cache`; bounds the in-memory full-file cache
     /// by weight (a single 50 MB compressed file can decode to > 1 GB of f32).
@@ -198,6 +199,9 @@ impl Default for AudioShared {
             producer_pts_sec: 0.0,
             seek_serial: 0,
             scene_serial: 0,
+            plugin_host: std::sync::Arc::new(parking_lot::Mutex::new(
+                crate::audio::plugins::PluginHost::new(),
+            )),
             decoded_cache: lru::LruCache::unbounded(),
             decoded_cache_bytes: 0,
             file_size_cache: HashMap::new(),
@@ -289,6 +293,7 @@ mod tests {
             audio_fade_out_sec: 2.0,
             audio_fade_in_curve: AudioFadeCurve::Linear,
             audio_fade_out_curve: AudioFadeCurve::Linear,
+            audio_effects: vec![],
         }
     }
 
