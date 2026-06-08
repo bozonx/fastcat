@@ -45,6 +45,12 @@ struct CachedDecoder {
     max_output_long_edge: Option<u32>,
 }
 
+#[derive(Clone)]
+struct CachedRaster {
+    image: ImageData,
+    natural_size: (u32, u32),
+}
+
 impl CachedDecoder {
     /// Forward gap (seconds) beyond which seeking to a nearer keyframe beats
     /// decoding every intermediate frame.
@@ -108,6 +114,8 @@ impl CachedDecoder {
 
 pub struct VideoDecoderCache {
     decoders: HashMap<PathBuf, CachedDecoder>,
+    images: HashMap<PathBuf, CachedRaster>,
+    svgs: HashMap<(PathBuf, u32), CachedRaster>,
     lru: VecDeque<PathBuf>,
     capacity: usize,
 }
@@ -122,6 +130,8 @@ impl VideoDecoderCache {
     pub fn new() -> Self {
         Self {
             decoders: HashMap::new(),
+            images: HashMap::new(),
+            svgs: HashMap::new(),
             lru: VecDeque::new(),
             capacity: 8,
         }
@@ -170,6 +180,37 @@ impl VideoDecoderCache {
             .get_mut(&path_buf)
             .context("decoder cache insertion failed")
     }
+
+    fn image_raster(&mut self, path: &Path) -> Result<CachedRaster> {
+        let path_buf = path.to_path_buf();
+        if let Some(cached) = self.images.get(&path_buf) {
+            return Ok(cached.clone());
+        }
+
+        let decoded = decode_image(path)?;
+        let raster = CachedRaster {
+            image: decoded.image,
+            natural_size: (decoded.width, decoded.height),
+        };
+        self.images.insert(path_buf, raster.clone());
+        Ok(raster)
+    }
+
+    fn svg_raster(&mut self, path: &Path, target_long_edge: u32) -> Result<CachedRaster> {
+        let path_buf = path.to_path_buf();
+        let key = (path_buf, target_long_edge);
+        if let Some(cached) = self.svgs.get(&key) {
+            return Ok(cached.clone());
+        }
+
+        let (image, natural_size) = rasterize_svg(path, target_long_edge)?;
+        let raster = CachedRaster {
+            image,
+            natural_size,
+        };
+        self.svgs.insert(key, raster.clone());
+        Ok(raster)
+    }
 }
 
 #[cfg(test)]
@@ -181,7 +222,53 @@ mod tests {
         let cache = VideoDecoderCache::new();
         assert_eq!(cache.capacity, 8);
         assert!(cache.decoders.is_empty());
+        assert!(cache.images.is_empty());
+        assert!(cache.svgs.is_empty());
         assert!(cache.lru.is_empty());
+    }
+
+    #[test]
+    fn static_image_raster_is_cached() {
+        let fixture = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .parent()
+            .unwrap()
+            .join("test/fixtures/media/sample-red-1280x720.png");
+        let mut cache = VideoDecoderCache::new();
+
+        let first = cache.image_raster(&fixture).unwrap();
+        let second = cache.image_raster(&fixture).unwrap();
+
+        assert_eq!(cache.images.len(), 1);
+        assert_eq!(first.natural_size, (1280, 720));
+        assert_eq!(second.natural_size, first.natural_size);
+    }
+
+    #[test]
+    fn svg_raster_is_cached_per_target_size() {
+        let path = std::env::temp_dir().join(format!(
+            "fastcat-export-cache-test-{}-{}.svg",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        std::fs::write(
+            &path,
+            r#"<svg xmlns="http://www.w3.org/2000/svg" width="10" height="20"><rect width="10" height="20" fill="red"/></svg>"#,
+        )
+        .unwrap();
+
+        let mut cache = VideoDecoderCache::new();
+        let first = cache.svg_raster(&path, 100).unwrap();
+        let second = cache.svg_raster(&path, 100).unwrap();
+        let different_size = cache.svg_raster(&path, 50).unwrap();
+
+        let _ = std::fs::remove_file(&path);
+
+        assert_eq!(cache.svgs.len(), 2);
+        assert_eq!(first.natural_size, second.natural_size);
+        assert_ne!(different_size.natural_size, first.natural_size);
     }
 
     #[test]
@@ -379,21 +466,21 @@ fn build_raster_kind(
             }
         }
         LayerKind::Image => {
-            let decoded = decode_image(Path::new(&layer.path))?;
+            let raster = cache.image_raster(Path::new(&layer.path))?;
             RasterBuild {
                 kind: CompLayerKind::Raster {
-                    source: RasterSource::Image(decoded.image),
-                    natural_size: (decoded.width, decoded.height),
+                    source: RasterSource::Image(raster.image),
+                    natural_size: raster.natural_size,
                 },
                 source_rotation: 0,
             }
         }
         LayerKind::Svg => {
-            let (image, size) = rasterize_svg(Path::new(&layer.path), svg_long_edge)?;
+            let raster = cache.svg_raster(Path::new(&layer.path), svg_long_edge)?;
             RasterBuild {
                 kind: CompLayerKind::Raster {
-                    source: RasterSource::Image(image),
-                    natural_size: size,
+                    source: RasterSource::Image(raster.image),
+                    natural_size: raster.natural_size,
                 },
                 source_rotation: 0,
             }
