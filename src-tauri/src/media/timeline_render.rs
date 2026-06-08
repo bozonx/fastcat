@@ -230,94 +230,16 @@ impl VideoDecoderCache {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_decoder_cache_new_has_default_capacity() {
-        let cache = VideoDecoderCache::new();
-        assert_eq!(cache.capacity, 8);
-        assert!(cache.decoders.is_empty());
-        assert!(cache.images.is_empty());
-        assert!(cache.svgs.is_empty());
-        assert!(cache.lru.is_empty());
-        assert_eq!(cache.hw_mode, HwAccelMode::None);
-        assert_eq!(cache.vaapi_device, None);
-    }
-
-    #[test]
-    fn decoder_cache_can_store_hw_decode_settings() {
-        let cache = VideoDecoderCache::new_with_hw_decode(
-            HwAccelMode::Vaapi,
-            Some("/dev/dri/renderD128".to_string()),
-        );
-
-        assert_eq!(cache.hw_mode, HwAccelMode::Vaapi);
-        assert_eq!(cache.vaapi_device.as_deref(), Some("/dev/dri/renderD128"));
-    }
-
-    #[test]
-    fn static_image_raster_is_cached() {
-        let fixture = Path::new(env!("CARGO_MANIFEST_DIR"))
-            .parent()
-            .unwrap()
-            .join("test/fixtures/media/sample-red-1280x720.png");
-        let mut cache = VideoDecoderCache::new();
-
-        let first = cache.image_raster(&fixture).unwrap();
-        let second = cache.image_raster(&fixture).unwrap();
-
-        assert_eq!(cache.images.len(), 1);
-        assert_eq!(first.natural_size, (1280, 720));
-        assert_eq!(second.natural_size, first.natural_size);
-    }
-
-    #[test]
-    fn svg_raster_is_cached_per_target_size() {
-        let path = std::env::temp_dir().join(format!(
-            "fastcat-export-cache-test-{}-{}.svg",
-            std::process::id(),
-            std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)
-                .unwrap()
-                .as_nanos()
-        ));
-        std::fs::write(
-            &path,
-            r#"<svg xmlns="http://www.w3.org/2000/svg" width="10" height="20"><rect width="10" height="20" fill="red"/></svg>"#,
-        )
-        .unwrap();
-
-        let mut cache = VideoDecoderCache::new();
-        let first = cache.svg_raster(&path, 100).unwrap();
-        let second = cache.svg_raster(&path, 100).unwrap();
-        let different_size = cache.svg_raster(&path, 50).unwrap();
-
-        let _ = std::fs::remove_file(&path);
-
-        assert_eq!(cache.svgs.len(), 2);
-        assert_eq!(first.natural_size, second.natural_size);
-        assert_ne!(different_size.natural_size, first.natural_size);
-    }
-
-    #[test]
-    fn webp_quality_percent_maps_fraction_to_0_100_scale() {
-        assert!((webp_quality_percent(0.6) - 60.0).abs() < 0.01);
-        assert!((webp_quality_percent(0.8) - 80.0).abs() < 0.01);
-        assert!((webp_quality_percent(0.0) - 0.0).abs() < 0.01);
-        assert!((webp_quality_percent(1.0) - 100.0).abs() < 0.01);
-        // Out-of-range and non-finite inputs are clamped / defaulted.
-        assert!((webp_quality_percent(2.0) - 100.0).abs() < 0.01);
-        assert!((webp_quality_percent(-1.0) - 0.0).abs() < 0.01);
-        assert!((webp_quality_percent(f32::NAN) - 70.0).abs() < 0.01);
-    }
-}
-
 /// Holds a lazily-initialised compositor for off-screen thumbnail rendering.
 /// Extracted from a global static so tests can inject a fake compositor.
 pub struct ThumbnailRenderer {
     compositor: Mutex<Option<Compositor>>,
+}
+
+impl Default for ThumbnailRenderer {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl ThumbnailRenderer {
@@ -568,4 +490,88 @@ pub fn encode_rgba_as_webp(
         encoder.encode(quality)
     };
     Ok(bytes.to_vec())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_decoder_cache_new_has_default_capacity() {
+        let cache = VideoDecoderCache::new();
+        assert_eq!(cache.capacity, 8);
+        assert!(cache.decoders.is_empty());
+        assert!(cache.images.is_empty());
+        assert!(cache.svgs.is_empty());
+        assert!(cache.lru.is_empty());
+        assert_eq!(cache.hw_mode, HwAccelMode::None);
+        assert_eq!(cache.vaapi_device, None);
+    }
+
+    #[test]
+    fn decoder_cache_can_store_hw_decode_settings() {
+        let cache = VideoDecoderCache::new_with_hw_decode(
+            HwAccelMode::Vaapi,
+            Some("/dev/dri/renderD128".to_string()),
+        );
+
+        assert_eq!(cache.hw_mode, HwAccelMode::Vaapi);
+        assert_eq!(cache.vaapi_device.as_deref(), Some("/dev/dri/renderD128"));
+    }
+
+    #[test]
+    fn static_image_raster_is_cached() {
+        let fixture = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .parent()
+            .unwrap()
+            .join("test/fixtures/media/sample-red-1280x720.png");
+        let mut cache = VideoDecoderCache::new();
+
+        let first = cache.image_raster(&fixture).unwrap();
+        let second = cache.image_raster(&fixture).unwrap();
+
+        assert_eq!(cache.images.len(), 1);
+        assert_eq!(first.natural_size, (1280, 720));
+        assert_eq!(second.natural_size, first.natural_size);
+    }
+
+    #[test]
+    fn svg_raster_is_cached_per_target_size() {
+        let path = std::env::temp_dir().join(format!(
+            "fastcat-export-cache-test-{}-{}.svg",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        std::fs::write(
+            &path,
+            r#"<svg xmlns="http://www.w3.org/2000/svg" width="10" height="20"><rect width="10" height="20" fill="red"/></svg>"#,
+        )
+        .unwrap();
+
+        let mut cache = VideoDecoderCache::new();
+        let first = cache.svg_raster(&path, 100).unwrap();
+        let second = cache.svg_raster(&path, 100).unwrap();
+        let different_size = cache.svg_raster(&path, 50).unwrap();
+
+        let _ = std::fs::remove_file(&path);
+
+        assert_eq!(cache.svgs.len(), 2);
+        assert_eq!(first.natural_size, second.natural_size);
+        assert_ne!(different_size.natural_size, first.natural_size);
+    }
+
+    #[test]
+    fn webp_quality_percent_maps_fraction_to_0_100_scale() {
+        assert!((webp_quality_percent(0.6) - 60.0).abs() < 0.01);
+        assert!((webp_quality_percent(0.8) - 80.0).abs() < 0.01);
+        assert!((webp_quality_percent(0.0) - 0.0).abs() < 0.01);
+        assert!((webp_quality_percent(1.0) - 100.0).abs() < 0.01);
+        // Out-of-range and non-finite inputs are clamped / defaulted.
+        assert!((webp_quality_percent(2.0) - 100.0).abs() < 0.01);
+        assert!((webp_quality_percent(-1.0) - 0.0).abs() < 0.01);
+        assert!((webp_quality_percent(f32::NAN) - 70.0).abs() < 0.01);
+    }
 }

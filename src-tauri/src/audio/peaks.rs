@@ -260,7 +260,7 @@ mod tests {
 
         assert_eq!(peaks.len(), 1);
         assert_eq!(peaks[0].len(), 5);
-        let expected = vec![0.2f32, 0.4, 0.6, 0.8, 1.0];
+        let expected = [0.2f32, 0.4, 0.6, 0.8, 1.0];
         for (a, b) in peaks[0].iter().zip(expected.iter()) {
             assert!((a - b).abs() < 1e-4, "peak mismatch: {} vs {}", a, b);
         }

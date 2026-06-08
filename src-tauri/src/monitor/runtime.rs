@@ -249,7 +249,7 @@ impl LayerRuntimeManager {
                     }
                     _ => None,
                 };
-                let hw_mode = self.hw_settings.hardware_acceleration_mode.clone();
+                let hw_mode = self.hw_settings.hardware_acceleration_mode;
                 let vaapi_dev = self.hw_settings.vaapi_device.clone();
                 log::info!("[monitor] spawn video decoder {id} (max_long_edge={max_long_edge:?})");
                 let spawn_id = id.clone();
@@ -261,15 +261,15 @@ impl LayerRuntimeManager {
                         let on_frame = Box::new(move || {
                             let _ = proxy_cb.send_event(MonitorCommand::VideoFrameReady);
                         });
-                        let result = match DecodePump::open(
-                            &path,
-                            max_long_edge,
-                            Some(on_frame),
+                        let result = match DecodePump::open(crate::media::decode_thread::DecodeOpenParams {
+                            path: &path,
+                            max_output_long_edge: max_long_edge,
+                            on_frame_decoded: Some(on_frame),
                             device,
                             queue,
                             hw_mode,
-                            Some(vaapi_dev.as_str()),
-                        ) {
+                            vaapi_device: Some(vaapi_dev.as_str()),
+                        }) {
                             Ok(pump) => {
                                 let media_size = (pump.info.width, pump.info.height);
                                 let source_rotation = pump.info.rotation;

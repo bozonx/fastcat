@@ -30,6 +30,29 @@ use super::types::HwAccelMode;
 // playback (всегда есть `current` + 1 `upcoming` для lookahead) и не раздувает память.
 const QUEUE_CAPACITY: usize = 2;
 
+pub type DecodeCallback = Box<dyn Fn() + Send + Sync + 'static>;
+
+pub struct DecodeOpenParams<'a> {
+    pub path: &'a Path,
+    pub max_output_long_edge: Option<u32>,
+    pub on_frame_decoded: Option<DecodeCallback>,
+    pub device: Option<wgpu::Device>,
+    pub queue: Option<wgpu::Queue>,
+    pub hw_mode: HwAccelMode,
+    pub vaapi_device: Option<&'a str>,
+}
+
+struct DecoderLoopArgs {
+    decoder: Box<dyn super::decode::VideoDecoder>,
+    frame_tx: SyncSender<DecodedFrameMsg>,
+    cmd_rx: Receiver<DecoderCmd>,
+    gen: Arc<AtomicU64>,
+    on_frame_decoded: Option<DecodeCallback>,
+    device: Option<wgpu::Device>,
+    queue: Option<wgpu::Queue>,
+    texture_pool: super::GpuTexturePool,
+}
+
 pub struct DecodedFrameMsg {
     pub generation: u64,
     pub frame: VideoFrame,
@@ -53,53 +76,23 @@ pub struct DecodePump {
 impl DecodePump {
     /// `max_output_long_edge` — кап на длинную сторону декодированного кадра в пикселях.
     /// Прокидывается в ffmpeg `-vf scale`. `None` = декод в нативе.
-    pub fn open(
-        path: &Path,
-        max_output_long_edge: Option<u32>,
-        on_frame_decoded: Option<Box<dyn Fn() + Send + Sync + 'static>>,
-        device: Option<wgpu::Device>,
-        queue: Option<wgpu::Queue>,
-        hw_mode: HwAccelMode,
-        vaapi_device: Option<&str>,
-    ) -> Result<Self> {
-        Self::open_with_factory(
-            path,
-            max_output_long_edge,
-            on_frame_decoded,
-            device,
-            queue,
-            hw_mode,
-            vaapi_device,
-            FfmpegNextDecoderFactory,
-        )
+    pub fn open(params: DecodeOpenParams<'_>) -> Result<Self> {
+        Self::open_with_factory(params, FfmpegNextDecoderFactory)
     }
 
-    pub fn open_with_factory<F>(
-        path: &Path,
-        max_output_long_edge: Option<u32>,
-        on_frame_decoded: Option<Box<dyn Fn() + Send + Sync + 'static>>,
-        device: Option<wgpu::Device>,
-        queue: Option<wgpu::Queue>,
-        hw_mode: HwAccelMode,
-        vaapi_device: Option<&str>,
-        factory: F,
-    ) -> Result<Self>
+    pub fn open_with_factory<F>(params: DecodeOpenParams<'_>, factory: F) -> Result<Self>
     where
         F: VideoDecoderFactory + 'static,
     {
-        let path_buf = path.to_path_buf();
-        let vaapi_device_str = vaapi_device.map(|s| s.to_string());
+        let path_buf = params.path.to_path_buf();
+        let vaapi_device_str = params.vaapi_device.map(|s| s.to_string());
 
         let (frame_tx, frame_rx) = mpsc::sync_channel::<DecodedFrameMsg>(QUEUE_CAPACITY);
-        // Маленькая command-очередь: seek/stop. sync_channel(1) — чтобы consumer не уехал
-        // вперёд с пачкой seek'ов; ему достаточно знать про самый свежий.
         let (cmd_tx, cmd_rx) = mpsc::channel::<DecoderCmd>();
         let generation = Arc::new(AtomicU64::new(0));
         let gen_in_thread = generation.clone();
-        let path_str = path.display().to_string();
-        #[allow(clippy::type_complexity)]
-        let texture_pool: Arc<Mutex<HashMap<(u32, u32), Vec<wgpu::Texture>>>> =
-            Arc::new(Mutex::new(HashMap::new()));
+        let path_str = params.path.display().to_string();
+        let texture_pool: super::GpuTexturePool = Arc::new(Mutex::new(HashMap::new()));
         let texture_pool_thread = texture_pool.clone();
 
         let (init_tx, init_rx) = mpsc::channel::<Result<MediaInfo>>();
@@ -108,8 +101,8 @@ impl DecodePump {
             .spawn(move || {
                 let decoder = factory.open(
                     &path_buf,
-                    max_output_long_edge,
-                    hw_mode,
+                    params.max_output_long_edge,
+                    params.hw_mode,
                     vaapi_device_str.as_deref(),
                 );
                 match decoder {
@@ -118,16 +111,16 @@ impl DecodePump {
                         if init_tx.send(Ok(info)).is_err() {
                             return; // caller dropped
                         }
-                        run_decoder_loop(
+                        run_decoder_loop(DecoderLoopArgs {
                             decoder,
                             frame_tx,
                             cmd_rx,
-                            gen_in_thread,
-                            on_frame_decoded,
-                            device,
-                            queue,
-                            texture_pool_thread,
-                        );
+                            gen: gen_in_thread,
+                            on_frame_decoded: params.on_frame_decoded,
+                            device: params.device,
+                            queue: params.queue,
+                            texture_pool: texture_pool_thread,
+                        });
                     }
                     Err(e) => {
                         let _ = init_tx.send(Err(e));
@@ -206,17 +199,17 @@ impl Drop for DecodePump {
     }
 }
 
-#[allow(clippy::type_complexity)]
-fn run_decoder_loop(
-    mut decoder: Box<dyn super::decode::VideoDecoder>,
-    frame_tx: SyncSender<DecodedFrameMsg>,
-    cmd_rx: Receiver<DecoderCmd>,
-    gen: Arc<AtomicU64>,
-    on_frame_decoded: Option<Box<dyn Fn() + Send + Sync + 'static>>,
-    device: Option<wgpu::Device>,
-    queue: Option<wgpu::Queue>,
-    texture_pool: Arc<Mutex<HashMap<(u32, u32), Vec<wgpu::Texture>>>>,
-) {
+fn run_decoder_loop(args: DecoderLoopArgs) {
+    let DecoderLoopArgs {
+        mut decoder,
+        frame_tx,
+        cmd_rx,
+        gen,
+        on_frame_decoded,
+        device,
+        queue,
+        texture_pool,
+    } = args;
     let mut playing = false;
     let mut decoded_after_seek = false;
     let mut current_gen = gen.load(Ordering::SeqCst);

@@ -37,7 +37,6 @@ tauri-plugin-fs = "2.5.1"
 tauri-plugin-fs-stream = "2.0.0"
 tauri-plugin-log = "2.8.0"
 tauri-plugin-os = "2"
-tauri-plugin-persisted-scope = "2.3.7"
 
 # --- GPU / compositor stack ---
 wgpu = { version = "29.0.3", default-features = false, features = ["dx12", "gles", "metal", "std", "vulkan", "wgsl"] }

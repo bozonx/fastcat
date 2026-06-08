@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use std::str::FromStr;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub enum HwAccelMode {
@@ -16,16 +17,6 @@ pub enum HwAccelMode {
 }
 
 impl HwAccelMode {
-    #[allow(clippy::should_implement_trait)]
-    pub fn from_str(s: &str) -> Self {
-        match s {
-            "vaapi" => Self::Vaapi,
-            "nvdec" | "nvenc" => Self::Nvdec,
-            "auto" => Self::Auto,
-            _ => Self::None,
-        }
-    }
-
     pub fn as_str(&self) -> &'static str {
         match self {
             Self::None => "none",
@@ -54,5 +45,18 @@ impl HwAccelMode {
     /// Returns true if any hardware acceleration is enabled.
     pub fn is_enabled(&self) -> bool {
         !matches!(self, Self::None)
+    }
+}
+
+impl FromStr for HwAccelMode {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "vaapi" => Ok(Self::Vaapi),
+            "nvdec" | "nvenc" => Ok(Self::Nvdec),
+            "auto" => Ok(Self::Auto),
+            _ => Ok(Self::None),
+        }
     }
 }

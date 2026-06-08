@@ -64,13 +64,15 @@ pub struct DecoderLoadGate {
     sem: Semaphore,
 }
 
-impl DecoderLoadGate {
-    pub fn new() -> Self {
+impl Default for DecoderLoadGate {
+    fn default() -> Self {
         Self {
             sem: Semaphore::new(default_permits()),
         }
     }
+}
 
+impl DecoderLoadGate {
     pub fn acquire(&self) -> SemaphorePermit<'_> {
         self.sem.acquire()
     }
@@ -80,7 +82,7 @@ static DECODER_LOAD_GATE: OnceLock<DecoderLoadGate> = OnceLock::new();
 
 /// Глобальный гейт открытий медиа-декодеров. Лениво инициализируется по числу ядер.
 pub fn decoder_load_gate() -> &'static DecoderLoadGate {
-    DECODER_LOAD_GATE.get_or_init(DecoderLoadGate::new)
+    DECODER_LOAD_GATE.get_or_init(DecoderLoadGate::default)
 }
 
 /// Половина логических ядер, зажатая в [2; 4]: достаточно для параллельной загрузки,

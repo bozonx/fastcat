@@ -466,39 +466,41 @@ pub fn convert_media(
     }
 }
 
-pub fn extract_video_frame_webp(
-    source_path: &Path,
-    time_sec: f64,
-    position_fraction: Option<f64>,
-    max_width: u32,
-    max_height: u32,
-    quality: f32,
-    hw_settings: crate::FfmpegHardwareSettings,
-) -> Result<Vec<u8>> {
+pub struct ExtractWebpParams<'a> {
+    pub source_path: &'a Path,
+    pub time_sec: f64,
+    pub position_fraction: Option<f64>,
+    pub max_width: u32,
+    pub max_height: u32,
+    pub quality: f32,
+    pub hw_settings: crate::FfmpegHardwareSettings,
+}
+
+pub fn extract_video_frame_webp(params: ExtractWebpParams<'_>) -> Result<Vec<u8>> {
     // Throttle concurrent decoder/ffmpeg spawns the same way the monitor does, so a
     // media panel full of clips can't flood the machine with parallel ffmpeg starts.
     let _permit = decoder_load_gate().acquire();
-    let metadata = probe_media(source_path, &hw_settings.ffprobe_path)?;
+    let metadata = probe_media(params.source_path, &params.hw_settings.ffprobe_path)?;
     let video = metadata
         .video
         .as_ref()
         .ok_or_else(|| anyhow!("source has no video stream"))?;
-    let (width, height) = video_frame_thumbnail_size(video, max_width, max_height);
+    let (width, height) = video_frame_thumbnail_size(video, params.max_width, params.max_height);
 
     // When the caller passes a position fraction we derive the timestamp from the
     // duration we already probed here, so the JS side doesn't have to spawn its own
     // ffprobe just to compute `duration * fraction`.
-    let time_sec = match position_fraction {
+    let time_sec = match params.position_fraction {
         Some(fraction) if fraction.is_finite() => {
             (metadata.duration.max(0.0) * fraction.clamp(0.0, 1.0)).max(0.0)
         }
-        _ => time_sec.max(0.0),
+        _ => params.time_sec.max(0.0),
     };
 
-    let hw_accel = &hw_settings.hardware_acceleration_mode;
-    let hw_decode = resolve_hw_decode_mode(hw_accel, &hw_settings.vaapi_device);
+    let hw_accel = &params.hw_settings.hardware_acceleration_mode;
+    let hw_decode = resolve_hw_decode_mode(hw_accel, &params.hw_settings.vaapi_device);
 
-    let mut cmd = Command::new(&hw_settings.ffmpeg_path);
+    let mut cmd = Command::new(&params.hw_settings.ffmpeg_path);
     cmd.arg("-nostdin");
 
     match hw_decode {
@@ -506,7 +508,7 @@ pub fn extract_video_frame_webp(
             cmd.arg("-hwaccel")
                 .arg("vaapi")
                 .arg("-hwaccel_device")
-                .arg(&hw_settings.vaapi_device);
+                .arg(&params.hw_settings.vaapi_device);
         }
         HwAccelMode::Nvdec => {
             cmd.arg("-hwaccel").arg("nvdec");
@@ -519,7 +521,7 @@ pub fn extract_video_frame_webp(
         .arg("-ss")
         .arg(format_time(time_sec))
         .arg("-i")
-        .arg(source_path)
+        .arg(params.source_path)
         .arg("-frames:v")
         .arg("1")
         .arg("-vf")
@@ -527,7 +529,7 @@ pub fn extract_video_frame_webp(
         .arg("-c:v")
         .arg("libwebp")
         .arg("-quality")
-        .arg(webp_quality_arg(quality))
+        .arg(webp_quality_arg(params.quality))
         .arg("-f")
         .arg("image2pipe")
         .arg("-")

@@ -113,7 +113,7 @@ impl RenderTelemetry {
         self.render_sum_ms += timing.render_ms;
         self.total_sum_ms += timing.total_ms;
 
-        let should_log_periodic = self.frames % 120 == 0;
+        let should_log_periodic = self.frames.is_multiple_of(120);
         let should_log_slow =
             timing.total_ms >= 50.0 && self.last_log.elapsed() >= Duration::from_secs(1);
         if !should_log_periodic && !should_log_slow {

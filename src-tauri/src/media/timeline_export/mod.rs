@@ -127,16 +127,16 @@ pub fn export_timeline(
             .audio_sample_rate
             .unwrap_or(DEFAULT_AUDIO_SAMPLE_RATE)
             .clamp(8_000, 192_000);
-        if let Err(e) = render_scene_to_wav(
-            &scene.audio_layers,
-            &scene.audio_tracks,
+        if let Err(e) = render_scene_to_wav(crate::audio::mix::WavRenderParams {
+            scene: &scene.audio_layers,
+            tracks: &scene.audio_tracks,
             master_gain,
-            start,
-            audio_end,
+            start_sec: start,
+            end_sec: audio_end,
             sample_rate,
             output_channels,
-            &path,
-        )
+            target_path: &path,
+        })
         .context("failed to render native audio mix")
         {
             let _ = std::fs::remove_file(&path);

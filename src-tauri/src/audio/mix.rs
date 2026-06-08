@@ -10,34 +10,36 @@ use crate::audio::decode::decode_audio_chunk;
 use crate::audio::shared::{AudioRenderTarget, AudioShared, CHUNK_DURATION_SEC};
 use crate::monitor::scene::{AudioFadeCurve, SceneAudioLayer, SceneAudioTrack};
 
+pub struct WavRenderParams<'a> {
+    pub scene: &'a [SceneAudioLayer],
+    pub tracks: &'a [SceneAudioTrack],
+    pub master_gain: f64,
+    pub start_sec: f64,
+    pub end_sec: f64,
+    pub sample_rate: u32,
+    pub output_channels: usize,
+    pub target_path: &'a Path,
+}
+
 /// Renders the audio scene to an f32 WAV file.
 ///
 /// `output_channels` selects the file's channel layout (1 = mono, 2 = stereo).
 /// Export is intentionally limited to mono/stereo for now.
-pub fn render_scene_to_wav(
-    scene: &[SceneAudioLayer],
-    tracks: &[SceneAudioTrack],
-    master_gain: f64,
-    start_sec: f64,
-    end_sec: f64,
-    sample_rate: u32,
-    output_channels: usize,
-    target_path: &Path,
-) -> anyhow::Result<()> {
-    let target = AudioRenderTarget::export(sample_rate, output_channels);
-    let start = if start_sec.is_finite() {
-        start_sec.max(0.0)
+pub fn render_scene_to_wav(params: WavRenderParams<'_>) -> anyhow::Result<()> {
+    let target = AudioRenderTarget::export(params.sample_rate, params.output_channels);
+    let start = if params.start_sec.is_finite() {
+        params.start_sec.max(0.0)
     } else {
         0.0
     };
-    let end = if end_sec.is_finite() {
-        end_sec.max(start)
+    let end = if params.end_sec.is_finite() {
+        params.end_sec.max(start)
     } else {
         start
     };
     let estimated_frames = ((end - start) * target.sample_rate as f64).round().max(1.0) as u64;
-    let mut file = std::fs::File::create(target_path)
-        .with_context(|| format!("create audio wav {}", target_path.display()))?;
+    let mut file = std::fs::File::create(params.target_path)
+        .with_context(|| format!("create audio wav {}", params.target_path.display()))?;
 
     // Write placeholder header (will be patched after we know actual size).
     write_wav_f32_header_placeholder(&mut file, target.sample_rate, target.channels as u16)?;
@@ -52,9 +54,9 @@ pub fn render_scene_to_wav(
         let chunk_duration = chunk_frames as f64 / target.sample_rate as f64;
         let chunk_start = start + written_frames as f64 / target.sample_rate as f64;
         let chunk = mix_chunk(
-            scene,
-            tracks,
-            master_gain,
+            params.scene,
+            params.tracks,
+            params.master_gain,
             chunk_start,
             chunk_duration,
             target,
@@ -1085,7 +1087,17 @@ mod tests {
         let tmp =
             std::env::temp_dir().join(format!("fastcat-audit-wav-test-{}.wav", std::process::id()));
         let l = layer();
-        render_scene_to_wav(&[l], &[], 1.0, 0.0, 0.01, 48000, 1, &tmp).unwrap();
+        render_scene_to_wav(WavRenderParams {
+            scene: &[l],
+            tracks: &[],
+            master_gain: 1.0,
+            start_sec: 0.0,
+            end_sec: 0.01,
+            sample_rate: 48000,
+            output_channels: 1,
+            target_path: &tmp,
+        })
+        .unwrap();
 
         let bytes = std::fs::read(&tmp).unwrap();
         assert!(bytes.len() >= 44);

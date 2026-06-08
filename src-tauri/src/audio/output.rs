@@ -298,10 +298,12 @@ pub(crate) fn write_output<T: OutputSample>(
         return;
     }
 
+    const AUDIO_CALLBACK_TEMP_CAPACITY: usize = 131072;
+
     thread_local! {
         static TEMP_BUF: std::cell::RefCell<Vec<f32>> = {
-            let mut v = Vec::with_capacity(131072);
-            v.resize(131072, 0.0);
+            let mut v = Vec::with_capacity(AUDIO_CALLBACK_TEMP_CAPACITY);
+            v.resize(AUDIO_CALLBACK_TEMP_CAPACITY, 0.0);
             std::cell::RefCell::new(v)
         };
     }

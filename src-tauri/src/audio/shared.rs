@@ -293,7 +293,7 @@ mod tests {
     #[test]
     fn timing_sig_ignores_mix_params_but_reacts_to_position() {
         let base = layer();
-        let sig = compute_timing_sig(&[base.clone()]);
+        let sig = compute_timing_sig(std::slice::from_ref(&base));
 
         // Pure mix-param edits must NOT change the signature (no ring flush).
         let mut gained = base.clone();

@@ -38,7 +38,7 @@ pub mod peaks;
 
 mod clock;
 mod decode;
-mod mix;
+pub mod mix;
 mod output;
 mod producer;
 mod resample;

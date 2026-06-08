@@ -21,6 +21,12 @@ pub struct SvgRasterizer {
     svg_cache: Mutex<lru::LruCache<(PathBuf, u32), SvgCacheEntry>>,
 }
 
+impl Default for SvgRasterizer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl SvgRasterizer {
     pub fn new() -> Self {
         Self {

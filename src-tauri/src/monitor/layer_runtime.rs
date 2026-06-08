@@ -277,8 +277,16 @@ mod tests {
             .parent()
             .unwrap()
             .join("test/fixtures/media/sample-1s-720p.mp4");
-        let pump = DecodePump::open(&fixture, None, None, None, None, HwAccelMode::None, None)
-            .expect("open fixture decoder");
+        let pump = DecodePump::open(crate::media::decode_thread::DecodeOpenParams {
+            path: &fixture,
+            max_output_long_edge: None,
+            on_frame_decoded: None,
+            device: None,
+            queue: None,
+            hw_mode: HwAccelMode::None,
+            vaapi_device: None,
+        })
+        .expect("open fixture decoder");
         let media_size = (pump.info.width, pump.info.height);
         let rotation = pump.info.rotation;
         VideoLayerRt::new(pump, media_size, rotation)

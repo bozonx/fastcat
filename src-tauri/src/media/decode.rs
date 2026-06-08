@@ -8,11 +8,8 @@
 
 use anyhow::{anyhow, Context, Result};
 use ffmpeg_next as ffmpeg;
-use std::collections::HashMap;
 use std::path::{Path, PathBuf};
-use std::sync::{Arc, OnceLock};
-
-use parking_lot::Mutex;
+use std::sync::OnceLock;
 
 use super::ffmpeg_utils::is_quarter_turn;
 use super::hwaccel::{init_hwaccel_context, try_transfer_to_cpu, HwAccelContext};
@@ -37,7 +34,7 @@ pub struct VideoFrame {
     pub yuv: Option<YuvFrame>,
     pub pts_sec: f64,
     pub texture: Option<wgpu::Texture>,
-    pub texture_pool: Option<Arc<Mutex<HashMap<(u32, u32), Vec<wgpu::Texture>>>>>,
+    pub texture_pool: Option<super::GpuTexturePool>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -965,7 +962,7 @@ mod tests {
 
     #[test]
     fn ffmpeg_next_decoder_reads_alpha_webm() {
-        let _ = init_ffmpeg().unwrap();
+        init_ffmpeg().unwrap();
         let fixture = Path::new(env!("CARGO_MANIFEST_DIR"))
             .parent()
             .unwrap()

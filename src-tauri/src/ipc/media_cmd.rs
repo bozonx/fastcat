@@ -116,23 +116,9 @@ impl NativeMediaService {
 
     pub fn extract_video_frame_webp(
         &self,
-        source_path: &std::path::Path,
-        time_sec: f64,
-        position_fraction: Option<f64>,
-        max_width: u32,
-        max_height: u32,
-        quality: f32,
-        hw: crate::FfmpegHardwareSettings,
+        params: crate::media::processing::ExtractWebpParams<'_>,
     ) -> anyhow::Result<Vec<u8>> {
-        extract_video_frame_webp(
-            source_path,
-            time_sec,
-            position_fraction,
-            max_width,
-            max_height,
-            quality,
-            hw,
-        )
+        extract_video_frame_webp(params)
     }
 
     pub fn extract_video_frame_webps(
@@ -310,15 +296,15 @@ pub async fn native_video_frame_webp(
     let source_path = PathBuf::from(source_path);
     let hw = hw_settings.read().clone();
     tokio::task::spawn_blocking(move || {
-        extract_video_frame_webp(
-            &source_path,
+        extract_video_frame_webp(crate::media::processing::ExtractWebpParams {
+            source_path: &source_path,
             time_sec,
             position_fraction,
             max_width,
             max_height,
             quality,
-            hw,
-        )
+            hw_settings: hw,
+        })
     })
     .await
     .map_err(|e| e.to_string())?
