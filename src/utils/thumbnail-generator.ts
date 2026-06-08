@@ -17,6 +17,9 @@ import { isTauriRuntime } from '~/utils/runtime';
 import { getNativeFileHandlePath, nativeVideoFrameWebps } from '~/utils/tauri-media-processing';
 const log = createDevLogger('thumbnail-generator');
 const CLIP_THUMBNAIL_HASH_VERSION = 2;
+const NATIVE_THUMBNAIL_BATCH_SIZE = 128;
+const NATIVE_THUMBNAIL_SEEK_THRESHOLD_SECONDS = 1;
+const WORKER_THUMBNAIL_BATCH_SIZE = 32;
 
 export interface ThumbnailTask extends BaseThumbnailTask {
   duration: number; // video duration in seconds
@@ -469,10 +472,6 @@ class ThumbnailGenerator extends BaseThumbnailGenerator<ThumbnailTask, Map<numbe
     const vfs = useVfs();
     const vfsPath = getTimelineThumbnailVfsPath(task.projectId, task.id);
     const attemptedMissingTimes = new Set<number>();
-    // Larger chunks dramatically cut per-call demuxer setup overhead.
-    // The worker still checks cancellation between samples inside the chunk.
-    const chunkSize = 32;
-
     try {
       while (!this.isCancelled(task.id)) {
         const requestedTimes = this.getRequestedTimes(task);
@@ -491,6 +490,9 @@ class ThumbnailGenerator extends BaseThumbnailGenerator<ThumbnailTask, Map<numbe
 
         const totalFrames = requestedTimes.length;
         let framesProcessed = requestedTimes.length - missingTimesS.length;
+        const chunkSize = nativeSourcePath
+          ? NATIVE_THUMBNAIL_BATCH_SIZE
+          : WORKER_THUMBNAIL_BATCH_SIZE;
 
         for (let i = 0; i < missingTimesS.length && !this.isCancelled(task.id); i += chunkSize) {
           const chunkTimes = missingTimesS.slice(i, i + chunkSize);
@@ -504,6 +506,7 @@ class ThumbnailGenerator extends BaseThumbnailGenerator<ThumbnailTask, Map<numbe
                   maxWidth: TIMELINE_CLIP_THUMBNAILS.WIDTH,
                   maxHeight: TIMELINE_CLIP_THUMBNAILS.HEIGHT,
                   quality: TIMELINE_CLIP_THUMBNAILS.QUALITY,
+                  seekThresholdSec: NATIVE_THUMBNAIL_SEEK_THRESHOLD_SECONDS,
                 })
               : await client!.extractVideoFrameBlobs(file!, {
                   timesS: chunkTimes,

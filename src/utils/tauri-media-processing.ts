@@ -240,6 +240,7 @@ export async function nativeVideoFrameWebps(params: {
   maxWidth: number;
   maxHeight: number;
   quality: number;
+  seekThresholdSec?: number;
 }): Promise<(Blob | null)[]> {
   const packedBytes = toUint8Array(
     await invoke<NativeBytePayload>('native_video_frame_webps', {
@@ -248,6 +249,7 @@ export async function nativeVideoFrameWebps(params: {
       maxWidth: params.maxWidth,
       maxHeight: params.maxHeight,
       quality: params.quality,
+      seekThresholdSec: params.seekThresholdSec ?? null,
     }),
   );
 

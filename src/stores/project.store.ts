@@ -513,6 +513,11 @@ export const useProjectStore = defineStore('project', () => {
       }
     }
 
+    // Restore the last opened folder for each file-manager instance now that the
+    // project is fully open (routing/topology ready). Must happen before the save
+    // below so it doesn't overwrite the stored paths with the still-null selection.
+    await projectSettingsStore.restoreFileManagerFolders();
+
     if (!isReadOnly.value) {
       await saveProjectSettings();
     }

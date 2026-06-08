@@ -151,10 +151,11 @@ impl NativeMediaService {
         max_width: u32,
         max_height: u32,
         quality: f32,
+        seek_threshold_sec: Option<f64>,
         hw_settings: &crate::FfmpegHardwareSettings,
     ) -> anyhow::Result<Vec<u8>> {
         let frames =
-            extract_video_frame_webps(source_path, times_sec, max_width, max_height, quality, hw_settings)?;
+            extract_video_frame_webps(source_path, times_sec, max_width, max_height, quality, seek_threshold_sec, hw_settings)?;
         Ok(pack_webp_frames(frames))
     }
 
@@ -400,6 +401,7 @@ pub async fn native_video_frame_webps(
     max_width: u32,
     max_height: u32,
     quality: f32,
+    seek_threshold_sec: Option<f64>,
     hw_settings: State<'_, parking_lot::RwLock<crate::FfmpegHardwareSettings>>,
 ) -> Result<Vec<u8>, String> {
     if times_sec.len() > 1000 {
@@ -414,7 +416,15 @@ pub async fn native_video_frame_webps(
     let source_path = PathBuf::from(source_path);
     let hw = hw_settings.read().clone();
     let frames = tokio::task::spawn_blocking(move || {
-        extract_video_frame_webps(&source_path, &times_sec, max_width, max_height, quality, &hw)
+        extract_video_frame_webps(
+            &source_path,
+            &times_sec,
+            max_width,
+            max_height,
+            quality,
+            seek_threshold_sec,
+            &hw,
+        )
     })
     .await
     .map_err(|e| e.to_string())?

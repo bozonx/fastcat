@@ -23,7 +23,7 @@ const DEFAULT_VIDEO_HEIGHT: u32 = 1080;
 const DEFAULT_VIDEO_FPS: f64 = 30.0;
 const DEFAULT_VIDEO_BITRATE_BPS: u32 = 5_000_000;
 const DEFAULT_WEBP_QUALITY: f32 = 75.0;
-const SEEK_THRESHOLD_SEC: f64 = 5.0;
+const THUMBNAIL_SEEK_THRESHOLD_SEC: f64 = 1.0;
 
 #[derive(Clone, Default)]
 pub struct NativeMediaTasks {
@@ -553,7 +553,7 @@ fn build_convert_ffmpeg_args(
         "audio" => {
             args.extend([
                 "-map".into(),
-                "0:a:0".into(),
+                "0:a:0?".into(),
                 "-vn".into(),
                 "-sn".into(),
                 "-dn".into(),
@@ -679,6 +679,7 @@ pub fn extract_video_frame_webps(
     max_width: u32,
     max_height: u32,
     quality: f32,
+    seek_threshold_sec: Option<f64>,
     hw_settings: &crate::FfmpegHardwareSettings,
 ) -> Result<Vec<Option<Vec<u8>>>> {
     let mut sorted_times: Vec<(usize, f64)> = times_sec.iter().copied().enumerate().collect();
@@ -706,11 +707,10 @@ pub fn extract_video_frame_webps(
     } else {
         DEFAULT_WEBP_QUALITY
     };
+    let seek_threshold_sec = sanitize_seek_threshold_sec(seek_threshold_sec);
 
     for (orig_idx, target_time) in sorted_times {
-        let needs_seek = last_pts < 0.0
-            || target_time < last_pts
-            || (target_time - last_pts) > SEEK_THRESHOLD_SEC;
+        let needs_seek = should_seek_for_thumbnail_time(last_pts, target_time, seek_threshold_sec);
         if needs_seek {
             if let Err(e) = decoder.seek(target_time) {
                 log::warn!(
@@ -810,6 +810,16 @@ pub fn extract_video_frame_webps(
     }
 
     Ok(results)
+}
+
+fn sanitize_seek_threshold_sec(value: Option<f64>) -> f64 {
+    value
+        .filter(|v| v.is_finite() && *v >= 0.0)
+        .unwrap_or(THUMBNAIL_SEEK_THRESHOLD_SEC)
+}
+
+fn should_seek_for_thumbnail_time(last_pts: f64, target_time: f64, threshold_sec: f64) -> bool {
+    last_pts < 0.0 || target_time < last_pts || (target_time - last_pts) > threshold_sec
 }
 
 /// Kill a job if ffmpeg makes no progress (no stderr output) for this long. A
@@ -1017,6 +1027,33 @@ mod tests {
     }
 
     #[test]
+    fn thumbnail_seek_strategy_seeks_for_sparse_timeline_grid() {
+        assert!(should_seek_for_thumbnail_time(-1.0, 0.0, 1.0));
+        assert!(should_seek_for_thumbnail_time(0.0, 4.0, 1.0));
+        assert!(should_seek_for_thumbnail_time(8.0, 4.0, 1.0));
+    }
+
+    #[test]
+    fn thumbnail_seek_strategy_decodes_forward_for_dense_times() {
+        assert!(!should_seek_for_thumbnail_time(1.0, 1.5, 1.0));
+        assert!(!should_seek_for_thumbnail_time(1.0, 2.0, 1.0));
+    }
+
+    #[test]
+    fn thumbnail_seek_threshold_defaults_to_thumbnail_value() {
+        assert_eq!(sanitize_seek_threshold_sec(None), THUMBNAIL_SEEK_THRESHOLD_SEC);
+        assert_eq!(
+            sanitize_seek_threshold_sec(Some(f64::NAN)),
+            THUMBNAIL_SEEK_THRESHOLD_SEC
+        );
+        assert_eq!(
+            sanitize_seek_threshold_sec(Some(-1.0)),
+            THUMBNAIL_SEEK_THRESHOLD_SEC
+        );
+        assert_eq!(sanitize_seek_threshold_sec(Some(0.5)), 0.5);
+    }
+
+    #[test]
     fn ffmpeg_video_codec_maps_browser_codec_strings() {
         assert_eq!(ffmpeg_video_codec("avc1.64001f"), "libx264");
         assert_eq!(ffmpeg_video_codec("av01.0.05M.08"), "libsvtav1");
@@ -1183,6 +1220,7 @@ mod tests {
         )
         .unwrap();
 
+        assert!(args.windows(2).any(|pair| pair == ["-map", "0:a:0?"]));
         assert!(args.windows(2).any(|pair| pair == ["-c:a", "flac"]));
         assert!(!args.contains(&"-b:a".to_string()));
     }

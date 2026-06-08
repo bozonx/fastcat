@@ -40,18 +40,6 @@ function computeStatus(
   if (meta?.error || isFailed) return 'corrupt';
 
   if (!meta) {
-    if (mediaType === 'video') {
-      // eslint-disable-next-line no-console
-      console.warn('[compat-debug] video CHECKING', {
-        path,
-        cacheKey,
-        externalKey,
-        hasMetaUnderCacheKey: cacheKey in mediaMetadata,
-        hasMetaUnderExternalKey: externalKey in mediaMetadata,
-        isLoading,
-        isFailed,
-      });
-    }
     if (isLoading) return 'checking';
     const isRemote = entry.source === 'remote';
     const isExternal = path.startsWith('/') || /^[A-Za-z]:[\\/]/.test(path);

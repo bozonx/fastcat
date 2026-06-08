@@ -1,6 +1,6 @@
 use anyhow::{anyhow, Context, Result};
 use parking_lot::Mutex;
-use std::collections::{HashMap, VecDeque};
+use std::collections::{HashMap, HashSet, VecDeque};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use vello::peniko::{Blob, Color, ImageAlphaType, ImageData, ImageFormat as VelloImageFormat};
@@ -362,15 +362,32 @@ pub(crate) fn build_export_scene(
     let scene_w = scene.width.max(1);
     let scene_h = scene.height.max(1);
     let svg_long_edge = target_size.0.max(target_size.1).max(1);
-    let mut active: Vec<&SceneLayer> = scene
-        .layers
-        .iter()
-        .filter(|layer| layer.covers(time_sec))
-        .collect();
-    active.sort_by_key(|layer| layer.z);
 
-    let mut layers = Vec::with_capacity(active.len());
-    for layer in active {
+    let mut active_indices = HashSet::new();
+    for i in 0..scene.layers.len() {
+        if scene.layers[i].covers(time_sec) {
+            active_indices.insert(i);
+            if let Some(t_in) = &scene.layers[i].transition_in {
+                let local_t = time_sec - scene.layers[i].timeline_start_sec;
+                if local_t < t_in.duration_sec && local_t >= 0.0 {
+                    if let Some(from_id) = &t_in.from_layer_id {
+                        if let Some(from_idx) =
+                            (0..scene.layers.len()).find(|&idx| &scene.layers[idx].id == from_id)
+                        {
+                            active_indices.insert(from_idx);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    let mut indices: Vec<usize> = active_indices.into_iter().collect();
+    indices.sort_by_key(|&i| scene.layers[i].z);
+
+    let mut layers = Vec::with_capacity(indices.len());
+    for i in indices {
+        let layer = &scene.layers[i];
         if layer.opacity.clamp(0.0, 1.0) <= 0.0 {
             continue;
         }
@@ -606,5 +623,87 @@ mod tests {
         assert!((webp_quality_percent(2.0) - 100.0).abs() < 0.01);
         assert!((webp_quality_percent(-1.0) - 0.0).abs() < 0.01);
         assert!((webp_quality_percent(f32::NAN) - 70.0).abs() < 0.01);
+    }
+
+    #[test]
+    fn export_scene_includes_from_layer_during_transition_in() {
+        let from = SceneLayer {
+            id: "from".into(),
+            kind: LayerKind::Background,
+            path: String::new(),
+            timeline_start_sec: 0.0,
+            timeline_end_sec: 5.0,
+            source_start_sec: 0.0,
+            source_range_duration_sec: 5.0,
+            speed: 1.0,
+            freeze_frame_source_sec: None,
+            source_orientation: None,
+            z: 0,
+            opacity: 1.0,
+            blend_mode: crate::compositor::scene::BlendMode::Normal,
+            background_color: Some("#000000".into()),
+            text: None,
+            style: None,
+            shape_type: None,
+            fill_color: None,
+            stroke_color: None,
+            stroke_width: None,
+            shape_config: None,
+            transform: None,
+            transition_in: None,
+            transition_out: None,
+            effects: Vec::new(),
+        };
+        let to = SceneLayer {
+            id: "to".into(),
+            kind: LayerKind::Background,
+            path: String::new(),
+            timeline_start_sec: 2.0,
+            timeline_end_sec: 7.0,
+            source_start_sec: 0.0,
+            source_range_duration_sec: 5.0,
+            speed: 1.0,
+            freeze_frame_source_sec: None,
+            source_orientation: None,
+            z: 1,
+            opacity: 1.0,
+            blend_mode: crate::compositor::scene::BlendMode::Normal,
+            background_color: Some("#ffffff".into()),
+            text: None,
+            style: None,
+            shape_type: None,
+            fill_color: None,
+            stroke_color: None,
+            stroke_width: None,
+            shape_config: None,
+            transform: None,
+            transition_in: Some(crate::monitor::scene::SceneTransition {
+                transition_type: "dissolve".into(),
+                duration_sec: 1.0,
+                curve: None,
+                from_layer_id: Some("from".into()),
+                spec: None,
+            }),
+            transition_out: None,
+            effects: Vec::new(),
+        };
+        let scene = MonitorScene {
+            layers: vec![from, to],
+            audio_layers: vec![],
+            audio_tracks: vec![],
+            audio_master_gain: 1.0,
+            audio_master_muted: false,
+            width: 1920,
+            height: 1080,
+            preview_scale: None,
+            preview_fps: 30.0,
+            preview_sync_mode: crate::monitor::scene::PreviewSyncMode::Balanced,
+        };
+        let mut cache = VideoDecoderCache::new();
+        let export = build_export_scene(&scene, 2.5, (1920, 1080), &mut cache, None).unwrap();
+
+        let ids: Vec<_> = export.layers.iter().map(|l| l.id.as_str()).collect();
+        assert!(ids.contains(&"from"), "from_layer must be present during transition");
+        assert!(ids.contains(&"to"), "to_layer must be present during transition");
     }
 }

@@ -5,6 +5,7 @@ import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useProjectStore } from '~/stores/project.store';
 import { getClipThumbnailsHash, thumbnailGenerator } from '~/utils/thumbnail-generator';
 import { getFileThumbnailHash, fileThumbnailGenerator } from '~/utils/file-thumbnail-generator';
+import { nativeVideoFrameWebps } from '~/utils/tauri-media-processing';
 
 const mockFile = new File([], 'test.mp4');
 const mockVfs = vi.hoisted(() => ({
@@ -460,6 +461,30 @@ describe('Thumbnail Generators', () => {
 
       expect(complete).toHaveBeenCalled();
       expect(mockVfs.writeFile).toHaveBeenCalled();
+    });
+
+    it('should batch native clip thumbnails in larger chunks', async () => {
+      const requestedTimesS = Array.from({ length: 130 }, (_, index) => index * 4);
+
+      thumbnailGenerator.addTask({
+        id: 'tauri-clip-large-batch',
+        projectId: 'p1',
+        projectRelativePath: 'v1.mp4',
+        duration: 520,
+        requestedTimesS,
+      });
+
+      await new Promise((resolve) => setTimeout(resolve, 10));
+
+      expect(nativeVideoFrameWebps).toHaveBeenCalledTimes(2);
+      expect(vi.mocked(nativeVideoFrameWebps).mock.calls[0]?.[0]).toMatchObject({
+        timesSec: requestedTimesS.slice(0, 128),
+        seekThresholdSec: 1,
+      });
+      expect(vi.mocked(nativeVideoFrameWebps).mock.calls[1]?.[0]).toMatchObject({
+        timesSec: requestedTimesS.slice(128),
+        seekThresholdSec: 1,
+      });
     });
 
     it('should generate file thumbnails successfully when workspaceHandle is null in Tauri', async () => {

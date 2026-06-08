@@ -414,25 +414,12 @@ export const useProjectSettingsStore = defineStore('projectSettings', () => {
       ];
       projectTabsStore.syncHiddenStaticTabsWithLayout(allPanels);
 
-      const internalFmStores = {
-        editor: useFileManagerStore(),
-        filesPage: useFilesPageFileManagerStore(),
-        'filesPage-sidebar': useFilesPageSidebarFileManagerStore(),
-      };
-
-      const vfs = useVfs();
-      for (const [key, store] of Object.entries(internalFmStores)) {
-        const savedPath = settings.ui.fileManagerPaths[key];
-        if (savedPath && (!store.selectedFolder || store.selectedFolder.path !== savedPath)) {
-          try {
-            if (await vfs.exists(savedPath)) {
-              store.openFolderByPath(savedPath);
-            }
-          } catch (err) {
-            log.warn(`Failed to check VFS path existence: ${savedPath}`, err);
-          }
-        }
-      }
+      // NOTE: restoring the per-instance file-manager folders is deferred to
+      // `restoreFileManagerFolders()`, which `project.store` calls once the
+      // project is fully open (routing + storage topology ready, browser panels
+      // mounted). Doing it here — while `loadProjectSettings` runs concurrently
+      // with meta/topology setup during open — meant the restored folder could be
+      // dropped or never loaded, so the last opened folder did not come back.
     } catch (e: unknown) {
       if ((e as { name?: unknown }).name === 'NotFoundError') {
         projectSettings.value = createDefaultProjectSettings(workspaceStore.userSettings);
@@ -445,6 +432,40 @@ export const useProjectSettingsStore = defineStore('projectSettings', () => {
       isLoadingProjectSettings.value = false;
       autoSave.reset();
       markProjectSettingsAsCleanForCurrentRevision();
+    }
+  }
+
+  /**
+   * Re-open the per-instance file-manager folder that was active at last save.
+   *
+   * Called by `project.store` after the project is fully open so the VFS router /
+   * storage topology are ready and the existence check + subsequent directory
+   * load actually resolve. Must run before the open-flow's final settings save,
+   * otherwise the save would persist the (still-null) selected folder and erase
+   * the stored path.
+   */
+  async function restoreFileManagerFolders() {
+    const fileManagerPaths = projectSettings.value.ui.fileManagerPaths;
+    if (!fileManagerPaths) return;
+
+    const internalFmStores = {
+      editor: useFileManagerStore(),
+      filesPage: useFilesPageFileManagerStore(),
+      'filesPage-sidebar': useFilesPageSidebarFileManagerStore(),
+    };
+
+    const vfs = useVfs();
+    for (const [key, store] of Object.entries(internalFmStores)) {
+      const savedPath = fileManagerPaths[key];
+      if (savedPath && (!store.selectedFolder || store.selectedFolder.path !== savedPath)) {
+        try {
+          if (await vfs.exists(savedPath)) {
+            store.openFolderByPath(savedPath);
+          }
+        } catch (err) {
+          log.warn(`Failed to check VFS path existence: ${savedPath}`, err);
+        }
+      }
     }
   }
 
@@ -573,6 +594,7 @@ export const useProjectSettingsStore = defineStore('projectSettings', () => {
     setContext,
     closeProjectSettings,
     loadProjectSettings,
+    restoreFileManagerFolders,
     saveProjectSettings,
     requestProjectSettingsSave,
     saveInitialProjectSettingsForNewProject,
