@@ -51,28 +51,25 @@ impl CpalAudioBackend {
         let device = host
             .default_output_device()
             .ok_or_else(|| anyhow!("no default audio output device"))?;
-        let supported = device
-            .default_output_config()
-            .context("default output config failed")?;
+        let supported = Self::choose_output_config(&device)?;
         let sample_rate = supported.sample_rate();
         let mut config: StreamConfig = supported.clone().into();
         let channels = config.channels.max(1);
 
-        // Pick the device buffer size. Under PipeWire's ALSA-compat shim the
-        // default quantum is often tiny (≈256–512 frames) and xruns whenever the
-        // 4K-decode/compositor load briefly preempts cpal's (non-RT) ALSA stream
-        // thread — heard as the persistent crackle. A larger device buffer gives
-        // that thread more slack, and our 800 ms ring upstream hides the added
-        // latency. So: honour the user's request but CLAMP it into the supported
-        // range instead of silently discarding an out-of-range value (the old
-        // behaviour, which fell back to a tiny Default); when nothing is
-        // requested, ask for a generous default rather than the device minimum.
-        const DEFAULT_BUFFER_FRAMES: u32 = 2048;
-        match supported.buffer_size() {
-            SupportedBufferSize::Range { min, max } => {
-                let requested = settings.buffer_size.unwrap_or(DEFAULT_BUFFER_FRAMES);
+        // Buffer size. Only override cpal's negotiated default when the user
+        // explicitly asks for a size — and even then only clamp it into the
+        // supported range. Forcing a `BufferSize::Fixed` that doesn't match the
+        // audio server's native period (PipeWire here runs a 1024-frame period at
+        // 48000) makes the ALSA-shim clock free-run slightly off the graph clock:
+        // the callback is then driven a few % faster than the period implies, so
+        // playback is consistently sped up/pitched with no underrun to flag it.
+        // Our 800 ms ring already absorbs scheduler jitter, so we don't need a
+        // large device buffer; leaving cpal's default keeps the device clock and
+        // the graph clock locked.
+        match (settings.buffer_size, supported.buffer_size()) {
+            (Some(requested), SupportedBufferSize::Range { min, max }) => {
                 let clamped = requested.clamp(*min, *max);
-                if Some(clamped) != settings.buffer_size && settings.buffer_size.is_some() {
+                if clamped != requested {
                     log::warn!(
                         "[audio] requested buffer size {requested} clamped to {clamped} \
                          (device supports {min}–{max})"
@@ -80,13 +77,12 @@ impl CpalAudioBackend {
                 }
                 config.buffer_size = BufferSize::Fixed(clamped);
             }
-            SupportedBufferSize::Unknown => {
-                // Device won't report a range; leave cpal's default and just note it.
-                if settings.buffer_size.is_some() {
-                    log::warn!(
-                        "[audio] device reports no buffer-size range; using backend default"
-                    );
-                }
+            (Some(_), SupportedBufferSize::Unknown) => {
+                log::warn!("[audio] device reports no buffer-size range; using backend default");
+            }
+            (None, _) => {
+                // No explicit request → keep cpal's default period so the device
+                // clock stays locked to the audio-server graph clock.
             }
         }
 
@@ -105,6 +101,64 @@ impl CpalAudioBackend {
             sample_rate,
             channels,
         })
+    }
+
+    fn choose_output_config(
+        device: &cpal::Device,
+    ) -> Result<cpal::SupportedStreamConfig> {
+        let default = device
+            .default_output_config()
+            .context("default output config failed")?;
+
+        // cpal's `default_output_config()` can report a stale 44100 Hz on systems
+        // whose audio graph actually runs at 48000 — notably PipeWire with
+        // `clock.allowed-rates = [48000]`. Opening a 44100 stream there plays
+        // ~8.8% FAST and pitched up, because the 48000 graph consumes our
+        // 44100-rate frames one-for-one (it won't/can't resample to a rate it does
+        // not allow). So prefer the graph's native 48000 when the device supports
+        // it: playback speed is correct and a 48000 source needs no resampling.
+        const PREFERRED_RATE: u32 = 48_000;
+        if default.sample_rate() == PREFERRED_RATE {
+            return Ok(default);
+        }
+
+        let ranges = match device.supported_output_configs() {
+            Ok(ranges) => ranges,
+            Err(_) => return Ok(default),
+        };
+        let mut fallback: Option<cpal::SupportedStreamConfig> = None;
+        for range in ranges {
+            if range.channels() != default.channels() {
+                continue;
+            }
+            if range.min_sample_rate() <= PREFERRED_RATE
+                && PREFERRED_RATE <= range.max_sample_rate()
+            {
+                let format = range.sample_format();
+                let cfg = range.with_sample_rate(PREFERRED_RATE);
+                // Prefer one with the device's default sample format (fewest
+                // conversions); otherwise keep the first match as a fallback.
+                if format == default.sample_format() {
+                    log::info!(
+                        "[audio] device default reported {} Hz but graph supports {PREFERRED_RATE} \
+                         Hz; opening {PREFERRED_RATE} Hz to match the audio graph (avoids the \
+                         resampled speed-up/pitch shift)",
+                        default.sample_rate(),
+                    );
+                    return Ok(cfg);
+                }
+                fallback.get_or_insert(cfg);
+            }
+        }
+        if let Some(cfg) = fallback {
+            log::info!(
+                "[audio] opening {PREFERRED_RATE} Hz output (device default {} Hz) to match the \
+                 audio graph",
+                default.sample_rate(),
+            );
+            return Ok(cfg);
+        }
+        Ok(default)
     }
 
     fn select_host(settings: &crate::audio::engine::AudioEngineSettings) -> cpal::Host {

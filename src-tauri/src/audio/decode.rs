@@ -10,7 +10,7 @@ use crate::audio::resample::{
 };
 use crate::audio::shared::{
     decoded_cache_key, AudioRenderTarget, AudioShared, AudioSourceMetadata, CachedAudioDecoder,
-    MAX_CACHEABLE_FILE_BYTES,
+    MAX_CACHEABLE_FILE_BYTES, MAX_DECODED_CACHE_BYTES,
 };
 
 /// Fraction of the current source chunk tolerated as scheduling jitter before
@@ -583,6 +583,19 @@ pub(crate) fn decode_audio_chunk(params: DecodeAudioChunkParams<'_>) -> Result<V
                     state.cache_decoded(cache_key, shared_samples.clone());
                     Some(shared_samples)
                 } else {
+                    // Streaming clip (large container or rate mismatch). Decoding it
+                    // inline on the realtime producer thread spikes (a 127ms AAC
+                    // decode under 1080p video load) and starves both the ring and
+                    // the cpal callback → crackle. Kick off ONE background decode to
+                    // PCM and keep streaming this chunk; once it lands in the cache,
+                    // later chunks become a cheap memcpy with no spikes.
+                    maybe_spawn_background_precache(
+                        shared,
+                        path,
+                        sample_rate,
+                        output_channels,
+                        &cache_key,
+                    );
                     None
                 }
             }
@@ -617,6 +630,104 @@ pub(crate) fn decode_audio_chunk(params: DecodeAudioChunkParams<'_>) -> Result<V
         reverse,
         shared,
     })
+}
+
+/// Spawns (at most once per cache key) a background thread that decodes a whole
+/// streaming audio track to PCM and stores it in `decoded_cache`. Runs OFF the
+/// realtime producer thread so a slow decode can never miss the audio deadline.
+/// The cheap part (set checks + insert) runs inline; the expensive format open +
+/// decode all happen on the spawned thread.
+fn maybe_spawn_background_precache(
+    shared: &Arc<(Mutex<AudioShared>, Condvar)>,
+    path: &str,
+    sample_rate: u32,
+    output_channels: usize,
+    cache_key: &str,
+) {
+    {
+        let mut state = shared.0.lock();
+        if state.decoded_cache.contains(cache_key)
+            || state.decoding_in_flight.contains(cache_key)
+            || state.precache_skip.contains(cache_key)
+        {
+            return;
+        }
+        state.decoding_in_flight.insert(cache_key.to_string());
+    }
+
+    let shared_thread = shared.clone();
+    let path_thread = path.to_string();
+    let cache_key_thread = cache_key.to_string();
+    let spawned = std::thread::Builder::new()
+        .name("fastcat-audio-precache".into())
+        .spawn(move || {
+            background_precache(
+                shared_thread,
+                path_thread,
+                sample_rate,
+                output_channels,
+                cache_key_thread,
+            );
+        });
+    if spawned.is_err() {
+        // Spawn failed (e.g. thread limit); clear the in-flight marker so a later
+        // chunk can retry instead of streaming this file forever.
+        shared.0.lock().decoding_in_flight.remove(cache_key);
+        log::warn!("[audio] failed to spawn background audio precache for {path}");
+    }
+}
+
+fn background_precache(
+    shared: Arc<(Mutex<AudioShared>, Condvar)>,
+    path: String,
+    sample_rate: u32,
+    output_channels: usize,
+    cache_key: String,
+) {
+    // Size-gate first so we never decode a multi-hour track into a giant transient
+    // buffer the cache would only reject. No declared frame count → skip (stream).
+    let too_big = match estimate_decoded_bytes(&path, sample_rate, output_channels) {
+        Some(bytes) => bytes > MAX_DECODED_CACHE_BYTES,
+        None => true,
+    };
+    if too_big {
+        let mut state = shared.0.lock();
+        state.decoding_in_flight.remove(&cache_key);
+        state.precache_skip.insert(cache_key);
+        return;
+    }
+
+    let result = decode_entire_file_symphonia(&path, sample_rate, output_channels);
+    let mut state = shared.0.lock();
+    state.decoding_in_flight.remove(&cache_key);
+    match result {
+        Ok(decoded) => {
+            log::info!(
+                "[audio] background-cached decoded audio: {path} ({} frames @ {sample_rate} Hz)",
+                decoded.len() / output_channels.max(1),
+            );
+            state.cache_decoded(cache_key, Arc::new(decoded));
+        }
+        Err(error) => {
+            log::warn!("[audio] background precache failed for {path}: {error:?}");
+            state.precache_skip.insert(cache_key);
+        }
+    }
+}
+
+/// Estimates the decoded PCM size (bytes) of a track at the target rate/channels
+/// from its declared frame count, without decoding. `None` if the track declares
+/// no frame count (then we don't risk a background full-decode).
+fn estimate_decoded_bytes(path: &str, target_rate: u32, output_channels: usize) -> Option<usize> {
+    let format = open_symphonia_format(path, "precache size estimate").ok()?;
+    let track = format
+        .tracks()
+        .iter()
+        .find(|t| t.codec_params.codec != symphonia::core::codecs::CODEC_TYPE_NULL)?;
+    let n_frames = track.codec_params.n_frames?;
+    let source_rate = track.codec_params.sample_rate.unwrap_or(target_rate).max(1);
+    let decoded_frames = (n_frames as f64 * target_rate as f64 / source_rate as f64).ceil() as usize;
+    Some(decoded_frames.saturating_mul(output_channels.max(1)).saturating_mul(std::mem::size_of::<f32>()))
 }
 
 fn is_audio_seek_past_end(error: &symphonia::core::errors::Error) -> bool {
@@ -750,9 +861,14 @@ mod tests {
                 channels: 1,
             })
         );
+        // The producer-thread call must be served by the STREAMING decoder (proof:
+        // a decoder was created for this layer), never by a synchronous whole-file
+        // decode that would block the realtime thread. A background precache may be
+        // spawned to fill `decoded_cache` later — that's off-thread and fine — so we
+        // assert the streaming path was taken rather than that the cache stays empty.
         assert!(
-            state.decoded_cache.is_empty(),
-            "rate-mismatched files must not use full-file cache on the producer thread"
+            state.decoders.contains_key("layer-8k"),
+            "rate-mismatched file must stream on the producer thread (decoder created)"
         );
         drop(state);
 

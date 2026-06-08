@@ -102,6 +102,13 @@ pub(crate) fn producer_loop(
     let mut chunks_discarded = 0u64;
     let mut ring_clears = 0u64;
 
+    // Effective output-rate check. The device must consume ~`sample_rate` frames
+    // per wall-second; if it consumes a different rate (e.g. the audio graph runs
+    // at 48000 while we opened 44100), every clip plays fast/slow and pitch-shifted
+    // with no underrun to flag it. Sample `clock.frames()` once a second and warn
+    // on >2% deviation. Resets (seek/arm zero the counter) are skipped.
+    let mut last_consumed: Option<(u64, std::time::Instant)> = None;
+
     while running.load(Ordering::Relaxed) {
         loop_iters += 1;
         {
@@ -112,6 +119,29 @@ pub(crate) fn producer_loop(
             }
         }
         if last_underrun_log.elapsed() >= Duration::from_secs(1) {
+            if clock.playing.load(Ordering::Acquire) {
+                let now = std::time::Instant::now();
+                let cur = clock.frames();
+                if let Some((prev, prev_t)) = last_consumed {
+                    let dt = now.duration_since(prev_t).as_secs_f64();
+                    if cur >= prev && dt > 0.5 {
+                        let effective = (cur - prev) as f64 / dt;
+                        let deviation = (effective - sample_rate as f64).abs() / sample_rate as f64;
+                        if deviation > 0.02 {
+                            log::warn!(
+                                "[audio] effective output rate {effective:.0} Hz differs from the \
+                                 opened {sample_rate} Hz by {:.1}% — the device/graph clock does \
+                                 not match the stream, so playback is sped up/slowed and pitch \
+                                 shifted. Open the output at the graph's native rate.",
+                                deviation * 100.0,
+                            );
+                        }
+                    }
+                }
+                last_consumed = Some((cur, now));
+            } else {
+                last_consumed = None;
+            }
             let events = clock.underrun_events.load(Ordering::SeqCst);
             // A seek/play calls `reset_frames`, zeroing the counters; rebase so we
             // don't go silent until the count climbs back past the old baseline.

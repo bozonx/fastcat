@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use crate::monitor::scene::{SceneAudioLayer, SceneAudioTrack};
 
@@ -134,6 +134,18 @@ pub(crate) struct AudioShared {
     /// iteration. This avoids a race between the main thread calling `clear()`
     /// while the producer is in the middle of `push_slice`.
     pub(crate) pending_ring_clear: bool,
+    /// Decoded-cache keys currently being decoded on a BACKGROUND thread. The
+    /// realtime producer must never decode a whole streaming file inline (a 127ms
+    /// AAC spike under 1080p decode load starves both the ring and the cpal
+    /// callback → crackle). When a streaming clip is first seen we spawn one
+    /// background decode and keep streaming until it lands in `decoded_cache`;
+    /// this set stops us from spawning a second thread for the same key.
+    pub(crate) decoding_in_flight: HashSet<String>,
+    /// Decoded-cache keys we deliberately will NOT background-cache (too large to
+    /// fit the cache budget, or no declared frame count to size-gate them). Kept
+    /// so the producer streams them forever instead of re-spawning a doomed decode
+    /// every chunk.
+    pub(crate) precache_skip: HashSet<String>,
 }
 
 pub(crate) fn decoded_cache_key(path: &str, sample_rate: u32, output_channels: usize) -> String {
@@ -158,6 +170,8 @@ impl Default for AudioShared {
             decoders: HashMap::new(),
             timing_sig: 0,
             pending_ring_clear: false,
+            decoding_in_flight: HashSet::new(),
+            precache_skip: HashSet::new(),
         }
     }
 }
