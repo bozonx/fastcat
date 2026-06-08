@@ -5,7 +5,13 @@ import {
 import type { WorkerTimelineClip } from '~/composables/timeline/export/types';
 import type { useProjectStore } from '~/stores/project.store';
 import type { useWorkspaceStore } from '~/stores/workspace.store';
-import type { ClipEffect, ClipTransform, TimelineDocument } from '~/timeline/types';
+import type {
+  ClipEffect,
+  ClipTransform,
+  TimelineBlendMode,
+  TimelineDocument,
+} from '~/timeline/types';
+import type { BlendMode } from '../../src-tauri/bindings/BlendMode';
 import type { MonitorScene } from '~/types/generated/native-monitor/MonitorScene';
 import type { SceneLayer } from '~/types/generated/native-monitor/SceneLayer';
 import type { SceneAudioLayer } from '~/types/generated/native-monitor/SceneAudioLayer';
@@ -78,6 +84,21 @@ function finite(value: unknown, fallback: number): number {
 
 function sanitizeVideoSpeed(value: unknown): number {
   return normalizeClipSpeed(value);
+}
+
+export function mapTimelineBlendModeToNative(mode: TimelineBlendMode | undefined): BlendMode {
+  switch (mode) {
+    case 'color-dodge':
+      return 'color_dodge';
+    case 'color-burn':
+      return 'color_burn';
+    case 'hard-light':
+      return 'hard_light';
+    case 'soft-light':
+      return 'soft_light';
+    default:
+      return mode ?? 'normal';
+  }
 }
 
 function sanitizeAudioSpeed(value: unknown): number {
@@ -377,7 +398,7 @@ function buildBaseLayer(params: {
     source_orientation: String(clip.sourceOrientation ?? 'auto'),
     z,
     opacity: Math.max(0, Math.min(1, finite(clip.opacity, 1))),
-    blend_mode: clip.blendMode ?? 'normal',
+    blend_mode: mapTimelineBlendModeToNative(clip.blendMode),
     effects: buildNativeEffectSpecs(clip.effects) ?? [],
     transform: buildNativeTransform(clip.transform, sceneWidth, sceneHeight),
     transition_in,

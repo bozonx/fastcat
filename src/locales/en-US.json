@@ -1371,6 +1371,7 @@
       },
       "convert": {
         "bgTaskAdded": "Conversion task added to background",
+        "completedWithWarnings": "Conversion completed with warnings",
         "failed": "Conversion failed",
         "imageFormat": "Image format",
         "imageQuality": "Image quality",
@@ -1378,7 +1379,8 @@
         "metadataWarning": "Metadata might be lost during conversion",
         "outputFile": "Output file",
         "success": "File converted successfully",
-        "targetFile": "Target file"
+        "targetFile": "Target file",
+        "warningsTitle": "Conversion issues: {count}"
       },
       "delete": {
         "confirmTitle": "Delete Items",

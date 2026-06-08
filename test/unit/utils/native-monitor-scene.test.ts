@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import { mapTimelineBlendModeToNative } from '~/utils/native-monitor-scene';
 
 // Reproduce the private helpers inline so the test does not depend on
 // module internals (they are not exported).
@@ -63,5 +64,21 @@ describe('sanitizeVideoSpeed', () => {
     expect(sanitizeVideoSpeed(-2)).toBe(-2);
     expect(sanitizeVideoSpeed(-10)).toBe(-10);
     expect(sanitizeVideoSpeed(-15)).toBe(-10);
+  });
+});
+
+describe('mapTimelineBlendModeToNative', () => {
+  it('keeps matching blend modes unchanged', () => {
+    expect(mapTimelineBlendModeToNative(undefined)).toBe('normal');
+    expect(mapTimelineBlendModeToNative('normal')).toBe('normal');
+    expect(mapTimelineBlendModeToNative('multiply')).toBe('multiply');
+    expect(mapTimelineBlendModeToNative('screen')).toBe('screen');
+  });
+
+  it('maps timeline kebab-case blend modes to native snake_case values', () => {
+    expect(mapTimelineBlendModeToNative('color-dodge')).toBe('color_dodge');
+    expect(mapTimelineBlendModeToNative('color-burn')).toBe('color_burn');
+    expect(mapTimelineBlendModeToNative('hard-light')).toBe('hard_light');
+    expect(mapTimelineBlendModeToNative('soft-light')).toBe('soft_light');
   });
 });

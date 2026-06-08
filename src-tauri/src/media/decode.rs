@@ -265,16 +265,18 @@ impl FfmpegNextDecoder {
                 decoded.width(),
                 decoded.height()
             );
-            self.scaler = Some(ffmpeg::software::scaling::Context::get(
-                decoded.format(),
-                decoded.width(),
-                decoded.height(),
-                ffmpeg::format::Pixel::RGBA,
-                self.info.width,
-                self.info.height,
-                ffmpeg::software::scaling::flag::Flags::BILINEAR,
-            )
-            .context("failed to recreate ffmpeg-next scaler")?);
+            self.scaler = Some(
+                ffmpeg::software::scaling::Context::get(
+                    decoded.format(),
+                    decoded.width(),
+                    decoded.height(),
+                    ffmpeg::format::Pixel::RGBA,
+                    self.info.width,
+                    self.info.height,
+                    ffmpeg::software::scaling::flag::Flags::BILINEAR,
+                )
+                .context("failed to recreate ffmpeg-next scaler")?,
+            );
             self.scaler_input_format = decoded.format();
             self.scaler_input_width = decoded.width();
             self.scaler_input_height = decoded.height();

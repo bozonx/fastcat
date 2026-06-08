@@ -726,8 +726,13 @@ fn estimate_decoded_bytes(path: &str, target_rate: u32, output_channels: usize) 
         .find(|t| t.codec_params.codec != symphonia::core::codecs::CODEC_TYPE_NULL)?;
     let n_frames = track.codec_params.n_frames?;
     let source_rate = track.codec_params.sample_rate.unwrap_or(target_rate).max(1);
-    let decoded_frames = (n_frames as f64 * target_rate as f64 / source_rate as f64).ceil() as usize;
-    Some(decoded_frames.saturating_mul(output_channels.max(1)).saturating_mul(std::mem::size_of::<f32>()))
+    let decoded_frames =
+        (n_frames as f64 * target_rate as f64 / source_rate as f64).ceil() as usize;
+    Some(
+        decoded_frames
+            .saturating_mul(output_channels.max(1))
+            .saturating_mul(std::mem::size_of::<f32>()),
+    )
 }
 
 fn is_audio_seek_past_end(error: &symphonia::core::errors::Error) -> bool {
@@ -887,7 +892,13 @@ mod tests {
         let cache_key = decoded_cache_key(&path_str, 48000, 2);
         shared.0.lock().decoding_in_flight.insert(cache_key.clone());
 
-        background_precache(shared.clone(), path_str.clone(), 48000, 2, cache_key.clone());
+        background_precache(
+            shared.clone(),
+            path_str.clone(),
+            48000,
+            2,
+            cache_key.clone(),
+        );
 
         let state = shared.0.lock();
         assert!(

@@ -279,11 +279,10 @@ pub fn generate_proxy(
 ) -> Result<()> {
     let ffprobe_cmd = options.ffprobe_path.as_deref().unwrap_or("ffprobe");
     let metadata = probe_media(source_path, ffprobe_cmd)?;
-    let video = metadata
+    metadata
         .video
         .as_ref()
         .ok_or_else(|| anyhow!("source has no video stream"))?;
-    let (width, height) = scaled_even_size(video.width, video.height, options.max_pixels);
 
     let hw_accel = options
         .hardware_acceleration_mode
@@ -301,17 +300,150 @@ pub fn generate_proxy(
         HwAccelMode::None
     };
 
+    let args = build_proxy_ffmpeg_args(
+        source_path,
+        target_path,
+        &metadata,
+        &options,
+        hw_decode,
+        hw_encode,
+        vaapi_dev,
+    );
+
+    let ffmpeg_cmd = options.ffmpeg_path.as_deref().unwrap_or("ffmpeg");
+    match run_ffmpeg_task(tasks, task_id, ffmpeg_cmd, args, None) {
+        Ok(()) => {
+            if !target_path.exists() {
+                return Err(anyhow!(
+                    "ffmpeg proxy did not produce output file: {}",
+                    target_path.display()
+                ));
+            }
+            Ok(())
+        }
+        Err(e) if hw_encode != HwAccelMode::None && !e.to_string().contains("cancelled") => {
+            log::warn!("[native-media] HW proxy failed ({e}), falling back to software encoding");
+            let mut sw_options = options.clone();
+            sw_options.enable_hardware_encoding = Some(false);
+            generate_proxy(tasks, task_id, source_path, target_path, sw_options)
+        }
+        Err(e) => Err(e),
+    }
+}
+
+pub fn convert_media(
+    tasks: &NativeMediaTasks,
+    task_id: &str,
+    source_path: &Path,
+    target_path: &Path,
+    options: NativeConvertOptions,
+) -> Result<()> {
+    convert_media_with_warnings(tasks, task_id, source_path, target_path, options, None)
+}
+
+pub fn convert_media_with_warnings(
+    tasks: &NativeMediaTasks,
+    task_id: &str,
+    source_path: &Path,
+    target_path: &Path,
+    options: NativeConvertOptions,
+    on_warning: Option<&(dyn Fn(String) + Send + Sync)>,
+) -> Result<()> {
+    let hw_accel = options
+        .hardware_acceleration_mode
+        .as_ref()
+        .unwrap_or(&HwAccelMode::None);
+    let vaapi_dev = options
+        .vaapi_device
+        .as_deref()
+        .unwrap_or(DEFAULT_VAAPI_DEVICE);
+    let hw_decode = resolve_hw_decode_mode(hw_accel, vaapi_dev);
+
+    let hw_encode = if options.enable_hardware_encoding.unwrap_or(false) {
+        hw_decode
+    } else {
+        HwAccelMode::None
+    };
+
+    let args = build_convert_ffmpeg_args(
+        source_path,
+        target_path,
+        &options,
+        hw_decode,
+        hw_encode,
+        vaapi_dev,
+        on_warning,
+    )?;
+
+    let ffmpeg_cmd = options.ffmpeg_path.as_deref().unwrap_or("ffmpeg");
+    match run_ffmpeg_task(tasks, task_id, ffmpeg_cmd, args, on_warning) {
+        Ok(()) => {
+            if !target_path.exists() {
+                return Err(anyhow!(
+                    "ffmpeg conversion did not produce output file: {}",
+                    target_path.display()
+                ));
+            }
+            Ok(())
+        }
+        Err(e) if hw_encode != HwAccelMode::None && !e.to_string().contains("cancelled") => {
+            log::warn!(
+                "[native-media] HW conversion failed ({e}), falling back to software encoding"
+            );
+            let mut sw_options = options.clone();
+            sw_options.enable_hardware_encoding = Some(false);
+            convert_media_with_warnings(
+                tasks,
+                task_id,
+                source_path,
+                target_path,
+                sw_options,
+                on_warning,
+            )
+        }
+        Err(e) => Err(e),
+    }
+}
+
+fn build_proxy_ffmpeg_args(
+    source_path: &Path,
+    target_path: &Path,
+    metadata: &NativeMediaMetadata,
+    options: &NativeProxyOptions,
+    hw_decode: HwAccelMode,
+    hw_encode: HwAccelMode,
+    vaapi_dev: &str,
+) -> Vec<String> {
+    let video = metadata
+        .video
+        .as_ref()
+        .expect("proxy args require video metadata");
+    let (width, height) = scaled_even_size(video.width, video.height, options.max_pixels);
     let mut args = Vec::new();
 
     if hw_encode == HwAccelMode::Vaapi {
         push_vaapi_init_device_args(&mut args, vaapi_dev);
     }
 
-    args.extend(["-nostdin".to_string(), "-y".to_string()]);
+    args.extend([
+        "-nostdin".to_string(),
+        "-y".to_string(),
+        "-loglevel".to_string(),
+        "warning".to_string(),
+    ]);
 
     push_hw_accel_decode_args(&mut args, hw_decode, vaapi_dev);
-
     args.extend(["-i".to_string(), source_path.display().to_string()]);
+    args.extend([
+        "-map".to_string(),
+        "0:v:0".to_string(),
+        "-sn".to_string(),
+        "-dn".to_string(),
+    ]);
+
+    if metadata.audio.is_some() {
+        args.extend(["-map".to_string(), "0:a:0?".to_string()]);
+    }
 
     push_video_encode_filter_args(&mut args, hw_encode, width, height, false);
 
@@ -341,58 +473,30 @@ pub fn generate_proxy(
     }
 
     args.push(target_path.display().to_string());
-
-    let ffmpeg_cmd = options.ffmpeg_path.as_deref().unwrap_or("ffmpeg");
-    match run_ffmpeg_task(tasks, task_id, ffmpeg_cmd, args) {
-        Ok(()) => {
-            if !target_path.exists() {
-                return Err(anyhow!(
-                    "ffmpeg proxy did not produce output file: {}",
-                    target_path.display()
-                ));
-            }
-            Ok(())
-        }
-        Err(e) if hw_encode != HwAccelMode::None && !e.to_string().contains("cancelled") => {
-            log::warn!("[native-media] HW proxy failed ({e}), falling back to software encoding");
-            let mut sw_options = options.clone();
-            sw_options.enable_hardware_encoding = Some(false);
-            generate_proxy(tasks, task_id, source_path, target_path, sw_options)
-        }
-        Err(e) => Err(e),
-    }
+    args
 }
 
-pub fn convert_media(
-    tasks: &NativeMediaTasks,
-    task_id: &str,
+fn build_convert_ffmpeg_args(
     source_path: &Path,
     target_path: &Path,
-    options: NativeConvertOptions,
-) -> Result<()> {
-    let hw_accel = options
-        .hardware_acceleration_mode
-        .as_ref()
-        .unwrap_or(&HwAccelMode::None);
-    let vaapi_dev = options
-        .vaapi_device
-        .as_deref()
-        .unwrap_or(DEFAULT_VAAPI_DEVICE);
-    let hw_decode = resolve_hw_decode_mode(hw_accel, vaapi_dev);
-
-    let hw_encode = if options.enable_hardware_encoding.unwrap_or(false) {
-        hw_decode
-    } else {
-        HwAccelMode::None
-    };
-
+    options: &NativeConvertOptions,
+    hw_decode: HwAccelMode,
+    hw_encode: HwAccelMode,
+    vaapi_dev: &str,
+    on_warning: Option<&(dyn Fn(String) + Send + Sync)>,
+) -> Result<Vec<String>> {
     let mut args = Vec::new();
 
     if hw_encode == HwAccelMode::Vaapi && options.kind == "video" {
         push_vaapi_init_device_args(&mut args, vaapi_dev);
     }
 
-    args.extend(["-nostdin".to_string(), "-y".to_string()]);
+    args.extend([
+        "-nostdin".to_string(),
+        "-y".to_string(),
+        "-loglevel".to_string(),
+        "warning".to_string(),
+    ]);
 
     if options.kind == "video" {
         push_hw_accel_decode_args(&mut args, hw_decode, vaapi_dev);
@@ -404,15 +508,28 @@ pub fn convert_media(
         "video" => {
             let width = options.width.unwrap_or(DEFAULT_VIDEO_WIDTH).max(1);
             let height = options.height.unwrap_or(DEFAULT_VIDEO_HEIGHT).max(1);
+            let fps = format_fps(options.fps.unwrap_or(DEFAULT_VIDEO_FPS));
 
-            push_video_encode_filter_args(&mut args, hw_encode, width, height, false);
+            args.extend(["-map".into(), "0:v:0".into(), "-sn".into(), "-dn".into()]);
+            if options.audio.unwrap_or(true) {
+                args.extend(["-map".into(), "0:a:0?".into()]);
+            }
+
+            push_video_encode_filter_args_with_extra(
+                &mut args,
+                hw_encode,
+                width,
+                height,
+                false,
+                &[format!("fps={fps}")],
+            );
 
             let raw_video_codec = options.video_codec.as_deref().unwrap_or("avc1");
             let video_codec = ffmpeg_video_codec_hw(raw_video_codec, hw_encode);
 
             args.extend([
-                "-r".into(),
-                format_fps(options.fps.unwrap_or(DEFAULT_VIDEO_FPS)),
+                "-fps_mode".into(),
+                "cfr".into(),
                 "-c:v".into(),
                 video_codec.to_string(),
                 "-b:v".into(),
@@ -423,17 +540,23 @@ pub fn convert_media(
             ]);
 
             if options.audio.unwrap_or(true) {
-                args.extend(audio_args(&options));
+                args.extend(audio_args(options, on_warning));
             } else {
                 args.push("-an".into());
             }
         }
         "audio" => {
-            args.push("-vn".into());
+            args.extend([
+                "-map".into(),
+                "0:a:0".into(),
+                "-vn".into(),
+                "-sn".into(),
+                "-dn".into(),
+            ]);
             if options.audio_reverse.unwrap_or(false) {
                 args.extend(["-af".into(), "areverse".into()]);
             }
-            args.extend(audio_args(&options));
+            args.extend(audio_args(options, on_warning));
         }
         _ => return Err(anyhow!("unsupported conversion kind: {}", options.kind)),
     }
@@ -442,28 +565,7 @@ pub fn convert_media(
         args.extend(["-movflags".into(), "+faststart".into()]);
     }
     args.push(target_path.display().to_string());
-
-    let ffmpeg_cmd = options.ffmpeg_path.as_deref().unwrap_or("ffmpeg");
-    match run_ffmpeg_task(tasks, task_id, ffmpeg_cmd, args) {
-        Ok(()) => {
-            if !target_path.exists() {
-                return Err(anyhow!(
-                    "ffmpeg conversion did not produce output file: {}",
-                    target_path.display()
-                ));
-            }
-            Ok(())
-        }
-        Err(e) if hw_encode != HwAccelMode::None && !e.to_string().contains("cancelled") => {
-            log::warn!(
-                "[native-media] HW conversion failed ({e}), falling back to software encoding"
-            );
-            let mut sw_options = options.clone();
-            sw_options.enable_hardware_encoding = Some(false);
-            convert_media(tasks, task_id, source_path, target_path, sw_options)
-        }
-        Err(e) => Err(e),
-    }
+    Ok(args)
 }
 
 pub struct ExtractWebpParams<'a> {
@@ -737,6 +839,7 @@ fn run_ffmpeg_task(
     task_id: &str,
     ffmpeg_path: &str,
     args: Vec<String>,
+    on_warning: Option<&(dyn Fn(String) + Send + Sync)>,
 ) -> Result<()> {
     verify_ffmpeg_binary(ffmpeg_path).context("ffmpeg binary check failed")?;
     let mut child = Command::new(ffmpeg_path)
@@ -763,6 +866,10 @@ fn run_ffmpeg_task(
             let cancelled = tasks.was_cancelled(task_id);
             tasks.remove(task_id);
             if status.success() {
+                let stderr_text = stderr_text.trim();
+                if !stderr_text.is_empty() {
+                    emit_media_warning(on_warning, format!("ffmpeg warning: {stderr_text}"));
+                }
                 return Ok(());
             }
             if cancelled {
@@ -787,22 +894,28 @@ fn run_ffmpeg_task(
     }
 }
 
-fn audio_args(options: &NativeConvertOptions) -> Vec<String> {
+fn audio_args(
+    options: &NativeConvertOptions,
+    on_warning: Option<&(dyn Fn(String) + Send + Sync)>,
+) -> Vec<String> {
     let (codec, substituted) =
         resolve_audio_encoder(options.audio_codec.as_deref(), &options.format);
     if substituted {
-        log::warn!(
+        let message = format!(
             "[native-media] audio codec {:?} not usable for {} container; using {codec}",
-            options.audio_codec,
-            options.format
+            options.audio_codec, options.format
         );
+        log::warn!("{message}");
+        emit_media_warning(on_warning, message);
     }
-    let mut args = vec![
-        "-c:a".to_string(),
-        codec.to_string(),
-        "-b:a".to_string(),
-        options.audio_bitrate_bps.unwrap_or(128_000).to_string(),
-    ];
+    let mut args = vec!["-c:a".to_string(), codec.to_string()];
+    let is_lossless_audio = codec == "flac" || codec.starts_with("pcm");
+    if !is_lossless_audio {
+        args.extend([
+            "-b:a".to_string(),
+            options.audio_bitrate_bps.unwrap_or(128_000).to_string(),
+        ]);
+    }
     if let Some(channels) = options.audio_channels {
         args.extend(["-ac".into(), channels.max(1).to_string()]);
     }
@@ -810,6 +923,12 @@ fn audio_args(options: &NativeConvertOptions) -> Vec<String> {
         args.extend(["-ar".into(), sample_rate.max(1).to_string()]);
     }
     args
+}
+
+fn emit_media_warning(on_warning: Option<&(dyn Fn(String) + Send + Sync)>, message: String) {
+    if let Some(callback) = on_warning {
+        callback(message);
+    }
 }
 
 fn scaled_even_size(width: u32, height: u32, max_pixels: u32) -> (u32, u32) {
@@ -921,6 +1040,136 @@ mod tests {
         );
         // None defaults sensibly.
         assert_eq!(resolve_audio_encoder(None, "mp4"), ("aac", false));
+    }
+
+    #[test]
+    fn proxy_args_map_primary_video_and_optional_audio() {
+        let metadata = NativeMediaMetadata {
+            duration: 10.0,
+            container: "matroska".into(),
+            video: Some(NativeVideoMetadata {
+                width: 1920,
+                height: 1080,
+                fps: 30.0,
+                codec: "h264".into(),
+                bitrate: None,
+                rotation: 0,
+            }),
+            audio: Some(NativeAudioMetadata {
+                codec: "aac".into(),
+                bitrate: None,
+                sample_rate: Some(48_000),
+                channels: Some(2),
+            }),
+        };
+        let options = NativeProxyOptions {
+            max_pixels: 1920 * 1080,
+            video_bitrate_bps: 2_000_000,
+            audio_bitrate_bps: 128_000,
+            video_codec: "h264".into(),
+            copy_opus_audio: false,
+            ffmpeg_path: None,
+            ffprobe_path: None,
+            hardware_acceleration_mode: None,
+            vaapi_device: None,
+            enable_hardware_encoding: None,
+        };
+
+        let args = build_proxy_ffmpeg_args(
+            Path::new("in.mkv"),
+            Path::new("out.mp4"),
+            &metadata,
+            &options,
+            HwAccelMode::None,
+            HwAccelMode::None,
+            DEFAULT_VAAPI_DEVICE,
+        );
+
+        assert!(args.windows(2).any(|pair| pair == ["-map", "0:v:0"]));
+        assert!(args.windows(2).any(|pair| pair == ["-map", "0:a:0?"]));
+        assert!(args.contains(&"-sn".to_string()));
+        assert!(args.contains(&"-dn".to_string()));
+    }
+
+    #[test]
+    fn convert_video_args_use_fps_filter_and_explicit_maps() {
+        let options = NativeConvertOptions {
+            kind: "video".into(),
+            format: "mp4".into(),
+            video_codec: Some("avc1.64001f".into()),
+            video_bitrate_bps: Some(5_000_000),
+            audio_codec: Some("aac".into()),
+            audio_bitrate_bps: Some(128_000),
+            audio: Some(true),
+            width: Some(1280),
+            height: Some(720),
+            fps: Some(24.0),
+            audio_channels: Some(2),
+            audio_sample_rate: Some(48_000),
+            audio_reverse: None,
+            ffmpeg_path: None,
+            ffprobe_path: None,
+            hardware_acceleration_mode: None,
+            vaapi_device: None,
+            enable_hardware_encoding: None,
+        };
+
+        let args = build_convert_ffmpeg_args(
+            Path::new("in.mov"),
+            Path::new("out.mp4"),
+            &options,
+            HwAccelMode::None,
+            HwAccelMode::None,
+            DEFAULT_VAAPI_DEVICE,
+            None,
+        )
+        .unwrap();
+
+        assert!(args.windows(2).any(|pair| pair == ["-map", "0:v:0"]));
+        assert!(args.windows(2).any(|pair| pair == ["-map", "0:a:0?"]));
+        assert!(args.windows(2).any(|pair| pair == ["-fps_mode", "cfr"]));
+        assert!(args
+            .windows(2)
+            .any(|pair| pair[0] == "-vf" && pair[1].contains("fps=24.000000")));
+        assert!(!args.windows(2).any(|pair| pair == ["-r", "24.000000"]));
+    }
+
+    #[test]
+    fn conversion_lossless_audio_skips_bitrate() {
+        let options = NativeConvertOptions {
+            kind: "audio".into(),
+            format: "flac".into(),
+            video_codec: None,
+            video_bitrate_bps: None,
+            audio_codec: Some("flac".into()),
+            audio_bitrate_bps: Some(320_000),
+            audio: Some(true),
+            width: None,
+            height: None,
+            fps: None,
+            audio_channels: Some(2),
+            audio_sample_rate: Some(48_000),
+            audio_reverse: None,
+            ffmpeg_path: None,
+            ffprobe_path: None,
+            hardware_acceleration_mode: None,
+            vaapi_device: None,
+            enable_hardware_encoding: None,
+        };
+
+        let args = build_convert_ffmpeg_args(
+            Path::new("in.wav"),
+            Path::new("out.flac"),
+            &options,
+            HwAccelMode::None,
+            HwAccelMode::None,
+            DEFAULT_VAAPI_DEVICE,
+            None,
+        )
+        .unwrap();
+
+        assert!(args.windows(2).any(|pair| pair == ["-c:a", "flac"]));
+        assert!(!args.contains(&"-b:a".to_string()));
     }
 
     #[test]

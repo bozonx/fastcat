@@ -30,6 +30,8 @@ const {
   video,
   audio,
   image,
+  conversionError,
+  conversionWarnings,
 } = storeToRefs(fileConversionStore);
 
 const { startConversion: storeStartConversion } = fileConversionStore;
@@ -142,6 +144,34 @@ const isFormValid = computed(() => {
       <div class="text-sm text-ui-text-muted">
         {{ t('videoEditor.fileManager.convert.outputFile') }}
         <span class="font-mono text-ui-text">{{ outputFileName }}</span>
+      </div>
+
+      <div
+        v-if="conversionError"
+        class="p-3 text-sm text-error-400 bg-error-400/10 rounded-md border border-error-400/20"
+      >
+        {{ conversionError }}
+      </div>
+
+      <div
+        v-if="conversionWarnings.length > 0"
+        class="p-3 text-sm text-amber-300 bg-amber-400/10 rounded-md border border-amber-400/20 flex flex-col gap-1"
+      >
+        <div class="font-medium flex items-center gap-1.5">
+          <UIcon name="i-heroicons-exclamation-triangle" class="w-4 h-4" />
+          {{
+            t('videoEditor.fileManager.convert.warningsTitle', { count: conversionWarnings.length })
+          }}
+        </div>
+        <ul class="list-disc list-inside space-y-0.5">
+          <li
+            v-for="(warning, index) in conversionWarnings"
+            :key="index"
+            class="text-xs leading-snug"
+          >
+            {{ warning }}
+          </li>
+        </ul>
       </div>
 
       <template v-if="mediaType === 'video'">

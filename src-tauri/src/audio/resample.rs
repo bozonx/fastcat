@@ -448,7 +448,10 @@ mod tests {
                 chunks += 1;
             }
         }
-        assert!(chunks >= 18, "expected steady full-chunk output, got {chunks}");
+        assert!(
+            chunks >= 18,
+            "expected steady full-chunk output, got {chunks}"
+        );
     }
 
     #[test]

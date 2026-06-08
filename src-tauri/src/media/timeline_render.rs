@@ -266,8 +266,13 @@ impl ThumbnailRenderer {
         quality: f32,
     ) -> Result<()> {
         let mut cache = VideoDecoderCache::new();
-        let compositor_scene =
-            build_export_scene(&scene, time_sec, (width.max(1), height.max(1)), &mut cache)?;
+        let compositor_scene = build_export_scene(
+            &scene,
+            time_sec,
+            (width.max(1), height.max(1)),
+            &mut cache,
+            None,
+        )?;
         let pixels = self.render(&compositor_scene, width, height)?;
         save_rgba_as_webp(
             target_path,
@@ -287,8 +292,13 @@ impl ThumbnailRenderer {
         quality: f32,
     ) -> Result<Vec<u8>> {
         let mut cache = VideoDecoderCache::new();
-        let compositor_scene =
-            build_export_scene(&scene, time_sec, (width.max(1), height.max(1)), &mut cache)?;
+        let compositor_scene = build_export_scene(
+            &scene,
+            time_sec,
+            (width.max(1), height.max(1)),
+            &mut cache,
+            None,
+        )?;
         let pixels = self.render(&compositor_scene, width, height)?;
         encode_rgba_as_webp(
             &pixels,
@@ -339,6 +349,7 @@ pub(crate) fn build_export_scene(
     time_sec: f64,
     target_size: (u32, u32),
     cache: &mut VideoDecoderCache,
+    on_warning: Option<&(dyn Fn(String) + Send + Sync)>,
 ) -> Result<Scene> {
     let scene_w = scene.width.max(1);
     let scene_h = scene.height.max(1);
@@ -355,14 +366,20 @@ pub(crate) fn build_export_scene(
         if layer.opacity.clamp(0.0, 1.0) <= 0.0 {
             continue;
         }
-        let (layer_kind, source_rotation) =
-            match build_raster_kind(layer, time_sec, svg_long_edge, Some(svg_long_edge), cache)? {
-                Some(built) => (built.kind, built.source_rotation),
-                None => match build_virtual_kind(layer, (scene_w, scene_h)) {
-                    Some(kind) => (kind, 0),
-                    None => continue,
-                },
-            };
+        let (layer_kind, source_rotation) = match build_raster_kind(
+            layer,
+            time_sec,
+            svg_long_edge,
+            Some(svg_long_edge),
+            cache,
+            on_warning,
+        )? {
+            Some(built) => (built.kind, built.source_rotation),
+            None => match build_virtual_kind(layer, (scene_w, scene_h)) {
+                Some(kind) => (kind, 0),
+                None => continue,
+            },
+        };
         let layer = layer_with_auto_source_rotation(layer, source_rotation);
         layers.push(finalize_layer(
             &layer,
@@ -387,6 +404,7 @@ fn build_raster_kind(
     svg_long_edge: u32,
     max_output_long_edge: Option<u32>,
     cache: &mut VideoDecoderCache,
+    on_warning: Option<&(dyn Fn(String) + Send + Sync)>,
 ) -> Result<Option<RasterBuild>> {
     let built = match layer.kind {
         LayerKind::Video => {
@@ -400,11 +418,18 @@ fn build_raster_kind(
                 Err(e) => {
                     // A single unreadable frame must not abort the whole export;
                     // skip this layer for this frame and keep going.
+                    let message = format!(
+                        "Video layer could not be decoded and was skipped: {}. Some exported frames may be blank.",
+                        layer.path
+                    );
                     log::warn!(
                         "[native-export] skipping video layer {} at {:.3}s: {e}",
                         layer.path,
                         time_sec
                     );
+                    if let Some(callback) = on_warning {
+                        callback(message);
+                    }
                     return Ok(None);
                 }
             };

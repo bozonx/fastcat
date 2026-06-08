@@ -228,8 +228,11 @@ impl ApplicationHandler<MonitorCommand> for MonitorApp {
                 // дедлайна) заставляли `about_to_wait` перескакивать сетку на +кадр и ронять
                 // каждый второй кадр (fps вдвое). about_to_wait теперь лишь пере-взводит это.
                 let base = self.next_redraw_at.unwrap_or_else(Instant::now);
-                self.next_redraw_at =
-                    Some(next_redraw_deadline(Some(base), Instant::now(), frame_duration));
+                self.next_redraw_at = Some(next_redraw_deadline(
+                    Some(base),
+                    Instant::now(),
+                    frame_duration,
+                ));
             }
         }
     }
@@ -416,7 +419,8 @@ impl ApplicationHandler<MonitorCommand> for MonitorApp {
         let deadline = match self.next_redraw_at {
             Some(d) => d,
             None => {
-                let frame_duration = Duration::from_secs_f64(1.0 / state.layers.preview_fps.max(1.0));
+                let frame_duration =
+                    Duration::from_secs_f64(1.0 / state.layers.preview_fps.max(1.0));
                 let d = Instant::now() + frame_duration;
                 self.next_redraw_at = Some(d);
                 d

@@ -301,18 +301,16 @@ fn mix_layer_into(params: MixLayerParams<'_>) -> bool {
         layer.source_pts_at(segment_start)
     };
 
-    let mut decoded = match decode_audio_chunk(
-        crate::audio::decode::DecodeAudioChunkParams {
-            layer_id: &layer.id,
-            path: &layer.path,
-            source_start_sec: source_start,
-            timeline_duration_sec: segment_duration,
-            speed,
-            target,
-            reverse: reversed,
-            shared,
-        },
-    )
+    let mut decoded = match decode_audio_chunk(crate::audio::decode::DecodeAudioChunkParams {
+        layer_id: &layer.id,
+        path: &layer.path,
+        source_start_sec: source_start,
+        timeline_duration_sec: segment_duration,
+        speed,
+        target,
+        reverse: reversed,
+        shared,
+    })
     .with_context(|| format!("decode audio layer {}", layer.id))
     {
         Ok(decoded) => decoded,

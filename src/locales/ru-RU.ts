@@ -1371,6 +1371,7 @@ export default {
       },
       "convert": {
         "bgTaskAdded": "Задача конвертации добавлена в фоновый режим",
+        "completedWithWarnings": "Конвертация завершена с предупреждениями",
         "failed": "Конвертация не удалась",
         "imageFormat": "Формат изображения",
         "imageQuality": "Качество изображения",
@@ -1378,7 +1379,8 @@ export default {
         "metadataWarning": "Метаданные могут быть потеряны при конвертации",
         "outputFile": "Выходной файл",
         "success": "Файл успешно конвертирован",
-        "targetFile": "Целевой файл"
+        "targetFile": "Целевой файл",
+        "warningsTitle": "Проблемы при конвертации: {count}"
       },
       "delete": {
         "confirmTitle": "Удаление элементов",

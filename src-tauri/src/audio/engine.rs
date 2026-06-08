@@ -171,8 +171,8 @@ impl NativeAudioEngine {
             } else {
                 1.0
             };
-            state.producer_pts_sec = state.origin_pts_sec
-                + self.clock.frames() as f64 / self.sample_rate as f64 * speed;
+            state.producer_pts_sec =
+                state.origin_pts_sec + self.clock.frames() as f64 / self.sample_rate as f64 * speed;
             // Discontinuous output: invalidate in-flight chunks and force decoders
             // to reseek to the new positions.
             state.seek_serial = state.seek_serial.wrapping_add(1);

@@ -157,8 +157,9 @@ impl OwnedTexturePool {
 
         // Промах: выкидываем свободные записи другого размера, чтобы пул не рос
         // монотонно после смены разрешения (preview ↔ export, ресайз окна).
-        self.entries
-            .retain(|e| Arc::strong_count(&e.texture) > 1 || (e.width == width && e.height == height));
+        self.entries.retain(|e| {
+            Arc::strong_count(&e.texture) > 1 || (e.width == width && e.height == height)
+        });
 
         let texture = Arc::new(device.create_texture(&wgpu::TextureDescriptor {
             label: Some("native-effect-owned-output"),

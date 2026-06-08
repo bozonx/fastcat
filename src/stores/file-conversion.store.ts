@@ -11,6 +11,7 @@ export const useFileConversionStore = defineStore('file-conversion', () => {
   const isConverting = ref(false);
   const isExtractingMetadata = ref(false);
   const conversionError = ref('');
+  const conversionWarnings = ref<string[]>([]);
   const targetEntry = ref<FsEntry | null>(null);
   const targetIsExternal = ref(false);
   const targetVfs = shallowRef<IFileSystemAdapter | null>(null);
@@ -39,6 +40,7 @@ export const useFileConversionStore = defineStore('file-conversion', () => {
     isConverting,
     isExtractingMetadata,
     conversionError,
+    conversionWarnings,
     isModalOpen,
     conversionModalRequestId,
     sourceHasAudio,
@@ -49,6 +51,7 @@ export const useFileConversionStore = defineStore('file-conversion', () => {
     isConverting,
     isExtractingMetadata,
     conversionError,
+    conversionWarnings,
     targetEntry,
     targetIsExternal,
     targetVfs,

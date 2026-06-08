@@ -134,6 +134,7 @@ describe('useFileConversionActions', () => {
       isConverting: ref(false),
       isExtractingMetadata: ref(false),
       conversionError: ref(''),
+      conversionWarnings: ref([]),
       isModalOpen: ref(false),
       conversionModalRequestId: ref(0),
       sourceHasAudio: ref(true),

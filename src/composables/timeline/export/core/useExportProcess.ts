@@ -21,6 +21,7 @@ import { createVideoCoreHostApi } from '~/utils/video-editor/createVideoCoreHost
 import { buildEffectiveAudioClipItems } from '~/utils/audio/track-bus';
 import type { TimelineDocument } from '~/timeline/types';
 import { buildNativeMonitorScene } from '~/utils/native-monitor-scene';
+import { createGroupedWarningReporter } from '~/utils/grouped-warnings';
 
 import type { ExportOptions, WorkerTimelineClip } from '../types';
 import {
@@ -97,9 +98,7 @@ export function useExportProcess(
       const allAudioTracks = doc?.tracks?.filter((track) => track.kind === 'audio') ?? [];
 
       const exportRangeUs = options.exportRangeUs;
-      const reportWarning = (message: string) => {
-        exportWarnings.value.push(message);
-      };
+      const reportWarning = createGroupedWarningReporter(exportWarnings);
 
       ensureNotCancelled();
       const nestedDocCache = new Map<string, TimelineDocument>();
@@ -214,6 +213,7 @@ export function useExportProcess(
             exportAlpha: options.exportAlpha,
           },
           onProgress,
+          onWarning: reportWarning,
         });
         return;
       }
@@ -237,7 +237,7 @@ export function useExportProcess(
           exportPhase.value = phase;
         },
         onExportWarning: (message) => {
-          exportWarnings.value.push(message);
+          reportWarning(message);
         },
       });
 

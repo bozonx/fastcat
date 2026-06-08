@@ -103,13 +103,25 @@ export async function nativeConvertMedia(params: {
   sourcePath: string;
   targetPath: string;
   request: ConversionRequest;
+  onWarning?: (message: string) => void;
 }): Promise<void> {
-  await invoke('native_media_convert', {
-    taskId: params.taskId,
-    sourcePath: params.sourcePath,
-    targetPath: params.targetPath,
-    options: buildNativeConvertOptions(params.request),
-  });
+  const unlisten = params.onWarning
+    ? await listen<{ taskId: string; message: string }>('native-media-convert:warning', (event) => {
+        if (event.payload.taskId !== params.taskId) return;
+        params.onWarning?.(event.payload.message);
+      })
+    : null;
+
+  try {
+    await invoke('native_media_convert', {
+      taskId: params.taskId,
+      sourcePath: params.sourcePath,
+      targetPath: params.targetPath,
+      options: buildNativeConvertOptions(params.request),
+    });
+  } finally {
+    unlisten?.();
+  }
 }
 
 export async function nativeCancelMediaTask(taskId: string): Promise<boolean> {
@@ -146,13 +158,23 @@ export async function nativeExportTimeline(params: {
   targetPath: string;
   options: NativeTimelineExportOptions;
   onProgress?: (progress: number) => void;
+  onWarning?: (message: string) => void;
 }): Promise<void> {
-  const unlisten = params.onProgress
+  const unlistenProgress = params.onProgress
     ? await listen<{ taskId: string; progress: number }>(
         'native-timeline-export:progress',
         (event) => {
           if (event.payload.taskId !== params.taskId) return;
           params.onProgress?.(event.payload.progress);
+        },
+      )
+    : null;
+  const unlistenWarning = params.onWarning
+    ? await listen<{ taskId: string; message: string }>(
+        'native-timeline-export:warning',
+        (event) => {
+          if (event.payload.taskId !== params.taskId) return;
+          params.onWarning?.(event.payload.message);
         },
       )
     : null;
@@ -165,7 +187,8 @@ export async function nativeExportTimeline(params: {
       options: params.options,
     });
   } finally {
-    unlisten?.();
+    unlistenProgress?.();
+    unlistenWarning?.();
   }
 }
 

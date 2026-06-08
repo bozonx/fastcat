@@ -26,6 +26,7 @@ import {
   nativeConvertMedia,
   nativeMediaMetadata,
 } from '~/utils/tauri-media-processing';
+import { createGroupedWarningReporter } from '~/utils/grouped-warnings';
 import {
   DEFAULT_VIDEO_FORMAT,
   DEFAULT_VIDEO_CODEC,
@@ -84,6 +85,7 @@ interface UseFileConversionActionsProps {
   isConverting: Ref<boolean>;
   isExtractingMetadata: Ref<boolean>;
   conversionError: Ref<string>;
+  conversionWarnings: Ref<string[]>;
   isModalOpen: Ref<boolean>;
   conversionModalRequestId: Ref<number>;
   sourceHasAudio: Ref<boolean>;
@@ -206,6 +208,7 @@ export function useFileConversionActions(props: UseFileConversionActionsProps) {
     props.isConverting.value = false;
     props.isExtractingMetadata.value = true;
     props.conversionError.value = '';
+    props.conversionWarnings.value = [];
     props.isModalOpen.value = true;
 
     // Default to VBR as requested
@@ -463,6 +466,8 @@ export function useFileConversionActions(props: UseFileConversionActionsProps) {
 
     props.isCancelRequested.value = false;
     props.conversionError.value = '';
+    props.conversionWarnings.value = [];
+    const reportConversionWarning = createGroupedWarningReporter(props.conversionWarnings);
 
     let createdFileName: string | null = null;
     let createdFilePath: string | null = null;
@@ -534,7 +539,13 @@ export function useFileConversionActions(props: UseFileConversionActionsProps) {
               throw new Error('Could not resolve native file paths for conversion');
             }
             backgroundTasksStore.updateTaskStatus(bgTaskId, 'running');
-            await nativeConvertMedia({ taskId, sourcePath, targetPath, request });
+            await nativeConvertMedia({
+              taskId,
+              sourcePath,
+              targetPath,
+              request,
+              onWarning: reportConversionWarning,
+            });
             return;
           }
 
@@ -556,6 +567,15 @@ export function useFileConversionActions(props: UseFileConversionActionsProps) {
           .then(async () => {
             backgroundTasksStore.updateTaskProgress(bgTaskId, 1);
             backgroundTasksStore.updateTaskStatus(bgTaskId, 'completed');
+            if (props.conversionWarnings.value.length > 0) {
+              props.isModalOpen.value = true;
+              toast.add({
+                title: t('videoEditor.fileManager.convert.completedWithWarnings'),
+                description: props.conversionWarnings.value[0],
+                color: 'warning',
+              });
+              return;
+            }
             toast.add({
               title: t('videoEditor.fileManager.convert.success'),
               color: 'success',
@@ -568,6 +588,8 @@ export function useFileConversionActions(props: UseFileConversionActionsProps) {
             } else {
               backgroundTasksStore.updateTaskStatus(bgTaskId, 'failed', err.message);
               log.error('Conversion failed', err);
+              props.conversionError.value = err instanceof Error ? err.message : String(err);
+              props.isModalOpen.value = true;
               toast.add({
                 title: t('videoEditor.fileManager.convert.failed'),
                 description: err instanceof Error ? err.message : String(err),
@@ -624,7 +646,8 @@ export function useFileConversionActions(props: UseFileConversionActionsProps) {
     } catch (err: unknown) {
       const error = err instanceof Error ? err : new Error(String(err));
       log.error('Conversion initiation failed', err);
-      props.isModalOpen.value = false;
+      props.conversionError.value = error.message;
+      props.isModalOpen.value = true;
       toast.add({
         title: t('videoEditor.fileManager.convert.failed'),
         description: error.message,

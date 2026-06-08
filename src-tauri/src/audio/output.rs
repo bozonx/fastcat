@@ -103,9 +103,7 @@ impl CpalAudioBackend {
         })
     }
 
-    fn choose_output_config(
-        device: &cpal::Device,
-    ) -> Result<cpal::SupportedStreamConfig> {
+    fn choose_output_config(device: &cpal::Device) -> Result<cpal::SupportedStreamConfig> {
         let default = device
             .default_output_config()
             .context("default output config failed")?;

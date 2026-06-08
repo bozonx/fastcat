@@ -261,32 +261,33 @@ impl LayerRuntimeManager {
                         let on_frame = Box::new(move || {
                             let _ = proxy_cb.send_event(MonitorCommand::VideoFrameReady);
                         });
-                        let result = match DecodePump::open(crate::media::decode_thread::DecodeOpenParams {
-                            path: &path,
-                            max_output_long_edge: max_long_edge,
-                            on_frame_decoded: Some(on_frame),
-                            device,
-                            queue,
-                            hw_mode,
-                            vaapi_device: Some(vaapi_dev.as_str()),
-                        }) {
-                            Ok(pump) => {
-                                let media_size = (pump.info.width, pump.info.height);
-                                let source_rotation = pump.info.rotation;
-                                BgLayerResult::VideoOk {
+                        let result =
+                            match DecodePump::open(crate::media::decode_thread::DecodeOpenParams {
+                                path: &path,
+                                max_output_long_edge: max_long_edge,
+                                on_frame_decoded: Some(on_frame),
+                                device,
+                                queue,
+                                hw_mode,
+                                vaapi_device: Some(vaapi_dev.as_str()),
+                            }) {
+                                Ok(pump) => {
+                                    let media_size = (pump.info.width, pump.info.height);
+                                    let source_rotation = pump.info.rotation;
+                                    BgLayerResult::VideoOk {
+                                        epoch,
+                                        id: spawn_id,
+                                        pump,
+                                        media_size,
+                                        source_rotation,
+                                    }
+                                }
+                                Err(e) => BgLayerResult::VideoErr {
                                     epoch,
                                     id: spawn_id,
-                                    pump,
-                                    media_size,
-                                    source_rotation,
-                                }
-                            }
-                            Err(e) => BgLayerResult::VideoErr {
-                                epoch,
-                                id: spawn_id,
-                                error: format!("{e:?}"),
-                            },
-                        };
+                                    error: format!("{e:?}"),
+                                },
+                            };
                         let _ = bg_tx.send(result);
                         let _ = proxy.send_event(MonitorCommand::BgReady);
                     })

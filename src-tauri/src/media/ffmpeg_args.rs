@@ -28,10 +28,34 @@ pub fn push_video_encode_filter_args(
     height: u32,
     export_alpha: bool,
 ) {
+    push_video_encode_filter_args_with_extra(args, hw_mode, width, height, export_alpha, &[]);
+}
+
+/// Same as [`push_video_encode_filter_args`], but prepends additional software
+/// filters before the scale/format/hwupload step. Useful for CFR conversion:
+/// `fps=...` must run before hardware upload, otherwise VAAPI/NVENC paths cannot
+/// see CPU frames.
+pub fn push_video_encode_filter_args_with_extra(
+    args: &mut Vec<String>,
+    hw_mode: HwAccelMode,
+    width: u32,
+    height: u32,
+    export_alpha: bool,
+    extra_filters: &[String],
+) {
     let has_scale = width > 0 && height > 0;
+    let with_extra = |tail: String| {
+        if extra_filters.is_empty() {
+            tail
+        } else if tail.is_empty() {
+            extra_filters.join(",")
+        } else {
+            format!("{},{}", extra_filters.join(","), tail)
+        }
+    };
     match hw_mode {
         HwAccelMode::Vaapi => {
-            let vf = if has_scale {
+            let tail = if has_scale {
                 format!(
                     "scale={}:{}:format=nv12|vaapi,hwupload",
                     even(width),
@@ -40,6 +64,7 @@ pub fn push_video_encode_filter_args(
             } else {
                 "format=nv12|vaapi,hwupload".to_string()
             };
+            let vf = with_extra(tail);
             args.extend([
                 "-vf".to_string(),
                 vf,
@@ -48,11 +73,12 @@ pub fn push_video_encode_filter_args(
             ]);
         }
         HwAccelMode::Nvdec | HwAccelMode::Nvenc => {
-            let vf = if has_scale {
+            let tail = if has_scale {
                 format!("scale={}:{}:format=yuv420p", even(width), even(height))
             } else {
                 "format=yuv420p".to_string()
             };
+            let vf = with_extra(tail);
             args.extend([
                 "-vf".to_string(),
                 vf,
@@ -61,11 +87,12 @@ pub fn push_video_encode_filter_args(
             ]);
         }
         HwAccelMode::None | HwAccelMode::Auto => {
+            let mut filters = extra_filters.to_vec();
             if has_scale {
-                args.extend([
-                    "-vf".to_string(),
-                    format!("scale={}:{}", even(width), even(height)),
-                ]);
+                filters.push(format!("scale={}:{}", even(width), even(height)));
+            }
+            if !filters.is_empty() {
+                args.extend(["-vf".to_string(), filters.join(",")]);
             }
             if export_alpha {
                 args.extend(["-pix_fmt".to_string(), "yuva420p".to_string()]);

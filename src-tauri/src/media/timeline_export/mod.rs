@@ -58,6 +58,7 @@ pub fn export_timeline(
     options: NativeExportOptions,
     target_path: &Path,
     on_progress: &(dyn Fn(f64) + Send + Sync),
+    on_warning: &(dyn Fn(String) + Send + Sync),
 ) -> Result<()> {
     let width = even(options.width.max(2));
     let height = even(options.height.max(2));
@@ -249,6 +250,7 @@ pub fn export_timeline(
                             time,
                             (width, height),
                             &mut cache,
+                            Some(on_warning),
                         )?;
                         if let Some(pixels) = compositor
                             .render_scene_to_pixels_pipelined(&mut pipeline, &frame_scene)?

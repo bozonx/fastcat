@@ -4,8 +4,9 @@ use serde::Serialize;
 use tauri::{AppHandle, Emitter, State};
 
 use crate::media::processing::{
-    convert_media, extract_video_frame_webp, extract_video_frame_webps, generate_proxy,
-    probe_media, NativeConvertOptions, NativeMediaMetadata, NativeMediaTasks, NativeProxyOptions,
+    convert_media_with_warnings, extract_video_frame_webp, extract_video_frame_webps,
+    generate_proxy, probe_media, NativeConvertOptions, NativeMediaMetadata, NativeMediaTasks,
+    NativeProxyOptions,
 };
 use crate::media::timeline_export::{export_timeline, NativeExportOptions};
 use crate::media::timeline_render::{render_timeline_frame_to_file, render_timeline_frame_to_webp};
@@ -72,8 +73,16 @@ impl NativeMediaService {
         source_path: &std::path::Path,
         target_path: &std::path::Path,
         options: NativeConvertOptions,
+        warning: Option<&(dyn Fn(String) + Send + Sync)>,
     ) -> anyhow::Result<()> {
-        convert_media(&self.tasks, task_id, source_path, target_path, options)
+        convert_media_with_warnings(
+            &self.tasks,
+            task_id,
+            source_path,
+            target_path,
+            options,
+            warning,
+        )
     }
 
     pub fn cancel_task(&self, task_id: &str) -> bool {
@@ -87,8 +96,17 @@ impl NativeMediaService {
         options: NativeExportOptions,
         target_path: &std::path::Path,
         progress: &(dyn Fn(f64) + Send + Sync),
+        warning: &(dyn Fn(String) + Send + Sync),
     ) -> anyhow::Result<()> {
-        export_timeline(&self.tasks, task_id, scene, options, target_path, progress)
+        export_timeline(
+            &self.tasks,
+            task_id,
+            scene,
+            options,
+            target_path,
+            progress,
+            warning,
+        )
     }
 
     pub fn render_timeline_frame_to_file(
@@ -187,6 +205,7 @@ pub async fn native_media_convert(
     source_path: String,
     target_path: String,
     mut options: NativeConvertOptions,
+    app: AppHandle,
     service: State<'_, NativeMediaService>,
     hw_settings: State<'_, parking_lot::RwLock<crate::FfmpegHardwareSettings>>,
 ) -> Result<(), String> {
@@ -198,7 +217,21 @@ pub async fn native_media_convert(
     options.apply_hw_settings(&hw);
 
     tokio::task::spawn_blocking(move || {
-        service.convert_media(&task_id, &source_path, &target_path, options)
+        service.convert_media(
+            &task_id,
+            &source_path,
+            &target_path,
+            options,
+            Some(&|message| {
+                let _ = app.emit(
+                    "native-media-convert:warning",
+                    NativeMediaWarning {
+                        task_id: &task_id,
+                        message: &message,
+                    },
+                );
+            }),
+        )
     })
     .await
     .map_err(|e| e.to_string())?
@@ -215,6 +248,13 @@ pub fn native_media_cancel(task_id: String, service: State<'_, NativeMediaServic
 struct NativeTimelineExportProgress<'a> {
     task_id: &'a str,
     progress: f64,
+}
+
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct NativeMediaWarning<'a> {
+    task_id: &'a str,
+    message: &'a str,
 }
 
 #[tauri::command]
@@ -234,15 +274,30 @@ pub async fn native_timeline_export(
     options.apply_hw_settings(&hw);
 
     tokio::task::spawn_blocking(move || {
-        service.export_timeline(&task_id, scene, options, &target_path, &|progress| {
-            let _ = app.emit(
-                "native-timeline-export:progress",
-                NativeTimelineExportProgress {
-                    task_id: &task_id,
-                    progress,
-                },
-            );
-        })
+        service.export_timeline(
+            &task_id,
+            scene,
+            options,
+            &target_path,
+            &|progress| {
+                let _ = app.emit(
+                    "native-timeline-export:progress",
+                    NativeTimelineExportProgress {
+                        task_id: &task_id,
+                        progress,
+                    },
+                );
+            },
+            &|message| {
+                let _ = app.emit(
+                    "native-timeline-export:warning",
+                    NativeMediaWarning {
+                        task_id: &task_id,
+                        message: &message,
+                    },
+                );
+            },
+        )
     })
     .await
     .map_err(|e| e.to_string())?
@@ -406,9 +461,7 @@ fn parse_ffmpeg_components(output_str: &str) -> std::collections::HashSet<String
         let flags = parts.next();
         let name = parts.next();
         if let (Some(flags), Some(name)) = (flags, name) {
-            if flags.len() == 6
-                && flags.chars().all(|c| FLAG_CHARS.contains(c))
-            {
+            if flags.len() == 6 && flags.chars().all(|c| FLAG_CHARS.contains(c)) {
                 names.insert(name.to_string());
             }
         }
@@ -422,9 +475,7 @@ fn parse_ffmpeg_components(output_str: &str) -> std::collections::HashSet<String
             let flags = parts.next();
             let name = parts.next();
             if let (Some(flags), Some(name)) = (flags, name) {
-                if flags.len() == 6
-                    && flags.chars().all(|c| FLAG_CHARS.contains(c))
-                {
+                if flags.len() == 6 && flags.chars().all(|c| FLAG_CHARS.contains(c)) {
                     names.insert(name.to_string());
                 }
             }
@@ -513,12 +564,10 @@ pub async fn native_get_ffmpeg_diagnostics(
         let has_nvdec = hwaccels
             .iter()
             .any(|item| item == "cuda" || item == "cuvid" || item == "nvdec");
-        let supports_vaapi_decode =
-            |codec: &str| has_vaapi && decoders_set.contains(codec);
+        let supports_vaapi_decode = |codec: &str| has_vaapi && decoders_set.contains(codec);
         let supports_qsv_decode = |codec: &str| {
             has_qsv
-                && (decoders_set.contains(&format!("{codec}_qsv"))
-                    || decoders_set.contains(codec))
+                && (decoders_set.contains(&format!("{codec}_qsv")) || decoders_set.contains(codec))
         };
 
         // 4. Populate codec diagnostics
@@ -676,8 +725,7 @@ pub async fn native_get_ffmpeg_diagnostics(
                         name: "av1_vaapi".to_string(),
                         label: "Hardware VAAPI (AMD/Intel)".to_string(),
                         supported: has_vaapi
-                            && (decoders_set.contains("av1")
-                                || decoders_set.contains("libdav1d")),
+                            && (decoders_set.contains("av1") || decoders_set.contains("libdav1d")),
                     },
                     FfmpegComponentDiagnostic {
                         name: "av1_cuvid".to_string(),
