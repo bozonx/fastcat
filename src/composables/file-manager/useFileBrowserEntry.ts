@@ -1,3 +1,4 @@
+import { toValue, type MaybeRefOrGetter } from 'vue';
 import { useSelectionStore } from '~/stores/selection.store';
 import { useTimelineMediaUsageStore } from '~/stores/timeline-media-usage.store';
 import { useProxyStore } from '~/stores/proxy.store';
@@ -24,7 +25,12 @@ export function getBdThumbnail(entry: FsEntry): string | undefined {
 }
 
 export interface UseFileBrowserEntryOptions {
-  fileCompatibility?: Record<string, FileCompatibility>;
+  // Accept a ref/getter (not a plain snapshot): `fileCompatibility` is a parent
+  // computed that returns a NEW object on each recompute. Capturing its value once
+  // at setup froze it at the initial 'checking' status, so thumbnails never
+  // appeared until the panel was remounted. Reading via `toValue` inside
+  // `getCompatibilityStatus` keeps the render subscribed to the latest value.
+  fileCompatibility?: MaybeRefOrGetter<Record<string, FileCompatibility> | undefined>;
   instanceId?: string;
 }
 
@@ -36,8 +42,9 @@ export function useFileBrowserEntry(options: UseFileBrowserEntryOptions) {
   const clipboardPaths = useClipboardPaths();
 
   function getCompatibilityStatus(entry: FsEntry) {
-    if (!entry.path || !options.fileCompatibility) return 'ok';
-    return options.fileCompatibility[entry.path]?.status ?? 'ok';
+    const compatibility = toValue(options.fileCompatibility);
+    if (!entry.path || !compatibility) return 'ok';
+    return compatibility[entry.path]?.status ?? 'ok';
   }
 
   function isCheckingCompatibility(entry: FsEntry) {

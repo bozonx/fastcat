@@ -68,7 +68,7 @@ const {
   isWorkspaceCommonRoot,
   handleImageError,
 } = useFileBrowserEntry({
-  fileCompatibility: props.fileCompatibility,
+  fileCompatibility: () => props.fileCompatibility,
   instanceId: props.instanceId,
 });
 
