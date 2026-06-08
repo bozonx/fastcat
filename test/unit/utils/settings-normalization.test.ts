@@ -189,6 +189,13 @@ describe('settings normalization', () => {
     expect(normalized.integrations.stt.includeWords).toBe(false);
   });
 
+  it('normalizes trackHeaders mouse fallbacks to real defaults', () => {
+    const normalized = normalizeUserSettings({ mouse: { trackHeaders: {} } });
+    expect(normalized.mouse.trackHeaders.click).toBe('select_track');
+    expect(normalized.mouse.trackHeaders.middleClick).toBe('select_all_clips');
+    expect(normalized.mouse.trackHeaders.doubleClick).toBe('select_all_clips');
+  });
+
   it('normalizes mouse settings and falls back to defaults for invalid values', () => {
     const normalized = normalizeUserSettings({
       mouse: {

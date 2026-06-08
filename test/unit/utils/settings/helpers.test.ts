@@ -1,6 +1,25 @@
 /** @vitest-environment node */
 import { describe, it, expect } from 'vitest';
-import { getResolutionPreset } from '~/utils/settings/helpers';
+import { getResolutionPreset, createDefaultUserSettings } from '~/utils/settings/helpers';
+import { DEFAULT_USER_SETTINGS } from '~/utils/settings/defaults';
+
+describe('createDefaultUserSettings', () => {
+  it('creates isolated copies that do not mutate DEFAULT_USER_SETTINGS', () => {
+    const defaults = createDefaultUserSettings();
+
+    // Mutate nested objects that were previously shallow-copied
+    defaults.timeline.snapping.clips = false;
+    defaults.timeline.snapping.playhead = false;
+    defaults.presets.custom.push({ id: 'x', baseType: 'effect', name: 'Test', category: 'effect', params: {}, order: 0 });
+    defaults.presets.collapsed['test'] = true;
+
+    // The DEFAULT_USER_SETTINGS must remain untouched
+    expect(DEFAULT_USER_SETTINGS.timeline.snapping.clips).toBe(true);
+    expect(DEFAULT_USER_SETTINGS.timeline.snapping.playhead).toBe(true);
+    expect(DEFAULT_USER_SETTINGS.presets.custom).toEqual([]);
+    expect(DEFAULT_USER_SETTINGS.presets.collapsed).toEqual({});
+  });
+});
 
 describe('getResolutionPreset', () => {
   it('detects standard 1080p landscape', () => {

@@ -58,7 +58,10 @@ export function createDefaultUserSettings(): FastCatUserSettings {
     openLastProjectOnStart: DEFAULT_USER_SETTINGS.openLastProjectOnStart,
     deleteWithoutConfirmation: DEFAULT_USER_SETTINGS.deleteWithoutConfirmation,
     ui: { ...DEFAULT_USER_SETTINGS.ui },
-    timeline: { ...DEFAULT_USER_SETTINGS.timeline },
+    timeline: {
+      ...DEFAULT_USER_SETTINGS.timeline,
+      snapping: { ...DEFAULT_USER_SETTINGS.timeline.snapping },
+    },
     stopFrames: {
       qualityPercent: DEFAULT_USER_SETTINGS.stopFrames.qualityPercent,
     },
@@ -96,7 +99,11 @@ export function createDefaultUserSettings(): FastCatUserSettings {
     },
     history: { ...DEFAULT_USER_SETTINGS.history },
     backup: { ...DEFAULT_USER_SETTINGS.backup },
-    presets: { ...DEFAULT_USER_SETTINGS.presets },
+    presets: {
+      ...DEFAULT_USER_SETTINGS.presets,
+      custom: [...DEFAULT_USER_SETTINGS.presets.custom],
+      collapsed: { ...DEFAULT_USER_SETTINGS.presets.collapsed },
+    },
     autosave: { ...DEFAULT_USER_SETTINGS.autosave },
     audioEngine: { ...DEFAULT_USER_SETTINGS.audioEngine },
   } as FastCatUserSettings;

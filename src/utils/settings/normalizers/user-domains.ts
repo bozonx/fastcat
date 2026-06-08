@@ -146,7 +146,9 @@ export function normalizeOptimizationSettings(raw: unknown): FastCatUserSettings
         .min(32)
         .max(512)
         .catch(DEFAULT_USER_SETTINGS.optimization.proxyAudioBitrateKbps),
-      proxyVideoCodec: z.enum(['h264', 'av1']).catch('h264'), // Note: legacy is checked against 'av1', else 'h264'
+      proxyVideoCodec: z
+        .enum(['h264', 'av1'])
+        .catch(DEFAULT_USER_SETTINGS.optimization.proxyVideoCodec),
       proxyCopyOpusAudio: z.boolean().catch(DEFAULT_USER_SETTINGS.optimization.proxyCopyOpusAudio),
       autoCreateProxies: z.boolean().catch(DEFAULT_USER_SETTINGS.optimization.autoCreateProxies),
       mediaTaskConcurrency: z.coerce
@@ -238,7 +240,9 @@ export function normalizeProjectDefaults(raw: unknown): FastCatUserSettings['pro
       height: z.coerce.number().min(1).catch(DEFAULT_USER_SETTINGS.projectDefaults.height),
       fps: z.coerce.number().min(1).max(240).catch(DEFAULT_USER_SETTINGS.projectDefaults.fps),
       resolutionFormat: z.string().catch(DEFAULT_USER_SETTINGS.projectDefaults.resolutionFormat),
-      orientation: z.enum(['landscape', 'portrait']).catch('landscape'),
+      orientation: z
+        .enum(['landscape', 'portrait'])
+        .catch(DEFAULT_USER_SETTINGS.projectDefaults.orientation),
       aspectRatio: z.string().catch(DEFAULT_USER_SETTINGS.projectDefaults.aspectRatio),
       isCustomResolution: z.coerce
         .boolean()
@@ -333,11 +337,15 @@ export function normalizeMouseSettings(raw: unknown): FastCatUserSettings['mouse
           wheelSecondaryShift: thWheelEnum.catch(
             DEFAULT_USER_SETTINGS.mouse.trackHeaders.wheelSecondaryShift,
           ),
-          click: z.enum(['select_track', 'select_all_clips', 'none']).catch('select_track'),
-          middleClick: z.enum(['select_track', 'select_all_clips', 'none']).catch('none'),
+          click: z
+            .enum(['select_track', 'select_all_clips', 'none'])
+            .catch(DEFAULT_USER_SETTINGS.mouse.trackHeaders.click),
+          middleClick: z
+            .enum(['select_track', 'select_all_clips', 'none'])
+            .catch(DEFAULT_USER_SETTINGS.mouse.trackHeaders.middleClick),
           doubleClick: z
             .enum(['select_track', 'select_all_clips', 'none'])
-            .catch('select_all_clips'),
+            .catch(DEFAULT_USER_SETTINGS.mouse.trackHeaders.doubleClick),
         })
         .catch(DEFAULT_USER_SETTINGS.mouse.trackHeaders),
 
@@ -450,11 +458,15 @@ export function normalizePresetsSettings(raw: unknown): FastCatUserSettings['pre
   const input = (raw as Record<string, unknown>)?.['presets'];
   const defaults = DEFAULT_USER_SETTINGS.presets;
   if (!input || typeof input !== 'object') {
-    return defaults;
+    return {
+      custom: [...defaults.custom],
+      defaultTextPresetId: defaults.defaultTextPresetId,
+      collapsed: { ...defaults.collapsed },
+    };
   }
   const d = input as Record<string, unknown>;
   return {
-    custom: Array.isArray(d.custom) ? d.custom : defaults.custom,
+    custom: Array.isArray(d.custom) ? d.custom : [...defaults.custom],
     defaultTextPresetId:
       typeof d.defaultTextPresetId === 'string'
         ? d.defaultTextPresetId
@@ -462,6 +474,6 @@ export function normalizePresetsSettings(raw: unknown): FastCatUserSettings['pre
     collapsed:
       d.collapsed && typeof d.collapsed === 'object'
         ? (d.collapsed as Record<string, boolean>)
-        : defaults.collapsed,
+        : { ...defaults.collapsed },
   };
 }

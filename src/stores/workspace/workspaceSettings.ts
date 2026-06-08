@@ -226,8 +226,7 @@ export function createWorkspaceSettingsModule(params: {
     appSettings.value = createDefaultAppSettings();
 
     autoSaveUserSettings.reset();
-    autoSaveAppSettings.markCleanForCurrentRevision();
-    autoSaveAppSettings.reset(); // to clear persistTimeout
+    autoSaveUserSettings.markCleanForCurrentRevision();
 
     autoSaveAppSettings.reset();
     autoSaveAppSettings.markCleanForCurrentRevision();
