@@ -79,7 +79,7 @@ The application will be available at `http://localhost:3000`.
 
 - Desktop mode uses Tauri 2 with `@tauri-apps/plugin-fs` for file system access.
 - File streaming in desktop mode uses `tauri-plugin-fs-stream` and `tauri-plugin-fs-stream-api`.
-- Selected desktop workspace folders are persisted with `tauri-plugin-persisted-scope`, so the app can restore access after restart without granting the whole home directory.
+- Desktop workspace folders are restored from app settings and added to the runtime FS scope after startup without granting the whole home directory.
 - The Rust desktop crate targets Rust `1.87.0` because the native video rendering engine foundation uses `wgpu` 29.
 - The `webgpu_render_engine_status` Tauri command probes native `wgpu` adapter/device availability and is the entry point for the upcoming Rust WebGPU renderer.
 - The native Tauri monitor renders media, SVG, background, text, and shape timeline layers through the Rust video core. Preview video frames use a YUV fast-path where supported: FFmpeg frames are kept as NV12-style Y/UV planes, uploaded as `R8Unorm`/`Rg8Unorm`, and converted to RGBA by a small GPU pass before entering the existing Vello texture path. SVG files are rasterized with `resvg` at the target preview/export resolution, while text/shapes/blend modes, and crossfades (dissolve transitions) are composed in the Vello scene used by the monitor preview and native video export. The web editor fonts loaded from Google Fonts are not bundled into Rust yet; to make them deterministic in native text rendering, bundle the matching `.ttf`/`.otf` files with the app and load them into the native font database before creating text layouts.
@@ -90,7 +90,7 @@ The application will be available at `http://localhost:3000`.
 - FastCat stores global `user.settings.json` and `app.settings.json` in the OS-recommended Tauri `BaseDirectory.AppConfig` location. Workspace settings stay in the selected workspace.
 - Desktop startup automatically restores the saved workspace path, or creates and uses the default `Documents/FastCat` workspace when no path was saved yet.
 - In Tauri dev mode, app config/cache/default documents resolve under `FASTCAT_DEV_DIR`, which defaults to the project-root `./.dev-files`. The directory mirrors the user's OS root layout: on Linux it creates `home/user/.config/fastcat`, `home/user/.local/share/fastcat`, `home/user/.cache/fastcat`, `tmp/fastcat`, and `home/user/Documents`; on Windows it uses `Users/user/AppData/Roaming/fastcat`, `Local/fastcat`, `Local/Temp/fastcat`, and `Documents`; on macOS it uses `Users/user/Library/Application Support/fastcat`, `Caches/fastcat`, `tmp/fastcat`, and `Documents`. The debug shell extends the runtime FS scope for that dev directory.
-- Tauri capabilities are scoped to app-managed directories (`$APPDATA`, `$APPCONFIG`, `$APPCACHE`, `$TEMP`) and dev resource paths. User-selected folders are added to the runtime scope by the dialog plugin and restored by persisted scope.
+- Tauri capabilities are scoped to app-managed directories (`$APPDATA`, `$APPCONFIG`, `$APPCACHE`, `$TEMP`) and dev resource paths. User-selected folders and dropped files are canonicalized and added to the runtime scope only after Rust-side policy checks reject filesystem roots, the bare home directory, and sensitive components such as `.git`, `.ssh`, `.env`, and `node_modules`.
 - Desktop production builds use `tauri build` with Linux `deb` and `rpm` bundle targets enabled. Add `appimage` back when the build environment provides a working `linuxdeploy`.
 
 ## Architecture

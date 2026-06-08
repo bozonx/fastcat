@@ -504,6 +504,78 @@ mod tests {
         assert!(text_layer.shadow_left > 0.0);
     }
 
+    fn text_layer_with_style(style: serde_json::Value) -> crate::compositor::scene::TextLayer {
+        let sl = SceneLayer {
+            id: "text-bg".into(),
+            kind: LayerKind::Text,
+            path: "".into(),
+            timeline_start_sec: 0.0,
+            timeline_end_sec: 10.0,
+            source_start_sec: 0.0,
+            source_range_duration_sec: 10.0,
+            speed: 1.0,
+            freeze_frame_source_sec: None,
+            source_orientation: None,
+            z: 1,
+            opacity: 1.0,
+            blend_mode: BlendMode::Normal,
+            background_color: None,
+            text: Some("Test".into()),
+            style: Some(style),
+            shape_type: None,
+            fill_color: None,
+            stroke_color: None,
+            stroke_width: None,
+            shape_config: None,
+            transform: None,
+            transition_in: None,
+            transition_out: None,
+            effects: Vec::new(),
+        };
+        build_text_layer(&sl, (1920, 1080))
+    }
+
+    #[test]
+    fn explicit_background_enabled_false_overrides_present_color() {
+        // Регрессия: явный `backgroundEnabled:false` должен выключать фон даже при
+        // сохранённом непустом `backgroundColor` (раньше OR не давал выключить).
+        let layer = text_layer_with_style(json!({
+            "backgroundEnabled": false,
+            "backgroundColor": "#0000ff",
+        }));
+        assert!(!layer.background_enabled);
+
+        // Без явного флага — включаем по непустому цвету (как web).
+        let layer = text_layer_with_style(json!({ "backgroundColor": "#0000ff" }));
+        assert!(layer.background_enabled);
+
+        // Явный true остаётся включённым.
+        let layer = text_layer_with_style(json!({ "backgroundEnabled": true }));
+        assert!(layer.background_enabled);
+    }
+
+    #[test]
+    fn linked_padding_applies_left_to_all_edges() {
+        // Связанные отступы (дефолт): все стороны = left.
+        let layer = text_layer_with_style(json!({
+            "padding": { "top": 5.0, "right": 5.0, "bottom": 5.0, "left": 40.0 },
+        }));
+        assert_eq!(layer.padding_top, 40.0);
+        assert_eq!(layer.padding_right, 40.0);
+        assert_eq!(layer.padding_bottom, 40.0);
+        assert_eq!(layer.padding_left, 40.0);
+
+        // Несвязанные — каждая сторона своя.
+        let layer = text_layer_with_style(json!({
+            "paddingLinked": false,
+            "padding": { "top": 5.0, "right": 10.0, "bottom": 15.0, "left": 20.0 },
+        }));
+        assert_eq!(layer.padding_top, 5.0);
+        assert_eq!(layer.padding_right, 10.0);
+        assert_eq!(layer.padding_bottom, 15.0);
+        assert_eq!(layer.padding_left, 20.0);
+    }
+
     #[test]
     fn test_build_text_layer_scales_style_to_scene_resolution() {
         let sl = SceneLayer {

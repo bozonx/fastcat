@@ -28,9 +28,12 @@ fn user_home_dir() -> Option<PathBuf> {
 /// Rejects scope-extension targets that would hand the webview far more of the
 /// filesystem than any single operation needs: filesystem roots and the bare
 /// home directory. A compromised renderer must not be able to call
-/// `allow_path_scope("/")` and read the whole disk. Callers should pass an
-/// already-resolved absolute path.
+/// `allow_path_scope("/")` and read the whole disk.
 fn reject_dangerous_scope_path(path: &Path) -> Result<(), String> {
+    if !path.is_absolute() {
+        return Err(format!("scope path must be absolute: {path:?}"));
+    }
+
     // A path with no parent is a filesystem root (`/`, `C:\`).
     if path.parent().is_none() {
         return Err(format!(
@@ -38,7 +41,7 @@ fn reject_dangerous_scope_path(path: &Path) -> Result<(), String> {
         ));
     }
 
-    if let Some(home) = user_home_dir() {
+    if let Some(home) = canonical_user_home_dir() {
         if path == home {
             return Err(format!(
                 "refusing to extend scope to the home directory: {path:?}"
@@ -62,6 +65,16 @@ fn reject_dangerous_scope_path(path: &Path) -> Result<(), String> {
     }
 
     Ok(())
+}
+
+fn canonical_user_home_dir() -> Option<PathBuf> {
+    user_home_dir().map(|home| home.canonicalize().unwrap_or(home))
+}
+
+fn canonicalize_scope_path(path: &str) -> Result<PathBuf, String> {
+    Path::new(path)
+        .canonicalize()
+        .map_err(|e| format!("failed to resolve scope path {path:?}: {e}"))
 }
 
 pub mod audio;
@@ -118,15 +131,17 @@ fn native_update_ffmpeg_settings(
 /// Required for drag-and-drop imports from arbitrary filesystem locations.
 #[tauri::command]
 fn allow_dropped_file_scope(app: tauri::AppHandle, path: String) -> Result<(), String> {
-    use std::path::Path;
-    let p = Path::new(&path);
+    let path = canonicalize_scope_path(&path)?;
+    reject_dangerous_scope_path(&path)?;
 
-    // Reject directories — only individual files should be allowed this way.
-    if p.extension().is_none() && p.is_dir() {
-        return Err(format!("path is a directory: {path}"));
+    if !path.is_file() {
+        return Err(format!("scope path is not a regular file: {path:?}"));
     }
 
-    log::info!("[allow_dropped_file_scope] extending scope to: {path}");
+    log::info!(
+        "[allow_dropped_file_scope] extending scope to: {}",
+        path.display()
+    );
     app.fs_scope()
         .allow_file(&path)
         .map_err(|e| e.to_string())?;
@@ -135,7 +150,7 @@ fn allow_dropped_file_scope(app: tauri::AppHandle, path: String) -> Result<(), S
         .map_err(|e| e.to_string())
 }
 
-fn allow_directory_scope(app: &tauri::AppHandle, path: &str) -> Result<(), String> {
+fn allow_directory_scope(app: &tauri::AppHandle, path: &Path) -> Result<(), String> {
     app.fs_scope()
         .allow_directory(path, true)
         .map_err(|e| e.to_string())?;
@@ -146,9 +161,10 @@ fn allow_directory_scope(app: &tauri::AppHandle, path: &str) -> Result<(), Strin
 
 #[tauri::command]
 fn allow_path_scope(app: tauri::AppHandle, path: String) -> Result<(), String> {
-    reject_dangerous_scope_path(Path::new(&path))?;
+    let path = canonicalize_scope_path(&path)?;
+    reject_dangerous_scope_path(&path)?;
 
-    log::info!("[allow_path_scope] extending scope to: {path}");
+    log::info!("[allow_path_scope] extending scope to: {}", path.display());
     allow_directory_scope(&app, &path)
 }
 
@@ -158,9 +174,13 @@ fn allow_dev_directory_scope(app: tauri::AppHandle, path: String) -> Result<(), 
         return Err("dev directory scope can only be extended in debug builds".to_string());
     }
 
-    reject_dangerous_scope_path(Path::new(&path))?;
+    let path = canonicalize_scope_path(&path)?;
+    reject_dangerous_scope_path(&path)?;
 
-    log::info!("[allow_dev_directory_scope] extending scope to: {}", path);
+    log::info!(
+        "[allow_dev_directory_scope] extending scope to: {}",
+        path.display()
+    );
     allow_directory_scope(&app, &path)?;
     log::info!("[allow_dev_directory_scope] scope extended successfully");
     Ok(())
@@ -271,5 +291,62 @@ pub fn run() {
     let result = builder.run(tauri::generate_context!());
     if let Err(e) = result {
         log::error!("error while running tauri application: {e}");
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::fs;
+    use std::path::PathBuf;
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    use super::{canonicalize_scope_path, reject_dangerous_scope_path};
+
+    fn unique_temp_dir(name: &str) -> PathBuf {
+        let unique = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("system clock before unix epoch")
+            .as_nanos();
+        std::env::temp_dir().join(format!("fastcat-{name}-{}-{unique}", std::process::id()))
+    }
+
+    #[test]
+    fn canonicalize_scope_path_resolves_parent_segments_before_policy_check() {
+        let root = unique_temp_dir("scope-canonical");
+        let safe = root.join("safe");
+        fs::create_dir_all(&safe).expect("create temp scope dir");
+
+        let raw = safe.join("..").join("safe");
+        let resolved = canonicalize_scope_path(&raw.to_string_lossy()).expect("canonical path");
+
+        assert_eq!(resolved, safe.canonicalize().expect("canonical safe dir"));
+        reject_dangerous_scope_path(&resolved).expect("safe canonical dir");
+
+        let _ = fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn scope_policy_rejects_sensitive_components_after_canonicalization() {
+        let root = unique_temp_dir("scope-sensitive");
+        let safe = root.join("safe");
+        let sensitive = root.join(".git").join("objects");
+        fs::create_dir_all(&safe).expect("create safe temp dir");
+        fs::create_dir_all(&sensitive).expect("create sensitive temp dir");
+
+        let raw = safe.join("..").join(".git").join("objects");
+        let resolved = canonicalize_scope_path(&raw.to_string_lossy()).expect("canonical path");
+        let error = reject_dangerous_scope_path(&resolved).expect_err("sensitive path rejected");
+
+        assert!(error.contains("sensitive component"));
+
+        let _ = fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn scope_policy_rejects_relative_paths() {
+        let error = reject_dangerous_scope_path(std::path::Path::new("relative/path"))
+            .expect_err("relative path rejected");
+
+        assert!(error.contains("absolute"));
     }
 }

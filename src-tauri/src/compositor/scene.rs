@@ -319,6 +319,12 @@ pub enum TextRenderMode {
     Full,
     WithoutTextShadow,
     TextShadowMask,
+    /// Только подложка: bg-тень + фон + рамка (без текста и тени текста).
+    /// Нижний слой GPU-композита тени текста.
+    BackgroundOnly,
+    /// Только глифы основного текста (без фона/рамки/тени).
+    /// Верхний слой GPU-композита тени текста.
+    TextOnly,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -577,11 +583,16 @@ fn draw_text(scene: &mut VelloScene, spec: &TextLayer, xform: Affine) {
 
     if matches!(
         spec.render_mode,
-        TextRenderMode::Full | TextRenderMode::WithoutTextShadow
+        TextRenderMode::Full | TextRenderMode::WithoutTextShadow | TextRenderMode::BackgroundOnly
     ) {
         draw_text_background_shadow(scene, spec, xform, frame_x, frame_y);
         draw_text_background(scene, spec, xform, frame_x, frame_y);
         draw_text_border(scene, spec, xform, frame_x, frame_y);
+    }
+
+    // Подложка нарисована — текст/тень в этом режиме не нужны.
+    if matches!(spec.render_mode, TextRenderMode::BackgroundOnly) {
+        return;
     }
 
     // 4. Layout Text
@@ -634,7 +645,7 @@ fn draw_text(scene: &mut VelloScene, spec: &TextLayer, xform: Affine) {
 
     if matches!(
         spec.render_mode,
-        TextRenderMode::Full | TextRenderMode::WithoutTextShadow
+        TextRenderMode::Full | TextRenderMode::WithoutTextShadow | TextRenderMode::TextOnly
     ) {
         draw_main_text(
             scene,
@@ -657,7 +668,12 @@ fn draw_text_background_shadow(
     frame_x: f32,
     frame_y: f32,
 ) {
-    if !(spec.bg_shadow_enabled && spec.bg_shadow_color.to_rgba8().a > 0) {
+    // Тень рисуем только при включённом фоне (как web: `backgroundEnabled &&
+    // backgroundShadowEnabled`) — тень от невидимой подложки не имеет смысла.
+    if !(spec.background_enabled
+        && spec.bg_shadow_enabled
+        && spec.bg_shadow_color.to_rgba8().a > 0)
+    {
         return;
     }
     let shadow_x = frame_x + spec.bg_shadow_offset_x;

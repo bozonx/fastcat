@@ -184,13 +184,19 @@ pub fn build_text_layer(sl: &SceneLayer, scene_size: (u32, u32)) -> TextLayer {
         number(&style, "borderAlpha", 1.0).clamp(0.0, 1.0),
     );
 
-    // Background
-    let background_enabled = bool_value(&style, "backgroundEnabled", false)
-        || style
+    // Background.
+    // Зеркалит web `normalizeTextClipStyle`: явный булев `backgroundEnabled`
+    // ВСЕГДА авторитетен (в т.ч. `false` = выключено). Только при его отсутствии
+    // включаем по факту непустого `backgroundColor`. Раньше тут было `||`, из-за
+    // чего сохранённый цвет не давал выключить фон.
+    let background_enabled = match style.get("backgroundEnabled").and_then(|v| v.as_bool()) {
+        Some(explicit) => explicit,
+        None => style
             .get("backgroundColor")
             .and_then(|v| v.as_str())
             .map(|s| !s.trim().is_empty())
-            .unwrap_or(false);
+            .unwrap_or(false),
+    };
     let background_color = parse_color(
         string_value(&style, "backgroundColor", "#000000").as_str(),
         number(&style, "backgroundAlpha", 1.0).clamp(0.0, 1.0),

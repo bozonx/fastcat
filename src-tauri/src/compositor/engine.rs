@@ -573,6 +573,19 @@ impl Compositor {
         };
         let render_scale = Self::vector_effect_render_scale(layer);
 
+        // Тень текста должна лежать МЕЖДУ фоном и глифами (как в CSS / старом CPU-пути),
+        // иначе непрозрачный фон-подложка полностью её перекрывает. Поэтому композитим
+        // три слоя: фон+рамка (низ) → размытая тень → основной текст (верх).
+        let mut bg_spec = spec.clone();
+        bg_spec.render_mode = TextRenderMode::BackgroundOnly;
+        let background = self.render_text_spec_to_texture(
+            dev_id,
+            scene.time,
+            layer.id.as_str(),
+            bg_spec,
+            render_scale,
+        )?;
+
         let mut shadow_spec = spec.clone();
         shadow_spec.render_mode = TextRenderMode::TextShadowMask;
         shadow_spec.text_shadow_blur = 0.0;
@@ -594,18 +607,18 @@ impl Compositor {
             }],
         )?;
 
-        let mut base_spec = spec.clone();
-        base_spec.render_mode = TextRenderMode::WithoutTextShadow;
-        let base = self.render_text_spec_to_texture(
+        let mut text_spec = spec.clone();
+        text_spec.render_mode = TextRenderMode::TextOnly;
+        let text = self.render_text_spec_to_texture(
             dev_id,
             scene.time,
             layer.id.as_str(),
-            base_spec,
+            text_spec,
             render_scale,
         )?;
 
-        let width = base.width();
-        let height = base.height();
+        let width = text.width();
+        let height = text.height();
         let composite = super::scene::Scene {
             width,
             height,
@@ -613,13 +626,18 @@ impl Compositor {
             background: Color::TRANSPARENT,
             layers: vec![
                 Self::gpu_texture_layer(
+                    format!("{}:gpu-text-bg", layer.id),
+                    Arc::new(background),
+                    (width, height),
+                ),
+                Self::gpu_texture_layer(
                     format!("{}:gpu-text-shadow", layer.id),
                     blurred_shadow,
                     (width, height),
                 ),
                 Self::gpu_texture_layer(
-                    format!("{}:gpu-text-base", layer.id),
-                    Arc::new(base),
+                    format!("{}:gpu-text-glyphs", layer.id),
+                    Arc::new(text),
                     (width, height),
                 ),
             ],
