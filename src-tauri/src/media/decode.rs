@@ -15,7 +15,7 @@ use std::sync::{Arc, OnceLock};
 use parking_lot::Mutex;
 
 use super::ffmpeg_utils::is_quarter_turn;
-use super::hwaccel::{init_hwaccel, try_transfer_to_cpu, HwAccelContext};
+use super::hwaccel::{init_hwaccel_context, try_transfer_to_cpu, HwAccelContext};
 use super::types::HwAccelMode;
 
 #[derive(Debug, Clone)]
@@ -104,7 +104,7 @@ pub struct FfmpegNextDecoder {
     info: MediaInfo,
     ictx: ffmpeg::format::context::Input,
     decoder: ffmpeg::decoder::Video,
-    scaler: ffmpeg::software::scaling::Context,
+    scaler: Option<ffmpeg::software::scaling::Context>,
     scaler_input_format: ffmpeg::format::Pixel,
     scaler_input_width: u32,
     scaler_input_height: u32,
@@ -154,9 +154,15 @@ impl FfmpegNextDecoder {
         let parameters = input.parameters();
         let codec = parameters.id().name().to_string();
 
-        let context_decoder = ffmpeg::codec::context::Context::from_parameters(parameters)
+        let mut context_decoder = ffmpeg::codec::context::Context::from_parameters(parameters)
             .context("failed to create ffmpeg-next decoder context")?;
-        let mut decoder = if codec == "vp9" {
+        let hwaccel = {
+            // SAFETY: `context_decoder` owns a live `AVCodecContext*`. We only attach
+            // the hw device before opening the codec, which is the libav-required point.
+            let codec_ctx = unsafe { context_decoder.as_mut_ptr() };
+            init_hwaccel_context(codec_ctx, hw_mode, vaapi_device)
+        };
+        let decoder = if codec == "vp9" {
             if let Some(libvpx) = ffmpeg::decoder::find_by_name("libvpx-vp9") {
                 context_decoder
                     .decoder()
@@ -180,22 +186,10 @@ impl FfmpegNextDecoder {
         let (visual_w, visual_h) = visual_dimensions(decoder.width(), decoder.height(), rotation);
         let (out_w, out_h) = compute_output_dims(visual_w, visual_h, max_output_long_edge);
         let (scaled_coded_w, scaled_coded_h) = coded_output_dimensions(out_w, out_h, rotation);
-        let scaler = ffmpeg::software::scaling::Context::get(
-            decoder.format(),
-            decoder.width(),
-            decoder.height(),
-            ffmpeg::format::Pixel::RGBA,
-            scaled_coded_w,
-            scaled_coded_h,
-            ffmpeg::software::scaling::flag::Flags::BILINEAR,
-        )
-        .context("failed to create ffmpeg-next scaler")?;
-
         let scaler_input_format = decoder.format();
         let scaler_input_width = decoder.width();
         let scaler_input_height = decoder.height();
 
-        let hwaccel = init_hwaccel(&mut decoder, hw_mode, vaapi_device);
         if hwaccel.is_some() {
             log::info!("[native-media] hwaccel enabled for {}", path.display());
         }
@@ -213,7 +207,7 @@ impl FfmpegNextDecoder {
             },
             ictx,
             decoder,
-            scaler,
+            scaler: None,
             scaler_input_format,
             scaler_input_width,
             scaler_input_height,
@@ -260,7 +254,8 @@ impl FfmpegNextDecoder {
             decoded
         };
 
-        if decoded.format() != self.scaler_input_format
+        if self.scaler.is_none()
+            || decoded.format() != self.scaler_input_format
             || decoded.width() != self.scaler_input_width
             || decoded.height() != self.scaler_input_height
         {
@@ -273,7 +268,7 @@ impl FfmpegNextDecoder {
                 decoded.width(),
                 decoded.height()
             );
-            self.scaler = ffmpeg::software::scaling::Context::get(
+            self.scaler = Some(ffmpeg::software::scaling::Context::get(
                 decoded.format(),
                 decoded.width(),
                 decoded.height(),
@@ -282,7 +277,7 @@ impl FfmpegNextDecoder {
                 self.info.height,
                 ffmpeg::software::scaling::flag::Flags::BILINEAR,
             )
-            .context("failed to recreate ffmpeg-next scaler")?;
+            .context("failed to recreate ffmpeg-next scaler")?);
             self.scaler_input_format = decoded.format();
             self.scaler_input_width = decoded.width();
             self.scaler_input_height = decoded.height();
@@ -290,6 +285,8 @@ impl FfmpegNextDecoder {
 
         let mut rgba = ffmpeg::util::frame::Video::empty();
         self.scaler
+            .as_mut()
+            .context("RGBA scaler missing")?
             .run(decoded, &mut rgba)
             .context("failed to scale decoded video frame to RGBA")?;
 

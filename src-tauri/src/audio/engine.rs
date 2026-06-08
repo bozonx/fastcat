@@ -268,13 +268,7 @@ impl NativeAudioEngine {
     pub fn pause(&self) -> f64 {
         self.restart_finished_producer();
         let mut state = self.shared.0.lock();
-        let pts = audible_pts_sec(
-            &state,
-            &self.clock,
-            self.sample_rate,
-            self.device_channels as usize,
-            self.ring.len(),
-        );
+        let pts = audible_pts_sec(&state, &self.clock, self.sample_rate);
         state.playing = false;
         self.clock.playing.store(false, Ordering::Release);
         state.origin_pts_sec = pts;
@@ -300,13 +294,7 @@ impl NativeAudioEngine {
         // playback already is, treat it as a no-op: do NOT flush or reseek. A real
         // scrub (a genuine position jump) exceeds the tolerance and seeks normally.
         if playing && state.playing {
-            let current = audible_pts_sec(
-                &state,
-                &self.clock,
-                self.sample_rate,
-                self.device_channels as usize,
-                self.ring.len(),
-            );
+            let current = audible_pts_sec(&state, &self.clock, self.sample_rate);
             if (pts - current).abs() < SEEK_IGNORE_SEC {
                 self.ignored_echo_seeks.fetch_add(1, Ordering::Relaxed);
                 let mut last = self.last_seek_diag_log.lock();
@@ -343,13 +331,7 @@ impl NativeAudioEngine {
         if !self.clock.playing.load(Ordering::Acquire) {
             return None;
         }
-        Some(audible_pts_sec(
-            &state,
-            &self.clock,
-            self.sample_rate,
-            self.device_channels as usize,
-            self.ring.len(),
-        ))
+        Some(audible_pts_sec(&state, &self.clock, self.sample_rate))
     }
 
     pub fn is_empty(&self) -> bool {

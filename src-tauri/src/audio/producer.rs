@@ -297,21 +297,22 @@ pub(crate) fn panic_payload_message(error: &Box<dyn std::any::Any + Send>) -> St
     "non-string panic payload".to_string()
 }
 
-pub(crate) fn audible_pts_sec(
-    state: &AudioShared,
-    clock: &RealtimeClock,
-    sample_rate: u32,
-    output_channels: usize,
-    ring_samples: usize,
-) -> f64 {
+pub(crate) fn audible_pts_sec(state: &AudioShared, clock: &RealtimeClock, sample_rate: u32) -> f64 {
+    // Timeline position currently leaving the speakers = origin + (frames the
+    // device has CONSUMED − hardware latency). `clock.frames()` counts frames
+    // handed to the device (incremented in the output callback), and the producer
+    // pushes the timeline contiguously starting at `origin`, so consumed frame N
+    // maps to timeline `origin + N/sr`.
+    //
+    // The ring buffer holds FUTURE, not-yet-consumed audio, so it must NOT be
+    // subtracted here. Doing so used to be masked because seek-thrash kept the
+    // ring pinned near one chunk (a constant ~50ms offset); once the prebuffer
+    // actually stays full (~800ms) and varies, subtracting it made the reported
+    // position lag and lurch BACKWARD whenever the ring grew — the audio playhead
+    // wobbled and the video (slaved to this pts) jumped back several frames.
     let hw_latency_frames =
         (clock.output_latency_sec().max(0.0) * sample_rate as f64).round() as u64;
-    // The ring buffer holds already-mixed but not-yet-audible samples.
-    // On Linux cpal often reports zero hardware latency, so this is the
-    // dominant delay in the audio pipeline and must be subtracted too.
-    let ring_frames = (ring_samples / output_channels.max(1)) as u64;
-    let total_latency_frames = hw_latency_frames + ring_frames;
-    let audible_frames = clock.frames().saturating_sub(total_latency_frames);
+    let audible_frames = clock.frames().saturating_sub(hw_latency_frames);
     state.origin_pts_sec + audible_frames as f64 / sample_rate as f64
 }
 
@@ -415,7 +416,7 @@ mod tests {
             .output_latency_bits
             .store(0.02f64.to_bits(), Ordering::Release);
 
-        let pts = audible_pts_sec(&state, &clock, 48_000, 2, 0);
+        let pts = audible_pts_sec(&state, &clock, 48_000);
 
         // frames_written already accounts for every frame handed to the OS;
         // only pipeline latency should be subtracted (0.02 s = 960 frames).

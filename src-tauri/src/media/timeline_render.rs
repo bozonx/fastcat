@@ -118,6 +118,8 @@ pub struct VideoDecoderCache {
     svgs: HashMap<(PathBuf, u32), CachedRaster>,
     lru: VecDeque<PathBuf>,
     capacity: usize,
+    hw_mode: HwAccelMode,
+    vaapi_device: Option<String>,
 }
 
 impl Default for VideoDecoderCache {
@@ -134,6 +136,16 @@ impl VideoDecoderCache {
             svgs: HashMap::new(),
             lru: VecDeque::new(),
             capacity: 8,
+            hw_mode: HwAccelMode::None,
+            vaapi_device: None,
+        }
+    }
+
+    pub fn new_with_hw_decode(hw_mode: HwAccelMode, vaapi_device: Option<String>) -> Self {
+        Self {
+            hw_mode,
+            vaapi_device,
+            ..Self::new()
         }
     }
 
@@ -158,7 +170,12 @@ impl VideoDecoderCache {
             if self.decoders.contains_key(&path_buf) {
                 self.decoders.remove(&path_buf);
             }
-            let decoder = open_decoder(path, max_output_long_edge, HwAccelMode::None, None)?;
+            let decoder = open_decoder(
+                path,
+                max_output_long_edge,
+                self.hw_mode,
+                self.vaapi_device.as_deref(),
+            )?;
             let (rotation, fps) = {
                 let info = decoder.info();
                 (info.rotation, info.fps)
@@ -225,6 +242,19 @@ mod tests {
         assert!(cache.images.is_empty());
         assert!(cache.svgs.is_empty());
         assert!(cache.lru.is_empty());
+        assert_eq!(cache.hw_mode, HwAccelMode::None);
+        assert_eq!(cache.vaapi_device, None);
+    }
+
+    #[test]
+    fn decoder_cache_can_store_hw_decode_settings() {
+        let cache = VideoDecoderCache::new_with_hw_decode(
+            HwAccelMode::Vaapi,
+            Some("/dev/dri/renderD128".to_string()),
+        );
+
+        assert_eq!(cache.hw_mode, HwAccelMode::Vaapi);
+        assert_eq!(cache.vaapi_device.as_deref(), Some("/dev/dri/renderD128"));
     }
 
     #[test]

@@ -269,6 +269,12 @@ impl ApplicationHandler<MonitorCommand> for MonitorApp {
                     s.recreate_audio(settings);
                 }
             }
+            MonitorCommand::SetHwSettings(settings) => {
+                if let Some(s) = self.state.as_mut() {
+                    s.update_hw_settings(settings);
+                    s.window.request_redraw();
+                }
+            }
             MonitorCommand::Close => {
                 event_loop.exit();
             }
@@ -482,6 +488,14 @@ impl WindowState {
                 None
             }
         };
+    }
+
+    fn update_hw_settings(&mut self, settings: crate::FfmpegHardwareSettings) {
+        let t = self.clock.current_pts();
+        let playing = self.clock.is_playing();
+        if self.layers.update_hw_settings(settings) {
+            self.layers.seek(t, playing);
+        }
     }
 
     fn set_mode(&mut self, mode: MonitorMode) {

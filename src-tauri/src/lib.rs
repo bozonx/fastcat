@@ -71,7 +71,7 @@ pub mod ipc;
 pub mod media;
 pub mod monitor;
 
-#[derive(Debug, Clone, serde::Deserialize, serde::Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct FfmpegHardwareSettings {
     pub ffmpeg_path: String,
@@ -97,8 +97,21 @@ impl Default for FfmpegHardwareSettings {
 fn native_update_ffmpeg_settings(
     settings: FfmpegHardwareSettings,
     state: tauri::State<'_, parking_lot::RwLock<FfmpegHardwareSettings>>,
+    engine: tauri::State<'_, engine::VideoEngine>,
 ) {
-    *state.write() = settings;
+    let changed = {
+        let mut guard = state.write();
+        let changed = *guard != settings;
+        if changed {
+            *guard = settings.clone();
+        }
+        changed
+    };
+    if changed {
+        if let Some(monitor) = engine.monitor() {
+            let _ = monitor.send(monitor::MonitorCommand::SetHwSettings(settings));
+        }
+    }
 }
 
 /// Extends the fs scope to allow reading a file dropped from the OS.

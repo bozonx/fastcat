@@ -43,8 +43,8 @@ impl Drop for HwAccelContext {
 ///
 /// Returns `None` if hwaccel is disabled or the requested backend could not
 /// be created (graceful fallback to software decode).
-pub fn init_hwaccel(
-    decoder: &mut ffmpeg::decoder::Video,
+pub fn init_hwaccel_context(
+    codec_ctx: *mut ffmpeg_sys_next::AVCodecContext,
     hw_mode: HwAccelMode,
     vaapi_device: Option<&str>,
 ) -> Option<HwAccelContext> {
@@ -52,19 +52,13 @@ pub fn init_hwaccel(
         return None;
     }
 
-    // SAFETY: `decoder` is a live `ffmpeg::decoder::Video`; `as_mut_ptr()` returns the
-    // underlying `AVCodecContext*` which remains valid as long as the decoder is alive.
-    let codec_ctx = unsafe { decoder.as_mut_ptr() };
     if codec_ctx.is_null() {
         log::warn!("[hwaccel] decoder context is null");
         return None;
     }
 
     #[cfg(target_os = "linux")]
-    if matches!(
-        hw_mode,
-        HwAccelMode::Auto | HwAccelMode::Vaapi | HwAccelMode::Nvdec
-    ) {
+    if matches!(hw_mode, HwAccelMode::Auto | HwAccelMode::Vaapi) {
         match try_vaapi(codec_ctx, vaapi_device) {
             Ok(ctx) => return Some(ctx),
             Err(e) => log::warn!("[hwaccel] VAAPI init failed: {e}"),
@@ -72,7 +66,7 @@ pub fn init_hwaccel(
     }
 
     #[cfg(target_os = "macos")]
-    if matches!(hw_mode, HwAccelMode::Auto | HwAccelMode::Vaapi) {
+    if matches!(hw_mode, HwAccelMode::Auto) {
         match try_videotoolbox(codec_ctx) {
             Ok(ctx) => return Some(ctx),
             Err(e) => log::warn!("[hwaccel] VideoToolbox init failed: {e}"),
@@ -80,7 +74,7 @@ pub fn init_hwaccel(
     }
 
     #[cfg(target_os = "windows")]
-    if matches!(hw_mode, HwAccelMode::Auto | HwAccelMode::Nvdec) {
+    if matches!(hw_mode, HwAccelMode::Auto) {
         match try_d3d11va(codec_ctx) {
             Ok(ctx) => return Some(ctx),
             Err(e) => log::warn!("[hwaccel] D3D11VA init failed: {e}"),
@@ -121,6 +115,13 @@ pub fn try_transfer_to_cpu(
     if ret < 0 {
         return Err(anyhow!(
             "av_hwframe_transfer_data failed: {}",
+            ffmpeg_error_str(ret)
+        ));
+    }
+    let ret = unsafe { ffmpeg_sys_next::av_frame_copy_props(sw_ptr, hw_frame) };
+    if ret < 0 {
+        return Err(anyhow!(
+            "av_frame_copy_props failed: {}",
             ffmpeg_error_str(ret)
         ));
     }

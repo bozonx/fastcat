@@ -54,6 +54,7 @@ pub struct LayerRuntimeManager {
     last_tick_t: f64,
     runtimes: HashMap<String, LayerRuntime>,
     loading_set: HashSet<String>,
+    load_epoch: u64,
     bg_tx: Sender<BgLayerResult>,
     proxy: EventLoopProxy<MonitorCommand>,
     hw_settings: crate::FfmpegHardwareSettings,
@@ -77,6 +78,7 @@ impl LayerRuntimeManager {
             last_tick_t: 0.0,
             runtimes: HashMap::new(),
             loading_set: HashSet::new(),
+            load_epoch: 0,
             bg_tx,
             proxy,
             hw_settings,
@@ -101,6 +103,42 @@ impl LayerRuntimeManager {
                 }
             }
         }
+    }
+
+    pub fn update_hw_settings(&mut self, hw_settings: crate::FfmpegHardwareSettings) -> bool {
+        if self.hw_settings == hw_settings {
+            return false;
+        }
+        log::info!(
+            "[monitor] hwaccel settings changed: {} -> {}",
+            self.hw_settings.hardware_acceleration_mode.as_str(),
+            hw_settings.hardware_acceleration_mode.as_str(),
+        );
+        self.hw_settings = hw_settings;
+        self.load_epoch = self.load_epoch.wrapping_add(1);
+        self.loading_set.clear();
+
+        let prev = std::mem::take(&mut self.runtimes);
+        let mut to_drop: Vec<LayerRuntime> = Vec::new();
+        for (id, rt) in prev {
+            match rt {
+                LayerRuntime::Video(_) | LayerRuntime::Loading | LayerRuntime::Failed => {
+                    to_drop.push(rt);
+                }
+                other => {
+                    self.runtimes.insert(id, other);
+                }
+            }
+        }
+        if !to_drop.is_empty() {
+            if let Err(e) = std::thread::Builder::new()
+                .name("fastcat-rt-hw-drop".into())
+                .spawn(move || drop(to_drop))
+            {
+                log::error!("[monitor] failed to spawn hw settings drop thread: {e:?}");
+            }
+        }
+        true
     }
 
     /// Конец последнего слоя сцены (секунды timeline). 0.0 если сцена пуста.
@@ -131,6 +169,7 @@ impl LayerRuntimeManager {
                 self.preview_scale,
                 scene.preview_scale,
             );
+            self.load_epoch = self.load_epoch.wrapping_add(1);
             self.loading_set.clear();
         }
         self.preview_scale = scene.preview_scale;
@@ -199,6 +238,7 @@ impl LayerRuntimeManager {
         let path = PathBuf::from(&layer.path);
         let bg_tx = self.bg_tx.clone();
         let proxy = self.proxy.clone();
+        let epoch = self.load_epoch;
 
         match layer.kind {
             LayerKind::Video => {
@@ -234,6 +274,7 @@ impl LayerRuntimeManager {
                                 let media_size = (pump.info.width, pump.info.height);
                                 let source_rotation = pump.info.rotation;
                                 BgLayerResult::VideoOk {
+                                    epoch,
                                     id: spawn_id,
                                     pump,
                                     media_size,
@@ -241,6 +282,7 @@ impl LayerRuntimeManager {
                                 }
                             }
                             Err(e) => BgLayerResult::VideoErr {
+                                epoch,
                                 id: spawn_id,
                                 error: format!("{e:?}"),
                             },
@@ -262,11 +304,13 @@ impl LayerRuntimeManager {
                         let _permit = decoder_load_gate().acquire();
                         let result = match decode_image(&path) {
                             Ok(img) => BgLayerResult::ImageOk {
+                                epoch,
                                 id: spawn_id,
                                 image: img.image,
                                 size: (img.width, img.height),
                             },
                             Err(e) => BgLayerResult::ImageErr {
+                                epoch,
                                 id: spawn_id,
                                 error: format!("{e:?}"),
                             },
@@ -292,11 +336,13 @@ impl LayerRuntimeManager {
                         let _permit = decoder_load_gate().acquire();
                         let result = match rasterize_svg(&path, target_long_edge) {
                             Ok((image, size)) => BgLayerResult::SvgOk {
+                                epoch,
                                 id: spawn_id,
                                 image,
                                 size,
                             },
                             Err(e) => BgLayerResult::SvgErr {
+                                epoch,
                                 id: spawn_id,
                                 error: format!("{e:?}"),
                             },
@@ -317,12 +363,18 @@ impl LayerRuntimeManager {
     pub fn apply_bg_result(&mut self, result: BgLayerResult) {
         match result {
             BgLayerResult::VideoOk {
+                epoch,
                 id,
                 pump,
                 media_size,
                 source_rotation,
             } => {
-                self.loading_set.remove(&id);
+                if epoch != self.load_epoch {
+                    return;
+                }
+                if !self.loading_set.remove(&id) {
+                    return;
+                }
                 if !self.scene.iter().any(|l| l.id == id) {
                     self.runtimes.remove(&id);
                     return;
@@ -354,16 +406,31 @@ impl LayerRuntimeManager {
                 }
                 self.runtimes.insert(id, LayerRuntime::Video(rt));
             }
-            BgLayerResult::VideoErr { id, error } => {
-                self.loading_set.remove(&id);
+            BgLayerResult::VideoErr { epoch, id, error } => {
+                if epoch != self.load_epoch {
+                    return;
+                }
+                if !self.loading_set.remove(&id) {
+                    return;
+                }
                 log::error!("[monitor] open pump {id}: {error}");
                 if !matches!(self.runtimes.get(&id), Some(LayerRuntime::Video(_))) {
                     self.runtimes.insert(id.clone(), LayerRuntime::Failed);
                 }
                 emit_layer_failed(&self.app, &id, "video", &error);
             }
-            BgLayerResult::ImageOk { id, image, size } => {
-                self.loading_set.remove(&id);
+            BgLayerResult::ImageOk {
+                epoch,
+                id,
+                image,
+                size,
+            } => {
+                if epoch != self.load_epoch {
+                    return;
+                }
+                if !self.loading_set.remove(&id) {
+                    return;
+                }
                 if !self.scene.iter().any(|l| l.id == id) {
                     self.runtimes.remove(&id);
                     return;
@@ -378,14 +445,29 @@ impl LayerRuntimeManager {
                     }),
                 );
             }
-            BgLayerResult::ImageErr { id, error } => {
-                self.loading_set.remove(&id);
+            BgLayerResult::ImageErr { epoch, id, error } => {
+                if epoch != self.load_epoch {
+                    return;
+                }
+                if !self.loading_set.remove(&id) {
+                    return;
+                }
                 log::error!("[monitor] decode image {id}: {error}");
                 self.runtimes.insert(id.clone(), LayerRuntime::Failed);
                 emit_layer_failed(&self.app, &id, "image", &error);
             }
-            BgLayerResult::SvgOk { id, image, size } => {
-                self.loading_set.remove(&id);
+            BgLayerResult::SvgOk {
+                epoch,
+                id,
+                image,
+                size,
+            } => {
+                if epoch != self.load_epoch {
+                    return;
+                }
+                if !self.loading_set.remove(&id) {
+                    return;
+                }
                 if !self.scene.iter().any(|l| l.id == id) {
                     self.runtimes.remove(&id);
                     return;
@@ -400,8 +482,13 @@ impl LayerRuntimeManager {
                     }),
                 );
             }
-            BgLayerResult::SvgErr { id, error } => {
-                self.loading_set.remove(&id);
+            BgLayerResult::SvgErr { epoch, id, error } => {
+                if epoch != self.load_epoch {
+                    return;
+                }
+                if !self.loading_set.remove(&id) {
+                    return;
+                }
                 log::error!("[monitor] decode svg {id}: {error}");
                 self.runtimes.insert(id.clone(), LayerRuntime::Failed);
                 emit_layer_failed(&self.app, &id, "svg", &error);

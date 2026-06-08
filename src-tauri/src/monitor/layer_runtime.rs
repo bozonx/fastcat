@@ -37,30 +37,36 @@ const DECODE_BOUND_LAG_TICKS: u32 = 12;
 
 pub enum BgLayerResult {
     VideoOk {
+        epoch: u64,
         id: String,
         pump: DecodePump,
         media_size: (u32, u32),
         source_rotation: i32,
     },
     VideoErr {
+        epoch: u64,
         id: String,
         error: String,
     },
     ImageOk {
+        epoch: u64,
         id: String,
         image: ImageData,
         size: (u32, u32),
     },
     ImageErr {
+        epoch: u64,
         id: String,
         error: String,
     },
     SvgOk {
+        epoch: u64,
         id: String,
         image: ImageData,
         size: (u32, u32),
     },
     SvgErr {
+        epoch: u64,
         id: String,
         error: String,
     },

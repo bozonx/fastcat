@@ -522,6 +522,18 @@ pub async fn native_get_ffmpeg_diagnostics(
                 }
             }
         }
+        let has_vaapi = hwaccels.iter().any(|item| item == "vaapi");
+        let has_qsv = hwaccels.iter().any(|item| item == "qsv");
+        let has_nvdec = hwaccels
+            .iter()
+            .any(|item| item == "cuda" || item == "cuvid" || item == "nvdec");
+        let supports_vaapi_decode =
+            |codec: &str| has_vaapi && decoders_set.contains(codec);
+        let supports_qsv_decode = |codec: &str| {
+            has_qsv
+                && (decoders_set.contains(&format!("{codec}_qsv"))
+                    || decoders_set.contains(codec))
+        };
 
         // 4. Populate codec diagnostics
         let codecs = vec![
@@ -537,17 +549,17 @@ pub async fn native_get_ffmpeg_diagnostics(
                     FfmpegComponentDiagnostic {
                         name: "h264_vaapi".to_string(),
                         label: "Hardware VAAPI (AMD/Intel)".to_string(),
-                        supported: decoders_set.contains("h264_vaapi"),
+                        supported: supports_vaapi_decode("h264"),
                     },
                     FfmpegComponentDiagnostic {
                         name: "h264_cuvid".to_string(),
                         label: "Hardware NVDEC (Nvidia)".to_string(),
-                        supported: decoders_set.contains("h264_cuvid"),
+                        supported: has_nvdec && decoders_set.contains("h264_cuvid"),
                     },
                     FfmpegComponentDiagnostic {
                         name: "h264_qsv".to_string(),
                         label: "Hardware QSV (Intel)".to_string(),
-                        supported: decoders_set.contains("h264_qsv"),
+                        supported: supports_qsv_decode("h264"),
                     },
                 ],
                 encoders: vec![
@@ -585,17 +597,17 @@ pub async fn native_get_ffmpeg_diagnostics(
                     FfmpegComponentDiagnostic {
                         name: "hevc_vaapi".to_string(),
                         label: "Hardware VAAPI (AMD/Intel)".to_string(),
-                        supported: decoders_set.contains("hevc_vaapi"),
+                        supported: supports_vaapi_decode("hevc"),
                     },
                     FfmpegComponentDiagnostic {
                         name: "hevc_cuvid".to_string(),
                         label: "Hardware NVDEC (Nvidia)".to_string(),
-                        supported: decoders_set.contains("hevc_cuvid"),
+                        supported: has_nvdec && decoders_set.contains("hevc_cuvid"),
                     },
                     FfmpegComponentDiagnostic {
                         name: "hevc_qsv".to_string(),
                         label: "Hardware QSV (Intel)".to_string(),
-                        supported: decoders_set.contains("hevc_qsv"),
+                        supported: supports_qsv_decode("hevc"),
                     },
                 ],
                 encoders: vec![
@@ -633,17 +645,17 @@ pub async fn native_get_ffmpeg_diagnostics(
                     FfmpegComponentDiagnostic {
                         name: "vp9_vaapi".to_string(),
                         label: "Hardware VAAPI (AMD/Intel)".to_string(),
-                        supported: decoders_set.contains("vp9_vaapi"),
+                        supported: supports_vaapi_decode("vp9"),
                     },
                     FfmpegComponentDiagnostic {
                         name: "vp9_cuvid".to_string(),
                         label: "Hardware NVDEC (Nvidia)".to_string(),
-                        supported: decoders_set.contains("vp9_cuvid"),
+                        supported: has_nvdec && decoders_set.contains("vp9_cuvid"),
                     },
                     FfmpegComponentDiagnostic {
                         name: "vp9_qsv".to_string(),
                         label: "Hardware QSV (Intel)".to_string(),
-                        supported: decoders_set.contains("vp9_qsv"),
+                        supported: supports_qsv_decode("vp9"),
                     },
                 ],
                 encoders: vec![
@@ -677,17 +689,22 @@ pub async fn native_get_ffmpeg_diagnostics(
                     FfmpegComponentDiagnostic {
                         name: "av1_vaapi".to_string(),
                         label: "Hardware VAAPI (AMD/Intel)".to_string(),
-                        supported: decoders_set.contains("av1_vaapi"),
+                        supported: has_vaapi
+                            && (decoders_set.contains("av1")
+                                || decoders_set.contains("libdav1d")),
                     },
                     FfmpegComponentDiagnostic {
                         name: "av1_cuvid".to_string(),
                         label: "Hardware NVDEC (Nvidia)".to_string(),
-                        supported: decoders_set.contains("av1_cuvid"),
+                        supported: has_nvdec && decoders_set.contains("av1_cuvid"),
                     },
                     FfmpegComponentDiagnostic {
                         name: "av1_qsv".to_string(),
                         label: "Hardware QSV (Intel)".to_string(),
-                        supported: decoders_set.contains("av1_qsv"),
+                        supported: has_qsv
+                            && (decoders_set.contains("av1_qsv")
+                                || decoders_set.contains("av1")
+                                || decoders_set.contains("libdav1d")),
                     },
                 ],
                 encoders: vec![

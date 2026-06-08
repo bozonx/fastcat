@@ -53,6 +53,8 @@ pub enum MonitorCommand {
     Close,
     /// Обновление настроек нативного аудио-движка.
     SetAudioSettings(crate::audio::engine::AudioEngineSettings),
+    /// Обновление настроек FFmpeg/hwaccel для новых видеодекодеров.
+    SetHwSettings(crate::FfmpegHardwareSettings),
     /// Фоновый поток загрузил слой — event-loop должен дренировать bg_rx.
     BgReady,
     /// Видеокадр декодирован.
