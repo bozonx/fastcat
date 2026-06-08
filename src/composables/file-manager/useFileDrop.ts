@@ -171,6 +171,7 @@ export function useFileDrop(options: UseFileDropOptions) {
   async function onRootDragOver(e: DragEvent) {
     if (!isRelevantDrag(e)) return;
 
+    e.preventDefault();
     e.stopPropagation();
     if (
       !hasInternalFileManagerDragType(e.dataTransfer?.types) &&

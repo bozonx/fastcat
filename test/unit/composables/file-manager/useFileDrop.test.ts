@@ -371,4 +371,53 @@ describe('useFileDrop', () => {
     });
     expect(handleFiles).not.toHaveBeenCalled();
   });
+
+  it('calls preventDefault on root dragover for relevant internal drags', () => {
+    const { onRootDragOver } = useFileDrop({
+      resolveEntryByPath: vi.fn(),
+      handleFiles: vi.fn(),
+      moveEntry: vi.fn(),
+      copyEntry: vi.fn(),
+      targetFileManagerInstanceId: 'main',
+      vfs: {} as any,
+    });
+
+    const event = {
+      preventDefault: vi.fn(),
+      stopPropagation: vi.fn(),
+      dataTransfer: {
+        types: ['application/fastcat-file-manager-move'],
+        getData: vi.fn(),
+      },
+    } as unknown as DragEvent;
+
+    onRootDragOver(event);
+
+    expect(event.preventDefault).toHaveBeenCalled();
+    expect(event.stopPropagation).toHaveBeenCalled();
+  });
+
+  it('does not call preventDefault on root dragover for irrelevant drags', () => {
+    const { onRootDragOver } = useFileDrop({
+      resolveEntryByPath: vi.fn(),
+      handleFiles: vi.fn(),
+      moveEntry: vi.fn(),
+      copyEntry: vi.fn(),
+      targetFileManagerInstanceId: 'main',
+      vfs: {} as any,
+    });
+
+    const event = {
+      preventDefault: vi.fn(),
+      stopPropagation: vi.fn(),
+      dataTransfer: {
+        types: ['text/plain'],
+      },
+    } as unknown as DragEvent;
+
+    onRootDragOver(event);
+
+    expect(event.preventDefault).not.toHaveBeenCalled();
+    expect(event.stopPropagation).not.toHaveBeenCalled();
+  });
 });

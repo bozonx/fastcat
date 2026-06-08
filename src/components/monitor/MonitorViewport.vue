@@ -5,13 +5,14 @@
  * Additional SVG elements (grid, transform handles, etc.) should be added inside the svg-overlay slot.
  * Canvas content is placed via the default slot inside the canvas wrapper.
  */
-import { toRef, ref, watch } from 'vue';
+import { toRef, ref, watch, computed } from 'vue';
 import { useMonitorGestures } from '~/composables/monitor/useMonitorGestures';
 import { useMonitorSettings } from '~/composables/monitor/useMonitorSettings';
 import { useNativeMonitorViewport } from '~/composables/monitor/useNativeMonitorViewport';
 import { useMonitorMode, useNativeMonitorCanvas } from '~/composables/monitor/useNativeMonitorMode';
 import { useProjectStore } from '~/stores/project.store';
 import { useTimelineStore } from '~/stores/timeline.store';
+import { formatTimecode } from '~/utils/timecode';
 import type { TimelineMarker } from '~/timeline/types';
 
 const props = withDefaults(
@@ -85,6 +86,19 @@ watch(
   },
   { immediate: true },
 );
+
+const hasActiveSelectionRange = computed(() => {
+  return !!timelineStore.selectionRange;
+});
+
+const selectionRangeText = computed(() => {
+  const range = timelineStore.selectionRange;
+  if (!range) return '';
+  const fps = timelineStore.timelineFormat?.fps ?? timelineStore.fps;
+  const start = formatTimecode(range.startUs, fps);
+  const end = formatTimecode(range.endUs, fps);
+  return `${start} / ${end}`;
+});
 
 defineExpose({
   viewportEl,
@@ -165,6 +179,18 @@ defineExpose({
             {{ marker.text }}
           </div>
         </div>
+
+        <!-- Selection Range Timecode -->
+        <span
+          v-if="showTimecode && hasActiveSelectionRange"
+          class="absolute text-xs text-blue-400 font-mono tabular-nums bg-ui-bg-elevated/85 backdrop-blur-sm px-2 py-1 rounded transition-all duration-300 select-none min-h-7"
+          :class="[
+            effectiveFullscreen ? 'bottom-28 right-8' : 'bottom-[2.25rem] right-3',
+            effectiveFullscreen && isIdle ? 'opacity-0' : 'opacity-100',
+          ]"
+        >
+          {{ selectionRangeText }}
+        </span>
 
         <!-- Timecode -->
         <span
