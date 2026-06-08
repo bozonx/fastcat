@@ -3,8 +3,10 @@ import { mount } from '@vue/test-utils';
 import MonitorViewport from '~/components/monitor/MonitorViewport.vue';
 import { ref } from 'vue';
 
+const mockShowTransparencyGrid = ref(false);
+
 vi.mock('~/composables/monitor/useMonitorSettings', () => ({
-  useMonitorSettings: () => ({ showTimecode: ref(true) }),
+  useMonitorSettings: () => ({ showTimecode: ref(true), showTransparencyGrid: mockShowTransparencyGrid }),
 }));
 
 vi.mock('~/stores/project.store', () => ({
@@ -40,6 +42,10 @@ vi.mock('~/composables/monitor/useMonitorGestures', () => ({
 }));
 
 describe('MonitorViewport', () => {
+  beforeEach(() => {
+    mockShowTransparencyGrid.value = false;
+  });
+
   it('renders slots correctly', () => {
     const wrapper = mount(MonitorViewport, {
       props: {
@@ -132,5 +138,31 @@ describe('MonitorViewport', () => {
 
     await wrapper.trigger('dblclick');
     expect(mockGestures.onViewportDoubleClick).toHaveBeenCalled();
+  });
+
+  it('applies checkerboard-bg class when showTransparencyGrid is true', () => {
+    mockShowTransparencyGrid.value = true;
+
+    const wrapper = mount(MonitorViewport, {
+      props: {
+        renderWidth: 100,
+        renderHeight: 100,
+      },
+    });
+
+    const canvasWrapper = wrapper.find('.shrink-0');
+    expect(canvasWrapper.classes()).toContain('checkerboard-bg');
+  });
+
+  it('does not apply checkerboard-bg class when showTransparencyGrid is false', () => {
+    const wrapper = mount(MonitorViewport, {
+      props: {
+        renderWidth: 100,
+        renderHeight: 100,
+      },
+    });
+
+    const canvasWrapper = wrapper.find('.shrink-0');
+    expect(canvasWrapper.classes()).not.toContain('checkerboard-bg');
   });
 });

@@ -16,6 +16,7 @@ const { defaultProjectMonitor, defaultMonitorView } = vi.hoisted(() => ({
     showGrid: false,
     showTimecode: true,
     toolbarPosition: 'bottom' as const,
+    showTransparencyGrid: false,
   },
   defaultMonitorView: {
     panX: 0,

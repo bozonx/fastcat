@@ -13,7 +13,17 @@ export function useMonitorSettings() {
     },
   });
 
+  const showTransparencyGrid = computed({
+    get: () => projectSettingsStore.activeMonitor?.showTransparencyGrid ?? false,
+    set: (val) => {
+      if (projectSettingsStore.activeMonitor) {
+        projectSettingsStore.activeMonitor.showTransparencyGrid = val;
+      }
+    },
+  });
+
   return {
     showTimecode,
+    showTransparencyGrid,
   };
 }

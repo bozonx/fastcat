@@ -52,7 +52,7 @@ function formatSpeedLabel(speed: number): string {
 }
 
 export function useMonitorContainerControls(options: UseMonitorContainerControlsOptions) {
-  const { showTimecode } = useMonitorSettings();
+  const { showTimecode, showTransparencyGrid } = useMonitorSettings();
   const positiveSpeedValues = [0.5, 0.75, 1, 1.25, 1.5, 1.75, 2, 3, 5];
 
   const playbackSpeedOptions: PlaybackSpeedOption[] = positiveSpeedValues.map((v) => ({
@@ -156,6 +156,10 @@ export function useMonitorContainerControls(options: UseMonitorContainerControls
     }
 
     options.projectStore.activeMonitor.useProxy = !options.useProxyInMonitor.value;
+  }
+
+  function toggleTransparencyGrid() {
+    showTransparencyGrid.value = !showTransparencyGrid.value;
   }
 
   function togglePlayback() {
@@ -347,6 +351,13 @@ export function useMonitorContainerControls(options: UseMonitorContainerControls
           showTimecode.value = !showTimecode.value;
         },
       },
+      {
+        label: options.t('fastcat.monitor.showTransparencyGrid'),
+        icon: 'i-lucide-grid-3x3',
+        type: 'checkbox' as const,
+        checked: showTransparencyGrid.value,
+        onSelect: toggleTransparencyGrid,
+      },
       ...(options.isMobile
         ? [
             {
@@ -431,10 +442,12 @@ export function useMonitorContainerControls(options: UseMonitorContainerControls
     rewindToStart,
     selectedPlaybackSpeedOption,
     setPlayback,
+    showTransparencyGrid,
     speedButtonLabel,
     togglePlayback,
     togglePreviewEffects,
     toggleProxyUsage,
+    toggleTransparencyGrid,
     toolbarPosition,
   };
 }

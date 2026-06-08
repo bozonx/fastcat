@@ -4,6 +4,7 @@ import {
   computeTextLayoutMetrics,
   normalizeTextClipStyle,
   getFontStack,
+  getTextBackgroundShadowOutsetPx,
 } from '~/utils/video-editor/text-layout';
 
 describe('text-layout', () => {
@@ -170,6 +171,17 @@ describe('text-layout', () => {
     expect(metrics.backgroundWidth).toBe(68);
     expect(metrics.backgroundHeight).toBe(76);
     expect(metrics.textStartX).toBe(940);
+  });
+
+  it('starts background shadow from the outer text border edge', () => {
+    const style = normalizeTextClipStyle({
+      backgroundShadowEnabled: true,
+      backgroundShadowSpread: 6,
+      borderEnabled: true,
+      borderWidth: 4,
+    });
+
+    expect(getTextBackgroundShadowOutsetPx(style, 1)).toBe(10);
   });
 
   it('uses manual height and vertical alignment inside the text frame', () => {

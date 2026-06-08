@@ -38,7 +38,7 @@ const props = withDefaults(
 
 const projectStore = useProjectStore();
 const timelineStore = useTimelineStore();
-const { showTimecode } = useMonitorSettings();
+const { showTimecode, showTransparencyGrid } = useMonitorSettings();
 const viewportEl = ref<HTMLElement | null>(null);
 const timecodeEl = ref<HTMLElement | null>(null);
 const nativeCanvasEl = ref<HTMLCanvasElement | null>(null);
@@ -100,6 +100,13 @@ const selectionRangeText = computed(() => {
   return `${start} / ${end}`;
 });
 
+const markersBottomClass = computed(() => {
+  if (props.effectiveFullscreen) {
+    return hasActiveSelectionRange.value ? 'bottom-40 right-8' : 'bottom-32 right-8';
+  }
+  return hasActiveSelectionRange.value ? 'bottom-20 right-3' : 'bottom-11 right-3';
+});
+
 defineExpose({
   viewportEl,
   timecodeEl,
@@ -131,6 +138,7 @@ defineExpose({
           <!-- Canvas wrapper at exact render resolution -->
           <div
             class="shrink-0 relative"
+            :class="{ 'checkerboard-bg': showTransparencyGrid }"
             :style="{ width: `${renderWidth}px`, height: `${renderHeight}px`, overflow: 'hidden' }"
             @pointerdown="onPreviewPointerDown"
           >
@@ -166,7 +174,7 @@ defineExpose({
           v-if="activeMarkers.length"
           class="absolute flex flex-col items-end gap-1 transition-all duration-300 z-10"
           :class="[
-            effectiveFullscreen ? 'bottom-32 right-8' : 'bottom-11 right-3',
+            markersBottomClass,
             effectiveFullscreen && isIdle ? 'opacity-0' : 'opacity-100',
             markersOffsetClass,
           ]"

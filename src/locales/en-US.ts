@@ -657,6 +657,7 @@ export default {
       "rewind": "Rewind",
       "showGrid": "Show grid",
       "showTimecode": "Show Timecode",
+      "showTransparencyGrid": "Transparency grid",
       "snapshot": "Snapshot",
       "syncBalanced": "Balanced",
       "syncBalancedTitle": "Balanced: keeps audio sync while giving video a small catch-up window for smoother playback.",

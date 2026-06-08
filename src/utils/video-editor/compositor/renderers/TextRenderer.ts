@@ -1,6 +1,6 @@
 import { CanvasSource, Texture } from 'pixi.js';
 import type { CompositorClip } from '../types';
-import { computeTextLayoutMetrics } from '../../text-layout';
+import { computeTextLayoutMetrics, getTextBackgroundShadowOutsetPx } from '../../text-layout';
 
 export class TextRenderer {
   /**
@@ -88,10 +88,10 @@ export class TextRenderer {
     const frameH = Math.max(1, layout.frameHeight);
 
     if (normalizedStyle.backgroundEnabled && normalizedStyle.backgroundShadowEnabled) {
-      const bgShadowSpreadPx = Math.round(normalizedStyle.backgroundShadowSpread * renderScale);
+      const bgShadowOutsetPx = getTextBackgroundShadowOutsetPx(normalizedStyle, renderScale);
       const bgShadowRadius = Math.max(
         0,
-        normalizedStyle.backgroundRadius * renderScale + bgShadowSpreadPx,
+        normalizedStyle.backgroundRadius * renderScale + bgShadowOutsetPx,
       );
       ctx.save();
       ctx.globalAlpha = normalizedStyle.backgroundShadowAlpha;
@@ -102,10 +102,10 @@ export class TextRenderer {
       ctx.shadowOffsetY = normalizedStyle.backgroundShadowOffsetY * renderScale;
       this.drawRoundedRect(
         ctx,
-        frameX - bgShadowSpreadPx,
-        frameY - bgShadowSpreadPx,
-        Math.max(1, frameW + bgShadowSpreadPx * 2),
-        Math.max(1, frameH + bgShadowSpreadPx * 2),
+        frameX - bgShadowOutsetPx,
+        frameY - bgShadowOutsetPx,
+        Math.max(1, frameW + bgShadowOutsetPx * 2),
+        Math.max(1, frameH + bgShadowOutsetPx * 2),
         bgShadowRadius,
       );
       ctx.fill();

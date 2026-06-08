@@ -255,15 +255,15 @@ mod tests {
         let mut host = PluginHost::new();
         let fx = spec("fx1");
 
-        host.apply_effects("layer-1", &mut vec![1.0f32; 4], 48_000, 2, &[fx.clone()]);
+        host.apply_effects("layer-1", &mut [1.0f32; 4], 48_000, 2, &[fx.clone()]);
         assert_eq!(host.instances.len(), 1);
 
         // Same key reuses the cached instance.
-        host.apply_effects("layer-1", &mut vec![1.0f32; 4], 48_000, 2, &[fx.clone()]);
+        host.apply_effects("layer-1", &mut [1.0f32; 4], 48_000, 2, &[fx.clone()]);
         assert_eq!(host.instances.len(), 1);
 
         // Different id → new instance.
-        host.apply_effects("layer-1", &mut vec![1.0f32; 4], 48_000, 2, &[spec("fx2")]);
+        host.apply_effects("layer-1", &mut [1.0f32; 4], 48_000, 2, &[spec("fx2")]);
         assert_eq!(host.instances.len(), 2);
     }
 
@@ -271,12 +271,12 @@ mod tests {
     fn param_change_reuses_instance_and_pushes_new_params() {
         let mut host = PluginHost::new();
         let mut fx = spec("fx1");
-        host.apply_effects("layer-1", &mut vec![1.0f32; 4], 48_000, 2, &[fx.clone()]);
+        host.apply_effects("layer-1", &mut [1.0f32; 4], 48_000, 2, &[fx.clone()]);
         assert_eq!(host.instances.len(), 1);
 
         // Tweak a parameter: the instance must be kept (stable key), not rebuilt.
         fx.params.insert("gain".into(), serde_json::json!(0.5));
-        host.apply_effects("layer-1", &mut vec![1.0f32; 4], 48_000, 2, &[fx.clone()]);
+        host.apply_effects("layer-1", &mut [1.0f32; 4], 48_000, 2, &[fx.clone()]);
         assert_eq!(host.instances.len(), 1);
 
         let cached = host.instances.values().next().unwrap();
@@ -290,15 +290,15 @@ mod tests {
     fn separate_instance_per_sample_rate() {
         let mut host = PluginHost::new();
         let fx = spec("fx1");
-        host.apply_effects("layer-1", &mut vec![1.0f32; 4], 48_000, 2, &[fx.clone()]);
-        host.apply_effects("layer-1", &mut vec![1.0f32; 4], 44_100, 2, &[fx.clone()]);
+        host.apply_effects("layer-1", &mut [1.0f32; 4], 48_000, 2, &[fx.clone()]);
+        host.apply_effects("layer-1", &mut [1.0f32; 4], 44_100, 2, &[fx.clone()]);
         assert_eq!(host.instances.len(), 2);
     }
 
     #[test]
     fn reset_all_keeps_instances() {
         let mut host = PluginHost::new();
-        host.apply_effects("layer-1", &mut vec![1.0f32; 4], 48_000, 2, &[spec("fx1")]);
+        host.apply_effects("layer-1", &mut [1.0f32; 4], 48_000, 2, &[spec("fx1")]);
         assert_eq!(host.instances.len(), 1);
         host.reset_all(); // resets state, keeps the cache
         assert_eq!(host.instances.len(), 1);
@@ -307,8 +307,8 @@ mod tests {
     #[test]
     fn reset_layer_keeps_instances() {
         let mut host = PluginHost::new();
-        host.apply_effects("layer-1", &mut vec![1.0f32; 4], 48_000, 2, &[spec("fx1")]);
-        host.apply_effects("layer-2", &mut vec![1.0f32; 4], 48_000, 2, &[spec("fx1")]);
+        host.apply_effects("layer-1", &mut [1.0f32; 4], 48_000, 2, &[spec("fx1")]);
+        host.apply_effects("layer-2", &mut [1.0f32; 4], 48_000, 2, &[spec("fx1")]);
         assert_eq!(host.instances.len(), 2);
         host.reset_layer("layer-1"); // resets state only, removes nothing
         assert_eq!(host.instances.len(), 2);
@@ -317,8 +317,8 @@ mod tests {
     #[test]
     fn retain_scene_specs_drops_absent_effects() {
         let mut host = PluginHost::new();
-        host.apply_effects("layer-1", &mut vec![1.0f32; 4], 48_000, 2, &[spec("fx1")]);
-        host.apply_effects("layer-2", &mut vec![1.0f32; 4], 48_000, 2, &[spec("fx2")]);
+        host.apply_effects("layer-1", &mut [1.0f32; 4], 48_000, 2, &[spec("fx1")]);
+        host.apply_effects("layer-2", &mut [1.0f32; 4], 48_000, 2, &[spec("fx2")]);
         assert_eq!(host.instances.len(), 2);
 
         // Only layer-1/fx1 remains in the scene.

@@ -81,6 +81,17 @@ export interface TextLayoutMetrics {
   paddingPx: NormalizedTextPadding;
 }
 
+export function getTextBackgroundShadowOutsetPx(
+  style: NormalizedTextStyle,
+  renderScale: number,
+): number {
+  const borderWidthPx =
+    style.borderEnabled && style.borderWidth > 0 ? Math.round(style.borderWidth * renderScale) : 0;
+  const shadowSpreadPx = Math.round(style.backgroundShadowSpread * renderScale);
+
+  return Math.max(0, borderWidthPx + shadowSpreadPx);
+}
+
 function clampFinite(value: unknown, fallback: number, min?: number, max?: number): number {
   if (typeof value !== 'number' || !Number.isFinite(value)) return fallback;
   const clampedMin = min === undefined ? value : Math.max(min, value);

@@ -95,11 +95,12 @@ export function useFileDrop(options: UseFileDropOptions) {
   function isRelevantDrag(e: DragEvent): boolean {
     const types = e.dataTransfer?.types;
     if (!types) return false;
+    const dragTypes = Array.from(types);
     return (
-      types.includes(FILE_MANAGER_MOVE_DRAG_TYPE) ||
-      types.includes(FILE_MANAGER_ITEMS_DRAG_TYPE) ||
-      types.includes(FILE_MANAGER_COPY_DRAG_TYPE) ||
-      types.includes('Files')
+      dragTypes.includes(FILE_MANAGER_MOVE_DRAG_TYPE) ||
+      dragTypes.includes(FILE_MANAGER_ITEMS_DRAG_TYPE) ||
+      dragTypes.includes(FILE_MANAGER_COPY_DRAG_TYPE) ||
+      dragTypes.includes('Files')
     );
   }
 
@@ -175,7 +176,7 @@ export function useFileDrop(options: UseFileDropOptions) {
     e.stopPropagation();
     if (
       !hasInternalFileManagerDragType(e.dataTransfer?.types) &&
-      e.dataTransfer?.types.includes('Files')
+      Array.from(e.dataTransfer?.types ?? []).includes('Files')
     ) {
       appClipboard.setCurrentDragOperation('copy');
       appClipboard.setDragTargetFileManagerInstanceId(options.targetFileManagerInstanceId ?? null);
@@ -232,7 +233,7 @@ export function useFileDrop(options: UseFileDropOptions) {
     resetFileManagerDragCursor();
 
     const droppedFiles = e.dataTransfer?.files ? Array.from(e.dataTransfer.files) : [];
-    const hasFiles = e.dataTransfer?.types.includes('Files') ?? false;
+    const hasFiles = Array.from(e.dataTransfer?.types ?? []).includes('Files');
     const itemsRaw = e.dataTransfer?.getData(FILE_MANAGER_ITEMS_DRAG_TYPE);
     const copyRaw = e.dataTransfer?.getData(FILE_MANAGER_COPY_DRAG_TYPE);
     const moveRaw = e.dataTransfer?.getData(FILE_MANAGER_MOVE_DRAG_TYPE);

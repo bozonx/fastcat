@@ -420,4 +420,35 @@ describe('useFileDrop', () => {
     expect(event.preventDefault).not.toHaveBeenCalled();
     expect(event.stopPropagation).not.toHaveBeenCalled();
   });
+
+  it('handles DOMStringList-like types (ArrayLike without includes)', () => {
+    const { onRootDragOver } = useFileDrop({
+      resolveEntryByPath: vi.fn(),
+      handleFiles: vi.fn(),
+      moveEntry: vi.fn(),
+      copyEntry: vi.fn(),
+      targetFileManagerInstanceId: 'main',
+      vfs: {} as any,
+    });
+
+    const domStringListLike = {
+      length: 1,
+      0: 'application/fastcat-file-manager-move',
+      item: (i: number) => (i === 0 ? 'application/fastcat-file-manager-move' : null),
+    };
+
+    const event = {
+      preventDefault: vi.fn(),
+      stopPropagation: vi.fn(),
+      dataTransfer: {
+        types: domStringListLike,
+        getData: vi.fn(),
+      },
+    } as unknown as DragEvent;
+
+    onRootDragOver(event);
+
+    expect(event.preventDefault).toHaveBeenCalled();
+    expect(event.stopPropagation).toHaveBeenCalled();
+  });
 });

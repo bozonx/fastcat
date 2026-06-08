@@ -310,11 +310,12 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
     if (!e.dataTransfer?.types) return;
 
     const types = e.dataTransfer.types;
+    const dragTypes = Array.from(types);
     if (
-      !types.includes(FILE_MANAGER_MOVE_DRAG_TYPE) &&
-      !types.includes(FILE_MANAGER_ITEMS_DRAG_TYPE) &&
-      !types.includes(FILE_MANAGER_COPY_DRAG_TYPE) &&
-      !types.includes('Files')
+      !dragTypes.includes(FILE_MANAGER_MOVE_DRAG_TYPE) &&
+      !dragTypes.includes(FILE_MANAGER_ITEMS_DRAG_TYPE) &&
+      !dragTypes.includes(FILE_MANAGER_COPY_DRAG_TYPE) &&
+      !dragTypes.includes('Files')
     ) {
       return;
     }
@@ -350,11 +351,12 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
   function onEntryDragOver(e: DragEvent, entry: FsEntry) {
     const types = e.dataTransfer?.types;
     if (!types) return;
+    const dragTypes = Array.from(types);
     if (
-      !types.includes(FILE_MANAGER_MOVE_DRAG_TYPE) &&
-      !types.includes(FILE_MANAGER_ITEMS_DRAG_TYPE) &&
-      !types.includes(FILE_MANAGER_COPY_DRAG_TYPE) &&
-      !types.includes('Files')
+      !dragTypes.includes(FILE_MANAGER_MOVE_DRAG_TYPE) &&
+      !dragTypes.includes(FILE_MANAGER_ITEMS_DRAG_TYPE) &&
+      !dragTypes.includes(FILE_MANAGER_COPY_DRAG_TYPE) &&
+      !dragTypes.includes('Files')
     ) {
       return;
     }
@@ -377,9 +379,9 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
     if (!isDropTargetDir(entry)) return;
 
     if (
-      types.includes(FILE_MANAGER_MOVE_DRAG_TYPE) ||
-      types.includes(FILE_MANAGER_ITEMS_DRAG_TYPE) ||
-      types.includes(FILE_MANAGER_COPY_DRAG_TYPE)
+      dragTypes.includes(FILE_MANAGER_MOVE_DRAG_TYPE) ||
+      dragTypes.includes(FILE_MANAGER_ITEMS_DRAG_TYPE) ||
+      dragTypes.includes(FILE_MANAGER_COPY_DRAG_TYPE)
     ) {
       if (
         !isBloggerDogTransferAllowed({
@@ -409,7 +411,7 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
       syncFileManagerDragCursor({ isDragging: true, operation: nextOperation });
     }
     dragOverEntryPath.value = entry.path ?? null;
-    const operation = types.includes('Files') ? 'copy' : resolveDragOperation(e);
+    const operation = dragTypes.includes('Files') ? 'copy' : resolveDragOperation(e);
     e.dataTransfer!.dropEffect = operation === 'copy' ? 'copy' : 'move';
     syncFileManagerDragCursor({ isDragging: true, operation });
   }
@@ -452,7 +454,7 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
     resetFileManagerDragCursor();
 
     const droppedFiles = e.dataTransfer?.files ? Array.from(e.dataTransfer.files) : [];
-    const hasFiles = e.dataTransfer?.types.includes('Files') ?? false;
+    const hasFiles = Array.from(e.dataTransfer?.types ?? []).includes('Files');
     const itemsRaw = e.dataTransfer?.getData(FILE_MANAGER_ITEMS_DRAG_TYPE);
     const copyRaw = e.dataTransfer?.getData(FILE_MANAGER_COPY_DRAG_TYPE);
     const moveRaw = e.dataTransfer?.getData(FILE_MANAGER_MOVE_DRAG_TYPE);
@@ -568,11 +570,12 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
   function onPanelDragEnter(e: DragEvent) {
     const types = e.dataTransfer?.types;
     if (!types) return;
+    const dragTypes = Array.from(types);
     if (
-      types.includes('Files') ||
-      types.includes(FILE_MANAGER_ITEMS_DRAG_TYPE) ||
-      types.includes(FILE_MANAGER_MOVE_DRAG_TYPE) ||
-      types.includes(FILE_MANAGER_COPY_DRAG_TYPE)
+      dragTypes.includes('Files') ||
+      dragTypes.includes(FILE_MANAGER_ITEMS_DRAG_TYPE) ||
+      dragTypes.includes(FILE_MANAGER_MOVE_DRAG_TYPE) ||
+      dragTypes.includes(FILE_MANAGER_COPY_DRAG_TYPE)
     ) {
       e.preventDefault();
       panelDragEnterCount++;
@@ -583,11 +586,12 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
   function onPanelDragOver(e: DragEvent) {
     const types = e.dataTransfer?.types;
     if (!types) return;
+    const dragTypes = Array.from(types);
     if (
-      types.includes('Files') ||
-      types.includes(FILE_MANAGER_ITEMS_DRAG_TYPE) ||
-      types.includes(FILE_MANAGER_MOVE_DRAG_TYPE) ||
-      types.includes(FILE_MANAGER_COPY_DRAG_TYPE)
+      dragTypes.includes('Files') ||
+      dragTypes.includes(FILE_MANAGER_ITEMS_DRAG_TYPE) ||
+      dragTypes.includes(FILE_MANAGER_MOVE_DRAG_TYPE) ||
+      dragTypes.includes(FILE_MANAGER_COPY_DRAG_TYPE)
     ) {
       isDragOverPanel.value = true;
       const targetFolder = fileManagerStore.selectedFolder;
@@ -605,9 +609,9 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
         return;
       }
       if (
-        types.includes(FILE_MANAGER_MOVE_DRAG_TYPE) ||
-        types.includes(FILE_MANAGER_ITEMS_DRAG_TYPE) ||
-        types.includes(FILE_MANAGER_COPY_DRAG_TYPE)
+        dragTypes.includes(FILE_MANAGER_MOVE_DRAG_TYPE) ||
+        dragTypes.includes(FILE_MANAGER_ITEMS_DRAG_TYPE) ||
+        dragTypes.includes(FILE_MANAGER_COPY_DRAG_TYPE)
       ) {
         if (
           !isBloggerDogTransferAllowed({
@@ -634,7 +638,7 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
         appClipboard.setCurrentDragOperation(resolveDragOperation(e));
         appClipboard.setDragTargetFileManagerInstanceId(options.fileManagerInstanceId ?? null);
       }
-      const operation = types.includes('Files') ? 'copy' : resolveDragOperation(e);
+      const operation = dragTypes.includes('Files') ? 'copy' : resolveDragOperation(e);
       e.dataTransfer!.dropEffect = operation === 'copy' ? 'copy' : 'move';
       syncFileManagerDragCursor({ isDragging: true, operation });
     }
@@ -643,11 +647,12 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
   function onPanelDragLeave(e: DragEvent) {
     const types = e.dataTransfer?.types;
     if (!types) return;
+    const dragTypes = Array.from(types);
     if (
-      types.includes('Files') ||
-      types.includes(FILE_MANAGER_ITEMS_DRAG_TYPE) ||
-      types.includes(FILE_MANAGER_MOVE_DRAG_TYPE) ||
-      types.includes(FILE_MANAGER_COPY_DRAG_TYPE)
+      dragTypes.includes('Files') ||
+      dragTypes.includes(FILE_MANAGER_ITEMS_DRAG_TYPE) ||
+      dragTypes.includes(FILE_MANAGER_MOVE_DRAG_TYPE) ||
+      dragTypes.includes(FILE_MANAGER_COPY_DRAG_TYPE)
     ) {
       panelDragEnterCount--;
       if (panelDragEnterCount <= 0) {

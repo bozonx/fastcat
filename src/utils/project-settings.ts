@@ -25,6 +25,7 @@ export interface ProjectMonitorSettings {
   showGrid: boolean;
   showTimecode: boolean;
   toolbarPosition: 'top' | 'bottom' | 'left' | 'right';
+  showTransparencyGrid: boolean;
 }
 
 /**
@@ -144,6 +145,7 @@ export const DEFAULT_PROJECT_MONITOR_SETTINGS: ProjectMonitorSettings = {
   showGrid: false,
   showTimecode: true,
   toolbarPosition: 'bottom',
+  showTransparencyGrid: false,
 };
 
 export const DEFAULT_MONITOR_VIEW_SETTINGS: MonitorViewSettings = {
@@ -313,6 +315,7 @@ function createProjectSettingsSchema(defaults: FastCatProjectSettings) {
     showGrid: z.coerce.boolean().catch(dm.showGrid),
     showTimecode: z.coerce.boolean().catch(dm.showTimecode),
     toolbarPosition: z.enum(['top', 'bottom', 'left', 'right']).catch(dm.toolbarPosition),
+    showTransparencyGrid: z.coerce.boolean().catch(dm.showTransparencyGrid),
   });
 
   const sessionSchema = z.object({
@@ -471,6 +474,8 @@ function pickProjectMonitorFields(
     out.previewEffectsEnabled = source.previewEffectsEnabled;
   if (typeof source.showGrid === 'boolean') out.showGrid = source.showGrid;
   if (typeof source.showTimecode === 'boolean') out.showTimecode = source.showTimecode;
+  if (typeof source.showTransparencyGrid === 'boolean')
+    out.showTransparencyGrid = source.showTransparencyGrid;
   if (
     typeof source.toolbarPosition === 'string' &&
     ['top', 'bottom', 'left', 'right'].includes(source.toolbarPosition)

@@ -566,12 +566,7 @@ fn draw_text(scene: &mut VelloScene, spec: &TextLayer, xform: Affine) {
         let shadow_x = frame_x + spec.bg_shadow_offset_x;
         let shadow_y = frame_y + spec.bg_shadow_offset_y;
 
-        let border_outset = if spec.border_enabled && spec.border_width > 0.0 {
-            spec.border_width / 2.0
-        } else {
-            0.0
-        };
-        let ext = spec.bg_shadow_spread + border_outset;
+        let ext = text_background_shadow_outset(spec);
         let rect = Rect::new(
             (shadow_x - ext) as f64,
             (shadow_y - ext) as f64,
@@ -851,6 +846,16 @@ fn draw_text(scene: &mut VelloScene, spec: &TextLayer, xform: Affine) {
     }
 }
 
+fn text_background_shadow_outset(spec: &TextLayer) -> f32 {
+    let border_outset = if spec.border_enabled && spec.border_width > 0.0 {
+        spec.border_width
+    } else {
+        0.0
+    };
+
+    (border_outset + spec.bg_shadow_spread).max(0.0)
+}
+
 /// Отсчёты дискретного 2D-гауссова ядра для аппроксимации размытия тени текста
 /// перерисовкой силуэта со смещениями. Возвращает `(dx, dy, weight)` на сетке в
 /// пределах ±2σ; веса нормированы к сумме 1, ничтожные (<4%) отброшены ради скорости.
@@ -1036,6 +1041,52 @@ mod tests {
         }
     }
 
+    fn text_layer_with_shadow_border(border_width: f32, shadow_spread: f32) -> TextLayer {
+        TextLayer {
+            text: "Text".into(),
+            font_family: "Inter".into(),
+            font_size: 64.0,
+            font_weight: 700.0,
+            color: Color::WHITE,
+            align: TextAlign::Center,
+            vertical_align: TextVerticalAlign::Middle,
+            line_height: 1.2,
+            letter_spacing: 0.0,
+            max_width: None,
+            explicit_height: None,
+            background_enabled: true,
+            background_color: Color::BLACK,
+            background_radius: 0.0,
+            bg_shadow_enabled: true,
+            bg_shadow_color: Color::BLACK,
+            bg_shadow_blur: 0.0,
+            bg_shadow_spread: shadow_spread,
+            bg_shadow_offset_x: 0.0,
+            bg_shadow_offset_y: 0.0,
+            border_enabled: border_width > 0.0,
+            border_color: Color::WHITE,
+            border_width,
+            text_shadow_enabled: false,
+            text_shadow_color: Color::TRANSPARENT,
+            text_shadow_blur: 0.0,
+            text_shadow_spread: 0.0,
+            text_shadow_offset_x: 0.0,
+            text_shadow_offset_y: 0.0,
+            padding_top: 0.0,
+            padding_right: 0.0,
+            padding_bottom: 0.0,
+            padding_left: 0.0,
+            shadow_left: 0.0,
+            shadow_top: 0.0,
+            shadow_right: 0.0,
+            shadow_bottom: 0.0,
+            frame_width: 100.0,
+            frame_height: 40.0,
+            text_block_height: 40.0,
+            natural_size: (100, 40),
+        }
+    }
+
     fn approx(a: f64, b: f64) -> bool {
         (a - b).abs() < 1e-6
     }
@@ -1043,6 +1094,13 @@ mod tests {
     fn affine_apply(a: Affine, p: (f64, f64)) -> (f64, f64) {
         let v = a * kurbo::Point::new(p.0, p.1);
         (v.x, v.y)
+    }
+
+    #[test]
+    fn text_background_shadow_outset_uses_outer_border_edge() {
+        let spec = text_layer_with_shadow_border(4.0, 6.0);
+
+        assert_eq!(text_background_shadow_outset(&spec), 10.0);
     }
 
     #[test]

@@ -44,8 +44,10 @@ vi.mock('~/composables/monitor/useMonitorContainerControls', () => ({
     rewindToStart: vi.fn(),
     selectedPlaybackSpeedOption: ref({ label: '1x', value: 1 }),
     setPlayback: vi.fn(),
+    showTransparencyGrid: ref(false),
     togglePreviewEffects: vi.fn(),
     toggleProxyUsage: vi.fn(),
+    toggleTransparencyGrid: vi.fn(),
     toolbarPosition: ref('bottom'),
   }),
 }));

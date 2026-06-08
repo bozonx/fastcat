@@ -657,6 +657,7 @@ export default {
       "rewind": "В начало",
       "showGrid": "Показать сетку",
       "showTimecode": "Показать таймкод",
+      "showTransparencyGrid": "Шахматный фон",
       "snapshot": "Снимок",
       "syncBalanced": "Баланс",
       "syncBalancedTitle": "Баланс: сохраняет синхронизацию со звуком, но дает видео небольшой запас для плавного догоняющего воспроизведения.",

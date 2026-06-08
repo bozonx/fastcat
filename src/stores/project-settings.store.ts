@@ -102,6 +102,7 @@ export const useProjectSettingsStore = defineStore('projectSettings', () => {
     'showGrid',
     'showTimecode',
     'toolbarPosition',
+    'showTransparencyGrid',
   ]);
 
   const activeMonitorView = computed<MonitorViewSettings>(() => {

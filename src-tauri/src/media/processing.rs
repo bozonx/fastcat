@@ -308,7 +308,7 @@ pub fn generate_proxy(
         hw_decode,
         hw_encode,
         vaapi_dev,
-    );
+    )?;
 
     let ffmpeg_cmd = options.ffmpeg_path.as_deref().unwrap_or("ffmpeg");
     match run_ffmpeg_task(tasks, task_id, ffmpeg_cmd, args, None) {
@@ -413,11 +413,11 @@ fn build_proxy_ffmpeg_args(
     hw_decode: HwAccelMode,
     hw_encode: HwAccelMode,
     vaapi_dev: &str,
-) -> Vec<String> {
+) -> Result<Vec<String>> {
     let video = metadata
         .video
         .as_ref()
-        .expect("proxy args require video metadata");
+        .ok_or_else(|| anyhow!("proxy args require video metadata"))?;
     let (width, height) = scaled_even_size(video.width, video.height, options.max_pixels);
     let mut args = Vec::new();
 
@@ -473,7 +473,7 @@ fn build_proxy_ffmpeg_args(
     }
 
     args.push(target_path.display().to_string());
-    args
+    Ok(args)
 }
 
 fn build_convert_ffmpeg_args(
@@ -749,50 +749,34 @@ pub fn extract_video_frame_webps(
         if let Some(frame) = last_frame {
             let rotation = decoder.info().rotation.rem_euclid(360);
 
-            let encode_res: Result<Vec<u8>, anyhow::Error> =
-                if rotation == 90 || rotation == 180 || rotation == 270 {
-                    let (frame_width, frame_height) = (frame.width, frame.height);
-                    if let Some(buf) = image::ImageBuffer::<image::Rgba<u8>, Vec<u8>>::from_raw(
-                        frame_width,
-                        frame_height,
-                        frame.pixels.clone(),
-                    ) {
-                        match rotation {
-                            90 => {
-                                let rotated = image::imageops::rotate90(&buf);
-                                encode_rgba_as_webp(
-                                    rotated.as_raw(),
-                                    rotated.width(),
-                                    rotated.height(),
-                                    webp_quality,
-                                )
-                            }
-                            180 => {
-                                let rotated = image::imageops::rotate180(&buf);
-                                encode_rgba_as_webp(
-                                    rotated.as_raw(),
-                                    rotated.width(),
-                                    rotated.height(),
-                                    webp_quality,
-                                )
-                            }
-                            270 => {
-                                let rotated = image::imageops::rotate270(&buf);
-                                encode_rgba_as_webp(
-                                    rotated.as_raw(),
-                                    rotated.width(),
-                                    rotated.height(),
-                                    webp_quality,
-                                )
-                            }
-                            _ => unreachable!(),
+            // `rotation` comes from the display matrix; only the cardinal
+            // angles need a re-orientation pass, everything else encodes as-is.
+            type RgbaImage = image::ImageBuffer<image::Rgba<u8>, Vec<u8>>;
+            type RotateFn = fn(&RgbaImage) -> RgbaImage;
+            let rotate: Option<RotateFn> = match rotation {
+                90 => Some(image::imageops::rotate90),
+                180 => Some(image::imageops::rotate180),
+                270 => Some(image::imageops::rotate270),
+                _ => None,
+            };
+
+            let encode_res: Result<Vec<u8>, anyhow::Error> = match rotate {
+                Some(rotate) => {
+                    match RgbaImage::from_raw(frame.width, frame.height, frame.pixels.clone()) {
+                        Some(buf) => {
+                            let rotated = rotate(&buf);
+                            encode_rgba_as_webp(
+                                rotated.as_raw(),
+                                rotated.width(),
+                                rotated.height(),
+                                webp_quality,
+                            )
                         }
-                    } else {
-                        Err(anyhow!("failed to create image buffer for rotation"))
+                        None => Err(anyhow!("failed to create image buffer for rotation")),
                     }
-                } else {
-                    encode_rgba_as_webp(&frame.pixels, frame.width, frame.height, webp_quality)
-                };
+                }
+                None => encode_rgba_as_webp(&frame.pixels, frame.width, frame.height, webp_quality),
+            };
 
             match encode_res {
                 Ok(bytes) => {
@@ -1138,7 +1122,8 @@ mod tests {
             HwAccelMode::None,
             HwAccelMode::None,
             DEFAULT_VAAPI_DEVICE,
-        );
+        )
+        .expect("proxy args build");
 
         assert!(args.windows(2).any(|pair| pair == ["-map", "0:v:0"]));
         assert!(args.windows(2).any(|pair| pair == ["-map", "0:a:0?"]));

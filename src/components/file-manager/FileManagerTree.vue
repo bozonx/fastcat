@@ -411,11 +411,12 @@ function onDragOverDir(e: DragEvent, entry: FsEntry) {
 
   const types = e.dataTransfer?.types;
   if (!types) return;
+  const dragTypes = Array.from(types);
 
   if (
-    types.includes(FILE_MANAGER_ITEMS_DRAG_TYPE) ||
-    types.includes(FILE_MANAGER_MOVE_DRAG_TYPE) ||
-    types.includes(FILE_MANAGER_COPY_DRAG_TYPE)
+    dragTypes.includes(FILE_MANAGER_ITEMS_DRAG_TYPE) ||
+    dragTypes.includes(FILE_MANAGER_MOVE_DRAG_TYPE) ||
+    dragTypes.includes(FILE_MANAGER_COPY_DRAG_TYPE)
   ) {
     // Basic restriction: internal dragging of files within Bloggerdog is not supported.
     const isSourceBd = appClipboard.dragSourceVfs?.id === 'bloggerdog';
@@ -445,7 +446,7 @@ function onDragOverDir(e: DragEvent, entry: FsEntry) {
     return;
   }
 
-  if (types.includes(REMOTE_FILE_DRAG_TYPE)) {
+  if (dragTypes.includes(REMOTE_FILE_DRAG_TYPE)) {
     isDragOver.value = entry.path || null;
     e.dataTransfer.dropEffect = 'copy';
     syncFileManagerDragCursor({ isDragging: true, operation: 'copy' });
@@ -453,7 +454,7 @@ function onDragOverDir(e: DragEvent, entry: FsEntry) {
   }
 
   // External files import
-  if (types.includes('Files')) {
+  if (dragTypes.includes('Files')) {
     isDragOver.value = entry.path || null;
     e.dataTransfer.dropEffect = 'copy';
     syncFileManagerDragCursor({ isDragging: true, operation: 'copy' });
