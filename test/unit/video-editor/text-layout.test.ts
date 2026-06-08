@@ -193,6 +193,27 @@ describe('text-layout', () => {
     expect(metrics.textBlockTopPx).toBe(572);
   });
 
+  it('returns frame dimensions matching the auto-sized text block plus padding', () => {
+    const metrics = computeTextLayoutMetrics({
+      text: 'hello world',
+      style: {
+        fontSize: 40,
+        padding: { x: 20, y: 10 },
+        paddingLinked: false,
+        align: 'left',
+        verticalAlign: 'top',
+      },
+      canvasWidth: 1920,
+      canvasHeight: 1080,
+      measureText: (text) => text.length * 10,
+    });
+
+    // text width = 11 * 10 = 110, padding x = 20 each side => frameWidth = 150
+    expect(metrics.frameWidth).toBe(150);
+    // text height = lineHeightPx = fontSizePx * lineHeight = 40 * 1.2 = 48, padding y = 10 each side => frameHeight = 68
+    expect(metrics.frameHeight).toBe(68);
+  });
+
   it('force-breaks words that are wider than the content width', () => {
     const metrics = computeTextLayoutMetrics({
       text: 'supercalifragilistic',

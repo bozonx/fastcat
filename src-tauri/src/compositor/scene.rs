@@ -566,7 +566,12 @@ fn draw_text(scene: &mut VelloScene, spec: &TextLayer, xform: Affine) {
         let shadow_x = frame_x + spec.bg_shadow_offset_x;
         let shadow_y = frame_y + spec.bg_shadow_offset_y;
 
-        let ext = spec.bg_shadow_spread;
+        let border_outset = if spec.border_enabled && spec.border_width > 0.0 {
+            spec.border_width / 2.0
+        } else {
+            0.0
+        };
+        let ext = spec.bg_shadow_spread + border_outset;
         let rect = Rect::new(
             (shadow_x - ext) as f64,
             (shadow_y - ext) as f64,
@@ -855,18 +860,19 @@ fn gaussian_kernel_taps(sigma: f32) -> Vec<(f32, f32, f32)> {
     if sigma < 0.5 {
         return vec![(0.0, 0.0, 1.0)];
     }
-    // 5×5 сетка с шагом σ покрывает ±2σ — баланс качества и числа перерисовок.
-    const STEPS: i32 = 2;
-    let step = sigma; // span = STEPS*step = 2σ
+    // Denser grid for smoother shadows: 7×7 with step 0.75σ covers ±2.25σ.
+    // For small sigma (< 1.5) fall back to the lighter 5×5 grid.
+    let steps = if sigma < 1.5 { 2 } else { 3 };
+    let step = sigma * 0.75;
     let two_sigma_sq = 2.0 * sigma * sigma;
     let mut taps = Vec::new();
     let mut wsum = 0.0f32;
-    for iy in -STEPS..=STEPS {
-        for ix in -STEPS..=STEPS {
+    for iy in -steps..=steps {
+        for ix in -steps..=steps {
             let dx = ix as f32 * step;
             let dy = iy as f32 * step;
             let w = (-(dx * dx + dy * dy) / two_sigma_sq).exp();
-            if w < 0.04 {
+            if w < 0.005 {
                 continue;
             }
             taps.push((dx, dy, w));

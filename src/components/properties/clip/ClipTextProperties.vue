@@ -10,6 +10,8 @@ import UiColorBlendPicker from '~/components/ui/UiColorBlendPicker.vue';
 import { isTauriRuntime } from '~/utils/runtime';
 import { nativeSystemFonts } from '~/utils/tauri-media-processing';
 import { createDevLogger } from '~/utils/dev-logger';
+import { computeTextLayoutMetrics } from '~/utils/video-editor/text-layout';
+import { TRANSFORM_DESIGN_BASE } from '~/utils/video-editor/clip-layout';
 
 const props = defineProps<{
   clip: TimelineTextClipItem;
@@ -110,21 +112,56 @@ const paddingLinked = computed({
   },
 });
 
+const measureCanvas = typeof document !== 'undefined' ? document.createElement('canvas') : null;
+const measureCtx = measureCanvas?.getContext('2d');
+
+function computeCurrentAutoSize(): { width: number; height: number } {
+  const text = props.clip.text ?? '';
+  const style = props.clip.style;
+  const canvasWidth = TRANSFORM_DESIGN_BASE.width;
+  const canvasHeight = TRANSFORM_DESIGN_BASE.height;
+
+  const layout = computeTextLayoutMetrics({
+    text,
+    style,
+    canvasWidth,
+    canvasHeight,
+    designWidth: canvasWidth,
+    designHeight: canvasHeight,
+    measureText: (t, font) => {
+      if (!measureCtx) return 0;
+      measureCtx.font = font;
+      return measureCtx.measureText(t).width;
+    },
+  });
+
+  return {
+    width: Math.max(1, Math.round(layout.frameWidth / layout.renderScale)),
+    height: Math.max(1, Math.round(layout.frameHeight / layout.renderScale)),
+  };
+}
+
 const isAutoWidth = computed({
   get: () => !(typeof props.clip.style?.width === 'number' && props.clip.style.width > 0),
   set: (value: boolean) => {
-    emit('updateTextStyle', {
-      width: value ? undefined : Number(props.clip.style?.width ?? 400),
-    });
+    if (!value) {
+      const size = computeCurrentAutoSize();
+      emit('updateTextStyle', { width: size.width });
+    } else {
+      emit('updateTextStyle', { width: undefined });
+    }
   },
 });
 
 const isAutoHeight = computed({
   get: () => !(typeof props.clip.style?.height === 'number' && props.clip.style.height > 0),
   set: (value: boolean) => {
-    emit('updateTextStyle', {
-      height: value ? undefined : Number(props.clip.style?.height ?? 240),
-    });
+    if (!value) {
+      const size = computeCurrentAutoSize();
+      emit('updateTextStyle', { height: size.height });
+    } else {
+      emit('updateTextStyle', { height: undefined });
+    }
   },
 });
 
@@ -316,16 +353,6 @@ const fontWeightOptions = ['100', '200', '300', '400', '500', '600', '700', '800
         </PropertyField>
 
         <div class="grid grid-cols-2 gap-2">
-          <PropertyField :label="t('fastcat.textClip.align')">
-            <UiSelect
-              :model-value="String(clip.style?.align ?? 'center')"
-              :items="alignOptions"
-              value-key="value"
-              label-key="label"
-              size="sm"
-              @update:model-value="(v: unknown) => emit('updateTextStyle', { align: v })"
-            />
-          </PropertyField>
           <PropertyField :label="t('fastcat.textClip.lineHeightMultiplier')">
             <UiWheelNumberInput
               :model-value="Number(clip.style?.lineHeight ?? 1.2)"
@@ -333,6 +360,17 @@ const fontWeightOptions = ['100', '200', '300', '400', '500', '600', '700', '800
               :step="0.1"
               full-width
               @update:model-value="(v: any) => emit('updateTextStyle', { lineHeight: Number(v) })"
+            />
+          </PropertyField>
+          <PropertyField :label="t('fastcat.textClip.letterSpacingPx')">
+            <UiWheelNumberInput
+              :model-value="Number(clip.style?.letterSpacing ?? 0)"
+              size="sm"
+              :step="1"
+              full-width
+              @update:model-value="
+                (v: any) => emit('updateTextStyle', { letterSpacing: Number(v) })
+              "
             />
           </PropertyField>
         </div>
@@ -363,6 +401,16 @@ const fontWeightOptions = ['100', '200', '300', '400', '500', '600', '700', '800
               @update:model-value="(v: any) => emit('updateTextStyle', { width: Number(v) })"
             />
           </PropertyField>
+          <PropertyField :label="t('fastcat.textClip.align')">
+            <UiSelect
+              :model-value="String(clip.style?.align ?? 'center')"
+              :items="alignOptions"
+              value-key="value"
+              label-key="label"
+              size="sm"
+              @update:model-value="(v: unknown) => emit('updateTextStyle', { align: v })"
+            />
+          </PropertyField>
         </div>
 
         <div v-if="!isAutoHeight" class="grid grid-cols-2 gap-2">
@@ -387,50 +435,6 @@ const fontWeightOptions = ['100', '200', '300', '400', '500', '600', '700', '800
             />
           </PropertyField>
         </div>
-
-        <div class="grid grid-cols-[minmax(0,1fr)_2rem_minmax(0,1fr)] gap-2 items-end">
-          <PropertyField :label="t('fastcat.textClip.horizontalPaddingPx')">
-            <UiWheelNumberInput
-              :model-value="getPaddingAxis('x')"
-              size="sm"
-              :step="1"
-              :min="0"
-              full-width
-              @update:model-value="(v: any) => updatePaddingAxis('x', Number(v))"
-            />
-          </PropertyField>
-          <div class="h-8 flex items-center justify-center">
-            <UButton
-              :icon="paddingLinked ? 'i-heroicons-link' : 'i-heroicons-link-slash'"
-              variant="ghost"
-              size="xs"
-              color="white"
-              square
-              :title="t('fastcat.textClip.paddingLink')"
-              @click="paddingLinked = !paddingLinked"
-            />
-          </div>
-          <PropertyField :label="t('fastcat.textClip.verticalPaddingPx')">
-            <UiWheelNumberInput
-              :model-value="getPaddingAxis('y')"
-              size="sm"
-              :step="1"
-              :min="0"
-              full-width
-              @update:model-value="(v: any) => updatePaddingAxis('y', Number(v))"
-            />
-          </PropertyField>
-        </div>
-
-        <PropertyField :label="t('fastcat.textClip.letterSpacingPx')">
-          <UiWheelNumberInput
-            :model-value="Number(clip.style?.letterSpacing ?? 0)"
-            size="sm"
-            :step="1"
-            full-width
-            @update:model-value="(v: any) => emit('updateTextStyle', { letterSpacing: Number(v) })"
-          />
-        </PropertyField>
       </div>
     </PropertySection>
 
@@ -529,6 +533,39 @@ const fontWeightOptions = ['100', '200', '300', '400', '500', '600', '700', '800
             "
           />
         </PropertyField>
+        <div class="grid grid-cols-[minmax(0,1fr)_2rem_minmax(0,1fr)] gap-2 items-end">
+          <PropertyField :label="t('fastcat.textClip.horizontalPaddingPx')">
+            <UiWheelNumberInput
+              :model-value="getPaddingAxis('x')"
+              size="sm"
+              :step="1"
+              :min="0"
+              full-width
+              @update:model-value="(v: any) => updatePaddingAxis('x', Number(v))"
+            />
+          </PropertyField>
+          <div class="h-8 flex items-center justify-center">
+            <UButton
+              :icon="paddingLinked ? 'i-heroicons-link' : 'i-heroicons-link-slash'"
+              variant="ghost"
+              size="xs"
+              color="white"
+              square
+              :title="t('fastcat.textClip.paddingLink')"
+              @click="paddingLinked = !paddingLinked"
+            />
+          </div>
+          <PropertyField :label="t('fastcat.textClip.verticalPaddingPx')">
+            <UiWheelNumberInput
+              :model-value="getPaddingAxis('y')"
+              size="sm"
+              :step="1"
+              :min="0"
+              full-width
+              @update:model-value="(v: any) => updatePaddingAxis('y', Number(v))"
+            />
+          </PropertyField>
+        </div>
       </div>
     </PropertySection>
 

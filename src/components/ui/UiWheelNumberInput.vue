@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { useBlurOnPointerDownOutside } from '~/composables/useBlurOnPointerDownOutside';
 import { useWheelSupport } from '../../composables/useWheelSupport';
 import { useWorkspaceStore } from '../../stores/workspace.store';
@@ -15,6 +15,7 @@ interface UiWheelNumberInputProps {
   disabled?: boolean;
   defaultValue?: number;
   fullWidth?: boolean;
+  debounceMs?: number;
 }
 
 const props = withDefaults(defineProps<UiWheelNumberInputProps>(), {
@@ -26,6 +27,7 @@ const props = withDefaults(defineProps<UiWheelNumberInputProps>(), {
   disabled: false,
   fullWidth: false,
   defaultValue: undefined,
+  debounceMs: 50,
 });
 
 const emit = defineEmits<{
@@ -39,15 +41,53 @@ function clampValue(val: number): number {
   return res;
 }
 
-const value = computed({
-  get: () => props.modelValue,
+const localValue = ref(props.modelValue);
+
+watch(
+  () => props.modelValue,
+  (val) => {
+    localValue.value = val;
+  },
+);
+
+const inputValue = computed({
+  get: () => localValue.value,
   set: (val: number | string) => {
     const num = Number(val);
     if (!Number.isNaN(num)) {
-      emit('update:modelValue', clampValue(num));
+      localValue.value = clampValue(num);
+      emit('update:modelValue', localValue.value);
     }
   },
 });
+
+let debounceTimer: number | null = null;
+let pendingEmitValue: number | null = null;
+
+function scheduleEmit(value: number) {
+  pendingEmitValue = value;
+  if (debounceTimer !== null) {
+    clearTimeout(debounceTimer);
+  }
+  debounceTimer = window.setTimeout(() => {
+    debounceTimer = null;
+    if (pendingEmitValue !== null && pendingEmitValue !== props.modelValue) {
+      emit('update:modelValue', pendingEmitValue);
+    }
+    pendingEmitValue = null;
+  }, props.debounceMs);
+}
+
+function flushDebounced() {
+  if (debounceTimer !== null) {
+    clearTimeout(debounceTimer);
+    debounceTimer = null;
+  }
+  if (pendingEmitValue !== null && pendingEmitValue !== props.modelValue) {
+    emit('update:modelValue', pendingEmitValue);
+  }
+  pendingEmitValue = null;
+}
 
 const wrapperRef = ref<HTMLElement | null>(null);
 const workspaceStore = useWorkspaceStore();
@@ -62,15 +102,15 @@ useWheelSupport({
   useWheelStepMultiplier: (e) => isLayer1Active(e, workspaceStore.userSettings),
   focusOnly: true,
   onWheelStep: (direction, wheelStep, precision) => {
-    const current = Number(props.modelValue);
+    const current = Number(localValue.value);
     const safeCurrent = Number.isFinite(current) ? current : (props.min ?? 0);
 
-    // If step is small (e.g. 0.01), we want shift to jump significantly
     const next = safeCurrent + direction * wheelStep;
     const rounded = Number(next.toFixed(precision));
     const clamped = clampValue(rounded);
 
-    emit('update:modelValue', clamped);
+    localValue.value = clamped;
+    scheduleEmit(clamped);
   },
 });
 
@@ -79,9 +119,18 @@ function onPointerDown(e: PointerEvent) {
     if (e.pointerType === 'mouse') {
       e.preventDefault();
     }
+    flushDebounced();
     emit('update:modelValue', props.defaultValue);
   }
 }
+
+function onBlur() {
+  flushDebounced();
+}
+
+onBeforeUnmount(() => {
+  flushDebounced();
+});
 </script>
 
 <template>
@@ -90,9 +139,10 @@ function onPointerDown(e: PointerEvent) {
     class="relative group"
     :class="fullWidth ? 'w-full' : 'max-w-24'"
     @pointerdown.capture="onPointerDown"
+    @blur="onBlur"
   >
     <UInput
-      v-model="value"
+      v-model="inputValue"
       type="number"
       :min="min"
       :max="max"
