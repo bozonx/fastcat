@@ -1006,6 +1006,34 @@ mod tests {
     }
 
     #[test]
+    fn reversed_source_range_duration_respected() {
+        let l = SceneAudioLayer {
+            id: "rev_dur".into(),
+            track_id: None,
+            path: "/tmp/x.wav".into(),
+            timeline_start_sec: 0.0,
+            timeline_end_sec: 10.0,
+            source_start_sec: 5.0,
+            source_range_duration_sec: 8.0,
+            speed: -1.0,
+            audio_gain: 1.0,
+            audio_balance: 0.0,
+            audio_fade_in_sec: 0.0,
+            audio_fade_out_sec: 0.0,
+            audio_fade_in_curve: AudioFadeCurve::Linear,
+            audio_fade_out_curve: AudioFadeCurve::Linear,
+            audio_effects: vec![],
+        };
+        let segment_end = 0.05;
+        let source_start = l.source_pts_at(segment_end);
+        assert!(
+            (source_start - 12.949).abs() < 1e-9,
+            "expected 12.949, got {}",
+            source_start
+        );
+    }
+
+    #[test]
     fn reversed_layer_is_muted_in_preview() {
         let l = SceneAudioLayer {
             id: "rev".into(),

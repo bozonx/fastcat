@@ -320,6 +320,31 @@ mod tests {
         assert_eq!(values, vec![0.5, 1.0, 0.25, 0.75]);
     }
 
+    #[test]
+    fn test_halve_mip() {
+        let mut mip = vec![
+            vec![0.5, 0.2, 0.8, 0.1, 0.4],
+            vec![0.1, 0.9, 0.3, 0.4, 0.2],
+        ];
+        halve_mip(&mut mip);
+        assert_eq!(mip.len(), 2);
+        assert_eq!(mip[0].len(), 3);
+        assert_eq!(mip[1].len(), 3);
+        assert_eq!(mip[0], vec![0.5, 0.8, 0.4]);
+        assert_eq!(mip[1], vec![0.9, 0.4, 0.2]);
+    }
+
+    #[test]
+    fn test_resample_channel() {
+        let mip = vec![0.1, 0.5, 0.9, 0.3, 0.2, 0.8, 0.4, 0.6];
+        let resampled = resample_channel(&mip, 4);
+        assert_eq!(resampled.len(), 4);
+        assert_eq!(resampled, vec![0.5, 0.9, 0.8, 0.6]);
+
+        assert_eq!(resample_channel(&[], 4), vec![0.0, 0.0, 0.0, 0.0]);
+        assert!(resample_channel(&mip, 0).is_empty());
+    }
+
     /// Unique temp path per test+process to avoid clobbering between tests that
     /// run in parallel (Rust's test harness is multi-threaded by default).
     fn unique_temp_wav(label: &str) -> std::path::PathBuf {

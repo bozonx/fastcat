@@ -9,9 +9,8 @@ import {
   mixProcessedChunk,
   pullNextProcessedChunk,
   getProcessedChunkForFrame,
+  buildGainEnvelope,
 } from '~/workers/core/AudioMixer';
-
-// import { buildGainEnvelope } from '~/workers/core/AudioMixer'; // requires complex clip data
 
 describe('interleavedToPlanar', () => {
   it('converts interleaved stereo to planar', () => {
@@ -253,5 +252,51 @@ describe('getProcessedChunkForFrame', () => {
       15,
     );
     expect(result).toBe(chunk2);
+  });
+});
+
+describe('buildGainEnvelope', () => {
+  it('fills with baseGain when no fades are specified', () => {
+    const clip = {
+      playDurationS: 5,
+      audioGain: 0.8,
+      audioFadeInS: 0,
+      audioFadeOutS: 0,
+      audioFadeInCurve: 'linear',
+      audioFadeOutCurve: 'linear',
+    };
+
+    const envelope = buildGainEnvelope({
+      frames: 10,
+      startFrame: 0,
+      targetSampleRate: 10,
+      clip: clip as any,
+    });
+
+    expect(envelope).toEqual(new Float32Array([0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8]));
+  });
+
+  it('calculates linear fade-in and fade-out envelopes correctly', () => {
+    const clip = {
+      playDurationS: 5,
+      audioGain: 1.0,
+      audioFadeInS: 2.0, // 20 frames at 10Hz
+      audioFadeOutS: 2.0, // 20 frames at the end
+      audioFadeInCurve: 'linear',
+      audioFadeOutCurve: 'linear',
+    };
+
+    // Total 50 frames in clip. We test the first 25 frames
+    const envelope = buildGainEnvelope({
+      frames: 25,
+      startFrame: 0,
+      targetSampleRate: 10,
+      clip: clip as any,
+    });
+
+    expect(envelope[0]).toBeCloseTo(0.0);
+    expect(envelope[10]).toBeCloseTo(0.5);
+    expect(envelope[20]).toBeCloseTo(1.0);
+    expect(envelope[24]).toBeCloseTo(1.0);
   });
 });

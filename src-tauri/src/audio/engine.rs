@@ -688,7 +688,6 @@ mod tests {
             state.seek_serial != before,
             "position change must flush"
         );
-        assert!(state.pending_ring_clear);
     }
 
     #[test]

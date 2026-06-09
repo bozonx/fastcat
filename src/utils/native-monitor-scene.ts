@@ -343,6 +343,9 @@ async function resolveProjectAbsolutePath(
   projectRelativePath: string,
   projectStore: ReturnType<typeof useProjectStore>,
 ): Promise<string> {
+  const isAbsolute = /^[\\/]/.test(projectRelativePath) || /^[a-zA-Z]:[\\/]/.test(projectRelativePath);
+  if (isAbsolute) return projectRelativePath;
+
   try {
     const handle = await projectStore.getProjectDirHandle();
     const projectPath = (handle as unknown as TauriDirectoryHandle | null)?.path;

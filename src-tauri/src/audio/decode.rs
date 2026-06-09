@@ -71,6 +71,11 @@ pub(crate) fn probe_audio_source_metadata(path: &str) -> Result<AudioSourceMetad
     })
 }
 
+/// Returns the audio source metadata from the cache or probes it.
+/// Note: `source_metadata_cache` is keyed solely by the file path (without channel count
+/// or sample rate), which is intentional because the inherent audio source metadata
+/// (original sample rate and channels) is a property of the source file itself
+/// and does not depend on the output audio device's sample rate or channel count.
 pub(crate) fn cached_audio_source_metadata(
     path: &str,
     shared: &Arc<(Mutex<AudioShared>, Condvar)>,
@@ -1440,6 +1445,50 @@ mod tests {
         let expected_samples = (0.05f64 * 44100.0).round() as usize * 2;
         assert_eq!(chunk.len(), expected_samples);
         assert!(chunk.iter().all(|sample| *sample == 0.0));
+        Ok(())
+    }
+
+    #[test]
+    fn test_probe_audio_source_metadata() -> anyhow::Result<()> {
+        let path = concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../test/fixtures/media/sample-1s-audio.mp3"
+        );
+        let meta = probe_audio_source_metadata(path)?;
+        assert_eq!(meta.channels, 2);
+        assert_eq!(meta.sample_rate, 48000);
+        Ok(())
+    }
+
+    #[test]
+    fn test_decoded_cache_key_format() {
+        let key = decoded_cache_key("/path/to/audio.mp3", 44100, 2);
+        assert_eq!(key, "/path/to/audio.mp3|sr=44100|ch=2");
+    }
+
+    #[test]
+    fn test_maybe_spawn_background_precache_prevents_duplicate() -> anyhow::Result<()> {
+        let path = write_temp_f32_wav(8000, 1, 8000)?;
+        let path_str = path.to_string_lossy().to_string();
+        let shared = Arc::new((Mutex::new(AudioShared::default()), Condvar::new()));
+        let cache_key = decoded_cache_key(&path_str, 48000, 2);
+
+        // Mark as in-flight
+        shared.0.lock().decoding_in_flight.insert(cache_key.clone());
+
+        // Invoke maybe_spawn_background_precache. Since it's already in-flight,
+        // it shouldn't spawn a background thread to cache it.
+        maybe_spawn_background_precache(&shared, &path_str, 48000, 2, &cache_key);
+
+        std::thread::sleep(std::time::Duration::from_millis(50));
+
+        let state = shared.0.lock();
+        assert!(!state.decoded_cache.contains(&cache_key));
+        assert!(!state.precache_skip.contains(&cache_key));
+        assert!(state.decoding_in_flight.contains(&cache_key));
+        drop(state);
+
+        let _ = std::fs::remove_file(path);
         Ok(())
     }
 }

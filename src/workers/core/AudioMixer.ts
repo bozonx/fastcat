@@ -527,7 +527,7 @@ export function trimOrPadPlanes(params: {
   });
 }
 
-function buildGainEnvelope(params: {
+export function buildGainEnvelope(params: {
   frames: number;
   startFrame: number;
   targetSampleRate: number;
