@@ -220,7 +220,7 @@ export type FastCatWorkspaceSettings = FastCatAppSettings;
 
 export const DEFAULT_USER_SETTINGS: FastCatUserSettings = {
   locale: 'en-US',
-  openLastProjectOnStart: true,
+  openLastProjectOnStart: false,
   timeline: {
     snapThresholdPx: 8,
     defaultTransitionDurationUs: 2_000_000,

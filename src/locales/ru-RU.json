@@ -758,7 +758,10 @@
       "width": "Ширина (%)"
     },
     "startup": {
-      "projectThumbnail": "Предпросмотр проекта"
+      "projectThumbnail": "Предпросмотр проекта",
+      "loadingLastProject": "Загрузка последнего проекта: {name}",
+      "cancelLoading": "Отмена",
+      "pleaseWait": "Пожалуйста, подождите..."
     },
     "textClip": {
       "align": "Выравнивание",

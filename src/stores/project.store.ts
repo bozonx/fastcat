@@ -64,6 +64,7 @@ export const useProjectStore = defineStore('project', () => {
   const currentFileName = ref<string | null>(null);
 
   const isReadOnly = ref(false);
+  let currentOpenSessionId = 0;
 
   const editorViewModule = createEditorViewModule(currentProjectId, {
     getProjectOrientation: () => projectSettingsStore.projectSettings.project.orientation,
@@ -107,6 +108,7 @@ export const useProjectStore = defineStore('project', () => {
   const { loadProjectMeta, clearProjectMetaState } = metaModule;
 
   async function closeProject() {
+    currentOpenSessionId++;
     projectSettingsStore.closeProjectSettings();
     currentProjectName.value = null;
     currentProjectDirHandle.value = null;
@@ -263,9 +265,12 @@ export const useProjectStore = defineStore('project', () => {
       if (isTauri) {
         const { join } = await import('@tauri-apps/api/path');
         const { mkdir, exists } = await import('@tauri-apps/plugin-fs');
+        const { invoke } = await import('@tauri-apps/api/core');
         const parentDir =
           options?.parentPath || workspaceStore.resolvedStorageTopology.projectsRoot;
         projectPath = await join(parentDir, name);
+
+        await invoke('allow_path_scope', { path: parentDir }).catch(() => {});
 
         if (await exists(projectPath)) {
           workspaceStore.error = `Project folder "${name}" already exists`;
@@ -429,6 +434,7 @@ export const useProjectStore = defineStore('project', () => {
   }
 
   async function openProject(nameOrPath: string) {
+    const sessionId = ++currentOpenSessionId;
     const isTauri = isTauriRuntime();
     let name = nameOrPath;
     let path = nameOrPath;
@@ -437,18 +443,25 @@ export const useProjectStore = defineStore('project', () => {
       const isAbsolute = isAbsoluteStorageRoot(nameOrPath);
       if (isAbsolute) {
         const { basename } = await import('@tauri-apps/api/path');
+        if (sessionId !== currentOpenSessionId) return;
         name = await basename(nameOrPath);
+        if (sessionId !== currentOpenSessionId) return;
         path = nameOrPath;
       } else {
         const { join } = await import('@tauri-apps/api/path');
+        if (sessionId !== currentOpenSessionId) return;
         path = await join(workspaceStore.resolvedStorageTopology.projectsRoot, nameOrPath);
+        if (sessionId !== currentOpenSessionId) return;
         name = nameOrPath;
       }
 
       const { invoke } = await import('@tauri-apps/api/core');
+      if (sessionId !== currentOpenSessionId) return;
       await invoke('allow_path_scope', { path }).catch(() => {});
+      if (sessionId !== currentOpenSessionId) return;
 
       const { TauriDirectoryHandle } = await import('~/stores/workspace/provider/tauri-handle');
+      if (sessionId !== currentOpenSessionId) return;
       currentProjectDirHandle.value = new TauriDirectoryHandle(
         path,
         name,
@@ -474,6 +487,7 @@ export const useProjectStore = defineStore('project', () => {
     const settingsLoaded = loadProjectSettings();
 
     await loadProjectMeta();
+    if (sessionId !== currentOpenSessionId) return;
     if (currentProjectId.value) {
       workspaceStore.updateRecentProject({
         projectName: name,
@@ -488,6 +502,12 @@ export const useProjectStore = defineStore('project', () => {
     const lockKey = currentProjectId.value ?? currentProjectName.value;
     if (lockKey) {
       const lockAcquired = await projectLock.acquireLock(lockKey);
+      if (sessionId !== currentOpenSessionId) {
+        if (lockAcquired) {
+          void projectLock.releaseLock();
+        }
+        return;
+      }
       isReadOnly.value = !lockAcquired;
     } else {
       log.warn('Cannot acquire lock: neither projectId nor projectName is available');
@@ -495,6 +515,7 @@ export const useProjectStore = defineStore('project', () => {
     }
 
     await settingsLoaded;
+    if (sessionId !== currentOpenSessionId) return;
 
     // If no timelines are open, open the last one from meta or default
     const openPaths = projectSettings.value.timelines.openPaths;
@@ -504,12 +525,15 @@ export const useProjectStore = defineStore('project', () => {
         metaModule.projectMeta.value?.lastOpenedTimelinePath ||
         `${TIMELINES_DIR_NAME}/${name}_001.otio`;
       await openTimelineFile(lastPath);
+      if (sessionId !== currentOpenSessionId) return;
     } else {
       const lastPath = metaModule.projectMeta.value?.lastOpenedTimelinePath;
       if (lastPath && openPaths.includes(lastPath)) {
         await openTimelineFile(lastPath);
+        if (sessionId !== currentOpenSessionId) return;
       } else {
         await openTimelineFile(openPaths[0]!);
+        if (sessionId !== currentOpenSessionId) return;
       }
     }
 
@@ -517,6 +541,7 @@ export const useProjectStore = defineStore('project', () => {
     // project is fully open (routing/topology ready). Must happen before the save
     // below so it doesn't overwrite the stored paths with the still-null selection.
     await projectSettingsStore.restoreFileManagerFolders();
+    if (sessionId !== currentOpenSessionId) return;
 
     if (!isReadOnly.value) {
       await saveProjectSettings();

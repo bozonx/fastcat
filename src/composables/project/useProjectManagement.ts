@@ -252,6 +252,8 @@ export function useProjectManagement(options: { isMobile?: boolean } = {}) {
       defaultPath: projectCreationSettings.value.location,
     });
     if (selected && typeof selected === 'string') {
+      const { invoke } = await import('@tauri-apps/api/core');
+      await invoke('allow_path_scope', { path: selected }).catch(() => {});
       projectCreationSettings.value.location = selected;
     }
   }

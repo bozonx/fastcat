@@ -216,7 +216,19 @@ onMounted(async () => {
     return;
   }
 
-  await openProject(decodeURIComponent(projectId));
+  try {
+    await openProject(decodeURIComponent(projectId));
+    if (!projectStore.currentProjectName) {
+      if (route.path.startsWith('/editor/')) {
+        router.push('/');
+      }
+    }
+  } catch (err) {
+    console.error('Failed to open project:', err);
+    if (route.path.startsWith('/editor/')) {
+      router.push('/');
+    }
+  }
 });
 
 function onMainSplitResize(event: { panes: { size: number }[] }) {

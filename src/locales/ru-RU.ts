@@ -658,7 +658,6 @@ export default {
       "rewind": "В начало",
       "showGrid": "Показать сетку",
       "showTimecode": "Показать таймкод",
-      "showTransparencyGrid": "Шахматный фон",
       "snapshot": "Снимок",
       "syncBalanced": "Баланс",
       "syncBalancedTitle": "Баланс: сохраняет синхронизацию со звуком, но дает видео небольшой запас для плавного догоняющего воспроизведения.",
@@ -759,7 +758,10 @@ export default {
       "width": "Ширина (%)"
     },
     "startup": {
-      "projectThumbnail": "Предпросмотр проекта"
+      "projectThumbnail": "Предпросмотр проекта",
+      "loadingLastProject": "Загрузка последнего проекта: {name}",
+      "cancelLoading": "Отмена",
+      "pleaseWait": "Пожалуйста, подождите..."
     },
     "textClip": {
       "align": "Выравнивание",
@@ -1269,7 +1271,6 @@ export default {
       "encodingSettings": "Настройки кодирования",
       "error": "Ошибка экспорта",
       "errorCancelled": "Экспорт был отменен",
-      "errorDescWithDuration": "Ошибка экспорта после {duration}",
       "exportAlpha": "Экспорт альфа-канала",
       "exporting": "Экспорт...",
       "filename": "Имя файла",
@@ -1306,10 +1307,7 @@ export default {
       "selection": "Выделение",
       "startExport": "Экспорт",
       "successDesc": "Таймлайн экспортирован в {file}",
-      "successDescWithDuration": "Таймлайн экспортирован в {file} за {duration}",
-      "successMessage": "Экспорт успешно завершён за {duration}",
       "successTitle": "Экспорт завершен успешно",
-      "durationLabel": "Длительность: {duration}",
       "title": "Экспорт",
       "videoBitrate": "Битрейт видео (Мбит/с)",
       "videoBitrateHelp": "Примерный целевой битрейт. Чем выше, тем лучше качество и больше размер файла.",
@@ -2098,4 +2096,4 @@ export default {
   "custom": {
     "delete": "Удалить"
   }
-}
+};

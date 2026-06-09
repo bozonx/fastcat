@@ -758,7 +758,10 @@
       "width": "Width (%)"
     },
     "startup": {
-      "projectThumbnail": "Project preview"
+      "projectThumbnail": "Project preview",
+      "loadingLastProject": "Loading last project: {name}",
+      "cancelLoading": "Cancel",
+      "pleaseWait": "Please wait..."
     },
     "textClip": {
       "align": "Align",

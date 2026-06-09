@@ -5,6 +5,71 @@ import { ref } from 'vue';
 import { useProjectStore } from '~/stores/project.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { createDefaultExportPresets, createDefaultProjectPresets } from '~/utils/settings';
+import { invoke } from '@tauri-apps/api/core';
+import { isTauriRuntime } from '~/utils/runtime';
+
+vi.mock('~/utils/runtime', () => ({
+  isTauriRuntime: vi.fn(() => false),
+}));
+
+vi.mock('@tauri-apps/api/core', () => ({
+  invoke: vi.fn().mockResolvedValue(undefined),
+}));
+
+vi.mock('@tauri-apps/api/path', () => ({
+  basename: vi.fn().mockImplementation(async (path: string) => path.split('/').pop() || path),
+  join: vi.fn().mockImplementation(async (...parts: string[]) => parts.join('/')),
+  dirname: vi.fn().mockImplementation(async (path: string) => path.split('/').slice(0, -1).join('/')),
+}));
+
+vi.mock('@tauri-apps/plugin-fs', () => ({
+  exists: vi.fn().mockResolvedValue(false),
+  mkdir: vi.fn().mockResolvedValue(undefined),
+  remove: vi.fn().mockResolvedValue(undefined),
+  readTextFile: vi.fn().mockResolvedValue('{}'),
+  writeTextFile: vi.fn().mockResolvedValue(undefined),
+}));
+
+vi.mock('~/stores/workspace/provider/tauri-handle', () => ({
+  TauriDirectoryHandle: vi.fn().mockImplementation(function (path: string, name: string) {
+    return {
+      kind: 'directory',
+      path,
+      name,
+    };
+  }),
+}));
+
+const mockVfs = {
+  writeFile: vi.fn().mockResolvedValue(undefined),
+  createDirectory: vi.fn().mockResolvedValue(undefined),
+  exists: vi.fn().mockResolvedValue(true),
+  readFile: vi.fn().mockResolvedValue(new Blob(['{}'])),
+};
+vi.mock('~/composables/useVfs', () => ({
+  useVfs: () => mockVfs,
+}));
+
+vi.mock('~/repositories/project-meta.repository', () => ({
+  createProjectMetaRepository: vi.fn(() => ({
+    load: vi.fn().mockResolvedValue({ id: '123-uuid', title: 'TestProject' }),
+    save: vi.fn().mockResolvedValue(undefined),
+  })),
+}));
+
+vi.mock('~/repositories/project-settings.repository', () => ({
+  createProjectSettingsRepository: vi.fn(() => ({
+    load: vi.fn().mockResolvedValue({}),
+    save: vi.fn().mockResolvedValue(undefined),
+  })),
+}));
+
+vi.mock('~/repositories/project-ui.repository', () => ({
+  createProjectUiRepository: vi.fn(() => ({
+    load: vi.fn().mockResolvedValue({}),
+    save: vi.fn().mockResolvedValue(undefined),
+  })),
+}));
 
 vi.mock('pinia', async (importOriginal) => {
   const mod = await importOriginal<typeof import('pinia')>();
@@ -103,6 +168,7 @@ vi.mock('~/stores/project-settings.store', () => {
       saveProjectSettings: mockSaveProjectSettings,
       setContext: mockSetContext,
       saveInitialProjectSettingsForNewProject: mockSaveInitialProjectSettingsForNewProject,
+      restoreFileManagerFolders: vi.fn().mockResolvedValue(undefined),
     })),
   };
 });
@@ -120,6 +186,14 @@ const workspaceMock = {
     timeline: { defaultStaticClipDurationUs: 5000000, snapThresholdPx: 8 },
   },
   workspaceState: { fileBrowser: { instances: {} } },
+  resolvedStorageTopology: {
+    projectsRoot: '/mock-projects',
+    tempRoot: '/mock-temp',
+    proxiesRoot: '/mock-proxies',
+    ephemeralTmpRoot: '/mock-ephemeral-tmp',
+    commonRoot: '/mock-common',
+    dataRoot: '/mock-data',
+  },
   batchUpdateWorkspaceState: vi.fn(),
   loadProjects: vi.fn(),
   updateRecentProject: vi.fn(),
@@ -199,5 +273,43 @@ describe('ProjectStore', () => {
     await store.openProject('MissingProject');
 
     expect(workspace.error).toBe('Project not found');
+  });
+
+  it('openProject with absolute path in Tauri environment calls allow_path_scope', async () => {
+    vi.mocked(isTauriRuntime).mockReturnValue(true);
+
+    const store = useProjectStore();
+    const workspace = useWorkspaceStore();
+    workspace.projects = [];
+
+    const absolutePath = '/custom/path/MyExternalProject';
+    await store.openProject(absolutePath);
+
+    expect(invoke).toHaveBeenCalledWith('allow_path_scope', { path: absolutePath });
+    expect(store.currentProjectName).toBe('MyExternalProject');
+    expect(workspace.error).toBeNull();
+    const dirHandle = await store.getProjectDirHandle();
+    expect(dirHandle).not.toBeNull();
+    expect(dirHandle?.name).toBe('MyExternalProject');
+    expect((dirHandle as any).path).toBe(absolutePath);
+  });
+
+  it('createProject in non-standard folder under Tauri environment calls allow_path_scope for parent', async () => {
+    vi.mocked(isTauriRuntime).mockReturnValue(true);
+
+    const store = useProjectStore();
+    const workspace = useWorkspaceStore();
+    workspace.projectsHandle = {} as any;
+
+    const customParentPath = '/custom/parent/path';
+    await store.createProject('MyExternalProject', { parentPath: customParentPath });
+
+    expect(invoke).toHaveBeenCalledWith('allow_path_scope', { path: customParentPath });
+    expect(store.currentProjectName).toBe('MyExternalProject');
+    expect(workspace.error).toBeNull();
+    const dirHandle = await store.getProjectDirHandle();
+    expect(dirHandle).not.toBeNull();
+    expect(dirHandle?.name).toBe('MyExternalProject');
+    expect((dirHandle as any).path).toBe('/custom/parent/path/MyExternalProject');
   });
 });

@@ -58,6 +58,38 @@ watch(
 
 // isEditorSettingsOpen and isProjectSettingsOpen are now in uiStore
 const isStartingUp = ref(true);
+const isAutoOpening = ref(false);
+const autoOpenProjectName = ref<string | null>(null);
+
+function cancelAutoOpen() {
+  isAutoOpening.value = false;
+  autoOpenProjectName.value = null;
+  isStartingUp.value = false;
+  void navigateTo('/');
+  void projectStore.closeProject();
+}
+
+watch(
+  () => projectStore.currentProjectName,
+  (name) => {
+    if (name && isAutoOpening.value) {
+      isStartingUp.value = false;
+      isAutoOpening.value = false;
+      autoOpenProjectName.value = null;
+    }
+  }
+);
+
+watch(
+  () => route.path,
+  (newPath) => {
+    if (newPath === '/' && isAutoOpening.value) {
+      isAutoOpening.value = false;
+      autoOpenProjectName.value = null;
+      isStartingUp.value = false;
+    }
+  }
+);
 
 // Initialize Actions and Hotkeys
 useEditorHotkeys();
@@ -67,23 +99,28 @@ onMounted(() => {
   workspaceStore
     .init()
     .then(() => {
-      if (
+      const shouldAutoOpen =
         route.path === '/' &&
         route.query.mode !== 'desktop' &&
         (workspaceStore.workspaceHandle || workspaceStore.workspaceProviderId === 'tauri') &&
         workspaceStore.userSettings.openLastProjectOnStart &&
         workspaceStore.lastProjectName &&
         (workspaceStore.workspaceProviderId === 'tauri' ||
-          workspaceStore.projects.includes(workspaceStore.lastProjectName))
-      ) {
+          workspaceStore.projects.includes(workspaceStore.lastProjectName));
+
+      if (shouldAutoOpen) {
+        isAutoOpening.value = true;
+        autoOpenProjectName.value = workspaceStore.lastProjectName;
         const target =
           workspaceStore.workspaceProviderId === 'tauri' && workspaceStore.lastProjectPath
             ? workspaceStore.lastProjectPath
             : workspaceStore.lastProjectName;
         void navigateTo(`/editor/${encodeURIComponent(target)}`);
+      } else {
+        isStartingUp.value = false;
       }
     })
-    .finally(() => {
+    .catch(() => {
       isStartingUp.value = false;
     });
 });
@@ -146,7 +183,11 @@ useEventListener(document, 'visibilitychange', () => {
 
       <!-- Startup Screens (Overlays) -->
       <template v-if="isStartingUp">
-        <LoadingScreen />
+        <LoadingScreen
+          :is-auto-opening="isAutoOpening"
+          :project-name="autoOpenProjectName"
+          @cancel="cancelAutoOpen"
+        />
       </template>
       <template
         v-else-if="

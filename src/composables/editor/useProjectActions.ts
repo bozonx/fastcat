@@ -75,6 +75,9 @@ export function useProjectActions() {
     try {
       await resetProjectState();
       await projectStore.openProject(name);
+      if (!projectStore.currentProjectName) {
+        return;
+      }
       if (name) {
         uiStore.restoreFileTreeStateOnce();
       }

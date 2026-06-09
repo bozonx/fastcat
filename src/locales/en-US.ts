@@ -658,7 +658,6 @@ export default {
       "rewind": "Rewind",
       "showGrid": "Show grid",
       "showTimecode": "Show Timecode",
-      "showTransparencyGrid": "Transparency grid",
       "snapshot": "Snapshot",
       "syncBalanced": "Balanced",
       "syncBalancedTitle": "Balanced: keeps audio sync while giving video a small catch-up window for smoother playback.",
@@ -759,7 +758,10 @@ export default {
       "width": "Width (%)"
     },
     "startup": {
-      "projectThumbnail": "Project preview"
+      "projectThumbnail": "Project preview",
+      "loadingLastProject": "Loading last project: {name}",
+      "cancelLoading": "Cancel",
+      "pleaseWait": "Please wait..."
     },
     "textClip": {
       "align": "Align",
@@ -1269,7 +1271,6 @@ export default {
       "encodingSettings": "Encoding settings",
       "error": "Export failed",
       "errorCancelled": "Export was cancelled",
-      "errorDescWithDuration": "Export failed after {duration}",
       "exportAlpha": "Export Alpha Channel",
       "exporting": "Exporting...",
       "filename": "Output filename",
@@ -1306,10 +1307,7 @@ export default {
       "selection": "Selection",
       "startExport": "Export",
       "successDesc": "Timeline exported to {file}",
-      "successDescWithDuration": "Timeline exported to {file} in {duration}",
-      "successMessage": "Export completed successfully in {duration}",
       "successTitle": "Export successful",
-      "durationLabel": "Duration: {duration}",
       "title": "Export",
       "videoBitrate": "Video bitrate (Mbps)",
       "videoBitrateHelp": "Approximate target bitrate. Higher values produce better quality and larger files.",
@@ -2098,4 +2096,4 @@ export default {
   "custom": {
     "delete": "Delete"
   }
-}
+};

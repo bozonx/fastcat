@@ -91,6 +91,15 @@ fn build_event_loop() -> Result<EventLoop<MonitorCommand>> {
         use winit::platform::x11::EventLoopBuilderExtX11;
         EventLoopBuilderExtWayland::with_any_thread(&mut builder, true);
         EventLoopBuilderExtX11::with_any_thread(&mut builder, true);
+        // Монитор крутит winit-event-loop в отдельном потоке (см. MonitorHandle::spawn),
+        // а не в главном. Wayland-backend winit в этом контексте не инициализируется и
+        // `build()` падает с "EventLoop::build failed" — а раз WAYLAND_DISPLAY выставлен,
+        // winit выбирает Wayland и НЕ откатывается на X11 сам. Форсируем X11: на Wayland-
+        // сессии это XWayland, который надёжно поднимается из потока. GTK/Tauri-оболочка
+        // при этом остаётся на нативном Wayland (GDK_BACKEND не трогаем) — монитор по
+        // умолчанию offscreen (Canvas), а standalone-окно как XWayland пользователю
+        // неотличимо от нативного.
+        EventLoopBuilderExtX11::with_x11(&mut builder);
     }
     #[cfg(target_os = "windows")]
     {
