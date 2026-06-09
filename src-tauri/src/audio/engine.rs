@@ -216,6 +216,9 @@ impl NativeAudioEngine {
                 .iter()
                 .map(|(layer_id, specs)| (layer_id.as_str(), specs.as_slice())),
         );
+        if needs_flush {
+            plugin_host.lock().reset_all();
+        }
         self.shared.1.notify_all();
     }
 
@@ -232,6 +235,9 @@ impl NativeAudioEngine {
         self.clock.playing.store(false, Ordering::Release);
         state.pending_ring_clear = true;
         state.seek_serial = state.seek_serial.wrapping_add(1);
+        let plugin_host = state.plugin_host.clone();
+        drop(state);
+        plugin_host.lock().reset_all();
         self.shared.1.notify_all();
     }
 
@@ -293,9 +299,9 @@ impl NativeAudioEngine {
             state.pending_ring_clear = true;
             self.clock.playing.store(false, Ordering::Release);
         }
-        // A purely paused seek (paused → paused) leaves the output untouched so a
-        // concurrent forward-scrub preview — which owns the ring/clock while
-        // paused — is not wiped by a transport seek the UI sends alongside it.
+        let plugin_host = state.plugin_host.clone();
+        drop(state);
+        plugin_host.lock().reset_all();
         self.shared.1.notify_all();
     }
 
@@ -333,6 +339,9 @@ impl NativeAudioEngine {
             state.pending_ring_clear = true;
             self.clock.playing.store(false, Ordering::Release);
         }
+        let plugin_host = state.plugin_host.clone();
+        drop(state);
+        plugin_host.lock().reset_all();
         self.shared.1.notify_all();
     }
 
@@ -595,6 +604,18 @@ mod tests {
             before.wrapping_add(1),
             "speed change must flush (bump seek_serial)"
         );
+    }
+
+    #[test]
+    fn seek_resets_plugin_host_state() {
+        let engine = mock_engine();
+
+        let initial_resets = engine.shared.0.lock().plugin_host.lock().reset_all_count;
+
+        engine.seek(15.0, true);
+
+        let after_resets = engine.shared.0.lock().plugin_host.lock().reset_all_count;
+        assert_eq!(after_resets, initial_resets + 1);
     }
 
     #[test]

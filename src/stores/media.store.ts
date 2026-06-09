@@ -206,6 +206,24 @@ export const useMediaStore = defineStore('media', () => {
     return requestPromise;
   }
 
+  async function resolveNativePath(path: string): Promise<string | null> {
+    if (path.startsWith('external:')) {
+      const cleanPath = path.slice('external:'.length);
+      if (!cleanPath.startsWith('/remote') && !cleanPath.startsWith('remote:')) {
+        return cleanPath;
+      }
+      return null;
+    }
+    if (path.startsWith('/') || /^[A-Za-z]:[\\/]/.test(path)) {
+      if (!path.startsWith('/remote') && !path.startsWith('remote:')) {
+        return path;
+      }
+      return null;
+    }
+    const handle = await projectStore.getFileHandleByPath(path);
+    return getNativeFileHandlePath(handle);
+  }
+
   async function fetchMetadataInternal(
     file: File,
     projectRelativePath: string,
@@ -327,8 +345,7 @@ export const useMediaStore = defineStore('media', () => {
       try {
         let meta: MediaMetadata | null = null;
         if (isTauriRuntime()) {
-          const handle = await projectStore.getFileHandleByPath(projectRelativePath);
-          const nativePath = getNativeFileHandlePath(handle);
+          const nativePath = await resolveNativePath(projectRelativePath);
           log.debug('[fetchMetadataInternal] nativePath=', nativePath);
           if (nativePath) {
             let nativeMeta;
@@ -714,8 +731,7 @@ export const useMediaStore = defineStore('media', () => {
     const maxLength = options?.maxLength || 8000;
 
     if (isTauriRuntime()) {
-      const handle = await projectStore.getFileHandleByPath(sourceKey);
-      const nativePath = getNativeFileHandlePath(handle);
+      const nativePath = await resolveNativePath(sourceKey);
       if (nativePath) {
         const nativePeaks = await nativeMediaExtractPeaks(
           nativePath,

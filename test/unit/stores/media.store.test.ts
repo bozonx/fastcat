@@ -824,4 +824,29 @@ describe('MediaStore', () => {
     expect(result?.[1]?.[0]).toBeCloseTo(0.3);
     expect(result?.[1]?.[1]).toBeCloseTo(0.4);
   });
+
+  it('resolves native paths correctly for external and absolute paths in Tauri', async () => {
+    mockIsTauriState.value = true;
+    mockNativeMediaMetadata.mockResolvedValue({
+      duration: 5.0,
+      video: { width: 100, height: 100, fps: 30, codec: 'h264' }
+    });
+
+    const mockFile = { size: 100, lastModified: 100, name: 'video.mp4' } as any;
+    const store = useMediaStore();
+
+    // 1. Path with external: prefix
+    await store.getOrFetchMetadata(mockFile, 'external:/absolute/path/to/video.mp4');
+    expect(mockNativeMediaMetadata).toHaveBeenLastCalledWith('/absolute/path/to/video.mp4');
+
+    // 2. Direct absolute path
+    await store.getOrFetchMetadata(mockFile, '/another/absolute/path/movie.mp4');
+    expect(mockNativeMediaMetadata).toHaveBeenLastCalledWith('/another/absolute/path/movie.mp4');
+
+    // 3. Remote paths should NOT resolve as native path
+    mockNativeMediaMetadata.mockClear();
+    await store.getOrFetchMetadata(mockFile, 'external:/remote/somefile.mp4');
+    // It should go to worker module because it is remote, hence nativeMediaMetadata is NOT called
+    expect(mockNativeMediaMetadata).not.toHaveBeenCalled();
+  });
 });

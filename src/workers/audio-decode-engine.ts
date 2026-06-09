@@ -77,7 +77,7 @@ export class AudioDecodeEngine<
 
     try {
       if (data.type === 'extract-peaks') {
-        const peaks = await this.withGlobalDecodeSlot(() =>
+        const { peaks, sampleRate } = await this.withGlobalDecodeSlot(() =>
           this.extractPeaksFromSource(
             data.blob ?? data.arrayBuffer ?? new ArrayBuffer(0),
             data.options,
@@ -85,7 +85,7 @@ export class AudioDecodeEngine<
         );
         response.ok = true;
         response.result = {
-          sampleRate: 48000,
+          sampleRate,
           numberOfChannels: peaks.length,
           channelBuffers: [],
           peaks,
@@ -374,7 +374,7 @@ export class AudioDecodeEngine<
   async extractPeaksFromSource(
     source: Blob | ArrayBuffer,
     options?: { maxLength?: number; precision?: number },
-  ): Promise<Float32Array[]> {
+  ): Promise<{ peaks: Float32Array[]; sampleRate: number }> {
     const maxLength = options?.maxLength || 8000;
     const precision = options?.precision || 10000;
     const blob = source instanceof Blob ? source : new Blob([source]);
@@ -496,7 +496,7 @@ export class AudioDecodeEngine<
             channel[i] = Math.round((channel[i] ?? 0) * precision) / precision;
           }
         }
-        return peaks;
+        return { peaks, sampleRate: trackSampleRate };
       } finally {
         (sink as { close?: () => void }).close?.();
         (sink as { dispose?: () => void }).dispose?.();

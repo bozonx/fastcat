@@ -231,6 +231,43 @@ describe('AudioDecodeEngine', () => {
     await Promise.all(promises);
     expect(maxActive).toBe(1);
   });
+
+  it('extract-peaks returns correct sample rate and peaks', async () => {
+    async function* singleSample() {
+      yield {
+        sampleRate: 44100,
+        numberOfChannels: 1,
+        numberOfFrames: 100,
+        timestamp: 0,
+        allocationSize: () => 400,
+        copyTo: (dst: Float32Array) => {
+          dst.fill(0.5);
+        },
+        close: vi.fn(),
+      };
+    }
+
+    const mockTrack = createMockTrack({ sampleRate: 44100 });
+    const mockInput = createMockInput({ duration: 1, track: mockTrack });
+    const engine = new AudioDecodeEngine(createMockDeps({ input: mockInput, samples: singleSample() }));
+
+    const request: DecodeRequest = {
+      type: 'extract-peaks',
+      id: 1,
+      sourceKey: 'test-peaks',
+      arrayBuffer: new ArrayBuffer(0),
+      options: {
+        maxLength: 10,
+        precision: 1000,
+      },
+    };
+
+    const response = await engine.handleRequest(request);
+    expect(response.ok).toBe(true);
+    expect(response.result?.sampleRate).toBe(44100);
+    expect(response.result?.peaks?.length).toBe(1);
+    expect(response.result?.peaks?.[0]?.length).toBe(10);
+  });
 });
 
 describe('copyPlanarSampleToChannelBuffers', () => {

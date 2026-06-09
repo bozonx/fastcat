@@ -122,7 +122,13 @@ export function useEntryPreview(params: {
   const metadataYaml = computed(() => {
     if (!fileInfo.value?.metadata) return null;
     try {
-      return yaml.dump(fileInfo.value.metadata, { indent: 2 });
+      const rawMeta = fileInfo.value.metadata;
+      if (rawMeta && typeof rawMeta === 'object') {
+        const cleanMeta = { ...rawMeta } as Record<string, unknown>;
+        delete cleanMeta.audioPeaks;
+        return yaml.dump(cleanMeta, { indent: 2 });
+      }
+      return yaml.dump(rawMeta, { indent: 2 });
     } catch {
       return String(fileInfo.value.metadata);
     }

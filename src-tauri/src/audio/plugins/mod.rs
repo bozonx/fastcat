@@ -101,6 +101,8 @@ pub struct PluginHost {
     /// Reused dry-signal buffer for wet/dry blending; grows to the largest
     /// chunk seen and is then reused without reallocating.
     scratch: Vec<f32>,
+    #[cfg(test)]
+    pub reset_all_count: usize,
 }
 
 impl Default for PluginHost {
@@ -114,6 +116,8 @@ impl PluginHost {
         Self {
             instances: HashMap::new(),
             scratch: Vec::new(),
+            #[cfg(test)]
+            reset_all_count: 0,
         }
     }
 
@@ -129,7 +133,7 @@ impl PluginHost {
     ) {
         // Split-borrow so the wet/dry blend can touch `scratch` while a cached
         // instance is mutably borrowed out of `instances`.
-        let Self { instances, scratch } = self;
+        let Self { instances, scratch, .. } = self;
 
         for spec in specs.iter().filter(|s| s.enabled) {
             let key = InstanceKey {
@@ -188,6 +192,10 @@ impl PluginHost {
     pub fn reset_all(&mut self) {
         for cached in self.instances.values_mut() {
             cached.instance.reset();
+        }
+        #[cfg(test)]
+        {
+            self.reset_all_count += 1;
         }
     }
 

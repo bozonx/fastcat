@@ -246,4 +246,40 @@ describe('useEntryPreview', () => {
       consoleWarnSpy.mockRestore();
     }
   });
+
+  it('excludes audioPeaks from metadataYaml to prevent js-yaml error', async () => {
+    const entry: FsEntry = {
+      kind: 'file',
+      name: 'video.mp4',
+      path: 'video.mp4',
+      source: 'local',
+    };
+
+    const selectedFsEntry = ref<FsEntry | null>(entry);
+    const getFileByPath = vi.fn().mockResolvedValue(new File([], 'video.mp4', { type: 'video/mp4' }));
+    const mockMetadata = {
+      duration: 60,
+      audioPeaks: [new Float32Array([0.5, -0.5])],
+    };
+
+    const preview = useEntryPreview({
+      selectedFsEntry,
+      previewMode: ref<'original' | 'proxy'>('original'),
+      hasProxy: ref(false),
+      mediaStore: {
+        getOrFetchMetadataByPath: async () => mockMetadata as any,
+      },
+      proxyStore: {
+        getProxyFile: async () => null,
+      },
+      getFileByPath,
+      onResetPreviewMode: () => {},
+    });
+
+    await flushAsyncState();
+
+    expect(preview.fileInfo.value?.metadata).toEqual(mockMetadata);
+    expect(preview.metadataYaml.value).toContain('duration: 60');
+    expect(preview.metadataYaml.value).not.toContain('audioPeaks');
+  });
 });
