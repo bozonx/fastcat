@@ -584,7 +584,15 @@ impl WindowState {
             audio.set_scene(&scene.audio_layers, &scene.audio_tracks, master_gain);
         }
         self.layers.apply_scene(scene);
-        self.render_current_frame();
+        // На паузе сразу спавним/позиционируем декодеры активных видеослоёв на playhead,
+        // иначе они не создавались бы до первого Play (декодеры спавнятся только здесь и в
+        // tick): монитор был бы чёрным на загрузке, а первый Play стартовал бы в пустоту.
+        // Во время воспроизведения tick сам поднимает рантаймы — повторный прогрев не нужен.
+        if !self.clock.is_playing() {
+            self.refresh_paused_display();
+        } else {
+            self.render_current_frame();
+        }
     }
 
     fn recreate_audio(&mut self, settings: AudioEngineSettings) {
@@ -704,7 +712,10 @@ impl WindowState {
     /// кеше непоказанным, а монитор — чёрным до первого Play.
     fn refresh_paused_display(&mut self) {
         let t = self.clock.current_pts();
-        self.layers.refresh_display(t);
+        let dev_id = self.offscreen_dev_id;
+        let device = self.compositor.device(dev_id);
+        let queue = self.compositor.queue(dev_id);
+        self.layers.refresh_display(t, device, queue);
         self.render(t);
     }
 

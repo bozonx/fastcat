@@ -444,6 +444,12 @@ impl LayerRuntimeManager {
                 if let Err(e) = rt.pump.seek(clip_local) {
                     log::error!("[monitor] initial seek {id}: {e:?}");
                 }
+                // На паузе сразу прогреваем первый GOP вперёд playhead'а, чтобы
+                // последующий Play не фризил/не чернел на холодном декоде. На
+                // воспроизведении декодер и так стримит вперёд (pump.play выше).
+                if !self.playing {
+                    rt.request_prebuffer(PREROLL_LOOKAHEAD_SEC);
+                }
                 self.runtimes.insert(id, LayerRuntime::Video(rt));
             }
             BgLayerResult::VideoErr { epoch, id, error } => {
@@ -702,19 +708,29 @@ impl LayerRuntimeManager {
         true
     }
 
-    /// На паузе: подтягивает свежедекодированные кадры активных видеослоёв в кеш и
-    /// обновляет показанный кадр на текущем playhead'е, БЕЗ репозиции декодера.
-    /// Нужно, чтобы кадр, догнавший playhead уже ПОСЛЕ seek/открытия декодера (когда
-    /// `seek` нашёл кеш пустым), появился на экране — иначе монитор остаётся чёрным до
-    /// первого Play. В отличие от `seek`, не дёргает `pump.seek` (никакого thrash на
-    /// каждый VideoFrameReady).
-    pub fn refresh_display(&mut self, t: f64) {
+    /// На паузе: ГАРАНТИРУЕТ создание декодеров активных видеослоёв, подтягивает
+    /// свежедекодированные кадры в кеш и показывает кадр на playhead'е.
+    ///
+    /// Раньше `ensure_runtime_for` звался ТОЛЬКО из `tick` (а tick идёт лишь во время
+    /// воспроизведения), поэтому на паузе декодеры вообще не создавались: монитор был
+    /// чёрным на загрузке проекта, а первый Play стартовал в пустоту (декодер только
+    /// тогда спавнился и догонял уже ушедший playhead) — и лишь повторный Play играл
+    /// нормально. Теперь декодеры спавнятся и на паузе, позиционируются на playhead в
+    /// `apply_bg_result` (+ preroll), и кадр появляется сразу. `device`/`queue` нужны
+    /// для GPU-аплоада кадра внутри декодер-потока (как в `tick`).
+    pub fn refresh_display(
+        &mut self,
+        t: f64,
+        device: Option<wgpu::Device>,
+        queue: Option<wgpu::Queue>,
+    ) {
         self.last_tick_t = t;
         let scene = self.scene.clone();
         for layer in scene.iter() {
             if !layer.covers(t) || layer.kind != LayerKind::Video {
                 continue;
             }
+            self.ensure_runtime_for(layer, device.clone(), queue.clone());
             let clip_local = layer.source_pts_at(t);
             if let Some(LayerRuntime::Video(rt)) = self.runtimes.get_mut(&layer.id) {
                 rt.pull_into_cache();
