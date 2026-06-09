@@ -1,4 +1,6 @@
-import { registerEffect } from './core/registry';
+import { registerEffect, getVideoEffectManifest } from './core/registry';
+import type { ClipEffect } from '~/timeline/types';
+import type { VideoEffectSpec } from '~/types/generated/native-monitor/VideoEffectSpec';
 import { compressorManifest } from './audio/compressor/manifest';
 import { echoManifest } from './audio/echo/manifest';
 import { flangerManifest } from './audio/flanger/manifest';
@@ -44,6 +46,33 @@ export function initEffects() {
   registerEffect(voiceUnderwaterManifest);
   registerEffect(voiceRobotManifest);
   registerEffect(voiceShakyManifest);
+}
+
+/**
+ * Converts a list of `ClipEffect` UI objects to the `VideoEffectSpec[]` array
+ * consumed by both the native WGPU runner and the web WebGPU compute runner.
+ * Disabled effects and audio effects are skipped.
+ */
+export function buildEffectSpecs(effects?: ClipEffect[]): VideoEffectSpec[] | undefined {
+  if (!Array.isArray(effects) || effects.length === 0) {
+    return undefined;
+  }
+
+  const specs: VideoEffectSpec[] = [];
+  for (const effect of effects) {
+    if (!effect?.enabled || effect.target === 'audio') {
+      continue;
+    }
+
+    const manifest = getVideoEffectManifest(effect.type);
+    if (!manifest?.toEffectSpecs) {
+      continue;
+    }
+
+    specs.push(...manifest.toEffectSpecs(effect));
+  }
+
+  return specs.length > 0 ? specs : undefined;
 }
 
 // Export everything for convenience

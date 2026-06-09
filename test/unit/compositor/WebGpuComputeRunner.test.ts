@@ -96,4 +96,10 @@ describe('WebGpuComputeRunner', () => {
     const result = await runner.applyEffects(fakeFrame, [{ type: 'brightness', value: 1.2 }]);
     expect(result).toBeNull();
   });
+
+  it('destroy() is a safe no-op on an uninitialized runner', () => {
+    const runner = new WebGpuComputeRunner();
+    expect(() => runner.destroy()).not.toThrow();
+    expect(runner.isReady()).toBe(false);
+  });
 });

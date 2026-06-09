@@ -26,8 +26,7 @@ import {
 import { resolveNormalizedAnchor, TRANSFORM_DESIGN_BASE } from '~/utils/video-editor/clip-layout';
 import { normalizeClipSpeed } from '~/utils/video-editor/source-time';
 import type { TauriDirectoryHandle } from '~/stores/workspace/provider/tauri-handle';
-import { getVideoEffectManifest } from '~/effects';
-import type { VideoEffectSpec } from '~/types/generated/native-monitor/VideoEffectSpec';
+import { buildEffectSpecs } from '~/effects';
 import { getTauriTransitionManifest } from '~/transitions/tauri/manifests';
 import { getTransitionManifest } from '~/transitions/core/registry';
 
@@ -317,27 +316,6 @@ function buildNativeShapeTransform(params: {
   };
 }
 
-export function buildEffectSpecs(effects?: ClipEffect[]): VideoEffectSpec[] | undefined {
-  if (!Array.isArray(effects) || effects.length === 0) {
-    return undefined;
-  }
-
-  const specs: VideoEffectSpec[] = [];
-  for (const effect of effects) {
-    if (!effect?.enabled || effect.target === 'audio') {
-      continue;
-    }
-
-    const manifest = getVideoEffectManifest(effect.type);
-    if (!manifest?.toEffectSpecs) {
-      continue;
-    }
-
-    specs.push(...manifest.toEffectSpecs(effect));
-  }
-
-  return specs.length > 0 ? specs : undefined;
-}
 
 async function resolveProjectAbsolutePath(
   projectRelativePath: string,

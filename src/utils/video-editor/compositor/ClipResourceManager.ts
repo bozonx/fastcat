@@ -15,6 +15,7 @@ import {
 } from './VideoFrameCache';
 import type { CanvasFallbackRenderer } from './renderers/CanvasFallbackRenderer';
 import type { WebGpuComputeRunner } from './WebGpuComputeRunner';
+import { buildEffectSpecs } from '~/effects';
 const log = createDevLogger('ClipResourceManager');
 
 export type WebMonitorSyncMode = 'smooth' | 'balanced' | 'strict';
@@ -317,9 +318,7 @@ export class ClipResourceManager {
           const hasEffects = (clip.effects?.length ?? 0) > 0;
           const runner = this.context.computeRunner;
           if (previewEffectsEnabled && hasEffects && runner?.isReady()) {
-            const effectSpecs = clip.effects
-              ?.map((e) => (e as { spec?: unknown }).spec)
-              .filter((s): s is NonNullable<typeof s> => s !== undefined);
+            const effectSpecs = buildEffectSpecs(clip.effects);
             if (effectSpecs && effectSpecs.length > 0) {
               try {
                 const processed = await runner.applyEffects(

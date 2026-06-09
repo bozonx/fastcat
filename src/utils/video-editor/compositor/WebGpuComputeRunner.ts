@@ -567,6 +567,10 @@ export class WebGpuComputeRunner {
       return;
     }
 
+    // Destroy previous ping/pong textures before reallocating at a larger size.
+    this.pingTexture?.destroy();
+    this.pongTexture?.destroy();
+
     const w = Math.max(1, width);
     const h = Math.max(1, height);
     const usage =
@@ -615,6 +619,9 @@ export class WebGpuComputeRunner {
     const needed = this.uniformStride * Math.max(1, passCount);
     if (this.uniformBuffer && this.uniformCapacity >= needed) return;
 
+    // Destroy the old buffer before allocating a larger one.
+    this.uniformBuffer?.destroy();
+
     this.uniformBuffer = this.device!.createBuffer({
       label: 'web-effect-uniform-ring',
       size: needed,
@@ -642,5 +649,30 @@ export class WebGpuComputeRunner {
     });
     this.customPipelines.set(source, pipeline);
     return pipeline;
+  }
+
+  /**
+   * Release all persistent GPU resources. Call when the compositor is destroyed
+   * to avoid leaking GPU memory across page navigations or compositor re-inits.
+   */
+  public destroy(): void {
+    this.pingTexture?.destroy();
+    this.pongTexture?.destroy();
+    this.uniformBuffer?.destroy();
+    // GPUShaderModule has no .destroy(); releasing the device reclaims all
+    // child objects (pipelines, shader modules, bind group layouts).
+    this.device?.destroy();
+
+    this.pingTexture = null;
+    this.pongTexture = null;
+    this.pingView = null;
+    this.pongView = null;
+    this.uniformBuffer = null;
+    this.uniformCapacity = 0;
+    this.customPipelines.clear();
+    this.bindLayout = null;
+    this.pipeline = null;
+    this.shaderModule = null;
+    this.device = null;
   }
 }

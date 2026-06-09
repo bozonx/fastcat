@@ -861,6 +861,7 @@ export class VideoCompositor {
         log.error('Application destroy failed', err);
       },
     });
+    this.computeRunner.destroy();
     this.app = null;
     this.canvas = null;
   }
