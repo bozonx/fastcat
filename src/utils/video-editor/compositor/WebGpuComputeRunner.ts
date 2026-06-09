@@ -395,26 +395,37 @@ export class WebGpuComputeRunner {
     }
     if (effects.length === 0) return null;
 
+    // VideoFrame from WebCodecs may carry YUV pixel formats that Chrome's
+    // copyExternalImageToTexture rejects. Convert to ImageBitmap first so the
+    // upload path is always RGBA and matches the Rust side (which uploads raw
+    // RGBA bytes via queue.write_texture).
+    let uploadSource: ImageBitmap | VideoFrame = source;
+    if (source instanceof VideoFrame) {
+      uploadSource = await createImageBitmap(source);
+    }
+
     const w = Math.max(
       1,
       Math.round(
-        source instanceof VideoFrame
+        uploadSource instanceof VideoFrame
           ? Number(
-              source.displayWidth ?? (source as unknown as { codedWidth?: number }).codedWidth ?? 1,
+              uploadSource.displayWidth ??
+                (uploadSource as unknown as { codedWidth?: number }).codedWidth ??
+                1,
             )
-          : source.width,
+          : uploadSource.width,
       ),
     );
     const h = Math.max(
       1,
       Math.round(
-        source instanceof VideoFrame
+        uploadSource instanceof VideoFrame
           ? Number(
-              source.displayHeight ??
-                (source as unknown as { codedHeight?: number }).codedHeight ??
+              uploadSource.displayHeight ??
+                (uploadSource as unknown as { codedHeight?: number }).codedHeight ??
                 1,
             )
-          : source.height,
+          : uploadSource.height,
       ),
     );
 
@@ -432,10 +443,16 @@ export class WebGpuComputeRunner {
 
     try {
       this.device.queue.copyExternalImageToTexture(
-        { source, flipY: false },
+        { source: uploadSource, flipY: false },
         { texture: inputTexture },
         { width: w, height: h, depthOrArrayLayers: 1 },
       );
+
+      // Release the intermediate ImageBitmap immediately after upload to avoid
+      // leaking GPU-backed bitmap memory.
+      if (uploadSource !== source && 'close' in uploadSource) {
+        (uploadSource as ImageBitmap).close();
+      }
 
       const inputView = inputTexture.createView();
       const owned = this.createOutputTexture(w, h);
