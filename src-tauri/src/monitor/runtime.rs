@@ -580,17 +580,30 @@ impl LayerRuntimeManager {
                 let clip_local = layer.source_pts_at(t);
                 let max_lag_sec = video_sync_lag_sec(self.preview_sync_mode, rt.pump.info.fps);
 
-                // Сначала пробуем кадр в окне синка (balanced/strict). Если его нет —
-                // показываем СВЕЖАЙШИЙ декодированный кадр ≤ target, чтобы экран не застывал:
-                // он просто отстаёт (как в smooth), а не держит устаревший кадр.
+                // Сначала пробуем кадр в окне синка (balanced/strict). Smooth не имеет
+                // конечного окна и всегда показывает свежайший доступный кадр <= target.
                 let shown_in_window = rt.update_display(clip_local, max_lag_sec);
-                let shown_any = shown_in_window || rt.update_display(clip_local, None);
+                let shown_any = shown_in_window
+                    || (allows_stale_video_fallback(self.preview_sync_mode)
+                        && rt.update_display(clip_local, None));
 
                 if playing {
                     if !shown_any {
-                        // Вообще нет кадра ≤ target (reverse / до начала клипа): репозиция.
-                        rt.note_synced();
-                        rt.maybe_reseek_on_miss(clip_local);
+                        rt.clear_display();
+                        if self.preview_sync_mode == PreviewSyncMode::Strict {
+                            // Strict/точно не имеет smooth fallback: stale-кадр за пределами
+                            // окна синка не считается валидным preview-кадром. Принудительно
+                            // двигаем декодер к target, а до прихода корректного кадра слой
+                            // не показывает устаревшую картинку.
+                            rt.note_lagged();
+                            if let Some(max_lag_sec) = max_lag_sec {
+                                rt.maybe_reseek_on_sync_lag(clip_local, max_lag_sec);
+                            }
+                        } else {
+                            // Вообще нет кадра ≤ target (reverse / до начала клипа): репозиция.
+                            rt.note_synced();
+                            rt.maybe_reseek_on_miss(clip_local);
+                        }
                     } else if !shown_in_window {
                         // Отстали за окно синка. Reseek скидывает бэклог ради синка — полезно,
                         // только если декодер декодит GOP→target быстрее реалтайма. На
@@ -732,6 +745,10 @@ fn video_sync_lag_sec(mode: PreviewSyncMode, fps: f64) -> Option<f64> {
     }
 }
 
+fn allows_stale_video_fallback(mode: PreviewSyncMode) -> bool {
+    matches!(mode, PreviewSyncMode::Smooth | PreviewSyncMode::Balanced)
+}
+
 /// Целевое разрешение растеризации SVG: длинная сторона сцены × preview_scale.
 /// `None`/невалидный scale → длинная сторона сцены без даунскейла. Если размер
 /// сцены ещё неизвестен — дефолт 1920 (перерастеризация произойдёт при пересборке
@@ -757,6 +774,7 @@ fn approx_eq_opt_scale(a: Option<f32>, b: Option<f32>) -> bool {
 
 #[cfg(test)]
 mod tests {
+    use super::allows_stale_video_fallback;
     use super::approx_eq_opt_scale;
     use super::sanitize_preview_fps;
     use super::svg_target_long_edge;
@@ -822,6 +840,13 @@ mod tests {
 
         let strict_capped = video_sync_lag_sec(PreviewSyncMode::Strict, 24.0).unwrap();
         assert!((strict_capped - STRICT_VIDEO_SYNC_LAG_SEC).abs() < 1e-9);
+    }
+
+    #[test]
+    fn stale_video_fallback_is_disabled_for_strict_mode() {
+        assert!(allows_stale_video_fallback(PreviewSyncMode::Smooth));
+        assert!(allows_stale_video_fallback(PreviewSyncMode::Balanced));
+        assert!(!allows_stale_video_fallback(PreviewSyncMode::Strict));
     }
 
     #[test]

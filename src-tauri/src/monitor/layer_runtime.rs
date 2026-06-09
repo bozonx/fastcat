@@ -244,6 +244,10 @@ impl VideoLayerRt {
         }
     }
 
+    pub fn clear_display(&mut self) {
+        self.current = None;
+    }
+
     pub fn has_cached_near(&mut self, target_clip_local: f64, tolerance_frames: i64) -> bool {
         self.cache.has_near(target_clip_local, tolerance_frames)
     }
