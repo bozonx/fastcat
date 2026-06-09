@@ -656,6 +656,27 @@ pub(crate) fn decode_audio_chunk(params: DecodeAudioChunkParams<'_>) -> Result<V
                     let mut state = shared.0.lock();
                     state.cache_decoded(cache_key, shared_samples.clone());
                     Some(shared_samples)
+                } else if target.is_export()
+                    && estimate_decoded_bytes(path, sample_rate, output_channels)
+                        .is_some_and(|bytes| bytes <= MAX_DECODED_CACHE_BYTES)
+                {
+                    // Export is offline — there is no realtime audio deadline, so the
+                    // streaming path's startup behaviour (resampler priming on an
+                    // upsampled source, seek-discard, AAC encoder delay) is pure
+                    // downside. The async `background_precache` only lands a couple of
+                    // seconds into the *output* file (the mix loop runs far faster than
+                    // realtime), so the export opened with the audibly "fast"/garbled
+                    // streaming window and only settled to the gap-free whole-file decode
+                    // once the cache filled. Decode the whole clip synchronously here so
+                    // every chunk reads the same gap-free decode from the start.
+                    log::info!(
+                        "[audio] export: caching entire streaming clip in memory: {path} ({sample_rate} Hz, {output_channels} ch)"
+                    );
+                    let decoded = decode_entire_file_symphonia(path, sample_rate, output_channels)?;
+                    let shared_samples = Arc::new(decoded);
+                    let mut state = shared.0.lock();
+                    state.cache_decoded(cache_key, shared_samples.clone());
+                    Some(shared_samples)
                 } else {
                     // Streaming clip (large container or rate mismatch). Decoding it
                     // inline on the realtime producer thread spikes (a 127ms AAC
@@ -1021,6 +1042,50 @@ mod tests {
             "decoded PCM must land in the cache so the producer stops streaming"
         );
         drop(state);
+        let _ = std::fs::remove_file(path);
+        Ok(())
+    }
+
+    /// Export is offline, so a rate-mismatched (streaming) clip must be decoded
+    /// SYNCHRONOUSLY into the PCM cache on the first chunk — never served by the
+    /// realtime streaming decoder. Otherwise the export's opening seconds came
+    /// from the streaming window (audibly "fast"/garbled) until the async
+    /// background precache happened to land, while later seconds read the
+    /// gap-free whole-file decode.
+    #[test]
+    fn export_caches_streaming_clip_synchronously_no_streaming_decoder() -> anyhow::Result<()> {
+        let path = write_temp_f32_wav(8000, 1, 8000)?;
+        let path_str = path.to_string_lossy().to_string();
+        let shared = Arc::new((Mutex::new(AudioShared::default()), Condvar::new()));
+        let cache_key = decoded_cache_key(&path_str, 48000, 2);
+
+        let decoded = decode_audio_chunk(DecodeAudioChunkParams {
+            layer_id: "export-8k",
+            path: &path_str,
+            source_start_sec: 0.0,
+            timeline_duration_sec: 0.05,
+            speed: 1.0,
+            target: AudioRenderTarget::export(48000, 2),
+            reverse: false,
+            shared: &shared,
+        })?;
+
+        assert_eq!(decoded.len(), (0.05f64 * 48000.0).round() as usize * 2);
+        let state = shared.0.lock();
+        assert!(
+            state.decoded_cache.contains(&cache_key),
+            "export must fill the PCM cache synchronously on the first chunk"
+        );
+        assert!(
+            !state.decoders.contains_key("export-8k"),
+            "export must not fall back to the realtime streaming decoder"
+        );
+        assert!(
+            !state.decoding_in_flight.contains(&cache_key),
+            "export must not spawn an async background precache"
+        );
+        drop(state);
+
         let _ = std::fs::remove_file(path);
         Ok(())
     }
