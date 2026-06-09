@@ -31,10 +31,14 @@ const RESEEK_COOLDOWN_SEC: f64 = 0.15;
 /// (graceful smooth-lag). Recovers automatically once sync is regained.
 const DECODE_BOUND_LAG_TICKS: u32 = 12;
 /// Hard memory ceiling for paused warm-up (preroll) per layer. At ~33 MB per 4K
-/// frame this allows ~1 frame; at ~8 MB per 1080p frame ~8 frames. Keeps a
-/// huge-GOP / keyframe-less 4K source from ballooning memory while we pre-decode
+/// frame this allows 2 frames; at ~8 MB per 1080p frame the full cap applies.
+/// Keeps a huge-GOP / keyframe-less source from ballooning memory while we pre-decode
 /// the first GOP. The frame queue and the cache budget bound it again downstream.
-const PREROLL_BUDGET_BYTES: usize = 32 * 1024 * 1024;
+const PREROLL_BUDGET_BYTES: usize = 64 * 1024 * 1024;
+/// Minimum preroll frame count, applied even when a single decoded frame exceeds
+/// `PREROLL_BUDGET_BYTES`. Two frames guarantee that the decoder has at least moved
+/// past the keyframe before Play, avoiding the "first frame freeze" on long-GOP 4K.
+pub(super) const MIN_PREROLL_FRAMES: u32 = 2;
 /// Absolute frame cap for warm-up regardless of resolution (small sources).
 const MAX_PREROLL_FRAMES: u32 = 8;
 
@@ -193,8 +197,9 @@ impl VideoLayerRt {
     /// Warms the cache while paused: pre-decodes ~`lookahead_sec` of frames ahead of
     /// the current playhead so a later Play does not freeze on the first 4K GOP. The
     /// frame count is capped both by a byte budget (`PREROLL_BUDGET_BYTES`) and an
-    /// absolute frame cap (`MAX_PREROLL_FRAMES`) — for very large frames it collapses
-    /// to a single frame, so memory stays bounded even on huge-GOP sources.
+    /// absolute frame cap (`MAX_PREROLL_FRAMES`). The result is always at least
+    /// `MIN_PREROLL_FRAMES` so even a full-resolution 4K source prewarms past the
+    /// keyframe into the actual GOP before Play.
     pub fn request_prebuffer(&self, lookahead_sec: f64) {
         let frames = self.preroll_frame_count(lookahead_sec);
         if let Err(e) = self.pump.prebuffer(frames) {
@@ -203,7 +208,7 @@ impl VideoLayerRt {
     }
 
     /// Bounded number of warm-up frames: `ceil(lookahead * fps) + 1`, clamped by the
-    /// per-layer byte budget and the absolute frame cap. Always ≥ 1.
+    /// per-layer byte budget and the absolute frame cap. Always ≥ `MIN_PREROLL_FRAMES`.
     pub fn preroll_frame_count(&self, lookahead_sec: f64) -> u32 {
         let fps = if self.pump.info.fps > 0.0 {
             self.pump.info.fps
@@ -215,8 +220,11 @@ impl VideoLayerRt {
             .saturating_mul(self.media_size.1 as usize)
             .saturating_mul(4)
             .max(1);
-        let by_memory = (PREROLL_BUDGET_BYTES / frame_bytes).max(1) as u32;
-        by_lookahead.min(by_memory).clamp(1, MAX_PREROLL_FRAMES)
+        // Применяем MIN_PREROLL_FRAMES как нижнюю границу: даже один 4K-кадр > бюджета
+        // должен прогреть минимум MIN_PREROLL_FRAMES кадров, чтобы декодер прошёл
+        // мимо keyframe и Play не стартовал с фриза на первом GOP-декоде.
+        let by_memory = (PREROLL_BUDGET_BYTES / frame_bytes).max(MIN_PREROLL_FRAMES as usize) as u32;
+        by_lookahead.min(by_memory).clamp(MIN_PREROLL_FRAMES, MAX_PREROLL_FRAMES)
     }
 
     /// Decoder is not where it should be (reverse / fast-forward / cache miss):
@@ -439,14 +447,14 @@ mod tests {
     }
 
     // Memory safeguard: the paused warm-up frame count must scale with lookahead but
-    // stay bounded by both the byte budget (so a huge 4K frame collapses to ~1) and
-    // the absolute frame cap, never ballooning on a huge-GOP / keyframe-less source.
+    // stay bounded by both the byte budget and the absolute frame cap, never ballooning
+    // on a huge-GOP / keyframe-less source. Always at least MIN_PREROLL_FRAMES.
     #[test]
     fn preroll_frame_count_is_bounded_by_memory_and_cap() {
         let rt = fixture_video_rt();
 
-        // Zero lookahead still warms at least one frame.
-        assert!(rt.preroll_frame_count(0.0) >= 1);
+        // Zero lookahead still warms at least MIN_PREROLL_FRAMES frames.
+        assert!(rt.preroll_frame_count(0.0) >= MIN_PREROLL_FRAMES);
 
         // A long lookahead is clamped by MAX_PREROLL_FRAMES, never unbounded.
         assert!(rt.preroll_frame_count(100.0) <= MAX_PREROLL_FRAMES);
@@ -456,14 +464,14 @@ mod tests {
     }
 
     #[test]
-    fn preroll_byte_budget_collapses_huge_frames_to_one() {
+    fn preroll_byte_budget_collapses_huge_frames_to_minimum() {
         let mut rt = fixture_video_rt();
         // Pretend each frame is enormous (8K-ish: way over the byte budget).
         rt.media_size = (7680, 4320);
         assert_eq!(
             rt.preroll_frame_count(10.0),
-            1,
-            "a frame larger than the byte budget must cap warm-up at a single frame"
+            MIN_PREROLL_FRAMES,
+            "a frame larger than the byte budget must still prewarm MIN_PREROLL_FRAMES frames"
         );
     }
 
