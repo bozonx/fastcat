@@ -466,21 +466,7 @@ impl ApplicationHandler<MonitorCommand> for MonitorApp {
             }
             return;
         }
-        match event {
-            WindowEvent::CloseRequested => {
-                state.window.set_visible(false);
-                state.pause();
-                self.next_redraw_at = None;
-            }
-            WindowEvent::Resized(size) => {
-                state.resize(size.width.max(1), size.height.max(1));
-                state.render_current_frame();
-            }
-            WindowEvent::RedrawRequested => {
-                state.render_current_frame();
-            }
-            _ => {}
-        }
+        let _ = event;
     }
 
     fn about_to_wait(&mut self, event_loop: &ActiveEventLoop) {
@@ -558,7 +544,7 @@ struct WindowState {
     /// Размер render target'а в canvas-режиме (физические пиксели).
     canvas_size: (u32, u32),
     /// dev_id wgpu для offscreen-рендера; берём из существующего surface'а.
-    offscreen_dev_id: Option<usize>,
+    offscreen_dev_id: usize,
     /// Дедлайн прогрева декодеров перед стартом часов. `Some` — Play запрошен, но
     /// воспроизведение ещё не началось (ждём кадры впереди playhead'а или таймаут).
     /// `None` — либо играем, либо стоим на паузе.
@@ -844,7 +830,7 @@ impl WindowState {
             }
         }
 
-        let dev_id = self.offscreen_dev_id.unwrap_or(self.surface.dev_id);
+        let dev_id = self.offscreen_dev_id;
         let device = self.compositor.device(dev_id);
         let queue = self.compositor.queue(dev_id);
         self.layers.tick(t, device, queue);
@@ -905,9 +891,7 @@ impl WindowState {
                 if width == 0 || height == 0 {
                     return;
                 }
-                let Some(dev_id) = self.offscreen_dev_id else {
-                    return;
-                };
+                let dev_id = self.offscreen_dev_id;
                 let scene = self.layers.build_compositor_scene(t);
                 // NOTE: `render_scene_to_pixels` блокирует event-loop на GPU readback
                 // (~1-5 мс при 1080p). При бюджете 33 мс (30 fps) это приемлемо.
@@ -949,7 +933,7 @@ fn init_state(
     audio_settings: AudioEngineSettings,
 ) -> Result<WindowState> {
     let mut compositor = Compositor::new();
-    let offscreen_dev_id = Some(compositor.ensure_offscreen_device()?);
+    let offscreen_dev_id = compositor.ensure_offscreen_device()?;
     let audio = match NativeAudioEngine::new(&audio_settings) {
         Ok(engine) => Some(engine),
         Err(error) => {
