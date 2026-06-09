@@ -73,9 +73,14 @@ onMounted(() => {
         (workspaceStore.workspaceHandle || workspaceStore.workspaceProviderId === 'tauri') &&
         workspaceStore.userSettings.openLastProjectOnStart &&
         workspaceStore.lastProjectName &&
-        workspaceStore.projects.includes(workspaceStore.lastProjectName)
+        (workspaceStore.workspaceProviderId === 'tauri' ||
+          workspaceStore.projects.includes(workspaceStore.lastProjectName))
       ) {
-        void navigateTo(`/editor/${encodeURIComponent(workspaceStore.lastProjectName)}`);
+        const target =
+          workspaceStore.workspaceProviderId === 'tauri' && workspaceStore.lastProjectPath
+            ? workspaceStore.lastProjectPath
+            : workspaceStore.lastProjectName;
+        void navigateTo(`/editor/${encodeURIComponent(target)}`);
       }
     })
     .finally(() => {

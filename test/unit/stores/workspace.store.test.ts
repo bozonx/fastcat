@@ -4,6 +4,7 @@ import { setActivePinia, createPinia } from 'pinia';
 import { nextTick } from 'vue';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { InMemoryFileSystemAdapter } from '~/file-manager/core/vfs/adapters/InMemoryFileSystemAdapter';
+import { readDir, exists } from '@tauri-apps/plugin-fs';
 
 vi.unmock('~/stores/workspace.store');
 
@@ -16,11 +17,24 @@ vi.mock('~/composables/useVfs', () => ({
 vi.mock('@tauri-apps/api/path', () => ({
   join: async (...args: string[]) => args.join('/'),
   resolve: async (path: string) => path,
+  dirname: async (path: string) => path.split('/').slice(0, -1).join('/') || '/',
+  basename: async (path: string) => path.split('/').pop() ?? path,
   appConfigDir: async () => '/mock/config',
   appDataDir: async () => '/mock/data',
   appCacheDir: async () => '/mock/cache',
   tempDir: async () => '/mock/temp',
   documentDir: async () => '/mock/documents',
+}));
+
+vi.mock('@tauri-apps/plugin-fs', () => ({
+  readDir: vi.fn(),
+  exists: vi.fn(),
+  remove: vi.fn(),
+  rename: vi.fn(),
+  mkdir: vi.fn(),
+  copyFile: vi.fn(),
+  readTextFile: vi.fn(),
+  writeTextFile: vi.fn(),
 }));
 
 describe('WorkspaceStore', () => {
@@ -335,6 +349,121 @@ describe('WorkspaceStore', () => {
       await nextTick();
 
       expect(store.projects).toEqual(['tauri-p1', 'tauri-p2']);
+    });
+
+    it('scans projectsRoot and merges with recentProjects in tauri mode', async () => {
+      const store = useWorkspaceStore();
+      await nextTick();
+      const projectsRoot = store.resolvedStorageTopology.projectsRoot;
+
+      store.recentProjects = [
+        {
+          projectName: 'recent-only',
+          projectId: 'id1',
+          updatedAt: '2024-01-01',
+          projectPath: '/custom/recent-only',
+        },
+      ];
+
+      (readDir as ReturnType<typeof vi.fn>).mockResolvedValue([
+        { name: 'disk-only', isDirectory: true, isFile: false, isSymlink: false },
+        { name: 'recent-only', isDirectory: true, isFile: false, isSymlink: false },
+      ]);
+
+      await store.loadProjects();
+
+      expect(store.projects).toEqual(['disk-only', 'recent-only']);
+      expect(readDir).toHaveBeenCalledWith(store.resolvedStorageTopology.projectsRoot);
+    });
+
+    it('falls back to default projectsRoot when custom root is not set in tauri mode', async () => {
+      const store = useWorkspaceStore();
+      await nextTick();
+
+      store.recentProjects = [];
+
+      (readDir as ReturnType<typeof vi.fn>).mockResolvedValue([
+        { name: 'default-project', isDirectory: true, isFile: false, isSymlink: false },
+      ]);
+
+      await store.loadProjects();
+
+      expect(store.projects).toEqual(['default-project']);
+      expect(readDir).toHaveBeenCalledWith('/mock/documents/FastCat/projects');
+    });
+
+    it('sets error when deleting a tauri project with unknown path and missing fallback', async () => {
+      const store = useWorkspaceStore();
+      store.resolvedStorageTopology.projectsRoot = '/mock/projects';
+      store.recentProjects = [];
+
+      (exists as ReturnType<typeof vi.fn>).mockResolvedValue(false);
+
+      await store.deleteProject('missing-project');
+
+      expect(store.error).toBe('Cannot resolve project path for "missing-project"');
+    });
+
+    it('sets error when renaming a tauri project with unknown path and missing fallback', async () => {
+      const store = useWorkspaceStore();
+      store.resolvedStorageTopology.projectsRoot = '/mock/projects';
+      store.recentProjects = [];
+
+      (exists as ReturnType<typeof vi.fn>).mockResolvedValue(false);
+
+      await store.renameProject('missing-project', 'new-name');
+
+      expect(store.error).toBe('Cannot resolve project path for "missing-project"');
+    });
+
+    it('sets error when duplicating a tauri project with unknown path and missing fallback', async () => {
+      const store = useWorkspaceStore();
+      store.resolvedStorageTopology.projectsRoot = '/mock/projects';
+      store.recentProjects = [];
+
+      (exists as ReturnType<typeof vi.fn>).mockResolvedValue(false);
+
+      await store.duplicateProject({ sourceName: 'missing-project', targetName: 'copy' });
+
+      expect(store.error).toBe('Cannot resolve project path for "missing-project"');
+    });
+  });
+
+  describe('lastProjectPath', () => {
+    it('initializes from localStorage', () => {
+      localStorage.setItem('fastcat_last_project_path', '/custom/my-project');
+      setActivePinia(createPinia());
+      const store = useWorkspaceStore();
+      expect(store.lastProjectPath).toBe('/custom/my-project');
+    });
+
+    it('is set by updateRecentProject', () => {
+      const store = useWorkspaceStore();
+      store.updateRecentProject({
+        projectName: 'my-project',
+        projectId: 'id-1',
+        projectPath: '/custom/my-project',
+      });
+      expect(store.lastProjectPath).toBe('/custom/my-project');
+    });
+
+    it('persists to localStorage', async () => {
+      const store = useWorkspaceStore();
+      store.updateRecentProject({
+        projectName: 'my-project',
+        projectId: 'id-1',
+        projectPath: '/custom/my-project',
+      });
+      await nextTick();
+      expect(localStorage.getItem('fastcat_last_project_path')).toBe('/custom/my-project');
+    });
+
+    it('is cleared by resetWorkspace', () => {
+      const store = useWorkspaceStore();
+      store.lastProjectPath = '/custom/my-project';
+      store.resetWorkspace();
+      expect(store.lastProjectPath).toBeNull();
+      expect(localStorage.getItem('fastcat_last_project_path')).toBeNull();
     });
   });
 });

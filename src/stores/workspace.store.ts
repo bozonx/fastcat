@@ -55,6 +55,9 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   const lastProjectName = ref<string | null>(
     typeof window !== 'undefined' ? localStorage.getItem('fastcat_last_project_name') : null,
   );
+  const lastProjectPath = ref<string | null>(
+    typeof window !== 'undefined' ? localStorage.getItem('fastcat_last_project_path') : null,
+  );
 
   const recentProjects = ref<RecentProject[]>([]);
   if (typeof window !== 'undefined') {
@@ -193,6 +196,16 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     });
   });
 
+  watch(lastProjectPath, (v) => {
+    if (typeof window !== 'undefined') {
+      if (v) {
+        localStorage.setItem('fastcat_last_project_path', v);
+      } else {
+        localStorage.removeItem('fastcat_last_project_path');
+      }
+    }
+  });
+
   watch(
     recentProjects,
     (v) => {
@@ -262,6 +275,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     }
 
     lastProjectName.value = project.projectName;
+    lastProjectPath.value = project.projectPath ?? null;
   }
 
   const isApiSupported = workspaceProvider.isSupported;
@@ -369,10 +383,12 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     projects.value = [];
     recentProjects.value = [];
     lastProjectName.value = null;
+    lastProjectPath.value = null;
     error.value = null;
 
     if (typeof window !== 'undefined') {
       localStorage.removeItem('fastcat_last_project_name');
+      localStorage.removeItem('fastcat_last_project_path');
       localStorage.removeItem('fastcat_recent_projects');
     }
 
@@ -448,6 +464,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     workspaceProviderId,
     tauriAppPaths: skipHydrate(tauriAppPaths),
     lastProjectName: skipHydrate(lastProjectName),
+    lastProjectPath: skipHydrate(lastProjectPath),
     userSettings: skipHydrate(userSettings),
     appSettings: skipHydrate(appSettings),
     resolvedStorageTopology: skipHydrate(resolvedStorageTopology),

@@ -115,7 +115,19 @@ export function createWorkspaceProjectsModule(params: {
   async function loadProjects() {
     const { isTauriRuntime } = await import('~/utils/runtime');
     if (isTauriRuntime()) {
-      params.projects.value = params.recentProjects.value.map((p) => p.projectName);
+      const projectNames = new Set(params.recentProjects.value.map((p) => p.projectName));
+      try {
+        const { readDir } = await import('@tauri-apps/plugin-fs');
+        const entries = await readDir(params.resolvedStorageTopology.value.projectsRoot);
+        for (const entry of entries) {
+          if (entry.isDirectory) {
+            projectNames.add(entry.name);
+          }
+        }
+      } catch (e: unknown) {
+        log.warn('Failed to scan Tauri projects root', e);
+      }
+      params.projects.value = [...projectNames].sort((a, b) => a.localeCompare(b));
       return;
     }
 
@@ -272,10 +284,19 @@ export function createWorkspaceProjectsModule(params: {
         const { join } = await import('@tauri-apps/api/path');
         const { remove, exists } = await import('@tauri-apps/plugin-fs');
         const project = findRecentProject(deleteInput);
-        const projectPath =
-          deleteInput.projectPath ??
-          project?.projectPath ??
-          (await join(params.resolvedStorageTopology.value.projectsRoot, deleteInput.name));
+        let projectPath = deleteInput.projectPath ?? project?.projectPath;
+        if (!projectPath) {
+          const fallbackPath = await join(
+            params.resolvedStorageTopology.value.projectsRoot,
+            deleteInput.name,
+          );
+          if (await exists(fallbackPath)) {
+            projectPath = fallbackPath;
+          } else {
+            params.error.value = `Cannot resolve project path for "${deleteInput.name}"`;
+            return;
+          }
+        }
         if (await exists(projectPath)) {
           await remove(projectPath, { recursive: true });
         }
@@ -341,14 +362,20 @@ export function createWorkspaceProjectsModule(params: {
           projectId: renameInput.projectId,
           projectPath: renameInput.projectPath,
         });
-        const oldPath =
-          renameInput.projectPath ??
-          project?.projectPath ??
-          (await join(params.resolvedStorageTopology.value.projectsRoot, oldName));
-        const parentDir =
-          renameInput.projectPath || project?.projectPath
-            ? await dirname(oldPath)
-            : params.resolvedStorageTopology.value.projectsRoot;
+        let oldPath = renameInput.projectPath ?? project?.projectPath;
+        if (!oldPath) {
+          const fallbackPath = await join(
+            params.resolvedStorageTopology.value.projectsRoot,
+            oldName,
+          );
+          if (await exists(fallbackPath)) {
+            oldPath = fallbackPath;
+          } else {
+            params.error.value = `Cannot resolve project path for "${oldName}"`;
+            return;
+          }
+        }
+        const parentDir = await dirname(oldPath);
         const newPath = await join(parentDir, newName);
 
         if (await exists(newPath)) {
@@ -454,14 +481,20 @@ export function createWorkspaceProjectsModule(params: {
         projectId: input.sourceProjectId,
         projectPath: input.sourceProjectPath,
       });
-      const sourcePath =
-        input.sourceProjectPath ??
-        project?.projectPath ??
-        (await join(params.resolvedStorageTopology.value.projectsRoot, sourceName));
-      const parentDir =
-        input.sourceProjectPath || project?.projectPath
-          ? await dirname(sourcePath)
-          : params.resolvedStorageTopology.value.projectsRoot;
+      let sourcePath = input.sourceProjectPath ?? project?.projectPath;
+      if (!sourcePath) {
+        const fallbackPath = await join(
+          params.resolvedStorageTopology.value.projectsRoot,
+          sourceName,
+        );
+        if (await exists(fallbackPath)) {
+          sourcePath = fallbackPath;
+        } else {
+          params.error.value = `Cannot resolve project path for "${sourceName}"`;
+          return;
+        }
+      }
+      const parentDir = await dirname(sourcePath);
       const targetPath = await join(parentDir, targetName);
 
       if (await exists(targetPath)) {

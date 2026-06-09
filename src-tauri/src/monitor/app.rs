@@ -1,9 +1,9 @@
-//! winit ApplicationHandler: window + PlaybackClock + LayerRuntimeManager.
+//! winit ApplicationHandler: optional native window + PlaybackClock + LayerRuntimeManager.
 //!
 //! Architecture:
 //!   MonitorApp — winit ApplicationHandler; holds WindowState and deferred data until
 //!               the first SetViewport / resumed.
-//!   WindowState — thin coordinator: window, surface, compositor + clock + layers.
+//!   WindowState — thin coordinator: compositor + optional native window + clock + layers.
 //!   PlaybackClock  → `clock.rs`
 //!   LayerRuntimeManager → `runtime.rs`
 
@@ -174,15 +174,14 @@ impl MonitorApp {
             .unwrap_or(false)
     }
 
-    fn try_create_window(&mut self, event_loop: &ActiveEventLoop) {
+    fn try_create_state(&mut self) {
         if self.state.is_some() || !self.resumed {
             return;
         }
         let Some(vp) = self.pending_viewport else {
             return;
         };
-        match init_window(
-            event_loop,
+        match init_state(
             self.app.clone(),
             self.proxy.clone(),
             self.bg_tx.clone(),
@@ -217,7 +216,8 @@ impl MonitorApp {
 impl ApplicationHandler<MonitorCommand> for MonitorApp {
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
         self.resumed = true;
-        self.try_create_window(event_loop);
+        let _ = event_loop;
+        self.try_create_state();
     }
 
     fn new_events(&mut self, _event_loop: &ActiveEventLoop, cause: StartCause) {
@@ -276,6 +276,7 @@ impl ApplicationHandler<MonitorCommand> for MonitorApp {
                     s.apply_scene(scene);
                 } else {
                     self.pending_scene = Some(scene);
+                    self.try_create_state();
                 }
             }
             MonitorCommand::Play => {
@@ -387,7 +388,7 @@ impl ApplicationHandler<MonitorCommand> for MonitorApp {
                 if let Some(s) = self.state.as_mut() {
                     s.apply_viewport(vp);
                 } else {
-                    self.try_create_window(event_loop);
+                    self.try_create_state();
                 }
             }
             MonitorCommand::OpenNativeWindow => {
@@ -396,12 +397,16 @@ impl ApplicationHandler<MonitorCommand> for MonitorApp {
                     self.pending_viewport = Some(default_native_window_viewport());
                 }
                 if let Some(s) = self.state.as_mut() {
-                    s.open_native_window();
+                    if let Err(error) = s.open_native_window(event_loop) {
+                        log::error!("[monitor] open native window failed: {error:?}");
+                    }
                     s.render_current_frame();
                 } else {
-                    self.try_create_window(event_loop);
+                    self.try_create_state();
                     if let Some(s) = self.state.as_mut() {
-                        s.open_native_window();
+                        if let Err(error) = s.open_native_window(event_loop) {
+                            log::error!("[monitor] open native window failed: {error:?}");
+                        }
                         s.render_current_frame();
                     }
                 }
@@ -419,6 +424,7 @@ impl ApplicationHandler<MonitorCommand> for MonitorApp {
                     s.render_current_frame();
                 } else {
                     self.pending_frame_channel = Some(ch);
+                    self.try_create_state();
                 }
             }
             MonitorCommand::SetCanvasSize { width, height } => {
@@ -437,15 +443,31 @@ impl ApplicationHandler<MonitorCommand> for MonitorApp {
     fn window_event(
         &mut self,
         _event_loop: &ActiveEventLoop,
-        _window_id: WindowId,
+        window_id: WindowId,
         event: WindowEvent,
     ) {
         let Some(state) = self.state.as_mut() else {
             return;
         };
+        if state.is_native_window(window_id) {
+            match event {
+                WindowEvent::CloseRequested => {
+                    log::info!("[monitor] native window close requested");
+                    state.close_native_window();
+                }
+                WindowEvent::Resized(size) => {
+                    state.resize_native_window(size.width.max(1), size.height.max(1));
+                    state.render_current_frame();
+                }
+                WindowEvent::RedrawRequested => {
+                    state.render_current_frame();
+                }
+                _ => {}
+            }
+            return;
+        }
         match event {
             WindowEvent::CloseRequested => {
-                state.native_window_open = false;
                 state.window.set_visible(false);
                 state.pause();
                 self.next_redraw_at = None;
@@ -455,7 +477,7 @@ impl ApplicationHandler<MonitorCommand> for MonitorApp {
                 state.render_current_frame();
             }
             WindowEvent::RedrawRequested => {
-                state.tick_and_render();
+                state.render_current_frame();
             }
             _ => {}
         }
@@ -512,11 +534,14 @@ fn next_redraw_deadline(
 // WindowState
 // ---------------------------------------------------------------------------
 
+struct NativeWindowState {
+    window: Arc<Window>,
+    surface: RenderSurface<'static>,
+}
+
 struct WindowState {
     app: AppHandle,
-    window: Arc<Window>,
     compositor: Compositor,
-    surface: RenderSurface<'static>,
 
     clock: Box<dyn Clock>,
     layers: LayerRuntimeManager,
@@ -538,15 +563,10 @@ struct WindowState {
     /// воспроизведение ещё не началось (ждём кадры впереди playhead'а или таймаут).
     /// `None` — либо играем, либо стоим на паузе.
     pending_play_deadline: Option<Instant>,
-    native_window_open: bool,
+    native_window: Option<NativeWindowState>,
 }
 
 impl WindowState {
-    fn resize(&mut self, width: u32, height: u32) {
-        self.compositor
-            .resize_surface(&mut self.surface, width, height);
-    }
-
     fn apply_scene(&mut self, scene: MonitorScene) {
         let master_gain = if scene.audio_master_muted {
             0.0
@@ -597,22 +617,7 @@ impl WindowState {
     }
 
     fn set_mode(&mut self, mode: MonitorMode) {
-        if self.mode == mode {
-            return;
-        }
         self.mode = mode;
-        match mode {
-            MonitorMode::Embedded => {
-                if self.last_viewport.visible {
-                    self.window.set_visible(true);
-                }
-            }
-            MonitorMode::Canvas => {
-                if !self.native_window_open {
-                    self.window.set_visible(false);
-                }
-            }
-        }
     }
 
     fn apply_viewport(&mut self, vp: ViewportSpec) {
@@ -626,40 +631,55 @@ impl WindowState {
             vp.visible
         );
         self.last_viewport = vp;
-        if self.native_window_open {
-            return;
-        }
-        if (prev.x, prev.y) != (vp.x, vp.y) {
-            self.window
-                .set_outer_position(PhysicalPosition::new(vp.x, vp.y));
-        }
-        if (prev.width, prev.height) != (vp.width, vp.height) {
-            let _ = self
-                .window
-                .request_inner_size(PhysicalSize::new(vp.width, vp.height));
-            // WindowEvent::Resized may arrive later, so keep the surface in sync immediately.
-            self.resize(vp.width, vp.height);
-        }
-        if !self.native_window_open && prev.visible != vp.visible {
-            self.window.set_visible(vp.visible);
-        }
-        if vp.visible {
-            self.window.request_redraw();
-        }
+        let _ = prev;
     }
 
-    fn open_native_window(&mut self) {
-        self.native_window_open = true;
-        self.window.set_title(DEFAULT_TITLE);
-        self.window.set_decorations(true);
-        self.window.set_resizable(true);
-        let width = self.surface.config.width.max(1280);
-        let height = self.surface.config.height.max(720);
-        let _ = self
-            .window
-            .request_inner_size(PhysicalSize::new(width, height));
-        self.resize(width, height);
-        self.window.set_visible(true);
+    fn is_native_window(&self, window_id: WindowId) -> bool {
+        self.native_window
+            .as_ref()
+            .is_some_and(|native| native.window.id() == window_id)
+    }
+
+    fn open_native_window(&mut self, event_loop: &ActiveEventLoop) -> Result<()> {
+        if let Some(native) = self.native_window.as_ref() {
+            native.window.set_visible(true);
+            native.window.focus_window();
+            return Ok(());
+        }
+
+        let window = Arc::new(
+            event_loop
+                .create_window(
+                    Window::default_attributes()
+                        .with_title(DEFAULT_TITLE)
+                        .with_decorations(true)
+                        .with_resizable(true)
+                        .with_visible(true)
+                        .with_inner_size(PhysicalSize::new(1280, 720))
+                        .with_position(PhysicalPosition::new(80, 80)),
+                )
+                .context("create native monitor window failed")?,
+        );
+        let size = window.inner_size();
+        let surface = pollster::block_on(self.compositor.create_window_surface(
+            window.clone(),
+            size.width.max(1),
+            size.height.max(1),
+        ))?;
+        window.focus_window();
+        self.native_window = Some(NativeWindowState { window, surface });
+        Ok(())
+    }
+
+    fn close_native_window(&mut self) {
+        self.native_window = None;
+    }
+
+    fn resize_native_window(&mut self, width: u32, height: u32) {
+        if let Some(native) = self.native_window.as_mut() {
+            self.compositor
+                .resize_surface(&mut native.surface, width, height);
+        }
     }
 
     fn render_current_frame(&mut self) {
@@ -848,27 +868,29 @@ impl WindowState {
     fn render(&mut self, t: f64) {
         match self.mode {
             MonitorMode::Embedded => {
-                let width = self.surface.config.width;
-                let height = self.surface.config.height;
-                let scene = self.layers.build_compositor_scene(t);
-                if let Err(e) = self.compositor.render_scene_to_surface(
-                    &scene,
-                    &mut self.surface,
-                    width,
-                    height,
-                ) {
-                    log::error!("[monitor] compositor render: {e:?}");
-                    emit_layer_failed(&self.app, "<surface>", "render", &e.to_string());
-                }
-            }
-            MonitorMode::Canvas => {
-                if self.native_window_open {
-                    let surface_width = self.surface.config.width;
-                    let surface_height = self.surface.config.height;
+                if let Some(native) = self.native_window.as_mut() {
+                    let width = native.surface.config.width;
+                    let height = native.surface.config.height;
                     let scene = self.layers.build_compositor_scene(t);
                     if let Err(e) = self.compositor.render_scene_to_surface(
                         &scene,
-                        &mut self.surface,
+                        &mut native.surface,
+                        width,
+                        height,
+                    ) {
+                        log::error!("[monitor] compositor render: {e:?}");
+                        emit_layer_failed(&self.app, "<surface>", "render", &e.to_string());
+                    }
+                }
+            }
+            MonitorMode::Canvas => {
+                if let Some(native) = self.native_window.as_mut() {
+                    let surface_width = native.surface.config.width;
+                    let surface_height = native.surface.config.height;
+                    let scene = self.layers.build_compositor_scene(t);
+                    if let Err(e) = self.compositor.render_scene_to_surface(
+                        &scene,
+                        &mut native.surface,
                         surface_width,
                         surface_height,
                     ) {
@@ -919,41 +941,15 @@ impl WindowState {
 // Инициализация окна
 // ---------------------------------------------------------------------------
 
-fn init_window(
-    event_loop: &ActiveEventLoop,
+fn init_state(
     app: AppHandle,
     proxy: EventLoopProxy<MonitorCommand>,
     bg_tx: Sender<BgLayerResult>,
     viewport: ViewportSpec,
     audio_settings: AudioEngineSettings,
 ) -> Result<WindowState> {
-    let window_attrs = Window::default_attributes()
-        .with_title(DEFAULT_TITLE)
-        .with_decorations(true)
-        .with_resizable(true)
-        .with_visible(false)
-        .with_inner_size(PhysicalSize::new(viewport.width, viewport.height))
-        .with_position(PhysicalPosition::new(viewport.x, viewport.y));
-
-    let window = Arc::new(
-        event_loop
-            .create_window(window_attrs)
-            .context("create_window failed")?,
-    );
-
-    let size = window.inner_size();
     let mut compositor = Compositor::new();
-    let surface = pollster::block_on(compositor.create_window_surface(
-        window.clone(),
-        size.width.max(1),
-        size.height.max(1),
-    ))?;
-
-    if viewport.visible {
-        window.set_visible(true);
-    }
-
-    let offscreen_dev_id = Some(surface.dev_id);
+    let offscreen_dev_id = Some(compositor.ensure_offscreen_device()?);
     let audio = match NativeAudioEngine::new(&audio_settings) {
         Ok(engine) => Some(engine),
         Err(error) => {
@@ -967,9 +963,7 @@ fn init_window(
         .clone();
     Ok(WindowState {
         app: app.clone(),
-        window,
         compositor,
-        surface,
         clock: Box::new(PlaybackClock::new()),
         layers: LayerRuntimeManager::new(app.clone(), bg_tx, proxy, hw_settings),
         audio,
@@ -983,7 +977,7 @@ fn init_window(
         canvas_size: (viewport.width.max(1), viewport.height.max(1)),
         offscreen_dev_id,
         pending_play_deadline: None,
-        native_window_open: viewport.visible,
+        native_window: None,
     })
 }
 
