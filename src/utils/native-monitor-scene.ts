@@ -14,12 +14,15 @@ import type {
 import type { BlendMode } from '../../src-tauri/bindings/BlendMode';
 import type { MonitorScene } from '~/types/generated/native-monitor/MonitorScene';
 import type { SceneLayer } from '~/types/generated/native-monitor/SceneLayer';
-import type { AudioEffectSpec } from '~/types/generated/native-monitor/AudioEffectSpec';
 import type { SceneAudioLayer } from '~/types/generated/native-monitor/SceneAudioLayer';
 import type { SceneAudioTrack } from '~/types/generated/native-monitor/SceneAudioTrack';
 import type { TimelineFormatInput } from '~/timeline/format';
 import { getTimelineFormat } from '~/timeline/format';
 import { buildEffectiveAudioClipItems } from '~/utils/audio/track-bus';
+import {
+  buildCanonicalAudioClipDescriptor,
+  toNativeSceneAudioLayer,
+} from '~/utils/audio/audio-clip-descriptor';
 import { resolveNormalizedAnchor, TRANSFORM_DESIGN_BASE } from '~/utils/video-editor/clip-layout';
 import { normalizeClipSpeed } from '~/utils/video-editor/source-time';
 import type { TauriDirectoryHandle } from '~/stores/workspace/provider/tauri-handle';
@@ -27,6 +30,8 @@ import { getVideoEffectManifest, type TauriEffectSpec } from '~/effects';
 import { getTauriVideoEffectManifest } from '~/effects/tauri/manifests';
 import { getTauriTransitionManifest } from '~/transitions/tauri/manifests';
 import { getTransitionManifest } from '~/transitions/core/registry';
+
+export { buildNativeAudioEffectSpecs } from '~/utils/audio/audio-clip-descriptor';
 
 // Preload Tauri path helper so we don't dynamic-import it per clip.
 let _tauriJoin: ((...paths: string[]) => Promise<string>) | null = null;
@@ -36,11 +41,6 @@ async function getTauriJoin() {
     _tauriJoin = join;
   }
   return _tauriJoin;
-}
-
-interface NativeAudioWorkerTimelineClip extends WorkerTimelineClip {
-  originalAudioGain?: unknown;
-  originalAudioBalance?: unknown;
 }
 
 const IMAGE_EXT = new Set(['png', 'jpg', 'jpeg', 'webp']);
@@ -134,30 +134,6 @@ export function mapTimelineBlendModeToNative(mode: TimelineBlendMode | undefined
     default:
       return mode ?? 'normal';
   }
-}
-
-export function buildNativeAudioEffectSpecs(effects?: ClipEffect[]): AudioEffectSpec[] {
-  if (!Array.isArray(effects) || effects.length === 0) {
-    return [];
-  }
-  return effects
-    .filter((e): e is ClipEffect & Record<string, unknown> => Boolean(e?.enabled && e.target === 'audio'))
-    .map((e) => {
-      const { id, type: effectType, enabled, target: _target, wet, ...rest } = e;
-      return {
-        id,
-        type: effectType,
-        enabled: Boolean(enabled),
-        wet: typeof wet === 'number' ? wet : 1,
-        params: rest as Record<string, unknown>,
-      };
-    });
-}
-
-function sanitizeAudioSpeed(value: unknown): number {
-  const raw = finite(value, 1) || 1;
-  const clamped = Math.max(0.01, Math.min(100, Math.abs(raw)));
-  return raw < 0 ? -clamped : clamped;
 }
 
 function findPreviousAdjacentClip(
@@ -494,35 +470,14 @@ async function buildAudioLayers(params: {
     const durationUs = clip.timelineRange.durationUs;
     if (durationUs <= 0) continue;
 
-    layers.push({
-      id: clip.id,
-      track_id: clip.trackId,
-      path: await resolveMediaSourceAbsolutePath(path, params.projectStore, params.proxy),
-      timeline_start_sec: startUs / 1_000_000,
-      timeline_end_sec: (startUs + durationUs) / 1_000_000,
-      source_start_sec: clip.sourceRange.startUs / 1_000_000,
-      source_range_duration_sec: Math.max(0, clip.sourceRange.durationUs) / 1_000_000,
-      speed: sanitizeAudioSpeed(clip.speed),
-      audio_gain: Math.max(
-        0,
-        finite((clip as NativeAudioWorkerTimelineClip).originalAudioGain ?? clip.audioGain, 1),
-      ),
-      audio_balance: Math.max(
-        -1,
-        Math.min(
-          1,
-          finite(
-            (clip as NativeAudioWorkerTimelineClip).originalAudioBalance ?? clip.audioBalance,
-            0,
-          ),
-        ),
-      ),
-      audio_fade_in_sec: Math.max(0, finite(clip.audioFadeInUs, 0) / 1_000_000),
-      audio_fade_out_sec: Math.max(0, finite(clip.audioFadeOutUs, 0) / 1_000_000),
-      audio_fade_in_curve: clip.audioFadeInCurve ?? 'linear',
-      audio_fade_out_curve: clip.audioFadeOutCurve ?? 'linear',
-      audio_effects: buildNativeAudioEffectSpecs(clip.effects),
-    });
+    layers.push(
+      toNativeSceneAudioLayer({
+        descriptor: buildCanonicalAudioClipDescriptor({
+          clip,
+          sourcePath: await resolveMediaSourceAbsolutePath(path, params.projectStore, params.proxy),
+        }),
+      }),
+    );
   }
   return layers;
 }

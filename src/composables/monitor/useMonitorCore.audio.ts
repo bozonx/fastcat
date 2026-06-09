@@ -1,14 +1,13 @@
 import type { AudioEngineClip } from '~/utils/video-editor/audio-engine.types';
-import type { AudioClipEffect, ClipEffect } from '~/timeline/types';
 import type { WorkerTimelineClip } from './types';
 import { getAudioSourceKey } from './useMonitorCore.helpers';
 import { withFileIoSlot } from '~/utils/io/io-governor';
+import {
+  buildCanonicalAudioClipDescriptor,
+  toAudioEngineClip,
+} from '~/utils/audio/audio-clip-descriptor';
 
 export type MonitorAudioClipDescriptor = AudioEngineClip;
-
-function isAudioClipEffect(effect: ClipEffect<Record<string, unknown>>): effect is AudioClipEffect {
-  return effect?.target === 'audio';
-}
 
 /**
  * Canonical projection from the shared `WorkerTimelineClip` DTO to the audio
@@ -22,28 +21,10 @@ export function workerClipToAudioEngineClip(params: {
   fileHandle: FileSystemFileHandle;
 }): MonitorAudioClipDescriptor {
   const { clip, sourcePath, fileHandle } = params;
-  return {
-    id: clip.id,
-    trackId: clip.trackId,
-    sourcePath,
+  return toAudioEngineClip({
+    descriptor: buildCanonicalAudioClipDescriptor({ clip, sourcePath }),
     fileHandle,
-    startUs: clip.timelineRange.startUs,
-    durationUs: clip.timelineRange.durationUs,
-    sourceStartUs: clip.sourceRange.startUs,
-    sourceRangeDurationUs: clip.sourceRange.durationUs,
-    sourceDurationUs: clip.sourceDurationUs ?? clip.sourceRange.durationUs,
-    speed: clip.speed,
-    audioGain: clip.audioGain,
-    audioBalance: clip.audioBalance,
-    audioFadeInUs: clip.audioFadeInUs,
-    audioFadeOutUs: clip.audioFadeOutUs,
-    audioFadeInCurve: clip.audioFadeInCurve,
-    audioFadeOutCurve: clip.audioFadeOutCurve,
-    audioDeclickDurationUs: clip.audioDeclickDurationUs,
-    transitionIn: clip.transitionIn,
-    transitionOut: clip.transitionOut,
-    audioEffects: (clip.effects ?? []).filter(isAudioClipEffect),
-  };
+  });
 }
 
 export async function getFileHandleForAudio(params: {
