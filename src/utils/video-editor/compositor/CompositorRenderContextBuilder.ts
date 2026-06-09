@@ -46,6 +46,7 @@ export interface CompositorRenderContextBuilderParams {
   getVideoSampleForClip: (params: {
     clip: CompositorClip;
     sampleTimeS: number;
+    monitorSyncMode?: 'smooth' | 'balanced' | 'strict';
     abortSignal?: AbortSignal;
   }) => Promise<unknown | null>;
   getClipById: (clipId: string) => CompositorClip | undefined;
@@ -105,10 +106,11 @@ export class CompositorRenderContextBuilder {
           previewEffectsEnabled: params.getPreviewEffectsEnabled(),
         });
       },
-      processFrameSamples: ({ activeClips, timeUs: currentTimeUs }) =>
+      processFrameSamples: ({ activeClips, timeUs: currentTimeUs, monitorSyncMode }) =>
         params.frameSampleOrchestrator.process({
           activeClips,
           timeUs: currentTimeUs,
+          monitorSyncMode,
           width: state.width,
           height: state.height,
           activeClipProcessor: params.timelineActiveClipProcessor,

@@ -15,6 +15,7 @@ const log = createDevLogger('FrameSampleOrchestrator');
 export interface FrameSampleOrchestratorParams {
   activeClips: CompositorClip[];
   timeUs: number;
+  monitorSyncMode?: 'smooth' | 'balanced' | 'strict';
   width: number;
   height: number;
   activeClipProcessor: TimelineActiveClipProcessor;
@@ -29,6 +30,7 @@ export interface FrameSampleOrchestratorParams {
   getVideoSampleForClip: (params: {
     clip: CompositorClip;
     sampleTimeS: number;
+    monitorSyncMode?: 'smooth' | 'balanced' | 'strict';
     abortSignal?: AbortSignal;
   }) => Promise<unknown | null>;
   getPrevClipOnLayer: (clip: CompositorClip) => CompositorClip | null;
@@ -62,6 +64,7 @@ export class FrameSampleOrchestrator {
           .getVideoSampleForClip({
             clip,
             sampleTimeS,
+            monitorSyncMode: params.monitorSyncMode,
             abortSignal: abortController.signal,
           })
           .then((sample) => {
@@ -204,6 +207,7 @@ export class FrameSampleOrchestrator {
             clip: prevClip,
             key: prevClip.itemId + '_shadow_end',
             sampleTimeS: lastUs / 1_000_000,
+            monitorSyncMode: params.monitorSyncMode,
             createAbortController: params.createAbortController,
             removeAbortController: params.removeAbortController,
             getVideoSampleForClip: params.getVideoSampleForClip,
@@ -222,6 +226,7 @@ export class FrameSampleOrchestrator {
           clip: prevClip,
           key: prevClip.itemId + '_shadow_overrun',
           sampleTimeS: Math.max(0, sampleUs / 1_000_000),
+          monitorSyncMode: params.monitorSyncMode,
           createAbortController: params.createAbortController,
           removeAbortController: params.removeAbortController,
           getVideoSampleForClip: params.getVideoSampleForClip,
@@ -236,11 +241,13 @@ export class FrameSampleOrchestrator {
     clip: CompositorClip;
     key: string;
     sampleTimeS: number;
+    monitorSyncMode?: 'smooth' | 'balanced' | 'strict';
     createAbortController: (key: string) => AbortController;
     removeAbortController?: (key: string) => void;
     getVideoSampleForClip: (params: {
       clip: CompositorClip;
       sampleTimeS: number;
+      monitorSyncMode?: 'smooth' | 'balanced' | 'strict';
       abortSignal?: AbortSignal;
     }) => Promise<unknown | null>;
   }): Promise<{ clip: CompositorClip; sample: unknown | null }> {
@@ -250,6 +257,7 @@ export class FrameSampleOrchestrator {
       .getVideoSampleForClip({
         clip: params.clip,
         sampleTimeS: params.sampleTimeS,
+        monitorSyncMode: params.monitorSyncMode,
         abortSignal: abortController.signal,
       })
       .then((sample) => {

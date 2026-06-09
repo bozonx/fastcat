@@ -12,6 +12,7 @@ export interface PreviewRenderOptions {
   previewEffectsEnabled?: boolean;
   pixiRenderer?: 'webgl' | 'webgpu';
   videoFrameCacheMb?: number;
+  monitorSyncMode?: 'smooth' | 'balanced' | 'strict';
 }
 
 export interface WorkerRpcErrorShape {
@@ -25,6 +26,7 @@ export const PreviewRenderOptionsSchema = z.object({
   previewEffectsEnabled: z.boolean().optional(),
   pixiRenderer: z.enum(['webgl', 'webgpu']).optional(),
   videoFrameCacheMb: z.number().finite().nonnegative().optional(),
+  monitorSyncMode: z.enum(['smooth', 'balanced', 'strict']).optional(),
 });
 
 const VideoColorSpaceSchema = z.object({

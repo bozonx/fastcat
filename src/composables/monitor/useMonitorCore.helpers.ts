@@ -21,11 +21,13 @@ export function createPreviewRenderOptions(params: {
   previewEffectsEnabled: boolean;
   pixiRenderer: 'webgl' | 'webgpu';
   videoFrameCacheMb: number;
+  monitorSyncMode: 'smooth' | 'balanced' | 'strict';
 }): PreviewRenderOptions {
   return {
     previewEffectsEnabled: params.previewEffectsEnabled,
     pixiRenderer: params.pixiRenderer,
     videoFrameCacheMb: params.videoFrameCacheMb,
+    monitorSyncMode: params.monitorSyncMode,
   };
 }
 

@@ -86,7 +86,7 @@ The application will be available at `http://localhost:3000`.
 - Desktop FFmpeg hardware acceleration settings are applied to native monitor decode, native timeline export source decode, thumbnails, proxy generation, and conversion. On Linux, VAAPI uses the configured render node, defaulting to `/dev/dri/renderD128`.
 - Desktop audio extraction uses the native FFmpeg task pipeline and copies the primary audio stream into a sidecar audio file without re-encoding when the target container supports it.
 - Set `FASTCAT_RENDER_TIMING=1` when running the Tauri app to log native compositor stage timings (`materialize`, `build_vello`, `render`, total) for preview and offscreen pixel renders. Initial cold-start GPU/Vello warmup frames are logged separately and excluded from the running average.
-- The native Tauri monitor supports `smooth`, `balanced`, and `strict` audio/video sync modes. `balanced` is the default and gives the video decoder a wider catch-up window than strict frame dropping.
+- The monitor supports `smooth`, `balanced`, and `strict` audio/video sync modes in both web and native Tauri preview paths. `balanced` is the default and gives the video decoder a wider catch-up window than strict frame dropping.
 - The desktop VFS adapter stores its local app-managed data in `BaseDirectory.AppData`.
 - FastCat stores global `user.settings.json` and `app.settings.json` in the OS-recommended Tauri `BaseDirectory.AppConfig` location. Workspace settings stay in the selected workspace.
 - Desktop startup automatically restores the saved workspace path, or creates and uses the default `Documents/FastCat` workspace when no path was saved yet.

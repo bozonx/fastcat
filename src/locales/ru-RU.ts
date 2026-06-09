@@ -1992,7 +1992,7 @@ export default {
         "hwaccelMode": "Аппаратное ускорение",
         "hwaccelModeHelp": "Режим аппаратного ускорения декодера при воспроизведении видео.",
         "nativeMonitorSyncMode": "Синхронизация монитора",
-        "nativeMonitorSyncModeHelp": "Балансирует плавность видео и точность совпадения с аудио в Tauri-мониторе.",
+        "nativeMonitorSyncModeHelp": "Балансирует плавность видео и точность совпадения с аудио в мониторе.",
         "nativeMonitorSyncSmooth": "Плавно",
         "nativeMonitorSyncBalanced": "Баланс",
         "nativeMonitorSyncStrict": "Точно",

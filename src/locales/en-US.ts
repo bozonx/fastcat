@@ -1992,7 +1992,7 @@ export default {
         "hwaccelMode": "Hardware Acceleration",
         "hwaccelModeHelp": "Decoder hardware acceleration backend for video playback.",
         "nativeMonitorSyncMode": "Monitor Sync",
-        "nativeMonitorSyncModeHelp": "Balances video smoothness and audio sync accuracy in the Tauri monitor.",
+        "nativeMonitorSyncModeHelp": "Balances video smoothness and audio sync accuracy in the monitor.",
         "nativeMonitorSyncSmooth": "Smooth",
         "nativeMonitorSyncBalanced": "Balanced",
         "nativeMonitorSyncStrict": "Strict",

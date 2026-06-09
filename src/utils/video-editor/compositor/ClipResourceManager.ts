@@ -16,6 +16,8 @@ import {
 import type { CanvasFallbackRenderer } from './renderers/CanvasFallbackRenderer';
 const log = createDevLogger('ClipResourceManager');
 
+export type WebMonitorSyncMode = 'smooth' | 'balanced' | 'strict';
+
 export interface ClipResourceManagerContext {
   width: number;
   height: number;
@@ -116,6 +118,7 @@ export class ClipResourceManager {
   public async getVideoSampleForClip(params: {
     clip: CompositorClip;
     sampleTimeS: number;
+    monitorSyncMode?: WebMonitorSyncMode;
     abortSignal?: AbortSignal;
   }): Promise<unknown | null> {
     const { clip, sampleTimeS, abortSignal } = params;
@@ -142,6 +145,7 @@ export class ClipResourceManager {
     const promise = this.fetchVideoSampleForClip(
       clip,
       sampleTimeS,
+      params.monitorSyncMode,
       frameIndex,
       cacheKey,
       abortSignal,
@@ -158,6 +162,7 @@ export class ClipResourceManager {
   private async fetchVideoSampleForClip(
     clip: CompositorClip,
     sampleTimeS: number,
+    monitorSyncMode: WebMonitorSyncMode | undefined,
     frameIndex: number,
     cacheKey: string,
     abortSignal?: AbortSignal,
@@ -179,10 +184,12 @@ export class ClipResourceManager {
       // though neighbouring frames decode fine. Retry slightly earlier so the
       // clip shows the previous source frame instead of becoming invisible
       // (which would leak through as a one-frame flicker in the export).
-      const frameRate = Number(clip.frameRate);
-      const frameStepS = Number.isFinite(frameRate) && frameRate > 0 ? 1 / frameRate : 1 / 30;
-      const fallbackTimeS = Math.max(0, sampleTimeS - frameStepS * 0.5);
-      if (fallbackTimeS < sampleTimeS) {
+      const fallbackTimeS = resolveMonitorSampleFallbackTimeS({
+        sampleTimeS,
+        frameRate: clip.frameRate,
+        monitorSyncMode,
+      });
+      if (fallbackTimeS !== null) {
         const retry = await this.context.resourceManager.withVideoSampleSlot(
           () =>
             getVideoSampleWithZeroFallback(
@@ -435,4 +442,22 @@ export class ClipResourceManager {
       clip.sprite = null;
     }
   }
+}
+
+export function resolveMonitorSampleFallbackTimeS(params: {
+  sampleTimeS: number;
+  frameRate?: number;
+  monitorSyncMode?: WebMonitorSyncMode;
+}): number | null {
+  const sampleTimeS = Number.isFinite(params.sampleTimeS) ? Math.max(0, params.sampleTimeS) : 0;
+  const mode = params.monitorSyncMode ?? 'balanced';
+  if (mode === 'strict') {
+    return null;
+  }
+
+  const frameRate = Number(params.frameRate);
+  const frameStepS = Number.isFinite(frameRate) && frameRate > 0 ? 1 / frameRate : 1 / 30;
+  const fallbackFrames = mode === 'smooth' ? 2 : 0.5;
+  const fallbackTimeS = Math.max(0, sampleTimeS - frameStepS * fallbackFrames);
+  return fallbackTimeS < sampleTimeS ? fallbackTimeS : null;
 }

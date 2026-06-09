@@ -30,6 +30,7 @@ export interface RenderingEngineContext {
   processFrameSamples: (params: {
     activeClips: CompositorClip[];
     timeUs: number;
+    monitorSyncMode: 'smooth' | 'balanced' | 'strict';
   }) => Promise<{ updatedClips: CompositorClip[] }>;
   sortStage: () => void;
   prepareAdjustmentClips: (activeClips: CompositorClip[]) => void;
@@ -115,6 +116,7 @@ export class RenderingEngine {
       const samplesResult = await context.processFrameSamples({
         activeClips,
         timeUs,
+        monitorSyncMode: options?.monitorSyncMode ?? 'balanced',
       });
       updatedClips = samplesResult.updatedClips;
 

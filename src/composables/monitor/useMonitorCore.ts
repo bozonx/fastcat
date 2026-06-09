@@ -128,6 +128,7 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
       previewEffectsEnabled: previewEffectsEnabled.value,
       pixiRenderer: workspaceStore.userSettings.optimization.pixiRenderer,
       videoFrameCacheMb: workspaceStore.userSettings.optimization.videoFrameCacheMb,
+      monitorSyncMode: workspaceStore.userSettings.optimization.nativeMonitorSyncMode,
     });
   }
 
