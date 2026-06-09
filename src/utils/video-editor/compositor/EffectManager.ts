@@ -1,10 +1,7 @@
-import { createDevLogger } from '~/utils/dev-logger';
 import type { Filter, Container, TextureSource } from 'pixi.js';
-import { getVideoEffectManifest } from '../../../effects';
 import type { VideoClipEffect } from '~/timeline/types';
 import type { CompositorClip, CompositorTrack } from './types';
 import { ClipMaskFilter } from './filters/ClipMaskFilter';
-const log = createDevLogger('EffectManager');
 
 export interface EffectManagerContext {
   previewEffectsEnabled: boolean;
@@ -170,42 +167,15 @@ export class EffectManager {
   }
 
   /**
-   * Universal filter synchronization logic.
+   * Video-effect math now lives in the shared WGSL compute runner, not in
+   * per-effect Pixi filters. No manifest produces Pixi filters anymore, so this
+   * only tears down any filters left over from the previous architecture and
+   * returns none. The WebGPU compute runner integration replaces this path.
    */
-  private syncFilters(filtersMap: Map<string, Filter>, effects: VideoClipEffect[]): Filter[] {
+  private syncFilters(filtersMap: Map<string, Filter>, _effects: VideoClipEffect[]): Filter[] {
     if (!filtersMap) return [];
-    const filters: Filter[] = [];
-    const seenIds = new Set<string>();
 
-    for (const effect of effects) {
-      if (!effect?.enabled) continue;
-      if (typeof effect.id !== 'string' || effect.id.length === 0) continue;
-      if (typeof effect.type !== 'string' || effect.type.length === 0) continue;
-
-      const manifest = getVideoEffectManifest(effect.type);
-      if (!manifest) continue;
-      if (!manifest.createFilter || !manifest.updateFilter) continue;
-
-      seenIds.add(effect.id);
-      let filter = filtersMap.get(effect.id);
-      if (!filter) {
-        filter = manifest.createFilter();
-        filtersMap.set(effect.id, filter);
-      }
-
-      try {
-        manifest.updateFilter(filter, effect);
-      } catch (err) {
-        log.error('Failed to update effect filter', err);
-        continue;
-      }
-
-      filters.push(filter);
-    }
-
-    // Cleanup filters for removed effects
     for (const [id, filter] of filtersMap.entries()) {
-      if (seenIds.has(id)) continue;
       filtersMap.delete(id);
       try {
         (filter as { destroy?: () => void })?.destroy?.();
@@ -214,6 +184,6 @@ export class EffectManager {
       }
     }
 
-    return filters;
+    return [];
   }
 }

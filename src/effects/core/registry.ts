@@ -1,17 +1,15 @@
-import type { Filter } from 'pixi.js';
 import type { ParamControl } from '~/components/properties/params';
-import { isTauriRuntime } from '~/utils/runtime';
-import { getTauriVideoEffectManifest, tauriVideoEffectManifests } from '../tauri/manifests';
+import type { VideoEffectSpec } from '~/types/generated/native-monitor/VideoEffectSpec';
+import { getVideoEffectManifestByType, videoEffectManifests } from '../video-manifests';
+
+export type { VideoEffectSpec };
 
 export type EffectType = string;
 
 export type EffectTarget = 'video' | 'audio';
-export type VideoEffectRenderer = 'pixi' | 'wgpu';
-
-export interface TauriEffectSpec {
-  type: string;
-  [key: string]: unknown;
-}
+// Video effects always run through the shared WGSL compute shader
+// (`shared/effects/effect.wgsl`) on both backends. The Pixi-filter path is gone.
+export type VideoEffectRenderer = 'wgsl-compute';
 
 export type AudioEffectCategory = 'basic' | 'artistic' | 'voice';
 
@@ -45,9 +43,8 @@ export interface BaseEffectManifest<T = Record<string, unknown>> {
 export interface VideoEffectManifest<T = Record<string, unknown>> extends BaseEffectManifest<T> {
   target?: 'video';
   renderer?: VideoEffectRenderer;
-  createFilter?: () => Filter;
-  updateFilter?: (filter: Filter, values: T) => void;
-  toTauriSpecs?: (values: T) => TauriEffectSpec[];
+  /** Maps UI values to the cross-backend effect spec consumed by both runners. */
+  toEffectSpecs?: (values: T) => VideoEffectSpec[];
 }
 
 export interface AudioEffectManifest<T = Record<string, unknown>> extends BaseEffectManifest<T> {
@@ -102,11 +99,12 @@ export function registerEffect<T>(manifest: EffectManifest<T>) {
 export function getEffectManifest(
   type: EffectType,
 ): EffectManifest<Record<string, unknown>> | undefined {
-  if (isTauriRuntime()) {
-    const manifest = getTauriVideoEffectManifest(type);
-    if (manifest) {
-      return manifest as EffectManifest<Record<string, unknown>>;
-    }
+  // Single catalog for both runtimes: video effects come from the unified
+  // `videoEffectManifests`, audio (and any registered custom effects) from the
+  // runtime registry.
+  const videoManifest = getVideoEffectManifestByType(type);
+  if (videoManifest) {
+    return videoManifest as EffectManifest<Record<string, unknown>>;
   }
 
   return effectsRegistry.get(type);
@@ -153,20 +151,25 @@ export function isAudioEffectNodeGraph(node: AudioEffectNode): node is AudioEffe
 export function getAllEffectManifests(
   target?: EffectTarget,
 ): EffectManifest<Record<string, unknown>>[] {
-  if (isTauriRuntime() && target === 'video') {
-    const custom = Array.from(effectsRegistry.values())
-      .filter(isVideoEffectManifest)
-      .filter((manifest) => manifest.isCustom);
+  // Custom (plugin) video effects are registered into the runtime registry; the
+  // built-in video catalog is the shared `videoEffectManifests`.
+  const customVideo = Array.from(effectsRegistry.values())
+    .filter(isVideoEffectManifest)
+    .filter((manifest) => manifest.isCustom);
+  const videoManifests = [...videoEffectManifests, ...customVideo] as EffectManifest<
+    Record<string, unknown>
+  >[];
 
-    return [...tauriVideoEffectManifests, ...custom] as EffectManifest<Record<string, unknown>>[];
+  if (target === 'video') {
+    return videoManifests;
   }
 
-  const manifests = Array.from(effectsRegistry.values());
-  if (!target) {
-    return manifests;
+  const audioManifests = Array.from(effectsRegistry.values()).filter(isAudioEffectManifest);
+  if (target === 'audio') {
+    return audioManifests as EffectManifest<Record<string, unknown>>[];
   }
 
-  return manifests.filter((manifest) => (manifest.target ?? 'video') === target);
+  return [...videoManifests, ...audioManifests];
 }
 
 export function getAllVideoEffectManifests(): VideoEffectManifest<Record<string, unknown>>[] {

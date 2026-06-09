@@ -222,7 +222,7 @@ export const tauriTransitionManifests: TransitionManifest[] = [
       {
         kind: 'slider',
         key: 'angle',
-        labelKey: 'fastcat.effects.video.dot.params.angle',
+        labelKey: 'fastcat.transitions.wipe.params.angle',
         min: -180,
         max: 180,
         step: 1,
@@ -318,7 +318,7 @@ export const tauriTransitionManifests: TransitionManifest[] = [
       {
         kind: 'slider',
         key: 'centerX',
-        labelKey: 'fastcat.effects.video.bulgePinch.params.centerX',
+        labelKey: 'fastcat.transitions.circle.params.centerX',
         min: 0,
         max: 1,
         step: 0.01,
@@ -326,7 +326,7 @@ export const tauriTransitionManifests: TransitionManifest[] = [
       {
         kind: 'slider',
         key: 'centerY',
-        labelKey: 'fastcat.effects.video.bulgePinch.params.centerY',
+        labelKey: 'fastcat.transitions.circle.params.centerY',
         min: 0,
         max: 1,
         step: 0.01,

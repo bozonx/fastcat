@@ -2,13 +2,13 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { getAllVideoEffectManifests, getVideoEffectManifest, initEffects } from '~/effects';
 import { getAllTransitionManifests, getTransitionManifest, initTransitions } from '~/transitions';
-import { buildNativeEffectSpecs } from '~/utils/native-monitor-scene';
+import { buildEffectSpecs } from '~/utils/native-monitor-scene';
 
 declare global {
   var __TAURI_INTERNALS__: unknown;
 }
 
-describe('tauri native effect manifests', () => {
+describe('unified video effect manifests', () => {
   beforeEach(() => {
     globalThis.__TAURI_INTERNALS__ = {};
     initEffects();
@@ -19,7 +19,7 @@ describe('tauri native effect manifests', () => {
     delete globalThis.__TAURI_INTERNALS__;
   });
 
-  it('exposes the Tauri video effect catalog instead of Pixi-only video effects', () => {
+  it('exposes the unified WGSL video effect catalog instead of Pixi-only video effects', () => {
     const types = getAllVideoEffectManifests().map((manifest) => manifest.type);
 
     expect(types).toEqual([
@@ -37,8 +37,8 @@ describe('tauri native effect manifests', () => {
     ]);
     expect(types).not.toContain('ascii');
     expect(types).not.toContain('crt');
-    expect(getVideoEffectManifest('blur')?.renderer).toBe('wgpu');
-    expect(getVideoEffectManifest('blur')?.createFilter).toBeUndefined();
+    expect(getVideoEffectManifest('blur')?.renderer).toBe('wgsl-compute');
+    expect(typeof getVideoEffectManifest('blur')?.toEffectSpecs).toBe('function');
   });
 
   it('exposes the Tauri transition catalog instead of Pixi shader filters', () => {
@@ -60,7 +60,7 @@ describe('tauri native effect manifests', () => {
   });
 
   it('serializes enabled video effects into native EffectSpec payloads', () => {
-    const specs = buildNativeEffectSpecs([
+    const specs = buildEffectSpecs([
       {
         id: 'fx-1',
         type: 'blur',

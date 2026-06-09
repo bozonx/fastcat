@@ -325,65 +325,18 @@
       "title": "Эффекты",
       "trackAudioTitle": "Эффекты аудио дорожки: {name}",
       "video": {
-        "advancedBloom": {
-          "description": "Продвинутый эффект свечения с настройкой порога и яркости",
-          "name": "Свечение (Продвинутое)",
-          "params": {
-            "bloomScale": "Сила свечения",
-            "blur": "Размытие",
-            "brightness": "Яркость",
-            "quality": "Качество",
-            "threshold": "Порог"
-          }
-        },
-        "ascii": {
-          "description": "Эффект ASCII символов",
-          "name": "ASCII Art",
-          "params": {
-            "size": "Размер"
-          }
-        },
-        "backdropBlur": {
-          "description": "Размытие всего, что находится позади объекта",
-          "name": "Размытие фона",
-          "params": {
-            "quality": "Качество",
-            "strength": "Сила"
-          }
-        },
-        "bevel": {
-          "description": "Эффект объемной рамки (фаски)",
-          "name": "Скос (Фаска)",
-          "params": {
-            "lightAlpha": "Прозрачность света",
-            "rotation": "Угол",
-            "shadowAlpha": "Прозрачность тени",
-            "thickness": "Толщина"
-          }
-        },
         "bloom": {
           "description": "Эффект размытого свечения",
           "name": "Свечение (Bloom)",
           "params": {
-            "quality": "Качество",
-            "strength": "Сила"
+            "strength": "Сила",
+            "threshold": "Порог"
           }
         },
         "blur": {
           "description": "Размытие по Гауссу",
           "name": "Размытие",
           "params": {
-            "quality": "Качество",
-            "strength": "Сила"
-          }
-        },
-        "bulgePinch": {
-          "description": "Эффект выпуклости или сжатия (эффект рыбьего глаза)",
-          "name": "Искажение (Выпуклость)",
-          "params": {
-            "centerX": "Центр X",
-            "centerY": "Центр Y",
-            "radius": "Радиус",
             "strength": "Сила"
           }
         },
@@ -394,120 +347,6 @@
             "brightness": "Яркость",
             "contrast": "Контрастность",
             "saturation": "Насыщенность"
-          }
-        },
-        "colorGradient": {
-          "description": "Наложение цветового градиента",
-          "name": "Цветовой градиент",
-          "options": {
-            "conic": "Конический",
-            "linear": "Линейный",
-            "radial": "Радиальный"
-          },
-          "params": {
-            "alpha": "Прозрачность",
-            "angle": "Угол",
-            "maxColors": "Кол-во цветов (0=Безлимит)",
-            "replace": "Заменить цвет",
-            "type": "Линейный"
-          }
-        },
-        "colorMap": {
-          "description": "Применение цветовой карты (LUT)",
-          "name": "Цветовая карта",
-          "params": {
-            "mix": "Интенсивность",
-            "nearest": "Режим Nearest"
-          }
-        },
-        "colorMatrix": {
-          "description": "Готовые цветовые пресеты",
-          "name": "Цветовой фильтр",
-          "options": {
-            "blackAndWhite": "Ч/Б",
-            "browni": "Брауни",
-            "kodachrome": "Кодахром",
-            "lsd": "LSD",
-            "negative": "Негатив",
-            "none": "Нет",
-            "polaroid": "Полароид",
-            "sepia": "Сепия",
-            "technicolor": "Техниколор",
-            "vintage": "Винтаж"
-          },
-          "params": {
-            "filterType": "Фильтр",
-            "intensity": "Интенсивность"
-          }
-        },
-        "colorOverlay": {
-          "description": "Заливка сплошным цветом",
-          "name": "Наложение цвета",
-          "params": {
-            "alpha": "Прозрачность"
-          }
-        },
-        "colorReplace": {
-          "description": "Замена одного цвета на другой",
-          "name": "Замена цвета",
-          "params": {
-            "tolerance": "Допуск"
-          }
-        },
-        "convolution": {
-          "description": "Применение матрицы свертки (Convolution Matrix)",
-          "name": "Свертка",
-          "params": {
-            "height": "Высота",
-            "width": "Ширина"
-          }
-        },
-        "crossHatch": {
-          "description": "Эффект перекрестной штриховки",
-          "name": "Штриховка"
-        },
-        "crt": {
-          "description": "Эффект старого телевизора",
-          "name": "ЭЛТ Монитор",
-          "params": {
-            "curvature": "Искажение",
-            "lineContrast": "Контраст линий",
-            "lineWidth": "Толщина линий",
-            "noise": "Шум",
-            "noiseSize": "Размер шума",
-            "verticalLine": "Вертикальные линии",
-            "vignetting": "Виньетка",
-            "vignettingAlpha": "Прозрачность виньетки",
-            "vignettingBlur": "Размытие виньетки"
-          }
-        },
-        "displacement": {
-          "description": "Эффект смещения/волн",
-          "name": "Искажение",
-          "params": {
-            "scaleX": "Смещение X",
-            "scaleY": "Смещение Y"
-          }
-        },
-        "dot": {
-          "description": "Эффект растровой печати",
-          "name": "Точки (Полутон)",
-          "params": {
-            "angle": "Угол",
-            "grayscale": "Ч/Б",
-            "scale": "Масштаб"
-          }
-        },
-        "dropShadow": {
-          "description": "Эффект падающей тени",
-          "name": "Тень",
-          "params": {
-            "alpha": "Прозрачность",
-            "blur": "Размытие",
-            "offsetX": "Смещение X",
-            "offsetY": "Смещение Y",
-            "quality": "Качество",
-            "shadowOnly": "Только тень"
           }
         },
         "tauri": {
@@ -540,11 +379,15 @@
             }
           },
           "params": {
-            "amount": "Сила"
+            "amount": "Сила",
+            "angle": "Угол"
           },
           "pixelate": {
             "description": "Блочная пиксельная выборка",
-            "name": "Пикселизация"
+            "name": "Пикселизация",
+            "params": {
+              "size": "Размер"
+            }
           },
           "sharpen": {
             "description": "Усиление контраста краев",
@@ -1164,7 +1007,9 @@
       "circle": {
         "name": "Круг",
         "params": {
-          "radius": "Радиус"
+          "radius": "Радиус",
+          "centerX": "Центр X",
+          "centerY": "Центр Y"
         }
       },
       "clock": {
@@ -1202,7 +1047,8 @@
       "wipe": {
         "name": "Вытеснение",
         "params": {
-          "softness": "Мягкость"
+          "softness": "Мягкость",
+          "angle": "Угол"
         }
       },
       "zoom": {

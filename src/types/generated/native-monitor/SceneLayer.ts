@@ -53,4 +53,4 @@ blend_mode: BlendMode, background_color?: string, text?: string, style?: import(
  * Явный трансформ слоя в scene-space.
  * `None` → letterbox center-fit (поведение по умолчанию, совместимость с предыдущими версиями).
  */
-transform?: SceneLayerTransform, transition_in?: SceneTransition, transition_out?: SceneTransition, effects: import('~/effects').TauriEffectSpec[], };
+transform?: SceneLayerTransform, transition_in?: SceneTransition, transition_out?: SceneTransition, effects: import('~/effects').VideoEffectSpec[], };

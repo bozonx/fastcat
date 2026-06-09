@@ -1,4 +1,5 @@
-import type { TauriEffectSpec, VideoEffectManifest } from '../core/registry';
+import type { VideoEffectManifest } from './core/registry';
+import type { VideoEffectSpec } from '~/types/generated/native-monitor/VideoEffectSpec';
 
 interface SliderFormat {
   (value: number): string;
@@ -17,11 +18,20 @@ function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
 }
 
-function spec(type: string, params: Record<string, unknown>): TauriEffectSpec {
-  return { type, ...params };
+// The catalog is intentionally loose about the per-variant shape: each manifest
+// is responsible for emitting a spec whose fields match the corresponding Rust
+// `EffectSpec` variant (mirrored as `VideoEffectSpec`). The cast keeps the
+// public `toEffectSpecs` contract strongly typed for consumers.
+function spec(type: VideoEffectSpec['type'], params: Record<string, unknown>): VideoEffectSpec {
+  return { type, ...params } as VideoEffectSpec;
 }
 
-export const tauriVideoEffectManifests: VideoEffectManifest[] = [
+/**
+ * Canonical video-effect catalog shared by both backends. The math lives in the
+ * shared `shared/effects/effect.wgsl` compute shader; these manifests only
+ * describe UI controls, defaults, and how UI values map to `VideoEffectSpec`.
+ */
+export const videoEffectManifests: VideoEffectManifest[] = [
   {
     type: 'color-adjustment',
     name: 'Color Correction',
@@ -30,7 +40,7 @@ export const tauriVideoEffectManifests: VideoEffectManifest[] = [
     descriptionKey: 'fastcat.effects.video.color-adjustment.description',
     icon: 'i-heroicons-swatch',
     target: 'video',
-    renderer: 'wgpu',
+    renderer: 'wgsl-compute',
     defaultValues: {
       brightness: 1,
       contrast: 1,
@@ -65,7 +75,7 @@ export const tauriVideoEffectManifests: VideoEffectManifest[] = [
         format: percentFromOne,
       },
     ],
-    toTauriSpecs: (values) => [
+    toEffectSpecs: (values) => [
       spec('brightness', {
         value: clamp(finiteNumber(values.brightness, 1), 0, 2),
       }),
@@ -85,7 +95,7 @@ export const tauriVideoEffectManifests: VideoEffectManifest[] = [
     descriptionKey: 'fastcat.effects.video.blur.description',
     icon: 'i-heroicons-sparkles',
     target: 'video',
-    renderer: 'wgpu',
+    renderer: 'wgsl-compute',
     defaultValues: {
       strength: 8,
     },
@@ -100,7 +110,7 @@ export const tauriVideoEffectManifests: VideoEffectManifest[] = [
         format: pixels,
       },
     ],
-    toTauriSpecs: (values) => [
+    toEffectSpecs: (values) => [
       spec('gaussian-blur', {
         radius: clamp(finiteNumber(values.strength, 8), 0, 64),
       }),
@@ -114,7 +124,7 @@ export const tauriVideoEffectManifests: VideoEffectManifest[] = [
     descriptionKey: 'fastcat.effects.video.bloom.description',
     icon: 'i-heroicons-sun',
     target: 'video',
-    renderer: 'wgpu',
+    renderer: 'wgsl-compute',
     defaultValues: {
       threshold: 0.75,
       strength: 0.6,
@@ -124,7 +134,7 @@ export const tauriVideoEffectManifests: VideoEffectManifest[] = [
       {
         kind: 'slider',
         key: 'threshold',
-        labelKey: 'fastcat.effects.video.advancedBloom.params.threshold',
+        labelKey: 'fastcat.effects.video.bloom.params.threshold',
         min: 0,
         max: 1,
         step: 0.01,
@@ -149,7 +159,7 @@ export const tauriVideoEffectManifests: VideoEffectManifest[] = [
         format: pixels,
       },
     ],
-    toTauriSpecs: (values) => [
+    toEffectSpecs: (values) => [
       spec('bloom', {
         threshold: clamp(finiteNumber(values.threshold, 0.75), 0, 1),
         strength: clamp(finiteNumber(values.strength, 0.6), 0, 2),
@@ -165,7 +175,7 @@ export const tauriVideoEffectManifests: VideoEffectManifest[] = [
     descriptionKey: 'fastcat.effects.video.tauri.sharpen.description',
     icon: 'i-heroicons-bolt',
     target: 'video',
-    renderer: 'wgpu',
+    renderer: 'wgsl-compute',
     defaultValues: {
       amount: 0.35,
     },
@@ -180,7 +190,7 @@ export const tauriVideoEffectManifests: VideoEffectManifest[] = [
         format: percent,
       },
     ],
-    toTauriSpecs: (values) => [
+    toEffectSpecs: (values) => [
       spec('sharpen', {
         amount: clamp(finiteNumber(values.amount, 0.35), 0, 1),
       }),
@@ -194,7 +204,7 @@ export const tauriVideoEffectManifests: VideoEffectManifest[] = [
     descriptionKey: 'fastcat.effects.video.tauri.pixelate.description',
     icon: 'i-heroicons-squares-2x2',
     target: 'video',
-    renderer: 'wgpu',
+    renderer: 'wgsl-compute',
     defaultValues: {
       size: 8,
     },
@@ -202,14 +212,14 @@ export const tauriVideoEffectManifests: VideoEffectManifest[] = [
       {
         kind: 'slider',
         key: 'size',
-        labelKey: 'fastcat.effects.video.ascii.params.size',
+        labelKey: 'fastcat.effects.video.tauri.pixelate.params.size',
         min: 1,
         max: 64,
         step: 1,
         format: pixels,
       },
     ],
-    toTauriSpecs: (values) => [
+    toEffectSpecs: (values) => [
       spec('pixelate', {
         size: clamp(finiteNumber(values.size, 8), 1, 64),
       }),
@@ -223,7 +233,7 @@ export const tauriVideoEffectManifests: VideoEffectManifest[] = [
     descriptionKey: 'fastcat.effects.video.tauri.vignette.description',
     icon: 'i-heroicons-eye',
     target: 'video',
-    renderer: 'wgpu',
+    renderer: 'wgsl-compute',
     defaultValues: {
       strength: 0.35,
       radius: 0.75,
@@ -258,7 +268,7 @@ export const tauriVideoEffectManifests: VideoEffectManifest[] = [
         format: percent,
       },
     ],
-    toTauriSpecs: (values) => [
+    toEffectSpecs: (values) => [
       spec('vignette', {
         strength: clamp(finiteNumber(values.strength, 0.35), 0, 1),
         radius: clamp(finiteNumber(values.radius, 0.75), 0, 1),
@@ -274,7 +284,7 @@ export const tauriVideoEffectManifests: VideoEffectManifest[] = [
     descriptionKey: 'fastcat.effects.video.noise.description',
     icon: 'i-heroicons-sparkles',
     target: 'video',
-    renderer: 'wgpu',
+    renderer: 'wgsl-compute',
     defaultValues: {
       amount: 0.08,
       seed: 1,
@@ -298,7 +308,7 @@ export const tauriVideoEffectManifests: VideoEffectManifest[] = [
         step: 1,
       },
     ],
-    toTauriSpecs: (values) => [
+    toEffectSpecs: (values) => [
       spec('noise', {
         amount: clamp(finiteNumber(values.amount, 0.08), 0, 1),
         seed: Math.max(0, Math.round(finiteNumber(values.seed, 1))),
@@ -313,7 +323,7 @@ export const tauriVideoEffectManifests: VideoEffectManifest[] = [
     descriptionKey: 'fastcat.effects.video.tauri.chromaticAberration.description',
     icon: 'i-heroicons-adjustments-horizontal',
     target: 'video',
-    renderer: 'wgpu',
+    renderer: 'wgsl-compute',
     defaultValues: {
       amount: 4,
       angle: 0,
@@ -331,14 +341,14 @@ export const tauriVideoEffectManifests: VideoEffectManifest[] = [
       {
         kind: 'slider',
         key: 'angle',
-        labelKey: 'fastcat.effects.video.dot.params.angle',
+        labelKey: 'fastcat.effects.video.tauri.params.angle',
         min: -180,
         max: 180,
         step: 1,
         format: degrees,
       },
     ],
-    toTauriSpecs: (values) => [
+    toEffectSpecs: (values) => [
       spec('chromatic-aberration', {
         amount: clamp(finiteNumber(values.amount, 4), 0, 40),
         angle_deg: clamp(finiteNumber(values.angle, 0), -180, 180),
@@ -353,7 +363,7 @@ export const tauriVideoEffectManifests: VideoEffectManifest[] = [
     descriptionKey: 'fastcat.effects.video.tauri.hue.description',
     icon: 'i-heroicons-arrow-path',
     target: 'video',
-    renderer: 'wgpu',
+    renderer: 'wgsl-compute',
     defaultValues: {
       degrees: 0,
     },
@@ -361,14 +371,14 @@ export const tauriVideoEffectManifests: VideoEffectManifest[] = [
       {
         kind: 'slider',
         key: 'degrees',
-        labelKey: 'fastcat.effects.video.dot.params.angle',
+        labelKey: 'fastcat.effects.video.tauri.params.angle',
         min: -180,
         max: 180,
         step: 1,
         format: degrees,
       },
     ],
-    toTauriSpecs: (values) => [
+    toEffectSpecs: (values) => [
       spec('hue', {
         degrees: clamp(finiteNumber(values.degrees, 0), -180, 180),
       }),
@@ -382,7 +392,7 @@ export const tauriVideoEffectManifests: VideoEffectManifest[] = [
     descriptionKey: 'fastcat.effects.video.tauri.levels.description',
     icon: 'i-heroicons-adjustments-vertical',
     target: 'video',
-    renderer: 'wgpu',
+    renderer: 'wgsl-compute',
     defaultValues: {
       inBlack: 0,
       inWhite: 1,
@@ -436,7 +446,7 @@ export const tauriVideoEffectManifests: VideoEffectManifest[] = [
         format: percent,
       },
     ],
-    toTauriSpecs: (values) => [
+    toEffectSpecs: (values) => [
       spec('levels', {
         in_black: clamp(finiteNumber(values.inBlack, 0), 0, 1),
         in_white: clamp(finiteNumber(values.inWhite, 1), 0.001, 1),
@@ -454,7 +464,7 @@ export const tauriVideoEffectManifests: VideoEffectManifest[] = [
     descriptionKey: 'fastcat.effects.video.tauri.chromaKey.description',
     icon: 'i-heroicons-sparkles',
     target: 'video',
-    renderer: 'wgpu',
+    renderer: 'wgsl-compute',
     defaultValues: {
       keyColor: '#00ff00',
       threshold: 0.1,
@@ -485,7 +495,7 @@ export const tauriVideoEffectManifests: VideoEffectManifest[] = [
         format: percent,
       },
     ],
-    toTauriSpecs: (values) => {
+    toEffectSpecs: (values) => {
       const colorHex = typeof values.keyColor === 'string' ? values.keyColor : '#00ff00';
       const clean = colorHex.replace('#', '');
       const r = parseInt(clean.substring(0, 2), 16) || 0;
@@ -503,10 +513,10 @@ export const tauriVideoEffectManifests: VideoEffectManifest[] = [
   },
 ];
 
-const tauriVideoManifestByType = new Map(
-  tauriVideoEffectManifests.map((manifest) => [manifest.type, manifest]),
+const videoManifestByType = new Map(
+  videoEffectManifests.map((manifest) => [manifest.type, manifest]),
 );
 
-export function getTauriVideoEffectManifest(type: string): VideoEffectManifest | undefined {
-  return tauriVideoManifestByType.get(type);
+export function getVideoEffectManifestByType(type: string): VideoEffectManifest | undefined {
+  return videoManifestByType.get(type);
 }

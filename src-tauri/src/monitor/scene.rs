@@ -171,7 +171,7 @@ pub struct SceneLayer {
     pub transition_out: Option<SceneTransition>,
     // Video effect specs — produced by the frontend effect manifests.
     #[serde(default)]
-    #[ts(type = "import('~/effects').TauriEffectSpec[]")]
+    #[ts(type = "import('~/effects').VideoEffectSpec[]")]
     pub effects: Vec<EffectSpec>,
 }
 

@@ -325,65 +325,18 @@
       "title": "Effects",
       "trackAudioTitle": "Audio Track Effects: {name}",
       "video": {
-        "advancedBloom": {
-          "description": "Advanced bloom effect with threshold and brightness settings",
-          "name": "Advanced Bloom",
-          "params": {
-            "bloomScale": "Bloom Strength",
-            "blur": "Blur",
-            "brightness": "Brightness",
-            "quality": "Quality",
-            "threshold": "Threshold"
-          }
-        },
-        "ascii": {
-          "description": "ASCII symbols effect",
-          "name": "ASCII Art",
-          "params": {
-            "size": "Size"
-          }
-        },
-        "backdropBlur": {
-          "description": "Blur everything behind the object",
-          "name": "Backdrop Blur",
-          "params": {
-            "quality": "Quality",
-            "strength": "Strength"
-          }
-        },
-        "bevel": {
-          "description": "Bevel/emboss effect",
-          "name": "Bevel",
-          "params": {
-            "lightAlpha": "Light Opacity",
-            "rotation": "Angle",
-            "shadowAlpha": "Shadow Opacity",
-            "thickness": "Thickness"
-          }
-        },
         "bloom": {
           "description": "Soft bloom effect",
           "name": "Bloom",
           "params": {
-            "quality": "Quality",
-            "strength": "Strength"
+            "strength": "Strength",
+            "threshold": "Threshold"
           }
         },
         "blur": {
           "description": "Gaussian blur",
           "name": "Blur",
           "params": {
-            "quality": "Quality",
-            "strength": "Strength"
-          }
-        },
-        "bulgePinch": {
-          "description": "Bulge or pinch distortion (fisheye)",
-          "name": "Bulge/Pinch",
-          "params": {
-            "centerX": "Center X",
-            "centerY": "Center Y",
-            "radius": "Radius",
             "strength": "Strength"
           }
         },
@@ -394,120 +347,6 @@
             "brightness": "Brightness",
             "contrast": "Contrast",
             "saturation": "Saturation"
-          }
-        },
-        "colorGradient": {
-          "description": "Overlay a color gradient",
-          "name": "Color Gradient",
-          "options": {
-            "conic": "Conic",
-            "linear": "Linear",
-            "radial": "Radial"
-          },
-          "params": {
-            "alpha": "Opacity",
-            "angle": "Angle",
-            "maxColors": "Color Count (0=Unlimited)",
-            "replace": "Replace color",
-            "type": "Linear"
-          }
-        },
-        "colorMap": {
-          "description": "Apply a Color Lookup Table (LUT)",
-          "name": "Color Map",
-          "params": {
-            "mix": "Intensity",
-            "nearest": "Nearest Mode"
-          }
-        },
-        "colorMatrix": {
-          "description": "Ready-to-use color presets",
-          "name": "Color Filter",
-          "options": {
-            "blackAndWhite": "Grayscale",
-            "browni": "Brownie",
-            "kodachrome": "Kodachrome",
-            "lsd": "LSD",
-            "negative": "Negative",
-            "none": "None",
-            "polaroid": "Polaroid",
-            "sepia": "Sepia",
-            "technicolor": "Technicolor",
-            "vintage": "Vintage"
-          },
-          "params": {
-            "filterType": "Filter",
-            "intensity": "Intensity"
-          }
-        },
-        "colorOverlay": {
-          "description": "Fill with a solid color",
-          "name": "Color Overlay",
-          "params": {
-            "alpha": "Opacity"
-          }
-        },
-        "colorReplace": {
-          "description": "Replace one color with another",
-          "name": "Color Replace",
-          "params": {
-            "tolerance": "Tolerance"
-          }
-        },
-        "convolution": {
-          "description": "Apply a convolution matrix",
-          "name": "Convolution",
-          "params": {
-            "height": "Height",
-            "width": "Width"
-          }
-        },
-        "crossHatch": {
-          "description": "Cross-hatching effect",
-          "name": "Cross Hatch"
-        },
-        "crt": {
-          "description": "Old TV effect",
-          "name": "CRT Monitor",
-          "params": {
-            "curvature": "Distortion",
-            "lineContrast": "Line Contrast",
-            "lineWidth": "Line Width",
-            "noise": "Noise",
-            "noiseSize": "Noise Size",
-            "verticalLine": "Vertical Lines",
-            "vignetting": "Vignette",
-            "vignettingAlpha": "Vignette Opacity",
-            "vignettingBlur": "Vignette Blur"
-          }
-        },
-        "displacement": {
-          "description": "Displacement/wave effect",
-          "name": "Distortion",
-          "params": {
-            "scaleX": "Offset X",
-            "scaleY": "Offset Y"
-          }
-        },
-        "dot": {
-          "description": "Raster printing effect",
-          "name": "Halftone Dots",
-          "params": {
-            "angle": "Angle",
-            "grayscale": "Grayscale",
-            "scale": "Scale"
-          }
-        },
-        "dropShadow": {
-          "description": "Drop shadow effect",
-          "name": "Shadow",
-          "params": {
-            "alpha": "Opacity",
-            "blur": "Blur",
-            "offsetX": "Offset X",
-            "offsetY": "Offset Y",
-            "quality": "Quality",
-            "shadowOnly": "Shadow Only"
           }
         },
         "tauri": {
@@ -540,11 +379,15 @@
             }
           },
           "params": {
-            "amount": "Amount"
+            "amount": "Amount",
+            "angle": "Angle"
           },
           "pixelate": {
             "description": "Blocky pixel sampling",
-            "name": "Pixelate"
+            "name": "Pixelate",
+            "params": {
+              "size": "Size"
+            }
           },
           "sharpen": {
             "description": "Increase edge contrast",
@@ -1164,7 +1007,9 @@
       "circle": {
         "name": "Circle",
         "params": {
-          "radius": "Radius"
+          "radius": "Radius",
+          "centerX": "Center X",
+          "centerY": "Center Y"
         }
       },
       "clock": {
@@ -1202,7 +1047,8 @@
       "wipe": {
         "name": "Wipe",
         "params": {
-          "softness": "Softness"
+          "softness": "Softness",
+          "angle": "Angle"
         }
       },
       "zoom": {

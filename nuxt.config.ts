@@ -42,6 +42,13 @@ export default defineNuxtConfig({
   ssr: false,
   srcDir: 'src/',
 
+  // Top-level `shared/` dir holds cross-backend assets (e.g. the effect WGSL
+  // shader) consumed by both the web build (`~shared/...?raw`) and Rust
+  // (`include_str!`).
+  alias: {
+    '~shared': resolve(import.meta.dirname, 'shared'),
+  },
+
   modules: [
     '@nuxt/ui',
     '@pinia/nuxt',
@@ -106,7 +113,6 @@ export default defineNuxtConfig({
         '@tauri-apps/plugin-dialog',
         'tauri-plugin-fs-stream-api',
         'pixi.js',
-        'pixi-filters',
         'zod',
         '@vueuse/core',
       ],
