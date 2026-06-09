@@ -44,6 +44,7 @@ import { TrackRuntimeManager } from './compositor/TrackRuntimeManager';
 import { createCompositorRuntime } from './compositor/CompositorRuntimeFactory';
 import { CompositorRenderContextBuilder } from './compositor/CompositorRenderContextBuilder';
 import { PixiCompositorLifecycle } from './compositor/PixiCompositorLifecycle';
+import { WebGpuComputeRunner } from './compositor/WebGpuComputeRunner';
 const log = createDevLogger('VideoCompositor');
 
 export interface VideoCompositorInitOptions {
@@ -128,6 +129,7 @@ export class VideoCompositor {
   });
   private renderContextBuilder = new CompositorRenderContextBuilder();
   private pixiLifecycle = new PixiCompositorLifecycle();
+  private computeRunner = new WebGpuComputeRunner();
 
   private readonly activeTracker = new TimelineActiveTracker<CompositorClip>({
     getId: (clip) => clip.itemId,
@@ -137,6 +139,10 @@ export class VideoCompositor {
 
   constructor() {
     this.resetRuntimeDependencies();
+  }
+
+  public async initComputeRunner(): Promise<boolean> {
+    return this.computeRunner.init();
   }
 
   public get tracks(): CompositorTrack[] {
@@ -162,6 +168,7 @@ export class VideoCompositor {
       clipPreferBitmapFallback: this.clipPreferBitmapFallback,
       resourceManager: this.resourceManager,
       videoFrameCache: this.videoFrameCache,
+      computeRunner: this.computeRunner,
     });
 
     this.layoutApplier = runtime.layoutApplier;
@@ -466,6 +473,9 @@ export class VideoCompositor {
     this.height = height;
     this.contextLost = false;
     this.resetRuntimeDependencies();
+
+    // Initialize WebGPU compute runner lazily; failures are non-fatal.
+    void this.computeRunner.init();
 
     const { app, canvas } = await this.pixiLifecycle.init({
       width,

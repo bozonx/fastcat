@@ -14,6 +14,7 @@ import {
   estimateVideoFrameSizeBytes,
 } from './VideoFrameCache';
 import type { CanvasFallbackRenderer } from './renderers/CanvasFallbackRenderer';
+import type { WebGpuComputeRunner } from './WebGpuComputeRunner';
 const log = createDevLogger('ClipResourceManager');
 
 export type WebMonitorSyncMode = 'smooth' | 'balanced' | 'strict';
@@ -25,6 +26,7 @@ export interface ClipResourceManagerContext {
   videoFrameCache: VideoFrameCache;
   canvasFallbackRenderer: CanvasFallbackRenderer;
   getLayoutApplier: () => LayoutApplier;
+  computeRunner?: WebGpuComputeRunner;
 }
 
 export class ClipResourceManager {
@@ -264,7 +266,11 @@ export class ClipResourceManager {
     }
   }
 
-  public async updateClipTextureFromSample(sample: unknown, clip: CompositorClip) {
+  public async updateClipTextureFromSample(
+    sample: unknown,
+    clip: CompositorClip,
+    previewEffectsEnabled = true,
+  ) {
     try {
       const sampleObj = sample as { toVideoFrame?: () => VideoFrame };
       if (typeof sampleObj?.toVideoFrame === 'function') {
@@ -304,6 +310,37 @@ export class ClipResourceManager {
 
           if (clip.imageSource.width !== frameW || clip.imageSource.height !== frameH) {
             clip.imageSource.resize(frameW, frameH);
+          }
+
+          // Run shared WGSL compute effects on the web when the clip has video
+          // effects and preview is enabled. On failure, fall back to raw frame.
+          const hasEffects = (clip.effects?.length ?? 0) > 0;
+          const runner = this.context.computeRunner;
+          if (previewEffectsEnabled && hasEffects && runner?.isReady()) {
+            const effectSpecs = clip.effects
+              ?.map((e) => (e as { spec?: unknown }).spec)
+              .filter((s): s is NonNullable<typeof s> => s !== undefined);
+            if (effectSpecs && effectSpecs.length > 0) {
+              try {
+                const processed = await runner.applyEffects(
+                  frame,
+                  effectSpecs as import('~/types/generated/native-monitor/VideoEffectSpec').VideoEffectSpec[],
+                );
+                if (processed) {
+                  safeDispose(frame);
+                  (clip.imageSource as { resource?: unknown }).resource = processed;
+                  clip.imageSource.update();
+                  clip.lastVideoFrame = processed as unknown as VideoFrame;
+                  this.context.getLayoutApplier().applySpriteLayout(frameW, frameH, clip);
+                  return;
+                }
+              } catch (computeErr) {
+                log.warn(
+                  '[VideoCompositor] WebGPU compute failed, falling back to raw frame:',
+                  computeErr,
+                );
+              }
+            }
           }
 
           (clip.imageSource as { resource?: unknown }).resource = frame as unknown;

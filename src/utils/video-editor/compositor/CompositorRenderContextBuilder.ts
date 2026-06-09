@@ -153,7 +153,11 @@ export class CompositorRenderContextBuilder {
           getVideoSampleForClip: params.getVideoSampleForClip,
           getPrevClipOnLayer: params.getPrevClipOnLayer,
           updateClipTextureFromSample: (sample, clip) =>
-            params.clipResourceManager.updateClipTextureFromSample(sample, clip),
+            params.clipResourceManager.updateClipTextureFromSample(
+              sample,
+              clip,
+              params.getPreviewEffectsEnabled(),
+            ),
           setClipSpriteVisible: params.setClipSpriteVisible,
         }),
       sortStage: () => {
@@ -192,7 +196,11 @@ export class CompositorRenderContextBuilder {
           removeAbortController: (key) => params.resourceManager.removeAbortController(key),
           getVideoSampleForClip: params.getVideoSampleForClip,
           updateClipTextureFromSample: (sample, clip) =>
-            params.clipResourceManager.updateClipTextureFromSample(sample, clip),
+            params.clipResourceManager.updateClipTextureFromSample(
+              sample,
+              clip,
+              params.getPreviewEffectsEnabled(),
+            ),
         }),
       applyMasterEffects: () => {
         params.effectManager.applyMasterEffects(

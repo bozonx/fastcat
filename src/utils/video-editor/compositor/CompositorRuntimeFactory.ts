@@ -19,6 +19,7 @@ import { TimelineLoadOrchestrator } from './TimelineLoadOrchestrator';
 import { TimelineTrackRebinder } from './TimelineTrackRebinder';
 import { TimelineUpdateLifecycle } from './TimelineUpdateLifecycle';
 import type { VideoFrameCache } from './VideoFrameCache';
+import type { WebGpuComputeRunner } from './WebGpuComputeRunner';
 
 export interface CompositorRuntimeFactoryParams {
   width: number;
@@ -26,6 +27,7 @@ export interface CompositorRuntimeFactoryParams {
   clipPreferBitmapFallback: Map<string, boolean>;
   resourceManager: ResourceManager;
   videoFrameCache: VideoFrameCache;
+  computeRunner?: WebGpuComputeRunner;
 }
 
 export interface CompositorRuntime {
@@ -51,7 +53,14 @@ export interface CompositorRuntime {
 }
 
 export function createCompositorRuntime(params: CompositorRuntimeFactoryParams): CompositorRuntime {
-  const { width, height, clipPreferBitmapFallback, resourceManager, videoFrameCache } = params;
+  const {
+    width,
+    height,
+    clipPreferBitmapFallback,
+    resourceManager,
+    videoFrameCache,
+    computeRunner,
+  } = params;
   const layoutApplier = new LayoutApplier({ width, height });
   const textRenderer = new TextRenderer();
   const shapeRenderer = new ShapeRenderer();
@@ -110,6 +119,7 @@ export function createCompositorRuntime(params: CompositorRuntimeFactoryParams):
       videoFrameCache,
       canvasFallbackRenderer,
       getLayoutApplier: () => layoutApplier,
+      computeRunner,
     }),
   };
 }
