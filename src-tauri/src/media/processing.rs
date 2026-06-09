@@ -393,6 +393,11 @@ fn build_proxy_ffmpeg_args(
         "-y".to_string(),
         "-loglevel".to_string(),
         "warning".to_string(),
+        // `-loglevel warning` alone suppresses the periodic `frame=… time=…` stats
+        // lines that `run_ffmpeg_task` parses for progress; `-stats` re-enables them
+        // so the background-task progress bar advances (and the stall watchdog keeps
+        // seeing activity during long encodes).
+        "-stats".to_string(),
     ]);
 
     push_hw_accel_decode_args(&mut args, hw_decode, vaapi_dev);
@@ -409,6 +414,13 @@ fn build_proxy_ffmpeg_args(
     }
 
     push_video_encode_filter_args(&mut args, hw_encode, width, height, false);
+
+    // ffmpeg auto-rotates (bakes the display matrix into pixels) before the scale
+    // filter above, so the proxy is already in display orientation. Some ffmpeg
+    // builds/muxers still copy the source rotation flag onto the output, which the
+    // monitor decoder would then apply a *second* time → squished/sideways video.
+    // Force the rotation metadata to zero so the proxy is unambiguously upright.
+    args.extend(["-metadata:s:v:0".to_string(), "rotate=0".to_string()]);
 
     let video_codec = ffmpeg_video_codec_hw(&options.video_codec, hw_encode);
     args.extend([

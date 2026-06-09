@@ -162,13 +162,39 @@ impl LayerRuntimeManager {
         self.preview_sync_mode = scene.preview_sync_mode;
         let new_ids: HashSet<String> = scene.layers.iter().map(|l| l.id.clone()).collect();
 
+        // Путь источника по id в НОВОЙ сцене — чтобы заметить смену файла у того же
+        // слоя (напр. переключение proxy ↔ оригинал в мониторе). id остаётся прежним,
+        // меняется только `path`, поэтому диф по одному id оставил бы старый декодер.
+        let new_paths: HashMap<&str, &str> = scene
+            .layers
+            .iter()
+            .map(|l| (l.id.as_str(), l.path.as_str()))
+            .collect();
+        // Старые пути по id (текущая сцена ещё не перезаписана) для сравнения.
+        let old_paths: HashMap<String, String> = self
+            .scene
+            .iter()
+            .map(|l| (l.id.clone(), l.path.clone()))
+            .collect();
+        // Сменился ли путь хоть у одного слоя, доживающего до новой сцены.
+        let any_path_changed = old_paths.iter().any(|(id, old)| {
+            new_paths
+                .get(id.as_str())
+                .is_some_and(|new| *new != old.as_str())
+        });
+
         let scale_changed = !approx_eq_opt_scale(self.preview_scale, scene.preview_scale);
-        if scale_changed {
-            log::info!(
-                "[monitor] preview_scale {:?} → {:?}: dropping video runtimes",
-                self.preview_scale,
-                scene.preview_scale,
-            );
+        // И смена preview_scale, и смена источника требуют сбросить эпоху: иначе
+        // фоновый декод, стартовавший под старый путь/масштаб, мог бы прилететь
+        // позже и подменить свежий рантайм устаревшим источником.
+        if scale_changed || any_path_changed {
+            if scale_changed {
+                log::info!(
+                    "[monitor] preview_scale {:?} → {:?}: dropping video runtimes",
+                    self.preview_scale,
+                    scene.preview_scale,
+                );
+            }
             self.load_epoch = self.load_epoch.wrapping_add(1);
             self.loading_set.clear();
         }
@@ -187,8 +213,15 @@ impl LayerRuntimeManager {
                 };
             let gone = !new_ids.contains(&id);
             let failed_retry = matches!(rt, LayerRuntime::Failed);
-            if drop_for_scale || gone || failed_retry {
+            // Источник слоя сменился: старый декодер/растр держит другой файл, его
+            // нужно дропнуть, чтобы `ensure_runtime_for` поднял новый путь заново.
+            let path_changed = match (old_paths.get(&id), new_paths.get(id.as_str())) {
+                (Some(old), Some(new)) => old.as_str() != *new,
+                _ => false,
+            };
+            if drop_for_scale || gone || failed_retry || path_changed {
                 to_drop.push(rt);
+                self.loading_set.remove(&id);
             } else {
                 self.runtimes.insert(id, rt);
             }
