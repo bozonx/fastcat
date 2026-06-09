@@ -430,115 +430,136 @@ export class WebGpuComputeRunner {
       usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST,
     });
 
-    this.device.queue.copyExternalImageToTexture(
-      { source, flipY: false },
-      { texture: inputTexture },
-      { width: w, height: h, depthOrArrayLayers: 1 },
-    );
+    try {
+      this.device.queue.copyExternalImageToTexture(
+        { source, flipY: false },
+        { texture: inputTexture },
+        { width: w, height: h, depthOrArrayLayers: 1 },
+      );
 
-    const inputView = inputTexture.createView();
-    const owned = this.createOutputTexture(w, h);
+      const inputView = inputTexture.createView();
+      const owned = this.createOutputTexture(w, h);
 
-    this.ensureUniformBuffer(passes.length);
+      try {
+        this.ensureUniformBuffer(passes.length);
 
-    const staging = new ArrayBuffer(this.uniformStride * passes.length);
-    const u32 = new Uint32Array(staging);
-    const f32 = new Float32Array(staging);
+        const staging = new ArrayBuffer(this.uniformStride * passes.length);
+        const u32 = new Uint32Array(staging);
+        const f32 = new Float32Array(staging);
 
-    for (let i = 0; i < passes.length; i++) {
-      const base = (i * this.uniformStride) / 4;
-      const u = passes[i]!.uniform;
-      u32[base + 0] = u.mode;
-      u32[base + 1] = u.width;
-      u32[base + 2] = u.height;
-      u32[base + 3] = u.seed;
-      f32[base + 4] = u.p0;
-      f32[base + 5] = u.p1;
-      f32[base + 6] = u.p2;
-      f32[base + 7] = u.p3;
-      f32[base + 8] = u.p4;
-      f32[base + 9] = u.p5;
-      f32[base + 10] = u.p6;
-      f32[base + 11] = u.p7;
-    }
+        for (let i = 0; i < passes.length; i++) {
+          const base = (i * this.uniformStride) / 4;
+          const u = passes[i]!.uniform;
+          u32[base + 0] = u.mode;
+          u32[base + 1] = u.width;
+          u32[base + 2] = u.height;
+          u32[base + 3] = u.seed;
+          f32[base + 4] = u.p0;
+          f32[base + 5] = u.p1;
+          f32[base + 6] = u.p2;
+          f32[base + 7] = u.p3;
+          f32[base + 8] = u.p4;
+          f32[base + 9] = u.p5;
+          f32[base + 10] = u.p6;
+          f32[base + 11] = u.p7;
+        }
 
-    this.device.queue.writeBuffer(this.uniformBuffer!, 0, staging);
+        this.device.queue.writeBuffer(this.uniformBuffer!, 0, staging);
 
-    const encoder = this.device.createCommandEncoder({ label: 'web-effect-encoder' });
-    const lastIndex = passes.length - 1;
-    let lastIsPing = false;
+        const encoder = this.device.createCommandEncoder({ label: 'web-effect-encoder' });
+        const lastIndex = passes.length - 1;
+        let lastIsPing = false;
 
-    for (let index = 0; index < passes.length; index++) {
-      const pass = passes[index]!;
-      const uniformOffset = index * this.uniformStride;
+        for (let index = 0; index < passes.length; index++) {
+          const pass = passes[index]!;
+          const uniformOffset = index * this.uniformStride;
 
-      const sourceView = index === 0 ? inputView : lastIsPing ? this.pingView! : this.pongView!;
-      const intermediateTarget = index === 0 || !lastIsPing ? this.pingView! : this.pongView!;
-      const targetView = index === lastIndex ? owned.view : intermediateTarget;
+          const sourceView = index === 0 ? inputView : lastIsPing ? this.pingView! : this.pongView!;
+          const intermediateTarget = index === 0 || !lastIsPing ? this.pingView! : this.pongView!;
+          const targetView = index === lastIndex ? owned.view : intermediateTarget;
 
-      const isCompose = pass.uniform.mode === 18;
-      const bindSrc = isCompose ? inputView : sourceView;
-      const bindSecondary = isCompose ? sourceView : inputView;
+          const isCompose = pass.uniform.mode === 18;
+          const bindSrc = isCompose ? inputView : sourceView;
+          const bindSecondary = isCompose ? sourceView : inputView;
 
-      let pipeline = this.pipeline;
-      if (pass.customSource) {
-        pipeline = this.getOrCreateCustomPipeline(pass.customSource);
+          let pipeline = this.pipeline;
+          if (pass.customSource) {
+            pipeline = this.getOrCreateCustomPipeline(pass.customSource);
+          }
+
+          const bindGroup = this.device.createBindGroup({
+            label: 'web-effect-bind-group',
+            layout: this.bindLayout,
+            entries: [
+              { binding: 0, resource: bindSrc },
+              { binding: 1, resource: targetView },
+              {
+                binding: 2,
+                resource: { buffer: this.uniformBuffer!, offset: 0, size: UNIFORM_SIZE },
+              },
+              { binding: 3, resource: bindSecondary },
+            ],
+          });
+
+          const computePass = encoder.beginComputePass({ label: 'web-effect-pass' });
+          computePass.setPipeline(pipeline);
+          computePass.setBindGroup(0, bindGroup, [uniformOffset]);
+          computePass.dispatchWorkgroups(Math.ceil(w / 8), Math.ceil(h / 8), 1);
+          computePass.end();
+
+          lastIsPing = index === 0 || !lastIsPing;
+        }
+
+        this.device.queue.submit([encoder.finish()]);
+
+        // Read output back to CPU and create ImageBitmap
+        const bytesPerRow = Math.ceil((w * 4) / 256) * 256;
+        const outputBuffer = this.device.createBuffer({
+          size: bytesPerRow * h,
+          usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ,
+        });
+
+        try {
+          const readEncoder = this.device.createCommandEncoder();
+          readEncoder.copyTextureToBuffer(
+            { texture: owned.texture },
+            { buffer: outputBuffer, bytesPerRow, rowsPerImage: h },
+            { width: w, height: h, depthOrArrayLayers: 1 },
+          );
+          this.device.queue.submit([readEncoder.finish()]);
+
+          await outputBuffer.mapAsync(GPUMapMode.READ);
+          const mappedRange = outputBuffer.getMappedRange();
+          const canvas = new OffscreenCanvas(w, h);
+          const ctx = canvas.getContext('2d')!;
+          const imageData = ctx.createImageData(w, h);
+          const data = imageData.data;
+
+          const rowSize = w * 4;
+          if (bytesPerRow === rowSize) {
+            data.set(new Uint8ClampedArray(mappedRange, 0, rowSize * h));
+          } else {
+            for (let y = 0; y < h; y++) {
+              const srcOffset = y * bytesPerRow;
+              const dstOffset = y * rowSize;
+              data.set(new Uint8ClampedArray(mappedRange, srcOffset, rowSize), dstOffset);
+            }
+          }
+
+          ctx.putImageData(imageData, 0, 0);
+          outputBuffer.unmap();
+
+          const result = await createImageBitmap(canvas);
+          return result;
+        } finally {
+          outputBuffer.destroy();
+        }
+      } finally {
+        owned.texture.destroy();
       }
-
-      const bindGroup = this.device.createBindGroup({
-        label: 'web-effect-bind-group',
-        layout: this.bindLayout,
-        entries: [
-          { binding: 0, resource: bindSrc },
-          { binding: 1, resource: targetView },
-          {
-            binding: 2,
-            resource: { buffer: this.uniformBuffer!, offset: 0, size: UNIFORM_SIZE },
-          },
-          { binding: 3, resource: bindSecondary },
-        ],
-      });
-
-      const computePass = encoder.beginComputePass({ label: 'web-effect-pass' });
-      computePass.setPipeline(pipeline);
-      computePass.setBindGroup(0, bindGroup, [uniformOffset]);
-      computePass.dispatchWorkgroups(Math.ceil(w / 8), Math.ceil(h / 8), 1);
-      computePass.end();
-
-      lastIsPing = index === 0 || !lastIsPing;
+    } finally {
+      inputTexture.destroy();
     }
-
-    this.device.queue.submit([encoder.finish()]);
-
-    // Read output back to CPU and create ImageBitmap
-    const bytesPerRow = Math.ceil((w * 4) / 256) * 256;
-    const outputBuffer = this.device.createBuffer({
-      size: bytesPerRow * h,
-      usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ,
-    });
-
-    const readEncoder = this.device.createCommandEncoder();
-    readEncoder.copyTextureToBuffer(
-      { texture: owned.texture },
-      { buffer: outputBuffer, bytesPerRow, rowsPerImage: h },
-      { width: w, height: h, depthOrArrayLayers: 1 },
-    );
-    this.device.queue.submit([readEncoder.finish()]);
-
-    await outputBuffer.mapAsync(GPUMapMode.READ);
-    const mapped = new Uint8Array(outputBuffer.getMappedRange());
-    const canvas = new OffscreenCanvas(w, h);
-    const ctx = canvas.getContext('2d')!;
-    const imageData = new ImageData(
-      new Uint8ClampedArray(mapped.buffer, mapped.byteOffset, w * 4 * h),
-      w,
-      h,
-    );
-    ctx.putImageData(imageData, 0, 0);
-    outputBuffer.unmap();
-
-    const result = await createImageBitmap(canvas);
-    return result;
   }
 
   private ensureTextures(width: number, height: number): void {
