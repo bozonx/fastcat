@@ -21,7 +21,7 @@ use winit::event_loop::EventLoopProxy;
 
 use super::handle::MonitorCommand;
 use super::layer_runtime::*;
-use super::scene::{LayerKind, MonitorScene, PreviewSyncMode, SceneLayer};
+use super::scene::{LayerKind, MonitorScene, NativeFrameCacheMode, PreviewSyncMode, SceneLayer};
 use super::scene_build::{build_compositor_scene, rasterize_svg};
 use crate::compositor::scene::Scene;
 use crate::media::decode_gate::decoder_load_gate;
@@ -33,6 +33,14 @@ use crate::media::image_decode::decode_image;
 /// больше окна готовности `app::PREBUFFER_LOOKAHEAD_SEC`, чтобы к моменту Play кадры
 /// уже были в кеше. Реальное число кадров ограничено бюджетом памяти на слой.
 pub(super) const PREROLL_LOOKAHEAD_SEC: f64 = 0.2;
+
+const MB: usize = 1024 * 1024;
+const LOW_CACHE_BUDGET_BYTES: usize = 96 * MB;
+const BALANCED_CACHE_BUDGET_BYTES: usize = 192 * MB;
+const HIGH_CACHE_BUDGET_BYTES: usize = 512 * MB;
+const AUTO_CACHE_MIN_FRAMES: usize = 6;
+const AUTO_CACHE_MAX_BYTES: usize = 512 * MB;
+const AUTO_CACHE_TARGET_WINDOW_SEC: f64 = 0.5;
 
 const STRICT_VIDEO_SYNC_LAG_FRAMES: f64 = 2.0;
 const STRICT_VIDEO_SYNC_LAG_SEC: f64 = 0.08;
@@ -54,6 +62,8 @@ pub struct LayerRuntimeManager {
     pub preview_fps: f64,
     /// Политика AV-sync для preview.
     pub preview_sync_mode: PreviewSyncMode,
+    frame_cache_mode: NativeFrameCacheMode,
+    frame_cache_custom_mb: u32,
     pub playing: bool,
     /// Последний timeline-PTS из `tick`/`seek`. Нужен, чтобы лениво открытый рантайм
     /// сикался на текущий playhead, а не на начало клипа.
@@ -80,6 +90,8 @@ impl LayerRuntimeManager {
             preview_scale: None,
             preview_fps: 30.0,
             preview_sync_mode: PreviewSyncMode::Balanced,
+            frame_cache_mode: NativeFrameCacheMode::Auto,
+            frame_cache_custom_mb: 0,
             playing: false,
             last_tick_t: 0.0,
             runtimes: HashMap::new(),
@@ -166,6 +178,8 @@ impl LayerRuntimeManager {
         // `Duration::from_secs_f64(1.0 / fps)` в event-loop, который паникует на не-finite.
         self.preview_fps = sanitize_preview_fps(scene.preview_fps);
         self.preview_sync_mode = scene.preview_sync_mode;
+        let cache_policy_changed = self.frame_cache_mode != scene.frame_cache_mode
+            || self.frame_cache_custom_mb != scene.frame_cache_custom_mb;
         let new_ids: HashSet<String> = scene.layers.iter().map(|l| l.id.clone()).collect();
 
         // Путь источника по id в НОВОЙ сцене — чтобы заметить смену файла у того же
@@ -193,7 +207,7 @@ impl LayerRuntimeManager {
         // И смена preview_scale, и смена источника требуют сбросить эпоху: иначе
         // фоновый декод, стартовавший под старый путь/масштаб, мог бы прилететь
         // позже и подменить свежий рантайм устаревшим источником.
-        if scale_changed || any_path_changed {
+        if scale_changed || any_path_changed || cache_policy_changed {
             if scale_changed {
                 log::info!(
                     "[monitor] preview_scale {:?} → {:?}: dropping video runtimes",
@@ -201,17 +215,28 @@ impl LayerRuntimeManager {
                     scene.preview_scale,
                 );
             }
+            if cache_policy_changed {
+                log::info!(
+                    "[monitor] frame cache policy {:?}/{}MB → {:?}/{}MB: dropping video runtimes",
+                    self.frame_cache_mode,
+                    self.frame_cache_custom_mb,
+                    scene.frame_cache_mode,
+                    scene.frame_cache_custom_mb,
+                );
+            }
             self.load_epoch = self.load_epoch.wrapping_add(1);
             self.loading_set.clear();
         }
         self.preview_scale = scene.preview_scale;
+        self.frame_cache_mode = scene.frame_cache_mode;
+        self.frame_cache_custom_mb = scene.frame_cache_custom_mb;
 
         // Diff рантаймов: сохраняем живые, остальные дропаем в фоне.
         // DecodePump::drop блокирует до завершения ffmpeg + join — делаем в отдельном потоке.
         let prev = std::mem::take(&mut self.runtimes);
         let mut to_drop: Vec<LayerRuntime> = Vec::new();
         for (id, rt) in prev {
-            let drop_for_scale = scale_changed
+            let drop_for_policy = (scale_changed || cache_policy_changed)
                 && match &rt {
                     LayerRuntime::Video(_) | LayerRuntime::Loading => true,
                     LayerRuntime::Image(im) => im.is_svg,
@@ -225,7 +250,7 @@ impl LayerRuntimeManager {
                 (Some(old), Some(new)) => old.as_str() != *new,
                 _ => false,
             };
-            if drop_for_scale || gone || failed_retry || path_changed {
+            if drop_for_policy || gone || failed_retry || path_changed {
                 to_drop.push(rt);
                 self.loading_set.remove(&id);
             } else {
@@ -435,7 +460,14 @@ impl LayerRuntimeManager {
                     .find(|l| l.id == id)
                     .map(|l| l.source_pts_at(self.last_tick_t))
                     .unwrap_or(0.0);
-                let rt = VideoLayerRt::new(pump, media_size, source_rotation);
+                let cache_budget_bytes = frame_cache_budget_bytes(
+                    self.frame_cache_mode,
+                    self.frame_cache_custom_mb,
+                    media_size,
+                    pump.info.fps,
+                );
+                let mut rt =
+                    VideoLayerRt::new(pump, media_size, source_rotation, cache_budget_bytes);
                 if self.playing {
                     let _ = rt.pump.play();
                 } else {
@@ -444,6 +476,7 @@ impl LayerRuntimeManager {
                 if let Err(e) = rt.pump.seek(clip_local) {
                     log::error!("[monitor] initial seek {id}: {e:?}");
                 }
+                rt.note_seek_requested();
                 // На паузе сразу прогреваем первый GOP вперёд playhead'а, чтобы
                 // последующий Play не фризил/не чернел на холодном декоде. На
                 // воспроизведении декодер и так стримит вперёд (pump.play выше).
@@ -658,6 +691,7 @@ impl LayerRuntimeManager {
                 if let Err(e) = rt.pump.seek(clip_local) {
                     log::error!("[monitor] seek pump {}: {e:?}", layer.id);
                 }
+                rt.note_seek_requested();
                 // На паузе сразу прогреваем первый GOP вперёд playhead'а, чтобы
                 // последующий Play не фризил на декоде 4К от ключевого кадра. На
                 // воспроизведении декодер и так стримит вперёд — отдельный прогрев не нужен.
@@ -753,6 +787,7 @@ impl LayerRuntimeManager {
                 if let Err(e) = rt.pump.seek(clip_local) {
                     log::error!("[monitor] resync pump {}: {e:?}", layer.id);
                 }
+                rt.note_seek_requested();
             }
         }
     }
@@ -796,6 +831,36 @@ fn video_sync_lag_sec(mode: PreviewSyncMode, fps: f64) -> Option<f64> {
 
 fn allows_stale_video_fallback(mode: PreviewSyncMode) -> bool {
     matches!(mode, PreviewSyncMode::Smooth | PreviewSyncMode::Balanced)
+}
+
+fn frame_cache_budget_bytes(
+    mode: NativeFrameCacheMode,
+    custom_mb: u32,
+    media_size: (u32, u32),
+    fps: f64,
+) -> usize {
+    match mode {
+        NativeFrameCacheMode::Low => LOW_CACHE_BUDGET_BYTES,
+        NativeFrameCacheMode::Balanced => BALANCED_CACHE_BUDGET_BYTES,
+        NativeFrameCacheMode::High => HIGH_CACHE_BUDGET_BYTES,
+        NativeFrameCacheMode::Custom => (custom_mb as usize).saturating_mul(MB),
+        NativeFrameCacheMode::Auto => {
+            let frame_bytes = (media_size.0 as usize)
+                .saturating_mul(media_size.1 as usize)
+                .saturating_mul(4)
+                .max(1);
+            let fps = if fps.is_finite() && fps > 0.0 {
+                fps
+            } else {
+                30.0
+            };
+            let target_frames =
+                ((fps * AUTO_CACHE_TARGET_WINDOW_SEC).ceil() as usize).max(AUTO_CACHE_MIN_FRAMES);
+            frame_bytes
+                .saturating_mul(target_frames)
+                .clamp(BALANCED_CACHE_BUDGET_BYTES, AUTO_CACHE_MAX_BYTES)
+        }
+    }
 }
 
 /// Целевое разрешение растеризации SVG: длинная сторона сцены × preview_scale.

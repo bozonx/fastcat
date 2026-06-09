@@ -134,6 +134,11 @@ export function useNativeMonitorBridge(): void {
         preview_scale: previewScale,
         preview_fps: fmt?.fps ?? 30,
         preview_sync_mode: workspaceStore.userSettings.optimization.nativeMonitorSyncMode,
+        frame_cache_mode: workspaceStore.userSettings.optimization.nativeFrameCacheMode,
+        frame_cache_custom_mb: Math.max(
+          0,
+          Math.round(workspaceStore.userSettings.optimization.nativeFrameCacheCustomMb),
+        ),
       };
     }
 

@@ -105,6 +105,7 @@ describe('SettingsVideo', () => {
     // Should render ffmpeg settings
     expect(wrapper.text()).toContain('videoEditor.settings.video.ffmpegSettings');
     expect(wrapper.text()).toContain('videoEditor.settings.video.hwaccelMode');
+    expect(wrapper.text()).toContain('videoEditor.settings.video.nativeFrameCacheMode');
 
     // Should invoke native_get_ffmpeg_diagnostics
     expect(invoke).toHaveBeenCalledWith('native_get_ffmpeg_diagnostics', expect.any(Object));

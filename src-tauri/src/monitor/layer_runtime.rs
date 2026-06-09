@@ -100,6 +100,8 @@ pub struct VideoLayerRt {
     pub current: Option<DecodedVideoFrame>,
     /// Cache of decoded frames for cheap backward scrubbing without respawning ffmpeg.
     cache: VideoFrameCache,
+    /// Last decoded frame kept only as a display handoff when the rotating cache is disabled.
+    uncached_latest: Option<DecodedVideoFrame>,
     /// Time of the last cache-miss re-seek (throttles re-seeking).
     last_reseek: Option<Instant>,
     /// Consecutive ticks lagged beyond the sync window (decode-bound detector).
@@ -110,17 +112,23 @@ pub struct VideoLayerRt {
 }
 
 impl VideoLayerRt {
-    pub fn new(pump: DecodePump, media_size: (u32, u32), source_rotation: i32) -> Self {
+    pub fn new(
+        pump: DecodePump,
+        media_size: (u32, u32),
+        source_rotation: i32,
+        cache_budget_bytes: usize,
+    ) -> Self {
         let fps = pump.info.fps;
         let frame_bytes = (media_size.0 as usize)
             .saturating_mul(media_size.1 as usize)
             .saturating_mul(4);
         Self {
-            cache: VideoFrameCache::new(fps, frame_bytes),
+            cache: VideoFrameCache::new(fps, frame_bytes, cache_budget_bytes),
             pump,
             media_size,
             source_rotation,
             current: None,
+            uncached_latest: None,
             last_reseek: None,
             lagged_ticks: 0,
             last_newest_pts: None,
@@ -165,7 +173,21 @@ impl VideoLayerRt {
     /// True once a frame at or past `target_clip_local` is buffered — the decoder has
     /// decoded ahead of the playhead and playback can start without a startup freeze.
     pub fn has_buffered_through(&self, target_clip_local: f64) -> bool {
+        if self.cache.is_disabled() {
+            return self
+                .uncached_latest
+                .as_ref()
+                .is_some_and(|frame| frame.pts_sec >= target_clip_local);
+        }
+
         self.cache.has_frame_ge(target_clip_local)
+    }
+
+    pub fn note_seek_requested(&mut self) {
+        if self.cache.is_disabled() {
+            self.uncached_latest = None;
+            self.current = None;
+        }
     }
 
     /// Warms the cache while paused: pre-decodes ~`lookahead_sec` of frames ahead of
@@ -219,6 +241,7 @@ impl VideoLayerRt {
         if let Err(e) = self.pump.seek(target_clip_local) {
             log::error!("[monitor] reseek-on-miss seek: {e:?}");
         }
+        self.note_seek_requested();
         if let Some(frame) = self.cache.frame_nearest(target_clip_local) {
             self.current = Some(frame);
         }
@@ -250,6 +273,7 @@ impl VideoLayerRt {
         if let Err(e) = self.pump.seek(target_clip_local) {
             log::error!("[monitor] {reason} seek: {e:?}");
         }
+        self.note_seek_requested();
     }
 
     /// Drains all available frames from the decoder into the cache (non-blocking).
@@ -261,7 +285,13 @@ impl VideoLayerRt {
             }
             // GPU texture lives inside the frame itself (Arc); eviction frees it
             // by dropping — no separate sync with an external texture cache needed.
-            self.cache.insert(video_frame_to_cached(msg.frame));
+            let cached = video_frame_to_cached(msg.frame);
+            if self.cache.is_disabled() {
+                self.uncached_latest = Some(cached);
+            } else {
+                self.uncached_latest = None;
+                self.cache.insert(cached);
+            }
         }
     }
 
@@ -271,6 +301,22 @@ impl VideoLayerRt {
             Some(max_lag) => self.cache.frame_le_with_max_lag(target_clip_local, max_lag),
             None => self.cache.frame_le(target_clip_local),
         };
+        let frame = frame.or_else(|| {
+            if !self.cache.is_disabled() {
+                return None;
+            }
+
+            let latest = self.uncached_latest.as_ref()?;
+            if latest.pts_sec > target_clip_local {
+                return None;
+            }
+            if let Some(max_lag) = max_lag_sec {
+                if target_clip_local - latest.pts_sec > max_lag.max(0.0) {
+                    return None;
+                }
+            }
+            Some(latest.clone())
+        });
         match frame {
             Some(frame) => {
                 self.current = Some(frame);
@@ -285,6 +331,10 @@ impl VideoLayerRt {
     }
 
     pub fn has_cached_near(&mut self, target_clip_local: f64, tolerance_frames: i64) -> bool {
+        if self.cache.is_disabled() {
+            return false;
+        }
+
         self.cache.has_near(target_clip_local, tolerance_frames)
     }
 }
@@ -358,7 +408,7 @@ mod tests {
         .expect("open fixture decoder");
         let media_size = (pump.info.width, pump.info.height);
         let rotation = pump.info.rotation;
-        VideoLayerRt::new(pump, media_size, rotation)
+        VideoLayerRt::new(pump, media_size, rotation, 192 * 1024 * 1024)
     }
 
     // Guards the graceful-degradation contract for decode-bound sources (e.g. 4K):

@@ -27,6 +27,11 @@ describe('DEFAULT_USER_SETTINGS', () => {
     expect(DEFAULT_USER_SETTINGS.optimization.nativeMonitorSyncMode).toBe('balanced');
   });
 
+  it('uses automatic native frame cache by default', () => {
+    expect(DEFAULT_USER_SETTINGS.optimization.nativeFrameCacheMode).toBe('auto');
+    expect(DEFAULT_USER_SETTINGS.optimization.nativeFrameCacheCustomMb).toBe(512);
+  });
+
   it('has mouse defaults', () => {
     expect(DEFAULT_USER_SETTINGS.mouse.timeline.click).toBe('select_item');
     expect(DEFAULT_USER_SETTINGS.mouse.ruler.click).toBe('seek');

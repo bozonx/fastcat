@@ -158,6 +158,10 @@ function resetDefaults() {
     DEFAULT_USER_SETTINGS.optimization.enableHardwareEncoding;
   workspaceStore.userSettings.optimization.nativeMonitorSyncMode =
     DEFAULT_USER_SETTINGS.optimization.nativeMonitorSyncMode;
+  workspaceStore.userSettings.optimization.nativeFrameCacheMode =
+    DEFAULT_USER_SETTINGS.optimization.nativeFrameCacheMode;
+  workspaceStore.userSettings.optimization.nativeFrameCacheCustomMb =
+    DEFAULT_USER_SETTINGS.optimization.nativeFrameCacheCustomMb;
   isResetConfirmOpen.value = false;
 }
 
@@ -310,6 +314,41 @@ const tauriVideoCodecs = computed(() => {
               ]"
               class="max-w-xs"
               full-width
+            />
+          </UiFormField>
+
+          <UiFormField
+            :label="t('videoEditor.settings.video.nativeFrameCacheMode')"
+            :help="t('videoEditor.settings.video.nativeFrameCacheModeHelp')"
+          >
+            <UiSelect
+              v-model="workspaceStore.userSettings.optimization.nativeFrameCacheMode"
+              :items="[
+                { label: t('videoEditor.settings.video.nativeFrameCacheAuto'), value: 'auto' },
+                { label: t('videoEditor.settings.video.nativeFrameCacheLow'), value: 'low' },
+                {
+                  label: t('videoEditor.settings.video.nativeFrameCacheBalanced'),
+                  value: 'balanced',
+                },
+                { label: t('videoEditor.settings.video.nativeFrameCacheHigh'), value: 'high' },
+                { label: t('videoEditor.settings.video.nativeFrameCacheCustom'), value: 'custom' },
+              ]"
+              class="max-w-xs"
+              full-width
+            />
+          </UiFormField>
+
+          <UiFormField
+            v-if="workspaceStore.userSettings.optimization.nativeFrameCacheMode === 'custom'"
+            :label="t('videoEditor.settings.video.nativeFrameCacheCustomMb')"
+            :help="t('videoEditor.settings.video.nativeFrameCacheCustomMbHelp')"
+          >
+            <UiWheelNumberInput
+              v-model="workspaceStore.userSettings.optimization.nativeFrameCacheCustomMb"
+              :min="0"
+              :max="4096"
+              :step="32"
+              class="max-w-xs"
             />
           </UiFormField>
 

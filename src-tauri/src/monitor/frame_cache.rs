@@ -31,9 +31,6 @@ pub struct DecodedVideoFrame {
     pub texture: Option<Arc<wgpu::Texture>>,
 }
 
-/// Бюджет памяти кеша на один слой. ~192 МБ: для 1080p (~8 МБ/кадр) это ~23 кадра,
-/// для 540p-превью (~2 МБ) ~90 кадров — достаточное «окно» для скраба, не раздувает память.
-const CACHE_BUDGET_BYTES: usize = 192 * 1024 * 1024;
 const MIN_FRAMES: usize = 6;
 const MAX_FRAMES: usize = 300;
 
@@ -53,11 +50,17 @@ pub struct VideoFrameCache {
 const CACHE_KEY_HZ: f64 = 1000.0;
 
 impl VideoFrameCache {
-    pub fn new(fps: f64, frame_bytes: usize) -> Self {
-        let capacity = CACHE_BUDGET_BYTES
+    pub fn new(fps: f64, frame_bytes: usize, cache_budget_bytes: usize) -> Self {
+        let capacity = cache_budget_bytes
             .checked_div(frame_bytes)
-            .map(|n| n.clamp(MIN_FRAMES, MAX_FRAMES))
-            .unwrap_or(MIN_FRAMES);
+            .map(|n| {
+                if n == 0 {
+                    0
+                } else {
+                    n.clamp(MIN_FRAMES, MAX_FRAMES)
+                }
+            })
+            .unwrap_or(0);
         Self {
             fps: if fps > 0.0 { fps } else { 30.0 },
             capacity,
@@ -73,6 +76,11 @@ impl VideoFrameCache {
     /// Вставляет кадр. Вытесненные/перезаписанные кадры освобождают свою GPU-текстуру
     /// автоматически через `Drop` Arc'а — отдельной синхронизации с внешним кешем не нужно.
     pub fn insert(&mut self, frame: DecodedVideoFrame) {
+        if self.capacity == 0 {
+            self.frames.clear();
+            return;
+        }
+
         let key = self.index_of(frame.pts_sec);
         self.frames.insert(key, frame);
         self.evict();
@@ -142,6 +150,10 @@ impl VideoFrameCache {
     pub fn has_frame_ge(&self, target_pts: f64) -> bool {
         let key = self.index_of(target_pts);
         self.frames.range(key..).next().is_some()
+    }
+
+    pub fn is_disabled(&self) -> bool {
+        self.capacity == 0
     }
 
     /// Расстояние (секунды) до ближайшего кешированного кадра от `target`.
@@ -229,9 +241,13 @@ mod tests {
         }
     }
 
+    fn cache() -> VideoFrameCache {
+        VideoFrameCache::new(30.0, 4, 1024)
+    }
+
     #[test]
     fn frame_le_returns_floor() {
-        let mut c = VideoFrameCache::new(30.0, 4);
+        let mut c = cache();
         c.insert(frame(0.0));
         c.insert(frame(1.0));
         c.insert(frame(2.0));
@@ -241,7 +257,7 @@ mod tests {
 
     #[test]
     fn frame_le_with_max_lag_rejects_stale_frames() {
-        let mut c = VideoFrameCache::new(30.0, 4);
+        let mut c = cache();
         c.insert(frame(1.0));
 
         assert_eq!(
@@ -253,7 +269,7 @@ mod tests {
 
     #[test]
     fn regular_frame_floor_still_allows_holding_last_frame() {
-        let mut c = VideoFrameCache::new(30.0, 4);
+        let mut c = cache();
         c.insert(frame(1.0));
 
         assert_eq!(c.frame_le(1.5).map(|f| f.pts_sec), Some(1.0));
@@ -263,7 +279,7 @@ mod tests {
     fn vfr_frames_closer_than_avg_interval_do_not_collide() {
         // avg fps=30 → интервал 33мс. Два кадра в 10мс друг от друга (типично для VFR)
         // при старом ключе round(pts*fps) схлопнулись бы в один индекс; мс-ключ их различает.
-        let mut c = VideoFrameCache::new(30.0, 4);
+        let mut c = cache();
         c.insert(frame(1.00));
         c.insert(frame(1.01));
         assert_eq!(c.frames.len(), 2);
@@ -273,7 +289,7 @@ mod tests {
 
     #[test]
     fn nearest_distance_picks_closest_side() {
-        let mut c = VideoFrameCache::new(30.0, 4);
+        let mut c = cache();
         assert_eq!(c.nearest_distance_sec(1.0), None);
         c.insert(frame(1.0));
         c.insert(frame(3.0));
@@ -284,7 +300,7 @@ mod tests {
 
     #[test]
     fn frame_nearest_returns_either_side() {
-        let mut c = VideoFrameCache::new(30.0, 4);
+        let mut c = cache();
         c.insert(frame(1.0));
         c.insert(frame(3.0));
         // Промах le (target < min) всё равно даёт ближайший кадр, а не None.
@@ -295,7 +311,7 @@ mod tests {
 
     #[test]
     fn newest_pts_and_has_frame_ge_track_forward_decode() {
-        let mut c = VideoFrameCache::new(30.0, 4);
+        let mut c = cache();
         assert_eq!(c.newest_pts(), None);
         assert!(!c.has_frame_ge(0.0));
         c.insert(frame(1.0));
@@ -310,7 +326,7 @@ mod tests {
 
     #[test]
     fn has_near_within_tolerance() {
-        let mut c = VideoFrameCache::new(30.0, 4);
+        let mut c = cache();
         c.insert(frame(1.0));
         assert!(c.has_near(1.0, 1));
         assert!(!c.has_near(5.0, 1));
@@ -319,7 +335,7 @@ mod tests {
     #[test]
     fn evicts_to_capacity_keeping_locality() {
         // frame_bytes huge → capacity = MIN_FRAMES (6).
-        let mut c = VideoFrameCache::new(30.0, usize::MAX);
+        let mut c = VideoFrameCache::new(30.0, usize::MAX, usize::MAX);
         for i in 0..20 {
             c.insert(frame(i as f64));
         }
@@ -328,5 +344,14 @@ mod tests {
         c.insert(frame(20.0));
         assert!(c.frames.len() <= MIN_FRAMES + 1);
         assert!(c.frame_le(0.5).map(|f| f.pts_sec) != Some(0.0));
+    }
+
+    #[test]
+    fn zero_budget_disables_rotating_cache() {
+        let mut c = VideoFrameCache::new(30.0, 4, 0);
+        c.insert(frame(1.0));
+        assert!(c.is_disabled());
+        assert_eq!(c.frame_le(1.0).map(|f| f.pts_sec), None);
+        assert!(!c.has_frame_ge(1.0));
     }
 }

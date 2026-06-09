@@ -330,6 +330,8 @@ fn one_clip_scene(layer: crate::monitor::scene::SceneLayer) -> crate::monitor::s
         preview_scale: None,
         preview_fps: 30.0,
         preview_sync_mode: crate::monitor::scene::PreviewSyncMode::Balanced,
+        frame_cache_mode: crate::monitor::scene::NativeFrameCacheMode::Auto,
+        frame_cache_custom_mb: 0,
     }
 }
 

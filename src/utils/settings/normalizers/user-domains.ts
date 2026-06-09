@@ -164,6 +164,14 @@ export function normalizeOptimizationSettings(raw: unknown): FastCatUserSettings
         .min(0)
         .max(4096)
         .catch(DEFAULT_USER_SETTINGS.optimization.videoFrameCacheMb),
+      nativeFrameCacheMode: z
+        .enum(['auto', 'low', 'balanced', 'high', 'custom'])
+        .catch(DEFAULT_USER_SETTINGS.optimization.nativeFrameCacheMode),
+      nativeFrameCacheCustomMb: z.coerce
+        .number()
+        .min(0)
+        .max(4096)
+        .catch(DEFAULT_USER_SETTINGS.optimization.nativeFrameCacheCustomMb),
       ffmpegPath: z.string().catch(DEFAULT_USER_SETTINGS.optimization.ffmpegPath),
       ffprobePath: z.string().catch(DEFAULT_USER_SETTINGS.optimization.ffprobePath),
       hardwareAccelerationMode: z

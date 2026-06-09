@@ -207,6 +207,50 @@ describe('buildNativeMonitorScene', () => {
     expect(scene.layers[0]?.path).not.toContain('proxies');
   });
 
+  it('passes native frame cache settings to the monitor scene', async () => {
+    const timelineDoc = {
+      version: 1,
+      timebase: { fps: 30 },
+      tracks: [],
+    };
+    const projectStore = {
+      projectSettings: {
+        project: {
+          width: 1920,
+          height: 1080,
+          fps: 30,
+          audioDeclickDurationUs: 0,
+        },
+      },
+      getProjectDirHandle: vi.fn(async () => ({ path: '/workspace/project' })),
+      getFileByPath: vi.fn(),
+    };
+    const workspaceStore = {
+      userSettings: {
+        projectDefaults: {
+          defaultAudioFadeCurve: 'linear',
+        },
+        optimization: {
+          nativeMonitorSyncMode: 'balanced',
+          nativeFrameCacheMode: 'custom',
+          nativeFrameCacheCustomMb: 0,
+        },
+      },
+      activeMonitor: {
+        useProxy: false,
+      },
+    };
+
+    const scene = await buildNativeMonitorScene({
+      timelineDoc: timelineDoc as never,
+      projectStore: projectStore as never,
+      workspaceStore: workspaceStore as never,
+    });
+
+    expect(scene.frame_cache_mode).toBe('custom');
+    expect(scene.frame_cache_custom_mb).toBe(0);
+  });
+
   it('keeps absolute local paths unaltered (both Unix and Windows formats)', async () => {
     const timelineDoc = {
       version: 1,

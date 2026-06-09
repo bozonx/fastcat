@@ -112,6 +112,8 @@ export interface FastCatUserSettings {
     mediaTaskConcurrency: number;
     pixiRenderer: 'webgl' | 'webgpu';
     videoFrameCacheMb: number;
+    nativeFrameCacheMode: 'auto' | 'low' | 'balanced' | 'high' | 'custom';
+    nativeFrameCacheCustomMb: number;
     ffmpegPath: string;
     ffprobePath: string;
     hardwareAccelerationMode: 'none' | 'vaapi' | 'nvdec' | 'auto';
@@ -256,6 +258,8 @@ export const DEFAULT_USER_SETTINGS: FastCatUserSettings = {
     mediaTaskConcurrency: 2,
     pixiRenderer: 'webgl',
     videoFrameCacheMb: 256,
+    nativeFrameCacheMode: 'auto',
+    nativeFrameCacheCustomMb: 512,
     ffmpegPath: 'ffmpeg',
     ffprobePath: 'ffprobe',
     hardwareAccelerationMode: 'none',

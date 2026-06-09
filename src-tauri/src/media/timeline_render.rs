@@ -672,6 +672,8 @@ mod tests {
             preview_scale: None,
             preview_fps: 30.0,
             preview_sync_mode: crate::monitor::scene::PreviewSyncMode::Balanced,
+            frame_cache_mode: crate::monitor::scene::NativeFrameCacheMode::Auto,
+            frame_cache_custom_mb: 0,
         };
         let mut cache = VideoDecoderCache::new();
         let export = build_export_scene(&scene, 2.5, (1920, 1080), &mut cache, None).unwrap();

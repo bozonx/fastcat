@@ -58,6 +58,25 @@ describe('settings normalization', () => {
     ).toBe('balanced');
   });
 
+  it('normalizes native monitor frame cache settings', () => {
+    expect(
+      normalizeUserSettings({
+        optimization: { nativeFrameCacheMode: 'custom', nativeFrameCacheCustomMb: 0 },
+      }).optimization,
+    ).toMatchObject({
+      nativeFrameCacheMode: 'custom',
+      nativeFrameCacheCustomMb: 0,
+    });
+    expect(
+      normalizeUserSettings({
+        optimization: { nativeFrameCacheMode: 'invalid', nativeFrameCacheCustomMb: 99999 },
+      }).optimization,
+    ).toMatchObject({
+      nativeFrameCacheMode: 'auto',
+      nativeFrameCacheCustomMb: 512,
+    });
+  });
+
   it('normalizes locale', () => {
     expect(normalizeUserSettings({ locale: 'ru-RU' }).locale).toBe('ru-RU');
     expect(normalizeUserSettings({ locale: 'ru' }).locale).toBe('ru-RU');

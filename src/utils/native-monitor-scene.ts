@@ -220,6 +220,7 @@ function buildNativeTransform(
 ) {
   if (!transform) return undefined;
   const anchor = resolveNormalizedAnchor(transform.anchor);
+
   return {
     x:
       sceneWidth / 2 +
@@ -579,6 +580,8 @@ export async function buildNativeMonitorScene(
     audio_solo: Boolean(track.audioSolo),
   }));
 
+  const optimization = params.workspaceStore.userSettings.optimization;
+
   return {
     layers,
     audio_layers:
@@ -599,6 +602,8 @@ export async function buildNativeMonitorScene(
     height: sceneHeight,
     preview_scale: params.previewScale ?? 1,
     preview_fps: format.fps,
-    preview_sync_mode: params.workspaceStore.userSettings.optimization.nativeMonitorSyncMode,
+    preview_sync_mode: optimization.nativeMonitorSyncMode,
+    frame_cache_mode: optimization.nativeFrameCacheMode ?? 'auto',
+    frame_cache_custom_mb: Math.max(0, Math.round(optimization.nativeFrameCacheCustomMb ?? 0)),
   };
 }

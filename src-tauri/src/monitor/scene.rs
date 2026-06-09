@@ -35,6 +35,27 @@ pub enum LayerKind {
     Background,
 }
 
+#[derive(Debug, Clone, Copy, Deserialize, PartialEq, Eq, TS)]
+#[serde(rename_all = "lowercase")]
+#[ts(
+    export,
+    export_to = "../../src/types/generated/native-monitor/",
+    rename_all = "lowercase"
+)]
+pub enum NativeFrameCacheMode {
+    Auto,
+    Low,
+    Balanced,
+    High,
+    Custom,
+}
+
+impl Default for NativeFrameCacheMode {
+    fn default() -> Self {
+        Self::Auto
+    }
+}
+
 /// 2D-трансформ слоя в координатах сцены (пиксели scene-space).
 ///
 /// Семантика `anchor`: точка привязки внутри натуральной bbox слоя в долях [0..1].
@@ -292,6 +313,12 @@ pub struct MonitorScene {
     /// Политика синхронизации видео с аудио для preview.
     #[serde(default)]
     pub preview_sync_mode: PreviewSyncMode,
+    /// Native decoded frame cache policy. `custom + 0 MB` disables the rotating cache window.
+    #[serde(default)]
+    pub frame_cache_mode: NativeFrameCacheMode,
+    /// Custom per-layer native decoded frame cache budget in MB when `frame_cache_mode=custom`.
+    #[serde(default)]
+    pub frame_cache_custom_mb: u32,
 }
 
 fn default_fps() -> f64 {

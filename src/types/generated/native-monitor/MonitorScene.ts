@@ -3,6 +3,7 @@ import type { PreviewSyncMode } from "./PreviewSyncMode";
 import type { SceneAudioLayer } from "./SceneAudioLayer";
 import type { SceneAudioTrack } from "./SceneAudioTrack";
 import type { SceneLayer } from "./SceneLayer";
+import type { NativeFrameCacheMode } from "./NativeFrameCacheMode";
 
 export type MonitorScene = { layers: Array<SceneLayer>, audio_layers: Array<SceneAudioLayer>, audio_tracks: Array<SceneAudioTrack>, 
 /**
@@ -27,4 +28,12 @@ preview_fps: number,
 /**
  * Политика синхронизации видео с аудио для preview.
  */
-preview_sync_mode: PreviewSyncMode, };
+preview_sync_mode: PreviewSyncMode, 
+/**
+ * Native decoded frame cache policy. `custom + 0 MB` disables the rotating cache window.
+ */
+frame_cache_mode: NativeFrameCacheMode, 
+/**
+ * Custom per-layer native decoded frame cache budget in MB when `frame_cache_mode=custom`.
+ */
+frame_cache_custom_mb: number, };
