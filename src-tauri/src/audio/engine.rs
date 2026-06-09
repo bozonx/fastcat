@@ -415,6 +415,7 @@ mod tests {
     use crate::audio::clock::RealtimeClock;
     use crate::audio::output::{AudioBackend, AudioStream};
     use crate::audio::ring::SpscRingBuffer;
+    use crate::monitor::scene::{AudioFadeCurve, SceneAudioLayer};
     use std::sync::Arc;
 
     struct MockAudioStream;
@@ -475,6 +476,32 @@ mod tests {
 
     fn seek_serial(engine: &NativeAudioEngine) -> u64 {
         engine.shared.0.lock().seek_serial
+    }
+
+    fn layer(
+        id: &str,
+        path: &str,
+        timeline_start_sec: f64,
+        timeline_end_sec: f64,
+        speed: f64,
+    ) -> SceneAudioLayer {
+        SceneAudioLayer {
+            id: id.into(),
+            track_id: None,
+            path: path.into(),
+            timeline_start_sec,
+            timeline_end_sec,
+            source_start_sec: 0.0,
+            source_range_duration_sec: 0.0,
+            speed,
+            audio_gain: 1.0,
+            audio_balance: 0.0,
+            audio_fade_in_sec: 0.0,
+            audio_fade_out_sec: 0.0,
+            audio_fade_in_curve: AudioFadeCurve::Linear,
+            audio_fade_out_curve: AudioFadeCurve::Linear,
+            audio_effects: vec![],
+        }
     }
 
     #[test]
@@ -594,5 +621,83 @@ mod tests {
             before.wrapping_add(1),
             "a paused scrub must always seek"
         );
+    }
+
+    #[test]
+    fn set_scene_pure_mix_param_edit_does_not_flush() {
+        let engine = mock_engine();
+        let l = layer("l1", "/tmp/a.wav", 0.0, 10.0, 1.0);
+        engine.set_scene(&[l.clone()], &[], 1.0);
+        let seek_serial_after_first = seek_serial(&engine);
+
+        // Change only gain — pure mix param.
+        let mut l2 = l.clone();
+        l2.audio_gain = 0.5;
+        engine.set_scene(&[l2], &[], 1.0);
+        let state = engine.shared.0.lock();
+        assert_eq!(
+            state.seek_serial, seek_serial_after_first,
+            "gain-only edit must not flush"
+        );
+    }
+
+    #[test]
+    fn set_scene_position_change_triggers_flush() {
+        let engine = mock_engine();
+        let l = layer("l1", "/tmp/a.wav", 0.0, 10.0, 1.0);
+        engine.set_scene(&[l.clone()], &[], 1.0);
+        let before = seek_serial(&engine);
+
+        let mut l2 = l.clone();
+        l2.timeline_start_sec = 1.0;
+        engine.set_scene(&[l2], &[], 1.0);
+        let state = engine.shared.0.lock();
+        assert!(
+            state.seek_serial != before,
+            "position change must flush"
+        );
+        assert!(state.pending_ring_clear);
+    }
+
+    #[test]
+    fn set_scene_speed_change_triggers_flush() {
+        let engine = mock_engine();
+        let l = layer("l1", "/tmp/a.wav", 0.0, 10.0, 1.0);
+        engine.set_scene(&[l.clone()], &[], 1.0);
+        let before = seek_serial(&engine);
+
+        let mut l2 = l.clone();
+        l2.speed = 2.0;
+        engine.set_scene(&[l2], &[], 1.0);
+        let state = engine.shared.0.lock();
+        assert!(
+            state.seek_serial != before,
+            "speed change must flush"
+        );
+    }
+
+    #[test]
+    fn set_scene_updates_master_gain() {
+        let engine = mock_engine();
+        engine.set_scene(&[], &[], 0.5);
+        let state = engine.shared.0.lock();
+        assert_eq!(state.master_gain, 0.5);
+    }
+
+    #[test]
+    fn set_scene_evicts_unused_decoded_cache() {
+        let engine = mock_engine();
+        let l1 = layer("l1", "/tmp/a.wav", 0.0, 10.0, 1.0);
+        engine.set_scene(&[l1.clone()], &[], 1.0);
+        {
+            let mut state = engine.shared.0.lock();
+            state.cache_decoded("/tmp/a.wav|sr=48000".into(), std::sync::Arc::new(vec![0.0f32; 100]));
+            state.cache_decoded("/tmp/b.wav|sr=48000".into(), std::sync::Arc::new(vec![0.0f32; 100]));
+        }
+
+        engine.set_scene(&[l1.clone()], &[], 1.0);
+        let state = engine.shared.0.lock();
+        assert!(state.decoded_cache.contains(&"/tmp/a.wav|sr=48000".to_string()));
+        assert!(!state.decoded_cache.contains(&"/tmp/b.wav|sr=48000".to_string()));
     }
 }
