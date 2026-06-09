@@ -10,7 +10,14 @@ describe('createDefaultUserSettings', () => {
     // Mutate nested objects that were previously shallow-copied
     defaults.timeline.snapping.clips = false;
     defaults.timeline.snapping.playhead = false;
-    defaults.presets.custom.push({ id: 'x', baseType: 'effect', name: 'Test', category: 'effect', params: {}, order: 0 });
+    defaults.presets.custom.push({
+      id: 'x',
+      baseType: 'effect',
+      name: 'Test',
+      category: 'effect',
+      params: {},
+      order: 0,
+    });
     defaults.presets.collapsed['test'] = true;
 
     // The DEFAULT_USER_SETTINGS must remain untouched

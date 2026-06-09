@@ -649,7 +649,10 @@ impl WindowState {
                         .with_title(DEFAULT_TITLE)
                         .with_decorations(true)
                         .with_resizable(true)
-                        .with_visible(true)
+                        // Создаём окно скрытым: показываем его только после первого рендера
+                        // в surface (ниже). Иначе WM мапит окно до того, как в swapchain
+                        // попал первый кадр, и оно вспыхивает чёрным на 1–2 кадра в начале.
+                        .with_visible(false)
                         .with_inner_size(PhysicalSize::new(1280, 720))
                         .with_position(PhysicalPosition::new(80, 80)),
                 )
@@ -661,8 +664,14 @@ impl WindowState {
             size.width.max(1),
             size.height.max(1),
         ))?;
-        window.focus_window();
         self.native_window = Some(NativeWindowState { window, surface });
+        // Первый кадр рисуем в surface ДО показа окна — тогда оно появляется уже с
+        // картинкой, без чёрной вспышки.
+        self.render_current_frame();
+        if let Some(native) = self.native_window.as_ref() {
+            native.window.set_visible(true);
+            native.window.focus_window();
+        }
         Ok(())
     }
 

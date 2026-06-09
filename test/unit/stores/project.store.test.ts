@@ -19,7 +19,9 @@ vi.mock('@tauri-apps/api/core', () => ({
 vi.mock('@tauri-apps/api/path', () => ({
   basename: vi.fn().mockImplementation(async (path: string) => path.split('/').pop() || path),
   join: vi.fn().mockImplementation(async (...parts: string[]) => parts.join('/')),
-  dirname: vi.fn().mockImplementation(async (path: string) => path.split('/').slice(0, -1).join('/')),
+  dirname: vi
+    .fn()
+    .mockImplementation(async (path: string) => path.split('/').slice(0, -1).join('/')),
 }));
 
 vi.mock('@tauri-apps/plugin-fs', () => ({
@@ -311,5 +313,31 @@ describe('ProjectStore', () => {
     expect(dirHandle).not.toBeNull();
     expect(dirHandle?.name).toBe('MyExternalProject');
     expect((dirHandle as any).path).toBe('/custom/parent/path/MyExternalProject');
+  });
+
+  it('aborts openProject if closeProject is called while it is loading', async () => {
+    vi.mocked(isTauriRuntime).mockReturnValue(false);
+    const store = useProjectStore();
+    const workspace = useWorkspaceStore();
+    workspace.projects = ['TestProject'];
+
+    let resolveSettings: (val: any) => void = () => {};
+    const settingsPromise = new Promise((resolve) => {
+      resolveSettings = resolve;
+    });
+    mockLoadProjectSettings.mockReturnValue(settingsPromise);
+
+    const openPromise = store.openProject('TestProject');
+
+    expect(store.currentProjectName).toBe('TestProject');
+
+    await store.closeProject();
+
+    expect(store.currentProjectName).toBeNull();
+
+    resolveSettings({});
+    await openPromise;
+
+    expect(store.currentProjectName).toBeNull();
   });
 });

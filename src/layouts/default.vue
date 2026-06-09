@@ -77,7 +77,7 @@ watch(
       isAutoOpening.value = false;
       autoOpenProjectName.value = null;
     }
-  }
+  },
 );
 
 watch(
@@ -88,7 +88,7 @@ watch(
       autoOpenProjectName.value = null;
       isStartingUp.value = false;
     }
-  }
+  },
 );
 
 // Initialize Actions and Hotkeys
@@ -114,7 +114,7 @@ onMounted(() => {
         const target =
           workspaceStore.workspaceProviderId === 'tauri' && workspaceStore.lastProjectPath
             ? workspaceStore.lastProjectPath
-            : workspaceStore.lastProjectName;
+            : workspaceStore.lastProjectName!;
         void navigateTo(`/editor/${encodeURIComponent(target)}`);
       } else {
         isStartingUp.value = false;

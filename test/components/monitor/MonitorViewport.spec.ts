@@ -9,7 +9,10 @@ const mockFps = ref(30);
 const mockTimelineFormat = ref<{ fps: number } | null>(null);
 
 vi.mock('~/composables/monitor/useMonitorSettings', () => ({
-  useMonitorSettings: () => ({ showTimecode: ref(true), showTransparencyGrid: mockShowTransparencyGrid }),
+  useMonitorSettings: () => ({
+    showTimecode: ref(true),
+    showTransparencyGrid: mockShowTransparencyGrid,
+  }),
 }));
 
 vi.mock('~/stores/project.store', () => ({
@@ -19,9 +22,15 @@ vi.mock('~/stores/project.store', () => ({
 vi.mock('~/stores/timeline.store', () => ({
   useTimelineStore: () => ({
     markers: [],
-    get selectionRange() { return mockSelectionRange.value; },
-    get fps() { return mockFps.value; },
-    get timelineFormat() { return mockTimelineFormat.value; },
+    get selectionRange() {
+      return mockSelectionRange.value;
+    },
+    get fps() {
+      return mockFps.value;
+    },
+    get timelineFormat() {
+      return mockTimelineFormat.value;
+    },
   }),
 }));
 

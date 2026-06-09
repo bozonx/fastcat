@@ -466,7 +466,6 @@ async function buildAudioLayers(params: {
     if (clip.clipType !== 'media') continue;
     const path = clip.source?.path;
     if (!path) continue;
-    const startUs = clip.timelineRange.startUs;
     const durationUs = clip.timelineRange.durationUs;
     if (durationUs <= 0) continue;
 

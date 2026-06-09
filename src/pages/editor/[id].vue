@@ -224,6 +224,7 @@ onMounted(async () => {
       }
     }
   } catch (err) {
+    // eslint-disable-next-line no-console
     console.error('Failed to open project:', err);
     if (route.path.startsWith('/editor/')) {
       router.push('/');

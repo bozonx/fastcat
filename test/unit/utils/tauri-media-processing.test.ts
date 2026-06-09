@@ -92,7 +92,9 @@ describe('tauri media processing byte handling', () => {
   it('listens for progress events when onProgress is provided', async () => {
     const { nativeGenerateProxy } = await import('~/utils/tauri-media-processing');
     const unlisten = vi.fn();
-    const handlerRef = { current: null as ((event: { payload: { taskId: string; progress: number } }) => void) | null };
+    const handlerRef = {
+      current: null as ((event: { payload: { taskId: string; progress: number } }) => void) | null,
+    };
 
     listenMock.mockImplementation(async (eventName: string, handler: any) => {
       if (eventName === 'native-media-generate-proxy:progress') {

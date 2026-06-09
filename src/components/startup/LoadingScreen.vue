@@ -24,11 +24,13 @@ const { t } = useI18n();
         <UIcon name="i-heroicons-arrow-path" class="w-8 h-8 text-primary-400 animate-spin" />
       </div>
 
-      <h3 class="text-xl font-bold bg-clip-text text-transparent bg-linear-to-r from-primary-300 to-primary-200">
-        <template v-slot v-if="isAutoOpening && projectName">
+      <h3
+        class="text-xl font-bold bg-clip-text text-transparent bg-linear-to-r from-primary-300 to-primary-200"
+      >
+        <template v-if="isAutoOpening && projectName">
           {{ t('fastcat.startup.loadingLastProject', { name: projectName }) }}
         </template>
-        <template v-slot v-else>
+        <template v-else>
           {{ t('common.loading') }}
         </template>
       </h3>

@@ -520,7 +520,11 @@ async function onConfirm() {
           v-if="lastExportStatus === 'success' && exportDurationMs !== null"
           class="p-3 text-sm text-success-400 bg-success-400/10 rounded-md border border-success-400/20"
         >
-          {{ t('videoEditor.export.successMessage', { duration: formatRenderDuration(exportDurationMs) }) }}
+          {{
+            t('videoEditor.export.successMessage', {
+              duration: formatRenderDuration(exportDurationMs),
+            })
+          }}
         </div>
 
         <div
@@ -529,7 +533,11 @@ async function onConfirm() {
         >
           <div>{{ exportError }}</div>
           <div v-if="exportDurationMs !== null" class="mt-1 text-xs text-error-300">
-            {{ t('videoEditor.export.durationLabel', { duration: formatRenderDuration(exportDurationMs) }) }}
+            {{
+              t('videoEditor.export.durationLabel', {
+                duration: formatRenderDuration(exportDurationMs),
+              })
+            }}
           </div>
         </div>
 

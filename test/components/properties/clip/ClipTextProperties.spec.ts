@@ -68,7 +68,8 @@ describe('ClipTextProperties.vue', () => {
           UiTextarea: { template: '<textarea class="ui-textarea"></textarea>' },
           UiColorBlendPicker: { template: '<div class="ui-color"></div>' },
           USwitch: {
-            template: '<button class="u-switch" @click="$emit(\'update:modelValue\', !modelValue)"><slot /></button>',
+            template:
+              '<button class="u-switch" @click="$emit(\'update:modelValue\', !modelValue)"><slot /></button>',
             props: ['modelValue'],
           },
           UButton: { template: '<button class="u-button"><slot /></button>' },
@@ -100,7 +101,8 @@ describe('ClipTextProperties.vue', () => {
           UiTextarea: { template: '<textarea class="ui-textarea"></textarea>' },
           UiColorBlendPicker: { template: '<div class="ui-color"></div>' },
           USwitch: {
-            template: '<button class="u-switch" @click="$emit(\'update:modelValue\', !modelValue)"><slot /></button>',
+            template:
+              '<button class="u-switch" @click="$emit(\'update:modelValue\', !modelValue)"><slot /></button>',
             props: ['modelValue'],
           },
           UButton: { template: '<button class="u-button"><slot /></button>' },
@@ -144,7 +146,8 @@ describe('ClipTextProperties.vue', () => {
           UiTextarea: { template: '<textarea class="ui-textarea"></textarea>' },
           UiColorBlendPicker: { template: '<div class="ui-color"></div>' },
           USwitch: {
-            template: '<button class="u-switch" @click="$emit(\'update:modelValue\', !modelValue)"><slot /></button>',
+            template:
+              '<button class="u-switch" @click="$emit(\'update:modelValue\', !modelValue)"><slot /></button>',
             props: ['modelValue'],
           },
           UButton: { template: '<button class="u-button"><slot /></button>' },

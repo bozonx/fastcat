@@ -36,7 +36,10 @@ function handleUpdateEffects(effects: Array<VideoClipEffect | AudioClipEffect>) 
   if (!track.value) return;
   const videoEffects = (track.value.effects ?? []).filter((e) => e?.target !== 'audio');
   timelineStore.updateTrackProperties(props.trackId, {
-    effects: [...videoEffects, ...effects.filter((e): e is AudioClipEffect => e.target === 'audio')],
+    effects: [
+      ...videoEffects,
+      ...effects.filter((e): e is AudioClipEffect => e.target === 'audio'),
+    ],
   });
 }
 </script>
