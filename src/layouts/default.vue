@@ -65,6 +65,10 @@ function cancelAutoOpen() {
   isAutoOpening.value = false;
   autoOpenProjectName.value = null;
   isStartingUp.value = false;
+
+  workspaceStore.lastProjectName = null;
+  workspaceStore.lastProjectPath = null;
+
   void navigateTo('/');
   void projectStore.closeProject();
 }
