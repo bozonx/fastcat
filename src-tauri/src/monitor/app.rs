@@ -24,7 +24,7 @@ use crate::audio::engine::{AudioEngineSettings, NativeAudioEngine};
 use crate::compositor::Compositor;
 
 use super::clock::{Clock, PlaybackClock};
-use super::handle::{MonitorCommand, MonitorMode, SendableRawHandle};
+use super::handle::{MonitorCommand, MonitorMode};
 use super::layer_runtime::{emit_layer_failed, BgLayerResult};
 use super::runtime::LayerRuntimeManager;
 use super::scene::{MonitorScene, SceneAudioLayer, SceneAudioTrack};
@@ -43,10 +43,9 @@ const PREBUFFER_LOOKAHEAD_SEC: f64 = 0.12;
 /// ошибка открытия) — стартуем как есть, чтобы Play никогда не зависал.
 const PREBUFFER_TIMEOUT: Duration = Duration::from_millis(500);
 
-/// Заказ положения child-окна от фронта (физические пиксели в координатах родителя).
+/// Заказ положения offscreen/native-окна монитора в физических пикселях.
 #[derive(Debug, Clone, Copy)]
 struct ViewportSpec {
-    parent: SendableRawHandle,
     x: i32,
     y: i32,
     width: u32,
@@ -92,10 +91,6 @@ fn build_event_loop() -> Result<EventLoop<MonitorCommand>> {
         use winit::platform::x11::EventLoopBuilderExtX11;
         EventLoopBuilderExtWayland::with_any_thread(&mut builder, true);
         EventLoopBuilderExtX11::with_any_thread(&mut builder, true);
-        // Форсируем X11: WINIT_UNIX_BACKEND env var в winit 0.30 не работает.
-        // Без этого на Wayland-сессии winit игнорирует X11-родителя и создаёт
-        // собственное Wayland-toplevel — встраивание в Tauri-окно ломается.
-        EventLoopBuilderExtX11::with_x11(&mut builder);
     }
     #[cfg(target_os = "windows")]
     {
@@ -147,7 +142,7 @@ impl MonitorApp {
             state: None,
             pending_scene: None,
             pending_viewport: None,
-            pending_mode: MonitorMode::Embedded,
+            pending_mode: MonitorMode::Canvas,
             pending_frame_channel: None,
             pending_canvas_size: None,
             resumed: false,
@@ -166,8 +161,8 @@ impl MonitorApp {
         };
         if started {
             self.next_redraw_at = Some(Instant::now());
-            if let Some(s) = self.state.as_ref() {
-                s.window.request_redraw();
+            if let Some(s) = self.state.as_mut() {
+                s.render_current_frame();
             }
         }
     }
@@ -205,7 +200,7 @@ impl MonitorApp {
                     }
                     s.set_mode(self.pending_mode);
                     if self.pending_mode == MonitorMode::Canvas {
-                        s.window.request_redraw();
+                        s.render_current_frame();
                     }
                 }
                 if let Some(scene) = self.pending_scene.take() {
@@ -279,7 +274,6 @@ impl ApplicationHandler<MonitorCommand> for MonitorApp {
             MonitorCommand::SetScene(scene) => {
                 if let Some(s) = self.state.as_mut() {
                     s.apply_scene(scene);
-                    s.window.request_redraw();
                 } else {
                     self.pending_scene = Some(scene);
                 }
@@ -293,7 +287,7 @@ impl ApplicationHandler<MonitorCommand> for MonitorApp {
                     if s.clock.is_playing() {
                         self.next_redraw_at = Some(Instant::now());
                     }
-                    s.window.request_redraw();
+                    s.render_current_frame();
                 }
             }
             MonitorCommand::Pause => {
@@ -305,7 +299,7 @@ impl ApplicationHandler<MonitorCommand> for MonitorApp {
             MonitorCommand::Seek(t) => {
                 if let Some(s) = self.state.as_mut() {
                     s.seek(t);
-                    s.window.request_redraw();
+                    s.render_current_frame();
                 }
             }
             MonitorCommand::SetSpeed(speed) => {
@@ -317,7 +311,7 @@ impl ApplicationHandler<MonitorCommand> for MonitorApp {
                     if playing {
                         self.next_redraw_at = Some(Instant::now());
                     }
-                    s.window.request_redraw();
+                    s.render_current_frame();
                 }
             }
             MonitorCommand::ScrubPreview {
@@ -342,7 +336,7 @@ impl ApplicationHandler<MonitorCommand> for MonitorApp {
             MonitorCommand::SetHwSettings(settings) => {
                 if let Some(s) = self.state.as_mut() {
                     s.update_hw_settings(settings);
-                    s.window.request_redraw();
+                    s.render_current_frame();
                 }
             }
             MonitorCommand::Close => {
@@ -357,8 +351,8 @@ impl ApplicationHandler<MonitorCommand> for MonitorApp {
                 // Декодер мог только что открыться во время прогрева — двигаем его.
                 if self.is_prebuffering() {
                     self.drive_prebuffer();
-                } else if let Some(s) = self.state.as_ref() {
-                    s.window.request_redraw();
+                } else if let Some(s) = self.state.as_mut() {
+                    s.render_current_frame();
                 }
             }
             MonitorCommand::VideoFrameReady => {
@@ -366,17 +360,16 @@ impl ApplicationHandler<MonitorCommand> for MonitorApp {
                 // не накопили ли мы достаточно впереди playhead'а, чтобы стартовать.
                 if self.is_prebuffering() {
                     self.drive_prebuffer();
-                } else if let Some(s) = self.state.as_ref() {
+                } else if let Some(s) = self.state.as_mut() {
                     // Во время play кадры забираются на следующем тике, отмеренном таймером
                     // (см. about_to_wait/new_events) — лишний redraw тут только раскручивал бы
                     // цикл. Нужен он лишь на паузе/скрабе, чтобы показать догнавший кадр.
                     if !s.clock.is_playing() {
-                        s.window.request_redraw();
+                        s.render_current_frame();
                     }
                 }
             }
             MonitorCommand::SetViewport {
-                parent,
                 x,
                 y,
                 width,
@@ -384,7 +377,6 @@ impl ApplicationHandler<MonitorCommand> for MonitorApp {
                 visible,
             } => {
                 let vp = ViewportSpec {
-                    parent,
                     x,
                     y,
                     width: width.max(1),
@@ -398,16 +390,33 @@ impl ApplicationHandler<MonitorCommand> for MonitorApp {
                     self.try_create_window(event_loop);
                 }
             }
+            MonitorCommand::OpenNativeWindow => {
+                log::info!("[monitor] open native window requested");
+                if self.pending_viewport.is_none() {
+                    self.pending_viewport = Some(default_native_window_viewport());
+                }
+                if let Some(s) = self.state.as_mut() {
+                    s.open_native_window();
+                    s.render_current_frame();
+                } else {
+                    self.try_create_window(event_loop);
+                    if let Some(s) = self.state.as_mut() {
+                        s.open_native_window();
+                        s.render_current_frame();
+                    }
+                }
+            }
             MonitorCommand::SetMode(mode) => {
                 self.pending_mode = mode;
                 if let Some(s) = self.state.as_mut() {
                     s.set_mode(mode);
-                    s.window.request_redraw();
+                    s.render_current_frame();
                 }
             }
             MonitorCommand::SetFrameChannel(ch) => {
                 if let Some(s) = self.state.as_mut() {
                     s.frame_channel = Some(ch);
+                    s.render_current_frame();
                 } else {
                     self.pending_frame_channel = Some(ch);
                 }
@@ -418,7 +427,7 @@ impl ApplicationHandler<MonitorCommand> for MonitorApp {
                 if let Some(s) = self.state.as_mut() {
                     s.canvas_size = size;
                     if s.mode == MonitorMode::Canvas {
-                        s.window.request_redraw();
+                        s.render_current_frame();
                     }
                 }
             }
@@ -436,13 +445,14 @@ impl ApplicationHandler<MonitorCommand> for MonitorApp {
         };
         match event {
             WindowEvent::CloseRequested => {
+                state.native_window_open = false;
                 state.window.set_visible(false);
                 state.pause();
                 self.next_redraw_at = None;
             }
             WindowEvent::Resized(size) => {
                 state.resize(size.width.max(1), size.height.max(1));
-                state.window.request_redraw();
+                state.render_current_frame();
             }
             WindowEvent::RedrawRequested => {
                 state.tick_and_render();
@@ -528,6 +538,7 @@ struct WindowState {
     /// воспроизведение ещё не началось (ждём кадры впереди playhead'а или таймаут).
     /// `None` — либо играем, либо стоим на паузе.
     pending_play_deadline: Option<Instant>,
+    native_window_open: bool,
 }
 
 impl WindowState {
@@ -550,7 +561,7 @@ impl WindowState {
             audio.set_scene(&scene.audio_layers, &scene.audio_tracks, master_gain);
         }
         self.layers.apply_scene(scene);
-        self.window.request_redraw();
+        self.render_current_frame();
     }
 
     fn recreate_audio(&mut self, settings: AudioEngineSettings) {
@@ -597,8 +608,9 @@ impl WindowState {
                 }
             }
             MonitorMode::Canvas => {
-                // X11 child скрываем — рендер пойдёт offscreen.
-                self.window.set_visible(false);
+                if !self.native_window_open {
+                    self.window.set_visible(false);
+                }
             }
         }
     }
@@ -613,6 +625,10 @@ impl WindowState {
             vp.height,
             vp.visible
         );
+        self.last_viewport = vp;
+        if self.native_window_open {
+            return;
+        }
         if (prev.x, prev.y) != (vp.x, vp.y) {
             self.window
                 .set_outer_position(PhysicalPosition::new(vp.x, vp.y));
@@ -621,17 +637,34 @@ impl WindowState {
             let _ = self
                 .window
                 .request_inner_size(PhysicalSize::new(vp.width, vp.height));
-            // С override_redirect WM не управляет окном — WindowEvent::Resized может
-            // не прийти синхронно, поэтому ресайзим surface сразу.
+            // WindowEvent::Resized may arrive later, so keep the surface in sync immediately.
             self.resize(vp.width, vp.height);
         }
-        if prev.visible != vp.visible {
+        if !self.native_window_open && prev.visible != vp.visible {
             self.window.set_visible(vp.visible);
         }
-        self.last_viewport = vp;
         if vp.visible {
             self.window.request_redraw();
         }
+    }
+
+    fn open_native_window(&mut self) {
+        self.native_window_open = true;
+        self.window.set_title(DEFAULT_TITLE);
+        self.window.set_decorations(true);
+        self.window.set_resizable(true);
+        let width = self.surface.config.width.max(1280);
+        let height = self.surface.config.height.max(720);
+        let _ = self
+            .window
+            .request_inner_size(PhysicalSize::new(width, height));
+        self.resize(width, height);
+        self.window.set_visible(true);
+    }
+
+    fn render_current_frame(&mut self) {
+        let t = self.clock.current_pts();
+        self.render(t);
     }
 
     /// Запрашивает воспроизведение. Для сцен с видео сначала прогревает декодеры до
@@ -681,9 +714,7 @@ impl WindowState {
             return false;
         };
         let t = self.clock.current_pts();
-        let ready = self
-            .layers
-            .active_videos_ready(t, PREBUFFER_LOOKAHEAD_SEC);
+        let ready = self.layers.active_videos_ready(t, PREBUFFER_LOOKAHEAD_SEC);
         if ready || Instant::now() >= deadline {
             self.begin_playback();
             true
@@ -831,6 +862,20 @@ impl WindowState {
                 }
             }
             MonitorMode::Canvas => {
+                if self.native_window_open {
+                    let surface_width = self.surface.config.width;
+                    let surface_height = self.surface.config.height;
+                    let scene = self.layers.build_compositor_scene(t);
+                    if let Err(e) = self.compositor.render_scene_to_surface(
+                        &scene,
+                        &mut self.surface,
+                        surface_width,
+                        surface_height,
+                    ) {
+                        log::error!("[monitor] compositor render: {e:?}");
+                        emit_layer_failed(&self.app, "<surface>", "render", &e.to_string());
+                    }
+                }
                 let Some(channel) = self.frame_channel.clone() else {
                     return;
                 };
@@ -882,49 +927,13 @@ fn init_window(
     viewport: ViewportSpec,
     audio_settings: AudioEngineSettings,
 ) -> Result<WindowState> {
-    let mut window_attrs = Window::default_attributes()
+    let window_attrs = Window::default_attributes()
         .with_title(DEFAULT_TITLE)
-        .with_decorations(false)
-        .with_resizable(false)
+        .with_decorations(true)
+        .with_resizable(true)
         .with_visible(false)
         .with_inner_size(PhysicalSize::new(viewport.width, viewport.height))
         .with_position(PhysicalPosition::new(viewport.x, viewport.y));
-
-    // Платформо-зависимое встраивание child-окна.
-    //
-    // На X11: `with_embed_parent_window(xid)` делает XReparentWindow — окно перестаёт
-    // быть toplevel, клипается и двигается с родителем.
-    // `with_parent_window` на X11 НЕ делает reparent; нужен именно embed.
-    #[cfg(target_os = "linux")]
-    {
-        use raw_window_handle::RawWindowHandle;
-        use winit::platform::x11::WindowAttributesExtX11;
-        match viewport.parent.0 {
-            RawWindowHandle::Xlib(h) => {
-                log::info!("[monitor] parent: Xlib XID={:#x}", h.window);
-                window_attrs = window_attrs
-                    .with_embed_parent_window(h.window as u32)
-                    .with_override_redirect(true);
-            }
-            RawWindowHandle::Xcb(h) => {
-                log::info!("[monitor] parent: Xcb XID={:#x}", h.window.get());
-                window_attrs = window_attrs
-                    .with_embed_parent_window(h.window.get())
-                    .with_override_redirect(true);
-            }
-            RawWindowHandle::Wayland(_) => {
-                anyhow::bail!(
-                    "monitor: parent handle is Wayland — GDK_BACKEND=x11 не подхватилось"
-                );
-            }
-            other => anyhow::bail!("monitor: unexpected parent handle: {:?}", other),
-        }
-    }
-    #[cfg(not(target_os = "linux"))]
-    {
-        // SAFETY: The parent handle belongs to the main Tauri window, which outlives the monitor.
-        window_attrs = unsafe { window_attrs.with_parent_window(Some(viewport.parent.0)) };
-    }
 
     let window = Arc::new(
         event_loop
@@ -969,12 +978,23 @@ fn init_window(
         audio_master_gain: 1.0,
         last_emit_pts: -1.0,
         last_viewport: viewport,
-        mode: MonitorMode::Embedded,
+        mode: MonitorMode::Canvas,
         frame_channel: None,
         canvas_size: (viewport.width.max(1), viewport.height.max(1)),
         offscreen_dev_id,
         pending_play_deadline: None,
+        native_window_open: viewport.visible,
     })
+}
+
+fn default_native_window_viewport() -> ViewportSpec {
+    ViewportSpec {
+        x: 80,
+        y: 80,
+        width: 1280,
+        height: 720,
+        visible: true,
+    }
 }
 
 #[cfg(test)]

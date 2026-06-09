@@ -186,19 +186,8 @@ fn allow_dev_directory_scope(app: tauri::AppHandle, path: String) -> Result<(), 
     Ok(())
 }
 
-/// Platform-specific environment variables that must be set before any windowing
-/// or GPU subsystem is initialized.
+/// Environment variables that must be set before any GPU subsystem is initialized.
 pub fn init_env_vars() {
-    #[cfg(target_os = "linux")]
-    {
-        // SAFETY: These must be set before any GTK or winit initialization.
-        // Called from `run()` before `tauri::Builder`; no other threads are
-        // running, satisfying the `std::env::set_var` safety contract.
-        unsafe {
-            std::env::set_var("GDK_BACKEND", "x11");
-            std::env::set_var("WINIT_UNIX_BACKEND", "x11");
-        }
-    }
     // Force wgpu to prefer the high-performance adapter (dGPU on hybrid laptops).
     // SAFETY: No wgpu code is running concurrently; the variable is read later
     // during adapter enumeration on the same thread.
@@ -256,6 +245,7 @@ pub fn run() {
             ipc::monitor_cmd::monitor_scrub_preview,
             ipc::monitor_cmd::monitor_stop_scrub_preview,
             ipc::monitor_cmd::monitor_set_viewport,
+            ipc::monitor_cmd::monitor_open_native_window,
             ipc::monitor_cmd::monitor_set_mode,
             ipc::monitor_cmd::monitor_subscribe_frames,
             ipc::monitor_cmd::monitor_set_canvas_size,

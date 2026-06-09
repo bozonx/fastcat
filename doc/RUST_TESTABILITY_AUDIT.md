@@ -23,7 +23,7 @@ Business logic directly calls concrete external APIs, making unit testing imposs
 | **Audio Output** | `build_stream()` directly builds a `cpal::Stream`. The real-time callback `write_output()` is testable, but the stream builder is not. | `src-tauri/src/audio/output.rs` |
 | **Video Render** | `probe_webgpu_render_engine()` directly creates `wgpu::Instance`, `request_adapter()`, `request_device()`. Cannot test without a GPU / wgpu backend. | `src-tauri/src/video_render.rs` |
 | **Compositor** | `Compositor::new()` creates `vello::RenderContext` (wgpu). `create_window_surface()` needs a real `winit::Window`. No `Compositor` trait exists to mock for tests. | `src-tauri/src/compositor/compositor.rs` |
-| **Monitor** | `WindowState` owns `Arc<Window>`, `Compositor`, `RenderSurface`, `NativeAudioEngine`, and `AppHandle`. `init_window()` contains platform-specific window reparenting (X11/Wayland/Windows). Completely untestable. | `src-tauri/src/monitor/app.rs` |
+| **Monitor** | `WindowState` owns `Arc<Window>`, `Compositor`, `RenderSurface`, `NativeAudioEngine`, and `AppHandle`. `init_window()` creates a real `winit` window/surface and cannot be tested without windowing/GPU integration. | `src-tauri/src/monitor/app.rs` |
 | **Monitor Handle** | `MonitorHandle::spawn()` launches a real `winit` event-loop thread. | `src-tauri/src/monitor/handle.rs` |
 | **FFmpeg Decode** | `FfmpegNextDecoder::open()` directly opens files via `ffmpeg-next`. `DecodePump::open()` spawns a real thread with a real decoder. | `src-tauri/src/media/decode.rs`, `src-tauri/src/media/decode_thread.rs` |
 | **FFmpeg HW Accel** | `init_hwaccel()` directly calls `ffmpeg_sys_next` unsafe functions (`av_hwdevice_ctx_create`, etc.). Platform-gated code (`#[cfg(target_os = "linux")]`). No way to mock. | `src-tauri/src/media/hwaccel.rs` |
@@ -226,8 +226,7 @@ Split it into smaller, single-responsibility units:
 Several modules contain `unsafe` blocks and `#[cfg(target_os = ...)]` that have no test coverage:
 
 - `media/hwaccel.rs` — `av_hwdevice_ctx_create`, `av_buffer_ref`, raw pointer manipulation.
-- `monitor/handle.rs` — `unsafe impl Send for SendableRawHandle`, `unsafe impl Sync`.
-- `monitor/app.rs` — X11 `with_embed_parent_window`, Windows `with_any_thread`.
+- `monitor/app.rs` — platform-specific event-loop setup such as Windows `with_any_thread`.
 - `audio/output.rs` — `write_output` generic over sample format (tests exist but only for f32).
 
 #### Recommendation

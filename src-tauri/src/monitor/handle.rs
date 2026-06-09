@@ -6,7 +6,6 @@ use std::sync::Arc;
 use std::thread::JoinHandle;
 
 use anyhow::{anyhow, Result};
-use raw_window_handle::RawWindowHandle;
 use serde::{Deserialize, Serialize};
 use tauri::ipc::{Channel, InvokeResponseBody};
 use tauri::AppHandle;
@@ -18,7 +17,7 @@ use super::app::run_event_loop;
 use super::scene::MonitorScene;
 
 /// Режим вывода монитора.
-/// - `Embedded` — нативное X11 child-окно поверх webview (по умолчанию, без оверлеев).
+/// - `Embedded` — нативное окно монитора как отдельное platform window.
 /// - `Canvas` — offscreen-рендер, стрим RGBA-кадров в HTML `<canvas>` через Tauri Channel.
 ///   Позволяет ставить SVG/HTML-оверлеи (transform handles, grid, timecode) поверх изображения.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -29,19 +28,6 @@ pub enum MonitorMode {
     Embedded,
     Canvas,
 }
-
-/// Обёртка над `RawWindowHandle` для безопасной (для нас) передачи между потоками.
-/// `RawWindowHandle` содержит сырой указатель/идентификатор окна; он остаётся валидным
-/// всё время жизни главного Tauri-окна, которое мы не закрываем досрочно.
-#[derive(Debug, Clone, Copy)]
-pub struct SendableRawHandle(pub RawWindowHandle);
-// SAFETY: SendableRawHandle wraps a RawWindowHandle that is only used while the
-// parent Tauri window is alive. The window is never closed early, so the raw
-// handle/ID remains valid for the entire lifetime of the monitor thread.
-unsafe impl Send for SendableRawHandle {}
-// SAFETY: Same reasoning as Send — the raw handle is never mutated and remains
-// valid as long as the parent window exists.
-unsafe impl Sync for SendableRawHandle {}
 
 pub enum MonitorCommand {
     /// Полная замена сцены — фронт шлёт текущий снимок таймлайна.
@@ -71,17 +57,17 @@ pub enum MonitorCommand {
     BgReady,
     /// Видеокадр декодирован.
     VideoFrameReady,
-    /// Положение/размер встроенного child-окна монитора в координатах родителя
-    /// (физические пиксели от left-top клиентской области главного окна).
+    /// Положение/размер offscreen/native-окна монитора в физических пикселях.
     /// Первый вызов с непустым прямоугольником создаёт окно; последующие — двигают/ресайзят.
     SetViewport {
-        parent: SendableRawHandle,
         x: i32,
         y: i32,
         width: u32,
         height: u32,
         visible: bool,
     },
+    /// Показать standalone-окно нативного монитора.
+    OpenNativeWindow,
     /// Переключение режима вывода (см. `MonitorMode`).
     SetMode(MonitorMode),
     /// Регистрация channel'а для стрима RGBA-кадров в canvas-режиме.

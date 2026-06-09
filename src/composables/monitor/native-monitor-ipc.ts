@@ -83,12 +83,16 @@ export const nativeMonitorIpc = {
   stopScrubPreview(): Promise<void> {
     return invoke('monitor_stop_scrub_preview');
   },
-  /** Position/size of the embedded child window, physical pixels. */
+  /** Position/size of the native monitor surface, physical pixels. */
   setViewport(args: MonitorViewportArgs): Promise<void> {
     const { x, y, width, height, visible } = args;
     return invoke('monitor_set_viewport', { x, y, width, height, visible });
   },
-  /** Switch output between embedded child window and offscreen canvas stream. */
+  /** Open the native monitor as a standalone Tauri window. */
+  openNativeWindow(): Promise<void> {
+    return invoke('monitor_open_native_window');
+  },
+  /** Switch output between native window surface and offscreen canvas stream. */
   setMode(mode: MonitorMode): Promise<void> {
     return invoke('monitor_set_mode', { mode });
   },

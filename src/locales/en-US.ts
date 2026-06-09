@@ -645,6 +645,7 @@ export default {
       "fullscreen": "Fullscreen",
       "layoutError": "Layout error",
       "loadError": "Error loading timeline",
+      "openNativeMonitor": "Open native monitor",
       "play": "Play",
       "playbackSpeed": "Playback Speed",
       "playbackStopped": "Playback stopped",

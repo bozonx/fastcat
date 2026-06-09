@@ -6,12 +6,11 @@
 //!   - `monitor_seek(timeline_sec)` — seek to a timeline PTS;
 //!   - `monitor_close` — close the window (event loop dies, respawned on the next set_scene).
 
-use raw_window_handle::HasWindowHandle;
 use tauri::ipc::{Channel, InvokeResponseBody};
-use tauri::{AppHandle, Manager, State};
+use tauri::State;
 
 use crate::engine::VideoEngine;
-use crate::monitor::{MonitorCommand, MonitorMode, MonitorScene, SendableRawHandle};
+use crate::monitor::{MonitorCommand, MonitorMode, MonitorScene};
 
 fn send_monitor_cmd(engine: &VideoEngine, cmd: MonitorCommand) -> Result<(), String> {
     engine
@@ -83,22 +82,12 @@ pub async fn monitor_set_viewport(
     width: u32,
     height: u32,
     visible: bool,
-    app: AppHandle,
     engine: State<'_, VideoEngine>,
 ) -> Result<(), String> {
-    let window = app
-        .get_webview_window("main")
-        .ok_or_else(|| "no main webview window".to_string())?;
-    let handle = window
-        .window_handle()
-        .map_err(|e| format!("window_handle failed: {e}"))?
-        .as_raw();
-    let parent = SendableRawHandle(handle);
     engine
         .ensure_monitor()
         .map_err(|e| e.to_string())?
         .send(MonitorCommand::SetViewport {
-            parent,
             x,
             y,
             width,
@@ -106,6 +95,12 @@ pub async fn monitor_set_viewport(
             visible,
         })
         .map_err(|e| e.to_string())
+}
+
+/// Opens the native monitor as a standalone platform window.
+#[tauri::command]
+pub async fn monitor_open_native_window(engine: State<'_, VideoEngine>) -> Result<(), String> {
+    send_monitor_cmd(&engine, MonitorCommand::OpenNativeWindow)
 }
 
 /// Switch output mode: `embedded` (X11 child) or `canvas` (offscreen → stream to HTML canvas).

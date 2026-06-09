@@ -17,5 +17,5 @@ pub mod runtime;
 pub mod scene;
 pub mod scene_build;
 
-pub use handle::{MonitorCommand, MonitorHandle, MonitorMode, SendableRawHandle};
+pub use handle::{MonitorCommand, MonitorHandle, MonitorMode};
 pub use scene::{LayerKind, MonitorScene, SceneLayer};

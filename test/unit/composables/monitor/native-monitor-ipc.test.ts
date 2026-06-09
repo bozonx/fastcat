@@ -34,6 +34,7 @@ describe('native-monitor-ipc', () => {
     await nativeMonitorIpc.setCanvasSize(640, 360);
     await nativeMonitorIpc.setMode('canvas');
     await nativeMonitorIpc.setViewport({ x: 1, y: 2, width: 3, height: 4, visible: true });
+    await nativeMonitorIpc.openNativeWindow();
     await nativeMonitorIpc.setAudioSettings({ bufferSize: 2048, backend: 'pulseaudio' });
     await nativeMonitorIpc.close();
 
@@ -44,6 +45,7 @@ describe('native-monitor-ipc', () => {
       ['monitor_set_canvas_size', { width: 640, height: 360 }],
       ['monitor_set_mode', { mode: 'canvas' }],
       ['monitor_set_viewport', { x: 1, y: 2, width: 3, height: 4, visible: true }],
+      ['monitor_open_native_window'],
       ['monitor_set_audio_settings', { bufferSize: 2048, backend: 'pulseaudio' }],
       ['monitor_close'],
     ]);

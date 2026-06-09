@@ -21,7 +21,7 @@ interface ViewportPayload {
 }
 
 /**
- * Привязывает положение и размер child-окна нативного монитора к DOM-элементу.
+ * Передает нативному монитору размер DOM viewport для offscreen/canvas render target.
  *
  * Используем ResizeObserver + IntersectionObserver вместо rAF-loop:
  * viewport обновляется только при реальных изменениях размера/видимости элемента.
@@ -30,8 +30,8 @@ interface ViewportPayload {
  * Координаты — в физических пикселях относительно клиентской области главного окна Tauri:
  *   `rect.left * dpr`, `rect.top * dpr`, `rect.width * dpr`, `rect.height * dpr`.
  *
- * Видимость определяется через IntersectionObserver (учитывает display:none, opacity, overflow).
- * В canvas-режиме нативное окно всегда скрывается (visible = false).
+ * Видимость определяется через IntersectionObserver (учитывает display:none, opacity, overflow),
+ * но в canvas-режиме standalone-окно открывается только отдельной командой пользователя.
  */
 export function useNativeMonitorViewport(elRef: Ref<HTMLElement | null>): void {
   if (!isTauriRuntime()) return;

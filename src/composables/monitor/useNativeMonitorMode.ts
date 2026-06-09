@@ -19,10 +19,10 @@ export type MonitorMode = 'embedded' | 'canvas';
 const MAX_RENDER_DIM = 960;
 
 /**
- * Глобальный (на модуль) реактивный режим монитора. Делим между кнопкой-переключателем
- * и компонентом, который рисует `<canvas>` или нативное окно.
+ * Глобальный (на модуль) реактивный режим монитора. В Tauri-панели по умолчанию
+ * используем canvas stream; отдельное native-окно открывается явной командой.
  */
-const mode = ref<MonitorMode>('embedded');
+const mode = ref<MonitorMode>('canvas');
 
 export function resolveNativeMonitorCanvasSize(params: {
   layoutWidth: number;

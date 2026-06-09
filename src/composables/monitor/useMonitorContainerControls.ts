@@ -1,8 +1,10 @@
 import { computed, type Ref } from 'vue';
+import { nativeMonitorIpc } from '~/composables/monitor/native-monitor-ipc';
 import { useMonitorSettings } from '~/composables/monitor/useMonitorSettings';
 import type { useProjectStore } from '~/stores/project.store';
 import type { useTimelineStore } from '~/stores/timeline.store';
 import type { useSelectionStore } from '~/stores/selection.store';
+import { isTauriRuntime } from '~/utils/runtime';
 
 interface PlaybackSpeedOption {
   label: string;
@@ -279,6 +281,10 @@ export function useMonitorContainerControls(options: UseMonitorContainerControls
     }
   }
 
+  function openNativeMonitorWindow() {
+    void nativeMonitorIpc.openNativeWindow();
+  }
+
   const contextMenuItems = computed(() => [
     [
       {
@@ -316,6 +322,15 @@ export function useMonitorContainerControls(options: UseMonitorContainerControls
           options.isLoading.value ||
           Boolean(options.loadError.value),
       },
+      ...(isTauriRuntime()
+        ? [
+            {
+              label: options.t('fastcat.monitor.openNativeMonitor'),
+              icon: 'i-lucide-monitor-up',
+              onSelect: openNativeMonitorWindow,
+            },
+          ]
+        : []),
     ],
     [
       {
