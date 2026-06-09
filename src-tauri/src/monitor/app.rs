@@ -362,7 +362,11 @@ impl ApplicationHandler<MonitorCommand> for MonitorApp {
                 if self.is_prebuffering() {
                     self.drive_prebuffer();
                 } else if let Some(s) = self.state.as_mut() {
-                    s.render_current_frame();
+                    if s.clock.is_playing() {
+                        s.render_current_frame();
+                    } else {
+                        s.refresh_paused_display();
+                    }
                 }
             }
             MonitorCommand::VideoFrameReady => {
@@ -375,7 +379,7 @@ impl ApplicationHandler<MonitorCommand> for MonitorApp {
                     // (см. about_to_wait/new_events) — лишний redraw тут только раскручивал бы
                     // цикл. Нужен он лишь на паузе/скрабе, чтобы показать догнавший кадр.
                     if !s.clock.is_playing() {
-                        s.render_current_frame();
+                        s.refresh_paused_display();
                     }
                 }
             }
@@ -688,6 +692,15 @@ impl WindowState {
 
     fn render_current_frame(&mut self) {
         let t = self.clock.current_pts();
+        self.render(t);
+    }
+
+    /// На паузе: подтягивает догнавшие playhead кадры в `current` и перерисовывает.
+    /// Без этого кадр, декодированный уже после seek/открытия декодера, оставался бы в
+    /// кеше непоказанным, а монитор — чёрным до первого Play.
+    fn refresh_paused_display(&mut self) {
+        let t = self.clock.current_pts();
+        self.layers.refresh_display(t);
         self.render(t);
     }
 
