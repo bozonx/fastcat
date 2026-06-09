@@ -97,6 +97,9 @@ pub struct VideoLayerRt {
     last_reseek: Option<Instant>,
     /// Consecutive ticks lagged beyond the sync window (decode-bound detector).
     lagged_ticks: u32,
+    /// Newest cached PTS seen on the previous `decoder_advancing` call — used to tell
+    /// "decoder is slow but moving forward" from "decoder is stuck / mispositioned".
+    last_newest_pts: Option<f64>,
 }
 
 impl VideoLayerRt {
@@ -113,6 +116,7 @@ impl VideoLayerRt {
             current: None,
             last_reseek: None,
             lagged_ticks: 0,
+            last_newest_pts: None,
         }
     }
 
@@ -130,6 +134,31 @@ impl VideoLayerRt {
     /// (decoder can't keep up with realtime); show the newest frame instead.
     pub fn is_decode_bound(&self) -> bool {
         self.lagged_ticks > DECODE_BOUND_LAG_TICKS
+    }
+
+    /// True if the newest cached frame advanced since the previous call — the decoder
+    /// is decoding forward (just possibly slower than realtime). MUST be called once
+    /// per tick after `pull_into_cache` to keep the baseline current.
+    ///
+    /// While advancing, re-seeking on sync-lag is counterproductive: it flushes the
+    /// in-progress GOP and re-decodes it from the keyframe, which is exactly the 1–2s
+    /// startup freeze on decode-bound 4K. Only a genuinely stalled or mispositioned
+    /// decoder (not advancing) benefits from a re-seek.
+    pub fn decoder_advancing(&mut self) -> bool {
+        let newest = self.cache.newest_pts();
+        let advancing = match (self.last_newest_pts, newest) {
+            (Some(prev), Some(now)) => now > prev + 1e-4,
+            (None, Some(_)) => true,
+            _ => false,
+        };
+        self.last_newest_pts = newest;
+        advancing
+    }
+
+    /// True once a frame at or past `target_clip_local` is buffered — the decoder has
+    /// decoded ahead of the playhead and playback can start without a startup freeze.
+    pub fn has_buffered_through(&self, target_clip_local: f64) -> bool {
+        self.cache.has_frame_ge(target_clip_local)
     }
 
     /// Decoder is not where it should be (reverse / fast-forward / cache miss):
@@ -317,5 +346,32 @@ mod tests {
             !rt.is_decode_bound(),
             "regaining sync must clear decode-bound so re-seeking can resume"
         );
+    }
+
+    // Anti-thrash core: while the decoder keeps producing newer frames it is decoding
+    // forward (just slow), and `runtime::tick` must NOT re-seek-on-lag — re-seeking
+    // flushes the in-progress GOP and causes the 4K startup freeze. A non-advancing
+    // (stuck) decoder reports false so a re-seek can recover it.
+    #[test]
+    fn decoder_advancing_tracks_forward_progress() {
+        fn cached(pts: f64) -> DecodedVideoFrame {
+            DecodedVideoFrame {
+                pts_sec: pts,
+                image: None,
+                texture: None,
+            }
+        }
+
+        let mut rt = fixture_video_rt();
+        // Пустой кеш — прогресса нет.
+        assert!(!rt.decoder_advancing());
+        rt.cache.insert(cached(1.0));
+        // Появился новейший кадр — прогресс есть.
+        assert!(rt.decoder_advancing());
+        // Тот же новейший кадр — декодер не двинулся.
+        assert!(!rt.decoder_advancing());
+        rt.cache.insert(cached(2.0));
+        assert!(rt.decoder_advancing());
+        assert!(!rt.decoder_advancing());
     }
 }

@@ -34,6 +34,15 @@ const DEFAULT_TITLE: &str = "FastCat Monitor";
 const EVT_TIME: &str = "monitor:time";
 const EVT_ENDED: &str = "monitor:ended";
 
+/// Прогрев декодеров перед стартом воспроизведения: ждём, пока активные видеослои
+/// декодируют кадр на столько секунд впереди playhead'а. Так 4К не фризит на старте,
+/// пока ffmpeg декодит GOP от ключевого кадра до playhead'а — прогрев идёт «под паузой»
+/// на правильном стоп-кадре, движение начинается уже синхронным.
+const PREBUFFER_LOOKAHEAD_SEC: f64 = 0.12;
+/// Жёсткий потолок ожидания прогрева. Если декодер не успел (очень тяжёлый источник,
+/// ошибка открытия) — стартуем как есть, чтобы Play никогда не зависал.
+const PREBUFFER_TIMEOUT: Duration = Duration::from_millis(500);
+
 /// Заказ положения child-окна от фронта (физические пиксели в координатах родителя).
 #[derive(Debug, Clone, Copy)]
 struct ViewportSpec {
@@ -147,6 +156,29 @@ impl MonitorApp {
         }
     }
 
+    /// Опрашивает прогрев декодеров. Если воспроизведение только что стартовало —
+    /// взводит сетку пейсинга и перерисовывает. Вызывается из источников, которые
+    /// двигают прогрев: декодированные кадры, открытие декодера, таймаут.
+    fn drive_prebuffer(&mut self) {
+        let started = match self.state.as_mut() {
+            Some(s) => s.poll_prebuffer(),
+            None => return,
+        };
+        if started {
+            self.next_redraw_at = Some(Instant::now());
+            if let Some(s) = self.state.as_ref() {
+                s.window.request_redraw();
+            }
+        }
+    }
+
+    fn is_prebuffering(&self) -> bool {
+        self.state
+            .as_ref()
+            .map(|s| s.pending_play_deadline.is_some())
+            .unwrap_or(false)
+    }
+
     fn try_create_window(&mut self, event_loop: &ActiveEventLoop) {
         if self.state.is_some() || !self.resumed {
             return;
@@ -205,6 +237,11 @@ impl ApplicationHandler<MonitorCommand> for MonitorApp {
         //   3) `about_to_wait` дедлайн НЕ пересчитывает, лишь пере-взводит сохранённый —
         //      иначе посторонние пробуждения (WaitCancelled) сдвигают сетку и роняют fps вдвое.
         if matches!(cause, StartCause::ResumeTimeReached { .. }) {
+            // Таймаут прогрева перед стартом: дедлайн истёк — стартуем воспроизведение,
+            // даже если декодер не успел декодировать кадры впереди (фоллбэк от зависания).
+            if self.is_prebuffering() {
+                self.drive_prebuffer();
+            }
             let is_playing = self
                 .state
                 .as_ref()
@@ -250,7 +287,12 @@ impl ApplicationHandler<MonitorCommand> for MonitorApp {
             MonitorCommand::Play => {
                 if let Some(s) = self.state.as_mut() {
                     s.play();
-                    self.next_redraw_at = Some(Instant::now());
+                    // Если старт мгновенный (нет видео для прогрева) — взводим сетку пейсинга.
+                    // Иначе прогрев двигают VideoFrameReady/таймаут (см. drive_prebuffer),
+                    // а about_to_wait спит до дедлайна прогрева.
+                    if s.clock.is_playing() {
+                        self.next_redraw_at = Some(Instant::now());
+                    }
                     s.window.request_redraw();
                 }
             }
@@ -312,15 +354,22 @@ impl ApplicationHandler<MonitorCommand> for MonitorApp {
                         s.layers.apply_bg_result(result);
                     }
                 }
-                if let Some(s) = self.state.as_ref() {
+                // Декодер мог только что открыться во время прогрева — двигаем его.
+                if self.is_prebuffering() {
+                    self.drive_prebuffer();
+                } else if let Some(s) = self.state.as_ref() {
                     s.window.request_redraw();
                 }
             }
             MonitorCommand::VideoFrameReady => {
-                // Во время play кадры забираются на следующем тике, отмеренном таймером
-                // (см. about_to_wait/new_events) — лишний redraw тут только раскручивал бы
-                // цикл. Нужен он лишь на паузе/скрабе, чтобы показать догнавший кадр.
-                if let Some(s) = self.state.as_ref() {
+                // Прогрев перед стартом: каждый декодированный кадр — повод проверить,
+                // не накопили ли мы достаточно впереди playhead'а, чтобы стартовать.
+                if self.is_prebuffering() {
+                    self.drive_prebuffer();
+                } else if let Some(s) = self.state.as_ref() {
+                    // Во время play кадры забираются на следующем тике, отмеренном таймером
+                    // (см. about_to_wait/new_events) — лишний redraw тут только раскручивал бы
+                    // цикл. Нужен он лишь на паузе/скрабе, чтобы показать догнавший кадр.
                     if !s.clock.is_playing() {
                         s.window.request_redraw();
                     }
@@ -408,7 +457,12 @@ impl ApplicationHandler<MonitorCommand> for MonitorApp {
         };
         if !state.clock.is_playing() {
             self.next_redraw_at = None;
-            event_loop.set_control_flow(ControlFlow::Wait);
+            match state.pending_play_deadline {
+                // Прогрев перед стартом: просыпаемся к дедлайну прогрева, чтобы стартовать
+                // воспроизведение по таймауту даже если поток кадров иссяк.
+                Some(deadline) => event_loop.set_control_flow(ControlFlow::WaitUntil(deadline)),
+                None => event_loop.set_control_flow(ControlFlow::Wait),
+            }
             return;
         }
         // ИНВАРИАНТ ПЕЙСИНГА (парно с new_events, см. там): дедлайн продвигается ТОЛЬКО
@@ -470,6 +524,10 @@ struct WindowState {
     canvas_size: (u32, u32),
     /// dev_id wgpu для offscreen-рендера; берём из существующего surface'а.
     offscreen_dev_id: Option<usize>,
+    /// Дедлайн прогрева декодеров перед стартом часов. `Some` — Play запрошен, но
+    /// воспроизведение ещё не началось (ждём кадры впереди playhead'а или таймаут).
+    /// `None` — либо играем, либо стоим на паузе.
+    pending_play_deadline: Option<Instant>,
 }
 
 impl WindowState {
@@ -576,10 +634,35 @@ impl WindowState {
         }
     }
 
+    /// Запрашивает воспроизведение. Для сцен с видео сначала прогревает декодеры до
+    /// playhead'а (prebuffer), а часы/аудио стартуют позже в `begin_playback`, когда
+    /// кадры уже декодированы вперёд — иначе 4К фризит на старте, пока декодится GOP.
+    /// Для сцен без активного видео (только аудио/картинки) старт мгновенный.
     fn play(&mut self) {
+        if self.clock.is_playing() || self.pending_play_deadline.is_some() {
+            return;
+        }
         if self.layers.is_empty() && self.audio.as_ref().is_none_or(NativeAudioEngine::is_empty) {
             return;
         }
+        let t = self.clock.current_pts();
+        // Заводим декодеры: говорим им играть и перепозиционируем на playhead, чтобы
+        // forward-стрим был корректным после скраба по кешу. Часы при этом ещё стоят.
+        self.layers.set_playing(true);
+        self.layers.resync_active_videos(t);
+
+        // Нечего прогревать (нет активного видео) — стартуем сразу.
+        if !self.layers.has_active_video(t) {
+            self.begin_playback();
+            return;
+        }
+        self.pending_play_deadline = Some(Instant::now() + PREBUFFER_TIMEOUT);
+    }
+
+    /// Фактический старт воспроизведения: запускает мастер-часы и аудио от текущего
+    /// playhead'а. Декодеры уже играют и спозиционированы (см. `play`).
+    fn begin_playback(&mut self) {
+        self.pending_play_deadline = None;
         // Start wall-clock first so audio.play() and video layers share the
         // exact same origin. Reversing the order lets audio buffer ahead of
         // the visual timeline, making the waveform lag behind the voice.
@@ -588,10 +671,27 @@ impl WindowState {
         if let Some(audio) = self.audio.as_ref() {
             audio.play(pts);
         }
-        self.layers.set_playing(true);
-        // После скраба по кешу декодеры могут стоять не на текущей позиции —
-        // перепозиционируем, чтобы forward-стрим воспроизведения был корректным.
-        self.layers.resync_active_videos(self.clock.current_pts());
+    }
+
+    /// Опрашивает прогрев. Возвращает `true`, если воспроизведение только что стартовало
+    /// (часы пошли) — вызывающий код должен взвести сетку пейсинга и перерисовать.
+    /// Стартует по готовности кадров впереди playhead'а либо по таймауту.
+    fn poll_prebuffer(&mut self) -> bool {
+        let Some(deadline) = self.pending_play_deadline else {
+            return false;
+        };
+        let t = self.clock.current_pts();
+        let ready = self
+            .layers
+            .active_videos_ready(t, PREBUFFER_LOOKAHEAD_SEC);
+        if ready || Instant::now() >= deadline {
+            self.begin_playback();
+            true
+        } else {
+            // Ещё греемся — держим на экране стоп-кадр playhead'а.
+            self.render(t);
+            false
+        }
     }
 
     /// Глобальная скорость транспорта. Переанкоривает мастер-клок и аудио-движок на
@@ -609,6 +709,8 @@ impl WindowState {
     }
 
     fn pause(&mut self) {
+        // Прогрев прерван запросом паузы — отменяем отложенный старт.
+        self.pending_play_deadline = None;
         // На реверсе/не-аудибельной скорости аудио молчит и мастер-клок — это сам
         // PlaybackClock, поэтому замораживаем его позицию. На обычном forward-аудио
         // источник истины — звуковой ринг, поэтому подтягиваемся к audible-позиции.
@@ -629,6 +731,12 @@ impl WindowState {
     }
 
     fn seek(&mut self, timeline_sec: f64) {
+        // Seek во время прогрева отменяет отложенный старт: позиция сменилась, пользователь
+        // повторит Play от новой точки. Иначе стартовали бы от устаревшего playhead'а.
+        if self.pending_play_deadline.is_some() {
+            self.pending_play_deadline = None;
+            self.layers.set_playing(false);
+        }
         let t = timeline_sec.max(0.0);
         self.clock.seek(t);
         let playing = self.clock.is_playing();
@@ -865,6 +973,7 @@ fn init_window(
         frame_channel: None,
         canvas_size: (viewport.width.max(1), viewport.height.max(1)),
         offscreen_dev_id,
+        pending_play_deadline: None,
     })
 }
 

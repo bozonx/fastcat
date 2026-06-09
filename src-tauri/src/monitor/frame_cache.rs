@@ -128,6 +128,22 @@ impl VideoFrameCache {
         best <= tolerance_ms
     }
 
+    /// PTS (секунды) новейшего декодированного кадра в кеше. `None` — кеш пуст.
+    /// Используется для детектора forward-прогресса декодера (decode-bound 4K).
+    pub fn newest_pts(&self) -> Option<f64> {
+        self.frames
+            .keys()
+            .next_back()
+            .map(|k| *k as f64 / CACHE_KEY_HZ)
+    }
+
+    /// Есть ли в кеше кадр с PTS ≥ `target_pts` (декодировано «вперёд» от playhead'а).
+    /// Критерий готовности прогрева перед стартом воспроизведения.
+    pub fn has_frame_ge(&self, target_pts: f64) -> bool {
+        let key = self.index_of(target_pts);
+        self.frames.range(key..).next().is_some()
+    }
+
     /// Расстояние (секунды) до ближайшего кешированного кадра от `target`.
     /// `None` — кеш пуст. Не трогает `last_request` (чистый запрос для эвристик).
     pub fn nearest_distance_sec(&self, target_pts: f64) -> Option<f64> {
@@ -275,6 +291,21 @@ mod tests {
         assert_eq!(c.frame_nearest(0.0).map(|f| f.pts_sec), Some(1.0));
         assert_eq!(c.frame_nearest(2.9).map(|f| f.pts_sec), Some(3.0));
         assert_eq!(c.frame_nearest(1.9).map(|f| f.pts_sec), Some(1.0));
+    }
+
+    #[test]
+    fn newest_pts_and_has_frame_ge_track_forward_decode() {
+        let mut c = VideoFrameCache::new(30.0, 4);
+        assert_eq!(c.newest_pts(), None);
+        assert!(!c.has_frame_ge(0.0));
+        c.insert(frame(1.0));
+        c.insert(frame(2.0));
+        assert_eq!(c.newest_pts(), Some(2.0));
+        // Есть кадр на/после playhead'а.
+        assert!(c.has_frame_ge(1.5));
+        assert!(c.has_frame_ge(2.0));
+        // Декодер ещё не дошёл до 2.5 — не готов.
+        assert!(!c.has_frame_ge(2.5));
     }
 
     #[test]

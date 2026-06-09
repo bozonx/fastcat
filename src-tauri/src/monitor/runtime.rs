@@ -574,6 +574,9 @@ impl LayerRuntimeManager {
             }
             if let Some(LayerRuntime::Video(rt)) = self.runtimes.get_mut(&layer.id) {
                 rt.pull_into_cache();
+                // Once per tick: is the decoder producing newer frames (moving forward)?
+                // Used below to suppress the reseek-on-lag thrash on decode-bound sources.
+                let advancing = rt.decoder_advancing();
                 let clip_local = layer.source_pts_at(t);
                 let max_lag_sec = video_sync_lag_sec(self.preview_sync_mode, rt.pump.info.fps);
 
@@ -592,10 +595,12 @@ impl LayerRuntimeManager {
                         // Отстали за окно синка. Reseek скидывает бэклог ради синка — полезно,
                         // только если декодер декодит GOP→target быстрее реалтайма. На
                         // decode-bound источнике (4K) он лишь флашит буфер и пере-декодит →
-                        // фризы. Пробуем несколько тиков; если синк не вернулся — отступаем в
-                        // плавный smooth-lag (reseek прекращаем).
+                        // фризы (тот самый «фриз на 1–2 сек на старте»). Поэтому reseek-им,
+                        // ТОЛЬКО если декодер не двигается вперёд (реально застрял/в чужом
+                        // месте). Если он декодит вперёд, но медленнее реалтайма — сразу
+                        // отступаем в плавный smooth-lag, не дожидаясь decode-bound порога.
                         rt.note_lagged();
-                        if !rt.is_decode_bound() {
+                        if !advancing && !rt.is_decode_bound() {
                             if let Some(max_lag_sec) = max_lag_sec {
                                 rt.maybe_reseek_on_sync_lag(clip_local, max_lag_sec);
                             }
@@ -638,6 +643,38 @@ impl LayerRuntimeManager {
                 );
             }
         }
+    }
+
+    /// Есть ли активный видеослой в момент `t` — нужно ли прогревать декодеры перед
+    /// стартом воспроизведения (для аудио/картинок прогрев не требуется).
+    pub fn has_active_video(&self, t: f64) -> bool {
+        self.scene
+            .iter()
+            .any(|l| l.kind == LayerKind::Video && l.covers(t))
+    }
+
+    /// Все активные видеослои декодировали кадр на `lookahead_sec` секунд впереди
+    /// playhead'а — значит можно стартовать воспроизведение без фриза на GOP-декоде.
+    /// Слой в состоянии `Loading`/`Failed` считается «ещё не готов» (рассосётся по
+    /// таймауту прогрева в вызывающем коде).
+    pub fn active_videos_ready(&mut self, t: f64, lookahead_sec: f64) -> bool {
+        let scene = self.scene.clone();
+        for layer in scene.iter() {
+            if !layer.covers(t) || layer.kind != LayerKind::Video {
+                continue;
+            }
+            let target = layer.source_pts_at(t) + lookahead_sec.max(0.0);
+            match self.runtimes.get_mut(&layer.id) {
+                Some(LayerRuntime::Video(rt)) => {
+                    rt.pull_into_cache();
+                    if !rt.has_buffered_through(target) {
+                        return false;
+                    }
+                }
+                _ => return false,
+            }
+        }
+        true
     }
 
     /// Перепозиционирует декодеры активных видеослоёв к `t`. Вызывается при старте
