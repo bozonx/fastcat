@@ -97,6 +97,16 @@ export function useNativeMonitorBridge(): void {
   // SHOULD be by now. Re-pinned on every native sync so drift can't accumulate.
   let playbackAnchorUs = 0;
   let playbackAnchorWallMs = 0;
+  // True from the moment Play is requested until the native engine confirms it
+  // actually started (first `monitor:time`). The native side defers the start
+  // while it warms decoders (prebuffer, up to ~1.5s on a cold 4K GOP), so the
+  // wall-clock anchor seeded at the click runs ahead of the real native clock.
+  // During this window a currentTime change must NOT be read as a seek — otherwise
+  // the first native time (arriving "from the past") looks like a backward jump and
+  // gets echoed as a `monitor_seek`, which reseeks the audio engine and replays the
+  // first fraction of a second (the "audio plays twice" on 4K). Cleared on the
+  // first native sync, after which the normal anchor-deviation logic takes over.
+  let awaitingFirstNativeTime = false;
   // Монотонный токен сборки сцены: buildScene() — async, и без него медленная сборка,
   // стартовавшая раньше, могла бы завершиться позже и отправить устаревшую сцену поверх свежей.
   let sceneBuildSeq = 0;
@@ -210,6 +220,11 @@ export function useNativeMonitorBridge(): void {
         // as normal progression, not seeks.
         playbackAnchorUs = timelineStore.currentTime;
         playbackAnchorWallMs = performance.now();
+        // Native start is deferred until decoders warm up; suppress seek-detection
+        // until it confirms by emitting the first `monitor:time` (see flag docs).
+        awaitingFirstNativeTime = true;
+      } else {
+        awaitingFirstNativeTime = false;
       }
       if (isNativeMonitorDisabled()) return;
       try {
@@ -253,6 +268,14 @@ export function useNativeMonitorBridge(): void {
       }
 
       if (timelineStore.isPlaying) {
+        // Native hasn't confirmed playback start yet (still warming decoders): the
+        // wall anchor seeded at the click is ahead of the real (not-yet-running)
+        // native clock, so any currentTime change here would be misread as a seek
+        // and echoed back as a spurious backward seek. Don't seek until the first
+        // native time arrives (which clears this flag and re-pins the anchor).
+        if (awaitingFirstNativeTime) {
+          return;
+        }
         // Where playback should be by now, extrapolated from the last native
         // (master-clock) anchor at the current playback speed (negative = reverse).
         // Local interpolation that simply follows the master clock stays within the
@@ -290,6 +313,15 @@ export function useNativeMonitorBridge(): void {
     const timelineUs = Math.round(timelineSec * 1_000_000);
     const diffUs = Math.abs(timelineUs - timelineStore.currentTime);
     const nowMs = performance.now();
+    // Any native time means playback actually started — clear the deferred-start
+    // guard up front, even when the sync itself is throttled below (the first tick
+    // is often within the sync threshold of currentTime), so seek-detection isn't
+    // suppressed for the rest of the session.
+    if (awaitingFirstNativeTime) {
+      awaitingFirstNativeTime = false;
+      playbackAnchorUs = timelineUs;
+      playbackAnchorWallMs = nowMs;
+    }
     if (
       !shouldSyncNativeMonitorTime({
         diffUs,

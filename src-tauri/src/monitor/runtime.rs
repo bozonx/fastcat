@@ -28,6 +28,12 @@ use crate::media::decode_gate::decoder_load_gate;
 use crate::media::decode_thread::DecodePump;
 use crate::media::image_decode::decode_image;
 
+/// Сколько секунд видео прогревать вперёд playhead'а на паузе (после seek/смены
+/// сцены), чтобы Play стартовал с уже декодированным первым GOP без фриза. Чуть
+/// больше окна готовности `app::PREBUFFER_LOOKAHEAD_SEC`, чтобы к моменту Play кадры
+/// уже были в кеше. Реальное число кадров ограничено бюджетом памяти на слой.
+pub(super) const PREROLL_LOOKAHEAD_SEC: f64 = 0.2;
+
 const STRICT_VIDEO_SYNC_LAG_FRAMES: f64 = 2.0;
 const STRICT_VIDEO_SYNC_LAG_SEC: f64 = 0.08;
 const BALANCED_VIDEO_SYNC_LAG_FRAMES: f64 = 6.0;
@@ -645,6 +651,12 @@ impl LayerRuntimeManager {
                 }
                 if let Err(e) = rt.pump.seek(clip_local) {
                     log::error!("[monitor] seek pump {}: {e:?}", layer.id);
+                }
+                // На паузе сразу прогреваем первый GOP вперёд playhead'а, чтобы
+                // последующий Play не фризил на декоде 4К от ключевого кадра. На
+                // воспроизведении декодер и так стримит вперёд — отдельный прогрев не нужен.
+                if !playing {
+                    rt.request_prebuffer(PREROLL_LOOKAHEAD_SEC);
                 }
                 rt.update_display(
                     clip_local,

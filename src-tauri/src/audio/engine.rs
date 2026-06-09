@@ -268,6 +268,17 @@ impl NativeAudioEngine {
             if (pts - current).abs() < SEEK_IGNORE_SEC {
                 return;
             }
+            // Диагностика «двойного» аудио на старте: реальная перемотка НАЗАД во время
+            // воспроизведения заставляет продюсер пере-декодить и заново проиграть уже
+            // прозвучавший участок (слышно как повтор). Если это логируется в первые
+            // секунды после Play — корень дубля именно тут (эхо-seek назад), а не в
+            // продюсере. Сними лог, когда причина подтверждена/устранена.
+            if pts + SEEK_IGNORE_SEC < current {
+                log::warn!(
+                    "[audio] backward seek during playback: {current:.3}s -> {pts:.3}s \
+                     (replays already-played audio; likely a startup echo-seek)"
+                );
+            }
         }
 
         let was_playing = state.playing;
