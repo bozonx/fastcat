@@ -475,7 +475,9 @@ export class VideoCompositor {
     this.resetRuntimeDependencies();
 
     // Initialize WebGPU compute runner lazily; failures are non-fatal.
-    void this.computeRunner.init();
+    this.computeRunner.init().catch((err) => {
+      log.error('Failed to initialize WebGPU compute runner lazily:', err);
+    });
 
     const { app, canvas } = await this.pixiLifecycle.init({
       width,

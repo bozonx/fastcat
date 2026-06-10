@@ -132,6 +132,23 @@ const api: Omit<VideoCoreWorkerAPI, 'initCompositor'> & {
     pixiRendererPreference = preference;
   },
 
+  async checkWebGpuSupport(): Promise<{ supported: boolean; error: string | null }> {
+    if (typeof navigator === 'undefined' || !navigator.gpu) {
+      return { supported: false, error: 'WebGPU API (navigator.gpu) is undefined in Worker context' };
+    }
+    try {
+      const adapter = await navigator.gpu.requestAdapter();
+      if (!adapter) {
+        return { supported: false, error: 'requestAdapter() returned null' };
+      }
+      const device = await adapter.requestDevice();
+      device.destroy?.();
+      return { supported: true, error: null };
+    } catch (err) {
+      return { supported: false, error: err instanceof Error ? err.message : String(err) };
+    }
+  },
+
   async extractMetadata(file: File | FileSystemFileHandle): Promise<MediaMetadata> {
     return parseMediaMetadata(await extractMetadata(file));
   },

@@ -1,5 +1,8 @@
 import type { VideoEffectSpec } from '~/types/generated/native-monitor/VideoEffectSpec';
 import effectWgsl from '~shared/effects/effect.wgsl?raw';
+import { createDevLogger } from '~/utils/dev-logger';
+
+const log = createDevLogger('WebGpuComputeRunner');
 
 const UNIFORM_SIZE = 48; // 12 * 4 bytes
 const MAX_BLUR_RADIUS = 64.0;
@@ -327,59 +330,71 @@ export class WebGpuComputeRunner {
 
   public async init(): Promise<boolean> {
     if (this.device) return true;
-    if (typeof navigator === 'undefined' || !navigator.gpu) return false;
+    if (typeof navigator === 'undefined' || !navigator.gpu) {
+      log.warn('WebGPU is not supported in this environment (navigator.gpu is undefined).');
+      return false;
+    }
 
-    const adapter = await navigator.gpu.requestAdapter();
-    if (!adapter) return false;
+    try {
+      const adapter = await navigator.gpu.requestAdapter();
+      if (!adapter) {
+        log.warn('Failed to request WebGPU adapter (requestAdapter returned null).');
+        return false;
+      }
 
-    this.device = await adapter.requestDevice();
+      this.device = await adapter.requestDevice();
 
-    this.bindLayout = this.device.createBindGroupLayout({
-      label: 'web-effect-bind-layout',
-      entries: [
-        {
-          binding: 0,
-          visibility: GPUShaderStage.COMPUTE,
-          texture: { sampleType: 'unfilterable-float', viewDimension: '2d' },
-        },
-        {
-          binding: 1,
-          visibility: GPUShaderStage.COMPUTE,
-          storageTexture: { access: 'write-only', format: 'rgba8unorm', viewDimension: '2d' },
-        },
-        {
-          binding: 2,
-          visibility: GPUShaderStage.COMPUTE,
-          buffer: { type: 'uniform', hasDynamicOffset: true, minBindingSize: UNIFORM_SIZE },
-        },
-        {
-          binding: 3,
-          visibility: GPUShaderStage.COMPUTE,
-          texture: { sampleType: 'unfilterable-float', viewDimension: '2d' },
-        },
-      ],
-    });
+      this.bindLayout = this.device.createBindGroupLayout({
+        label: 'web-effect-bind-layout',
+        entries: [
+          {
+            binding: 0,
+            visibility: GPUShaderStage.COMPUTE,
+            texture: { sampleType: 'unfilterable-float', viewDimension: '2d' },
+          },
+          {
+            binding: 1,
+            visibility: GPUShaderStage.COMPUTE,
+            storageTexture: { access: 'write-only', format: 'rgba8unorm', viewDimension: '2d' },
+          },
+          {
+            binding: 2,
+            visibility: GPUShaderStage.COMPUTE,
+            buffer: { type: 'uniform', hasDynamicOffset: true, minBindingSize: UNIFORM_SIZE },
+          },
+          {
+            binding: 3,
+            visibility: GPUShaderStage.COMPUTE,
+            texture: { sampleType: 'unfilterable-float', viewDimension: '2d' },
+          },
+        ],
+      });
 
-    this.shaderModule = this.device.createShaderModule({
-      label: 'web-effect-wgsl',
-      code: effectWgsl,
-    });
+      this.shaderModule = this.device.createShaderModule({
+        label: 'web-effect-wgsl',
+        code: effectWgsl,
+      });
 
-    const pipelineLayout = this.device.createPipelineLayout({
-      label: 'web-effect-pipeline-layout',
-      bindGroupLayouts: [this.bindLayout],
-    });
+      const pipelineLayout = this.device.createPipelineLayout({
+        label: 'web-effect-pipeline-layout',
+        bindGroupLayouts: [this.bindLayout],
+      });
 
-    this.pipeline = this.device.createComputePipeline({
-      label: 'web-effect-pipeline',
-      layout: pipelineLayout,
-      compute: { module: this.shaderModule, entryPoint: 'main' },
-    });
+      this.pipeline = this.device.createComputePipeline({
+        label: 'web-effect-pipeline',
+        layout: pipelineLayout,
+        compute: { module: this.shaderModule, entryPoint: 'main' },
+      });
 
-    const align = this.device.limits.minUniformBufferOffsetAlignment;
-    this.uniformStride = Math.ceil(UNIFORM_SIZE / align) * align;
+      const align = this.device.limits.minUniformBufferOffsetAlignment;
+      this.uniformStride = Math.ceil(UNIFORM_SIZE / align) * align;
 
-    return true;
+      log.info('WebGpuComputeRunner initialized successfully.');
+      return true;
+    } catch (err) {
+      log.error('Failed to initialize WebGPU device/pipeline:', err);
+      return false;
+    }
   }
 
   public isReady(): boolean {

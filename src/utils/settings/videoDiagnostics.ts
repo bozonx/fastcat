@@ -143,6 +143,7 @@ interface GatherVideoDiagnosticsOptions {
   createCanvas?: () => CanvasLike;
   navigatorObject?: NavigatorLike;
   probe: VideoDiagnosticsProbeOptions;
+  checkWorkerWebGpu?: () => Promise<{ supported: boolean; error: string | null }>;
 }
 
 function formatBoolean(
@@ -516,6 +517,7 @@ export function createVideoDiagnosticsSnapshot(params: {
   videoCodecDiagnostics: VideoCodecDiagnosticsResult[];
   webGlInfo: WebGlInfo;
   webGpuInfo: Awaited<ReturnType<typeof getWebGpuInfo>>;
+  workerWebGpuInfo: { supported: boolean; error: string | null } | null;
   secureContext: boolean | null;
   selectedVideoCodec: string;
   userAgent: string | null;
@@ -528,7 +530,9 @@ export function createVideoDiagnosticsSnapshot(params: {
 
   const compositorStatus = compositorReady
     ? webGpuReady
-      ? buildStatus('Ready for Pixi GPU compositor with WebGPU available', 'success')
+      ? params.workerWebGpuInfo?.supported === false
+        ? buildStatus('Ready for Pixi GPU compositor (WebGL fallback: WebGPU unavailable in Worker)', 'warning')
+        : buildStatus('Ready for Pixi GPU compositor with WebGPU available', 'success')
       : buildStatus('Ready for Pixi GPU compositor using WebGL fallback', 'success')
     : params.webGlInfo.supported === false && params.offscreenWebGlInfo.supported === false
       ? buildStatus('Preview compositor is limited: WebGL is unavailable', 'danger')
@@ -730,6 +734,14 @@ export function createVideoDiagnosticsSnapshot(params: {
         'WebGPU adapter detection depends on the current browser or WebView, OS graphics stack, driver allowlist and secure-context policy. WebGL can still use the GPU when this adapter is unavailable.',
       items: [
         {
+          label: 'WebGPU in Worker context',
+          value: params.workerWebGpuInfo
+            ? params.workerWebGpuInfo.supported
+              ? 'Available'
+              : `Unavailable: ${params.workerWebGpuInfo.error}`
+            : 'Not checked',
+        },
+        {
           label: 'WebGPU API',
           value: formatApiAvailability(params.webGpuInfo.apiAvailable),
         },
@@ -856,6 +868,7 @@ export async function gatherVideoDiagnostics(
     audioEncoderSupported,
     encodingInfo,
     videoCodecDiagnostics,
+    workerWebGpuInfo,
   ] = await Promise.all([
     getVideoEncoderSupport(browser, options.probe, 'prefer-hardware'),
     getVideoEncoderSupport(browser, options.probe, 'prefer-software'),
@@ -863,6 +876,7 @@ export async function gatherVideoDiagnostics(
     getAudioEncoderSupport(browser, options.probe),
     getEncodingInfo(navigatorObject, options.probe),
     getVideoCodecDiagnostics(browser, options.probe),
+    options.checkWorkerWebGpu ? options.checkWorkerWebGpu().catch((err) => ({ supported: false, error: String(err) })) : Promise.resolve(null),
   ]);
 
   const webGlInfo = getWebGlInfo(options.createCanvas);
@@ -884,6 +898,7 @@ export async function gatherVideoDiagnostics(
     videoCodecDiagnostics,
     webGlInfo,
     webGpuInfo,
+    workerWebGpuInfo,
     secureContext,
     selectedVideoCodec: options.probe.videoCodec,
     userAgent: navigatorObject.userAgent ?? null,

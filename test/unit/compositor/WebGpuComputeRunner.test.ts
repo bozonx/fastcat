@@ -209,4 +209,22 @@ describe('WebGpuComputeRunner', () => {
 
     vi.unstubAllGlobals();
   });
+
+  it('catches initialization errors gracefully and returns false', async () => {
+    const runner = new WebGpuComputeRunner();
+
+    const mockAdapter = {
+      requestDevice: vi.fn().mockRejectedValue(new Error('GPUDevice creation failed')),
+    } as any;
+
+    vi.stubGlobal('navigator', {
+      gpu: { requestAdapter: vi.fn().mockResolvedValue(mockAdapter) },
+    });
+
+    const result = await runner.init();
+    expect(result).toBe(false);
+    expect(runner.isReady()).toBe(false);
+
+    vi.unstubAllGlobals();
+  });
 });

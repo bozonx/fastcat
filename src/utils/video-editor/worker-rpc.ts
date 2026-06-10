@@ -135,6 +135,8 @@ export interface VideoCoreWorkerAPI {
 
   setPixiRendererPreference(preference: 'webgl' | 'webgpu'): Promise<void>;
 
+  checkWebGpuSupport(): Promise<{ supported: boolean; error: string | null }>;
+
   // initCompositor is implemented manually in the client proxy
   initCompositor(
     canvas: OffscreenCanvas,

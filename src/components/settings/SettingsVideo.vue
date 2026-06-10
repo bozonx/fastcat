@@ -8,7 +8,7 @@ import {
   type VideoDiagnosticsSnapshot,
   type VideoDiagnosticsStatus,
 } from '~/utils/settings/videoDiagnostics';
-import { broadcastPixiRendererPreference } from '~/utils/video-editor/worker-client';
+import { broadcastPixiRendererPreference, getPreviewWorkerClient } from '~/utils/video-editor/worker-client';
 import { isTauriRuntime } from '~/utils/runtime';
 import { createDevLogger } from '~/utils/dev-logger';
 import UiConfirmModal from '~/components/ui/UiConfirmModal.vue';
@@ -90,6 +90,14 @@ async function loadDiagnostics() {
         videoBitrate: Math.round(selectedExportPreset.value.bitrateMbps * 1_000_000),
         videoCodec: selectedExportPreset.value.videoCodec,
         width: selectedProjectPreset.value.width,
+      },
+      checkWorkerWebGpu: async () => {
+        try {
+          const { client } = getPreviewWorkerClient();
+          return await client.checkWebGpuSupport();
+        } catch (err) {
+          return { supported: false, error: err instanceof Error ? err.message : String(err) };
+        }
       },
     });
   } catch {

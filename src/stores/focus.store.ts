@@ -82,6 +82,11 @@ export function isTimelineHotkeyPanelFocus(panelId: string | null | undefined): 
   return panelId === 'timeline' || panelId === 'audioMixer';
 }
 
+export function isMonitorPanelFocus(panelId: string | null | undefined): boolean {
+  if (!panelId) return false;
+  return panelId === 'monitor' || String(panelId).startsWith('dynamic:monitor:');
+}
+
 export type FileManagerSurface = 'tree' | 'list';
 
 const FILES_VIEW_SIDEBAR_FOCUS_ID = 'dynamic:file-manager:sidebar';
@@ -218,6 +223,7 @@ export const useFocusStore = defineStore('focus', () => {
     return false;
   });
   const canUsePlaybackHotkeys = computed(() => isPlaybackPanelFocus(effectiveFocus.value));
+  const canUseMonitorHotkeys = computed(() => isMonitorPanelFocus(effectiveFocus.value));
 
   const canUsePreviewHotkeys = computed(() => isPreviewPanelFocus(effectiveFocus.value));
 
@@ -235,6 +241,7 @@ export const useFocusStore = defineStore('focus', () => {
 
     canUseTimelineHotkeys,
     canUsePlaybackHotkeys,
+    canUseMonitorHotkeys,
     canUsePreviewHotkeys,
     isPropertiesFocus,
 
