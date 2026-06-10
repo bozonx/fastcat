@@ -52,12 +52,6 @@ const snapModeOptions = computed<SnapOption[]>(() => [
     label: t('fastcat.timeline.snapModeFramesDescription'),
     description: t('fastcat.timeline.snapModeFramesDescription'),
   },
-  {
-    value: 'free_mode',
-    icon: 'i-heroicons-arrows-pointing-out',
-    label: t('fastcat.timeline.snapModeFreeDescription'),
-    description: t('fastcat.timeline.snapModeFreeDescription'),
-  },
 ]);
 
 const currentSnapOption = computed(
