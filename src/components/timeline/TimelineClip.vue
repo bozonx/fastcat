@@ -728,11 +728,12 @@ function handleTransitionCreate(
         clipItem &&
         (Boolean(clipItem.disabled) ||
           Boolean(track.videoHidden) ||
+          Boolean(track.audioMuted) ||
           (timelineContext.timelineDoc.value?.tracks.some((t) => t.audioSolo) && !track.audioSolo))
           ? 'opacity-40'
           : '',
         isMediaMissing ? 'bg-red-600! border-red-800! text-white!' : '',
-        !isMediaMissing && clipItem && clipItem.disabled
+        !isMediaMissing && clipItem && (clipItem.disabled || track.audioMuted)
           ? 'bg-zinc-800/40! border-zinc-700/60!'
           : '',
         !isMediaMissing && isUnsupported ? 'bg-amber-600/50! border-amber-700!' : '',

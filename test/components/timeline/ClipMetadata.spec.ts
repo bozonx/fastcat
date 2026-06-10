@@ -23,6 +23,16 @@ describe('ClipMetadata', () => {
     expect(component.html()).toContain('bg-black');
   });
 
+  it('hides muted icon if track itself is muted', async () => {
+    const mutedItem = { kind: 'clip', id: 'c1', audioMuted: true } as any;
+    const mutedTrack = { kind: 'video', audioMuted: true } as any;
+    const component = await mountSuspended(ClipMetadata, {
+      props: { item: mutedItem, track: mutedTrack, clipWidthPx: 100 },
+    });
+
+    expect(component.html()).not.toContain('bg-black');
+  });
+
   it('renders disabled icon', async () => {
     const disabledItem = { kind: 'clip', id: 'c1', disabled: true } as any;
     const component = await mountSuspended(ClipMetadata, {
