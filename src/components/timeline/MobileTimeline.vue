@@ -173,6 +173,10 @@ function handleCutClips() {
   });
 }
 
+function handleSplitClips() {
+  void timelineStore.splitClipsAtPlayhead();
+}
+
 const scrollEl = ref<HTMLElement | null>(null);
 
 function scrollPlayheadIntoView() {
@@ -566,6 +570,11 @@ async function onClipAction(payload: TimelineClipActionPayload) {
             icon="i-heroicons-scissors"
             :label="t('common.cut')"
             @click="handleCutClips"
+          />
+          <MobileDrawerToolbarButton
+            icon="i-lucide-scissors"
+            :label="t('fastcat.timeline.split')"
+            @click="handleSplitClips"
           />
           <MobileDrawerToolbarButton
             :icon="allDisabled ? 'i-heroicons-eye' : 'i-heroicons-eye-slash'"

@@ -119,6 +119,11 @@ function handleCut() {
   emit('close');
 }
 
+function handleSplit() {
+  if (!clip.value || isLocked.value) return;
+  void timelineStore.splitClipAtPlayhead();
+}
+
 function requestDelete() {
   if (!clip.value || isLocked.value) return;
   handleDeleteClip();
@@ -349,7 +354,15 @@ const hasAudio = computed(() => {
             @click="handleCut"
           />
 
-          <!-- 8. Rename -->
+          <!-- 8. Split -->
+          <MobileDrawerToolbarButton
+            icon="i-lucide-scissors"
+            :disabled="isLocked"
+            :label="t('fastcat.timeline.split')"
+            @click="handleSplit"
+          />
+
+          <!-- 9. Rename -->
           <MobileDrawerToolbarButton
             icon="i-heroicons-pencil"
             :label="t('common.rename')"

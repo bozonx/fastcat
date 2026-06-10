@@ -27,6 +27,7 @@ const rippleTrimLeft = vi.fn();
 const rippleTrimRight = vi.fn();
 const copySelectedClips = vi.fn(() => []);
 const cutSelectedClips = vi.fn(() => []);
+const splitClipAtPlayhead = vi.fn();
 
 const mockTimelineStore = reactive({
   timelineDoc: {
@@ -54,6 +55,7 @@ const mockTimelineStore = reactive({
   rippleTrimRight,
   copySelectedClips,
   cutSelectedClips,
+  splitClipAtPlayhead,
 });
 
 const mockSelectionStore = reactive({
@@ -146,13 +148,14 @@ describe('MobileClipPropertiesDrawer', () => {
     });
 
     const buttons = wrapper.findAll('.toolbar-stub button');
-    // We expect: Delete Toggle, Trim Toggle, Active, Mute, Lock, Copy, Cut, Rename
-    expect(buttons.length).toBe(8);
+    // We expect: Delete Toggle, Trim Toggle, Active, Mute, Lock, Copy, Cut, Split, Rename
+    expect(buttons.length).toBe(9);
 
     const deleteBtn = buttons[0];
     const trimBtn = buttons[1];
     expect(deleteBtn?.attributes('data-icon')).toBe('i-heroicons-trash');
     expect(trimBtn?.attributes('data-icon')).toBe('i-heroicons-arrows-right-left');
+    expect(buttons[7]?.attributes('data-icon')).toBe('i-lucide-scissors');
 
     // Overlays should not be visible initially
     expect(wrapper.findAll('.u-button').length).toBe(0);
@@ -216,5 +219,42 @@ describe('MobileClipPropertiesDrawer', () => {
     await liftBtn!.trigger('click');
     expect(handleDeleteClip).toHaveBeenCalled();
     expect(wrapper.emitted('close')).toBeTruthy();
+  });
+
+  it('calls splitClipAtPlayhead when split button is clicked', async () => {
+    const wrapper = await mountSuspended(MobileClipPropertiesDrawer, {
+      props: {
+        isOpen: true,
+      },
+      global: {
+        stubs: {
+          MobileTimelineDrawer: {
+            template: '<div><slot name="toolbar" /><slot /></div>',
+          },
+          MobileDrawerToolbar: {
+            template: '<div><slot /></div>',
+          },
+          MobileDrawerToolbarButton: {
+            props: ['icon', 'disabled'],
+            emits: ['click'],
+            template: '<button :data-icon="icon" :disabled="disabled" @click="$emit(\'click\')"></button>',
+          },
+          ClipProperties: {
+            template: '<div />',
+          },
+          UiRenameModal: true,
+          UButton: true,
+          UIcon: {
+            template: '<span />',
+          },
+        },
+      },
+    });
+
+    const splitBtn = wrapper.find('button[data-icon="i-lucide-scissors"]');
+    expect(splitBtn.exists()).toBe(true);
+    expect(splitBtn.attributes('disabled')).toBeUndefined();
+    await splitBtn.trigger('click');
+    expect(splitClipAtPlayhead).toHaveBeenCalled();
   });
 });

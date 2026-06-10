@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
-import { storeToRefs } from 'pinia';
 import type { ToolbarSnapMode } from '~/stores/timeline-settings.store';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useTimelineSettingsStore } from '~/stores/timeline-settings.store';
@@ -18,9 +17,6 @@ const clipboardStore = useAppClipboard();
 
 const { t } = useI18n();
 
-const { selectedItemIds } = storeToRefs(timelineStore);
-
-const hasSelection = computed(() => selectedItemIds.value.length > 0);
 const hasClipboard = computed(() => clipboardStore.hasTimelinePayload);
 
 const isSnapDrawerOpen = ref(false);
@@ -139,14 +135,6 @@ function stopLongPress() {
   }
 }
 
-function handleSplit() {
-  if (hasSelection.value) {
-    timelineStore.splitClipsAtPlayhead();
-  } else {
-    timelineStore.splitAllClipsAtPlayhead();
-  }
-}
-
 function handleUndo() {
   if (wasLastPressLong.value) return;
   timelineStore.undoTimeline();
@@ -223,13 +211,6 @@ function handlePaste() {
 
       <div class="flex items-center gap-1 rounded-xl bg-ui-bg px-1 py-1 shrink-0">
         <UiActionButton
-          icon="i-lucide-scissors"
-          color="neutral"
-          size="sm"
-          :title="t('fastcat.timeline.split')"
-          @click="handleSplit"
-        />
-        <UiActionButton
           v-if="hasClipboard"
           icon="i-heroicons-clipboard-document-check"
           color="primary"
@@ -238,7 +219,6 @@ function handlePaste() {
           :title="t('common.paste')"
           @click="handlePaste"
         />
-
       </div>
 
       <div class="flex items-center gap-1 rounded-xl bg-ui-bg px-1 py-1 shrink-0">
