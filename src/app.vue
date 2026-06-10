@@ -5,6 +5,7 @@ import DesktopMediaReplaceModal from '~/components/timeline/DesktopMediaReplaceM
 import RecoveryDialog from '~/components/timeline/RecoveryDialog.vue';
 import CloseConfirmDialog from '~/components/timeline/CloseConfirmDialog.vue';
 import MobileMediaPickerDrawer from '~/components/timeline/MobileMediaPickerDrawer.vue';
+import MobileForegroundTaskOverlay from '~/components/ui/MobileForegroundTaskOverlay.vue';
 import { usePresetsStore } from '~/stores/presets.store';
 import { useConfirmClose } from '~/composables/useConfirmClose';
 import { useWorkspaceStore } from '~/stores/workspace.store';
@@ -81,6 +82,7 @@ if (colorMode.preference === 'system') {
       :is-replace-mode="true"
       @close="uiStore.isMediaReplaceModalOpen = false"
     />
+    <MobileForegroundTaskOverlay />
   </UApp>
 </template>
 

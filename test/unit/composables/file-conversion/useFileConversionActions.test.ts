@@ -3,6 +3,7 @@ import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { ref } from 'vue';
 
 import { useFileConversionActions } from '~/composables/file-conversion/useFileConversionActions';
+import { useMobileLayout } from '~/composables/useMobileLayout';
 import { executeMediaConversion } from '~/utils/conversion/media-conversion';
 
 const mockProjectStore = {
@@ -59,6 +60,10 @@ vi.mock('~/stores/ui.store', () => ({
 
 vi.mock('~/composables/file-manager/useFileManager', () => ({
   useFileManager: () => mockFileManager,
+}));
+
+vi.mock('~/composables/useMobileLayout', () => ({
+  useMobileLayout: vi.fn(() => ({ isMobileLayout: { value: false } })),
 }));
 
 vi.mock('~/utils/video-editor/worker-client', () => ({
@@ -396,5 +401,27 @@ describe('useFileConversionActions', () => {
     expect(mockBitmap.close).toHaveBeenCalled();
 
     vi.unstubAllGlobals();
+  });
+
+  it('does not show bgTaskAdded toast on mobile layout', async () => {
+    vi.mocked(useMobileLayout).mockReturnValue({ isMobileLayout: { value: true } } as any);
+
+    const props = createProps('audio');
+    const { startConversion } = useFileConversionActions(props);
+
+    props.targetEntry.value = { name: 'test.mp3', path: '/test.mp3', kind: 'file' } as any;
+
+    mockProjectStore.getDirectoryHandleByPath.mockResolvedValue({
+      getFileHandle: vi.fn().mockResolvedValue({}),
+    });
+
+    await startConversion();
+
+    const bgTaskToast = mockToast.add.mock.calls.find(
+      (call) => (call[0] as any).title === 'videoEditor.fileManager.convert.bgTaskAdded',
+    );
+    expect(bgTaskToast).toBeUndefined();
+
+    vi.mocked(useMobileLayout).mockRestore?.();
   });
 });

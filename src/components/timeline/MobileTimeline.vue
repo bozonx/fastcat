@@ -176,6 +176,11 @@ function handleSplitClips() {
   void timelineStore.splitClipsAtPlayhead();
 }
 
+function handleAddContent(trackId: string) {
+  addContentTargetTrackId.value = trackId;
+  isAddContentDrawerOpen.value = true;
+}
+
 const scrollEl = ref<HTMLElement | null>(null);
 
 function scrollPlayheadIntoView() {
@@ -224,6 +229,20 @@ const lastPointerType = ref('');
 const clickStartX = ref(0);
 const clickStartY = ref(0);
 const isTrackManagerDrawerOpen = ref(false);
+const addContentTargetTrackId = ref<string | undefined>(undefined);
+
+const isAnyDrawerOpen = computed(
+  () =>
+    isTrackPropertiesDrawerOpen.value ||
+    isClipPropertiesDrawerOpen.value ||
+    isMarkerPropertiesDrawerOpen.value ||
+    isSelectionRangeDrawerOpen.value ||
+    isTransitionDrawerOpen.value ||
+    isMultiSelectionDrawerOpen.value ||
+    isTrimDrawerOpen.value ||
+    isAddContentDrawerOpen.value ||
+    isVirtualClipPresetDrawerOpen.value,
+);
 
 const trackHeights = computed(() => {
   const heights: Record<string, number> = {};
@@ -625,6 +644,7 @@ async function onClipAction(payload: TimelineClipActionPayload) {
           }
         }
       "
+      @add-content="handleAddContent"
     />
 
     <!-- Marker Properties Drawer -->
@@ -671,7 +691,13 @@ async function onClipAction(payload: TimelineClipActionPayload) {
     <!-- Add content drawer -->
     <MobileAddContentDrawer
       :is-open="isAddContentDrawerOpen"
-      @close="isAddContentDrawerOpen = false"
+      :target-track-id="addContentTargetTrackId"
+      @close="
+        () => {
+          isAddContentDrawerOpen = false;
+          addContentTargetTrackId = undefined;
+        }
+      "
       @open-virtual-clip-preset="onOpenVirtualClipPreset"
     />
 
@@ -757,7 +783,7 @@ async function onClipAction(payload: TimelineClipActionPayload) {
     <!-- FAB: add content -->
     <Teleport :to="teleportTarget">
       <div
-        v-if="!isTrimDrawerOpen"
+        v-if="!isAnyDrawerOpen"
         class="fixed bottom-20 right-6 z-40 transition-all duration-300"
       >
         <UButton

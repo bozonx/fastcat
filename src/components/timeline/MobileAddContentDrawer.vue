@@ -10,7 +10,10 @@ import { secondsToUs } from '~/utils/time';
 
 import { useAppClipboard } from '~/composables/useAppClipboard';
 
-const props = defineProps<{ isOpen: boolean }>();
+const props = defineProps<{
+  isOpen: boolean;
+  targetTrackId?: string;
+}>();
 const emit = defineEmits<{
   (e: 'close'): void;
   (e: 'open-virtual-clip-preset', type: 'text' | 'shape' | 'hud'): void;
@@ -66,17 +69,21 @@ async function handlePaste() {
 }
 
 function addAdjustment() {
-  const trackId = timelineStore.resolveMobileTargetTrackId('video', {
-    durationUs: workspaceStore.userSettings.timeline.defaultStaticClipDurationUs,
-  });
+  const trackId =
+    props.targetTrackId ??
+    timelineStore.resolveMobileTargetTrackId('video', {
+      durationUs: workspaceStore.userSettings.timeline.defaultStaticClipDurationUs,
+    });
   timelineStore.addAdjustmentClipAtPlayhead({ pseudo: true, trackId });
   emit('close');
 }
 
 function addBackground() {
-  const trackId = timelineStore.resolveMobileTargetTrackId('video', {
-    durationUs: workspaceStore.userSettings.timeline.defaultStaticClipDurationUs,
-  });
+  const trackId =
+    props.targetTrackId ??
+    timelineStore.resolveMobileTargetTrackId('video', {
+      durationUs: workspaceStore.userSettings.timeline.defaultStaticClipDurationUs,
+    });
   timelineStore.addBackgroundClipAtPlayhead({ pseudo: true, trackId });
   emit('close');
 }
@@ -112,7 +119,7 @@ async function onFilesSelected(e: Event) {
       } else if (['video', 'audio', 'image'].includes(mediaType)) {
         const kind = mediaType === 'audio' ? 'audio' : 'video';
         const durationUs = await resolveInsertDurationUs(r.targetPath, mediaType);
-        const trackId = timelineStore.resolveMobileTargetTrackId(kind, { durationUs });
+        const trackId = props.targetTrackId ?? timelineStore.resolveMobileTargetTrackId(kind, { durationUs });
 
         await timelineStore.addClipToTimelineFromPath({
           trackId,

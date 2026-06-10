@@ -1117,7 +1117,9 @@ export default {
       "transcriptionTitle": "Transcription: {name}",
       "uploadFailed": "Failed to upload files",
       "confirmCloseTitle": "Background tasks in progress",
-      "confirmCloseMessage": "There are unfinished background tasks. Are you sure you want to close the application?"
+      "confirmCloseMessage": "There are unfinished background tasks. Are you sure you want to close the application?",
+      "processing": "Processing...",
+      "doNotClose": "Do not close or leave this screen."
     },
     "export": {
       "audioTab": "Audio Export",

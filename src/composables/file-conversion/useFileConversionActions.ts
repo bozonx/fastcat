@@ -27,6 +27,7 @@ import {
   nativeMediaMetadata,
 } from '~/utils/tauri-media-processing';
 import { createGroupedWarningReporter } from '~/utils/grouped-warnings';
+import { useMobileLayout } from '~/composables/useMobileLayout';
 import {
   DEFAULT_VIDEO_FORMAT,
   DEFAULT_VIDEO_CODEC,
@@ -96,6 +97,7 @@ export function useFileConversionActions(props: UseFileConversionActionsProps) {
   const fileManager = useFileManager();
   const uiStore = useUiStore();
   const backgroundTasksStore = useBackgroundTasksStore();
+  const { isMobileLayout } = useMobileLayout();
   const { t } = useI18n();
   const toast = useToast();
 
@@ -522,11 +524,13 @@ export function useFileConversionActions(props: UseFileConversionActionsProps) {
 
         props.isConverting.value = true;
         props.isModalOpen.value = false;
-        toast.add({
-          title: t('videoEditor.fileManager.convert.bgTaskAdded'),
-          description: title,
-          color: 'neutral',
-        });
+        if (!isMobileLayout.value) {
+          toast.add({
+            title: t('videoEditor.fileManager.convert.bgTaskAdded'),
+            description: title,
+            color: 'neutral',
+          });
+        }
 
         const runConversion = async () => {
           if (isTauriRuntime()) {

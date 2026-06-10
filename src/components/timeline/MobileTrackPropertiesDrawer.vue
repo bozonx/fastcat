@@ -17,6 +17,7 @@ const activeSnapPoint = defineModel<string | number | null>('activeSnapPoint', {
 
 const emit = defineEmits<{
   (e: 'close'): void;
+  (e: 'add-content', trackId: string): void;
 }>();
 
 const { t } = useI18n();
@@ -115,6 +116,17 @@ function deleteGap() {
 
       <!-- Разделитель после действия гэпа -->
       <div v-if="isGapMode" class="w-px h-6 bg-ui-border mx-1 shrink-0" />
+
+      <!-- Add content -->
+      <MobileDrawerToolbarButton
+        v-if="selectedTrack"
+        icon="i-heroicons-plus"
+        success
+        :label="t('fastcat.timeline.addContent')"
+        @click="selectedTrack && emit('add-content', selectedTrack.id)"
+      />
+
+      <div v-if="selectedTrack" class="w-px h-6 bg-ui-border mx-1 shrink-0" />
 
       <!-- 2. Active/disabled (дорожку) -->
       <MobileDrawerToolbarButton
