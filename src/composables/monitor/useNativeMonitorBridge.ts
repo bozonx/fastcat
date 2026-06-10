@@ -376,9 +376,30 @@ export function useNativeMonitorBridge(): void {
   onScopeDispose(() => {
     for (const un of unsubs) un();
     if (!isNativeMonitorDisabled()) {
+      // Pause playback and clear the scene to free resources, but do NOT close/kill the EventLoop
+      // since winit EventLoop cannot be recreated in the same process on Linux.
       void nativeMonitorIpc
-        .close()
-        .catch((err) => warnMonitorFailure('monitor_close on dispose failed', err));
+        .pause()
+        .catch((err) => log.warn('monitor pause on dispose failed', err));
+      void nativeMonitorIpc
+        .setScene({
+          layers: [],
+          audio_layers: [],
+          audio_tracks: [],
+          audio_master_gain: 0,
+          audio_master_muted: true,
+          width: 1920,
+          height: 1080,
+          preview_scale: 1,
+          preview_fps: 30,
+          preview_sync_mode: 'balanced',
+          frame_cache_mode: 'auto',
+          frame_cache_custom_mb: 0,
+        })
+        .catch((err) => log.warn('monitor clear scene on dispose failed', err));
+      void nativeMonitorIpc
+        .setViewport({ x: 0, y: 0, width: 1, height: 1, visible: false })
+        .catch((err) => log.warn('monitor hide viewport on dispose failed', err));
     }
   });
 }
