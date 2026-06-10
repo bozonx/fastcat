@@ -51,11 +51,8 @@ vi.mock('~/components/properties/clip/ClipMaskSection.vue', () => ({
 vi.mock('~/components/properties/clip/ClipParametersPasteModal.vue', () => ({
   default: { name: 'ClipParametersPasteModal', template: '<div></div>' },
 }));
-vi.mock('~/components/effects/EffectsEditor.vue', () => ({
-  default: { name: 'EffectsEditor', template: '<div></div>' },
-}));
-vi.mock('~/components/effects/AudioEffectsEditor.vue', () => ({
-  default: { name: 'AudioEffectsEditor', template: '<div></div>' },
+vi.mock('~/components/effects/ClipEffectsEditor.vue', () => ({
+  default: { name: 'ClipEffectsEditor', template: '<div></div>' },
 }));
 
 const mockTimelineStore = reactive({

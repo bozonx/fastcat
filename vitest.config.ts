@@ -8,6 +8,12 @@ export default defineVitestConfig({
     environment: 'nuxt',
     globals: true,
     hookTimeout: 30_000,
+    testTimeout: 10_000,
+    server: {
+      deps: {
+        inline: ['@nuxt/test-utils', '@nuxtjs/i18n'],
+      },
+    },
     include: [
       'test/unit/**/*.{test,spec}.ts',
       'test/components/**/*.{test,spec}.{ts,vue}',

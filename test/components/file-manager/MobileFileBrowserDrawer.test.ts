@@ -105,6 +105,13 @@ vi.mock('~/utils/external-integrations', () => ({
   resolveExternalServiceConfig: () => null,
 }));
 
+vi.mock('~/components/properties/FileProperties.vue', () => ({
+  default: {
+    name: 'FileProperties',
+    template: '<div />',
+  },
+}));
+
 describe('MobileFileBrowserDrawer', () => {
   beforeEach(() => {
     vi.clearAllMocks();

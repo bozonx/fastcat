@@ -145,16 +145,17 @@ describe('MobileTrackPropertiesDrawer', () => {
     });
 
     const buttonsGap = wrapperGap.findAll('button[data-icon]');
-    expect(buttonsGap.length).toBe(7);
+    expect(buttonsGap.length).toBe(8);
     expect(buttonsGap[0].attributes('data-icon')).toBe('i-heroicons-trash');
     expect(buttonsGap[0].attributes('data-primary')).toBe('true'); // gap delete is primary
-    expect(buttonsGap[1].attributes('data-icon')).toBe('i-heroicons-eye'); // active/disabled (visible)
-    expect(buttonsGap[2].attributes('data-icon')).toBe('i-heroicons-speaker-wave'); // mute
-    expect(buttonsGap[3].attributes('data-icon')).toBe('i-heroicons-musical-note'); // solo
-    expect(buttonsGap[4].attributes('data-icon')).toBe('i-heroicons-lock-closed'); // lock
-    expect(buttonsGap[5].attributes('data-icon')).toBe('i-heroicons-pencil-square'); // rename
-    expect(buttonsGap[6].attributes('data-icon')).toBe('i-heroicons-trash'); // delete track
-    expect(buttonsGap[6].attributes('data-primary')).toBeUndefined();
+    expect(buttonsGap[1].attributes('data-icon')).toBe('i-heroicons-plus'); // add content
+    expect(buttonsGap[2].attributes('data-icon')).toBe('i-heroicons-eye'); // active/disabled (visible)
+    expect(buttonsGap[3].attributes('data-icon')).toBe('i-heroicons-speaker-wave'); // mute
+    expect(buttonsGap[4].attributes('data-icon')).toBe('i-heroicons-musical-note'); // solo
+    expect(buttonsGap[5].attributes('data-icon')).toBe('i-heroicons-lock-closed'); // lock
+    expect(buttonsGap[6].attributes('data-icon')).toBe('i-heroicons-pencil-square'); // rename
+    expect(buttonsGap[7].attributes('data-icon')).toBe('i-heroicons-trash'); // delete track
+    expect(buttonsGap[7].attributes('data-primary')).toBeUndefined();
 
     // 2. Check track mode (gapItemId is null/undefined)
     const wrapperTrack = await mountSuspended(MobileTrackPropertiesDrawer, {
@@ -183,12 +184,13 @@ describe('MobileTrackPropertiesDrawer', () => {
     });
 
     const buttonsTrack = wrapperTrack.findAll('button[data-icon]');
-    expect(buttonsTrack.length).toBe(6);
-    expect(buttonsTrack[0].attributes('data-icon')).toBe('i-heroicons-eye'); // active/disabled (visible)
-    expect(buttonsTrack[1].attributes('data-icon')).toBe('i-heroicons-speaker-wave'); // mute
-    expect(buttonsTrack[2].attributes('data-icon')).toBe('i-heroicons-musical-note'); // solo
-    expect(buttonsTrack[3].attributes('data-icon')).toBe('i-heroicons-lock-closed'); // lock
-    expect(buttonsTrack[4].attributes('data-icon')).toBe('i-heroicons-pencil-square'); // rename
-    expect(buttonsTrack[5].attributes('data-icon')).toBe('i-heroicons-trash'); // delete track
+    expect(buttonsTrack.length).toBe(7);
+    expect(buttonsTrack[0].attributes('data-icon')).toBe('i-heroicons-plus'); // add content
+    expect(buttonsTrack[1].attributes('data-icon')).toBe('i-heroicons-eye'); // active/disabled (visible)
+    expect(buttonsTrack[2].attributes('data-icon')).toBe('i-heroicons-speaker-wave'); // mute
+    expect(buttonsTrack[3].attributes('data-icon')).toBe('i-heroicons-musical-note'); // solo
+    expect(buttonsTrack[4].attributes('data-icon')).toBe('i-heroicons-lock-closed'); // lock
+    expect(buttonsTrack[5].attributes('data-icon')).toBe('i-heroicons-pencil-square'); // rename
+    expect(buttonsTrack[6].attributes('data-icon')).toBe('i-heroicons-trash'); // delete track
   });
 });

@@ -46,7 +46,7 @@ const vueI18nMock = {
 vi.mock('vue-i18n', () => vueI18nMock);
 
 vi.mock('vue-router', () => ({
-  useRoute: vi.fn(() => ({ path: '/', fullPath: '/', query: {}, params: {}, hash: '' })),
+  useRoute: vi.fn(() => ({ path: '/', fullPath: '/', query: {}, params: {}, hash: '', meta: { layout: 'default' } })),
   useRouter: vi.fn(() => ({
     push: vi.fn(),
     replace: vi.fn(),
@@ -182,7 +182,7 @@ vi.mock('#app/composables/router', () => ({
     back: vi.fn(),
     afterEach: vi.fn(),
   })),
-  useRoute: vi.fn(() => ({ path: '/', fullPath: '/', query: {}, params: {}, hash: '' })),
+  useRoute: vi.fn(() => ({ path: '/', fullPath: '/', query: {}, params: {}, hash: '', meta: { layout: 'default' } })),
   defineNuxtRouteMiddleware: vi.fn((mw) => mw),
   navigateTo: vi.fn(),
 }));
@@ -191,10 +191,10 @@ vi.mock('#app', () => ({
   useNuxtApp: createNuxtMock,
   defineNuxtComponent: vi.fn((options) => options),
   definePageMeta: vi.fn(),
-  defineEmits: vi.fn(() => vi.fn()),
   defineProps: vi.fn(() => ({})),
+  defineEmits: vi.fn(() => vi.fn()),
   defineNuxtPlugin: vi.fn((plugin) => plugin),
-  useRoute: vi.fn(() => ({ path: '/', fullPath: '/', query: {}, params: {}, hash: '' })),
+  useRoute: vi.fn(() => ({ path: '/', fullPath: '/', query: {}, params: {}, hash: '', meta: { layout: 'default' } })),
   useRouter: vi.fn(() => ({ push: vi.fn(), replace: vi.fn(), go: vi.fn(), back: vi.fn(), afterEach: vi.fn() })),
   useAsyncData: vi.fn(() => ({ data: ref(null), pending: ref(false), error: ref(null) })),
   useState: vi.fn((key: string, init?: () => any) => ref(init ? init() : null)),
@@ -302,6 +302,9 @@ class LocalStorageMock {
     return Object.keys(this.store)[index] || null;
   }
 }
+
+// Stub global useNuxtApp so @nuxt/test-utils setupNuxt sees _route.sync
+vi.stubGlobal('useNuxtApp', createNuxtMock);
 
 // Always override localStorage/sessionStorage to avoid issues in happy-dom
 // and ensure our mock is present regardless of environment
