@@ -13,6 +13,7 @@ import {
   hasFileManagerItemsDragType,
 } from '~/composables/file-manager/dragOperation';
 import { syncFileManagerDragCursor } from '~/composables/file-manager/dragCursor';
+import { useTauriPanelPointerDrag } from '~/composables/editor/useTauriPanelPointerDrag';
 const log = createDevLogger('useEditorDynamicPanels');
 
 interface UseEditorDynamicPanelsOptions {
@@ -181,6 +182,7 @@ export function useEditorDynamicPanels(options: UseEditorDynamicPanelsOptions) {
   function onDragStart(event: DragEvent, panelId: string) {
     if (event.dataTransfer) {
       event.dataTransfer.effectAllowed = 'move';
+      event.dataTransfer.setData('text/plain', panelId);
 
       const panel = [...projectStore.cutPanels, ...projectStore.soundPanels]
         .flatMap((column) => column.panels)
@@ -485,6 +487,30 @@ export function useEditorDynamicPanels(options: UseEditorDynamicPanelsOptions) {
     }
   }
 
+  const { startDrag: startTauriPanelDrag } = useTauriPanelPointerDrag({
+    onDragStart: (panelId) => {
+      draggingPanelId.value = panelId;
+    },
+    onDragOver: (panelId, position) => {
+      dragOverPanelId.value = panelId;
+      dropPosition.value = position;
+    },
+    onDrop: (targetPanelId, position) => {
+      const view = getPanelView(targetPanelId);
+      if (view && draggingPanelId.value) {
+        projectStore.movePanel(draggingPanelId.value, targetPanelId, position, view);
+      }
+      resetDragState();
+    },
+    onDragEnd: () => {
+      resetDragState();
+    },
+  });
+
+  function onPanelPointerDown(event: PointerEvent, panelId: string) {
+    startTauriPanelDrag(event, panelId);
+  }
+
   return {
     draggingPanelId,
     dragOverPanelId,
@@ -503,6 +529,7 @@ export function useEditorDynamicPanels(options: UseEditorDynamicPanelsOptions) {
     onDrop,
     onVerticalSplitResize,
     resetVerticalSizes,
+    onPanelPointerDown,
     cutPanelsLayoutKey,
     soundPanelsLayoutKey,
   };

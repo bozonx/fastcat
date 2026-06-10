@@ -72,16 +72,19 @@ vi.mock('~/composables/monitor/useMonitorGrid', () => ({
   }),
 }));
 
-// Mock browser APIs
+// Mock app fullscreen
 const mockToggleFullscreen = vi.fn();
+vi.mock('~/composables/useAppFullscreen', () => ({
+  useAppFullscreen: () => ({
+    isFullscreen: ref(false),
+    toggle: mockToggleFullscreen,
+  }),
+}));
+
 vi.mock('@vueuse/core', async () => {
   const actual = await vi.importActual('@vueuse/core');
   return {
     ...actual,
-    useFullscreen: () => ({
-      isFullscreen: ref(false),
-      toggle: mockToggleFullscreen,
-    }),
     useMediaQuery: () => sharedIsLandscape,
   };
 });

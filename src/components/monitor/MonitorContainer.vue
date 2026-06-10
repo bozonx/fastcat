@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import UiTooltip from '~/components/ui/UiTooltip.vue';
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
-import { useFullscreen } from '@vueuse/core';
+import { useAppFullscreen } from '~/composables/useAppFullscreen';
 import { useFocusStore } from '~/stores/focus.store';
 import { useProjectStore } from '~/stores/project.store';
 import { useTimelineStore } from '~/stores/timeline.store';
@@ -47,7 +47,7 @@ const {
   isFullscreen: isBrowserFullscreen,
   enter: enterBrowserFullscreen,
   exit: exitBrowserFullscreen,
-} = useFullscreen(panelRef);
+} = useAppFullscreen(panelRef);
 
 const {
   selectionStore,
@@ -361,6 +361,7 @@ watch(viewportRef, (vp) => {
 
         <!-- Playback controls bar -->
         <div
+          data-panel-drag-handle
           class="flex flex-wrap items-center justify-center gap-3 border-ui-border shrink-0 transition-all duration-300 select-none"
           :class="[
             effectiveFullscreen

@@ -113,6 +113,8 @@ pub struct VideoLayerRt {
     /// Newest cached PTS seen on the previous `decoder_advancing` call — used to tell
     /// "decoder is slow but moving forward" from "decoder is stuck / mispositioned".
     last_newest_pts: Option<f64>,
+    /// Last target PTS sent to the decoder pump via `seek`.
+    pub last_pump_seek_pts: Option<f64>,
 }
 
 impl VideoLayerRt {
@@ -136,6 +138,7 @@ impl VideoLayerRt {
             last_reseek: None,
             lagged_ticks: 0,
             last_newest_pts: None,
+            last_pump_seek_pts: None,
         }
     }
 
@@ -249,6 +252,7 @@ impl VideoLayerRt {
         if let Err(e) = self.pump.seek(target_clip_local) {
             log::error!("[monitor] reseek-on-miss seek: {e:?}");
         }
+        self.last_pump_seek_pts = Some(target_clip_local);
         self.note_seek_requested();
         if let Some(frame) = self.cache.frame_nearest(target_clip_local) {
             self.current = Some(frame);
@@ -281,6 +285,7 @@ impl VideoLayerRt {
         if let Err(e) = self.pump.seek(target_clip_local) {
             log::error!("[monitor] {reason} seek: {e:?}");
         }
+        self.last_pump_seek_pts = Some(target_clip_local);
         self.note_seek_requested();
     }
 
@@ -500,5 +505,22 @@ mod tests {
         rt.cache.insert(cached(2.0));
         assert!(rt.decoder_advancing());
         assert!(!rt.decoder_advancing());
+    }
+
+    #[test]
+    fn last_pump_seek_pts_tracks_seeks() {
+        let mut rt = fixture_video_rt();
+        assert_eq!(rt.last_pump_seek_pts, None);
+
+        // maybe_reseek_on_miss should seek on far miss (0.5 is far enough from empty cache)
+        rt.maybe_reseek_on_miss(0.5);
+        assert_eq!(rt.last_pump_seek_pts, Some(0.5));
+
+        // seek_with_cooldown should seek (throttling doesn't block first since last_reseek is recent but we can force or just test that it sets it when it seeked)
+        // Wait, to bypass cooldown in the test, we can just call it and it will set the field if it actually runs. Or we can just call it.
+        // Actually, since RESEEK_COOLDOWN_SEC is 0.15s and we just called it, we might be throttled. Let's make sure last_reseek is cleared or old.
+        rt.last_reseek = None;
+        rt.seek_with_cooldown(1.0, "test");
+        assert_eq!(rt.last_pump_seek_pts, Some(1.0));
     }
 }

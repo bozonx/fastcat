@@ -193,6 +193,8 @@ describe('buildNativeMonitorScene', () => {
       activeMonitor: {
         useProxy: true,
       },
+      lastProjectPath: null,
+      recentProjects: [],
     };
 
     const scene = await buildNativeMonitorScene({
@@ -239,6 +241,8 @@ describe('buildNativeMonitorScene', () => {
       activeMonitor: {
         useProxy: false,
       },
+      lastProjectPath: null,
+      recentProjects: [],
     };
 
     const scene = await buildNativeMonitorScene({
@@ -308,6 +312,8 @@ describe('buildNativeMonitorScene', () => {
       activeMonitor: {
         useProxy: false,
       },
+      lastProjectPath: null,
+      recentProjects: [],
     };
 
     const scene = await buildNativeMonitorScene({
@@ -319,5 +325,68 @@ describe('buildNativeMonitorScene', () => {
     expect(scene.layers).toHaveLength(2);
     expect(scene.layers[0]?.path).toBe('/absolute/path/to/unix_video.mp4');
     expect(scene.layers[1]?.path).toBe('D:/absolute/path/to/win_video.mp4');
+  });
+
+  it('falls back to workspaceStore.lastProjectPath when getProjectDirHandle lacks path', async () => {
+    const timelineDoc = {
+      version: 1,
+      timebase: { fps: 30 },
+      tracks: [
+        {
+          id: 'v-track',
+          kind: 'video',
+          videoHidden: false,
+          items: [
+            {
+              id: 'clip-1',
+              kind: 'clip',
+              type: 'media',
+              trackId: 'v-track',
+              source: { path: '_video/source.mp4' },
+              timelineRange: { startUs: 0, durationUs: 1_000_000 },
+              sourceRange: { startUs: 0, durationUs: 1_000_000 },
+            },
+          ],
+        },
+      ],
+    };
+
+    const projectStore = {
+      currentProjectName: 'myproject',
+      projectSettings: {
+        project: {
+          width: 1920,
+          height: 1080,
+          fps: 30,
+          audioDeclickDurationUs: 0,
+        },
+      },
+      getProjectDirHandle: vi.fn(async () => null),
+      getFileByPath: vi.fn(),
+    };
+    const workspaceStore = {
+      userSettings: {
+        projectDefaults: {
+          defaultAudioFadeCurve: 'linear',
+        },
+        optimization: {
+          nativeMonitorSyncMode: 'balanced',
+        },
+      },
+      activeMonitor: {
+        useProxy: false,
+      },
+      lastProjectPath: '/external/myproject',
+      recentProjects: [],
+    };
+
+    const scene = await buildNativeMonitorScene({
+      timelineDoc: timelineDoc as never,
+      projectStore: projectStore as never,
+      workspaceStore: workspaceStore as never,
+    });
+
+    expect(scene.layers).toHaveLength(1);
+    expect(scene.layers[0]?.path).toBe('/external/myproject/_video/source.mp4');
   });
 });

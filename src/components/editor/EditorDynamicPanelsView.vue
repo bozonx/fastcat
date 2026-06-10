@@ -48,6 +48,7 @@ const emit = defineEmits<{
   moveToView: [panel: DynamicPanel, view: 'cut' | 'sound'];
   topReset: [view: 'cut' | 'sound'];
   verticalReset: [colId: string, view: 'cut' | 'sound'];
+  panelPointerDown: [event: PointerEvent, panelId: string, view: 'cut' | 'sound'];
 }>();
 
 const { t } = useI18n();
@@ -128,12 +129,21 @@ const splitterMenuItems = computed(() => [
                   dragOverPanelId === panel.id && dropPosition === 'bottom',
                 'panel-focus-frame--active': isFocused(panel.id),
               }"
+              :data-panel-id="panel.id"
               @click.stop="emit('focus', panel.id)"
               @dragenter.prevent
               @dragover.prevent="(event) => emit('dragOver', event, panel.id, view)"
               @dragleave="(event) => emit('dragLeave', event, panel.id)"
               @drop.prevent="(event) => emit('drop', event, panel.id, view)"
               @dragend="emit('dragEnd')"
+              @pointerdown.capture="
+                (event) => {
+                  const target = event.target as HTMLElement;
+                  if (target.closest('[data-panel-drag-handle]')) {
+                    emit('panelPointerDown', event, panel.id, view);
+                  }
+                }
+              "
             >
               <EditorDynamicPanelContent
                 :panel="panel"

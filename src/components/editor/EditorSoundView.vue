@@ -49,6 +49,7 @@ const emit = defineEmits<{
   moveToView: [panel: DynamicPanel, view: 'cut' | 'sound'];
   topReset: [view: 'cut' | 'sound'];
   verticalReset: [colId: string, view: 'cut' | 'sound'];
+  panelPointerDown: [event: PointerEvent, panelId: string, view: 'cut' | 'sound'];
 }>();
 
 provide('fileManagerStore', useFileManagerStore());
@@ -87,6 +88,7 @@ provide('fileManagerStore', useFileManagerStore());
         @move-to-view="(panel, view) => emit('moveToView', panel, view)"
         @top-reset="(view) => emit('topReset', view)"
         @vertical-reset="(colId, view) => emit('verticalReset', colId, view)"
+        @panel-pointer-down="(event, panelId, view) => emit('panelPointerDown', event, panelId, view)"
       />
     </Pane>
   </Splitpanes>

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, nextTick, watch, onBeforeUnmount } from 'vue';
-import { useFullscreen, useMediaQuery } from '@vueuse/core';
+import { useMediaQuery } from '@vueuse/core';
+import { useAppFullscreen } from '~/composables/useAppFullscreen';
 import { useMonitorGrid } from '~/composables/monitor/useMonitorGrid';
 import { useMonitorRuntime } from '~/composables/monitor/useMonitorRuntime';
 import MonitorTextTransformBox from './MonitorTextTransformBox.vue';
@@ -104,7 +105,7 @@ const monitorZoomLabel = computed(() => {
 });
 
 const containerRef = ref<HTMLElement | null>(null);
-const { isFullscreen, toggle: toggleFullscreen } = useFullscreen(containerRef);
+const { isFullscreen, toggle: toggleFullscreen } = useAppFullscreen(containerRef);
 
 const isContextMenuOpen = ref(false);
 

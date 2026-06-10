@@ -170,6 +170,7 @@ const {
   onDrop,
   onVerticalSplitResize,
   resetVerticalSizes,
+  onPanelPointerDown,
 } = useEditorDynamicPanels({
   currentProjectId,
 });
@@ -291,6 +292,7 @@ function onMainSplitResize(event: { panes: { size: number }[] }) {
             @move-to-view="movePanelToView"
             @top-reset="topSplitReset"
             @vertical-reset="resetVerticalSizes"
+            @panel-pointer-down="onPanelPointerDown"
           />
 
           <EditorSoundView
@@ -320,6 +322,7 @@ function onMainSplitResize(event: { panes: { size: number }[] }) {
             @move-to-view="movePanelToView"
             @top-reset="soundTopSplitReset"
             @vertical-reset="resetVerticalSizes"
+            @panel-pointer-down="onPanelPointerDown"
           />
 
           <EditorExportView

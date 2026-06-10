@@ -386,7 +386,8 @@ const headerTitle = computed(() => {
   >
     <!-- Header -->
     <div
-      class="flex items-center justify-between px-2 py-1.5 border-b border-ui-border shrink-0 cursor-grab active:cursor-grabbing"
+      data-panel-drag-handle
+      class="flex items-center justify-between px-2 py-1.5 border-b border-ui-border shrink-0 cursor-grab active:cursor-grabbing select-none"
       draggable="true"
       @dragstart="(e) => $emit('panelDragStart', e)"
     >

@@ -58,7 +58,7 @@ function onAuxClick(event: MouseEvent) {
 <template>
   <UContextMenu v-model:open="isMenuOpen" :items="contextMenuItems">
     <div
-      class="flex justify-between items-center px-4 py-2 border-b border-ui-border text-sm bg-ui-bg-elevated shrink-0"
+      class="flex justify-between items-center px-4 py-2 border-b border-ui-border text-sm bg-ui-bg-elevated shrink-0 select-none"
       :class="[isAbsolute ? 'absolute top-0 left-0 right-0 z-20' : '', draggableCursorClass]"
       draggable="true"
       @dragstart="onDragStart"

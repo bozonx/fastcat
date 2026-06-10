@@ -476,6 +476,7 @@ impl LayerRuntimeManager {
                 if let Err(e) = rt.pump.seek(clip_local) {
                     log::error!("[monitor] initial seek {id}: {e:?}");
                 }
+                rt.last_pump_seek_pts = Some(clip_local);
                 rt.note_seek_requested();
                 // На паузе сразу прогреваем первый GOP вперёд playhead'а, чтобы
                 // последующий Play не фризил/не чернел на холодном декоде. На
@@ -688,10 +689,17 @@ impl LayerRuntimeManager {
                     rt.update_display(clip_local, None);
                     continue;
                 }
-                if let Err(e) = rt.pump.seek(clip_local) {
-                    log::error!("[monitor] seek pump {}: {e:?}", layer.id);
+                let need_seek = match rt.last_pump_seek_pts {
+                    Some(last_pts) => (last_pts - clip_local).abs() > 1e-5,
+                    None => true,
+                };
+                if need_seek {
+                    if let Err(e) = rt.pump.seek(clip_local) {
+                        log::error!("[monitor] seek pump {}: {e:?}", layer.id);
+                    }
+                    rt.last_pump_seek_pts = Some(clip_local);
+                    rt.note_seek_requested();
                 }
-                rt.note_seek_requested();
                 // На паузе сразу прогреваем первый GOP вперёд playhead'а, чтобы
                 // последующий Play не фризил на декоде 4К от ключевого кадра. На
                 // воспроизведении декодер и так стримит вперёд — отдельный прогрев не нужен.
@@ -784,10 +792,17 @@ impl LayerRuntimeManager {
             }
             let clip_local = layer.source_pts_at(t);
             if let Some(LayerRuntime::Video(rt)) = self.runtimes.get_mut(&layer.id) {
-                if let Err(e) = rt.pump.seek(clip_local) {
-                    log::error!("[monitor] resync pump {}: {e:?}", layer.id);
+                let need_seek = match rt.last_pump_seek_pts {
+                    Some(last_pts) => (last_pts - clip_local).abs() > 1e-5,
+                    None => true,
+                };
+                if need_seek {
+                    if let Err(e) = rt.pump.seek(clip_local) {
+                        log::error!("[monitor] resync pump {}: {e:?}", layer.id);
+                    }
+                    rt.last_pump_seek_pts = Some(clip_local);
+                    rt.note_seek_requested();
                 }
-                rt.note_seek_requested();
             }
         }
     }

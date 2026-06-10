@@ -60,20 +60,16 @@ vi.mock('~/composables/monitor/useMonitorGrid', () => ({
   }),
 }));
 
-// Mock browser APIs
+// Mock app fullscreen
 const mockEnterFullscreen = vi.fn();
 const mockExitFullscreen = vi.fn();
-vi.mock('@vueuse/core', async () => {
-  const actual = await vi.importActual('@vueuse/core');
-  return {
-    ...actual,
-    useFullscreen: () => ({
-      isFullscreen: ref(false),
-      enter: mockEnterFullscreen,
-      exit: mockExitFullscreen,
-    }),
-  };
-});
+vi.mock('~/composables/useAppFullscreen', () => ({
+  useAppFullscreen: () => ({
+    isFullscreen: ref(false),
+    enter: mockEnterFullscreen,
+    exit: mockExitFullscreen,
+  }),
+}));
 
 describe('MonitorContainer', () => {
   let pinia: any;

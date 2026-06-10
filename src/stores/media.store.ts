@@ -545,7 +545,10 @@ export const useMediaStore = defineStore('media', () => {
   function setAudioPeaks(projectRelativePath: string, peaks: Float32Array[]) {
     const metadata = mediaMetadata.value[projectRelativePath];
     if (metadata) {
-      metadata.audioPeaks = peaks;
+      mediaMetadata.value[projectRelativePath] = {
+        ...metadata,
+        audioPeaks: peaks,
+      };
     }
 
     // Persist with a source fingerprint when we know it, so the blob can be

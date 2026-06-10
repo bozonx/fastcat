@@ -5,12 +5,7 @@ import {
 import type { WorkerTimelineClip } from '~/composables/timeline/export/types';
 import type { useProjectStore } from '~/stores/project.store';
 import type { useWorkspaceStore } from '~/stores/workspace.store';
-import type {
-  ClipEffect,
-  ClipTransform,
-  TimelineBlendMode,
-  TimelineDocument,
-} from '~/timeline/types';
+import type { ClipTransform, TimelineBlendMode, TimelineDocument } from '~/timeline/types';
 import type { BlendMode } from '../../src-tauri/bindings/BlendMode';
 import type { MonitorScene } from '~/types/generated/native-monitor/MonitorScene';
 import type { SceneLayer } from '~/types/generated/native-monitor/SceneLayer';
@@ -86,6 +81,7 @@ interface ProxyResolution {
 async function resolveMediaSourceAbsolutePath(
   projectRelativePath: string,
   projectStore: ReturnType<typeof useProjectStore>,
+  workspaceStore: ReturnType<typeof useWorkspaceStore>,
   proxy: ProxyResolution | undefined,
 ): Promise<string> {
   if (
@@ -96,7 +92,7 @@ async function resolveMediaSourceAbsolutePath(
     const proxyPath = await proxy.getProxyNativePath(projectRelativePath);
     if (proxyPath) return proxyPath;
   }
-  return resolveProjectAbsolutePath(projectRelativePath, projectStore);
+  return resolveProjectAbsolutePath(projectRelativePath, projectStore, workspaceStore);
 }
 
 function extOf(path: string): string {
@@ -316,10 +312,10 @@ function buildNativeShapeTransform(params: {
   };
 }
 
-
 async function resolveProjectAbsolutePath(
   projectRelativePath: string,
   projectStore: ReturnType<typeof useProjectStore>,
+  workspaceStore: ReturnType<typeof useWorkspaceStore>,
 ): Promise<string> {
   const isAbsolute =
     /^[\\/]/.test(projectRelativePath) || /^[a-zA-Z]:[\\/]/.test(projectRelativePath);
@@ -328,12 +324,32 @@ async function resolveProjectAbsolutePath(
   try {
     const handle = await projectStore.getProjectDirHandle();
     const projectPath = (handle as unknown as TauriDirectoryHandle | null)?.path;
-    if (!projectPath) return projectRelativePath;
-    const join = await getTauriJoin();
-    return await join(projectPath, projectRelativePath);
+    if (projectPath) {
+      const join = await getTauriJoin();
+      return await join(projectPath, projectRelativePath);
+    }
   } catch {
-    return projectRelativePath;
+    // ignore, try fallback
   }
+
+  // Fallback for projects outside the standard projectsRoot where
+  // currentProjectDirHandle may be null (e.g. after hot-reload) and
+  // projectsHandle cannot locate the project by name.
+  try {
+    const fallbackPath =
+      workspaceStore.lastProjectPath ??
+      workspaceStore.recentProjects.find(
+        (p) => p.projectName === projectStore.currentProjectName && p.projectPath,
+      )?.projectPath;
+    if (fallbackPath) {
+      const join = await getTauriJoin();
+      return await join(fallbackPath, projectRelativePath);
+    }
+  } catch {
+    // ignore
+  }
+
+  return projectRelativePath;
 }
 
 function buildBaseLayer(params: {
@@ -455,7 +471,12 @@ async function buildAudioLayers(params: {
       toNativeSceneAudioLayer({
         descriptor: buildCanonicalAudioClipDescriptor({
           clip,
-          sourcePath: await resolveMediaSourceAbsolutePath(path, params.projectStore, params.proxy),
+          sourcePath: await resolveMediaSourceAbsolutePath(
+            path,
+            params.projectStore,
+            params.workspaceStore,
+            params.proxy,
+          ),
         }),
       }),
     );
@@ -498,7 +519,12 @@ export async function buildNativeMonitorScene(
       layers.push({
         ...base,
         kind: isSvgLayer(clip) ? 'svg' : isImageLayer(clip) ? 'image' : 'video',
-        path: await resolveMediaSourceAbsolutePath(path, params.projectStore, proxy),
+        path: await resolveMediaSourceAbsolutePath(
+          path,
+          params.projectStore,
+          params.workspaceStore,
+          proxy,
+        ),
       });
       continue;
     }

@@ -397,6 +397,15 @@ watch(
 );
 
 watch(
+  () => projectStore.currentProjectId,
+  (newId) => {
+    if (newId) {
+      requestPeaksExtraction();
+    }
+  }
+);
+
+watch(
   () => timelineStore.isPlaying,
   (isPlaying) => {
     if (isPlaying) {
