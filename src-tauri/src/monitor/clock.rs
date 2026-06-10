@@ -34,8 +34,10 @@ pub struct PlaybackClock {
 
 impl PlaybackClock {
     /// Окно допуска рассинхрона wall-clock↔audio. Должно быть больше джиттера audible-PTS
-    /// (≈ один аудио-чанк, ~50мс), иначе клок дёргается на каждый кадр.
-    const RESYNC_THRESHOLD_SEC: f64 = 0.1;
+    /// (≈ один аудио-чанк, ~50мс) И startup prebuffer (~100мс), иначе клок дёргается на
+    /// старте: аудио начинает с задержкой prebuffer, а wall-клок уже тикает → синк
+    /// телепортирует видео назад на 100мс, кэш не попадает → черная вспышка.
+    const RESYNC_THRESHOLD_SEC: f64 = 0.2;
 
     pub fn new() -> Self {
         Self {

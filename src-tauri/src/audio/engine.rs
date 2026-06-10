@@ -684,10 +684,7 @@ mod tests {
         l2.timeline_start_sec = 1.0;
         engine.set_scene(&[l2], &[], 1.0);
         let state = engine.shared.0.lock();
-        assert!(
-            state.seek_serial != before,
-            "position change must flush"
-        );
+        assert!(state.seek_serial != before, "position change must flush");
     }
 
     #[test]
@@ -701,10 +698,7 @@ mod tests {
         l2.speed = 2.0;
         engine.set_scene(&[l2], &[], 1.0);
         let state = engine.shared.0.lock();
-        assert!(
-            state.seek_serial != before,
-            "speed change must flush"
-        );
+        assert!(state.seek_serial != before, "speed change must flush");
     }
 
     #[test]
@@ -722,13 +716,23 @@ mod tests {
         engine.set_scene(&[l1.clone()], &[], 1.0);
         {
             let mut state = engine.shared.0.lock();
-            state.cache_decoded("/tmp/a.wav|sr=48000".into(), std::sync::Arc::new(vec![0.0f32; 100]));
-            state.cache_decoded("/tmp/b.wav|sr=48000".into(), std::sync::Arc::new(vec![0.0f32; 100]));
+            state.cache_decoded(
+                "/tmp/a.wav|sr=48000".into(),
+                std::sync::Arc::new(vec![0.0f32; 100]),
+            );
+            state.cache_decoded(
+                "/tmp/b.wav|sr=48000".into(),
+                std::sync::Arc::new(vec![0.0f32; 100]),
+            );
         }
 
         engine.set_scene(&[l1.clone()], &[], 1.0);
         let state = engine.shared.0.lock();
-        assert!(state.decoded_cache.contains(&"/tmp/a.wav|sr=48000".to_string()));
-        assert!(!state.decoded_cache.contains(&"/tmp/b.wav|sr=48000".to_string()));
+        assert!(state
+            .decoded_cache
+            .contains(&"/tmp/a.wav|sr=48000".to_string()));
+        assert!(!state
+            .decoded_cache
+            .contains(&"/tmp/b.wav|sr=48000".to_string()));
     }
 }

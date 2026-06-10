@@ -670,9 +670,7 @@ fn draw_text_background_shadow(
 ) {
     // Тень рисуем только при включённом фоне (как web: `backgroundEnabled &&
     // backgroundShadowEnabled`) — тень от невидимой подложки не имеет смысла.
-    if !(spec.background_enabled
-        && spec.bg_shadow_enabled
-        && spec.bg_shadow_color.to_rgba8().a > 0)
+    if !(spec.background_enabled && spec.bg_shadow_enabled && spec.bg_shadow_color.to_rgba8().a > 0)
     {
         return;
     }

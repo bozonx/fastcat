@@ -40,12 +40,11 @@ const EVT_ENDED: &str = "monitor:ended";
 /// на правильном стоп-кадре, движение начинается уже синхронным.
 const PREBUFFER_LOOKAHEAD_SEC: f64 = 0.12;
 /// Жёсткий потолок ожидания прогрева. Если декодер не успел (очень тяжёлый источник,
-/// ошибка открытия) — стартуем как есть, чтобы Play никогда не зависал. 500мс не хватало
-/// на декод первого GOP 4К от ключевого кадра до playhead'а → старт уходил в таймаут,
-/// аудио стартовало с t, а видео ещё декодилось (рассинхрон + рывок). 1.5с покрывают
-/// холодный 4К-GOP; при тёплом кеше (preroll на паузе) старт всё равно идёт по готовности,
-/// задолго до этого потолка.
-const PREBUFFER_TIMEOUT: Duration = Duration::from_millis(1500);
+/// ошибка открытия, медленный диск/сеть) — стартуем как есть, чтобы Play никогда не
+/// зависал. 1.5с не хватало на холодный старт с медленного диска: видео таймаутилось
+/// раньше декодера → черный экран на старте + рассинхрон с аудио. 3.0с дают запас
+/// для нестандартных путей и тяжёлых GOP без риска зависания Play.
+const PREBUFFER_TIMEOUT: Duration = Duration::from_millis(3000);
 
 /// Заказ положения offscreen/native-окна монитора в физических пикселях.
 #[derive(Debug, Clone, Copy)]
@@ -768,6 +767,12 @@ impl WindowState {
         let t = self.clock.current_pts();
         let ready = self.layers.active_videos_ready(t, PREBUFFER_LOOKAHEAD_SEC);
         if ready || Instant::now() >= deadline {
+            if !ready {
+                log::warn!(
+                    "[monitor] prebuffer timed out after {:.1}s — starting playback without ready video frames",
+                    PREBUFFER_TIMEOUT.as_secs_f64()
+                );
+            }
             self.begin_playback();
             true
         } else {

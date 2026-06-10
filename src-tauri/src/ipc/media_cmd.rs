@@ -68,7 +68,14 @@ impl NativeMediaService {
         options: NativeProxyOptions,
         on_progress: Option<&(dyn Fn(f64) + Send + Sync)>,
     ) -> anyhow::Result<()> {
-        generate_proxy(&self.tasks, task_id, source_path, target_path, options, on_progress)
+        generate_proxy(
+            &self.tasks,
+            task_id,
+            source_path,
+            target_path,
+            options,
+            on_progress,
+        )
     }
 
     pub fn convert_media(

@@ -209,7 +209,10 @@ mod tests {
             .find(|p| p[0] == "-vf")
             .map(|p| p[1].clone())
             .expect("expected -vf");
-        assert!(!vf.contains(":format="), "format must not be a scale option: {vf}");
+        assert!(
+            !vf.contains(":format="),
+            "format must not be a scale option: {vf}"
+        );
         assert!(vf.contains(",format=nv12|vaapi,hwupload"), "got: {vf}");
         assert!(vf.starts_with("fps=30,scale=1920:1080"), "got: {vf}");
     }

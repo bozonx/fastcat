@@ -635,7 +635,13 @@ impl LayerRuntimeManager {
 
                 if playing {
                     if !shown_any {
-                        rt.clear_display();
+                        // Не гасим слой мгновенно — оставляем freeze frame (last known good
+                        // frame), чтобы таймаут прогрева или кратковременный лаг декодера
+                        // не превращались в черную вспышку. Только если кадра никогда не
+                        // было (current == None), тогда слой действительно чёрный.
+                        if rt.current.is_none() {
+                            rt.clear_display();
+                        }
                         if self.preview_sync_mode == PreviewSyncMode::Strict {
                             // Strict/точно не имеет smooth fallback: stale-кадр за пределами
                             // окна синка не считается валидным preview-кадром. Принудительно

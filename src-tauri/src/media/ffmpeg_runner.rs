@@ -25,7 +25,11 @@ pub(crate) fn now_millis() -> u64 {
 
 pub(crate) fn spawn_stderr_drain(
     child: &mut Child,
-) -> (Option<JoinHandle<Vec<u8>>>, Arc<AtomicU64>, Arc<Mutex<Vec<u8>>>) {
+) -> (
+    Option<JoinHandle<Vec<u8>>>,
+    Arc<AtomicU64>,
+    Arc<Mutex<Vec<u8>>>,
+) {
     let last_activity = Arc::new(AtomicU64::new(now_millis()));
     let activity = last_activity.clone();
     let shared_buf = Arc::new(Mutex::new(Vec::new()));
@@ -170,7 +174,10 @@ mod tests {
     #[test]
     fn parse_time_with_hours() {
         let stderr = "time=01:23:45.67";
-        assert_eq!(parse_ffmpeg_time(stderr), Some(3600.0 + 23.0 * 60.0 + 45.67));
+        assert_eq!(
+            parse_ffmpeg_time(stderr),
+            Some(3600.0 + 23.0 * 60.0 + 45.67)
+        );
     }
 
     #[test]

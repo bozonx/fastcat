@@ -121,6 +121,12 @@ export function useNativeMonitorBridge(): void {
   async function buildScene(): Promise<NativeMonitorScene> {
     const doc = timelineStore.timelineDoc;
     const previewScale = projectStore.activeMonitor?.previewResolution ?? 1;
+    log.info('[bridge] buildScene', {
+      project: projectStore.currentProjectName,
+      timeline: projectStore.currentTimelinePath,
+      hasDoc: !!doc,
+      trackCount: doc?.tracks?.length ?? 0,
+    });
     if (!doc?.tracks?.length) {
       const fmt = timelineStore.timelineFormat;
       return {
@@ -158,6 +164,7 @@ export function useNativeMonitorBridge(): void {
 
   async function syncScene(): Promise<void> {
     const seq = ++sceneBuildSeq;
+    log.info('[bridge] syncScene called', { seq });
     try {
       if (
         !isNativeMonitorSceneReady({
@@ -169,12 +176,21 @@ export function useNativeMonitorBridge(): void {
         return;
       }
       const scene = await buildScene();
+      log.info('[bridge] syncScene built', {
+        seq,
+        sceneBuildSeq,
+        layers: scene.layers.length,
+        audioLayers: scene.audio_layers.length,
+        disabled: isNativeMonitorDisabled(),
+        sameJson: JSON.stringify(scene) === lastSceneJson,
+      });
       // Более новая сборка обогнала нас — выходим, чтобы не затереть свежую сцену.
       if (seq !== sceneBuildSeq) return;
       if (isNativeMonitorDisabled()) return;
       const json = JSON.stringify(scene);
       if (json === lastSceneJson) return;
       lastSceneJson = json;
+      log.info('[bridge] calling setScene');
       await nativeMonitorIpc.setScene(scene);
     } catch (err) {
       warnMonitorFailure('monitor_set_scene failed', err);

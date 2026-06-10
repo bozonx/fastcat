@@ -126,11 +126,11 @@ pub(crate) fn producer_loop(
                         let effective = (cur - prev) as f64 / dt;
                         let deviation = (effective - sample_rate as f64).abs() / sample_rate as f64;
                         if deviation > 0.02 {
-                            log::warn!(
+                            log::error!(
                                 "[audio] effective output rate {effective:.0} Hz differs from the \
                                  opened {sample_rate} Hz by {:.1}% — the device/graph clock does \
                                  not match the stream, so playback is sped up/slowed and pitch \
-                                 shifted. Open the output at the graph's native rate.",
+                                 shifted. Try changing the audio backend or output device in settings.",
                                 deviation * 100.0,
                             );
                         }

@@ -66,8 +66,13 @@ enum DecoderCmd {
     /// waiting for a 4K keyframe→target decode. `frames` is a hard cap (memory
     /// safeguard): a pathological huge-GOP / keyframe-less source can never push
     /// more than this ahead.
-    Prebuffer { frames: u32 },
-    Seek { generation: u64, time_sec: f64 },
+    Prebuffer {
+        frames: u32,
+    },
+    Seek {
+        generation: u64,
+        time_sec: f64,
+    },
     Stop,
 }
 

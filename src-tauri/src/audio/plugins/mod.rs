@@ -133,7 +133,9 @@ impl PluginHost {
     ) {
         // Split-borrow so the wet/dry blend can touch `scratch` while a cached
         // instance is mutably borrowed out of `instances`.
-        let Self { instances, scratch, .. } = self;
+        let Self {
+            instances, scratch, ..
+        } = self;
 
         for spec in specs.iter().filter(|s| s.enabled) {
             let key = InstanceKey {

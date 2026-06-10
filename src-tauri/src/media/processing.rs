@@ -262,7 +262,15 @@ pub fn generate_proxy(
     )?;
 
     let ffmpeg_cmd = options.ffmpeg_path.as_deref().unwrap_or("ffmpeg");
-    match run_ffmpeg_task(tasks, task_id, ffmpeg_cmd, args, None, on_progress, Some(duration)) {
+    match run_ffmpeg_task(
+        tasks,
+        task_id,
+        ffmpeg_cmd,
+        args,
+        None,
+        on_progress,
+        Some(duration),
+    ) {
         Ok(()) => {
             if !target_path.exists() {
                 return Err(anyhow!(
@@ -276,7 +284,14 @@ pub fn generate_proxy(
             log::warn!("[native-media] HW proxy failed ({e}), falling back to software encoding");
             let mut sw_options = options.clone();
             sw_options.enable_hardware_encoding = Some(false);
-            generate_proxy(tasks, task_id, source_path, target_path, sw_options, on_progress)
+            generate_proxy(
+                tasks,
+                task_id,
+                source_path,
+                target_path,
+                sw_options,
+                on_progress,
+            )
         }
         Err(e) => Err(e),
     }

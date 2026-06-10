@@ -226,8 +226,11 @@ impl VideoLayerRt {
         // Применяем MIN_PREROLL_FRAMES как нижнюю границу: даже один 4K-кадр > бюджета
         // должен прогреть минимум MIN_PREROLL_FRAMES кадров, чтобы декодер прошёл
         // мимо keyframe и Play не стартовал с фриза на первом GOP-декоде.
-        let by_memory = (PREROLL_BUDGET_BYTES / frame_bytes).max(MIN_PREROLL_FRAMES as usize) as u32;
-        by_lookahead.min(by_memory).clamp(MIN_PREROLL_FRAMES, MAX_PREROLL_FRAMES)
+        let by_memory =
+            (PREROLL_BUDGET_BYTES / frame_bytes).max(MIN_PREROLL_FRAMES as usize) as u32;
+        by_lookahead
+            .min(by_memory)
+            .clamp(MIN_PREROLL_FRAMES, MAX_PREROLL_FRAMES)
     }
 
     /// Decoder is not where it should be (reverse / fast-forward / cache miss):
