@@ -172,7 +172,7 @@ const mainActions = computed<
         />
       </div>
 
-      <div class="flex flex-col gap-2 mt-4 pb-2">
+      <div v-if="!isMobile" class="flex flex-col gap-2 mt-4 pb-2">
         <span class="text-xs text-ui-text-muted">{{ t('common.color') }}</span>
         <UiColorPicker
           :model-value="marker.color ?? '#eab308'"
