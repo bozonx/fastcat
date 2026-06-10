@@ -157,8 +157,8 @@ const formatDate = (dateStr?: string) => {
           <header
             class="shrink-0 pt-safe px-5 pb-4 bg-ui-bg/80 backdrop-blur-xl border-b border-white/5 z-20"
           >
-            <div class="flex items-center justify-between h-14">
-              <div class="flex flex-col min-w-0">
+            <div class="flex items-center justify-between h-14 gap-4">
+              <div class="flex flex-col min-w-0 shrink-0">
                 <h1 class="text-xl font-black tracking-tight text-white uppercase italic truncate">
                   FastCat <span class="text-primary-500 not-italic">Editor</span>
                 </h1>
@@ -173,7 +173,39 @@ const formatDate = (dateStr?: string) => {
                   }}</span>
                 </div>
               </div>
-              <div class="flex items-center gap-2">
+
+              <!-- Search Bar (landscape only) -->
+              <div class="hidden landscape:flex flex-1 max-w-md min-w-0">
+                <UiSearchInput
+                  v-model="searchQuery"
+                  :placeholder="t('fastcat.projects.searchPlaceholder')"
+                  is-mobile
+                />
+              </div>
+
+              <div class="flex items-center gap-2 shrink-0">
+                <!-- Action Buttons (landscape only) -->
+                <UButton
+                  size="md"
+                  color="primary"
+                  icon="i-heroicons-plus"
+                  class="hidden landscape:flex shadow-lg shadow-ui-action/20 rounded-2xl font-bold uppercase tracking-wide bg-ui-action! hover:bg-ui-action-hover! text-white! border-none transition-all active:scale-[0.98]"
+                  @click="startCreateProject"
+                >
+                  {{ t('fastcat.projects.newProject') }}
+                </UButton>
+                <UButton
+                  v-if="workspaceStore.workspaceProviderId === 'tauri'"
+                  size="md"
+                  variant="subtle"
+                  color="neutral"
+                  icon="i-heroicons-folder-open"
+                  class="hidden landscape:flex rounded-2xl font-bold uppercase tracking-wide bg-ui-bg-elevated/40 text-white! border border-white/5 transition-all active:scale-[0.98]"
+                  @click="openProjectFromDisk"
+                >
+                  {{ t('fastcat.projects.openProjectDisk') }}
+                </UButton>
+
                 <UButton
                   size="sm"
                   variant="ghost"
@@ -235,37 +267,15 @@ const formatDate = (dateStr?: string) => {
 
             <!-- 2. Dashboard with Projects -->
             <template v-else>
-              <!-- Search & Actions Bar Sticky below header -->
+              <!-- Search Bar Sticky below header (Mobile Portrait only) -->
               <div
-                class="px-5 py-4 sticky top-0 z-10 bg-ui-bg/80 backdrop-blur-md flex flex-row items-center gap-3"
+                class="px-5 py-4 sticky top-0 z-10 bg-ui-bg/80 backdrop-blur-md border-b border-white/5 landscape:hidden"
               >
-                <div class="flex-1 min-w-0">
-                  <UiSearchInput
-                    v-model="searchQuery"
-                    :placeholder="t('fastcat.projects.searchPlaceholder')"
-                    is-mobile
-                  />
-                </div>
-                <UButton
-                  size="lg"
-                  color="primary"
-                  icon="i-heroicons-plus"
-                  class="hidden landscape:flex shadow-lg shadow-ui-action/20 py-3 px-6 rounded-2xl font-bold uppercase tracking-wide bg-ui-action! hover:bg-ui-action-hover! text-white! border-none transition-all active:scale-[0.98] shrink-0"
-                  @click="startCreateProject"
-                >
-                  {{ t('fastcat.projects.newProject') }}
-                </UButton>
-                <UButton
-                  v-if="workspaceStore.workspaceProviderId === 'tauri'"
-                  size="lg"
-                  variant="subtle"
-                  color="neutral"
-                  icon="i-heroicons-folder-open"
-                  class="hidden landscape:flex py-3 px-6 rounded-2xl font-bold uppercase tracking-wide bg-ui-bg-elevated/40 text-white! border border-white/5 transition-all active:scale-[0.98] shrink-0"
-                  @click="openProjectFromDisk"
-                >
-                  {{ t('fastcat.projects.openProjectDisk') }}
-                </UButton>
+                <UiSearchInput
+                  v-model="searchQuery"
+                  :placeholder="t('fastcat.projects.searchPlaceholder')"
+                  is-mobile
+                />
               </div>
 
               <div class="flex flex-col gap-8 pb-24">

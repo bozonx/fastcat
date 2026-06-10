@@ -47,7 +47,6 @@ export default {
     "imagePreview": "Предпросмотр изображения",
     "inDirDocuments": "В _documents/",
     "inDirTimelines": "В _timelines/",
-    "info": "Информация",
     "items": "Элементы",
     "itemsSelected": "Выбрано: {count}",
     "language": "Язык",
@@ -477,19 +476,16 @@ export default {
       "text": "Текст",
       "title": "Маркер",
       "zoneMarker": "Маркер-зона",
-      "exportAsText": "Экспорт в текст",
+      "exportAsText": "Экспорт как текст",
       "exportTitle": "Экспорт маркеров",
-      "filterColors": "Фильтр по цветам",
-      "selectAll": "Выбрать все / Сбросить",
-      "layoutFormat": "Формат вывода",
-      "timecodeFormat": "Формат времени",
       "layoutOptions": {
-        "left": "Время слева",
-        "right": "Время справа"
+        "left": "Слева",
+        "right": "Справа"
       },
+      "selectAll": "Выбрать все",
       "timecodeOptions": {
-        "timecode": "Таймкод",
-        "hms": "Часы:Минуты:Секунды"
+        "hms": "ЧМС",
+        "timecode": "Таймкод"
       }
     },
     "monitor": {
@@ -1118,8 +1114,8 @@ export default {
       "uploadFailed": "Не удалось загрузить файлы",
       "confirmCloseTitle": "Фоновые задачи в процессе",
       "confirmCloseMessage": "Есть незавершённые фоновые задачи. Вы уверены, что хотите закрыть приложение?",
-      "processing": "Обработка...",
-      "doNotClose": "Не закрывайте и не покидайте этот экран."
+      "doNotClose": "Пожалуйста, не закрывайте это окно и не переходите на другие страницы во время обработки.",
+      "processing": "Обработка..."
     },
     "export": {
       "audioTab": "Экспорт только аудио",
@@ -1175,8 +1171,11 @@ export default {
       "saveLocationNote": "Файл будет сохранен в папку export/ в директории вашего проекта",
       "selection": "Выделение",
       "startExport": "Экспорт",
-      "successDesc": "Таймлайн экспортирован в {file}",
+      "successDescWithDuration": "Экспорт завершён за {duration}: {file}",
+      "successMessage": "Экспорт завершён за {duration}.",
       "successTitle": "Экспорт завершен успешно",
+      "durationLabel": "Длительность: {duration}",
+      "errorDescWithDuration": "Ошибка экспорта после {duration}.",
       "title": "Экспорт",
       "videoBitrate": "Битрейт видео (Мбит/с)",
       "videoBitrateHelp": "Примерный целевой битрейт. Чем выше, тем лучше качество и больше размер файла.",
@@ -1560,7 +1559,7 @@ export default {
       }
     },
     "project": {
-      "readOnlyBannerText": "Проект открыт в другой вкладке. Редактирование отключено во избежание конфликтов данных.",
+      "readOnlyBannerText": "Этот проект открыт в режиме только для чтения. Редактирование отключено.",
       "takeControl": "Взять управление"
     },
     "projectSettings": {
@@ -1622,7 +1621,6 @@ export default {
     "settings": {
       "advancedSection": "Расширенные",
       "app": "Приложение",
-      "backups": "Бэкапы",
       "audioDeclickDuration": "Длительность de-click",
       "audioDeclickDurationHelp": "Длительность микро-фейдов для устранения щелчков.",
       "audioScrubbingHint": "Воспроизводить звук при перемещении по таймлайну вручную.",
@@ -1766,6 +1764,7 @@ export default {
       "mouseTrackHeadersDoubleClick": "Двойной клик",
       "mouseTrackHeadersMiddleClick": "Одиночный клик средней кнопкой",
       "openLastProjectOnStart": "Открывать последний проект при запуске",
+      "backups": "Резервные копии",
       "project": "Проект",
       "projectAudioDeclickHint": "Микро-фейды (линейные), накладываемые на края всех клипов для устранения щелчков. 0 отключает их. Значение по умолчанию, которое используется при создании нового проекта.",
       "projectAudioDeclickTitle": "Длительность De-click",
@@ -1856,11 +1855,6 @@ export default {
         "ffmpegSettings": "FFmpeg и аппаратное ускорение (Linux)",
         "hwaccelMode": "Аппаратное ускорение",
         "hwaccelModeHelp": "Режим аппаратного ускорения декодера при воспроизведении видео.",
-        "nativeMonitorSyncMode": "Синхронизация монитора",
-        "nativeMonitorSyncModeHelp": "Балансирует плавность видео и точность совпадения с аудио в мониторе.",
-        "nativeMonitorSyncSmooth": "Плавно",
-        "nativeMonitorSyncBalanced": "Баланс",
-        "nativeMonitorSyncStrict": "Точно",
         "nativeFrameCacheMode": "Кэш кадров монитора",
         "nativeFrameCacheModeHelp": "Управляет размером native-кэша декодированных кадров на видеослой. Auto подбирает бюджет по разрешению и FPS.",
         "nativeFrameCacheAuto": "Авто",

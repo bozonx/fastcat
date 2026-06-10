@@ -62,7 +62,7 @@ for (const { json, ts, isRu } of configs) {
 
   const jsonStr = JSON.stringify(data, null, 2) + '\n';
   await writeFile(json, jsonStr);
-  await writeFile(ts, `export default ${jsonStr}`);
+  await writeFile(ts, `export default ${jsonStr.trimEnd()};\n`);
 
   console.log('Updated', json, 'and', ts);
 }

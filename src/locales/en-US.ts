@@ -47,7 +47,6 @@ export default {
     "imagePreview": "Image preview",
     "inDirDocuments": "In _documents/",
     "inDirTimelines": "In _timelines/",
-    "info": "Info",
     "items": "Items",
     "itemsSelected": "Selected: {count}",
     "language": "Language",
@@ -477,19 +476,16 @@ export default {
       "text": "Text",
       "title": "Marker",
       "zoneMarker": "Zone Marker",
-      "exportAsText": "Export as text",
+      "exportAsText": "Export as Text",
       "exportTitle": "Export Markers",
-      "filterColors": "Filter by colors",
-      "selectAll": "Select All / Reset",
-      "layoutFormat": "Layout Format",
-      "timecodeFormat": "Timecode Format",
       "layoutOptions": {
-        "left": "Time on left",
-        "right": "Time on right"
+        "left": "Left",
+        "right": "Right"
       },
+      "selectAll": "Select All",
       "timecodeOptions": {
-        "timecode": "Timecode",
-        "hms": "Hours:Minutes:Seconds"
+        "hms": "HMS",
+        "timecode": "Timecode"
       }
     },
     "monitor": {
@@ -1118,8 +1114,8 @@ export default {
       "uploadFailed": "Failed to upload files",
       "confirmCloseTitle": "Background tasks in progress",
       "confirmCloseMessage": "There are unfinished background tasks. Are you sure you want to close the application?",
-      "processing": "Processing...",
-      "doNotClose": "Do not close or leave this screen."
+      "doNotClose": "Please do not close this window or navigate away during processing.",
+      "processing": "Processing..."
     },
     "export": {
       "audioTab": "Audio Export",
@@ -1175,8 +1171,11 @@ export default {
       "saveLocationNote": "File will be saved to the export/ folder in your project directory",
       "selection": "Selection",
       "startExport": "Export",
-      "successDesc": "Timeline exported to {file}",
+      "successDescWithDuration": "Export completed in {duration}: {file}",
+      "successMessage": "Export completed in {duration}.",
       "successTitle": "Export successful",
+      "durationLabel": "Duration: {duration}",
+      "errorDescWithDuration": "Export failed after {duration}.",
       "title": "Export",
       "videoBitrate": "Video bitrate (Mbps)",
       "videoBitrateHelp": "Approximate target bitrate. Higher values produce better quality and larger files.",
@@ -1560,7 +1559,7 @@ export default {
       }
     },
     "project": {
-      "readOnlyBannerText": "This project is open in another tab. Editing is disabled to prevent data conflicts.",
+      "readOnlyBannerText": "This project is open in read-only mode. Editing is disabled.",
       "takeControl": "Take control"
     },
     "projectSettings": {
@@ -1622,7 +1621,6 @@ export default {
     "settings": {
       "advancedSection": "Advanced",
       "app": "App",
-      "backups": "Backups",
       "audioDeclickDuration": "Audio de-click duration",
       "audioDeclickDurationHelp": "Duration of micro-fades to eliminate clicks.",
       "audioScrubbingHint": "Play audio while scrubbing the timeline.",
@@ -1766,6 +1764,7 @@ export default {
       "mouseTrackHeadersDoubleClick": "Double click",
       "mouseTrackHeadersMiddleClick": "Middle click",
       "openLastProjectOnStart": "Open last project on start",
+      "backups": "Backups",
       "project": "Project",
       "projectAudioDeclickHint": "Micro-fades (linear) applied to edges of all clips to eliminate clicks. 0 disables it. Default value used when creating a new project.",
       "projectAudioDeclickTitle": "Audio De-click Duration",
@@ -1856,11 +1855,6 @@ export default {
         "ffmpegSettings": "FFmpeg & Hardware Acceleration (Linux)",
         "hwaccelMode": "Hardware Acceleration",
         "hwaccelModeHelp": "Decoder hardware acceleration backend for video playback.",
-        "nativeMonitorSyncMode": "Monitor Sync",
-        "nativeMonitorSyncModeHelp": "Balances video smoothness and audio sync accuracy in the monitor.",
-        "nativeMonitorSyncSmooth": "Smooth",
-        "nativeMonitorSyncBalanced": "Balanced",
-        "nativeMonitorSyncStrict": "Strict",
         "nativeFrameCacheMode": "Monitor Frame Cache",
         "nativeFrameCacheModeHelp": "Controls the native decoded-frame cache size per video layer. Auto sizes the budget from resolution and FPS.",
         "nativeFrameCacheAuto": "Auto",
