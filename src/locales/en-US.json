@@ -500,6 +500,7 @@
       "resetZoom": "Reset zoom (100%)",
       "rewind": "Rewind",
       "showGrid": "Show grid",
+      "showTransparencyGrid": "Show transparency grid",
       "showTimecode": "Show Timecode",
       "snapshot": "Snapshot",
       "syncBalanced": "Balanced",
