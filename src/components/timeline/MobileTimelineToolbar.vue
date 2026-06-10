@@ -184,6 +184,15 @@ function handlePaste() {
           @pointerup="stopLongPress"
           @pointerleave="stopLongPress"
         />
+        <UiActionButton
+          v-if="hasClipboard"
+          icon="i-heroicons-clipboard-document-check"
+          color="primary"
+          variant="soft"
+          size="sm"
+          :title="t('common.paste')"
+          @click="handlePaste"
+        />
       </div>
 
       <!-- Snap mode -->
@@ -206,18 +215,6 @@ function handlePaste() {
           size="sm"
           :title="t('fastcat.timeline.moveModePseudoDescription')"
           @click="togglePseudoOverlapMode"
-        />
-      </div>
-
-      <div class="flex items-center gap-1 rounded-xl bg-ui-bg px-1 py-1 shrink-0">
-        <UiActionButton
-          v-if="hasClipboard"
-          icon="i-heroicons-clipboard-document-check"
-          color="primary"
-          variant="soft"
-          size="sm"
-          :title="t('common.paste')"
-          @click="handlePaste"
         />
       </div>
 
