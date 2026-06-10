@@ -34,14 +34,11 @@ const createI18nMock = () => ({
 
 // Explicitly define named exports via a separate object to ensure Vitest sees them
 const vueI18nMock = {
-  useI18n: vi.fn(() => {
-    console.log('DEBUG vitest.setup.ts useI18n called');
-    return {
-      t: (key: string, params?: string | Record<string, unknown>) =>
-        typeof params === 'string' ? params : key,
-      locale: ref('en-US'),
-    };
-  }),
+  useI18n: vi.fn(() => ({
+    t: (key: string, params?: string | Record<string, unknown>) =>
+      typeof params === 'string' ? params : key,
+    locale: ref('en-US'),
+  })),
   createI18n: vi.fn(createI18nMock),
   __esModule: true,
 };
