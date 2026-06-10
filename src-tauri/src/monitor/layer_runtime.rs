@@ -372,7 +372,7 @@ pub fn video_frame_to_cached(mut frame: VideoFrame) -> DecodedVideoFrame {
     // Take GPU texture ownership into an Arc. CPU pixels are kept ONLY if
     // there was no GPU upload (no device); otherwise this is a pure duplicate
     // of the GPU frame — do not accumulate it.
-    let texture = std::mem::take(&mut frame.texture).map(Arc::new);
+    let texture = std::mem::take(&mut frame.texture);
     let image = if texture.is_some() {
         None
     } else {

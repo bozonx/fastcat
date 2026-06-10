@@ -354,11 +354,11 @@ pub enum RasterSource {
     /// GPU-resident кадр. `Arc` владеет текстурой ровно столько, сколько слой/кадр
     /// на неё ссылается — отдельного кеша с независимым вытеснением больше нет, поэтому
     /// хэндл никогда не «протухает» под живым кадром (раньше для этого держался CPU-дубль).
-    GpuTexture(Arc<wgpu::Texture>),
+    GpuTexture(Arc<crate::media::SharedTexture>),
 }
 
 pub enum RasterGpuSource<'a> {
-    Texture(&'a wgpu::Texture),
+    Texture(&'a crate::media::SharedTexture),
 }
 
 /// 2D-transform слоя в координатах композитного кадра.

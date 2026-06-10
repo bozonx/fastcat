@@ -39,7 +39,6 @@ export default {
     "files": "Files",
     "folder": "Folder",
     "folderBaseName": "Folder",
-    "found": "Found",
     "hidden": "Hidden",
     "hide": "Hide",
     "hideHiddenFiles": "Hide hidden files",
@@ -558,9 +557,6 @@ export default {
       "localWorkspaceName": "Local Disk",
       "projectLocation": "Project Location",
       "openProjectDisk": "Open Project from Disk",
-      "resumeEditing": "Resume Editing",
-      "activeProject": "Active Project",
-      "otherProjects": "Other Projects",
       "welcomeTitle": "Create Your First Masterpiece",
       "welcomeSubtitle": "Your dashboard is empty. Create a new project to start."
     },

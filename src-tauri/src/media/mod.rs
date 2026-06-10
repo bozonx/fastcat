@@ -9,6 +9,7 @@ use std::sync::Arc;
 use parking_lot::Mutex;
 
 pub type GpuTexturePool = Arc<Mutex<HashMap<(u32, u32), Vec<wgpu::Texture>>>>;
+pub use decode::SharedTexture;
 
 pub mod audio_extract;
 pub mod decode;

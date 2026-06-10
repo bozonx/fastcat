@@ -98,8 +98,8 @@ describe('MobileTrackPropertiesDrawer', () => {
 
     const buttons = wrapper.findAll('button');
 
-    // In gap mode there are 7 toolbar buttons (delete gap, delete track, rename, lock, video, mute, solo)
-    expect(buttons.length).toBe(7);
+    // In gap mode there are 8 toolbar buttons (delete gap, add content, delete track, rename, lock, video, mute, solo)
+    expect(buttons.length).toBe(8);
 
     const deleteGapButton = buttons[0];
     expect(deleteGapButton).toBeDefined();

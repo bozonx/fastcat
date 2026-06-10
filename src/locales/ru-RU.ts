@@ -39,7 +39,6 @@ export default {
     "files": "Файлы",
     "folder": "Папка",
     "folderBaseName": "Папка",
-    "found": "Найдено",
     "hidden": "Скрыт",
     "hide": "Скрыть",
     "hideHiddenFiles": "Скрыть скрытые файлы",
@@ -558,9 +557,6 @@ export default {
       "localWorkspaceName": "Локальный диск",
       "projectLocation": "Папка проекта",
       "openProjectDisk": "Открыть проект с диска",
-      "resumeEditing": "Продолжить редактирование",
-      "activeProject": "Активный проект",
-      "otherProjects": "Другие проекты",
       "welcomeTitle": "Создайте свой первый шедевр",
       "welcomeSubtitle": "Ваша монтажная панель пуста. Создайте первый проект, чтобы начать."
     },

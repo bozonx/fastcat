@@ -421,8 +421,8 @@ fn run_decoder_loop(args: DecoderLoopArgs) {
                             &tex,
                         ) {
                             Ok(()) => {
-                                frame.texture = Some(tex);
-                                frame.texture_pool = Some(texture_pool.clone());
+                                let shared_tex = Arc::new(super::decode::SharedTexture::new_owned(tex, texture_pool.clone()));
+                                frame.texture = Some(shared_tex);
                             }
                             Err(error) => {
                                 log::warn!(
@@ -452,8 +452,8 @@ fn run_decoder_loop(args: DecoderLoopArgs) {
                                 depth_or_array_layers: 1,
                             },
                         );
-                        frame.texture = Some(tex);
-                        frame.texture_pool = Some(texture_pool.clone());
+                        let shared_tex = Arc::new(super::decode::SharedTexture::new_owned(tex, texture_pool.clone()));
+                        frame.texture = Some(shared_tex);
                     }
                 }
 

@@ -9,7 +9,7 @@
 use anyhow::{anyhow, Context, Result};
 use ffmpeg_next as ffmpeg;
 use std::path::{Path, PathBuf};
-use std::sync::OnceLock;
+use std::sync::{Arc, OnceLock};
 
 use super::ffmpeg_utils::is_quarter_turn;
 use super::hwaccel::{init_hwaccel_context, try_transfer_to_cpu, HwAccelContext};
@@ -26,6 +26,69 @@ pub struct MediaInfo {
     pub has_audio: bool,
 }
 
+#[derive(Debug)]
+pub enum TextureSource {
+    Owned(wgpu::Texture),
+    Shared(Arc<wgpu::Texture>),
+}
+
+pub struct SharedTexture {
+    pub source: Option<TextureSource>,
+    pub pool: Option<super::GpuTexturePool>,
+}
+
+impl std::fmt::Debug for SharedTexture {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("SharedTexture")
+            .field("source", &self.source)
+            .finish()
+    }
+}
+
+impl SharedTexture {
+    pub fn new_owned(texture: wgpu::Texture, pool: super::GpuTexturePool) -> Self {
+        Self {
+            source: Some(TextureSource::Owned(texture)),
+            pool: Some(pool),
+        }
+    }
+
+    pub fn new_shared(texture: Arc<wgpu::Texture>) -> Self {
+        Self {
+            source: Some(TextureSource::Shared(texture)),
+            pool: None,
+        }
+    }
+}
+
+impl std::ops::Deref for SharedTexture {
+    type Target = wgpu::Texture;
+    fn deref(&self) -> &Self::Target {
+        match self.source.as_ref().unwrap() {
+            TextureSource::Owned(ref tex) => tex,
+            TextureSource::Shared(ref arc) => arc.as_ref(),
+        }
+    }
+}
+
+const MAX_TEXTURES_PER_SIZE: usize = 4;
+
+impl Drop for SharedTexture {
+    fn drop(&mut self) {
+        if let Some(TextureSource::Owned(tex)) = self.source.take() {
+            if let Some(ref pool) = self.pool {
+                let size = tex.size();
+                let mut p = pool.lock();
+                let slot = p.entry((size.width, size.height)).or_default();
+                if slot.len() >= MAX_TEXTURES_PER_SIZE {
+                    slot.remove(0);
+                }
+                slot.push(tex);
+            }
+        }
+    }
+}
+
 pub struct VideoFrame {
     pub width: u32,
     pub height: u32,
@@ -33,8 +96,7 @@ pub struct VideoFrame {
     pub pixels: Vec<u8>,
     pub yuv: Option<YuvFrame>,
     pub pts_sec: f64,
-    pub texture: Option<wgpu::Texture>,
-    pub texture_pool: Option<super::GpuTexturePool>,
+    pub texture: Option<Arc<SharedTexture>>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -66,24 +128,6 @@ pub struct YuvFrame {
     pub uv_width: u32,
     pub uv_height: u32,
     pub color: YuvColor,
-}
-
-/// Maximum pooled textures for any single (width, height) to avoid
-/// unbounded growth when switching between clips of different resolutions.
-const MAX_TEXTURES_PER_SIZE: usize = 4;
-
-impl Drop for VideoFrame {
-    fn drop(&mut self) {
-        if let (Some(tex), Some(pool)) = (self.texture.take(), self.texture_pool.take()) {
-            let mut p = pool.lock();
-            let slot = p.entry((tex.size().width, tex.size().height)).or_default();
-            if slot.len() >= MAX_TEXTURES_PER_SIZE {
-                // Evict the oldest (front) to keep the pool bounded.
-                slot.remove(0);
-            }
-            slot.push(tex);
-        }
-    }
 }
 
 pub trait VideoDecoder {
@@ -320,7 +364,6 @@ impl FfmpegNextDecoder {
             yuv: None,
             pts_sec,
             texture: None,
-            texture_pool: None,
         })
     }
 
@@ -404,7 +447,6 @@ impl FfmpegNextDecoder {
             yuv: Some(yuv),
             pts_sec: self.frame_pts_sec(decoded),
             texture: None,
-            texture_pool: None,
         })
     }
 
@@ -1075,5 +1117,46 @@ mod tests {
         assert_eq!(decoder.info().height, 720);
         assert_eq!(frame.width, 1280);
         assert_eq!(frame.height, 720);
+    }
+
+    #[test]
+    fn test_shared_texture_drop_recycles_to_pool() {
+        let instance = wgpu::Instance::default();
+        let adapter = match pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions::default())) {
+            Ok(adapter) => adapter,
+            Err(_) => return,
+        };
+        let (device, _queue) = match pollster::block_on(adapter.request_device(&wgpu::DeviceDescriptor::default())) {
+            Ok(res) => res,
+            Err(_) => return,
+        };
+
+        let texture = device.create_texture(&wgpu::TextureDescriptor {
+            label: Some("test-recycle"),
+            size: wgpu::Extent3d {
+                width: 128,
+                height: 128,
+                depth_or_array_layers: 1,
+            },
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format: wgpu::TextureFormat::Rgba8Unorm,
+            usage: wgpu::TextureUsages::TEXTURE_BINDING,
+            view_formats: &[],
+        });
+
+        let pool = Arc::new(parking_lot::Mutex::new(std::collections::HashMap::new()));
+        
+        {
+            let shared = SharedTexture::new_owned(texture, pool.clone());
+            assert_eq!(shared.size().width, 128);
+            assert_eq!(shared.size().height, 128);
+            assert!(pool.lock().is_empty());
+        }
+
+        let p = pool.lock();
+        let textures = p.get(&(128, 128)).expect("expected slot for 128x128");
+        assert_eq!(textures.len(), 1);
     }
 }

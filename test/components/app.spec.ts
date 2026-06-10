@@ -2,6 +2,13 @@ import { describe, it, expect, vi } from 'vitest';
 import App from '~/app.vue';
 import { mountWithNuxt } from '../utils/mount';
 
+vi.mock('@nuxtjs/color-mode', () => ({
+  useColorMode: vi.fn(() => ({
+    preference: 'dark',
+    value: 'dark',
+  })),
+}));
+
 vi.mock('#imports', () => ({
   useColorMode: () => ({
     preference: 'dark',
@@ -81,6 +88,7 @@ vi.mock('~/stores/workspace.store', () => ({
 
 describe('App Smoke Test', () => {
   it('can mount the app root component', async () => {
+    (globalThis as any).useColorMode = () => ({ preference: 'dark', value: 'dark' });
     const component = await mountWithNuxt(App);
     expect(component.exists()).toBe(true);
   }, 15000);

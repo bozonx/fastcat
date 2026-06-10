@@ -39,9 +39,6 @@ if (process.env.NODE_ENV !== 'production' && process.env.NODE_ENV !== 'test') {
 }
 
 export default defineNuxtConfig({
-  imports: {
-    exclude: [/^define/],
-  },
   ssr: false,
   srcDir: 'src/',
 

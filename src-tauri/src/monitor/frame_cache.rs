@@ -28,7 +28,7 @@ use vello::peniko::ImageData;
 pub struct DecodedVideoFrame {
     pub pts_sec: f64,
     pub image: Option<ImageData>,
-    pub texture: Option<Arc<wgpu::Texture>>,
+    pub texture: Option<Arc<crate::media::SharedTexture>>,
 }
 
 const MIN_FRAMES: usize = 6;

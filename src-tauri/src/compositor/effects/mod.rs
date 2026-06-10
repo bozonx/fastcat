@@ -119,7 +119,7 @@ struct EffectPass {
 
 pub enum EffectSource {
     Cpu(ImageData),
-    Gpu(Arc<wgpu::Texture>),
+    Gpu(Arc<crate::media::SharedTexture>),
 }
 
 struct CachedResources {
@@ -447,7 +447,7 @@ impl EffectPipeline {
         queue: &wgpu::Queue,
         source: &EffectSource,
         effects: &[EffectSpec],
-    ) -> Result<Arc<wgpu::Texture>> {
+    ) -> Result<Arc<crate::media::SharedTexture>> {
         let (width, height) = match source {
             EffectSource::Cpu(img) => (img.width, img.height),
             EffectSource::Gpu(tex) => (tex.width(), tex.height()),
@@ -621,7 +621,7 @@ impl EffectPipeline {
         }
 
         queue.submit([encoder.finish()]);
-        Ok(owned)
+        Ok(Arc::new(crate::media::SharedTexture::new_shared(owned)))
     }
 }
 
@@ -910,7 +910,7 @@ fn source_to_owned_texture(
     source: &EffectSource,
     width: u32,
     height: u32,
-) -> Result<Arc<wgpu::Texture>> {
+) -> Result<Arc<crate::media::SharedTexture>> {
     match source {
         EffectSource::Cpu(img) => {
             let texture = device.create_texture(&wgpu::TextureDescriptor {
@@ -949,7 +949,7 @@ fn source_to_owned_texture(
                     depth_or_array_layers: 1,
                 },
             );
-            Ok(Arc::new(texture))
+            Ok(Arc::new(crate::media::SharedTexture::new_shared(Arc::new(texture))))
         }
         EffectSource::Gpu(texture) => Ok(texture.clone()),
     }
