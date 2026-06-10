@@ -119,7 +119,7 @@ function togglePseudoOverlapMode() {
   }
 }
 
-const rippleTrimDisabled = computed(() => timelineStore.getHotkeyTargetClip() === null);
+
 
 function startLongPress() {
   wasLastPressLong.value = false;
@@ -165,13 +165,7 @@ function handlePaste() {
   if (payload.operation === 'cut') clipboardStore.setClipboardPayload(null);
 }
 
-function handleRippleTrimLeft() {
-  void timelineStore.rippleTrimLeft();
-}
 
-function handleRippleTrimRight() {
-  void timelineStore.rippleTrimRight();
-}
 </script>
 
 <template>
@@ -244,22 +238,7 @@ function handleRippleTrimRight() {
           :title="t('common.paste')"
           @click="handlePaste"
         />
-        <UiActionButton
-          icon="i-heroicons-arrow-left"
-          color="neutral"
-          size="sm"
-          :disabled="rippleTrimDisabled"
-          :title="t('fastcat.timeline.rippleTrimLeft')"
-          @click="handleRippleTrimLeft"
-        />
-        <UiActionButton
-          icon="i-heroicons-arrow-right"
-          color="neutral"
-          size="sm"
-          :disabled="rippleTrimDisabled"
-          :title="t('fastcat.timeline.rippleTrimRight')"
-          @click="handleRippleTrimRight"
-        />
+
       </div>
 
       <div class="flex items-center gap-1 rounded-xl bg-ui-bg px-1 py-1 shrink-0">
