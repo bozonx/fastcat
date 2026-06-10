@@ -49,6 +49,7 @@ fn open_symphonia_format(
     Ok(probed.format)
 }
 
+#[allow(dead_code)]
 pub(crate) fn probe_audio_source_metadata(path: &str) -> Result<AudioSourceMetadata> {
     let format = open_symphonia_format(path, "metadata")?;
 
@@ -76,6 +77,7 @@ pub(crate) fn probe_audio_source_metadata(path: &str) -> Result<AudioSourceMetad
 /// or sample rate), which is intentional because the inherent audio source metadata
 /// (original sample rate and channels) is a property of the source file itself
 /// and does not depend on the output audio device's sample rate or channel count.
+#[allow(dead_code)]
 pub(crate) fn cached_audio_source_metadata(
     path: &str,
     shared: &Arc<(Mutex<AudioShared>, Condvar)>,

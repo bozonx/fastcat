@@ -22,10 +22,6 @@ pub(crate) const PREBUFFER_CHUNKS: usize = 16;
 
 /// Max bytes of decoded f32 audio kept in `decoded_cache` across all files.
 pub(crate) const MAX_DECODED_CACHE_BYTES: usize = 256 * 1024 * 1024;
-/// Only fully decode + cache files whose compressed size is below this. Larger
-/// files stream through the chunk decoder (which is built for it), avoiding a
-/// multi-GB decode of a long track into RAM.
-pub(crate) const MAX_CACHEABLE_FILE_BYTES: u64 = 16 * 1024 * 1024;
 /// Producer resync threshold: if the mix position falls more than this behind
 /// the audible playhead (e.g. after an output underrun), skip stale audio and
 /// realign instead of permanently lagging.
