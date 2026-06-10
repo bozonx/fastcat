@@ -33,6 +33,9 @@ use crate::media::image_decode::decode_image;
 /// больше окна готовности `app::PREBUFFER_LOOKAHEAD_SEC`, чтобы к моменту Play кадры
 /// уже были в кеше. Реальное число кадров ограничено бюджетом памяти на слой.
 pub(super) const PREROLL_LOOKAHEAD_SEC: f64 = 0.2;
+/// Сколько секунд до начала будущего клипа на таймлайне должно оставаться,
+/// чтобы мы превентивно запустили фоновую инициализацию его декодера.
+const VIDEO_PREWARM_LOOKAHEAD_SEC: f64 = 1.5;
 
 const MB: usize = 1024 * 1024;
 const LOW_CACHE_BUDGET_BYTES: usize = 96 * MB;
@@ -610,16 +613,26 @@ impl LayerRuntimeManager {
                         }
                     }
                 }
+            } else if layer.covers(t + VIDEO_PREWARM_LOOKAHEAD_SEC) {
+                // Превентивно прогреваем декодер будущего слоя
+                self.ensure_runtime_for(layer, device.clone(), queue.clone());
             }
         }
 
         let playing = self.playing;
+        // Сначала прокачиваем все видео-рантаймы (включая прогревающиеся неактивные),
+        // чтобы вычитать готовые кадры из фонового канала и заполнить кэш.
+        for rt in self.runtimes.values_mut() {
+            if let LayerRuntime::Video(v) = rt {
+                v.pull_into_cache();
+            }
+        }
+
         for (i, layer) in scene.iter().enumerate() {
             if !active.contains(&i) || layer.kind != LayerKind::Video {
                 continue;
             }
             if let Some(LayerRuntime::Video(rt)) = self.runtimes.get_mut(&layer.id) {
-                rt.pull_into_cache();
                 // Once per tick: is the decoder producing newer frames (moving forward)?
                 // Used below to suppress the reseek-on-lag thrash on decode-bound sources.
                 let advancing = rt.decoder_advancing();
