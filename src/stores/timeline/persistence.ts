@@ -71,6 +71,21 @@ export interface TimelinePersistenceDeps {
    */
   getAutosaveIntervalMs?: () => number;
   /**
+   * Debounce time for the debounced auto-save (used on mobile). Defaults to 500 ms.
+   */
+  autosaveDebounceMs?: () => number;
+  /**
+   * When true the persistence module autosaves into the canonical timeline file
+   * instead of a crash-recovery sidecar. Used on mobile where explicit “Save”
+   * does not exist.
+   */
+  isMobile?: Ref<boolean>;
+  /**
+   * Called before switching away from a dirty timeline on mobile so a backup
+   * snapshot can be created.
+   */
+  onMobileBackup?: (serialized: string) => Promise<void>;
+  /**
    * Deletes the crash-recovery sidecar for the given timeline path. Called on
    * explicit save (the work is now committed) and on clean shutdown.
    */
@@ -386,6 +401,11 @@ export function createTimelinePersistenceModule(
   function scheduleAutosave() {
     if (!deps.timelineDoc.value || !isDirty()) return;
     if (deps.isReadOnly?.value) return;
+    if (deps.isMobile?.value) {
+      // On mobile the debounced autoSave writes directly to the main file
+      void autoSave.requestSave();
+      return;
+    }
     if (typeof window === 'undefined') {
       void flushTimelineAutosave();
       return;
@@ -403,6 +423,7 @@ export function createTimelinePersistenceModule(
   }
 
   const autoSave = createAutoSave({
+    debounceMs: deps.autosaveDebounceMs?.() ?? 500,
     doSave: async () => {
       const doc = deps.timelineDoc.value;
       if (!doc || !isDirty()) return false;
@@ -424,14 +445,25 @@ export function createTimelinePersistenceModule(
           return false;
         }
 
-        const autosavePath = getAutosavePath(currentTimelinePath);
+        const isMobile = deps.isMobile?.value ?? false;
+        const targetPath = isMobile ? currentTimelinePath : getAutosavePath(currentTimelinePath);
         const serialized = await serializeValidatedTimeline(doc);
         if (generation !== autosaveGeneration || !isDirty()) return false;
 
-        await writeSerializedToPath(autosavePath, serialized);
+        await writeSerializedToPath(targetPath, serialized);
         if (generation !== autosaveGeneration || !isDirty()) {
           return false;
         }
+
+        // On mobile the autosave IS the canonical save, so advance the main saved
+        // revision so the dirty indicator drops immediately.
+        if (isMobile) {
+          if (mainSavedRevision < currentRevision) {
+            mainSavedRevision = currentRevision;
+            setDirtyState();
+          }
+        }
+
         return true;
       } catch (e: unknown) {
         deps.timelineSaveError.value =
@@ -476,6 +508,10 @@ export function createTimelinePersistenceModule(
 
   async function requestTimelineSave(options?: { immediate?: boolean }) {
     if (!deps.timelineDoc.value) return;
+    if (deps.isMobile?.value) {
+      await autoSave.requestSave(options);
+      return;
+    }
     if (options?.immediate) {
       await flushTimelineAutosave();
     } else {
@@ -488,6 +524,12 @@ export function createTimelinePersistenceModule(
 
     if (deps.exitPreview) {
       deps.exitPreview();
+    }
+
+    // Mobile backup before switching away from a dirty timeline.
+    if (deps.isMobile?.value && isDirty() && deps.timelineDoc.value) {
+      const serialized = await serializeValidatedTimeline(deps.timelineDoc.value);
+      await deps.onMobileBackup?.(serialized);
     }
 
     // Preserve the outgoing tab's live edits in memory before its doc is
@@ -522,72 +564,88 @@ export function createTimelinePersistenceModule(
 
     try {
       const mainPath = deps.currentTimelinePath.value;
-      const autosavePath = getAutosavePath(mainPath);
 
-      // Independent stat calls — fetch them concurrently rather than chaining.
-      const [mainMeta, autosaveMeta] = await Promise.all([
-        deps.getTimelineMetadata(mainPath),
-        deps.getTimelineMetadata(autosavePath),
-      ]);
+      let text = '';
+      let mainMeta = null;
 
-      if (!mainMeta && !autosaveMeta) {
-        if (requestId !== loadTimelineRequestId) return;
-        deps.timelineDoc.value = fallback;
-        return;
-      }
+      if (!deps.isMobile?.value) {
+        const autosavePath = getAutosavePath(mainPath);
 
-      let text = mainMeta
-        ? ((await withFileIoSlot(() => deps.readTimelineText(mainPath))) ?? '')
-        : '';
-      let shouldOfferAutosave =
-        !!autosaveMeta && (!mainMeta || autosaveMeta.lastModified > mainMeta.lastModified);
+        // Independent stat calls — fetch them concurrently rather than chaining.
+        const [mainMetaRaw, autosaveMeta] = await Promise.all([
+          deps.getTimelineMetadata(mainPath),
+          deps.getTimelineMetadata(autosavePath),
+        ]);
+        mainMeta = mainMetaRaw;
 
-      // Suppress spurious recovery: a best-effort sidecar delete that failed
-      // after a clean save (or an autosave that wrote byte-identical content) can
-      // leave a sidecar that's newer-but-equal. Only pay for the extra read when
-      // the sizes match exactly; if the content is identical there's nothing to
-      // recover, so drop the redundant sidecar and load the saved file silently.
-      if (shouldOfferAutosave && mainMeta && autosaveMeta && mainMeta.size === autosaveMeta.size) {
-        const autosaveText =
-          (await withFileIoSlot(() => deps.readTimelineText(autosavePath))) ?? '';
-        if (autosaveText && autosaveText === text) {
-          shouldOfferAutosave = false;
-          try {
-            await deps.deleteAutosaveFile?.(mainPath);
-          } catch (e) {
-            log.warn('Failed to remove redundant identical autosave sidecar', e);
-          }
+        if (!mainMeta && !autosaveMeta) {
+          if (requestId !== loadTimelineRequestId) return;
+          deps.timelineDoc.value = fallback;
+          return;
         }
-      }
 
-      if (shouldOfferAutosave) {
-        if (deps.shouldRestoreAutosaveSilently?.()) {
-          text = (await withFileIoSlot(() => deps.readTimelineText(autosavePath))) ?? '';
-          restoredAutosave = true;
-        } else if (deps.showRecoveryDialog) {
-          const choice = await deps.showRecoveryDialog({ timelinePath: mainPath });
-          if (choice === 'restore-autosave') {
-            text = (await withFileIoSlot(() => deps.readTimelineText(autosavePath))) ?? '';
-            restoredAutosave = true;
-          } else {
-            deps.onRecoveryChoice?.(choice);
-            if (choice === 'open-saved') {
-              try {
-                await deps.discardAutosave?.(mainPath);
-              } catch (e) {
-                log.warn('Failed to discard autosave sidecar', e);
-              }
+        text = mainMeta
+          ? ((await withFileIoSlot(() => deps.readTimelineText(mainPath))) ?? '')
+          : '';
+        let shouldOfferAutosave =
+          !!autosaveMeta && (!mainMeta || autosaveMeta.lastModified > mainMeta.lastModified);
+
+        // Suppress spurious recovery: a best-effort sidecar delete that failed
+        // after a clean save (or an autosave that wrote byte-identical content) can
+        // leave a sidecar that's newer-but-equal. Only pay for the extra read when
+        // the sizes match exactly; if the content is identical there's nothing to
+        // recover, so drop the redundant sidecar and load the saved file silently.
+        if (shouldOfferAutosave && mainMeta && autosaveMeta && mainMeta.size === autosaveMeta.size) {
+          const autosaveText =
+            (await withFileIoSlot(() => deps.readTimelineText(autosavePath))) ?? '';
+          if (autosaveText && autosaveText === text) {
+            shouldOfferAutosave = false;
+            try {
+              await deps.deleteAutosaveFile?.(mainPath);
+            } catch (e) {
+              log.warn('Failed to remove redundant identical autosave sidecar', e);
             }
           }
-        } else {
-          const shouldRestore =
-            (await deps.confirmRestoreAutosave?.({ timelinePath: mainPath, autosavePath })) ??
-            false;
-          if (shouldRestore) {
+        }
+
+        if (shouldOfferAutosave) {
+          if (deps.shouldRestoreAutosaveSilently?.()) {
             text = (await withFileIoSlot(() => deps.readTimelineText(autosavePath))) ?? '';
             restoredAutosave = true;
+          } else if (deps.showRecoveryDialog) {
+            const choice = await deps.showRecoveryDialog({ timelinePath: mainPath });
+            if (choice === 'restore-autosave') {
+              text = (await withFileIoSlot(() => deps.readTimelineText(autosavePath))) ?? '';
+              restoredAutosave = true;
+            } else {
+              deps.onRecoveryChoice?.(choice);
+              if (choice === 'open-saved') {
+                try {
+                  await deps.discardAutosave?.(mainPath);
+                } catch (e) {
+                  log.warn('Failed to discard autosave sidecar', e);
+                }
+              }
+            }
+          } else {
+            const shouldRestore =
+              (await deps.confirmRestoreAutosave?.({ timelinePath: mainPath, autosavePath })) ??
+              false;
+            if (shouldRestore) {
+              text = (await withFileIoSlot(() => deps.readTimelineText(autosavePath))) ?? '';
+              restoredAutosave = true;
+            }
           }
         }
+      } else {
+        // Mobile: no crash-recovery sidecar; load directly from the canonical file.
+        mainMeta = await deps.getTimelineMetadata(mainPath);
+        if (!mainMeta) {
+          if (requestId !== loadTimelineRequestId) return;
+          deps.timelineDoc.value = fallback;
+          return;
+        }
+        text = ((await withFileIoSlot(() => deps.readTimelineText(mainPath))) ?? '');
       }
 
       if (!text) {

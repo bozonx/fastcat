@@ -383,4 +383,72 @@ describe('TimelinePersistenceModule', () => {
 
     expect(deleteAutosaveFile).toHaveBeenCalledWith('timeline.otio');
   });
+
+  it('on mobile writes autosave to the main file and clears dirty', async () => {
+    const files: FileStore = {};
+    const vfsMock = makeVfsMock(files);
+    const onMobileBackup = vi.fn().mockResolvedValue(undefined);
+    const deps = createMockDeps({
+      timelineDoc: ref({ ...fallbackDoc }),
+      ...vfsMock,
+      isMobile: ref(true),
+      onMobileBackup,
+    });
+    const mod = createTimelinePersistenceModule(deps);
+
+    mod.markDirty();
+    await mod.requestTimelineSave({ immediate: true });
+
+    expect(vfsMock.writeTimelineText).toHaveBeenCalledWith(
+      'timeline.otio',
+      expect.any(String),
+    );
+    expect(deps.isTimelineDirty.value).toBe(false);
+  });
+
+  it('on mobile loadTimeline skips sidecar recovery and reads main file', async () => {
+    const files: FileStore = {
+      'timeline.otio': { text: JSON.stringify({ ...fallbackDoc, id: 'main' }), lastModified: 100 },
+      '.fastcat/autosave/timeline.otio': {
+        text: JSON.stringify({ ...fallbackDoc, id: 'autosave' }),
+        lastModified: 200,
+      },
+    };
+    parseTimelineFromOtio.mockImplementation((text: string) => JSON.parse(text));
+    const onMobileBackup = vi.fn().mockResolvedValue(undefined);
+    const deps = createMockDeps({
+      ...makeVfsMock(files),
+      isMobile: ref(true),
+      onMobileBackup,
+    });
+    const mod = createTimelinePersistenceModule(deps);
+
+    await mod.loadTimeline();
+
+    expect(deps.timelineDoc.value.id).toBe('main');
+  });
+
+  it('on mobile loadTimeline creates backup before switching away from dirty timeline', async () => {
+    const files: FileStore = {
+      'timeline.otio': { text: JSON.stringify({ ...fallbackDoc, id: 'main' }), lastModified: 100 },
+    };
+    parseTimelineFromOtio.mockImplementation((text: string) => JSON.parse(text));
+    const onMobileBackup = vi.fn().mockResolvedValue(undefined);
+    const deps = createMockDeps({
+      ...makeVfsMock(files),
+      isMobile: ref(true),
+      onMobileBackup,
+    });
+    const mod = createTimelinePersistenceModule(deps);
+
+    await mod.loadTimeline();
+    deps.timelineDoc.value = { ...deps.timelineDoc.value, edited: true };
+    mod.markDirty();
+
+    // Switch to another timeline
+    deps.currentTimelinePath.value = 'other.otio';
+    await mod.loadTimeline();
+
+    expect(onMobileBackup).toHaveBeenCalled();
+  });
 });

@@ -29,7 +29,6 @@ const emit = defineEmits<{
   (e: 'open-track-manager'): void;
   (e: 'open-history'): void;
   (e: 'open-markers'): void;
-  (e: 'open-backups'): void;
 }>();
 
 // Snap mode options
@@ -232,13 +231,6 @@ function handlePaste() {
           size="sm"
           :title="t('common.markers')"
           @click="emit('open-markers')"
-        />
-        <UiActionButton
-          icon="lucide:archive"
-          color="neutral"
-          size="sm"
-          :title="t('videoEditor.timeline.backups.title')"
-          @click="emit('open-backups')"
         />
       </div>
     </MobileDrawerToolbar>

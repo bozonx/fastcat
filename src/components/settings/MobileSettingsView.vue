@@ -6,6 +6,7 @@ import ExportSettings from '~/components/project-settings/ExportSettings.vue';
 import AdvancedSettings from '~/components/project-settings/AdvancedSettings.vue';
 import MetadataSettings from '~/components/project-settings/MetadataSettings.vue';
 import StorageSettings from '~/components/project-settings/StorageSettings.vue';
+import ProjectBackups from '~/components/project/ProjectBackups.vue';
 import { useProjectStore } from '~/stores/project.store';
 
 const props = defineProps<{
@@ -20,6 +21,7 @@ const tabOptions = computed(() => {
   const options = [];
   if (projectStore.currentProjectName) {
     options.push({ value: 'project', label: t('videoEditor.settings.project') });
+    options.push({ value: 'backups', label: t('videoEditor.settings.backups') });
   }
   options.push({ value: 'app', label: t('videoEditor.settings.app') });
   return options;
@@ -58,6 +60,14 @@ const tabOptions = computed(() => {
         <UIcon name="lucide:folder-off" class="w-10 h-10 opacity-20" />
         <p class="text-sm">Settings not available</p>
       </div>
+    </div>
+
+    <!-- Backups -->
+    <div
+      v-else-if="activeTab === 'backups'"
+      class="flex-1 overflow-y-auto bg-ui-bg animate-in fade-in duration-200"
+    >
+      <ProjectBackups class="h-full" />
     </div>
 
     <!-- App Settings: full-height panel with its own internal tab navigation -->

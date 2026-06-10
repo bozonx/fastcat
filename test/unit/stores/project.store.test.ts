@@ -121,7 +121,10 @@ vi.mock('~/stores/media.store', () => ({
 }));
 
 vi.mock('~/stores/timeline.store', () => ({
-  useTimelineStore: vi.fn(() => ({ resetTimelineState: mockResetTimelineState })),
+  useTimelineStore: vi.fn(() => ({
+    resetTimelineState: mockResetTimelineState,
+    maybeCreateMobileBackup: vi.fn().mockResolvedValue(undefined),
+  })),
 }));
 
 vi.mock('~/stores/selection.store', () => ({
@@ -223,13 +226,13 @@ describe('ProjectStore', () => {
     expect(store.currentTimelinePath).toBeNull();
   });
 
-  it('closeProject resets current project state and dependent stores', () => {
+  it('closeProject resets current project state and dependent stores', async () => {
     const store = useProjectStore();
     store.currentProjectName = 'test-project';
     store.currentProjectId = '123';
     store.currentTimelinePath = '/some/path.otio';
 
-    store.closeProject();
+    await store.closeProject();
 
     expect(store.currentProjectName).toBeNull();
     expect(store.currentProjectId).toBeNull();

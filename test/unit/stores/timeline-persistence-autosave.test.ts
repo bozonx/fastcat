@@ -359,4 +359,69 @@ describe('Timeline Persistence and AutoSave', () => {
 
     expect(mockProjectStore.writeTextByPath).not.toHaveBeenCalled();
   });
+
+  describe('mobile', () => {
+    let originalPathname: string;
+    beforeEach(() => {
+      originalPathname = window.location.pathname;
+      (window as any).location.pathname = '/m/project/123';
+    });
+    afterEach(() => {
+      (window as any).location.pathname = originalPathname;
+    });
+
+    it('autosaves to the main file on mobile after debounce', async () => {
+      const timelineStore = useTimelineStore();
+      timelineStore.timelineDoc = {
+        OTIO_SCHEMA: 'Timeline.1',
+        id: 'test',
+        name: 'test',
+        tracks: [],
+      } as any;
+
+      timelineStore.markTimelineAsDirty();
+      await timelineStore.requestTimelineSave();
+
+      expect(mockProjectStore.writeTextByPath).not.toHaveBeenCalled();
+
+      vi.advanceTimersByTime(2_000);
+      for (let i = 0; i < 10; i++) {
+        await vi.runAllTimersAsync();
+        await Promise.resolve();
+      }
+
+      expect(mockProjectStore.writeTextByPath).toHaveBeenCalledWith(
+        'timelines/main.otio',
+        expect.any(String),
+      );
+      expect(timelineStore.isTimelineDirty).toBe(false);
+    });
+
+    it('does not create backup on explicit save on mobile', async () => {
+      (mockWorkspaceStore.userSettings as any).backup = { enabled: true, count: 5 };
+
+      const timelineStore = useTimelineStore();
+      timelineStore.timelineDoc = {
+        OTIO_SCHEMA: 'Timeline.1',
+        id: 'test',
+        name: 'test',
+        tracks: [],
+      } as any;
+
+      timelineStore.markTimelineAsDirty();
+      await timelineStore.saveTimeline();
+      await vi.runAllTimersAsync();
+      await Promise.resolve();
+
+      expect(mockProjectStore.writeTextByPath).toHaveBeenCalledWith(
+        'timelines/main.otio',
+        expect.any(String),
+      );
+      // Backup should NOT be created on mobile explicit save
+      const backupCalls = (mockProjectStore.writeTextByPath as any).mock.calls.filter(
+        ([path]: [string]) => path.includes('.fastcat/backups'),
+      );
+      expect(backupCalls).toHaveLength(0);
+    });
+  });
 });

@@ -63,6 +63,11 @@ export const useTimelineStore = defineStore('timeline', () => {
   const toast = nuxtApp.$notificationService as AppNotificationService;
   const { t } = nuxtApp.$i18nService as I18nService;
   const timelineMediaUsageStore = useTimelineMediaUsageStore();
+  const isMobileLayout = computed(() => {
+    if (typeof window === 'undefined') return false;
+    const path = window.location.pathname;
+    return path === '/m' || path.startsWith('/m/');
+  });
 
   const historyDebounce = createTimelineHistoryDebounceModule({ historyStore });
 
@@ -408,6 +413,9 @@ export const useTimelineStore = defineStore('timeline', () => {
       const minutes = workspaceStore.userSettings.autosave?.intervalMinutes ?? 2;
       return Math.max(1, minutes) * 60_000;
     },
+    autosaveDebounceMs: () => (isMobileLayout.value ? 1_500 : 500),
+    isMobile: isMobileLayout,
+    onMobileBackup: (serialized) => backup.handleBackup(serialized, { force: true }),
     deleteAutosaveFile: (timelinePath) => deleteTimelineAutosaveFile(timelinePath),
     discardAutosave: (timelinePath) => backup.preserveAndDiscardAutosave(timelinePath),
     onDirtyStateChange: (timelinePath, dirty) => {
@@ -450,7 +458,11 @@ export const useTimelineStore = defineStore('timeline', () => {
     },
     onSaveSuccess: (serialized) => {
       void lifecycle.handleSaveSuccess();
-      void backup.handleBackup(serialized);
+      // On desktop backups are created on every explicit save; on mobile they
+      // are taken only when switching timelines or leaving the project.
+      if (!isMobileLayout.value) {
+        void backup.handleBackup(serialized);
+      }
     },
     onSaveError: () => {
       toast.add({
@@ -968,5 +980,14 @@ export const useTimelineStore = defineStore('timeline', () => {
     restoreVersion: backup.restoreVersion,
     deleteBackupVersion: backup.deleteBackupVersion,
     loadBackupVersions: backup.loadBackupVersions,
+    isMobileLayout,
+    // Create a forced backup of the current timeline before leaving the project
+    // or switching timelines on mobile.
+    async maybeCreateMobileBackup() {
+      if (!isMobileLayout.value || !currentTimelinePath.value || !timelineDoc.value) return;
+      if (!isPathDirty(currentTimelinePath.value)) return;
+      const serialized = serializeTimelineToOtio(timelineDoc.value);
+      await backup.handleBackup(serialized, { force: true });
+    },
   };
 });

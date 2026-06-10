@@ -45,6 +45,11 @@ const vueI18nMock = {
 
 vi.mock('vue-i18n', () => vueI18nMock);
 
+vi.mock('vue-router', () => ({
+  useRoute: vi.fn(() => ({ path: '/', fullPath: '/', query: {}, params: {}, hash: '' })),
+  useRouter: vi.fn(() => ({ push: vi.fn(), replace: vi.fn(), go: vi.fn(), back: vi.fn() })),
+}));
+
 vi.mock('#i18n', () => ({
   useI18n: vi.fn(() => ({
     t: (key: string, params?: string | Record<string, unknown>) =>

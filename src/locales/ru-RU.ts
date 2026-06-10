@@ -1624,6 +1624,7 @@ export default {
     "settings": {
       "advancedSection": "Расширенные",
       "app": "Приложение",
+      "backups": "Бэкапы",
       "audioDeclickDuration": "Длительность de-click",
       "audioDeclickDurationHelp": "Длительность микро-фейдов для устранения щелчков.",
       "audioScrubbingHint": "Воспроизводить звук при перемещении по таймлайну вручную.",

@@ -48,7 +48,6 @@ import MobileTrackMixerDrawer from './MobileTrackMixerDrawer.vue';
 import MobileTrackManagerDrawer from './MobileTrackManagerDrawer.vue';
 import MobileHistoryDrawer from './MobileHistoryDrawer.vue';
 import MobileMarkersDrawer from './MobileMarkersDrawer.vue';
-import MobileBackupsDrawer from './MobileBackupsDrawer.vue';
 import { useTeleportTarget } from '~/composables/ui/useTeleportTarget';
 
 // Composables
@@ -225,7 +224,6 @@ const lastPointerType = ref('');
 const clickStartX = ref(0);
 const clickStartY = ref(0);
 const isTrackManagerDrawerOpen = ref(false);
-const isBackupsDrawerOpen = ref(false);
 
 const trackHeights = computed(() => {
   const heights: Record<string, number> = {};
@@ -486,7 +484,6 @@ async function onClipAction(payload: TimelineClipActionPayload) {
       @open-track-manager="isTrackManagerDrawerOpen = true"
       @open-history="isHistoryDrawerOpen = true"
       @open-markers="isMarkersDrawerOpen = true"
-      @open-backups="isBackupsDrawerOpen = true"
     />
 
     <!-- Backup Preview Banner (Mobile) -->
@@ -698,8 +695,6 @@ async function onClipAction(payload: TimelineClipActionPayload) {
     <MobileHistoryDrawer :is-open="isHistoryDrawerOpen" @close="isHistoryDrawerOpen = false" />
 
     <MobileMarkersDrawer :is-open="isMarkersDrawerOpen" @close="isMarkersDrawerOpen = false" />
-
-    <MobileBackupsDrawer :is-open="isBackupsDrawerOpen" @close="isBackupsDrawerOpen = false" />
 
     <!-- Tracks area -->
     <div class="flex-1 relative overflow-hidden">

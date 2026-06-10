@@ -1624,6 +1624,7 @@ export default {
     "settings": {
       "advancedSection": "Advanced",
       "app": "App",
+      "backups": "Backups",
       "audioDeclickDuration": "Audio de-click duration",
       "audioDeclickDurationHelp": "Duration of micro-fades to eliminate clicks.",
       "audioScrubbingHint": "Play audio while scrubbing the timeline.",

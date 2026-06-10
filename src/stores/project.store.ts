@@ -125,6 +125,7 @@ export const useProjectStore = defineStore('project', () => {
     const fileManagerStore = useFileManagerStore();
     const historyStore = useHistoryStore();
 
+    await timelineStore.maybeCreateMobileBackup();
     mediaStore.resetMediaState();
     timelineStore.resetTimelineState();
     selectionStore.clearSelection();
