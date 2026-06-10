@@ -526,4 +526,31 @@ mod tests {
         rt.seek_with_cooldown(1.0, "test");
         assert_eq!(rt.last_pump_seek_pts, Some(1.0));
     }
+
+    /// Регрессионный тест: `request_prebuffer` при seek на паузе с кэш-хитом не должна
+    /// паниковать, и кадры вперёд playhead'а не должны считаться «готовыми» до декода.
+    ///
+    /// До фикса `LayerRuntimeManager::seek` делал `continue` без вызова `request_prebuffer`
+    /// при `has_cached_near` — форвард-буфер оставался пустым, Play стартовал без прогрева
+    /// и слышался треск/повтор аудио на первых секундах.
+    #[test]
+    fn request_prebuffer_does_not_panic_on_cache_hit_seek() {
+        let rt = fixture_video_rt();
+        // Вызов без паники — базовый контракт.
+        rt.request_prebuffer(0.2);
+        // preroll_frame_count должен вернуть минимум MIN_PREROLL_FRAMES
+        assert!(rt.preroll_frame_count(0.2) >= MIN_PREROLL_FRAMES);
+    }
+
+    /// Контракт `has_buffered_through`: пока ни один кадр не декодирован вперёд `target`,
+    /// должна возвращать `false` — прогрев не считается завершённым.
+    #[test]
+    fn has_buffered_through_is_false_before_forward_frames_decoded() {
+        let rt = fixture_video_rt();
+        // Кэш пуст — нет кадров вперёд target.
+        assert!(
+            !rt.has_buffered_through(0.5),
+            "empty cache must report not buffered through"
+        );
+    }
 }

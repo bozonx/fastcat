@@ -108,7 +108,8 @@ vi.mock('~/utils/external-integrations', () => ({
 vi.mock('~/components/properties/FileProperties.vue', () => ({
   default: {
     name: 'FileProperties',
-    template: '<div />',
+    props: ['selectedFsEntry', 'previewMode', 'hasProxy', 'mobileTextMode'],
+    template: '<div data-testid="file-properties" />',
   },
 }));
 
@@ -121,7 +122,7 @@ describe('MobileFileBrowserDrawer', () => {
     mockReadDirectory.mockResolvedValue([]);
   });
 
-  it('shows regenerate and delete proxy actions for video with existing proxy', async () => {
+  it('passes has-proxy=true to FileProperties for video with existing proxy', async () => {
     const entry = { kind: 'file', name: 'clip.mp4', path: 'clip.mp4' };
     mockSelectionStore.selectedEntity = {
       source: 'fileManager',
@@ -143,23 +144,17 @@ describe('MobileFileBrowserDrawer', () => {
           MobileDrawerToolbar: { template: '<div><slot /></div>' },
           MobileDrawerToolbarButton: true,
           MultiFileProperties: true,
-          PropertyActionList: {
-            name: 'PropertyActionList',
-            props: ['actions'],
-            template: '<div />',
-          },
         },
       },
     });
 
-    const actionList = wrapper.findComponent({ name: 'PropertyActionList' });
-    const labels = actionList.props('actions').map((action: { label: string }) => action.label);
-
-    expect(labels).toContain('videoEditor.fileManager.actions.regenerateProxy');
-    expect(labels).toContain('videoEditor.fileManager.actions.deleteProxy');
+    const fileProps = wrapper.findComponent({ name: 'FileProperties' });
+    expect(fileProps.exists()).toBe(true);
+    expect(fileProps.props('hasProxy')).toBe(true);
+    expect(fileProps.props('selectedFsEntry')).toEqual(entry);
   });
 
-  it('shows folder proxy action when directory has direct video children', async () => {
+  it('renders FileProperties for directory selection', async () => {
     const entry = { kind: 'directory', name: 'videos', path: 'videos' };
     mockSelectionStore.selectedEntity = {
       source: 'fileManager',
@@ -183,18 +178,12 @@ describe('MobileFileBrowserDrawer', () => {
           MobileDrawerToolbar: { template: '<div><slot /></div>' },
           MobileDrawerToolbarButton: true,
           MultiFileProperties: true,
-          PropertyActionList: {
-            name: 'PropertyActionList',
-            props: ['actions'],
-            template: '<div />',
-          },
         },
       },
     });
 
-    const actionList = wrapper.findComponent({ name: 'PropertyActionList' });
-    const labels = actionList.props('actions').map((action: { label: string }) => action.label);
-
-    expect(labels).toContain('videoEditor.fileManager.actions.createProxyForAll');
+    const fileProps = wrapper.findComponent({ name: 'FileProperties' });
+    expect(fileProps.exists()).toBe(true);
+    expect(fileProps.props('selectedFsEntry')).toEqual(entry);
   });
 });

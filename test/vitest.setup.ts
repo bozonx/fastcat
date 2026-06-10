@@ -72,12 +72,14 @@ vi.mock('vue-router', () => ({
     back: vi.fn(),
     afterEach: vi.fn(),
     beforeEach: vi.fn(),
+    beforeResolve: vi.fn(),
     addRoute: vi.fn(),
     getRoutes: vi.fn(() => []),
     resolve: vi.fn(),
     currentRoute: { value: { path: '/', fullPath: '/', query: {}, params: {}, hash: '', meta: { layout: 'default' } } },
     options: { routes: [] },
     install: vi.fn(),
+    isReady: vi.fn(() => Promise.resolve()),
   })),
   RouterView: { name: 'RouterView', render: () => null },
   RouterLink: { name: 'RouterLink', render: () => null },
@@ -276,6 +278,26 @@ vi.mock('@nuxtjs/device', () => ({
   })),
 }));
 
+vi.mock('@nuxtjs/device/runtime/composables/useDevice', () => ({
+  useDevice: vi.fn(() => ({
+    isMobile: false,
+    isDesktop: true,
+    isTablet: false,
+    isMobileOrTablet: false,
+    isDesktopOrTablet: true,
+    isIos: false,
+    isAndroid: false,
+    isWindows: false,
+    isMacOS: false,
+    userAgent: '',
+    orientation: 'landscape',
+  })),
+}));
+
+vi.mock('@nuxtjs/color-mode', () => ({
+  useColorMode: vi.fn(() => ({ preference: 'dark', value: 'dark' })),
+}));
+
 vi.mock('#ui/composables/useToast', () => {
   const toastMaxInjectionKey = Symbol('toastMaxInjectionKey');
   return {
@@ -371,7 +393,19 @@ class LocalStorageMock {
 
 // Stub global useNuxtApp so @nuxt/test-utils setupNuxt sees _route.sync
 vi.stubGlobal('useNuxtApp', createNuxtMock);
-vi.stubGlobal('useColorMode', () => ({ preference: 'dark', value: 'dark' }));
+vi.stubGlobal('useDevice', () => ({
+  isMobile: false,
+  isDesktop: true,
+  isTablet: false,
+  isMobileOrTablet: false,
+  isDesktopOrTablet: true,
+  isIos: false,
+  isAndroid: false,
+  isWindows: false,
+  isMacOS: false,
+  userAgent: '',
+  orientation: 'landscape',
+}));
 
 // Always override localStorage/sessionStorage to avoid issues in happy-dom
 // and ensure our mock is present regardless of environment

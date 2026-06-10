@@ -691,8 +691,11 @@ impl LayerRuntimeManager {
             if let Some(LayerRuntime::Video(rt)) = self.runtimes.get_mut(&layer.id) {
                 rt.pull_into_cache();
                 // Пауза + попадание в кеш → показываем кадр без перезапуска ffmpeg.
+                // Всё равно прогреваем вперёд: даже если текущий кадр уже в кеше,
+                // декодер мог стоять на другом месте и при Play форвард-буфер пустой.
                 if !playing && rt.has_cached_near(clip_local, 1) {
                     rt.update_display(clip_local, None);
+                    rt.request_prebuffer(PREROLL_LOOKAHEAD_SEC);
                     continue;
                 }
                 let need_seek = match rt.last_pump_seek_pts {
