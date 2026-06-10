@@ -103,7 +103,7 @@ export function useTimelineClipThumbnails(options: UseTimelineClipThumbnailsOpti
   const isImage = computed(() => {
     const url = fileUrl.value;
     if (!url) return false;
-    const meta = mediaStore.mediaMetadata[url];
+    const meta = mediaStore.getCachedMetadata(url);
     if (meta) {
       return !meta.video && !meta.audio;
     }
@@ -167,7 +167,7 @@ export function useTimelineClipThumbnails(options: UseTimelineClipThumbnailsOpti
   const videoAspect = computed(() => {
     const url = fileUrl.value;
     if (!url) return DEFAULT_THUMB_ASPECT;
-    const meta = mediaStore.mediaMetadata[url];
+    const meta = mediaStore.getCachedMetadata(url);
     return resolveVisualVideoAspect(meta?.video);
   });
 

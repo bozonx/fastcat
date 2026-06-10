@@ -1,7 +1,7 @@
 /** @vitest-environment node */
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { setActivePinia, createPinia } from 'pinia';
-import { useMediaStore } from '~/stores/media.store';
+import { useMediaStore, resolveMediaMetadata } from '~/stores/media.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useProjectStore } from '~/stores/project.store';
 import {
@@ -848,5 +848,30 @@ describe('MediaStore', () => {
     await store.getOrFetchMetadata(mockFile, 'external:/remote/somefile.mp4');
     // It should go to worker module because it is remote, hence nativeMediaMetadata is NOT called
     expect(mockNativeMediaMetadata).not.toHaveBeenCalled();
+  });
+});
+
+describe('resolveMediaMetadata', () => {
+  it('returns direct match', () => {
+    const meta = { duration: 10 } as any;
+    expect(resolveMediaMetadata({ 'file.mp4': meta }, 'file.mp4')).toBe(meta);
+  });
+
+  it('resolves external: prefix by looking up clean path', () => {
+    const meta = { duration: 10 } as any;
+    expect(resolveMediaMetadata({ 'file.mp4': meta }, 'external:file.mp4')).toBe(meta);
+  });
+
+  it('resolves unprefixed path by looking up external: prefixed key', () => {
+    const meta = { duration: 10 } as any;
+    expect(resolveMediaMetadata({ 'external:file.mp4': meta }, 'file.mp4')).toBe(meta);
+  });
+
+  it('returns undefined when path is empty', () => {
+    expect(resolveMediaMetadata({ 'file.mp4': { duration: 10 } as any }, '')).toBeUndefined();
+  });
+
+  it('returns undefined when no match exists', () => {
+    expect(resolveMediaMetadata({}, 'missing.mp4')).toBeUndefined();
   });
 });

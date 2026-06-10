@@ -183,6 +183,7 @@ describe('useTimelineClipThumbnails reactive logic', () => {
 
     vi.mocked(useMediaStore).mockReturnValue({
       mediaMetadata,
+      getCachedMetadata: (path: string) => mediaMetadata[path],
     } as any);
   });
 

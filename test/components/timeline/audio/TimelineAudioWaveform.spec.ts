@@ -5,6 +5,17 @@ import TimelineAudioWaveform from '~/components/timeline/audio/TimelineAudioWave
 
 const mockMediaStore = reactive({
   mediaMetadata: {} as Record<string, any>,
+  getCachedMetadata: vi.fn((path: string) => {
+    if (!path) return undefined;
+    const direct = mockMediaStore.mediaMetadata[path];
+    if (direct) return direct;
+    if (path.startsWith('external:')) {
+      const clean = path.slice('external:'.length);
+      return mockMediaStore.mediaMetadata[clean];
+    }
+    const prefixed = `external:${path}`;
+    return mockMediaStore.mediaMetadata[prefixed];
+  }),
   getOrFetchMetadataByPath: vi.fn(),
   extractPeaks: vi.fn(),
   setAudioPeaks: vi.fn(),

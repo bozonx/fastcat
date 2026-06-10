@@ -117,14 +117,6 @@ export function useNativeMonitorBridge(): void {
     if (disabledNow || !isNativeMonitorDisabled()) {
       log.warn(message, err);
     }
-    // After a monitor crash give the old winit thread time to exit,
-    // then auto-reset so the next project switch or scene update can retry.
-    if (disabledNow) {
-      setTimeout(() => {
-        log.info('[bridge] auto-resetting native monitor availability after init failure');
-        resetNativeMonitorAvailability();
-      }, 2000);
-    }
   }
 
   async function buildScene(): Promise<NativeMonitorScene> {
@@ -204,13 +196,18 @@ export function useNativeMonitorBridge(): void {
     { immediate: true },
   );
 
-  // When the project changes, reset the disabled flag so a previously-crashed
-  // monitor can try to re-initialize on the new project.
+  // When the project changes, force-drop the Rust monitor handle and reset the
+  // disabled flag so a previously-crashed monitor can re-initialize.
   watch(
     () => projectStore.currentProjectName,
-    () => {
+    async () => {
       if (isNativeMonitorDisabled()) {
-        log.info('[bridge] resetNativeMonitorAvailability on project change');
+        log.info('[bridge] resetting monitor on project change');
+        try {
+          await nativeMonitorIpc.reset();
+        } catch (e) {
+          log.warn('[bridge] monitor_reset failed', e);
+        }
         resetNativeMonitorAvailability();
       }
     },

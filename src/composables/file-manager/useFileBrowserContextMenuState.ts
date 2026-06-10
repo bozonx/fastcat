@@ -5,6 +5,7 @@ import type { FileAction as ContextMenuFileAction } from '~/composables/file-man
 import type { FileCompatibility } from '~/composables/file-manager/useFileManagerCompatibility';
 import type { FsEntry } from '~/types/fs';
 import { getBdPayload } from '~/types/bloggerdog';
+import { resolveMediaMetadata } from '~/stores/media.store';
 import { getMediaTypeFromFilename, isOpenableProjectFileName } from '~/utils/media-types';
 import {
   isGeneratingProxyInDirectory as hasGeneratingProxyInDirectory,
@@ -82,7 +83,7 @@ export function useFileBrowserContextMenuState(params: FileBrowserContextMenuSta
       isVideo,
       hasAudioTrack: (entry) => {
         if (entry.kind !== 'file' || !entry.path) return false;
-        const meta = params.mediaMetadata[entry.path];
+        const meta = resolveMediaMetadata(params.mediaMetadata, entry.path);
         return !!meta?.audio;
       },
       getEntryMeta: (entry: FsEntry) => ({

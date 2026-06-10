@@ -109,7 +109,7 @@ const {
 const mediaMeta = computed(() => {
   if (!firstVideoClip.value) return null;
   if (firstVideoClip.value.clipType !== 'media' || !firstVideoClip.value.source?.path) return null;
-  return mediaStore.mediaMetadata[firstVideoClip.value.source.path] || null;
+  return mediaStore.getCachedMetadata(firstVideoClip.value.source.path) || null;
 });
 
 const selectedCountLabel = computed(() => {

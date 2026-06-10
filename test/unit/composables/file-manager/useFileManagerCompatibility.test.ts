@@ -40,6 +40,7 @@ describe('useFileManagerCompatibility', () => {
       metadataLoading,
       getOrFetchMetadataByPath: getOrFetchMetadataByPathMock,
       getOrFetchMetadata: getOrFetchMetadataMock,
+      getCachedMetadata: (path: string) => mediaMetadata[path],
     } as any);
   });
 

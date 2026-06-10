@@ -1,4 +1,4 @@
-import type { MediaMetadata } from '~/stores/media.store';
+import { resolveMediaMetadata, type MediaMetadata } from '~/stores/media.store';
 import type { TimelineClipItem, TimelineTrack, TimelineTrackItem } from '~/timeline/types';
 
 export function formatAudioChannels(channels: number | undefined): string {
@@ -54,7 +54,7 @@ export function clipHasAudio(
   if (clip.clipType !== 'media' && clip.clipType !== 'timeline') return track.kind === 'audio';
   if (!clip.source?.path) return track.kind === 'audio';
 
-  const meta = mediaMetadata[clip.source.path];
+  const meta = resolveMediaMetadata(mediaMetadata, clip.source.path);
   return Boolean(meta?.audio) || track.kind === 'audio';
 }
 

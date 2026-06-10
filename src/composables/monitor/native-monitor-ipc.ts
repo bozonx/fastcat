@@ -110,6 +110,13 @@ export const nativeMonitorIpc = {
   close(): Promise<void> {
     return invoke('monitor_close');
   },
+  /**
+   * Force-drop the Rust monitor handle and wait briefly so the OS can reclaim
+   * display connections from a crashed thread before the next spawn.
+   */
+  reset(): Promise<void> {
+    return invoke('monitor_reset');
+  },
 } as const;
 
 /** Subscribe to native timeline-time ticks (seconds). */

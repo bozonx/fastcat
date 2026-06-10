@@ -1,5 +1,6 @@
 import { applyTransitionCurve } from '~/transitions';
 import type { TransitionCurve } from '~/transitions';
+import { resolveMediaMetadata } from '~/stores/media.store';
 import type { TimelineClipItem, TimelineTrack, TimelineTrackItem } from '~/timeline/types';
 
 export function getClipClass(item: TimelineTrackItem, track: TimelineTrack): string[] {
@@ -327,5 +328,9 @@ export function clipHasAudio(
   if (ct === 'timeline') return true;
   if (ct !== 'media' && ct !== 'timeline') return track.kind === 'audio';
   if (!clip.source?.path) return track.kind === 'audio';
-  return Boolean((mediaMetadata[clip.source.path] as Record<string, unknown> | undefined)?.audio);
+  const meta = resolveMediaMetadata(
+    mediaMetadata as Record<string, { audio?: unknown } | undefined>,
+    clip.source.path,
+  );
+  return Boolean(meta?.audio);
 }

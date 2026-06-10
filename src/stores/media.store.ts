@@ -80,6 +80,21 @@ export interface MediaMetadata {
   error?: boolean;
 }
 
+export function resolveMediaMetadata<T>(
+  mediaMetadata: Record<string, T | undefined>,
+  path: string,
+): T | undefined {
+  if (!path) return undefined;
+  const direct = mediaMetadata[path];
+  if (direct) return direct;
+  if (path.startsWith('external:')) {
+    const clean = path.slice('external:'.length);
+    return mediaMetadata[clean];
+  }
+  const prefixed = `external:${path}`;
+  return mediaMetadata[prefixed];
+}
+
 export const useMediaStore = defineStore('media', () => {
   const workspaceStore = useWorkspaceStore();
   const projectStore = useProjectStore();
@@ -543,23 +558,12 @@ export const useMediaStore = defineStore('media', () => {
   }
 
   function setAudioPeaks(projectRelativePath: string, peaks: Float32Array[]) {
-    let targetPath = projectRelativePath;
-    let metadata = mediaMetadata.value[targetPath];
-    if (!metadata) {
-      if (projectRelativePath.startsWith('external:')) {
-        const clean = projectRelativePath.slice('external:'.length);
-        if (mediaMetadata.value[clean]) {
-          targetPath = clean;
-          metadata = mediaMetadata.value[clean];
-        }
-      } else {
-        const prefixed = `external:${projectRelativePath}`;
-        if (mediaMetadata.value[prefixed]) {
-          targetPath = prefixed;
-          metadata = mediaMetadata.value[prefixed];
-        }
-      }
-    }
+    const metadata = resolveMediaMetadata(mediaMetadata.value, projectRelativePath);
+    const targetPath = metadata
+      ? projectRelativePath
+      : projectRelativePath.startsWith('external:')
+        ? projectRelativePath.slice('external:'.length)
+        : `external:${projectRelativePath}`;
 
     mediaMetadata.value[targetPath] = {
       ...(metadata || { source: { size: 0, lastModified: 0 }, duration: 0 }),
@@ -808,6 +812,10 @@ export const useMediaStore = defineStore('media', () => {
     });
   }
 
+  function getCachedMetadata(path: string): MediaMetadata | undefined {
+    return resolveMediaMetadata(mediaMetadata.value, path);
+  }
+
   return {
     mediaMetadata,
     missingPaths,
@@ -815,6 +823,7 @@ export const useMediaStore = defineStore('media', () => {
     metadataLoading,
     getOrFetchMetadataByPath,
     getOrFetchMetadata,
+    getCachedMetadata,
     resetMediaState,
     setAudioPeaks,
     revalidateMissingMedia,

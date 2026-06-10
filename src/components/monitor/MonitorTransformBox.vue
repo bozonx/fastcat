@@ -66,7 +66,7 @@ const intrinsicDimensions = computed(() => {
   const sourcePath = clipData.value.source?.path;
   if (!sourcePath) return { w: props.renderWidth, h: props.renderHeight };
 
-  const meta = mediaStore.mediaMetadata[sourcePath];
+  const meta = mediaStore.getCachedMetadata(sourcePath);
   if (!meta) return { w: props.renderWidth, h: props.renderHeight };
 
   if (meta.video) {
@@ -115,7 +115,7 @@ const sourceRotation = computed(() => {
     return Number(sourceOrientation);
   }
   if (!sourcePath) return 0;
-  const meta = mediaStore.mediaMetadata[sourcePath];
+  const meta = mediaStore.getCachedMetadata(sourcePath);
   return meta?.video?.rotation ?? 0;
 });
 

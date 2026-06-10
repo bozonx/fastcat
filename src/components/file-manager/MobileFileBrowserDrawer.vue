@@ -140,7 +140,7 @@ const isFullyUnsupported = computed(() => {
   const entry = selectedFsEntry.value?.entry;
   if (!entry || entry.kind !== 'file' || !entry.path) return false;
   if (mediaStore.metadataLoadFailed[entry.path]) return true;
-  const meta = mediaStore.mediaMetadata[entry.path];
+  const meta = mediaStore.getCachedMetadata(entry.path);
   if (!meta) return false;
   if (meta.error) return true;
   const type = getMediaTypeFromFilename(entry.name);

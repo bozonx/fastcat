@@ -105,7 +105,7 @@ function handleToggleSelection(entry: FsEntry) {
   // Block selection of fully unsupported files
   if (entry.path) {
     if (mediaStore.metadataLoadFailed[entry.path]) return;
-    const meta = mediaStore.mediaMetadata[entry.path];
+    const meta = mediaStore.getCachedMetadata(entry.path);
     if (meta) {
       const type = getMediaTypeFromFilename(entry.name);
       if (type === 'image' && meta.image?.canDisplay === false) return;

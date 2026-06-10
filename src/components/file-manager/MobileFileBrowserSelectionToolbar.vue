@@ -47,7 +47,7 @@ const canExtractAudio = computed(() =>
   props.selectedEntries.some((entry) => {
     if (entry.kind !== 'file' || !entry.path) return false;
     if (getMediaTypeFromFilename(entry.name) !== 'video') return false;
-    return Boolean(mediaStore.mediaMetadata[entry.path]?.audio);
+    return Boolean(mediaStore.getCachedMetadata(entry.path)?.audio);
   }),
 );
 

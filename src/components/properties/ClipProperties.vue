@@ -210,7 +210,7 @@ const { handleDeleteClip, otherActionsList, commonActionsList } = useClipPropert
 
 const mediaMeta = computed(() => {
   if (props.clip.clipType !== 'media' || !props.clip.source?.path) return null;
-  return mediaStore.mediaMetadata[props.clip.source.path] || null;
+  return mediaStore.getCachedMetadata(props.clip.source.path) || null;
 });
 
 function handleUpdateStartTime(val: number) {
