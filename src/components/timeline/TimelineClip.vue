@@ -742,9 +742,7 @@ function handleTransitionCreate(
             ? 'opacity-60'
             : '',
         isMediaMissing ? 'bg-red-600! border-red-800! text-white!' : '',
-        !isMediaMissing && isMutedOrDisabled
-          ? 'bg-zinc-800/80! border-zinc-700/80!'
-          : '',
+        !isMediaMissing && isMutedOrDisabled ? 'bg-zinc-800/80! border-zinc-700/80!' : '',
         !isMediaMissing && isUnsupported ? 'bg-amber-600/50! border-amber-700!' : '',
         (clipItem && Boolean(clipItem.locked)) || track.locked ? 'cursor-not-allowed' : '',
         isMobile && timelineContext.selectedItemIds.value.includes(item.id) ? 'touch-none' : '',

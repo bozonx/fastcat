@@ -595,7 +595,12 @@ export function createTimelinePersistenceModule(
         // leave a sidecar that's newer-but-equal. Only pay for the extra read when
         // the sizes match exactly; if the content is identical there's nothing to
         // recover, so drop the redundant sidecar and load the saved file silently.
-        if (shouldOfferAutosave && mainMeta && autosaveMeta && mainMeta.size === autosaveMeta.size) {
+        if (
+          shouldOfferAutosave &&
+          mainMeta &&
+          autosaveMeta &&
+          mainMeta.size === autosaveMeta.size
+        ) {
           const autosaveText =
             (await withFileIoSlot(() => deps.readTimelineText(autosavePath))) ?? '';
           if (autosaveText && autosaveText === text) {
@@ -645,7 +650,7 @@ export function createTimelinePersistenceModule(
           deps.timelineDoc.value = fallback;
           return;
         }
-        text = ((await withFileIoSlot(() => deps.readTimelineText(mainPath))) ?? '');
+        text = (await withFileIoSlot(() => deps.readTimelineText(mainPath))) ?? '';
       }
 
       if (!text) {

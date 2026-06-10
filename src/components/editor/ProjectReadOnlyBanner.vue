@@ -31,10 +31,7 @@ async function handleStealLock() {
     v-if="projectStore.isReadOnly && projectStore.currentProjectName"
     class="shrink-0 flex items-center gap-3 px-4 py-2 bg-amber-500/10 border-b border-amber-500/20"
   >
-    <UIcon
-      name="i-heroicons-exclamation-triangle"
-      class="w-5 h-5 shrink-0 text-amber-500"
-    />
+    <UIcon name="i-heroicons-exclamation-triangle" class="w-5 h-5 shrink-0 text-amber-500" />
     <span class="flex-1 text-sm text-amber-200">
       {{ t('videoEditor.project.readOnlyBannerText') }}
     </span>

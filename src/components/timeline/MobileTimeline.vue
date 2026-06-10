@@ -782,10 +782,7 @@ async function onClipAction(payload: TimelineClipActionPayload) {
 
     <!-- FAB: add content -->
     <Teleport :to="teleportTarget">
-      <div
-        v-if="!isAnyDrawerOpen"
-        class="fixed bottom-20 right-6 z-40 transition-all duration-300"
-      >
+      <div v-if="!isAnyDrawerOpen" class="fixed bottom-20 right-6 z-40 transition-all duration-300">
         <UButton
           icon="lucide:plus"
           size="xl"

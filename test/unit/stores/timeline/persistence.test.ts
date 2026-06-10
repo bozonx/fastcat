@@ -399,10 +399,7 @@ describe('TimelinePersistenceModule', () => {
     mod.markDirty();
     await mod.requestTimelineSave({ immediate: true });
 
-    expect(vfsMock.writeTimelineText).toHaveBeenCalledWith(
-      'timeline.otio',
-      expect.any(String),
-    );
+    expect(vfsMock.writeTimelineText).toHaveBeenCalledWith('timeline.otio', expect.any(String));
     expect(deps.isTimelineDirty.value).toBe(false);
   });
 

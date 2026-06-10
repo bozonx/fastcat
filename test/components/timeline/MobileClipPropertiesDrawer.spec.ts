@@ -129,7 +129,8 @@ describe('MobileClipPropertiesDrawer', () => {
           MobileDrawerToolbarButton: {
             props: ['icon', 'active', 'disabled'],
             emits: ['click'],
-            template: '<button :data-icon="icon" :class="{ active }" :disabled="disabled" @click="$emit(\'click\')"></button>',
+            template:
+              '<button :data-icon="icon" :class="{ active }" :disabled="disabled" @click="$emit(\'click\')"></button>',
           },
           ClipProperties: {
             template: '<div />',
@@ -163,11 +164,11 @@ describe('MobileClipPropertiesDrawer', () => {
     // Click Delete button to open Delete overlay
     await deleteBtn?.trigger('click');
     expect(deleteBtn?.classes()).toContain('active');
-    
+
     const uButtons = wrapper.findAll('.u-button');
     expect(uButtons.length).toBeGreaterThan(0);
     // Find the extract range button
-    const extractBtn = uButtons.find(b => b.text().includes('fastcat.timeline.extractRange'));
+    const extractBtn = uButtons.find((b) => b.text().includes('fastcat.timeline.extractRange'));
     expect(extractBtn).toBeDefined();
 
     // Click Trim button to open Trim overlay (should close Delete overlay)
@@ -214,7 +215,7 @@ describe('MobileClipPropertiesDrawer', () => {
     await deleteBtn.trigger('click');
 
     const uButtons = wrapper.findAll('.u-button');
-    const liftBtn = uButtons.find(b => b.text().includes('fastcat.timeline.deleteLift'));
+    const liftBtn = uButtons.find((b) => b.text().includes('fastcat.timeline.deleteLift'));
     expect(liftBtn).toBeDefined();
     await liftBtn!.trigger('click');
     expect(handleDeleteClip).toHaveBeenCalled();
@@ -237,7 +238,8 @@ describe('MobileClipPropertiesDrawer', () => {
           MobileDrawerToolbarButton: {
             props: ['icon', 'disabled'],
             emits: ['click'],
-            template: '<button :data-icon="icon" :disabled="disabled" @click="$emit(\'click\')"></button>',
+            template:
+              '<button :data-icon="icon" :disabled="disabled" @click="$emit(\'click\')"></button>',
           },
           ClipProperties: {
             template: '<div />',

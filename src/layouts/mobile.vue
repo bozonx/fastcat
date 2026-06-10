@@ -9,10 +9,11 @@ const workspaceStore = useWorkspaceStore();
 const projectStore = useProjectStore();
 const route = useRoute();
 
-const showReadOnlyBanner = computed(() =>
-  route.path.startsWith('/m/editor') &&
-  projectStore.isReadOnly &&
-  !!projectStore.currentProjectName,
+const showReadOnlyBanner = computed(
+  () =>
+    route.path.startsWith('/m/editor') &&
+    projectStore.isReadOnly &&
+    !!projectStore.currentProjectName,
 );
 
 useHead({

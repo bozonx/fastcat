@@ -505,7 +505,7 @@ const menuItems = computed(() => [
         :class="{ 'transition-all duration-300 ease-out': !isPulling }"
         :style="{
           transform: `translateY(${-48 + pullDistance}px)`,
-          opacity: Math.min(1, pullDistance / 48)
+          opacity: Math.min(1, pullDistance / 48),
         }"
       >
         <div

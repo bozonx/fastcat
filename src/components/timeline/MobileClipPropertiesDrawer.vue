@@ -52,11 +52,14 @@ function closeOverlays() {
   showTrimOverlay.value = false;
 }
 
-watch(() => props.isOpen, (newVal) => {
-  if (!newVal) {
-    closeOverlays();
-  }
-});
+watch(
+  () => props.isOpen,
+  (newVal) => {
+    if (!newVal) {
+      closeOverlays();
+    }
+  },
+);
 
 const currentClipAndTrack = computed(() => {
   const entity = selectionStore.selectedEntity;
@@ -75,24 +78,20 @@ const clipTrack = computed(() => currentClipAndTrack.value?.track ?? null);
 const clipTrackKind = computed(() => clipTrack.value?.kind ?? 'video');
 const isLocked = computed(() => Boolean(clip.value?.locked || clipTrack.value?.locked));
 
-const {
-  handleDeleteClip,
-  handleToggleDisabled,
-  handleToggleLocked,
-  handleToggleMuted,
-} = useClipPropertiesActions({
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  clip: clip as any,
-  trackKind: clipTrackKind,
-  timelineStore,
-  projectStore,
-  uiStore,
-  fileManagerStore,
-  selectionStore,
-  focusStore,
-  fileManager,
-  setActiveTab,
-});
+const { handleDeleteClip, handleToggleDisabled, handleToggleLocked, handleToggleMuted } =
+  useClipPropertiesActions({
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    clip: clip as any,
+    trackKind: clipTrackKind,
+    timelineStore,
+    projectStore,
+    uiStore,
+    fileManagerStore,
+    selectionStore,
+    focusStore,
+    fileManager,
+    setActiveTab,
+  });
 
 function handleCopy() {
   if (!clip.value) return;
@@ -390,7 +389,9 @@ const hasAudio = computed(() => {
 <style scoped>
 .slide-up-enter-active,
 .slide-up-leave-active {
-  transition: transform 0.2s ease, opacity 0.2s ease;
+  transition:
+    transform 0.2s ease,
+    opacity 0.2s ease;
 }
 
 .slide-up-enter-from,

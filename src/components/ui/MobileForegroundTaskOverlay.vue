@@ -47,7 +47,9 @@ function formatProgress(value: number): string {
             >
               <div class="flex items-center justify-between">
                 <span class="text-sm font-medium text-ui-text truncate pr-2">{{ task.title }}</span>
-                <span class="text-xs text-ui-text-muted shrink-0">{{ formatProgress(task.progress) }}</span>
+                <span class="text-xs text-ui-text-muted shrink-0">{{
+                  formatProgress(task.progress)
+                }}</span>
               </div>
 
               <UProgress :value="task.progress * 100" size="sm" color="primary" />

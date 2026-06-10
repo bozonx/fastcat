@@ -63,12 +63,17 @@ async function handleItemClick(itemId: string) {
 </script>
 
 <template>
-  <nav v-if="showNav" class="shrink-0 border-t border-ui-border bg-ui-bg/95 pb-safe backdrop-blur">
-    <div class="grid h-16 grid-cols-5 items-center gap-1 px-1">
+  <nav
+    v-if="showNav"
+    class="shrink-0 border-t border-ui-border bg-ui-bg/95 pb-safe backdrop-blur landscape:border-t-0 landscape:border-r landscape:pb-0 landscape:pt-safe landscape:w-20 landscape:h-full"
+  >
+    <div
+      class="grid h-16 grid-cols-5 items-center gap-1 px-1 landscape:flex landscape:flex-col landscape:h-full landscape:w-full landscape:py-6 landscape:gap-4 landscape:items-center landscape:justify-start"
+    >
       <button
         v-for="item in navItems"
         :key="item.id"
-        class="flex h-full min-w-0 flex-col items-center justify-center gap-1 rounded-xl px-1 text-center transition-colors outline-none"
+        class="flex h-full min-w-0 flex-col items-center justify-center gap-1 rounded-xl px-1 text-center transition-colors outline-none landscape:h-14 landscape:w-14 landscape:shrink-0"
         :class="
           activeTab === item.id || (item.id === 'home' && !isEditorPage)
             ? 'bg-selection-accent-500/12 text-selection-accent-400'

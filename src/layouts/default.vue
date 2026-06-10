@@ -181,7 +181,11 @@ useEventListener(document, 'visibilitychange', () => {
           @open-editor-settings="uiStore.isEditorSettingsOpen = true"
         />
         <ProjectReadOnlyBanner
-          v-if="route.path.startsWith('/editor') && projectStore.isReadOnly && projectStore.currentProjectName"
+          v-if="
+            route.path.startsWith('/editor') &&
+            projectStore.isReadOnly &&
+            projectStore.currentProjectName
+          "
         />
         <div class="flex-1 min-h-0 overflow-y-auto">
           <slot />

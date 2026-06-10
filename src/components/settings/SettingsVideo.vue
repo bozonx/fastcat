@@ -307,7 +307,7 @@ const tauriVideoCodecs = computed(() => {
             />
           </UiFormField>
 
-              <UiFormField
+          <UiFormField
             :label="t('videoEditor.settings.video.nativeFrameCacheMode')"
             :help="t('videoEditor.settings.video.nativeFrameCacheModeHelp')"
           >

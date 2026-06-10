@@ -47,7 +47,6 @@
     "imagePreview": "Предпросмотр изображения",
     "inDirDocuments": "В _documents/",
     "inDirTimelines": "В _timelines/",
-    "info": "Информация",
     "items": "Элементы",
     "itemsSelected": "Выбрано: {count}",
     "language": "Язык",
@@ -476,7 +475,18 @@
       "marker": "Маркер",
       "text": "Текст",
       "title": "Маркер",
-      "zoneMarker": "Маркер-зона"
+      "zoneMarker": "Маркер-зона",
+      "exportAsText": "Экспорт как текст",
+      "exportTitle": "Экспорт маркеров",
+      "layoutOptions": {
+        "left": "Слева",
+        "right": "Справа"
+      },
+      "selectAll": "Выбрать все",
+      "timecodeOptions": {
+        "hms": "ЧМС",
+        "timecode": "Таймкод"
+      }
     },
     "monitor": {
       "audioMute": "Выключить звук",
@@ -1103,7 +1113,9 @@
       "transcriptionTitle": "Транскрибация: {name}",
       "uploadFailed": "Не удалось загрузить файлы",
       "confirmCloseTitle": "Фоновые задачи в процессе",
-      "confirmCloseMessage": "Есть незавершённые фоновые задачи. Вы уверены, что хотите закрыть приложение?"
+      "confirmCloseMessage": "Есть незавершённые фоновые задачи. Вы уверены, что хотите закрыть приложение?",
+      "doNotClose": "Пожалуйста, не закрывайте это окно и не переходите на другие страницы во время обработки.",
+      "processing": "Обработка..."
     },
     "export": {
       "audioTab": "Экспорт только аудио",
@@ -1159,8 +1171,11 @@
       "saveLocationNote": "Файл будет сохранен в папку export/ в директории вашего проекта",
       "selection": "Выделение",
       "startExport": "Экспорт",
-      "successDesc": "Таймлайн экспортирован в {file}",
+      "successDescWithDuration": "Экспорт завершён за {duration}: {file}",
+      "successMessage": "Экспорт завершён за {duration}.",
       "successTitle": "Экспорт завершен успешно",
+      "durationLabel": "Длительность: {duration}",
+      "errorDescWithDuration": "Ошибка экспорта после {duration}.",
       "title": "Экспорт",
       "videoBitrate": "Битрейт видео (Мбит/с)",
       "videoBitrateHelp": "Примерный целевой битрейт. Чем выше, тем лучше качество и больше размер файла.",
@@ -1544,11 +1559,7 @@
       }
     },
     "project": {
-      "lockedAcknowledge": "Понятно, только чтение",
-      "lockedDescription": "Этот проект в данный момент открыт в другой вкладке или окне браузера. Одновременное редактирование одного и того же проекта не поддерживается и может привести к потере данных или конфликтам.",
-      "lockedStatus": "Заблокировано",
-      "lockedSuggestion": "Вы можете продолжить в режиме «Только чтение», чтобы просмотреть проект, но мы рекомендуем вернуться в первоначальную вкладку для редактирования.",
-      "lockedTitle": "Проект заблокирован",
+      "readOnlyBannerText": "Этот проект открыт в режиме только для чтения. Редактирование отключено.",
       "takeControl": "Взять управление"
     },
     "projectSettings": {
@@ -1753,6 +1764,7 @@
       "mouseTrackHeadersDoubleClick": "Двойной клик",
       "mouseTrackHeadersMiddleClick": "Одиночный клик средней кнопкой",
       "openLastProjectOnStart": "Открывать последний проект при запуске",
+      "backups": "Резервные копии",
       "project": "Проект",
       "projectAudioDeclickHint": "Микро-фейды (линейные), накладываемые на края всех клипов для устранения щелчков. 0 отключает их. Значение по умолчанию, которое используется при создании нового проекта.",
       "projectAudioDeclickTitle": "Длительность De-click",
@@ -1843,11 +1855,6 @@
         "ffmpegSettings": "FFmpeg и аппаратное ускорение (Linux)",
         "hwaccelMode": "Аппаратное ускорение",
         "hwaccelModeHelp": "Режим аппаратного ускорения декодера при воспроизведении видео.",
-        "nativeMonitorSyncMode": "Синхронизация монитора",
-        "nativeMonitorSyncModeHelp": "Балансирует плавность видео и точность совпадения с аудио в мониторе.",
-        "nativeMonitorSyncSmooth": "Плавно",
-        "nativeMonitorSyncBalanced": "Баланс",
-        "nativeMonitorSyncStrict": "Точно",
         "nativeFrameCacheMode": "Кэш кадров монитора",
         "nativeFrameCacheModeHelp": "Управляет размером native-кэша декодированных кадров на видеослой. Auto подбирает бюджет по разрешению и FPS.",
         "nativeFrameCacheAuto": "Авто",

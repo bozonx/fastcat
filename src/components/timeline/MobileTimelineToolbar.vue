@@ -113,8 +113,6 @@ function togglePseudoOverlapMode() {
   }
 }
 
-
-
 function startLongPress() {
   wasLastPressLong.value = false;
   if (longPressTimer.value) clearTimeout(longPressTimer.value);
@@ -177,7 +175,6 @@ function stopSnapLongPress() {
     snapLongPressTimer.value = null;
   }
 }
-
 </script>
 
 <template>

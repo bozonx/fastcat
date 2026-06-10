@@ -119,7 +119,8 @@ async function onFilesSelected(e: Event) {
       } else if (['video', 'audio', 'image'].includes(mediaType)) {
         const kind = mediaType === 'audio' ? 'audio' : 'video';
         const durationUs = await resolveInsertDurationUs(r.targetPath, mediaType);
-        const trackId = props.targetTrackId ?? timelineStore.resolveMobileTargetTrackId(kind, { durationUs });
+        const trackId =
+          props.targetTrackId ?? timelineStore.resolveMobileTargetTrackId(kind, { durationUs });
 
         await timelineStore.addClipToTimelineFromPath({
           trackId,

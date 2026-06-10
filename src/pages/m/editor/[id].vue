@@ -159,7 +159,7 @@ function onDividerPointerDown(e: PointerEvent) {
 </script>
 
 <template>
-  <div class="flex h-full w-full flex-col">
+  <div class="flex h-full w-full flex-col landscape:flex-row">
     <!-- Main Content Area (Virtual Tabs) -->
     <main class="relative flex-1 min-h-0 overflow-hidden bg-ui-bg">
       <div
@@ -231,7 +231,11 @@ function onDividerPointerDown(e: PointerEvent) {
     </main>
 
     <!-- Bottom Navigation Bar -->
-    <MobileBottomNav v-if="showBottomNav" v-model:active-tab="activeTab" />
+    <MobileBottomNav
+      v-if="showBottomNav"
+      v-model:active-tab="activeTab"
+      class="landscape:order-first"
+    />
   </div>
 </template>
 

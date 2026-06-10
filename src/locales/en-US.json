@@ -47,7 +47,6 @@
     "imagePreview": "Image preview",
     "inDirDocuments": "In _documents/",
     "inDirTimelines": "In _timelines/",
-    "info": "Info",
     "items": "Items",
     "itemsSelected": "Selected: {count}",
     "language": "Language",
@@ -476,7 +475,18 @@
       "marker": "Marker",
       "text": "Text",
       "title": "Marker",
-      "zoneMarker": "Zone Marker"
+      "zoneMarker": "Zone Marker",
+      "exportAsText": "Export as Text",
+      "exportTitle": "Export Markers",
+      "layoutOptions": {
+        "left": "Left",
+        "right": "Right"
+      },
+      "selectAll": "Select All",
+      "timecodeOptions": {
+        "hms": "HMS",
+        "timecode": "Timecode"
+      }
     },
     "monitor": {
       "audioMute": "Mute",
@@ -1103,7 +1113,9 @@
       "transcriptionTitle": "Transcription: {name}",
       "uploadFailed": "Failed to upload files",
       "confirmCloseTitle": "Background tasks in progress",
-      "confirmCloseMessage": "There are unfinished background tasks. Are you sure you want to close the application?"
+      "confirmCloseMessage": "There are unfinished background tasks. Are you sure you want to close the application?",
+      "doNotClose": "Please do not close this window or navigate away during processing.",
+      "processing": "Processing..."
     },
     "export": {
       "audioTab": "Audio Export",
@@ -1159,8 +1171,11 @@
       "saveLocationNote": "File will be saved to the export/ folder in your project directory",
       "selection": "Selection",
       "startExport": "Export",
-      "successDesc": "Timeline exported to {file}",
+      "successDescWithDuration": "Export completed in {duration}: {file}",
+      "successMessage": "Export completed in {duration}.",
       "successTitle": "Export successful",
+      "durationLabel": "Duration: {duration}",
+      "errorDescWithDuration": "Export failed after {duration}.",
       "title": "Export",
       "videoBitrate": "Video bitrate (Mbps)",
       "videoBitrateHelp": "Approximate target bitrate. Higher values produce better quality and larger files.",
@@ -1544,11 +1559,7 @@
       }
     },
     "project": {
-      "lockedAcknowledge": "Understood, Read-Only",
-      "lockedDescription": "This project is currently open in another tab or browser window. Concurrent editing of the same project is not supported and may lead to data loss or conflicts.",
-      "lockedStatus": "Locked",
-      "lockedSuggestion": "You can continue in Read-Only mode to view the project, but we recommend returning to your original tab for editing.",
-      "lockedTitle": "Project Locked",
+      "readOnlyBannerText": "This project is open in read-only mode. Editing is disabled.",
       "takeControl": "Take control"
     },
     "projectSettings": {
@@ -1753,6 +1764,7 @@
       "mouseTrackHeadersDoubleClick": "Double click",
       "mouseTrackHeadersMiddleClick": "Middle click",
       "openLastProjectOnStart": "Open last project on start",
+      "backups": "Backups",
       "project": "Project",
       "projectAudioDeclickHint": "Micro-fades (linear) applied to edges of all clips to eliminate clicks. 0 disables it. Default value used when creating a new project.",
       "projectAudioDeclickTitle": "Audio De-click Duration",
@@ -1843,11 +1855,6 @@
         "ffmpegSettings": "FFmpeg & Hardware Acceleration (Linux)",
         "hwaccelMode": "Hardware Acceleration",
         "hwaccelModeHelp": "Decoder hardware acceleration backend for video playback.",
-        "nativeMonitorSyncMode": "Monitor Sync",
-        "nativeMonitorSyncModeHelp": "Balances video smoothness and audio sync accuracy in the monitor.",
-        "nativeMonitorSyncSmooth": "Smooth",
-        "nativeMonitorSyncBalanced": "Balanced",
-        "nativeMonitorSyncStrict": "Strict",
         "nativeFrameCacheMode": "Monitor Frame Cache",
         "nativeFrameCacheModeHelp": "Controls the native decoded-frame cache size per video layer. Auto sizes the budget from resolution and FPS.",
         "nativeFrameCacheAuto": "Auto",

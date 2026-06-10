@@ -236,7 +236,10 @@ const clipCount = computed(
 <template>
   <div class="w-full flex flex-col gap-2">
     <PropertySection v-if="!hideActions" :title="t('fastcat.track.actions')">
-      <PropertyActionsBlock :quick-actions="isMobile ? [] : trackQuickActions" :additional-actions="extraActions" />
+      <PropertyActionsBlock
+        :quick-actions="isMobile ? [] : trackQuickActions"
+        :additional-actions="extraActions"
+      />
     </PropertySection>
 
     <PropertySection>

@@ -96,7 +96,6 @@ function deleteGap() {
   timelineStore.clearSelection();
   emit('close');
 }
-
 </script>
 
 <template>

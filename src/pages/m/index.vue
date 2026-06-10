@@ -149,357 +149,391 @@ const formatDate = (dateStr?: string) => {
     />
 
     <template v-else>
-      <div class="flex h-screen w-full flex-col bg-ui-bg overflow-hidden text-ui-text font-sans">
-        <!-- Sticky Header with Glass Effect -->
-        <header
-          class="shrink-0 pt-safe px-5 pb-4 bg-ui-bg/80 backdrop-blur-xl border-b border-white/5 z-20"
-        >
-          <div class="flex items-center justify-between h-14">
-            <div class="flex flex-col min-w-0">
-              <h1 class="text-xl font-black tracking-tight text-white uppercase italic truncate">
-                FastCat <span class="text-primary-500 not-italic">Editor</span>
-              </h1>
-              <div
-                class="flex items-center gap-1 text-[10px] text-ui-text-muted font-bold uppercase tracking-widest"
-              >
-                <UIcon name="i-heroicons-folder" class="w-3 h-3" />
-                <span class="truncate max-w-[120px]">{{
-                  workspaceStore.workspaceProviderId === 'tauri'
-                    ? t('fastcat.projects.localWorkspaceName')
-                    : workspaceStore.workspaceHandle?.name
-                }}</span>
-              </div>
-            </div>
-            <div class="flex items-center gap-2">
-              <UButton
-                size="sm"
-                variant="ghost"
-                color="neutral"
-                icon="i-heroicons-computer-desktop"
-                class="rounded-full w-10 h-10 p-0 flex items-center justify-center bg-white/5 text-ui-text-muted"
-                @click="router.push('/?mode=desktop')"
-              />
-              <UButton
-                size="sm"
-                variant="ghost"
-                color="neutral"
-                icon="i-heroicons-cog-6-tooth"
-                class="rounded-full w-10 h-10 p-0 flex items-center justify-center bg-white/5"
-                @click="isSettingsOpen = true"
-              />
-            </div>
-          </div>
-        </header>
-
-        <!-- Main Content -->
-        <main class="flex-1 overflow-y-auto bg-ui-bg custom-scrollbar relative">
-          <!-- 1. Completely Empty State (No projects at all) -->
-          <div
-            v-if="sortedProjects.length === 0 && !searchQuery"
-            class="flex flex-col items-center justify-center min-h-[70vh] px-6 text-center gap-6"
+      <div
+        class="flex h-screen w-full flex-col landscape:flex-row bg-ui-bg overflow-hidden text-ui-text font-sans"
+      >
+        <div class="flex flex-1 flex-col min-w-0 min-h-0">
+          <!-- Sticky Header with Glass Effect -->
+          <header
+            class="shrink-0 pt-safe px-5 pb-4 bg-ui-bg/80 backdrop-blur-xl border-b border-white/5 z-20"
           >
-            <div class="relative w-36 h-36 flex items-center justify-center">
-              <div
-                class="absolute inset-0 bg-gradient-to-tr from-primary-500/20 to-selection-accent-500/10 rounded-full blur-2xl animate-pulse"
-              />
-              <div
-                class="w-24 h-24 rounded-3xl bg-ui-bg-elevated/80 border border-white/10 flex items-center justify-center shadow-2xl relative"
-              >
-                <UIcon
-                  name="i-heroicons-squares-plus"
-                  class="w-12 h-12 text-primary-400 animate-pulse"
+            <div class="flex items-center justify-between h-14">
+              <div class="flex flex-col min-w-0">
+                <h1 class="text-xl font-black tracking-tight text-white uppercase italic truncate">
+                  FastCat <span class="text-primary-500 not-italic">Editor</span>
+                </h1>
+                <div
+                  class="flex items-center gap-1 text-[10px] text-ui-text-muted font-bold uppercase tracking-widest"
+                >
+                  <UIcon name="i-heroicons-folder" class="w-3 h-3" />
+                  <span class="truncate max-w-[120px]">{{
+                    workspaceStore.workspaceProviderId === 'tauri'
+                      ? t('fastcat.projects.localWorkspaceName')
+                      : workspaceStore.workspaceHandle?.name
+                  }}</span>
+                </div>
+              </div>
+              <div class="flex items-center gap-2">
+                <UButton
+                  size="sm"
+                  variant="ghost"
+                  color="neutral"
+                  icon="i-heroicons-computer-desktop"
+                  class="rounded-full w-10 h-10 p-0 flex items-center justify-center bg-white/5 text-ui-text-muted"
+                  @click="router.push('/?mode=desktop')"
+                />
+                <UButton
+                  size="sm"
+                  variant="ghost"
+                  color="neutral"
+                  icon="i-heroicons-cog-6-tooth"
+                  class="rounded-full w-10 h-10 p-0 flex items-center justify-center bg-white/5"
+                  @click="isSettingsOpen = true"
                 />
               </div>
             </div>
-            <div class="space-y-2 max-w-sm">
-              <h2 class="text-xl font-bold text-white tracking-tight">
-                {{ t('fastcat.projects.welcomeTitle') }}
-              </h2>
-              <p class="text-sm text-ui-text-muted">
-                {{ t('fastcat.projects.welcomeSubtitle') }}
-              </p>
-            </div>
-            <UButton
-              size="xl"
-              color="primary"
-              icon="i-heroicons-plus"
-              class="shadow-lg shadow-ui-action/20 py-4 px-8 rounded-2xl font-bold uppercase tracking-wide bg-ui-action! hover:bg-ui-action-hover! text-white! border-none transition-all active:scale-[0.98] mt-2 animate-bounce"
-              @click="startCreateProject"
+          </header>
+
+          <!-- Main Content -->
+          <main class="flex-1 overflow-y-auto bg-ui-bg custom-scrollbar relative">
+            <!-- 1. Completely Empty State (No projects at all) -->
+            <div
+              v-if="sortedProjects.length === 0 && !searchQuery"
+              class="flex flex-col items-center justify-center min-h-[70vh] px-6 text-center gap-6"
             >
-              {{ t('fastcat.projects.newProject') }}
-            </UButton>
-          </div>
-
-          <!-- 2. Dashboard with Projects -->
-          <template v-else>
-            <!-- Search Bar Sticky below header -->
-            <div class="px-5 py-4 sticky top-0 z-10 bg-ui-bg/80 backdrop-blur-md">
-              <UiSearchInput
-                v-model="searchQuery"
-                :placeholder="t('fastcat.projects.searchPlaceholder')"
-                is-mobile
-              />
+              <div class="relative w-36 h-36 flex items-center justify-center">
+                <div
+                  class="absolute inset-0 bg-gradient-to-tr from-primary-500/20 to-selection-accent-500/10 rounded-full blur-2xl animate-pulse"
+                />
+                <div
+                  class="w-24 h-24 rounded-3xl bg-ui-bg-elevated/80 border border-white/10 flex items-center justify-center shadow-2xl relative"
+                >
+                  <UIcon
+                    name="i-heroicons-squares-plus"
+                    class="w-12 h-12 text-primary-400 animate-pulse"
+                  />
+                </div>
+              </div>
+              <div class="space-y-2 max-w-sm">
+                <h2 class="text-xl font-bold text-white tracking-tight">
+                  {{ t('fastcat.projects.welcomeTitle') }}
+                </h2>
+                <p class="text-sm text-ui-text-muted">
+                  {{ t('fastcat.projects.welcomeSubtitle') }}
+                </p>
+              </div>
+              <UButton
+                size="xl"
+                color="primary"
+                icon="i-heroicons-plus"
+                class="shadow-lg shadow-ui-action/20 py-4 px-8 rounded-2xl font-bold uppercase tracking-wide bg-ui-action! hover:bg-ui-action-hover! text-white! border-none transition-all active:scale-[0.98] mt-2 animate-bounce"
+                @click="startCreateProject"
+              >
+                {{ t('fastcat.projects.newProject') }}
+              </UButton>
             </div>
 
-            <div class="flex flex-col gap-8 pb-24">
-              <!-- New Project Button -->
-              <div class="flex flex-col gap-3 px-5">
+            <!-- 2. Dashboard with Projects -->
+            <template v-else>
+              <!-- Search & Actions Bar Sticky below header -->
+              <div
+                class="px-5 py-4 sticky top-0 z-10 bg-ui-bg/80 backdrop-blur-md flex flex-row items-center gap-3"
+              >
+                <div class="flex-1 min-w-0">
+                  <UiSearchInput
+                    v-model="searchQuery"
+                    :placeholder="t('fastcat.projects.searchPlaceholder')"
+                    is-mobile
+                  />
+                </div>
                 <UButton
-                  block
-                  size="xl"
+                  size="lg"
                   color="primary"
                   icon="i-heroicons-plus"
-                  class="shadow-lg shadow-ui-action/20 py-4 rounded-2xl font-bold uppercase tracking-wide bg-ui-action! hover:bg-ui-action-hover! text-white! border-none transition-all active:scale-[0.98]"
+                  class="hidden landscape:flex shadow-lg shadow-ui-action/20 py-3 px-6 rounded-2xl font-bold uppercase tracking-wide bg-ui-action! hover:bg-ui-action-hover! text-white! border-none transition-all active:scale-[0.98] shrink-0"
                   @click="startCreateProject"
                 >
                   {{ t('fastcat.projects.newProject') }}
                 </UButton>
                 <UButton
                   v-if="workspaceStore.workspaceProviderId === 'tauri'"
-                  block
-                  size="xl"
+                  size="lg"
                   variant="subtle"
                   color="neutral"
                   icon="i-heroicons-folder-open"
-                  class="py-4 rounded-2xl font-bold uppercase tracking-wide bg-ui-bg-elevated/40 text-white! border border-white/5 transition-all active:scale-[0.98]"
+                  class="hidden landscape:flex py-3 px-6 rounded-2xl font-bold uppercase tracking-wide bg-ui-bg-elevated/40 text-white! border border-white/5 transition-all active:scale-[0.98] shrink-0"
                   @click="openProjectFromDisk"
                 >
                   {{ t('fastcat.projects.openProjectDisk') }}
                 </UButton>
               </div>
 
-              <!-- Resume Editing Card -->
-              <div v-if="showResumeCard && latestProject" class="px-5 space-y-3">
-                <h2 class="text-[11px] font-black uppercase tracking-[0.2em] text-ui-text-muted">
-                  {{ t('fastcat.projects.resumeEditing') }}
-                </h2>
-                <div
-                  class="group relative overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-br from-primary-500/15 via-ui-bg-elevated/40 to-ui-bg-elevated/10 p-4 transition-all active:scale-[0.98] shadow-lg flex items-center gap-4 cursor-pointer"
-                  @click="handleOpenProject(latestProject.projectPath || latestProject.projectName)"
-                >
-                  <!-- Thumbnail -->
-                  <div
-                    class="w-24 h-24 rounded-2xl overflow-hidden relative shrink-0 border border-white/5 shadow-inner"
+              <div class="flex flex-col gap-8 pb-24">
+                <!-- New Project Button (Mobile Portrait only) -->
+                <div class="flex flex-col gap-3 px-5 landscape:hidden">
+                  <UButton
+                    block
+                    size="xl"
+                    color="primary"
+                    icon="i-heroicons-plus"
+                    class="shadow-lg shadow-ui-action/20 py-4 rounded-2xl font-bold uppercase tracking-wide bg-ui-action! hover:bg-ui-action-hover! text-white! border-none transition-all active:scale-[0.98]"
+                    @click="startCreateProject"
                   >
-                    <ProjectThumbnail
-                      :project-id="latestProject.projectId"
-                      :project-relative-path="latestProject.lastTimelinePath"
-                      :project-name="latestProject.projectName"
-                      variant="mobile"
-                    />
-                    <div class="absolute inset-0 bg-black/20" />
-                    <div class="absolute inset-0 flex items-center justify-center">
-                      <div
-                        class="w-10 h-10 rounded-full bg-primary-500/90 flex items-center justify-center shadow-lg transform scale-90 group-hover:scale-100 transition-all duration-300"
-                      >
-                        <UIcon name="i-heroicons-pencil-square" class="w-5 h-5 text-white" />
-                      </div>
-                    </div>
-                  </div>
-
-                  <!-- Info -->
-                  <div class="flex-1 min-w-0 py-1">
-                    <h3
-                      class="font-bold text-base text-white truncate leading-tight tracking-tight"
-                    >
-                      {{ latestProject.projectName }}
-                    </h3>
-                    <p class="text-xs text-ui-text-muted mt-2 flex items-center gap-1">
-                      <UIcon name="i-heroicons-clock" class="w-3.5 h-3.5" />
-                      {{ latestProject.updatedAt ? formatDate(latestProject.updatedAt) : '---' }}
-                    </p>
-                    <div class="mt-3 flex">
-                      <span
-                        class="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-primary-400 bg-primary-500/10 px-2.5 py-1 rounded-full"
-                      >
-                        {{ t('fastcat.projects.activeProject') }}
-                      </span>
-                    </div>
-                  </div>
-
-                  <!-- Actions Dropdown -->
-                  <div class="shrink-0">
-                    <UDropdownMenu
-                      :items="[
-                        [
-                          {
-                            label: t('common.rename'),
-                            icon: 'i-heroicons-pencil-square',
-                            onSelect: () => startRename(latestProject!),
-                          },
-                          {
-                            label: t('common.duplicate'),
-                            icon: 'i-heroicons-document-duplicate',
-                            onSelect: () => startDuplicate(latestProject!),
-                          },
-                          {
-                            label: t('common.delete'),
-                            icon: 'i-heroicons-trash',
-                            onSelect: () => startDelete(latestProject!),
-                          },
-                        ],
-                      ]"
-                    >
-                      <UButton
-                        size="sm"
-                        variant="ghost"
-                        color="neutral"
-                        icon="i-heroicons-ellipsis-vertical"
-                        class="rounded-full w-9 h-9 p-0 text-ui-text-muted active:text-white active:bg-white/5 transition-colors"
-                        @click.stop
-                      />
-                    </UDropdownMenu>
-                  </div>
+                    {{ t('fastcat.projects.newProject') }}
+                  </UButton>
+                  <UButton
+                    v-if="workspaceStore.workspaceProviderId === 'tauri'"
+                    block
+                    size="xl"
+                    variant="subtle"
+                    color="neutral"
+                    icon="i-heroicons-folder-open"
+                    class="py-4 rounded-2xl font-bold uppercase tracking-wide bg-ui-bg-elevated/40 text-white! border border-white/5 transition-all active:scale-[0.98]"
+                    @click="openProjectFromDisk"
+                  >
+                    {{ t('fastcat.projects.openProjectDisk') }}
+                  </UButton>
                 </div>
-              </div>
 
-              <!-- Projects List Section -->
-              <section class="space-y-4 px-5">
-                <div class="flex items-center justify-between">
+                <!-- Resume Editing Card -->
+                <div v-if="showResumeCard && latestProject" class="px-5 space-y-3">
                   <h2 class="text-[11px] font-black uppercase tracking-[0.2em] text-ui-text-muted">
-                    {{
-                      searchQuery
-                        ? t('common.found')
-                        : showResumeCard
-                          ? t('fastcat.projects.otherProjects')
-                          : t('fastcat.projects.title')
-                    }}
+                    {{ t('fastcat.projects.resumeEditing') }}
                   </h2>
-                  <span
-                    class="text-[10px] font-bold text-primary-500 bg-primary-500/10 px-2 py-0.5 rounded-full uppercase"
+                  <div
+                    class="group relative overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-br from-primary-500/15 via-ui-bg-elevated/40 to-ui-bg-elevated/10 p-4 transition-all active:scale-[0.98] shadow-lg flex items-center gap-4 cursor-pointer"
+                    @click="
+                      handleOpenProject(latestProject.projectPath || latestProject.projectName)
+                    "
                   >
-                    {{ otherProjects.length }}
-                  </span>
-                </div>
-
-                <div v-if="otherProjects.length > 0" class="flex flex-col gap-3">
-                  <UiSwipeableRow
-                    v-for="project in otherProjects"
-                    :key="project.projectPath || project.projectId || project.projectName"
-                    class="rounded-2xl overflow-hidden"
-                  >
-                    <template #actions="{ close }">
-                      <div class="flex h-full items-stretch pl-2 pr-1 py-0">
-                        <button
-                          class="bg-blue-600 active:bg-blue-700 text-white w-14 rounded-2xl h-full flex items-center justify-center transition-colors cursor-pointer"
-                          :aria-label="t('common.rename')"
-                          @click.stop="
-                            startRename(project);
-                            close();
-                          "
-                        >
-                          <UIcon name="i-heroicons-pencil-square" class="w-6 h-6" />
-                        </button>
-                        <button
-                          class="bg-red-600 active:bg-red-700 text-white w-14 rounded-2xl h-full flex items-center justify-center transition-colors ml-1 cursor-pointer"
-                          :aria-label="t('common.delete')"
-                          @click.stop="
-                            startDelete(project);
-                            close();
-                          "
-                        >
-                          <UIcon name="i-heroicons-trash" class="w-6 h-6" />
-                        </button>
-                      </div>
-                    </template>
-
+                    <!-- Thumbnail -->
                     <div
-                      class="group bg-ui-bg-elevated/40 border border-white/5 rounded-2xl overflow-hidden flex items-center active:bg-ui-bg-elevated transition-all shadow-sm h-20"
-                      @click="handleOpenProject(project.projectPath || project.projectName)"
+                      class="w-24 h-24 rounded-2xl overflow-hidden relative shrink-0 border border-white/5 shadow-inner"
                     >
-                      <div class="w-20 h-full relative shrink-0">
-                        <ProjectThumbnail
-                          :project-id="project.projectId"
-                          :project-relative-path="project.lastTimelinePath"
-                          :project-name="project.projectName"
-                          variant="mobile"
-                        />
-                        <div class="absolute inset-0 bg-black/20" />
-                      </div>
-
-                      <div class="px-4 flex items-center justify-between flex-1 min-w-0 h-full">
-                        <div class="flex flex-col min-w-0">
-                          <span
-                            class="font-bold text-ui-text truncate text-sm tracking-tight leading-tight"
-                            >{{ project.projectName }}</span
-                          >
-                          <span
-                            class="text-[10px] text-ui-text-muted font-medium flex items-center gap-1 mt-1"
-                          >
-                            <UIcon name="i-heroicons-clock" class="w-3 h-3" />
-                            {{ project.updatedAt ? formatDate(project.updatedAt) : '---' }}
-                          </span>
-                        </div>
-
-                        <div class="flex items-center gap-2 shrink-0">
-                          <UDropdownMenu
-                            :items="[
-                              [
-                                {
-                                  label: t('common.rename'),
-                                  icon: 'i-heroicons-pencil-square',
-                                  onSelect: () => startRename(project),
-                                },
-                                {
-                                  label: t('common.duplicate'),
-                                  icon: 'i-heroicons-document-duplicate',
-                                  onSelect: () => startDuplicate(project),
-                                },
-                                {
-                                  label: t('common.delete'),
-                                  icon: 'i-heroicons-trash',
-                                  onSelect: () => startDelete(project),
-                                },
-                              ],
-                            ]"
-                          >
-                            <UButton
-                              size="sm"
-                              variant="ghost"
-                              color="neutral"
-                              icon="i-heroicons-ellipsis-vertical"
-                              class="rounded-full w-9 h-9 p-0 text-ui-text-muted active:text-white active:bg-white/5 transition-colors"
-                              @click.stop
-                            />
-                          </UDropdownMenu>
+                      <ProjectThumbnail
+                        :project-id="latestProject.projectId"
+                        :project-relative-path="latestProject.lastTimelinePath"
+                        :project-name="latestProject.projectName"
+                        variant="mobile"
+                      />
+                      <div class="absolute inset-0 bg-black/20" />
+                      <div class="absolute inset-0 flex items-center justify-center">
+                        <div
+                          class="w-10 h-10 rounded-full bg-primary-500/90 flex items-center justify-center shadow-lg transform scale-90 group-hover:scale-100 transition-all duration-300"
+                        >
+                          <UIcon name="i-heroicons-pencil-square" class="w-5 h-5 text-white" />
                         </div>
                       </div>
                     </div>
-                  </UiSwipeableRow>
+
+                    <!-- Info -->
+                    <div class="flex-1 min-w-0 py-1">
+                      <h3
+                        class="font-bold text-base text-white truncate leading-tight tracking-tight"
+                      >
+                        {{ latestProject.projectName }}
+                      </h3>
+                      <p class="text-xs text-ui-text-muted mt-2 flex items-center gap-1">
+                        <UIcon name="i-heroicons-clock" class="w-3.5 h-3.5" />
+                        {{ latestProject.updatedAt ? formatDate(latestProject.updatedAt) : '---' }}
+                      </p>
+                      <div class="mt-3 flex">
+                        <span
+                          class="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-primary-400 bg-primary-500/10 px-2.5 py-1 rounded-full"
+                        >
+                          {{ t('fastcat.projects.activeProject') }}
+                        </span>
+                      </div>
+                    </div>
+
+                    <!-- Actions Dropdown -->
+                    <div class="shrink-0">
+                      <UDropdownMenu
+                        :items="[
+                          [
+                            {
+                              label: t('common.rename'),
+                              icon: 'i-heroicons-pencil-square',
+                              onSelect: () => startRename(latestProject!),
+                            },
+                            {
+                              label: t('common.duplicate'),
+                              icon: 'i-heroicons-document-duplicate',
+                              onSelect: () => startDuplicate(latestProject!),
+                            },
+                            {
+                              label: t('common.delete'),
+                              icon: 'i-heroicons-trash',
+                              onSelect: () => startDelete(latestProject!),
+                            },
+                          ],
+                        ]"
+                      >
+                        <UButton
+                          size="sm"
+                          variant="ghost"
+                          color="neutral"
+                          icon="i-heroicons-ellipsis-vertical"
+                          class="rounded-full w-9 h-9 p-0 text-ui-text-muted active:text-white active:bg-white/5 transition-colors"
+                          @click.stop
+                        />
+                      </UDropdownMenu>
+                    </div>
+                  </div>
                 </div>
 
-                <!-- Empty State for search -->
-                <div
-                  v-else
-                  class="flex flex-col items-center justify-center py-24 text-ui-text-muted gap-8"
-                >
+                <!-- Projects List Section -->
+                <section class="space-y-4 px-5">
+                  <div class="flex items-center justify-between">
+                    <h2
+                      class="text-[11px] font-black uppercase tracking-[0.2em] text-ui-text-muted"
+                    >
+                      {{
+                        searchQuery
+                          ? t('common.found')
+                          : showResumeCard
+                            ? t('fastcat.projects.otherProjects')
+                            : t('fastcat.projects.title')
+                      }}
+                    </h2>
+                    <span
+                      class="text-[10px] font-bold text-primary-500 bg-primary-500/10 px-2 py-0.5 rounded-full uppercase"
+                    >
+                      {{ otherProjects.length }}
+                    </span>
+                  </div>
+
+                  <div v-if="otherProjects.length > 0" class="flex flex-col gap-3">
+                    <UiSwipeableRow
+                      v-for="project in otherProjects"
+                      :key="project.projectPath || project.projectId || project.projectName"
+                      class="rounded-2xl overflow-hidden"
+                    >
+                      <template #actions="{ close }">
+                        <div class="flex h-full items-stretch pl-2 pr-1 py-0">
+                          <button
+                            class="bg-blue-600 active:bg-blue-700 text-white w-14 rounded-2xl h-full flex items-center justify-center transition-colors cursor-pointer"
+                            :aria-label="t('common.rename')"
+                            @click.stop="
+                              startRename(project);
+                              close();
+                            "
+                          >
+                            <UIcon name="i-heroicons-pencil-square" class="w-6 h-6" />
+                          </button>
+                          <button
+                            class="bg-red-600 active:bg-red-700 text-white w-14 rounded-2xl h-full flex items-center justify-center transition-colors ml-1 cursor-pointer"
+                            :aria-label="t('common.delete')"
+                            @click.stop="
+                              startDelete(project);
+                              close();
+                            "
+                          >
+                            <UIcon name="i-heroicons-trash" class="w-6 h-6" />
+                          </button>
+                        </div>
+                      </template>
+
+                      <div
+                        class="group bg-ui-bg-elevated/40 border border-white/5 rounded-2xl overflow-hidden flex items-center active:bg-ui-bg-elevated transition-all shadow-sm h-20"
+                        @click="handleOpenProject(project.projectPath || project.projectName)"
+                      >
+                        <div class="w-20 h-full relative shrink-0">
+                          <ProjectThumbnail
+                            :project-id="project.projectId"
+                            :project-relative-path="project.lastTimelinePath"
+                            :project-name="project.projectName"
+                            variant="mobile"
+                          />
+                          <div class="absolute inset-0 bg-black/20" />
+                        </div>
+
+                        <div class="px-4 flex items-center justify-between flex-1 min-w-0 h-full">
+                          <div class="flex flex-col min-w-0">
+                            <span
+                              class="font-bold text-ui-text truncate text-sm tracking-tight leading-tight"
+                              >{{ project.projectName }}</span
+                            >
+                            <span
+                              class="text-[10px] text-ui-text-muted font-medium flex items-center gap-1 mt-1"
+                            >
+                              <UIcon name="i-heroicons-clock" class="w-3 h-3" />
+                              {{ project.updatedAt ? formatDate(project.updatedAt) : '---' }}
+                            </span>
+                          </div>
+
+                          <div class="flex items-center gap-2 shrink-0">
+                            <UDropdownMenu
+                              :items="[
+                                [
+                                  {
+                                    label: t('common.rename'),
+                                    icon: 'i-heroicons-pencil-square',
+                                    onSelect: () => startRename(project),
+                                  },
+                                  {
+                                    label: t('common.duplicate'),
+                                    icon: 'i-heroicons-document-duplicate',
+                                    onSelect: () => startDuplicate(project),
+                                  },
+                                  {
+                                    label: t('common.delete'),
+                                    icon: 'i-heroicons-trash',
+                                    onSelect: () => startDelete(project),
+                                  },
+                                ],
+                              ]"
+                            >
+                              <UButton
+                                size="sm"
+                                variant="ghost"
+                                color="neutral"
+                                icon="i-heroicons-ellipsis-vertical"
+                                class="rounded-full w-9 h-9 p-0 text-ui-text-muted active:text-white active:bg-white/5 transition-colors"
+                                @click.stop
+                              />
+                            </UDropdownMenu>
+                          </div>
+                        </div>
+                      </div>
+                    </UiSwipeableRow>
+                  </div>
+
+                  <!-- Empty State for search -->
                   <div
-                    class="w-28 h-28 rounded-full bg-ui-bg-elevated/50 flex items-center justify-center border border-white/5 relative"
+                    v-else
+                    class="flex flex-col items-center justify-center py-24 text-ui-text-muted gap-8"
                   >
-                    <UIcon name="i-heroicons-folder-open" class="w-12 h-12 opacity-10" />
-                    <div class="absolute inset-0 bg-primary-500/5 rounded-full animate-pulse" />
+                    <div
+                      class="w-28 h-28 rounded-full bg-ui-bg-elevated/50 flex items-center justify-center border border-white/5 relative"
+                    >
+                      <UIcon name="i-heroicons-folder-open" class="w-12 h-12 opacity-10" />
+                      <div class="absolute inset-0 bg-primary-500/5 rounded-full animate-pulse" />
+                    </div>
+                    <div class="text-center space-y-3">
+                      <p
+                        class="font-black uppercase tracking-[0.2em] text-[10px] text-ui-text-muted"
+                      >
+                        {{ t('fastcat.projects.noProjectsFound') }}
+                      </p>
+                      <UButton
+                        variant="solid"
+                        color="neutral"
+                        size="sm"
+                        class="rounded-full px-6 bg-ui-action! hover:bg-ui-action-hover! text-white! border-none shadow-ui-action/20"
+                        :label="t('fastcat.projects.newProject')"
+                        @click="startCreateProject"
+                      />
+                    </div>
                   </div>
-                  <div class="text-center space-y-3">
-                    <p class="font-black uppercase tracking-[0.2em] text-[10px] text-ui-text-muted">
-                      {{ t('fastcat.projects.noProjectsFound') }}
-                    </p>
-                    <UButton
-                      variant="solid"
-                      color="neutral"
-                      size="sm"
-                      class="rounded-full px-6 bg-ui-action! hover:bg-ui-action-hover! text-white! border-none shadow-ui-action/20"
-                      :label="t('fastcat.projects.newProject')"
-                      @click="startCreateProject"
-                    />
-                  </div>
-                </div>
-              </section>
-            </div>
-          </template>
-        </main>
+                </section>
+              </div>
+            </template>
+          </main>
+        </div>
 
         <!-- Bottom Navigation Bar -->
-        <MobileBottomNav />
+        <MobileBottomNav class="landscape:order-first" />
 
         <!-- Error Toast Overlay -->
         <div v-if="workspaceStore.error" class="fixed bottom-24 left-5 right-5 z-50 animate-bounce">
