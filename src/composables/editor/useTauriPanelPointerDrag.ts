@@ -1,4 +1,7 @@
+import { createDevLogger } from '~/utils/dev-logger';
 import { isTauriRuntime } from '~/utils/runtime';
+
+const log = createDevLogger('useTauriPanelPointerDrag');
 
 export interface TauriPanelPointerDragCallbacks {
   onDragStart: (panelId: string) => void;
@@ -64,7 +67,9 @@ export function useTauriPanelPointerDrag(callbacks: TauriPanelPointerDragCallbac
         return;
       }
       isDragging = true;
+      e.preventDefault();
       document.body.style.cursor = 'grabbing';
+      log.debug('drag started', draggingPanelId);
       callbacks.onDragStart(draggingPanelId!);
     }
 
@@ -78,10 +83,13 @@ export function useTauriPanelPointerDrag(callbacks: TauriPanelPointerDragCallbac
   }
 
   function onPointerUp(e: PointerEvent) {
+    log.debug('pointer up', { isDragging, x: e.clientX, y: e.clientY });
     if (isDragging) {
       const { panelId, rect } = findPanelUnderPointer(e.clientX, e.clientY);
+      log.debug('drop candidate', { panelId, draggingPanelId, rect: !!rect });
       if (panelId && panelId !== draggingPanelId && rect) {
         const position = getDropPosition(rect, e.clientX, e.clientY);
+        log.debug('drop position', position);
         if (position) {
           callbacks.onDrop(panelId, position);
         }
@@ -99,9 +107,14 @@ export function useTauriPanelPointerDrag(callbacks: TauriPanelPointerDragCallbac
   function startDrag(e: PointerEvent, panelId: string) {
     if (e.button !== 0) return;
 
+    e.preventDefault();
+    e.stopPropagation();
+
     startX = e.clientX;
     startY = e.clientY;
     draggingPanelId = panelId;
+
+    log.debug('startDrag', panelId, e.clientX, e.clientY);
 
     window.addEventListener('pointermove', onPointerMove);
     window.addEventListener('pointerup', onPointerUp);
