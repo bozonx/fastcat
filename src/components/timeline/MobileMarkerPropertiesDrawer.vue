@@ -41,7 +41,7 @@ function confirmDelete() {
     </template>
 
     <div class="px-4 pb-8 pt-4 flex flex-col gap-5">
-      <MarkerProperties :marker-id="markerId" />
+      <MarkerProperties :marker-id="markerId" is-mobile />
     </div>
   </MobilePropertiesDrawer>
 </template>

@@ -10,6 +10,7 @@ import UiTextarea from '~/components/ui/UiTextarea.vue';
 const props = defineProps<{
   markerId: string;
   hideActions?: boolean;
+  isMobile?: boolean;
 }>();
 
 const { t } = useI18n();
@@ -142,7 +143,7 @@ const mainActions = computed<
 <template>
   <div v-if="marker" class="w-full flex flex-col gap-2 text-ui-text">
     <PropertySection v-if="!hideActions" :title="t('fastcat.marker.actions')">
-      <PropertyActionsBlock :quick-actions="commonActions" :additional-actions="mainActions" />
+      <PropertyActionsBlock :quick-actions="isMobile ? [] : commonActions" :additional-actions="mainActions" />
     </PropertySection>
 
     <PropertySection :title="t('fastcat.marker.info')">

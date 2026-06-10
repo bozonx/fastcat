@@ -61,7 +61,6 @@ const {
   handleToggleDisabled,
   handleToggleLocked,
   handleToggleMuted,
-  otherActionsList: rawOtherActionsList,
 } = useClipPropertiesActions({
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   clip: clip as any,
@@ -75,35 +74,6 @@ const {
   fileManager,
   setActiveTab,
 });
-
-const {
-  isPasteParametersModalOpen,
-  selectedParameterGroups,
-  clipParameterGroupOptions,
-  copyClipParameters,
-  openPasteClipParameters,
-  applyClipParameters,
-} = useClipParametersClipboard({
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  clip: clip as any,
-  trackKind: clipTrackKind,
-  updateClipProperties: (trackId, itemId, props) =>
-    timelineStore.updateClipProperties(trackId, itemId, props),
-  updateClipTransition: (trackId, itemId, patch) =>
-    timelineStore.updateClipTransition(trackId, itemId, patch),
-});
-
-const otherActionsList = computed(() =>
-  rawOtherActionsList.value.map((action: { id?: string; onClick?: () => void }) => {
-    if (action.id === 'copy-parameters') {
-      return { ...action, onClick: () => copyClipParameters() };
-    }
-    if (action.id === 'paste-parameters') {
-      return { ...action, onClick: () => openPasteClipParameters() };
-    }
-    return action;
-  }),
-);
 
 function handleCopy() {
   if (!clip.value) return;
@@ -233,21 +203,7 @@ const hasAudio = computed(() => {
     </template>
 
     <div v-if="clip" class="px-4 pb-8 pt-4">
-      <div class="mb-4">
-        <div
-          v-if="otherActionsList.length > 0"
-          class="py-1 px-3 border border-ui-border rounded-xl bg-ui-bg-elevated/40"
-        >
-          <PropertyActionList
-            :actions="otherActionsList as any"
-            vertical
-            variant="ghost"
-            size="md"
-          />
-        </div>
-      </div>
-
-      <ClipProperties :clip="clip" hide-actions />
+      <ClipProperties :clip="clip" is-mobile />
     </div>
 
     <UiRenameModal
@@ -258,11 +214,5 @@ const hasAudio = computed(() => {
       @rename="handleRename"
     />
 
-    <ClipParametersPasteModal
-      v-model:open="isPasteParametersModalOpen"
-      v-model:selected-groups="selectedParameterGroups"
-      :groups="clipParameterGroupOptions"
-      @apply="applyClipParameters"
-    />
   </MobilePropertiesDrawer>
 </template>

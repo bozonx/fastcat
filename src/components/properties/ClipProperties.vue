@@ -44,6 +44,7 @@ import ClipEffectsEditor from '~/components/effects/ClipEffectsEditor.vue';
 const props = defineProps<{
   clip: TimelineClipItem;
   hideActions?: boolean;
+  isMobile?: boolean;
 }>();
 
 const { t } = useI18n();
@@ -429,7 +430,7 @@ defineExpose({
   <div class="w-full flex flex-col gap-2 text-ui-text">
     <ClipActionsSection
       v-if="!hideActions"
-      :common-actions="commonActionsList"
+      :common-actions="isMobile ? [] : commonActionsList"
       :other-actions="otherActionsList"
       @rename="isUiRenameModalOpen = true"
       @copy="handleCopyClip"

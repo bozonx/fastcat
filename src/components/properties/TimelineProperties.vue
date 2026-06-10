@@ -45,6 +45,7 @@ const props = defineProps<{
   };
   isReadOnly?: boolean;
   fsEntry?: FsEntry | null;
+  isMobile?: boolean;
 }>();
 
 const { t } = useI18n();
@@ -196,7 +197,7 @@ async function handleSelectInFileManager() {
 }
 
 const timelineQuickActions = computed(() => {
-  if (!props.fsEntry) return [];
+  if (!props.fsEntry || props.isMobile) return [];
   return [
     {
       id: 'delete',

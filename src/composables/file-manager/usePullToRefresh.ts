@@ -54,14 +54,21 @@ export function usePullToRefresh(onRefresh: () => Promise<void>) {
 
     if (pullDistance.value >= PULL_THRESHOLD && !isRefreshing.value) {
       isRefreshing.value = true;
+      // Hold the spinner visible at 96px (so with -48px offset it sits at +48px)
+      pullDistance.value = 96;
       try {
         await onRefresh();
       } finally {
-        isRefreshing.value = false;
+        // Animate up to 0px
+        pullDistance.value = 0;
+        // Keep isRefreshing true for the duration of the transition
+        setTimeout(() => {
+          isRefreshing.value = false;
+        }, 300);
       }
+    } else {
+      pullDistance.value = 0;
     }
-
-    pullDistance.value = 0;
   }
 
   return {

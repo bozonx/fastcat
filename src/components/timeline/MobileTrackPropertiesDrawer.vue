@@ -4,11 +4,8 @@ import { useTimelineStore } from '~/stores/timeline.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import type { TimelineTrack } from '~/timeline/types';
 import TrackProperties from '~/components/properties/TrackProperties.vue';
-import GenerateCaptionsModal from '~/components/properties/GenerateCaptionsModal.vue';
 import MobilePropertiesDrawer from './MobilePropertiesDrawer.vue';
 import MobileDrawerToolbarButton from './MobileDrawerToolbarButton.vue';
-import PropertyActionList from '~/components/properties/PropertyActionList.vue';
-import { useTrackExtraActions } from '~/composables/properties/useTrackExtraActions';
 
 const props = defineProps<{
   isOpen: boolean;
@@ -99,13 +96,6 @@ function deleteGap() {
   emit('close');
 }
 
-const isGenerateCaptionsOpen = ref(false);
-
-const { extraActions } = useTrackExtraActions({
-  track: selectedTrack,
-  timelineStore,
-  onGenerateCaptions: () => (isGenerateCaptionsOpen.value = true),
-});
 </script>
 
 <template>
@@ -169,21 +159,8 @@ const { extraActions } = useTrackExtraActions({
     </template>
 
     <div v-if="selectedTrack" class="px-4 pb-8 pt-4 flex flex-col gap-4">
-      <div
-        v-if="extraActions.length > 0"
-        class="py-1 px-3 border border-ui-border rounded-xl bg-ui-bg-elevated/40"
-      >
-        <PropertyActionList :actions="extraActions" vertical variant="ghost" size="md" />
-      </div>
-
-      <TrackProperties :track="selectedTrack" hide-actions />
+      <TrackProperties :track="selectedTrack" is-mobile />
     </div>
-
-    <GenerateCaptionsModal
-      v-if="selectedTrack?.kind === 'video'"
-      v-model:open="isGenerateCaptionsOpen"
-      :track-id="selectedTrack.id"
-    />
 
     <UiConfirmModal
       v-model:open="isTrackDeleteConfirmOpen"
