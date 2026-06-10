@@ -484,6 +484,13 @@ const {
   createMarkdownInFolder,
   t,
 });
+
+const { isMobile } = useDevice();
+
+const hasVisibleSecondaryActions = (actions: any) => {
+  const list = Array.isArray(actions) ? actions : actions?.value;
+  return Array.isArray(list) ? list.some((a: any) => !a.hidden) : false;
+};
 </script>
 
 <template>
@@ -540,12 +547,12 @@ const {
 
     <template v-if="!mobileTextMode || mediaType !== 'text'">
       <PropertySection
-        v-if="isWorkspaceRootProperties"
+        v-if="isWorkspaceRootProperties && (!isMobile || hasVisibleSecondaryActions(workspaceRootSecondaryActions))"
         key="actions-workspace-root"
         :title="t('videoEditor.fileManager.actions.title')"
       >
         <EntryActions
-          :primary-actions="workspaceRootPrimaryActions"
+          :primary-actions="isMobile ? [] : workspaceRootPrimaryActions"
           :secondary-actions="workspaceRootSecondaryActions"
         />
       </PropertySection>
@@ -612,13 +619,14 @@ const {
           !isVirtualAll &&
           !isPersonalLibrary &&
           !isProjectLibraries &&
-          !isBloggerDogProject
+          !isBloggerDogProject &&
+          (!isMobile || hasVisibleSecondaryActions(directorySecondaryActions))
         "
         key="actions-directory"
         :title="t('videoEditor.fileManager.actions.title')"
       >
         <EntryActions
-          :primary-actions="filteredDirectoryPrimaryActions"
+          :primary-actions="isMobile ? [] : filteredDirectoryPrimaryActions"
           :secondary-actions="directorySecondaryActions"
         />
       </PropertySection>
@@ -631,13 +639,14 @@ const {
           !isVirtualAll &&
           !isPersonalLibrary &&
           !isProjectLibraries &&
-          !isBloggerDogProject
+          !isBloggerDogProject &&
+          (!isMobile || hasVisibleSecondaryActions(filteredFileSecondaryActions))
         "
         key="actions-file"
         :title="t('videoEditor.fileManager.actions.title')"
       >
         <EntryActions
-          :primary-actions="filteredFilePrimaryActions"
+          :primary-actions="isMobile ? [] : filteredFilePrimaryActions"
           :secondary-actions="filteredFileSecondaryActions"
         />
       </PropertySection>
@@ -695,11 +704,11 @@ const {
       </PropertySection>
 
       <PropertySection
-        v-if="!isWorkspaceRootProperties && !hideActions && isVirtualAll"
+        v-if="!isWorkspaceRootProperties && !hideActions && isVirtualAll && (!isMobile || hasVisibleSecondaryActions(virtualAllSecondaryActions))"
         :title="t('videoEditor.fileManager.actions.title')"
       >
         <EntryActions
-          :primary-actions="virtualAllPrimaryActions"
+          :primary-actions="isMobile ? [] : virtualAllPrimaryActions"
           :secondary-actions="virtualAllSecondaryActions"
         />
       </PropertySection>
@@ -724,11 +733,11 @@ const {
       </PropertySection>
 
       <PropertySection
-        v-if="!isWorkspaceRootProperties && !hideActions && isPersonalLibrary"
+        v-if="!isWorkspaceRootProperties && !hideActions && isPersonalLibrary && (!isMobile || hasVisibleSecondaryActions(personalLibrarySecondaryActions))"
         :title="t('videoEditor.fileManager.actions.title')"
       >
         <EntryActions
-          :primary-actions="personalLibraryPrimaryActions"
+          :primary-actions="isMobile ? [] : personalLibraryPrimaryActions"
           :secondary-actions="personalLibrarySecondaryActions"
         />
       </PropertySection>
@@ -773,11 +782,11 @@ const {
       </PropertySection>
 
       <PropertySection
-        v-if="!isWorkspaceRootProperties && !hideActions && isBloggerDogProject"
+        v-if="!isWorkspaceRootProperties && !hideActions && isBloggerDogProject && (!isMobile || hasVisibleSecondaryActions(projectSecondaryActions))"
         :title="t('videoEditor.fileManager.actions.title')"
       >
         <EntryActions
-          :primary-actions="projectPrimaryActions"
+          :primary-actions="isMobile ? [] : projectPrimaryActions"
           :secondary-actions="projectSecondaryActions"
         />
       </PropertySection>

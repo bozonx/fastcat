@@ -1,7 +1,13 @@
 import { describe, it, expect, vi } from 'vitest';
 import { ref } from 'vue';
 import { mountWithNuxt } from '../../utils/mount';
+import { mockNuxtImport } from '@nuxt/test-utils/runtime';
 import FileProperties from '~/components/properties/FileProperties.vue';
+
+const mockIsMobile = ref(false);
+mockNuxtImport('useDevice', () => {
+  return () => ({ isMobile: mockIsMobile.value });
+});
 
 vi.mock('~/components/preview/TextEditor.vue', () => ({
   default: {
@@ -749,5 +755,26 @@ describe('FileProperties.vue', () => {
     expect(findButtonByTitlePrefix('Rename')).toBeUndefined();
     expect(component.text()).not.toContain('Open in cut');
     expect(component.text()).not.toContain('Open as tab');
+  });
+
+  it('hides quick actions and actions block on mobile device', async () => {
+    mockIsMobile.value = true;
+
+    const component = await mountWithNuxt(FileProperties, {
+      props: {
+        selectedFsEntry: { kind: 'file', name: 'test.mp4', path: '/projects/test.mp4' } as any,
+        previewMode: 'original',
+        hasProxy: false,
+      },
+    });
+
+    // On mobile, the quick actions row (primary actions like delete, rename, copy, cut, paste) is hidden.
+    // In our mock, filePrimaryActions has "Mock Action", which should not be rendered.
+    expect(component.find('button[title="Mock Action"]').exists()).toBe(false);
+
+    // In this mock, fileSecondaryActions is empty, so since we are on mobile, the entire actions section should be hidden too.
+    expect(component.text()).not.toContain('videoEditor.fileManager.actions.title');
+
+    mockIsMobile.value = false;
   });
 });

@@ -38,6 +38,8 @@ const {
   filteredProjects,
   isRenameModalOpen,
   isDeleteModalOpen,
+  isDuplicateModalOpen,
+  duplicateValue,
   createNewProject,
   startCreateProject,
   applyProjectCreationPreset,
@@ -47,6 +49,9 @@ const {
   startDelete,
   confirmDelete,
   closeDeleteModal,
+  startDuplicate,
+  confirmDuplicate,
+  closeDuplicateModal,
   selectProjectLocation,
   openProjectFromDisk,
 } = useProjectManagement({ isMobile: true });
@@ -311,6 +316,40 @@ const formatDate = (dateStr?: string) => {
                       </span>
                     </div>
                   </div>
+
+                  <!-- Actions Dropdown -->
+                  <div class="shrink-0">
+                    <UDropdownMenu
+                      :items="[
+                        [
+                          {
+                            label: t('common.rename'),
+                            icon: 'i-heroicons-pencil-square',
+                            onSelect: () => startRename(latestProject),
+                          },
+                          {
+                            label: t('common.duplicate'),
+                            icon: 'i-heroicons-document-duplicate',
+                            onSelect: () => startDuplicate(latestProject),
+                          },
+                          {
+                            label: t('common.delete'),
+                            icon: 'i-heroicons-trash',
+                            onSelect: () => startDelete(latestProject),
+                          },
+                        ],
+                      ]"
+                    >
+                      <UButton
+                        size="sm"
+                        variant="ghost"
+                        color="neutral"
+                        icon="i-heroicons-ellipsis-vertical"
+                        class="rounded-full w-9 h-9 p-0 text-ui-text-muted active:text-white active:bg-white/5 transition-colors"
+                        @click.stop
+                      />
+                    </UDropdownMenu>
+                  </div>
                 </div>
               </div>
 
@@ -400,6 +439,11 @@ const formatDate = (dateStr?: string) => {
                                   label: t('common.rename'),
                                   icon: 'i-heroicons-pencil-square',
                                   onSelect: () => startRename(project),
+                                },
+                                {
+                                  label: t('common.duplicate'),
+                                  icon: 'i-heroicons-document-duplicate',
+                                  onSelect: () => startDuplicate(project),
                                 },
                                 {
                                   label: t('common.delete'),
@@ -642,6 +686,41 @@ const formatDate = (dateStr?: string) => {
               @click="confirmDelete"
             >
               {{ t('videoEditor.projectSettings.deleteProjectAction') }}
+            </UButton>
+          </div>
+        </template>
+      </UiMobileDrawer>
+
+      <!-- Duplicate Project Drawer -->
+      <UiMobileDrawer v-model:open="isDuplicateModalOpen" :title="t('common.duplicate')">
+        <div class="space-y-6 px-6 pt-2 pb-6">
+          <UiFormField :label="t('fastcat.projects.projectNamePlaceholder')">
+            <UiTextInput
+              v-model="duplicateValue"
+              :placeholder="t('fastcat.projects.projectNamePlaceholder')"
+              variant="none"
+              full-width
+              :ui="{
+                base: 'h-16 text-xl font-bold px-6 bg-ui-bg-elevated/50 border border-white/5 rounded-3xl focus:ring-2 focus:ring-primary-500 transition-all placeholder:text-ui-text-muted',
+              }"
+              autofocus
+              @keyup.enter="confirmDuplicate"
+            />
+          </UiFormField>
+        </div>
+
+        <template #footer>
+          <div class="flex justify-end gap-3 w-full pb-safe">
+            <UButton variant="ghost" color="neutral" @click="closeDuplicateModal">
+              {{ t('common.cancel') }}
+            </UButton>
+            <UButton
+              color="primary"
+              :disabled="!duplicateValue.trim()"
+              :loading="workspaceStore.isLoading"
+              @click="confirmDuplicate"
+            >
+              {{ t('common.duplicate') }}
             </UButton>
           </div>
         </template>

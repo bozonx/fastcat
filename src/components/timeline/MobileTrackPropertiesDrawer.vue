@@ -115,29 +115,18 @@ const { extraActions } = useTrackExtraActions({
     @close="emit('close')"
   >
     <template #toolbar>
-      <MobileDrawerToolbarButton
-        icon="i-heroicons-trash"
-        @click="isGapMode ? deleteGap() : requestDeleteTrack()"
-      />
-
+      <!-- 1. Удалить гэп (только в режиме гэпа) -->
       <MobileDrawerToolbarButton
         v-if="isGapMode"
         icon="i-heroicons-trash"
-        @click="requestDeleteTrack"
+        primary
+        @click="deleteGap"
       />
 
-      <MobileDrawerToolbarButton
-        icon="i-heroicons-pencil-square"
-        :label="t('common.rename')"
-        @click="isTrackRenameOpen = true"
-      />
+      <!-- Разделитель после действия гэпа -->
+      <div v-if="isGapMode" class="w-px h-6 bg-ui-border mx-1 shrink-0" />
 
-      <MobileDrawerToolbarButton
-        :icon="selectedTrack?.locked ? 'i-heroicons-lock-open' : 'i-heroicons-lock-closed'"
-        :active="selectedTrack?.locked"
-        @click="toggleTrackLock"
-      />
-
+      <!-- 2. Active/disabled (дорожку) -->
       <MobileDrawerToolbarButton
         v-if="selectedTrack?.kind === 'video'"
         :icon="selectedTrack?.videoHidden ? 'i-heroicons-eye-slash' : 'i-heroicons-eye'"
@@ -145,6 +134,7 @@ const { extraActions } = useTrackExtraActions({
         @click="toggleTrackVideoHidden"
       />
 
+      <!-- 3. Mute (дорожку) -->
       <MobileDrawerToolbarButton
         :icon="
           selectedTrack?.audioMuted ? 'i-heroicons-speaker-x-mark' : 'i-heroicons-speaker-wave'
@@ -153,10 +143,31 @@ const { extraActions } = useTrackExtraActions({
         @click="toggleTrackMute"
       />
 
+      <!-- 4. Solo (дорожку) -->
       <MobileDrawerToolbarButton
         icon="i-heroicons-musical-note"
         :active="selectedTrack?.audioSolo"
         @click="toggleTrackSolo"
+      />
+
+      <!-- 5. Locked (дорожку) -->
+      <MobileDrawerToolbarButton
+        :icon="selectedTrack?.locked ? 'i-heroicons-lock-open' : 'i-heroicons-lock-closed'"
+        :active="selectedTrack?.locked"
+        @click="toggleTrackLock"
+      />
+
+      <!-- 6. Переименовать (дорожку) -->
+      <MobileDrawerToolbarButton
+        icon="i-heroicons-pencil-square"
+        :label="t('common.rename')"
+        @click="isTrackRenameOpen = true"
+      />
+
+      <!-- 7. Удалить дорожку -->
+      <MobileDrawerToolbarButton
+        icon="i-heroicons-trash"
+        @click="requestDeleteTrack"
       />
     </template>
 

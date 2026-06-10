@@ -167,27 +167,14 @@ const hasAudio = computed(() => {
     @close="emit('close')"
   >
     <template #toolbar>
+      <!-- 1. Удалить -->
       <MobileDrawerToolbarButton
         icon="i-heroicons-trash"
         :disabled="isLocked"
         @click="requestDelete"
       />
 
-      <MobileDrawerToolbarButton
-        icon="i-heroicons-pencil"
-        :label="t('common.rename')"
-        :disabled="isLocked"
-        @click="isRenameModalOpen = true"
-      />
-
-      <MobileDrawerToolbarButton icon="i-heroicons-document-duplicate" @click="handleCopy" />
-
-      <MobileDrawerToolbarButton
-        icon="i-heroicons-scissors"
-        :disabled="isLocked"
-        @click="handleCut"
-      />
-
+      <!-- 2. Длительность -->
       <MobileDrawerToolbarButton
         icon="i-heroicons-arrows-right-left"
         :label="t('fastcat.timeline.trimMode')"
@@ -195,12 +182,14 @@ const hasAudio = computed(() => {
         @click="$emit('open-trim-drawer')"
       />
 
+      <!-- 3. Active/disabled -->
       <MobileDrawerToolbarButton
         :icon="clip?.disabled ? 'i-heroicons-eye' : 'i-heroicons-eye-slash'"
         :active="clip?.disabled"
         @click="handleToggleDisabled"
       />
 
+      <!-- 4. Mute -->
       <template v-if="hasAudio">
         <MobileDrawerToolbarButton
           :icon="clip?.audioMuted ? 'i-heroicons-speaker-wave' : 'i-heroicons-speaker-x-mark'"
@@ -209,12 +198,32 @@ const hasAudio = computed(() => {
         />
       </template>
 
+      <!-- 5. Locked -->
       <MobileDrawerToolbarButton
         :icon="clip?.locked ? 'i-heroicons-lock-open' : 'i-heroicons-lock-closed'"
         :active="clip?.locked"
         @click="handleToggleLocked"
       />
 
+      <!-- 6. Копировать -->
+      <MobileDrawerToolbarButton icon="i-heroicons-document-duplicate" @click="handleCopy" />
+
+      <!-- 7. Вырезать -->
+      <MobileDrawerToolbarButton
+        icon="i-heroicons-scissors"
+        :disabled="isLocked"
+        @click="handleCut"
+      />
+
+      <!-- 8. Переименовать -->
+      <MobileDrawerToolbarButton
+        icon="i-heroicons-pencil"
+        :label="t('common.rename')"
+        :disabled="isLocked"
+        @click="isRenameModalOpen = true"
+      />
+
+      <!-- 9. Удалить со сдвигом -->
       <MobileDrawerToolbarButton
         icon="i-heroicons-backspace"
         :label="t('fastcat.timeline.rippleDelete')"
