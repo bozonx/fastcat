@@ -167,10 +167,10 @@ pub async fn monitor_close(engine: State<'_, VideoEngine>) -> Result<(), String>
     Ok(())
 }
 
-/// Force-drop the current monitor handle.  Drop joins the underlying winit
-/// thread so the OS display connection is fully released before the next spawn.
+/// No-op: previously tried to drop the monitor handle so it could be respawned,
+/// but winit on Linux allows only one EventLoop per process.  Dropping it makes
+/// the monitor unusable forever, so we keep the handle alive for the app session.
 #[tauri::command]
-pub async fn monitor_reset(engine: State<'_, VideoEngine>) -> Result<(), String> {
-    engine.clear_monitor();
+pub async fn monitor_reset(_engine: State<'_, VideoEngine>) -> Result<(), String> {
     Ok(())
 }

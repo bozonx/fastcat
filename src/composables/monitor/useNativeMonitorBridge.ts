@@ -196,18 +196,15 @@ export function useNativeMonitorBridge(): void {
     { immediate: true },
   );
 
-  // When the project changes, force-drop the Rust monitor handle and reset the
-  // disabled flag so a previously-crashed monitor can re-initialize.
+  // When the project changes, clear the disabled flag so subsequent scene syncs
+  // can reach the monitor.  We do NOT reset the Rust monitor handle — winit on
+  // Linux allows only one EventLoop per process, so respawning always fails with
+  // "EventLoop can't be recreated".  The monitor thread lives for the app session.
   watch(
     () => projectStore.currentProjectName,
     async () => {
       if (isNativeMonitorDisabled()) {
-        log.info('[bridge] resetting monitor on project change');
-        try {
-          await nativeMonitorIpc.reset();
-        } catch (e) {
-          log.warn('[bridge] monitor_reset failed', e);
-        }
+        log.info('[bridge] clearing disabled flag on project change');
         resetNativeMonitorAvailability();
       }
     },
