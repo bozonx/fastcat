@@ -112,6 +112,7 @@ export function useMonitorRuntime() {
       renderHeight,
       updateCanvasDisplaySize,
     },
+    isMobile,
   });
 
   const timecodeEl = ref<HTMLElement | null>(null);

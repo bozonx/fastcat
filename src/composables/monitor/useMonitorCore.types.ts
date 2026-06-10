@@ -1,4 +1,4 @@
-import type { Ref } from 'vue';
+import type { ComputedRef, Ref } from 'vue';
 import type { useProjectStore } from '~/stores/project.store';
 import type { TimelineDocument } from '~/timeline/types';
 import type { WorkerVideoPayloadItem } from '~/composables/timeline/export/types';
@@ -52,4 +52,5 @@ export interface MonitorStoreState {
 export interface UseMonitorCoreOptions extends MonitorStoreState {
   monitorTimeline: MonitorTimelineState;
   monitorDisplay: MonitorDisplayState;
+  isMobile?: ComputedRef<boolean>;
 }

@@ -64,6 +64,8 @@ export interface BuildNativeMonitorSceneParams {
   existingProxies?: Set<string>;
   /** Resolves a clip's proxy to its absolute on-disk path, or null if none. */
   getProxyNativePath?: (projectRelativePath: string) => Promise<string | null>;
+  /** Hardcoded sync mode override (e.g. mobile always uses 'balanced'). */
+  syncMode?: 'smooth' | 'balanced' | 'strict';
 }
 
 interface ProxyResolution {
@@ -606,7 +608,7 @@ export async function buildNativeMonitorScene(
     height: sceneHeight,
     preview_scale: params.previewScale ?? 1,
     preview_fps: format.fps,
-    preview_sync_mode: optimization.nativeMonitorSyncMode,
+    preview_sync_mode: params.syncMode ?? optimization.nativeMonitorSyncMode,
     frame_cache_mode: optimization.nativeFrameCacheMode ?? 'auto',
     frame_cache_custom_mb: Math.max(0, Math.round(optimization.nativeFrameCacheCustomMb ?? 0)),
   };

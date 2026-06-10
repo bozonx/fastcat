@@ -167,8 +167,6 @@ function resetDefaults() {
     DEFAULT_USER_SETTINGS.optimization.vaapiDevice;
   workspaceStore.userSettings.optimization.enableHardwareEncoding =
     DEFAULT_USER_SETTINGS.optimization.enableHardwareEncoding;
-  workspaceStore.userSettings.optimization.nativeMonitorSyncMode =
-    DEFAULT_USER_SETTINGS.optimization.nativeMonitorSyncMode;
   workspaceStore.userSettings.optimization.nativeFrameCacheMode =
     DEFAULT_USER_SETTINGS.optimization.nativeFrameCacheMode;
   workspaceStore.userSettings.optimization.nativeFrameCacheCustomMb =
@@ -309,26 +307,7 @@ const tauriVideoCodecs = computed(() => {
             />
           </UiFormField>
 
-          <UiFormField
-            :label="t('videoEditor.settings.video.nativeMonitorSyncMode')"
-            :help="t('videoEditor.settings.video.nativeMonitorSyncModeHelp')"
-          >
-            <UiSelect
-              v-model="workspaceStore.userSettings.optimization.nativeMonitorSyncMode"
-              :items="[
-                { label: t('videoEditor.settings.video.nativeMonitorSyncSmooth'), value: 'smooth' },
-                {
-                  label: t('videoEditor.settings.video.nativeMonitorSyncBalanced'),
-                  value: 'balanced',
-                },
-                { label: t('videoEditor.settings.video.nativeMonitorSyncStrict'), value: 'strict' },
-              ]"
-              class="max-w-xs"
-              full-width
-            />
-          </UiFormField>
-
-          <UiFormField
+              <UiFormField
             :label="t('videoEditor.settings.video.nativeFrameCacheMode')"
             :help="t('videoEditor.settings.video.nativeFrameCacheModeHelp')"
           >

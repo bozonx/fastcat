@@ -1,5 +1,5 @@
 import type { UnlistenFn } from '@tauri-apps/api/event';
-import { onScopeDispose, watch } from 'vue';
+import { computed, onScopeDispose, watch } from 'vue';
 import { nativeMonitorIpc, onMonitorTime, onMonitorEnded } from './native-monitor-ipc';
 
 import { useTimelineStore } from '~/stores/timeline.store';
@@ -79,6 +79,9 @@ export function resolveNativeAudioTrackSelection(params: {
 export function useNativeMonitorBridge(): void {
   if (!isTauriRuntime()) return;
 
+  const route = useRoute();
+  const isMobile = computed(() => route.path.startsWith('/m'));
+
   const timelineStore = useTimelineStore();
   const projectStore = useProjectStore();
   const workspaceStore = useWorkspaceStore();
@@ -134,7 +137,9 @@ export function useNativeMonitorBridge(): void {
         height: fmt?.height ?? 1080,
         preview_scale: previewScale,
         preview_fps: fmt?.fps ?? 30,
-        preview_sync_mode: workspaceStore.userSettings.optimization.nativeMonitorSyncMode,
+        preview_sync_mode: isMobile.value
+          ? 'balanced'
+          : workspaceStore.userSettings.optimization.nativeMonitorSyncMode,
         frame_cache_mode: workspaceStore.userSettings.optimization.nativeFrameCacheMode,
         frame_cache_custom_mb: Math.max(
           0,
@@ -154,6 +159,7 @@ export function useNativeMonitorBridge(): void {
       useProxyInMonitor: projectStore.activeMonitor?.useProxy !== false,
       existingProxies: proxyStore.existingProxies,
       getProxyNativePath: proxyStore.getProxyNativePath,
+      syncMode: isMobile.value ? 'balanced' : undefined,
     });
   }
 

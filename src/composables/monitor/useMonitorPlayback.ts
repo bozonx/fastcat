@@ -381,7 +381,9 @@ export function useMonitorPlayback(options: UseMonitorPlaybackOptions) {
     const renderBudget = consumeMonitorRenderAccumulator({
       accumulatorMs: playbackLoopState.renderAccumulatorMs,
       frameIntervalMs,
-      syncMode: workspaceStore.userSettings?.optimization?.nativeMonitorSyncMode ?? 'balanced',
+      syncMode: isMobile.value
+        ? 'balanced'
+        : (workspaceStore.userSettings?.optimization?.nativeMonitorSyncMode ?? 'balanced'),
     });
 
     if (renderBudget.shouldRender) {
