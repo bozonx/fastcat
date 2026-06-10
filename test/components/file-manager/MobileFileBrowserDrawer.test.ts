@@ -91,6 +91,7 @@ vi.mock('~/stores/media.store', () => ({
   useMediaStore: () => ({
     metadataLoadFailed: {},
     mediaMetadata: {},
+    getCachedMetadata: vi.fn(),
   }),
 }));
 

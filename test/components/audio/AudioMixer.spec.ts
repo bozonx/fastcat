@@ -21,6 +21,7 @@ const mockTimelineStore = reactive({
 
 const mockMediaStore = reactive({
   mediaMetadata: {},
+  getCachedMetadata: vi.fn((path: string) => mockMediaStore.mediaMetadata[path]),
 });
 
 const mockFocusStore = reactive({

@@ -89,6 +89,7 @@ vi.mock('~/stores/selection.store', () => ({ useSelectionStore: () => useMockSel
 vi.mock('~/stores/media.store', () => ({
   useMediaStore: () => ({
     mediaMetadata: {},
+    getCachedMetadata: vi.fn(),
   }),
 }));
 

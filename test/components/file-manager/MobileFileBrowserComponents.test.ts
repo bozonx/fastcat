@@ -11,6 +11,7 @@ const mockProxyStore = {
 
 const mockMediaStore = {
   mediaMetadata: {} as Record<string, { audio?: unknown }>,
+  getCachedMetadata: vi.fn((path: string) => mockMediaStore.mediaMetadata[path]),
 };
 
 vi.mock('~/stores/proxy.store', () => ({

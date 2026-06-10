@@ -31,6 +31,7 @@ const timelineStoreMock = reactive({
 
 const mediaStoreMock = reactive({
   getOrFetchMetadataByPath: vi.fn(),
+  getCachedMetadata: vi.fn(),
 });
 
 vi.mock('~/stores/workspace.store', () => ({

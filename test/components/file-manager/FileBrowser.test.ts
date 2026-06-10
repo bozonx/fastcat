@@ -132,7 +132,7 @@ vi.mock('~/stores/file-conversion.store', () => ({
   useFileConversionStore: () => ({ openConversionModal: vi.fn() }),
 }));
 vi.mock('~/stores/media.store', () => ({
-  useMediaStore: () => ({ getOrFetchMetadataByPath: vi.fn() }),
+  useMediaStore: () => ({ getOrFetchMetadataByPath: vi.fn(), getCachedMetadata: vi.fn() }),
 }));
 vi.mock('~/stores/project.store', () => ({
   useProjectStore: () => ({ currentProjectName: 'test', currentProjectId: 'test' }),

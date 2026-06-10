@@ -56,6 +56,7 @@ const mediaStoreMock = {
   mediaMetadata: { value: {} },
   getOrFetchMetadataByPath: vi.fn().mockResolvedValue({}),
   getOrFetchMetadata: vi.fn().mockResolvedValue({}),
+  getCachedMetadata: vi.fn(),
 };
 
 vi.mock('~/stores/media.store', () => ({

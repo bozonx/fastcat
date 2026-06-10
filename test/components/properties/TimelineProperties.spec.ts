@@ -121,7 +121,7 @@ vi.mock('~/stores/ui.store', () => ({ useUiStore: () => mockUiStore }));
 vi.mock('~/stores/focus.store', () => ({ useFocusStore: () => mockFocusStore }));
 vi.mock('~/stores/selection.store', () => ({ useSelectionStore: () => mockSelectionStore }));
 vi.mock('~/stores/file-manager.store', () => ({ useFileManagerStore: () => mockFileManagerStore }));
-vi.mock('~/stores/media.store', () => ({ useMediaStore: () => ({ mediaMetadata: {} }) }));
+vi.mock('~/stores/media.store', () => ({ useMediaStore: () => ({ mediaMetadata: {}, getCachedMetadata: vi.fn() }) }));
 vi.mock('~/stores/proxy.store', () => ({ useProxyStore: () => ({ existingProxies: new Map() }) }));
 vi.mock('~/stores/timeline-media-usage.store', () => ({
   useTimelineMediaUsageStore: () => ({}),

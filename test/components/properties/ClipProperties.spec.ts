@@ -81,6 +81,7 @@ const mockSelectionStore = reactive({
 });
 const mockMediaStore = reactive({
   mediaMetadata: {},
+  getCachedMetadata: vi.fn((path: string) => mockMediaStore.mediaMetadata[path]),
 });
 const mockUiStore = reactive({
   scrollToEffectsTrigger: 0,

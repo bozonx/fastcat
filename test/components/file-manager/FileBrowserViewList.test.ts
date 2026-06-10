@@ -49,7 +49,7 @@ vi.mock('~/stores/timeline-media-usage.store', () => ({
 }));
 vi.mock('~/stores/project.store', () => ({ useProjectStore: () => mockProjectStore }));
 vi.mock('~/stores/media.store', () => ({
-  useMediaStore: () => ({ metadataLoadFailed: {} }),
+  useMediaStore: () => ({ metadataLoadFailed: {}, getCachedMetadata: vi.fn() }),
 }));
 vi.mock('~/composables/file-manager/useFileManager', () => ({
   useFileManager: () => mockFileManager,

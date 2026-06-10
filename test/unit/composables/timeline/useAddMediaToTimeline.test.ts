@@ -26,6 +26,7 @@ const { timelineStoreMock, mediaStoreMock, vfsGetFileMock } = vi.hoisted(() => (
   },
   mediaStoreMock: {
     getOrFetchMetadataByPath: vi.fn(),
+    getCachedMetadata: vi.fn(),
   },
   vfsGetFileMock: vi.fn(),
 }));

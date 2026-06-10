@@ -71,6 +71,7 @@ describe('useFileManagerThumbnails', () => {
       metadataLoadFailed,
       metadataLoading,
       getOrFetchMetadata,
+      getCachedMetadata: (path: string) => mediaMetadata[path],
     } as any);
 
     global.URL.createObjectURL = vi.fn(() => 'blob:image');

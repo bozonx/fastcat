@@ -74,6 +74,7 @@ const mockMediaStore = reactive({
   mediaMetadata: {
     'file.mp4': { audio: true },
   },
+  getCachedMetadata: vi.fn((path: string) => mockMediaStore.mediaMetadata[path]),
 });
 const mockUiStore = reactive({
   triggerOpenAutoMontage: vi.fn(),
