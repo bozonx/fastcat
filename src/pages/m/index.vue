@@ -115,12 +115,6 @@ const sortedProjects = computed(() => {
   return projects;
 });
 
-const showResumeCard = computed(() => !searchQuery.value && sortedProjects.value.length > 0);
-const latestProject = computed(() => (showResumeCard.value ? sortedProjects.value[0] : null));
-const otherProjects = computed(() =>
-  showResumeCard.value ? sortedProjects.value.slice(1) : sortedProjects.value,
-);
-
 const formatDate = (dateStr?: string) => {
   if (!dateStr) return '';
   const date = new Date(dateStr);
@@ -305,117 +299,28 @@ const formatDate = (dateStr?: string) => {
                   </UButton>
                 </div>
 
-                <!-- Resume Editing Card -->
-                <div v-if="showResumeCard && latestProject" class="px-5 space-y-3">
-                  <h2 class="text-[11px] font-black uppercase tracking-[0.2em] text-ui-text-muted">
-                    {{ t('fastcat.projects.resumeEditing') }}
-                  </h2>
-                  <div
-                    class="group relative overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-br from-primary-500/15 via-ui-bg-elevated/40 to-ui-bg-elevated/10 p-4 transition-all active:scale-[0.98] shadow-lg flex items-center gap-4 cursor-pointer"
-                    @click="
-                      handleOpenProject(latestProject.projectPath || latestProject.projectName)
-                    "
-                  >
-                    <!-- Thumbnail -->
-                    <div
-                      class="w-24 h-24 rounded-2xl overflow-hidden relative shrink-0 border border-white/5 shadow-inner"
-                    >
-                      <ProjectThumbnail
-                        :project-id="latestProject.projectId"
-                        :project-relative-path="latestProject.lastTimelinePath"
-                        :project-name="latestProject.projectName"
-                        variant="mobile"
-                      />
-                      <div class="absolute inset-0 bg-black/20" />
-                      <div class="absolute inset-0 flex items-center justify-center">
-                        <div
-                          class="w-10 h-10 rounded-full bg-primary-500/90 flex items-center justify-center shadow-lg transform scale-90 group-hover:scale-100 transition-all duration-300"
-                        >
-                          <UIcon name="i-heroicons-pencil-square" class="w-5 h-5 text-white" />
-                        </div>
-                      </div>
-                    </div>
-
-                    <!-- Info -->
-                    <div class="flex-1 min-w-0 py-1">
-                      <h3
-                        class="font-bold text-base text-white truncate leading-tight tracking-tight"
-                      >
-                        {{ latestProject.projectName }}
-                      </h3>
-                      <p class="text-xs text-ui-text-muted mt-2 flex items-center gap-1">
-                        <UIcon name="i-heroicons-clock" class="w-3.5 h-3.5" />
-                        {{ latestProject.updatedAt ? formatDate(latestProject.updatedAt) : '---' }}
-                      </p>
-                      <div class="mt-3 flex">
-                        <span
-                          class="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-primary-400 bg-primary-500/10 px-2.5 py-1 rounded-full"
-                        >
-                          {{ t('fastcat.projects.activeProject') }}
-                        </span>
-                      </div>
-                    </div>
-
-                    <!-- Actions Dropdown -->
-                    <div class="shrink-0">
-                      <UDropdownMenu
-                        :items="[
-                          [
-                            {
-                              label: t('common.rename'),
-                              icon: 'i-heroicons-pencil-square',
-                              onSelect: () => startRename(latestProject!),
-                            },
-                            {
-                              label: t('common.duplicate'),
-                              icon: 'i-heroicons-document-duplicate',
-                              onSelect: () => startDuplicate(latestProject!),
-                            },
-                            {
-                              label: t('common.delete'),
-                              icon: 'i-heroicons-trash',
-                              onSelect: () => startDelete(latestProject!),
-                            },
-                          ],
-                        ]"
-                      >
-                        <UButton
-                          size="sm"
-                          variant="ghost"
-                          color="neutral"
-                          icon="i-heroicons-ellipsis-vertical"
-                          class="rounded-full w-9 h-9 p-0 text-ui-text-muted active:text-white active:bg-white/5 transition-colors"
-                          @click.stop
-                        />
-                      </UDropdownMenu>
-                    </div>
-                  </div>
-                </div>
-
-                <!-- Projects List Section -->
-                <section class="space-y-4 px-5">
-                  <div class="flex items-center justify-between">
+                <div class="px-5 pb-24">
+                  <!-- Заголовок секции проектов -->
+                  <div class="flex items-center justify-between mb-4">
                     <h2
                       class="text-[11px] font-black uppercase tracking-[0.2em] text-ui-text-muted"
                     >
-                      {{
-                        searchQuery
-                          ? t('common.found')
-                          : showResumeCard
-                            ? t('fastcat.projects.otherProjects')
-                            : t('fastcat.projects.title')
-                      }}
+                      {{ searchQuery ? t('common.found') : t('fastcat.projects.title') }}
                     </h2>
                     <span
                       class="text-[10px] font-bold text-primary-500 bg-primary-500/10 px-2 py-0.5 rounded-full uppercase"
                     >
-                      {{ otherProjects.length }}
+                      {{ sortedProjects.length }}
                     </span>
                   </div>
 
-                  <div v-if="otherProjects.length > 0" class="flex flex-col gap-3">
+                  <!-- Если проекты есть -->
+                  <div
+                    v-if="sortedProjects.length > 0"
+                    class="grid grid-cols-1 landscape:grid-cols-2 gap-4"
+                  >
                     <UiSwipeableRow
-                      v-for="project in otherProjects"
+                      v-for="project in sortedProjects"
                       :key="project.projectPath || project.projectId || project.projectName"
                       class="rounded-2xl overflow-hidden"
                     >
@@ -509,7 +414,7 @@ const formatDate = (dateStr?: string) => {
                     </UiSwipeableRow>
                   </div>
 
-                  <!-- Empty State for search -->
+                  <!-- Если проектов нет -->
                   <div
                     v-else
                     class="flex flex-col items-center justify-center py-24 text-ui-text-muted gap-8"
@@ -536,7 +441,7 @@ const formatDate = (dateStr?: string) => {
                       />
                     </div>
                   </div>
-                </section>
+                </div>
               </div>
             </template>
           </main>

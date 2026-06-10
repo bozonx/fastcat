@@ -47,7 +47,15 @@ vi.mock('vue-i18n', () => vueI18nMock);
 
 vi.mock('vue-router', () => ({
   useRoute: vi.fn(() => ({ path: '/', fullPath: '/', query: {}, params: {}, hash: '' })),
-  useRouter: vi.fn(() => ({ push: vi.fn(), replace: vi.fn(), go: vi.fn(), back: vi.fn() })),
+  useRouter: vi.fn(() => ({
+    push: vi.fn(),
+    replace: vi.fn(),
+    go: vi.fn(),
+    back: vi.fn(),
+    afterEach: vi.fn(),
+  })),
+  createWebHistory: vi.fn(() => ({ type: 'history', location: '/' })),
+  createMemoryHistory: vi.fn(() => ({ type: 'memory', location: '/' })),
 }));
 
 vi.mock('#i18n', () => ({
@@ -166,6 +174,17 @@ const { createNuxtMock } = vi.hoisted(() => ({
   })),
 }));
 
+vi.mock('#app/composables/router', () => ({
+  useRouter: vi.fn(() => ({
+    push: vi.fn(),
+    replace: vi.fn(),
+    go: vi.fn(),
+    back: vi.fn(),
+    afterEach: vi.fn(),
+  })),
+  useRoute: vi.fn(() => ({ path: '/', fullPath: '/', query: {}, params: {}, hash: '' })),
+}));
+
 vi.mock('#app', () => ({
   useNuxtApp: createNuxtMock,
   defineNuxtComponent: vi.fn((options) => options),
@@ -174,7 +193,7 @@ vi.mock('#app', () => ({
   defineProps: vi.fn(() => ({})),
   defineNuxtPlugin: vi.fn((plugin) => plugin),
   useRoute: vi.fn(() => ({ path: '/', fullPath: '/', query: {}, params: {}, hash: '' })),
-  useRouter: vi.fn(() => ({ push: vi.fn(), replace: vi.fn(), go: vi.fn(), back: vi.fn() })),
+  useRouter: vi.fn(() => ({ push: vi.fn(), replace: vi.fn(), go: vi.fn(), back: vi.fn(), afterEach: vi.fn() })),
   useAsyncData: vi.fn(() => ({ data: ref(null), pending: ref(false), error: ref(null) })),
   useState: vi.fn((key: string, init?: () => any) => ref(init ? init() : null)),
   useHead: vi.fn(),
