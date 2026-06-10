@@ -750,6 +750,19 @@ pub(crate) fn maybe_spawn_background_precache(
     }
 }
 
+struct PrecacheGuard {
+    shared: Arc<(Mutex<AudioShared>, Condvar)>,
+    cache_key: String,
+}
+
+impl Drop for PrecacheGuard {
+    fn drop(&mut self) {
+        let mut state = self.shared.0.lock();
+        state.decoding_in_flight.remove(&self.cache_key);
+        self.shared.1.notify_all();
+    }
+}
+
 fn background_precache(
     shared: Arc<(Mutex<AudioShared>, Condvar)>,
     path: String,
@@ -757,6 +770,11 @@ fn background_precache(
     output_channels: usize,
     cache_key: String,
 ) {
+    let _guard = PrecacheGuard {
+        shared: shared.clone(),
+        cache_key: cache_key.clone(),
+    };
+
     // Size-gate first so we never decode a multi-hour track into a giant transient
     // buffer the cache would only reject. No declared frame count → skip (stream).
     let too_big = match estimate_decoded_bytes(&path, sample_rate, output_channels) {
@@ -765,14 +783,12 @@ fn background_precache(
     };
     if too_big {
         let mut state = shared.0.lock();
-        state.decoding_in_flight.remove(&cache_key);
         state.precache_skip.insert(cache_key);
         return;
     }
 
     let result = decode_entire_file_symphonia(&path, sample_rate, output_channels);
     let mut state = shared.0.lock();
-    state.decoding_in_flight.remove(&cache_key);
     match result {
         Ok(decoded) => {
             log::info!(
