@@ -299,21 +299,7 @@ const formatDate = (dateStr?: string) => {
                   </UButton>
                 </div>
 
-                <div class="px-5 pb-24">
-                  <!-- Заголовок секции проектов -->
-                  <div class="flex items-center justify-between mb-4">
-                    <h2
-                      class="text-[11px] font-black uppercase tracking-[0.2em] text-ui-text-muted"
-                    >
-                      {{ searchQuery ? t('common.found') : t('fastcat.projects.title') }}
-                    </h2>
-                    <span
-                      class="text-[10px] font-bold text-primary-500 bg-primary-500/10 px-2 py-0.5 rounded-full uppercase"
-                    >
-                      {{ sortedProjects.length }}
-                    </span>
-                  </div>
-
+                <div class="px-5 pt-6 pb-24">
                   <!-- Если проекты есть -->
                   <div
                     v-if="sortedProjects.length > 0"

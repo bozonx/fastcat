@@ -183,6 +183,8 @@ vi.mock('#app/composables/router', () => ({
     afterEach: vi.fn(),
   })),
   useRoute: vi.fn(() => ({ path: '/', fullPath: '/', query: {}, params: {}, hash: '' })),
+  defineNuxtRouteMiddleware: vi.fn((mw) => mw),
+  navigateTo: vi.fn(),
 }));
 
 vi.mock('#app', () => ({
