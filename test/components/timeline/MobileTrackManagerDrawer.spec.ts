@@ -8,6 +8,7 @@ const deleteTrack = vi.fn();
 const reorderTracks = vi.fn();
 const updateTrackProperties = vi.fn();
 const toggleTrackAudioMuted = vi.fn();
+const toggleTrackAudioSolo = vi.fn();
 const requestTimelineSave = vi.fn();
 
 const mockTimelineStore = reactive({
@@ -40,6 +41,7 @@ const mockTimelineStore = reactive({
   reorderTracks,
   updateTrackProperties,
   toggleTrackAudioMuted,
+  toggleTrackAudioSolo,
   requestTimelineSave,
 });
 
@@ -72,6 +74,7 @@ describe('MobileTrackManagerDrawer', () => {
     reorderTracks.mockReset();
     updateTrackProperties.mockReset();
     toggleTrackAudioMuted.mockReset();
+    toggleTrackAudioSolo.mockReset();
     requestTimelineSave.mockReset();
   });
 
@@ -103,7 +106,7 @@ describe('MobileTrackManagerDrawer', () => {
     expect(addAudioBtn).toBeDefined();
   });
 
-  it('handles toggle visibility, mute, and lock', async () => {
+  it('handles toggle visibility, mute, solo, and lock', async () => {
     const wrapper = await mountSuspended(MobileTrackManagerDrawer, {
       props: {
         isOpen: true,
@@ -120,14 +123,14 @@ describe('MobileTrackManagerDrawer', () => {
     });
 
     // Toggle mute on track-1 (video track)
-    // Buttons inside track: eye, speaker, lock, trash
+    // Buttons inside track: eye, speaker, musical-note (solo), lock, trash
     // Track-1 index 0 in list. Let's find buttons inside the list item
     const trackItems = wrapper.findAll('.draggable-stub > div');
     expect(trackItems.length).toBe(2);
 
     const firstTrackButtons = trackItems[0].findAll('button');
-    // For video track: index 0 = visibility, index 1 = mute, index 2 = lock, index 3 = delete
-    expect(firstTrackButtons.length).toBe(4);
+    // For video track: index 0 = visibility, index 1 = mute, index 2 = solo, index 3 = lock, index 4 = delete
+    expect(firstTrackButtons.length).toBe(5);
 
     // Toggle Visibility
     await firstTrackButtons[0].trigger('click');
@@ -138,8 +141,12 @@ describe('MobileTrackManagerDrawer', () => {
     await firstTrackButtons[1].trigger('click');
     expect(toggleTrackAudioMuted).toHaveBeenCalledWith('track-1');
 
-    // Toggle Lock
+    // Toggle Solo
     await firstTrackButtons[2].trigger('click');
+    expect(toggleTrackAudioSolo).toHaveBeenCalledWith('track-1');
+
+    // Toggle Lock
+    await firstTrackButtons[3].trigger('click');
     expect(updateTrackProperties).toHaveBeenCalledWith('track-1', { locked: true });
   });
 
@@ -162,8 +169,8 @@ describe('MobileTrackManagerDrawer', () => {
     const trackItems = wrapper.findAll('.draggable-stub > div');
     const firstTrackButtons = trackItems[0].findAll('button');
 
-    // Delete is index 3 (trash icon)
-    await firstTrackButtons[3].trigger('click');
+    // Delete is index 4 (trash icon)
+    await firstTrackButtons[4].trigger('click');
     expect(deleteTrack).toHaveBeenCalledWith('track-1', { allowNonEmpty: true });
   });
 

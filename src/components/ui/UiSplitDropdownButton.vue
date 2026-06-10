@@ -19,6 +19,7 @@ const props = withDefaults(
     items: DropdownActionItem[][];
     size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl';
     variant?: 'solid' | 'outline' | 'soft' | 'subtle' | 'ghost' | 'link';
+    title?: string;
   }>(),
   {
     caretAriaLabel: undefined,
@@ -30,6 +31,7 @@ const props = withDefaults(
     icon: undefined,
     size: 'sm',
     variant: 'ghost',
+    title: undefined,
   },
 );
 
@@ -58,6 +60,7 @@ function onMainButtonClick(event: MouseEvent) {
       :color="color"
       :icon="icon"
       :aria-label="ariaLabel"
+      :title="title"
       :disabled="disabled"
       :class="buttonClass"
       @click="onMainButtonClick"

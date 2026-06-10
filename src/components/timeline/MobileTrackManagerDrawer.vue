@@ -85,6 +85,11 @@ function toggleMute(trackId: string) {
   timelineStore.requestTimelineSave({ immediate: true });
 }
 
+function toggleSolo(trackId: string) {
+  timelineStore.toggleTrackAudioSolo(trackId);
+  timelineStore.requestTimelineSave({ immediate: true });
+}
+
 function toggleLock(trackId: string) {
   const t = tracks.value.find((x) => x.id === trackId);
   if (t) {
@@ -122,20 +127,6 @@ function addAudioTrack() {
 <template>
   <UiMobileDrawer v-model:open="isOpenLocal" :show-close="false" :ui="{ body: 'no-scrollbar' }">
     <div class="px-4 py-4 flex flex-col h-full overflow-hidden">
-      <!-- Title -->
-      <div class="flex items-center justify-between mb-4">
-        <h3 class="text-sm font-semibold text-ui-text uppercase tracking-wider">
-          {{ t('fastcat.timeline.trackManager') }}
-        </h3>
-        <UButton
-          icon="i-heroicons-x-mark"
-          variant="ghost"
-          color="neutral"
-          size="sm"
-          @click="isOpenLocal = false"
-        />
-      </div>
-
       <!-- Empty State -->
       <div v-if="localTracks.length === 0" class="flex-1 flex items-center justify-center py-8">
         <p class="text-sm text-ui-text-muted">{{ t('fastcat.timeline.noTracks') }}</p>
@@ -209,13 +200,23 @@ function addAudioTrack() {
                 @click="toggleMute(track.id)"
               />
 
+              <!-- Solo -->
+              <UButton
+                icon="i-heroicons-musical-note"
+                variant="ghost"
+                color="neutral"
+                size="sm"
+                :class="track.audioSolo ? 'text-success-500' : 'text-ui-text-muted'"
+                @click="toggleSolo(track.id)"
+              />
+
               <!-- Lock -->
               <UButton
                 :icon="track.locked ? 'i-heroicons-lock-closed' : 'i-heroicons-lock-open'"
                 variant="ghost"
                 color="neutral"
                 size="sm"
-                :class="track.locked ? 'text-primary-500' : 'text-ui-text-muted'"
+                :class="track.locked ? 'text-blue-500' : 'text-ui-text-muted'"
                 @click="toggleLock(track.id)"
               />
 

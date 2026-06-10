@@ -233,7 +233,8 @@ describe('TimelineClip', () => {
     });
     const clipDiv = component.find('[data-clip-id="clip-1"]');
 
-    expect(clipDiv.classes()).toContain('opacity-40');
+    expect(clipDiv.classes()).toContain('opacity-60');
+    expect(clipDiv.classes()).toContain('bg-zinc-800/80!');
   });
 
   it('displays muted track state correctly', async () => {
@@ -243,8 +244,8 @@ describe('TimelineClip', () => {
     });
     const clipDiv = component.find('[data-clip-id="clip-1"]');
 
-    expect(clipDiv.classes()).toContain('opacity-40');
-    expect(clipDiv.classes()).toContain('bg-zinc-800/40!');
+    expect(clipDiv.classes()).toContain('opacity-60');
+    expect(clipDiv.classes()).toContain('bg-zinc-800/80!');
   });
 
   it('displays locked state correctly', async () => {

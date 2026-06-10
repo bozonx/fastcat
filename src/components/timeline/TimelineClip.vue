@@ -443,6 +443,15 @@ const { isDraggingOver, handleDragLeave, handleDrop } = useClipDrop({
   ),
 });
 
+const isMutedOrDisabled = computed(() => {
+  if (!clipItem.value) return false;
+  return (
+    Boolean(clipItem.value.disabled) ||
+    Boolean(clipItem.value.audioMuted) ||
+    Boolean(props.track.audioMuted)
+  );
+});
+
 const isMediaMissing = computed(() => {
   if (
     !clipItem.value ||
@@ -726,15 +735,15 @@ function handleTransitionCreate(
           ? 'outline-(--color-warning) outline-2'
           : '',
         clipItem &&
-        (Boolean(clipItem.disabled) ||
-          Boolean(track.videoHidden) ||
-          Boolean(track.audioMuted) ||
+        (Boolean(track.videoHidden) ||
           (timelineContext.timelineDoc.value?.tracks.some((t) => t.audioSolo) && !track.audioSolo))
           ? 'opacity-40'
-          : '',
+          : isMutedOrDisabled
+            ? 'opacity-60'
+            : '',
         isMediaMissing ? 'bg-red-600! border-red-800! text-white!' : '',
-        !isMediaMissing && clipItem && (clipItem.disabled || track.audioMuted)
-          ? 'bg-zinc-800/40! border-zinc-700/60!'
+        !isMediaMissing && isMutedOrDisabled
+          ? 'bg-zinc-800/80! border-zinc-700/80!'
           : '',
         !isMediaMissing && isUnsupported ? 'bg-amber-600/50! border-amber-700!' : '',
         (clipItem && Boolean(clipItem.locked)) || track.locked ? 'cursor-not-allowed' : '',
