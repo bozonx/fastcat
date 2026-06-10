@@ -323,7 +323,14 @@ pub(crate) fn producer_loop(
                 // Start the real-time output clock once a tiny startup prebuffer has
                 // accumulated (see `arm_output_clock_after_prebuffer`). Until armed the
                 // cpal callback emits silence without counting a (false) underrun.
-                arm_output_clock_after_prebuffer(&clock, ring.len(), start_prebuffer_samples);
+                // While `hold_output` is set (warmup priming) we keep filling the ring
+                // but never arm, so the primed audio stays inaudible until released.
+                arm_output_clock_after_prebuffer(
+                    &clock,
+                    ring.len(),
+                    start_prebuffer_samples,
+                    state.hold_output,
+                );
             }
         } else {
             // Priming iteration (varispeed only): input consumed, no output yet.
@@ -336,8 +343,12 @@ fn arm_output_clock_after_prebuffer(
     clock: &RealtimeClock,
     ring_samples: usize,
     start_prebuffer_samples: usize,
+    hold_output: bool,
 ) -> bool {
-    if ring_samples < start_prebuffer_samples || clock.playing.load(Ordering::Acquire) {
+    if hold_output
+        || ring_samples < start_prebuffer_samples
+        || clock.playing.load(Ordering::Acquire)
+    {
         return false;
     }
 
@@ -691,6 +702,7 @@ mod tests {
             &clock,
             start_samples - 1,
             start_samples,
+            false,
         ));
         assert!(!clock.playing.load(Ordering::Acquire));
 
@@ -698,6 +710,7 @@ mod tests {
             &clock,
             start_samples,
             start_samples,
+            false,
         ));
         assert!(clock.playing.load(Ordering::Acquire));
         assert_eq!(clock.frames(), 0);
@@ -706,6 +719,32 @@ mod tests {
             &clock,
             start_samples * 2,
             start_samples,
+            false,
         ));
+    }
+
+    #[test]
+    fn output_clock_stays_silent_while_warmup_holds_output() {
+        let clock = RealtimeClock::default();
+        let start_samples = 2_000;
+
+        // Even with the ring well past the startup prebuffer, the warmup gate must
+        // keep the output clock disarmed so primed audio stays inaudible.
+        assert!(!arm_output_clock_after_prebuffer(
+            &clock,
+            start_samples * 4,
+            start_samples,
+            true,
+        ));
+        assert!(!clock.playing.load(Ordering::Acquire));
+
+        // Releasing the gate (hold_output = false) arms it on the next push.
+        assert!(arm_output_clock_after_prebuffer(
+            &clock,
+            start_samples * 4,
+            start_samples,
+            false,
+        ));
+        assert!(clock.playing.load(Ordering::Acquire));
     }
 }

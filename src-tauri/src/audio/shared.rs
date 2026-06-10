@@ -132,6 +132,12 @@ pub(crate) struct AudioShared {
     pub(crate) tracks: Vec<SceneAudioTrack>,
     pub(crate) master_gain: f64,
     pub(crate) playing: bool,
+    /// Warmup gate: while true the producer keeps mixing and filling the ring but
+    /// must NOT arm the real-time output clock, so the buffered audio stays
+    /// inaudible. Used to prime the ring during the video prebuffer window so the
+    /// first Play after a cold page load starts with a full buffer instead of an
+    /// immediate underrun (crackle + sped-up audio). Cleared in `release_output`.
+    pub(crate) hold_output: bool,
     /// Глобальная скорость транспорта (мультипликатор таймлайн-времени). >0 —
     /// вперёд (1.0 норма, !=1 даёт варипитч-ресемпл), <=0 — реверс/стоп: producer
     /// не миксует (аудио молчит), мастер-клок ведёт само видео.
@@ -194,6 +200,7 @@ impl Default for AudioShared {
             tracks: Vec::new(),
             master_gain: 1.0,
             playing: false,
+            hold_output: false,
             global_speed: 1.0,
             origin_pts_sec: 0.0,
             producer_pts_sec: 0.0,

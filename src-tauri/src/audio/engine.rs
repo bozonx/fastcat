@@ -12,6 +12,7 @@ use crate::audio::producer::{audible_pts_sec, spawn_producer_thread};
 use crate::audio::ring::SpscRingBuffer;
 use crate::audio::shared::{
     compute_timing_sig, AudioRenderTarget, AudioShared, CHUNK_DURATION_SEC, PREBUFFER_CHUNKS,
+    START_PREBUFFER_CHUNKS,
 };
 
 pub use crate::audio::mix::render_scene_to_wav;
@@ -223,9 +224,25 @@ impl NativeAudioEngine {
     }
 
     pub fn play(&self, pts_sec: f64) {
+        self.start_transport(pts_sec, false);
+    }
+
+    /// Starts mixing into the ring WITHOUT making it audible (warmup priming).
+    ///
+    /// Used during the native monitor's video prebuffer window: the producer fills
+    /// the ring to its full prebuffer while `hold_output` keeps the real-time output
+    /// clock disarmed, so the first Play after a cold page load starts from a full
+    /// buffer instead of an immediate underrun (crackle + sped-up audio). Audibility
+    /// is released later via `release_output` when the master clock actually starts.
+    pub fn start_priming(&self, pts_sec: f64) {
+        self.start_transport(pts_sec, true);
+    }
+
+    fn start_transport(&self, pts_sec: f64, hold_output: bool) {
         self.restart_finished_producer();
         let mut state = self.shared.0.lock();
         state.playing = true;
+        state.hold_output = hold_output;
         state.origin_pts_sec = pts_sec.max(0.0);
         state.producer_pts_sec = state.origin_pts_sec;
         self.clock.reset_frames();
@@ -241,11 +258,62 @@ impl NativeAudioEngine {
         self.shared.1.notify_all();
     }
 
+    /// True once a primed ring has filled enough that releasing the output will not
+    /// immediately underrun. Returns `true` for cases that don't need (or can't be)
+    /// primed — not currently priming, no audible scene, or reverse/stopped speed —
+    /// so the caller's warmup gate never blocks on them.
+    pub fn is_primed(&self) -> bool {
+        let (playing, hold, scene_empty, speed) = {
+            let state = self.shared.0.lock();
+            (
+                state.playing,
+                state.hold_output,
+                state.scene.is_empty(),
+                state.global_speed,
+            )
+        };
+        if !playing || !hold || scene_empty || speed <= 0.0 {
+            return true;
+        }
+        self.ring.len() >= self.prebuffer_target_samples()
+    }
+
+    /// Releases the warmup gate so the primed ring becomes audible. Arms the output
+    /// clock right away when a startup prebuffer is already queued; otherwise the
+    /// producer arms it once the ring fills past the startup threshold. Re-arming is
+    /// idempotent (guarded by `clock.playing`), so a late producer arm is harmless.
+    pub fn release_output(&self) {
+        let already_armed = {
+            let mut state = self.shared.0.lock();
+            state.hold_output = false;
+            self.clock.playing.load(Ordering::Acquire)
+        };
+        if !already_armed && self.ring.len() >= self.start_prebuffer_samples() {
+            self.clock.reset_frames();
+            self.clock.playing.store(true, Ordering::Release);
+        }
+        self.shared.1.notify_all();
+    }
+
+    fn chunk_frames(&self) -> usize {
+        (CHUNK_DURATION_SEC * self.sample_rate as f64).round().max(1.0) as usize
+    }
+
+    fn start_prebuffer_samples(&self) -> usize {
+        self.chunk_frames() * self.device_channels as usize * START_PREBUFFER_CHUNKS
+    }
+
+    fn prebuffer_target_samples(&self) -> usize {
+        self.chunk_frames() * self.device_channels as usize * PREBUFFER_CHUNKS
+    }
+
     pub fn pause(&self) -> f64 {
         self.restart_finished_producer();
         let mut state = self.shared.0.lock();
         let pts = audible_pts_sec(&state, &self.clock, self.sample_rate);
         state.playing = false;
+        // Cancel any in-progress warmup priming so a later play isn't stuck held.
+        state.hold_output = false;
         self.clock.playing.store(false, Ordering::Release);
         state.origin_pts_sec = pts;
         self.clock.reset_frames();
@@ -295,6 +363,8 @@ impl NativeAudioEngine {
         if playing || was_playing {
             // Entering, continuing, or stopping real playback: discard buffered
             // output and let the producer re-arm the clock for the new position.
+            // A position jump also invalidates any warmup priming for the old spot.
+            state.hold_output = false;
             self.clock.reset_frames();
             state.pending_ring_clear = true;
             self.clock.playing.store(false, Ordering::Release);
@@ -734,5 +804,114 @@ mod tests {
         assert!(!state
             .decoded_cache
             .contains(&"/tmp/b.wav|sr=48000".to_string()));
+    }
+
+    #[test]
+    fn start_priming_sets_hold_output_and_keeps_clock_disarmed() {
+        let engine = mock_engine();
+        engine.start_priming(10.0);
+
+        let state = engine.shared.0.lock();
+        assert!(state.playing, "priming must set playing = true");
+        assert!(state.hold_output, "priming must set hold_output = true");
+        assert_eq!(state.origin_pts_sec, 10.0);
+        assert_eq!(state.producer_pts_sec, 10.0);
+        drop(state);
+
+        assert!(
+            !engine.clock.playing.load(Ordering::Acquire),
+            "output clock must stay disarmed during priming"
+        );
+        assert_eq!(engine.current_pts(), None);
+    }
+
+    #[test]
+    fn release_output_arms_clock_when_prebuffer_met() {
+        let engine = mock_engine();
+        engine.start_priming(0.0);
+
+        // Fill the ring past the startup prebuffer so release_output arms immediately.
+        let samples = engine.start_prebuffer_samples();
+        engine.ring.push_slice(&vec![0.0f32; samples + 1]);
+
+        engine.release_output();
+
+        assert!(
+            engine.clock.playing.load(Ordering::Acquire),
+            "release_output must arm the clock when ring has enough samples"
+        );
+        assert!(!engine.shared.0.lock().hold_output, "hold_output must be cleared");
+    }
+
+    #[test]
+    fn release_output_does_not_arm_when_ring_too_short() {
+        let engine = mock_engine();
+        engine.start_priming(0.0);
+
+        // Leave the ring empty — the startup prebuffer isn't met.
+        engine.release_output();
+
+        assert!(
+            !engine.clock.playing.load(Ordering::Acquire),
+            "release_output must NOT arm when ring is below startup threshold"
+        );
+        assert!(!engine.shared.0.lock().hold_output);
+    }
+
+    #[test]
+    fn is_primed_is_true_for_empty_scene_and_reverse_speed() {
+        let engine = mock_engine();
+        // No scene set → empty → is_primed returns true (nothing to prime).
+        engine.start_priming(0.0);
+        assert!(engine.is_primed(), "empty scene must report primed");
+
+        // Reverse speed → producer renders nothing → primed is vacuously true.
+        engine.set_speed(-1.0, 0.0, true);
+        assert!(engine.is_primed(), "reverse speed must report primed");
+    }
+
+    #[test]
+    fn is_primed_is_false_until_ring_reaches_target() {
+        let engine = mock_engine();
+        let l = layer("l1", "/tmp/a.wav", 0.0, 10.0, 1.0);
+        engine.set_scene(&[l], &[], 1.0);
+        engine.start_priming(0.0);
+
+        assert!(
+            !engine.is_primed(),
+            "with a non-empty scene and empty ring, primed must be false"
+        );
+
+        // (We don't push to the ring here: the producer thread is already running
+        // and SPSC rings have exactly one writer. Filling from the test thread races
+        // with the producer, corrupting ring state. The "ring full → primed" path
+        // is covered by the integration of producer + engine in real playback.)
+    }
+
+    #[test]
+    fn pause_clears_hold_output() {
+        let engine = mock_engine();
+        engine.start_priming(0.0);
+        assert!(engine.shared.0.lock().hold_output);
+
+        engine.pause();
+        assert!(
+            !engine.shared.0.lock().hold_output,
+            "pause must cancel any in-progress priming"
+        );
+    }
+
+    #[test]
+    fn seek_clears_hold_output() {
+        let engine = mock_engine();
+        engine.start_priming(0.0);
+        assert!(engine.shared.0.lock().hold_output);
+
+        // A real position jump (playing=false, pts differs from origin).
+        engine.seek(5.0, false);
+        assert!(
+            !engine.shared.0.lock().hold_output,
+            "seek must clear hold_output"
+        );
     }
 }

@@ -45,6 +45,11 @@ const PREBUFFER_LOOKAHEAD_SEC: f64 = 0.12;
 /// раньше декодера → черный экран на старте + рассинхрон с аудио. 3.0с дают запас
 /// для нестандартных путей и тяжёлых GOP без риска зависания Play.
 const PREBUFFER_TIMEOUT: Duration = Duration::from_millis(3000);
+/// Polling cadence while warming up before playback. Video readiness is normally
+/// driven by `VideoFrameReady`/`BgReady` events, but audio-only scenes (or audio
+/// finishing its prime after video) emit no such event, so we also wake on this
+/// interval to re-check both gates and start promptly instead of at the timeout.
+const PREBUFFER_POLL_INTERVAL: Duration = Duration::from_millis(10);
 
 /// Заказ положения offscreen/native-окна монитора в физических пикселях.
 #[derive(Debug, Clone, Copy)]
@@ -501,9 +506,13 @@ impl ApplicationHandler<MonitorCommand> for MonitorApp {
         if !state.clock.is_playing() {
             self.next_redraw_at = None;
             match state.pending_play_deadline {
-                // Прогрев перед стартом: просыпаемся к дедлайну прогрева, чтобы стартовать
-                // воспроизведение по таймауту даже если поток кадров иссяк.
-                Some(deadline) => event_loop.set_control_flow(ControlFlow::WaitUntil(deadline)),
+                // Прогрев перед стартом: периодически опрашиваем готовность видео И аудио
+                // (см. PREBUFFER_POLL_INTERVAL) — аудио-only сцены не шлют VideoFrameReady,
+                // иначе старт ждал бы полного таймаута. Не позже самого дедлайна прогрева.
+                Some(deadline) => {
+                    let poll_at = (Instant::now() + PREBUFFER_POLL_INTERVAL).min(deadline);
+                    event_loop.set_control_flow(ControlFlow::WaitUntil(poll_at));
+                }
                 None => event_loop.set_control_flow(ControlFlow::Wait),
             }
             return;
@@ -735,7 +744,8 @@ impl WindowState {
         if self.clock.is_playing() || self.pending_play_deadline.is_some() {
             return;
         }
-        if self.layers.is_empty() && self.audio.as_ref().is_none_or(NativeAudioEngine::is_empty) {
+        let has_audio = self.audio.as_ref().is_some_and(|a| !a.is_empty());
+        if self.layers.is_empty() && !has_audio {
             return;
         }
         let t = self.clock.current_pts();
@@ -744,8 +754,18 @@ impl WindowState {
         self.layers.set_playing(true);
         self.layers.resync_active_videos(t);
 
-        // Нечего прогревать (нет активного видео) — стартуем сразу.
-        if !self.layers.has_active_video(t) {
+        // Прогреваем аудио параллельно видео: продюсер наполняет кольцо до полного
+        // префетча, но вывод держится беззвучным (hold_output) до `begin_playback`.
+        // Так первый Play после холодной загрузки стартует с полным буфером, а не с
+        // мгновенным underrun (треск + ускоренный звук).
+        if has_audio {
+            if let Some(audio) = self.audio.as_ref() {
+                audio.start_priming(t.max(0.0));
+            }
+        }
+
+        // Нечего прогревать (нет ни активного видео, ни аудио) — стартуем сразу.
+        if !self.layers.has_active_video(t) && !has_audio {
             self.begin_playback();
             return;
         }
@@ -756,13 +776,15 @@ impl WindowState {
     /// playhead'а. Декодеры уже играют и спозиционированы (см. `play`).
     fn begin_playback(&mut self) {
         self.pending_play_deadline = None;
-        // Start wall-clock first so audio.play() and video layers share the
-        // exact same origin. Reversing the order lets audio buffer ahead of
-        // the visual timeline, making the waveform lag behind the voice.
+        // Start wall-clock first so the audio output and video layers share the
+        // exact same origin. Reversing the order lets audio buffer ahead of the
+        // visual timeline, making the waveform lag behind the voice.
         self.clock.play();
-        let pts = self.clock.current_pts();
         if let Some(audio) = self.audio.as_ref() {
-            audio.play(pts);
+            // The ring was primed during the warmup window (see `play`): just lift
+            // the hold gate so it becomes audible from a full buffer. If priming
+            // never ran (no audio scene) this is a harmless no-op.
+            audio.release_output();
         }
     }
 
@@ -774,11 +796,18 @@ impl WindowState {
             return false;
         };
         let t = self.clock.current_pts();
-        let ready = self.layers.active_videos_ready(t, PREBUFFER_LOOKAHEAD_SEC);
+        let video_ready = self.layers.active_videos_ready(t, PREBUFFER_LOOKAHEAD_SEC);
+        // Audio warmup runs in parallel: don't start the master clock until the ring
+        // is primed too, otherwise the cold producer underruns on the first chunks
+        // (crackle + resync skip = sped-up audio). `is_primed` is true when there is
+        // nothing to prime (no/empty audio, reverse speed).
+        let audio_ready = self.audio.as_ref().is_none_or(NativeAudioEngine::is_primed);
+        let ready = video_ready && audio_ready;
         if ready || Instant::now() >= deadline {
             if !ready {
                 log::warn!(
-                    "[monitor] prebuffer timed out after {:.1}s — starting playback without ready video frames",
+                    "[monitor] prebuffer timed out after {:.1}s — starting playback with \
+                     video_ready={video_ready} audio_ready={audio_ready}",
                     PREBUFFER_TIMEOUT.as_secs_f64()
                 );
             }
