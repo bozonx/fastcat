@@ -1560,11 +1560,7 @@ export default {
       }
     },
     "project": {
-      "lockedAcknowledge": "Understood, Read-Only",
-      "lockedDescription": "This project is currently open in another tab or browser window. Concurrent editing of the same project is not supported and may lead to data loss or conflicts.",
-      "lockedStatus": "Locked",
-      "lockedSuggestion": "You can continue in Read-Only mode to view the project, but we recommend returning to your original tab for editing.",
-      "lockedTitle": "Project Locked",
+      "readOnlyBannerText": "This project is open in another tab. Editing is disabled to prevent data conflicts.",
       "takeControl": "Take control"
     },
     "projectSettings": {

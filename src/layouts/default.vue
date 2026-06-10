@@ -17,7 +17,7 @@ import { useGlobalDragAndDrop } from '~/composables/editor/useGlobalDragAndDrop'
 import LoadingScreen from '~/components/startup/LoadingScreen.vue';
 import WelcomeScreen from '~/components/startup/WelcomeScreen.vue';
 import EditorHeader from '~/components/editor/EditorHeader.vue';
-import ProjectLockedModal from '~/components/editor/ProjectLockedModal.vue';
+import ProjectReadOnlyBanner from '~/components/editor/ProjectReadOnlyBanner.vue';
 import EditorSettingsModal from '~/components/settings/EditorSettingsModal.vue';
 import ProjectSettingsModal from '~/components/project-settings/ProjectSettingsModal.vue';
 import FileConversionModal from '~/components/file-manager/FileConversionModal.vue';
@@ -180,6 +180,9 @@ useEventListener(document, 'visibilitychange', () => {
           @open-project-settings="uiStore.isProjectSettingsOpen = true"
           @open-editor-settings="uiStore.isEditorSettingsOpen = true"
         />
+        <ProjectReadOnlyBanner
+          v-if="route.path.startsWith('/editor') && projectStore.isReadOnly && projectStore.currentProjectName"
+        />
         <div class="flex-1 min-h-0 overflow-y-auto">
           <slot />
         </div>
@@ -204,7 +207,6 @@ useEventListener(document, 'visibilitychange', () => {
       <!-- Modals -->
       <EditorSettingsModal v-model:open="uiStore.isEditorSettingsOpen" />
       <ProjectSettingsModal v-model:open="uiStore.isProjectSettingsOpen" />
-      <ProjectLockedModal />
       <FileConversionModal />
       <FileManagerRemoteTransferProgressModal
         :open="isUploading"
