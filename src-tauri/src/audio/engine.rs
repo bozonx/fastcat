@@ -225,6 +225,21 @@ impl NativeAudioEngine {
         if needs_flush {
             plugin_host.lock().reset_all();
         }
+
+        // Pre-emptively warm up the cache for all audio layers in the scene
+        let sample_rate = self.sample_rate;
+        let output_channels = self.device_channels as usize;
+        for layer in &scene_clone {
+            let cache_key = crate::audio::shared::decoded_cache_key(&layer.path, sample_rate, output_channels);
+            crate::audio::decode::maybe_spawn_background_precache(
+                &self.shared,
+                &layer.path,
+                sample_rate,
+                output_channels,
+                &cache_key,
+            );
+        }
+
         self.shared.1.notify_all();
     }
 
@@ -268,17 +283,21 @@ impl NativeAudioEngine {
     /// primed — not currently priming, no audible scene, or reverse/stopped speed —
     /// so the caller's warmup gate never blocks on them.
     pub fn is_primed(&self) -> bool {
-        let (playing, hold, scene_empty, speed) = {
+        let (playing, hold, scene_empty, speed, has_decoding_in_flight) = {
             let state = self.shared.0.lock();
             (
                 state.playing,
                 state.hold_output,
                 state.scene.is_empty(),
                 state.global_speed,
+                !state.decoding_in_flight.is_empty(),
             )
         };
         if !playing || !hold || scene_empty || speed <= 0.0 {
             return true;
+        }
+        if has_decoding_in_flight {
+            return false;
         }
         self.ring.len() >= self.prebuffer_target_samples()
     }

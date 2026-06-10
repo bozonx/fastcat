@@ -11,7 +11,7 @@ use crate::audio::resample::{
 };
 use crate::audio::shared::{
     decoded_cache_key, find_audio_track, AudioRenderTarget, AudioShared, AudioSourceMetadata,
-    CachedAudioDecoder, MAX_CACHEABLE_FILE_BYTES, MAX_DECODED_CACHE_BYTES,
+    CachedAudioDecoder, MAX_DECODED_CACHE_BYTES,
 };
 
 /// Fraction of the current source chunk tolerated as scheduling jitter before
@@ -634,34 +634,7 @@ pub(crate) fn decode_audio_chunk(params: DecodeAudioChunkParams<'_>) -> Result<V
         let cached_samples = match cached_samples {
             Some(samples) => Some(samples),
             None => {
-                let file_size = {
-                    let mut state = shared.0.lock();
-                    match state.file_size_cache.get(path) {
-                        Some(&size) => size,
-                        None => {
-                            let size = std::fs::metadata(path).map(|m| m.len()).unwrap_or(0);
-                            state.file_size_cache.insert(path.to_string(), size);
-                            size
-                        }
-                    }
-                };
-                let source_metadata = cached_audio_source_metadata(path, shared)?;
-                if file_size > 0
-                    && file_size < MAX_CACHEABLE_FILE_BYTES
-                    && source_metadata.sample_rate == sample_rate
-                {
-                    log::info!(
-                        "[audio] caching entire file in memory: {} ({} Hz, {} ch)",
-                        path,
-                        source_metadata.sample_rate,
-                        source_metadata.channels,
-                    );
-                    let decoded = decode_entire_file_symphonia(path, sample_rate, output_channels)?;
-                    let shared_samples = Arc::new(decoded);
-                    let mut state = shared.0.lock();
-                    state.cache_decoded(cache_key, shared_samples.clone());
-                    Some(shared_samples)
-                } else if target.is_export()
+                if target.is_export()
                     && estimate_decoded_bytes(path, sample_rate, output_channels)
                         .is_some_and(|bytes| bytes <= MAX_DECODED_CACHE_BYTES)
                 {
@@ -737,7 +710,7 @@ pub(crate) fn decode_audio_chunk(params: DecodeAudioChunkParams<'_>) -> Result<V
 /// realtime producer thread so a slow decode can never miss the audio deadline.
 /// The cheap part (set checks + insert) runs inline; the expensive format open +
 /// decode all happen on the spawned thread.
-fn maybe_spawn_background_precache(
+pub(crate) fn maybe_spawn_background_precache(
     shared: &Arc<(Mutex<AudioShared>, Condvar)>,
     path: &str,
     sample_rate: u32,
@@ -995,14 +968,15 @@ mod tests {
         })?;
 
         assert_eq!(decoded.len(), (0.05f64 * 48000.0).round() as usize * 2);
-        let state = shared.0.lock();
+        let metadata = cached_audio_source_metadata(&path_str, &shared)?;
         assert_eq!(
-            state.source_metadata_cache.get(&path_str),
-            Some(&AudioSourceMetadata {
+            metadata,
+            AudioSourceMetadata {
                 sample_rate: 8000,
                 channels: 1,
-            })
+            }
         );
+        let state = shared.0.lock();
         // The producer-thread call must be served by the STREAMING decoder (proof:
         // a decoder was created for this layer), never by a synchronous whole-file
         // decode that would block the realtime thread. A background precache may be
