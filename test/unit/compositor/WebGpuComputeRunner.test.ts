@@ -167,6 +167,7 @@ describe('WebGpuComputeRunner', () => {
       STORAGE_BINDING: 8,
       COPY_SRC: 16,
       COPY_DST: 32,
+      RENDER_ATTACHMENT: 64,
     });
     vi.stubGlobal('GPUBufferUsage', {
       COPY_DST: 8,
