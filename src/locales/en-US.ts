@@ -834,6 +834,7 @@ export default {
       "textClipDefaultText": "Text",
       "timelineSettings": "Timeline Settings",
       "trackManager": "Track Manager",
+      "dropHereToDelete": "Drop here to delete",
       "noTracks": "No tracks yet",
       "toggleTrackMute": "Toggle track mute",
       "toggleTrackSolo": "Toggle track solo",

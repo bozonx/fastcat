@@ -834,6 +834,7 @@ export default {
       "textClipDefaultText": "Текст",
       "timelineSettings": "Параметры таймлайна",
       "trackManager": "Управление дорожками",
+      "dropHereToDelete": "Перетащите сюда для удаления",
       "noTracks": "Нет дорожек",
       "toggleTrackMute": "Вкл/выкл звук дорожки",
       "toggleTrackSolo": "Соло дорожки",

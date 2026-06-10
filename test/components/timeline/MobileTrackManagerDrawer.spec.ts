@@ -62,6 +62,7 @@ vi.mock('~/stores/workspace.store', () => ({
 // Mock VueDraggable to simplify rendering in tests
 vi.mock('vue-draggable-plus', () => ({
   VueDraggable: {
+    name: 'VueDraggable',
     props: ['modelValue'],
     template: '<div class="draggable-stub"><slot /></div>',
   },
@@ -123,14 +124,14 @@ describe('MobileTrackManagerDrawer', () => {
     });
 
     // Toggle mute on track-1 (video track)
-    // Buttons inside track: eye, speaker, musical-note (solo), lock, trash
+    // Buttons inside track: eye, speaker, musical-note (solo), lock
     // Track-1 index 0 in list. Let's find buttons inside the list item
     const trackItems = wrapper.findAll('.draggable-stub > div');
     expect(trackItems.length).toBe(2);
 
     const firstTrackButtons = trackItems[0].findAll('button');
-    // For video track: index 0 = visibility, index 1 = mute, index 2 = solo, index 3 = lock, index 4 = delete
-    expect(firstTrackButtons.length).toBe(5);
+    // For video track: index 0 = visibility, index 1 = mute, index 2 = solo, index 3 = lock
+    expect(firstTrackButtons.length).toBe(4);
 
     // Toggle Visibility
     await firstTrackButtons[0].trigger('click');
@@ -150,7 +151,13 @@ describe('MobileTrackManagerDrawer', () => {
     expect(updateTrackProperties).toHaveBeenCalledWith('track-1', { locked: true });
   });
 
-  it('handles delete track', async () => {
+  it('handles delete track via drag and drop', async () => {
+    const elementFromPointSpy = vi.spyOn(document, 'elementFromPoint').mockImplementation(() => {
+      const div = document.createElement('div');
+      div.className = 'delete-drop-zone';
+      return div;
+    });
+
     const wrapper = await mountSuspended(MobileTrackManagerDrawer, {
       props: {
         isOpen: true,
@@ -166,12 +173,22 @@ describe('MobileTrackManagerDrawer', () => {
       },
     });
 
-    const trackItems = wrapper.findAll('.draggable-stub > div');
-    const firstTrackButtons = trackItems[0].findAll('button');
+    // Find the VueDraggable wrapper
+    const draggable = wrapper.findComponent({ name: 'VueDraggable' });
+    expect(draggable.exists()).toBe(true);
 
-    // Delete is index 4 (trash icon)
-    await firstTrackButtons[4].trigger('click');
+    // Emit 'end' event to simulate drop over delete zone
+    await draggable.vm.$emit('end', {
+      oldIndex: 0,
+      originalEvent: {
+        clientX: 100,
+        clientY: 100,
+      },
+    });
+
     expect(deleteTrack).toHaveBeenCalledWith('track-1', { allowNonEmpty: true });
+
+    elementFromPointSpy.mockRestore();
   });
 
   it('handles add tracks', async () => {

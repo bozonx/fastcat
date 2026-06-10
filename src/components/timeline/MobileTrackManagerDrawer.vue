@@ -122,6 +122,38 @@ function addAudioTrack() {
   timelineStore.addTrack('audio', `Audio ${audioCount + 1}`);
   timelineStore.requestTimelineSave({ immediate: true });
 }
+
+const isDragging = ref(false);
+
+function handleDragEnd(event: any) {
+  isDragging.value = false;
+
+  const originalEvent = event.originalEvent;
+  if (!originalEvent) return;
+
+  let clientX = originalEvent.clientX;
+  let clientY = originalEvent.clientY;
+
+  if (originalEvent.changedTouches && originalEvent.changedTouches.length > 0) {
+    clientX = originalEvent.changedTouches[0].clientX;
+    clientY = originalEvent.changedTouches[0].clientY;
+  } else if (originalEvent.touches && originalEvent.touches.length > 0) {
+    clientX = originalEvent.touches[0].clientX;
+    clientY = originalEvent.touches[0].clientY;
+  }
+
+  if (clientX === undefined || clientY === undefined) return;
+
+  const element = document.elementFromPoint(clientX, clientY);
+  const isOverDeleteZone = element?.closest('.delete-drop-zone');
+
+  if (isOverDeleteZone) {
+    const track = localTracks.value[event.oldIndex];
+    if (track) {
+      requestDeleteTrack(track);
+    }
+  }
+}
 </script>
 
 <template>
@@ -139,6 +171,8 @@ function addAudioTrack() {
           handle=".drag-handle"
           :animation="150"
           class="space-y-2"
+          @start="isDragging = true"
+          @end="handleDragEnd"
         >
           <div
             v-for="track in localTracks"
@@ -219,41 +253,52 @@ function addAudioTrack() {
                 :class="track.locked ? 'text-blue-500' : 'text-ui-text-muted'"
                 @click="toggleLock(track.id)"
               />
-
-              <!-- Delete -->
-              <UButton
-                icon="i-heroicons-trash"
-                variant="ghost"
-                color="neutral"
-                size="sm"
-                class="hover:text-error-500 text-ui-text-muted"
-                @click="requestDeleteTrack(track)"
-              />
             </div>
           </div>
         </VueDraggable>
       </div>
 
-      <!-- Add Track Buttons -->
-      <div class="flex gap-2 pt-4 border-t border-ui-border/50 shrink-0">
-        <UButton
-          icon="i-heroicons-video-camera"
-          :label="t('fastcat.timeline.addVideoTrack')"
-          variant="soft"
-          color="neutral"
-          size="md"
-          class="flex-1 justify-center py-2.5 rounded-xl text-sm"
-          @click="addVideoTrack"
-        />
-        <UButton
-          icon="i-heroicons-musical-note"
-          :label="t('fastcat.timeline.addAudioTrack')"
-          variant="soft"
-          color="neutral"
-          size="md"
-          class="flex-1 justify-center py-2.5 rounded-xl text-sm"
-          @click="addAudioTrack"
-        />
+      <!-- Bottom block -->
+      <div class="pt-4 border-t border-ui-border/50 shrink-0 min-h-[58px] relative overflow-hidden">
+        <!-- Delete drop zone (during drag) -->
+        <Transition
+          enter-active-class="transition duration-200 ease-out"
+          enter-from-class="transform translate-y-4 opacity-0"
+          enter-to-class="transform translate-y-0 opacity-100"
+          leave-active-class="transition duration-150 ease-in"
+          leave-from-class="transform translate-y-0 opacity-100"
+          leave-to-class="transform translate-y-4 opacity-0"
+        >
+          <div
+            v-if="isDragging"
+            class="delete-drop-zone absolute inset-x-0 bottom-0 top-0 flex items-center justify-center gap-2 rounded-xl bg-error-500/10 border-2 border-dashed border-error-500/40 text-error-400 font-bold text-sm select-none"
+          >
+            <UIcon name="i-heroicons-trash" class="w-5 h-5 text-error-500 animate-pulse" />
+            <span>{{ t('fastcat.timeline.dropHereToDelete') }}</span>
+          </div>
+        </Transition>
+
+        <!-- Add Track Buttons (when not dragging) -->
+        <div v-show="!isDragging" class="flex gap-2 w-full">
+          <UButton
+            icon="i-heroicons-video-camera"
+            :label="t('fastcat.timeline.addVideoTrack')"
+            variant="soft"
+            color="neutral"
+            size="md"
+            class="flex-1 justify-center py-2.5 rounded-xl text-sm"
+            @click="addVideoTrack"
+          />
+          <UButton
+            icon="i-heroicons-musical-note"
+            :label="t('fastcat.timeline.addAudioTrack')"
+            variant="soft"
+            color="neutral"
+            size="md"
+            class="flex-1 justify-center py-2.5 rounded-xl text-sm"
+            @click="addAudioTrack"
+          />
+        </div>
       </div>
     </div>
 
