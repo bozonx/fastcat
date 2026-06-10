@@ -5,7 +5,15 @@ import MobileMonitorContainer from '~/components/monitor/MobileMonitorContainer.
 import { ref } from 'vue';
 import { DEFAULT_USER_SETTINGS } from '~/utils/settings/defaults';
 
-const { sharedVideoItems, sharedIsLoading, sharedLoadError, sharedIsLandscape } = vi.hoisted(() => {
+const {
+  sharedVideoItems,
+  sharedIsLoading,
+  sharedLoadError,
+  sharedIsLandscape,
+  sharedProjectWidth,
+  sharedProjectHeight,
+  sharedIsFullscreen,
+} = vi.hoisted(() => {
   // eslint-disable-next-line @typescript-eslint/no-require-imports -- require needed in vi.hoisted before module resolution
   const { ref } = require('vue');
   return {
@@ -13,6 +21,9 @@ const { sharedVideoItems, sharedIsLoading, sharedLoadError, sharedIsLandscape } 
     sharedIsLoading: ref(false),
     sharedLoadError: ref(null as string | null),
     sharedIsLandscape: ref(false),
+    sharedProjectWidth: ref(1920),
+    sharedProjectHeight: ref(1080),
+    sharedIsFullscreen: ref(false),
   };
 });
 
@@ -20,7 +31,9 @@ vi.mock('~/composables/monitor/useMonitorRuntime', () => ({
   useMonitorRuntime: () => ({
     projectStore: {
       projectSettings: {
-        project: { width: 1920, height: 1080 },
+        get project() {
+          return { width: sharedProjectWidth.value, height: sharedProjectHeight.value };
+        },
       },
       activeMonitor: { zoom: 1 },
     },
@@ -76,7 +89,7 @@ vi.mock('~/composables/monitor/useMonitorGrid', () => ({
 const mockToggleFullscreen = vi.fn();
 vi.mock('~/composables/useAppFullscreen', () => ({
   useAppFullscreen: () => ({
-    isFullscreen: ref(false),
+    isFullscreen: sharedIsFullscreen,
     toggle: mockToggleFullscreen,
   }),
 }));
@@ -210,6 +223,8 @@ describe('MobileMonitorContainer', () => {
 
   it('changes layout based on orientation', async () => {
     sharedIsLandscape.value = false;
+    sharedProjectWidth.value = 1920;
+    sharedProjectHeight.value = 1080;
     const wrapper = mount(MobileMonitorContainer, {
       global: {
         plugins: [pinia],
@@ -229,5 +244,53 @@ describe('MobileMonitorContainer', () => {
     // which happens when isLandscape is true and project is not vertical
     const hasValidLayout = wrapper.classes().some((c) => c.startsWith('flex'));
     expect(hasValidLayout).toBe(true);
+  });
+
+  it('positions toolbar on the right for vertical projects in portrait mode', async () => {
+    sharedIsLandscape.value = false;
+    sharedProjectWidth.value = 1080;
+    sharedProjectHeight.value = 1920; // Vertical project
+
+    const wrapper = mount(MobileMonitorContainer, {
+      global: {
+        plugins: [pinia],
+        stubs,
+      },
+    });
+
+    await wrapper.vm.$nextTick();
+
+    // With internalLayout = right, it should have flex-row class
+    expect(wrapper.classes()).toContain('flex-row');
+  });
+
+  it('controls overlay auto-hides and shows on interaction in fullscreen', async () => {
+    vi.useFakeTimers();
+    sharedIsFullscreen.value = true;
+
+    const wrapper = mount(MobileMonitorContainer, {
+      global: {
+        plugins: [pinia],
+        stubs,
+      },
+    });
+
+    await wrapper.vm.$nextTick();
+
+    // Initially controls are visible
+    const toolbar = wrapper.find('.transition-all');
+    expect(toolbar.classes()).not.toContain('opacity-0');
+
+    // Advance time by 3 seconds - controls should hide
+    vi.advanceTimersByTime(3000);
+    await wrapper.vm.$nextTick();
+    expect(toolbar.classes()).toContain('opacity-0');
+
+    // Tap the viewport to show them again
+    const viewport = wrapper.find('.viewport-stub');
+    await viewport.trigger('click');
+    expect(toolbar.classes()).not.toContain('opacity-0');
+
+    vi.useRealTimers();
   });
 });

@@ -325,17 +325,17 @@ const formatDate = (dateStr?: string) => {
                           {
                             label: t('common.rename'),
                             icon: 'i-heroicons-pencil-square',
-                            onSelect: () => startRename(latestProject),
+                            onSelect: () => startRename(latestProject!),
                           },
                           {
                             label: t('common.duplicate'),
                             icon: 'i-heroicons-document-duplicate',
-                            onSelect: () => startDuplicate(latestProject),
+                            onSelect: () => startDuplicate(latestProject!),
                           },
                           {
                             label: t('common.delete'),
                             icon: 'i-heroicons-trash',
-                            onSelect: () => startDelete(latestProject),
+                            onSelect: () => startDelete(latestProject!),
                           },
                         ],
                       ]"

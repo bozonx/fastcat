@@ -133,12 +133,6 @@ function clearLongPressTimer() {
   }
 }
 
-function onLongPressPointerDown(e: PointerEvent) {
-  // Long press contextual menu is disabled on mobile
-  longPressStartX = e.clientX;
-  longPressStartY = e.clientY;
-}
-
 function onLongPressPointerMove(e: PointerEvent) {
   if (longPressTimer === null) return;
   const dx = Math.abs(e.clientX - longPressStartX);
@@ -150,20 +144,78 @@ function onLongPressPointerMove(e: PointerEvent) {
 
 function handleViewportClick(e: MouseEvent) {
   const target = e.target as HTMLElement;
-  if (target.closest('button') || target.closest('[role="slider"]')) return;
+  if (target.closest('button') || target.closest('[role="slider"]')) {
+    showControlsTemporary();
+    return;
+  }
 
-  if (viewportTapTimer !== null) {
-    clearTimeout(viewportTapTimer);
-    viewportTapTimer = null;
-    (viewportRef.value as { fitMonitor?: () => void })?.fitMonitor?.();
+  if (isFullscreen.value) {
+    if (isControlsVisible.value) {
+      clearControlsTimeout();
+      isControlsVisible.value = false;
+    } else {
+      showControlsTemporary();
+    }
   } else {
-    viewportTapTimer = setTimeout(() => {
+    if (viewportTapTimer !== null) {
+      clearTimeout(viewportTapTimer);
       viewportTapTimer = null;
-    }, DOUBLE_TAP_MS);
+      (viewportRef.value as { fitMonitor?: () => void })?.fitMonitor?.();
+    } else {
+      viewportTapTimer = setTimeout(() => {
+        viewportTapTimer = null;
+      }, DOUBLE_TAP_MS);
+    }
   }
 }
 
-watch(isFullscreen, () => {
+const isControlsVisible = ref(true);
+let controlsTimeout: ReturnType<typeof setTimeout> | null = null;
+
+function clearControlsTimeout() {
+  if (controlsTimeout) {
+    clearTimeout(controlsTimeout);
+    controlsTimeout = null;
+  }
+}
+
+function showControlsTemporary() {
+  clearControlsTimeout();
+  isControlsVisible.value = true;
+  if (isFullscreen.value) {
+    controlsTimeout = setTimeout(() => {
+      isControlsVisible.value = false;
+    }, 3000);
+  }
+}
+
+onBeforeUnmount(() => {
+  clearLongPressTimer();
+  if (viewportTapTimer !== null) {
+    clearTimeout(viewportTapTimer);
+    viewportTapTimer = null;
+  }
+  clearControlsTimeout();
+  stopMarkerLongPress();
+});
+
+function onLongPressPointerDown(e: PointerEvent) {
+  // Long press contextual menu is disabled on mobile
+  longPressStartX = e.clientX;
+  longPressStartY = e.clientY;
+}
+
+function onToolbarPointerDown(e: PointerEvent) {
+  onLongPressPointerDown(e);
+  showControlsTemporary();
+}
+
+watch(isFullscreen, (val) => {
+  clearControlsTimeout();
+  isControlsVisible.value = true;
+  if (val) {
+    showControlsTemporary();
+  }
   void nextTick(() => {
     (viewportRef.value as { fitMonitor?: () => void })?.fitMonitor?.();
   });
@@ -181,13 +233,18 @@ const isVerticalProject = computed(() => {
 const internalLayout = computed<'left' | 'right' | 'top' | 'bottom'>(() => {
   if (isFullscreen.value) return isLandscape.value ? 'right' : 'bottom';
 
-  if (isVerticalProject.value) {
-    // Left panel for portrait projects as requested
-    return 'left';
+  if (isLandscape.value) {
+    // В ландшафтном режиме тулбар всегда справа для эргономики и высоты
+    return 'right';
   }
 
-  /** For landscape projects: landscape browser -> top, portrait browser -> bottom */
-  return isLandscape.value ? 'top' : 'bottom';
+  if (isVerticalProject.value) {
+    // Для вертикальных проектов в портретном режиме тулбар справа
+    return 'right';
+  }
+
+  // Для горизонтальных проектов в портретном режиме тулбар снизу
+  return 'bottom';
 });
 
 const showSideControls = computed(
@@ -230,6 +287,9 @@ const isReadonly = computed(
 onMounted(() => {
   if (viewportRef.value) {
     timecodeEl.value = (viewportRef.value as { timecodeEl?: HTMLElement }).timecodeEl ?? null;
+  }
+  if (isFullscreen.value) {
+    showControlsTemporary();
   }
 });
 
@@ -349,29 +409,42 @@ const containerHeightClass = computed(() => {
     </MonitorViewport>
 
     <div
-      class="shrink-0 bg-ui-bg"
+      class="transition-all duration-300 z-10"
       :class="[
-        showSideControls
-          ? 'w-[72px] flex flex-col items-center py-4 border-ui-border'
-          : 'px-4 py-1.5 border-ui-border h-[64px]',
-        {
-          'border-r': internalLayout === 'left',
-          'border-l': internalLayout === 'right',
-          'border-b': internalLayout === 'top',
-          'border-t': internalLayout === 'bottom',
-        },
+        isFullscreen
+          ? [
+              'absolute bg-black/60 backdrop-blur-md border border-white/10 shadow-2xl',
+              isControlsVisible
+                ? 'opacity-100 scale-100'
+                : 'opacity-0 scale-95 pointer-events-none',
+              internalLayout === 'right'
+                ? 'right-4 top-1/2 -translate-y-1/2 w-[72px] flex flex-col items-center py-4 rounded-2xl'
+                : 'bottom-4 left-1/2 -translate-x-1/2 w-[calc(100%-2rem)] max-w-[480px] h-[64px] flex items-center justify-between px-4 py-1.5 rounded-2xl',
+            ]
+          : [
+              'shrink-0 bg-ui-bg',
+              showSideControls
+                ? 'w-[72px] flex flex-col items-center py-4 border-ui-border'
+                : 'px-4 py-1.5 border-ui-border h-[64px]',
+              {
+                'border-r': internalLayout === 'left',
+                'border-l': internalLayout === 'right',
+                'border-b': internalLayout === 'top',
+                'border-t': internalLayout === 'bottom',
+              },
+            ],
       ]"
-      @pointerdown="onLongPressPointerDown"
+      @pointerdown="onToolbarPointerDown"
       @pointermove="onLongPressPointerMove"
       @pointerup="clearLongPressTimer"
       @pointercancel="clearLongPressTimer"
     >
       <div
-        class="flex gap-3"
+        class="flex gap-3 w-full"
         :class="[
           showSideControls
             ? 'flex-col justify-between h-full items-center'
-            : 'items-center justify-between h-full',
+            : 'items-center justify-between h-full w-full',
         ]"
       >
         <div
