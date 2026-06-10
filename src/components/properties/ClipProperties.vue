@@ -44,7 +44,6 @@ import ClipEffectsEditor from '~/components/effects/ClipEffectsEditor.vue';
 const props = defineProps<{
   clip: TimelineClipItem;
   hideActions?: boolean;
-  isMobile?: boolean;
 }>();
 
 const { t } = useI18n();

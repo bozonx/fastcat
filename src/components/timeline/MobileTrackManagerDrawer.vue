@@ -125,6 +125,7 @@ function addAudioTrack() {
 
 const isDragging = ref(false);
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function handleDragEnd(event: any) {
   isDragging.value = false;
 

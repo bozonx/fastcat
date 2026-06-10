@@ -487,9 +487,9 @@ const {
 
 const { isMobile } = useDevice();
 
-const hasVisibleSecondaryActions = (actions: any) => {
-  const list = Array.isArray(actions) ? actions : actions?.value;
-  return Array.isArray(list) ? list.some((a: any) => !a.hidden) : false;
+const hasVisibleSecondaryActions = (actions: unknown) => {
+  const list = Array.isArray(actions) ? actions : (actions as { value?: unknown[] })?.value;
+  return Array.isArray(list) ? list.some((a) => !(a as { hidden?: boolean }).hidden) : false;
 };
 </script>
 
