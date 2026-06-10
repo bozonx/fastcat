@@ -65,6 +65,7 @@ pub fn run_event_loop(
     proxy_tx: Sender<Result<EventLoopProxy<MonitorCommand>, String>>,
     audio_settings: AudioEngineSettings,
 ) {
+    log::info!("[monitor] run_event_loop starting");
     let event_loop = match build_event_loop() {
         Ok(el) => el,
         Err(e) => {
@@ -83,9 +84,11 @@ pub fn run_event_loop(
     if let Err(e) = event_loop.run_app(&mut app_handler) {
         log::error!("[monitor] event loop terminated: {e:?}");
     }
+    log::info!("[monitor] run_event_loop exiting");
 }
 
 fn build_event_loop() -> Result<EventLoop<MonitorCommand>> {
+    log::info!("[monitor] building EventLoop...");
     let mut builder = EventLoop::<MonitorCommand>::with_user_event();
 
     #[cfg(target_os = "linux")]
@@ -110,7 +113,12 @@ fn build_event_loop() -> Result<EventLoop<MonitorCommand>> {
         builder.with_any_thread(true);
     }
 
-    builder.build().context("winit EventLoop::build failed")
+    let result = builder.build().context("winit EventLoop::build failed");
+    match &result {
+        Ok(_) => log::info!("[monitor] EventLoop built successfully"),
+        Err(e) => log::error!("[monitor] EventLoop build failed: {e:?}"),
+    }
+    result
 }
 
 // ---------------------------------------------------------------------------
@@ -353,6 +361,7 @@ impl ApplicationHandler<MonitorCommand> for MonitorApp {
                 }
             }
             MonitorCommand::Close => {
+                log::info!("[monitor] received Close command, exiting event loop");
                 event_loop.exit();
             }
             MonitorCommand::BgReady => {

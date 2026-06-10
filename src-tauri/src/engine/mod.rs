@@ -44,8 +44,12 @@ impl VideoEngine {
         let mut guard = self.monitor.lock();
         if let Some(existing) = guard.as_ref() {
             if existing.is_alive() {
+                log::info!("[engine] reusing alive monitor handle");
                 return Ok(existing.clone());
             }
+            log::info!("[engine] existing monitor handle is dead, spawning new one");
+        } else {
+            log::info!("[engine] no existing monitor, spawning new one");
         }
         let handle = Arc::new(MonitorHandle::spawn(self.app.clone(), audio_settings)?);
         *guard = Some(handle.clone());
@@ -59,6 +63,7 @@ impl VideoEngine {
             if h.is_alive() {
                 return Some(h.clone());
             }
+            log::info!("[engine] clearing dead monitor handle");
             *guard = None;
         }
         None
@@ -67,6 +72,7 @@ impl VideoEngine {
     /// Принудительно сбрасывает handle. Использовать после Close, чтобы следующий
     /// `ensure_monitor` спавнил с нуля даже если event-loop ещё не успел упасть.
     pub fn clear_monitor(&self) {
+        log::info!("[engine] clear_monitor called");
         *self.monitor.lock() = None;
     }
 }

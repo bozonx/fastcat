@@ -1,5 +1,6 @@
 //! Тонкий handle к потоку монитора. Хранится в `VideoEngine` и шарится между Tauri-командами.
 
+use std::panic;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc;
 use std::sync::Arc;
@@ -95,7 +96,18 @@ impl MonitorHandle {
         let thread = std::thread::Builder::new()
             .name("fastcat-monitor".into())
             .spawn(move || {
-                run_event_loop(app, tx, audio_settings);
+                let result = panic::catch_unwind(panic::AssertUnwindSafe(|| {
+                    run_event_loop(app, tx, audio_settings);
+                }));
+                if let Err(e) = result {
+                    if let Some(s) = e.downcast_ref::<&str>() {
+                        log::error!("[monitor] thread panicked: {s}");
+                    } else if let Some(s) = e.downcast_ref::<String>() {
+                        log::error!("[monitor] thread panicked: {s}");
+                    } else {
+                        log::error!("[monitor] thread panicked with unknown payload");
+                    }
+                }
                 alive_clone.store(false, Ordering::Release);
             })?;
         let proxy = rx
@@ -125,11 +137,17 @@ impl MonitorHandle {
 
 impl Drop for MonitorHandle {
     fn drop(&mut self) {
-        let _ = self.proxy.send_event(MonitorCommand::Close);
+        let close_sent = self.proxy.send_event(MonitorCommand::Close);
+        match close_sent {
+            Ok(()) => log::info!("[monitor] Drop: Close event sent successfully"),
+            Err(_) => log::info!("[monitor] Drop: Close event failed (event loop closed)"),
+        }
         if let Some(handle) = self._thread.take() {
+            let start = std::time::Instant::now();
             if let Err(e) = handle.join() {
                 log::warn!("[monitor] thread panicked on drop: {e:?}");
             }
+            log::info!("[monitor] Drop: join took {:?}", start.elapsed());
         }
     }
 }
