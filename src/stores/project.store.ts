@@ -450,7 +450,14 @@ export const useProjectStore = defineStore('project', () => {
       } else {
         const { join } = await import('@tauri-apps/api/path');
         if (sessionId !== currentOpenSessionId) return;
-        path = await join(workspaceStore.resolvedStorageTopology.projectsRoot, nameOrPath);
+        const recent = workspaceStore.recentProjects.find(
+          (p) => p.projectName === nameOrPath && p.projectPath,
+        );
+        if (recent?.projectPath) {
+          path = recent.projectPath;
+        } else {
+          path = await join(workspaceStore.resolvedStorageTopology.projectsRoot, nameOrPath);
+        }
         if (sessionId !== currentOpenSessionId) return;
         name = nameOrPath;
       }

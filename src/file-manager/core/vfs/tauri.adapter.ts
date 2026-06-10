@@ -33,6 +33,11 @@ import {
   writeFile,
 } from '@tauri-apps/plugin-fs';
 import { openReadFileStream, openWriteFileStream } from 'tauri-plugin-fs-stream-api';
+import {
+  LazyTauriFile,
+  LAZY_FILE_MEDIA_THRESHOLD_BYTES,
+  isMediaFile,
+} from '~/stores/workspace/provider/tauri-handle';
 
 import { normalizeFsPath } from '~/file-manager/core/path';
 import { acquireStreamingFileIoSlot, withFileWriteSlot } from '~/utils/io/io-governor';
@@ -476,10 +481,23 @@ export class TauriFileSystemAdapter implements IFileSystemAdapter {
       return null;
     }
 
+    const name = this.getEntryName(path);
+    const mimeType = getMimeTypeFromFilename(path);
+    if (metadata.size > LAZY_FILE_MEDIA_THRESHOLD_BYTES && isMediaFile(name)) {
+      const absolutePath = await this.resolveStreamPath(path);
+      return new LazyTauriFile({
+        path: absolutePath,
+        name,
+        size: metadata.size,
+        type: mimeType,
+        lastModified: metadata.lastModified,
+      });
+    }
+
     const blob = await this.readFile(path);
-    return new File([blob], this.getEntryName(path), {
+    return new File([blob], name, {
       lastModified: metadata.lastModified,
-      type: getMimeTypeFromFilename(path),
+      type: mimeType,
     });
   }
 

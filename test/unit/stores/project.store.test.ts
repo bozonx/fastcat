@@ -296,6 +296,33 @@ describe('ProjectStore', () => {
     expect((dirHandle as any).path).toBe(absolutePath);
   });
 
+  it('openProject resolves external project path from recentProjects when given a name', async () => {
+    vi.mocked(isTauriRuntime).mockReturnValue(true);
+
+    const store = useProjectStore();
+    const workspace = useWorkspaceStore();
+    workspace.projects = [];
+    workspace.recentProjects = [
+      {
+        projectName: 'ExternalProject',
+        projectId: 'ext-123',
+        projectPath: '/external/path/ExternalProject',
+        updatedAt: new Date().toISOString(),
+      },
+    ];
+
+    await store.openProject('ExternalProject');
+
+    expect(invoke).toHaveBeenCalledWith('allow_path_scope', {
+      path: '/external/path/ExternalProject',
+    });
+    expect(store.currentProjectName).toBe('ExternalProject');
+    expect(workspace.error).toBeNull();
+    const dirHandle = await store.getProjectDirHandle();
+    expect(dirHandle).not.toBeNull();
+    expect((dirHandle as any).path).toBe('/external/path/ExternalProject');
+  });
+
   it('createProject in non-standard folder under Tauri environment calls allow_path_scope for parent', async () => {
     vi.mocked(isTauriRuntime).mockReturnValue(true);
 

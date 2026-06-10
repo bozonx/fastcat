@@ -117,11 +117,39 @@ export class LazyTauriFile extends File {
   }
 
   override stream(): ReadableStream<Uint8Array<ArrayBuffer>> {
+    const chunkSize = 256 * 1024; // 256 KB
+    let offset = this._start;
+    const end = this._end;
+    const path = this.path;
+
     return new ReadableStream<Uint8Array<ArrayBuffer>>({
-      pull: async (controller) => {
-        const chunk = await this.arrayBuffer();
-        controller.enqueue(new Uint8Array(chunk) as Uint8Array<ArrayBuffer>);
-        controller.close();
+      async pull(controller) {
+        if (offset >= end) {
+          controller.close();
+          return;
+        }
+
+        const remaining = end - offset;
+        const currentChunkSize = Math.min(chunkSize, remaining);
+
+        try {
+          const chunk = await withTauriReadHandle(path, async (handle) => {
+            await handle.seek(offset, 0);
+            const result = new Uint8Array(currentChunkSize);
+            let read = 0;
+            while (read < currentChunkSize) {
+              const chunkRead = await handle.read(result.subarray(read));
+              if (chunkRead === null) break;
+              read += chunkRead;
+            }
+            return result.buffer;
+          });
+
+          offset += currentChunkSize;
+          controller.enqueue(new Uint8Array(chunk) as Uint8Array<ArrayBuffer>);
+        } catch (err) {
+          controller.error(err);
+        }
       },
     });
   }

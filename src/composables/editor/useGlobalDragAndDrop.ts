@@ -18,6 +18,12 @@ import { useDraggedFile } from '~/composables/useDraggedFile';
 import { useUploadProgress } from '~/composables/useUploadProgress';
 import { getDevicePixelRatio, dispatchWindowEvent, elementFromPoint } from '~/utils/browser-api';
 const log = createDevLogger('useGlobalDragAndDrop');
+import {
+  LazyTauriFile,
+  LAZY_FILE_MEDIA_THRESHOLD_BYTES,
+  isMediaFile,
+} from '~/stores/workspace/provider/tauri-handle';
+import { getMimeTypeFromFilename } from '~/utils/media-types';
 
 const GLOBAL_DRAG_LEAVE_HIDE_DELAY_MS = 120;
 
@@ -343,24 +349,47 @@ export function useGlobalDragAndDrop() {
                 if (file) {
                   files.push(file);
                 } else {
-                  const { readFile, stat } = await import('@tauri-apps/plugin-fs');
+                  const { stat } = await import('@tauri-apps/plugin-fs');
                   let metadata;
-                  let bytes;
                   try {
                     metadata = await stat(path);
-                    bytes = await readFile(path);
                   } catch (err) {
-                    log.warn('Failed to read dropped file via fs plugin', path, err);
+                    log.warn('Failed to stat dropped file via fs plugin', path, err);
                     continue;
                   }
                   const filename = path.split(/[/\\]/).pop() || 'unknown';
-                  files.push(
-                    new File([bytes], filename, {
-                      lastModified: metadata.mtime
-                        ? new Date(metadata.mtime).getTime()
-                        : Date.now(),
-                    }),
-                  );
+                  const size = metadata.size ?? 0;
+                  const mimeType = getMimeTypeFromFilename(filename);
+                  const lastModified = metadata.mtime
+                    ? new Date(metadata.mtime).getTime()
+                    : Date.now();
+
+                  if (size > LAZY_FILE_MEDIA_THRESHOLD_BYTES && isMediaFile(filename)) {
+                    files.push(
+                      new LazyTauriFile({
+                        path,
+                        name: filename,
+                        size,
+                        type: mimeType,
+                        lastModified,
+                      }),
+                    );
+                  } else {
+                    const { readFile } = await import('@tauri-apps/plugin-fs');
+                    let bytes;
+                    try {
+                      bytes = await readFile(path);
+                    } catch (err) {
+                      log.warn('Failed to read dropped file via fs plugin', path, err);
+                      continue;
+                    }
+                    files.push(
+                      new File([bytes], filename, {
+                        type: mimeType,
+                        lastModified,
+                      }),
+                    );
+                  }
                 }
               }
 

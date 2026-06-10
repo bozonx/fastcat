@@ -354,6 +354,40 @@ describe('TauriFileSystemAdapter', () => {
     });
   });
 
+  describe('getFile', () => {
+    it('returns a standard File for small files or non-media files', async () => {
+      const adapter = new TauriFileSystemAdapter('/root');
+      vi.mocked(stat).mockResolvedValue({
+        size: 100,
+        mtime: 1700000000,
+        isDirectory: false,
+      } as any);
+      vi.mocked(readFile).mockResolvedValue(new TextEncoder().encode('small file content'));
+
+      const file = await adapter.getFile('docs/small.txt');
+      expect(file).toBeInstanceOf(File);
+      expect(file?.name).toBe('small.txt');
+      expect(file?.size).toBe(18); // length of 'small file content' as blob size
+      expect(readFile).toHaveBeenCalledWith('/root/docs/small.txt', { baseDir: undefined });
+    });
+
+    it('returns a LazyTauriFile for large media files without reading them', async () => {
+      const adapter = new TauriFileSystemAdapter('/root');
+      vi.mocked(stat).mockResolvedValue({
+        size: 10 * 1024 * 1024, // 10 MB
+        mtime: 1700000000,
+        isDirectory: false,
+      } as any);
+
+      const file = await adapter.getFile('video/large.mp4');
+      const { LazyTauriFile } = await import('~/stores/workspace/provider/tauri-handle');
+      expect(file).toBeInstanceOf(LazyTauriFile);
+      expect(file?.name).toBe('large.mp4');
+      expect(file?.size).toBe(10 * 1024 * 1024);
+      expect(readFile).not.toHaveBeenCalled();
+    });
+  });
+
   describe('getObjectUrl / streams', () => {
     it('builds an asset URL via convertFileSrc with a version query', async () => {
       const adapter = new TauriFileSystemAdapter('/root');

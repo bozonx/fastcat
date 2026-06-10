@@ -500,6 +500,7 @@ export default {
       "resetZoom": "Сбросить зум (100%)",
       "rewind": "В начало",
       "showGrid": "Показать сетку",
+      "showTransparencyGrid": "Показать прозрачную сетку",
       "showTimecode": "Показать таймкод",
       "snapshot": "Снимок",
       "syncBalanced": "Баланс",
