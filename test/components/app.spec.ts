@@ -1,14 +1,21 @@
 import { describe, it, expect, vi } from 'vitest';
+import { mockNuxtImport } from '@nuxt/test-utils/runtime';
 import App from '~/app.vue';
 import { mountWithNuxt } from '../utils/mount';
 
-vi.mock('@nuxtjs/color-mode', () => ({
-  useColorMode: vi.fn(() => ({ preference: 'dark', value: 'dark' })),
-}));
+mockNuxtImport('useColorMode', () => {
+  return () => ({ preference: 'dark', value: 'dark' });
+});
 
-vi.mock('#imports', () => ({
-  useColorMode: vi.fn(() => ({ preference: 'dark', value: 'dark' })),
-  useHead: vi.fn(),
+mockNuxtImport('useI18n', () => {
+  return () => ({
+    t: (key: string) => key,
+    locale: { value: 'en-US' },
+  });
+});
+
+vi.mock('~/components/file-manager/FileConversionModal.vue', () => ({
+  default: { name: 'FileConversionModal', template: '<div />' },
 }));
 
 vi.mock('~/stores/project-settings.store', () => ({
@@ -90,9 +97,6 @@ vi.mock('~/stores/workspace.store', () => ({
 
 describe('App Smoke Test', () => {
   it('can mount the app root component', async () => {
-    (globalThis as any).useColorMode = () => ({ preference: 'dark', value: 'dark' });
-    const colorMode = (globalThis as any).useColorMode?.();
-    console.log('useColorMode result:', colorMode);
     const component = await mountWithNuxt(App);
     expect(component.exists()).toBe(true);
   }, 15000);

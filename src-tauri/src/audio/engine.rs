@@ -40,9 +40,14 @@ pub struct NativeAudioEngine {
 
 /// A seek to within this of the current playback position, while already playing,
 /// is treated as a redundant master-clock echo and ignored (no ring flush / no
-/// decoder reseek). Comfortably larger than the frontend's interpolation window
-/// (~200ms) and sync jitter, yet far below any deliberate scrub jump.
-const SEEK_IGNORE_SEC: f64 = 0.4;
+/// decoder reseek). Must be at least as large as the full prebuffer window:
+/// PREBUFFER_CHUNKS (16) × CHUNK_DURATION_SEC (0.05s) = 0.8s. Immediately after
+/// `release_output` the audible_pts_sec is exactly at the origin while the ring
+/// holds 800ms pre-mixed audio ahead; a frontend seek to any position inside that
+/// window looks like a forward jump of up to 800ms. With only 0.4s the guard
+/// passed those through, cleared the ring, and the producer replayed the first
+/// fraction of audio — heard as crackle + sped-up repeat.
+const SEEK_IGNORE_SEC: f64 = 1.0;
 
 impl NativeAudioEngine {
     pub fn new(settings: &AudioEngineSettings) -> Result<Self> {
@@ -638,6 +643,28 @@ mod tests {
         );
         assert_eq!(engine.shared.0.lock().origin_pts_sec, 10.0);
     }
+
+    /// Регрессионный тест: seek в пределах prebuffer window не должен сбрасывать ring.
+    ///
+    /// До фикса `SEEK_IGNORE_SEC = 0.4s` < `PREBUFFER_CHUNKS × 0.05s = 0.8s`: сразу
+    /// после `release_output` `audible_pts_sec = origin`, ring держит 0.8s вперёд.
+    /// Frontend-seek на +0.7s от origin воспринимался как «реальный», сбрасывал ring
+    /// и продюсер начинал пере-декодировать — слышался треск + ускоренный повтор.
+    #[test]
+    fn seek_within_prebuffer_window_is_ignored() {
+        let engine = mock_engine();
+        engine.play(10.0);
+        let before = seek_serial(&engine);
+
+        // 0.7s вперёд — внутри prebuffer window (0.8s), старый порог 0.4s пропускал это.
+        engine.seek(10.0 + 0.7, true);
+        assert_eq!(
+            seek_serial(&engine),
+            before,
+            "seek within prebuffer window must not flush the ring (was crackle + repeat)"
+        );
+    }
+
 
     #[test]
     fn seek_honors_real_scrub_during_playback() {

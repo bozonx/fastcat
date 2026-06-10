@@ -1,10 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { reactive, ref, computed } from 'vue';
-import { mountSuspended } from '@nuxt/test-utils/runtime';
+import { mountSuspended, mockNuxtImport } from '@nuxt/test-utils/runtime';
 import ClipProperties from '~/components/properties/ClipProperties.vue';
 
-// Stub useDevice globally
-vi.stubGlobal('useDevice', () => ({ isMobile: false }));
+mockNuxtImport('useDevice', () => {
+  return () => ({ isMobile: false });
+});
 
 // Mock subcomponents
 vi.mock('~/components/ui/UiRenameModal.vue', () => ({
