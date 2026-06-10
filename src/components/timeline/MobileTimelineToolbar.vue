@@ -21,6 +21,9 @@ const hasClipboard = computed(() => clipboardStore.hasTimelinePayload);
 
 const isSnapDrawerOpen = ref(false);
 
+const snapLongPressTimer = ref<ReturnType<typeof setTimeout> | null>(null);
+const wasSnapPressLong = ref(false);
+
 const longPressTimer = ref<ReturnType<typeof setTimeout> | null>(null);
 const wasLastPressLong = ref(false);
 
@@ -96,6 +99,8 @@ const snapPlayheadOnClick = computed({
   set: (val: boolean) => (workspaceStore.userSettings.timeline.snapping.playheadClick = val),
 });
 
+const isSnapEnabled = computed(() => settingsStore.toolbarSnapMode !== 'no_snap');
+
 const isPseudoOverlapMode = computed(
   () => settingsStore.toolbarDragModeEnabled && settingsStore.toolbarDragMode === 'pseudo_overlap',
 );
@@ -146,6 +151,32 @@ function handlePaste() {
   if (payload.operation === 'cut') clipboardStore.setClipboardPayload(null);
 }
 
+function handleSnapToggle() {
+  if (wasSnapPressLong.value) {
+    wasSnapPressLong.value = false;
+    return;
+  }
+  settingsStore.toggleToolbarSnapMode();
+  if (navigator.vibrate) navigator.vibrate(20);
+}
+
+function startSnapLongPress() {
+  wasSnapPressLong.value = false;
+  if (snapLongPressTimer.value) clearTimeout(snapLongPressTimer.value);
+  snapLongPressTimer.value = setTimeout(() => {
+    isSnapDrawerOpen.value = true;
+    wasSnapPressLong.value = true;
+    snapLongPressTimer.value = null;
+    if (navigator.vibrate) navigator.vibrate(50);
+  }, MOBILE_LONG_PRESS_MS);
+}
+
+function stopSnapLongPress() {
+  if (snapLongPressTimer.value) {
+    clearTimeout(snapLongPressTimer.value);
+    snapLongPressTimer.value = null;
+  }
+}
 
 </script>
 
@@ -192,11 +223,14 @@ function handlePaste() {
       <div class="flex items-center gap-1 rounded-xl bg-ui-bg px-1 py-1 shrink-0">
         <UiActionButton
           :icon="currentSnapOption.icon"
-          color="primary"
-          variant="soft"
+          :color="settingsStore.toolbarSnapMode === 'no_snap' ? 'neutral' : 'primary'"
+          :variant="settingsStore.toolbarSnapMode === 'no_snap' ? 'ghost' : 'soft'"
           size="sm"
           :title="currentSnapOption.label"
-          @click="isSnapDrawerOpen = true"
+          @click="handleSnapToggle"
+          @pointerdown="startSnapLongPress"
+          @pointerup="stopSnapLongPress"
+          @pointerleave="stopSnapLongPress"
         />
       </div>
 
@@ -259,59 +293,59 @@ function handlePaste() {
   <!-- Snap mode drawer -->
   <UiMobileDrawer v-model:open="isSnapDrawerOpen" :show-close="false" direction="bottom">
     <div class="px-4 pb-6 flex flex-col gap-5">
-      <div class="flex flex-col gap-2">
+      <!-- Segmented control -->
+      <div class="flex rounded-xl bg-ui-bg p-1 gap-1">
         <button
           v-for="opt in snapModeOptions"
           :key="opt.value"
-          class="flex items-center gap-3 rounded-xl px-4 py-3 transition-colors"
+          class="flex-1 flex items-center justify-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors"
           :class="
             settingsStore.toolbarSnapMode === opt.value
-              ? 'bg-primary-500/15 text-primary-500'
-              : 'bg-ui-bg text-ui-text hover:bg-ui-bg-hover'
+              ? 'bg-primary-500 text-white'
+              : 'text-ui-text hover:bg-ui-bg-hover'
           "
-          @click="
-            settingsStore.selectToolbarSnapMode(opt.value);
-            isSnapDrawerOpen = false;
-          "
+          @click="settingsStore.selectToolbarSnapMode(opt.value)"
         >
-          <UIcon :name="opt.icon" class="size-5 shrink-0" />
-          <span class="text-sm font-medium leading-snug">{{ opt.description }}</span>
-          <UIcon
-            v-if="settingsStore.toolbarSnapMode === opt.value"
-            name="i-heroicons-check"
-            class="size-4 ml-auto shrink-0"
-          />
+          <UIcon :name="opt.icon" class="size-4 shrink-0" />
+          <span>{{ opt.label }}</span>
         </button>
       </div>
 
       <div class="h-px bg-ui-border" />
 
-      <UiSliderInput
-        v-model="snapThresholdPx"
-        :label="t('videoEditor.settings.snapThresholdDefault')"
-        :min="1"
-        :max="100"
-        :step="1"
-        :default-value="8"
-        unit="px"
-      />
+      <div
+        :class="{
+          'opacity-40 pointer-events-none': !isSnapEnabled,
+        }"
+        class="flex flex-col gap-5 transition-opacity duration-200"
+      >
+        <UiSliderInput
+          v-model="snapThresholdPx"
+          :label="t('videoEditor.settings.snapThresholdDefault')"
+          :min="1"
+          :max="100"
+          :step="1"
+          :default-value="8"
+          unit="px"
+        />
 
-      <div class="flex flex-col gap-3">
-        <p class="text-sm font-medium text-ui-text">
-          {{ t('videoEditor.settings.snapToTargets') }}
-        </p>
-        <UCheckbox
-          v-model="snapToTimelineEdges"
-          :label="t('videoEditor.settings.snapToTimelineEdges')"
-        />
-        <UCheckbox v-model="snapToClips" :label="t('videoEditor.settings.snapToClips')" />
-        <UCheckbox v-model="snapToMarkers" :label="t('videoEditor.settings.snapToMarkers')" />
-        <UCheckbox v-model="snapToSelection" :label="t('videoEditor.settings.snapToSelection')" />
-        <UCheckbox v-model="snapToPlayhead" :label="t('videoEditor.settings.snapToPlayhead')" />
-        <UCheckbox
-          v-model="snapPlayheadOnClick"
-          :label="t('videoEditor.settings.snapPlayheadOnClick')"
-        />
+        <div class="flex flex-col gap-3">
+          <p class="text-sm font-medium text-ui-text">
+            {{ t('videoEditor.settings.snapToTargets') }}
+          </p>
+          <UCheckbox
+            v-model="snapToTimelineEdges"
+            :label="t('videoEditor.settings.snapToTimelineEdges')"
+          />
+          <UCheckbox v-model="snapToClips" :label="t('videoEditor.settings.snapToClips')" />
+          <UCheckbox v-model="snapToMarkers" :label="t('videoEditor.settings.snapToMarkers')" />
+          <UCheckbox v-model="snapToSelection" :label="t('videoEditor.settings.snapToSelection')" />
+          <UCheckbox v-model="snapToPlayhead" :label="t('videoEditor.settings.snapToPlayhead')" />
+          <UCheckbox
+            v-model="snapPlayheadOnClick"
+            :label="t('videoEditor.settings.snapPlayheadOnClick')"
+          />
+        </div>
       </div>
     </div>
   </UiMobileDrawer>
