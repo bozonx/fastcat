@@ -32,3 +32,24 @@ export function formatTimecode(us: number, fps: number): string {
 
   return isNegative ? `-${formatted}` : formatted;
 }
+
+/**
+ * Formats microseconds to HH:MM:SS string.
+ *
+ * @param us - Time in microseconds
+ * @returns Formatted time string in hours:minutes:seconds
+ */
+export function formatHms(us: number): string {
+  const isNegative = us < 0;
+  const absUs = Math.abs(us);
+  const totalSeconds = Math.floor(absUs / 1_000_000);
+  const ss = totalSeconds % 60;
+  const mm = Math.floor(totalSeconds / 60) % 60;
+  const hh = Math.floor(totalSeconds / 3600);
+
+  const pad = (n: number) => String(n).padStart(2, '0');
+  const formatted = `${pad(hh)}:${pad(mm)}:${pad(ss)}`;
+
+  return isNegative ? `-${formatted}` : formatted;
+}
+

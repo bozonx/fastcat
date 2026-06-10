@@ -24,11 +24,8 @@ import type { TauriDirectoryHandle } from '~/stores/workspace/provider/tauri-han
 import { buildEffectSpecs } from '~/effects';
 import { getTauriTransitionManifest } from '~/transitions/tauri/manifests';
 import { getTransitionManifest } from '~/transitions/core/registry';
-import { createDevLogger } from '~/utils/dev-logger';
 
 export { buildNativeAudioEffectSpecs } from '~/utils/audio/audio-clip-descriptor';
-
-const log = createDevLogger('native-monitor-scene');
 
 // Preload Tauri path helper so we don't dynamic-import it per clip.
 let _tauriJoin: ((...paths: string[]) => Promise<string>) | null = null;
@@ -327,16 +324,9 @@ async function resolveProjectAbsolutePath(
   try {
     const handle = await projectStore.getProjectDirHandle();
     const projectPath = (handle as unknown as TauriDirectoryHandle | null)?.path;
-    log.info('[scene] resolveProjectAbsolutePath', {
-      projectRelativePath,
-      projectPath,
-      currentProjectName: projectStore.currentProjectName,
-    });
     if (projectPath) {
       const join = await getTauriJoin();
-      const resolved = await join(projectPath, projectRelativePath);
-      log.info('[scene] resolvedPath', { projectRelativePath, resolved });
-      return resolved;
+      return await join(projectPath, projectRelativePath);
     }
   } catch {
     // ignore, try fallback
@@ -497,11 +487,6 @@ async function buildAudioLayers(params: {
 export async function buildNativeMonitorScene(
   params: BuildNativeMonitorSceneParams,
 ): Promise<NativeMonitorScene> {
-  log.info('[scene] buildNativeMonitorScene', {
-    project: params.projectStore.currentProjectName,
-    timelinePath: params.projectStore.currentTimelinePath,
-    trackCount: params.timelineDoc.tracks?.length ?? 0,
-  });
   const format = getTimelineFormat(params.timelineDoc);
   const fallbackFormat = params.fallbackFormat ?? format;
   const sceneWidth = format.width;
@@ -512,24 +497,14 @@ export async function buildNativeMonitorScene(
     getProxyNativePath: params.getProxyNativePath,
   };
   const nestedDocCache = new Map<string, TimelineDocument>();
-  let builtVideo: Awaited<ReturnType<typeof buildVideoWorkerPayloadFromTracks>>;
-  try {
-    builtVideo = await buildVideoWorkerPayloadFromTracks({
-      tracks: params.timelineDoc.tracks,
-      projectStore: params.projectStore,
-      workspaceStore: params.workspaceStore,
-      masterEffects: params.timelineDoc.metadata?.fastcat?.masterEffects,
-      fallbackFormat,
-      onWarning: params.onWarning,
-      nestedDocCache,
-    });
-  } catch (e) {
-    log.error('[scene] buildVideoWorkerPayloadFromTracks failed', e);
-    throw e;
-  }
-  log.info('[scene] builtVideo', {
-    clipCount: builtVideo.clips.length,
-    trackCount: builtVideo.tracks.length,
+  const builtVideo = await buildVideoWorkerPayloadFromTracks({
+    tracks: params.timelineDoc.tracks,
+    projectStore: params.projectStore,
+    workspaceStore: params.workspaceStore,
+    masterEffects: params.timelineDoc.metadata?.fastcat?.masterEffects,
+    fallbackFormat,
+    onWarning: params.onWarning,
+    nestedDocCache,
   });
 
   const layers: NativeSceneLayer[] = [];

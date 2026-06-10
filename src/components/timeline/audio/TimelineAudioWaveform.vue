@@ -45,6 +45,20 @@ let resizeObserver: ResizeObserver | null = null;
 let redrawFrameId = 0;
 let nextWaveformPeakId = 1;
 
+function getMetadataForPath(path: string) {
+  if (!path) return null;
+  const direct = mediaStore.mediaMetadata[path];
+  if (direct) return direct;
+
+  if (path.startsWith('external:')) {
+    const clean = path.slice('external:'.length);
+    return mediaStore.mediaMetadata[clean] || null;
+  } else {
+    const prefixed = `external:${path}`;
+    return mediaStore.mediaMetadata[prefixed] || null;
+  }
+}
+
 const fileUrl = computed(() => {
   if (props.item.source) {
     return props.item.source.path;
@@ -59,7 +73,7 @@ const nestedAudioPeaks = ref<Float32Array[] | null>(null);
 const audioPeaks = computed<Float32Array[] | null>(() => {
   if (!fileUrl.value) return null;
   if (isNestedTimeline.value) return nestedAudioPeaks.value;
-  const meta = mediaStore.mediaMetadata[fileUrl.value];
+  const meta = getMetadataForPath(fileUrl.value);
   return meta?.audioPeaks || null;
 });
 
@@ -74,7 +88,8 @@ const effectiveSourceDurationUs = computed(() => {
   if (explicit && explicit > 0) return explicit;
 
   if (fileUrl.value) {
-    const metaDurationS = mediaStore.mediaMetadata[fileUrl.value]?.duration;
+    const meta = getMetadataForPath(fileUrl.value);
+    const metaDurationS = meta?.duration;
     if (metaDurationS && metaDurationS > 0) {
       return Math.floor(metaDurationS * 1_000_000);
     }
@@ -112,14 +127,15 @@ async function ensureMediaPeaks(params: {
   shouldCancel?: () => boolean;
 }): Promise<Float32Array[] | null> {
   const { path, maxLength, shouldCancel } = params;
-  const existing = mediaStore.mediaMetadata[path]?.audioPeaks;
+  const existingMeta = getMetadataForPath(path);
+  const existing = existingMeta?.audioPeaks;
   if (existing && existing.length > 0) return existing;
 
   const metadata = await mediaStore.getOrFetchMetadataByPath(path);
   if (shouldCancel?.()) return null;
 
   const cachedAfterMetadataLoad =
-    mediaStore.mediaMetadata[path]?.audioPeaks ??
+    getMetadataForPath(path)?.audioPeaks ??
     (metadata as { audioPeaks?: Float32Array[] } | null)?.audioPeaks;
   if (cachedAfterMetadataLoad && cachedAfterMetadataLoad.length > 0) {
     return cachedAfterMetadataLoad;
@@ -129,11 +145,11 @@ async function ensureMediaPeaks(params: {
     path,
     shouldCancel,
     task: async () => {
-      const cached = mediaStore.mediaMetadata[path]?.audioPeaks;
+      const cached = getMetadataForPath(path)?.audioPeaks;
       if (cached && cached.length > 0) return cached;
       if (shouldCancel?.()) return null;
 
-      const file = await projectStore.getFileByPath(path);
+      const file = await fileManager.vfs.getFile(path);
       if (!file || shouldCancel?.()) return null;
 
       try {
@@ -190,7 +206,8 @@ async function buildTimelinePeaks(params: {
         ? clip.sourceDurationUs
         : path
           ? (() => {
-              const metaDurationS = mediaStore.mediaMetadata[path]?.duration;
+              const meta = getMetadataForPath(path);
+              const metaDurationS = meta?.duration;
               return metaDurationS && metaDurationS > 0 ? Math.floor(metaDurationS * 1_000_000) : 0;
             })()
           : 0;

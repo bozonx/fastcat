@@ -543,13 +543,28 @@ export const useMediaStore = defineStore('media', () => {
   }
 
   function setAudioPeaks(projectRelativePath: string, peaks: Float32Array[]) {
-    const metadata = mediaMetadata.value[projectRelativePath];
-    if (metadata) {
-      mediaMetadata.value[projectRelativePath] = {
-        ...metadata,
-        audioPeaks: peaks,
-      };
+    let targetPath = projectRelativePath;
+    let metadata = mediaMetadata.value[targetPath];
+    if (!metadata) {
+      if (projectRelativePath.startsWith('external:')) {
+        const clean = projectRelativePath.slice('external:'.length);
+        if (mediaMetadata.value[clean]) {
+          targetPath = clean;
+          metadata = mediaMetadata.value[clean];
+        }
+      } else {
+        const prefixed = `external:${projectRelativePath}`;
+        if (mediaMetadata.value[prefixed]) {
+          targetPath = prefixed;
+          metadata = mediaMetadata.value[prefixed];
+        }
+      }
     }
+
+    mediaMetadata.value[targetPath] = {
+      ...(metadata || { source: { size: 0, lastModified: 0 }, duration: 0 }),
+      audioPeaks: peaks,
+    };
 
     // Persist with a source fingerprint when we know it, so the blob can be
     // validated on reload and never served for a different file at this path.

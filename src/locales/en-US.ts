@@ -476,7 +476,21 @@ export default {
       "marker": "Marker",
       "text": "Text",
       "title": "Marker",
-      "zoneMarker": "Zone Marker"
+      "zoneMarker": "Zone Marker",
+      "exportAsText": "Export as text",
+      "exportTitle": "Export Markers",
+      "filterColors": "Filter by colors",
+      "selectAll": "Select All / Reset",
+      "layoutFormat": "Layout Format",
+      "timecodeFormat": "Timecode Format",
+      "layoutOptions": {
+        "left": "Time on left",
+        "right": "Time on right"
+      },
+      "timecodeOptions": {
+        "timecode": "Timecode",
+        "hms": "Hours:Minutes:Seconds"
+      }
     },
     "monitor": {
       "audioMute": "Mute",

@@ -476,7 +476,21 @@ export default {
       "marker": "Маркер",
       "text": "Текст",
       "title": "Маркер",
-      "zoneMarker": "Маркер-зона"
+      "zoneMarker": "Маркер-зона",
+      "exportAsText": "Экспорт в текст",
+      "exportTitle": "Экспорт маркеров",
+      "filterColors": "Фильтр по цветам",
+      "selectAll": "Выбрать все / Сбросить",
+      "layoutFormat": "Формат вывода",
+      "timecodeFormat": "Формат времени",
+      "layoutOptions": {
+        "left": "Время слева",
+        "right": "Время справа"
+      },
+      "timecodeOptions": {
+        "timecode": "Таймкод",
+        "hms": "Часы:Минуты:Секунды"
+      }
     },
     "monitor": {
       "audioMute": "Выключить звук",

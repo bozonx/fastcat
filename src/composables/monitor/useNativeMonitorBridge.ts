@@ -13,6 +13,7 @@ import { buildNativeMonitorScene, type NativeMonitorScene } from '~/utils/native
 import {
   isNativeMonitorDisabled,
   markNativeMonitorInitFailure,
+  resetNativeMonitorAvailability,
 } from '~/composables/monitor/native-monitor-availability';
 
 const log = createDevLogger('useNativeMonitorBridge');
@@ -116,17 +117,19 @@ export function useNativeMonitorBridge(): void {
     if (disabledNow || !isNativeMonitorDisabled()) {
       log.warn(message, err);
     }
+    // After a monitor crash give the old winit thread time to exit,
+    // then auto-reset so the next project switch or scene update can retry.
+    if (disabledNow) {
+      setTimeout(() => {
+        log.info('[bridge] auto-resetting native monitor availability after init failure');
+        resetNativeMonitorAvailability();
+      }, 2000);
+    }
   }
 
   async function buildScene(): Promise<NativeMonitorScene> {
     const doc = timelineStore.timelineDoc;
     const previewScale = projectStore.activeMonitor?.previewResolution ?? 1;
-    log.info('[bridge] buildScene', {
-      project: projectStore.currentProjectName,
-      timeline: projectStore.currentTimelinePath,
-      hasDoc: !!doc,
-      trackCount: doc?.tracks?.length ?? 0,
-    });
     if (!doc?.tracks?.length) {
       const fmt = timelineStore.timelineFormat;
       return {
@@ -164,7 +167,6 @@ export function useNativeMonitorBridge(): void {
 
   async function syncScene(): Promise<void> {
     const seq = ++sceneBuildSeq;
-    log.info('[bridge] syncScene called', { seq });
     try {
       if (
         !isNativeMonitorSceneReady({
@@ -176,21 +178,12 @@ export function useNativeMonitorBridge(): void {
         return;
       }
       const scene = await buildScene();
-      log.info('[bridge] syncScene built', {
-        seq,
-        sceneBuildSeq,
-        layers: scene.layers.length,
-        audioLayers: scene.audio_layers.length,
-        disabled: isNativeMonitorDisabled(),
-        sameJson: JSON.stringify(scene) === lastSceneJson,
-      });
       // Более новая сборка обогнала нас — выходим, чтобы не затереть свежую сцену.
       if (seq !== sceneBuildSeq) return;
       if (isNativeMonitorDisabled()) return;
       const json = JSON.stringify(scene);
       if (json === lastSceneJson) return;
       lastSceneJson = json;
-      log.info('[bridge] calling setScene');
       await nativeMonitorIpc.setScene(scene);
     } catch (err) {
       warnMonitorFailure('monitor_set_scene failed', err);
@@ -209,6 +202,18 @@ export function useNativeMonitorBridge(): void {
         .catch((err) => warnMonitorFailure('monitor_set_audio_settings failed', err));
     },
     { immediate: true },
+  );
+
+  // When the project changes, reset the disabled flag so a previously-crashed
+  // monitor can try to re-initialize on the new project.
+  watch(
+    () => projectStore.currentProjectName,
+    () => {
+      if (isNativeMonitorDisabled()) {
+        log.info('[bridge] resetNativeMonitorAvailability on project change');
+        resetNativeMonitorAvailability();
+      }
+    },
   );
 
   // Сцена меняется при правках треков/клипов и формата.
