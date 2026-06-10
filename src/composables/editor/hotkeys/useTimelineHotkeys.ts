@@ -596,7 +596,7 @@ export function useTimelineHotkeys(
     },
 
     'timeline.setSelectionIn': () => {
-      if (!focusStore.canUseTimelineHotkeys) return false;
+      if (!focusStore.canUseTimelineHotkeys && focusStore.effectiveFocus !== 'monitor') return false;
       const currentRange = timelineStore.getSelectionRange();
       const currentUs = timelineStore.currentTime;
 
@@ -621,7 +621,7 @@ export function useTimelineHotkeys(
     },
 
     'timeline.setSelectionOut': () => {
-      if (!focusStore.canUseTimelineHotkeys) return false;
+      if (!focusStore.canUseTimelineHotkeys && focusStore.effectiveFocus !== 'monitor') return false;
       const currentRange = timelineStore.getSelectionRange();
       const currentUs = timelineStore.currentTime;
 
