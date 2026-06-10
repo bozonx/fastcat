@@ -321,14 +321,22 @@ const hasAudio = computed(() => {
             @click="toggleTrimOverlay"
           />
 
-          <!-- 3. Active/disabled -->
+          <!-- 3. Split -->
+          <MobileDrawerToolbarButton
+            icon="i-lucide-scissors"
+            :disabled="isLocked"
+            :label="t('fastcat.timeline.split')"
+            @click="handleSplit"
+          />
+
+          <!-- 4. Active/disabled -->
           <MobileDrawerToolbarButton
             :icon="clip?.disabled ? 'i-heroicons-eye' : 'i-heroicons-eye-slash'"
             :active="clip?.disabled"
             @click="handleToggleDisabled"
           />
 
-          <!-- 4. Mute -->
+          <!-- 5. Mute -->
           <template v-if="hasAudio">
             <MobileDrawerToolbarButton
               :icon="clip?.audioMuted ? 'i-heroicons-speaker-wave' : 'i-heroicons-speaker-x-mark'"
@@ -337,29 +345,21 @@ const hasAudio = computed(() => {
             />
           </template>
 
-          <!-- 5. Locked -->
+          <!-- 6. Locked -->
           <MobileDrawerToolbarButton
             :icon="clip?.locked ? 'i-heroicons-lock-open' : 'i-heroicons-lock-closed'"
             :active="clip?.locked"
             @click="handleToggleLocked"
           />
 
-          <!-- 6. Copy -->
+          <!-- 7. Copy -->
           <MobileDrawerToolbarButton icon="i-heroicons-document-duplicate" @click="handleCopy" />
 
-          <!-- 7. Cut -->
+          <!-- 8. Cut -->
           <MobileDrawerToolbarButton
             icon="i-heroicons-scissors"
             :disabled="isLocked"
             @click="handleCut"
-          />
-
-          <!-- 8. Split -->
-          <MobileDrawerToolbarButton
-            icon="i-lucide-scissors"
-            :disabled="isLocked"
-            :label="t('fastcat.timeline.split')"
-            @click="handleSplit"
           />
 
           <!-- 9. Rename -->
