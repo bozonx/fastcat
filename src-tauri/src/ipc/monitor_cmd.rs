@@ -167,12 +167,10 @@ pub async fn monitor_close(engine: State<'_, VideoEngine>) -> Result<(), String>
     Ok(())
 }
 
-/// Force-drop the current monitor handle and wait briefly so the OS can reclaim
-/// X11 / Wayland connections from a crashed thread before a new EventLoop is built.
+/// Force-drop the current monitor handle.  Drop joins the underlying winit
+/// thread so the OS display connection is fully released before the next spawn.
 #[tauri::command]
 pub async fn monitor_reset(engine: State<'_, VideoEngine>) -> Result<(), String> {
     engine.clear_monitor();
-    // Give the old winit thread time to exit and release its display connection.
-    tokio::time::sleep(std::time::Duration::from_millis(500)).await;
     Ok(())
 }

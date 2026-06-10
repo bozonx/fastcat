@@ -127,12 +127,9 @@ impl Drop for MonitorHandle {
     fn drop(&mut self) {
         let _ = self.proxy.send_event(MonitorCommand::Close);
         if let Some(handle) = self._thread.take() {
-            if handle.is_finished() {
-                let _ = handle.join();
+            if let Err(e) = handle.join() {
+                log::warn!("[monitor] thread panicked on drop: {e:?}");
             }
-            // If the thread is still running, we drop the JoinHandle and
-            // let it become detached. The Close command above tells the event
-            // loop to exit; the thread will clean itself up.
         }
     }
 }
