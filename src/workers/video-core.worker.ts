@@ -134,7 +134,10 @@ const api: Omit<VideoCoreWorkerAPI, 'initCompositor'> & {
 
   async checkWebGpuSupport(): Promise<{ supported: boolean; error: string | null }> {
     if (typeof navigator === 'undefined' || !navigator.gpu) {
-      return { supported: false, error: 'WebGPU API (navigator.gpu) is undefined in Worker context' };
+      return {
+        supported: false,
+        error: 'WebGPU API (navigator.gpu) is undefined in Worker context',
+      };
     }
     try {
       const adapter = await navigator.gpu.requestAdapter();

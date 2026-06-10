@@ -165,10 +165,7 @@ const { extraActions } = useTrackExtraActions({
       />
 
       <!-- 7. Удалить дорожку -->
-      <MobileDrawerToolbarButton
-        icon="i-heroicons-trash"
-        @click="requestDeleteTrack"
-      />
+      <MobileDrawerToolbarButton icon="i-heroicons-trash" @click="requestDeleteTrack" />
     </template>
 
     <div v-if="selectedTrack" class="px-4 pb-8 pt-4 flex flex-col gap-4">

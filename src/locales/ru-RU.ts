@@ -833,6 +833,8 @@ export default {
       "textClipDefaultName": "Текст",
       "textClipDefaultText": "Текст",
       "timelineSettings": "Параметры таймлайна",
+      "trackManager": "Управление дорожками",
+      "noTracks": "Нет дорожек",
       "toggleTrackMute": "Вкл/выкл звук дорожки",
       "toggleTrackSolo": "Соло дорожки",
       "toggleTrackVisibility": "Показать/скрыть дорожку",

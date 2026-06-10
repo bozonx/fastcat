@@ -30,6 +30,7 @@ const wasLastPressLong = ref(false);
 
 const emit = defineEmits<{
   (e: 'open-track-mixer'): void;
+  (e: 'open-track-manager'): void;
   (e: 'open-history'): void;
   (e: 'open-markers'): void;
 }>();
@@ -279,6 +280,14 @@ function handleRippleTrimRight() {
     </MobileDrawerToolbar>
 
     <div class="flex items-center shrink-0 border-l border-ui-border pl-2 ml-1">
+      <UiActionButton
+        icon="lucide:layers"
+        color="neutral"
+        size="sm"
+        :title="t('fastcat.timeline.trackManager')"
+        class="mr-1"
+        @click="emit('open-track-manager')"
+      />
       <UiActionButton
         icon="lucide:sliders"
         color="neutral"

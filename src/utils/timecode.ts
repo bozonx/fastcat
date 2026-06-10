@@ -52,4 +52,3 @@ export function formatHms(us: number): string {
 
   return isNegative ? `-${formatted}` : formatted;
 }
-

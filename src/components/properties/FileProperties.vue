@@ -547,7 +547,10 @@ const hasVisibleSecondaryActions = (actions: any) => {
 
     <template v-if="!mobileTextMode || mediaType !== 'text'">
       <PropertySection
-        v-if="isWorkspaceRootProperties && (!isMobile || hasVisibleSecondaryActions(workspaceRootSecondaryActions))"
+        v-if="
+          isWorkspaceRootProperties &&
+          (!isMobile || hasVisibleSecondaryActions(workspaceRootSecondaryActions))
+        "
         key="actions-workspace-root"
         :title="t('videoEditor.fileManager.actions.title')"
       >
@@ -704,7 +707,12 @@ const hasVisibleSecondaryActions = (actions: any) => {
       </PropertySection>
 
       <PropertySection
-        v-if="!isWorkspaceRootProperties && !hideActions && isVirtualAll && (!isMobile || hasVisibleSecondaryActions(virtualAllSecondaryActions))"
+        v-if="
+          !isWorkspaceRootProperties &&
+          !hideActions &&
+          isVirtualAll &&
+          (!isMobile || hasVisibleSecondaryActions(virtualAllSecondaryActions))
+        "
         :title="t('videoEditor.fileManager.actions.title')"
       >
         <EntryActions
@@ -733,7 +741,12 @@ const hasVisibleSecondaryActions = (actions: any) => {
       </PropertySection>
 
       <PropertySection
-        v-if="!isWorkspaceRootProperties && !hideActions && isPersonalLibrary && (!isMobile || hasVisibleSecondaryActions(personalLibrarySecondaryActions))"
+        v-if="
+          !isWorkspaceRootProperties &&
+          !hideActions &&
+          isPersonalLibrary &&
+          (!isMobile || hasVisibleSecondaryActions(personalLibrarySecondaryActions))
+        "
         :title="t('videoEditor.fileManager.actions.title')"
       >
         <EntryActions
@@ -782,7 +795,12 @@ const hasVisibleSecondaryActions = (actions: any) => {
       </PropertySection>
 
       <PropertySection
-        v-if="!isWorkspaceRootProperties && !hideActions && isBloggerDogProject && (!isMobile || hasVisibleSecondaryActions(projectSecondaryActions))"
+        v-if="
+          !isWorkspaceRootProperties &&
+          !hideActions &&
+          isBloggerDogProject &&
+          (!isMobile || hasVisibleSecondaryActions(projectSecondaryActions))
+        "
         :title="t('videoEditor.fileManager.actions.title')"
       >
         <EntryActions

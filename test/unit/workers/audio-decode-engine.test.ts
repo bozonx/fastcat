@@ -249,7 +249,9 @@ describe('AudioDecodeEngine', () => {
 
     const mockTrack = createMockTrack({ sampleRate: 44100 });
     const mockInput = createMockInput({ duration: 1, track: mockTrack });
-    const engine = new AudioDecodeEngine(createMockDeps({ input: mockInput, samples: singleSample() }));
+    const engine = new AudioDecodeEngine(
+      createMockDeps({ input: mockInput, samples: singleSample() }),
+    );
 
     const request: DecodeRequest = {
       type: 'extract-peaks',

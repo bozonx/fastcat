@@ -45,6 +45,7 @@ import MobileDrawerToolbarButton from './MobileDrawerToolbarButton.vue';
 import MobileTrimToolbar from './MobileTrimToolbar.vue';
 import MobileTimelineSettingsDrawer from './MobileTimelineSettingsDrawer.vue';
 import MobileTrackMixerDrawer from './MobileTrackMixerDrawer.vue';
+import MobileTrackManagerDrawer from './MobileTrackManagerDrawer.vue';
 import MobileHistoryDrawer from './MobileHistoryDrawer.vue';
 import MobileMarkersDrawer from './MobileMarkersDrawer.vue';
 import { useTeleportTarget } from '~/composables/ui/useTeleportTarget';
@@ -218,6 +219,7 @@ watch(
 const lastPointerType = ref('');
 const clickStartX = ref(0);
 const clickStartY = ref(0);
+const isTrackManagerDrawerOpen = ref(false);
 
 const trackHeights = computed(() => {
   const heights: Record<string, number> = {};
@@ -475,6 +477,7 @@ async function onClipAction(payload: TimelineClipActionPayload) {
   >
     <MobileTimelineToolbar
       @open-track-mixer="isTrackMixerDrawerOpen = true"
+      @open-track-manager="isTrackManagerDrawerOpen = true"
       @open-history="isHistoryDrawerOpen = true"
       @open-markers="isMarkersDrawerOpen = true"
     />
@@ -673,6 +676,11 @@ async function onClipAction(payload: TimelineClipActionPayload) {
     <MobileTrackMixerDrawer
       :is-open="isTrackMixerDrawerOpen"
       @close="isTrackMixerDrawerOpen = false"
+    />
+
+    <MobileTrackManagerDrawer
+      :is-open="isTrackManagerDrawerOpen"
+      @close="isTrackManagerDrawerOpen = false"
     />
 
     <MobileHistoryDrawer :is-open="isHistoryDrawerOpen" @close="isHistoryDrawerOpen = false" />

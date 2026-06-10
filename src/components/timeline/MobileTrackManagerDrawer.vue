@@ -1,0 +1,289 @@
+<script setup lang="ts">
+import { computed, ref } from 'vue';
+import { VueDraggable } from 'vue-draggable-plus';
+import { useTimelineStore } from '~/stores/timeline.store';
+import { useWorkspaceStore } from '~/stores/workspace.store';
+import type { TimelineTrack } from '~/timeline/types';
+import UiMobileDrawer from '~/components/ui/UiMobileDrawer.vue';
+import UiConfirmModal from '~/components/ui/UiConfirmModal.vue';
+import UiRenameModal from '~/components/ui/UiRenameModal.vue';
+
+const props = defineProps<{
+  isOpen: boolean;
+}>();
+
+const emit = defineEmits<{
+  (e: 'close'): void;
+}>();
+
+const { t } = useI18n();
+const timelineStore = useTimelineStore();
+const workspaceStore = useWorkspaceStore();
+
+const isOpenLocal = computed({
+  get: () => props.isOpen,
+  set: (val) => {
+    if (!val) emit('close');
+  },
+});
+
+const tracks = computed(() => (timelineStore.timelineDoc?.tracks as TimelineTrack[]) ?? []);
+
+const localTracks = computed({
+  get: () => tracks.value,
+  set: (newTracks) => {
+    timelineStore.reorderTracks(newTracks.map((t) => t.id));
+    timelineStore.requestTimelineSave({ immediate: true });
+  },
+});
+
+// Rename State
+const isRenameOpen = ref(false);
+const trackToRename = ref<TimelineTrack | null>(null);
+
+function openRename(track: TimelineTrack) {
+  trackToRename.value = track;
+  isRenameOpen.value = true;
+}
+
+function handleRename(name: string) {
+  if (trackToRename.value) {
+    const trimmed = name.trim();
+    if (trimmed) {
+      timelineStore.renameTrack(trackToRename.value.id, trimmed);
+    }
+  }
+  isRenameOpen.value = false;
+  trackToRename.value = null;
+}
+
+// Delete State
+const isDeleteConfirmOpen = ref(false);
+const trackToDelete = ref<TimelineTrack | null>(null);
+
+function requestDeleteTrack(track: TimelineTrack) {
+  const skipConfirm = workspaceStore.userSettings.deleteWithoutConfirmation;
+  if (track.items.length === 0 || skipConfirm) {
+    timelineStore.deleteTrack(track.id, { allowNonEmpty: true });
+  } else {
+    trackToDelete.value = track;
+    isDeleteConfirmOpen.value = true;
+  }
+}
+
+function confirmDeleteTrack() {
+  if (trackToDelete.value) {
+    timelineStore.deleteTrack(trackToDelete.value.id, { allowNonEmpty: true });
+    isDeleteConfirmOpen.value = false;
+    trackToDelete.value = null;
+  }
+}
+
+// Quick Actions
+function toggleMute(trackId: string) {
+  timelineStore.toggleTrackAudioMuted(trackId);
+  timelineStore.requestTimelineSave({ immediate: true });
+}
+
+function toggleLock(trackId: string) {
+  const t = tracks.value.find((x) => x.id === trackId);
+  if (t) {
+    timelineStore.updateTrackProperties(trackId, {
+      locked: !t.locked,
+    });
+    timelineStore.requestTimelineSave({ immediate: true });
+  }
+}
+
+function toggleVisibility(trackId: string) {
+  const t = tracks.value.find((x) => x.id === trackId);
+  if (t && t.kind === 'video') {
+    timelineStore.updateTrackProperties(trackId, {
+      videoHidden: !t.videoHidden,
+    });
+    timelineStore.requestTimelineSave({ immediate: true });
+  }
+}
+
+// Add Tracks
+function addVideoTrack() {
+  const videoCount = tracks.value.filter((t) => t.kind === 'video').length;
+  timelineStore.addTrack('video', `Video ${videoCount + 1}`);
+  timelineStore.requestTimelineSave({ immediate: true });
+}
+
+function addAudioTrack() {
+  const audioCount = tracks.value.filter((t) => t.kind === 'audio').length;
+  timelineStore.addTrack('audio', `Audio ${audioCount + 1}`);
+  timelineStore.requestTimelineSave({ immediate: true });
+}
+</script>
+
+<template>
+  <UiMobileDrawer v-model:open="isOpenLocal" :show-close="false" :ui="{ body: 'no-scrollbar' }">
+    <div class="px-4 py-4 flex flex-col h-full overflow-hidden">
+      <!-- Title -->
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="text-sm font-semibold text-ui-text uppercase tracking-wider">
+          {{ t('fastcat.timeline.trackManager') }}
+        </h3>
+        <UButton
+          icon="i-heroicons-x-mark"
+          variant="ghost"
+          color="neutral"
+          size="sm"
+          @click="isOpenLocal = false"
+        />
+      </div>
+
+      <!-- Empty State -->
+      <div v-if="localTracks.length === 0" class="flex-1 flex items-center justify-center py-8">
+        <p class="text-sm text-ui-text-muted">{{ t('fastcat.timeline.noTracks') }}</p>
+      </div>
+
+      <!-- Drag & Drop List -->
+      <div v-else class="flex-1 overflow-y-auto pr-1 no-scrollbar mb-4">
+        <VueDraggable
+          v-model="localTracks"
+          handle=".drag-handle"
+          :animation="150"
+          class="space-y-2"
+        >
+          <div
+            v-for="track in localTracks"
+            :key="track.id"
+            class="flex items-center gap-2 bg-ui-bg-elevated/40 border border-ui-border rounded-xl p-3 transition-colors hover:bg-ui-bg-elevated/60"
+          >
+            <!-- Drag Handle -->
+            <div
+              class="drag-handle p-1 text-ui-text-muted hover:text-ui-text cursor-grab active:cursor-grabbing shrink-0"
+            >
+              <UIcon name="i-heroicons-bars-2" class="w-5 h-5" />
+            </div>
+
+            <!-- Kind Icon -->
+            <div
+              class="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 font-semibold text-xs"
+              :style="{
+                backgroundColor:
+                  track.color && track.color !== '#2a2a2a' ? `${track.color}33` : '#1e293b',
+                color: track.color && track.color !== '#2a2a2a' ? track.color : '#94a3b8',
+              }"
+            >
+              <UIcon
+                :name="
+                  track.kind === 'video' ? 'i-heroicons-video-camera' : 'i-heroicons-musical-note'
+                "
+                class="w-4 h-4"
+              />
+            </div>
+
+            <!-- Track Name (Tap to Rename) -->
+            <span
+              class="flex-1 text-sm font-medium text-ui-text truncate px-1 cursor-pointer hover:underline"
+              @click="openRename(track)"
+            >
+              {{ track.name || track.id }}
+            </span>
+
+            <!-- Actions -->
+            <div class="flex items-center gap-1.5 shrink-0">
+              <!-- Visibility (Video only) -->
+              <UButton
+                v-if="track.kind === 'video'"
+                :icon="track.videoHidden ? 'i-heroicons-eye-slash' : 'i-heroicons-eye'"
+                variant="ghost"
+                color="neutral"
+                size="sm"
+                :class="track.videoHidden ? 'text-error-500' : 'text-ui-text-muted'"
+                @click="toggleVisibility(track.id)"
+              />
+
+              <!-- Mute -->
+              <UButton
+                :icon="track.audioMuted ? 'i-heroicons-speaker-x-mark' : 'i-heroicons-speaker-wave'"
+                variant="ghost"
+                color="neutral"
+                size="sm"
+                :class="track.audioMuted ? 'text-error-500' : 'text-ui-text-muted'"
+                @click="toggleMute(track.id)"
+              />
+
+              <!-- Lock -->
+              <UButton
+                :icon="track.locked ? 'i-heroicons-lock-closed' : 'i-heroicons-lock-open'"
+                variant="ghost"
+                color="neutral"
+                size="sm"
+                :class="track.locked ? 'text-primary-500' : 'text-ui-text-muted'"
+                @click="toggleLock(track.id)"
+              />
+
+              <!-- Delete -->
+              <UButton
+                icon="i-heroicons-trash"
+                variant="ghost"
+                color="neutral"
+                size="sm"
+                class="hover:text-error-500 text-ui-text-muted"
+                @click="requestDeleteTrack(track)"
+              />
+            </div>
+          </div>
+        </VueDraggable>
+      </div>
+
+      <!-- Add Track Buttons -->
+      <div class="flex gap-2 pt-4 border-t border-ui-border/50 shrink-0">
+        <UButton
+          icon="i-heroicons-video-camera"
+          :label="t('fastcat.timeline.addVideoTrack')"
+          variant="soft"
+          color="neutral"
+          size="md"
+          class="flex-1 justify-center py-2.5 rounded-xl text-sm"
+          @click="addVideoTrack"
+        />
+        <UButton
+          icon="i-heroicons-musical-note"
+          :label="t('fastcat.timeline.addAudioTrack')"
+          variant="soft"
+          color="neutral"
+          size="md"
+          class="flex-1 justify-center py-2.5 rounded-xl text-sm"
+          @click="addAudioTrack"
+        />
+      </div>
+    </div>
+
+    <!-- Modals -->
+    <UiConfirmModal
+      v-model:open="isDeleteConfirmOpen"
+      :title="t('fastcat.timeline.deleteTrackTitle')"
+      :description="t('fastcat.timeline.deleteTrackDescription')"
+      color="error"
+      icon="i-heroicons-exclamation-triangle"
+      :confirm-text="t('common.delete')"
+      @confirm="confirmDeleteTrack"
+    />
+
+    <UiRenameModal
+      v-if="trackToRename"
+      :open="isRenameOpen"
+      :current-name="trackToRename.name || ''"
+      :title="t('fastcat.timeline.renameTrack')"
+      @update:open="isRenameOpen = $event"
+      @rename="handleRename"
+    />
+  </UiMobileDrawer>
+</template>
+
+<style scoped>
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+</style>

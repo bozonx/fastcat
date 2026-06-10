@@ -833,6 +833,8 @@ export default {
       "textClipDefaultName": "Text Clip",
       "textClipDefaultText": "Text",
       "timelineSettings": "Timeline Settings",
+      "trackManager": "Track Manager",
+      "noTracks": "No tracks yet",
       "toggleTrackMute": "Toggle track mute",
       "toggleTrackSolo": "Toggle track solo",
       "toggleTrackVisibility": "Toggle track visibility",

@@ -829,7 +829,7 @@ describe('MediaStore', () => {
     mockIsTauriState.value = true;
     mockNativeMediaMetadata.mockResolvedValue({
       duration: 5.0,
-      video: { width: 100, height: 100, fps: 30, codec: 'h264' }
+      video: { width: 100, height: 100, fps: 30, codec: 'h264' },
     });
 
     const mockFile = { size: 100, lastModified: 100, name: 'video.mp4' } as any;

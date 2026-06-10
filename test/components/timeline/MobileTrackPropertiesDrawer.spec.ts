@@ -133,7 +133,8 @@ describe('MobileTrackPropertiesDrawer', () => {
               primary: Boolean,
               label: String,
             },
-            template: '<button :data-primary="primary ? \'true\' : undefined" :data-icon="icon" :data-label="label" />',
+            template:
+              '<button :data-primary="primary ? \'true\' : undefined" :data-icon="icon" :data-label="label" />',
           },
           TrackProperties: { template: '<div />' },
           GenerateCaptionsModal: { template: '<div />' },
@@ -170,7 +171,8 @@ describe('MobileTrackPropertiesDrawer', () => {
               primary: Boolean,
               label: String,
             },
-            template: '<button :data-primary="primary ? \'true\' : undefined" :data-icon="icon" :data-label="label" />',
+            template:
+              '<button :data-primary="primary ? \'true\' : undefined" :data-icon="icon" :data-label="label" />',
           },
           TrackProperties: { template: '<div />' },
           GenerateCaptionsModal: { template: '<div />' },

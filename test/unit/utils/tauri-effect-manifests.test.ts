@@ -1,8 +1,12 @@
 /** @vitest-environment node */
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { getAllVideoEffectManifests, getVideoEffectManifest, initEffects } from '~/effects';
+import {
+  getAllVideoEffectManifests,
+  getVideoEffectManifest,
+  initEffects,
+  buildEffectSpecs,
+} from '~/effects';
 import { getAllTransitionManifests, getTransitionManifest, initTransitions } from '~/transitions';
-import { buildEffectSpecs } from '~/effects';
 
 declare global {
   var __TAURI_INTERNALS__: unknown;

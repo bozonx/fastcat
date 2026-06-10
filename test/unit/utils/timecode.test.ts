@@ -48,4 +48,3 @@ describe('formatHms', () => {
     expect(formatHms(-3661_000_000)).toBe('-01:01:01');
   });
 });
-

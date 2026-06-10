@@ -405,7 +405,7 @@ watch(
     if (newId) {
       requestPeaksExtraction();
     }
-  }
+  },
 );
 
 watch(

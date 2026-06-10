@@ -17,13 +17,13 @@ import { isTauriRuntime } from '~/utils/runtime';
 import { useDraggedFile } from '~/composables/useDraggedFile';
 import { useUploadProgress } from '~/composables/useUploadProgress';
 import { getDevicePixelRatio, dispatchWindowEvent, elementFromPoint } from '~/utils/browser-api';
-const log = createDevLogger('useGlobalDragAndDrop');
 import {
   LazyTauriFile,
   LAZY_FILE_MEDIA_THRESHOLD_BYTES,
   isMediaFile,
 } from '~/stores/workspace/provider/tauri-handle';
 import { getMimeTypeFromFilename } from '~/utils/media-types';
+const log = createDevLogger('useGlobalDragAndDrop');
 
 const GLOBAL_DRAG_LEAVE_HIDE_DELAY_MS = 120;
 

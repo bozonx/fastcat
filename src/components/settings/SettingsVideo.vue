@@ -8,7 +8,10 @@ import {
   type VideoDiagnosticsSnapshot,
   type VideoDiagnosticsStatus,
 } from '~/utils/settings/videoDiagnostics';
-import { broadcastPixiRendererPreference, getPreviewWorkerClient } from '~/utils/video-editor/worker-client';
+import {
+  broadcastPixiRendererPreference,
+  getPreviewWorkerClient,
+} from '~/utils/video-editor/worker-client';
 import { isTauriRuntime } from '~/utils/runtime';
 import { createDevLogger } from '~/utils/dev-logger';
 import UiConfirmModal from '~/components/ui/UiConfirmModal.vue';

@@ -256,7 +256,9 @@ describe('useEntryPreview', () => {
     };
 
     const selectedFsEntry = ref<FsEntry | null>(entry);
-    const getFileByPath = vi.fn().mockResolvedValue(new File([], 'video.mp4', { type: 'video/mp4' }));
+    const getFileByPath = vi
+      .fn()
+      .mockResolvedValue(new File([], 'video.mp4', { type: 'video/mp4' }));
     const mockMetadata = {
       duration: 60,
       audioPeaks: [new Float32Array([0.5, -0.5])],

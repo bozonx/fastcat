@@ -531,7 +531,10 @@ export function createVideoDiagnosticsSnapshot(params: {
   const compositorStatus = compositorReady
     ? webGpuReady
       ? params.workerWebGpuInfo?.supported === false
-        ? buildStatus('Ready for Pixi GPU compositor (WebGL fallback: WebGPU unavailable in Worker)', 'warning')
+        ? buildStatus(
+            'Ready for Pixi GPU compositor (WebGL fallback: WebGPU unavailable in Worker)',
+            'warning',
+          )
         : buildStatus('Ready for Pixi GPU compositor with WebGPU available', 'success')
       : buildStatus('Ready for Pixi GPU compositor using WebGL fallback', 'success')
     : params.webGlInfo.supported === false && params.offscreenWebGlInfo.supported === false
@@ -876,7 +879,9 @@ export async function gatherVideoDiagnostics(
     getAudioEncoderSupport(browser, options.probe),
     getEncodingInfo(navigatorObject, options.probe),
     getVideoCodecDiagnostics(browser, options.probe),
-    options.checkWorkerWebGpu ? options.checkWorkerWebGpu().catch((err) => ({ supported: false, error: String(err) })) : Promise.resolve(null),
+    options.checkWorkerWebGpu
+      ? options.checkWorkerWebGpu().catch((err) => ({ supported: false, error: String(err) }))
+      : Promise.resolve(null),
   ]);
 
   const webGlInfo = getWebGlInfo(options.createCanvas);
