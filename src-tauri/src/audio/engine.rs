@@ -283,21 +283,27 @@ impl NativeAudioEngine {
     /// primed — not currently priming, no audible scene, or reverse/stopped speed —
     /// so the caller's warmup gate never blocks on them.
     pub fn is_primed(&self) -> bool {
-        let (playing, hold, scene_empty, speed, has_decoding_in_flight, pending_ring_clear) = {
+        let (playing, hold, scene_empty, speed, pending_ring_clear) = {
             let state = self.shared.0.lock();
             (
                 state.playing,
                 state.hold_output,
                 state.scene.is_empty(),
                 state.global_speed,
-                !state.decoding_in_flight.is_empty(),
                 state.pending_ring_clear,
             )
         };
         if !playing || !hold || scene_empty || speed <= 0.0 {
             return true;
         }
-        if pending_ring_clear || has_decoding_in_flight {
+        // NOTE: a background precache (`decoding_in_flight`) being in flight does NOT
+        // block priming. The producer fills the ring by STREAMING until the decoded
+        // PCM lands, then swaps to it seamlessly mid-chunk (no reseek) — exactly as
+        // it does during steady-state playback. Gating the start on it made a cold
+        // "load project → press Play" wait the full prebuffer timeout (~3s) for a
+        // large file's precache even though the ring was already full. Only a pending
+        // ring clear (the buffer is about to be wiped) means we are not yet primed.
+        if pending_ring_clear {
             return false;
         }
         self.ring.len() >= self.prebuffer_target_samples()
@@ -348,7 +354,7 @@ impl NativeAudioEngine {
         pts
     }
 
-    pub fn seek(&self, pts_sec: f64, playing: bool) {
+    pub fn seek(&self, pts_sec: f64, playing: bool, explicit: bool) {
         self.restart_finished_producer();
         let pts = pts_sec.max(0.0);
         let mut state = self.shared.0.lock();
@@ -362,7 +368,13 @@ impl NativeAudioEngine {
         // are already playing, staying playing, and the target is essentially where
         // playback already is, treat it as a no-op: do NOT flush or reseek. A real
         // scrub (a genuine position jump) exceeds the tolerance and seeks normally.
-        if playing && state.playing {
+        //
+        // `explicit` user seeks (a click/drag on the playhead, already filtered by
+        // the frontend's expected-position anchor) bypass this guard entirely: with
+        // the coarse `SEEK_IGNORE_SEC` window they would otherwise be swallowed for
+        // sub-1s scrubs, making a nearby click feel ignored while the video clock
+        // snapped back. The guard is now only a backstop for non-explicit echoes.
+        if !explicit && playing && state.playing {
             let current = audible_pts_sec(&state, &self.clock, self.sample_rate);
             if (pts - current).abs() < SEEK_IGNORE_SEC {
                 return;
@@ -403,14 +415,15 @@ impl NativeAudioEngine {
     /// Sets the global transport speed (timeline-time multiplier). `anchor_sec` is
     /// the authoritative master-clock position to continue from (the caller's
     /// `PlaybackClock`, which stays correct across reverse spans where audio is
-    /// silent); `playing` reflects whether the master transport is running.
+    /// silent).
     ///
     /// Forward speeds (>0) varispeed the output (pitch shifts); a value <=0 means
     /// reverse/stopped, where audio is intentionally muted (the producer renders
-    /// nothing). Changing speed while playing re-anchors the mix origin and flushes
-    /// the buffered output (which was mixed at the old rate), exactly like a seek,
-    /// so the new rate starts cleanly.
-    pub fn set_speed(&self, speed: f64, anchor_sec: f64, playing: bool) {
+    /// nothing). When the producer is buffering (`state.playing`, including the
+    /// warmup-priming window) this re-anchors the mix origin and flushes the
+    /// buffered output (mixed at the old rate), exactly like a seek, so the new
+    /// rate starts cleanly.
+    pub fn set_speed(&self, speed: f64, anchor_sec: f64) {
         self.restart_finished_producer();
         let speed = if speed.is_finite() && speed != 0.0 {
             speed
@@ -428,7 +441,14 @@ impl NativeAudioEngine {
         state.producer_pts_sec = current;
         state.seek_serial = state.seek_serial.wrapping_add(1);
 
-        if playing && state.playing {
+        // Flush whenever the producer is actively filling the ring (`state.playing`),
+        // which includes the warmup-priming window where the master clock hasn't
+        // started yet (`playing` arg is false but the ring already holds old-rate
+        // audio). Keying the flush on the caller's `playing` instead left that primed
+        // old-speed audio in the ring, so the first ~800ms after release_output
+        // played at the previous pitch. `reset_frames` / `clock.playing=false` are
+        // harmless no-ops while still held (the output clock isn't armed yet).
+        if state.playing {
             // Discard output mixed at the old rate and re-arm the clock for the new one.
             self.clock.reset_frames();
             state.pending_ring_clear = true;
@@ -635,7 +655,7 @@ mod tests {
         let engine = mock_engine();
         engine.play(10.0);
 
-        engine.seek(25.0, true);
+        engine.seek(25.0, true, false);
 
         let state = engine.shared.0.lock();
         assert!(state.playing);
@@ -653,9 +673,9 @@ mod tests {
         engine.play(10.0);
         let before = seek_serial(&engine);
 
-        // An echo seek to ~the current position must be ignored: no reseek,
-        // no ring flush. seek_serial is the observable proxy for "we reseeked".
-        engine.seek(10.0 + SEEK_IGNORE_SEC / 2.0, true);
+        // A non-explicit echo seek to ~the current position must be ignored: no
+        // reseek, no ring flush. seek_serial is the observable proxy for "we reseeked".
+        engine.seek(10.0 + SEEK_IGNORE_SEC / 2.0, true, false);
         assert_eq!(
             seek_serial(&engine),
             before,
@@ -677,11 +697,35 @@ mod tests {
         let before = seek_serial(&engine);
 
         // 0.7s вперёд — внутри prebuffer window (0.8s), старый порог 0.4s пропускал это.
-        engine.seek(10.0 + 0.7, true);
+        // Non-explicit (echo) seek: must be swallowed.
+        engine.seek(10.0 + 0.7, true, false);
         assert_eq!(
             seek_serial(&engine),
             before,
             "seek within prebuffer window must not flush the ring (was crackle + repeat)"
+        );
+    }
+
+    /// Регрессионный тест для UX-бага: явный пользовательский seek в пределах
+    /// `SEEK_IGNORE_SEC` во время воспроизведения ДОЛЖЕН отрабатывать (не глотаться).
+    /// Иначе клик по таймлайну ближе ~1с ощущался как «не сработал»: аудио игнорило
+    /// seek, а видеоклок откатывался назад по `sync_to_audio_pts`.
+    #[test]
+    fn explicit_seek_within_window_is_honored_during_playback() {
+        let engine = mock_engine();
+        engine.play(10.0);
+        let before = seek_serial(&engine);
+
+        // Small jump well inside SEEK_IGNORE_SEC, but flagged explicit → must seek.
+        engine.seek(10.0 + SEEK_IGNORE_SEC / 2.0, true, true);
+        assert_eq!(
+            seek_serial(&engine),
+            before.wrapping_add(1),
+            "an explicit user seek must reseek even within the echo-guard window"
+        );
+        assert_eq!(
+            engine.shared.0.lock().origin_pts_sec,
+            10.0 + SEEK_IGNORE_SEC / 2.0
         );
     }
 
@@ -692,8 +736,9 @@ mod tests {
         engine.play(10.0);
         let before = seek_serial(&engine);
 
-        // A genuine position jump (beyond the tolerance) must seek normally.
-        engine.seek(25.0, true);
+        // A genuine position jump (beyond the tolerance) must seek normally even
+        // when not flagged explicit (the guard only swallows in-place echoes).
+        engine.seek(25.0, true, false);
         assert_eq!(
             seek_serial(&engine),
             before.wrapping_add(1),
@@ -709,7 +754,7 @@ mod tests {
         let before = seek_serial(&engine);
 
         // Switch to 2× while playing, anchored at 12.0 (master-clock position).
-        engine.set_speed(2.0, 12.0, true);
+        engine.set_speed(2.0, 12.0);
 
         let state = engine.shared.0.lock();
         assert_eq!(state.global_speed, 2.0);
@@ -729,7 +774,7 @@ mod tests {
 
         let initial_resets = engine.shared.0.lock().plugin_host.lock().reset_all_count;
 
-        engine.seek(15.0, true);
+        engine.seek(15.0, true, true);
 
         let after_resets = engine.shared.0.lock().plugin_host.lock().reset_all_count;
         assert_eq!(after_resets, initial_resets + 1);
@@ -740,7 +785,7 @@ mod tests {
         let engine = mock_engine();
         engine.play(10.0);
         // Reverse: audio is intentionally silent, so it is not the master clock.
-        engine.set_speed(-1.0, 10.0, true);
+        engine.set_speed(-1.0, 10.0);
         assert!(
             engine.current_pts().is_none(),
             "reverse playback must report no audible pts"
@@ -752,7 +797,7 @@ mod tests {
     fn set_speed_zero_falls_back_to_one() {
         let engine = mock_engine();
         engine.play(10.0);
-        engine.set_speed(0.0, 10.0, true);
+        engine.set_speed(0.0, 10.0);
         assert_eq!(engine.shared.0.lock().global_speed, 1.0);
     }
 
@@ -764,7 +809,7 @@ mod tests {
 
         // A scrub that pauses (playing=false) must seek even if very close to the
         // current position — the guard only applies to play→play echoes.
-        engine.seek(10.0, false);
+        engine.seek(10.0, false, false);
         assert_eq!(
             seek_serial(&engine),
             before.wrapping_add(1),
@@ -913,7 +958,7 @@ mod tests {
         assert!(engine.is_primed(), "empty scene must report primed");
 
         // Reverse speed → producer renders nothing → primed is vacuously true.
-        engine.set_speed(-1.0, 0.0, true);
+        engine.set_speed(-1.0, 0.0);
         assert!(engine.is_primed(), "reverse speed must report primed");
     }
 
@@ -975,7 +1020,7 @@ mod tests {
         assert!(engine.shared.0.lock().hold_output);
 
         // A real position jump (playing=false, pts differs from origin).
-        engine.seek(5.0, false);
+        engine.seek(5.0, false, true);
         assert!(
             !engine.shared.0.lock().hold_output,
             "seek must clear hold_output"

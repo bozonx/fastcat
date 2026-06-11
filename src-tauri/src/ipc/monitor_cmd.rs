@@ -39,8 +39,20 @@ pub async fn monitor_pause(engine: State<'_, VideoEngine>) -> Result<(), String>
 }
 
 #[tauri::command]
-pub async fn monitor_seek(time_sec: f64, engine: State<'_, VideoEngine>) -> Result<(), String> {
-    send_monitor_cmd(&engine, MonitorCommand::Seek(time_sec))
+pub async fn monitor_seek(
+    time_sec: f64,
+    explicit: Option<bool>,
+    engine: State<'_, VideoEngine>,
+) -> Result<(), String> {
+    send_monitor_cmd(
+        &engine,
+        MonitorCommand::Seek {
+            time_sec,
+            // Default to an explicit user seek when the flag is omitted: a missing
+            // flag means an older/other caller that always meant a real scrub.
+            explicit: explicit.unwrap_or(true),
+        },
+    )
 }
 
 /// Sets the global transport playback speed (timeline-time multiplier). `1.0` is

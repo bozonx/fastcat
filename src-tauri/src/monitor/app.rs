@@ -322,9 +322,9 @@ impl ApplicationHandler<MonitorCommand> for MonitorApp {
                 }
                 self.next_redraw_at = None;
             }
-            MonitorCommand::Seek(t) => {
+            MonitorCommand::Seek { time_sec, explicit } => {
                 if let Some(s) = self.state.as_mut() {
-                    s.seek(t);
+                    s.seek(time_sec, explicit);
                     s.render_current_frame();
                 }
             }
@@ -625,7 +625,10 @@ impl WindowState {
                 if playing {
                     audio.play(pts);
                 } else {
-                    audio.seek(pts, false);
+                    // Reseat the freshly-created engine at the current position. Paused
+                    // (playing=false) seeks bypass the echo guard regardless, so the
+                    // explicit flag is immaterial here; pass true for clarity.
+                    audio.seek(pts, false, true);
                 }
                 Some(audio)
             }
@@ -824,13 +827,12 @@ impl WindowState {
     /// текущую позицию, чтобы переключение было бесшовным. Реверс (<0) и не-1× аудио
     /// обрабатываются ниже по тракту (клок/producer).
     fn set_speed(&mut self, speed: f64) {
-        let playing = self.clock.is_playing();
         self.clock.set_speed(speed);
         // The clock is the authoritative timeline position and stays correct even
         // across reverse spans (where audio is silent), so anchor audio to it.
         let anchor = self.clock.current_pts().max(0.0);
         if let Some(audio) = self.audio.as_ref() {
-            audio.set_speed(speed, anchor, playing);
+            audio.set_speed(speed, anchor);
         }
     }
 
@@ -856,7 +858,7 @@ impl WindowState {
         self.layers.set_playing(false);
     }
 
-    fn seek(&mut self, timeline_sec: f64) {
+    fn seek(&mut self, timeline_sec: f64, explicit: bool) {
         // Seek во время прогрева отменяет отложенный старт: позиция сменилась, пользователь
         // повторит Play от новой точки. Иначе стартовали бы от устаревшего playhead'а.
         if self.pending_play_deadline.is_some() {
@@ -867,7 +869,7 @@ impl WindowState {
         self.clock.seek(t);
         let playing = self.clock.is_playing();
         if let Some(audio) = self.audio.as_ref() {
-            audio.seek(t, playing);
+            audio.seek(t, playing, explicit);
         }
         self.layers.seek(t, playing);
     }
@@ -959,10 +961,12 @@ impl WindowState {
                 }
             }
             MonitorMode::Canvas => {
+                // Build the compositor snapshot once; both the optional native-window
+                // surface and the offscreen canvas readback render the same scene.
+                let scene = self.layers.build_compositor_scene(t);
                 if let Some(native) = self.native_window.as_mut() {
                     let surface_width = native.surface.config.width;
                     let surface_height = native.surface.config.height;
-                    let scene = self.layers.build_compositor_scene(t);
                     if let Err(e) = self.compositor.render_scene_to_surface(
                         &scene,
                         &mut native.surface,
@@ -981,7 +985,6 @@ impl WindowState {
                     return;
                 }
                 let dev_id = self.offscreen_dev_id;
-                let scene = self.layers.build_compositor_scene(t);
                 // NOTE: `render_scene_to_pixels` блокирует event-loop на GPU readback
                 // (~1-5 мс при 1080p). При бюджете 33 мс (30 fps) это приемлемо.
                 // Если понадобится ≥ 60 fps или экспорт — перейти на async-readback:

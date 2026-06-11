@@ -41,7 +41,7 @@ describe('native-monitor-ipc', () => {
     expect(invokeMock.mock.calls).toEqual([
       ['monitor_play'],
       ['monitor_pause'],
-      ['monitor_seek', { timeSec: 2.5 }],
+      ['monitor_seek', { timeSec: 2.5, explicit: true }],
       ['monitor_set_canvas_size', { width: 640, height: 360 }],
       ['monitor_set_mode', { mode: 'canvas' }],
       ['monitor_set_viewport', { x: 1, y: 2, width: 3, height: 4, visible: true }],

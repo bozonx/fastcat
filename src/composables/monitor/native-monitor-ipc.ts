@@ -59,9 +59,13 @@ export const nativeMonitorIpc = {
   pause(): Promise<void> {
     return invoke('monitor_pause');
   },
-  /** Seek by timeline PTS in seconds. */
-  seek(timeSec: number): Promise<void> {
-    return invoke('monitor_seek', { timeSec });
+  /**
+   * Seek by timeline PTS in seconds. `explicit` marks a genuine user scrub
+   * (click/drag on the playhead) that the native echo-guard must never swallow;
+   * pass `false` only for programmatic/possible-echo seeks.
+   */
+  seek(timeSec: number, explicit = true): Promise<void> {
+    return invoke('monitor_seek', { timeSec, explicit });
   },
   /**
    * Global transport playback speed (timeline-time multiplier). `1` is normal,

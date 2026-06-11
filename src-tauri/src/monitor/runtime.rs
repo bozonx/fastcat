@@ -468,6 +468,7 @@ impl LayerRuntimeManager {
                     self.frame_cache_custom_mb,
                     media_size,
                     pump.info.fps,
+                    max_concurrent_video_layers(&self.scene),
                 );
                 let mut rt =
                     VideoLayerRt::new(pump, media_size, source_rotation, cache_budget_bytes);
@@ -879,8 +880,9 @@ fn frame_cache_budget_bytes(
     custom_mb: u32,
     media_size: (u32, u32),
     fps: f64,
+    concurrent_video_layers: usize,
 ) -> usize {
-    match mode {
+    let base = match mode {
         NativeFrameCacheMode::Low => LOW_CACHE_BUDGET_BYTES,
         NativeFrameCacheMode::Balanced => BALANCED_CACHE_BUDGET_BYTES,
         NativeFrameCacheMode::High => HIGH_CACHE_BUDGET_BYTES,
@@ -901,7 +903,41 @@ fn frame_cache_budget_bytes(
                 .saturating_mul(target_frames)
                 .clamp(BALANCED_CACHE_BUDGET_BYTES, AUTO_CACHE_MAX_BYTES)
         }
+    };
+    // Treat the configured budget as a GLOBAL pool split across video layers that
+    // are on screen at the same time, so total decoded-frame memory stays bounded
+    // on multicam timelines (without it, N simultaneous 4K layers could each hold
+    // the full budget → multiple GB). Sequential clips on a track never overlap, so
+    // the divisor is 1 for the common single-clip-at-a-time case (no reduction).
+    // The per-layer `VideoFrameCache` still floors at its own MIN_FRAMES, so each
+    // layer keeps a usable scrub/lookahead window regardless of the split.
+    base / concurrent_video_layers.max(1)
+}
+
+/// Maximum number of video layers whose timeline intervals overlap at any single
+/// instant. This is the right divisor for splitting the frame-cache budget: it is
+/// 1 for clips laid out sequentially (only one decodes at a time) and rises only
+/// for genuine multicam / transition overlaps. Computed with an interval sweep.
+fn max_concurrent_video_layers(scene: &[SceneLayer]) -> usize {
+    let mut events: Vec<(f64, i32)> = Vec::new();
+    for layer in scene.iter().filter(|l| l.kind == LayerKind::Video) {
+        events.push((layer.timeline_start_sec, 1));
+        events.push((layer.timeline_end_sec, -1));
     }
+    // At an equal timestamp, process ends (-1) before starts (+1): a clip ending
+    // exactly where the next begins does not count as an overlap.
+    events.sort_by(|a, b| {
+        a.0.partial_cmp(&b.0)
+            .unwrap_or(std::cmp::Ordering::Equal)
+            .then(a.1.cmp(&b.1))
+    });
+    let mut current = 0i32;
+    let mut max = 0i32;
+    for (_, delta) in events {
+        current += delta;
+        max = max.max(current);
+    }
+    (max.max(1)) as usize
 }
 
 /// Целевое разрешение растеризации SVG: длинная сторона сцены × preview_scale.
@@ -1018,6 +1054,60 @@ mod tests {
         let resolved = layer_with_auto_source_rotation(&layer, 90);
 
         assert_eq!(resolved.source_orientation.as_deref(), Some("0"));
+    }
+
+    #[test]
+    fn max_concurrent_video_layers_counts_temporal_overlap() {
+        use super::max_concurrent_video_layers;
+
+        // Sequential clips on a track never overlap → divisor 1 (no cache reduction).
+        let sequential = vec![
+            video_layer_span("a", 0.0, 5.0),
+            video_layer_span("b", 5.0, 10.0),
+            video_layer_span("c", 10.0, 15.0),
+        ];
+        assert_eq!(max_concurrent_video_layers(&sequential), 1);
+
+        // Three genuinely overlapping (multicam) clips → divisor 3.
+        let multicam = vec![
+            video_layer_span("a", 0.0, 10.0),
+            video_layer_span("b", 2.0, 12.0),
+            video_layer_span("c", 4.0, 8.0),
+        ];
+        assert_eq!(max_concurrent_video_layers(&multicam), 3);
+
+        // Empty / no-video scene still yields at least 1 (never divides by zero).
+        assert_eq!(max_concurrent_video_layers(&[]), 1);
+    }
+
+    #[test]
+    fn frame_cache_budget_splits_across_concurrent_layers() {
+        use super::frame_cache_budget_bytes;
+        use crate::monitor::scene::NativeFrameCacheMode;
+
+        let one = frame_cache_budget_bytes(NativeFrameCacheMode::Balanced, 0, (1920, 1080), 30.0, 1);
+        let three =
+            frame_cache_budget_bytes(NativeFrameCacheMode::Balanced, 0, (1920, 1080), 30.0, 3);
+        assert_eq!(three, one / 3, "budget must be split across concurrent layers");
+        // A zero count must not divide by zero.
+        let zero =
+            frame_cache_budget_bytes(NativeFrameCacheMode::Balanced, 0, (1920, 1080), 30.0, 0);
+        assert_eq!(zero, one);
+    }
+
+    fn video_layer_span(id: &str, start: f64, end: f64) -> SceneLayer {
+        SceneLayer {
+            timeline_start_sec: start,
+            timeline_end_sec: end,
+            ..test_video_layer_with_id(id)
+        }
+    }
+
+    fn test_video_layer_with_id(id: &str) -> SceneLayer {
+        SceneLayer {
+            id: id.into(),
+            ..test_video_layer(None)
+        }
     }
 
     fn test_video_layer(source_orientation: Option<&str>) -> SceneLayer {

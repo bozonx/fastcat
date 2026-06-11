@@ -210,10 +210,28 @@ pub(crate) fn producer_loop(
                         state.global_speed,
                     ));
                 }
-                // Short 1 ms sleep instead of 50 ms: the producer must wake quickly
-                // when the ring drops below the prebuffer limit to avoid underruns.
-                let wait_res = shared.1.wait_for(&mut state, Duration::from_millis(1));
-                if wait_res.timed_out()
+                // Poll cadence. While the producer must refill the ring (playing) or
+                // play out a scrub snippet, wake every 1 ms: the cpal callback drains
+                // the ring WITHOUT notifying us, so we have to notice it dropping below
+                // the prebuffer limit promptly or we underrun. When idle (paused, no
+                // scrub) there is nothing to refill — a 1 ms timeout there just burned
+                // ~1000 wakeups/sec for nothing; wait 50 ms instead and rely on
+                // `notify_all` (every state change calls it) to wake us immediately on
+                // play/seek/scrub. Cuts idle wakeups ~50× with no latency cost to
+                // playback (which keeps the 1 ms cadence).
+                let poll = if state.playing || scrub_end_frame.is_some() {
+                    Duration::from_millis(1)
+                } else {
+                    Duration::from_millis(50)
+                };
+                let wait_res = shared.1.wait_for(&mut state, poll);
+                // Leave the wait loop (to let the outer loop service scrub previews /
+                // re-evaluate) on a timeout OR when a scrub request/cancel just
+                // arrived via `notify_all` — otherwise an idle producer would re-sleep
+                // for another full poll before noticing the scrub, adding up to 50 ms
+                // of latency to the start of a scrub snippet.
+                let scrub_pending = state.scrub_request.is_some() || state.scrub_cancel;
+                if (wait_res.timed_out() || scrub_pending)
                     && (!speed_positive
                         || !state.playing
                         || state.scene.is_empty()
