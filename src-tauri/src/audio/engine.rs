@@ -283,7 +283,7 @@ impl NativeAudioEngine {
     /// primed — not currently priming, no audible scene, or reverse/stopped speed —
     /// so the caller's warmup gate never blocks on them.
     pub fn is_primed(&self) -> bool {
-        let (playing, hold, scene_empty, speed, has_decoding_in_flight) = {
+        let (playing, hold, scene_empty, speed, has_decoding_in_flight, pending_ring_clear) = {
             let state = self.shared.0.lock();
             (
                 state.playing,
@@ -291,12 +291,13 @@ impl NativeAudioEngine {
                 state.scene.is_empty(),
                 state.global_speed,
                 !state.decoding_in_flight.is_empty(),
+                state.pending_ring_clear,
             )
         };
         if !playing || !hold || scene_empty || speed <= 0.0 {
             return true;
         }
-        if has_decoding_in_flight {
+        if pending_ring_clear || has_decoding_in_flight {
             return false;
         }
         self.ring.len() >= self.prebuffer_target_samples()
@@ -932,6 +933,26 @@ mod tests {
         // and SPSC rings have exactly one writer. Filling from the test thread races
         // with the producer, corrupting ring state. The "ring full → primed" path
         // is covered by the integration of producer + engine in real playback.)
+    }
+
+    #[test]
+    fn is_primed_is_false_when_pending_ring_clear() {
+        let engine = mock_engine();
+        let l = layer("l1", "/tmp/a.wav", 0.0, 10.0, 1.0);
+        engine.set_scene(&[l], &[], 1.0);
+        
+        // Мануально ставим pending_ring_clear в true, как при старте
+        {
+            let mut state = engine.shared.0.lock();
+            state.playing = true;
+            state.hold_output = true;
+            state.pending_ring_clear = true;
+        }
+        
+        assert!(
+            !engine.is_primed(),
+            "primed must be false when pending_ring_clear is true, regardless of ring fill"
+        );
     }
 
     #[test]

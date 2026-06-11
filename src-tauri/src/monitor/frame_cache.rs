@@ -111,6 +111,31 @@ impl VideoFrameCache {
         }
     }
 
+    /// Кадр с наибольшим PTS ≤ target, а если такого нет — первый кадр в интервале
+    /// (target, target + max_lead_sec]. Позволяет показывать ближайший кадр на паузе,
+    /// даже если он лежит чуть-чуть в будущем из-за неточного seek/округления PTS.
+    pub fn frame_le_with_lead(
+        &mut self,
+        target_pts: f64,
+        max_lead_sec: f64,
+    ) -> Option<DecodedVideoFrame> {
+        let key = self.index_of(target_pts);
+        self.last_request = key;
+        
+        // Сначала ищем кадр с PTS ≤ target_pts (полноценный floor)
+        if let Some((_, f)) = self.frames.range(..=key).next_back() {
+            return Some(f.clone());
+        }
+
+        // Если не нашли, ищем первый кадр в пределах max_lead_sec
+        let lead_key = self.index_of(target_pts + max_lead_sec);
+        if let Some((_, f)) = self.frames.range(key..=lead_key).next() {
+            return Some(f.clone());
+        }
+
+        None
+    }
+
     /// Есть ли в кеше кадр в пределах `tolerance_frames` от target (для fast-path seek).
     pub fn has_near(&mut self, target_pts: f64, tolerance_frames: i64) -> bool {
         let key = self.index_of(target_pts);
@@ -265,6 +290,27 @@ mod tests {
             Some(1.0)
         );
         assert_eq!(c.frame_le_with_max_lag(1.5, 0.1).map(|f| f.pts_sec), None);
+    }
+
+    #[test]
+    fn frame_le_with_lead_allows_small_future_frames() {
+        let mut c = cache();
+        // У нас есть только кадр в будущем (1.001)
+        c.insert(frame(1.001));
+
+        // Ищем на позиции 1.000
+        // Без lead - None
+        assert_eq!(c.frame_le(1.000).map(|f| f.pts_sec), None);
+
+        // С lead в 0.033 секунды (1 кадр при 30fps) - должен найти 1.001
+        assert_eq!(c.frame_le_with_lead(1.000, 0.033).map(|f| f.pts_sec), Some(1.001));
+
+        // Слишком маленький lead (например, 0.0001) - не найдет
+        assert_eq!(c.frame_le_with_lead(1.000, 0.0001).map(|f| f.pts_sec), None);
+
+        // Если есть и прошедший, и будущий кадр, то приоритет прошедшему (floor)
+        c.insert(frame(0.999));
+        assert_eq!(c.frame_le_with_lead(1.000, 0.033).map(|f| f.pts_sec), Some(0.999));
     }
 
     #[test]

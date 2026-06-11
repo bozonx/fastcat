@@ -312,10 +312,17 @@ impl VideoLayerRt {
     }
 
     /// Picks the displayed frame: nearest with PTS ≤ target from cache (if any).
-    pub fn update_display(&mut self, target_clip_local: f64, max_lag_sec: Option<f64>) -> bool {
-        let frame = match max_lag_sec {
-            Some(max_lag) => self.cache.frame_le_with_max_lag(target_clip_local, max_lag),
-            None => self.cache.frame_le(target_clip_local),
+    /// If `max_lead_sec` is provided, allows picking a frame slightly ahead of target.
+    pub fn update_display(
+        &mut self,
+        target_clip_local: f64,
+        max_lag_sec: Option<f64>,
+        max_lead_sec: Option<f64>,
+    ) -> bool {
+        let frame = match (max_lag_sec, max_lead_sec) {
+            (_, Some(lead)) => self.cache.frame_le_with_lead(target_clip_local, lead),
+            (Some(max_lag), None) => self.cache.frame_le_with_max_lag(target_clip_local, max_lag),
+            (None, None) => self.cache.frame_le(target_clip_local),
         };
         let frame = frame.or_else(|| {
             if !self.cache.is_disabled() {
@@ -324,6 +331,11 @@ impl VideoLayerRt {
 
             let latest = self.uncached_latest.as_ref()?;
             if latest.pts_sec > target_clip_local {
+                if let Some(lead) = max_lead_sec {
+                    if latest.pts_sec - target_clip_local <= lead.max(0.0) {
+                        return Some(latest.clone());
+                    }
+                }
                 return None;
             }
             if let Some(max_lag) = max_lag_sec {

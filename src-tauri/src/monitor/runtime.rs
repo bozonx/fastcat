@@ -641,10 +641,10 @@ impl LayerRuntimeManager {
 
                 // Сначала пробуем кадр в окне синка (balanced/strict). Smooth не имеет
                 // конечного окна и всегда показывает свежайший доступный кадр <= target.
-                let shown_in_window = rt.update_display(clip_local, max_lag_sec);
+                let shown_in_window = rt.update_display(clip_local, max_lag_sec, None);
                 let shown_any = shown_in_window
                     || (allows_stale_video_fallback(self.preview_sync_mode)
-                        && rt.update_display(clip_local, None));
+                        && rt.update_display(clip_local, None, None));
 
                 if playing {
                     if !shown_any {
@@ -707,7 +707,8 @@ impl LayerRuntimeManager {
                 // Всё равно прогреваем вперёд: даже если текущий кадр уже в кеше,
                 // декодер мог стоять на другом месте и при Play форвард-буфер пустой.
                 if !playing && rt.has_cached_near(clip_local, 1) {
-                    rt.update_display(clip_local, None);
+                    let lead = Some(1.0 / rt.pump.info.fps.max(1.0));
+                    rt.update_display(clip_local, None, lead);
                     rt.request_prebuffer(PREROLL_LOOKAHEAD_SEC);
                     continue;
                 }
@@ -728,6 +729,7 @@ impl LayerRuntimeManager {
                 if !playing {
                     rt.request_prebuffer(PREROLL_LOOKAHEAD_SEC);
                 }
+                let lead = if playing { None } else { Some(1.0 / rt.pump.info.fps.max(1.0)) };
                 rt.update_display(
                     clip_local,
                     if playing {
@@ -735,6 +737,7 @@ impl LayerRuntimeManager {
                     } else {
                         None
                     },
+                    lead,
                 );
             }
         }
@@ -798,7 +801,8 @@ impl LayerRuntimeManager {
             let clip_local = layer.source_pts_at(t);
             if let Some(LayerRuntime::Video(rt)) = self.runtimes.get_mut(&layer.id) {
                 rt.pull_into_cache();
-                rt.update_display(clip_local, None);
+                let lead = Some(1.0 / rt.pump.info.fps.max(1.0));
+                rt.update_display(clip_local, None, lead);
             }
         }
     }
