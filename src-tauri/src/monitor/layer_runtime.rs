@@ -41,6 +41,10 @@ const PREROLL_BUDGET_BYTES: usize = 64 * 1024 * 1024;
 pub(super) const MIN_PREROLL_FRAMES: u32 = 2;
 /// Absolute frame cap for warm-up regardless of resolution (small sources).
 const MAX_PREROLL_FRAMES: u32 = 8;
+/// How far ahead (in seconds) to request pre-decoding during paused warm-up.
+/// Used by `preroll_frame_count` to convert to a frame count and by
+/// `expected_preroll_duration` to compute the actual ready threshold.
+pub(super) const PREROLL_LOOKAHEAD_SEC: f64 = 0.2;
 
 // ---------------------------------------------------------------------------
 // Background loading results
@@ -197,17 +201,40 @@ impl VideoLayerRt {
         }
     }
 
-    /// Warms the cache while paused: pre-decodes ~`lookahead_sec` of frames ahead of
+    /// Warms the cache while paused: pre-decodes ~`PREROLL_LOOKAHEAD_SEC` of frames ahead of
     /// the current playhead so a later Play does not freeze on the first 4K GOP. The
     /// frame count is capped both by a byte budget (`PREROLL_BUDGET_BYTES`) and an
     /// absolute frame cap (`MAX_PREROLL_FRAMES`). The result is always at least
     /// `MIN_PREROLL_FRAMES` so even a full-resolution 4K source prewarms past the
     /// keyframe into the actual GOP before Play.
-    pub fn request_prebuffer(&self, lookahead_sec: f64) {
-        let frames = self.preroll_frame_count(lookahead_sec);
-        if let Err(e) = self.pump.prebuffer(frames) {
+    ///
+    /// `keep_preseek_frames` is always `true` for paused warm-up: this causes the
+    /// decoder to emit intra-GOP frames that lie *before* the seek target so that
+    /// the `VideoFrameCache` is filled with the whole decoded GOP. Backward scrubbing
+    /// within the same GOP is then served from cache without a re-seek.
+    pub fn request_prebuffer(&self) {
+        let frames = self.preroll_frame_count(PREROLL_LOOKAHEAD_SEC);
+        if let Err(e) = self.pump.prebuffer(frames, true) {
             log::error!("[monitor] prebuffer request: {e:?}");
         }
+    }
+
+    /// Expected warm-up duration in seconds, accounting for the per-layer
+    /// memory budget. Unlike the constant `PREROLL_LOOKAHEAD_SEC`, this
+    /// value reflects the *actual* number of frames the decoder was asked to
+    /// produce — which may be smaller for 4K sources where the budget only
+    /// allows `MIN_PREROLL_FRAMES` frames.
+    ///
+    /// Used by `active_videos_ready` as the readiness threshold so that a 4K
+    /// source (limited to 2 preroll frames) never has to wait for the full
+    /// 0.2 s of frames that the budget cannot hold anyway.
+    pub fn expected_preroll_duration(&self) -> f64 {
+        let fps = self.pump.info.fps.max(1.0);
+        let frames = self.preroll_frame_count(PREROLL_LOOKAHEAD_SEC);
+        // Subtract half a frame as a PTS tolerance so the readiness check
+        // triggers as soon as the last requested frame is actually decoded,
+        // not only when the *next* hypothetical frame would be present.
+        (frames as f64 - 0.5) / fps
     }
 
     /// Bounded number of warm-up frames: `ceil(lookahead * fps) + 1`, clamped by the
@@ -549,7 +576,7 @@ mod tests {
     fn request_prebuffer_does_not_panic_on_cache_hit_seek() {
         let rt = fixture_video_rt();
         // Вызов без паники — базовый контракт.
-        rt.request_prebuffer(0.2);
+        rt.request_prebuffer();
         // preroll_frame_count должен вернуть минимум MIN_PREROLL_FRAMES
         assert!(rt.preroll_frame_count(0.2) >= MIN_PREROLL_FRAMES);
     }
@@ -564,5 +591,61 @@ mod tests {
             !rt.has_buffered_through(0.5),
             "empty cache must report not buffered through"
         );
+    }
+
+    #[test]
+    fn expected_preroll_duration_matches_memory_budget() {
+        let rt = fixture_video_rt();
+        // В нормальном случае duration = (frames - 0.5) / fps
+        let fps = rt.pump.info.fps.max(1.0);
+        let normal_frames = rt.preroll_frame_count(PREROLL_LOOKAHEAD_SEC);
+        let expected_normal = (normal_frames as f64 - 0.5) / fps;
+        assert!((rt.expected_preroll_duration() - expected_normal).abs() < 1e-9);
+
+        // В случае огромных кадров, preroll_frame_count должен упасть до MIN_PREROLL_FRAMES
+        let mut rt_big = fixture_video_rt();
+        rt_big.media_size = (7680, 4320); // 8K
+        let big_frames = rt_big.preroll_frame_count(PREROLL_LOOKAHEAD_SEC);
+        assert_eq!(big_frames, MIN_PREROLL_FRAMES);
+        let expected_big = (MIN_PREROLL_FRAMES as f64 - 0.5) / fps;
+        assert!((rt_big.expected_preroll_duration() - expected_big).abs() < 1e-9);
+    }
+
+    #[test]
+    fn has_buffered_through_near_eof_returns_true_immediately() {
+        let mut rt = fixture_video_rt();
+        
+        let video_duration = rt.pump.info.duration_sec; // 1.0s
+        let fps = rt.pump.info.fps.max(1.0); // 30.0
+        let half_frame = 0.5 / fps;
+        let lookahead = rt.expected_preroll_duration();
+
+        // Помещаем в кэш последний кадр (на самом eof).
+        fn cached(pts: f64) -> DecodedVideoFrame {
+            DecodedVideoFrame {
+                pts_sec: pts,
+                image: None,
+                texture: None,
+            }
+        }
+        rt.cache.insert(cached(video_duration - half_frame));
+
+        // Playhead находится близко к eof, например в video_duration - 0.05 (0.95s).
+        let clip_local = video_duration - 0.05;
+        
+        // С EOF-защитой (как в runtime.rs):
+        let target = (clip_local + lookahead)
+            .min(video_duration - half_frame)
+            .max(clip_local);
+
+        // Убеждаемся, что target зажат до video_duration - half_frame
+        assert_eq!(target, video_duration - half_frame);
+
+        // И теперь has_buffered_through(target) должен вернуть true немедленно
+        assert!(rt.has_buffered_through(target));
+
+        // А без EOF-защиты (где target был бы clip_local + lookahead = 0.95 + lookahead > 1.0)
+        let target_no_eof_protection = clip_local + lookahead;
+        assert!(!rt.has_buffered_through(target_no_eof_protection));
     }
 }

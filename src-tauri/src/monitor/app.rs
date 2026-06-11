@@ -34,16 +34,11 @@ const DEFAULT_TITLE: &str = "FastCat Monitor";
 const EVT_TIME: &str = "monitor:time";
 const EVT_ENDED: &str = "monitor:ended";
 
-/// Прогрев декодеров перед стартом воспроизведения: ждём, пока активные видеослои
-/// декодируют кадр на столько секунд впереди playhead'а. Так 4К не фризит на старте,
-/// пока ffmpeg декодит GOP от ключевого кадра до playhead'а — прогрев идёт «под паузой»
-/// на правильном стоп-кадре, движение начинается уже синхронным.
-const PREBUFFER_LOOKAHEAD_SEC: f64 = 0.12;
 /// Жёсткий потолок ожидания прогрева. Если декодер не успел (очень тяжёлый источник,
 /// ошибка открытия, медленный диск/сеть) — стартуем как есть, чтобы Play никогда не
-/// зависал. 1.5с не хватало на холодный старт с медленного диска: видео таймаутилось
-/// раньше декодера → черный экран на старте + рассинхрон с аудио. 3.0с дают запас
-/// для нестандартных путей и тяжёлых GOP без риска зависания Play.
+/// зависал. Реальные сцены проходят проверку раньше: порог готовности для каждого
+/// видеослоя рассчитывается динамически в `active_videos_ready` через
+/// `expected_preroll_duration()` с учётом лимита памяти на кадры.
 const PREBUFFER_TIMEOUT: Duration = Duration::from_millis(3000);
 /// Polling cadence while warming up before playback. Video readiness is normally
 /// driven by `VideoFrameReady`/`BgReady` events, but audio-only scenes (or audio
@@ -799,7 +794,7 @@ impl WindowState {
             return false;
         };
         let t = self.clock.current_pts();
-        let video_ready = self.layers.active_videos_ready(t, PREBUFFER_LOOKAHEAD_SEC);
+        let video_ready = self.layers.active_videos_ready(t);
         // Audio warmup runs in parallel: don't start the master clock until the ring
         // is primed too, otherwise the cold producer underruns on the first chunks
         // (crackle + resync skip = sped-up audio). `is_primed` is true when there is

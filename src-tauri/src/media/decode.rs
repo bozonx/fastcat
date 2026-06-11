@@ -137,6 +137,18 @@ pub trait VideoDecoder {
     fn next_frame_for_gpu(&mut self) -> Result<Option<VideoFrame>> {
         self.next_frame()
     }
+    /// Like `next_frame`, but when a seek is active, intra-GOP frames that
+    /// would normally be silently skipped are emitted **before** the seek
+    /// target. Use during paused warm-up to opportunistically fill the
+    /// `VideoFrameCache` with GOP-interior frames so backward scrubbing
+    /// within the same GOP is served from cache instead of triggering a
+    /// re-seek + re-decode.
+    fn next_frame_keep_preseek(&mut self) -> Result<Option<VideoFrame>> {
+        self.next_frame()
+    }
+    fn next_frame_keep_preseek_for_gpu(&mut self) -> Result<Option<VideoFrame>> {
+        self.next_frame_for_gpu()
+    }
 }
 
 static FFMPEG_INIT: OnceLock<Result<(), String>> = OnceLock::new();
@@ -450,17 +462,35 @@ impl FfmpegNextDecoder {
         })
     }
 
-    fn next_frame_with_mode(&mut self, prefer_yuv: bool) -> Result<Option<VideoFrame>> {
+    /// Core decode loop.
+    ///
+    /// `prefer_yuv` — pass YUV planes instead of scaling to RGBA when the GPU pipeline is active.
+    /// `keep_preseek` — when `true`, intra-GOP frames that are chronologically *before* the active
+    ///   seek target are returned to the caller instead of being silently discarded. This lets the
+    ///   warm-up path opportunistically cache GOP-interior frames (backward-scrub without re-seek).
+    fn next_frame_with_mode(
+        &mut self,
+        prefer_yuv: bool,
+        keep_preseek: bool,
+    ) -> Result<Option<VideoFrame>> {
         loop {
             let mut decoded = ffmpeg::util::frame::Video::empty();
             match self.decoder.receive_frame(&mut decoded) {
                 Ok(()) => {
-                    // Frame-accurate seek: after jumping to the key frame, skip frames that
-                    // lag behind the target by more than half a frame, avoiding wasted CPU on
-                    // scaling them to RGBA.
+                    // Frame-accurate seek: after jumping to the key frame, skip (or optionally
+                    // keep) frames that lag behind the target by more than half a frame.
                     if let Some(target) = self.seek_target {
                         let tolerance = 0.5 / self.effective_fps();
                         if self.frame_pts_sec(&decoded) < target - tolerance {
+                            if keep_preseek {
+                                // Emit this pre-seek frame so the caller can cache it —
+                                // do NOT clear seek_target yet; we haven't reached target.
+                                return if prefer_yuv {
+                                    self.decode_frame_for_gpu(&mut decoded).map(Some)
+                                } else {
+                                    self.decode_frame(&mut decoded).map(Some)
+                                };
+                            }
                             continue;
                         }
                         self.seek_target = None;
@@ -532,11 +562,19 @@ impl VideoDecoder for FfmpegNextDecoder {
     }
 
     fn next_frame(&mut self) -> Result<Option<VideoFrame>> {
-        self.next_frame_with_mode(false)
+        self.next_frame_with_mode(false, false)
     }
 
     fn next_frame_for_gpu(&mut self) -> Result<Option<VideoFrame>> {
-        self.next_frame_with_mode(true)
+        self.next_frame_with_mode(true, false)
+    }
+
+    fn next_frame_keep_preseek(&mut self) -> Result<Option<VideoFrame>> {
+        self.next_frame_with_mode(false, true)
+    }
+
+    fn next_frame_keep_preseek_for_gpu(&mut self) -> Result<Option<VideoFrame>> {
+        self.next_frame_with_mode(true, true)
     }
 }
 
@@ -1098,6 +1136,41 @@ mod tests {
             (frame.pts_sec - target).abs() <= 0.5 / fps + 1e-6,
             "seek not frame-accurate: target={target}, got pts={}",
             frame.pts_sec
+        );
+    }
+
+    #[test]
+    fn ffmpeg_next_decoder_seek_keep_preseek_emits_preseek_frames() {
+        let fixture = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .parent()
+            .unwrap()
+            .join("test/fixtures/media/sample-1s-720p.mp4");
+        let mut decoder = FfmpegNextDecoder::open(&fixture, None, HwAccelMode::None, None).unwrap();
+
+        let target = 0.5;
+        decoder.seek(target).unwrap();
+
+        // В режиме keep_preseek мы должны получить кадры ДО target (начиная с keyframe на 0.0)
+        let mut frames = Vec::new();
+        while let Some(frame) = decoder.next_frame_keep_preseek().unwrap() {
+            frames.push(frame);
+            // Прервем, если дошли до target (чтобы не декодировать весь файл до конца)
+            if decoder.seek_target.is_none() {
+                break;
+            }
+        }
+
+        // Мы должны получить несколько кадров
+        assert!(frames.len() > 1, "expected multiple preseek frames, got {}", frames.len());
+        // Первый кадр должен быть около 0.0 (ключевой кадр)
+        assert!(frames[0].pts_sec < 0.1, "first frame should be keyframe, got {}", frames[0].pts_sec);
+        // Последний кадр должен быть близок к target
+        let last_pts = frames.last().unwrap().pts_sec;
+        let fps = decoder.effective_fps();
+        assert!(
+            (last_pts - target).abs() <= 0.5 / fps + 1e-6,
+            "last frame not near target: target={target}, got pts={}",
+            last_pts
         );
     }
 

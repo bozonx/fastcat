@@ -66,8 +66,13 @@ enum DecoderCmd {
     /// waiting for a 4K keyframe→target decode. `frames` is a hard cap (memory
     /// safeguard): a pathological huge-GOP / keyframe-less source can never push
     /// more than this ahead.
+    ///
+    /// When `keep_preseek_frames` is `true`, intra-GOP frames that come *before*
+    /// the seek target are also emitted (opportunistic caching — backward scrub
+    /// within the same GOP will be served from cache).
     Prebuffer {
         frames: u32,
+        keep_preseek_frames: bool,
     },
     Seek {
         generation: u64,
@@ -170,12 +175,20 @@ impl DecodePump {
     /// frames forward from its current position and emit them, then park. Bounded
     /// by `frames` (hard memory cap) and the queue capacity, so it is safe even on
     /// huge-GOP / keyframe-less sources. No-op if `frames == 0`.
-    pub fn prebuffer(&self, frames: u32) -> Result<()> {
+    ///
+    /// `keep_preseek_frames` — when `true`, intra-GOP frames that lie chronologically
+    /// *before* the seek target are also emitted and cached. This fills the
+    /// `VideoFrameCache` with the whole decoded GOP so backward scrubbing within
+    /// the same GOP doesn't trigger a re-seek.
+    pub fn prebuffer(&self, frames: u32, keep_preseek_frames: bool) -> Result<()> {
         if frames == 0 {
             return Ok(());
         }
         self.cmd_tx
-            .send(DecoderCmd::Prebuffer { frames })
+            .send(DecoderCmd::Prebuffer {
+                frames,
+                keep_preseek_frames,
+            })
             .map_err(|_| anyhow!("decoder thread is gone"))
     }
 
@@ -240,6 +253,8 @@ fn run_decoder_loop(args: DecoderLoopArgs) {
     // decoder keeps decoding forward instead of parking after the first frame. Hard
     // cap on warm-up memory (see `DecoderCmd::Prebuffer`).
     let mut preroll_remaining: u32 = 0;
+    // Whether the active Prebuffer should emit pre-seek frames (opportunistic caching).
+    let mut preroll_keep_preseek: bool = false;
     let mut current_gen = gen.load(Ordering::SeqCst);
     let mut at_eof = false;
     let mut prefer_yuv = device.is_some() && queue.is_some();
@@ -248,7 +263,7 @@ fn run_decoder_loop(args: DecoderLoopArgs) {
     loop {
         // 1) Обработать все накопившиеся команды.
         let mut latest_seek = None;
-        let mut pending_preroll: Option<u32> = None;
+        let mut pending_preroll: Option<(u32, bool)> = None;
         let mut stop = false;
 
         loop {
@@ -259,8 +274,12 @@ fn run_decoder_loop(args: DecoderLoopArgs) {
                 }) => {
                     latest_seek = Some((generation, time_sec));
                 }
-                Ok(DecoderCmd::Prebuffer { frames }) => {
-                    pending_preroll = Some(pending_preroll.unwrap_or(0).max(frames));
+                Ok(DecoderCmd::Prebuffer {
+                    frames,
+                    keep_preseek_frames,
+                }) => {
+                    // Take the max so multiple rapid Prebuffer commands don't reduce the budget.
+                    pending_preroll = Some((pending_preroll.map_or(0, |(f, _)| f).max(frames), keep_preseek_frames));
                 }
                 Ok(DecoderCmd::Play) => {
                     playing = true;
@@ -285,7 +304,13 @@ fn run_decoder_loop(args: DecoderLoopArgs) {
             current_gen = generation;
             // A fresh seek discards any leftover preroll budget — only the warm-up
             // requested for THIS position (if any) applies.
-            preroll_remaining = pending_preroll.unwrap_or(0);
+            if let Some((frames, keep)) = pending_preroll {
+                preroll_remaining = frames;
+                preroll_keep_preseek = keep;
+            } else {
+                preroll_remaining = 0;
+                preroll_keep_preseek = false;
+            }
             if let Err(e) = decoder.seek(time_sec) {
                 // A failed seek must not kill the decode thread permanently: the
                 // layer would freeze forever with no retry. Park until the next
@@ -297,10 +322,11 @@ fn run_decoder_loop(args: DecoderLoopArgs) {
                 at_eof = false;
                 decoded_after_seek = false;
             }
-        } else if let Some(frames) = pending_preroll {
+        } else if let Some((frames, keep)) = pending_preroll {
             // Prebuffer without an accompanying seek (already positioned): keep
             // decoding forward from here.
             preroll_remaining = preroll_remaining.max(frames);
+            preroll_keep_preseek = keep;
         }
 
         // Если мы не проигрываем, и уже декодировали один кадр после seek, то нам нечего делать — ждём команду блокирующе.
@@ -309,7 +335,7 @@ fn run_decoder_loop(args: DecoderLoopArgs) {
             match cmd_rx.recv() {
                 Ok(cmd) => {
                     let mut latest_seek = None;
-                    let mut pending_preroll: Option<u32> = None;
+                    let mut pending_preroll: Option<(u32, bool)> = None;
                     let mut stop = false;
 
                     let mut process_cmd = |cmd: DecoderCmd| match cmd {
@@ -319,8 +345,14 @@ fn run_decoder_loop(args: DecoderLoopArgs) {
                         } => {
                             latest_seek = Some((generation, time_sec));
                         }
-                        DecoderCmd::Prebuffer { frames } => {
-                            pending_preroll = Some(pending_preroll.unwrap_or(0).max(frames));
+                        DecoderCmd::Prebuffer {
+                            frames,
+                            keep_preseek_frames,
+                        } => {
+                            pending_preroll = Some((
+                                pending_preroll.map_or(0, |(f, _)| f).max(frames),
+                                keep_preseek_frames,
+                            ));
                         }
                         DecoderCmd::Play => {
                             playing = true;
@@ -349,7 +381,13 @@ fn run_decoder_loop(args: DecoderLoopArgs) {
 
                     if let Some((generation, time_sec)) = latest_seek {
                         current_gen = generation;
-                        preroll_remaining = pending_preroll.unwrap_or(0);
+                        if let Some((frames, keep)) = pending_preroll {
+                            preroll_remaining = frames;
+                            preroll_keep_preseek = keep;
+                        } else {
+                            preroll_remaining = 0;
+                            preroll_keep_preseek = false;
+                        }
                         if let Err(e) = decoder.seek(time_sec) {
                             // Stay alive and parked; a later seek can recover.
                             log::error!("[decode] seek({time_sec}) failed: {e:?}");
@@ -359,9 +397,10 @@ fn run_decoder_loop(args: DecoderLoopArgs) {
                             at_eof = false;
                             decoded_after_seek = false;
                         }
-                    } else if let Some(frames) = pending_preroll {
+                    } else if let Some((frames, keep)) = pending_preroll {
                         // Warm-up at the already-positioned playhead: decode forward.
                         preroll_remaining = preroll_remaining.max(frames);
+                        preroll_keep_preseek = keep;
                     }
                     continue;
                 }
@@ -369,8 +408,15 @@ fn run_decoder_loop(args: DecoderLoopArgs) {
             }
         }
 
-        // 3) Тянем следующий кадр.
-        let decoded = if prefer_yuv {
+        // 3) Тянем следующий кадр. Во время Prebuffer с keep_preseek=true используем
+        // next_frame_keep_preseek*, чтобы кадры до seek-target также попали в кэш.
+        let decoded = if preroll_remaining > 0 && preroll_keep_preseek {
+            if prefer_yuv {
+                decoder.next_frame_keep_preseek_for_gpu()
+            } else {
+                decoder.next_frame_keep_preseek()
+            }
+        } else if prefer_yuv {
             decoder.next_frame_for_gpu()
         } else {
             decoder.next_frame()

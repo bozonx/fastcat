@@ -28,11 +28,6 @@ use crate::media::decode_gate::decoder_load_gate;
 use crate::media::decode_thread::DecodePump;
 use crate::media::image_decode::decode_image;
 
-/// Сколько секунд видео прогревать вперёд playhead'а на паузе (после seek/смены
-/// сцены), чтобы Play стартовал с уже декодированным первым GOP без фриза. Чуть
-/// больше окна готовности `app::PREBUFFER_LOOKAHEAD_SEC`, чтобы к моменту Play кадры
-/// уже были в кеше. Реальное число кадров ограничено бюджетом памяти на слой.
-pub(super) const PREROLL_LOOKAHEAD_SEC: f64 = 0.2;
 /// Сколько секунд до начала будущего клипа на таймлайне должно оставаться,
 /// чтобы мы превентивно запустили фоновую инициализацию его декодера.
 const VIDEO_PREWARM_LOOKAHEAD_SEC: f64 = 1.5;
@@ -486,7 +481,7 @@ impl LayerRuntimeManager {
                 // последующий Play не фризил/не чернел на холодном декоде. На
                 // воспроизведении декодер и так стримит вперёд (pump.play выше).
                 if !self.playing {
-                    rt.request_prebuffer(PREROLL_LOOKAHEAD_SEC);
+                    rt.request_prebuffer();
                 }
                 self.runtimes.insert(id, LayerRuntime::Video(rt));
             }
@@ -710,7 +705,7 @@ impl LayerRuntimeManager {
                 if !playing && rt.has_cached_near(clip_local, 1) {
                     let lead = Some(1.0 / rt.pump.info.fps.max(1.0));
                     rt.update_display(clip_local, None, lead);
-                    rt.request_prebuffer(PREROLL_LOOKAHEAD_SEC);
+                    rt.request_prebuffer();
                     continue;
                 }
                 let need_seek = match rt.last_pump_seek_pts {
@@ -728,7 +723,7 @@ impl LayerRuntimeManager {
                 // последующий Play не фризил на декоде 4К от ключевого кадра. На
                 // воспроизведении декодер и так стримит вперёд — отдельный прогрев не нужен.
                 if !playing {
-                    rt.request_prebuffer(PREROLL_LOOKAHEAD_SEC);
+                    rt.request_prebuffer();
                 }
                 let lead = if playing { None } else { Some(1.0 / rt.pump.info.fps.max(1.0)) };
                 rt.update_display(
@@ -752,20 +747,49 @@ impl LayerRuntimeManager {
             .any(|l| l.kind == LayerKind::Video && l.covers(t))
     }
 
-    /// Все активные видеослои декодировали кадр на `lookahead_sec` секунд впереди
-    /// playhead'а — значит можно стартовать воспроизведение без фриза на GOP-декоде.
+    /// Все активные видеослои декодировали кадр на глубину `expected_preroll_duration()`
+    /// секунд впереди playhead'а (с учётом лимитов памяти на каждый слой) — значит можно
+    /// стартовать воспроизведение без фриза на GOP-декоде.
+    ///
+    /// Два ключевых улучшения по сравнению с предыдущей версией:
+    ///
+    /// 1. **Динамический порог** — порог готовности для каждого слоя вычисляется из
+    ///    `expected_preroll_duration()`, которая отражает реальный объём запрошенного
+    ///    прогрева с учётом лимита памяти. Для 4K-видео с бюджетом на 2 кадра порог
+    ///    составит ~2/fps вместо статических 0.12 сек, поэтому проверка проходит
+    ///    сразу после декода этих двух кадров, а не зависает в таймауте.
+    ///
+    /// 2. **EOF-защита** — если playhead находится ближе чем на `lookahead` к концу
+    ///    видео, target прижимается к `duration_sec - half_frame`. Это гарантирует
+    ///    немедленное прохождение проверки у конца клипа без ожидания таймаута.
+    ///
     /// Слой в состоянии `Loading`/`Failed` считается «ещё не готов» (рассосётся по
     /// таймауту прогрева в вызывающем коде).
-    pub fn active_videos_ready(&mut self, t: f64, lookahead_sec: f64) -> bool {
+    pub fn active_videos_ready(&mut self, t: f64) -> bool {
         let scene = self.scene.clone();
         for layer in scene.iter() {
             if !layer.covers(t) || layer.kind != LayerKind::Video {
                 continue;
             }
-            let target = layer.source_pts_at(t) + lookahead_sec.max(0.0);
+            let clip_local = layer.source_pts_at(t);
             match self.runtimes.get_mut(&layer.id) {
                 Some(LayerRuntime::Video(rt)) => {
                     rt.pull_into_cache();
+                    // Dynamic readiness threshold: reflects the actual number of frames
+                    // the decoder was asked to produce, not a static constant. For 4K
+                    // sources capped at MIN_PREROLL_FRAMES the threshold shrinks to
+                    // ~(MIN_PREROLL_FRAMES - 0.5) / fps so the check passes as soon as
+                    // those frames are in the cache.
+                    let lookahead = rt.expected_preroll_duration();
+                    let fps = rt.pump.info.fps.max(1.0);
+                    let half_frame = 0.5 / fps;
+                    let video_duration = rt.pump.info.duration_sec;
+                    // Clamp target to just before EOF so a playhead near the end of the
+                    // clip passes the readiness check immediately instead of hanging
+                    // until the prebuffer timeout fires.
+                    let target = (clip_local + lookahead)
+                        .min(video_duration - half_frame)
+                        .max(clip_local);
                     if !rt.has_buffered_through(target) {
                         return false;
                     }
