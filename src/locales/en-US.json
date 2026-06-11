@@ -1127,7 +1127,7 @@
         "opus": "Opus"
       },
       "convert": "Convert",
-      "convertFile": "Convert file: {file}",
+      "convertFile": "Convert file",
       "doNotClose": "Please do not close this window or navigate away during export.",
       "encodingSettings": "Encoding settings",
       "error": "Export failed",

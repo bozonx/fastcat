@@ -19,6 +19,18 @@ describe('UiFpsInputWithPresets', () => {
     expect(wheelInput.props('modelValue')).toBe(30);
   });
 
+  it('handles fractional FPS values without rounding to two decimals', async () => {
+    const component = await mountSuspended(UiFpsInputWithPresets, {
+      props: {
+        modelValue: 23.976,
+      },
+    });
+
+    const wheelInput = component.findComponent(UiWheelNumberInput);
+    expect(wheelInput.exists()).toBe(true);
+    expect(wheelInput.props('modelValue')).toBe(23.976);
+  });
+
   it('emits update:modelValue when UiWheelNumberInput emits an update', async () => {
     const component = await mountSuspended(UiFpsInputWithPresets, {
       props: {

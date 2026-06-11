@@ -47,7 +47,7 @@ export function formatMegabytes(bytes: number, decimals = 2): string {
  */
 export function formatFps(fps: number | undefined | null): string {
   const value = typeof fps === 'number' && Number.isFinite(fps) ? fps : 0;
-  return parseFloat(value.toFixed(2)).toString();
+  return parseFloat(value.toFixed(3)).toString();
 }
 
 /**

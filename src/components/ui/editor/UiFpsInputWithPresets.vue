@@ -22,7 +22,7 @@ const fpsPresets = [
   { label: '60', value: 60 },
 ];
 
-const displayValue = computed(() => parseFloat(props.modelValue.toFixed(2)));
+const displayValue = computed(() => parseFloat(props.modelValue.toFixed(3)));
 
 const fpsMenuItems = computed(() => [
   fpsPresets.map((p) => ({

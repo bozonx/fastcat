@@ -86,6 +86,13 @@ const outputFileName = computed(() => {
   return fileName.value;
 });
 
+const mediaIcon = computed(() => {
+  if (mediaType.value === 'video') return 'i-lucide-video';
+  if (mediaType.value === 'audio') return 'i-lucide-music';
+  if (mediaType.value === 'image') return 'i-lucide-image';
+  return 'i-lucide-file';
+});
+
 watch(
   sourceHasAudio,
   (hasAudio) => {
@@ -135,7 +142,7 @@ const isFormValid = computed(() => {
   <component
     :is="modalWrapper"
     v-model:open="isOpen"
-    :title="t('videoEditor.export.convertFile', { file: fileName })"
+    :title="t('videoEditor.export.convertFile')"
     :ui="modalUi"
   >
     <div class="flex flex-col gap-6">
@@ -144,18 +151,44 @@ const isFormValid = computed(() => {
         {{ t('videoEditor.fileManager.convert.loadingMetadata') }}
       </div>
 
-      <template v-if="mediaType === 'video'">
-        {{ t('videoEditor.fileManager.convert.targetFile') }}
-        <span class="font-mono text-ui-text">{{ fileName }}</span>
-      </template>
+      <div class="bg-ui-bg-muted/40 border border-ui-border/50 rounded-lg p-3.5 space-y-3">
+        <!-- Исходный файл -->
+        <div class="flex items-center justify-between gap-3 text-sm">
+          <div class="flex items-center gap-2 text-ui-text-muted min-w-0 shrink-0">
+            <UIcon :name="mediaIcon" class="w-4 h-4 text-ui-text-dim shrink-0" />
+            <span class="font-medium truncate">{{
+              t('videoEditor.fileManager.convert.targetFile')
+            }}</span>
+          </div>
+          <span
+            class="font-mono text-ui-text-muted truncate text-right max-w-[65%]"
+            :title="fileName"
+          >
+            {{ fileName }}
+          </span>
+        </div>
 
-      <div class="text-sm text-ui-text-muted">
-        {{
-          mediaType === 'image'
-            ? t('videoEditor.fileManager.convert.outputFileImage')
-            : t('videoEditor.fileManager.convert.outputFile')
-        }}
-        <span class="font-mono text-ui-text">{{ outputFileName }}</span>
+        <div class="h-px bg-ui-border/20"></div>
+
+        <!-- Выходной файл -->
+        <div class="flex items-center justify-between gap-3 text-sm">
+          <div class="flex items-center gap-2 text-ui-text-muted min-w-0 shrink-0">
+            <UIcon :name="mediaIcon" class="w-4 h-4 text-primary-400 shrink-0" />
+            <span class="font-medium truncate">
+              {{
+                mediaType === 'image'
+                  ? t('videoEditor.fileManager.convert.outputFileImage')
+                  : t('videoEditor.fileManager.convert.outputFile')
+              }}
+            </span>
+          </div>
+          <span
+            class="font-mono text-ui-text font-semibold truncate text-right max-w-[65%]"
+            :title="outputFileName"
+          >
+            {{ outputFileName }}
+          </span>
+        </div>
       </div>
 
       <div
