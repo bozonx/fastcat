@@ -85,6 +85,7 @@ impl NativeMediaService {
         target_path: &std::path::Path,
         options: NativeConvertOptions,
         warning: Option<&(dyn Fn(String) + Send + Sync)>,
+        progress: Option<&(dyn Fn(f64) + Send + Sync)>,
     ) -> anyhow::Result<()> {
         convert_media_with_warnings(
             &self.tasks,
@@ -93,6 +94,7 @@ impl NativeMediaService {
             target_path,
             options,
             warning,
+            progress,
         )
     }
 
@@ -217,6 +219,9 @@ pub async fn native_media_convert(
     let hw = hw_settings.read().clone();
     options.apply_hw_settings(&hw);
 
+    let app_clone = app.clone();
+    let task_id_clone = task_id.clone();
+
     tokio::task::spawn_blocking(move || {
         service.convert_media(
             &task_id,
@@ -229,6 +234,15 @@ pub async fn native_media_convert(
                     NativeMediaWarning {
                         task_id: &task_id,
                         message: &message,
+                    },
+                );
+            }),
+            Some(&|progress| {
+                let _ = app_clone.emit(
+                    "native-media-convert:progress",
+                    NativeMediaConvertProgress {
+                        task_id: &task_id_clone,
+                        progress,
                     },
                 );
             }),
@@ -288,6 +302,13 @@ struct NativeMediaWarning<'a> {
 #[derive(Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 struct NativeMediaGenerateProxyProgress<'a> {
+    task_id: &'a str,
+    progress: f64,
+}
+
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct NativeMediaConvertProgress<'a> {
     task_id: &'a str,
     progress: f64,
 }

@@ -3,6 +3,12 @@ import type { AudioClipEffect, ClipEffect } from '~/timeline/types';
 import type { AudioEffectSpec } from '~/types/generated/native-monitor/AudioEffectSpec';
 import type { SceneAudioLayer } from '~/types/generated/native-monitor/SceneAudioLayer';
 import type { AudioEngineClip } from '~/utils/video-editor/audio-engine.types';
+import {
+  resolveEffectiveFadeDurationsSeconds,
+  type AudioEnvelopeClipLike,
+} from '~/utils/audio/envelope';
+
+const US_PER_SEC = 1_000_000;
 
 interface AudioWorkerClip extends WorkerTimelineClip {
   defaultAudioFadeCurve?: 'linear' | 'logarithmic';
@@ -47,6 +53,13 @@ export interface ToAudioEngineClipParams {
 
 export interface ToNativeSceneAudioLayerParams {
   descriptor: CanonicalAudioClipDescriptor;
+  /**
+   * Same-track neighbours (by timeline order). Required for the native mixer to
+   * reproduce the worker AudioMixer's edge handling: de-click fades, adjacent
+   * transition crossfades and curve inheritance from a touching neighbour.
+   */
+  previous?: CanonicalAudioClipDescriptor | null;
+  next?: CanonicalAudioClipDescriptor | null;
 }
 
 function finite(value: unknown, fallback: number): number {
@@ -140,26 +153,136 @@ export function toAudioEngineClip(params: ToAudioEngineClipParams): AudioEngineC
   };
 }
 
+function descriptorToEnvelopeClip(d: CanonicalAudioClipDescriptor): AudioEnvelopeClipLike {
+  return {
+    timelineRange: { durationUs: d.durationUs },
+    audioFadeInUs: d.audioFadeInUs,
+    audioFadeOutUs: d.audioFadeOutUs,
+    audioFadeInCurve: d.audioFadeInCurve,
+    audioFadeOutCurve: d.audioFadeOutCurve,
+    audioDeclickDurationUs: d.audioDeclickDurationUs,
+    transitionIn: d.transitionIn,
+    transitionOut: d.transitionOut,
+  };
+}
+
+/**
+ * Duration (µs) by which a clip overlaps its neighbour for an *adjacent*
+ * transition (a true crossfade). Non-adjacent transitions (background/dip,
+ * transparent) do not overlap, so they contribute no extension.
+ */
+function adjacentTransitionDurationUs(
+  transition: CanonicalAudioClipDescriptor['transitionIn'],
+): number {
+  if (!transition) return 0;
+  const dur =
+    typeof transition.durationUs === 'number' && Number.isFinite(transition.durationUs)
+      ? transition.durationUs
+      : 0;
+  if (dur <= 0) return 0;
+  return transition.mode === 'adjacent' ? dur : 0;
+}
+
 export function toNativeSceneAudioLayer(params: ToNativeSceneAudioLayerParams): SceneAudioLayer {
   const descriptor = params.descriptor;
+  const signedSpeed = finite(descriptor.speed, 1) || 1;
+  const reversed = signedSpeed < 0;
+  const absSpeed = Math.max(0.01, Math.min(100, Math.abs(signedSpeed)));
+
+  const startUs = Math.max(0, descriptor.startUs);
+  const durationUs = Math.max(0, descriptor.durationUs);
+  const sourceStartUs = Math.max(0, descriptor.sourceStartUs);
+  const sourceRangeDurationUs = Math.max(0, descriptor.sourceRangeDurationUs);
+  const materialDurationUs = Math.max(0, finite(descriptor.sourceDurationUs, sourceRangeDurationUs));
+
+  // Effective fades fold in: manual fades, the auto de-click (removes the click at
+  // every plain cut), an adjacent transition rendered as a crossfade, and curve
+  // inheritance from a touching neighbour. The native mixer only carries plain
+  // fade-in/out durations, so this is where the worker AudioMixer's edge handling
+  // is reproduced for the native (monitor + export) path.
+  const fadeClipDurationS =
+    Math.min(
+      sourceRangeDurationUs / absSpeed,
+      durationUs || sourceRangeDurationUs / absSpeed,
+    ) / US_PER_SEC;
+  const { fadeInS, fadeOutS, fadeInCurve, fadeOutCurve } = resolveEffectiveFadeDurationsSeconds({
+    clipDurationS: fadeClipDurationS,
+    clip: descriptorToEnvelopeClip(descriptor),
+    previousClip: params.previous ? descriptorToEnvelopeClip(params.previous) : null,
+    nextClip: params.next ? descriptorToEnvelopeClip(params.next) : null,
+    defaultAudioFadeCurve: descriptor.defaultAudioFadeCurve,
+  });
+
+  const inDurUs = adjacentTransitionDurationUs(descriptor.transitionIn);
+  const outDurUs = adjacentTransitionDurationUs(descriptor.transitionOut);
+
+  // Default (no crossfade): keep the clip's exact ranges and only override the
+  // fades. The common case stays byte-for-byte identical to before plus de-click.
+  let timelineStartUs = startUs;
+  let timelineDurationUs = durationUs;
+  let layerSourceStartUs = sourceStartUs;
+  let layerSourceRangeUs = sourceRangeDurationUs;
+
+  if (inDurUs > 0 || outDurUs > 0) {
+    // Extend the clip into its neighbour so an adjacent transition actually
+    // overlaps and the two clips' fades cross, instead of dipping to silence at
+    // the butt seam. Mirrors the worker AudioMixer extension (incl. reverse and
+    // material clamping).
+    let playDurationUs = Math.min(
+      sourceRangeDurationUs / absSpeed,
+      durationUs || sourceRangeDurationUs / absSpeed,
+    );
+    let effectiveStartUs = startUs;
+    let effectiveOffsetUs = sourceStartUs;
+    let extraSourceTailUs = 0;
+
+    if (outDurUs > 0) {
+      playDurationUs += outDurUs;
+      if (reversed) {
+        effectiveOffsetUs = Math.max(0, effectiveOffsetUs - outDurUs * absSpeed);
+      } else {
+        extraSourceTailUs += outDurUs * absSpeed;
+      }
+    }
+    if (inDurUs > 0) {
+      playDurationUs += inDurUs;
+      effectiveStartUs = Math.max(0, startUs - inDurUs);
+      if (reversed) {
+        extraSourceTailUs += inDurUs * absSpeed;
+      } else {
+        effectiveOffsetUs = Math.max(0, effectiveOffsetUs - inDurUs * absSpeed);
+      }
+    }
+
+    const offsetUs = Math.max(0, effectiveOffsetUs);
+    const sourceWindowBaseUs = playDurationUs * absSpeed + extraSourceTailUs;
+    const maxPlayableUs = Math.max(0, materialDurationUs - offsetUs);
+    const finalSourceWindowUs = Math.min(sourceWindowBaseUs, maxPlayableUs);
+
+    timelineStartUs = effectiveStartUs;
+    timelineDurationUs = finalSourceWindowUs / absSpeed;
+    layerSourceStartUs = offsetUs;
+    layerSourceRangeUs = finalSourceWindowUs;
+  }
+
   return {
     id: descriptor.id,
     track_id: descriptor.trackId,
     path: descriptor.sourcePath,
-    timeline_start_sec: descriptor.startUs / 1_000_000,
-    timeline_end_sec: (descriptor.startUs + descriptor.durationUs) / 1_000_000,
-    source_start_sec: descriptor.sourceStartUs / 1_000_000,
-    source_range_duration_sec: Math.max(0, descriptor.sourceRangeDurationUs) / 1_000_000,
+    timeline_start_sec: timelineStartUs / US_PER_SEC,
+    timeline_end_sec: (timelineStartUs + timelineDurationUs) / US_PER_SEC,
+    source_start_sec: layerSourceStartUs / US_PER_SEC,
+    source_range_duration_sec: Math.max(0, layerSourceRangeUs) / US_PER_SEC,
     speed: sanitizeNativeAudioSpeed(descriptor.speed),
     audio_gain: Math.max(0, finite(descriptor.originalAudioGain ?? descriptor.audioGain, 1)),
     audio_balance: Math.max(
       -1,
       Math.min(1, finite(descriptor.originalAudioBalance ?? descriptor.audioBalance, 0)),
     ),
-    audio_fade_in_sec: Math.max(0, finite(descriptor.audioFadeInUs, 0) / 1_000_000),
-    audio_fade_out_sec: Math.max(0, finite(descriptor.audioFadeOutUs, 0) / 1_000_000),
-    audio_fade_in_curve: descriptor.audioFadeInCurve ?? 'linear',
-    audio_fade_out_curve: descriptor.audioFadeOutCurve ?? 'linear',
+    audio_fade_in_sec: Math.max(0, fadeInS),
+    audio_fade_out_sec: Math.max(0, fadeOutS),
+    audio_fade_in_curve: fadeInCurve,
+    audio_fade_out_curve: fadeOutCurve,
     audio_effects: buildNativeAudioEffectSpecs(descriptor.audioEffects),
   };
 }

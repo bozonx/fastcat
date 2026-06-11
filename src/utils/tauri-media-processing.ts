@@ -119,11 +119,19 @@ export async function nativeConvertMedia(params: {
   targetPath: string;
   request: ConversionRequest;
   onWarning?: (message: string) => void;
+  onProgress?: (progress: number) => void;
 }): Promise<void> {
-  const unlisten = params.onWarning
+  const unlistenWarning = params.onWarning
     ? await listen<{ taskId: string; message: string }>('native-media-convert:warning', (event) => {
         if (event.payload.taskId !== params.taskId) return;
         params.onWarning?.(event.payload.message);
+      })
+    : null;
+
+  const unlistenProgress = params.onProgress
+    ? await listen<{ taskId: string; progress: number }>('native-media-convert:progress', (event) => {
+        if (event.payload.taskId !== params.taskId) return;
+        params.onProgress?.(event.payload.progress);
       })
     : null;
 
@@ -135,7 +143,8 @@ export async function nativeConvertMedia(params: {
       options: buildNativeConvertOptions(params.request),
     });
   } finally {
-    unlisten?.();
+    unlistenWarning?.();
+    unlistenProgress?.();
   }
 }
 

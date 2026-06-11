@@ -126,6 +126,36 @@ pub(crate) fn mix_chunk(
     target: AudioRenderTarget,
     shared: &Arc<(Mutex<AudioShared>, Condvar)>,
 ) -> Vec<f32> {
+    mix_chunk_ramped(
+        scene,
+        tracks,
+        master_gain,
+        None,
+        chunk_start_sec,
+        chunk_duration_sec,
+        target,
+        shared,
+    )
+}
+
+/// Same as [`mix_chunk`] but, when `prev_master_gain` is `Some`, ramps the master
+/// gain linearly from the previous chunk's value to `master_gain` across this
+/// chunk instead of applying it as a per-chunk step. This removes the "zipper"
+/// heard when the master volume is dragged during playback (each 50 ms chunk
+/// otherwise jumped to a new constant gain). `None` keeps the exact original
+/// per-chunk behaviour, so offline export, scrub previews and tests are
+/// unaffected — the ramp only engages on the realtime producer path mid-drag.
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn mix_chunk_ramped(
+    scene: &[SceneAudioLayer],
+    tracks: &[SceneAudioTrack],
+    master_gain: f64,
+    prev_master_gain: Option<f64>,
+    chunk_start_sec: f64,
+    chunk_duration_sec: f64,
+    target: AudioRenderTarget,
+    shared: &Arc<(Mutex<AudioShared>, Condvar)>,
+) -> Vec<f32> {
     let sample_rate = target.sample_rate;
     let output_channels = target.channels;
     let frames = (chunk_duration_sec * sample_rate as f64).round().max(1.0) as usize;
@@ -216,7 +246,10 @@ pub(crate) fn mix_chunk(
         }
     }
 
-    apply_master_gain(&mut mixed, master_gain);
+    match prev_master_gain {
+        Some(prev) => apply_master_gain_ramp(&mut mixed, prev, master_gain, frames, output_channels),
+        None => apply_master_gain(&mut mixed, master_gain),
+    }
     soft_clip(&mut mixed);
     mixed
 }
@@ -440,6 +473,39 @@ fn apply_master_gain(samples: &mut [f32], master_gain: f64) {
     }
     for sample in samples {
         *sample *= gain;
+    }
+}
+
+/// Applies the master gain ramped linearly from `prev_gain` (chunk start) to
+/// `target_gain` (chunk end). When the two are equal this is identical to
+/// [`apply_master_gain`], so a static master volume incurs no extra cost.
+fn apply_master_gain_ramp(
+    samples: &mut [f32],
+    prev_gain: f64,
+    target_gain: f64,
+    frames: usize,
+    channels: usize,
+) {
+    let g0 = sanitize_master_gain(prev_gain) as f32;
+    let g1 = sanitize_master_gain(target_gain) as f32;
+    if (g0 - g1).abs() <= f32::EPSILON {
+        apply_master_gain(samples, target_gain);
+        return;
+    }
+    // Ramp across frame centres so the first frame is not pinned to the previous
+    // gain and the last not fully at the target — keeps the slope continuous with
+    // the next chunk, which starts where this one ended.
+    let denom = frames.max(1) as f32;
+    for i in 0..frames {
+        let t = (i as f32 + 0.5) / denom;
+        let g = g0 + (g1 - g0) * t;
+        let base = i * channels;
+        for ch in 0..channels {
+            let idx = base + ch;
+            if idx < samples.len() {
+                samples[idx] *= g;
+            }
+        }
     }
 }
 
@@ -761,6 +827,38 @@ mod tests {
     // ------------------------------------------------------------------
     // Master Gain / Soft Clip
     // ------------------------------------------------------------------
+
+    #[test]
+    fn master_gain_ramp_interpolates_between_chunks() {
+        // Four mono frames, all 1.0; ramp gain 0.0 → 1.0 across the chunk. With
+        // frame-centre sampling the gains are 1/8, 3/8, 5/8, 7/8.
+        let mut samples = vec![1.0f32; 4];
+        apply_master_gain_ramp(&mut samples, 0.0, 1.0, 4, 1);
+        let expected = [0.125f32, 0.375, 0.625, 0.875];
+        for (got, want) in samples.iter().zip(expected.iter()) {
+            assert!((got - want).abs() < 1e-6, "ramp mismatch: {got} vs {want}");
+        }
+    }
+
+    #[test]
+    fn master_gain_ramp_equal_values_match_constant_path() {
+        let mut ramped = vec![0.5f32, -0.5, 1.0, 0.25];
+        let mut constant = ramped.clone();
+        apply_master_gain_ramp(&mut ramped, 0.5, 0.5, 4, 1);
+        apply_master_gain(&mut constant, 0.5);
+        assert_eq!(ramped, constant);
+    }
+
+    #[test]
+    fn mix_chunk_none_prev_matches_constant_master_gain() {
+        // `prev_master_gain = None` must be byte-for-byte identical to `mix_chunk`.
+        let l = layer();
+        let shared = Arc::new((Mutex::new(AudioShared::default()), Condvar::new()));
+        let target = AudioRenderTarget::monitor(48000, 2);
+        let a = mix_chunk(&[l.clone()], &[], 0.5, 0.0, 0.05, target, &shared);
+        let b = mix_chunk_ramped(&[l], &[], 0.5, None, 0.0, 0.05, target, &shared);
+        assert_eq!(a, b);
+    }
 
     #[test]
     fn master_gain_is_applied_after_layer_mix() {

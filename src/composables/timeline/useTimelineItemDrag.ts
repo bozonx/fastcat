@@ -728,15 +728,23 @@ export function useTimelineItemDrag(
             ? Math.round(rawSourceDurationUs)
             : prevSourceEndUs;
         if (mode === 'trim_start') {
+          // Leftmost the start edge can travel: until the consumed source start
+          // reaches 0 (the clip already begins `prevSourceStartUs` into the
+          // material). Using `knownSourceEndUs` here ignored an already-trimmed
+          // end and let the start drag past where the clip can actually grow.
           const minSourceBound = hasFixedSourceDuration
-            ? anchorEndUs - knownSourceEndUs / absSpeed
+            ? anchorStartUs - prevSourceStartUs / absSpeed
             : Number.NEGATIVE_INFINITY;
 
           minEdgeUs = Math.max(prevClipEnd, minSourceBound);
           maxEdgeUs = anchorEndUs;
         } else {
+          // Rightmost the end edge can travel: until the consumed source end
+          // reaches the material end. Anchored on the clip's real consumed source
+          // (`prevSourceStartUs`), so a clip trimmed at the start can't be dragged
+          // past the actual end of material.
           const maxSourceBound = hasFixedSourceDuration
-            ? anchorStartUs + knownSourceEndUs / absSpeed
+            ? anchorStartUs + (knownSourceEndUs - prevSourceStartUs) / absSpeed
             : Number.POSITIVE_INFINITY;
 
           minEdgeUs = anchorStartUs;

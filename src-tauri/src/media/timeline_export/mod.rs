@@ -330,7 +330,16 @@ pub fn export_timeline(
                         if tasks.was_cancelled(task_id) {
                             return Err(anyhow!("cancelled"));
                         }
-                        let time = start + i as f64 / fps;
+                        // Sample the CENTRE of each frame interval, not its leading
+                        // edge. Clip boundaries are stored on a microsecond grid
+                        // (`frameToUs`), so a boundary can sit up to half a microsecond
+                        // *after* the exact `i/fps` edge; the half-open `covers()` test
+                        // then kept the previous clip's last frame for one extra frame at
+                        // the cut (a duplicate frame / stutter). The centre `(i+0.5)/fps`
+                        // is always strictly inside frame `i`'s interval, on the correct
+                        // side of any frame-quantised boundary — matching the paused
+                        // monitor, which samples the quantised playhead exactly on the cut.
+                        let time = start + (i as f64 + 0.5) / fps;
                         let mut frame_scene = super::timeline_render::build_export_scene(
                             &scene,
                             time,

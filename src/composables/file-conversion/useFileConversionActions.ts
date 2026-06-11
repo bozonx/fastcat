@@ -549,6 +549,9 @@ export function useFileConversionActions(props: UseFileConversionActionsProps) {
               targetPath,
               request,
               onWarning: reportConversionWarning,
+              onProgress: (progress) => {
+                backgroundTasksStore.updateTaskProgress(bgTaskId, progress);
+              },
             });
             return;
           }

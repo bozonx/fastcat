@@ -17,6 +17,7 @@ import { buildEffectiveAudioClipItems } from '~/utils/audio/track-bus';
 import {
   buildCanonicalAudioClipDescriptor,
   toNativeSceneAudioLayer,
+  type CanonicalAudioClipDescriptor,
 } from '~/utils/audio/audio-clip-descriptor';
 import { resolveNormalizedAnchor, TRANSFORM_DESIGN_BASE } from '~/utils/video-editor/clip-layout';
 import { normalizeClipSpeed } from '~/utils/video-editor/source-time';
@@ -461,7 +462,10 @@ async function buildAudioLayers(params: {
     },
   );
 
-  const layers: NativeSceneAudioLayer[] = [];
+  // Build descriptors first so same-track neighbours can be resolved: the native
+  // mixer needs prev/next to reproduce de-click, adjacent-transition crossfades
+  // and curve inheritance (see toNativeSceneAudioLayer).
+  const descriptors: CanonicalAudioClipDescriptor[] = [];
   for (const clip of clips) {
     if (clip.clipType !== 'media') continue;
     const path = clip.source?.path;
@@ -469,21 +473,44 @@ async function buildAudioLayers(params: {
     const durationUs = clip.timelineRange.durationUs;
     if (durationUs <= 0) continue;
 
-    layers.push(
-      toNativeSceneAudioLayer({
-        descriptor: buildCanonicalAudioClipDescriptor({
-          clip,
-          sourcePath: await resolveMediaSourceAbsolutePath(
-            path,
-            params.projectStore,
-            params.workspaceStore,
-            params.proxy,
-          ),
-        }),
+    descriptors.push(
+      buildCanonicalAudioClipDescriptor({
+        clip,
+        sourcePath: await resolveMediaSourceAbsolutePath(
+          path,
+          params.projectStore,
+          params.workspaceStore,
+          params.proxy,
+        ),
       }),
     );
   }
-  return layers;
+
+  // Adjacency: per track (effective trackId), ordered by timeline start.
+  const byTrack = new Map<string, CanonicalAudioClipDescriptor[]>();
+  for (const descriptor of descriptors) {
+    const key = descriptor.trackId ?? '';
+    const list = byTrack.get(key);
+    if (list) list.push(descriptor);
+    else byTrack.set(key, [descriptor]);
+  }
+  const prevOf = new Map<CanonicalAudioClipDescriptor, CanonicalAudioClipDescriptor | null>();
+  const nextOf = new Map<CanonicalAudioClipDescriptor, CanonicalAudioClipDescriptor | null>();
+  for (const list of byTrack.values()) {
+    list.sort((a, b) => a.startUs - b.startUs);
+    for (let i = 0; i < list.length; i++) {
+      prevOf.set(list[i]!, i > 0 ? list[i - 1]! : null);
+      nextOf.set(list[i]!, i < list.length - 1 ? list[i + 1]! : null);
+    }
+  }
+
+  return descriptors.map((descriptor) =>
+    toNativeSceneAudioLayer({
+      descriptor,
+      previous: prevOf.get(descriptor) ?? null,
+      next: nextOf.get(descriptor) ?? null,
+    }),
+  );
 }
 
 export async function buildNativeMonitorScene(

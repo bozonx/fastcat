@@ -304,7 +304,7 @@ pub fn convert_media(
     target_path: &Path,
     options: NativeConvertOptions,
 ) -> Result<()> {
-    convert_media_with_warnings(tasks, task_id, source_path, target_path, options, None)
+    convert_media_with_warnings(tasks, task_id, source_path, target_path, options, None, None)
 }
 
 pub fn convert_media_with_warnings(
@@ -314,7 +314,17 @@ pub fn convert_media_with_warnings(
     target_path: &Path,
     options: NativeConvertOptions,
     on_warning: Option<&(dyn Fn(String) + Send + Sync)>,
+    on_progress: Option<&(dyn Fn(f64) + Send + Sync)>,
 ) -> Result<()> {
+    let ffprobe_cmd = options.ffprobe_path.as_deref().unwrap_or("ffprobe");
+    let duration = match probe_media(source_path, ffprobe_cmd) {
+        Ok(meta) => Some(meta.duration.max(0.0)),
+        Err(e) => {
+            log::warn!("[native-media] failed to probe source duration for progress tracking: {e}");
+            None
+        }
+    };
+
     let hw_accel = options
         .hardware_acceleration_mode
         .as_ref()
@@ -342,7 +352,7 @@ pub fn convert_media_with_warnings(
     )?;
 
     let ffmpeg_cmd = options.ffmpeg_path.as_deref().unwrap_or("ffmpeg");
-    match run_ffmpeg_task(tasks, task_id, ffmpeg_cmd, args, on_warning, None, None) {
+    match run_ffmpeg_task(tasks, task_id, ffmpeg_cmd, args, on_warning, on_progress, duration) {
         Ok(()) => {
             if !target_path.exists() {
                 return Err(anyhow!(
@@ -365,6 +375,7 @@ pub fn convert_media_with_warnings(
                 target_path,
                 sw_options,
                 on_warning,
+                on_progress,
             )
         }
         Err(e) => Err(e),
@@ -486,6 +497,7 @@ fn build_convert_ffmpeg_args(
         "-y".to_string(),
         "-loglevel".to_string(),
         "warning".to_string(),
+        "-stats".to_string(),
     ]);
 
     if options.kind == "video" {

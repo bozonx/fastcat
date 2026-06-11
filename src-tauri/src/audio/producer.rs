@@ -8,7 +8,7 @@ use anyhow::{Context, Result};
 use parking_lot::{Condvar, Mutex};
 
 use crate::audio::clock::RealtimeClock;
-use crate::audio::mix::mix_chunk;
+use crate::audio::mix::{mix_chunk, mix_chunk_ramped};
 use crate::audio::ring::SpscRingBuffer;
 use crate::audio::shared::{
     AudioRenderTarget, AudioShared, CHUNK_DURATION_SEC, MAX_SCRUB_PREVIEW_SEC, PREBUFFER_CHUNKS,
@@ -101,6 +101,12 @@ pub(crate) fn producer_loop(
     let mut varispeed_serial = u64::MAX;
     let mut varispeed_speed = 1.0f64;
     let mut plugin_seek_serial = u64::MAX;
+
+    // Previous chunk's master gain, so a master-volume drag during playback ramps
+    // smoothly across the chunk instead of stepping (zipper). `None` until the
+    // first chunk after a (re)start/seek so we never ramp from a stale value.
+    let mut prev_master_gain: Option<f64> = None;
+    let mut master_gain_serial = u64::MAX;
 
     while running.load(Ordering::Relaxed) {
         // Forward-scrub preview is a one-shot snippet played while NOT in normal
@@ -255,6 +261,15 @@ pub(crate) fn producer_loop(
             plugin_seek_serial = seek_serial;
         }
 
+        // Reset the master-gain ramp baseline on a seek/flush so the first chunk
+        // after a discontinuity applies the gain as-is rather than ramping from a
+        // stale pre-seek value.
+        if master_gain_serial != seek_serial {
+            prev_master_gain = None;
+            master_gain_serial = seek_serial;
+        }
+        let ramp_prev_master_gain = prev_master_gain;
+
         // At speed != 1 we mix a `speed×` longer timeline span and varispeed-resample
         // it back to one device chunk (pitch shifts like tape). The 1× path is left
         // byte-for-byte untouched so normal playback carries zero regression risk.
@@ -266,10 +281,11 @@ pub(crate) fn producer_loop(
         // varispeed pitch-shift happens further down through the streaming resampler.
         let mix_frames = (mix_duration * sample_rate as f64).round().max(1.0) as usize;
         let mixed = match panic::catch_unwind(AssertUnwindSafe(|| {
-            mix_chunk(
+            mix_chunk_ramped(
                 scene,
                 tracks,
                 master_gain,
+                ramp_prev_master_gain,
                 chunk_start,
                 mix_duration,
                 target,
@@ -285,6 +301,8 @@ pub(crate) fn producer_loop(
                 vec![0.0; mix_frames * output_channels]
             }
         };
+        // Remember the gain we just applied so the next chunk ramps from it.
+        prev_master_gain = Some(master_gain);
 
         let mix_ms = mix_started.elapsed().as_secs_f64() * 1000.0;
         if mix_ms > chunk_duration_sec * 1000.0 {

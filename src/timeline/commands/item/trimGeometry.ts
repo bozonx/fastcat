@@ -182,6 +182,14 @@ export function computeTrimGeometry(input: TrimGeometryInput): TrimGeometryResul
       );
     }
 
+    // Frame quantization can nudge the re-derived source end up to a sub-frame
+    // past the real material (a clip pulled flush to EOF). Reading past the end
+    // freezes the last video frame and zero-pads audio (an end-of-clip click),
+    // so pin the source back inside the material bounds. The timeline range stays
+    // frame-quantized; only the source edge is clamped (a sub-frame correction).
+    nextSourceEndUs = Math.min(nextSourceEndUs, maxSourceEndUs);
+    nextSourceStartUs = Math.max(minSourceStartUs, Math.min(nextSourceStartUs, nextSourceEndUs));
+
     nextSourceDurationUs = Math.max(0, nextSourceEndUs - nextSourceStartUs);
   }
 

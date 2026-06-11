@@ -4,6 +4,11 @@ import type { TimelineApplyOptions } from '~/timeline/apply-options';
 
 import { buildRippleMarkerCommands } from '~/timeline/domain/markers';
 import { computeCutUs } from '~/timeline/domain/editing';
+import {
+  getLinkedClipGroupItemIds,
+  getDocFps,
+  quantizeDeltaUsToFrames,
+} from '~/timeline/commands/utils';
 
 interface HotkeyTarget {
   trackId: string;
@@ -30,6 +35,60 @@ interface RippleDeleteRangeParams {
 export function createTimelineEditService(deps: TimelineEditServiceDeps) {
   function getTrackById(doc: TimelineDocument, trackId: string): TimelineTrack | null {
     return doc.tracks.find((t) => t.id === trackId) ?? null;
+  }
+
+  /**
+   * Builds the ripple moves for a single-track ripple-trim that nonetheless must
+   * keep a linked group in sync. `trim_item` retimes EVERY member of the trimmed
+   * clip's linked group (across tracks), so the gap it opens exists on each of
+   * those tracks — not just the target track. Shifting only the target track left
+   * (the old behaviour) left every linked partner after the cut un-rippled and
+   * therefore desynced. Here we ripple the clips after the gap on each track that
+   * holds a group member, by the same `deltaUs`, excluding the members themselves
+   * (their own start is handled by the trim / explicit move). The gap boundary on
+   * each track is that track's group-member right edge.
+   */
+  function buildGroupRippleMoves(params: {
+    doc: TimelineDocument;
+    targetItemId: string;
+    deltaUs: number;
+  }): Array<{ fromTrackId: string; toTrackId: string; itemId: string; startUs: number }> {
+    const groupIds = new Set(getLinkedClipGroupItemIds(params.doc, params.targetItemId));
+
+    const memberEndByTrack = new Map<string, number>();
+    for (const t of params.doc.tracks) {
+      for (const it of t.items) {
+        if (it.kind === 'clip' && groupIds.has(it.id)) {
+          const end = it.timelineRange.startUs + it.timelineRange.durationUs;
+          memberEndByTrack.set(t.id, Math.max(memberEndByTrack.get(t.id) ?? 0, end));
+        }
+      }
+    }
+
+    const moves: Array<{
+      fromTrackId: string;
+      toTrackId: string;
+      itemId: string;
+      startUs: number;
+    }> = [];
+    for (const t of params.doc.tracks) {
+      if (t.locked) continue;
+      const memberEnd = memberEndByTrack.get(t.id);
+      if (memberEnd === undefined) continue;
+      for (const it of t.items) {
+        if (it.kind !== 'clip') continue;
+        if (groupIds.has(it.id)) continue;
+        if (it.locked) continue;
+        if (it.timelineRange.startUs < memberEnd - 10) continue;
+        moves.push({
+          fromTrackId: t.id,
+          toTrackId: t.id,
+          itemId: it.id,
+          startUs: Math.max(0, it.timelineRange.startUs - params.deltaUs),
+        });
+      }
+    }
+    return moves;
   }
 
   function rippleDeleteRange(
@@ -194,7 +253,11 @@ export function createTimelineEditService(deps: TimelineEditServiceDeps) {
 
     if (!(cutUs > startUs && cutUs < endUs)) return null;
 
-    const deltaUs = endUs - cutUs;
+    // Frame-align the ripple amount up front so the end trim and the subsequent
+    // shift use the EXACT same delta. Otherwise the trim quantizes `endUs - cutUs`
+    // to frames while the moves quantize each clip's start independently, which
+    // can leave a sub-frame gap/overlap on legacy non-frame-aligned geometry.
+    const deltaUs = quantizeDeltaUsToFrames(endUs - cutUs, getDocFps(doc), 'round');
     if (deltaUs <= 0) return null;
 
     const cmds: TimelineCommand[] = [
@@ -207,24 +270,7 @@ export function createTimelineEditService(deps: TimelineEditServiceDeps) {
       },
     ];
 
-    const moves: Array<{
-      fromTrackId: string;
-      toTrackId: string;
-      itemId: string;
-      startUs: number;
-    }> = [];
-
-    for (const it of track.items) {
-      if (it.kind !== 'clip') continue;
-      if (it.id === target.itemId) continue;
-      if (it.timelineRange.startUs < endUs - 10) continue;
-      moves.push({
-        fromTrackId: target.trackId,
-        toTrackId: target.trackId,
-        itemId: it.id,
-        startUs: Math.max(0, it.timelineRange.startUs - deltaUs),
-      });
-    }
+    const moves = buildGroupRippleMoves({ doc, targetItemId: target.itemId, deltaUs });
 
     if (moves.length > 0) {
       cmds.push({
@@ -265,7 +311,9 @@ export function createTimelineEditService(deps: TimelineEditServiceDeps) {
 
     if (!(cutUs > startUs && cutUs < endUs)) return null;
 
-    const deltaUs = cutUs - startUs;
+    // Frame-align the ripple amount up front so the start trim, the move-back and
+    // the subsequent shift all use the EXACT same delta (see rippleTrimRight).
+    const deltaUs = quantizeDeltaUsToFrames(cutUs - startUs, getDocFps(doc), 'round');
     if (deltaUs <= 0) return null;
 
     const cmds: TimelineCommand[] = [
@@ -291,24 +339,7 @@ export function createTimelineEditService(deps: TimelineEditServiceDeps) {
       },
     ];
 
-    const moves: Array<{
-      fromTrackId: string;
-      toTrackId: string;
-      itemId: string;
-      startUs: number;
-    }> = [];
-
-    for (const it of track.items) {
-      if (it.kind !== 'clip') continue;
-      if (it.id === target.itemId) continue;
-      if (it.timelineRange.startUs < cutUs - 10) continue;
-      moves.push({
-        fromTrackId: target.trackId,
-        toTrackId: target.trackId,
-        itemId: it.id,
-        startUs: Math.max(0, it.timelineRange.startUs - deltaUs),
-      });
-    }
+    const moves = buildGroupRippleMoves({ doc, targetItemId: target.itemId, deltaUs });
 
     if (moves.length > 0) {
       cmds.push({
