@@ -80,7 +80,7 @@ pub(crate) fn run_ffmpeg_task(
     task_id: &str,
     ffmpeg_path: &str,
     args: Vec<String>,
-    on_warning: Option<&(dyn Fn(String) + Send + Sync)>,
+    _on_warning: Option<&(dyn Fn(String) + Send + Sync)>,
     on_progress: Option<&(dyn Fn(f64) + Send + Sync)>,
     duration_sec: Option<f64>,
 ) -> Result<()> {
@@ -111,7 +111,7 @@ pub(crate) fn run_ffmpeg_task(
             if status.success() {
                 let stderr_text = stderr_text.trim();
                 if !stderr_text.is_empty() {
-                    emit_media_warning(on_warning, format!("ffmpeg warning: {stderr_text}"));
+                    log::info!("[ffmpeg] task {} succeeded with stderr output:\n{}", task_id, stderr_text);
                 }
                 return Ok(());
             }
