@@ -76,7 +76,16 @@ vi.mock('vue-router', () => ({
     addRoute: vi.fn(),
     getRoutes: vi.fn(() => []),
     resolve: vi.fn(),
-    currentRoute: { value: { path: '/', fullPath: '/', query: {}, params: {}, hash: '', meta: { layout: 'default' } } },
+    currentRoute: {
+      value: {
+        path: '/',
+        fullPath: '/',
+        query: {},
+        params: {},
+        hash: '',
+        meta: { layout: 'default' },
+      },
+    },
     options: { routes: [] },
     install: vi.fn(),
     isReady: vi.fn(() => Promise.resolve()),

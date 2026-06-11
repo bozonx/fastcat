@@ -1,11 +1,11 @@
 import { readFile, writeFile } from 'node:fs/promises';
 
 const configs = [
-  { json: 'src/locales/en-US.json', ts: 'src/locales/en-US.ts', isRu: false },
-  { json: 'src/locales/ru-RU.json', ts: 'src/locales/ru-RU.ts', isRu: true },
+  { json: 'src/locales/en-US.json', isRu: false },
+  { json: 'src/locales/ru-RU.json', isRu: true },
 ];
 
-for (const { json, ts, isRu } of configs) {
+for (const { json, isRu } of configs) {
   const data = JSON.parse(await readFile(json, 'utf8'));
 
   // Remove unused keys
@@ -62,7 +62,6 @@ for (const { json, ts, isRu } of configs) {
 
   const jsonStr = JSON.stringify(data, null, 2) + '\n';
   await writeFile(json, jsonStr);
-  await writeFile(ts, `export default ${jsonStr.trimEnd()};\n`);
 
-  console.log('Updated', json, 'and', ts);
+  console.log('Updated', json);
 }

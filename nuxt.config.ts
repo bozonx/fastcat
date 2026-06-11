@@ -70,8 +70,8 @@ export default defineNuxtConfig({
     strategy: 'no_prefix',
     defaultLocale: 'en-US',
     locales: [
-      { code: 'en-US', file: 'en-US.ts' },
-      { code: 'ru-RU', file: 'ru-RU.ts' },
+      { code: 'en-US', file: 'en-US.json' },
+      { code: 'ru-RU', file: 'ru-RU.json' },
     ],
     restructureDir: 'src',
     langDir: 'locales',

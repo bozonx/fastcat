@@ -6,15 +6,6 @@ const LOCALE_FILES = {
   ru: 'src/locales/ru-RU.json',
 };
 
-const GENERATED_LOCALE_FILES = {
-  en: 'src/locales/en-US.ts',
-  ru: 'src/locales/ru-RU.ts',
-};
-
-function serializeLocaleModule(locale) {
-  return `export default ${JSON.stringify(locale, null, 2)};\n`;
-}
-
 async function flattenObject(obj, prefix = '') {
   let keys = {};
   for (const [key, value] of Object.entries(obj)) {
@@ -47,14 +38,6 @@ async function check() {
   for (const [lang, path] of Object.entries(LOCALE_FILES)) {
     locales[lang] = JSON.parse(await readFile(path, 'utf8'));
     localeKeys[lang] = await flattenObject(locales[lang]);
-
-    const generatedPath = GENERATED_LOCALE_FILES[lang];
-    const generatedContent = await readFile(generatedPath, 'utf8');
-    const expectedContent = serializeLocaleModule(locales[lang]);
-    if (generatedContent !== expectedContent) {
-      console.error(`${generatedPath} is out of sync with ${path}`);
-      error = true;
-    }
   }
 
   const allLocaleKeys = new Set([...Object.keys(localeKeys.en), ...Object.keys(localeKeys.ru)]);
