@@ -7,6 +7,8 @@ import VideoEncodingForm from '~/components/media/VideoEncodingForm.vue';
 import MediaResolutionSettings from '~/components/media/MediaResolutionSettings.vue';
 import FileConversionAudioSettings from '~/components/file-manager/FileConversionAudioSettings.vue';
 import UiWheelNumberInput from '~/components/ui/UiWheelNumberInput.vue';
+import UiSliderInput from '~/components/ui/UiSliderInput.vue';
+import UiButtonGroup from '~/components/ui/UiButtonGroup.vue';
 import { storeToRefs } from 'pinia';
 import { useFileConversionStore } from '~/stores/file-conversion.store';
 import { resolveAudioOnlyFileExtension } from '~/utils/conversion/helpers';
@@ -16,7 +18,13 @@ import { useExportCodecs } from '~/composables/timeline/export/core/useExportCod
 const { t } = useI18n();
 const { isMobile } = useDevice();
 const modalWrapper = computed(() => (isMobile ? UiMobileDrawer : UiModal));
-const modalUi = computed(() => (isMobile ? {} : { content: 'sm:max-w-3xl' }));
+const modalUi = computed(() => {
+  if (isMobile) return {};
+  if (mediaType.value === 'video') {
+    return { content: 'sm:max-w-2xl' };
+  }
+  return { content: 'sm:max-w-md' };
+});
 
 const fileConversionStore = useFileConversionStore();
 
@@ -142,7 +150,11 @@ const isFormValid = computed(() => {
       </template>
 
       <div class="text-sm text-ui-text-muted">
-        {{ t('videoEditor.fileManager.convert.outputFile') }}
+        {{
+          mediaType === 'image'
+            ? t('videoEditor.fileManager.convert.outputFileImage')
+            : t('videoEditor.fileManager.convert.outputFile')
+        }}
         <span class="font-mono text-ui-text">{{ outputFileName }}</span>
       </div>
 
@@ -237,24 +249,22 @@ const isFormValid = computed(() => {
       </template>
 
       <template v-else-if="mediaType === 'image'">
-        <div class="space-y-4">
-          <div class="flex flex-col gap-2">
-            <label class="text-xs text-ui-text-muted font-medium">
-              {{ t('videoEditor.fileManager.convert.imageFormat') }}
-            </label>
-            <div class="text-sm font-medium text-ui-text">WebP</div>
-          </div>
+        <div class="space-y-5">
+          <UiSliderInput
+            v-model="image.quality"
+            :label="t('videoEditor.fileManager.convert.imageQuality')"
+            :min="1"
+            :max="100"
+            :step="1"
+            :decimals="0"
+            unit="%"
+          />
 
-          <div class="flex flex-col gap-2">
-            <label class="text-xs text-ui-text-muted font-medium">
-              {{ t('videoEditor.fileManager.convert.imageQuality') }}
-            </label>
-            <UiWheelNumberInput v-model="image.quality" :min="1" :max="100" :step="1" />
-          </div>
-
-          <div class="grid grid-cols-2 gap-3">
-            <div class="flex flex-col gap-2">
-              <label class="text-xs text-ui-text-muted font-medium">W</label>
+          <div class="flex items-end gap-3 w-full">
+            <div class="flex-1 flex flex-col gap-2">
+              <label class="text-xs text-ui-text-muted font-medium">
+                {{ t('videoEditor.export.width') }}
+              </label>
               <UiWheelNumberInput
                 :model-value="image.width"
                 :min="1"
@@ -263,8 +273,22 @@ const isFormValid = computed(() => {
               />
             </div>
 
-            <div class="flex flex-col gap-2">
-              <label class="text-xs text-ui-text-muted font-medium">H</label>
+            <div class="flex items-center justify-center h-9 shrink-0">
+              <UButton
+                :color="image.isResolutionLinked ? 'primary' : 'neutral'"
+                :variant="image.isResolutionLinked ? 'soft' : 'ghost'"
+                :icon="image.isResolutionLinked ? 'i-lucide-link' : 'i-lucide-link-2'"
+                size="sm"
+                class="h-9 w-9 p-0 flex items-center justify-center"
+                :title="t('videoEditor.fileManager.convert.keepAspectRatio')"
+                @click="image.isResolutionLinked = !image.isResolutionLinked"
+              />
+            </div>
+
+            <div class="flex-1 flex flex-col gap-2">
+              <label class="text-xs text-ui-text-muted font-medium">
+                {{ t('videoEditor.export.height') }}
+              </label>
               <UiWheelNumberInput
                 :model-value="image.height"
                 :min="1"
