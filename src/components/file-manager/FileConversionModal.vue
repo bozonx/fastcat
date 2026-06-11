@@ -200,6 +200,8 @@ const isFormValid = computed(() => {
             :disable-aspect-ratio="true"
           />
 
+          <div class="h-px bg-ui-border"></div>
+
           <VideoEncodingForm
             v-model:output-format="video.format"
             v-model:video-codec="video.videoCodec"

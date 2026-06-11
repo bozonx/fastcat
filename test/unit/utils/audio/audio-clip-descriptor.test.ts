@@ -68,7 +68,11 @@ function createClip(overrides: Partial<AudioWorkerClip> = {}): AudioWorkerClip {
 describe('audio clip descriptor adapters', () => {
   it('maps one canonical descriptor to equivalent web and native timing fields', () => {
     const descriptor = buildCanonicalAudioClipDescriptor({
-      clip: createClip(),
+      clip: createClip({
+        transitionIn: undefined,
+        transitionOut: undefined,
+        audioDeclickDurationUs: undefined,
+      }),
       sourcePath: '/project/audio/source.mp3',
     });
     const webClip = toAudioEngineClip({
@@ -151,6 +155,10 @@ describe('audio clip descriptor adapters', () => {
         audioFadeOutUs: Number.NaN,
         audioFadeInCurve: undefined,
         audioFadeOutCurve: undefined,
+        defaultAudioFadeCurve: undefined,
+        transitionIn: undefined,
+        transitionOut: undefined,
+        audioDeclickDurationUs: undefined,
       }),
       sourcePath: '/project/audio/source.mp3',
     });
@@ -171,6 +179,48 @@ describe('audio clip descriptor adapters', () => {
     expect(nativeLayer.audio_fade_out_sec).toBe(0);
     expect(nativeLayer.audio_fade_in_curve).toBe('linear');
     expect(nativeLayer.audio_fade_out_curve).toBe('linear');
+  });
+
+  it('resolves de-click, adjacent transitions, and neighbor context in native layer', () => {
+    const descriptor = buildCanonicalAudioClipDescriptor({
+      clip: createClip({
+        audioFadeInUs: undefined,
+        audioFadeOutUs: undefined,
+        audioDeclickDurationUs: 5_000, // 5ms auto-declick
+        transitionIn: { type: 'dissolve', durationUs: 100_000, mode: 'adjacent' },
+        transitionOut: { type: 'dissolve', durationUs: 150_000, mode: 'adjacent' },
+      }),
+      sourcePath: '/project/audio/source.mp3',
+    });
+
+    const previous = buildCanonicalAudioClipDescriptor({
+      clip: createClip({ id: 'prev-clip', timelineRange: { startUs: 0, durationUs: 1_000_000 } }),
+      sourcePath: '/project/audio/prev.mp3',
+    });
+
+    const next = buildCanonicalAudioClipDescriptor({
+      clip: createClip({ id: 'next-clip', timelineRange: { startUs: 3_500_000, durationUs: 1_000_000 } }),
+      sourcePath: '/project/audio/next.mp3',
+    });
+
+    const nativeLayer = toNativeSceneAudioLayer({
+      descriptor,
+      previous,
+      next,
+    });
+
+    expect(nativeLayer).toMatchObject({
+      id: 'clip-1',
+      track_id: 'track-1',
+      path: '/project/audio/source.mp3',
+      timeline_start_sec: 0.9,
+      timeline_end_sec: 2.175,
+      source_start_sec: 0.3,
+      source_range_duration_sec: 2.55,
+      speed: 2,
+      audio_fade_in_sec: 0.1, // matches transitionIn duration
+      audio_fade_out_sec: 0.15, // matches transitionOut duration
+    });
   });
 });
 
