@@ -1243,9 +1243,11 @@ export default {
         "failed": "Conversion failed",
         "imageFormat": "Image format",
         "imageQuality": "Image quality",
+        "keepAspectRatio": "Keep aspect ratio",
         "loadingMetadata": "Loading file metadata...",
         "metadataWarning": "Metadata might be lost during conversion",
         "outputFile": "Output file",
+        "outputFileImage": "Output file (WebP format)",
         "success": "File converted successfully",
         "targetFile": "Target file",
         "warningsTitle": "Conversion issues: {count}"

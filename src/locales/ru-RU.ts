@@ -1243,9 +1243,11 @@ export default {
         "failed": "Конвертация не удалась",
         "imageFormat": "Формат изображения",
         "imageQuality": "Качество изображения",
+        "keepAspectRatio": "Сохранять пропорции",
         "loadingMetadata": "Загрузка метаданных файла...",
         "metadataWarning": "Метаданные могут быть потеряны при конвертации",
         "outputFile": "Выходной файл",
+        "outputFileImage": "Выходной файл (формат WebP)",
         "success": "Файл успешно конвертирован",
         "targetFile": "Целевой файл",
         "warningsTitle": "Проблемы при конвертации: {count}"
