@@ -41,6 +41,7 @@ import { computeDirectoryStatsByPath } from '~/utils/fs';
 import { useComputerVfs } from '~/composables/file-manager/useComputerVfs';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { resolveExternalServiceConfig } from '~/utils/external-integrations';
+import { useMobileLayout } from '~/composables/useMobileLayout';
 
 import { useFilePropertiesContext } from '~/composables/properties/useFilePropertiesContext';
 import { useFileMediaSupport } from '~/composables/properties/useFileMediaSupport';
@@ -485,7 +486,9 @@ const {
   t,
 });
 
-const { isMobile } = useDevice();
+const { isMobile: isMobileDevice } = useDevice();
+const { isMobileLayout } = useMobileLayout();
+const isMobile = computed(() => isMobileDevice || isMobileLayout.value);
 
 const hasVisibleSecondaryActions = (actions: unknown) => {
   const list = Array.isArray(actions) ? actions : (actions as { value?: unknown[] })?.value;

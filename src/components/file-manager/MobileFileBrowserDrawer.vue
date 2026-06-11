@@ -20,6 +20,9 @@ import {
   isBloggerDogTextWrapper,
 } from '~/utils/bloggerdog-file-manager';
 import { WORKSPACE_COMMON_PATH_PREFIX } from '~/utils/workspace-common';
+import { useFileConversionStore } from '~/stores/file-conversion.store';
+import { useFileManager } from '~/composables/file-manager/useFileManager';
+import { useComputerVfs } from '~/composables/file-manager/useComputerVfs';
 
 type DrawerAction = FileManagerAction | 'openAsPanelCut' | 'openAsPanelSound' | 'openAsProjectTab';
 
@@ -40,6 +43,23 @@ const selectionStore = useSelectionStore();
 const proxyStore = useProxyStore();
 const mediaStore = useMediaStore();
 const clipboardStore = useAppClipboard();
+
+const fileManager = useFileManager();
+const { vfs: computerVfs } = useComputerVfs();
+const conversionStore = useFileConversionStore();
+
+const isExternal = computed(() => {
+  const entity = selectedFsEntry.value;
+  if (!entity) return false;
+  return (
+    entity.origin === 'workspace-browser' ||
+    entity.origin === 'remote-browser' ||
+    entity.isExternal ||
+    entity.instanceId === 'computer' ||
+    entity.instanceId === 'sidebar' ||
+    entity.entry?.source === 'remote'
+  );
+});
 
 const selectedEntity = computed(() => selectionStore.selectedEntity);
 
@@ -276,6 +296,14 @@ function handleAction(actionId: DrawerAction) {
             preview-mode="original"
             :has-proxy="hasExistingProxy"
             :mobile-text-mode="isTextDocument"
+            @convert="
+              (entry) =>
+                conversionStore.openConversionModal(entry, {
+                  isExternal: isExternal,
+                  vfs: isExternal ? (computerVfs ?? null) : fileManager.vfs,
+                  reloadDirectory: fileManager.reloadDirectory,
+                })
+            "
           />
         </div>
         <div v-else-if="selectedFsMultiple" class="py-2">

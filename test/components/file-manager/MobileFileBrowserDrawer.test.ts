@@ -31,9 +31,10 @@ vi.mock('~/stores/project.store', () => ({
   useProjectStore: () => mockProjectStore,
 }));
 
+const mockOpenConversionModal = vi.fn();
 vi.mock('~/stores/file-conversion.store', () => ({
   useFileConversionStore: () => ({
-    openConversionModal: vi.fn(),
+    openConversionModal: mockOpenConversionModal,
   }),
 }));
 
@@ -116,6 +117,7 @@ vi.mock('~/components/properties/FileProperties.vue', () => ({
 describe('MobileFileBrowserDrawer', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockOpenConversionModal.mockClear();
     mockSelectionStore.selectedEntity = null;
     mockProxyStore.existingProxies.clear();
     mockProxyStore.generatingProxies.clear();
@@ -185,5 +187,40 @@ describe('MobileFileBrowserDrawer', () => {
     const fileProps = wrapper.findComponent({ name: 'FileProperties' });
     expect(fileProps.exists()).toBe(true);
     expect(fileProps.props('selectedFsEntry')).toEqual(entry);
+  });
+
+  it('calls conversionStore.openConversionModal when FileProperties emits convert', async () => {
+    const entry = { kind: 'file', name: 'clip.mp4', path: 'clip.mp4' };
+    mockSelectionStore.selectedEntity = {
+      source: 'fileManager',
+      kind: 'file',
+      name: entry.name,
+      path: entry.path,
+      entry,
+    };
+
+    const wrapper = await mountSuspended(MobileFileBrowserDrawer, {
+      props: {
+        isOpen: true,
+        isSelectionMode: false,
+      },
+      global: {
+        stubs: {
+          UiMobileDrawer: { template: '<div><slot /></div>' },
+          MobileDrawerToolbar: { template: '<div><slot /></div>' },
+          MobileDrawerToolbarButton: true,
+          MultiFileProperties: true,
+        },
+      },
+    });
+
+    const fileProps = wrapper.findComponent({ name: 'FileProperties' });
+    expect(fileProps.exists()).toBe(true);
+
+    await fileProps.vm.$emit('convert', entry);
+
+    expect(mockOpenConversionModal).toHaveBeenCalledWith(entry, expect.objectContaining({
+      isExternal: false,
+    }));
   });
 });

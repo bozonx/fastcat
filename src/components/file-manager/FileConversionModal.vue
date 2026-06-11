@@ -14,9 +14,12 @@ import { useFileConversionStore } from '~/stores/file-conversion.store';
 import { resolveAudioOnlyFileExtension } from '~/utils/conversion/helpers';
 
 import { useExportCodecs } from '~/composables/timeline/export/core/useExportCodecs';
+import { useMobileLayout } from '~/composables/useMobileLayout';
 
 const { t } = useI18n();
-const { isMobile } = useDevice();
+const { isMobile: isMobileDevice } = useDevice();
+const { isMobileLayout } = useMobileLayout();
+const isMobile = computed(() => isMobileDevice || isMobileLayout.value);
 const modalWrapper = computed(() => (isMobile ? UiMobileDrawer : UiModal));
 const modalUi = computed(() => {
   if (isMobile) return {};
@@ -144,6 +147,7 @@ const isFormValid = computed(() => {
     v-model:open="isOpen"
     :title="t('videoEditor.export.convertFile')"
     :ui="modalUi"
+    :z-index="isMobile ? 'z-[var(--z-modal)]' : undefined"
   >
     <div class="flex flex-col gap-6">
       <div v-if="isExtractingMetadata" class="flex items-center gap-2 text-sm text-ui-text-muted">

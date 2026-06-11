@@ -35,6 +35,8 @@ interface Props {
     toolbar?: string;
     close?: string;
   };
+  /** Custom z-index class override, defaults to 'z-[var(--z-fixed)]' */
+  zIndex?: string;
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -50,6 +52,7 @@ const props = withDefaults(defineProps<Props>(), {
   withHandle: true,
   showClose: true,
   ui: () => ({}),
+  zIndex: 'z-[var(--z-fixed)]',
 });
 const isOpen = defineModel<boolean>('open', { default: false });
 const activeSnapPoint = defineModel<string | number | null>('activeSnapPoint', { default: null });
@@ -120,14 +123,30 @@ const snapContentHeight = computed(() => {
   return undefined;
 });
 
+const backdropZIndexClass = computed(() => {
+  if (props.zIndex === 'z-[var(--z-fixed)]') {
+    return 'z-[calc(var(--z-fixed)-1)]';
+  }
+  if (props.zIndex === 'z-[var(--z-modal)]') {
+    return 'z-[var(--z-modal-backdrop)]';
+  }
+  const match = props.zIndex.match(/^z-\[(\d+)\]$/);
+  if (match && match[1]) {
+    const val = parseInt(match[1], 10);
+    return `z-[${val - 1}]`;
+  }
+  return `z-[calc(${props.zIndex.replace(/^z-\[?/, '').replace(/\]?$/, '')}-1)]`;
+});
+
 const drawerUi = computed(() => ({
-  content: 'mobile-drawer-vaul-content z-[var(--z-fixed)] shadow-none ring-0 bg-transparent mt-0',
+  content: `mobile-drawer-vaul-content ${props.zIndex} shadow-none ring-0 bg-transparent mt-0`,
+  overlay: backdropZIndexClass.value,
 }));
 
 /** Responsive container logic */
 const containerClasses = computed(() => {
   const base =
-    'flex flex-col relative shadow-2xl transition-all duration-300 pointer-events-auto z-[var(--z-fixed)]';
+    `flex flex-col relative shadow-2xl transition-all duration-300 pointer-events-auto ${props.zIndex}`;
   const bgColor = 'bg-ui-bg-elevated ring-1 ring-white/10';
 
   if (effectiveDirection.value === 'right' || effectiveDirection.value === 'left') {
@@ -520,12 +539,13 @@ watch(isOpen, (val) => {
 <template>
   <Teleport v-if="!props.modal" :to="effectiveTeleportTarget">
     <div
-      class="fixed inset-0 bg-ui-bg/40 backdrop-blur-[2px] transition-all duration-300 z-[calc(var(--z-fixed)-1)]"
-      :class="
+      class="fixed inset-0 bg-ui-bg/40 backdrop-blur-[2px] transition-all duration-300"
+      :class="[
         isBackdropVisible
           ? ['pointer-events-auto', props.overlay ? 'opacity-100' : 'opacity-0']
-          : 'opacity-0 pointer-events-none'
-      "
+          : 'opacity-0 pointer-events-none',
+        backdropZIndexClass
+      ]"
       :style="{ touchAction: isBackdropInteractive ? 'none' : 'auto' }"
       @touchstart.passive="onBackdropTouchStart"
       @touchmove.passive="onBackdropTouchMove"

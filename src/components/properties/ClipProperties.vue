@@ -10,6 +10,7 @@ import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useAppClipboard } from '~/composables/useAppClipboard';
 import { useFocusStore } from '~/stores/focus.store';
 import { useFileManager } from '~/composables/file-manager/useFileManager';
+import { useMobileLayout } from '~/composables/useMobileLayout';
 import { useFileManagerStore } from '~/stores/file-manager.store';
 import { BLEND_MODE_OPTIONS as RAW_BLEND_MODE_OPTIONS } from '~/utils/constants';
 import type {
@@ -61,7 +62,9 @@ const fileManagerStore = inject('fileManagerStore', useFileManagerStore()) as Re
 >;
 const clipboardStore = useAppClipboard();
 
-const { isMobile } = useDevice();
+const { isMobile: isMobileDevice } = useDevice();
+const { isMobileLayout } = useMobileLayout();
+const isMobile = computed(() => isMobileDevice || isMobileLayout.value);
 
 const isUiRenameModalOpen = ref(false);
 
