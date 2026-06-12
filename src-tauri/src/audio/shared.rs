@@ -278,6 +278,7 @@ pub(crate) fn compute_timing_sig(layers: &[SceneAudioLayer]) -> u64 {
         l.timeline_start_sec.to_bits().hash(&mut hasher);
         l.timeline_end_sec.to_bits().hash(&mut hasher);
         l.source_start_sec.to_bits().hash(&mut hasher);
+        l.source_range_duration_sec.to_bits().hash(&mut hasher);
         l.speed.to_bits().hash(&mut hasher);
     }
     hasher.finish()
@@ -362,6 +363,9 @@ mod tests {
         let mut sped = base.clone();
         sped.speed = 2.0;
         assert_ne!(compute_timing_sig(&[sped]), sig);
+        let mut source_range_changed = base.clone();
+        source_range_changed.source_range_duration_sec = 3.0;
+        assert_ne!(compute_timing_sig(&[source_range_changed]), sig);
         let mut repathed = base.clone();
         repathed.path = "/tmp/other.wav".into();
         assert_ne!(compute_timing_sig(&[repathed]), sig);

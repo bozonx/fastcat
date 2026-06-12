@@ -5,6 +5,7 @@ import { useProjectManagement } from '~/composables/project/useProjectManagement
 import { onMounted } from 'vue';
 import { writeLocalStorageString, STORAGE_KEYS } from '~/stores/ui/uiLocalStorage';
 import WelcomeScreen from '~/components/startup/WelcomeScreen.vue';
+import { blurOnDropdownMenuClose } from '~/composables/useDropdownMenuBlur';
 import UiSelect from '~/components/ui/UiSelect.vue';
 import UiSearchInput from '~/components/ui/UiSearchInput.vue';
 import MediaResolutionSettings from '~/components/media/MediaResolutionSettings.vue';
@@ -384,6 +385,7 @@ const formatDate = (dateStr?: string) => {
                                   },
                                 ],
                               ]"
+                              @update:open="blurOnDropdownMenuClose"
                             >
                               <UButton
                                 size="sm"

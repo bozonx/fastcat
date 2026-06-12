@@ -33,6 +33,14 @@ use tauri::ipc::{Channel, InvokeResponseBody};
 const DEFAULT_TITLE: &str = "FastCat Monitor";
 const EVT_TIME: &str = "monitor:time";
 const EVT_ENDED: &str = "monitor:ended";
+const EVT_AUDIO_LEVELS: &str = "monitor:audio-levels";
+
+#[derive(Debug, Clone, Copy, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+struct AudioLevelsPayload {
+    rms_db: f64,
+    peak_db: f64,
+}
 
 /// Жёсткий потолок ожидания прогрева. Если декодер не успел (очень тяжёлый источник,
 /// ошибка открытия, медленный диск/сеть) — стартуем как есть, чтобы Play никогда не
@@ -359,6 +367,11 @@ impl ApplicationHandler<MonitorCommand> for MonitorApp {
                     s.recreate_audio(settings);
                 }
             }
+            MonitorCommand::SetOutputGain(gain) => {
+                if let Some(s) = self.state.as_mut() {
+                    s.set_output_gain(gain);
+                }
+            }
             MonitorCommand::SetHwSettings(settings) => {
                 if let Some(s) = self.state.as_mut() {
                     s.update_hw_settings(settings);
@@ -586,6 +599,7 @@ struct WindowState {
     audio_layers: Vec<SceneAudioLayer>,
     audio_tracks: Vec<SceneAudioTrack>,
     audio_master_gain: f64,
+    audio_output_gain: f64,
 
     last_emit_pts: f64,
     last_viewport: ViewportSpec,
@@ -644,6 +658,7 @@ impl WindowState {
                     &self.audio_tracks,
                     self.audio_master_gain,
                 );
+                audio.set_output_gain(self.audio_output_gain);
                 if playing {
                     audio.play(pts);
                 } else {
@@ -889,6 +904,17 @@ impl WindowState {
         }
     }
 
+    fn set_output_gain(&mut self, gain: f64) {
+        self.audio_output_gain = if gain.is_finite() {
+            gain.clamp(0.0, 10.0)
+        } else {
+            1.0
+        };
+        if let Some(audio) = self.audio.as_ref() {
+            audio.set_output_gain(self.audio_output_gain);
+        }
+    }
+
     fn pause(&mut self) {
         // Прогрев прерван запросом паузы — отменяем отложенный старт.
         self.pending_play_deadline = None;
@@ -1004,6 +1030,7 @@ impl WindowState {
         self.layers.tick(t, device, queue);
         self.render(t);
         self.emit_time(t);
+        self.emit_audio_levels();
     }
 
     fn emit_time(&mut self, t: f64) {
@@ -1013,6 +1040,16 @@ impl WindowState {
         }
         self.last_emit_pts = t;
         let _ = self.app.emit(EVT_TIME, t);
+    }
+
+    fn emit_audio_levels(&self) {
+        let Some(audio) = self.audio.as_ref() else {
+            return;
+        };
+        let (rms_db, peak_db) = audio.output_levels_db();
+        let _ = self
+            .app
+            .emit(EVT_AUDIO_LEVELS, AudioLevelsPayload { rms_db, peak_db });
     }
 
     // -----------------------------------------------------------------------
@@ -1074,7 +1111,10 @@ impl WindowState {
                         None => true,
                     };
                     if need_new {
-                        match self.compositor.begin_pipelined_readback(dev_id, width, height, 2) {
+                        match self
+                            .compositor
+                            .begin_pipelined_readback(dev_id, width, height, 2)
+                        {
                             Ok(session) => self.canvas_readback = Some(session),
                             Err(e) => {
                                 log::error!("[monitor] pipelined readback init: {e:?}");
@@ -1158,6 +1198,7 @@ fn init_state(
         audio_layers: Vec::new(),
         audio_tracks: Vec::new(),
         audio_master_gain: 1.0,
+        audio_output_gain: 1.0,
         last_emit_pts: -1.0,
         last_viewport: viewport,
         mode: MonitorMode::Canvas,

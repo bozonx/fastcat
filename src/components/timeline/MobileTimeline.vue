@@ -488,6 +488,21 @@ async function onClipAction(payload: TimelineClipActionPayload) {
     });
   }
 }
+
+const isCreateVersionModalOpen = ref(false);
+const proposedVersionName = ref('');
+
+async function handleCreateVersionFromPreview() {
+  proposedVersionName.value = await timelineStore.getNextVersionName();
+  isCreateVersionModalOpen.value = true;
+}
+
+async function handleConfirmCreateVersion(newName: string) {
+  isCreateVersionModalOpen.value = false;
+  if (timelineStore.previewBackupInfo) {
+    await timelineStore.createVersionFromBackup(timelineStore.previewBackupInfo, newName);
+  }
+}
 </script>
 
 <template>
@@ -498,6 +513,14 @@ async function onClipAction(payload: TimelineClipActionPayload) {
     @pointerup="onMobilePointerUp"
     @pointercancel="onMobilePointerCancel"
   >
+    <UiEntityCreationModal
+      v-model:open="isCreateVersionModalOpen"
+      :title="t('fastcat.timeline.createVersion')"
+      :confirm-label="t('common.confirm')"
+      :default-value="proposedVersionName"
+      select-without-extension
+      @confirm="handleConfirmCreateVersion"
+    />
     <MobileTimelineToolbar
       @open-track-mixer="isTrackMixerDrawerOpen = true"
       @open-track-manager="isTrackManagerDrawerOpen = true"
@@ -533,9 +556,9 @@ async function onClipAction(payload: TimelineClipActionPayload) {
           color="amber"
           variant="solid"
           class="cursor-pointer"
-          @click="timelineStore.restorePreviewVersion"
+          @click="handleCreateVersionFromPreview"
         >
-          {{ t('videoEditor.timeline.backups.actionsLabel.restoreMobile') }}
+          {{ t('fastcat.timeline.createVersion') }}
         </UButton>
       </div>
     </div>

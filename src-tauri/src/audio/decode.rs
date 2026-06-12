@@ -284,8 +284,22 @@ fn decode_range_ffmpeg(
     let t = format!("{:.6}", duration_sec.max(0.0));
     let output = Command::new("ffmpeg")
         .args([
-            "-v", "error", "-ss", &ss, "-i", path, "-t", &t, "-vn", "-f", "f32le", "-ac", &channels,
-            "-ar", &sample_rate, "pipe:1",
+            "-v",
+            "error",
+            "-ss",
+            &ss,
+            "-i",
+            path,
+            "-t",
+            &t,
+            "-vn",
+            "-f",
+            "f32le",
+            "-ac",
+            &channels,
+            "-ar",
+            &sample_rate,
+            "pipe:1",
         ])
         .output()
         .with_context(|| format!("failed to run ffmpeg for audio decode: {path}"))?;
@@ -730,9 +744,10 @@ pub(crate) fn decode_audio_chunk(params: DecodeAudioChunkParams<'_>) -> Result<V
     let (hit, window_end_frame) = {
         let state = shared.0.lock();
         match state.layer_windows.get(layer_id) {
-            Some(w) if w.covers(start_frame, frames_to_read, sample_rate, output_channels) => {
-                (Some((w.samples.clone(), w.source_start_frame)), Some(w.end_frame()))
-            }
+            Some(w) if w.covers(start_frame, frames_to_read, sample_rate, output_channels) => (
+                Some((w.samples.clone(), w.source_start_frame)),
+                Some(w.end_frame()),
+            ),
             // A window exists but doesn't cover this request (e.g. after a seek):
             // treat as a miss but still report its end so we don't refill needlessly.
             _ => (None, None),
@@ -754,7 +769,14 @@ pub(crate) fn decode_audio_chunk(params: DecodeAudioChunkParams<'_>) -> Result<V
         if let Some(end) = window_end_frame {
             let margin_frames = (REFILL_MARGIN_SEC * sample_rate as f64) as usize;
             if end.saturating_sub(start_frame + frames_to_read) < margin_frames {
-                spawn_window_fill(shared, layer_id, path, start_frame, sample_rate, output_channels);
+                spawn_window_fill(
+                    shared,
+                    layer_id,
+                    path,
+                    start_frame,
+                    sample_rate,
+                    output_channels,
+                );
             }
         }
         return Ok(result);
@@ -764,7 +786,14 @@ pub(crate) fn decode_audio_chunk(params: DecodeAudioChunkParams<'_>) -> Result<V
     // a bounded background fill at this position AND stream this one chunk inline so
     // there is no audible gap while the window fills. Inline streaming a single chunk
     // is cheap (~1ms); the long ranged decode stays off the realtime thread.
-    spawn_window_fill(shared, layer_id, path, start_frame, sample_rate, output_channels);
+    spawn_window_fill(
+        shared,
+        layer_id,
+        path,
+        start_frame,
+        sample_rate,
+        output_channels,
+    );
     stream()
 }
 
@@ -871,8 +900,7 @@ fn window_fill(
     };
 
     let start_sec = target_start_frame as f64 / sample_rate.max(1) as f64;
-    let result =
-        decode_range_symphonia(&path, start_sec, WINDOW_SEC, sample_rate, output_channels);
+    let result = decode_range_symphonia(&path, start_sec, WINDOW_SEC, sample_rate, output_channels);
     match result {
         Ok(samples) if !samples.is_empty() => {
             let window = AudioWindow {
@@ -1011,8 +1039,7 @@ mod tests {
             return Ok(());
         }
 
-        let samples =
-            decode_range_symphonia(&webm_path.to_string_lossy(), 0.0, 2.0, 48_000, 2)?;
+        let samples = decode_range_symphonia(&webm_path.to_string_lossy(), 0.0, 2.0, 48_000, 2)?;
         assert!(
             samples.len() >= 4_800 * 2,
             "decoded Opus fallback should produce PCM samples"
@@ -1535,7 +1562,11 @@ mod tests {
 
         let start = (0.1 * 48000.0) as usize * 2;
         let len = (0.05 * 48000.0) as usize * 2;
-        assert_eq!(out, samples[start..start + len], "memcpy is window-relative");
+        assert_eq!(
+            out,
+            samples[start..start + len],
+            "memcpy is window-relative"
+        );
         let state = shared.0.lock();
         assert!(
             !state.decoders.contains_key("w1"),
@@ -1662,11 +1693,13 @@ mod tests {
         let path = write_temp_f32_wav(8000, 1, 8000 * 2)?; // 2s tone
         let path_str = path.to_string_lossy().to_string();
         let head_frames = (0.005 * 48000.0) as usize * 2; // first 5ms
-        // Both from 0 (no seek) and from a mid-clip seek must open with signal.
+                                                          // Both from 0 (no seek) and from a mid-clip seek must open with signal.
         for start in [0.0, 0.1] {
             let out = decode_range_symphonia(&path_str, start, 0.5, 48000, 2)?;
             assert!(!out.is_empty(), "start {start}: empty");
-            let head_peak = out[..head_frames].iter().fold(0.0f32, |a, &b| a.max(b.abs()));
+            let head_peak = out[..head_frames]
+                .iter()
+                .fold(0.0f32, |a, &b| a.max(b.abs()));
             assert!(
                 head_peak > 0.01,
                 "start {start}: leading silence (peak {head_peak})"
@@ -1717,9 +1750,13 @@ mod tests {
         // Free the budget; the same call now fills and releases the slot.
         shared.0.lock().active_window_fill_count = 0;
         spawn_window_fill(&shared, "c1", &path_str, 0, 48000, 2);
-        assert!(wait_for_window(&shared, "c1", 0), "fill must run with a free slot");
+        assert!(
+            wait_for_window(&shared, "c1", 0),
+            "fill must run with a free slot"
+        );
         assert_eq!(
-            shared.0.lock().active_window_fill_count, 0,
+            shared.0.lock().active_window_fill_count,
+            0,
             "slot must be released when the fill thread finishes"
         );
         let _ = std::fs::remove_file(path);

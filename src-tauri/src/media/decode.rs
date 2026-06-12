@@ -1161,9 +1161,17 @@ mod tests {
         }
 
         // Мы должны получить несколько кадров
-        assert!(frames.len() > 1, "expected multiple preseek frames, got {}", frames.len());
+        assert!(
+            frames.len() > 1,
+            "expected multiple preseek frames, got {}",
+            frames.len()
+        );
         // Первый кадр должен быть около 0.0 (ключевой кадр)
-        assert!(frames[0].pts_sec < 0.1, "first frame should be keyframe, got {}", frames[0].pts_sec);
+        assert!(
+            frames[0].pts_sec < 0.1,
+            "first frame should be keyframe, got {}",
+            frames[0].pts_sec
+        );
         // Последний кадр должен быть близок к target
         let last_pts = frames.last().unwrap().pts_sec;
         let fps = decoder.effective_fps();
@@ -1195,14 +1203,17 @@ mod tests {
     #[test]
     fn test_shared_texture_drop_recycles_to_pool() {
         let instance = wgpu::Instance::default();
-        let adapter = match pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions::default())) {
+        let adapter = match pollster::block_on(
+            instance.request_adapter(&wgpu::RequestAdapterOptions::default()),
+        ) {
             Ok(adapter) => adapter,
             Err(_) => return,
         };
-        let (device, _queue) = match pollster::block_on(adapter.request_device(&wgpu::DeviceDescriptor::default())) {
-            Ok(res) => res,
-            Err(_) => return,
-        };
+        let (device, _queue) =
+            match pollster::block_on(adapter.request_device(&wgpu::DeviceDescriptor::default())) {
+                Ok(res) => res,
+                Err(_) => return,
+            };
 
         let texture = device.create_texture(&wgpu::TextureDescriptor {
             label: Some("test-recycle"),
@@ -1220,7 +1231,7 @@ mod tests {
         });
 
         let pool = Arc::new(parking_lot::Mutex::new(std::collections::HashMap::new()));
-        
+
         {
             let shared = SharedTexture::new_owned(texture, pool.clone());
             assert_eq!(shared.size().width, 128);

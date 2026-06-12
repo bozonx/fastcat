@@ -19,6 +19,8 @@ export const MONITOR_EVENTS = {
   time: 'monitor:time',
   /** Playback reached the end of the timeline. */
   ended: 'monitor:ended',
+  /** Live native monitor master audio levels. */
+  audioLevels: 'monitor:audio-levels',
 } as const;
 
 export interface MonitorViewportArgs {
@@ -110,6 +112,10 @@ export const nativeMonitorIpc = {
   },
   setAudioSettings(settings: MonitorAudioSettingsInput): Promise<void> {
     return invoke('monitor_set_audio_settings', toMonitorAudioSettingsPayload(settings));
+  },
+  /** Post-mix monitor output gain. Applies only to live native monitor audio. */
+  setOutputGain(gain: number): Promise<void> {
+    return invoke('monitor_set_output_gain', { gain });
   },
   close(): Promise<void> {
     return invoke('monitor_close');

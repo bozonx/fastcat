@@ -169,6 +169,14 @@ pub async fn monitor_set_audio_settings(
 }
 
 #[tauri::command]
+pub async fn monitor_set_output_gain(
+    gain: f64,
+    engine: State<'_, VideoEngine>,
+) -> Result<(), String> {
+    send_monitor_cmd(&engine, MonitorCommand::SetOutputGain(gain))
+}
+
+#[tauri::command]
 pub async fn monitor_close(engine: State<'_, VideoEngine>) -> Result<(), String> {
     if let Some(m) = engine.monitor() {
         m.send(MonitorCommand::Close).map_err(|e| e.to_string())?;

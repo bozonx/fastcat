@@ -111,7 +111,11 @@ pub(crate) fn run_ffmpeg_task(
             if status.success() {
                 let stderr_text = stderr_text.trim();
                 if !stderr_text.is_empty() {
-                    log::info!("[ffmpeg] task {} succeeded with stderr output:\n{}", task_id, stderr_text);
+                    log::info!(
+                        "[ffmpeg] task {} succeeded with stderr output:\n{}",
+                        task_id,
+                        stderr_text
+                    );
                 }
                 return Ok(());
             }

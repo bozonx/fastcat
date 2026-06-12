@@ -225,6 +225,10 @@ impl NativeAudioEngine {
         self.shared.1.notify_all();
     }
 
+    pub fn set_output_gain(&self, gain: f64) {
+        self.clock.set_output_gain(gain);
+    }
+
     pub fn play(&self, pts_sec: f64) {
         self.start_transport(pts_sec, false);
     }
@@ -498,6 +502,10 @@ impl NativeAudioEngine {
         Some(audible_pts_sec(&state, &self.clock, self.sample_rate))
     }
 
+    pub fn output_levels_db(&self) -> (f64, f64) {
+        self.clock.output_levels_db()
+    }
+
     pub fn is_empty(&self) -> bool {
         self.restart_finished_producer();
         self.shared.0.lock().scene.is_empty()
@@ -639,6 +647,15 @@ mod tests {
         assert!(engine.shared.0.lock().playing);
         assert!(!engine.clock.playing.load(Ordering::Acquire));
         assert_eq!(engine.current_pts(), None);
+    }
+
+    #[test]
+    fn set_output_gain_updates_realtime_clock() {
+        let engine = mock_engine();
+
+        engine.set_output_gain(0.35);
+
+        assert!((engine.clock.output_gain() - 0.35).abs() < 1e-9);
     }
 
     #[test]
@@ -886,7 +903,10 @@ mod tests {
         // Re-set the same scene (only l1) → the stale layer's window is dropped.
         engine.set_scene(std::slice::from_ref(&l1), &[], 1.0);
         let state = engine.shared.0.lock();
-        assert!(state.layer_windows.contains_key("l1"), "in-scene window kept");
+        assert!(
+            state.layer_windows.contains_key("l1"),
+            "in-scene window kept"
+        );
         assert!(
             !state.layer_windows.contains_key("stale"),
             "window of a removed layer must be evicted"

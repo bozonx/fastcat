@@ -121,7 +121,7 @@ impl VideoFrameCache {
     ) -> Option<DecodedVideoFrame> {
         let key = self.index_of(target_pts);
         self.last_request = key;
-        
+
         // Сначала ищем кадр с PTS ≤ target_pts (полноценный floor)
         if let Some((_, f)) = self.frames.range(..=key).next_back() {
             return Some(f.clone());
@@ -303,14 +303,20 @@ mod tests {
         assert_eq!(c.frame_le(1.000).map(|f| f.pts_sec), None);
 
         // С lead в 0.033 секунды (1 кадр при 30fps) - должен найти 1.001
-        assert_eq!(c.frame_le_with_lead(1.000, 0.033).map(|f| f.pts_sec), Some(1.001));
+        assert_eq!(
+            c.frame_le_with_lead(1.000, 0.033).map(|f| f.pts_sec),
+            Some(1.001)
+        );
 
         // Слишком маленький lead (например, 0.0001) - не найдет
         assert_eq!(c.frame_le_with_lead(1.000, 0.0001).map(|f| f.pts_sec), None);
 
         // Если есть и прошедший, и будущий кадр, то приоритет прошедшему (floor)
         c.insert(frame(0.999));
-        assert_eq!(c.frame_le_with_lead(1.000, 0.033).map(|f| f.pts_sec), Some(0.999));
+        assert_eq!(
+            c.frame_le_with_lead(1.000, 0.033).map(|f| f.pts_sec),
+            Some(0.999)
+        );
     }
 
     #[test]

@@ -614,7 +614,7 @@ mod tests {
     #[test]
     fn has_buffered_through_near_eof_returns_true_immediately() {
         let mut rt = fixture_video_rt();
-        
+
         let video_duration = rt.pump.info.duration_sec; // 1.0s
         let fps = rt.pump.info.fps.max(1.0); // 30.0
         let half_frame = 0.5 / fps;
@@ -632,7 +632,7 @@ mod tests {
 
         // Playhead находится близко к eof, например в video_duration - 0.05 (0.95s).
         let clip_local = video_duration - 0.05;
-        
+
         // С EOF-защитой (как в runtime.rs):
         let target = (clip_local + lookahead)
             .min(video_duration - half_frame)

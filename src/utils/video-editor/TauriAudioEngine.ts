@@ -1,5 +1,5 @@
 import { listen, type UnlistenFn } from '@tauri-apps/api/event';
-import { nativeMonitorIpc } from '~/composables/monitor/native-monitor-ipc';
+import { MONITOR_EVENTS, nativeMonitorIpc } from '~/composables/monitor/native-monitor-ipc';
 import { createDevLogger } from '~/utils/dev-logger';
 import { AudioScheduler } from '~/utils/video-editor/AudioScheduler';
 import type { AudioEngineClip } from '~/utils/video-editor/audio-engine.types';
@@ -11,6 +11,11 @@ import type {
 
 const logger = createDevLogger('TauriAudioEngine');
 const EVT_TIME = 'monitor:time';
+
+interface NativeAudioLevelsPayload {
+  rmsDb: number;
+  peakDb: number;
+}
 
 /**
  * Tauri-native audio engine that does NOT use the Web Audio API.
@@ -28,14 +33,16 @@ export class TauriAudioEngine implements IAudioEngine {
   readonly capabilities: AudioEngineCapabilities = {
     scrubPreview: true,
     peaksExtraction: false,
-    levelMetering: false,
+    levelMetering: true,
   };
   private readonly scheduler: AudioScheduler;
   private currentClips: AudioEngineClip[] = [];
   private destroyed = false;
   private currentMasterVolume = 1;
   private currentMonitorVolume = 1;
+  private currentMasterLevels = { rmsDb: -60, peakDb: -60 };
   private unlistenTime: UnlistenFn | null = null;
+  private unlistenLevels: UnlistenFn | null = null;
 
   constructor(_options: AudioEngineOptions = {}) {
     this.scheduler = new AudioScheduler({
@@ -55,6 +62,17 @@ export class TauriAudioEngine implements IAudioEngine {
       }
     }).then((unlisten) => {
       this.unlistenTime = unlisten;
+    });
+
+    void listen<NativeAudioLevelsPayload>(MONITOR_EVENTS.audioLevels, (event) => {
+      const levels = event.payload;
+      if (!levels) return;
+      this.currentMasterLevels = {
+        rmsDb: Number.isFinite(levels.rmsDb) ? levels.rmsDb : -60,
+        peakDb: Number.isFinite(levels.peakDb) ? levels.peakDb : -60,
+      };
+    }).then((unlisten) => {
+      this.unlistenLevels = unlisten;
     });
   }
 
@@ -97,15 +115,21 @@ export class TauriAudioEngine implements IAudioEngine {
 
   setMonitorVolume(volume: number) {
     this.currentMonitorVolume = Math.max(0, Math.min(10, volume));
+    void nativeMonitorIpc.setOutputGain(this.currentMonitorVolume).catch((error) => {
+      logger.debug('setMonitorVolume failed', error);
+    });
   }
 
   getCurrentTimeUs(): number {
     return this.scheduler.getCurrentTimeUs();
   }
 
-  getLevels(_trackId?: string): { rmsDb: number; peakDb: number } {
-    // Native levels could be plumbed from Rust in the future.
-    return { rmsDb: -60, peakDb: -60 };
+  getLevels(trackId?: string): { rmsDb: number; peakDb: number } {
+    if (trackId) {
+      // Native per-track metering is not emitted yet; avoid showing fake bus data.
+      return { rmsDb: -60, peakDb: -60 };
+    }
+    return this.currentMasterLevels;
   }
 
   async previewScrubForward(
@@ -150,6 +174,10 @@ export class TauriAudioEngine implements IAudioEngine {
     if (this.unlistenTime) {
       this.unlistenTime();
       this.unlistenTime = null;
+    }
+    if (this.unlistenLevels) {
+      this.unlistenLevels();
+      this.unlistenLevels = null;
     }
   }
 }

@@ -2,6 +2,7 @@
 import { useProjectStore } from '~/stores/project.store';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useHotkeyLabel } from '~/composables/useHotkeyLabel';
+import { blurOnDropdownMenuClose } from '~/composables/useDropdownMenuBlur';
 import TimelineTabs from '~/components/timeline/TimelineTabs.vue';
 import BackgroundTasksButton from '~/components/file-manager/BackgroundTasksButton.vue';
 import UiTooltip from '~/components/ui/UiTooltip.vue';
@@ -172,7 +173,12 @@ const menuItems = computed(() => {
 
       <BackgroundTasksButton size="sm" />
 
-      <UDropdownMenu :items="menuItems" mode="hover" :ui="{ content: 'w-56' }">
+      <UDropdownMenu
+        :items="menuItems"
+        mode="hover"
+        :ui="{ content: 'w-56' }"
+        @update:open="blurOnDropdownMenuClose"
+      >
         <UiActionButton
           size="sm"
           variant="ghost"

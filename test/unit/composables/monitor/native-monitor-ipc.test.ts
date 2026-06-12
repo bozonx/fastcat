@@ -36,6 +36,7 @@ describe('native-monitor-ipc', () => {
     await nativeMonitorIpc.setViewport({ x: 1, y: 2, width: 3, height: 4, visible: true });
     await nativeMonitorIpc.openNativeWindow();
     await nativeMonitorIpc.setAudioSettings({ bufferSize: 2048, backend: 'pulseaudio' });
+    await nativeMonitorIpc.setOutputGain(0.25);
     await nativeMonitorIpc.close();
 
     expect(invokeMock.mock.calls).toEqual([
@@ -47,6 +48,7 @@ describe('native-monitor-ipc', () => {
       ['monitor_set_viewport', { x: 1, y: 2, width: 3, height: 4, visible: true }],
       ['monitor_open_native_window'],
       ['monitor_set_audio_settings', { bufferSize: 2048, backend: 'pulseaudio' }],
+      ['monitor_set_output_gain', { gain: 0.25 }],
       ['monitor_close'],
     ]);
   });

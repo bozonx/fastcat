@@ -525,6 +525,21 @@ function onDragVirtualStart(event: DragEvent, type: 'adjustment' | 'background' 
 function onDragVirtualEnd() {
   clearDraggedFile();
 }
+
+const isCreateVersionModalOpen = ref(false);
+const proposedVersionName = ref('');
+
+async function handleCreateVersionFromPreview() {
+  proposedVersionName.value = await timelineStore.getNextVersionName();
+  isCreateVersionModalOpen.value = true;
+}
+
+async function handleConfirmCreateVersion(newName: string) {
+  isCreateVersionModalOpen.value = false;
+  if (timelineStore.previewBackupInfo) {
+    await timelineStore.createVersionFromBackup(timelineStore.previewBackupInfo, newName);
+  }
+}
 </script>
 
 <template>
@@ -555,6 +570,14 @@ function onDragVirtualEnd() {
       :item-id="pendingClipInfo.itemId"
       @select="(id) => applyTextPreset(id, pendingClipInfo!)"
       @close="cancelTextPreset"
+    />
+    <UiEntityCreationModal
+      v-model:open="isCreateVersionModalOpen"
+      :title="t('fastcat.timeline.createVersion')"
+      :confirm-label="t('common.confirm')"
+      :default-value="proposedVersionName"
+      select-without-extension
+      @confirm="handleConfirmCreateVersion"
     />
 
     <!-- Row 1: Toolbar -->
@@ -591,9 +614,9 @@ function onDragVirtualEnd() {
           color="amber"
           variant="solid"
           class="cursor-pointer"
-          @click="timelineStore.restorePreviewVersion"
+          @click="handleCreateVersionFromPreview"
         >
-          {{ t('videoEditor.timeline.backups.actionsLabel.restore') }}
+          {{ t('fastcat.timeline.createVersion') }}
         </UButton>
       </div>
     </div>

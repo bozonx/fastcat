@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { formatBytes } from '~/utils/format';
+import { blurOnDropdownMenuClose } from '~/composables/useDropdownMenuBlur';
 import { useProjectStore } from '~/stores/project.store';
 
 interface Breadcrumb {
@@ -83,6 +84,7 @@ const projectStore = useProjectStore();
         v-if="!isSelectionMode"
         :items="menuItems as any"
         :ui="{ content: 'w-56 min-w-max' }"
+        @update:open="blurOnDropdownMenuClose"
       >
         <UButton icon="lucide:more-vertical" variant="ghost" color="neutral" size="sm" />
       </UDropdownMenu>

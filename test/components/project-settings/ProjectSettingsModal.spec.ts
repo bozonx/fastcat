@@ -1,7 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { mockNuxtImport } from '@nuxt/test-utils/runtime';
 import { mountWithNuxt } from '../../utils/mount';
-import ProjectSettingsModal from '~/components/project-settings/ProjectSettingsModal.vue';
 import { reactive } from 'vue';
 
 mockNuxtImport('useI18n', () => {
@@ -10,6 +9,8 @@ mockNuxtImport('useI18n', () => {
     locale: { value: 'en-US' },
   });
 });
+
+import ProjectSettingsModal from '~/components/project-settings/ProjectSettingsModal.vue';
 
 const mockProjectStore = reactive({
   currentProjectId: 'test-project-id',

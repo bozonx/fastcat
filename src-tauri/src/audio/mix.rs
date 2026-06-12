@@ -247,7 +247,9 @@ pub(crate) fn mix_chunk_ramped(
     }
 
     match prev_master_gain {
-        Some(prev) => apply_master_gain_ramp(&mut mixed, prev, master_gain, frames, output_channels),
+        Some(prev) => {
+            apply_master_gain_ramp(&mut mixed, prev, master_gain, frames, output_channels)
+        }
         None => apply_master_gain(&mut mixed, master_gain),
     }
     soft_clip(&mut mixed);

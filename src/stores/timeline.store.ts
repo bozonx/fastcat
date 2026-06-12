@@ -679,6 +679,90 @@ export const useTimelineStore = defineStore('timeline', () => {
     }
   }
 
+  async function getNextVersionName(): Promise<string> {
+    if (!currentTimelinePath.value) return '';
+    const path = currentTimelinePath.value;
+    const parts = path.split('/');
+    const fileName = parts.pop();
+    if (!fileName) return '';
+
+    const baseName = fileName.replace(/\.otio$/, '');
+    const match = baseName.match(/^(.*)_v(\d{1,3})$/);
+    const prefix = match ? match[1]! : baseName;
+
+    const parentPath = parts.join('/');
+    const existingNames = await projectStore.listEntryNames(parentPath);
+    const existingVersions: number[] = [];
+    for (const name of existingNames) {
+      if (name.startsWith(prefix) && name.endsWith('.otio')) {
+        const vMatch = name.slice(0, -'.otio'.length).match(/_v(\d{1,3})$/);
+        if (vMatch) {
+          existingVersions.push(parseInt(vMatch[1]!, 10));
+        } else if (name === prefix + '.otio') {
+          existingVersions.push(0);
+        }
+      }
+    }
+
+    existingVersions.sort((a, b) => a - b);
+    const nextNum =
+      existingVersions.length > 0 ? existingVersions[existingVersions.length - 1]! + 1 : 1;
+    return `${prefix}_v${nextNum.toString().padStart(2, '0')}.otio`;
+  }
+
+  async function createVersionFromBackup(
+    version: TimelineBackupVersion | TimelinePreviewBackupInfo,
+    newName: string,
+  ) {
+    if (!currentTimelinePath.value) return;
+    try {
+      let text: string | null = null;
+      if (version.type === 'main') {
+        text = await projectStore.readTextByPath(currentTimelinePath.value);
+      } else if (version.type === 'autosave') {
+        text = await projectStore.readTextByPath(`.fastcat/autosave/${currentTimelinePath.value}`);
+      } else {
+        text = await projectStore.readTextByPath(version.path);
+      }
+      if (!text) throw new Error('Version file not found');
+
+      const path = currentTimelinePath.value;
+      const parts = path.split('/');
+      parts.pop();
+      const parentPath = parts.join('/');
+      const finalName = newName.trim();
+      const finalNameWithExt = finalName.toLowerCase().endsWith('.otio')
+        ? finalName
+        : `${finalName}.otio`;
+      const newRelativePath = parentPath ? `${parentPath}/${finalNameWithExt}` : finalNameWithExt;
+
+      await projectStore.writeTextByPath(newRelativePath, text);
+
+      toast.add({
+        title: t('videoEditor.timeline.versionCreated', {
+          name: finalNameWithExt,
+        }),
+        color: 'success',
+      });
+
+      if (previewMode.value) {
+        previewMode.value = false;
+        previewBackupInfo.value = null;
+      }
+
+      await projectStore.openTimelineFile(newRelativePath);
+      focusStore.setActiveTimelinePath(newRelativePath);
+      await loadTimeline();
+      void lifecycle.loadTimelineMetadata();
+    } catch (e) {
+      log.error('Failed to create version from backup', e);
+      toast.add({
+        title: t('common.saveError'),
+        color: 'error',
+      });
+    }
+  }
+
   async function saveTimelineAs(newName: string) {
     if (!currentTimelinePath.value || !timelineDoc.value) return;
     if (projectStore.isReadOnly || previewMode.value) {
@@ -973,6 +1057,8 @@ export const useTimelineStore = defineStore('timeline', () => {
     setTimelineZoomExact,
     duplicateCurrentTimeline,
     saveTimelineAs,
+    getNextVersionName,
+    createVersionFromBackup,
     previewMode,
     previewBackupInfo,
     backupVersions: backup.backupVersions,

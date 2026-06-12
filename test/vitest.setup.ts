@@ -271,6 +271,10 @@ vi.mock('#app', () => ({
   })),
 }));
 
+vi.mock('nuxt/app', () => ({
+  useNuxtApp: createNuxtMock,
+}));
+
 vi.mock('@nuxtjs/device', () => ({
   useDevice: vi.fn(() => ({
     isMobile: false,

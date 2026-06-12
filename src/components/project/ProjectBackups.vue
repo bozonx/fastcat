@@ -5,6 +5,8 @@ import { useProjectStore } from '~/stores/project.store';
 import UiEmptyState from '~/components/ui/UiEmptyState.vue';
 import UiConfirmModal from '~/components/ui/UiConfirmModal.vue';
 
+import type { TimelineBackupVersion } from '~/stores/timeline.store';
+
 defineProps<{
   compact?: boolean;
 }>();
@@ -54,10 +56,21 @@ function formatDate(date: Date | null): string {
   }).format(date);
 }
 
-function formatSize(bytes: number | null): string {
-  if (bytes === null) return '—';
-  if (bytes < 1024) return `${bytes} B`;
-  return `${Math.round(bytes / 1024)} KB`;
+const isCreateVersionModalOpen = ref(false);
+const selectedVersionForCopy = ref<TimelineBackupVersion | null>(null);
+const proposedVersionName = ref('');
+
+async function handleCreateVersionClick(version: TimelineBackupVersion) {
+  selectedVersionForCopy.value = version;
+  proposedVersionName.value = await timelineStore.getNextVersionName();
+  isCreateVersionModalOpen.value = true;
+}
+
+async function handleConfirmCreateVersion(newName: string) {
+  if (!selectedVersionForCopy.value) return;
+  isCreateVersionModalOpen.value = false;
+  await timelineStore.createVersionFromBackup(selectedVersionForCopy.value, newName);
+  selectedVersionForCopy.value = null;
 }
 
 const versions = computed(() => timelineStore.backupVersions);
@@ -80,6 +93,16 @@ const versions = computed(() => timelineStore.backupVersions);
       color="warning"
       icon="i-heroicons-trash"
       @confirm="handleClearBackups"
+    />
+
+    <!-- Create Version Modal -->
+    <UiEntityCreationModal
+      v-model:open="isCreateVersionModalOpen"
+      :title="t('fastcat.timeline.createVersion')"
+      :confirm-label="t('common.confirm')"
+      :default-value="proposedVersionName"
+      select-without-extension
+      @confirm="handleConfirmCreateVersion"
     />
 
     <!-- Header with Refresh Button -->
@@ -124,9 +147,8 @@ const versions = computed(() => timelineStore.backupVersions);
           class="sticky top-0 bg-ui-bg-elevated/95 backdrop-blur-sm z-10 border-b border-ui-border uppercase tracking-wider text-ui-text-muted font-semibold"
         >
           <tr>
-            <th class="px-3 py-2.5 w-1/3">{{ t('videoEditor.timeline.backups.version') }}</th>
+            <th class="px-3 py-2.5 w-1/2">{{ t('videoEditor.timeline.backups.version') }}</th>
             <th class="px-3 py-2.5 w-1/4">{{ t('videoEditor.timeline.backups.date') }}</th>
-            <th class="px-3 py-2.5 w-1/6">{{ t('videoEditor.timeline.backups.size') }}</th>
             <th class="px-3 py-2.5 text-right w-1/4">
               {{ t('videoEditor.timeline.backups.actions') }}
             </th>
@@ -170,16 +192,11 @@ const versions = computed(() => timelineStore.backupVersions);
               {{ formatDate(version.date) }}
             </td>
 
-            <!-- Size -->
-            <td class="px-3 py-3 align-middle text-ui-text-muted font-mono whitespace-nowrap">
-              {{ formatSize(version.size) }}
-            </td>
-
             <!-- Actions -->
             <td class="px-3 py-3 align-middle text-right">
               <div class="flex items-center justify-end gap-1.5">
                 <!-- Preview / Open -->
-                <UTooltip :text="t('videoEditor.timeline.backups.actionsLabel.open')">
+                <UTooltip v-if="version.type !== 'main'" :text="t('videoEditor.timeline.backups.actionsLabel.open')">
                   <UButton
                     size="xs"
                     color="neutral"
@@ -190,16 +207,16 @@ const versions = computed(() => timelineStore.backupVersions);
                   />
                 </UTooltip>
 
-                <!-- Restore -->
-                <UTooltip :text="t('videoEditor.timeline.backups.actionsLabel.restore')">
+                <!-- Create Version -->
+                <UTooltip :text="t('fastcat.timeline.createVersion')">
                   <UButton
                     size="xs"
                     color="primary"
                     variant="ghost"
-                    icon="i-heroicons-arrow-path-20-solid"
+                    icon="i-heroicons-document-duplicate"
                     class="cursor-pointer"
                     :disabled="isReadOnly"
-                    @click="timelineStore.restoreVersion(version)"
+                    @click="handleCreateVersionClick(version)"
                   />
                 </UTooltip>
 

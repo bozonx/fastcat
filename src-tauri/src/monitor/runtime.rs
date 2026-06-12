@@ -725,7 +725,11 @@ impl LayerRuntimeManager {
                 if !playing {
                     rt.request_prebuffer();
                 }
-                let lead = if playing { None } else { Some(1.0 / rt.pump.info.fps.max(1.0)) };
+                let lead = if playing {
+                    None
+                } else {
+                    Some(1.0 / rt.pump.info.fps.max(1.0))
+                };
                 rt.update_display(
                     clip_local,
                     if playing {
@@ -1109,10 +1113,15 @@ mod tests {
         use super::frame_cache_budget_bytes;
         use crate::monitor::scene::NativeFrameCacheMode;
 
-        let one = frame_cache_budget_bytes(NativeFrameCacheMode::Balanced, 0, (1920, 1080), 30.0, 1);
+        let one =
+            frame_cache_budget_bytes(NativeFrameCacheMode::Balanced, 0, (1920, 1080), 30.0, 1);
         let three =
             frame_cache_budget_bytes(NativeFrameCacheMode::Balanced, 0, (1920, 1080), 30.0, 3);
-        assert_eq!(three, one / 3, "budget must be split across concurrent layers");
+        assert_eq!(
+            three,
+            one / 3,
+            "budget must be split across concurrent layers"
+        );
         // A zero count must not divide by zero.
         let zero =
             frame_cache_budget_bytes(NativeFrameCacheMode::Balanced, 0, (1920, 1080), 30.0, 0);

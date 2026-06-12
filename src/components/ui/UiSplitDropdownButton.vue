@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { blurOnDropdownMenuClose } from '~/composables/useDropdownMenuBlur';
+
 interface DropdownActionItem {
   label: string;
   icon?: string;
@@ -66,7 +68,12 @@ function onMainButtonClick(event: MouseEvent) {
       @click="onMainButtonClick"
     />
 
-    <UDropdownMenu :items="items" :disabled="disabled" :ui="{ content: 'bottom-end' }">
+    <UDropdownMenu
+      :items="items"
+      :disabled="disabled"
+      :ui="{ content: 'bottom-end' }"
+      @update:open="blurOnDropdownMenuClose"
+    >
       <UButton
         :size="size"
         :variant="variant"

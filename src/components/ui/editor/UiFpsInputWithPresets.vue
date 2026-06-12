@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import UiWheelNumberInput from '~/components/ui/UiWheelNumberInput.vue';
+import { blurOnDropdownMenuClose } from '~/composables/useDropdownMenuBlur';
 
 const props = defineProps<{
   modelValue: number;
@@ -54,6 +55,7 @@ function selectPreset(value: number) {
       :items="fpsMenuItems"
       :disabled="disabled"
       :content="{ align: 'end' }"
+      @update:open="blurOnDropdownMenuClose"
       :ui="{ content: 'min-w-24' }"
     >
       <UButton

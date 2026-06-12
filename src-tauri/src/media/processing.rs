@@ -304,7 +304,15 @@ pub fn convert_media(
     target_path: &Path,
     options: NativeConvertOptions,
 ) -> Result<()> {
-    convert_media_with_warnings(tasks, task_id, source_path, target_path, options, None, None)
+    convert_media_with_warnings(
+        tasks,
+        task_id,
+        source_path,
+        target_path,
+        options,
+        None,
+        None,
+    )
 }
 
 pub fn convert_media_with_warnings(
@@ -352,7 +360,15 @@ pub fn convert_media_with_warnings(
     )?;
 
     let ffmpeg_cmd = options.ffmpeg_path.as_deref().unwrap_or("ffmpeg");
-    match run_ffmpeg_task(tasks, task_id, ffmpeg_cmd, args, on_warning, on_progress, duration) {
+    match run_ffmpeg_task(
+        tasks,
+        task_id,
+        ffmpeg_cmd,
+        args,
+        on_warning,
+        on_progress,
+        duration,
+    ) {
         Ok(()) => {
             if !target_path.exists() {
                 return Err(anyhow!(

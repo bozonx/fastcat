@@ -949,7 +949,9 @@ fn source_to_owned_texture(
                     depth_or_array_layers: 1,
                 },
             );
-            Ok(Arc::new(crate::media::SharedTexture::new_shared(Arc::new(texture))))
+            Ok(Arc::new(crate::media::SharedTexture::new_shared(Arc::new(
+                texture,
+            ))))
         }
         EffectSource::Gpu(texture) => Ok(texture.clone()),
     }

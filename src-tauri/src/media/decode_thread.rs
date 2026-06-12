@@ -479,7 +479,10 @@ fn run_decoder_loop(args: DecoderLoopArgs) {
                         ) {
                             Ok(()) => {
                                 yuv_upload_failures = 0;
-                                let shared_tex = Arc::new(super::decode::SharedTexture::new_owned(tex, texture_pool.clone()));
+                                let shared_tex = Arc::new(super::decode::SharedTexture::new_owned(
+                                    tex,
+                                    texture_pool.clone(),
+                                ));
                                 frame.texture = Some(shared_tex);
                             }
                             Err(error) => {
@@ -519,7 +522,10 @@ fn run_decoder_loop(args: DecoderLoopArgs) {
                                 depth_or_array_layers: 1,
                             },
                         );
-                        let shared_tex = Arc::new(super::decode::SharedTexture::new_owned(tex, texture_pool.clone()));
+                        let shared_tex = Arc::new(super::decode::SharedTexture::new_owned(
+                            tex,
+                            texture_pool.clone(),
+                        ));
                         frame.texture = Some(shared_tex);
                     }
                 }

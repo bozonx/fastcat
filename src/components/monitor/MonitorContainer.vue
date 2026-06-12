@@ -18,6 +18,7 @@ import { registerMonitorActions } from '~/composables/editor/hotkeys/monitorActi
 import { useFileManager } from '~/composables/file-manager/useFileManager';
 import { useProjectActions } from '~/composables/editor/useProjectActions';
 import { useHotkeyLabel } from '~/composables/useHotkeyLabel';
+import { blurOnDropdownMenuClose } from '~/composables/useDropdownMenuBlur';
 
 const { t } = useI18n();
 const toast = useToast();
@@ -455,6 +456,7 @@ watch(viewportRef, (vp) => {
               :items="monitorSyncMenuItems"
               :portal="monitorMenuPortal"
               :ui="{ content: 'min-w-44' }"
+              @update:open="blurOnDropdownMenuClose"
             >
               <UButton
                 v-if="projectStore.activeMonitor"
@@ -574,7 +576,11 @@ watch(viewportRef, (vp) => {
           />
 
           <!-- "More" dropdown duplicates the context menu items for discoverability -->
-          <UDropdownMenu :items="contextMenuItems" :portal="monitorMenuPortal">
+          <UDropdownMenu
+            :items="contextMenuItems"
+            :portal="monitorMenuPortal"
+            @update:open="blurOnDropdownMenuClose"
+          >
             <UButton
               size="xs"
               color="neutral"

@@ -11,11 +11,16 @@ vi.mock('@tauri-apps/api/event', () => ({
 
 const scrubPreviewMock = vi.hoisted(() => vi.fn());
 const stopScrubPreviewMock = vi.hoisted(() => vi.fn());
+const setOutputGainMock = vi.hoisted(() => vi.fn());
 
 vi.mock('~/composables/monitor/native-monitor-ipc', () => ({
+  MONITOR_EVENTS: {
+    audioLevels: 'monitor:audio-levels',
+  },
   nativeMonitorIpc: {
     scrubPreview: scrubPreviewMock,
     stopScrubPreview: stopScrubPreviewMock,
+    setOutputGain: setOutputGainMock,
   },
 }));
 
@@ -32,6 +37,7 @@ describe('TauriAudioEngine', () => {
     listenMock.mockResolvedValue(unlistenMock);
     scrubPreviewMock.mockResolvedValue(undefined);
     stopScrubPreviewMock.mockResolvedValue(undefined);
+    setOutputGainMock.mockResolvedValue(undefined);
   });
 
   it('declares correct capabilities', async () => {
@@ -39,7 +45,7 @@ describe('TauriAudioEngine', () => {
     expect(engine.capabilities).toEqual({
       scrubPreview: true,
       peaksExtraction: false,
-      levelMetering: false,
+      levelMetering: true,
     });
   });
 
@@ -127,9 +133,27 @@ describe('TauriAudioEngine', () => {
     expect((engine as any).currentMonitorVolume).toBe(10);
   });
 
-  it('getLevels returns static silence', async () => {
+  it('setMonitorVolume forwards the effective gain to native output', async () => {
     const engine = await createEngine();
-    expect(engine.getLevels()).toEqual({ rmsDb: -60, peakDb: -60 });
+
+    engine.setMonitorVolume(0.25);
+    engine.setMonitorVolume(-1);
+    engine.setMonitorVolume(20);
+
+    expect(setOutputGainMock).toHaveBeenNthCalledWith(1, 0.25);
+    expect(setOutputGainMock).toHaveBeenNthCalledWith(2, 0);
+    expect(setOutputGainMock).toHaveBeenNthCalledWith(3, 10);
+  });
+
+  it('getLevels returns native master levels and silence for per-track meters', async () => {
+    const engine = await createEngine();
+    const levelsHandler = listenMock.mock.calls[1]?.[1] as (event: {
+      payload: { rmsDb: number; peakDb: number };
+    }) => void;
+
+    levelsHandler({ payload: { rmsDb: -18, peakDb: -6 } });
+
+    expect(engine.getLevels()).toEqual({ rmsDb: -18, peakDb: -6 });
     expect(engine.getLevels('track-1')).toEqual({ rmsDb: -60, peakDb: -60 });
   });
 
@@ -167,7 +191,7 @@ describe('TauriAudioEngine', () => {
   it('destroy unregisters time listener and marks destroyed', async () => {
     const engine = await createEngine();
     engine.destroy();
-    expect(unlistenMock).toHaveBeenCalled();
+    expect(unlistenMock).toHaveBeenCalledTimes(2);
     expect((engine as any).destroyed).toBe(true);
   });
 
@@ -175,7 +199,7 @@ describe('TauriAudioEngine', () => {
     const engine = await createEngine();
     engine.destroy();
     engine.destroy();
-    expect(unlistenMock).toHaveBeenCalledTimes(1);
+    expect(unlistenMock).toHaveBeenCalledTimes(2);
   });
 
   it('syncTime event updates scheduler time', async () => {

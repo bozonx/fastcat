@@ -10,15 +10,25 @@ vi.mock('~/timeline/otio-serializer', () => ({
   serializeTimelineToOtio: vi.fn().mockReturnValue('{}'),
 }));
 
+import { ref } from 'vue';
+
+const currentProjectNameRef = ref('test');
+const currentTimelinePathRef = ref('timeline.otio');
+
 const projectStoreMock = {
-  currentProjectName: 'test',
-  currentTimelinePath: 'timeline.otio',
+  get currentProjectName() { return currentProjectNameRef.value; },
+  set currentProjectName(val) { currentProjectNameRef.value = val; },
+  get currentTimelinePath() { return currentTimelinePathRef.value; },
+  set currentTimelinePath(val) { currentTimelinePathRef.value = val; },
   getFileHandleByPath: vi.fn(),
   getProjectFileHandleByRelativePath: vi.fn(),
   getFileByPath: vi.fn(),
   getDirectoryHandleByPath: vi.fn(),
   getFileMetadata: vi.fn(),
   readTextByPath: vi.fn(),
+  listEntryNames: vi.fn(),
+  writeTextByPath: vi.fn(),
+  openTimelineFile: vi.fn(),
   deleteByPath: vi.fn(),
   saveProjectSettings: vi.fn(),
   projectSettings: {
@@ -652,5 +662,48 @@ describe('TimelineStore', () => {
     const c2 = store.timelineDoc.tracks[1].items.find((it: any) => it.id === 'c2');
     expect(c1.opacity).toBe(0.5);
     expect(c2.opacity).toBeUndefined(); // Should NOT sync to group member because it's not in selection
+  });
+
+  describe('Backup versioning', () => {
+    beforeEach(() => {
+      projectStoreMock.listEntryNames.mockReset();
+      projectStoreMock.writeTextByPath.mockReset();
+      projectStoreMock.openTimelineFile.mockReset();
+    });
+
+    it('calculates the next version name correctly', async () => {
+      projectStoreMock.currentTimelinePath = 'folder/project.otio';
+      vi.mocked(projectStoreMock.listEntryNames).mockResolvedValue([
+        'project.otio',
+        'project_v01.otio',
+        'project_v02.otio',
+        'unrelated.otio',
+      ]);
+
+      const nextName = await store.getNextVersionName();
+      expect(nextName).toBe('project_v03.otio');
+    });
+
+    it('creates a new version from backup and opens it', async () => {
+      projectStoreMock.currentTimelinePath = 'folder/project.otio';
+      vi.mocked(projectStoreMock.readTextByPath).mockResolvedValue('{"schema":"otio"}');
+
+      const mockBackup = {
+        type: 'backup' as const,
+        name: 'backup_1.otio',
+        path: '.fastcat/backups/folder/project__bak001.otio',
+        date: new Date(),
+        size: 100,
+        label: 'Backup #1',
+      };
+
+      await store.createVersionFromBackup(mockBackup, 'project_v03.otio');
+
+      expect(projectStoreMock.writeTextByPath).toHaveBeenCalledWith(
+        'folder/project_v03.otio',
+        '{"schema":"otio"}',
+      );
+      expect(projectStoreMock.openTimelineFile).toHaveBeenCalledWith('folder/project_v03.otio');
+    });
   });
 });

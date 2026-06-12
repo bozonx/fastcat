@@ -427,7 +427,11 @@ impl Compositor {
                         Ok(processed) => {
                             layers[i].kind = LayerKind::Raster {
                                 natural_size: (processed.width(), processed.height()),
-                                source: RasterSource::GpuTexture(std::sync::Arc::new(crate::media::SharedTexture::new_shared(std::sync::Arc::new(processed)))),
+                                source: RasterSource::GpuTexture(std::sync::Arc::new(
+                                    crate::media::SharedTexture::new_shared(std::sync::Arc::new(
+                                        processed,
+                                    )),
+                                )),
                             };
                             layers[i].transition = None;
                             // Эффекты уже запечены в переход — не применять повторно в шаге 2.
@@ -467,7 +471,9 @@ impl Compositor {
 
             let source = if is_vector {
                 let texture = self.render_layer_to_texture(dev_id, scene, &layer, render_scale)?;
-                EffectSource::Gpu(Arc::new(crate::media::SharedTexture::new_shared(Arc::new(texture))))
+                EffectSource::Gpu(Arc::new(crate::media::SharedTexture::new_shared(Arc::new(
+                    texture,
+                ))))
             } else {
                 self.layer_to_effect_source(dev_id, scene, &layer)?
             };
@@ -508,7 +514,9 @@ impl Compositor {
         let base = if Self::text_layer_needs_gpu_shadow(layer) {
             let texture =
                 self.render_text_layer_with_gpu_shadow(dev_id, scene, layer, device, queue)?;
-            EffectSource::Gpu(Arc::new(crate::media::SharedTexture::new_shared(Arc::new(texture))))
+            EffectSource::Gpu(Arc::new(crate::media::SharedTexture::new_shared(Arc::new(
+                texture,
+            ))))
         } else {
             self.layer_to_effect_source(dev_id, scene, layer)?
         };
@@ -538,7 +546,9 @@ impl Compositor {
                 Ok(texture) => {
                     layer.kind = LayerKind::Raster {
                         natural_size: (texture.width(), texture.height()),
-                        source: RasterSource::GpuTexture(Arc::new(crate::media::SharedTexture::new_shared(Arc::new(texture)))),
+                        source: RasterSource::GpuTexture(Arc::new(
+                            crate::media::SharedTexture::new_shared(Arc::new(texture)),
+                        )),
                     };
                     layer.transform.scale_x /= render_scale.0;
                     layer.transform.scale_y /= render_scale.1;
@@ -601,7 +611,9 @@ impl Compositor {
             dev_id,
             device,
             queue,
-            &EffectSource::Gpu(Arc::new(crate::media::SharedTexture::new_shared(Arc::new(shadow_mask)))),
+            &EffectSource::Gpu(Arc::new(crate::media::SharedTexture::new_shared(Arc::new(
+                shadow_mask,
+            )))),
             &[EffectSpec::GaussianBlurPixels {
                 radius: spec.text_shadow_blur * blur_scale,
             }],
@@ -627,7 +639,9 @@ impl Compositor {
             layers: vec![
                 Self::gpu_texture_layer(
                     format!("{}:gpu-text-bg", layer.id),
-                    Arc::new(crate::media::SharedTexture::new_shared(Arc::new(background))),
+                    Arc::new(crate::media::SharedTexture::new_shared(Arc::new(
+                        background,
+                    ))),
                     (width, height),
                 ),
                 Self::gpu_texture_layer(
@@ -713,7 +727,9 @@ impl Compositor {
             LayerKind::Shape(_) | LayerKind::Text(_) => {
                 // 1:1 — путь переходов; сверхдискретизация под эффекты делается в шаге 2.
                 let texture = self.render_layer_to_texture(dev_id, scene, layer, (1.0, 1.0))?;
-                Ok(EffectSource::Gpu(Arc::new(crate::media::SharedTexture::new_shared(Arc::new(texture)))))
+                Ok(EffectSource::Gpu(Arc::new(
+                    crate::media::SharedTexture::new_shared(Arc::new(texture)),
+                )))
             }
         }
     }
@@ -792,7 +808,11 @@ impl Compositor {
                 log::warn!("[compositor] layer effects skipped: {error:?}");
                 // Fallback: отдать исходник как есть. GPU-текстура — дешёвый клон хэндла.
                 match source {
-                    EffectSource::Cpu(img) => Ok(Arc::new(crate::media::SharedTexture::new_shared(Arc::new(image_to_texture(device, queue, img)?)))),
+                    EffectSource::Cpu(img) => {
+                        Ok(Arc::new(crate::media::SharedTexture::new_shared(Arc::new(
+                            image_to_texture(device, queue, img)?,
+                        ))))
+                    }
                     EffectSource::Gpu(tex) => Ok(tex.clone()),
                 }
             }

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, nextTick, watch, onBeforeUnmount } from 'vue';
+import { blurOnDropdownMenuClose } from '~/composables/useDropdownMenuBlur';
 import { useMediaQuery } from '@vueuse/core';
 import { useAppFullscreen } from '~/composables/useAppFullscreen';
 import { useMonitorGrid } from '~/composables/monitor/useMonitorGrid';
@@ -107,7 +108,6 @@ const monitorZoomLabel = computed(() => {
 const containerRef = ref<HTMLElement | null>(null);
 const { isFullscreen, toggle: toggleFullscreen } = useAppFullscreen(containerRef);
 
-const isContextMenuOpen = ref(false);
 
 const LONG_PRESS_MOVE_THRESHOLD = 10;
 let longPressTimer: ReturnType<typeof setTimeout> | null = null;
@@ -514,7 +514,11 @@ const containerHeightClass = computed(() => {
             @click="togglePlayback"
           />
 
-          <UDropdownMenu :items="mobileSpeedMenuItems" :ui="{ content: 'min-w-20' }">
+          <UDropdownMenu
+            :items="mobileSpeedMenuItems"
+            :ui="{ content: 'min-w-20' }"
+            @update:open="blurOnDropdownMenuClose"
+          >
             <UButton
               size="xs"
               variant="ghost"
@@ -525,7 +529,10 @@ const containerHeightClass = computed(() => {
             />
           </UDropdownMenu>
 
-          <UDropdownMenu v-model:open="isContextMenuOpen" :items="contextMenuItems">
+          <UDropdownMenu
+            :items="contextMenuItems"
+            @update:open="blurOnDropdownMenuClose"
+          >
             <UButton
               size="xs"
               variant="ghost"

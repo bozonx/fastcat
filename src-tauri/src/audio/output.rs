@@ -292,6 +292,7 @@ pub(crate) fn write_output<T: OutputSample>(
         for sample in data.iter_mut() {
             *sample = T::from_f32(0.0);
         }
+        clock.set_output_levels(0.0, 0.0);
         return;
     }
 
@@ -331,9 +332,22 @@ pub(crate) fn write_output<T: OutputSample>(
                 .underrun_frames
                 .fetch_add(silent_frames, std::sync::atomic::Ordering::SeqCst);
         }
+        let output_gain = clock.output_gain() as f32;
+        let mut sum_squares = 0.0f64;
+        let mut peak = 0.0f64;
         for (out, sample) in data.iter_mut().zip(temp_slice.iter()) {
-            *out = T::from_f32(*sample);
+            let scaled = *sample * output_gain;
+            let abs = scaled.abs() as f64;
+            sum_squares += (scaled as f64) * (scaled as f64);
+            peak = peak.max(abs);
+            *out = T::from_f32(scaled);
         }
+        let rms = if temp_slice.is_empty() {
+            0.0
+        } else {
+            (sum_squares / temp_slice.len() as f64).sqrt()
+        };
+        clock.set_output_levels(rms, peak);
         (read / channels) as u64
     });
 
@@ -478,5 +492,44 @@ mod tests {
 
         assert_eq!(data, vec![0.0, 0.0]);
         assert_eq!(clock.frames(), 0);
+    }
+
+    #[test]
+    fn output_callback_applies_monitor_output_gain_without_affecting_clock() {
+        let clock = RealtimeClock::default();
+        clock
+            .playing
+            .store(true, std::sync::atomic::Ordering::Release);
+        clock.set_output_gain(0.25);
+        let ring = SpscRingBuffer::new(16);
+        ring.push_slice(&[0.8, -0.4]);
+        let mut data = vec![0.0f32; 2];
+
+        write_output(&mut data, &callback_info(0.0), &clock, &ring, 1);
+
+        assert!((data[0] - 0.2).abs() < 1e-6);
+        assert!((data[1] + 0.1).abs() < 1e-6);
+        assert_eq!(clock.frames(), 2);
+        let (rms_db, peak_db) = clock.output_levels_db();
+        assert!((peak_db - (20.0f64 * 0.2f64.log10())).abs() < 1e-5);
+        assert!(rms_db > -20.0);
+    }
+
+    #[test]
+    fn output_callback_output_gain_zero_mutes_buffered_samples() {
+        let clock = RealtimeClock::default();
+        clock
+            .playing
+            .store(true, std::sync::atomic::Ordering::Release);
+        clock.set_output_gain(0.0);
+        let ring = SpscRingBuffer::new(16);
+        ring.push_slice(&[0.8, -0.4]);
+        let mut data = vec![1.0f32; 2];
+
+        write_output(&mut data, &callback_info(0.0), &clock, &ring, 1);
+
+        assert_eq!(data, vec![0.0, -0.0]);
+        assert_eq!(clock.frames(), 2);
+        assert_eq!(clock.output_levels_db(), (-60.0, -60.0));
     }
 }
