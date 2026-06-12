@@ -340,6 +340,8 @@ impl Compositor {
         let materialize_started = Instant::now();
         let effective_scene =
             self.materialize_transitions_and_effects(dev_id, scene, &device, &queue)?;
+        let effective_scene =
+            self.materialize_adjustment_clips(dev_id, &effective_scene, &device, &queue)?;
         let materialize_ms = elapsed_ms(materialize_started);
         let build_started = Instant::now();
         let vello = self.build_vello_scene_from_materialized(
@@ -529,6 +531,88 @@ impl Compositor {
             background: scene.background,
             layers: final_layers,
             master_effects: Vec::new(),
+        })
+    }
+
+    /// Materializes adjustment clips by rendering lower layers into a texture,
+    /// applying the adjustment's effects, and replacing the lower layers with
+    /// a single raster layer. Processes adjustments bottom-to-top (by z-order).
+    fn materialize_adjustment_clips(
+        &mut self,
+        dev_id: usize,
+        scene: &super::scene::Scene,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+    ) -> Result<super::scene::Scene> {
+        if !scene
+            .layers
+            .iter()
+            .any(|l| matches!(l.kind, LayerKind::Adjustment))
+        {
+            return Ok(scene.clone());
+        }
+
+        let mut result_layers: Vec<Layer> = Vec::new();
+        let mut lower_layers: Vec<Layer> = Vec::new();
+
+        for layer in &scene.layers {
+            match &layer.kind {
+                LayerKind::Adjustment => {
+                    if lower_layers.is_empty() {
+                        continue;
+                    }
+                    let temp_scene = super::scene::Scene {
+                        width: scene.width,
+                        height: scene.height,
+                        time: scene.time,
+                        background: scene.background,
+                        layers: lower_layers.clone(),
+                        master_effects: Vec::new(),
+                    };
+                    let texture = self.render_domain_scene_to_owned_texture(
+                        dev_id,
+                        &temp_scene,
+                        scene.width,
+                        scene.height,
+                        scene.background,
+                    )?;
+                    let processed = self.apply_effects_to_texture(
+                        dev_id,
+                        device,
+                        queue,
+                        &EffectSource::Gpu(Arc::new(
+                            crate::media::SharedTexture::new_shared(Arc::new(texture)),
+                        )),
+                        &layer.effects,
+                    )?;
+                    result_layers.push(Layer {
+                        id: layer.id.clone(),
+                        kind: LayerKind::Raster {
+                            source: RasterSource::GpuTexture(processed),
+                            natural_size: (scene.width, scene.height),
+                        },
+                        transform: Transform::identity(),
+                        opacity: 1.0,
+                        blend: layer.blend,
+                        mask: None,
+                        effects: Vec::new(),
+                        transition: None,
+                    });
+                    lower_layers.clear();
+                }
+                _ => lower_layers.push(layer.clone()),
+            }
+        }
+
+        result_layers.extend(lower_layers);
+
+        Ok(super::scene::Scene {
+            width: scene.width,
+            height: scene.height,
+            time: scene.time,
+            background: scene.background,
+            layers: result_layers,
+            master_effects: scene.master_effects.clone(),
         })
     }
 

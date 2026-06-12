@@ -389,4 +389,114 @@ describe('buildNativeMonitorScene', () => {
     expect(scene.layers).toHaveLength(1);
     expect(scene.layers[0]?.path).toBe('/external/myproject/_video/source.mp4');
   });
+
+  it('includes enabled video master effects in the monitor scene', async () => {
+    const timelineDoc = {
+      version: 1,
+      timebase: { fps: 30 },
+      tracks: [],
+      metadata: {
+        fastcat: {
+          masterEffects: [
+            { id: 'blur-1', type: 'blur', enabled: true, target: 'video', radius: 5 },
+            { id: 'brightness-1', type: 'brightness', enabled: false, target: 'video', value: 1.2 },
+            { id: 'echo-1', type: 'echo', enabled: true, target: 'audio', wet: 0.5 },
+          ],
+        },
+      },
+    };
+    const projectStore = {
+      projectSettings: {
+        project: { width: 1920, height: 1080, fps: 30, audioDeclickDurationUs: 0 },
+      },
+      getProjectDirHandle: vi.fn(async () => ({ path: '/workspace/project' })),
+      getFileByPath: vi.fn(),
+    };
+    const workspaceStore = {
+      userSettings: {
+        projectDefaults: { defaultAudioFadeCurve: 'linear' },
+        optimization: { nativeMonitorSyncMode: 'balanced' },
+      },
+      activeMonitor: { useProxy: false },
+      lastProjectPath: null,
+      recentProjects: [],
+    };
+
+    const scene = await buildNativeMonitorScene({
+      timelineDoc: timelineDoc as never,
+      projectStore: projectStore as never,
+      workspaceStore: workspaceStore as never,
+    });
+
+    expect(scene.master_effects).toHaveLength(1);
+    expect(scene.master_effects[0]).toMatchObject({ type: 'gaussian-blur', radius: 8 });
+  });
+
+  it('includes adjustment clips as adjustment layers with their effects', async () => {
+    const timelineDoc = {
+      version: 1,
+      timebase: { fps: 30 },
+      tracks: [
+        {
+          id: 'v-track',
+          kind: 'video',
+          videoHidden: false,
+          items: [
+            {
+              id: 'clip-1',
+              kind: 'clip',
+              clipType: 'media',
+              trackId: 'v-track',
+              source: { path: '_video/source.mp4' },
+              timelineRange: { startUs: 0, durationUs: 2_000_000 },
+              sourceRange: { startUs: 0, durationUs: 2_000_000 },
+              layer: 0,
+            },
+            {
+              id: 'adj-1',
+              kind: 'clip',
+              clipType: 'adjustment',
+              trackId: 'v-track',
+              timelineRange: { startUs: 500_000, durationUs: 1_000_000 },
+              sourceRange: { startUs: 0, durationUs: 1_000_000 },
+              layer: 1,
+              effects: [
+                { id: 'blur-1', type: 'blur', enabled: true, target: 'video', radius: 3 },
+              ],
+            },
+          ],
+        },
+      ],
+    };
+    const projectStore = {
+      projectSettings: {
+        project: { width: 1920, height: 1080, fps: 30, audioDeclickDurationUs: 0 },
+      },
+      getProjectDirHandle: vi.fn(async () => ({ path: '/workspace/project' })),
+      getFileByPath: vi.fn(),
+    };
+    const workspaceStore = {
+      userSettings: {
+        projectDefaults: { defaultAudioFadeCurve: 'linear' },
+        optimization: { nativeMonitorSyncMode: 'balanced' },
+      },
+      activeMonitor: { useProxy: false },
+      lastProjectPath: null,
+      recentProjects: [],
+    };
+
+    const scene = await buildNativeMonitorScene({
+      timelineDoc: timelineDoc as never,
+      projectStore: projectStore as never,
+      workspaceStore: workspaceStore as never,
+    });
+
+    const adjustmentLayer = scene.layers.find((l) => l.kind === 'adjustment');
+    expect(adjustmentLayer).toBeDefined();
+    expect(adjustmentLayer?.id).toBe('adj-1');
+    expect(adjustmentLayer?.effects).toHaveLength(1);
+    expect(adjustmentLayer?.effects[0]).toMatchObject({ type: 'gaussian-blur', radius: 8 });
+    expect(adjustmentLayer?.timeline_start_sec).toBe(0.5);
+    expect(adjustmentLayer?.timeline_end_sec).toBe(1.5);
+  });
 });

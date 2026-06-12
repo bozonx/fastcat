@@ -38,6 +38,7 @@ describe('native-monitor-ipc', () => {
     await nativeMonitorIpc.setAudioSettings({ bufferSize: 2048, backend: 'pulseaudio' });
     await nativeMonitorIpc.setOutputGain(0.25);
     await nativeMonitorIpc.close();
+    await nativeMonitorIpc.unsubscribeFrames();
 
     expect(invokeMock.mock.calls).toEqual([
       ['monitor_play'],
@@ -50,6 +51,7 @@ describe('native-monitor-ipc', () => {
       ['monitor_set_audio_settings', { bufferSize: 2048, backend: 'pulseaudio' }],
       ['monitor_set_output_gain', { gain: 0.25 }],
       ['monitor_close'],
+      ['monitor_unsubscribe_frames'],
     ]);
   });
 

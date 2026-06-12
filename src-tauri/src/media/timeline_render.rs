@@ -407,6 +407,7 @@ fn build_raster_kind(
     on_warning: Option<&(dyn Fn(String) + Send + Sync)>,
 ) -> Result<Option<RasterBuild>> {
     let built = match layer.kind {
+        LayerKind::Adjustment => return Ok(None),
         LayerKind::Video => {
             let (frame, source_rotation) = match decode_video_frame_cached(
                 Path::new(&layer.path),
@@ -663,6 +664,7 @@ mod tests {
             effects: Vec::new(),
         };
         let scene = MonitorScene {
+            master_effects: Vec::new(),
             layers: vec![from, to],
             audio_layers: vec![],
             audio_tracks: vec![],

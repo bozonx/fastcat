@@ -33,7 +33,7 @@ const SHADOW_BLUR_EXTENT_FACTOR: f32 = 1.5;
 pub fn build_virtual_kind(sl: &SceneLayer, scene_size: (u32, u32)) -> Option<CompLayerKind> {
     let (scene_w, scene_h) = scene_size;
     match sl.kind {
-        LayerKind::Video | LayerKind::Image | LayerKind::Svg => None,
+        LayerKind::Video | LayerKind::Image | LayerKind::Svg | LayerKind::Adjustment => None,
         LayerKind::Background => Some(CompLayerKind::Shape(ShapeLayer {
             geometry: ShapeGeometry::Rectangle {
                 width: 1.0,

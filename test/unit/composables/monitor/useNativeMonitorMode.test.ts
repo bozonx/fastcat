@@ -116,4 +116,47 @@ describe('useNativeMonitorCanvas', () => {
 
     wrapper.unmount();
   });
+
+  it('handles ArrayBufferView with byteOffset and byteLength', async () => {
+    useMonitorMode().set('canvas');
+    let receivedBuffer: ArrayBuffer | null = null;
+
+    const TestComponent = defineComponent({
+      setup() {
+        const canvasRef = ref<HTMLCanvasElement | null>(null);
+        useNativeMonitorCanvas(canvasRef);
+        return () =>
+          h('canvas', {
+            ref: (el) => {
+              canvasRef.value = el as HTMLCanvasElement | null;
+              if (el instanceof HTMLCanvasElement) {
+                defineCanvasLayout(el);
+              }
+            },
+          });
+      },
+    });
+
+    const wrapper = mount(TestComponent, { attachTo: document.body });
+    await nextTick();
+    await flushPromises();
+
+    const subscribeCall = invokeMock.mock.calls.find(
+      ([name]) => name === 'monitor_subscribe_frames',
+    );
+    const channel = subscribeCall?.[1] as { channel: { onmessage: (data: unknown) => void } };
+    const handler = channel?.channel?.onmessage;
+    expect(handler).toBeDefined();
+
+    const original = new Uint8Array([0, 1, 2, 3, 4, 5, 6, 7]);
+    const view = new Uint8Array(original.buffer, 2, 4);
+    handler(view);
+
+    wrapper.unmount();
+    await nextTick();
+    await flushPromises();
+
+    const unsubCall = invokeMock.mock.calls.some(([name]) => name === 'monitor_unsubscribe_frames');
+    expect(unsubCall).toBe(true);
+  });
 });

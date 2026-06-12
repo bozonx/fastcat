@@ -149,6 +149,7 @@ impl Scene {
                 LayerKind::Text(spec) => {
                     draw_text(&mut out, spec, xform);
                 }
+                LayerKind::Adjustment => {}
             }
 
             if needs_layer {
@@ -1298,6 +1299,7 @@ mod tests {
 
         let layer = raster_layer((100, 100), transform, 1.0);
         let scene = Scene {
+            master_effects: Vec::new(),
             width: 100,
             height: 100,
             time: 0.0,
@@ -1312,6 +1314,7 @@ mod tests {
     #[test]
     fn to_vello_empty_scene_returns_empty() {
         let scene = Scene {
+            master_effects: Vec::new(),
             width: 1920,
             height: 1080,
             time: 0.0,
@@ -1326,6 +1329,7 @@ mod tests {
     fn to_vello_skips_zero_opacity_layer() {
         // Smoke: opacity=0 — layer не должен вызывать draw, паники не должно быть.
         let scene = Scene {
+            master_effects: Vec::new(),
             width: 100,
             height: 100,
             time: 0.0,
@@ -1342,6 +1346,7 @@ mod tests {
     #[test]
     fn to_vello_handles_zero_viewport() {
         let scene = Scene {
+            master_effects: Vec::new(),
             width: 100,
             height: 100,
             time: 0.0,
@@ -1358,6 +1363,7 @@ mod tests {
         let mut layer = raster_layer((10, 10), Transform::identity(), 1.0);
         layer.effects = vec![EffectSpec::Brightness { value: 1.2 }];
         let scene = Scene {
+            master_effects: Vec::new(),
             width: 100,
             height: 100,
             time: 0.0,

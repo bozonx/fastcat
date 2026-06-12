@@ -538,9 +538,17 @@ export async function buildNativeMonitorScene(
 
   const layers: NativeSceneLayer[] = [];
   for (const [index, clip] of builtVideo.clips.entries()) {
-    if (clip.clipType === 'hud' || clip.clipType === 'adjustment') continue;
+    if (clip.clipType === 'hud') continue;
     const z = clip.layer * 1000 + index;
     const base = buildBaseLayer({ clip, sceneWidth, sceneHeight, z, allClips: builtVideo.clips });
+
+    if (clip.clipType === 'adjustment') {
+      layers.push({
+        ...base,
+        kind: 'adjustment',
+      });
+      continue;
+    }
 
     if (clip.clipType === 'media') {
       const path = clip.source?.path;

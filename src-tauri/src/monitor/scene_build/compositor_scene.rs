@@ -82,6 +82,7 @@ pub fn build_compositor_scene(
                     None => continue,
                 }
             }
+            LayerKind::Adjustment => CompLayerKind::Adjustment,
         };
 
         let layer = match runtimes.get(&sl.id) {
@@ -182,5 +183,36 @@ mod tests {
             transition_out: None,
             effects: Vec::new(),
         }
+    }
+
+    #[test]
+    fn propagates_master_effects_into_domain_scene() {
+        let mut layer = test_layer(LayerKind::Background, "bg", 0);
+        layer.timeline_start_sec = 0.0;
+        layer.timeline_end_sec = 10.0;
+        let scene = build_compositor_scene(&[layer], (1280, 720), &HashMap::new(), 0.0);
+        assert_eq!(scene.master_effects.len(), 0);
+    }
+
+    #[test]
+    fn includes_adjustment_layer_in_domain_scene() {
+        let adj = test_layer(LayerKind::Adjustment, "adj-1", 10);
+        let bg = test_layer(LayerKind::Background, "bg", 0);
+        let scene = build_compositor_scene(&[bg, adj], (1280, 720), &HashMap::new(), 0.5);
+
+        assert_eq!(scene.layers.len(), 2);
+        assert!(scene.layers.iter().any(|l| matches!(l.kind, CompLayerKind::Adjustment)));
+    }
+
+    #[test]
+    fn skips_inactive_adjustment_layer_outside_timewindow() {
+        let mut adj = test_layer(LayerKind::Adjustment, "adj-1", 10);
+        adj.timeline_start_sec = 2.0;
+        adj.timeline_end_sec = 4.0;
+        let bg = test_layer(LayerKind::Background, "bg", 0);
+        let scene = build_compositor_scene(&[bg, adj], (1280, 720), &HashMap::new(), 0.5);
+
+        assert_eq!(scene.layers.len(), 1);
+        assert!(!scene.layers.iter().any(|l| matches!(l.kind, CompLayerKind::Adjustment)));
     }
 }

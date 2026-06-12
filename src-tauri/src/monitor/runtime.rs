@@ -307,6 +307,7 @@ impl LayerRuntimeManager {
         let epoch = self.load_epoch;
 
         match layer.kind {
+            LayerKind::Adjustment => return,
             LayerKind::Video => {
                 let max_long_edge = match (self.scene_size, self.preview_scale) {
                     ((w, h), Some(scale)) if w > 0 && h > 0 && scale > 0.0 => {

@@ -334,6 +334,7 @@ fn video_layer() -> crate::monitor::scene::SceneLayer {
 
 fn one_clip_scene(layer: crate::monitor::scene::SceneLayer) -> crate::monitor::scene::MonitorScene {
     crate::monitor::scene::MonitorScene {
+        master_effects: Vec::new(),
         layers: vec![layer],
         audio_layers: vec![],
         audio_tracks: vec![],
