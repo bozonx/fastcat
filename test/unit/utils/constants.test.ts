@@ -14,6 +14,8 @@ import {
   TIMELINE_CLIP_THUMBNAILS,
   TIMELINE_RULER_CONSTANTS,
   BLEND_MODE_OPTIONS,
+  TIMELINE_BLEND_MODES,
+  isTimelineBlendMode,
   TRACK_COLOR_PRESETS,
   TIMELINE_DEFAULTS,
 } from '~/utils/constants';
@@ -58,7 +60,12 @@ describe('constants', () => {
 
   it('exports blend mode options', () => {
     expect(BLEND_MODE_OPTIONS).toHaveLength(17);
+    expect(TIMELINE_BLEND_MODES).toHaveLength(17);
     expect(BLEND_MODE_OPTIONS[0]!.value).toBe('normal');
+    expect(BLEND_MODE_OPTIONS.map((opt) => opt.value)).toEqual([...TIMELINE_BLEND_MODES]);
+    expect(isTimelineBlendMode('overlay')).toBe(true);
+    expect(isTimelineBlendMode('soft-light')).toBe(true);
+    expect(isTimelineBlendMode('invalid')).toBe(false);
   });
 
   it('exports track color presets', () => {

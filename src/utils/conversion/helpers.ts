@@ -41,6 +41,38 @@ export function isAbortError(error: unknown) {
   return error instanceof Error && error.name === 'AbortError';
 }
 
+export async function resolveUniqueFileName(
+  exists: (path: string) => Promise<boolean>,
+  filePath: string,
+  fileName: string,
+): Promise<{ filePath: string; fileName: string }> {
+  if (!(await exists(filePath))) {
+    return { filePath, fileName };
+  }
+
+  const dotIndex = fileName.lastIndexOf('.');
+  const base = dotIndex > 0 ? fileName.slice(0, dotIndex) : fileName;
+  const ext = dotIndex > 0 ? fileName.slice(dotIndex) : '';
+
+  let counter = 1;
+  let candidateName = `${base}_${counter}${ext}`;
+  let candidatePath = filePath.replace(
+    new RegExp(`${fileName.replace(/\./g, '\\.')}$`),
+    candidateName,
+  );
+
+  while (await exists(candidatePath)) {
+    counter++;
+    candidateName = `${base}_${counter}${ext}`;
+    candidatePath = filePath.replace(
+      new RegExp(`${fileName.replace(/\./g, '\\.')}$`),
+      candidateName,
+    );
+  }
+
+  return { filePath: candidatePath, fileName: candidateName };
+}
+
 export async function removeCreatedFile(params: {
   dirHandle: FileSystemDirectoryHandle | null;
   fileName: string | null;

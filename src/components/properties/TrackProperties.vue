@@ -2,7 +2,10 @@
 import { computed, ref, toRef } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
-import { BLEND_MODE_OPTIONS as RAW_BLEND_MODE_OPTIONS } from '~/utils/constants';
+import {
+  BLEND_MODE_OPTIONS as RAW_BLEND_MODE_OPTIONS,
+  isTimelineBlendMode,
+} from '~/utils/constants';
 import type {
   TimelineBlendMode,
   TimelineTrack,
@@ -65,15 +68,7 @@ const trackOpacity = computed({
 const trackBlendMode = computed({
   get: () => props.track?.blendMode ?? 'normal',
   set: (val: TimelineBlendMode | string) => {
-    const safe =
-      val === 'add' ||
-      val === 'multiply' ||
-      val === 'screen' ||
-      val === 'darken' ||
-      val === 'lighten'
-        ? val
-        : 'normal';
-
+    const safe = isTimelineBlendMode(val) ? val : 'normal';
     timelineStore.updateTrackProperties(props.track.id, { blendMode: safe });
   },
 });

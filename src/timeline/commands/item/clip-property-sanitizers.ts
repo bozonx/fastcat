@@ -4,6 +4,7 @@ import type {
   ClipAnchorPreset,
   ClipSourceOrientation,
 } from '../../types';
+import { isTimelineBlendMode } from '~/utils/constants';
 
 // Pure value sanitizers for `updateClipProperties`. They never read clip/doc
 // state — each takes a raw (untrusted) value and returns a normalized one or
@@ -15,25 +16,7 @@ export function clampNumber(value: unknown, min: number, max: number): number {
 }
 
 export function sanitizeBlendMode(value: unknown): TimelineBlendMode | undefined {
-  return value === 'add' ||
-    value === 'multiply' ||
-    value === 'screen' ||
-    value === 'overlay' ||
-    value === 'darken' ||
-    value === 'lighten' ||
-    value === 'color-dodge' ||
-    value === 'color-burn' ||
-    value === 'hard-light' ||
-    value === 'soft-light' ||
-    value === 'difference' ||
-    value === 'exclusion' ||
-    value === 'hue' ||
-    value === 'saturation' ||
-    value === 'color' ||
-    value === 'luminosity' ||
-    value === 'normal'
-    ? value
-    : undefined;
+  return isTimelineBlendMode(value) ? value : undefined;
 }
 
 export function sanitizeSourceOrientation(value: unknown): ClipSourceOrientation | undefined {

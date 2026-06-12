@@ -24,6 +24,7 @@ const mockFileManager = {
     getFile: vi.fn(),
     writeFile: vi.fn(),
     deleteEntry: vi.fn(),
+    exists: vi.fn().mockResolvedValue(false),
   },
   reloadDirectory: vi.fn(),
 };
@@ -104,6 +105,7 @@ describe('useFileConversionActions', () => {
     mockFileManager.vfs.getFile.mockReset();
     mockFileManager.vfs.writeFile.mockReset();
     mockFileManager.vfs.deleteEntry.mockReset();
+    mockFileManager.vfs.exists.mockReset().mockResolvedValue(false);
   });
 
   const createProps = (mediaTypeVal: 'video' | 'audio' | 'image' | 'unknown') => {
@@ -302,6 +304,25 @@ describe('useFileConversionActions', () => {
       expect.any(Blob),
     );
     expect(mockProjectStore.getFileByPath).not.toHaveBeenCalled();
+  });
+
+  it('increments file name when target already exists', async () => {
+    const props = createProps('image');
+    const { startConversion } = useFileConversionActions(props);
+
+    props.targetEntry.value = { name: 'test.png', path: '/test.png', kind: 'file' } as any;
+    props.targetVfs.value = mockFileManager.vfs as any;
+    mockFileManager.vfs.getFile.mockResolvedValue(
+      new File(['x'], 'test.png', { type: 'image/png' }),
+    );
+    mockFileManager.vfs.exists.mockResolvedValueOnce(true).mockResolvedValueOnce(false);
+
+    await startConversion();
+
+    expect(mockFileManager.vfs.writeFile).toHaveBeenCalledWith(
+      '/test_converted_1.webp',
+      expect.any(Blob),
+    );
   });
 
   it('defaults video conversion sample rate to original option', async () => {

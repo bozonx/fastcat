@@ -9,6 +9,7 @@ import type {
 } from '../commands';
 import { getTrackById, nextTrackId, normalizeTrackOrder } from './utils';
 import { normalizeBalance, normalizeGain } from '~/utils/audio/envelope';
+import { isTimelineBlendMode } from '~/utils/constants';
 
 function normalizeOpacity(value: unknown): number | undefined {
   if (value === undefined) return undefined;
@@ -17,25 +18,7 @@ function normalizeOpacity(value: unknown): number | undefined {
 }
 
 function normalizeBlendMode(value: unknown): TimelineTrack['blendMode'] {
-  return value === 'add' ||
-    value === 'multiply' ||
-    value === 'screen' ||
-    value === 'overlay' ||
-    value === 'darken' ||
-    value === 'lighten' ||
-    value === 'color-dodge' ||
-    value === 'color-burn' ||
-    value === 'hard-light' ||
-    value === 'soft-light' ||
-    value === 'difference' ||
-    value === 'exclusion' ||
-    value === 'hue' ||
-    value === 'saturation' ||
-    value === 'color' ||
-    value === 'luminosity' ||
-    value === 'normal'
-    ? value
-    : undefined;
+  return isTimelineBlendMode(value) ? value : undefined;
 }
 
 export function addTrack(doc: TimelineDocument, cmd: AddTrackCommand): TimelineCommandResult {

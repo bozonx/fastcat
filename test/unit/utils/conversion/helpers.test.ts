@@ -7,6 +7,7 @@ import {
   clampPositiveNumber,
   isAbortError,
   removeCreatedFile,
+  resolveUniqueFileName,
 } from '~/utils/conversion/helpers';
 
 describe('resolveAudioChannelsFromMeta', () => {
@@ -115,5 +116,28 @@ describe('removeCreatedFile', () => {
 
     await removeCreatedFile({ dirHandle, fileName: null });
     expect(dirHandle.removeEntry).not.toHaveBeenCalled();
+  });
+});
+
+describe('resolveUniqueFileName', () => {
+  it('returns original name when file does not exist', async () => {
+    const exists = vi.fn().mockResolvedValue(false);
+    const result = await resolveUniqueFileName(exists, '/dir/test.mp4', 'test.mp4');
+    expect(result).toEqual({ filePath: '/dir/test.mp4', fileName: 'test.mp4' });
+  });
+
+  it('increments name when file exists', async () => {
+    const exists = vi.fn()
+      .mockResolvedValueOnce(true)
+      .mockResolvedValueOnce(true)
+      .mockResolvedValueOnce(false);
+    const result = await resolveUniqueFileName(exists, '/dir/test.mp4', 'test.mp4');
+    expect(result).toEqual({ filePath: '/dir/test_2.mp4', fileName: 'test_2.mp4' });
+  });
+
+  it('handles files without extension', async () => {
+    const exists = vi.fn().mockResolvedValueOnce(true).mockResolvedValueOnce(false);
+    const result = await resolveUniqueFileName(exists, '/dir/test', 'test');
+    expect(result).toEqual({ filePath: '/dir/test_1', fileName: 'test_1' });
   });
 });

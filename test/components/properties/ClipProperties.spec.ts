@@ -339,6 +339,16 @@ describe('ClipProperties.vue', () => {
     expect(mockTimelineStore.updateClipProperties).toHaveBeenCalledWith('track-1', 'clip-1', {
       blendMode: 'multiply',
     });
+
+    wrapper.vm.handleUpdateBlendMode('overlay');
+    expect(mockTimelineStore.updateClipProperties).toHaveBeenCalledWith('track-1', 'clip-1', {
+      blendMode: 'overlay',
+    });
+
+    wrapper.vm.handleUpdateBlendMode('soft-light');
+    expect(mockTimelineStore.updateClipProperties).toHaveBeenCalledWith('track-1', 'clip-1', {
+      blendMode: 'soft-light',
+    });
   });
 
   it('calls clipboard actions copy and cut correctly', async () => {

@@ -12,7 +12,10 @@ import { useFocusStore } from '~/stores/focus.store';
 import { useFileManager } from '~/composables/file-manager/useFileManager';
 import { useMobileLayout } from '~/composables/useMobileLayout';
 import { useFileManagerStore } from '~/stores/file-manager.store';
-import { BLEND_MODE_OPTIONS as RAW_BLEND_MODE_OPTIONS } from '~/utils/constants';
+import {
+  BLEND_MODE_OPTIONS as RAW_BLEND_MODE_OPTIONS,
+  isTimelineBlendMode,
+} from '~/utils/constants';
 import type {
   AudioClipEffect,
   TimelineBlendMode,
@@ -259,10 +262,7 @@ function handleUpdateOpacity(val: number) {
 }
 
 function handleUpdateBlendMode(val: TimelineBlendMode | string) {
-  const safe =
-    val === 'add' || val === 'multiply' || val === 'screen' || val === 'darken' || val === 'lighten'
-      ? val
-      : 'normal';
+  const safe = isTimelineBlendMode(val) ? val : 'normal';
   timelineStore.updateClipProperties(props.clip.trackId, props.clip.id, { blendMode: safe });
 }
 

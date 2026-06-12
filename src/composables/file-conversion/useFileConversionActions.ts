@@ -17,6 +17,7 @@ import {
   isAbortError,
   removeCreatedFile,
   resolveAudioOnlyFileExtension,
+  resolveUniqueFileName,
 } from '~/utils/conversion/helpers';
 import { executeMediaConversion } from '~/utils/conversion/media-conversion';
 import { convertImageFile } from '~/utils/conversion/image-conversion';
@@ -485,6 +486,16 @@ export function useFileConversionActions(props: UseFileConversionActionsProps) {
       createdFileName = request.newFileName;
       dirPath = request.dirPath;
       createdFilePath = target.filePath;
+
+      const vfs = props.targetVfs.value ?? fileManager.vfs;
+      const unique = await resolveUniqueFileName(
+        (p) => vfs.exists(p),
+        createdFilePath,
+        createdFileName,
+      );
+      createdFilePath = unique.filePath;
+      createdFileName = unique.fileName;
+      request.newFileName = unique.fileName;
 
       if (request.type === 'video' || request.type === 'audio') {
         const targetHandle = props.targetIsExternal.value

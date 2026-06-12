@@ -1,3 +1,5 @@
+import type { TimelineBlendMode } from '~/timeline/types';
+
 export const PROXY_DIR_NAME = 'proxies';
 export const VIDEO_DIR_NAME = '_video';
 export const AUDIO_DIR_NAME = '_audio';
@@ -165,7 +167,34 @@ export const TIMELINE_RULER_CONSTANTS = {
   MIN_SELECTION_DURATION_PX: 6,
 } as const;
 
-export const BLEND_MODE_OPTIONS = [
+export const TIMELINE_BLEND_MODES = [
+  'normal',
+  'add',
+  'multiply',
+  'screen',
+  'overlay',
+  'darken',
+  'lighten',
+  'color-dodge',
+  'color-burn',
+  'hard-light',
+  'soft-light',
+  'difference',
+  'exclusion',
+  'hue',
+  'saturation',
+  'color',
+  'luminosity',
+] as const satisfies readonly TimelineBlendMode[];
+
+export function isTimelineBlendMode(value: unknown): value is TimelineBlendMode {
+  return typeof value === 'string' && TIMELINE_BLEND_MODES.includes(value as TimelineBlendMode);
+}
+
+export const BLEND_MODE_OPTIONS: Array<{
+  value: TimelineBlendMode;
+  labelKey: string;
+}> = [
   { value: 'normal', labelKey: 'fastcat.clip.blendMode.normal' },
   { value: 'add', labelKey: 'fastcat.clip.blendMode.add' },
   { value: 'multiply', labelKey: 'fastcat.clip.blendMode.multiply' },

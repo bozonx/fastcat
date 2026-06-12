@@ -15,6 +15,7 @@ import {
   isAbortError,
   removeCreatedFile,
   resolveAudioOnlyFileExtension,
+  resolveUniqueFileName,
 } from '~/utils/conversion/helpers';
 import { executeMediaConversion } from '~/utils/conversion/media-conversion';
 import { convertImageFile } from '~/utils/conversion/image-conversion';
@@ -195,6 +196,14 @@ export function useBatchConversion() {
     const request = buildConversionRequest(entry, type);
     const target = getSiblingTarget(entry.path!, request.newFileName);
     const dirPath = request.dirPath;
+
+    const unique = await resolveUniqueFileName(
+      (p) => fileManager.vfs.exists(p),
+      target.filePath,
+      request.newFileName,
+    );
+    request.newFileName = unique.fileName;
+    target.filePath = unique.filePath;
 
     if (type === 'video' || type === 'audio') {
       const targetHandle = state.targetIsExternal

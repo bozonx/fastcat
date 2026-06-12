@@ -145,6 +145,81 @@ describe('buildNativeAudioEffectSpecs', () => {
 });
 
 describe('buildNativeMonitorScene', () => {
+  it('serializes full blend mode set and crop for native scene layers', async () => {
+    const timelineDoc = {
+      version: 1,
+      timebase: { fps: 30 },
+      tracks: [
+        {
+          id: 'v-track',
+          kind: 'video',
+          videoHidden: false,
+          items: [
+            {
+              id: 'clip-1',
+              kind: 'clip',
+              type: 'media',
+              trackId: 'v-track',
+              source: { path: '_video/source.mp4' },
+              timelineRange: { startUs: 0, durationUs: 1_000_000 },
+              sourceRange: { startUs: 0, durationUs: 1_000_000 },
+              blendMode: 'soft-light',
+              transform: {
+                crop: {
+                  top: 10,
+                  bottom: 20,
+                  left: 30,
+                  right: 40,
+                },
+              },
+            },
+          ],
+        },
+      ],
+    };
+    const projectStore = {
+      projectSettings: {
+        project: {
+          width: 1920,
+          height: 1080,
+          fps: 30,
+          audioDeclickDurationUs: 0,
+        },
+      },
+      getProjectDirHandle: vi.fn(async () => ({ path: '/workspace/project' })),
+      getFileByPath: vi.fn(),
+    };
+    const workspaceStore = {
+      userSettings: {
+        projectDefaults: {
+          defaultAudioFadeCurve: 'linear',
+        },
+        optimization: {
+          nativeMonitorSyncMode: 'balanced',
+        },
+      },
+      activeMonitor: {
+        useProxy: false,
+      },
+      lastProjectPath: null,
+      recentProjects: [],
+    };
+
+    const scene = await buildNativeMonitorScene({
+      timelineDoc: timelineDoc as never,
+      projectStore: projectStore as never,
+      workspaceStore: workspaceStore as never,
+    });
+
+    expect(scene.layers[0]?.blend_mode).toBe('soft_light');
+    expect(scene.layers[0]?.transform).toMatchObject({
+      crop_top: 10,
+      crop_bottom: 20,
+      crop_left: 30,
+      crop_right: 40,
+    });
+  });
+
   it('uses original project media paths even when monitor proxy preview is enabled', async () => {
     const timelineDoc = {
       version: 1,
