@@ -1555,6 +1555,7 @@ mod tests {
             state.layer_windows.insert(
                 "l1".to_string(),
                 crate::audio::shared::AudioWindow {
+                    path: path.to_string(),
                     source_start_frame: 0,
                     sample_rate,
                     channels,

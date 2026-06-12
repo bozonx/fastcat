@@ -344,7 +344,19 @@ impl ApplicationHandler<MonitorCommand> for MonitorApp {
             MonitorCommand::Seek { time_sec, explicit } => {
                 if let Some(s) = self.state.as_mut() {
                     s.seek(time_sec, explicit);
-                    s.render_current_frame();
+                    // While playing (or warming up a micro-prime after an explicit
+                    // seek) the tick/prebuffer paths own rendering — just refresh the
+                    // current frame. While paused, `WindowState::seek` repositions any
+                    // EXISTING runtimes but never creates one, so a scrub into a clip
+                    // whose decoder was never opened (or was evicted) would show black
+                    // until Play. Route paused seeks through `refresh_paused_display`,
+                    // which guarantees `ensure_runtime_for` spawns the decoder at the
+                    // playhead and shows the frame as soon as it decodes.
+                    if s.clock.is_playing() || s.pending_play_deadline.is_some() {
+                        s.render_current_frame();
+                    } else {
+                        s.refresh_paused_display();
+                    }
                 }
             }
             MonitorCommand::SetSpeed(speed) => {

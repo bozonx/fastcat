@@ -1008,6 +1008,7 @@ mod tests {
                 state.layer_windows.insert(
                     id.to_string(),
                     AudioWindow {
+                        path: format!("/tmp/{id}.wav"),
                         source_start_frame: 0,
                         sample_rate: 48000,
                         channels: 2,
@@ -1150,6 +1151,7 @@ mod tests {
                 state.layer_windows.insert(
                     id.to_string(),
                     AudioWindow {
+                        path: format!("/tmp/{id}.wav"),
                         source_start_frame: 0,
                         sample_rate: 48000,
                         channels: 2,

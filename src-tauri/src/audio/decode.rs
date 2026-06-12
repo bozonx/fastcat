@@ -353,6 +353,16 @@ pub(crate) fn decode_symphonia_chunk(params: DecodeSymphoniaChunkParams<'_>) -> 
         state.decoders.remove(layer_id)
     };
 
+    // Drop a cached decoder whose source path no longer matches this layer (proxy
+    // on/off, media replace under the same layer id): reusing it would keep decoding
+    // the OLD file. A fresh decoder for the new path is built below.
+    if decoder_state
+        .as_ref()
+        .is_some_and(|state| state.path != path)
+    {
+        decoder_state = None;
+    }
+
     if decoder_state.is_none() {
         use symphonia::core::codecs::DecoderOptions;
 
@@ -378,6 +388,7 @@ pub(crate) fn decode_symphonia_chunk(params: DecodeSymphoniaChunkParams<'_>) -> 
             .unwrap_or(symphonia::core::units::TimeBase::new(1, source_rate));
 
         decoder_state = Some(CachedAudioDecoder {
+            path: path.to_string(),
             format,
             decoder,
             track_id,
@@ -778,10 +789,17 @@ pub(crate) fn decode_audio_chunk(params: DecodeAudioChunkParams<'_>) -> Result<V
     let (hit, window_end_frame) = {
         let state = shared.0.lock();
         match state.layer_windows.get(layer_id) {
-            Some(w) if w.covers(start_frame, frames_to_read, sample_rate, output_channels) => (
-                Some((w.samples.clone(), w.source_start_frame)),
-                Some(w.end_frame()),
-            ),
+            // The window must be for THIS layer's current path: a stale window left from
+            // a previous path (proxy swap / media replace) holds the wrong file's PCM.
+            Some(w)
+                if w.path == path
+                    && w.covers(start_frame, frames_to_read, sample_rate, output_channels) =>
+            {
+                (
+                    Some((w.samples.clone(), w.source_start_frame)),
+                    Some(w.end_frame()),
+                )
+            }
             // A window exists but doesn't cover this request (e.g. after a seek):
             // treat as a miss but still report its end so we don't refill needlessly.
             _ => (None, None),
@@ -938,6 +956,7 @@ fn window_fill(
     match result {
         Ok(samples) if !samples.is_empty() => {
             let window = AudioWindow {
+                path: path.clone(),
                 source_start_frame: target_start_frame,
                 sample_rate,
                 channels: output_channels,
@@ -1574,6 +1593,7 @@ mod tests {
         shared.0.lock().layer_windows.insert(
             "w1".to_string(),
             AudioWindow {
+                path: "/tmp/does-not-exist.wav".to_string(),
                 source_start_frame: 0,
                 sample_rate: 48000,
                 channels: 2,
@@ -1613,6 +1633,56 @@ mod tests {
         Ok(())
     }
 
+    /// Regression: a resident window left from a PREVIOUS path (proxy swap / media
+    /// replace under the same layer id) must NOT be served — its PCM is the wrong
+    /// file's audio. The chunk must miss, stream the new file inline, and start a
+    /// fresh fill for the new path.
+    #[test]
+    fn window_for_stale_path_is_not_served() -> anyhow::Result<()> {
+        let path = write_temp_f32_wav(48000, 2, 48000 * 3)?; // 3s real NEW source
+        let path_str = path.to_string_lossy().to_string();
+        let shared = Arc::new((Mutex::new(AudioShared::default()), Condvar::new()));
+        // A window covering [0, 5s) but tagged with the OLD path; a distinctive ramp
+        // so a (buggy) memcpy hit would be obvious.
+        let frames = 5 * 48000;
+        let stale: Vec<f32> = (0..frames * 2).map(|i| i as f32 * 1e-3).collect();
+        shared.0.lock().layer_windows.insert(
+            "p1".to_string(),
+            AudioWindow {
+                path: "/tmp/old-proxy.wav".to_string(),
+                source_start_frame: 0,
+                sample_rate: 48000,
+                channels: 2,
+                samples: Arc::new(stale),
+            },
+        );
+
+        let out = decode_audio_chunk(DecodeAudioChunkParams {
+            layer_id: "p1",
+            path: &path_str,
+            source_start_sec: 0.1,
+            timeline_duration_sec: 0.05,
+            speed: 1.0,
+            target: AudioRenderTarget::monitor(48000, 2),
+            reverse: false,
+            shared: &shared,
+        })?;
+
+        // Served by streaming the NEW file (decoder created), not the stale window.
+        assert!(
+            shared.0.lock().decoders.contains_key("p1"),
+            "a window with a stale path must miss and stream the new file inline"
+        );
+        // The new WAV is a 440Hz sine ≤ 0.25 amplitude; the stale window's ramp around
+        // index 0.1s would be ~9.6. So the output must not be the stale ramp.
+        assert!(
+            out.iter().all(|s| s.abs() <= 0.5),
+            "output must be the new file's audio, not the stale window's ramp"
+        );
+        let _ = std::fs::remove_file(path);
+        Ok(())
+    }
+
     #[test]
     fn window_refill_ahead_spawns_next_window() -> anyhow::Result<()> {
         let path = write_temp_f32_wav(48000, 2, 48000 * 3)?; // 3s real source
@@ -1623,6 +1693,7 @@ mod tests {
         shared.0.lock().layer_windows.insert(
             "r1".to_string(),
             AudioWindow {
+                path: path_str.clone(),
                 source_start_frame: 0,
                 sample_rate: 48000,
                 channels: 2,
@@ -1693,6 +1764,7 @@ mod tests {
         shared.0.lock().layer_windows.insert(
             "s1".to_string(),
             AudioWindow {
+                path: path_str.clone(),
                 source_start_frame: 0,
                 sample_rate: 48000,
                 channels: 2,

@@ -98,6 +98,11 @@ impl AudioRenderTarget {
 }
 
 pub(crate) struct CachedAudioDecoder {
+    /// Source file this decoder was opened for. `decoders` is keyed by layer id, but a
+    /// layer's `path` can change under the same id (proxy on/off, media replace). The
+    /// chunk decoder validates this before reuse and rebuilds on a mismatch, otherwise
+    /// it would keep decoding the OLD file's audio after a path swap.
+    pub(crate) path: String,
     pub(crate) format: Box<dyn symphonia::core::formats::FormatReader>,
     pub(crate) decoder: Box<dyn symphonia::core::codecs::Decoder>,
     pub(crate) track_id: u32,
@@ -143,6 +148,11 @@ pub(crate) struct AudioSourceMetadata {
 /// realtime producer serves a chunk by `memcpy` out of it. Replacing the whole-file
 /// cache with this is what bounds memory to the window regardless of file size.
 pub(crate) struct AudioWindow {
+    /// Source file this window was decoded from. `layer_windows` is keyed by layer id,
+    /// but a layer's path can change under the same id (proxy swap / media replace), so
+    /// the producer validates this before a memcpy hit — otherwise it would serve the
+    /// OLD file's PCM after a path change.
+    pub(crate) path: String,
     /// Window start, in target-rate frames from the start of the source.
     pub(crate) source_start_frame: usize,
     /// Target rate this window was decoded at (guards against a device-rate change).
@@ -380,6 +390,7 @@ mod tests {
     #[test]
     fn audio_window_covers_only_fully_contained_requests() {
         let w = AudioWindow {
+            path: "/tmp/a.wav".to_string(),
             source_start_frame: 100,
             sample_rate: 48_000,
             channels: 2,

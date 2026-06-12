@@ -56,12 +56,18 @@ const STRICT_VIDEO_SYNC_LAG_SEC: f64 = 0.08;
 const BALANCED_VIDEO_SYNC_LAG_FRAMES: f64 = 6.0;
 const BALANCED_VIDEO_SYNC_LAG_SEC: f64 = 0.22;
 
+/// Identifies which decoded SOURCE frames a layer's runtime must hold. Deliberately
+/// excludes the clip's `timeline_start/end`: moving a clip along the timeline (or
+/// right-trimming it, which only shortens `timeline_end`) does not change which source
+/// pixels the decoder must produce — `source_start_sec`, `source_range_duration_sec`,
+/// `speed` and `freeze_frame_source_sec` fully capture the source mapping. Including the
+/// timeline position here previously respawned the ffmpeg decoder + frame cache on every
+/// drag/trim, freezing the layer while it re-opened. The live `SceneLayer` still carries
+/// the up-to-date `timeline_start_sec` used by `source_pts_at`, so playback maps correctly.
 #[derive(Debug, Clone, PartialEq)]
 struct VideoRuntimeKey {
     kind: LayerKind,
     path: String,
-    timeline_start_bits: u64,
-    timeline_end_bits: u64,
     source_start_bits: u64,
     source_range_duration_bits: u64,
     speed_bits: u64,
@@ -74,8 +80,6 @@ impl VideoRuntimeKey {
         Self {
             kind: layer.kind,
             path: layer.path.clone(),
-            timeline_start_bits: layer.timeline_start_sec.to_bits(),
-            timeline_end_bits: layer.timeline_end_sec.to_bits(),
             source_start_bits: layer.source_start_sec.to_bits(),
             source_range_duration_bits: layer.source_range_duration_sec.to_bits(),
             speed_bits: layer.speed.to_bits(),
@@ -1333,6 +1337,18 @@ mod tests {
         let mut frozen = base.clone();
         frozen.freeze_frame_source_sec = Some(1.0);
         assert_ne!(VideoRuntimeKey::from_layer(&frozen), base_key);
+
+        // Moving the clip along the timeline (or right-trimming, which only changes
+        // timeline_end) must NOT change the key: the source mapping is identical, so the
+        // decoder/cache should be kept alive rather than respawned mid-drag.
+        let mut moved = base.clone();
+        moved.timeline_start_sec += 5.0;
+        moved.timeline_end_sec += 5.0;
+        assert_eq!(VideoRuntimeKey::from_layer(&moved), base_key);
+
+        let mut right_trimmed = base.clone();
+        right_trimmed.timeline_end_sec -= 0.3;
+        assert_eq!(VideoRuntimeKey::from_layer(&right_trimmed), base_key);
     }
 
     #[test]
