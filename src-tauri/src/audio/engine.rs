@@ -283,27 +283,39 @@ impl NativeAudioEngine {
     /// primed — not currently priming, no audible scene, or reverse/stopped speed —
     /// so the caller's warmup gate never blocks on them.
     pub fn is_primed(&self) -> bool {
-        let (playing, hold, scene_empty, speed, pending_ring_clear) = {
+        let sample_rate = self.sample_rate;
+        let output_channels = self.device_channels as usize;
+        let waiting_on_playhead_cache = {
             let state = self.shared.0.lock();
-            (
-                state.playing,
-                state.hold_output,
-                state.scene.is_empty(),
-                state.global_speed,
-                state.pending_ring_clear,
+            if !state.playing || !state.hold_output || state.scene.is_empty() || state.global_speed <= 0.0
+            {
+                return true;
+            }
+            // A pending ring clear means the buffer is about to be wiped — not primed.
+            if state.pending_ring_clear {
+                return false;
+            }
+            // Wait for the PCM of the clips UNDER the playhead to finish background
+            // decoding before going audible. Streaming a deep seek into a large 4K
+            // file is too slow to keep the ring full: the producer goes decode-behind,
+            // the ring drains and the device underruns — heard as crackle, and the
+            // timeline rushes ahead of what is cleanly audible (audio "runs forward").
+            // Once the clip's PCM is in `decoded_cache`, mix_chunk is a memcpy and
+            // playback starts clean. Scoped to ONLY the layers covering the playhead
+            // (not the whole scene), so far-away clips still precache lazily without
+            // delaying Play — a background precache that is NOT under the playhead does
+            // not block. Files too big to ever cache (precache_skip, never in
+            // `decoding_in_flight`) stream as before and never block.
+            playhead_clip_still_caching(
+                &state.scene,
+                state.origin_pts_sec,
+                sample_rate,
+                output_channels,
+                &state.decoding_in_flight,
+                &state.decoded_cache,
             )
         };
-        if !playing || !hold || scene_empty || speed <= 0.0 {
-            return true;
-        }
-        // NOTE: a background precache (`decoding_in_flight`) being in flight does NOT
-        // block priming. The producer fills the ring by STREAMING until the decoded
-        // PCM lands, then swaps to it seamlessly mid-chunk (no reseek) — exactly as
-        // it does during steady-state playback. Gating the start on it made a cold
-        // "load project → press Play" wait the full prebuffer timeout (~3s) for a
-        // large file's precache even though the ring was already full. Only a pending
-        // ring clear (the buffer is about to be wiped) means we are not yet primed.
-        if pending_ring_clear {
+        if waiting_on_playhead_cache {
             return false;
         }
         let ring_len = self.ring.len();
@@ -537,6 +549,34 @@ impl NativeAudioEngine {
     pub fn output_info(&self) -> (u32, u16) {
         (self.sample_rate, self.device_channels)
     }
+}
+
+/// True while any scene layer that COVERS `playhead_sec` still has its PCM being
+/// background-decoded (in `decoding_in_flight`) and not yet in `decoded_cache`.
+///
+/// Used to hold audio inaudible until the clip under the playhead is cached, so the
+/// first audible chunk is a memcpy from `decoded_cache` rather than a slow streaming
+/// decode (deep seek into a large 4K file) that goes decode-behind → ring drain →
+/// underrun (crackle) and rushes the timeline ahead of clean audio. Scoped to the
+/// covering layers only: far-away clips precache lazily and never block Play, and
+/// files that can never be cached (`precache_skip`, never in `decoding_in_flight`)
+/// stream as before.
+fn playhead_clip_still_caching(
+    scene: &[crate::monitor::scene::SceneAudioLayer],
+    playhead_sec: f64,
+    sample_rate: u32,
+    output_channels: usize,
+    decoding_in_flight: &std::collections::HashSet<String>,
+    decoded_cache: &lru::LruCache<String, std::sync::Arc<Vec<f32>>>,
+) -> bool {
+    scene.iter().any(|layer| {
+        if layer.timeline_end_sec <= playhead_sec || layer.timeline_start_sec > playhead_sec {
+            return false;
+        }
+        let key =
+            crate::audio::shared::decoded_cache_key(&layer.path, sample_rate, output_channels);
+        decoding_in_flight.contains(&key) && !decoded_cache.contains(&key)
+    })
 }
 
 impl Drop for NativeAudioEngine {
@@ -1005,6 +1045,58 @@ mod tests {
             !engine.is_primed(),
             "primed must be false when pending_ring_clear is true, regardless of ring fill"
         );
+    }
+
+    #[test]
+    fn playhead_cache_gate_blocks_while_covering_clip_decodes() {
+        use std::collections::HashSet;
+        let scene = vec![layer("l1", "/tmp/big.mp4", 0.0, 10.0, 1.0)];
+        let key = crate::audio::shared::decoded_cache_key("/tmp/big.mp4", 48000, 2);
+        let mut in_flight = HashSet::new();
+        in_flight.insert(key.clone());
+        let mut cache: lru::LruCache<String, Arc<Vec<f32>>> = lru::LruCache::unbounded();
+
+        // Playhead (5s) is under the clip and its PCM is still decoding → block.
+        assert!(playhead_clip_still_caching(
+            &scene, 5.0, 48000, 2, &in_flight, &cache
+        ));
+
+        // Once the PCM lands in the cache, the gate clears even if the in-flight set
+        // is still being torn down.
+        cache.put(key, Arc::new(vec![0.0f32; 8]));
+        assert!(!playhead_clip_still_caching(
+            &scene, 5.0, 48000, 2, &in_flight, &cache
+        ));
+    }
+
+    #[test]
+    fn playhead_cache_gate_ignores_clip_not_under_playhead() {
+        use std::collections::HashSet;
+        // Clip is far ahead; the playhead (0s) is not under it.
+        let scene = vec![layer("far", "/tmp/far.mp4", 100.0, 110.0, 1.0)];
+        let key = crate::audio::shared::decoded_cache_key("/tmp/far.mp4", 48000, 2);
+        let mut in_flight = HashSet::new();
+        in_flight.insert(key);
+        let cache: lru::LruCache<String, Arc<Vec<f32>>> = lru::LruCache::unbounded();
+
+        // A precache of a clip NOT under the playhead must never delay Play.
+        assert!(!playhead_clip_still_caching(
+            &scene, 0.0, 48000, 2, &in_flight, &cache
+        ));
+    }
+
+    #[test]
+    fn playhead_cache_gate_does_not_block_uncacheable_streaming_clip() {
+        use std::collections::HashSet;
+        // A too-big clip never enters `decoding_in_flight` (it is precache_skip and
+        // streams forever); the gate must not wait on it.
+        let scene = vec![layer("l1", "/tmp/huge.mp4", 0.0, 10.0, 1.0)];
+        let in_flight = HashSet::new();
+        let cache: lru::LruCache<String, Arc<Vec<f32>>> = lru::LruCache::unbounded();
+
+        assert!(!playhead_clip_still_caching(
+            &scene, 5.0, 48000, 2, &in_flight, &cache
+        ));
     }
 
     #[test]

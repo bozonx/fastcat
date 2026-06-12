@@ -39,7 +39,13 @@ const EVT_ENDED: &str = "monitor:ended";
 /// зависал. Реальные сцены проходят проверку раньше: порог готовности для каждого
 /// видеослоя рассчитывается динамически в `active_videos_ready` через
 /// `expected_preroll_duration()` с учётом лимита памяти на кадры.
-const PREBUFFER_TIMEOUT: Duration = Duration::from_millis(3000);
+///
+/// 6s (не 3s): на тяжёлых 4K-источниках фоновый декод PCM клипа под плейхедом
+/// может занять несколько секунд, а `is_primed` теперь ждёт именно его, чтобы
+/// первый слышимый звук шёл из кеша (memcpy), а не из медленного стриминга
+/// (decode-behind → underrun → треск + «уход аудио вперёд»). Потолок лишь
+/// продлевает ХУДШИЙ случай; готовые сцены стартуют сразу по готовности.
+const PREBUFFER_TIMEOUT: Duration = Duration::from_millis(6000);
 /// Polling cadence while warming up before playback. Video readiness is normally
 /// driven by `VideoFrameReady`/`BgReady` events, but audio-only scenes (or audio
 /// finishing its prime after video) emit no such event, so we also wake on this
