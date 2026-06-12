@@ -114,12 +114,15 @@ impl Scene {
             let has_crop =
                 crop_left > 0.0 || crop_right > 0.0 || crop_top > 0.0 || crop_bottom > 0.0;
 
-            // push_layer нужен для opacity<1, non-Normal blend или наличия кропа.
+            // Isolation is needed for opacity and non-normal blend. Crop-only should
+            // use a clip layer so it does not alter the backdrop seen by later blends.
             let mix = layer.blend.to_vello();
-            let needs_layer =
-                opacity < 1.0 || !matches!(layer.blend, BlendMode::Normal) || has_crop;
-            if needs_layer {
+            let needs_composite_layer = opacity < 1.0 || !matches!(layer.blend, BlendMode::Normal);
+            let needs_clip_layer = has_crop && !needs_composite_layer;
+            if needs_composite_layer {
                 out.push_layer(Fill::NonZero, mix, opacity, xform, &crop_bbox);
+            } else if needs_clip_layer {
+                out.push_clip_layer(Fill::NonZero, xform, &crop_bbox);
             }
 
             match &layer.kind {
@@ -152,7 +155,7 @@ impl Scene {
                 LayerKind::Adjustment => {}
             }
 
-            if needs_layer {
+            if needs_composite_layer || needs_clip_layer {
                 out.pop_layer();
             }
             // TODO: layer.mask — kurbo::BezPath из layer.mask.path, push_layer как clip.

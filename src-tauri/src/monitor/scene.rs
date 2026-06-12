@@ -496,6 +496,25 @@ mod tests {
         assert_eq!(layer.style.unwrap()["fontSize"], 72);
     }
 
+    #[test]
+    fn deserializes_native_snake_case_blend_modes() {
+        let json = r##"{
+            "id": "video-1",
+            "kind": "video",
+            "path": "/tmp/video.mp4",
+            "timeline_start_sec": 0.0,
+            "timeline_end_sec": 5.0,
+            "source_start_sec": 0.0,
+            "source_range_duration_sec": 5.0,
+            "speed": 1.0,
+            "z": 10,
+            "opacity": 1.0,
+            "blend_mode": "soft_light"
+        }"##;
+        let layer: SceneLayer = serde_json::from_str(json).unwrap();
+        assert_eq!(layer.blend_mode, BlendMode::SoftLight);
+    }
+
     fn audio_layer(start: f64, end: f64, source_start: f64) -> SceneAudioLayer {
         SceneAudioLayer {
             id: "a".into(),
