@@ -38,16 +38,6 @@ watch(completedTasks, (nextCompleted) => {
       continue;
     }
 
-    if (task.type === 'conversion') {
-      toast.add({
-        title: t('videoEditor.fileManager.convert.success'),
-        description: task.title,
-        color: 'success',
-      });
-      notifiedCompletedTaskIds.add(task.id);
-      continue;
-    }
-
     if (task.type === 'proxy') {
       toast.add({
         title: t('videoEditor.fileManager.proxy.success'),

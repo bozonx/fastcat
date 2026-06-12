@@ -423,7 +423,22 @@ pub fn export_timeline(
                 return Err(anyhow!("{error}: {stderr_text}"));
             }
 
+            // Finalization phase: stdin is closed and (for mp4/mov) ffmpeg now flushes the
+            // encoder and writes the container trailer — a span that emits nothing on
+            // stdin/stdout/stderr and so looks like a stall to the watchdog. A long but
+            // healthy encode could be killed at "100%". Feed the watchdog from real output
+            // progress instead: reset the clock now, then bump it whenever the output file
+            // grows. (The faststart moov-relocation pass rewrites via a sibling temp and is
+            // bounded by file size / disk speed, well under the stall window.)
+            last_activity.store(now_millis(), Ordering::Release);
+            let mut last_output_len = std::fs::metadata(target_path).map(|m| m.len()).unwrap_or(0);
             loop {
+                if let Ok(len) = std::fs::metadata(target_path).map(|m| m.len()) {
+                    if len != last_output_len {
+                        last_output_len = len;
+                        last_activity.store(now_millis(), Ordering::Release);
+                    }
+                }
                 let mut guard = child.lock();
                 if let Some(status) = guard.try_wait().context("failed to poll ffmpeg export")? {
                     let stderr_text = match stderr_handle {

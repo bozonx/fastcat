@@ -324,9 +324,12 @@ pub fn convert_media_with_warnings(
     on_warning: Option<&(dyn Fn(String) + Send + Sync)>,
     on_progress: Option<&(dyn Fn(f64) + Send + Sync)>,
 ) -> Result<()> {
-    let ffprobe_cmd = options.ffprobe_path.as_deref().unwrap_or("ffprobe");
     let mut options = options;
-    let duration = match probe_media(source_path, ffprobe_cmd) {
+    let ffprobe_cmd = options
+        .ffprobe_path
+        .clone()
+        .unwrap_or_else(|| "ffprobe".to_string());
+    let duration = match probe_media(source_path, &ffprobe_cmd) {
         Ok(meta) => {
             if options.width.is_none() {
                 options.width = meta.video.as_ref().map(|v| v.width);
@@ -557,6 +560,9 @@ fn build_convert_ffmpeg_args(
                 // keeps the exact-scale path via push_video_encode_filter_args.)
                 true,
                 &[format!("fps={fps}")],
+                // Convert/proxy transcode a real source whose colour metadata ffmpeg
+                // already propagates; don't re-tag.
+                None,
             );
 
             let raw_video_codec = options.video_codec.as_deref().unwrap_or("avc1");

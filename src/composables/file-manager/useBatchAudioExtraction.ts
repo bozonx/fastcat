@@ -239,6 +239,7 @@ export function useBatchAudioExtraction() {
       if (noAudioCount < eligibleEntries.length) {
         toast.add({
           title: t('videoEditor.fileManager.batchExtractAudio.success'),
+          description: title,
           color: 'success',
         });
       }

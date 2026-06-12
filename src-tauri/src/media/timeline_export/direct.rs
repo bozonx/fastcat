@@ -121,6 +121,7 @@ pub(crate) fn plan_direct(
     if (src_aspect - out_aspect).abs() > out_aspect * 0.005 {
         return None;
     }
+    let source_duration_sec = info.duration_sec;
     drop(decoder);
 
     // speed == 1 and no freeze, so source PTS is a straight offset from the range start.
@@ -128,6 +129,16 @@ pub(crate) fn plan_direct(
     // Match the vello path's range: frame_count/fps (>= end - start) so the last partial
     // frame and the rendered audio mix line up.
     let duration_sec = frame_count as f64 / fps;
+
+    // The source must actually have frames for the whole range. If it ends early, the
+    // vello path holds the last decoded frame to the end while ffmpeg's `-t` here would
+    // simply produce a shorter video (and `-shortest` would then clip the audio mix).
+    // Fall back to vello unless the source provably covers the range. A non-positive
+    // (unknown) duration also bails — better a correct slow path than a truncated file.
+    if !(source_duration_sec > 0.0 && source_duration_sec + EPS >= source_start_sec + duration_sec)
+    {
+        return None;
+    }
 
     Some(DirectPlan {
         source: PathBuf::from(&layer.path),

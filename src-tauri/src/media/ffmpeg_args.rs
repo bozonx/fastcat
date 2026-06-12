@@ -95,6 +95,7 @@ pub fn push_video_encode_filter_args(
         export_alpha,
         false,
         &[],
+        None,
     );
 }
 
@@ -125,6 +126,7 @@ pub fn push_video_encode_filter_args_with_extra(
     export_alpha: bool,
     preserve_aspect: bool,
     extra_filters: &[String],
+    color: Option<ColorSpec>,
 ) {
     let has_scale = width > 0 && height > 0;
     let with_extra = |tail: String| {
@@ -136,20 +138,28 @@ pub fn push_video_encode_filter_args_with_extra(
             format!("{},{}", extra_filters.join(","), tail)
         }
     };
+    // When a colour space is requested, pin the RGB→YUV matrix and output range on a
+    // dimension-preserving `scale` step (no `w:h` ⇒ keep size). It runs before any
+    // pixel-format/hwupload conversion so the conversion — not swscale's BT.601 default —
+    // decides the matrix. `push_color_tag_args` then tags the stream to match.
+    let color_scale = color
+        .map(|c| format!("scale=out_color_matrix={}:out_range=tv", c.matrix));
     match hw_mode {
         HwAccelMode::Vaapi => {
             // `format` must be its own filter, not a `scale` option: the scale filter has
             // no `format` option (ffmpeg errors "Option not found"), so the conversion to
             // an upload-able pixel format goes in a separate `format=...` step before
             // `hwupload`. This is the same recipe as the no-scale branch below.
-            let tail = if has_scale {
-                format!(
-                    "{},format=nv12|vaapi,hwupload",
-                    scale_filter(width, height, preserve_aspect, "")
-                )
-            } else {
-                "format=nv12|vaapi,hwupload".to_string()
-            };
+            let mut tail = String::new();
+            if has_scale {
+                tail.push_str(&scale_filter(width, height, preserve_aspect, ""));
+                tail.push(',');
+            }
+            if let Some(cs) = &color_scale {
+                tail.push_str(cs);
+                tail.push(',');
+            }
+            tail.push_str("format=nv12|vaapi,hwupload");
             let vf = with_extra(tail);
             args.extend([
                 "-vf".to_string(),
@@ -159,12 +169,15 @@ pub fn push_video_encode_filter_args_with_extra(
             ]);
         }
         HwAccelMode::Nvdec | HwAccelMode::Nvenc => {
-            let tail = if has_scale {
-                scale_filter(width, height, preserve_aspect, ":format=yuv420p")
-            } else {
-                "format=yuv420p".to_string()
-            };
-            let vf = with_extra(tail);
+            let mut parts: Vec<String> = Vec::new();
+            if has_scale {
+                parts.push(scale_filter(width, height, preserve_aspect, ""));
+            }
+            if let Some(cs) = &color_scale {
+                parts.push(cs.clone());
+            }
+            parts.push("format=yuv420p".to_string());
+            let vf = with_extra(parts.join(","));
             args.extend([
                 "-vf".to_string(),
                 vf,
@@ -177,6 +190,13 @@ pub fn push_video_encode_filter_args_with_extra(
             if has_scale {
                 filters.push(scale_filter(width, height, preserve_aspect, ""));
             }
+            // Alpha export keeps straight RGBA→yuva420p (colour handled by the VP9 path);
+            // never inject a matrix-converting scale there.
+            if !export_alpha {
+                if let Some(cs) = &color_scale {
+                    filters.push(cs.clone());
+                }
+            }
             if !filters.is_empty() {
                 args.extend(["-vf".to_string(), filters.join(",")]);
             }
@@ -186,6 +206,9 @@ pub fn push_video_encode_filter_args_with_extra(
                 args.extend(["-pix_fmt".to_string(), "yuv420p".to_string()]);
             }
         }
+    }
+    if !export_alpha {
+        push_color_tag_args(args, color);
     }
 }
 
@@ -236,6 +259,7 @@ mod tests {
             false,
             true,
             &["fps=24".to_string()],
+            None,
         );
         let vf = args
             .windows(2)
@@ -262,6 +286,7 @@ mod tests {
             false,
             true,
             &["fps=30".to_string()],
+            None,
         );
         let vf = args
             .windows(2)
@@ -286,5 +311,91 @@ mod tests {
             .map(|p| p[1].clone())
             .expect("expected -vf");
         assert_eq!(vf, "scale=1920:1080");
+    }
+
+    fn find_arg<'a>(args: &'a [String], flag: &str) -> Option<&'a String> {
+        args.windows(2).find(|p| p[0] == flag).map(|p| &p[1])
+    }
+
+    #[test]
+    fn software_color_pins_matrix_and_tags_hd_as_bt709() {
+        // vello export: no resize (0×0), raw RGB in, BT.709 requested.
+        let mut args = Vec::new();
+        push_video_encode_filter_args_with_extra(
+            &mut args,
+            HwAccelMode::None,
+            0,
+            0,
+            false,
+            false,
+            &[],
+            Some(ColorSpec::for_output_height(1080)),
+        );
+        let vf = find_arg(&args, "-vf").expect("expected -vf");
+        assert_eq!(vf, "scale=out_color_matrix=bt709:out_range=tv");
+        assert_eq!(find_arg(&args, "-pix_fmt"), Some(&"yuv420p".to_string()));
+        assert_eq!(find_arg(&args, "-colorspace"), Some(&"bt709".to_string()));
+        assert_eq!(find_arg(&args, "-color_primaries"), Some(&"bt709".to_string()));
+        assert_eq!(find_arg(&args, "-color_trc"), Some(&"bt709".to_string()));
+        assert_eq!(find_arg(&args, "-color_range"), Some(&"tv".to_string()));
+    }
+
+    #[test]
+    fn software_color_tags_sd_as_smpte170m() {
+        let mut args = Vec::new();
+        push_video_encode_filter_args_with_extra(
+            &mut args,
+            HwAccelMode::None,
+            0,
+            0,
+            false,
+            false,
+            &[],
+            Some(ColorSpec::for_output_height(480)),
+        );
+        let vf = find_arg(&args, "-vf").expect("expected -vf");
+        assert!(vf.contains("out_color_matrix=bt601"), "got: {vf}");
+        assert_eq!(find_arg(&args, "-colorspace"), Some(&"smpte170m".to_string()));
+    }
+
+    #[test]
+    fn alpha_export_ignores_color_and_keeps_yuva420p() {
+        // Even if a ColorSpec is passed, alpha export must not inject a matrix-converting
+        // scale or write colour tags — VP9 yuva420p carries straight alpha.
+        let mut args = Vec::new();
+        push_video_encode_filter_args_with_extra(
+            &mut args,
+            HwAccelMode::None,
+            0,
+            0,
+            true,
+            false,
+            &[],
+            Some(ColorSpec::for_output_height(1080)),
+        );
+        assert!(find_arg(&args, "-vf").is_none(), "no scale expected: {args:?}");
+        assert_eq!(find_arg(&args, "-pix_fmt"), Some(&"yuva420p".to_string()));
+        assert!(find_arg(&args, "-colorspace").is_none());
+    }
+
+    #[test]
+    fn vaapi_color_scale_precedes_format_upload() {
+        let mut args = Vec::new();
+        push_video_encode_filter_args_with_extra(
+            &mut args,
+            HwAccelMode::Vaapi,
+            0,
+            0,
+            false,
+            false,
+            &[],
+            Some(ColorSpec::for_output_height(1080)),
+        );
+        let vf = find_arg(&args, "-vf").expect("expected -vf");
+        assert_eq!(
+            vf,
+            "scale=out_color_matrix=bt709:out_range=tv,format=nv12|vaapi,hwupload"
+        );
+        assert_eq!(find_arg(&args, "-colorspace"), Some(&"bt709".to_string()));
     }
 }

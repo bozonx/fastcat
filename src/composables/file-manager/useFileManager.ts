@@ -471,43 +471,87 @@ export function createFileManager(deps: FileManagerCreateDeps) {
     });
   }
 
+  async function clearVectorCacheForDirectory(oldPath: string, newPath: string) {
+    const projectId = deps.getProjectId();
+    if (!projectId) return;
+
+    async function walk(dirPath: string): Promise<void> {
+      const entries = await deps.vfs.readDirectory(dirPath);
+      for (const entry of entries) {
+        if (entry.kind === 'directory') {
+          await walk(entry.path);
+        } else {
+          const oldFilePath = `${oldPath}${entry.path.slice(newPath.length)}`;
+          await clearVectorImageRasterVfs({
+            vfs: deps.vfs,
+            projectId: projectId!,
+            projectRelativePath: oldFilePath,
+          });
+        }
+      }
+    }
+
+    try {
+      await walk(newPath);
+    } catch {
+      // ignore
+    }
+  }
+
   async function deleteEntry(target: FsEntry) {
     await runWithUiFeedback({
       action: async () => {
-        await deleteEntryCommand(target, {
+        const deletedFilePaths = await deleteEntryCommand(target, {
           vfs: deps.vfs,
           onFileDeleted: async ({ path }) => {
-            await removeProxyCommand({
-              service: deps.mediaCache,
-              projectRelativePath: path,
-            });
-
             await clearVectorCacheForPath(path);
-
-            if (path.startsWith(`${VIDEO_DIR_NAME}/`)) {
-              const projectId = deps.getProjectId();
-              if (projectId) {
-                await clearVideoThumbnailsCommand({
-                  service: deps.mediaCache,
-                  projectId,
-                  projectRelativePath: path,
-                });
-              }
-            }
-
-            if (path.startsWith(`${VIDEO_DIR_NAME}/`) || path.startsWith(`${AUDIO_DIR_NAME}/`)) {
-              const projectId = deps.getProjectId();
-              if (projectId) {
-                await deps.mediaCache.clearWaveforms({
-                  projectId,
-                  projectRelativePath: path,
-                });
-              }
-            }
-
             await deps.onFileDeleted?.({ path });
           },
         });
+
+        const videoPaths: string[] = [];
+        const mediaPaths: string[] = [];
+
+        for (const path of deletedFilePaths) {
+          if (path.startsWith(`${VIDEO_DIR_NAME}/`)) {
+            videoPaths.push(path);
+            mediaPaths.push(path);
+          } else if (path.startsWith(`${AUDIO_DIR_NAME}/`)) {
+            mediaPaths.push(path);
+          }
+        }
+
+        if (videoPaths.length > 0) {
+          await deps.mediaCache.removeProxyBatch({
+            projectRelativePaths: videoPaths,
+          });
+
+          const projectId = deps.getProjectId();
+          if (projectId) {
+            await Promise.all(
+              videoPaths.map((path) =>
+                deps.mediaCache.clearVideoThumbnails({
+                  projectId,
+                  projectRelativePath: path,
+                }),
+              ),
+            );
+          }
+        }
+
+        if (mediaPaths.length > 0) {
+          const projectId = deps.getProjectId();
+          if (projectId) {
+            await Promise.all(
+              mediaPaths.map((path) =>
+                deps.mediaCache.clearWaveforms({
+                  projectId,
+                  projectRelativePath: path,
+                }),
+              ),
+            );
+          }
+        }
 
         const parentPath = getParentPath(target.path);
         await reloadDirectory(parentPath);
@@ -778,6 +822,7 @@ export function createFileManager(deps: FileManagerCreateDeps) {
     resolveDefaultTargetDir: async (params: { file: File } | { name: string }) =>
       await resolveDefaultTargetDir(params),
     runWithUiFeedback,
+    clearVectorCacheForDirectory,
     async restoreHistory(snapshot: unknown) {
       const op = snapshot as Record<string, unknown>;
       if (!op || !op.type) return;
@@ -984,6 +1029,7 @@ export function useFileManager(options?: {
     },
     onDirectoryMoved: async ({ oldPath, newPath }: { oldPath: string; newPath: string }) => {
       await mediaStore.removeMediaCacheForDirectory(oldPath);
+      await api.clearVectorCacheForDirectory(oldPath, newPath);
       updateSelectionForDirectoryMove({ oldPath, newPath });
       await syncTimelinePathsOnMove({ oldPath, newPath });
 

@@ -146,7 +146,7 @@ describe('useFileManager', () => {
 
     const vfs = {
       init: vi.fn(),
-      readDirectory: vi.fn(async () => []),
+      readDirectory: vi.fn(async (_path: string) => []),
       createDirectory: vi.fn(),
       listEntryNames: vi.fn(async () => []),
       readFile: vi.fn(),
@@ -186,7 +186,9 @@ describe('useFileManager', () => {
       mediaCache: {
         checkExistingProxies: vi.fn(),
         removeProxy: vi.fn(),
+        removeProxyBatch: vi.fn(),
         clearVideoThumbnails: vi.fn(),
+        clearWaveforms: vi.fn(),
       } as any,
       mediaStore: {} as any,
       historyStore: { push: vi.fn() } as any,
@@ -286,5 +288,27 @@ describe('useFileManager', () => {
     expect(entry.name).toBe('test');
     expect(entry.kind).toBe('file');
     expect(entry.path).toBe('test/path');
+  });
+
+  it('deleteEntry batch-removes proxies and clears thumbnails/waveforms for video files', async () => {
+    const { manager, vfs } = createUploadManager();
+
+    vi.mocked(vfs.readDirectory).mockImplementation(async (path: string) => {
+      if (path === '_video') {
+        return [
+          { name: 'a.mp4', kind: 'file', path: '_video/a.mp4' } as FsEntry,
+          { name: 'b.mp4', kind: 'file', path: '_video/b.mp4' } as FsEntry,
+        ];
+      }
+      return [];
+    });
+
+    await manager.deleteEntry({ kind: 'directory', name: '_video', path: '_video' } as FsEntry);
+
+    expect(manager.mediaCache.removeProxyBatch).toHaveBeenCalledWith({
+      projectRelativePaths: ['_video/a.mp4', '_video/b.mp4'],
+    });
+    expect(manager.mediaCache.clearVideoThumbnails).toHaveBeenCalledTimes(2);
+    expect(manager.mediaCache.clearWaveforms).toHaveBeenCalledTimes(2);
   });
 });

@@ -182,27 +182,26 @@ describe('fileManagerCommands', () => {
     expect(vfs.writeStream).not.toHaveBeenCalled();
   });
 
-  it('deleteEntryCommand calls removeEntry and onFileDeleted for files with path', async () => {
+  it('deleteEntryCommand returns deleted paths and calls onFileDeleted for files with path', async () => {
     const parent = createDirHandleMock();
     const { entry } = createFileEntry({ name: 'a.mp4', path: 'video/a.mp4', parent });
 
-    const removeEntry = vi.fn(async () => undefined);
     const onFileDeleted = vi.fn(async () => undefined);
     const vfs = {
       deleteEntry: vi.fn(async () => undefined),
     };
 
-    await deleteEntryCommand(entry, { removeEntry, onFileDeleted, vfs: vfs as any });
+    const result = await deleteEntryCommand(entry, { onFileDeleted, vfs: vfs as any });
 
     expect(vfs.deleteEntry).toHaveBeenCalledWith('video/a.mp4', true);
     expect(onFileDeleted).toHaveBeenCalledWith({ path: 'video/a.mp4' });
+    expect(result).toEqual(['video/a.mp4']);
   });
 
-  it('deleteEntryCommand calls onFileDeleted for files inside directories', async () => {
+  it('deleteEntryCommand returns nested paths and calls onFileDeleted for files inside directories', async () => {
     const parent = createDirHandleMock();
     const { entry } = createDirEntry({ name: 'images', path: 'images', parent });
 
-    const removeEntry = vi.fn(async () => undefined);
     const onFileDeleted = vi.fn(async () => undefined);
     const vfs = {
       deleteEntry: vi.fn(async () => undefined),
@@ -216,11 +215,12 @@ describe('fileManagerCommands', () => {
       ),
     };
 
-    await deleteEntryCommand(entry, { removeEntry, onFileDeleted, vfs: vfs as any });
+    const result = await deleteEntryCommand(entry, { onFileDeleted, vfs: vfs as any });
 
     expect(vfs.deleteEntry).toHaveBeenCalledWith('images', true);
     expect(onFileDeleted).toHaveBeenCalledWith({ path: 'images/a.png' });
     expect(onFileDeleted).toHaveBeenCalledWith({ path: 'images/nested/b.png' });
+    expect(result).toEqual(['images/a.png', 'images/nested/b.png']);
   });
 
   it('renameEntryCommand uses vfs.moveEntry', async () => {

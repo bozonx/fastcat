@@ -362,6 +362,7 @@ export function useBatchConversion() {
         } else {
           toast.add({
             title: t('videoEditor.fileManager.batchConvert.success'),
+            description: title,
             color: 'success',
           });
         }

@@ -57,7 +57,31 @@ pub(crate) fn build_ffmpeg_args(
     if is_video {
         let video_codec = ffmpeg_video_codec_hw(&options.video_codec, hw_mode);
         push_video_codec_rate_args(&mut args, options, hw_mode, fps, video_codec);
-        push_video_encode_filter_args(&mut args, hw_mode, 0, 0, export_alpha);
+        // The vello path streams raw RGB; without an explicit matrix swscale defaults to
+        // BT.601 and writes the stream untagged, so HD players (assuming BT.709) show a
+        // colour shift vs the monitor. Pin + tag the conventional space for the output
+        // size. Alpha export skips this (handled by the VP9 yuva path).
+        let color = (!export_alpha).then(|| ColorSpec::for_output_height(height));
+        // Vello renders premultiplied alpha. The non-alpha path bakes that onto a black
+        // background (premultiplied RGB == composite-over-black, so dropping alpha is
+        // correct), but alpha export keeps the alpha channel and ffmpeg reads rawvideo
+        // `rgba` as *straight* alpha — so semi-transparent pixels would come out too dark.
+        // Undo the premultiply before the yuva420p conversion to restore straight alpha.
+        let extra: Vec<String> = if export_alpha {
+            vec!["unpremultiply=inplace=1".to_string()]
+        } else {
+            Vec::new()
+        };
+        push_video_encode_filter_args_with_extra(
+            &mut args,
+            hw_mode,
+            0,
+            0,
+            export_alpha,
+            false,
+            &extra,
+            color,
+        );
     } else {
         args.push("-vn".to_string());
     }
@@ -272,7 +296,12 @@ pub(crate) fn build_direct_ffmpeg_args(
         height,
         false,
         true,
-        &[format!("fps={}", format_fps(fps))],
+        // `setsar=1` pins square output pixels so the geometry matches the vello path
+        // (which always renders square); a normal SAR=1 source is unaffected.
+        &[format!("fps={}", format_fps(fps)), "setsar=1".to_string()],
+        // Direct transcode decodes a real source; ffmpeg already carries its colour
+        // metadata through, so don't override it.
+        None,
     );
 
     push_audio_metadata_output_tail(&mut args, options, true, has_audio, target_path);
