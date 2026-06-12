@@ -217,25 +217,56 @@ export function useNativeMonitorBridge(): void {
     },
   );
 
+  // Use computed refs for doc-derived arrays so the watcher only fires when the
+  // array *contents* mutate, not when the parent doc object is replaced (e.g.
+  // update_master_gain replaces timelineDoc but preserves the tracks reference).
+  const nativeMonitorTracks = computed(
+    () => timelineStore.timelineDoc?.tracks ?? [],
+  );
+  const nativeMonitorMasterEffects = computed(
+    () => timelineStore.timelineDoc?.metadata?.fastcat?.masterEffects ?? [],
+  );
+
+  let sceneSyncDebounceTimer: number | null = null;
+
+  function scheduleSyncScene(delayMs = 100): void {
+    if (sceneSyncDebounceTimer !== null) {
+      clearTimeout(sceneSyncDebounceTimer);
+    }
+    sceneSyncDebounceTimer = window.setTimeout(() => {
+      sceneSyncDebounceTimer = null;
+      void syncScene();
+    }, delayMs);
+  }
+
   // Сцена меняется при правках треков/клипов и формата.
   // Наблюдаем только tracks + format (не весь doc), чтобы не гонять IPC на каждое
   // изменение waveform-данных или UI-полей, не влияющих на рендер.
   watch(
     [
-      () => timelineStore.timelineDoc?.tracks,
+      nativeMonitorTracks,
       () => timelineStore.timelineFormat,
-      () => timelineStore.masterGain,
-      () => timelineStore.audioMuted,
       () => projectStore.activeMonitor?.previewResolution,
       () => projectStore.activeMonitor?.useProxy,
       () => proxyStore.existingProxies,
       () => workspaceStore.userSettings.optimization.nativeMonitorSyncMode,
-      () => timelineStore.timelineDoc?.metadata?.fastcat?.masterEffects,
+      nativeMonitorMasterEffects,
     ],
     () => {
       void syncScene();
     },
     { deep: true, immediate: true },
+  );
+
+  // Master gain/muted — debounced to avoid a scene-rebuild storm during drag.
+  // The WebAudio engine already reacts instantly via the monitor-core wiring,
+  // so a small delay for the native monitor scene is imperceptible.
+  watch(
+    [() => timelineStore.masterGain, () => timelineStore.audioMuted],
+    () => {
+      scheduleSyncScene(100);
+    },
+    { immediate: true },
   );
 
   // Play/Pause.

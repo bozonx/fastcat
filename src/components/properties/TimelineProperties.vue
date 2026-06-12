@@ -315,13 +315,31 @@ const computedSummary = computed(() => {
   };
 });
 
+let pendingMasterGain: number | null = null;
+let masterGainDebounceTimer: number | null = null;
+
+function debouncedApplyMasterGain(val: number) {
+  pendingMasterGain = val;
+  if (masterGainDebounceTimer !== null) {
+    clearTimeout(masterGainDebounceTimer);
+  }
+  masterGainDebounceTimer = window.setTimeout(() => {
+    masterGainDebounceTimer = null;
+    if (pendingMasterGain !== null) {
+      timelineStore.applyTimeline({
+        type: 'update_master_gain',
+        gain: pendingMasterGain,
+      });
+      pendingMasterGain = null;
+    }
+  }, 300);
+}
+
 const masterGain = computed({
-  get: () => timelineStore.timelineDoc?.metadata?.fastcat?.masterGain ?? 1,
+  get: () => timelineStore.masterGain ?? 1,
   set: (val: number) => {
-    timelineStore.applyTimeline({
-      type: 'update_master_gain',
-      gain: val,
-    });
+    timelineStore.setAudioVolume(val);
+    debouncedApplyMasterGain(val);
   },
 });
 

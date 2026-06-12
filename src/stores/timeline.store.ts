@@ -98,7 +98,7 @@ export const useTimelineStore = defineStore('timeline', () => {
   const playbackSpeed = ref(TIMELINE_DEFAULTS.PLAYBACK_SPEED);
   const currentTime = ref(0);
   const duration = ref(0);
-  const masterGain = ref(TIMELINE_DEFAULTS.MASTER_GAIN);
+  const masterGain = ref<number>(TIMELINE_DEFAULTS.MASTER_GAIN);
   const audioMuted = ref(false);
   const audioLevels = ref<Record<string, { rmsDb: number; peakDb: number }>>({});
 
@@ -958,6 +958,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     requestTimelineSave: lifecycle.requestTimelineSave,
     applyTimeline,
     setMasterGain: (gain: number) => {
+      masterGain.value = gain;
       applyTimeline({ type: 'update_master_gain', gain });
       if (gain > 0 && audioMuted.value) {
         setMasterMuted(false);

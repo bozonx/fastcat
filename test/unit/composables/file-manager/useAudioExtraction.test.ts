@@ -47,6 +47,8 @@ const uiStore = {
   setFileTreePathExpanded: vi.fn(),
   notifyFileManagerUpdate: vi.fn(),
   triggerScrollToFileTreeEntry: vi.fn(),
+  isExtractingAudio: false,
+  extractingAudioError: null as string | null,
 };
 
 const selectionStore = {
@@ -294,5 +296,53 @@ describe('useAudioExtraction', () => {
     });
     expect(extractAudio).not.toHaveBeenCalled();
     expect(fileManager.reloadDirectory).toHaveBeenCalledWith('media');
+  });
+
+  it('sets isExtractingAudio to true during extraction and false on success', async () => {
+    const entry: FsEntry = {
+      kind: 'file',
+      name: 'clip.mp4',
+      path: 'media/clip.mp4',
+    };
+
+    const composable = useAudioExtraction();
+    
+    // Before extraction
+    expect(uiStore.isExtractingAudio).toBe(false);
+    expect(uiStore.extractingAudioError).toBeNull();
+
+    const promise = composable.extractAudio(entry);
+    
+    // During extraction (before promise resolves)
+    expect(uiStore.isExtractingAudio).toBe(true);
+    expect(uiStore.extractingAudioError).toBeNull();
+
+    await promise;
+
+    // After successful extraction
+    expect(uiStore.isExtractingAudio).toBe(false);
+    expect(uiStore.extractingAudioError).toBeNull();
+  });
+
+  it('keeps isExtractingAudio as true and sets extractingAudioError on failure', async () => {
+    const entry: FsEntry = {
+      kind: 'file',
+      name: 'clip.mp4',
+      path: 'media/clip.mp4',
+    };
+
+    extractAudio.mockRejectedValueOnce(new Error('Test extraction error'));
+
+    const composable = useAudioExtraction();
+    
+    // Before extraction
+    expect(uiStore.isExtractingAudio).toBe(false);
+    expect(uiStore.extractingAudioError).toBeNull();
+
+    await composable.extractAudio(entry);
+
+    // After failed extraction: modal stays open, error is set
+    expect(uiStore.isExtractingAudio).toBe(true);
+    expect(uiStore.extractingAudioError).toBe('Test extraction error');
   });
 });

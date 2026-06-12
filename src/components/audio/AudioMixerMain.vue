@@ -17,9 +17,16 @@ const { t } = useI18n();
 const volumeDb = computed({
   get: () => linearToDb(timelineStore.masterGain),
   set: (val: number) => {
-    timelineStore.setMasterGain(dbToLinear(val));
+    timelineStore.setAudioVolume(dbToLinear(val));
   },
 });
+
+function onVolumeDragEnd() {
+  timelineStore.applyTimeline({
+    type: 'update_master_gain',
+    gain: dbToLinear(volumeDb.value),
+  });
+}
 
 const isMuted = computed(() => timelineStore.audioMuted);
 
@@ -102,7 +109,11 @@ function handleSelectEffect(type: string) {
 
     <!-- Volume Slider (Vertical) -->
     <div class="flex-1 w-full flex justify-center relative mb-4 min-h-25">
-      <DbSlider v-model="volumeDb" :level-db="timelineStore.audioLevels?.['master']?.peakDb" />
+      <DbSlider
+        v-model="volumeDb"
+        :level-db="timelineStore.audioLevels?.['master']?.peakDb"
+        @drag-end="onVolumeDragEnd"
+      />
     </div>
 
     <!-- DB Value -->

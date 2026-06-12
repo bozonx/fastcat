@@ -1274,7 +1274,8 @@
       },
       "extractAudio": {
         "failed": "Failed to extract audio",
-        "success": "Audio extracted successfully"
+        "success": "Audio extracted successfully",
+        "extracting": "Extracting audio..."
       },
       "folder": {
         "filesCount": "Files Count"

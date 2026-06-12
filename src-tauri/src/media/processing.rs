@@ -604,7 +604,9 @@ pub struct ExtractWebpParams<'a> {
 pub fn extract_video_frame_webp(params: ExtractWebpParams<'_>) -> Result<Vec<u8>> {
     // Throttle concurrent decoder/ffmpeg spawns the same way the monitor does, so a
     // media panel full of clips can't flood the machine with parallel ffmpeg starts.
-    let _permit = decoder_load_gate().acquire();
+    let _permit = decoder_load_gate()
+        .acquire_with_priority(crate::media::decode_gate::LoadPriority::Background, &|| false)
+        .expect("Background without cancel always succeeds");
     let metadata = probe_media(params.source_path, &params.hw_settings.ffprobe_path)?;
     let video = metadata
         .video
@@ -709,7 +711,9 @@ pub fn extract_video_frame_webps(
         &hw_settings.vaapi_device,
     );
     let mut decoder = {
-        let _permit = decoder_load_gate().acquire();
+        let _permit = decoder_load_gate()
+            .acquire_with_priority(crate::media::decode_gate::LoadPriority::Background, &|| false)
+            .expect("Background without cancel always succeeds");
         crate::media::decode::open(
             source_path,
             Some(max_edge),

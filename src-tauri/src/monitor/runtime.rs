@@ -14,6 +14,7 @@ use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 use std::sync::mpsc::Sender;
 
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::Arc;
 
 use tauri::AppHandle;
@@ -68,7 +69,10 @@ pub struct LayerRuntimeManager {
     last_tick_t: f64,
     runtimes: HashMap<String, LayerRuntime>,
     loading_set: HashSet<String>,
+    loading_cancels: HashMap<String, Arc<AtomicBool>>,
     load_epoch: u64,
+    /// Atomic mirror of `load_epoch` so spawned threads can read it without locking.
+    live_epoch: Arc<AtomicU64>,
     bg_tx: Sender<BgLayerResult>,
     proxy: EventLoopProxy<MonitorCommand>,
     hw_settings: crate::FfmpegHardwareSettings,
@@ -96,7 +100,9 @@ impl LayerRuntimeManager {
             last_tick_t: 0.0,
             runtimes: HashMap::new(),
             loading_set: HashSet::new(),
+            loading_cancels: HashMap::new(),
             load_epoch: 0,
+            live_epoch: Arc::new(AtomicU64::new(0)),
             bg_tx,
             proxy,
             hw_settings,
@@ -135,6 +141,8 @@ impl LayerRuntimeManager {
         );
         self.hw_settings = hw_settings;
         self.load_epoch = self.load_epoch.wrapping_add(1);
+        self.live_epoch.store(self.load_epoch, Ordering::Relaxed);
+        self.cancel_all_loading();
         self.loading_set.clear();
 
         let prev = std::mem::take(&mut self.runtimes);
@@ -226,6 +234,8 @@ impl LayerRuntimeManager {
                 );
             }
             self.load_epoch = self.load_epoch.wrapping_add(1);
+            self.live_epoch.store(self.load_epoch, Ordering::Relaxed);
+            self.cancel_all_loading();
             self.loading_set.clear();
         }
         self.preview_scale = scene.preview_scale;
@@ -254,6 +264,9 @@ impl LayerRuntimeManager {
             if drop_for_policy || gone || failed_retry || path_changed {
                 to_drop.push(rt);
                 self.loading_set.remove(&id);
+                if let Some(cancel) = self.loading_cancels.remove(&id) {
+                    cancel.store(true, Ordering::Relaxed);
+                }
             } else {
                 self.runtimes.insert(id, rt);
             }
@@ -277,6 +290,12 @@ impl LayerRuntimeManager {
         true
     }
 
+    fn cancel_all_loading(&mut self) {
+        for (_, cancel) in self.loading_cancels.drain() {
+            cancel.store(true, Ordering::Relaxed);
+        }
+    }
+
     // -----------------------------------------------------------------------
     // Фоновая загрузка
     // -----------------------------------------------------------------------
@@ -293,12 +312,22 @@ impl LayerRuntimeManager {
         ) {
             return;
         }
-        if self.runtimes.contains_key(&layer.id) {
-            return;
+        if let Some(rt) = self.runtimes.get(&layer.id) {
+            if !matches!(rt, LayerRuntime::Loading) {
+                return;
+            }
+            // A previous load was cancelled (Dropped); remove stale Loading and respawn.
+            if !self.loading_set.contains(&layer.id) {
+                self.runtimes.remove(&layer.id);
+            } else {
+                return;
+            }
         }
         self.runtimes
             .insert(layer.id.clone(), LayerRuntime::Loading);
         self.loading_set.insert(layer.id.clone());
+        let cancel = Arc::new(AtomicBool::new(false));
+        self.loading_cancels.insert(layer.id.clone(), cancel.clone());
 
         let id = layer.id.clone();
         let path = PathBuf::from(&layer.path);
@@ -320,10 +349,25 @@ impl LayerRuntimeManager {
                 let vaapi_dev = self.hw_settings.vaapi_device.clone();
                 log::info!("[monitor] spawn video decoder {id} (max_long_edge={max_long_edge:?})");
                 let spawn_id = id.clone();
+                let live_epoch = self.live_epoch.clone();
                 if let Err(e) = std::thread::Builder::new()
                     .name(format!("fastcat-load-video:{}", path.display()))
                     .spawn(move || {
-                        let _permit = decoder_load_gate().acquire();
+                        let cancel_fn = || {
+                            cancel.load(Ordering::Relaxed)
+                                || epoch != live_epoch.load(Ordering::Relaxed)
+                        };
+                        let permit = match decoder_load_gate().acquire_with_priority(
+                            crate::media::decode_gate::LoadPriority::Live,
+                            &cancel_fn,
+                        ) {
+                            Some(p) => p,
+                            None => {
+                                let _ = bg_tx.send(BgLayerResult::Dropped { id: spawn_id.clone() });
+                                return;
+                            }
+                        };
+                        let _permit = permit;
                         let proxy_cb = proxy.clone();
                         let on_frame = Box::new(move || {
                             let _ = proxy_cb.send_event(MonitorCommand::VideoFrameReady);
@@ -366,10 +410,25 @@ impl LayerRuntimeManager {
             }
             LayerKind::Image => {
                 let spawn_id = id.clone();
+                let live_epoch = self.live_epoch.clone();
                 if let Err(e) = std::thread::Builder::new()
                     .name(format!("fastcat-load-img:{}", path.display()))
                     .spawn(move || {
-                        let _permit = decoder_load_gate().acquire();
+                        let cancel_fn = || {
+                            cancel.load(Ordering::Relaxed)
+                                || epoch != live_epoch.load(Ordering::Relaxed)
+                        };
+                        let permit = match decoder_load_gate().acquire_with_priority(
+                            crate::media::decode_gate::LoadPriority::Live,
+                            &cancel_fn,
+                        ) {
+                            Some(p) => p,
+                            None => {
+                                let _ = bg_tx.send(BgLayerResult::Dropped { id: spawn_id.clone() });
+                                return;
+                            }
+                        };
+                        let _permit = permit;
                         let result = match decode_image(&path) {
                             Ok(img) => BgLayerResult::ImageOk {
                                 epoch,
@@ -398,10 +457,25 @@ impl LayerRuntimeManager {
                 // мылится при увеличении и не жжёт память при маленьком preview.
                 let target_long_edge = svg_target_long_edge(self.scene_size, self.preview_scale);
                 let spawn_id = id.clone();
+                let live_epoch = self.live_epoch.clone();
                 if let Err(e) = std::thread::Builder::new()
                     .name(format!("fastcat-load-svg:{}", path.display()))
                     .spawn(move || {
-                        let _permit = decoder_load_gate().acquire();
+                        let cancel_fn = || {
+                            cancel.load(Ordering::Relaxed)
+                                || epoch != live_epoch.load(Ordering::Relaxed)
+                        };
+                        let permit = match decoder_load_gate().acquire_with_priority(
+                            crate::media::decode_gate::LoadPriority::Live,
+                            &cancel_fn,
+                        ) {
+                            Some(p) => p,
+                            None => {
+                                let _ = bg_tx.send(BgLayerResult::Dropped { id: spawn_id.clone() });
+                                return;
+                            }
+                        };
+                        let _permit = permit;
                         let result = match rasterize_svg(&path, target_long_edge) {
                             Ok((image, size)) => BgLayerResult::SvgOk {
                                 epoch,
@@ -576,6 +650,10 @@ impl LayerRuntimeManager {
                 log::error!("[monitor] decode svg {id}: {error}");
                 self.runtimes.insert(id.clone(), LayerRuntime::Failed);
                 emit_layer_failed(&self.app, &id, "svg", &error);
+            }
+            BgLayerResult::Dropped { id } => {
+                self.loading_set.remove(&id);
+                self.loading_cancels.remove(&id);
             }
         }
     }

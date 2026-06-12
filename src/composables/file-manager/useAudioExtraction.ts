@@ -1,5 +1,5 @@
 import { createDevLogger } from '~/utils/dev-logger';
-import { ref, inject, nextTick } from 'vue';
+import { ref, computed, inject, nextTick } from 'vue';
 import type { FsEntry } from '~/types/fs';
 import { getExportWorkerClient, setExportHostApi } from '~/utils/video-editor/worker-client';
 import { createVideoCoreHostApi } from '~/utils/video-editor/createVideoCoreHostApi';
@@ -30,6 +30,7 @@ export function useAudioExtraction() {
   const fileManager = useFileManager();
   const toast = useToast();
   const selectionStore = useSelectionStore();
+  const uiStore = useUiStore();
 
   // Resolve the correct file manager store for the current context.
   // ComputerFileManager injects its own sidebar store; other contexts use the global one.
@@ -37,7 +38,15 @@ export function useAudioExtraction() {
     (inject('fileManagerStore', null) as ReturnType<typeof useFileManagerStore> | null) ??
     useFileManagerStore();
 
-  const isExtracting = ref(false);
+  const isExtracting = computed({
+    get: () => uiStore.isExtractingAudio,
+    set: (val) => {
+      uiStore.isExtractingAudio = val;
+      if (!val) {
+        uiStore.extractingAudioError = null;
+      }
+    },
+  });
 
   // Resolve a native FileSystemFileHandle directly from the workspace root handle.
   // Bypasses projectStore entirely so workspace-relative paths never accidentally
@@ -72,6 +81,7 @@ export function useAudioExtraction() {
     if (isExtracting.value) return;
     if (!entry.path) return;
 
+    uiStore.extractingAudioError = null;
     isExtracting.value = true;
     try {
       const selectedEntityBeforeNavigation = selectionStore.selectedEntity;
@@ -162,9 +172,9 @@ export function useAudioExtraction() {
       if (lowercaseCodec.startsWith('mp4a') || lowercaseCodec.includes('aac')) {
         ext = 'm4a';
       } else if (lowercaseCodec.includes('opus')) {
-        ext = 'opus';
+        ext = useNativeExtraction ? 'opus' : 'weba';
       } else if (lowercaseCodec.includes('mp3')) {
-        ext = 'mp3';
+        ext = useNativeExtraction ? 'mp3' : 'mka';
       }
 
       const dirPath = entry.path.split('/').slice(0, -1).join('/');
@@ -264,13 +274,16 @@ export function useAudioExtraction() {
     } catch (err: unknown) {
       log.error('Audio extraction failed', err);
       const e = err instanceof Error ? err : null;
+      uiStore.extractingAudioError = e?.message ?? 'Unknown error';
       toast.add({
         title: t('videoEditor.fileManager.extractAudio.failed'),
         description: e?.message ?? 'Unknown error',
         color: 'error',
       });
     } finally {
-      isExtracting.value = false;
+      if (!uiStore.extractingAudioError) {
+        isExtracting.value = false;
+      }
     }
   }
 

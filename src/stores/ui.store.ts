@@ -90,6 +90,8 @@ export const useUiStore = defineStore('ui', () => {
   const isProjectSettingsOpen = ref(false);
   const isEditorSettingsOpen = ref(false);
   const isBackgroundTasksOpen = ref(false);
+  const isExtractingAudio = ref(false);
+  const extractingAudioError = ref<string | null>(null);
   const editorSettingsActiveSection = ref<string>('user.general');
   const activeModalsCount = ref(0);
 
@@ -330,6 +332,8 @@ export const useUiStore = defineStore('ui', () => {
     isProjectSettingsOpen,
     isEditorSettingsOpen,
     isBackgroundTasksOpen,
+    isExtractingAudio,
+    extractingAudioError,
     activeModalsCount,
     activeLibraryTab,
     isTextPresetModalOpen,

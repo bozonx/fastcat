@@ -25,6 +25,9 @@ pub(crate) const PREBUFFER_CHUNKS: usize = 16;
 /// bounded regardless of file size — tens of GB are fine. 12s × 2ch × 48kHz × 4B ≈
 /// 4.6 MB per active layer. Chosen well above the ~800ms producer ring and the
 /// ranged-decode latency so a refill always lands before the current window drains.
+///
+/// Audio intentionally does NOT use the video decode_gate (media/decode_gate.rs);
+/// it has its own bounded look-ahead so audio and video loads never contend.
 pub(crate) const WINDOW_SEC: f64 = 12.0;
 /// When the playhead comes within this of the current window's end, prefetch the
 /// next window. 4s ≫ ring depth and ≫ a ranged-decode's wall time, so the next

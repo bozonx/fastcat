@@ -85,6 +85,11 @@ pub enum BgLayerResult {
         id: String,
         error: String,
     },
+    /// The loader was cancelled before opening the decoder (e.g. layer left the
+    /// scene while waiting for a gate permit). No runtime state is changed.
+    Dropped {
+        id: String,
+    },
 }
 
 // ---------------------------------------------------------------------------

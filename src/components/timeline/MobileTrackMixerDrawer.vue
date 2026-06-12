@@ -136,9 +136,16 @@ function getAudioEffectsCount(track: TimelineTrack) {
 const masterVolumeDb = computed({
   get: () => linearToDb(timelineStore.masterGain ?? 1),
   set: (value: number) => {
-    timelineStore.setMasterGain(dbToLinear(value));
+    timelineStore.setAudioVolume(dbToLinear(value));
   },
 });
+
+function onMasterVolumeDragEnd() {
+  timelineStore.applyTimeline({
+    type: 'update_master_gain',
+    gain: dbToLinear(masterVolumeDb.value),
+  });
+}
 
 const isMasterMuted = computed(() => timelineStore.audioMuted);
 
@@ -227,6 +234,7 @@ function handleRenameTrack(name: string) {
             <DbSlider
               v-model="masterVolumeDb"
               :level-db="timelineStore.audioLevels?.master?.peakDb"
+              @drag-end="onMasterVolumeDragEnd"
             />
           </div>
 
