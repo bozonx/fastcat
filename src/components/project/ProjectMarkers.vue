@@ -133,17 +133,6 @@ function isMarkerSelected(markerId: string): boolean {
 
     <div class="flex-1 overflow-auto custom-scrollbar">
       <table class="w-full text-left text-xs border-collapse table-fixed">
-        <thead
-          class="sticky top-0 bg-ui-bg-elevated/95 backdrop-blur-sm z-10 border-b border-ui-border-muted uppercase tracking-wider text-ui-text-muted font-semibold"
-        >
-          <tr>
-            <th class="px-3 py-2 w-24"></th>
-            <th class="px-3 py-2 w-8"></th>
-            <th class="px-3 py-2 whitespace-nowrap">{{ $t('common.text') }}</th>
-            <th class="px-3 py-2 w-24 whitespace-nowrap">{{ $t('common.start') }}</th>
-            <th class="px-3 py-2 w-24 whitespace-nowrap">{{ $t('common.end') }}</th>
-          </tr>
-        </thead>
         <tbody class="divide-y divide-ui-border/50">
           <tr
             v-for="marker in filteredSortedMarkers"
@@ -157,26 +146,26 @@ function isMarkerSelected(markerId: string): boolean {
             <td class="px-3 py-2 w-24 align-middle">
               <MarkerThumbnail :marker-id="marker.id" :time-us="marker.timeUs" />
             </td>
-            <td class="px-3 py-2">
+            <td class="px-3 py-2 w-6 align-middle">
               <div
                 class="w-2.5 h-2.5 rounded-full border border-white/5 shadow-sm"
                 :style="{ backgroundColor: marker.color || 'var(--color-primary-500)' }"
               ></div>
             </td>
-            <td class="px-3 py-2 min-w-[140px] truncate" :title="marker.text">
+            <td class="px-3 py-2 text-left align-middle truncate" :title="marker.text">
               <div class="flex items-center gap-2 truncate">
                 <span class="truncate transition-colors group-hover:text-ui-text">
                   {{ marker.text || $t('fastcat.timeline.marker') }}
                 </span>
               </div>
             </td>
-            <td class="px-3 py-2 font-mono text-[10px] text-ui-text-muted tabular-nums">
-              {{ formatMarkerTimecode(marker.timeUs) }}
-            </td>
-            <td class="px-3 py-2 font-mono text-[10px] text-ui-text-muted tabular-nums">
-              {{
-                marker.durationUs ? formatMarkerTimecode(marker.timeUs + marker.durationUs) : '—'
-              }}
+            <td class="px-3 py-2 w-28 align-middle font-mono text-[10px] text-ui-text-muted tabular-nums">
+              <div class="flex flex-col justify-center">
+                <span>{{ formatMarkerTimecode(marker.timeUs) }}</span>
+                <span v-if="marker.durationUs" class="text-[9px] opacity-60 mt-0.5 whitespace-nowrap">
+                  ↳ {{ formatMarkerTimecode(marker.timeUs + marker.durationUs) }}
+                </span>
+              </div>
             </td>
           </tr>
         </tbody>

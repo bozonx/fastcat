@@ -132,4 +132,23 @@ describe('ProjectMarkers.vue', () => {
     await exportButton!.trigger('click');
     expect(component.find('.modal-mock').exists()).toBe(true);
   });
+
+  it('renders stacked end timecode only when duration is present', async () => {
+    mockTimelineStore.markers = [
+      { id: '1', timeUs: 1_000_000, durationUs: 5_000_000, text: 'Zone Marker' },
+      { id: '2', timeUs: 10_000_000, text: 'Point Marker' },
+    ];
+
+    const component = await mountWithNuxt(ProjectMarkers);
+    const rows = component.findAll('tbody tr');
+    expect(rows.length).toBe(2);
+
+    const zoneRow = rows.find((row) => row.text().includes('Zone Marker'))!;
+    expect(zoneRow.text()).toContain('00:00:01:00');
+    expect(zoneRow.text()).toContain('↳ 00:00:06:00');
+
+    const pointRow = rows.find((row) => row.text().includes('Point Marker'))!;
+    expect(pointRow.text()).toContain('00:00:10:00');
+    expect(pointRow.text()).not.toContain('↳');
+  });
 });
