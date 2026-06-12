@@ -15,7 +15,7 @@ import UiTabs from '~/components/ui/UiTabs.vue';
 
 import {
   BASE_VIDEO_CODEC_OPTIONS,
-  BASE_AUDIO_CODEC_OPTIONS,
+  AUDIO_EXPORT_CODEC_OPTIONS,
   VIDEO_FORMAT_OPTIONS,
 } from '~/utils/webcodecs';
 import { formatFps, middleEllipsis, formatRenderDuration } from '~/utils/format';
@@ -117,7 +117,7 @@ const encodingSummary = computed(() => {
   const vBitrate = `${bitrateMbps.value || 0}Mb/s`;
 
   const aCodecLabel =
-    BASE_AUDIO_CODEC_OPTIONS.find((o) => o.value === audioCodec.value)?.label ||
+    AUDIO_EXPORT_CODEC_OPTIONS.find((o) => o.value === audioCodec.value)?.label ||
     audioCodec.value ||
     '';
   const aCodec = aCodecLabel.split(' ')[0]?.toUpperCase() || '';

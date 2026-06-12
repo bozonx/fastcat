@@ -23,6 +23,14 @@ export const VIDEO_FORMAT_OPTIONS = [
   { value: 'mkv', label: 'MKV' },
 ] as const;
 
+export const AUDIO_EXPORT_CODEC_OPTIONS: readonly AudioCodecOption[] = [
+  { value: 'aac', label: 'AAC' },
+  { value: 'opus', label: 'Opus' },
+  { value: 'flac', label: 'FLAC' },
+  { value: 'pcm', label: 'WAV' },
+  { value: 'mp3', label: 'MP3' },
+] as const;
+
 export interface CheckVideoCodecSupportOptions {
   width?: number;
   height?: number;

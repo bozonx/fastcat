@@ -13,6 +13,7 @@ import { storeToRefs } from 'pinia';
 import { useFileConversionStore } from '~/stores/file-conversion.store';
 import { resolveAudioOnlyFileExtension } from '~/utils/conversion/helpers';
 
+import { AUDIO_EXPORT_CODEC_OPTIONS } from '~/utils/webcodecs';
 import { useExportCodecs } from '~/composables/timeline/export/core/useExportCodecs';
 import { useMobileLayout } from '~/composables/useMobileLayout';
 
@@ -64,13 +65,12 @@ onMounted(() => {
   loadCodecSupport();
 });
 
-const audioFormatOptions = computed(() => [
-  { value: 'aac', label: 'AAC', disabled: !audioCodecSupport.value?.aac },
-  { value: 'opus', label: 'OPUS', disabled: !audioCodecSupport.value?.opus },
-  { value: 'flac', label: 'FLAC', disabled: !audioCodecSupport.value?.flac },
-  { value: 'pcm', label: 'WAV', disabled: !audioCodecSupport.value?.pcm },
-  { value: 'mp3', label: 'MP3', disabled: !audioCodecSupport.value?.mp3 },
-]);
+const audioFormatOptions = computed(() =>
+  AUDIO_EXPORT_CODEC_OPTIONS.map((opt) => ({
+    ...opt,
+    disabled: !audioCodecSupport.value[opt.value as keyof typeof audioCodecSupport.value],
+  })),
+);
 
 const fileName = computed(() => targetEntry.value?.name ?? '');
 

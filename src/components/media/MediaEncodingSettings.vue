@@ -10,7 +10,7 @@ import UiTooltip from '~/components/ui/UiTooltip.vue';
 import UiTextInput from '~/components/ui/UiTextInput.vue';
 import UiButtonGroup from '~/components/ui/UiButtonGroup.vue';
 import FileConversionAudioSettings from '~/components/file-manager/FileConversionAudioSettings.vue';
-import type { VideoCodecOptionResolved } from '~/utils/webcodecs';
+import { AUDIO_EXPORT_CODEC_OPTIONS, type VideoCodecOptionResolved } from '~/utils/webcodecs';
 
 export interface FormatOption {
   value: 'mp4' | 'webm' | 'mkv';
@@ -168,15 +168,7 @@ onMounted(() => {
 });
 
 const audioCodecOptions = computed(() => {
-  const allOptions = [
-    { value: 'aac', label: t('videoEditor.export.codec.aac') },
-    { value: 'opus', label: t('videoEditor.export.codec.opus') },
-    { value: 'flac', label: 'FLAC' },
-    { value: 'pcm', label: 'WAV' },
-    { value: 'mp3', label: 'MP3' },
-  ];
-
-  return allOptions.map((opt) => {
+  return AUDIO_EXPORT_CODEC_OPTIONS.map((opt) => {
     let disabled = false;
 
     // Блокировка по формату контейнера
@@ -192,7 +184,13 @@ const audioCodecOptions = computed(() => {
       audioCodecSupport.value[opt.value as keyof typeof audioCodecSupport.value] !== false;
 
     return {
-      ...opt,
+      value: opt.value,
+      label:
+        opt.value === 'aac'
+          ? t('videoEditor.export.codec.aac')
+          : opt.value === 'opus'
+            ? t('videoEditor.export.codec.opus')
+            : opt.label,
       disabled: disabled || !isSupported,
     };
   });

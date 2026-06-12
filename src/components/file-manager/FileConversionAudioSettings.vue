@@ -3,6 +3,7 @@ import { computed, onMounted } from 'vue';
 import UiWheelNumberInput from '~/components/ui/UiWheelNumberInput.vue';
 import UiSelect from '~/components/ui/UiSelect.vue';
 import UiButtonGroup from '~/components/ui/UiButtonGroup.vue';
+import { AUDIO_EXPORT_CODEC_OPTIONS } from '~/utils/webcodecs';
 import { useExportCodecs } from '~/composables/timeline/export/core/useExportCodecs';
 
 const props = withDefaults(
@@ -40,16 +41,8 @@ onMounted(async () => {
 });
 
 const audioCodecOptions = computed(() => {
-  const opts = [
-    { value: 'aac', label: t('videoEditor.export.codec.aac', 'AAC') },
-    { value: 'opus', label: t('videoEditor.export.codec.opus', 'Opus') },
-    { value: 'flac', label: 'FLAC' },
-    { value: 'pcm', label: 'WAV' },
-    { value: 'mp3', label: 'MP3' },
-  ];
-
   const format = props.outputFormat;
-  return opts.map((opt) => {
+  return AUDIO_EXPORT_CODEC_OPTIONS.map((opt) => {
     let disabled = false;
     if (format === 'webm' && opt.value !== 'opus') {
       disabled = true;
@@ -59,7 +52,13 @@ const audioCodecOptions = computed(() => {
     const isSupported =
       audioCodecSupport.value[opt.value as keyof typeof audioCodecSupport.value] !== false;
     return {
-      ...opt,
+      value: opt.value,
+      label:
+        opt.value === 'aac'
+          ? t('videoEditor.export.codec.aac', 'AAC')
+          : opt.value === 'opus'
+            ? t('videoEditor.export.codec.opus', 'Opus')
+            : opt.label,
       disabled: disabled || !isSupported,
     };
   });

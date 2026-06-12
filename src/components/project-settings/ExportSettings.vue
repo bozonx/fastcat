@@ -4,7 +4,7 @@ import { useProjectStore } from '~/stores/project.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { resolveExportPreset } from '~/utils/settings';
 import {
-  BASE_AUDIO_CODEC_OPTIONS,
+  AUDIO_EXPORT_CODEC_OPTIONS,
   BASE_VIDEO_CODEC_OPTIONS,
   VIDEO_FORMAT_OPTIONS,
 } from '~/utils/webcodecs';
@@ -32,7 +32,7 @@ const exportSummary = computed(() => {
   const vBitrate = `${e.bitrateMbps || 0}Mb/s`;
 
   const aCodecLabel =
-    BASE_AUDIO_CODEC_OPTIONS.find((o) => o.value === e.audioCodec)?.label || e.audioCodec || '';
+    AUDIO_EXPORT_CODEC_OPTIONS.find((o) => o.value === e.audioCodec)?.label || e.audioCodec || '';
   const aCodec = aCodecLabel.split(' ')[0]?.toUpperCase() || '';
 
   const aBitrate = `${e.audioBitrateKbps || 0} Kb/s`;
