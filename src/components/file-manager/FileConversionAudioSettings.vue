@@ -44,7 +44,7 @@ const audioCodecOptions = computed(() => {
     { value: 'aac', label: t('videoEditor.export.codec.aac', 'AAC') },
     { value: 'opus', label: t('videoEditor.export.codec.opus', 'Opus') },
     { value: 'flac', label: 'FLAC' },
-    { value: 'pcm', label: 'PCM (WAV)' },
+    { value: 'pcm', label: 'WAV' },
     { value: 'mp3', label: 'MP3' },
   ];
 

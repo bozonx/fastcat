@@ -68,7 +68,7 @@ const audioFormatOptions = computed(() => [
   { value: 'aac', label: 'AAC', disabled: !audioCodecSupport.value?.aac },
   { value: 'opus', label: 'OPUS', disabled: !audioCodecSupport.value?.opus },
   { value: 'flac', label: 'FLAC', disabled: !audioCodecSupport.value?.flac },
-  { value: 'pcm', label: 'PCM (WAV)', disabled: !audioCodecSupport.value?.pcm },
+  { value: 'pcm', label: 'WAV', disabled: !audioCodecSupport.value?.pcm },
   { value: 'mp3', label: 'MP3', disabled: !audioCodecSupport.value?.mp3 },
 ]);
 
