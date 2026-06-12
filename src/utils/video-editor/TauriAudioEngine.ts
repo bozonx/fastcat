@@ -120,6 +120,10 @@ export class TauriAudioEngine implements IAudioEngine {
     });
   }
 
+  setMasterAudioEffects(_effects: import('~/timeline/types').ClipEffect[]) {
+    // Native audio master effects are handled by the Rust engine via the scene DTO.
+  }
+
   getCurrentTimeUs(): number {
     return this.scheduler.getCurrentTimeUs();
   }

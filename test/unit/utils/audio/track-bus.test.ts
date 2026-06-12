@@ -30,9 +30,9 @@ describe('buildEffectiveAudioClipItems', () => {
       videoTracks: [],
     });
 
-    expect(result).toHaveLength(1);
-    expect(result[0]!.source.path).toBe('audio/y.mp3');
-    expect(result[0]!.audioGain).toBe(3); // 1.5 * 2 = 3
+    expect(result.items).toHaveLength(1);
+    expect(result.items[0]!.source.path).toBe('audio/y.mp3');
+    expect(result.items[0]!.audioGain).toBe(3); // 1.5 * 2 = 3
   });
 
   it('builds effective items from video tracks when audio from video is enabled', () => {
@@ -62,9 +62,9 @@ describe('buildEffectiveAudioClipItems', () => {
       videoTracks: [videoTrack as any],
     });
 
-    expect(result).toHaveLength(1);
-    expect(result[0]!.id).toBe('c1__audio');
-    expect(result[0]!.source.path).toBe('video/x.mp4');
+    expect(result.items).toHaveLength(1);
+    expect(result.items[0]!.id).toBe('c1__audio');
+    expect(result.items[0]!.source.path).toBe('video/x.mp4');
   });
 
   it('ignores muted tracks', () => {
@@ -93,7 +93,7 @@ describe('buildEffectiveAudioClipItems', () => {
       videoTracks: [],
     });
 
-    expect(result).toHaveLength(0);
+    expect(result.items).toHaveLength(0);
   });
 
   it('only includes solo tracks when any track is soloed', () => {
@@ -141,8 +141,8 @@ describe('buildEffectiveAudioClipItems', () => {
       videoTracks: [],
     });
 
-    expect(result).toHaveLength(1);
-    expect(result[0]!.source.path).toBe('audio/y.mp3');
+    expect(result.items).toHaveLength(1);
+    expect(result.items[0]!.source.path).toBe('audio/y.mp3');
   });
 
   it('ignores clips without source path', () => {
@@ -169,7 +169,7 @@ describe('buildEffectiveAudioClipItems', () => {
       videoTracks: [],
     });
 
-    expect(result).toHaveLength(0);
+    expect(result.items).toHaveLength(0);
   });
 
   it('ignores non-media clip types', () => {
@@ -196,7 +196,7 @@ describe('buildEffectiveAudioClipItems', () => {
       videoTracks: [],
     });
 
-    expect(result).toHaveLength(0);
+    expect(result.items).toHaveLength(0);
   });
 
   it('ignores image and svg clips on video tracks', () => {
@@ -250,8 +250,8 @@ describe('buildEffectiveAudioClipItems', () => {
       videoTracks: [videoTrack as any],
     });
 
-    expect(result).toHaveLength(1);
-    expect(result[0]!.id).toBe('c3__audio');
-    expect(result[0]!.source.path).toBe('video/x.mp4');
+    expect(result.items).toHaveLength(1);
+    expect(result.items[0]!.id).toBe('c3__audio');
+    expect(result.items[0]!.source.path).toBe('video/x.mp4');
   });
 });

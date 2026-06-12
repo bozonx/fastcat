@@ -171,6 +171,7 @@ export interface VideoCoreWorkerAPI {
     videoPayload: WorkerVideoPayloadItem[],
     audioClips: WorkerTimelineClip[],
     taskId?: string,
+    masterAudioEffects?: import('../audio/apply-audio-effects-offline').AudioEffectData[],
   ): Promise<void>;
 
   transcodeMedia(

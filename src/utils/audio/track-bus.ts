@@ -21,18 +21,17 @@ export interface BuildEffectiveAudioClipItemsParams {
   masterEffects?: ClipEffect[];
 }
 
+export interface EffectiveAudioClipItemsResult {
+  items: TimelineTrackItem[];
+  masterAudioEffects: ClipEffect[];
+}
+
 export function buildEffectiveAudioClipItems(
   params: BuildEffectiveAudioClipItemsParams,
-): TimelineTrackItem[] {
+): EffectiveAudioClipItemsResult {
   const allAudioTracks = params.audioTracks;
   const allVideoTracks = params.videoTracks;
-  // TODO: master audio effects are currently merged into every clip. This makes
-// them sound different from a true post-mix master-bus effect (e.g. compressor
-// / limiter / reverb applied per-clip instead of to the mixed output). A full
-// fix requires adding a master-effects pass in the native audio mixer after
-// all layers are summed, which touches the Rust audio pipeline, IPC DTO and
-// the web AudioMixer alike.
-const masterAudioEffects = (params.masterEffects ?? []).filter((e) => e?.target === 'audio');
+  const masterAudioEffects = (params.masterEffects ?? []).filter((e) => e?.target === 'audio');
 
   const hasSolo = [...allAudioTracks, ...allVideoTracks].some((t) => Boolean(t.audioSolo));
 
@@ -44,7 +43,7 @@ const masterAudioEffects = (params.masterEffects ?? []).filter((e) => e?.target 
     ? allVideoTracks.filter((t) => Boolean(t.audioSolo))
     : allVideoTracks.filter((t) => !t.audioMuted);
 
-  const result: TimelineTrackItem[] = [];
+  const items: TimelineTrackItem[] = [];
 
   for (const track of effectiveAudioTracks) {
     const trackAudioEffects = (track.effects ?? []).filter((e) => e?.target === 'audio');
@@ -61,9 +60,8 @@ const masterAudioEffects = (params.masterEffects ?? []).filter((e) => e?.target 
       const itemEffects = Array.isArray(item.effects) ? cloneEffects(item.effects) : [];
       const combinedEffects = [...itemEffects];
       if (trackAudioEffects.length > 0) combinedEffects.push(...cloneEffects(trackAudioEffects));
-      if (masterAudioEffects.length > 0) combinedEffects.push(...cloneEffects(masterAudioEffects));
 
-      result.push({
+      items.push({
         ...item,
         clipType,
         source: { path },
@@ -94,9 +92,8 @@ const masterAudioEffects = (params.masterEffects ?? []).filter((e) => e?.target 
       const itemEffects = Array.isArray(item.effects) ? cloneEffects(item.effects) : [];
       const combinedEffects = [...itemEffects];
       if (trackAudioEffects.length > 0) combinedEffects.push(...cloneEffects(trackAudioEffects));
-      if (masterAudioEffects.length > 0) combinedEffects.push(...cloneEffects(masterAudioEffects));
 
-      result.push({
+      items.push({
         ...item,
         clipType,
         id: `${item.id}__audio`,
@@ -110,5 +107,5 @@ const masterAudioEffects = (params.masterEffects ?? []).filter((e) => e?.target 
     }
   }
 
-  return result;
+  return { items, masterAudioEffects: cloneEffects(masterAudioEffects) };
 }

@@ -38,6 +38,25 @@ export function interleavedToPlanar(params: {
   return planar;
 }
 
+export function planarToInterleaved(params: {
+  planar: Float32Array;
+  frames: number;
+  numberOfChannels: number;
+  interleavedOut?: Float32Array;
+}): Float32Array {
+  const { planar, frames, numberOfChannels, interleavedOut } = params;
+  const interleaved = interleavedOut ?? new Float32Array(frames * numberOfChannels);
+  for (let c = 0; c < numberOfChannels; c += 1) {
+    const srcOffset = c * frames;
+    let dstOffset = c;
+    for (let i = 0; i < frames; i += 1) {
+      interleaved[dstOffset] = planar[srcOffset + i] ?? 0;
+      dstOffset += numberOfChannels;
+    }
+  }
+  return interleaved;
+}
+
 export function normalizeSampleChannels(params: {
   planes: Float32Array[];
   sourceChannels: number;
@@ -312,6 +331,7 @@ export interface AudioMixerWriteParams {
     sampleRate: number;
     timestamp: number;
   }) => unknown;
+  masterAudioEffects?: import('../../utils/audio/apply-audio-effects-offline').AudioEffectData[];
 }
 
 export interface StereoPanMatrix {
@@ -1193,6 +1213,7 @@ export class AudioMixer {
       reportExportWarning,
       checkCancel,
       AudioSample,
+      masterAudioEffects,
     } = params;
 
     function ensureNotCancelled() {
@@ -1294,6 +1315,34 @@ export class AudioMixer {
             active.current = null;
             if (typeof active.iterator.return === 'function') {
               await active.iterator.return();
+            }
+          }
+        }
+
+        // Apply master audio effects post-mix (e.g. compressor / limiter / reverb).
+        if (masterAudioEffects && masterAudioEffects.length > 0) {
+          const planarTmp = interleavedToPlanar({
+            interleaved: mixedInterleaved,
+            frames: framesInChunk,
+            numberOfChannels,
+          });
+          const planes: Float32Array[] = [];
+          for (let c = 0; c < numberOfChannels; c += 1) {
+            planes.push(planarTmp.subarray(c * framesInChunk, (c + 1) * framesInChunk));
+          }
+          const { planes: processedPlanes } = await applyAudioEffectsOffline({
+            planes,
+            sampleRate,
+            frames: framesInChunk,
+            channels: numberOfChannels,
+            effects: masterAudioEffects,
+          });
+          for (let c = 0; c < numberOfChannels; c += 1) {
+            const plane = processedPlanes[c] ?? new Float32Array(framesInChunk);
+            let dstOffset = c;
+            for (let i = 0; i < framesInChunk; i += 1) {
+              mixedInterleaved[dstOffset] = plane[i] ?? 0;
+              dstOffset += numberOfChannels;
             }
           }
         }

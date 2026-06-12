@@ -670,6 +670,7 @@ mod tests {
             audio_tracks: vec![],
             audio_master_gain: 1.0,
             audio_master_muted: false,
+            audio_master_effects: Vec::new(),
             width: 1920,
             height: 1080,
             preview_scale: None,

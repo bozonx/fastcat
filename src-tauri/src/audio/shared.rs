@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use crate::audio::plugins::AudioEffectSpec;
 use crate::monitor::scene::{SceneAudioLayer, SceneAudioTrack};
 
 use symphonia::core::formats::Track;
@@ -181,6 +182,7 @@ impl AudioWindow {
 pub(crate) struct AudioShared {
     pub(crate) scene: Vec<SceneAudioLayer>,
     pub(crate) tracks: Vec<SceneAudioTrack>,
+    pub(crate) audio_master_effects: Vec<AudioEffectSpec>,
     pub(crate) master_gain: f64,
     pub(crate) playing: bool,
     /// Warmup gate: while true the producer keeps mixing and filling the ring but
@@ -242,6 +244,7 @@ impl Default for AudioShared {
         Self {
             scene: Vec::new(),
             tracks: Vec::new(),
+            audio_master_effects: Vec::new(),
             master_gain: 1.0,
             playing: false,
             hold_output: false,

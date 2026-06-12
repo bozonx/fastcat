@@ -15,6 +15,7 @@ export async function buildMixedAudioTrack(
   hostClient: VideoCoreHostAPI | null,
   reportExportWarning: (message: string) => Promise<void>,
   checkCancel?: () => boolean,
+  masterAudioEffects?: import('../../utils/audio/apply-audio-effects-offline').AudioEffectData[],
 ) {
   const { AudioSampleSink, AudioSampleSource, Input, BlobSource, ALL_FORMATS } =
     await import('mediabunny');
@@ -60,6 +61,7 @@ export async function buildMixedAudioTrack(
       reportExportWarning,
       checkCancel,
       AudioSample,
+      masterAudioEffects,
     });
   }
 

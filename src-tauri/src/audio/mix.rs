@@ -14,6 +14,7 @@ pub struct WavRenderParams<'a> {
     pub scene: &'a [SceneAudioLayer],
     pub tracks: &'a [SceneAudioTrack],
     pub master_gain: f64,
+    pub audio_master_effects: &'a [crate::audio::plugins::AudioEffectSpec],
     pub start_sec: f64,
     pub end_sec: f64,
     pub sample_rate: u32,
@@ -73,6 +74,7 @@ pub fn render_scene_to_wav(params: WavRenderParams<'_>) -> anyhow::Result<()> {
             params.scene,
             params.tracks,
             params.master_gain,
+            params.audio_master_effects,
             chunk_start,
             chunk_duration,
             target,
@@ -165,6 +167,7 @@ pub(crate) fn mix_chunk(
     scene: &[SceneAudioLayer],
     tracks: &[SceneAudioTrack],
     master_gain: f64,
+    audio_master_effects: &[crate::audio::plugins::AudioEffectSpec],
     chunk_start_sec: f64,
     chunk_duration_sec: f64,
     target: AudioRenderTarget,
@@ -174,6 +177,7 @@ pub(crate) fn mix_chunk(
         scene,
         tracks,
         master_gain,
+        audio_master_effects,
         None,
         chunk_start_sec,
         chunk_duration_sec,
@@ -196,6 +200,7 @@ pub(crate) fn mix_chunk_ramped(
     scene: &[SceneAudioLayer],
     tracks: &[SceneAudioTrack],
     master_gain: f64,
+    audio_master_effects: &[crate::audio::plugins::AudioEffectSpec],
     prev_master_gain: Option<f64>,
     chunk_start_sec: f64,
     chunk_duration_sec: f64,
@@ -206,6 +211,7 @@ pub(crate) fn mix_chunk_ramped(
         scene,
         tracks,
         master_gain,
+        audio_master_effects,
         prev_master_gain,
         chunk_start_sec,
         chunk_duration_sec,
@@ -220,6 +226,7 @@ pub(crate) fn mix_chunk_strict(
     scene: &[SceneAudioLayer],
     tracks: &[SceneAudioTrack],
     master_gain: f64,
+    audio_master_effects: &[crate::audio::plugins::AudioEffectSpec],
     chunk_start_sec: f64,
     chunk_duration_sec: f64,
     target: AudioRenderTarget,
@@ -229,6 +236,7 @@ pub(crate) fn mix_chunk_strict(
         scene,
         tracks,
         master_gain,
+        audio_master_effects,
         None,
         chunk_start_sec,
         chunk_duration_sec,
@@ -243,6 +251,7 @@ fn mix_chunk_ramped_result(
     scene: &[SceneAudioLayer],
     tracks: &[SceneAudioTrack],
     master_gain: f64,
+    audio_master_effects: &[crate::audio::plugins::AudioEffectSpec],
     prev_master_gain: Option<f64>,
     chunk_start_sec: f64,
     chunk_duration_sec: f64,
@@ -344,6 +353,14 @@ fn mix_chunk_ramped_result(
                 decode_error_policy,
             )?;
         }
+    }
+
+    // Apply master audio effects post-mix (compressor / limiter / reverb etc.)
+    if !audio_master_effects.is_empty() {
+        let plugin_host = { shared.0.lock().plugin_host.clone() };
+        plugin_host
+            .lock()
+            .apply_master_effects(&mut mixed, sample_rate, output_channels, audio_master_effects);
     }
 
     match prev_master_gain {
@@ -983,8 +1000,8 @@ mod tests {
         let l = layer();
         let shared = Arc::new((Mutex::new(AudioShared::default()), Condvar::new()));
         let target = AudioRenderTarget::monitor(48000, 2);
-        let a = mix_chunk(&[l.clone()], &[], 0.5, 0.0, 0.05, target, &shared);
-        let b = mix_chunk_ramped(&[l], &[], 0.5, None, 0.0, 0.05, target, &shared);
+        let a = mix_chunk(&[l.clone()], &[], 0.5, &[], 0.0, 0.05, target, &shared);
+        let b = mix_chunk_ramped(&[l], &[], 0.5, &[], None, 0.0, 0.05, target, &shared);
         assert_eq!(a, b);
     }
 
@@ -1071,7 +1088,7 @@ mod tests {
 
         let shared = Arc::new((Mutex::new(AudioShared::default()), Condvar::new()));
         let target = AudioRenderTarget::monitor(48000, 2);
-        let chunk = mix_chunk(&[l1, l2], &[t1, t2], 1.0, 0.0, 1.0, target, &shared);
+        let chunk = mix_chunk(&[l1, l2], &[t1, t2], 1.0, &[], 0.0, 1.0, target, &shared);
         assert_eq!(chunk.len(), (1.0f64 * 48000.0).round() as usize * 2);
     }
 
@@ -1085,7 +1102,7 @@ mod tests {
 
         let shared = Arc::new((Mutex::new(AudioShared::default()), Condvar::new()));
         let target = AudioRenderTarget::monitor(48000, 2);
-        let chunk = mix_chunk(&[l, l2], &[], 10.0, 0.0, 0.01, target, &shared);
+        let chunk = mix_chunk(&[l, l2], &[], 10.0, &[], 0.0, 0.01, target, &shared);
         assert!(
             chunk.iter().all(|s| s.is_finite()),
             "mix produced non-finite sample"
@@ -1368,6 +1385,7 @@ mod tests {
             scene: &[],
             tracks: &[],
             master_gain: 1.0,
+            audio_master_effects: &[],
             start_sec: 0.0,
             end_sec: 0.01,
             sample_rate: 48000,
@@ -1410,6 +1428,7 @@ mod tests {
             scene: &[],
             tracks: &[],
             master_gain: 1.0,
+            audio_master_effects: &[],
             start_sec: 0.0,
             end_sec: 0.000_5,
             sample_rate: 6000,
@@ -1438,6 +1457,7 @@ mod tests {
             scene: &[l],
             tracks: &[],
             master_gain: 1.0,
+            audio_master_effects: &[],
             start_sec: 0.0,
             end_sec: 0.01,
             sample_rate: 48000,
@@ -1463,6 +1483,7 @@ mod tests {
             scene: &[],
             tracks: &[],
             master_gain: 1.0,
+            audio_master_effects: &[],
             start_sec: 0.0,
             end_sec: 0.01,
             sample_rate: 48000,

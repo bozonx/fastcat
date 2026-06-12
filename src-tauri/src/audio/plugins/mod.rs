@@ -179,6 +179,18 @@ impl PluginHost {
         }
     }
 
+    /// Apply master-bus effects post-mix. Uses a stable synthetic layer id so
+    /// master effect instances are cached independently from per-layer effects.
+    pub fn apply_master_effects(
+        &mut self,
+        buffer: &mut [f32],
+        sample_rate: u32,
+        channels: usize,
+        specs: &[AudioEffectSpec],
+    ) {
+        self.apply_effects("__master_bus", buffer, sample_rate, channels, specs);
+    }
+
     /// Reset internal state of all instances belonging to `layer_id` while
     /// keeping them cached. Call on a per-layer discontinuity.
     pub fn reset_layer(&mut self, layer_id: &str) {
@@ -204,7 +216,7 @@ impl PluginHost {
     /// Drop instances that no longer exist in the current scene/effect graph.
     /// This is the sole lifecycle GC; the hot `apply_effects` path does not
     /// prune.
-    pub fn retain_scene_specs<'a, I>(&mut self, layers: I)
+    pub fn retain_scene_specs<'a, I>(&mut self, layers: I, master_specs: &[AudioEffectSpec])
     where
         I: IntoIterator<Item = (&'a str, &'a [AudioEffectSpec])>,
     {
@@ -213,6 +225,9 @@ impl PluginHost {
             for spec in specs.iter().filter(|s| s.enabled) {
                 active.insert((layer_id, spec.id.as_str()));
             }
+        }
+        for spec in master_specs.iter().filter(|s| s.enabled) {
+            active.insert(("__master_bus", spec.id.as_str()));
         }
 
         self.instances
@@ -369,7 +384,7 @@ mod tests {
 
         // Only layer-1/fx1 remains in the scene.
         let fx1 = [spec("fx1")];
-        host.retain_scene_specs([("layer-1", fx1.as_slice())]);
+        host.retain_scene_specs([("layer-1", fx1.as_slice())], &[]);
         assert_eq!(host.instances.len(), 1);
         assert!(host.instances.keys().all(|k| k.layer_id == "layer-1"));
     }

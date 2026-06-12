@@ -163,6 +163,7 @@ impl NativeAudioEngine {
         layers: &[crate::monitor::scene::SceneAudioLayer],
         tracks: &[crate::monitor::scene::SceneAudioTrack],
         master_gain: f64,
+        audio_master_effects: &[crate::audio::plugins::AudioEffectSpec],
     ) {
         self.restart_finished_producer();
         let mut state = self.shared.0.lock();
@@ -176,6 +177,7 @@ impl NativeAudioEngine {
 
         state.scene = layers.to_vec();
         state.tracks = tracks.to_vec();
+        state.audio_master_effects = audio_master_effects.to_vec();
         state.master_gain = sanitize_master_gain(master_gain);
         // Bump scene_serial so the producer re-reads the scene (refreshes its
         // cached snapshot and applies new mix params). This does NOT discard the
@@ -234,11 +236,13 @@ impl NativeAudioEngine {
             .iter()
             .map(|layer| (layer.id.clone(), layer.audio_effects.clone()))
             .collect();
+        let audio_master_effects = state.audio_master_effects.clone();
         drop(state);
         plugin_host.lock().retain_scene_specs(
             plugin_specs
                 .iter()
                 .map(|(layer_id, specs)| (layer_id.as_str(), specs.as_slice())),
+            &audio_master_effects,
         );
         if needs_flush {
             plugin_host.lock().reset_all();
@@ -894,13 +898,13 @@ mod tests {
     fn set_scene_pure_mix_param_edit_does_not_flush() {
         let engine = mock_engine();
         let l = layer("l1", "/tmp/a.wav", 0.0, 10.0, 1.0);
-        engine.set_scene(&[l.clone()], &[], 1.0);
+        engine.set_scene(&[l.clone()], &[], 1.0, &[]);
         let seek_serial_after_first = seek_serial(&engine);
 
         // Change only gain — pure mix param.
         let mut l2 = l.clone();
         l2.audio_gain = 0.5;
-        engine.set_scene(&[l2], &[], 1.0);
+        engine.set_scene(&[l2], &[], 1.0, &[]);
         let state = engine.shared.0.lock();
         assert_eq!(
             state.seek_serial, seek_serial_after_first,
@@ -912,12 +916,12 @@ mod tests {
     fn set_scene_position_change_triggers_flush() {
         let engine = mock_engine();
         let l = layer("l1", "/tmp/a.wav", 0.0, 10.0, 1.0);
-        engine.set_scene(&[l.clone()], &[], 1.0);
+        engine.set_scene(&[l.clone()], &[], 1.0, &[]);
         let before = seek_serial(&engine);
 
         let mut l2 = l.clone();
         l2.timeline_start_sec = 1.0;
-        engine.set_scene(&[l2], &[], 1.0);
+        engine.set_scene(&[l2], &[], 1.0, &[]);
         let state = engine.shared.0.lock();
         assert!(state.seek_serial != before, "position change must flush");
     }
@@ -926,12 +930,12 @@ mod tests {
     fn set_scene_speed_change_triggers_flush() {
         let engine = mock_engine();
         let l = layer("l1", "/tmp/a.wav", 0.0, 10.0, 1.0);
-        engine.set_scene(&[l.clone()], &[], 1.0);
+        engine.set_scene(&[l.clone()], &[], 1.0, &[]);
         let before = seek_serial(&engine);
 
         let mut l2 = l.clone();
         l2.speed = 2.0;
-        engine.set_scene(&[l2], &[], 1.0);
+        engine.set_scene(&[l2], &[], 1.0, &[]);
         let state = engine.shared.0.lock();
         assert!(state.seek_serial != before, "speed change must flush");
     }
@@ -939,7 +943,7 @@ mod tests {
     #[test]
     fn set_scene_updates_master_gain() {
         let engine = mock_engine();
-        engine.set_scene(&[], &[], 0.5);
+        engine.set_scene(&[], &[], 0.5, &[]);
         let state = engine.shared.0.lock();
         assert_eq!(state.master_gain, 0.5);
     }
@@ -949,7 +953,7 @@ mod tests {
         use crate::audio::shared::AudioWindow;
         let engine = mock_engine();
         let l1 = layer("l1", "/tmp/a.wav", 0.0, 10.0, 1.0);
-        engine.set_scene(std::slice::from_ref(&l1), &[], 1.0);
+        engine.set_scene(std::slice::from_ref(&l1), &[], 1.0, &[]);
         {
             let mut state = engine.shared.0.lock();
             // A window for the in-scene layer and one for a layer no longer present.
@@ -967,7 +971,7 @@ mod tests {
         }
 
         // Re-set the same scene (only l1) → the stale layer's window is dropped.
-        engine.set_scene(std::slice::from_ref(&l1), &[], 1.0);
+        engine.set_scene(std::slice::from_ref(&l1), &[], 1.0, &[]);
         let state = engine.shared.0.lock();
         assert!(
             state.layer_windows.contains_key("l1"),
@@ -1050,7 +1054,7 @@ mod tests {
     fn is_primed_is_false_until_ring_reaches_target() {
         let engine = mock_engine();
         let l = layer("l1", "/tmp/a.wav", 0.0, 10.0, 1.0);
-        engine.set_scene(&[l], &[], 1.0);
+        engine.set_scene(&[l], &[], 1.0, &[]);
         engine.start_priming(0.0);
 
         assert!(
@@ -1068,7 +1072,7 @@ mod tests {
     fn is_primed_is_false_when_pending_ring_clear() {
         let engine = mock_engine();
         let l = layer("l1", "/tmp/a.wav", 0.0, 10.0, 1.0);
-        engine.set_scene(&[l], &[], 1.0);
+        engine.set_scene(&[l], &[], 1.0, &[]);
 
         // Мануально ставим pending_ring_clear в true, как при старте
         {

@@ -157,6 +157,7 @@ pub fn export_timeline(
             scene: &scene.audio_layers,
             tracks: &scene.audio_tracks,
             master_gain,
+            audio_master_effects: &scene.audio_master_effects,
             start_sec: start,
             end_sec: audio_end,
             sample_rate,

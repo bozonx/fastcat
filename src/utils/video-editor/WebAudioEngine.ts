@@ -2,6 +2,7 @@ import { createDevLogger } from '~/utils/dev-logger';
 import type { IFileSystemAdapter } from '~/file-manager/core/vfs/types';
 
 import { getGainAtClipTime } from '~/utils/audio/envelope';
+import { buildAudioEffectGraph } from '~/utils/audio/effect-graph';
 import { AudioChunkDecoder } from '~/utils/video-editor/AudioChunkDecoder';
 import { AudioGraphBuilder } from '~/utils/video-editor/AudioGraphBuilder';
 import { AudioScheduler } from '~/utils/video-editor/AudioScheduler';
@@ -75,6 +76,9 @@ export class WebAudioEngine implements IAudioEngine {
 
   private currentMasterVolume = 1;
   private currentMonitorVolume = 1;
+  private masterEffectInput: GainNode | null = null;
+  private masterEffectGraph: { outputNode: AudioNode; destroy: () => Promise<void> } | null = null;
+  private currentMasterAudioEffects: import('~/timeline/types').ClipEffect[] = [];
   private schedulingClipIds = new Set<string>();
   private scheduleGeneration = 0;
   private layoutGeneration = 0;
@@ -127,13 +131,17 @@ export class WebAudioEngine implements IAudioEngine {
       this.monitorGain = this.ctx.createGain();
       this.monitorGain.gain.value = this.currentMonitorVolume;
 
+      this.masterEffectInput = this.ctx.createGain();
+
       const masterAnalyser = this.ctx.createAnalyser();
       masterAnalyser.fftSize = 2048;
 
-      // Chain: MasterGain -> Analyser -> MonitorGain -> Destination
+      // Chain: MasterEffectInput -> MasterGain -> Analyser -> MonitorGain -> Destination
+      // When master effects are active they bridge MasterEffectInput to MasterGain.
       this.masterGain.connect(masterAnalyser);
       masterAnalyser.connect(this.monitorGain);
       this.monitorGain.connect(this.ctx.destination);
+      this.masterEffectInput.connect(this.masterGain);
 
       this.analyserNodes.set('master', masterAnalyser);
 
@@ -352,7 +360,7 @@ export class WebAudioEngine implements IAudioEngine {
       audioBalance: window.audioBalance,
       effects: clip.audioEffects ?? [],
       clipGain,
-      masterGain: this.masterGain,
+      masterGain: this.masterEffectInput!,
       trackId: clip.trackId,
       analyserNodes: this.analyserNodes,
     });
@@ -757,6 +765,52 @@ export class WebAudioEngine implements IAudioEngine {
     }
   }
 
+  setMasterAudioEffects(effects: import('~/timeline/types').ClipEffect[]) {
+    if (!this.ctx || !this.masterEffectInput || !this.masterGain) return;
+    const same =
+      effects.length === this.currentMasterAudioEffects.length &&
+      effects.every((e, i) => {
+        const other = this.currentMasterAudioEffects[i];
+        return (
+          e?.id === other?.id && e?.type === other?.type && e?.enabled === other?.enabled
+        );
+      });
+    if (same) return;
+
+    if (this.masterEffectGraph) {
+      try {
+        this.masterEffectInput.disconnect();
+      } catch {
+        /* no-op */
+      }
+      void this.masterEffectGraph.destroy();
+      this.masterEffectGraph = null;
+    }
+
+    this.currentMasterAudioEffects = effects.slice();
+
+    if (effects.length === 0) {
+      this.masterEffectInput.connect(this.masterGain);
+      return;
+    }
+
+    void (async () => {
+      if (!this.ctx || !this.masterEffectInput || !this.masterGain) return;
+      try {
+        const { outputNode, destroy } = await buildAudioEffectGraph({
+          audioContext: this.ctx,
+          sourceNode: this.masterEffectInput,
+          effects,
+        });
+        outputNode.connect(this.masterGain);
+        this.masterEffectGraph = { outputNode, destroy };
+      } catch (err) {
+        logger.error('Failed to build master audio effect graph', err);
+        this.masterEffectInput.connect(this.masterGain);
+      }
+    })();
+  }
+
   getCurrentTimeS(): number {
     return this.scheduler.getCurrentTimeS();
   }
@@ -887,7 +941,7 @@ export class WebAudioEngine implements IAudioEngine {
         audioBalance: window.audioBalance,
         effects: clip.audioEffects ?? [],
         clipGain,
-        masterGain: this.masterGain,
+        masterGain: this.masterEffectInput!,
         trackId: clip.trackId,
         analyserNodes: this.analyserNodes,
       });
@@ -1234,10 +1288,15 @@ export class WebAudioEngine implements IAudioEngine {
     this.scheduler.destroy();
     this.stopAllNodes();
     this.stopScrubPreview();
+    if (this.masterEffectGraph) {
+      void this.masterEffectGraph.destroy();
+      this.masterEffectGraph = null;
+    }
     if (this.ctx) {
       this.ctx.close();
       this.ctx = null;
     }
+    this.masterEffectInput = null;
     this.analyserNodes.clear();
 
     this.chunkDecoder.destroy();

@@ -1033,4 +1033,89 @@ describe('useTimelineExport pure functions', () => {
     expect(clips[0]?.audioFadeInUs).toBe(200_000);
     expect(clips[0]?.audioFadeOutUs).toBe(300_000);
   });
+
+  it('toWorkerTimelineClips should not merge parent track effects into clip effects', async () => {
+    const items: TimelineTrackItem[] = [
+      {
+        kind: 'clip',
+        clipType: 'media',
+        id: 'c1',
+        trackId: 't1',
+        name: 'Clip 1',
+        source: { path: '/video.mp4' },
+        sourceDurationUs: 1_000_000,
+        timelineRange: { startUs: 0, durationUs: 1_000_000 },
+        sourceRange: { startUs: 0, durationUs: 1_000_000 },
+        effects: [{ id: 'clip-fx', type: 'brightness', enabled: true, amount: 1.2 } as any],
+      },
+    ];
+
+    const projectStoreMock = {
+      getFileHandleByPath: async () => null,
+      projectSettings: { project: { audioDeclickDurationUs: 5000 } },
+    } as any;
+
+    const trackFx = [{ id: 'track-fx', type: 'blur', enabled: true, amount: 2 } as any];
+    const clips = await toWorkerTimelineClips(items, projectStoreMock, wsMock, {
+      parentEffects: trackFx,
+    });
+
+    expect(clips[0]?.effects).toEqual([
+      expect.objectContaining({ id: 'clip-fx' }),
+    ]);
+    expect(clips[0]?.effects).not.toEqual(
+      expect.arrayContaining([expect.objectContaining({ id: 'track-fx' })]),
+    );
+  });
+
+  it('buildVideoWorkerPayloadFromTracks keeps track effects on tracks and clip effects on clips', async () => {
+    const trackFx = [{ id: 'track-fx', type: 'blur', enabled: true, amount: 2 } as any];
+    const clipFx = [{ id: 'clip-fx', type: 'brightness', enabled: true, amount: 1.2 } as any];
+
+    const tracks = [
+      {
+        id: 'v1',
+        kind: 'video',
+        items: [
+          {
+            kind: 'clip',
+            clipType: 'media',
+            id: 'c1',
+            trackId: 'v1',
+            name: 'Clip 1',
+            source: { path: '/video.mp4' },
+            sourceDurationUs: 1_000_000,
+            timelineRange: { startUs: 0, durationUs: 1_000_000 },
+            sourceRange: { startUs: 0, durationUs: 1_000_000 },
+            effects: clipFx,
+          },
+        ],
+        effects: trackFx,
+      },
+    ] as any;
+
+    const projectStoreMock = {
+      getFileByPath: async () => null,
+      projectSettings: { project: { audioDeclickDurationUs: 5000 } },
+    } as any;
+
+    const built = await buildVideoWorkerPayloadFromTracks({
+      tracks,
+      projectStore: projectStoreMock,
+      workspaceStore: wsMock,
+    });
+
+    const trackItem = built.payload.find((i: any) => i.kind === 'track') as any;
+    const clipItem = built.payload.find((i: any) => i.kind === 'clip') as any;
+
+    expect(trackItem?.effects).toEqual(
+      expect.arrayContaining([expect.objectContaining({ id: 'track-fx' })]),
+    );
+    expect(clipItem?.effects).toEqual(
+      expect.arrayContaining([expect.objectContaining({ id: 'clip-fx' })]),
+    );
+    expect(clipItem?.effects).not.toEqual(
+      expect.arrayContaining([expect.objectContaining({ id: 'track-fx' })]),
+    );
+  });
 });

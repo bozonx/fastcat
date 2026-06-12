@@ -64,6 +64,7 @@ pub(crate) fn producer_loop(
         u64,
         Vec<crate::monitor::scene::SceneAudioLayer>,
         Vec<crate::monitor::scene::SceneAudioTrack>,
+        Vec<crate::audio::plugins::AudioEffectSpec>,
     )> = None;
 
     // Throttled underrun reporting. The real-time callback only bumps the atomic
@@ -187,11 +188,12 @@ pub(crate) fn producer_loop(
                     && ring.len() < limit_samples
                 {
                     // Refresh the cached scene clone only on a real change.
-                    if cached.as_ref().map(|(s, _, _)| *s) != Some(state.scene_serial) {
+                    if cached.as_ref().map(|(s, _, _, _)| *s) != Some(state.scene_serial) {
                         cached = Some((
                             state.scene_serial,
                             state.scene.clone(),
                             state.tracks.clone(),
+                            state.audio_master_effects.clone(),
                         ));
                     }
 
@@ -243,7 +245,7 @@ pub(crate) fn producer_loop(
         let Some((master_gain, chunk_start, seek_serial, speed)) = snapshot else {
             continue;
         };
-        let Some((_, scene, tracks)) = cached.as_ref() else {
+        let Some((_, scene, tracks, audio_master_effects)) = cached.as_ref() else {
             continue;
         };
 
@@ -277,6 +279,7 @@ pub(crate) fn producer_loop(
                 scene,
                 tracks,
                 master_gain,
+                audio_master_effects,
                 ramp_prev_master_gain,
                 chunk_start,
                 mix_duration,
@@ -453,6 +456,7 @@ fn service_scrub_preview(
                     &scene,
                     &tracks,
                     master_gain,
+                    &[],
                     req.from_sec + offset,
                     piece_dur,
                     target,

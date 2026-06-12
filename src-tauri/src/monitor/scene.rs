@@ -11,6 +11,7 @@ use serde::Deserialize;
 use serde_json::Value;
 use ts_rs::TS;
 
+use crate::audio::plugins::AudioEffectSpec;
 use crate::compositor::effects::EffectSpec;
 use crate::compositor::scene::BlendMode;
 use crate::compositor::transitions::TransitionSpec;
@@ -324,6 +325,9 @@ pub struct MonitorScene {
     #[serde(default)]
     #[ts(type = "import('~/effects').VideoEffectSpec[]")]
     pub master_effects: Vec<crate::compositor::effects::EffectSpec>,
+    /// Enabled audio master effects applied post-mix on the master bus.
+    #[serde(default)]
+    pub audio_master_effects: Vec<AudioEffectSpec>,
 }
 
 fn default_fps() -> f64 {

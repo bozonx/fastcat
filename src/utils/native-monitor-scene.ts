@@ -25,8 +25,9 @@ import type { TauriDirectoryHandle } from '~/stores/workspace/provider/tauri-han
 import { buildEffectSpecs } from '~/effects';
 import { getTauriTransitionManifest } from '~/transitions/tauri/manifests';
 import { getTransitionManifest } from '~/transitions/core/registry';
+import { buildNativeAudioEffectSpecs } from '~/utils/audio/audio-clip-descriptor';
 
-export { buildNativeAudioEffectSpecs } from '~/utils/audio/audio-clip-descriptor';
+export { buildNativeAudioEffectSpecs };
 
 // Preload Tauri path helper so we don't dynamic-import it per clip.
 let _tauriJoin: ((...paths: string[]) => Promise<string>) | null = null;
@@ -446,13 +447,13 @@ async function buildAudioLayers(params: {
 }): Promise<NativeSceneAudioLayer[]> {
   const audioTracks = params.timelineDoc.tracks.filter((track) => track.kind === 'audio');
   const videoTracks = params.timelineDoc.tracks.filter((track) => track.kind === 'video');
-  const effectiveAudioItems = buildEffectiveAudioClipItems({
+  const effectiveAudioResult = buildEffectiveAudioClipItems({
     audioTracks,
     videoTracks,
     masterEffects: params.timelineDoc.metadata?.fastcat?.masterEffects,
   });
   const clips = await toWorkerTimelineClips(
-    effectiveAudioItems,
+    effectiveAudioResult.items,
     params.projectStore,
     params.workspaceStore,
     {
@@ -639,6 +640,9 @@ export async function buildNativeMonitorScene(
     audio_tracks,
     audio_master_gain: Math.max(0, finite(params.masterGain, 1)),
     audio_master_muted: Boolean(params.masterMuted),
+    audio_master_effects: buildNativeAudioEffectSpecs(
+      params.timelineDoc.metadata?.fastcat?.masterEffects,
+    ),
     width: sceneWidth,
     height: sceneHeight,
     preview_scale: params.previewScale ?? 1,

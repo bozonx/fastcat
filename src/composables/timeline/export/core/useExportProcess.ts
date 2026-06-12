@@ -126,17 +126,19 @@ export function useExportProcess(
       });
 
       let croppedAudioClips: WorkerTimelineClip[] = [];
+      let masterAudioEffects: import('~/timeline/types').AudioClipEffect[] = [];
       if (options.audio) {
-        const effectiveAudioItems = buildEffectiveAudioClipItems({
+        const effectiveAudioResult = buildEffectiveAudioClipItems({
           audioTracks: allAudioTracks,
           videoTracks: allVideoTracks,
           masterEffects: doc?.metadata?.fastcat?.masterEffects,
         });
+        masterAudioEffects = effectiveAudioResult.masterAudioEffects as import('~/timeline/types').AudioClipEffect[];
 
         ensureNotCancelled();
         const masterGain = timelineStore.audioMuted ? 0 : timelineStore.masterGain;
         const audioClips = (
-          await toWorkerTimelineClips(effectiveAudioItems, projectStore, workspaceStore, {
+          await toWorkerTimelineClips(effectiveAudioResult.items, projectStore, workspaceStore, {
             trackKind: 'audio',
             fallbackFormat: timelineStore.timelineFormat,
             onWarning: reportWarning,
@@ -259,6 +261,7 @@ export function useExportProcess(
         videoPayload,
         croppedAudioClips,
         exportTaskId,
+        masterAudioEffects,
       );
     } finally {
       unregisterExportTaskHostApi(exportTaskId);

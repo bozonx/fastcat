@@ -33,6 +33,7 @@ export interface IAudioEngine {
   resumeContext(): Promise<void>;
   setMasterVolume(volume: number): void;
   setMonitorVolume(volume: number): void;
+  setMasterAudioEffects(effects: import('~/timeline/types').ClipEffect[]): void;
   getCurrentTimeUs(): number;
   getLevels(trackId?: string): { rmsDb: number; peakDb: number };
   previewScrubForward(fromUs: number, toUs: number, maxPreviewDurationUs?: number): Promise<void>;

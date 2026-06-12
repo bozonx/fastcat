@@ -320,6 +320,7 @@ const api: Omit<VideoCoreWorkerAPI, 'initCompositor'> & {
     timelineClips: import('../composables/timeline/export/types').WorkerVideoPayloadItem[],
     audioClips: import('../composables/timeline/export/types').WorkerTimelineClip[] = [],
     taskId?: string,
+    masterAudioEffects?: import('../utils/audio/apply-audio-effects-offline').AudioEffectData[],
   ) {
     if (taskId) {
       if (!activeCancels.has(taskId)) {
@@ -343,6 +344,7 @@ const api: Omit<VideoCoreWorkerAPI, 'initCompositor'> & {
         },
         taskId,
         pixiRendererPreference,
+        masterAudioEffects,
       );
     } finally {
       if (taskId) {

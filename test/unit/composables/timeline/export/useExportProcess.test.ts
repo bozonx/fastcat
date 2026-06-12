@@ -248,13 +248,13 @@ describe('useExportProcess - format resolution', () => {
       () => {},
     );
 
-    expect(mockExportTimeline).toHaveBeenCalledWith(
-      fileHandle,
-      expect.objectContaining({ format: 'aac' }),
-      expect.any(Array),
-      expect.any(Array),
-      expect.any(String),
-    );
+    expect(mockExportTimeline).toHaveBeenCalledTimes(1);
+    const callArgs = mockExportTimeline.mock.calls[0];
+    expect(callArgs[0]).toBe(fileHandle);
+    expect(callArgs[1]).toMatchObject({ format: 'aac' });
+    expect(Array.isArray(callArgs[2])).toBe(true);
+    expect(Array.isArray(callArgs[3])).toBe(true);
+    expect(typeof callArgs[4]).toBe('string');
   });
 });
 

@@ -400,6 +400,7 @@ export async function runExport(
   checkCancel: () => boolean,
   taskId?: string,
   rendererPreference: 'webgl' | 'webgpu' = 'webgl',
+  masterAudioEffects?: import('../../utils/audio/apply-audio-effects-offline').AudioEffectData[],
 ) {
   initEffects();
   initTransitions();
@@ -755,6 +756,7 @@ export async function runExport(
             hostClient,
             reportExportWarning,
             checkCancel,
+            masterAudioEffects,
           );
           if (audioTrack) {
             audioSource = audioTrack.audioSource;

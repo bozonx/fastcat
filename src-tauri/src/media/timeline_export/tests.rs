@@ -394,6 +394,7 @@ fn one_clip_scene(layer: crate::monitor::scene::SceneLayer) -> crate::monitor::s
         audio_tracks: vec![],
         audio_master_gain: 1.0,
         audio_master_muted: false,
+        audio_master_effects: Vec::new(),
         width: 1920,
         height: 1080,
         preview_scale: None,

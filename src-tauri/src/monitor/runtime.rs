@@ -951,9 +951,13 @@ impl LayerRuntimeManager {
 
     /// Строит снимок доменной сцены в момент `t` для передачи в `Compositor`.
     pub fn build_compositor_scene(&self, t: f64) -> Scene {
-        let mut scene = build_compositor_scene(&self.scene, self.scene_size, &self.runtimes, t);
-        scene.master_effects.clone_from(&self.master_effects);
-        scene
+        build_compositor_scene(
+            &self.scene,
+            self.scene_size,
+            &self.runtimes,
+            t,
+            &self.master_effects,
+        )
     }
 }
 

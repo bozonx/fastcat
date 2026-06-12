@@ -397,10 +397,10 @@ export async function toWorkerTimelineClips(
     const combinedOpacity = parentOpacity * itemOpacity;
     const combinedBlendMode = item.blendMode ?? options?.parentBlendMode;
 
-    const parentEffects = options?.parentEffects ?? [];
     const itemEffects = Array.isArray(item.effects) ? cloneEffects(item.effects) : [];
-    const combinedEffects =
-      parentEffects.length > 0 ? [...itemEffects, ...parentEffects] : itemEffects;
+    // Track-level effects are applied to the track container by the compositor;
+    // merging them into every clip would cause double-application.
+    const combinedEffects = itemEffects;
 
     const parentAudioBalance = options?.parentAudioBalance ?? 0;
     const parentAudioGain = options?.parentAudioGain ?? 1;
@@ -599,13 +599,13 @@ export async function toWorkerTimelineClips(
               }
             }
           } else if (trackKind === 'audio') {
-            const nestedAudioItems = buildEffectiveAudioClipItems({
+            const nestedAudioResult = buildEffectiveAudioClipItems({
               audioTracks: nestedDoc.tracks.filter((t) => t.kind === 'audio'),
               videoTracks: nestedDoc.tracks.filter((t) => t.kind === 'video'),
             });
 
             const nestedWorkerClips = await toWorkerTimelineClips(
-              nestedAudioItems,
+              nestedAudioResult.items,
               projectStore,
               workspaceStore,
               {

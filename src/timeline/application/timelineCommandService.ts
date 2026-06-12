@@ -180,7 +180,7 @@ export function createTimelineCommandService(deps: TimelineCommandServiceDeps) {
     const hasAudio = buildEffectiveAudioClipItems({
       audioTracks: doc.tracks.filter((track) => track.kind === 'audio'),
       videoTracks: doc.tracks.filter((track) => track.kind === 'video'),
-    }).some((item) => item.kind === 'clip');
+    }).items.some((item) => item.kind === 'clip');
 
     return {
       hasVideo,

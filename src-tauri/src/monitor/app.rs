@@ -21,6 +21,7 @@ use winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoop, EventLoopProxy}
 use winit::window::{Window, WindowId};
 
 use crate::audio::engine::{AudioEngineSettings, NativeAudioEngine};
+use crate::audio::plugins::AudioEffectSpec;
 use crate::compositor::{Compositor, PipelinedReadback};
 
 use super::clock::{Clock, PlaybackClock};
@@ -617,6 +618,7 @@ struct WindowState {
     audio_tracks: Vec<SceneAudioTrack>,
     audio_master_gain: f64,
     audio_output_gain: f64,
+    audio_master_effects: Vec<AudioEffectSpec>,
     /// Last applied audio settings, kept so the output-stall watchdog can rebuild
     /// the engine with the same backend/buffer config the user selected.
     audio_settings: AudioEngineSettings,
@@ -652,9 +654,15 @@ impl WindowState {
         self.audio_layers.clone_from(&scene.audio_layers);
         self.audio_tracks.clone_from(&scene.audio_tracks);
         self.audio_master_gain = master_gain;
+        self.audio_master_effects.clone_from(&scene.audio_master_effects);
 
         if let Some(audio) = self.audio.as_ref() {
-            audio.set_scene(&scene.audio_layers, &scene.audio_tracks, master_gain);
+            audio.set_scene(
+                &scene.audio_layers,
+                &scene.audio_tracks,
+                master_gain,
+                &scene.audio_master_effects,
+            );
         }
         self.layers.apply_scene(scene);
         // На паузе сразу спавним/позиционируем декодеры активных видеослоёв на playhead,
@@ -678,6 +686,7 @@ impl WindowState {
                     &self.audio_layers,
                     &self.audio_tracks,
                     self.audio_master_gain,
+                    &self.audio_master_effects,
                 );
                 audio.set_output_gain(self.audio_output_gain);
                 if playing {
@@ -1267,6 +1276,7 @@ fn init_state(
         audio_tracks: Vec::new(),
         audio_master_gain: 1.0,
         audio_output_gain: 1.0,
+        audio_master_effects: Vec::new(),
         audio_settings,
         last_emit_pts: -1.0,
         last_viewport: viewport,
