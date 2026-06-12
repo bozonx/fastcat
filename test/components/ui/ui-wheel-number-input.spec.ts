@@ -216,4 +216,64 @@ describe('UiWheelNumberInput', () => {
     expect(emitted).toHaveLength(1);
     expect(emitted![0][0]).toBe(11);
   });
+
+  it('aligns to the step grid on wheel events when initial value is off-grid', async () => {
+    const component = await mountSuspended(UiWheelNumberInput, {
+      props: {
+        modelValue: 113,
+        step: 16,
+        debounceMs: 50,
+      },
+    });
+
+    const wrapper = component.find('div');
+    const input = component.find('input');
+    (input.element as HTMLElement).focus();
+    Object.defineProperty(document, 'activeElement', {
+      value: input.element,
+      configurable: true,
+    });
+
+    // Scroll up (negative deltaY = direction: 1)
+    // 113 with step 16 -> next higher multiple is 128
+    const evUp = new Event('wheel', { bubbles: true }) as unknown as WheelEvent;
+    Object.defineProperty(evUp, 'deltaY', { value: -1 });
+    Object.defineProperty(evUp, 'deltaX', { value: 0 });
+    Object.defineProperty(evUp, 'shiftKey', { value: false });
+    wrapper.element.dispatchEvent(evUp as Event);
+
+    vi.advanceTimersByTime(60);
+    await component.vm.$nextTick?.();
+
+    expect(component.emitted('update:modelValue')?.[0]?.[0]).toBe(128);
+
+    // Reset emitted events and test scroll down
+    const componentDown = await mountSuspended(UiWheelNumberInput, {
+      props: {
+        modelValue: 113,
+        step: 16,
+        debounceMs: 50,
+      },
+    });
+    const wrapperDown = componentDown.find('div');
+    const inputDown = componentDown.find('input');
+    (inputDown.element as HTMLElement).focus();
+    Object.defineProperty(document, 'activeElement', {
+      value: inputDown.element,
+      configurable: true,
+    });
+
+    // Scroll down (positive deltaY = direction: -1)
+    // 113 with step 16 -> next lower multiple is 112
+    const evDown = new Event('wheel', { bubbles: true }) as unknown as WheelEvent;
+    Object.defineProperty(evDown, 'deltaY', { value: 1 });
+    Object.defineProperty(evDown, 'deltaX', { value: 0 });
+    Object.defineProperty(evDown, 'shiftKey', { value: false });
+    wrapperDown.element.dispatchEvent(evDown as Event);
+
+    vi.advanceTimersByTime(60);
+    await componentDown.vm.$nextTick?.();
+
+    expect(componentDown.emitted('update:modelValue')?.[0]?.[0]).toBe(112);
+  });
 });

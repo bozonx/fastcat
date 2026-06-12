@@ -105,7 +105,22 @@ useWheelSupport({
     const current = Number(localValue.value);
     const safeCurrent = Number.isFinite(current) ? current : (props.min ?? 0);
 
-    const next = safeCurrent + direction * wheelStep;
+    const base = props.min ?? 0;
+    const stepVal = wheelStep;
+
+    let next: number;
+    if (stepVal > 0) {
+      const x = (safeCurrent - base) / stepVal;
+      const roundedX = Math.round(x * 1e10) / 1e10;
+      if (direction > 0) {
+        next = (Math.floor(roundedX) + 1) * stepVal + base;
+      } else {
+        next = (Math.ceil(roundedX) - 1) * stepVal + base;
+      }
+    } else {
+      next = safeCurrent + direction * stepVal;
+    }
+
     const rounded = Number(next.toFixed(precision));
     const clamped = clampValue(rounded);
 
