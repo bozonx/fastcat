@@ -13,8 +13,8 @@ import {
   computeWaveformPeakBins,
   computeWaveformRenderBudget,
   computeWaveformWindowMetrics,
+  computeWaveformPeakLength,
   resolveWaveformSourceUs,
-  MAX_WAVEFORM_PEAK_LENGTH,
 } from '~/utils/audio/waveform';
 import { runQueuedPeakExtraction } from '~/utils/audio/waveform-extraction-queue';
 import { timeUsToPx } from '~/utils/timeline/geometry';
@@ -96,14 +96,12 @@ function makeEmptyPeaks(channelCount: number, length: number): Float32Array[] {
   return Array.from({ length: channelCount }, () => new Float32Array(length));
 }
 
-// Resolution budget: ~200 samples per second is more than enough — even at max
-// zoom (~1280 px/s) a denser array adds no visible detail while bloating the
-// cache. Clamp to the native extractor's hard ceiling so the JS budget never
-// silently exceeds what `extract_peaks` can return.
-const WAVEFORM_SAMPLES_PER_SECOND = 200;
 function waveformMaxLength(durationS: number): number {
-  const requested = Math.max(8000, Math.ceil(durationS * WAVEFORM_SAMPLES_PER_SECOND));
-  return Math.min(MAX_WAVEFORM_PEAK_LENGTH, requested);
+  return computeWaveformPeakLength(durationS);
+}
+
+function hasSufficientPeaks(peaks: Float32Array[] | null | undefined, maxLength: number): boolean {
+  return Boolean(peaks?.some((channel) => channel.length >= maxLength));
 }
 
 function mixPeakValue(target: number, next: number) {
@@ -118,7 +116,7 @@ async function ensureMediaPeaks(params: {
   const { path, maxLength, shouldCancel } = params;
   const existingMeta = mediaStore.getCachedMetadata(path);
   const existing = existingMeta?.audioPeaks;
-  if (existing && existing.length > 0) return existing;
+  if (hasSufficientPeaks(existing, maxLength)) return existing;
 
   const metadata = await mediaStore.getOrFetchMetadataByPath(path);
   if (shouldCancel?.()) return null;
@@ -126,7 +124,7 @@ async function ensureMediaPeaks(params: {
   const cachedAfterMetadataLoad =
     mediaStore.getCachedMetadata(path)?.audioPeaks ??
     (metadata as { audioPeaks?: Float32Array[] } | null)?.audioPeaks;
-  if (cachedAfterMetadataLoad && cachedAfterMetadataLoad.length > 0) {
+  if (hasSufficientPeaks(cachedAfterMetadataLoad, maxLength)) {
     return cachedAfterMetadataLoad;
   }
 
@@ -135,7 +133,7 @@ async function ensureMediaPeaks(params: {
     shouldCancel,
     task: async () => {
       const cached = mediaStore.getCachedMetadata(path)?.audioPeaks;
-      if (cached && cached.length > 0) return cached;
+      if (hasSufficientPeaks(cached, maxLength)) return cached;
       if (shouldCancel?.()) return null;
 
       const file = await fileManager.vfs.getFile(path);
@@ -300,7 +298,8 @@ async function buildTimelinePeaks(params: {
 
 const extractPeaks = async () => {
   if (!fileUrl.value || !projectStore.currentProjectId) return;
-  if (audioPeaks.value || isExtracting.value) return;
+  const maxLength = waveformMaxLength(effectiveSourceDurationUs.value / 1_000_000);
+  if (hasSufficientPeaks(audioPeaks.value, maxLength) || isExtracting.value) return;
   if (timelineStore.isPlaying) {
     hasDeferredExtraction.value = true;
     return;
@@ -336,9 +335,6 @@ const extractPeaks = async () => {
         format: { fps: 25 },
       });
 
-      const durationS = effectiveSourceDurationUs.value / 1_000_000;
-      const maxLength = waveformMaxLength(durationS);
-
       const peaks = await buildTimelinePeaks({
         doc: nestedDoc,
         durationUs: Math.max(1, Math.round(effectiveSourceDurationUs.value)),
@@ -357,9 +353,6 @@ const extractPeaks = async () => {
       void redrawMountedChunks();
       return;
     }
-
-    const durationS = effectiveSourceDurationUs.value / 1_000_000;
-    const maxLength = waveformMaxLength(durationS);
 
     const peaks = await ensureMediaPeaks({
       path: fileUrl.value,
@@ -385,7 +378,8 @@ const extractPeaks = async () => {
 };
 
 function requestPeaksExtraction() {
-  if (audioPeaks.value) return;
+  const maxLength = waveformMaxLength(effectiveSourceDurationUs.value / 1_000_000);
+  if (hasSufficientPeaks(audioPeaks.value, maxLength)) return;
   if (timelineStore.isPlaying) {
     hasDeferredExtraction.value = true;
     return;
@@ -422,7 +416,8 @@ watch(
       return;
     }
 
-    if (hasDeferredExtraction.value && !audioPeaks.value) {
+    const maxLength = waveformMaxLength(effectiveSourceDurationUs.value / 1_000_000);
+    if (hasDeferredExtraction.value && !hasSufficientPeaks(audioPeaks.value, maxLength)) {
       requestPeaksExtraction();
     }
   },

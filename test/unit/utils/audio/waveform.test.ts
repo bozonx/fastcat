@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   computeWaveformPeakBins,
+  computeWaveformPeakLength,
   computeWaveformRenderBudget,
   computeWaveformWindowMetrics,
   resolveWaveformSourceUs,
@@ -126,6 +127,13 @@ describe('audio waveform utilities', () => {
     expect(bins[0]).toBeCloseTo(0.7);
     expect(bins[1]).toBeCloseTo(0.9);
     expect(bins[2]).toBeCloseTo(0.8);
+  });
+
+  it('computes a denser extraction budget for precise audio cuts', () => {
+    expect(computeWaveformPeakLength(0.1)).toBe(8_000);
+    expect(computeWaveformPeakLength(0.25)).toBe(12_000);
+    expect(computeWaveformPeakLength(10)).toBe(480_000);
+    expect(computeWaveformPeakLength(10_000)).toBe(500_000);
   });
 
   it('keeps source peak count when there are fewer peaks than output bins', () => {

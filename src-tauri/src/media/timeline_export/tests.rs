@@ -1,6 +1,7 @@
 use std::path::Path;
 
 use super::super::ffmpeg_utils::resolve_audio_encoder;
+use super::export_frame_sample_time;
 use super::ffmpeg_args_builder::{build_ffmpeg_args, export_uses_alpha};
 use super::options::NativeExportOptions;
 
@@ -84,6 +85,19 @@ fn test_build_ffmpeg_args_webm_forces_opus() {
         idx += 1;
     }
     assert!(found_opus, "Audio codec argument not found");
+}
+
+#[test]
+fn export_frame_sample_time_clamps_last_partial_frame_inside_range() {
+    let start = 0.0;
+    let end = 1.01;
+    let fps = 30.0;
+
+    assert_eq!(export_frame_sample_time(start, end, fps, 0), 1.0 / 60.0);
+    let last = export_frame_sample_time(start, end, fps, 30);
+
+    assert!(last < end);
+    assert!(last >= end - 1e-6);
 }
 
 #[test]

@@ -160,8 +160,9 @@ describe('TimelineAudioWaveform.vue', () => {
 
   describe('ensureMediaPeaks', () => {
     it('returns existing peaks from metadata without calling extraction', async () => {
-      const peaks = [new Float32Array([0.1, 0.3])];
+      const peaks = [new Float32Array(100).fill(0.3)];
       mockMediaStore.mediaMetadata['media.mp4'] = { audioPeaks: peaks };
+      mockTimelineStore.isPlaying = true;
       const wrapper = await mountComponent();
 
       const result = await (wrapper.vm as any).ensureMediaPeaks({
@@ -188,6 +189,30 @@ describe('TimelineAudioWaveform.vue', () => {
       });
 
       expect(mockVfs.getFile).toHaveBeenCalledWith('media.mp4');
+    });
+
+    it('re-extracts peaks when cached peaks are below the requested precision', async () => {
+      const fileMock = new File([], 'media.mp4');
+      const precisePeaks = [new Float32Array(100).fill(0.5)];
+      mockMediaStore.mediaMetadata['media.mp4'] = { audioPeaks: [new Float32Array(2)] };
+      mockVfs.getFile.mockResolvedValue(fileMock);
+      mockMediaStore.getOrFetchMetadataByPath.mockResolvedValue({});
+      mockMediaStore.extractPeaks.mockResolvedValue(precisePeaks);
+
+      const { runQueuedPeakExtraction } = await import('~/utils/audio/waveform-extraction-queue');
+      vi.mocked(runQueuedPeakExtraction).mockImplementation(async ({ task }: any) => task());
+
+      const wrapper = await mountComponent();
+      const result = await (wrapper.vm as any).ensureMediaPeaks({
+        path: 'media.mp4',
+        maxLength: 100,
+      });
+
+      expect(result).toStrictEqual(precisePeaks);
+      expect(mockMediaStore.extractPeaks).toHaveBeenCalledWith(fileMock, 'media.mp4', {
+        maxLength: 100,
+        precision: 10000,
+      });
     });
   });
 });

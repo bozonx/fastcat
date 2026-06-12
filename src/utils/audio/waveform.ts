@@ -6,6 +6,8 @@ import { timeUsToPx, zoomToPxPerSecond } from '~/utils/timeline/geometry';
  * budget never asks for more than the native extractor will ever return.
  */
 export const MAX_WAVEFORM_PEAK_LENGTH = 500_000;
+export const MIN_WAVEFORM_PEAK_LENGTH = 8_000;
+export const WAVEFORM_PEAKS_PER_SECOND = 48_000;
 
 export interface WaveformWindowMetricsParams {
   sourceStartUs: number;
@@ -50,6 +52,15 @@ export interface WaveformRenderBudgetParams {
 export interface WaveformRenderBudget {
   effectiveDevicePixelRatio: number;
   outputBins: number;
+}
+
+export function computeWaveformPeakLength(durationS: number): number {
+  const safeDurationS = typeof durationS === 'number' && Number.isFinite(durationS) ? durationS : 0;
+  const requested = Math.max(
+    MIN_WAVEFORM_PEAK_LENGTH,
+    Math.ceil(Math.max(0, safeDurationS) * WAVEFORM_PEAKS_PER_SECOND),
+  );
+  return Math.min(MAX_WAVEFORM_PEAK_LENGTH, requested);
 }
 
 export function normalizeWaveformSpeed(speed: unknown): number {

@@ -52,6 +52,28 @@ use ffmpeg_args_builder::{
 const EXPORT_STALL_TIMEOUT: Duration = Duration::from_secs(300);
 const DEFAULT_FALLBACK_FPS: f64 = 30.0;
 const DEFAULT_AUDIO_SAMPLE_RATE: u32 = 48_000;
+const FRAME_SAMPLE_END_EPS_SEC: f64 = 1e-9;
+
+pub(crate) fn export_frame_sample_time(
+    start_sec: f64,
+    end_sec: f64,
+    fps: f64,
+    frame_index: u64,
+) -> f64 {
+    let fps = if fps.is_finite() && fps > 0.0 {
+        fps
+    } else {
+        DEFAULT_FALLBACK_FPS
+    };
+    let start = start_sec.max(0.0);
+    let end = end_sec.max(start);
+    let center = start + (frame_index as f64 + 0.5) / fps;
+    if end <= start {
+        return start;
+    }
+    let last_visible_time = (end - FRAME_SAMPLE_END_EPS_SEC).max(start);
+    center.min(last_visible_time)
+}
 
 /// Runs the full export. `on_progress(0..1)` is called after each written frame.
 pub fn export_timeline(
@@ -339,7 +361,7 @@ pub fn export_timeline(
                         // is always strictly inside frame `i`'s interval, on the correct
                         // side of any frame-quantised boundary — matching the paused
                         // monitor, which samples the quantised playhead exactly on the cut.
-                        let time = start + (i as f64 + 0.5) / fps;
+                        let time = export_frame_sample_time(start, end, fps, i);
                         let mut frame_scene = super::timeline_render::build_export_scene(
                             &scene,
                             time,
