@@ -23,6 +23,10 @@ pub(crate) struct RealtimeClock {
     // emitted as a result. Both are cumulative since the last `reset_frames`.
     pub(crate) underrun_events: AtomicU64,
     pub(crate) underrun_frames: AtomicU64,
+    // Set by the cpal error callback when the output stream fails fatally (device
+    // lost, backend disconnect). Read by the engine's stall watchdog to trigger a
+    // rebuild. Never reset here — a failed stream is replaced, not resurrected.
+    pub(crate) stream_failed: AtomicBool,
 }
 
 impl Default for RealtimeClock {
@@ -36,6 +40,7 @@ impl Default for RealtimeClock {
             output_peak_bits: AtomicU64::default(),
             underrun_events: AtomicU64::default(),
             underrun_frames: AtomicU64::default(),
+            stream_failed: AtomicBool::default(),
         }
     }
 }

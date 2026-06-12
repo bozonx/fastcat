@@ -1,6 +1,7 @@
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::thread::JoinHandle;
+use std::time::Duration;
 
 use anyhow::{Context, Result};
 use parking_lot::{Condvar, Mutex};
@@ -36,7 +37,18 @@ pub struct NativeAudioEngine {
     settings: AudioEngineSettings,
     _stream: Box<dyn AudioStream>,
     producer: Mutex<Option<JoinHandle<()>>>,
+    /// Last `(frames_consumed, sampled_at)` observed by the output-stall watchdog.
+    /// `None` until the first armed observation; reset whenever the clock disarms.
+    output_watchdog: Mutex<Option<(u64, std::time::Instant)>>,
 }
+
+/// How long the output clock may stay frozen while armed and the ring still holds
+/// playable audio before we treat the device stream as dead. The producer keeps
+/// refilling a ring nobody drains when the cpal stream silently dies (device
+/// unplugged, default sink switched, PipeWire node lost), so a full ring plus a
+/// stuck frame counter is the unambiguous fingerprint — distinct from a genuine
+/// underrun, where the ring is empty because the producer fell behind.
+const OUTPUT_STALL_TIMEOUT: Duration = Duration::from_millis(1500);
 
 /// A seek to within this of the current playback position, while already playing,
 /// is treated as a redundant master-clock echo and ignored (no ring flush / no
@@ -91,6 +103,7 @@ impl NativeAudioEngine {
             settings: settings.clone(),
             _stream: stream,
             producer: Mutex::new(Some(producer)),
+            output_watchdog: Mutex::new(None),
         })
     }
 
@@ -172,13 +185,27 @@ impl NativeAudioEngine {
 
         if needs_flush {
             state.pending_ring_clear = true;
-            let speed = if state.global_speed > 0.0 {
-                state.global_speed
+            if state.playing && state.global_speed > 0.0 {
+                // Audio moved while playing: re-anchor to the position currently
+                // leaving the speakers and re-prime exactly like a seek. Without
+                // disarming the clock + resetting the frame counter, the callback
+                // keeps consuming the just-cleared (empty) ring while `clock.playing`
+                // stays armed, so the producer never gets the START_PREBUFFER window
+                // to refill — the ring oscillates near empty and crackles. Capturing
+                // the audible pts as the new origin keeps the playhead continuous
+                // (frames reset to 0 → audible == old audible), and disarming lets
+                // the producer re-arm only after START_PREBUFFER_CHUNKS have queued.
+                let audible = audible_pts_sec(&state, &self.clock, self.sample_rate);
+                state.origin_pts_sec = audible;
+                state.producer_pts_sec = audible;
+                state.hold_output = false;
+                self.clock.reset_frames();
+                self.clock.playing.store(false, Ordering::Release);
             } else {
-                1.0
-            };
-            state.producer_pts_sec =
-                state.origin_pts_sec + self.clock.frames() as f64 / self.sample_rate as f64 * speed;
+                // Paused, priming, or reverse/stopped: the output clock is not the
+                // master here, so just realign the producer cursor to the origin.
+                state.producer_pts_sec = state.origin_pts_sec;
+            }
             // Discontinuous output: invalidate in-flight chunks and force decoders
             // to reseek to the new positions.
             state.seek_serial = state.seek_serial.wrapping_add(1);
@@ -307,15 +334,23 @@ impl NativeAudioEngine {
     /// producer arms it once the ring fills past the startup threshold. Re-arming is
     /// idempotent (guarded by `clock.playing`), so a late producer arm is harmless.
     pub fn release_output(&self) {
-        let already_armed = {
-            let mut state = self.shared.0.lock();
-            state.hold_output = false;
-            self.clock.playing.load(Ordering::Acquire)
-        };
-        if !already_armed && self.ring.len() >= self.start_prebuffer_samples() {
+        // Arm under the state lock. The producer only arms the clock while holding
+        // this same lock (see `arm_output_clock_after_prebuffer`, called inside the
+        // producer's `state` critical section), so taking it here makes the
+        // check-then-arm atomic with respect to the producer. Doing the
+        // `reset_frames` + arm after dropping the lock (the previous shape) let the
+        // producer arm in the gap and start counting consumed frames, which our
+        // `reset_frames` then zeroed — the audible position (and the video slaved to
+        // it) lurched backward by that many frames.
+        let mut state = self.shared.0.lock();
+        state.hold_output = false;
+        if !self.clock.playing.load(Ordering::Acquire)
+            && self.ring.len() >= self.start_prebuffer_samples()
+        {
             self.clock.reset_frames();
             self.clock.playing.store(true, Ordering::Release);
         }
+        drop(state);
         self.shared.1.notify_all();
     }
 
@@ -504,6 +539,37 @@ impl NativeAudioEngine {
 
     pub fn output_levels_db(&self) -> (f64, f64) {
         self.clock.output_levels_db()
+    }
+
+    /// True when the output device stream looks dead and the engine should be
+    /// rebuilt. Two signals: a fatal cpal stream error (`err_fn` set the flag), or
+    /// the output clock frozen for `OUTPUT_STALL_TIMEOUT` while armed with a
+    /// non-empty ring (the producer keeps filling a ring no callback is draining).
+    /// A normal underrun is NOT a stall: there the ring is empty, so the watchdog
+    /// resamples its baseline and reports healthy.
+    pub fn output_stalled(&self) -> bool {
+        if self.clock.stream_failed.load(Ordering::Acquire) {
+            return true;
+        }
+        let mut watchdog = self.output_watchdog.lock();
+        // Not armed, or nothing buffered to play: can't be a device stall. Re-baseline
+        // so a later freeze is measured from now, not from a stale pre-pause sample.
+        if !self.clock.playing.load(Ordering::Acquire) || self.ring.len() == 0 {
+            *watchdog = None;
+            return false;
+        }
+        let frames = self.clock.frames();
+        let now = std::time::Instant::now();
+        match *watchdog {
+            Some((last_frames, since)) if frames == last_frames => {
+                if now.duration_since(since) >= OUTPUT_STALL_TIMEOUT {
+                    *watchdog = None;
+                    return true;
+                }
+            }
+            _ => *watchdog = Some((frames, now)),
+        }
+        false
     }
 
     pub fn is_empty(&self) -> bool {

@@ -220,7 +220,16 @@ pub(crate) fn build_stream(
     clock: Arc<RealtimeClock>,
     device_channels: u16,
 ) -> Result<Stream> {
-    let err_fn = |err| log::error!("[audio] output stream error: {err}");
+    // The error callback runs on a fatal stream failure (device lost, backend
+    // disconnect). Flag it on the clock so the engine's stall watchdog rebuilds the
+    // stream instead of silently mixing into a ring no device is draining.
+    let err_clock = clock.clone();
+    let err_fn = move |err| {
+        log::error!("[audio] output stream error: {err}");
+        err_clock
+            .stream_failed
+            .store(true, std::sync::atomic::Ordering::Release);
+    };
     match format {
         SampleFormat::F32 => device
             .build_output_stream(

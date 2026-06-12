@@ -4,36 +4,41 @@ import type { PreviewSyncMode } from "./PreviewSyncMode";
 import type { SceneAudioLayer } from "./SceneAudioLayer";
 import type { SceneAudioTrack } from "./SceneAudioTrack";
 import type { SceneLayer } from "./SceneLayer";
+import type { VideoEffectSpec } from "./VideoEffectSpec";
 
-export type MonitorScene = { layers: Array<SceneLayer>, audio_layers: Array<SceneAudioLayer>, audio_tracks: Array<SceneAudioTrack>, 
+export type MonitorScene = { layers: Array<SceneLayer>, audio_layers: Array<SceneAudioLayer>, audio_tracks: Array<SceneAudioTrack>,
 /**
  * Master audio bus gain. Effects/track buses подключатся поверх этой модели позже.
  */
-audio_master_gain: number, audio_master_muted: boolean, 
+audio_master_gain: number, audio_master_muted: boolean,
 /**
  * Размер композитного кадра. Если 0/отсутствует — берём bounding box из рантаймов.
  */
-width: number, height: number, 
+width: number, height: number,
 /**
  * Preview-scale: 1.0 = 1/1, 0.5 = 1/2 и т.д. Прокидывается в ffmpeg `-vf scale`.
  * Даёт значительную экономию CPU/GPU на 4K source'ах в маленьком preview.
  * `None` или отсутствие → декод в нативном разрешении.
  */
-preview_scale?: number, 
+preview_scale?: number,
 /**
  * Целевой FPS preview-рендера. По умолчанию 30. Большинство source — 24/25/30,
  * поэтому 30 достаточно; для 60fps source укажите 60.
  */
-preview_fps: number, 
+preview_fps: number,
 /**
  * Политика синхронизации видео с аудио для preview.
  */
-preview_sync_mode: PreviewSyncMode, 
+preview_sync_mode: PreviewSyncMode,
 /**
  * Native decoded frame cache policy. `custom + 0 MB` disables the rotating cache window.
  */
-frame_cache_mode: NativeFrameCacheMode, 
+frame_cache_mode: NativeFrameCacheMode,
 /**
  * Custom per-layer native decoded frame cache budget in MB when `frame_cache_mode=custom`.
  */
-frame_cache_custom_mb: number, };
+frame_cache_custom_mb: number,
+/**
+ * Enabled video master effects applied to the final composited frame.
+ */
+master_effects: Array<VideoEffectSpec>, };

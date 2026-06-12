@@ -134,6 +134,12 @@ pub async fn monitor_subscribe_frames(
     send_monitor_cmd(&engine, MonitorCommand::SetFrameChannel(channel))
 }
 
+/// Unsubscribe from the RGBA frame stream and clear the Rust-side channel.
+#[tauri::command]
+pub async fn monitor_unsubscribe_frames(engine: State<'_, VideoEngine>) -> Result<(), String> {
+    send_monitor_cmd(&engine, MonitorCommand::UnsetFrameChannel)
+}
+
 /// Render target size in canvas mode (physical pixels).
 #[tauri::command]
 pub async fn monitor_set_canvas_size(

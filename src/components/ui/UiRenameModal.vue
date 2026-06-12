@@ -15,6 +15,7 @@ const props = withDefaults(
     initialName: '',
     currentName: '',
     selectWithoutExtension: true,
+    validate: undefined,
   },
 );
 

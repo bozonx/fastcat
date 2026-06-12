@@ -4,6 +4,7 @@ import { useTimelineStore } from '~/stores/timeline.store';
 import { useProjectStore } from '~/stores/project.store';
 import UiEmptyState from '~/components/ui/UiEmptyState.vue';
 import UiConfirmModal from '~/components/ui/UiConfirmModal.vue';
+import FriendlyTime from '~/components/ui/FriendlyTime.vue';
 
 import type { TimelineBackupVersion } from '~/stores/timeline.store';
 
@@ -45,16 +46,7 @@ watch(
   },
 );
 
-function formatDate(date: Date | null): string {
-  if (!date) return '—';
-  return new Intl.DateTimeFormat(locale.value, {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-  }).format(date);
-}
+// formatDate removed in favor of FriendlyTime component
 
 const isCreateVersionModalOpen = ref(false);
 const selectedVersionForCopy = ref<TimelineBackupVersion | null>(null);
@@ -202,14 +194,17 @@ const versions = computed(() => timelineStore.backupVersions);
 
             <!-- Date -->
             <td class="px-1.5 py-3 align-middle text-ui-text-muted whitespace-nowrap">
-              {{ formatDate(version.date) }}
+              <FriendlyTime :date="version.date" />
             </td>
 
             <!-- Actions -->
             <td class="px-1.5 py-3 align-middle text-right">
               <div class="flex items-center justify-end gap-1.5">
                 <!-- Preview / Open -->
-                <UTooltip v-if="version.type !== 'main'" :text="t('videoEditor.timeline.backups.actionsLabel.openReadOnly')">
+                <UTooltip
+                  v-if="version.type !== 'main'"
+                  :text="t('videoEditor.timeline.backups.actionsLabel.openReadOnly')"
+                >
                   <UButton
                     size="xs"
                     color="neutral"

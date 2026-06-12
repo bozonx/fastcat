@@ -94,8 +94,22 @@ impl SpscRingBuffer {
                 out[i] = f32::from_bits(self.buffer[i - first].load(Ordering::Relaxed));
             }
         }
-        self.read_idx
-            .store(r.wrapping_add(available), Ordering::Release);
+        // Advance the read cursor with a compare-exchange against the value we
+        // started from, NOT a blind store. A blind store races the producer's
+        // `clear()` (the only other writer of `read_idx`): if a clear lands while
+        // this callback is mid-pop, a `store(r + available)` would roll `read_idx`
+        // back past the cleared point and make up to a full prebuffer (~800ms) of
+        // already-discarded pre-seek audio readable again — heard as a stale burst
+        // right after a seek/flush. On a lost CAS the clear won; we leave the
+        // cursor where the clear put it and drop this (now-stale) advance. The
+        // handful of samples already copied to the device this call is at most one
+        // callback of glitch, vastly preferable to replaying the whole ring.
+        let _ = self.read_idx.compare_exchange(
+            r,
+            r.wrapping_add(available),
+            Ordering::AcqRel,
+            Ordering::Acquire,
+        );
         available
     }
 }

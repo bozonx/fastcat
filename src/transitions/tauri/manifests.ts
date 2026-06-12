@@ -577,8 +577,7 @@ export const tauriTransitionManifests: TransitionManifest[] = [
       type: 'custom-wgsl',
       source: CLOCK_WGSL,
       params: {
-        p0:
-          params.direction === 'counterclockwise' ? -1 : params.direction === 'symmetric' ? 2 : 1,
+        p0: params.direction === 'counterclockwise' ? -1 : params.direction === 'symmetric' ? 2 : 1,
       },
     }),
     computeOutOpacity: transparent,

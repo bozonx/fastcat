@@ -5,21 +5,29 @@ import { useTimelineStore } from '~/stores/timeline.store';
 import { createTestTimeline } from '../utils/timeline-builder';
 import { parseTimelineFromOtio } from '~/timeline/otio-serializer';
 
+import { ref } from 'vue';
+
 vi.mock('~/timeline/otio-serializer', () => ({
   parseTimelineFromOtio: vi.fn(),
   serializeTimelineToOtio: vi.fn().mockReturnValue('{}'),
 }));
 
-import { ref } from 'vue';
-
 const currentProjectNameRef = ref('test');
 const currentTimelinePathRef = ref('timeline.otio');
 
 const projectStoreMock = {
-  get currentProjectName() { return currentProjectNameRef.value; },
-  set currentProjectName(val) { currentProjectNameRef.value = val; },
-  get currentTimelinePath() { return currentTimelinePathRef.value; },
-  set currentTimelinePath(val) { currentTimelinePathRef.value = val; },
+  get currentProjectName() {
+    return currentProjectNameRef.value;
+  },
+  set currentProjectName(val) {
+    currentProjectNameRef.value = val;
+  },
+  get currentTimelinePath() {
+    return currentTimelinePathRef.value;
+  },
+  set currentTimelinePath(val) {
+    currentTimelinePathRef.value = val;
+  },
   getFileHandleByPath: vi.fn(),
   getProjectFileHandleByRelativePath: vi.fn(),
   getFileByPath: vi.fn(),

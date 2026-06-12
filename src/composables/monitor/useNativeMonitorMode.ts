@@ -137,7 +137,9 @@ export function useNativeMonitorCanvas(canvasRef: Ref<HTMLCanvasElement | null>)
         drawFrame(data);
       } else if (ArrayBuffer.isView(data)) {
         const view = data as ArrayBufferView;
-        drawFrame(view.buffer as ArrayBuffer);
+        drawFrame(
+          (view.buffer as ArrayBuffer).slice(view.byteOffset, view.byteOffset + view.byteLength),
+        );
       }
     };
     try {
@@ -192,6 +194,11 @@ export function useNativeMonitorCanvas(canvasRef: Ref<HTMLCanvasElement | null>)
     unsubChannel?.();
     ctx2d = null;
     ctxEl = null;
+    if (!isNativeMonitorDisabled()) {
+      nativeMonitorIpc
+        .unsubscribeFrames()
+        .catch((err) => warnMonitorFailure('monitor_unsubscribe_frames failed', err));
+    }
   });
 }
 

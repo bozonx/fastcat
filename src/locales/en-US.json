@@ -1020,9 +1020,7 @@
       "circle": {
         "name": "Circle",
         "params": {
-          "radius": "Radius",
-          "centerX": "Center X",
-          "centerY": "Center Y"
+          "radius": "Radius"
         }
       },
       "clock": {
@@ -1913,8 +1911,6 @@
         "tabLabel": "Backups",
         "version": "Version",
         "date": "Date",
-        "size": "Size",
-        "actions": "Actions",
         "mainFile": "Main File",
         "autosave": "Auto-Save",
         "backupNum": "Backup {num}",
@@ -1940,13 +1936,10 @@
         "empty": "No backup versions available",
         "clearAllButton": "Delete all backups",
         "actionsLabel": {
-          "open": "Open",
           "openReadOnly": "Open preview (read-only)",
-          "restore": "Restore",
           "delete": "Delete",
           "return": "Return",
-          "returnMobile": "Return",
-          "restoreMobile": "Restore"
+          "returnMobile": "Return"
         },
         "cannotDeleteMain": "Cannot delete main file version",
         "loadError": "Failed to load backup versions",
@@ -1963,7 +1956,20 @@
     "cutItems": "Cut items",
     "pasteItems": "Paste items"
   },
+  "timeAgo": {
+    "justNow": "just now",
+    "ago": "{time} ago",
+    "in": "in {time}",
+    "second": "1 second | {n} seconds",
+    "minute": "1 minute | {n} minutes",
+    "hour": "1 hour | {n} hours",
+    "day": "1 day | {n} days",
+    "week": "1 week | {n} weeks",
+    "month": "1 month | {n} months",
+    "year": "1 year | {n} years"
+  },
   "custom": {
     "delete": "Delete"
   }
 }
+

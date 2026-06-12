@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import PropertySection from '~/components/properties/PropertySection.vue';
 import PropertyRow from '~/components/properties/PropertyRow.vue';
+import FriendlyTime from '~/components/ui/FriendlyTime.vue';
 interface FileInfo {
   kind: 'file' | 'directory';
   name: string;
@@ -99,23 +100,15 @@ const { t, locale } = useI18n();
     <PropertyRow
       v-if="props.fileInfo.createdAt || props.fileInfo.lastModified"
       :label="t('common.created')"
-      :value="
-        new Intl.DateTimeFormat(locale as unknown as string, {
-          dateStyle: 'short',
-          timeStyle: 'short',
-        }).format(new Date(props.fileInfo.createdAt ?? props.fileInfo.lastModified!))
-      "
-    />
+    >
+      <FriendlyTime :date="props.fileInfo.createdAt ?? props.fileInfo.lastModified!" />
+    </PropertyRow>
     <PropertyRow
       v-if="props.fileInfo.lastModified"
       :label="t('common.updated')"
-      :value="
-        new Intl.DateTimeFormat(locale as unknown as string, {
-          dateStyle: 'short',
-          timeStyle: 'short',
-        }).format(new Date(props.fileInfo.lastModified))
-      "
-    />
+    >
+      <FriendlyTime :date="props.fileInfo.lastModified" />
+    </PropertyRow>
     <PropertyRow v-if="props.isHidden" :label="t('common.hidden')" value="Yes" />
     <div v-if="$slots['after-content']" class="mt-4 pt-2 border-t border-ui-border">
       <slot name="after-content" />

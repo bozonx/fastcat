@@ -106,6 +106,10 @@ export const nativeMonitorIpc = {
   subscribeFrames(channel: Channel<ArrayBuffer>): Promise<void> {
     return invoke('monitor_subscribe_frames', { channel });
   },
+  /** Unsubscribe from the RGBA frame stream (canvas mode). */
+  unsubscribeFrames(): Promise<void> {
+    return invoke('monitor_unsubscribe_frames');
+  },
   /** Render-target size in canvas mode, physical pixels. */
   setCanvasSize(width: number, height: number): Promise<void> {
     return invoke('monitor_set_canvas_size', { width, height });

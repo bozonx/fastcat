@@ -53,6 +53,16 @@ const PREBUFFER_TIMEOUT: Duration = Duration::from_millis(3000);
 /// finishing its prime after video) emit no such event, so we also wake on this
 /// interval to re-check both gates and start promptly instead of at the timeout.
 const PREBUFFER_POLL_INTERVAL: Duration = Duration::from_millis(10);
+/// A seek arriving while a play-prebuffer / micro-prime is already in flight and
+/// targeting within this of where we are already priming is treated as a frontend
+/// echo. During a prime the clock is frozen at the prime target and emits no
+/// `monitor:time`; the frontend keeps extrapolating a smooth playhead and echoing
+/// it back as explicit seeks. Restarting the prime on each echo wipes the ring
+/// every time, so the prebuffer never completes and the transport jams (native
+/// paused while the UI still shows "playing"). The echoes target the frozen
+/// position exactly (diff ≈ 0), so a small tolerance catches them while leaving
+/// genuine scrubs to re-target the prime.
+const SEEK_PRIME_REDUNDANT_SEC: f64 = 0.05;
 
 /// Заказ положения offscreen/native-окна монитора в физических пикселях.
 #[derive(Debug, Clone, Copy)]
@@ -470,6 +480,13 @@ impl ApplicationHandler<MonitorCommand> for MonitorApp {
                     self.try_create_state();
                 }
             }
+            MonitorCommand::UnsetFrameChannel => {
+                if let Some(s) = self.state.as_mut() {
+                    s.frame_channel = None;
+                    s.canvas_readback = None;
+                }
+                self.pending_frame_channel = None;
+            }
             MonitorCommand::SetCanvasSize { width, height } => {
                 let size = (width.max(1), height.max(1));
                 self.pending_canvas_size = Some(size);
@@ -600,6 +617,9 @@ struct WindowState {
     audio_tracks: Vec<SceneAudioTrack>,
     audio_master_gain: f64,
     audio_output_gain: f64,
+    /// Last applied audio settings, kept so the output-stall watchdog can rebuild
+    /// the engine with the same backend/buffer config the user selected.
+    audio_settings: AudioEngineSettings,
 
     last_emit_pts: f64,
     last_viewport: ViewportSpec,
@@ -649,6 +669,7 @@ impl WindowState {
     }
 
     fn recreate_audio(&mut self, settings: AudioEngineSettings) {
+        self.audio_settings = settings.clone();
         let playing = self.clock.is_playing();
         let pts = self.clock.current_pts();
         self.audio = match NativeAudioEngine::new(&settings) {
@@ -674,6 +695,23 @@ impl WindowState {
                 None
             }
         };
+    }
+
+    /// Rebuilds the audio engine if its output device stream died (sink unplugged,
+    /// default device switched, backend disconnect). When that happens the producer
+    /// keeps mixing into a ring no callback drains, so audio would stay silent for
+    /// the rest of the session without a manual settings change. Cheap to poll: it
+    /// only samples a couple of atomics unless an actual stall is detected.
+    fn check_audio_health(&mut self) {
+        if self
+            .audio
+            .as_ref()
+            .is_some_and(NativeAudioEngine::output_stalled)
+        {
+            log::error!("[audio] output stream stalled (device lost?); rebuilding audio engine");
+            let settings = self.audio_settings.clone();
+            self.recreate_audio(settings);
+        }
     }
 
     fn update_hw_settings(&mut self, settings: crate::FfmpegHardwareSettings) {
@@ -935,35 +973,62 @@ impl WindowState {
             self.clock.pause();
         }
         self.layers.set_playing(false);
+        // The output callback drops to silence on pause, but `emit_audio_levels`
+        // only runs while ticking, so the UI meter would otherwise freeze at its
+        // last pre-pause value. Push one zeroed update so it falls to the floor.
+        let _ = self.app.emit(
+            EVT_AUDIO_LEVELS,
+            AudioLevelsPayload {
+                rms_db: -60.0,
+                peak_db: -60.0,
+            },
+        );
     }
 
     fn seek(&mut self, timeline_sec: f64, explicit: bool) {
+        let t = timeline_sec.max(0.0);
         let had_pending = self.pending_play_deadline.is_some();
-        // Seek во время прогрева отменяет отложенный старт: позиция сменилась, пользователь
-        // повторит Play от новой точки. Иначе стартовали бы от устаревшего playhead'а.
+
+        // Redundant-echo guard (see SEEK_PRIME_REDUNDANT_SEC). While a prebuffer /
+        // micro-prime is in flight the clock is frozen at the prime target; a seek to
+        // ~that position is a frontend echo and must be a no-op. Restarting the prime
+        // on each echo wipes the ring and it never completes → transport jam.
+        if had_pending && (t - self.clock.current_pts()).abs() < SEEK_PRIME_REDUNDANT_SEC {
+            return;
+        }
+
+        // Does the transport intend to keep playing? This must NOT be read from
+        // `clock.is_playing()` alone: a micro-prime in flight has paused the clock
+        // (had_pending), yet the transport is still logically playing. Conflating the
+        // two was the jam — the next seek dropped to a paused state while the frontend
+        // still thought it was playing, and no further `monitor:time` ever arrived.
+        let transport_playing = self.clock.is_playing() || had_pending;
+
+        // Seek during warmup cancels the deferred start: the position changed, so we
+        // re-establish the prime at the new spot below (if still playing).
         if had_pending {
             self.pending_play_deadline = None;
             self.layers.set_playing(false);
         }
-        let t = timeline_sec.max(0.0);
+
         log::trace!(
-            "[monitor] seek to {t:.3}s, explicit={explicit}, playing={}",
-            self.clock.is_playing()
+            "[monitor] seek to {t:.3}s, explicit={explicit}, transport_playing={transport_playing}"
         );
         self.clock.seek(t);
-        let playing = self.clock.is_playing();
         if let Some(audio) = self.audio.as_ref() {
-            audio.seek(t, playing, explicit);
+            audio.seek(t, transport_playing, explicit);
         }
-        self.layers.seek(t, playing);
+        self.layers.seek(t, transport_playing);
 
         // After a real user seek during playback the audio ring was flushed and the
         // callback stopped. If we let the clock keep running, video races ahead while
         // the producer refills the ring. When the callback restarts (after only
         // START_PREBUFFER_CHUNKS chunks) the ring can underrun under decoder-seek load
         // → crackle + sped-up resync. So we do a micro-prime: freeze the video clock,
-        // refill the ring, and restart both together once audio is fully primed.
-        if playing && explicit {
+        // refill the ring, and restart both together once audio is fully primed. A
+        // genuine drag re-targets the prime on each move; the echo guard above keeps
+        // the stationary echoes from restarting it.
+        if transport_playing && explicit {
             if let Some(audio) = self.audio.as_ref() {
                 if !audio.is_empty() {
                     log::info!("[monitor] micro-priming audio after explicit seek to {t:.3}s");
@@ -982,6 +1047,9 @@ impl WindowState {
     // -----------------------------------------------------------------------
 
     fn tick_and_render(&mut self) {
+        // Recover from a dead output device before reading the audio clock, so a
+        // rebuilt engine is the one driving this frame's sync.
+        self.check_audio_health();
         // ИНВАРИАНТ ИСТОЧНИКА ВРЕМЕНИ: для выбора кадра берём СГЛАЖЕННЫЙ `clock.current_pts()`,
         // НЕ сырой `audio_pts`. `current_pts` (audible position) джиттерит на величину аудио-чанка
         // (~50мс), т.к. вычитает мгновенную заполненность ринга — при выводе напрямую кадры
@@ -1199,6 +1267,7 @@ fn init_state(
         audio_tracks: Vec::new(),
         audio_master_gain: 1.0,
         audio_output_gain: 1.0,
+        audio_settings,
         last_emit_pts: -1.0,
         last_viewport: viewport,
         mode: MonitorMode::Canvas,

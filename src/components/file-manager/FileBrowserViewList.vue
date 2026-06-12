@@ -12,6 +12,7 @@ import {
 } from '~/composables/file-manager/useFileBrowserEntry';
 import InlineNameEditor from '~/components/file-manager/InlineNameEditor.vue';
 import UiProgressSpinner from '~/components/ui/UiProgressSpinner.vue';
+import FriendlyTime from '~/components/ui/FriendlyTime.vue';
 
 type ExtendedFsEntry = FsEntry & {
   objectUrl?: string;
@@ -81,10 +82,7 @@ const { onNameClick, onNameDblClick } = useRenameTimer({
   onRename: (entry) => emit('fileAction', 'rename', entry),
 });
 
-function formatDate(timestamp?: number) {
-  if (!timestamp) return '-';
-  return new Date(timestamp).toLocaleString();
-}
+// formatDate removed in favor of FriendlyTime component
 </script>
 
 <template>
@@ -387,10 +385,10 @@ function formatDate(timestamp?: number) {
                 <template v-else> - </template>
               </td>
               <td class="py-0.5 px-3 text-ui-text-muted">
-                {{ formatDate(entry.created) }}
+                <FriendlyTime :date="entry.created" fallback="-" />
               </td>
               <td class="py-0.5 px-3 text-ui-text-muted">
-                {{ formatDate(entry.lastModified) }}
+                <FriendlyTime :date="entry.lastModified" fallback="-" />
               </td>
             </tr>
           </UContextMenu>

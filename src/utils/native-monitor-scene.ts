@@ -638,5 +638,6 @@ export async function buildNativeMonitorScene(
     preview_sync_mode: params.syncMode ?? optimization.nativeMonitorSyncMode,
     frame_cache_mode: optimization.nativeFrameCacheMode ?? 'auto',
     frame_cache_custom_mb: Math.max(0, Math.round(optimization.nativeFrameCacheCustomMb ?? 0)),
+    master_effects: buildEffectSpecs(params.timelineDoc.metadata?.fastcat?.masterEffects) ?? [],
   };
 }

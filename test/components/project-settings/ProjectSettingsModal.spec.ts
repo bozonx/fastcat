@@ -49,6 +49,9 @@ const mockProjectStore = reactive({
 
 const mockWorkspaceStore = reactive({
   userSettings: {
+    timeline: {
+      defaultStaticClipDurationUs: 5000000,
+    },
     projectDefaults: {
       audioDeclickDurationUs: 5000,
     },

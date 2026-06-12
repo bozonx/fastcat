@@ -349,6 +349,32 @@ impl Compositor {
             viewport_h,
             registered_images,
         )?;
+        let vello = if !effective_scene.master_effects.is_empty() {
+            let texture = self.render_to_owned_texture(
+                dev_id,
+                &vello,
+                viewport_w,
+                viewport_h,
+                effective_scene.background,
+            )?;
+            let processed = self.apply_effects_to_texture(
+                dev_id,
+                &device,
+                &queue,
+                &EffectSource::Gpu(Arc::new(crate::media::SharedTexture::new_shared(
+                    Arc::new(texture),
+                ))),
+                &effective_scene.master_effects,
+            )?;
+            let mut out = VelloScene::new();
+            let img = self
+                .register_texture_for_vello(dev_id, &*processed, registered_images)
+                .map_err(|e| anyhow!("register master-effect texture: {e:?}"))?;
+            out.draw_image(&img, vello::kurbo::Affine::IDENTITY);
+            out
+        } else {
+            vello
+        };
         let build_vello_ms = elapsed_ms(build_started);
         Ok((
             vello,
@@ -450,9 +476,13 @@ impl Compositor {
         layers.retain(|l| !to_remove.contains(&l.id));
         self.materialize_text_shadow_blurs(dev_id, scene, device, queue, &mut layers)?;
 
-        // 2. Применяем эффекты к оставшимся слоям
+        // 2. Применяем эффекты к оставшимся слоям (adjustment layers handled separately)
         let mut final_layers = Vec::with_capacity(layers.len());
         for layer in layers {
+            if matches!(layer.kind, LayerKind::Adjustment) {
+                final_layers.push(layer);
+                continue;
+            }
             if layer.effects.is_empty() {
                 final_layers.push(layer);
                 continue;
@@ -498,6 +528,7 @@ impl Compositor {
             time: scene.time,
             background: scene.background,
             layers: final_layers,
+            master_effects: Vec::new(),
         })
     }
 
@@ -655,6 +686,7 @@ impl Compositor {
                     (width, height),
                 ),
             ],
+            master_effects: Vec::new(),
         };
         self.render_domain_scene_to_owned_texture(
             dev_id,
@@ -689,6 +721,7 @@ impl Compositor {
             time,
             background: Color::TRANSPARENT,
             layers: Vec::new(),
+            master_effects: Vec::new(),
         };
         self.render_layer_to_texture(dev_id, &scene, &layer, scale)
     }
@@ -731,6 +764,10 @@ impl Compositor {
                     crate::media::SharedTexture::new_shared(Arc::new(texture)),
                 )))
             }
+            LayerKind::Adjustment => Err(anyhow!(
+                "layer_to_effect_source called on adjustment layer {}",
+                layer.id
+            )),
         }
     }
 
@@ -770,6 +807,7 @@ impl Compositor {
                 effects: Vec::new(),
                 transition: None,
             }],
+            master_effects: Vec::new(),
         };
         let vello = isolated.to_vello(width, height, |_| None);
         self.render_to_owned_texture(dev_id, &vello, width, height, Color::TRANSPARENT)

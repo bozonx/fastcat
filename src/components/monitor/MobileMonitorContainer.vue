@@ -108,7 +108,6 @@ const monitorZoomLabel = computed(() => {
 const containerRef = ref<HTMLElement | null>(null);
 const { isFullscreen, toggle: toggleFullscreen } = useAppFullscreen(containerRef);
 
-
 const LONG_PRESS_MOVE_THRESHOLD = 10;
 let longPressTimer: ReturnType<typeof setTimeout> | null = null;
 let longPressStartX = 0;
@@ -529,10 +528,7 @@ const containerHeightClass = computed(() => {
             />
           </UDropdownMenu>
 
-          <UDropdownMenu
-            :items="contextMenuItems"
-            @update:open="blurOnDropdownMenuClose"
-          >
+          <UDropdownMenu :items="contextMenuItems" @update:open="blurOnDropdownMenuClose">
             <UButton
               size="xs"
               variant="ghost"

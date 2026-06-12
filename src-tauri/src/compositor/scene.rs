@@ -29,6 +29,8 @@ pub struct Scene {
     pub background: Color,
     /// Layers are pre-sorted bottom-to-top (by source `z`).
     pub layers: Vec<Layer>,
+    /// Video master effects applied to the final composited frame after all layers.
+    pub master_effects: Vec<super::effects::EffectSpec>,
 }
 
 impl Scene {
@@ -193,6 +195,9 @@ pub enum LayerKind {
     },
     Shape(ShapeLayer),
     Text(TextLayer),
+    /// Adjustment layer: applies effects to lower layers. Rendered as raster
+    /// after composing lower layers into a texture and applying its effects.
+    Adjustment,
 }
 
 impl LayerKind {
@@ -201,6 +206,7 @@ impl LayerKind {
             LayerKind::Raster { natural_size, .. } => *natural_size,
             LayerKind::Shape(spec) => spec.natural_size,
             LayerKind::Text(spec) => spec.natural_size,
+            LayerKind::Adjustment => (0, 0),
         }
     }
 }

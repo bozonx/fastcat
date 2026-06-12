@@ -47,6 +47,9 @@ async function check() {
     'fastcat.otio.v1',
     'videoEditor.backgroundTasks.copyTitle',
     'videoEditor.backgroundTasks.uploadFailed',
+    'videoEditor.timeline.backups.actionsLabel.restore',
+    'videoEditor.timeline.backups.actionsLabel.restoreMobile',
+    'videoEditor.timeline.backups.size',
   ]);
 
   const srcFiles = (await getFiles('src')).filter((f) =>

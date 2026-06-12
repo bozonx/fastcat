@@ -33,6 +33,7 @@ pub enum LayerKind {
     Text,
     Shape,
     Background,
+    Adjustment,
 }
 
 #[derive(Debug, Clone, Copy, Deserialize, PartialEq, Eq, TS)]
@@ -319,6 +320,10 @@ pub struct MonitorScene {
     /// Custom per-layer native decoded frame cache budget in MB when `frame_cache_mode=custom`.
     #[serde(default)]
     pub frame_cache_custom_mb: u32,
+    /// Enabled video master effects applied to the final composited frame.
+    #[serde(default)]
+    #[ts(type = "import('~/effects').VideoEffectSpec[]")]
+    pub master_effects: Vec<crate::compositor::effects::EffectSpec>,
 }
 
 fn default_fps() -> f64 {

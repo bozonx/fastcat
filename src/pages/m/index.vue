@@ -14,6 +14,7 @@ import MobileSettingsView from '~/components/settings/MobileSettingsView.vue';
 import UiMobileDrawer from '~/components/ui/UiMobileDrawer.vue';
 import UiFormField from '~/components/ui/UiFormField.vue';
 import MobileBottomNav from '~/components/layout/MobileBottomNav.vue';
+import FriendlyTime from '~/components/ui/FriendlyTime.vue';
 
 definePageMeta({
   layout: 'mobile',
@@ -116,16 +117,7 @@ const sortedProjects = computed(() => {
   return projects;
 });
 
-const formatDate = (dateStr?: string) => {
-  if (!dateStr) return '';
-  const date = new Date(dateStr);
-  return new Intl.DateTimeFormat(locale.value, {
-    day: 'numeric',
-    month: 'short',
-    hour: '2-digit',
-    minute: '2-digit',
-  }).format(date);
-};
+// formatDate removed in favor of FriendlyTime component
 </script>
 
 <template>
@@ -360,7 +352,7 @@ const formatDate = (dateStr?: string) => {
                               class="text-[10px] text-ui-text-muted font-medium flex items-center gap-1 mt-1"
                             >
                               <UIcon name="i-heroicons-clock" class="w-3 h-3" />
-                              {{ project.updatedAt ? formatDate(project.updatedAt) : '---' }}
+                              <FriendlyTime :date="project.updatedAt" fallback="---" />
                             </span>
                           </div>
 

@@ -55,8 +55,8 @@ function selectPreset(value: number) {
       :items="fpsMenuItems"
       :disabled="disabled"
       :content="{ align: 'end' }"
-      @update:open="blurOnDropdownMenuClose"
       :ui="{ content: 'min-w-24' }"
+      @update:open="blurOnDropdownMenuClose"
     >
       <UButton
         color="neutral"

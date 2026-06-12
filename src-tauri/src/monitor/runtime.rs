@@ -72,6 +72,8 @@ pub struct LayerRuntimeManager {
     bg_tx: Sender<BgLayerResult>,
     proxy: EventLoopProxy<MonitorCommand>,
     hw_settings: crate::FfmpegHardwareSettings,
+    /// Video master effects applied to the final composited frame.
+    pub master_effects: Vec<crate::compositor::effects::EffectSpec>,
 }
 
 impl LayerRuntimeManager {
@@ -98,6 +100,7 @@ impl LayerRuntimeManager {
             bg_tx,
             proxy,
             hw_settings,
+            master_effects: Vec::new(),
         }
     }
 
@@ -270,6 +273,7 @@ impl LayerRuntimeManager {
         self.loading_set.retain(|id| new_ids.contains(id));
         self.scene_size = (scene.width, scene.height);
         self.scene = Arc::new(scene.layers);
+        self.master_effects = scene.master_effects;
         true
     }
 
@@ -868,7 +872,9 @@ impl LayerRuntimeManager {
 
     /// Строит снимок доменной сцены в момент `t` для передачи в `Compositor`.
     pub fn build_compositor_scene(&self, t: f64) -> Scene {
-        build_compositor_scene(&self.scene, self.scene_size, &self.runtimes, t)
+        let mut scene = build_compositor_scene(&self.scene, self.scene_size, &self.runtimes, t);
+        scene.master_effects.clone_from(&self.master_effects);
+        scene
     }
 }
 

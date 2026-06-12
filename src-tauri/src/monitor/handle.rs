@@ -81,6 +81,8 @@ pub enum MonitorCommand {
     /// Регистрация channel'а для стрима RGBA-кадров в canvas-режиме.
     /// Каждый кадр: 8-байтный header (`u32 LE width`, `u32 LE height`) + RGBA8 пиксели.
     SetFrameChannel(Channel<InvokeResponseBody>),
+    /// Сброс channel'а стрима RGBA-кадров (например, при unmount canvas-элемента).
+    UnsetFrameChannel,
     /// Размер render target'а в canvas-режиме (физические пиксели). Может отличаться от `SetViewport`.
     SetCanvasSize {
         width: u32,

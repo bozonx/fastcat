@@ -97,6 +97,7 @@ pub fn build_compositor_scene(
         time: t,
         background: Color::TRANSPARENT,
         layers,
+        master_effects: Vec::new(),
     }
 }
 

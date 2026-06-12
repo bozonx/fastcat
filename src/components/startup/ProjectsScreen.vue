@@ -6,6 +6,7 @@ import UiModal from '~/components/ui/UiModal.vue';
 import UiSelect from '~/components/ui/UiSelect.vue';
 import UiTextInput from '~/components/ui/UiTextInput.vue';
 import UiFormField from '~/components/ui/UiFormField.vue';
+import FriendlyTime from '~/components/ui/FriendlyTime.vue';
 
 import MediaResolutionSettings from '~/components/media/MediaResolutionSettings.vue';
 import ProjectThumbnail from '~/components/startup/ProjectThumbnail.vue';
@@ -103,17 +104,7 @@ const sortedProjects = computed(() => {
   return projects;
 });
 
-const formatDate = (dateStr?: string) => {
-  if (!dateStr) return '';
-  const date = new Date(dateStr);
-  return new Intl.DateTimeFormat(locale.value, {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  }).format(date);
-};
+// formatDate removed in favor of FriendlyTime component
 </script>
 
 <template>
@@ -310,7 +301,7 @@ const formatDate = (dateStr?: string) => {
                     class="flex items-center justify-between mt-auto pt-2 border-t border-ui-border/50 h-8"
                   >
                     <span class="text-[10px] text-ui-text-muted font-medium truncate">
-                      {{ project.updatedAt ? formatDate(project.updatedAt) : '' }}
+                      <FriendlyTime :date="project.updatedAt" fallback="" />
                     </span>
                     <UDropdownMenu
                       :items="[

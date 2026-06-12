@@ -257,9 +257,7 @@ function handleCreateFolderRequest() {
 function validateNewFolderName(newName: string): string | boolean | null {
   const trimmed = newName.trim();
   if (!trimmed) return false;
-  const exists = folderEntries.value.some(
-    (e) => e.name.toLowerCase() === trimmed.toLowerCase()
-  );
+  const exists = folderEntries.value.some((e) => e.name.toLowerCase() === trimmed.toLowerCase());
   if (exists) {
     return t('common.validation.exists', 'Имя уже существует');
   }
@@ -273,7 +271,7 @@ function validateRename(newName: string): string | boolean | null {
     return true;
   }
   const exists = folderEntries.value.some(
-    (e) => e.name.toLowerCase() === trimmed.toLowerCase() && e.path !== entryToRename.value?.path
+    (e) => e.name.toLowerCase() === trimmed.toLowerCase() && e.path !== entryToRename.value?.path,
   );
   if (exists) {
     return t('common.validation.exists', 'Имя уже существует');

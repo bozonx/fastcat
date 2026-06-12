@@ -115,7 +115,7 @@ function handleCancel() {
             :disabled="loading"
             autocomplete="off"
             :ui="{
-              base: errorMsg ? 'ring-2 ring-error-500! border-error-500!' : ''
+              base: errorMsg ? 'ring-2 ring-error-500! border-error-500!' : '',
             }"
           />
         </UiFormField>

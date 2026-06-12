@@ -145,6 +145,7 @@ export function useNativeMonitorBridge(): void {
           0,
           Math.round(workspaceStore.userSettings.optimization.nativeFrameCacheCustomMb),
         ),
+        master_effects: [],
       };
     }
 
@@ -229,6 +230,7 @@ export function useNativeMonitorBridge(): void {
       () => projectStore.activeMonitor?.useProxy,
       () => proxyStore.existingProxies,
       () => workspaceStore.userSettings.optimization.nativeMonitorSyncMode,
+      () => timelineStore.timelineDoc?.metadata?.fastcat?.masterEffects,
     ],
     () => {
       void syncScene();
@@ -381,6 +383,10 @@ export function useNativeMonitorBridge(): void {
 
   onScopeDispose(() => {
     for (const un of unsubs) un();
+    if (seekThrottleId) {
+      clearTimeout(seekThrottleId);
+      seekThrottleId = null;
+    }
     if (!isNativeMonitorDisabled()) {
       // Pause playback and clear the scene to free resources, but do NOT close/kill the EventLoop
       // since winit EventLoop cannot be recreated in the same process on Linux.
@@ -401,6 +407,7 @@ export function useNativeMonitorBridge(): void {
           preview_sync_mode: 'balanced',
           frame_cache_mode: 'auto',
           frame_cache_custom_mb: 0,
+          master_effects: [],
         })
         .catch((err) => log.warn('monitor clear scene on dispose failed', err));
       void nativeMonitorIpc

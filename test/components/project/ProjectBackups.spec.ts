@@ -133,10 +133,12 @@ describe('ProjectBackups.vue', () => {
     expect(component.vm.isCreateVersionModalOpen).toBe(true);
 
     // Simulate confirm event from UiEntityCreationModal
-    await component.findComponent({ name: 'UiEntityCreationModal' }).vm.$emit('confirm', 'new_version.otio');
+    await component
+      .findComponent({ name: 'UiEntityCreationModal' })
+      .vm.$emit('confirm', 'new_version.otio');
     expect(mockTimelineStore.createVersionFromBackup).toHaveBeenCalledWith(
       mockTimelineStore.backupVersions[0],
-      'new_version.otio'
+      'new_version.otio',
     );
   });
 });

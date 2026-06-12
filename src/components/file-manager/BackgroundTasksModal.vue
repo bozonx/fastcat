@@ -2,6 +2,7 @@
 import UiModal from '~/components/ui/UiModal.vue';
 import { useBackgroundTasksStore } from '~/stores/background-tasks.store';
 import UiProgressSpinner from '~/components/ui/UiProgressSpinner.vue';
+import FriendlyTime from '~/components/ui/FriendlyTime.vue';
 
 defineProps<{
   open: boolean;
@@ -14,9 +15,7 @@ const emit = defineEmits<{
 const { t } = useI18n();
 const backgroundTasksStore = useBackgroundTasksStore();
 
-function formatTime(timestamp: number) {
-  return new Date(timestamp).toLocaleTimeString();
-}
+// formatTime removed in favor of FriendlyTime component
 </script>
 
 <template>
@@ -79,7 +78,7 @@ function formatTime(timestamp: number) {
           <div class="flex-1 min-w-0">
             <div class="flex items-center gap-2">
               <span class="font-medium text-sm truncate">{{ task.title }}</span>
-              <span class="text-xs text-ui-text-muted">{{ formatTime(task.createdAt) }}</span>
+              <span class="text-xs text-ui-text-muted"><FriendlyTime :date="task.createdAt" /></span>
             </div>
             <div v-if="task.description" class="text-xs text-ui-text-muted mt-1 line-clamp-1">
               {{ task.description }}
