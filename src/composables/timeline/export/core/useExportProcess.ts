@@ -180,6 +180,7 @@ export function useExportProcess(
           includeAudio: options.audio,
           onWarning: reportWarning,
         });
+        ensureNotCancelled();
         const rangeStartUs = options.exportRangeUs?.startUs ?? 0;
         const rangeEndUs = options.exportRangeUs?.endUs ?? timelineStore.duration;
         if (rangeEndUs <= rangeStartUs) {

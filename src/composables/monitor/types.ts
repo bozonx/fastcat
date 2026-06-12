@@ -8,6 +8,8 @@ export interface WorkerTimelineClip {
 
   audioGain?: number;
   audioBalance?: number;
+  originalAudioGain?: number;
+  originalAudioBalance?: number;
   audioFadeInUs?: number;
   audioFadeOutUs?: number;
   audioFadeInCurve?: 'linear' | 'logarithmic';

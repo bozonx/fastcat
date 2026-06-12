@@ -418,6 +418,13 @@ export async function toWorkerTimelineClips(
       speed: item.speedActive !== false ? item.speed : undefined,
       audioGain: mergeGain(parentAudioGain, item.audioGain),
       audioBalance: mergeBalance(parentAudioBalance, item.audioBalance),
+      // Clip-only gain/balance (track bus excluded). The native mixer applies the
+      // owning track's gain/balance separately on its bus, so the layer must not
+      // also carry it — otherwise track gain/balance is applied twice. `item.audioGain`
+      // above is the merged track×clip value the web mixer needs; the originals are
+      // the clip's own value, set by buildEffectiveAudioClipItems.
+      originalAudioGain: mergeGain(parentAudioGain, item.originalAudioGain),
+      originalAudioBalance: mergeBalance(parentAudioBalance, item.originalAudioBalance),
       audioFadeInUs: item.audioFadesActive !== false ? item.audioFadeInUs : undefined,
       audioFadeOutUs: item.audioFadesActive !== false ? item.audioFadeOutUs : undefined,
       audioFadeInCurve: item.audioFadesActive !== false ? item.audioFadeInCurve : undefined,
@@ -650,6 +657,13 @@ export async function toWorkerTimelineClips(
                   layer: 0,
                   audioGain: resolvedNClip.audioGain,
                   audioBalance: resolvedNClip.audioBalance,
+                  // A nested clip's track_id is the *inner* doc's track, which has no
+                  // matching native bus (the scene only exposes outer-doc tracks), so
+                  // the layer is mixed straight into master as an orphan. It must
+                  // therefore carry the full merged gain/balance — not the clip-only
+                  // value — since no bus will re-apply the (already-merged) track stage.
+                  originalAudioGain: resolvedNClip.audioGain,
+                  originalAudioBalance: resolvedNClip.audioBalance,
                   audioFadeInUs: mergeFadeInUs({
                     childFadeInUs: resolvedNClip.audioFadeInUs,
                     parentFadeInUs: item.audioFadeInUs,

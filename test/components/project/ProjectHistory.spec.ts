@@ -123,4 +123,50 @@ describe('ProjectHistory.vue', () => {
     expect(mockHistoryStore.redoGlobal).toHaveBeenCalled();
     expect(mockRestoreHistory).toHaveBeenCalledWith({ mock: 'fileSnapshot' });
   });
+
+  it('renders mobile empty state when mobile prop is true', async () => {
+    const component = await mountWithNuxt(ProjectHistory, { props: { mobile: true } });
+
+    expect(component.exists()).toBe(true);
+    expect(component.text()).toContain('videoEditor.fileManager.history.empty');
+
+    // Mobile layout should not have action buttons
+    expect(component.findAll('button').length).toBe(0);
+
+    // Should use the lucide history icon in mobile empty state (rendered as icon mock)
+    expect(component.find('span.opacity-40').exists()).toBe(true);
+  });
+
+  it('renders mobile history entries with correct styling', async () => {
+    mockHistoryStore.past = [
+      {
+        id: '1',
+        scope: 'timeline',
+        snapshot: {},
+        labelKey: 'videoEditor.fileManager.history.entries.addClip',
+        timestamp: Date.now() - 1000,
+      },
+    ];
+    mockHistoryStore.future = [
+      {
+        id: '2',
+        scope: 'timeline',
+        snapshot: {},
+        labelKey: 'videoEditor.fileManager.history.entries.deleteItems',
+        timestamp: Date.now() + 1000,
+      },
+    ];
+
+    const component = await mountWithNuxt(ProjectHistory, { props: { mobile: true } });
+
+    // Should render the entries
+    expect(component.text()).toContain('videoEditor.fileManager.history.entries.addClip');
+    expect(component.text()).toContain('videoEditor.fileManager.history.entries.deleteItems');
+
+    // Current state should have mobile highlight class
+    expect(component.html()).toContain('bg-primary-500/10');
+
+    // Mobile layout should not have action buttons
+    expect(component.findAll('button').length).toBe(0);
+  });
 });

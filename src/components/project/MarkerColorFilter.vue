@@ -49,9 +49,9 @@ function toggleAll() {
         v-for="color in availableColors"
         :key="color"
         type="button"
-        class="w-4 h-4 rounded-full border border-ui-border transition-all hover:scale-110 relative cursor-pointer"
+        class="w-4 h-4 rounded-full border border-ui-border transition-all hover:scale-110 relative cursor-pointer focus:outline-none focus:ring-0 focus-visible:outline-none"
         :class="{
-          'opacity-100 ring-2 ring-primary-500 ring-offset-1 ring-offset-ui-bg-elevated scale-110 z-10':
+          'opacity-100 ring-2 ring-white ring-offset-1 ring-offset-ui-bg-elevated scale-110 z-10':
             selectedColors.has(color),
           'opacity-40 hover:opacity-75': !selectedColors.has(color),
         }"

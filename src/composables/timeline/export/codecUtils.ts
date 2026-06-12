@@ -39,7 +39,7 @@ export function resolveExportCodecs(
 export function supportsExportAlpha(format: string, videoCodec?: string) {
   if (format === 'webm') return true;
   if (format === 'mkv') {
-    const alphaCodecs = ['vp09.00.10.08', 'av01.0.05M.08'];
+    const alphaCodecs = ['vp09.00.10.08'];
     return alphaCodecs.includes(videoCodec ?? '');
   }
   return false;

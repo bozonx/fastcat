@@ -123,7 +123,7 @@ describe('useTimelineExport pure functions', () => {
     expect(supportsExportAlpha('webm')).toBe(true);
     expect(supportsExportAlpha('mp4')).toBe(false);
     expect(supportsExportAlpha('mkv')).toBe(false);
-    expect(supportsExportAlpha('mkv', 'av01.0.05M.08')).toBe(true);
+    expect(supportsExportAlpha('mkv', 'av01.0.05M.08')).toBe(false);
     expect(supportsExportAlpha('mkv', 'vp09.00.10.08')).toBe(true);
     expect(supportsExportAlpha('mkv', 'avc1.640032')).toBe(false);
   });

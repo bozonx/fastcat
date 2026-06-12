@@ -26,7 +26,13 @@ export function buildEffectiveAudioClipItems(
 ): TimelineTrackItem[] {
   const allAudioTracks = params.audioTracks;
   const allVideoTracks = params.videoTracks;
-  const masterAudioEffects = (params.masterEffects ?? []).filter((e) => e?.target === 'audio');
+  // TODO: master audio effects are currently merged into every clip. This makes
+// them sound different from a true post-mix master-bus effect (e.g. compressor
+// / limiter / reverb applied per-clip instead of to the mixed output). A full
+// fix requires adding a master-effects pass in the native audio mixer after
+// all layers are summed, which touches the Rust audio pipeline, IPC DTO and
+// the web AudioMixer alike.
+const masterAudioEffects = (params.masterEffects ?? []).filter((e) => e?.target === 'audio');
 
   const hasSolo = [...allAudioTracks, ...allVideoTracks].some((t) => Boolean(t.audioSolo));
 

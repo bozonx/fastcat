@@ -104,6 +104,15 @@ export interface WorkerTimelineClip {
 
   audioGain?: number;
   audioBalance?: number;
+  /**
+   * Clip-only gain/balance, *excluding* the owning track's bus contribution.
+   * The native mixer applies the track bus separately (see `audio_tracks`), so
+   * the layer must carry only the clip's own value to avoid applying the track
+   * gain/balance twice. `audioGain`/`audioBalance` stay the fully-merged values
+   * used by the web export mixer (which has no separate bus stage).
+   */
+  originalAudioGain?: number;
+  originalAudioBalance?: number;
   audioFadeInUs?: number;
   audioFadeOutUs?: number;
   audioFadeInCurve?: 'linear' | 'logarithmic';
@@ -177,6 +186,8 @@ const WorkerTimelineClipSchema = z.object({
 
   audioGain: z.number().optional(),
   audioBalance: z.number().optional(),
+  originalAudioGain: z.number().optional(),
+  originalAudioBalance: z.number().optional(),
   audioFadeInUs: z.number().optional(),
   audioFadeOutUs: z.number().optional(),
   audioFadeInCurve: FadeCurveSchema.optional(),
