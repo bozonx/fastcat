@@ -600,12 +600,10 @@ export function createProxyService(params: {
         'completed',
         `${failedCount} of ${needsProxy.length} failed. ${skippedMessage}`.trim(),
       );
+    } else if (skippedMessage) {
+      params.backgroundTasksStore.updateTaskStatus(batchBgTaskId, 'completed', skippedMessage);
     } else {
-      params.backgroundTasksStore.updateTaskStatus(
-        batchBgTaskId,
-        'completed',
-        skippedMessage || undefined,
-      );
+      params.backgroundTasksStore.updateTaskStatus(batchBgTaskId, 'completed');
     }
 
     return { skippedCount };

@@ -12,6 +12,7 @@ import { usePresetsStore } from '~/stores/presets.store';
 import { useConfirmClose } from '~/composables/useConfirmClose';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useUiStore } from '~/stores/ui.store';
+import { useDismissMenusOnEscape } from '~/composables/useDismissMenusOnEscape';
 import { loadFonts } from '~/utils/video-editor/load-fonts';
 const uiStore = useUiStore();
 const { t } = useI18n();
@@ -22,6 +23,7 @@ const colorMode = useColorMode();
 const presetsStore = usePresetsStore();
 const runtimeConfig = useRuntimeConfig();
 const workspaceStore = useWorkspaceStore();
+useDismissMenusOnEscape();
 
 function preventContextMenu(e: MouseEvent) {
   e.preventDefault();

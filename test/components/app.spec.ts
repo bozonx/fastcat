@@ -14,6 +14,10 @@ mockNuxtImport('useI18n', () => {
   });
 });
 
+mockNuxtImport('useDevice', () => {
+  return () => ({ isMobile: false });
+});
+
 vi.mock('~/components/file-manager/FileConversionModal.vue', () => ({
   default: { name: 'FileConversionModal', template: '<div />' },
 }));

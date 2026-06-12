@@ -315,7 +315,7 @@ const isReadonly = computed(
 );
 
 onMounted(() => {
-  window.addEventListener('keydown', onMobileMonitorKeyDown);
+  window.addEventListener('keydown', onMobileMonitorKeyDown, { capture: true });
   if (viewportRef.value) {
     timecodeEl.value = (viewportRef.value as { timecodeEl?: HTMLElement }).timecodeEl ?? null;
   }
@@ -325,7 +325,7 @@ onMounted(() => {
 });
 
 onBeforeUnmount(() => {
-  window.removeEventListener('keydown', onMobileMonitorKeyDown);
+  window.removeEventListener('keydown', onMobileMonitorKeyDown, { capture: true });
 });
 
 watch(viewportRef, (vp) => {

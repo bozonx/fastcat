@@ -308,7 +308,7 @@ function resetIdle() {
 
 onMounted(() => {
   window.addEventListener('mousemove', resetIdle);
-  window.addEventListener('keydown', onMonitorKeyDown);
+  window.addEventListener('keydown', onMonitorKeyDown, { capture: true });
   // Synchronize timecode transition target
   if (viewportRef.value) {
     timecodeEl.value = (viewportRef.value as { timecodeEl?: HTMLElement }).timecodeEl ?? null;
@@ -317,7 +317,7 @@ onMounted(() => {
 
 onUnmounted(() => {
   window.removeEventListener('mousemove', resetIdle);
-  window.removeEventListener('keydown', onMonitorKeyDown);
+  window.removeEventListener('keydown', onMonitorKeyDown, { capture: true });
   clearTimeout(idleTimer);
 });
 

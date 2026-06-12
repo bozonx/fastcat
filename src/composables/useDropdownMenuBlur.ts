@@ -32,7 +32,9 @@ export function blurOnDropdownMenuClose(isOpen: boolean) {
 
   for (const delay of BLUR_DELAYS_MS) {
     setTimeout(() => {
-      blurButton(findButton(document.activeElement));
+      if (typeof document !== 'undefined') {
+        blurButton(findButton(document.activeElement));
+      }
       blurButton(triggerButton);
     }, delay);
   }

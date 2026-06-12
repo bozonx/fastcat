@@ -45,21 +45,14 @@ pub fn render_scene_to_wav(params: WavRenderParams<'_>) -> anyhow::Result<()> {
         start
     };
     let estimated_frames = ((end - start) * target.sample_rate as f64).round().max(1.0) as u64;
-    let estimated_data_size = estimated_frames
-        .saturating_mul(target.channels as u64)
-        .saturating_mul(4);
-    if estimated_data_size > u32::MAX as u64 {
-        return Err(anyhow::anyhow!(
-            "WAV data size {} exceeds 32-bit limit ({}). Use a shorter export range or lower sample rate.",
-            estimated_data_size,
-            u32::MAX
-        ));
-    }
     let mut file = std::fs::File::create(params.target_path)
-        .with_context(|| format!("create audio wav {}", params.target_path.display()))?;
+        .with_context(|| format!("create audio mix {}", params.target_path.display()))?;
 
-    // Write placeholder header (will be patched after we know actual size).
-    write_wav_f32_header_placeholder(&mut file, target.sample_rate, target.channels as u16)?;
+    // Write placeholder header (will be patched after we know actual size). The temp mix
+    // is a Sony Wave64 (.w64) container: identical f32 PCM payload to a plain WAV but with
+    // 64-bit size fields, so a long export (a RIFF/WAV's 32-bit size caps at 4 GB ≈ 3 h of
+    // 48 kHz stereo f32) no longer overflows. ffmpeg reads it natively (format_name=w64).
+    write_wave64_f32_header_placeholder(&mut file, target.sample_rate, target.channels as u16)?;
 
     let shared = Arc::new((Mutex::new(AudioShared::default()), Condvar::new()));
 
@@ -92,33 +85,67 @@ pub fn render_scene_to_wav(params: WavRenderParams<'_>) -> anyhow::Result<()> {
         written_frames = written_frames.saturating_add(chunk_frames);
     }
 
-    // Patch header with actual frame count.
-    let data_size = written_frames
+    // Patch the 64-bit size fields now that the frame count is known. Wave64 chunk sizes
+    // *include* their own 16-byte GUID and 8-byte size field; the top-level `riff` size is
+    // the whole file. Chunks are aligned to 8 bytes, with trailing pad excluded from the
+    // chunk size but counted in the file total — so pad the `data` payload to a boundary.
+    let data_bytes = written_frames
         .saturating_mul(target.channels as u64)
         .saturating_mul(4);
-    let riff_size = 36u64.saturating_add(data_size);
-    file.seek(std::io::SeekFrom::Start(4))?;
-    file.write_all(&(riff_size as u32).to_le_bytes())?;
-    file.seek(std::io::SeekFrom::Start(40))?;
-    file.write_all(&(data_size.min(u32::MAX as u64) as u32).to_le_bytes())?;
+    let pad = (8 - (data_bytes % 8)) % 8;
+    if pad > 0 {
+        file.write_all(&[0u8; 7][..pad as usize])?;
+    }
+    let data_chunk_size = W64_DATA_HEADER_LEN + data_bytes;
+    let riff_size = W64_HEADER_LEN + data_bytes + pad;
+    // riff size field: 16 (riff GUID) + 8 (this field).
+    file.seek(std::io::SeekFrom::Start(16))?;
+    file.write_all(&riff_size.to_le_bytes())?;
+    // data size field: 16 (riff) + 8 + 16 (wave) + 40 (fmt chunk) + 16 (data GUID) = 96.
+    file.seek(std::io::SeekFrom::Start(96))?;
+    file.write_all(&data_chunk_size.to_le_bytes())?;
     Ok(())
 }
 
-fn write_wav_f32_header_placeholder(
+/// 12-byte fixed suffix shared by every Wave64 GUID after its 4-byte ASCII tag.
+const W64_GUID_SUFFIX: [u8; 12] = [
+    0xF3, 0xAC, 0xD3, 0x11, 0x8C, 0xD1, 0x00, 0xC0, 0x4F, 0x8E, 0xDB, 0x8A,
+];
+/// The top-level `riff` GUID uses a *different* suffix from the sub-chunks.
+const W64_RIFF_GUID: [u8; 16] = [
+    b'r', b'i', b'f', b'f', 0x2E, 0x91, 0xCF, 0x11, 0xA5, 0xD6, 0x28, 0xDB, 0x04, 0xC1, 0x00, 0x00,
+];
+/// Bytes of header that precede the `data` payload (riff..data GUID + data size field).
+const W64_HEADER_LEN: u64 = 104;
+/// `data` chunk overhead counted in its own size field: 16 (GUID) + 8 (size).
+const W64_DATA_HEADER_LEN: u64 = 24;
+
+fn w64_guid(tag: &[u8; 4]) -> [u8; 16] {
+    let mut guid = [0u8; 16];
+    guid[..4].copy_from_slice(tag);
+    guid[4..].copy_from_slice(&W64_GUID_SUFFIX);
+    guid
+}
+
+/// Writes the 104-byte Wave64 header with placeholder (zero) size fields, patched later.
+/// Layout: riff GUID + size │ wave GUID │ fmt GUID + size + 16-byte f32 WAVEFORMAT │
+/// data GUID + size. All multi-byte fields little-endian.
+fn write_wave64_f32_header_placeholder(
     file: &mut std::fs::File,
     sample_rate: u32,
     channels: u16,
 ) -> anyhow::Result<()> {
     let bits_per_sample = 32u16;
     let bytes_per_sample = (bits_per_sample / 8) as u32;
-    let data_size = 0u32;
-    let riff_size = 36u32.saturating_add(data_size);
-    file.write_all(b"RIFF")?;
-    file.write_all(&riff_size.to_le_bytes())?;
-    file.write_all(b"WAVE")?;
-    file.write_all(b"fmt ")?;
-    file.write_all(&16u32.to_le_bytes())?;
-    file.write_all(&3u16.to_le_bytes())?;
+
+    file.write_all(&W64_RIFF_GUID)?;
+    file.write_all(&0u64.to_le_bytes())?; // riff size (patched)
+    file.write_all(&w64_guid(b"wave"))?;
+
+    file.write_all(&w64_guid(b"fmt "))?;
+    // fmt chunk size: 16 (GUID) + 8 (size) + 16 (WAVEFORMAT body) = 40.
+    file.write_all(&40u64.to_le_bytes())?;
+    file.write_all(&3u16.to_le_bytes())?; // WAVE_FORMAT_IEEE_FLOAT
     file.write_all(&channels.to_le_bytes())?;
     file.write_all(&sample_rate.to_le_bytes())?;
     let byte_rate = sample_rate
@@ -128,8 +155,9 @@ fn write_wav_f32_header_placeholder(
     let block_align = channels.saturating_mul(bytes_per_sample as u16);
     file.write_all(&block_align.to_le_bytes())?;
     file.write_all(&bits_per_sample.to_le_bytes())?;
-    file.write_all(b"data")?;
-    file.write_all(&data_size.to_le_bytes())?;
+
+    file.write_all(&w64_guid(b"data"))?;
+    file.write_all(&0u64.to_le_bytes())?; // data size (patched)
     Ok(())
 }
 
@@ -1313,9 +1341,9 @@ mod tests {
     // ------------------------------------------------------------------
 
     #[test]
-    fn render_scene_to_wav_produces_valid_header() {
+    fn render_scene_to_wav_produces_valid_wave64_header() {
         let tmp =
-            std::env::temp_dir().join(format!("fastcat-audit-wav-test-{}.wav", std::process::id()));
+            std::env::temp_dir().join(format!("fastcat-audit-w64-test-{}.w64", std::process::id()));
         render_scene_to_wav(WavRenderParams {
             scene: &[],
             tracks: &[],
@@ -1330,16 +1358,52 @@ mod tests {
         .unwrap();
 
         let bytes = std::fs::read(&tmp).unwrap();
-        assert!(bytes.len() >= 44);
-        assert_eq!(&bytes[0..4], b"RIFF");
-        assert_eq!(&bytes[8..12], b"WAVE");
-        assert_eq!(&bytes[12..16], b"fmt ");
-        assert_eq!(u16::from_le_bytes(bytes[22..24].try_into().unwrap()), 1);
+        assert_eq!(bytes.len() as u64 % 8, 0, "file must be 8-byte aligned");
+        // riff / wave / fmt / data GUIDs match ffmpeg's Wave64 layout.
+        assert_eq!(&bytes[0..16], &super::W64_RIFF_GUID);
+        assert_eq!(&bytes[24..40], &super::w64_guid(b"wave"));
+        assert_eq!(&bytes[40..56], &super::w64_guid(b"fmt "));
+        assert_eq!(&bytes[80..96], &super::w64_guid(b"data"));
+        // fmt: 64-bit chunk size 40, IEEE-float tag, 1 channel.
+        assert_eq!(u64::from_le_bytes(bytes[56..64].try_into().unwrap()), 40);
+        assert_eq!(u16::from_le_bytes(bytes[64..66].try_into().unwrap()), 3);
+        assert_eq!(u16::from_le_bytes(bytes[66..68].try_into().unwrap()), 1);
+        assert_eq!(u32::from_le_bytes(bytes[68..72].try_into().unwrap()), 48000);
+        // 64-bit sizes: riff = whole file, data = 24 (GUID+size) + payload bytes.
+        let riff_size = u64::from_le_bytes(bytes[16..24].try_into().unwrap());
+        let data_size = u64::from_le_bytes(bytes[96..104].try_into().unwrap());
+        assert_eq!(riff_size, bytes.len() as u64);
+        assert_eq!(data_size, (bytes.len() as u64 - 104) + 24);
 
-        let data_size = u32::from_le_bytes(bytes[40..44].try_into().unwrap()) as u64;
-        let riff_size = u32::from_le_bytes(bytes[4..8].try_into().unwrap()) as u64;
-        assert_eq!(riff_size, 36 + data_size);
+        let _ = std::fs::remove_file(&tmp);
+    }
 
+    #[test]
+    fn render_scene_to_wav_pads_odd_payload_to_8_byte_boundary() {
+        // Mono with an odd frame count yields a 4-byte-aligned payload; Wave64 requires
+        // 8-byte chunk alignment, so the file must be padded (and the pad excluded from
+        // the data chunk size but included in the file/riff total).
+        let tmp = std::env::temp_dir()
+            .join(format!("fastcat-audit-w64-pad-test-{}.w64", std::process::id()));
+        // 7 frames @ 7000 Hz over 0.001 s ⇒ ceil to a small odd-ish count; mono f32.
+        render_scene_to_wav(WavRenderParams {
+            scene: &[],
+            tracks: &[],
+            master_gain: 1.0,
+            start_sec: 0.0,
+            end_sec: 0.000_5,
+            sample_rate: 6000,
+            output_channels: 1,
+            target_path: &tmp,
+            should_cancel: None,
+        })
+        .unwrap();
+        let bytes = std::fs::read(&tmp).unwrap();
+        assert_eq!(bytes.len() as u64 % 8, 0);
+        let data_size = u64::from_le_bytes(bytes[96..104].try_into().unwrap());
+        let payload = bytes.len() as u64 - 104; // includes any pad
+        // data chunk size counts payload sans pad; pad is 0..=4 bytes.
+        assert!(data_size <= payload + 24 && data_size + 4 >= payload + 24);
         let _ = std::fs::remove_file(&tmp);
     }
 
@@ -1391,32 +1455,4 @@ mod tests {
         let _ = std::fs::remove_file(&tmp);
     }
 
-    #[test]
-    fn render_scene_to_wav_rejects_oversized_riff_before_create() {
-        let tmp = std::env::temp_dir().join(format!(
-            "fastcat-audit-wav-large-test-{}.wav",
-            std::process::id()
-        ));
-        let _ = std::fs::remove_file(&tmp);
-        let result = render_scene_to_wav(WavRenderParams {
-            scene: &[],
-            tracks: &[],
-            master_gain: 1.0,
-            start_sec: 0.0,
-            end_sec: 3_000.0,
-            sample_rate: 192_000,
-            output_channels: 2,
-            target_path: &tmp,
-            should_cancel: None,
-        });
-
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("exceeds 32-bit limit"));
-        assert!(
-            !tmp.exists(),
-            "oversized export should fail before file create"
-        );
-    }
 }
