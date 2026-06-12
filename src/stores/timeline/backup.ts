@@ -39,6 +39,8 @@ export interface TimelineBackupDeps {
   previewMode: Ref<boolean>;
   previewBackupInfo: Ref<TimelinePreviewBackupInfo | null>;
   isReadOnly?: Ref<boolean>;
+  isMobile?: Ref<boolean>;
+  isDirty?: Ref<boolean>;
   projectStore: {
     readTextByPath: (path: string) => Promise<string | null>;
     writeTextByPath: (path: string, text: string) => Promise<void>;
@@ -74,6 +76,7 @@ export interface TimelineBackupModule {
   restoreVersion: (version: TimelineBackupVersion) => Promise<void>;
   deleteBackupVersion: (version: TimelineBackupVersion) => Promise<void>;
   loadBackupVersions: () => Promise<void>;
+  clearAllBackups: () => Promise<void>;
 }
 
 /**
@@ -82,6 +85,7 @@ export interface TimelineBackupModule {
  * and backups, and can preview or restore any of them.
  */
 export function createTimelineBackupModule(deps: TimelineBackupDeps): TimelineBackupModule {
+  let module: TimelineBackupModule;
   const backupVersions = ref<TimelineBackupVersion[]>([]);
 
   async function readVersionText(version: TimelineBackupVersion): Promise<string> {
@@ -276,7 +280,7 @@ export function createTimelineBackupModule(deps: TimelineBackupDeps): TimelineBa
         title: deps.t('videoEditor.timeline.backups.versionRestored'),
         color: 'success',
       });
-      await loadBackupVersions();
+      await module.loadBackupVersions();
     } catch (e) {
       log.error('Failed to restore version', e);
       deps.toast.add({
@@ -316,7 +320,7 @@ export function createTimelineBackupModule(deps: TimelineBackupDeps): TimelineBa
         title: deps.t('videoEditor.timeline.backups.versionDeleted'),
         color: 'success',
       });
-      await loadBackupVersions();
+      await module.loadBackupVersions();
     } catch (e) {
       log.error('Failed to delete version', e);
       deps.toast.add({
@@ -331,6 +335,17 @@ export function createTimelineBackupModule(deps: TimelineBackupDeps): TimelineBa
       backupVersions.value = [];
       return;
     }
+
+    // Flush any pending dirty changes to the autosave sidecar on desktop
+    // before listing, so the latest unsaved work is visible in the panel.
+    if (!deps.isMobile?.value && !deps.isReadOnly?.value && deps.isDirty?.value) {
+      try {
+        await deps.requestTimelineSave({ immediate: true });
+      } catch (e) {
+        log.warn('Failed to flush autosave before loading backup versions', e);
+      }
+    }
+
     const list: TimelineBackupVersion[] = [];
     try {
       // 1. Main file
@@ -346,18 +361,20 @@ export function createTimelineBackupModule(deps: TimelineBackupDeps): TimelineBa
         });
       }
 
-      // 2. Autosave
-      const autosavePath = `.fastcat/autosave/${deps.currentTimelinePath.value}`;
-      const autosaveMeta = await deps.projectStore.getFileMetadata(autosavePath);
-      if (autosaveMeta) {
-        list.push({
-          type: 'autosave',
-          name: 'autosave',
-          path: autosavePath,
-          date: new Date(autosaveMeta.lastModified),
-          size: autosaveMeta.size,
-          label: deps.t('videoEditor.timeline.backups.autosave'),
-        });
+      // 2. Autosave (only on desktop)
+      if (!deps.isMobile?.value) {
+        const autosavePath = `.fastcat/autosave/${deps.currentTimelinePath.value}`;
+        const autosaveMeta = await deps.projectStore.getFileMetadata(autosavePath);
+        if (autosaveMeta) {
+          list.push({
+            type: 'autosave',
+            name: 'autosave',
+            path: autosavePath,
+            date: new Date(autosaveMeta.lastModified),
+            size: autosaveMeta.size,
+            label: deps.t('videoEditor.timeline.backups.autosave'),
+          });
+        }
       }
 
       // 3. Backups
@@ -402,7 +419,34 @@ export function createTimelineBackupModule(deps: TimelineBackupDeps): TimelineBa
     backupVersions.value = list;
   }
 
-  return {
+  async function clearAllBackups() {
+    if (deps.isReadOnly?.value) {
+      deps.toast.add({
+        title: deps.t('videoEditor.timeline.saveBlockedReadOnlyTitle'),
+        description: deps.previewMode.value
+          ? deps.t('videoEditor.timeline.saveBlockedPreviewDesc')
+          : deps.t('videoEditor.timeline.saveBlockedLockedDesc'),
+        color: 'warning',
+      });
+      return;
+    }
+    try {
+      await deps.projectStore.deleteByPath('.fastcat/backups', { recursive: true });
+      deps.toast.add({
+        title: deps.t('videoEditor.timeline.backups.clearSuccess'),
+        color: 'success',
+      });
+      await module.loadBackupVersions();
+    } catch (e) {
+      log.error('Failed to clear backups', e);
+      deps.toast.add({
+        title: deps.t('videoEditor.timeline.backups.clearError'),
+        color: 'error',
+      });
+    }
+  }
+
+  module = {
     backupVersions,
     handleBackup,
     preserveAndDiscardAutosave,
@@ -412,5 +456,8 @@ export function createTimelineBackupModule(deps: TimelineBackupDeps): TimelineBa
     restoreVersion,
     deleteBackupVersion,
     loadBackupVersions,
+    clearAllBackups,
   };
+
+  return module;
 }

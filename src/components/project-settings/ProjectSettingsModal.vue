@@ -6,6 +6,7 @@ import UiConfirmModal from '~/components/ui/UiConfirmModal.vue';
 import { ref, computed } from 'vue';
 import { useProjectStore } from '~/stores/project.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
+import { useTimelineStore } from '~/stores/timeline.store';
 import {
   resolveExportPreset,
   resolveProjectPreset,
@@ -31,6 +32,9 @@ const emit = defineEmits<{
 const { t } = useI18n();
 const projectStore = useProjectStore();
 const workspaceStore = useWorkspaceStore();
+const timelineStore = useTimelineStore();
+
+const storageStatsKey = ref(0);
 
 const isOpen = computed({
   get: () => props.open,
@@ -46,23 +50,13 @@ async function confirmClearProjectVardata() {
   isClearProjectVardataConfirmOpen.value = false;
   if (!projectStore.currentProjectId) return;
   await workspaceStore.clearProjectVardata(projectStore.currentProjectId);
+  storageStatsKey.value++;
 }
 
 async function confirmClearBackups() {
   isClearBackupsConfirmOpen.value = false;
-  try {
-    const backupDir = await projectStore.getDirectoryHandleByPath('.fastcat/backups', {
-      create: false,
-    });
-    if (backupDir) {
-      const parent = await projectStore.getDirectoryHandleByPath('.fastcat', { create: false });
-      if (parent) {
-        await parent.removeEntry('backups', { recursive: true });
-      }
-    }
-  } catch (e) {
-    log.error('Failed to clear backups', e);
-  }
+  await timelineStore.clearAllBackups();
+  storageStatsKey.value++;
 }
 
 async function confirmDeleteProject() {
@@ -218,6 +212,7 @@ async function resetToDefaults() {
       <div class="space-y-2 pt-2 px-0">
         <UiFormSectionHeader :title="t('videoEditor.projectSettings.storage')" />
         <StorageSettings
+          :key="storageStatsKey"
           @clear-temp="isClearProjectVardataConfirmOpen = true"
           @clear-backups="isClearBackupsConfirmOpen = true"
           @delete-project="isDeleteProjectConfirmOpen = true"

@@ -43,6 +43,8 @@ function createMockDeps(overrides: Partial<TimelineBackupDeps> = {}): TimelineBa
     currentTime: ref(0),
     previewMode: ref(false),
     previewBackupInfo: ref(null),
+    isMobile: ref(false),
+    isDirty: ref(false),
     projectStore: makeProjectStoreMock(),
     workspaceStore: { userSettings: { backup: { enabled: true, count: 5 } } },
     toast: { add: vi.fn() },
@@ -86,6 +88,38 @@ describe('createTimelineBackupModule', () => {
       expect(main.path).toBe('project/clip.otio');
       expect(main.size).toBe(4); // 'main'.length
       expect(backup.backupVersions.value[1].path).toBe('.fastcat/autosave/project/clip.otio');
+    });
+
+    it('does not flush autosave or list it when isMobile is true', async () => {
+      const files: Record<string, FileMeta> = {
+        'project/clip.otio': { text: 'main', lastModified: 1000 },
+        '.fastcat/autosave/project/clip.otio': { text: 'autosave', lastModified: 2000 },
+      };
+      const deps = createMockDeps({
+        projectStore: makeProjectStoreMock(files),
+        isMobile: ref(true),
+      });
+      const backup = createTimelineBackupModule(deps);
+
+      await backup.loadBackupVersions();
+
+      expect(deps.requestTimelineSave).not.toHaveBeenCalled();
+      expect(backup.backupVersions.value.map((v) => v.type)).toEqual(['main']);
+    });
+
+    it('flushes autosave when isDirty is true', async () => {
+      const files: Record<string, FileMeta> = {
+        'project/clip.otio': { text: 'main', lastModified: 1000 },
+      };
+      const deps = createMockDeps({
+        projectStore: makeProjectStoreMock(files),
+        isDirty: ref(true),
+      });
+      const backup = createTimelineBackupModule(deps);
+
+      await backup.loadBackupVersions();
+
+      expect(deps.requestTimelineSave).toHaveBeenCalledWith({ immediate: true });
     });
   });
 
@@ -414,6 +448,44 @@ describe('createTimelineBackupModule', () => {
       expect(deps.previewMode.value).toBe(false);
       expect(clearSelection).toHaveBeenCalledOnce();
       expect(removeSelectionRange).toHaveBeenCalledOnce();
+    });
+  });
+
+  describe('clearAllBackups', () => {
+    it('deletes backups folder recursively and reloads versions', async () => {
+      const projectStore = makeProjectStoreMock();
+      const deps = createMockDeps({ projectStore });
+      const backup = createTimelineBackupModule(deps);
+      vi.spyOn(backup, 'loadBackupVersions').mockResolvedValue(undefined);
+
+      await backup.clearAllBackups();
+
+      expect(projectStore.deleteByPath).toHaveBeenCalledWith('.fastcat/backups', { recursive: true });
+      expect(deps.toast.add).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: 'videoEditor.timeline.backups.clearSuccess',
+          color: 'success',
+        }),
+      );
+      expect(backup.loadBackupVersions).toHaveBeenCalledOnce();
+    });
+
+    it('does nothing and toast warning if read-only', async () => {
+      const projectStore = makeProjectStoreMock();
+      const deps = createMockDeps({ projectStore, isReadOnly: ref(true) });
+      const backup = createTimelineBackupModule(deps);
+      vi.spyOn(backup, 'loadBackupVersions');
+
+      await backup.clearAllBackups();
+
+      expect(projectStore.deleteByPath).not.toHaveBeenCalled();
+      expect(deps.toast.add).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: 'videoEditor.timeline.saveBlockedReadOnlyTitle',
+          color: 'warning',
+        }),
+      );
+      expect(backup.loadBackupVersions).not.toHaveBeenCalled();
     });
   });
 });

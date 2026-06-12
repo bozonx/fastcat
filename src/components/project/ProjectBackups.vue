@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { computed, onMounted, watch } from 'vue';
+import { ref, computed, onMounted, watch } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useProjectStore } from '~/stores/project.store';
 import UiEmptyState from '~/components/ui/UiEmptyState.vue';
+import UiConfirmModal from '~/components/ui/UiConfirmModal.vue';
 
 defineProps<{
   compact?: boolean;
@@ -13,6 +14,16 @@ const timelineStore = useTimelineStore();
 const projectStore = useProjectStore();
 
 const isReadOnly = computed(() => projectStore.isReadOnly || timelineStore.previewMode);
+const isClearBackupsConfirmOpen = ref(false);
+
+const hasBackups = computed(() => {
+  return versions.value.some((v) => v.type === 'backup');
+});
+
+async function handleClearBackups() {
+  isClearBackupsConfirmOpen.value = false;
+  await timelineStore.clearAllBackups();
+}
 
 onMounted(() => {
   timelineStore.loadBackupVersions();
@@ -47,6 +58,23 @@ const versions = computed(() => timelineStore.backupVersions);
 
 <template>
   <div class="h-full flex flex-col bg-ui-bg-elevated overflow-hidden">
+    <!-- Clear Backups Confirmation Modal -->
+    <UiConfirmModal
+      v-model:open="isClearBackupsConfirmOpen"
+      :title="t('videoEditor.projectSettings.clearBackupsTitle')"
+      :description="
+        t(
+          'videoEditor.projectSettings.clearBackupsDescription',
+          'This will delete all auto-saved timeline backups for this project. This action cannot be undone.',
+        )
+      "
+      :confirm-text="t('videoEditor.projectSettings.clearTempConfirm')"
+      :cancel-text="t('common.cancel')"
+      color="warning"
+      icon="i-heroicons-trash"
+      @confirm="handleClearBackups"
+    />
+
     <!-- Header with Refresh Button -->
     <div
       class="px-4 py-2.5 border-b border-ui-border flex items-center justify-between bg-ui-bg shrink-0"
@@ -54,14 +82,32 @@ const versions = computed(() => timelineStore.backupVersions);
       <span class="text-xs text-ui-text-muted font-semibold uppercase tracking-wider">
         {{ t('videoEditor.timeline.backups.title') }}
       </span>
-      <UButton
-        icon="i-heroicons-arrow-path"
-        size="xs"
-        variant="ghost"
-        color="neutral"
-        class="cursor-pointer"
-        @click="timelineStore.loadBackupVersions()"
-      />
+      <div class="flex items-center gap-1.5">
+        <!-- Clear Backups Button -->
+        <UTooltip
+          v-if="hasBackups"
+          :text="t('videoEditor.projectSettings.clearBackups')"
+        >
+          <UButton
+            icon="i-heroicons-trash"
+            size="xs"
+            variant="ghost"
+            color="error"
+            class="cursor-pointer"
+            :disabled="isReadOnly"
+            @click="isClearBackupsConfirmOpen = true"
+          />
+        </UTooltip>
+        <!-- Refresh Button -->
+        <UButton
+          icon="i-heroicons-arrow-path"
+          size="xs"
+          variant="ghost"
+          color="neutral"
+          class="cursor-pointer"
+          @click="timelineStore.loadBackupVersions()"
+        />
+      </div>
     </div>
 
     <!-- Table content -->

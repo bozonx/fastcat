@@ -1,4 +1,5 @@
 import {
+  copyFile,
   mkdir,
   readDir,
   readFile,
@@ -11,7 +12,7 @@ import {
 import { acquireStreamingFileIoSlot, withFileWriteSlot } from '~/utils/io/io-governor';
 import { withTauriReadHandle } from '~/stores/workspace/provider/tauri-read-handle-pool';
 import { randomToken } from '~/utils/ids';
-import { openWriteFileStream } from 'tauri-plugin-fs-stream-api';
+import { openReadFileStream, openWriteFileStream } from 'tauri-plugin-fs-stream-api';
 import { joinTauriFsPath } from '~/utils/tauri-local-path';
 import { getMimeTypeFromFilename } from '~/utils/media-types';
 
@@ -169,7 +170,7 @@ export class TauriFileHandle {
     const fileStat = await stat(this.path).catch(() => ({ mtime: Date.now(), size: 0 }));
     const size = fileStat.size ?? 0;
     const mimeType = getMimeTypeFromFilename(this.name);
-    if (size > LAZY_FILE_MEDIA_THRESHOLD_BYTES && isMediaFile(this.name)) {
+    if (isMediaFile(this.name)) {
       return new LazyTauriFile({
         path: this.path,
         name: this.name,
@@ -204,18 +205,44 @@ export class TauriFileHandle {
     let fileSize = 0;
     let position = 0;
 
+    if (options?.keepExistingData !== false && (await exists(this.path))) {
+      try {
+        await copyFile(this.path, tempPath);
+        const fileStat = await stat(this.path);
+        fileSize = fileStat.size ?? 0;
+      } catch {
+        // Ignore and start empty if copy fails
+      }
+    }
+
     const ensureBufferMode = async () => {
       if (mode === 'buffer') return;
       if (mode === 'stream') {
         throw new Error('Cannot seek or truncate after streaming writes have started');
       }
       mode = 'buffer';
-      if (options?.keepExistingData !== false && (await exists(this.path))) {
+      if (fileSize > 0 && buffer.length === 0) {
         try {
-          buffer = await readFile(this.path);
-          fileSize = buffer.length;
+          const stream = await openReadFileStream(tempPath);
+          const reader = stream.getReader();
+          const chunks: Uint8Array[] = [];
+          let total = 0;
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            if (value) {
+              chunks.push(value);
+              total += value.length;
+            }
+          }
+          buffer = new Uint8Array(total);
+          let offset = 0;
+          for (const chunk of chunks) {
+            buffer.set(chunk, offset);
+            offset += chunk.length;
+          }
         } catch {
-          // Ignore and start empty if file read fails
+          // Ignore and start empty if streaming read fails
         }
       }
     };
@@ -357,8 +384,10 @@ export class TauriFileHandle {
             releaseStreamSlot = null;
           } else {
             await ensureBufferMode();
-            const finalData = buffer.subarray(0, fileSize);
-            await withFileWriteSlot(() => writeFile(tempPath, finalData));
+            if (buffer.length > 0 || fileSize === 0) {
+              const finalData = buffer.subarray(0, fileSize);
+              await withFileWriteSlot(() => writeFile(tempPath, finalData));
+            }
           }
           await withFileWriteSlot(() => rename(tempPath, this.path));
         } catch (error) {

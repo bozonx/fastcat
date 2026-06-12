@@ -483,7 +483,7 @@ export class TauriFileSystemAdapter implements IFileSystemAdapter {
 
     const name = this.getEntryName(path);
     const mimeType = getMimeTypeFromFilename(path);
-    if (metadata.size > LAZY_FILE_MEDIA_THRESHOLD_BYTES && isMediaFile(name)) {
+    if (isMediaFile(name)) {
       const absolutePath = await this.resolveStreamPath(path);
       return new LazyTauriFile({
         path: absolutePath,

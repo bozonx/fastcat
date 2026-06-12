@@ -1947,7 +1947,9 @@
           "restoreMobile": "Restore"
         },
         "cannotDeleteMain": "Cannot delete main file version",
-        "loadError": "Failed to load backup versions"
+        "loadError": "Failed to load backup versions",
+        "clearSuccess": "All backups deleted successfully",
+        "clearError": "Failed to delete backups"
       }
     }
   },

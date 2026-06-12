@@ -335,6 +335,8 @@ export const useTimelineStore = defineStore('timeline', () => {
     previewMode,
     previewBackupInfo,
     isReadOnly: computed(() => projectStore.isReadOnly || previewMode.value),
+    isMobile: isMobileLayout,
+    isDirty: isTimelineDirty,
     projectStore,
     workspaceStore,
     toast,
@@ -980,6 +982,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     restoreVersion: backup.restoreVersion,
     deleteBackupVersion: backup.deleteBackupVersion,
     loadBackupVersions: backup.loadBackupVersions,
+    clearAllBackups: backup.clearAllBackups,
     isMobileLayout,
     // Create a forced backup of the current timeline before leaving the project
     // or switching timelines on mobile.
