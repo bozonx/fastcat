@@ -1,6 +1,7 @@
 import { computed } from 'vue';
 import type { TimelineTrack, TimelineTrackItem } from '~/timeline/types';
 import { timelineRangeToRoundedPx } from '~/utils/timeline/geometry';
+import { clipHasAudio } from '~/utils/timeline/clip';
 import {
   buildClipRenderMemo,
   buildTrackVisibilityIndex,
@@ -14,6 +15,7 @@ const DEFAULT_TRACK_HEIGHT = 40;
 
 export interface TrackVirtualizationDeps {
   tracks: () => TimelineTrack[];
+  mediaMetadata: () => Record<string, { audio?: unknown } | undefined>;
   trackHeights: () => Record<string, number>;
   scrollLeft: () => number;
   viewportWidth: () => number;
@@ -88,6 +90,7 @@ export function useTimelineTrackVirtualization(deps: TrackVirtualizationDeps) {
     const hoveredTrackId = deps.hoveredTrackId();
     const visibleItemsMap = visibleItemsByTrack.value;
     const trackHeights = deps.trackHeights();
+    const mediaMetadata = deps.mediaMetadata();
 
     return deps.tracks().map((track) => {
       const isDirectlySelected = deps.isTrackDirectlySelected(track.id);
@@ -103,7 +106,9 @@ export function useTimelineTrackVirtualization(deps: TrackVirtualizationDeps) {
         isVisuallySelected,
         isHovered,
         visibleItems,
-        clipRenderMemo: visibleItems.map(buildClipRenderMemo).join('|'),
+        clipRenderMemo: visibleItems
+          .map((item) => buildClipRenderMemo(item, clipHasAudio(item, track, mediaMetadata)))
+          .join('|'),
         selectionColor: track.color && track.color !== '#2a2a2a' ? `${track.color}80` : undefined,
         backgroundColor:
           track.color && track.color !== '#2a2a2a'

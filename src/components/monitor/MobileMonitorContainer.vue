@@ -1,6 +1,10 @@
 <script setup lang="ts">
 import { computed, ref, nextTick, watch, onBeforeUnmount, onMounted } from 'vue';
 import { blurOnDropdownMenuClose } from '~/composables/useDropdownMenuBlur';
+
+defineOptions({
+  inheritAttrs: false,
+});
 import { useMediaQuery } from '@vueuse/core';
 import { useAppFullscreen } from '~/composables/useAppFullscreen';
 import { isTauriRuntime } from '~/utils/runtime';
@@ -407,6 +411,7 @@ const containerHeightClass = computed(() => {
   <Teleport to="body" :disabled="!shouldTeleport">
     <div
       ref="containerRef"
+      v-bind="$attrs"
       class="flex min-w-0 shrink-0 border-ui-border bg-ui-bg-elevated transition-colors duration-200"
       :class="[
         isFullscreen ? 'fixed inset-0 z-50 h-screen w-screen' : [containerHeightClass],

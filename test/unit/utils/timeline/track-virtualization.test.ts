@@ -52,6 +52,15 @@ describe('buildClipRenderMemo', () => {
     const b = { ...item('c1', 0, 1000), name: 'A' };
     expect(buildClipRenderMemo(a as any)).toBe(buildClipRenderMemo(b as any));
   });
+
+  it('changes when audio presence flips (async metadata load)', () => {
+    const base = { ...item('c1', 0, 1000), name: 'A' };
+    const withoutAudio = buildClipRenderMemo(base as any, false);
+    const withAudio = buildClipRenderMemo(base as any, true);
+    expect(withoutAudio).not.toBe(withAudio);
+    // Omitting the flag is treated as "no audio yet" (backwards compatible).
+    expect(buildClipRenderMemo(base as any)).toBe(withoutAudio);
+  });
 });
 
 describe('buildTrackVisibilityIndex', () => {

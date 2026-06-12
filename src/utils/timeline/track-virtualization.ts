@@ -25,7 +25,7 @@ export interface TrackVisibilityIndexEntry {
  * changes. Used as a `v-memo` key so a track only re-renders when one of its
  * visible items actually changes.
  */
-export function buildClipRenderMemo(item: TimelineTrackItem): string {
+export function buildClipRenderMemo(item: TimelineTrackItem, hasAudio?: boolean): string {
   if (item.kind !== 'clip') {
     return [item.id, item.timelineRange.startUs, item.timelineRange.durationUs].join(':');
   }
@@ -33,6 +33,10 @@ export function buildClipRenderMemo(item: TimelineTrackItem): string {
   const clip = item as TimelineClipItem;
   return [
     clip.id,
+    // Audio-presence depends on async media metadata; include it so the track
+    // re-renders (and the clipHasAudio-gated waveform/fades mount) once metadata
+    // loads after a fresh drop — not only after an unrelated re-render.
+    hasAudio ? 1 : 0,
     clip.timelineRange.startUs,
     clip.timelineRange.durationUs,
     clip.sourceRange?.startUs ?? '',

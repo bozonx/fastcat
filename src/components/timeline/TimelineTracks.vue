@@ -17,6 +17,7 @@ import { useTimelineClipHandleResize } from '~/composables/timeline/useTimelineC
 import { useTimelineMarquee } from '~/composables/timeline/useTimelineMarquee';
 import { useFocusStore } from '~/stores/focus.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
+import { useMediaStore } from '~/stores/media.store';
 
 import TimelineGap from './TimelineGap.vue';
 import TimelineSpeedModal from './TimelineSpeedModal.vue';
@@ -42,6 +43,7 @@ const selectionStore = useSelectionStore();
 const focusStore = useFocusStore();
 const uiStore = useUiStore();
 const workspaceStore = useWorkspaceStore();
+const mediaStore = useMediaStore();
 
 // Provide the shared TimelineContext consumed by descendant clip/gap components.
 useProvideTimelineContext();
@@ -103,6 +105,7 @@ function isTrackDirectlySelected(trackId: string): boolean {
 // Windowing + render-ready track view models (geometry, visibility, selection).
 const { trackViewModels } = useTimelineTrackVirtualization({
   tracks: () => props.tracks,
+  mediaMetadata: () => mediaStore.mediaMetadata,
   trackHeights: () => props.trackHeights,
   scrollLeft: () => props.scrollLeft ?? 0,
   viewportWidth: () => props.viewportWidth ?? 0,
