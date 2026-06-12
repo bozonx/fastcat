@@ -131,7 +131,13 @@ function isMarkerSelected(markerId: string): boolean {
           @click="toggleColor(color)"
         />
       </div>
-      <UButton size="xs" variant="ghost" color="neutral" class="cursor-pointer" @click="toggleAllColors">
+      <UButton
+        size="xs"
+        variant="ghost"
+        color="neutral"
+        class="cursor-pointer"
+        @click="toggleAllColors"
+      >
         {{ $t('fastcat.marker.selectAll') }}
       </UButton>
       <div class="flex-1"></div>

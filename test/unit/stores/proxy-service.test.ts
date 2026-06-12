@@ -618,9 +618,7 @@ describe('createProxyService', () => {
       });
       mockWorkerClient.client.exportTimeline.mockResolvedValue(undefined);
 
-      const entries = [
-        { file: new File([], 'a.mp4'), projectRelativePath: '_video/a.mp4' },
-      ];
+      const entries = [{ file: new File([], 'a.mp4'), projectRelativePath: '_video/a.mp4' }];
 
       await service.generateProxiesBatch(entries);
 

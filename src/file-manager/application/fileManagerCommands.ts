@@ -306,7 +306,10 @@ async function collectDeletedFilePaths(params: {
   return paths;
 }
 
-export async function deleteEntryCommand(target: FsEntry, deps: DeleteEntryDeps): Promise<string[]> {
+export async function deleteEntryCommand(
+  target: FsEntry,
+  deps: DeleteEntryDeps,
+): Promise<string[]> {
   const deletedFilePaths = await collectDeletedFilePaths({ vfs: deps.vfs, entry: target });
 
   await deps.vfs.deleteEntry(target.path, true);

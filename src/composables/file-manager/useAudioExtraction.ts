@@ -1,5 +1,5 @@
 import { createDevLogger } from '~/utils/dev-logger';
-import { ref, computed, inject, nextTick } from 'vue';
+import { computed, inject, nextTick } from 'vue';
 import type { FsEntry } from '~/types/fs';
 import { getExportWorkerClient, setExportHostApi } from '~/utils/video-editor/worker-client';
 import { createVideoCoreHostApi } from '~/utils/video-editor/createVideoCoreHostApi';

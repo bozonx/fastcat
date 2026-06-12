@@ -78,7 +78,9 @@ const backgroundTasksStore = useBackgroundTasksStore();
           <div class="flex-1 min-w-0">
             <div class="flex items-center gap-2">
               <span class="font-medium text-sm truncate">{{ task.title }}</span>
-              <span class="text-xs text-ui-text-muted"><FriendlyTime :date="task.createdAt" /></span>
+              <span class="text-xs text-ui-text-muted"
+                ><FriendlyTime :date="task.createdAt"
+              /></span>
             </div>
             <div v-if="task.description" class="text-xs text-ui-text-muted mt-1 line-clamp-1">
               {{ task.description }}

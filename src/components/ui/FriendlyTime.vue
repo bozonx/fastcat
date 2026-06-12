@@ -9,7 +9,7 @@ const props = withDefaults(
   {
     date: null,
     fallback: '—',
-  }
+  },
 );
 
 const friendlyTime = useFriendlyTimeAgo(() => props.date, props.fallback);

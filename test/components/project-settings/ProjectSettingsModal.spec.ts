@@ -3,14 +3,14 @@ import { mockNuxtImport } from '@nuxt/test-utils/runtime';
 import { mountWithNuxt } from '../../utils/mount';
 import { reactive } from 'vue';
 
+import ProjectSettingsModal from '~/components/project-settings/ProjectSettingsModal.vue';
+
 mockNuxtImport('useI18n', () => {
   return () => ({
     t: (key: string) => key,
     locale: { value: 'en-US' },
   });
 });
-
-import ProjectSettingsModal from '~/components/project-settings/ProjectSettingsModal.vue';
 
 const mockProjectStore = reactive({
   currentProjectId: 'test-project-id',

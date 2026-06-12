@@ -24,7 +24,6 @@ import { getClipThumbnailsHash, thumbnailGenerator } from '~/utils/thumbnail-gen
 import { fileThumbnailGenerator } from '~/utils/file-thumbnail-generator';
 import { createProxyThumbnailService } from '~/media-cache/application/proxyThumbnailService';
 import {
-  clearVideoThumbnailsCommand,
   onVideoPathMovedCommand,
   removeProxyCommand,
 } from '~/media-cache/application/proxyThumbnailCommands';
@@ -913,7 +912,8 @@ export function useFileManager(options?: {
     cancelProxy: async (projectRelativePath) =>
       await proxyStore.cancelProxyGeneration(projectRelativePath),
     removeProxy: async (projectRelativePath) => await proxyStore.deleteProxy(projectRelativePath),
-    removeProxyBatch: async (params) => await proxyStore.deleteProxiesBatch(params.projectRelativePaths),
+    removeProxyBatch: async (params) =>
+      await proxyStore.deleteProxiesBatch(params.projectRelativePaths),
     renameProxy: async (params) => await proxyStore.renameProxy(params),
     renameProxyDir: async (params) => await proxyStore.renameProxyDir(params),
     clearExistingProxies: () => proxyStore.existingProxies.clear(),

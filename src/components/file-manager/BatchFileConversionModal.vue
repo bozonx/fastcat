@@ -63,7 +63,9 @@ const fileCount = computed(() => state.entries.length);
 
 const outputFileName = computed(() => {
   if (conversionType.value === 'video') {
-    return t('videoEditor.fileManager.batchConvert.outputPatternVideo', { format: videoSettings.format });
+    return t('videoEditor.fileManager.batchConvert.outputPatternVideo', {
+      format: videoSettings.format,
+    });
   }
   if (conversionType.value === 'audio') {
     const ext = resolveAudioOnlyFileExtension(audioSettings.onlyFormat);

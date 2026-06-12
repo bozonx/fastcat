@@ -119,7 +119,7 @@ describe('useNativeMonitorCanvas', () => {
 
   it('handles ArrayBufferView with byteOffset and byteLength', async () => {
     useMonitorMode().set('canvas');
-    let receivedBuffer: ArrayBuffer | null = null;
+    const receivedBuffer: ArrayBuffer | null = null;
 
     const TestComponent = defineComponent({
       setup() {

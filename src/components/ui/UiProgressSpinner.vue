@@ -1,8 +1,14 @@
 <script setup lang="ts">
-defineProps<{
-  progress: number;
-  size?: 'sm' | 'md' | 'lg';
-}>();
+withDefaults(
+  defineProps<{
+    progress?: number;
+    size?: 'sm' | 'md' | 'lg';
+  }>(),
+  {
+    progress: 0,
+    size: undefined,
+  },
+);
 </script>
 
 <template>

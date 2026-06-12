@@ -20,7 +20,7 @@ definePageMeta({
   layout: 'mobile',
 });
 
-const { t, locale } = useI18n();
+const { t, locale: _locale } = useI18n();
 const router = useRouter();
 const workspaceStore = useWorkspaceStore();
 const { resetProjectState } = useProjectActions();

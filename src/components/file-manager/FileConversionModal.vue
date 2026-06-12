@@ -89,13 +89,6 @@ const outputFileName = computed(() => {
   return fileName.value;
 });
 
-const mediaIcon = computed(() => {
-  if (mediaType.value === 'video') return 'i-lucide-video';
-  if (mediaType.value === 'audio') return 'i-lucide-music';
-  if (mediaType.value === 'image') return 'i-lucide-image';
-  return 'i-lucide-file';
-});
-
 const modalTitle = computed(() => {
   if (mediaType.value === 'image') {
     return t('videoEditor.fileManager.convert.convertToWebp');

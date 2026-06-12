@@ -1,4 +1,4 @@
-import { ref, computed, reactive, type Ref } from 'vue';
+import { ref, computed, reactive } from 'vue';
 import type { FsEntry } from '~/types/fs';
 import { getMediaTypeFromFilename } from '~/utils/media-types';
 import { useProjectStore } from '~/stores/project.store';
@@ -109,7 +109,10 @@ export function useBatchConversion() {
     return t('videoEditor.export.convertFile');
   });
 
-  function getSiblingTarget(entryPath: string, fileName: string): { dirPath: string; filePath: string } {
+  function getSiblingTarget(
+    entryPath: string,
+    fileName: string,
+  ): { dirPath: string; filePath: string } {
     const separatorIndex = entryPath.lastIndexOf('/');
     if (separatorIndex < 0) {
       return { dirPath: '', filePath: fileName };
@@ -169,7 +172,10 @@ export function useBatchConversion() {
       };
     } else {
       request.image = {
-        quality: Math.max(1, Math.min(100, Math.round(Number(imageSettings.quality) || DEFAULT_IMAGE_QUALITY))),
+        quality: Math.max(
+          1,
+          Math.min(100, Math.round(Number(imageSettings.quality) || DEFAULT_IMAGE_QUALITY)),
+        ),
         width: Math.max(1, Math.round(Number(imageSettings.width) || 1)),
         height: Math.max(1, Math.round(Number(imageSettings.height) || 1)),
       };
@@ -282,7 +288,7 @@ export function useBatchConversion() {
       cancel: async () => {
         controller.abort();
         if (isTauriRuntime()) {
-          for (const entry of entries) {
+          for (const _entry of entries) {
             const taskId = createConversionTaskId();
             await nativeCancelMediaTask(taskId).catch(() => {});
           }

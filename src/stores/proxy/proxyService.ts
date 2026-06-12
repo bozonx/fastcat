@@ -614,7 +614,7 @@ export function createProxyService(params: {
   async function deleteProxiesBatch(projectRelativePaths: string[]): Promise<void> {
     if (projectRelativePaths.length === 0) return;
     if (projectRelativePaths.length === 1) {
-      await deleteProxy(projectRelativePaths[0]);
+      await deleteProxy(projectRelativePaths[0]!);
       return;
     }
 
@@ -629,8 +629,11 @@ export function createProxyService(params: {
     params.backgroundTasksStore.updateTaskStatus(batchBgTaskId, 'running');
 
     for (let i = 0; i < projectRelativePaths.length; i++) {
-      await deleteProxy(projectRelativePaths[i]);
-      params.backgroundTasksStore.updateTaskProgress(batchBgTaskId, (i + 1) / projectRelativePaths.length);
+      await deleteProxy(projectRelativePaths[i]!);
+      params.backgroundTasksStore.updateTaskProgress(
+        batchBgTaskId,
+        (i + 1) / projectRelativePaths.length,
+      );
     }
 
     params.backgroundTasksStore.updateTaskStatus(batchBgTaskId, 'completed');

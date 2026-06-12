@@ -13,7 +13,7 @@ import ProjectThumbnail from '~/components/startup/ProjectThumbnail.vue';
 import EditorSettingsModal from '~/components/settings/EditorSettingsModal.vue';
 import { blurOnDropdownMenuClose } from '~/composables/useDropdownMenuBlur';
 
-const { t, locale } = useI18n();
+const { t, locale: _locale } = useI18n();
 const workspaceStore = useWorkspaceStore();
 const isSettingsOpen = ref(false);
 const canChangeWorkspace = computed(() => workspaceStore.workspaceProviderId !== 'tauri');

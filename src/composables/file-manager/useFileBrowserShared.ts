@@ -32,7 +32,10 @@ export interface UseFileBrowserSharedDeps {
   findEntryByPath: (path: string) => FsEntry | null;
   readDirectory: (path?: string) => Promise<FsEntry[]>;
   reloadDirectory: (path: string) => Promise<void>;
-  mediaCache: Pick<ProxyThumbnailService, 'ensureProxy' | 'cancelProxy' | 'removeProxy'>;
+  mediaCache: Pick<
+    ProxyThumbnailService,
+    'ensureProxy' | 'ensureProxyBatch' | 'cancelProxy' | 'removeProxy' | 'removeProxyBatch'
+  >;
   copyEntry?: (params: { source: FsEntry; targetDirPath: string }) => Promise<unknown>;
   moveEntry?: (params: { source: FsEntry; targetDirPath: string }) => Promise<unknown>;
   instanceId?: string;

@@ -141,7 +141,9 @@ function jumpToState(entryId: string, isFuture: boolean) {
           <div class="flex-1 truncate">
             {{ $t(entry.labelKey) }}
           </div>
-          <div class="text-3xs text-ui-text-muted/60 opacity-0 group-hover:opacity-100 transition-opacity">
+          <div
+            class="text-3xs text-ui-text-muted/60 opacity-0 group-hover:opacity-100 transition-opacity"
+          >
             {{ formatTime(entry.timestamp) }}
           </div>
         </div>
@@ -166,7 +168,9 @@ function jumpToState(entryId: string, isFuture: boolean) {
           <div
             class="text-3xs transition-opacity"
             :class="[
-              index === 0 ? 'text-ui-text-muted' : 'text-ui-text-disabled opacity-0 group-hover:opacity-100',
+              index === 0
+                ? 'text-ui-text-muted'
+                : 'text-ui-text-disabled opacity-0 group-hover:opacity-100',
             ]"
           >
             {{ formatTime(entry.timestamp) }}

@@ -460,9 +460,7 @@ describe('buildNativeMonitorScene', () => {
               timelineRange: { startUs: 500_000, durationUs: 1_000_000 },
               sourceRange: { startUs: 0, durationUs: 1_000_000 },
               layer: 1,
-              effects: [
-                { id: 'blur-1', type: 'blur', enabled: true, target: 'video', radius: 3 },
-              ],
+              effects: [{ id: 'blur-1', type: 'blur', enabled: true, target: 'video', radius: 3 }],
             },
           ],
         },

@@ -220,9 +220,7 @@ export function useNativeMonitorBridge(): void {
   // Use computed refs for doc-derived arrays so the watcher only fires when the
   // array *contents* mutate, not when the parent doc object is replaced (e.g.
   // update_master_gain replaces timelineDoc but preserves the tracks reference).
-  const nativeMonitorTracks = computed(
-    () => timelineStore.timelineDoc?.tracks ?? [],
-  );
+  const nativeMonitorTracks = computed(() => timelineStore.timelineDoc?.tracks ?? []);
   const nativeMonitorMasterEffects = computed(
     () => timelineStore.timelineDoc?.metadata?.fastcat?.masterEffects ?? [],
   );

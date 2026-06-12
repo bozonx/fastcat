@@ -76,7 +76,9 @@ describe('useBatchConversion', () => {
     vi.clearAllMocks();
     mockProjectStore.getFileByPath.mockReset();
     mockProjectStore.getDirectoryHandleByPath.mockReset();
-    mockFileManager.vfs.getFile.mockReset().mockResolvedValue(new File(['x'], 'test.png', { type: 'image/png' }));
+    mockFileManager.vfs.getFile
+      .mockReset()
+      .mockResolvedValue(new File(['x'], 'test.png', { type: 'image/png' }));
     mockFileManager.vfs.writeFile.mockReset();
     mockFileManager.vfs.exists.mockReset();
     mockBackgroundTasksStore.addTask.mockReturnValue('task-1');

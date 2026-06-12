@@ -306,13 +306,13 @@ describe('useAudioExtraction', () => {
     };
 
     const composable = useAudioExtraction();
-    
+
     // Before extraction
     expect(uiStore.isExtractingAudio).toBe(false);
     expect(uiStore.extractingAudioError).toBeNull();
 
     const promise = composable.extractAudio(entry);
-    
+
     // During extraction (before promise resolves)
     expect(uiStore.isExtractingAudio).toBe(true);
     expect(uiStore.extractingAudioError).toBeNull();
@@ -334,7 +334,7 @@ describe('useAudioExtraction', () => {
     extractAudio.mockRejectedValueOnce(new Error('Test extraction error'));
 
     const composable = useAudioExtraction();
-    
+
     // Before extraction
     expect(uiStore.isExtractingAudio).toBe(false);
     expect(uiStore.extractingAudioError).toBeNull();

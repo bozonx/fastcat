@@ -9,7 +9,7 @@ import type { MaybeRefOrGetter } from 'vue';
  */
 export function useFriendlyTimeAgo(
   dateInput: MaybeRefOrGetter<Date | number | string | null | undefined>,
-  fallback = '—'
+  fallback = '—',
 ) {
   const { t } = useI18n();
 
@@ -38,7 +38,7 @@ export function useFriendlyTimeAgo(
           invalid: fallback,
         };
       },
-    }
+    },
   );
 
   return computed(() => {

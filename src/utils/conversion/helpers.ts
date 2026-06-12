@@ -61,7 +61,7 @@ export async function removeCreatedFile(params: {
             }
           }
         }
-      } catch (err) {
+      } catch (_err) {
         // Fallback or ignore if plugin-fs is not available/failed to load
       }
       return;
@@ -81,4 +81,3 @@ export async function removeCreatedFile(params: {
     }
   }
 }
-

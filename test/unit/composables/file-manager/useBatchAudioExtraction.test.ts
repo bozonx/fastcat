@@ -100,7 +100,10 @@ vi.mock('~/composables/file-manager/useFileManager', () => ({
 }));
 
 const toastAdd = vi.fn();
-vi.stubGlobal('useI18n', () => ({ t: (key: string, params?: Record<string, unknown>) => key + (params ? ` ${JSON.stringify(params)}` : '') }));
+vi.stubGlobal('useI18n', () => ({
+  t: (key: string, params?: Record<string, unknown>) =>
+    key + (params ? ` ${JSON.stringify(params)}` : ''),
+}));
 vi.stubGlobal('useToast', () => ({ add: toastAdd }));
 
 describe('useBatchAudioExtraction', () => {
@@ -118,7 +121,9 @@ describe('useBatchAudioExtraction', () => {
     nativeExtractAudio.mockResolvedValue(undefined);
     workspaceStore.workspaceHandle = null;
     backgroundTasksStore.addTask.mockReturnValue('task-batch-1');
-    projectStore.getFileByPath.mockResolvedValue(new File(['video'], 'clip.mp4', { type: 'video/mp4' }));
+    projectStore.getFileByPath.mockResolvedValue(
+      new File(['video'], 'clip.mp4', { type: 'video/mp4' }),
+    );
     projectStore.getDirectoryHandleByPath.mockResolvedValue({
       getFileHandle: vi.fn().mockResolvedValue({}),
     });
@@ -158,9 +163,7 @@ describe('useBatchAudioExtraction', () => {
   });
 
   it('processes audio files as well as video files', async () => {
-    const entries: FsEntry[] = [
-      { kind: 'file', name: 'track.mp3', path: 'media/track.mp3' },
-    ];
+    const entries: FsEntry[] = [{ kind: 'file', name: 'track.mp3', path: 'media/track.mp3' }];
 
     const composable = useBatchAudioExtraction();
     await composable.batchExtractAudio(entries, false);
@@ -178,15 +181,19 @@ describe('useBatchAudioExtraction', () => {
     const composable = useBatchAudioExtraction();
     await composable.batchExtractAudio(entries, false);
 
-    expect(backgroundTasksStore.updateTaskProgress).toHaveBeenCalledWith('task-batch-1', expect.closeTo(1 / 3));
-    expect(backgroundTasksStore.updateTaskProgress).toHaveBeenCalledWith('task-batch-1', expect.closeTo(2 / 3));
+    expect(backgroundTasksStore.updateTaskProgress).toHaveBeenCalledWith(
+      'task-batch-1',
+      expect.closeTo(1 / 3),
+    );
+    expect(backgroundTasksStore.updateTaskProgress).toHaveBeenCalledWith(
+      'task-batch-1',
+      expect.closeTo(2 / 3),
+    );
     expect(backgroundTasksStore.updateTaskProgress).toHaveBeenCalledWith('task-batch-1', 1);
   });
 
   it('prevents concurrent batch runs', async () => {
-    const entries: FsEntry[] = [
-      { kind: 'file', name: 'a.mp4', path: 'media/a.mp4' },
-    ];
+    const entries: FsEntry[] = [{ kind: 'file', name: 'a.mp4', path: 'media/a.mp4' }];
 
     const composable = useBatchAudioExtraction();
     await composable.batchExtractAudio(entries, false);
@@ -204,16 +211,11 @@ describe('useBatchAudioExtraction', () => {
   it('skips files with no audio track and warns via toast', async () => {
     extractMetadata.mockResolvedValueOnce({ audio: null });
 
-    const entries: FsEntry[] = [
-      { kind: 'file', name: 'silent.mp4', path: 'media/silent.mp4' },
-    ];
+    const entries: FsEntry[] = [{ kind: 'file', name: 'silent.mp4', path: 'media/silent.mp4' }];
 
     const composable = useBatchAudioExtraction();
     await composable.batchExtractAudio(entries, false);
 
-    expect(backgroundTasksStore.updateTaskStatus).toHaveBeenCalledWith(
-      'task-batch-1',
-      'completed',
-    );
+    expect(backgroundTasksStore.updateTaskStatus).toHaveBeenCalledWith('task-batch-1', 'completed');
   });
 });

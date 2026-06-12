@@ -330,7 +330,10 @@ const extractPeaks = async () => {
       const normalizedTimelinePath = normalizeProjectPath(fileUrl.value);
       const file = await fileManager.vfs.getFile(normalizedTimelinePath);
       if (!file) {
-        log.error('Failed to load nested timeline for waveform extraction:', normalizedTimelinePath);
+        log.error(
+          'Failed to load nested timeline for waveform extraction:',
+          normalizedTimelinePath,
+        );
         return;
       }
 

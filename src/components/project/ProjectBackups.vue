@@ -12,7 +12,7 @@ defineProps<{
   compact?: boolean;
 }>();
 
-const { locale, t } = useI18n();
+const { locale: _locale, t } = useI18n();
 const timelineStore = useTimelineStore();
 const projectStore = useProjectStore();
 

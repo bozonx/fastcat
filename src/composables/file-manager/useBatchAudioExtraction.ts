@@ -57,7 +57,7 @@ export function useBatchAudioExtraction() {
     entry: FsEntry,
     isExternal: boolean,
     taskIdPrefix: string,
-  ): Promise<'no-audio' | void> {
+  ): Promise<'no-audio' | undefined> {
     if (!entry.path) return;
 
     const useNativeExtraction = isTauriRuntime();
@@ -176,12 +176,17 @@ export function useBatchAudioExtraction() {
     if (isExtracting.value) return;
 
     const eligibleEntries = entries.filter(
-      (e) => e.kind === 'file' && (getMediaTypeFromFilename(e.name) === 'video' || getMediaTypeFromFilename(e.name) === 'audio'),
+      (e) =>
+        e.kind === 'file' &&
+        (getMediaTypeFromFilename(e.name) === 'video' ||
+          getMediaTypeFromFilename(e.name) === 'audio'),
     );
     if (eligibleEntries.length === 0) return;
 
     isExtracting.value = true;
-    const title = t('videoEditor.fileManager.batchExtractAudio.taskTitle', { count: eligibleEntries.length });
+    const title = t('videoEditor.fileManager.batchExtractAudio.taskTitle', {
+      count: eligibleEntries.length,
+    });
     const bgTaskId = backgroundTasksStore.addTask({
       type: 'conversion',
       title,
@@ -208,11 +213,7 @@ export function useBatchAudioExtraction() {
           }
         } catch (err) {
           const message = err instanceof Error ? err.message : String(err);
-          backgroundTasksStore.updateTaskStatus(
-            bgTaskId,
-            'failed',
-            `${entry.name}: ${message}`,
-          );
+          backgroundTasksStore.updateTaskStatus(bgTaskId, 'failed', `${entry.name}: ${message}`);
           throw err;
         }
 
@@ -231,7 +232,9 @@ export function useBatchAudioExtraction() {
 
       if (noAudioCount > 0) {
         toast.add({
-          title: t('videoEditor.fileManager.batchExtractAudio.noAudioTrack', { count: noAudioCount }),
+          title: t('videoEditor.fileManager.batchExtractAudio.noAudioTrack', {
+            count: noAudioCount,
+          }),
           color: 'warning',
         });
       }

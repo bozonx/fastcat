@@ -90,14 +90,18 @@ if (colorMode.preference === 'system') {
     <!-- Foreground Audio Extraction Modal -->
     <UiModal
       v-model:open="uiStore.isExtractingAudio"
-      :title="uiStore.extractingAudioError ? t('videoEditor.fileManager.extractAudio.failed') : t('videoEditor.fileManager.actions.extractAudio')"
+      :title="
+        uiStore.extractingAudioError
+          ? t('videoEditor.fileManager.extractAudio.failed')
+          : t('videoEditor.fileManager.actions.extractAudio')
+      "
       :close-button="!!uiStore.extractingAudioError"
       :prevent-close="!uiStore.extractingAudioError"
     >
       <div class="flex flex-col items-center justify-center p-6 gap-4 text-center">
         <UiProgressSpinner v-if="!uiStore.extractingAudioError" size="md" />
         <UIcon v-else name="i-heroicons-exclamation-triangle" class="w-12 h-12 text-error-500" />
-        
+
         <div class="text-sm font-medium text-ui-text">
           <span v-if="!uiStore.extractingAudioError">
             {{ t('videoEditor.fileManager.extractAudio.extracting') }}
@@ -110,11 +114,7 @@ if (colorMode.preference === 'system') {
 
       <template v-if="uiStore.extractingAudioError" #footer>
         <div class="flex justify-end w-full">
-          <UButton
-            color="neutral"
-            variant="solid"
-            @click="uiStore.isExtractingAudio = false"
-          >
+          <UButton color="neutral" variant="solid" @click="uiStore.isExtractingAudio = false">
             {{ t('common.close', 'Закрыть') }}
           </UButton>
         </div>

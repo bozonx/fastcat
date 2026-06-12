@@ -28,11 +28,14 @@ describe('useFriendlyTimeAgo', () => {
 
   afterEach(() => {
     // Restore the default mock from vitest.setup.ts
-    vi.mocked(useI18n).mockImplementation(() => ({
-      t: (key: string, params?: string | Record<string, unknown>) =>
-        typeof params === 'string' ? params : key,
-      locale: ref('en-US'),
-    } as any));
+    vi.mocked(useI18n).mockImplementation(
+      () =>
+        ({
+          t: (key: string, params?: string | Record<string, unknown>) =>
+            typeof params === 'string' ? params : key,
+          locale: ref('en-US'),
+        }) as any,
+    );
   });
 
   it('should return fallback for null or undefined dates', () => {
@@ -51,14 +54,14 @@ describe('useFriendlyTimeAgo', () => {
   it('should format relative time for justNow', () => {
     const now = new Date();
     const timeAgo = useFriendlyTimeAgo(now);
-    
+
     expect(timeAgo.value).toBe('timeAgo.justNow');
     expect(mockT).toHaveBeenCalledWith('timeAgo.justNow');
   });
 
   it('should format relative time for minutes, hours, days', () => {
     const now = Date.now();
-    
+
     // 5 minutes ago
     const date5m = new Date(now - 300000);
     const timeAgo5m = useFriendlyTimeAgo(date5m);

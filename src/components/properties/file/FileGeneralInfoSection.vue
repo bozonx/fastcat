@@ -24,7 +24,7 @@ const props = defineProps<{
   isExternal?: boolean;
 }>();
 
-const { t, locale } = useI18n();
+const { t, locale: _locale } = useI18n();
 </script>
 
 <template>
@@ -103,10 +103,7 @@ const { t, locale } = useI18n();
     >
       <FriendlyTime :date="props.fileInfo.createdAt ?? props.fileInfo.lastModified!" />
     </PropertyRow>
-    <PropertyRow
-      v-if="props.fileInfo.lastModified"
-      :label="t('common.updated')"
-    >
+    <PropertyRow v-if="props.fileInfo.lastModified" :label="t('common.updated')">
       <FriendlyTime :date="props.fileInfo.lastModified" />
     </PropertyRow>
     <PropertyRow v-if="props.isHidden" :label="t('common.hidden')" value="Yes" />
