@@ -19,9 +19,15 @@ vi.mock('@tauri-apps/api/core', () => ({
   },
 }));
 
+const resizeObserverInstances: ResizeObserverMock[] = [];
+
 class ResizeObserverMock {
   observe = vi.fn();
   disconnect = vi.fn();
+
+  constructor() {
+    resizeObserverInstances.push(this);
+  }
 }
 
 function flushPromises(): Promise<void> {
@@ -70,6 +76,7 @@ describe('resolveNativeMonitorCanvasSize', () => {
 describe('useNativeMonitorCanvas', () => {
   beforeEach(() => {
     invokeMock.mockClear();
+    resizeObserverInstances.length = 0;
     vi.stubGlobal('ResizeObserver', ResizeObserverMock);
     Object.defineProperty(window, '__TAURI_INTERNALS__', {
       configurable: true,
@@ -190,6 +197,50 @@ describe('useNativeMonitorCanvas', () => {
     await flushPromises();
 
     expect(invokeMock.mock.calls.some(([name]) => name === 'monitor_unsubscribe_frames')).toBe(true);
+
+    wrapper.unmount();
+  });
+
+  it('rebinds the resize observer when the canvas element changes', async () => {
+    useMonitorMode().set('canvas');
+    const canvasKey = ref(0);
+
+    const TestComponent = defineComponent({
+      setup() {
+        const canvasRef = ref<HTMLCanvasElement | null>(null);
+        useNativeMonitorCanvas(canvasRef);
+        return () =>
+          h('canvas', {
+            key: canvasKey.value,
+            ref: (el) => {
+              canvasRef.value = el as HTMLCanvasElement | null;
+              if (el instanceof HTMLCanvasElement) {
+                defineCanvasLayout(el);
+              }
+            },
+          });
+      },
+    });
+
+    const wrapper = mount(TestComponent, { attachTo: document.body });
+    await nextTick();
+    await flushPromises();
+
+    const firstObserver = resizeObserverInstances.at(-1);
+    expect(firstObserver?.observe).toHaveBeenCalledTimes(1);
+
+    canvasKey.value += 1;
+    await nextTick();
+    await flushPromises();
+
+    const secondObserver = resizeObserverInstances.at(-1);
+    expect(firstObserver?.disconnect).toHaveBeenCalled();
+    expect(secondObserver).not.toBe(firstObserver);
+    expect(secondObserver?.observe).toHaveBeenCalledTimes(1);
+    expect(invokeMock).toHaveBeenCalledWith('monitor_set_canvas_size', {
+      width: 640,
+      height: 360,
+    });
 
     wrapper.unmount();
   });

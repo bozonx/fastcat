@@ -1,6 +1,6 @@
 import { Channel } from '@tauri-apps/api/core';
 import { nativeMonitorIpc } from '~/composables/monitor/native-monitor-ipc';
-import { computed, ref, watch, onMounted, onScopeDispose, type Ref } from 'vue';
+import { computed, nextTick, ref, watch, onMounted, onScopeDispose, type Ref } from 'vue';
 
 import { createDevLogger } from '~/utils/dev-logger';
 import { isTauriRuntime } from '~/utils/runtime';
@@ -69,6 +69,7 @@ export function useNativeMonitorCanvas(canvasRef: Ref<HTMLCanvasElement | null>)
   // Кешируем 2D-контекст: getContext на каждый кадр стрима — лишняя работа.
   let ctx2d: CanvasRenderingContext2D | null = null;
   let ctxEl: HTMLCanvasElement | null = null;
+  let ro: ResizeObserver | null = null;
 
   function getCtx(el: HTMLCanvasElement): CanvasRenderingContext2D | null {
     if (ctxEl !== el || !ctx2d) {
@@ -159,6 +160,7 @@ export function useNativeMonitorCanvas(canvasRef: Ref<HTMLCanvasElement | null>)
   }
 
   async function activateCanvasMode(): Promise<void> {
+    await nextTick();
     syncCanvasSize();
     if (!unsubChannel) await subscribe();
   }
@@ -186,18 +188,24 @@ export function useNativeMonitorCanvas(canvasRef: Ref<HTMLCanvasElement | null>)
     { immediate: true },
   );
 
-  // Реактивно подстраиваем canvas size при resize.
-  let ro: ResizeObserver | null = null;
-  onMounted(() => {
+  function observeCanvas(): void {
+    ro?.disconnect();
+    ro = null;
     const el = canvasRef.value;
     if (!el) return;
     ro = new ResizeObserver(() => {
       if (mode.value === 'canvas') syncCanvasSize();
     });
     ro.observe(el);
+  }
+
+  // Реактивно подстраиваем canvas size при resize.
+  onMounted(() => {
+    observeCanvas();
   });
 
   watch(canvasRef, (el) => {
+    observeCanvas();
     if (el && mode.value === 'canvas') void activateCanvasMode();
   });
 
