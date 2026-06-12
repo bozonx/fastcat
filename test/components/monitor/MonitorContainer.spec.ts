@@ -353,4 +353,64 @@ describe('MonitorContainer', () => {
 
     expect(contextMenu.props('open')).toBe(false);
   });
+
+  it('controls overlay auto-hides and shows on interaction in fullscreen', async () => {
+    vi.useFakeTimers();
+
+    const wrapper = mount(MonitorContainer, {
+      props: {
+        isFullscreen: true,
+      },
+      global: {
+        plugins: [pinia],
+        stubs: {
+          MonitorViewport: {
+            template:
+              '<div class="viewport-stub" v-bind="$attrs"><slot name="canvas" /><slot name="svg-overlay" /><slot /></div>',
+          },
+          MonitorAudioControl: true,
+          UiTooltip: { template: '<div><slot /></div>' },
+          UButton: {
+            template:
+              '<button class="test-btn" @click="$emit(\'click\', $event)"><slot /></button>',
+          },
+          UiActionButton: true,
+          UiToggleButton: true,
+          UDropdownMenu: {
+            props: ['open'],
+            template: '<div class="dropdown-stub"><slot /></div>',
+          },
+          UContextMenu: {
+            props: ['open'],
+            template: '<div class="context-menu-stub"><slot /></div>',
+          },
+          UiContextMenuPortal: true,
+          UIcon: true,
+        },
+      },
+    });
+
+    await wrapper.vm.$nextTick();
+
+    const controlsBar = wrapper.find('[data-panel-drag-handle]');
+    expect(controlsBar.classes()).not.toContain('opacity-0');
+
+    vi.advanceTimersByTime(3000);
+    await wrapper.vm.$nextTick();
+    expect(controlsBar.classes()).toContain('opacity-0');
+
+    const viewport = wrapper.find('.viewport-stub');
+    await viewport.trigger('click');
+    expect(controlsBar.classes()).not.toContain('opacity-0');
+
+    await controlsBar.trigger('mousemove');
+    vi.advanceTimersByTime(2000);
+    expect(controlsBar.classes()).not.toContain('opacity-0');
+
+    vi.advanceTimersByTime(2000);
+    await wrapper.vm.$nextTick();
+    expect(controlsBar.classes()).toContain('opacity-0');
+
+    vi.useRealTimers();
+  });
 });

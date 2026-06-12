@@ -68,6 +68,7 @@ export function useMonitorTimeline() {
       masterEffects: masterEffects.value,
     }),
   );
+  const effectiveAudioClipItems = computed(() => effectiveAudioItems.value.items);
   const hasSoloAudio = computed(() =>
     combinedAudioTracks.value.some((track) => Boolean(track.audioSolo)),
   );
@@ -157,7 +158,7 @@ export function useMonitorTimeline() {
       return sanitizeMonitorSpeed(raw, 1) ?? 1;
     }
 
-    for (const item of effectiveAudioItems.value) {
+    for (const item of effectiveAudioClipItems.value) {
       if (item.kind !== 'clip') continue;
       if (item.clipType !== 'media' && item.clipType !== 'timeline') continue;
       if (!item.source?.path) continue;
@@ -428,7 +429,7 @@ export function useMonitorTimeline() {
   });
 
   const audioClipLayoutSignature = computed(() => {
-    let hash = mixHash(2166136261, effectiveAudioItems.value.length);
+    let hash = mixHash(2166136261, effectiveAudioClipItems.value.length);
     hash = mixHash(hash, hasSoloAudio.value ? 1 : 0);
     const masterAudioEffects = masterEffects.value.filter((effect) => effect?.target === 'audio');
     if (masterAudioEffects.length > 0) {
@@ -450,7 +451,7 @@ export function useMonitorTimeline() {
       }
     }
 
-    for (const item of effectiveAudioItems.value) {
+    for (const item of effectiveAudioClipItems.value) {
       hash = mixHash(hash, hashString(item.id));
       hash = mixTime(hash, item.timelineRange.startUs);
       hash = mixTime(hash, item.timelineRange.durationUs);
@@ -481,7 +482,7 @@ export function useMonitorTimeline() {
   });
 
   const audioClipSourceSignature = computed(() => {
-    let hash = mixHash(2166136261, effectiveAudioItems.value.length);
+    let hash = mixHash(2166136261, effectiveAudioClipItems.value.length);
     hash = mixHash(hash, hasSoloAudio.value ? 1 : 0);
     for (const track of combinedAudioTracks.value) {
       hash = mixHash(hash, hashString(track.id));
@@ -489,7 +490,7 @@ export function useMonitorTimeline() {
       hash = mixHash(hash, track.audioSolo ? 1 : 0);
     }
 
-    for (const item of effectiveAudioItems.value) {
+    for (const item of effectiveAudioClipItems.value) {
       hash = mixHash(hash, hashString(item.id));
       if (item.kind === 'clip') {
         if (item.clipType === 'media' && item.source?.path) {
@@ -501,6 +502,8 @@ export function useMonitorTimeline() {
     }
     return hash;
   });
+
+  const masterAudioEffects = computed(() => effectiveAudioItems.value.masterAudioEffects);
 
   return {
     videoItems,
@@ -516,5 +519,6 @@ export function useMonitorTimeline() {
     activeLayoutSignature,
     audioClipSourceSignature,
     audioClipLayoutSignature,
+    masterAudioEffects,
   };
 }

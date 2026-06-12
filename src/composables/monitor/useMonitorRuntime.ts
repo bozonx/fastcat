@@ -46,6 +46,7 @@ export function useMonitorRuntime() {
     activeLayoutSignature,
     audioClipSourceSignature,
     audioClipLayoutSignature,
+    masterAudioEffects,
   } = useMonitorTimeline();
 
   const selectedTimelineClip = computed(() => {
@@ -104,6 +105,7 @@ export function useMonitorRuntime() {
       activeLayoutSignature,
       audioClipSourceSignature,
       audioClipLayoutSignature,
+      masterAudioEffects,
     },
     monitorDisplay: {
       containerEl,

@@ -50,7 +50,7 @@ export async function prepareMonitorTimelineData(params: {
     masterEffects: params.masterEffects,
   });
   const flattenedAudio = await toWorkerTimelineClips(
-    effectiveAudioItems,
+    effectiveAudioItems.items,
     params.projectStore,
     params.workspaceStore,
     {

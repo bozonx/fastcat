@@ -218,6 +218,9 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
       const audioClips = workerAudioClips.value;
       const audioEngineClips = await syncAudioEngineClips(audioClips);
       await audioEngine.updateTimelineLayout(audioEngineClips);
+      if (options.monitorTimeline.masterAudioEffects) {
+        audioEngine.setMasterAudioEffects(options.monitorTimeline.masterAudioEffects.value);
+      }
     } catch (audioErr) {
       log.error('[Monitor] Failed to update audio engine layout', audioErr);
     }
@@ -384,6 +387,9 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
 
       const audioEngineClips = await syncAudioEngineClips(audioClips);
       await audioEngine.loadClips(audioEngineClips);
+      if (options.monitorTimeline.masterAudioEffects) {
+        audioEngine.setMasterAudioEffects(options.monitorTimeline.masterAudioEffects.value);
+      }
 
       // Keep store duration at least as large as current value to avoid clamping
       // when disabled clips are excluded from the worker payload.

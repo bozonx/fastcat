@@ -18,6 +18,7 @@ export interface MonitorTimelineState {
   activeLayoutSignature: Ref<number>;
   audioClipSourceSignature: Ref<number>;
   audioClipLayoutSignature: Ref<number>;
+  masterAudioEffects?: Ref<import('~/timeline/types').ClipEffect[]>;
 }
 
 export interface MonitorDisplayState {

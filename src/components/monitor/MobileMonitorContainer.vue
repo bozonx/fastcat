@@ -209,7 +209,11 @@ function showControlsTemporary() {
   isControlsVisible.value = true;
   if (isFullscreen.value) {
     controlsTimeout = setTimeout(() => {
-      isControlsVisible.value = false;
+      if (isMobileSpeedMenuOpen.value || isMobileMoreMenuOpen.value) {
+        showControlsTemporary();
+      } else {
+        isControlsVisible.value = false;
+      }
     }, 3000);
   }
 }

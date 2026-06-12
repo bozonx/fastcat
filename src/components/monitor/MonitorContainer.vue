@@ -291,34 +291,113 @@ function closeMonitorMenus() {
 
 function onMonitorKeyDown(event: KeyboardEvent) {
   if (event.key === 'Escape') {
-    closeMonitorMenus();
+    if (
+      isMonitorContextMenuOpen.value ||
+      isMonitorSyncMenuOpen.value ||
+      isMonitorMoreMenuOpen.value
+    ) {
+      closeMonitorMenus();
+      event.stopPropagation();
+      return;
+    }
+    if (effectiveFullscreen.value) {
+      void exitBrowserFullscreen();
+      event.stopPropagation();
+    }
   }
 }
 
 const isIdle = ref(false);
 let idleTimer: ReturnType<typeof setTimeout> | undefined;
 
-function resetIdle() {
+function clearIdleTimeout() {
+  if (idleTimer) {
+    clearTimeout(idleTimer);
+    idleTimer = undefined;
+  }
+}
+
+function showControlsTemporary() {
   isIdle.value = false;
-  clearTimeout(idleTimer);
-  idleTimer = setTimeout(() => {
-    isIdle.value = true;
-  }, 2000);
+  clearIdleTimeout();
+  if (effectiveFullscreen.value) {
+    idleTimer = setTimeout(() => {
+      if (
+        isMonitorSyncMenuOpen.value ||
+        isMonitorMoreMenuOpen.value ||
+        isMonitorContextMenuOpen.value
+      ) {
+        showControlsTemporary();
+      } else {
+        isIdle.value = true;
+      }
+    }, 3000);
+  }
+}
+
+function hideControlsImmediate() {
+  isIdle.value = true;
+  clearIdleTimeout();
+}
+
+function resetIdleTimeout() {
+  if (effectiveFullscreen.value && !isIdle.value) {
+    showControlsTemporary();
+  }
+}
+
+watch(effectiveFullscreen, (entering) => {
+  clearIdleTimeout();
+  if (entering) {
+    showControlsTemporary();
+  } else {
+    isIdle.value = false;
+  }
+});
+
+function handleContainerClick(event: MouseEvent) {
+  if (!effectiveFullscreen.value) return;
+
+  const target = event.target as HTMLElement;
+
+  // Check if click is inside the controls bar (panel)
+  const controlsBar = panelRef.value?.querySelector('[data-panel-drag-handle]');
+  if (controlsBar && controlsBar.contains(target)) {
+    resetIdleTimeout();
+    return;
+  }
+
+  // Check if click is inside any active dropdown or context menus
+  if (
+    target.closest('.u-dropdown-menu') ||
+    target.closest('.u-context-menu') ||
+    target.closest('[role="menu"]')
+  ) {
+    return;
+  }
+
+  // Toggle controls visibility
+  if (isIdle.value) {
+    showControlsTemporary();
+  } else {
+    hideControlsImmediate();
+  }
 }
 
 onMounted(() => {
-  window.addEventListener('mousemove', resetIdle);
   window.addEventListener('keydown', onMonitorKeyDown, { capture: true });
   // Synchronize timecode transition target
   if (viewportRef.value) {
     timecodeEl.value = (viewportRef.value as { timecodeEl?: HTMLElement }).timecodeEl ?? null;
   }
+  if (effectiveFullscreen.value) {
+    showControlsTemporary();
+  }
 });
 
 onUnmounted(() => {
-  window.removeEventListener('mousemove', resetIdle);
   window.removeEventListener('keydown', onMonitorKeyDown, { capture: true });
-  clearTimeout(idleTimer);
+  clearIdleTimeout();
 });
 
 watch(viewportRef, (vp) => {
@@ -341,7 +420,7 @@ watch(viewportRef, (vp) => {
         ref="panelRef"
         class="panel-focus-frame flex h-full min-w-0 min-h-0 transition-colors duration-300 relative select-none"
         :class="[
-          effectiveFullscreen ? 'bg-black flex-col' : 'bg-ui-bg-elevated',
+          effectiveFullscreen ? 'fixed inset-0 z-50 h-screen w-screen bg-black flex-col' : 'bg-ui-bg-elevated',
           !effectiveFullscreen && toolbarPosition === 'bottom' ? 'flex-col' : '',
           !effectiveFullscreen && toolbarPosition === 'top' ? 'flex-col-reverse' : '',
           !effectiveFullscreen && toolbarPosition === 'right' ? 'flex-row' : '',
@@ -354,6 +433,7 @@ watch(viewportRef, (vp) => {
             'border-r border-ui-border': !effectiveFullscreen,
           },
         ]"
+        @click="handleContainerClick"
         @pointerdown.capture="!props.useExternalFocus && focusStore.setMainFocus('monitor')"
       >
         <!-- Video area -->
@@ -437,7 +517,8 @@ watch(viewportRef, (vp) => {
           ]"
           :draggable="!effectiveFullscreen"
           @dragstart="(e) => emit('panelDragStart', e)"
-          @mouseenter="resetIdle"
+          @mouseenter="resetIdleTimeout"
+          @mousemove="resetIdleTimeout"
         >
           <!-- Left cluster: utility buttons -->
           <template v-if="effectiveFullscreen">
