@@ -157,9 +157,9 @@ export function useBatchConversion() {
         audioBitrateKbps: clampPositiveNumber(videoSettings.audioBitrateKbps, 128),
         bitrateMode: videoSettings.bitrateMode,
         keyframeIntervalSec: clampPositiveNumber(videoSettings.keyframeIntervalSec, 2),
-        width: Math.max(1, Math.round(Number(videoSettings.width) || DEFAULT_VIDEO_WIDTH)),
-        height: Math.max(1, Math.round(Number(videoSettings.height) || DEFAULT_VIDEO_HEIGHT)),
-        fps: clampPositiveNumber(Number(videoSettings.fps), DEFAULT_VIDEO_FPS),
+        width: null,
+        height: null,
+        fps: null,
       };
     } else if (type === 'audio') {
       request.audioOnly = {

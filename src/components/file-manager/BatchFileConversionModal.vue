@@ -3,7 +3,6 @@ import { computed } from 'vue';
 import UiModal from '~/components/ui/UiModal.vue';
 import UiMobileDrawer from '~/components/ui/UiMobileDrawer.vue';
 import VideoEncodingForm from '~/components/media/VideoEncodingForm.vue';
-import MediaResolutionSettings from '~/components/media/MediaResolutionSettings.vue';
 import FileConversionAudioSettings from '~/components/file-manager/FileConversionAudioSettings.vue';
 import UiWheelNumberInput from '~/components/ui/UiWheelNumberInput.vue';
 import UiSliderInput from '~/components/ui/UiSliderInput.vue';
@@ -138,17 +137,11 @@ const isFormValid = computed(() => {
 
       <template v-if="conversionType === 'video'">
         <div class="space-y-4">
-          <MediaResolutionSettings
-            v-model:is-custom-resolution="videoSettings.isCustomResolution"
-            v-model:width="videoSettings.width"
-            v-model:height="videoSettings.height"
-            v-model:fps="videoSettings.fps"
-            v-model:resolution-format="videoSettings.resolutionFormat"
-            v-model:orientation="videoSettings.orientation"
-            v-model:aspect-ratio="videoSettings.aspectRatio"
-            :show-audio-settings="false"
-            :disable-aspect-ratio="true"
-          />
+          <div class="bg-ui-bg-muted/40 border border-ui-border/50 rounded-lg p-3.5 space-y-2">
+            <div class="text-xs text-ui-text-muted">
+              {{ t('videoEditor.fileManager.batchConvert.originalResolutionAndFps') }}
+            </div>
+          </div>
 
           <div class="h-px bg-ui-border"></div>
 

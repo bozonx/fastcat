@@ -38,6 +38,29 @@ describe('blurOnDropdownMenuClose', () => {
     button.remove();
   });
 
+  it('blurs the opening trigger when focus is restored after close', () => {
+    const button = document.createElement('button');
+    const menuItem = document.createElement('div');
+    menuItem.tabIndex = 0;
+    document.body.append(button, menuItem);
+
+    button.focus();
+    blurOnDropdownMenuClose(true);
+    menuItem.focus();
+    expect(document.activeElement).toBe(menuItem);
+
+    blurOnDropdownMenuClose(false);
+    vi.advanceTimersByTime(50);
+    button.focus();
+    expect(document.activeElement).toBe(button);
+
+    vi.advanceTimersByTime(50);
+
+    expect(document.activeElement).not.toBe(button);
+    button.remove();
+    menuItem.remove();
+  });
+
   it('does not blur when active element is not a button', () => {
     const input = document.createElement('input');
     document.body.appendChild(input);

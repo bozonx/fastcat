@@ -1282,6 +1282,7 @@
         "completedWithWarnings": "Пакетная конвертация завершена с предупреждениями",
         "failed": "Ошибка пакетной конвертации",
         "filesCount": "Файлов: {count}",
+        "originalResolutionAndFps": "Для каждого файла сохраняются оригинальное разрешение и FPS.",
         "outputPatternAudio": "{name}_converted.{format}",
         "outputPatternImage": "{name}_converted.webp",
         "outputPatternVideo": "{name}_converted.{format}",

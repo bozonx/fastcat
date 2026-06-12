@@ -1282,6 +1282,7 @@
         "completedWithWarnings": "Batch conversion completed with warnings",
         "failed": "Batch conversion failed",
         "filesCount": "Files: {count}",
+        "originalResolutionAndFps": "Original resolution and FPS will be preserved for each file.",
         "outputPatternAudio": "{name}_converted.{format}",
         "outputPatternImage": "{name}_converted.webp",
         "outputPatternVideo": "{name}_converted.{format}",

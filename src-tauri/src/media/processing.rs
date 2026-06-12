@@ -325,8 +325,20 @@ pub fn convert_media_with_warnings(
     on_progress: Option<&(dyn Fn(f64) + Send + Sync)>,
 ) -> Result<()> {
     let ffprobe_cmd = options.ffprobe_path.as_deref().unwrap_or("ffprobe");
+    let mut options = options;
     let duration = match probe_media(source_path, ffprobe_cmd) {
-        Ok(meta) => Some(meta.duration.max(0.0)),
+        Ok(meta) => {
+            if options.width.is_none() {
+                options.width = meta.video.as_ref().map(|v| v.width);
+            }
+            if options.height.is_none() {
+                options.height = meta.video.as_ref().map(|v| v.height);
+            }
+            if options.fps.is_none() {
+                options.fps = meta.video.as_ref().map(|v| v.fps);
+            }
+            Some(meta.duration.max(0.0))
+        }
         Err(e) => {
             log::warn!("[native-media] failed to probe source duration for progress tracking: {e}");
             None

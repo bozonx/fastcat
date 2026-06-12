@@ -1,6 +1,65 @@
 use super::ffmpeg_utils::even;
 use super::types::HwAccelMode;
 
+/// Output colour signalling for an encode. The vello export path feeds ffmpeg raw
+/// **RGB** frames; swscale's default RGB→YUV matrix is BT.601 and it writes the stream
+/// *untagged*, so HD players (which assume BT.709 for untagged HD) render visibly
+/// shifted colours versus the monitor. We pin the conversion matrix *and* tag the
+/// output with the same matrix so the round-trip is exact regardless of the player.
+#[derive(Debug, Clone, Copy)]
+pub struct ColorSpec {
+    /// swscale `out_color_matrix` value (drives the actual RGB→YUV conversion).
+    pub matrix: &'static str,
+    /// `-colorspace` tag written to the container.
+    pub space: &'static str,
+    /// `-color_primaries` tag.
+    pub primaries: &'static str,
+    /// `-color_trc` tag.
+    pub trc: &'static str,
+}
+
+impl ColorSpec {
+    /// Resolves the conventional colour space for an output of the given height:
+    /// BT.709 for HD (>576 lines), BT.601 (SMPTE-170M coefficients) for SD. The
+    /// conversion matrix and the written tags always agree, so the export displays
+    /// identically to the monitor whichever convention the player follows.
+    pub fn for_output_height(height: u32) -> Self {
+        if height > 576 {
+            ColorSpec {
+                matrix: "bt709",
+                space: "bt709",
+                primaries: "bt709",
+                trc: "bt709",
+            }
+        } else {
+            ColorSpec {
+                matrix: "bt601",
+                space: "smpte170m",
+                primaries: "smpte170m",
+                trc: "smpte170m",
+            }
+        }
+    }
+}
+
+/// Appends the colour-signalling output tags (`-colorspace`/`-color_primaries`/
+/// `-color_trc`/`-color_range`). The matrix used here matches the `out_color_matrix`
+/// pinned in the filter chain, so the tag is truthful rather than aspirational.
+fn push_color_tag_args(args: &mut Vec<String>, color: Option<ColorSpec>) {
+    if let Some(c) = color {
+        args.extend([
+            "-colorspace".to_string(),
+            c.space.to_string(),
+            "-color_primaries".to_string(),
+            c.primaries.to_string(),
+            "-color_trc".to_string(),
+            c.trc.to_string(),
+            "-color_range".to_string(),
+            "tv".to_string(),
+        ]);
+    }
+}
+
 /// Appends hardware-accelerated decode CLI flags to an ffmpeg argument vector.
 pub fn push_hw_accel_decode_args(args: &mut Vec<String>, hw_mode: HwAccelMode, vaapi_device: &str) {
     match hw_mode {

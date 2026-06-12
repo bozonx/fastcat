@@ -12,9 +12,9 @@ export interface VideoConversionSettings {
   audioBitrateKbps: number;
   bitrateMode: 'constant' | 'variable';
   keyframeIntervalSec: number;
-  width: number;
-  height: number;
-  fps: number;
+  width: number | null;
+  height: number | null;
+  fps: number | null;
 }
 
 export interface AudioOnlyConversionSettings {

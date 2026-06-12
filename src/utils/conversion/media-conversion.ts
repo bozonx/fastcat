@@ -133,9 +133,9 @@ export async function executeMediaConversion(params: {
             audio: !params.request.video.excludeAudio,
             audioCodec:
               params.request.video.format === 'mp4' ? 'aac' : params.request.video.audioCodec,
-            width: Math.max(1, params.request.video.width || meta.video?.width || 1920),
-            height: Math.max(1, params.request.video.height || meta.video?.height || 1080),
-            fps: clampPositiveNumber(params.request.video.fps || Number(meta.video?.fps), 30),
+            width: Math.max(1, params.request.video.width ?? meta.video?.width ?? 1920),
+            height: Math.max(1, params.request.video.height ?? meta.video?.height ?? 1080),
+            fps: clampPositiveNumber(params.request.video.fps ?? Number(meta.video?.fps), 30),
             bitrateMode: params.request.video.bitrateMode,
             keyframeIntervalSec: params.request.video.keyframeIntervalSec,
             exportAlpha: false,
