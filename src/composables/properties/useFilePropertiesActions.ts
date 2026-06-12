@@ -258,7 +258,9 @@ export function useFilePropertiesActions(options: UseFilePropertiesActionsOption
   const fileSecondaryActions = computed<SecondaryEntryAction[]>(() => [
     {
       id: 'convertFile',
-      label: options.t('videoEditor.fileManager.actions.convertFile'),
+      label: options.isAudioFile.value
+        ? options.t('videoEditor.fileManager.actions.convertAudioFile')
+        : options.t('videoEditor.export.convert'),
       icon: 'i-heroicons-arrow-path',
       hidden: !options.canConvertFile.value,
       onClick: options.onConvert,

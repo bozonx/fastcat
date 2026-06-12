@@ -1183,6 +1183,7 @@
     "fileManager": {
       "actions": {
         "cancelProxyGeneration": "Cancel proxy generation",
+        "convertAudioFile": "Convert/reverse",
         "convertFile": "Convert file",
         "createFolder": "Create folder",
         "createMarkdown": "Create Markdown document",
