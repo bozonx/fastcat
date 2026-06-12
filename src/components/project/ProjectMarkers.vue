@@ -5,9 +5,14 @@ import { useSelectionStore } from '~/stores/selection.store';
 import { formatTimecode } from '~/utils/timecode';
 import MarkerThumbnail from '~/components/project/MarkerThumbnail.vue';
 import MarkerExportModal from '~/components/project/MarkerExportModal.vue';
+import MarkerColorFilter from '~/components/project/MarkerColorFilter.vue';
 
 defineProps<{
   compact?: boolean;
+}>();
+
+const emit = defineEmits<{
+  (e: 'marker-click', marker: import('~/timeline/types').TimelineMarker): void;
 }>();
 
 const timelineStore = useTimelineStore();
@@ -39,8 +44,23 @@ const selectedColors = ref<Set<string>>(new Set());
 
 watch(
   availableColors,
-  (colors) => {
-    selectedColors.value = new Set(colors);
+  (newColors, oldColors) => {
+    if (!oldColors || oldColors.length === 0) {
+      selectedColors.value = new Set(newColors);
+      return;
+    }
+    const next = new Set(selectedColors.value);
+    for (const color of newColors) {
+      if (!oldColors.includes(color)) {
+        next.add(color);
+      }
+    }
+    for (const color of next) {
+      if (!newColors.includes(color)) {
+        next.delete(color);
+      }
+    }
+    selectedColors.value = next;
   },
   { immediate: true },
 );
@@ -53,31 +73,6 @@ const filteredSortedMarkers = computed(() => {
     selectedColors.value.has(marker.color || DEFAULT_MARKER_COLOR),
   );
 });
-
-function toggleColor(color: string) {
-  const next = new Set(selectedColors.value);
-  if (next.has(color)) {
-    next.delete(color);
-  } else {
-    next.add(color);
-  }
-  selectedColors.value = next;
-}
-
-const isAllSelected = computed(() => {
-  return (
-    availableColors.value.length > 0 &&
-    availableColors.value.every((c) => selectedColors.value.has(c))
-  );
-});
-
-function toggleAllColors() {
-  if (isAllSelected.value) {
-    selectedColors.value = new Set();
-  } else {
-    selectedColors.value = new Set(availableColors.value);
-  }
-}
 
 const isExportModalOpen = ref(false);
 
@@ -107,6 +102,7 @@ function handleMarkerClick(marker: { id: string; timeUs: number }, event: MouseE
   }
 
   selectionStore.selectTimelineMarker(marker.id);
+  emit('marker-click', marker as import('~/timeline/types').TimelineMarker);
 }
 
 function isMarkerSelected(markerId: string): boolean {
@@ -117,29 +113,10 @@ function isMarkerSelected(markerId: string): boolean {
 <template>
   <div class="h-full flex flex-col bg-ui-bg-elevated overflow-hidden select-none">
     <div class="flex items-center gap-2 px-3 h-9 border-b border-ui-border bg-ui-bg/30 shrink-0">
-      <div class="flex items-center gap-1">
-        <button
-          v-for="color in availableColors"
-          :key="color"
-          type="button"
-          class="w-3.5 h-3.5 rounded-full border border-ui-border transition-all hover:scale-110 cursor-pointer"
-          :class="{
-            'ring-2 ring-primary ring-offset-1 ring-offset-ui-bg-elevated':
-              selectedColors.has(color),
-          }"
-          :style="{ backgroundColor: color }"
-          @click="toggleColor(color)"
-        />
-      </div>
-      <UButton
-        size="xs"
-        variant="ghost"
-        color="neutral"
-        class="cursor-pointer"
-        @click="toggleAllColors"
-      >
-        {{ $t('fastcat.marker.selectAll') }}
-      </UButton>
+      <MarkerColorFilter
+        :available-colors="availableColors"
+        v-model="selectedColors"
+      />
       <div class="flex-1"></div>
       <UButton
         size="xs"

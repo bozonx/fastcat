@@ -9,6 +9,7 @@ import { useFileManager } from '~/composables/file-manager/useFileManager';
 
 defineProps<{
   compact?: boolean;
+  mobile?: boolean;
 }>();
 
 const { locale } = useI18n();
@@ -97,7 +98,7 @@ function jumpToState(entryId: string, isFuture: boolean) {
 </script>
 
 <template>
-  <div class="h-full flex flex-col w-full bg-ui-bg-elevated">
+  <div v-if="!mobile" class="h-full flex flex-col w-full bg-ui-bg-elevated">
     <div class="flex items-center gap-1.5 px-3 h-9 border-b border-ui-border bg-ui-bg/30 shrink-0">
       <UButton
         icon="i-heroicons-arrow-uturn-left"
@@ -175,6 +176,60 @@ function jumpToState(entryId: string, isFuture: boolean) {
           >
             {{ formatTime(entry.timestamp) }}
           </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Mobile layout -->
+  <div v-else class="px-4 py-2 space-y-1">
+    <div
+      v-if="past.length === 0 && future.length === 0"
+      class="py-20 flex flex-col items-center justify-center gap-4 text-ui-text-muted"
+    >
+      <div class="p-4 rounded-full bg-ui-bg-muted">
+        <UIcon name="lucide:history" class="w-8 h-8 opacity-40" />
+      </div>
+      <span class="text-sm">
+        {{ $t('videoEditor.fileManager.history.empty') }}
+      </span>
+    </div>
+
+    <div v-else>
+      <!-- Future states (Redo) -->
+      <div
+        v-for="entry in reversedFuture"
+        :key="`future-${entry.id}`"
+        class="flex items-center gap-3 px-3 py-3 rounded-xl text-sm transition-all duration-200 active:bg-ui-bg-hover opacity-50"
+        @click="jumpToState(entry.id, true)"
+      >
+        <div class="flex-1 truncate text-ui-text-muted">
+          {{ $t(entry.labelKey) }}
+        </div>
+        <div class="text-[10px] text-ui-text-muted font-mono opacity-50">
+          {{ formatTime(entry.timestamp) }}
+        </div>
+      </div>
+
+      <div v-if="future.length > 0" class="h-px bg-ui-border/50 my-2 mx-2"></div>
+
+      <!-- Current/Past states (Undo) -->
+      <div
+        v-for="(entry, index) in reversedPast"
+        :key="`past-${entry.id}`"
+        class="flex items-center gap-3 px-3 py-3 rounded-xl text-sm transition-all duration-200"
+        :class="[
+          index === 0
+            ? 'bg-primary-500/10 text-primary-500'
+            : 'text-ui-text active:bg-ui-bg-hover cursor-pointer',
+        ]"
+        @click="index === 0 ? null : jumpToState(entry.id, false)"
+      >
+        <div class="flex-1 truncate" :class="[index === 0 ? 'font-semibold' : '']">
+          {{ $t(entry.labelKey) }}
+        </div>
+        <div class="text-[10px] transition-opacity font-mono opacity-50">
+          {{ formatTime(entry.timestamp) }}
         </div>
       </div>
     </div>

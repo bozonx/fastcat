@@ -73,7 +73,7 @@ function jumpToState(entryId: string, isFuture: boolean) {
     :open="isOpen"
     :show-close="false"
     :ui="{ body: 'pb-8' }"
-    @update:open="$emit('close')"
+    @update:open="!$event && $emit('close')"
   >
     <div class="px-4 py-2 space-y-1">
       <div
