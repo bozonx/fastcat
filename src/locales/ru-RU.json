@@ -1240,13 +1240,12 @@
         "completedWithWarnings": "Конвертация завершена с предупреждениями",
         "failed": "Конвертация не удалась",
         "imageQuality": "Качество изображения",
+        "convertToWebp": "Конвертация в WebP",
         "keepAspectRatio": "Сохранять пропорции",
         "loadingMetadata": "Загрузка метаданных файла...",
         "metadataWarning": "Метаданные могут быть потеряны при конвертации",
-        "outputFile": "Выходной файл",
-        "outputFileImage": "Выходной файл (формат WebP)",
+        "outputLocation": "Новый файл будет создан в той же папке",
         "success": "Файл успешно конвертирован",
-        "targetFile": "Целевой файл",
         "warningsTitle": "Проблемы при конвертации: {count}"
       },
       "delete": {
