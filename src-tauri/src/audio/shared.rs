@@ -176,6 +176,13 @@ pub(crate) struct AudioShared {
     /// Set by the UI thread to stop an in-progress scrub preview (drag ended).
     pub(crate) scrub_cancel: bool,
     pub(crate) decoding_in_flight: HashSet<String>,
+    /// Number of background full-file precache threads currently running. Bounded by
+    /// `PRECACHE_MAX_CONCURRENCY` so that pressing Play doesn't kick off many
+    /// simultaneous multi-GB 4K decodes that thrash the disk and starve the
+    /// producer's realtime streaming reads (→ decode-behind → crackle + a slow
+    /// start). Incremented when a precache thread is spawned, decremented when it
+    /// finishes (see `PrecacheGuard`).
+    pub(crate) active_precache_count: usize,
     /// Decoded-cache keys we deliberately will NOT background-cache (too large to
     /// fit the cache budget, or no declared frame count to size-gate them). Kept
     /// so the producer streams them forever instead of re-spawning a doomed decode
@@ -213,6 +220,7 @@ impl Default for AudioShared {
             scrub_request: None,
             scrub_cancel: false,
             decoding_in_flight: HashSet::new(),
+            active_precache_count: 0,
             precache_skip: HashSet::new(),
         }
     }
