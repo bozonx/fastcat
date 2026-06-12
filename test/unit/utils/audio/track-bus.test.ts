@@ -254,4 +254,46 @@ describe('buildEffectiveAudioClipItems', () => {
     expect(result.items[0]!.id).toBe('c3__audio');
     expect(result.items[0]!.source.path).toBe('video/x.mp4');
   });
+
+  it('master audio effects are not merged into clips', () => {
+    const audioTrack = {
+      id: 'a1',
+      kind: 'audio',
+      name: 'A1',
+      items: [
+        {
+          kind: 'clip',
+          clipType: 'media',
+          id: 'c1',
+          trackId: 'a1',
+          name: 'clip1',
+          timelineRange: { startUs: 0, durationUs: 1_000_000 },
+          sourceRange: { startUs: 0, durationUs: 1_000_000 },
+          source: { path: 'audio/y.mp3' },
+          sourceDurationUs: 1_000_000,
+          effects: [{ id: 'fx1', type: 'eq', enabled: true, target: 'audio' }],
+        },
+      ],
+    };
+
+    const masterEffects = [
+      { id: 'm1', type: 'reverb', enabled: true, target: 'audio' },
+      { id: 'mv1', type: 'video-lut', enabled: true, target: 'video' },
+    ];
+
+    const result = buildEffectiveAudioClipItems({
+      audioTracks: [audioTrack as any],
+      videoTracks: [],
+      masterEffects: masterEffects as any,
+    });
+
+    expect(result.items).toHaveLength(1);
+    // Clip effects should only contain the clip's own effects
+    expect(result.items[0]!.effects).toHaveLength(1);
+    expect(result.items[0]!.effects![0]!.id).toBe('fx1');
+    // masterAudioEffects should only contain audio master effects
+    expect(result.masterAudioEffects).toHaveLength(1);
+    expect(result.masterAudioEffects[0]!.id).toBe('m1');
+  });
 });
+

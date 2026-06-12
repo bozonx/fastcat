@@ -3,6 +3,7 @@ import { computed, ref, nextTick, watch, onBeforeUnmount, onMounted } from 'vue'
 import { blurOnDropdownMenuClose } from '~/composables/useDropdownMenuBlur';
 import { useMediaQuery } from '@vueuse/core';
 import { useAppFullscreen } from '~/composables/useAppFullscreen';
+import { isTauriRuntime } from '~/utils/runtime';
 import { useMonitorGrid } from '~/composables/monitor/useMonitorGrid';
 import { useMonitorRuntime } from '~/composables/monitor/useMonitorRuntime';
 import MonitorTextTransformBox from './MonitorTextTransformBox.vue';
@@ -133,6 +134,7 @@ function onMobileMonitorKeyDown(event: KeyboardEvent) {
 
 const containerRef = ref<HTMLElement | null>(null);
 const { isFullscreen, toggle: toggleFullscreen } = useAppFullscreen(containerRef);
+const shouldTeleport = computed(() => isTauriRuntime() && isFullscreen.value);
 
 const LONG_PRESS_MOVE_THRESHOLD = 10;
 let longPressTimer: ReturnType<typeof setTimeout> | null = null;
@@ -244,15 +246,41 @@ function onToolbarPointerDown(e: PointerEvent) {
   showControlsTemporary();
 }
 
+const savedPanelViewport = ref<{ zoom: number; panX: number; panY: number } | null>(null);
+
+function capturePanelViewport() {
+  if (savedPanelViewport.value) return;
+  const m = projectStore.activeMonitor;
+  if (!m) return;
+  savedPanelViewport.value = { zoom: m.zoom, panX: m.panX, panY: m.panY };
+}
+
+function restorePanelViewport() {
+  const m = projectStore.activeMonitor;
+  const s = savedPanelViewport.value;
+  if (!m || !s) return;
+  m.zoom = s.zoom;
+  m.panX = s.panX;
+  m.panY = s.panY;
+  savedPanelViewport.value = null;
+}
+
 watch(isFullscreen, (val) => {
   clearControlsTimeout();
   isControlsVisible.value = true;
   if (val) {
+    capturePanelViewport();
     showControlsTemporary();
+    void nextTick(() => {
+      void nextTick(() => {
+        (viewportRef.value as { fitMonitor?: () => void })?.fitMonitor?.();
+      });
+    });
+  } else {
+    void nextTick(() => {
+      restorePanelViewport();
+    });
   }
-  void nextTick(() => {
-    (viewportRef.value as { fitMonitor?: () => void })?.fitMonitor?.();
-  });
 });
 
 const isLandscape = useMediaQuery('(orientation: landscape)');
@@ -335,6 +363,9 @@ onBeforeUnmount(() => {
 watch(viewportRef, (vp) => {
   if (vp) {
     timecodeEl.value = (vp as { timecodeEl?: HTMLElement }).timecodeEl ?? null;
+    if (isFullscreen.value) {
+      (vp as { fitMonitor?: () => void })?.fitMonitor?.();
+    }
   }
 });
 
@@ -373,19 +404,20 @@ const containerHeightClass = computed(() => {
 </script>
 
 <template>
-  <div
-    ref="containerRef"
-    class="flex min-w-0 shrink-0 border-ui-border bg-ui-bg-elevated transition-colors duration-200"
-    :class="[
-      isFullscreen ? 'fixed inset-0 z-50 h-screen w-screen' : [containerHeightClass],
-      {
-        'flex-row-reverse border-l': internalLayout === 'left',
-        'flex-row border-r': internalLayout === 'right',
-        'flex-col-reverse border-t': internalLayout === 'top',
-        'flex-col border-b': internalLayout === 'bottom',
-      },
-    ]"
-  >
+  <Teleport to="body" :disabled="!shouldTeleport">
+    <div
+      ref="containerRef"
+      class="flex min-w-0 shrink-0 border-ui-border bg-ui-bg-elevated transition-colors duration-200"
+      :class="[
+        isFullscreen ? 'fixed inset-0 z-50 h-screen w-screen' : [containerHeightClass],
+        {
+          'flex-row-reverse border-l': internalLayout === 'left',
+          'flex-row border-r': internalLayout === 'right',
+          'flex-col-reverse border-t': internalLayout === 'top',
+          'flex-col border-b': internalLayout === 'bottom',
+        },
+      ]"
+    >
     <!-- Video area -->
     <MonitorViewport
       ref="viewportRef"
@@ -597,5 +629,6 @@ const containerHeightClass = computed(() => {
         <ProjectMarkers class="h-full" />
       </div>
     </UiMobileDrawer>
-  </div>
+    </div>
+  </Teleport>
 </template>

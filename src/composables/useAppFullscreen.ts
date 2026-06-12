@@ -10,6 +10,7 @@ export function useAppFullscreen(target?: Ref<HTMLElement | null>) {
 
   const isFullscreen = ref(false);
   let unlisten: (() => void) | null = null;
+  let syncTimeout: ReturnType<typeof setTimeout> | null = null;
 
   async function getWindow() {
     const { getCurrentWindow } = await import('@tauri-apps/api/window');
@@ -17,12 +18,15 @@ export function useAppFullscreen(target?: Ref<HTMLElement | null>) {
   }
 
   async function syncState() {
-    try {
-      const win = await getWindow();
-      isFullscreen.value = await win.isFullscreen();
-    } catch {
-      // ignore in test environments or if window API is unavailable
-    }
+    if (syncTimeout) clearTimeout(syncTimeout);
+    syncTimeout = setTimeout(async () => {
+      try {
+        const win = await getWindow();
+        isFullscreen.value = await win.isFullscreen();
+      } catch {
+        // ignore in test environments or if window API is unavailable
+      }
+    }, 200);
   }
 
   async function enter() {
@@ -68,6 +72,7 @@ export function useAppFullscreen(target?: Ref<HTMLElement | null>) {
 
   onScopeDispose(() => {
     unlisten?.();
+    if (syncTimeout) clearTimeout(syncTimeout);
   });
 
   return {

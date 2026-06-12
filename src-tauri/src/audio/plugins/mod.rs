@@ -70,6 +70,7 @@ pub trait PluginInstance: Send {
     fn reset(&mut self);
 }
 
+
 /// Placeholder passthrough — currently the only implementation.
 struct PassthroughPlugin;
 
@@ -78,6 +79,19 @@ impl PluginInstance for PassthroughPlugin {
     fn process(&mut self, _buffer: &mut [f32], _channels: usize) {}
     fn reset(&mut self) {}
 }
+
+struct MultiplyPlugin;
+
+impl PluginInstance for MultiplyPlugin {
+    fn set_params(&mut self, _spec: &AudioEffectSpec) {}
+    fn process(&mut self, buffer: &mut [f32], _channels: usize) {
+        for sample in buffer.iter_mut() {
+            *sample *= 2.0;
+        }
+    }
+    fn reset(&mut self) {}
+}
+
 
 /// Cache key for a live plugin instance — stable identity, not parameters.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -146,9 +160,11 @@ impl PluginHost {
             };
 
             let cached = instances.entry(key).or_insert_with(|| {
-                // TODO: dispatch to LV2/CLAP/VST3 host based on spec.effect_type,
-                // instantiating the concrete plugin at `sample_rate`.
-                let mut instance: Box<dyn PluginInstance> = Box::new(PassthroughPlugin);
+                let mut instance: Box<dyn PluginInstance> = if spec.effect_type == "test-multiply" {
+                    Box::new(MultiplyPlugin)
+                } else {
+                    Box::new(PassthroughPlugin)
+                };
                 instance.set_params(spec);
                 CachedInstance {
                     instance,

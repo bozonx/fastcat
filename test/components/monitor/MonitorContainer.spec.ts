@@ -1,8 +1,8 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { mount } from '@vue/test-utils';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { mount, DOMWrapper } from '@vue/test-utils';
 import { createTestingPinia } from '@pinia/testing';
 import MonitorContainer from '~/components/monitor/MonitorContainer.vue';
-import { ref } from 'vue';
+import { ref, nextTick } from 'vue';
 import { DEFAULT_USER_SETTINGS } from '~/utils/settings/defaults';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 
@@ -60,12 +60,20 @@ vi.mock('~/composables/monitor/useMonitorGrid', () => ({
   }),
 }));
 
-// Mock app fullscreen
-const mockEnterFullscreen = vi.fn();
-const mockExitFullscreen = vi.fn();
+import { useProjectStore } from '~/stores/project.store';
+
+// Mock app fullscreen using standard hoisted mock variables
+const mockIsFullscreenRef = ref(false);
+const mockEnterFullscreen = vi.fn(() => {
+  mockIsFullscreenRef.value = true;
+});
+const mockExitFullscreen = vi.fn(() => {
+  mockIsFullscreenRef.value = false;
+});
+
 vi.mock('~/composables/useAppFullscreen', () => ({
   useAppFullscreen: () => ({
-    isFullscreen: ref(false),
+    isFullscreen: mockIsFullscreenRef,
     enter: mockEnterFullscreen,
     exit: mockExitFullscreen,
   }),
@@ -73,6 +81,7 @@ vi.mock('~/composables/useAppFullscreen', () => ({
 
 describe('MonitorContainer', () => {
   let pinia: any;
+  let wrapper: any;
 
   beforeEach(() => {
     pinia = createTestingPinia({
@@ -102,8 +111,17 @@ describe('MonitorContainer', () => {
     });
   });
 
+  afterEach(async () => {
+    mockIsFullscreenRef.value = false;
+    if (wrapper) {
+      wrapper.unmount();
+      wrapper = null;
+    }
+    await nextTick();
+  });
+
   it('renders viewport and toolbar', async () => {
-    const wrapper = mount(MonitorContainer, {
+    wrapper = mount(MonitorContainer, {
       global: {
         plugins: [pinia],
         stubs: {
@@ -135,7 +153,7 @@ describe('MonitorContainer', () => {
   });
 
   it('enters fullscreen on button click', async () => {
-    const wrapper = mount(MonitorContainer, {
+    wrapper = mount(MonitorContainer, {
       global: {
         plugins: [pinia],
         stubs: {
@@ -188,7 +206,8 @@ describe('MonitorContainer', () => {
       template: '<div data-dropdown-menu><slot /></div>',
     };
 
-    const wrapper = mount(MonitorContainer, {
+    wrapper = mount(MonitorContainer, {
+      attachTo: document.body,
       props: {
         isFullscreen: true,
       },
@@ -220,7 +239,7 @@ describe('MonitorContainer', () => {
     await wrapper.vm.$nextTick();
     await wrapper.vm.$nextTick();
 
-    const panel = wrapper.find('.panel-focus-frame').element;
+    const panel = document.body.querySelector('.panel-focus-frame');
 
     expect(wrapper.findComponent(contextMenuStub).props('portal')).toBe(panel);
     expect(wrapper.findComponent(dropdownMenuStub).props('portal')).toBe(panel);
@@ -235,7 +254,7 @@ describe('MonitorContainer', () => {
     const workspaceStore = useWorkspaceStore(pinia);
     workspaceStore.userSettings = JSON.parse(JSON.stringify(DEFAULT_USER_SETTINGS));
 
-    const wrapper = mount(MonitorContainer, {
+    wrapper = mount(MonitorContainer, {
       global: {
         plugins: [pinia],
         stubs: {
@@ -290,7 +309,7 @@ describe('MonitorContainer', () => {
       template: '<div data-context-menu><slot /></div>',
     };
 
-    const wrapper = mount(MonitorContainer, {
+    wrapper = mount(MonitorContainer, {
       global: {
         plugins: [pinia],
         stubs: {
@@ -357,7 +376,8 @@ describe('MonitorContainer', () => {
   it('controls overlay auto-hides and shows on interaction in fullscreen', async () => {
     vi.useFakeTimers();
 
-    const wrapper = mount(MonitorContainer, {
+    wrapper = mount(MonitorContainer, {
+      attachTo: document.body,
       props: {
         isFullscreen: true,
       },
@@ -392,14 +412,20 @@ describe('MonitorContainer', () => {
 
     await wrapper.vm.$nextTick();
 
-    const controlsBar = wrapper.find('[data-panel-drag-handle]');
+    const getFromBody = (selector: string) => {
+      const el = document.body.querySelector(selector);
+      if (!el) throw new Error(`Element ${selector} not found in body`);
+      return new DOMWrapper(el);
+    };
+
+    const controlsBar = getFromBody('[data-panel-drag-handle]');
     expect(controlsBar.classes()).not.toContain('opacity-0');
 
     vi.advanceTimersByTime(3000);
     await wrapper.vm.$nextTick();
     expect(controlsBar.classes()).toContain('opacity-0');
 
-    const viewport = wrapper.find('.viewport-stub');
+    const viewport = getFromBody('.viewport-stub');
     await viewport.trigger('click');
     expect(controlsBar.classes()).not.toContain('opacity-0');
 
@@ -412,5 +438,77 @@ describe('MonitorContainer', () => {
     expect(controlsBar.classes()).toContain('opacity-0');
 
     vi.useRealTimers();
+  });
+
+  it('saves active monitor pan & zoom on entering fullscreen and restores them on exit', async () => {
+    mockIsFullscreenRef.value = false;
+    const projectStore = useProjectStore(pinia);
+    projectStore.activeMonitor = {
+      zoom: 2.5,
+      panX: 10,
+      panY: 20,
+      previewResolution: 1080,
+    };
+    projectStore.currentView = 'cut';
+    projectStore.lastViewBeforeFullscreen = 'cut';
+
+    const viewportStub = {
+      template: '<div class="viewport-stub"><slot name="canvas" /></div>',
+      setup(props: any, { expose }: any) {
+        const fitMonitor = () => {
+          projectStore.activeMonitor.zoom = 1.0;
+          projectStore.activeMonitor.panX = 0;
+          projectStore.activeMonitor.panY = 0;
+        };
+        expose({ fitMonitor });
+        return {};
+      }
+    };
+
+    wrapper = mount(MonitorContainer, {
+      global: {
+        plugins: [pinia],
+        stubs: {
+          MonitorViewport: viewportStub,
+          MonitorAudioControl: true,
+          UiTooltip: { template: '<div><slot /></div>' },
+          UButton: true,
+          UiActionButton: true,
+          UiToggleButton: true,
+          UDropdownMenu: true,
+          UContextMenu: { template: '<div><slot /></div>' },
+          UiContextMenuPortal: true,
+          UIcon: true,
+        },
+      },
+    });
+
+    await wrapper.vm.$nextTick();
+
+    // Verify initial values
+    expect(projectStore.activeMonitor.zoom).toBe(2.5);
+    expect(projectStore.activeMonitor.panX).toBe(10);
+    expect(projectStore.activeMonitor.panY).toBe(20);
+
+    // Trigger entering fullscreen by updating mockIsFullscreenRef
+    mockIsFullscreenRef.value = true;
+    await wrapper.vm.$nextTick();
+    await wrapper.vm.$nextTick();
+    await wrapper.vm.$nextTick(); // extra tick for double nextTick
+
+    // Viewport fitMonitor should have run, resetting zoom/pan
+    expect(projectStore.activeMonitor.zoom).toBe(1.0);
+    expect(projectStore.activeMonitor.panX).toBe(0);
+    expect(projectStore.activeMonitor.panY).toBe(0);
+
+    // Exit fullscreen by updating mockIsFullscreenRef
+    mockIsFullscreenRef.value = false;
+    await wrapper.vm.$nextTick();
+    await wrapper.vm.$nextTick();
+
+    // Original values should be restored
+    expect(projectStore.activeMonitor.zoom).toBe(2.5);
+    expect(projectStore.activeMonitor.panX).toBe(10);
+    expect(projectStore.activeMonitor.panY).toBe(20);
   });
 });

@@ -1,48 +1,37 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { mount } from '@vue/test-utils';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { mount, DOMWrapper } from '@vue/test-utils';
 import { createTestingPinia } from '@pinia/testing';
 import MobileMonitorContainer from '~/components/monitor/MobileMonitorContainer.vue';
-import { ref } from 'vue';
+import { ref, nextTick } from 'vue';
 import { DEFAULT_USER_SETTINGS } from '~/utils/settings/defaults';
 
-const {
-  sharedVideoItems,
-  sharedIsLoading,
-  sharedLoadError,
-  sharedIsLandscape,
-  sharedProjectWidth,
-  sharedProjectHeight,
-  sharedIsFullscreen,
-} = vi.hoisted(() => {
-  // eslint-disable-next-line @typescript-eslint/no-require-imports -- require needed in vi.hoisted before module resolution
-  const { ref } = require('vue');
-  return {
-    sharedVideoItems: ref([] as any[]),
-    sharedIsLoading: ref(false),
-    sharedLoadError: ref(null as string | null),
-    sharedIsLandscape: ref(false),
-    sharedProjectWidth: ref(1920),
-    sharedProjectHeight: ref(1080),
-    sharedIsFullscreen: ref(false),
-  };
-});
+import { reactive } from 'vue';
+
+const mockVideoItems = ref([] as any[]);
+const mockIsLoading = ref(false);
+const mockLoadError = ref(null as string | null);
+const mockIsLandscape = ref(false);
+const mockProjectWidth = ref(1920);
+const mockProjectHeight = ref(1080);
+const mockIsFullscreen = ref(false);
+const mockActiveMonitor = reactive({ zoom: 1, panX: 0, panY: 0 });
 
 vi.mock('~/composables/monitor/useMonitorRuntime', () => ({
   useMonitorRuntime: () => ({
     projectStore: {
       projectSettings: {
         get project() {
-          return { width: sharedProjectWidth.value, height: sharedProjectHeight.value };
+          return { width: mockProjectWidth.value, height: mockProjectHeight.value };
         },
       },
-      activeMonitor: { zoom: 1 },
+      activeMonitor: mockActiveMonitor,
     },
     timelineStore: {
       togglePlayback: vi.fn(),
       setCurrentTimeUs: vi.fn(),
     },
     selectionStore: {},
-    videoItems: sharedVideoItems,
+    videoItems: mockVideoItems,
     safeDurationUs: ref(1000000),
     isTextClipSelected: ref(false),
     containerEl: ref(null),
@@ -52,8 +41,8 @@ vi.mock('~/composables/monitor/useMonitorRuntime', () => ({
       fitMonitor: vi.fn(),
       timecodeEl: ref(null),
     }),
-    isLoading: sharedIsLoading,
-    loadError: sharedLoadError,
+    isLoading: mockIsLoading,
+    loadError: mockLoadError,
     previewEffectsEnabled: ref(true),
     scheduleBuild: vi.fn(),
     useProxyInMonitor: ref(false),
@@ -86,10 +75,12 @@ vi.mock('~/composables/monitor/useMonitorGrid', () => ({
 }));
 
 // Mock app fullscreen
-const mockToggleFullscreen = vi.fn();
+const mockToggleFullscreen = vi.fn(() => {
+  mockIsFullscreen.value = !mockIsFullscreen.value;
+});
 vi.mock('~/composables/useAppFullscreen', () => ({
   useAppFullscreen: () => ({
-    isFullscreen: sharedIsFullscreen,
+    isFullscreen: mockIsFullscreen,
     toggle: mockToggleFullscreen,
   }),
 }));
@@ -98,12 +89,13 @@ vi.mock('@vueuse/core', async () => {
   const actual = await vi.importActual('@vueuse/core');
   return {
     ...actual,
-    useMediaQuery: () => sharedIsLandscape,
+    useMediaQuery: () => mockIsLandscape,
   };
 });
 
 describe('MobileMonitorContainer', () => {
   let pinia: any;
+  let wrapper: any;
 
   beforeEach(() => {
     pinia = createTestingPinia({
@@ -133,6 +125,15 @@ describe('MobileMonitorContainer', () => {
     });
   });
 
+  afterEach(async () => {
+    mockIsFullscreen.value = false;
+    if (wrapper) {
+      wrapper.unmount();
+      wrapper = null;
+    }
+    await nextTick();
+  });
+
   const stubs = {
     MonitorViewport: {
       template:
@@ -155,7 +156,7 @@ describe('MobileMonitorContainer', () => {
   };
 
   it('renders viewport and mobile controls', async () => {
-    const wrapper = mount(MobileMonitorContainer, {
+    wrapper = mount(MobileMonitorContainer, {
       global: {
         plugins: [pinia],
         stubs,
@@ -176,7 +177,7 @@ describe('MobileMonitorContainer', () => {
   });
 
   it('calls toggleFullscreen when fullscreen button is clicked', async () => {
-    const wrapper = mount(MobileMonitorContainer, {
+    wrapper = mount(MobileMonitorContainer, {
       global: {
         plugins: [pinia],
         stubs,
@@ -194,7 +195,7 @@ describe('MobileMonitorContainer', () => {
   });
 
   it('closes mobile monitor dropdowns on viewport pointer down', async () => {
-    const wrapper = mount(MobileMonitorContainer, {
+    wrapper = mount(MobileMonitorContainer, {
       global: {
         plugins: [pinia],
         stubs,
@@ -229,9 +230,9 @@ describe('MobileMonitorContainer', () => {
   });
 
   it('shows status text when no media is present', async () => {
-    sharedVideoItems.value = []; // NO MEDIA
+    mockVideoItems.value = []; // NO MEDIA
 
-    const wrapper = mount(MobileMonitorContainer, {
+    wrapper = mount(MobileMonitorContainer, {
       global: {
         plugins: [pinia],
         stubs,
@@ -243,7 +244,7 @@ describe('MobileMonitorContainer', () => {
   });
 
   it('is disabled when no media and no duration', async () => {
-    const wrapper = mount(MobileMonitorContainer, {
+    wrapper = mount(MobileMonitorContainer, {
       global: {
         plugins: [pinia],
         stubs,
@@ -258,10 +259,10 @@ describe('MobileMonitorContainer', () => {
   });
 
   it('changes layout based on orientation', async () => {
-    sharedIsLandscape.value = false;
-    sharedProjectWidth.value = 1920;
-    sharedProjectHeight.value = 1080;
-    const wrapper = mount(MobileMonitorContainer, {
+    mockIsLandscape.value = false;
+    mockProjectWidth.value = 1920;
+    mockProjectHeight.value = 1080;
+    wrapper = mount(MobileMonitorContainer, {
       global: {
         plugins: [pinia],
         stubs,
@@ -269,25 +270,25 @@ describe('MobileMonitorContainer', () => {
     });
 
     // In portrait, should have flex-col
-    expect(wrapper.classes()).toContain('flex-col');
+    expect(wrapper.find('.border-ui-border').classes()).toContain('flex-col');
 
     // Change to landscape
-    sharedIsLandscape.value = true;
+    mockIsLandscape.value = true;
     await wrapper.vm.$nextTick();
 
     // In landscape, the main container changes layout based on internalLayout
     // The container shows flex-row when internalLayout is 'left' or 'right'
     // which happens when isLandscape is true and project is not vertical
-    const hasValidLayout = wrapper.classes().some((c) => c.startsWith('flex'));
+    const hasValidLayout = wrapper.find('.border-ui-border').classes().some((c) => c.startsWith('flex'));
     expect(hasValidLayout).toBe(true);
   });
 
   it('positions toolbar on the right for vertical projects in portrait mode', async () => {
-    sharedIsLandscape.value = false;
-    sharedProjectWidth.value = 1080;
-    sharedProjectHeight.value = 1920; // Vertical project
+    mockIsLandscape.value = false;
+    mockProjectWidth.value = 1080;
+    mockProjectHeight.value = 1920; // Vertical project
 
-    const wrapper = mount(MobileMonitorContainer, {
+    wrapper = mount(MobileMonitorContainer, {
       global: {
         plugins: [pinia],
         stubs,
@@ -297,14 +298,15 @@ describe('MobileMonitorContainer', () => {
     await wrapper.vm.$nextTick();
 
     // With internalLayout = right, it should have flex-row class
-    expect(wrapper.classes()).toContain('flex-row');
+    expect(wrapper.find('.border-ui-border').classes()).toContain('flex-row');
   });
 
   it('controls overlay auto-hides and shows on interaction in fullscreen', async () => {
     vi.useFakeTimers();
-    sharedIsFullscreen.value = true;
+    mockIsFullscreen.value = true;
 
-    const wrapper = mount(MobileMonitorContainer, {
+    wrapper = mount(MobileMonitorContainer, {
+      attachTo: document.body,
       global: {
         plugins: [pinia],
         stubs,
@@ -313,8 +315,14 @@ describe('MobileMonitorContainer', () => {
 
     await wrapper.vm.$nextTick();
 
+    const getFromBody = (selector: string) => {
+      const el = document.body.querySelector(selector);
+      if (!el) throw new Error(`Element ${selector} not found in body`);
+      return new DOMWrapper(el);
+    };
+
     // Initially controls are visible
-    const toolbar = wrapper.find('.transition-all');
+    const toolbar = getFromBody('.transition-all');
     expect(toolbar.classes()).not.toContain('opacity-0');
 
     // Advance time by 3 seconds - controls should hide
@@ -323,10 +331,68 @@ describe('MobileMonitorContainer', () => {
     expect(toolbar.classes()).toContain('opacity-0');
 
     // Tap the viewport to show them again
-    const viewport = wrapper.find('.viewport-stub');
+    const viewport = getFromBody('.viewport-stub');
     await viewport.trigger('click');
     expect(toolbar.classes()).not.toContain('opacity-0');
 
     vi.useRealTimers();
+  });
+
+  it('saves active monitor pan & zoom on entering fullscreen and restores them on exit', async () => {
+    mockIsFullscreen.value = false;
+    mockActiveMonitor.zoom = 2.5;
+    mockActiveMonitor.panX = 10;
+    mockActiveMonitor.panY = 20;
+
+    const viewportStub = {
+      template: '<div class="viewport-stub"><slot name="canvas" /></div>',
+      setup(props: any, { expose }: any) {
+        const fitMonitor = () => {
+          mockActiveMonitor.zoom = 1.0;
+          mockActiveMonitor.panX = 0;
+          mockActiveMonitor.panY = 0;
+        };
+        expose({ fitMonitor });
+        return {};
+      }
+    };
+
+    wrapper = mount(MobileMonitorContainer, {
+      global: {
+        plugins: [pinia],
+        stubs: {
+          ...stubs,
+          MonitorViewport: viewportStub,
+        },
+      },
+    });
+
+    await wrapper.vm.$nextTick();
+
+    // Verify initial values
+    expect(mockActiveMonitor.zoom).toBe(2.5);
+    expect(mockActiveMonitor.panX).toBe(10);
+    expect(mockActiveMonitor.panY).toBe(20);
+
+    // Enter fullscreen
+    mockIsFullscreen.value = true;
+    await wrapper.vm.$nextTick();
+    await wrapper.vm.$nextTick();
+    await wrapper.vm.$nextTick();
+
+    // fitMonitor should have run, resetting zoom/pan
+    expect(mockActiveMonitor.zoom).toBe(1.0);
+    expect(mockActiveMonitor.panX).toBe(0);
+    expect(mockActiveMonitor.panY).toBe(0);
+
+    // Exit fullscreen
+    mockIsFullscreen.value = false;
+    await wrapper.vm.$nextTick();
+    await wrapper.vm.$nextTick();
+
+    // Original values should be restored
+    expect(mockActiveMonitor.zoom).toBe(2.5);
+    expect(mockActiveMonitor.panX).toBe(10);
+    expect(mockActiveMonitor.panY).toBe(20);
   });
 });

@@ -19,6 +19,7 @@ import { useFileManager } from '~/composables/file-manager/useFileManager';
 import { useProjectActions } from '~/composables/editor/useProjectActions';
 import { useHotkeyLabel } from '~/composables/useHotkeyLabel';
 import { blurOnDropdownMenuClose } from '~/composables/useDropdownMenuBlur';
+import { isTauriRuntime } from '~/utils/runtime';
 
 const { t } = useI18n();
 const toast = useToast();
@@ -93,6 +94,7 @@ const emit = defineEmits<{
 }>();
 
 const effectiveFullscreen = computed(() => props.isFullscreen || isBrowserFullscreen.value);
+const shouldTeleport = computed(() => isTauriRuntime() && effectiveFullscreen.value);
 const monitorMenuPortal = computed(() =>
   effectiveFullscreen.value ? (panelRef.value ?? false) : true,
 );
@@ -101,6 +103,7 @@ const monitorMenuPortal = computed(() =>
 const savedPanelViewport = ref<{ zoom: number; panX: number; panY: number } | null>(null);
 
 function capturePanelViewport() {
+  if (savedPanelViewport.value) return;
   const m = projectStore.activeMonitor;
   if (!m) return;
   savedPanelViewport.value = { zoom: m.zoom, panX: m.panX, panY: m.panY };
@@ -113,6 +116,7 @@ function restorePanelViewport() {
   m.zoom = s.zoom;
   m.panX = s.panX;
   m.panY = s.panY;
+  savedPanelViewport.value = null;
 }
 
 function restoreViewAfterFullscreen() {
@@ -126,11 +130,14 @@ function restoreViewAfterFullscreen() {
 // isBrowserFullscreen drives the actual enter/exit lifecycle
 watch(isBrowserFullscreen, (entering) => {
   if (entering) {
+    capturePanelViewport();
     projectStore.goToFullscreen();
     focusStore.setMainFocus('monitor');
     // Fit to the new (larger) viewport after layout settles
     void nextTick(() => {
-      (viewportRef.value as { fitMonitor?: () => void })?.fitMonitor?.();
+      void nextTick(() => {
+        (viewportRef.value as { fitMonitor?: () => void })?.fitMonitor?.();
+      });
     });
   } else {
     if (projectStore.currentView === 'fullscreen') {
@@ -403,19 +410,23 @@ onUnmounted(() => {
 watch(viewportRef, (vp) => {
   if (vp) {
     timecodeEl.value = (vp as { timecodeEl?: HTMLElement }).timecodeEl ?? null;
+    if (effectiveFullscreen.value) {
+      (vp as { fitMonitor?: () => void })?.fitMonitor?.();
+    }
   }
 });
 </script>
 
 <template>
   <div class="h-full">
-    <!-- panelRef is always rendered unconditionally so useFullscreen keeps a stable DOM target -->
-    <UContextMenu
-      :open="isMonitorContextMenuOpen"
-      :items="contextMenuItems"
-      :portal="monitorMenuPortal"
-      @update:open="setMonitorContextMenuOpen"
-    >
+    <Teleport to="body" :disabled="!shouldTeleport">
+      <!-- panelRef is always rendered unconditionally so useFullscreen keeps a stable DOM target -->
+      <UContextMenu
+        :open="isMonitorContextMenuOpen"
+        :items="contextMenuItems"
+        :portal="monitorMenuPortal"
+        @update:open="setMonitorContextMenuOpen"
+      >
       <div
         ref="panelRef"
         class="panel-focus-frame flex h-full min-w-0 min-h-0 transition-colors duration-300 relative select-none"
@@ -722,5 +733,6 @@ watch(viewportRef, (vp) => {
         </div>
       </div>
     </UContextMenu>
+    </Teleport>
   </div>
 </template>

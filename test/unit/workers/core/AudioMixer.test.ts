@@ -692,7 +692,85 @@ describe('AudioMixer.writeMixedToSource', () => {
     expect(mixedData[500]).toBeCloseTo(1.0, 1);
     expect(mixedData[999]).toBeCloseTo(1.0);
   });
+
+  it('applies master audio effects once on the mixed bus', async () => {
+    vi.mocked(applyAudioEffectsOffline).mockClear();
+    const sampleRate = 48000;
+    const numberOfChannels = 1;
+    const durationS = 1;
+    const audioSource = { add: vi.fn().mockResolvedValue(undefined) };
+
+    const prepared: PreparedClip[] = [
+      {
+        clipStartS: 0,
+        offsetS: 0,
+        playDurationS: 1,
+        input: new mockMediabunny.Input() as any,
+        sink: new mockMediabunny.AudioSampleSink() as any,
+        sourcePath: 'clip1.mp3',
+        speed: 1,
+        reversed: false,
+        audioGain: 1,
+        audioBalance: 0,
+        audioFadeInS: 0,
+        audioFadeOutS: 0,
+        audioFadeInCurve: 'linear',
+        audioFadeOutCurve: 'linear',
+        audioEffects: [],
+      },
+      {
+        clipStartS: 0,
+        offsetS: 0,
+        playDurationS: 1,
+        input: new mockMediabunny.Input() as any,
+        sink: new mockMediabunny.AudioSampleSink() as any,
+        sourcePath: 'clip2.mp3',
+        speed: 1,
+        reversed: false,
+        audioGain: 1,
+        audioBalance: 0,
+        audioFadeInS: 0,
+        audioFadeOutS: 0,
+        audioFadeInCurve: 'linear',
+        audioFadeOutCurve: 'linear',
+        audioEffects: [],
+      },
+    ];
+
+    (applyAudioEffectsOffline as any).mockImplementation(({ planes, frames }: any) => {
+      const newPlanes = planes.map((p: Float32Array) => {
+        const out = new Float32Array(p.length);
+        for (let i = 0; i < p.length; i++) out[i] = p[i]! * 2;
+        return out;
+      });
+      return Promise.resolve({ planes: newPlanes, frames });
+    });
+
+    const masterAudioEffects = [{ id: 'm1', type: 'limiter', enabled: true, target: 'audio' }] as any;
+
+    await AudioMixer.writeMixedToSource({
+      prepared,
+      durationS,
+      audioSource,
+      chunkDurationS: 1,
+      sampleRate,
+      numberOfChannels,
+      reportExportWarning: vi.fn(),
+      AudioSample: mockMediabunny.AudioSample as any,
+      masterAudioEffects,
+    });
+
+    expect(applyAudioEffectsOffline).toHaveBeenCalledTimes(1);
+    expect(applyAudioEffectsOffline).toHaveBeenCalledWith(expect.objectContaining({
+      effects: masterAudioEffects
+    }));
+
+    const resultInstance = audioSource.add.mock.calls[0][0];
+    const mixedData = resultInstance.data.data;
+    expect(mixedData[0]).toBeCloseTo(1.0); // Hard clamped to 1.0 after master effect (sum is 0.5+0.5=1.0, x2 = 2.0, clamped to 1.0)
+  });
 });
+
 
 describe('AudioMixer time-stretch via speed', () => {
   it('invokes resampleAndStretchOffline when speed != 1', async () => {

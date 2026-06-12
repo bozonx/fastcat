@@ -1496,4 +1496,114 @@ mod tests {
         let _ = std::fs::remove_file(&tmp);
     }
 
+    #[test]
+    fn test_mix_chunk_pipeline_order() {
+        // Path doesn't matter since we will prime the cache window
+        let path = "/tmp/dummy-file.mp3";
+        let layer_effect = crate::audio::plugins::AudioEffectSpec {
+            id: "fx-layer".into(),
+            effect_type: "test-multiply".into(),
+            enabled: true,
+            wet: 1.0,
+            params: Default::default(),
+        };
+        let l = SceneAudioLayer {
+            id: "l1".into(),
+            track_id: Some("track1".into()),
+            path: path.into(),
+            timeline_start_sec: 0.0,
+            timeline_end_sec: 1.0,
+            source_start_sec: 0.0,
+            source_range_duration_sec: 0.0,
+            speed: 1.0,
+            audio_gain: 1.0,
+            audio_balance: 0.0,
+            audio_fade_in_sec: 0.0,
+            audio_fade_out_sec: 0.0,
+            audio_fade_in_curve: AudioFadeCurve::Linear,
+            audio_fade_out_curve: AudioFadeCurve::Linear,
+            audio_effects: vec![layer_effect],
+        };
+
+        let t = SceneAudioTrack {
+            id: "track1".into(),
+            audio_gain: 1.0,
+            audio_balance: 0.0,
+            audio_solo: false,
+            audio_muted: false,
+        };
+
+        let master_effect = crate::audio::plugins::AudioEffectSpec {
+            id: "fx-master".into(),
+            effect_type: "test-multiply".into(),
+            enabled: true,
+            wet: 1.0,
+            params: Default::default(),
+        };
+
+        let shared = Arc::new((Mutex::new(AudioShared::default()), Condvar::new()));
+        
+        let sample_rate = 48000;
+        let channels = 1;
+        // target MUST be monitor for layer_windows cache hit
+        let target = AudioRenderTarget::monitor(sample_rate, channels);
+        
+        // Prime the cache with a stable 0.5f32 signal for l1
+        {
+            let mut state = shared.0.lock();
+            let samples = vec![0.5f32; 48000 * 2]; // 2 seconds of 0.5f32
+            state.layer_windows.insert(
+                "l1".to_string(),
+                crate::audio::shared::AudioWindow {
+                    source_start_frame: 0,
+                    sample_rate,
+                    channels,
+                    samples: std::sync::Arc::new(samples),
+                },
+            );
+        }
+
+        let baseline = mix_chunk_strict(
+            &[l.clone()],
+            &[t.clone()],
+            1.0,
+            &[],
+            0.0,
+            0.05,
+            target,
+            &shared,
+        ).unwrap();
+
+        let processed = mix_chunk_strict(
+            &[l],
+            &[t],
+            0.5,
+            &[master_effect],
+            0.0,
+            0.05,
+            target,
+            &shared,
+        ).unwrap();
+
+        assert_eq!(baseline.len(), processed.len());
+        
+        let mut checked = 0;
+        for i in 0..baseline.len() {
+            let s_base = baseline[i];
+            let s_proc = processed[i];
+            
+            // Expected soft-clipped value for input 1.0:
+            // expected = 0.8 + 0.2 * tanh((1.0 - 0.8)/0.2) = 0.8 + 0.2 * tanh(1.0) ≈ 0.9523
+            let expected = 0.8 + 0.2 * 1.0f32.tanh(); // tanh(1.0)
+            
+            // Baseline sample S_base should be: 0.5 (source) * 2.0 (layer multiply) * 1.0 (gain) = 1.0, soft-clipped
+            assert!((s_base - expected).abs() < 1e-4, "Baseline sample should be soft-clipped 1.0, got {}", s_base);
+            
+            // Processed sample: 0.5 (source) * 2.0 (layer multiply) * 2.0 (master multiply) * 0.5 (master gain) = 1.0, soft-clipped
+            assert!((s_proc - expected).abs() < 1e-4, "Expected soft-clipped value: {}, got {}", expected, s_proc);
+            checked += 1;
+        }
+        assert!(checked > 0, "Should have verified at least some audio samples");
+    }
 }
+
