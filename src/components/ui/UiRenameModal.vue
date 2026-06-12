@@ -8,6 +8,7 @@ const props = withDefaults(
     currentName?: string;
     loading?: boolean;
     selectWithoutExtension?: boolean;
+    validate?: (name: string) => string | boolean | null | undefined;
   }>(),
   {
     title: '',
@@ -33,6 +34,7 @@ const { t } = useI18n();
     :default-value="props.initialName || props.currentName"
     :loading="props.loading"
     :select-without-extension="props.selectWithoutExtension"
+    :validate="props.validate"
     @confirm="
       emit('rename', $event);
       isOpen = false;

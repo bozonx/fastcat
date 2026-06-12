@@ -59,11 +59,32 @@ function formatDate(date: Date | null): string {
 const isCreateVersionModalOpen = ref(false);
 const selectedVersionForCopy = ref<TimelineBackupVersion | null>(null);
 const proposedVersionName = ref('');
+const existingNamesInFolder = ref<string[]>([]);
 
 async function handleCreateVersionClick(version: TimelineBackupVersion) {
   selectedVersionForCopy.value = version;
+
+  if (timelineStore.currentTimelinePath) {
+    const parts = timelineStore.currentTimelinePath.split('/');
+    parts.pop();
+    const parentPath = parts.join('/');
+    existingNamesInFolder.value = await projectStore.listEntryNames(parentPath);
+  } else {
+    existingNamesInFolder.value = [];
+  }
+
   proposedVersionName.value = await timelineStore.getNextVersionName();
   isCreateVersionModalOpen.value = true;
+}
+
+function validateVersionName(newName: string): string | boolean | null {
+  const trimmed = newName.trim();
+  if (!trimmed) return false;
+  const finalName = trimmed.toLowerCase().endsWith('.otio') ? trimmed : `${trimmed}.otio`;
+  if (existingNamesInFolder.value.includes(finalName)) {
+    return t('common.validation.exists', 'Имя уже существует');
+  }
+  return true;
 }
 
 async function handleConfirmCreateVersion(newName: string) {
@@ -102,39 +123,37 @@ const versions = computed(() => timelineStore.backupVersions);
       :confirm-label="t('common.confirm')"
       :default-value="proposedVersionName"
       select-without-extension
+      :validate="validateVersionName"
       @confirm="handleConfirmCreateVersion"
     />
 
-    <!-- Header with Refresh Button -->
+    <!-- Header with Actions -->
     <div
       class="px-4 py-2.5 border-b border-ui-border flex items-center justify-between bg-ui-bg shrink-0"
     >
-      <span class="text-xs text-ui-text-muted font-semibold uppercase tracking-wider">
-        {{ t('videoEditor.timeline.backups.title') }}
-      </span>
-      <div class="flex items-center gap-1.5">
-        <!-- Clear Backups Button -->
-        <UTooltip v-if="hasBackups" :text="t('videoEditor.projectSettings.clearBackups')">
-          <UButton
-            icon="i-heroicons-trash"
-            size="xs"
-            variant="ghost"
-            color="error"
-            class="cursor-pointer"
-            :disabled="isReadOnly"
-            @click="isClearBackupsConfirmOpen = true"
-          />
-        </UTooltip>
-        <!-- Refresh Button -->
-        <UButton
-          icon="i-heroicons-arrow-path"
-          size="xs"
-          variant="ghost"
-          color="neutral"
-          class="cursor-pointer"
-          @click="timelineStore.loadBackupVersions()"
-        />
-      </div>
+      <!-- Clear Backups Button -->
+      <UButton
+        v-if="hasBackups"
+        size="xs"
+        variant="outline"
+        color="neutral"
+        class="cursor-pointer"
+        :disabled="isReadOnly"
+        @click="isClearBackupsConfirmOpen = true"
+      >
+        {{ t('videoEditor.timeline.backups.clearAllButton') }}
+      </UButton>
+      <div v-else />
+
+      <!-- Refresh Button -->
+      <UButton
+        icon="i-heroicons-arrow-path"
+        size="xs"
+        variant="ghost"
+        color="neutral"
+        class="cursor-pointer"
+        @click="timelineStore.loadBackupVersions()"
+      />
     </div>
 
     <!-- Table content -->
@@ -143,17 +162,11 @@ const versions = computed(() => timelineStore.backupVersions);
         v-if="versions.length > 0"
         class="w-full text-left text-xs border-collapse table-fixed"
       >
-        <thead
-          class="sticky top-0 bg-ui-bg-elevated/95 backdrop-blur-sm z-10 border-b border-ui-border uppercase tracking-wider text-ui-text-muted font-semibold"
-        >
-          <tr>
-            <th class="px-3 py-2.5 w-1/2">{{ t('videoEditor.timeline.backups.version') }}</th>
-            <th class="px-3 py-2.5 w-1/4">{{ t('videoEditor.timeline.backups.date') }}</th>
-            <th class="px-3 py-2.5 text-right w-1/4">
-              {{ t('videoEditor.timeline.backups.actions') }}
-            </th>
-          </tr>
-        </thead>
+        <colgroup>
+          <col class="w-auto" />
+          <col class="w-[125px]" />
+          <col class="w-[100px]" />
+        </colgroup>
         <tbody class="divide-y divide-ui-border/40">
           <tr
             v-for="version in versions"
@@ -161,8 +174,8 @@ const versions = computed(() => timelineStore.backupVersions);
             class="hover:bg-ui-bg-muted/30 transition-colors"
           >
             <!-- Name / Type Badge -->
-            <td class="px-3 py-3 align-middle truncate font-medium text-ui-text">
-              <div class="flex flex-col gap-1">
+            <td class="px-3 py-3 align-middle font-medium text-ui-text min-w-0">
+              <div class="flex flex-col gap-1 min-w-0">
                 <span class="truncate" :title="version.name">{{ version.name }}</span>
                 <div class="flex">
                   <span
@@ -196,7 +209,7 @@ const versions = computed(() => timelineStore.backupVersions);
             <td class="px-3 py-3 align-middle text-right">
               <div class="flex items-center justify-end gap-1.5">
                 <!-- Preview / Open -->
-                <UTooltip v-if="version.type !== 'main'" :text="t('videoEditor.timeline.backups.actionsLabel.open')">
+                <UTooltip v-if="version.type !== 'main'" :text="t('videoEditor.timeline.backups.actionsLabel.openReadOnly')">
                   <UButton
                     size="xs"
                     color="neutral"
@@ -213,7 +226,7 @@ const versions = computed(() => timelineStore.backupVersions);
                     size="xs"
                     color="primary"
                     variant="ghost"
-                    icon="i-heroicons-document-duplicate"
+                    icon="i-heroicons-camera"
                     class="cursor-pointer"
                     :disabled="isReadOnly"
                     @click="handleCreateVersionClick(version)"
@@ -227,7 +240,7 @@ const versions = computed(() => timelineStore.backupVersions);
                 >
                   <UButton
                     size="xs"
-                    color="error"
+                    color="neutral"
                     variant="ghost"
                     icon="i-heroicons-trash"
                     class="cursor-pointer"

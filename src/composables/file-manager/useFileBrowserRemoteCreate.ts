@@ -10,6 +10,7 @@ import type { RemoteVfsScope } from '~/types/remote-vfs';
 interface UseFileBrowserRemoteCreateParams {
   vfs: {
     createDirectory: (path: string) => Promise<void>;
+    listEntryNames?: (path: string) => Promise<string[]>;
   };
   bloggerDogStore?: {
     createItem: (params: {
@@ -37,6 +38,7 @@ export function useFileBrowserRemoteCreate(params: UseFileBrowserRemoteCreatePar
   const pendingSubgroupParent = ref<FsEntry | null>(null);
   const isItemModalOpen = ref(false);
   const pendingItemParent = ref<FsEntry | null>(null);
+  const existingNames = ref<string[]>([]);
 
   const bloggerDogStore = params.bloggerDogStore || useBloggerDogStore();
   const uiStore = useUiStore();
@@ -59,8 +61,17 @@ export function useFileBrowserRemoteCreate(params: UseFileBrowserRemoteCreatePar
       uiStore.pendingBloggerDogCreateItem = null;
     });
 
-  function handlePendingBloggerDogCreateSubgroup(entry: FsEntry) {
+  async function handlePendingBloggerDogCreateSubgroup(entry: FsEntry) {
     pendingSubgroupParent.value = entry;
+    if (params.vfs.listEntryNames && entry.path) {
+      try {
+        existingNames.value = await params.vfs.listEntryNames(entry.path);
+      } catch {
+        existingNames.value = entry.children?.map((c) => c.name) || [];
+      }
+    } else {
+      existingNames.value = entry.children?.map((c) => c.name) || [];
+    }
     isSubgroupModalOpen.value = true;
     clearSubgroup();
   }
@@ -89,8 +100,17 @@ export function useFileBrowserRemoteCreate(params: UseFileBrowserRemoteCreatePar
     }
   }
 
-  function handlePendingBloggerDogCreateItem(entry: FsEntry) {
+  async function handlePendingBloggerDogCreateItem(entry: FsEntry) {
     pendingItemParent.value = entry;
+    if (params.vfs.listEntryNames && entry.path) {
+      try {
+        existingNames.value = await params.vfs.listEntryNames(entry.path);
+      } catch {
+        existingNames.value = entry.children?.map((c) => c.name) || [];
+      }
+    } else {
+      existingNames.value = entry.children?.map((c) => c.name) || [];
+    }
     isItemModalOpen.value = true;
     clearItem();
   }
@@ -161,6 +181,25 @@ export function useFileBrowserRemoteCreate(params: UseFileBrowserRemoteCreatePar
     }
   }
 
+  function validateSubgroupName(newName: string): string | boolean | null {
+    const trimmed = newName.trim();
+    if (!trimmed) return false;
+    if (existingNames.value.includes(trimmed)) {
+      return t('common.validation.exists', 'Имя уже существует');
+    }
+    return true;
+  }
+
+  function validateItemName(newName: string): string | boolean | null {
+    const trimmed = newName.trim();
+    if (!trimmed) return false;
+    const finalName = trimmed.includes('.') ? trimmed : `${trimmed}.txt`;
+    if (existingNames.value.includes(finalName)) {
+      return t('common.validation.exists', 'Имя уже существует');
+    }
+    return true;
+  }
+
   return {
     isSubgroupModalOpen,
     isItemModalOpen,
@@ -168,5 +207,7 @@ export function useFileBrowserRemoteCreate(params: UseFileBrowserRemoteCreatePar
     handlePendingBloggerDogCreateItem,
     onSubgroupCreateConfirm,
     onItemCreateConfirm,
+    validateSubgroupName,
+    validateItemName,
   };
 }

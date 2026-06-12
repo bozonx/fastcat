@@ -14,6 +14,45 @@ function clamp(value: number, min: number, max: number): number {
 
 const transparent = () => 1;
 
+function normalizeDirection(value: unknown): 'left' | 'right' | 'up' | 'down' {
+  return value === 'right' || value === 'up' || value === 'down' || value === 'left'
+    ? value
+    : 'left';
+}
+
+function directionIndex(value: unknown): number {
+  const direction = normalizeDirection(value);
+  if (direction === 'right') return 1;
+  if (direction === 'up') return 2;
+  if (direction === 'down') return 3;
+  return 0;
+}
+
+function normalizeTransitionColor(value: unknown, fallback = '#000000'): string {
+  const raw = String(value ?? '')
+    .trim()
+    .replace(/^#/, '');
+  if (/^[0-9a-fA-F]{3}$/.test(raw)) {
+    const r = raw[0] ?? '0';
+    const g = raw[1] ?? '0';
+    const b = raw[2] ?? '0';
+    return `#${r}${r}${g}${g}${b}${b}`.toLowerCase();
+  }
+  return /^[0-9a-fA-F]{6}$/.test(raw) ? `#${raw}`.toLowerCase() : fallback;
+}
+
+function centerFromAnchor(params: Record<string, unknown>): [number, number] {
+  const anchor = typeof params.anchor === 'string' ? params.anchor : 'center';
+  const offsetX = clamp(finiteNumber(params.offsetX, 0), -100, 100) / 100;
+  const offsetY = clamp(finiteNumber(params.offsetY, 0), -100, 100) / 100;
+
+  if (anchor === 'top-left') return [offsetX, offsetY];
+  if (anchor === 'top-right') return [1 - offsetX, offsetY];
+  if (anchor === 'bottom-left') return [offsetX, 1 - offsetY];
+  if (anchor === 'bottom-right') return [1 - offsetX, 1 - offsetY];
+  return [0.5 + offsetX, 0.5 + offsetY];
+}
+
 const ZOOM_WGSL = `@group(0) @binding(0) var from_tex: texture_2d<f32>;
 @group(0) @binding(1) var to_tex: texture_2d<f32>;
 @group(0) @binding(2) var output_tex: texture_storage_2d<rgba8unorm, write>;
@@ -192,6 +231,255 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
     }
 }`;
 
+const CLOCK_WGSL = `@group(0) @binding(0) var from_tex: texture_2d<f32>;
+@group(0) @binding(1) var to_tex: texture_2d<f32>;
+@group(0) @binding(2) var output_tex: texture_storage_2d<rgba8unorm, write>;
+
+struct TransitionUniform {
+    progress: f32,
+    width: u32,
+    height: u32,
+    pad: u32,
+    p0: f32, p1: f32, p2: f32, p3: f32,
+    p4: f32, p5: f32, p6: f32, p7: f32,
+};
+@group(0) @binding(3) var<uniform> uni: TransitionUniform;
+
+const PI = 3.1415926535897932384626433832795;
+
+@compute @workgroup_size(8, 8, 1)
+fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
+    if (gid.x >= uni.width || gid.y >= uni.height) {
+        return;
+    }
+    let coord = vec2<i32>(i32(gid.x), i32(gid.y));
+    let uv = vec2<f32>(f32(gid.x) / f32(uni.width), f32(gid.y) / f32(uni.height));
+    let centered = uv - vec2<f32>(0.5, 0.5);
+    var angle = atan2(centered.x, -centered.y);
+    if (angle < 0.0) {
+        angle = angle + PI * 2.0;
+    }
+    if (uni.p0 < 0.0) {
+        angle = PI * 2.0 - angle;
+        if (angle >= PI * 2.0) {
+            angle = angle - PI * 2.0;
+        }
+    } else if (uni.p0 > 1.5) {
+        if (angle > PI) {
+            angle = PI * 2.0 - angle;
+        }
+        angle = angle * 2.0;
+    }
+    let reveal = 1.0 - smoothstep(uni.progress - 0.001, uni.progress + 0.001, angle / (PI * 2.0));
+    textureStore(output_tex, coord, mix(textureLoad(from_tex, coord, 0), textureLoad(to_tex, coord, 0), reveal));
+}`;
+
+const RECTANGLE_WGSL = `@group(0) @binding(0) var from_tex: texture_2d<f32>;
+@group(0) @binding(1) var to_tex: texture_2d<f32>;
+@group(0) @binding(2) var output_tex: texture_storage_2d<rgba8unorm, write>;
+
+struct TransitionUniform {
+    progress: f32,
+    width: u32,
+    height: u32,
+    pad: u32,
+    p0: f32, // blur
+    p1: f32, // direction
+    p2: f32, // center x
+    p3: f32, // center y
+    p4: f32, p5: f32, p6: f32, p7: f32,
+};
+@group(0) @binding(3) var<uniform> uni: TransitionUniform;
+
+fn rect_distance(p: vec2<f32>, center: vec2<f32>, size: vec2<f32>) -> f32 {
+    let d = abs(p - center) - size;
+    return length(max(d, vec2<f32>(0.0))) + min(max(d.x, d.y), 0.0);
+}
+
+@compute @workgroup_size(8, 8, 1)
+fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
+    if (gid.x >= uni.width || gid.y >= uni.height) {
+        return;
+    }
+    let coord = vec2<i32>(i32(gid.x), i32(gid.y));
+    let uv = vec2<f32>(f32(gid.x) / f32(uni.width), f32(gid.y) / f32(uni.height));
+    let aspect = f32(uni.width) / f32(uni.height);
+    let center = vec2<f32>(uni.p2, uni.p3);
+    let t = select(1.0 - uni.progress, uni.progress, uni.p1 > 0.0);
+    let p = vec2<f32>((uv.x - center.x) * aspect, uv.y - center.y);
+    let max_size = vec2<f32>(max(center.x, 1.0 - center.x) * aspect, max(center.y, 1.0 - center.y));
+    let dist = rect_distance(p, vec2<f32>(0.0), max_size * t);
+    var reveal = 1.0 - smoothstep(-max(uni.p0, 0.0001), max(uni.p0, 0.0001), dist);
+    if (uni.p1 < 0.0) {
+        reveal = 1.0 - reveal;
+    }
+    textureStore(output_tex, coord, mix(textureLoad(from_tex, coord, 0), textureLoad(to_tex, coord, 0), reveal));
+}`;
+
+const ELLIPSE_WGSL = `@group(0) @binding(0) var from_tex: texture_2d<f32>;
+@group(0) @binding(1) var to_tex: texture_2d<f32>;
+@group(0) @binding(2) var output_tex: texture_storage_2d<rgba8unorm, write>;
+
+struct TransitionUniform {
+    progress: f32,
+    width: u32,
+    height: u32,
+    pad: u32,
+    p0: f32, // blur
+    p1: f32, // direction
+    p2: f32, // center x
+    p3: f32, // center y
+    p4: f32, // scale x
+    p5: f32, // scale y
+    p6: f32, p7: f32,
+};
+@group(0) @binding(3) var<uniform> uni: TransitionUniform;
+
+@compute @workgroup_size(8, 8, 1)
+fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
+    if (gid.x >= uni.width || gid.y >= uni.height) {
+        return;
+    }
+    let coord = vec2<i32>(i32(gid.x), i32(gid.y));
+    let uv = vec2<f32>(f32(gid.x) / f32(uni.width), f32(gid.y) / f32(uni.height));
+    let aspect = f32(uni.width) / f32(uni.height);
+    let center = vec2<f32>(uni.p2, uni.p3);
+    let scale = max(vec2<f32>(uni.p4, uni.p5), vec2<f32>(0.001));
+    let t = select(1.0 - uni.progress, uni.progress, uni.p1 > 0.0);
+    let p = vec2<f32>((uv.x - center.x) * aspect, uv.y - center.y) / scale;
+    let corners = array<vec2<f32>, 4>(
+        (vec2<f32>(0.0, 0.0) - center) * vec2<f32>(aspect, 1.0) / scale,
+        (vec2<f32>(1.0, 0.0) - center) * vec2<f32>(aspect, 1.0) / scale,
+        (vec2<f32>(0.0, 1.0) - center) * vec2<f32>(aspect, 1.0) / scale,
+        (vec2<f32>(1.0, 1.0) - center) * vec2<f32>(aspect, 1.0) / scale
+    );
+    let max_radius = max(max(length(corners[0]), length(corners[1])), max(length(corners[2]), length(corners[3])));
+    var reveal = 1.0 - smoothstep(max_radius * t - max(uni.p0, 0.0001), max_radius * t + max(uni.p0, 0.0001), length(p));
+    if (uni.p1 < 0.0) {
+        reveal = 1.0 - reveal;
+    }
+    textureStore(output_tex, coord, mix(textureLoad(from_tex, coord, 0), textureLoad(to_tex, coord, 0), reveal));
+}`;
+
+const BLINDS_WGSL = `@group(0) @binding(0) var from_tex: texture_2d<f32>;
+@group(0) @binding(1) var to_tex: texture_2d<f32>;
+@group(0) @binding(2) var output_tex: texture_storage_2d<rgba8unorm, write>;
+
+struct TransitionUniform {
+    progress: f32,
+    width: u32,
+    height: u32,
+    pad: u32,
+    p0: f32, // angle degrees
+    p1: f32, // strip count
+    p2: f32, p3: f32, p4: f32, p5: f32, p6: f32, p7: f32,
+};
+@group(0) @binding(3) var<uniform> uni: TransitionUniform;
+
+@compute @workgroup_size(8, 8, 1)
+fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
+    if (gid.x >= uni.width || gid.y >= uni.height) {
+        return;
+    }
+    let coord = vec2<i32>(i32(gid.x), i32(gid.y));
+    let uv = vec2<f32>(f32(gid.x) / f32(uni.width), f32(gid.y) / f32(uni.height));
+    let angle = uni.p0 * 0.0174532925;
+    let axis = vec2<f32>(cos(angle), sin(angle));
+    let perp = vec2<f32>(-axis.y, axis.x);
+    let strip_coord = dot(uv - vec2<f32>(0.5), perp) + 0.5;
+    let strip_index = floor(strip_coord * max(uni.p1, 2.0));
+    let phase = fract(strip_coord * max(uni.p1, 2.0));
+    let stagger = (strip_index / max(uni.p1, 2.0)) * 0.18;
+    let reveal = smoothstep(0.0, 1.0, uni.progress * 1.18 - stagger);
+    let mask = step(phase, reveal);
+    textureStore(output_tex, coord, mix(textureLoad(from_tex, coord, 0), textureLoad(to_tex, coord, 0), mask));
+}`;
+
+const BARN_DOOR_WGSL = `@group(0) @binding(0) var from_tex: texture_2d<f32>;
+@group(0) @binding(1) var to_tex: texture_2d<f32>;
+@group(0) @binding(2) var output_tex: texture_storage_2d<rgba8unorm, write>;
+
+struct TransitionUniform {
+    progress: f32,
+    width: u32,
+    height: u32,
+    pad: u32,
+    p0: f32, // angle degrees
+    p1: f32, // open=1 close=-1
+    p2: f32, // blur
+    p3: f32, p4: f32, p5: f32, p6: f32, p7: f32,
+};
+@group(0) @binding(3) var<uniform> uni: TransitionUniform;
+
+@compute @workgroup_size(8, 8, 1)
+fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
+    if (gid.x >= uni.width || gid.y >= uni.height) {
+        return;
+    }
+    let coord = vec2<i32>(i32(gid.x), i32(gid.y));
+    let uv = vec2<f32>(f32(gid.x) / f32(uni.width), f32(gid.y) / f32(uni.height));
+    let aspect = f32(uni.width) / f32(uni.height);
+    let angle = uni.p0 * 0.0174532925;
+    let axis = vec2<f32>(cos(angle), sin(angle));
+    let p = (uv - vec2<f32>(0.5)) * vec2<f32>(aspect, 1.0);
+    let max_dist = 0.5 * (aspect * abs(axis.x) + abs(axis.y));
+    let dist = abs(dot(p, axis));
+    let t = select(1.0 - uni.progress, uni.progress, uni.p1 > 0.0);
+    var reveal = 1.0 - smoothstep(max_dist * t - max(uni.p2, 0.0001), max_dist * t + max(uni.p2, 0.0001), dist);
+    if (uni.p1 < 0.0) {
+        reveal = 1.0 - reveal;
+    }
+    textureStore(output_tex, coord, mix(textureLoad(from_tex, coord, 0), textureLoad(to_tex, coord, 0), reveal));
+}`;
+
+const DIRECTIONAL_ZOOM_WGSL = `@group(0) @binding(0) var from_tex: texture_2d<f32>;
+@group(0) @binding(1) var to_tex: texture_2d<f32>;
+@group(0) @binding(2) var output_tex: texture_storage_2d<rgba8unorm, write>;
+
+struct TransitionUniform {
+    progress: f32,
+    width: u32,
+    height: u32,
+    pad: u32,
+    p0: f32, // direction
+    p1: f32, // scale peak
+    p2: f32, // darkness
+    p3: f32, p4: f32, p5: f32, p6: f32, p7: f32,
+};
+@group(0) @binding(3) var<uniform> uni: TransitionUniform;
+
+fn sample_checked(tex: texture_2d<f32>, uv: vec2<f32>) -> vec4<f32> {
+    if (uv.x < 0.0 || uv.x > 1.0 || uv.y < 0.0 || uv.y > 1.0) {
+        return vec4<f32>(0.0);
+    }
+    let coord = vec2<i32>(
+        i32(clamp(uv.x * f32(uni.width), 0.0, f32(uni.width) - 1.0)),
+        i32(clamp(uv.y * f32(uni.height), 0.0, f32(uni.height) - 1.0))
+    );
+    return textureLoad(tex, coord, 0);
+}
+
+@compute @workgroup_size(8, 8, 1)
+fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
+    if (gid.x >= uni.width || gid.y >= uni.height) {
+        return;
+    }
+    let coord = vec2<i32>(i32(gid.x), i32(gid.y));
+    let uv = vec2<f32>(f32(gid.x) / f32(uni.width), f32(gid.y) / f32(uni.height));
+    let dir = i32(round(uni.p0));
+    var axis = vec2<f32>(1.0, 0.0);
+    if (dir == 1) { axis = vec2<f32>(-1.0, 0.0); }
+    if (dir == 2) { axis = vec2<f32>(0.0, 1.0); }
+    if (dir == 3) { axis = vec2<f32>(0.0, -1.0); }
+    let peak = 1.0 - abs(uni.progress - 0.5) * 2.0;
+    let scale = mix(1.0, max(uni.p1, 1.0), peak);
+    let from_uv = (uv - vec2<f32>(0.5)) / scale + vec2<f32>(0.5) + axis * uni.progress;
+    let to_uv = (uv - vec2<f32>(0.5)) / scale + vec2<f32>(0.5) + axis * (uni.progress - 1.0);
+    var color = mix(sample_checked(from_tex, from_uv), sample_checked(to_tex, to_uv), uni.progress);
+    color.rgb = color.rgb * (1.0 - uni.p2 * peak);
+    textureStore(output_tex, coord, color);
+}`;
+
 export const tauriTransitionManifests: TransitionManifest[] = [
   {
     type: 'dissolve',
@@ -249,7 +537,7 @@ export const tauriTransitionManifests: TransitionManifest[] = [
     name: 'Slide',
     nameKey: 'fastcat.transitions.slide.name',
     icon: 'i-heroicons-arrows-pointing-out',
-    defaultDurationUs: 700_000,
+    defaultDurationUs: 500_000,
     defaultParams: {
       direction: 'left',
     },
@@ -269,11 +557,59 @@ export const tauriTransitionManifests: TransitionManifest[] = [
       },
     ],
     toTauriSpec: (params): TauriTransitionSpec => {
-      const raw = params.direction;
-      const direction =
-        raw === 'right' || raw === 'up' || raw === 'down' || raw === 'left' ? raw : 'left';
-      return { type: 'slide', direction };
+      return { type: 'slide', direction: normalizeDirection(params.direction) };
     },
+    computeOutOpacity: transparent,
+    computeInOpacity: transparent,
+  },
+  {
+    type: 'clock',
+    name: 'Clock',
+    nameKey: 'fastcat.transitions.clock.name',
+    icon: 'i-heroicons-clock',
+    defaultDurationUs: 600_000,
+    defaultParams: {
+      direction: 'clockwise',
+    },
+    renderMode: 'shader',
+    renderer: 'wgpu',
+    toTauriSpec: (params: Record<string, unknown>) => ({
+      type: 'custom-wgsl',
+      source: CLOCK_WGSL,
+      params: {
+        p0:
+          params.direction === 'counterclockwise' ? -1 : params.direction === 'symmetric' ? 2 : 1,
+      },
+    }),
+    computeOutOpacity: transparent,
+    computeInOpacity: transparent,
+  },
+  {
+    type: 'barn-door',
+    name: 'Barn Door',
+    nameKey: 'fastcat.transitions.barn-door.name',
+    icon: 'i-heroicons-arrows-right-left',
+    defaultDurationUs: 500_000,
+    defaultParams: {
+      mode: 'open',
+      edgeMode: 'gap',
+      gap: 0.02,
+      gapColor: '#000000',
+      blur: 0.02,
+      blurMode: 'scaled',
+      angle: 0,
+    },
+    renderMode: 'shader',
+    renderer: 'wgpu',
+    toTauriSpec: (params: Record<string, unknown>) => ({
+      type: 'custom-wgsl',
+      source: BARN_DOOR_WGSL,
+      params: {
+        p0: clamp(finiteNumber(params.angle, 0), -180, 180),
+        p1: params.mode === 'close' ? -1 : 1,
+        p2: clamp(finiteNumber(params.blur, 0.02), 0.0001, 0.2),
+      },
+    }),
     computeOutOpacity: transparent,
     computeInOpacity: transparent,
   },
@@ -290,7 +626,7 @@ export const tauriTransitionManifests: TransitionManifest[] = [
     renderer: 'wgpu',
     toTauriSpec: (params) => ({
       type: 'fade-through-color',
-      color: typeof params.color === 'string' ? params.color : '#000000',
+      color: normalizeTransitionColor(params.color, '#000000'),
     }),
     computeOutOpacity: (progress, _params, curve) => {
       const t = applyTransitionCurve(progress, curve);
@@ -303,50 +639,134 @@ export const tauriTransitionManifests: TransitionManifest[] = [
   },
   {
     type: 'circle',
-    name: 'Circle Reveal',
+    name: 'Circle',
     nameKey: 'fastcat.transitions.circle.name',
     icon: 'i-heroicons-eye',
-    defaultDurationUs: 700_000,
+    defaultDurationUs: 600_000,
     defaultParams: {
-      centerX: 0.5,
-      centerY: 0.5,
-      softness: 0.08,
+      blur: 0.015,
+      blurMode: 'fixed',
+      direction: 'from-center',
+      anchor: 'center',
+      offsetX: 0,
+      offsetY: 0,
+      scaleX: 100,
+      scaleY: 100,
+      followScale: false,
     },
     renderMode: 'shader',
     renderer: 'wgpu',
     paramFields: [
       {
         kind: 'slider',
-        key: 'centerX',
-        labelKey: 'fastcat.transitions.circle.params.centerX',
-        min: 0,
-        max: 1,
-        step: 0.01,
+        key: 'blur',
+        labelKey: 'fastcat.timeline.transition.paramCircleBlur',
+        min: 0.0001,
+        max: 0.2,
+        step: 0.0025,
       },
       {
-        kind: 'slider',
-        key: 'centerY',
-        labelKey: 'fastcat.transitions.circle.params.centerY',
-        min: 0,
-        max: 1,
-        step: 0.01,
+        kind: 'select',
+        key: 'direction',
+        labelKey: 'fastcat.timeline.transition.paramDirection',
+        options: [
+          {
+            value: 'from-center',
+            labelKey: 'fastcat.timeline.transition.directionFromCenter',
+          },
+          { value: 'to-center', labelKey: 'fastcat.timeline.transition.directionToCenter' },
+        ],
       },
       {
-        kind: 'slider',
-        key: 'softness',
-        labelKey: 'fastcat.transitions.wipe.params.softness',
-        min: 0,
-        max: 1,
-        step: 0.01,
+        kind: 'select',
+        key: 'anchor',
+        labelKey: 'fastcat.timeline.transition.paramAnchor',
+        options: [
+          { value: 'center', labelKey: 'fastcat.timeline.transition.anchorCenter' },
+          { value: 'top-left', labelKey: 'fastcat.timeline.transition.anchorTopLeft' },
+          { value: 'top-right', labelKey: 'fastcat.timeline.transition.anchorTopRight' },
+          { value: 'bottom-left', labelKey: 'fastcat.timeline.transition.anchorBottomLeft' },
+          { value: 'bottom-right', labelKey: 'fastcat.timeline.transition.anchorBottomRight' },
+        ],
       },
     ],
-    toTauriSpec: (params) => ({
-      type: 'circle-reveal',
-      center: [
-        clamp(finiteNumber(params.centerX, 0.5), 0, 1),
-        clamp(finiteNumber(params.centerY, 0.5), 0, 1),
-      ],
-      softness: clamp(finiteNumber(params.softness, 0.08), 0, 1),
+    toTauriSpec: (params: Record<string, unknown>) => {
+      const center = centerFromAnchor(params);
+      return {
+        type: 'custom-wgsl',
+        source: ELLIPSE_WGSL,
+        params: {
+          p0: clamp(finiteNumber(params.blur, 0.015), 0.0001, 0.2),
+          p1: params.direction === 'to-center' ? -1 : 1,
+          p2: center[0],
+          p3: center[1],
+          p4: clamp(finiteNumber(params.scaleX, 100), 1, 1000) / 100,
+          p5: clamp(finiteNumber(params.scaleY, 100), 1, 1000) / 100,
+        },
+      };
+    },
+    computeOutOpacity: transparent,
+    computeInOpacity: transparent,
+  },
+  {
+    type: 'rectangle',
+    name: 'Rectangle',
+    nameKey: 'fastcat.transitions.rectangle.name',
+    icon: 'i-heroicons-stop',
+    defaultDurationUs: 600_000,
+    defaultParams: {
+      blur: 0.015,
+      blurMode: 'fixed',
+      direction: 'from-center',
+      anchor: 'center',
+      offsetX: 0,
+      offsetY: 0,
+      contentMode: 'reveal',
+    },
+    renderMode: 'shader',
+    renderer: 'wgpu',
+    toTauriSpec: (params: Record<string, unknown>) => {
+      const center = centerFromAnchor(params);
+      return {
+        type: 'custom-wgsl',
+        source: RECTANGLE_WGSL,
+        params: {
+          p0: clamp(finiteNumber(params.blur, 0.015), 0.0001, 0.2),
+          p1: params.direction === 'to-center' ? -1 : 1,
+          p2: center[0],
+          p3: center[1],
+        },
+      };
+    },
+    computeOutOpacity: transparent,
+    computeInOpacity: transparent,
+  },
+  {
+    type: 'blinds',
+    name: 'Blinds',
+    nameKey: 'fastcat.transitions.blinds.name',
+    icon: 'i-heroicons-bars-3',
+    defaultDurationUs: 1_000_000,
+    defaultParams: {
+      angle: 0,
+      stripCount: 10,
+      blur: 0,
+      blurQuality: 'medium',
+      motionBlur: 0,
+      motionBlurMode: 'normal',
+      brightnessMode: 'normal',
+      brightness: 0,
+      bloomThreshold: 0.7,
+    },
+    renderMode: 'shader',
+    renderer: 'wgpu',
+    toTauriSpec: (params: Record<string, unknown>) => ({
+      type: 'custom-wgsl',
+      source: BLINDS_WGSL,
+      params: {
+        p0: clamp(finiteNumber(params.angle, 0), -360, 360),
+        p1: Math.round(clamp(finiteNumber(params.stripCount, 10), 2, 100)),
+      },
     }),
     computeOutOpacity: transparent,
     computeInOpacity: transparent,
@@ -412,6 +832,88 @@ export const tauriTransitionManifests: TransitionManifest[] = [
         p0: finiteNumber(params.brightness as number, 1.5),
         p1: finiteNumber(params.blurLevel as number, 1.0),
         p2: params.mode === 'normal' ? 0.0 : 1.0,
+      },
+    }),
+    computeOutOpacity: transparent,
+    computeInOpacity: transparent,
+  },
+  {
+    type: 'cube',
+    name: 'Cube',
+    nameKey: 'fastcat.transitions.cube.name',
+    icon: 'i-heroicons-cube',
+    defaultDurationUs: 700_000,
+    defaultParams: {
+      direction: 'left',
+      unzoomAmount: 0.3,
+      perspective: 0.7,
+      gapSize: 0,
+    },
+    renderMode: 'shader',
+    renderer: 'wgpu',
+    toTauriSpec: (params: Record<string, unknown>) => ({
+      type: 'custom-wgsl',
+      source: DIRECTIONAL_ZOOM_WGSL,
+      params: {
+        p0: directionIndex(params.direction),
+        p1: 1 + clamp(finiteNumber(params.unzoomAmount, 0.3), 0, 1),
+        p2: 0.18,
+      },
+    }),
+    computeOutOpacity: transparent,
+    computeInOpacity: transparent,
+  },
+  {
+    type: 'card-swap',
+    name: 'Card Swap',
+    nameKey: 'fastcat.transitions.card-swap.name',
+    icon: 'i-heroicons-rectangle-stack',
+    defaultDurationUs: 800_000,
+    defaultParams: {
+      direction: 'left',
+      mode: 'overlap',
+      slideOrder: 'out-first',
+      maxDarkness: 0.5,
+      shadowSize: 0.2,
+      shadowOpacity: 0.6,
+      blurStrength: 0.5,
+      blurQuality: 'low',
+      bloom: false,
+    },
+    renderMode: 'shader',
+    renderer: 'wgpu',
+    toTauriSpec: (params: Record<string, unknown>) => ({
+      type: 'custom-wgsl',
+      source: DIRECTIONAL_ZOOM_WGSL,
+      params: {
+        p0: directionIndex(params.direction),
+        p1: 1.08,
+        p2: clamp(finiteNumber(params.maxDarkness, 0.5), 0, 1),
+      },
+    }),
+    computeOutOpacity: transparent,
+    computeInOpacity: transparent,
+  },
+  {
+    type: 'falling-card',
+    name: 'Falling Card',
+    nameKey: 'fastcat.transitions.falling-card.name',
+    icon: 'i-heroicons-square-3-stack-3d',
+    defaultDurationUs: 800_000,
+    defaultParams: {
+      direction: 'left',
+      depthDirection: 'backward',
+      action: 'out',
+    },
+    renderMode: 'shader',
+    renderer: 'wgpu',
+    toTauriSpec: (params: Record<string, unknown>) => ({
+      type: 'custom-wgsl',
+      source: DIRECTIONAL_ZOOM_WGSL,
+      params: {
+        p0: directionIndex(params.direction),
+        p1: params.depthDirection === 'forward' ? 1.35 : 1.12,
+        p2: 0.28,
       },
     }),
     computeOutOpacity: transparent,

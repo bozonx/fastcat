@@ -118,6 +118,7 @@ const {
   isCreateFolderModalOpen,
   createFolderDefaultName,
   confirmCreateFolder,
+  validateFolderCreation,
   editingEntryPath,
   commitRename,
   stopRename,
@@ -306,18 +307,55 @@ function handleFileManagerFilesSelect(entry: FsEntry) {
 // --- BloggerDog Creation (Sidebar) ---
 const isSubgroupModalOpen = ref(false);
 const pendingSubgroupParent = ref<FsEntry | null>(null);
+const isItemModalOpen = ref(false);
+const pendingItemParent = ref<FsEntry | null>(null);
+const existingBloggerDogNames = ref<string[]>([]);
 
-function handlePendingBloggerDogCreateSubgroup(entry: FsEntry) {
+async function handlePendingBloggerDogCreateSubgroup(entry: FsEntry) {
   pendingSubgroupParent.value = entry;
+  if (entry.path) {
+    try {
+      existingBloggerDogNames.value = await vfs.listEntryNames(entry.path);
+    } catch {
+      existingBloggerDogNames.value = entry.children?.map((c) => c.name) || [];
+    }
+  } else {
+    existingBloggerDogNames.value = entry.children?.map((c) => c.name) || [];
+  }
   isSubgroupModalOpen.value = true;
 }
 
-const isItemModalOpen = ref(false);
-const pendingItemParent = ref<FsEntry | null>(null);
-
-function handlePendingBloggerDogCreateItem(entry: FsEntry) {
+async function handlePendingBloggerDogCreateItem(entry: FsEntry) {
   pendingItemParent.value = entry;
+  if (entry.path) {
+    try {
+      existingBloggerDogNames.value = await vfs.listEntryNames(entry.path);
+    } catch {
+      existingBloggerDogNames.value = entry.children?.map((c) => c.name) || [];
+    }
+  } else {
+    existingBloggerDogNames.value = entry.children?.map((c) => c.name) || [];
+  }
   isItemModalOpen.value = true;
+}
+
+function validateSubgroupName(newName: string): string | boolean | null {
+  const trimmed = newName.trim();
+  if (!trimmed) return false;
+  if (existingBloggerDogNames.value.includes(trimmed)) {
+    return t('common.validation.exists', 'Имя уже существует');
+  }
+  return true;
+}
+
+function validateItemName(newName: string): string | boolean | null {
+  const trimmed = newName.trim();
+  if (!trimmed) return false;
+  const finalName = trimmed.includes('.') ? trimmed : `${trimmed}.txt`;
+  if (existingBloggerDogNames.value.includes(finalName)) {
+    return t('common.validation.exists', 'Имя уже существует');
+  }
+  return true;
 }
 
 async function onSubgroupCreateConfirm(name: string) {
@@ -504,6 +542,9 @@ useFileManagerPanelBootstrap({
       :is-subgroup-modal-open="isSubgroupModalOpen"
       :is-item-modal-open="isItemModalOpen"
       :folder-default-name="createFolderDefaultName"
+      :validate-folder="validateFolderCreation"
+      :validate-subgroup="validateSubgroupName"
+      :validate-item="validateItemName"
       :is-transcribing="isTranscribing"
       :transcription-error="transcriptionError"
       :transcription-entry="transcriptionEntry"

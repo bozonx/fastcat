@@ -631,7 +631,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     }
 
     const baseName = fileName.replace(/\.otio$/, '');
-    const match = baseName.match(/^(.*)_v(\d{1,3})$/);
+    const match = baseName.match(/^(.*)_(\d{3})$/);
     const prefix = match ? match[1]! : baseName;
 
     const parentPath = parts.join('/');
@@ -640,7 +640,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     const existingVersions: number[] = [];
     for (const name of existingNames) {
       if (name.startsWith(prefix) && name.endsWith('.otio')) {
-        const vMatch = name.slice(0, -'.otio'.length).match(/_v(\d{1,3})$/);
+        const vMatch = name.slice(0, -'.otio'.length).match(/_(\d{3})$/);
         if (vMatch) {
           existingVersions.push(parseInt(vMatch[1]!, 10));
         } else if (name === prefix + '.otio') {
@@ -650,9 +650,13 @@ export const useTimelineStore = defineStore('timeline', () => {
     }
 
     existingVersions.sort((a, b) => a - b);
-    const nextNum =
+    let nextNum =
       existingVersions.length > 0 ? existingVersions[existingVersions.length - 1]! + 1 : 1;
-    const nextName = `${prefix}_v${nextNum.toString().padStart(2, '0')}.otio`;
+    let nextName = `${prefix}_${nextNum.toString().padStart(3, '0')}.otio`;
+    while (existingNames.includes(nextName)) {
+      nextNum++;
+      nextName = `${prefix}_${nextNum.toString().padStart(3, '0')}.otio`;
+    }
 
     try {
       const newPath = parentPath ? `${parentPath}/${nextName}` : nextName;
@@ -687,7 +691,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     if (!fileName) return '';
 
     const baseName = fileName.replace(/\.otio$/, '');
-    const match = baseName.match(/^(.*)_v(\d{1,3})$/);
+    const match = baseName.match(/^(.*)_(\d{3})$/);
     const prefix = match ? match[1]! : baseName;
 
     const parentPath = parts.join('/');
@@ -695,7 +699,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     const existingVersions: number[] = [];
     for (const name of existingNames) {
       if (name.startsWith(prefix) && name.endsWith('.otio')) {
-        const vMatch = name.slice(0, -'.otio'.length).match(/_v(\d{1,3})$/);
+        const vMatch = name.slice(0, -'.otio'.length).match(/_(\d{3})$/);
         if (vMatch) {
           existingVersions.push(parseInt(vMatch[1]!, 10));
         } else if (name === prefix + '.otio') {
@@ -705,9 +709,14 @@ export const useTimelineStore = defineStore('timeline', () => {
     }
 
     existingVersions.sort((a, b) => a - b);
-    const nextNum =
+    let nextNum =
       existingVersions.length > 0 ? existingVersions[existingVersions.length - 1]! + 1 : 1;
-    return `${prefix}_v${nextNum.toString().padStart(2, '0')}.otio`;
+    let nextName = `${prefix}_${nextNum.toString().padStart(3, '0')}.otio`;
+    while (existingNames.includes(nextName)) {
+      nextNum++;
+      nextName = `${prefix}_${nextNum.toString().padStart(3, '0')}.otio`;
+    }
+    return nextName;
   }
 
   async function createVersionFromBackup(

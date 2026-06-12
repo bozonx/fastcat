@@ -675,13 +675,26 @@ describe('TimelineStore', () => {
       projectStoreMock.currentTimelinePath = 'folder/project.otio';
       vi.mocked(projectStoreMock.listEntryNames).mockResolvedValue([
         'project.otio',
-        'project_v01.otio',
-        'project_v02.otio',
+        'project_001.otio',
+        'project_002.otio',
         'unrelated.otio',
       ]);
 
       const nextName = await store.getNextVersionName();
-      expect(nextName).toBe('project_v03.otio');
+      expect(nextName).toBe('project_003.otio');
+    });
+
+    it('calculates the next version name correctly and avoids conflicts when versions are skipped or custom', async () => {
+      projectStoreMock.currentTimelinePath = 'folder/project.otio';
+      vi.mocked(projectStoreMock.listEntryNames).mockResolvedValue([
+        'project.otio',
+        'project_001.otio',
+        'project_005.otio',
+        'project_006.otio',
+      ]);
+
+      const nextName = await store.getNextVersionName();
+      expect(nextName).toBe('project_007.otio');
     });
 
     it('creates a new version from backup and opens it', async () => {
@@ -697,13 +710,13 @@ describe('TimelineStore', () => {
         label: 'Backup #1',
       };
 
-      await store.createVersionFromBackup(mockBackup, 'project_v03.otio');
+      await store.createVersionFromBackup(mockBackup, 'project_003.otio');
 
       expect(projectStoreMock.writeTextByPath).toHaveBeenCalledWith(
-        'folder/project_v03.otio',
+        'folder/project_003.otio',
         '{"schema":"otio"}',
       );
-      expect(projectStoreMock.openTimelineFile).toHaveBeenCalledWith('folder/project_v03.otio');
+      expect(projectStoreMock.openTimelineFile).toHaveBeenCalledWith('folder/project_003.otio');
     });
   });
 });

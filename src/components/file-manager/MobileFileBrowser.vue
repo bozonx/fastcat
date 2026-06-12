@@ -254,6 +254,33 @@ function handleCreateFolderRequest() {
   isCreateFolderModalOpen.value = true;
 }
 
+function validateNewFolderName(newName: string): string | boolean | null {
+  const trimmed = newName.trim();
+  if (!trimmed) return false;
+  const exists = folderEntries.value.some(
+    (e) => e.name.toLowerCase() === trimmed.toLowerCase()
+  );
+  if (exists) {
+    return t('common.validation.exists', 'Имя уже существует');
+  }
+  return true;
+}
+
+function validateRename(newName: string): string | boolean | null {
+  const trimmed = newName.trim();
+  if (!trimmed) return false;
+  if (entryToRename.value && trimmed.toLowerCase() === entryToRename.value.name.toLowerCase()) {
+    return true;
+  }
+  const exists = folderEntries.value.some(
+    (e) => e.name.toLowerCase() === trimmed.toLowerCase() && e.path !== entryToRename.value?.path
+  );
+  if (exists) {
+    return t('common.validation.exists', 'Имя уже существует');
+  }
+  return true;
+}
+
 async function onCreateFolderConfirm(name: string) {
   await runCreateFolder(name);
 }
@@ -621,6 +648,7 @@ const menuItems = computed(() => [
     <UiRenameModal
       v-model:open="isRenameModalOpen"
       :initial-name="entryToRename?.name"
+      :validate="validateRename"
       @rename="onRenameConfirm"
     />
 
@@ -628,6 +656,7 @@ const menuItems = computed(() => [
     <UiEntityCreationModal
       v-model:open="isCreateFolderModalOpen"
       :title="t('videoEditor.fileManager.actions.createFolder')"
+      :validate="validateNewFolderName"
       @confirm="onCreateFolderConfirm"
     />
 

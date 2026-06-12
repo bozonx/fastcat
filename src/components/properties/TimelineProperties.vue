@@ -113,6 +113,54 @@ const { timelinesUsingSelectedFile, openTimelineFromUsage } = useFileTimelineUsa
 
 const isRenameModalOpen = ref(false);
 const isSaveAsModalOpen = ref(false);
+const existingNamesInFolder = ref<string[]>([]);
+
+async function openRenameModal() {
+  const entry = props.fsEntry;
+  if (!entry) return;
+  const parentPath = entry.parentPath ?? entry.path.split('/').slice(0, -1).join('/');
+  try {
+    existingNamesInFolder.value = await fileManager.vfs.listEntryNames(parentPath);
+  } catch {
+    existingNamesInFolder.value = [];
+  }
+  isRenameModalOpen.value = true;
+}
+
+async function openSaveAsModal() {
+  const entry = props.fsEntry;
+  if (!entry) return;
+  const parentPath = entry.parentPath ?? entry.path.split('/').slice(0, -1).join('/');
+  try {
+    existingNamesInFolder.value = await fileManager.vfs.listEntryNames(parentPath);
+  } catch {
+    existingNamesInFolder.value = [];
+  }
+  isSaveAsModalOpen.value = true;
+}
+
+function validateRename(newName: string): string | boolean | null {
+  const trimmed = newName.trim();
+  if (!trimmed) return false;
+  if (props.fsEntry && trimmed.toLowerCase() === props.fsEntry.name.toLowerCase()) {
+    return true;
+  }
+  const finalName = trimmed.toLowerCase().endsWith('.otio') ? trimmed : `${trimmed}.otio`;
+  if (existingNamesInFolder.value.some((name) => name.toLowerCase() === finalName.toLowerCase())) {
+    return t('common.validation.exists', 'Имя уже существует');
+  }
+  return true;
+}
+
+function validateSaveAs(newName: string): string | boolean | null {
+  const trimmed = newName.trim();
+  if (!trimmed) return false;
+  const finalName = trimmed.toLowerCase().endsWith('.otio') ? trimmed : `${trimmed}.otio`;
+  if (existingNamesInFolder.value.some((name) => name.toLowerCase() === finalName.toLowerCase())) {
+    return t('common.validation.exists', 'Имя уже существует');
+  }
+  return true;
+}
 
 async function handleRenameConfirm(newName: string) {
   const entry = props.fsEntry;
@@ -209,9 +257,7 @@ const timelineQuickActions = computed(() => {
       id: 'rename',
       title: t('common.rename'),
       icon: 'i-heroicons-pencil',
-      onClick: () => {
-        isRenameModalOpen.value = true;
-      },
+      onClick: openRenameModal,
     },
   ];
 });
@@ -241,9 +287,7 @@ const timelineAdditionalActions = computed(() => {
       id: 'saveTimelineAs',
       label: t('fastcat.timeline.saveAs'),
       icon: 'i-heroicons-document-arrow-down',
-      onClick: () => {
-        isSaveAsModalOpen.value = true;
-      },
+      onClick: openSaveAsModal,
     });
   }
   return list;
@@ -501,6 +545,7 @@ const addTrackActions = computed(() => [
       :open="isRenameModalOpen"
       :initial-name="fsEntry.name"
       :current-name="fsEntry.name"
+      :validate="validateRename"
       @update:open="isRenameModalOpen = $event"
       @rename="handleRenameConfirm"
     />
@@ -509,6 +554,7 @@ const addTrackActions = computed(() => [
       v-model:open="isSaveAsModalOpen"
       :title="t('fastcat.timeline.saveAs')"
       :confirm-label="t('common.save')"
+      :validate="validateSaveAs"
       @confirm="handleSaveAsConfirm"
     />
   </div>

@@ -25,17 +25,17 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
     var to_uv = uv;
     
     if (dir == 0) { // Left
-        from_uv.x = uv.x - uni.progress;
-        to_uv.x = uv.x + (1.0 - uni.progress);
-    } else if (dir == 1) { // Right
         from_uv.x = uv.x + uni.progress;
         to_uv.x = uv.x - (1.0 - uni.progress);
+    } else if (dir == 1) { // Right
+        from_uv.x = uv.x - uni.progress;
+        to_uv.x = uv.x + (1.0 - uni.progress);
     } else if (dir == 2) { // Up
-        from_uv.y = uv.y - uni.progress;
-        to_uv.y = uv.y + (1.0 - uni.progress);
-    } else { // Down
         from_uv.y = uv.y + uni.progress;
         to_uv.y = uv.y - (1.0 - uni.progress);
+    } else { // Down
+        from_uv.y = uv.y - uni.progress;
+        to_uv.y = uv.y + (1.0 - uni.progress);
     }
     
     var final_color = vec4<f32>(0.0);

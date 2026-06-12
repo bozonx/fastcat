@@ -115,6 +115,7 @@ export function useFileManagerActions(actions: FileManagerActions) {
   const isCreateFolderModalOpen = ref(false);
   const pendingCreateFolderParent = ref<FsEntry | null>(null);
   const createFolderDefaultName = ref('');
+  const existingNamesInPendingFolder = ref<string[]>([]);
 
   const directoryUploadTarget = ref<FsEntry | null>(null);
   const directoryUploadInput = ref<HTMLInputElement | null>(null);
@@ -198,6 +199,7 @@ export function useFileManagerActions(actions: FileManagerActions) {
       index++;
     } while (usedNames.has(newName));
 
+    existingNamesInPendingFolder.value = existingNames;
     createFolderDefaultName.value = newName;
     pendingCreateFolderParent.value =
       actions.findEntryByPath(targetDirPath) ||
@@ -207,6 +209,15 @@ export function useFileManagerActions(actions: FileManagerActions) {
         path: targetDirPath,
       } as FsEntry);
     isCreateFolderModalOpen.value = true;
+  }
+
+  function validateFolderCreation(newName: string): string | boolean | null {
+    const trimmed = newName.trim();
+    if (!trimmed) return false;
+    if (existingNamesInPendingFolder.value.includes(trimmed)) {
+      return t('common.validation.exists', 'Имя уже существует');
+    }
+    return true;
   }
 
   async function confirmCreateFolder(name: string) {
@@ -611,6 +622,7 @@ export function useFileManagerActions(actions: FileManagerActions) {
     handleCreateAutoFolder,
     openDeleteConfirmModal,
     handleDeleteConfirm,
+    validateFolderCreation,
     onFileAction,
   };
 }

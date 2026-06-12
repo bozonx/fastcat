@@ -528,10 +528,30 @@ function onDragVirtualEnd() {
 
 const isCreateVersionModalOpen = ref(false);
 const proposedVersionName = ref('');
+const existingNamesInFolder = ref<string[]>([]);
 
 async function handleCreateVersionFromPreview() {
+  if (timelineStore.currentTimelinePath) {
+    const parts = timelineStore.currentTimelinePath.split('/');
+    parts.pop();
+    const parentPath = parts.join('/');
+    existingNamesInFolder.value = await projectStore.listEntryNames(parentPath);
+  } else {
+    existingNamesInFolder.value = [];
+  }
+
   proposedVersionName.value = await timelineStore.getNextVersionName();
   isCreateVersionModalOpen.value = true;
+}
+
+function validateVersionName(newName: string): string | boolean | null {
+  const trimmed = newName.trim();
+  if (!trimmed) return false;
+  const finalName = trimmed.toLowerCase().endsWith('.otio') ? trimmed : `${trimmed}.otio`;
+  if (existingNamesInFolder.value.includes(finalName)) {
+    return t('common.validation.exists', 'Имя уже существует');
+  }
+  return true;
 }
 
 async function handleConfirmCreateVersion(newName: string) {
@@ -577,6 +597,7 @@ async function handleConfirmCreateVersion(newName: string) {
       :confirm-label="t('common.confirm')"
       :default-value="proposedVersionName"
       select-without-extension
+      :validate="validateVersionName"
       @confirm="handleConfirmCreateVersion"
     />
 

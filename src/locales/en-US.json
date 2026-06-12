@@ -1938,8 +1938,10 @@
         "deleteError": "Failed to delete version",
         "previewLoadError": "Failed to load preview",
         "empty": "No backup versions available",
+        "clearAllButton": "Delete all backups",
         "actionsLabel": {
           "open": "Open",
+          "openReadOnly": "Open preview (read-only)",
           "restore": "Restore",
           "delete": "Delete",
           "return": "Return",

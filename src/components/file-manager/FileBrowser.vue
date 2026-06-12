@@ -417,6 +417,8 @@ const {
   handlePendingBloggerDogCreateItem,
   onSubgroupCreateConfirm,
   onItemCreateConfirm,
+  validateSubgroupName,
+  validateItemName,
 } = useFileBrowserRemoteCreate({
   vfs,
   buildRemoteDirectoryEntry,
@@ -433,6 +435,7 @@ const {
   isCreateFolderModalOpen,
   createFolderDefaultName,
   confirmCreateFolder,
+  validateFolderCreation,
   editingEntryPath,
   commitRename,
   stopRename,
@@ -925,6 +928,9 @@ async function onDirectoryUploadChange(e: Event) {
       v-model:is-item-modal-open="isItemModalOpen"
       v-model:is-folder-modal-open="isCreateFolderModalOpen"
       :folder-default-name="createFolderDefaultName"
+      :validate-folder="validateFolderCreation"
+      :validate-subgroup="validateSubgroupName"
+      :validate-item="validateItemName"
       :delete-targets="deleteTargets"
       :remote-transfer-open="remoteTransferOpen"
       :remote-transfer-progress="remoteTransferProgress"

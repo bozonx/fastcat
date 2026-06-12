@@ -52,15 +52,23 @@ describe('unified video effect manifests', () => {
       'dissolve',
       'wipe',
       'slide',
+      'clock',
+      'barn-door',
       'fade-to-black',
       'circle',
+      'rectangle',
+      'blinds',
       'zoom',
       'bloom',
+      'cube',
+      'card-swap',
+      'falling-card',
     ]);
-    expect(types).not.toContain('cube');
-    expect(types).not.toContain('card-swap');
     expect(getTransitionManifest('dissolve')?.renderer).toBe('wgpu');
     expect(getTransitionManifest('dissolve')?.createFilter).toBeUndefined();
+    for (const manifest of getAllTransitionManifests()) {
+      expect(manifest.toTauriSpec, manifest.type).toBeTypeOf('function');
+    }
   });
 
   it('serializes enabled video effects into native EffectSpec payloads', () => {

@@ -26,6 +26,9 @@ interface Props {
   // BloggerDog Creation
   isSubgroupModalOpen: boolean;
   isItemModalOpen: boolean;
+  validateFolder?: (name: string) => string | boolean | null | undefined;
+  validateSubgroup?: (name: string) => string | boolean | null | undefined;
+  validateItem?: (name: string) => string | boolean | null | undefined;
 }
 
 const props = defineProps<Props>();
@@ -161,6 +164,7 @@ const { t } = useI18n();
     :open="props.isFolderModalOpen"
     :title="t('videoEditor.fileManager.actions.createFolder')"
     :default-value="props.folderDefaultName"
+    :validate="props.validateFolder"
     @update:open="emit('update:isFolderModalOpen', $event)"
     @confirm="emit('folderConfirm', $event)"
   />
@@ -168,6 +172,7 @@ const { t } = useI18n();
   <UiEntityCreationModal
     :open="props.isSubgroupModalOpen"
     :title="t('fastcat.bloggerDog.actions.createSubgroup')"
+    :validate="props.validateSubgroup"
     @update:open="emit('update:isSubgroupModalOpen', $event)"
     @confirm="emit('subgroupConfirm', $event)"
   />
@@ -175,6 +180,7 @@ const { t } = useI18n();
   <UiEntityCreationModal
     :open="props.isItemModalOpen"
     :title="t('fastcat.bloggerDog.actions.createItem')"
+    :validate="props.validateItem"
     @update:open="emit('update:isItemModalOpen', $event)"
     @confirm="emit('itemConfirm', $event)"
   />
