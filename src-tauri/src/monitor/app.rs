@@ -747,6 +747,10 @@ impl WindowState {
             return;
         }
         let t = self.clock.current_pts();
+        log::info!(
+            "[monitor] play requested at pts={t:.3}s has_audio={has_audio} has_video={}",
+            self.layers.has_active_video(t)
+        );
         // Заводим декодеры: говорим им играть и перепозиционируем на playhead, чтобы
         // forward-стрим был корректным после скраба по кешу. Часы при этом ещё стоят.
         self.layers.set_playing(true);
@@ -773,6 +777,8 @@ impl WindowState {
     /// Фактический старт воспроизведения: запускает мастер-часы и аудио от текущего
     /// playhead'а. Декодеры уже играют и спозиционированы (см. `play`).
     fn begin_playback(&mut self) {
+        let pts = self.clock.current_pts();
+        log::info!("[monitor] begin_playback at pts={pts:.3}s");
         self.pending_play_deadline = None;
         // Start wall-clock first so the audio output and video layers share the
         // exact same origin. Reversing the order lets audio buffer ahead of the
@@ -801,12 +807,22 @@ impl WindowState {
         // nothing to prime (no/empty audio, reverse speed).
         let audio_ready = self.audio.as_ref().is_none_or(NativeAudioEngine::is_primed);
         let ready = video_ready && audio_ready;
+        log::trace!(
+            "[monitor] poll_prebuffer: video_ready={video_ready} audio_ready={audio_ready} \
+             ready={ready} deadline_in={:?}",
+            deadline.saturating_duration_since(Instant::now()),
+        );
         if ready || Instant::now() >= deadline {
             if !ready {
                 log::warn!(
                     "[monitor] prebuffer timed out after {:.1}s — starting playback with \
                      video_ready={video_ready} audio_ready={audio_ready}",
                     PREBUFFER_TIMEOUT.as_secs_f64()
+                );
+            } else {
+                log::info!(
+                    "[monitor] prebuffer complete — starting playback \
+                     (video_ready={video_ready} audio_ready={audio_ready})"
                 );
             }
             self.begin_playback();
@@ -854,19 +870,43 @@ impl WindowState {
     }
 
     fn seek(&mut self, timeline_sec: f64, explicit: bool) {
+        let had_pending = self.pending_play_deadline.is_some();
         // Seek во время прогрева отменяет отложенный старт: позиция сменилась, пользователь
         // повторит Play от новой точки. Иначе стартовали бы от устаревшего playhead'а.
-        if self.pending_play_deadline.is_some() {
+        if had_pending {
             self.pending_play_deadline = None;
             self.layers.set_playing(false);
         }
         let t = timeline_sec.max(0.0);
+        log::trace!(
+            "[monitor] seek to {t:.3}s, explicit={explicit}, playing={}",
+            self.clock.is_playing()
+        );
         self.clock.seek(t);
         let playing = self.clock.is_playing();
         if let Some(audio) = self.audio.as_ref() {
             audio.seek(t, playing, explicit);
         }
         self.layers.seek(t, playing);
+
+        // After a real user seek during playback the audio ring was flushed and the
+        // callback stopped. If we let the clock keep running, video races ahead while
+        // the producer refills the ring. When the callback restarts (after only
+        // START_PREBUFFER_CHUNKS chunks) the ring can underrun under decoder-seek load
+        // → crackle + sped-up resync. So we do a micro-prime: freeze the video clock,
+        // refill the ring, and restart both together once audio is fully primed.
+        if playing && explicit {
+            if let Some(audio) = self.audio.as_ref() {
+                if !audio.is_empty() {
+                    log::info!("[monitor] micro-priming audio after explicit seek to {t:.3}s");
+                    self.clock.pause();
+                    audio.start_priming(t);
+                    self.layers.set_playing(true);
+                    self.layers.resync_active_videos(t);
+                    self.pending_play_deadline = Some(Instant::now() + PREBUFFER_TIMEOUT);
+                }
+            }
+        }
     }
 
     // -----------------------------------------------------------------------

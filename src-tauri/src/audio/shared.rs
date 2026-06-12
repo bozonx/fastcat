@@ -6,12 +6,12 @@ use symphonia::core::formats::Track;
 
 pub(crate) const CHUNK_DURATION_SEC: f64 = 0.05;
 /// Minimum fill before the real-time output callback starts consuming after a
-/// play/seek. Four 50ms chunks = 200ms: enough slack that a single missed
+/// play/seek. Eight 50ms chunks = 400ms: enough slack that a single missed
 /// producer deadline (common on Linux without RT-priority, e.g. under 4K decode
 /// load) does not immediately underrun and crackle on the very first output.
 /// Intentionally smaller than `PREBUFFER_CHUNKS` so playback does not feel
 /// delayed relative to the click.
-pub(crate) const START_PREBUFFER_CHUNKS: usize = 4;
+pub(crate) const START_PREBUFFER_CHUNKS: usize = 8;
 /// Target fill of the playback ring buffer, in `CHUNK_DURATION_SEC` chunks. This
 /// is the real defence against crackle: it sits upstream of the cpal device
 /// buffer and absorbs scheduler jitter / decode spikes when the producer thread

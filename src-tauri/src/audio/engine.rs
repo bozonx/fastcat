@@ -306,7 +306,14 @@ impl NativeAudioEngine {
         if pending_ring_clear {
             return false;
         }
-        self.ring.len() >= self.prebuffer_target_samples()
+        let ring_len = self.ring.len();
+        let target = self.prebuffer_target_samples();
+        let primed = ring_len >= target;
+        log::trace!(
+            "[audio] is_primed: ring={ring_len}/{target} samples ({:.0}%), primed={primed}",
+            (ring_len as f64 / target.max(1) as f64) * 100.0,
+        );
+        primed
     }
 
     /// Releases the warmup gate so the primed ring becomes audible. Arms the output
