@@ -115,38 +115,40 @@ function isMarkerSelected(markerId: string): boolean {
 </script>
 
 <template>
-  <div class="h-full flex flex-col bg-ui-bg-elevated overflow-hidden">
-    <div class="px-3 py-2 border-b border-ui-border flex items-center gap-2 flex-wrap shrink-0">
+  <div class="h-full flex flex-col bg-ui-bg-elevated overflow-hidden select-none">
+    <div class="flex items-center gap-2 px-3 h-9 border-b border-ui-border bg-ui-bg/30 shrink-0">
       <div class="flex items-center gap-1">
         <button
           v-for="color in availableColors"
           :key="color"
           type="button"
-          class="w-4 h-4 rounded-full border border-ui-border transition-all hover:scale-110"
+          class="w-3.5 h-3.5 rounded-full border border-ui-border transition-all hover:scale-110 cursor-pointer"
           :class="{
-            'ring-2 ring-ui-primary ring-offset-1 ring-offset-ui-bg-elevated':
+            'ring-2 ring-primary ring-offset-1 ring-offset-ui-bg-elevated':
               selectedColors.has(color),
           }"
           :style="{ backgroundColor: color }"
           @click="toggleColor(color)"
         />
       </div>
-      <UButton size="xs" variant="ghost" @click="toggleAllColors">
+      <UButton size="xs" variant="ghost" color="neutral" class="cursor-pointer" @click="toggleAllColors">
         {{ $t('fastcat.marker.selectAll') }}
       </UButton>
-      <div class="flex-1 min-w-2"></div>
+      <div class="flex-1"></div>
       <UButton
         size="xs"
         variant="soft"
+        color="neutral"
         icon="i-heroicons-document-text"
         :disabled="markers.length === 0"
+        class="cursor-pointer"
         @click="openExportModal"
       >
         {{ $t('fastcat.marker.exportAsText') }}
       </UButton>
     </div>
 
-    <div class="flex-1 overflow-auto">
+    <div class="flex-1 overflow-auto custom-scrollbar">
       <table class="w-full text-left text-xs border-collapse table-fixed">
         <thead
           class="sticky top-0 bg-ui-bg-elevated/95 backdrop-blur-sm z-10 border-b border-ui-border-muted uppercase tracking-wider text-ui-text-muted font-semibold"
@@ -169,7 +171,7 @@ function isMarkerSelected(markerId: string): boolean {
             }"
             @click="handleMarkerClick(marker, $event)"
           >
-            <td class="px-3 py-1.5 w-24 align-middle">
+            <td class="px-3 py-2 w-24 align-middle">
               <MarkerThumbnail :marker-id="marker.id" :time-us="marker.timeUs" />
             </td>
             <td class="px-3 py-2">

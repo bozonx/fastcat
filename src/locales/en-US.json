@@ -1291,12 +1291,14 @@
       "batchExtractAudio": {
         "failed": "Batch audio extraction failed",
         "success": "Batch audio extraction completed",
-        "taskTitle": "Extracting audio from {count} files"
+        "taskTitle": "Extracting audio from {count} files",
+        "noAudioTrack": "{count} file(s) had no audio track and were skipped."
       },
       "extractAudio": {
         "failed": "Failed to extract audio",
         "success": "Audio extracted successfully",
-        "extracting": "Extracting audio..."
+        "extracting": "Extracting audio...",
+        "noAudioTrack": "No audio track found in file."
       },
       "folder": {
         "filesCount": "Files Count"

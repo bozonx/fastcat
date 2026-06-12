@@ -163,7 +163,13 @@ export function useAudioExtraction() {
 
         meta = await client.extractMetadata(sourceFile);
       }
-      if (!meta.audio) throw new Error('No audio track found in file');
+      if (!meta.audio) {
+        toast.add({
+          title: t('videoEditor.fileManager.extractAudio.noAudioTrack'),
+          color: 'warning',
+        });
+        return;
+      }
 
       const codec = meta.audio.codec || '';
       const lowercaseCodec = codec.toLowerCase();

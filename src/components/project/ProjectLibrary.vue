@@ -151,39 +151,39 @@ function isSelected(kind: 'text' | 'shape' | 'hud', id: string) {
 </script>
 
 <template>
-  <div class="flex flex-col h-full bg-ui-bg-elevated text-sm relative min-h-0">
+  <div class="flex flex-col h-full bg-ui-bg-elevated text-sm relative min-h-0 select-none">
     <!-- Tabs -->
     <div
-      class="flex items-center border-b border-ui-border shrink-0 px-2 pt-2 gap-1 bg-ui-bg-elevated sticky top-0 z-10"
+      class="flex items-center border-b border-ui-border shrink-0 px-1 py-1 gap-0.5 bg-ui-bg-elevated sticky top-0 z-10 min-h-[36px]"
     >
       <button
-        class="px-3 py-1.5 rounded-t-lg transition-colors border border-b-0 border-transparent font-medium"
+        class="group relative flex items-center gap-1.5 px-2 py-1 rounded cursor-pointer transition-colors duration-150 shrink-0 text-2xs font-semibold tracking-wide uppercase"
         :class="
           activeTab === 'texts'
-            ? 'bg-ui-bg text-primary-400 border-ui-border'
-            : 'text-ui-text-muted hover:text-ui-text hover:bg-ui-bg-hover'
+            ? 'bg-selection-accent-500/15 text-selection-accent-400'
+            : 'text-ui-text-muted hover:text-ui-text hover:bg-ui-bg-accent/40'
         "
         @click="activeTab = 'texts'"
       >
         {{ t('fastcat.library.tabs.texts') }}
       </button>
       <button
-        class="px-3 py-1.5 rounded-t-lg transition-colors border border-b-0 border-transparent font-medium"
+        class="group relative flex items-center gap-1.5 px-2 py-1 rounded cursor-pointer transition-colors duration-150 shrink-0 text-2xs font-semibold tracking-wide uppercase"
         :class="
           activeTab === 'shapes'
-            ? 'bg-ui-bg text-primary-400 border-ui-border'
-            : 'text-ui-text-muted hover:text-ui-text hover:bg-ui-bg-hover'
+            ? 'bg-selection-accent-500/15 text-selection-accent-400'
+            : 'text-ui-text-muted hover:text-ui-text hover:bg-ui-bg-accent/40'
         "
         @click="activeTab = 'shapes'"
       >
         {{ t('fastcat.library.tabs.shapes') }}
       </button>
       <button
-        class="px-3 py-1.5 rounded-t-lg transition-colors border border-b-0 border-transparent font-medium"
+        class="group relative flex items-center gap-1.5 px-2 py-1 rounded cursor-pointer transition-colors duration-150 shrink-0 text-2xs font-semibold tracking-wide uppercase"
         :class="
           activeTab === 'hud'
-            ? 'bg-ui-bg text-primary-400 border-ui-border'
-            : 'text-ui-text-muted hover:text-ui-text hover:bg-ui-bg-hover'
+            ? 'bg-selection-accent-500/15 text-selection-accent-400'
+            : 'text-ui-text-muted hover:text-ui-text hover:bg-ui-bg-accent/40'
         "
         @click="activeTab = 'hud'"
       >
@@ -192,7 +192,7 @@ function isSelected(kind: 'text' | 'shape' | 'hud', id: string) {
     </div>
 
     <!-- Content -->
-    <div class="flex-1 overflow-y-auto bg-ui-bg px-4 pt-4 pb-8">
+    <div class="flex-1 overflow-y-auto px-3 py-3 space-y-3 custom-scrollbar bg-ui-bg-elevated">
       <!-- Texts -->
       <div v-show="activeTab === 'texts'" class="flex flex-col gap-4 pb-4">
         <!-- Standard Texts -->
@@ -207,7 +207,7 @@ function isSelected(kind: 'text' | 'shape' | 'hud', id: string) {
               class="flex items-center gap-3 p-3 rounded-lg border cursor-pointer active:cursor-grabbing transition-colors"
               :class="
                 isSelected('text', text.type)
-                  ? 'border-primary-500 bg-primary-500/10'
+                  ? 'border-primary bg-primary/10'
                   : 'border-ui-border bg-ui-bg-muted hover:bg-ui-bg-elevated'
               "
               draggable="true"
@@ -258,7 +258,7 @@ function isSelected(kind: 'text' | 'shape' | 'hud', id: string) {
               class="flex items-center gap-3 p-3 rounded-lg border cursor-pointer active:cursor-grabbing transition-colors group"
               :class="
                 isSelected('text', text.id)
-                  ? 'border-primary-500 bg-primary-500/10'
+                  ? 'border-primary bg-primary/10'
                   : 'border-ui-border bg-ui-bg-muted hover:bg-ui-bg-elevated'
               "
               @click="selectItem('text', text.id, text.params)"
@@ -328,7 +328,7 @@ function isSelected(kind: 'text' | 'shape' | 'hud', id: string) {
               class="flex items-center gap-3 p-3 rounded-lg border cursor-pointer active:cursor-grabbing transition-colors"
               :class="
                 isSelected('shape', shape.type)
-                  ? 'border-primary-500 bg-primary-500/10'
+                  ? 'border-primary bg-primary/10'
                   : 'border-ui-border bg-ui-bg-muted hover:bg-ui-bg-elevated'
               "
               draggable="true"
@@ -367,7 +367,7 @@ function isSelected(kind: 'text' | 'shape' | 'hud', id: string) {
               class="flex items-center gap-3 p-3 rounded-lg border cursor-pointer active:cursor-grabbing transition-colors group"
               :class="
                 isSelected('shape', shape.id)
-                  ? 'border-primary-500 bg-primary-500/10'
+                  ? 'border-primary bg-primary/10'
                   : 'border-ui-border bg-ui-bg-muted hover:bg-ui-bg-elevated'
               "
               @click="selectItem('shape', shape.id, shape.params)"
@@ -422,7 +422,7 @@ function isSelected(kind: 'text' | 'shape' | 'hud', id: string) {
               class="flex items-center gap-3 p-3 rounded-lg border cursor-pointer active:cursor-grabbing transition-colors"
               :class="
                 isSelected('hud', hud.type)
-                  ? 'border-primary-500 bg-primary-500/10'
+                  ? 'border-primary bg-primary/10'
                   : 'border-ui-border bg-ui-bg-muted hover:bg-ui-bg-elevated'
               "
               draggable="true"
@@ -461,7 +461,7 @@ function isSelected(kind: 'text' | 'shape' | 'hud', id: string) {
               class="flex items-center gap-3 p-3 rounded-lg border cursor-pointer active:cursor-grabbing transition-colors group"
               :class="
                 isSelected('hud', hud.id)
-                  ? 'border-primary-500 bg-primary-500/10'
+                  ? 'border-primary bg-primary/10'
                   : 'border-ui-border bg-ui-bg-muted hover:bg-ui-bg-elevated'
               "
               @click="selectItem('hud', hud.id, hud.params)"

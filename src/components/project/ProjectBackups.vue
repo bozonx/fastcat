@@ -121,13 +121,13 @@ const versions = computed(() => timelineStore.backupVersions);
 
     <!-- Header with Actions -->
     <div
-      class="px-4 py-2.5 border-b border-ui-border flex items-center justify-between bg-ui-bg shrink-0"
+      class="flex items-center justify-between px-3 h-9 border-b border-ui-border bg-ui-bg/30 shrink-0 select-none"
     >
       <!-- Clear Backups Button -->
       <UButton
         v-if="hasBackups"
         size="xs"
-        variant="outline"
+        variant="ghost"
         color="neutral"
         class="cursor-pointer"
         :disabled="isReadOnly"
@@ -166,7 +166,7 @@ const versions = computed(() => timelineStore.backupVersions);
             class="hover:bg-ui-bg-muted/30 transition-colors"
           >
             <!-- Name / Type Badge -->
-            <td class="px-1.5 py-3 align-middle font-medium text-ui-text min-w-0">
+            <td class="px-3 py-2 align-middle font-medium text-ui-text min-w-0">
               <div class="flex flex-col gap-1 min-w-0">
                 <span class="truncate" :title="version.name">{{ version.name }}</span>
                 <div class="flex">
@@ -193,12 +193,12 @@ const versions = computed(() => timelineStore.backupVersions);
             </td>
 
             <!-- Date -->
-            <td class="px-1.5 py-3 align-middle text-ui-text-muted whitespace-nowrap">
+            <td class="px-3 py-2 align-middle text-ui-text-muted whitespace-nowrap">
               <FriendlyTime :date="version.date" />
             </td>
 
             <!-- Actions -->
-            <td class="px-1.5 py-3 align-middle text-right">
+            <td class="px-3 py-2 align-middle text-right">
               <div class="flex items-center justify-end gap-1.5">
                 <!-- Preview / Open -->
                 <UTooltip

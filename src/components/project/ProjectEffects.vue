@@ -107,39 +107,39 @@ function updateCustomTransitionsOrder(newCustomTransitions: TransitionManifest[]
 </script>
 
 <template>
-  <div class="flex flex-col h-full bg-ui-bg-elevated text-sm relative min-h-0">
+  <div class="flex flex-col h-full bg-ui-bg-elevated text-sm relative min-h-0 select-none">
     <!-- Tabs -->
     <div
-      class="flex items-center border-b border-ui-border shrink-0 px-2 pt-2 gap-1 bg-ui-bg-elevated sticky top-0 z-10"
+      class="flex items-center border-b border-ui-border shrink-0 px-1 py-1 gap-0.5 bg-ui-bg-elevated sticky top-0 z-10 min-h-[36px]"
     >
       <button
-        class="px-3 py-1.5 rounded-t-lg transition-colors border border-b-0 border-transparent font-medium"
+        class="group relative flex items-center gap-1.5 px-2 py-1 rounded cursor-pointer transition-colors duration-150 shrink-0 text-2xs font-semibold tracking-wide uppercase"
         :class="
           activeTab === 'video'
-            ? 'bg-ui-bg text-primary-400 border-ui-border'
-            : 'text-ui-text-muted hover:text-ui-text hover:bg-ui-bg-hover'
+            ? 'bg-selection-accent-500/15 text-selection-accent-400'
+            : 'text-ui-text-muted hover:text-ui-text hover:bg-ui-bg-accent/40'
         "
         @click="activeTab = 'video'"
       >
         {{ t('fastcat.effects.tabs.video') }}
       </button>
       <button
-        class="px-3 py-1.5 rounded-t-lg transition-colors border border-b-0 border-transparent font-medium"
+        class="group relative flex items-center gap-1.5 px-2 py-1 rounded cursor-pointer transition-colors duration-150 shrink-0 text-2xs font-semibold tracking-wide uppercase"
         :class="
           activeTab === 'transitions'
-            ? 'bg-ui-bg text-primary-400 border-ui-border'
-            : 'text-ui-text-muted hover:text-ui-text hover:bg-ui-bg-hover'
+            ? 'bg-selection-accent-500/15 text-selection-accent-400'
+            : 'text-ui-text-muted hover:text-ui-text hover:bg-ui-bg-accent/40'
         "
         @click="activeTab = 'transitions'"
       >
         {{ t('fastcat.effects.tabs.transitions') }}
       </button>
       <button
-        class="px-3 py-1.5 rounded-t-lg transition-colors border border-b-0 border-transparent font-medium"
+        class="group relative flex items-center gap-1.5 px-2 py-1 rounded cursor-pointer transition-colors duration-150 shrink-0 text-2xs font-semibold tracking-wide uppercase"
         :class="
           activeTab === 'audio'
-            ? 'bg-ui-bg text-primary-400 border-ui-border'
-            : 'text-ui-text-muted hover:text-ui-text hover:bg-ui-bg-hover'
+            ? 'bg-selection-accent-500/15 text-selection-accent-400'
+            : 'text-ui-text-muted hover:text-ui-text hover:bg-ui-bg-accent/40'
         "
         @click="activeTab = 'audio'"
       >
@@ -148,7 +148,7 @@ function updateCustomTransitionsOrder(newCustomTransitions: TransitionManifest[]
     </div>
 
     <!-- Content -->
-    <div class="flex-1 overflow-y-auto bg-ui-bg px-4 pt-4 pb-8">
+    <div class="flex-1 overflow-y-auto px-3 py-3 space-y-3 custom-scrollbar bg-ui-bg-elevated">
       <!-- Video Effects -->
       <div v-show="activeTab === 'video'" class="flex flex-col gap-4 pb-4">
         <!-- Standard Effects -->

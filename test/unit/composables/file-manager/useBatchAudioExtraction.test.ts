@@ -99,8 +99,9 @@ vi.mock('~/composables/file-manager/useFileManager', () => ({
   useFileManager: () => fileManager,
 }));
 
-vi.stubGlobal('useI18n', () => ({ t: (key: string) => key }));
-vi.stubGlobal('useToast', () => ({ add: vi.fn() }));
+const toastAdd = vi.fn();
+vi.stubGlobal('useI18n', () => ({ t: (key: string, params?: Record<string, unknown>) => key + (params ? ` ${JSON.stringify(params)}` : '') }));
+vi.stubGlobal('useToast', () => ({ add: toastAdd }));
 
 describe('useBatchAudioExtraction', () => {
   beforeEach(() => {
@@ -200,7 +201,7 @@ describe('useBatchAudioExtraction', () => {
     expect(backgroundTasksStore.addTask).not.toHaveBeenCalled();
   });
 
-  it('marks task failed when a file has no audio track', async () => {
+  it('skips files with no audio track and warns via toast', async () => {
     extractMetadata.mockResolvedValueOnce({ audio: null });
 
     const entries: FsEntry[] = [
@@ -212,8 +213,7 @@ describe('useBatchAudioExtraction', () => {
 
     expect(backgroundTasksStore.updateTaskStatus).toHaveBeenCalledWith(
       'task-batch-1',
-      'failed',
-      expect.stringContaining('No audio track'),
+      'completed',
     );
   });
 });

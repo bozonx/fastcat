@@ -57,7 +57,7 @@ export function useBatchAudioExtraction() {
     entry: FsEntry,
     isExternal: boolean,
     taskIdPrefix: string,
-  ): Promise<void> {
+  ): Promise<'no-audio' | void> {
     if (!entry.path) return;
 
     const useNativeExtraction = isTauriRuntime();
@@ -119,7 +119,7 @@ export function useBatchAudioExtraction() {
     }
 
     if (!meta.audio) {
-      throw new Error('No audio track found in file');
+      return 'no-audio';
     }
 
     const codec = meta.audio.codec || '';
@@ -195,10 +195,17 @@ export function useBatchAudioExtraction() {
 
     try {
       backgroundTasksStore.updateTaskStatus(bgTaskId, 'running');
+      let noAudioCount = 0;
 
       for (const entry of eligibleEntries) {
         try {
-          await extractSingleAudio(entry, isExternal, taskIdPrefix);
+          const result = await extractSingleAudio(entry, isExternal, taskIdPrefix);
+          if (result === 'no-audio') {
+            noAudioCount++;
+            completed++;
+            backgroundTasksStore.updateTaskProgress(bgTaskId, completed / total);
+            continue;
+          }
         } catch (err) {
           const message = err instanceof Error ? err.message : String(err);
           backgroundTasksStore.updateTaskStatus(
@@ -221,10 +228,20 @@ export function useBatchAudioExtraction() {
 
       backgroundTasksStore.updateTaskProgress(bgTaskId, 1);
       backgroundTasksStore.updateTaskStatus(bgTaskId, 'completed');
-      toast.add({
-        title: t('videoEditor.fileManager.batchExtractAudio.success'),
-        color: 'success',
-      });
+
+      if (noAudioCount > 0) {
+        toast.add({
+          title: t('videoEditor.fileManager.batchExtractAudio.noAudioTrack', { count: noAudioCount }),
+          color: 'warning',
+        });
+      }
+
+      if (noAudioCount < eligibleEntries.length) {
+        toast.add({
+          title: t('videoEditor.fileManager.batchExtractAudio.success'),
+          color: 'success',
+        });
+      }
     } catch {
       const task = backgroundTasksStore.tasks.find((t) => t.id === bgTaskId);
       if (task && task.status !== 'failed') {

@@ -5,6 +5,7 @@ import { ref } from 'vue';
 import { useFileConversionActions } from '~/composables/file-conversion/useFileConversionActions';
 import { useMobileLayout } from '~/composables/useMobileLayout';
 import { executeMediaConversion } from '~/utils/conversion/media-conversion';
+import { removeCreatedFile } from '~/utils/conversion/helpers';
 
 const mockProjectStore = {
   projectSettings: {
@@ -86,9 +87,18 @@ vi.mock('~/utils/conversion/image-conversion', () => ({
   convertImageFile: vi.fn().mockResolvedValue(new Blob(['converted'], { type: 'image/webp' })),
 }));
 
+vi.mock('~/utils/conversion/helpers', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('~/utils/conversion/helpers')>();
+  return {
+    ...actual,
+    removeCreatedFile: vi.fn(),
+  };
+});
+
 describe('useFileConversionActions', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(removeCreatedFile).mockReset();
     mockProjectStore.getFileByPath.mockReset();
     mockProjectStore.getDirectoryHandleByPath.mockReset();
     mockFileManager.vfs.getFile.mockReset();
@@ -194,6 +204,28 @@ describe('useFileConversionActions', () => {
         }),
       }),
     );
+  });
+
+  it('removes created file when media conversion fails with a generic error', async () => {
+    const props = createProps('audio');
+    const { startConversion } = useFileConversionActions(props);
+
+    props.targetEntry.value = { name: 'test.mp3', path: '/test.mp3', kind: 'file' } as any;
+
+    mockProjectStore.getDirectoryHandleByPath.mockResolvedValue({
+      getFileHandle: vi.fn().mockResolvedValue({}),
+    });
+
+    const executeMediaConversionModule = await import('~/utils/conversion/media-conversion');
+    vi.mocked(executeMediaConversionModule.executeMediaConversion).mockRejectedValue(
+      new Error('FFmpeg crash'),
+    );
+
+    await startConversion();
+
+    await new Promise((resolve) => setTimeout(resolve, 10));
+
+    expect(vi.mocked(removeCreatedFile)).toHaveBeenCalled();
   });
 
   it('openConversionModal resets video defaults when metadata extraction fails', async () => {

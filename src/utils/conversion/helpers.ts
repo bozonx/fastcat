@@ -44,7 +44,30 @@ export function isAbortError(error: unknown) {
 export async function removeCreatedFile(params: {
   dirHandle: FileSystemDirectoryHandle | null;
   fileName: string | null;
+  filePath?: string | null;
 }) {
+  if (params.filePath) {
+    const { isTauriRuntime } = await import('~/utils/runtime');
+    if (isTauriRuntime()) {
+      try {
+        const { remove } = await import('@tauri-apps/plugin-fs');
+        for (let attempt = 0; attempt < 5; attempt++) {
+          try {
+            await remove(params.filePath);
+            return;
+          } catch {
+            if (attempt < 4) {
+              await new Promise((resolve) => setTimeout(resolve, 100));
+            }
+          }
+        }
+      } catch (err) {
+        // Fallback or ignore if plugin-fs is not available/failed to load
+      }
+      return;
+    }
+  }
+
   if (!params.dirHandle || !params.fileName) return;
 
   for (let attempt = 0; attempt < 5; attempt++) {
@@ -58,3 +81,4 @@ export async function removeCreatedFile(params: {
     }
   }
 }
+

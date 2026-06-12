@@ -97,46 +97,31 @@ function jumpToState(entryId: string, isFuture: boolean) {
 </script>
 
 <template>
-  <div class="h-full flex flex-col w-full bg-zinc-900 border-l border-zinc-800">
-    <div
-      class="px-4 py-3 border-b border-zinc-800 flex items-center justify-between text-xs text-zinc-400 font-medium tracking-wide uppercase"
-    >
-      <span>{{ $t('videoEditor.fileManager.history.title') }}</span>
-      <div class="flex items-center gap-2">
-        <button
-          class="hover:text-white transition-colors disabled:opacity-30 disabled:hover:text-zinc-400"
-          :disabled="!canUndo"
-          :title="$t('videoEditor.fileManager.history.actions.undo')"
-          @click="handleUndo"
-        >
-          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"
-            />
-          </svg>
-        </button>
-        <button
-          class="hover:text-white transition-colors disabled:opacity-30 disabled:hover:text-zinc-400"
-          :disabled="!canRedo"
-          :title="$t('videoEditor.fileManager.history.actions.redo')"
-          @click="handleRedo"
-        >
-          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              d="M21 10h-10a8 8 0 00-8 8v2M21 10l-6 6m6-6l-6-6"
-            />
-          </svg>
-        </button>
-      </div>
+  <div class="h-full flex flex-col w-full bg-ui-bg-elevated">
+    <div class="flex items-center gap-1.5 px-3 h-9 border-b border-ui-border bg-ui-bg/30 shrink-0">
+      <UButton
+        icon="i-heroicons-arrow-uturn-left"
+        size="xs"
+        variant="ghost"
+        color="neutral"
+        :disabled="!canUndo"
+        :title="$t('videoEditor.fileManager.history.actions.undo')"
+        class="cursor-pointer"
+        @click="handleUndo"
+      />
+      <UButton
+        icon="i-heroicons-arrow-uturn-right"
+        size="xs"
+        variant="ghost"
+        color="neutral"
+        :disabled="!canRedo"
+        :title="$t('videoEditor.fileManager.history.actions.redo')"
+        class="cursor-pointer"
+        @click="handleRedo"
+      />
     </div>
 
-    <div class="flex-1 overflow-y-auto min-h-0 relative">
+    <div class="flex-1 overflow-y-auto min-h-0 relative custom-scrollbar">
       <UiEmptyState
         v-if="past.length === 0 && future.length === 0"
         :message="$t('videoEditor.fileManager.history.empty')"
@@ -145,43 +130,43 @@ function jumpToState(entryId: string, isFuture: boolean) {
         wrapper-class="absolute inset-0 flex flex-col items-center justify-center p-6 opacity-40 select-none"
       />
 
-      <div v-else class="py-2 px-3 space-y-1">
+      <div v-else class="py-2 px-2.5 space-y-1">
         <!-- Future states (Redo) -->
         <div
           v-for="entry in reversedFuture"
           :key="`future-${entry.id}`"
-          class="group flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all duration-200 cursor-pointer opacity-50 hover:opacity-100 hover:bg-zinc-800/50"
+          class="group flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-xs transition-all duration-200 cursor-pointer text-ui-text-disabled hover:text-ui-text-muted hover:bg-ui-bg-accent/20"
           @click="jumpToState(entry.id, true)"
         >
-          <div class="flex-1 truncate text-zinc-400">
+          <div class="flex-1 truncate">
             {{ $t(entry.labelKey) }}
           </div>
-          <div class="text-xs text-zinc-600 opacity-0 group-hover:opacity-100 transition-opacity">
+          <div class="text-3xs text-ui-text-muted/60 opacity-0 group-hover:opacity-100 transition-opacity">
             {{ formatTime(entry.timestamp) }}
           </div>
         </div>
 
-        <div v-if="future.length > 0" class="h-px bg-zinc-800/50 my-2 mx-2"></div>
+        <div v-if="future.length > 0" class="h-px bg-ui-border/50 my-1 mx-2"></div>
 
         <!-- Current/Past states (Undo) -->
         <div
           v-for="(entry, index) in reversedPast"
           :key="`past-${entry.id}`"
-          class="group flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all duration-200"
+          class="group flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-xs transition-all duration-200"
           :class="[
             index === 0
-              ? 'bg-zinc-700/30 text-zinc-200'
-              : 'text-zinc-300 hover:bg-zinc-800/50 cursor-pointer',
+              ? 'bg-ui-bg-hover text-ui-text font-medium'
+              : 'text-ui-text-muted hover:text-ui-text hover:bg-ui-bg-accent/20 cursor-pointer',
           ]"
           @click="index === 0 ? null : jumpToState(entry.id, false)"
         >
-          <div class="flex-1 truncate" :class="[index === 0 ? 'font-medium' : '']">
+          <div class="flex-1 truncate">
             {{ $t(entry.labelKey) }}
           </div>
           <div
-            class="text-xs transition-opacity"
+            class="text-3xs transition-opacity"
             :class="[
-              index === 0 ? 'text-zinc-400' : 'text-zinc-500 opacity-0 group-hover:opacity-100',
+              index === 0 ? 'text-ui-text-muted' : 'text-ui-text-disabled opacity-0 group-hover:opacity-100',
             ]"
           >
             {{ formatTime(entry.timestamp) }}

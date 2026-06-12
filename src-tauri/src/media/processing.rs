@@ -1147,17 +1147,20 @@ mod tests {
     #[test]
     fn test_actual_conversion_reverse() {
         let tasks = NativeMediaTasks::default();
-        let source_path = Path::new("../test/fixtures/media/sample-1s-audio.mp3");
+        let mp3_source = Path::new("../test/fixtures/media/sample-1s-audio.mp3");
+        let mp4_source = Path::new("../test/fixtures/media/sample-1s-720p.mp4");
 
         let test_cases = vec![
-            ("m4a", "aac"),
-            ("flac", "flac"),
-            ("wav", "pcm"),
-            ("mp3", "mp3"),
-            ("opus", "opus"),
+            (mp3_source, "m4a", "aac"),
+            (mp3_source, "flac", "flac"),
+            (mp3_source, "wav", "pcm"),
+            (mp3_source, "mp3", "mp3"),
+            (mp3_source, "opus", "opus"),
+            (mp4_source, "m4a", "aac"),
+            (mp4_source, "wav", "pcm"),
         ];
 
-        for (format, codec) in test_cases {
+        for (source_path, format, codec) in test_cases {
             let target_filename = format!("target_test_reversed_{codec}.{format}");
             let target_path = Path::new(&target_filename);
 

@@ -273,6 +273,7 @@ vi.mock('#app', () => ({
 
 vi.mock('nuxt/app', () => ({
   useNuxtApp: createNuxtMock,
+  defineNuxtPlugin: vi.fn((plugin) => plugin),
 }));
 
 vi.mock('@nuxtjs/device', () => ({

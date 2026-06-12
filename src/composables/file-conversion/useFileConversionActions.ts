@@ -589,9 +589,13 @@ export function useFileConversionActions(props: UseFileConversionActionsProps) {
             });
           })
           .catch(async (err) => {
+            await removeCreatedFile({
+              dirHandle: createdDirHandle,
+              fileName: createdFileName,
+              filePath: createdFilePath,
+            });
             if (isAbortError(err)) {
               backgroundTasksStore.updateTaskStatus(bgTaskId, 'cancelled');
-              await removeCreatedFile({ dirHandle: createdDirHandle, fileName: createdFileName });
             } else {
               backgroundTasksStore.updateTaskStatus(bgTaskId, 'failed', err.message);
               log.error('Conversion failed', err);

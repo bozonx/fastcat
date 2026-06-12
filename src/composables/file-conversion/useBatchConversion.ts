@@ -48,6 +48,52 @@ interface BatchConversionState {
   targetIsExternal: boolean;
 }
 
+const state = reactive<BatchConversionState>({
+  isModalOpen: false,
+  isConverting: false,
+  conversionError: '',
+  conversionWarnings: [],
+  entries: [],
+  conversionType: null,
+  targetIsExternal: false,
+});
+
+const videoSettings = reactive({
+  format: DEFAULT_VIDEO_FORMAT as 'mp4' | 'webm' | 'mkv',
+  videoCodec: DEFAULT_VIDEO_CODEC,
+  bitrateMbps: DEFAULT_VIDEO_BITRATE_MBPS,
+  excludeAudio: false,
+  audioCodec: DEFAULT_AUDIO_CODEC as 'aac' | 'opus' | 'flac' | 'pcm' | 'mp3',
+  audioBitrateKbps: DEFAULT_AUDIO_BITRATE_KBPS,
+  bitrateMode: 'variable' as 'constant' | 'variable',
+  keyframeIntervalSec: 2,
+  width: DEFAULT_VIDEO_WIDTH,
+  height: DEFAULT_VIDEO_HEIGHT,
+  fps: DEFAULT_VIDEO_FPS,
+  resolutionFormat: '1080p',
+  orientation: 'landscape' as 'landscape' | 'portrait',
+  aspectRatio: '16:9',
+  isCustomResolution: false,
+});
+
+const audioSettings = reactive({
+  onlyFormat: 'opus' as 'aac' | 'opus' | 'flac' | 'pcm' | 'mp3',
+  onlyBitrateKbps: DEFAULT_AUDIO_BITRATE_KBPS,
+  channels: 2,
+  sampleRate: 'original' as 'original' | number,
+  reverse: false,
+  originalSampleRate: null as number | null,
+  originalChannels: null as number | null,
+});
+
+const imageSettings = reactive({
+  quality: DEFAULT_IMAGE_QUALITY,
+  width: 0,
+  height: 0,
+  isResolutionLinked: true,
+  aspectRatio: 1,
+});
+
 export function useBatchConversion() {
   const projectStore = useProjectStore();
   const fileManager = useFileManager();
@@ -55,52 +101,6 @@ export function useBatchConversion() {
   const backgroundTasksStore = useBackgroundTasksStore();
   const { t } = useI18n();
   const toast = useToast();
-
-  const state = reactive<BatchConversionState>({
-    isModalOpen: false,
-    isConverting: false,
-    conversionError: '',
-    conversionWarnings: [],
-    entries: [],
-    conversionType: null,
-    targetIsExternal: false,
-  });
-
-  const videoSettings = reactive({
-    format: DEFAULT_VIDEO_FORMAT as 'mp4' | 'webm' | 'mkv',
-    videoCodec: DEFAULT_VIDEO_CODEC,
-    bitrateMbps: DEFAULT_VIDEO_BITRATE_MBPS,
-    excludeAudio: false,
-    audioCodec: DEFAULT_AUDIO_CODEC as 'aac' | 'opus' | 'flac' | 'pcm' | 'mp3',
-    audioBitrateKbps: DEFAULT_AUDIO_BITRATE_KBPS,
-    bitrateMode: 'variable' as 'constant' | 'variable',
-    keyframeIntervalSec: 2,
-    width: DEFAULT_VIDEO_WIDTH,
-    height: DEFAULT_VIDEO_HEIGHT,
-    fps: DEFAULT_VIDEO_FPS,
-    resolutionFormat: '1080p',
-    orientation: 'landscape' as 'landscape' | 'portrait',
-    aspectRatio: '16:9',
-    isCustomResolution: false,
-  });
-
-  const audioSettings = reactive({
-    onlyFormat: 'opus' as 'aac' | 'opus' | 'flac' | 'pcm' | 'mp3',
-    onlyBitrateKbps: DEFAULT_AUDIO_BITRATE_KBPS,
-    channels: 2,
-    sampleRate: 'original' as 'original' | number,
-    reverse: false,
-    originalSampleRate: null as number | null,
-    originalChannels: null as number | null,
-  });
-
-  const imageSettings = reactive({
-    quality: DEFAULT_IMAGE_QUALITY,
-    width: 0,
-    height: 0,
-    isResolutionLinked: true,
-    aspectRatio: 1,
-  });
 
   const modalTitle = computed(() => {
     if (state.conversionType === 'image') {
@@ -319,6 +319,17 @@ export function useBatchConversion() {
           completed++;
           backgroundTasksStore.updateTaskProgress(bgTaskId, completed / total);
         } catch (err) {
+          const request = buildConversionRequest(entry, type);
+          const target = getSiblingTarget(entry.path!, request.newFileName);
+          const dirHandle = state.targetIsExternal
+            ? null
+            : await projectStore.getDirectoryHandleByPath(request.dirPath);
+          await removeCreatedFile({
+            dirHandle,
+            fileName: request.newFileName,
+            filePath: target.filePath,
+          });
+
           if (isAbortError(err)) throw err;
           reportWarning(`${entry.name}: ${err instanceof Error ? err.message : String(err)}`);
           completed++;
