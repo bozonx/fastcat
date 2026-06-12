@@ -166,6 +166,7 @@ const isFormValid = computed(() => {
             :original-audio-sample-rate="audioSettings.originalSampleRate"
             :original-audio-channels="audioSettings.originalChannels"
             :allow-original-audio-sample-rate="true"
+            :hide-audio-sample-rate="true"
           />
         </div>
       </template>
@@ -191,6 +192,7 @@ const isFormValid = computed(() => {
             :original-sample-rate="audioSettings.originalSampleRate"
             :original-channels="audioSettings.originalChannels"
             :allow-original-sample-rate="true"
+            hide-sample-rate
           />
         </div>
       </template>
