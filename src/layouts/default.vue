@@ -21,6 +21,7 @@ import ProjectReadOnlyBanner from '~/components/editor/ProjectReadOnlyBanner.vue
 import EditorSettingsModal from '~/components/settings/EditorSettingsModal.vue';
 import ProjectSettingsModal from '~/components/project-settings/ProjectSettingsModal.vue';
 import FileConversionModal from '~/components/file-manager/FileConversionModal.vue';
+import BatchFileConversionModal from '~/components/file-manager/BatchFileConversionModal.vue';
 import GlobalDropOverlay from '~/components/file-manager/GlobalDropOverlay.vue';
 import FileManagerRemoteTransferProgressModal from '~/components/file-manager/RemoteTransferProgressModal.vue';
 import { useFileManager } from '~/composables/file-manager/useFileManager';
@@ -212,6 +213,7 @@ useEventListener(document, 'visibilitychange', () => {
       <EditorSettingsModal v-model:open="uiStore.isEditorSettingsOpen" />
       <ProjectSettingsModal v-model:open="uiStore.isProjectSettingsOpen" />
       <FileConversionModal />
+      <BatchFileConversionModal />
       <FileManagerRemoteTransferProgressModal
         :open="isUploading"
         :title="t('videoEditor.fileManager.actions.importing')"

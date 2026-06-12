@@ -11,7 +11,8 @@ import type { FsEntry } from '~/types/fs';
 import { getMediaTypeFromFilename } from '~/utils/media-types';
 import { formatBytes } from '~/utils/format';
 import { computeDirectoryStatsByPath } from '~/utils/fs';
-import { useAudioExtraction } from '~/composables/file-manager/useAudioExtraction';
+import { useBatchConversion } from '~/composables/file-conversion/useBatchConversion';
+import { useBatchAudioExtraction } from '~/composables/file-manager/useBatchAudioExtraction';
 import PropertySection from '~/components/properties/PropertySection.vue';
 import EntryActions from '~/components/properties/file/EntryActions.vue';
 import { useI18n } from 'vue-i18n';
@@ -91,15 +92,35 @@ function onDelete() {
   uiStore.pendingFsEntryDelete = props.entries;
 }
 
-const { extractAudio } = useAudioExtraction();
+const { openModal: openBatchConversionModal } = useBatchConversion();
+const { batchExtractAudio } = useBatchAudioExtraction();
 
-async function handleExtractAudio() {
-  if (!props.entries.length) return;
-  for (const entry of props.entries) {
-    if (entry.kind === 'file' && getMediaTypeFromFilename(entry.name) === 'video') {
-      await extractAudio(entry, { isExternal: props.isExternal });
-    }
-  }
+const hasAudio = computed(() => {
+  return props.entries.some(
+    (e) => e.kind === 'file' && getMediaTypeFromFilename(e.name) === 'audio',
+  );
+});
+
+const hasImage = computed(() => {
+  return props.entries.some(
+    (e) => e.kind === 'file' && getMediaTypeFromFilename(e.name) === 'image',
+  );
+});
+
+async function handleBatchExtractAudio() {
+  await batchExtractAudio(props.entries, props.isExternal ?? false);
+}
+
+function handleBatchConvertVideo() {
+  openBatchConversionModal('video', props.entries, props.isExternal ?? false);
+}
+
+function handleBatchConvertAudio() {
+  openBatchConversionModal('audio', props.entries, props.isExternal ?? false);
+}
+
+function handleBatchConvertImages() {
+  openBatchConversionModal('image', props.entries, props.isExternal ?? false);
 }
 
 async function onCreateProxy() {
@@ -240,11 +261,32 @@ function onCut() {
             onClick: onCancelProxy,
           },
           {
-            id: 'extractAudio',
-            label: t('videoEditor.fileManager.actions.extractAudio'),
+            id: 'batchConvertVideo',
+            label: t('videoEditor.fileManager.actions.batchConvertVideo'),
+            icon: 'i-heroicons-arrow-path',
+            hidden: props.isExternal || !hasVideo,
+            onClick: handleBatchConvertVideo,
+          },
+          {
+            id: 'batchConvertAudio',
+            label: t('videoEditor.fileManager.actions.batchConvertAudio'),
+            icon: 'i-heroicons-arrow-path',
+            hidden: props.isExternal || !hasAudio,
+            onClick: handleBatchConvertAudio,
+          },
+          {
+            id: 'batchConvertImages',
+            label: t('videoEditor.fileManager.actions.batchConvertImages'),
+            icon: 'i-heroicons-arrow-path',
+            hidden: props.isExternal || !hasImage,
+            onClick: handleBatchConvertImages,
+          },
+          {
+            id: 'batchExtractAudio',
+            label: t('videoEditor.fileManager.actions.batchExtractAudio'),
             icon: 'i-heroicons-musical-note',
-            hidden: !hasVideo,
-            onClick: handleExtractAudio,
+            hidden: props.isExternal || (!hasVideo && !hasAudio),
+            onClick: handleBatchExtractAudio,
           },
           {
             id: 'deleteProxy',

@@ -1182,6 +1182,10 @@
     },
     "fileManager": {
       "actions": {
+        "batchConvertAudio": "Convert audio/reverse",
+        "batchConvertImages": "Convert images",
+        "batchConvertVideo": "Convert video",
+        "batchExtractAudio": "Extract audio",
         "cancelProxyGeneration": "Cancel proxy generation",
         "convertAudioFile": "Convert/reverse",
         "convertFile": "Convert file",
@@ -1271,6 +1275,21 @@
         "readOnlyAction": "Action unavailable in read-only mode",
         "remoteFailed": "Remote file operation failed",
         "uploadFailedTitle": "Upload failed"
+      },
+      "batchConvert": {
+        "completedWithWarnings": "Batch conversion completed with warnings",
+        "failed": "Batch conversion failed",
+        "filesCount": "Files: {count}",
+        "outputPatternAudio": "{name}_converted.{format}",
+        "outputPatternImage": "{name}_converted.webp",
+        "outputPatternVideo": "{name}_converted.{format}",
+        "success": "Batch conversion completed successfully",
+        "taskTitle": "Converting {count} files"
+      },
+      "batchExtractAudio": {
+        "failed": "Batch audio extraction failed",
+        "success": "Batch audio extraction completed",
+        "taskTitle": "Extracting audio from {count} files"
       },
       "extractAudio": {
         "failed": "Failed to extract audio",

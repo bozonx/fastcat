@@ -4,6 +4,7 @@ import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useProjectStore } from '~/stores/project.store';
 import ProjectReadOnlyBanner from '~/components/editor/ProjectReadOnlyBanner.vue';
 import FileConversionModal from '~/components/file-manager/FileConversionModal.vue';
+import BatchFileConversionModal from '~/components/file-manager/BatchFileConversionModal.vue';
 
 const workspaceStore = useWorkspaceStore();
 const projectStore = useProjectStore();
@@ -37,5 +38,6 @@ onMounted(async () => {
     </main>
 
     <FileConversionModal />
+    <BatchFileConversionModal />
   </div>
 </template>

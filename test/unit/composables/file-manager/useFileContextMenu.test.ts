@@ -57,7 +57,7 @@ describe('useFileContextMenu', () => {
     expect(labels).not.toContain('videoEditor.fileManager.actions.createProxy');
     expect(labels).not.toContain('videoEditor.fileManager.actions.deleteProxy');
     expect(labels).not.toContain('videoEditor.fileManager.actions.cancelProxyGeneration');
-    expect(labels).toContain('videoEditor.fileManager.actions.extractAudio');
+    expect(labels).not.toContain('videoEditor.fileManager.actions.extractAudio');
   });
 
   it('keeps proxy actions for project multi-selection', () => {

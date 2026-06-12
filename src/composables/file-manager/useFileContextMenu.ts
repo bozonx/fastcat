@@ -337,7 +337,7 @@ export function useFileContextMenu(
       }
     }
 
-    if (hasVideo && (!deps.hasAudioTrack || selectedEntries.some((e) => deps.hasAudioTrack?.(e)))) {
+    if (!isComputer && hasVideo && (!deps.hasAudioTrack || selectedEntries.some((e) => deps.hasAudioTrack?.(e)))) {
       items.push([
         {
           label: t('videoEditor.fileManager.actions.extractAudio'),

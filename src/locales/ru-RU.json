@@ -1182,6 +1182,10 @@
     },
     "fileManager": {
       "actions": {
+        "batchConvertAudio": "Конвертировать аудио/реверс",
+        "batchConvertImages": "Конвертировать картинки",
+        "batchConvertVideo": "Конвертировать видео",
+        "batchExtractAudio": "Извлечь аудио",
         "cancelProxyGeneration": "Отменить генерацию прокси",
         "convertAudioFile": "Конвертировать/реверс",
         "convertFile": "Конвертировать файл",
@@ -1271,6 +1275,21 @@
         "readOnlyAction": "Действие недоступно в режиме только чтения",
         "remoteFailed": "Ошибка удалённой операции с файлами",
         "uploadFailedTitle": "Загрузка не удалась"
+      },
+      "batchConvert": {
+        "completedWithWarnings": "Пакетная конвертация завершена с предупреждениями",
+        "failed": "Ошибка пакетной конвертации",
+        "filesCount": "Файлов: {count}",
+        "outputPatternAudio": "{name}_converted.{format}",
+        "outputPatternImage": "{name}_converted.webp",
+        "outputPatternVideo": "{name}_converted.{format}",
+        "success": "Пакетная конвертация успешно завершена",
+        "taskTitle": "Конвертация {count} файлов"
+      },
+      "batchExtractAudio": {
+        "failed": "Ошибка пакетного извлечения аудио",
+        "success": "Пакетное извлечение аудио завершено",
+        "taskTitle": "Извлечение аудио из {count} файлов"
       },
       "extractAudio": {
         "failed": "Ошибка при извлечении аудио",

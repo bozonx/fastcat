@@ -11,6 +11,26 @@ vi.mock('~/composables/file-manager/useFileManager', () => ({
   })),
 }));
 
+vi.mock('~/composables/file-conversion/useBatchConversion', () => ({
+  useBatchConversion: vi.fn(() => ({
+    openModal: vi.fn(),
+    state: { isModalOpen: false },
+    videoSettings: {},
+    audioSettings: {},
+    imageSettings: {},
+    modalTitle: { value: '' },
+    startConversion: vi.fn(),
+    cancelConversion: vi.fn(),
+  })),
+}));
+
+vi.mock('~/composables/file-manager/useBatchAudioExtraction', () => ({
+  useBatchAudioExtraction: vi.fn(() => ({
+    isExtracting: { value: false },
+    batchExtractAudio: vi.fn(),
+  })),
+}));
+
 describe('MultiFileProperties.vue', () => {
   const mockEntries = [
     { kind: 'file', name: 'video1.mp4', path: '/p/v1.mp4' },
@@ -63,6 +83,8 @@ describe('MultiFileProperties.vue', () => {
     expect(findButtonByTitlePrefix('common.cut')).toBeTruthy();
     expect(findButtonByTitlePrefix('common.delete')).toBeTruthy();
     expect(component.text()).toContain('videoEditor.fileManager.proxy.create');
-    expect(component.text()).toContain('videoEditor.fileManager.actions.extractAudio');
+    expect(component.text()).toContain('videoEditor.fileManager.actions.batchConvertVideo');
+    expect(component.text()).toContain('videoEditor.fileManager.actions.batchConvertImages');
+    expect(component.text()).toContain('videoEditor.fileManager.actions.batchExtractAudio');
   });
 });
