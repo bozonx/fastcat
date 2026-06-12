@@ -90,6 +90,7 @@ export function useNativeMonitorBridge(): void {
   let lastSceneJson = '';
   let suppressSeekFromTimeUpdate = false;
   let lastNativeTimeStoreSyncMs = 0;
+  let disposed = false;
   // Expected-playback-position anchor. The native engine is the master clock but
   // only emits `monitor:time` a handful of times per second; the timeline store
   // interpolates its own smooth playhead in between. Comparing currentTime to a
@@ -168,6 +169,7 @@ export function useNativeMonitorBridge(): void {
   async function syncScene(): Promise<void> {
     const seq = ++sceneBuildSeq;
     try {
+      if (disposed) return;
       if (
         !isNativeMonitorSceneReady({
           currentProjectName: projectStore.currentProjectName,
@@ -179,7 +181,7 @@ export function useNativeMonitorBridge(): void {
       }
       const scene = await buildScene();
       // Более новая сборка обогнала нас — выходим, чтобы не затереть свежую сцену.
-      if (seq !== sceneBuildSeq) return;
+      if (disposed || seq !== sceneBuildSeq) return;
       if (isNativeMonitorDisabled()) return;
       const json = JSON.stringify(scene);
       if (json === lastSceneJson) return;
@@ -368,6 +370,7 @@ export function useNativeMonitorBridge(): void {
   // Натив — мастер-клок: timeline-PTS (секунды) приходят в `monitor:time`.
   const unsubs: UnlistenFn[] = [];
   void onMonitorTime((timelineSec) => {
+    if (disposed) return;
     const timelineUs = Math.round(timelineSec * 1_000_000);
     const diffUs = Math.abs(timelineUs - timelineStore.currentTime);
     const nowMs = performance.now();
@@ -402,17 +405,36 @@ export function useNativeMonitorBridge(): void {
       suppressSeekFromTimeUpdate = false;
     });
   })
-    .then((un) => unsubs.push(un))
+    .then((un) => {
+      if (disposed) {
+        un();
+        return;
+      }
+      unsubs.push(un);
+    })
     .catch((err) => log.warn('listen monitor:time failed', err));
 
   void onMonitorEnded(() => {
+    if (disposed) return;
     if (timelineStore.isPlaying) timelineStore.isPlaying = false;
   })
-    .then((un) => unsubs.push(un))
+    .then((un) => {
+      if (disposed) {
+        un();
+        return;
+      }
+      unsubs.push(un);
+    })
     .catch((err) => log.warn('listen monitor:ended failed', err));
 
   onScopeDispose(() => {
+    disposed = true;
     for (const un of unsubs) un();
+    unsubs.length = 0;
+    if (sceneSyncDebounceTimer !== null) {
+      clearTimeout(sceneSyncDebounceTimer);
+      sceneSyncDebounceTimer = null;
+    }
     if (seekThrottleId) {
       clearTimeout(seekThrottleId);
       seekThrottleId = null;

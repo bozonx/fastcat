@@ -395,4 +395,46 @@ describe('MobileMonitorContainer', () => {
     expect(mockActiveMonitor.panX).toBe(10);
     expect(mockActiveMonitor.panY).toBe(20);
   });
+
+  it('intercepts browser popstate to exit fullscreen mode', async () => {
+    const pushStateSpy = vi.spyOn(window.history, 'pushState');
+    const backSpy = vi.spyOn(window.history, 'back');
+
+    wrapper = mount(MobileMonitorContainer, {
+      global: {
+        plugins: [pinia],
+        stubs,
+      },
+    });
+
+    await wrapper.vm.$nextTick();
+
+    // Enter fullscreen
+    mockIsFullscreen.value = true;
+    await wrapper.vm.$nextTick();
+
+    // Verify history state was pushed
+    expect(pushStateSpy).toHaveBeenCalledWith({ fullscreenMonitor: true }, '');
+
+    // Simulate system Back button/gesture
+    window.dispatchEvent(new PopStateEvent('popstate'));
+    await wrapper.vm.$nextTick();
+
+    // Verify that fullscreen was exited
+    expect(mockIsFullscreen.value).toBe(false);
+
+    // Enter fullscreen again to test manual UI exit
+    mockIsFullscreen.value = true;
+    await wrapper.vm.$nextTick();
+
+    // Manually exit via UI (sets isFullscreen to false)
+    mockIsFullscreen.value = false;
+    await wrapper.vm.$nextTick();
+
+    // Verify window.history.back was called to remove the dummy entry
+    expect(backSpy).toHaveBeenCalled();
+
+    pushStateSpy.mockRestore();
+    backSpy.mockRestore();
+  });
 });

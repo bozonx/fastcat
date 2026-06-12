@@ -185,11 +185,11 @@ pub async fn monitor_set_output_gain(
 #[tauri::command]
 pub async fn monitor_close(engine: State<'_, VideoEngine>) -> Result<(), String> {
     if let Some(m) = engine.monitor() {
-        m.send(MonitorCommand::Close).map_err(|e| e.to_string())?;
+        // Keep the winit EventLoop alive for the app session. On Linux it cannot be
+        // recreated reliably in the same process; closing it here makes later preview
+        // use fail until the whole app restarts.
+        m.send(MonitorCommand::Pause).map_err(|e| e.to_string())?;
     }
-    // Reset the cache — the event loop dies asynchronously, but the next ensure_monitor
-    // must see fresh state and respawn if necessary.
-    engine.clear_monitor();
     Ok(())
 }
 

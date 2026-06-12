@@ -202,6 +202,26 @@ describe('TauriAudioEngine', () => {
     expect(unlistenMock).toHaveBeenCalledTimes(2);
   });
 
+  it('unregisters listeners that resolve after destroy', async () => {
+    const resolvers: Array<(unlisten: () => void) => void> = [];
+    listenMock.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolvers.push(resolve as (unlisten: () => void) => void);
+        }),
+    );
+
+    const engine = new TauriAudioEngine();
+    engine.destroy();
+
+    for (const resolve of resolvers) {
+      resolve(unlistenMock);
+    }
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(unlistenMock).toHaveBeenCalledTimes(2);
+  });
+
   it('syncTime event updates scheduler time', async () => {
     const engine = await createEngine();
     const handler = listenMock.mock.calls[0]?.[1] as (event: { payload: number }) => void;

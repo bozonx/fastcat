@@ -65,6 +65,7 @@ export function useNativeMonitorCanvas(canvasRef: Ref<HTMLCanvasElement | null>)
   if (!isTauriRuntime()) return;
 
   let unsubChannel: (() => void) | null = null;
+  let disposed = false;
   // Кешируем 2D-контекст: getContext на каждый кадр стрима — лишняя работа.
   let ctx2d: CanvasRenderingContext2D | null = null;
   let ctxEl: HTMLCanvasElement | null = null;
@@ -144,6 +145,11 @@ export function useNativeMonitorCanvas(canvasRef: Ref<HTMLCanvasElement | null>)
     };
     try {
       await nativeMonitorIpc.subscribeFrames(channel);
+      if (disposed) {
+        channel.onmessage = () => {};
+        await nativeMonitorIpc.unsubscribeFrames();
+        return;
+      }
       unsubChannel = () => {
         channel.onmessage = () => {};
       };
@@ -169,6 +175,12 @@ export function useNativeMonitorCanvas(canvasRef: Ref<HTMLCanvasElement | null>)
       if (isNativeMonitorDisabled()) return;
       if (m === 'canvas') {
         await activateCanvasMode();
+      } else if (unsubChannel) {
+        unsubChannel();
+        unsubChannel = null;
+        await nativeMonitorIpc
+          .unsubscribeFrames()
+          .catch((err) => warnMonitorFailure('monitor_unsubscribe_frames failed', err));
       }
     },
     { immediate: true },
@@ -190,6 +202,7 @@ export function useNativeMonitorCanvas(canvasRef: Ref<HTMLCanvasElement | null>)
   });
 
   onScopeDispose(() => {
+    disposed = true;
     ro?.disconnect();
     unsubChannel?.();
     ctx2d = null;

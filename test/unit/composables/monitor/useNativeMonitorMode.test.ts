@@ -159,4 +159,38 @@ describe('useNativeMonitorCanvas', () => {
     const unsubCall = invokeMock.mock.calls.some(([name]) => name === 'monitor_unsubscribe_frames');
     expect(unsubCall).toBe(true);
   });
+
+  it('unsubscribes the frame stream when switching out of canvas mode', async () => {
+    useMonitorMode().set('canvas');
+
+    const TestComponent = defineComponent({
+      setup() {
+        const canvasRef = ref<HTMLCanvasElement | null>(null);
+        useNativeMonitorCanvas(canvasRef);
+        return () =>
+          h('canvas', {
+            ref: (el) => {
+              canvasRef.value = el as HTMLCanvasElement | null;
+              if (el instanceof HTMLCanvasElement) {
+                defineCanvasLayout(el);
+              }
+            },
+          });
+      },
+    });
+
+    const wrapper = mount(TestComponent, { attachTo: document.body });
+    await nextTick();
+    await flushPromises();
+
+    expect(invokeMock.mock.calls.some(([name]) => name === 'monitor_subscribe_frames')).toBe(true);
+
+    useMonitorMode().set('embedded');
+    await nextTick();
+    await flushPromises();
+
+    expect(invokeMock.mock.calls.some(([name]) => name === 'monitor_unsubscribe_frames')).toBe(true);
+
+    wrapper.unmount();
+  });
 });

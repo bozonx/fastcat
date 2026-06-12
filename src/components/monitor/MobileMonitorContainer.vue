@@ -232,6 +232,12 @@ onBeforeUnmount(() => {
   }
   clearControlsTimeout();
   stopMarkerLongPress();
+  if (typeof window !== 'undefined') {
+    window.removeEventListener('popstate', onPopState);
+    if (isFullscreen.value && window.history.state?.fullscreenMonitor) {
+      window.history.back();
+    }
+  }
 });
 
 function onLongPressPointerDown(e: PointerEvent) {
@@ -269,18 +275,34 @@ function restorePanelViewport() {
   savedPanelViewport.value = null;
 }
 
+function onPopState(event: PopStateEvent) {
+  if (isFullscreen.value) {
+    isFullscreen.value = false;
+  }
+}
+
 watch(isFullscreen, (val) => {
   clearControlsTimeout();
   isControlsVisible.value = true;
   if (val) {
     capturePanelViewport();
     showControlsTemporary();
+    if (typeof window !== 'undefined') {
+      window.history.pushState({ fullscreenMonitor: true }, '');
+      window.addEventListener('popstate', onPopState);
+    }
     void nextTick(() => {
       void nextTick(() => {
         (viewportRef.value as { fitMonitor?: () => void })?.fitMonitor?.();
       });
     });
   } else {
+    if (typeof window !== 'undefined') {
+      window.removeEventListener('popstate', onPopState);
+      if (window.history.state?.fullscreenMonitor) {
+        window.history.back();
+      }
+    }
     void nextTick(() => {
       restorePanelViewport();
     });

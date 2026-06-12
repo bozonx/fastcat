@@ -180,14 +180,14 @@ async function buildTimelinePeaks(params: {
   if (durationUs <= 0 || maxLength <= 0) return null;
   if (shouldCancel?.()) return null;
 
-  const effectiveItems = buildEffectiveAudioClipItems({
+  const effectiveAudioResult = buildEffectiveAudioClipItems({
     audioTracks: doc.tracks.filter((track) => track.kind === 'audio'),
     videoTracks: doc.tracks.filter((track) => track.kind === 'video'),
   });
 
   let mixedPeaks: Float32Array[] | null = null;
 
-  for (const item of effectiveItems) {
+  for (const item of effectiveAudioResult.items) {
     if (shouldCancel?.()) return null;
     if (item.kind !== 'clip') continue;
     const clip = item as TimelineClipItem;

@@ -574,14 +574,16 @@ fn send_canvas_frame(
     width: u32,
     height: u32,
     pixels: Vec<u8>,
-) {
+) -> bool {
     let mut payload = Vec::with_capacity(8 + pixels.len());
     payload.extend_from_slice(&width.to_le_bytes());
     payload.extend_from_slice(&height.to_le_bytes());
     payload.extend_from_slice(&pixels);
     if let Err(e) = channel.send(InvokeResponseBody::Raw(payload)) {
         log::warn!("[monitor] frame channel send: {e:?}");
+        return false;
     }
+    true
 }
 
 fn next_redraw_deadline(
@@ -654,7 +656,8 @@ impl WindowState {
         self.audio_layers.clone_from(&scene.audio_layers);
         self.audio_tracks.clone_from(&scene.audio_tracks);
         self.audio_master_gain = master_gain;
-        self.audio_master_effects.clone_from(&scene.audio_master_effects);
+        self.audio_master_effects
+            .clone_from(&scene.audio_master_effects);
 
         if let Some(audio) = self.audio.as_ref() {
             audio.set_scene(
@@ -1206,7 +1209,12 @@ impl WindowState {
                         self.canvas_readback = Some(session);
                         match result {
                             // Самый старый готовый кадр (предыдущий) — отдаём фронту.
-                            Ok(Some(pixels)) => send_canvas_frame(&channel, width, height, pixels),
+                            Ok(Some(pixels)) => {
+                                if !send_canvas_frame(&channel, width, height, pixels) {
+                                    self.frame_channel = None;
+                                    self.canvas_readback = None;
+                                }
+                            }
                             // GPU ещё не догнал (первый кадр после старта) — пропускаем,
                             // на экране держится последний синхронный стоп-кадр.
                             Ok(None) => {}
@@ -1230,7 +1238,11 @@ impl WindowState {
                         .compositor
                         .render_scene_to_pixels(dev_id, &scene, width, height)
                     {
-                        Ok(pixels) => send_canvas_frame(&channel, width, height, pixels),
+                        Ok(pixels) => {
+                            if !send_canvas_frame(&channel, width, height, pixels) {
+                                self.frame_channel = None;
+                            }
+                        }
                         Err(e) => {
                             log::error!("[monitor] offscreen render: {e:?}");
                             emit_layer_failed(&self.app, "<offscreen>", "render", &e.to_string());

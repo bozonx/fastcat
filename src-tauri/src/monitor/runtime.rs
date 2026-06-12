@@ -46,6 +46,35 @@ const STRICT_VIDEO_SYNC_LAG_SEC: f64 = 0.08;
 const BALANCED_VIDEO_SYNC_LAG_FRAMES: f64 = 6.0;
 const BALANCED_VIDEO_SYNC_LAG_SEC: f64 = 0.22;
 
+#[derive(Debug, Clone, PartialEq)]
+struct VideoRuntimeKey {
+    kind: LayerKind,
+    path: String,
+    timeline_start_bits: u64,
+    timeline_end_bits: u64,
+    source_start_bits: u64,
+    source_range_duration_bits: u64,
+    speed_bits: u64,
+    freeze_frame_source_bits: Option<u64>,
+    source_orientation: Option<String>,
+}
+
+impl VideoRuntimeKey {
+    fn from_layer(layer: &SceneLayer) -> Self {
+        Self {
+            kind: layer.kind,
+            path: layer.path.clone(),
+            timeline_start_bits: layer.timeline_start_sec.to_bits(),
+            timeline_end_bits: layer.timeline_end_sec.to_bits(),
+            source_start_bits: layer.source_start_sec.to_bits(),
+            source_range_duration_bits: layer.source_range_duration_sec.to_bits(),
+            speed_bits: layer.speed.to_bits(),
+            freeze_frame_source_bits: layer.freeze_frame_source_sec.map(f64::to_bits),
+            source_orientation: layer.source_orientation.clone(),
+        }
+    }
+}
+
 // ---------------------------------------------------------------------------
 // LayerRuntimeManager
 // ---------------------------------------------------------------------------
@@ -191,32 +220,34 @@ impl LayerRuntimeManager {
             || self.frame_cache_custom_mb != scene.frame_cache_custom_mb;
         let new_ids: HashSet<String> = scene.layers.iter().map(|l| l.id.clone()).collect();
 
-        // Путь источника по id в НОВОЙ сцене — чтобы заметить смену файла у того же
-        // слоя (напр. переключение proxy ↔ оригинал в мониторе). id остаётся прежним,
-        // меняется только `path`, поэтому диф по одному id оставил бы старый декодер.
-        let new_paths: HashMap<&str, &str> = scene
+        // Decode-key по id в НОВОЙ сцене — чтобы заметить смену файла или source mapping
+        // у того же слоя. id остаётся прежним, но старый декодер/кэш уже не соответствует
+        // кадрам, которые нужно показывать после trim/speed/freeze edits.
+        let new_decode_keys: HashMap<&str, VideoRuntimeKey> = scene
             .layers
             .iter()
-            .map(|l| (l.id.as_str(), l.path.as_str()))
+            .filter(|l| has_loaded_runtime(l.kind))
+            .map(|l| (l.id.as_str(), VideoRuntimeKey::from_layer(l)))
             .collect();
-        // Старые пути по id (текущая сцена ещё не перезаписана) для сравнения.
-        let old_paths: HashMap<String, String> = self
+        // Старые decode-key по id (текущая сцена ещё не перезаписана) для сравнения.
+        let old_decode_keys: HashMap<String, VideoRuntimeKey> = self
             .scene
             .iter()
-            .map(|l| (l.id.clone(), l.path.clone()))
+            .filter(|l| has_loaded_runtime(l.kind))
+            .map(|l| (l.id.clone(), VideoRuntimeKey::from_layer(l)))
             .collect();
-        // Сменился ли путь хоть у одного слоя, доживающего до новой сцены.
-        let any_path_changed = old_paths.iter().any(|(id, old)| {
-            new_paths
+        // Сменился ли decode-key хоть у одного слоя, доживающего до новой сцены.
+        let any_decode_key_changed = old_decode_keys.iter().any(|(id, old)| {
+            new_decode_keys
                 .get(id.as_str())
-                .is_some_and(|new| *new != old.as_str())
+                .is_some_and(|new| new != old)
         });
 
         let scale_changed = !approx_eq_opt_scale(self.preview_scale, scene.preview_scale);
-        // И смена preview_scale, и смена источника требуют сбросить эпоху: иначе
-        // фоновый декод, стартовавший под старый путь/масштаб, мог бы прилететь
-        // позже и подменить свежий рантайм устаревшим источником.
-        if scale_changed || any_path_changed || cache_policy_changed {
+        // И смена preview_scale, и смена источника/source mapping требуют сбросить эпоху:
+        // иначе фоновый декод, стартовавший под старые параметры, мог бы прилететь позже
+        // и подменить свежий рантайм устаревшим источником.
+        if scale_changed || any_decode_key_changed || cache_policy_changed {
             if scale_changed {
                 log::info!(
                     "[monitor] preview_scale {:?} → {:?}: dropping video runtimes",
@@ -255,13 +286,14 @@ impl LayerRuntimeManager {
                 };
             let gone = !new_ids.contains(&id);
             let failed_retry = matches!(rt, LayerRuntime::Failed);
-            // Источник слоя сменился: старый декодер/растр держит другой файл, его
-            // нужно дропнуть, чтобы `ensure_runtime_for` поднял новый путь заново.
-            let path_changed = match (old_paths.get(&id), new_paths.get(id.as_str())) {
-                (Some(old), Some(new)) => old.as_str() != *new,
-                _ => false,
-            };
-            if drop_for_policy || gone || failed_retry || path_changed {
+            // Источник/source mapping слоя сменился: старый декодер/кэш держит другие кадры,
+            // его нужно дропнуть, чтобы `ensure_runtime_for` поднял актуальный runtime.
+            let decode_key_changed =
+                match (old_decode_keys.get(&id), new_decode_keys.get(id.as_str())) {
+                    (Some(old), Some(new)) => old != new,
+                    _ => false,
+                };
+            if drop_for_policy || gone || failed_retry || decode_key_changed {
                 to_drop.push(rt);
                 self.loading_set.remove(&id);
                 if let Some(cancel) = self.loading_cancels.remove(&id) {
@@ -308,7 +340,7 @@ impl LayerRuntimeManager {
     ) {
         if matches!(
             layer.kind,
-            LayerKind::Text | LayerKind::Shape | LayerKind::Background
+            LayerKind::Text | LayerKind::Shape | LayerKind::Background | LayerKind::Adjustment
         ) {
             return;
         }
@@ -327,7 +359,8 @@ impl LayerRuntimeManager {
             .insert(layer.id.clone(), LayerRuntime::Loading);
         self.loading_set.insert(layer.id.clone());
         let cancel = Arc::new(AtomicBool::new(false));
-        self.loading_cancels.insert(layer.id.clone(), cancel.clone());
+        self.loading_cancels
+            .insert(layer.id.clone(), cancel.clone());
 
         let id = layer.id.clone();
         let path = PathBuf::from(&layer.path);
@@ -336,7 +369,7 @@ impl LayerRuntimeManager {
         let epoch = self.load_epoch;
 
         match layer.kind {
-            LayerKind::Adjustment => return,
+            LayerKind::Adjustment => unreachable!("adjustment layers do not need runtime loading"),
             LayerKind::Video => {
                 let max_long_edge = match (self.scene_size, self.preview_scale) {
                     ((w, h), Some(scale)) if w > 0 && h > 0 && scale > 0.0 => {
@@ -363,7 +396,9 @@ impl LayerRuntimeManager {
                         ) {
                             Some(p) => p,
                             None => {
-                                let _ = bg_tx.send(BgLayerResult::Dropped { id: spawn_id.clone() });
+                                let _ = bg_tx.send(BgLayerResult::Dropped {
+                                    id: spawn_id.clone(),
+                                });
                                 return;
                             }
                         };
@@ -424,7 +459,9 @@ impl LayerRuntimeManager {
                         ) {
                             Some(p) => p,
                             None => {
-                                let _ = bg_tx.send(BgLayerResult::Dropped { id: spawn_id.clone() });
+                                let _ = bg_tx.send(BgLayerResult::Dropped {
+                                    id: spawn_id.clone(),
+                                });
                                 return;
                             }
                         };
@@ -471,7 +508,9 @@ impl LayerRuntimeManager {
                         ) {
                             Some(p) => p,
                             None => {
-                                let _ = bg_tx.send(BgLayerResult::Dropped { id: spawn_id.clone() });
+                                let _ = bg_tx.send(BgLayerResult::Dropped {
+                                    id: spawn_id.clone(),
+                                });
                                 return;
                             }
                         };
@@ -517,6 +556,7 @@ impl LayerRuntimeManager {
                 if !self.loading_set.remove(&id) {
                     return;
                 }
+                self.loading_cancels.remove(&id);
                 if !self.scene.iter().any(|l| l.id == id) {
                     self.runtimes.remove(&id);
                     return;
@@ -571,6 +611,7 @@ impl LayerRuntimeManager {
                 if !self.loading_set.remove(&id) {
                     return;
                 }
+                self.loading_cancels.remove(&id);
                 log::error!("[monitor] open pump {id}: {error}");
                 if !matches!(self.runtimes.get(&id), Some(LayerRuntime::Video(_))) {
                     self.runtimes.insert(id.clone(), LayerRuntime::Failed);
@@ -589,6 +630,7 @@ impl LayerRuntimeManager {
                 if !self.loading_set.remove(&id) {
                     return;
                 }
+                self.loading_cancels.remove(&id);
                 if !self.scene.iter().any(|l| l.id == id) {
                     self.runtimes.remove(&id);
                     return;
@@ -610,6 +652,7 @@ impl LayerRuntimeManager {
                 if !self.loading_set.remove(&id) {
                     return;
                 }
+                self.loading_cancels.remove(&id);
                 log::error!("[monitor] decode image {id}: {error}");
                 self.runtimes.insert(id.clone(), LayerRuntime::Failed);
                 emit_layer_failed(&self.app, &id, "image", &error);
@@ -626,6 +669,7 @@ impl LayerRuntimeManager {
                 if !self.loading_set.remove(&id) {
                     return;
                 }
+                self.loading_cancels.remove(&id);
                 if !self.scene.iter().any(|l| l.id == id) {
                     self.runtimes.remove(&id);
                     return;
@@ -647,6 +691,7 @@ impl LayerRuntimeManager {
                 if !self.loading_set.remove(&id) {
                     return;
                 }
+                self.loading_cancels.remove(&id);
                 log::error!("[monitor] decode svg {id}: {error}");
                 self.runtimes.insert(id.clone(), LayerRuntime::Failed);
                 emit_layer_failed(&self.app, &id, "svg", &error);
@@ -988,6 +1033,10 @@ fn video_sync_lag_sec(mode: PreviewSyncMode, fps: f64) -> Option<f64> {
     }
 }
 
+fn has_loaded_runtime(kind: LayerKind) -> bool {
+    matches!(kind, LayerKind::Video | LayerKind::Image | LayerKind::Svg)
+}
+
 fn allows_stale_video_fallback(mode: PreviewSyncMode) -> bool {
     matches!(mode, PreviewSyncMode::Smooth | PreviewSyncMode::Balanced)
 }
@@ -1171,6 +1220,26 @@ mod tests {
         let resolved = layer_with_auto_source_rotation(&layer, 90);
 
         assert_eq!(resolved.source_orientation.as_deref(), Some("0"));
+    }
+
+    #[test]
+    fn video_runtime_key_tracks_source_mapping_changes() {
+        use super::VideoRuntimeKey;
+
+        let base = test_video_layer(None);
+        let base_key = VideoRuntimeKey::from_layer(&base);
+
+        let mut trimmed = base.clone();
+        trimmed.source_start_sec = 2.0;
+        assert_ne!(VideoRuntimeKey::from_layer(&trimmed), base_key);
+
+        let mut sped = base.clone();
+        sped.speed = 2.0;
+        assert_ne!(VideoRuntimeKey::from_layer(&sped), base_key);
+
+        let mut frozen = base.clone();
+        frozen.freeze_frame_source_sec = Some(1.0);
+        assert_ne!(VideoRuntimeKey::from_layer(&frozen), base_key);
     }
 
     #[test]

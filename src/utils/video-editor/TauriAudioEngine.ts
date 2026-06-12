@@ -57,14 +57,20 @@ export class TauriAudioEngine implements IAudioEngine {
 
     // Sync frontend clock with Rust audio engine time.
     void listen<number>(EVT_TIME, (event) => {
+      if (this.destroyed) return;
       if (event.payload !== undefined && event.payload !== null) {
         this.scheduler.syncTime(Math.round(event.payload * 1_000_000));
       }
     }).then((unlisten) => {
+      if (this.destroyed) {
+        unlisten();
+        return;
+      }
       this.unlistenTime = unlisten;
     });
 
     void listen<NativeAudioLevelsPayload>(MONITOR_EVENTS.audioLevels, (event) => {
+      if (this.destroyed) return;
       const levels = event.payload;
       if (!levels) return;
       this.currentMasterLevels = {
@@ -72,6 +78,10 @@ export class TauriAudioEngine implements IAudioEngine {
         peakDb: Number.isFinite(levels.peakDb) ? levels.peakDb : -60,
       };
     }).then((unlisten) => {
+      if (this.destroyed) {
+        unlisten();
+        return;
+      }
       this.unlistenLevels = unlisten;
     });
   }
