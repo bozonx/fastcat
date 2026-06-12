@@ -22,11 +22,6 @@ pub(crate) const PREBUFFER_CHUNKS: usize = 16;
 
 /// Max bytes of decoded f32 audio kept in `decoded_cache` across all files.
 pub(crate) const MAX_DECODED_CACHE_BYTES: usize = 256 * 1024 * 1024;
-/// Producer resync threshold: if the mix position falls more than this behind
-/// the audible playhead (e.g. after an output underrun), skip stale audio and
-/// realign instead of permanently lagging.
-pub(crate) const PRODUCER_RESYNC_THRESHOLD_SEC: f64 = 0.12;
-
 /// Upper bound on a forward-scrub audio preview snippet. The frontend asks for
 /// ~90 ms; this caps it so a stray request can't queue a long burst.
 pub(crate) const MAX_SCRUB_PREVIEW_SEC: f64 = 0.5;

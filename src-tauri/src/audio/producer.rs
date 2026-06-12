@@ -12,7 +12,7 @@ use crate::audio::mix::{mix_chunk, mix_chunk_ramped};
 use crate::audio::ring::SpscRingBuffer;
 use crate::audio::shared::{
     AudioRenderTarget, AudioShared, CHUNK_DURATION_SEC, MAX_SCRUB_PREVIEW_SEC, PREBUFFER_CHUNKS,
-    PRODUCER_RESYNC_THRESHOLD_SEC, START_PREBUFFER_CHUNKS,
+    START_PREBUFFER_CHUNKS,
 };
 
 pub(crate) fn spawn_producer_thread(
@@ -195,20 +195,12 @@ pub(crate) fn producer_loop(
                         ));
                     }
 
-                    // Realign the mix position with the audible playhead. After an
-                    // output underrun the callback advanced `frames_written` over
-                    // silence; without this the producer would keep emitting audio
-                    // for an already-past position, lagging permanently. At speed != 1
-                    // each consumed/buffered device frame maps to `speed` timeline
-                    // seconds (varispeed), so scale the elapsed span accordingly.
-                    let buffered_frames = (ring.len() / output_channels) as f64;
-                    let expected_pts = state.origin_pts_sec
-                        + (clock.frames() as f64 + buffered_frames) / sample_rate as f64
-                            * state.global_speed;
-                    if state.producer_pts_sec + PRODUCER_RESYNC_THRESHOLD_SEC < expected_pts {
-                        state.producer_pts_sec = expected_pts;
-                    }
-
+                    // The producer mixes contiguously from `producer_pts_sec`; the
+                    // output callback only advances `frames_written` for frames it
+                    // actually read from the ring (no advance over silence). This
+                    // means the audible position never races ahead of the producer,
+                    // so there is no gap to catch up. Removing the old resync
+                    // prevents sped-up audio caused by skipping ahead after underruns.
                     break Some((
                         state.master_gain,
                         state.producer_pts_sec,
