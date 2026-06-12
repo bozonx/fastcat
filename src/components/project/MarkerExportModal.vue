@@ -5,6 +5,13 @@ import { formatTimecode, formatHms } from '~/utils/timecode';
 import UiModal from '~/components/ui/UiModal.vue';
 import UiSelect from '~/components/ui/UiSelect.vue';
 
+type ExportFormat =
+  | 'timecode-bracket-left'
+  | 'timecode-bracket-right'
+  | 'hms-left'
+  | 'hms-dash-left'
+  | 'hms-right';
+
 export interface MarkerExportModalProps {
   markers: TimelineMarker[];
   fps: number;
@@ -17,8 +24,16 @@ const { t } = useI18n();
 
 const DEFAULT_MARKER_COLOR = '#eab308';
 
-const timeFormat = ref<'timecode' | 'hms'>('timecode');
-const layoutFormat = ref<'left' | 'right'>('left');
+function isLightColor(hex: string): boolean {
+  const sanitized = hex.replace('#', '');
+  const r = parseInt(sanitized.substring(0, 2), 16);
+  const g = parseInt(sanitized.substring(2, 4), 16);
+  const b = parseInt(sanitized.substring(4, 6), 16);
+  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  return luminance > 0.6;
+}
+
+const exportFormat = ref<ExportFormat>('timecode-bracket-left');
 const copied = ref(false);
 
 const availableColors = computed(() => {
@@ -37,27 +52,35 @@ watch(
     if (open) {
       selectedColors.value = new Set(availableColors.value);
       copied.value = false;
-      timeFormat.value = 'timecode';
-      layoutFormat.value = 'left';
+      exportFormat.value = 'timecode-bracket-left';
     }
   },
   { immediate: true },
 );
 
-function formatTime(us: number): string {
-  if (timeFormat.value === 'timecode') {
+function formatTimeForExport(us: number): string {
+  const isTimecode = exportFormat.value.startsWith('timecode');
+  if (isTimecode) {
     return formatTimecode(us, props.fps);
   }
   return formatHms(us);
 }
 
 function formatMarkerLine(marker: TimelineMarker): string {
-  const timeStr = `[${formatTime(marker.timeUs)}]`;
+  const timeValue = formatTimeForExport(marker.timeUs);
   const text = marker.text || '';
-  if (layoutFormat.value === 'left') {
-    return `${timeStr} ${text}`;
+  switch (exportFormat.value) {
+    case 'timecode-bracket-left':
+      return `[${timeValue}] ${text}`;
+    case 'timecode-bracket-right':
+      return `${text} [${timeValue}]`;
+    case 'hms-left':
+      return `${timeValue} ${text}`;
+    case 'hms-dash-left':
+      return `${timeValue} - ${text}`;
+    case 'hms-right':
+      return `${text} ${timeValue}`;
   }
-  return `${text} ${timeStr}`;
 }
 
 const filteredMarkers = computed(() => {
@@ -111,14 +134,12 @@ async function handleCopy() {
   }
 }
 
-const timeFormatItems = computed(() => [
-  { value: 'timecode', label: t('fastcat.marker.timecodeOptions.timecode') },
-  { value: 'hms', label: t('fastcat.marker.timecodeOptions.hms') },
-]);
-
-const layoutFormatItems = computed(() => [
-  { value: 'left', label: t('fastcat.marker.layoutOptions.left') },
-  { value: 'right', label: t('fastcat.marker.layoutOptions.right') },
+const exportFormatItems = computed(() => [
+  { value: 'timecode-bracket-left' as ExportFormat, label: t('fastcat.marker.exportFormats.timecodeBracketLeft') },
+  { value: 'timecode-bracket-right' as ExportFormat, label: t('fastcat.marker.exportFormats.timecodeBracketRight') },
+  { value: 'hms-left' as ExportFormat, label: t('fastcat.marker.exportFormats.hmsLeft') },
+  { value: 'hms-dash-left' as ExportFormat, label: t('fastcat.marker.exportFormats.hmsDashLeft') },
+  { value: 'hms-right' as ExportFormat, label: t('fastcat.marker.exportFormats.hmsRight') },
 ]);
 </script>
 
@@ -137,14 +158,22 @@ const layoutFormatItems = computed(() => [
             v-for="color in availableColors"
             :key="color"
             type="button"
-            class="w-5 h-5 rounded-full border border-ui-border transition-all hover:scale-110"
+            class="w-5 h-5 rounded-full border border-ui-border transition-all hover:scale-110 relative"
             :class="{
-              'ring-2 ring-ui-primary ring-offset-1 ring-offset-ui-bg-elevated':
-                selectedColors.has(color),
+              'opacity-100 ring-2 ring-white shadow-sm scale-110': selectedColors.has(color),
+              'opacity-40': !selectedColors.has(color),
             }"
             :style="{ backgroundColor: color }"
             @click="toggleColor(color)"
-          />
+          >
+            <span
+              v-if="selectedColors.has(color)"
+              class="absolute inset-0 flex items-center justify-center text-[8px] font-bold"
+              :class="isLightColor(color) ? 'text-black' : 'text-white'"
+            >
+              ✓
+            </span>
+          </button>
         </div>
 
         <UButton size="xs" variant="ghost" @click="toggleAll">
@@ -154,23 +183,13 @@ const layoutFormatItems = computed(() => [
         <div class="flex-1 min-w-2"></div>
 
         <UiSelect
-          v-model="timeFormat"
-          :items="timeFormatItems"
+          v-model="exportFormat"
+          :items="exportFormatItems"
           value-key="value"
           label-key="label"
           size="xs"
           :searchable="false"
-          class="min-w-36"
-        />
-
-        <UiSelect
-          v-model="layoutFormat"
-          :items="layoutFormatItems"
-          value-key="value"
-          label-key="label"
-          size="xs"
-          :searchable="false"
-          class="min-w-36"
+          class="min-w-52"
         />
       </div>
 

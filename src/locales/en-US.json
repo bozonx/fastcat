@@ -477,15 +477,14 @@
       "zoneMarker": "Zone Marker",
       "exportAsText": "Export as Text",
       "exportTitle": "Export Markers",
-      "layoutOptions": {
-        "left": "Left",
-        "right": "Right"
+      "exportFormats": {
+        "timecodeBracketLeft": "[00:00:00:00] Title",
+        "timecodeBracketRight": "Title [00:00:00:00]",
+        "hmsLeft": "00:00:00 Title",
+        "hmsDashLeft": "00:00:00 - Title",
+        "hmsRight": "Title 00:00:00"
       },
-      "selectAll": "Select All",
-      "timecodeOptions": {
-        "hms": "HMS",
-        "timecode": "Timecode"
-      }
+      "selectAll": "Select All"
     },
     "monitor": {
       "audioMute": "Mute",

@@ -477,15 +477,14 @@
       "zoneMarker": "Маркер-зона",
       "exportAsText": "Экспорт как текст",
       "exportTitle": "Экспорт маркеров",
-      "layoutOptions": {
-        "left": "Слева",
-        "right": "Справа"
+      "exportFormats": {
+        "timecodeBracketLeft": "[00:00:00:00] Название",
+        "timecodeBracketRight": "Название [00:00:00:00]",
+        "hmsLeft": "00:00:00 Название",
+        "hmsDashLeft": "00:00:00 - Название",
+        "hmsRight": "Название 00:00:00"
       },
-      "selectAll": "Выбрать все",
-      "timecodeOptions": {
-        "hms": "ЧМС",
-        "timecode": "Таймкод"
-      }
+      "selectAll": "Выбрать все"
     },
     "monitor": {
       "audioMute": "Выключить звук",
