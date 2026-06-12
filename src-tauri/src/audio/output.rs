@@ -286,7 +286,6 @@ pub(crate) fn write_output<T: OutputSample>(
     device_channels: u16,
 ) {
     let channels = device_channels.max(1) as usize;
-    let frames = data.len() / channels;
 
     // Playback state is read lock-free; the callback never blocks on a mutex.
     if !clock.playing.load(std::sync::atomic::Ordering::Acquire) {
@@ -306,7 +305,7 @@ pub(crate) fn write_output<T: OutputSample>(
         };
     }
 
-    TEMP_BUF.with(|buf| {
+    let played_frames = TEMP_BUF.with(|buf| {
         let mut buf = buf.borrow_mut();
         let needed = data.len();
         if needed > buf.len() {
@@ -320,8 +319,6 @@ pub(crate) fn write_output<T: OutputSample>(
         let temp_slice = &mut buf[..needed];
         temp_slice.fill(0.0);
         // The ring already holds device-channel interleaved samples, so we copy 1:1.
-        // On underrun the unfilled tail stays zeroed (silence), but the clock still
-        // advances below to prevent drift.
         let read = ring.pop_slice(temp_slice);
         // Record any shortfall as an underrun. Relaxed stores keep the real-time
         // callback lock-free; the producer thread reads these to log throttled.
@@ -337,11 +334,18 @@ pub(crate) fn write_output<T: OutputSample>(
         for (out, sample) in data.iter_mut().zip(temp_slice.iter()) {
             *out = T::from_f32(*sample);
         }
+        (read / channels) as u64
     });
 
+    // CRITICAL: only advance the output clock for frames we actually pulled
+    // from the ring. On underrun the remaining tail is silence; if we advance
+    // the clock over that silence, the producer sees a large gap on its next
+    // iteration and skips ahead to "catch up", producing sped-up audio.
+    // Freezing the clock during dropout keeps the producer aligned so playback
+    // resumes smoothly once the ring refills.
     clock
         .frames_written
-        .fetch_add(frames as u64, std::sync::atomic::Ordering::AcqRel);
+        .fetch_add(played_frames, std::sync::atomic::Ordering::AcqRel);
     clock.output_latency_bits.store(
         output_latency_sec(info).to_bits(),
         std::sync::atomic::Ordering::Release,
@@ -371,7 +375,7 @@ mod tests {
     }
 
     #[test]
-    fn output_clock_advances_on_underrun_to_prevent_drift() {
+    fn output_clock_freezes_on_full_underrun_to_avoid_sped_up_catch_up() {
         let clock = RealtimeClock::default();
         clock
             .playing
@@ -389,9 +393,37 @@ mod tests {
         );
 
         assert!(data.iter().all(|sample| *sample == 0.0));
-        // Even when the ring underruns we must advance the frame counter so
-        // that audible_pts_sec does not fall behind real time.
-        assert_eq!(clock.frames(), 128);
+        // Clock must NOT advance during full underrun. Advancing over silence
+        // made the producer skip ahead on recovery, producing sped-up audio.
+        assert_eq!(clock.frames(), 0);
+    }
+
+    #[test]
+    fn output_clock_advances_only_by_read_frames_on_partial_underrun() {
+        let clock = RealtimeClock::default();
+        clock
+            .playing
+            .store(true, std::sync::atomic::Ordering::Release);
+        let ring = SpscRingBuffer::new(256);
+        let channels = 2;
+        // Push exactly 50 frames (100 samples) into the ring.
+        let pushed_samples: Vec<f32> = (0..100).map(|i| i as f32 / 100.0).collect();
+        ring.push_slice(&pushed_samples);
+        // Request 128 frames = 256 samples.
+        let mut data = vec![1.0f32; 128 * channels];
+
+        write_output(
+            &mut data,
+            &callback_info(0.0),
+            &clock,
+            &ring,
+            channels as u16,
+        );
+
+        // Clock advanced only by the 50 frames actually read, not the full 128.
+        assert_eq!(clock.frames(), 50);
+        // Tail beyond the ring data is silence.
+        assert!(data[100..].iter().all(|s| *s == 0.0));
     }
 
     #[test]
