@@ -70,16 +70,19 @@ let isUnmounted = false;
 let extractCallId = 0;
 
 const effectiveSourceDurationUs = computed(() => {
-  const explicit = props.item.sourceDurationUs;
-  if (explicit && explicit > 0) return explicit;
-
-  if (fileUrl.value) {
+  // Prefer the real file duration from the metadata cache (ffprobe / symphonia) because
+  // props.item.sourceDurationUs may equal only the trimmed source range duration and
+  // therefore produce a totalWidthPx that is too small, cutting the waveform short.
+  if (fileUrl.value && !isNestedTimeline.value) {
     const meta = mediaStore.getCachedMetadata(fileUrl.value);
     const metaDurationS = meta?.duration;
     if (metaDurationS && metaDurationS > 0) {
       return Math.floor(metaDurationS * 1_000_000);
     }
   }
+
+  const explicit = props.item.sourceDurationUs;
+  if (explicit && explicit > 0) return explicit;
 
   const rangeEndUs = props.item.sourceRange.startUs + props.item.sourceRange.durationUs;
   if (rangeEndUs > 0) return rangeEndUs;
