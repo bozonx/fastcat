@@ -98,6 +98,12 @@ impl PipelinedReadback {
         }
     }
 
+    /// True if this session already targets the given device and dimensions, so a
+    /// caller can reuse it instead of recreating GPU resources every frame.
+    pub fn matches(&self, dev_id: usize, width: u32, height: u32) -> bool {
+        self.dev_id == dev_id && self.width == width && self.height == height
+    }
+
     /// Insert a ready frame, keeping `pending` sorted by `frame_seq`.
     ///
     /// Slots may become ready out of order (especially when depth > 2), but

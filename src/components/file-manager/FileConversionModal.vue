@@ -20,9 +20,9 @@ const { t } = useI18n();
 const { isMobile: isMobileDevice } = useDevice();
 const { isMobileLayout } = useMobileLayout();
 const isMobile = computed(() => isMobileDevice || isMobileLayout.value);
-const modalWrapper = computed(() => (isMobile ? UiMobileDrawer : UiModal));
+const modalWrapper = computed(() => (isMobile.value ? UiMobileDrawer : UiModal));
 const modalUi = computed(() => {
-  if (isMobile) return {};
+  if (isMobile.value) return {};
   if (mediaType.value === 'video') {
     return { content: 'sm:max-w-2xl' };
   }

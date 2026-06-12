@@ -145,8 +145,7 @@ const drawerUi = computed(() => ({
 
 /** Responsive container logic */
 const containerClasses = computed(() => {
-  const base =
-    `flex flex-col relative shadow-2xl transition-all duration-300 pointer-events-auto ${props.zIndex}`;
+  const base = `flex flex-col relative shadow-2xl transition-all duration-300 pointer-events-auto ${props.zIndex}`;
   const bgColor = 'bg-ui-bg-elevated ring-1 ring-white/10';
 
   if (effectiveDirection.value === 'right' || effectiveDirection.value === 'left') {
@@ -544,7 +543,7 @@ watch(isOpen, (val) => {
         isBackdropVisible
           ? ['pointer-events-auto', props.overlay ? 'opacity-100' : 'opacity-0']
           : 'opacity-0 pointer-events-none',
-        backdropZIndexClass
+        backdropZIndexClass,
       ]"
       :style="{ touchAction: isBackdropInteractive ? 'none' : 'auto' }"
       @touchstart.passive="onBackdropTouchStart"

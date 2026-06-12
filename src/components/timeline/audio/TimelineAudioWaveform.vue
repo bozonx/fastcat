@@ -116,7 +116,7 @@ async function ensureMediaPeaks(params: {
   const { path, maxLength, shouldCancel } = params;
   const existingMeta = mediaStore.getCachedMetadata(path);
   const existing = existingMeta?.audioPeaks;
-  if (hasSufficientPeaks(existing, maxLength)) return existing;
+  if (hasSufficientPeaks(existing, maxLength)) return existing || null;
 
   const metadata = await mediaStore.getOrFetchMetadataByPath(path);
   if (shouldCancel?.()) return null;
@@ -125,7 +125,7 @@ async function ensureMediaPeaks(params: {
     mediaStore.getCachedMetadata(path)?.audioPeaks ??
     (metadata as { audioPeaks?: Float32Array[] } | null)?.audioPeaks;
   if (hasSufficientPeaks(cachedAfterMetadataLoad, maxLength)) {
-    return cachedAfterMetadataLoad;
+    return cachedAfterMetadataLoad || null;
   }
 
   return await runQueuedPeakExtraction({
@@ -133,7 +133,7 @@ async function ensureMediaPeaks(params: {
     shouldCancel,
     task: async () => {
       const cached = mediaStore.getCachedMetadata(path)?.audioPeaks;
-      if (hasSufficientPeaks(cached, maxLength)) return cached;
+      if (hasSufficientPeaks(cached, maxLength)) return cached || null;
       if (shouldCancel?.()) return null;
 
       const file = await fileManager.vfs.getFile(path);

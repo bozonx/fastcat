@@ -33,11 +33,7 @@ import {
   writeFile,
 } from '@tauri-apps/plugin-fs';
 import { openReadFileStream, openWriteFileStream } from 'tauri-plugin-fs-stream-api';
-import {
-  LazyTauriFile,
-  LAZY_FILE_MEDIA_THRESHOLD_BYTES,
-  isMediaFile,
-} from '~/stores/workspace/provider/tauri-handle';
+import { LazyTauriFile, isMediaFile } from '~/stores/workspace/provider/tauri-handle';
 
 import { normalizeFsPath } from '~/file-manager/core/path';
 import { acquireStreamingFileIoSlot, withFileWriteSlot } from '~/utils/io/io-governor';

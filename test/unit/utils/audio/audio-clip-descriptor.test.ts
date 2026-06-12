@@ -199,7 +199,10 @@ describe('audio clip descriptor adapters', () => {
     });
 
     const next = buildCanonicalAudioClipDescriptor({
-      clip: createClip({ id: 'next-clip', timelineRange: { startUs: 3_500_000, durationUs: 1_000_000 } }),
+      clip: createClip({
+        id: 'next-clip',
+        timelineRange: { startUs: 3_500_000, durationUs: 1_000_000 },
+      }),
       sourcePath: '/project/audio/next.mp3',
     });
 

@@ -15,10 +15,16 @@ import { generateUniqueFsEntryName } from '~/utils/fs';
 import { createMarkdownCommand } from '~/file-manager/application/fileManagerCommands';
 import { DOCUMENTS_DIR_NAME } from '~/utils/constants';
 import { isTauriRuntime } from '~/utils/runtime';
+import { getMimeTypeFromFilename } from '~/utils/media-types';
 import { useFileManagerStore } from '~/stores/file-manager.store';
 import { useProjectTabsStore } from '~/stores/project-tabs.store';
 import type { IFileSystemAdapter } from '~/file-manager/core/vfs/types';
 import { executeFileManagerPaste } from '~/composables/file-manager/executeFileManagerPaste';
+import {
+  LazyTauriFile,
+  LAZY_FILE_MEDIA_THRESHOLD_BYTES,
+  isMediaFile,
+} from '~/stores/workspace/provider/tauri-handle';
 import {
   canCopyBloggerDogEntry,
   canCutBloggerDogEntry,
@@ -408,11 +414,30 @@ export function useFileManagerActions(actions: FileManagerActions) {
         const files: File[] = [];
         for (const path of paths) {
           try {
-            const [metadata, bytes] = await Promise.all([stat(path), readFile(path)]);
+            const metadata = await stat(path);
             const filename = path.split(/[/\\]/).pop() || 'unknown';
+            const size = metadata.size ?? 0;
+            const mimeType = getMimeTypeFromFilename(filename);
+            const lastModified = metadata.mtime ? new Date(metadata.mtime).getTime() : Date.now();
+
+            if (size > LAZY_FILE_MEDIA_THRESHOLD_BYTES && isMediaFile(filename)) {
+              files.push(
+                new LazyTauriFile({
+                  path,
+                  name: filename,
+                  size,
+                  type: mimeType,
+                  lastModified,
+                }),
+              );
+              continue;
+            }
+
+            const bytes = await readFile(path);
             files.push(
               new File([bytes], filename, {
-                lastModified: metadata.mtime ? new Date(metadata.mtime).getTime() : Date.now(),
+                type: mimeType,
+                lastModified,
               }),
             );
           } catch (err) {

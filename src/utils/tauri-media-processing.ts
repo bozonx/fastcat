@@ -129,10 +129,13 @@ export async function nativeConvertMedia(params: {
     : null;
 
   const unlistenProgress = params.onProgress
-    ? await listen<{ taskId: string; progress: number }>('native-media-convert:progress', (event) => {
-        if (event.payload.taskId !== params.taskId) return;
-        params.onProgress?.(event.payload.progress);
-      })
+    ? await listen<{ taskId: string; progress: number }>(
+        'native-media-convert:progress',
+        (event) => {
+          if (event.payload.taskId !== params.taskId) return;
+          params.onProgress?.(event.payload.progress);
+        },
+      )
     : null;
 
   try {

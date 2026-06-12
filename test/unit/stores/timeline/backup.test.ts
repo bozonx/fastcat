@@ -88,6 +88,7 @@ describe('createTimelineBackupModule', () => {
       expect(main.path).toBe('project/clip.otio');
       expect(main.size).toBe(4); // 'main'.length
       expect(backup.backupVersions.value[1].path).toBe('.fastcat/autosave/project/clip.otio');
+      expect(backup.backupVersions.value[1].name).toBe('clip.otio');
     });
 
     it('does not flush autosave or list it when isMobile is true', async () => {
@@ -107,7 +108,7 @@ describe('createTimelineBackupModule', () => {
       expect(backup.backupVersions.value.map((v) => v.type)).toEqual(['main']);
     });
 
-    it('flushes autosave when isDirty is true', async () => {
+    it('does not flush autosave when isDirty is true', async () => {
       const files: Record<string, FileMeta> = {
         'project/clip.otio': { text: 'main', lastModified: 1000 },
       };
@@ -119,7 +120,7 @@ describe('createTimelineBackupModule', () => {
 
       await backup.loadBackupVersions();
 
-      expect(deps.requestTimelineSave).toHaveBeenCalledWith({ immediate: true });
+      expect(deps.requestTimelineSave).not.toHaveBeenCalled();
     });
   });
 
@@ -460,7 +461,9 @@ describe('createTimelineBackupModule', () => {
 
       await backup.clearAllBackups();
 
-      expect(projectStore.deleteByPath).toHaveBeenCalledWith('.fastcat/backups', { recursive: true });
+      expect(projectStore.deleteByPath).toHaveBeenCalledWith('.fastcat/backups', {
+        recursive: true,
+      });
       expect(deps.toast.add).toHaveBeenCalledWith(
         expect.objectContaining({
           title: 'videoEditor.timeline.backups.clearSuccess',

@@ -21,7 +21,7 @@ use winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoop, EventLoopProxy}
 use winit::window::{Window, WindowId};
 
 use crate::audio::engine::{AudioEngineSettings, NativeAudioEngine};
-use crate::compositor::Compositor;
+use crate::compositor::{Compositor, PipelinedReadback};
 
 use super::clock::{Clock, PlaybackClock};
 use super::handle::{MonitorCommand, MonitorMode};
@@ -314,6 +314,11 @@ impl ApplicationHandler<MonitorCommand> for MonitorApp {
             MonitorCommand::Pause => {
                 if let Some(s) = self.state.as_mut() {
                     s.pause();
+                    // Рендерим точный стоп-кадр синхронно: во время воспроизведения
+                    // canvas-стрим идёт через pipelined readback (1 кадр латентности),
+                    // поэтому последний показанный кадр на 1 позади точки паузы. Этот
+                    // синхронный рендер (путь !is_playing) ставит ровно кадр playhead'а.
+                    s.render_current_frame();
                 }
                 self.next_redraw_at = None;
             }
@@ -531,6 +536,23 @@ impl ApplicationHandler<MonitorCommand> for MonitorApp {
     }
 }
 
+/// Отправляет RGBA-кадр фронту через canvas-канал: 8-байтный заголовок
+/// (`u32 LE width`, `u32 LE height`) + плотные RGBA8-пиксели.
+fn send_canvas_frame(
+    channel: &Channel<InvokeResponseBody>,
+    width: u32,
+    height: u32,
+    pixels: Vec<u8>,
+) {
+    let mut payload = Vec::with_capacity(8 + pixels.len());
+    payload.extend_from_slice(&width.to_le_bytes());
+    payload.extend_from_slice(&height.to_le_bytes());
+    payload.extend_from_slice(&pixels);
+    if let Err(e) = channel.send(InvokeResponseBody::Raw(payload)) {
+        log::warn!("[monitor] frame channel send: {e:?}");
+    }
+}
+
 fn next_redraw_deadline(
     previous_deadline: Option<Instant>,
     now: Instant,
@@ -574,6 +596,11 @@ struct WindowState {
     canvas_size: (u32, u32),
     /// dev_id wgpu для offscreen-рендера; берём из существующего surface'а.
     offscreen_dev_id: usize,
+    /// Pipelined (async-map) readback для canvas-стрима во время воспроизведения.
+    /// Снимает блокирующий `device.poll(wait_indefinitely)` с event-loop'а ценой
+    /// одного кадра латентности. На паузе/скрабе НЕ используется (там нужен
+    /// гарантированный кадр синхронно), и сбрасывается в `None`, освобождая GPU-буферы.
+    canvas_readback: Option<PipelinedReadback>,
     /// Дедлайн прогрева декодеров перед стартом часов. `Some` — Play запрошен, но
     /// воспроизведение ещё не началось (ждём кадры впереди playhead'а или таймаут).
     /// `None` — либо играем, либо стоим на паузе.
@@ -638,7 +665,17 @@ impl WindowState {
         let t = self.clock.current_pts();
         let playing = self.clock.is_playing();
         if self.layers.update_hw_settings(settings) {
-            self.layers.seek(t, playing);
+            if playing {
+                // Во время воспроизведения декодеры пересоздаст ближайший `tick`
+                // (он зовёт `ensure_runtime_for`), здесь только перепозиционируем.
+                self.layers.seek(t, playing);
+            } else {
+                // На паузе `tick` не идёт, а `layers.seek` НЕ создаёт рантаймы — после
+                // дропа видеодекодеров (смена hwaccel сбрасывает их) сцена осталась бы
+                // без декодеров и монитор чёрным до следующего Play/скраба. Идём через
+                // refresh_paused_display: он гарантированно спавнит декодеры на playhead.
+                self.refresh_paused_display();
+            }
         }
     }
 
@@ -828,8 +865,13 @@ impl WindowState {
             self.begin_playback();
             true
         } else {
-            // Ещё греемся — держим на экране стоп-кадр playhead'а.
-            self.render(t);
+            // Ещё греемся. Стоп-кадр playhead'а уже на экране: его отрисовал
+            // синхронный путь при входе в Play/Seek (render_current_frame), а во время
+            // прогрева `current` не меняется (poll лишь тянет кадры в кеш, не двигая
+            // отображаемый кадр). Поэтому НЕ перерисовываем здесь — иначе на каждом
+            // poll (каждые ~10мс + на каждый VideoFrameReady) шёл бы полный композит с
+            // блокирующим GPU-readback одного и того же кадра, отбирая ресурсы у
+            // декодера ровно в момент прогрева (особенно больно на 4K).
             false
         }
     }
@@ -1013,6 +1055,7 @@ impl WindowState {
                     }
                 }
                 let Some(channel) = self.frame_channel.clone() else {
+                    self.canvas_readback = None;
                     return;
                 };
                 let (width, height) = self.canvas_size;
@@ -1020,27 +1063,61 @@ impl WindowState {
                     return;
                 }
                 let dev_id = self.offscreen_dev_id;
-                // NOTE: `render_scene_to_pixels` блокирует event-loop на GPU readback
-                // (~1-5 мс при 1080p). При бюджете 33 мс (30 fps) это приемлемо.
-                // Если понадобится ≥ 60 fps или экспорт — перейти на async-readback:
-                // submit, зарегистрировать callback через `map_async`, проверять готовность
-                // в `about_to_wait`.
-                match self
-                    .compositor
-                    .render_scene_to_pixels(dev_id, &scene, width, height)
-                {
-                    Ok(pixels) => {
-                        let mut payload = Vec::with_capacity(8 + pixels.len());
-                        payload.extend_from_slice(&width.to_le_bytes());
-                        payload.extend_from_slice(&height.to_le_bytes());
-                        payload.extend_from_slice(&pixels);
-                        if let Err(e) = channel.send(InvokeResponseBody::Raw(payload)) {
-                            log::warn!("[monitor] frame channel send: {e:?}");
+
+                if self.clock.is_playing() {
+                    // Воспроизведение: непрерывный поток кадров — используем pipelined
+                    // async-readback, чтобы НЕ блокировать event-loop на `device.poll`
+                    // (иначе IPC/аудио/события декодеров ждут весь readback; больно на
+                    // высоком preview_fps и тяжёлых сценах). Цена — 1 кадр латентности.
+                    let need_new = match &self.canvas_readback {
+                        Some(s) => !s.matches(dev_id, width, height),
+                        None => true,
+                    };
+                    if need_new {
+                        match self.compositor.begin_pipelined_readback(dev_id, width, height, 2) {
+                            Ok(session) => self.canvas_readback = Some(session),
+                            Err(e) => {
+                                log::error!("[monitor] pipelined readback init: {e:?}");
+                                self.canvas_readback = None;
+                            }
                         }
                     }
-                    Err(e) => {
-                        log::error!("[monitor] offscreen render: {e:?}");
-                        emit_layer_failed(&self.app, "<offscreen>", "render", &e.to_string());
+                    if let Some(mut session) = self.canvas_readback.take() {
+                        let result = self
+                            .compositor
+                            .render_scene_to_pixels_pipelined(&mut session, &scene);
+                        self.canvas_readback = Some(session);
+                        match result {
+                            // Самый старый готовый кадр (предыдущий) — отдаём фронту.
+                            Ok(Some(pixels)) => send_canvas_frame(&channel, width, height, pixels),
+                            // GPU ещё не догнал (первый кадр после старта) — пропускаем,
+                            // на экране держится последний синхронный стоп-кадр.
+                            Ok(None) => {}
+                            Err(e) => {
+                                log::error!("[monitor] pipelined offscreen render: {e:?}");
+                                emit_layer_failed(
+                                    &self.app,
+                                    "<offscreen>",
+                                    "render",
+                                    &e.to_string(),
+                                );
+                            }
+                        }
+                    }
+                } else {
+                    // Пауза/скраб/одиночный кадр: нужен ГАРАНТИРОВАННЫЙ кадр прямо сейчас
+                    // (следующего рендера может не быть), поэтому синхронный readback.
+                    // Освобождаем pipelined-сессию — её GPU-буферы не нужны на паузе.
+                    self.canvas_readback = None;
+                    match self
+                        .compositor
+                        .render_scene_to_pixels(dev_id, &scene, width, height)
+                    {
+                        Ok(pixels) => send_canvas_frame(&channel, width, height, pixels),
+                        Err(e) => {
+                            log::error!("[monitor] offscreen render: {e:?}");
+                            emit_layer_failed(&self.app, "<offscreen>", "render", &e.to_string());
+                        }
                     }
                 }
             }
@@ -1087,6 +1164,7 @@ fn init_state(
         frame_channel: None,
         canvas_size: (viewport.width.max(1), viewport.height.max(1)),
         offscreen_dev_id,
+        canvas_readback: None,
         pending_play_deadline: None,
         native_window: None,
     })

@@ -1,7 +1,15 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { mockNuxtImport } from '@nuxt/test-utils/runtime';
 import { mountWithNuxt } from '../../utils/mount';
 import ProjectSettingsModal from '~/components/project-settings/ProjectSettingsModal.vue';
 import { reactive } from 'vue';
+
+mockNuxtImport('useI18n', () => {
+  return () => ({
+    t: (key: string) => key,
+    locale: { value: 'en-US' },
+  });
+});
 
 const mockProjectStore = reactive({
   currentProjectId: 'test-project-id',

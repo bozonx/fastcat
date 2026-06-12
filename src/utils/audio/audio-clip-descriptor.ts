@@ -193,7 +193,10 @@ export function toNativeSceneAudioLayer(params: ToNativeSceneAudioLayerParams): 
   const durationUs = Math.max(0, descriptor.durationUs);
   const sourceStartUs = Math.max(0, descriptor.sourceStartUs);
   const sourceRangeDurationUs = Math.max(0, descriptor.sourceRangeDurationUs);
-  const materialDurationUs = Math.max(0, finite(descriptor.sourceDurationUs, sourceRangeDurationUs));
+  const materialDurationUs = Math.max(
+    0,
+    finite(descriptor.sourceDurationUs, sourceRangeDurationUs),
+  );
 
   // Effective fades fold in: manual fades, the auto de-click (removes the click at
   // every plain cut), an adjacent transition rendered as a crossfade, and curve
@@ -201,10 +204,8 @@ export function toNativeSceneAudioLayer(params: ToNativeSceneAudioLayerParams): 
   // fade-in/out durations, so this is where the worker AudioMixer's edge handling
   // is reproduced for the native (monitor + export) path.
   const fadeClipDurationS =
-    Math.min(
-      sourceRangeDurationUs / absSpeed,
-      durationUs || sourceRangeDurationUs / absSpeed,
-    ) / US_PER_SEC;
+    Math.min(sourceRangeDurationUs / absSpeed, durationUs || sourceRangeDurationUs / absSpeed) /
+    US_PER_SEC;
   const { fadeInS, fadeOutS, fadeInCurve, fadeOutCurve } = resolveEffectiveFadeDurationsSeconds({
     clipDurationS: fadeClipDurationS,
     clip: descriptorToEnvelopeClip(descriptor),

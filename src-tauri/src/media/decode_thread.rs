@@ -259,6 +259,12 @@ fn run_decoder_loop(args: DecoderLoopArgs) {
     let mut at_eof = false;
     let mut prefer_yuv = device.is_some() && queue.is_some();
     let mut yuv_pipeline: Option<YuvToRgbaPipeline> = None;
+    // Consecutive YUV→RGBA GPU upload failures. A single failure can be transient
+    // (e.g. a momentary allocation hiccup), so we keep the fast path and only fall
+    // back to RGBA-on-CPU permanently once it fails repeatedly — a persistent failure
+    // signals a real device problem. Reset on every success.
+    let mut yuv_upload_failures: u32 = 0;
+    const YUV_UPLOAD_FAILURE_LIMIT: u32 = 3;
 
     loop {
         // 1) Обработать все накопившиеся команды.
@@ -278,8 +284,13 @@ fn run_decoder_loop(args: DecoderLoopArgs) {
                     frames,
                     keep_preseek_frames,
                 }) => {
-                    // Take the max so multiple rapid Prebuffer commands don't reduce the budget.
-                    pending_preroll = Some((pending_preroll.map_or(0, |(f, _)| f).max(frames), keep_preseek_frames));
+                    // Take the max frames so multiple rapid Prebuffer commands don't
+                    // reduce the budget, and OR the keep-preseek flag so a request that
+                    // asked to cache the whole GOP (keep=true) is never downgraded by a
+                    // later keep=false merge.
+                    let (prev_frames, prev_keep) = pending_preroll.unwrap_or((0, false));
+                    pending_preroll =
+                        Some((prev_frames.max(frames), prev_keep || keep_preseek_frames));
                 }
                 Ok(DecoderCmd::Play) => {
                     playing = true;
@@ -349,10 +360,10 @@ fn run_decoder_loop(args: DecoderLoopArgs) {
                             frames,
                             keep_preseek_frames,
                         } => {
-                            pending_preroll = Some((
-                                pending_preroll.map_or(0, |(f, _)| f).max(frames),
-                                keep_preseek_frames,
-                            ));
+                            // Max frames, OR keep-preseek (see the merge in the main loop).
+                            let (prev_frames, prev_keep) = pending_preroll.unwrap_or((0, false));
+                            pending_preroll =
+                                Some((prev_frames.max(frames), prev_keep || keep_preseek_frames));
                         }
                         DecoderCmd::Play => {
                             playing = true;
@@ -467,14 +478,24 @@ fn run_decoder_loop(args: DecoderLoopArgs) {
                             &tex,
                         ) {
                             Ok(()) => {
+                                yuv_upload_failures = 0;
                                 let shared_tex = Arc::new(super::decode::SharedTexture::new_owned(tex, texture_pool.clone()));
                                 frame.texture = Some(shared_tex);
                             }
                             Err(error) => {
-                                log::warn!(
-                                    "[decode] YUV GPU upload failed, falling back to RGBA decode: {error:?}"
-                                );
-                                prefer_yuv = false;
+                                yuv_upload_failures += 1;
+                                if yuv_upload_failures >= YUV_UPLOAD_FAILURE_LIMIT {
+                                    log::warn!(
+                                        "[decode] YUV GPU upload failed {yuv_upload_failures}× — \
+                                         disabling YUV fast path, falling back to RGBA decode: {error:?}"
+                                    );
+                                    prefer_yuv = false;
+                                } else {
+                                    log::warn!(
+                                        "[decode] YUV GPU upload failed ({yuv_upload_failures}/\
+                                         {YUV_UPLOAD_FAILURE_LIMIT}), retrying YUV fast path: {error:?}"
+                                    );
+                                }
                                 continue;
                             }
                         }

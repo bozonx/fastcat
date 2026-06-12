@@ -85,6 +85,7 @@ export interface TimelineBackupModule {
  * and backups, and can preview or restore any of them.
  */
 export function createTimelineBackupModule(deps: TimelineBackupDeps): TimelineBackupModule {
+  // eslint-disable-next-line prefer-const
   let module: TimelineBackupModule;
   const backupVersions = ref<TimelineBackupVersion[]>([]);
 
@@ -336,16 +337,6 @@ export function createTimelineBackupModule(deps: TimelineBackupDeps): TimelineBa
       return;
     }
 
-    // Flush any pending dirty changes to the autosave sidecar on desktop
-    // before listing, so the latest unsaved work is visible in the panel.
-    if (!deps.isMobile?.value && !deps.isReadOnly?.value && deps.isDirty?.value) {
-      try {
-        await deps.requestTimelineSave({ immediate: true });
-      } catch (e) {
-        log.warn('Failed to flush autosave before loading backup versions', e);
-      }
-    }
-
     const list: TimelineBackupVersion[] = [];
     try {
       // 1. Main file
@@ -366,9 +357,11 @@ export function createTimelineBackupModule(deps: TimelineBackupDeps): TimelineBa
         const autosavePath = `.fastcat/autosave/${deps.currentTimelinePath.value}`;
         const autosaveMeta = await deps.projectStore.getFileMetadata(autosavePath);
         if (autosaveMeta) {
+          const fileName =
+            deps.currentTimelinePath.value.split('/').pop() || deps.currentTimelinePath.value;
           list.push({
             type: 'autosave',
-            name: 'autosave',
+            name: fileName,
             path: autosavePath,
             date: new Date(autosaveMeta.lastModified),
             size: autosaveMeta.size,

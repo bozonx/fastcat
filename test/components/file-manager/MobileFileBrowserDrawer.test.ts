@@ -219,8 +219,11 @@ describe('MobileFileBrowserDrawer', () => {
 
     await fileProps.vm.$emit('convert', entry);
 
-    expect(mockOpenConversionModal).toHaveBeenCalledWith(entry, expect.objectContaining({
-      isExternal: false,
-    }));
+    expect(mockOpenConversionModal).toHaveBeenCalledWith(
+      entry,
+      expect.objectContaining({
+        isExternal: false,
+      }),
+    );
   });
 });

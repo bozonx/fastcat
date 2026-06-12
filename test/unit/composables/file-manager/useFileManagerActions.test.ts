@@ -2,9 +2,22 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { useFileManagerActions } from '~/composables/file-manager/useFileManagerActions';
+import {
+  LazyTauriFile,
+  LAZY_FILE_MEDIA_THRESHOLD_BYTES,
+} from '~/stores/workspace/provider/tauri-handle';
 import type { FsEntry } from '~/types/fs';
 import type { SelectedEntity } from '~/stores/selection.store';
 import type { IFileSystemAdapter } from '~/file-manager/core/vfs/types';
+
+const tauriDialogMock = vi.hoisted(() => ({
+  open: vi.fn(),
+}));
+
+const tauriFsMock = vi.hoisted(() => ({
+  stat: vi.fn(),
+  readFile: vi.fn(),
+}));
 
 interface SelectedFsEntryInfo {
   kind: FsEntry['kind'];
@@ -113,6 +126,8 @@ vi.mock('~/stores/focus.store', () => ({ useFocusStore: () => focusStore }));
 vi.mock('~/stores/file-manager.store', () => ({ useFileManagerStore: () => fileManagerStore }));
 vi.mock('~/stores/project-tabs.store', () => ({ useProjectTabsStore: () => projectTabsStore }));
 vi.mock('~/composables/useAppClipboard', () => ({ useAppClipboard: () => clipboardStore }));
+vi.mock('@tauri-apps/plugin-dialog', () => tauriDialogMock);
+vi.mock('@tauri-apps/plugin-fs', () => tauriFsMock);
 
 vi.stubGlobal('useI18n', () => ({ t: (_key: string, fallback?: string) => fallback ?? _key }));
 vi.stubGlobal('useToast', () => ({ add: vi.fn() }));
@@ -138,6 +153,10 @@ describe('useFileManagerActions', () => {
     clipboardStore.setClipboardPayload.mockReset();
     clipboardStore.clearClipboardPayload.mockReset();
     clipboardStore.getFileManagerVfs.mockReset();
+    tauriDialogMock.open.mockReset();
+    tauriFsMock.stat.mockReset();
+    tauriFsMock.readFile.mockReset();
+    Reflect.deleteProperty(globalThis as Record<string, unknown>, '__TAURI_INTERNALS__');
   });
 
   function createComposable(overrides: Partial<Parameters<typeof useFileManagerActions>[0]> = {}) {
@@ -315,6 +334,43 @@ describe('useFileManagerActions', () => {
 
     expect(copyEntry).not.toHaveBeenCalled();
     expect(moveEntry).not.toHaveBeenCalled();
+  });
+
+  it('uses LazyTauriFile for large media selected from the Tauri upload dialog', async () => {
+    (globalThis as Record<string, unknown>).__TAURI_INTERNALS__ = {};
+    const sourcePath = '/media/large.mp4';
+    const handleFiles = vi.fn().mockResolvedValue(undefined);
+    const notifyFileManagerUpdate = vi.fn();
+    tauriDialogMock.open.mockResolvedValue([sourcePath]);
+    tauriFsMock.stat.mockResolvedValue({
+      size: LAZY_FILE_MEDIA_THRESHOLD_BYTES + 1,
+      mtime: new Date('2026-01-01T00:00:00.000Z'),
+    });
+    tauriFsMock.readFile.mockResolvedValue(new Uint8Array([1, 2, 3]));
+    const api = createComposable({
+      handleFiles,
+      notifyFileManagerUpdate,
+    });
+
+    await api.onFileAction('upload', {
+      kind: 'directory',
+      name: 'Media',
+      path: 'media',
+    });
+
+    expect(tauriFsMock.readFile).not.toHaveBeenCalled();
+    expect(handleFiles).toHaveBeenCalledTimes(1);
+    const [files, options] = handleFiles.mock.calls[0]!;
+    expect(options).toEqual({ targetDirPath: 'media' });
+    expect(files).toHaveLength(1);
+    expect(files[0]).toBeInstanceOf(LazyTauriFile);
+    expect(files[0]).toMatchObject({
+      path: sourcePath,
+      name: 'large.mp4',
+      size: LAZY_FILE_MEDIA_THRESHOLD_BYTES + 1,
+      type: 'video/mp4',
+    });
+    expect(notifyFileManagerUpdate).toHaveBeenCalledOnce();
   });
 
   it('creates an OTIO version and opens the newly created timeline', async () => {

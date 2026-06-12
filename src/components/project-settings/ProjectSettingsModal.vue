@@ -20,7 +20,7 @@ import AdvancedSettings from './AdvancedSettings.vue';
 import MetadataSettings from './MetadataSettings.vue';
 import StorageSettings from './StorageSettings.vue';
 import UiFormSectionHeader from '~/components/ui/UiFormSectionHeader.vue';
-const log = createDevLogger('ProjectSettingsModal');
+const _log = createDevLogger('ProjectSettingsModal');
 const props = defineProps<{
   open: boolean;
 }>();

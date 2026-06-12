@@ -36,6 +36,13 @@ watch(
   },
 );
 
+watch(
+  () => timelineStore.isTimelineDirty,
+  () => {
+    timelineStore.loadBackupVersions();
+  },
+);
+
 function formatDate(date: Date | null): string {
   if (!date) return '—';
   return new Intl.DateTimeFormat(locale.value, {
@@ -84,10 +91,7 @@ const versions = computed(() => timelineStore.backupVersions);
       </span>
       <div class="flex items-center gap-1.5">
         <!-- Clear Backups Button -->
-        <UTooltip
-          v-if="hasBackups"
-          :text="t('videoEditor.projectSettings.clearBackups')"
-        >
+        <UTooltip v-if="hasBackups" :text="t('videoEditor.projectSettings.clearBackups')">
           <UButton
             icon="i-heroicons-trash"
             size="xs"
