@@ -712,6 +712,16 @@ pub(crate) fn decode_audio_chunk(params: DecodeAudioChunkParams<'_>) -> Result<V
 /// realtime producer thread so a slow decode can never miss the audio deadline.
 /// The cheap part (set checks + insert) runs inline; the expensive format open +
 /// decode all happen on the spawned thread.
+/// Max concurrent background full-file precache decodes. Deliberately 1: each is a
+/// multi-GB 4K-container decode, and running several at once thrashes the disk so
+/// badly that the realtime producer's streaming reads miss the 50ms chunk deadline
+/// (decode-behind → ring drain → crackle) AND the warmup streaming that primes the
+/// ring before Play slows to a crawl (a 2-3s+ start). With one at a time the disk
+/// stays responsive: the producer streams the playhead clip cheaply (decoding ~50ms
+/// of audio costs ~1ms) and the clip currently playing wins the next free slot,
+/// since the streaming path re-requests its own precache every chunk.
+pub(crate) const PRECACHE_MAX_CONCURRENCY: usize = 1;
+
 pub(crate) fn maybe_spawn_background_precache(
     shared: &Arc<(Mutex<AudioShared>, Condvar)>,
     path: &str,
@@ -727,7 +737,15 @@ pub(crate) fn maybe_spawn_background_precache(
         {
             return;
         }
+        // Throttle concurrency. When the slot is full we simply don't spawn; the
+        // streaming path re-calls this every chunk for the clip it is decoding, so a
+        // skipped clip is retried (and the actively-playing clip is naturally
+        // prioritized) as soon as a running precache finishes.
+        if state.active_precache_count >= PRECACHE_MAX_CONCURRENCY {
+            return;
+        }
         state.decoding_in_flight.insert(cache_key.to_string());
+        state.active_precache_count += 1;
     }
 
     let shared_thread = shared.clone();
@@ -745,9 +763,11 @@ pub(crate) fn maybe_spawn_background_precache(
             );
         });
     if spawned.is_err() {
-        // Spawn failed (e.g. thread limit); clear the in-flight marker so a later
-        // chunk can retry instead of streaming this file forever.
-        shared.0.lock().decoding_in_flight.remove(cache_key);
+        // Spawn failed (e.g. thread limit); release both the in-flight marker and the
+        // concurrency slot so a later chunk can retry instead of streaming forever.
+        let mut state = shared.0.lock();
+        state.decoding_in_flight.remove(cache_key);
+        state.active_precache_count = state.active_precache_count.saturating_sub(1);
         log::warn!("[audio] failed to spawn background audio precache for {path}");
     }
 }
@@ -761,6 +781,9 @@ impl Drop for PrecacheGuard {
     fn drop(&mut self) {
         let mut state = self.shared.0.lock();
         state.decoding_in_flight.remove(&self.cache_key);
+        // Free the concurrency slot so the next (e.g. the currently-playing) clip's
+        // precache can start.
+        state.active_precache_count = state.active_precache_count.saturating_sub(1);
         self.shared.1.notify_all();
     }
 }
@@ -1478,6 +1501,55 @@ mod tests {
         assert!(!state.decoded_cache.contains(&cache_key));
         assert!(!state.precache_skip.contains(&cache_key));
         assert!(state.decoding_in_flight.contains(&cache_key));
+        drop(state);
+
+        let _ = std::fs::remove_file(path);
+        Ok(())
+    }
+
+    #[test]
+    fn maybe_spawn_background_precache_respects_concurrency_limit() -> anyhow::Result<()> {
+        let path = write_temp_f32_wav(8000, 1, 8000)?;
+        let path_str = path.to_string_lossy().to_string();
+        let shared = Arc::new((Mutex::new(AudioShared::default()), Condvar::new()));
+        let cache_key = decoded_cache_key(&path_str, 48000, 2);
+
+        // Saturate the concurrency budget with other in-flight decodes.
+        shared.0.lock().active_precache_count = PRECACHE_MAX_CONCURRENCY;
+
+        // A fresh (not in-flight) clip must NOT spawn while the budget is full: no
+        // in-flight marker is taken, so the streaming path retries it later.
+        maybe_spawn_background_precache(&shared, &path_str, 48000, 2, &cache_key);
+        std::thread::sleep(std::time::Duration::from_millis(50));
+        {
+            let state = shared.0.lock();
+            assert!(
+                !state.decoding_in_flight.contains(&cache_key),
+                "must not claim a slot while concurrency budget is full"
+            );
+            assert!(!state.decoded_cache.contains(&cache_key));
+            assert_eq!(state.active_precache_count, PRECACHE_MAX_CONCURRENCY);
+        }
+
+        // Free the budget; the same call now spawns and eventually caches the clip,
+        // releasing the slot again on completion.
+        shared.0.lock().active_precache_count = 0;
+        maybe_spawn_background_precache(&shared, &path_str, 48000, 2, &cache_key);
+        for _ in 0..200 {
+            if shared.0.lock().decoded_cache.contains(&cache_key) {
+                break;
+            }
+            std::thread::sleep(std::time::Duration::from_millis(10));
+        }
+        let state = shared.0.lock();
+        assert!(
+            state.decoded_cache.contains(&cache_key),
+            "with a free slot the precache must run and cache the clip"
+        );
+        assert_eq!(
+            state.active_precache_count, 0,
+            "slot must be released when the precache thread finishes"
+        );
         drop(state);
 
         let _ = std::fs::remove_file(path);
