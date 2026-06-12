@@ -37,6 +37,10 @@ pub struct NativeAudioEngine {
     settings: AudioEngineSettings,
     _stream: Box<dyn AudioStream>,
     producer: Mutex<Option<JoinHandle<()>>>,
+    /// Set by the producer thread when it exits (clean stop or panic). Lets
+    /// `restart_finished_producer` skip the producer mutex on the common (alive)
+    /// path with a single atomic load, instead of locking on every per-frame call.
+    producer_exited: Arc<AtomicBool>,
     /// Last `(frames_consumed, sampled_at)` observed by the output-stall watchdog.
     /// `None` until the first armed observation; reset whenever the clock disarms.
     output_watchdog: Mutex<Option<(u64, std::time::Instant)>>,
@@ -85,12 +89,14 @@ impl NativeAudioEngine {
         let stream = backend.build_output_stream(ring.clone(), clock.clone())?;
         stream.play().context("audio stream play failed")?;
 
+        let producer_exited = Arc::new(AtomicBool::new(false));
         let producer = spawn_producer_thread(
             shared.clone(),
             ring.clone(),
             running.clone(),
             clock.clone(),
             AudioRenderTarget::monitor(sample_rate, output_channels),
+            producer_exited.clone(),
         )?;
 
         Ok(Self {
@@ -103,6 +109,7 @@ impl NativeAudioEngine {
             settings: settings.clone(),
             _stream: stream,
             producer: Mutex::new(Some(producer)),
+            producer_exited,
             output_watchdog: Mutex::new(None),
         })
     }
@@ -111,11 +118,19 @@ impl NativeAudioEngine {
         if !self.running.load(Ordering::Acquire) {
             return;
         }
+        // Fast path: the producer flags this only when its thread has exited. Avoids
+        // taking the producer mutex on every engine call (current_pts / scene_end /
+        // is_empty all run once per monitor frame).
+        if !self.producer_exited.load(Ordering::Relaxed) {
+            return;
+        }
 
         let mut producer = self.producer.lock();
-        if producer
-            .as_ref()
-            .is_some_and(|handle| !handle.is_finished())
+        // Re-check under the lock: another caller may have already restarted it.
+        if !self.producer_exited.load(Ordering::Relaxed)
+            || producer
+                .as_ref()
+                .is_some_and(|handle| !handle.is_finished())
         {
             return;
         }
@@ -137,6 +152,7 @@ impl NativeAudioEngine {
             self.running.clone(),
             self.clock.clone(),
             AudioRenderTarget::monitor(self.sample_rate, self.device_channels as usize),
+            self.producer_exited.clone(),
         ) {
             Ok(handle) => {
                 *producer = Some(handle);
@@ -258,6 +274,37 @@ impl NativeAudioEngine {
 
     pub fn set_output_gain(&self, gain: f64) {
         self.clock.set_output_gain(gain);
+    }
+
+    /// Drops per-layer streaming decoders and look-ahead windows for clips whose
+    /// timeline interval is far from `t`. Without this a long uninterrupted
+    /// playthrough accumulates one `CachedAudioDecoder` (with a large resampler) +
+    /// one `WINDOW_SEC` PCM window per clip ever played, freed only on a scene edit
+    /// (`set_scene` retain). Pruning bounds that to a working set around the playhead.
+    ///
+    /// Safe vs. the producer: each chunk re-locks and re-inserts the decoder it uses,
+    /// and only clips NOT near the playhead (i.e. not being mixed) are dropped, so a
+    /// pruned decoder is never one mid-decode. `window_fill_in_flight` /
+    /// `active_window_fill_count` are left untouched — the `WindowFillGuard` self-clears
+    /// them and a distant clip is not re-requested.
+    pub fn prune_distant_layers(&self, t: f64) {
+        const KEEP_BEHIND_SEC: f64 = 5.0;
+        const KEEP_AHEAD_SEC: f64 = 5.0;
+        let mut state = self.shared.0.lock();
+        if state.decoders.is_empty() && state.layer_windows.is_empty() {
+            return;
+        }
+        let keep: std::collections::HashSet<String> = state
+            .scene
+            .iter()
+            .filter(|l| {
+                l.timeline_start_sec < t + KEEP_AHEAD_SEC
+                    && l.timeline_end_sec > t - KEEP_BEHIND_SEC
+            })
+            .map(|l| l.id.clone())
+            .collect();
+        state.decoders.retain(|id, _| keep.contains(id));
+        state.layer_windows.retain(|id, _| keep.contains(id));
     }
 
     pub fn play(&self, pts_sec: f64) {
@@ -1085,6 +1132,44 @@ mod tests {
         assert!(
             !engine.is_primed(),
             "primed must be false when pending_ring_clear is true, regardless of ring fill"
+        );
+    }
+
+    #[test]
+    fn prune_distant_layers_drops_far_decoders_and_windows_keeps_near() {
+        use crate::audio::shared::AudioWindow;
+        let engine = mock_engine();
+        // Scene: a near clip (covers t≈1s) and a far clip (ends well before t).
+        let near = layer("near", "/tmp/n.wav", 0.0, 5.0, 1.0);
+        let far = layer("far", "/tmp/f.wav", 100.0, 110.0, 1.0);
+        engine.set_scene(&[near, far], &[], 1.0, &[]);
+
+        {
+            let mut state = engine.shared.0.lock();
+            for id in ["near", "far"] {
+                state.layer_windows.insert(
+                    id.to_string(),
+                    AudioWindow {
+                        source_start_frame: 0,
+                        sample_rate: 48000,
+                        channels: 2,
+                        samples: std::sync::Arc::new(vec![0.0f32; 100]),
+                    },
+                );
+            }
+        }
+
+        // Playhead at 1s: "near" overlaps the keep window, "far" (100–110s) does not.
+        engine.prune_distant_layers(1.0);
+
+        let state = engine.shared.0.lock();
+        assert!(
+            state.layer_windows.contains_key("near"),
+            "window of a clip near the playhead must be kept"
+        );
+        assert!(
+            !state.layer_windows.contains_key("far"),
+            "window of a clip far from the playhead must be evicted"
         );
     }
 

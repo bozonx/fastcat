@@ -33,6 +33,16 @@ use crate::media::image_decode::decode_image;
 /// чтобы мы превентивно запустили фоновую инициализацию его декодера.
 const VIDEO_PREWARM_LOOKAHEAD_SEC: f64 = 1.5;
 
+/// Окно удержания рантайма слоя вокруг playhead'а. Рантаймы клипов, чей timeline-интервал
+/// не пересекает `[t - KEEP_BEHIND, t + KEEP_AHEAD]`, вытесняются прямо во время
+/// воспроизведения (а не только при `apply_scene`). Без этого при длинном таймлайне
+/// накапливались бы живые ffmpeg-декодеры + кадровые кэши на КАЖДЫЙ пройденный клип
+/// (память и число потоков росли бы с числом проигранных клипов, а не с рабочим
+/// множеством у playhead). `KEEP_AHEAD` ≥ `VIDEO_PREWARM_LOOKAHEAD_SEC`, иначе только что
+/// прогретый будущий клип вытеснялся бы тем же тиком (thrash «прогрел → выкинул → прогрел»).
+const RUNTIME_KEEP_BEHIND_SEC: f64 = 3.0;
+const RUNTIME_KEEP_AHEAD_SEC: f64 = VIDEO_PREWARM_LOOKAHEAD_SEC + 1.0;
+
 const MB: usize = 1024 * 1024;
 const LOW_CACHE_BUDGET_BYTES: usize = 96 * MB;
 const BALANCED_CACHE_BUDGET_BYTES: usize = 192 * MB;
@@ -813,6 +823,61 @@ impl LayerRuntimeManager {
                 }
             }
         }
+
+        // Вытесняем рантаймы клипов, ушедших далеко от playhead'а: освобождаем их
+        // ffmpeg-декодеры, кадровые кэши и GPU-текстуры, не дожидаясь смены сцены.
+        self.evict_distant_runtimes(t, &scene, &active);
+    }
+
+    /// Дропает рантаймы (видео/изображение/svg/loading), чей слой не входит в активный
+    /// набор и чей timeline-интервал не пересекает окно удержания вокруг playhead'а.
+    /// Иначе при длинном воспроизведении рантайм каждого пройденного клипа жил бы до
+    /// следующего `apply_scene` — копились бы потоки декодеров и декодированные кадры.
+    fn evict_distant_runtimes(
+        &mut self,
+        t: f64,
+        scene: &[SceneLayer],
+        active: &HashSet<usize>,
+    ) {
+        if self.runtimes.is_empty() {
+            return;
+        }
+        // id'ы слоёв, которые держим: активные (covers t / прогрев / transition-from)
+        // ИЛИ близкие к playhead'у в пределах окна удержания.
+        let mut keep: HashSet<&str> = HashSet::new();
+        for (i, layer) in scene.iter().enumerate() {
+            if active.contains(&i) || layer_near_playhead(layer, t) {
+                keep.insert(layer.id.as_str());
+            }
+        }
+        let to_remove: Vec<String> = self
+            .runtimes
+            .keys()
+            .filter(|id| !keep.contains(id.as_str()))
+            .cloned()
+            .collect();
+        if to_remove.is_empty() {
+            return;
+        }
+        let mut to_drop: Vec<LayerRuntime> = Vec::with_capacity(to_remove.len());
+        for id in to_remove {
+            if let Some(rt) = self.runtimes.remove(&id) {
+                to_drop.push(rt);
+            }
+            self.loading_set.remove(&id);
+            if let Some(cancel) = self.loading_cancels.remove(&id) {
+                cancel.store(true, Ordering::Relaxed);
+            }
+        }
+        // GPU-текстуры выбывших слоёв освобождаются дропом их кадров (Arc) внутри
+        // рантайма. `DecodePump::drop` блокирует до join'а ffmpeg-потока — дропаем в
+        // отдельном потоке, чтобы не подвесить event-loop монитора.
+        if let Err(e) = std::thread::Builder::new()
+            .name("fastcat-rt-evict-drop".into())
+            .spawn(move || drop(to_drop))
+        {
+            log::error!("[monitor] failed to spawn evict drop thread: {e:?}");
+        }
     }
 
     /// Seek активных видеослоёв на `t`. На паузе при попадании в кеш показывает кадр без
@@ -1037,6 +1102,13 @@ fn has_loaded_runtime(kind: LayerKind) -> bool {
     matches!(kind, LayerKind::Video | LayerKind::Image | LayerKind::Svg)
 }
 
+/// Пересекает ли timeline-интервал слоя окно удержания `[t - BEHIND, t + AHEAD]`.
+/// Используется для вытеснения далёких рантаймов во время воспроизведения.
+fn layer_near_playhead(layer: &SceneLayer, t: f64) -> bool {
+    layer.timeline_start_sec < t + RUNTIME_KEEP_AHEAD_SEC
+        && layer.timeline_end_sec > t - RUNTIME_KEEP_BEHIND_SEC
+}
+
 fn allows_stale_video_fallback(mode: PreviewSyncMode) -> bool {
     matches!(mode, PreviewSyncMode::Smooth | PreviewSyncMode::Balanced)
 }
@@ -1139,6 +1211,27 @@ mod tests {
     use super::{BALANCED_VIDEO_SYNC_LAG_SEC, STRICT_VIDEO_SYNC_LAG_SEC};
     use crate::monitor::scene::{LayerKind, PreviewSyncMode, SceneLayer};
     use crate::monitor::scene_build::layer_with_auto_source_rotation;
+
+    #[test]
+    fn layer_near_playhead_keeps_window_around_t() {
+        use super::layer_near_playhead;
+        use super::{RUNTIME_KEEP_AHEAD_SEC, RUNTIME_KEEP_BEHIND_SEC};
+
+        let l = video_layer_span("a", 10.0, 12.0);
+        // Inside the clip.
+        assert!(layer_near_playhead(&l, 11.0));
+        // Just past the end, within the behind grace → still kept.
+        assert!(layer_near_playhead(&l, 12.0 + RUNTIME_KEEP_BEHIND_SEC - 0.1));
+        // Far past the end → evicted.
+        assert!(!layer_near_playhead(&l, 12.0 + RUNTIME_KEEP_BEHIND_SEC + 0.1));
+        // Just before the start, within the ahead (prewarm) window → kept.
+        assert!(layer_near_playhead(&l, 10.0 - RUNTIME_KEEP_AHEAD_SEC + 0.1));
+        // Far before the start → not yet kept.
+        assert!(!layer_near_playhead(&l, 10.0 - RUNTIME_KEEP_AHEAD_SEC - 0.1));
+        // The ahead window must cover the prewarm lookahead so a just-prewarmed clip
+        // is never evicted the same tick it was warmed.
+        assert!(RUNTIME_KEEP_AHEAD_SEC >= super::VIDEO_PREWARM_LOOKAHEAD_SEC);
+    }
 
     #[test]
     fn none_equals_some_one() {

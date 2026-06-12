@@ -21,7 +21,11 @@ pub(crate) fn spawn_producer_thread(
     running: Arc<AtomicBool>,
     clock: Arc<RealtimeClock>,
     target: AudioRenderTarget,
+    exited: Arc<AtomicBool>,
 ) -> Result<JoinHandle<()>> {
+    // The freshly-spawned thread is alive; clear any stale exit flag from a prior
+    // run before it starts so the engine's fast-path health check stays accurate.
+    exited.store(false, Ordering::Release);
     std::thread::Builder::new()
         .name("fastcat-audio-producer".into())
         .spawn(move || {
@@ -40,6 +44,10 @@ pub(crate) fn spawn_producer_thread(
                     panic_payload_message(&error)
                 ),
             }
+            // Signal the engine that the thread is gone. `restart_finished_producer`
+            // reads this with a single Relaxed load to avoid taking the producer
+            // mutex on every per-frame engine call (current_pts/scene_end).
+            exited.store(true, Ordering::Release);
         })
         .context("failed to spawn audio producer thread")
 }

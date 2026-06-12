@@ -626,6 +626,12 @@ struct WindowState {
     audio_settings: AudioEngineSettings,
 
     last_emit_pts: f64,
+    /// Last RMS/peak (dB) pushed to the UI meter; suppresses duplicate emits so a
+    /// steady level (e.g. repeated silence) doesn't spam IPC every frame.
+    last_emit_levels: (f64, f64),
+    /// Throttle for `audio.prune_distant_layers`: pruning locks the shared audio
+    /// state (contends with the producer), so we run it at most ~1×/sec, not per frame.
+    last_audio_prune: Instant,
     last_viewport: ViewportSpec,
     mode: MonitorMode,
     /// Канал для стрима RGBA-кадров фронту (только в режиме Canvas).
@@ -1111,6 +1117,16 @@ impl WindowState {
         self.render(t);
         self.emit_time(t);
         self.emit_audio_levels();
+
+        // Bound long-playback memory: drop audio decoders/windows for clips the
+        // playhead has left behind. Throttled (~1×/sec) to limit lock contention
+        // with the producer.
+        if self.last_audio_prune.elapsed() >= Duration::from_secs(1) {
+            if let Some(audio) = self.audio.as_ref() {
+                audio.prune_distant_layers(t);
+            }
+            self.last_audio_prune = Instant::now();
+        }
     }
 
     fn emit_time(&mut self, t: f64) {
@@ -1122,11 +1138,18 @@ impl WindowState {
         let _ = self.app.emit(EVT_TIME, t);
     }
 
-    fn emit_audio_levels(&self) {
+    fn emit_audio_levels(&mut self) {
         let Some(audio) = self.audio.as_ref() else {
             return;
         };
         let (rms_db, peak_db) = audio.output_levels_db();
+        // Suppress duplicate emits: a steady meter value (e.g. repeated silence at
+        // the -60 dB floor) doesn't need an IPC event every frame.
+        let (last_rms, last_peak) = self.last_emit_levels;
+        if (rms_db - last_rms).abs() < 0.1 && (peak_db - last_peak).abs() < 0.1 {
+            return;
+        }
+        self.last_emit_levels = (rms_db, peak_db);
         let _ = self
             .app
             .emit(EVT_AUDIO_LEVELS, AudioLevelsPayload { rms_db, peak_db });
@@ -1291,6 +1314,8 @@ fn init_state(
         audio_master_effects: Vec::new(),
         audio_settings,
         last_emit_pts: -1.0,
+        last_emit_levels: (f64::NAN, f64::NAN),
+        last_audio_prune: Instant::now(),
         last_viewport: viewport,
         mode: MonitorMode::Canvas,
         frame_channel: None,
