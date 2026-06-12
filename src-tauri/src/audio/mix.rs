@@ -785,11 +785,25 @@ fn fade_curve(t: f64, curve: AudioFadeCurve) -> f64 {
 /// silence. This is deliberately NOT the equal-power pan law (which dips the
 /// centre by ~3 dB) — applying that law per layer *and* per bus compounded into
 /// a ~6 dB loss on every default-balance clip.
+/// Equal-power stereo pan/balance matrix matching the web export mixer's
+/// `getStereoPanMatrix` (W3C `StereoPannerNode` law). For `balance <= 0` the right
+/// channel is attenuated by `cos` and folded into the left by `sin`; for
+/// `balance > 0` the left does the same toward the right. Unlike a plain linear
+/// balance this preserves the panned-away channel's energy (folded across) rather
+/// than discarding it — so `balance = ±1` no longer drops a whole channel — and
+/// keeps web and native (monitor + export) renders in sync. Center is unity on both
+/// channels (no ~3 dB dip), so applying it on both the layer and the bus is a
+/// no-op at default balance.
 fn stereo_pan_matrix(balance: f64) -> (f64, f64, f64, f64) {
     let pan = balance.clamp(-1.0, 1.0);
-    let left_gain = (1.0 - pan).min(1.0);
-    let right_gain = (1.0 + pan).min(1.0);
-    (left_gain, 0.0, 0.0, right_gain)
+    let clean = |v: f64| if v.abs() < 1e-12 { 0.0 } else { v };
+    if pan <= 0.0 {
+        let angle = -pan * std::f64::consts::FRAC_PI_2;
+        (1.0, clean(angle.sin()), 0.0, clean(angle.cos()))
+    } else {
+        let angle = pan * std::f64::consts::FRAC_PI_2;
+        (clean(angle.cos()), 0.0, clean(angle.sin()), 1.0)
+    }
 }
 
 fn sanitize_speed(speed: f64) -> f64 {
@@ -901,28 +915,34 @@ mod tests {
     }
 
     #[test]
-    fn stereo_balance_full_left() {
+    fn stereo_balance_full_left_folds_right_into_left() {
+        // Equal-power: hard left fully folds the right channel into the left
+        // (lr = 1) and zeroes the right output (rr = 0), instead of discarding it.
         let (ll, lr, rl, rr) = stereo_pan_matrix(-1.0);
         assert!((ll - 1.0).abs() < 1e-9);
-        assert_eq!(lr, 0.0);
+        assert!((lr - 1.0).abs() < 1e-9);
         assert_eq!(rl, 0.0);
-        assert!((rr - 0.0).abs() < 1e-9);
+        assert!(rr.abs() < 1e-9);
     }
 
     #[test]
-    fn stereo_balance_full_right() {
+    fn stereo_balance_full_right_folds_left_into_right() {
         let (ll, lr, rl, rr) = stereo_pan_matrix(1.0);
-        assert!((ll - 0.0).abs() < 1e-9);
+        assert!(ll.abs() < 1e-9);
         assert_eq!(lr, 0.0);
-        assert_eq!(rl, 0.0);
+        assert!((rl - 1.0).abs() < 1e-9);
         assert!((rr - 1.0).abs() < 1e-9);
     }
 
     #[test]
     fn stereo_balance_half_left_attenuates_right() {
-        let (ll, _, _, rr) = stereo_pan_matrix(-0.5);
+        // cos(π/4) on the kept channel; the panned-away energy folds across (sin).
+        let g = std::f64::consts::FRAC_1_SQRT_2;
+        let (ll, lr, rl, rr) = stereo_pan_matrix(-0.5);
         assert!((ll - 1.0).abs() < 1e-9);
-        assert!((rr - 0.5).abs() < 1e-9);
+        assert!((lr - g).abs() < 1e-9);
+        assert_eq!(rl, 0.0);
+        assert!((rr - g).abs() < 1e-9);
     }
 
     #[test]

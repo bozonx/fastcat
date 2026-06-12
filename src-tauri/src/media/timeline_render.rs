@@ -394,7 +394,7 @@ pub(crate) fn build_export_scene(
         time: time_sec,
         background: Color::TRANSPARENT,
         layers,
-        master_effects: Vec::new(),
+        master_effects: scene.master_effects.clone(),
     })
 }
 

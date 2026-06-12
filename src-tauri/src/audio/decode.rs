@@ -6,8 +6,8 @@ use anyhow::{anyhow, Context, Result};
 use parking_lot::{Condvar, Mutex};
 
 use crate::audio::resample::{
-    make_sinc_resampler, planar_to_interleaved, resample_planar_cached, resample_planar_with_speed,
-    RESAMPLER_CHUNK_SIZE,
+    make_sinc_resampler, planar_to_interleaved, resample_planar_cached,
+    resample_planar_with_speed, RESAMPLER_CHUNK_SIZE,
 };
 use crate::audio::shared::{
     find_audio_track, AudioRenderTarget, AudioShared, AudioSourceMetadata, AudioWindow,
@@ -633,6 +633,41 @@ pub(crate) fn decode_symphonia_chunk(params: DecodeSymphoniaChunkParams<'_>) -> 
         if hit_eof {
             break;
         }
+    }
+
+    // End-of-stream flush: the streaming resampler carries a sub-block input
+    // remainder and trails the signal by its group delay. Without draining both at
+    // EOF the clip's final ~block-plus-delay of audio would be replaced by the
+    // zero-padding below (heard as the tail cutting abruptly to silence). Only
+    // meaningful while actually resampling and still short of a full chunk.
+    if hit_eof && resampling_active && combined.len() < target_samples {
+        if needs_delay_drop {
+            // This session never emitted a resampled block (clip shorter than one
+            // input block), so its initial priming delay was never dropped: schedule
+            // it to be dropped from the flushed output.
+            use rubato::Resampler;
+            pending_delay_samples = state_val
+                .resampler
+                .as_ref()
+                .map(|r| r.output_delay())
+                .unwrap_or(0)
+                * output_channels;
+        }
+        let flushed = resample_flush_cached(crate::audio::resample::ResampleFlushCachedParams {
+            source_rate: state_val.source_rate,
+            target_rate: target_sample_rate,
+            speed,
+            num_channels: state_val.channels,
+            cached_resampler: &mut state_val.resampler,
+            remainder: &mut state_val.resample_remainder,
+        })?;
+        let mut interleaved = planar_to_interleaved(&flushed, output_channels);
+        if pending_delay_samples > 0 {
+            let drop = pending_delay_samples.min(interleaved.len());
+            interleaved.drain(0..drop);
+            pending_delay_samples -= drop;
+        }
+        combined.extend_from_slice(&interleaved);
     }
 
     if total_collected == 0 && combined.is_empty() {

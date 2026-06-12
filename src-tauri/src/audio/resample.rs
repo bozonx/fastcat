@@ -197,6 +197,93 @@ pub(crate) fn resample_planar_cached(
     Ok(output)
 }
 
+pub(crate) struct ResampleFlushCachedParams<'a> {
+    pub source_rate: u32,
+    pub target_rate: u32,
+    pub speed: f64,
+    pub num_channels: usize,
+    pub cached_resampler: &'a mut Option<Box<rubato::SincFixedIn<f32>>>,
+    pub remainder: &'a mut Vec<Vec<f32>>,
+}
+
+/// Flushes a streaming [`resample_planar_cached`] session at end-of-stream so the
+/// source's final samples aren't dropped. The streaming path only emits output once
+/// a full input block accumulates and otherwise carries a sub-block `remainder`; it
+/// also runs perpetually `output_delay` frames behind (the group-delay tail still
+/// inside the filter). At EOF both would otherwise be replaced by zero-padding — up
+/// to a block plus the delay, audible as the clip's tail cutting to silence.
+///
+/// This processes the leftover `remainder` (zero-padded to a full block) and then
+/// pushes zero blocks to drain the delay line, returning exactly
+/// `round(remainder_len * ratio) + output_delay` planar output frames: the
+/// remainder's resampled length plus the delay tail the steady stream was short of.
+/// The caller is responsible for dropping the *initial* priming delay if this session
+/// was never primed. Leaves the resampler drained and clears `remainder`.
+pub(crate) fn resample_flush_cached(
+    params: ResampleFlushCachedParams<'_>,
+) -> Result<Vec<Vec<f32>>> {
+    use rubato::Resampler;
+    let ResampleFlushCachedParams {
+        source_rate,
+        target_rate,
+        speed,
+        num_channels,
+        cached_resampler,
+        remainder,
+    } = params;
+
+    if num_channels == 0 {
+        return Ok(Vec::new());
+    }
+    let ratio = target_rate as f64 / (source_rate as f64 * speed);
+    let Some(resampler) = cached_resampler.as_mut() else {
+        return Ok(vec![Vec::new(); num_channels]);
+    };
+    let chunk_size = resampler.input_frames_max();
+    let rem_len = remainder.first().map(Vec::len).unwrap_or(0);
+    let output_delay = resampler.output_delay();
+    let valid = (rem_len as f64 * ratio).round() as usize + output_delay;
+
+    let mut output = vec![Vec::new(); num_channels];
+    if valid == 0 {
+        *remainder = vec![Vec::new(); num_channels];
+        return Ok(output);
+    }
+
+    // First block carries the carried-over input remainder, zero-padded to a block.
+    let mut first = vec![vec![0.0f32; chunk_size]; num_channels];
+    for (ch, rem) in first.iter_mut().zip(remainder.iter()) {
+        let n = rem.len().min(chunk_size);
+        ch[..n].copy_from_slice(&rem[..n]);
+    }
+    let out_chunk = resampler
+        .process(&first, None)
+        .map_err(|e| anyhow!("failed to flush resampler: {:?}", e))?;
+    for (out, och) in output.iter_mut().zip(out_chunk.iter()) {
+        out.extend_from_slice(och);
+    }
+
+    // Drain the group-delay tail with silent blocks until we have the valid count.
+    let zero = vec![vec![0.0f32; chunk_size]; num_channels];
+    while output.first().map(Vec::len).unwrap_or(0) < valid {
+        let out_chunk = resampler
+            .process(&zero, None)
+            .map_err(|e| anyhow!("failed to flush resampler: {:?}", e))?;
+        if out_chunk.iter().all(|c| c.is_empty()) {
+            break;
+        }
+        for (out, och) in output.iter_mut().zip(out_chunk.iter()) {
+            out.extend_from_slice(och);
+        }
+    }
+
+    for out in output.iter_mut() {
+        out.truncate(valid);
+    }
+    *remainder = vec![Vec::new(); num_channels];
+    Ok(output)
+}
+
 /// Continuous (streaming) varispeed resampler for the realtime producer's global
 /// playback-speed path (speed != 1). The mixer renders a `speed×` longer timeline
 /// span at normal pitch; this compresses (speed > 1) or stretches (speed < 1) it

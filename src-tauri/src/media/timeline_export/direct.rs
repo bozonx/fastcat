@@ -52,6 +52,10 @@ pub(crate) fn plan_direct(
     if export_uses_alpha(options) {
         return None;
     }
+    // Master effects apply to the final composite frame; the direct path has no compositor.
+    if !scene.master_effects.is_empty() {
+        return None;
+    }
 
     // Exactly one visible layer, and it must be a plain video clip.
     if scene.layers.len() != 1 {
