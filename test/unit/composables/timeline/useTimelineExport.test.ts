@@ -48,6 +48,7 @@ describe('useTimelineExport pure functions', () => {
     expect(getExt('mp4')).toBe('mp4');
     expect(getExt('webm')).toBe('webm');
     expect(getExt('mkv')).toBe('mkv');
+    expect(getExt('mp3')).toBe('mp3');
     expect(getExt('unknown' as any)).toBe('mp4');
   });
 

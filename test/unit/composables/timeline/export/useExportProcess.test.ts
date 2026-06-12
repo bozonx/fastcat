@@ -330,6 +330,57 @@ describe('useExportProcess - platform routing', () => {
     expect(mockExportTimeline).not.toHaveBeenCalled();
   });
 
+  it('marks mp3 exports as audio-only in Tauri mode', async () => {
+    const { isTauriRuntime } = await import('~/utils/io/io-governor');
+    vi.mocked(isTauriRuntime).mockReturnValue(true);
+
+    const { nativeExportTimeline } = await import('~/utils/tauri-media-processing');
+
+    const state = {
+      activeExportTaskId: ref<string | null>(null),
+      exportPhase: ref<'preparing' | 'encoding' | 'saving' | null>(null),
+      exportWarnings: ref<string[]>([]),
+      isExporting: ref(false),
+      cancelRequested: ref(false),
+    };
+
+    const { exportTimelineToFile } = useExportProcess(
+      state.activeExportTaskId,
+      state.exportPhase,
+      state.exportWarnings,
+      state.isExporting,
+      state.cancelRequested,
+    );
+
+    const fileHandle = { createWritable: vi.fn() } as any;
+    await exportTimelineToFile(
+      {
+        format: 'mp3',
+        videoCodec: 'none',
+        audio: true,
+        audioCodec: 'mp3',
+        audioSampleRate: 48000,
+        width: 1920,
+        height: 1080,
+        fps: 30,
+        bitrate: 5_000_000,
+        audioBitrate: 192_000,
+      } as any,
+      fileHandle,
+      () => {},
+    );
+
+    expect(nativeExportTimeline).toHaveBeenCalledWith(
+      expect.objectContaining({
+        options: expect.objectContaining({
+          format: 'mp3',
+          audioCodec: 'mp3',
+          videoEnabled: false,
+        }),
+      }),
+    );
+  });
+
   it('routes to worker client.exportTimeline in browser mode', async () => {
     const { isTauriRuntime } = await import('~/utils/io/io-governor');
     vi.mocked(isTauriRuntime).mockReturnValue(false);

@@ -5,8 +5,12 @@ export interface ProxyThumbnailServiceDeps {
     file: File | FileSystemFileHandle;
     projectRelativePath: string;
   }) => Promise<void>;
+  ensureProxyBatch: (params: {
+    entries: { file: File | FileSystemFileHandle; projectRelativePath: string }[];
+  }) => Promise<void>;
   cancelProxy: (projectRelativePath: string) => Promise<void>;
   removeProxy: (projectRelativePath: string) => Promise<void>;
+  removeProxyBatch: (params: { projectRelativePaths: string[] }) => Promise<void>;
   renameProxy: (params: { oldPath: string; newPath: string }) => Promise<void>;
   renameProxyDir: (params: { oldPath: string; newPath: string }) => Promise<void>;
   clearExistingProxies: () => void;
@@ -24,8 +28,12 @@ export interface ProxyThumbnailService {
     file: File | FileSystemFileHandle;
     projectRelativePath: string;
   }) => Promise<void>;
+  ensureProxyBatch: (params: {
+    entries: { file: File | FileSystemFileHandle; projectRelativePath: string }[];
+  }) => Promise<void>;
   cancelProxy: (projectRelativePath: string) => Promise<void>;
   removeProxy: (projectRelativePath: string) => Promise<void>;
+  removeProxyBatch: (params: { projectRelativePaths: string[] }) => Promise<void>;
   renameProxy: (params: { oldPath: string; newPath: string }) => Promise<void>;
   renameProxyDir: (params: { oldPath: string; newPath: string }) => Promise<void>;
   clearExistingProxies: () => void;
@@ -47,8 +55,10 @@ export function createProxyThumbnailService(
         file: params.file,
         projectRelativePath: params.projectRelativePath,
       }),
+    ensureProxyBatch: (params) => deps.ensureProxyBatch(params),
     cancelProxy: (projectRelativePath) => deps.cancelProxy(projectRelativePath),
     removeProxy: (projectRelativePath) => deps.removeProxy(projectRelativePath),
+    removeProxyBatch: (params) => deps.removeProxyBatch(params),
     renameProxy: (params) => deps.renameProxy(params),
     renameProxyDir: (params) => deps.renameProxyDir(params),
     clearExistingProxies: () => deps.clearExistingProxies(),

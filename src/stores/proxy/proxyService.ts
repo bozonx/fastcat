@@ -184,7 +184,7 @@ export function createProxyService(params: {
   async function generateProxy(
     file: File | FileSystemFileHandle,
     projectRelativePath: string,
-    options?: { signal?: AbortSignal },
+    options?: { signal?: AbortSignal; suppressBgTask?: boolean },
   ): Promise<void> {
     // Wait if currently generating (e.g. cancellation still in progress)
     if (params.generatingProxies.value.has(projectRelativePath)) return;
@@ -203,23 +203,25 @@ export function createProxyService(params: {
     params.proxyProgress.value = new Map(params.proxyProgress.value).set(projectRelativePath, 0);
 
     const controller = new AbortController();
+    let bgTaskId: string | null = null;
 
-    // Add to background tasks
-    const bgTaskId = params.backgroundTasksStore.addTask({
-      type: 'proxy',
-      title: params.getProxyTaskTitle({
-        fileName: projectRelativePath.split('/').pop() ?? projectRelativePath,
+    if (!options?.suppressBgTask) {
+      bgTaskId = params.backgroundTasksStore.addTask({
+        type: 'proxy',
+        title: params.getProxyTaskTitle({
+          fileName: projectRelativePath.split('/').pop() ?? projectRelativePath,
+          projectRelativePath,
+        }),
+        status: 'pending',
+        cancel: async () => {
+          await cancelProxyGeneration(projectRelativePath);
+        },
+      });
+      params.bgTaskIdsByPath.value = new Map(params.bgTaskIdsByPath.value).set(
         projectRelativePath,
-      }),
-      status: 'pending',
-      cancel: async () => {
-        await cancelProxyGeneration(projectRelativePath);
-      },
-    });
-    params.bgTaskIdsByPath.value = new Map(params.bgTaskIdsByPath.value).set(
-      projectRelativePath,
-      bgTaskId,
-    );
+        bgTaskId,
+      );
+    }
 
     params.proxyAbortControllers.value = new Map(params.proxyAbortControllers.value).set(
       projectRelativePath,
@@ -416,7 +418,9 @@ export function createProxyService(params: {
               // Best-effort cleanup
             }
             const nextStatus = (innerErr as Error)?.name === 'AbortError' ? 'cancelled' : 'failed';
-            params.backgroundTasksStore.updateTaskStatus(bgTaskId, nextStatus, String(innerErr));
+            if (bgTaskId) {
+              params.backgroundTasksStore.updateTaskStatus(bgTaskId, nextStatus, String(innerErr));
+            }
             throw innerErr;
           } finally {
             const nextActiveWorkerPaths = new Set(params.activeWorkerPaths.value);
@@ -466,11 +470,13 @@ export function createProxyService(params: {
       // The inner catch already wrote a terminal status; calling updateTaskStatus
       // here is a no-op because the store guards terminal transitions, but we
       // still attempt it for tasks that never entered the queue body.
-      params.backgroundTasksStore.updateTaskStatus(
-        bgTaskId,
-        isAbort ? 'cancelled' : 'failed',
-        String(e),
-      );
+      if (bgTaskId) {
+        params.backgroundTasksStore.updateTaskStatus(
+          bgTaskId,
+          isAbort ? 'cancelled' : 'failed',
+          String(e),
+        );
+      }
 
       const nextGenerating = new Set(params.generatingProxies.value);
       nextGenerating.delete(projectRelativePath);
@@ -516,6 +522,93 @@ export function createProxyService(params: {
         // ignore
       }
     }
+  }
+
+  async function generateProxiesBatch(
+    entries: { file: File | FileSystemFileHandle; projectRelativePath: string }[],
+    options?: { signal?: AbortSignal },
+  ): Promise<void> {
+    if (entries.length === 0) return;
+    if (entries.length === 1) {
+      await generateProxy(entries[0].file, entries[0].projectRelativePath, options);
+      return;
+    }
+
+    const batchBgTaskId = params.backgroundTasksStore.addTask({
+      type: 'proxy',
+      title: params.getProxyTaskTitle({
+        fileName: `${entries.length}`,
+        projectRelativePath: '',
+      }),
+      status: 'pending',
+      cancel: async () => {
+        for (const { projectRelativePath } of entries) {
+          await cancelProxyGeneration(projectRelativePath);
+        }
+      },
+    });
+    params.backgroundTasksStore.updateTaskStatus(batchBgTaskId, 'running');
+
+    let completedCount = 0;
+    let failedCount = 0;
+
+    for (const { file, projectRelativePath } of entries) {
+      try {
+        await generateProxy(file, projectRelativePath, {
+          signal: options?.signal,
+          suppressBgTask: true,
+        });
+        completedCount++;
+      } catch (err) {
+        failedCount++;
+        log.warn('Failed to generate proxy in batch', projectRelativePath, err);
+      }
+      params.backgroundTasksStore.updateTaskProgress(
+        batchBgTaskId,
+        (completedCount + failedCount) / entries.length,
+      );
+    }
+
+    if (failedCount === entries.length) {
+      params.backgroundTasksStore.updateTaskStatus(
+        batchBgTaskId,
+        'failed',
+        'All proxy generations failed',
+      );
+    } else if (failedCount > 0) {
+      params.backgroundTasksStore.updateTaskStatus(
+        batchBgTaskId,
+        'completed',
+        `${failedCount} of ${entries.length} failed`,
+      );
+    } else {
+      params.backgroundTasksStore.updateTaskStatus(batchBgTaskId, 'completed');
+    }
+  }
+
+  async function deleteProxiesBatch(projectRelativePaths: string[]): Promise<void> {
+    if (projectRelativePaths.length === 0) return;
+    if (projectRelativePaths.length === 1) {
+      await deleteProxy(projectRelativePaths[0]);
+      return;
+    }
+
+    const batchBgTaskId = params.backgroundTasksStore.addTask({
+      type: 'proxy',
+      title: params.getProxyTaskTitle({
+        fileName: `${projectRelativePaths.length}`,
+        projectRelativePath: '',
+      }),
+      status: 'pending',
+    });
+    params.backgroundTasksStore.updateTaskStatus(batchBgTaskId, 'running');
+
+    for (let i = 0; i < projectRelativePaths.length; i++) {
+      await deleteProxy(projectRelativePaths[i]);
+      params.backgroundTasksStore.updateTaskProgress(batchBgTaskId, (i + 1) / projectRelativePaths.length);
+    }
+
+    params.backgroundTasksStore.updateTaskStatus(batchBgTaskId, 'completed');
   }
 
   async function deleteProxy(projectRelativePath: string) {
@@ -628,5 +721,7 @@ export function createProxyService(params: {
     renameProxyDir,
     getProxyFileHandle,
     getProxyFile,
+    generateProxiesBatch,
+    deleteProxiesBatch,
   };
 }

@@ -864,9 +864,11 @@ export function useFileManager(options?: {
     hasProxy: (path) => proxyStore.existingProxies.has(path),
     ensureProxy: async ({ file, projectRelativePath }) =>
       await proxyStore.generateProxy(file, projectRelativePath),
+    ensureProxyBatch: async (params) => await proxyStore.generateProxiesBatch(params.entries),
     cancelProxy: async (projectRelativePath) =>
       await proxyStore.cancelProxyGeneration(projectRelativePath),
     removeProxy: async (projectRelativePath) => await proxyStore.deleteProxy(projectRelativePath),
+    removeProxyBatch: async (params) => await proxyStore.deleteProxiesBatch(params.projectRelativePaths),
     renameProxy: async (params) => await proxyStore.renameProxy(params),
     renameProxyDir: async (params) => await proxyStore.renameProxyDir(params),
     clearExistingProxies: () => proxyStore.existingProxies.clear(),

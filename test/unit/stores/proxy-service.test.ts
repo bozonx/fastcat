@@ -517,4 +517,137 @@ describe('createProxyService', () => {
       expect(queue.add).toHaveBeenCalledTimes(1);
     });
   });
+
+  describe('generateProxiesBatch', () => {
+    it('creates a single background task for multiple files', async () => {
+      const { service, addTask, updateTaskStatus, updateTaskProgress } = createService();
+
+      mockWorkerClient.client.extractMetadata.mockResolvedValue({
+        video: { width: 1920, height: 1080, fps: 30 },
+        audio: { codec: 'aac' },
+        duration: 10,
+      });
+      mockWorkerClient.client.exportTimeline.mockResolvedValue(undefined);
+
+      const entries = [
+        { file: new File([], 'a.mp4'), projectRelativePath: '_video/a.mp4' },
+        { file: new File([], 'b.mp4'), projectRelativePath: '_video/b.mp4' },
+      ];
+
+      await service.generateProxiesBatch(entries);
+
+      expect(addTask).toHaveBeenCalledTimes(1);
+      expect(updateTaskStatus).toHaveBeenCalledWith(expect.any(String), 'running');
+      expect(updateTaskStatus).toHaveBeenCalledWith(expect.any(String), 'completed');
+      expect(updateTaskProgress).toHaveBeenCalledWith(expect.any(String), 1);
+    });
+
+    it('suppresses individual bg tasks when batching', async () => {
+      const { service, addTask } = createService();
+
+      mockWorkerClient.client.extractMetadata.mockResolvedValue({
+        video: { width: 1920, height: 1080, fps: 30 },
+        audio: { codec: 'aac' },
+        duration: 10,
+      });
+      mockWorkerClient.client.exportTimeline.mockResolvedValue(undefined);
+
+      const entries = [
+        { file: new File([], 'a.mp4'), projectRelativePath: '_video/a.mp4' },
+        { file: new File([], 'b.mp4'), projectRelativePath: '_video/b.mp4' },
+      ];
+
+      await service.generateProxiesBatch(entries);
+
+      // Only one task (the batch task)
+      expect(addTask).toHaveBeenCalledTimes(1);
+    });
+
+    it('marks batch failed when all entries fail', async () => {
+      const { service, updateTaskStatus } = createService();
+
+      mockWorkerClient.client.extractMetadata.mockRejectedValue(new Error('metadata failed'));
+
+      const entries = [
+        { file: new File([], 'a.mp4'), projectRelativePath: '_video/a.mp4' },
+        { file: new File([], 'b.mp4'), projectRelativePath: '_video/b.mp4' },
+      ];
+
+      await service.generateProxiesBatch(entries);
+
+      expect(updateTaskStatus).toHaveBeenCalledWith(
+        expect.any(String),
+        'failed',
+        expect.stringContaining('All proxy generations failed'),
+      );
+    });
+
+    it('marks batch completed with warnings when some entries fail', async () => {
+      const { service, updateTaskStatus } = createService();
+
+      mockWorkerClient.client.extractMetadata
+        .mockRejectedValueOnce(new Error('metadata failed'))
+        .mockResolvedValueOnce({
+          video: { width: 1920, height: 1080, fps: 30 },
+          audio: { codec: 'aac' },
+          duration: 10,
+        });
+      mockWorkerClient.client.exportTimeline.mockResolvedValue(undefined);
+
+      const entries = [
+        { file: new File([], 'a.mp4'), projectRelativePath: '_video/a.mp4' },
+        { file: new File([], 'b.mp4'), projectRelativePath: '_video/b.mp4' },
+      ];
+
+      await service.generateProxiesBatch(entries);
+
+      expect(updateTaskStatus).toHaveBeenCalledWith(
+        expect.any(String),
+        'completed',
+        expect.stringContaining('failed'),
+      );
+    });
+
+    it('delegates to single generateProxy for one entry', async () => {
+      const { service, addTask } = createService();
+
+      mockWorkerClient.client.extractMetadata.mockResolvedValue({
+        video: { width: 1920, height: 1080, fps: 30 },
+        audio: { codec: 'aac' },
+        duration: 10,
+      });
+      mockWorkerClient.client.exportTimeline.mockResolvedValue(undefined);
+
+      const entries = [
+        { file: new File([], 'a.mp4'), projectRelativePath: '_video/a.mp4' },
+      ];
+
+      await service.generateProxiesBatch(entries);
+
+      // Should create the single-file bg task (not a batch task)
+      expect(addTask).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('deleteProxiesBatch', () => {
+    it('creates a single background task and deletes all proxies', async () => {
+      const { service, addTask, updateTaskStatus, mockDir } = createService();
+
+      await service.deleteProxiesBatch(['_video/a.mp4', '_video/b.mp4']);
+
+      expect(addTask).toHaveBeenCalledTimes(1);
+      expect(mockDir.removeEntry).toHaveBeenCalledWith('_video/a.mp4.proxy.mp4');
+      expect(mockDir.removeEntry).toHaveBeenCalledWith('_video/b.mp4.proxy.mp4');
+      expect(updateTaskStatus).toHaveBeenCalledWith(expect.any(String), 'completed');
+    });
+
+    it('delegates to single deleteProxy for one path', async () => {
+      const { service, addTask, mockDir } = createService();
+
+      await service.deleteProxiesBatch(['_video/a.mp4']);
+
+      expect(addTask).not.toHaveBeenCalled();
+      expect(mockDir.removeEntry).toHaveBeenCalledWith('_video/a.mp4.proxy.mp4');
+    });
+  });
 });

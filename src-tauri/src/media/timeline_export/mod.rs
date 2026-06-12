@@ -162,6 +162,7 @@ pub fn export_timeline(
             sample_rate,
             output_channels,
             target_path: &path,
+            should_cancel: Some(&|| tasks.was_cancelled(task_id)),
         })
         .context("failed to render native audio mix")
         {

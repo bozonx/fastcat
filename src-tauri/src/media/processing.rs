@@ -1145,6 +1145,66 @@ mod tests {
     }
 
     #[test]
+    fn test_actual_conversion_reverse() {
+        let tasks = NativeMediaTasks::default();
+        let source_path = Path::new("../test/fixtures/media/sample-1s-audio.mp3");
+
+        let test_cases = vec![
+            ("m4a", "aac"),
+            ("flac", "flac"),
+            ("wav", "pcm"),
+            ("mp3", "mp3"),
+            ("opus", "opus"),
+        ];
+
+        for (format, codec) in test_cases {
+            let target_filename = format!("target_test_reversed_{codec}.{format}");
+            let target_path = Path::new(&target_filename);
+
+            let options = NativeConvertOptions {
+                kind: "audio".into(),
+                format: format.into(),
+                video_codec: None,
+                video_bitrate_bps: None,
+                audio_codec: Some(codec.into()),
+                audio_bitrate_bps: Some(128_000),
+                audio: Some(true),
+                width: None,
+                height: None,
+                fps: None,
+                audio_channels: Some(2),
+                audio_sample_rate: Some(48_000),
+                audio_reverse: Some(true),
+                ffmpeg_path: None,
+                ffprobe_path: None,
+                hardware_acceleration_mode: None,
+                vaapi_device: None,
+                enable_hardware_encoding: None,
+            };
+
+            let result = convert_media(
+                &tasks,
+                &format!("test_task_reverse_{codec}"),
+                source_path,
+                target_path,
+                options,
+            );
+
+            assert!(result.is_ok(), "Conversion failed for codec {codec}: {:?}", result.err());
+            assert!(target_path.exists());
+
+            // Probe the file to ensure it's not corrupted
+            let probe = probe_media(target_path, "ffprobe");
+            assert!(probe.is_ok(), "Probe failed for codec {codec}: {:?}", probe.err());
+            let meta = probe.unwrap();
+            assert!(meta.duration > 0.0);
+
+            // Clean up
+            let _ = std::fs::remove_file(target_path);
+        }
+    }
+
+    #[test]
     fn conversion_lossless_audio_skips_bitrate() {
         let options = NativeConvertOptions {
             kind: "audio".into(),

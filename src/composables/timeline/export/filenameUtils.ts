@@ -1,6 +1,6 @@
 export function getExt(
-  fmt: 'mp4' | 'webm' | 'mkv' | 'aac' | 'opus' | 'ogg' | 'flac' | 'wav' | 'pcm',
-): 'mp4' | 'webm' | 'mkv' | 'aac' | 'opus' | 'ogg' | 'flac' | 'wav' | 'pcm' {
+  fmt: 'mp4' | 'webm' | 'mkv' | 'aac' | 'opus' | 'ogg' | 'flac' | 'wav' | 'pcm' | 'mp3',
+): 'mp4' | 'webm' | 'mkv' | 'aac' | 'opus' | 'ogg' | 'flac' | 'wav' | 'pcm' | 'mp3' {
   if (fmt === 'webm') return 'webm';
   if (fmt === 'mkv') return 'mkv';
   if (fmt === 'aac') return 'aac';
@@ -9,6 +9,7 @@ export function getExt(
   if (fmt === 'flac') return 'flac';
   if (fmt === 'wav') return 'wav';
   if (fmt === 'pcm') return 'pcm';
+  if (fmt === 'mp3') return 'mp3';
   return 'mp4';
 }
 

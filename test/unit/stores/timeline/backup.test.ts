@@ -73,7 +73,7 @@ describe('createTimelineBackupModule', () => {
       expect(backup.backupVersions.value).toEqual([]);
     });
 
-    it('lists the main file and autosave when both exist', async () => {
+    it('lists the main file and does not list autosave when both exist', async () => {
       const files: Record<string, FileMeta> = {
         'project/clip.otio': { text: 'main', lastModified: 1000 },
         '.fastcat/autosave/project/clip.otio': { text: 'autosave', lastModified: 2000 },
@@ -83,12 +83,10 @@ describe('createTimelineBackupModule', () => {
 
       await backup.loadBackupVersions();
 
-      expect(backup.backupVersions.value.map((v) => v.type)).toEqual(['main', 'autosave']);
+      expect(backup.backupVersions.value.map((v) => v.type)).toEqual(['main']);
       const main = backup.backupVersions.value[0];
       expect(main.path).toBe('project/clip.otio');
       expect(main.size).toBe(4); // 'main'.length
-      expect(backup.backupVersions.value[1].path).toBe('.fastcat/autosave/project/clip.otio');
-      expect(backup.backupVersions.value[1].name).toBe('clip.otio');
     });
 
     it('does not flush autosave or list it when isMobile is true', async () => {

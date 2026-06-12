@@ -141,13 +141,14 @@ pub fn format_time(time_sec: f64) -> String {
 /// Returns the encoder name and whether the original request had to be substituted.
 pub fn resolve_audio_encoder(requested: Option<&str>, format: &str) -> (&'static str, bool) {
     let is_webm = format == "webm";
+    let is_ogg = format == "ogg" || format == "opus";
     match requested.map(|s| s.trim().to_ascii_lowercase()).as_deref() {
         Some("opus") | Some("libopus") => ("libopus", false),
         // FLAC/PCM ride in mkv/flac/wav containers, but mp4/mov and webm can't
         // carry them — remap to the container's safe lossy default rather than
         // handing ffmpeg an invalid stream/container pairing.
         Some("flac") => {
-            if is_webm {
+            if is_webm || is_ogg {
                 ("libopus", true)
             } else if format == "mp4" || format == "mov" {
                 ("aac", true)
@@ -156,7 +157,7 @@ pub fn resolve_audio_encoder(requested: Option<&str>, format: &str) -> (&'static
             }
         }
         Some("pcm") => {
-            if is_webm {
+            if is_webm || is_ogg {
                 ("libopus", true)
             } else if format == "mp4" || format == "mov" {
                 ("aac", true)
@@ -164,26 +165,46 @@ pub fn resolve_audio_encoder(requested: Option<&str>, format: &str) -> (&'static
                 ("pcm_s16le", false)
             }
         }
-        // webm only carries opus/vorbis; AAC requests are remapped to opus.
+        // webm/ogg only carry Opus/Vorbis in our exporter; AAC requests are remapped.
         Some("aac") | None => {
-            if is_webm {
+            if is_webm || is_ogg {
                 ("libopus", requested.is_some())
+            } else if requested.is_none() {
+                match format {
+                    "wav" | "pcm" => ("pcm_s16le", true),
+                    "flac" => ("flac", true),
+                    "mp3" => ("libmp3lame", true),
+                    "aac" => ("aac", false),
+                    _ => ("aac", false),
+                }
             } else {
                 ("aac", false)
             }
         }
         Some("libfdk_aac") => {
-            if is_webm {
+            if is_webm || is_ogg {
                 ("libopus", true)
             } else {
                 ("aac", true)
             }
         }
-        Some("vorbis") | Some("libvorbis") => ("libvorbis", false),
-        Some("mp3") | Some("libmp3lame") => ("libmp3lame", false),
+        Some("vorbis") | Some("libvorbis") => {
+            if format == "opus" {
+                ("libopus", true)
+            } else {
+                ("libvorbis", false)
+            }
+        }
+        Some("mp3") | Some("libmp3lame") => {
+            if is_webm || is_ogg {
+                ("libopus", true)
+            } else {
+                ("libmp3lame", false)
+            }
+        }
         // Anything else is not something we can safely hand to ffmpeg unchecked.
         Some(_) => {
-            if is_webm {
+            if is_webm || is_ogg {
                 ("libopus", true)
             } else {
                 ("aac", true)

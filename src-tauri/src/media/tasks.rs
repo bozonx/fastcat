@@ -15,7 +15,7 @@ pub struct NativeMediaTasks {
 impl NativeMediaTasks {
     pub(crate) fn insert(&self, task_id: &str, child: Child) -> Arc<Mutex<Child>> {
         let child = Arc::new(Mutex::new(child));
-        self.cancelled.lock().remove(task_id);
+        let was_cancelled = self.cancelled.lock().contains(task_id);
         // Reusing a task id while a previous process is still registered would
         // orphan that process (cancel only ever sees the latest). Kill the old one.
         let previous = self
@@ -24,6 +24,11 @@ impl NativeMediaTasks {
             .insert(task_id.to_string(), child.clone());
         if let Some(previous) = previous {
             let mut guard = previous.lock();
+            let _ = guard.kill();
+            let _ = guard.wait();
+        }
+        if was_cancelled {
+            let mut guard = child.lock();
             let _ = guard.kill();
             let _ = guard.wait();
         }

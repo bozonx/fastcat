@@ -352,24 +352,6 @@ export function createTimelineBackupModule(deps: TimelineBackupDeps): TimelineBa
         });
       }
 
-      // 2. Autosave (only on desktop)
-      if (!deps.isMobile?.value) {
-        const autosavePath = `.fastcat/autosave/${deps.currentTimelinePath.value}`;
-        const autosaveMeta = await deps.projectStore.getFileMetadata(autosavePath);
-        if (autosaveMeta) {
-          const fileName =
-            deps.currentTimelinePath.value.split('/').pop() || deps.currentTimelinePath.value;
-          list.push({
-            type: 'autosave',
-            name: fileName,
-            path: autosavePath,
-            date: new Date(autosaveMeta.lastModified),
-            size: autosaveMeta.size,
-            label: deps.t('videoEditor.timeline.backups.autosave'),
-          });
-        }
-      }
-
       // 3. Backups
       const pathParts = deps.currentTimelinePath.value.split('/');
       const fileName = pathParts.pop();

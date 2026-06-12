@@ -497,3 +497,17 @@ fn test_mp4_flac_request_remaps_to_aac() {
         ("pcm_s16le", false)
     );
 }
+
+#[test]
+fn test_audio_only_formats_choose_container_safe_defaults() {
+    assert_eq!(resolve_audio_encoder(None, "wav"), ("pcm_s16le", true));
+    assert_eq!(resolve_audio_encoder(None, "flac"), ("flac", true));
+    assert_eq!(resolve_audio_encoder(None, "mp3"), ("libmp3lame", true));
+    assert_eq!(resolve_audio_encoder(None, "opus"), ("libopus", false));
+    assert_eq!(resolve_audio_encoder(Some("aac"), "ogg"), ("libopus", true));
+    assert_eq!(resolve_audio_encoder(Some("mp3"), "ogg"), ("libopus", true));
+    assert_eq!(
+        resolve_audio_encoder(Some("vorbis"), "opus"),
+        ("libopus", true)
+    );
+}

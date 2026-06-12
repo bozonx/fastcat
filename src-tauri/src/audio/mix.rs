@@ -19,6 +19,13 @@ pub struct WavRenderParams<'a> {
     pub sample_rate: u32,
     pub output_channels: usize,
     pub target_path: &'a Path,
+    pub should_cancel: Option<&'a (dyn Fn() -> bool + Send + Sync)>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum DecodeErrorPolicy {
+    WarnAndSkip,
+    Propagate,
 }
 
 /// Renders the audio scene to an f32 WAV file.
@@ -38,6 +45,16 @@ pub fn render_scene_to_wav(params: WavRenderParams<'_>) -> anyhow::Result<()> {
         start
     };
     let estimated_frames = ((end - start) * target.sample_rate as f64).round().max(1.0) as u64;
+    let estimated_data_size = estimated_frames
+        .saturating_mul(target.channels as u64)
+        .saturating_mul(4);
+    if estimated_data_size > u32::MAX as u64 {
+        return Err(anyhow::anyhow!(
+            "WAV data size {} exceeds 32-bit limit ({}). Use a shorter export range or lower sample rate.",
+            estimated_data_size,
+            u32::MAX
+        ));
+    }
     let mut file = std::fs::File::create(params.target_path)
         .with_context(|| format!("create audio wav {}", params.target_path.display()))?;
 
@@ -48,12 +65,18 @@ pub fn render_scene_to_wav(params: WavRenderParams<'_>) -> anyhow::Result<()> {
 
     let mut written_frames = 0u64;
     while written_frames < estimated_frames {
+        if params
+            .should_cancel
+            .is_some_and(|should_cancel| should_cancel())
+        {
+            return Err(anyhow::anyhow!("cancelled"));
+        }
         let chunk_frames = ((CHUNK_DURATION_SEC * target.sample_rate as f64).round() as u64)
             .min(estimated_frames - written_frames)
             .max(1);
         let chunk_duration = chunk_frames as f64 / target.sample_rate as f64;
         let chunk_start = start + written_frames as f64 / target.sample_rate as f64;
-        let chunk = mix_chunk(
+        let chunk = mix_chunk_strict(
             params.scene,
             params.tracks,
             params.master_gain,
@@ -61,7 +84,7 @@ pub fn render_scene_to_wav(params: WavRenderParams<'_>) -> anyhow::Result<()> {
             chunk_duration,
             target,
             &shared,
-        );
+        )?;
         let samples_to_write = chunk_frames as usize * target.channels;
         for sample in chunk.into_iter().take(samples_to_write) {
             file.write_all(&sample.to_le_bytes())?;
@@ -73,13 +96,6 @@ pub fn render_scene_to_wav(params: WavRenderParams<'_>) -> anyhow::Result<()> {
     let data_size = written_frames
         .saturating_mul(target.channels as u64)
         .saturating_mul(4);
-    if data_size > u32::MAX as u64 {
-        return Err(anyhow::anyhow!(
-            "WAV data size {} exceeds 32-bit limit ({}). Use a shorter export range or lower sample rate.",
-            data_size,
-            u32::MAX
-        ));
-    }
     let riff_size = 36u64.saturating_add(data_size);
     file.seek(std::io::SeekFrom::Start(4))?;
     file.write_all(&(riff_size as u32).to_le_bytes())?;
@@ -126,7 +142,7 @@ pub(crate) fn mix_chunk(
     target: AudioRenderTarget,
     shared: &Arc<(Mutex<AudioShared>, Condvar)>,
 ) -> Vec<f32> {
-    mix_chunk_ramped(
+    mix_chunk_ramped_result(
         scene,
         tracks,
         master_gain,
@@ -135,7 +151,9 @@ pub(crate) fn mix_chunk(
         chunk_duration_sec,
         target,
         shared,
+        DecodeErrorPolicy::WarnAndSkip,
     )
+    .expect("warn-and-skip audio mix policy must not return decode errors")
 }
 
 /// Same as [`mix_chunk`] but, when `prev_master_gain` is `Some`, ramps the master
@@ -156,6 +174,54 @@ pub(crate) fn mix_chunk_ramped(
     target: AudioRenderTarget,
     shared: &Arc<(Mutex<AudioShared>, Condvar)>,
 ) -> Vec<f32> {
+    mix_chunk_ramped_result(
+        scene,
+        tracks,
+        master_gain,
+        prev_master_gain,
+        chunk_start_sec,
+        chunk_duration_sec,
+        target,
+        shared,
+        DecodeErrorPolicy::WarnAndSkip,
+    )
+    .expect("warn-and-skip audio mix policy must not return decode errors")
+}
+
+pub(crate) fn mix_chunk_strict(
+    scene: &[SceneAudioLayer],
+    tracks: &[SceneAudioTrack],
+    master_gain: f64,
+    chunk_start_sec: f64,
+    chunk_duration_sec: f64,
+    target: AudioRenderTarget,
+    shared: &Arc<(Mutex<AudioShared>, Condvar)>,
+) -> anyhow::Result<Vec<f32>> {
+    mix_chunk_ramped_result(
+        scene,
+        tracks,
+        master_gain,
+        None,
+        chunk_start_sec,
+        chunk_duration_sec,
+        target,
+        shared,
+        DecodeErrorPolicy::Propagate,
+    )
+}
+
+#[allow(clippy::too_many_arguments)]
+fn mix_chunk_ramped_result(
+    scene: &[SceneAudioLayer],
+    tracks: &[SceneAudioTrack],
+    master_gain: f64,
+    prev_master_gain: Option<f64>,
+    chunk_start_sec: f64,
+    chunk_duration_sec: f64,
+    target: AudioRenderTarget,
+    shared: &Arc<(Mutex<AudioShared>, Condvar)>,
+    decode_error_policy: DecodeErrorPolicy,
+) -> anyhow::Result<Vec<f32>> {
     let sample_rate = target.sample_rate;
     let output_channels = target.channels;
     let frames = (chunk_duration_sec * sample_rate as f64).round().max(1.0) as usize;
@@ -203,17 +269,20 @@ pub(crate) fn mix_chunk_ramped(
         let mut has_audio_on_track = false;
 
         for layer in layers {
-            has_audio_on_track |= mix_layer_into(MixLayerParams {
-                buffer: &mut track_mixed,
-                layer,
-                chunk_start_sec,
-                chunk_end_sec,
-                frames,
-                sample_rate,
-                output_channels,
-                target,
-                shared,
-            });
+            has_audio_on_track |= mix_layer_into(
+                MixLayerParams {
+                    buffer: &mut track_mixed,
+                    layer,
+                    chunk_start_sec,
+                    chunk_end_sec,
+                    frames,
+                    sample_rate,
+                    output_channels,
+                    target,
+                    shared,
+                },
+                decode_error_policy,
+            )?;
         }
 
         if has_audio_on_track {
@@ -232,17 +301,20 @@ pub(crate) fn mix_chunk_ramped(
     // They have no track to solo, so any active solo silences them entirely.
     if !has_solo {
         for layer in orphan_layers {
-            mix_layer_into(MixLayerParams {
-                buffer: &mut mixed,
-                layer,
-                chunk_start_sec,
-                chunk_end_sec,
-                frames,
-                sample_rate,
-                output_channels,
-                target,
-                shared,
-            });
+            mix_layer_into(
+                MixLayerParams {
+                    buffer: &mut mixed,
+                    layer,
+                    chunk_start_sec,
+                    chunk_end_sec,
+                    frames,
+                    sample_rate,
+                    output_channels,
+                    target,
+                    shared,
+                },
+                decode_error_policy,
+            )?;
         }
     }
 
@@ -253,7 +325,7 @@ pub(crate) fn mix_chunk_ramped(
         None => apply_master_gain(&mut mixed, master_gain),
     }
     soft_clip(&mut mixed);
-    mixed
+    Ok(mixed)
 }
 
 /// Resolves the bus track that owns a layer. An empty `tid` is never matched
@@ -292,7 +364,10 @@ struct MixLayerParams<'a> {
 
 /// Decodes, optionally reverses, and mixes a single layer into `buffer`.
 /// Returns `true` if the layer contributed audio to this chunk.
-fn mix_layer_into(params: MixLayerParams<'_>) -> bool {
+fn mix_layer_into(
+    params: MixLayerParams<'_>,
+    decode_error_policy: DecodeErrorPolicy,
+) -> anyhow::Result<bool> {
     let MixLayerParams {
         buffer,
         layer,
@@ -305,7 +380,7 @@ fn mix_layer_into(params: MixLayerParams<'_>) -> bool {
         shared,
     } = params;
     if layer.timeline_end_sec <= chunk_start_sec || layer.timeline_start_sec >= chunk_end_sec {
-        return false;
+        return Ok(false);
     }
     let raw_segment_start = chunk_start_sec.max(layer.timeline_start_sec);
     let raw_segment_end = chunk_end_sec.min(layer.timeline_end_sec);
@@ -317,7 +392,7 @@ fn mix_layer_into(params: MixLayerParams<'_>) -> bool {
         frames,
     );
     if frames_to_write == 0 {
-        return false;
+        return Ok(false);
     }
     let segment_start = chunk_start_sec + write_start_frame as f64 / sample_rate as f64;
     let segment_duration = frames_to_write as f64 / sample_rate as f64;
@@ -326,7 +401,7 @@ fn mix_layer_into(params: MixLayerParams<'_>) -> bool {
     let reversed = layer.speed < 0.0;
     if !target.is_export() && reversed {
         // Reverse audio is muted in preview/monitor; only rendered on export.
-        return false;
+        return Ok(false);
     }
 
     let speed = sanitize_speed(layer.speed.abs());
@@ -350,11 +425,14 @@ fn mix_layer_into(params: MixLayerParams<'_>) -> bool {
     {
         Ok(decoded) => decoded,
         Err(error) => {
+            if decode_error_policy == DecodeErrorPolicy::Propagate {
+                return Err(error);
+            }
             log::warn!(
                 "[audio] skipping layer {} at {chunk_start_sec:.3}s: {error:?}",
                 layer.id
             );
-            return false;
+            return Ok(false);
         }
     };
 
@@ -391,7 +469,7 @@ fn mix_layer_into(params: MixLayerParams<'_>) -> bool {
         segment_start_sec: segment_start,
         channels: output_channels,
     });
-    true
+    Ok(true)
 }
 
 fn chunk_write_range(
@@ -1153,17 +1231,21 @@ mod tests {
             audio_effects: vec![],
         };
         let shared = Arc::new((Mutex::new(AudioShared::default()), Condvar::new()));
-        let preview_result = mix_layer_into(MixLayerParams {
-            buffer: &mut vec![0.0f32; 4800],
-            layer: &l,
-            chunk_start_sec: 0.0,
-            chunk_end_sec: 0.05,
-            frames: 2400,
-            sample_rate: 48000,
-            output_channels: 2,
-            target: AudioRenderTarget::monitor(48000, 2),
-            shared: &shared,
-        });
+        let preview_result = mix_layer_into(
+            MixLayerParams {
+                buffer: &mut vec![0.0f32; 4800],
+                layer: &l,
+                chunk_start_sec: 0.0,
+                chunk_end_sec: 0.05,
+                frames: 2400,
+                sample_rate: 48000,
+                output_channels: 2,
+                target: AudioRenderTarget::monitor(48000, 2),
+                shared: &shared,
+            },
+            DecodeErrorPolicy::WarnAndSkip,
+        )
+        .unwrap();
         assert!(!preview_result, "reverse audio should be muted in preview");
     }
 
@@ -1188,17 +1270,21 @@ mod tests {
             audio_effects: vec![],
         };
         let shared = Arc::new((Mutex::new(AudioShared::default()), Condvar::new()));
-        let export_result = mix_layer_into(MixLayerParams {
-            buffer: &mut vec![0.0f32; 4800],
-            layer: &l,
-            chunk_start_sec: 0.0,
-            chunk_end_sec: 0.05,
-            frames: 2400,
-            sample_rate: 48000,
-            output_channels: 2,
-            target: AudioRenderTarget::export(48000, 2),
-            shared: &shared,
-        });
+        let export_result = mix_layer_into(
+            MixLayerParams {
+                buffer: &mut vec![0.0f32; 4800],
+                layer: &l,
+                chunk_start_sec: 0.0,
+                chunk_end_sec: 0.05,
+                frames: 2400,
+                sample_rate: 48000,
+                output_channels: 2,
+                target: AudioRenderTarget::export(48000, 2),
+                shared: &shared,
+            },
+            DecodeErrorPolicy::WarnAndSkip,
+        )
+        .unwrap();
         assert!(export_result, "reverse audio should be enabled in export");
     }
 
@@ -1230,9 +1316,8 @@ mod tests {
     fn render_scene_to_wav_produces_valid_header() {
         let tmp =
             std::env::temp_dir().join(format!("fastcat-audit-wav-test-{}.wav", std::process::id()));
-        let l = layer();
         render_scene_to_wav(WavRenderParams {
-            scene: &[l],
+            scene: &[],
             tracks: &[],
             master_gain: 1.0,
             start_sec: 0.0,
@@ -1240,6 +1325,7 @@ mod tests {
             sample_rate: 48000,
             output_channels: 1,
             target_path: &tmp,
+            should_cancel: None,
         })
         .unwrap();
 
@@ -1255,5 +1341,82 @@ mod tests {
         assert_eq!(riff_size, 36 + data_size);
 
         let _ = std::fs::remove_file(&tmp);
+    }
+
+    #[test]
+    fn render_scene_to_wav_propagates_decode_errors() {
+        let tmp = std::env::temp_dir().join(format!(
+            "fastcat-audit-wav-missing-test-{}.wav",
+            std::process::id()
+        ));
+        let l = layer();
+        let result = render_scene_to_wav(WavRenderParams {
+            scene: &[l],
+            tracks: &[],
+            master_gain: 1.0,
+            start_sec: 0.0,
+            end_sec: 0.01,
+            sample_rate: 48000,
+            output_channels: 1,
+            target_path: &tmp,
+            should_cancel: None,
+        });
+
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("decode audio layer a1"));
+        let _ = std::fs::remove_file(&tmp);
+    }
+
+    #[test]
+    fn render_scene_to_wav_honours_cancel_before_writing_chunks() {
+        let tmp = std::env::temp_dir().join(format!(
+            "fastcat-audit-wav-cancel-test-{}.wav",
+            std::process::id()
+        ));
+        let result = render_scene_to_wav(WavRenderParams {
+            scene: &[],
+            tracks: &[],
+            master_gain: 1.0,
+            start_sec: 0.0,
+            end_sec: 0.01,
+            sample_rate: 48000,
+            output_channels: 1,
+            target_path: &tmp,
+            should_cancel: Some(&|| true),
+        });
+
+        assert_eq!(result.unwrap_err().to_string(), "cancelled");
+        let _ = std::fs::remove_file(&tmp);
+    }
+
+    #[test]
+    fn render_scene_to_wav_rejects_oversized_riff_before_create() {
+        let tmp = std::env::temp_dir().join(format!(
+            "fastcat-audit-wav-large-test-{}.wav",
+            std::process::id()
+        ));
+        let _ = std::fs::remove_file(&tmp);
+        let result = render_scene_to_wav(WavRenderParams {
+            scene: &[],
+            tracks: &[],
+            master_gain: 1.0,
+            start_sec: 0.0,
+            end_sec: 3_000.0,
+            sample_rate: 192_000,
+            output_channels: 2,
+            target_path: &tmp,
+            should_cancel: None,
+        });
+
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("exceeds 32-bit limit"));
+        assert!(
+            !tmp.exists(),
+            "oversized export should fail before file create"
+        );
     }
 }

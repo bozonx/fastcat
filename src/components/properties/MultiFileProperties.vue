@@ -124,12 +124,17 @@ function handleBatchConvertImages() {
 }
 
 async function onCreateProxy() {
-  for (const e of props.entries) {
-    if (e.kind === 'file' && e.path && getMediaTypeFromFilename(e.name) === 'video') {
-      const file = await projectStore.getFileByPath(e.path);
-      if (!file) continue;
-      void proxyStore.generateProxy(file, e.path);
-    }
+  const entries = props.entries.filter(
+    (e) => e.kind === 'file' && e.path && getMediaTypeFromFilename(e.name) === 'video',
+  );
+  const batchEntries: { file: File; projectRelativePath: string }[] = [];
+  for (const e of entries) {
+    const file = await projectStore.getFileByPath(e.path);
+    if (!file) continue;
+    batchEntries.push({ file, projectRelativePath: e.path });
+  }
+  if (batchEntries.length > 0) {
+    await proxyStore.generateProxiesBatch(batchEntries);
   }
 }
 
@@ -142,10 +147,11 @@ function onCancelProxy() {
 }
 
 function onDeleteProxy() {
-  for (const e of props.entries) {
-    if (e.kind === 'file' && e.path && proxyStore.existingProxies.has(e.path)) {
-      void proxyStore.deleteProxy(e.path);
-    }
+  const paths = props.entries
+    .filter((e) => e.kind === 'file' && e.path && proxyStore.existingProxies.has(e.path))
+    .map((e) => e.path);
+  if (paths.length > 0) {
+    void proxyStore.deleteProxiesBatch(paths);
   }
 }
 

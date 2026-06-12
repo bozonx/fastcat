@@ -78,7 +78,10 @@ interface FileManagerActions {
       selectInFileManager?: boolean;
     },
   ) => Promise<unknown>;
-  mediaCache: Pick<ProxyThumbnailService, 'ensureProxy' | 'cancelProxy' | 'removeProxy'>;
+  mediaCache: Pick<
+    ProxyThumbnailService,
+    'ensureProxy' | 'ensureProxyBatch' | 'cancelProxy' | 'removeProxy' | 'removeProxyBatch'
+  >;
   vfs: IFileSystemAdapter;
   findEntryByPath: (path: string) => FsEntry | null;
   readDirectory: (path?: string) => Promise<FsEntry[]>;
@@ -475,14 +478,29 @@ export function useFileManagerActions(actions: FileManagerActions) {
     createProxy: async (entry) => {
       if (isReadOnlyGuard()) return;
       const entries = Array.isArray(entry) ? entry : [entry];
-      for (const e of entries) {
-        if (e.kind !== 'file' || !e.path) continue;
-        const file = await actions.vfs.getFile(e.path);
-        if (!file) continue;
+      const fileEntries = entries.filter((e) => e.kind === 'file' && e.path);
+      if (fileEntries.length === 0) return;
+
+      if (fileEntries.length === 1) {
+        const [first] = fileEntries;
+        if (!first?.path) return;
+        const file = await actions.vfs.getFile(first.path);
+        if (!file) return;
         await actions.mediaCache.ensureProxy({
           file,
-          projectRelativePath: e.path,
+          projectRelativePath: first.path,
         });
+        return;
+      }
+
+      const batchEntries: { file: File; projectRelativePath: string }[] = [];
+      for (const e of fileEntries) {
+        const file = await actions.vfs.getFile(e.path);
+        if (!file) continue;
+        batchEntries.push({ file, projectRelativePath: e.path });
+      }
+      if (batchEntries.length > 0) {
+        await actions.mediaCache.ensureProxyBatch({ entries: batchEntries });
       }
     },
     cancelProxy: async (entry) => {
@@ -496,11 +514,19 @@ export function useFileManagerActions(actions: FileManagerActions) {
     deleteProxy: async (entry) => {
       if (isReadOnlyGuard()) return;
       const entries = Array.isArray(entry) ? entry : [entry];
-      for (const e of entries) {
-        if (e.kind === 'file' && e.path) {
-          await actions.mediaCache.removeProxy(e.path);
-        }
+      const fileEntries = entries.filter((e) => e.kind === 'file' && e.path);
+      if (fileEntries.length === 0) return;
+
+      if (fileEntries.length === 1) {
+        const [first] = fileEntries;
+        if (!first?.path) return;
+        await actions.mediaCache.removeProxy(first.path);
+        return;
       }
+
+      await actions.mediaCache.removeProxyBatch({
+        projectRelativePaths: fileEntries.map((e) => e.path),
+      });
     },
     createOtioVersion: async (entry) => {
       if (isReadOnlyGuard()) return;

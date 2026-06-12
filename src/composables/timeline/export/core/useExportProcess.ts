@@ -34,7 +34,7 @@ const log = createDevLogger('useExportProcess');
 
 let timelineExportInFlight = false;
 const CANCEL_FORCE_TERMINATE_TIMEOUT_MS = 15_000;
-const AUDIO_ONLY_EXPORT_FORMATS = new Set(['aac', 'opus', 'ogg', 'flac', 'wav', 'pcm']);
+const AUDIO_ONLY_EXPORT_FORMATS = new Set(['aac', 'opus', 'ogg', 'flac', 'wav', 'pcm', 'mp3']);
 
 function validateNativeExportDimensions(options: Pick<ExportOptions, 'width' | 'height'>) {
   const values = [
