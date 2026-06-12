@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, nextTick, watch, onBeforeUnmount } from 'vue';
+import { computed, ref, nextTick, watch, onBeforeUnmount, onMounted } from 'vue';
 import { blurOnDropdownMenuClose } from '~/composables/useDropdownMenuBlur';
 import { useMediaQuery } from '@vueuse/core';
 import { useAppFullscreen } from '~/composables/useAppFullscreen';
@@ -105,6 +105,32 @@ const monitorZoomLabel = computed(() => {
   return `x${zoom.toFixed(2)}`;
 });
 
+const isMobileSpeedMenuOpen = ref(false);
+const isMobileMoreMenuOpen = ref(false);
+
+function setMobileSpeedMenuOpen(isOpen: boolean) {
+  isMobileSpeedMenuOpen.value = isOpen;
+  blurOnDropdownMenuClose(isOpen);
+}
+
+function setMobileMoreMenuOpen(isOpen: boolean) {
+  isMobileMoreMenuOpen.value = isOpen;
+  blurOnDropdownMenuClose(isOpen);
+}
+
+function closeMobileDropdownMenus() {
+  if (!isMobileSpeedMenuOpen.value && !isMobileMoreMenuOpen.value) return;
+  isMobileSpeedMenuOpen.value = false;
+  isMobileMoreMenuOpen.value = false;
+  blurOnDropdownMenuClose(false);
+}
+
+function onMobileMonitorKeyDown(event: KeyboardEvent) {
+  if (event.key === 'Escape') {
+    closeMobileDropdownMenus();
+  }
+}
+
 const containerRef = ref<HTMLElement | null>(null);
 const { isFullscreen, toggle: toggleFullscreen } = useAppFullscreen(containerRef);
 
@@ -204,6 +230,11 @@ function onLongPressPointerDown(e: PointerEvent) {
   longPressStartY = e.clientY;
 }
 
+function onViewportPointerDown(e: PointerEvent) {
+  closeMobileDropdownMenus();
+  onLongPressPointerDown(e);
+}
+
 function onToolbarPointerDown(e: PointerEvent) {
   onLongPressPointerDown(e);
   showControlsTemporary();
@@ -284,12 +315,17 @@ const isReadonly = computed(
 );
 
 onMounted(() => {
+  window.addEventListener('keydown', onMobileMonitorKeyDown);
   if (viewportRef.value) {
     timecodeEl.value = (viewportRef.value as { timecodeEl?: HTMLElement }).timecodeEl ?? null;
   }
   if (isFullscreen.value) {
     showControlsTemporary();
   }
+});
+
+onBeforeUnmount(() => {
+  window.removeEventListener('keydown', onMobileMonitorKeyDown);
 });
 
 watch(viewportRef, (vp) => {
@@ -356,7 +392,7 @@ const containerHeightClass = computed(() => {
       :is-mobile="true"
       class="bg-black/80"
       @click="handleViewportClick"
-      @pointerdown="onLongPressPointerDown"
+      @pointerdown.capture="onViewportPointerDown"
       @pointermove="onLongPressPointerMove"
       @pointerup="clearLongPressTimer"
       @pointercancel="clearLongPressTimer"
@@ -514,9 +550,10 @@ const containerHeightClass = computed(() => {
           />
 
           <UDropdownMenu
+            :open="isMobileSpeedMenuOpen"
             :items="mobileSpeedMenuItems"
             :ui="{ content: 'min-w-20' }"
-            @update:open="blurOnDropdownMenuClose"
+            @update:open="setMobileSpeedMenuOpen"
           >
             <UButton
               size="xs"
@@ -528,7 +565,11 @@ const containerHeightClass = computed(() => {
             />
           </UDropdownMenu>
 
-          <UDropdownMenu :items="contextMenuItems" @update:open="blurOnDropdownMenuClose">
+          <UDropdownMenu
+            :open="isMobileMoreMenuOpen"
+            :items="contextMenuItems"
+            @update:open="setMobileMoreMenuOpen"
+          >
             <UButton
               size="xs"
               variant="ghost"

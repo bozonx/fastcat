@@ -1102,8 +1102,6 @@
       "failed": "Фоновая задача завершилась с ошибкой",
       "modelDownloadDescription": "Скачивается локальная Whisper-модель {model}. Можно закрыть настройки или перейти в другую вкладку.",
       "modelDownloadTitle": "Скачивание модели распознавания речи",
-      "proxyBatchDeleteTitle": "Удаление прокси: {count} файлов",
-      "proxyBatchTitle": "Создание прокси: {count} файлов",
       "proxyTitle": "Создание прокси: {fileName}",
       "title": "Фоновые задачи",
       "transcriptionTitle": "Транскрибация: {name}",
@@ -1363,8 +1361,7 @@
           "updateClipTransform": "Обновить трансформацию клипа",
           "updateFreezeFrame": "Обновить стоп-кадр"
         },
-        "markers": "Маркеры",
-        "title": "История"
+        "markers": "Маркеры"
       },
       "image": {
         "camera": "Камера",
@@ -1392,7 +1389,8 @@
         "create": "Создать прокси",
         "delete": "Удалить прокси",
         "regenerate": "Перегенерировать прокси",
-        "success": "Прокси успешно создано"
+        "success": "Прокси успешно создано",
+        "alreadyExists": "{count} файл(ов) уже имеют прокси и были пропущены."
       },
       "root": "Корень",
       "skipOtio": {

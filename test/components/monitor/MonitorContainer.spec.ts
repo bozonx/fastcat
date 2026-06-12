@@ -275,4 +275,82 @@ describe('MonitorContainer', () => {
 
     expect(strictItem?.onSelect).toEqual(expect.any(Function));
   });
+
+  it('closes monitor dropdowns on viewport pointer down', async () => {
+    const dropdownMenuStub = {
+      name: 'UDropdownMenu',
+      props: ['items', 'open', 'portal'],
+      emits: ['update:open'],
+      template: '<div data-dropdown-menu><slot /></div>',
+    };
+    const contextMenuStub = {
+      name: 'UContextMenu',
+      props: ['items', 'open', 'portal'],
+      emits: ['update:open'],
+      template: '<div data-context-menu><slot /></div>',
+    };
+
+    const wrapper = mount(MonitorContainer, {
+      global: {
+        plugins: [pinia],
+        stubs: {
+          MonitorViewport: {
+            template:
+              '<div class="viewport-stub" v-bind="$attrs"><slot name="canvas" /><slot name="svg-overlay" /><slot /></div>',
+          },
+          MonitorAudioControl: true,
+          UiTooltip: { template: '<div><slot /></div>' },
+          UButton: {
+            props: ['title', 'ariaLabel'],
+            template:
+              '<button class="u-button-stub" :title="title" :aria-label="ariaLabel"><slot /></button>',
+          },
+          UiActionButton: true,
+          UiToggleButton: true,
+          UDropdownMenu: dropdownMenuStub,
+          UContextMenu: contextMenuStub,
+          UiContextMenuPortal: true,
+          UIcon: true,
+        },
+      },
+    });
+
+    await wrapper.vm.$nextTick();
+
+    const syncDropdown = wrapper.findAllComponents(dropdownMenuStub).find((component) => {
+      const items = component.props('items') as Array<Array<{ label: string }>>;
+      return items?.[0]?.some((item) => item.label === 'fastcat.monitor.syncSmooth');
+    });
+
+    expect(syncDropdown).toBeTruthy();
+
+    syncDropdown!.vm.$emit('update:open', true);
+    await wrapper.vm.$nextTick();
+
+    expect(syncDropdown!.props('open')).toBe(true);
+
+    await wrapper.find('.viewport-stub').trigger('pointerdown');
+
+    expect(syncDropdown!.props('open')).toBe(false);
+
+    syncDropdown!.vm.$emit('update:open', true);
+    await wrapper.vm.$nextTick();
+
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+    await wrapper.vm.$nextTick();
+
+    expect(syncDropdown!.props('open')).toBe(false);
+
+    const contextMenu = wrapper.findComponent(contextMenuStub);
+
+    contextMenu.vm.$emit('update:open', true);
+    await wrapper.vm.$nextTick();
+
+    expect(contextMenu.props('open')).toBe(true);
+
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+    await wrapper.vm.$nextTick();
+
+    expect(contextMenu.props('open')).toBe(false);
+  });
 });

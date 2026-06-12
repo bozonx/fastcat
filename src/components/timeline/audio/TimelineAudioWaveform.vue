@@ -120,6 +120,9 @@ async function ensureMediaPeaks(params: {
 
   const metadata = await mediaStore.getOrFetchMetadataByPath(path);
   if (shouldCancel?.()) return null;
+  if (!metadata) {
+    log.error('Failed to load metadata before waveform extraction:', path);
+  }
 
   const cachedAfterMetadataLoad =
     mediaStore.getCachedMetadata(path)?.audioPeaks ??
@@ -137,16 +140,23 @@ async function ensureMediaPeaks(params: {
       if (shouldCancel?.()) return null;
 
       const file = await fileManager.vfs.getFile(path);
-      if (!file || shouldCancel?.()) return null;
+      if (shouldCancel?.()) return null;
+      if (!file) {
+        log.error('Failed to load source file for waveform extraction:', path);
+        return null;
+      }
 
       try {
         const peaks = await mediaStore.extractPeaks(file, path, {
           maxLength,
           precision: 10000,
         });
-        if (peaks && !shouldCancel?.()) {
+        if (peaks?.some((channel) => channel.length > 0) && !shouldCancel?.()) {
           mediaStore.setAudioPeaks(path, peaks);
           return peaks;
+        }
+        if (!shouldCancel?.()) {
+          log.error('Waveform extraction returned no peaks:', path);
         }
         return null;
       } catch (err) {
@@ -319,7 +329,10 @@ const extractPeaks = async () => {
     if (isNestedTimeline.value) {
       const normalizedTimelinePath = normalizeProjectPath(fileUrl.value);
       const file = await fileManager.vfs.getFile(normalizedTimelinePath);
-      if (!file) return;
+      if (!file) {
+        log.error('Failed to load nested timeline for waveform extraction:', normalizedTimelinePath);
+        return;
+      }
 
       if (shouldCancel()) {
         return;
@@ -350,6 +363,9 @@ const extractPeaks = async () => {
       }
 
       nestedAudioPeaks.value = peaks;
+      if (!peaks?.some((channel) => channel.length > 0)) {
+        log.error('Nested timeline waveform extraction returned no peaks:', normalizedTimelinePath);
+      }
       void redrawMountedChunks();
       return;
     }
@@ -367,8 +383,10 @@ const extractPeaks = async () => {
       return;
     }
 
-    if (peaks) {
+    if (peaks?.some((channel) => channel.length > 0)) {
       void redrawMountedChunks();
+    } else {
+      log.error('Waveform is unavailable after extraction:', fileUrl.value);
     }
   } catch (err) {
     log.error('Failed to extract audio peaks:', err);

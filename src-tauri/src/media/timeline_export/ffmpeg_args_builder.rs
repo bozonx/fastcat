@@ -193,7 +193,14 @@ fn push_audio_metadata_output_tail(
         args.push("-an".to_string());
     }
 
-    // Metadata
+    // Metadata. The mp4/mov (mov) muxer only writes a fixed set of recognised keys and
+    // *silently drops* the rest — `author` and `tags` among them — so map those to the
+    // QuickTime-atom-backed `artist`/`keywords` that survive. `title`/`description` are
+    // kept by the mov muxer directly. Other containers (mkv/webm) carry arbitrary keys,
+    // so they keep the literal names.
+    let is_mov_family = options.format == "mp4" || options.format == "mov";
+    let author_key = if is_mov_family { "artist" } else { "author" };
+    let tags_key = if is_mov_family { "keywords" } else { "tags" };
     if let Some(title) = options.metadata_title.as_deref().filter(|s| !s.is_empty()) {
         args.extend(["-metadata".to_string(), format!("title={title}")]);
     }
@@ -208,10 +215,10 @@ fn push_audio_metadata_output_tail(
         ]);
     }
     if let Some(author) = options.metadata_author.as_deref().filter(|s| !s.is_empty()) {
-        args.extend(["-metadata".to_string(), format!("author={author}")]);
+        args.extend(["-metadata".to_string(), format!("{author_key}={author}")]);
     }
     if let Some(tags) = options.metadata_tags.as_deref().filter(|s| !s.is_empty()) {
-        args.extend(["-metadata".to_string(), format!("tags={tags}")]);
+        args.extend(["-metadata".to_string(), format!("{tags_key}={tags}")]);
     }
 
     if options.format == "mp4" || options.format == "mov" {

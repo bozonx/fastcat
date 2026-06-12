@@ -24,6 +24,7 @@ const props = defineProps<{
 }>();
 
 const { t } = useI18n();
+const toast = useToast();
 const uiStore = useUiStore();
 const proxyStore = useProxyStore();
 const projectStore = useProjectStore();
@@ -134,7 +135,13 @@ async function onCreateProxy() {
     batchEntries.push({ file, projectRelativePath: e.path });
   }
   if (batchEntries.length > 0) {
-    await proxyStore.generateProxiesBatch(batchEntries);
+    const result = await proxyStore.generateProxiesBatch(batchEntries);
+    if (result.skippedCount > 0) {
+      toast.add({
+        title: t('videoEditor.fileManager.proxy.alreadyExists', { count: result.skippedCount }),
+        color: 'warning',
+      });
+    }
   }
 }
 

@@ -1102,8 +1102,6 @@
       "failed": "Background task failed",
       "modelDownloadDescription": "Downloading local Whisper model {model}. You can close settings or switch to another tab.",
       "modelDownloadTitle": "Downloading speech recognition model",
-      "proxyBatchDeleteTitle": "Deleting proxies: {count} files",
-      "proxyBatchTitle": "Creating proxies: {count} files",
       "proxyTitle": "Generating proxy: {fileName}",
       "title": "Background Tasks",
       "transcriptionTitle": "Transcription: {name}",
@@ -1363,8 +1361,7 @@
           "updateClipTransform": "Update clip transform",
           "updateFreezeFrame": "Update freeze frame"
         },
-        "markers": "Markers",
-        "title": "History"
+        "markers": "Markers"
       },
       "image": {
         "camera": "Camera",
@@ -1392,7 +1389,8 @@
         "create": "Create proxy",
         "delete": "Delete proxy",
         "regenerate": "Regenerate proxy",
-        "success": "Proxy created successfully"
+        "success": "Proxy created successfully",
+        "alreadyExists": "{count} file(s) already have a proxy and were skipped."
       },
       "root": "Root",
       "skipOtio": {

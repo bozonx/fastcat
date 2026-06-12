@@ -95,6 +95,22 @@ export function resolveMediaMetadata<T>(
   return mediaMetadata[prefixed];
 }
 
+function resolveMediaMetadataKey<T>(
+  mediaMetadata: Record<string, T | undefined>,
+  path: string,
+): string | null {
+  if (!path) return null;
+  if (mediaMetadata[path]) return path;
+  if (path.startsWith('external:')) {
+    const clean = path.slice('external:'.length);
+    if (mediaMetadata[clean]) return clean;
+    return null;
+  }
+  const prefixed = `external:${path}`;
+  if (mediaMetadata[prefixed]) return prefixed;
+  return null;
+}
+
 export const useMediaStore = defineStore('media', () => {
   const workspaceStore = useWorkspaceStore();
   const projectStore = useProjectStore();
@@ -507,9 +523,11 @@ export const useMediaStore = defineStore('media', () => {
     try {
       const arrayBuffer = await runCacheFileAccess('waveform', params.cacheFileName, async () => {
         const peaksFile = await getVfs().getFile(waveformsPath);
-        if (!peaksFile) throw new Error('waveform cache miss');
+        if (!peaksFile) return null;
         return await peaksFile.arrayBuffer();
       });
+      if (!arrayBuffer) return false;
+
       const uint8 = new Uint8Array(arrayBuffer);
       if (uint8[0] === 0x5b /* '[' character in UTF-8 */) {
         // Legacy JSON format (no fingerprint): trusted optimistically.
@@ -527,14 +545,15 @@ export const useMediaStore = defineStore('media', () => {
         ) {
           params.metadata.audioPeaks = entry.peaks;
         } else {
+          log.warn('Rejected stale or corrupt waveform cache for', params.cacheKey);
           // Stale (belongs to a different file at this path) — drop it so a fresh
           // extraction replaces it instead of rendering the wrong waveform.
           try {
             await runCacheFileAccess('waveform', params.cacheFileName, async () => {
               await getVfs().deleteEntry(waveformsPath);
             });
-          } catch {
-            // ignore
+          } catch (e) {
+            log.warn('Failed to delete stale waveform cache for', params.cacheKey, e);
           }
           return false;
         }
@@ -543,27 +562,38 @@ export const useMediaStore = defineStore('media', () => {
         const deserialized = deserializeWaveformPeaks(arrayBuffer);
         if (deserialized) {
           params.metadata.audioPeaks = deserialized;
+        } else {
+          log.warn('Rejected unreadable legacy waveform cache for', params.cacheKey);
+          return false;
         }
       }
-    } catch {
+    } catch (e) {
+      log.warn('Failed to load waveform cache for', params.cacheKey, e);
       return false;
     }
 
-    if (params.metadata.audioPeaks) {
+    if (params.metadata.audioPeaks?.some((channel) => channel.length > 0)) {
       mediaMetadata.value[params.cacheKey] = params.metadata;
       return true;
     }
 
+    log.warn('Waveform cache contained no peak samples for', params.cacheKey);
     return false;
   }
 
   function setAudioPeaks(projectRelativePath: string, peaks: Float32Array[]) {
-    const metadata = resolveMediaMetadata(mediaMetadata.value, projectRelativePath);
-    const targetPath = metadata
-      ? projectRelativePath
-      : projectRelativePath.startsWith('external:')
+    if (!peaks.some((channel) => channel.length > 0)) {
+      log.warn('Refusing to persist empty waveform peaks for', projectRelativePath);
+      return;
+    }
+
+    const existingKey = resolveMediaMetadataKey(mediaMetadata.value, projectRelativePath);
+    const metadata = existingKey ? mediaMetadata.value[existingKey] : undefined;
+    const targetPath =
+      existingKey ??
+      (projectRelativePath.startsWith('external:')
         ? projectRelativePath.slice('external:'.length)
-        : `external:${projectRelativePath}`;
+        : projectRelativePath);
 
     mediaMetadata.value[targetPath] = {
       ...(metadata || { source: { size: 0, lastModified: 0 }, duration: 0 }),
@@ -582,30 +612,30 @@ export const useMediaStore = defineStore('media', () => {
 
     // Serialize peaks writes per-path to avoid concurrent createWritable() races on the
     // same OPFS entry which can yield truncated/interleaved data for long audio.
-    const cacheFileName = fsModule.getCacheFileName(projectRelativePath);
-    const previous = pendingPeakWrites.get(projectRelativePath) ?? Promise.resolve();
+    const cacheFileName = fsModule.getCacheFileName(targetPath);
+    const previous = pendingPeakWrites.get(targetPath) ?? Promise.resolve();
     const writeTask = previous
       .catch(() => {
         // ignore previous error — we still try to persist the latest peaks
       })
       .then(async () => {
         try {
-          const waveformsPath = fsModule.getWaveformsFilePath(projectRelativePath);
+          const waveformsPath = fsModule.getWaveformsFilePath(targetPath);
           if (!waveformsPath) return;
           await runCacheFileAccess('waveform', cacheFileName, async () => {
             await getVfs().writeFile(waveformsPath, new Uint8Array(binaryData));
           });
         } catch (e) {
-          log.warn('Failed to write peaks', e);
+          log.warn('Failed to write waveform peaks for', targetPath, e);
         }
       })
       .finally(() => {
-        if (pendingPeakWrites.get(projectRelativePath) === writeTask) {
-          pendingPeakWrites.delete(projectRelativePath);
+        if (pendingPeakWrites.get(targetPath) === writeTask) {
+          pendingPeakWrites.delete(targetPath);
         }
       });
 
-    pendingPeakWrites.set(projectRelativePath, writeTask);
+    pendingPeakWrites.set(targetPath, writeTask);
   }
 
   async function revalidateMissingMedia(usedPaths: string[]) {

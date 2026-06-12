@@ -34,6 +34,11 @@ export interface ProxyService {
   renameProxyDir: (params: { oldPath: string; newPath: string }) => Promise<void>;
   getProxyFileHandle: (projectRelativePath: string) => Promise<FileSystemFileHandle | null>;
   getProxyFile: (projectRelativePath: string) => Promise<File | null>;
+  generateProxiesBatch: (
+    entries: { file: File | FileSystemFileHandle; projectRelativePath: string }[],
+    options?: { signal?: AbortSignal },
+  ) => Promise<{ skippedCount: number }>;
+  deleteProxiesBatch: (projectRelativePaths: string[]) => Promise<void>;
 }
 
 export function createProxyService(params: {
@@ -527,22 +532,33 @@ export function createProxyService(params: {
   async function generateProxiesBatch(
     entries: { file: File | FileSystemFileHandle; projectRelativePath: string }[],
     options?: { signal?: AbortSignal },
-  ): Promise<void> {
-    if (entries.length === 0) return;
-    if (entries.length === 1) {
-      await generateProxy(entries[0].file, entries[0].projectRelativePath, options);
-      return;
+  ): Promise<{ skippedCount: number }> {
+    if (entries.length === 0) return { skippedCount: 0 };
+
+    const needsProxy = entries.filter(
+      (e) => !params.existingProxies.value.has(e.projectRelativePath),
+    );
+    const skippedCount = entries.length - needsProxy.length;
+
+    if (needsProxy.length === 0) {
+      return { skippedCount };
+    }
+
+    if (needsProxy.length === 1) {
+      const first = needsProxy[0]!;
+      await generateProxy(first.file, first.projectRelativePath, options);
+      return { skippedCount };
     }
 
     const batchBgTaskId = params.backgroundTasksStore.addTask({
       type: 'proxy',
       title: params.getProxyTaskTitle({
-        fileName: `${entries.length}`,
+        fileName: `${needsProxy.length}`,
         projectRelativePath: '',
       }),
       status: 'pending',
       cancel: async () => {
-        for (const { projectRelativePath } of entries) {
+        for (const { projectRelativePath } of needsProxy) {
           await cancelProxyGeneration(projectRelativePath);
         }
       },
@@ -552,7 +568,7 @@ export function createProxyService(params: {
     let completedCount = 0;
     let failedCount = 0;
 
-    for (const { file, projectRelativePath } of entries) {
+    for (const { file, projectRelativePath } of needsProxy) {
       try {
         await generateProxy(file, projectRelativePath, {
           signal: options?.signal,
@@ -565,25 +581,34 @@ export function createProxyService(params: {
       }
       params.backgroundTasksStore.updateTaskProgress(
         batchBgTaskId,
-        (completedCount + failedCount) / entries.length,
+        (completedCount + failedCount) / needsProxy.length,
       );
     }
 
-    if (failedCount === entries.length) {
+    const skippedMessage =
+      skippedCount > 0 ? `${skippedCount} file(s) already have a proxy and were skipped.` : '';
+
+    if (failedCount === needsProxy.length) {
       params.backgroundTasksStore.updateTaskStatus(
         batchBgTaskId,
         'failed',
-        'All proxy generations failed',
+        skippedMessage || 'All proxy generations failed',
       );
     } else if (failedCount > 0) {
       params.backgroundTasksStore.updateTaskStatus(
         batchBgTaskId,
         'completed',
-        `${failedCount} of ${entries.length} failed`,
+        `${failedCount} of ${needsProxy.length} failed. ${skippedMessage}`.trim(),
       );
     } else {
-      params.backgroundTasksStore.updateTaskStatus(batchBgTaskId, 'completed');
+      params.backgroundTasksStore.updateTaskStatus(
+        batchBgTaskId,
+        'completed',
+        skippedMessage || undefined,
+      );
     }
+
+    return { skippedCount };
   }
 
   async function deleteProxiesBatch(projectRelativePaths: string[]): Promise<void> {

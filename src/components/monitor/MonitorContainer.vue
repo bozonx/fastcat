@@ -256,6 +256,45 @@ const monitorSyncMenuItems = computed(() => [
   })),
 ]);
 
+const isMonitorSyncMenuOpen = ref(false);
+const isMonitorMoreMenuOpen = ref(false);
+const isMonitorContextMenuOpen = ref(false);
+
+function setMonitorContextMenuOpen(isOpen: boolean) {
+  isMonitorContextMenuOpen.value = isOpen;
+  blurOnDropdownMenuClose(isOpen);
+}
+
+function setMonitorSyncMenuOpen(isOpen: boolean) {
+  isMonitorSyncMenuOpen.value = isOpen;
+  blurOnDropdownMenuClose(isOpen);
+}
+
+function setMonitorMoreMenuOpen(isOpen: boolean) {
+  isMonitorMoreMenuOpen.value = isOpen;
+  blurOnDropdownMenuClose(isOpen);
+}
+
+function closeMonitorMenus() {
+  if (
+    !isMonitorContextMenuOpen.value &&
+    !isMonitorSyncMenuOpen.value &&
+    !isMonitorMoreMenuOpen.value
+  ) {
+    return;
+  }
+  isMonitorContextMenuOpen.value = false;
+  isMonitorSyncMenuOpen.value = false;
+  isMonitorMoreMenuOpen.value = false;
+  blurOnDropdownMenuClose(false);
+}
+
+function onMonitorKeyDown(event: KeyboardEvent) {
+  if (event.key === 'Escape') {
+    closeMonitorMenus();
+  }
+}
+
 const isIdle = ref(false);
 let idleTimer: ReturnType<typeof setTimeout> | undefined;
 
@@ -269,6 +308,7 @@ function resetIdle() {
 
 onMounted(() => {
   window.addEventListener('mousemove', resetIdle);
+  window.addEventListener('keydown', onMonitorKeyDown);
   // Synchronize timecode transition target
   if (viewportRef.value) {
     timecodeEl.value = (viewportRef.value as { timecodeEl?: HTMLElement }).timecodeEl ?? null;
@@ -277,6 +317,7 @@ onMounted(() => {
 
 onUnmounted(() => {
   window.removeEventListener('mousemove', resetIdle);
+  window.removeEventListener('keydown', onMonitorKeyDown);
   clearTimeout(idleTimer);
 });
 
@@ -290,7 +331,12 @@ watch(viewportRef, (vp) => {
 <template>
   <div class="h-full">
     <!-- panelRef is always rendered unconditionally so useFullscreen keeps a stable DOM target -->
-    <UContextMenu :items="contextMenuItems" :portal="monitorMenuPortal">
+    <UContextMenu
+      :open="isMonitorContextMenuOpen"
+      :items="contextMenuItems"
+      :portal="monitorMenuPortal"
+      @update:open="setMonitorContextMenuOpen"
+    >
       <div
         ref="panelRef"
         class="panel-focus-frame flex h-full min-w-0 min-h-0 transition-colors duration-300 relative select-none"
@@ -318,6 +364,7 @@ watch(viewportRef, (vp) => {
           :is-idle="isIdle"
           :effective-fullscreen="effectiveFullscreen"
           :ui-current-time-us="uiCurrentTimeUs"
+          @pointerdown.capture="closeMonitorMenus"
         >
           <template #canvas>
             <div ref="containerEl" class="absolute inset-0" style="pointer-events: none" />
@@ -453,10 +500,11 @@ watch(viewportRef, (vp) => {
 
           <UiTooltip :text="selectedMonitorSyncTitle">
             <UDropdownMenu
+              :open="isMonitorSyncMenuOpen"
               :items="monitorSyncMenuItems"
               :portal="monitorMenuPortal"
               :ui="{ content: 'min-w-44' }"
-              @update:open="blurOnDropdownMenuClose"
+              @update:open="setMonitorSyncMenuOpen"
             >
               <UButton
                 v-if="projectStore.activeMonitor"
@@ -577,9 +625,10 @@ watch(viewportRef, (vp) => {
 
           <!-- "More" dropdown duplicates the context menu items for discoverability -->
           <UDropdownMenu
+            :open="isMonitorMoreMenuOpen"
             :items="contextMenuItems"
             :portal="monitorMenuPortal"
-            @update:open="blurOnDropdownMenuClose"
+            @update:open="setMonitorMoreMenuOpen"
           >
             <UButton
               size="xs"

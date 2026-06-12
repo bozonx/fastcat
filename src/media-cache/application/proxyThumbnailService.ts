@@ -7,7 +7,7 @@ export interface ProxyThumbnailServiceDeps {
   }) => Promise<void>;
   ensureProxyBatch: (params: {
     entries: { file: File | FileSystemFileHandle; projectRelativePath: string }[];
-  }) => Promise<void>;
+  }) => Promise<{ skippedCount: number }>;
   cancelProxy: (projectRelativePath: string) => Promise<void>;
   removeProxy: (projectRelativePath: string) => Promise<void>;
   removeProxyBatch: (params: { projectRelativePaths: string[] }) => Promise<void>;
@@ -30,7 +30,7 @@ export interface ProxyThumbnailService {
   }) => Promise<void>;
   ensureProxyBatch: (params: {
     entries: { file: File | FileSystemFileHandle; projectRelativePath: string }[];
-  }) => Promise<void>;
+  }) => Promise<{ skippedCount: number }>;
   cancelProxy: (projectRelativePath: string) => Promise<void>;
   removeProxy: (projectRelativePath: string) => Promise<void>;
   removeProxyBatch: (params: { projectRelativePaths: string[] }) => Promise<void>;

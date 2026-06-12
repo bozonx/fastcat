@@ -136,7 +136,7 @@ describe('MobileMonitorContainer', () => {
   const stubs = {
     MonitorViewport: {
       template:
-        '<div class="viewport-stub"><slot name="canvas" /><slot name="svg-overlay" /><slot /></div>',
+        '<div class="viewport-stub" v-bind="$attrs"><slot name="canvas" /><slot name="svg-overlay" /><slot /></div>',
     },
     MobileMonitorAudioControl: {
       template: '<div class="audio-control-stub"></div>',
@@ -147,7 +147,8 @@ describe('MobileMonitorContainer', () => {
       template: '<button class="button-stub" v-bind="$attrs"><slot /></button>',
     },
     UDropdownMenu: {
-      props: ['items'],
+      props: ['items', 'open'],
+      emits: ['update:open'],
       template: '<div class="dropdown-stub"><slot /></div>',
     },
     UIcon: true,
@@ -190,6 +191,41 @@ describe('MobileMonitorContainer', () => {
     }
     await fullscreenBtn.trigger('click');
     expect(mockToggleFullscreen).toHaveBeenCalled();
+  });
+
+  it('closes mobile monitor dropdowns on viewport pointer down', async () => {
+    const wrapper = mount(MobileMonitorContainer, {
+      global: {
+        plugins: [pinia],
+        stubs,
+      },
+    });
+
+    await wrapper.vm.$nextTick();
+
+    const speedDropdown = wrapper.findAllComponents(stubs.UDropdownMenu).find((component) => {
+      const items = component.props('items') as Array<Array<{ label: string }>>;
+      return items?.[0]?.some((item) => item.label === 'x1');
+    });
+
+    expect(speedDropdown).toBeTruthy();
+
+    speedDropdown!.vm.$emit('update:open', true);
+    await wrapper.vm.$nextTick();
+
+    expect(speedDropdown!.props('open')).toBe(true);
+
+    await wrapper.find('.viewport-stub').trigger('pointerdown');
+
+    expect(speedDropdown!.props('open')).toBe(false);
+
+    speedDropdown!.vm.$emit('update:open', true);
+    await wrapper.vm.$nextTick();
+
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+    await wrapper.vm.$nextTick();
+
+    expect(speedDropdown!.props('open')).toBe(false);
   });
 
   it('shows status text when no media is present', async () => {

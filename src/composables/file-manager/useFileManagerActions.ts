@@ -500,7 +500,13 @@ export function useFileManagerActions(actions: FileManagerActions) {
         batchEntries.push({ file, projectRelativePath: e.path });
       }
       if (batchEntries.length > 0) {
-        await actions.mediaCache.ensureProxyBatch({ entries: batchEntries });
+        const result = await actions.mediaCache.ensureProxyBatch({ entries: batchEntries });
+        if (result.skippedCount > 0) {
+          toast.add({
+            title: t('videoEditor.fileManager.proxy.alreadyExists', { count: result.skippedCount }),
+            color: 'warning',
+          });
+        }
       }
     },
     cancelProxy: async (entry) => {

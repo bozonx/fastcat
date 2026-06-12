@@ -214,5 +214,53 @@ describe('TimelineAudioWaveform.vue', () => {
         precision: 10000,
       });
     });
+
+    it('logs an error when the source file cannot be loaded for waveform extraction', async () => {
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+      mockVfs.getFile.mockResolvedValue(null);
+      mockMediaStore.getOrFetchMetadataByPath.mockResolvedValue({ duration: 5 });
+
+      const { runQueuedPeakExtraction } = await import('~/utils/audio/waveform-extraction-queue');
+      vi.mocked(runQueuedPeakExtraction).mockImplementation(async ({ task }: any) => task());
+
+      const wrapper = await mountComponent();
+      await (wrapper.vm as any).ensureMediaPeaks({
+        path: 'media.mp4',
+        maxLength: 100,
+      });
+
+      expect(errorSpy).toHaveBeenCalledWith(
+        '[TimelineAudioWaveform]',
+        'Failed to load source file for waveform extraction:',
+        'media.mp4',
+      );
+      errorSpy.mockRestore();
+    });
+
+    it('logs an error and does not cache empty extraction results', async () => {
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+      const fileMock = new File([], 'media.mp4');
+      mockVfs.getFile.mockResolvedValue(fileMock);
+      mockMediaStore.getOrFetchMetadataByPath.mockResolvedValue({ duration: 5 });
+      mockMediaStore.extractPeaks.mockResolvedValue([]);
+
+      const { runQueuedPeakExtraction } = await import('~/utils/audio/waveform-extraction-queue');
+      vi.mocked(runQueuedPeakExtraction).mockImplementation(async ({ task }: any) => task());
+
+      const wrapper = await mountComponent();
+      const result = await (wrapper.vm as any).ensureMediaPeaks({
+        path: 'media.mp4',
+        maxLength: 100,
+      });
+
+      expect(result).toBeNull();
+      expect(mockMediaStore.setAudioPeaks).not.toHaveBeenCalled();
+      expect(errorSpy).toHaveBeenCalledWith(
+        '[TimelineAudioWaveform]',
+        'Waveform extraction returned no peaks:',
+        'media.mp4',
+      );
+      errorSpy.mockRestore();
+    });
   });
 });

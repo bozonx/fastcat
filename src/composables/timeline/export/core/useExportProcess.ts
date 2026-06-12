@@ -185,6 +185,16 @@ export function useExportProcess(
         if (rangeEndUs <= rangeStartUs) {
           throw new Error('Export range is zero or negative');
         }
+        // Native reports 1.0 once every frame has been handed to ffmpeg, but the
+        // container is still being finalized (encoder flush + mp4 faststart remux),
+        // which is slow for large files. Surface that tail as the 'saving' phase
+        // instead of letting the bar sit at a seemingly-stuck 100% under 'encoding'.
+        const onNativeProgress = (progress: number) => {
+          if (progress >= 1 && exportPhase.value === 'encoding') {
+            exportPhase.value = 'saving';
+          }
+          onProgress(progress);
+        };
         await nativeExportTimeline({
           taskId: exportTaskId,
           scene,
@@ -212,7 +222,7 @@ export function useExportProcess(
             metadataTags: options.metadata?.tags || null,
             exportAlpha: options.exportAlpha,
           },
-          onProgress,
+          onProgress: onNativeProgress,
           onWarning: reportWarning,
         });
         return;

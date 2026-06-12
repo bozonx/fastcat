@@ -278,6 +278,21 @@ describe('MediaStore', () => {
     expect(store.mediaMetadata['some/path.mp4'].audioPeaks?.[0]).toBeInstanceOf(Float32Array);
   });
 
+  it('persists audio peaks under the resolved metadata key for external paths', async () => {
+    const store = useMediaStore();
+    store.mediaMetadata = {
+      'some/path.mp4': { source: { size: 100, lastModified: 100 }, duration: 10 },
+    } as any;
+
+    store.setAudioPeaks('external:some/path.mp4', [new Float32Array([0.5, -0.25])]);
+
+    await vi.waitFor(() => {
+      expect(mediaFsMock.waveformFiles.get('some%2Fpath.mp4.json')).toBeDefined();
+    });
+    expect(mediaFsMock.waveformFiles.get('external%3Asome%2Fpath.mp4.json')).toBeUndefined();
+    expect(store.mediaMetadata['some/path.mp4'].audioPeaks?.[0]).toBeInstanceOf(Float32Array);
+  });
+
   it('persists audio peaks even when in-memory metadata is absent', async () => {
     const store = useMediaStore();
     // mediaMetadata is empty — simulate the race where peaks arrive before metadata
@@ -308,6 +323,27 @@ describe('MediaStore', () => {
     expect(result?.audioPeaks?.[0]).toBeInstanceOf(Float32Array);
     expect(Array.from(result?.audioPeaks?.[0] ?? [])).toEqual([0.5, -0.25]);
     expect(Array.from(result?.audioPeaks?.[1] ?? [])).toEqual([1]);
+  });
+
+  it('logs corrupt waveform cache instead of failing silently', async () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const store = useMediaStore();
+    const cacheFileName = 'some%2Fpath.mp4.json';
+    mediaFsMock.waveformFiles.set(cacheFileName, '[not-json');
+
+    const result = await store.getOrFetchMetadata(
+      { size: 100, lastModified: 100, name: 'path.mp4' } as File,
+      'some/path.mp4',
+    );
+
+    expect(result?.audioPeaks).toBeUndefined();
+    expect(warnSpy).toHaveBeenCalledWith(
+      '[media.store]',
+      'Failed to load waveform cache for',
+      'some/path.mp4',
+      expect.any(SyntaxError),
+    );
+    warnSpy.mockRestore();
   });
 
   it('rejects a fingerprinted waveform blob that belongs to a different file', async () => {

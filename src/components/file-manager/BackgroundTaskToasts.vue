@@ -39,11 +39,19 @@ watch(completedTasks, (nextCompleted) => {
     }
 
     if (task.type === 'proxy') {
-      toast.add({
-        title: t('videoEditor.fileManager.proxy.success'),
-        description: task.title,
-        color: 'success',
-      });
+      if (task.error) {
+        toast.add({
+          title: t('videoEditor.fileManager.proxy.success'),
+          description: task.error,
+          color: 'warning',
+        });
+      } else {
+        toast.add({
+          title: t('videoEditor.fileManager.proxy.success'),
+          description: task.title,
+          color: 'success',
+        });
+      }
       notifiedCompletedTaskIds.add(task.id);
     }
   }

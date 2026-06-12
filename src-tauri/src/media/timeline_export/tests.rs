@@ -212,6 +212,27 @@ fn test_build_ffmpeg_args_adds_metadata_cbr_and_keyframes() {
     assert!(args
         .windows(2)
         .any(|pair| pair == ["-metadata", "description=Export description"]));
+    // mp4/mov muxer drops `author`/`tags`; they're mapped to the atoms that survive.
+    assert!(args
+        .windows(2)
+        .any(|pair| pair == ["-metadata", "artist=Author"]));
+    assert!(args
+        .windows(2)
+        .any(|pair| pair == ["-metadata", "keywords=one, two"]));
+    assert!(!args.iter().any(|a| a == "author=Author"));
+    assert!(!args.iter().any(|a| a == "tags=one, two"));
+}
+
+#[test]
+fn test_mkv_keeps_literal_author_and_tags_metadata() {
+    // Matroska carries arbitrary tag names, so author/tags are written verbatim.
+    let options = NativeExportOptions {
+        format: "mkv".to_string(),
+        metadata_author: Some("Author".to_string()),
+        metadata_tags: Some("one, two".to_string()),
+        ..base_options()
+    };
+    let args = build_ffmpeg_args(&options, None, 1920, 1080, 30.0, Path::new("output.mkv"));
     assert!(args
         .windows(2)
         .any(|pair| pair == ["-metadata", "author=Author"]));
@@ -300,6 +321,39 @@ fn test_alpha_mkv_vp9_emits_yuva() {
     let args = build_ffmpeg_args(&options, None, 1920, 1080, 30.0, Path::new("output.mkv"));
     assert!(args.contains(&"yuva420p".to_string()));
     assert!(args.windows(2).any(|pair| pair == ["-auto-alt-ref", "0"]));
+    // Vello renders premultiplied alpha; ffmpeg reads rawvideo rgba as straight, so the
+    // alpha export must undo the premultiply before yuva420p or edges come out too dark.
+    let vf = args
+        .iter()
+        .position(|a| a == "-vf")
+        .map(|i| args[i + 1].clone())
+        .expect("alpha export must set a -vf filter");
+    assert!(vf.contains("unpremultiply"), "got: {vf}");
+    // Alpha keeps straight RGBA; no BT.709 matrix conversion / colour tags here.
+    assert!(!vf.contains("out_color_matrix"), "got: {vf}");
+    assert!(!args.contains(&"-colorspace".to_string()));
+}
+
+#[test]
+fn test_build_ffmpeg_args_tags_bt709_for_hd_vello_path() {
+    // The vello path streams raw RGB; without an explicit matrix the stream would be
+    // untagged BT.601 and HD players would show a colour shift vs the monitor. The
+    // software encode must pin BT.709 and tag the output to match.
+    let options = NativeExportOptions {
+        video_codec: "avc1".to_string(),
+        format: "mp4".to_string(),
+        ..base_options()
+    };
+    let args = build_ffmpeg_args(&options, None, 1920, 1080, 30.0, Path::new("out.mp4"));
+    let vf = args
+        .iter()
+        .position(|a| a == "-vf")
+        .map(|i| args[i + 1].clone())
+        .expect("vello export must set a -vf filter");
+    assert!(vf.contains("scale=out_color_matrix=bt709:out_range=tv"), "got: {vf}");
+    assert!(args.windows(2).any(|p| p == ["-colorspace", "bt709"]));
+    assert!(args.windows(2).any(|p| p == ["-color_primaries", "bt709"]));
+    assert!(args.windows(2).any(|p| p == ["-color_trc", "bt709"]));
 }
 
 fn video_layer() -> crate::monitor::scene::SceneLayer {
