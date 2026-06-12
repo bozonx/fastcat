@@ -1,4 +1,4 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 
 use crate::monitor::scene::{SceneAudioLayer, SceneAudioTrack};
 
@@ -20,8 +20,17 @@ pub(crate) const START_PREBUFFER_CHUNKS: usize = 8;
 /// Raised from 8 (~400ms) after observed underruns under UI/decode contention.
 pub(crate) const PREBUFFER_CHUNKS: usize = 16;
 
-/// Max bytes of decoded f32 audio kept in `decoded_cache` across all files.
-pub(crate) const MAX_DECODED_CACHE_BYTES: usize = 256 * 1024 * 1024;
+/// Length of one decoded look-ahead window, in seconds. The background fill thread
+/// decodes only this much of a clip at a time (never the whole file), so memory is
+/// bounded regardless of file size — tens of GB are fine. 12s × 2ch × 48kHz × 4B ≈
+/// 4.6 MB per active layer. Chosen well above the ~800ms producer ring and the
+/// ranged-decode latency so a refill always lands before the current window drains.
+pub(crate) const WINDOW_SEC: f64 = 12.0;
+/// When the playhead comes within this of the current window's end, prefetch the
+/// next window. 4s ≫ ring depth and ≫ a ranged-decode's wall time, so the next
+/// window is resident before the current one is exhausted (steady-state stays on
+/// the memcpy fast path, no inline streaming).
+pub(crate) const REFILL_MARGIN_SEC: f64 = 4.0;
 /// Upper bound on a forward-scrub audio preview snippet. The frontend asks for
 /// ~90 ms; this caps it so a stray request can't queue a long burst.
 pub(crate) const MAX_SCRUB_PREVIEW_SEC: f64 = 0.5;
@@ -121,6 +130,51 @@ pub(crate) struct AudioSourceMetadata {
     pub(crate) channels: usize,
 }
 
+/// A bounded, contiguous decoded-PCM look-ahead window for ONE layer, at the
+/// target rate/channels. Covers `[source_start_frame, source_start_frame + len)`
+/// in TARGET-rate frames (the same units `decode_audio_chunk` indexes by), so a
+/// requested `source_start_sec * sample_rate` maps directly into `samples`.
+///
+/// The background fill thread decodes only `WINDOW_SEC` of source into this; the
+/// realtime producer serves a chunk by `memcpy` out of it. Replacing the whole-file
+/// cache with this is what bounds memory to the window regardless of file size.
+pub(crate) struct AudioWindow {
+    /// Window start, in target-rate frames from the start of the source.
+    pub(crate) source_start_frame: usize,
+    /// Target rate this window was decoded at (guards against a device-rate change).
+    pub(crate) sample_rate: u32,
+    /// Output channels this window is interleaved by.
+    pub(crate) channels: usize,
+    pub(crate) samples: std::sync::Arc<Vec<f32>>,
+}
+
+impl AudioWindow {
+    /// Number of target-rate frames held by this window.
+    pub(crate) fn len_frames(&self) -> usize {
+        self.samples.len() / self.channels.max(1)
+    }
+
+    /// One-past-the-last target-rate frame this window covers.
+    pub(crate) fn end_frame(&self) -> usize {
+        self.source_start_frame + self.len_frames()
+    }
+
+    /// True if this window fully covers `[start_frame, start_frame + frames)` at the
+    /// given rate/channels.
+    pub(crate) fn covers(
+        &self,
+        start_frame: usize,
+        frames: usize,
+        sample_rate: u32,
+        channels: usize,
+    ) -> bool {
+        self.sample_rate == sample_rate
+            && self.channels == channels
+            && start_frame >= self.source_start_frame
+            && start_frame + frames <= self.end_frame()
+    }
+}
+
 pub(crate) struct AudioShared {
     pub(crate) scene: Vec<SceneAudioLayer>,
     pub(crate) tracks: Vec<SceneAudioTrack>,
@@ -141,10 +195,19 @@ pub(crate) struct AudioShared {
     pub(crate) seek_serial: u64,
     pub(crate) scene_serial: u64,
     pub(crate) plugin_host: std::sync::Arc<parking_lot::Mutex<crate::audio::plugins::PluginHost>>,
-    pub(crate) decoded_cache: lru::LruCache<String, std::sync::Arc<Vec<f32>>>,
-    /// Total bytes held by `decoded_cache`; bounds the in-memory full-file cache
-    /// by weight (a single 50 MB compressed file can decode to > 1 GB of f32).
-    pub(crate) decoded_cache_bytes: usize,
+    /// Per-LAYER rolling decoded window (keyed by layer id, like `decoders`, so two
+    /// clips from the same file don't collide). The realtime producer serves a chunk
+    /// by `memcpy` out of the covering window; a background thread refills it ahead
+    /// of the playhead. Bounded to `WINDOW_SEC` per layer — never the whole file.
+    pub(crate) layer_windows: HashMap<String, AudioWindow>,
+    /// Layer ids with a background window fill in flight, mapped to the TARGET-frame
+    /// start that fill will cover. Dedupes refill spawns for the same start and lets
+    /// the worker discard its result if a newer seek has superseded it.
+    pub(crate) window_fill_in_flight: HashMap<String, usize>,
+    /// Number of background window-fill threads running. Bounded by
+    /// `WINDOW_FILL_MAX_CONCURRENCY` so refills don't thrash the disk and starve the
+    /// producer's own inline streaming reads.
+    pub(crate) active_window_fill_count: usize,
     /// Cached `fs::metadata` file sizes so the cache-routing decision doesn't
     /// `stat` the file on every 50 ms chunk.
     pub(crate) file_size_cache: HashMap<String, u64>,
@@ -164,34 +227,11 @@ pub(crate) struct AudioShared {
     /// iteration. This avoids a race between the main thread calling `clear()`
     /// while the producer is in the middle of `push_slice`.
     pub(crate) pending_ring_clear: bool,
-    /// Decoded-cache keys currently being decoded on a BACKGROUND thread. The
-    /// realtime producer must never decode a whole streaming file inline (a 127ms
-    /// AAC spike under 1080p decode load starves both the ring and the cpal
-    /// callback → crackle). When a streaming clip is first seen we spawn one
-    /// background decode and keep streaming until it lands in `decoded_cache`;
-    /// this set stops us from spawning a second thread for the same key.
     /// Pending forward-scrub preview to start (set by the UI thread, consumed by
     /// the producer so all ring writes stay on the single producer thread).
     pub(crate) scrub_request: Option<ScrubRequest>,
     /// Set by the UI thread to stop an in-progress scrub preview (drag ended).
     pub(crate) scrub_cancel: bool,
-    pub(crate) decoding_in_flight: HashSet<String>,
-    /// Number of background full-file precache threads currently running. Bounded by
-    /// `PRECACHE_MAX_CONCURRENCY` so that pressing Play doesn't kick off many
-    /// simultaneous multi-GB 4K decodes that thrash the disk and starve the
-    /// producer's realtime streaming reads (→ decode-behind → crackle + a slow
-    /// start). Incremented when a precache thread is spawned, decremented when it
-    /// finishes (see `PrecacheGuard`).
-    pub(crate) active_precache_count: usize,
-    /// Decoded-cache keys we deliberately will NOT background-cache (too large to
-    /// fit the cache budget, or no declared frame count to size-gate them). Kept
-    /// so the producer streams them forever instead of re-spawning a doomed decode
-    /// every chunk.
-    pub(crate) precache_skip: HashSet<String>,
-}
-
-pub(crate) fn decoded_cache_key(path: &str, sample_rate: u32, output_channels: usize) -> String {
-    format!("{path}|sr={sample_rate}|ch={output_channels}")
 }
 
 impl Default for AudioShared {
@@ -210,8 +250,9 @@ impl Default for AudioShared {
             plugin_host: std::sync::Arc::new(parking_lot::Mutex::new(
                 crate::audio::plugins::PluginHost::new(),
             )),
-            decoded_cache: lru::LruCache::unbounded(),
-            decoded_cache_bytes: 0,
+            layer_windows: HashMap::new(),
+            window_fill_in_flight: HashMap::new(),
+            active_window_fill_count: 0,
             file_size_cache: HashMap::new(),
             source_metadata_cache: HashMap::new(),
             decoders: HashMap::new(),
@@ -219,45 +260,6 @@ impl Default for AudioShared {
             pending_ring_clear: false,
             scrub_request: None,
             scrub_cancel: false,
-            decoding_in_flight: HashSet::new(),
-            active_precache_count: 0,
-            precache_skip: HashSet::new(),
-        }
-    }
-}
-
-impl AudioShared {
-    /// Inserts a fully decoded file into the byte-bounded cache, evicting the
-    /// least-recently-used entries until the total stays under the budget.
-    /// Skips caching entirely if a single file exceeds the whole budget.
-    pub(crate) fn cache_decoded(&mut self, key: String, samples: std::sync::Arc<Vec<f32>>) {
-        let bytes = samples.len() * std::mem::size_of::<f32>();
-        if bytes > MAX_DECODED_CACHE_BYTES {
-            return;
-        }
-        if let Some(prev) = self.decoded_cache.put(key, samples) {
-            self.decoded_cache_bytes = self
-                .decoded_cache_bytes
-                .saturating_sub(prev.len() * std::mem::size_of::<f32>());
-        }
-        self.decoded_cache_bytes += bytes;
-        while self.decoded_cache_bytes > MAX_DECODED_CACHE_BYTES {
-            match self.decoded_cache.pop_lru() {
-                Some((_, evicted)) => {
-                    self.decoded_cache_bytes = self
-                        .decoded_cache_bytes
-                        .saturating_sub(evicted.len() * std::mem::size_of::<f32>());
-                }
-                None => break,
-            }
-        }
-    }
-
-    pub(crate) fn drop_decoded(&mut self, key: &str) {
-        if let Some(removed) = self.decoded_cache.pop(key) {
-            self.decoded_cache_bytes = self
-                .decoded_cache_bytes
-                .saturating_sub(removed.len() * std::mem::size_of::<f32>());
         }
     }
 }
@@ -366,24 +368,24 @@ mod tests {
     }
 
     #[test]
-    fn decoded_cache_evicts_to_stay_under_byte_budget() {
-        let mut shared = AudioShared::default();
-        // Each ~100 MB; budget is 256 MB, so inserting three drops the oldest.
-        let big = std::sync::Arc::new(vec![0.0f32; 25 * 1024 * 1024]);
-        shared.cache_decoded("a".into(), big.clone());
-        shared.cache_decoded("b".into(), big.clone());
-        shared.cache_decoded("c".into(), big.clone());
-        assert!(shared.decoded_cache_bytes <= MAX_DECODED_CACHE_BYTES);
-        assert!(shared.decoded_cache.peek("a").is_none(), "oldest evicted");
-        assert!(shared.decoded_cache.peek("c").is_some(), "newest retained");
-    }
-
-    #[test]
-    fn decoded_cache_skips_items_larger_than_budget() {
-        let mut shared = AudioShared::default();
-        let huge = std::sync::Arc::new(vec![0.0f32; MAX_DECODED_CACHE_BYTES]); // 4x budget in bytes
-        shared.cache_decoded("x".into(), huge);
-        assert!(shared.decoded_cache.peek("x").is_none());
-        assert_eq!(shared.decoded_cache_bytes, 0);
+    fn audio_window_covers_only_fully_contained_requests() {
+        let w = AudioWindow {
+            source_start_frame: 100,
+            sample_rate: 48_000,
+            channels: 2,
+            samples: std::sync::Arc::new(vec![0.0f32; 200 * 2]), // 200 frames → [100, 300)
+        };
+        assert_eq!(w.len_frames(), 200);
+        assert_eq!(w.end_frame(), 300);
+        // Fully inside.
+        assert!(w.covers(120, 50, 48_000, 2));
+        // Touches the exact end (half-open) — still covered.
+        assert!(w.covers(250, 50, 48_000, 2));
+        // Past the end / before the start → not covered.
+        assert!(!w.covers(280, 50, 48_000, 2));
+        assert!(!w.covers(50, 10, 48_000, 2));
+        // Rate / channel mismatch → not covered.
+        assert!(!w.covers(120, 50, 44_100, 2));
+        assert!(!w.covers(120, 50, 48_000, 1));
     }
 }

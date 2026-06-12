@@ -10,8 +10,8 @@ use crate::audio::resample::{
     RESAMPLER_CHUNK_SIZE,
 };
 use crate::audio::shared::{
-    decoded_cache_key, find_audio_track, AudioRenderTarget, AudioShared, AudioSourceMetadata,
-    CachedAudioDecoder, MAX_DECODED_CACHE_BYTES,
+    find_audio_track, AudioRenderTarget, AudioShared, AudioSourceMetadata, AudioWindow,
+    CachedAudioDecoder, REFILL_MARGIN_SEC, WINDOW_SEC,
 };
 
 /// Fraction of the current source chunk tolerated as scheduling jitter before
@@ -94,12 +94,27 @@ pub(crate) fn cached_audio_source_metadata(
         .or_insert(metadata))
 }
 
-pub(crate) fn decode_entire_file_symphonia(
+/// Decodes a BOUNDED time range `[start_sec, start_sec + duration_sec)` of a file
+/// to interleaved f32 at the target rate/channels — never the whole file. This is
+/// the off-thread fill for the per-layer look-ahead window: memory is bounded by
+/// `duration_sec` regardless of how large the source is (tens of GB are fine).
+///
+/// Seeks accurately to `start_sec` and discards the sub-frame remainder so the
+/// returned buffer begins exactly at `start_sec`, then stops once `duration_sec`
+/// worth of source frames have been collected. Resampling reuses
+/// `resample_planar_with_speed` (speed 1.0), which drops the resampler group delay,
+/// so the window has NO leading silence.
+pub(crate) fn decode_range_symphonia(
     path: &str,
+    start_sec: f64,
+    duration_sec: f64,
     target_sample_rate: u32,
     output_channels: usize,
 ) -> Result<Vec<f32>> {
     use symphonia::core::codecs::DecoderOptions;
+
+    let start_sec = start_sec.max(0.0);
+    let duration_sec = duration_sec.max(0.0);
 
     let mut format = open_symphonia_format(path, "decode")?;
     let track =
@@ -111,20 +126,70 @@ pub(crate) fn decode_entire_file_symphonia(
         Ok(decoder) => decoder,
         Err(_) if track.codec_params.codec == symphonia::core::codecs::CODEC_TYPE_OPUS => {
             log::warn!("[audio] symphonia cannot decode Opus; falling back to ffmpeg: {path}");
-            return decode_entire_file_ffmpeg(path, target_sample_rate, output_channels)
-                .context("failed to decode Opus audio via ffmpeg");
+            return decode_range_ffmpeg(
+                path,
+                start_sec,
+                duration_sec,
+                target_sample_rate,
+                output_channels,
+            )
+            .context("failed to decode Opus audio via ffmpeg");
         }
         Err(err) => return Err(err).context("failed to create decoder"),
     };
 
     let track_id = track.id;
     let source_rate = track.codec_params.sample_rate.unwrap_or(target_sample_rate);
+    let time_base = track
+        .codec_params
+        .time_base
+        .unwrap_or(symphonia::core::units::TimeBase::new(1, source_rate.max(1)));
     let declared_channels = track.codec_params.channels.map(|c| c.count()).unwrap_or(0);
     let mut channels = declared_channels.max(1);
+
+    // Seek to the window start (only when not at 0) and compute how many decoded
+    // source frames to discard so the buffer begins exactly at `start_sec`.
+    let mut discard_frames_remaining = if start_sec > 0.0 {
+        let seeked_to = match format.seek(
+            symphonia::core::formats::SeekMode::Accurate,
+            symphonia::core::formats::SeekTo::Time {
+                time: symphonia::core::units::Time {
+                    seconds: start_sec.floor() as u64,
+                    frac: start_sec.fract(),
+                },
+                track_id: Some(track_id),
+            },
+        ) {
+            Ok(seeked_to) => seeked_to,
+            // Seeking past the end yields an empty window — the caller treats this
+            // region as silence (the chunk it serves zero-fills the tail).
+            Err(error) if is_audio_seek_past_end(&error) => return Ok(Vec::new()),
+            Err(error) => return Err(error).context("failed to seek in format reader"),
+        };
+        decoder.reset();
+        let actual_sec = {
+            let t = time_base.calc_time(seeked_to.actual_ts);
+            t.seconds as f64 + t.frac
+        };
+        if actual_sec <= start_sec {
+            ((start_sec - actual_sec) * source_rate as f64).floor() as usize
+        } else {
+            0
+        }
+    } else {
+        0
+    };
+
+    // Stop once this many POST-discard source frames are collected: this is what
+    // bounds the decode (and memory) to `duration_sec` regardless of file length.
+    let wanted_source_frames = (duration_sec * source_rate as f64).ceil() as usize;
     let mut planar_buffers = vec![Vec::new(); channels];
     let mut collected_frames = 0usize;
 
-    loop {
+    'outer: loop {
+        if collected_frames >= wanted_source_frames {
+            break;
+        }
         let packet = match format.next_packet() {
             Ok(packet) => packet,
             Err(symphonia::core::errors::Error::IoError(ref err))
@@ -158,6 +223,13 @@ pub(crate) fn decode_entire_file_symphonia(
                 }
 
                 for frame in 0..num_frames {
+                    if discard_frames_remaining > 0 {
+                        discard_frames_remaining -= 1;
+                        continue;
+                    }
+                    if collected_frames >= wanted_source_frames {
+                        break 'outer;
+                    }
                     for ch in 0..channels {
                         let sample = if ch < num_channels {
                             samples[frame * num_channels + ch]
@@ -182,6 +254,10 @@ pub(crate) fn decode_entire_file_symphonia(
         }
     }
 
+    if collected_frames == 0 {
+        return Ok(Vec::new());
+    }
+
     let resampled = resample_planar_with_speed(
         planar_buffers,
         source_rate,
@@ -193,27 +269,23 @@ pub(crate) fn decode_entire_file_symphonia(
     Ok(interleaved)
 }
 
-fn decode_entire_file_ffmpeg(
+fn decode_range_ffmpeg(
     path: &str,
+    start_sec: f64,
+    duration_sec: f64,
     target_sample_rate: u32,
     output_channels: usize,
 ) -> Result<Vec<f32>> {
     let channels = output_channels.max(1).to_string();
     let sample_rate = target_sample_rate.max(1).to_string();
+    // `-ss` BEFORE `-i` is fast (input) seeking; `-t` bounds the decoded duration,
+    // so ffmpeg never reads the whole file either.
+    let ss = format!("{:.6}", start_sec.max(0.0));
+    let t = format!("{:.6}", duration_sec.max(0.0));
     let output = Command::new("ffmpeg")
         .args([
-            "-v",
-            "error",
-            "-i",
-            path,
-            "-vn",
-            "-f",
-            "f32le",
-            "-ac",
-            &channels,
-            "-ar",
-            &sample_rate,
-            "pipe:1",
+            "-v", "error", "-ss", &ss, "-i", path, "-t", &t, "-vn", "-f", "f32le", "-ac", &channels,
+            "-ar", &sample_rate, "pipe:1",
         ])
         .output()
         .with_context(|| format!("failed to run ffmpeg for audio decode: {path}"))?;
@@ -622,228 +694,210 @@ pub(crate) fn decode_audio_chunk(params: DecodeAudioChunkParams<'_>) -> Result<V
     } else {
         0.0
     };
-    let is_cacheable = (speed - 1.0).abs() <= 1e-6;
-    let cache_key = decoded_cache_key(path, sample_rate, output_channels);
+    // Only forward, 1× clips are served from a window; reverse / speed-shifted
+    // clips always stream (the window is a contiguous forward buffer).
+    let is_cacheable = (speed - 1.0).abs() <= 1e-6 && !reverse;
 
-    let cached_samples = if is_cacheable {
-        let mut state = shared.0.lock();
-        state.decoded_cache.get(&cache_key).cloned()
-    } else {
-        None
+    let stream = || {
+        decode_symphonia_chunk(DecodeSymphoniaChunkParams {
+            layer_id,
+            path,
+            source_start_sec,
+            timeline_duration_sec,
+            speed,
+            target_sample_rate: sample_rate,
+            output_channels,
+            reverse,
+            shared,
+        })
     };
 
-    if is_cacheable {
-        let cached_samples = match cached_samples {
-            Some(samples) => Some(samples),
-            None => {
-                if target.is_export()
-                    && estimate_decoded_bytes(path, sample_rate, output_channels)
-                        .is_some_and(|bytes| bytes <= MAX_DECODED_CACHE_BYTES)
-                {
-                    // Export is offline — there is no realtime audio deadline, so the
-                    // streaming path's startup behaviour (resampler priming on an
-                    // upsampled source, seek-discard, AAC encoder delay) is pure
-                    // downside. The async `background_precache` only lands a couple of
-                    // seconds into the *output* file (the mix loop runs far faster than
-                    // realtime), so the export opened with the audibly "fast"/garbled
-                    // streaming window and only settled to the gap-free whole-file decode
-                    // once the cache filled. Decode the whole clip synchronously here so
-                    // every chunk reads the same gap-free decode from the start.
-                    log::info!(
-                        "[audio] export: caching entire streaming clip in memory: {path} ({sample_rate} Hz, {output_channels} ch)"
-                    );
-                    let decoded = decode_entire_file_symphonia(path, sample_rate, output_channels)?;
-                    let shared_samples = Arc::new(decoded);
-                    let mut state = shared.0.lock();
-                    state.cache_decoded(cache_key, shared_samples.clone());
-                    Some(shared_samples)
-                } else {
-                    // Streaming clip (large container or rate mismatch). Decoding it
-                    // inline on the realtime producer thread spikes (a 127ms AAC
-                    // decode under 1080p video load) and starves both the ring and
-                    // the cpal callback → crackle. Kick off ONE background decode to
-                    // PCM and keep streaming this chunk; once it lands in the cache,
-                    // later chunks become a cheap memcpy with no spikes.
-                    maybe_spawn_background_precache(
-                        shared,
-                        path,
-                        sample_rate,
-                        output_channels,
-                        &cache_key,
-                    );
-                    None
-                }
-            }
-        };
-
-        if let Some(cached_samples) = cached_samples {
-            let start_frame = (source_start_sec * sample_rate as f64).round() as usize;
-            let frames_to_read = (timeline_duration_sec * sample_rate as f64).round() as usize;
-            let start_sample = start_frame * output_channels;
-            let samples_to_read = frames_to_read * output_channels;
-
-            let mut result = vec![0.0f32; samples_to_read];
-            let cached_len = cached_samples.len();
-
-            if start_sample < cached_len {
-                let available = (cached_len - start_sample).min(samples_to_read);
-                result[..available]
-                    .copy_from_slice(&cached_samples[start_sample..start_sample + available]);
-            }
-            return Ok(result);
-        }
+    // Export is offline (no realtime deadline) and mixes strictly FORWARD, so the
+    // per-layer streaming decoder stays sequential (one seek, then sequential
+    // decode) and is gap-free from the first chunk thanks to the resampler-priming
+    // fix. No window / whole-file decode is needed — and never reading the whole
+    // file keeps export bounded for tens-of-GB sources too.
+    if !is_cacheable || target.is_export() {
+        return stream();
     }
 
-    decode_symphonia_chunk(DecodeSymphoniaChunkParams {
-        layer_id,
-        path,
-        source_start_sec,
-        timeline_duration_sec,
-        speed,
-        target_sample_rate: sample_rate,
-        output_channels,
-        reverse,
-        shared,
-    })
+    let start_frame = (source_start_sec * sample_rate as f64).round() as usize;
+    let frames_to_read = (timeline_duration_sec * sample_rate as f64).round() as usize;
+    let samples_to_read = frames_to_read * output_channels;
+
+    // Look for a window covering this chunk. On a hit, copy out of it (window-
+    // relative) — the realtime fast path is a lock + Arc clone + memcpy.
+    let (hit, window_end_frame) = {
+        let state = shared.0.lock();
+        match state.layer_windows.get(layer_id) {
+            Some(w) if w.covers(start_frame, frames_to_read, sample_rate, output_channels) => {
+                (Some((w.samples.clone(), w.source_start_frame)), Some(w.end_frame()))
+            }
+            // A window exists but doesn't cover this request (e.g. after a seek):
+            // treat as a miss but still report its end so we don't refill needlessly.
+            _ => (None, None),
+        }
+    };
+
+    if let Some((samples, win_start)) = hit {
+        let rel = (start_frame - win_start) * output_channels;
+        let mut result = vec![0.0f32; samples_to_read];
+        let available = samples.len().saturating_sub(rel).min(samples_to_read);
+        if available > 0 {
+            result[..available].copy_from_slice(&samples[rel..rel + available]);
+        }
+        // Refill-ahead: once less than `REFILL_MARGIN_SEC` of look-ahead remains,
+        // slide the window forward so steady state stays on the memcpy fast path.
+        // Target the CURRENT playhead (not the window end) so the new, overlapping
+        // window still covers this position — replacing it with a forward-only
+        // window would leave the playhead in a gap and thrash (miss → refill → …).
+        if let Some(end) = window_end_frame {
+            let margin_frames = (REFILL_MARGIN_SEC * sample_rate as f64) as usize;
+            if end.saturating_sub(start_frame + frames_to_read) < margin_frames {
+                spawn_window_fill(shared, layer_id, path, start_frame, sample_rate, output_channels);
+            }
+        }
+        return Ok(result);
+    }
+
+    // Miss (no window yet, or the playhead jumped outside it after a seek). Kick off
+    // a bounded background fill at this position AND stream this one chunk inline so
+    // there is no audible gap while the window fills. Inline streaming a single chunk
+    // is cheap (~1ms); the long ranged decode stays off the realtime thread.
+    spawn_window_fill(shared, layer_id, path, start_frame, sample_rate, output_channels);
+    stream()
 }
 
-/// Spawns (at most once per cache key) a background thread that decodes a whole
-/// streaming audio track to PCM and stores it in `decoded_cache`. Runs OFF the
-/// realtime producer thread so a slow decode can never miss the audio deadline.
-/// The cheap part (set checks + insert) runs inline; the expensive format open +
-/// decode all happen on the spawned thread.
-/// Max concurrent background full-file precache decodes. Deliberately 1: each is a
-/// multi-GB 4K-container decode, and running several at once thrashes the disk so
-/// badly that the realtime producer's streaming reads miss the 50ms chunk deadline
-/// (decode-behind → ring drain → crackle) AND the warmup streaming that primes the
-/// ring before Play slows to a crawl (a 2-3s+ start). With one at a time the disk
-/// stays responsive: the producer streams the playhead clip cheaply (decoding ~50ms
-/// of audio costs ~1ms) and the clip currently playing wins the next free slot,
-/// since the streaming path re-requests its own precache every chunk.
-pub(crate) const PRECACHE_MAX_CONCURRENCY: usize = 1;
+/// Max concurrent background window-fill decodes. Deliberately 1: each ranged
+/// decode reads from a (possibly multi-GB) container, and running several at once
+/// thrashes the disk so badly that the realtime producer's inline streaming reads
+/// miss the 50ms chunk deadline (decode-behind → ring drain → crackle). With one at
+/// a time the disk stays responsive; the clip currently playing wins the next free
+/// slot because its own chunks re-request a fill every iteration.
+pub(crate) const WINDOW_FILL_MAX_CONCURRENCY: usize = 1;
 
-pub(crate) fn maybe_spawn_background_precache(
+/// Requests a bounded background decode of one `WINDOW_SEC` look-ahead window for
+/// `layer_id`, starting at `target_start_frame` (target-rate frames). Bounded
+/// memory: it decodes only the window, never the whole file. Idempotent and
+/// concurrency-gated; safe to call every chunk (the streaming/refill paths do).
+pub(crate) fn spawn_window_fill(
     shared: &Arc<(Mutex<AudioShared>, Condvar)>,
+    layer_id: &str,
     path: &str,
+    target_start_frame: usize,
     sample_rate: u32,
     output_channels: usize,
-    cache_key: &str,
 ) {
     {
         let mut state = shared.0.lock();
-        if state.decoded_cache.contains(cache_key)
-            || state.decoding_in_flight.contains(cache_key)
-            || state.precache_skip.contains(cache_key)
-        {
+        // Already filling this exact start for this layer → nothing to do. (We do NOT
+        // skip when a resident window already covers the start: refill-ahead
+        // deliberately re-fills an overlapping, forward-slid window so the look-ahead
+        // never runs out — the concurrency gate below still prevents pile-ups.)
+        if state.window_fill_in_flight.get(layer_id) == Some(&target_start_frame) {
             return;
         }
-        // Throttle concurrency. When the slot is full we simply don't spawn; the
-        // streaming path re-calls this every chunk for the clip it is decoding, so a
-        // skipped clip is retried (and the actively-playing clip is naturally
-        // prioritized) as soon as a running precache finishes.
-        if state.active_precache_count >= PRECACHE_MAX_CONCURRENCY {
+        // Throttle concurrency. When the slot is full we don't spawn; the caller
+        // re-requests next chunk, so the actively-playing layer is retried as soon
+        // as a running fill finishes.
+        if state.active_window_fill_count >= WINDOW_FILL_MAX_CONCURRENCY {
             return;
         }
-        state.decoding_in_flight.insert(cache_key.to_string());
-        state.active_precache_count += 1;
+        state
+            .window_fill_in_flight
+            .insert(layer_id.to_string(), target_start_frame);
+        state.active_window_fill_count += 1;
     }
 
     let shared_thread = shared.clone();
+    let layer_id_thread = layer_id.to_string();
     let path_thread = path.to_string();
-    let cache_key_thread = cache_key.to_string();
     let spawned = std::thread::Builder::new()
-        .name("fastcat-audio-precache".into())
+        .name("fastcat-audio-window-fill".into())
         .spawn(move || {
-            background_precache(
+            window_fill(
                 shared_thread,
+                layer_id_thread,
                 path_thread,
+                target_start_frame,
                 sample_rate,
                 output_channels,
-                cache_key_thread,
             );
         });
     if spawned.is_err() {
-        // Spawn failed (e.g. thread limit); release both the in-flight marker and the
-        // concurrency slot so a later chunk can retry instead of streaming forever.
+        // Spawn failed (e.g. thread limit); release the in-flight marker + slot so a
+        // later chunk can retry instead of streaming forever.
         let mut state = shared.0.lock();
-        state.decoding_in_flight.remove(cache_key);
-        state.active_precache_count = state.active_precache_count.saturating_sub(1);
-        log::warn!("[audio] failed to spawn background audio precache for {path}");
+        if state.window_fill_in_flight.get(layer_id) == Some(&target_start_frame) {
+            state.window_fill_in_flight.remove(layer_id);
+        }
+        state.active_window_fill_count = state.active_window_fill_count.saturating_sub(1);
+        log::warn!("[audio] failed to spawn audio window fill for {path}");
     }
 }
 
-struct PrecacheGuard {
+/// RAII release of a window fill's in-flight marker + concurrency slot. Only clears
+/// the marker if it still matches THIS fill's start (a newer seek may have replaced
+/// it with a different start that another fill now owns).
+struct WindowFillGuard {
     shared: Arc<(Mutex<AudioShared>, Condvar)>,
-    cache_key: String,
+    layer_id: String,
+    start_frame: usize,
 }
 
-impl Drop for PrecacheGuard {
+impl Drop for WindowFillGuard {
     fn drop(&mut self) {
         let mut state = self.shared.0.lock();
-        state.decoding_in_flight.remove(&self.cache_key);
-        // Free the concurrency slot so the next (e.g. the currently-playing) clip's
-        // precache can start.
-        state.active_precache_count = state.active_precache_count.saturating_sub(1);
+        if state.window_fill_in_flight.get(&self.layer_id) == Some(&self.start_frame) {
+            state.window_fill_in_flight.remove(&self.layer_id);
+        }
+        state.active_window_fill_count = state.active_window_fill_count.saturating_sub(1);
         self.shared.1.notify_all();
     }
 }
 
-fn background_precache(
+fn window_fill(
     shared: Arc<(Mutex<AudioShared>, Condvar)>,
+    layer_id: String,
     path: String,
+    target_start_frame: usize,
     sample_rate: u32,
     output_channels: usize,
-    cache_key: String,
 ) {
-    let _guard = PrecacheGuard {
+    let _guard = WindowFillGuard {
         shared: shared.clone(),
-        cache_key: cache_key.clone(),
+        layer_id: layer_id.clone(),
+        start_frame: target_start_frame,
     };
 
-    // Size-gate first so we never decode a multi-hour track into a giant transient
-    // buffer the cache would only reject. No declared frame count → skip (stream).
-    let too_big = match estimate_decoded_bytes(&path, sample_rate, output_channels) {
-        Some(bytes) => bytes > MAX_DECODED_CACHE_BYTES,
-        None => true,
-    };
-    if too_big {
-        let mut state = shared.0.lock();
-        state.precache_skip.insert(cache_key);
-        return;
-    }
-
-    let result = decode_entire_file_symphonia(&path, sample_rate, output_channels);
-    let mut state = shared.0.lock();
+    let start_sec = target_start_frame as f64 / sample_rate.max(1) as f64;
+    let result =
+        decode_range_symphonia(&path, start_sec, WINDOW_SEC, sample_rate, output_channels);
     match result {
-        Ok(decoded) => {
-            log::info!(
-                "[audio] background-cached decoded audio: {path} ({} frames @ {sample_rate} Hz)",
-                decoded.len() / output_channels.max(1),
-            );
-            state.cache_decoded(cache_key, Arc::new(decoded));
+        Ok(samples) if !samples.is_empty() => {
+            let window = AudioWindow {
+                source_start_frame: target_start_frame,
+                sample_rate,
+                channels: output_channels,
+                samples: Arc::new(samples),
+            };
+            let mut state = shared.0.lock();
+            // Only store if this fill still owns the in-flight slot for this start —
+            // a newer seek may have superseded us; clobbering would replace a fresher
+            // window with stale audio.
+            if state.window_fill_in_flight.get(&layer_id) == Some(&target_start_frame) {
+                state.layer_windows.insert(layer_id, window);
+                shared.1.notify_all();
+            }
+        }
+        Ok(_) => {
+            // Empty range (seek past end / no frames). Leave no window; the miss path
+            // keeps streaming silence/tail for this region.
         }
         Err(error) => {
-            log::warn!("[audio] background precache failed for {path}: {error:?}");
-            state.precache_skip.insert(cache_key);
+            log::warn!("[audio] audio window fill failed for {path}: {error:?}");
         }
     }
-}
-
-/// Estimates the decoded PCM size (bytes) of a track at the target rate/channels
-/// from its declared frame count, without decoding. `None` if the track declares
-/// no frame count (then we don't risk a background full-decode).
-fn estimate_decoded_bytes(path: &str, target_rate: u32, output_channels: usize) -> Option<usize> {
-    let format = open_symphonia_format(path, "precache size estimate").ok()?;
-    let track = find_audio_track(format.tracks())?;
-    let n_frames = track.codec_params.n_frames?;
-    let source_rate = track.codec_params.sample_rate.unwrap_or(target_rate).max(1);
-    let decoded_frames =
-        (n_frames as f64 * target_rate as f64 / source_rate as f64).ceil() as usize;
-    Some(
-        decoded_frames
-            .saturating_mul(output_channels.max(1))
-            .saturating_mul(std::mem::size_of::<f32>()),
-    )
 }
 
 fn is_audio_seek_past_end(error: &symphonia::core::errors::Error) -> bool {
@@ -917,18 +971,19 @@ mod tests {
     }
 
     #[test]
-    fn test_decode_entire_file_symphonia() -> anyhow::Result<()> {
+    fn decode_range_symphonia_decodes_mp3() -> anyhow::Result<()> {
         let path = concat!(
             env!("CARGO_MANIFEST_DIR"),
             "/../test/fixtures/media/sample-1s-audio.mp3"
         );
-        let samples = decode_entire_file_symphonia(path, 48000, 2)?;
+        // 2s range covers the whole ~1s fixture.
+        let samples = decode_range_symphonia(path, 0.0, 2.0, 48000, 2)?;
         assert!(!samples.is_empty(), "Decoded sample buffer is empty");
         Ok(())
     }
 
     #[test]
-    fn test_decode_entire_file_webm_opus_uses_ffmpeg_fallback() -> anyhow::Result<()> {
+    fn decode_range_symphonia_webm_opus_uses_ffmpeg_fallback() -> anyhow::Result<()> {
         let wav_path = write_temp_f32_wav(48_000, 2, 4_800)?;
         let mut webm_path = wav_path.clone();
         webm_path.set_extension("webm");
@@ -956,7 +1011,8 @@ mod tests {
             return Ok(());
         }
 
-        let samples = decode_entire_file_symphonia(&webm_path.to_string_lossy(), 48_000, 2)?;
+        let samples =
+            decode_range_symphonia(&webm_path.to_string_lossy(), 0.0, 2.0, 48_000, 2)?;
         assert!(
             samples.len() >= 4_800 * 2,
             "decoded Opus fallback should produce PCM samples"
@@ -1020,9 +1076,9 @@ mod tests {
         let state = shared.0.lock();
         // The producer-thread call must be served by the STREAMING decoder (proof:
         // a decoder was created for this layer), never by a synchronous whole-file
-        // decode that would block the realtime thread. A background precache may be
-        // spawned to fill `decoded_cache` later — that's off-thread and fine — so we
-        // assert the streaming path was taken rather than that the cache stays empty.
+        // decode that would block the realtime thread. A bounded window fill may be
+        // spawned off-thread to take over later — that's fine — so we assert the
+        // streaming path was taken on this call.
         assert!(
             state.decoders.contains_key("layer-8k"),
             "rate-mismatched file must stream on the producer thread (decoder created)"
@@ -1033,51 +1089,14 @@ mod tests {
         Ok(())
     }
 
+    /// Export is offline and mixes strictly forward, so a clip is served by the
+    /// sequential STREAMING decoder — never decoded whole into memory (which would
+    /// OOM on a tens-of-GB source) and never via a look-ahead window fill.
     #[test]
-    fn background_precache_fills_decoded_cache_off_thread() -> anyhow::Result<()> {
-        // Drives the worker the background thread runs, synchronously, so the test
-        // is deterministic: a streaming (rate-mismatched) clip ends up in the PCM
-        // cache and the in-flight marker is cleared.
+    fn export_streams_clip_via_streaming_decoder() -> anyhow::Result<()> {
         let path = write_temp_f32_wav(8000, 1, 8000)?;
         let path_str = path.to_string_lossy().to_string();
         let shared = Arc::new((Mutex::new(AudioShared::default()), Condvar::new()));
-        let cache_key = decoded_cache_key(&path_str, 48000, 2);
-        shared.0.lock().decoding_in_flight.insert(cache_key.clone());
-
-        background_precache(
-            shared.clone(),
-            path_str.clone(),
-            48000,
-            2,
-            cache_key.clone(),
-        );
-
-        let state = shared.0.lock();
-        assert!(
-            !state.decoding_in_flight.contains(&cache_key),
-            "in-flight marker must be cleared when the worker finishes"
-        );
-        assert!(
-            state.decoded_cache.contains(&cache_key),
-            "decoded PCM must land in the cache so the producer stops streaming"
-        );
-        drop(state);
-        let _ = std::fs::remove_file(path);
-        Ok(())
-    }
-
-    /// Export is offline, so a rate-mismatched (streaming) clip must be decoded
-    /// SYNCHRONOUSLY into the PCM cache on the first chunk — never served by the
-    /// realtime streaming decoder. Otherwise the export's opening seconds came
-    /// from the streaming window (audibly "fast"/garbled) until the async
-    /// background precache happened to land, while later seconds read the
-    /// gap-free whole-file decode.
-    #[test]
-    fn export_caches_streaming_clip_synchronously_no_streaming_decoder() -> anyhow::Result<()> {
-        let path = write_temp_f32_wav(8000, 1, 8000)?;
-        let path_str = path.to_string_lossy().to_string();
-        let shared = Arc::new((Mutex::new(AudioShared::default()), Condvar::new()));
-        let cache_key = decoded_cache_key(&path_str, 48000, 2);
 
         let decoded = decode_audio_chunk(DecodeAudioChunkParams {
             layer_id: "export-8k",
@@ -1093,16 +1112,16 @@ mod tests {
         assert_eq!(decoded.len(), (0.05f64 * 48000.0).round() as usize * 2);
         let state = shared.0.lock();
         assert!(
-            state.decoded_cache.contains(&cache_key),
-            "export must fill the PCM cache synchronously on the first chunk"
+            state.decoders.contains_key("export-8k"),
+            "export must stream via the sequential decoder"
         );
         assert!(
-            !state.decoders.contains_key("export-8k"),
-            "export must not fall back to the realtime streaming decoder"
+            !state.layer_windows.contains_key("export-8k"),
+            "export must not build a look-ahead window"
         );
         assert!(
-            !state.decoding_in_flight.contains(&cache_key),
-            "export must not spawn an async background precache"
+            !state.window_fill_in_flight.contains_key("export-8k"),
+            "export must not spawn a background window fill"
         );
         drop(state);
 
@@ -1171,19 +1190,6 @@ mod tests {
     }
 
     #[test]
-    fn estimate_decoded_bytes_scales_source_frames_to_target() -> anyhow::Result<()> {
-        // 8000 frames of 8 kHz mono → at 48 kHz stereo f32 that is
-        // 8000 * (48000/8000) = 48000 frames * 2 ch * 4 bytes = 384000 bytes.
-        let path = write_temp_f32_wav(8000, 1, 8000)?;
-        let path_str = path.to_string_lossy().to_string();
-        let bytes = estimate_decoded_bytes(&path_str, 48000, 2)
-            .ok_or_else(|| anyhow::anyhow!("wav must declare a frame count"))?;
-        assert_eq!(bytes, 48000 * 2 * 4);
-        let _ = std::fs::remove_file(path);
-        Ok(())
-    }
-
-    #[test]
     fn streaming_resampler_drops_initial_filter_delay() -> anyhow::Result<()> {
         let path = write_temp_f32_wav(8000, 1, 8000)?;
         let path_str = path.to_string_lossy().to_string();
@@ -1200,7 +1206,7 @@ mod tests {
             reverse: false,
             shared: &shared,
         })?;
-        let full = decode_entire_file_symphonia(&path_str, 48000, 2)?;
+        let full = decode_range_symphonia(&path_str, 0.0, 2.0, 48000, 2)?;
 
         let compare_len = chunk.len().min(full.len()).min(512);
         let mean_abs_diff = chunk[..compare_len]
@@ -1475,83 +1481,247 @@ mod tests {
         Ok(())
     }
 
-    #[test]
-    fn test_decoded_cache_key_format() {
-        let key = decoded_cache_key("/path/to/audio.mp3", 44100, 2);
-        assert_eq!(key, "/path/to/audio.mp3|sr=44100|ch=2");
+    /// Polls `layer_windows[layer_id]` until a window with the given start frame is
+    /// resident (a background fill landed), or times out (~2s).
+    fn wait_for_window(
+        shared: &Arc<(Mutex<AudioShared>, Condvar)>,
+        layer_id: &str,
+        start_frame: usize,
+    ) -> bool {
+        for _ in 0..200 {
+            if shared
+                .0
+                .lock()
+                .layer_windows
+                .get(layer_id)
+                .is_some_and(|w| w.source_start_frame == start_frame)
+            {
+                return true;
+            }
+            std::thread::sleep(std::time::Duration::from_millis(10));
+        }
+        false
     }
 
     #[test]
-    fn test_maybe_spawn_background_precache_prevents_duplicate() -> anyhow::Result<()> {
-        let path = write_temp_f32_wav(8000, 1, 8000)?;
+    fn window_hit_serves_memcpy() -> anyhow::Result<()> {
+        let shared = Arc::new((Mutex::new(AudioShared::default()), Condvar::new()));
+        // Resident window [0, 5s) of a distinct ramp so we can verify the offset copy.
+        let frames = 5 * 48000;
+        let samples: Vec<f32> = (0..frames * 2).map(|i| i as f32 * 1e-6).collect();
+        let samples = Arc::new(samples);
+        shared.0.lock().layer_windows.insert(
+            "w1".to_string(),
+            AudioWindow {
+                source_start_frame: 0,
+                sample_rate: 48000,
+                channels: 2,
+                samples: samples.clone(),
+            },
+        );
+
+        // Request at 0.1s — well before the 4s refill margin, so no fill is spawned
+        // and the fake path is never opened.
+        let out = decode_audio_chunk(DecodeAudioChunkParams {
+            layer_id: "w1",
+            path: "/tmp/does-not-exist.wav",
+            source_start_sec: 0.1,
+            timeline_duration_sec: 0.05,
+            speed: 1.0,
+            target: AudioRenderTarget::monitor(48000, 2),
+            reverse: false,
+            shared: &shared,
+        })?;
+
+        let start = (0.1 * 48000.0) as usize * 2;
+        let len = (0.05 * 48000.0) as usize * 2;
+        assert_eq!(out, samples[start..start + len], "memcpy is window-relative");
+        let state = shared.0.lock();
+        assert!(
+            !state.decoders.contains_key("w1"),
+            "a window hit must not create a streaming decoder"
+        );
+        assert!(
+            !state.window_fill_in_flight.contains_key("w1"),
+            "a hit far from the window end must not spawn a refill"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn window_refill_ahead_spawns_next_window() -> anyhow::Result<()> {
+        let path = write_temp_f32_wav(48000, 2, 48000 * 3)?; // 3s real source
         let path_str = path.to_string_lossy().to_string();
         let shared = Arc::new((Mutex::new(AudioShared::default()), Condvar::new()));
-        let cache_key = decoded_cache_key(&path_str, 48000, 2);
+        // Resident window [0, 1s); a chunk near its end is within the refill margin.
+        let end_frame = 48000;
+        shared.0.lock().layer_windows.insert(
+            "r1".to_string(),
+            AudioWindow {
+                source_start_frame: 0,
+                sample_rate: 48000,
+                channels: 2,
+                samples: Arc::new(vec![0.1f32; end_frame * 2]),
+            },
+        );
 
-        // Mark as in-flight
-        shared.0.lock().decoding_in_flight.insert(cache_key.clone());
+        let start_frame = (0.9 * 48000.0) as usize;
+        let _ = decode_audio_chunk(DecodeAudioChunkParams {
+            layer_id: "r1",
+            path: &path_str,
+            source_start_sec: 0.9,
+            timeline_duration_sec: 0.05,
+            speed: 1.0,
+            target: AudioRenderTarget::monitor(48000, 2),
+            reverse: false,
+            shared: &shared,
+        })?;
+        let _ = end_frame;
 
-        // Invoke maybe_spawn_background_precache. Since it's already in-flight,
-        // it shouldn't spawn a background thread to cache it.
-        maybe_spawn_background_precache(&shared, &path_str, 48000, 2, &cache_key);
-
-        std::thread::sleep(std::time::Duration::from_millis(50));
-
-        let state = shared.0.lock();
-        assert!(!state.decoded_cache.contains(&cache_key));
-        assert!(!state.precache_skip.contains(&cache_key));
-        assert!(state.decoding_in_flight.contains(&cache_key));
-        drop(state);
-
+        // Refill-ahead slides the window forward from the CURRENT playhead (so the
+        // new, overlapping window still covers it), not from the old window end.
+        assert!(
+            wait_for_window(&shared, "r1", start_frame),
+            "refill-ahead must decode and install a forward window at the playhead"
+        );
         let _ = std::fs::remove_file(path);
         Ok(())
     }
 
     #[test]
-    fn maybe_spawn_background_precache_respects_concurrency_limit() -> anyhow::Result<()> {
-        let path = write_temp_f32_wav(8000, 1, 8000)?;
+    fn window_miss_streams_inline_and_spawns_fill() -> anyhow::Result<()> {
+        let path = write_temp_f32_wav(48000, 2, 48000 * 3)?;
         let path_str = path.to_string_lossy().to_string();
         let shared = Arc::new((Mutex::new(AudioShared::default()), Condvar::new()));
-        let cache_key = decoded_cache_key(&path_str, 48000, 2);
 
-        // Saturate the concurrency budget with other in-flight decodes.
-        shared.0.lock().active_precache_count = PRECACHE_MAX_CONCURRENCY;
+        // No window yet → miss: serve this chunk inline AND start a fill at start 0.
+        let out = decode_audio_chunk(DecodeAudioChunkParams {
+            layer_id: "m1",
+            path: &path_str,
+            source_start_sec: 0.0,
+            timeline_duration_sec: 0.05,
+            speed: 1.0,
+            target: AudioRenderTarget::monitor(48000, 2),
+            reverse: false,
+            shared: &shared,
+        })?;
 
-        // A fresh (not in-flight) clip must NOT spawn while the budget is full: no
-        // in-flight marker is taken, so the streaming path retries it later.
-        maybe_spawn_background_precache(&shared, &path_str, 48000, 2, &cache_key);
-        std::thread::sleep(std::time::Duration::from_millis(50));
+        assert_eq!(out.len(), (0.05 * 48000.0) as usize * 2);
+        assert!(
+            shared.0.lock().decoders.contains_key("m1"),
+            "a miss must stream this chunk inline (decoder created)"
+        );
+        assert!(
+            wait_for_window(&shared, "m1", 0),
+            "a miss must spawn a fill that installs the window at the requested start"
+        );
+        let _ = std::fs::remove_file(path);
+        Ok(())
+    }
+
+    #[test]
+    fn seek_outside_window_refills_at_new_start() -> anyhow::Result<()> {
+        let path = write_temp_f32_wav(48000, 2, 48000 * 3)?;
+        let path_str = path.to_string_lossy().to_string();
+        let shared = Arc::new((Mutex::new(AudioShared::default()), Condvar::new()));
+        // Resident window [0, 1s); the request jumps to 2s — outside it.
+        shared.0.lock().layer_windows.insert(
+            "s1".to_string(),
+            AudioWindow {
+                source_start_frame: 0,
+                sample_rate: 48000,
+                channels: 2,
+                samples: Arc::new(vec![0.0f32; 48000 * 2]),
+            },
+        );
+
+        let _ = decode_audio_chunk(DecodeAudioChunkParams {
+            layer_id: "s1",
+            path: &path_str,
+            source_start_sec: 2.0,
+            timeline_duration_sec: 0.05,
+            speed: 1.0,
+            target: AudioRenderTarget::monitor(48000, 2),
+            reverse: false,
+            shared: &shared,
+        })?;
+
+        // The fill targets the NEW seek position (2s), not the old window end.
+        assert!(
+            wait_for_window(&shared, "s1", 2 * 48000),
+            "a seek outside the window must refill at the new position"
+        );
+        let _ = std::fs::remove_file(path);
+        Ok(())
+    }
+
+    #[test]
+    fn decode_range_symphonia_no_leading_silence() -> anyhow::Result<()> {
+        // Continuous 440Hz tone at 8kHz → decoding at 48k forces a resample, so this
+        // exercises that the resampler group delay is dropped (no leading silence).
+        let path = write_temp_f32_wav(8000, 1, 8000 * 2)?; // 2s tone
+        let path_str = path.to_string_lossy().to_string();
+        let head_frames = (0.005 * 48000.0) as usize * 2; // first 5ms
+        // Both from 0 (no seek) and from a mid-clip seek must open with signal.
+        for start in [0.0, 0.1] {
+            let out = decode_range_symphonia(&path_str, start, 0.5, 48000, 2)?;
+            assert!(!out.is_empty(), "start {start}: empty");
+            let head_peak = out[..head_frames].iter().fold(0.0f32, |a, &b| a.max(b.abs()));
+            assert!(
+                head_peak > 0.01,
+                "start {start}: leading silence (peak {head_peak})"
+            );
+        }
+        let _ = std::fs::remove_file(path);
+        Ok(())
+    }
+
+    #[test]
+    fn decode_range_symphonia_is_bounded() -> anyhow::Result<()> {
+        // 10s source; decode only a 1s range → ~1s of output, NOT the whole file.
+        let path = write_temp_f32_wav(8000, 1, 8000 * 10)?;
+        let path_str = path.to_string_lossy().to_string();
+        let out = decode_range_symphonia(&path_str, 0.0, 1.0, 48000, 2)?;
+        let out_frames = out.len() / 2;
+        assert!(
+            (47000..49000).contains(&out_frames),
+            "expected ~1s ({}) of output, got {out_frames} frames",
+            48000
+        );
+        // Must be far less than a whole-file decode (10s → 480000 frames).
+        assert!(out_frames < 100_000, "decode was not bounded to the range");
+        let _ = std::fs::remove_file(path);
+        Ok(())
+    }
+
+    #[test]
+    fn window_fill_respects_concurrency_limit() -> anyhow::Result<()> {
+        let path = write_temp_f32_wav(48000, 2, 48000 * 2)?;
+        let path_str = path.to_string_lossy().to_string();
+        let shared = Arc::new((Mutex::new(AudioShared::default()), Condvar::new()));
+
+        // Saturate the budget: a fresh fill must NOT claim a slot or spawn.
+        shared.0.lock().active_window_fill_count = WINDOW_FILL_MAX_CONCURRENCY;
+        spawn_window_fill(&shared, "c1", &path_str, 0, 48000, 2);
+        std::thread::sleep(std::time::Duration::from_millis(30));
         {
             let state = shared.0.lock();
             assert!(
-                !state.decoding_in_flight.contains(&cache_key),
-                "must not claim a slot while concurrency budget is full"
+                !state.window_fill_in_flight.contains_key("c1"),
+                "must not claim a slot while the budget is full"
             );
-            assert!(!state.decoded_cache.contains(&cache_key));
-            assert_eq!(state.active_precache_count, PRECACHE_MAX_CONCURRENCY);
+            assert!(!state.layer_windows.contains_key("c1"));
+            assert_eq!(state.active_window_fill_count, WINDOW_FILL_MAX_CONCURRENCY);
         }
 
-        // Free the budget; the same call now spawns and eventually caches the clip,
-        // releasing the slot again on completion.
-        shared.0.lock().active_precache_count = 0;
-        maybe_spawn_background_precache(&shared, &path_str, 48000, 2, &cache_key);
-        for _ in 0..200 {
-            if shared.0.lock().decoded_cache.contains(&cache_key) {
-                break;
-            }
-            std::thread::sleep(std::time::Duration::from_millis(10));
-        }
-        let state = shared.0.lock();
-        assert!(
-            state.decoded_cache.contains(&cache_key),
-            "with a free slot the precache must run and cache the clip"
-        );
+        // Free the budget; the same call now fills and releases the slot.
+        shared.0.lock().active_window_fill_count = 0;
+        spawn_window_fill(&shared, "c1", &path_str, 0, 48000, 2);
+        assert!(wait_for_window(&shared, "c1", 0), "fill must run with a free slot");
         assert_eq!(
-            state.active_precache_count, 0,
-            "slot must be released when the precache thread finishes"
+            shared.0.lock().active_window_fill_count, 0,
+            "slot must be released when the fill thread finishes"
         );
-        drop(state);
-
         let _ = std::fs::remove_file(path);
         Ok(())
     }

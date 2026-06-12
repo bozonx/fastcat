@@ -184,30 +184,21 @@ impl NativeAudioEngine {
             state.seek_serial = state.seek_serial.wrapping_add(1);
         }
 
-        // Drop decoded files / decoders no longer referenced by the scene.
+        // Drop per-layer state no longer referenced by the scene. Windows, in-flight
+        // fills and streaming decoders are all keyed by layer id, so retain by id.
         let scene_clone = state.scene.clone();
-        let to_remove: Vec<String> = state
-            .decoded_cache
-            .iter()
-            .filter_map(|(key, _)| {
-                let path = key.split("|sr=").next().unwrap_or(key);
-                if scene_clone.iter().any(|l| l.path == path) {
-                    None
-                } else {
-                    Some(key.clone())
-                }
-            })
-            .collect();
-        for key in &to_remove {
-            state.drop_decoded(key);
-        }
+        state
+            .layer_windows
+            .retain(|layer_id, _| scene_clone.iter().any(|l| l.id == *layer_id));
+        state
+            .window_fill_in_flight
+            .retain(|layer_id, _| scene_clone.iter().any(|l| l.id == *layer_id));
         state
             .file_size_cache
             .retain(|path, _| scene_clone.iter().any(|l| l.path == *path));
         state
             .source_metadata_cache
             .retain(|path, _| scene_clone.iter().any(|l| l.path == *path));
-        // Decoders are keyed per layer id (not per path), so retain by layer id.
         state
             .decoders
             .retain(|layer_id, _| scene_clone.iter().any(|l| l.id == *layer_id));
@@ -226,20 +217,10 @@ impl NativeAudioEngine {
             plugin_host.lock().reset_all();
         }
 
-        // Pre-emptively warm up the cache for all audio layers in the scene
-        let sample_rate = self.sample_rate;
-        let output_channels = self.device_channels as usize;
-        for layer in &scene_clone {
-            let cache_key =
-                crate::audio::shared::decoded_cache_key(&layer.path, sample_rate, output_channels);
-            crate::audio::decode::maybe_spawn_background_precache(
-                &self.shared,
-                &layer.path,
-                sample_rate,
-                output_channels,
-                &cache_key,
-            );
-        }
+        // No eager whole-file warm: a layer's look-ahead window is filled on demand
+        // when the producer first mixes it (at the playhead), bounded to WINDOW_SEC.
+        // Speculatively decoding every scene clip would do unbounded work for far-away
+        // and never-played clips.
 
         self.shared.1.notify_all();
     }
@@ -297,15 +278,13 @@ impl NativeAudioEngine {
         if !playing || !hold || scene_empty || speed <= 0.0 {
             return true;
         }
-        // Primed = the ring has streamed enough audio to start, NOT that the whole
-        // file is decoded into `decoded_cache`. Streaming a clip's audio at the
-        // playhead is cheap (decoding ~50ms of audio costs ~1ms) and fills the ring
-        // in well under a second; waiting for the full-file precache here made Play
-        // wait seconds on long clips. Sustained playback stays clean because the
-        // background precache is concurrency-limited (see PRECACHE_MAX_CONCURRENCY),
-        // so the producer's streaming reads are not starved by a disk thrash of many
-        // simultaneous full-file decodes. Only a pending ring clear (buffer about to
-        // be wiped) blocks priming.
+        // Primed = the ring has streamed enough audio to start, NOT that a clip is
+        // fully decoded. Streaming a clip's audio at the playhead is cheap (decoding
+        // ~50ms of audio costs ~1ms) and fills the ring in well under a second.
+        // Sustained playback then stays clean because each layer's bounded look-ahead
+        // window is filled off-thread (concurrency-limited, see
+        // WINDOW_FILL_MAX_CONCURRENCY) and the producer memcpys from it. Only a
+        // pending ring clear (buffer about to be wiped) blocks priming.
         if pending_ring_clear {
             return false;
         }
@@ -883,30 +862,35 @@ mod tests {
     }
 
     #[test]
-    fn set_scene_evicts_unused_decoded_cache() {
+    fn set_scene_evicts_unused_layer_windows() {
+        use crate::audio::shared::AudioWindow;
         let engine = mock_engine();
         let l1 = layer("l1", "/tmp/a.wav", 0.0, 10.0, 1.0);
-        engine.set_scene(&[l1.clone()], &[], 1.0);
+        engine.set_scene(std::slice::from_ref(&l1), &[], 1.0);
         {
             let mut state = engine.shared.0.lock();
-            state.cache_decoded(
-                "/tmp/a.wav|sr=48000".into(),
-                std::sync::Arc::new(vec![0.0f32; 100]),
-            );
-            state.cache_decoded(
-                "/tmp/b.wav|sr=48000".into(),
-                std::sync::Arc::new(vec![0.0f32; 100]),
-            );
+            // A window for the in-scene layer and one for a layer no longer present.
+            for id in ["l1", "stale"] {
+                state.layer_windows.insert(
+                    id.to_string(),
+                    AudioWindow {
+                        source_start_frame: 0,
+                        sample_rate: 48000,
+                        channels: 2,
+                        samples: std::sync::Arc::new(vec![0.0f32; 100]),
+                    },
+                );
+            }
         }
 
-        engine.set_scene(&[l1.clone()], &[], 1.0);
+        // Re-set the same scene (only l1) → the stale layer's window is dropped.
+        engine.set_scene(std::slice::from_ref(&l1), &[], 1.0);
         let state = engine.shared.0.lock();
-        assert!(state
-            .decoded_cache
-            .contains(&"/tmp/a.wav|sr=48000".to_string()));
-        assert!(!state
-            .decoded_cache
-            .contains(&"/tmp/b.wav|sr=48000".to_string()));
+        assert!(state.layer_windows.contains_key("l1"), "in-scene window kept");
+        assert!(
+            !state.layer_windows.contains_key("stale"),
+            "window of a removed layer must be evicted"
+        );
     }
 
     #[test]
