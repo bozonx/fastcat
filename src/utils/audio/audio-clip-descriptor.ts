@@ -12,8 +12,6 @@ const US_PER_SEC = 1_000_000;
 
 interface AudioWorkerClip extends WorkerTimelineClip {
   defaultAudioFadeCurve?: 'linear' | 'logarithmic';
-  originalAudioGain?: unknown;
-  originalAudioBalance?: unknown;
 }
 
 export interface CanonicalAudioClipDescriptor {

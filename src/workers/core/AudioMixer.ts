@@ -329,12 +329,10 @@ export interface StereoPanMatrix {
  * mixing that StereoPannerNode performs internally — keeping render in sync
  * with preview.
  *
- * NOTE: This is intentionally different from the native Tauri implementation in
- * `src-tauri/src/audio/mix.rs` which uses a linear balance law without channel
- * cross-feed. The equal-power pan law dips the center gain by ~3 dB. If it were
- * applied both on the layers AND on the bus levels in the native mixer, it would
- * compound to a ~6 dB volume loss on every clip at default balance, whereas the W3C
- * environment Web Audio components handle the equal-power summation internally.
+ * The native Tauri mixer (`src-tauri/src/audio/mix.rs`) now uses the same
+ * equal-power law, so web and native renders are aligned. Center is unity on
+ * both channels (no ~3 dB dip), so applying it on both the layer and the bus is
+ * a no-op at default balance.
  */
 export function getStereoPanMatrix(audioBalance: number): StereoPanMatrix {
   const pan = Math.max(-1, Math.min(1, Number.isFinite(audioBalance) ? audioBalance : 0));

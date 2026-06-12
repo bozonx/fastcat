@@ -9,8 +9,6 @@ import {
 
 interface AudioWorkerClip extends WorkerTimelineClip {
   defaultAudioFadeCurve?: 'linear' | 'logarithmic';
-  originalAudioGain?: unknown;
-  originalAudioBalance?: unknown;
 }
 
 function createClip(overrides: Partial<AudioWorkerClip> = {}): AudioWorkerClip {
@@ -141,6 +139,24 @@ describe('audio clip descriptor adapters', () => {
         params: { delayMs: 120 },
       },
     ]);
+  });
+
+  it('uses originalAudioGain/originalAudioBalance for native layer to avoid double track application', () => {
+    const descriptor = buildCanonicalAudioClipDescriptor({
+      clip: createClip({
+        audioGain: 0.5, // merged track * clip gain
+        audioBalance: -0.5, // merged track * clip balance
+        originalAudioGain: 1.0, // clip-only gain
+        originalAudioBalance: 0.0, // clip-only balance
+      }),
+      sourcePath: '/project/audio/source.mp3',
+    });
+    const nativeLayer = toNativeSceneAudioLayer({ descriptor });
+
+    // The native mixer applies track gain/balance on the bus, so the layer
+    // must carry clip-only values. Using merged values would double-apply.
+    expect(nativeLayer.audio_gain).toBe(1.0);
+    expect(nativeLayer.audio_balance).toBe(0.0);
   });
 
   it('sanitizes native-only scalar fields without changing web fields', () => {

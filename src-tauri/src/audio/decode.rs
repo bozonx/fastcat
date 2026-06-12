@@ -6,7 +6,7 @@ use anyhow::{anyhow, Context, Result};
 use parking_lot::{Condvar, Mutex};
 
 use crate::audio::resample::{
-    make_sinc_resampler, planar_to_interleaved, resample_planar_cached,
+    make_sinc_resampler, planar_to_interleaved, resample_flush_cached, resample_planar_cached,
     resample_planar_with_speed, RESAMPLER_CHUNK_SIZE,
 };
 use crate::audio::shared::{
@@ -665,7 +665,6 @@ pub(crate) fn decode_symphonia_chunk(params: DecodeSymphoniaChunkParams<'_>) -> 
         if pending_delay_samples > 0 {
             let drop = pending_delay_samples.min(interleaved.len());
             interleaved.drain(0..drop);
-            pending_delay_samples -= drop;
         }
         combined.extend_from_slice(&interleaved);
     }
