@@ -164,8 +164,8 @@ const versions = computed(() => timelineStore.backupVersions);
       >
         <colgroup>
           <col class="w-auto" />
-          <col class="w-[125px]" />
-          <col class="w-[100px]" />
+          <col class="w-[115px]" />
+          <col class="w-[90px]" />
         </colgroup>
         <tbody class="divide-y divide-ui-border/40">
           <tr
@@ -174,7 +174,7 @@ const versions = computed(() => timelineStore.backupVersions);
             class="hover:bg-ui-bg-muted/30 transition-colors"
           >
             <!-- Name / Type Badge -->
-            <td class="px-3 py-3 align-middle font-medium text-ui-text min-w-0">
+            <td class="px-1.5 py-3 align-middle font-medium text-ui-text min-w-0">
               <div class="flex flex-col gap-1 min-w-0">
                 <span class="truncate" :title="version.name">{{ version.name }}</span>
                 <div class="flex">
@@ -201,12 +201,12 @@ const versions = computed(() => timelineStore.backupVersions);
             </td>
 
             <!-- Date -->
-            <td class="px-3 py-3 align-middle text-ui-text-muted whitespace-nowrap">
+            <td class="px-1.5 py-3 align-middle text-ui-text-muted whitespace-nowrap">
               {{ formatDate(version.date) }}
             </td>
 
             <!-- Actions -->
-            <td class="px-3 py-3 align-middle text-right">
+            <td class="px-1.5 py-3 align-middle text-right">
               <div class="flex items-center justify-end gap-1.5">
                 <!-- Preview / Open -->
                 <UTooltip v-if="version.type !== 'main'" :text="t('videoEditor.timeline.backups.actionsLabel.openReadOnly')">
