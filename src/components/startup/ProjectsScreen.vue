@@ -293,6 +293,7 @@ const sortedProjects = computed(() => {
                 <div class="p-3 flex flex-col flex-1 min-h-[74px]">
                   <h3
                     class="text-sm font-semibold text-ui-text truncate group-hover:text-primary-400 transition-colors mb-1"
+                    :title="project.projectName"
                   >
                     {{ project.projectName }}
                   </h3>

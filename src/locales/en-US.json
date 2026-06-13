@@ -327,6 +327,7 @@
           "description": "Soft bloom effect",
           "name": "Bloom",
           "params": {
+            "radius": "Radius",
             "strength": "Strength",
             "threshold": "Threshold"
           }
@@ -393,7 +394,12 @@
           },
           "vignette": {
             "description": "Darken image edges",
-            "name": "Vignette"
+            "name": "Vignette",
+            "params": {
+              "strength": "Strength",
+              "radius": "Radius",
+              "softness": "Softness"
+            }
           }
         },
         "noise": {

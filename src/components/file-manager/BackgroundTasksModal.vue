@@ -77,7 +77,7 @@ const backgroundTasksStore = useBackgroundTasksStore();
           <!-- Task Info -->
           <div class="flex-1 min-w-0">
             <div class="flex items-center gap-2">
-              <span class="font-medium text-sm truncate">{{ task.title }}</span>
+              <span class="font-medium text-sm truncate" :title="task.title">{{ task.title }}</span>
               <span class="text-xs text-ui-text-muted"
                 ><FriendlyTime :date="task.createdAt"
               /></span>

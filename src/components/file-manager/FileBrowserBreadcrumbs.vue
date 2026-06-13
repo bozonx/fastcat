@@ -75,6 +75,7 @@ const { getHotkeyTitle } = useHotkeyLabel();
         <button
           class="text-xs text-ui-text-muted hover:text-ui-text transition-colors shrink-0 truncate max-w-[120px]"
           :class="{ 'text-ui-text font-medium': index === parentFolders.length - 1 }"
+          :title="folder.name"
           @click="emit('navigateToFolder', index)"
         >
           {{ folder.name }}

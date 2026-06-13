@@ -397,7 +397,7 @@ const headerTitle = computed(() => {
       :draggable="props.experimentalFeatures"
       @dragstart="props.experimentalFeatures ? onPanelDragStart : undefined"
     >
-      <span class="ml-2 text-xs text-ui-text-muted font-mono truncate min-w-0 flex-1">
+      <span class="ml-2 text-xs text-ui-text-muted font-mono truncate min-w-0 flex-1" :title="headerTitle">
         {{ headerTitle }}
       </span>
       <div v-if="displayMode !== 'empty'" class="flex gap-1 shrink-0 ml-2">

@@ -68,6 +68,7 @@ function toggle() {
           v-if="summary || title"
           v-show="!isCurrentlyOpen"
           class="text-base text-ui-text-muted font-normal truncate"
+          :title="summary || title"
         >
           {{ summary || title }}
         </span>

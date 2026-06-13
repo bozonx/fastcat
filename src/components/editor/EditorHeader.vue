@@ -56,7 +56,7 @@ const menuItems = computed(() => {
         class="flex items-center gap-2 px-2 py-1 rounded-md hover:bg-ui-bg-accent cursor-pointer transition-colors shrink-0"
         @click="$emit('open-project-settings')"
       >
-        <span class="text-ui-text font-bold text-sm truncate max-w-[200px]">
+        <span class="text-ui-text font-bold text-sm truncate max-w-[200px]" :title="projectStore.currentProjectName ?? ''">
           {{ projectStore.currentProjectName }}
         </span>
         <UIcon name="ix:project-configuration" class="w-4 h-4 text-ui-text-muted" />

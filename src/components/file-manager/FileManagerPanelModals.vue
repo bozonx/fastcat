@@ -66,7 +66,7 @@ const { t } = useI18n();
     @confirm="emit('deleteConfirm')"
   >
     <div>
-      <div v-if="props.deleteTargets.length === 1" class="mt-2 text-sm font-medium text-ui-text truncate">
+      <div v-if="props.deleteTargets.length === 1" class="mt-2 text-sm font-medium text-ui-text truncate" :title="props.deleteTargets[0]?.name">
         {{ props.deleteTargets[0]?.name }}
       </div>
       <div v-else-if="props.deleteTargets.length > 1" class="mt-2 text-sm font-medium text-ui-text">
@@ -93,6 +93,7 @@ const { t } = useI18n();
             v-for="tl in props.timelinesUsingDeleteTarget"
             :key="tl.timelinePath"
             class="text-xs text-ui-text break-all"
+            :title="tl.timelineName"
           >
             {{ tl.timelineName }}
             <span class="text-2xs text-ui-text-muted">({{ tl.timelinePath }})</span>

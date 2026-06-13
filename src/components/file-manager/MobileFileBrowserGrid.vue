@@ -291,6 +291,7 @@ onBeforeUnmount(clearLongPress);
           >
             <div
               class="truncate text-[12px] font-medium leading-tight mb-0.5 transition-colors"
+              :title="entry.name"
               :class="[
                 isSelected(entry) && !hasProxy(entry) && !isGeneratingProxy(entry)
                   ? 'text-selection-accent-400'

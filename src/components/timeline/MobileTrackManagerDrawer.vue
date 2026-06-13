@@ -207,6 +207,7 @@ function handleDragEnd(event: any) {
             <!-- Track Name (Tap to Rename) -->
             <span
               class="flex-1 text-sm font-medium text-ui-text truncate px-1 cursor-pointer hover:underline"
+              :title="track.name || track.id"
               @click="openRename(track)"
             >
               {{ track.name || track.id }}

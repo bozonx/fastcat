@@ -327,6 +327,7 @@
           "description": "Эффект размытого свечения",
           "name": "Свечение (Bloom)",
           "params": {
+            "radius": "Радиус",
             "strength": "Сила",
             "threshold": "Порог"
           }
@@ -393,7 +394,12 @@
           },
           "vignette": {
             "description": "Затемнение краев изображения",
-            "name": "Виньетка"
+            "name": "Виньетка",
+            "params": {
+              "strength": "Сила",
+              "radius": "Радиус",
+              "softness": "Мягкость"
+            }
           }
         },
         "noise": {

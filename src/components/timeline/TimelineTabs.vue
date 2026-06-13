@@ -286,7 +286,7 @@ onBeforeUnmount(() => {
               "
             />
 
-            <span class="text-2xs truncate flex-1 font-bold tracking-widest uppercase">
+            <span class="text-2xs truncate flex-1 font-bold tracking-widest uppercase" :title="getFileName(path)">
               {{ getFileName(path) }}
             </span>
 
