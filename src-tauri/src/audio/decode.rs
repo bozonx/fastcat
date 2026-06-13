@@ -832,6 +832,7 @@ pub(crate) fn decode_audio_chunk(params: DecodeAudioChunkParams<'_>) -> Result<V
                     start_frame,
                     sample_rate,
                     output_channels,
+                    WindowFillPriority::Live,
                 );
             }
         }
@@ -849,6 +850,7 @@ pub(crate) fn decode_audio_chunk(params: DecodeAudioChunkParams<'_>) -> Result<V
         start_frame,
         sample_rate,
         output_channels,
+        WindowFillPriority::Live,
     );
     stream()
 }
@@ -881,6 +883,12 @@ pub(crate) const WINDOW_FILL_MAX_CONCURRENCY: usize = 1;
 /// `layer_id`, starting at `target_start_frame` (target-rate frames). Bounded
 /// memory: it decodes only the window, never the whole file. Idempotent and
 /// concurrency-gated; safe to call every chunk (the streaming/refill paths do).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum WindowFillPriority {
+    Live,
+    Speculative,
+}
+
 pub(crate) fn spawn_window_fill(
     shared: &Arc<(Mutex<AudioShared>, Condvar)>,
     layer_id: &str,
@@ -888,6 +896,7 @@ pub(crate) fn spawn_window_fill(
     target_start_frame: usize,
     sample_rate: u32,
     output_channels: usize,
+    priority: WindowFillPriority,
 ) {
     {
         let mut state = shared.0.lock();
@@ -896,6 +905,11 @@ pub(crate) fn spawn_window_fill(
         // deliberately re-fills an overlapping, forward-slid window so the look-ahead
         // never runs out — the concurrency gate below still prevents pile-ups.)
         if state.window_fill_in_flight.get(layer_id) == Some(&target_start_frame) {
+            return;
+        }
+        // Future-clip prewarm is optional. Do not let it occupy the single ranged
+        // decode slot while live refill/miss work is already active.
+        if priority == WindowFillPriority::Speculative && state.active_window_fill_count > 0 {
             return;
         }
         // Throttle concurrency. When the slot is full we don't spawn; the caller
@@ -1921,7 +1935,15 @@ mod tests {
 
         // Saturate the budget: a fresh fill must NOT claim a slot or spawn.
         shared.0.lock().active_window_fill_count = WINDOW_FILL_MAX_CONCURRENCY;
-        spawn_window_fill(&shared, "c1", &path_str, 0, 48000, 2);
+        spawn_window_fill(
+            &shared,
+            "c1",
+            &path_str,
+            0,
+            48000,
+            2,
+            WindowFillPriority::Live,
+        );
         std::thread::sleep(std::time::Duration::from_millis(30));
         {
             let state = shared.0.lock();
@@ -1935,7 +1957,15 @@ mod tests {
 
         // Free the budget; the same call now fills and releases the slot.
         shared.0.lock().active_window_fill_count = 0;
-        spawn_window_fill(&shared, "c1", &path_str, 0, 48000, 2);
+        spawn_window_fill(
+            &shared,
+            "c1",
+            &path_str,
+            0,
+            48000,
+            2,
+            WindowFillPriority::Live,
+        );
         assert!(
             wait_for_window(&shared, "c1", 0),
             "fill must run with a free slot"
@@ -1945,6 +1975,35 @@ mod tests {
             0,
             "slot must be released when the fill thread finishes"
         );
+        let _ = std::fs::remove_file(path);
+        Ok(())
+    }
+
+    #[test]
+    fn speculative_window_fill_yields_to_active_live_fill() -> anyhow::Result<()> {
+        let path = write_temp_f32_wav(48000, 2, 48000 * 2)?;
+        let path_str = path.to_string_lossy().to_string();
+        let shared = Arc::new((Mutex::new(AudioShared::default()), Condvar::new()));
+
+        shared.0.lock().active_window_fill_count = 1;
+        spawn_window_fill(
+            &shared,
+            "future",
+            &path_str,
+            0,
+            48000,
+            2,
+            WindowFillPriority::Speculative,
+        );
+
+        let state = shared.0.lock();
+        assert!(
+            !state.window_fill_in_flight.contains_key("future"),
+            "speculative prewarm must not claim the fill slot while live work is active"
+        );
+        assert_eq!(state.active_window_fill_count, 1);
+        drop(state);
+
         let _ = std::fs::remove_file(path);
         Ok(())
     }

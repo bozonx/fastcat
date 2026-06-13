@@ -6,7 +6,7 @@ use std::sync::Arc;
 use anyhow::Context;
 use parking_lot::{Condvar, Mutex};
 
-use crate::audio::decode::{decode_audio_chunk, spawn_window_fill};
+use crate::audio::decode::{decode_audio_chunk, spawn_window_fill, WindowFillPriority};
 use crate::audio::shared::{AudioRenderTarget, AudioShared, CHUNK_DURATION_SEC, REFILL_MARGIN_SEC};
 use crate::monitor::scene::{AudioFadeCurve, SceneAudioLayer, SceneAudioTrack};
 
@@ -462,6 +462,7 @@ fn prewarm_audio_layer_window(
         target_start_frame,
         sample_rate,
         output_channels,
+        WindowFillPriority::Speculative,
     );
 }
 

@@ -87,9 +87,7 @@ pub enum BgLayerResult {
     },
     /// The loader was cancelled before opening the decoder (e.g. layer left the
     /// scene while waiting for a gate permit). No runtime state is changed.
-    Dropped {
-        id: String,
-    },
+    Dropped { id: String },
 }
 
 // ---------------------------------------------------------------------------
@@ -124,6 +122,10 @@ pub struct VideoLayerRt {
     last_newest_pts: Option<f64>,
     /// Last target PTS sent to the decoder pump via `seek`.
     pub last_pump_seek_pts: Option<f64>,
+    /// True for a runtime opened by look-ahead before its timeline interval becomes
+    /// active. It may hold a small preroll cache, but must not free-run until the
+    /// playhead actually enters the clip.
+    play_deferred_until_active: bool,
 }
 
 impl VideoLayerRt {
@@ -148,6 +150,46 @@ impl VideoLayerRt {
             lagged_ticks: 0,
             last_newest_pts: None,
             last_pump_seek_pts: None,
+            play_deferred_until_active: false,
+        }
+    }
+
+    pub fn set_play_deferred_until_active(&mut self, deferred: bool) {
+        self.play_deferred_until_active = deferred;
+    }
+
+    pub fn play_deferred_until_active(&self) -> bool {
+        self.play_deferred_until_active
+    }
+
+    pub fn set_transport_playing(&mut self, playing: bool) {
+        if playing && !self.play_deferred_until_active {
+            if let Err(e) = self.pump.play() {
+                log::error!("[monitor] video play request: {e:?}");
+            }
+        } else if let Err(e) = self.pump.pause() {
+            log::error!("[monitor] video pause request: {e:?}");
+        }
+    }
+
+    pub fn activate_deferred_playback(&mut self, target_clip_local: f64) {
+        if !self.play_deferred_until_active {
+            return;
+        }
+        let need_seek = match self.last_pump_seek_pts {
+            Some(last_pts) => (last_pts - target_clip_local).abs() > 1e-5,
+            None => true,
+        };
+        if need_seek {
+            if let Err(e) = self.pump.seek(target_clip_local) {
+                log::error!("[monitor] activate deferred video seek: {e:?}");
+            }
+            self.last_pump_seek_pts = Some(target_clip_local);
+            self.note_seek_requested();
+        }
+        self.play_deferred_until_active = false;
+        if let Err(e) = self.pump.play() {
+            log::error!("[monitor] activate deferred video play: {e:?}");
         }
     }
 
@@ -584,6 +626,25 @@ mod tests {
         rt.request_prebuffer();
         // preroll_frame_count должен вернуть минимум MIN_PREROLL_FRAMES
         assert!(rt.preroll_frame_count(0.2) >= MIN_PREROLL_FRAMES);
+    }
+
+    #[test]
+    fn deferred_future_runtime_does_not_start_until_activation() {
+        let mut rt = fixture_video_rt();
+        rt.set_play_deferred_until_active(true);
+
+        rt.set_transport_playing(true);
+        assert!(
+            rt.play_deferred_until_active(),
+            "global play must not clear deferred future-runtime state"
+        );
+
+        rt.activate_deferred_playback(0.25);
+        assert!(
+            !rt.play_deferred_until_active(),
+            "active clip must clear deferred state and enter normal playback"
+        );
+        assert_eq!(rt.last_pump_seek_pts, Some(0.25));
     }
 
     /// Контракт `has_buffered_through`: пока ни один кадр не декодирован вперёд `target`,

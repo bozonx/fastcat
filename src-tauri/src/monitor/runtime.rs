@@ -164,11 +164,7 @@ impl LayerRuntimeManager {
         self.playing = playing;
         for rt in self.runtimes.values_mut() {
             if let LayerRuntime::Video(v) = rt {
-                if playing {
-                    let _ = v.pump.play();
-                } else {
-                    let _ = v.pump.pause();
-                }
+                v.set_transport_playing(playing);
             }
         }
     }
@@ -600,20 +596,22 @@ impl LayerRuntimeManager {
                 );
                 let mut rt =
                     VideoLayerRt::new(pump, media_size, source_rotation, cache_budget_bytes);
-                if self.playing {
-                    let _ = rt.pump.play();
-                } else {
-                    let _ = rt.pump.pause();
-                }
+                let is_active_at_playhead = self
+                    .scene
+                    .iter()
+                    .find(|l| l.id == id)
+                    .is_some_and(|l| l.covers(self.last_tick_t));
+                let defer_play_until_active = self.playing && !is_active_at_playhead;
+                rt.set_play_deferred_until_active(defer_play_until_active);
+                rt.set_transport_playing(self.playing);
                 if let Err(e) = rt.pump.seek(clip_local) {
                     log::error!("[monitor] initial seek {id}: {e:?}");
                 }
                 rt.last_pump_seek_pts = Some(clip_local);
                 rt.note_seek_requested();
-                // На паузе сразу прогреваем первый GOP вперёд playhead'а, чтобы
-                // последующий Play не фризил/не чернел на холодном декоде. На
-                // воспроизведении декодер и так стримит вперёд (pump.play выше).
-                if !self.playing {
+                // На паузе и для look-ahead будущего клипа сразу прогреваем первый
+                // GOP, но не даём future-runtime free-run'ить за стык.
+                if !self.playing || defer_play_until_active {
                     rt.request_prebuffer();
                 }
                 self.runtimes.insert(id, LayerRuntime::Video(rt));
@@ -775,6 +773,9 @@ impl LayerRuntimeManager {
                 // Used below to suppress the reseek-on-lag thrash on decode-bound sources.
                 let advancing = rt.decoder_advancing();
                 let clip_local = layer.source_pts_at(t);
+                if playing && rt.play_deferred_until_active() {
+                    rt.activate_deferred_playback(clip_local);
+                }
                 let max_lag_sec = video_sync_lag_sec(self.preview_sync_mode, rt.pump.info.fps);
 
                 // Сначала пробуем кадр в окне синка (balanced/strict). Smooth не имеет
@@ -837,12 +838,7 @@ impl LayerRuntimeManager {
     /// набор и чей timeline-интервал не пересекает окно удержания вокруг playhead'а.
     /// Иначе при длинном воспроизведении рантайм каждого пройденного клипа жил бы до
     /// следующего `apply_scene` — копились бы потоки декодеров и декодированные кадры.
-    fn evict_distant_runtimes(
-        &mut self,
-        t: f64,
-        scene: &[SceneLayer],
-        active: &HashSet<usize>,
-    ) {
+    fn evict_distant_runtimes(&mut self, t: f64, scene: &[SceneLayer], active: &HashSet<usize>) {
         if self.runtimes.is_empty() {
             return;
         }
@@ -1225,13 +1221,22 @@ mod tests {
         // Inside the clip.
         assert!(layer_near_playhead(&l, 11.0));
         // Just past the end, within the behind grace → still kept.
-        assert!(layer_near_playhead(&l, 12.0 + RUNTIME_KEEP_BEHIND_SEC - 0.1));
+        assert!(layer_near_playhead(
+            &l,
+            12.0 + RUNTIME_KEEP_BEHIND_SEC - 0.1
+        ));
         // Far past the end → evicted.
-        assert!(!layer_near_playhead(&l, 12.0 + RUNTIME_KEEP_BEHIND_SEC + 0.1));
+        assert!(!layer_near_playhead(
+            &l,
+            12.0 + RUNTIME_KEEP_BEHIND_SEC + 0.1
+        ));
         // Just before the start, within the ahead (prewarm) window → kept.
         assert!(layer_near_playhead(&l, 10.0 - RUNTIME_KEEP_AHEAD_SEC + 0.1));
         // Far before the start → not yet kept.
-        assert!(!layer_near_playhead(&l, 10.0 - RUNTIME_KEEP_AHEAD_SEC - 0.1));
+        assert!(!layer_near_playhead(
+            &l,
+            10.0 - RUNTIME_KEEP_AHEAD_SEC - 0.1
+        ));
         // The ahead window must cover the prewarm lookahead so a just-prewarmed clip
         // is never evicted the same tick it was warmed.
         assert!(RUNTIME_KEEP_AHEAD_SEC >= super::VIDEO_PREWARM_LOOKAHEAD_SEC);
