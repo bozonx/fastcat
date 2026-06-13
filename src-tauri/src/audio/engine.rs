@@ -240,12 +240,6 @@ impl NativeAudioEngine {
             .window_fill_in_flight
             .retain(|layer_id, _| scene_clone.iter().any(|l| l.id == *layer_id));
         state
-            .file_size_cache
-            .retain(|path, _| scene_clone.iter().any(|l| l.path == *path));
-        state
-            .source_metadata_cache
-            .retain(|path, _| scene_clone.iter().any(|l| l.path == *path));
-        state
             .decoders
             .retain(|layer_id, _| scene_clone.iter().any(|l| l.id == *layer_id));
         let plugin_host = state.plugin_host.clone();

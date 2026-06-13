@@ -58,6 +58,7 @@ interface ContextMenuDeps {
   instanceId?: string;
   isExternal?: boolean;
   canUseFile?: (entry: FsEntry) => boolean;
+  experimentalFeatures?: boolean;
 }
 
 type ContextMenuItem = {
@@ -480,7 +481,7 @@ export function useFileContextMenu(
       }
     }
 
-    if (deps.isOpenableMediaFile(entry) && !isComputer) {
+    if (deps.experimentalFeatures && deps.isOpenableMediaFile(entry) && !isComputer) {
       items.push([
         {
           label: t('videoEditor.fileManager.actions.openAsPanelCut'),

@@ -223,14 +223,6 @@ pub(crate) struct AudioShared {
     /// `WINDOW_FILL_MAX_CONCURRENCY` so refills don't thrash the disk and starve the
     /// producer's own inline streaming reads.
     pub(crate) active_window_fill_count: usize,
-    /// Cached `fs::metadata` file sizes so the cache-routing decision doesn't
-    /// `stat` the file on every 50 ms chunk.
-    pub(crate) file_size_cache: HashMap<String, u64>,
-    /// Lightweight source metadata used for cache routing. The producer must not
-    /// eagerly decode+resample whole files whose source rate differs from the
-    /// output device: an 8 kHz WAV can otherwise pin the only producer thread
-    /// long enough to make all monitor audio disappear.
-    pub(crate) source_metadata_cache: HashMap<String, AudioSourceMetadata>,
     /// Streaming decoders, keyed per layer (NOT per path): two clips from the
     /// same media file must not share one stateful decoder or they thrash seeks.
     pub(crate) decoders: HashMap<String, CachedAudioDecoder>,
@@ -269,8 +261,6 @@ impl Default for AudioShared {
             layer_windows: HashMap::new(),
             window_fill_in_flight: HashMap::new(),
             active_window_fill_count: 0,
-            file_size_cache: HashMap::new(),
-            source_metadata_cache: HashMap::new(),
             decoders: HashMap::new(),
             timing_sig: 0,
             pending_ring_clear: false,

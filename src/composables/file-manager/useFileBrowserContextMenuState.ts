@@ -33,6 +33,7 @@ interface FileBrowserContextMenuStateParams {
   isFilesPage?: boolean;
   instanceId: string;
   isExternal: boolean;
+  experimentalFeatures?: boolean;
 }
 
 export function useFileBrowserContextMenuState(params: FileBrowserContextMenuStateParams) {
@@ -93,6 +94,7 @@ export function useFileBrowserContextMenuState(params: FileBrowserContextMenuSta
       isFilesPage: params.isFilesPage,
       instanceId: params.instanceId,
       isExternal: params.isExternal,
+      experimentalFeatures: params.experimentalFeatures,
       isBloggerDogProject: (entry: FsEntry) => getBdPayload(entry)?.type === 'project',
       isBloggerDogGroup: (entry: FsEntry) => getBdPayload(entry)?.type === 'collection',
       isBloggerDogContentItem: (entry: FsEntry) => getBdPayload(entry)?.type === 'content-item',

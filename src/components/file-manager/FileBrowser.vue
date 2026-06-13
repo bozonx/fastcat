@@ -30,6 +30,7 @@ import { useAppClipboard } from '~/composables/useAppClipboard';
 import type { FsEntry } from '~/types/fs';
 import type { RemoteFsEntry } from '~/utils/remote-vfs';
 import { useTimelineMediaUsageStore } from '~/stores/timeline-media-usage.store';
+import { useWorkspaceStore } from '~/stores/workspace.store';
 import FileBrowserToolbar from '~/components/file-manager/FileBrowserToolbar.vue';
 import FileBrowserBreadcrumbs from '~/components/file-manager/FileBrowserBreadcrumbs.vue';
 import FileBrowserContent from '~/components/file-manager/FileBrowserContent.vue';
@@ -63,6 +64,7 @@ const fileManagerStore =
   useFileManagerStore();
 const selectionStore = useSelectionStore();
 const projectStore = useProjectStore();
+const workspaceStore = useWorkspaceStore();
 
 const uiStore = useUiStore();
 const focusStore = useFocusStore();
@@ -500,6 +502,7 @@ const { canUseFile, isDirectoryGeneratingProxy, getContextMenuItems, emptySpaceC
     isFilesPage: props.isFilesPage,
     instanceId,
     isExternal: isExternal.value,
+    experimentalFeatures: workspaceStore.userSettings.experimentalFeatures,
   });
 
 // --- Marquee selection ---

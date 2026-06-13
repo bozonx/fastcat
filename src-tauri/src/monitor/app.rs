@@ -699,7 +699,9 @@ impl WindowState {
 
     fn recreate_audio(&mut self, settings: AudioEngineSettings) {
         self.audio_settings = settings.clone();
-        let playing = self.clock.is_playing();
+        // A micro-prime already in flight (pending_play_deadline) means the transport
+        // is logically playing even though the master clock is momentarily frozen.
+        let playing = self.clock.is_playing() || self.pending_play_deadline.is_some();
         let pts = self.clock.current_pts();
         self.audio = match NativeAudioEngine::new(&settings) {
             Ok(audio) => {
@@ -710,9 +712,7 @@ impl WindowState {
                     &self.audio_master_effects,
                 );
                 audio.set_output_gain(self.audio_output_gain);
-                if playing {
-                    audio.play(pts);
-                } else {
+                if !playing {
                     // Reseat the freshly-created engine at the current position. Paused
                     // (playing=false) seeks bypass the echo guard regardless, so the
                     // explicit flag is immaterial here; pass true for clarity.
@@ -725,6 +725,26 @@ impl WindowState {
                 None
             }
         };
+
+        // Re-establishing audio mid-playback must NOT just `play()` from `pts`: the
+        // master clock keeps free-running while the new producer spends ~START_PREBUFFER
+        // (~400ms) filling its ring, so the engine would arm its output that far BEHIND
+        // the clock, and the next `sync_to_audio_pts` would yank the video backward by
+        // the gap (a visible jump on device-loss recovery / a live settings change).
+        // Instead restart through the same warmup path as an explicit seek: freeze the
+        // clock, prime audio (and re-arm the video decoders) at `pts`, and let
+        // `begin_playback` release both together so their origins line up.
+        if playing && self.audio.is_some() {
+            let t = pts.max(0.0);
+            if let Some(audio) = self.audio.as_ref() {
+                audio.start_priming(t);
+            }
+            self.clock.pause();
+            self.layers.set_playing(true);
+            self.layers.resync_active_videos(t);
+            self.layers.set_frame_events_enabled(true);
+            self.pending_play_deadline = Some(Instant::now() + PREBUFFER_TIMEOUT);
+        }
     }
 
     /// Rebuilds the audio engine if its output device stream died (sink unplugged,
@@ -1013,7 +1033,10 @@ impl WindowState {
         self.layers.set_frame_events_enabled(true);
         // The output callback drops to silence on pause, but `emit_audio_levels`
         // only runs while ticking, so the UI meter would otherwise freeze at its
-        // last pre-pause value. Push one zeroed update so it falls to the floor.
+        // last pre-pause value. Push one zeroed update so it falls to the floor, and
+        // record it as the new baseline so the next tick's dedup compares against the
+        // floor (not the stale loud value, which would force a redundant re-emit).
+        self.last_emit_levels = (-60.0, -60.0);
         let _ = self.app.emit(
             EVT_AUDIO_LEVELS,
             AudioLevelsPayload {

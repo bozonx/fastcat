@@ -72,28 +72,6 @@ pub(crate) fn probe_audio_source_metadata(path: &str) -> Result<AudioSourceMetad
     })
 }
 
-/// Returns the audio source metadata from the cache or probes it.
-/// Note: `source_metadata_cache` is keyed solely by the file path (without channel count
-/// or sample rate), which is intentional because the inherent audio source metadata
-/// (original sample rate and channels) is a property of the source file itself
-/// and does not depend on the output audio device's sample rate or channel count.
-#[allow(dead_code)]
-pub(crate) fn cached_audio_source_metadata(
-    path: &str,
-    shared: &Arc<(Mutex<AudioShared>, Condvar)>,
-) -> Result<AudioSourceMetadata> {
-    if let Some(metadata) = shared.0.lock().source_metadata_cache.get(path).copied() {
-        return Ok(metadata);
-    }
-
-    let metadata = probe_audio_source_metadata(path)?;
-    let mut state = shared.0.lock();
-    Ok(*state
-        .source_metadata_cache
-        .entry(path.to_string())
-        .or_insert(metadata))
-}
-
 /// Decodes a BOUNDED time range `[start_sec, start_sec + duration_sec)` of a file
 /// to interleaved f32 at the target rate/channels — never the whole file. This is
 /// the off-thread fill for the per-layer look-ahead window: memory is bounded by
@@ -871,13 +849,20 @@ fn source_end_frame_for_layer(
     Some(((layer.source_start_sec + layer.source_range_duration_sec) * sample_rate as f64) as usize)
 }
 
-/// Max concurrent background window-fill decodes. Deliberately 1: each ranged
-/// decode reads from a (possibly multi-GB) container, and running several at once
-/// thrashes the disk so badly that the realtime producer's inline streaming reads
-/// miss the 50ms chunk deadline (decode-behind → ring drain → crackle). With one at
-/// a time the disk stays responsive; the clip currently playing wins the next free
-/// slot because its own chunks re-request a fill every iteration.
-pub(crate) const WINDOW_FILL_MAX_CONCURRENCY: usize = 1;
+/// Max concurrent background window-fill decodes. Each ranged decode reads from a
+/// (possibly multi-GB) container, so this is kept small to avoid thrashing the disk
+/// badly enough that the realtime producer's inline streaming reads miss the 50ms
+/// chunk deadline (decode-behind → ring drain → crackle).
+///
+/// Set to 2 (was 1): with a single slot, a project with several audio layers all
+/// missing at once on Play/seek filled their windows strictly one-at-a-time, so
+/// every not-yet-windowed layer fell back to inline streaming on the RT producer
+/// thread every chunk. For many simultaneous tracks that sustained inline load was
+/// itself a deadline risk. Two slots roughly halve the worst-case time before all
+/// live layers are on the memcpy fast path while still bounding disk contention.
+/// Speculative (future-clip) prewarm is gated to never run while any fill is active
+/// (see `spawn_window_fill`), so it can't consume these slots ahead of live work.
+pub(crate) const WINDOW_FILL_MAX_CONCURRENCY: usize = 2;
 
 /// Requests a bounded background decode of one `WINDOW_SEC` look-ahead window for
 /// `layer_id`, starting at `target_start_frame` (target-rate frames). Bounded
@@ -1179,7 +1164,7 @@ mod tests {
         })?;
 
         assert_eq!(decoded.len(), (0.05f64 * 48000.0).round() as usize * 2);
-        let metadata = cached_audio_source_metadata(&path_str, &shared)?;
+        let metadata = probe_audio_source_metadata(&path_str)?;
         assert_eq!(
             metadata,
             AudioSourceMetadata {

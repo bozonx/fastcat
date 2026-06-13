@@ -536,9 +536,16 @@ fn mix_layer_into(
     let segment_duration = frames_to_write as f64 / sample_rate as f64;
     let segment_end = segment_start + segment_duration;
 
+    // Reverse audio is NOT supported in this version. A clip with negative `speed`
+    // (a per-layer reversed clip, while the global transport still runs forward)
+    // produces NO sound — neither in the monitor preview NOR in export — so the two
+    // always agree. Global reverse PLAYBACK (negative transport speed) is likewise
+    // silent, gated upstream in the producer (`global_speed > 0.0`), so this only
+    // covers the per-layer case. The forward-decode + frame-reverse plumbing below
+    // is intentionally left in place (and stays compiler-reachable) for a future
+    // version, but is never executed while reverse audio is unsupported.
     let reversed = layer.speed < 0.0;
-    if !target.is_export() && reversed {
-        // Reverse audio is muted in preview/monitor; only rendered on export.
+    if reversed {
         return Ok(false);
     }
 
@@ -1424,10 +1431,14 @@ mod tests {
 
     #[test]
     fn reversed_layer_is_muted_in_preview() {
+        // Reverse audio is unsupported: a negative-speed clip contributes nothing in
+        // the monitor. Uses a real fixture so a `false` result can only come from the
+        // reverse mute, not from a decode failure on a missing path.
+        let path = "../test/fixtures/media/sample-1s-audio.mp3";
         let l = SceneAudioLayer {
             id: "rev".into(),
             track_id: None,
-            path: "/tmp/x.wav".into(),
+            path: path.into(),
             timeline_start_sec: 0.0,
             timeline_end_sec: 10.0,
             source_start_sec: 0.0,
@@ -1457,11 +1468,13 @@ mod tests {
             DecodeErrorPolicy::WarnAndSkip,
         )
         .unwrap();
-        assert!(!preview_result, "reverse audio should be muted in preview");
+        assert!(!preview_result, "reverse audio must be muted in preview");
     }
 
     #[test]
-    fn reversed_layer_is_enabled_in_export() {
+    fn reversed_layer_is_muted_in_export() {
+        // Reverse audio is unsupported in export too, so preview and export agree:
+        // a negative-speed clip is silent everywhere.
         let path = "../test/fixtures/media/sample-1s-audio.mp3";
         let l = SceneAudioLayer {
             id: "rev".into(),
@@ -1496,7 +1509,7 @@ mod tests {
             DecodeErrorPolicy::WarnAndSkip,
         )
         .unwrap();
-        assert!(export_result, "reverse audio should be enabled in export");
+        assert!(!export_result, "reverse audio must be muted in export");
     }
 
     #[test]

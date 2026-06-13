@@ -4,6 +4,7 @@ import { useFileManager } from '~/composables/file-manager/useFileManager';
 import { useProjectTabsStore } from '~/stores/project-tabs.store';
 import { useFocusStore } from '~/stores/focus.store';
 import { useProjectStore } from '~/stores/project.store';
+import { useWorkspaceStore } from '~/stores/workspace.store';
 import { readLocalStorageJson, getPlatformSuffix } from '~/stores/ui/uiLocalStorage';
 import type { DynamicPanel } from '~/stores/editor-view.store';
 import { isOpenableProjectFileName } from '~/utils/media-types';
@@ -67,6 +68,7 @@ function isTextExtension(ext: string) {
 export function useEditorDynamicPanels(options: UseEditorDynamicPanelsOptions) {
   const projectStore = useProjectStore();
   const focusStore = useFocusStore();
+  const workspaceStore = useWorkspaceStore();
   const { currentProjectId } = options;
   const { findEntryByPath } = useFileManager();
 
@@ -180,6 +182,7 @@ export function useEditorDynamicPanels(options: UseEditorDynamicPanelsOptions) {
   }
 
   function onDragStart(event: DragEvent, panelId: string) {
+    if (!workspaceStore.userSettings.experimentalFeatures) return;
     if (event.dataTransfer) {
       event.dataTransfer.effectAllowed = 'move';
       event.dataTransfer.setData('text/plain', panelId);
@@ -201,6 +204,7 @@ export function useEditorDynamicPanels(options: UseEditorDynamicPanelsOptions) {
   }
 
   function onDragOver(event: DragEvent, panelId: string) {
+    if (!workspaceStore.userSettings.experimentalFeatures) return;
     event.preventDefault();
 
     const isDraggingFile =
@@ -293,6 +297,7 @@ export function useEditorDynamicPanels(options: UseEditorDynamicPanelsOptions) {
   }
 
   function onDrop(input: PanelDropInput) {
+    if (!workspaceStore.userSettings.experimentalFeatures) return;
     const { event, targetPanelId, view = 'cut' } = input;
     event.preventDefault();
     const targetPanel = getPanelById(targetPanelId);
