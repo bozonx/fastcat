@@ -5,6 +5,19 @@ interface SliderFormat {
   (value: number): string;
 }
 
+// Per-parameter ranges. Three tiers, by design:
+//   - uiMin/uiMax     — the comfortable manual slider range. Picked so the
+//                       *useful* part of the effect is easy to dial in; not the
+//                       absolute maximum the effect can do.
+//   - animationMin/Max — the range an animation keyframe may reach. Wider than
+//                       the slider so animations can push effects well past
+//                       manual limits (e.g. a heavy blur easing down to none),
+//                       but still bounded.
+//   - renderMin/renderMax — the hard clamp applied before the value reaches the
+//                       GPU. Mirrors the Rust `MAX_*` ceilings exactly and is
+//                       the final safety net (`animationMax <= renderMax`).
+// All spatial maxima are expressed in px @1080p; the backends scale them by the
+// real frame height, so the visual amount is resolution-independent.
 export const VIDEO_EFFECT_PARAM_RANGES = {
   colorMultiplier: {
     uiMin: 0,
@@ -16,7 +29,7 @@ export const VIDEO_EFFECT_PARAM_RANGES = {
   },
   blurRadius: {
     uiMin: 0,
-    uiMax: 64,
+    uiMax: 100,
     animationMin: 0,
     animationMax: 512,
     renderMin: 0,
@@ -24,7 +37,7 @@ export const VIDEO_EFFECT_PARAM_RANGES = {
   },
   bloomRadius: {
     uiMin: 0,
-    uiMax: 16,
+    uiMax: 32,
     animationMin: 0,
     animationMax: 256,
     renderMin: 0,
@@ -39,6 +52,16 @@ export const VIDEO_EFFECT_PARAM_RANGES = {
     renderMax: 4,
   },
   unit: { uiMin: 0, uiMax: 1, animationMin: 0, animationMax: 1, renderMin: 0, renderMax: 1 },
+  // Sharpen amount: 0..1 is the useful manual range; animation can overshoot
+  // for stylized pulses, hard-capped well below instability.
+  sharpenAmount: {
+    uiMin: 0,
+    uiMax: 1,
+    animationMin: 0,
+    animationMax: 3,
+    renderMin: 0,
+    renderMax: 4,
+  },
   pixelSize: {
     uiMin: 1,
     uiMax: 64,
@@ -266,7 +289,7 @@ export const videoEffectManifests: VideoEffectManifest[] = [
       {
         kind: 'slider',
         key: 'radius',
-        labelKey: 'fastcat.effects.video.blur.params.strength',
+        labelKey: 'fastcat.effects.video.bloom.params.radius',
         min: VIDEO_EFFECT_PARAM_RANGES.bloomRadius.uiMin,
         max: VIDEO_EFFECT_PARAM_RANGES.bloomRadius.uiMax,
         step: 1,
@@ -297,22 +320,25 @@ export const videoEffectManifests: VideoEffectManifest[] = [
       amount: 0.35,
     },
     paramRanges: {
-      amount: VIDEO_EFFECT_PARAM_RANGES.unit,
+      amount: VIDEO_EFFECT_PARAM_RANGES.sharpenAmount,
     },
     controls: [
       {
         kind: 'slider',
         key: 'amount',
         labelKey: 'fastcat.effects.video.tauri.params.amount',
-        min: VIDEO_EFFECT_PARAM_RANGES.unit.uiMin,
-        max: VIDEO_EFFECT_PARAM_RANGES.unit.uiMax,
+        min: VIDEO_EFFECT_PARAM_RANGES.sharpenAmount.uiMin,
+        max: VIDEO_EFFECT_PARAM_RANGES.sharpenAmount.uiMax,
         step: 0.01,
         format: percent,
       },
     ],
     toEffectSpecs: (values) => [
       spec('sharpen', {
-        amount: clampRange(finiteNumber(values.amount, 0.35), VIDEO_EFFECT_PARAM_RANGES.unit),
+        amount: clampRange(
+          finiteNumber(values.amount, 0.35),
+          VIDEO_EFFECT_PARAM_RANGES.sharpenAmount,
+        ),
       }),
     ],
   },
@@ -371,7 +397,7 @@ export const videoEffectManifests: VideoEffectManifest[] = [
       {
         kind: 'slider',
         key: 'strength',
-        labelKey: 'fastcat.effects.video.bloom.params.strength',
+        labelKey: 'fastcat.effects.video.tauri.vignette.params.strength',
         min: VIDEO_EFFECT_PARAM_RANGES.unit.uiMin,
         max: VIDEO_EFFECT_PARAM_RANGES.unit.uiMax,
         step: 0.01,
@@ -380,7 +406,7 @@ export const videoEffectManifests: VideoEffectManifest[] = [
       {
         kind: 'slider',
         key: 'radius',
-        labelKey: 'fastcat.transitions.circle.params.radius',
+        labelKey: 'fastcat.effects.video.tauri.vignette.params.radius',
         min: VIDEO_EFFECT_PARAM_RANGES.unit.uiMin,
         max: VIDEO_EFFECT_PARAM_RANGES.unit.uiMax,
         step: 0.01,
@@ -389,7 +415,7 @@ export const videoEffectManifests: VideoEffectManifest[] = [
       {
         kind: 'slider',
         key: 'softness',
-        labelKey: 'fastcat.transitions.wipe.params.softness',
+        labelKey: 'fastcat.effects.video.tauri.vignette.params.softness',
         min: VIDEO_EFFECT_PARAM_RANGES.unit.uiMin,
         max: VIDEO_EFFECT_PARAM_RANGES.unit.uiMax,
         step: 0.01,
@@ -400,7 +426,13 @@ export const videoEffectManifests: VideoEffectManifest[] = [
       spec('vignette', {
         strength: clampRange(finiteNumber(values.strength, 0.35), VIDEO_EFFECT_PARAM_RANGES.unit),
         radius: clampRange(finiteNumber(values.radius, 0.75), VIDEO_EFFECT_PARAM_RANGES.unit),
-        softness: clampRange(finiteNumber(values.softness, 0.35), VIDEO_EFFECT_PARAM_RANGES.unit),
+        // Softness floor matches the shader's smoothstep guard (0 would be a
+        // degenerate hard edge); the backend also clamps to 0.001.
+        softness: clamp(
+          finiteNumber(values.softness, 0.35),
+          0.001,
+          VIDEO_EFFECT_PARAM_RANGES.unit.renderMax,
+        ),
       }),
     ],
   },

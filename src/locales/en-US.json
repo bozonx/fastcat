@@ -1022,10 +1022,7 @@
         "name": "Card Swap"
       },
       "circle": {
-        "name": "Circle",
-        "params": {
-          "radius": "Radius"
-        }
+        "name": "Circle"
       },
       "clock": {
         "name": "Clock"

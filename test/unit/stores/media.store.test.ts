@@ -258,6 +258,55 @@ describe('MediaStore', () => {
     expect(store.mediaMetadata['some/path.mp4'].audioPeaks).toEqual([new Float32Array([0.5, 0.5])]);
   });
 
+  it('resolves cached metadata by normalized project path', () => {
+    const metadata = {
+      'some/path.mp4': { source: { size: 100, lastModified: 100 }, duration: 10 },
+    };
+
+    expect(resolveMediaMetadata(metadata, './some/path.mp4')).toBe(metadata['some/path.mp4']);
+  });
+
+  it('normalizes metadata paths before loading files and cache entries', async () => {
+    const file = { size: 100, lastModified: 100, name: 'path.mp4' } as File;
+    const getFileByPath = vi.fn().mockResolvedValue(file);
+    vi.mocked(useProjectStore).mockReturnValue({
+      currentProjectId: 'test-project',
+      getFileHandleByPath: vi.fn(),
+      getFileByPath,
+    } as any);
+
+    const store = useMediaStore();
+    mediaFsMock.waveformFiles.set(
+      'some%2Fpath.mp4.json',
+      serializeWaveformCacheEntry([new Float32Array([0.5])], {
+        size: 100,
+        lastModified: 100,
+      }),
+    );
+
+    const result = await store.getOrFetchMetadataByPath('./some/path.mp4');
+
+    expect(getFileByPath).toHaveBeenCalledWith('some/path.mp4');
+    expect(result?.audioPeaks?.[0]).toBeInstanceOf(Float32Array);
+    expect(Array.from(result?.audioPeaks?.[0] ?? [])).toEqual([0.5]);
+    expect(mediaFsMock.waveformFiles.get('.%2Fsome%2Fpath.mp4.json')).toBeUndefined();
+  });
+
+  it('persists audio peaks under a normalized cache path', async () => {
+    const store = useMediaStore();
+    store.mediaMetadata = {
+      'some/path.mp4': { source: { size: 100, lastModified: 100 }, duration: 10 },
+    } as any;
+
+    store.setAudioPeaks('./some/path.mp4', [new Float32Array([0.75])]);
+
+    await vi.waitFor(() => {
+      expect(mediaFsMock.waveformFiles.get('some%2Fpath.mp4.json')).toBeDefined();
+    });
+    expect(mediaFsMock.waveformFiles.get('.%2Fsome%2Fpath.mp4.json')).toBeUndefined();
+    expect(store.mediaMetadata['some/path.mp4'].audioPeaks?.[0]).toBeInstanceOf(Float32Array);
+  });
+
   it('persists audio peaks in a fingerprinted envelope when metadata is known', async () => {
     const store = useMediaStore();
     store.mediaMetadata = {

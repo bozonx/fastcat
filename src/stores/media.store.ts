@@ -27,6 +27,7 @@ import {
   nativeMediaExtractPeaks,
 } from '~/utils/tauri-media-processing';
 import { isLazyTauriFile } from '~/stores/workspace/provider/tauri-handle';
+import { normalizeProjectPath } from '~/utils/video-editor/worker-clip-utils';
 
 const log = createDevLogger('media.store');
 
@@ -87,6 +88,10 @@ export function resolveMediaMetadata<T>(
   if (!path) return undefined;
   const direct = mediaMetadata[path];
   if (direct) return direct;
+  const normalized = normalizeMediaCachePath(path);
+  if (normalized !== path && mediaMetadata[normalized]) {
+    return mediaMetadata[normalized];
+  }
   if (path.startsWith('external:')) {
     const clean = path.slice('external:'.length);
     return mediaMetadata[clean];
@@ -101,6 +106,8 @@ function resolveMediaMetadataKey<T>(
 ): string | null {
   if (!path) return null;
   if (mediaMetadata[path]) return path;
+  const normalized = normalizeMediaCachePath(path);
+  if (normalized !== path && mediaMetadata[normalized]) return normalized;
   if (path.startsWith('external:')) {
     const clean = path.slice('external:'.length);
     if (mediaMetadata[clean]) return clean;
@@ -109,6 +116,14 @@ function resolveMediaMetadataKey<T>(
   const prefixed = `external:${path}`;
   if (mediaMetadata[prefixed]) return prefixed;
   return null;
+}
+
+function normalizeMediaCachePath(path: string): string {
+  if (!path) return path;
+  if (path.startsWith('external:')) {
+    return `external:${normalizeProjectPath(path.slice('external:'.length))}`;
+  }
+  return normalizeProjectPath(path);
 }
 
 export const useMediaStore = defineStore('media', () => {
@@ -160,14 +175,26 @@ export const useMediaStore = defineStore('media', () => {
   }
 
   async function getOrFetchMetadataByPath(path: string, options?: { forceRefresh?: boolean }) {
-    const file = await projectStore.getFileByPath(path);
-    log.debug('[getOrFetchMetadataByPath] path=', path, 'file=', file?.name, 'size=', file?.size);
+    const normalizedPath = normalizeMediaCachePath(path);
+    if (normalizedPath !== path) {
+      log.debug('[getOrFetchMetadataByPath] normalized path=', path, '=>', normalizedPath);
+    }
+    const file = await projectStore.getFileByPath(normalizedPath);
+    log.debug(
+      '[getOrFetchMetadataByPath] path=',
+      normalizedPath,
+      'file=',
+      file?.name,
+      'size=',
+      file?.size,
+    );
     if (!file) {
-      missingPaths.value[path] = true;
+      log.warn('Source file not found while loading media metadata:', normalizedPath);
+      missingPaths.value[normalizedPath] = true;
       return null;
     }
-    missingPaths.value[path] = false;
-    return await getOrFetchMetadata(file, path, options);
+    missingPaths.value[normalizedPath] = false;
+    return await getOrFetchMetadata(file, normalizedPath, options);
   }
 
   async function getOrFetchMetadata(
@@ -175,6 +202,16 @@ export const useMediaStore = defineStore('media', () => {
     projectRelativePath: string,
     options?: { forceRefresh?: boolean },
   ): Promise<MediaMetadata | null> {
+    const normalizedProjectRelativePath = normalizeMediaCachePath(projectRelativePath);
+    if (normalizedProjectRelativePath !== projectRelativePath) {
+      log.debug(
+        '[getOrFetchMetadata] normalized path=',
+        projectRelativePath,
+        '=>',
+        normalizedProjectRelativePath,
+      );
+    }
+    projectRelativePath = normalizedProjectRelativePath;
     const cacheKey = projectRelativePath;
 
     // Clear missing status if we are here (we have a file handle)
@@ -273,8 +310,12 @@ export const useMediaStore = defineStore('media', () => {
             await getVfs().deleteEntry(waveformsPath);
           });
         }
-      } catch {
-        // ignore
+      } catch (e) {
+        log.warn(
+          'Failed to delete waveform cache during force refresh for',
+          projectRelativePath,
+          e,
+        );
       }
     }
 
@@ -345,8 +386,12 @@ export const useMediaStore = defineStore('media', () => {
                 await getVfs().deleteEntry(waveformsPath);
               });
             }
-          } catch {
-            // ignore
+          } catch (e) {
+            log.warn(
+              'Failed to delete stale waveform cache for changed file',
+              projectRelativePath,
+              e,
+            );
           }
 
           try {
@@ -365,8 +410,8 @@ export const useMediaStore = defineStore('media', () => {
             log.warn('Failed to clear thumbnails on file change:', e);
           }
         }
-      } catch {
-        // Cache miss
+      } catch (e) {
+        log.debug('Media metadata cache miss for', projectRelativePath, e);
       }
     }
 
@@ -484,8 +529,12 @@ export const useMediaStore = defineStore('media', () => {
             await runCacheFileAccess('metadata', cacheFileName, async () => {
               await getVfs().writeFile(metaPath, JSON.stringify(errorMeta, null, 2));
             });
-          } catch {
-            // Ignore OPFS write error
+          } catch (writeError) {
+            log.warn(
+              'Failed to write failed media metadata cache for',
+              projectRelativePath,
+              writeError,
+            );
           }
         }
 
@@ -582,6 +631,8 @@ export const useMediaStore = defineStore('media', () => {
   }
 
   function setAudioPeaks(projectRelativePath: string, peaks: Float32Array[]) {
+    projectRelativePath = normalizeMediaCachePath(projectRelativePath);
+
     if (!peaks.some((channel) => channel.length > 0)) {
       log.warn('Refusing to persist empty waveform peaks for', projectRelativePath);
       return;

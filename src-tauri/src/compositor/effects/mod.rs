@@ -111,10 +111,32 @@ struct EffectUniform {
     p7: f32,
 }
 
+/// Logical buffer slot a pass reads from / writes to. The pass scheduler routes
+/// these to concrete texture views in `apply_effects`. Explicit routing (instead
+/// of an implicit ping-pong) lets multi-pass effects like bloom keep the running
+/// image intact in a dedicated buffer while their internal passes ping-pong, so
+/// the compose step blends glow over the *current* image (post earlier effects),
+/// not the pristine source frame.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+enum Buf {
+    /// Original source frame for this layer (read-only).
+    Input,
+    Ping,
+    Pong,
+    /// Third scratch buffer; needed when an effect must pin one image while
+    /// ping-ponging two others (bloom).
+    Aux,
+    /// Final owned output handed back to the caller.
+    Owned,
+}
+
 #[derive(Clone)]
 struct EffectPass {
     uniform: EffectUniform,
     custom_source: Option<String>,
+    src: Buf,
+    secondary: Buf,
+    dst: Buf,
 }
 
 pub enum EffectSource {
@@ -135,6 +157,11 @@ struct CachedResources {
     #[allow(dead_code)]
     pong: wgpu::Texture,
     pong_view: wgpu::TextureView,
+    // Third scratch buffer used by effects that must pin the running image while
+    // ping-ponging (bloom). Read/written only through `aux_view`.
+    #[allow(dead_code)]
+    aux: wgpu::Texture,
+    aux_view: wgpu::TextureView,
 }
 
 /// Запись пула owned-выходов эффектов. Текстура отдаётся вызывающему как
@@ -218,6 +245,10 @@ pub struct EffectPipeline {
     uniform_capacity: u64,
     uniform_stride: u64,
     owned_pool: OwnedTexturePool,
+    /// Linear, clamp-to-edge sampler used by blur / sharpen / chromatic-aberration
+    /// for sub-texel sampling. Makes those effects continuous in their parameters
+    /// (no integer-pixel quantization) — important for smooth animation.
+    sampler: wgpu::Sampler,
 }
 
 impl EffectPipeline {
@@ -229,7 +260,7 @@ impl EffectPipeline {
                     binding: 0,
                     visibility: wgpu::ShaderStages::COMPUTE,
                     ty: wgpu::BindingType::Texture {
-                        sample_type: wgpu::TextureSampleType::Float { filterable: false },
+                        sample_type: wgpu::TextureSampleType::Float { filterable: true },
                         view_dimension: wgpu::TextureViewDimension::D2,
                         multisampled: false,
                     },
@@ -262,10 +293,17 @@ impl EffectPipeline {
                     binding: 3,
                     visibility: wgpu::ShaderStages::COMPUTE,
                     ty: wgpu::BindingType::Texture {
-                        sample_type: wgpu::TextureSampleType::Float { filterable: false },
+                        sample_type: wgpu::TextureSampleType::Float { filterable: true },
                         view_dimension: wgpu::TextureViewDimension::D2,
                         multisampled: false,
                     },
+                    count: None,
+                },
+                // Linear clamp-to-edge sampler for sub-texel sampling.
+                wgpu::BindGroupLayoutEntry {
+                    binding: 4,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
                     count: None,
                 },
             ],
@@ -294,6 +332,16 @@ impl EffectPipeline {
         let uniform_size = std::mem::size_of::<EffectUniform>() as u64;
         let align = device.limits().min_uniform_buffer_offset_alignment.max(1) as u64;
         let uniform_stride = uniform_size.div_ceil(align) * align;
+        let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
+            label: Some("native-effect-sampler"),
+            address_mode_u: wgpu::AddressMode::ClampToEdge,
+            address_mode_v: wgpu::AddressMode::ClampToEdge,
+            address_mode_w: wgpu::AddressMode::ClampToEdge,
+            mag_filter: wgpu::FilterMode::Linear,
+            min_filter: wgpu::FilterMode::Linear,
+            mipmap_filter: wgpu::MipmapFilterMode::Nearest,
+            ..Default::default()
+        });
         Self {
             bind_layout,
             pipeline,
@@ -304,6 +352,7 @@ impl EffectPipeline {
             uniform_capacity: 0,
             uniform_stride,
             owned_pool: OwnedTexturePool::default(),
+            sampler,
         }
     }
 
@@ -429,6 +478,18 @@ impl EffectPipeline {
             });
             let pong_view = pong.create_view(&wgpu::TextureViewDescriptor::default());
 
+            let aux = device.create_texture(&wgpu::TextureDescriptor {
+                label: Some("native-effect-cached-aux"),
+                size: new_size,
+                mip_level_count: 1,
+                sample_count: 1,
+                dimension: wgpu::TextureDimension::D2,
+                format: wgpu::TextureFormat::Rgba8Unorm,
+                usage,
+                view_formats: &[],
+            });
+            let aux_view = aux.create_view(&wgpu::TextureViewDescriptor::default());
+
             self.resources = Some(CachedResources {
                 width: new_w,
                 height: new_h,
@@ -437,6 +498,8 @@ impl EffectPipeline {
                 ping_view,
                 pong,
                 pong_view,
+                aux,
+                aux_view,
             });
         }
     }
@@ -509,6 +572,7 @@ impl EffectPipeline {
         };
         let ping_view = resources.ping_view.clone();
         let pong_view = resources.pong_view.clone();
+        let aux_view = resources.aux_view.clone();
         // `resources` (immutable borrow of self) больше не нужен — дальше идут
         // мутабельные вызовы (uniform-буфер, пул owned-текстур).
 
@@ -536,41 +600,31 @@ impl EffectPipeline {
         }
         let uniform_size = wgpu::BufferSize::new(std::mem::size_of::<EffectUniform>() as u64);
 
-        let last_index = passes.len() - 1;
-        let mut last_is_ping = false;
         let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
             label: Some("native-effect-encoder"),
         });
 
+        // Explicit buffer routing: each pass declares its src / secondary / dst
+        // slots (see `build_passes`). The final pass is routed to `owned`.
+        // Inlined (rather than a closure) so the returned references borrow the
+        // local views directly without fighting closure lifetime elision.
+        macro_rules! view_of {
+            ($buf:expr) => {
+                match $buf {
+                    Buf::Input => &input_view,
+                    Buf::Ping => &ping_view,
+                    Buf::Pong => &pong_view,
+                    Buf::Aux => &aux_view,
+                    Buf::Owned => &owned_view,
+                }
+            };
+        }
+
         for (index, pass) in passes.iter().enumerate() {
             let uniform_offset = (index as u64 * self.uniform_stride) as u32;
-            let source_view = if index == 0 {
-                &input_view
-            } else if last_is_ping {
-                &ping_view
-            } else {
-                &pong_view
-            };
-            // Промежуточный таргет в пинг-понг-кеше; на последнем пассе пишем в owned.
-            let intermediate_target = if index == 0 || !last_is_ping {
-                &ping_view
-            } else {
-                &pong_view
-            };
-            let target_view = if index == last_index {
-                &owned_view
-            } else {
-                intermediate_target
-            };
-            // Bloom compose (mode 18) reads original via input_tex and blurred bloom
-            // via secondary_tex; for all other passes secondary_tex is bound to the
-            // original source (unused in shader).
-            let is_compose = pass.uniform.mode == 18;
-            let (bind_src, bind_secondary) = if is_compose {
-                (&input_view, source_view)
-            } else {
-                (source_view, &input_view)
-            };
+            let bind_src: &wgpu::TextureView = view_of!(pass.src);
+            let bind_secondary: &wgpu::TextureView = view_of!(pass.secondary);
+            let target_view: &wgpu::TextureView = view_of!(pass.dst);
             // Сначала разрешаем pipeline (&mut self для кеша кастомных шейдеров),
             // затем берём иммутабельную ссылку на постоянный uniform-буфер.
             let pipeline = if let Some(ref src) = pass.custom_source {
@@ -606,6 +660,10 @@ impl EffectPipeline {
                         binding: 3,
                         resource: wgpu::BindingResource::TextureView(bind_secondary),
                     },
+                    wgpu::BindGroupEntry {
+                        binding: 4,
+                        resource: wgpu::BindingResource::Sampler(&self.sampler),
+                    },
                 ],
             });
             {
@@ -617,7 +675,6 @@ impl EffectPipeline {
                 cpass.set_bind_group(0, &bind_group, &[uniform_offset]);
                 cpass.dispatch_workgroups(width.div_ceil(8), height.div_ceil(8), 1);
             }
-            last_is_ping = index == 0 || !last_is_ping;
         }
 
         queue.submit([encoder.finish()]);
@@ -635,162 +692,249 @@ fn spatial_scale(height: u32) -> f32 {
     (height as f32 / 1080.0).clamp(0.1, 8.0)
 }
 
-/// Верхняя граница радиуса гауссова размытия. Шейдер ограничивает число taps до
-/// 64 в каждую сторону и использует sparse sampling для больших радиусов, поэтому
-/// анимационные значения могут быть существенно выше обычного UI-диапазона.
+// Hard render ceilings. These are the absolute clamps applied to every value
+// reaching the GPU and are the single source of truth for the maximum an
+// animation key can reach (the frontend `renderMin/renderMax` in
+// `video-manifests.ts` mirror these). They sit well above the comfortable
+// slider ranges so animations can push effects far past manual limits — but
+// still bounded, so a runaway key can never DoS the GPU.
+//
+// The blur kernel always spans the full requested radius; for radii larger than
+// the shader's tap budget the tap step grows and bilinear filtering keeps the
+// result smooth (no banding / no per-frame popping), so large animated radii
+// are safe and continuous.
 const MAX_BLUR_RADIUS: f32 = 1024.0;
 const MAX_BLOOM_RADIUS: f32 = 512.0;
 const MAX_COLOR_MULTIPLIER: f32 = 4.0;
 const MAX_BLOOM_STRENGTH: f32 = 4.0;
 const MAX_CHROMATIC_ABERRATION: f32 = 256.0;
 const MAX_LEVELS_GAMMA: f32 = 16.0;
+const MAX_SHARPEN: f32 = 4.0;
+const MAX_PIXELATE: f32 = 256.0;
+
+/// Pick a scratch buffer (`Ping`/`Pong`/`Aux`) not in `avoid`. Linear chains
+/// only ever exclude one buffer, so they alternate ping/pong and never touch
+/// `Aux`; bloom excludes two and so reaches for the third.
+fn pick_scratch(avoid: &[Buf]) -> Buf {
+    for candidate in [Buf::Ping, Buf::Pong, Buf::Aux] {
+        if !avoid.contains(&candidate) {
+            return candidate;
+        }
+    }
+    Buf::Ping
+}
+
+/// Separable gaussian blur (horizontal then vertical) reading from `cur` and
+/// returning the buffer holding the result.
+fn push_blur(passes: &mut Vec<EffectPass>, cur: Buf, radius: f32, width: u32, height: u32) -> Buf {
+    if radius <= 0.0 {
+        return cur;
+    }
+    let t1 = pick_scratch(&[cur]);
+    passes.push(EffectPass {
+        uniform: EffectUniform {
+            mode: 4,
+            width,
+            height,
+            seed: 0,
+            p0: radius,
+            ..Default::default()
+        },
+        custom_source: None,
+        src: cur,
+        secondary: cur,
+        dst: t1,
+    });
+    let t2 = pick_scratch(&[t1]);
+    passes.push(EffectPass {
+        uniform: EffectUniform {
+            mode: 14,
+            width,
+            height,
+            seed: 0,
+            p0: radius,
+            ..Default::default()
+        },
+        custom_source: None,
+        src: t1,
+        secondary: t1,
+        dst: t2,
+    });
+    t2
+}
+
+/// Bloom: extract bright pass → blur → compose over the *running* image. The
+/// running image (`cur`) is pinned in `base` for the whole effect so compose
+/// blends glow on top of earlier effects' output, not the pristine source.
+fn push_bloom(
+    passes: &mut Vec<EffectPass>,
+    cur: Buf,
+    threshold: f32,
+    strength: f32,
+    radius: f32,
+    width: u32,
+    height: u32,
+) -> Buf {
+    if radius <= 0.0 {
+        return cur;
+    }
+    let base = cur;
+    // Bright-pass extract (mode 15): base -> a.
+    let a = pick_scratch(&[base]);
+    passes.push(EffectPass {
+        uniform: EffectUniform {
+            mode: 15,
+            width,
+            height,
+            seed: 0,
+            p0: threshold,
+            ..Default::default()
+        },
+        custom_source: None,
+        src: base,
+        secondary: base,
+        dst: a,
+    });
+    // Blur the mask: a -> b (h) -> a (v). `b` is the third buffer (Aux), so
+    // `base` stays intact for compose.
+    let b = pick_scratch(&[base, a]);
+    passes.push(EffectPass {
+        uniform: EffectUniform {
+            mode: 4,
+            width,
+            height,
+            seed: 0,
+            p0: radius,
+            ..Default::default()
+        },
+        custom_source: None,
+        src: a,
+        secondary: a,
+        dst: b,
+    });
+    passes.push(EffectPass {
+        uniform: EffectUniform {
+            mode: 14,
+            width,
+            height,
+            seed: 0,
+            p0: radius,
+            ..Default::default()
+        },
+        custom_source: None,
+        src: b,
+        secondary: b,
+        dst: a,
+    });
+    // Compose (mode 18): running image (base) + blurred glow (a) -> b.
+    passes.push(EffectPass {
+        uniform: EffectUniform {
+            mode: 18,
+            width,
+            height,
+            seed: 0,
+            p0: 0.0,
+            p1: strength,
+            ..Default::default()
+        },
+        custom_source: None,
+        src: base,
+        secondary: a,
+        dst: b,
+    });
+    b
+}
 
 fn build_passes(effects: &[EffectSpec], width: u32, height: u32) -> Vec<EffectPass> {
     let scale = spatial_scale(height);
-    let mut passes = Vec::new();
+    let mut passes: Vec<EffectPass> = Vec::new();
+    // The buffer currently holding the running image; effects chain off it.
+    let mut cur = Buf::Input;
+
     for effect in effects {
         match *effect {
             EffectSpec::GaussianBlur { radius } => {
-                let clamped_r = (radius * scale).clamp(0.0, MAX_BLUR_RADIUS);
-                if clamped_r > 0.0 {
-                    // Pass 1: Horizontal Blur (mode 4)
-                    passes.push(EffectPass {
-                        uniform: EffectUniform {
-                            mode: 4,
-                            width,
-                            height,
-                            seed: 0,
-                            p0: clamped_r,
-                            ..Default::default()
-                        },
-                        custom_source: None,
-                    });
-                    // Pass 2: Vertical Blur (mode 14)
-                    passes.push(EffectPass {
-                        uniform: EffectUniform {
-                            mode: 14,
-                            width,
-                            height,
-                            seed: 0,
-                            p0: clamped_r,
-                            ..Default::default()
-                        },
-                        custom_source: None,
-                    });
-                }
+                cur = push_blur(
+                    &mut passes,
+                    cur,
+                    (radius * scale).clamp(0.0, MAX_BLUR_RADIUS),
+                    width,
+                    height,
+                );
             }
             EffectSpec::GaussianBlurPixels { radius } => {
-                let clamped_r = radius.clamp(0.0, MAX_BLUR_RADIUS);
-                if clamped_r > 0.0 {
-                    passes.push(EffectPass {
-                        uniform: EffectUniform {
-                            mode: 4,
-                            width,
-                            height,
-                            seed: 0,
-                            p0: clamped_r,
-                            ..Default::default()
-                        },
-                        custom_source: None,
-                    });
-                    passes.push(EffectPass {
-                        uniform: EffectUniform {
-                            mode: 14,
-                            width,
-                            height,
-                            seed: 0,
-                            p0: clamped_r,
-                            ..Default::default()
-                        },
-                        custom_source: None,
-                    });
-                }
+                cur = push_blur(
+                    &mut passes,
+                    cur,
+                    radius.clamp(0.0, MAX_BLUR_RADIUS),
+                    width,
+                    height,
+                );
             }
             EffectSpec::Bloom {
                 threshold,
                 strength,
                 radius,
             } => {
-                let clamped_r = (radius * scale).clamp(0.0, MAX_BLOOM_RADIUS);
-                if clamped_r > 0.0 {
-                    passes.push(EffectPass {
-                        uniform: EffectUniform {
-                            mode: 15,
-                            width,
-                            height,
-                            seed: 0,
-                            p0: threshold.clamp(0.0, 1.0),
-                            ..Default::default()
-                        },
-                        custom_source: None,
-                    });
-                    passes.push(EffectPass {
-                        uniform: EffectUniform {
-                            mode: 4,
-                            width,
-                            height,
-                            seed: 0,
-                            p0: clamped_r,
-                            ..Default::default()
-                        },
-                        custom_source: None,
-                    });
-                    passes.push(EffectPass {
-                        uniform: EffectUniform {
-                            mode: 14,
-                            width,
-                            height,
-                            seed: 0,
-                            p0: clamped_r,
-                            ..Default::default()
-                        },
-                        custom_source: None,
-                    });
-                    passes.push(EffectPass {
-                        uniform: EffectUniform {
-                            mode: 18,
-                            width,
-                            height,
-                            seed: 0,
-                            p0: 0.0,
-                            p1: strength.clamp(0.0, MAX_BLOOM_STRENGTH),
-                            ..Default::default()
-                        },
-                        custom_source: None,
-                    });
-                }
+                cur = push_bloom(
+                    &mut passes,
+                    cur,
+                    threshold.clamp(0.0, 1.0),
+                    strength.clamp(0.0, MAX_BLOOM_STRENGTH),
+                    (radius * scale).clamp(0.0, MAX_BLOOM_RADIUS),
+                    width,
+                    height,
+                );
             }
             _ => {
-                if let Some(pass) = effect_to_pass(effect, width, height) {
-                    passes.push(pass);
+                if let Some((uniform, custom_source)) = effect_uniform(effect, width, height) {
+                    let dst = pick_scratch(&[cur]);
+                    passes.push(EffectPass {
+                        uniform,
+                        custom_source,
+                        src: cur,
+                        secondary: cur,
+                        dst,
+                    });
+                    cur = dst;
                 }
             }
         }
     }
+
+    // The final result must land in the owned output texture handed back to the
+    // caller; everything before it ping-pongs through the scratch buffers.
+    if let Some(last) = passes.last_mut() {
+        last.dst = Buf::Owned;
+    }
     passes
 }
 
-fn effect_to_pass(effect: &EffectSpec, width: u32, height: u32) -> Option<EffectPass> {
+/// Builds the `EffectUniform` (and optional custom WGSL source) for a
+/// single-pass effect. Multi-pass effects (blur, bloom) are routed in
+/// `build_passes`; this returns `None` for them.
+fn effect_uniform(
+    effect: &EffectSpec,
+    width: u32,
+    height: u32,
+) -> Option<(EffectUniform, Option<String>)> {
     let scale = spatial_scale(height);
-    let base = |mode, p0, p1, p2, p3, p4, p5, seed| EffectPass {
-        uniform: EffectUniform {
-            mode,
-            width,
-            height,
-            seed,
-            p0,
-            p1,
-            p2,
-            p3,
-            p4,
-            p5,
-            p6: 0.0,
-            p7: 0.0,
-        },
-        custom_source: None,
+    let base = |mode, p0, p1, p2, p3, p4, p5, seed| EffectUniform {
+        mode,
+        width,
+        height,
+        seed,
+        p0,
+        p1,
+        p2,
+        p3,
+        p4,
+        p5,
+        p6: 0.0,
+        p7: 0.0,
     };
-    match effect {
-        EffectSpec::Brightness { value } => Some(base(
+    let uniform = match effect {
+        EffectSpec::Brightness { value } => base(
             1,
             value.clamp(0.0, MAX_COLOR_MULTIPLIER),
             0.0,
@@ -799,8 +943,8 @@ fn effect_to_pass(effect: &EffectSpec, width: u32, height: u32) -> Option<Effect
             0.0,
             0.0,
             0,
-        )),
-        EffectSpec::Contrast { value } => Some(base(
+        ),
+        EffectSpec::Contrast { value } => base(
             2,
             value.clamp(0.0, MAX_COLOR_MULTIPLIER),
             0.0,
@@ -809,8 +953,8 @@ fn effect_to_pass(effect: &EffectSpec, width: u32, height: u32) -> Option<Effect
             0.0,
             0.0,
             0,
-        )),
-        EffectSpec::Saturation { value } => Some(base(
+        ),
+        EffectSpec::Saturation { value } => base(
             3,
             value.clamp(0.0, MAX_COLOR_MULTIPLIER),
             0.0,
@@ -819,27 +963,38 @@ fn effect_to_pass(effect: &EffectSpec, width: u32, height: u32) -> Option<Effect
             0.0,
             0.0,
             0,
-        )),
-        EffectSpec::GaussianBlur { .. } | EffectSpec::GaussianBlurPixels { .. } => None, // Handled in build_passes
-        EffectSpec::Sharpen { amount } => {
-            Some(base(5, amount.clamp(0.0, 1.0), 0.0, 0.0, 0.0, 0.0, 0.0, 0))
-        }
-        EffectSpec::Pixelate { size } => Some(base(
+        ),
+        // Multi-pass; routed in build_passes.
+        EffectSpec::GaussianBlur { .. }
+        | EffectSpec::GaussianBlurPixels { .. }
+        | EffectSpec::Bloom { .. } => return None,
+        // p1 = sample step in px (resolution-normalized so sharpening looks the
+        // same fraction-of-frame at any resolution).
+        EffectSpec::Sharpen { amount } => base(
+            5,
+            amount.clamp(0.0, MAX_SHARPEN),
+            scale.max(1.0),
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0,
+        ),
+        EffectSpec::Pixelate { size } => base(
             6,
-            (size * scale).clamp(1.0, 256.0),
+            (size * scale).clamp(1.0, MAX_PIXELATE),
             0.0,
             0.0,
             0.0,
             0.0,
             0.0,
             0,
-        )),
-        EffectSpec::Bloom { .. } => None, // Handled in build_passes
+        ),
         EffectSpec::Vignette {
             strength,
             radius,
             softness,
-        } => Some(base(
+        } => base(
             8,
             strength.clamp(0.0, 1.0),
             radius.clamp(0.0, 1.0),
@@ -848,18 +1003,11 @@ fn effect_to_pass(effect: &EffectSpec, width: u32, height: u32) -> Option<Effect
             0.0,
             0.0,
             0,
-        )),
-        EffectSpec::Noise { amount, seed } => Some(base(
-            9,
-            amount.clamp(0.0, 1.0),
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            *seed,
-        )),
-        EffectSpec::ChromaticAberration { amount, angle_deg } => Some(base(
+        ),
+        EffectSpec::Noise { amount, seed } => {
+            base(9, amount.clamp(0.0, 1.0), 0.0, 0.0, 0.0, 0.0, 0.0, *seed)
+        }
+        EffectSpec::ChromaticAberration { amount, angle_deg } => base(
             10,
             (amount * scale).clamp(0.0, MAX_CHROMATIC_ABERRATION),
             *angle_deg,
@@ -868,15 +1016,15 @@ fn effect_to_pass(effect: &EffectSpec, width: u32, height: u32) -> Option<Effect
             0.0,
             0.0,
             0,
-        )),
-        EffectSpec::Hue { degrees } => Some(base(11, *degrees, 0.0, 0.0, 0.0, 0.0, 0.0, 0)),
+        ),
+        EffectSpec::Hue { degrees } => base(11, *degrees, 0.0, 0.0, 0.0, 0.0, 0.0, 0),
         EffectSpec::Levels {
             in_black,
             in_white,
             gamma,
             out_black,
             out_white,
-        } => Some(base(
+        } => base(
             12,
             in_black.clamp(0.0, 1.0),
             in_white.clamp(0.001, 1.0),
@@ -885,12 +1033,12 @@ fn effect_to_pass(effect: &EffectSpec, width: u32, height: u32) -> Option<Effect
             out_white.clamp(0.0, 1.0),
             0.0,
             0,
-        )),
+        ),
         EffectSpec::ChromaKey {
             key_rgba,
             threshold,
             smoothness,
-        } => Some(base(
+        } => base(
             13,
             key_rgba[0] as f32 / 255.0,
             key_rgba[1] as f32 / 255.0,
@@ -899,7 +1047,7 @@ fn effect_to_pass(effect: &EffectSpec, width: u32, height: u32) -> Option<Effect
             smoothness.clamp(0.0001, 1.0),
             0.0,
             0,
-        )),
+        ),
         EffectSpec::CustomWgsl { source, params } => {
             let mut p = [0.0f32; 8];
             if let serde_json::Value::Object(map) = params {
@@ -910,8 +1058,8 @@ fn effect_to_pass(effect: &EffectSpec, width: u32, height: u32) -> Option<Effect
                     }
                 }
             }
-            Some(EffectPass {
-                uniform: EffectUniform {
+            return Some((
+                EffectUniform {
                     mode: 0,
                     width,
                     height,
@@ -925,10 +1073,11 @@ fn effect_to_pass(effect: &EffectSpec, width: u32, height: u32) -> Option<Effect
                     p6: p[6],
                     p7: p[7],
                 },
-                custom_source: Some(source.clone()),
-            })
+                Some(source.clone()),
+            ));
         }
-    }
+    };
+    Some((uniform, None))
 }
 
 fn source_to_owned_texture(

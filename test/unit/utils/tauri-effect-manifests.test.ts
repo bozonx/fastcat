@@ -133,12 +133,12 @@ describe('unified video effect manifests', () => {
     const bloom = getVideoEffectManifest('bloom');
 
     expect(blur?.paramRanges?.strength).toMatchObject({
-      uiMax: 64,
+      uiMax: 100,
       animationMax: 512,
       renderMax: 1024,
     });
     expect(bloom?.paramRanges?.radius).toMatchObject({
-      uiMax: 16,
+      uiMax: 32,
       animationMax: 256,
       renderMax: 512,
     });

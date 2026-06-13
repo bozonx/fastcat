@@ -5,12 +5,18 @@ import { createDevLogger } from '~/utils/dev-logger';
 const log = createDevLogger('WebGpuComputeRunner');
 
 const UNIFORM_SIZE = 48; // 12 * 4 bytes
+// Hard render ceilings — must stay byte-identical to the Rust side
+// (`src-tauri/src/compositor/effects/mod.rs`). These bound every value reaching
+// the GPU and are the ceiling an animation key can reach; the frontend
+// `renderMin/renderMax` in `video-manifests.ts` mirror them.
 const MAX_BLUR_RADIUS = 1024.0;
 const MAX_BLOOM_RADIUS = 512.0;
 const MAX_COLOR_MULTIPLIER = 4.0;
 const MAX_BLOOM_STRENGTH = 4.0;
 const MAX_CHROMATIC_ABERRATION = 256.0;
 const MAX_LEVELS_GAMMA = 16.0;
+const MAX_SHARPEN = 4.0;
+const MAX_PIXELATE = 256.0;
 
 export interface EffectUniform {
   mode: number;
@@ -27,13 +33,105 @@ export interface EffectUniform {
   p7: number;
 }
 
+/**
+ * Logical buffer slot a pass reads from / writes to — mirror of the Rust `Buf`
+ * enum. Explicit routing (instead of an implicit ping-pong) lets multi-pass
+ * effects like bloom pin the running image while their internal passes
+ * ping-pong, so compose blends glow over the current image (post earlier
+ * effects), not the pristine source frame.
+ */
+export type Buf = 'input' | 'ping' | 'pong' | 'aux' | 'owned';
+
 export interface ComputePass {
   uniform: EffectUniform;
   customSource?: string;
+  src: Buf;
+  secondary: Buf;
+  dst: Buf;
 }
 
 function spatialScale(height: number): number {
   return Math.max(0.1, Math.min(8.0, height / 1080.0));
+}
+
+function uniform(mode: number, width: number, height: number, seed = 0): EffectUniform {
+  return { mode, width, height, seed, p0: 0, p1: 0, p2: 0, p3: 0, p4: 0, p5: 0, p6: 0, p7: 0 };
+}
+
+/** Pick a scratch buffer not in `avoid` (mirror of Rust `pick_scratch`). */
+function pickScratch(avoid: Buf[]): Buf {
+  for (const candidate of ['ping', 'pong', 'aux'] as Buf[]) {
+    if (!avoid.includes(candidate)) return candidate;
+  }
+  return 'ping';
+}
+
+/** Separable gaussian blur (h then v); returns the buffer holding the result. */
+function pushBlur(
+  passes: ComputePass[],
+  cur: Buf,
+  radius: number,
+  width: number,
+  height: number,
+): Buf {
+  if (radius <= 0) return cur;
+  const t1 = pickScratch([cur]);
+  passes.push({
+    uniform: { ...uniform(4, width, height), p0: radius },
+    src: cur,
+    secondary: cur,
+    dst: t1,
+  });
+  const t2 = pickScratch([t1]);
+  passes.push({
+    uniform: { ...uniform(14, width, height), p0: radius },
+    src: t1,
+    secondary: t1,
+    dst: t2,
+  });
+  return t2;
+}
+
+/** Bloom: extract bright → blur → compose over the running image (`cur`). */
+function pushBloom(
+  passes: ComputePass[],
+  cur: Buf,
+  threshold: number,
+  strength: number,
+  radius: number,
+  width: number,
+  height: number,
+): Buf {
+  if (radius <= 0) return cur;
+  const base = cur;
+  const a = pickScratch([base]);
+  passes.push({
+    uniform: { ...uniform(15, width, height), p0: threshold },
+    src: base,
+    secondary: base,
+    dst: a,
+  });
+  const b = pickScratch([base, a]);
+  passes.push({
+    uniform: { ...uniform(4, width, height), p0: radius },
+    src: a,
+    secondary: a,
+    dst: b,
+  });
+  passes.push({
+    uniform: { ...uniform(14, width, height), p0: radius },
+    src: b,
+    secondary: b,
+    dst: a,
+  });
+  // Compose: running image (base) + blurred glow (a) -> b.
+  passes.push({
+    uniform: { ...uniform(18, width, height), p1: strength },
+    src: base,
+    secondary: a,
+    dst: b,
+  });
+  return b;
 }
 
 export function buildPasses(
@@ -43,171 +141,70 @@ export function buildPasses(
 ): ComputePass[] {
   const scale = spatialScale(height);
   const passes: ComputePass[] = [];
+  // Buffer currently holding the running image; effects chain off it.
+  let cur: Buf = 'input';
 
   for (const effect of effects) {
     switch (effect.type) {
-      case 'gaussian-blur': {
-        const clampedR = Math.max(0, Math.min(MAX_BLUR_RADIUS, effect.radius * scale));
-        if (clampedR > 0) {
-          passes.push({
-            uniform: {
-              mode: 4,
-              width,
-              height,
-              seed: 0,
-              p0: clampedR,
-              p1: 0,
-              p2: 0,
-              p3: 0,
-              p4: 0,
-              p5: 0,
-              p6: 0,
-              p7: 0,
-            },
-          });
-          passes.push({
-            uniform: {
-              mode: 14,
-              width,
-              height,
-              seed: 0,
-              p0: clampedR,
-              p1: 0,
-              p2: 0,
-              p3: 0,
-              p4: 0,
-              p5: 0,
-              p6: 0,
-              p7: 0,
-            },
-          });
-        }
+      case 'gaussian-blur':
+        cur = pushBlur(
+          passes,
+          cur,
+          Math.max(0, Math.min(MAX_BLUR_RADIUS, effect.radius * scale)),
+          width,
+          height,
+        );
         break;
-      }
-      case 'gaussian-blur-pixels': {
-        const clampedR = Math.max(0, Math.min(MAX_BLUR_RADIUS, effect.radius));
-        if (clampedR > 0) {
-          passes.push({
-            uniform: {
-              mode: 4,
-              width,
-              height,
-              seed: 0,
-              p0: clampedR,
-              p1: 0,
-              p2: 0,
-              p3: 0,
-              p4: 0,
-              p5: 0,
-              p6: 0,
-              p7: 0,
-            },
-          });
-          passes.push({
-            uniform: {
-              mode: 14,
-              width,
-              height,
-              seed: 0,
-              p0: clampedR,
-              p1: 0,
-              p2: 0,
-              p3: 0,
-              p4: 0,
-              p5: 0,
-              p6: 0,
-              p7: 0,
-            },
-          });
-        }
+      case 'gaussian-blur-pixels':
+        cur = pushBlur(
+          passes,
+          cur,
+          Math.max(0, Math.min(MAX_BLUR_RADIUS, effect.radius)),
+          width,
+          height,
+        );
         break;
-      }
-      case 'bloom': {
-        const clampedR = Math.max(0, Math.min(MAX_BLOOM_RADIUS, effect.radius * scale));
-        if (clampedR > 0) {
-          passes.push({
-            uniform: {
-              mode: 15,
-              width,
-              height,
-              seed: 0,
-              p0: Math.max(0, Math.min(1.0, effect.threshold)),
-              p1: 0,
-              p2: 0,
-              p3: 0,
-              p4: 0,
-              p5: 0,
-              p6: 0,
-              p7: 0,
-            },
-          });
-          passes.push({
-            uniform: {
-              mode: 4,
-              width,
-              height,
-              seed: 0,
-              p0: clampedR,
-              p1: 0,
-              p2: 0,
-              p3: 0,
-              p4: 0,
-              p5: 0,
-              p6: 0,
-              p7: 0,
-            },
-          });
-          passes.push({
-            uniform: {
-              mode: 14,
-              width,
-              height,
-              seed: 0,
-              p0: clampedR,
-              p1: 0,
-              p2: 0,
-              p3: 0,
-              p4: 0,
-              p5: 0,
-              p6: 0,
-              p7: 0,
-            },
-          });
-          passes.push({
-            uniform: {
-              mode: 18,
-              width,
-              height,
-              seed: 0,
-              p0: 0,
-              p1: Math.max(0, Math.min(MAX_BLOOM_STRENGTH, effect.strength)),
-              p2: 0,
-              p3: 0,
-              p4: 0,
-              p5: 0,
-              p6: 0,
-              p7: 0,
-            },
-          });
-        }
+      case 'bloom':
+        cur = pushBloom(
+          passes,
+          cur,
+          Math.max(0, Math.min(1.0, effect.threshold)),
+          Math.max(0, Math.min(MAX_BLOOM_STRENGTH, effect.strength)),
+          Math.max(0, Math.min(MAX_BLOOM_RADIUS, effect.radius * scale)),
+          width,
+          height,
+        );
         break;
-      }
       default: {
-        const pass = effectToPass(effect, width, height, scale);
-        if (pass) passes.push(pass);
+        const built = effectUniform(effect, width, height, scale);
+        if (built) {
+          const dst = pickScratch([cur]);
+          passes.push({
+            uniform: built.uniform,
+            customSource: built.customSource,
+            src: cur,
+            secondary: cur,
+            dst,
+          });
+          cur = dst;
+        }
       }
     }
   }
 
+  // The final result must land in the owned output texture.
+  if (passes.length > 0) {
+    passes[passes.length - 1]!.dst = 'owned';
+  }
   return passes;
 }
 
-function effectToPass(
+function effectUniform(
   effect: VideoEffectSpec,
   width: number,
   height: number,
   scale: number,
-): ComputePass | null {
+): { uniform: EffectUniform; customSource?: string } | null {
   const base = (
     mode: number,
     p0: number,
@@ -217,7 +214,7 @@ function effectToPass(
     p4: number,
     p5: number,
     seed: number,
-  ): ComputePass => ({
+  ): { uniform: EffectUniform } => ({
     uniform: { mode, width, height, seed, p0, p1, p2, p3, p4, p5, p6: 0, p7: 0 },
   });
 
@@ -233,9 +230,19 @@ function effectToPass(
     case 'bloom':
       return null; // handled in buildPasses
     case 'sharpen':
-      return base(5, Math.max(0, Math.min(1.0, effect.amount)), 0, 0, 0, 0, 0, 0);
+      // p1 = sample step in px (resolution-normalized).
+      return base(
+        5,
+        Math.max(0, Math.min(MAX_SHARPEN, effect.amount)),
+        Math.max(1, scale),
+        0,
+        0,
+        0,
+        0,
+        0,
+      );
     case 'pixelate':
-      return base(6, Math.max(1, Math.min(256, effect.size * scale)), 0, 0, 0, 0, 0, 0);
+      return base(6, Math.max(1, Math.min(MAX_PIXELATE, effect.size * scale)), 0, 0, 0, 0, 0, 0);
     case 'vignette':
       return base(
         8,
@@ -326,8 +333,11 @@ export class WebGpuComputeRunner {
 
   private pingTexture: GPUTexture | null = null;
   private pongTexture: GPUTexture | null = null;
+  private auxTexture: GPUTexture | null = null;
   private pingView: GPUTextureView | null = null;
   private pongView: GPUTextureView | null = null;
+  private auxView: GPUTextureView | null = null;
+  private sampler: GPUSampler | null = null;
   private cachedWidth = 0;
   private cachedHeight = 0;
 
@@ -355,7 +365,7 @@ export class WebGpuComputeRunner {
           {
             binding: 0,
             visibility: GPUShaderStage.COMPUTE,
-            texture: { sampleType: 'unfilterable-float', viewDimension: '2d' },
+            texture: { sampleType: 'float', viewDimension: '2d' },
           },
           {
             binding: 1,
@@ -370,9 +380,25 @@ export class WebGpuComputeRunner {
           {
             binding: 3,
             visibility: GPUShaderStage.COMPUTE,
-            texture: { sampleType: 'unfilterable-float', viewDimension: '2d' },
+            texture: { sampleType: 'float', viewDimension: '2d' },
+          },
+          {
+            binding: 4,
+            visibility: GPUShaderStage.COMPUTE,
+            sampler: { type: 'filtering' },
           },
         ],
+      });
+
+      // Linear, clamp-to-edge sampler for sub-texel sampling (blur / sharpen /
+      // chromatic aberration) — keeps those effects continuous in their params.
+      this.sampler = this.device.createSampler({
+        label: 'web-effect-sampler',
+        addressModeU: 'clamp-to-edge',
+        addressModeV: 'clamp-to-edge',
+        addressModeW: 'clamp-to-edge',
+        magFilter: 'linear',
+        minFilter: 'linear',
       });
 
       this.shaderModule = this.device.createShaderModule({
@@ -507,20 +533,31 @@ export class WebGpuComputeRunner {
         this.device.queue.writeBuffer(this.uniformBuffer!, 0, staging);
 
         const encoder = this.device.createCommandEncoder({ label: 'web-effect-encoder' });
-        const lastIndex = passes.length - 1;
-        let lastIsPing = false;
+
+        // Map a logical buffer slot to its concrete view (mirror of the Rust
+        // `view_of` routing). The final pass is routed to `owned` by buildPasses.
+        const viewOf = (buf: Buf): GPUTextureView => {
+          switch (buf) {
+            case 'input':
+              return inputView;
+            case 'ping':
+              return this.pingView!;
+            case 'pong':
+              return this.pongView!;
+            case 'aux':
+              return this.auxView!;
+            case 'owned':
+              return owned.view;
+          }
+        };
 
         for (let index = 0; index < passes.length; index++) {
           const pass = passes[index]!;
           const uniformOffset = index * this.uniformStride;
 
-          const sourceView = index === 0 ? inputView : lastIsPing ? this.pingView! : this.pongView!;
-          const intermediateTarget = index === 0 || !lastIsPing ? this.pingView! : this.pongView!;
-          const targetView = index === lastIndex ? owned.view : intermediateTarget;
-
-          const isCompose = pass.uniform.mode === 18;
-          const bindSrc = isCompose ? inputView : sourceView;
-          const bindSecondary = isCompose ? sourceView : inputView;
+          const bindSrc = viewOf(pass.src);
+          const bindSecondary = viewOf(pass.secondary);
+          const targetView = viewOf(pass.dst);
 
           let pipeline = this.pipeline;
           if (pass.customSource) {
@@ -538,6 +575,7 @@ export class WebGpuComputeRunner {
                 resource: { buffer: this.uniformBuffer!, offset: 0, size: UNIFORM_SIZE },
               },
               { binding: 3, resource: bindSecondary },
+              { binding: 4, resource: this.sampler! },
             ],
           });
 
@@ -546,8 +584,6 @@ export class WebGpuComputeRunner {
           computePass.setBindGroup(0, bindGroup, [uniformOffset]);
           computePass.dispatchWorkgroups(Math.ceil(w / 8), Math.ceil(h / 8), 1);
           computePass.end();
-
-          lastIsPing = index === 0 || !lastIsPing;
         }
 
         this.device.queue.submit([encoder.finish()]);
@@ -607,9 +643,10 @@ export class WebGpuComputeRunner {
       return;
     }
 
-    // Destroy previous ping/pong textures before reallocating at a larger size.
+    // Destroy previous scratch textures before reallocating at a larger size.
     this.pingTexture?.destroy();
     this.pongTexture?.destroy();
+    this.auxTexture?.destroy();
 
     const w = Math.max(1, width);
     const h = Math.max(1, height);
@@ -634,6 +671,16 @@ export class WebGpuComputeRunner {
       usage,
     });
     this.pongView = this.pongTexture.createView();
+
+    // Third scratch buffer; used by bloom to pin the running image while
+    // ping-ponging the bright-mask blur.
+    this.auxTexture = this.device!.createTexture({
+      label: 'web-effect-aux',
+      size: { width: w, height: h, depthOrArrayLayers: 1 },
+      format: 'rgba8unorm',
+      usage,
+    });
+    this.auxView = this.auxTexture.createView();
 
     this.cachedWidth = w;
     this.cachedHeight = h;
@@ -698,6 +745,7 @@ export class WebGpuComputeRunner {
   public destroy(): void {
     this.pingTexture?.destroy();
     this.pongTexture?.destroy();
+    this.auxTexture?.destroy();
     this.uniformBuffer?.destroy();
     // GPUShaderModule has no .destroy(); releasing the device reclaims all
     // child objects (pipelines, shader modules, bind group layouts).
@@ -705,8 +753,11 @@ export class WebGpuComputeRunner {
 
     this.pingTexture = null;
     this.pongTexture = null;
+    this.auxTexture = null;
     this.pingView = null;
     this.pongView = null;
+    this.auxView = null;
+    this.sampler = null;
     this.uniformBuffer = null;
     this.uniformCapacity = 0;
     this.customPipelines.clear();

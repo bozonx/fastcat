@@ -144,6 +144,7 @@ describe('WebGpuComputeRunner', () => {
       createBindGroupLayout: vi.fn().mockReturnValue({}),
       createPipelineLayout: vi.fn().mockReturnValue({}),
       createComputePipeline: vi.fn().mockReturnValue({}),
+      createSampler: vi.fn().mockReturnValue({}),
       limits: { minUniformBufferOffsetAlignment: 256 },
       createBuffer: vi.fn().mockReturnValue({
         destroy: vi.fn(),
