@@ -81,17 +81,23 @@ const props = withDefaults(
     isFullscreen?: boolean;
     useExternalFocus?: boolean;
     panelDragCursorClass?: string;
+    experimentalFeatures?: boolean;
   }>(),
   {
     isFullscreen: false,
     useExternalFocus: false,
     panelDragCursorClass: 'cursor-grab active:cursor-grabbing',
+    experimentalFeatures: false,
   },
 );
 
 const emit = defineEmits<{
   panelDragStart: [e: DragEvent];
 }>();
+
+function onPanelDragStart(e: DragEvent) {
+  emit('panelDragStart', e);
+}
 
 const effectiveFullscreen = computed(() => props.isFullscreen || isBrowserFullscreen.value);
 const shouldTeleport = computed(() => isTauriRuntime() && effectiveFullscreen.value);
@@ -519,7 +525,7 @@ watch(viewportRef, (vp) => {
                       ? 'px-1.5 py-3'
                       : 'px-4 py-3.5',
                     'bg-ui-bg-elevated',
-                    props.panelDragCursorClass,
+                    props.experimentalFeatures ? props.panelDragCursorClass : '',
                   ],
               effectiveFullscreen && isIdle ? 'opacity-0 pointer-events-none' : 'opacity-100',
               !effectiveFullscreen && toolbarPosition === 'bottom' ? 'border-t' : '',
@@ -528,8 +534,8 @@ watch(viewportRef, (vp) => {
               !effectiveFullscreen && toolbarPosition === 'left' ? 'border-r' : '',
               toolbarPosition === 'left' || toolbarPosition === 'right' ? 'flex-col' : '',
             ]"
-            :draggable="!effectiveFullscreen"
-            @dragstart="(e) => emit('panelDragStart', e)"
+            :draggable="!effectiveFullscreen && props.experimentalFeatures"
+            @dragstart="props.experimentalFeatures ? onPanelDragStart : undefined"
             @mouseenter="resetIdleTimeout"
             @mousemove="resetIdleTimeout"
           >

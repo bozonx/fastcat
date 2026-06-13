@@ -13,12 +13,14 @@ interface Props {
   isAbsolute?: boolean;
   draggableCursorClass?: string;
   contextMenuItems?: ContextMenuItem[][];
+  experimentalFeatures?: boolean;
 }
 
 withDefaults(defineProps<Props>(), {
   isAbsolute: false,
   draggableCursorClass: 'cursor-grab active:cursor-grabbing',
   contextMenuItems: () => [],
+  experimentalFeatures: false,
 });
 
 const emit = defineEmits<{
@@ -59,8 +61,11 @@ function onAuxClick(event: MouseEvent) {
   <UContextMenu v-model:open="isMenuOpen" :items="contextMenuItems">
     <div
       class="flex justify-between items-center px-4 py-2 border-b border-ui-border text-sm bg-ui-bg-elevated shrink-0 select-none"
-      :class="[isAbsolute ? 'absolute top-0 left-0 right-0 z-20' : '', draggableCursorClass]"
-      draggable="true"
+      :class="[
+        isAbsolute ? 'absolute top-0 left-0 right-0 z-20' : '',
+        experimentalFeatures ? draggableCursorClass : '',
+      ]"
+      :draggable="experimentalFeatures"
       @dragstart="onDragStart"
       @dblclick="emit('close')"
       @contextmenu="onContextMenu"

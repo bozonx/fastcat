@@ -513,6 +513,7 @@ export function useEditorDynamicPanels(options: UseEditorDynamicPanelsOptions) {
   });
 
   function onPanelPointerDown(event: PointerEvent, panelId: string) {
+    if (!workspaceStore.userSettings.experimentalFeatures) return;
     startTauriPanelDrag(event, panelId);
   }
 
