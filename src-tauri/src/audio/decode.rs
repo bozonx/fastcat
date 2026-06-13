@@ -805,6 +805,7 @@ pub(crate) fn decode_audio_chunk(params: DecodeAudioChunkParams<'_>) -> Result<V
             _ => (None, None),
         }
     };
+    let source_end_frame = source_end_frame_for_layer(shared, layer_id, sample_rate);
 
     if let Some((samples, win_start)) = hit {
         let rel = (start_frame - win_start) * output_channels;
@@ -820,7 +821,10 @@ pub(crate) fn decode_audio_chunk(params: DecodeAudioChunkParams<'_>) -> Result<V
         // window would leave the playhead in a gap and thrash (miss → refill → …).
         if let Some(end) = window_end_frame {
             let margin_frames = (REFILL_MARGIN_SEC * sample_rate as f64) as usize;
-            if end.saturating_sub(start_frame + frames_to_read) < margin_frames {
+            let reached_source_end = source_end_frame.is_some_and(|source_end| end >= source_end);
+            if !reached_source_end
+                && end.saturating_sub(start_frame + frames_to_read) < margin_frames
+            {
                 spawn_window_fill(
                     shared,
                     layer_id,
@@ -847,6 +851,22 @@ pub(crate) fn decode_audio_chunk(params: DecodeAudioChunkParams<'_>) -> Result<V
         output_channels,
     );
     stream()
+}
+
+fn source_end_frame_for_layer(
+    shared: &Arc<(Mutex<AudioShared>, Condvar)>,
+    layer_id: &str,
+    sample_rate: u32,
+) -> Option<usize> {
+    let state = shared.0.lock();
+    let layer = state.scene.iter().find(|layer| layer.id == layer_id)?;
+    if !layer.source_start_sec.is_finite()
+        || !layer.source_range_duration_sec.is_finite()
+        || layer.source_range_duration_sec <= 0.0
+    {
+        return None;
+    }
+    Some(((layer.source_start_sec + layer.source_range_duration_sec) * sample_rate as f64) as usize)
 }
 
 /// Max concurrent background window-fill decodes. Deliberately 1: each ranged
@@ -1720,6 +1740,66 @@ mod tests {
             wait_for_window(&shared, "r1", start_frame),
             "refill-ahead must decode and install a forward window at the playhead"
         );
+        let _ = std::fs::remove_file(path);
+        Ok(())
+    }
+
+    #[test]
+    fn window_refill_stops_at_known_source_end() -> anyhow::Result<()> {
+        let path = write_temp_f32_wav(48000, 2, 48000 * 3)?;
+        let path_str = path.to_string_lossy().to_string();
+        let shared = Arc::new((Mutex::new(AudioShared::default()), Condvar::new()));
+        shared.0.lock().scene = vec![crate::monitor::scene::SceneAudioLayer {
+            id: "eof".into(),
+            track_id: None,
+            path: path_str.clone(),
+            timeline_start_sec: 0.0,
+            timeline_end_sec: 1.0,
+            source_start_sec: 0.0,
+            source_range_duration_sec: 1.0,
+            speed: 1.0,
+            audio_gain: 1.0,
+            audio_balance: 0.0,
+            audio_fade_in_sec: 0.0,
+            audio_fade_out_sec: 0.0,
+            audio_fade_in_curve: crate::monitor::scene::AudioFadeCurve::Linear,
+            audio_fade_out_curve: crate::monitor::scene::AudioFadeCurve::Linear,
+            audio_effects: vec![],
+        }];
+        shared.0.lock().layer_windows.insert(
+            "eof".to_string(),
+            AudioWindow {
+                path: path_str.clone(),
+                source_start_frame: 0,
+                sample_rate: 48000,
+                channels: 2,
+                samples: Arc::new(vec![0.1f32; 48000 * 2]),
+            },
+        );
+
+        let _ = decode_audio_chunk(DecodeAudioChunkParams {
+            layer_id: "eof",
+            path: &path_str,
+            source_start_sec: 0.9,
+            timeline_duration_sec: 0.05,
+            speed: 1.0,
+            target: AudioRenderTarget::monitor(48000, 2),
+            reverse: false,
+            shared: &shared,
+        })?;
+
+        std::thread::sleep(std::time::Duration::from_millis(80));
+        let state = shared.0.lock();
+        assert_eq!(
+            state
+                .layer_windows
+                .get("eof")
+                .map(|window| window.source_start_frame),
+            Some(0),
+            "a window that already reaches the clip source end must not be refilled"
+        );
+        assert!(!state.window_fill_in_flight.contains_key("eof"));
+        drop(state);
         let _ = std::fs::remove_file(path);
         Ok(())
     }

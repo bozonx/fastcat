@@ -6,8 +6,8 @@ use std::sync::Arc;
 use anyhow::Context;
 use parking_lot::{Condvar, Mutex};
 
-use crate::audio::decode::decode_audio_chunk;
-use crate::audio::shared::{AudioRenderTarget, AudioShared, CHUNK_DURATION_SEC};
+use crate::audio::decode::{decode_audio_chunk, spawn_window_fill};
+use crate::audio::shared::{AudioRenderTarget, AudioShared, CHUNK_DURATION_SEC, REFILL_MARGIN_SEC};
 use crate::monitor::scene::{AudioFadeCurve, SceneAudioLayer, SceneAudioTrack};
 
 pub struct WavRenderParams<'a> {
@@ -321,6 +321,14 @@ fn mix_chunk_ramped_result(
                 decode_error_policy,
             )?;
         }
+        prewarm_upcoming_audio_layers(
+            layers,
+            chunk_end_sec,
+            sample_rate,
+            output_channels,
+            target,
+            shared,
+        );
 
         if has_audio_on_track {
             apply_bus_gain_balance(
@@ -337,11 +345,11 @@ fn mix_chunk_ramped_result(
     // 4. Mix orphan layers (no owning track) directly into the master bus.
     // They have no track to solo, so any active solo silences them entirely.
     if !has_solo {
-        for layer in orphan_layers {
+        for layer in &orphan_layers {
             mix_layer_into(
                 MixLayerParams {
                     buffer: &mut mixed,
-                    layer,
+                    layer: *layer,
                     chunk_start_sec,
                     chunk_end_sec,
                     frames,
@@ -353,14 +361,25 @@ fn mix_chunk_ramped_result(
                 decode_error_policy,
             )?;
         }
+        prewarm_upcoming_audio_layers(
+            &orphan_layers,
+            chunk_end_sec,
+            sample_rate,
+            output_channels,
+            target,
+            shared,
+        );
     }
 
     // Apply master audio effects post-mix (compressor / limiter / reverb etc.)
     if !audio_master_effects.is_empty() {
         let plugin_host = { shared.0.lock().plugin_host.clone() };
-        plugin_host
-            .lock()
-            .apply_master_effects(&mut mixed, sample_rate, output_channels, audio_master_effects);
+        plugin_host.lock().apply_master_effects(
+            &mut mixed,
+            sample_rate,
+            output_channels,
+            audio_master_effects,
+        );
     }
 
     match prev_master_gain {
@@ -371,6 +390,79 @@ fn mix_chunk_ramped_result(
     }
     soft_clip(&mut mixed);
     Ok(mixed)
+}
+
+fn prewarm_upcoming_audio_layers(
+    layers: &[&SceneAudioLayer],
+    chunk_end_sec: f64,
+    sample_rate: u32,
+    output_channels: usize,
+    target: AudioRenderTarget,
+    shared: &Arc<(Mutex<AudioShared>, Condvar)>,
+) {
+    if target.is_export() {
+        return;
+    }
+
+    let lookahead_end_sec = chunk_end_sec + REFILL_MARGIN_SEC;
+    for layer in layers {
+        if layer.timeline_start_sec <= chunk_end_sec || layer.timeline_start_sec > lookahead_end_sec
+        {
+            continue;
+        }
+        prewarm_audio_layer_window(layer, sample_rate, output_channels, shared);
+    }
+}
+
+fn prewarm_audio_layer_window(
+    layer: &SceneAudioLayer,
+    sample_rate: u32,
+    output_channels: usize,
+    shared: &Arc<(Mutex<AudioShared>, Condvar)>,
+) {
+    if (sanitize_speed(layer.speed.abs()) - 1.0).abs() > 1e-6 || layer.speed < 0.0 {
+        return;
+    }
+
+    let source_start_sec = layer.source_pts_at(layer.timeline_start_sec);
+    if !source_start_sec.is_finite() {
+        return;
+    }
+    let target_start_frame = (source_start_sec.max(0.0) * sample_rate as f64).round() as usize;
+    let source_end_frame =
+        if layer.source_range_duration_sec.is_finite() && layer.source_range_duration_sec > 0.0 {
+            Some(
+                ((layer.source_start_sec + layer.source_range_duration_sec) * sample_rate as f64)
+                    as usize,
+            )
+        } else {
+            None
+        };
+    if source_end_frame.is_some_and(|source_end| target_start_frame >= source_end) {
+        return;
+    }
+
+    {
+        let state = shared.0.lock();
+        if state.window_fill_in_flight.contains_key(&layer.id) {
+            return;
+        }
+        if state.layer_windows.get(&layer.id).is_some_and(|window| {
+            window.path == layer.path
+                && window.covers(target_start_frame, 1, sample_rate, output_channels)
+        }) {
+            return;
+        }
+    }
+
+    spawn_window_fill(
+        shared,
+        &layer.id,
+        &layer.path,
+        target_start_frame,
+        sample_rate,
+        output_channels,
+    );
 }
 
 /// Resolves the bus track that owns a layer. An empty `tid` is never matched
@@ -879,6 +971,26 @@ mod tests {
         }
     }
 
+    fn wait_for_window(
+        shared: &Arc<(Mutex<AudioShared>, Condvar)>,
+        layer_id: &str,
+        start_frame: usize,
+    ) -> bool {
+        for _ in 0..200 {
+            if shared
+                .0
+                .lock()
+                .layer_windows
+                .get(layer_id)
+                .is_some_and(|window| window.source_start_frame == start_frame)
+            {
+                return true;
+            }
+            std::thread::sleep(std::time::Duration::from_millis(10));
+        }
+        false
+    }
+
     // ------------------------------------------------------------------
     // Gain / Fade
     // ------------------------------------------------------------------
@@ -916,6 +1028,39 @@ mod tests {
         let (fade_in, fade_out) = effective_fades(&l, 10.0);
         assert!((fade_in - 4.0).abs() < 1e-9);
         assert!((fade_out - 6.0).abs() < 1e-9);
+    }
+
+    #[test]
+    fn mix_chunk_prewarms_upcoming_audio_layer() {
+        let path = concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../test/fixtures/media/sample-1s-audio.mp3"
+        );
+        let shared = Arc::new((Mutex::new(AudioShared::default()), Condvar::new()));
+        let mut future = layer();
+        future.id = "future".into();
+        future.track_id = None;
+        future.path = path.into();
+        future.timeline_start_sec = 1.0;
+        future.timeline_end_sec = 2.0;
+        future.source_start_sec = 0.0;
+        future.source_range_duration_sec = 1.0;
+
+        let _ = mix_chunk(
+            &[future],
+            &[],
+            1.0,
+            &[],
+            0.0,
+            0.05,
+            AudioRenderTarget::monitor(48000, 2),
+            &shared,
+        );
+
+        assert!(
+            wait_for_window(&shared, "future", 0),
+            "monitor mix should prewarm a future layer inside the refill lookahead"
+        );
     }
 
     // ------------------------------------------------------------------
@@ -1421,8 +1566,10 @@ mod tests {
         // Mono with an odd frame count yields a 4-byte-aligned payload; Wave64 requires
         // 8-byte chunk alignment, so the file must be padded (and the pad excluded from
         // the data chunk size but included in the file/riff total).
-        let tmp = std::env::temp_dir()
-            .join(format!("fastcat-audit-w64-pad-test-{}.w64", std::process::id()));
+        let tmp = std::env::temp_dir().join(format!(
+            "fastcat-audit-w64-pad-test-{}.w64",
+            std::process::id()
+        ));
         // 7 frames @ 7000 Hz over 0.001 s ⇒ ceil to a small odd-ish count; mono f32.
         render_scene_to_wav(WavRenderParams {
             scene: &[],
@@ -1441,7 +1588,7 @@ mod tests {
         assert_eq!(bytes.len() as u64 % 8, 0);
         let data_size = u64::from_le_bytes(bytes[96..104].try_into().unwrap());
         let payload = bytes.len() as u64 - 104; // includes any pad
-        // data chunk size counts payload sans pad; pad is 0..=4 bytes.
+                                                // data chunk size counts payload sans pad; pad is 0..=4 bytes.
         assert!(data_size <= payload + 24 && data_size + 4 >= payload + 24);
         let _ = std::fs::remove_file(&tmp);
     }
@@ -1542,12 +1689,12 @@ mod tests {
         };
 
         let shared = Arc::new((Mutex::new(AudioShared::default()), Condvar::new()));
-        
+
         let sample_rate = 48000;
         let channels = 1;
         // target MUST be monitor for layer_windows cache hit
         let target = AudioRenderTarget::monitor(sample_rate, channels);
-        
+
         // Prime the cache with a stable 0.5f32 signal for l1
         {
             let mut state = shared.0.lock();
@@ -1573,7 +1720,8 @@ mod tests {
             0.05,
             target,
             &shared,
-        ).unwrap();
+        )
+        .unwrap();
 
         let processed = mix_chunk_strict(
             &[l],
@@ -1584,27 +1732,39 @@ mod tests {
             0.05,
             target,
             &shared,
-        ).unwrap();
+        )
+        .unwrap();
 
         assert_eq!(baseline.len(), processed.len());
-        
+
         let mut checked = 0;
         for i in 0..baseline.len() {
             let s_base = baseline[i];
             let s_proc = processed[i];
-            
+
             // Expected soft-clipped value for input 1.0:
             // expected = 0.8 + 0.2 * tanh((1.0 - 0.8)/0.2) = 0.8 + 0.2 * tanh(1.0) ≈ 0.9523
             let expected = 0.8 + 0.2 * 1.0f32.tanh(); // tanh(1.0)
-            
+
             // Baseline sample S_base should be: 0.5 (source) * 2.0 (layer multiply) * 1.0 (gain) = 1.0, soft-clipped
-            assert!((s_base - expected).abs() < 1e-4, "Baseline sample should be soft-clipped 1.0, got {}", s_base);
-            
+            assert!(
+                (s_base - expected).abs() < 1e-4,
+                "Baseline sample should be soft-clipped 1.0, got {}",
+                s_base
+            );
+
             // Processed sample: 0.5 (source) * 2.0 (layer multiply) * 2.0 (master multiply) * 0.5 (master gain) = 1.0, soft-clipped
-            assert!((s_proc - expected).abs() < 1e-4, "Expected soft-clipped value: {}, got {}", expected, s_proc);
+            assert!(
+                (s_proc - expected).abs() < 1e-4,
+                "Expected soft-clipped value: {}, got {}",
+                expected,
+                s_proc
+            );
             checked += 1;
         }
-        assert!(checked > 0, "Should have verified at least some audio samples");
+        assert!(
+            checked > 0,
+            "Should have verified at least some audio samples"
+        );
     }
 }
-
