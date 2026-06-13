@@ -1,5 +1,5 @@
 /** @vitest-environment node */
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { nextTick, ref, computed } from 'vue';
 import { useToast } from '#ui/composables/useToast';
 import { useExportForm } from '~/composables/timeline/export/useExportForm';
@@ -196,8 +196,14 @@ vi.mock('~/composables/timeline/export', () => ({
 }));
 
 describe('useExportForm', () => {
+  afterEach(async () => {
+    await nextTick();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  });
+
   beforeEach(async () => {
     await nextTick();
+    await new Promise((resolve) => setTimeout(resolve, 0));
     timelineFormatMock.value = {
       sampleRate: 48000,
       width: 1920,

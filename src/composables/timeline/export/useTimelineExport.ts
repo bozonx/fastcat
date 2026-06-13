@@ -13,7 +13,6 @@ export function useTimelineExport() {
   const codecs = useExportCodecs();
 
   const filename = useExportFilename(
-    config.ext,
     fileSystem.ensureExportDir,
     fileSystem.listExportFilenames,
   );
