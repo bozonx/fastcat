@@ -8,6 +8,7 @@ import { useProxyStore } from '~/stores/proxy.store';
 import { useMediaStore } from '~/stores/media.store';
 import { getMediaTypeFromFilename } from '~/utils/media-types';
 import { canCopyBloggerDogEntry, canCutBloggerDogEntry } from '~/utils/bloggerdog-file-manager';
+import { normalizeMediaCachePath } from '~/utils/media-cache-path';
 
 const props = defineProps<{
   selectedEntries: FsEntry[];
@@ -32,14 +33,18 @@ const hasVideo = computed(() =>
 const hasProxy = computed(() =>
   props.selectedEntries.some(
     (entry) =>
-      entry.kind === 'file' && Boolean(entry.path) && proxyStore.existingProxies.has(entry.path),
+      entry.kind === 'file' &&
+      Boolean(entry.path) &&
+      proxyStore.existingProxies.has(normalizeMediaCachePath(entry.path)),
   ),
 );
 
 const isGeneratingProxy = computed(() =>
   props.selectedEntries.some(
     (entry) =>
-      entry.kind === 'file' && Boolean(entry.path) && proxyStore.generatingProxies.has(entry.path),
+      entry.kind === 'file' &&
+      Boolean(entry.path) &&
+      proxyStore.generatingProxies.has(normalizeMediaCachePath(entry.path)),
   ),
 );
 

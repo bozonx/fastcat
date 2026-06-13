@@ -20,6 +20,7 @@ import { getMediaTypeFromFilename } from '~/utils/media-types';
 import { isTauriRuntime } from '~/utils/runtime';
 import { getNativeFileHandlePath, nativeVideoFrameWebp } from '~/utils/tauri-media-processing';
 import { isNotFoundError } from '~/utils/error-helpers';
+import { normalizeMediaCachePath } from '~/utils/media-cache-path';
 const log = createDevLogger('file-thumbnail-generator');
 const FILE_THUMBNAIL_HASH_VERSION = 2;
 
@@ -36,11 +37,12 @@ export function getFileThumbnailHash(input: {
     lastModified: number;
   };
 }): string {
-  const isTimeline = input.projectRelativePath.toLowerCase().endsWith('.otio');
+  const projectRelativePath = normalizeMediaCachePath(input.projectRelativePath);
+  const isTimeline = projectRelativePath.toLowerCase().endsWith('.otio');
   const sourceKey =
     input.source && !isTimeline ? `:${input.source.size}:${input.source.lastModified}` : '';
   return hashString(
-    `file:v${FILE_THUMBNAIL_HASH_VERSION}:${input.projectId}:${input.projectRelativePath}${sourceKey}`,
+    `file:v${FILE_THUMBNAIL_HASH_VERSION}:${input.projectId}:${projectRelativePath}${sourceKey}`,
   );
 }
 
@@ -149,6 +151,13 @@ class FileThumbnailGenerator extends BaseThumbnailGenerator<FileThumbnailTask, s
 
   protected onCacheHit(task: FileThumbnailTask, url: string): void {
     task.onComplete?.(url);
+  }
+
+  override addTask(task: FileThumbnailTask): void {
+    super.addTask({
+      ...task,
+      projectRelativePath: normalizeMediaCachePath(task.projectRelativePath),
+    });
   }
 
   private async loadThumbnailFromVfs(task: FileThumbnailTask): Promise<string | null> {
@@ -348,12 +357,13 @@ class FileThumbnailGenerator extends BaseThumbnailGenerator<FileThumbnailTask, s
   async saveManualThumbnail(input: { projectId: string; projectRelativePath: string; blob: Blob }) {
     const workspaceStore = useWorkspaceStore();
     if (!workspaceStore.workspaceHandle && !isTauriRuntime()) return;
+    const projectRelativePath = normalizeMediaCachePath(input.projectRelativePath);
 
     const hash = getFileThumbnailHash({
       projectId: input.projectId,
-      projectRelativePath: input.projectRelativePath,
+      projectRelativePath,
     });
-    const isTimeline = input.projectRelativePath.toLowerCase().endsWith('.otio');
+    const isTimeline = projectRelativePath.toLowerCase().endsWith('.otio');
     const dirName = isTimeline
       ? TIMELINE_MANAGER_THUMBNAILS.DIR_NAME
       : FILE_MANAGER_THUMBNAILS.DIR_NAME;
@@ -374,18 +384,19 @@ class FileThumbnailGenerator extends BaseThumbnailGenerator<FileThumbnailTask, s
     }
     this.cache.set(hash, thumbUrl);
     this.cacheProjectIds.set(hash, input.projectId);
-    this.pathHashes.set(`${input.projectId}:${input.projectRelativePath}`, hash);
+    this.pathHashes.set(`${input.projectId}:${projectRelativePath}`, hash);
     this.touchCacheEntry(hash);
     this.evictCacheIfNeeded();
   }
 
   async clearThumbnail(input: { projectId: string; projectRelativePath: string }) {
-    const key = `${input.projectId}:${input.projectRelativePath}`;
+    const projectRelativePath = normalizeMediaCachePath(input.projectRelativePath);
+    const key = `${input.projectId}:${projectRelativePath}`;
     const hash =
       this.pathHashes.get(key) ||
       getFileThumbnailHash({
         projectId: input.projectId,
-        projectRelativePath: input.projectRelativePath,
+        projectRelativePath,
       });
     this.pathHashes.delete(key);
     const cachedUrl = this.cache.get(hash);
@@ -399,12 +410,12 @@ class FileThumbnailGenerator extends BaseThumbnailGenerator<FileThumbnailTask, s
     if (!workspaceStore.workspaceHandle && !isTauriRuntime()) return;
 
     try {
-      const isTimeline = input.projectRelativePath.toLowerCase().endsWith('.otio');
+      const isTimeline = projectRelativePath.toLowerCase().endsWith('.otio');
       const dirName = isTimeline
         ? TIMELINE_MANAGER_THUMBNAILS.DIR_NAME
         : FILE_MANAGER_THUMBNAILS.DIR_NAME;
       const vfs = useVfs();
-      const ext = input.projectRelativePath.split('.').pop()?.toLowerCase();
+      const ext = projectRelativePath.split('.').pop()?.toLowerCase();
       const fileExt = ext === 'svg' ? 'svg' : 'webp';
       const filePath = getThumbnailFileVfsPath({
         projectId: input.projectId,

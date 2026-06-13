@@ -15,6 +15,7 @@ import { addMediaTask, MEDIA_TASK_PRIORITIES } from '~/utils/media-task-queue';
 import { randomToken } from '~/utils/ids';
 import { isTauriRuntime } from '~/utils/runtime';
 import { getNativeFileHandlePath, nativeVideoFrameWebps } from '~/utils/tauri-media-processing';
+import { normalizeMediaCachePath } from '~/utils/media-cache-path';
 const log = createDevLogger('thumbnail-generator');
 const CLIP_THUMBNAIL_HASH_VERSION = 2;
 const NATIVE_THUMBNAIL_BATCH_SIZE = 128;
@@ -40,8 +41,9 @@ export function getClipThumbnailsHash(input: {
   projectId: string;
   projectRelativePath: string;
 }): string {
+  const projectRelativePath = normalizeMediaCachePath(input.projectRelativePath);
   return hashString(
-    `v${CLIP_THUMBNAIL_HASH_VERSION}:${input.projectId}:${input.projectRelativePath}`,
+    `v${CLIP_THUMBNAIL_HASH_VERSION}:${input.projectId}:${projectRelativePath}`,
   );
 }
 
@@ -220,6 +222,11 @@ class ThumbnailGenerator extends BaseThumbnailGenerator<ThumbnailTask, Map<numbe
   }
 
   override addTask(task: ThumbnailTask) {
+    task = {
+      ...task,
+      projectRelativePath: normalizeMediaCachePath(task.projectRelativePath),
+    };
+
     if (this.isCancelled(task.id)) {
       this.cancelledTasks.delete(task.id);
     }

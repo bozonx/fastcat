@@ -8,6 +8,7 @@ import { useTimelineMediaUsageStore } from '~/stores/timeline-media-usage.store'
 import type { FileCompatibility } from '~/composables/file-manager/useFileManagerCompatibility';
 import { useProxyStore } from '~/stores/proxy.store';
 import { isGeneratingProxyInDirectory } from '~/utils/fs-entry-utils';
+import { normalizeMediaCachePath } from '~/utils/media-cache-path';
 
 interface ExtendedFsEntry extends FsEntry {
   objectUrl?: string;
@@ -44,12 +45,19 @@ function isEntryUsed(entry: FsEntry) {
 }
 
 function hasProxy(entry: FsEntry) {
-  return entry.kind === 'file' && Boolean(entry.path) && proxyStore.existingProxies.has(entry.path);
+  return (
+    entry.kind === 'file' &&
+    Boolean(entry.path) &&
+    proxyStore.existingProxies.has(normalizeMediaCachePath(entry.path))
+  );
 }
 
 function isGeneratingProxy(entry: FsEntry) {
   if (entry.kind === 'file') {
-    return Boolean(entry.path) && proxyStore.generatingProxies.has(entry.path);
+    return (
+      Boolean(entry.path) &&
+      proxyStore.generatingProxies.has(normalizeMediaCachePath(entry.path))
+    );
   }
 
   return isGeneratingProxyInDirectory(entry, proxyStore.generatingProxies);

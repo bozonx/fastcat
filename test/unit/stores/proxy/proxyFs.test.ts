@@ -24,6 +24,17 @@ describe('createProxyFsModule', () => {
     expect(name).toMatch(/^[0-9a-f]{64}\.mp4$/);
   });
 
+  it('normalizes project paths before building proxy file names', async () => {
+    const module = createProxyFsModule({
+      getProjectId: () => null,
+      getResolvedStorageTopology: () => makeTopology(),
+    });
+
+    await expect(module.getProxyFileName('./video/./test.mp4')).resolves.toBe(
+      await module.getProxyFileName('video/test.mp4'),
+    );
+  });
+
   it('returns null VFS path when project id is missing', () => {
     const module = createProxyFsModule({
       getProjectId: () => null,

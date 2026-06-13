@@ -1,4 +1,5 @@
 import type { IFileSystemAdapter } from '~/file-manager/core/vfs/types';
+import { normalizeMediaCachePath } from '~/utils/media-cache-path';
 
 const AUDIO_CHUNK_CACHE_VERSION = 1;
 const AUDIO_CHUNK_CACHE_MAGIC = 0x46434131; // FCA1
@@ -42,7 +43,7 @@ function hashString(input: string): string {
 }
 
 function getSourceDirectoryName(sourceKey: string): string {
-  return hashString(sourceKey);
+  return hashString(normalizeMediaCachePath(sourceKey));
 }
 
 function getChunkFileName(chunkIndex: number): string {
@@ -172,9 +173,10 @@ export async function readAudioChunkFromFileCache(params: {
   context: BaseAudioContext;
 }): Promise<PersistedAudioChunk | null> {
   if (!params.vfs || !params.cacheVfsPath) return null;
+  const sourceKey = normalizeMediaCachePath(params.sourceKey);
 
   const expected: AudioChunkFileCacheMetadata = {
-    sourceKey: params.sourceKey,
+    sourceKey,
     chunkIndex: params.chunkIndex,
     chunkSizeS: params.chunkSizeS,
     ...getSourceStamp(params.sourceFile),
@@ -188,7 +190,7 @@ export async function readAudioChunkFromFileCache(params: {
   try {
     const filePath = getChunkVfsPath({
       cacheVfsPath: params.cacheVfsPath,
-      sourceKey: params.sourceKey,
+      sourceKey,
       chunkIndex: params.chunkIndex,
     });
     const file = await params.vfs.readFile(filePath);
@@ -213,9 +215,10 @@ export async function writeAudioChunkToFileCache(params: {
   chunk: PersistedAudioChunk;
 }): Promise<void> {
   if (!params.vfs || !params.cacheVfsPath) return;
+  const sourceKey = normalizeMediaCachePath(params.sourceKey);
 
   const metadata: AudioChunkFileCacheMetadata = {
-    sourceKey: params.sourceKey,
+    sourceKey,
     chunkIndex: params.chunkIndex,
     chunkSizeS: params.chunkSizeS,
     ...getSourceStamp(params.sourceFile),
@@ -228,7 +231,7 @@ export async function writeAudioChunkToFileCache(params: {
 
   const filePath = getChunkVfsPath({
     cacheVfsPath: params.cacheVfsPath,
-    sourceKey: params.sourceKey,
+    sourceKey,
     chunkIndex: params.chunkIndex,
   });
   const data = serializeAudioBuffer({ metadata, buffer: params.chunk.buffer });

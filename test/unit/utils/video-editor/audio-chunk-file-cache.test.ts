@@ -124,4 +124,43 @@ describe('audio chunk file cache', () => {
 
     expect(restored).toBeNull();
   });
+
+  it('normalizes project source keys before reading persistent chunks', async () => {
+    const vfs = new InMemoryFileSystemAdapter();
+    const cacheVfsPath = '@ptemp/projects/project-1/audio-cache';
+    const context = new AudioContextMock() as unknown as BaseAudioContext;
+    const sourceFile = createSourceFile();
+    const buffer = new AudioBufferMock(1, 2, 48_000);
+    buffer.copyToChannel(new Float32Array([0.25, 0.5]), 0);
+
+    await writeAudioChunkToFileCache({
+      vfs,
+      cacheVfsPath,
+      sourceKey: './_audio/./test.wav',
+      chunkIndex: 0,
+      chunkSizeS: 5,
+      sourceFile,
+      chunk: {
+        chunkIndex: 0,
+        startTimeS: 0,
+        durationS: 2 / 48_000,
+        buffer: buffer as unknown as AudioBuffer,
+      },
+    });
+
+    const restored = await readAudioChunkFromFileCache({
+      vfs,
+      cacheVfsPath,
+      sourceKey: '_audio/test.wav',
+      chunkIndex: 0,
+      chunkSizeS: 5,
+      sourceFile,
+      context,
+    });
+
+    expect(Array.from(restored!.buffer.getChannelData(0))).toEqual([
+      expect.closeTo(0.25),
+      expect.closeTo(0.5),
+    ]);
+  });
 });

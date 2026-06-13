@@ -28,6 +28,7 @@ import {
   removeProxyCommand,
 } from '~/media-cache/application/proxyThumbnailCommands';
 import { clearVectorImageRasterVfs } from '~/media-cache/application/vectorImageCache';
+import { normalizeMediaCachePath } from '~/utils/media-cache-path';
 import type { FsEntry } from '~/types/fs';
 import { getBdPayload } from '~/types/bloggerdog';
 import type { IFileSystemAdapter } from '~/file-manager/core/vfs/types';
@@ -905,7 +906,7 @@ export function useFileManager(options?: {
 
   const mediaCache = createProxyThumbnailService({
     checkExistingProxies: async (paths) => await proxyStore.checkExistingProxies(paths),
-    hasProxy: (path) => proxyStore.existingProxies.has(path),
+    hasProxy: (path) => proxyStore.existingProxies.has(normalizeMediaCachePath(path)),
     ensureProxy: async ({ file, projectRelativePath }) =>
       await proxyStore.generateProxy(file, projectRelativePath),
     ensureProxyBatch: async (params) => await proxyStore.generateProxiesBatch(params.entries),

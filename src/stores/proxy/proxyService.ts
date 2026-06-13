@@ -15,6 +15,7 @@ import {
   nativeGenerateProxy,
   nativeMediaMetadata,
 } from '~/utils/tauri-media-processing';
+import { normalizeMediaCachePath } from '~/utils/media-cache-path';
 const log = createDevLogger('proxyService');
 
 export interface ProxyService {
@@ -165,7 +166,8 @@ export function createProxyService(params: {
   async function checkExistingProxies(paths: string[]) {
     const vfs = params.getVfs();
     const next = new Set(params.existingProxies.value);
-    for (const path of paths) {
+    for (const rawPath of paths) {
+      const path = normalizeMediaCachePath(rawPath);
       if (!path.startsWith(`${VIDEO_DIR_NAME}/`)) continue;
       try {
         const proxyFilePath = await params.getProxyFilePath(path);
@@ -191,6 +193,8 @@ export function createProxyService(params: {
     projectRelativePath: string,
     options?: { signal?: AbortSignal; suppressBgTask?: boolean },
   ): Promise<void> {
+    projectRelativePath = normalizeMediaCachePath(projectRelativePath);
+
     // Wait if currently generating (e.g. cancellation still in progress)
     if (params.generatingProxies.value.has(projectRelativePath)) return;
 
@@ -507,6 +511,7 @@ export function createProxyService(params: {
   }
 
   async function cancelProxyGeneration(projectRelativePath: string) {
+    projectRelativePath = normalizeMediaCachePath(projectRelativePath);
     const controller = params.proxyAbortControllers.value.get(projectRelativePath);
     if (controller && !controller.signal.aborted) {
       controller.abort();
@@ -534,6 +539,11 @@ export function createProxyService(params: {
     options?: { signal?: AbortSignal },
   ): Promise<{ skippedCount: number }> {
     if (entries.length === 0) return { skippedCount: 0 };
+
+    entries = entries.map((entry) => ({
+      ...entry,
+      projectRelativePath: normalizeMediaCachePath(entry.projectRelativePath),
+    }));
 
     const needsProxy = entries.filter(
       (e) => !params.existingProxies.value.has(e.projectRelativePath),
@@ -610,6 +620,7 @@ export function createProxyService(params: {
   }
 
   async function deleteProxiesBatch(projectRelativePaths: string[]): Promise<void> {
+    projectRelativePaths = projectRelativePaths.map((path) => normalizeMediaCachePath(path));
     if (projectRelativePaths.length === 0) return;
     if (projectRelativePaths.length === 1) {
       await deleteProxy(projectRelativePaths[0]!);
@@ -638,6 +649,7 @@ export function createProxyService(params: {
   }
 
   async function deleteProxy(projectRelativePath: string) {
+    projectRelativePath = normalizeMediaCachePath(projectRelativePath);
     const vfs = params.getVfs();
     try {
       const proxyFilePath = await params.getProxyFilePath(projectRelativePath);
@@ -657,6 +669,10 @@ export function createProxyService(params: {
   }
 
   async function renameProxyDir(input: { oldPath: string; newPath: string }) {
+    input = {
+      oldPath: normalizeMediaCachePath(input.oldPath),
+      newPath: normalizeMediaCachePath(input.newPath),
+    };
     const oldPrefix = `${input.oldPath}/`;
 
     // 1. Cancel active/pending tasks
@@ -679,6 +695,10 @@ export function createProxyService(params: {
   }
 
   async function renameProxy(input: { oldPath: string; newPath: string }) {
+    input = {
+      oldPath: normalizeMediaCachePath(input.oldPath),
+      newPath: normalizeMediaCachePath(input.newPath),
+    };
     const vfs = params.getVfs();
 
     try {
@@ -726,6 +746,7 @@ export function createProxyService(params: {
   }
 
   async function getProxyFile(projectRelativePath: string): Promise<File | null> {
+    projectRelativePath = normalizeMediaCachePath(projectRelativePath);
     const proxyFilePath = await params.getProxyFilePath(projectRelativePath);
     if (!proxyFilePath) return null;
 

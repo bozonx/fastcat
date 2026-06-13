@@ -10,6 +10,7 @@ import type { TimelineClipItem, TimelineTrack } from '~/timeline/types';
 import { isEditableTarget } from '~/utils/hotkeys/hotkeyUtils';
 import { useFileManager } from '~/composables/file-manager/useFileManager';
 import { useComputerVfs } from '~/composables/file-manager/useComputerVfs';
+import { normalizeMediaCachePath } from '~/utils/media-cache-path';
 
 import ClipProperties from '~/components/properties/ClipProperties.vue';
 import TrackProperties from '~/components/properties/TrackProperties.vue';
@@ -308,7 +309,7 @@ const hasProxy = computed(() => {
   if (isExternal.value) return false;
   if (displayMode.value !== 'file' || !selectedFsEntry.value || !selectedFsEntry.value.path)
     return false;
-  return proxyStore.existingProxies.has(selectedFsEntry.value.path);
+  return proxyStore.existingProxies.has(normalizeMediaCachePath(selectedFsEntry.value.path));
 });
 
 const clipRef = ref<InstanceType<typeof ClipProperties> | null>(null);

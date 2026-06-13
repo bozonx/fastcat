@@ -27,7 +27,7 @@ import {
   nativeMediaExtractPeaks,
 } from '~/utils/tauri-media-processing';
 import { isLazyTauriFile } from '~/stores/workspace/provider/tauri-handle';
-import { normalizeProjectPath } from '~/utils/video-editor/worker-clip-utils';
+import { normalizeMediaCachePath } from '~/utils/media-cache-path';
 
 const log = createDevLogger('media.store');
 
@@ -116,14 +116,6 @@ function resolveMediaMetadataKey<T>(
   const prefixed = `external:${path}`;
   if (mediaMetadata[prefixed]) return prefixed;
   return null;
-}
-
-function normalizeMediaCachePath(path: string): string {
-  if (!path) return path;
-  if (path.startsWith('external:')) {
-    return `external:${normalizeProjectPath(path.slice('external:'.length))}`;
-  }
-  return normalizeProjectPath(path);
 }
 
 export const useMediaStore = defineStore('media', () => {

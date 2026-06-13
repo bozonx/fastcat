@@ -12,6 +12,7 @@ import { useVfs } from '~/composables/useVfs';
 import { ensureResolvedProjectProxiesDir } from '~/utils/storage-handles';
 import { isTauriRuntime } from '~/utils/runtime';
 import { getNativeFileHandlePath } from '~/utils/tauri-media-processing';
+import { normalizeMediaCachePath } from '~/utils/media-cache-path';
 
 export const useProxyStore = defineStore('proxy', () => {
   const workspaceStore = useWorkspaceStore();
@@ -80,6 +81,7 @@ export const useProxyStore = defineStore('proxy', () => {
    */
   async function getProxyNativePath(projectRelativePath: string): Promise<string | null> {
     if (!isTauriRuntime()) return null;
+    projectRelativePath = normalizeMediaCachePath(projectRelativePath);
     if (!existingProxies.value.has(projectRelativePath)) return null;
     const proxyVfsPath = await fsModule.getProxyFilePath(projectRelativePath);
     if (!proxyVfsPath) return null;

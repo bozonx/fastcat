@@ -41,6 +41,7 @@ import { useFocusStore } from './focus.store';
 import { useUiStore } from './ui.store';
 import { MAX_TIMELINE_ZOOM_POSITION, MIN_TIMELINE_ZOOM_POSITION } from '~/utils/zoom';
 import { TIMELINE_DEFAULTS } from '~/utils/constants';
+import { normalizeMediaCachePath } from '~/utils/media-cache-path';
 import { useNuxtApp } from 'nuxt/app';
 import { useTimelineMediaUsageStore } from './timeline-media-usage.store';
 
@@ -558,7 +559,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     getUserSettings: () => workspaceStore.userSettings,
     getProjectSettings: () => projectStore.projectSettings,
     updateTimelineFormat,
-    hasProxy: (path: string) => proxyStore.existingProxies.has(path),
+    hasProxy: (path: string) => proxyStore.existingProxies.has(normalizeMediaCachePath(path)),
     ensureProxy: async (options: {
       file: File | FileSystemFileHandle;
       projectRelativePath: string;

@@ -362,6 +362,16 @@ describe('createProxyService', () => {
       expect(existingProxies.value.has('_audio/track.mp3')).toBe(false);
     });
 
+    it('normalizes paths before checking existing proxy files', async () => {
+      const { service, existingProxies, mockDir } = createService();
+      mockDir._map.set('_video/a.mp4.proxy.mp4', { getFile: vi.fn(async () => ({ size: 1024 })) });
+
+      await service.checkExistingProxies(['./_video/./a.mp4']);
+
+      expect(existingProxies.value.has('_video/a.mp4')).toBe(true);
+      expect(existingProxies.value.has('./_video/./a.mp4')).toBe(false);
+    });
+
     it('removes paths when proxy file is missing', async () => {
       const { service, existingProxies } = createService();
       existingProxies.value.add('_video/old.mp4');
@@ -378,6 +388,16 @@ describe('createProxyService', () => {
       existingProxies.value.add('_video/test.mp4');
 
       await service.deleteProxy('_video/test.mp4');
+
+      expect(mockDir.removeEntry).toHaveBeenCalledWith('_video/test.mp4.proxy.mp4');
+      expect(existingProxies.value.has('_video/test.mp4')).toBe(false);
+    });
+
+    it('normalizes paths before deleting proxy files and state', async () => {
+      const { service, existingProxies, mockDir } = createService();
+      existingProxies.value.add('_video/test.mp4');
+
+      await service.deleteProxy('./_video/./test.mp4');
 
       expect(mockDir.removeEntry).toHaveBeenCalledWith('_video/test.mp4.proxy.mp4');
       expect(existingProxies.value.has('_video/test.mp4')).toBe(false);

@@ -1,5 +1,6 @@
 import type { ResolvedStorageTopology } from '~/utils/storage-topology';
 import { toProjectProxiesVfsPath } from '~/utils/storage-topology';
+import { normalizeMediaCachePath } from '~/utils/media-cache-path';
 
 /**
  * Builds VFS addresses for the per-project proxy video files.
@@ -33,7 +34,7 @@ export function createProxyFsModule(params: {
   }
 
   async function getProxyFileName(projectRelativePath: string): Promise<string> {
-    const hash = await hashString(projectRelativePath);
+    const hash = await hashString(normalizeMediaCachePath(projectRelativePath));
     return `${hash}.mp4`;
   }
 

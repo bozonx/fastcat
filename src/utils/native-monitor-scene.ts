@@ -23,6 +23,7 @@ import { resolveNormalizedAnchor, TRANSFORM_DESIGN_BASE } from '~/utils/video-ed
 import { normalizeClipSpeed } from '~/utils/video-editor/source-time';
 import type { TauriDirectoryHandle } from '~/stores/workspace/provider/tauri-handle';
 import { buildEffectSpecs } from '~/effects';
+import { normalizeMediaCachePath } from '~/utils/media-cache-path';
 import { getTauriTransitionManifest } from '~/transitions/tauri/manifests';
 import type { TransitionMode } from '~/transitions/core/registry';
 import { buildNativeAudioEffectSpecs } from '~/utils/audio/audio-clip-descriptor';
@@ -91,7 +92,7 @@ async function resolveMediaSourceAbsolutePath(
   if (
     proxy?.useProxyInMonitor &&
     proxy.getProxyNativePath &&
-    proxy.existingProxies?.has(projectRelativePath)
+    proxy.existingProxies?.has(normalizeMediaCachePath(projectRelativePath))
   ) {
     const proxyPath = await proxy.getProxyNativePath(projectRelativePath);
     if (proxyPath) return proxyPath;

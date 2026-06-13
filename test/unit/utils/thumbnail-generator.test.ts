@@ -151,6 +151,19 @@ describe('Thumbnail Generators', () => {
       expect(hash1).toBe(hash2);
       expect(hash1).not.toBe(hash3);
     });
+
+    it('normalizes project paths before hashing clip thumbnails', () => {
+      const base = getClipThumbnailsHash({
+        projectId: 'p1',
+        projectRelativePath: '_video/v1.mp4',
+      });
+      const normalized = getClipThumbnailsHash({
+        projectId: 'p1',
+        projectRelativePath: './_video/./v1.mp4',
+      });
+
+      expect(normalized).toBe(base);
+    });
   });
 
   describe('getFileThumbnailHash', () => {
@@ -166,6 +179,21 @@ describe('Thumbnail Generators', () => {
 
       expect(hash1).toBe(hash2);
       expect(hash1.startsWith('file:')).toBe(false); // getFileThumbnailHash uses prefix "file:" but it's hashed
+    });
+
+    it('normalizes project paths before hashing file thumbnails', () => {
+      const base = getFileThumbnailHash({
+        projectId: 'p1',
+        projectRelativePath: '_video/v1.mp4',
+        source: { size: 100, lastModified: 100 },
+      });
+      const normalized = getFileThumbnailHash({
+        projectId: 'p1',
+        projectRelativePath: './_video/./v1.mp4',
+        source: { size: 100, lastModified: 100 },
+      });
+
+      expect(normalized).toBe(base);
     });
 
     it('should include source fingerprint when provided', () => {

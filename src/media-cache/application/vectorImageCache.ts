@@ -4,6 +4,7 @@ import { toProjectTempVfsPath } from '~/utils/storage-topology';
 import { withFileIoSlot } from '~/utils/io/io-governor';
 import type { IFileSystemAdapter } from '~/file-manager/core/vfs/types';
 import { CACHE_ROOT_DIR_NAME } from '~/utils/storage-roots';
+import { normalizeMediaCachePath } from '~/utils/media-cache-path';
 const log = createDevLogger('vectorImageCache');
 
 const VECTOR_IMAGE_CACHE_VERSION = 'v3';
@@ -32,7 +33,7 @@ function normalizeDimension(value: number): number {
 }
 
 function getVectorImageSourceDirName(projectRelativePath: string): string {
-  return hashString(projectRelativePath);
+  return hashString(normalizeMediaCachePath(projectRelativePath));
 }
 
 function getVectorImageRasterFileName(params: {

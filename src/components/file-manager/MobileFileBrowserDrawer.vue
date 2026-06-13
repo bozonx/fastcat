@@ -23,6 +23,7 @@ import { WORKSPACE_COMMON_PATH_PREFIX } from '~/utils/workspace-common';
 import { useFileConversionStore } from '~/stores/file-conversion.store';
 import { useFileManager } from '~/composables/file-manager/useFileManager';
 import { useComputerVfs } from '~/composables/file-manager/useComputerVfs';
+import { normalizeMediaCachePath } from '~/utils/media-cache-path';
 
 type DrawerAction = FileManagerAction | 'openAsPanelCut' | 'openAsPanelSound' | 'openAsProjectTab';
 
@@ -180,7 +181,7 @@ const canAddToTimeline = computed(() => {
 
 const hasExistingProxy = computed(() => {
   if (!selectedFsEntry.value || !selectedFsEntry.value.path) return false;
-  return proxyStore.existingProxies.has(selectedFsEntry.value.path);
+  return proxyStore.existingProxies.has(normalizeMediaCachePath(selectedFsEntry.value.path));
 });
 
 function canTransferSelection(
