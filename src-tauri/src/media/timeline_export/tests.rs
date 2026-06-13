@@ -350,7 +350,10 @@ fn test_build_ffmpeg_args_tags_bt709_for_hd_vello_path() {
         .position(|a| a == "-vf")
         .map(|i| args[i + 1].clone())
         .expect("vello export must set a -vf filter");
-    assert!(vf.contains("scale=out_color_matrix=bt709:out_range=tv"), "got: {vf}");
+    assert!(
+        vf.contains("scale=out_color_matrix=bt709:out_range=tv"),
+        "got: {vf}"
+    );
     assert!(args.windows(2).any(|p| p == ["-colorspace", "bt709"]));
     assert!(args.windows(2).any(|p| p == ["-color_primaries", "bt709"]));
     assert!(args.windows(2).any(|p| p == ["-color_trc", "bt709"]));

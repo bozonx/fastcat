@@ -35,9 +35,19 @@ export interface BaseEffectManifest<T = Record<string, unknown>> {
   category?: AudioEffectCategory;
   defaultValues: T;
   controls: ParamControl[];
+  paramRanges?: Record<string, EffectParamRange>;
   settingsControls?: ParamControl[];
   isCustom?: boolean;
   baseType?: string;
+}
+
+export interface EffectParamRange {
+  uiMin: number;
+  uiMax: number;
+  animationMin: number;
+  animationMax: number;
+  renderMin: number;
+  renderMax: number;
 }
 
 export interface VideoEffectManifest<T = Record<string, unknown>> extends BaseEffectManifest<T> {

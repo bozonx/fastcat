@@ -255,6 +255,20 @@ fn run_decoder_loop(args: DecoderLoopArgs) {
     let mut preroll_remaining: u32 = 0;
     // Whether the active Prebuffer should emit pre-seek frames (opportunistic caching).
     let mut preroll_keep_preseek: bool = false;
+    // Seek target (stream-time seconds) not yet reached after the last seek. While it is
+    // `Some`, decoded intra-GOP frames whose PTS lies before it are "pre-seek" frames: they
+    // are retained only for backward-scrub caching and must NOT consume the forward preroll
+    // budget, and the decoder must NOT park before a frame at/after the target is emitted.
+    // Without this, a long-GOP / 4K paused warm-up spends its whole (tiny) preroll budget on
+    // near-keyframe frames and parks, so the monitor displays a frame seconds behind the
+    // playhead instead of the playhead frame.
+    let mut preseek_target: Option<f64> = None;
+    // Hard cap on how many pre-seek frames are RETAINED (emitted) for caching, bounding
+    // warm-up memory on huge-GOP / keyframe-less sources. Once exhausted the decoder keeps
+    // decoding toward the target but stops keeping pre-seek frames (they are discarded).
+    let mut preseek_cap_remaining: u32 = 0;
+    // PTS tolerance for "reached the seek target", matching the decoder's own intra-GOP skip.
+    let seek_tolerance_sec = 0.5 / decoder.info().fps.max(1.0);
     let mut current_gen = gen.load(Ordering::SeqCst);
     let mut at_eof = false;
     let mut prefer_yuv = device.is_some() && queue.is_some();
@@ -318,10 +332,15 @@ fn run_decoder_loop(args: DecoderLoopArgs) {
             if let Some((frames, keep)) = pending_preroll {
                 preroll_remaining = frames;
                 preroll_keep_preseek = keep;
+                preseek_cap_remaining = frames;
             } else {
                 preroll_remaining = 0;
                 preroll_keep_preseek = false;
+                preseek_cap_remaining = 0;
             }
+            // Must decode through the GOP to this exact target before parking, so the
+            // displayed paused frame is the playhead frame, not a near-keyframe one.
+            preseek_target = Some(time_sec);
             if let Err(e) = decoder.seek(time_sec) {
                 // A failed seek must not kill the decode thread permanently: the
                 // layer would freeze forever with no retry. Park until the next
@@ -329,20 +348,25 @@ fn run_decoder_loop(args: DecoderLoopArgs) {
                 log::error!("[decode] seek({time_sec}) failed: {e:?}");
                 at_eof = true;
                 decoded_after_seek = true;
+                preseek_target = None;
             } else {
                 at_eof = false;
                 decoded_after_seek = false;
             }
         } else if let Some((frames, keep)) = pending_preroll {
-            // Prebuffer without an accompanying seek (already positioned): keep
-            // decoding forward from here.
+            // Prebuffer without an accompanying seek (already positioned past any prior
+            // target): keep decoding forward from here. No pre-seek phase.
             preroll_remaining = preroll_remaining.max(frames);
             preroll_keep_preseek = keep;
+            preseek_cap_remaining = preseek_cap_remaining.max(frames);
         }
 
         // Если мы не проигрываем, и уже декодировали один кадр после seek, то нам нечего делать — ждём команду блокирующе.
-        // Пока есть невыбранный preroll-бюджет — не паркуемся, декодим кадры вперёд.
-        if (!playing && preroll_remaining == 0 && decoded_after_seek) || at_eof {
+        // Пока есть невыбранный preroll-бюджет ИЛИ ещё не достигнут seek-target — не
+        // паркуемся, декодим кадры вперёд.
+        if (!playing && preroll_remaining == 0 && preseek_target.is_none() && decoded_after_seek)
+            || at_eof
+        {
             match cmd_rx.recv() {
                 Ok(cmd) => {
                     let mut latest_seek = None;
@@ -395,15 +419,19 @@ fn run_decoder_loop(args: DecoderLoopArgs) {
                         if let Some((frames, keep)) = pending_preroll {
                             preroll_remaining = frames;
                             preroll_keep_preseek = keep;
+                            preseek_cap_remaining = frames;
                         } else {
                             preroll_remaining = 0;
                             preroll_keep_preseek = false;
+                            preseek_cap_remaining = 0;
                         }
+                        preseek_target = Some(time_sec);
                         if let Err(e) = decoder.seek(time_sec) {
                             // Stay alive and parked; a later seek can recover.
                             log::error!("[decode] seek({time_sec}) failed: {e:?}");
                             at_eof = true;
                             decoded_after_seek = true;
+                            preseek_target = None;
                         } else {
                             at_eof = false;
                             decoded_after_seek = false;
@@ -412,6 +440,7 @@ fn run_decoder_loop(args: DecoderLoopArgs) {
                         // Warm-up at the already-positioned playhead: decode forward.
                         preroll_remaining = preroll_remaining.max(frames);
                         preroll_keep_preseek = keep;
+                        preseek_cap_remaining = preseek_cap_remaining.max(frames);
                     }
                     continue;
                 }
@@ -421,7 +450,13 @@ fn run_decoder_loop(args: DecoderLoopArgs) {
 
         // 3) Тянем следующий кадр. Во время Prebuffer с keep_preseek=true используем
         // next_frame_keep_preseek*, чтобы кадры до seek-target также попали в кэш.
-        let decoded = if preroll_remaining > 0 && preroll_keep_preseek {
+        // Retain pre-seek (intra-GOP) frames only while warming up toward an unreached
+        // seek target AND the retention cap is not yet spent. Once the target is reached
+        // (`preseek_target == None`) or the cap is spent, fall back to the skipping decode
+        // so the decoder advances to the target without retaining more GOP interior.
+        let keep_preseek_now =
+            preroll_keep_preseek && preseek_target.is_some() && preseek_cap_remaining > 0;
+        let decoded = if keep_preseek_now {
             if prefer_yuv {
                 decoder.next_frame_keep_preseek_for_gpu()
             } else {
@@ -530,6 +565,7 @@ fn run_decoder_loop(args: DecoderLoopArgs) {
                     }
                 }
 
+                let frame_pts = frame.pts_sec;
                 let msg = DecodedFrameMsg {
                     generation: current_gen,
                     frame,
@@ -538,8 +574,20 @@ fn run_decoder_loop(args: DecoderLoopArgs) {
                     return; // consumer ушёл
                 }
                 decoded_after_seek = true;
-                // A warm-up frame was emitted — count it against the preroll budget.
-                preroll_remaining = preroll_remaining.saturating_sub(1);
+                // Account the emitted frame. A "pre-seek" frame (PTS before the active seek
+                // target) is an intra-GOP frame retained only for backward-scrub caching: it
+                // spends the retention cap but must NOT consume the forward preroll budget nor
+                // count as reaching the target. Only a frame at/after the target clears the
+                // target and spends the forward budget — guaranteeing the displayed paused
+                // frame is the playhead frame, not a near-keyframe one.
+                let is_preseek =
+                    preseek_target.is_some_and(|target| frame_pts < target - seek_tolerance_sec);
+                if is_preseek {
+                    preseek_cap_remaining = preseek_cap_remaining.saturating_sub(1);
+                } else {
+                    preseek_target = None;
+                    preroll_remaining = preroll_remaining.saturating_sub(1);
+                }
                 if let Some(ref cb) = on_frame_decoded {
                     cb();
                 }
@@ -555,5 +603,189 @@ fn run_decoder_loop(args: DecoderLoopArgs) {
                 at_eof = true;
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::time::{Duration, Instant};
+
+    use crate::media::decode::{MediaInfo, VideoDecoder, VideoDecoderFactory, VideoFrame};
+
+    /// Decoder simulating a single huge GOP: every `seek` lands on the keyframe at PTS 0
+    /// and frames are produced sequentially, so reaching a target deep inside the GOP
+    /// requires decoding through many intra-GOP (pre-seek) frames — exactly the case where
+    /// the old budget logic parked on a near-keyframe frame.
+    struct LongGopDecoder {
+        info: MediaInfo,
+        cursor_idx: u64,
+        seek_target: Option<f64>,
+    }
+
+    impl LongGopDecoder {
+        fn frame_pts(&self) -> f64 {
+            self.cursor_idx as f64 / self.info.fps
+        }
+
+        fn make_frame(pts_sec: f64) -> VideoFrame {
+            VideoFrame {
+                width: 2,
+                height: 2,
+                pixels: vec![0u8; 2 * 2 * 4],
+                yuv: None,
+                pts_sec,
+                texture: None,
+            }
+        }
+
+        fn next_with_mode(&mut self, keep_preseek: bool) -> Result<Option<VideoFrame>> {
+            let tol = 0.5 / self.info.fps;
+            loop {
+                if self.frame_pts() > self.info.duration_sec {
+                    self.seek_target = None;
+                    return Ok(None);
+                }
+                let pts = self.frame_pts();
+                self.cursor_idx += 1;
+                if let Some(target) = self.seek_target {
+                    if pts < target - tol {
+                        if keep_preseek {
+                            return Ok(Some(Self::make_frame(pts)));
+                        }
+                        continue;
+                    }
+                    self.seek_target = None;
+                }
+                return Ok(Some(Self::make_frame(pts)));
+            }
+        }
+    }
+
+    impl VideoDecoder for LongGopDecoder {
+        fn info(&self) -> &MediaInfo {
+            &self.info
+        }
+        fn seek(&mut self, _time_sec: f64) -> Result<()> {
+            // Single GOP: every seek rewinds to the keyframe at 0.
+            self.cursor_idx = 0;
+            self.seek_target = Some(_time_sec.max(0.0));
+            Ok(())
+        }
+        fn next_frame(&mut self) -> Result<Option<VideoFrame>> {
+            self.next_with_mode(false)
+        }
+        fn next_frame_keep_preseek(&mut self) -> Result<Option<VideoFrame>> {
+            self.next_with_mode(true)
+        }
+    }
+
+    struct LongGopFactory {
+        fps: f64,
+        duration_sec: f64,
+    }
+
+    impl VideoDecoderFactory for LongGopFactory {
+        fn open(
+            &self,
+            _path: &Path,
+            _max_output_long_edge: Option<u32>,
+            _hw_mode: HwAccelMode,
+            _vaapi_device: Option<&str>,
+        ) -> Result<Box<dyn VideoDecoder>> {
+            Ok(Box::new(LongGopDecoder {
+                info: MediaInfo {
+                    duration_sec: self.duration_sec,
+                    width: 2,
+                    height: 2,
+                    rotation: 0,
+                    fps: self.fps,
+                    codec: "mock".into(),
+                    has_audio: false,
+                },
+                cursor_idx: 0,
+                seek_target: None,
+            }))
+        }
+    }
+
+    fn open_mock_pump(fps: f64, duration_sec: f64) -> DecodePump {
+        DecodePump::open_with_factory(
+            DecodeOpenParams {
+                path: Path::new("/mock/long-gop.mp4"),
+                max_output_long_edge: None,
+                on_frame_decoded: None,
+                device: None,
+                queue: None,
+                hw_mode: HwAccelMode::None,
+                vaapi_device: None,
+            },
+            LongGopFactory { fps, duration_sec },
+        )
+        .expect("open mock pump")
+    }
+
+    fn drain_until_pts_ge(pump: &DecodePump, target: f64, timeout: Duration) -> Vec<f64> {
+        let deadline = Instant::now() + timeout;
+        let mut seen = Vec::new();
+        while Instant::now() < deadline {
+            match pump.try_recv_frame() {
+                Some(msg) => {
+                    seen.push(msg.frame.pts_sec);
+                    if msg.frame.pts_sec >= target {
+                        break;
+                    }
+                }
+                None => std::thread::sleep(Duration::from_millis(2)),
+            }
+        }
+        seen
+    }
+
+    /// Regression: a paused warm-up (`prebuffer(MIN_PREROLL_FRAMES, keep_preseek=true)`) into
+    /// a position deep inside a long GOP must still decode through to a frame at/after the
+    /// seek target. Previously the small preroll budget was spent on near-keyframe pre-seek
+    /// frames and the decoder parked, so the monitor displayed a frame seconds behind the
+    /// playhead.
+    #[test]
+    fn paused_warmup_reaches_seek_target_on_long_gop() {
+        let fps = 30.0;
+        let pump = open_mock_pump(fps, 100.0);
+        let target = 5.0; // frame ~150, far past the keyframe at 0
+
+        pump.seek(target).expect("seek");
+        // Tiny budget, as for a 4K source; keep_preseek=true as request_prebuffer uses.
+        pump.prebuffer(2, true).expect("prebuffer");
+
+        let seen = drain_until_pts_ge(&pump, target - 0.5 / fps, Duration::from_secs(3));
+        let max_pts = seen.iter().cloned().fold(f64::MIN, f64::max);
+        assert!(
+            max_pts >= target - 0.5 / fps,
+            "warm-up parked before the target: got frames {seen:?}, expected one >= {target}"
+        );
+        // Pre-seek frames are still retained for backward-scrub caching (cap = 2),
+        // so the keyframe-region frames must also have been emitted.
+        assert!(
+            seen.iter().any(|&p| p < target - 0.5 / fps),
+            "expected retained pre-seek frames for caching, got {seen:?}"
+        );
+    }
+
+    /// A plain paused seek (no prebuffer) must also land on the exact target frame — the
+    /// skipping decode path was already correct and must stay so.
+    #[test]
+    fn paused_seek_without_prebuffer_lands_on_target() {
+        let fps = 30.0;
+        let pump = open_mock_pump(fps, 100.0);
+        let target = 3.0;
+        pump.seek(target).expect("seek");
+
+        let seen = drain_until_pts_ge(&pump, target - 0.5 / fps, Duration::from_secs(3));
+        assert_eq!(
+            seen.len(),
+            1,
+            "skipping decode must emit exactly the target frame: {seen:?}"
+        );
+        assert!((seen[0] - target).abs() < 1.0 / fps);
     }
 }

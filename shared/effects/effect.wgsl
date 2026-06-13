@@ -84,36 +84,44 @@ fn rotate_hue(color: vec3<f32>, degrees: f32) -> vec3<f32> {
 }
 
 fn sample_blur_h(coord: vec2<i32>, radius: f32) -> vec4<f32> {
-    let r = i32(clamp(round(radius), 0.0, 64.0));
+    let safe_radius = max(radius, 0.0);
+    let r = i32(clamp(round(safe_radius), 0.0, 64.0));
     if (r == 0) {
         return load_px(coord);
     }
+    let stride = max(safe_radius / f32(r), 1.0);
     var sum = vec4<f32>(0.0);
     var weight_sum = 0.0;
-    let sigma = max(radius * 0.5, 1.0);
+    let sigma = max(safe_radius * 0.5, 1.0);
     let double_sigma_sq = 2.0 * sigma * sigma;
     for (var x = -r; x <= r; x = x + 1) {
-        let dist = f32(x * x);
+        let sample_dist = f32(x) * stride;
+        let sample_offset = i32(round(sample_dist));
+        let dist = sample_dist * sample_dist;
         let w = exp(-dist / double_sigma_sq);
-        sum += load_px(coord + vec2<i32>(x, 0)) * w;
+        sum += load_px(coord + vec2<i32>(sample_offset, 0)) * w;
         weight_sum += w;
     }
     return sum / max(weight_sum, 0.0001);
 }
 
 fn sample_blur_v(coord: vec2<i32>, radius: f32) -> vec4<f32> {
-    let r = i32(clamp(round(radius), 0.0, 64.0));
+    let safe_radius = max(radius, 0.0);
+    let r = i32(clamp(round(safe_radius), 0.0, 64.0));
     if (r == 0) {
         return load_px(coord);
     }
+    let stride = max(safe_radius / f32(r), 1.0);
     var sum = vec4<f32>(0.0);
     var weight_sum = 0.0;
-    let sigma = max(radius * 0.5, 1.0);
+    let sigma = max(safe_radius * 0.5, 1.0);
     let double_sigma_sq = 2.0 * sigma * sigma;
     for (var y = -r; y <= r; y = y + 1) {
-        let dist = f32(y * y);
+        let sample_dist = f32(y) * stride;
+        let sample_offset = i32(round(sample_dist));
+        let dist = sample_dist * sample_dist;
         let w = exp(-dist / double_sigma_sq);
-        sum += load_px(coord + vec2<i32>(0, y)) * w;
+        sum += load_px(coord + vec2<i32>(0, sample_offset)) * w;
         weight_sum += w;
     }
     return sum / max(weight_sum, 0.0001);

@@ -175,7 +175,9 @@ mod tests {
                 std::thread::sleep(Duration::from_millis(30));
                 cancelled.store(true, Ordering::Relaxed);
             });
-            let bg = sem_ref.acquire(LoadPriority::Background, &|| cancelled.load(Ordering::Relaxed));
+            let bg = sem_ref.acquire(LoadPriority::Background, &|| {
+                cancelled.load(Ordering::Relaxed)
+            });
             assert!(bg.is_none());
         });
     }

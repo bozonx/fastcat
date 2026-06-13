@@ -1,9 +1,10 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import {
   isNativeMonitorSceneReady,
   resolveNativeAudioTrackSelection,
   shouldSyncNativeMonitorTime,
+  syncNativeMonitorTransportAfterScene,
 } from '~/composables/monitor/useNativeMonitorBridge';
 import type { TimelineDocument, TimelineTrack } from '~/timeline/types';
 
@@ -102,5 +103,49 @@ describe('isNativeMonitorSceneReady', () => {
         timelineDoc: emptyDoc,
       }),
     ).toBe(true);
+  });
+});
+
+describe('syncNativeMonitorTransportAfterScene', () => {
+  it('pauses native transport after scene sync when the store is not playing', async () => {
+    const pause = vi.fn(async () => undefined);
+
+    await syncNativeMonitorTransportAfterScene({
+      isPlaying: false,
+      isNativeMonitorDisabled: () => false,
+      pause,
+      warnFailure: vi.fn(),
+    });
+
+    expect(pause).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not pause while playback is active', async () => {
+    const pause = vi.fn(async () => undefined);
+
+    await syncNativeMonitorTransportAfterScene({
+      isPlaying: true,
+      isNativeMonitorDisabled: () => false,
+      pause,
+      warnFailure: vi.fn(),
+    });
+
+    expect(pause).not.toHaveBeenCalled();
+  });
+
+  it('routes pause failures through the bridge failure handler', async () => {
+    const error = new Error('pause failed');
+    const warnFailure = vi.fn();
+
+    await syncNativeMonitorTransportAfterScene({
+      isPlaying: false,
+      isNativeMonitorDisabled: () => false,
+      pause: vi.fn(async () => {
+        throw error;
+      }),
+      warnFailure,
+    });
+
+    expect(warnFailure).toHaveBeenCalledWith('monitor pause after scene sync failed', error);
   });
 });

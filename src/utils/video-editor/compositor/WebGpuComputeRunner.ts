@@ -5,7 +5,12 @@ import { createDevLogger } from '~/utils/dev-logger';
 const log = createDevLogger('WebGpuComputeRunner');
 
 const UNIFORM_SIZE = 48; // 12 * 4 bytes
-const MAX_BLUR_RADIUS = 64.0;
+const MAX_BLUR_RADIUS = 1024.0;
+const MAX_BLOOM_RADIUS = 512.0;
+const MAX_COLOR_MULTIPLIER = 4.0;
+const MAX_BLOOM_STRENGTH = 4.0;
+const MAX_CHROMATIC_ABERRATION = 256.0;
+const MAX_LEVELS_GAMMA = 16.0;
 
 export interface EffectUniform {
   mode: number;
@@ -118,7 +123,7 @@ export function buildPasses(
         break;
       }
       case 'bloom': {
-        const clampedR = Math.max(0, Math.min(16.0, effect.radius * scale));
+        const clampedR = Math.max(0, Math.min(MAX_BLOOM_RADIUS, effect.radius * scale));
         if (clampedR > 0) {
           passes.push({
             uniform: {
@@ -175,7 +180,7 @@ export function buildPasses(
               height,
               seed: 0,
               p0: 0,
-              p1: Math.max(0, Math.min(2.0, effect.strength)),
+              p1: Math.max(0, Math.min(MAX_BLOOM_STRENGTH, effect.strength)),
               p2: 0,
               p3: 0,
               p4: 0,
@@ -218,11 +223,11 @@ function effectToPass(
 
   switch (effect.type) {
     case 'brightness':
-      return base(1, Math.max(0, Math.min(2.0, effect.value)), 0, 0, 0, 0, 0, 0);
+      return base(1, Math.max(0, Math.min(MAX_COLOR_MULTIPLIER, effect.value)), 0, 0, 0, 0, 0, 0);
     case 'contrast':
-      return base(2, Math.max(0, Math.min(2.0, effect.value)), 0, 0, 0, 0, 0, 0);
+      return base(2, Math.max(0, Math.min(MAX_COLOR_MULTIPLIER, effect.value)), 0, 0, 0, 0, 0, 0);
     case 'saturation':
-      return base(3, Math.max(0, Math.min(2.0, effect.value)), 0, 0, 0, 0, 0, 0);
+      return base(3, Math.max(0, Math.min(MAX_COLOR_MULTIPLIER, effect.value)), 0, 0, 0, 0, 0, 0);
     case 'gaussian-blur':
     case 'gaussian-blur-pixels':
     case 'bloom':
@@ -247,7 +252,7 @@ function effectToPass(
     case 'chromatic-aberration':
       return base(
         10,
-        Math.max(0, Math.min(80.0, effect.amount * scale)),
+        Math.max(0, Math.min(MAX_CHROMATIC_ABERRATION, effect.amount * scale)),
         effect.angle_deg,
         0,
         0,
@@ -262,7 +267,7 @@ function effectToPass(
         12,
         Math.max(0, Math.min(1.0, effect.in_black)),
         Math.max(0.001, Math.min(1.0, effect.in_white)),
-        Math.max(0.01, Math.min(8.0, effect.gamma)),
+        Math.max(0.01, Math.min(MAX_LEVELS_GAMMA, effect.gamma)),
         Math.max(0, Math.min(1.0, effect.out_black)),
         Math.max(0, Math.min(1.0, effect.out_white)),
         0,

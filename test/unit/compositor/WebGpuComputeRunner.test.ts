@@ -64,13 +64,34 @@ describe('buildPasses', () => {
   });
 
   it('clamps blur radius to MAX_BLUR_RADIUS', () => {
-    const effects: VideoEffectSpec[] = [{ type: 'gaussian-blur', radius: 200.0 }];
+    const effects: VideoEffectSpec[] = [{ type: 'gaussian-blur', radius: 2_000.0 }];
     const passes = buildPasses(effects, 1920, 1080);
     expect(passes[0]!.uniform.p0).toBe(MAX_BLUR_RADIUS);
   });
+
+  it('keeps animation-scale blur values below the renderer hard cap', () => {
+    const effects: VideoEffectSpec[] = [{ type: 'gaussian-blur', radius: 500.0 }];
+    const passes = buildPasses(effects, 1920, 1080);
+
+    expect(passes.length).toBe(2);
+    expect(passes[0]!.uniform.p0).toBe(500.0);
+    expect(passes[1]!.uniform.p0).toBe(500.0);
+  });
+
+  it('keeps animation-scale bloom radius and strength below hard caps', () => {
+    const effects: VideoEffectSpec[] = [
+      { type: 'bloom', threshold: 0.75, strength: 3.5, radius: 220.0 },
+    ];
+    const passes = buildPasses(effects, 1920, 1080);
+
+    expect(passes.length).toBe(4);
+    expect(passes[1]!.uniform.p0).toBe(220.0);
+    expect(passes[2]!.uniform.p0).toBe(220.0);
+    expect(passes[3]!.uniform.p1).toBe(3.5);
+  });
 });
 
-const MAX_BLUR_RADIUS = 64.0;
+const MAX_BLUR_RADIUS = 1024.0;
 
 describe('WebGpuComputeRunner', () => {
   it('reports not ready when WebGPU is unavailable', async () => {

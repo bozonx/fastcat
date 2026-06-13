@@ -875,6 +875,9 @@ impl WindowState {
         // forward-стрим был корректным после скраба по кешу. Часы при этом ещё стоят.
         self.layers.set_playing(true);
         self.layers.resync_active_videos(t);
+        // На время прогрева перед стартом VideoFrameReady нужен (двигает poll_prebuffer);
+        // begin_playback выключит его, когда кадры пойдут по таймеру пейсинга.
+        self.layers.set_frame_events_enabled(true);
 
         // Прогреваем аудио параллельно видео: продюсер наполняет кольцо до полного
         // префетча, но вывод держится беззвучным (hold_output) до `begin_playback`.
@@ -900,6 +903,8 @@ impl WindowState {
         let pts = self.clock.current_pts();
         log::info!("[monitor] begin_playback at pts={pts:.3}s");
         self.pending_play_deadline = None;
+        // Кадры теперь забираются по таймеру пейсинга — гасим холостые VideoFrameReady.
+        self.layers.set_frame_events_enabled(false);
         // Start wall-clock first so the audio output and video layers share the
         // exact same origin. Reversing the order lets audio buffer ahead of the
         // visual timeline, making the waveform lag behind the voice.
@@ -1003,6 +1008,9 @@ impl WindowState {
             self.clock.pause();
         }
         self.layers.set_playing(false);
+        // На паузе VideoFrameReady снова нужен: он подтягивает догнавший playhead кадр в
+        // отображение (refresh_paused_display).
+        self.layers.set_frame_events_enabled(true);
         // The output callback drops to silence on pause, but `emit_audio_levels`
         // only runs while ticking, so the UI meter would otherwise freeze at its
         // last pre-pause value. Push one zeroed update so it falls to the floor.
@@ -1075,6 +1083,9 @@ impl WindowState {
                     audio.start_priming(t);
                     self.layers.set_playing(true);
                     self.layers.resync_active_videos(t);
+                    // Часы заморожены на время микро-прайма — VideoFrameReady снова двигает
+                    // прогрев (begin_playback выключит его при фактическом старте).
+                    self.layers.set_frame_events_enabled(true);
                     self.pending_play_deadline = Some(Instant::now() + PREBUFFER_TIMEOUT);
                 }
             }

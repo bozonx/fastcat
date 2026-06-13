@@ -123,4 +123,83 @@ describe('unified video effect manifests', () => {
       },
     ]);
   });
+
+  it('exposes separate UI and animation ranges for video effect params', () => {
+    const blur = getVideoEffectManifest('blur');
+    const bloom = getVideoEffectManifest('bloom');
+
+    expect(blur?.paramRanges?.strength).toMatchObject({
+      uiMax: 64,
+      animationMax: 512,
+      renderMax: 1024,
+    });
+    expect(bloom?.paramRanges?.radius).toMatchObject({
+      uiMax: 16,
+      animationMax: 256,
+      renderMax: 512,
+    });
+  });
+
+  it('serializes animation-scale values up to renderer hard caps', () => {
+    const specs = buildEffectSpecs([
+      {
+        id: 'fx-blur',
+        type: 'blur',
+        enabled: true,
+        target: 'video',
+        strength: 500,
+      },
+      {
+        id: 'fx-bloom',
+        type: 'bloom',
+        enabled: true,
+        target: 'video',
+        threshold: 0.4,
+        strength: 3.5,
+        radius: 220,
+      },
+      {
+        id: 'fx-color',
+        type: 'color-adjustment',
+        enabled: true,
+        target: 'video',
+        brightness: 3,
+        contrast: 3.5,
+        saturation: 4,
+      },
+    ]);
+
+    expect(specs).toEqual([
+      { type: 'gaussian-blur', radius: 500 },
+      { type: 'bloom', threshold: 0.4, strength: 3.5, radius: 220 },
+      { type: 'brightness', value: 3 },
+      { type: 'contrast', value: 3.5 },
+      { type: 'saturation', value: 4 },
+    ]);
+  });
+
+  it('normalizes legacy blur radius and clamps unsafe numeric values', () => {
+    const specs = buildEffectSpecs([
+      {
+        id: 'fx-radius',
+        type: 'blur',
+        enabled: true,
+        target: 'video',
+        radius: 96,
+      },
+      {
+        id: 'fx-seed',
+        type: 'noise',
+        enabled: true,
+        target: 'video',
+        amount: 2,
+        seed: Number.MAX_SAFE_INTEGER,
+      },
+    ]);
+
+    expect(specs).toEqual([
+      { type: 'gaussian-blur', radius: 96 },
+      { type: 'noise', amount: 1, seed: 4_294_967_295 },
+    ]);
+  });
 });

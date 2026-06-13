@@ -116,6 +116,11 @@ pub struct LayerRuntimeManager {
     load_epoch: u64,
     /// Atomic mirror of `load_epoch` so spawned threads can read it without locking.
     live_epoch: Arc<AtomicU64>,
+    /// Gate controlling whether decoder threads emit `VideoFrameReady`. Disabled during
+    /// active paced playback, where the event is a no-op that only wakes the event loop
+    /// (frames are pulled on the pacing tick). Enabled while paused / warming up, where the
+    /// event drives the paused display refresh and the play-prebuffer readiness check.
+    frame_event_gate: Arc<AtomicBool>,
     bg_tx: Sender<BgLayerResult>,
     proxy: EventLoopProxy<MonitorCommand>,
     hw_settings: crate::FfmpegHardwareSettings,
@@ -146,6 +151,7 @@ impl LayerRuntimeManager {
             loading_cancels: HashMap::new(),
             load_epoch: 0,
             live_epoch: Arc::new(AtomicU64::new(0)),
+            frame_event_gate: Arc::new(AtomicBool::new(true)),
             bg_tx,
             proxy,
             hw_settings,
@@ -155,6 +161,14 @@ impl LayerRuntimeManager {
 
     pub fn is_empty(&self) -> bool {
         self.scene.is_empty()
+    }
+
+    /// Включает/выключает эмит `VideoFrameReady` из декодер-потоков. Во время активного
+    /// воспроизведения событие не нужно (кадры забираются по таймеру пейсинга) и лишь
+    /// будит event-loop вхолостую — выключаем. На паузе/прогреве/микро-прайме оно двигает
+    /// отображение и проверку готовности старта — включаем.
+    pub fn set_frame_events_enabled(&self, enabled: bool) {
+        self.frame_event_gate.store(enabled, Ordering::Relaxed);
     }
 
     pub fn set_playing(&mut self, playing: bool) {
@@ -393,6 +407,7 @@ impl LayerRuntimeManager {
                 log::info!("[monitor] spawn video decoder {id} (max_long_edge={max_long_edge:?})");
                 let spawn_id = id.clone();
                 let live_epoch = self.live_epoch.clone();
+                let frame_event_gate = self.frame_event_gate.clone();
                 if let Err(e) = std::thread::Builder::new()
                     .name(format!("fastcat-load-video:{}", path.display()))
                     .spawn(move || {
@@ -414,8 +429,14 @@ impl LayerRuntimeManager {
                         };
                         let _permit = permit;
                         let proxy_cb = proxy.clone();
+                        let gate = frame_event_gate.clone();
                         let on_frame = Box::new(move || {
-                            let _ = proxy_cb.send_event(MonitorCommand::VideoFrameReady);
+                            // На активном воспроизведении кадры забираются по таймеру, а
+                            // обработчик VideoFrameReady — no-op: событие лишь будит
+                            // event-loop. Эмитим только когда оно реально нужно (пауза/прогрев).
+                            if gate.load(Ordering::Relaxed) {
+                                let _ = proxy_cb.send_event(MonitorCommand::VideoFrameReady);
+                            }
                         });
                         let result =
                             match DecodePump::open(crate::media::decode_thread::DecodeOpenParams {
@@ -892,12 +913,29 @@ impl LayerRuntimeManager {
             let clip_local = layer.source_pts_at(t);
             if let Some(LayerRuntime::Video(rt)) = self.runtimes.get_mut(&layer.id) {
                 rt.pull_into_cache();
-                // Пауза + попадание в кеш → показываем кадр без перезапуска ffmpeg.
-                // Всё равно прогреваем вперёд: даже если текущий кадр уже в кеше,
-                // декодер мог стоять на другом месте и при Play форвард-буфер пустой.
+                // Пауза + попадание в кеш → показываем кадр без блокирующего ожидания
+                // декода (мгновенный скраб из кеша).
                 if !playing && rt.has_cached_near(clip_local, 1) {
                     let lead = Some(1.0 / rt.pump.info.fps.max(1.0));
                     rt.update_display(clip_local, None, lead);
+                    // Всё равно прогреваем вперёд playhead'а для последующего Play. Но
+                    // декодер мог стоять на другом месте (после прошлого воспроизведения/
+                    // скраба): прогрев БЕЗ репозиции декодил бы кадры от чужой позиции —
+                    // форвард-буфер вокруг playhead'а так и остался бы пустым, а кеш
+                    // засорялся бы нерелевантными кадрами. Поэтому сначала перепозиционируем
+                    // декодер на playhead (асинхронно, кадр уже показан из кеша — скраб
+                    // остаётся мгновенным), затем прогреваем.
+                    let need_seek = match rt.last_pump_seek_pts {
+                        Some(last_pts) => (last_pts - clip_local).abs() > 1e-5,
+                        None => true,
+                    };
+                    if need_seek {
+                        if let Err(e) = rt.pump.seek(clip_local) {
+                            log::error!("[monitor] cache-hit warm seek {}: {e:?}", layer.id);
+                        }
+                        rt.last_pump_seek_pts = Some(clip_local);
+                        rt.note_seek_requested();
+                    }
                     rt.request_prebuffer();
                     continue;
                 }

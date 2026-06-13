@@ -142,8 +142,7 @@ pub fn push_video_encode_filter_args_with_extra(
     // dimension-preserving `scale` step (no `w:h` ⇒ keep size). It runs before any
     // pixel-format/hwupload conversion so the conversion — not swscale's BT.601 default —
     // decides the matrix. `push_color_tag_args` then tags the stream to match.
-    let color_scale = color
-        .map(|c| format!("scale=out_color_matrix={}:out_range=tv", c.matrix));
+    let color_scale = color.map(|c| format!("scale=out_color_matrix={}:out_range=tv", c.matrix));
     match hw_mode {
         HwAccelMode::Vaapi => {
             // `format` must be its own filter, not a `scale` option: the scale filter has
@@ -335,7 +334,10 @@ mod tests {
         assert_eq!(vf, "scale=out_color_matrix=bt709:out_range=tv");
         assert_eq!(find_arg(&args, "-pix_fmt"), Some(&"yuv420p".to_string()));
         assert_eq!(find_arg(&args, "-colorspace"), Some(&"bt709".to_string()));
-        assert_eq!(find_arg(&args, "-color_primaries"), Some(&"bt709".to_string()));
+        assert_eq!(
+            find_arg(&args, "-color_primaries"),
+            Some(&"bt709".to_string())
+        );
         assert_eq!(find_arg(&args, "-color_trc"), Some(&"bt709".to_string()));
         assert_eq!(find_arg(&args, "-color_range"), Some(&"tv".to_string()));
     }
@@ -355,7 +357,10 @@ mod tests {
         );
         let vf = find_arg(&args, "-vf").expect("expected -vf");
         assert!(vf.contains("out_color_matrix=bt601"), "got: {vf}");
-        assert_eq!(find_arg(&args, "-colorspace"), Some(&"smpte170m".to_string()));
+        assert_eq!(
+            find_arg(&args, "-colorspace"),
+            Some(&"smpte170m".to_string())
+        );
     }
 
     #[test]
@@ -373,7 +378,10 @@ mod tests {
             &[],
             Some(ColorSpec::for_output_height(1080)),
         );
-        assert!(find_arg(&args, "-vf").is_none(), "no scale expected: {args:?}");
+        assert!(
+            find_arg(&args, "-vf").is_none(),
+            "no scale expected: {args:?}"
+        );
         assert_eq!(find_arg(&args, "-pix_fmt"), Some(&"yuva420p".to_string()));
         assert!(find_arg(&args, "-colorspace").is_none());
     }

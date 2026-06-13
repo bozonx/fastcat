@@ -363,9 +363,9 @@ impl Compositor {
                 dev_id,
                 &device,
                 &queue,
-                &EffectSource::Gpu(Arc::new(crate::media::SharedTexture::new_shared(
-                    Arc::new(texture),
-                ))),
+                &EffectSource::Gpu(Arc::new(crate::media::SharedTexture::new_shared(Arc::new(
+                    texture,
+                )))),
                 &effective_scene.master_effects,
             )?;
             let mut out = VelloScene::new();
@@ -580,9 +580,9 @@ impl Compositor {
                         dev_id,
                         device,
                         queue,
-                        &EffectSource::Gpu(Arc::new(
-                            crate::media::SharedTexture::new_shared(Arc::new(texture)),
-                        )),
+                        &EffectSource::Gpu(Arc::new(crate::media::SharedTexture::new_shared(
+                            Arc::new(texture),
+                        ))),
                         &layer.effects,
                     )?;
                     result_layers.push(Layer {

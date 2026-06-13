@@ -204,7 +204,10 @@ mod tests {
         let scene = build_compositor_scene(&[bg, adj], (1280, 720), &HashMap::new(), 0.5, &[]);
 
         assert_eq!(scene.layers.len(), 2);
-        assert!(scene.layers.iter().any(|l| matches!(l.kind, CompLayerKind::Adjustment)));
+        assert!(scene
+            .layers
+            .iter()
+            .any(|l| matches!(l.kind, CompLayerKind::Adjustment)));
     }
 
     #[test]
@@ -216,6 +219,9 @@ mod tests {
         let scene = build_compositor_scene(&[bg, adj], (1280, 720), &HashMap::new(), 0.5, &[]);
 
         assert_eq!(scene.layers.len(), 1);
-        assert!(!scene.layers.iter().any(|l| matches!(l.kind, CompLayerKind::Adjustment)));
+        assert!(!scene
+            .layers
+            .iter()
+            .any(|l| matches!(l.kind, CompLayerKind::Adjustment)));
     }
 }

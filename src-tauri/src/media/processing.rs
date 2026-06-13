@@ -623,7 +623,9 @@ pub fn extract_video_frame_webp(params: ExtractWebpParams<'_>) -> Result<Vec<u8>
     // Throttle concurrent decoder/ffmpeg spawns the same way the monitor does, so a
     // media panel full of clips can't flood the machine with parallel ffmpeg starts.
     let _permit = decoder_load_gate()
-        .acquire_with_priority(crate::media::decode_gate::LoadPriority::Background, &|| false)
+        .acquire_with_priority(crate::media::decode_gate::LoadPriority::Background, &|| {
+            false
+        })
         .expect("Background without cancel always succeeds");
     let metadata = probe_media(params.source_path, &params.hw_settings.ffprobe_path)?;
     let video = metadata
@@ -730,7 +732,9 @@ pub fn extract_video_frame_webps(
     );
     let mut decoder = {
         let _permit = decoder_load_gate()
-            .acquire_with_priority(crate::media::decode_gate::LoadPriority::Background, &|| false)
+            .acquire_with_priority(crate::media::decode_gate::LoadPriority::Background, &|| {
+                false
+            })
             .expect("Background without cancel always succeeds");
         crate::media::decode::open(
             source_path,
@@ -1211,12 +1215,20 @@ mod tests {
                 options,
             );
 
-            assert!(result.is_ok(), "Conversion failed for codec {codec}: {:?}", result.err());
+            assert!(
+                result.is_ok(),
+                "Conversion failed for codec {codec}: {:?}",
+                result.err()
+            );
             assert!(target_path.exists());
 
             // Probe the file to ensure it's not corrupted
             let probe = probe_media(target_path, "ffprobe");
-            assert!(probe.is_ok(), "Probe failed for codec {codec}: {:?}", probe.err());
+            assert!(
+                probe.is_ok(),
+                "Probe failed for codec {codec}: {:?}",
+                probe.err()
+            );
             let meta = probe.unwrap();
             assert!(meta.duration > 0.0);
 

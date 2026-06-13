@@ -1,9 +1,79 @@
-import type { VideoEffectManifest } from './core/registry';
+import type { EffectParamRange, VideoEffectManifest } from './core/registry';
 import type { VideoEffectSpec } from '~/types/generated/native-monitor/VideoEffectSpec';
 
 interface SliderFormat {
   (value: number): string;
 }
+
+export const VIDEO_EFFECT_PARAM_RANGES = {
+  colorMultiplier: {
+    uiMin: 0,
+    uiMax: 2,
+    animationMin: 0,
+    animationMax: 4,
+    renderMin: 0,
+    renderMax: 4,
+  },
+  blurRadius: {
+    uiMin: 0,
+    uiMax: 64,
+    animationMin: 0,
+    animationMax: 512,
+    renderMin: 0,
+    renderMax: 1024,
+  },
+  bloomRadius: {
+    uiMin: 0,
+    uiMax: 16,
+    animationMin: 0,
+    animationMax: 256,
+    renderMin: 0,
+    renderMax: 512,
+  },
+  bloomStrength: {
+    uiMin: 0,
+    uiMax: 2,
+    animationMin: 0,
+    animationMax: 4,
+    renderMin: 0,
+    renderMax: 4,
+  },
+  unit: { uiMin: 0, uiMax: 1, animationMin: 0, animationMax: 1, renderMin: 0, renderMax: 1 },
+  pixelSize: {
+    uiMin: 1,
+    uiMax: 64,
+    animationMin: 1,
+    animationMax: 256,
+    renderMin: 1,
+    renderMax: 256,
+  },
+  chromaticAmount: {
+    uiMin: 0,
+    uiMax: 40,
+    animationMin: 0,
+    animationMax: 160,
+    renderMin: 0,
+    renderMax: 256,
+  },
+  hueDegrees: {
+    uiMin: -180,
+    uiMax: 180,
+    animationMin: -1080,
+    animationMax: 1080,
+    renderMin: -1080,
+    renderMax: 1080,
+  },
+  gamma: {
+    uiMin: 0.01,
+    uiMax: 8,
+    animationMin: 0.01,
+    animationMax: 16,
+    renderMin: 0.01,
+    renderMax: 16,
+  },
+} satisfies Record<string, EffectParamRange>;
+
+const UINT32_MAX = 4_294_967_295;
 
 const percentFromOne: SliderFormat = (value) => `${Math.round((value - 1) * 100)}%`;
 const percent: SliderFormat = (value) => `${Math.round(value * 100)}%`;
@@ -16,6 +86,25 @@ function finiteNumber(value: unknown, fallback: number): number {
 
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
+}
+
+function clampRange(value: number, range: Pick<EffectParamRange, 'renderMin' | 'renderMax'>) {
+  return clamp(value, range.renderMin, range.renderMax);
+}
+
+function finiteNumberFromKeys(
+  values: Record<string, unknown>,
+  keys: string[],
+  fallback: number,
+): number {
+  for (const key of keys) {
+    const value = values[key];
+    if (typeof value === 'number' && Number.isFinite(value)) {
+      return value;
+    }
+  }
+
+  return fallback;
 }
 
 // The catalog is intentionally loose about the per-variant shape: each manifest
@@ -46,13 +135,18 @@ export const videoEffectManifests: VideoEffectManifest[] = [
       contrast: 1,
       saturation: 1,
     },
+    paramRanges: {
+      brightness: VIDEO_EFFECT_PARAM_RANGES.colorMultiplier,
+      contrast: VIDEO_EFFECT_PARAM_RANGES.colorMultiplier,
+      saturation: VIDEO_EFFECT_PARAM_RANGES.colorMultiplier,
+    },
     controls: [
       {
         kind: 'slider',
         key: 'brightness',
         labelKey: 'fastcat.effects.video.color-adjustment.params.brightness',
-        min: 0,
-        max: 2,
+        min: VIDEO_EFFECT_PARAM_RANGES.colorMultiplier.uiMin,
+        max: VIDEO_EFFECT_PARAM_RANGES.colorMultiplier.uiMax,
         step: 0.05,
         format: percentFromOne,
       },
@@ -60,8 +154,8 @@ export const videoEffectManifests: VideoEffectManifest[] = [
         kind: 'slider',
         key: 'contrast',
         labelKey: 'fastcat.effects.video.color-adjustment.params.contrast',
-        min: 0,
-        max: 2,
+        min: VIDEO_EFFECT_PARAM_RANGES.colorMultiplier.uiMin,
+        max: VIDEO_EFFECT_PARAM_RANGES.colorMultiplier.uiMax,
         step: 0.05,
         format: percentFromOne,
       },
@@ -69,21 +163,30 @@ export const videoEffectManifests: VideoEffectManifest[] = [
         kind: 'slider',
         key: 'saturation',
         labelKey: 'fastcat.effects.video.color-adjustment.params.saturation',
-        min: 0,
-        max: 2,
+        min: VIDEO_EFFECT_PARAM_RANGES.colorMultiplier.uiMin,
+        max: VIDEO_EFFECT_PARAM_RANGES.colorMultiplier.uiMax,
         step: 0.05,
         format: percentFromOne,
       },
     ],
     toEffectSpecs: (values) => [
       spec('brightness', {
-        value: clamp(finiteNumber(values.brightness, 1), 0, 2),
+        value: clampRange(
+          finiteNumber(values.brightness, 1),
+          VIDEO_EFFECT_PARAM_RANGES.colorMultiplier,
+        ),
       }),
       spec('contrast', {
-        value: clamp(finiteNumber(values.contrast, 1), 0, 2),
+        value: clampRange(
+          finiteNumber(values.contrast, 1),
+          VIDEO_EFFECT_PARAM_RANGES.colorMultiplier,
+        ),
       }),
       spec('saturation', {
-        value: clamp(finiteNumber(values.saturation, 1), 0, 2),
+        value: clampRange(
+          finiteNumber(values.saturation, 1),
+          VIDEO_EFFECT_PARAM_RANGES.colorMultiplier,
+        ),
       }),
     ],
   },
@@ -99,20 +202,26 @@ export const videoEffectManifests: VideoEffectManifest[] = [
     defaultValues: {
       strength: 8,
     },
+    paramRanges: {
+      strength: VIDEO_EFFECT_PARAM_RANGES.blurRadius,
+    },
     controls: [
       {
         kind: 'slider',
         key: 'strength',
         labelKey: 'fastcat.effects.video.blur.params.strength',
-        min: 0,
-        max: 64,
+        min: VIDEO_EFFECT_PARAM_RANGES.blurRadius.uiMin,
+        max: VIDEO_EFFECT_PARAM_RANGES.blurRadius.uiMax,
         step: 1,
         format: pixels,
       },
     ],
     toEffectSpecs: (values) => [
       spec('gaussian-blur', {
-        radius: clamp(finiteNumber(values.strength, 8), 0, 64),
+        radius: clampRange(
+          finiteNumberFromKeys(values, ['strength', 'radius'], 8),
+          VIDEO_EFFECT_PARAM_RANGES.blurRadius,
+        ),
       }),
     ],
   },
@@ -130,13 +239,18 @@ export const videoEffectManifests: VideoEffectManifest[] = [
       strength: 0.6,
       radius: 12,
     },
+    paramRanges: {
+      threshold: VIDEO_EFFECT_PARAM_RANGES.unit,
+      strength: VIDEO_EFFECT_PARAM_RANGES.bloomStrength,
+      radius: VIDEO_EFFECT_PARAM_RANGES.bloomRadius,
+    },
     controls: [
       {
         kind: 'slider',
         key: 'threshold',
         labelKey: 'fastcat.effects.video.bloom.params.threshold',
-        min: 0,
-        max: 1,
+        min: VIDEO_EFFECT_PARAM_RANGES.unit.uiMin,
+        max: VIDEO_EFFECT_PARAM_RANGES.unit.uiMax,
         step: 0.01,
         format: percent,
       },
@@ -144,8 +258,8 @@ export const videoEffectManifests: VideoEffectManifest[] = [
         kind: 'slider',
         key: 'strength',
         labelKey: 'fastcat.effects.video.bloom.params.strength',
-        min: 0,
-        max: 2,
+        min: VIDEO_EFFECT_PARAM_RANGES.bloomStrength.uiMin,
+        max: VIDEO_EFFECT_PARAM_RANGES.bloomStrength.uiMax,
         step: 0.05,
         format: percent,
       },
@@ -153,17 +267,20 @@ export const videoEffectManifests: VideoEffectManifest[] = [
         kind: 'slider',
         key: 'radius',
         labelKey: 'fastcat.effects.video.blur.params.strength',
-        min: 0,
-        max: 16,
+        min: VIDEO_EFFECT_PARAM_RANGES.bloomRadius.uiMin,
+        max: VIDEO_EFFECT_PARAM_RANGES.bloomRadius.uiMax,
         step: 1,
         format: pixels,
       },
     ],
     toEffectSpecs: (values) => [
       spec('bloom', {
-        threshold: clamp(finiteNumber(values.threshold, 0.75), 0, 1),
-        strength: clamp(finiteNumber(values.strength, 0.6), 0, 2),
-        radius: clamp(finiteNumber(values.radius, 12), 0, 16),
+        threshold: clampRange(finiteNumber(values.threshold, 0.75), VIDEO_EFFECT_PARAM_RANGES.unit),
+        strength: clampRange(
+          finiteNumber(values.strength, 0.6),
+          VIDEO_EFFECT_PARAM_RANGES.bloomStrength,
+        ),
+        radius: clampRange(finiteNumber(values.radius, 12), VIDEO_EFFECT_PARAM_RANGES.bloomRadius),
       }),
     ],
   },
@@ -179,20 +296,23 @@ export const videoEffectManifests: VideoEffectManifest[] = [
     defaultValues: {
       amount: 0.35,
     },
+    paramRanges: {
+      amount: VIDEO_EFFECT_PARAM_RANGES.unit,
+    },
     controls: [
       {
         kind: 'slider',
         key: 'amount',
         labelKey: 'fastcat.effects.video.tauri.params.amount',
-        min: 0,
-        max: 1,
+        min: VIDEO_EFFECT_PARAM_RANGES.unit.uiMin,
+        max: VIDEO_EFFECT_PARAM_RANGES.unit.uiMax,
         step: 0.01,
         format: percent,
       },
     ],
     toEffectSpecs: (values) => [
       spec('sharpen', {
-        amount: clamp(finiteNumber(values.amount, 0.35), 0, 1),
+        amount: clampRange(finiteNumber(values.amount, 0.35), VIDEO_EFFECT_PARAM_RANGES.unit),
       }),
     ],
   },
@@ -208,20 +328,23 @@ export const videoEffectManifests: VideoEffectManifest[] = [
     defaultValues: {
       size: 8,
     },
+    paramRanges: {
+      size: VIDEO_EFFECT_PARAM_RANGES.pixelSize,
+    },
     controls: [
       {
         kind: 'slider',
         key: 'size',
         labelKey: 'fastcat.effects.video.tauri.pixelate.params.size',
-        min: 1,
-        max: 64,
+        min: VIDEO_EFFECT_PARAM_RANGES.pixelSize.uiMin,
+        max: VIDEO_EFFECT_PARAM_RANGES.pixelSize.uiMax,
         step: 1,
         format: pixels,
       },
     ],
     toEffectSpecs: (values) => [
       spec('pixelate', {
-        size: clamp(finiteNumber(values.size, 8), 1, 64),
+        size: clampRange(finiteNumber(values.size, 8), VIDEO_EFFECT_PARAM_RANGES.pixelSize),
       }),
     ],
   },
@@ -239,13 +362,18 @@ export const videoEffectManifests: VideoEffectManifest[] = [
       radius: 0.75,
       softness: 0.35,
     },
+    paramRanges: {
+      strength: VIDEO_EFFECT_PARAM_RANGES.unit,
+      radius: VIDEO_EFFECT_PARAM_RANGES.unit,
+      softness: VIDEO_EFFECT_PARAM_RANGES.unit,
+    },
     controls: [
       {
         kind: 'slider',
         key: 'strength',
         labelKey: 'fastcat.effects.video.bloom.params.strength',
-        min: 0,
-        max: 1,
+        min: VIDEO_EFFECT_PARAM_RANGES.unit.uiMin,
+        max: VIDEO_EFFECT_PARAM_RANGES.unit.uiMax,
         step: 0.01,
         format: percent,
       },
@@ -253,8 +381,8 @@ export const videoEffectManifests: VideoEffectManifest[] = [
         kind: 'slider',
         key: 'radius',
         labelKey: 'fastcat.transitions.circle.params.radius',
-        min: 0,
-        max: 1,
+        min: VIDEO_EFFECT_PARAM_RANGES.unit.uiMin,
+        max: VIDEO_EFFECT_PARAM_RANGES.unit.uiMax,
         step: 0.01,
         format: percent,
       },
@@ -262,17 +390,17 @@ export const videoEffectManifests: VideoEffectManifest[] = [
         kind: 'slider',
         key: 'softness',
         labelKey: 'fastcat.transitions.wipe.params.softness',
-        min: 0,
-        max: 1,
+        min: VIDEO_EFFECT_PARAM_RANGES.unit.uiMin,
+        max: VIDEO_EFFECT_PARAM_RANGES.unit.uiMax,
         step: 0.01,
         format: percent,
       },
     ],
     toEffectSpecs: (values) => [
       spec('vignette', {
-        strength: clamp(finiteNumber(values.strength, 0.35), 0, 1),
-        radius: clamp(finiteNumber(values.radius, 0.75), 0, 1),
-        softness: clamp(finiteNumber(values.softness, 0.35), 0, 1),
+        strength: clampRange(finiteNumber(values.strength, 0.35), VIDEO_EFFECT_PARAM_RANGES.unit),
+        radius: clampRange(finiteNumber(values.radius, 0.75), VIDEO_EFFECT_PARAM_RANGES.unit),
+        softness: clampRange(finiteNumber(values.softness, 0.35), VIDEO_EFFECT_PARAM_RANGES.unit),
       }),
     ],
   },
@@ -289,13 +417,24 @@ export const videoEffectManifests: VideoEffectManifest[] = [
       amount: 0.08,
       seed: 1,
     },
+    paramRanges: {
+      amount: VIDEO_EFFECT_PARAM_RANGES.unit,
+      seed: {
+        uiMin: 0,
+        uiMax: 65535,
+        animationMin: 0,
+        animationMax: UINT32_MAX,
+        renderMin: 0,
+        renderMax: UINT32_MAX,
+      },
+    },
     controls: [
       {
         kind: 'slider',
         key: 'amount',
         labelKey: 'fastcat.effects.video.noise.params.noise',
-        min: 0,
-        max: 1,
+        min: VIDEO_EFFECT_PARAM_RANGES.unit.uiMin,
+        max: VIDEO_EFFECT_PARAM_RANGES.unit.uiMax,
         step: 0.01,
         format: percent,
       },
@@ -310,8 +449,8 @@ export const videoEffectManifests: VideoEffectManifest[] = [
     ],
     toEffectSpecs: (values) => [
       spec('noise', {
-        amount: clamp(finiteNumber(values.amount, 0.08), 0, 1),
-        seed: Math.max(0, Math.round(finiteNumber(values.seed, 1))),
+        amount: clampRange(finiteNumber(values.amount, 0.08), VIDEO_EFFECT_PARAM_RANGES.unit),
+        seed: clamp(Math.round(finiteNumber(values.seed, 1)), 0, UINT32_MAX),
       }),
     ],
   },
@@ -328,13 +467,17 @@ export const videoEffectManifests: VideoEffectManifest[] = [
       amount: 4,
       angle: 0,
     },
+    paramRanges: {
+      amount: VIDEO_EFFECT_PARAM_RANGES.chromaticAmount,
+      angle: VIDEO_EFFECT_PARAM_RANGES.hueDegrees,
+    },
     controls: [
       {
         kind: 'slider',
         key: 'amount',
         labelKey: 'fastcat.effects.video.tauri.params.amount',
-        min: 0,
-        max: 40,
+        min: VIDEO_EFFECT_PARAM_RANGES.chromaticAmount.uiMin,
+        max: VIDEO_EFFECT_PARAM_RANGES.chromaticAmount.uiMax,
         step: 0.5,
         format: pixels,
       },
@@ -342,16 +485,19 @@ export const videoEffectManifests: VideoEffectManifest[] = [
         kind: 'slider',
         key: 'angle',
         labelKey: 'fastcat.effects.video.tauri.params.angle',
-        min: -180,
-        max: 180,
+        min: VIDEO_EFFECT_PARAM_RANGES.hueDegrees.uiMin,
+        max: VIDEO_EFFECT_PARAM_RANGES.hueDegrees.uiMax,
         step: 1,
         format: degrees,
       },
     ],
     toEffectSpecs: (values) => [
       spec('chromatic-aberration', {
-        amount: clamp(finiteNumber(values.amount, 4), 0, 40),
-        angle_deg: clamp(finiteNumber(values.angle, 0), -180, 180),
+        amount: clampRange(
+          finiteNumber(values.amount, 4),
+          VIDEO_EFFECT_PARAM_RANGES.chromaticAmount,
+        ),
+        angle_deg: clampRange(finiteNumber(values.angle, 0), VIDEO_EFFECT_PARAM_RANGES.hueDegrees),
       }),
     ],
   },
@@ -367,20 +513,23 @@ export const videoEffectManifests: VideoEffectManifest[] = [
     defaultValues: {
       degrees: 0,
     },
+    paramRanges: {
+      degrees: VIDEO_EFFECT_PARAM_RANGES.hueDegrees,
+    },
     controls: [
       {
         kind: 'slider',
         key: 'degrees',
         labelKey: 'fastcat.effects.video.tauri.params.angle',
-        min: -180,
-        max: 180,
+        min: VIDEO_EFFECT_PARAM_RANGES.hueDegrees.uiMin,
+        max: VIDEO_EFFECT_PARAM_RANGES.hueDegrees.uiMax,
         step: 1,
         format: degrees,
       },
     ],
     toEffectSpecs: (values) => [
       spec('hue', {
-        degrees: clamp(finiteNumber(values.degrees, 0), -180, 180),
+        degrees: clampRange(finiteNumber(values.degrees, 0), VIDEO_EFFECT_PARAM_RANGES.hueDegrees),
       }),
     ],
   },
@@ -400,13 +549,20 @@ export const videoEffectManifests: VideoEffectManifest[] = [
       outBlack: 0,
       outWhite: 1,
     },
+    paramRanges: {
+      inBlack: VIDEO_EFFECT_PARAM_RANGES.unit,
+      inWhite: VIDEO_EFFECT_PARAM_RANGES.unit,
+      gamma: VIDEO_EFFECT_PARAM_RANGES.gamma,
+      outBlack: VIDEO_EFFECT_PARAM_RANGES.unit,
+      outWhite: VIDEO_EFFECT_PARAM_RANGES.unit,
+    },
     controls: [
       {
         kind: 'slider',
         key: 'inBlack',
         labelKey: 'fastcat.effects.video.tauri.levels.params.inBlack',
-        min: 0,
-        max: 1,
+        min: VIDEO_EFFECT_PARAM_RANGES.unit.uiMin,
+        max: VIDEO_EFFECT_PARAM_RANGES.unit.uiMax,
         step: 0.01,
         format: percent,
       },
@@ -414,8 +570,8 @@ export const videoEffectManifests: VideoEffectManifest[] = [
         kind: 'slider',
         key: 'inWhite',
         labelKey: 'fastcat.effects.video.tauri.levels.params.inWhite',
-        min: 0,
-        max: 1,
+        min: VIDEO_EFFECT_PARAM_RANGES.unit.uiMin,
+        max: VIDEO_EFFECT_PARAM_RANGES.unit.uiMax,
         step: 0.01,
         format: percent,
       },
@@ -423,16 +579,16 @@ export const videoEffectManifests: VideoEffectManifest[] = [
         kind: 'slider',
         key: 'gamma',
         labelKey: 'fastcat.effects.video.tauri.levels.params.gamma',
-        min: 0.01,
-        max: 8.0,
+        min: VIDEO_EFFECT_PARAM_RANGES.gamma.uiMin,
+        max: VIDEO_EFFECT_PARAM_RANGES.gamma.uiMax,
         step: 0.05,
       },
       {
         kind: 'slider',
         key: 'outBlack',
         labelKey: 'fastcat.effects.video.tauri.levels.params.outBlack',
-        min: 0,
-        max: 1,
+        min: VIDEO_EFFECT_PARAM_RANGES.unit.uiMin,
+        max: VIDEO_EFFECT_PARAM_RANGES.unit.uiMax,
         step: 0.01,
         format: percent,
       },
@@ -440,19 +596,23 @@ export const videoEffectManifests: VideoEffectManifest[] = [
         kind: 'slider',
         key: 'outWhite',
         labelKey: 'fastcat.effects.video.tauri.levels.params.outWhite',
-        min: 0,
-        max: 1,
+        min: VIDEO_EFFECT_PARAM_RANGES.unit.uiMin,
+        max: VIDEO_EFFECT_PARAM_RANGES.unit.uiMax,
         step: 0.01,
         format: percent,
       },
     ],
     toEffectSpecs: (values) => [
       spec('levels', {
-        in_black: clamp(finiteNumber(values.inBlack, 0), 0, 1),
-        in_white: clamp(finiteNumber(values.inWhite, 1), 0.001, 1),
-        gamma: clamp(finiteNumber(values.gamma, 1), 0.01, 8.0),
-        out_black: clamp(finiteNumber(values.outBlack, 0), 0, 1),
-        out_white: clamp(finiteNumber(values.outWhite, 1), 0, 1),
+        in_black: clampRange(finiteNumber(values.inBlack, 0), VIDEO_EFFECT_PARAM_RANGES.unit),
+        in_white: clamp(
+          finiteNumber(values.inWhite, 1),
+          0.001,
+          VIDEO_EFFECT_PARAM_RANGES.unit.renderMax,
+        ),
+        gamma: clampRange(finiteNumber(values.gamma, 1), VIDEO_EFFECT_PARAM_RANGES.gamma),
+        out_black: clampRange(finiteNumber(values.outBlack, 0), VIDEO_EFFECT_PARAM_RANGES.unit),
+        out_white: clampRange(finiteNumber(values.outWhite, 1), VIDEO_EFFECT_PARAM_RANGES.unit),
       }),
     ],
   },
@@ -470,6 +630,10 @@ export const videoEffectManifests: VideoEffectManifest[] = [
       threshold: 0.1,
       smoothness: 0.1,
     },
+    paramRanges: {
+      threshold: VIDEO_EFFECT_PARAM_RANGES.unit,
+      smoothness: VIDEO_EFFECT_PARAM_RANGES.unit,
+    },
     controls: [
       {
         kind: 'color',
@@ -480,8 +644,8 @@ export const videoEffectManifests: VideoEffectManifest[] = [
         kind: 'slider',
         key: 'threshold',
         labelKey: 'fastcat.effects.video.tauri.chromaKey.params.threshold',
-        min: 0,
-        max: 1,
+        min: VIDEO_EFFECT_PARAM_RANGES.unit.uiMin,
+        max: VIDEO_EFFECT_PARAM_RANGES.unit.uiMax,
         step: 0.01,
         format: percent,
       },
@@ -489,8 +653,8 @@ export const videoEffectManifests: VideoEffectManifest[] = [
         kind: 'slider',
         key: 'smoothness',
         labelKey: 'fastcat.effects.video.tauri.chromaKey.params.smoothness',
-        min: 0,
-        max: 1,
+        min: VIDEO_EFFECT_PARAM_RANGES.unit.uiMin,
+        max: VIDEO_EFFECT_PARAM_RANGES.unit.uiMax,
         step: 0.01,
         format: percent,
       },
@@ -505,8 +669,15 @@ export const videoEffectManifests: VideoEffectManifest[] = [
       return [
         spec('chroma-key', {
           key_rgba: [r, g, b, a],
-          threshold: clamp(finiteNumber(values.threshold, 0.1), 0, 1),
-          smoothness: clamp(finiteNumber(values.smoothness, 0.1), 0.0001, 1),
+          threshold: clampRange(
+            finiteNumber(values.threshold, 0.1),
+            VIDEO_EFFECT_PARAM_RANGES.unit,
+          ),
+          smoothness: clamp(
+            finiteNumber(values.smoothness, 0.1),
+            0.0001,
+            VIDEO_EFFECT_PARAM_RANGES.unit.renderMax,
+          ),
         }),
       ];
     },

@@ -70,7 +70,6 @@ pub trait PluginInstance: Send {
     fn reset(&mut self);
 }
 
-
 /// Placeholder passthrough — currently the only implementation.
 struct PassthroughPlugin;
 
@@ -91,7 +90,6 @@ impl PluginInstance for MultiplyPlugin {
     }
     fn reset(&mut self) {}
 }
-
 
 /// Cache key for a live plugin instance — stable identity, not parameters.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]

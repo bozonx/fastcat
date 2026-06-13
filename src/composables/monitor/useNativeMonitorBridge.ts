@@ -48,6 +48,21 @@ export function shouldSyncNativeMonitorTime(params: {
   return params.nowMs - params.lastSyncMs >= NATIVE_TIME_STORE_SYNC_MS;
 }
 
+export async function syncNativeMonitorTransportAfterScene(params: {
+  isPlaying: boolean;
+  isNativeMonitorDisabled: () => boolean;
+  pause: () => Promise<void>;
+  warnFailure: (message: string, err: unknown) => void;
+}): Promise<void> {
+  if (params.isPlaying || params.isNativeMonitorDisabled()) return;
+
+  try {
+    await params.pause();
+  } catch (err) {
+    params.warnFailure('monitor pause after scene sync failed', err);
+  }
+}
+
 export function resolveNativeAudioTrackSelection(params: {
   visibleVideoTracks: TimelineTrack[];
   audioTracks: TimelineTrack[];
@@ -187,6 +202,12 @@ export function useNativeMonitorBridge(): void {
       if (json === lastSceneJson) return;
       lastSceneJson = json;
       await nativeMonitorIpc.setScene(scene);
+      await syncNativeMonitorTransportAfterScene({
+        isPlaying: timelineStore.isPlaying,
+        isNativeMonitorDisabled,
+        pause: () => nativeMonitorIpc.pause(),
+        warnFailure: warnMonitorFailure,
+      });
     } catch (err) {
       warnMonitorFailure('monitor_set_scene failed', err);
     }

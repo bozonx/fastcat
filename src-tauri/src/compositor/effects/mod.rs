@@ -635,9 +635,15 @@ fn spatial_scale(height: u32) -> f32 {
     (height as f32 / 1080.0).clamp(0.1, 8.0)
 }
 
-/// Верхняя граница радиуса гауссова размытия. Совпадает с клампом в шейдере
-/// (`sample_blur_h/v`), чтобы значения из UI не упирались в «тихий потолок».
-const MAX_BLUR_RADIUS: f32 = 64.0;
+/// Верхняя граница радиуса гауссова размытия. Шейдер ограничивает число taps до
+/// 64 в каждую сторону и использует sparse sampling для больших радиусов, поэтому
+/// анимационные значения могут быть существенно выше обычного UI-диапазона.
+const MAX_BLUR_RADIUS: f32 = 1024.0;
+const MAX_BLOOM_RADIUS: f32 = 512.0;
+const MAX_COLOR_MULTIPLIER: f32 = 4.0;
+const MAX_BLOOM_STRENGTH: f32 = 4.0;
+const MAX_CHROMATIC_ABERRATION: f32 = 256.0;
+const MAX_LEVELS_GAMMA: f32 = 16.0;
 
 fn build_passes(effects: &[EffectSpec], width: u32, height: u32) -> Vec<EffectPass> {
     let scale = spatial_scale(height);
@@ -705,7 +711,7 @@ fn build_passes(effects: &[EffectSpec], width: u32, height: u32) -> Vec<EffectPa
                 strength,
                 radius,
             } => {
-                let clamped_r = (radius * scale).clamp(0.0, 16.0);
+                let clamped_r = (radius * scale).clamp(0.0, MAX_BLOOM_RADIUS);
                 if clamped_r > 0.0 {
                     passes.push(EffectPass {
                         uniform: EffectUniform {
@@ -747,7 +753,7 @@ fn build_passes(effects: &[EffectSpec], width: u32, height: u32) -> Vec<EffectPa
                             height,
                             seed: 0,
                             p0: 0.0,
-                            p1: strength.clamp(0.0, 2.0),
+                            p1: strength.clamp(0.0, MAX_BLOOM_STRENGTH),
                             ..Default::default()
                         },
                         custom_source: None,
@@ -784,15 +790,36 @@ fn effect_to_pass(effect: &EffectSpec, width: u32, height: u32) -> Option<Effect
         custom_source: None,
     };
     match effect {
-        EffectSpec::Brightness { value } => {
-            Some(base(1, value.clamp(0.0, 2.0), 0.0, 0.0, 0.0, 0.0, 0.0, 0))
-        }
-        EffectSpec::Contrast { value } => {
-            Some(base(2, value.clamp(0.0, 2.0), 0.0, 0.0, 0.0, 0.0, 0.0, 0))
-        }
-        EffectSpec::Saturation { value } => {
-            Some(base(3, value.clamp(0.0, 2.0), 0.0, 0.0, 0.0, 0.0, 0.0, 0))
-        }
+        EffectSpec::Brightness { value } => Some(base(
+            1,
+            value.clamp(0.0, MAX_COLOR_MULTIPLIER),
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0,
+        )),
+        EffectSpec::Contrast { value } => Some(base(
+            2,
+            value.clamp(0.0, MAX_COLOR_MULTIPLIER),
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0,
+        )),
+        EffectSpec::Saturation { value } => Some(base(
+            3,
+            value.clamp(0.0, MAX_COLOR_MULTIPLIER),
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0,
+        )),
         EffectSpec::GaussianBlur { .. } | EffectSpec::GaussianBlurPixels { .. } => None, // Handled in build_passes
         EffectSpec::Sharpen { amount } => {
             Some(base(5, amount.clamp(0.0, 1.0), 0.0, 0.0, 0.0, 0.0, 0.0, 0))
@@ -834,7 +861,7 @@ fn effect_to_pass(effect: &EffectSpec, width: u32, height: u32) -> Option<Effect
         )),
         EffectSpec::ChromaticAberration { amount, angle_deg } => Some(base(
             10,
-            (amount * scale).clamp(0.0, 80.0),
+            (amount * scale).clamp(0.0, MAX_CHROMATIC_ABERRATION),
             *angle_deg,
             0.0,
             0.0,
@@ -853,7 +880,7 @@ fn effect_to_pass(effect: &EffectSpec, width: u32, height: u32) -> Option<Effect
             12,
             in_black.clamp(0.0, 1.0),
             in_white.clamp(0.001, 1.0),
-            gamma.clamp(0.01, 8.0),
+            gamma.clamp(0.01, MAX_LEVELS_GAMMA),
             out_black.clamp(0.0, 1.0),
             out_white.clamp(0.0, 1.0),
             0.0,
