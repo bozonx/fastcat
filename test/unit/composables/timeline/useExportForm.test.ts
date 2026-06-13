@@ -13,6 +13,7 @@ const selectedEntityMock = ref<any>(null);
 const mockExportType = ref<'video' | 'audio'>('video');
 const mockAudioCodec = ref<'aac' | 'opus' | 'flac' | 'pcm' | 'mp3'>('aac');
 const mockOutputFormat = ref<'mp4' | 'webm' | 'mkv'>('mp4');
+const mockAudioSampleRate = ref<number>(48000);
 
 const exportTimelineToFileMock = vi.fn();
 const validateFilenameMock = vi.fn(async () => true);
@@ -144,7 +145,7 @@ vi.mock('~/composables/timeline/export', () => ({
     audioCodec: mockAudioCodec,
     audioBitrateKbps: ref(192),
     audioChannels: ref(2),
-    audioSampleRate: ref(48000),
+    audioSampleRate: mockAudioSampleRate,
     exportWidth: ref(1920),
     exportHeight: ref(1080),
     exportFps: ref(30),
@@ -202,8 +203,6 @@ describe('useExportForm', () => {
   });
 
   beforeEach(async () => {
-    await nextTick();
-    await new Promise((resolve) => setTimeout(resolve, 0));
     timelineFormatMock.value = {
       sampleRate: 48000,
       width: 1920,
@@ -227,6 +226,7 @@ describe('useExportForm', () => {
     mockExportType.value = 'video';
     mockAudioCodec.value = 'aac';
     mockOutputFormat.value = 'mp4';
+    mockAudioSampleRate.value = 48000;
     projectStoreMock.projectSettings.exportSettings = undefined as any;
     ensureExportDirMock.mockReset();
     ensureExportDirMock.mockImplementation(async () => ({
@@ -254,6 +254,8 @@ describe('useExportForm', () => {
       removeEntry: vi.fn(async () => undefined),
     }));
     existingFilesMock.clear();
+    await nextTick();
+    await new Promise((resolve) => setTimeout(resolve, 0));
   });
 
   it('выбирает активный маркер-зону по умолчанию', async () => {

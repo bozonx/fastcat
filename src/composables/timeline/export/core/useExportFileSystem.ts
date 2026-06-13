@@ -25,7 +25,7 @@ export function useExportFileSystem() {
   }
 
   async function ensureExportDir(): Promise<FileSystemDirectoryHandle> {
-    if (!workspaceStore.projectsHandle || !projectStore.currentProjectName) {
+    if (!projectStore.currentProjectName) {
       resetExportFsCache();
       throw new Error('Project is not opened');
     }
@@ -35,9 +35,12 @@ export function useExportFileSystem() {
     }
 
     try {
-      const projectDir = await workspaceStore.projectsHandle.getDirectoryHandle(
-        projectStore.currentProjectName,
-      );
+      const projectDir = await projectStore.getProjectDirHandle();
+      if (!projectDir) {
+        resetExportFsCache();
+        throw new Error('Project is not opened');
+      }
+
       cachedExportDir = await projectDir.getDirectoryHandle(EXPORT_DIR_NAME, { create: true });
       cachedProjectName = projectStore.currentProjectName;
       cachedProjectsHandle = workspaceStore.projectsHandle;
