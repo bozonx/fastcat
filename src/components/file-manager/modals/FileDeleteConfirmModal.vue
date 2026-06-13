@@ -30,7 +30,7 @@ const { t } = useI18n();
     @confirm="emit('confirm')"
   >
     <div>
-      <div v-if="props.deleteTargets.length === 1" class="mt-2 text-sm font-medium text-ui-text">
+      <div v-if="props.deleteTargets.length === 1" class="mt-2 text-sm font-medium text-ui-text truncate">
         {{ props.deleteTargets[0]?.name }}
       </div>
       <div v-else-if="props.deleteTargets.length > 1" class="mt-2 text-sm font-medium text-ui-text">

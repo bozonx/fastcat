@@ -42,7 +42,7 @@ const { t, locale: _locale } = useI18n();
         <span class="truncate">{{ props.fileInfo.name }}</span>
         <UIcon name="i-heroicons-arrow-top-right-on-square-20-solid" class="w-3 h-3 shrink-0" />
       </NuxtLink>
-      <span v-else>
+      <span v-else class="break-all">
         {{ props.selectedPath === '' ? '/' : props.selectedPath }}
       </span>
     </PropertyRow>

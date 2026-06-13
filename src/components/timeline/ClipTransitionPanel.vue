@@ -1,8 +1,13 @@
 <script setup lang="ts">
-import { computed, ref, toRef } from 'vue';
+import { computed, ref, toRef, watch } from 'vue';
 import { getAllTransitionManifests } from '~/transitions';
 import type { ClipTransition, TimelineTrack, TimelineClipItem } from '~/timeline/types';
-import type { TransitionCurve, TransitionParamField } from '~/transitions/core/registry';
+import type {
+  TransitionCurve,
+  TransitionManifest,
+  TransitionMode,
+  TransitionParamField,
+} from '~/transitions/core/registry';
 import UiSliderInput from '~/components/ui/UiSliderInput.vue';
 import UiButtonGroup from '~/components/ui/UiButtonGroup.vue';
 import UiModal from '~/components/ui/UiModal.vue';
@@ -107,19 +112,62 @@ const sourceOptions = computed(() => [
     value: 'adjacent',
     label: t('fastcat.timeline.transition.sourceAdjacentShort'),
     title: t('fastcat.timeline.transition.sourceAdjacent'),
-    disabled: !isAdjacentAvailable.value,
+    disabled: !isTransitionModeAvailable(selectedManifest.value, 'adjacent'),
   },
   {
     value: 'background',
     label: t('fastcat.timeline.transition.sourceBackgroundShort'),
     title: t('fastcat.timeline.transition.sourceBackground'),
+    disabled: !isTransitionModeAvailable(selectedManifest.value, 'background'),
   },
   {
     value: 'transparent',
     label: t('fastcat.timeline.transition.sourceTransparentShort'),
     title: t('fastcat.timeline.transition.sourceTransparent'),
+    disabled: !isTransitionModeAvailable(selectedManifest.value, 'transparent'),
   },
 ]);
+
+function isTransitionModeAvailable(
+  manifest: TransitionManifest | undefined,
+  mode: TransitionMode,
+): boolean {
+  if (mode === 'adjacent' && !isAdjacentAvailable.value) {
+    return false;
+  }
+
+  return !manifest?.supportedModes || manifest.supportedModes.includes(mode);
+}
+
+function isManifestAvailable(manifest: TransitionManifest): boolean {
+  const modes = manifest.supportedModes ?? ['adjacent', 'background', 'transparent'];
+  return modes.some((mode) => isTransitionModeAvailable(manifest, mode));
+}
+
+watch(
+  [manifests, selectedManifest, sourceOptions],
+  () => {
+    if (selectedManifest.value && !isManifestAvailable(selectedManifest.value)) {
+      const fallbackManifest = manifests.value.find((manifest) => isManifestAvailable(manifest));
+      if (fallbackManifest && fallbackManifest.type !== selectedType.value) {
+        selectedType.value = fallbackManifest.type;
+        return;
+      }
+    }
+
+    if (
+      sourceOptions.value.some((option) => option.value === selectedMode.value && !option.disabled)
+    ) {
+      return;
+    }
+
+    const fallbackMode = sourceOptions.value.find((option) => !option.disabled)?.value;
+    if (fallbackMode) {
+      selectedMode.value = fallbackMode as TransitionMode;
+    }
+  },
+  { immediate: true },
+);
 
 const curveOptions = computed<CurveOption[]>(() => {
   const curves: TransitionCurve[] = ['linear', 'smooth', 'ease-in', 'ease-out'];
@@ -283,11 +331,14 @@ defineExpose({
         v-for="manifest in manifests"
         :key="manifest.type"
         type="button"
+        :disabled="!isManifestAvailable(manifest)"
         class="flex items-center gap-2 px-2 py-1.5 rounded border transition-colors w-full"
         :class="
-          selectedType === manifest.type
-            ? 'bg-primary-500/20 border-primary-500 text-primary-400'
-            : 'bg-ui-bg border-ui-border hover:bg-ui-bg-hover'
+          !isManifestAvailable(manifest)
+            ? 'bg-ui-bg border-ui-border text-ui-text-muted opacity-50 cursor-not-allowed'
+            : selectedType === manifest.type
+              ? 'bg-primary-500/20 border-primary-500 text-primary-400'
+              : 'bg-ui-bg border-ui-border hover:bg-ui-bg-hover'
         "
         @click="selectedType = manifest.type"
       >

@@ -61,11 +61,15 @@ describe('unified video effect manifests', () => {
       'zoom',
       'bloom',
       'cube',
-      'card-swap',
-      'falling-card',
     ]);
     expect(getTransitionManifest('dissolve')?.renderer).toBe('wgpu');
     expect(getTransitionManifest('dissolve')?.createFilter).toBeUndefined();
+    expect(getTransitionManifest('dissolve')?.supportedModes).toEqual([
+      'adjacent',
+      'background',
+      'transparent',
+    ]);
+    expect(getTransitionManifest('wipe')?.supportedModes).toEqual(['adjacent']);
     for (const manifest of getAllTransitionManifests()) {
       expect(manifest.toTauriSpec, manifest.type).toBeTypeOf('function');
     }

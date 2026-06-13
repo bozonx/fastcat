@@ -504,7 +504,7 @@ describe('buildNativeMonitorScene', () => {
     });
 
     expect(scene.master_effects).toHaveLength(1);
-    expect(scene.master_effects[0]).toMatchObject({ type: 'gaussian-blur', radius: 8 });
+    expect(scene.master_effects[0]).toMatchObject({ type: 'gaussian-blur', radius: 5 });
   });
 
   it('includes adjustment clips as adjustment layers with their effects', async () => {
@@ -568,8 +568,138 @@ describe('buildNativeMonitorScene', () => {
     expect(adjustmentLayer).toBeDefined();
     expect(adjustmentLayer?.id).toBe('adj-1');
     expect(adjustmentLayer?.effects).toHaveLength(1);
-    expect(adjustmentLayer?.effects[0]).toMatchObject({ type: 'gaussian-blur', radius: 8 });
+    expect(adjustmentLayer?.effects[0]).toMatchObject({ type: 'gaussian-blur', radius: 3 });
     expect(adjustmentLayer?.timeline_start_sec).toBe(0.5);
     expect(adjustmentLayer?.timeline_end_sec).toBe(1.5);
+  });
+
+  it('moves an adjacent transitionOut to the next clip transitionIn for native shader rendering', async () => {
+    const timelineDoc = {
+      version: 1,
+      timebase: { fps: 30 },
+      tracks: [
+        {
+          id: 'v-track',
+          kind: 'video',
+          videoHidden: false,
+          items: [
+            {
+              id: 'clip-a',
+              kind: 'clip',
+              type: 'media',
+              trackId: 'v-track',
+              source: { path: '_video/a.mp4' },
+              timelineRange: { startUs: 0, durationUs: 1_000_000 },
+              sourceRange: { startUs: 0, durationUs: 1_000_000 },
+              transitionOut: {
+                type: 'wipe',
+                durationUs: 250_000,
+                mode: 'adjacent',
+                params: { angle: 45, softness: 0.1 },
+              },
+            },
+            {
+              id: 'clip-b',
+              kind: 'clip',
+              type: 'media',
+              trackId: 'v-track',
+              source: { path: '_video/b.mp4' },
+              timelineRange: { startUs: 1_000_000, durationUs: 1_000_000 },
+              sourceRange: { startUs: 0, durationUs: 1_000_000 },
+            },
+          ],
+        },
+      ],
+    };
+    const projectStore = {
+      projectSettings: {
+        project: { width: 1920, height: 1080, fps: 30, audioDeclickDurationUs: 0 },
+      },
+      getProjectDirHandle: vi.fn(async () => ({ path: '/workspace/project' })),
+      getFileByPath: vi.fn(),
+    };
+    const workspaceStore = {
+      userSettings: {
+        projectDefaults: { defaultAudioFadeCurve: 'linear' },
+        optimization: { nativeMonitorSyncMode: 'balanced' },
+      },
+      activeMonitor: { useProxy: false },
+      lastProjectPath: null,
+      recentProjects: [],
+    };
+
+    const scene = await buildNativeMonitorScene({
+      timelineDoc: timelineDoc as never,
+      projectStore: projectStore as never,
+      workspaceStore: workspaceStore as never,
+    });
+
+    const fromLayer = scene.layers.find((layer) => layer.id === 'clip-a');
+    const toLayer = scene.layers.find((layer) => layer.id === 'clip-b');
+    expect(fromLayer?.transition_out).toBeUndefined();
+    expect(toLayer?.transition_in).toMatchObject({
+      type: 'wipe',
+      from_layer_id: 'clip-a',
+      spec: { type: 'wipe', angle_deg: 45, softness: 0.1 },
+    });
+  });
+
+  it('warns and skips unsupported non-adjacent native shader transitions', async () => {
+    const onWarning = vi.fn();
+    const timelineDoc = {
+      version: 1,
+      timebase: { fps: 30 },
+      tracks: [
+        {
+          id: 'v-track',
+          kind: 'video',
+          videoHidden: false,
+          items: [
+            {
+              id: 'clip-1',
+              kind: 'clip',
+              type: 'media',
+              trackId: 'v-track',
+              source: { path: '_video/source.mp4' },
+              timelineRange: { startUs: 0, durationUs: 1_000_000 },
+              sourceRange: { startUs: 0, durationUs: 1_000_000 },
+              transitionOut: {
+                type: 'wipe',
+                durationUs: 250_000,
+                mode: 'transparent',
+              },
+            },
+          ],
+        },
+      ],
+    };
+    const projectStore = {
+      projectSettings: {
+        project: { width: 1920, height: 1080, fps: 30, audioDeclickDurationUs: 0 },
+      },
+      getProjectDirHandle: vi.fn(async () => ({ path: '/workspace/project' })),
+      getFileByPath: vi.fn(),
+    };
+    const workspaceStore = {
+      userSettings: {
+        projectDefaults: { defaultAudioFadeCurve: 'linear' },
+        optimization: { nativeMonitorSyncMode: 'balanced' },
+      },
+      activeMonitor: { useProxy: false },
+      lastProjectPath: null,
+      recentProjects: [],
+    };
+
+    const scene = await buildNativeMonitorScene({
+      timelineDoc: timelineDoc as never,
+      projectStore: projectStore as never,
+      workspaceStore: workspaceStore as never,
+      onWarning,
+    });
+
+    expect(scene.layers[0]?.transition_out).toBeUndefined();
+    expect(onWarning).toHaveBeenCalledWith(
+      'Transition "wipe" on clip "clip-1" is not supported by the native Tauri renderer in "transparent" mode.',
+    );
   });
 });

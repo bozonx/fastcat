@@ -8,7 +8,21 @@ vi.mock('~/components/ui/UiSliderInput.vue', () => ({
   default: { template: '<div class="mock-slider"></div>', props: ['modelValue'] },
 }));
 vi.mock('~/components/ui/UiButtonGroup.vue', () => ({
-  default: { template: '<div class="mock-btn-group"></div>', props: ['modelValue', 'options'] },
+  default: {
+    template: `
+      <div class="mock-btn-group">
+        <button
+          v-for="option in options"
+          :key="option.value"
+          type="button"
+          :disabled="option.disabled"
+        >
+          {{ option.value }}
+        </button>
+      </div>
+    `,
+    props: ['modelValue', 'options'],
+  },
 }));
 vi.mock('~/components/ui/UiModal.vue', () => ({
   default: {
@@ -20,6 +34,28 @@ vi.mock('~/components/properties/TransitionParamFields.vue', () => ({
   default: { template: '<div class="mock-params"></div>' },
 }));
 
+vi.mock('~/transitions', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('~/transitions')>();
+
+  return {
+    ...actual,
+    getAllTransitionManifests: () => [
+      {
+        type: 'dissolve',
+        name: 'Dissolve',
+        icon: 'i-heroicons-arrows-right-left',
+        supportedModes: ['adjacent', 'background', 'transparent'],
+      },
+      {
+        type: 'wipe',
+        name: 'Wipe',
+        icon: 'i-heroicons-arrow-long-right',
+        supportedModes: ['adjacent'],
+      },
+    ],
+  };
+});
+
 // Mock Composables
 vi.mock('~/composables/timeline/useClipTransitionPanel', () => ({
   useClipTransitionPanel: () => ({
@@ -30,10 +66,10 @@ vi.mock('~/composables/timeline/useClipTransitionPanel', () => ({
     edgeIcon: ref('i-heroicons-arrow-right-circle'),
     remove: vi.fn(),
     selectedCurve: ref('linear'),
-    selectedManifest: ref({ paramFields: [] }),
+    selectedManifest: ref({ paramFields: [], supportedModes: ['adjacent'] }),
     selectedMode: ref('adjacent'),
     selectedParams: ref({}),
-    selectedType: ref('dissolve'),
+    selectedType: ref('wipe'),
     updateParam: vi.fn(),
   }),
 }));
@@ -83,5 +119,18 @@ describe('ClipTransitionPanel', () => {
 
     const modal = component.find('.mock-modal');
     expect(modal.exists()).toBe(true);
+  });
+
+  it('disables source modes unsupported by the selected native transition', async () => {
+    const component = await mountSuspended(ClipTransitionPanel, { props: defaultProps });
+
+    const buttons = component.findAll('.mock-btn-group button');
+    const adjacent = buttons.find((button) => button.text() === 'adjacent');
+    const background = buttons.find((button) => button.text() === 'background');
+    const transparent = buttons.find((button) => button.text() === 'transparent');
+
+    expect(adjacent?.attributes('disabled')).toBeUndefined();
+    expect(background?.attributes('disabled')).toBeDefined();
+    expect(transparent?.attributes('disabled')).toBeDefined();
   });
 });

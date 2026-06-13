@@ -43,7 +43,7 @@ function handleChoice(choice: 'open-saved' | 'restore-autosave') {
     }"
   >
     <div class="space-y-4 pt-1">
-      <p class="text-sm text-ui-text-muted leading-relaxed">
+      <p class="text-sm text-ui-text-muted leading-relaxed break-all">
         {{ t('videoEditor.timeline.backups.recoveryDescription', { name: timelineName }) }}
       </p>
 

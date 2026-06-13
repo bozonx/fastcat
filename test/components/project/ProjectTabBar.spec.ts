@@ -218,4 +218,39 @@ describe('ProjectTabBar.vue', () => {
     expect(restoredTabs).toHaveLength(2);
     expect(restoredTabs[1].attributes('data-tab-id')).toBe('history');
   });
+
+  it('sets draggable false on tabs when experimentalFeatures is off', async () => {
+    const component = await mountWithNuxt(ProjectTabBar, {
+      initialState: {
+        projectTabs: {
+          activeTabId: 'files',
+          fileTabs: [],
+          staticTabsOrder: ['files', 'history'],
+          tabOrder: [],
+          hiddenStaticTabs: [],
+        },
+      },
+    });
+
+    const store = useProjectTabsStore();
+    store.registerProjectTab({
+      id: 'files',
+      label: 'Files',
+      icon: 'i-heroicons-folder',
+      component: markRaw(MockComponent),
+    });
+    store.registerProjectTab({
+      id: 'history',
+      label: 'History',
+      icon: 'i-heroicons-clock',
+      component: markRaw(MockComponent),
+    });
+
+    await component.vm.$nextTick();
+
+    const tabs = component.findAll('[data-tab-id]');
+    expect(tabs[0].attributes('draggable')).toBe('false');
+    expect(tabs[1].attributes('draggable')).toBe('false');
+  });
+
 });

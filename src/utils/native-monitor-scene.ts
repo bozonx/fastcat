@@ -24,7 +24,7 @@ import { normalizeClipSpeed } from '~/utils/video-editor/source-time';
 import type { TauriDirectoryHandle } from '~/stores/workspace/provider/tauri-handle';
 import { buildEffectSpecs } from '~/effects';
 import { getTauriTransitionManifest } from '~/transitions/tauri/manifests';
-import { getTransitionManifest } from '~/transitions/core/registry';
+import type { TransitionMode } from '~/transitions/core/registry';
 import { buildNativeAudioEffectSpecs } from '~/utils/audio/audio-clip-descriptor';
 
 export { buildNativeAudioEffectSpecs };
@@ -212,6 +212,33 @@ function getEffectiveTransitionIn(
   return undefined;
 }
 
+function getTransitionMode(
+  transition: WorkerTimelineClip['transitionIn'] | WorkerTimelineClip['transitionOut'],
+): TransitionMode {
+  return transition?.mode ?? 'transparent';
+}
+
+function isNativeTransitionSupported(params: {
+  type: string;
+  mode: TransitionMode;
+  hasAdjacentPeer: boolean;
+}): boolean {
+  if (params.type === 'dissolve') {
+    return true;
+  }
+
+  if (!params.hasAdjacentPeer) {
+    return false;
+  }
+
+  const manifest = getTauriTransitionManifest(params.type);
+  if (!manifest?.toTauriSpec) {
+    return false;
+  }
+
+  return (manifest.supportedModes ?? ['adjacent']).includes(params.mode);
+}
+
 function buildNativeTransform(
   transform: ClipTransform | undefined,
   sceneWidth: number,
@@ -362,8 +389,9 @@ function buildBaseLayer(params: {
   sceneHeight: number;
   z: number;
   allClips: WorkerTimelineClip[];
+  onWarning?: (message: string) => void;
 }): Omit<NativeSceneLayer, 'kind'> {
-  const { clip, sceneWidth, sceneHeight, z, allClips } = params;
+  const { clip, sceneWidth, sceneHeight, z, allClips, onWarning } = params;
   const startUs = clip.timelineRange.startUs;
   const durationUs = clip.timelineRange.durationUs;
   const sourceStartUs = clip.sourceRange.startUs;
@@ -373,11 +401,24 @@ function buildBaseLayer(params: {
     const effectiveTransitionIn = getEffectiveTransitionIn(clip, allClips);
     if (effectiveTransitionIn && effectiveTransitionIn.durationUs > 0) {
       const type = effectiveTransitionIn.type;
-      const manifest = getTauriTransitionManifest(type) || getTransitionManifest(type);
+      const mode = getTransitionMode(effectiveTransitionIn);
+      const fromClip = mode === 'adjacent' ? findPreviousAdjacentClip(clip, allClips) : undefined;
+      if (
+        !isNativeTransitionSupported({
+          type,
+          mode,
+          hasAdjacentPeer: Boolean(fromClip),
+        })
+      ) {
+        onWarning?.(
+          `Transition "${type}" on clip "${clip.id}" is not supported by the native Tauri renderer in "${mode}" mode.`,
+        );
+        return undefined;
+      }
+      const manifest = getTauriTransitionManifest(type);
       const spec = manifest?.toTauriSpec
         ? manifest.toTauriSpec(effectiveTransitionIn.params ?? {})
         : undefined;
-      const fromClip = findPreviousAdjacentClip(clip, allClips);
 
       return {
         type,
@@ -397,7 +438,21 @@ function buildBaseLayer(params: {
       !isTransitionOutConsumedByNextClip(clip, allClips)
     ) {
       const type = clip.transitionOut.type;
-      const manifest = getTauriTransitionManifest(type) || getTransitionManifest(type);
+      const mode = getTransitionMode(clip.transitionOut);
+      const toClip = mode === 'adjacent' ? findNextAdjacentClip(clip, allClips) : undefined;
+      if (
+        !isNativeTransitionSupported({
+          type,
+          mode,
+          hasAdjacentPeer: Boolean(toClip),
+        })
+      ) {
+        onWarning?.(
+          `Transition "${type}" on clip "${clip.id}" is not supported by the native Tauri renderer in "${mode}" mode.`,
+        );
+        return undefined;
+      }
+      const manifest = getTauriTransitionManifest(type);
       const spec = manifest?.toTauriSpec
         ? manifest.toTauriSpec(clip.transitionOut.params ?? {})
         : undefined;
@@ -541,7 +596,14 @@ export async function buildNativeMonitorScene(
   for (const [index, clip] of builtVideo.clips.entries()) {
     if (clip.clipType === 'hud') continue;
     const z = clip.layer * 1000 + index;
-    const base = buildBaseLayer({ clip, sceneWidth, sceneHeight, z, allClips: builtVideo.clips });
+    const base = buildBaseLayer({
+      clip,
+      sceneWidth,
+      sceneHeight,
+      z,
+      allClips: builtVideo.clips,
+      onWarning: params.onWarning,
+    });
 
     if (clip.clipType === 'adjustment') {
       layers.push({

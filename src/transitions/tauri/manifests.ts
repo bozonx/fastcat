@@ -490,6 +490,7 @@ export const tauriTransitionManifests: TransitionManifest[] = [
     defaultParams: {},
     renderMode: 'shader',
     renderer: 'wgpu',
+    supportedModes: ['adjacent', 'background', 'transparent'],
     toTauriSpec: () => ({ type: 'crossfade' }),
     computeOutOpacity: () => 1,
     computeInOpacity: () => 1,
@@ -506,6 +507,7 @@ export const tauriTransitionManifests: TransitionManifest[] = [
     },
     renderMode: 'shader',
     renderer: 'wgpu',
+    supportedModes: ['adjacent'],
     paramFields: [
       {
         kind: 'slider',
@@ -543,6 +545,7 @@ export const tauriTransitionManifests: TransitionManifest[] = [
     },
     renderMode: 'shader',
     renderer: 'wgpu',
+    supportedModes: ['adjacent'],
     paramFields: [
       {
         kind: 'select',
@@ -573,6 +576,7 @@ export const tauriTransitionManifests: TransitionManifest[] = [
     },
     renderMode: 'shader',
     renderer: 'wgpu',
+    supportedModes: ['adjacent'],
     toTauriSpec: (params: Record<string, unknown>) => ({
       type: 'custom-wgsl',
       source: CLOCK_WGSL,
@@ -600,6 +604,7 @@ export const tauriTransitionManifests: TransitionManifest[] = [
     },
     renderMode: 'shader',
     renderer: 'wgpu',
+    supportedModes: ['adjacent'],
     toTauriSpec: (params: Record<string, unknown>) => ({
       type: 'custom-wgsl',
       source: BARN_DOOR_WGSL,
@@ -623,6 +628,7 @@ export const tauriTransitionManifests: TransitionManifest[] = [
     },
     renderMode: 'shader',
     renderer: 'wgpu',
+    supportedModes: ['adjacent'],
     toTauriSpec: (params) => ({
       type: 'fade-through-color',
       color: normalizeTransitionColor(params.color, '#000000'),
@@ -655,6 +661,7 @@ export const tauriTransitionManifests: TransitionManifest[] = [
     },
     renderMode: 'shader',
     renderer: 'wgpu',
+    supportedModes: ['adjacent'],
     paramFields: [
       {
         kind: 'slider',
@@ -724,6 +731,7 @@ export const tauriTransitionManifests: TransitionManifest[] = [
     },
     renderMode: 'shader',
     renderer: 'wgpu',
+    supportedModes: ['adjacent'],
     toTauriSpec: (params: Record<string, unknown>) => {
       const center = centerFromAnchor(params);
       return {
@@ -759,6 +767,7 @@ export const tauriTransitionManifests: TransitionManifest[] = [
     },
     renderMode: 'shader',
     renderer: 'wgpu',
+    supportedModes: ['adjacent'],
     toTauriSpec: (params: Record<string, unknown>) => ({
       type: 'custom-wgsl',
       source: BLINDS_WGSL,
@@ -787,6 +796,7 @@ export const tauriTransitionManifests: TransitionManifest[] = [
     },
     renderMode: 'shader',
     renderer: 'wgpu',
+    supportedModes: ['adjacent'],
     toTauriSpec: (params: Record<string, unknown>) => {
       let samples = 16.0;
       const blurQuality = params.blurQuality as string;
@@ -824,6 +834,7 @@ export const tauriTransitionManifests: TransitionManifest[] = [
     },
     renderMode: 'shader',
     renderer: 'wgpu',
+    supportedModes: ['adjacent'],
     toTauriSpec: (params: Record<string, unknown>) => ({
       type: 'custom-wgsl',
       source: BLOOM_WGSL,
@@ -850,6 +861,7 @@ export const tauriTransitionManifests: TransitionManifest[] = [
     },
     renderMode: 'shader',
     renderer: 'wgpu',
+    supportedModes: ['adjacent'],
     toTauriSpec: (params: Record<string, unknown>) => ({
       type: 'custom-wgsl',
       source: DIRECTIONAL_ZOOM_WGSL,
@@ -857,62 +869,6 @@ export const tauriTransitionManifests: TransitionManifest[] = [
         p0: directionIndex(params.direction),
         p1: 1 + clamp(finiteNumber(params.unzoomAmount, 0.3), 0, 1),
         p2: 0.18,
-      },
-    }),
-    computeOutOpacity: transparent,
-    computeInOpacity: transparent,
-  },
-  {
-    type: 'card-swap',
-    name: 'Card Swap',
-    nameKey: 'fastcat.transitions.card-swap.name',
-    icon: 'i-heroicons-rectangle-stack',
-    defaultDurationUs: 800_000,
-    defaultParams: {
-      direction: 'left',
-      mode: 'overlap',
-      slideOrder: 'out-first',
-      maxDarkness: 0.5,
-      shadowSize: 0.2,
-      shadowOpacity: 0.6,
-      blurStrength: 0.5,
-      blurQuality: 'low',
-      bloom: false,
-    },
-    renderMode: 'shader',
-    renderer: 'wgpu',
-    toTauriSpec: (params: Record<string, unknown>) => ({
-      type: 'custom-wgsl',
-      source: DIRECTIONAL_ZOOM_WGSL,
-      params: {
-        p0: directionIndex(params.direction),
-        p1: 1.08,
-        p2: clamp(finiteNumber(params.maxDarkness, 0.5), 0, 1),
-      },
-    }),
-    computeOutOpacity: transparent,
-    computeInOpacity: transparent,
-  },
-  {
-    type: 'falling-card',
-    name: 'Falling Card',
-    nameKey: 'fastcat.transitions.falling-card.name',
-    icon: 'i-heroicons-square-3-stack-3d',
-    defaultDurationUs: 800_000,
-    defaultParams: {
-      direction: 'left',
-      depthDirection: 'backward',
-      action: 'out',
-    },
-    renderMode: 'shader',
-    renderer: 'wgpu',
-    toTauriSpec: (params: Record<string, unknown>) => ({
-      type: 'custom-wgsl',
-      source: DIRECTIONAL_ZOOM_WGSL,
-      params: {
-        p0: directionIndex(params.direction),
-        p1: params.depthDirection === 'forward' ? 1.35 : 1.12,
-        p2: 0.28,
       },
     }),
     computeOutOpacity: transparent,

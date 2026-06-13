@@ -2,10 +2,13 @@
 import { VueDraggable } from 'vue-draggable-plus';
 import { isFileTab, type AnyProjectTab } from '~/stores/project-tabs.store';
 import { useProjectTabs } from '~/composables/project/useProjectTabs';
+import { useWorkspaceStore } from '~/stores/workspace.store';
 
 const emit = defineEmits<{
   (e: 'tab-drag-start', event: DragEvent, tabId: string): void;
 }>();
+
+const workspaceStore = useWorkspaceStore();
 
 const {
   activateProjectTab,
@@ -37,6 +40,7 @@ function tabLabel(tab: AnyProjectTab): string {
 }
 
 function isDraggable(tab: AnyProjectTab): boolean {
+  if (!workspaceStore.userSettings.experimentalFeatures) return false;
   if (isFileTab(tab)) return true;
   return tab.id !== 'files';
 }
