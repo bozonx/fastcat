@@ -64,6 +64,7 @@ const OUTPUT_STALL_TIMEOUT: Duration = Duration::from_millis(1500);
 /// passed those through, cleared the ring, and the producer replayed the first
 /// fraction of audio — heard as crackle + sped-up repeat.
 const SEEK_IGNORE_SEC: f64 = 1.0;
+const PRIME_REUSE_EPSILON_SEC: f64 = 1e-4;
 
 impl NativeAudioEngine {
     pub fn new(settings: &AudioEngineSettings) -> Result<Self> {
@@ -325,9 +326,18 @@ impl NativeAudioEngine {
     fn start_transport(&self, pts_sec: f64, hold_output: bool) {
         self.restart_finished_producer();
         let mut state = self.shared.0.lock();
+        let pts = pts_sec.max(0.0);
+        if hold_output
+            && state.playing
+            && state.hold_output
+            && !state.pending_ring_clear
+            && (state.origin_pts_sec - pts).abs() <= PRIME_REUSE_EPSILON_SEC
+        {
+            return;
+        }
         state.playing = true;
         state.hold_output = hold_output;
-        state.origin_pts_sec = pts_sec.max(0.0);
+        state.origin_pts_sec = pts;
         state.producer_pts_sec = state.origin_pts_sec;
         self.clock.reset_frames();
         // The producer arms the real-time output clock after a tiny startup
@@ -1048,6 +1058,54 @@ mod tests {
             "output clock must stay disarmed during priming"
         );
         assert_eq!(engine.current_pts(), None);
+    }
+
+    #[test]
+    fn start_priming_reuses_existing_prime_at_same_position() {
+        let engine = mock_engine();
+        engine.start_priming(10.0);
+        {
+            let mut state = engine.shared.0.lock();
+            // Simulate the producer having consumed the pending clear. After that,
+            // a Play at the same paused seek point must keep the warmed ring.
+            state.pending_ring_clear = false;
+        }
+        let before = seek_serial(&engine);
+
+        engine.start_priming(10.0);
+
+        assert_eq!(
+            seek_serial(&engine),
+            before,
+            "re-priming the same paused position must not flush the warmed ring"
+        );
+        let state = engine.shared.0.lock();
+        assert!(state.playing);
+        assert!(state.hold_output);
+        assert_eq!(state.origin_pts_sec, 10.0);
+    }
+
+    #[test]
+    fn start_priming_retargets_when_position_changes() {
+        let engine = mock_engine();
+        engine.start_priming(10.0);
+        {
+            let mut state = engine.shared.0.lock();
+            state.pending_ring_clear = false;
+        }
+        let before = seek_serial(&engine);
+
+        engine.start_priming(12.0);
+
+        assert_eq!(
+            seek_serial(&engine),
+            before.wrapping_add(1),
+            "a prime for a new playhead position must flush old buffered audio"
+        );
+        let state = engine.shared.0.lock();
+        assert_eq!(state.origin_pts_sec, 12.0);
+        assert_eq!(state.producer_pts_sec, 12.0);
+        assert!(state.pending_ring_clear);
     }
 
     #[test]

@@ -1050,6 +1050,15 @@ impl WindowState {
         }
         self.layers.seek(t, transport_playing);
 
+        if !transport_playing {
+            if let Some(audio) = self.audio.as_ref() {
+                if !audio.is_empty() {
+                    log::info!("[monitor] paused audio prime after seek to {t:.3}s");
+                    audio.start_priming(t);
+                }
+            }
+        }
+
         // After a real user seek during playback the audio ring was flushed and the
         // callback stopped. If we let the clock keep running, video races ahead while
         // the producer refills the ring. When the callback restarts (after only
