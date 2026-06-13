@@ -8,6 +8,7 @@ import {
   useTimelineExport,
   sanitizeBaseName,
   resolveExportCodecs,
+  resolveAudioExportSampleRate,
   supportsExportAlpha,
   normalizeExportFilename,
 } from '~/composables/timeline/export';
@@ -246,6 +247,7 @@ export function useExportForm() {
   );
 
   watch(ext, async (nextExt) => {
+    if (isInitializing.value) return;
     try {
       const base = outputFilename.value.replace(/\.[^.]+$/, '');
       if (!base) return;
@@ -367,10 +369,7 @@ export function useExportForm() {
       const timelineBase = sanitizeBaseName(
         projectStore.currentFileName || projectStore.currentProjectName || 'timeline',
       );
-      outputFilename.value = await getNextAvailableFilename(
-        timelineBase,
-        ext.value,
-      );
+      outputFilename.value = await getNextAvailableFilename(timelineBase, ext.value);
       await validateFilename();
     } finally {
       await nextTick();
@@ -454,6 +453,11 @@ export function useExportForm() {
         !isAudio &&
         supportsExportAlpha(finalFormat, resolvedCodecs.videoCodec) &&
         exportAlpha.value;
+      const effectiveAudioSampleRate = resolveAudioExportSampleRate({
+        format: finalFormat,
+        audioCodec: resolvedCodecs.audioCodec,
+        sampleRate: audioSampleRate.value,
+      });
 
       let exportSuccess = false;
       try {
@@ -466,7 +470,7 @@ export function useExportForm() {
             audioBitrate: audioBitrateBps.value,
             audio: isAudio ? true : !excludeAudio.value,
             audioCodec: resolvedCodecs.audioCodec,
-            audioSampleRate: audioSampleRate.value,
+            audioSampleRate: effectiveAudioSampleRate,
             audioChannels: audioChannels.value === 1 ? 'mono' : 'stereo',
             width: isAudio ? 2 : normalizedExportWidth.value,
             height: isAudio ? 2 : normalizedExportHeight.value,

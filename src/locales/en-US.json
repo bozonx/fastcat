@@ -1136,7 +1136,6 @@
       "filename": "Output filename",
       "filenameAlreadyExists": "A file with this name already exists",
       "filenameInvalidChars": "Filename cannot contain path separators or control characters",
-      "filenameInvalidExtension": "Filename must end with .{ext}",
       "filenamePlaceholder": "e.g. video.{ext}",
       "filenameRequired": "Filename is required",
       "fps": "FPS",

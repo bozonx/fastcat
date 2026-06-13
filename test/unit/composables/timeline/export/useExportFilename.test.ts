@@ -30,13 +30,11 @@ vi.stubGlobal('useI18n', () => ({
 }));
 
 describe('useExportFilename', () => {
-  const extMock = ref('mp4');
   const mockExportDir = { name: '_export' } as unknown as FileSystemDirectoryHandle;
   const ensureExportDirMock = vi.fn(async () => mockExportDir);
   const listExportFilenamesMock = vi.fn(async () => new Set<string>());
 
   beforeEach(() => {
-    extMock.value = 'mp4';
     ensureExportDirMock.mockClear();
     listExportFilenamesMock.mockClear();
     listExportFilenamesMock.mockResolvedValue(new Set<string>());
@@ -44,7 +42,6 @@ describe('useExportFilename', () => {
 
   it('требует указания имени файла', async () => {
     const { outputFilename, filenameError, validateFilename } = useExportFilename(
-      extMock,
       ensureExportDirMock,
       listExportFilenamesMock,
     );
@@ -57,7 +54,6 @@ describe('useExportFilename', () => {
 
   it('запрещает недопустимые символы в имени файла', async () => {
     const { outputFilename, filenameError, validateFilename } = useExportFilename(
-      extMock,
       ensureExportDirMock,
       listExportFilenamesMock,
     );
@@ -73,20 +69,18 @@ describe('useExportFilename', () => {
     expect(filenameError.value).toBe('videoEditor.export.filenameInvalidChars');
   });
 
-  it('требует соответствия расширения выбранному формату (ext)', async () => {
+  it('разрешает любое расширение файла (не валидирует расширение)', async () => {
     const { outputFilename, filenameError, validateFilename } = useExportFilename(
-      extMock,
       ensureExportDirMock,
       listExportFilenamesMock,
     );
 
     outputFilename.value = 'video.webm';
     let isValid = await validateFilename();
-    expect(isValid).toBe(false);
-    expect(filenameError.value).toBe('videoEditor.export.filenameInvalidExtension:mp4');
+    expect(isValid).toBe(true);
+    expect(filenameError.value).toBeNull();
 
-    extMock.value = 'webm';
-    outputFilename.value = 'video.webm';
+    outputFilename.value = 'video.whatever';
     isValid = await validateFilename();
     expect(isValid).toBe(true);
     expect(filenameError.value).toBeNull();
@@ -96,7 +90,6 @@ describe('useExportFilename', () => {
     listExportFilenamesMock.mockResolvedValue(new Set(['video.mp4', 'exists.mp4']));
 
     const { outputFilename, filenameError, validateFilename } = useExportFilename(
-      extMock,
       ensureExportDirMock,
       listExportFilenamesMock,
     );
@@ -111,7 +104,6 @@ describe('useExportFilename', () => {
     listExportFilenamesMock.mockResolvedValue(new Set(['video.mp4', 'video_001.mp4']));
 
     const { getNextAvailableFilename } = useExportFilename(
-      extMock,
       ensureExportDirMock,
       listExportFilenamesMock,
     );

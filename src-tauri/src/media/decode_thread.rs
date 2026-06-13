@@ -702,6 +702,8 @@ mod tests {
                     fps: self.fps,
                     codec: "mock".into(),
                     has_audio: false,
+                    start_time_sec: 0.0,
+                    is_hdr: false,
                 },
                 cursor_idx: 0,
                 seek_target: None,

@@ -70,4 +70,26 @@ describe('buildMixedAudioTrack', () => {
 
     expect(result).toBeNull();
   });
+
+  it('forces Opus mixes to 48 kHz timing', async () => {
+    (AudioMixer.prepareClips as any).mockResolvedValue([{ id: 'prepared-clip' }]);
+
+    const result = await buildMixedAudioTrack(
+      { audioSampleRate: 44100, audioChannels: 'stereo', audioCodec: 'opus' },
+      [{ sourcePath: 'test.webm' }] as any,
+      10,
+      null,
+      vi.fn(),
+    );
+
+    expect(result?.sampleRate).toBe(48000);
+
+    await result?.writeMixedToSource();
+    expect(AudioMixer.writeMixedToSource).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sampleRate: 48000,
+        numberOfChannels: 2,
+      }),
+    );
+  });
 });

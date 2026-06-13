@@ -6,7 +6,6 @@ import {
 } from '../filenameUtils';
 
 export function useExportFilename(
-  ext: import('vue').Ref<string>,
   ensureExportDir: () => Promise<FileSystemDirectoryHandle>,
   listExportFilenames: (exportDir: FileSystemDirectoryHandle) => Promise<Set<string>>,
 ) {
@@ -39,12 +38,6 @@ export function useExportFilename(
     if (hasInvalidExportFilenameChars(normalized)) {
       if (token !== validationToken) return false;
       filenameError.value = t('videoEditor.export.filenameInvalidChars');
-      return false;
-    }
-
-    if (!normalized.toLowerCase().endsWith(`.${ext.value}`)) {
-      if (token !== validationToken) return false;
-      filenameError.value = t('videoEditor.export.filenameInvalidExtension', { ext: ext.value });
       return false;
     }
 

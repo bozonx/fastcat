@@ -5,7 +5,11 @@ import {
   hasInvalidExportFilenameChars,
   resolveNextAvailableFilename,
 } from './filenameUtils';
-import { resolveExportCodecs, supportsExportAlpha } from './codecUtils';
+import {
+  resolveExportCodecs,
+  resolveAudioExportSampleRate,
+  supportsExportAlpha,
+} from './codecUtils';
 import {
   buildWorkerVideoTracks,
   buildVideoWorkerPayload,
@@ -23,6 +27,7 @@ export {
   hasInvalidExportFilenameChars,
   resolveNextAvailableFilename,
   resolveExportCodecs,
+  resolveAudioExportSampleRate,
   supportsExportAlpha,
   buildWorkerVideoTracks,
   buildVideoWorkerPayload,

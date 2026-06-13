@@ -9,6 +9,7 @@ import {
   hasInvalidExportFilenameChars,
   resolveNextAvailableFilename,
   resolveExportCodecs,
+  resolveAudioExportSampleRate,
   supportsExportAlpha,
   toWorkerTimelineClips,
   trimWorkerClipToRange,
@@ -126,6 +127,18 @@ describe('useTimelineExport pure functions', () => {
     expect(supportsExportAlpha('mkv', 'av01.0.05M.08')).toBe(false);
     expect(supportsExportAlpha('mkv', 'vp09.00.10.08')).toBe(true);
     expect(supportsExportAlpha('mkv', 'avc1.640032')).toBe(false);
+  });
+
+  it('resolveAudioExportSampleRate forces Opus-compatible containers to 48 kHz', () => {
+    expect(
+      resolveAudioExportSampleRate({ format: 'opus', audioCodec: 'opus', sampleRate: 44100 }),
+    ).toBe(48000);
+    expect(
+      resolveAudioExportSampleRate({ format: 'webm', audioCodec: 'opus', sampleRate: 44100 }),
+    ).toBe(48000);
+    expect(
+      resolveAudioExportSampleRate({ format: 'aac', audioCodec: 'aac', sampleRate: 44100 }),
+    ).toBe(44100);
   });
 
   it('buildVideoWorkerPayload should emit meta, track and clip items', () => {

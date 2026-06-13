@@ -3,6 +3,17 @@ import { getBunnyAudioCodec } from './utils';
 import { AudioMixer } from './AudioMixer';
 import type { AudioMixerPrepareParams } from './AudioMixer';
 
+const OPUS_SAMPLE_RATE = 48000;
+
+function resolveMixSampleRate(options: { audioSampleRate?: number; audioCodec?: string }): number {
+  const codec = String(options.audioCodec ?? '').toLowerCase();
+  if (codec === 'opus') return OPUS_SAMPLE_RATE;
+
+  const sampleRate = Number(options.audioSampleRate);
+  if (!Number.isFinite(sampleRate)) return OPUS_SAMPLE_RATE;
+  return Math.min(192000, Math.max(8000, Math.round(sampleRate)));
+}
+
 export async function buildMixedAudioTrack(
   options: {
     audioSampleRate?: number;
@@ -20,7 +31,7 @@ export async function buildMixedAudioTrack(
   const { AudioSampleSink, AudioSampleSource, Input, BlobSource, ALL_FORMATS } =
     await import('mediabunny');
 
-  const sampleRate = options.audioSampleRate || 48000;
+  const sampleRate = resolveMixSampleRate(options);
   const numberOfChannels = options.audioChannels === 'mono' ? 1 : 2;
 
   const prepared = await AudioMixer.prepareClips({

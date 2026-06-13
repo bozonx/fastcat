@@ -119,6 +119,19 @@ pub(crate) fn plan_direct(
     if info.rotation != 0 || info.width == 0 || info.height == 0 {
         return None;
     }
+    // The vello/monitor decode path normalises a non-zero stream start time (MPEG-TS,
+    // edit-list MP4) by adding it back on seek, so a 0-based timeline offset maps to the
+    // right source frame. The direct path hands that 0-based offset straight to ffmpeg
+    // `-ss`, which targets a different absolute position — so the export would no longer
+    // match the monitor. Bail to vello for any source that carries a start offset.
+    if info.start_time_sec.abs() > EPS {
+        return None;
+    }
+    // HDR / wide-gamut sources: the direct path keeps the source's colour tags while the
+    // vello path forces BT.709, so the two diverge. Let vello own these.
+    if info.is_hdr {
+        return None;
+    }
     let src_aspect = info.width as f64 / info.height as f64;
     let out_aspect = width as f64 / height as f64;
     // ~0.5% tolerance absorbs rounding between stored display size and even() output.

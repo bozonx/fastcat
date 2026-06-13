@@ -24,6 +24,15 @@ pub struct MediaInfo {
     pub fps: f64,
     pub codec: String,
     pub has_audio: bool,
+    /// Stream start PTS in seconds (0 when the demuxer exposes none). Non-zero for
+    /// MPEG-TS or edit-list MP4 sources; the decode path normalises it internally, so
+    /// callers that bypass the decoder (e.g. the direct-transcode export) need it to
+    /// stay consistent.
+    pub start_time_sec: f64,
+    /// True when the source signals HDR / wide gamut (PQ or HLG transfer, or BT.2020
+    /// primaries). Such sources are not colour-equivalent through the direct-transcode
+    /// fast path, which preserves source tags while the vello path forces BT.709.
+    pub is_hdr: bool,
 }
 
 #[derive(Debug)]
@@ -244,6 +253,11 @@ impl FfmpegNextDecoder {
                 .context("failed to open ffmpeg-next video decoder")?
         };
 
+        let is_hdr = is_hdr_signal(
+            decoder.color_transfer_characteristic(),
+            decoder.color_primaries(),
+        );
+
         let (visual_w, visual_h) = visual_dimensions(decoder.width(), decoder.height(), rotation);
         let (out_w, out_h) = compute_output_dims(visual_w, visual_h, max_output_long_edge);
         let (scaled_coded_w, scaled_coded_h) = coded_output_dimensions(out_w, out_h, rotation);
@@ -265,6 +279,8 @@ impl FfmpegNextDecoder {
                 fps,
                 codec,
                 has_audio,
+                start_time_sec,
+                is_hdr,
             },
             ictx,
             decoder,
@@ -644,6 +660,21 @@ fn stream_start_time_sec(stream: &ffmpeg::Stream<'_>, time_base: ffmpeg::Rationa
     } else {
         start as f64 * rational_as_f64(time_base)
     }
+}
+
+/// True when the decoder's colour signalling indicates HDR or a wide gamut: a PQ
+/// (SMPTE 2084) or HLG (ARIB STD-B67) transfer function, or BT.2020 primaries. The
+/// direct-transcode export keeps the source's colour tags while the vello path forces
+/// BT.709, so these sources must not take the direct fast path.
+fn is_hdr_signal(
+    transfer: ffmpeg::util::color::TransferCharacteristic,
+    primaries: ffmpeg::util::color::Primaries,
+) -> bool {
+    use ffmpeg::util::color::{Primaries, TransferCharacteristic};
+    matches!(
+        transfer,
+        TransferCharacteristic::SMPTE2084 | TransferCharacteristic::ARIB_STD_B67
+    ) || matches!(primaries, Primaries::BT2020)
 }
 
 fn input_duration_sec(ictx: &ffmpeg::format::context::Input, stream: &ffmpeg::Stream<'_>) -> f64 {

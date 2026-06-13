@@ -1,4 +1,5 @@
 const MKV_VIDEO_CODECS = ['avc1.640032', 'vp09.00.10.08', 'av01.0.05M.08'] as const;
+const OPUS_SAMPLE_RATE = 48000;
 
 export function resolveExportCodecs(
   format: 'mp4' | 'webm' | 'mkv',
@@ -43,4 +44,21 @@ export function supportsExportAlpha(format: string, videoCodec?: string) {
     return alphaCodecs.includes(videoCodec ?? '');
   }
   return false;
+}
+
+export function resolveAudioExportSampleRate(params: {
+  format: string;
+  audioCodec?: string;
+  sampleRate?: number;
+}): number {
+  const requested = Number(params.sampleRate);
+  const sampleRate = Number.isFinite(requested) ? Math.round(requested) : OPUS_SAMPLE_RATE;
+  const format = params.format.toLowerCase();
+  const audioCodec = String(params.audioCodec ?? '').toLowerCase();
+
+  if (audioCodec === 'opus' || format === 'opus' || format === 'ogg' || format === 'webm') {
+    return OPUS_SAMPLE_RATE;
+  }
+
+  return Math.min(192000, Math.max(8000, sampleRate));
 }

@@ -127,6 +127,18 @@ vi.mock('~/composables/timeline/export', () => ({
     videoCodec,
     audioCodec: format === 'webm' ? 'opus' : audioCodec,
   }),
+  resolveAudioExportSampleRate: ({
+    format,
+    audioCodec,
+    sampleRate,
+  }: {
+    format: string;
+    audioCodec?: string;
+    sampleRate?: number;
+  }) =>
+    audioCodec === 'opus' || format === 'opus' || format === 'ogg' || format === 'webm'
+      ? 48000
+      : sampleRate,
   supportsExportAlpha: (format: string, _videoCodec?: string) => format === 'webm',
   useTimelineExport: () => ({
     isExporting: ref(false),
@@ -138,6 +150,7 @@ vi.mock('~/composables/timeline/export', () => ({
     lastExportStatus: ref<'success' | 'error' | null>(null),
     outputFilename: ref(''),
     filenameError: ref<string | null>(null),
+    exportType: mockExportType,
     outputFormat: mockOutputFormat,
     videoCodec: ref('avc1.42E032'),
     bitrateMbps: ref(8),
@@ -203,6 +216,8 @@ describe('useExportForm', () => {
   });
 
   beforeEach(async () => {
+    await nextTick();
+    await new Promise((resolve) => setTimeout(resolve, 0));
     timelineFormatMock.value = {
       sampleRate: 48000,
       width: 1920,
@@ -254,8 +269,6 @@ describe('useExportForm', () => {
       removeEntry: vi.fn(async () => undefined),
     }));
     existingFilesMock.clear();
-    await nextTick();
-    await new Promise((resolve) => setTimeout(resolve, 0));
   });
 
   it('выбирает активный маркер-зону по умолчанию', async () => {
@@ -585,5 +598,49 @@ describe('useExportForm', () => {
 
     expect(getNextAvailableFilenameMock).toHaveBeenCalledWith('timeline', 'opus');
     expect(form.outputFilename.value).toBe('timeline.opus');
+  });
+
+  it('экспортирует Opus с частотой 48 kHz даже если проект настроен на 44.1 kHz', async () => {
+    projectStoreMock.projectSettings.exportSettings = {
+      exportType: 'audio',
+      audioCodec: 'opus',
+      audioSampleRate: 44100,
+      bitrateMbps: 8,
+      excludeAudio: false,
+      audioBitrateKbps: 192,
+      bitrateMode: 'vbr',
+      keyframeIntervalSec: 2,
+      exportAlpha: false,
+      matchTimeline: true,
+      customWidth: 1920,
+      customHeight: 1080,
+      customFps: 30,
+      customAudioSampleRate: 44100,
+      metadataTitle: '',
+      metadataDescription: '',
+      metadataAuthor: '',
+      metadataTags: '',
+    };
+
+    getNextAvailableFilenameMock.mockResolvedValue('timeline.opus');
+
+    const form = useExportForm();
+    await form.initializeExportForm();
+    form.exportType.value = 'audio';
+    form.audioCodec.value = 'opus';
+    form.audioSampleRate.value = 44100;
+    form.outputFilename.value = 'timeline.opus';
+    exportTimelineToFileMock.mockClear();
+    await form.handleStartExport();
+
+    expect(exportTimelineToFileMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        format: 'opus',
+        audioCodec: 'opus',
+        audioSampleRate: 48000,
+      }),
+      expect.anything(),
+      expect.any(Function),
+    );
   });
 });

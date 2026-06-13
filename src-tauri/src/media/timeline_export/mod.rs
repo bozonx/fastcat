@@ -271,9 +271,21 @@ pub fn export_timeline(
             let activity = last_activity.clone();
             let done = watchdog_done.clone();
             let stalled = watchdog_stalled.clone();
+            // Poll cancellation here too (the registry is `Clone`/Arc-backed) so a cancel
+            // is honoured within one tick on *both* export paths. The direct path otherwise
+            // only notices a cancel when ffmpeg emits its next `-progress` line, which can
+            // lag; the vello path checks per frame but stalls behind a blocked stdin write.
+            let tasks = tasks.clone();
+            let task_id = task_id.to_string();
             std::thread::spawn(move || {
                 while !done.load(Ordering::Relaxed) {
                     std::thread::sleep(Duration::from_millis(250));
+                    if tasks.was_cancelled(&task_id) {
+                        let mut guard = child.lock();
+                        let _ = guard.kill();
+                        let _ = guard.wait();
+                        break;
+                    }
                     let idle_ms = now_millis().saturating_sub(activity.load(Ordering::Acquire));
                     if idle_ms > EXPORT_STALL_TIMEOUT.as_millis() as u64 {
                         stalled.store(true, Ordering::Relaxed);
