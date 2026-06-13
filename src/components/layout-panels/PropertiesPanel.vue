@@ -34,12 +34,17 @@ const props = defineProps<{
   entity?: SelectedEntity | null;
   useExternalFocus?: boolean;
   focusId?: string;
+  experimentalFeatures?: boolean;
 }>();
 
 const emit = defineEmits<{
   panelDragStart: [e: DragEvent];
   clearSelection: [];
 }>();
+
+function onPanelDragStart(e: DragEvent) {
+  emit('panelDragStart', e);
+}
 
 const { t } = useI18n();
 const timelineStore = useTimelineStore();
@@ -387,9 +392,10 @@ const headerTitle = computed(() => {
     <!-- Header -->
     <div
       data-panel-drag-handle
-      class="flex items-center justify-between px-2 py-1.5 border-b border-ui-border shrink-0 cursor-grab active:cursor-grabbing select-none"
-      draggable="true"
-      @dragstart="(e) => $emit('panelDragStart', e)"
+      class="flex items-center justify-between px-2 py-1.5 border-b border-ui-border shrink-0 select-none"
+      :class="props.experimentalFeatures ? 'cursor-grab active:cursor-grabbing' : ''"
+      :draggable="props.experimentalFeatures"
+      @dragstart="props.experimentalFeatures ? onPanelDragStart : undefined"
     >
       <span class="ml-2 text-xs text-ui-text-muted font-mono truncate min-w-0 flex-1">
         {{ headerTitle }}

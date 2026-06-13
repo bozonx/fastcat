@@ -86,7 +86,7 @@ describe('useFileContextMenu', () => {
     expect(labels).toContain('videoEditor.fileManager.actions.deleteProxy');
   });
 
-  it('keeps open as project tab in files page context menu', () => {
+  it('keeps open as project tab in files page context menu when experimentalFeatures is on', () => {
     const { getContextMenuItems } = useFileContextMenu(
       {
         isGeneratingProxyInDirectory: () => false,
@@ -99,6 +99,7 @@ describe('useFileContextMenu', () => {
           generatingProxy: false,
         }),
         isFilesPage: true,
+        experimentalFeatures: true,
       },
       vi.fn(),
     );
@@ -112,6 +113,39 @@ describe('useFileContextMenu', () => {
     );
 
     expect(labels).toContain('videoEditor.fileManager.actions.openAsProjectTab');
+    expect(labels).toContain('videoEditor.fileManager.actions.openAsPanelCut');
+    expect(labels).toContain('videoEditor.fileManager.actions.openAsPanelSound');
+  });
+
+  it('hides open-as-panel and open-as-tab items when experimentalFeatures is off', () => {
+    const { getContextMenuItems } = useFileContextMenu(
+      {
+        isGeneratingProxyInDirectory: () => false,
+        folderHasVideos: () => false,
+        isOpenableMediaFile: () => true,
+        isConvertibleMediaFile: () => false,
+        isVideo: () => false,
+        getEntryMeta: () => ({
+          hasProxy: false,
+          generatingProxy: false,
+        }),
+        isFilesPage: true,
+        experimentalFeatures: false,
+      },
+      vi.fn(),
+    );
+
+    const labels = flattenLabels(
+      getContextMenuItems({
+        kind: 'file',
+        name: 'notes.txt',
+        path: 'docs/notes.txt',
+      }),
+    );
+
+    expect(labels).not.toContain('videoEditor.fileManager.actions.openAsProjectTab');
+    expect(labels).not.toContain('videoEditor.fileManager.actions.openAsPanelCut');
+    expect(labels).not.toContain('videoEditor.fileManager.actions.openAsPanelSound');
   });
 
   it('shows only workspace-root actions for external root directory', () => {

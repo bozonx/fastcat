@@ -1,5 +1,5 @@
 /** @vitest-environment node */
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { ref } from 'vue';
 import { useEditorDynamicPanels } from '~/composables/editor/useEditorDynamicPanels';
 
@@ -38,6 +38,12 @@ const mockFileManager = {
   vfs: {},
 };
 
+const mockWorkspaceStore = {
+  userSettings: {
+    experimentalFeatures: true,
+  },
+};
+
 vi.mock('~/stores/project.store', () => ({
   useProjectStore: () => mockProjectStore,
 }));
@@ -48,6 +54,10 @@ vi.mock('~/stores/focus.store', () => ({
 
 vi.mock('~/stores/project-tabs.store', () => ({
   useProjectTabsStore: () => mockTabsStore,
+}));
+
+vi.mock('~/stores/workspace.store', () => ({
+  useWorkspaceStore: () => mockWorkspaceStore,
 }));
 
 vi.mock('~/composables/file-manager/useFileManager', () => ({
@@ -229,6 +239,52 @@ describe('useEditorDynamicPanels', () => {
       onDragEnd();
       expect(draggingPanelId.value).toBeNull();
     });
+
+    it('ignores drag start when experimentalFeatures is off', () => {
+      mockWorkspaceStore.userSettings.experimentalFeatures = false;
+      const projectId = ref('test-proj');
+      const { onDragStart, draggingPanelId } = useEditorDynamicPanels({
+        currentProjectId: projectId,
+      });
+
+      const event = createDragEvent();
+      onDragStart(event, 'panel1');
+
+      expect(draggingPanelId.value).toBeNull();
+      expect(event.dataTransfer?.setData).not.toHaveBeenCalled();
+    });
+
+    it('ignores drag over when experimentalFeatures is off', () => {
+      mockWorkspaceStore.userSettings.experimentalFeatures = false;
+      const projectId = ref('test-proj');
+      const { onDragOver, dragOverPanelId, dropPosition } = useEditorDynamicPanels({
+        currentProjectId: projectId,
+      });
+
+      const event = createDragEvent({ dataTransfer: { types: ['panel-drag'] } });
+      onDragOver(event, 'panel2');
+
+      expect(dragOverPanelId.value).toBeNull();
+      expect(dropPosition.value).toBeNull();
+      expect(event.preventDefault).not.toHaveBeenCalled();
+    });
+
+    it('ignores drop when experimentalFeatures is off', () => {
+      mockWorkspaceStore.userSettings.experimentalFeatures = false;
+      const projectId = ref('test-proj');
+      const { onDrop } = useEditorDynamicPanels({ currentProjectId: projectId });
+
+      const event = createDragEvent({ dataTransfer: { getData: vi.fn(() => '') } });
+      onDrop({ event, targetPanelId: 'panel2' });
+
+      expect(event.preventDefault).not.toHaveBeenCalled();
+      expect(mockProjectStore.insertPanelAt).not.toHaveBeenCalled();
+      expect(mockProjectStore.movePanel).not.toHaveBeenCalled();
+    });
+  });
+
+  afterEach(() => {
+    mockWorkspaceStore.userSettings.experimentalFeatures = true;
   });
 
   describe('Vertical Split Resizing', () => {

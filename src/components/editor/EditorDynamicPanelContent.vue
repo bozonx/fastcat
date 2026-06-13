@@ -13,6 +13,10 @@ import TextEditor from '~/components/preview/TextEditor.vue';
 import EditorPanelHeader from '~/components/editor/EditorPanelHeader.vue';
 import type { DynamicPanel } from '~/stores/editor-view.store';
 import type { PanelFocusId } from '~/stores/focus.store';
+import { useWorkspaceStore } from '~/stores/workspace.store';
+
+const workspaceStore = useWorkspaceStore();
+const experimentalFeatures = computed(() => workspaceStore.userSettings.experimentalFeatures);
 
 interface Props {
   panel: DynamicPanel;
@@ -115,6 +119,7 @@ const detachedStaticPanelContextMenuItems = computed(() => {
     class="h-full"
     :use-external-focus="true"
     panel-drag-cursor-class=""
+    :experimental-features="experimentalFeatures"
     @panel-drag-start="onDragStart"
   />
   <PropertiesPanel
@@ -122,6 +127,7 @@ const detachedStaticPanelContextMenuItems = computed(() => {
     class="h-full"
     :focus-id="focusPanelId"
     :use-external-focus="true"
+    :experimental-features="experimentalFeatures"
     @panel-drag-start="onDragStart"
   />
   <div
@@ -133,6 +139,7 @@ const detachedStaticPanelContextMenuItems = computed(() => {
       :icon="mediaIcon"
       :is-absolute="true"
       :context-menu-items="customPanelContextMenuItems"
+      :experimental-features="experimentalFeatures"
       @drag-start="onDragStart"
       @close="onClose"
     />
@@ -153,6 +160,7 @@ const detachedStaticPanelContextMenuItems = computed(() => {
       icon="i-heroicons-bars-2"
       :is-absolute="true"
       :context-menu-items="customPanelContextMenuItems"
+      :experimental-features="experimentalFeatures"
       @drag-start="onDragStart"
       @close="onClose"
     />
@@ -173,6 +181,7 @@ const detachedStaticPanelContextMenuItems = computed(() => {
       :title="panel.title || 'History'"
       icon="i-heroicons-clock"
       :context-menu-items="detachedStaticPanelContextMenuItems"
+      :experimental-features="experimentalFeatures"
       @drag-start="onDragStart"
       @close="onClose"
     />
@@ -188,6 +197,7 @@ const detachedStaticPanelContextMenuItems = computed(() => {
       :title="panel.title || 'Effects'"
       icon="i-heroicons-sparkles"
       :context-menu-items="detachedStaticPanelContextMenuItems"
+      :experimental-features="experimentalFeatures"
       @drag-start="onDragStart"
       @close="onClose"
     />
@@ -203,6 +213,7 @@ const detachedStaticPanelContextMenuItems = computed(() => {
       :title="panel.title || 'Library'"
       icon="i-heroicons-rectangle-group"
       :context-menu-items="detachedStaticPanelContextMenuItems"
+      :experimental-features="experimentalFeatures"
       @drag-start="onDragStart"
       @close="onClose"
     />
@@ -218,6 +229,7 @@ const detachedStaticPanelContextMenuItems = computed(() => {
       :title="panel.title || t('videoEditor.fileManager.tabs.markers')"
       icon="i-heroicons-tag"
       :context-menu-items="detachedStaticPanelContextMenuItems"
+      :experimental-features="experimentalFeatures"
       @drag-start="onDragStart"
       @close="onClose"
     />
@@ -233,6 +245,7 @@ const detachedStaticPanelContextMenuItems = computed(() => {
       :title="panel.title || t('videoEditor.timeline.backups.tabLabel')"
       icon="i-heroicons-archive-box"
       :context-menu-items="detachedStaticPanelContextMenuItems"
+      :experimental-features="experimentalFeatures"
       @drag-start="onDragStart"
       @close="onClose"
     />
