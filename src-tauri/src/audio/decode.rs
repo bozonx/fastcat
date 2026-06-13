@@ -555,10 +555,6 @@ pub(crate) fn decode_symphonia_chunk(params: DecodeSymphoniaChunkParams<'_>) -> 
                             discard_frames_remaining -= 1;
                             continue;
                         }
-                        if batch_collected >= batch_target {
-                            batch_full = true;
-                            break;
-                        }
                         for ch in 0..state_val.channels {
                             let sample = if ch < num_channels {
                                 samples[frame * num_channels + ch]
@@ -568,6 +564,18 @@ pub(crate) fn decode_symphonia_chunk(params: DecodeSymphoniaChunkParams<'_>) -> 
                             planar_buffers[ch].push(sample);
                         }
                         batch_collected += 1;
+                    }
+                    // Stop reading once the batch target is met, but only at this PACKET
+                    // boundary — never mid-packet. A decoded packet is consumed in full
+                    // and the (bounded, ≤ one packet) over-read rides along: it resamples
+                    // into `combined` and the surplus past `target_samples` is carried to
+                    // the next chunk via `resample_output_remainder`. Breaking mid-packet
+                    // and dropping the remaining frames (the demuxer has already advanced
+                    // past them, and the next sequential chunk does NOT reseek) silently
+                    // lost ~20-28% of every chunk's audio — heard on export as faster,
+                    // crackly playback.
+                    if batch_collected >= batch_target {
+                        batch_full = true;
                     }
                 }
                 Err(symphonia::core::errors::Error::IoError(ref err))
@@ -1321,6 +1329,91 @@ mod tests {
         );
 
         let _ = std::fs::remove_file(path);
+        Ok(())
+    }
+
+    #[test]
+    fn sequential_export_chunks_do_not_drop_packet_tails() -> anyhow::Result<()> {
+        // The export path streams a clip via back-to-back `decode_symphonia_chunk`
+        // calls (50 ms each) with NO reseek between them. A batch that hit its target
+        // mid-packet used to discard the rest of that already-decoded packet; since
+        // the demuxer had advanced past it and the next chunk does not reseek, those
+        // frames were lost on every chunk — compressing (speeding up) the audio and
+        // clicking at each boundary.
+        //
+        // Reproduce with a real packetised codec (mp3, 1152-frame packets) carrying a
+        // LOUD continuous tone, so the 2400-frame chunk target lands mid-packet and any
+        // dropped frames shift the content. Decode the SAME source two ways at MATCHED
+        // rate (no resampler in either path → they must be sample-identical): the
+        // one-shot whole-range path behind the monitor window cache (preview, known
+        // good) vs. the per-chunk streaming path behind export. Per-chunk frame loss
+        // makes the streamed concatenation drift out of phase with the range decode.
+        let rate = 48_000u32;
+        let src = write_temp_f32_wav(rate, 1, rate as usize)?; // 1 s, 440 Hz @ 0.25
+        let mut mp3 = src.clone();
+        mp3.set_extension("mp3");
+        let encoded = Command::new("ffmpeg")
+            .args([
+                "-v",
+                "error",
+                "-y",
+                "-i",
+                src.to_string_lossy().as_ref(),
+                "-c:a",
+                "libmp3lame",
+                "-b:a",
+                "192k",
+                mp3.to_string_lossy().as_ref(),
+            ])
+            .status();
+        let _ = std::fs::remove_file(&src);
+        match encoded {
+            Ok(s) if s.success() => {}
+            _ => return Ok(()), // ffmpeg/libmp3lame unavailable: skip
+        }
+        let mp3_str = mp3.to_string_lossy().to_string();
+
+        let chunk_sec = 0.05f64;
+        let num_chunks = 10usize; // 0.5 s, inside the 1 s tone
+        let chunk_frames = (chunk_sec * rate as f64).round() as usize;
+
+        let shared = Arc::new((Mutex::new(AudioShared::default()), Condvar::new()));
+        let mut stream: Vec<f32> = Vec::new();
+        for k in 0..num_chunks {
+            let chunk = decode_symphonia_chunk(DecodeSymphoniaChunkParams {
+                layer_id: "export-layer",
+                path: &mp3_str,
+                source_start_sec: k as f64 * chunk_sec,
+                timeline_duration_sec: chunk_sec,
+                speed: 1.0,
+                target_sample_rate: rate,
+                output_channels: 1,
+                reverse: false,
+                shared: &shared,
+            })?;
+            assert_eq!(chunk.len(), chunk_frames, "each export chunk must be exact");
+            stream.extend_from_slice(&chunk);
+        }
+
+        let range = decode_range_symphonia(&mp3_str, 0.0, num_chunks as f64 * chunk_sec, rate, 1)?;
+        let _ = std::fs::remove_file(&mp3);
+
+        // Compare the back half (the drop accumulates over chunks; the first chunk is
+        // still aligned). The two decodes are byte-equivalent absent frame loss.
+        let compare = stream.len().min(range.len());
+        let from = compare / 2;
+        let mean_abs_diff = stream[from..compare]
+            .iter()
+            .zip(range[from..compare].iter())
+            .map(|(a, b)| (*a - *b).abs())
+            .sum::<f32>()
+            / (compare - from) as f32;
+        assert!(
+            mean_abs_diff < 1e-2,
+            "streamed export decode drifts from the one-shot decode (mean abs diff \
+             {mean_abs_diff}) — frames dropped at chunk boundaries"
+        );
+
         Ok(())
     }
 
