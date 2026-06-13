@@ -427,312 +427,314 @@ watch(viewportRef, (vp) => {
         :portal="monitorMenuPortal"
         @update:open="setMonitorContextMenuOpen"
       >
-      <div
-        ref="panelRef"
-        class="panel-focus-frame flex h-full min-w-0 min-h-0 transition-colors duration-300 relative select-none"
-        :class="[
-          effectiveFullscreen ? 'fixed inset-0 z-50 h-screen w-screen bg-black flex-col' : 'bg-ui-bg-elevated',
-          !effectiveFullscreen && toolbarPosition === 'bottom' ? 'flex-col' : '',
-          !effectiveFullscreen && toolbarPosition === 'top' ? 'flex-col-reverse' : '',
-          !effectiveFullscreen && toolbarPosition === 'right' ? 'flex-row' : '',
-          !effectiveFullscreen && toolbarPosition === 'left' ? 'flex-row-reverse' : '',
-          {
-            'panel-focus-frame--active':
-              !props.useExternalFocus &&
-              !effectiveFullscreen &&
-              focusStore.isPanelFocused('monitor'),
-            'border-r border-ui-border': !effectiveFullscreen,
-          },
-        ]"
-        @click="handleContainerClick"
-        @pointerdown.capture="!props.useExternalFocus && focusStore.setMainFocus('monitor')"
-      >
-        <!-- Video area -->
-        <MonitorViewport
-          ref="viewportRef"
-          :render-width="renderWidth"
-          :render-height="renderHeight"
-          :is-idle="isIdle"
-          :effective-fullscreen="effectiveFullscreen"
-          :ui-current-time-us="uiCurrentTimeUs"
-          @pointerdown.capture="closeMonitorMenus"
-        >
-          <template #canvas>
-            <div ref="containerEl" class="absolute inset-0" style="pointer-events: none" />
-          </template>
-
-          <template #svg-overlay>
-            <g v-if="showGrid">
-              <line
-                v-for="(line, i) in getGridLines(renderWidth, renderHeight)"
-                :key="i"
-                :x1="line.x1"
-                :y1="line.y1"
-                :x2="line.x2"
-                :y2="line.y2"
-                stroke="rgba(255,255,255,0.5)"
-                stroke-width="1"
-              />
-            </g>
-
-            <MonitorTextTransformBox
-              v-if="!isReadonly && isTextClipSelected"
-              :render-width="renderWidth"
-              :render-height="renderHeight"
-            />
-
-            <MonitorTransformBox
-              v-else-if="!isReadonly"
-              :render-width="renderWidth"
-              :render-height="renderHeight"
-            />
-          </template>
-
-          <template #default>
-            <div
-              v-if="loadError"
-              class="absolute inset-0 flex items-center justify-center text-red-500"
-            >
-              {{ loadError }}
-            </div>
-          </template>
-        </MonitorViewport>
-
-        <!-- Playback controls bar -->
         <div
-          data-panel-drag-handle
-          class="flex flex-wrap items-center justify-center gap-3 border-ui-border shrink-0 transition-all duration-300 select-none"
+          ref="panelRef"
+          class="panel-focus-frame flex h-full min-w-0 min-h-0 transition-colors duration-300 relative select-none"
           :class="[
             effectiveFullscreen
-              ? [
-                  'absolute bg-ui-bg-elevated/80 backdrop-blur-xl rounded-2xl shadow-2xl z-50 border-none transition-all duration-300',
-                  toolbarPosition === 'left' || toolbarPosition === 'right'
-                    ? 'top-1/2 -translate-y-1/2 px-3 py-6 flex-col'
-                    : 'bottom-8 left-1/2 -translate-x-1/2 px-6 py-3 flex-row',
-                  toolbarPosition === 'left' ? 'left-8' : '',
-                  toolbarPosition === 'right' ? 'right-8' : '',
-                ]
-              : [
-                  toolbarPosition === 'left' || toolbarPosition === 'right'
-                    ? 'px-1.5 py-3'
-                    : 'px-4 py-3.5',
-                  'bg-ui-bg-elevated',
-                  props.panelDragCursorClass,
-                ],
-            effectiveFullscreen && isIdle ? 'opacity-0 pointer-events-none' : 'opacity-100',
-            !effectiveFullscreen && toolbarPosition === 'bottom' ? 'border-t' : '',
-            !effectiveFullscreen && toolbarPosition === 'top' ? 'border-b' : '',
-            !effectiveFullscreen && toolbarPosition === 'right' ? 'border-l' : '',
-            !effectiveFullscreen && toolbarPosition === 'left' ? 'border-r' : '',
-            toolbarPosition === 'left' || toolbarPosition === 'right' ? 'flex-col' : '',
+              ? 'fixed inset-0 z-50 h-screen w-screen bg-black flex-col'
+              : 'bg-ui-bg-elevated',
+            !effectiveFullscreen && toolbarPosition === 'bottom' ? 'flex-col' : '',
+            !effectiveFullscreen && toolbarPosition === 'top' ? 'flex-col-reverse' : '',
+            !effectiveFullscreen && toolbarPosition === 'right' ? 'flex-row' : '',
+            !effectiveFullscreen && toolbarPosition === 'left' ? 'flex-row-reverse' : '',
+            {
+              'panel-focus-frame--active':
+                !props.useExternalFocus &&
+                !effectiveFullscreen &&
+                focusStore.isPanelFocused('monitor'),
+              'border-r border-ui-border': !effectiveFullscreen,
+            },
           ]"
-          :draggable="!effectiveFullscreen"
-          @dragstart="(e) => emit('panelDragStart', e)"
-          @mouseenter="resetIdleTimeout"
-          @mousemove="resetIdleTimeout"
+          @click="handleContainerClick"
+          @pointerdown.capture="!props.useExternalFocus && focusStore.setMainFocus('monitor')"
         >
-          <!-- Left cluster: utility buttons -->
-          <template v-if="effectiveFullscreen">
-            <UiTooltip
-              :text="getHotkeyTitle(t('fastcat.monitor.exitFullscreen'), 'general.fullscreen')"
-            >
-              <UiActionButton
-                size="sm"
-                color="neutral"
-                variant="solid"
-                icon="lucide:minimize"
-                :aria-label="t('fastcat.monitor.exitFullscreen')"
-                @click="exitBrowserFullscreen()"
+          <!-- Video area -->
+          <MonitorViewport
+            ref="viewportRef"
+            :render-width="renderWidth"
+            :render-height="renderHeight"
+            :is-idle="isIdle"
+            :effective-fullscreen="effectiveFullscreen"
+            :ui-current-time-us="uiCurrentTimeUs"
+            @pointerdown.capture="closeMonitorMenus"
+          >
+            <template #canvas>
+              <div ref="containerEl" class="absolute inset-0" style="pointer-events: none" />
+            </template>
+
+            <template #svg-overlay>
+              <g v-if="showGrid">
+                <line
+                  v-for="(line, i) in getGridLines(renderWidth, renderHeight)"
+                  :key="i"
+                  :x1="line.x1"
+                  :y1="line.y1"
+                  :x2="line.x2"
+                  :y2="line.y2"
+                  stroke="rgba(255,255,255,0.5)"
+                  stroke-width="1"
+                />
+              </g>
+
+              <MonitorTextTransformBox
+                v-if="!isReadonly && isTextClipSelected"
+                :render-width="renderWidth"
+                :render-height="renderHeight"
               />
-            </UiTooltip>
-          </template>
-          <template v-else>
-            <UiTooltip
-              :text="getHotkeyTitle(t('fastcat.monitor.fullscreen'), 'general.fullscreen')"
-            >
+
+              <MonitorTransformBox
+                v-else-if="!isReadonly"
+                :render-width="renderWidth"
+                :render-height="renderHeight"
+              />
+            </template>
+
+            <template #default>
+              <div
+                v-if="loadError"
+                class="absolute inset-0 flex items-center justify-center text-red-500"
+              >
+                {{ loadError }}
+              </div>
+            </template>
+          </MonitorViewport>
+
+          <!-- Playback controls bar -->
+          <div
+            data-panel-drag-handle
+            class="flex flex-wrap items-center justify-center gap-3 border-ui-border shrink-0 transition-all duration-300 select-none"
+            :class="[
+              effectiveFullscreen
+                ? [
+                    'absolute bg-ui-bg-elevated/80 backdrop-blur-xl rounded-2xl shadow-2xl z-50 border-none transition-all duration-300',
+                    toolbarPosition === 'left' || toolbarPosition === 'right'
+                      ? 'top-1/2 -translate-y-1/2 px-3 py-6 flex-col'
+                      : 'bottom-8 left-1/2 -translate-x-1/2 px-6 py-3 flex-row',
+                    toolbarPosition === 'left' ? 'left-8' : '',
+                    toolbarPosition === 'right' ? 'right-8' : '',
+                  ]
+                : [
+                    toolbarPosition === 'left' || toolbarPosition === 'right'
+                      ? 'px-1.5 py-3'
+                      : 'px-4 py-3.5',
+                    'bg-ui-bg-elevated',
+                    props.panelDragCursorClass,
+                  ],
+              effectiveFullscreen && isIdle ? 'opacity-0 pointer-events-none' : 'opacity-100',
+              !effectiveFullscreen && toolbarPosition === 'bottom' ? 'border-t' : '',
+              !effectiveFullscreen && toolbarPosition === 'top' ? 'border-b' : '',
+              !effectiveFullscreen && toolbarPosition === 'right' ? 'border-l' : '',
+              !effectiveFullscreen && toolbarPosition === 'left' ? 'border-r' : '',
+              toolbarPosition === 'left' || toolbarPosition === 'right' ? 'flex-col' : '',
+            ]"
+            :draggable="!effectiveFullscreen"
+            @dragstart="(e) => emit('panelDragStart', e)"
+            @mouseenter="resetIdleTimeout"
+            @mousemove="resetIdleTimeout"
+          >
+            <!-- Left cluster: utility buttons -->
+            <template v-if="effectiveFullscreen">
+              <UiTooltip
+                :text="getHotkeyTitle(t('fastcat.monitor.exitFullscreen'), 'general.fullscreen')"
+              >
+                <UiActionButton
+                  size="sm"
+                  color="neutral"
+                  variant="solid"
+                  icon="lucide:minimize"
+                  :aria-label="t('fastcat.monitor.exitFullscreen')"
+                  @click="exitBrowserFullscreen()"
+                />
+              </UiTooltip>
+            </template>
+            <template v-else>
+              <UiTooltip
+                :text="getHotkeyTitle(t('fastcat.monitor.fullscreen'), 'general.fullscreen')"
+              >
+                <UiActionButton
+                  size="xs"
+                  color="neutral"
+                  variant="ghost"
+                  icon="lucide:maximize"
+                  :aria-label="t('fastcat.monitor.fullscreen')"
+                  @click="enterBrowserFullscreen()"
+                />
+              </UiTooltip>
+            </template>
+
+            <UiTooltip :text="getHotkeyTitle(t('fastcat.monitor.resetZoom'), 'general.zoomReset')">
               <UiActionButton
                 size="xs"
                 color="neutral"
                 variant="ghost"
-                icon="lucide:maximize"
-                :aria-label="t('fastcat.monitor.fullscreen')"
-                @click="enterBrowserFullscreen()"
+                class="font-mono tabular-nums min-w-10 justify-center text-[10px] px-0! hover:bg-transparent! text-ui-text-muted hover:text-ui-text"
+                hover-class=""
+                :label="monitorZoomLabel"
+                @click="resetZoom"
               />
             </UiTooltip>
-          </template>
 
-          <UiTooltip :text="getHotkeyTitle(t('fastcat.monitor.resetZoom'), 'general.zoomReset')">
-            <UiActionButton
-              size="xs"
-              color="neutral"
-              variant="ghost"
-              class="font-mono tabular-nums min-w-10 justify-center text-[10px] px-0! hover:bg-transparent! text-ui-text-muted hover:text-ui-text"
-              hover-class=""
-              :label="monitorZoomLabel"
-              @click="resetZoom"
+            <UiTooltip :text="t('fastcat.monitor.useProxy')">
+              <UiToggleButton
+                v-if="projectStore.activeMonitor"
+                :model-value="useProxyInMonitor"
+                icon="i-heroicons-bolt"
+                inactive-color="neutral"
+                inactive-variant="ghost"
+                active-color="neutral"
+                active-variant="soft"
+                :active-bg="'color-mix(in srgb, var(--selection-accent-500) 12%, transparent)'"
+                :active-text="'var(--selection-accent-400)'"
+                title="Use proxy"
+                no-toggle
+                @click="toggleProxyUsage"
+              />
+            </UiTooltip>
+
+            <UiTooltip :text="selectedMonitorSyncTitle">
+              <UDropdownMenu
+                :open="isMonitorSyncMenuOpen"
+                :items="monitorSyncMenuItems"
+                :portal="monitorMenuPortal"
+                :ui="{ content: 'min-w-44' }"
+                @update:open="setMonitorSyncMenuOpen"
+              >
+                <UButton
+                  v-if="projectStore.activeMonitor"
+                  size="xs"
+                  color="neutral"
+                  variant="ghost"
+                  :icon="selectedMonitorSyncOption.icon"
+                  :title="selectedMonitorSyncTitle"
+                  :aria-label="t('fastcat.monitor.syncMode')"
+                  class="px-1.5"
+                >
+                  <UIcon name="i-lucide-chevron-down" class="size-3 text-ui-text-muted" />
+                </UButton>
+              </UDropdownMenu>
+            </UiTooltip>
+
+            <UiTooltip
+              :text="
+                previewEffectsEnabled
+                  ? t('fastcat.monitor.previewWithEffects')
+                  : t('fastcat.monitor.previewWithoutEffects')
+              "
+            >
+              <UiToggleButton
+                v-if="projectStore.activeMonitor"
+                :model-value="previewEffectsEnabled"
+                icon="i-heroicons-sparkles"
+                inactive-color="neutral"
+                inactive-variant="ghost"
+                active-color="neutral"
+                active-variant="soft"
+                :active-bg="'color-mix(in srgb, var(--selection-accent-500) 12%, transparent)'"
+                :active-text="'var(--selection-accent-400)'"
+                title="Preview effects"
+                no-toggle
+                @click="togglePreviewEffects"
+              />
+            </UiTooltip>
+
+            <!-- Playback buttons — wheel on play button changes speed -->
+            <UiTooltip :text="getHotkeyTitle(t('fastcat.monitor.rewind'), 'playback.toStart')">
+              <UButton
+                size="md"
+                variant="ghost"
+                color="neutral"
+                icon="i-lucide-skip-back"
+                :aria-label="t('fastcat.monitor.rewind')"
+                :disabled="!canInteractPlayback"
+                @click="
+                  (e) => {
+                    rewindToStart();
+                    (e.currentTarget as HTMLElement).blur();
+                  }
+                "
+                @wheel.prevent="handleBoundaryWheel"
+              />
+            </UiTooltip>
+
+            <UiTooltip :text="getHotkeyTitle(t('fastcat.monitor.play'), 'playback.toggle')">
+              <UButton
+                size="md"
+                variant="solid"
+                color="neutral"
+                class="relative overflow-hidden min-w-8 px-1.5"
+                :aria-label="t('fastcat.monitor.play')"
+                :disabled="!canInteractPlayback"
+                @click="
+                  (e) => {
+                    setPlayback(selectedPlaybackSpeedOption?.value ?? 1);
+                    (e.currentTarget as HTMLElement).blur();
+                  }
+                "
+                @wheel.prevent="handleSpeedWheel"
+              >
+                <div class="flex items-center justify-center">
+                  <UIcon
+                    v-if="timelineStore.isPlaying"
+                    name="i-heroicons-stop-20-solid"
+                    class="w-5 h-5"
+                  />
+                  <UIcon
+                    v-else-if="(selectedPlaybackSpeedOption?.value ?? 1) < 0"
+                    name="i-heroicons-play-20-solid"
+                    class="w-5 h-5 scale-x-[-1]"
+                  />
+                  <UIcon v-else name="i-heroicons-play-20-solid" class="w-5 h-5 ml-0.5" />
+                  <span
+                    class="absolute text-3xs font-mono leading-none opacity-90 pointer-events-none"
+                    style="right: 4px; bottom: 0"
+                  >
+                    {{ speedButtonLabel }}
+                  </span>
+                </div>
+              </UButton>
+            </UiTooltip>
+
+            <UiTooltip :text="getHotkeyTitle(t('fastcat.monitor.end'), 'playback.toEnd')">
+              <UButton
+                size="md"
+                variant="ghost"
+                color="neutral"
+                icon="i-lucide-skip-forward"
+                :aria-label="t('fastcat.monitor.end')"
+                :disabled="!canInteractPlayback"
+                @click="
+                  (e) => {
+                    rewindToEnd();
+                    (e.currentTarget as HTMLElement).blur();
+                  }
+                "
+                @wheel.prevent="handleEndBoundaryWheel"
+              />
+            </UiTooltip>
+
+            <MonitorAudioControl
+              :compact="toolbarPosition === 'left' || toolbarPosition === 'right'"
             />
-          </UiTooltip>
 
-          <UiTooltip :text="t('fastcat.monitor.useProxy')">
-            <UiToggleButton
-              v-if="projectStore.activeMonitor"
-              :model-value="useProxyInMonitor"
-              icon="i-heroicons-bolt"
-              inactive-color="neutral"
-              inactive-variant="ghost"
-              active-color="neutral"
-              active-variant="soft"
-              :active-bg="'color-mix(in srgb, var(--selection-accent-500) 12%, transparent)'"
-              :active-text="'var(--selection-accent-400)'"
-              title="Use proxy"
-              no-toggle
-              @click="toggleProxyUsage"
-            />
-          </UiTooltip>
-
-          <UiTooltip :text="selectedMonitorSyncTitle">
+            <!-- "More" dropdown duplicates the context menu items for discoverability -->
             <UDropdownMenu
-              :open="isMonitorSyncMenuOpen"
-              :items="monitorSyncMenuItems"
+              :open="isMonitorMoreMenuOpen"
+              :items="contextMenuItems"
               :portal="monitorMenuPortal"
-              :ui="{ content: 'min-w-44' }"
-              @update:open="setMonitorSyncMenuOpen"
+              @update:open="setMonitorMoreMenuOpen"
             >
               <UButton
-                v-if="projectStore.activeMonitor"
                 size="xs"
                 color="neutral"
                 variant="ghost"
-                :icon="selectedMonitorSyncOption.icon"
-                :title="selectedMonitorSyncTitle"
-                :aria-label="t('fastcat.monitor.syncMode')"
-                class="px-1.5"
-              >
-                <UIcon name="i-lucide-chevron-down" class="size-3 text-ui-text-muted" />
-              </UButton>
+                icon="i-heroicons-ellipsis-horizontal"
+                :title="t('common.more')"
+              />
             </UDropdownMenu>
-          </UiTooltip>
-
-          <UiTooltip
-            :text="
-              previewEffectsEnabled
-                ? t('fastcat.monitor.previewWithEffects')
-                : t('fastcat.monitor.previewWithoutEffects')
-            "
-          >
-            <UiToggleButton
-              v-if="projectStore.activeMonitor"
-              :model-value="previewEffectsEnabled"
-              icon="i-heroicons-sparkles"
-              inactive-color="neutral"
-              inactive-variant="ghost"
-              active-color="neutral"
-              active-variant="soft"
-              :active-bg="'color-mix(in srgb, var(--selection-accent-500) 12%, transparent)'"
-              :active-text="'var(--selection-accent-400)'"
-              title="Preview effects"
-              no-toggle
-              @click="togglePreviewEffects"
-            />
-          </UiTooltip>
-
-          <!-- Playback buttons — wheel on play button changes speed -->
-          <UiTooltip :text="getHotkeyTitle(t('fastcat.monitor.rewind'), 'playback.toStart')">
-            <UButton
-              size="md"
-              variant="ghost"
-              color="neutral"
-              icon="i-lucide-skip-back"
-              :aria-label="t('fastcat.monitor.rewind')"
-              :disabled="!canInteractPlayback"
-              @click="
-                (e) => {
-                  rewindToStart();
-                  (e.currentTarget as HTMLElement).blur();
-                }
-              "
-              @wheel.prevent="handleBoundaryWheel"
-            />
-          </UiTooltip>
-
-          <UiTooltip :text="getHotkeyTitle(t('fastcat.monitor.play'), 'playback.toggle')">
-            <UButton
-              size="md"
-              variant="solid"
-              color="neutral"
-              class="relative overflow-hidden min-w-8 px-1.5"
-              :aria-label="t('fastcat.monitor.play')"
-              :disabled="!canInteractPlayback"
-              @click="
-                (e) => {
-                  setPlayback(selectedPlaybackSpeedOption?.value ?? 1);
-                  (e.currentTarget as HTMLElement).blur();
-                }
-              "
-              @wheel.prevent="handleSpeedWheel"
-            >
-              <div class="flex items-center justify-center">
-                <UIcon
-                  v-if="timelineStore.isPlaying"
-                  name="i-heroicons-stop-20-solid"
-                  class="w-5 h-5"
-                />
-                <UIcon
-                  v-else-if="(selectedPlaybackSpeedOption?.value ?? 1) < 0"
-                  name="i-heroicons-play-20-solid"
-                  class="w-5 h-5 scale-x-[-1]"
-                />
-                <UIcon v-else name="i-heroicons-play-20-solid" class="w-5 h-5 ml-0.5" />
-                <span
-                  class="absolute text-3xs font-mono leading-none opacity-90 pointer-events-none"
-                  style="right: 4px; bottom: 0"
-                >
-                  {{ speedButtonLabel }}
-                </span>
-              </div>
-            </UButton>
-          </UiTooltip>
-
-          <UiTooltip :text="getHotkeyTitle(t('fastcat.monitor.end'), 'playback.toEnd')">
-            <UButton
-              size="md"
-              variant="ghost"
-              color="neutral"
-              icon="i-lucide-skip-forward"
-              :aria-label="t('fastcat.monitor.end')"
-              :disabled="!canInteractPlayback"
-              @click="
-                (e) => {
-                  rewindToEnd();
-                  (e.currentTarget as HTMLElement).blur();
-                }
-              "
-              @wheel.prevent="handleEndBoundaryWheel"
-            />
-          </UiTooltip>
-
-          <MonitorAudioControl
-            :compact="toolbarPosition === 'left' || toolbarPosition === 'right'"
-          />
-
-          <!-- "More" dropdown duplicates the context menu items for discoverability -->
-          <UDropdownMenu
-            :open="isMonitorMoreMenuOpen"
-            :items="contextMenuItems"
-            :portal="monitorMenuPortal"
-            @update:open="setMonitorMoreMenuOpen"
-          >
-            <UButton
-              size="xs"
-              color="neutral"
-              variant="ghost"
-              icon="i-heroicons-ellipsis-horizontal"
-              :title="t('common.more')"
-            />
-          </UDropdownMenu>
+          </div>
         </div>
-      </div>
-    </UContextMenu>
+      </UContextMenu>
     </Teleport>
   </div>
 </template>

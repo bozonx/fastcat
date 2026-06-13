@@ -6,6 +6,8 @@ import { ref, nextTick } from 'vue';
 import { DEFAULT_USER_SETTINGS } from '~/utils/settings/defaults';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 
+import { useProjectStore } from '~/stores/project.store';
+
 // Mock all the monitor-related composables used in MonitorContainer
 vi.mock('~/composables/monitor/useMonitorRuntime', () => ({
   useMonitorRuntime: () => ({
@@ -59,8 +61,6 @@ vi.mock('~/composables/monitor/useMonitorGrid', () => ({
     getGridLines: vi.fn(() => []),
   }),
 }));
-
-import { useProjectStore } from '~/stores/project.store';
 
 // Mock app fullscreen using standard hoisted mock variables
 const mockIsFullscreenRef = ref(false);
@@ -462,7 +462,7 @@ describe('MonitorContainer', () => {
         };
         expose({ fitMonitor });
         return {};
-      }
+      },
     };
 
     wrapper = mount(MonitorContainer, {

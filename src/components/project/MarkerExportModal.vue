@@ -102,8 +102,14 @@ async function handleCopy() {
 }
 
 const exportFormatItems = computed(() => [
-  { value: 'timecode-bracket-left' as ExportFormat, label: t('fastcat.marker.exportFormats.timecodeBracketLeft') },
-  { value: 'timecode-bracket-right' as ExportFormat, label: t('fastcat.marker.exportFormats.timecodeBracketRight') },
+  {
+    value: 'timecode-bracket-left' as ExportFormat,
+    label: t('fastcat.marker.exportFormats.timecodeBracketLeft'),
+  },
+  {
+    value: 'timecode-bracket-right' as ExportFormat,
+    label: t('fastcat.marker.exportFormats.timecodeBracketRight'),
+  },
   { value: 'hms-left' as ExportFormat, label: t('fastcat.marker.exportFormats.hmsLeft') },
   { value: 'hms-dash-left' as ExportFormat, label: t('fastcat.marker.exportFormats.hmsDashLeft') },
   { value: 'hms-right' as ExportFormat, label: t('fastcat.marker.exportFormats.hmsRight') },
@@ -120,10 +126,7 @@ const exportFormatItems = computed(() => [
 
     <div class="flex flex-col gap-4">
       <div class="flex flex-wrap items-center gap-2">
-        <MarkerColorFilter
-          :available-colors="availableColors"
-          v-model="selectedColors"
-        />
+        <MarkerColorFilter v-model="selectedColors" :available-colors="availableColors" />
 
         <div class="flex-1 min-w-2"></div>
 

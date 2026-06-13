@@ -196,7 +196,9 @@ describe('useNativeMonitorCanvas', () => {
     await nextTick();
     await flushPromises();
 
-    expect(invokeMock.mock.calls.some(([name]) => name === 'monitor_unsubscribe_frames')).toBe(true);
+    expect(invokeMock.mock.calls.some(([name]) => name === 'monitor_unsubscribe_frames')).toBe(
+      true,
+    );
 
     wrapper.unmount();
   });

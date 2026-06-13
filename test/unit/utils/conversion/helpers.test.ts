@@ -127,7 +127,8 @@ describe('resolveUniqueFileName', () => {
   });
 
   it('increments name when file exists', async () => {
-    const exists = vi.fn()
+    const exists = vi
+      .fn()
       .mockResolvedValueOnce(true)
       .mockResolvedValueOnce(true)
       .mockResolvedValueOnce(false);

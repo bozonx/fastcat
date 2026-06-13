@@ -2,10 +2,8 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { mount, DOMWrapper } from '@vue/test-utils';
 import { createTestingPinia } from '@pinia/testing';
 import MobileMonitorContainer from '~/components/monitor/MobileMonitorContainer.vue';
-import { ref, nextTick } from 'vue';
+import { ref, nextTick, reactive } from 'vue';
 import { DEFAULT_USER_SETTINGS } from '~/utils/settings/defaults';
-
-import { reactive } from 'vue';
 
 const mockVideoItems = ref([] as any[]);
 const mockIsLoading = ref(false);
@@ -279,7 +277,10 @@ describe('MobileMonitorContainer', () => {
     // In landscape, the main container changes layout based on internalLayout
     // The container shows flex-row when internalLayout is 'left' or 'right'
     // which happens when isLandscape is true and project is not vertical
-    const hasValidLayout = wrapper.find('.border-ui-border').classes().some((c) => c.startsWith('flex'));
+    const hasValidLayout = wrapper
+      .find('.border-ui-border')
+      .classes()
+      .some((c) => c.startsWith('flex'));
     expect(hasValidLayout).toBe(true);
   });
 
@@ -354,7 +355,7 @@ describe('MobileMonitorContainer', () => {
         };
         expose({ fitMonitor });
         return {};
-      }
+      },
     };
 
     wrapper = mount(MobileMonitorContainer, {

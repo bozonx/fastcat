@@ -771,9 +771,7 @@ export class WebAudioEngine implements IAudioEngine {
       effects.length === this.currentMasterAudioEffects.length &&
       effects.every((e, i) => {
         const other = this.currentMasterAudioEffects[i];
-        return (
-          e?.id === other?.id && e?.type === other?.type && e?.enabled === other?.enabled
-        );
+        return e?.id === other?.id && e?.type === other?.type && e?.enabled === other?.enabled;
       });
     if (same) return;
 

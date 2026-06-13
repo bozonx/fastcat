@@ -746,7 +746,9 @@ describe('AudioMixer.writeMixedToSource', () => {
       return Promise.resolve({ planes: newPlanes, frames });
     });
 
-    const masterAudioEffects = [{ id: 'm1', type: 'limiter', enabled: true, target: 'audio' }] as any;
+    const masterAudioEffects = [
+      { id: 'm1', type: 'limiter', enabled: true, target: 'audio' },
+    ] as any;
 
     await AudioMixer.writeMixedToSource({
       prepared,
@@ -761,16 +763,17 @@ describe('AudioMixer.writeMixedToSource', () => {
     });
 
     expect(applyAudioEffectsOffline).toHaveBeenCalledTimes(1);
-    expect(applyAudioEffectsOffline).toHaveBeenCalledWith(expect.objectContaining({
-      effects: masterAudioEffects
-    }));
+    expect(applyAudioEffectsOffline).toHaveBeenCalledWith(
+      expect.objectContaining({
+        effects: masterAudioEffects,
+      }),
+    );
 
     const resultInstance = audioSource.add.mock.calls[0][0];
     const mixedData = resultInstance.data.data;
     expect(mixedData[0]).toBeCloseTo(1.0); // Hard clamped to 1.0 after master effect (sum is 0.5+0.5=1.0, x2 = 2.0, clamped to 1.0)
   });
 });
-
 
 describe('AudioMixer time-stretch via speed', () => {
   it('invokes resampleAndStretchOffline when speed != 1', async () => {

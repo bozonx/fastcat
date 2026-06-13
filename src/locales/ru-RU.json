@@ -471,7 +471,6 @@
     "marker": {
       "actions": "Действия",
       "info": "Инфо маркера",
-      "marker": "Маркер",
       "text": "Текст",
       "title": "Маркер",
       "zoneMarker": "Маркер-зона",
@@ -1359,8 +1358,7 @@
           "updateClipSpeed": "Обновить скорость клипа",
           "updateClipTransform": "Обновить трансформацию клипа",
           "updateFreezeFrame": "Обновить стоп-кадр"
-        },
-        "markers": "Маркеры"
+        }
       },
       "image": {
         "camera": "Камера",

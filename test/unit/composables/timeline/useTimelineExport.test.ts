@@ -1060,9 +1060,7 @@ describe('useTimelineExport pure functions', () => {
       parentEffects: trackFx,
     });
 
-    expect(clips[0]?.effects).toEqual([
-      expect.objectContaining({ id: 'clip-fx' }),
-    ]);
+    expect(clips[0]?.effects).toEqual([expect.objectContaining({ id: 'clip-fx' })]);
     expect(clips[0]?.effects).not.toEqual(
       expect.arrayContaining([expect.objectContaining({ id: 'track-fx' })]),
     );

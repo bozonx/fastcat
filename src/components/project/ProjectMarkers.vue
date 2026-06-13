@@ -113,10 +113,7 @@ function isMarkerSelected(markerId: string): boolean {
 <template>
   <div class="h-full flex flex-col bg-ui-bg-elevated overflow-hidden select-none">
     <div class="flex items-center gap-2 px-3 h-9 border-b border-ui-border bg-ui-bg/30 shrink-0">
-      <MarkerColorFilter
-        :available-colors="availableColors"
-        v-model="selectedColors"
-      />
+      <MarkerColorFilter v-model="selectedColors" :available-colors="availableColors" />
       <div class="flex-1"></div>
       <UButton
         size="xs"
@@ -159,10 +156,15 @@ function isMarkerSelected(markerId: string): boolean {
                 </span>
               </div>
             </td>
-            <td class="px-3 py-2 w-28 align-middle font-mono text-[10px] text-ui-text-muted tabular-nums">
+            <td
+              class="px-3 py-2 w-28 align-middle font-mono text-[10px] text-ui-text-muted tabular-nums"
+            >
               <div class="flex flex-col justify-center">
                 <span>{{ formatMarkerTimecode(marker.timeUs) }}</span>
-                <span v-if="marker.durationUs" class="text-[9px] opacity-60 mt-0.5 whitespace-nowrap">
+                <span
+                  v-if="marker.durationUs"
+                  class="text-[9px] opacity-60 mt-0.5 whitespace-nowrap"
+                >
                   ↳ {{ formatMarkerTimecode(marker.timeUs + marker.durationUs) }}
                 </span>
               </div>

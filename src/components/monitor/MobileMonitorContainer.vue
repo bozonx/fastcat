@@ -1,10 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, nextTick, watch, onBeforeUnmount, onMounted } from 'vue';
 import { blurOnDropdownMenuClose } from '~/composables/useDropdownMenuBlur';
-
-defineOptions({
-  inheritAttrs: false,
-});
 import { useMediaQuery } from '@vueuse/core';
 import { useAppFullscreen } from '~/composables/useAppFullscreen';
 import { isTauriRuntime } from '~/utils/runtime';
@@ -16,6 +12,10 @@ import MonitorTransformBox from './MonitorTransformBox.vue';
 import MobileMonitorAudioControl from './MobileMonitorAudioControl.vue';
 import { useMonitorContainerControls } from '~/composables/monitor/useMonitorContainerControls';
 import ProjectMarkers from '~/components/project/ProjectMarkers.vue';
+
+defineOptions({
+  inheritAttrs: false,
+});
 
 const props = withDefaults(
   defineProps<{
@@ -275,7 +275,7 @@ function restorePanelViewport() {
   savedPanelViewport.value = null;
 }
 
-function onPopState(event: PopStateEvent) {
+function onPopState(_event: PopStateEvent) {
   if (isFullscreen.value) {
     isFullscreen.value = false;
   }
@@ -445,217 +445,217 @@ const containerHeightClass = computed(() => {
         },
       ]"
     >
-    <!-- Video area -->
-    <MonitorViewport
-      ref="viewportRef"
-      :render-width="renderWidth"
-      :render-height="renderHeight"
-      :effective-fullscreen="isFullscreen"
-      :ui-current-time-us="uiCurrentTimeUs"
-      :is-mobile="true"
-      class="bg-black/80"
-      @click="handleViewportClick"
-      @pointerdown.capture="onViewportPointerDown"
-      @pointermove="onLongPressPointerMove"
-      @pointerup="clearLongPressTimer"
-      @pointercancel="clearLongPressTimer"
-    >
-      <template #canvas>
-        <div ref="containerEl" class="absolute inset-0" style="pointer-events: none" />
-      </template>
-      <template #svg-overlay>
-        <g v-if="showGrid">
-          <line
-            v-for="(line, i) in getGridLines(renderWidth, renderHeight)"
-            :key="i"
-            :x1="line.x1"
-            :y1="line.y1"
-            :x2="line.x2"
-            :y2="line.y2"
-            stroke="rgba(255,255,255,0.5)"
-            stroke-width="1"
+      <!-- Video area -->
+      <MonitorViewport
+        ref="viewportRef"
+        :render-width="renderWidth"
+        :render-height="renderHeight"
+        :effective-fullscreen="isFullscreen"
+        :ui-current-time-us="uiCurrentTimeUs"
+        :is-mobile="true"
+        class="bg-black/80"
+        @click="handleViewportClick"
+        @pointerdown.capture="onViewportPointerDown"
+        @pointermove="onLongPressPointerMove"
+        @pointerup="clearLongPressTimer"
+        @pointercancel="clearLongPressTimer"
+      >
+        <template #canvas>
+          <div ref="containerEl" class="absolute inset-0" style="pointer-events: none" />
+        </template>
+        <template #svg-overlay>
+          <g v-if="showGrid">
+            <line
+              v-for="(line, i) in getGridLines(renderWidth, renderHeight)"
+              :key="i"
+              :x1="line.x1"
+              :y1="line.y1"
+              :x2="line.x2"
+              :y2="line.y2"
+              stroke="rgba(255,255,255,0.5)"
+              stroke-width="1"
+            />
+          </g>
+          <MonitorTextTransformBox
+            v-if="!isReadonly && isTextClipSelected"
+            :render-width="renderWidth"
+            :render-height="renderHeight"
           />
-        </g>
-        <MonitorTextTransformBox
-          v-if="!isReadonly && isTextClipSelected"
-          :render-width="renderWidth"
-          :render-height="renderHeight"
-        />
-        <MonitorTransformBox
-          v-else-if="!isReadonly"
-          :render-width="renderWidth"
-          :render-height="renderHeight"
-        />
-      </template>
-      <template #default>
-        <div
-          v-if="videoItems.length === 0"
-          class="absolute inset-0 flex flex-col items-center justify-center gap-3 px-6 text-center text-ui-text-disabled"
-        >
-          <UIcon name="lucide:play-circle" class="w-12 h-12" />
-          <p class="text-sm text-ui-text-muted">{{ statusText }}</p>
-        </div>
-        <div
-          v-else-if="loadError"
-          class="absolute inset-0 flex flex-col items-center justify-center gap-3 px-6 text-center text-red-300"
-        >
-          <UIcon name="lucide:triangle-alert" class="w-7 h-7" />
-          <p class="text-sm font-medium">{{ statusText }}</p>
-          <p class="text-xs text-red-200/80">{{ loadError }}</p>
-        </div>
-      </template>
-    </MonitorViewport>
+          <MonitorTransformBox
+            v-else-if="!isReadonly"
+            :render-width="renderWidth"
+            :render-height="renderHeight"
+          />
+        </template>
+        <template #default>
+          <div
+            v-if="videoItems.length === 0"
+            class="absolute inset-0 flex flex-col items-center justify-center gap-3 px-6 text-center text-ui-text-disabled"
+          >
+            <UIcon name="lucide:play-circle" class="w-12 h-12" />
+            <p class="text-sm text-ui-text-muted">{{ statusText }}</p>
+          </div>
+          <div
+            v-else-if="loadError"
+            class="absolute inset-0 flex flex-col items-center justify-center gap-3 px-6 text-center text-red-300"
+          >
+            <UIcon name="lucide:triangle-alert" class="w-7 h-7" />
+            <p class="text-sm font-medium">{{ statusText }}</p>
+            <p class="text-xs text-red-200/80">{{ loadError }}</p>
+          </div>
+        </template>
+      </MonitorViewport>
 
-    <div
-      class="transition-all duration-300 z-10"
-      :class="[
-        isFullscreen
-          ? [
-              'absolute bg-black/60 backdrop-blur-md border border-white/10 shadow-2xl',
-              isControlsVisible
-                ? 'opacity-100 scale-100'
-                : 'opacity-0 scale-95 pointer-events-none',
-              internalLayout === 'right'
-                ? 'right-4 top-1/2 -translate-y-1/2 w-[72px] flex flex-col items-center py-4 rounded-2xl'
-                : 'bottom-4 left-1/2 -translate-x-1/2 w-[calc(100%-2rem)] max-w-[480px] h-[64px] flex items-center justify-between px-4 py-1.5 rounded-2xl',
-            ]
-          : [
-              'shrink-0 bg-ui-bg',
-              showSideControls
-                ? 'w-[72px] flex flex-col items-center py-4 border-ui-border'
-                : 'px-4 py-1.5 border-ui-border h-[64px]',
-              {
-                'border-r': internalLayout === 'left',
-                'border-l': internalLayout === 'right',
-                'border-b': internalLayout === 'top',
-                'border-t': internalLayout === 'bottom',
-              },
-            ],
-      ]"
-      @pointerdown="onToolbarPointerDown"
-      @pointermove="onLongPressPointerMove"
-      @pointerup="clearLongPressTimer"
-      @pointercancel="clearLongPressTimer"
-    >
       <div
-        class="flex gap-3 w-full"
+        class="transition-all duration-300 z-10"
         :class="[
-          showSideControls
-            ? 'flex-col justify-between h-full items-center'
-            : 'items-center justify-between h-full w-full',
+          isFullscreen
+            ? [
+                'absolute bg-black/60 backdrop-blur-md border border-white/10 shadow-2xl',
+                isControlsVisible
+                  ? 'opacity-100 scale-100'
+                  : 'opacity-0 scale-95 pointer-events-none',
+                internalLayout === 'right'
+                  ? 'right-4 top-1/2 -translate-y-1/2 w-[72px] flex flex-col items-center py-4 rounded-2xl'
+                  : 'bottom-4 left-1/2 -translate-x-1/2 w-[calc(100%-2rem)] max-w-[480px] h-[64px] flex items-center justify-between px-4 py-1.5 rounded-2xl',
+              ]
+            : [
+                'shrink-0 bg-ui-bg',
+                showSideControls
+                  ? 'w-[72px] flex flex-col items-center py-4 border-ui-border'
+                  : 'px-4 py-1.5 border-ui-border h-[64px]',
+                {
+                  'border-r': internalLayout === 'left',
+                  'border-l': internalLayout === 'right',
+                  'border-b': internalLayout === 'top',
+                  'border-t': internalLayout === 'bottom',
+                },
+              ],
         ]"
+        @pointerdown="onToolbarPointerDown"
+        @pointermove="onLongPressPointerMove"
+        @pointerup="clearLongPressTimer"
+        @pointercancel="clearLongPressTimer"
       >
         <div
-          class="flex items-center gap-4 overflow-x-auto no-scrollbar"
-          :class="[showSideControls ? 'flex-col' : '']"
+          class="flex gap-3 w-full"
+          :class="[
+            showSideControls
+              ? 'flex-col justify-between h-full items-center'
+              : 'items-center justify-between h-full w-full',
+          ]"
         >
-          <UButton
-            size="xs"
-            variant="ghost"
-            color="neutral"
-            :icon="isFullscreen ? 'lucide:minimize' : 'lucide:maximize'"
-            class="p-1.5"
-            :aria-label="t('fastcat.monitor.fullscreen')"
-            @click="toggleFullscreen"
-          />
-
-          <UButton
-            size="xs"
-            variant="ghost"
-            color="neutral"
-            icon="i-heroicons-bookmark"
-            class="p-1.5"
-            :aria-label="t('fastcat.timeline.addMarker')"
-            @click="handleMarkerClick"
-            @pointerdown="startMarkerLongPress"
-            @pointerup="stopMarkerLongPress"
-            @pointerleave="stopMarkerLongPress"
-          />
-
-          <UButton
-            size="xs"
-            variant="ghost"
-            color="neutral"
-            class="font-mono tabular-nums text-[10px] min-w-10 justify-center h-6 px-1 text-ui-text-muted hover:text-ui-text"
-            :label="monitorZoomLabel"
-            @click="resetZoom"
-          />
-        </div>
-
-        <div class="flex items-center gap-4" :class="[showSideControls ? 'flex-col' : 'h-full']">
-          <MobileMonitorAudioControl />
-
-          <UButton
-            size="md"
-            variant="ghost"
-            color="neutral"
-            icon="lucide:skip-back"
-            class="p-1"
-            :aria-label="t('fastcat.monitor.rewind')"
-            :disabled="!canInteractPlayback"
-            @click="rewindToStart"
-          />
-
-          <UButton
-            variant="solid"
-            color="primary"
-            :icon="timelineStore.isPlaying ? 'lucide:pause' : 'lucide:play'"
-            class="shadow-lg mx-2 flex items-center justify-center p-0!"
-            :class="[
-              showSideControls
-                ? 'w-full aspect-square rounded-full'
-                : 'h-full aspect-square rounded-full',
-            ]"
-            :ui="{ icon: 'w-8 h-8' }"
-            :aria-label="t('fastcat.monitor.play')"
-            :disabled="!canInteractPlayback"
-            @click="togglePlayback"
-          />
-
-          <UDropdownMenu
-            :open="isMobileSpeedMenuOpen"
-            :items="mobileSpeedMenuItems"
-            :ui="{ content: 'min-w-20' }"
-            @update:open="setMobileSpeedMenuOpen"
+          <div
+            class="flex items-center gap-4 overflow-x-auto no-scrollbar"
+            :class="[showSideControls ? 'flex-col' : '']"
           >
+            <UButton
+              size="xs"
+              variant="ghost"
+              color="neutral"
+              :icon="isFullscreen ? 'lucide:minimize' : 'lucide:maximize'"
+              class="p-1.5"
+              :aria-label="t('fastcat.monitor.fullscreen')"
+              @click="toggleFullscreen"
+            />
+
+            <UButton
+              size="xs"
+              variant="ghost"
+              color="neutral"
+              icon="i-heroicons-bookmark"
+              class="p-1.5"
+              :aria-label="t('fastcat.timeline.addMarker')"
+              @click="handleMarkerClick"
+              @pointerdown="startMarkerLongPress"
+              @pointerup="stopMarkerLongPress"
+              @pointerleave="stopMarkerLongPress"
+            />
+
             <UButton
               size="xs"
               variant="ghost"
               color="neutral"
               class="font-mono tabular-nums text-[10px] min-w-10 justify-center h-6 px-1 text-ui-text-muted hover:text-ui-text"
-              :label="speedButtonLabel"
-              :aria-label="t('fastcat.monitor.playbackSpeed')"
+              :label="monitorZoomLabel"
+              @click="resetZoom"
             />
-          </UDropdownMenu>
+          </div>
 
-          <UDropdownMenu
-            :open="isMobileMoreMenuOpen"
-            :items="contextMenuItems"
-            @update:open="setMobileMoreMenuOpen"
-          >
+          <div class="flex items-center gap-4" :class="[showSideControls ? 'flex-col' : 'h-full']">
+            <MobileMonitorAudioControl />
+
             <UButton
-              size="xs"
+              size="md"
               variant="ghost"
               color="neutral"
-              icon="lucide:ellipsis"
-              class="p-1.5"
-              :aria-label="t('common.more')"
+              icon="lucide:skip-back"
+              class="p-1"
+              :aria-label="t('fastcat.monitor.rewind')"
+              :disabled="!canInteractPlayback"
+              @click="rewindToStart"
             />
-          </UDropdownMenu>
+
+            <UButton
+              variant="solid"
+              color="primary"
+              :icon="timelineStore.isPlaying ? 'lucide:pause' : 'lucide:play'"
+              class="shadow-lg mx-2 flex items-center justify-center p-0!"
+              :class="[
+                showSideControls
+                  ? 'w-full aspect-square rounded-full'
+                  : 'h-full aspect-square rounded-full',
+              ]"
+              :ui="{ icon: 'w-8 h-8' }"
+              :aria-label="t('fastcat.monitor.play')"
+              :disabled="!canInteractPlayback"
+              @click="togglePlayback"
+            />
+
+            <UDropdownMenu
+              :open="isMobileSpeedMenuOpen"
+              :items="mobileSpeedMenuItems"
+              :ui="{ content: 'min-w-20' }"
+              @update:open="setMobileSpeedMenuOpen"
+            >
+              <UButton
+                size="xs"
+                variant="ghost"
+                color="neutral"
+                class="font-mono tabular-nums text-[10px] min-w-10 justify-center h-6 px-1 text-ui-text-muted hover:text-ui-text"
+                :label="speedButtonLabel"
+                :aria-label="t('fastcat.monitor.playbackSpeed')"
+              />
+            </UDropdownMenu>
+
+            <UDropdownMenu
+              :open="isMobileMoreMenuOpen"
+              :items="contextMenuItems"
+              @update:open="setMobileMoreMenuOpen"
+            >
+              <UButton
+                size="xs"
+                variant="ghost"
+                color="neutral"
+                icon="lucide:ellipsis"
+                class="p-1.5"
+                :aria-label="t('common.more')"
+              />
+            </UDropdownMenu>
+          </div>
         </div>
       </div>
-    </div>
-    <!-- Markers drawer (long-press on marker button) -->
-    <UiMobileDrawer
-      v-model:open="isMarkersDrawerOpen"
-      :title="t('videoEditor.fileManager.tabs.markers')"
-      :snap-points="[0.4, 0.85]"
-      direction="bottom"
-    >
-      <div class="px-4 pb-4 h-full overflow-hidden">
-        <ProjectMarkers class="h-full" />
-      </div>
-    </UiMobileDrawer>
+      <!-- Markers drawer (long-press on marker button) -->
+      <UiMobileDrawer
+        v-model:open="isMarkersDrawerOpen"
+        :title="t('videoEditor.fileManager.tabs.markers')"
+        :snap-points="[0.4, 0.85]"
+        direction="bottom"
+      >
+        <div class="px-4 pb-4 h-full overflow-hidden">
+          <ProjectMarkers class="h-full" />
+        </div>
+      </UiMobileDrawer>
     </div>
   </Teleport>
 </template>

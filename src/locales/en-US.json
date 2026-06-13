@@ -471,7 +471,6 @@
     "marker": {
       "actions": "Actions",
       "info": "Marker Info",
-      "marker": "Marker",
       "text": "Text",
       "title": "Marker",
       "zoneMarker": "Zone Marker",
@@ -1359,8 +1358,7 @@
           "updateClipSpeed": "Update clip speed",
           "updateClipTransform": "Update clip transform",
           "updateFreezeFrame": "Update freeze frame"
-        },
-        "markers": "Markers"
+        }
       },
       "image": {
         "camera": "Camera",

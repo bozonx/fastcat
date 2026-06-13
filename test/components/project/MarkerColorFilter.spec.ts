@@ -39,8 +39,12 @@ describe('MarkerColorFilter.vue', () => {
       },
     });
 
-    const redButton = component.findAll('button').find((btn) => btn.attributes('style')?.includes('#d0021b'));
-    const blueButton = component.findAll('button').find((btn) => btn.attributes('style')?.includes('#4a90e2'));
+    const redButton = component
+      .findAll('button')
+      .find((btn) => btn.attributes('style')?.includes('#d0021b'));
+    const blueButton = component
+      .findAll('button')
+      .find((btn) => btn.attributes('style')?.includes('#4a90e2'));
 
     expect(redButton!.classes()).toContain('opacity-100');
     expect(redButton!.classes()).not.toContain('ring-2');
@@ -63,14 +67,18 @@ describe('MarkerColorFilter.vue', () => {
       },
     });
 
-    const blueButton = component.findAll('button').find((btn) => btn.attributes('style')?.includes('#4a90e2'));
+    const blueButton = component
+      .findAll('button')
+      .find((btn) => btn.attributes('style')?.includes('#4a90e2'));
     await blueButton!.trigger('click');
     await component.setProps({ modelValue: selectedColors.value });
 
     expect(selectedColors.value.has('#4a90e2')).toBe(true);
     expect(selectedColors.value.has('#d0021b')).toBe(true);
 
-    const redButton = component.findAll('button').find((btn) => btn.attributes('style')?.includes('#d0021b'));
+    const redButton = component
+      .findAll('button')
+      .find((btn) => btn.attributes('style')?.includes('#d0021b'));
     await redButton!.trigger('click');
     await component.setProps({ modelValue: selectedColors.value });
     expect(selectedColors.value.has('#d0021b')).toBe(false);
@@ -88,7 +96,9 @@ describe('MarkerColorFilter.vue', () => {
       },
     });
 
-    const selectAllBtn = component.findAll('button').find((btn) => btn.text().includes('fastcat.marker.selectAll'));
+    const selectAllBtn = component
+      .findAll('button')
+      .find((btn) => btn.text().includes('fastcat.marker.selectAll'));
     expect(selectAllBtn).toBeDefined();
 
     // Currently not all selected (only red), so clicking should select all

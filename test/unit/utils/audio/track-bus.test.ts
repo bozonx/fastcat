@@ -296,4 +296,3 @@ describe('buildEffectiveAudioClipItems', () => {
     expect(result.masterAudioEffects[0]!.id).toBe('m1');
   });
 });
-

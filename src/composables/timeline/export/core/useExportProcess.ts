@@ -133,7 +133,8 @@ export function useExportProcess(
           videoTracks: allVideoTracks,
           masterEffects: doc?.metadata?.fastcat?.masterEffects,
         });
-        masterAudioEffects = effectiveAudioResult.masterAudioEffects as import('~/timeline/types').AudioClipEffect[];
+        masterAudioEffects =
+          effectiveAudioResult.masterAudioEffects as import('~/timeline/types').AudioClipEffect[];
 
         ensureNotCancelled();
         const masterGain = timelineStore.audioMuted ? 0 : timelineStore.masterGain;
