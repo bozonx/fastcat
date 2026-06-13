@@ -272,7 +272,8 @@ export function useFilePropertiesActions(options: UseFilePropertiesActionsOption
       icon: 'i-heroicons-microphone',
       hidden:
         (!options.isVideoFile.value && !options.isAudioFile.value) ||
-        options.isMediaFullyUnsupported?.value,
+        options.isMediaFullyUnsupported?.value ||
+        !options.experimentalFeatures?.value,
       disabled: !options.canTranscribeMedia.value,
       onClick: options.openTranscriptionModal,
     },

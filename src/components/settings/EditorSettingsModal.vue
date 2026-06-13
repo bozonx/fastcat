@@ -202,6 +202,7 @@ watch(
               @click="activeSection = 'user.audio'"
             />
             <UiToggleButton
+              v-if="workspaceStore.userSettings.experimentalFeatures"
               :model-value="activeSection === 'user.integrations'"
               label="Integrations"
               inactive-color="neutral"

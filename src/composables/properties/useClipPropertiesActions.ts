@@ -93,6 +93,7 @@ interface UseClipPropertiesActionsOptions {
   focusStore: FocusStoreActions;
   fileManager: FileManagerActions;
   setActiveTab: (tabId: string) => void;
+  experimentalFeatures?: Ref<boolean>;
 }
 
 export function useClipPropertiesActions(options: UseClipPropertiesActionsOptions) {
@@ -463,7 +464,7 @@ export function useClipPropertiesActions(options: UseClipPropertiesActionsOption
     }
 
     // 6. Автомонтаж
-    if (clip.clipType === 'media') {
+    if (clip.clipType === 'media' && options.experimentalFeatures?.value) {
       list.push({
         id: 'autoMontage',
         label: t('fastcat.timeline.autoMontage.title'),

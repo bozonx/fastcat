@@ -115,6 +115,7 @@ function togglePseudoOverlapMode() {
 
 function startLongPress() {
   wasLastPressLong.value = false;
+  if (!workspaceStore.userSettings.experimentalFeatures) return;
   if (longPressTimer.value) clearTimeout(longPressTimer.value);
   longPressTimer.value = setTimeout(() => {
     emit('open-history');
@@ -242,7 +243,7 @@ function stopSnapLongPress() {
         />
       </div>
 
-      <div class="flex items-center gap-1 rounded-xl bg-ui-bg px-1 py-1 shrink-0">
+      <div v-if="workspaceStore.userSettings.experimentalFeatures" class="flex items-center gap-1 rounded-xl bg-ui-bg px-1 py-1 shrink-0">
         <UiActionButton
           icon="lucide:history"
           color="neutral"

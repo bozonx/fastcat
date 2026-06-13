@@ -25,12 +25,14 @@ interface UseTrackExtraActionsOptions {
   track: Ref<TimelineTrack | null | undefined>;
   timelineStore: TimelineStoreActions;
   onGenerateCaptions?: () => void;
+  experimentalFeatures?: Ref<boolean>;
 }
 
 export function useTrackExtraActions({
   track,
   timelineStore,
   onGenerateCaptions,
+  experimentalFeatures,
 }: UseTrackExtraActionsOptions) {
   const { t } = useI18n();
 
@@ -51,7 +53,7 @@ export function useTrackExtraActions({
     if (!track.value) return [];
     const list: TrackExtraAction[] = [];
 
-    if (track.value.kind === 'video' && onGenerateCaptions) {
+    if (track.value.kind === 'video' && onGenerateCaptions && experimentalFeatures?.value) {
       list.push({
         id: 'generate-captions',
         label: t('fastcat.captions.generate'),

@@ -154,6 +154,7 @@ const { extraActions } = useTrackExtraActions({
   track: trackRef,
   timelineStore,
   onGenerateCaptions: () => (isGenerateCaptionsOpen.value = true),
+  experimentalFeatures: computed(() => workspaceStore.userSettings.experimentalFeatures),
 });
 
 const trackQuickActions = computed(() => {

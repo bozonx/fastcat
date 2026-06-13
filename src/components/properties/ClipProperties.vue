@@ -212,6 +212,7 @@ const { handleDeleteClip, otherActionsList, commonActionsList } = useClipPropert
   focusStore,
   fileManager,
   setActiveTab,
+  experimentalFeatures: computed(() => workspaceStore.userSettings.experimentalFeatures),
 });
 
 const mediaMeta = computed(() => {
@@ -539,7 +540,7 @@ defineExpose({
       />
 
       <ClipMaskSection
-        v-if="isVideoTrack"
+        v-if="isVideoTrack && workspaceStore.userSettings.experimentalFeatures"
         v-model:enabled="isMaskEnabled"
         :clip="clip"
         @update-mask="handleUpdateMask"
