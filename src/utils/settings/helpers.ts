@@ -105,6 +105,7 @@ export function createDefaultUserSettings(): FastCatUserSettings {
       collapsed: { ...DEFAULT_USER_SETTINGS.presets.collapsed },
     },
     autosave: { ...DEFAULT_USER_SETTINGS.autosave },
+    experimentalFeatures: DEFAULT_USER_SETTINGS.experimentalFeatures,
     audioEngine: { ...DEFAULT_USER_SETTINGS.audioEngine },
   } as FastCatUserSettings;
 }

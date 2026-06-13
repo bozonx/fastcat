@@ -35,6 +35,7 @@ function resetGeneralDefaults() {
   workspaceStore.userSettings.history.maxEntries = DEFAULT_USER_SETTINGS.history.maxEntries;
   workspaceStore.userSettings.backup = { ...DEFAULT_USER_SETTINGS.backup };
   workspaceStore.userSettings.autosave = { ...DEFAULT_USER_SETTINGS.autosave };
+  workspaceStore.userSettings.experimentalFeatures = DEFAULT_USER_SETTINGS.experimentalFeatures;
 
   isResetConfirmOpen.value = false;
 }
@@ -229,6 +230,21 @@ function clearCache() {
             {{ t('videoEditor.settings.clearCacheAction') }}
           </UButton>
         </div>
+
+        <UiFormField
+          :label="t('videoEditor.settings.experimentalFeatures')"
+          :help="t('videoEditor.settings.experimentalFeaturesHelp')"
+        >
+          <UCheckbox v-model="workspaceStore.userSettings.experimentalFeatures" />
+        </UiFormField>
+
+        <UAlert
+          v-if="workspaceStore.userSettings.experimentalFeatures"
+          color="warning"
+          variant="soft"
+          icon="i-heroicons-exclamation-triangle"
+          :description="t('videoEditor.settings.experimentalFeaturesWarning')"
+        />
       </div>
     </UiAccordion>
   </div>

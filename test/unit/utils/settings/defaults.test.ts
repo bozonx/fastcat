@@ -36,6 +36,10 @@ describe('DEFAULT_USER_SETTINGS', () => {
     expect(DEFAULT_USER_SETTINGS.mouse.timeline.click).toBe('select_item');
     expect(DEFAULT_USER_SETTINGS.mouse.ruler.click).toBe('seek');
   });
+
+  it('has experimental features disabled by default', () => {
+    expect(DEFAULT_USER_SETTINGS.experimentalFeatures).toBe(false);
+  });
 });
 
 describe('DEFAULT_APP_SETTINGS', () => {

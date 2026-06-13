@@ -283,6 +283,13 @@ describe('settings normalization', () => {
     expect(normalized.timeline.snapping.playhead).toBe(true);
   });
 
+  it('normalizes experimental features flag', () => {
+    expect(normalizeUserSettings({ experimentalFeatures: true }).experimentalFeatures).toBe(true);
+    expect(normalizeUserSettings({ experimentalFeatures: false }).experimentalFeatures).toBe(false);
+    expect(normalizeUserSettings({}).experimentalFeatures).toBe(false);
+    expect(normalizeUserSettings({ experimentalFeatures: 'yes' }).experimentalFeatures).toBe(false);
+  });
+
   it('normalizes UI settings including defaultAudioWaveformMode', () => {
     const normalized = normalizeUserSettings({
       ui: {

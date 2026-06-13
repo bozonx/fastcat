@@ -53,6 +53,13 @@ export function normalizeDeleteWithoutConfirmation(raw: unknown): boolean {
     .parse((raw as Record<string, unknown>)?.['deleteWithoutConfirmation']);
 }
 
+export function normalizeExperimentalFeatures(raw: unknown): boolean {
+  return z
+    .boolean()
+    .catch(DEFAULT_USER_SETTINGS.experimentalFeatures)
+    .parse((raw as Record<string, unknown>)?.['experimentalFeatures']);
+}
+
 export function normalizeTimelineSettings(raw: unknown): FastCatUserSettings['timeline'] {
   const input = (raw as Record<string, unknown>)?.['timeline'];
   const snapSchema = z

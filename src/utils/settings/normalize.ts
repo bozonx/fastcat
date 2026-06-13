@@ -6,6 +6,7 @@ import { normalizeUserPresets } from './normalizers/presets';
 import {
   normalizeAudioEngineSettings,
   normalizeDeleteWithoutConfirmation,
+  normalizeExperimentalFeatures,
   normalizeIntegrationsSettings,
   normalizeMouseSettings,
   normalizeOpenLastProjectOnStart,
@@ -62,6 +63,7 @@ export function normalizeUserSettings(raw: unknown): FastCatUserSettings {
     history: normalizeHistorySettings(input),
     backup: normalizeBackupSettings(input),
     autosave: normalizeAutosaveSettings(input),
+    experimentalFeatures: normalizeExperimentalFeatures(input),
     presets: normalizePresetsSettings(input),
     audioEngine: normalizeAudioEngineSettings(input),
   };
