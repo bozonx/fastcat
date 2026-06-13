@@ -1253,4 +1253,26 @@ mod tests {
             "seek must clear hold_output"
         );
     }
+
+    #[test]
+    fn scrub_preview_accepted_after_paused_seek() {
+        let engine = mock_engine();
+        let l = layer("l1", "/tmp/a.wav", 0.0, 10.0, 1.0);
+        engine.set_scene(&[l], &[], 1.0, &[]);
+
+        // A paused explicit seek must keep playing=false so that the frontend
+        // forward-scrub preview can still be accepted (scrub_preview bails when
+        // playing is true).
+        engine.seek(2.0, false, true);
+        assert!(
+            !engine.shared.0.lock().playing,
+            "paused seek must keep playing = false"
+        );
+
+        engine.scrub_preview(2.0, 0.1);
+        assert!(
+            engine.shared.0.lock().scrub_request.is_some(),
+            "scrub_preview must be accepted after a paused seek"
+        );
+    }
 }

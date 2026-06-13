@@ -1,6 +1,6 @@
 /** @vitest-environment node */
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { nextTick, ref } from 'vue';
+import { nextTick, ref, computed } from 'vue';
 import { useToast } from '#ui/composables/useToast';
 import { useExportForm } from '~/composables/timeline/export/useExportForm';
 
@@ -9,6 +9,10 @@ const markersMock = ref<
   Array<{ id: string; timeUs: number; durationUs?: number; text: string; color?: string }>
 >([]);
 const selectedEntityMock = ref<any>(null);
+
+const mockExportType = ref<'video' | 'audio'>('video');
+const mockAudioCodec = ref<'aac' | 'opus' | 'flac' | 'pcm' | 'mp3'>('aac');
+const mockOutputFormat = ref<'mp4' | 'webm' | 'mkv'>('mp4');
 
 const exportTimelineToFileMock = vi.fn();
 const validateFilenameMock = vi.fn(async () => true);
@@ -49,6 +53,7 @@ const projectStoreMock = {
     tags: ['tag-1'],
   },
   projectSettings: {
+    exportSettings: undefined as any,
     exportDefaults: {
       encoding: {
         format: 'mp4',
@@ -132,11 +137,11 @@ vi.mock('~/composables/timeline/export', () => ({
     lastExportStatus: ref<'success' | 'error' | null>(null),
     outputFilename: ref(''),
     filenameError: ref<string | null>(null),
-    outputFormat: ref<'mp4' | 'webm' | 'mkv'>('mp4'),
+    outputFormat: mockOutputFormat,
     videoCodec: ref('avc1.42E032'),
     bitrateMbps: ref(8),
     excludeAudio: ref(false),
-    audioCodec: ref<'aac' | 'opus'>('aac'),
+    audioCodec: mockAudioCodec,
     audioBitrateKbps: ref(192),
     audioChannels: ref(2),
     audioSampleRate: ref(48000),
@@ -171,8 +176,17 @@ vi.mock('~/composables/timeline/export', () => ({
     cancelExport: vi.fn(),
     cancelRequested: ref(false),
     resetExportState: vi.fn(),
-    exportType: ref<'video' | 'audio'>('video'),
-    ext: ref('mp4'),
+    exportType: mockExportType,
+    ext: computed(() => {
+      if (mockExportType.value === 'audio') {
+        if (mockAudioCodec.value === 'opus') return 'opus';
+        if (mockAudioCodec.value === 'flac') return 'flac';
+        if (mockAudioCodec.value === 'pcm') return 'wav';
+        if (mockAudioCodec.value === 'mp3') return 'mp3';
+        return 'aac';
+      }
+      return mockOutputFormat.value;
+    }),
     matchTimeline: ref(true),
     customWidth: ref(1920),
     customHeight: ref(1080),
@@ -182,7 +196,8 @@ vi.mock('~/composables/timeline/export', () => ({
 }));
 
 describe('useExportForm', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
+    await nextTick();
     timelineFormatMock.value = {
       sampleRate: 48000,
       width: 1920,
@@ -201,7 +216,12 @@ describe('useExportForm', () => {
     selectedEntityMock.value = null;
     exportTimelineToFileMock.mockReset();
     validateFilenameMock.mockClear();
-    getNextAvailableFilenameMock.mockClear();
+    getNextAvailableFilenameMock.mockReset();
+    getNextAvailableFilenameMock.mockResolvedValue('timeline.mp4');
+    mockExportType.value = 'video';
+    mockAudioCodec.value = 'aac';
+    mockOutputFormat.value = 'mp4';
+    projectStoreMock.projectSettings.exportSettings = undefined as any;
     ensureExportDirMock.mockReset();
     ensureExportDirMock.mockImplementation(async () => ({
       getFileHandle: vi.fn(async (_name: string, options?: { create?: boolean }) => {
@@ -524,5 +544,38 @@ describe('useExportForm', () => {
         description: expect.stringContaining('videoEditor.export.errorDescWithDuration'),
       }),
     );
+  });
+
+  it('генерирует имя файла с аудио-расширением при инициализации аудио-экспорта', async () => {
+    projectStoreMock.projectSettings.exportSettings = {
+      exportType: 'audio',
+      outputFormat: 'mp4',
+      videoCodec: 'avc1.42E032',
+      bitrateMbps: 8,
+      excludeAudio: false,
+      audioCodec: 'opus',
+      audioBitrateKbps: 192,
+      audioSampleRate: 48000,
+      bitrateMode: 'vbr',
+      keyframeIntervalSec: 2,
+      exportAlpha: false,
+      matchTimeline: true,
+      customWidth: 1920,
+      customHeight: 1080,
+      customFps: 30,
+      customAudioSampleRate: 48000,
+      metadataTitle: '',
+      metadataDescription: '',
+      metadataAuthor: '',
+      metadataTags: '',
+    };
+
+    getNextAvailableFilenameMock.mockImplementation(async () => 'timeline.opus');
+
+    const form = useExportForm();
+    await form.initializeExportForm();
+
+    expect(getNextAvailableFilenameMock).toHaveBeenCalledWith('timeline', 'opus');
+    expect(form.outputFilename.value).toBe('timeline.opus');
   });
 });

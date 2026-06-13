@@ -24,13 +24,6 @@ pub enum TransitionSpec {
     Slide {
         direction: SlideDirection,
     },
-    Dissolve {
-        seed: u32,
-    },
-    CircleReveal {
-        center: [f32; 2],
-        softness: f32,
-    },
     FadeThroughColor {
         color: String,
     },
@@ -65,6 +58,10 @@ pub struct TransitionUniform {
     pub p5: f32,
     pub p6: f32,
     pub p7: f32,
+    pub p8: f32,
+    pub p9: f32,
+    pub p10: f32,
+    pub p11: f32,
 }
 
 pub struct TransitionPipeline {
@@ -532,6 +529,10 @@ fn build_uniform(
         p5: 0.0,
         p6: 0.0,
         p7: 0.0,
+        p8: 0.0,
+        p9: 0.0,
+        p10: 0.0,
+        p11: 0.0,
     };
 
     match spec {
@@ -551,14 +552,6 @@ fn build_uniform(
                 SlideDirection::Down => 3.0,
             };
         }
-        TransitionSpec::Dissolve { seed } => {
-            uni.p0 = *seed as f32;
-        }
-        TransitionSpec::CircleReveal { center, softness } => {
-            uni.p0 = center[0];
-            uni.p1 = center[1];
-            uni.p2 = *softness;
-        }
         TransitionSpec::FadeThroughColor { color } => {
             let rgb = parse_hex_color(color);
             uni.p0 = rgb[0];
@@ -569,7 +562,7 @@ fn build_uniform(
             params: serde_json::Value::Object(map),
             ..
         } => {
-            for i in 0..8 {
+            for i in 0..12 {
                 let key = format!("p{}", i);
                 if let Some(v) = map.get(&key).and_then(|v| v.as_f64()) {
                     match i {
@@ -581,6 +574,10 @@ fn build_uniform(
                         5 => uni.p5 = v as f32,
                         6 => uni.p6 = v as f32,
                         7 => uni.p7 = v as f32,
+                        8 => uni.p8 = v as f32,
+                        9 => uni.p9 = v as f32,
+                        10 => uni.p10 = v as f32,
+                        11 => uni.p11 = v as f32,
                         _ => {}
                     }
                 }
@@ -610,10 +607,6 @@ fn get_shader_source(spec: &TransitionSpec) -> String {
         TransitionSpec::Crossfade => include_str!("shaders/crossfade.wgsl").to_string(),
         TransitionSpec::Wipe { .. } => include_str!("shaders/wipe.wgsl").to_string(),
         TransitionSpec::Slide { .. } => include_str!("shaders/slide.wgsl").to_string(),
-        TransitionSpec::Dissolve { .. } => include_str!("shaders/dissolve.wgsl").to_string(),
-        TransitionSpec::CircleReveal { .. } => {
-            include_str!("shaders/circle_reveal.wgsl").to_string()
-        }
         TransitionSpec::FadeThroughColor { .. } => {
             include_str!("shaders/fade_through_color.wgsl").to_string()
         }
@@ -689,11 +682,6 @@ mod tests {
             },
             TransitionSpec::Slide {
                 direction: SlideDirection::Left,
-            },
-            TransitionSpec::Dissolve { seed: 42 },
-            TransitionSpec::CircleReveal {
-                center: [0.5, 0.5],
-                softness: 0.1,
             },
             TransitionSpec::FadeThroughColor {
                 color: "#ff0000".into(),

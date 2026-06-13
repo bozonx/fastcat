@@ -1137,7 +1137,7 @@
       "filenameAlreadyExists": "Файл с таким именем уже существует",
       "filenameInvalidChars": "Имя файла не должно содержать разделители пути и управляющие символы",
       "filenameInvalidExtension": "Имя файла должно заканчиваться на .{ext}",
-      "filenamePlaceholder": "например, video.mp4",
+      "filenamePlaceholder": "например, video.{ext}",
       "filenameRequired": "Укажите имя файла",
       "fps": "FPS (кадров в секунду)",
       "height": "Высота",

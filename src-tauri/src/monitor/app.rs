@@ -1082,12 +1082,11 @@ impl WindowState {
         self.layers.seek(t, transport_playing);
 
         if !transport_playing {
-            if let Some(audio) = self.audio.as_ref() {
-                if !audio.is_empty() {
-                    log::info!("[monitor] paused audio prime after seek to {t:.3}s");
-                    audio.start_priming(t);
-                }
-            }
+            // Do NOT start priming on a paused seek. The frontend sends explicit
+            // seeks for every user scrub, and priming sets `playing=true`, which
+            // blocks the forward-scrub audio preview (`scrub_preview` returns
+            // early when `playing`). `play()` starts priming anyway when the user
+            // actually hits Play, so there is no loss.
         }
 
         // After a real user seek during playback the audio ring was flushed and the

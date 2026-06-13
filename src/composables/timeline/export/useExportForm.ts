@@ -9,7 +9,6 @@ import {
   sanitizeBaseName,
   resolveExportCodecs,
   supportsExportAlpha,
-  getExt,
   normalizeExportFilename,
 } from '~/composables/timeline/export';
 import { createTimelineFormatFromProjectDefaults } from '~/timeline/format';
@@ -370,7 +369,7 @@ export function useExportForm() {
       );
       outputFilename.value = await getNextAvailableFilename(
         timelineBase,
-        getExt(outputFormat.value),
+        ext.value,
       );
       await validateFilename();
     } finally {

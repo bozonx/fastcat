@@ -79,6 +79,7 @@ const {
   customExportPath,
   isTauri,
   exportType,
+  ext,
 
   initializeExportForm,
   pickTauriExportPath,
@@ -181,6 +182,10 @@ async function onConfirm() {
     emit('exported', { file, filename: outputFilename.value });
   });
 }
+
+const filenamePlaceholder = computed(() =>
+  t('videoEditor.export.filenamePlaceholder', { ext: ext.value }),
+);
 </script>
 
 <template>
@@ -246,7 +251,7 @@ async function onConfirm() {
               v-model="outputFilename"
               full-width
               :disabled="isExporting"
-              :placeholder="t('videoEditor.export.filenamePlaceholder')"
+              :placeholder="filenamePlaceholder"
             />
           </UiFormField>
           <div v-if="isTauri" class="mt-1">
