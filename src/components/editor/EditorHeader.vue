@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { useProjectStore } from '~/stores/project.store';
 import { useTimelineStore } from '~/stores/timeline.store';
+import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useHotkeyLabel } from '~/composables/useHotkeyLabel';
 import { blurOnDropdownMenuClose } from '~/composables/useDropdownMenuBlur';
 import TimelineTabs from '~/components/timeline/TimelineTabs.vue';
@@ -10,6 +11,7 @@ import UiTooltip from '~/components/ui/UiTooltip.vue';
 const { t } = useI18n();
 const projectStore = useProjectStore();
 const timelineStore = useTimelineStore();
+const workspaceStore = useWorkspaceStore();
 const { getHotkeyTitle } = useHotkeyLabel();
 
 const emit = defineEmits(['open-project-settings', 'open-editor-settings', 'open-export-modal']);
@@ -106,6 +108,7 @@ const menuItems = computed(() => {
       <!-- Window Switcher -->
       <div class="flex items-center bg-ui-bg/50 p-1 rounded-lg border border-ui-border gap-1 mr-2">
         <UiTooltip
+          v-if="workspaceStore.userSettings.experimentalFeatures"
           :text="getHotkeyTitle(t('videoEditor.fileManager.tabs.files'), 'general.switchViewFiles')"
         >
           <button
@@ -136,6 +139,7 @@ const menuItems = computed(() => {
           </button>
         </UiTooltip>
         <UiTooltip
+          v-if="workspaceStore.userSettings.experimentalFeatures"
           :text="getHotkeyTitle(t('videoEditor.timeline.tabs.sound'), 'general.switchViewSound')"
         >
           <button
@@ -171,7 +175,7 @@ const menuItems = computed(() => {
         </UiTooltip>
       </div>
 
-      <BackgroundTasksButton size="sm" />
+      <BackgroundTasksButton v-if="workspaceStore.userSettings.experimentalFeatures" size="sm" />
 
       <UDropdownMenu
         :items="menuItems"

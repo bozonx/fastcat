@@ -11,9 +11,11 @@ import ProjectTabFileViewer from '~/components/project/ProjectTabFileViewer.vue'
 import { useProjectTabs } from '~/composables/project/useProjectTabs';
 import { useFocusStore } from '~/stores/focus.store';
 import { useProjectTabsStore } from '~/stores/project-tabs.store';
+import { useWorkspaceStore } from '~/stores/workspace.store';
 
 const { t } = useI18n();
 const focusStore = useFocusStore();
+const workspaceStore = useWorkspaceStore();
 
 const props = withDefaults(
   defineProps<{
@@ -51,12 +53,14 @@ onMounted(() => {
     component: markRaw(ProjectFilesTab),
   });
 
-  registerProjectTab({
-    id: 'history',
-    label: t('videoEditor.fileManager.tabs.history'),
-    icon: 'i-heroicons-clock',
-    component: markRaw(ProjectHistory),
-  });
+  if (workspaceStore.userSettings.experimentalFeatures) {
+    registerProjectTab({
+      id: 'history',
+      label: t('videoEditor.fileManager.tabs.history'),
+      icon: 'i-heroicons-clock',
+      component: markRaw(ProjectHistory),
+    });
+  }
 
   registerProjectTab({
     id: 'effects',
@@ -65,19 +69,21 @@ onMounted(() => {
     component: markRaw(ProjectEffects),
   });
 
-  registerProjectTab({
-    id: 'library',
-    label: t('videoEditor.fileManager.tabs.library'),
-    icon: 'i-heroicons-rectangle-group',
-    component: markRaw(ProjectLibrary),
-  });
+  if (workspaceStore.userSettings.experimentalFeatures) {
+    registerProjectTab({
+      id: 'library',
+      label: t('videoEditor.fileManager.tabs.library'),
+      icon: 'i-heroicons-rectangle-group',
+      component: markRaw(ProjectLibrary),
+    });
 
-  registerProjectTab({
-    id: 'markers',
-    label: t('videoEditor.fileManager.tabs.markers'),
-    icon: 'i-heroicons-tag',
-    component: markRaw(ProjectMarkers),
-  });
+    registerProjectTab({
+      id: 'markers',
+      label: t('videoEditor.fileManager.tabs.markers'),
+      icon: 'i-heroicons-tag',
+      component: markRaw(ProjectMarkers),
+    });
+  }
 
   registerProjectTab({
     id: 'backups',

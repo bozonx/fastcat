@@ -72,6 +72,7 @@ interface UseFilePropertiesActionsOptions {
   instanceId?: Ref<string | undefined>;
   isExternal?: Ref<boolean | undefined>;
   isMediaFullyUnsupported?: Ref<boolean>;
+  experimentalFeatures?: Ref<boolean>;
 }
 
 export function useFilePropertiesActions(options: UseFilePropertiesActionsOptions) {
@@ -262,7 +263,7 @@ export function useFilePropertiesActions(options: UseFilePropertiesActionsOption
         ? options.t('videoEditor.fileManager.actions.convertAudioFile')
         : options.t('videoEditor.export.convert'),
       icon: 'i-heroicons-arrow-path',
-      hidden: !options.canConvertFile.value,
+      hidden: !options.canConvertFile.value || !options.experimentalFeatures?.value,
       onClick: options.onConvert,
     },
     {
@@ -342,7 +343,9 @@ export function useFilePropertiesActions(options: UseFilePropertiesActionsOption
       label: options.t('videoEditor.fileManager.actions.extractAudio'),
       icon: 'i-heroicons-musical-note',
       hidden:
-        !options.isVideoFile.value || (options.isVideoWithAudio && !options.isVideoWithAudio.value),
+        !options.isVideoFile.value ||
+        (options.isVideoWithAudio && !options.isVideoWithAudio.value) ||
+        !options.experimentalFeatures?.value,
       onClick: options.extractAudio,
     },
   ]);
