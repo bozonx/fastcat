@@ -263,4 +263,42 @@ describe('TimelineAudioWaveform.vue', () => {
       errorSpy.mockRestore();
     });
   });
+
+  describe('extraction lifecycle', () => {
+    it('requests higher-resolution peaks when source duration becomes available after mount', async () => {
+      const fileMock = new File([], 'media.mp4');
+      mockVfs.getFile.mockResolvedValue(fileMock);
+      mockMediaStore.getOrFetchMetadataByPath.mockResolvedValue({});
+      mockMediaStore.extractPeaks.mockResolvedValue([new Float32Array(240_000).fill(0.5)]);
+
+      const { runQueuedPeakExtraction } = await import('~/utils/audio/waveform-extraction-queue');
+      vi.mocked(runQueuedPeakExtraction).mockImplementation(async ({ task }: any) => task());
+
+      await mountComponent();
+      await nextTick();
+
+      expect(mockMediaStore.extractPeaks).toHaveBeenCalledWith(fileMock, 'media.mp4', {
+        maxLength: 240_000,
+        precision: 10000,
+        durationS: 5,
+      });
+
+      mockMediaStore.extractPeaks.mockClear();
+      mockMediaStore.mediaMetadata['media.mp4'] = {
+        duration: 10,
+        audio: { codec: 'aac', parsedCodec: 'aac', sampleRate: 48000, channels: 2 },
+        audioPeaks: [new Float32Array(240_000).fill(0.5)],
+        source: { size: 1, lastModified: 1 },
+      };
+      await nextTick();
+
+      await vi.waitFor(() => {
+        expect(mockMediaStore.extractPeaks).toHaveBeenCalledWith(fileMock, 'media.mp4', {
+          maxLength: 480_000,
+          precision: 10000,
+          durationS: 10,
+        });
+      });
+    });
+  });
 });

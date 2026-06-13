@@ -9,6 +9,7 @@ export interface DecodeRequest {
   options?: {
     maxLength?: number;
     precision?: number;
+    durationS?: number; // For extract-peaks: expected source duration to align waveform mapping
     targetSampleRate?: number; // For decode-stt
   };
 }

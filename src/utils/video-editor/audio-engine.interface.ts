@@ -41,7 +41,7 @@ export interface IAudioEngine {
   extractPeaks(
     fileHandle: FileSystemFileHandle,
     sourceKey: string,
-    options?: { maxLength?: number; precision?: number },
+    options?: { maxLength?: number; precision?: number; durationS?: number },
   ): Promise<Float32Array[] | null>;
   destroy(): void;
 }

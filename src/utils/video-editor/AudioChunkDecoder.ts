@@ -24,7 +24,7 @@ export interface AudioChunkDecoderOptions {
 export interface ExtractAudioPeaksParams {
   fileHandle: FileSystemFileHandle;
   sourceKey: string;
-  options?: { maxLength?: number; precision?: number };
+  options?: { maxLength?: number; precision?: number; durationS?: number };
 }
 
 export interface EnsureAudioChunkDecodedParams {

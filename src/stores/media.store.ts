@@ -821,7 +821,7 @@ export const useMediaStore = defineStore('media', () => {
   async function extractPeaks(
     file: File,
     sourceKey: string,
-    options?: { maxLength?: number; precision?: number },
+    options?: { maxLength?: number; precision?: number; durationS?: number },
   ): Promise<Float32Array[] | null> {
     const maxLength = options?.maxLength || 8000;
 
@@ -859,7 +859,7 @@ export const useMediaStore = defineStore('media', () => {
         sourceKey: string;
         blob?: File;
         arrayBuffer?: ArrayBuffer;
-        options?: { maxLength?: number; precision?: number };
+        options?: { maxLength?: number; precision?: number; durationS?: number };
       } = {
         type: 'extract-peaks',
         id,

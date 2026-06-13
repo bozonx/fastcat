@@ -175,7 +175,7 @@ export class TauriAudioEngine implements IAudioEngine {
   async extractPeaks(
     _fileHandle: FileSystemFileHandle,
     _sourceKey: string,
-    _options?: { maxLength?: number; precision?: number },
+    _options?: { maxLength?: number; precision?: number; durationS?: number },
   ): Promise<Float32Array[] | null> {
     // Peaks extraction is handled by the media store / native pipeline in Tauri.
     return null;

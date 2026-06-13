@@ -111,9 +111,10 @@ function mixPeakValue(target: number, next: number) {
 async function ensureMediaPeaks(params: {
   path: string;
   maxLength: number;
+  durationS?: number;
   shouldCancel?: () => boolean;
 }): Promise<Float32Array[] | null> {
-  const { path, maxLength, shouldCancel } = params;
+  const { path, maxLength, durationS, shouldCancel } = params;
   const existingMeta = mediaStore.getCachedMetadata(path);
   const existing = existingMeta?.audioPeaks;
   if (hasSufficientPeaks(existing, maxLength)) return existing || null;
@@ -150,6 +151,7 @@ async function ensureMediaPeaks(params: {
         const peaks = await mediaStore.extractPeaks(file, path, {
           maxLength,
           precision: 10000,
+          durationS,
         });
         if (peaks?.some((channel) => channel.length > 0) && !shouldCancel?.()) {
           mediaStore.setAudioPeaks(path, peaks);
@@ -249,7 +251,12 @@ async function buildTimelinePeaks(params: {
       visiting.delete(path);
     } else {
       if (shouldCancel?.()) return null;
-      sourcePeaks = await ensureMediaPeaks({ path, maxLength, shouldCancel });
+      sourcePeaks = await ensureMediaPeaks({
+        path,
+        maxLength,
+        durationS: sourceDurationUs / 1_000_000,
+        shouldCancel,
+      });
       if (shouldCancel?.()) return null;
     }
 
@@ -309,7 +316,11 @@ async function buildTimelinePeaks(params: {
 const extractPeaks = async () => {
   if (!fileUrl.value || !projectStore.currentProjectId) return;
   const maxLength = waveformMaxLength(effectiveSourceDurationUs.value / 1_000_000);
-  if (hasSufficientPeaks(audioPeaks.value, maxLength) || isExtracting.value) return;
+  if (hasSufficientPeaks(audioPeaks.value, maxLength)) return;
+  if (isExtracting.value) {
+    hasDeferredExtraction.value = true;
+    return;
+  }
   if (timelineStore.isPlaying) {
     hasDeferredExtraction.value = true;
     return;
@@ -376,6 +387,7 @@ const extractPeaks = async () => {
     const peaks = await ensureMediaPeaks({
       path: fileUrl.value,
       maxLength,
+      durationS: effectiveSourceDurationUs.value / 1_000_000,
       shouldCancel,
     });
 
@@ -395,12 +407,24 @@ const extractPeaks = async () => {
     log.error('Failed to extract audio peaks:', err);
   } finally {
     isExtracting.value = false;
+    if (hasDeferredExtraction.value && !timelineStore.isPlaying) {
+      const latestMaxLength = waveformMaxLength(effectiveSourceDurationUs.value / 1_000_000);
+      if (!hasSufficientPeaks(audioPeaks.value, latestMaxLength)) {
+        requestPeaksExtraction();
+      } else {
+        hasDeferredExtraction.value = false;
+      }
+    }
   }
 };
 
 function requestPeaksExtraction() {
   const maxLength = waveformMaxLength(effectiveSourceDurationUs.value / 1_000_000);
   if (hasSufficientPeaks(audioPeaks.value, maxLength)) return;
+  if (isExtracting.value) {
+    hasDeferredExtraction.value = true;
+    return;
+  }
   if (timelineStore.isPlaying) {
     hasDeferredExtraction.value = true;
     return;
@@ -416,6 +440,10 @@ watch(
   },
   { immediate: true },
 );
+
+watch(effectiveSourceDurationUs, () => {
+  requestPeaksExtraction();
+});
 
 watch(
   () => projectStore.currentProjectId,

@@ -373,7 +373,7 @@ export class AudioDecodeEngine<
 
   async extractPeaksFromSource(
     source: Blob | ArrayBuffer,
-    options?: { maxLength?: number; precision?: number },
+    options?: { maxLength?: number; precision?: number; durationS?: number },
   ): Promise<{ peaks: Float32Array[]; sampleRate: number }> {
     const maxLength = options?.maxLength || 8000;
     const precision = options?.precision || 10000;
@@ -397,18 +397,24 @@ export class AudioDecodeEngine<
       const sink = new this.deps.AudioSampleSink(aTrack);
       try {
         const metaDurationS = await input.computeDuration();
-        const durationS = Number.isFinite(metaDurationS) && metaDurationS > 0 ? metaDurationS : 0;
+        const computedDurationS = Number.isFinite(metaDurationS) && metaDurationS > 0 ? metaDurationS : 0;
+        const durationS =
+          options?.durationS && Number.isFinite(options.durationS) && options.durationS > 0
+            ? options.durationS
+            : computedDurationS;
         const trackSampleRate = Math.max(
           1,
           (aTrack as { sampleRate?: number }).sampleRate || 48000,
         );
         let totalFramesEstimate = Math.max(1, Math.ceil(durationS * trackSampleRate));
+        const useFixedDuration =
+          options?.durationS && Number.isFinite(options.durationS) && options.durationS > 0;
         const peaks: Float32Array[] = [];
         let resolvedChannels = 0;
 
         for await (const sampleRaw of (
           sink as { samples: (...args: number[]) => AsyncIterable<unknown> }
-        ).samples(0, durationS || 1e9)) {
+        ).samples(0, durationS || computedDurationS || 1e9)) {
           const sample = sampleRaw as {
             numberOfFrames?: number;
             numberOfChannels?: number;
@@ -441,7 +447,7 @@ export class AudioDecodeEngine<
             const framesInTrackRate = Math.round(frames * (trackSampleRate / sampleRate));
             const lastFrameTrack = startFrameTrack + framesInTrackRate;
 
-            if (lastFrameTrack > totalFramesEstimate) {
+            if (!useFixedDuration && lastFrameTrack > totalFramesEstimate) {
               const oldEstimate = totalFramesEstimate;
               totalFramesEstimate = lastFrameTrack;
               const ratio = oldEstimate / totalFramesEstimate;

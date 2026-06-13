@@ -270,6 +270,62 @@ describe('AudioDecodeEngine', () => {
     expect(response.result?.peaks?.length).toBe(1);
     expect(response.result?.peaks?.[0]?.length).toBe(10);
   });
+
+  it('extract-peaks with durationS fixes totalFramesEstimate and skips remap', async () => {
+    async function* lateSample() {
+      yield {
+        sampleRate: 48000,
+        numberOfChannels: 1,
+        numberOfFrames: 48000,
+        timestamp: 0,
+        allocationSize: () => 192000,
+        copyTo: (dst: Float32Array) => {
+          dst.fill(0.5);
+        },
+        close: vi.fn(),
+      };
+      // Second sample starts beyond the fixed durationS, which would normally trigger remap
+      yield {
+        sampleRate: 48000,
+        numberOfChannels: 1,
+        numberOfFrames: 4800,
+        timestamp: 1.1,
+        allocationSize: () => 19200,
+        copyTo: (dst: Float32Array) => {
+          dst.fill(0.9);
+        },
+        close: vi.fn(),
+      };
+    }
+
+    const mockTrack = createMockTrack({ sampleRate: 48000 });
+    const mockInput = createMockInput({ duration: 1.2, track: mockTrack });
+    const engine = new AudioDecodeEngine(
+      createMockDeps({ input: mockInput, samples: lateSample() }),
+    );
+
+    const requestWithFixedDuration: DecodeRequest = {
+      type: 'extract-peaks',
+      id: 2,
+      sourceKey: 'test-fixed-duration',
+      arrayBuffer: new ArrayBuffer(0),
+      options: {
+        maxLength: 48000,
+        precision: 10000,
+        durationS: 1.0,
+      },
+    };
+
+    const response = await engine.handleRequest(requestWithFixedDuration);
+    expect(response.ok).toBe(true);
+    expect(response.result?.peaks?.length).toBe(1);
+    const peaks = response.result?.peaks?.[0];
+    expect(peaks).toBeDefined();
+    expect(peaks!.length).toBe(48000);
+    // Because durationS is fixed at 1.0s, totalFramesEstimate = 48000.
+    // The late frames land in the last bucket (index 47999) instead of remap.
+    expect(peaks![47999]).toBeGreaterThan(0.5);
+  });
 });
 
 describe('copyPlanarSampleToChannelBuffers', () => {

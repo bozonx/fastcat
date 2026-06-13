@@ -83,7 +83,7 @@ export class DecodeWorkerClient {
   extractPeaks(
     blob: Blob,
     sourceKey: string,
-    options?: { maxLength?: number; precision?: number },
+    options?: { maxLength?: number; precision?: number; durationS?: number },
   ): Promise<DecodeResult> {
     if (this.destroyed) {
       return Promise.reject(new Error(DECODE_CANCELLED_MESSAGE));
