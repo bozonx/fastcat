@@ -296,9 +296,25 @@ pub(crate) fn decode_symphonia_chunk(params: DecodeSymphoniaChunkParams<'_>) -> 
         let track = find_audio_track(format.tracks())
             .ok_or_else(|| anyhow!("no active audio track found"))?;
 
-        let decoder = symphonia::default::get_codecs()
+        let decoder = match symphonia::default::get_codecs()
             .make(&track.codec_params, &DecoderOptions::default())
-            .context("failed to create decoder")?;
+        {
+            Ok(decoder) => decoder,
+            Err(_) if track.codec_params.codec == symphonia::core::codecs::CODEC_TYPE_OPUS => {
+                log::warn!(
+                    "[audio] symphonia cannot decode Opus chunk; falling back to ffmpeg: {path}"
+                );
+                return decode_chunk_ffmpeg(DecodeChunkFfmpegParams {
+                    path,
+                    source_start_sec,
+                    timeline_duration_sec,
+                    speed,
+                    target_sample_rate,
+                    output_channels,
+                });
+            }
+            Err(err) => return Err(err).context("failed to create decoder"),
+        };
 
         let track_id = track.id;
         let source_rate = track.codec_params.sample_rate.unwrap_or(target_sample_rate);
@@ -651,6 +667,87 @@ pub(crate) fn decode_symphonia_chunk(params: DecodeSymphoniaChunkParams<'_>) -> 
         state.decoders.insert(layer_id.to_string(), state_val);
     }
     Ok(out)
+}
+
+struct DecodeChunkFfmpegParams<'a> {
+    path: &'a str,
+    source_start_sec: f64,
+    timeline_duration_sec: f64,
+    speed: f64,
+    target_sample_rate: u32,
+    output_channels: usize,
+}
+
+fn decode_chunk_ffmpeg(params: DecodeChunkFfmpegParams<'_>) -> Result<Vec<f32>> {
+    let DecodeChunkFfmpegParams {
+        path,
+        source_start_sec,
+        timeline_duration_sec,
+        speed,
+        target_sample_rate,
+        output_channels,
+    } = params;
+    let target_samples = (timeline_duration_sec.max(0.0) * target_sample_rate as f64).round()
+        as usize
+        * output_channels;
+    let source_duration_sec = timeline_duration_sec.max(0.0) * speed.abs().max(1e-6);
+    let mut samples = decode_range_ffmpeg(
+        Path::new(path),
+        source_start_sec,
+        source_duration_sec,
+        target_sample_rate,
+        output_channels,
+    )
+    .context("failed to decode Opus audio chunk via ffmpeg")?;
+
+    let channels = output_channels.max(1);
+    let target_frames = target_samples / channels;
+    let source_frames = samples.len() / channels;
+
+    if source_frames > 0 && source_frames != target_frames {
+        samples = resample_interleaved_linear(&samples, channels, target_frames);
+    }
+
+    if samples.len() > target_samples {
+        samples.truncate(target_samples);
+    } else {
+        samples.resize(target_samples, 0.0);
+    }
+    Ok(samples)
+}
+
+fn resample_interleaved_linear(input: &[f32], channels: usize, target_frames: usize) -> Vec<f32> {
+    if channels == 0 || target_frames == 0 {
+        return Vec::new();
+    }
+    let source_frames = input.len() / channels;
+    if source_frames == 0 {
+        return vec![0.0; target_frames * channels];
+    }
+    if source_frames == 1 {
+        let mut out = vec![0.0; target_frames * channels];
+        for frame in 0..target_frames {
+            for ch in 0..channels {
+                out[frame * channels + ch] = input[ch];
+            }
+        }
+        return out;
+    }
+
+    let mut out = vec![0.0; target_frames * channels];
+    let scale = source_frames as f64 / target_frames.max(1) as f64;
+    for frame in 0..target_frames {
+        let pos = (frame as f64 + 0.5) * scale - 0.5;
+        let left = pos.floor().max(0.0) as usize;
+        let right = (left + 1).min(source_frames - 1);
+        let frac = (pos - left as f64).clamp(0.0, 1.0) as f32;
+        for ch in 0..channels {
+            let a = input[left * channels + ch];
+            let b = input[right * channels + ch];
+            out[frame * channels + ch] = a + (b - a) * frac;
+        }
+    }
+    out
 }
 
 pub(crate) struct DecodeAudioChunkParams<'a> {
@@ -1077,6 +1174,70 @@ mod tests {
         let _ = std::fs::remove_file(wav_path);
         let _ = std::fs::remove_file(webm_path);
         Ok(())
+    }
+
+    #[test]
+    fn decode_audio_chunk_ogg_opus_uses_ffmpeg_fallback() -> anyhow::Result<()> {
+        let wav_path = write_temp_f32_wav(48_000, 2, 24_000)?;
+        let mut opus_path = wav_path.clone();
+        opus_path.set_extension("opus");
+
+        let status = Command::new("ffmpeg")
+            .args([
+                "-v",
+                "error",
+                "-y",
+                "-i",
+                wav_path.to_string_lossy().as_ref(),
+                "-c:a",
+                "libopus",
+                opus_path.to_string_lossy().as_ref(),
+            ])
+            .status();
+
+        let Ok(status) = status else {
+            let _ = std::fs::remove_file(wav_path);
+            return Ok(());
+        };
+        if !status.success() {
+            let _ = std::fs::remove_file(wav_path);
+            let _ = std::fs::remove_file(opus_path);
+            return Ok(());
+        }
+
+        let shared = Arc::new((Mutex::new(AudioShared::default()), Condvar::new()));
+        let decoded = decode_audio_chunk(DecodeAudioChunkParams {
+            layer_id: "opus-layer",
+            path: &opus_path.to_string_lossy(),
+            source_start_sec: 0.1,
+            timeline_duration_sec: 0.05,
+            speed: 1.0,
+            target: AudioRenderTarget::monitor(48_000, 2),
+            reverse: false,
+            shared: &shared,
+        })?;
+
+        assert_eq!(decoded.len(), (0.05f64 * 48_000.0).round() as usize * 2);
+        assert!(
+            decoded.iter().any(|sample| sample.abs() > 1e-6),
+            "decoded Opus chunk should contain PCM samples"
+        );
+
+        let _ = std::fs::remove_file(wav_path);
+        let _ = std::fs::remove_file(opus_path);
+        Ok(())
+    }
+
+    #[test]
+    fn resample_interleaved_linear_matches_target_frame_count() {
+        let input = vec![0.0, 0.0, 1.0, 1.0, 0.0, 0.0, -1.0, -1.0];
+        let out = resample_interleaved_linear(&input, 2, 2);
+
+        assert_eq!(out.len(), 4);
+        assert_eq!(out[0], 0.5);
+        assert_eq!(out[1], 0.5);
+        assert_eq!(out[2], -0.5);
+        assert_eq!(out[3], -0.5);
     }
 
     #[test]
