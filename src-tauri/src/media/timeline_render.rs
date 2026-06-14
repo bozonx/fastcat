@@ -365,19 +365,23 @@ pub(crate) fn build_export_scene(
         if layer.opacity.clamp(0.0, 1.0) <= 0.0 {
             continue;
         }
-        let (layer_kind, source_rotation) = match build_raster_kind(
-            layer,
-            time_sec,
-            svg_long_edge,
-            Some(svg_long_edge),
-            cache,
-            on_warning,
-        )? {
-            Some(built) => (built.kind, built.source_rotation),
-            None => match build_virtual_kind(layer, (scene_w, scene_h)) {
-                Some(kind) => (kind, 0),
-                None => continue,
-            },
+        let (layer_kind, source_rotation) = if matches!(layer.kind, LayerKind::Adjustment) {
+            (CompLayerKind::Adjustment, 0)
+        } else {
+            match build_raster_kind(
+                layer,
+                time_sec,
+                svg_long_edge,
+                Some(svg_long_edge),
+                cache,
+                on_warning,
+            )? {
+                Some(built) => (built.kind, built.source_rotation),
+                None => match build_virtual_kind(layer, (scene_w, scene_h)) {
+                    Some(kind) => (kind, 0),
+                    None => continue,
+                },
+            }
         };
         let layer = layer_with_auto_source_rotation(layer, source_rotation);
         layers.push(finalize_layer(
@@ -691,5 +695,67 @@ mod tests {
             ids.contains(&"to"),
             "to_layer must be present during transition"
         );
+    }
+
+    #[test]
+    fn export_scene_keeps_adjustment_layer_effects() {
+        let background = SceneLayer {
+            id: "bg".into(),
+            kind: LayerKind::Background,
+            path: String::new(),
+            timeline_start_sec: 0.0,
+            timeline_end_sec: 5.0,
+            source_start_sec: 0.0,
+            source_range_duration_sec: 5.0,
+            speed: 1.0,
+            freeze_frame_source_sec: None,
+            source_orientation: None,
+            z: 0,
+            opacity: 1.0,
+            blend_mode: crate::compositor::scene::BlendMode::Normal,
+            background_color: Some("#000000".into()),
+            text: None,
+            style: None,
+            shape_type: None,
+            fill_color: None,
+            stroke_color: None,
+            stroke_width: None,
+            shape_config: None,
+            transform: None,
+            transition_in: None,
+            transition_out: None,
+            effects: Vec::new(),
+        };
+        let mut adjustment = background.clone();
+        adjustment.id = "adj".into();
+        adjustment.kind = LayerKind::Adjustment;
+        adjustment.z = 1;
+        adjustment.effects =
+            vec![crate::compositor::effects::EffectSpec::GaussianBlur { radius: 12.0 }];
+        let scene = MonitorScene {
+            master_effects: Vec::new(),
+            layers: vec![background, adjustment],
+            audio_layers: vec![],
+            audio_tracks: vec![],
+            audio_master_gain: 1.0,
+            audio_master_muted: false,
+            audio_master_effects: Vec::new(),
+            width: 1920,
+            height: 1080,
+            preview_scale: None,
+            preview_fps: 30.0,
+            preview_sync_mode: crate::monitor::scene::PreviewSyncMode::Balanced,
+            frame_cache_mode: crate::monitor::scene::NativeFrameCacheMode::Auto,
+            frame_cache_custom_mb: 0,
+        };
+        let mut cache = VideoDecoderCache::new();
+        let export = build_export_scene(&scene, 2.5, (1920, 1080), &mut cache, None).unwrap();
+
+        let adjustment_layer = export
+            .layers
+            .iter()
+            .find(|layer| matches!(layer.kind, CompLayerKind::Adjustment))
+            .expect("adjustment layer should be present in export scene");
+        assert_eq!(adjustment_layer.effects.len(), 1);
     }
 }
