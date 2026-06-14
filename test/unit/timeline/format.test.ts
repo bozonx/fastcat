@@ -47,14 +47,25 @@ describe('normalizeTimelineFormat', () => {
     const result = normalizeTimelineFormat({ fps: 29.970001 });
     expect(result.fps).toBe(29.97);
   });
+
+  it('sets useProjectSettings to true by default', () => {
+    const result = normalizeTimelineFormat(null);
+    expect(result.useProjectSettings).toBe(true);
+  });
+
+  it('preserves useProjectSettings flag if provided', () => {
+    const result = normalizeTimelineFormat({ useProjectSettings: false });
+    expect(result.useProjectSettings).toBe(false);
+  });
 });
 
 describe('createTimelineFormatFromProjectDefaults', () => {
-  it('creates format with project defaults', () => {
+  it('creates format with project defaults and useProjectSettings true', () => {
     const result = createTimelineFormatFromProjectDefaults({ width: 1280, height: 720 });
     expect(result.width).toBe(1280);
     expect(result.height).toBe(720);
     expect(result.settingsSource).toBe('projectDefaults');
+    expect(result.useProjectSettings).toBe(true);
   });
 });
 

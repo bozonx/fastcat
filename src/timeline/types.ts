@@ -20,18 +20,7 @@ export interface TimelineFormat {
   sampleRate: number;
   isAutoSettings: boolean;
   settingsSource: TimelineFormatSettingsSource;
-
-  exportFormat?: 'mp4' | 'webm' | 'mkv';
-  videoCodec?: string;
-  videoBitrateMbps?: number;
-  excludeAudio?: boolean;
-  audioCodec?: 'aac' | 'opus' | 'flac' | 'pcm' | 'mp3';
-  audioBitrateKbps?: number;
-  audioChannels?: number;
-  bitrateMode?: 'constant' | 'variable';
-  keyframeIntervalSec?: number;
-  exportAlpha?: boolean;
-  fastStart?: boolean;
+  useProjectSettings?: boolean;
 }
 
 export interface TimelineRange {

@@ -12,16 +12,7 @@ export const DEFAULT_TIMELINE_FORMAT: TimelineFormat = {
   sampleRate: 48000,
   isAutoSettings: true,
   settingsSource: 'projectDefaults',
-  exportFormat: 'mp4',
-  videoCodec: 'avc1.640032',
-  videoBitrateMbps: 5,
-  excludeAudio: false,
-  audioCodec: 'aac',
-  audioBitrateKbps: 128,
-  audioChannels: 2,
-  bitrateMode: 'variable',
-  keyframeIntervalSec: 2,
-  exportAlpha: false,
+  useProjectSettings: true,
 };
 
 export interface TimelineFormatInput {
@@ -35,17 +26,7 @@ export interface TimelineFormatInput {
   sampleRate?: unknown;
   isAutoSettings?: unknown;
   settingsSource?: unknown;
-
-  exportFormat?: unknown;
-  videoCodec?: unknown;
-  videoBitrateMbps?: unknown;
-  excludeAudio?: unknown;
-  audioCodec?: unknown;
-  audioBitrateKbps?: unknown;
-  audioChannels?: unknown;
-  bitrateMode?: unknown;
-  keyframeIntervalSec?: unknown;
-  exportAlpha?: unknown;
+  useProjectSettings?: unknown;
 }
 
 function toNumber(value: unknown, fallback: number, min: number, max: number): number {
@@ -94,30 +75,10 @@ export function normalizeTimelineFormat(
     isAutoSettings:
       typeof input?.isAutoSettings === 'boolean' ? input.isAutoSettings : fallback.isAutoSettings,
     settingsSource,
-
-    exportFormat: (input?.exportFormat as 'mp4' | 'webm' | 'mkv') ?? fallback.exportFormat ?? 'mp4',
-    videoCodec: (input?.videoCodec as string) ?? fallback.videoCodec ?? 'avc1.640032',
-    videoBitrateMbps: toNumber(input?.videoBitrateMbps, fallback.videoBitrateMbps ?? 5, 0.2, 200),
-    excludeAudio:
-      typeof input?.excludeAudio === 'boolean'
-        ? input.excludeAudio
-        : (fallback.excludeAudio ?? false),
-    audioCodec:
-      (input?.audioCodec as 'aac' | 'opus' | 'flac' | 'pcm' | 'mp3') ??
-      fallback.audioCodec ??
-      'aac',
-    audioBitrateKbps: toInt(input?.audioBitrateKbps, fallback.audioBitrateKbps ?? 128, 8, 512),
-    audioChannels: toInt(input?.audioChannels, fallback.audioChannels ?? 2, 1, 8),
-    bitrateMode:
-      (input?.bitrateMode as 'constant' | 'variable') ?? fallback.bitrateMode ?? 'variable',
-    keyframeIntervalSec: toInt(
-      input?.keyframeIntervalSec,
-      fallback.keyframeIntervalSec ?? 2,
-      1,
-      60,
-    ),
-    exportAlpha:
-      typeof input?.exportAlpha === 'boolean' ? input.exportAlpha : (fallback.exportAlpha ?? false),
+    useProjectSettings:
+      typeof input?.useProjectSettings === 'boolean'
+        ? input.useProjectSettings
+        : (fallback.useProjectSettings ?? true),
   };
 }
 
@@ -126,6 +87,7 @@ export function createTimelineFormatFromProjectDefaults(project: TimelineFormatI
     ...project,
     isAutoSettings: typeof project.isAutoSettings === 'boolean' ? project.isAutoSettings : true,
     settingsSource: 'projectDefaults',
+    useProjectSettings: true,
   });
 }
 

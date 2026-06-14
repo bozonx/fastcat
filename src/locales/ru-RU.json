@@ -693,6 +693,7 @@
       "createSelectionArea": "Создать область выделения",
       "createSelectionFromZone": "Создать выделение из зоны",
       "createVersion": "Создать версию",
+      "followProjectSettings": "Следовать настройкам проекта",
       "saveAs": "Сохранить как",
       "autoMontage": {
         "title": "Авто монтаж (Обрезка пауз)",

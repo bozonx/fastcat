@@ -404,6 +404,18 @@ const timelineSampleRate = computed({
   set: (sampleRate: number) => updateFormat({ sampleRate }),
 });
 
+const followProjectSettings = computed({
+  get: () => timelineStore.timelineFormat.useProjectSettings ?? true,
+  set: (val: boolean) => {
+    void timelineStore.updateTimelineFormat({
+      ...timelineStore.timelineFormat,
+      useProjectSettings: val,
+      settingsSource: val ? 'projectDefaults' : 'manual',
+      isAutoSettings: false,
+    });
+  },
+});
+
 function handleUpdateMasterEffects(effects: Array<VideoClipEffect | AudioClipEffect>) {
   timelineStore.applyTimeline({
     type: 'update_master_effects',
@@ -505,6 +517,10 @@ const addTrackActions = computed(() => [
     </template>
 
     <PropertySection v-if="!finalIsReadOnly" :title="t('videoEditor.timeline.format')">
+      <div class="flex items-center gap-3 mb-4">
+        <UCheckbox v-model="followProjectSettings" />
+        <span class="text-ui-text text-sm">{{ t('videoEditor.timeline.followProjectSettings') }}</span>
+      </div>
       <MediaResolutionSettings
         v-model:width="timelineWidth"
         v-model:height="timelineHeight"
@@ -514,6 +530,7 @@ const addTrackActions = computed(() => [
         v-model:aspect-ratio="timelineAspectRatio"
         v-model:is-custom-resolution="timelineIsCustomResolution"
         v-model:sample-rate="timelineSampleRate"
+        :disabled="followProjectSettings"
       />
     </PropertySection>
 

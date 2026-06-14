@@ -553,17 +553,6 @@ export function useExportForm() {
               aspectRatio: aspectRatio.value,
               isCustomResolution: isCustomResolution.value,
               sampleRate: audioSampleRate.value,
-
-              exportFormat: outputFormat.value,
-              videoCodec: videoCodec.value,
-              videoBitrateMbps: bitrateMbps.value,
-              excludeAudio: excludeAudio.value,
-              audioCodec: audioCodec.value,
-              audioBitrateKbps: audioBitrateKbps.value,
-              audioChannels: audioChannels.value,
-              bitrateMode: bitrateMode.value,
-              keyframeIntervalSec: keyframeIntervalSec.value,
-              exportAlpha: exportAlpha.value,
             });
             await saveProjectSettingsAsDefault();
           } catch (e) {

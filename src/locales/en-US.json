@@ -693,6 +693,7 @@
       "createSelectionArea": "Create selection area",
       "createSelectionFromZone": "Create selection from zone",
       "createVersion": "Create version",
+      "followProjectSettings": "Follow project settings",
       "saveAs": "Save as",
       "autoMontage": {
         "title": "Auto Montage (Silence Trimming)",

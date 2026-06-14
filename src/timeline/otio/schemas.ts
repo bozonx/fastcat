@@ -393,6 +393,7 @@ export const TimelineDocFastCatMetaSchema = z
             sampleRate: z.number().optional(),
             isAutoSettings: z.boolean().optional(),
             settingsSource: z.enum(['projectDefaults', 'firstClip', 'manual']).optional(),
+            useProjectSettings: z.boolean().optional(),
           })
           .optional(),
         markers: z.array(z.any()).optional(),

@@ -119,7 +119,24 @@ export const useTimelineStore = defineStore('timeline', () => {
     if (timelineDoc.value) return getDocFps(timelineDoc.value);
     return TIMELINE_DEFAULTS.FPS;
   });
-  const timelineFormat = computed(() => getTimelineFormat(timelineDoc.value));
+  const timelineFormat = computed(() => {
+    const format = getTimelineFormat(timelineDoc.value);
+    if ((format.useProjectSettings ?? true) && projectStore.projectSettings?.project) {
+      const proj = projectStore.projectSettings.project;
+      return {
+        ...format,
+        width: proj.width,
+        height: proj.height,
+        fps: proj.fps,
+        resolutionFormat: proj.resolutionFormat,
+        orientation: proj.orientation,
+        aspectRatio: proj.aspectRatio,
+        isCustomResolution: proj.isCustomResolution,
+        sampleRate: proj.sampleRate,
+      };
+    }
+    return format;
+  });
 
   async function updateTimelineFormat(settings: TimelineFormatInput) {
     if (!timelineDoc.value) {
