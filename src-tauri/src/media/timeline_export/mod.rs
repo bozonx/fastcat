@@ -251,6 +251,7 @@ pub fn export_timeline(
                 width,
                 height,
                 fps,
+                frame_count as f64 / fps,
                 target_path,
             ),
         };

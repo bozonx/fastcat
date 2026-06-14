@@ -11,6 +11,7 @@ pub(crate) fn build_ffmpeg_args(
     width: u32,
     height: u32,
     fps: f64,
+    duration_sec: f64,
     target_path: &Path,
 ) -> Vec<String> {
     let export_alpha = export_uses_alpha(options);
@@ -57,6 +58,27 @@ pub(crate) fn build_ffmpeg_args(
     if is_video {
         let video_codec = ffmpeg_video_codec_hw(&options.video_codec, hw_mode);
         push_video_codec_rate_args(&mut args, options, hw_mode, fps, video_codec);
+        // Pin constant frame rate on the OUTPUT too, mirroring the direct path. The
+        // rawvideo demuxer only carries the *input* rate; without an explicit output
+        // `-r` + `-fps_mode cfr`, ffmpeg's default `auto` mode can drop colliding frames
+        // on a fractional/off-grid rate (e.g. 29.97 → 2997/125), which surfaces as a
+        // reduced average fps in the encoded file. CFR guarantees one output frame per
+        // input frame at the declared rate.
+        args.extend([
+            "-fps_mode".to_string(),
+            "cfr".to_string(),
+            "-r".to_string(),
+            format!("{fps:.6}"),
+        ]);
+        // Hard-cap the output to the exact video length (frame_count/fps). The rendered
+        // audio mix can be a few samples / a priming frame longer, and `-shortest` is
+        // unreliable with `+faststart` and encoder priming — so without this cap the
+        // container duration follows the slightly-longer audio and players show a
+        // black/frozen tail after the last video frame. The video emits exactly this
+        // many seconds, so `-t` only trims the audio overhang, never the picture.
+        if duration_sec.is_finite() && duration_sec > 0.0 {
+            args.extend(["-t".to_string(), format_time(duration_sec)]);
+        }
         // The vello path streams raw RGB; without an explicit matrix swscale defaults to
         // BT.601 and writes the stream untagged, so HD players (assuming BT.709) show a
         // colour shift vs the monitor. Pin + tag the conventional space for the output
