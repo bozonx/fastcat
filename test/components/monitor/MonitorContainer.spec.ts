@@ -511,4 +511,55 @@ describe('MonitorContainer', () => {
     expect(projectStore.activeMonitor.panX).toBe(10);
     expect(projectStore.activeMonitor.panY).toBe(20);
   });
+
+  it('renders seekbar and seeks on interaction', async () => {
+    const { useTimelineStore } = await import('~/stores/timeline.store');
+    const timelineStore = useTimelineStore(pinia);
+    timelineStore.setCurrentTimeUs = vi.fn();
+
+    wrapper = mount(MonitorContainer, {
+      global: {
+        plugins: [pinia],
+        stubs: {
+          MonitorViewport: true,
+          MonitorAudioControl: true,
+          UiTooltip: { template: '<div><slot /></div>' },
+          UButton: true,
+          UiActionButton: true,
+          UiToggleButton: true,
+          UDropdownMenu: true,
+          UContextMenu: { template: '<div><slot /></div>' },
+          UiContextMenuPortal: true,
+          UIcon: true,
+        },
+      },
+    });
+
+    await wrapper.vm.$nextTick();
+
+    const seekbar = wrapper.find('[data-testid="monitor-seekbar"]');
+    expect(seekbar.exists()).toBe(true);
+
+    // Mock getBoundingClientRect for seekbar to test mouse click positioning
+    seekbar.element.getBoundingClientRect = vi.fn(() => ({
+      left: 10,
+      width: 100,
+      top: 0,
+      right: 110,
+      bottom: 10,
+      height: 10,
+      x: 10,
+      y: 0,
+      toJSON: () => {},
+    }));
+
+    // Trigger pointerdown at 50% width (x = 60, since left is 10, so ClientX = 60 is 50%)
+    await seekbar.trigger('pointerdown', {
+      button: 0,
+      clientX: 60,
+    });
+
+    // 50% of 1,000,000 Us is 500,000 Us
+    expect(timelineStore.setCurrentTimeUs).toHaveBeenCalledWith(500000);
+  });
 });

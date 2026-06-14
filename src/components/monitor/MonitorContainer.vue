@@ -71,6 +71,48 @@ const {
   uiCurrentTimeUs,
 } = useMonitorRuntime();
 
+const seekbarRef = ref<HTMLElement | null>(null);
+const isDraggingSeekbar = ref(false);
+
+const progressPercent = computed(() => {
+  if (safeDurationUs.value <= 0) return 0;
+  return (uiCurrentTimeUs.value / safeDurationUs.value) * 100;
+});
+
+function handleSeekEvent(event: PointerEvent) {
+  if (!seekbarRef.value || safeDurationUs.value <= 0) return;
+  const rect = seekbarRef.value.getBoundingClientRect();
+  const x = event.clientX - rect.left;
+  const width = rect.width;
+  const pct = Math.max(0, Math.min(1, x / width));
+  const targetTimeUs = Math.round(pct * safeDurationUs.value);
+  timelineStore.setCurrentTimeUs(targetTimeUs);
+}
+
+function onSeekbarPointerDown(event: PointerEvent) {
+  if (event.button !== 0) return;
+  isDraggingSeekbar.value = true;
+  handleSeekEvent(event);
+  seekbarRef.value?.setPointerCapture(event.pointerId);
+  event.stopPropagation();
+  resetIdleTimeout();
+}
+
+function onSeekbarPointerMove(event: PointerEvent) {
+  if (!isDraggingSeekbar.value) return;
+  handleSeekEvent(event);
+  event.stopPropagation();
+  resetIdleTimeout();
+}
+
+function onSeekbarPointerUp(event: PointerEvent) {
+  if (!isDraggingSeekbar.value) return;
+  isDraggingSeekbar.value = false;
+  seekbarRef.value?.releasePointerCapture(event.pointerId);
+  event.stopPropagation();
+  resetIdleTimeout();
+}
+
 registerMonitorActions({
   createStopFrameSnapshot,
   createNewTimeline,
@@ -455,56 +497,103 @@ watch(viewportRef, (vp) => {
           @click="handleContainerClick"
           @pointerdown.capture="!props.useExternalFocus && focusStore.setMainFocus('monitor')"
         >
-          <!-- Video area -->
-          <MonitorViewport
-            ref="viewportRef"
-            :render-width="renderWidth"
-            :render-height="renderHeight"
-            :is-idle="isIdle"
-            :effective-fullscreen="effectiveFullscreen"
-            :ui-current-time-us="uiCurrentTimeUs"
-            @pointerdown.capture="closeMonitorMenus"
-          >
-            <template #canvas>
-              <div ref="containerEl" class="absolute inset-0" style="pointer-events: none" />
-            </template>
+          <!-- Video area with Seekbar -->
+          <div class="relative flex-1 min-h-0 min-w-0 flex flex-col justify-between">
+            <MonitorViewport
+              ref="viewportRef"
+              :render-width="renderWidth"
+              :render-height="renderHeight"
+              :is-idle="isIdle"
+              :effective-fullscreen="effectiveFullscreen"
+              :ui-current-time-us="uiCurrentTimeUs"
+              @pointerdown.capture="closeMonitorMenus"
+            >
+              <template #canvas>
+                <div ref="containerEl" class="absolute inset-0" style="pointer-events: none" />
+              </template>
 
-            <template #svg-overlay>
-              <g v-if="showGrid">
-                <line
-                  v-for="(line, i) in getGridLines(renderWidth, renderHeight)"
-                  :key="i"
-                  :x1="line.x1"
-                  :y1="line.y1"
-                  :x2="line.x2"
-                  :y2="line.y2"
-                  stroke="rgba(255,255,255,0.5)"
-                  stroke-width="1"
+              <template #svg-overlay>
+                <g v-if="showGrid">
+                  <line
+                    v-for="(line, i) in getGridLines(renderWidth, renderHeight)"
+                    :key="i"
+                    :x1="line.x1"
+                    :y1="line.y1"
+                    :x2="line.x2"
+                    :y2="line.y2"
+                    stroke="rgba(255,255,255,0.5)"
+                    stroke-width="1"
+                  />
+                </g>
+
+                <MonitorTextTransformBox
+                  v-if="!isReadonly && isTextClipSelected"
+                  :render-width="renderWidth"
+                  :render-height="renderHeight"
                 />
-              </g>
 
-              <MonitorTextTransformBox
-                v-if="!isReadonly && isTextClipSelected"
-                :render-width="renderWidth"
-                :render-height="renderHeight"
-              />
+                <MonitorTransformBox
+                  v-else-if="!isReadonly"
+                  :render-width="renderWidth"
+                  :render-height="renderHeight"
+                />
+              </template>
 
-              <MonitorTransformBox
-                v-else-if="!isReadonly"
-                :render-width="renderWidth"
-                :render-height="renderHeight"
-              />
-            </template>
+              <template #default>
+                <div
+                  v-if="loadError"
+                  class="absolute inset-0 flex items-center justify-center text-red-500"
+                >
+                  {{ loadError }}
+                </div>
+              </template>
+            </MonitorViewport>
 
-            <template #default>
+            <!-- Monitor Seekbar / Progress line -->
+            <div
+              v-if="safeDurationUs > 0"
+              class="absolute left-0 right-0 z-30 transition-all duration-300 pointer-events-auto select-none"
+              :class="[
+                effectiveFullscreen && isIdle ? 'opacity-0 pointer-events-none' : 'opacity-100',
+                effectiveFullscreen
+                  ? [
+                      'px-8 pb-3',
+                      toolbarPosition === 'left' || toolbarPosition === 'right' ? 'bottom-6' : 'bottom-20'
+                    ]
+                  : 'bottom-0 px-0 pb-0'
+              ]"
+              @pointerdown="onSeekbarPointerDown"
+              @pointermove="onSeekbarPointerMove"
+              @pointerup="onSeekbarPointerUp"
+              @pointercancel="onSeekbarPointerUp"
+            >
               <div
-                v-if="loadError"
-                class="absolute inset-0 flex items-center justify-center text-red-500"
+                ref="seekbarRef"
+                data-testid="monitor-seekbar"
+                class="relative h-4 flex items-center cursor-pointer group"
               >
-                {{ loadError }}
+                <!-- Background Track -->
+                <div
+                  class="absolute left-0 right-0 h-1 bg-ui-border rounded-full transition-all duration-150"
+                  :class="{ 'h-1.5': isDraggingSeekbar }"
+                ></div>
+                <!-- Progress Fill -->
+                <div
+                  class="absolute left-0 h-1 bg-ui-text-muted rounded-full transition-all duration-150"
+                  :class="{ 'h-1.5 bg-ui-text': isDraggingSeekbar }"
+                  :style="{ width: `${progressPercent}%` }"
+                ></div>
+                <!-- Thumb/Marker -->
+                <div
+                  class="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-3 h-3 bg-ui-text rounded-full shadow-md transition-all duration-150 pointer-events-none"
+                  :class="[
+                    isDraggingSeekbar ? 'opacity-100 scale-100' : 'opacity-0 scale-75 group-hover:opacity-100 group-hover:scale-100'
+                  ]"
+                  :style="{ left: `${progressPercent}%` }"
+                ></div>
               </div>
-            </template>
-          </MonitorViewport>
+            </div>
+          </div>
 
           <!-- Playback controls bar -->
           <div
