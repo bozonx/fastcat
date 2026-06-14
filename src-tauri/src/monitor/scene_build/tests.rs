@@ -76,6 +76,36 @@ mod tests {
     }
 
     #[test]
+    fn background_virtual_kind_fills_wide_scene() {
+        let layer: SceneLayer = serde_json::from_value(json!({
+            "id": "bg",
+            "kind": "background",
+            "timeline_start_sec": 0.0,
+            "timeline_end_sec": 1.0,
+            "source_start_sec": 0.0,
+            "z": 0,
+            "opacity": 1.0,
+            "background_color": "#112233"
+        }))
+        .unwrap();
+
+        let kind = build_virtual_kind(&layer, (1920, 1080)).expect("background shape");
+        match kind {
+            crate::compositor::scene::LayerKind::Shape(shape) => {
+                assert_eq!(shape.natural_size, (1920, 1080));
+                match shape.geometry {
+                    ShapeGeometry::Rectangle { width, height, .. } => {
+                        assert!((width - (1920.0 / 1080.0)).abs() < 1e-9);
+                        assert!((height - 1.0).abs() < 1e-9);
+                    }
+                    _ => panic!("background must be a rectangle"),
+                }
+            }
+            _ => panic!("background must render as shape"),
+        }
+    }
+
+    #[test]
     fn finalize_layer_remaps_raster_crop_for_90_degree_source_orientation() {
         let layer = layer_with_crop("video", "90");
         let output = finalize_layer(&layer, test_shape_kind(), (1920, 1080), 0.0);

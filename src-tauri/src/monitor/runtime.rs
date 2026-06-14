@@ -1054,10 +1054,13 @@ impl LayerRuntimeManager {
         self.last_tick_t = t;
         let scene = self.scene.clone();
         for layer in scene.iter() {
-            if !layer.covers(t) || layer.kind != LayerKind::Video {
+            if !layer.covers(t) || !is_refreshable_display_runtime(layer.kind) {
                 continue;
             }
             self.ensure_runtime_for(layer, device.clone(), queue.clone());
+            if layer.kind != LayerKind::Video {
+                continue;
+            }
             let clip_local = layer.source_pts_at(t);
             if let Some(LayerRuntime::Video(rt)) = self.runtimes.get_mut(&layer.id) {
                 rt.pull_into_cache();
@@ -1137,6 +1140,10 @@ fn video_sync_lag_sec(mode: PreviewSyncMode, fps: f64) -> Option<f64> {
 }
 
 fn has_loaded_runtime(kind: LayerKind) -> bool {
+    matches!(kind, LayerKind::Video | LayerKind::Image | LayerKind::Svg)
+}
+
+fn is_refreshable_display_runtime(kind: LayerKind) -> bool {
     matches!(kind, LayerKind::Video | LayerKind::Image | LayerKind::Svg)
 }
 
@@ -1344,6 +1351,19 @@ mod tests {
         assert!(allows_stale_video_fallback(PreviewSyncMode::Smooth));
         assert!(allows_stale_video_fallback(PreviewSyncMode::Balanced));
         assert!(!allows_stale_video_fallback(PreviewSyncMode::Strict));
+    }
+
+    #[test]
+    fn paused_refresh_loads_static_raster_layers() {
+        use super::is_refreshable_display_runtime;
+
+        assert!(is_refreshable_display_runtime(LayerKind::Video));
+        assert!(is_refreshable_display_runtime(LayerKind::Image));
+        assert!(is_refreshable_display_runtime(LayerKind::Svg));
+        assert!(!is_refreshable_display_runtime(LayerKind::Text));
+        assert!(!is_refreshable_display_runtime(LayerKind::Shape));
+        assert!(!is_refreshable_display_runtime(LayerKind::Background));
+        assert!(!is_refreshable_display_runtime(LayerKind::Adjustment));
     }
 
     #[test]

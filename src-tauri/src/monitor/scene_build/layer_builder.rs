@@ -34,17 +34,20 @@ pub fn build_virtual_kind(sl: &SceneLayer, scene_size: (u32, u32)) -> Option<Com
     let (scene_w, scene_h) = scene_size;
     match sl.kind {
         LayerKind::Video | LayerKind::Image | LayerKind::Svg | LayerKind::Adjustment => None,
-        LayerKind::Background => Some(CompLayerKind::Shape(ShapeLayer {
-            geometry: ShapeGeometry::Rectangle {
-                width: 1.0,
-                height: 1.0,
-                corner_radius: 0.0,
-            },
-            fill: parse_color(sl.background_color.as_deref().unwrap_or("#000000"), 1.0),
-            stroke: Color::TRANSPARENT,
-            stroke_width: 0.0,
-            natural_size: (scene_w, scene_h),
-        })),
+        LayerKind::Background => {
+            let base = scene_w.min(scene_h).max(1) as f64;
+            Some(CompLayerKind::Shape(ShapeLayer {
+                geometry: ShapeGeometry::Rectangle {
+                    width: scene_w.max(1) as f64 / base,
+                    height: scene_h.max(1) as f64 / base,
+                    corner_radius: 0.0,
+                },
+                fill: parse_color(sl.background_color.as_deref().unwrap_or("#000000"), 1.0),
+                stroke: Color::TRANSPARENT,
+                stroke_width: 0.0,
+                natural_size: (scene_w, scene_h),
+            }))
+        }
         LayerKind::Shape => {
             // Stroke width is authored in the 1920x1080 design space, so scale it to
             // the scene resolution (uniform, matching the shape body which is a fixed
