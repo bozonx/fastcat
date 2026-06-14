@@ -46,7 +46,9 @@ function formatProgress(value: number): string {
               class="flex flex-col gap-2 p-3 bg-ui-bg rounded-xl border border-ui-border"
             >
               <div class="flex items-center justify-between">
-                <span class="text-sm font-medium text-ui-text truncate pr-2" :title="task.title">{{ task.title }}</span>
+                <span class="text-sm font-medium text-ui-text truncate pr-2" :title="task.title">{{
+                  task.title
+                }}</span>
                 <span class="text-xs text-ui-text-muted shrink-0">{{
                   formatProgress(task.progress)
                 }}</span>

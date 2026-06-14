@@ -147,9 +147,7 @@ describe('TauriAudioEngine', () => {
 
   it('getLevels returns native master levels and track levels when present', async () => {
     const engine = await createEngine();
-    const levelsHandler = listenMock.mock.calls[1]?.[1] as (event: {
-      payload: any;
-    }) => void;
+    const levelsHandler = listenMock.mock.calls[1]?.[1] as (event: { payload: any }) => void;
 
     levelsHandler({
       payload: {

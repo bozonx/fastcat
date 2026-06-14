@@ -45,7 +45,11 @@ const variantClasses = computed(() => {
     @click="emit('click')"
   >
     <UIcon v-if="props.icon" :name="props.icon" class="w-4 h-4 shrink-0" />
-    <span v-if="props.label" class="text-[9px] font-medium leading-tight truncate w-full px-0.5" :title="props.label">
+    <span
+      v-if="props.label"
+      class="text-[9px] font-medium leading-tight truncate w-full px-0.5"
+      :title="props.label"
+    >
       {{ props.label }}
     </span>
   </button>

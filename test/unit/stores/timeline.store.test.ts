@@ -7,6 +7,15 @@ import { parseTimelineFromOtio } from '~/timeline/otio-serializer';
 
 import { ref } from 'vue';
 
+global.Worker = class {
+  postMessage(data: any) {
+    this.onmessage?.({ data: { success: true, serialized: '{"schema":"otio"}' } } as any);
+  }
+  onmessage?: (e: any) => void;
+  onerror?: (e: any) => void;
+  terminate() {}
+} as any;
+
 vi.mock('~/timeline/otio-serializer', () => ({
   parseTimelineFromOtio: vi.fn(),
   serializeTimelineToOtio: vi.fn().mockReturnValue('{}'),
@@ -94,6 +103,21 @@ vi.mock('~/stores/workspace.store', () => ({
   useWorkspaceStore: () => workspaceStoreMock,
 }));
 
+const projectSettingsStoreMock = {
+  projectSettings: {
+    timelines: {
+      openPaths: [] as string[],
+      sessions: {} as Record<string, any>,
+    },
+  },
+  markProjectSettingsAsDirty: vi.fn(),
+  requestProjectSettingsSave: vi.fn(),
+};
+
+vi.mock('~/stores/project-settings.store', () => ({
+  useProjectSettingsStore: () => projectSettingsStoreMock,
+}));
+
 const uiStoreMock = {
   notifyTimelineSave: vi.fn(),
   pendingRecoveryDialog: null as {
@@ -166,6 +190,10 @@ describe('TimelineStore', () => {
     historyStoreMock.push.mockClear();
     uiStoreMock.notifyTimelineSave.mockClear();
     uiStoreMock.pendingRecoveryDialog = null;
+
+    projectSettingsStoreMock.projectSettings.timelines.sessions = {};
+    projectSettingsStoreMock.markProjectSettingsAsDirty.mockClear();
+    projectSettingsStoreMock.requestProjectSettingsSave.mockClear();
   });
 
   it('initializes with default state', () => {
@@ -725,6 +753,84 @@ describe('TimelineStore', () => {
         '{"schema":"otio"}',
       );
       expect(projectStoreMock.openTimelineFile).toHaveBeenCalledWith('folder/project_003.otio');
+    });
+
+    it('copies current session settings when duplicating timeline', async () => {
+      projectStoreMock.currentTimelinePath = 'folder/project.otio';
+      projectStoreMock.listEntryNames.mockResolvedValue(['project.otio']);
+
+      store.currentTime = 5_000_000;
+      store.timelineZoom = 3;
+      store.trackHeights = { track1: 80 };
+      store.createSelectionRange({ startUs: 1000, endUs: 2000 });
+
+      await store.duplicateCurrentTimeline();
+
+      expect(
+        projectSettingsStoreMock.projectSettings.timelines.sessions['folder/project_001.otio'],
+      ).toEqual({
+        playheadUs: 5_000_000,
+        masterGain: 1,
+        masterMuted: false,
+        zoom: 3,
+        trackHeights: { track1: 80 },
+        selectionRange: { startUs: 1000, endUs: 2000 },
+      });
+      expect(projectSettingsStoreMock.markProjectSettingsAsDirty).toHaveBeenCalled();
+      expect(projectSettingsStoreMock.requestProjectSettingsSave).toHaveBeenCalledWith({
+        immediate: true,
+      });
+    });
+
+    it('copies current session settings when creating version from backup', async () => {
+      projectStoreMock.currentTimelinePath = 'folder/project.otio';
+      vi.mocked(projectStoreMock.readTextByPath).mockResolvedValue('{"schema":"otio"}');
+
+      store.currentTime = 3_000_000;
+      store.timelineZoom = 1;
+      store.trackHeights = { track2: 120 };
+
+      const mockBackup = {
+        type: 'backup' as const,
+        name: 'backup_1.otio',
+        path: '.fastcat/backups/folder/project__bak001.otio',
+        date: new Date(),
+        size: 100,
+        label: 'Backup #1',
+      };
+
+      await store.createVersionFromBackup(mockBackup, 'project_003.otio');
+
+      expect(
+        projectSettingsStoreMock.projectSettings.timelines.sessions['folder/project_003.otio'],
+      ).toEqual({
+        playheadUs: 3_000_000,
+        masterGain: 1,
+        masterMuted: false,
+        zoom: 1,
+        trackHeights: { track2: 120 },
+        selectionRange: undefined,
+      });
+    });
+
+    it('copies current session settings when saving timeline as', async () => {
+      projectStoreMock.currentTimelinePath = 'folder/project.otio';
+      store.currentTime = 4_000_000;
+      store.timelineZoom = 1;
+      store.trackHeights = { track3: 150 };
+
+      await store.saveTimelineAs('project_new');
+
+      expect(
+        projectSettingsStoreMock.projectSettings.timelines.sessions['folder/project_new.otio'],
+      ).toEqual({
+        playheadUs: 4_000_000,
+        masterGain: 1,
+        masterMuted: false,
+        zoom: 1,
+        trackHeights: { track3: 150 },
+        selectionRange: undefined,
+      });
     });
   });
 });

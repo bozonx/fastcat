@@ -55,8 +55,7 @@ function hasProxy(entry: FsEntry) {
 function isGeneratingProxy(entry: FsEntry) {
   if (entry.kind === 'file') {
     return (
-      Boolean(entry.path) &&
-      proxyStore.generatingProxies.has(normalizeMediaCachePath(entry.path))
+      Boolean(entry.path) && proxyStore.generatingProxies.has(normalizeMediaCachePath(entry.path))
     );
   }
 

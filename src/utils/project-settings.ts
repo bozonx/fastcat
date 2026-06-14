@@ -484,8 +484,7 @@ function pickProjectMonitorFields(
   if (typeof source.showTimecode === 'boolean') out.showTimecode = source.showTimecode;
   if (typeof source.showTransparencyGrid === 'boolean')
     out.showTransparencyGrid = source.showTransparencyGrid;
-  if (typeof source.showMarkerTexts === 'boolean')
-    out.showMarkerTexts = source.showMarkerTexts;
+  if (typeof source.showMarkerTexts === 'boolean') out.showMarkerTexts = source.showMarkerTexts;
   if (
     typeof source.toolbarPosition === 'string' &&
     ['top', 'bottom', 'left', 'right'].includes(source.toolbarPosition)

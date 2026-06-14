@@ -137,7 +137,7 @@ export function ensureNotCancelled(checkCancel: () => boolean): void {
 
 export async function notifyPhase(
   hostClient: VideoCoreHostAPI | null,
-  phase: 'encoding' | 'saving',
+  phase: 'encoding' | 'finalizing',
   taskId?: string,
 ): Promise<void> {
   if (!hostClient) return;

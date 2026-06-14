@@ -119,7 +119,7 @@ export function addVirtualClipToTrack(
   } = {
     kind: 'clip',
     clipType: cmd.clipType,
-    id: nextItemId(track.id, 'clip'),
+    id: cmd.clipId || nextItemId(track.id, 'clip'),
     trackId: track.id,
     name: cmd.name,
     timelineRange: { startUs, durationUs },

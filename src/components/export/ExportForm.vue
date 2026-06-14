@@ -66,6 +66,7 @@ const {
   bitrateMode,
   keyframeIntervalSec,
   exportAlpha,
+  fastStart,
   metadataTitle,
   metadataDescription,
   metadataAuthor,
@@ -388,6 +389,7 @@ const filenamePlaceholder = computed(() =>
               v-model:bitrate-mode="bitrateMode"
               v-model:keyframe-interval-sec="keyframeIntervalSec"
               v-model:export-alpha="exportAlpha"
+              v-model:fast-start="fastStart"
               v-model:metadata-title="metadataTitle"
               v-model:metadata-description="metadataDescription"
               v-model:metadata-author="metadataAuthor"

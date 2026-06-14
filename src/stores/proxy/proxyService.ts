@@ -113,8 +113,8 @@ export function createProxyService(params: {
           }
         }
       },
-      onExportPhase: (phase: 'encoding' | 'saving', taskId?: string) => {
-        if (!taskId || phase !== 'saving') return;
+      onExportPhase: (phase: 'encoding' | 'finalizing', taskId?: string) => {
+        if (!taskId || phase !== 'finalizing') return;
         const path = params.taskIdToPath.value.get(taskId);
         if (!path) return;
         const bgTaskId = params.bgTaskIdsByPath.value.get(path);

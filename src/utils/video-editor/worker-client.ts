@@ -33,7 +33,7 @@ export interface VideoCoreHostAPI {
     sourceFileHandle: FileSystemFileHandle;
   }): Promise<VectorImageRasterCacheResult | null>;
   onExportProgress(progress: number, taskId?: string): void;
-  onExportPhase?(phase: 'encoding' | 'saving', taskId?: string): void;
+  onExportPhase?(phase: 'encoding' | 'finalizing', taskId?: string): void;
   onExportWarning?(message: string, taskId?: string): void;
 }
 
@@ -159,7 +159,7 @@ const hostMethodHandlers: Record<
     ),
   onExportProgress: (hostApi, args, taskId) => hostApi.onExportProgress(args[0] as number, taskId),
   onExportPhase: (hostApi, args, taskId) =>
-    hostApi.onExportPhase?.(args[0] as 'encoding' | 'saving', taskId),
+    hostApi.onExportPhase?.(args[0] as 'encoding' | 'finalizing', taskId),
   onExportWarning: (hostApi, args, taskId) => hostApi.onExportWarning?.(args[0] as string, taskId),
 };
 

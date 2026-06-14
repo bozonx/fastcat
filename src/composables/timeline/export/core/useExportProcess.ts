@@ -248,7 +248,7 @@ export function useExportProcess(
       registerExportTaskHostApi(exportTaskId, {
         onExportProgress: (progress) => onProgress(progress / 100),
         onExportPhase: (phase) => {
-          exportPhase.value = phase;
+          exportPhase.value = phase as typeof exportPhase.value;
         },
         onExportWarning: (message) => {
           reportWarning(message);

@@ -69,6 +69,7 @@ export function useExportForm() {
     bitrateMode,
     keyframeIntervalSec,
     exportAlpha,
+    fastStart,
     metadataTitle,
     metadataDescription,
     metadataAuthor,
@@ -167,6 +168,7 @@ export function useExportForm() {
       bitrateMode: bitrateMode.value,
       keyframeIntervalSec: keyframeIntervalSec.value,
       exportAlpha: exportAlpha.value,
+      fastStart: fastStart.value,
       metadataTitle: metadataTitle.value.trim(),
       metadataDescription: metadataDescription.value.trim(),
       metadataAuthor: metadataAuthor.value.trim(),
@@ -193,7 +195,8 @@ export function useExportForm() {
       audioBitrateKbps.value !== encDefaults.audioBitrateKbps ||
       bitrateMode.value !== encDefaults.bitrateMode ||
       keyframeIntervalSec.value !== encDefaults.keyframeIntervalSec ||
-      exportAlpha.value !== encDefaults.exportAlpha;
+      exportAlpha.value !== encDefaults.exportAlpha ||
+      fastStart.value !== encDefaults.fastStart;
 
     const isGeometryDifferent =
       !matchTimeline.value ||
@@ -312,6 +315,7 @@ export function useExportForm() {
         bitrateMode.value = saved.bitrateMode ?? 'variable';
         keyframeIntervalSec.value = saved.keyframeIntervalSec ?? 2;
         exportAlpha.value = saved.exportAlpha ?? false;
+        fastStart.value = saved.fastStart ?? true;
         matchTimeline.value = saved.matchTimeline ?? true;
         customWidth.value = saved.customWidth ?? format.width;
         customHeight.value = saved.customHeight ?? format.height;
@@ -346,6 +350,8 @@ export function useExportForm() {
           projectStore.projectSettings.exportDefaults.encoding.keyframeIntervalSec;
         exportAlpha.value =
           format.exportAlpha ?? projectStore.projectSettings.exportDefaults.encoding.exportAlpha;
+        fastStart.value =
+          format.fastStart ?? projectStore.projectSettings.exportDefaults.encoding.fastStart;
 
         metadataTitle.value = projectStore.projectMeta?.title || '';
         metadataDescription.value = projectStore.projectMeta?.description || '';
@@ -478,6 +484,7 @@ export function useExportForm() {
             bitrateMode: bitrateMode.value,
             keyframeIntervalSec: keyframeIntervalSec.value,
             exportAlpha: effectiveExportAlpha,
+            fastStart: fastStart.value,
             metadata: {
               title: metadataTitle.value,
               description: metadataDescription.value,
@@ -660,7 +667,7 @@ export function useExportForm() {
         ? t('videoEditor.export.phaseEncodingAudio')
         : t('videoEditor.export.phaseEncoding');
     }
-    if (exportPhase.value === 'saving') return t('videoEditor.export.phaseSaving');
+    if (exportPhase.value === 'finalizing') return t('videoEditor.export.phaseFinalizing');
     if (exportPhase.value === 'preparing') return t('videoEditor.export.phasePreparing');
     return t('videoEditor.export.processing');
   }
@@ -704,6 +711,9 @@ export function useExportForm() {
         break;
       case 'exportAlpha':
         if (encDefaults) exportAlpha.value = encDefaults.exportAlpha;
+        break;
+      case 'fastStart':
+        if (encDefaults) fastStart.value = encDefaults.fastStart;
         break;
       case 'matchTimeline':
         matchTimeline.value = true;
@@ -764,6 +774,8 @@ export function useExportForm() {
         return keyframeIntervalSec.value !== encDefaults?.keyframeIntervalSec;
       case 'exportAlpha':
         return exportAlpha.value !== encDefaults?.exportAlpha;
+      case 'fastStart':
+        return fastStart.value !== encDefaults?.fastStart;
       case 'matchTimeline':
         return !matchTimeline.value;
       case 'customWidth':
@@ -800,6 +812,7 @@ export function useExportForm() {
       bitrateMode,
       keyframeIntervalSec,
       exportAlpha,
+      fastStart,
       matchTimeline,
       customWidth,
       customHeight,
@@ -826,6 +839,7 @@ export function useExportForm() {
         bitrateMode: bitrateMode.value,
         keyframeIntervalSec: keyframeIntervalSec.value,
         exportAlpha: exportAlpha.value,
+        fastStart: fastStart.value,
         matchTimeline: matchTimeline.value,
         customWidth: customWidth.value,
         customHeight: customHeight.value,
@@ -869,6 +883,7 @@ export function useExportForm() {
     bitrateMode,
     keyframeIntervalSec,
     exportAlpha,
+    fastStart,
     metadataTitle,
     metadataDescription,
     metadataAuthor,

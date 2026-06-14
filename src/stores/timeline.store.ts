@@ -39,6 +39,7 @@ import { useProxyStore } from './proxy.store';
 import { useSelectionStore } from './selection.store';
 import { useFocusStore } from './focus.store';
 import { useUiStore } from './ui.store';
+import { useProjectSettingsStore } from './project-settings.store';
 import { MAX_TIMELINE_ZOOM_POSITION, MIN_TIMELINE_ZOOM_POSITION } from '~/utils/zoom';
 import { TIMELINE_DEFAULTS } from '~/utils/constants';
 import { normalizeMediaCachePath } from '~/utils/media-cache-path';
@@ -599,6 +600,20 @@ export const useTimelineStore = defineStore('timeline', () => {
     );
   }
 
+  async function copySessionSettingsToNewTimeline(newPath: string) {
+    const projectSettingsStore = useProjectSettingsStore();
+    projectSettingsStore.projectSettings.timelines.sessions[newPath] = {
+      playheadUs: currentTime.value,
+      masterGain: masterGain.value,
+      masterMuted: audioMuted.value,
+      zoom: timelineZoom.value,
+      trackHeights: { ...trackHeights.value },
+      selectionRange: selectionRange.value ? { ...selectionRange.value } : undefined,
+    };
+    projectSettingsStore.markProjectSettingsAsDirty();
+    await projectSettingsStore.requestProjectSettingsSave({ immediate: true });
+  }
+
   async function duplicateCurrentTimeline() {
     if (!currentTimelinePath.value || !timelineDoc.value) return;
     if (projectStore.isReadOnly || previewMode.value) {
@@ -662,6 +677,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     try {
       const newPath = parentPath ? `${parentPath}/${nextName}` : nextName;
       await projectStore.writeTextByPath(newPath, snapshotSerialized);
+      await copySessionSettingsToNewTimeline(newPath);
 
       toast.add({
         title: t('videoEditor.timeline.versionCreated', {
@@ -747,6 +763,7 @@ export const useTimelineStore = defineStore('timeline', () => {
       const newRelativePath = parentPath ? `${parentPath}/${finalNameWithExt}` : finalNameWithExt;
 
       await projectStore.writeTextByPath(newRelativePath, text);
+      await copySessionSettingsToNewTimeline(newRelativePath);
 
       toast.add({
         title: t('videoEditor.timeline.versionCreated', {
@@ -815,6 +832,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     try {
       const newPath = parentPath ? `${parentPath}/${finalName}` : finalName;
       await projectStore.writeTextByPath(newPath, snapshotSerialized);
+      await copySessionSettingsToNewTimeline(newPath);
 
       toast.add({
         title: t('videoEditor.timeline.timelineSavedAs', {

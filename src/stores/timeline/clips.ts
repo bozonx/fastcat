@@ -667,6 +667,7 @@ export function createTimelineClipsModule(deps: TimelineClipsDeps): TimelineClip
         commands.push({
           type: 'add_virtual_clip_to_track',
           trackId,
+          clipId: newClipId,
           clipType: clip.clipType as Extract<
             import('~/timeline/types').TimelineClipType,
             'adjustment' | 'background' | 'text' | 'shape' | 'hud'

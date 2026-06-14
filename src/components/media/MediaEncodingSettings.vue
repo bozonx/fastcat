@@ -73,6 +73,7 @@ const preset = defineModel<
 const bitrateMode = defineModel<'constant' | 'variable'>('bitrateMode', { default: 'variable' });
 const keyframeIntervalSec = defineModel<number>('keyframeIntervalSec', { default: 2 });
 const exportAlpha = defineModel<boolean>('exportAlpha', { default: false });
+const fastStart = defineModel<boolean>('fastStart', { default: true });
 const metadataTitle = defineModel<string>('metadataTitle', { default: '' });
 const metadataAuthor = defineModel<string>('metadataAuthor', { default: '' });
 const metadataTags = defineModel<string>('metadataTags', { default: '' });
@@ -212,6 +213,7 @@ watch(
     bitrateMode,
     keyframeIntervalSec,
     exportAlpha,
+    fastStart,
   ],
   () => {
     preset.value = 'custom';
@@ -371,6 +373,28 @@ watch(
           size="xs"
           class="shrink-0"
           @click="props.resetField?.('exportAlpha')"
+        />
+      </div>
+    </div>
+
+    <div class="flex items-center justify-between">
+      <div class="flex items-center gap-2">
+        <UCheckbox
+          v-if="outputFormat === 'mp4'"
+          v-model="fastStart"
+          :label="t('videoEditor.export.fastStart')"
+          :disabled="props.disabled"
+          :ui="{ label: 'text-sm text-ui-text-muted' }"
+          class="cursor-pointer"
+        />
+        <UButton
+          v-if="outputFormat === 'mp4' && props.isFieldDirty?.('fastStart')"
+          icon="i-heroicons-arrow-path-20-solid"
+          color="warning"
+          variant="ghost"
+          size="xs"
+          class="shrink-0"
+          @click="props.resetField?.('fastStart')"
         />
       </div>
     </div>

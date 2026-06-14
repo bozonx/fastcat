@@ -90,7 +90,7 @@ export async function executeMediaConversion(params: {
           backgroundTasksStore.updateTaskProgress(params.backgroundTaskId, normalizedProgress);
         },
         onExportPhase: (phase) => {
-          if (phase === 'saving') {
+          if (phase === 'finalizing') {
             backgroundTasksStore.updateTaskProgress(params.backgroundTaskId, 0.99);
           }
         },

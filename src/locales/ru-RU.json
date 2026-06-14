@@ -1133,6 +1133,7 @@
       "error": "Ошибка экспорта",
       "errorCancelled": "Экспорт был отменен",
       "exportAlpha": "Экспорт альфа-канала",
+      "fastStart": "Оптимизировать для веб-стриминга (Fast Start)",
       "exporting": "Экспорт...",
       "filename": "Имя файла",
       "filenameAlreadyExists": "Файл с таким именем уже существует",
@@ -1151,7 +1152,7 @@
       "phaseEncoding": "Кодирование видео...",
       "phaseEncodingAudio": "Кодирование аудио...",
       "phasePreparing": "Подготовка проекта...",
-      "phaseSaving": "Сохранение в библиотеку...",
+      "phaseFinalizing": "Финализация...",
       "matchTimeline": "Как на таймлайне",
       "preset": {
         "custom": "Свой",

@@ -63,6 +63,7 @@ export interface AddClipToTrackCommand {
 export interface AddVirtualClipToTrackCommand {
   type: 'add_virtual_clip_to_track';
   trackId: string;
+  clipId?: string;
   clipType: Extract<TimelineClipType, 'adjustment' | 'background' | 'text' | 'shape' | 'hud'>;
   name: string;
   durationUs?: number;

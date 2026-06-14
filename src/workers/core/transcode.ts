@@ -270,7 +270,7 @@ export async function runTranscode(
       clearInterval(cancelInterval);
     }
 
-    await notifyPhase(hostClient, 'saving', taskId);
+    await notifyPhase(hostClient, 'finalizing', taskId);
   } catch (e) {
     try {
       if (conversionProcess) {

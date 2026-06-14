@@ -31,6 +31,7 @@ export interface TimelineFormat {
   bitrateMode?: 'constant' | 'variable';
   keyframeIntervalSec?: number;
   exportAlpha?: boolean;
+  fastStart?: boolean;
 }
 
 export interface TimelineRange {

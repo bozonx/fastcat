@@ -233,4 +233,43 @@ describe('TimelineStore Copy/Paste', () => {
       ?.items.find((item: any) => item.id === pasted?.itemId);
     expect(pastedAudio).toBeTruthy();
   });
+
+  it('preserves virtual clip properties and effects on paste', async () => {
+    const store = useTimelineStore();
+    const builder = new TimelineBuilder();
+    store.timelineDoc = builder
+      .withTrack('v1', 'video', 'Video 1')
+      .withClip('textClip', 'v1', { startUs: 0, durationUs: 5_000_000, clipType: 'text' })
+      .build() as any;
+
+    const clip = store.timelineDoc.tracks[0].items.find((item: any) => item.id === 'textClip');
+    Object.assign(clip, {
+      opacity: 0.8,
+      blendMode: 'multiply',
+      text: 'Hello World',
+      effects: [{ id: 'effect1', type: 'blur', params: { radius: 10 } }],
+    });
+
+    store.selectedItemIds = ['textClip'];
+    const copiedItems = store.copySelectedClips();
+    expect(copiedItems).toHaveLength(1);
+    expect(copiedItems[0].clip.id).toBe('textClip');
+
+    store.currentTime = 10_000_000;
+    const [pasted] = await store.pasteClips(copiedItems, {
+      targetTrackId: 'v1',
+    });
+
+    expect(pasted).toBeDefined();
+
+    const pastedClip = store.timelineDoc.tracks[0].items.find(
+      (item: any) => item.id === pasted?.itemId,
+    );
+    expect(pastedClip).toBeDefined();
+    expect(pastedClip.timelineRange.startUs).toBe(10_000_000);
+    expect(pastedClip.opacity).toBe(0.8);
+    expect(pastedClip.blendMode).toBe('multiply');
+    expect(pastedClip.text).toBe('Hello World');
+    expect(pastedClip.effects).toEqual([{ id: 'effect1', type: 'blur', params: { radius: 10 } }]);
+  });
 });

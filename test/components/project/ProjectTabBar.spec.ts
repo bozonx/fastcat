@@ -252,5 +252,4 @@ describe('ProjectTabBar.vue', () => {
     expect(tabs[0].attributes('draggable')).toBe('false');
     expect(tabs[1].attributes('draggable')).toBe('false');
   });
-
 });

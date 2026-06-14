@@ -425,7 +425,7 @@ export async function runExport(
     throw abortErr;
   }
 
-  async function notifyPhase(phase: 'encoding' | 'saving', taskId?: string) {
+  async function notifyPhase(phase: 'encoding' | 'finalizing', taskId?: string) {
     if (!hostClient) return;
     try {
       await hostClient.onExportPhase?.(phase, taskId);
@@ -796,7 +796,7 @@ export async function runExport(
           }
         }
 
-        await notifyPhase('saving', taskId);
+        await notifyPhase('finalizing', taskId);
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         await (output as any).finalize();

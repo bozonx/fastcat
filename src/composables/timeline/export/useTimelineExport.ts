@@ -12,10 +12,7 @@ export function useTimelineExport() {
   const fileSystem = useExportFileSystem();
   const codecs = useExportCodecs();
 
-  const filename = useExportFilename(
-    fileSystem.ensureExportDir,
-    fileSystem.listExportFilenames,
-  );
+  const filename = useExportFilename(fileSystem.ensureExportDir, fileSystem.listExportFilenames);
 
   const settingsSave = useExportSettingsSave(config);
 

@@ -59,6 +59,7 @@ const preset = defineModel<
 const bitrateMode = defineModel<'constant' | 'variable'>('bitrateMode', { default: 'variable' });
 const keyframeIntervalSec = defineModel<number>('keyframeIntervalSec', { default: 2 });
 const exportAlpha = defineModel<boolean>('exportAlpha', { default: false });
+const fastStart = defineModel<boolean>('fastStart', { default: true });
 const metadataTitle = defineModel<string>('metadataTitle', { default: '' });
 const metadataAuthor = defineModel<string>('metadataAuthor', { default: '' });
 const metadataTags = defineModel<string>('metadataTags', { default: '' });
@@ -103,6 +104,7 @@ function applyPreset(presetId: string) {
     bitrateMode.value = encDefaults.bitrateMode;
     keyframeIntervalSec.value = encDefaults.keyframeIntervalSec;
     exportAlpha.value = encDefaults.exportAlpha;
+    fastStart.value = encDefaults.fastStart;
     preset.value = 'match-timeline';
     return;
   }
@@ -119,6 +121,7 @@ function applyPreset(presetId: string) {
   bitrateMode.value = found.bitrateMode;
   keyframeIntervalSec.value = found.keyframeIntervalSec;
   exportAlpha.value = found.exportAlpha;
+  fastStart.value = found.fastStart;
 }
 </script>
 
@@ -154,6 +157,7 @@ function applyPreset(presetId: string) {
       v-model:bitrate-mode="bitrateMode"
       v-model:keyframe-interval-sec="keyframeIntervalSec"
       v-model:export-alpha="exportAlpha"
+      v-model:fast-start="fastStart"
       v-model:metadata-title="metadataTitle"
       v-model:metadata-author="metadataAuthor"
       v-model:metadata-tags="metadataTags"

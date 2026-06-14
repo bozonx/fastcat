@@ -391,7 +391,9 @@ export const useProjectSettingsStore = defineStore('projectSettings', () => {
           }
 
           if (uiRaw.exportSettings) {
-            settings.exportSettings = { ...uiRaw.exportSettings };
+            settings.exportSettings = {
+              ...uiRaw.exportSettings,
+            } as FastCatProjectSettings['exportSettings'];
           }
         }
       }
@@ -600,6 +602,7 @@ export const useProjectSettingsStore = defineStore('projectSettings', () => {
     saveProjectSettings,
     requestProjectSettingsSave,
     saveInitialProjectSettingsForNewProject,
+    markProjectSettingsAsDirty,
     activeMonitor,
     activeMonitorView,
   };

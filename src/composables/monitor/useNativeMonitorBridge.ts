@@ -1,6 +1,11 @@
 import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 import { computed, onScopeDispose, watch } from 'vue';
-import { nativeMonitorIpc, onMonitorTime, onMonitorEnded, MONITOR_EVENTS } from './native-monitor-ipc';
+import {
+  nativeMonitorIpc,
+  onMonitorTime,
+  onMonitorEnded,
+  MONITOR_EVENTS,
+} from './native-monitor-ipc';
 
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useProjectStore } from '~/stores/project.store';

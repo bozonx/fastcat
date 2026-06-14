@@ -87,7 +87,10 @@ function clearCache() {
       />
     </UiFormField>
 
-    <UiFormField v-if="workspaceStore.userSettings.experimentalFeatures" :label="t('videoEditor.settings.uiInterfaceScale')">
+    <UiFormField
+      v-if="workspaceStore.userSettings.experimentalFeatures"
+      :label="t('videoEditor.settings.uiInterfaceScale')"
+    >
       <UiScaleSlider v-model="workspaceStore.userSettings.ui.interfaceScale" :min="10" :max="20" />
     </UiFormField>
 

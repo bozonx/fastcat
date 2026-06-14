@@ -12,7 +12,7 @@ export interface CreateVideoCoreHostApiParams {
   getWorkspaceHandle: () => FileSystemDirectoryHandle | null;
   getResolvedStorageTopology?: () => ResolvedStorageTopology | null;
   onExportProgress: (progress: number, taskId?: string) => void;
-  onExportPhase?: (phase: 'encoding' | 'saving', taskId?: string) => void;
+  onExportPhase?: (phase: 'encoding' | 'finalizing', taskId?: string) => void;
   onExportWarning?: (message: string, taskId?: string) => void;
 }
 

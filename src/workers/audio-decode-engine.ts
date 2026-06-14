@@ -397,7 +397,8 @@ export class AudioDecodeEngine<
       const sink = new this.deps.AudioSampleSink(aTrack);
       try {
         const metaDurationS = await input.computeDuration();
-        const computedDurationS = Number.isFinite(metaDurationS) && metaDurationS > 0 ? metaDurationS : 0;
+        const computedDurationS =
+          Number.isFinite(metaDurationS) && metaDurationS > 0 ? metaDurationS : 0;
         const durationS =
           options?.durationS && Number.isFinite(options.durationS) && options.durationS > 0
             ? options.durationS

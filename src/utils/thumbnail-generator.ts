@@ -42,9 +42,7 @@ export function getClipThumbnailsHash(input: {
   projectRelativePath: string;
 }): string {
   const projectRelativePath = normalizeMediaCachePath(input.projectRelativePath);
-  return hashString(
-    `v${CLIP_THUMBNAIL_HASH_VERSION}:${input.projectId}:${projectRelativePath}`,
-  );
+  return hashString(`v${CLIP_THUMBNAIL_HASH_VERSION}:${input.projectId}:${projectRelativePath}`);
 }
 
 function getTimelineThumbnailVfsPath(projectId: string, hash?: string): string {
