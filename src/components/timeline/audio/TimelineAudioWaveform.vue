@@ -8,14 +8,13 @@ import { useMediaStore } from '~/stores/media.store';
 import { useFileManager } from '~/composables/file-manager/useFileManager';
 import type { TimelineClipItem, TimelineDocument } from '~/timeline/types';
 import { parseTimelineFromOtio } from '~/timeline/otio-serializer';
-import { buildEffectiveAudioClipItems } from '~/utils/audio/track-bus';
 import {
   computeWaveformRenderBudget,
   computeWaveformWindowMetrics,
   computeWaveformPeakLength,
-  resolveWaveformSourceUs,
 } from '~/utils/audio/waveform';
 import { computeWaveformPeakBinsFromMips } from '~/utils/audio/waveform-mips';
+import { buildTimelinePeaks } from '~/utils/audio/timeline-waveform';
 import {
   scheduleWaveformRedraw,
   cancelWaveformRedraw,
@@ -23,10 +22,7 @@ import {
 import { runQueuedPeakExtraction } from '~/utils/audio/waveform-extraction-queue';
 import { timeUsToPx } from '~/utils/timeline/geometry';
 import { isTauriRuntime } from '~/utils/runtime';
-import {
-  normalizeProjectPath,
-  resolveNestedMediaPath,
-} from '~/utils/video-editor/worker-clip-utils';
+import { normalizeProjectPath } from '~/utils/video-editor/worker-clip-utils';
 const log = createDevLogger('TimelineAudioWaveform');
 
 const props = defineProps<{
@@ -100,20 +96,12 @@ const effectiveSourceDurationUs = computed(() => {
 
 const durationUs = computed(() => effectiveSourceDurationUs.value);
 
-function makeEmptyPeaks(channelCount: number, length: number): Float32Array[] {
-  return Array.from({ length: channelCount }, () => new Float32Array(length));
-}
-
 function waveformMaxLength(durationS: number): number {
   return computeWaveformPeakLength(durationS);
 }
 
 function hasSufficientPeaks(peaks: Float32Array[] | null | undefined, maxLength: number): boolean {
   return Boolean(peaks?.some((channel) => channel.length >= maxLength));
-}
-
-function mixPeakValue(target: number, next: number) {
-  return Math.min(1, Math.abs(target) + Math.abs(next));
 }
 
 async function ensureMediaPeaks(params: {
@@ -142,6 +130,7 @@ async function ensureMediaPeaks(params: {
 
   return await runQueuedPeakExtraction({
     path,
+    cacheKey: `${path}:${maxLength}:${durationS ?? 0}`,
     shouldCancel,
     task: async () => {
       const cached = mediaStore.getCachedMetadata(path)?.audioPeaks;
@@ -156,11 +145,12 @@ async function ensureMediaPeaks(params: {
       }
 
       try {
-        const peaks = await mediaStore.extractPeaks(file, path, {
+        const options = {
           maxLength,
           precision: 10000,
-          durationS,
-        });
+          ...(durationS ? { durationS } : {}),
+        };
+        const peaks = await mediaStore.extractPeaks(file, path, options);
         if (peaks?.some((channel) => channel.length > 0) && !shouldCancel?.()) {
           mediaStore.setAudioPeaks(path, peaks);
           return peaks;
@@ -175,150 +165,6 @@ async function ensureMediaPeaks(params: {
       }
     },
   });
-}
-
-async function buildTimelinePeaks(params: {
-  doc: TimelineDocument;
-  durationUs: number;
-  maxLength: number;
-  visiting: Set<string>;
-  timelinePath?: string;
-  docCache?: Map<string, TimelineDocument>;
-  shouldCancel?: () => boolean;
-}): Promise<Float32Array[] | null> {
-  const { doc, durationUs, maxLength, visiting, timelinePath, docCache, shouldCancel } = params;
-  if (durationUs <= 0 || maxLength <= 0) return null;
-  if (shouldCancel?.()) return null;
-
-  const effectiveAudioResult = buildEffectiveAudioClipItems({
-    audioTracks: doc.tracks.filter((track) => track.kind === 'audio'),
-    videoTracks: doc.tracks.filter((track) => track.kind === 'video'),
-  });
-
-  let mixedPeaks: Float32Array[] | null = null;
-
-  for (const item of effectiveAudioResult.items) {
-    if (shouldCancel?.()) return null;
-    if (item.kind !== 'clip') continue;
-    const clip = item as TimelineClipItem;
-    const rawPath = clip.source?.path;
-    if (!rawPath) continue;
-    const path = timelinePath
-      ? resolveNestedMediaPath({ nestedTimelinePath: timelinePath, mediaPath: rawPath })
-      : rawPath;
-
-    let sourcePeaks: Float32Array[] | null = null;
-    const clipSourceDurationUs =
-      clip.sourceDurationUs && clip.sourceDurationUs > 0
-        ? clip.sourceDurationUs
-        : path
-          ? (() => {
-              const meta = mediaStore.getCachedMetadata(path);
-              const metaDurationS = meta?.duration;
-              return metaDurationS && metaDurationS > 0 ? Math.floor(metaDurationS * 1_000_000) : 0;
-            })()
-          : 0;
-
-    // Fallback to clip.sourceRange end is incorrect (that's only the used range, not full source).
-    // Use itemSourceDurationUs as last resort so source-relative bucket math stays consistent.
-    const sourceDurationUs = Math.max(
-      1,
-      Math.round(clipSourceDurationUs || clip.sourceRange.durationUs || 0),
-    );
-
-    if (clip.clipType === 'timeline') {
-      if (visiting.has(path)) continue;
-
-      let nestedDoc = docCache?.get(path) ?? null;
-      if (!nestedDoc) {
-        const file = await fileManager.vfs.getFile(path);
-        if (!file || shouldCancel?.()) continue;
-        const text = await file.text();
-        if (shouldCancel?.()) return null;
-        nestedDoc = parseTimelineFromOtio(text, {
-          id: 'nested-waveform',
-          name: clip.name,
-          format: { fps: 25 },
-        });
-        docCache?.set(path, nestedDoc);
-      }
-
-      visiting.add(path);
-      const nestedDurationS = sourceDurationUs / 1_000_000;
-      const nestedMaxLength = waveformMaxLength(nestedDurationS);
-
-      sourcePeaks = await buildTimelinePeaks({
-        doc: nestedDoc,
-        durationUs: sourceDurationUs,
-        maxLength: nestedMaxLength,
-        visiting,
-        timelinePath: path,
-        docCache,
-        shouldCancel,
-      });
-      visiting.delete(path);
-    } else {
-      if (shouldCancel?.()) return null;
-      sourcePeaks = await ensureMediaPeaks({
-        path,
-        maxLength,
-        durationS: sourceDurationUs / 1_000_000,
-        shouldCancel,
-      });
-      if (shouldCancel?.()) return null;
-    }
-
-    if (!sourcePeaks || sourcePeaks.length === 0) continue;
-
-    const channelCount = sourcePeaks.length;
-    if (!mixedPeaks) {
-      mixedPeaks = makeEmptyPeaks(channelCount, maxLength);
-    } else if (mixedPeaks.length < channelCount) {
-      for (let channelIndex = mixedPeaks.length; channelIndex < channelCount; channelIndex++) {
-        mixedPeaks.push(new Float32Array(maxLength));
-      }
-    }
-
-    const itemStartUs = Math.max(0, Math.round(clip.timelineRange.startUs));
-    const itemDurationUs = Math.max(0, Math.round(clip.timelineRange.durationUs));
-    const itemSourceStartUs = Math.max(0, Math.round(clip.sourceRange.startUs));
-    const itemSourceDurationUs = Math.max(1, Math.round(clip.sourceRange.durationUs));
-    const gain = Math.max(0, Math.min(10, Number(clip.audioGain ?? 1)));
-
-    const startIndex = Math.max(0, Math.floor((itemStartUs / durationUs) * maxLength));
-    const endIndex = Math.min(
-      maxLength,
-      Math.ceil(((itemStartUs + itemDurationUs) / durationUs) * maxLength),
-    );
-
-    for (let sampleIndex = startIndex; sampleIndex < endIndex; sampleIndex++) {
-      const parentRatio = sampleIndex / maxLength;
-      const absoluteUs = parentRatio * durationUs;
-      const sourceUs = resolveWaveformSourceUs({
-        absoluteUs,
-        clipStartUs: itemStartUs,
-        clipDurationUs: itemDurationUs,
-        sourceStartUs: itemSourceStartUs,
-        sourceRangeDurationUs: itemSourceDurationUs,
-        speed: clip.speed,
-      });
-      if (sourceUs === null) continue;
-
-      for (let channelIndex = 0; channelIndex < mixedPeaks.length; channelIndex++) {
-        const sourceChannel = sourcePeaks[channelIndex] ?? sourcePeaks[0];
-        if (!sourceChannel || sourceChannel.length === 0) continue;
-        const sourceIndex = Math.min(
-          sourceChannel.length - 1,
-          Math.max(0, Math.floor((sourceUs / sourceDurationUs) * sourceChannel.length)),
-        );
-        const current = mixedPeaks[channelIndex]?.[sampleIndex] ?? 0;
-        const next = (sourceChannel[sourceIndex] ?? 0) * gain;
-        mixedPeaks[channelIndex]![sampleIndex] = mixPeakValue(current, next);
-      }
-    }
-  }
-
-  return mixedPeaks;
 }
 
 const extractPeaks = async () => {
@@ -378,6 +224,23 @@ const extractPeaks = async () => {
         timelinePath: normalizedTimelinePath,
         docCache: new Map<string, TimelineDocument>([[normalizedTimelinePath, nestedDoc]]),
         shouldCancel,
+        getMediaDurationUs: (path) => {
+          const meta = mediaStore.getCachedMetadata(path);
+          const metaDurationS = meta?.duration;
+          return metaDurationS && metaDurationS > 0 ? Math.floor(metaDurationS * 1_000_000) : 0;
+        },
+        loadTimelineDocument: async (path, clip) => {
+          const file = await fileManager.vfs.getFile(path);
+          if (!file || shouldCancel()) return null;
+          const text = await file.text();
+          if (shouldCancel()) return null;
+          return parseTimelineFromOtio(text, {
+            id: 'nested-waveform',
+            name: clip.name,
+            format: { fps: 25 },
+          });
+        },
+        ensureMediaPeaks,
       });
 
       if (shouldCancel()) {
@@ -683,6 +546,18 @@ function requestDraw() {
   scheduleWaveformRedraw(schedulerKey, draw);
 }
 
+watch(
+  () => timelineStore.timelineZoom,
+  () => {
+    if (zoomSettleTimer) clearTimeout(zoomSettleTimer);
+    zoomSettleTimer = window.setTimeout(() => {
+      zoomSettleTimer = 0;
+      requestDraw();
+    }, ZOOM_SETTLE_MS);
+  },
+  { flush: 'sync' },
+);
+
 // Geometry/scroll changes: the strip + canvas CSS box follow `renderWindow`
 // reactively, so the existing bitmap stretches for free during a zoom gesture.
 // We only re-rasterize the backing store when the visible window changes — and
@@ -692,17 +567,6 @@ watch(
   () => {
     if (zoomSettleTimer) return;
     requestDraw();
-  },
-);
-
-watch(
-  () => timelineStore.timelineZoom,
-  () => {
-    if (zoomSettleTimer) clearTimeout(zoomSettleTimer);
-    zoomSettleTimer = window.setTimeout(() => {
-      zoomSettleTimer = 0;
-      requestDraw();
-    }, ZOOM_SETTLE_MS);
   },
 );
 

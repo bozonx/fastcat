@@ -44,6 +44,19 @@ describe('waveform mip pyramid', () => {
     expect(level1[149]).toBeCloseTo(0);
   });
 
+  it('keeps odd trailing samples and signed peaks while downsampling', () => {
+    const channel = new Float32Array(513);
+    channel[511] = -0.9;
+    channel[512] = -1.0;
+
+    const mips = getPeakMips([channel]);
+    const level1 = mips.levels[1]![0]!;
+
+    expect(level1.length).toBe(257);
+    expect(level1[255]).toBeCloseTo(0.9);
+    expect(level1[256]).toBeCloseTo(1.0);
+  });
+
   it('memoizes by channels identity', () => {
     const channels = [ramp(1024)];
     expect(getPeakMips(channels)).toBe(getPeakMips(channels));

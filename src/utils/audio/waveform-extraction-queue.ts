@@ -3,10 +3,12 @@ let peakExtractionQueue = Promise.resolve();
 
 export function runQueuedPeakExtraction(params: {
   path: string;
+  cacheKey?: string;
   shouldCancel?: () => boolean;
   task: () => Promise<Float32Array[] | null>;
 }): Promise<Float32Array[] | null> {
-  const existing = peakExtractionsByPath.get(params.path);
+  const key = params.cacheKey ?? params.path;
+  const existing = peakExtractionsByPath.get(key);
   if (existing) return existing;
 
   const queued = peakExtractionQueue
@@ -23,16 +25,16 @@ export function runQueuedPeakExtraction(params: {
     () => undefined,
   );
 
-  peakExtractionsByPath.set(params.path, queued);
+  peakExtractionsByPath.set(key, queued);
   void queued.then(
     () => {
-      if (peakExtractionsByPath.get(params.path) === queued) {
-        peakExtractionsByPath.delete(params.path);
+      if (peakExtractionsByPath.get(key) === queued) {
+        peakExtractionsByPath.delete(key);
       }
     },
     () => {
-      if (peakExtractionsByPath.get(params.path) === queued) {
-        peakExtractionsByPath.delete(params.path);
+      if (peakExtractionsByPath.get(key) === queued) {
+        peakExtractionsByPath.delete(key);
       }
     },
   );

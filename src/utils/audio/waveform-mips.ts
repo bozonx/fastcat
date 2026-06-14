@@ -32,12 +32,14 @@ export interface PeakMips {
 let mipCache = new WeakMap<readonly Float32Array[], PeakMips>();
 
 function downsampleHalf(channel: Float32Array): Float32Array {
-  const outLength = channel.length >> 1;
+  const outLength = Math.ceil(channel.length / 2);
   const out = new Float32Array(outLength);
   for (let i = 0; i < outLength; i++) {
     const a = channel[i * 2] ?? 0;
     const b = channel[i * 2 + 1] ?? 0;
-    out[i] = a > b ? a : b;
+    const absA = Math.abs(a);
+    const absB = Math.abs(b);
+    out[i] = absA > absB ? absA : absB;
   }
   return out;
 }

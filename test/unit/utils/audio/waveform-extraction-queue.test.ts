@@ -1,6 +1,9 @@
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { runQueuedPeakExtraction } from '~/utils/audio/waveform-extraction-queue';
+import {
+  runQueuedPeakExtraction,
+  __resetWaveformExtractionQueueForTesting,
+} from '~/utils/audio/waveform-extraction-queue';
 
 function createDeferred<T>() {
   let resolve!: (value: T) => void;
@@ -12,6 +15,10 @@ function createDeferred<T>() {
 }
 
 describe('waveform extraction queue', () => {
+  beforeEach(() => {
+    __resetWaveformExtractionQueueForTesting();
+  });
+
   it('runs peak extraction tasks one file at a time', async () => {
     const firstGate = createDeferred<Float32Array[] | null>();
     const events: string[] = [];
@@ -51,5 +58,27 @@ describe('waveform extraction queue', () => {
     expect(first).toBe(second);
     await expect(first).resolves.toHaveLength(1);
     expect(task).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not share in-flight extractions when cache keys differ', async () => {
+    const low = vi.fn(async () => [new Float32Array([1])]);
+    const high = vi.fn(async () => [new Float32Array([1, 2])]);
+
+    const first = runQueuedPeakExtraction({
+      path: 'video/shared.mp4',
+      cacheKey: 'video/shared.mp4:100',
+      task: low,
+    });
+    const second = runQueuedPeakExtraction({
+      path: 'video/shared.mp4',
+      cacheKey: 'video/shared.mp4:1000',
+      task: high,
+    });
+
+    expect(first).not.toBe(second);
+    await expect(first).resolves.toHaveLength(1);
+    await expect(second).resolves.toHaveLength(1);
+    expect(low).toHaveBeenCalledTimes(1);
+    expect(high).toHaveBeenCalledTimes(1);
   });
 });
