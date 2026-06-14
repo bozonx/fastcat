@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { createDevLogger } from '~/utils/dev-logger';
 
-import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue';
+import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useProjectStore } from '~/stores/project.store';
 import { useMediaStore } from '~/stores/media.store';
@@ -10,14 +10,19 @@ import type { TimelineClipItem, TimelineDocument } from '~/timeline/types';
 import { parseTimelineFromOtio } from '~/timeline/otio-serializer';
 import { buildEffectiveAudioClipItems } from '~/utils/audio/track-bus';
 import {
-  computeWaveformPeakBins,
   computeWaveformRenderBudget,
   computeWaveformWindowMetrics,
   computeWaveformPeakLength,
   resolveWaveformSourceUs,
 } from '~/utils/audio/waveform';
+import { computeWaveformPeakBinsFromMips } from '~/utils/audio/waveform-mips';
+import {
+  scheduleWaveformRedraw,
+  cancelWaveformRedraw,
+} from '~/utils/audio/waveform-render-scheduler';
 import { runQueuedPeakExtraction } from '~/utils/audio/waveform-extraction-queue';
 import { timeUsToPx } from '~/utils/timeline/geometry';
+import { isTauriRuntime } from '~/utils/runtime';
 import {
   normalizeProjectPath,
   resolveNestedMediaPath,
@@ -36,14 +41,17 @@ const mediaStore = useMediaStore();
 const fileManager = useFileManager();
 
 const rootEl = ref<HTMLElement | null>(null);
-const chunkEls = new Map<number, HTMLElement>();
-const chunkCanvases = new Map<number, HTMLCanvasElement>();
-const chunkDrawSignatures = new Map<number, string>();
+const canvasEl = ref<HTMLCanvasElement | null>(null);
 const waveformPeakIds = new WeakMap<readonly Float32Array[], number>();
 
 let resizeObserver: ResizeObserver | null = null;
-let redrawFrameId = 0;
 let nextWaveformPeakId = 1;
+let lastDrawSignature = '';
+let zoomSettleTimer = 0;
+
+// A stable per-instance key so the shared scheduler can coalesce/cancel this
+// clip's redraws independently of every other clip.
+const schedulerKey = `waveform:${Math.random().toString(36).slice(2)}`;
 
 const fileUrl = computed(() => {
   if (props.item.source) {
@@ -380,7 +388,7 @@ const extractPeaks = async () => {
       if (!peaks?.some((channel) => channel.length > 0)) {
         log.error('Nested timeline waveform extraction returned no peaks:', normalizedTimelinePath);
       }
-      void redrawMountedChunks();
+      requestDraw();
       return;
     }
 
@@ -399,7 +407,7 @@ const extractPeaks = async () => {
     }
 
     if (peaks?.some((channel) => channel.length > 0)) {
-      void redrawMountedChunks();
+      requestDraw();
     } else {
       log.error('Waveform is unavailable after extraction:', fileUrl.value);
     }
@@ -472,24 +480,24 @@ watch(
   },
 );
 
-onMounted(() => {
-  isUnmounted = false;
-  requestPeaksExtraction();
-});
+// ---------------------------------------------------------------------------
+// Rendering
+//
+// One canvas per clip (not per chunk). Clips whose waveform strip fits within
+// STATIC_MAX_PX are drawn once into a single static canvas covering the whole
+// strip — scrolling then costs nothing because the parent content is merely
+// transform-translated. Wider clips fall back to a viewport-windowed canvas that
+// is redrawn as the visible window moves. All redraws go through a shared,
+// frame-budgeted scheduler, and during an active zoom gesture the bitmap is
+// stretched via CSS while the backing redraw is deferred until the zoom settles.
+// ---------------------------------------------------------------------------
 
-onBeforeUnmount(() => {
-  isUnmounted = true;
-  extractCallId += 1;
-  if (redrawFrameId) {
-    window.cancelAnimationFrame(redrawFrameId);
-    redrawFrameId = 0;
-  }
-  resizeObserver?.disconnect();
-  resizeObserver = null;
-  chunkEls.clear();
-  chunkCanvases.clear();
-  chunkDrawSignatures.clear();
-});
+// Largest strip width drawn as a single static canvas. Above this we window the
+// canvas to the viewport to stay well under browser canvas size limits.
+const STATIC_MAX_PX = 8000;
+const WINDOW_OVERSCAN_PX = 1000;
+const MAX_WAVEFORM_DRAW_POINTS = 4096;
+const ZOOM_SETTLE_MS = 120;
 
 const isReversed = computed(() => (props.item.speed ?? 1) < 0);
 
@@ -503,26 +511,16 @@ const waveformMetrics = computed(() =>
   }),
 );
 
-interface WaveformChunk {
-  chunkIndex: number;
-  widthPx: number;
-  startPx: number;
-}
-
-// Chunking logic (similar to video thumbnails but for waveform rendering)
-const CHUNK_WIDTH_PX = 1000; // Fixed chunk width in pixels for canvas
-const CHUNK_OVERSCAN_PX = CHUNK_WIDTH_PX * 2;
-const MAX_WAVEFORM_DRAW_POINTS_PER_CHUNK = 2048;
-
-const totalWidthPx = computed(() => {
-  return waveformMetrics.value.totalWidthPx;
-});
-
+const totalWidthPx = computed(() => waveformMetrics.value.totalWidthPx);
 const waveformLeftPx = computed(() => waveformMetrics.value.leftPx);
 
-const track = computed(() => {
-  return timelineStore.timelineDoc?.tracks.find((t) => t.id === props.item.trackId);
-});
+const clipStartPx = computed(() =>
+  timeUsToPx(props.item.timelineRange.startUs, timelineStore.timelineZoom),
+);
+
+const track = computed(() =>
+  timelineStore.timelineDoc?.tracks.find((t) => t.id === props.item.trackId),
+);
 
 const isMuted = computed(() => {
   return (
@@ -534,59 +532,26 @@ const isMuted = computed(() => {
   );
 });
 
-const chunkCount = computed(() => {
+// Visible sub-rect of the waveform strip, in strip-local pixels. Static clips
+// always return the full strip; wide clips return the scrolled viewport window.
+const renderWindow = computed<{ leftPx: number; widthPx: number }>(() => {
   const totalW = totalWidthPx.value;
-  if (totalW <= 0) return 0;
-  return Math.ceil(totalW / CHUNK_WIDTH_PX);
-});
-
-const clipStartPx = computed(() => {
-  return timeUsToPx(props.item.timelineRange.startUs, timelineStore.timelineZoom);
-});
-
-function buildWaveformChunk(chunkIndex: number): WaveformChunk {
-  const totalW = totalWidthPx.value;
-  const isLast = chunkIndex === chunkCount.value - 1;
-  const startPx = chunkIndex * CHUNK_WIDTH_PX;
-  return {
-    chunkIndex,
-    widthPx: isLast ? totalW - startPx : CHUNK_WIDTH_PX,
-    startPx,
-  };
-}
-
-const visibleWaveformChunks = computed<WaveformChunk[]>(() => {
-  const count = chunkCount.value;
-  const totalW = totalWidthPx.value;
-  if (count <= 0 || totalW <= 0) return [];
+  if (totalW <= 0) return { leftPx: 0, widthPx: 0 };
+  if (totalW <= STATIC_MAX_PX) return { leftPx: 0, widthPx: totalW };
 
   const viewportWidth = props.viewportWidth ?? timelineStore.timelineViewportWidth;
   if (!Number.isFinite(viewportWidth) || viewportWidth <= 0) {
-    return [buildWaveformChunk(0)];
+    return { leftPx: 0, widthPx: Math.min(totalW, STATIC_MAX_PX) };
   }
 
   const scrollLeft = props.scrollLeft ?? timelineStore.timelineScrollLeftPx;
   const stripStartInTimeline = clipStartPx.value + waveformLeftPx.value;
   const visibleLeft = scrollLeft - stripStartInTimeline;
-  const visibleRight = visibleLeft + viewportWidth;
-  const overscanPx = Math.max(CHUNK_OVERSCAN_PX, viewportWidth * 0.5);
+  const overscan = Math.max(WINDOW_OVERSCAN_PX, viewportWidth * 0.5);
 
-  const firstIndex = Math.max(0, Math.floor((visibleLeft - overscanPx) / CHUNK_WIDTH_PX));
-  const lastIndex = Math.min(count - 1, Math.ceil((visibleRight + overscanPx) / CHUNK_WIDTH_PX));
-
-  if (lastIndex < firstIndex) return [];
-
-  return Array.from({ length: lastIndex - firstIndex + 1 }, (_, index) =>
-    buildWaveformChunk(firstIndex + index),
-  );
-});
-
-const visibleWaveformChunkKey = computed(() => {
-  const chunks = visibleWaveformChunks.value;
-  if (chunks.length === 0) return 'empty';
-  const firstChunk = chunks[0]!;
-  const lastChunk = chunks[chunks.length - 1]!;
-  return `${chunks.length}:${firstChunk.chunkIndex}:${lastChunk.chunkIndex}:${firstChunk.widthPx}:${lastChunk.widthPx}`;
+  const left = Math.max(0, Math.floor(visibleLeft - overscan));
+  const right = Math.min(totalW, Math.ceil(visibleLeft + viewportWidth + overscan));
+  return { leftPx: left, widthPx: Math.max(0, right - left) };
 });
 
 function getWaveformPeakId(channels: readonly Float32Array[]) {
@@ -597,106 +562,86 @@ function getWaveformPeakId(channels: readonly Float32Array[]) {
   return id;
 }
 
-function pruneUnmountedChunkRefs() {
-  const visibleIndexes = new Set(visibleWaveformChunks.value.map((chunk) => chunk.chunkIndex));
-  for (const index of chunkEls.keys()) {
-    if (!visibleIndexes.has(index)) chunkEls.delete(index);
-  }
-  for (const index of chunkCanvases.keys()) {
-    if (!visibleIndexes.has(index)) chunkCanvases.delete(index);
-  }
+function effectiveDevicePixelRatio(): number {
+  // Cap to 1 inside the Tauri webview (WebKitGTK): 2× backing doubles fill cost
+  // on HiDPI while adding no perceptible waveform detail.
+  if (isTauriRuntime()) return 1;
+  return typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1;
 }
 
-function setChunkEl(el: unknown, chunkIndex: number) {
-  if (el instanceof HTMLElement) {
-    chunkEls.set(chunkIndex, el);
-  } else {
-    chunkEls.delete(chunkIndex);
-  }
-}
-
-function setChunkCanvas(el: unknown, chunkIndex: number) {
-  if (el instanceof HTMLCanvasElement) {
-    chunkCanvases.set(chunkIndex, el);
-  } else {
-    chunkCanvases.delete(chunkIndex);
-    chunkDrawSignatures.delete(chunkIndex);
-  }
-}
-
-function drawChunk(chunkIndex: number) {
-  const chunk = visibleWaveformChunks.value.find((c) => c.chunkIndex === chunkIndex);
-  if (!chunk) return;
-  const canvas = chunkCanvases.get(chunkIndex);
+function draw() {
+  const canvas = canvasEl.value;
   const root = rootEl.value;
   if (!canvas || !root) return;
-  if (!audioPeaks.value || audioPeaks.value.length === 0) return;
+
+  const channels = audioPeaks.value;
+  if (!channels || channels.length === 0) return;
+  const peaksCount = channels[0]?.length || 0;
+  if (peaksCount === 0) return;
+
+  const win = renderWindow.value;
+  if (win.widthPx <= 0) return;
+
+  const totalW = totalWidthPx.value;
+  if (totalW <= 0) return;
 
   const cssHeight = Math.max(1, canvas.parentElement?.clientHeight || root.clientHeight);
-  const cssWidth = Math.max(1, Math.round(chunk.widthPx));
+  const cssWidth = Math.max(1, Math.round(win.widthPx));
+
   const renderBudget = computeWaveformRenderBudget({
     cssWidth,
-    devicePixelRatio: window.devicePixelRatio || 1,
+    devicePixelRatio: effectiveDevicePixelRatio(),
     zoom: timelineStore.timelineZoom,
-    maxPointsPerChunk: MAX_WAVEFORM_DRAW_POINTS_PER_CHUNK,
+    maxPointsPerChunk: MAX_WAVEFORM_DRAW_POINTS,
   });
 
   const targetWidth = Math.max(1, Math.round(cssWidth * renderBudget.effectiveDevicePixelRatio));
   const targetHeight = Math.max(1, Math.round(cssHeight * renderBudget.effectiveDevicePixelRatio));
 
-  if (canvas.width !== targetWidth) canvas.width = targetWidth;
-  if (canvas.height !== targetHeight) canvas.height = targetHeight;
-  canvas.style.width = `${cssWidth}px`;
-  canvas.style.height = `${cssHeight}px`;
-
-  const ctx = canvas.getContext('2d');
-  if (!ctx) return;
-
-  const channels = audioPeaks.value;
-  if (!channels || channels.length === 0) return;
-
-  const peaksCount = channels[0]?.length || 0;
-  if (peaksCount === 0) return;
-
-  const totalW = totalWidthPx.value;
-
-  // Calculate which portion of the peaks array falls into this chunk.
-  // We include one extra peak at the end (if available) so that the line
-  // connects smoothly to the start of the next chunk instead of dropping to zero.
-  const startRatio = chunk.startPx / totalW;
-  const endRatio = (chunk.startPx + chunk.widthPx) / totalW;
-
+  // Map the visible window back to peak-sample indices. One extra peak at the end
+  // (when available) keeps the line connected to the next window.
+  const startRatio = win.leftPx / totalW;
+  const endRatio = (win.leftPx + win.widthPx) / totalW;
   const startIndex = Math.floor(startRatio * peaksCount);
   const endIndex = Math.min(peaksCount, Math.ceil(endRatio * peaksCount) + 1);
+
   const mode = props.item.audioWaveformMode || 'half';
   const muted = isMuted.value;
+  const gain = props.item.audioGain ?? 1;
   const peakId = getWaveformPeakId(channels);
+
   const drawSignature = [
     peakId,
     peaksCount,
-    chunk.startPx,
-    chunk.widthPx,
+    win.leftPx,
+    win.widthPx,
     totalW,
     startIndex,
     endIndex,
     renderBudget.outputBins,
     targetWidth,
     targetHeight,
-    props.item.audioGain ?? 1,
+    gain,
     mode,
     muted ? 1 : 0,
   ].join(':');
 
-  if (chunkDrawSignatures.get(chunkIndex) === drawSignature) return;
+  if (drawSignature === lastDrawSignature) return;
+
+  if (canvas.width !== targetWidth) canvas.width = targetWidth;
+  if (canvas.height !== targetHeight) canvas.height = targetHeight;
+
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return;
 
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  const peakBins = computeWaveformPeakBins({
+  const peakBins = computeWaveformPeakBinsFromMips({
     channels,
     startIndex,
     endIndex,
     outputBins: renderBudget.outputBins,
-    gain: props.item.audioGain ?? 1,
+    gain,
   });
 
   if (peakBins.length <= 0) return;
@@ -704,12 +649,7 @@ function drawChunk(chunkIndex: number) {
   const halfH = targetHeight / 2;
   const step = peakBins.length > 1 ? targetWidth / (peakBins.length - 1) : targetWidth;
 
-  if (muted) {
-    ctx.fillStyle = '#ffffff66';
-  } else {
-    ctx.fillStyle = '#ffffff';
-  }
-
+  ctx.fillStyle = muted ? '#ffffff66' : '#ffffff';
   ctx.beginPath();
 
   if (mode === 'half') {
@@ -721,15 +661,12 @@ function drawChunk(chunkIndex: number) {
     }
     ctx.lineTo(targetWidth, targetHeight);
   } else {
-    // Draw top half
     ctx.moveTo(0, halfH);
     for (let i = 0; i < peakBins.length; i++) {
       const x = i * step;
       const y = halfH - Math.min(1, peakBins[i] ?? 0) * halfH;
       ctx.lineTo(x, y);
     }
-
-    // Draw bottom half (mirrored)
     for (let i = peakBins.length - 1; i >= 0; i--) {
       const x = i * step;
       const y = halfH + Math.min(1, peakBins[i] ?? 0) * halfH;
@@ -739,87 +676,73 @@ function drawChunk(chunkIndex: number) {
 
   ctx.closePath();
   ctx.fill();
-  chunkDrawSignatures.set(chunkIndex, drawSignature);
+  lastDrawSignature = drawSignature;
 }
 
-async function redrawVisibleChunks() {
-  await nextTick();
-  for (const chunk of visibleWaveformChunks.value) {
-    const canvas = chunkCanvases.get(chunk.chunkIndex);
-    if (!canvas) continue;
-    drawChunk(chunk.chunkIndex);
-  }
+function requestDraw() {
+  scheduleWaveformRedraw(schedulerKey, draw);
 }
 
-const redrawMountedChunks = redrawVisibleChunks;
+// Geometry/scroll changes: the strip + canvas CSS box follow `renderWindow`
+// reactively, so the existing bitmap stretches for free during a zoom gesture.
+// We only re-rasterize the backing store when the visible window changes — and
+// while a zoom gesture is in flight we defer that to the settle timer below.
+watch(
+  () => [renderWindow.value.leftPx, renderWindow.value.widthPx],
+  () => {
+    if (zoomSettleTimer) return;
+    requestDraw();
+  },
+);
 
-function requestRedrawMountedChunks() {
-  if (redrawFrameId) return;
-  redrawFrameId = window.requestAnimationFrame(() => {
-    redrawFrameId = 0;
-    void redrawMountedChunks();
-  });
-}
+watch(
+  () => timelineStore.timelineZoom,
+  () => {
+    if (zoomSettleTimer) clearTimeout(zoomSettleTimer);
+    zoomSettleTimer = window.setTimeout(() => {
+      zoomSettleTimer = 0;
+      requestDraw();
+    }, ZOOM_SETTLE_MS);
+  },
+);
 
-function invalidateDrawCache() {
-  chunkDrawSignatures.clear();
-}
-
+// Visual-only property changes (no geometry impact) → redraw immediately.
 watch(
   () => [props.item.audioWaveformMode, props.item.audioGain, isMuted.value],
-  () => {
-    invalidateDrawCache();
-    requestRedrawMountedChunks();
-  },
+  () => requestDraw(),
 );
 
-watch(
-  () => [
-    totalWidthPx.value,
-    waveformLeftPx.value,
-    timelineStore.timelineZoom,
-    props.item.timelineRange.startUs,
-    props.item.timelineRange.durationUs,
-    props.item.sourceRange.startUs,
-    props.item.sourceRange.durationUs,
-    props.item.speed,
-  ],
-  () => {
-    invalidateDrawCache();
-    requestRedrawMountedChunks();
-  },
-);
-
-// External peaks updates (e.g. cache refresh, late extraction completion) must
-// trigger a redraw — otherwise the canvas stays empty until the user pans/zooms.
+// External peaks updates (cache refresh / late extraction) must trigger a redraw,
+// otherwise the canvas stays empty until the user pans/zooms.
 watch(audioPeaks, () => {
-  if (audioPeaks.value) {
-    hasDeferredExtraction.value = false;
-  }
-  invalidateDrawCache();
-  requestRedrawMountedChunks();
+  if (audioPeaks.value) hasDeferredExtraction.value = false;
+  lastDrawSignature = '';
+  requestDraw();
 });
 
-watch(
-  visibleWaveformChunkKey,
-  () => {
-    void nextTick().then(() => {
-      pruneUnmountedChunkRefs();
-      requestRedrawMountedChunks();
-    });
-  },
-  { immediate: true, flush: 'post' },
-);
-
 onMounted(() => {
-  resizeObserver = new ResizeObserver(() => {
-    invalidateDrawCache();
-    requestRedrawMountedChunks();
-  });
+  isUnmounted = false;
+  requestPeaksExtraction();
 
-  if (rootEl.value) {
-    resizeObserver.observe(rootEl.value);
+  resizeObserver = new ResizeObserver(() => {
+    lastDrawSignature = '';
+    requestDraw();
+  });
+  if (rootEl.value) resizeObserver.observe(rootEl.value);
+
+  requestDraw();
+});
+
+onBeforeUnmount(() => {
+  isUnmounted = true;
+  extractCallId += 1;
+  if (zoomSettleTimer) {
+    clearTimeout(zoomSettleTimer);
+    zoomSettleTimer = 0;
   }
+  cancelWaveformRedraw(schedulerKey);
+  resizeObserver?.disconnect();
+  resizeObserver = null;
 });
 </script>
 
@@ -845,29 +768,21 @@ onMounted(() => {
 
     <div
       v-else-if="audioPeaks"
-      class="absolute inset-y-0 h-full flex"
+      class="absolute inset-y-0 h-full"
       :style="{
         left: `${waveformLeftPx}px`,
         width: `${totalWidthPx}px`,
         transform: isReversed ? 'scaleX(-1)' : undefined,
       }"
     >
-      <div
-        v-for="chunk in visibleWaveformChunks"
-        :key="chunk.chunkIndex"
-        :ref="(el) => setChunkEl(el, chunk.chunkIndex)"
-        class="absolute top-0 h-full overflow-hidden"
-        :data-chunk-index="chunk.chunkIndex"
+      <canvas
+        ref="canvasEl"
+        class="absolute top-0 h-full max-w-none"
         :style="{
-          left: `${chunk.startPx}px`,
-          width: `${chunk.widthPx}px`,
+          left: `${renderWindow.leftPx}px`,
+          width: `${renderWindow.widthPx}px`,
         }"
-      >
-        <canvas
-          :ref="(el) => setChunkCanvas(el, chunk.chunkIndex)"
-          class="absolute top-0 left-0 h-full max-w-none"
-        ></canvas>
-      </div>
+      ></canvas>
     </div>
   </div>
 </template>
