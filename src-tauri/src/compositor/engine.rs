@@ -1399,23 +1399,18 @@ impl Compositor {
     ) -> Result<Option<Vec<u8>>> {
         let total_started = Instant::now();
         let dev_id = session.dev_id;
-        let device_handle = &self.render_cx.devices[dev_id];
-        let device = device_handle.device.clone();
-        let queue = device_handle.queue.clone();
-        let materialize_started = Instant::now();
-        let effective_scene =
-            self.materialize_transitions_and_effects(dev_id, scene, &device, &queue)?;
-        let materialize_ms = elapsed_ms(materialize_started);
+        // Use the same scene-preparation path as the live monitor so adjustment
+        // clips and master effects are materialized identically; otherwise their
+        // effects (e.g. blur on an adjustment layer) render in the monitor but get
+        // silently dropped from the export.
         let mut registered_images = Vec::new();
-        let build_started = Instant::now();
-        let vello = self.build_vello_scene_from_materialized(
+        let (vello, prepare_timing) = self.prepare_vello_scene(
             dev_id,
-            &effective_scene,
+            scene,
             session.width,
             session.height,
             &mut registered_images,
         )?;
-        let build_vello_ms = elapsed_ms(build_started);
         let render_started = Instant::now();
         let result = self.render_to_pixels_pipelined(session, &vello, scene.background);
         let render_ms = elapsed_ms(render_started);
@@ -1423,8 +1418,8 @@ impl Compositor {
         self.render_telemetry.record(
             "pixels-pipelined",
             RenderStageTiming {
-                materialize_ms,
-                build_vello_ms,
+                materialize_ms: prepare_timing.materialize_ms,
+                build_vello_ms: prepare_timing.build_vello_ms,
                 render_ms,
                 total_ms: elapsed_ms(total_started),
             },
