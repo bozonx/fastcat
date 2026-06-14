@@ -50,7 +50,9 @@ pub(crate) fn plan_direct(
     match evaluate_direct(scene, options, width, height, start, end, fps, frame_count) {
         Ok(plan) => Some(plan),
         Err(reason) => {
-            log::info!("[native-export] direct transcode not used ({reason}); using compositor path");
+            log::info!(
+                "[native-export] direct transcode not used ({reason}); using compositor path"
+            );
             None
         }
     }
@@ -83,11 +85,17 @@ fn evaluate_direct(
 
     // Exactly one visible layer, and it must be a plain video clip.
     if scene.layers.len() != 1 {
-        return Err(format!("scene has {} layers (need exactly 1)", scene.layers.len()));
+        return Err(format!(
+            "scene has {} layers (need exactly 1)",
+            scene.layers.len()
+        ));
     }
     let layer = &scene.layers[0];
     if !matches!(layer.kind, LayerKind::Video) {
-        return Err(format!("the single layer is {:?}, not a plain video clip", layer.kind));
+        return Err(format!(
+            "the single layer is {:?}, not a plain video clip",
+            layer.kind
+        ));
     }
     if layer.path.is_empty() {
         return Err("the video layer has no source path".into());
@@ -122,7 +130,10 @@ fn evaluate_direct(
         return Err("clip is a freeze frame".into());
     }
     if !matches!(layer.blend_mode, BlendMode::Normal) {
-        return Err(format!("clip blend mode is {:?}, not Normal", layer.blend_mode));
+        return Err(format!(
+            "clip blend mode is {:?}, not Normal",
+            layer.blend_mode
+        ));
     }
     // Explicit orientation overrides the source's own rotation handling; let vello own it.
     // Frontend sends "auto" for the default case, which is equivalent to `None` here:

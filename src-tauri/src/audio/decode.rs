@@ -4,21 +4,19 @@ use std::sync::Arc;
 use anyhow::{anyhow, Context, Result};
 use parking_lot::{Condvar, Mutex};
 
-use crate::audio::ffmpeg_decode::{
-    decode_range_ffmpeg, spawn_ffmpeg_f32le, FfmpegDecodeParams,
-};
+use crate::audio::ffmpeg_decode::{decode_range_ffmpeg, spawn_ffmpeg_f32le, FfmpegDecodeParams};
 use crate::audio::resample::{
     make_sinc_resampler, planar_to_interleaved, resample_flush_cached, resample_planar_cached,
     resample_planar_with_speed, RESAMPLER_CHUNK_SIZE,
 };
 use crate::audio::shared::{
     find_audio_track, AudioRenderTarget, AudioShared, AudioSourceMetadata, AudioWindow,
-    CachedAudioDecoder, CachedFfmpegDecoder, REFILL_MARGIN_SEC, WINDOW_SEC,
+    FfmpegStreamSource, LayerDecoder, SymphoniaDecoder, REFILL_MARGIN_SEC, WINDOW_SEC,
 };
 
 /// Fraction of the current source chunk tolerated as scheduling jitter before
 /// the streaming decoder treats the request as a discontinuity and reseeks.
-/// Reversed clips bypass this and always reseek (see `decode_symphonia_chunk`).
+/// Reversed clips bypass this and always reseek (see `stream_layer_chunk`).
 const SEEK_TOLERANCE_CHUNK_FRACTION: f64 = 0.25;
 const SEEK_TOLERANCE_MIN_SEC: f64 = 0.001;
 
@@ -100,12 +98,15 @@ pub(crate) fn decode_range_symphonia(
     let track =
         find_audio_track(format.tracks()).ok_or_else(|| anyhow!("no active audio track found"))?;
 
+    // symphonia can't decode this codec (Opus today, and a safety net for any other
+    // codec it lacks): fall back to a one-shot ranged ffmpeg decode. The streaming
+    // path makes the same decision in `open_layer_decoder`.
     let mut decoder = match symphonia::default::get_codecs()
         .make(&track.codec_params, &DecoderOptions::default())
     {
         Ok(decoder) => decoder,
-        Err(_) if track.codec_params.codec == symphonia::core::codecs::CODEC_TYPE_OPUS => {
-            log::warn!("[audio] symphonia cannot decode Opus; falling back to ffmpeg: {path}");
+        Err(_) => {
+            log::warn!("[audio] symphonia cannot decode codec; ranged ffmpeg fallback: {path}");
             return decode_range_ffmpeg(
                 Path::new(path),
                 start_sec,
@@ -113,9 +114,8 @@ pub(crate) fn decode_range_symphonia(
                 target_sample_rate,
                 output_channels,
             )
-            .context("failed to decode Opus audio via ffmpeg");
+            .context("failed to decode audio range via ffmpeg fallback");
         }
-        Err(err) => return Err(err).context("failed to create decoder"),
     };
 
     let track_id = track.id;
@@ -249,7 +249,17 @@ pub(crate) fn decode_range_symphonia(
     Ok(interleaved)
 }
 
-pub(crate) struct DecodeSymphoniaChunkParams<'a> {
+/// Request for one streaming chunk decode, independent of which backend serves it.
+pub(crate) struct StreamChunkRequest {
+    pub source_start_sec: f64,
+    pub timeline_duration_sec: f64,
+    pub speed: f64,
+    pub reverse: bool,
+    pub target_sample_rate: u32,
+    pub output_channels: usize,
+}
+
+pub(crate) struct StreamChunkParams<'a> {
     pub layer_id: &'a str,
     pub path: &'a str,
     pub source_start_sec: f64,
@@ -261,8 +271,14 @@ pub(crate) struct DecodeSymphoniaChunkParams<'a> {
     pub shared: &'a Arc<(Mutex<AudioShared>, Condvar)>,
 }
 
-pub(crate) fn decode_symphonia_chunk(params: DecodeSymphoniaChunkParams<'_>) -> Result<Vec<f32>> {
-    let DecodeSymphoniaChunkParams {
+/// Streams one chunk for a layer through its cached `LayerDecoder`, building one the
+/// first time (or after a path change). The codec→backend decision is made ONCE here
+/// (in `open_layer_decoder`); both backends then share this single cache, the same
+/// sequential-continuation contract, and the same eviction. The decoder is removed
+/// from the shared map while decoding so the lock is NOT held across the decode, then
+/// re-inserted — matching the realtime producer's lock-free decode invariant.
+pub(crate) fn stream_layer_chunk(params: StreamChunkParams<'_>) -> Result<Vec<f32>> {
+    let StreamChunkParams {
         layer_id,
         path,
         source_start_sec,
@@ -274,563 +290,518 @@ pub(crate) fn decode_symphonia_chunk(params: DecodeSymphoniaChunkParams<'_>) -> 
         shared,
     } = params;
 
-    // Forward 1× clips of a codec symphonia can't decode (Opus) stream through a
-    // long-lived ffmpeg child kept in `ffmpeg_decoders`. Once established for this
-    // layer+path, keep using it instead of re-probing the container every chunk.
-    // (speed/reverse fall through to the per-chunk seek path below.)
-    let streamable_via_ffmpeg = (speed - 1.0).abs() <= 1e-6 && !reverse;
-    if streamable_via_ffmpeg {
-        let has_ffmpeg = {
-            let state = shared.0.lock();
-            state
-                .ffmpeg_decoders
-                .get(layer_id)
-                .is_some_and(|cached| cached.path == path)
-        };
-        if has_ffmpeg {
-            return decode_chunk_ffmpeg_streaming(DecodeChunkFfmpegStreamingParams {
-                layer_id,
-                path,
-                source_start_sec,
-                timeline_duration_sec,
-                target_sample_rate,
-                output_channels,
-                shared,
-            });
-        }
-    }
+    let req = StreamChunkRequest {
+        source_start_sec,
+        timeline_duration_sec,
+        speed,
+        reverse,
+        target_sample_rate,
+        output_channels,
+    };
 
-    let target_frames =
-        (timeline_duration_sec.max(0.0) * target_sample_rate as f64).round() as usize;
-    let target_samples = target_frames * output_channels;
-    let mut decoder_state = {
+    // Take the cached decoder out (dropping a stale one whose path changed: proxy
+    // on/off, media replace under the same layer id), or build a fresh one for this
+    // path. One cache, so a backend switch on media-replace is just a rebuild here.
+    let mut decoder = {
         let mut state = shared.0.lock();
         state.decoders.remove(layer_id)
     };
-
-    // Drop a cached decoder whose source path no longer matches this layer (proxy
-    // on/off, media replace under the same layer id): reusing it would keep decoding
-    // the OLD file. A fresh decoder for the new path is built below.
-    if decoder_state
-        .as_ref()
-        .is_some_and(|state| state.path != path)
-    {
-        decoder_state = None;
+    if decoder.as_ref().is_some_and(|d| d.path() != path) {
+        decoder = None;
     }
-
-    if decoder_state.is_none() {
-        use symphonia::core::codecs::DecoderOptions;
-
-        let format = open_symphonia_format(path, "chunk decode")?;
-        let track = find_audio_track(format.tracks())
-            .ok_or_else(|| anyhow!("no active audio track found"))?;
-
-        let decoder = match symphonia::default::get_codecs()
-            .make(&track.codec_params, &DecoderOptions::default())
-        {
-            Ok(decoder) => decoder,
-            Err(_) if track.codec_params.codec == symphonia::core::codecs::CODEC_TYPE_OPUS => {
-                log::warn!(
-                    "[audio] symphonia cannot decode Opus chunk; falling back to ffmpeg: {path}"
-                );
-                // Forward 1× → sequential streaming decoder (gap-free across chunks).
-                // speed/reverse → per-chunk seek decode (rare; reverse reseeks anyway).
-                if streamable_via_ffmpeg {
-                    return decode_chunk_ffmpeg_streaming(DecodeChunkFfmpegStreamingParams {
-                        layer_id,
-                        path,
-                        source_start_sec,
-                        timeline_duration_sec,
-                        target_sample_rate,
-                        output_channels,
-                        shared,
-                    });
-                }
-                return decode_chunk_ffmpeg(DecodeChunkFfmpegParams {
-                    path,
-                    source_start_sec,
-                    timeline_duration_sec,
-                    speed,
-                    target_sample_rate,
-                    output_channels,
-                });
-            }
-            Err(err) => return Err(err).context("failed to create decoder"),
-        };
-
-        let track_id = track.id;
-        let source_rate = track.codec_params.sample_rate.unwrap_or(target_sample_rate);
-        let channels = track
-            .codec_params
-            .channels
-            .map(|c| c.count())
-            .unwrap_or(1)
-            .max(1);
-        let time_base = track
-            .codec_params
-            .time_base
-            .unwrap_or(symphonia::core::units::TimeBase::new(1, source_rate));
-
-        decoder_state = Some(CachedAudioDecoder {
-            path: path.to_string(),
-            format,
-            decoder,
-            track_id,
-            source_rate,
-            channels,
-            time_base,
-            resampler: None,
-            last_resample_ratio: 0.0,
-            resampler_primed: false,
-            last_decode_end_sec: 0.0,
-            resample_remainder: vec![Vec::new(); channels],
-            resample_output_remainder: Vec::new(),
-        });
-    }
-
-    let mut state_val =
-        decoder_state.ok_or_else(|| anyhow!("decoder state missing for layer {}", layer_id))?;
-
-    let source_advance_sec = timeline_duration_sec * speed;
-    let seek_tolerance_sec =
-        (source_advance_sec.abs() * SEEK_TOLERANCE_CHUNK_FRACTION).max(SEEK_TOLERANCE_MIN_SEC);
-    let needs_seek = reverse
-        || source_start_sec < state_val.last_decode_end_sec - seek_tolerance_sec
-        || source_start_sec > state_val.last_decode_end_sec + seek_tolerance_sec;
-    let current_ratio = target_sample_rate as f64 / (state_val.source_rate as f64 * speed);
-
-    let (_actual_sec, discard_frames_remaining) = if needs_seek {
-        let seeked_to = match state_val.format.seek(
-            symphonia::core::formats::SeekMode::Accurate,
-            symphonia::core::formats::SeekTo::Time {
-                time: symphonia::core::units::Time {
-                    seconds: source_start_sec.floor() as u64,
-                    frac: source_start_sec.fract(),
-                },
-                track_id: Some(state_val.track_id),
-            },
-        ) {
-            Ok(seeked_to) => seeked_to,
-            Err(error) if is_audio_seek_past_end(&error) => {
-                state_val.last_decode_end_sec = source_start_sec;
-                let mut state = shared.0.lock();
-                state.decoders.insert(layer_id.to_string(), state_val);
-                return Ok(vec![0.0f32; target_samples]);
-            }
-            Err(error) => return Err(error).context("failed to seek in format reader"),
-        };
-
-        state_val.decoder.reset();
-        if state_val.resampler.is_some()
-            && (state_val.last_resample_ratio - current_ratio).abs() <= 1e-6
-        {
-            if let Some(r) = state_val.resampler.as_mut() {
-                use rubato::Resampler;
-                r.reset();
-            }
-        } else {
-            state_val.resampler = None;
-        }
-        state_val.resample_remainder = vec![Vec::new(); state_val.channels];
-        state_val.resample_output_remainder.clear();
-        state_val.last_resample_ratio = current_ratio;
-        state_val.resampler_primed = false;
-
-        let actual_sec = {
-            let t = state_val.time_base.calc_time(seeked_to.actual_ts);
-            t.seconds as f64 + t.frac
-        };
-        let (decode_start_sec, discard_frames) = if actual_sec <= source_start_sec {
-            let discard_sec = source_start_sec - actual_sec;
-            let discard_frames = (discard_sec * state_val.source_rate as f64).floor() as usize;
-            (actual_sec, discard_frames)
-        } else {
-            (actual_sec, 0usize)
-        };
-        (decode_start_sec, discard_frames)
-    } else {
-        (source_start_sec, 0usize)
-    };
-    let mut discard_frames_remaining = discard_frames_remaining;
-
-    let resampling_active =
-        !((current_ratio - 1.0).abs() < 1e-6 && state_val.source_rate == target_sample_rate);
-    if state_val.resampler.is_some() && (state_val.last_resample_ratio - current_ratio).abs() > 1e-6
-    {
-        state_val.resampler = None;
-        state_val.resample_remainder = vec![Vec::new(); state_val.channels];
-        state_val.resample_output_remainder.clear();
-        state_val.resampler_primed = false;
-    }
-    state_val.last_resample_ratio = current_ratio;
-
-    if resampling_active && state_val.resampler.is_none() {
-        state_val.resampler = Some(Box::new(make_sinc_resampler(
-            current_ratio,
-            state_val.channels,
-        )?));
-        state_val.resample_remainder = vec![Vec::new(); state_val.channels];
-        state_val.resampler_primed = false;
-    }
-
-    // Source frames spanning this chunk's timeline duration. Used only to size the
-    // per-iteration decode batch and to advance the logical decode cursor — the
-    // amount we actually decode is driven by how much OUTPUT we still need.
-    let chunk_source_frames =
-        (timeline_duration_sec * speed * state_val.source_rate as f64).round() as usize;
-
-    // Output already buffered from previous chunks' resampler surplus. The decode
-    // loop tops this up to a full chunk; the surplus is carried to the next chunk.
-    let mut combined = std::mem::take(&mut state_val.resample_output_remainder);
-
-    // Decode source in blocks and resample until we have a full chunk of OUTPUT
-    // (or hit end-of-stream). This is the core invariant that prevents periodic
-    // silent chunks: `SincFixedIn` only emits output once a full input block
-    // accumulates, so for an upsampled source (rate well below the device rate,
-    // e.g. an 8 kHz clip on a 48 kHz device → only ~400 source frames per 50 ms
-    // chunk) a block fills just once every few chunks. Decoding a FIXED per-chunk
-    // source amount and zero-padding the shortfall therefore dropped a fully-silent
-    // 50 ms chunk in every inter-burst valley (heard as glitchy/"fast" playback
-    // until the background precache swapped in the gap-free whole-file decode).
-    // Driving the decode by an OUTPUT target instead guarantees every chunk is
-    // filled; the resampler's variable per-block surplus is carried in `combined`
-    // so the source read-ahead stays bounded (≈ one block) rather than growing.
-    let mut total_collected = 0usize;
-    let mut hit_eof = false;
-    // Drop the resampler's group-delay region exactly once, on the first resample
-    // after a (re)prime, so the first emitted chunk isn't short by the resampler
-    // latency. Queried after the first resample (the resampler may have just been
-    // created) and carried across batches in case the first batch is shorter than
-    // the delay.
-    let mut needs_delay_drop = resampling_active && !state_val.resampler_primed;
-    let mut pending_delay_samples = 0usize;
-
-    while combined.len() < target_samples {
-        // Batch large enough to cross at least one resampler input block so each
-        // iteration makes guaranteed progress (covers the chunk span plus read-ahead).
-        let batch_target = chunk_source_frames.max(RESAMPLER_CHUNK_SIZE);
-        let mut planar_buffers = vec![Vec::new(); state_val.channels];
-        let mut batch_collected = 0usize;
-        let mut batch_full = false;
-
-        while !batch_full {
-            let packet = match state_val.format.next_packet() {
-                Ok(packet) => packet,
-                Err(symphonia::core::errors::Error::IoError(ref err))
-                    if err.kind() == std::io::ErrorKind::UnexpectedEof =>
-                {
-                    hit_eof = true;
-                    break;
-                }
-                Err(err) => return Err(err).context("failed to read next packet"),
-            };
-
-            if packet.track_id() != state_val.track_id {
-                continue;
-            }
-
-            match state_val.decoder.decode(&packet) {
-                Ok(audio_buf) => {
-                    let spec = *audio_buf.spec();
-                    let duration = audio_buf.frames() as u64;
-                    let mut sample_buf =
-                        symphonia::core::audio::SampleBuffer::<f32>::new(duration, spec);
-                    sample_buf.copy_interleaved_ref(audio_buf);
-
-                    let samples = sample_buf.samples();
-                    let num_channels = spec.channels.count();
-                    let num_frames = samples.len() / num_channels;
-                    if num_channels > state_val.channels {
-                        for _ in state_val.channels..num_channels {
-                            planar_buffers.push(vec![0.0; batch_collected]);
-                        }
-                        state_val.channels = num_channels;
-                        state_val.resampler = None;
-                        state_val.resample_remainder = vec![Vec::new(); state_val.channels];
-                        state_val.last_resample_ratio = current_ratio;
-                        // Channel layout changed mid-stream: the old resampler and any
-                        // already-collected output are invalid. Restart this chunk's
-                        // accumulation cleanly and re-prime.
-                        combined.clear();
-                        needs_delay_drop = resampling_active;
-                        pending_delay_samples = 0;
-                    }
-
-                    for frame in 0..num_frames {
-                        if discard_frames_remaining > 0 {
-                            discard_frames_remaining -= 1;
-                            continue;
-                        }
-                        for ch in 0..state_val.channels {
-                            let sample = if ch < num_channels {
-                                samples[frame * num_channels + ch]
-                            } else {
-                                0.0
-                            };
-                            planar_buffers[ch].push(sample);
-                        }
-                        batch_collected += 1;
-                    }
-                    // Stop reading once the batch target is met, but only at this PACKET
-                    // boundary — never mid-packet. A decoded packet is consumed in full
-                    // and the (bounded, ≤ one packet) over-read rides along: it resamples
-                    // into `combined` and the surplus past `target_samples` is carried to
-                    // the next chunk via `resample_output_remainder`. Breaking mid-packet
-                    // and dropping the remaining frames (the demuxer has already advanced
-                    // past them, and the next sequential chunk does NOT reseek) silently
-                    // lost ~20-28% of every chunk's audio — heard on export as faster,
-                    // crackly playback.
-                    if batch_collected >= batch_target {
-                        batch_full = true;
-                    }
-                }
-                Err(symphonia::core::errors::Error::IoError(ref err))
-                    if err.kind() == std::io::ErrorKind::UnexpectedEof =>
-                {
-                    hit_eof = true;
-                    break;
-                }
-                Err(symphonia::core::errors::Error::DecodeError(err)) => {
-                    log::warn!("[audio] symphonia chunk decode error: {:?}", err);
-                    continue;
-                }
-                Err(err) => return Err(err).context("failed to decode packet"),
-            }
-        }
-
-        if batch_collected == 0 {
-            hit_eof = true;
-            break;
-        }
-        total_collected += batch_collected;
-
-        let resampled =
-            resample_planar_cached(crate::audio::resample::ResamplePlanarCachedParams {
-                input: planar_buffers,
-                source_rate: state_val.source_rate,
-                target_rate: target_sample_rate,
-                speed,
-                num_channels: state_val.channels,
-                cached_resampler: &mut state_val.resampler,
-                remainder: &mut state_val.resample_remainder,
-            })?;
-        if needs_delay_drop {
-            use rubato::Resampler;
-            pending_delay_samples = state_val
-                .resampler
-                .as_ref()
-                .map(|r| r.output_delay())
-                .unwrap_or(0)
-                * output_channels;
-            needs_delay_drop = false;
-        }
-
-        let mut interleaved = planar_to_interleaved(&resampled, output_channels);
-        if pending_delay_samples > 0 {
-            let drop = pending_delay_samples.min(interleaved.len());
-            interleaved.drain(0..drop);
-            pending_delay_samples -= drop;
-        }
-        combined.extend_from_slice(&interleaved);
-
-        if hit_eof {
-            break;
-        }
-    }
-
-    // End-of-stream flush: the streaming resampler carries a sub-block input
-    // remainder and trails the signal by its group delay. Without draining both at
-    // EOF the clip's final ~block-plus-delay of audio would be replaced by the
-    // zero-padding below (heard as the tail cutting abruptly to silence). Only
-    // meaningful while actually resampling and still short of a full chunk.
-    if hit_eof && resampling_active && combined.len() < target_samples {
-        if needs_delay_drop {
-            // This session never emitted a resampled block (clip shorter than one
-            // input block), so its initial priming delay was never dropped: schedule
-            // it to be dropped from the flushed output.
-            use rubato::Resampler;
-            pending_delay_samples = state_val
-                .resampler
-                .as_ref()
-                .map(|r| r.output_delay())
-                .unwrap_or(0)
-                * output_channels;
-        }
-        let flushed = resample_flush_cached(crate::audio::resample::ResampleFlushCachedParams {
-            source_rate: state_val.source_rate,
-            target_rate: target_sample_rate,
-            speed,
-            num_channels: state_val.channels,
-            cached_resampler: &mut state_val.resampler,
-            remainder: &mut state_val.resample_remainder,
-        })?;
-        let mut interleaved = planar_to_interleaved(&flushed, output_channels);
-        if pending_delay_samples > 0 {
-            let drop = pending_delay_samples.min(interleaved.len());
-            interleaved.drain(0..drop);
-        }
-        combined.extend_from_slice(&interleaved);
-    }
-
-    if total_collected == 0 && combined.is_empty() {
-        state_val.last_decode_end_sec = source_start_sec;
-        {
-            let mut state = shared.0.lock();
-            state.decoders.insert(layer_id.to_string(), state_val);
-        }
-        return Ok(vec![0.0f32; target_samples]);
-    }
-
-    let out = if combined.len() >= target_samples {
-        state_val.resample_output_remainder = combined.split_off(target_samples);
-        combined
-    } else {
-        combined.resize(target_samples, 0.0);
-        combined
-    };
-    state_val.resampler_primed = true;
-
-    // Advance the logical cursor by exactly one chunk on a complete decode. The
-    // loop may have read AHEAD of this (its surplus is buffered in
-    // `resample_output_remainder`), so the cursor tracks the logical timeline
-    // position, not the physical reader position — the next sequential chunk's
-    // `source_start` then matches and skips a reseek. On EOF the source ran out
-    // before a full chunk, so leave the cursor put (the producer's next advance
-    // will exceed the seek tolerance and reseek, as before).
-    let logical_source_end_sec = source_start_sec + source_advance_sec;
-    state_val.last_decode_end_sec = if hit_eof {
-        source_start_sec
-    } else {
-        logical_source_end_sec
+    let mut decoder = match decoder {
+        Some(decoder) => decoder,
+        None => open_layer_decoder(path, &req)?,
     };
 
-    {
-        let mut state = shared.0.lock();
-        // This layer decodes natively via symphonia; drop any ffmpeg streaming decoder
-        // left from a previous Opus source under the same id (media replace) so its
-        // child doesn't linger (retain-by-id can't tell the path changed).
-        state.ffmpeg_decoders.remove(layer_id);
-        state.decoders.insert(layer_id.to_string(), state_val);
-    }
+    // Decode WITHOUT holding the shared lock, then re-insert.
+    let out = decoder.decode_chunk(&req)?;
+
+    let mut state = shared.0.lock();
+    state.decoders.insert(layer_id.to_string(), decoder);
     Ok(out)
 }
 
-struct DecodeChunkFfmpegStreamingParams<'a> {
-    layer_id: &'a str,
-    path: &'a str,
-    source_start_sec: f64,
-    timeline_duration_sec: f64,
-    target_sample_rate: u32,
-    output_channels: usize,
-    shared: &'a Arc<(Mutex<AudioShared>, Condvar)>,
+/// Builds the per-layer streaming decoder, choosing the backend ONCE: symphonia if it
+/// can decode the codec, otherwise the ffmpeg fallback (Opus today, and a safety net
+/// for any other codec symphonia lacks — the ranged path decides the same way in
+/// `decode_range_symphonia`).
+fn open_layer_decoder(path: &str, req: &StreamChunkRequest) -> Result<LayerDecoder> {
+    use symphonia::core::codecs::DecoderOptions;
+
+    let format = open_symphonia_format(path, "chunk decode")?;
+    let track =
+        find_audio_track(format.tracks()).ok_or_else(|| anyhow!("no active audio track found"))?;
+
+    match symphonia::default::get_codecs().make(&track.codec_params, &DecoderOptions::default()) {
+        Ok(decoder) => {
+            let track_id = track.id;
+            let source_rate = track
+                .codec_params
+                .sample_rate
+                .unwrap_or(req.target_sample_rate);
+            let channels = track
+                .codec_params
+                .channels
+                .map(|c| c.count())
+                .unwrap_or(1)
+                .max(1);
+            let time_base = track
+                .codec_params
+                .time_base
+                .unwrap_or(symphonia::core::units::TimeBase::new(1, source_rate));
+            Ok(LayerDecoder::Symphonia(SymphoniaDecoder {
+                path: path.to_string(),
+                format,
+                decoder,
+                track_id,
+                source_rate,
+                channels,
+                time_base,
+                resampler: None,
+                last_resample_ratio: 0.0,
+                resampler_primed: false,
+                last_decode_end_sec: 0.0,
+                resample_remainder: vec![Vec::new(); channels],
+                resample_output_remainder: Vec::new(),
+            }))
+        }
+        Err(_) => {
+            log::warn!("[audio] symphonia cannot decode codec; ffmpeg streaming fallback: {path}");
+            Ok(LayerDecoder::Ffmpeg(FfmpegStreamSource::new(path)))
+        }
+    }
 }
 
-/// Decodes one forward 1× chunk of an Opus (ffmpeg-only) clip from a LONG-LIVED
-/// ffmpeg child cached per layer. Sequential chunks read on from the same running
-/// ffmpeg/swr session — so the decode/resample is continuous and the chunk boundary
-/// carries no discontinuity. A non-sequential request (seek) or a path/rate change
-/// reseeks by killing and respawning ffmpeg at the new position.
-///
-/// This replaces a fresh `ffmpeg -ss <t> -t 0.05` per chunk, whose independent seek +
-/// resampler-priming at each 50 ms boundary left occasional clicks in Opus-audio
-/// exports (the symphonia path avoids this the same way: one sequential decoder, no
-/// per-chunk reseek).
-fn decode_chunk_ffmpeg_streaming(params: DecodeChunkFfmpegStreamingParams<'_>) -> Result<Vec<f32>> {
-    let DecodeChunkFfmpegStreamingParams {
-        layer_id,
-        path,
-        source_start_sec,
-        timeline_duration_sec,
-        target_sample_rate,
-        output_channels,
-        shared,
-    } = params;
-
-    let output_channels = output_channels.max(1);
-    let target_frames =
-        (timeline_duration_sec.max(0.0) * target_sample_rate as f64).round() as usize;
-    let target_samples = target_frames * output_channels;
-    if target_samples == 0 {
-        return Ok(Vec::new());
-    }
-
-    let mut cached = {
-        let mut state = shared.0.lock();
-        state.ffmpeg_decoders.remove(layer_id)
-    };
-
-    // Rebuild on a path / rate / channel-layout change: the cached ffmpeg child is
-    // emitting a different file or format. (Dropping the old `CachedFfmpegDecoder`
-    // kills its child via `FfmpegPcmReader::drop`.)
-    if cached.as_ref().is_some_and(|c| {
-        c.path != path || c.sample_rate != target_sample_rate || c.channels != output_channels
-    }) {
-        cached = None;
-    }
-
-    // Continue the running stream only if this request resumes ~where it left off.
-    // Tolerance mirrors `decode_symphonia_chunk`: a quarter-chunk of scheduling jitter.
-    let seek_tolerance_sec =
-        (timeline_duration_sec.abs() * SEEK_TOLERANCE_CHUNK_FRACTION).max(SEEK_TOLERANCE_MIN_SEC);
-    let needs_seek = match cached.as_ref() {
-        Some(c) => {
-            c.reader.is_none()
-                || (source_start_sec - c.next_source_sec).abs() > seek_tolerance_sec
+impl LayerDecoder {
+    fn path(&self) -> &str {
+        match self {
+            LayerDecoder::Symphonia(d) => &d.path,
+            LayerDecoder::Ffmpeg(d) => &d.path,
         }
-        None => true,
-    };
+    }
 
-    if needs_seek {
-        // Drop any prior stream (kills its child) before spawning a fresh one with NO
-        // `-t` so it streams from `source_start_sec` to EOF; read it chunk-by-chunk.
-        drop(cached.take());
-        let reader = spawn_ffmpeg_f32le(FfmpegDecodeParams {
-            path: Path::new(path),
-            start_sec: source_start_sec.max(0.0),
-            duration_sec: None,
-            target_sample_rate,
-            output_channels,
-        })?;
-        cached = Some(CachedFfmpegDecoder {
+    fn decode_chunk(&mut self, req: &StreamChunkRequest) -> Result<Vec<f32>> {
+        match self {
+            LayerDecoder::Symphonia(d) => d.decode_chunk(req),
+            LayerDecoder::Ffmpeg(d) => d.decode_chunk(req),
+        }
+    }
+}
+
+impl SymphoniaDecoder {
+    /// Decodes one chunk of `timeline_duration_sec` to interleaved f32 at the target
+    /// rate/channels, continuing sequentially from the previous chunk where possible
+    /// and reseeking only on a discontinuity (or any reverse chunk).
+    fn decode_chunk(&mut self, req: &StreamChunkRequest) -> Result<Vec<f32>> {
+        let target_sample_rate = req.target_sample_rate;
+        let output_channels = req.output_channels;
+        let speed = req.speed;
+        let reverse = req.reverse;
+        let source_start_sec = req.source_start_sec;
+        let timeline_duration_sec = req.timeline_duration_sec;
+        let target_samples = (timeline_duration_sec.max(0.0) * target_sample_rate as f64).round()
+            as usize
+            * output_channels;
+
+        let source_advance_sec = timeline_duration_sec * speed;
+        let seek_tolerance_sec =
+            (source_advance_sec.abs() * SEEK_TOLERANCE_CHUNK_FRACTION).max(SEEK_TOLERANCE_MIN_SEC);
+        let needs_seek = reverse
+            || source_start_sec < self.last_decode_end_sec - seek_tolerance_sec
+            || source_start_sec > self.last_decode_end_sec + seek_tolerance_sec;
+        let current_ratio = target_sample_rate as f64 / (self.source_rate as f64 * speed);
+
+        let (_actual_sec, discard_frames_remaining) = if needs_seek {
+            let seeked_to = match self.format.seek(
+                symphonia::core::formats::SeekMode::Accurate,
+                symphonia::core::formats::SeekTo::Time {
+                    time: symphonia::core::units::Time {
+                        seconds: source_start_sec.floor() as u64,
+                        frac: source_start_sec.fract(),
+                    },
+                    track_id: Some(self.track_id),
+                },
+            ) {
+                Ok(seeked_to) => seeked_to,
+                Err(error) if is_audio_seek_past_end(&error) => {
+                    self.last_decode_end_sec = source_start_sec;
+                    return Ok(vec![0.0f32; target_samples]);
+                }
+                Err(error) => return Err(error).context("failed to seek in format reader"),
+            };
+
+            self.decoder.reset();
+            if self.resampler.is_some() && (self.last_resample_ratio - current_ratio).abs() <= 1e-6
+            {
+                if let Some(r) = self.resampler.as_mut() {
+                    use rubato::Resampler;
+                    r.reset();
+                }
+            } else {
+                self.resampler = None;
+            }
+            self.resample_remainder = vec![Vec::new(); self.channels];
+            self.resample_output_remainder.clear();
+            self.last_resample_ratio = current_ratio;
+            self.resampler_primed = false;
+
+            let actual_sec = {
+                let t = self.time_base.calc_time(seeked_to.actual_ts);
+                t.seconds as f64 + t.frac
+            };
+            let (decode_start_sec, discard_frames) = if actual_sec <= source_start_sec {
+                let discard_sec = source_start_sec - actual_sec;
+                let discard_frames = (discard_sec * self.source_rate as f64).floor() as usize;
+                (actual_sec, discard_frames)
+            } else {
+                (actual_sec, 0usize)
+            };
+            (decode_start_sec, discard_frames)
+        } else {
+            (source_start_sec, 0usize)
+        };
+        let mut discard_frames_remaining = discard_frames_remaining;
+
+        let resampling_active =
+            !((current_ratio - 1.0).abs() < 1e-6 && self.source_rate == target_sample_rate);
+        if self.resampler.is_some() && (self.last_resample_ratio - current_ratio).abs() > 1e-6 {
+            self.resampler = None;
+            self.resample_remainder = vec![Vec::new(); self.channels];
+            self.resample_output_remainder.clear();
+            self.resampler_primed = false;
+        }
+        self.last_resample_ratio = current_ratio;
+
+        if resampling_active && self.resampler.is_none() {
+            self.resampler = Some(Box::new(make_sinc_resampler(current_ratio, self.channels)?));
+            self.resample_remainder = vec![Vec::new(); self.channels];
+            self.resampler_primed = false;
+        }
+
+        // Source frames spanning this chunk's timeline duration. Used only to size the
+        // per-iteration decode batch and to advance the logical decode cursor — the
+        // amount we actually decode is driven by how much OUTPUT we still need.
+        let chunk_source_frames =
+            (timeline_duration_sec * speed * self.source_rate as f64).round() as usize;
+
+        // Output already buffered from previous chunks' resampler surplus. The decode
+        // loop tops this up to a full chunk; the surplus is carried to the next chunk.
+        let mut combined = std::mem::take(&mut self.resample_output_remainder);
+
+        // Decode source in blocks and resample until we have a full chunk of OUTPUT
+        // (or hit end-of-stream). This is the core invariant that prevents periodic
+        // silent chunks: `SincFixedIn` only emits output once a full input block
+        // accumulates, so for an upsampled source (rate well below the device rate,
+        // e.g. an 8 kHz clip on a 48 kHz device → only ~400 source frames per 50 ms
+        // chunk) a block fills just once every few chunks. Decoding a FIXED per-chunk
+        // source amount and zero-padding the shortfall therefore dropped a fully-silent
+        // 50 ms chunk in every inter-burst valley (heard as glitchy/"fast" playback
+        // until the background precache swapped in the gap-free whole-file decode).
+        // Driving the decode by an OUTPUT target instead guarantees every chunk is
+        // filled; the resampler's variable per-block surplus is carried in `combined`
+        // so the source read-ahead stays bounded (≈ one block) rather than growing.
+        let mut total_collected = 0usize;
+        let mut hit_eof = false;
+        // Drop the resampler's group-delay region exactly once, on the first resample
+        // after a (re)prime, so the first emitted chunk isn't short by the resampler
+        // latency. Queried after the first resample (the resampler may have just been
+        // created) and carried across batches in case the first batch is shorter than
+        // the delay.
+        let mut needs_delay_drop = resampling_active && !self.resampler_primed;
+        let mut pending_delay_samples = 0usize;
+
+        while combined.len() < target_samples {
+            // Batch large enough to cross at least one resampler input block so each
+            // iteration makes guaranteed progress (covers the chunk span plus read-ahead).
+            let batch_target = chunk_source_frames.max(RESAMPLER_CHUNK_SIZE);
+            let mut planar_buffers = vec![Vec::new(); self.channels];
+            let mut batch_collected = 0usize;
+            let mut batch_full = false;
+
+            while !batch_full {
+                let packet = match self.format.next_packet() {
+                    Ok(packet) => packet,
+                    Err(symphonia::core::errors::Error::IoError(ref err))
+                        if err.kind() == std::io::ErrorKind::UnexpectedEof =>
+                    {
+                        hit_eof = true;
+                        break;
+                    }
+                    Err(err) => return Err(err).context("failed to read next packet"),
+                };
+
+                if packet.track_id() != self.track_id {
+                    continue;
+                }
+
+                match self.decoder.decode(&packet) {
+                    Ok(audio_buf) => {
+                        let spec = *audio_buf.spec();
+                        let duration = audio_buf.frames() as u64;
+                        let mut sample_buf =
+                            symphonia::core::audio::SampleBuffer::<f32>::new(duration, spec);
+                        sample_buf.copy_interleaved_ref(audio_buf);
+
+                        let samples = sample_buf.samples();
+                        let num_channels = spec.channels.count();
+                        let num_frames = samples.len() / num_channels;
+                        if num_channels > self.channels {
+                            for _ in self.channels..num_channels {
+                                planar_buffers.push(vec![0.0; batch_collected]);
+                            }
+                            self.channels = num_channels;
+                            self.resampler = None;
+                            self.resample_remainder = vec![Vec::new(); self.channels];
+                            self.last_resample_ratio = current_ratio;
+                            // Channel layout changed mid-stream: the old resampler and any
+                            // already-collected output are invalid. Restart this chunk's
+                            // accumulation cleanly and re-prime.
+                            combined.clear();
+                            needs_delay_drop = resampling_active;
+                            pending_delay_samples = 0;
+                        }
+
+                        for frame in 0..num_frames {
+                            if discard_frames_remaining > 0 {
+                                discard_frames_remaining -= 1;
+                                continue;
+                            }
+                            for ch in 0..self.channels {
+                                let sample = if ch < num_channels {
+                                    samples[frame * num_channels + ch]
+                                } else {
+                                    0.0
+                                };
+                                planar_buffers[ch].push(sample);
+                            }
+                            batch_collected += 1;
+                        }
+                        // Stop reading once the batch target is met, but only at this PACKET
+                        // boundary — never mid-packet. A decoded packet is consumed in full
+                        // and the (bounded, ≤ one packet) over-read rides along: it resamples
+                        // into `combined` and the surplus past `target_samples` is carried to
+                        // the next chunk via `resample_output_remainder`. Breaking mid-packet
+                        // and dropping the remaining frames (the demuxer has already advanced
+                        // past them, and the next sequential chunk does NOT reseek) silently
+                        // lost ~20-28% of every chunk's audio — heard on export as faster,
+                        // crackly playback.
+                        if batch_collected >= batch_target {
+                            batch_full = true;
+                        }
+                    }
+                    Err(symphonia::core::errors::Error::IoError(ref err))
+                        if err.kind() == std::io::ErrorKind::UnexpectedEof =>
+                    {
+                        hit_eof = true;
+                        break;
+                    }
+                    Err(symphonia::core::errors::Error::DecodeError(err)) => {
+                        log::warn!("[audio] symphonia chunk decode error: {:?}", err);
+                        continue;
+                    }
+                    Err(err) => return Err(err).context("failed to decode packet"),
+                }
+            }
+
+            if batch_collected == 0 {
+                hit_eof = true;
+                break;
+            }
+            total_collected += batch_collected;
+
+            let resampled =
+                resample_planar_cached(crate::audio::resample::ResamplePlanarCachedParams {
+                    input: planar_buffers,
+                    source_rate: self.source_rate,
+                    target_rate: target_sample_rate,
+                    speed,
+                    num_channels: self.channels,
+                    cached_resampler: &mut self.resampler,
+                    remainder: &mut self.resample_remainder,
+                })?;
+            if needs_delay_drop {
+                use rubato::Resampler;
+                pending_delay_samples = self
+                    .resampler
+                    .as_ref()
+                    .map(|r| r.output_delay())
+                    .unwrap_or(0)
+                    * output_channels;
+                needs_delay_drop = false;
+            }
+
+            let mut interleaved = planar_to_interleaved(&resampled, output_channels);
+            if pending_delay_samples > 0 {
+                let drop = pending_delay_samples.min(interleaved.len());
+                interleaved.drain(0..drop);
+                pending_delay_samples -= drop;
+            }
+            combined.extend_from_slice(&interleaved);
+
+            if hit_eof {
+                break;
+            }
+        }
+
+        // End-of-stream flush: the streaming resampler carries a sub-block input
+        // remainder and trails the signal by its group delay. Without draining both at
+        // EOF the clip's final ~block-plus-delay of audio would be replaced by the
+        // zero-padding below (heard as the tail cutting abruptly to silence). Only
+        // meaningful while actually resampling and still short of a full chunk.
+        if hit_eof && resampling_active && combined.len() < target_samples {
+            if needs_delay_drop {
+                // This session never emitted a resampled block (clip shorter than one
+                // input block), so its initial priming delay was never dropped: schedule
+                // it to be dropped from the flushed output.
+                use rubato::Resampler;
+                pending_delay_samples = self
+                    .resampler
+                    .as_ref()
+                    .map(|r| r.output_delay())
+                    .unwrap_or(0)
+                    * output_channels;
+            }
+            let flushed =
+                resample_flush_cached(crate::audio::resample::ResampleFlushCachedParams {
+                    source_rate: self.source_rate,
+                    target_rate: target_sample_rate,
+                    speed,
+                    num_channels: self.channels,
+                    cached_resampler: &mut self.resampler,
+                    remainder: &mut self.resample_remainder,
+                })?;
+            let mut interleaved = planar_to_interleaved(&flushed, output_channels);
+            if pending_delay_samples > 0 {
+                let drop = pending_delay_samples.min(interleaved.len());
+                interleaved.drain(0..drop);
+            }
+            combined.extend_from_slice(&interleaved);
+        }
+
+        if total_collected == 0 && combined.is_empty() {
+            self.last_decode_end_sec = source_start_sec;
+            return Ok(vec![0.0f32; target_samples]);
+        }
+
+        let out = if combined.len() >= target_samples {
+            self.resample_output_remainder = combined.split_off(target_samples);
+            combined
+        } else {
+            combined.resize(target_samples, 0.0);
+            combined
+        };
+        self.resampler_primed = true;
+
+        // Advance the logical cursor by exactly one chunk on a complete decode. The
+        // loop may have read AHEAD of this (its surplus is buffered in
+        // `resample_output_remainder`), so the cursor tracks the logical timeline
+        // position, not the physical reader position — the next sequential chunk's
+        // `source_start` then matches and skips a reseek. On EOF the source ran out
+        // before a full chunk, so leave the cursor put (the producer's next advance
+        // will exceed the seek tolerance and reseek, as before).
+        let logical_source_end_sec = source_start_sec + source_advance_sec;
+        self.last_decode_end_sec = if hit_eof {
+            source_start_sec
+        } else {
+            logical_source_end_sec
+        };
+
+        Ok(out)
+    }
+}
+
+impl FfmpegStreamSource {
+    fn new(path: &str) -> Self {
+        // rate/channels 0 force a (re)spawn on the first chunk, which sets them.
+        Self {
             path: path.to_string(),
-            sample_rate: target_sample_rate,
-            channels: output_channels,
-            next_source_sec: source_start_sec.max(0.0),
-            reader: Some(reader),
-        });
+            sample_rate: 0,
+            channels: 0,
+            next_source_sec: 0.0,
+            reader: None,
+        }
     }
 
-    let mut decoder =
-        cached.ok_or_else(|| anyhow!("ffmpeg decoder state missing for layer {}", layer_id))?;
+    /// Decodes one chunk. Forward 1× chunks read on from the LONG-LIVED ffmpeg/swr
+    /// child so back-to-back chunks are sample-continuous (no per-chunk reseek → no
+    /// boundary clicks); a non-sequential request or a target rate/channel change
+    /// reseeks by killing and respawning ffmpeg. Speed/reverse chunks (rare for an
+    /// ffmpeg-only codec) fall to a per-chunk one-shot `ffmpeg -ss` decode.
+    fn decode_chunk(&mut self, req: &StreamChunkRequest) -> Result<Vec<f32>> {
+        if req.reverse || (req.speed - 1.0).abs() > 1e-6 {
+            return decode_chunk_ffmpeg(DecodeChunkFfmpegParams {
+                path: &self.path,
+                source_start_sec: req.source_start_sec,
+                timeline_duration_sec: req.timeline_duration_sec,
+                speed: req.speed,
+                target_sample_rate: req.target_sample_rate,
+                output_channels: req.output_channels,
+            });
+        }
 
-    let (mut samples, hit_eof) = match decoder.reader.as_mut() {
-        Some(reader) => reader.read_f32(target_samples)?,
-        // Stream already exhausted (past source end): serve silence, stay sequential.
-        None => (Vec::new(), true),
-    };
+        let output_channels = req.output_channels.max(1);
+        let target_sample_rate = req.target_sample_rate;
+        let source_start_sec = req.source_start_sec;
+        let timeline_duration_sec = req.timeline_duration_sec;
+        let target_samples = (timeline_duration_sec.max(0.0) * target_sample_rate as f64).round()
+            as usize
+            * output_channels;
+        if target_samples == 0 {
+            return Ok(Vec::new());
+        }
 
-    // Advance the logical cursor by the frames actually produced (a short read at EOF
-    // advances by less), so a subsequent sequential chunk past the end still matches
-    // `next_source_sec` and serves silence without a needless respawn.
-    let produced_frames = samples.len() / output_channels;
-    decoder.next_source_sec += produced_frames as f64 / target_sample_rate as f64;
-    if hit_eof {
-        // Stream ended; release the child now (its bytes are fully drained).
-        decoder.reader = None;
+        // Continue the running stream only if this request resumes ~where it left off
+        // at the SAME target rate/channels. Tolerance mirrors `SymphoniaDecoder`: a
+        // quarter-chunk of scheduling jitter. A rate/channel change or a jump kills the
+        // child (via `FfmpegPcmReader::drop`) and respawns at the new position/format.
+        let seek_tolerance_sec = (timeline_duration_sec.abs() * SEEK_TOLERANCE_CHUNK_FRACTION)
+            .max(SEEK_TOLERANCE_MIN_SEC);
+        let format_changed =
+            self.sample_rate != target_sample_rate || self.channels != output_channels;
+        let needs_seek = format_changed
+            || self.reader.is_none()
+            || (source_start_sec - self.next_source_sec).abs() > seek_tolerance_sec;
+
+        if needs_seek {
+            // Drop any prior stream (kills its child) before spawning a fresh one with
+            // NO `-t` so it streams from `source_start_sec` to EOF; read it chunk-by-chunk.
+            drop(self.reader.take());
+            let reader = spawn_ffmpeg_f32le(FfmpegDecodeParams {
+                path: Path::new(&self.path),
+                start_sec: source_start_sec.max(0.0),
+                duration_sec: None,
+                target_sample_rate,
+                output_channels,
+            })?;
+            self.sample_rate = target_sample_rate;
+            self.channels = output_channels;
+            self.next_source_sec = source_start_sec.max(0.0);
+            self.reader = Some(reader);
+        }
+
+        let (mut samples, hit_eof) = match self.reader.as_mut() {
+            Some(reader) => reader.read_f32(target_samples)?,
+            // Stream already exhausted (past source end): serve silence, stay sequential.
+            None => (Vec::new(), true),
+        };
+
+        // Advance the logical cursor by the frames actually produced (a short read at
+        // EOF advances by less), so a later sequential chunk past the end still matches
+        // `next_source_sec` and serves silence without a needless respawn.
+        let produced_frames = samples.len() / output_channels;
+        self.next_source_sec += produced_frames as f64 / target_sample_rate as f64;
+        if hit_eof {
+            // Stream ended; release the child now (its bytes are fully drained).
+            self.reader = None;
+        }
+
+        if samples.len() < target_samples {
+            samples.resize(target_samples, 0.0);
+        }
+
+        Ok(samples)
     }
-
-    if samples.len() < target_samples {
-        samples.resize(target_samples, 0.0);
-    }
-
-    {
-        let mut state = shared.0.lock();
-        state
-            .ffmpeg_decoders
-            .insert(layer_id.to_string(), decoder);
-    }
-
-    Ok(samples)
 }
 
 struct DecodeChunkFfmpegParams<'a> {
@@ -953,7 +924,7 @@ pub(crate) fn decode_audio_chunk(params: DecodeAudioChunkParams<'_>) -> Result<V
     let is_cacheable = (speed - 1.0).abs() <= 1e-6 && !reverse;
 
     let stream = || {
-        decode_symphonia_chunk(DecodeSymphoniaChunkParams {
+        stream_layer_chunk(StreamChunkParams {
             layer_id,
             path,
             source_start_sec,
@@ -1449,18 +1420,15 @@ mod tests {
         {
             let state = shared.0.lock();
             assert!(
-                state.ffmpeg_decoders.contains_key("export-opus"),
+                matches!(
+                    state.decoders.get("export-opus"),
+                    Some(LayerDecoder::Ffmpeg(_))
+                ),
                 "the streaming ffmpeg decoder must be cached and reused across chunks"
             );
         }
 
-        let range = decode_range_ffmpeg(
-            &opus_path,
-            0.0,
-            num_chunks as f64 * chunk_sec,
-            rate,
-            1,
-        )?;
+        let range = decode_range_ffmpeg(&opus_path, 0.0, num_chunks as f64 * chunk_sec, rate, 1)?;
         let _ = std::fs::remove_file(&opus_path);
 
         // Compare the back half: a per-chunk reseek/re-prime drifts away from the
@@ -1502,7 +1470,7 @@ mod tests {
             "/../test/fixtures/media/sample-1s-audio.mp3"
         );
         let shared = Arc::new((Mutex::new(AudioShared::default()), Condvar::new()));
-        let samples = decode_symphonia_chunk(DecodeSymphoniaChunkParams {
+        let samples = stream_layer_chunk(StreamChunkParams {
             layer_id: "layer-1",
             path,
             source_start_sec: 0.2,
@@ -1618,7 +1586,7 @@ mod tests {
             let shared = Arc::new((Mutex::new(AudioShared::default()), Condvar::new()));
             for k in 0..n {
                 let src = k as f64 * chunk_sec;
-                let c = decode_symphonia_chunk(DecodeSymphoniaChunkParams {
+                let c = stream_layer_chunk(StreamChunkParams {
                     layer_id: "diag",
                     path: &path_str,
                     source_start_sec: src,
@@ -1667,7 +1635,7 @@ mod tests {
         let path_str = path.to_string_lossy().to_string();
         let shared = Arc::new((Mutex::new(AudioShared::default()), Condvar::new()));
 
-        let chunk = decode_symphonia_chunk(DecodeSymphoniaChunkParams {
+        let chunk = stream_layer_chunk(StreamChunkParams {
             layer_id: "delay-layer",
             path: &path_str,
             source_start_sec: 0.0,
@@ -1699,7 +1667,7 @@ mod tests {
 
     #[test]
     fn sequential_export_chunks_do_not_drop_packet_tails() -> anyhow::Result<()> {
-        // The export path streams a clip via back-to-back `decode_symphonia_chunk`
+        // The export path streams a clip via back-to-back `stream_layer_chunk`
         // calls (50 ms each) with NO reseek between them. A batch that hit its target
         // mid-packet used to discard the rest of that already-decoded packet; since
         // the demuxer had advanced past it and the next chunk does not reseek, those
@@ -1745,7 +1713,7 @@ mod tests {
         let shared = Arc::new((Mutex::new(AudioShared::default()), Condvar::new()));
         let mut stream: Vec<f32> = Vec::new();
         for k in 0..num_chunks {
-            let chunk = decode_symphonia_chunk(DecodeSymphoniaChunkParams {
+            let chunk = stream_layer_chunk(StreamChunkParams {
                 layer_id: "export-layer",
                 path: &mp3_str,
                 source_start_sec: k as f64 * chunk_sec,
@@ -1789,7 +1757,7 @@ mod tests {
             "/../test/fixtures/media/sample-1s-audio.mp3"
         );
         let shared = Arc::new((Mutex::new(AudioShared::default()), Condvar::new()));
-        let chunk = decode_symphonia_chunk(DecodeSymphoniaChunkParams {
+        let chunk = stream_layer_chunk(StreamChunkParams {
             layer_id: "seek-layer",
             path,
             source_start_sec: 0.1,
@@ -1805,10 +1773,9 @@ mod tests {
         assert_eq!(frames, expected_frames, "chunk length must be exact");
 
         let state = shared.0.lock();
-        let decoder = state
-            .decoders
-            .get("seek-layer")
-            .ok_or_else(|| anyhow::anyhow!("decoder cached"))?;
+        let Some(LayerDecoder::Symphonia(decoder)) = state.decoders.get("seek-layer") else {
+            return Err(anyhow::anyhow!("symphonia decoder cached"));
+        };
         assert!(decoder.resampler_primed, "resampler should be primed");
         assert!(
             !decoder.resample_output_remainder.is_empty(),
@@ -1827,7 +1794,7 @@ mod tests {
         let expected_frames = (0.05f64 * 44100.0).round() as usize;
         for i in 0..3 {
             let src = 0.5 - i as f64 * 0.05;
-            let chunk = decode_symphonia_chunk(DecodeSymphoniaChunkParams {
+            let chunk = stream_layer_chunk(StreamChunkParams {
                 layer_id: "rev-layer",
                 path,
                 source_start_sec: src,
@@ -1844,10 +1811,9 @@ mod tests {
                 "reverse chunk exact length"
             );
             let state = shared.0.lock();
-            let decoder = state
-                .decoders
-                .get("rev-layer")
-                .ok_or_else(|| anyhow::anyhow!("decoder cached"))?;
+            let Some(LayerDecoder::Symphonia(decoder)) = state.decoders.get("rev-layer") else {
+                return Err(anyhow::anyhow!("symphonia decoder cached"));
+            };
             assert!(
                 decoder.resampler_primed,
                 "reverse resampler should be primed"
@@ -1971,7 +1937,7 @@ mod tests {
         );
         let shared = Arc::new((Mutex::new(AudioShared::default()), Condvar::new()));
         let source_start = 0.999;
-        let chunk = decode_symphonia_chunk(DecodeSymphoniaChunkParams {
+        let chunk = stream_layer_chunk(StreamChunkParams {
             layer_id: "tail-layer",
             path,
             source_start_sec: source_start,
@@ -1990,10 +1956,9 @@ mod tests {
         );
 
         let state = shared.0.lock();
-        let decoder = state
-            .decoders
-            .get("tail-layer")
-            .ok_or_else(|| anyhow::anyhow!("decoder cached"))?;
+        let Some(LayerDecoder::Symphonia(decoder)) = state.decoders.get("tail-layer") else {
+            return Err(anyhow::anyhow!("symphonia decoder cached"));
+        };
         assert!(
             (decoder.last_decode_end_sec - source_start).abs() < 1e-9,
             "EOF tail cursor should stay at clamped source start"
@@ -2008,7 +1973,7 @@ mod tests {
             "/../test/fixtures/media/sample-1s-audio.mp3"
         );
         let shared = Arc::new((Mutex::new(AudioShared::default()), Condvar::new()));
-        let chunk = decode_symphonia_chunk(DecodeSymphoniaChunkParams {
+        let chunk = stream_layer_chunk(StreamChunkParams {
             layer_id: "past-end-layer",
             path,
             source_start_sec: 999.0,

@@ -33,6 +33,7 @@ fn base_options() -> NativeExportOptions {
         vaapi_device: None,
         enable_hardware_encoding: None,
         export_alpha: None,
+        fast_start: None,
     }
 }
 
@@ -65,6 +66,7 @@ fn test_build_ffmpeg_args_webm_forces_opus() {
         vaapi_device: None,
         enable_hardware_encoding: None,
         export_alpha: None,
+        fast_start: None,
     };
     let args = build_ffmpeg_args(
         &options,
@@ -130,8 +132,17 @@ fn test_build_ffmpeg_args_vp9_alpha_adds_auto_alt_ref() {
         vaapi_device: None,
         enable_hardware_encoding: None,
         export_alpha: Some(true),
+        fast_start: None,
     };
-    let args = build_ffmpeg_args(&options, None, 1920, 1080, 30.0, 5.0, Path::new("output.webm"));
+    let args = build_ffmpeg_args(
+        &options,
+        None,
+        1920,
+        1080,
+        30.0,
+        5.0,
+        Path::new("output.webm"),
+    );
     let mut found_yuva = false;
     let mut found_auto_alt_ref = false;
     let mut idx = 0;
@@ -177,8 +188,17 @@ fn test_build_ffmpeg_args_mp4_ignores_alpha() {
         vaapi_device: None,
         enable_hardware_encoding: None,
         export_alpha: Some(true),
+        fast_start: None,
     };
-    let args = build_ffmpeg_args(&options, None, 1920, 1080, 30.0, 5.0, Path::new("output.mp4"));
+    let args = build_ffmpeg_args(
+        &options,
+        None,
+        1920,
+        1080,
+        30.0,
+        5.0,
+        Path::new("output.mp4"),
+    );
     assert!(
         !args.contains(&"yuva420p".to_string()),
         "mp4 should ignore alpha flag"
@@ -200,7 +220,15 @@ fn test_build_ffmpeg_args_adds_metadata_cbr_and_keyframes() {
         metadata_tags: Some("one, two".to_string()),
         ..base_options()
     };
-    let args = build_ffmpeg_args(&options, None, 1920, 1080, 30.0, 5.0, Path::new("output.mp4"));
+    let args = build_ffmpeg_args(
+        &options,
+        None,
+        1920,
+        1080,
+        30.0,
+        5.0,
+        Path::new("output.mp4"),
+    );
 
     assert!(args.windows(2).any(|pair| pair == ["-g", "60"]));
     // Software CBR pins the rate with an equal floor/ceiling, not just a cap.
@@ -229,9 +257,7 @@ fn test_build_ffmpeg_args_pins_cfr_and_caps_output_duration() {
     // The vello (rawvideo-stdin) path must pin a constant output frame rate and hard-cap
     // the output length, mirroring the direct path. Without these the output fps can drift
     // on fractional rates and a marginally-longer audio mix leaves a black/frozen tail.
-    let options = NativeExportOptions {
-        ..base_options()
-    };
+    let options = NativeExportOptions { ..base_options() };
     let args = build_ffmpeg_args(
         &options,
         Some(Path::new("dummy.wav")),
@@ -259,7 +285,15 @@ fn test_mkv_keeps_literal_author_and_tags_metadata() {
         metadata_tags: Some("one, two".to_string()),
         ..base_options()
     };
-    let args = build_ffmpeg_args(&options, None, 1920, 1080, 30.0, 5.0, Path::new("output.mkv"));
+    let args = build_ffmpeg_args(
+        &options,
+        None,
+        1920,
+        1080,
+        30.0,
+        5.0,
+        Path::new("output.mkv"),
+    );
     assert!(args
         .windows(2)
         .any(|pair| pair == ["-metadata", "author=Author"]));
@@ -332,7 +366,15 @@ fn test_alpha_mkv_av1_does_not_emit_yuva() {
         ..base_options()
     };
     assert!(!export_uses_alpha(&options));
-    let args = build_ffmpeg_args(&options, None, 1920, 1080, 30.0, 5.0, Path::new("output.mkv"));
+    let args = build_ffmpeg_args(
+        &options,
+        None,
+        1920,
+        1080,
+        30.0,
+        5.0,
+        Path::new("output.mkv"),
+    );
     assert!(!args.contains(&"yuva420p".to_string()));
     assert!(!args.contains(&"-auto-alt-ref".to_string()));
 }
@@ -347,7 +389,15 @@ fn test_alpha_mkv_vp9_emits_yuva() {
         ..base_options()
     };
     assert!(export_uses_alpha(&options));
-    let args = build_ffmpeg_args(&options, None, 1920, 1080, 30.0, 5.0, Path::new("output.mkv"));
+    let args = build_ffmpeg_args(
+        &options,
+        None,
+        1920,
+        1080,
+        30.0,
+        5.0,
+        Path::new("output.mkv"),
+    );
     assert!(args.contains(&"yuva420p".to_string()));
     assert!(args.windows(2).any(|pair| pair == ["-auto-alt-ref", "0"]));
     // Vello renders premultiplied alpha; ffmpeg reads rawvideo rgba as straight, so the

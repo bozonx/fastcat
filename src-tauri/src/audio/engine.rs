@@ -242,9 +242,6 @@ impl NativeAudioEngine {
         state
             .decoders
             .retain(|layer_id, _| scene_clone.iter().any(|l| l.id == *layer_id));
-        state
-            .ffmpeg_decoders
-            .retain(|layer_id, _| scene_clone.iter().any(|l| l.id == *layer_id));
         let plugin_host = state.plugin_host.clone();
         let plugin_specs: Vec<_> = scene_clone
             .iter()
@@ -289,10 +286,7 @@ impl NativeAudioEngine {
         const KEEP_BEHIND_SEC: f64 = 5.0;
         const KEEP_AHEAD_SEC: f64 = 5.0;
         let mut state = self.shared.0.lock();
-        if state.decoders.is_empty()
-            && state.layer_windows.is_empty()
-            && state.ffmpeg_decoders.is_empty()
-        {
+        if state.decoders.is_empty() && state.layer_windows.is_empty() {
             return;
         }
         let keep: std::collections::HashSet<String> = state
@@ -306,7 +300,6 @@ impl NativeAudioEngine {
             .collect();
         state.decoders.retain(|id, _| keep.contains(id));
         state.layer_windows.retain(|id, _| keep.contains(id));
-        state.ffmpeg_decoders.retain(|id, _| keep.contains(id));
     }
 
     pub fn play(&self, pts_sec: f64) {

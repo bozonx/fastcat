@@ -388,7 +388,14 @@ fn stereo_downmix_coeffs(src_channels: usize) -> Vec<(f32, f32)> {
         // 5.0: FL FR FC BL BR
         5 => vec![(1.0, 0.0), (0.0, 1.0), (c, c), (c, 0.0), (0.0, c)],
         // 5.1: FL FR FC LFE BL BR (LFE dropped)
-        6 => vec![(1.0, 0.0), (0.0, 1.0), (c, c), (0.0, 0.0), (c, 0.0), (0.0, c)],
+        6 => vec![
+            (1.0, 0.0),
+            (0.0, 1.0),
+            (c, c),
+            (0.0, 0.0),
+            (c, 0.0),
+            (0.0, c),
+        ],
         // 6.1: FL FR FC LFE BC SL SR
         7 => vec![
             (1.0, 0.0),
@@ -581,8 +588,18 @@ mod tests {
         // L = FL + c*FC + c*BL ; R = FR + c*FC + c*BR ; LFE contributes nothing.
         let expect_l = 1.0 + c * 3.0 + c * 4.0;
         let expect_r = 2.0 + c * 3.0 + c * 5.0;
-        assert!((out[0] - expect_l).abs() < 1e-6, "L {} != {}", out[0], expect_l);
-        assert!((out[1] - expect_r).abs() < 1e-6, "R {} != {}", out[1], expect_r);
+        assert!(
+            (out[0] - expect_l).abs() < 1e-6,
+            "L {} != {}",
+            out[0],
+            expect_l
+        );
+        assert!(
+            (out[1] - expect_r).abs() < 1e-6,
+            "R {} != {}",
+            out[1],
+            expect_r
+        );
         // The centre channel must reach BOTH outputs (dialogue not lost).
         assert!(out[0] > 1.0 && out[1] > 2.0);
     }

@@ -391,8 +391,9 @@ pub fn export_timeline(
                 // (per frame) and, faster, by the watchdog tearing ffmpeg down — which makes
                 // the writer's `write_all` fail and unwinds the pipeline the same way.
                 const PIPELINE_DEPTH: usize = 4;
-                let (scene_tx, scene_rx) =
-                    std::sync::mpsc::sync_channel::<crate::compositor::scene::Scene>(PIPELINE_DEPTH);
+                let (scene_tx, scene_rx) = std::sync::mpsc::sync_channel::<
+                    crate::compositor::scene::Scene,
+                >(PIPELINE_DEPTH);
                 let (rgba_tx, rgba_rx) = std::sync::mpsc::sync_channel::<Vec<u8>>(PIPELINE_DEPTH);
 
                 // Owned clone: `run_attempt` may run twice (HW→SW fallback), so we must not

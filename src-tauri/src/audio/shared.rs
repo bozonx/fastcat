@@ -97,10 +97,12 @@ impl AudioRenderTarget {
     }
 }
 
-pub(crate) struct CachedAudioDecoder {
+/// Native (in-process) streaming decoder backed by symphonia + a rubato resampler.
+/// One of the two `LayerDecoder` backends; used for every codec symphonia can decode.
+pub(crate) struct SymphoniaDecoder {
     /// Source file this decoder was opened for. `decoders` is keyed by layer id, but a
     /// layer's `path` can change under the same id (proxy on/off, media replace). The
-    /// chunk decoder validates this before reuse and rebuilds on a mismatch, otherwise
+    /// streaming entry validates this before reuse and rebuilds on a mismatch, otherwise
     /// it would keep decoding the OLD file's audio after a path swap.
     pub(crate) path: String,
     pub(crate) format: Box<dyn symphonia::core::formats::FormatReader>,
@@ -133,15 +135,16 @@ pub(crate) struct CachedAudioDecoder {
     pub(crate) resample_output_remainder: Vec<f32>,
 }
 
-/// A long-lived ffmpeg streaming decoder for a codec symphonia can't decode
-/// natively (currently Opus). Unlike a one-shot-per-chunk `ffmpeg -ss`, this keeps
-/// ONE ffmpeg/swr session alive and reads it sequentially chunk-by-chunk, so
-/// back-to-back chunks are sample-continuous — a fresh seek+resample per chunk left
-/// audible clicks at the ~50 ms boundaries (heard on Opus-audio exports). Keyed per
-/// layer id (like `decoders`), and reseeks only on a non-sequential request.
-pub(crate) struct CachedFfmpegDecoder {
+/// Fallback streaming decoder backed by a long-lived ffmpeg child. The other
+/// `LayerDecoder` backend; used for any codec symphonia can't decode natively
+/// (currently Opus). Unlike a one-shot-per-chunk `ffmpeg -ss`, this keeps ONE
+/// ffmpeg/swr session alive and reads it sequentially chunk-by-chunk, so back-to-back
+/// chunks are sample-continuous — a fresh seek+resample per chunk left audible clicks
+/// at the ~50 ms boundaries (heard on Opus-audio exports). Reseeks only on a
+/// non-sequential request; speed/reverse chunks fall to a per-chunk one-shot decode.
+pub(crate) struct FfmpegStreamSource {
     /// Source file this stream was opened for; rebuilt on a path change (proxy swap /
-    /// media replace under the same layer id), like `CachedAudioDecoder::path`.
+    /// media replace under the same layer id), like `SymphoniaDecoder::path`.
     pub(crate) path: String,
     /// Target rate/channels the ffmpeg child is emitting at; a change rebuilds it.
     pub(crate) sample_rate: u32,
@@ -152,6 +155,16 @@ pub(crate) struct CachedFfmpegDecoder {
     /// The running ffmpeg, or `None` once the stream hit EOF (further sequential
     /// reads past the source end return silence without respawning).
     pub(crate) reader: Option<crate::audio::ffmpeg_decode::FfmpegPcmReader>,
+}
+
+/// One per-layer streaming decoder. The codec is probed ONCE when the decoder is
+/// built (see `open_layer_decoder`): symphonia if it can decode the codec, otherwise
+/// the ffmpeg fallback. The realtime/export streaming path holds only this enum and
+/// never re-decides per chunk, so both backends share one cache, one seek/continuation
+/// contract, and one eviction policy. Decode logic lives in `audio/decode.rs`.
+pub(crate) enum LayerDecoder {
+    Symphonia(SymphoniaDecoder),
+    Ffmpeg(FfmpegStreamSource),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -244,13 +257,12 @@ pub(crate) struct AudioShared {
     /// `WINDOW_FILL_MAX_CONCURRENCY` so refills don't thrash the disk and starve the
     /// producer's own inline streaming reads.
     pub(crate) active_window_fill_count: usize,
-    /// Streaming decoders, keyed per layer (NOT per path): two clips from the
-    /// same media file must not share one stateful decoder or they thrash seeks.
-    pub(crate) decoders: HashMap<String, CachedAudioDecoder>,
-    /// Long-lived ffmpeg streaming decoders for codecs symphonia can't decode (Opus),
-    /// keyed per layer like `decoders`. Kept alive across sequential chunks so the
-    /// decode/resample stays continuous (no per-chunk reseek → no boundary clicks).
-    pub(crate) ffmpeg_decoders: HashMap<String, CachedFfmpegDecoder>,
+    /// Streaming decoders, keyed per layer (NOT per path): two clips from the same
+    /// media file must not share one stateful decoder or they thrash seeks. Each entry
+    /// is a `LayerDecoder` (symphonia or the ffmpeg fallback), kept alive across
+    /// sequential chunks so the decode/resample stays continuous (no per-chunk reseek
+    /// → no boundary clicks). The backend is chosen once when the decoder is built.
+    pub(crate) decoders: HashMap<String, LayerDecoder>,
     /// Hash of timing-relevant layer fields (path/position/speed/source). Used to
     /// decide whether a scene update needs a ring flush (positions changed) or is
     /// a pure mix-param change (gain/balance/fade) that can apply gap-free.
@@ -288,7 +300,6 @@ impl Default for AudioShared {
             window_fill_in_flight: HashMap::new(),
             active_window_fill_count: 0,
             decoders: HashMap::new(),
-            ffmpeg_decoders: HashMap::new(),
             timing_sig: 0,
             pending_ring_clear: false,
             scrub_request: None,
