@@ -40,4 +40,30 @@ describe('timeline OTIO roundtrip', () => {
     expect(clip?.name).toBe('Clip');
     expect(clip?.source?.path).toBe('_video/clip.mp4');
   });
+
+  it('preserves custom track order after serializing and parsing a saved timeline', () => {
+    const base = createDefaultTimelineDocument({
+      id: 'doc-1',
+      name: 'Timeline',
+      format: { fps: 30, width: 1920, height: 1080 },
+    });
+    const doc = {
+      ...base,
+      tracks: [
+        { id: 'v1', kind: 'video' as const, name: 'Video 1', videoHidden: false, items: [] },
+        { id: 'v3', kind: 'video' as const, name: 'Video 3', videoHidden: false, items: [] },
+        { id: 'v2', kind: 'video' as const, name: 'Video 2', videoHidden: false, items: [] },
+        { id: 'a2', kind: 'audio' as const, name: 'Audio 2', audioMuted: false, items: [] },
+        { id: 'a1', kind: 'audio' as const, name: 'Audio 1', audioMuted: false, items: [] },
+      ],
+    };
+
+    const parsed = parseTimelineFromOtio(serializeTimelineToOtio(doc), {
+      id: 'fallback',
+      name: 'Fallback',
+      format: { fps: 30, width: 1920, height: 1080 },
+    });
+
+    expect(parsed.tracks.map((track) => track.id)).toEqual(['v1', 'v3', 'v2', 'a2', 'a1']);
+  });
 });

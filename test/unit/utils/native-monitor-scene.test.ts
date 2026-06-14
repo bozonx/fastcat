@@ -573,6 +573,93 @@ describe('buildNativeMonitorScene', () => {
     expect(adjustmentLayer?.timeline_end_sec).toBe(1.5);
   });
 
+  it('keeps image tracks above adjustment layers in native z order', async () => {
+    const timelineDoc = {
+      version: 1,
+      timebase: { fps: 30 },
+      tracks: [
+        {
+          id: 'image-top',
+          kind: 'video',
+          videoHidden: false,
+          items: [
+            {
+              id: 'image-1',
+              kind: 'clip',
+              clipType: 'media',
+              trackId: 'image-top',
+              source: { path: '_images/overlay.png' },
+              timelineRange: { startUs: 0, durationUs: 2_000_000 },
+              sourceRange: { startUs: 0, durationUs: 2_000_000 },
+            },
+          ],
+        },
+        {
+          id: 'adjustment-mid',
+          kind: 'video',
+          videoHidden: false,
+          items: [
+            {
+              id: 'adj-1',
+              kind: 'clip',
+              clipType: 'adjustment',
+              trackId: 'adjustment-mid',
+              timelineRange: { startUs: 0, durationUs: 2_000_000 },
+              sourceRange: { startUs: 0, durationUs: 2_000_000 },
+              effects: [{ id: 'blur-1', type: 'blur', enabled: true, target: 'video', radius: 3 }],
+            },
+          ],
+        },
+        {
+          id: 'video-bottom',
+          kind: 'video',
+          videoHidden: false,
+          items: [
+            {
+              id: 'video-1',
+              kind: 'clip',
+              clipType: 'media',
+              trackId: 'video-bottom',
+              source: { path: '_video/source.mp4' },
+              timelineRange: { startUs: 0, durationUs: 2_000_000 },
+              sourceRange: { startUs: 0, durationUs: 2_000_000 },
+            },
+          ],
+        },
+      ],
+    };
+    const projectStore = {
+      projectSettings: {
+        project: { width: 1920, height: 1080, fps: 30, audioDeclickDurationUs: 0 },
+      },
+      getProjectDirHandle: vi.fn(async () => ({ path: '/workspace/project' })),
+      getFileByPath: vi.fn(),
+    };
+    const workspaceStore = {
+      userSettings: {
+        projectDefaults: { defaultAudioFadeCurve: 'linear' },
+        optimization: { nativeMonitorSyncMode: 'balanced' },
+      },
+      activeMonitor: { useProxy: false },
+      lastProjectPath: null,
+      recentProjects: [],
+    };
+
+    const scene = await buildNativeMonitorScene({
+      timelineDoc: timelineDoc as never,
+      projectStore: projectStore as never,
+      workspaceStore: workspaceStore as never,
+    });
+
+    const image = scene.layers.find((layer) => layer.id === 'image-1');
+    const adjustment = scene.layers.find((layer) => layer.id === 'adj-1');
+    const video = scene.layers.find((layer) => layer.id === 'video-1');
+
+    expect(video?.z).toBeLessThan(adjustment?.z ?? Number.NEGATIVE_INFINITY);
+    expect(adjustment?.z).toBeLessThan(image?.z ?? Number.NEGATIVE_INFINITY);
+    expect(image?.kind).toBe('image');
+  });
+
   it('moves an adjacent transitionOut to the next clip transitionIn for native shader rendering', async () => {
     const timelineDoc = {
       version: 1,

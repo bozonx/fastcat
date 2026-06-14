@@ -658,27 +658,8 @@ export function parseTimelineFromOtio(
     };
   });
 
-  const video = tracks.filter((t) => t.kind === 'video');
+  const video = tracks.filter((t) => t.kind === 'video').reverse();
   const audio = tracks.filter((t) => t.kind === 'audio');
-
-  const getTrackIndex = (id: string) => {
-    const m = id.match(/^(?:v|a)(\d+)$/);
-    return m && m[1] ? parseInt(m[1], 10) : null;
-  };
-
-  video.sort((a, b) => {
-    const ia = getTrackIndex(a.id);
-    const ib = getTrackIndex(b.id);
-    if (ia !== null && ib !== null) return ib - ia;
-    return 0;
-  });
-
-  audio.sort((a, b) => {
-    const ia = getTrackIndex(a.id);
-    const ib = getTrackIndex(b.id);
-    if (ia !== null && ib !== null) return ia - ib;
-    return 0;
-  });
 
   const normalizedTracks = [...video, ...audio];
   const docId = coerceId(docMeta.docId, fallback.id);
