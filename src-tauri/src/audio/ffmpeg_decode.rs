@@ -8,7 +8,7 @@ use anyhow::{anyhow, Context, Result};
 pub(crate) struct FfmpegPcmReader {
     child: Child,
     stdout: ChildStdout,
-    stderr_reader: thread::JoinHandle<std::io::Result<Vec<u8>>>,
+    stderr_reader: Option<thread::JoinHandle<std::io::Result<Vec<u8>>>>,
 }
 
 impl FfmpegPcmReader {
@@ -21,25 +21,51 @@ impl FfmpegPcmReader {
         Ok(f32_samples_from_bytes(&bytes))
     }
 
+    /// Reads the next `sample_count` f32 samples from the running ffmpeg, blocking
+    /// until they arrive. Returns the samples actually read (fewer than requested
+    /// only at end-of-stream) and whether the stream reached EOF. Used by the
+    /// long-lived streaming decoder so back-to-back export chunks come from ONE
+    /// continuous ffmpeg/swr session — no per-chunk reseek, hence no boundary clicks.
+    pub(crate) fn read_f32(&mut self, sample_count: usize) -> Result<(Vec<f32>, bool)> {
+        let want_bytes = sample_count.saturating_mul(std::mem::size_of::<f32>());
+        let mut buf = vec![0u8; want_bytes];
+        let mut filled = 0usize;
+        let mut eof = false;
+        while filled < want_bytes {
+            match self.stdout.read(&mut buf[filled..]) {
+                Ok(0) => {
+                    eof = true;
+                    break;
+                }
+                Ok(n) => filled += n,
+                Err(ref err) if err.kind() == std::io::ErrorKind::Interrupted => continue,
+                Err(err) => return Err(err).context("failed to read ffmpeg streamed PCM"),
+            }
+        }
+        buf.truncate(filled);
+        Ok((f32_samples_from_bytes(&buf), eof))
+    }
+
     pub(crate) fn stdout_mut(&mut self) -> &mut ChildStdout {
         &mut self.stdout
     }
 
-    pub(crate) fn wait(self) -> Result<()> {
-        let FfmpegPcmReader {
-            mut child,
-            stdout,
-            stderr_reader,
-        } = self;
-        drop(stdout);
-
-        let status = child
+    pub(crate) fn wait(mut self) -> Result<()> {
+        let status = self
+            .child
             .wait()
             .context("failed to wait for ffmpeg audio decode")?;
-        let stderr = stderr_reader
-            .join()
-            .map_err(|_| anyhow!("ffmpeg stderr reader panicked"))?
-            .context("failed to read ffmpeg stderr")?;
+        let stderr = self
+            .stderr_reader
+            .take()
+            .map(|reader| {
+                reader
+                    .join()
+                    .map_err(|_| anyhow!("ffmpeg stderr reader panicked"))?
+                    .context("failed to read ffmpeg stderr")
+            })
+            .transpose()?
+            .unwrap_or_default();
         if !status.success() {
             let stderr = String::from_utf8_lossy(&stderr);
             return Err(anyhow!(
@@ -50,6 +76,20 @@ impl FfmpegPcmReader {
         }
 
         Ok(())
+    }
+}
+
+impl Drop for FfmpegPcmReader {
+    /// Reaps the ffmpeg child for any reader not finished via `wait`/`read_samples`
+    /// (a streaming decoder dropped on seek/eviction/path-change). Kills the process
+    /// and joins the stderr drainer so neither leaks. `wait` takes `self` by value, so
+    /// this never runs for a cleanly-finished one-shot decode.
+    fn drop(&mut self) {
+        let _ = self.child.kill();
+        let _ = self.child.wait();
+        if let Some(reader) = self.stderr_reader.take() {
+            let _ = reader.join();
+        }
     }
 }
 
@@ -105,7 +145,7 @@ pub(crate) fn spawn_ffmpeg_f32le(params: FfmpegDecodeParams<'_>) -> Result<Ffmpe
     Ok(FfmpegPcmReader {
         child,
         stdout,
-        stderr_reader,
+        stderr_reader: Some(stderr_reader),
     })
 }
 

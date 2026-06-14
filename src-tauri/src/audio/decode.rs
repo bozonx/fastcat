@@ -4,14 +4,16 @@ use std::sync::Arc;
 use anyhow::{anyhow, Context, Result};
 use parking_lot::{Condvar, Mutex};
 
-use crate::audio::ffmpeg_decode::decode_range_ffmpeg;
+use crate::audio::ffmpeg_decode::{
+    decode_range_ffmpeg, spawn_ffmpeg_f32le, FfmpegDecodeParams,
+};
 use crate::audio::resample::{
     make_sinc_resampler, planar_to_interleaved, resample_flush_cached, resample_planar_cached,
     resample_planar_with_speed, RESAMPLER_CHUNK_SIZE,
 };
 use crate::audio::shared::{
     find_audio_track, AudioRenderTarget, AudioShared, AudioSourceMetadata, AudioWindow,
-    CachedAudioDecoder, REFILL_MARGIN_SEC, WINDOW_SEC,
+    CachedAudioDecoder, CachedFfmpegDecoder, REFILL_MARGIN_SEC, WINDOW_SEC,
 };
 
 /// Fraction of the current source chunk tolerated as scheduling jitter before
@@ -271,6 +273,33 @@ pub(crate) fn decode_symphonia_chunk(params: DecodeSymphoniaChunkParams<'_>) -> 
         reverse,
         shared,
     } = params;
+
+    // Forward 1× clips of a codec symphonia can't decode (Opus) stream through a
+    // long-lived ffmpeg child kept in `ffmpeg_decoders`. Once established for this
+    // layer+path, keep using it instead of re-probing the container every chunk.
+    // (speed/reverse fall through to the per-chunk seek path below.)
+    let streamable_via_ffmpeg = (speed - 1.0).abs() <= 1e-6 && !reverse;
+    if streamable_via_ffmpeg {
+        let has_ffmpeg = {
+            let state = shared.0.lock();
+            state
+                .ffmpeg_decoders
+                .get(layer_id)
+                .is_some_and(|cached| cached.path == path)
+        };
+        if has_ffmpeg {
+            return decode_chunk_ffmpeg_streaming(DecodeChunkFfmpegStreamingParams {
+                layer_id,
+                path,
+                source_start_sec,
+                timeline_duration_sec,
+                target_sample_rate,
+                output_channels,
+                shared,
+            });
+        }
+    }
+
     let target_frames =
         (timeline_duration_sec.max(0.0) * target_sample_rate as f64).round() as usize;
     let target_samples = target_frames * output_channels;
@@ -304,6 +333,19 @@ pub(crate) fn decode_symphonia_chunk(params: DecodeSymphoniaChunkParams<'_>) -> 
                 log::warn!(
                     "[audio] symphonia cannot decode Opus chunk; falling back to ffmpeg: {path}"
                 );
+                // Forward 1× → sequential streaming decoder (gap-free across chunks).
+                // speed/reverse → per-chunk seek decode (rare; reverse reseeks anyway).
+                if streamable_via_ffmpeg {
+                    return decode_chunk_ffmpeg_streaming(DecodeChunkFfmpegStreamingParams {
+                        layer_id,
+                        path,
+                        source_start_sec,
+                        timeline_duration_sec,
+                        target_sample_rate,
+                        output_channels,
+                        shared,
+                    });
+                }
                 return decode_chunk_ffmpeg(DecodeChunkFfmpegParams {
                     path,
                     source_start_sec,
@@ -664,9 +706,131 @@ pub(crate) fn decode_symphonia_chunk(params: DecodeSymphoniaChunkParams<'_>) -> 
 
     {
         let mut state = shared.0.lock();
+        // This layer decodes natively via symphonia; drop any ffmpeg streaming decoder
+        // left from a previous Opus source under the same id (media replace) so its
+        // child doesn't linger (retain-by-id can't tell the path changed).
+        state.ffmpeg_decoders.remove(layer_id);
         state.decoders.insert(layer_id.to_string(), state_val);
     }
     Ok(out)
+}
+
+struct DecodeChunkFfmpegStreamingParams<'a> {
+    layer_id: &'a str,
+    path: &'a str,
+    source_start_sec: f64,
+    timeline_duration_sec: f64,
+    target_sample_rate: u32,
+    output_channels: usize,
+    shared: &'a Arc<(Mutex<AudioShared>, Condvar)>,
+}
+
+/// Decodes one forward 1× chunk of an Opus (ffmpeg-only) clip from a LONG-LIVED
+/// ffmpeg child cached per layer. Sequential chunks read on from the same running
+/// ffmpeg/swr session — so the decode/resample is continuous and the chunk boundary
+/// carries no discontinuity. A non-sequential request (seek) or a path/rate change
+/// reseeks by killing and respawning ffmpeg at the new position.
+///
+/// This replaces a fresh `ffmpeg -ss <t> -t 0.05` per chunk, whose independent seek +
+/// resampler-priming at each 50 ms boundary left occasional clicks in Opus-audio
+/// exports (the symphonia path avoids this the same way: one sequential decoder, no
+/// per-chunk reseek).
+fn decode_chunk_ffmpeg_streaming(params: DecodeChunkFfmpegStreamingParams<'_>) -> Result<Vec<f32>> {
+    let DecodeChunkFfmpegStreamingParams {
+        layer_id,
+        path,
+        source_start_sec,
+        timeline_duration_sec,
+        target_sample_rate,
+        output_channels,
+        shared,
+    } = params;
+
+    let output_channels = output_channels.max(1);
+    let target_frames =
+        (timeline_duration_sec.max(0.0) * target_sample_rate as f64).round() as usize;
+    let target_samples = target_frames * output_channels;
+    if target_samples == 0 {
+        return Ok(Vec::new());
+    }
+
+    let mut cached = {
+        let mut state = shared.0.lock();
+        state.ffmpeg_decoders.remove(layer_id)
+    };
+
+    // Rebuild on a path / rate / channel-layout change: the cached ffmpeg child is
+    // emitting a different file or format. (Dropping the old `CachedFfmpegDecoder`
+    // kills its child via `FfmpegPcmReader::drop`.)
+    if cached.as_ref().is_some_and(|c| {
+        c.path != path || c.sample_rate != target_sample_rate || c.channels != output_channels
+    }) {
+        cached = None;
+    }
+
+    // Continue the running stream only if this request resumes ~where it left off.
+    // Tolerance mirrors `decode_symphonia_chunk`: a quarter-chunk of scheduling jitter.
+    let seek_tolerance_sec =
+        (timeline_duration_sec.abs() * SEEK_TOLERANCE_CHUNK_FRACTION).max(SEEK_TOLERANCE_MIN_SEC);
+    let needs_seek = match cached.as_ref() {
+        Some(c) => {
+            c.reader.is_none()
+                || (source_start_sec - c.next_source_sec).abs() > seek_tolerance_sec
+        }
+        None => true,
+    };
+
+    if needs_seek {
+        // Drop any prior stream (kills its child) before spawning a fresh one with NO
+        // `-t` so it streams from `source_start_sec` to EOF; read it chunk-by-chunk.
+        drop(cached.take());
+        let reader = spawn_ffmpeg_f32le(FfmpegDecodeParams {
+            path: Path::new(path),
+            start_sec: source_start_sec.max(0.0),
+            duration_sec: None,
+            target_sample_rate,
+            output_channels,
+        })?;
+        cached = Some(CachedFfmpegDecoder {
+            path: path.to_string(),
+            sample_rate: target_sample_rate,
+            channels: output_channels,
+            next_source_sec: source_start_sec.max(0.0),
+            reader: Some(reader),
+        });
+    }
+
+    let mut decoder =
+        cached.ok_or_else(|| anyhow!("ffmpeg decoder state missing for layer {}", layer_id))?;
+
+    let (mut samples, hit_eof) = match decoder.reader.as_mut() {
+        Some(reader) => reader.read_f32(target_samples)?,
+        // Stream already exhausted (past source end): serve silence, stay sequential.
+        None => (Vec::new(), true),
+    };
+
+    // Advance the logical cursor by the frames actually produced (a short read at EOF
+    // advances by less), so a subsequent sequential chunk past the end still matches
+    // `next_source_sec` and serves silence without a needless respawn.
+    let produced_frames = samples.len() / output_channels;
+    decoder.next_source_sec += produced_frames as f64 / target_sample_rate as f64;
+    if hit_eof {
+        // Stream ended; release the child now (its bytes are fully drained).
+        decoder.reader = None;
+    }
+
+    if samples.len() < target_samples {
+        samples.resize(target_samples, 0.0);
+    }
+
+    {
+        let mut state = shared.0.lock();
+        state
+            .ffmpeg_decoders
+            .insert(layer_id.to_string(), decoder);
+    }
+
+    Ok(samples)
 }
 
 struct DecodeChunkFfmpegParams<'a> {
@@ -1225,6 +1389,97 @@ mod tests {
 
         let _ = std::fs::remove_file(wav_path);
         let _ = std::fs::remove_file(opus_path);
+        Ok(())
+    }
+
+    /// Export streams an Opus clip via back-to-back 50 ms `decode_audio_chunk` calls.
+    /// Each chunk must read on from ONE long-lived ffmpeg/swr session (cached in
+    /// `ffmpeg_decoders`), not a fresh `ffmpeg -ss` per chunk — otherwise each chunk's
+    /// independent seek + resampler priming leaves a discontinuity at the boundary
+    /// (the occasional clicks heard in Opus-audio exports). Proven by: the per-chunk
+    /// concatenation must match a single whole-range ffmpeg decode, AND exactly one
+    /// ffmpeg child is cached after the run (sequential reuse, not per-chunk respawn).
+    #[test]
+    fn export_opus_streams_sequentially_without_boundary_discontinuity() -> anyhow::Result<()> {
+        let rate = 48_000u32;
+        let wav_path = write_temp_f32_wav(rate, 1, rate as usize)?; // 1 s, 440 Hz tone
+        let mut opus_path = wav_path.clone();
+        opus_path.set_extension("opus");
+        let encoded = Command::new("ffmpeg")
+            .args([
+                "-v",
+                "error",
+                "-y",
+                "-i",
+                wav_path.to_string_lossy().as_ref(),
+                "-c:a",
+                "libopus",
+                opus_path.to_string_lossy().as_ref(),
+            ])
+            .status();
+        let _ = std::fs::remove_file(&wav_path);
+        match encoded {
+            Ok(status) if status.success() => {}
+            _ => return Ok(()), // ffmpeg/libopus unavailable: skip
+        }
+        let opus_str = opus_path.to_string_lossy().to_string();
+
+        let chunk_sec = 0.05f64;
+        let num_chunks = 10usize; // 0.5 s, well inside the tone
+        let chunk_frames = (chunk_sec * rate as f64).round() as usize;
+
+        let shared = Arc::new((Mutex::new(AudioShared::default()), Condvar::new()));
+        let mut stream: Vec<f32> = Vec::new();
+        for k in 0..num_chunks {
+            let chunk = decode_audio_chunk(DecodeAudioChunkParams {
+                layer_id: "export-opus",
+                path: &opus_str,
+                source_start_sec: k as f64 * chunk_sec,
+                timeline_duration_sec: chunk_sec,
+                speed: 1.0,
+                target: AudioRenderTarget::export(rate, 1),
+                reverse: false,
+                shared: &shared,
+            })?;
+            assert_eq!(chunk.len(), chunk_frames, "each export chunk must be exact");
+            stream.extend_from_slice(&chunk);
+        }
+
+        // Exactly one long-lived ffmpeg child served all chunks (no per-chunk respawn).
+        {
+            let state = shared.0.lock();
+            assert!(
+                state.ffmpeg_decoders.contains_key("export-opus"),
+                "the streaming ffmpeg decoder must be cached and reused across chunks"
+            );
+        }
+
+        let range = decode_range_ffmpeg(
+            &opus_path,
+            0.0,
+            num_chunks as f64 * chunk_sec,
+            rate,
+            1,
+        )?;
+        let _ = std::fs::remove_file(&opus_path);
+
+        // Compare the back half: a per-chunk reseek/re-prime drifts away from the
+        // continuous whole-range decode; sequential streaming stays aligned.
+        let compare = stream.len().min(range.len());
+        assert!(compare > chunk_frames, "decoded enough to compare");
+        let from = compare / 2;
+        let mean_abs_diff = stream[from..compare]
+            .iter()
+            .zip(range[from..compare].iter())
+            .map(|(a, b)| (*a - *b).abs())
+            .sum::<f32>()
+            / (compare - from) as f32;
+        assert!(
+            mean_abs_diff < 1e-2,
+            "streamed Opus export drifts from the continuous decode (mean abs diff \
+             {mean_abs_diff}) — chunks are not sequential"
+        );
+
         Ok(())
     }
 

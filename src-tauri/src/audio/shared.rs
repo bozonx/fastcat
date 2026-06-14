@@ -133,6 +133,27 @@ pub(crate) struct CachedAudioDecoder {
     pub(crate) resample_output_remainder: Vec<f32>,
 }
 
+/// A long-lived ffmpeg streaming decoder for a codec symphonia can't decode
+/// natively (currently Opus). Unlike a one-shot-per-chunk `ffmpeg -ss`, this keeps
+/// ONE ffmpeg/swr session alive and reads it sequentially chunk-by-chunk, so
+/// back-to-back chunks are sample-continuous — a fresh seek+resample per chunk left
+/// audible clicks at the ~50 ms boundaries (heard on Opus-audio exports). Keyed per
+/// layer id (like `decoders`), and reseeks only on a non-sequential request.
+pub(crate) struct CachedFfmpegDecoder {
+    /// Source file this stream was opened for; rebuilt on a path change (proxy swap /
+    /// media replace under the same layer id), like `CachedAudioDecoder::path`.
+    pub(crate) path: String,
+    /// Target rate/channels the ffmpeg child is emitting at; a change rebuilds it.
+    pub(crate) sample_rate: u32,
+    pub(crate) channels: usize,
+    /// Source position (sec) the stream will next emit. A request within tolerance of
+    /// this continues reading the live process; a jump reseeks (kill + respawn).
+    pub(crate) next_source_sec: f64,
+    /// The running ffmpeg, or `None` once the stream hit EOF (further sequential
+    /// reads past the source end return silence without respawning).
+    pub(crate) reader: Option<crate::audio::ffmpeg_decode::FfmpegPcmReader>,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) struct AudioSourceMetadata {
     pub(crate) sample_rate: u32,
@@ -226,6 +247,10 @@ pub(crate) struct AudioShared {
     /// Streaming decoders, keyed per layer (NOT per path): two clips from the
     /// same media file must not share one stateful decoder or they thrash seeks.
     pub(crate) decoders: HashMap<String, CachedAudioDecoder>,
+    /// Long-lived ffmpeg streaming decoders for codecs symphonia can't decode (Opus),
+    /// keyed per layer like `decoders`. Kept alive across sequential chunks so the
+    /// decode/resample stays continuous (no per-chunk reseek → no boundary clicks).
+    pub(crate) ffmpeg_decoders: HashMap<String, CachedFfmpegDecoder>,
     /// Hash of timing-relevant layer fields (path/position/speed/source). Used to
     /// decide whether a scene update needs a ring flush (positions changed) or is
     /// a pure mix-param change (gain/balance/fade) that can apply gap-free.
@@ -262,6 +287,7 @@ impl Default for AudioShared {
             window_fill_in_flight: HashMap::new(),
             active_window_fill_count: 0,
             decoders: HashMap::new(),
+            ffmpeg_decoders: HashMap::new(),
             timing_sig: 0,
             pending_ring_clear: false,
             scrub_request: None,
