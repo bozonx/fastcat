@@ -100,6 +100,7 @@ function removePreset() {
       v-model:bitrate-mode="selectedPreset.bitrateMode"
       v-model:keyframe-interval-sec="selectedPreset.keyframeIntervalSec"
       v-model:export-alpha="selectedPreset.exportAlpha"
+      v-model:fast-start="selectedPreset.fastStart"
       :show-audio-advanced="true"
       :show-presets="false"
       :hide-audio-sample-rate="true"

@@ -219,6 +219,7 @@ const isFormValid = computed(() => {
             v-model:audio-sample-rate="audio.sampleRate"
             v-model:bitrate-mode="video.bitrateMode"
             v-model:keyframe-interval-sec="video.keyframeIntervalSec"
+            v-model:fast-start="video.fastStart"
             :show-metadata="false"
             :show-presets="true"
             :has-audio="sourceHasAudio"

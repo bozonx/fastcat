@@ -98,6 +98,7 @@ function applyExportPreset(presetId: string) {
         projectStore.projectSettings.exportDefaults.encoding.keyframeIntervalSec
       "
       v-model:export-alpha="projectStore.projectSettings.exportDefaults.encoding.exportAlpha"
+      v-model:fast-start="projectStore.projectSettings.exportDefaults.encoding.fastStart"
       :show-audio-advanced="true"
       :show-presets="false"
       :hide-audio-sample-rate="true"

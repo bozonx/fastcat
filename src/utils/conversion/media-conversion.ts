@@ -139,6 +139,7 @@ export async function executeMediaConversion(params: {
             bitrateMode: params.request.video.bitrateMode,
             keyframeIntervalSec: params.request.video.keyframeIntervalSec,
             exportAlpha: false,
+            fastStart: params.request.video.fastStart,
             audioChannels,
             audioSampleRate: params.request.sharedAudio.sampleRate || undefined,
           };

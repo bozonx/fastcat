@@ -68,6 +68,7 @@ const videoSettings = reactive({
   audioBitrateKbps: DEFAULT_AUDIO_BITRATE_KBPS,
   bitrateMode: 'variable' as 'constant' | 'variable',
   keyframeIntervalSec: 2,
+  fastStart: true,
   width: DEFAULT_VIDEO_WIDTH,
   height: DEFAULT_VIDEO_HEIGHT,
   fps: DEFAULT_VIDEO_FPS,

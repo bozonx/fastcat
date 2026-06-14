@@ -59,6 +59,7 @@ interface UseFileConversionActionsProps {
     audioBitrateKbps: number;
     bitrateMode: 'constant' | 'variable';
     keyframeIntervalSec: number;
+    fastStart: boolean;
     width: number;
     height: number;
     fps: number;
@@ -439,6 +440,7 @@ export function useFileConversionActions(props: UseFileConversionActionsProps) {
         audioBitrateKbps: clampPositiveNumber(props.videoSettings.audioBitrateKbps, 128),
         bitrateMode: props.videoSettings.bitrateMode,
         keyframeIntervalSec: clampPositiveNumber(props.videoSettings.keyframeIntervalSec, 2),
+        fastStart: props.videoSettings.fastStart,
         width: Math.max(1, Math.round(Number(props.videoSettings.width) || DEFAULT_VIDEO_WIDTH)),
         height: Math.max(1, Math.round(Number(props.videoSettings.height) || DEFAULT_VIDEO_HEIGHT)),
         fps: clampPositiveNumber(Number(props.videoSettings.fps), DEFAULT_VIDEO_FPS),

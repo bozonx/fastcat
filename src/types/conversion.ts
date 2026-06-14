@@ -12,6 +12,7 @@ export interface VideoConversionSettings {
   audioBitrateKbps: number;
   bitrateMode: 'constant' | 'variable';
   keyframeIntervalSec: number;
+  fastStart?: boolean;
   width: number | null;
   height: number | null;
   fps: number | null;
