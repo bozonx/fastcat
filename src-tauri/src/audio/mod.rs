@@ -34,6 +34,7 @@
 //!    it wipes the prebuffer and resets decoders every tick → constant crackle.
 
 pub mod engine;
+mod ffmpeg_decode;
 pub mod peaks;
 pub mod plugins;
 

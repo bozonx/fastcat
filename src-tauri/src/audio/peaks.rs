@@ -1,4 +1,5 @@
 use anyhow::{anyhow, Context, Result};
+use std::io::Read;
 use std::path::Path;
 use symphonia::core::audio::SampleBuffer;
 use symphonia::core::codecs::{Decoder, DecoderOptions};
@@ -6,6 +7,7 @@ use symphonia::core::formats::{FormatOptions, FormatReader};
 use symphonia::core::meta::MetadataOptions;
 use symphonia::core::probe::Hint;
 
+use crate::audio::ffmpeg_decode::{spawn_ffmpeg_f32le, FfmpegDecodeParams};
 use crate::audio::shared::find_audio_track;
 
 const MAX_PEAK_LENGTH: usize = 500_000;
@@ -26,7 +28,14 @@ struct AudioDecoderState {
     channels: usize,
 }
 
-fn open_audio_decoder(path: &Path) -> Result<AudioDecoderState> {
+struct AudioProbe {
+    format: Box<dyn FormatReader>,
+    track_id: u32,
+    channels: usize,
+    sample_rate: u32,
+}
+
+fn probe_audio(path: &Path) -> Result<AudioProbe> {
     let file = std::fs::File::open(path)
         .with_context(|| format!("failed to open audio file: {}", path.display()))?;
     let mss = symphonia::core::io::MediaSourceStream::new(Box::new(file), Default::default());
@@ -48,15 +57,35 @@ fn open_audio_decoder(path: &Path) -> Result<AudioDecoderState> {
     let format = probed.format;
     let track =
         find_audio_track(format.tracks()).ok_or_else(|| anyhow!("no active audio track found"))?;
+    let track_id = track.id;
+    let channels = track.codec_params.channels.map(|c| c.count()).unwrap_or(1);
+    let sample_rate = track.codec_params.sample_rate.unwrap_or(48_000);
+
+    Ok(AudioProbe {
+        track_id,
+        channels,
+        sample_rate,
+        format,
+    })
+}
+
+fn open_audio_decoder(path: &Path) -> Result<AudioDecoderState> {
+    let probe = probe_audio(path)?;
+    let track = probe
+        .format
+        .tracks()
+        .iter()
+        .find(|track| track.id == probe.track_id)
+        .ok_or_else(|| anyhow!("probed audio track disappeared"))?;
 
     let decoder = symphonia::default::get_codecs()
         .make(&track.codec_params, &DecoderOptions::default())
         .context("failed to create decoder")?;
 
     Ok(AudioDecoderState {
-        track_id: track.id,
-        channels: track.codec_params.channels.map(|c| c.count()).unwrap_or(1),
-        format,
+        track_id: probe.track_id,
+        channels: probe.channels,
+        format: probe.format,
         decoder,
     })
 }
@@ -106,6 +135,76 @@ fn resample_channel(mip: &[f32], output_len: usize) -> Vec<f32> {
     out
 }
 
+struct PeakAccumulator {
+    mip: Vec<Vec<f32>>,
+    frames_per_bucket: u64,
+    total_frames: u64,
+    target_buckets: usize,
+}
+
+impl PeakAccumulator {
+    fn new(channels: usize, target_buckets: usize) -> Self {
+        Self {
+            mip: vec![Vec::new(); channels.max(1)],
+            frames_per_bucket: 1,
+            total_frames: 0,
+            target_buckets,
+        }
+    }
+
+    fn push_interleaved(&mut self, samples: &[f32], num_channels: usize) {
+        if num_channels == 0 {
+            return;
+        }
+        let num_frames = samples.len() / num_channels;
+        if num_frames == 0 {
+            return;
+        }
+
+        if num_channels > self.mip.len() {
+            let current_len = self.mip.first().map(|c| c.len()).unwrap_or(0);
+            while self.mip.len() < num_channels {
+                self.mip.push(vec![0.0f32; current_len]);
+            }
+        }
+
+        for frame in 0..num_frames {
+            let global_frame = self.total_frames + frame as u64;
+            let bucket = (global_frame / self.frames_per_bucket) as usize;
+            for ch in 0..num_channels {
+                let channel = &mut self.mip[ch];
+                if bucket >= channel.len() {
+                    channel.resize(bucket + 1, 0.0);
+                }
+                let val = samples[frame * num_channels + ch].abs();
+                if val > channel[bucket] {
+                    channel[bucket] = val;
+                }
+            }
+        }
+
+        self.total_frames += num_frames as u64;
+
+        while self.mip.first().map(|c| c.len()).unwrap_or(0) > self.target_buckets.saturating_mul(2)
+        {
+            halve_mip(&mut self.mip);
+            self.frames_per_bucket = self.frames_per_bucket.saturating_mul(2);
+        }
+    }
+
+    fn finish(self, max_length: usize) -> Vec<Vec<f32>> {
+        let channels = self.mip.len().max(1);
+        if self.total_frames == 0 {
+            return vec![vec![0.0f32; max_length]; channels];
+        }
+
+        self.mip
+            .iter()
+            .map(|channel| resample_channel(channel, max_length))
+            .collect()
+    }
+}
+
 /// Extracts audio peaks from a media file in a single streaming decode pass.
 ///
 /// Amplitudes are accumulated into an intermediate per-channel "mip" buffer at a
@@ -120,10 +219,29 @@ pub fn extract_peaks(path: &Path, max_length: usize) -> Result<Vec<Vec<f32>>> {
         .saturating_mul(MIP_OVERSAMPLE)
         .clamp(1, MAX_MIP_BUCKETS);
 
+    match extract_peaks_symphonia(path, max_length, target_buckets) {
+        Ok(peaks) => Ok(peaks),
+        Err(symphonia_error) => {
+            log::warn!(
+                "[audio peaks] symphonia failed for {}; falling back to ffmpeg: {symphonia_error:#}",
+                path.display()
+            );
+            extract_peaks_ffmpeg(path, max_length, target_buckets).with_context(|| {
+                format!(
+                    "failed to extract peaks via ffmpeg after symphonia failed: {symphonia_error:#}"
+                )
+            })
+        }
+    }
+}
+
+fn extract_peaks_symphonia(
+    path: &Path,
+    max_length: usize,
+    target_buckets: usize,
+) -> Result<Vec<Vec<f32>>> {
     let mut state = open_audio_decoder(path)?;
-    let mut mip: Vec<Vec<f32>> = vec![Vec::new(); state.channels.max(1)];
-    let mut frames_per_bucket: u64 = 1;
-    let mut total_frames: u64 = 0;
+    let mut accumulator = PeakAccumulator::new(state.channels, target_buckets);
 
     loop {
         let packet = match state.format.next_packet() {
@@ -149,44 +267,7 @@ pub fn extract_peaks(path: &Path, max_length: usize) -> Result<Vec<Vec<f32>>> {
 
                 let samples = sample_buf.samples();
                 let num_channels = spec.channels.count();
-                if num_channels == 0 {
-                    continue;
-                }
-                let num_frames = samples.len() / num_channels;
-                if num_frames == 0 {
-                    continue;
-                }
-
-                if num_channels > mip.len() {
-                    let current_len = mip.first().map(|c| c.len()).unwrap_or(0);
-                    while mip.len() < num_channels {
-                        mip.push(vec![0.0f32; current_len]);
-                    }
-                }
-
-                for frame in 0..num_frames {
-                    let global_frame = total_frames + frame as u64;
-                    let bucket = (global_frame / frames_per_bucket) as usize;
-                    for ch in 0..num_channels {
-                        let channel = &mut mip[ch];
-                        if bucket >= channel.len() {
-                            channel.resize(bucket + 1, 0.0);
-                        }
-                        let val = samples[frame * num_channels + ch].abs();
-                        if val > channel[bucket] {
-                            channel[bucket] = val;
-                        }
-                    }
-                }
-
-                total_frames += num_frames as u64;
-
-                // Keep the intermediate buffer bounded: once it grows past twice
-                // the target resolution, halve it (and the frames-per-bucket).
-                while mip.first().map(|c| c.len()).unwrap_or(0) > target_buckets.saturating_mul(2) {
-                    halve_mip(&mut mip);
-                    frames_per_bucket = frames_per_bucket.saturating_mul(2);
-                }
+                accumulator.push_interleaved(samples, num_channels);
             }
             Err(symphonia::core::errors::Error::IoError(ref err))
                 if err.kind() == std::io::ErrorKind::UnexpectedEof =>
@@ -200,15 +281,52 @@ pub fn extract_peaks(path: &Path, max_length: usize) -> Result<Vec<Vec<f32>>> {
         }
     }
 
-    let channels = mip.len().max(1);
-    if total_frames == 0 {
-        return Ok(vec![vec![0.0f32; max_length]; channels]);
+    Ok(accumulator.finish(max_length))
+}
+
+fn extract_peaks_ffmpeg(
+    path: &Path,
+    max_length: usize,
+    target_buckets: usize,
+) -> Result<Vec<Vec<f32>>> {
+    let probe = probe_audio(path)?;
+    let channels = probe.channels.max(1);
+    let mut reader = spawn_ffmpeg_f32le(FfmpegDecodeParams {
+        path,
+        start_sec: 0.0,
+        duration_sec: None,
+        target_sample_rate: probe.sample_rate.max(1),
+        output_channels: channels,
+    })?;
+    let mut accumulator = PeakAccumulator::new(channels, target_buckets);
+    let mut pending = Vec::<u8>::new();
+    let mut chunk = [0u8; 64 * 1024];
+
+    loop {
+        let read = reader
+            .stdout_mut()
+            .read(&mut chunk)
+            .context("failed to read ffmpeg waveform PCM")?;
+        if read == 0 {
+            break;
+        }
+        pending.extend_from_slice(&chunk[..read]);
+        let complete_len = pending.len() / std::mem::size_of::<f32>() * std::mem::size_of::<f32>();
+        if complete_len == 0 {
+            continue;
+        }
+
+        let samples: Vec<f32> = pending[..complete_len]
+            .chunks_exact(std::mem::size_of::<f32>())
+            .map(|chunk| f32::from_le_bytes([chunk[0], chunk[1], chunk[2], chunk[3]]))
+            .collect();
+        accumulator.push_interleaved(&samples, channels);
+
+        pending.drain(..complete_len);
     }
 
-    Ok(mip
-        .iter()
-        .map(|channel| resample_channel(channel, max_length))
-        .collect())
+    reader.wait()?;
+    Ok(accumulator.finish(max_length))
 }
 
 pub fn pack_peaks(peaks: &[Vec<f32>]) -> Vec<u8> {

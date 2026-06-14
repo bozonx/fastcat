@@ -1,10 +1,10 @@
 use std::path::Path;
-use std::process::Command;
 use std::sync::Arc;
 
 use anyhow::{anyhow, Context, Result};
 use parking_lot::{Condvar, Mutex};
 
+use crate::audio::ffmpeg_decode::decode_range_ffmpeg;
 use crate::audio::resample::{
     make_sinc_resampler, planar_to_interleaved, resample_flush_cached, resample_planar_cached,
     resample_planar_with_speed, RESAMPLER_CHUNK_SIZE,
@@ -105,7 +105,7 @@ pub(crate) fn decode_range_symphonia(
         Err(_) if track.codec_params.codec == symphonia::core::codecs::CODEC_TYPE_OPUS => {
             log::warn!("[audio] symphonia cannot decode Opus; falling back to ffmpeg: {path}");
             return decode_range_ffmpeg(
-                path,
+                Path::new(path),
                 start_sec,
                 duration_sec,
                 target_sample_rate,
@@ -245,58 +245,6 @@ pub(crate) fn decode_range_symphonia(
     )?;
     let interleaved = planar_to_interleaved(&resampled, output_channels);
     Ok(interleaved)
-}
-
-fn decode_range_ffmpeg(
-    path: &str,
-    start_sec: f64,
-    duration_sec: f64,
-    target_sample_rate: u32,
-    output_channels: usize,
-) -> Result<Vec<f32>> {
-    let channels = output_channels.max(1).to_string();
-    let sample_rate = target_sample_rate.max(1).to_string();
-    // `-ss` BEFORE `-i` is fast (input) seeking; `-t` bounds the decoded duration,
-    // so ffmpeg never reads the whole file either.
-    let ss = format!("{:.6}", start_sec.max(0.0));
-    let t = format!("{:.6}", duration_sec.max(0.0));
-    let output = Command::new("ffmpeg")
-        .args([
-            "-v",
-            "error",
-            "-ss",
-            &ss,
-            "-i",
-            path,
-            "-t",
-            &t,
-            "-vn",
-            "-f",
-            "f32le",
-            "-ac",
-            &channels,
-            "-ar",
-            &sample_rate,
-            "pipe:1",
-        ])
-        .output()
-        .with_context(|| format!("failed to run ffmpeg for audio decode: {path}"))?;
-
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        return Err(anyhow!(
-            "ffmpeg audio decode failed with status {}: {}",
-            output.status,
-            stderr.trim()
-        ));
-    }
-
-    let mut samples = Vec::with_capacity(output.stdout.len() / std::mem::size_of::<f32>());
-    for chunk in output.stdout.chunks_exact(std::mem::size_of::<f32>()) {
-        samples.push(f32::from_le_bytes([chunk[0], chunk[1], chunk[2], chunk[3]]));
-    }
-
-    Ok(samples)
 }
 
 pub(crate) struct DecodeSymphoniaChunkParams<'a> {
@@ -1025,6 +973,7 @@ fn is_audio_seek_past_end(error: &symphonia::core::errors::Error) -> bool {
 mod tests {
     use super::*;
     use crate::audio::shared::AudioShared;
+    use std::process::Command;
 
     fn write_temp_f32_wav(
         sample_rate: u32,
