@@ -372,12 +372,68 @@ impl VarispeedResampler {
     }
 }
 
+/// Per-source-channel `(left, right)` gains for downmixing a multichannel layout
+/// to stereo, following ITU-R BS.775 (centre and surrounds folded in at −3 dB,
+/// LFE dropped). The source order is assumed to be the canonical FFmpeg/symphonia
+/// order (FL, FR, FC, LFE, BL/SL, BR/SR, …), which is what `copy_interleaved_ref`
+/// emits. Unknown layouts fall back to L/R for the first pair and a centred fold
+/// for any further channels, so nothing is ever silently dropped.
+fn stereo_downmix_coeffs(src_channels: usize) -> Vec<(f32, f32)> {
+    let c = std::f32::consts::FRAC_1_SQRT_2;
+    match src_channels {
+        // 3.0: FL FR FC
+        3 => vec![(1.0, 0.0), (0.0, 1.0), (c, c)],
+        // quad: FL FR BL BR
+        4 => vec![(1.0, 0.0), (0.0, 1.0), (c, 0.0), (0.0, c)],
+        // 5.0: FL FR FC BL BR
+        5 => vec![(1.0, 0.0), (0.0, 1.0), (c, c), (c, 0.0), (0.0, c)],
+        // 5.1: FL FR FC LFE BL BR (LFE dropped)
+        6 => vec![(1.0, 0.0), (0.0, 1.0), (c, c), (0.0, 0.0), (c, 0.0), (0.0, c)],
+        // 6.1: FL FR FC LFE BC SL SR
+        7 => vec![
+            (1.0, 0.0),
+            (0.0, 1.0),
+            (c, c),
+            (0.0, 0.0),
+            (c, c),
+            (c, 0.0),
+            (0.0, c),
+        ],
+        // 7.1: FL FR FC LFE BL BR SL SR
+        8 => vec![
+            (1.0, 0.0),
+            (0.0, 1.0),
+            (c, c),
+            (0.0, 0.0),
+            (c, 0.0),
+            (0.0, c),
+            (c, 0.0),
+            (0.0, c),
+        ],
+        // Unknown layout: keep the front pair, fold the rest to centre so no
+        // channel's content is discarded.
+        n => {
+            let mut v = Vec::with_capacity(n);
+            for ch in 0..n {
+                match ch {
+                    0 => v.push((1.0, 0.0)),
+                    1 => v.push((0.0, 1.0)),
+                    _ => v.push((c, c)),
+                }
+            }
+            v
+        }
+    }
+}
+
 /// Converts planar channel buffers into an interleaved buffer with exactly
 /// `out_channels` channels, applying a sensible down/up-mix:
 /// - equal channel counts: copied 1:1;
 /// - mono source: duplicated into the front L/R pair (others silent);
 /// - mono output: average of all source channels;
-/// - otherwise: the overlapping channels are copied, extra outputs stay silent.
+/// - multichannel → stereo: ITU-R BS.775 downmix (centre/surrounds folded into
+///   L/R, LFE dropped) so dialogue in the centre channel is never lost;
+/// - any other mismatch (out > 2): the overlapping channels are copied.
 ///
 /// Channels of unequal length are tolerated (frame count is the shortest
 /// channel) so a malformed decode never panics.
@@ -427,8 +483,27 @@ pub(crate) fn planar_to_interleaved(planar: &[Vec<f32>], out_channels: usize) ->
             }
             interleaved[f] = sum * inv;
         }
+    } else if out_channels == 2 {
+        // Multichannel → stereo (src_channels >= 3 here). Fold centre and
+        // surrounds into L/R per ITU-R BS.775 instead of copying only the front
+        // pair — the old behaviour silently dropped the centre (dialogue), LFE
+        // and surround channels.
+        let coeffs = stereo_downmix_coeffs(src_channels);
+        for f in 0..num_frames {
+            let mut left = 0.0f32;
+            let mut right = 0.0f32;
+            for (ch, &(cl, cr)) in coeffs.iter().enumerate() {
+                let s = planar[ch][f];
+                left += s * cl;
+                right += s * cr;
+            }
+            let base = f * 2;
+            interleaved[base] = left;
+            interleaved[base + 1] = right;
+        }
     } else {
-        // Mismatched multichannel: copy the overlapping channels, rest silent.
+        // Mismatched multichannel into >2 outputs: copy the overlapping
+        // channels, rest silent.
         let common = src_channels.min(out_channels);
         for f in 0..num_frames {
             let base = f * out_channels;
@@ -488,6 +563,28 @@ mod tests {
         let planar = vec![vec![1.0, 3.0], vec![3.0, 5.0], vec![5.0, 7.0]];
         let interleaved = planar_to_interleaved(&planar, 1);
         assert_eq!(interleaved, vec![3.0, 5.0]);
+    }
+
+    #[test]
+    fn planar_to_interleaved_downmixes_51_to_stereo_keeping_centre() {
+        // 5.1 order: FL FR FC LFE BL BR. One frame.
+        let c = std::f32::consts::FRAC_1_SQRT_2;
+        let planar = vec![
+            vec![1.0], // FL
+            vec![2.0], // FR
+            vec![3.0], // FC
+            vec![9.0], // LFE (dropped)
+            vec![4.0], // BL
+            vec![5.0], // BR
+        ];
+        let out = planar_to_interleaved(&planar, 2);
+        // L = FL + c*FC + c*BL ; R = FR + c*FC + c*BR ; LFE contributes nothing.
+        let expect_l = 1.0 + c * 3.0 + c * 4.0;
+        let expect_r = 2.0 + c * 3.0 + c * 5.0;
+        assert!((out[0] - expect_l).abs() < 1e-6, "L {} != {}", out[0], expect_l);
+        assert!((out[1] - expect_r).abs() < 1e-6, "R {} != {}", out[1], expect_r);
+        // The centre channel must reach BOTH outputs (dialogue not lost).
+        assert!(out[0] > 1.0 && out[1] > 2.0);
     }
 
     #[test]

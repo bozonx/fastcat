@@ -21,6 +21,9 @@ pub struct WavRenderParams<'a> {
     pub output_channels: usize,
     pub target_path: &'a Path,
     pub should_cancel: Option<&'a (dyn Fn() -> bool + Send + Sync)>,
+    /// Called with the offline-render fraction (0..1) after each chunk is written,
+    /// so a long pre-render shows progress instead of sitting silently at 0%.
+    pub on_progress: Option<&'a (dyn Fn(f64) + Send + Sync)>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -85,6 +88,9 @@ pub fn render_scene_to_wav(params: WavRenderParams<'_>) -> anyhow::Result<()> {
             file.write_all(&sample.to_le_bytes())?;
         }
         written_frames = written_frames.saturating_add(chunk_frames);
+        if let Some(report) = params.on_progress {
+            report((written_frames as f64 / estimated_frames as f64).clamp(0.0, 1.0));
+        }
     }
 
     // Patch the 64-bit size fields now that the frame count is known. Wave64 chunk sizes
@@ -388,7 +394,7 @@ fn mix_chunk_ramped_result(
         }
         None => apply_master_gain(&mut mixed, master_gain),
     }
-    soft_clip(&mut mixed);
+    clamp_peaks(&mut mixed);
     Ok(mixed)
 }
 
@@ -734,29 +740,22 @@ fn apply_master_gain_ramp(
     }
 }
 
-/// Smooth soft-knee limiter. Below the knee the signal is untouched; above it,
-/// magnitudes are mapped asymptotically toward (but never reaching) 1.0 with a
-/// single continuous tanh curve, so loud mixes are gracefully compressed instead
-/// of hard-clipped. The curve is continuous everywhere: at `mag == KNEE` it
-/// equals `KNEE` (`tanh(0) == 0`) and as `mag → ∞` it approaches 1.0. The
-/// previous implementation special-cased `mag >= 1.0 → 1.0`, which introduced a
-/// ~0.05 jump (audible distortion) right at unity. Non-finite inputs are flushed
-/// to silence to keep the output bounded.
-fn soft_clip(samples: &mut [f32]) {
-    const KNEE: f32 = 0.8;
+/// Transparent peak guard applied at the very end of the mix. It deliberately does
+/// NOT limit or compress: every sample inside `[-1, 1]` is left bit-for-bit
+/// untouched, so the rendered audio matches exactly what the user mixed (a previous
+/// soft-knee limiter quietly attenuated everything above 0.8, colouring legitimately
+/// loud — but non-clipping — material the user never asked to compress). It only
+/// (a) flushes non-finite samples to silence and (b) hard-clamps true overshoots to
+/// ±1.0 so the downstream encoder / integer-PCM target never receives out-of-range
+/// values. A musical limiter is applied only if the user adds one explicitly as an
+/// audio effect.
+fn clamp_peaks(samples: &mut [f32]) {
     for sample in samples {
-        let s = *sample;
-        if !s.is_finite() {
+        if sample.is_finite() {
+            *sample = sample.clamp(-1.0, 1.0);
+        } else {
             *sample = 0.0;
-            continue;
         }
-        let mag = s.abs();
-        if mag <= KNEE {
-            continue;
-        }
-        let over = (mag - KNEE) / (1.0 - KNEE);
-        let limited = KNEE + (1.0 - KNEE) * over.tanh();
-        *sample = limited.copysign(s);
     }
 }
 
@@ -1175,19 +1174,19 @@ mod tests {
     }
 
     #[test]
-    fn soft_clip_is_continuous_around_unity() {
-        let mut below = vec![0.999f32];
-        let mut above = vec![1.001f32];
-        soft_clip(&mut below);
-        soft_clip(&mut above);
-        assert!(below[0] < 1.0 && above[0] < 1.0);
-        assert!((above[0] - below[0]).abs() < 1e-3);
+    fn clamp_peaks_leaves_sub_unity_untouched() {
+        // The peak guard must be transparent below 1.0: a legitimately loud but
+        // non-clipping sample (0.95) is passed through bit-for-bit, not attenuated.
+        let mut samples = vec![0.95f32, -0.95, 0.999, -0.999];
+        let original = samples.clone();
+        clamp_peaks(&mut samples);
+        assert_eq!(samples, original);
     }
 
     #[test]
-    fn soft_clip_preserves_in_band() {
+    fn clamp_peaks_preserves_in_band() {
         let mut samples = vec![-0.5, 0.0, 0.5, 0.8, -0.8];
-        soft_clip(&mut samples);
+        clamp_peaks(&mut samples);
         assert!((samples[0] - (-0.5)).abs() < 1e-6);
         assert!((samples[1] - 0.0).abs() < 1e-6);
         assert!((samples[2] - 0.5).abs() < 1e-6);
@@ -1196,17 +1195,16 @@ mod tests {
     }
 
     #[test]
-    fn soft_clip_limits_out_of_band() {
-        let mut samples = vec![2.0, -2.0];
-        soft_clip(&mut samples);
-        assert!(samples[0] >= 0.8 && samples[0] <= 1.0);
-        assert!(samples[1] <= -0.8 && samples[1] >= -1.0);
+    fn clamp_peaks_hard_clamps_overshoots_to_unity() {
+        let mut samples = vec![2.0, -2.0, 1.0, -1.0];
+        clamp_peaks(&mut samples);
+        assert_eq!(samples, vec![1.0, -1.0, 1.0, -1.0]);
     }
 
     #[test]
-    fn soft_clip_flushes_non_finite_samples() {
+    fn clamp_peaks_flushes_non_finite_samples() {
         let mut samples = vec![f32::NAN, f32::INFINITY, f32::NEG_INFINITY];
-        soft_clip(&mut samples);
+        clamp_peaks(&mut samples);
         assert_eq!(samples, vec![0.0, 0.0, 0.0]);
     }
 
@@ -1551,6 +1549,7 @@ mod tests {
             output_channels: 1,
             target_path: &tmp,
             should_cancel: None,
+            on_progress: None,
         })
         .unwrap();
 
@@ -1596,6 +1595,7 @@ mod tests {
             output_channels: 1,
             target_path: &tmp,
             should_cancel: None,
+            on_progress: None,
         })
         .unwrap();
         let bytes = std::fs::read(&tmp).unwrap();
@@ -1625,6 +1625,7 @@ mod tests {
             output_channels: 1,
             target_path: &tmp,
             should_cancel: None,
+            on_progress: None,
         });
 
         assert!(result
@@ -1651,6 +1652,7 @@ mod tests {
             output_channels: 1,
             target_path: &tmp,
             should_cancel: Some(&|| true),
+            on_progress: None,
         });
 
         assert_eq!(result.unwrap_err().to_string(), "cancelled");
@@ -1756,21 +1758,21 @@ mod tests {
             let s_base = baseline[i];
             let s_proc = processed[i];
 
-            // Expected soft-clipped value for input 1.0:
-            // expected = 0.8 + 0.2 * tanh((1.0 - 0.8)/0.2) = 0.8 + 0.2 * tanh(1.0) ≈ 0.9523
-            let expected = 0.8 + 0.2 * 1.0f32.tanh(); // tanh(1.0)
+            // The peak guard is transparent up to 1.0, so a sample that lands exactly
+            // at unity is passed through unchanged (no soft-knee attenuation).
+            let expected = 1.0f32;
 
-            // Baseline sample S_base should be: 0.5 (source) * 2.0 (layer multiply) * 1.0 (gain) = 1.0, soft-clipped
+            // Baseline sample: 0.5 (source) * 2.0 (layer multiply) * 1.0 (gain) = 1.0.
             assert!(
                 (s_base - expected).abs() < 1e-4,
-                "Baseline sample should be soft-clipped 1.0, got {}",
+                "Baseline sample should be 1.0, got {}",
                 s_base
             );
 
-            // Processed sample: 0.5 (source) * 2.0 (layer multiply) * 2.0 (master multiply) * 0.5 (master gain) = 1.0, soft-clipped
+            // Processed sample: 0.5 (source) * 2.0 (layer multiply) * 2.0 (master multiply) * 0.5 (master gain) = 1.0.
             assert!(
                 (s_proc - expected).abs() < 1e-4,
-                "Expected soft-clipped value: {}, got {}",
+                "Expected unity value: {}, got {}",
                 expected,
                 s_proc
             );

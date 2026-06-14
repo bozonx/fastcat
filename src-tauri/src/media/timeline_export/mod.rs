@@ -117,6 +117,26 @@ pub fn export_timeline(
         end
     };
 
+    // Split the progress bar between the offline audio pre-render (which runs to
+    // completion before ffmpeg even starts) and the ffmpeg encode. The pre-render
+    // takes a small leading slice when there is video to encode; an audio-only
+    // export has no per-frame encode progress, so the pre-render owns the whole bar.
+    let is_video_export = options.video_enabled.unwrap_or(true);
+    let will_render_audio = options.audio_enabled && !scene.audio_layers.is_empty();
+    let audio_progress_share = if will_render_audio {
+        if is_video_export {
+            0.1
+        } else {
+            1.0
+        }
+    } else {
+        0.0
+    };
+    // Remaps the ffmpeg-encode fraction into the trailing slice after the pre-render.
+    let report_video_progress = |frac: f64| {
+        on_progress(audio_progress_share + (1.0 - audio_progress_share) * frac.clamp(0.0, 1.0));
+    };
+
     // Resolve the hardware mode once (auto → vaapi/none, alpha forces software) so
     // the fallback decision below is based on what the first attempt *actually* used.
     // Otherwise an "auto" export on a machine without a VAAPI device would render the
@@ -164,6 +184,9 @@ pub fn export_timeline(
             output_channels,
             target_path: &path,
             should_cancel: Some(&|| tasks.was_cancelled(task_id)),
+            on_progress: Some(&|frac: f64| {
+                on_progress((audio_progress_share * frac).clamp(0.0, 1.0))
+            }),
         })
         .context("failed to render native audio mix")
         {
@@ -327,11 +350,11 @@ pub fn export_timeline(
                         if let Ok(us) = rest.trim().parse::<i64>() {
                             if total_sec > 0.0 && us >= 0 {
                                 let frac = (us as f64 / 1_000_000.0 / total_sec).clamp(0.0, 1.0);
-                                on_progress(frac);
+                                report_video_progress(frac);
                             }
                         }
                     } else if line.starts_with("progress=end") {
-                        on_progress(1.0);
+                        report_video_progress(1.0);
                     }
                 }
                 result
@@ -391,7 +414,7 @@ pub fn export_timeline(
                                 return Err(anyhow!("ffmpeg stdin closed prematurely: {e}"));
                             }
                             last_activity.store(now_millis(), Ordering::Release);
-                            on_progress(pipeline.emitted as f64 / frame_count as f64);
+                            report_video_progress(pipeline.emitted as f64 / frame_count as f64);
                         }
                     }
                     // Сливаем хвостовые кадры, которые ещё висят в pipeline.
@@ -400,7 +423,7 @@ pub fn export_timeline(
                             return Err(anyhow!("ffmpeg stdin closed prematurely: {e}"));
                         }
                         last_activity.store(now_millis(), Ordering::Release);
-                        on_progress(pipeline.emitted as f64 / frame_count as f64);
+                        report_video_progress(pipeline.emitted as f64 / frame_count as f64);
                     }
                     Ok(())
                 })();
@@ -409,7 +432,7 @@ pub fn export_timeline(
                 drop(stdin);
                 result
             } else {
-                on_progress(1.0);
+                report_video_progress(1.0);
                 Ok(())
             };
 
