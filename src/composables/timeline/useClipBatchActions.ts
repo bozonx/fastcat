@@ -15,6 +15,7 @@ import {
   getSelectedClipRefs,
   isClipFrameAligned,
 } from '~/utils/timeline/clip-capabilities';
+import { buildQuantizeClipCommands } from '~/utils/timeline/clip-quantize';
 
 type ClipPropertiesPatch = UpdateClipPropertiesCommand['properties'];
 
@@ -374,14 +375,7 @@ export function useClipBatchActions(
     for (const { track, clip } of editableClipRefs.value) {
       if (isClipFrameAligned(clip, fps)) continue;
 
-      cmds.push({
-        type: 'trim_item',
-        trackId: track.id,
-        itemId: clip.id,
-        edge: 'end',
-        deltaUs: 0,
-        quantizeToFrames: true,
-      });
+      cmds.push(...buildQuantizeClipCommands({ trackId: track.id, clip, fps }));
     }
 
     if (cmds.length === 0) return;

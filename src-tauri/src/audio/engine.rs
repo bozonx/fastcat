@@ -603,6 +603,16 @@ impl NativeAudioEngine {
         self.clock.output_levels_db()
     }
 
+    pub fn track_levels_db(&self) -> std::collections::HashMap<String, (f64, f64)> {
+        let state = self.shared.0.lock();
+        state.track_levels.clone()
+    }
+
+    pub fn clear_track_levels(&self) {
+        let mut state = self.shared.0.lock();
+        state.track_levels.clear();
+    }
+
     /// True when the output device stream looks dead and the engine should be
     /// rebuilt. Two signals: a fatal cpal stream error (`err_fn` set the flag), or
     /// the output clock frozen for `OUTPUT_STALL_TIMEOUT` while armed with a

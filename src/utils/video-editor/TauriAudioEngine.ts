@@ -15,6 +15,7 @@ const EVT_TIME = 'monitor:time';
 interface NativeAudioLevelsPayload {
   rmsDb: number;
   peakDb: number;
+  tracks?: Record<string, { rmsDb: number; peakDb: number }>;
 }
 
 /**
@@ -41,6 +42,7 @@ export class TauriAudioEngine implements IAudioEngine {
   private currentMasterVolume = 1;
   private currentMonitorVolume = 1;
   private currentMasterLevels = { rmsDb: -60, peakDb: -60 };
+  private currentTrackLevels = new Map<string, { rmsDb: number; peakDb: number }>();
   private unlistenTime: UnlistenFn | null = null;
   private unlistenLevels: UnlistenFn | null = null;
 
@@ -77,6 +79,16 @@ export class TauriAudioEngine implements IAudioEngine {
         rmsDb: Number.isFinite(levels.rmsDb) ? levels.rmsDb : -60,
         peakDb: Number.isFinite(levels.peakDb) ? levels.peakDb : -60,
       };
+
+      this.currentTrackLevels.clear();
+      if (levels.tracks) {
+        for (const [trackId, trackLevels] of Object.entries(levels.tracks)) {
+          this.currentTrackLevels.set(trackId, {
+            rmsDb: Number.isFinite(trackLevels.rmsDb) ? trackLevels.rmsDb : -60,
+            peakDb: Number.isFinite(trackLevels.peakDb) ? trackLevels.peakDb : -60,
+          });
+        }
+      }
     }).then((unlisten) => {
       if (this.destroyed) {
         unlisten();
@@ -140,8 +152,7 @@ export class TauriAudioEngine implements IAudioEngine {
 
   getLevels(trackId?: string): { rmsDb: number; peakDb: number } {
     if (trackId) {
-      // Native per-track metering is not emitted yet; avoid showing fake bus data.
-      return { rmsDb: -60, peakDb: -60 };
+      return this.currentTrackLevels.get(trackId) ?? { rmsDb: -60, peakDb: -60 };
     }
     return this.currentMasterLevels;
   }

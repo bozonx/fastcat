@@ -7,6 +7,8 @@ import {
   clipSupportsThumbnailControls,
 } from '~/utils/timeline/clip-capabilities';
 import { getApplicableClipParameterGroups } from '~/utils/timeline/clip-parameters';
+import { sanitizeFps } from '~/timeline/commands/utils';
+import { buildQuantizeClipCommands } from '~/utils/timeline/clip-quantize';
 
 export function buildSingleClipMainGroup(options: UseClipContextMenuOptions): ContextMenuGroup[] {
   const track = options.track.value;
@@ -214,14 +216,10 @@ export function buildSingleClipMainGroup(options: UseClipContextMenuOptions): Co
       label: options.t('fastcat.timeline.quantize'),
       icon: 'i-heroicons-squares-2x2',
       onSelect: async () => {
-        options.emitClipAction({
-          action: 'trim_item',
-          trackId: track.id,
-          itemId: clipItem.id,
-          edge: 'end',
-          deltaUs: 0,
-          quantizeToFrames: true,
-        });
+        const fps = sanitizeFps(options.timelineDoc.value?.timebase?.fps);
+        options.batchApplyTimeline(
+          buildQuantizeClipCommands({ trackId: track.id, clip: clipItem, fps }),
+        );
         await options.requestTimelineSave({ immediate: true });
       },
     });

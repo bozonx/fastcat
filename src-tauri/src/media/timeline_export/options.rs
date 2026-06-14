@@ -51,4 +51,6 @@ pub struct NativeExportOptions {
     pub ffprobe_path: Option<String>,
     #[serde(default)]
     pub export_alpha: Option<bool>,
+    #[serde(default)]
+    pub fast_start: Option<bool>,
 }

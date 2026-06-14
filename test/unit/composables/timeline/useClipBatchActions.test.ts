@@ -213,12 +213,19 @@ describe('useClipBatchActions', () => {
     expect(batchApplyTimeline).toHaveBeenCalledTimes(1);
     expect(batchApplyTimeline).toHaveBeenCalledWith([
       {
+        type: 'move_item',
+        trackId: 'v1',
+        itemId: 'free-1',
+        startUs: 0,
+        quantizeToFrames: false,
+      },
+      {
         type: 'trim_item',
         trackId: 'v1',
         itemId: 'free-1',
         edge: 'end',
         deltaUs: 0,
-        quantizeToFrames: true,
+        quantizeToFrames: false,
       },
     ]);
   });

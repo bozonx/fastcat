@@ -28,6 +28,7 @@ export const ExportOptionsSchema = z.object({
   bitrateMode: z.enum(['constant', 'variable']).optional(),
   keyframeIntervalSec: z.number().finite().positive().max(1_000).optional(),
   exportAlpha: z.boolean().optional(),
+  fastStart: z.boolean().optional(),
   metadata: z
     .object({
       title: z.string(),
@@ -70,6 +71,7 @@ export const TranscodeOptionsSchema = z.object({
   bitrateMode: z.enum(['constant', 'variable']).optional(),
   keyframeIntervalSec: z.number().finite().positive().max(1_000).optional(),
   exportAlpha: z.boolean().optional(),
+  fastStart: z.boolean().optional(),
   audioBitrate: z.number().finite().min(1),
   audio: z.boolean(),
   audioCodec: z.string().trim().min(1).optional(),

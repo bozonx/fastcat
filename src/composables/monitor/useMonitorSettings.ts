@@ -22,8 +22,18 @@ export function useMonitorSettings() {
     },
   });
 
+  const showMarkerTexts = computed({
+    get: () => projectSettingsStore.activeMonitor?.showMarkerTexts ?? true,
+    set: (val) => {
+      if (projectSettingsStore.activeMonitor) {
+        projectSettingsStore.activeMonitor.showMarkerTexts = val;
+      }
+    },
+  });
+
   return {
     showTimecode,
     showTransparencyGrid,
+    showMarkerTexts,
   };
 }

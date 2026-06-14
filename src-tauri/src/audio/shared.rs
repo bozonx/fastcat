@@ -264,6 +264,7 @@ pub(crate) struct AudioShared {
     pub(crate) scrub_request: Option<ScrubRequest>,
     /// Set by the UI thread to stop an in-progress scrub preview (drag ended).
     pub(crate) scrub_cancel: bool,
+    pub(crate) track_levels: HashMap<String, (f64, f64)>,
 }
 
 impl Default for AudioShared {
@@ -292,6 +293,7 @@ impl Default for AudioShared {
             pending_ring_clear: false,
             scrub_request: None,
             scrub_cancel: false,
+            track_levels: HashMap::new(),
         }
     }
 }

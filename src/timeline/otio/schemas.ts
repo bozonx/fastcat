@@ -260,6 +260,17 @@ export const TimelineClipRoundtripSchema = z.object({
   sourceRange: z.object({ startUs: z.number(), durationUs: z.number() }).optional(),
 });
 
+export const TimelineGapFastCatMetaSchema = z
+  .object({
+    id: z.string().trim().min(1).optional(),
+    roundtrip: z
+      .object({
+        timelineRange: z.object({ startUs: z.number(), durationUs: z.number() }).optional(),
+      })
+      .optional(),
+  })
+  .catch({});
+
 export const TimelineClipFastCatMetaSchema = z
   .object({
     id: z.string().trim().min(1).optional(),

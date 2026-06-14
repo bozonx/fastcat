@@ -1,6 +1,6 @@
-import type { UnlistenFn } from '@tauri-apps/api/event';
+import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 import { computed, onScopeDispose, watch } from 'vue';
-import { nativeMonitorIpc, onMonitorTime, onMonitorEnded } from './native-monitor-ipc';
+import { nativeMonitorIpc, onMonitorTime, onMonitorEnded, MONITOR_EVENTS } from './native-monitor-ipc';
 
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useProjectStore } from '~/stores/project.store';
@@ -447,6 +447,38 @@ export function useNativeMonitorBridge(): void {
       unsubs.push(un);
     })
     .catch((err) => log.warn('listen monitor:ended failed', err));
+
+  void listen<any>(MONITOR_EVENTS.audioLevels, (event) => {
+    if (disposed) return;
+    const payload = event.payload;
+    if (!payload) return;
+
+    const nextLevels = { ...timelineStore.audioLevels };
+    nextLevels.master = {
+      rmsDb: Number.isFinite(payload.rmsDb) ? payload.rmsDb : -60,
+      peakDb: Number.isFinite(payload.peakDb) ? payload.peakDb : -60,
+    };
+
+    if (payload.tracks) {
+      for (const [trackId, trackLevels] of Object.entries(payload.tracks)) {
+        const trL = trackLevels as { rmsDb: number; peakDb: number };
+        nextLevels[trackId] = {
+          rmsDb: Number.isFinite(trL.rmsDb) ? trL.rmsDb : -60,
+          peakDb: Number.isFinite(trL.peakDb) ? trL.peakDb : -60,
+        };
+      }
+    }
+
+    timelineStore.audioLevels = nextLevels;
+  })
+    .then((un) => {
+      if (disposed) {
+        un();
+        return;
+      }
+      unsubs.push(un);
+    })
+    .catch((err) => log.warn('listen monitor:audio-levels failed', err));
 
   onScopeDispose(() => {
     disposed = true;

@@ -243,7 +243,7 @@ fn push_audio_metadata_output_tail(
         args.extend(["-metadata".to_string(), format!("{tags_key}={tags}")]);
     }
 
-    if options.format == "mp4" || options.format == "mov" {
+    if (options.format == "mp4" || options.format == "mov") && options.fast_start.unwrap_or(true) {
         args.extend(["-movflags".to_string(), "+faststart".to_string()]);
     }
 

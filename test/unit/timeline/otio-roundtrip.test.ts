@@ -66,4 +66,36 @@ describe('timeline OTIO roundtrip', () => {
 
     expect(parsed.tracks.map((track) => track.id)).toEqual(['v1', 'v3', 'v2', 'a2', 'a1']);
   });
+
+  it('preserves free clip timing and sub-frame gaps after serializing and parsing', () => {
+    const base = createDefaultTimelineDocument({
+      id: 'doc-1',
+      name: 'Timeline',
+      format: { fps: 30, width: 1920, height: 1080 },
+    });
+
+    const doc = applyTimelineCommand(base, {
+      type: 'add_clip_to_track',
+      trackId: 'v1',
+      name: 'Free Clip',
+      path: '_video/clip.mp4',
+      startUs: 10_000,
+      durationUs: 1_010_001,
+      sourceDurationUs: 2_000_000,
+      quantizeToFrames: false,
+    }).next;
+
+    const parsed = parseTimelineFromOtio(serializeTimelineToOtio(doc), {
+      id: 'fallback',
+      name: 'Fallback',
+      format: { fps: 30, width: 1920, height: 1080 },
+    });
+
+    const track = parsed.tracks.find((candidate) => candidate.id === 'v1');
+    const gap = track?.items.find((item) => item.kind === 'gap');
+    const clip = track?.items.find((item): item is TimelineClipItem => item.kind === 'clip');
+
+    expect(gap?.timelineRange).toEqual({ startUs: 0, durationUs: 10_000 });
+    expect(clip?.timelineRange).toEqual({ startUs: 10_000, durationUs: 1_010_001 });
+  });
 });

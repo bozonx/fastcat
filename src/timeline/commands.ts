@@ -49,6 +49,7 @@ export interface AddClipToTrackCommand {
   path: string;
   startUs: number;
   durationUs: number;
+  quantizeToFrames?: boolean;
   sourceDurationUs?: number;
   sourceRange?: TimelineRange;
   isImage?: boolean;
@@ -66,6 +67,7 @@ export interface AddVirtualClipToTrackCommand {
   name: string;
   durationUs?: number;
   startUs?: number;
+  quantizeToFrames?: boolean;
   pseudo?: boolean;
   backgroundColor?: string;
   text?: string;

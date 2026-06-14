@@ -2,6 +2,8 @@ import type { TimelineCommand } from '~/timeline/commands';
 import type { ContextMenuGroup, UseClipContextMenuOptions } from './types';
 import { collectMultiSelectionState, isClipFreePosition } from './utils';
 import { createLinkedGroupId } from '~/timeline/id';
+import { sanitizeFps } from '~/timeline/commands/utils';
+import { buildQuantizeClipCommands } from '~/utils/timeline/clip-quantize';
 
 export function buildMultiSelectionContextMenu(
   options: UseClipContextMenuOptions,
@@ -100,6 +102,7 @@ export function buildMultiSelectionContextMenu(
         if (!state.doc) return;
 
         const cmds: TimelineCommand[] = [];
+        const fps = sanitizeFps(state.doc.timebase?.fps);
         for (const { trackId, itemId } of state.itemsToUpdate) {
           const track = state.doc.tracks.find((candidateTrack) => candidateTrack.id === trackId);
           const clip = track?.items.find((candidateItem) => candidateItem.id === itemId);
@@ -107,14 +110,7 @@ export function buildMultiSelectionContextMenu(
           if (clip.locked) continue;
           if (!isClipFreePosition(clip, state.doc)) continue;
 
-          cmds.push({
-            type: 'trim_item',
-            trackId,
-            itemId,
-            edge: 'end',
-            deltaUs: 0,
-            quantizeToFrames: true,
-          });
+          cmds.push(...buildQuantizeClipCommands({ trackId, clip, fps }));
         }
 
         if (cmds.length === 0) return;

@@ -26,6 +26,7 @@ export interface ProjectMonitorSettings {
   showTimecode: boolean;
   toolbarPosition: 'top' | 'bottom' | 'left' | 'right';
   showTransparencyGrid: boolean;
+  showMarkerTexts: boolean;
 }
 
 /**
@@ -90,6 +91,7 @@ export interface FastCatProjectSettings {
       bitrateMode: 'constant' | 'variable';
       keyframeIntervalSec: number;
       exportAlpha: boolean;
+      fastStart: boolean;
     };
   };
   /** Project-wide monitor settings (effects, proxy, resolution, grid, timecode, toolbar position). */
@@ -126,6 +128,7 @@ export interface FastCatProjectSettings {
     bitrateMode: 'constant' | 'variable';
     keyframeIntervalSec: number;
     exportAlpha: boolean;
+    fastStart: boolean;
     matchTimeline: boolean;
     customWidth: number;
     customHeight: number;
@@ -146,6 +149,7 @@ export const DEFAULT_PROJECT_MONITOR_SETTINGS: ProjectMonitorSettings = {
   showTimecode: true,
   toolbarPosition: 'bottom',
   showTransparencyGrid: false,
+  showMarkerTexts: true,
 };
 
 export const DEFAULT_MONITOR_VIEW_SETTINGS: MonitorViewSettings = {
@@ -185,6 +189,7 @@ export const DEFAULT_PROJECT_SETTINGS: FastCatProjectSettings = {
       bitrateMode: 'variable',
       keyframeIntervalSec: 2,
       exportAlpha: false,
+      fastStart: true,
     },
   },
   monitor: { ...DEFAULT_PROJECT_MONITOR_SETTINGS },
@@ -253,6 +258,7 @@ function getProjectSettingsFromUserDefaults(
         bitrateMode: exportPreset.bitrateMode,
         keyframeIntervalSec: exportPreset.keyframeIntervalSec,
         exportAlpha: exportPreset.exportAlpha,
+        fastStart: exportPreset.fastStart,
       },
     },
   };
@@ -316,6 +322,7 @@ function createProjectSettingsSchema(defaults: FastCatProjectSettings) {
     showTimecode: z.coerce.boolean().catch(dm.showTimecode),
     toolbarPosition: z.enum(['top', 'bottom', 'left', 'right']).catch(dm.toolbarPosition),
     showTransparencyGrid: z.coerce.boolean().catch(dm.showTransparencyGrid),
+    showMarkerTexts: z.coerce.boolean().catch(dm.showMarkerTexts),
   });
 
   const sessionSchema = z.object({
@@ -423,6 +430,7 @@ function createProjectSettingsSchema(defaults: FastCatProjectSettings) {
                   .max(60)
                   .catch(defaults.exportDefaults.encoding.keyframeIntervalSec),
                 exportAlpha: z.coerce.boolean().catch(defaults.exportDefaults.encoding.exportAlpha),
+                fastStart: z.coerce.boolean().catch(defaults.exportDefaults.encoding.fastStart),
               })
               .catch(defaults.exportDefaults.encoding),
           })
@@ -476,6 +484,8 @@ function pickProjectMonitorFields(
   if (typeof source.showTimecode === 'boolean') out.showTimecode = source.showTimecode;
   if (typeof source.showTransparencyGrid === 'boolean')
     out.showTransparencyGrid = source.showTransparencyGrid;
+  if (typeof source.showMarkerTexts === 'boolean')
+    out.showMarkerTexts = source.showMarkerTexts;
   if (
     typeof source.toolbarPosition === 'string' &&
     ['top', 'bottom', 'left', 'right'].includes(source.toolbarPosition)

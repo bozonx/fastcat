@@ -38,7 +38,7 @@ const props = withDefaults(
 
 const projectStore = useProjectStore();
 const timelineStore = useTimelineStore();
-const { showTimecode, showTransparencyGrid } = useMonitorSettings();
+const { showTimecode, showTransparencyGrid, showMarkerTexts } = useMonitorSettings();
 const viewportEl = ref<HTMLElement | null>(null);
 const timecodeEl = ref<HTMLElement | null>(null);
 const nativeCanvasEl = ref<HTMLCanvasElement | null>(null);
@@ -184,7 +184,7 @@ defineExpose({
       <div class="absolute inset-0 pointer-events-none select-none">
         <!-- Active Markers -->
         <div
-          v-if="activeMarkers.length"
+          v-if="showMarkerTexts && activeMarkers.length"
           class="absolute flex flex-col items-end gap-1 transition-all duration-300 z-10"
           :class="[
             markersBottomClass,

@@ -87,6 +87,7 @@ export function normalizeExportPresetItem(
         .catch(fallback.bitrateMode as 'constant' | 'variable'),
       keyframeIntervalSec: z.coerce.number().min(1).max(60).catch(fallback.keyframeIntervalSec),
       exportAlpha: z.boolean().catch(fallback.exportAlpha),
+      fastStart: z.boolean().catch(fallback.fastStart),
     })
     .catch(fallback);
 

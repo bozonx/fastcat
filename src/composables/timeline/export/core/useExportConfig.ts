@@ -28,6 +28,7 @@ export function useExportConfig() {
   const bitrateMode = ref<'constant' | 'variable'>('variable');
   const keyframeIntervalSec = ref<number>(2);
   const exportAlpha = ref<boolean>(false);
+  const fastStart = ref<boolean>(true);
   const metadataTitle = ref<string>('');
   const metadataDescription = ref<string>('');
   const metadataAuthor = ref<string>('');
@@ -135,6 +136,7 @@ export function useExportConfig() {
     bitrateMode,
     keyframeIntervalSec,
     exportAlpha,
+    fastStart,
     metadataTitle,
     metadataDescription,
     metadataAuthor,

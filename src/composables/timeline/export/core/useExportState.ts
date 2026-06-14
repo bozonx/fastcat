@@ -4,7 +4,7 @@ export function useExportState() {
   const isExporting = ref(false);
   const exportProgress = ref(0);
   const exportError = ref<string | null>(null);
-  const exportPhase = ref<'preparing' | 'encoding' | 'saving' | null>(null);
+  const exportPhase = ref<'preparing' | 'encoding' | 'finalizing' | null>(null);
   const exportWarnings = ref<string[]>([]);
   const exportDurationMs = ref<number | null>(null);
   const lastExportStatus = ref<'success' | 'error' | null>(null);

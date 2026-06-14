@@ -228,6 +228,7 @@ function handleUpdateStartTime(val: number) {
     trackId: props.clip.trackId,
     itemId: props.clip.id,
     startUs: newStartUs,
+    quantizeToFrames: false,
   });
 }
 

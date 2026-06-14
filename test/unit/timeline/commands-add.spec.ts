@@ -1,6 +1,6 @@
 /** @vitest-environment node */
 import { describe, it, expect } from 'vitest';
-import { addClipToTrack } from '~/timeline/commands/item/add';
+import { addClipToTrack, addVirtualClipToTrack } from '~/timeline/commands/item/add';
 import type { TimelineDocument } from '~/timeline/types';
 
 function makeDoc(): TimelineDocument {
@@ -31,6 +31,38 @@ describe('addClipToTrack', () => {
     // 50_000us at 30fps is between 1 and 2 frames; rounding gives 2 frames = 66_667us
     expect(clip.timelineRange.startUs).toBe(66_667);
     expect(clip.timelineRange.durationUs).toBe(66_667);
+  });
+
+  it('keeps free startUs and durationUs when frame quantization is disabled', () => {
+    const doc = makeDoc();
+    const result = addClipToTrack(doc, {
+      type: 'add_clip_to_track',
+      trackId: 'v1',
+      name: 'clip',
+      path: 'video/a.mp4',
+      startUs: 50_000,
+      durationUs: 50_001,
+      quantizeToFrames: false,
+    });
+
+    const clip = result.next.tracks[0].items.find((it: any) => it.kind === 'clip');
+    expect(clip?.timelineRange).toEqual({ startUs: 50_000, durationUs: 50_001 });
+  });
+
+  it('keeps virtual clip free startUs and durationUs when frame quantization is disabled', () => {
+    const doc = makeDoc();
+    const result = addVirtualClipToTrack(doc, {
+      type: 'add_virtual_clip_to_track',
+      trackId: 'v1',
+      clipType: 'text',
+      name: 'text',
+      startUs: 50_000,
+      durationUs: 50_001,
+      quantizeToFrames: false,
+    });
+
+    const clip = result.next.tracks[0].items.find((it: any) => it.kind === 'clip');
+    expect(clip?.timelineRange).toEqual({ startUs: 50_000, durationUs: 50_001 });
   });
 
   it('throws when adding an overlapping clip without pseudo', () => {

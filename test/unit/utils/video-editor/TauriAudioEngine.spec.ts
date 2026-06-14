@@ -145,16 +145,25 @@ describe('TauriAudioEngine', () => {
     expect(setOutputGainMock).toHaveBeenNthCalledWith(3, 10);
   });
 
-  it('getLevels returns native master levels and silence for per-track meters', async () => {
+  it('getLevels returns native master levels and track levels when present', async () => {
     const engine = await createEngine();
     const levelsHandler = listenMock.mock.calls[1]?.[1] as (event: {
-      payload: { rmsDb: number; peakDb: number };
+      payload: any;
     }) => void;
 
-    levelsHandler({ payload: { rmsDb: -18, peakDb: -6 } });
+    levelsHandler({
+      payload: {
+        rmsDb: -18,
+        peakDb: -6,
+        tracks: {
+          'track-1': { rmsDb: -12, peakDb: -3 },
+        },
+      },
+    });
 
     expect(engine.getLevels()).toEqual({ rmsDb: -18, peakDb: -6 });
-    expect(engine.getLevels('track-1')).toEqual({ rmsDb: -60, peakDb: -60 });
+    expect(engine.getLevels('track-1')).toEqual({ rmsDb: -12, peakDb: -3 });
+    expect(engine.getLevels('track-2')).toEqual({ rmsDb: -60, peakDb: -60 });
   });
 
   it('previewScrubForward delegates to native IPC for forward spans', async () => {

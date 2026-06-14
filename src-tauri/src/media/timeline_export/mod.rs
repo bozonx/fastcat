@@ -173,6 +173,7 @@ pub fn export_timeline(
             .audio_sample_rate
             .unwrap_or(DEFAULT_AUDIO_SAMPLE_RATE)
             .clamp(8_000, 192_000);
+        let last_reported_pct = std::sync::atomic::AtomicU32::new(0);
         if let Err(e) = render_scene_to_wav(crate::audio::mix::WavRenderParams {
             scene: &scene.audio_layers,
             tracks: &scene.audio_tracks,
@@ -185,7 +186,13 @@ pub fn export_timeline(
             target_path: &path,
             should_cancel: Some(&|| tasks.was_cancelled(task_id)),
             on_progress: Some(&|frac: f64| {
-                on_progress((audio_progress_share * frac).clamp(0.0, 1.0))
+                let progress = (audio_progress_share * frac).clamp(0.0, 1.0);
+                let pct = (progress * 100.0) as u32;
+                let last = last_reported_pct.load(std::sync::atomic::Ordering::Relaxed);
+                if pct != last || progress == 0.0 || progress == 1.0 {
+                    last_reported_pct.store(pct, std::sync::atomic::Ordering::Relaxed);
+                    on_progress(progress);
+                }
             }),
         })
         .context("failed to render native audio mix")
@@ -360,78 +367,141 @@ pub fn export_timeline(
                 }
                 result
             } else if is_video {
-                let mut stdin = child
+                let stdin = child
                     .lock()
                     .stdin
                     .take()
                     .ok_or_else(|| anyhow!("ffmpeg stdin unavailable"))?;
 
-                // Render frames sequentially through a dedicated compositor, separate
-                // from the thumbnail pool, so export and thumbnail generation do not
-                // contend for the same GPU target.
-                let mut compositor = Compositor::new();
-                let dev_id = compositor
-                    .ensure_offscreen_device()
-                    .context("export: no GPU device")?;
+                // Three-stage pipeline so decode (CPU), composite (GPU) and encode
+                // (ffmpeg) run concurrently instead of taking turns on one thread:
+                //
+                //   decode thread → [scene] → GPU (this thread) → [rgba] → writer thread
+                //
+                // The old serial loop left every stage idle while another ran — the GPU
+                // waited on the single-threaded CPU decode, then both stalled on a blocking
+                // `stdin.write_all` whenever ffmpeg applied back-pressure — so neither the
+                // GPU nor the CPU ever saturated. The bounded channels cap in-flight frames
+                // (and therefore memory) while letting each stage work a frame ahead.
+                //
+                // Shutdown/error flow: when a downstream stage fails it drops its receiver,
+                // so the upstream `send` returns `Err`. Each stage treats a failed send as
+                // "stop quietly" and returns `Ok`, leaving the stage that *actually* failed
+                // to surface the real error. Cancellation is detected in the decode stage
+                // (per frame) and, faster, by the watchdog tearing ffmpeg down — which makes
+                // the writer's `write_all` fail and unwinds the pipeline the same way.
+                const PIPELINE_DEPTH: usize = 4;
+                let (scene_tx, scene_rx) =
+                    std::sync::mpsc::sync_channel::<crate::compositor::scene::Scene>(PIPELINE_DEPTH);
+                let (rgba_tx, rgba_rx) = std::sync::mpsc::sync_channel::<Vec<u8>>(PIPELINE_DEPTH);
 
-                let mut cache = super::timeline_render::VideoDecoderCache::new_with_hw_decode(
-                    effective_decode_hw,
-                    decode_vaapi_device.clone(),
-                );
-                let mut pipeline = compositor
-                    .begin_pipelined_readback(dev_id, width, height, 2)
-                    .context("export: failed to create pipelined readback")?;
+                // Owned clone: `run_attempt` may run twice (HW→SW fallback), so we must not
+                // move the captured `decode_vaapi_device` out of the enclosing closure.
+                let decode_vaapi_device = decode_vaapi_device.clone();
+                let scene_ref = &scene;
+                let report = &report_video_progress;
+                let activity = &last_activity;
 
-                let result = (|| -> Result<()> {
-                    for i in 0..frame_count {
-                        // Honour cancellation even while the GPU is the bottleneck and no
-                        // frame is being written (the stdin-write path below only notices a
-                        // killed ffmpeg on the next successful emit).
-                        if tasks.was_cancelled(task_id) {
-                            return Err(anyhow!("cancelled"));
+                std::thread::scope(|s| -> Result<()> {
+                    // Stage 1: decode each source frame and build its export scene.
+                    let decode_handle = s.spawn(move || -> Result<()> {
+                        let mut cache =
+                            super::timeline_render::VideoDecoderCache::new_with_hw_decode(
+                                effective_decode_hw,
+                                decode_vaapi_device,
+                            );
+                        for i in 0..frame_count {
+                            // Honour cancellation here; the watchdog covers the case where
+                            // this stage is blocked on a full channel (GPU is the bottleneck).
+                            if tasks.was_cancelled(task_id) {
+                                return Err(anyhow!("cancelled"));
+                            }
+                            // Sample the CENTRE of each frame interval, not its leading
+                            // edge. Clip boundaries are stored on a microsecond grid
+                            // (`frameToUs`), so a boundary can sit up to half a microsecond
+                            // *after* the exact `i/fps` edge; the half-open `covers()` test
+                            // then kept the previous clip's last frame for one extra frame at
+                            // the cut (a duplicate frame / stutter). The centre `(i+0.5)/fps`
+                            // is always strictly inside frame `i`'s interval, on the correct
+                            // side of any frame-quantised boundary — matching the paused
+                            // monitor, which samples the quantised playhead exactly on the cut.
+                            let time = export_frame_sample_time(start, end, fps, i);
+                            let mut frame_scene = super::timeline_render::build_export_scene(
+                                scene_ref,
+                                time,
+                                (width, height),
+                                &mut cache,
+                                Some(on_warning),
+                            )?;
+                            frame_scene.background = frame_background;
+                            // Downstream (GPU) gone: stop and let it report the real error.
+                            if scene_tx.send(frame_scene).is_err() {
+                                return Ok(());
+                            }
                         }
-                        // Sample the CENTRE of each frame interval, not its leading
-                        // edge. Clip boundaries are stored on a microsecond grid
-                        // (`frameToUs`), so a boundary can sit up to half a microsecond
-                        // *after* the exact `i/fps` edge; the half-open `covers()` test
-                        // then kept the previous clip's last frame for one extra frame at
-                        // the cut (a duplicate frame / stutter). The centre `(i+0.5)/fps`
-                        // is always strictly inside frame `i`'s interval, on the correct
-                        // side of any frame-quantised boundary — matching the paused
-                        // monitor, which samples the quantised playhead exactly on the cut.
-                        let time = export_frame_sample_time(start, end, fps, i);
-                        let mut frame_scene = super::timeline_render::build_export_scene(
-                            &scene,
-                            time,
-                            (width, height),
-                            &mut cache,
-                            Some(on_warning),
-                        )?;
-                        frame_scene.background = frame_background;
-                        if let Some(pixels) = compositor
-                            .render_scene_to_pixels_pipelined(&mut pipeline, &frame_scene)?
-                        {
+                        Ok(())
+                    });
+
+                    // Stage 3: stream finished RGBA frames into ffmpeg's stdin.
+                    let write_handle = s.spawn(move || -> Result<()> {
+                        let mut stdin = stdin;
+                        let mut written: u64 = 0;
+                        for pixels in rgba_rx.iter() {
                             if let Err(e) = stdin.write_all(&pixels) {
                                 return Err(anyhow!("ffmpeg stdin closed prematurely: {e}"));
                             }
-                            last_activity.store(now_millis(), Ordering::Release);
-                            report_video_progress(pipeline.emitted as f64 / frame_count as f64);
+                            written += 1;
+                            activity.store(now_millis(), Ordering::Release);
+                            report(written as f64 / frame_count as f64);
                         }
-                    }
-                    // Сливаем хвостовые кадры, которые ещё висят в pipeline.
-                    for pixels in pipeline.drain(&mut compositor)? {
-                        if let Err(e) = stdin.write_all(&pixels) {
-                            return Err(anyhow!("ffmpeg stdin closed prematurely: {e}"));
-                        }
-                        last_activity.store(now_millis(), Ordering::Release);
-                        report_video_progress(pipeline.emitted as f64 / frame_count as f64);
-                    }
-                    Ok(())
-                })();
+                        // Close stdin so ffmpeg finalizes the container.
+                        drop(stdin);
+                        Ok(())
+                    });
 
-                // Close stdin so ffmpeg finalizes the container.
-                drop(stdin);
-                result
+                    // Stage 2: composite on the GPU (this thread, separate from the
+                    // thumbnail pool so export and thumbnails don't contend for the target).
+                    let gpu_result = (|| -> Result<()> {
+                        let mut compositor = Compositor::new();
+                        let dev_id = compositor
+                            .ensure_offscreen_device()
+                            .context("export: no GPU device")?;
+                        let mut pipeline = compositor
+                            .begin_pipelined_readback(dev_id, width, height, 2)
+                            .context("export: failed to create pipelined readback")?;
+                        for frame_scene in scene_rx.iter() {
+                            if let Some(pixels) = compositor
+                                .render_scene_to_pixels_pipelined(&mut pipeline, &frame_scene)?
+                            {
+                                // Downstream (writer) gone: stop and let it report.
+                                if rgba_tx.send(pixels).is_err() {
+                                    return Ok(());
+                                }
+                            }
+                        }
+                        // Flush the tail frames still held in the readback pipeline.
+                        for pixels in pipeline.drain(&mut compositor)? {
+                            if rgba_tx.send(pixels).is_err() {
+                                return Ok(());
+                            }
+                        }
+                        Ok(())
+                    })();
+                    // Drop our sender so the writer's `rgba_rx.iter()` terminates.
+                    drop(rgba_tx);
+
+                    let decode_result = decode_handle
+                        .join()
+                        .map_err(|_| anyhow!("export decode thread panicked"))?;
+                    let write_result = write_handle
+                        .join()
+                        .map_err(|_| anyhow!("export writer thread panicked"))?;
+
+                    // Surface the root cause first: a stage whose downstream died returned
+                    // Ok, so the only Err here is the stage that truly failed. Order
+                    // decode → GPU → writer puts the cause ahead of the symptom.
+                    decode_result.and(gpu_result).and(write_result)
+                })
             } else {
                 report_video_progress(1.0);
                 Ok(())

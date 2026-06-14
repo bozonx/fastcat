@@ -13,7 +13,7 @@ import {
 } from './utils';
 import { parseEffects, parseFastCatTransition, parseTimeEffects } from './serialization';
 import { sanitizeTimelineColor } from '~/utils/video-editor/utils';
-import { TimelineClipFastCatMetaSchema } from './schemas';
+import { TimelineClipFastCatMetaSchema, TimelineGapFastCatMetaSchema } from './schemas';
 
 // ---------------------------------------------------------------------------
 // Sequence duration helper
@@ -371,13 +371,21 @@ export function parseGapItem(input: {
 }): TimelineGapItem {
   const { trackId, otio, index, occupiedIds, fallbackStartUs } = input;
   const range = fromTimeRange(otio.source_range);
-  const fastcatMeta = safeFastCatMetadata(otio.metadata);
-  const timelineStartUs = fallbackStartUs;
+  const fastcatMeta = TimelineGapFastCatMetaSchema.parse(safeFastCatMetadata(otio.metadata));
+  const roundtripRange = fastcatMeta.roundtrip?.timelineRange;
+  const timelineStartUs =
+    roundtripRange?.startUs !== undefined
+      ? Math.max(0, Math.round(roundtripRange.startUs))
+      : fallbackStartUs;
+  const durationUs =
+    roundtripRange?.durationUs !== undefined
+      ? Math.max(0, Math.round(roundtripRange.durationUs))
+      : range.durationUs;
   const id = resolveStableItemId({
     prefix: 'gap',
     trackId,
     fallbackFingerprint: JSON.stringify({
-      durationUs: range.durationUs,
+      durationUs,
       timelineStartUs,
       index,
     }),
@@ -389,6 +397,6 @@ export function parseGapItem(input: {
     kind: 'gap',
     id,
     trackId,
-    timelineRange: { startUs: timelineStartUs, durationUs: range.durationUs },
+    timelineRange: { startUs: timelineStartUs, durationUs },
   };
 }

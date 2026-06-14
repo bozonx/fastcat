@@ -154,7 +154,14 @@ function serializeTrackItems(
         OTIO_SCHEMA: 'Gap.1',
         name: 'gap',
         source_range: toTimeRange({ startUs: 0, durationUs: startUs - cursorUs }, fps),
-        metadata: { fastcat: { id: `gap_${trackId}_${cursorUs}` } },
+        metadata: {
+          fastcat: {
+            id: `gap_${trackId}_${cursorUs}`,
+            roundtrip: {
+              timelineRange: { startUs: cursorUs, durationUs: startUs - cursorUs },
+            },
+          },
+        },
       });
       cursorUs = startUs;
     }
@@ -164,7 +171,14 @@ function serializeTrackItems(
         OTIO_SCHEMA: 'Gap.1',
         name: 'gap',
         source_range: toTimeRange({ startUs: 0, durationUs }, fps),
-        metadata: { fastcat: { id: item.id } },
+        metadata: {
+          fastcat: {
+            id: item.id,
+            roundtrip: {
+              timelineRange: item.timelineRange,
+            },
+          },
+        },
       });
       cursorUs += durationUs;
       continue;

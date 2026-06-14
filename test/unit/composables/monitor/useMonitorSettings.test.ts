@@ -5,6 +5,7 @@ import { ref } from 'vue';
 const mockActiveMonitor = ref({
   showTimecode: true,
   showTransparencyGrid: false,
+  showMarkerTexts: true,
 });
 
 vi.mock('~/stores/project-settings.store', () => ({
@@ -18,6 +19,7 @@ describe('useMonitorSettings', () => {
     mockActiveMonitor.value = {
       showTimecode: true,
       showTransparencyGrid: false,
+      showMarkerTexts: true,
     };
   });
 
@@ -31,15 +33,27 @@ describe('useMonitorSettings', () => {
     expect(showTransparencyGrid.value).toBe(false);
   });
 
+  it('returns default showMarkerTexts value', () => {
+    const { showMarkerTexts } = useMonitorSettings();
+    expect(showMarkerTexts.value).toBe(true);
+  });
+
   it('toggles showTransparencyGrid', () => {
     const { showTransparencyGrid } = useMonitorSettings();
     showTransparencyGrid.value = true;
     expect(mockActiveMonitor.value.showTransparencyGrid).toBe(true);
   });
 
-  it('falls back to false when activeMonitor is null', () => {
+  it('toggles showMarkerTexts', () => {
+    const { showMarkerTexts } = useMonitorSettings();
+    showMarkerTexts.value = false;
+    expect(mockActiveMonitor.value.showMarkerTexts).toBe(false);
+  });
+
+  it('falls back to defaults when activeMonitor is null', () => {
     mockActiveMonitor.value = null as any;
-    const { showTransparencyGrid } = useMonitorSettings();
+    const { showTransparencyGrid, showMarkerTexts } = useMonitorSettings();
     expect(showTransparencyGrid.value).toBe(false);
+    expect(showMarkerTexts.value).toBe(true);
   });
 });

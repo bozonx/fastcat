@@ -38,9 +38,17 @@ const EVT_AUDIO_LEVELS: &str = "monitor:audio-levels";
 
 #[derive(Debug, Clone, Copy, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
+struct TrackLevelsPayload {
+    rms_db: f64,
+    peak_db: f64,
+}
+
+#[derive(Debug, Clone, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
 struct AudioLevelsPayload {
     rms_db: f64,
     peak_db: f64,
+    tracks: std::collections::HashMap<String, TrackLevelsPayload>,
 }
 
 /// Жёсткий потолок ожидания прогрева. Если декодер не успел (очень тяжёлый источник,
@@ -641,6 +649,7 @@ struct WindowState {
     /// Last RMS/peak (dB) pushed to the UI meter; suppresses duplicate emits so a
     /// steady level (e.g. repeated silence) doesn't spam IPC every frame.
     last_emit_levels: (f64, f64),
+    last_emit_tracks: std::collections::HashMap<String, (f64, f64)>,
     /// Throttle for `audio.prune_distant_layers`: pruning locks the shared audio
     /// state (contends with the producer), so we run it at most ~1×/sec, not per frame.
     last_audio_prune: Instant,
@@ -1037,11 +1046,16 @@ impl WindowState {
         // record it as the new baseline so the next tick's dedup compares against the
         // floor (not the stale loud value, which would force a redundant re-emit).
         self.last_emit_levels = (-60.0, -60.0);
+        self.last_emit_tracks.clear();
+        if let Some(audio) = self.audio.as_ref() {
+            audio.clear_track_levels();
+        }
         let _ = self.app.emit(
             EVT_AUDIO_LEVELS,
             AudioLevelsPayload {
                 rms_db: -60.0,
                 peak_db: -60.0,
+                tracks: std::collections::HashMap::new(),
             },
         );
     }
@@ -1197,16 +1211,60 @@ impl WindowState {
             return;
         };
         let (rms_db, peak_db) = audio.output_levels_db();
-        // Suppress duplicate emits: a steady meter value (e.g. repeated silence at
-        // the -60 dB floor) doesn't need an IPC event every frame.
+        let track_levels = audio.track_levels_db();
+
+        let mut changed = false;
         let (last_rms, last_peak) = self.last_emit_levels;
-        if (rms_db - last_rms).abs() < 0.1 && (peak_db - last_peak).abs() < 0.1 {
+        if last_rms.is_nan() || last_peak.is_nan() {
+            changed = true;
+        } else if (rms_db - last_rms).abs() > 0.1 || (peak_db - last_peak).abs() > 0.1 {
+            changed = true;
+        }
+
+        if !changed {
+            if track_levels.len() != self.last_emit_tracks.len() {
+                changed = true;
+            } else {
+                for (tid, &(rms, peak)) in &track_levels {
+                    if let Some(&(l_rms, l_peak)) = self.last_emit_tracks.get(tid) {
+                        if (rms - l_rms).abs() > 0.5 || (peak - l_peak).abs() > 0.5 {
+                            changed = true;
+                            break;
+                        }
+                    } else {
+                        changed = true;
+                        break;
+                    }
+                }
+            }
+        }
+
+        if !changed {
             return;
         }
+
         self.last_emit_levels = (rms_db, peak_db);
-        let _ = self
-            .app
-            .emit(EVT_AUDIO_LEVELS, AudioLevelsPayload { rms_db, peak_db });
+        self.last_emit_tracks = track_levels.clone();
+
+        let mut tracks_payload = std::collections::HashMap::new();
+        for (track_id, (rms, peak)) in track_levels {
+            tracks_payload.insert(
+                track_id,
+                TrackLevelsPayload {
+                    rms_db: rms,
+                    peak_db: peak,
+                },
+            );
+        }
+
+        let _ = self.app.emit(
+            EVT_AUDIO_LEVELS,
+            AudioLevelsPayload {
+                rms_db,
+                peak_db,
+                tracks: tracks_payload,
+            },
+        );
     }
 
     // -----------------------------------------------------------------------
@@ -1369,6 +1427,7 @@ fn init_state(
         audio_settings,
         last_emit_pts: -1.0,
         last_emit_levels: (f64::NAN, f64::NAN),
+        last_emit_tracks: std::collections::HashMap::new(),
         last_audio_prune: Instant::now(),
         last_viewport: viewport,
         mode: MonitorMode::Canvas,

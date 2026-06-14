@@ -295,57 +295,76 @@ fn mix_chunk_ramped_result(
     // is ignored (a soloed-and-muted track still plays). When nothing is soloed,
     // muted tracks are dropped. Reused across tracks to avoid a per-track
     // allocation every chunk; zeroed at the start of each iteration.
+    let mut track_levels = HashMap::new();
     let mut track_mixed = vec![0.0f32; frames * output_channels];
     for track in tracks {
-        if has_solo && !track.audio_solo {
-            continue;
-        }
-        if !has_solo && track.audio_muted {
-            continue;
-        }
+        let mut rms = 0.0f64;
+        let mut peak = 0.0f64;
 
-        let Some(layers) = track_layers.get(&track.id) else {
-            continue;
-        };
+        let active = !(has_solo && !track.audio_solo) && !(!has_solo && track.audio_muted);
+        if active {
+            if let Some(layers) = track_layers.get(&track.id) {
+                track_mixed.iter_mut().for_each(|s| *s = 0.0);
+                let mut has_audio_on_track = false;
 
-        track_mixed.iter_mut().for_each(|s| *s = 0.0);
-        let mut has_audio_on_track = false;
-
-        for layer in layers {
-            has_audio_on_track |= mix_layer_into(
-                MixLayerParams {
-                    buffer: &mut track_mixed,
-                    layer,
-                    chunk_start_sec,
+                for layer in layers {
+                    has_audio_on_track |= mix_layer_into(
+                        MixLayerParams {
+                            buffer: &mut track_mixed,
+                            layer,
+                            chunk_start_sec,
+                            chunk_end_sec,
+                            frames,
+                            sample_rate,
+                            output_channels,
+                            target,
+                            shared,
+                        },
+                        decode_error_policy,
+                    )?;
+                }
+                prewarm_upcoming_audio_layers(
+                    layers,
                     chunk_end_sec,
-                    frames,
                     sample_rate,
                     output_channels,
                     target,
                     shared,
-                },
-                decode_error_policy,
-            )?;
-        }
-        prewarm_upcoming_audio_layers(
-            layers,
-            chunk_end_sec,
-            sample_rate,
-            output_channels,
-            target,
-            shared,
-        );
+                );
 
-        if has_audio_on_track {
-            apply_bus_gain_balance(
-                &mut mixed,
-                &track_mixed,
-                frames,
-                output_channels,
-                track.audio_gain,
-                track.audio_balance,
-            );
+                if has_audio_on_track {
+                    let gain = track.audio_gain.max(0.0) as f64;
+                    for &sample in &track_mixed {
+                        let abs = sample.abs() as f64 * gain;
+                        rms += abs * abs;
+                        peak = peak.max(abs);
+                    }
+                    rms = if !track_mixed.is_empty() {
+                        (rms / track_mixed.len() as f64).sqrt()
+                    } else {
+                        0.0
+                    };
+
+                    apply_bus_gain_balance(
+                        &mut mixed,
+                        &track_mixed,
+                        frames,
+                        output_channels,
+                        track.audio_gain,
+                        track.audio_balance,
+                    );
+                }
+            }
         }
+
+        let to_db = |val: f64| {
+            if val > 0.001 {
+                20.0 * val.log10()
+            } else {
+                -60.0
+            }
+        };
+        track_levels.insert(track.id.clone(), (to_db(rms), to_db(peak)));
     }
 
     // 4. Mix orphan layers (no owning track) directly into the master bus.
@@ -395,6 +414,10 @@ fn mix_chunk_ramped_result(
         None => apply_master_gain(&mut mixed, master_gain),
     }
     clamp_peaks(&mut mixed);
+    {
+        let mut state = shared.0.lock();
+        state.track_levels = track_levels;
+    }
     Ok(mixed)
 }
 

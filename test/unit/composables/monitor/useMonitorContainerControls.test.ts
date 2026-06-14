@@ -17,6 +17,7 @@ vi.mock('~/composables/monitor/useMonitorSettings', () => ({
   useMonitorSettings: () => ({
     showTimecode: ref(true),
     showTransparencyGrid: ref(false),
+    showMarkerTexts: ref(true),
   }),
 }));
 
@@ -98,5 +99,14 @@ describe('useMonitorContainerControls', () => {
     const items = flattenMenuItems(controls.contextMenuItems.value);
 
     expect(items.some((entry) => entry.label === 'fastcat.monitor.openNativeMonitor')).toBe(false);
+  });
+
+  it('includes showMarkerTexts option in context menu', () => {
+    const controls = createControls();
+    const items = flattenMenuItems(controls.contextMenuItems.value);
+    const item = items.find((entry) => entry.label === 'fastcat.monitor.showMarkerTexts');
+
+    expect(item).toBeTruthy();
+    expect(item?.type).toBe('checkbox');
   });
 });

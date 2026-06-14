@@ -209,6 +209,7 @@ export interface NativeTimelineExportOptions {
   metadataAuthor?: string | null;
   metadataTags?: string | null;
   exportAlpha?: boolean;
+  fastStart?: boolean;
 }
 
 export async function nativeExportTimeline(params: {

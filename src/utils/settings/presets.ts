@@ -35,6 +35,7 @@ export interface ExportSettingsPreset {
   bitrateMode: 'constant' | 'variable';
   keyframeIntervalSec: number;
   exportAlpha: boolean;
+  fastStart: boolean;
 }
 
 export interface UserProjectPresetsSettings {
@@ -124,6 +125,7 @@ export function createDefaultExportPresets(): UserExportPresetsSettings {
       bitrateMode: 'variable',
       keyframeIntervalSec: 2,
       exportAlpha: false,
+      fastStart: true,
     },
     {
       id: 'social',
@@ -137,6 +139,7 @@ export function createDefaultExportPresets(): UserExportPresetsSettings {
       bitrateMode: 'variable',
       keyframeIntervalSec: 2,
       exportAlpha: false,
+      fastStart: true,
     },
     {
       id: 'high',
@@ -150,6 +153,7 @@ export function createDefaultExportPresets(): UserExportPresetsSettings {
       bitrateMode: 'variable',
       keyframeIntervalSec: 2,
       exportAlpha: false,
+      fastStart: true,
     },
     {
       id: 'lossless',
@@ -163,6 +167,7 @@ export function createDefaultExportPresets(): UserExportPresetsSettings {
       bitrateMode: 'constant',
       keyframeIntervalSec: 1,
       exportAlpha: false,
+      fastStart: true,
     },
   ];
 

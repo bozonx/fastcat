@@ -2,13 +2,14 @@ import { computed, type Ref } from 'vue';
 import type { TimelineClipItem, TrackKind, TimelineDocument } from '~/timeline/types';
 import type { TimelineCommand } from '~/timeline/commands';
 import type { TimelineClipClipboardItem } from '~/stores/timeline/clips';
-import { quantizeTimeUsToFrames, sanitizeFps } from '~/timeline/commands/utils';
+import { sanitizeFps } from '~/timeline/commands/utils';
 import type { FsEntry } from '~/types/fs';
 import { normalizeWorkspaceFilePath } from '~/utils/workspace-common';
 import { revealFileManagerEntry } from '~/composables/file-manager/revealFileManagerEntry';
 import { useAppClipboard } from '~/composables/useAppClipboard';
 import { getApplicableClipParameterGroups } from '~/utils/timeline/clip-parameters';
 import { isClipFrameAligned, clipSupportsSpeedControls } from '~/utils/timeline/clip-capabilities';
+import { buildQuantizeClipCommands } from '~/utils/timeline/clip-quantize';
 
 interface TimelineStoreActions {
   timelineDoc: TimelineDocument | null;
@@ -195,30 +196,9 @@ export function useClipPropertiesActions(options: UseClipPropertiesActionsOption
     if (!doc) return;
 
     const fps = sanitizeFps(doc.timebase?.fps);
-    const startUs = quantizeTimeUsToFrames(clip.timelineRange.startUs, fps, 'round');
-    const endUs = quantizeTimeUsToFrames(
-      clip.timelineRange.startUs + clip.timelineRange.durationUs,
-      fps,
-      'round',
-    );
-    const durationUs = Math.max(1, endUs - startUs);
-
-    timelineStore.applyTimeline({
-      type: 'move_item',
-      trackId: clip.trackId,
-      itemId: clip.id,
-      startUs,
-      quantizeToFrames: false,
-    });
-
-    timelineStore.applyTimeline({
-      type: 'trim_item',
-      trackId: clip.trackId,
-      itemId: clip.id,
-      edge: 'end',
-      deltaUs: durationUs - clip.timelineRange.durationUs,
-      quantizeToFrames: false,
-    });
+    for (const cmd of buildQuantizeClipCommands({ trackId: clip.trackId, clip, fps })) {
+      timelineStore.applyTimeline(cmd);
+    }
   }
 
   function handleRemoveFromGroup() {

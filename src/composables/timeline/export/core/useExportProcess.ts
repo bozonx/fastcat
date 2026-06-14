@@ -191,13 +191,10 @@ export function useExportProcess(
         }
         // Native reports 1.0 once every frame has been handed to ffmpeg, but the
         // container is still being finalized (encoder flush + mp4 faststart remux),
-        // which is slow for large files. Surface that tail as the 'saving' phase
-        // instead of letting the bar sit at a seemingly-stuck 100% under 'encoding'.
+        // which is slow for large files. Cap progress at 0.99 during encoding so the
+        // bar doesn't sit stuck at 100%, then switch to 'finalizing' after ffmpeg exits.
         const onNativeProgress = (progress: number) => {
-          if (progress >= 1 && exportPhase.value === 'encoding') {
-            exportPhase.value = 'saving';
-          }
-          onProgress(progress);
+          onProgress(Math.min(progress, 0.99));
         };
         await nativeExportTimeline({
           taskId: exportTaskId,
@@ -225,10 +222,13 @@ export function useExportProcess(
             metadataAuthor: options.metadata?.author || null,
             metadataTags: options.metadata?.tags || null,
             exportAlpha: options.exportAlpha,
+            fastStart: options.fastStart,
           },
           onProgress: onNativeProgress,
           onWarning: reportWarning,
         });
+        exportPhase.value = 'finalizing';
+        onProgress(0.99);
         return;
       }
 

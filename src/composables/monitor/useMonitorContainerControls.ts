@@ -54,7 +54,7 @@ function formatSpeedLabel(speed: number): string {
 }
 
 export function useMonitorContainerControls(options: UseMonitorContainerControlsOptions) {
-  const { showTimecode, showTransparencyGrid } = useMonitorSettings();
+  const { showTimecode, showTransparencyGrid, showMarkerTexts } = useMonitorSettings();
   const positiveSpeedValues = [0.5, 0.75, 1, 1.25, 1.5, 1.75, 2, 3, 5];
 
   const playbackSpeedOptions: PlaybackSpeedOption[] = positiveSpeedValues.map((v) => ({
@@ -364,6 +364,15 @@ export function useMonitorContainerControls(options: UseMonitorContainerControls
         checked: showTimecode.value,
         onSelect: () => {
           showTimecode.value = !showTimecode.value;
+        },
+      },
+      {
+        label: options.t('fastcat.monitor.showMarkerTexts'),
+        icon: 'i-heroicons-tag',
+        type: 'checkbox' as const,
+        checked: showMarkerTexts.value,
+        onSelect: () => {
+          showMarkerTexts.value = !showMarkerTexts.value;
         },
       },
       {

@@ -22,7 +22,10 @@ export function addClipToTrack(
 ): TimelineCommandResult {
   const track = getTrackById(doc, cmd.trackId);
   const fps = getDocFps(doc);
-  const durationUs = quantizeTimeUsToFrames(Number(cmd.durationUs ?? 0), fps, 'round');
+  const shouldQuantizeToFrames = cmd.quantizeToFrames !== false;
+  const durationUs = shouldQuantizeToFrames
+    ? quantizeTimeUsToFrames(Number(cmd.durationUs ?? 0), fps, 'round')
+    : Math.max(0, Math.round(Number(cmd.durationUs ?? 0)));
   const sourceDurationUs =
     cmd.sourceDurationUs !== undefined
       ? Math.max(0, Math.round(Number(cmd.sourceDurationUs)))
@@ -43,7 +46,9 @@ export function addClipToTrack(
   };
   const startCandidate =
     cmd.startUs === undefined ? computeTrackEndUs(track) : Math.max(0, Number(cmd.startUs));
-  const startUs = quantizeTimeUsToFrames(startCandidate, fps, 'round');
+  const startUs = shouldQuantizeToFrames
+    ? quantizeTimeUsToFrames(startCandidate, fps, 'round')
+    : Math.max(0, Math.round(startCandidate));
 
   const clipType = cmd.path.toLowerCase().endsWith('.otio') ? 'timeline' : 'media';
 
@@ -94,15 +99,20 @@ export function addVirtualClipToTrack(
 ): TimelineCommandResult {
   const track = getTrackById(doc, cmd.trackId);
   const fps = getDocFps(doc);
+  const shouldQuantizeToFrames = cmd.quantizeToFrames !== false;
 
   if (track.kind !== 'video') {
     throw new Error('Virtual clips can only be added to video tracks');
   }
 
-  const durationUs = quantizeTimeUsToFrames(Number(cmd.durationUs ?? 5_000_000), fps, 'round');
+  const durationUs = shouldQuantizeToFrames
+    ? quantizeTimeUsToFrames(Number(cmd.durationUs ?? 5_000_000), fps, 'round')
+    : Math.max(0, Math.round(Number(cmd.durationUs ?? 5_000_000)));
   const startCandidate =
     cmd.startUs === undefined ? computeTrackEndUs(track) : Math.max(0, Number(cmd.startUs));
-  const startUs = quantizeTimeUsToFrames(startCandidate, fps, 'round');
+  const startUs = shouldQuantizeToFrames
+    ? quantizeTimeUsToFrames(startCandidate, fps, 'round')
+    : Math.max(0, Math.round(startCandidate));
 
   const base: Omit<Extract<TimelineClipItem, { kind: 'clip' }>, 'clipType'> & {
     clipType: AddVirtualClipToTrackCommand['clipType'];
