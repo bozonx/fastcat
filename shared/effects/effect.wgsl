@@ -158,7 +158,15 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
                 + sample_uv(uv - vec2<f32>(step, 0.0) * texel).rgb
                 + sample_uv(uv + vec2<f32>(0.0, step) * texel).rgb
                 + sample_uv(uv - vec2<f32>(0.0, step) * texel).rgb;
-            color = vec4<f32>(center + (center * 4.0 - neighbors) * effect.p0, color.a);
+            if (effect.p0 >= 0.0) {
+                color = vec4<f32>(center + (center * 4.0 - neighbors) * effect.p0, color.a);
+            } else {
+                // For negative amount, soften by blending towards the neighbor average.
+                // We clamp the blend factor to [0.0, 1.0] to prevent negative weights
+                // which cause phase-inversion artifacts (outlines/contours).
+                let blend = min(-effect.p0, 1.0);
+                color = vec4<f32>(mix(center, neighbors * 0.25, blend), color.a);
+            }
         }
         case 6u: {
             let size = max(effect.p0, 1.0);
