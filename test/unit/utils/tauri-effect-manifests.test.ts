@@ -305,4 +305,74 @@ describe('unified video effect manifests', () => {
       { type: 'noise', amount: 0.5, seed: 42, noise_type: 'perlin', scale: 25 },
     ]);
   });
+
+  it('applies Intensity to scale down effect parameters towards neutral values', () => {
+    const specs = buildEffectSpecs([
+      {
+        id: 'fx-blur-intensity',
+        type: 'blur',
+        enabled: true,
+        target: 'video',
+        strength: 12,
+        intensity: 0.5, // factor = 0.5
+      },
+      {
+        id: 'fx-color-intensity',
+        type: 'color-adjustment',
+        enabled: true,
+        target: 'video',
+        brightness: 2.0,
+        contrast: 1.0,
+        saturation: 1.0,
+        hue: 80,
+        intensity: 0.75, // factor = 0.75
+      },
+      {
+        id: 'fx-pixelate-intensity',
+        type: 'pixelate',
+        enabled: true,
+        target: 'video',
+        size: 9,
+        intensity: 0.5, // factor = 0.5
+      },
+      {
+        id: 'fx-levels-intensity',
+        type: 'levels',
+        enabled: true,
+        target: 'video',
+        inBlack: 0.2,
+        inWhite: 0.8,
+        gamma: 1.6,
+        outBlack: 0.1,
+        outWhite: 0.9,
+        intensity: 0.5, // factor = 0.5
+      },
+    ]);
+
+    expect(specs).toEqual([
+      // Blur strength 12 * 0.5 = 6
+      { type: 'gaussian-blur', radius: 6, bleed: false, blur_type: 'gaussian' },
+      // Brightness: 1.0 + (2.0 - 1.0) * 0.75 = 1.75. Hue: 80 * 0.75 = 60
+      { type: 'brightness', value: 1.75 },
+      { type: 'contrast', value: 1.0 },
+      { type: 'saturation', value: 1.0 },
+      { type: 'hue', degrees: 60 },
+      // Pixelate: 1.0 + (9.0 - 1.0) * 0.5 = 5.0
+      { type: 'pixelate', size: 5 },
+      // Levels:
+      // inBlack: 0.2 * 0.5 = 0.1
+      // inWhite: 1.0 - (1.0 - 0.8) * 0.5 = 0.9
+      // gamma: 1.0 + (1.6 - 1.0) * 0.5 = 1.3
+      // outBlack: 0.1 * 0.5 = 0.05
+      // outWhite: 1.0 - (1.0 - 0.9) * 0.5 = 0.95
+      {
+        type: 'levels',
+        in_black: 0.1,
+        in_white: 0.9,
+        gamma: 1.3,
+        out_black: 0.05,
+        out_white: 0.95,
+      },
+    ]);
+  });
 });
