@@ -497,6 +497,7 @@ export const videoEffectManifests: VideoEffectManifest[] = [
       noiseType: 'white',
       amount: 0.08,
       seed: 1,
+      scale: 10,
     },
     paramRanges: {
       amount: VIDEO_EFFECT_PARAM_RANGES.unit,
@@ -507,6 +508,14 @@ export const videoEffectManifests: VideoEffectManifest[] = [
         animationMax: UINT32_MAX,
         renderMin: 0,
         renderMax: UINT32_MAX,
+      },
+      scale: {
+        uiMin: 1,
+        uiMax: 100,
+        animationMin: 1,
+        animationMax: 200,
+        renderMin: 1,
+        renderMax: 500,
       },
     },
     controls: [
@@ -537,12 +546,22 @@ export const videoEffectManifests: VideoEffectManifest[] = [
         max: 65535,
         step: 1,
       },
+      {
+        kind: 'slider',
+        key: 'scale',
+        labelKey: 'fastcat.effects.video.noise.params.scale',
+        min: 1,
+        max: 100,
+        step: 1,
+        showIf: (values) => values.noiseType === 'perlin' || values.noiseType === 'simplex',
+      },
     ],
     toEffectSpecs: (values) => [
       spec('noise', {
         amount: clampRange(finiteNumber(values.amount, 0.08), VIDEO_EFFECT_PARAM_RANGES.unit),
         seed: clamp(Math.round(finiteNumber(values.seed, 1)), 0, UINT32_MAX),
         noise_type: values.noiseType || 'white',
+        scale: clamp(finiteNumber(values.scale, 10), 1, 500),
       }),
     ],
   },

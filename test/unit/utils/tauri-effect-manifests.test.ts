@@ -209,7 +209,7 @@ describe('unified video effect manifests', () => {
 
     expect(specs).toEqual([
       { type: 'gaussian-blur', radius: 96, bleed: false, blur_type: 'gaussian' },
-      { type: 'noise', amount: 1, seed: 4_294_967_295, noise_type: 'white' },
+      { type: 'noise', amount: 1, seed: 4_294_967_295, noise_type: 'white', scale: 10 },
     ]);
   });
 
@@ -295,13 +295,14 @@ describe('unified video effect manifests', () => {
         amount: 0.5,
         seed: 42,
         noiseType: 'perlin',
+        scale: 25,
       },
     ]);
 
     expect(specs).toEqual([
       { type: 'gaussian-blur', radius: 20, bleed: false, blur_type: 'box' },
       { type: 'gaussian-blur', radius: 30, bleed: false, blur_type: 'radial' },
-      { type: 'noise', amount: 0.5, seed: 42, noise_type: 'perlin' },
+      { type: 'noise', amount: 0.5, seed: 42, noise_type: 'perlin', scale: 25 },
     ]);
   });
 });

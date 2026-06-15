@@ -91,6 +91,8 @@ pub enum EffectSpec {
         seed: u32,
         #[serde(default)]
         noise_type: String,
+        #[serde(default)]
+        scale: f32,
     },
     ChromaticAberration {
         amount: f32,
@@ -1147,13 +1149,13 @@ fn effect_uniform(
             0.0,
             0,
         ),
-        EffectSpec::Noise { amount, seed, noise_type } => {
+        EffectSpec::Noise { amount, seed, noise_type, scale } => {
             let type_val = match noise_type.as_str() {
                 "perlin" => 1.0,
                 "simplex" => 2.0,
                 _ => 0.0,
             };
-            base(9, amount.clamp(0.0, 1.0), type_val, 0.0, 0.0, 0.0, 0.0, *seed)
+            base(9, amount.clamp(0.0, 1.0), type_val, *scale, 0.0, 0.0, 0.0, *seed)
         }
         EffectSpec::ChromaticAberration { amount, angle_deg } => base(
             10,

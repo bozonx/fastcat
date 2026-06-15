@@ -297,15 +297,16 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
         case 9u: {
             var n: f32 = 0.0;
             let seed_val = f32(effect.seed);
+            let scale_val = select(10.0, effect.p2, effect.p2 > 0.0);
             if (effect.p1 >= 1.5) {
                 let seed_x = hash21(vec2<f32>(seed_val, 1.0)) * 1000.0;
                 let seed_y = hash21(vec2<f32>(seed_val, 2.0)) * 1000.0;
-                let p = vec2<f32>(f32(gid.x) + seed_x, f32(gid.y) + seed_y) * 0.1;
+                let p = vec2<f32>(f32(gid.x) + seed_x, f32(gid.y) + seed_y) / scale_val;
                 n = simplex_noise(p);
             } else if (effect.p1 >= 0.5) {
                 let seed_x = hash21(vec2<f32>(seed_val, 1.0)) * 1000.0;
                 let seed_y = hash21(vec2<f32>(seed_val, 2.0)) * 1000.0;
-                let p = vec2<f32>(f32(gid.x) + seed_x, f32(gid.y) + seed_y) * 0.1;
+                let p = vec2<f32>(f32(gid.x) + seed_x, f32(gid.y) + seed_y) / scale_val;
                 n = perlin_noise(p);
             } else {
                 n = hash31(vec3<f32>(f32(gid.x), f32(gid.y), seed_val));

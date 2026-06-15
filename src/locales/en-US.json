@@ -416,7 +416,8 @@
           "params": {
             "noise": "Intensity",
             "seed": "Grain",
-            "noiseType": "Noise Type"
+            "noiseType": "Noise Type",
+            "scale": "Scale"
           },
           "options": {
             "white": "White Noise",

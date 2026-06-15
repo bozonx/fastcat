@@ -416,7 +416,8 @@
           "params": {
             "noise": "Интенсивность",
             "seed": "Зерно",
-            "noiseType": "Тип шума"
+            "noiseType": "Тип шума",
+            "scale": "Масштаб"
           },
           "options": {
             "white": "Белый шум",
