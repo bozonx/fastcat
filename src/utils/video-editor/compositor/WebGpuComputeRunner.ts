@@ -323,6 +323,23 @@ function effectUniform(
   }
 }
 
+function calculatePadding(effects: VideoEffectSpec[], scale: number): number {
+  let maxR = 0;
+  for (const effect of effects) {
+    if (effect.type === 'gaussian-blur') {
+      const r = effect.radius * scale;
+      if (r > maxR) maxR = r;
+    } else if (effect.type === 'gaussian-blur-pixels') {
+      const r = effect.radius;
+      if (r > maxR) maxR = r;
+    } else if (effect.type === 'bloom') {
+      const r = effect.radius * scale;
+      if (r > maxR) maxR = r;
+    }
+  }
+  return Math.ceil(maxR * 2.0);
+}
+
 export class WebGpuComputeRunner {
   private device: GPUDevice | null = null;
   private bindLayout: GPUBindGroupLayout | null = null;
@@ -400,22 +417,23 @@ export class WebGpuComputeRunner {
         addressModeW: 'clamp-to-edge',
         magFilter: 'linear',
         minFilter: 'linear',
+        mipmapFilter: 'linear',
       });
 
       this.shaderModule = this.device.createShaderModule({
-        label: 'web-effect-wgsl',
+        label: 'web-effect-shader',
         code: effectWgsl,
-      });
-
-      const pipelineLayout = this.device.createPipelineLayout({
-        label: 'web-effect-pipeline-layout',
-        bindGroupLayouts: [this.bindLayout],
       });
 
       this.pipeline = this.device.createComputePipeline({
         label: 'web-effect-pipeline',
-        layout: pipelineLayout,
-        compute: { module: this.shaderModule, entryPoint: 'main' },
+        layout: this.device.createPipelineLayout({
+          bindGroupLayouts: [this.bindLayout],
+        }),
+        compute: {
+          module: this.shaderModule,
+          entryPoint: 'main',
+        },
       });
 
       const align = this.device.limits.minUniformBufferOffsetAlignment;
@@ -451,7 +469,7 @@ export class WebGpuComputeRunner {
       uploadSource = await createImageBitmap(source);
     }
 
-    const w = Math.max(
+    let w = Math.max(
       1,
       Math.round(
         uploadSource instanceof VideoFrame
@@ -463,7 +481,7 @@ export class WebGpuComputeRunner {
           : uploadSource.width,
       ),
     );
-    const h = Math.max(
+    let h = Math.max(
       1,
       Math.round(
         uploadSource instanceof VideoFrame
@@ -475,6 +493,13 @@ export class WebGpuComputeRunner {
           : uploadSource.height,
       ),
     );
+
+    const origW = w;
+    const origH = h;
+    const scale = Math.max(0.1, Math.min(8.0, origH / 1080.0));
+    const padding = calculatePadding(effects, scale);
+    w = origW + 2 * padding;
+    h = origH + 2 * padding;
 
     const passes = buildPasses(effects, w, h);
     if (passes.length === 0) return null;
@@ -494,8 +519,8 @@ export class WebGpuComputeRunner {
     try {
       this.device.queue.copyExternalImageToTexture(
         { source: uploadSource, flipY: false },
-        { texture: inputTexture },
-        { width: w, height: h, depthOrArrayLayers: 1 },
+        { texture: inputTexture, origin: { x: padding, y: padding, z: 0 } },
+        { width: origW, height: origH, depthOrArrayLayers: 1 },
       );
 
       // Release the intermediate ImageBitmap immediately after upload to avoid

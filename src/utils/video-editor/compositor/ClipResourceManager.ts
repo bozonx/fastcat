@@ -327,6 +327,21 @@ export class ClipResourceManager {
                 );
                 if (processed) {
                   safeDispose(frame);
+                  // The compute runner pads the output around the frame so blur /
+                  // bloom can bleed beyond the original rectangle, so the bitmap
+                  // is larger than frameW×frameH. The texture source must be sized
+                  // to the *padded* bitmap — otherwise `LayoutApplier` infers
+                  // padding=0 and the content/UV mapping is offset (content drifts
+                  // into a corner with a black/transparent border). `applySpriteLayout`
+                  // re-derives the padding from this source size and frameW/frameH.
+                  const processedW = (processed as { width?: number }).width ?? frameW;
+                  const processedH = (processed as { height?: number }).height ?? frameH;
+                  if (
+                    clip.imageSource.width !== processedW ||
+                    clip.imageSource.height !== processedH
+                  ) {
+                    clip.imageSource.resize(processedW, processedH);
+                  }
                   (clip.imageSource as { resource?: unknown }).resource = processed;
                   clip.imageSource.update();
                   clip.lastVideoFrame = processed as unknown as VideoFrame;

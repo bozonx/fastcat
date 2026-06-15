@@ -118,6 +118,11 @@ export class LayoutApplier {
       },
     });
 
+    const textureW = clip.sprite?.texture?.source?.width ?? frameW;
+    const textureH = clip.sprite?.texture?.source?.height ?? frameH;
+    const paddingX = Math.max(0, Math.round((textureW - frameW) / 2));
+    const paddingY = Math.max(0, Math.round((textureH - frameH) / 2));
+
     this.applyTransformLayout({
       clip,
       baseX: layout.baseX,
@@ -132,6 +137,10 @@ export class LayoutApplier {
       rotationDeg: layout.rotationDeg,
       stagePosX: layout.stagePositionX,
       stagePosY: layout.stagePositionY,
+      paddingX,
+      paddingY,
+      frameW,
+      frameH,
     });
   }
 
@@ -189,14 +198,34 @@ export class LayoutApplier {
     rotationDeg: number;
     stagePosX: number;
     stagePosY: number;
+    paddingX?: number;
+    paddingY?: number;
+    frameW?: number;
+    frameH?: number;
   }) {
     const sprite = input.clip.sprite;
     if (!sprite) return;
 
+    const padX = input.paddingX ?? 0;
+    const padY = input.paddingY ?? 0;
+    const fW = input.frameW ?? input.targetW;
+    const fH = input.frameH ?? input.targetH;
+
+    const paddedW = fW + 2 * padX;
+    const paddedH = fH + 2 * padY;
+
+    const fitScaleX = input.targetW / fW;
+    const fitScaleY = input.targetH / fH;
+
+    const anchorX =
+      paddedW > 0 ? (input.normalizedAnchor.x * fW + padX) / paddedW : input.normalizedAnchor.x;
+    const anchorY =
+      paddedH > 0 ? (input.normalizedAnchor.y * fH + padY) / paddedH : input.normalizedAnchor.y;
+
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (sprite as any).anchor?.set?.(input.normalizedAnchor.x, input.normalizedAnchor.y);
-    sprite.width = input.targetW;
-    sprite.height = input.targetH;
+    (sprite as any).anchor?.set?.(anchorX, anchorY);
+    sprite.width = paddedW * fitScaleX;
+    sprite.height = paddedH * fitScaleY;
 
     if (sprite.scale) {
       sprite.scale.x *= input.scaleX;

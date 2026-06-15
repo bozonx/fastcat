@@ -82,7 +82,11 @@ impl Scene {
             if natural.0 == 0 || natural.1 == 0 {
                 continue;
             }
-            let inner = layer.transform.to_affine(natural);
+            let padding = match &layer.kind {
+                LayerKind::Raster { padding: Some((px, py)), .. } => (*px as f64, *py as f64),
+                _ => (0.0, 0.0),
+            };
+            let inner = layer.transform.to_affine_with_padding(natural, padding);
             let xform = outer * inner;
 
             // Расчет обрезанного bbox (crop)
@@ -196,6 +200,7 @@ pub enum LayerKind {
     Raster {
         source: RasterSource,
         natural_size: (u32, u32),
+        padding: Option<(u32, u32)>,
     },
     Shape(ShapeLayer),
     Text(TextLayer),
@@ -429,11 +434,16 @@ impl Transform {
 
     /// Сборка `Affine` из Transform и натуральных размеров слоя.
     pub fn to_affine(self, natural: (u32, u32)) -> Affine {
-        let (nw, nh) = (natural.0 as f64, natural.1 as f64);
+        self.to_affine_with_padding(natural, (0.0, 0.0))
+    }
+
+    pub fn to_affine_with_padding(self, natural: (u32, u32), padding: (f64, f64)) -> Affine {
+        let nw = natural.0 as f64 - 2.0 * padding.0;
+        let nh = natural.1 as f64 - 2.0 * padding.1;
         Affine::translate((self.x, self.y))
             * Affine::rotate(self.rotation_deg.to_radians())
             * Affine::scale_non_uniform(self.scale_x, self.scale_y)
-            * Affine::translate((-self.anchor_x * nw, -self.anchor_y * nh))
+            * Affine::translate((-self.anchor_x * nw - padding.0, -self.anchor_y * nh - padding.1))
     }
 }
 
@@ -1151,6 +1161,7 @@ mod tests {
             kind: LayerKind::Raster {
                 source: RasterSource::Image(dummy_image(natural.0, natural.1)),
                 natural_size: natural,
+                padding: None,
             },
             transform,
             opacity,

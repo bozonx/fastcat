@@ -443,6 +443,7 @@ fn build_raster_kind(
                 kind: CompLayerKind::Raster {
                     source: RasterSource::Image(export_frame_to_image(&frame)),
                     natural_size: size,
+                    padding: None,
                 },
                 source_rotation,
             }
@@ -453,6 +454,7 @@ fn build_raster_kind(
                 kind: CompLayerKind::Raster {
                     source: RasterSource::Image(raster.image),
                     natural_size: raster.natural_size,
+                    padding: None,
                 },
                 source_rotation: 0,
             }
@@ -463,6 +465,7 @@ fn build_raster_kind(
                 kind: CompLayerKind::Raster {
                     source: RasterSource::Image(raster.image),
                     natural_size: raster.natural_size,
+                    padding: None,
                 },
                 source_rotation: 0,
             }

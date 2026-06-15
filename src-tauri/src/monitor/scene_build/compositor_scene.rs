@@ -68,12 +68,14 @@ pub fn build_compositor_scene(
                                 (None, None) => continue,
                             },
                             natural_size: v.media_size,
+                            padding: None,
                         },
                         None => continue,
                     },
                     LayerRuntime::Image(im) => CompLayerKind::Raster {
                         source: RasterSource::Image(im.image.clone()),
                         natural_size: im.size,
+                        padding: None,
                     },
                     LayerRuntime::Loading | LayerRuntime::Failed => continue,
                 }

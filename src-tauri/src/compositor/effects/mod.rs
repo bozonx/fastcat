@@ -251,6 +251,34 @@ pub struct EffectPipeline {
     sampler: wgpu::Sampler,
 }
 
+fn calculate_padding(effects: &[EffectSpec], scale: f32) -> u32 {
+    let mut max_r = 0.0f32;
+    for effect in effects {
+        match effect {
+            EffectSpec::GaussianBlur { radius } => {
+                let r = radius * scale;
+                if r > max_r {
+                    max_r = r;
+                }
+            }
+            EffectSpec::GaussianBlurPixels { radius } => {
+                let r = *radius;
+                if r > max_r {
+                    max_r = r;
+                }
+            }
+            EffectSpec::Bloom { radius, .. } => {
+                let r = radius * scale;
+                if r > max_r {
+                    max_r = r;
+                }
+            }
+            _ => {}
+        }
+    }
+    (max_r * 2.0).ceil() as u32
+}
+
 impl EffectPipeline {
     pub fn new(device: &wgpu::Device, cache: Option<&wgpu::PipelineCache>) -> Self {
         let bind_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
@@ -504,27 +532,41 @@ impl EffectPipeline {
         }
     }
 
+
     pub fn apply_effects(
         &mut self,
         device: &wgpu::Device,
         queue: &wgpu::Queue,
         source: &EffectSource,
         effects: &[EffectSpec],
-    ) -> Result<Arc<crate::media::SharedTexture>> {
-        let (width, height) = match source {
+        enable_padding: bool,
+    ) -> Result<(Arc<crate::media::SharedTexture>, u32)> {
+        let (orig_width, orig_height) = match source {
             EffectSource::Cpu(img) => (img.width, img.height),
             EffectSource::Gpu(tex) => (tex.width(), tex.height()),
         };
 
+        let scale = spatial_scale(orig_height);
+        let padding = if enable_padding {
+            calculate_padding(effects, scale)
+        } else {
+            0
+        };
+
+        let width = orig_width + 2 * padding;
+        let height = orig_height + 2 * padding;
+
         let passes = build_passes(effects, width, height);
         if passes.is_empty() {
-            return source_to_owned_texture(device, queue, source, width, height);
+            let tex = source_to_owned_texture(device, queue, source, orig_width, orig_height)?;
+            return Ok((tex, 0));
         }
-        if width == 0 || height == 0 {
-            return source_to_owned_texture(device, queue, source, width.max(1), height.max(1));
+        if orig_width == 0 || orig_height == 0 {
+            let tex = source_to_owned_texture(device, queue, source, orig_width.max(1), orig_height.max(1))?;
+            return Ok((tex, 0));
         }
 
-        let need_input = matches!(source, EffectSource::Cpu(_));
+        let need_input = matches!(source, EffectSource::Cpu(_)) || padding > 0;
         self.ensure_resources(device, width, height, need_input);
 
         let resources = self
@@ -532,12 +574,31 @@ impl EffectPipeline {
             .as_ref()
             .ok_or_else(|| anyhow!("effect resources not initialized"))?;
 
+        // When padding is active the source is written into the *interior* of the
+        // (cached, reused) input texture at offset (padding, padding). The border
+        // ring around it is never written by the copy, so without an explicit
+        // clear it would retain stale pixels from a previous frame — and because
+        // the padding amount changes as the radius slider moves, that stale ring
+        // shows up as a sharp frame (most visible at the top-left origin). Clear
+        // the whole input to transparent black first so the blur/bloom bleed into
+        // clean transparency instead of garbage.
+        if padding > 0 {
+            if let Some(input_tex) = resources.input.as_ref() {
+                let mut encoder =
+                    device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                        label: Some("native-effect-input-clear-encoder"),
+                    });
+                encoder.clear_texture(input_tex, &wgpu::ImageSubresourceRange::default());
+                queue.submit(Some(encoder.finish()));
+            }
+        }
+
         let input_view = match source {
             EffectSource::Cpu(img) => {
                 let pixels = image_pixels_rgba8(img)?;
                 let size = wgpu::Extent3d {
-                    width,
-                    height,
+                    width: orig_width,
+                    height: orig_height,
                     depth_or_array_layers: 1,
                 };
                 let input_tex = resources
@@ -548,14 +609,18 @@ impl EffectPipeline {
                     wgpu::TexelCopyTextureInfo {
                         texture: input_tex,
                         mip_level: 0,
-                        origin: wgpu::Origin3d::ZERO,
+                        origin: wgpu::Origin3d {
+                            x: padding,
+                            y: padding,
+                            z: 0,
+                        },
                         aspect: wgpu::TextureAspect::All,
                     },
                     &pixels,
                     wgpu::TexelCopyBufferLayout {
                         offset: 0,
-                        bytes_per_row: Some(width * 4),
-                        rows_per_image: Some(height),
+                        bytes_per_row: Some(orig_width * 4),
+                        rows_per_image: Some(orig_height),
                     },
                     size,
                 );
@@ -568,7 +633,44 @@ impl EffectPipeline {
                     ..Default::default()
                 })
             }
-            EffectSource::Gpu(tex) => tex.create_view(&wgpu::TextureViewDescriptor::default()),
+            EffectSource::Gpu(tex) => {
+                if padding > 0 {
+                    let input_tex = resources
+                        .input
+                        .as_ref()
+                        .ok_or_else(|| anyhow!("effect input texture missing"))?;
+                    let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                        label: Some("native-effect-input-copy-encoder"),
+                    });
+                    encoder.copy_texture_to_texture(
+                        wgpu::TexelCopyTextureInfo {
+                            texture: &**tex,
+                            mip_level: 0,
+                            origin: wgpu::Origin3d::ZERO,
+                            aspect: wgpu::TextureAspect::All,
+                        },
+                        wgpu::TexelCopyTextureInfo {
+                            texture: input_tex,
+                            mip_level: 0,
+                            origin: wgpu::Origin3d {
+                                x: padding,
+                                y: padding,
+                                z: 0,
+                            },
+                            aspect: wgpu::TextureAspect::All,
+                        },
+                        wgpu::Extent3d {
+                            width: orig_width,
+                            height: orig_height,
+                            depth_or_array_layers: 1,
+                        },
+                    );
+                    queue.submit(Some(encoder.finish()));
+                    input_tex.create_view(&wgpu::TextureViewDescriptor::default())
+                } else {
+                    tex.create_view(&wgpu::TextureViewDescriptor::default())
+                }
+            }
         };
         let ping_view = resources.ping_view.clone();
         let pong_view = resources.pong_view.clone();
@@ -678,7 +780,7 @@ impl EffectPipeline {
         }
 
         queue.submit([encoder.finish()]);
-        Ok(Arc::new(crate::media::SharedTexture::new_shared(owned)))
+        Ok((Arc::new(crate::media::SharedTexture::new_shared(owned)), padding))
     }
 }
 

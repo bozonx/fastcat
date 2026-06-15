@@ -359,7 +359,7 @@ impl Compositor {
                 viewport_h,
                 effective_scene.background,
             )?;
-            let processed = self.apply_effects_to_texture(
+            let (processed, _) = self.apply_effects_to_texture(
                 dev_id,
                 &device,
                 &queue,
@@ -367,6 +367,7 @@ impl Compositor {
                     texture,
                 )))),
                 &effective_scene.master_effects,
+                false,
             )?;
             let mut out = VelloScene::new();
             let img = self
@@ -460,6 +461,7 @@ impl Compositor {
                                         processed,
                                     )),
                                 )),
+                                padding: None,
                             };
                             layers[i].transition = None;
                             // Эффекты уже запечены в переход — не применять повторно в шаге 2.
@@ -509,12 +511,13 @@ impl Compositor {
             } else {
                 self.layer_to_effect_source(dev_id, scene, &layer)?
             };
-            let processed =
-                self.apply_effects_to_texture(dev_id, device, queue, &source, &layer.effects)?;
+            let (processed, padding) =
+                self.apply_effects_to_texture(dev_id, device, queue, &source, &layer.effects, true)?;
             let mut next = layer.clone();
             next.kind = LayerKind::Raster {
                 natural_size: (processed.width(), processed.height()),
                 source: RasterSource::GpuTexture(processed),
+                padding: if padding > 0 { Some((padding, padding)) } else { None },
             };
             if is_vector {
                 next.transform.scale_x /= render_scale.0;
@@ -576,7 +579,7 @@ impl Compositor {
                         scene.height,
                         scene.background,
                     )?;
-                    let processed = self.apply_effects_to_texture(
+                    let (processed, _) = self.apply_effects_to_texture(
                         dev_id,
                         device,
                         queue,
@@ -584,12 +587,14 @@ impl Compositor {
                             Arc::new(texture),
                         ))),
                         &layer.effects,
+                        false,
                     )?;
                     result_layers.push(Layer {
                         id: layer.id.clone(),
                         kind: LayerKind::Raster {
                             source: RasterSource::GpuTexture(processed),
                             natural_size: (scene.width, scene.height),
+                            padding: None,
                         },
                         transform: Transform::identity(),
                         opacity: 1.0,
@@ -638,8 +643,8 @@ impl Compositor {
         if layer.effects.is_empty() {
             return Ok(base);
         }
-        let processed =
-            self.apply_effects_to_texture(dev_id, device, queue, &base, &layer.effects)?;
+        let (processed, _) =
+            self.apply_effects_to_texture(dev_id, device, queue, &base, &layer.effects, false)?;
         Ok(EffectSource::Gpu(processed))
     }
 
@@ -664,6 +669,7 @@ impl Compositor {
                         source: RasterSource::GpuTexture(Arc::new(
                             crate::media::SharedTexture::new_shared(Arc::new(texture)),
                         )),
+                        padding: None,
                     };
                     layer.transform.scale_x /= render_scale.0;
                     layer.transform.scale_y /= render_scale.1;
@@ -722,7 +728,7 @@ impl Compositor {
             render_scale,
         )?;
         let blur_scale = ((render_scale.0 + render_scale.1) * 0.5) as f32;
-        let blurred_shadow = self.apply_effects_to_texture(
+        let (blurred_shadow, _) = self.apply_effects_to_texture(
             dev_id,
             device,
             queue,
@@ -732,6 +738,7 @@ impl Compositor {
             &[EffectSpec::GaussianBlurPixels {
                 radius: spec.text_shadow_blur * blur_scale,
             }],
+            false,
         )?;
 
         let mut text_spec = spec.clone();
@@ -820,6 +827,7 @@ impl Compositor {
             kind: LayerKind::Raster {
                 source: RasterSource::GpuTexture(texture),
                 natural_size,
+                padding: None,
             },
             transform: Transform::identity(),
             opacity: 1.0,
@@ -918,25 +926,27 @@ impl Compositor {
         queue: &wgpu::Queue,
         source: &EffectSource,
         effects: &[EffectSpec],
-    ) -> Result<Arc<crate::media::SharedTexture>> {
+        enable_padding: bool,
+    ) -> Result<(Arc<crate::media::SharedTexture>, u32)> {
         let cache = self.pipeline_caches.get(&dev_id);
         let pipeline = self
             .effect_pipelines
             .entry(dev_id)
             .or_insert_with(|| EffectPipeline::new(device, cache));
-        match pipeline.apply_effects(device, queue, source, effects) {
-            Ok(texture) => Ok(texture),
+        match pipeline.apply_effects(device, queue, source, effects, enable_padding) {
+            Ok((texture, padding)) => Ok((texture, padding)),
             Err(error) => {
                 log::warn!("[compositor] layer effects skipped: {error:?}");
                 // Fallback: отдать исходник как есть. GPU-текстура — дешёвый клон хэндла.
-                match source {
+                let tex = match source {
                     EffectSource::Cpu(img) => {
-                        Ok(Arc::new(crate::media::SharedTexture::new_shared(Arc::new(
+                        Arc::new(crate::media::SharedTexture::new_shared(Arc::new(
                             image_to_texture(device, queue, img)?,
-                        ))))
+                        )))
                     }
-                    EffectSource::Gpu(tex) => Ok(tex.clone()),
-                }
+                    EffectSource::Gpu(tex) => tex.clone(),
+                };
+                Ok((tex, 0))
             }
         }
     }
