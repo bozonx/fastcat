@@ -52,14 +52,16 @@ export const VIDEO_EFFECT_PARAM_RANGES = {
     renderMax: 4,
   },
   unit: { uiMin: 0, uiMax: 1, animationMin: 0, animationMax: 1, renderMin: 0, renderMax: 1 },
-  // Sharpen amount: 0..1 is the useful manual range; animation can overshoot
+  // Sharpen amount: bidirectional. 0 is neutral (identity); positive sharpens
+  // (unsharp mask), negative softens (the same kernel run with a negative
+  // weight). −1..+1 is the comfortable manual range; animation can overshoot
   // for stylized pulses, hard-capped well below instability.
   sharpenAmount: {
-    uiMin: 0,
+    uiMin: -1,
     uiMax: 1,
-    animationMin: 0,
+    animationMin: -3,
     animationMax: 3,
-    renderMin: 0,
+    renderMin: -4,
     renderMax: 4,
   },
   pixelSize: {
@@ -87,7 +89,9 @@ export const VIDEO_EFFECT_PARAM_RANGES = {
     renderMax: 1080,
   },
   gamma: {
-    uiMin: 0.01,
+    // uiMin 0.1 is the comfortable manual floor; the render/animation floor
+    // stays at the shader's hard 0.01 guard so keyframes can still go darker.
+    uiMin: 0.1,
     uiMax: 8,
     animationMin: 0.01,
     animationMax: 16,
@@ -102,6 +106,7 @@ const percentFromOne: SliderFormat = (value) => `${Math.round((value - 1) * 100)
 const percent: SliderFormat = (value) => `${Math.round(value * 100)}%`;
 const pixels: SliderFormat = (value) => `${value}px`;
 const degrees: SliderFormat = (value) => `${value}deg`;
+const decimal: SliderFormat = (value) => value.toFixed(2);
 
 function finiteNumber(value: unknown, fallback: number): number {
   return typeof value === 'number' && Number.isFinite(value) ? value : fallback;
@@ -341,7 +346,7 @@ export const videoEffectManifests: VideoEffectManifest[] = [
     target: 'video',
     renderer: 'wgsl-compute',
     defaultValues: {
-      amount: 0.35,
+      amount: 0,
     },
     paramRanges: {
       amount: VIDEO_EFFECT_PARAM_RANGES.sharpenAmount,
@@ -360,7 +365,7 @@ export const videoEffectManifests: VideoEffectManifest[] = [
     toEffectSpecs: (values) => [
       spec('sharpen', {
         amount: clampRange(
-          finiteNumber(values.amount, 0.35),
+          finiteNumber(values.amount, 0),
           VIDEO_EFFECT_PARAM_RANGES.sharpenAmount,
         ),
       }),
@@ -639,6 +644,7 @@ export const videoEffectManifests: VideoEffectManifest[] = [
         min: VIDEO_EFFECT_PARAM_RANGES.gamma.uiMin,
         max: VIDEO_EFFECT_PARAM_RANGES.gamma.uiMax,
         step: 0.05,
+        format: decimal,
       },
       {
         kind: 'slider',

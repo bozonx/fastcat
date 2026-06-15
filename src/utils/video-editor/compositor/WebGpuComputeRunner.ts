@@ -230,10 +230,11 @@ function effectUniform(
     case 'bloom':
       return null; // handled in buildPasses
     case 'sharpen':
+      // Bidirectional: positive sharpens, negative softens.
       // p1 = sample step in px (resolution-normalized).
       return base(
         5,
-        Math.max(0, Math.min(MAX_SHARPEN, effect.amount)),
+        Math.max(-MAX_SHARPEN, Math.min(MAX_SHARPEN, effect.amount)),
         Math.max(1, scale),
         0,
         0,

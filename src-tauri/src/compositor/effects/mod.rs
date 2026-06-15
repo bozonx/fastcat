@@ -968,11 +968,12 @@ fn effect_uniform(
         EffectSpec::GaussianBlur { .. }
         | EffectSpec::GaussianBlurPixels { .. }
         | EffectSpec::Bloom { .. } => return None,
+        // Bidirectional: positive sharpens (unsharp mask), negative softens.
         // p1 = sample step in px (resolution-normalized so sharpening looks the
         // same fraction-of-frame at any resolution).
         EffectSpec::Sharpen { amount } => base(
             5,
-            amount.clamp(0.0, MAX_SHARPEN),
+            amount.clamp(-MAX_SHARPEN, MAX_SHARPEN),
             scale.max(1.0),
             0.0,
             0.0,
