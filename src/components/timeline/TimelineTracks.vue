@@ -399,14 +399,14 @@ watch(
           trackViewModel.clipRenderMemo,
           movePreviewMemoByTrack[trackViewModel.track.id] ?? null,
           dragPreview?.trackId === trackViewModel.track.id ? dragPreview.startUs : null,
-          trackViewModel.track.items.some((i) => i.id === draggingItemId) ? draggingItemId : null,
-          trackViewModel.track.items.some((i) => movePreviewIds.has(i.id))
+          draggingItemId && trackViewModel.track.items.some((i) => i.id === draggingItemId) ? draggingItemId : null,
+          movePreviewIds.size > 0 && trackViewModel.track.items.some((i) => movePreviewIds.has(i.id))
             ? (movePreviewMemoByTrack[trackViewModel.track.id] ?? null)
             : null,
-          trackViewModel.track.items.some((i) => i.id === slipPreview?.itemId)
-            ? slipPreview?.deltaUs
+          slipPreview && trackViewModel.track.items.some((i) => i.id === slipPreview.itemId)
+            ? slipPreview.deltaUs
             : null,
-          trackViewModel.track.items.some((i) => trimPreview?.some((p) => p.itemId === i.id))
+          trimPreview && trimPreview.length > 0 && trackViewModel.track.items.some((i) => trimPreview.some((p) => p.itemId === i.id))
             ? (trimPreviewMemoByTrack[trackViewModel.track.id] ?? null)
             : null,
         ]"
