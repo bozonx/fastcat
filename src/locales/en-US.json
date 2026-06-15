@@ -337,7 +337,13 @@
           "name": "Blur",
           "params": {
             "blurPastEdges": "Blur past edges",
-            "strength": "Strength"
+            "strength": "Strength",
+            "blurType": "Blur Type"
+          },
+          "options": {
+            "gaussian": "Gaussian",
+            "box": "Box",
+            "radial": "Radial"
           }
         },
         "color-adjustment": {
@@ -409,7 +415,13 @@
           "name": "Noise",
           "params": {
             "noise": "Intensity",
-            "seed": "Grain"
+            "seed": "Grain",
+            "noiseType": "Noise Type"
+          },
+          "options": {
+            "white": "White Noise",
+            "perlin": "Perlin Noise",
+            "simplex": "Simplex Noise"
           }
         }
       },

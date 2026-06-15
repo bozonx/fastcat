@@ -337,7 +337,13 @@
           "name": "Размытие",
           "params": {
             "blurPastEdges": "Размывать за края кадра",
-            "strength": "Сила"
+            "strength": "Сила",
+            "blurType": "Тип размытия"
+          },
+          "options": {
+            "gaussian": "Гауссово",
+            "box": "Блочное (Box)",
+            "radial": "Радиальное"
           }
         },
         "color-adjustment": {
@@ -409,7 +415,13 @@
           "name": "Шум",
           "params": {
             "noise": "Интенсивность",
-            "seed": "Зерно"
+            "seed": "Зерно",
+            "noiseType": "Тип шума"
+          },
+          "options": {
+            "white": "Белый шум",
+            "perlin": "Шум Перлина",
+            "simplex": "Симплекс-шум"
           }
         }
       },

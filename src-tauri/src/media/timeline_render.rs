@@ -737,6 +737,7 @@ mod tests {
             vec![crate::compositor::effects::EffectSpec::GaussianBlur {
                 radius: 12.0,
                 bleed: false,
+                blur_type: "gaussian".to_string(),
             }];
         let scene = MonitorScene {
             master_effects: Vec::new(),

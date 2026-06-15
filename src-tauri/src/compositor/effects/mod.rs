@@ -37,6 +37,8 @@ pub enum EffectSpec {
         /// keeps a full-bleed, crisp border instead of darkening/fading.
         #[serde(default)]
         bleed: bool,
+        #[serde(default)]
+        blur_type: String,
     },
     /// Internal compositor-space blur. Unlike `GaussianBlur`, the radius is
     /// already expressed in the target texture's pixels and is not normalized
@@ -87,6 +89,8 @@ pub enum EffectSpec {
     Noise {
         amount: f32,
         seed: u32,
+        #[serde(default)]
+        noise_type: String,
     },
     ChromaticAberration {
         amount: f32,
@@ -268,6 +272,7 @@ fn calculate_padding(effects: &[EffectSpec], scale: f32) -> u32 {
         if let EffectSpec::GaussianBlur {
             radius,
             bleed: true,
+            ..
         } = effect
         {
             let r = radius * scale;
@@ -831,41 +836,71 @@ fn pick_scratch(avoid: &[Buf]) -> Buf {
 
 /// Separable gaussian blur (horizontal then vertical) reading from `cur` and
 /// returning the buffer holding the result.
-fn push_blur(passes: &mut Vec<EffectPass>, cur: Buf, radius: f32, width: u32, height: u32) -> Buf {
+fn push_blur(
+    passes: &mut Vec<EffectPass>,
+    cur: Buf,
+    radius: f32,
+    blur_type: &str,
+    width: u32,
+    height: u32,
+) -> Buf {
     if radius <= 0.0 {
         return cur;
     }
-    let t1 = pick_scratch(&[cur]);
-    passes.push(EffectPass {
-        uniform: EffectUniform {
-            mode: 4,
-            width,
-            height,
-            seed: 0,
-            p0: radius,
-            ..Default::default()
-        },
-        custom_source: None,
-        src: cur,
-        secondary: cur,
-        dst: t1,
-    });
-    let t2 = pick_scratch(&[t1]);
-    passes.push(EffectPass {
-        uniform: EffectUniform {
-            mode: 14,
-            width,
-            height,
-            seed: 0,
-            p0: radius,
-            ..Default::default()
-        },
-        custom_source: None,
-        src: t1,
-        secondary: t1,
-        dst: t2,
-    });
-    t2
+    if blur_type == "radial" {
+        let t1 = pick_scratch(&[cur]);
+        passes.push(EffectPass {
+            uniform: EffectUniform {
+                mode: 4,
+                width,
+                height,
+                seed: 0,
+                p0: radius,
+                p1: 2.0, // 2.0 = Radial
+                ..Default::default()
+            },
+            custom_source: None,
+            src: cur,
+            secondary: cur,
+            dst: t1,
+        });
+        t1
+    } else {
+        let type_val = if blur_type == "box" { 1.0 } else { 0.0 };
+        let t1 = pick_scratch(&[cur]);
+        passes.push(EffectPass {
+            uniform: EffectUniform {
+                mode: 4,
+                width,
+                height,
+                seed: 0,
+                p0: radius,
+                p1: type_val,
+                ..Default::default()
+            },
+            custom_source: None,
+            src: cur,
+            secondary: cur,
+            dst: t1,
+        });
+        let t2 = pick_scratch(&[t1]);
+        passes.push(EffectPass {
+            uniform: EffectUniform {
+                mode: 14,
+                width,
+                height,
+                seed: 0,
+                p0: radius,
+                p1: type_val,
+                ..Default::default()
+            },
+            custom_source: None,
+            src: t1,
+            secondary: t1,
+            dst: t2,
+        });
+        t2
+    }
 }
 
 /// Bloom: extract bright pass → blur → compose over the *running* image. The
@@ -957,12 +992,13 @@ fn build_passes(effects: &[EffectSpec], width: u32, height: u32) -> Vec<EffectPa
     let mut cur = Buf::Input;
 
     for effect in effects {
-        match *effect {
-            EffectSpec::GaussianBlur { radius, .. } => {
+        match effect {
+            EffectSpec::GaussianBlur { radius, blur_type, .. } => {
                 cur = push_blur(
                     &mut passes,
                     cur,
-                    (radius * scale).clamp(0.0, MAX_BLUR_RADIUS),
+                    (*radius * scale).clamp(0.0, MAX_BLUR_RADIUS),
+                    blur_type,
                     width,
                     height,
                 );
@@ -971,7 +1007,8 @@ fn build_passes(effects: &[EffectSpec], width: u32, height: u32) -> Vec<EffectPa
                 cur = push_blur(
                     &mut passes,
                     cur,
-                    radius.clamp(0.0, MAX_BLUR_RADIUS),
+                    *radius,
+                    "gaussian",
                     width,
                     height,
                 );
@@ -984,9 +1021,9 @@ fn build_passes(effects: &[EffectSpec], width: u32, height: u32) -> Vec<EffectPa
                 cur = push_bloom(
                     &mut passes,
                     cur,
-                    threshold.clamp(0.0, 1.0),
-                    strength.clamp(0.0, MAX_BLOOM_STRENGTH),
-                    (radius * scale).clamp(0.0, MAX_BLOOM_RADIUS),
+                    *threshold,
+                    *strength,
+                    (*radius * scale).clamp(0.0, MAX_BLOOM_RADIUS),
                     width,
                     height,
                 );
@@ -1110,8 +1147,13 @@ fn effect_uniform(
             0.0,
             0,
         ),
-        EffectSpec::Noise { amount, seed } => {
-            base(9, amount.clamp(0.0, 1.0), 0.0, 0.0, 0.0, 0.0, 0.0, *seed)
+        EffectSpec::Noise { amount, seed, noise_type } => {
+            let type_val = match noise_type.as_str() {
+                "perlin" => 1.0,
+                "simplex" => 2.0,
+                _ => 0.0,
+            };
+            base(9, amount.clamp(0.0, 1.0), type_val, 0.0, 0.0, 0.0, 0.0, *seed)
         }
         EffectSpec::ChromaticAberration { amount, angle_deg } => base(
             10,
@@ -1287,6 +1329,7 @@ mod tests {
             &[EffectSpec::GaussianBlur {
                 radius: 10.0,
                 bleed: false,
+                blur_type: "gaussian".to_string(),
             }],
             1920,
             1080,

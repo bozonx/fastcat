@@ -93,12 +93,74 @@ fn hash21(p: vec2<f32>) -> f32 {
     return fract((r.x + r.y) * r.z);
 }
 
+fn hash22(p: vec2<f32>) -> vec2<f32> {
+    let q = fract(vec3<f32>(p.x, p.y, p.x) * vec3<f32>(0.1031, 0.1030, 0.0973));
+    let r = q + dot(q, q.yzx + vec3<f32>(33.33));
+    return fract((r.xx + r.yz) * r.zy) * 2.0 - 1.0;
+}
+
+fn hash31(p: vec3<f32>) -> f32 {
+    let q = fract(p * vec3<f32>(0.1031, 0.1030, 0.0973));
+    let r = q + dot(q, q.yzx + vec3<f32>(33.33));
+    return fract((r.x + r.y) * r.z);
+}
+
 fn rotate_hue(color: vec3<f32>, degrees: f32) -> vec3<f32> {
     let angle = degrees * 0.017453292519943295;
     let s = sin(angle);
     let c = cos(angle);
     let k = vec3<f32>(0.57735026919);
     return color * c + cross(k, color) * s + k * dot(k, color) * (1.0 - c);
+}
+
+// 2D Perlin (Gradient) Noise mapped to [0, 1]
+fn perlin_noise(p: vec2<f32>) -> f32 {
+    let ip = floor(p);
+    let fp = fract(p);
+    let u = fp * fp * (3.0 - 2.0 * fp);
+
+    let g00 = dot(hash22(ip + vec2<f32>(0.0, 0.0)), fp - vec2<f32>(0.0, 0.0));
+    let g10 = dot(hash22(ip + vec2<f32>(1.0, 0.0)), fp - vec2<f32>(1.0, 0.0));
+    let g01 = dot(hash22(ip + vec2<f32>(0.0, 1.0)), fp - vec2<f32>(0.0, 1.0));
+    let g11 = dot(hash22(ip + vec2<f32>(1.0, 1.0)), fp - vec2<f32>(1.0, 1.0));
+
+    let n = mix(mix(g00, g10, u.x), mix(g01, g11, u.x), u.y);
+    return n * 0.5 + 0.5;
+}
+
+// 2D Simplex Noise mapped to [0, 1]
+fn simplex_noise(p: vec2<f32>) -> f32 {
+    let C = vec4<f32>(0.211324865405187,  // (3.0-sqrt(3.0))/6.0
+                      0.366025403784439,  // 0.5*(sqrt(3.0)-1.0)
+                     -0.577350269189626,  // -1.0 + 2.0 * C.x
+                      0.024390243902439); // 1.0 / 41.0
+    var i  = floor(p + dot(p, C.yy) );
+    let x0 = p -   i + dot(i, C.xx) ;
+
+    var i1: vec2<f32>;
+    if (x0.x > x0.y) {
+        i1 = vec2<f32>(1.0, 0.0);
+    } else {
+        i1 = vec2<f32>(0.0, 1.0);
+    }
+    let x1 = x0.xy - i1 + C.xx;
+    let x2 = x0.xy + C.zz;
+
+    let i_mod = i - floor(i * (1.0 / 289.0)) * 289.0;
+    let h0 = hash22(i_mod);
+    let h1 = hash22(i_mod + i1);
+    let h2 = hash22(i_mod + vec2<f32>(1.0, 1.0));
+
+    let g0 = dot(h0, x0);
+    let g1 = dot(h1, x1);
+    let g2 = dot(h2, x2);
+
+    var m = max(0.5 - vec3<f32>(dot(x0, x0), dot(x1, x1), dot(x2, x2)), vec3<f32>(0.0));
+    m = m * m;
+    m = m * m;
+
+    let n = dot(m, vec3<f32>(g0, g1, g2));
+    return clamp(70.0 * n * 0.5 + 0.5, 0.0, 1.0);
 }
 
 // Separable gaussian along an arbitrary axis (`dir` is a unit vector in UV px:
@@ -126,6 +188,50 @@ fn gaussian_blur(uv: vec2<f32>, radius: f32, dir: vec2<f32>) -> vec4<f32> {
     return sum / max(weight_sum, 0.0001);
 }
 
+// Separable box blur along an arbitrary axis.
+fn box_blur(uv: vec2<f32>, radius: f32, dir: vec2<f32>) -> vec4<f32> {
+    let safe_radius = max(radius, 0.0);
+    if (safe_radius < 0.5) {
+        return sample_uv(uv);
+    }
+    let taps = i32(clamp(ceil(safe_radius), 1.0, f32(MAX_BLUR_TAPS)));
+    let step = safe_radius / f32(taps);
+    let texel = texel_size();
+    var sum = vec4<f32>(0.0);
+    var weight_sum = 0.0;
+    for (var i = -taps; i <= taps; i = i + 1) {
+        let dist = f32(i) * step;
+        let sample_pos = uv + dir * dist * texel;
+        sum += sample_uv(sample_pos);
+        weight_sum += 1.0;
+    }
+    return sum / max(weight_sum, 0.0001);
+}
+
+// Radial blur centered around (0.5, 0.5) with sharpness at the center.
+fn radial_blur(uv: vec2<f32>, radius: f32) -> vec4<f32> {
+    let center = vec2<f32>(0.5, 0.5);
+    let dir = uv - center;
+    let dist = length(dir);
+    let safe_radius = max(radius * dist, 0.0);
+    if (safe_radius < 0.5) {
+        return sample_uv(uv);
+    }
+    let norm_dir = dir / max(dist, 0.0001);
+    let taps = i32(clamp(ceil(safe_radius), 1.0, f32(MAX_BLUR_TAPS)));
+    let step = safe_radius / f32(taps);
+    let texel = texel_size();
+    var sum = vec4<f32>(0.0);
+    var weight_sum = 0.0;
+    for (var i = -taps; i <= taps; i = i + 1) {
+        let dist_val = f32(i) * step;
+        let sample_pos = uv + norm_dir * dist_val * texel;
+        sum += sample_uv(sample_pos);
+        weight_sum += 1.0;
+    }
+    return sum / max(weight_sum, 0.0001);
+}
+
 @compute @workgroup_size(8, 8, 1)
 fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
     if (gid.x >= effect.width || gid.y >= effect.height) {
@@ -149,7 +255,13 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
             color = vec4<f32>(mix(gray, color.rgb, effect.p0), color.a);
         }
         case 4u: {
-            color = gaussian_blur(uv, effect.p0, vec2<f32>(1.0, 0.0));
+            if (effect.p1 >= 1.5) {
+                color = radial_blur(uv, effect.p0);
+            } else if (effect.p1 >= 0.5) {
+                color = box_blur(uv, effect.p0, vec2<f32>(1.0, 0.0));
+            } else {
+                color = gaussian_blur(uv, effect.p0, vec2<f32>(1.0, 0.0));
+            }
         }
         case 5u: {
             let step = max(effect.p1, 1.0);
@@ -183,7 +295,21 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
             color = vec4<f32>(color.rgb * (1.0 - mask * effect.p0), color.a);
         }
         case 9u: {
-            let n = hash21(vec2<f32>(f32(gid.x) + f32(effect.seed), f32(gid.y) - f32(effect.seed)));
+            var n: f32 = 0.0;
+            let seed_val = f32(effect.seed);
+            if (effect.p1 >= 1.5) {
+                let seed_x = hash21(vec2<f32>(seed_val, 1.0)) * 1000.0;
+                let seed_y = hash21(vec2<f32>(seed_val, 2.0)) * 1000.0;
+                let p = vec2<f32>(f32(gid.x) + seed_x, f32(gid.y) + seed_y) * 0.1;
+                n = simplex_noise(p);
+            } else if (effect.p1 >= 0.5) {
+                let seed_x = hash21(vec2<f32>(seed_val, 1.0)) * 1000.0;
+                let seed_y = hash21(vec2<f32>(seed_val, 2.0)) * 1000.0;
+                let p = vec2<f32>(f32(gid.x) + seed_x, f32(gid.y) + seed_y) * 0.1;
+                n = perlin_noise(p);
+            } else {
+                n = hash31(vec3<f32>(f32(gid.x), f32(gid.y), seed_val));
+            }
             color = vec4<f32>(color.rgb + (n - 0.5) * effect.p0, color.a);
         }
         case 10u: {
@@ -214,7 +340,13 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
             color = vec4<f32>(color.rgb, color.a * smoothstep(threshold, threshold + smoothness, diff));
         }
         case 14u: {
-            color = gaussian_blur(uv, effect.p0, vec2<f32>(0.0, 1.0));
+            if (effect.p1 >= 1.5) {
+                color = load_px(coord);
+            } else if (effect.p1 >= 0.5) {
+                color = box_blur(uv, effect.p0, vec2<f32>(0.0, 1.0));
+            } else {
+                color = gaussian_blur(uv, effect.p0, vec2<f32>(0.0, 1.0));
+            }
         }
         case 15u: {
             let bright = smoothstep(effect.p0, 1.0, luma(color.rgb));

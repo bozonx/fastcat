@@ -117,6 +117,7 @@ describe('unified video effect manifests', () => {
         type: 'gaussian-blur',
         radius: 12,
         bleed: false,
+        blur_type: 'gaussian',
       },
       {
         type: 'brightness',
@@ -179,7 +180,7 @@ describe('unified video effect manifests', () => {
     ]);
 
     expect(specs).toEqual([
-      { type: 'gaussian-blur', radius: 500, bleed: false },
+      { type: 'gaussian-blur', radius: 500, bleed: false, blur_type: 'gaussian' },
       { type: 'bloom', threshold: 0.4, strength: 3.5, radius: 220 },
       { type: 'brightness', value: 3 },
       { type: 'contrast', value: 3.5 },
@@ -207,8 +208,8 @@ describe('unified video effect manifests', () => {
     ]);
 
     expect(specs).toEqual([
-      { type: 'gaussian-blur', radius: 96, bleed: false },
-      { type: 'noise', amount: 1, seed: 4_294_967_295 },
+      { type: 'gaussian-blur', radius: 96, bleed: false, blur_type: 'gaussian' },
+      { type: 'noise', amount: 1, seed: 4_294_967_295, noise_type: 'white' },
     ]);
   });
 
@@ -224,7 +225,7 @@ describe('unified video effect manifests', () => {
       },
     ]);
 
-    expect(specs).toEqual([{ type: 'gaussian-blur', radius: 24, bleed: true }]);
+    expect(specs).toEqual([{ type: 'gaussian-blur', radius: 24, bleed: true, blur_type: 'gaussian' }]);
   });
 
   it('serializes color-adjustment with non-zero hue value and omits it when zero', () => {
@@ -265,6 +266,42 @@ describe('unified video effect manifests', () => {
       { type: 'brightness', value: 1 },
       { type: 'contrast', value: 1 },
       { type: 'saturation', value: 1 },
+    ]);
+  });
+
+  it('serializes box and radial blur types, and perlin and simplex noise types', () => {
+    const specs = buildEffectSpecs([
+      {
+        id: 'fx-box-blur',
+        type: 'blur',
+        enabled: true,
+        target: 'video',
+        strength: 20,
+        blurType: 'box',
+      },
+      {
+        id: 'fx-radial-blur',
+        type: 'blur',
+        enabled: true,
+        target: 'video',
+        strength: 30,
+        blurType: 'radial',
+      },
+      {
+        id: 'fx-perlin-noise',
+        type: 'noise',
+        enabled: true,
+        target: 'video',
+        amount: 0.5,
+        seed: 42,
+        noiseType: 'perlin',
+      },
+    ]);
+
+    expect(specs).toEqual([
+      { type: 'gaussian-blur', radius: 20, bleed: false, blur_type: 'box' },
+      { type: 'gaussian-blur', radius: 30, bleed: false, blur_type: 'radial' },
+      { type: 'noise', amount: 0.5, seed: 42, noise_type: 'perlin' },
     ]);
   });
 });

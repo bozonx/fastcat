@@ -66,30 +66,43 @@ function pickScratch(avoid: Buf[]): Buf {
   return 'ping';
 }
 
-/** Separable gaussian blur (h then v); returns the buffer holding the result. */
+/** Separable gaussian or box blur, or single-pass radial blur; returns the buffer holding the result. */
 function pushBlur(
   passes: ComputePass[],
   cur: Buf,
   radius: number,
+  blurType: string,
   width: number,
   height: number,
 ): Buf {
   if (radius <= 0) return cur;
-  const t1 = pickScratch([cur]);
-  passes.push({
-    uniform: { ...uniform(4, width, height), p0: radius },
-    src: cur,
-    secondary: cur,
-    dst: t1,
-  });
-  const t2 = pickScratch([t1]);
-  passes.push({
-    uniform: { ...uniform(14, width, height), p0: radius },
-    src: t1,
-    secondary: t1,
-    dst: t2,
-  });
-  return t2;
+  if (blurType === 'radial') {
+    const t1 = pickScratch([cur]);
+    passes.push({
+      uniform: { ...uniform(4, width, height), p0: radius, p1: 2.0 },
+      src: cur,
+      secondary: cur,
+      dst: t1,
+    });
+    return t1;
+  } else {
+    const blurTypeVal = blurType === 'box' ? 1.0 : 0.0;
+    const t1 = pickScratch([cur]);
+    passes.push({
+      uniform: { ...uniform(4, width, height), p0: radius, p1: blurTypeVal },
+      src: cur,
+      secondary: cur,
+      dst: t1,
+    });
+    const t2 = pickScratch([t1]);
+    passes.push({
+      uniform: { ...uniform(14, width, height), p0: radius, p1: blurTypeVal },
+      src: t1,
+      secondary: t1,
+      dst: t2,
+    });
+    return t2;
+  }
 }
 
 /** Bloom: extract bright → blur → compose over the running image (`cur`). */
@@ -151,6 +164,7 @@ export function buildPasses(
           passes,
           cur,
           Math.max(0, Math.min(MAX_BLUR_RADIUS, effect.radius * scale)),
+          effect.blur_type || 'gaussian',
           width,
           height,
         );
@@ -160,6 +174,7 @@ export function buildPasses(
           passes,
           cur,
           Math.max(0, Math.min(MAX_BLUR_RADIUS, effect.radius)),
+          'gaussian',
           width,
           height,
         );
@@ -255,8 +270,10 @@ function effectUniform(
         0,
         0,
       );
-    case 'noise':
-      return base(9, Math.max(0, Math.min(1.0, effect.amount)), 0, 0, 0, 0, 0, effect.seed);
+    case 'noise': {
+      const typeVal = effect.noise_type === 'perlin' ? 1.0 : (effect.noise_type === 'simplex' ? 2.0 : 0.0);
+      return base(9, Math.max(0, Math.min(1.0, effect.amount)), typeVal, 0, 0, 0, 0, effect.seed);
+    }
     case 'chromatic-aberration':
       return base(
         10,

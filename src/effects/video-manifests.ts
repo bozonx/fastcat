@@ -252,6 +252,7 @@ export const videoEffectManifests: VideoEffectManifest[] = [
     target: 'video',
     renderer: 'wgsl-compute',
     defaultValues: {
+      blurType: 'gaussian',
       strength: 8,
       // Off by default: safe for opaque video (clamps to the frame edges, no
       // darkening). Turn on for PNGs / cutouts so the blur bleeds past the
@@ -262,6 +263,16 @@ export const videoEffectManifests: VideoEffectManifest[] = [
       strength: VIDEO_EFFECT_PARAM_RANGES.blurRadius,
     },
     controls: [
+      {
+        kind: 'select',
+        key: 'blurType',
+        labelKey: 'fastcat.effects.video.blur.params.blurType',
+        options: [
+          { value: 'gaussian', labelKey: 'fastcat.effects.video.blur.options.gaussian' },
+          { value: 'box', labelKey: 'fastcat.effects.video.blur.options.box' },
+          { value: 'radial', labelKey: 'fastcat.effects.video.blur.options.radial' },
+        ],
+      },
       {
         kind: 'slider',
         key: 'strength',
@@ -284,6 +295,7 @@ export const videoEffectManifests: VideoEffectManifest[] = [
           VIDEO_EFFECT_PARAM_RANGES.blurRadius,
         ),
         bleed: values.blurPastEdges === true,
+        blur_type: values.blurType || 'gaussian',
       }),
     ],
   },
@@ -482,6 +494,7 @@ export const videoEffectManifests: VideoEffectManifest[] = [
     target: 'video',
     renderer: 'wgsl-compute',
     defaultValues: {
+      noiseType: 'white',
       amount: 0.08,
       seed: 1,
     },
@@ -497,6 +510,16 @@ export const videoEffectManifests: VideoEffectManifest[] = [
       },
     },
     controls: [
+      {
+        kind: 'select',
+        key: 'noiseType',
+        labelKey: 'fastcat.effects.video.noise.params.noiseType',
+        options: [
+          { value: 'white', labelKey: 'fastcat.effects.video.noise.options.white' },
+          { value: 'perlin', labelKey: 'fastcat.effects.video.noise.options.perlin' },
+          { value: 'simplex', labelKey: 'fastcat.effects.video.noise.options.simplex' },
+        ],
+      },
       {
         kind: 'slider',
         key: 'amount',
@@ -519,6 +542,7 @@ export const videoEffectManifests: VideoEffectManifest[] = [
       spec('noise', {
         amount: clampRange(finiteNumber(values.amount, 0.08), VIDEO_EFFECT_PARAM_RANGES.unit),
         seed: clamp(Math.round(finiteNumber(values.seed, 1)), 0, UINT32_MAX),
+        noise_type: values.noiseType || 'white',
       }),
     ],
   },
