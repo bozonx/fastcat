@@ -157,11 +157,13 @@ export const videoEffectManifests: VideoEffectManifest[] = [
       brightness: 1,
       contrast: 1,
       saturation: 1,
+      hue: 0,
     },
     paramRanges: {
       brightness: VIDEO_EFFECT_PARAM_RANGES.colorMultiplier,
       contrast: VIDEO_EFFECT_PARAM_RANGES.colorMultiplier,
       saturation: VIDEO_EFFECT_PARAM_RANGES.colorMultiplier,
+      hue: VIDEO_EFFECT_PARAM_RANGES.hueDegrees,
     },
     controls: [
       {
@@ -191,27 +193,49 @@ export const videoEffectManifests: VideoEffectManifest[] = [
         step: 0.05,
         format: percentFromOne,
       },
+      {
+        kind: 'slider',
+        key: 'hue',
+        labelKey: 'fastcat.effects.video.color-adjustment.params.hue',
+        min: VIDEO_EFFECT_PARAM_RANGES.hueDegrees.uiMin,
+        max: VIDEO_EFFECT_PARAM_RANGES.hueDegrees.uiMax,
+        step: 1,
+        format: degrees,
+      },
     ],
-    toEffectSpecs: (values) => [
-      spec('brightness', {
-        value: clampRange(
-          finiteNumber(values.brightness, 1),
-          VIDEO_EFFECT_PARAM_RANGES.colorMultiplier,
-        ),
-      }),
-      spec('contrast', {
-        value: clampRange(
-          finiteNumber(values.contrast, 1),
-          VIDEO_EFFECT_PARAM_RANGES.colorMultiplier,
-        ),
-      }),
-      spec('saturation', {
-        value: clampRange(
-          finiteNumber(values.saturation, 1),
-          VIDEO_EFFECT_PARAM_RANGES.colorMultiplier,
-        ),
-      }),
-    ],
+    toEffectSpecs: (values) => {
+      const specs = [
+        spec('brightness', {
+          value: clampRange(
+            finiteNumber(values.brightness, 1),
+            VIDEO_EFFECT_PARAM_RANGES.colorMultiplier,
+          ),
+        }),
+        spec('contrast', {
+          value: clampRange(
+            finiteNumber(values.contrast, 1),
+            VIDEO_EFFECT_PARAM_RANGES.colorMultiplier,
+          ),
+        }),
+        spec('saturation', {
+          value: clampRange(
+            finiteNumber(values.saturation, 1),
+            VIDEO_EFFECT_PARAM_RANGES.colorMultiplier,
+          ),
+        }),
+      ];
+
+      const hueVal = finiteNumber(values.hue, 0);
+      if (hueVal !== 0) {
+        specs.push(
+          spec('hue', {
+            degrees: clampRange(hueVal, VIDEO_EFFECT_PARAM_RANGES.hueDegrees),
+          }),
+        );
+      }
+
+      return specs;
+    },
   },
   {
     type: 'blur',
@@ -542,6 +566,7 @@ export const videoEffectManifests: VideoEffectManifest[] = [
     icon: 'i-heroicons-arrow-path',
     target: 'video',
     renderer: 'wgsl-compute',
+    hidden: true,
     defaultValues: {
       degrees: 0,
     },
@@ -657,6 +682,7 @@ export const videoEffectManifests: VideoEffectManifest[] = [
     icon: 'i-heroicons-sparkles',
     target: 'video',
     renderer: 'wgsl-compute',
+    experimental: true,
     defaultValues: {
       keyColor: '#00ff00',
       threshold: 0.1,

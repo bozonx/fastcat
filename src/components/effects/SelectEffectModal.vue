@@ -7,6 +7,7 @@ import {
   type EffectManifest,
 } from '~/effects';
 import { usePresetsStore } from '~/stores/presets.store';
+import { useWorkspaceStore } from '~/stores/workspace.store';
 import CollapsibleEffectGroup from './CollapsibleEffectGroup.vue';
 import EffectCard from './EffectCard.vue';
 
@@ -29,6 +30,7 @@ const emit = defineEmits<{
 
 const { t } = useI18n();
 const presetsStore = usePresetsStore();
+const workspaceStore = useWorkspaceStore();
 const isOpen = ref(props.open);
 
 watch(
@@ -44,9 +46,13 @@ watch(isOpen, (val) => {
   }
 });
 
-const allManifests = computed(() =>
-  props.target === 'video' ? getAllVideoEffectManifests() : getAllAudioEffectManifests(),
-);
+const allManifests = computed(() => {
+  const manifests =
+    props.target === 'video' ? getAllVideoEffectManifests() : getAllAudioEffectManifests();
+  return manifests.filter(
+    (m) => !m.experimental || workspaceStore.userSettings.experimentalFeatures,
+  );
+});
 
 const groupedEffects = computed<{
   basic: EffectManifest[];

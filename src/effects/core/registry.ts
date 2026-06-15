@@ -39,6 +39,8 @@ export interface BaseEffectManifest<T = Record<string, unknown>> {
   settingsControls?: ParamControl[];
   isCustom?: boolean;
   baseType?: string;
+  hidden?: boolean;
+  experimental?: boolean;
 }
 
 export interface EffectParamRange {
@@ -170,16 +172,19 @@ export function getAllEffectManifests(
     Record<string, unknown>
   >[];
 
+  const filteredVideo = videoManifests.filter((manifest) => !manifest.hidden);
+
   if (target === 'video') {
-    return videoManifests;
+    return filteredVideo;
   }
 
   const audioManifests = Array.from(effectsRegistry.values()).filter(isAudioEffectManifest);
+  const filteredAudio = audioManifests.filter((manifest) => !manifest.hidden);
   if (target === 'audio') {
-    return audioManifests as EffectManifest<Record<string, unknown>>[];
+    return filteredAudio as EffectManifest<Record<string, unknown>>[];
   }
 
-  return [...videoManifests, ...audioManifests];
+  return [...filteredVideo, ...filteredAudio];
 }
 
 export function getAllVideoEffectManifests(): VideoEffectManifest<Record<string, unknown>>[] {

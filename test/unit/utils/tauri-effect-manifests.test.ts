@@ -35,10 +35,12 @@ describe('unified video effect manifests', () => {
       'vignette',
       'noise',
       'chromatic-aberration',
-      'hue',
       'levels',
       'chroma-key',
     ]);
+    expect(types).not.toContain('hue');
+    expect(getVideoEffectManifest('hue')).toBeDefined();
+    expect(getVideoEffectManifest('hue')?.hidden).toBe(true);
     expect(types).not.toContain('ascii');
     expect(types).not.toContain('crt');
     expect(getVideoEffectManifest('blur')?.renderer).toBe('wgsl-compute');
@@ -206,6 +208,47 @@ describe('unified video effect manifests', () => {
     expect(specs).toEqual([
       { type: 'gaussian-blur', radius: 96 },
       { type: 'noise', amount: 1, seed: 4_294_967_295 },
+    ]);
+  });
+
+  it('serializes color-adjustment with non-zero hue value and omits it when zero', () => {
+    const specsWithHue = buildEffectSpecs([
+      {
+        id: 'fx-color-hue',
+        type: 'color-adjustment',
+        enabled: true,
+        target: 'video',
+        brightness: 1,
+        contrast: 1,
+        saturation: 1,
+        hue: 90,
+      },
+    ]);
+
+    expect(specsWithHue).toEqual([
+      { type: 'brightness', value: 1 },
+      { type: 'contrast', value: 1 },
+      { type: 'saturation', value: 1 },
+      { type: 'hue', degrees: 90 },
+    ]);
+
+    const specsWithoutHue = buildEffectSpecs([
+      {
+        id: 'fx-color-no-hue',
+        type: 'color-adjustment',
+        enabled: true,
+        target: 'video',
+        brightness: 1,
+        contrast: 1,
+        saturation: 1,
+        hue: 0,
+      },
+    ]);
+
+    expect(specsWithoutHue).toEqual([
+      { type: 'brightness', value: 1 },
+      { type: 'contrast', value: 1 },
+      { type: 'saturation', value: 1 },
     ]);
   });
 });

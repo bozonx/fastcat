@@ -10,12 +10,22 @@ const mockPresetsStore = reactive({
   effectsCustomCollapsed: false,
 });
 
+const mockWorkspaceStore = reactive({
+  userSettings: {
+    experimentalFeatures: false,
+  },
+});
+
 const mockGetAllVideoEffectManifests = vi.fn();
 const mockGetAllAudioEffectManifests = vi.fn();
 const mockGetEffectManifest = vi.fn();
 
 vi.mock('~/stores/presets.store', () => ({
   usePresetsStore: () => mockPresetsStore,
+}));
+
+vi.mock('~/stores/workspace.store', () => ({
+  useWorkspaceStore: () => mockWorkspaceStore,
 }));
 
 vi.mock('~/effects', async (importOriginal) => {
@@ -107,5 +117,43 @@ describe('SelectEffectModal', () => {
 
     expect(component.findAll('.effect-group')).toHaveLength(0);
     expect(component.text()).toContain('fastcat.effects.empty');
+  });
+
+  it('hides experimental effects when feature flag is disabled', async () => {
+    mockWorkspaceStore.userSettings.experimentalFeatures = false;
+    mockGetAllVideoEffectManifests.mockReturnValue([
+      { type: 'brightness', category: 'basic', isCustom: false },
+      { type: 'chroma-key', category: 'basic', isCustom: false, experimental: true },
+    ]);
+    mockGetAllAudioEffectManifests.mockReturnValue([]);
+
+    const component = await mountWithNuxt(SelectEffectModal, {
+      props: {
+        open: true,
+        target: 'video',
+      },
+    });
+
+    expect(component.text()).toContain('brightness');
+    expect(component.text()).not.toContain('chroma-key');
+  });
+
+  it('shows experimental effects when feature flag is enabled', async () => {
+    mockWorkspaceStore.userSettings.experimentalFeatures = true;
+    mockGetAllVideoEffectManifests.mockReturnValue([
+      { type: 'brightness', category: 'basic', isCustom: false },
+      { type: 'chroma-key', category: 'basic', isCustom: false, experimental: true },
+    ]);
+    mockGetAllAudioEffectManifests.mockReturnValue([]);
+
+    const component = await mountWithNuxt(SelectEffectModal, {
+      props: {
+        open: true,
+        target: 'video',
+      },
+    });
+
+    expect(component.text()).toContain('brightness');
+    expect(component.text()).toContain('chroma-key');
   });
 });

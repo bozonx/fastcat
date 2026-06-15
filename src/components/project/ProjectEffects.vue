@@ -11,6 +11,7 @@ import type { TransitionManifest } from '~/transitions';
 import { getAllTransitionManifests, getTransitionManifest } from '~/transitions';
 import { useSelectionStore } from '~/stores/selection.store';
 import { usePresetsStore } from '~/stores/presets.store';
+import { useWorkspaceStore } from '~/stores/workspace.store';
 
 import CollapsibleEffectGroup from '~/components/effects/CollapsibleEffectGroup.vue';
 import EffectCard from '~/components/effects/EffectCard.vue';
@@ -22,11 +23,20 @@ defineProps<{
 const { t } = useI18n();
 const selectionStore = useSelectionStore();
 const presetsStore = usePresetsStore();
+const workspaceStore = useWorkspaceStore();
 
 const activeTab = ref<'video' | 'transitions' | 'audio'>('video');
 
-const videoEffects = computed(() => getAllVideoEffectManifests());
-const audioEffects = computed(() => getAllAudioEffectManifests());
+const videoEffects = computed(() =>
+  getAllVideoEffectManifests().filter(
+    (m) => !m.experimental || workspaceStore.userSettings.experimentalFeatures,
+  ),
+);
+const audioEffects = computed(() =>
+  getAllAudioEffectManifests().filter(
+    (m) => !m.experimental || workspaceStore.userSettings.experimentalFeatures,
+  ),
+);
 const standardAudioEffects = computed(() => audioEffects.value.filter((e) => !e.isCustom));
 const customAudioEffects = computed(() => {
   const presetManifests = presetsStore.customPresets
