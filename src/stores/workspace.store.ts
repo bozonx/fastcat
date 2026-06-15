@@ -286,10 +286,11 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     try {
       const { nativeUpdateFfmpegSettings } = await import('~/utils/tauri-media-processing');
       const opt = userSettings.value.optimization;
+      const hasExp = userSettings.value.experimentalFeatures;
       await nativeUpdateFfmpegSettings({
         ffmpegPath: opt.ffmpegPath,
         ffprobePath: opt.ffprobePath,
-        hardwareAccelerationMode: opt.hardwareAccelerationMode,
+        hardwareAccelerationMode: hasExp ? opt.hardwareAccelerationMode : 'auto',
         vaapiDevice: opt.vaapiDevice,
         enableHardwareEncoding: opt.enableHardwareEncoding,
       });

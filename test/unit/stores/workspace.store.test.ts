@@ -13,6 +13,11 @@ let mockVfs: InMemoryFileSystemAdapter;
 vi.mock('~/composables/useVfs', () => ({
   useVfs: () => mockVfs,
 }));
+// Mock tauri-media-processing
+const mockNativeUpdateFfmpegSettings = vi.fn().mockResolvedValue(undefined);
+vi.mock('~/utils/tauri-media-processing', () => ({
+  nativeUpdateFfmpegSettings: (...args: any[]) => mockNativeUpdateFfmpegSettings(...args),
+}));
 
 vi.mock('@tauri-apps/api/path', () => ({
   join: async (...args: string[]) => args.join('/'),
@@ -464,6 +469,77 @@ describe('WorkspaceStore', () => {
       store.resetWorkspace();
       expect(store.lastProjectPath).toBeNull();
       expect(localStorage.getItem('fastcat_last_project_path')).toBeNull();
+    });
+  });
+
+  describe('ffmpeg settings synchronization', () => {
+    let originalTauriInternals: any;
+
+    beforeEach(() => {
+      originalTauriInternals = (window as any).__TAURI_INTERNALS__;
+      (window as any).__TAURI_INTERNALS__ = {};
+      vi.clearAllMocks();
+    });
+
+    afterEach(() => {
+      if (originalTauriInternals === undefined) {
+        delete (window as any).__TAURI_INTERNALS__;
+      } else {
+        (window as any).__TAURI_INTERNALS__ = originalTauriInternals;
+      }
+    });
+
+    it('sends hardwareAccelerationMode as auto when experimentalFeatures is false', async () => {
+      const store = useWorkspaceStore();
+
+      await mockVfs.writeFile(
+        '@config/user.settings.json',
+        JSON.stringify({
+          experimentalFeatures: false,
+          optimization: {
+            hardwareAccelerationMode: 'nvdec',
+          },
+        }),
+      );
+
+      const mockDirectoryHandle = {
+        getDirectoryHandle: vi.fn().mockResolvedValue({}),
+        name: 'root',
+        kind: 'directory',
+      } as any;
+
+      // setupWorkspace triggers syncFfmpegSettingsToNative
+      await store.setupWorkspace(mockDirectoryHandle);
+
+      expect(mockNativeUpdateFfmpegSettings).toHaveBeenCalledWith(expect.objectContaining({
+        hardwareAccelerationMode: 'auto',
+      }));
+    });
+
+    it('sends hardwareAccelerationMode as custom mode when experimentalFeatures is true', async () => {
+      const store = useWorkspaceStore();
+
+      await mockVfs.writeFile(
+        '@config/user.settings.json',
+        JSON.stringify({
+          experimentalFeatures: true,
+          optimization: {
+            hardwareAccelerationMode: 'nvdec',
+          },
+        }),
+      );
+
+      const mockDirectoryHandle = {
+        getDirectoryHandle: vi.fn().mockResolvedValue({}),
+        name: 'root',
+        kind: 'directory',
+      } as any;
+
+      await store.setupWorkspace(mockDirectoryHandle);
+
+      expect(mockNativeUpdateFfmpegSettings).toHaveBeenCalledWith(expect.objectContaining({
+        hardwareAccelerationMode: 'nvdec',
+      }));
     });
   });
 });

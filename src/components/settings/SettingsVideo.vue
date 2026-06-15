@@ -131,10 +131,13 @@ async function syncFfmpegSettings() {
   if (!isTauri.value) return;
   try {
     const { nativeUpdateFfmpegSettings } = await import('~/utils/tauri-media-processing');
+    const hasExp = workspaceStore.userSettings.experimentalFeatures;
     await nativeUpdateFfmpegSettings({
       ffmpegPath: workspaceStore.userSettings.optimization.ffmpegPath,
       ffprobePath: workspaceStore.userSettings.optimization.ffprobePath,
-      hardwareAccelerationMode: workspaceStore.userSettings.optimization.hardwareAccelerationMode,
+      hardwareAccelerationMode: hasExp
+        ? workspaceStore.userSettings.optimization.hardwareAccelerationMode
+        : 'auto',
       vaapiDevice: workspaceStore.userSettings.optimization.vaapiDevice,
       enableHardwareEncoding: workspaceStore.userSettings.optimization.enableHardwareEncoding,
     });
@@ -195,6 +198,7 @@ watch(
 
 watch(
   () => [
+    workspaceStore.userSettings.experimentalFeatures,
     workspaceStore.userSettings.optimization.ffmpegPath,
     workspaceStore.userSettings.optimization.ffprobePath,
     workspaceStore.userSettings.optimization.hardwareAccelerationMode,
@@ -291,6 +295,7 @@ const tauriVideoCodecs = computed(() => {
           </div>
 
           <UiFormField
+            v-if="workspaceStore.userSettings.experimentalFeatures"
             :label="t('videoEditor.settings.video.hwaccelMode')"
             :help="t('videoEditor.settings.video.hwaccelModeHelp')"
           >
@@ -344,8 +349,9 @@ const tauriVideoCodecs = computed(() => {
 
           <UiFormField
             v-if="
-              workspaceStore.userSettings.optimization.hardwareAccelerationMode === 'vaapi' ||
-              workspaceStore.userSettings.optimization.hardwareAccelerationMode === 'auto'
+              workspaceStore.userSettings.experimentalFeatures &&
+              (workspaceStore.userSettings.optimization.hardwareAccelerationMode === 'vaapi' ||
+                workspaceStore.userSettings.optimization.hardwareAccelerationMode === 'auto')
             "
             :label="t('videoEditor.settings.video.vaapiDevice')"
             :help="t('videoEditor.settings.video.vaapiDeviceHelp')"
