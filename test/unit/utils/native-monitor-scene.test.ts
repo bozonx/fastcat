@@ -727,7 +727,11 @@ describe('buildNativeMonitorScene', () => {
     expect(toLayer?.transition_in).toMatchObject({
       type: 'wipe',
       from_layer_id: 'clip-a',
-      spec: { type: 'wipe', angle_deg: 45, softness: 0.1 },
+      spec: {
+        type: 'custom-wgsl',
+        source: expect.any(String),
+        params: expect.any(Object),
+      },
     });
   });
 

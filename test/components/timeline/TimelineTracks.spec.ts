@@ -120,6 +120,10 @@ vi.mock('~/composables/timeline/useTimelineMarquee', () => ({
   }),
 }));
 
+vi.mock('~/composables/useAppClipboard', () => ({
+  useAppClipboard: () => mockClipboardStore,
+}));
+
 describe('TimelineTracks', () => {
   beforeEach(() => {
     vi.clearAllMocks();

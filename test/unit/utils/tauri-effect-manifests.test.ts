@@ -61,6 +61,8 @@ describe('unified video effect manifests', () => {
       'zoom',
       'bloom',
       'cube',
+      'card-swap',
+      'falling-card',
     ]);
     expect(getTransitionManifest('dissolve')?.renderer).toBe('wgpu');
     expect(getTransitionManifest('dissolve')?.createFilter).toBeUndefined();

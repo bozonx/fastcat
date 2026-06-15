@@ -72,7 +72,6 @@ const {
   metadataAuthor,
   metadataTags,
   selectedExportRangeId,
-  saveAsDefaults,
   exportRangeOptions,
   hasSelectableExportRanges,
   isSettingsDirty,
@@ -511,17 +510,6 @@ const filenamePlaceholder = computed(() =>
           </UiFormField>
         </div>
 
-        <div class="h-px bg-ui-border"></div>
-
-        <label
-          class="flex items-center gap-3 mt-2"
-          :class="
-            isSettingsDirty && !isExporting ? 'cursor-pointer' : 'cursor-not-allowed opacity-70'
-          "
-        >
-          <UCheckbox v-model="saveAsDefaults" :disabled="isExporting || !isSettingsDirty" />
-          <span class="text-ui-text text-sm">{{ t('videoEditor.export.saveAsDefault') }}</span>
-        </label>
 
         <div
           v-if="lastExportStatus === 'success' && exportDurationMs !== null"

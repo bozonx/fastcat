@@ -470,39 +470,6 @@ describe('useExportForm', () => {
     expect(form.exportAlpha.value).toBe(true);
   });
 
-  it('сохраняет настройки в timelineFormat при экспорте, если saveAsDefaults === true', async () => {
-    const form = useExportForm();
-    await form.initializeExportForm();
-
-    form.saveAsDefaults.value = true;
-    form.outputFormat.value = 'mkv';
-    form.videoCodec.value = 'hevc';
-    form.bitrateMbps.value = 15;
-    form.excludeAudio.value = false;
-    form.audioCodec.value = 'flac';
-    form.audioBitrateKbps.value = 320;
-    form.audioChannels.value = 6;
-    form.bitrateMode.value = 'vbr';
-    form.keyframeIntervalSec.value = 3;
-    form.exportAlpha.value = false;
-
-    // Убедимся, что форма грязная, чтобы сохранить настройки
-    expect(form.isSettingsDirty.value).toBe(true);
-
-    await form.handleStartExport();
-
-    expect(updateTimelineFormatMock).toHaveBeenCalledTimes(1);
-    expect(updateTimelineFormatMock).toHaveBeenCalledWith({
-      width: 1920,
-      height: 1080,
-      fps: 30,
-      resolutionFormat: '1080p',
-      orientation: 'landscape',
-      aspectRatio: '16:9',
-      isCustomResolution: false,
-      sampleRate: 48000,
-    });
-  });
 
   it('сбрасывает экспорт альфа-канала при переключении с webm на mp4', async () => {
     const form = useExportForm();

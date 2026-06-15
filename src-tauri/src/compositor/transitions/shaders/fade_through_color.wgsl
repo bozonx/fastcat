@@ -25,10 +25,10 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
     var final_color = vec4<f32>(0.0);
     
     if (uni.progress < 0.5) {
-        let t = uni.progress * 2.0;
+        let t = smoothstep(0.0, 1.0, uni.progress * 2.0);
         final_color = mix(from_color, target_color, t);
     } else {
-        let t = (uni.progress - 0.5) * 2.0;
+        let t = smoothstep(0.0, 1.0, (uni.progress - 0.5) * 2.0);
         final_color = mix(target_color, to_color, t);
     }
     

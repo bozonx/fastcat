@@ -2,7 +2,6 @@
 import { ref, computed } from 'vue';
 import MobileAppSettingsPanel from './MobileAppSettingsPanel.vue';
 import ResolutionSettings from '~/components/project-settings/ResolutionSettings.vue';
-import ExportSettings from '~/components/project-settings/ExportSettings.vue';
 import AdvancedSettings from '~/components/project-settings/AdvancedSettings.vue';
 import MetadataSettings from '~/components/project-settings/MetadataSettings.vue';
 import StorageSettings from '~/components/project-settings/StorageSettings.vue';
@@ -49,8 +48,6 @@ const tabOptions = computed(() => {
     >
       <div v-if="projectStore.projectSettings" class="space-y-8">
         <ResolutionSettings />
-        <div class="h-px bg-ui-border"></div>
-        <ExportSettings />
         <div class="h-px bg-ui-border"></div>
         <AdvancedSettings />
         <div class="h-px bg-ui-border"></div>

@@ -3,7 +3,6 @@ import { useExportConfig } from './core/useExportConfig';
 import { useExportFileSystem } from './core/useExportFileSystem';
 import { useExportCodecs } from './core/useExportCodecs';
 import { useExportFilename } from './core/useExportFilename';
-import { useExportSettingsSave } from './core/useExportSettingsSave';
 import { useExportProcess } from './core/useExportProcess';
 
 export function useTimelineExport() {
@@ -13,8 +12,6 @@ export function useTimelineExport() {
   const codecs = useExportCodecs();
 
   const filename = useExportFilename(fileSystem.ensureExportDir, fileSystem.listExportFilenames);
-
-  const settingsSave = useExportSettingsSave(config);
 
   const process = useExportProcess(
     state.activeExportTaskId,
@@ -30,7 +27,6 @@ export function useTimelineExport() {
     ...fileSystem,
     ...codecs,
     ...filename,
-    ...settingsSave,
     ...process,
   };
 }

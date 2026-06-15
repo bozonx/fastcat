@@ -40,7 +40,6 @@ export function useExportForm() {
   const workspaceStore = useWorkspaceStore();
 
   const selectedExportRangeId = ref('timeline');
-  const saveAsDefaults = ref(false);
   const customExportPath = ref<string | null>(null);
   const isTauri = isTauriRuntime();
 
@@ -89,7 +88,6 @@ export function useExportForm() {
     validateFilename,
     getNextAvailableFilename,
     loadCodecSupport,
-    saveProjectSettingsAsDefault,
     exportTimelineToFile,
     cancelExport,
     cancelRequested,
@@ -216,10 +214,7 @@ export function useExportForm() {
     return isEncodingDifferent || isGeometryDifferent || isMetadataDifferent;
   });
 
-  watch(isSettingsDirty, (isDirty) => {
-    if (isDirty) return;
-    saveAsDefaults.value = false;
-  });
+
 
   watch(exportRangeOptions, (options) => {
     if (options.some((option) => option.id === selectedExportRangeId.value)) return;
@@ -294,7 +289,6 @@ export function useExportForm() {
       resetExportState();
       exportType.value = 'video';
       filenameError.value = null;
-      saveAsDefaults.value = false;
       customExportPath.value = null;
       selectedExportRangeId.value = resolveDefaultExportRangeId();
 
@@ -542,23 +536,7 @@ export function useExportForm() {
         exportDurationMs.value = durationMs;
         lastExportStatus.value = 'success';
 
-        if (saveAsDefaults.value) {
-          try {
-            await timelineStore.updateTimelineFormat({
-              width: exportWidth.value,
-              height: exportHeight.value,
-              fps: exportFps.value,
-              resolutionFormat: resolutionFormat.value,
-              orientation: orientation.value,
-              aspectRatio: aspectRatio.value,
-              isCustomResolution: isCustomResolution.value,
-              sampleRate: audioSampleRate.value,
-            });
-            await saveProjectSettingsAsDefault();
-          } catch (e) {
-            log.warn('Failed to persist export defaults', e);
-          }
-        }
+
 
         if (exportWarnings.value.length > 0) {
           toast.add({
@@ -886,7 +864,6 @@ export function useExportForm() {
 
     selectedExportRangeId,
     selectedExportRange,
-    saveAsDefaults,
     exportRangeOptions,
     hasSelectableExportRanges,
     isSettingsDirty,

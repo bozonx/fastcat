@@ -22,6 +22,7 @@ pub mod hwaccel;
 pub mod image_decode;
 pub mod processing;
 pub mod tasks;
+pub mod temp;
 pub mod timeline_export;
 pub mod timeline_render;
 pub mod types;

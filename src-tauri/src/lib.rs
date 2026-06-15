@@ -182,6 +182,9 @@ fn allow_dev_directory_scope(app: tauri::AppHandle, path: String) -> Result<(), 
         path.display()
     );
     allow_directory_scope(&app, &path)?;
+    // Redirect native ephemeral temp under the dev root so concurrent checkouts
+    // stay isolated and artifacts sit next to the frontend's emulated OS tree.
+    crate::media::temp::set_dev_temp_root(&path);
     log::info!("[allow_dev_directory_scope] scope extended successfully");
     Ok(())
 }
@@ -280,6 +283,9 @@ pub fn run() {
             }
             // Видео-движок-singleton; AppHandle нужен, чтобы натив мог эмитить события на фронт.
             app.manage(engine::VideoEngine::new(app.handle().clone()));
+            // Reclaim ephemeral temp files orphaned by a previous crashed/killed
+            // run. Off-thread so a slow temp FS can't delay window creation.
+            std::thread::spawn(media::temp::sweep_orphans);
             Ok(())
         });
     let result = builder.run(tauri::generate_context!());

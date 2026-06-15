@@ -156,13 +156,16 @@ pub fn export_timeline(
 
     // Render the native audio mix once so hardware-to-software fallback can reuse the
     // same temporary file instead of running the expensive offline mix twice.
-    let mut temp_audio: Option<PathBuf> = None;
+    // RAII guard: the mix file is deleted when `temp_audio` drops, covering the
+    // early-return error below, the normal end-of-fn return, *and* a panic or
+    // hard kill mid-export (reclaimed on next launch by `temp::sweep_orphans`).
+    let mut temp_audio: Option<crate::media::temp::TempFile> = None;
     let audio_input: Option<PathBuf> = if options.audio_enabled && !scene.audio_layers.is_empty() {
-        let path = temp_audio_path();
-        // Register the temp path for cleanup *before* rendering: render_scene_to_wav
-        // creates the file up front and may fail mid-write, which would otherwise
-        // orphan it.
-        temp_audio = Some(path.clone());
+        // Create the guard *before* rendering: render_scene_to_wav creates the
+        // file up front and may fail mid-write, which would otherwise orphan it.
+        let guard = crate::media::temp::TempFile::new(temp_audio_path());
+        let path = guard.path().to_path_buf();
+        temp_audio = Some(guard);
         let master_gain = if scene.audio_master_muted {
             0.0
         } else {
@@ -197,7 +200,7 @@ pub fn export_timeline(
         })
         .context("failed to render native audio mix")
         {
-            let _ = std::fs::remove_file(&path);
+            // `temp_audio` (the guard) drops on return and removes the file.
             return Err(e);
         }
         Some(path)
@@ -616,8 +619,8 @@ pub fn export_timeline(
         other => other,
     };
 
-    if let Some(path) = temp_audio.as_deref() {
-        let _ = std::fs::remove_file(path);
-    }
+    // ffmpeg is done with the mix; drop the guard now to delete it promptly
+    // rather than waiting for the function to return.
+    drop(temp_audio);
     result
 }

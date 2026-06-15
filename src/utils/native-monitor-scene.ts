@@ -418,7 +418,10 @@ function buildBaseLayer(params: {
       }
       const manifest = getTauriTransitionManifest(type);
       const spec = manifest?.toTauriSpec
-        ? manifest.toTauriSpec(effectiveTransitionIn.params ?? {})
+        ? manifest.toTauriSpec(
+            effectiveTransitionIn.params ?? {},
+            effectiveTransitionIn.durationUs / 1_000_000,
+          )
         : undefined;
 
       return {
@@ -455,7 +458,10 @@ function buildBaseLayer(params: {
       }
       const manifest = getTauriTransitionManifest(type);
       const spec = manifest?.toTauriSpec
-        ? manifest.toTauriSpec(clip.transitionOut.params ?? {})
+        ? manifest.toTauriSpec(
+            clip.transitionOut.params ?? {},
+            clip.transitionOut.durationUs / 1_000_000,
+          )
         : undefined;
 
       return {
