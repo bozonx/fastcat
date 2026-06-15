@@ -2,7 +2,6 @@
 import { computed } from 'vue';
 import { useVideoCodecs } from '~/composables/useVideoCodecs';
 import { useWorkspaceStore } from '~/stores/workspace.store';
-import { useProjectStore } from '~/stores/project.store';
 import MediaEncodingSettings, {
   type FormatOption,
 } from '~/components/media/MediaEncodingSettings.vue';
@@ -51,9 +50,7 @@ const audioChannels = defineModel<number>('audioChannels', { default: 2 });
 const audioSampleRate = defineModel<number | 'original'>('audioSampleRate', {
   default: 'original',
 });
-const preset = defineModel<
-  'custom' | 'high' | 'optimal' | 'social' | 'lossless'
->('preset', {
+const preset = defineModel<'custom' | 'high' | 'optimal' | 'social' | 'lossless'>('preset', {
   default: 'custom',
 });
 const bitrateMode = defineModel<'constant' | 'variable'>('bitrateMode', { default: 'variable' });
@@ -66,7 +63,6 @@ const metadataTags = defineModel<string>('metadataTags', { default: '' });
 const metadataDescription = defineModel<string>('metadataDescription', { default: '' });
 const { t } = useI18n();
 const workspaceStore = useWorkspaceStore();
-const projectStore = useProjectStore();
 const { isLoadingCodecSupport, videoCodecOptions } = useVideoCodecs();
 
 const formatOptions: readonly FormatOption[] = [
@@ -80,10 +76,7 @@ const presetOptions = computed(() => {
     value: p.id,
     label: p.name,
   }));
-  return [
-    ...items,
-    { value: 'custom', label: t('videoEditor.export.preset.custom') },
-  ];
+  return [...items, { value: 'custom', label: t('videoEditor.export.preset.custom') }];
 });
 
 function applyPreset(presetId: string) {

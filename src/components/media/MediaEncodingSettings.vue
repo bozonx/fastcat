@@ -65,9 +65,7 @@ const audioChannels = defineModel<number>('audioChannels', { default: 2 });
 const audioSampleRate = defineModel<number | 'original'>('audioSampleRate', {
   default: 'original',
 });
-const preset = defineModel<
-  'optimal' | 'social' | 'high' | 'lossless' | 'custom'
->('preset', {
+const preset = defineModel<'optimal' | 'social' | 'high' | 'lossless' | 'custom'>('preset', {
   default: 'custom',
 });
 const bitrateMode = defineModel<'constant' | 'variable'>('bitrateMode', { default: 'variable' });
