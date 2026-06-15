@@ -11,6 +11,8 @@ export interface TimelineContext {
   currentTime: ComputedRef<number>;
   isTrimModeActive: ComputedRef<boolean>;
   selectedItemIds: ComputedRef<string[]>;
+  /** O(1) membership view of {@link selectedItemIds} for hot per-clip render checks. */
+  selectedItemIdSet: ComputedRef<Set<string>>;
   userSettings: ComputedRef<FastCatUserSettings>;
   missingPaths: ComputedRef<Record<string, boolean>>;
   mediaMetadata: ComputedRef<Record<string, unknown>>;
@@ -53,6 +55,11 @@ export interface TimelineContext {
   copySelectedClips: () => unknown[];
   cutSelectedClips: () => unknown[];
   pasteClips: (options?: { insertStartUs?: number }) => Promise<unknown>;
+
+  /** Reveal a media clip's source file in the file manager (delegated double-click). */
+  revealClipInFileManager: (clip: unknown, trackKind: string) => Promise<void> | void;
+  /** Open a nested-timeline clip as the active timeline (delegated double-click). */
+  openNestedTimeline: (clip: unknown, trackKind: string) => Promise<void> | void;
 
   renameItem: (trackId: string, itemId: string, name: string) => void;
   updateTrackProperties: (trackId: string, patch: Record<string, unknown>) => void;

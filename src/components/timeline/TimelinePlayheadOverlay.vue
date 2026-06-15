@@ -39,8 +39,9 @@ const activeMarkerLines = computed(() => {
   const zoom = timelineStore.timelineZoom;
   const lines: Array<{ px: number; color: string }> = [];
 
+  const markerById = new Map(timelineStore.markers.map((m) => [m.id, m]));
   for (const id of ids) {
-    const marker = timelineStore.markers.find((m) => m.id === id);
+    const marker = markerById.get(id);
     if (!marker) continue;
     const color = marker.color ?? '#eab308';
     lines.push({ px: viewportX(timeUsToPx(marker.timeUs, zoom)), color });

@@ -1,4 +1,4 @@
-import { computed, ref, watch, type Ref } from 'vue';
+import { computed, onScopeDispose, ref, watch, type Ref } from 'vue';
 import { useResizeObserver } from '@vueuse/core';
 import { useTimelineStore } from '~/stores/timeline.store';
 
@@ -23,10 +23,45 @@ export function useTimelineHorizontalScrollSync(els: UseTimelineHorizontalScroll
   const scrollbarHeight = ref(0);
   const viewportWidth = ref(0);
 
+  // Scroll events fire faster than once per frame on precision touchpads/mice.
+  // Writing the reactive scrollLeft synchronously on each event re-runs the whole
+  // virtualization/thumbnail/ruler/grid/playhead pipeline inside the scroll handler.
+  // Coalesce to at most one store write per animation frame, deduped by value.
+  let scrollRafId: number | null = null;
+  let pendingScrollLeft: number | null = null;
+
+  function flushScrollLeft() {
+    scrollRafId = null;
+    if (pendingScrollLeft === null) return;
+    const next = pendingScrollLeft;
+    pendingScrollLeft = null;
+    if (timelineStore.timelineScrollLeftPx !== next) {
+      timelineStore.timelineScrollLeftPx = next;
+    }
+  }
+
+  function queueScrollLeft(scrollLeft: number) {
+    pendingScrollLeft = scrollLeft;
+    if (scrollRafId !== null) return;
+    if (typeof requestAnimationFrame === 'undefined') {
+      flushScrollLeft();
+      return;
+    }
+    scrollRafId = requestAnimationFrame(flushScrollLeft);
+  }
+
   function onMasterScroll() {
     if (!els.master.value) return;
-    timelineStore.timelineScrollLeftPx = els.master.value.scrollLeft;
+    queueScrollLeft(els.master.value.scrollLeft);
   }
+
+  onScopeDispose(() => {
+    if (scrollRafId !== null && typeof cancelAnimationFrame !== 'undefined') {
+      cancelAnimationFrame(scrollRafId);
+    }
+    scrollRafId = null;
+    pendingScrollLeft = null;
+  });
 
   function onVideoScroll() {
     if (!els.video.value) return;
@@ -76,6 +111,8 @@ export function useTimelineHorizontalScrollSync(els: UseTimelineHorizontalScroll
   watch(
     () => timelineStore.scrollResetTicket,
     () => {
+      // Drop any coalesced scroll write so it can't clobber the reset.
+      pendingScrollLeft = null;
       if (els.master?.value) els.master.value.scrollLeft = 0;
       timelineStore.timelineScrollLeftPx = 0;
     },

@@ -1,4 +1,6 @@
-import { computed, provide } from 'vue';
+import { computed, provide, ref } from 'vue';
+import { useClipPropertiesActions } from '~/composables/properties/useClipPropertiesActions';
+import type { TimelineClipItem, TrackKind } from '~/timeline/types';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useSelectionStore } from '~/stores/selection.store';
 import { useMediaStore } from '~/stores/media.store';
@@ -38,12 +40,32 @@ export function useProvideTimelineContext() {
   const uiStore = useUiStore();
   const clipboardStore = useAppClipboard();
 
+  // A single shared clip-properties-actions instance for delegated clip double-clicks.
+  // Building this per visible clip span up a `useFileManager()` watcher each; here it is
+  // created once. The target clip is set transiently right before each handler runs.
+  const dblClickClip = ref<TimelineClipItem | null>(null);
+  const dblClickTrackKind = ref<TrackKind>('video');
+  const clipDblClickActions = useClipPropertiesActions({
+    clip: computed(() => dblClickClip.value!),
+    trackKind: computed(() => dblClickTrackKind.value),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    timelineStore: timelineStore as any,
+    projectStore,
+    uiStore,
+    fileManagerStore,
+    selectionStore,
+    focusStore,
+    fileManager,
+    setActiveTab: (tabId: string) => projectTabsStore.setActiveTab(tabId),
+  });
+
   provide<TimelineContext>('timelineContext', {
     zoom: computed(() => timelineStore.timelineZoom),
     fps: computed(() => timelineStore.fps),
     currentTime: computed(() => timelineStore.currentTime),
     isTrimModeActive: computed(() => timelineStore.isTrimModeActive),
     selectedItemIds: computed(() => timelineStore.selectedItemIds),
+    selectedItemIdSet: computed(() => new Set(timelineStore.selectedItemIds)),
     userSettings: computed(() => workspaceStore.userSettings),
     missingPaths: computed(() => mediaStore.missingPaths),
     mediaMetadata: computed(() => mediaStore.mediaMetadata),
@@ -100,6 +122,17 @@ export function useProvideTimelineContext() {
           : [],
         options,
       ),
+
+    revealClipInFileManager: (clip: unknown, trackKind: string) => {
+      dblClickClip.value = clip as TimelineClipItem;
+      dblClickTrackKind.value = trackKind as TrackKind;
+      return clipDblClickActions.handleSelectInFileManager();
+    },
+    openNestedTimeline: (clip: unknown, trackKind: string) => {
+      dblClickClip.value = clip as TimelineClipItem;
+      dblClickTrackKind.value = trackKind as TrackKind;
+      return clipDblClickActions.handleOpenNestedTimeline();
+    },
 
     renameItem: (trackId: string, itemId: string, name: string) =>
       timelineStore.renameItem(trackId, itemId, name),

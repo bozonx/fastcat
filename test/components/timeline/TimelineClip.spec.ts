@@ -1,8 +1,12 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { mountSuspended } from '@nuxt/test-utils/runtime';
+import { mountSuspended, mockComponent } from '@nuxt/test-utils/runtime';
 import { reactive, computed, ref } from 'vue';
 import TimelineClip from '~/components/timeline/TimelineClip.vue';
 import { timeUsToPx } from '~/utils/timeline/geometry';
+
+mockComponent('UContextMenu', {
+  template: '<div><slot /></div>',
+});
 
 // Mock subcomponents
 vi.mock('~/components/timeline/ClipTransitions.vue', () => ({
@@ -83,6 +87,7 @@ const mockTimelineContext = {
   currentTime: computed(() => 0),
   isTrimModeActive: computed(() => mockTimelineStore.isTrimModeActive),
   selectedItemIds: computed(() => mockTimelineStore.selectedItemIds),
+  selectedItemIdSet: computed(() => new Set(mockTimelineStore.selectedItemIds)),
   userSettings: computed(() => mockWorkspaceStore.userSettings as any),
   missingPaths: computed(() => mockMediaStore.missingPaths),
   mediaMetadata: computed(() => mockMediaStore.mediaMetadata),
@@ -180,9 +185,6 @@ async function mountClip(props = defaultProps, options: any = {}) {
     global: {
       provide: {
         timelineContext: mockTimelineContext,
-      },
-      stubs: {
-        UContextMenu: { template: '<div><slot /></div>' },
       },
       ...options?.global,
     },
@@ -284,6 +286,33 @@ describe('TimelineClip', () => {
       edge: 'end',
       startUs: 1000000,
     });
+  });
+
+  it('computes dynamic trim handle widths based on clip width to prevent blocking narrow clips', async () => {
+    // Zoom 50 corresponds to exactly 10 pixels per second
+    mockTimelineStore.timelineZoom = 50;
+
+    // Wide clip: 10 seconds -> 100px width. Handles should be capped at 14px.
+    const wideComponent = await mountClip({
+      ...defaultProps,
+      item: {
+        ...baseItem,
+        timelineRange: { startUs: 1000000, durationUs: 10000000 },
+      },
+    });
+    const wideTrims = wideComponent.findAll('.cursor-ew-resize');
+    expect(wideTrims[0].attributes('style')).toContain('width: 14px');
+
+    // Narrow clip: 4 seconds -> 40px width. Handles should be clipWidth * 0.25 = 10px.
+    const narrowComponent = await mountClip({
+      ...defaultProps,
+      item: {
+        ...baseItem,
+        timelineRange: { startUs: 1000000, durationUs: 4000000 },
+      },
+    });
+    const narrowTrims = narrowComponent.findAll('.cursor-ew-resize');
+    expect(narrowTrims[0].attributes('style')).toContain('width: 10px');
   });
 
   it('triggers onClipClick on pointerdown and then click', async () => {

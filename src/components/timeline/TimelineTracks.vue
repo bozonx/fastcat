@@ -176,18 +176,52 @@ const { movePreviewItemsByTrack, movePreviewIds, movePreviewMemoByTrack } = useT
   },
 );
 
+// Per-track trim-preview memo string. Only affected tracks get an entry, so the
+// v-memo key can do an O(1) lookup instead of re-scanning track.items per render.
 const trimPreviewMemoByTrack = computed(() => {
   const map: Record<string, string> = {};
-  if (!props.trimPreview) return map;
+  if (!props.trimPreview || props.trimPreview.length === 0) return map;
+  const byItemId = new Map(props.trimPreview.map((tp) => [tp.itemId, tp]));
   for (const track of props.tracks) {
-    const parts: string[] = [];
+    let parts = '';
     for (const item of track.items) {
-      const p = props.trimPreview.find((tp) => tp.itemId === item.id);
-      if (p) parts.push(`${item.id}:${p.startUs}:${p.durationUs}`);
+      const p = byItemId.get(item.id);
+      if (p) parts += `${item.id}:${p.startUs}:${p.durationUs},`;
     }
-    map[track.id] = parts.join(',');
+    if (parts) map[track.id] = parts;
   }
   return map;
+});
+
+// Track that currently holds the grabbed (single) dragged item.
+const draggingItemTrackId = computed(() => {
+  const id = props.draggingItemId;
+  if (!id) return null;
+  for (const track of props.tracks) {
+    if (track.items.some((i) => i.id === id)) return track.id;
+  }
+  return null;
+});
+
+// Source tracks holding any move-preview item (covers multi-select / cross-track moves).
+const movePreviewSourceTracks = computed(() => {
+  const set = new Set<string>();
+  const ids = movePreviewIds.value;
+  if (ids.size === 0) return set;
+  for (const track of props.tracks) {
+    if (track.items.some((i) => ids.has(i.id))) set.add(track.id);
+  }
+  return set;
+});
+
+// Track holding the slipped item.
+const slipPreviewTrackId = computed(() => {
+  const id = props.slipPreview?.itemId;
+  if (!id) return null;
+  for (const track of props.tracks) {
+    if (track.items.some((i) => i.id === id)) return track.id;
+  }
+  return null;
 });
 
 const { speedModal, openSpeedModal, saveSpeedModal, speedModalTargetHasAudio } =
@@ -399,16 +433,12 @@ watch(
           trackViewModel.clipRenderMemo,
           movePreviewMemoByTrack[trackViewModel.track.id] ?? null,
           dragPreview?.trackId === trackViewModel.track.id ? dragPreview.startUs : null,
-          draggingItemId && trackViewModel.track.items.some((i) => i.id === draggingItemId) ? draggingItemId : null,
-          movePreviewIds.size > 0 && trackViewModel.track.items.some((i) => movePreviewIds.has(i.id))
+          draggingItemTrackId === trackViewModel.track.id ? draggingItemId : null,
+          movePreviewSourceTracks.has(trackViewModel.track.id)
             ? (movePreviewMemoByTrack[trackViewModel.track.id] ?? null)
             : null,
-          slipPreview && trackViewModel.track.items.some((i) => i.id === slipPreview.itemId)
-            ? slipPreview.deltaUs
-            : null,
-          trimPreview && trimPreview.length > 0 && trackViewModel.track.items.some((i) => trimPreview.some((p) => p.itemId === i.id))
-            ? (trimPreviewMemoByTrack[trackViewModel.track.id] ?? null)
-            : null,
+          slipPreviewTrackId === trackViewModel.track.id ? (slipPreview?.deltaUs ?? null) : null,
+          trimPreviewMemoByTrack[trackViewModel.track.id] ?? null,
         ]"
         :data-track-id="trackViewModel.track.id"
         class="flex items-center relative transition-colors border-b border-ui-border"

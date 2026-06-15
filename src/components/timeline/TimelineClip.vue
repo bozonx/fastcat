@@ -36,10 +36,8 @@ import {
 } from '~/utils/timeline/clip';
 import { useClipDrop } from '~/composables/timeline/useClipDrop';
 import { useClipInteractions } from '~/composables/timeline/useClipInteractions';
-import { useFileManager } from '~/composables/file-manager/useFileManager';
 import { isClipFreePosition } from '~/utils/timeline/clip-checks';
 import { useClickOrDrag } from '~/composables/timeline/useClickOrDrag';
-import { useClipPropertiesActions } from '~/composables/properties/useClipPropertiesActions';
 import { DEFAULT_TRANSITION_MODE } from '~/transitions';
 import { computeTrimGeometry } from '~/timeline/commands/item/trimGeometry';
 
@@ -132,6 +130,10 @@ const timelineContext = inject<TimelineContext>('timelineContext')!;
 
 const isHovered = ref(false);
 const isTransitionCreateHandleActive = ref(false);
+
+// O(1) selection check via the shared Set view; avoids Array.includes() scans on
+// every render (this binding is read several times per clip per frame).
+const isSelected = computed(() => timelineContext.selectedItemIdSet.value.has(props.item.id));
 
 const myTrimPreview = computed(() => {
   if (!props.trimPreview) return null;
@@ -256,8 +258,7 @@ const {
   onDragStart: (e) => {
     if (clipItem.value?.locked || props.track.locked) return false;
     // On mobile, dragging is only allowed when the clip is already selected
-    if (props.isMobile && !timelineContext.selectedItemIds.value.includes(props.item.id))
-      return false;
+    if (props.isMobile && !timelineContext.selectedItemIdSet.value.has(props.item.id)) return false;
     emit('startMoveItem', e, {
       trackId: props.track.id,
       itemId: props.item.id,
@@ -392,36 +393,19 @@ function onClipClick(e: MouseEvent) {
 const safeClip = computed(() => clipItem.value!);
 const safeTrackKind = computed<TrackKind>(() => props.track.kind);
 
-const timelineStore = useTimelineStore();
-const projectStore = useProjectStore();
 const uiStore = useUiStore();
-const fileManagerStore = useFileManagerStore();
-const selectionStore = useSelectionStore();
-const focusStore = useFocusStore();
-const fileManager = useFileManager();
-const { setActiveTab } = useProjectTabsStore();
-
-const { handleSelectInFileManager, handleOpenNestedTimeline } = useClipPropertiesActions({
-  clip: computed(() => clipItem.value!),
-  trackKind: computed(() => props.track.kind),
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  timelineStore: timelineStore as any,
-  projectStore,
-  uiStore,
-  fileManagerStore,
-  selectionStore,
-  focusStore,
-  fileManager,
-  setActiveTab,
-});
 
 function onClipDblClick() {
-  if (!clipItem.value) return;
+  const clip = clipItem.value;
+  if (!clip) return;
 
-  if (clipItem.value.clipType === 'media') {
-    void handleSelectInFileManager();
-  } else if (clipItem.value.clipType === 'timeline') {
-    void handleOpenNestedTimeline();
+  // Reveal/open is delegated to the timeline context, which owns a single shared
+  // file-manager instance — previously every visible clip span up its own
+  // `useFileManager()` (a watcher + service) just for this rare double-click.
+  if (clip.clipType === 'media') {
+    void timelineContext.revealClipInFileManager(clip, props.track.kind);
+  } else if (clip.clipType === 'timeline') {
+    void timelineContext.openNestedTimeline(clip, props.track.kind);
   }
 }
 
@@ -570,6 +554,14 @@ const { contextMenuItems } = useClipContextMenu({
   t,
 });
 
+// Build the context-menu tree only while the menu is open. Binding the computed
+// directly forced a full menu rebuild on every render of every visible clip.
+const EMPTY_MENU_ITEMS: typeof contextMenuItems.value = [];
+const isContextMenuOpen = ref(false);
+const lazyContextMenuItems = computed(() =>
+  isContextMenuOpen.value ? contextMenuItems.value : EMPTY_MENU_ITEMS,
+);
+
 const isFreePosition = computed(() =>
   isClipFreePosition(
     clipItem.value,
@@ -706,8 +698,9 @@ function handleTransitionCreate(
 
 <template>
   <UContextMenu
-    :items="contextMenuItems"
+    :items="lazyContextMenuItems"
     :disabled="props.isMobile || rightClickPointerActive || rightClickDragTriggered"
+    @update:open="isContextMenuOpen = $event"
   >
     <div
       :data-clip-id="item.kind === 'clip' ? item.id : undefined"
@@ -719,7 +712,7 @@ function handleTransitionCreate(
         width: `${clipWidthPx}px`,
         zIndex: isHovered
           ? 'var(--z-clip-handles)'
-          : timelineContext.selectedItemIds.value.includes(item.id)
+          : isSelected
             ? 'var(--z-clip-selected)'
             : isDraggingOver
               ? 'var(--z-clip-dragging-over)'
@@ -728,9 +721,7 @@ function handleTransitionCreate(
       }"
       :class="[
         getClipClass(item, track),
-        timelineContext.selectedItemIds.value.includes(item.id)
-          ? 'outline-(--color-primary) outline-2 z-10 shadow-lg'
-          : 'outline-transparent',
+        isSelected ? 'outline-(--color-primary) outline-2 z-10 shadow-lg' : 'outline-transparent',
         clipItem && typeof clipItem.freezeFrameSourceUs === 'number'
           ? 'outline-(--color-warning) outline-2'
           : '',
@@ -745,7 +736,7 @@ function handleTransitionCreate(
         !isMediaMissing && isMutedOrDisabled ? 'bg-zinc-800/80! border-zinc-700/80!' : '',
         !isMediaMissing && isUnsupported ? 'bg-amber-600/50! border-amber-700!' : '',
         (clipItem && Boolean(clipItem.locked)) || track.locked ? 'cursor-not-allowed' : '',
-        isMobile && timelineContext.selectedItemIds.value.includes(item.id) ? 'touch-none' : '',
+        isMobile && isSelected ? 'touch-none' : '',
         isMovePreviewCollision ? 'bg-red-600/80! border-red-500! border-2! text-white! z-50!' : '',
       ]"
       @pointerdown="onClipPointerdown"
@@ -828,7 +819,7 @@ function handleTransitionCreate(
           :is-resizing-volume="resizeVolume?.itemId === item.id"
           :is-mobile="isMobile"
           :is-hovered="isHovered"
-          :is-selected="timelineContext.selectedItemIds.value.includes(item.id)"
+          :is-selected="isSelected"
           :scroll-left="scrollLeft"
           :viewport-width="viewportWidth"
           @start-resize-fade="
@@ -874,6 +865,7 @@ function handleTransitionCreate(
         <TimelineClipTrimHandles
           v-if="clipItem && canEditClipContent && !clipItem.locked && !track.locked && !isMobile"
           :is-transition-create-handle-active="isTransitionCreateHandleActive"
+          :clip-width-px="clipWidthPx"
           @trim-start="onTrimHandlePointerDown($event, 'start')"
           @trim-end="onTrimHandlePointerDown($event, 'end')"
         />
