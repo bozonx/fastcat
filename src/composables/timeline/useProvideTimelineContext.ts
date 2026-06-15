@@ -63,6 +63,7 @@ export function useProvideTimelineContext() {
     zoom: computed(() => timelineStore.timelineZoom),
     fps: computed(() => timelineStore.fps),
     currentTime: computed(() => timelineStore.currentTime),
+    isAnyTrackSoloed: computed(() => timelineStore.isAnyTrackSoloed),
     isTrimModeActive: computed(() => timelineStore.isTrimModeActive),
     selectedItemIds: computed(() => timelineStore.selectedItemIds),
     selectedItemIdSet: computed(() => new Set(timelineStore.selectedItemIds)),

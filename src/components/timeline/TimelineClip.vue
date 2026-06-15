@@ -40,6 +40,7 @@ import { isClipFreePosition } from '~/utils/timeline/clip-checks';
 import { useClickOrDrag } from '~/composables/timeline/useClickOrDrag';
 import { DEFAULT_TRANSITION_MODE } from '~/transitions';
 import { computeTrimGeometry } from '~/timeline/commands/item/trimGeometry';
+import type { TimelineTrimPreview } from '~/composables/timeline/useTimelineItemDrag';
 
 import ClipTransitions from './ClipTransitions.vue';
 import ClipAudioFades from './ClipAudioFades.vue';
@@ -68,16 +69,7 @@ interface Props {
     deltaUs: number;
     timecode: string;
   } | null;
-  trimPreview?:
-    | {
-        itemId: string;
-        trackId: string;
-        startUs: number;
-        durationUs: number;
-        edge: 'start' | 'end';
-        deltaUs: number;
-      }[]
-    | null;
+  trimPreview?: TimelineTrimPreview | null;
   selectedTransition: { trackId: string; itemId: string; edge: 'in' | 'out' } | null;
   resizeVolume: {
     itemId: string;
@@ -136,8 +128,7 @@ const isTransitionCreateHandleActive = ref(false);
 const isSelected = computed(() => timelineContext.selectedItemIdSet.value.has(props.item.id));
 
 const myTrimPreview = computed(() => {
-  if (!props.trimPreview) return null;
-  return props.trimPreview.find((p) => p.itemId === props.item.id) ?? null;
+  return props.trimPreview ?? null;
 });
 
 const effectiveTimelineRange = computed(() => {
@@ -432,7 +423,7 @@ const isDisabled = computed(() => {
   return (
     Boolean(clipItem.value.disabled) ||
     Boolean(props.track.videoHidden) ||
-    (timelineContext.timelineDoc.value?.tracks.some((t) => t.audioSolo) && !props.track.audioSolo)
+    (timelineContext.isAnyTrackSoloed.value && !props.track.audioSolo)
   );
 });
 
@@ -733,9 +724,7 @@ function handleTransitionCreate(
         clipItem && typeof clipItem.freezeFrameSourceUs === 'number'
           ? 'outline-(--color-warning) outline-2'
           : '',
-        isDisabled
-          ? 'opacity-40'
-          : '',
+        isDisabled ? 'opacity-40' : '',
         isMediaMissing ? 'bg-red-600! border-red-800! text-white!' : '',
         !isMediaMissing && isUnsupported ? 'bg-amber-600/50! border-amber-700!' : '',
         (clipItem && Boolean(clipItem.locked)) || track.locked ? 'cursor-not-allowed' : '',
@@ -784,9 +773,9 @@ function handleTransitionCreate(
           :clip-width-px="clipWidthPx"
         />
 
-        <!-- Dotted pattern overlay for muted audio clips -->
+        <!-- Dotted pattern overlay for muted clips -->
         <div
-          v-if="!isMediaMissing && track.kind === 'audio' && isAudioMuted && !isDisabled"
+          v-if="!isMediaMissing && isAudioMuted && !isDisabled"
           class="absolute inset-0 muted-track-dots pointer-events-none rounded opacity-80"
         />
 

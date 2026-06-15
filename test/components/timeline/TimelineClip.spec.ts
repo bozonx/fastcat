@@ -85,6 +85,7 @@ const mockTimelineContext = {
   zoom: computed(() => mockTimelineStore.timelineZoom),
   fps: computed(() => mockTimelineStore.fps),
   currentTime: computed(() => 0),
+  isAnyTrackSoloed: computed(() => mockTimelineStore.isAnyTrackSoloed),
   isTrimModeActive: computed(() => mockTimelineStore.isTrimModeActive),
   selectedItemIds: computed(() => mockTimelineStore.selectedItemIds),
   selectedItemIdSet: computed(() => new Set(mockTimelineStore.selectedItemIds)),
@@ -256,7 +257,7 @@ describe('TimelineClip', () => {
   it('displays muted clip state correctly (keeps background but adds dotted pattern)', async () => {
     const component = await mountClip({
       ...defaultProps,
-      track: { ...baseTrack, kind: 'audio' },
+      track: { ...baseTrack, kind: 'video' },
       item: { ...baseItem, audioMuted: true },
     });
     const clipDiv = component.find('[data-clip-id="clip-1"]');
@@ -470,16 +471,14 @@ describe('TimelineClip', () => {
         sourceRange: { startUs: 1_000_000, durationUs: 5_000_000 },
         sourceDurationUs: 10_000_000,
       },
-      trimPreview: [
-        {
-          itemId: 'clip-1',
-          trackId: 'track-1',
-          startUs: 1_000_000,
-          durationUs: 4_000_000,
-          edge: 'start',
-          deltaUs: 1_000_000,
-        },
-      ],
+      trimPreview: {
+        itemId: 'clip-1',
+        trackId: 'track-1',
+        startUs: 1_000_000,
+        durationUs: 4_000_000,
+        edge: 'start',
+        deltaUs: 1_000_000,
+      },
     });
 
     const overlay = component.find('[data-trim-overlay]');

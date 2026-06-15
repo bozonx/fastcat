@@ -9,6 +9,7 @@ export interface TimelineContext {
   zoom: ComputedRef<number>;
   fps: ComputedRef<number>;
   currentTime: ComputedRef<number>;
+  isAnyTrackSoloed: ComputedRef<boolean>;
   isTrimModeActive: ComputedRef<boolean>;
   selectedItemIds: ComputedRef<string[]>;
   /** O(1) membership view of {@link selectedItemIds} for hot per-clip render checks. */

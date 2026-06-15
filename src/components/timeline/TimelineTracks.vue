@@ -34,6 +34,7 @@ import { useTimelineSpeedModal } from '~/composables/timeline/useTimelineSpeedMo
 import { useTimelineAutoMontage } from '~/composables/timeline/useTimelineAutoMontage';
 import { useTimelineTrackContextMenu } from '~/composables/timeline/useTimelineTrackContextMenu';
 import { useTimelinePasteParameters } from '~/composables/timeline/useTimelinePasteParameters';
+import type { TimelineTrimPreview } from '~/composables/timeline/useTimelineItemDrag';
 
 import { isLayer1Active, isLayer2Active } from '~/utils/hotkeys/layerUtils';
 
@@ -66,16 +67,7 @@ const props = defineProps<{
   } | null;
   movePreview?: { itemId: string; trackId: string; startUs: number; isCollision?: boolean }[];
   slipPreview?: { itemId: string; trackId: string; deltaUs: number; timecode: string } | null;
-  trimPreview?:
-    | {
-        itemId: string;
-        trackId: string;
-        startUs: number;
-        durationUs: number;
-        edge: 'start' | 'end';
-        deltaUs: number;
-      }[]
-    | null;
+  trimPreview?: TimelineTrimPreview[] | null;
   draggingMode?: 'move' | 'slip' | 'trim_start' | 'trim_end' | null;
   draggingItemId?: string | null;
   isMobile?: boolean;
@@ -149,7 +141,7 @@ const { resizeVolume, startResizeVolume, startResizeFade, startResizeTransition 
   );
 
 const timelineWidthPx = computed(() => {
-  const maxUs = Math.max(timelineStore.duration, timelineStore.currentTime) + 30_000_000;
+  const maxUs = timelineStore.duration + 30_000_000;
   return timeUsToPx(maxUs, timelineStore.timelineZoom);
 });
 
@@ -176,16 +168,25 @@ const { movePreviewItemsByTrack, movePreviewIds, movePreviewMemoByTrack } = useT
   },
 );
 
+const trimPreviewByItemId = computed(() => {
+  const map: Record<string, TimelineTrimPreview> = {};
+  if (!props.trimPreview || props.trimPreview.length === 0) return map;
+  for (const preview of props.trimPreview) {
+    map[preview.itemId] = preview;
+  }
+  return map;
+});
+
 // Per-track trim-preview memo string. Only affected tracks get an entry, so the
 // v-memo key can do an O(1) lookup instead of re-scanning track.items per render.
 const trimPreviewMemoByTrack = computed(() => {
   const map: Record<string, string> = {};
   if (!props.trimPreview || props.trimPreview.length === 0) return map;
-  const byItemId = new Map(props.trimPreview.map((tp) => [tp.itemId, tp]));
+  const byItemId = trimPreviewByItemId.value;
   for (const track of props.tracks) {
     let parts = '';
     for (const item of track.items) {
-      const p = byItemId.get(item.id);
+      const p = byItemId[item.id];
       if (p) parts += `${item.id}:${p.startUs}:${p.durationUs},`;
     }
     if (parts) map[track.id] = parts;
@@ -537,13 +538,13 @@ watch(
             :can-edit-clip-content="canEditClipContent"
             :is-dragging-current-item="draggingItemId === item.id"
             :is-move-preview-current-item="movePreviewIds.has(item.id)"
-            :is-trim-preview-current-item="trimPreview?.some((p) => p.itemId === item.id)"
+            :is-trim-preview-current-item="Boolean(trimPreviewByItemId[item.id])"
             :selected-transition="selectedTransition"
             :resize-volume="resizeVolume"
             :scroll-left="scrollLeft"
             :viewport-width="viewportWidth"
             :slip-preview="slipPreview?.itemId === item.id ? slipPreview : null"
-            :trim-preview="trimPreview ?? null"
+            :trim-preview="trimPreviewByItemId[item.id] ?? null"
             :is-mobile="isMobile"
             @select-item="(ev, id) => emit('selectItem', ev, id)"
             @start-move-item="(ev, payload) => emit('startMoveItem', ev, payload)"

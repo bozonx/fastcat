@@ -131,7 +131,7 @@ const trackResetButtons = computed(() =>
 );
 
 const timelineWidthStyle = computed(() => {
-  const maxUs = Math.max(timelineStore.duration, timelineStore.currentTime) + 30_000_000;
+  const maxUs = timelineStore.duration + 30_000_000;
   const widthPx = timeUsToPx(maxUs, timelineStore.timelineZoom);
   return { width: `${widthPx}px`, minWidth: '100%' };
 });
