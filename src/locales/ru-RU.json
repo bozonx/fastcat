@@ -1148,8 +1148,7 @@
       "phaseFinalizing": "Финализация...",
       "matchTimeline": "Как на таймлайне",
       "preset": {
-        "custom": "Свой",
-        "matchTimeline": "Как в таймлайне"
+        "custom": "Свой"
       },
       "presetLabel": "Пресет",
       "processing": "Обработка...",

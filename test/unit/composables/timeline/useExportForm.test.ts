@@ -55,19 +55,6 @@ const projectStoreMock = {
   },
   projectSettings: {
     exportSettings: undefined as any,
-    exportDefaults: {
-      encoding: {
-        format: 'mp4',
-        videoCodec: 'avc1.42E032',
-        bitrateMbps: 8,
-        excludeAudio: false,
-        audioCodec: 'aac',
-        audioBitrateKbps: 192,
-        bitrateMode: 'vbr',
-        keyframeIntervalSec: 2,
-        exportAlpha: false,
-      },
-    },
     project: {
       sampleRate: 48000,
       width: 1920,
@@ -432,7 +419,7 @@ describe('useExportForm', () => {
     expect(tempFilename.endsWith('.mkv')).toBe(true);
   });
 
-  it('инициализирует настройки формы из timelineFormat', async () => {
+  it('инициализирует настройки формы из export preset по умолчанию', async () => {
     timelineFormatMock.value = {
       sampleRate: 44100,
       width: 1280,
@@ -442,32 +429,22 @@ describe('useExportForm', () => {
       orientation: 'landscape',
       aspectRatio: '16:9',
       isCustomResolution: false,
-      exportFormat: 'webm',
-      videoCodec: 'vp9',
-      videoBitrateMbps: 12,
-      excludeAudio: true,
-      audioCodec: 'opus',
-      audioBitrateKbps: 128,
-      audioChannels: 1,
-      bitrateMode: 'cbr',
-      keyframeIntervalSec: 5,
-      exportAlpha: true,
     };
 
     const form = useExportForm();
     await form.initializeExportForm();
 
-    expect(form.outputFormat.value).toBe('webm');
-    expect(form.videoCodec.value).toBe('vp9');
-    expect(form.bitrateMbps.value).toBe(12);
-    expect(form.excludeAudio.value).toBe(true);
+    expect(form.outputFormat.value).toBe('mkv');
+    expect(form.videoCodec.value).toBe('av01.0.05M.08');
+    expect(form.bitrateMbps.value).toBe(5);
+    expect(form.excludeAudio.value).toBe(false);
     expect(form.audioCodec.value).toBe('opus');
     expect(form.audioBitrateKbps.value).toBe(128);
-    expect(form.audioChannels.value).toBe(1);
+    expect(form.audioChannels.value).toBe(2);
     expect(form.audioSampleRate.value).toBe(44100);
-    expect(form.bitrateMode.value).toBe('cbr');
-    expect(form.keyframeIntervalSec.value).toBe(5);
-    expect(form.exportAlpha.value).toBe(true);
+    expect(form.bitrateMode.value).toBe('variable');
+    expect(form.keyframeIntervalSec.value).toBe(2);
+    expect(form.exportAlpha.value).toBe(false);
   });
 
   it('сбрасывает экспорт альфа-канала при переключении с webm на mp4', async () => {

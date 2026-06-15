@@ -694,7 +694,9 @@ export async function runExport(
         fps,
       });
 
-      const formatSupportsAlpha = options.format === 'webm' || options.format === 'mkv';
+      const formatSupportsAlpha =
+        options.format === 'webm' ||
+        (options.format === 'mkv' && options.videoCodec === 'vp09.00.10.08');
       if (options.exportAlpha && !formatSupportsAlpha) {
         await reportExportWarning(
           `[Worker Export] Alpha channel is not supported by ${options.format.toUpperCase()}; exporting without alpha.`,

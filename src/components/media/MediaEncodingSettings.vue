@@ -66,7 +66,7 @@ const audioSampleRate = defineModel<number | 'original'>('audioSampleRate', {
   default: 'original',
 });
 const preset = defineModel<
-  'optimal' | 'social' | 'high' | 'lossless' | 'custom' | 'match-timeline'
+  'optimal' | 'social' | 'high' | 'lossless' | 'custom'
 >('preset', {
   default: 'custom',
 });
@@ -135,7 +135,7 @@ const videoCodecHelp = computed(() => {
 const canExportAlpha = computed(() => {
   if (outputFormat.value === 'webm') return true;
   if (outputFormat.value === 'mkv') {
-    const alphaCodecs = ['vp09.00.10.08', 'av01.0.05M.08'];
+    const alphaCodecs = ['vp09.00.10.08'];
     return alphaCodecs.includes(videoCodec.value);
   }
   return false;

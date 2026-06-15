@@ -52,7 +52,7 @@ const audioSampleRate = defineModel<number | 'original'>('audioSampleRate', {
   default: 'original',
 });
 const preset = defineModel<
-  'custom' | 'high' | 'optimal' | 'social' | 'lossless' | 'match-timeline'
+  'custom' | 'high' | 'optimal' | 'social' | 'lossless'
 >('preset', {
   default: 'custom',
 });
@@ -64,8 +64,6 @@ const metadataTitle = defineModel<string>('metadataTitle', { default: '' });
 const metadataAuthor = defineModel<string>('metadataAuthor', { default: '' });
 const metadataTags = defineModel<string>('metadataTags', { default: '' });
 const metadataDescription = defineModel<string>('metadataDescription', { default: '' });
-const matchTimeline = defineModel<boolean>('matchTimeline', { default: true });
-
 const { t } = useI18n();
 const workspaceStore = useWorkspaceStore();
 const projectStore = useProjectStore();
@@ -83,7 +81,6 @@ const presetOptions = computed(() => {
     label: p.name,
   }));
   return [
-    { value: 'match-timeline', label: t('videoEditor.export.preset.matchTimeline') },
     ...items,
     { value: 'custom', label: t('videoEditor.export.preset.custom') },
   ];
@@ -91,24 +88,6 @@ const presetOptions = computed(() => {
 
 function applyPreset(presetId: string) {
   if (presetId === 'custom') return;
-
-  if (presetId === 'match-timeline') {
-    matchTimeline.value = true;
-    const encDefaults = projectStore.projectSettings.exportSettings;
-    if (!encDefaults) return;
-    outputFormat.value = encDefaults.outputFormat;
-    videoCodec.value = encDefaults.videoCodec;
-    bitrateMbps.value = encDefaults.bitrateMbps;
-    excludeAudio.value = encDefaults.excludeAudio;
-    audioCodec.value = encDefaults.audioCodec as typeof audioCodec.value;
-    audioBitrateKbps.value = encDefaults.audioBitrateKbps;
-    bitrateMode.value = encDefaults.bitrateMode;
-    keyframeIntervalSec.value = encDefaults.keyframeIntervalSec;
-    exportAlpha.value = encDefaults.exportAlpha;
-    fastStart.value = encDefaults.fastStart;
-    preset.value = 'match-timeline';
-    return;
-  }
 
   const found = workspaceStore.userSettings.exportPresets.items.find((p) => p.id === presetId);
   if (!found) return;

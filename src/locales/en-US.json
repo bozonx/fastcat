@@ -1148,8 +1148,7 @@
       "phaseFinalizing": "Finalizing...",
       "matchTimeline": "Match Timeline",
       "preset": {
-        "custom": "Custom",
-        "matchTimeline": "Match Timeline"
+        "custom": "Custom"
       },
       "presetLabel": "Preset",
       "processing": "Processing...",

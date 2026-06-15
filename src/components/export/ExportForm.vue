@@ -393,7 +393,6 @@ const filenamePlaceholder = computed(() =>
               v-model:metadata-description="metadataDescription"
               v-model:metadata-author="metadataAuthor"
               v-model:metadata-tags="metadataTags"
-              v-model:match-timeline="matchTimeline"
               :is-field-dirty="isFieldDirty"
               :reset-field="resetField"
               :show-audio-advanced="true"
