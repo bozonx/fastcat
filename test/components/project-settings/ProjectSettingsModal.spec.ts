@@ -130,8 +130,6 @@ vi.mock('~/components/project-settings/ResolutionSettings.vue', () => ({
   },
 }));
 
-
-
 vi.mock('~/components/project-settings/AdvancedSettings.vue', () => ({
   default: {
     name: 'AdvancedSettings',

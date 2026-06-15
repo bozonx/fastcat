@@ -510,7 +510,6 @@ const filenamePlaceholder = computed(() =>
           </UiFormField>
         </div>
 
-
         <div
           v-if="lastExportStatus === 'success' && exportDurationMs !== null"
           class="p-3 text-sm text-success-400 bg-success-400/10 rounded-md border border-success-400/20"

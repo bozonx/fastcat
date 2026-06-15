@@ -94,8 +94,9 @@ function applyPreset(presetId: string) {
 
   if (presetId === 'match-timeline') {
     matchTimeline.value = true;
-    const encDefaults = projectStore.projectSettings.exportDefaults.encoding;
-    outputFormat.value = encDefaults.format;
+    const encDefaults = projectStore.projectSettings.exportSettings;
+    if (!encDefaults) return;
+    outputFormat.value = encDefaults.outputFormat;
     videoCodec.value = encDefaults.videoCodec;
     bitrateMbps.value = encDefaults.bitrateMbps;
     excludeAudio.value = encDefaults.excludeAudio;

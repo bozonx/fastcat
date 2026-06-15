@@ -693,7 +693,6 @@
       "createSelectionArea": "Создать область выделения",
       "createSelectionFromZone": "Создать выделение из зоны",
       "createVersion": "Создать версию",
-      "followProjectSettings": "Следовать настройкам проекта",
       "saveAs": "Сохранить как",
       "autoMontage": {
         "title": "Авто монтаж (Обрезка пауз)",
@@ -1052,18 +1051,11 @@
           "left": "Влево",
           "right": "Вправо",
           "up": "Вверх"
-        },
-        "params": {
-          "direction": "Направление"
         }
       },
       "title": "Переходы",
       "wipe": {
-        "name": "Вытеснение",
-        "params": {
-          "softness": "Мягкость",
-          "angle": "Угол"
-        }
+        "name": "Вытеснение"
       },
       "zoom": {
         "name": "Zoom"
@@ -1163,7 +1155,6 @@
       "processing": "Обработка...",
       "rangeSourceHelp": "Выберите, какая часть таймлайна будет использована при экспорте.",
       "rangeSourceTitle": "Что экспортировать",
-      "saveAsDefault": "Сделать настройками проекта по умолчанию",
       "changeFolder": "Изменить папку",
       "defaultExportFolderNote": "Будет сохранено в папку _export проекта",
       "saveLocationNote": "Файл будет сохранен в папку export/ в директории вашего проекта",
@@ -1918,6 +1909,7 @@
       "autoSettingsApplied": "Параметры таймлайна обновлены",
       "autoSettingsAppliedDesc": "Разрешение {width}x{height}, {fps} FPS",
       "format": "Формат таймлайна",
+      "followProjectSettings": "Следовать настройкам проекта",
       "settings": "Настройки таймлайна",
       "confirmCloseUnsavedTitle": "Несохраненные изменения",
       "closeUnsavedTitle": "Несохраненные изменения",

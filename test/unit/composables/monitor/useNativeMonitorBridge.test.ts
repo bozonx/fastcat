@@ -1,6 +1,15 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { reactive, effectScope } from 'vue';
 
+import {
+  useNativeMonitorBridge,
+  isNativeMonitorSceneReady,
+  resolveNativeAudioTrackSelection,
+  shouldSyncNativeMonitorTime,
+  syncNativeMonitorTransportAfterScene,
+} from '~/composables/monitor/useNativeMonitorBridge';
+import type { TimelineDocument, TimelineTrack } from '~/timeline/types';
+
 // Mock stores
 const mockWorkspaceStore = reactive({
   userSettings: {
@@ -76,15 +85,6 @@ vi.mock('~/composables/monitor/native-monitor-ipc', () => ({
 vi.mock('@tauri-apps/api/event', () => ({
   listen: vi.fn().mockResolvedValue(() => {}),
 }));
-
-import {
-  useNativeMonitorBridge,
-  isNativeMonitorSceneReady,
-  resolveNativeAudioTrackSelection,
-  shouldSyncNativeMonitorTime,
-  syncNativeMonitorTransportAfterScene,
-} from '~/composables/monitor/useNativeMonitorBridge';
-import type { TimelineDocument, TimelineTrack } from '~/timeline/types';
 
 function track(id: string, kind: 'audio' | 'video', props: Partial<TimelineTrack>): TimelineTrack {
   return {

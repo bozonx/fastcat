@@ -214,8 +214,6 @@ export function useExportForm() {
     return isEncodingDifferent || isGeometryDifferent || isMetadataDifferent;
   });
 
-
-
   watch(exportRangeOptions, (options) => {
     if (options.some((option) => option.id === selectedExportRangeId.value)) return;
     selectedExportRangeId.value = 'timeline';
@@ -324,28 +322,18 @@ export function useExportForm() {
       } else {
         const encDefaults = resolveExportPreset(workspaceStore.userSettings.exportPresets);
         exportType.value = 'video';
-        outputFormat.value =
-          format.exportFormat ?? encDefaults.format;
-        videoCodec.value =
-          format.videoCodec ?? encDefaults.videoCodec;
-        bitrateMbps.value =
-          format.videoBitrateMbps ?? encDefaults.bitrateMbps;
-        excludeAudio.value =
-          format.excludeAudio ?? encDefaults.excludeAudio;
-        audioCodec.value =
-          format.audioCodec ?? encDefaults.audioCodec;
-        audioBitrateKbps.value =
-          format.audioBitrateKbps ?? encDefaults.audioBitrateKbps;
-        audioChannels.value = format.audioChannels ?? 2;
+        outputFormat.value = encDefaults.format;
+        videoCodec.value = encDefaults.videoCodec;
+        bitrateMbps.value = encDefaults.bitrateMbps;
+        excludeAudio.value = encDefaults.excludeAudio;
+        audioCodec.value = encDefaults.audioCodec;
+        audioBitrateKbps.value = encDefaults.audioBitrateKbps;
+        audioChannels.value = 2;
         audioSampleRate.value = format.sampleRate;
-        bitrateMode.value =
-          format.bitrateMode ?? encDefaults.bitrateMode;
-        keyframeIntervalSec.value =
-          format.keyframeIntervalSec ?? encDefaults.keyframeIntervalSec;
-        exportAlpha.value =
-          format.exportAlpha ?? encDefaults.exportAlpha;
-        fastStart.value =
-          format.fastStart ?? encDefaults.fastStart;
+        bitrateMode.value = encDefaults.bitrateMode;
+        keyframeIntervalSec.value = encDefaults.keyframeIntervalSec;
+        exportAlpha.value = encDefaults.exportAlpha;
+        fastStart.value = encDefaults.fastStart;
 
         metadataTitle.value = projectStore.projectMeta?.title || '';
         metadataDescription.value = projectStore.projectMeta?.description || '';
@@ -535,8 +523,6 @@ export function useExportForm() {
         const durationMs = Math.round(performance.now() - startTime);
         exportDurationMs.value = durationMs;
         lastExportStatus.value = 'success';
-
-
 
         if (exportWarnings.value.length > 0) {
           toast.add({

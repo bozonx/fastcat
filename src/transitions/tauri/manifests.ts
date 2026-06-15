@@ -1444,7 +1444,11 @@ export const tauriTransitionManifests: TransitionManifest[] = [
         max: 1000,
         step: 1,
       },
-      { kind: 'boolean', key: 'followScale', labelKey: 'fastcat.timeline.transition.paramFollowScale' },
+      {
+        kind: 'boolean',
+        key: 'followScale',
+        labelKey: 'fastcat.timeline.transition.paramFollowScale',
+      },
     ],
     toTauriSpec: (params: Record<string, unknown>) => {
       const center = centerFromAnchor(params);

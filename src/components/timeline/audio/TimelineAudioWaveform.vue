@@ -86,11 +86,7 @@ const effectiveSourceDurationUs = computed(() => {
     const meta = mediaStore.getCachedMetadata(fileUrl.value);
     const metaDurationS = meta?.duration;
     if (metaDurationS && metaDurationS > 0) {
-      return Math.max(
-        Math.floor(metaDurationS * 1_000_000),
-        explicitDurationUs,
-        sourceRangeEndUs,
-      );
+      return Math.max(Math.floor(metaDurationS * 1_000_000), explicitDurationUs, sourceRangeEndUs);
     }
   }
 

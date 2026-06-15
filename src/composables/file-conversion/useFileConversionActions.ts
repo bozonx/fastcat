@@ -221,18 +221,17 @@ export function useFileConversionActions(props: UseFileConversionActionsProps) {
     if (mediaCategory === 'video') {
       props.sourceHasAudio.value = true;
       props.videoSettings.format =
-        projectStore.projectSettings?.exportDefaults?.encoding?.format ?? DEFAULT_VIDEO_FORMAT;
+        projectStore.projectSettings?.exportSettings?.outputFormat ?? DEFAULT_VIDEO_FORMAT;
       props.videoSettings.videoCodec =
-        projectStore.projectSettings?.exportDefaults?.encoding?.videoCodec ?? DEFAULT_VIDEO_CODEC;
+        projectStore.projectSettings?.exportSettings?.videoCodec ?? DEFAULT_VIDEO_CODEC;
       props.videoSettings.bitrateMbps =
-        projectStore.projectSettings?.exportDefaults?.encoding?.bitrateMbps ??
-        DEFAULT_VIDEO_BITRATE_MBPS;
+        projectStore.projectSettings?.exportSettings?.bitrateMbps ?? DEFAULT_VIDEO_BITRATE_MBPS;
       props.videoSettings.excludeAudio =
-        projectStore.projectSettings?.exportDefaults?.encoding?.excludeAudio ?? false;
+        projectStore.projectSettings?.exportSettings?.excludeAudio ?? false;
       props.videoSettings.audioCodec =
-        projectStore.projectSettings?.exportDefaults?.encoding?.audioCodec ?? DEFAULT_AUDIO_CODEC;
+        projectStore.projectSettings?.exportSettings?.audioCodec ?? DEFAULT_AUDIO_CODEC;
       props.videoSettings.audioBitrateKbps =
-        projectStore.projectSettings?.exportDefaults?.encoding?.audioBitrateKbps ??
+        projectStore.projectSettings?.exportSettings?.audioBitrateKbps ??
         DEFAULT_AUDIO_BITRATE_KBPS;
 
       try {

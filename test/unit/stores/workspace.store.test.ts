@@ -512,10 +512,12 @@ describe('WorkspaceStore', () => {
       // setupWorkspace triggers syncFfmpegSettingsToNative
       await store.setupWorkspace(mockDirectoryHandle);
 
-      expect(mockNativeUpdateFfmpegSettings).toHaveBeenCalledWith(expect.objectContaining({
-        hardwareAccelerationMode: 'auto',
-        enableHardwareEncoding: false,
-      }));
+      expect(mockNativeUpdateFfmpegSettings).toHaveBeenCalledWith(
+        expect.objectContaining({
+          hardwareAccelerationMode: 'auto',
+          enableHardwareEncoding: false,
+        }),
+      );
     });
 
     it('sends hardwareAccelerationMode as custom mode when experimentalFeatures is true', async () => {
@@ -540,10 +542,12 @@ describe('WorkspaceStore', () => {
 
       await store.setupWorkspace(mockDirectoryHandle);
 
-      expect(mockNativeUpdateFfmpegSettings).toHaveBeenCalledWith(expect.objectContaining({
-        hardwareAccelerationMode: 'nvdec',
-        enableHardwareEncoding: true,
-      }));
+      expect(mockNativeUpdateFfmpegSettings).toHaveBeenCalledWith(
+        expect.objectContaining({
+          hardwareAccelerationMode: 'nvdec',
+          enableHardwareEncoding: true,
+        }),
+      );
     });
   });
 });

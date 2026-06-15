@@ -134,9 +134,10 @@ watch(
   async ({ experimentalFeatures, bufferSize, backend }) => {
     if (!isTauri.value) return;
     try {
-      const settings = experimentalFeatures
-        ? { bufferSize, backend }
-        : { bufferSize: 'default', backend: 'default' };
+      const settings: import('~/composables/monitor/native-monitor-ipc').MonitorAudioSettingsInput =
+        experimentalFeatures
+          ? { bufferSize: bufferSize as 'default' | number, backend: backend as 'default' | string }
+          : { bufferSize: 'default', backend: 'default' };
       await nativeMonitorIpc.setAudioSettings(settings);
     } catch (err) {
       log.error('Failed to update audio engine settings:', err);

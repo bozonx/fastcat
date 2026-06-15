@@ -7,10 +7,7 @@ import { ref, computed } from 'vue';
 import { useProjectStore } from '~/stores/project.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useTimelineStore } from '~/stores/timeline.store';
-import {
-  resolveProjectPreset,
-  DEFAULT_PROJECT_PRESET_ID,
-} from '~/utils/settings';
+import { resolveProjectPreset, DEFAULT_PROJECT_PRESET_ID } from '~/utils/settings';
 
 import ResolutionSettings from './ResolutionSettings.vue';
 import AdvancedSettings from './AdvancedSettings.vue';
@@ -174,8 +171,6 @@ async function resetToDefaults() {
       <div class="h-px bg-ui-border"></div>
 
       <ResolutionSettings />
-
-
 
       <div class="h-px bg-ui-border"></div>
 

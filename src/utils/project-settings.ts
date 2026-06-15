@@ -2,7 +2,7 @@ import { z } from 'zod';
 import type { FastCatUserSettings } from './settings/defaults';
 import { DEFAULT_USER_SETTINGS } from './settings/defaults';
 import { getResolutionPreset } from './settings/helpers';
-import { resolveExportPreset, resolveProjectPreset } from './settings/presets';
+import { resolveProjectPreset } from './settings/presets';
 
 interface ProjectSettingsUserDefaultsInput {
   projectDefaults: FastCatUserSettings['projectDefaults'];

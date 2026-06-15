@@ -693,7 +693,6 @@
       "createSelectionArea": "Create selection area",
       "createSelectionFromZone": "Create selection from zone",
       "createVersion": "Create version",
-      "followProjectSettings": "Follow project settings",
       "saveAs": "Save as",
       "autoMontage": {
         "title": "Auto Montage (Silence Trimming)",
@@ -1052,18 +1051,11 @@
           "left": "Left",
           "right": "Right",
           "up": "Up"
-        },
-        "params": {
-          "direction": "Direction"
         }
       },
       "title": "Transitions",
       "wipe": {
-        "name": "Wipe",
-        "params": {
-          "softness": "Softness",
-          "angle": "Angle"
-        }
+        "name": "Wipe"
       },
       "zoom": {
         "name": "Zoom"
@@ -1163,7 +1155,6 @@
       "processing": "Processing...",
       "rangeSourceHelp": "Choose which part of the timeline should be used for export.",
       "rangeSourceTitle": "What to export",
-      "saveAsDefault": "Save as project defaults",
       "changeFolder": "Change folder",
       "defaultExportFolderNote": "Will be saved to the project's _export folder",
       "saveLocationNote": "File will be saved to the export/ folder in your project directory",
@@ -1918,6 +1909,7 @@
       "autoSettingsApplied": "Timeline settings updated",
       "autoSettingsAppliedDesc": "Resolution {width}x{height}, {fps} FPS",
       "format": "Timeline Format",
+      "followProjectSettings": "Follow project settings",
       "settings": "Timeline settings",
       "confirmCloseUnsavedTitle": "Unsaved changes",
       "closeUnsavedTitle": "Unsaved changes",

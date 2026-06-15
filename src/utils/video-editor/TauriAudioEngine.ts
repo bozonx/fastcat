@@ -12,7 +12,7 @@ import type {
 const logger = createDevLogger('TauriAudioEngine');
 const EVT_TIME = 'monitor:time';
 
-interface NativeAudioLevelsPayload {
+export interface NativeAudioLevelsPayload {
   rmsDb: number;
   peakDb: number;
   tracks?: Record<string, { rmsDb: number; peakDb: number }>;

@@ -558,9 +558,11 @@ watch(viewportRef, (vp) => {
                 effectiveFullscreen
                   ? [
                       'px-8 pb-3',
-                      toolbarPosition === 'left' || toolbarPosition === 'right' ? 'bottom-6' : 'bottom-20'
+                      toolbarPosition === 'left' || toolbarPosition === 'right'
+                        ? 'bottom-6'
+                        : 'bottom-20',
                     ]
-                  : 'bottom-0 px-0 pb-0'
+                  : 'bottom-0 px-0 pb-0',
               ]"
               @pointerdown="onSeekbarPointerDown"
               @pointermove="onSeekbarPointerMove"
@@ -587,7 +589,9 @@ watch(viewportRef, (vp) => {
                 <div
                   class="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-3 h-3 bg-ui-text rounded-full shadow-md transition-all duration-150 pointer-events-none"
                   :class="[
-                    isDraggingSeekbar ? 'opacity-100 scale-100' : 'opacity-0 scale-75 group-hover:opacity-100 group-hover:scale-100'
+                    isDraggingSeekbar
+                      ? 'opacity-100 scale-100'
+                      : 'opacity-0 scale-75 group-hover:opacity-100 group-hover:scale-100',
                   ]"
                   :style="{ left: `${progressPercent}%` }"
                 ></div>

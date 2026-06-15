@@ -5,6 +5,7 @@ import {
   onMonitorTime,
   onMonitorEnded,
   MONITOR_EVENTS,
+  type MonitorAudioSettingsInput,
 } from './native-monitor-ipc';
 
 import { useTimelineStore } from '~/stores/timeline.store';
@@ -226,8 +227,8 @@ export function useNativeMonitorBridge(): void {
     }),
     ({ experimentalFeatures, bufferSize, backend }) => {
       if (isNativeMonitorDisabled()) return;
-      const settings = experimentalFeatures
-        ? { bufferSize, backend }
+      const settings: MonitorAudioSettingsInput = experimentalFeatures
+        ? { bufferSize: bufferSize as 'default' | number, backend: backend as 'default' | string }
         : { bufferSize: 'default', backend: 'default' };
       void nativeMonitorIpc
         .setAudioSettings(settings)
@@ -457,29 +458,32 @@ export function useNativeMonitorBridge(): void {
     })
     .catch((err) => log.warn('listen monitor:ended failed', err));
 
-  void listen<any>(MONITOR_EVENTS.audioLevels, (event) => {
-    if (disposed) return;
-    const payload = event.payload;
-    if (!payload) return;
+  void listen<import('~/utils/video-editor/TauriAudioEngine').NativeAudioLevelsPayload>(
+    MONITOR_EVENTS.audioLevels,
+    (event) => {
+      if (disposed) return;
+      const payload = event.payload;
+      if (!payload) return;
 
-    const nextLevels = { ...timelineStore.audioLevels };
-    nextLevels.master = {
-      rmsDb: Number.isFinite(payload.rmsDb) ? payload.rmsDb : -60,
-      peakDb: Number.isFinite(payload.peakDb) ? payload.peakDb : -60,
-    };
+      const nextLevels = { ...timelineStore.audioLevels };
+      nextLevels.master = {
+        rmsDb: Number.isFinite(payload.rmsDb) ? payload.rmsDb : -60,
+        peakDb: Number.isFinite(payload.peakDb) ? payload.peakDb : -60,
+      };
 
-    if (payload.tracks) {
-      for (const [trackId, trackLevels] of Object.entries(payload.tracks)) {
-        const trL = trackLevels as { rmsDb: number; peakDb: number };
-        nextLevels[trackId] = {
-          rmsDb: Number.isFinite(trL.rmsDb) ? trL.rmsDb : -60,
-          peakDb: Number.isFinite(trL.peakDb) ? trL.peakDb : -60,
-        };
+      if (payload.tracks) {
+        for (const [trackId, trackLevels] of Object.entries(payload.tracks)) {
+          const trL = trackLevels as { rmsDb: number; peakDb: number };
+          nextLevels[trackId] = {
+            rmsDb: Number.isFinite(trL.rmsDb) ? trL.rmsDb : -60,
+            peakDb: Number.isFinite(trL.peakDb) ? trL.peakDb : -60,
+          };
+        }
       }
-    }
 
-    timelineStore.audioLevels = nextLevels;
-  })
+      timelineStore.audioLevels = nextLevels;
+    },
+  )
     .then((un) => {
       if (disposed) {
         un();

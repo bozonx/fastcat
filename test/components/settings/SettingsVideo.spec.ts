@@ -2,6 +2,9 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { reactive, ref } from 'vue';
 import { invoke } from '@tauri-apps/api/core';
 
+import { mountSuspended } from '@nuxt/test-utils/runtime';
+import SettingsVideo from '~/components/settings/SettingsVideo.vue';
+
 // Mock workspace store
 const mockWorkspaceStore = {
   userSettings: reactive({
@@ -75,13 +78,63 @@ const mockWorkspaceStore = {
       fastcatAccount: { enabled: false, bearerToken: '' },
       fastcatPublicador: { enabled: false, bearerToken: '' },
       manualFilesApi: { enabled: false, baseUrl: '', bearerToken: '', overrideFastCat: false },
-      stt: { provider: '', models: [], localModel: 'Xenova/whisper-tiny', language: '', restorePunctuation: true, formatText: false, includeWords: true }
+      stt: {
+        provider: '',
+        models: [],
+        localModel: 'Xenova/whisper-tiny',
+        language: '',
+        restorePunctuation: true,
+        formatText: false,
+        includeWords: true,
+      },
     },
     mouse: {
-      ruler: { wheel: 'seek_frame', wheelShift: 'seek_second', wheelSecondary: 'scroll_horizontal', wheelSecondaryShift: 'zoom_horizontal', click: 'seek', middleClick: 'fit_zoom', doubleClick: 'add_marker', shiftClick: 'clear_selection', drag: 'move_playhead', middleDrag: 'pan', dragShift: 'select_area', horizontalMovement: 'none' },
-      timeline: { wheel: 'scroll_vertical', wheelShift: 'zoom_horizontal', wheelSecondary: 'scroll_horizontal', wheelSecondaryShift: 'zoom_vertical', click: 'select_item', drag: 'move_clips', middleClick: 'fit_zoom', middleDrag: 'pan', horizontalMovement: 'none', clipDragShift: 'select_area', clipDragCtrl: 'free_mode', clipDragRight: 'copy' },
-      trackHeaders: { wheel: 'scroll_vertical', wheelShift: 'zoom_vertical', wheelSecondary: 'resize_track', wheelSecondaryShift: 'none', click: 'select_track', middleClick: 'select_all_clips', doubleClick: 'select_all_clips' },
-      monitor: { wheel: 'zoom', wheelShift: 'scroll_horizontal', wheelSecondary: 'scroll_horizontal', wheelSecondaryShift: 'scroll_vertical', middleClick: 'fit', doubleClick: 'reset_zoom_center', middleDrag: 'pan' }
+      ruler: {
+        wheel: 'seek_frame',
+        wheelShift: 'seek_second',
+        wheelSecondary: 'scroll_horizontal',
+        wheelSecondaryShift: 'zoom_horizontal',
+        click: 'seek',
+        middleClick: 'fit_zoom',
+        doubleClick: 'add_marker',
+        shiftClick: 'clear_selection',
+        drag: 'move_playhead',
+        middleDrag: 'pan',
+        dragShift: 'select_area',
+        horizontalMovement: 'none',
+      },
+      timeline: {
+        wheel: 'scroll_vertical',
+        wheelShift: 'zoom_horizontal',
+        wheelSecondary: 'scroll_horizontal',
+        wheelSecondaryShift: 'zoom_vertical',
+        click: 'select_item',
+        drag: 'move_clips',
+        middleClick: 'fit_zoom',
+        middleDrag: 'pan',
+        horizontalMovement: 'none',
+        clipDragShift: 'select_area',
+        clipDragCtrl: 'free_mode',
+        clipDragRight: 'copy',
+      },
+      trackHeaders: {
+        wheel: 'scroll_vertical',
+        wheelShift: 'zoom_vertical',
+        wheelSecondary: 'resize_track',
+        wheelSecondaryShift: 'none',
+        click: 'select_track',
+        middleClick: 'select_all_clips',
+        doubleClick: 'select_all_clips',
+      },
+      monitor: {
+        wheel: 'zoom',
+        wheelShift: 'scroll_horizontal',
+        wheelSecondary: 'scroll_horizontal',
+        wheelSecondaryShift: 'scroll_vertical',
+        middleClick: 'fit',
+        doubleClick: 'reset_zoom_center',
+        middleDrag: 'pan',
+      },
     },
     deleteWithoutConfirmation: false,
     ui: { interfaceScale: 14, clipThumbnailMode: 'standard', defaultAudioWaveformMode: 'half' },
@@ -130,7 +183,9 @@ vi.mock('@tauri-apps/api/core', () => ({
 vi.mock('~/utils/video-editor/worker-client', () => ({
   broadcastPixiRendererPreference: vi.fn(),
   setProxyHostApi: vi.fn(),
-  getPreviewWorkerClient: () => ({ client: { checkWebGpuSupport: vi.fn().mockResolvedValue({ supported: true }) } }),
+  getPreviewWorkerClient: () => ({
+    client: { checkWebGpuSupport: vi.fn().mockResolvedValue({ supported: true }) },
+  }),
 }));
 
 // Mock tauri-media-processing
@@ -138,9 +193,6 @@ const mockNativeUpdateFfmpegSettings = vi.fn().mockResolvedValue(undefined);
 vi.mock('~/utils/tauri-media-processing', () => ({
   nativeUpdateFfmpegSettings: (...args: any[]) => mockNativeUpdateFfmpegSettings(...args),
 }));
-
-import { mountSuspended } from '@nuxt/test-utils/runtime';
-import SettingsVideo from '~/components/settings/SettingsVideo.vue';
 
 describe('SettingsVideo', () => {
   beforeEach(() => {
@@ -239,10 +291,12 @@ describe('SettingsVideo', () => {
     await new Promise((resolve) => setTimeout(resolve, 10));
 
     // Should sync auto and enableHardwareEncoding = false to native
-    expect(mockNativeUpdateFfmpegSettings).toHaveBeenLastCalledWith(expect.objectContaining({
-      hardwareAccelerationMode: 'auto',
-      enableHardwareEncoding: false,
-    }));
+    expect(mockNativeUpdateFfmpegSettings).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        hardwareAccelerationMode: 'auto',
+        enableHardwareEncoding: false,
+      }),
+    );
   });
 
   it('shows hardwareAccelerationMode and sends custom value when experimentalFeatures is true', async () => {
@@ -262,19 +316,23 @@ describe('SettingsVideo', () => {
     await new Promise((resolve) => setTimeout(resolve, 10));
 
     // Should sync custom value to native
-    expect(mockNativeUpdateFfmpegSettings).toHaveBeenLastCalledWith(expect.objectContaining({
-      hardwareAccelerationMode: 'nvdec',
-      enableHardwareEncoding: true,
-    }));
+    expect(mockNativeUpdateFfmpegSettings).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        hardwareAccelerationMode: 'nvdec',
+        enableHardwareEncoding: true,
+      }),
+    );
 
     // Toggle experimentalFeatures off
     mockWorkspaceStore.userSettings.experimentalFeatures = false;
     await new Promise((resolve) => setTimeout(resolve, 10));
 
     // Should revert to auto and false
-    expect(mockNativeUpdateFfmpegSettings).toHaveBeenLastCalledWith(expect.objectContaining({
-      hardwareAccelerationMode: 'auto',
-      enableHardwareEncoding: false,
-    }));
+    expect(mockNativeUpdateFfmpegSettings).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        hardwareAccelerationMode: 'auto',
+        enableHardwareEncoding: false,
+      }),
+    );
   });
 });

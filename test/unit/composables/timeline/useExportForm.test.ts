@@ -137,10 +137,10 @@ const workspaceStoreMock = {
           keyframeIntervalSec: 2,
           exportAlpha: false,
           fastStart: true,
-        }
-      ]
-    }
-  }
+        },
+      ],
+    },
+  },
 };
 
 vi.mock('~/stores/workspace.store', () => ({
@@ -469,7 +469,6 @@ describe('useExportForm', () => {
     expect(form.keyframeIntervalSec.value).toBe(5);
     expect(form.exportAlpha.value).toBe(true);
   });
-
 
   it('сбрасывает экспорт альфа-канала при переключении с webm на mp4', async () => {
     const form = useExportForm();
