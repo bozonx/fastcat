@@ -359,7 +359,10 @@ watch(
 // canvas to the viewport to stay well under browser canvas size limits.
 const STATIC_MAX_PX = 8000;
 const WINDOW_OVERSCAN_PX = 1000;
-const MAX_WAVEFORM_DRAW_POINTS = 4096;
+// Upper bound on draw points per canvas. Sized to STATIC_MAX_PX so a full static
+// strip can reach ~1 point/CSS-px (the binner is O(points) via the mip pyramid, so
+// this is cheap); below this the budget tracks the actual CSS width.
+const MAX_WAVEFORM_DRAW_POINTS = 8192;
 const ZOOM_SETTLE_MS = 120;
 
 const isReversed = computed(() => (props.item.speed ?? 1) < 0);
@@ -412,8 +415,21 @@ const renderWindow = computed<{ leftPx: number; widthPx: number }>(() => {
   const visibleLeft = scrollLeft - stripStartInTimeline;
   const overscan = Math.max(WINDOW_OVERSCAN_PX, viewportWidth * 0.5);
 
-  const left = Math.max(0, Math.floor(visibleLeft - overscan));
-  const right = Math.min(totalW, Math.ceil(visibleLeft + viewportWidth + overscan));
+  let left = Math.max(0, Math.floor(visibleLeft - overscan));
+  let right = Math.min(totalW, Math.ceil(visibleLeft + viewportWidth + overscan));
+
+  // Reversed clips render the strip CSS-mirrored (`scaleX(-1)` on the container),
+  // so a strip-local pixel `p` is displayed at `totalW - p`. The window above is
+  // computed in displayed (un-mirrored) space, so mirror it back into strip-local
+  // space — otherwise a reversed clip wider than STATIC_MAX_PX would rasterize the
+  // opposite (off-screen) portion of the waveform and show blank in the viewport.
+  if (isReversed.value) {
+    const mirroredLeft = Math.max(0, totalW - right);
+    const mirroredRight = Math.min(totalW, totalW - left);
+    left = mirroredLeft;
+    right = mirroredRight;
+  }
+
   return { leftPx: left, widthPx: Math.max(0, right - left) };
 });
 
@@ -461,12 +477,14 @@ function draw() {
   const targetWidth = Math.max(1, Math.round(cssWidth * renderBudget.effectiveDevicePixelRatio));
   const targetHeight = Math.max(1, Math.round(cssHeight * renderBudget.effectiveDevicePixelRatio));
 
-  // Map the visible window back to peak-sample indices. One extra peak at the end
-  // (when available) keeps the line connected to the next window.
+  // Map the visible window back to peak-sample indices. The window is rendered
+  // into a single per-clip canvas spanning exactly [leftPx, leftPx + widthPx], so
+  // the index range must map 1:1 to that span — no extra trailing sample (which
+  // would horizontally compress the window relative to the timeline).
   const startRatio = win.leftPx / totalW;
   const endRatio = (win.leftPx + win.widthPx) / totalW;
   const startIndex = Math.floor(startRatio * peaksCount);
-  const endIndex = Math.min(peaksCount, Math.ceil(endRatio * peaksCount) + 1);
+  const endIndex = Math.min(peaksCount, Math.ceil(endRatio * peaksCount));
 
   const mode = props.item.audioWaveformMode || 'half';
   const muted = isMuted.value;
@@ -510,7 +528,13 @@ function draw() {
   if (peakBins.length <= 0) return;
 
   const halfH = targetHeight / 2;
-  const step = peakBins.length > 1 ? targetWidth / (peakBins.length - 1) : targetWidth;
+  // Each bin represents the source range under one x-slot of width `binWidth`, so
+  // its sample is drawn at the slot CENTER `(i + 0.5) * binWidth`. (The old
+  // `i / (N - 1)` mapping placed bins on fence-posts, shifting the whole waveform
+  // left by half a bin and stretching it by N/(N-1).) The fill path is anchored to
+  // the baseline at x=0 and x=targetWidth so the strip still spans the full width.
+  const binWidth = targetWidth / peakBins.length;
+  const xAt = (i: number) => (i + 0.5) * binWidth;
 
   ctx.fillStyle = muted ? '#ffffff66' : '#ffffff';
   ctx.beginPath();
@@ -518,22 +542,19 @@ function draw() {
   if (mode === 'half') {
     ctx.moveTo(0, targetHeight);
     for (let i = 0; i < peakBins.length; i++) {
-      const x = i * step;
       const y = targetHeight - Math.min(1, peakBins[i] ?? 0) * targetHeight;
-      ctx.lineTo(x, y);
+      ctx.lineTo(xAt(i), y);
     }
     ctx.lineTo(targetWidth, targetHeight);
   } else {
     ctx.moveTo(0, halfH);
     for (let i = 0; i < peakBins.length; i++) {
-      const x = i * step;
       const y = halfH - Math.min(1, peakBins[i] ?? 0) * halfH;
-      ctx.lineTo(x, y);
+      ctx.lineTo(xAt(i), y);
     }
     for (let i = peakBins.length - 1; i >= 0; i--) {
-      const x = i * step;
       const y = halfH + Math.min(1, peakBins[i] ?? 0) * halfH;
-      ctx.lineTo(x, y);
+      ctx.lineTo(xAt(i), y);
     }
   }
 
