@@ -40,7 +40,6 @@ function tabLabel(tab: AnyProjectTab): string {
 }
 
 function isDraggable(tab: AnyProjectTab): boolean {
-  if (!workspaceStore.userSettings.experimentalFeatures) return false;
   if (isFileTab(tab)) return true;
   return tab.id !== 'files';
 }

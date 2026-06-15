@@ -108,6 +108,17 @@ describe('TimelineAudioWaveform.vue', () => {
       expect((wrapper.vm as any).effectiveSourceDurationUs).toBe(10_000_000);
     });
 
+    it('does not let sourceDurationUs truncate a later trimmed source range', async () => {
+      const item = {
+        ...baseItem,
+        sourceDurationUs: 3_000_000,
+        sourceRange: { startUs: 8_000_000, durationUs: 2_000_000 },
+      };
+      const wrapper = await mountComponent({ item });
+
+      expect((wrapper.vm as any).effectiveSourceDurationUs).toBe(10_000_000);
+    });
+
     it('resolves metadata by direct path', async () => {
       mockMediaStore.mediaMetadata['media.mp4'] = { duration: 12 };
       const wrapper = await mountComponent();

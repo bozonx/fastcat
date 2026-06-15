@@ -219,7 +219,7 @@ describe('ProjectTabBar.vue', () => {
     expect(restoredTabs[1].attributes('data-tab-id')).toBe('history');
   });
 
-  it('sets draggable false on tabs when experimentalFeatures is off', async () => {
+  it('sets draggable false on files tab but true on other tabs by default', async () => {
     const component = await mountWithNuxt(ProjectTabBar, {
       initialState: {
         projectTabs: {
@@ -250,6 +250,6 @@ describe('ProjectTabBar.vue', () => {
 
     const tabs = component.findAll('[data-tab-id]');
     expect(tabs[0].attributes('draggable')).toBe('false');
-    expect(tabs[1].attributes('draggable')).toBe('false');
+    expect(tabs[1].attributes('draggable')).toBe('true');
   });
 });
