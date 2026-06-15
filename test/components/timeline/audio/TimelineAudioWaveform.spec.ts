@@ -1,7 +1,8 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { mountSuspended } from '@nuxt/test-utils/runtime';
 import { reactive, ref, nextTick } from 'vue';
 import TimelineAudioWaveform from '~/components/timeline/audio/TimelineAudioWaveform.vue';
+import { __resetWaveformSchedulerForTests } from '~/utils/audio/waveform-render-scheduler';
 
 const mockMediaStore = reactive({
   mediaMetadata: {} as Record<string, any>,
@@ -81,8 +82,19 @@ async function mountComponent(props = { item: baseItem }) {
 describe('TimelineAudioWaveform.vue', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    __resetWaveformSchedulerForTests();
     mockMediaStore.mediaMetadata = {};
     mockTimelineStore.isPlaying = false;
+    mockTimelineStore.timelineZoom = 1;
+    mockTimelineStore.timelineViewportWidth = 1920;
+    mockTimelineStore.timelineScrollLeftPx = 0;
+  });
+
+  afterEach(() => {
+    __resetWaveformSchedulerForTests();
+    vi.useRealTimers();
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
   });
 
   describe('getMetadataForPath logic (effectiveSourceDurationUs)', () => {
@@ -299,6 +311,47 @@ describe('TimelineAudioWaveform.vue', () => {
           durationS: 10,
         });
       });
+    });
+  });
+
+  describe('render lifecycle', () => {
+    it('redraws after a zoom change even when rounded canvas geometry is unchanged', async () => {
+      vi.useFakeTimers();
+      vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => {
+        return window.setTimeout(() => callback(0), 0);
+      });
+      vi.stubGlobal('cancelAnimationFrame', (handle: number) => clearTimeout(handle));
+
+      const fill = vi.fn();
+      vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue({
+        beginPath: vi.fn(),
+        clearRect: vi.fn(),
+        closePath: vi.fn(),
+        fill,
+        lineTo: vi.fn(),
+        moveTo: vi.fn(),
+        fillStyle: '',
+      } as unknown as CanvasRenderingContext2D);
+
+      mockTimelineStore.timelineZoom = 50;
+      mockMediaStore.mediaMetadata['media.mp4'] = {
+        duration: 5,
+        audioPeaks: [new Float32Array(240_000).fill(0.5)],
+      };
+
+      await mountComponent();
+      await nextTick();
+      await vi.advanceTimersByTimeAsync(0);
+
+      const callsBeforeZoom = fill.mock.calls.length;
+      expect(callsBeforeZoom).toBeGreaterThan(0);
+
+      mockTimelineStore.timelineZoom = 50.01;
+      await nextTick();
+      await vi.advanceTimersByTimeAsync(121);
+      await vi.advanceTimersByTimeAsync(0);
+
+      expect(fill.mock.calls.length).toBeGreaterThan(callsBeforeZoom);
     });
   });
 });

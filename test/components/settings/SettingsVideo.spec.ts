@@ -224,32 +224,38 @@ describe('SettingsVideo', () => {
   it('hides hardwareAccelerationMode and sends auto when experimentalFeatures is false', async () => {
     mockIsTauriRuntime.mockReturnValue(true);
     mockWorkspaceStore.userSettings.experimentalFeatures = false;
+    mockWorkspaceStore.userSettings.optimization.enableHardwareEncoding = true;
 
     const wrapper = await mountSuspended(SettingsVideo);
     await new Promise((resolve) => setTimeout(resolve, 10));
 
     // Should not render the hwaccelMode field
     expect(wrapper.text()).not.toContain('videoEditor.settings.video.hwaccelMode');
+    // Should not render the enableHardwareEncoding field
+    expect(wrapper.text()).not.toContain('videoEditor.settings.video.enableHardwareEncoding');
 
     // Trigger watch by updating ffmpegPath
     mockWorkspaceStore.userSettings.optimization.ffmpegPath = 'ffmpeg_new';
     await new Promise((resolve) => setTimeout(resolve, 10));
 
-    // Should sync auto to native
+    // Should sync auto and enableHardwareEncoding = false to native
     expect(mockNativeUpdateFfmpegSettings).toHaveBeenLastCalledWith(expect.objectContaining({
       hardwareAccelerationMode: 'auto',
+      enableHardwareEncoding: false,
     }));
   });
 
   it('shows hardwareAccelerationMode and sends custom value when experimentalFeatures is true', async () => {
     mockIsTauriRuntime.mockReturnValue(true);
     mockWorkspaceStore.userSettings.experimentalFeatures = true;
+    mockWorkspaceStore.userSettings.optimization.enableHardwareEncoding = true;
 
     const wrapper = await mountSuspended(SettingsVideo);
     await new Promise((resolve) => setTimeout(resolve, 10));
 
-    // Should render the hwaccelMode field
+    // Should render the hwaccelMode and enableHardwareEncoding fields
     expect(wrapper.text()).toContain('videoEditor.settings.video.hwaccelMode');
+    expect(wrapper.text()).toContain('videoEditor.settings.video.enableHardwareEncoding');
 
     // Trigger watch by updating ffmpegPath
     mockWorkspaceStore.userSettings.optimization.ffmpegPath = 'ffmpeg_new';
@@ -258,15 +264,17 @@ describe('SettingsVideo', () => {
     // Should sync custom value to native
     expect(mockNativeUpdateFfmpegSettings).toHaveBeenLastCalledWith(expect.objectContaining({
       hardwareAccelerationMode: 'nvdec',
+      enableHardwareEncoding: true,
     }));
 
     // Toggle experimentalFeatures off
     mockWorkspaceStore.userSettings.experimentalFeatures = false;
     await new Promise((resolve) => setTimeout(resolve, 10));
 
-    // Should revert to auto
+    // Should revert to auto and false
     expect(mockNativeUpdateFfmpegSettings).toHaveBeenLastCalledWith(expect.objectContaining({
       hardwareAccelerationMode: 'auto',
+      enableHardwareEncoding: false,
     }));
   });
 });

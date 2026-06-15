@@ -498,6 +498,7 @@ describe('WorkspaceStore', () => {
           experimentalFeatures: false,
           optimization: {
             hardwareAccelerationMode: 'nvdec',
+            enableHardwareEncoding: true,
           },
         }),
       );
@@ -513,6 +514,7 @@ describe('WorkspaceStore', () => {
 
       expect(mockNativeUpdateFfmpegSettings).toHaveBeenCalledWith(expect.objectContaining({
         hardwareAccelerationMode: 'auto',
+        enableHardwareEncoding: false,
       }));
     });
 
@@ -525,6 +527,7 @@ describe('WorkspaceStore', () => {
           experimentalFeatures: true,
           optimization: {
             hardwareAccelerationMode: 'nvdec',
+            enableHardwareEncoding: true,
           },
         }),
       );
@@ -539,6 +542,7 @@ describe('WorkspaceStore', () => {
 
       expect(mockNativeUpdateFfmpegSettings).toHaveBeenCalledWith(expect.objectContaining({
         hardwareAccelerationMode: 'nvdec',
+        enableHardwareEncoding: true,
       }));
     });
   });

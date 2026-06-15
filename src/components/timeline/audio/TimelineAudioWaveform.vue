@@ -499,6 +499,7 @@ function draw() {
     totalW,
     startIndex,
     endIndex,
+    timelineStore.timelineZoom,
     renderBudget.outputBins,
     targetWidth,
     targetHeight,
@@ -570,6 +571,7 @@ function requestDraw() {
 watch(
   () => timelineStore.timelineZoom,
   () => {
+    lastDrawSignature = '';
     if (zoomSettleTimer) clearTimeout(zoomSettleTimer);
     zoomSettleTimer = window.setTimeout(() => {
       zoomSettleTimer = 0;

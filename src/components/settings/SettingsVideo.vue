@@ -139,7 +139,9 @@ async function syncFfmpegSettings() {
         ? workspaceStore.userSettings.optimization.hardwareAccelerationMode
         : 'auto',
       vaapiDevice: workspaceStore.userSettings.optimization.vaapiDevice,
-      enableHardwareEncoding: workspaceStore.userSettings.optimization.enableHardwareEncoding,
+      enableHardwareEncoding: hasExp
+        ? workspaceStore.userSettings.optimization.enableHardwareEncoding
+        : false,
     });
   } catch (err) {
     log.error('Failed to sync ffmpeg settings to backend:', err);
@@ -363,6 +365,7 @@ const tauriVideoCodecs = computed(() => {
           </UiFormField>
 
           <UiFormField
+            v-if="workspaceStore.userSettings.experimentalFeatures"
             :label="t('videoEditor.settings.video.enableHardwareEncoding')"
             :help="t('videoEditor.settings.video.enableHardwareEncodingHelp')"
           >

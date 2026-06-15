@@ -292,7 +292,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
         ffprobePath: opt.ffprobePath,
         hardwareAccelerationMode: hasExp ? opt.hardwareAccelerationMode : 'auto',
         vaapiDevice: opt.vaapiDevice,
-        enableHardwareEncoding: opt.enableHardwareEncoding,
+        enableHardwareEncoding: hasExp ? opt.enableHardwareEncoding : false,
       });
     } catch (e) {
       log.warn('Failed to sync ffmpeg settings to native backend:', e);
