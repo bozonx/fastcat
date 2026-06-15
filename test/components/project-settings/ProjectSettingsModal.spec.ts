@@ -130,12 +130,7 @@ vi.mock('~/components/project-settings/ResolutionSettings.vue', () => ({
   },
 }));
 
-vi.mock('~/components/project-settings/ExportSettings.vue', () => ({
-  default: {
-    name: 'ExportSettings',
-    template: '<div class="export-settings-mock">Export Settings</div>',
-  },
-}));
+
 
 vi.mock('~/components/project-settings/AdvancedSettings.vue', () => ({
   default: {
@@ -184,7 +179,6 @@ describe('ProjectSettingsModal.vue', () => {
 
     // Subsections should be rendered
     expect(component.find('.resolution-settings-mock').exists()).toBe(true);
-    expect(component.find('.export-settings-mock').exists()).toBe(true);
     expect(component.find('.advanced-settings-mock').exists()).toBe(true);
     expect(component.find('.storage-settings-mock').exists()).toBe(true);
   });

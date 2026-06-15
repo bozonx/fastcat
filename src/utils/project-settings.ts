@@ -80,20 +80,6 @@ export interface FastCatProjectSettings {
     audioDeclickDurationUs: number;
     isAutoSettings: boolean;
   };
-  exportDefaults: {
-    encoding: {
-      format: 'mp4' | 'webm' | 'mkv';
-      videoCodec: string;
-      bitrateMbps: number;
-      excludeAudio: boolean;
-      audioCodec: 'aac' | 'opus' | 'flac' | 'pcm' | 'mp3';
-      audioBitrateKbps: number;
-      bitrateMode: 'constant' | 'variable';
-      keyframeIntervalSec: number;
-      exportAlpha: boolean;
-      fastStart: boolean;
-    };
-  };
   /** Project-wide monitor settings (effects, proxy, resolution, grid, timecode, toolbar position). */
   monitor: ProjectMonitorSettings;
   /** Per-view monitor pan/zoom (keys: `cut`, `sound`, `export`, plus `*-mobile` for platform). */
@@ -178,20 +164,6 @@ export const DEFAULT_PROJECT_SETTINGS: FastCatProjectSettings = {
     audioDeclickDurationUs: 5_000,
     isAutoSettings: true,
   },
-  exportDefaults: {
-    encoding: {
-      format: 'mp4',
-      videoCodec: 'avc1.640032',
-      bitrateMbps: 5,
-      excludeAudio: false,
-      audioCodec: 'aac',
-      audioBitrateKbps: 128,
-      bitrateMode: 'variable',
-      keyframeIntervalSec: 2,
-      exportAlpha: false,
-      fastStart: true,
-    },
-  },
   monitor: { ...DEFAULT_PROJECT_MONITOR_SETTINGS },
   monitors: {
     cut: { ...DEFAULT_MONITOR_VIEW_SETTINGS },
@@ -224,13 +196,10 @@ export const DEFAULT_PROJECT_SETTINGS: FastCatProjectSettings = {
 
 function getProjectSettingsFromUserDefaults(
   userSettings: ProjectSettingsUserDefaultsInput | undefined | null,
-): Pick<FastCatProjectSettings, 'project' | 'exportDefaults'> {
+): Pick<FastCatProjectSettings, 'project'> {
   const settings = userSettings || DEFAULT_USER_SETTINGS;
   const projectPreset = resolveProjectPreset(
     settings.projectPresets || DEFAULT_USER_SETTINGS.projectPresets,
-  );
-  const exportPreset = resolveExportPreset(
-    settings.exportPresets || DEFAULT_USER_SETTINGS.exportPresets,
   );
 
   return {
@@ -246,20 +215,6 @@ function getProjectSettingsFromUserDefaults(
       audioDeclickDurationUs: (settings.projectDefaults || DEFAULT_USER_SETTINGS.projectDefaults)
         .audioDeclickDurationUs,
       isAutoSettings: true,
-    },
-    exportDefaults: {
-      encoding: {
-        format: exportPreset.format,
-        videoCodec: exportPreset.videoCodec,
-        bitrateMbps: exportPreset.bitrateMbps,
-        excludeAudio: exportPreset.excludeAudio,
-        audioCodec: exportPreset.audioCodec,
-        audioBitrateKbps: exportPreset.audioBitrateKbps,
-        bitrateMode: exportPreset.bitrateMode,
-        keyframeIntervalSec: exportPreset.keyframeIntervalSec,
-        exportAlpha: exportPreset.exportAlpha,
-        fastStart: exportPreset.fastStart,
-      },
     },
   };
 }
@@ -397,44 +352,6 @@ function createProjectSettingsSchema(defaults: FastCatProjectSettings) {
             };
           })
           .catch(defaults.project),
-        exportDefaults: z
-          .object({
-            encoding: z
-              .object({
-                format: z
-                  .enum(['mp4', 'webm', 'mkv'])
-                  .catch(defaults.exportDefaults.encoding.format),
-                videoCodec: z.string().min(1).catch(defaults.exportDefaults.encoding.videoCodec),
-                bitrateMbps: z.coerce
-                  .number()
-                  .min(0.2)
-                  .max(200)
-                  .catch(defaults.exportDefaults.encoding.bitrateMbps),
-                excludeAudio: z.coerce
-                  .boolean()
-                  .catch(defaults.exportDefaults.encoding.excludeAudio),
-                audioCodec: z
-                  .enum(['aac', 'opus', 'flac', 'pcm', 'mp3'])
-                  .catch(defaults.exportDefaults.encoding.audioCodec),
-                audioBitrateKbps: z.coerce
-                  .number()
-                  .min(32)
-                  .max(1024)
-                  .catch(defaults.exportDefaults.encoding.audioBitrateKbps),
-                bitrateMode: z
-                  .enum(['constant', 'variable'])
-                  .catch(defaults.exportDefaults.encoding.bitrateMode),
-                keyframeIntervalSec: z.coerce
-                  .number()
-                  .min(1)
-                  .max(60)
-                  .catch(defaults.exportDefaults.encoding.keyframeIntervalSec),
-                exportAlpha: z.coerce.boolean().catch(defaults.exportDefaults.encoding.exportAlpha),
-                fastStart: z.coerce.boolean().catch(defaults.exportDefaults.encoding.fastStart),
-              })
-              .catch(defaults.exportDefaults.encoding),
-          })
-          .catch(defaults.exportDefaults),
         monitor: projectMonitorSchema.catch(defaults.monitor),
         monitors: z.record(z.string(), monitorViewSchema).catch({}),
         timelines: z
@@ -526,12 +443,6 @@ export function normalizeProjectSettings(
   const mappedInput: Record<string, unknown> = {
     ...input,
     project: typeof input.project === 'object' ? input.project : {},
-    exportDefaults: {
-      encoding:
-        typeof (input.exportDefaults as Record<string, unknown>)?.encoding === 'object'
-          ? (input.exportDefaults as Record<string, unknown>).encoding
-          : {},
-    },
     monitor: migratedProjectMonitor,
     monitors: inputMonitors,
   };

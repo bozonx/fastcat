@@ -142,3 +142,35 @@ defineExpose({
     </div>
   </div>
 </template>
+
+<style scoped>
+.video-tracks-scroll,
+.audio-tracks-scroll {
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+  scrollbar-color: var(--ui-border-accent, #666) transparent;
+}
+
+.video-tracks-scroll::-webkit-scrollbar,
+.audio-tracks-scroll::-webkit-scrollbar {
+  width: 10px;
+}
+
+.video-tracks-scroll::-webkit-scrollbar-track,
+.audio-tracks-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.video-tracks-scroll::-webkit-scrollbar-thumb,
+.audio-tracks-scroll::-webkit-scrollbar-thumb {
+  background: var(--ui-border, #444);
+  border-radius: 5px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+.video-tracks-scroll::-webkit-scrollbar-thumb:hover,
+.audio-tracks-scroll::-webkit-scrollbar-thumb:hover {
+  background: var(--ui-border-accent, #666);
+}
+</style>

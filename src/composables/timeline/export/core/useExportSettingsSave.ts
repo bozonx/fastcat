@@ -1,5 +1,4 @@
 import { useProjectStore } from '~/stores/project.store';
-import { resolveExportCodecs } from '../codecUtils';
 
 export function useExportSettingsSave(
   config: ReturnType<(typeof import('./useExportConfig'))['useExportConfig']>,
@@ -10,20 +9,8 @@ export function useExportSettingsSave(
     const isAudio = config.exportType.value === 'audio';
 
     projectStore.projectSettings.project.sampleRate = config.audioSampleRate.value;
-    projectStore.projectSettings.exportDefaults.encoding.audioCodec =
-      config.audioCodec.value === 'flac' || config.audioCodec.value === 'pcm'
-        ? 'aac'
-        : config.audioCodec.value;
-    projectStore.projectSettings.exportDefaults.encoding.audioBitrateKbps =
-      config.audioBitrateKbps.value;
 
     if (!isAudio) {
-      const resolvedCodecs = resolveExportCodecs(
-        config.outputFormat.value,
-        config.videoCodec.value,
-        config.audioCodec.value,
-      );
-
       projectStore.projectSettings.project.width = config.normalizedExportWidth.value;
       projectStore.projectSettings.project.height = config.normalizedExportHeight.value;
       projectStore.projectSettings.project.fps = config.normalizedExportFps.value;
@@ -32,15 +19,6 @@ export function useExportSettingsSave(
       projectStore.projectSettings.project.aspectRatio = config.aspectRatio.value;
       projectStore.projectSettings.project.isCustomResolution = config.isCustomResolution.value;
       projectStore.projectSettings.project.isAutoSettings = true;
-      projectStore.projectSettings.exportDefaults.encoding.format = config.outputFormat.value;
-      projectStore.projectSettings.exportDefaults.encoding.videoCodec = resolvedCodecs.videoCodec;
-      projectStore.projectSettings.exportDefaults.encoding.bitrateMbps = config.bitrateMbps.value;
-      projectStore.projectSettings.exportDefaults.encoding.excludeAudio = config.excludeAudio.value;
-      projectStore.projectSettings.exportDefaults.encoding.audioCodec = resolvedCodecs.audioCodec;
-      projectStore.projectSettings.exportDefaults.encoding.bitrateMode = config.bitrateMode.value;
-      projectStore.projectSettings.exportDefaults.encoding.keyframeIntervalSec =
-        config.keyframeIntervalSec.value;
-      projectStore.projectSettings.exportDefaults.encoding.exportAlpha = config.exportAlpha.value;
     }
 
     await projectStore.saveProjectSettings();

@@ -699,20 +699,21 @@ async function handleConfirmCreateVersion(newName: string) {
         ref="rulerContainerRef"
         class="flex-1 min-w-0 relative z-10 timeline-ruler-container overflow-hidden"
       >
-        <UContextMenu :items="emptyAreaContextMenuItems">
-          <TimelineRuler
-            class="absolute inset-0 h-full border-b border-ui-border bg-ui-bg-elevated cursor-pointer"
-            :scroll-el="masterScrollEl"
-            :scroll-left="scrollLeftRef"
-            @pointerdown="onTimeRulerPointerDown"
-            @start-playhead-drag="startPlayheadDrag"
-            @start-pan="startPan"
-          />
-        </UContextMenu>
         <div
-          class="absolute inset-0 pointer-events-none"
-          :style="{ paddingRight: `${scrollbarHeight}px` }"
-        />
+          class="absolute top-0 bottom-0 left-0 h-full"
+          :style="{ right: `${scrollbarHeight}px` }"
+        >
+          <UContextMenu :items="emptyAreaContextMenuItems" class="w-full h-full">
+            <TimelineRuler
+              class="w-full h-full border-b border-ui-border bg-ui-bg-elevated cursor-pointer"
+              :scroll-el="masterScrollEl"
+              :scroll-left="scrollLeftRef"
+              @pointerdown="onTimeRulerPointerDown"
+              @start-playhead-drag="startPlayheadDrag"
+              @start-pan="startPan"
+            />
+          </UContextMenu>
+        </div>
       </div>
     </div>
 
@@ -813,6 +814,7 @@ async function handleConfirmCreateVersion(newName: string) {
 
 <style scoped>
 .timeline-master-scroll {
+  height: 10px;
   scrollbar-width: thin;
   scrollbar-color: var(--ui-border-accent, #666) transparent;
 }

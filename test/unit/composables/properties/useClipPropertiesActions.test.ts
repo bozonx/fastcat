@@ -92,6 +92,7 @@ function build(options: { clip?: any; trackKind?: 'video' | 'audio'; timelineSto
       toggleDirectory: vi.fn(async () => {}),
     } as any,
     setActiveTab: vi.fn(),
+    experimentalFeatures: ref(true),
   });
   return { actions, timelineStore, clip, uiStore };
 }

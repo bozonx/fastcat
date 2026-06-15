@@ -43,7 +43,7 @@ describe('useMonitorDisplay', () => {
 
   it('respects valid project settings', () => {
     withMonitorDisplay((res, _projectStore, timelineStore) => {
-      timelineStore.updateTimelineFormat({ width: 1280, height: 720 });
+      timelineStore.updateTimelineFormat({ width: 1280, height: 720, useProjectSettings: false });
 
       const { exportWidth, exportHeight, aspectRatio } = res;
       expect(exportWidth.value).toBe(1280);
@@ -55,14 +55,14 @@ describe('useMonitorDisplay', () => {
   it('clamps dimensions to MIN/MAX limits', () => {
     withMonitorDisplay((res, _projectStore, timelineStore) => {
       // Test minimum limits
-      timelineStore.updateTimelineFormat({ width: 5, height: -10 });
+      timelineStore.updateTimelineFormat({ width: 5, height: -10, useProjectSettings: false });
 
       const { exportWidth, exportHeight } = res;
       expect(exportWidth.value).toBe(16); // MIN_CANVAS_DIMENSION
       expect(exportHeight.value).toBe(16); // MIN_CANVAS_DIMENSION
 
       // Test maximum limits
-      timelineStore.updateTimelineFormat({ width: 10000, height: 8000 });
+      timelineStore.updateTimelineFormat({ width: 10000, height: 8000, useProjectSettings: false });
 
       expect(exportWidth.value).toBe(7680); // MAX_CANVAS_DIMENSION
       expect(exportHeight.value).toBe(7680); // MAX_CANVAS_DIMENSION

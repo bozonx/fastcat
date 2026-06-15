@@ -119,6 +119,34 @@ vi.mock('~/stores/selection.store', () => ({
   }),
 }));
 
+const workspaceStoreMock = {
+  userSettings: {
+    exportPresets: {
+      selectedPresetId: 'optimal',
+      items: [
+        {
+          id: 'optimal',
+          name: 'Optimal',
+          format: 'mkv',
+          videoCodec: 'av01.0.05M.08',
+          bitrateMbps: 5,
+          excludeAudio: false,
+          audioCodec: 'opus',
+          audioBitrateKbps: 128,
+          bitrateMode: 'variable',
+          keyframeIntervalSec: 2,
+          exportAlpha: false,
+          fastStart: true,
+        }
+      ]
+    }
+  }
+};
+
+vi.mock('~/stores/workspace.store', () => ({
+  useWorkspaceStore: () => workspaceStoreMock,
+}));
+
 vi.mock('~/composables/timeline/export', () => ({
   sanitizeBaseName: (name: string) => name.replace(/\.[^.]+$/, ''),
   normalizeExportFilename: (name: string) => name.trim(),
@@ -169,6 +197,7 @@ vi.mock('~/composables/timeline/export', () => ({
     bitrateMode: ref<'cbr' | 'vbr'>('vbr'),
     keyframeIntervalSec: ref(2),
     exportAlpha: ref(false),
+    fastStart: ref(true),
     metadataTitle: ref(''),
     metadataDescription: ref(''),
     metadataAuthor: ref(''),
@@ -472,16 +501,6 @@ describe('useExportForm', () => {
       aspectRatio: '16:9',
       isCustomResolution: false,
       sampleRate: 48000,
-      exportFormat: 'mkv',
-      videoCodec: 'hevc',
-      videoBitrateMbps: 15,
-      excludeAudio: false,
-      audioCodec: 'flac',
-      audioBitrateKbps: 320,
-      audioChannels: 6,
-      bitrateMode: 'vbr',
-      keyframeIntervalSec: 3,
-      exportAlpha: false,
     });
   });
 

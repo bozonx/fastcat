@@ -305,6 +305,7 @@ describe('ClipProperties.vue', () => {
       trackId: 'track-1',
       itemId: 'clip-1',
       startUs: 2000000,
+      quantizeToFrames: false,
     });
 
     wrapper.vm.handleUpdateEndTime(7000000);

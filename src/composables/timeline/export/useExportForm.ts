@@ -3,7 +3,9 @@ import { computed, ref, watch, nextTick } from 'vue';
 import { useProjectStore } from '~/stores/project.store';
 import { useSelectionStore } from '~/stores/selection.store';
 import { useTimelineStore } from '~/stores/timeline.store';
+import { useWorkspaceStore } from '~/stores/workspace.store';
 import type { TimelineSelectionRange } from '~/timeline/types';
+import { resolveExportPreset } from '~/utils/settings';
 import {
   useTimelineExport,
   sanitizeBaseName,
@@ -35,6 +37,7 @@ export function useExportForm() {
   const projectStore = useProjectStore();
   const timelineStore = useTimelineStore();
   const selectionStore = useSelectionStore();
+  const workspaceStore = useWorkspaceStore();
 
   const selectedExportRangeId = ref('timeline');
   const saveAsDefaults = ref(false);
@@ -179,8 +182,7 @@ export function useExportForm() {
     }),
   );
   const isSettingsDirty = computed(() => {
-    const encDefaults = projectStore.projectSettings?.exportDefaults?.encoding;
-    if (!encDefaults) return false;
+    const encDefaults = resolveExportPreset(workspaceStore.userSettings.exportPresets);
 
     const format =
       timelineStore.timelineFormat ??
@@ -326,32 +328,30 @@ export function useExportForm() {
         metadataAuthor.value = saved.metadataAuthor ?? '';
         metadataTags.value = saved.metadataTags ?? '';
       } else {
+        const encDefaults = resolveExportPreset(workspaceStore.userSettings.exportPresets);
         exportType.value = 'video';
         outputFormat.value =
-          format.exportFormat ?? projectStore.projectSettings.exportDefaults.encoding.format;
+          format.exportFormat ?? encDefaults.format;
         videoCodec.value =
-          format.videoCodec ?? projectStore.projectSettings.exportDefaults.encoding.videoCodec;
+          format.videoCodec ?? encDefaults.videoCodec;
         bitrateMbps.value =
-          format.videoBitrateMbps ??
-          projectStore.projectSettings.exportDefaults.encoding.bitrateMbps;
+          format.videoBitrateMbps ?? encDefaults.bitrateMbps;
         excludeAudio.value =
-          format.excludeAudio ?? projectStore.projectSettings.exportDefaults.encoding.excludeAudio;
+          format.excludeAudio ?? encDefaults.excludeAudio;
         audioCodec.value =
-          format.audioCodec ?? projectStore.projectSettings.exportDefaults.encoding.audioCodec;
+          format.audioCodec ?? encDefaults.audioCodec;
         audioBitrateKbps.value =
-          format.audioBitrateKbps ??
-          projectStore.projectSettings.exportDefaults.encoding.audioBitrateKbps;
+          format.audioBitrateKbps ?? encDefaults.audioBitrateKbps;
         audioChannels.value = format.audioChannels ?? 2;
         audioSampleRate.value = format.sampleRate;
         bitrateMode.value =
-          format.bitrateMode ?? projectStore.projectSettings.exportDefaults.encoding.bitrateMode;
+          format.bitrateMode ?? encDefaults.bitrateMode;
         keyframeIntervalSec.value =
-          format.keyframeIntervalSec ??
-          projectStore.projectSettings.exportDefaults.encoding.keyframeIntervalSec;
+          format.keyframeIntervalSec ?? encDefaults.keyframeIntervalSec;
         exportAlpha.value =
-          format.exportAlpha ?? projectStore.projectSettings.exportDefaults.encoding.exportAlpha;
+          format.exportAlpha ?? encDefaults.exportAlpha;
         fastStart.value =
-          format.fastStart ?? projectStore.projectSettings.exportDefaults.encoding.fastStart;
+          format.fastStart ?? encDefaults.fastStart;
 
         metadataTitle.value = projectStore.projectMeta?.title || '';
         metadataDescription.value = projectStore.projectMeta?.description || '';
@@ -668,7 +668,7 @@ export function useExportForm() {
   }
 
   function resetField(fieldName: string) {
-    const encDefaults = projectStore.projectSettings?.exportDefaults?.encoding;
+    const encDefaults = resolveExportPreset(workspaceStore.userSettings.exportPresets);
     const format =
       timelineStore.timelineFormat ??
       createTimelineFormatFromProjectDefaults(projectStore.projectSettings.project);
@@ -739,7 +739,7 @@ export function useExportForm() {
   }
 
   function isFieldDirty(fieldName: string) {
-    const encDefaults = projectStore.projectSettings?.exportDefaults?.encoding;
+    const encDefaults = resolveExportPreset(workspaceStore.userSettings.exportPresets);
     const format =
       timelineStore.timelineFormat ??
       createTimelineFormatFromProjectDefaults(projectStore.projectSettings.project);

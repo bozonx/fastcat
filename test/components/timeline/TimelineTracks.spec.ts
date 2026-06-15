@@ -84,6 +84,13 @@ const mockMediaStore = reactive({
   mediaMetadata: {},
 });
 
+const mockClipboardStore = reactive({
+  clipboardPayload: null as any,
+  setClipboardPayload: vi.fn((payload) => {
+    mockClipboardStore.clipboardPayload = payload;
+  }),
+});
+
 vi.mock('~/stores/timeline.store', () => ({ useTimelineStore: () => useMockTimelineStore() }));
 vi.mock('~/stores/selection.store', () => ({ useSelectionStore: () => useMockSelectionStore() }));
 vi.mock('~/stores/media.store', () => ({

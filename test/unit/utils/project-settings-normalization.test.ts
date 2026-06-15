@@ -19,24 +19,6 @@ describe('project settings normalization', () => {
           isCustomResolution: false,
           sampleRate: 999999,
         },
-        exportDefaults: {
-          encoding: {
-            format: 'mp4',
-            videoCodec: 'avc1.640032',
-            bitrateMbps: 5,
-            excludeAudio: false,
-            audioCodec: 'aac',
-            audioBitrateKbps: 128,
-            bitrateMode: 'variable',
-            keyframeIntervalSec: 999,
-            exportAlpha: false,
-            metadata: {
-              title: '',
-              author: '',
-              tags: '',
-            },
-          },
-        },
         monitors: {
           cut: {
             previewResolution: 99999,
@@ -58,7 +40,6 @@ describe('project settings normalization', () => {
     );
 
     expect(normalized.project.sampleRate).toBe(48000);
-    expect(normalized.exportDefaults.encoding.keyframeIntervalSec).toBe(2);
     expect(normalized.monitor.previewResolution).toBe(0.5);
     expect(normalized.monitor.previewEffectsEnabled).toBe(false);
   });

@@ -8,14 +8,11 @@ import { useProjectStore } from '~/stores/project.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useTimelineStore } from '~/stores/timeline.store';
 import {
-  resolveExportPreset,
   resolveProjectPreset,
   DEFAULT_PROJECT_PRESET_ID,
-  DEFAULT_EXPORT_PRESET_ID,
 } from '~/utils/settings';
 
 import ResolutionSettings from './ResolutionSettings.vue';
-import ExportSettings from './ExportSettings.vue';
 import AdvancedSettings from './AdvancedSettings.vue';
 import MetadataSettings from './MetadataSettings.vue';
 import StorageSettings from './StorageSettings.vue';
@@ -81,26 +78,12 @@ async function resetToDefaults() {
   projectStore.projectSettings.project.sampleRate = pDefaults.sampleRate;
   projectStore.projectSettings.project.isAutoSettings = true;
 
-  // Reset export encoding settings to workspace defaults
-  const eDefaults = resolveExportPreset(workspaceStore.userSettings.exportPresets);
-  const exportEncoding = projectStore.projectSettings.exportDefaults.encoding;
-  exportEncoding.format = eDefaults.format;
-  exportEncoding.videoCodec = eDefaults.videoCodec;
-  exportEncoding.bitrateMbps = eDefaults.bitrateMbps;
-  exportEncoding.excludeAudio = eDefaults.excludeAudio;
-  exportEncoding.audioCodec = eDefaults.audioCodec;
-  exportEncoding.audioBitrateKbps = eDefaults.audioBitrateKbps;
-  exportEncoding.bitrateMode = eDefaults.bitrateMode;
-  exportEncoding.keyframeIntervalSec = eDefaults.keyframeIntervalSec;
-  exportEncoding.exportAlpha = eDefaults.exportAlpha;
-
   // Reset advanced settings
   projectStore.projectSettings.project.audioDeclickDurationUs =
     workspaceStore.userSettings.projectDefaults.audioDeclickDurationUs;
 
   // Reset selected preset IDs to defaults
   workspaceStore.userSettings.projectPresets.selectedPresetId = DEFAULT_PROJECT_PRESET_ID;
-  workspaceStore.userSettings.exportPresets.selectedPresetId = DEFAULT_EXPORT_PRESET_ID;
 
   await projectStore.saveProjectMeta({
     title: '',
@@ -192,9 +175,7 @@ async function resetToDefaults() {
 
       <ResolutionSettings />
 
-      <div class="h-px bg-ui-border"></div>
 
-      <ExportSettings />
 
       <div class="h-px bg-ui-border"></div>
 
