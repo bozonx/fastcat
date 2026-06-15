@@ -738,6 +738,7 @@ mod tests {
                 radius: 12.0,
                 bleed: false,
                 blur_type: "gaussian".to_string(),
+                mix: 1.0,
             }];
         let scene = MonitorScene {
             master_effects: Vec::new(),

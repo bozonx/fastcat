@@ -44,12 +44,16 @@ pub enum EffectSpec {
         bleed: bool,
         #[serde(default)]
         blur_type: String,
+        #[serde(default = "default_mix")]
+        mix: f32,
     },
     /// Internal compositor-space blur. Unlike `GaussianBlur`, the radius is
     /// already expressed in the target texture's pixels and is not normalized
     /// against the frame height.
     GaussianBlurPixels {
         radius: f32,
+        #[serde(default = "default_mix")]
+        mix: f32,
     },
     Brightness {
         value: f32,
@@ -69,6 +73,8 @@ pub enum EffectSpec {
         gamma: f32,
         out_black: f32,
         out_white: f32,
+        #[serde(default = "default_mix")]
+        mix: f32,
     },
     ChromaKey {
         key_rgba: [u8; 4],
@@ -77,6 +83,8 @@ pub enum EffectSpec {
     },
     Sharpen {
         amount: f32,
+        #[serde(default = "default_mix")]
+        mix: f32,
     },
     Pixelate {
         size: f32,
@@ -87,11 +95,15 @@ pub enum EffectSpec {
         threshold: f32,
         strength: f32,
         radius: f32,
+        #[serde(default = "default_mix")]
+        mix: f32,
     },
     Vignette {
         strength: f32,
         radius: f32,
         softness: f32,
+        #[serde(default = "default_mix")]
+        mix: f32,
     },
     Noise {
         amount: f32,
@@ -100,10 +112,14 @@ pub enum EffectSpec {
         noise_type: String,
         #[serde(default)]
         scale: f32,
+        #[serde(default = "default_mix")]
+        mix: f32,
     },
     ChromaticAberration {
         amount: f32,
         angle_deg: f32,
+        #[serde(default = "default_mix")]
+        mix: f32,
     },
     /// Arbitrary WGSL. Not executed by the built-in pipeline yet; keep the
     /// serialized contract available for future plugin-style effects.
@@ -994,6 +1010,34 @@ fn push_bloom(
     b
 }
 
+/// Post-effect mix pass: blends the effect result (bound to input_tex/src)
+/// with the original image (bound to secondary_tex) by `mix` factor.
+fn push_mix(
+    passes: &mut Vec<EffectPass>,
+    effect_result: Buf,
+    original: Buf,
+    mix: f32,
+    width: u32,
+    height: u32,
+) -> Buf {
+    let dst = pick_scratch(&[effect_result, original]);
+    passes.push(EffectPass {
+        uniform: EffectUniform {
+            mode: 19,
+            width,
+            height,
+            seed: 0,
+            p0: mix.clamp(0.0, 1.0),
+            ..Default::default()
+        },
+        custom_source: None,
+        src: effect_result,
+        secondary: original,
+        dst,
+    });
+    dst
+}
+
 fn build_passes(effects: &[EffectSpec], width: u32, height: u32) -> Vec<EffectPass> {
     let scale = spatial_scale(height);
     let mut passes: Vec<EffectPass> = Vec::new();
@@ -1002,7 +1046,13 @@ fn build_passes(effects: &[EffectSpec], width: u32, height: u32) -> Vec<EffectPa
 
     for effect in effects {
         match effect {
-            EffectSpec::GaussianBlur { radius, blur_type, .. } => {
+            EffectSpec::GaussianBlur {
+                radius,
+                blur_type,
+                mix,
+                ..
+            } => {
+                let base = cur;
                 cur = push_blur(
                     &mut passes,
                     cur,
@@ -1011,8 +1061,12 @@ fn build_passes(effects: &[EffectSpec], width: u32, height: u32) -> Vec<EffectPa
                     width,
                     height,
                 );
+                if *mix < 1.0 {
+                    cur = push_mix(&mut passes, cur, base, *mix, width, height);
+                }
             }
-            EffectSpec::GaussianBlurPixels { radius } => {
+            EffectSpec::GaussianBlurPixels { radius, mix } => {
+                let base = cur;
                 cur = push_blur(
                     &mut passes,
                     cur,
@@ -1021,12 +1075,17 @@ fn build_passes(effects: &[EffectSpec], width: u32, height: u32) -> Vec<EffectPa
                     width,
                     height,
                 );
+                if *mix < 1.0 {
+                    cur = push_mix(&mut passes, cur, base, *mix, width, height);
+                }
             }
             EffectSpec::Bloom {
                 threshold,
                 strength,
                 radius,
+                mix,
             } => {
+                let base = cur;
                 cur = push_bloom(
                     &mut passes,
                     cur,
@@ -1036,6 +1095,9 @@ fn build_passes(effects: &[EffectSpec], width: u32, height: u32) -> Vec<EffectPa
                     width,
                     height,
                 );
+                if *mix < 1.0 {
+                    cur = push_mix(&mut passes, cur, base, *mix, width, height);
+                }
             }
             _ => {
                 if let Some((uniform, custom_source)) = effect_uniform(effect, width, height) {
@@ -1122,11 +1184,11 @@ fn effect_uniform(
         // Bidirectional: positive sharpens (unsharp mask), negative softens.
         // p1 = sample step in px (resolution-normalized so sharpening looks the
         // same fraction-of-frame at any resolution).
-        EffectSpec::Sharpen { amount } => base(
+        EffectSpec::Sharpen { amount, mix } => base(
             5,
             amount.clamp(-MAX_SHARPEN, MAX_SHARPEN),
             scale.max(1.0),
-            0.0,
+            mix.clamp(0.0, 1.0),
             0.0,
             0.0,
             0.0,
@@ -1146,29 +1208,30 @@ fn effect_uniform(
             strength,
             radius,
             softness,
+            mix,
         } => base(
             8,
             strength.clamp(0.0, 1.0),
             radius.clamp(0.0, 1.0),
             softness.clamp(0.001, 1.0),
-            0.0,
+            mix.clamp(0.0, 1.0),
             0.0,
             0.0,
             0,
         ),
-        EffectSpec::Noise { amount, seed, noise_type, scale } => {
+        EffectSpec::Noise { amount, seed, noise_type, scale, mix } => {
             let type_val = match noise_type.as_str() {
                 "perlin" => 1.0,
                 "simplex" => 2.0,
                 _ => 0.0,
             };
-            base(9, amount.clamp(0.0, 1.0), type_val, *scale, 0.0, 0.0, 0.0, *seed)
+            base(9, amount.clamp(0.0, 1.0), type_val, *scale, mix.clamp(0.0, 1.0), 0.0, 0.0, *seed)
         }
-        EffectSpec::ChromaticAberration { amount, angle_deg } => base(
+        EffectSpec::ChromaticAberration { amount, angle_deg, mix } => base(
             10,
             (amount * scale).clamp(0.0, MAX_CHROMATIC_ABERRATION),
             *angle_deg,
-            0.0,
+            mix.clamp(0.0, 1.0),
             0.0,
             0.0,
             0.0,
@@ -1181,6 +1244,7 @@ fn effect_uniform(
             gamma,
             out_black,
             out_white,
+            mix,
         } => base(
             12,
             in_black.clamp(0.0, 1.0),
@@ -1188,7 +1252,7 @@ fn effect_uniform(
             gamma.clamp(0.01, MAX_LEVELS_GAMMA),
             out_black.clamp(0.0, 1.0),
             out_white.clamp(0.0, 1.0),
-            0.0,
+            mix.clamp(0.0, 1.0),
             0,
         ),
         EffectSpec::ChromaKey {
@@ -1339,6 +1403,7 @@ mod tests {
                 radius: 10.0,
                 bleed: false,
                 blur_type: "gaussian".to_string(),
+                mix: 1.0,
             }],
             1920,
             1080,
@@ -1353,7 +1418,7 @@ mod tests {
     #[test]
     fn build_passes_gaussian_blur_pixels_keeps_texture_pixel_radius() {
         let passes = build_passes(
-            &[EffectSpec::GaussianBlurPixels { radius: 10.0 }],
+            &[EffectSpec::GaussianBlurPixels { radius: 10.0, mix: 1.0 }],
             1920,
             540,
         );
@@ -1371,6 +1436,7 @@ mod tests {
                 threshold: 0.75,
                 strength: 0.6,
                 radius: 12.0,
+                mix: 1.0,
             }],
             1920,
             1080,
@@ -1410,5 +1476,75 @@ mod tests {
             1080,
         );
         assert_eq!(passes[0].uniform.p1, 1.0);
+    }
+
+    #[test]
+    fn build_passes_blur_appends_mix_pass_when_mix_less_than_one() {
+        let passes = build_passes(
+            &[EffectSpec::GaussianBlur {
+                radius: 10.0,
+                bleed: false,
+                blur_type: "gaussian".to_string(),
+                mix: 0.5,
+            }],
+            1920,
+            1080,
+        );
+        // h-blur + v-blur + mix = 3 passes
+        assert_eq!(passes.len(), 3);
+        assert_eq!(passes[2].uniform.mode, 19);
+        assert_eq!(passes[2].uniform.p0, 0.5);
+    }
+
+    #[test]
+    fn build_passes_bloom_appends_mix_pass_when_mix_less_than_one() {
+        let passes = build_passes(
+            &[EffectSpec::Bloom {
+                threshold: 0.75,
+                strength: 0.6,
+                radius: 12.0,
+                mix: 0.25,
+            }],
+            1920,
+            1080,
+        );
+        // extract + blur_h + blur_v + compose + mix = 5 passes
+        assert_eq!(passes.len(), 5);
+        assert_eq!(passes[4].uniform.mode, 19);
+        assert_eq!(passes[4].uniform.p0, 0.25);
+    }
+
+    #[test]
+    fn sharpen_uniform_carries_mix_in_p2() {
+        let passes = build_passes(
+            &[EffectSpec::Sharpen {
+                amount: 1.0,
+                mix: 0.75,
+            }],
+            1920,
+            1080,
+        );
+        assert_eq!(passes.len(), 1);
+        assert_eq!(passes[0].uniform.mode, 5);
+        assert_eq!(passes[0].uniform.p2, 0.75);
+    }
+
+    #[test]
+    fn levels_uniform_carries_mix_in_p5() {
+        let passes = build_passes(
+            &[EffectSpec::Levels {
+                in_black: 0.2,
+                in_white: 0.8,
+                gamma: 1.6,
+                out_black: 0.1,
+                out_white: 0.9,
+                mix: 0.4,
+            }],
+            1920,
+            1080,
+        );
+        assert_eq!(passes.len(), 1);
+        assert_eq!(passes[0].uniform.mode, 12);
+        assert_eq!(passes[0].uniform.p5, 0.4);
     }
 }

@@ -279,11 +279,11 @@ export const videoEffectManifests: VideoEffectManifest[] = [
       // darkening). Turn on for PNGs / cutouts so the blur bleeds past the
       // rectangle into transparency.
       blurPastEdges: false,
-      intensity: 1,
+      mix: 1,
     },
     paramRanges: {
       strength: VIDEO_EFFECT_PARAM_RANGES.blurRadius,
-      intensity: VIDEO_EFFECT_PARAM_RANGES.intensity,
+      mix: VIDEO_EFFECT_PARAM_RANGES.intensity,
     },
     controls: [
       {
@@ -312,27 +312,28 @@ export const videoEffectManifests: VideoEffectManifest[] = [
       },
       {
         kind: 'slider',
-        key: 'intensity',
-        labelKey: 'fastcat.effects.video.intensity',
+        key: 'mix',
+        labelKey: 'fastcat.effects.video.mix',
         min: VIDEO_EFFECT_PARAM_RANGES.intensity.uiMin,
         max: VIDEO_EFFECT_PARAM_RANGES.intensity.uiMax,
         step: 0.01,
         format: percent,
       },
     ],
-    toEffectSpecs: (values) => {
-      const factor = finiteNumber(values.intensity, 1);
-      return [
-        spec('gaussian-blur', {
-          radius: clampRange(
-            finiteNumberFromKeys(values, ['strength', 'radius'], 8) * factor,
-            VIDEO_EFFECT_PARAM_RANGES.blurRadius,
-          ),
-          bleed: values.blurPastEdges === true,
-          blur_type: values.blurType || 'gaussian',
-        }),
-      ];
-    },
+    toEffectSpecs: (values) => [
+      spec('gaussian-blur', {
+        radius: clampRange(
+          finiteNumberFromKeys(values, ['strength', 'radius'], 8),
+          VIDEO_EFFECT_PARAM_RANGES.blurRadius,
+        ),
+        bleed: values.blurPastEdges === true,
+        blur_type: values.blurType || 'gaussian',
+        mix: clampRange(
+          finiteNumber(values.mix ?? values.intensity, 1),
+          VIDEO_EFFECT_PARAM_RANGES.intensity,
+        ),
+      }),
+    ],
   },
   {
     type: 'bloom',
@@ -347,13 +348,13 @@ export const videoEffectManifests: VideoEffectManifest[] = [
       threshold: 0.75,
       strength: 0.6,
       radius: 12,
-      intensity: 1,
+      mix: 1,
     },
     paramRanges: {
       threshold: VIDEO_EFFECT_PARAM_RANGES.unit,
       strength: VIDEO_EFFECT_PARAM_RANGES.bloomStrength,
       radius: VIDEO_EFFECT_PARAM_RANGES.bloomRadius,
-      intensity: VIDEO_EFFECT_PARAM_RANGES.intensity,
+      mix: VIDEO_EFFECT_PARAM_RANGES.intensity,
     },
     controls: [
       {
@@ -385,30 +386,31 @@ export const videoEffectManifests: VideoEffectManifest[] = [
       },
       {
         kind: 'slider',
-        key: 'intensity',
-        labelKey: 'fastcat.effects.video.intensity',
+        key: 'mix',
+        labelKey: 'fastcat.effects.video.mix',
         min: VIDEO_EFFECT_PARAM_RANGES.intensity.uiMin,
         max: VIDEO_EFFECT_PARAM_RANGES.intensity.uiMax,
         step: 0.01,
         format: percent,
       },
     ],
-    toEffectSpecs: (values) => {
-      const factor = finiteNumber(values.intensity, 1);
-      return [
-        spec('bloom', {
-          threshold: clampRange(finiteNumber(values.threshold, 0.75), VIDEO_EFFECT_PARAM_RANGES.unit),
-          strength: clampRange(
-            finiteNumber(values.strength, 0.6) * factor,
-            VIDEO_EFFECT_PARAM_RANGES.bloomStrength,
-          ),
-          radius: clampRange(
-            finiteNumber(values.radius, 12) * factor,
-            VIDEO_EFFECT_PARAM_RANGES.bloomRadius,
-          ),
-        }),
-      ];
-    },
+    toEffectSpecs: (values) => [
+      spec('bloom', {
+        threshold: clampRange(finiteNumber(values.threshold, 0.75), VIDEO_EFFECT_PARAM_RANGES.unit),
+        strength: clampRange(
+          finiteNumber(values.strength, 0.6),
+          VIDEO_EFFECT_PARAM_RANGES.bloomStrength,
+        ),
+        radius: clampRange(
+          finiteNumber(values.radius, 12),
+          VIDEO_EFFECT_PARAM_RANGES.bloomRadius,
+        ),
+        mix: clampRange(
+          finiteNumber(values.mix ?? values.intensity, 1),
+          VIDEO_EFFECT_PARAM_RANGES.intensity,
+        ),
+      }),
+    ],
   },
   {
     type: 'sharpen',
@@ -421,11 +423,11 @@ export const videoEffectManifests: VideoEffectManifest[] = [
     renderer: 'wgsl-compute',
     defaultValues: {
       amount: 0,
-      intensity: 1,
+      mix: 1,
     },
     paramRanges: {
       amount: VIDEO_EFFECT_PARAM_RANGES.sharpenAmount,
-      intensity: VIDEO_EFFECT_PARAM_RANGES.intensity,
+      mix: VIDEO_EFFECT_PARAM_RANGES.intensity,
     },
     controls: [
       {
@@ -439,25 +441,26 @@ export const videoEffectManifests: VideoEffectManifest[] = [
       },
       {
         kind: 'slider',
-        key: 'intensity',
-        labelKey: 'fastcat.effects.video.intensity',
+        key: 'mix',
+        labelKey: 'fastcat.effects.video.mix',
         min: VIDEO_EFFECT_PARAM_RANGES.intensity.uiMin,
         max: VIDEO_EFFECT_PARAM_RANGES.intensity.uiMax,
         step: 0.01,
         format: percent,
       },
     ],
-    toEffectSpecs: (values) => {
-      const factor = finiteNumber(values.intensity, 1);
-      return [
-        spec('sharpen', {
-          amount: clampRange(
-            finiteNumber(values.amount, 0) * factor,
-            VIDEO_EFFECT_PARAM_RANGES.sharpenAmount,
-          ),
-        }),
-      ];
-    },
+    toEffectSpecs: (values) => [
+      spec('sharpen', {
+        amount: clampRange(
+          finiteNumber(values.amount, 0),
+          VIDEO_EFFECT_PARAM_RANGES.sharpenAmount,
+        ),
+        mix: clampRange(
+          finiteNumber(values.mix ?? values.intensity, 1),
+          VIDEO_EFFECT_PARAM_RANGES.intensity,
+        ),
+      }),
+    ],
   },
   {
     type: 'pixelate',
@@ -522,11 +525,13 @@ export const videoEffectManifests: VideoEffectManifest[] = [
       strength: 0.35,
       radius: 0.75,
       softness: 0.35,
+      mix: 1,
     },
     paramRanges: {
       strength: VIDEO_EFFECT_PARAM_RANGES.unit,
       radius: VIDEO_EFFECT_PARAM_RANGES.unit,
       softness: VIDEO_EFFECT_PARAM_RANGES.unit,
+      mix: VIDEO_EFFECT_PARAM_RANGES.intensity,
     },
     controls: [
       {
@@ -556,6 +561,15 @@ export const videoEffectManifests: VideoEffectManifest[] = [
         step: 0.01,
         format: percent,
       },
+      {
+        kind: 'slider',
+        key: 'mix',
+        labelKey: 'fastcat.effects.video.mix',
+        min: VIDEO_EFFECT_PARAM_RANGES.intensity.uiMin,
+        max: VIDEO_EFFECT_PARAM_RANGES.intensity.uiMax,
+        step: 0.01,
+        format: percent,
+      },
     ],
     toEffectSpecs: (values) => [
       spec('vignette', {
@@ -567,6 +581,10 @@ export const videoEffectManifests: VideoEffectManifest[] = [
           finiteNumber(values.softness, 0.35),
           0.001,
           VIDEO_EFFECT_PARAM_RANGES.unit.renderMax,
+        ),
+        mix: clampRange(
+          finiteNumber(values.mix, 1),
+          VIDEO_EFFECT_PARAM_RANGES.intensity,
         ),
       }),
     ],
@@ -585,6 +603,7 @@ export const videoEffectManifests: VideoEffectManifest[] = [
       amount: 0.08,
       seed: 1,
       scale: 10,
+      mix: 1,
     },
     paramRanges: {
       amount: VIDEO_EFFECT_PARAM_RANGES.unit,
@@ -604,6 +623,7 @@ export const videoEffectManifests: VideoEffectManifest[] = [
         renderMin: 1,
         renderMax: 500,
       },
+      mix: VIDEO_EFFECT_PARAM_RANGES.intensity,
     },
     controls: [
       {
@@ -642,6 +662,15 @@ export const videoEffectManifests: VideoEffectManifest[] = [
         step: 1,
         showIf: (values) => values.noiseType === 'perlin' || values.noiseType === 'simplex',
       },
+      {
+        kind: 'slider',
+        key: 'mix',
+        labelKey: 'fastcat.effects.video.mix',
+        min: VIDEO_EFFECT_PARAM_RANGES.intensity.uiMin,
+        max: VIDEO_EFFECT_PARAM_RANGES.intensity.uiMax,
+        step: 0.01,
+        format: percent,
+      },
     ],
     toEffectSpecs: (values) => [
       spec('noise', {
@@ -649,6 +678,10 @@ export const videoEffectManifests: VideoEffectManifest[] = [
         seed: clamp(Math.round(finiteNumber(values.seed, 1)), 0, UINT32_MAX),
         noise_type: values.noiseType || 'white',
         scale: clamp(finiteNumber(values.scale, 10), 1, 500),
+        mix: clampRange(
+          finiteNumber(values.mix, 1),
+          VIDEO_EFFECT_PARAM_RANGES.intensity,
+        ),
       }),
     ],
   },
@@ -664,12 +697,12 @@ export const videoEffectManifests: VideoEffectManifest[] = [
     defaultValues: {
       amount: 4,
       angle: 0,
-      intensity: 1,
+      mix: 1,
     },
     paramRanges: {
       amount: VIDEO_EFFECT_PARAM_RANGES.chromaticAmount,
       angle: VIDEO_EFFECT_PARAM_RANGES.hueDegrees,
-      intensity: VIDEO_EFFECT_PARAM_RANGES.intensity,
+      mix: VIDEO_EFFECT_PARAM_RANGES.intensity,
     },
     controls: [
       {
@@ -692,26 +725,27 @@ export const videoEffectManifests: VideoEffectManifest[] = [
       },
       {
         kind: 'slider',
-        key: 'intensity',
-        labelKey: 'fastcat.effects.video.intensity',
+        key: 'mix',
+        labelKey: 'fastcat.effects.video.mix',
         min: VIDEO_EFFECT_PARAM_RANGES.intensity.uiMin,
         max: VIDEO_EFFECT_PARAM_RANGES.intensity.uiMax,
         step: 0.01,
         format: percent,
       },
     ],
-    toEffectSpecs: (values) => {
-      const factor = finiteNumber(values.intensity, 1);
-      return [
-        spec('chromatic-aberration', {
-          amount: clampRange(
-            finiteNumber(values.amount, 4) * factor,
-            VIDEO_EFFECT_PARAM_RANGES.chromaticAmount,
-          ),
-          angle_deg: clampRange(finiteNumber(values.angle, 0), VIDEO_EFFECT_PARAM_RANGES.hueDegrees),
-        }),
-      ];
-    },
+    toEffectSpecs: (values) => [
+      spec('chromatic-aberration', {
+        amount: clampRange(
+          finiteNumber(values.amount, 4),
+          VIDEO_EFFECT_PARAM_RANGES.chromaticAmount,
+        ),
+        angle_deg: clampRange(finiteNumber(values.angle, 0), VIDEO_EFFECT_PARAM_RANGES.hueDegrees),
+        mix: clampRange(
+          finiteNumber(values.mix ?? values.intensity, 1),
+          VIDEO_EFFECT_PARAM_RANGES.intensity,
+        ),
+      }),
+    ],
   },
   {
     type: 'hue',
@@ -761,7 +795,7 @@ export const videoEffectManifests: VideoEffectManifest[] = [
       gamma: 1,
       outBlack: 0,
       outWhite: 1,
-      intensity: 1,
+      mix: 1,
     },
     paramRanges: {
       inBlack: VIDEO_EFFECT_PARAM_RANGES.unit,
@@ -769,7 +803,7 @@ export const videoEffectManifests: VideoEffectManifest[] = [
       gamma: VIDEO_EFFECT_PARAM_RANGES.gamma,
       outBlack: VIDEO_EFFECT_PARAM_RANGES.unit,
       outWhite: VIDEO_EFFECT_PARAM_RANGES.unit,
-      intensity: VIDEO_EFFECT_PARAM_RANGES.intensity,
+      mix: VIDEO_EFFECT_PARAM_RANGES.intensity,
     },
     controls: [
       {
@@ -819,42 +853,43 @@ export const videoEffectManifests: VideoEffectManifest[] = [
       },
       {
         kind: 'slider',
-        key: 'intensity',
-        labelKey: 'fastcat.effects.video.intensity',
+        key: 'mix',
+        labelKey: 'fastcat.effects.video.mix',
         min: VIDEO_EFFECT_PARAM_RANGES.intensity.uiMin,
         max: VIDEO_EFFECT_PARAM_RANGES.intensity.uiMax,
         step: 0.01,
         format: percent,
       },
     ],
-    toEffectSpecs: (values) => {
-      const factor = finiteNumber(values.intensity, 1);
-      return [
-        spec('levels', {
-          in_black: clampRange(
-            finiteNumber(values.inBlack, 0) * factor,
-            VIDEO_EFFECT_PARAM_RANGES.unit,
-          ),
-          in_white: clamp(
-            1.0 - (1.0 - finiteNumber(values.inWhite, 1)) * factor,
-            0.001,
-            VIDEO_EFFECT_PARAM_RANGES.unit.renderMax,
-          ),
-          gamma: clampRange(
-            1.0 + (finiteNumber(values.gamma, 1) - 1.0) * factor,
-            VIDEO_EFFECT_PARAM_RANGES.gamma,
-          ),
-          out_black: clampRange(
-            finiteNumber(values.outBlack, 0) * factor,
-            VIDEO_EFFECT_PARAM_RANGES.unit,
-          ),
-          out_white: clampRange(
-            1.0 - (1.0 - finiteNumber(values.outWhite, 1)) * factor,
-            VIDEO_EFFECT_PARAM_RANGES.unit,
-          ),
-        }),
-      ];
-    },
+    toEffectSpecs: (values) => [
+      spec('levels', {
+        in_black: clampRange(
+          finiteNumber(values.inBlack, 0),
+          VIDEO_EFFECT_PARAM_RANGES.unit,
+        ),
+        in_white: clamp(
+          finiteNumber(values.inWhite, 1),
+          0.001,
+          VIDEO_EFFECT_PARAM_RANGES.unit.renderMax,
+        ),
+        gamma: clampRange(
+          finiteNumber(values.gamma, 1),
+          VIDEO_EFFECT_PARAM_RANGES.gamma,
+        ),
+        out_black: clampRange(
+          finiteNumber(values.outBlack, 0),
+          VIDEO_EFFECT_PARAM_RANGES.unit,
+        ),
+        out_white: clampRange(
+          finiteNumber(values.outWhite, 1),
+          VIDEO_EFFECT_PARAM_RANGES.unit,
+        ),
+        mix: clampRange(
+          finiteNumber(values.mix ?? values.intensity, 1),
+          VIDEO_EFFECT_PARAM_RANGES.intensity,
+        ),
+      }),
+    ],
   },
   {
     type: 'chroma-key',

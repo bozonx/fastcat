@@ -118,6 +118,7 @@ describe('unified video effect manifests', () => {
         radius: 12,
         bleed: false,
         blur_type: 'gaussian',
+        mix: 1,
       },
       {
         type: 'brightness',
@@ -180,8 +181,8 @@ describe('unified video effect manifests', () => {
     ]);
 
     expect(specs).toEqual([
-      { type: 'gaussian-blur', radius: 500, bleed: false, blur_type: 'gaussian' },
-      { type: 'bloom', threshold: 0.4, strength: 3.5, radius: 220 },
+      { type: 'gaussian-blur', radius: 500, bleed: false, blur_type: 'gaussian', mix: 1 },
+      { type: 'bloom', threshold: 0.4, strength: 3.5, radius: 220, mix: 1 },
       { type: 'brightness', value: 3 },
       { type: 'contrast', value: 3.5 },
       { type: 'saturation', value: 4 },
@@ -208,8 +209,8 @@ describe('unified video effect manifests', () => {
     ]);
 
     expect(specs).toEqual([
-      { type: 'gaussian-blur', radius: 96, bleed: false, blur_type: 'gaussian' },
-      { type: 'noise', amount: 1, seed: 4_294_967_295, noise_type: 'white', scale: 10 },
+      { type: 'gaussian-blur', radius: 96, bleed: false, blur_type: 'gaussian', mix: 1 },
+      { type: 'noise', amount: 1, seed: 4_294_967_295, noise_type: 'white', scale: 10, mix: 1 },
     ]);
   });
 
@@ -225,7 +226,7 @@ describe('unified video effect manifests', () => {
       },
     ]);
 
-    expect(specs).toEqual([{ type: 'gaussian-blur', radius: 24, bleed: true, blur_type: 'gaussian' }]);
+    expect(specs).toEqual([{ type: 'gaussian-blur', radius: 24, bleed: true, blur_type: 'gaussian', mix: 1 }]);
   });
 
   it('serializes color-adjustment with non-zero hue value and omits it when zero', () => {
@@ -300,21 +301,21 @@ describe('unified video effect manifests', () => {
     ]);
 
     expect(specs).toEqual([
-      { type: 'gaussian-blur', radius: 20, bleed: false, blur_type: 'box' },
-      { type: 'gaussian-blur', radius: 30, bleed: false, blur_type: 'radial' },
-      { type: 'noise', amount: 0.5, seed: 42, noise_type: 'perlin', scale: 25 },
+      { type: 'gaussian-blur', radius: 20, bleed: false, blur_type: 'box', mix: 1 },
+      { type: 'gaussian-blur', radius: 30, bleed: false, blur_type: 'radial', mix: 1 },
+      { type: 'noise', amount: 0.5, seed: 42, noise_type: 'perlin', scale: 25, mix: 1 },
     ]);
   });
 
-  it('applies Intensity to scale down effect parameters towards neutral values', () => {
+  it('applies mix to blend effect with original, not scale parameters', () => {
     const specs = buildEffectSpecs([
       {
-        id: 'fx-blur-intensity',
+        id: 'fx-blur-mix',
         type: 'blur',
         enabled: true,
         target: 'video',
         strength: 12,
-        intensity: 0.5, // factor = 0.5
+        mix: 0.5,
       },
       {
         id: 'fx-color-intensity',
@@ -325,7 +326,7 @@ describe('unified video effect manifests', () => {
         contrast: 1.0,
         saturation: 1.0,
         hue: 80,
-        intensity: 0.75, // factor = 0.75
+        intensity: 0.75, // color-adjustment still uses intensity as master fader
       },
       {
         id: 'fx-pixelate-mix',
@@ -336,7 +337,7 @@ describe('unified video effect manifests', () => {
         mix: 0.5,
       },
       {
-        id: 'fx-levels-intensity',
+        id: 'fx-levels-mix',
         type: 'levels',
         enabled: true,
         target: 'video',
@@ -345,33 +346,29 @@ describe('unified video effect manifests', () => {
         gamma: 1.6,
         outBlack: 0.1,
         outWhite: 0.9,
-        intensity: 0.5, // factor = 0.5
+        mix: 0.5,
       },
     ]);
 
     expect(specs).toEqual([
-      // Blur strength 12 * 0.5 = 6
-      { type: 'gaussian-blur', radius: 6, bleed: false, blur_type: 'gaussian' },
-      // Brightness: 1.0 + (2.0 - 1.0) * 0.75 = 1.75. Hue: 80 * 0.75 = 60
+      // Blur: radius stays as-is, mix blends with original
+      { type: 'gaussian-blur', radius: 12, bleed: false, blur_type: 'gaussian', mix: 0.5 },
+      // Color-adjustment: intensity still scales parameters
       { type: 'brightness', value: 1.75 },
       { type: 'contrast', value: 1.0 },
       { type: 'saturation', value: 1.0 },
       { type: 'hue', degrees: 60 },
       // Pixelate: size stays as-is, mix controls blend with original
       { type: 'pixelate', size: 9, mix: 0.5 },
-      // Levels:
-      // inBlack: 0.2 * 0.5 = 0.1
-      // inWhite: 1.0 - (1.0 - 0.8) * 0.5 = 0.9
-      // gamma: 1.0 + (1.6 - 1.0) * 0.5 = 1.3
-      // outBlack: 0.1 * 0.5 = 0.05
-      // outWhite: 1.0 - (1.0 - 0.9) * 0.5 = 0.95
+      // Levels: params stay as-is, mix blends with original
       {
         type: 'levels',
-        in_black: 0.1,
-        in_white: 0.9,
-        gamma: 1.3,
-        out_black: 0.05,
-        out_white: 0.95,
+        in_black: 0.2,
+        in_white: 0.8,
+        gamma: 1.6,
+        out_black: 0.1,
+        out_white: 0.9,
+        mix: 0.5,
       },
     ]);
   });

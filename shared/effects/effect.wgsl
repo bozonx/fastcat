@@ -23,13 +23,15 @@
 //   4  gaussian blur horizontal (p0=radius px)
 //   5  sharpen (p0=amount, p1=step px)
 //   6  pixelate (p0=size, p1=mix)
-//   8  vignette (p0=strength, p1=radius, p2=softness)
-//   9  noise (p0=amount, seed)      10 chromatic aberration (p0=amount px, p1=angle_deg)
-//   11 hue rotation (p0=degrees)    12 levels (p0..p4)
+//   8  vignette (p0=strength, p1=radius, p2=softness, p3=mix)
+//   9  noise (p0=amount, p1=type, p2=scale, p3=mix, seed)
+//   10 chromatic aberration (p0=amount px, p1=angle_deg, p2=mix)
+//   11 hue rotation (p0=degrees)    12 levels (p0..p4, p5=mix)
 //   13 chroma key (p0..p2=key rgb, p3=threshold, p4=smoothness)
 //   14 gaussian blur vertical (p0=radius px)
 //   15 bloom bright-pass extract (p0=threshold)
 //   18 bloom compose (input=running image, secondary=blurred mask, p1=strength)
+//   19 mix with secondary (p0=mix) — blends input_tex over secondary_tex
 // =============================================================================
 
 struct EffectUniform {
@@ -242,6 +244,7 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
     // Sample at pixel centers so bilinear taps land exactly on texels at zero offset.
     let uv = (vec2<f32>(f32(gid.x), f32(gid.y)) + vec2<f32>(0.5)) * texel;
     var color = load_px(coord);
+    let original = color;
 
     switch effect.mode {
         case 1u: {
@@ -279,6 +282,7 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
                 let blend = min(-effect.p0, 1.0);
                 color = vec4<f32>(mix(center, neighbors * 0.25, blend), color.a);
             }
+            color = mix(original, color, clamp(effect.p2, 0.0, 1.0));
         }
         case 6u: {
             let size = max(effect.p0, 1.0);
@@ -294,6 +298,7 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
             let d = length(centered) / max(0.5 * sqrt(aspect * aspect + 1.0), 0.0001);
             let mask = smoothstep(effect.p1, effect.p1 + effect.p2, d);
             color = vec4<f32>(color.rgb * (1.0 - mask * effect.p0), color.a);
+            color = mix(original, color, clamp(effect.p3, 0.0, 1.0));
         }
         case 9u: {
             var n: f32 = 0.0;
@@ -313,6 +318,7 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
                 n = hash31(vec3<f32>(f32(gid.x), f32(gid.y), seed_val));
             }
             color = vec4<f32>(color.rgb + (n - 0.5) * effect.p0, color.a);
+            color = mix(original, color, clamp(effect.p3, 0.0, 1.0));
         }
         case 10u: {
             let angle = effect.p1 * 0.017453292519943295;
@@ -321,6 +327,7 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
             let g = color.g;
             let b = sample_uv(uv - offset).b;
             color = vec4<f32>(r, g, b, color.a);
+            color = mix(original, color, clamp(effect.p2, 0.0, 1.0));
         }
         case 11u: {
             color = vec4<f32>(rotate_hue(color.rgb, effect.p0), color.a);
@@ -333,6 +340,7 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
             let out_white = effect.p4;
             let normalized = clamp((color.rgb - vec3<f32>(in_black)) / max(in_white - in_black, 0.001), vec3<f32>(0.0), vec3<f32>(1.0));
             color = vec4<f32>(mix(vec3<f32>(out_black), vec3<f32>(out_white), pow(normalized, vec3<f32>(1.0 / gamma))), color.a);
+            color = mix(original, color, clamp(effect.p5, 0.0, 1.0));
         }
         case 13u: {
             let key = vec3<f32>(effect.p0, effect.p1, effect.p2);
@@ -360,6 +368,10 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
             let orig = color;
             let bloom = load_secondary(coord);
             color = vec4<f32>(orig.rgb + bloom.rgb * effect.p1, orig.a);
+        }
+        case 19u: {
+            // Blend effect result (input_tex) over the original (secondary_tex).
+            color = mix(load_secondary(coord), color, clamp(effect.p0, 0.0, 1.0));
         }
         default: {}
     }

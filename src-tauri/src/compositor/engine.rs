@@ -737,6 +737,7 @@ impl Compositor {
             )))),
             &[EffectSpec::GaussianBlurPixels {
                 radius: spec.text_shadow_blur * blur_scale,
+                mix: 1.0,
             }],
             false,
         )?;

@@ -147,6 +147,25 @@ function pushBloom(
   return b;
 }
 
+/** Post-effect mix pass: blends the effect result over the original image. */
+function pushMix(
+  passes: ComputePass[],
+  effectResult: Buf,
+  original: Buf,
+  mix: number,
+  width: number,
+  height: number,
+): Buf {
+  const dst = pickScratch([effectResult, original]);
+  passes.push({
+    uniform: { ...uniform(19, width, height), p0: Math.max(0, Math.min(1.0, mix)) },
+    src: effectResult,
+    secondary: original,
+    dst,
+  });
+  return dst;
+}
+
 export function buildPasses(
   effects: VideoEffectSpec[],
   width: number,
@@ -159,7 +178,8 @@ export function buildPasses(
 
   for (const effect of effects) {
     switch (effect.type) {
-      case 'gaussian-blur':
+      case 'gaussian-blur': {
+        const base = cur;
         cur = pushBlur(
           passes,
           cur,
@@ -168,8 +188,13 @@ export function buildPasses(
           width,
           height,
         );
+        if ((effect.mix ?? 1) < 1.0) {
+          cur = pushMix(passes, cur, base, effect.mix ?? 1, width, height);
+        }
         break;
-      case 'gaussian-blur-pixels':
+      }
+      case 'gaussian-blur-pixels': {
+        const base = cur;
         cur = pushBlur(
           passes,
           cur,
@@ -178,8 +203,13 @@ export function buildPasses(
           width,
           height,
         );
+        if ((effect.mix ?? 1) < 1.0) {
+          cur = pushMix(passes, cur, base, effect.mix ?? 1, width, height);
+        }
         break;
-      case 'bloom':
+      }
+      case 'bloom': {
+        const base = cur;
         cur = pushBloom(
           passes,
           cur,
@@ -189,7 +219,11 @@ export function buildPasses(
           width,
           height,
         );
+        if ((effect.mix ?? 1) < 1.0) {
+          cur = pushMix(passes, cur, base, effect.mix ?? 1, width, height);
+        }
         break;
+      }
       default: {
         const built = effectUniform(effect, width, height, scale);
         if (built) {
@@ -251,7 +285,7 @@ function effectUniform(
         5,
         Math.max(-MAX_SHARPEN, Math.min(MAX_SHARPEN, effect.amount)),
         Math.max(1, scale),
-        0,
+        Math.max(0, Math.min(1.0, effect.mix ?? 1)),
         0,
         0,
         0,
@@ -274,7 +308,7 @@ function effectUniform(
         Math.max(0, Math.min(1.0, effect.strength)),
         Math.max(0, Math.min(1.0, effect.radius)),
         Math.max(0.001, Math.min(1.0, effect.softness)),
-        0,
+        Math.max(0, Math.min(1.0, effect.mix ?? 1)),
         0,
         0,
         0,
@@ -282,14 +316,14 @@ function effectUniform(
     case 'noise': {
       const typeVal = effect.noise_type === 'perlin' ? 1.0 : (effect.noise_type === 'simplex' ? 2.0 : 0.0);
       const scaleVal = effect.scale || 10.0;
-      return base(9, Math.max(0, Math.min(1.0, effect.amount)), typeVal, scaleVal, 0, 0, 0, effect.seed);
+      return base(9, Math.max(0, Math.min(1.0, effect.amount)), typeVal, scaleVal, Math.max(0, Math.min(1.0, effect.mix ?? 1)), 0, 0, effect.seed);
     }
     case 'chromatic-aberration':
       return base(
         10,
         Math.max(0, Math.min(MAX_CHROMATIC_ABERRATION, effect.amount * scale)),
         effect.angle_deg,
-        0,
+        Math.max(0, Math.min(1.0, effect.mix ?? 1)),
         0,
         0,
         0,
@@ -305,7 +339,7 @@ function effectUniform(
         Math.max(0.01, Math.min(MAX_LEVELS_GAMMA, effect.gamma)),
         Math.max(0, Math.min(1.0, effect.out_black)),
         Math.max(0, Math.min(1.0, effect.out_white)),
-        0,
+        Math.max(0, Math.min(1.0, effect.mix ?? 1)),
         0,
       );
     case 'chroma-key':
