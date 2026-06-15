@@ -104,6 +104,9 @@ pub struct LayerRuntimeManager {
     pub preview_fps: f64,
     /// Политика AV-sync для preview.
     pub preview_sync_mode: PreviewSyncMode,
+    /// Global transport speed. Used to keep future-layer warmup measured in wall time:
+    /// at 4x a 1.5s timeline window leaves only 375ms to open/decode the next clip.
+    playback_speed: f64,
     frame_cache_mode: NativeFrameCacheMode,
     frame_cache_custom_mb: u32,
     pub playing: bool,
@@ -142,6 +145,7 @@ impl LayerRuntimeManager {
             preview_scale: None,
             preview_fps: 30.0,
             preview_sync_mode: PreviewSyncMode::Balanced,
+            playback_speed: 1.0,
             frame_cache_mode: NativeFrameCacheMode::Auto,
             frame_cache_custom_mb: 0,
             playing: false,
@@ -181,6 +185,10 @@ impl LayerRuntimeManager {
                 v.set_transport_playing(playing);
             }
         }
+    }
+
+    pub fn set_playback_speed(&mut self, speed: f64) {
+        self.playback_speed = sanitize_transport_speed(speed).abs();
     }
 
     pub fn update_hw_settings(&mut self, hw_settings: crate::FfmpegHardwareSettings) -> bool {
@@ -770,7 +778,7 @@ impl LayerRuntimeManager {
                         }
                     }
                 }
-            } else if layer.covers(t + VIDEO_PREWARM_LOOKAHEAD_SEC) {
+            } else if layer.covers(t + self.prewarm_lookahead_sec()) {
                 // Превентивно прогреваем декодер будущего слоя
                 self.ensure_runtime_for(layer, device.clone(), queue.clone());
             }
@@ -867,7 +875,7 @@ impl LayerRuntimeManager {
         // ИЛИ близкие к playhead'у в пределах окна удержания.
         let mut keep: HashSet<&str> = HashSet::new();
         for (i, layer) in scene.iter().enumerate() {
-            if active.contains(&i) || layer_near_playhead(layer, t) {
+            if active.contains(&i) || layer_near_playhead(layer, t, self.prewarm_lookahead_sec()) {
                 keep.insert(layer.id.as_str());
             }
         }
@@ -1110,6 +1118,10 @@ impl LayerRuntimeManager {
             &self.master_effects,
         )
     }
+
+    fn prewarm_lookahead_sec(&self) -> f64 {
+        scaled_prewarm_lookahead_sec(self.playback_speed)
+    }
 }
 
 /// Защищает preview-FPS: только конечные положительные значения, зажатые в разумный
@@ -1149,9 +1161,22 @@ fn is_refreshable_display_runtime(kind: LayerKind) -> bool {
 
 /// Пересекает ли timeline-интервал слоя окно удержания `[t - BEHIND, t + AHEAD]`.
 /// Используется для вытеснения далёких рантаймов во время воспроизведения.
-fn layer_near_playhead(layer: &SceneLayer, t: f64) -> bool {
-    layer.timeline_start_sec < t + RUNTIME_KEEP_AHEAD_SEC
+fn layer_near_playhead(layer: &SceneLayer, t: f64, prewarm_lookahead_sec: f64) -> bool {
+    let keep_ahead = RUNTIME_KEEP_AHEAD_SEC.max(prewarm_lookahead_sec + 1.0);
+    layer.timeline_start_sec < t + keep_ahead
         && layer.timeline_end_sec > t - RUNTIME_KEEP_BEHIND_SEC
+}
+
+fn sanitize_transport_speed(speed: f64) -> f64 {
+    if speed.is_finite() && speed != 0.0 {
+        speed.clamp(-100.0, 100.0)
+    } else {
+        1.0
+    }
+}
+
+fn scaled_prewarm_lookahead_sec(playback_speed: f64) -> f64 {
+    VIDEO_PREWARM_LOOKAHEAD_SEC * sanitize_transport_speed(playback_speed).abs().max(1.0)
 }
 
 fn allows_stale_video_fallback(mode: PreviewSyncMode) -> bool {
@@ -1260,31 +1285,38 @@ mod tests {
     #[test]
     fn layer_near_playhead_keeps_window_around_t() {
         use super::layer_near_playhead;
-        use super::{RUNTIME_KEEP_AHEAD_SEC, RUNTIME_KEEP_BEHIND_SEC};
+        use super::{RUNTIME_KEEP_AHEAD_SEC, RUNTIME_KEEP_BEHIND_SEC, VIDEO_PREWARM_LOOKAHEAD_SEC};
 
         let l = video_layer_span("a", 10.0, 12.0);
         // Inside the clip.
-        assert!(layer_near_playhead(&l, 11.0));
+        assert!(layer_near_playhead(&l, 11.0, VIDEO_PREWARM_LOOKAHEAD_SEC));
         // Just past the end, within the behind grace → still kept.
         assert!(layer_near_playhead(
             &l,
-            12.0 + RUNTIME_KEEP_BEHIND_SEC - 0.1
+            12.0 + RUNTIME_KEEP_BEHIND_SEC - 0.1,
+            VIDEO_PREWARM_LOOKAHEAD_SEC
         ));
         // Far past the end → evicted.
         assert!(!layer_near_playhead(
             &l,
-            12.0 + RUNTIME_KEEP_BEHIND_SEC + 0.1
+            12.0 + RUNTIME_KEEP_BEHIND_SEC + 0.1,
+            VIDEO_PREWARM_LOOKAHEAD_SEC
         ));
         // Just before the start, within the ahead (prewarm) window → kept.
-        assert!(layer_near_playhead(&l, 10.0 - RUNTIME_KEEP_AHEAD_SEC + 0.1));
+        assert!(layer_near_playhead(
+            &l,
+            10.0 - RUNTIME_KEEP_AHEAD_SEC + 0.1,
+            VIDEO_PREWARM_LOOKAHEAD_SEC
+        ));
         // Far before the start → not yet kept.
         assert!(!layer_near_playhead(
             &l,
-            10.0 - RUNTIME_KEEP_AHEAD_SEC - 0.1
+            10.0 - RUNTIME_KEEP_AHEAD_SEC - 0.1,
+            VIDEO_PREWARM_LOOKAHEAD_SEC
         ));
         // The ahead window must cover the prewarm lookahead so a just-prewarmed clip
         // is never evicted the same tick it was warmed.
-        assert!(RUNTIME_KEEP_AHEAD_SEC >= super::VIDEO_PREWARM_LOOKAHEAD_SEC);
+        assert!(RUNTIME_KEEP_AHEAD_SEC >= VIDEO_PREWARM_LOOKAHEAD_SEC);
     }
 
     #[test]
@@ -1456,6 +1488,46 @@ mod tests {
         let zero =
             frame_cache_budget_bytes(NativeFrameCacheMode::Balanced, 0, (1920, 1080), 30.0, 0);
         assert_eq!(zero, one);
+    }
+
+    #[test]
+    fn prewarm_lookahead_scales_with_transport_speed() {
+        use super::{scaled_prewarm_lookahead_sec, VIDEO_PREWARM_LOOKAHEAD_SEC};
+
+        assert_eq!(
+            scaled_prewarm_lookahead_sec(1.0),
+            VIDEO_PREWARM_LOOKAHEAD_SEC
+        );
+        assert_eq!(
+            scaled_prewarm_lookahead_sec(4.0),
+            VIDEO_PREWARM_LOOKAHEAD_SEC * 4.0
+        );
+        assert_eq!(
+            scaled_prewarm_lookahead_sec(-2.0),
+            VIDEO_PREWARM_LOOKAHEAD_SEC * 2.0
+        );
+        assert_eq!(
+            scaled_prewarm_lookahead_sec(0.0),
+            VIDEO_PREWARM_LOOKAHEAD_SEC
+        );
+    }
+
+    #[test]
+    fn layer_near_playhead_keeps_scaled_future_prewarm_window() {
+        use super::{layer_near_playhead, VIDEO_PREWARM_LOOKAHEAD_SEC};
+
+        let layer = video_layer_span("future", 5.8, 8.0);
+
+        assert!(!layer_near_playhead(
+            &layer,
+            0.0,
+            VIDEO_PREWARM_LOOKAHEAD_SEC
+        ));
+        assert!(layer_near_playhead(
+            &layer,
+            0.0,
+            VIDEO_PREWARM_LOOKAHEAD_SEC * 4.0
+        ));
     }
 
     fn video_layer_span(id: &str, start: f64, end: f64) -> SceneLayer {

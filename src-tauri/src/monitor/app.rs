@@ -1001,6 +1001,7 @@ impl WindowState {
         // The clock is the authoritative timeline position and stays correct even
         // across reverse spans (where audio is silent), so anchor audio to it.
         let anchor = self.clock.current_pts().max(0.0);
+        self.layers.set_playback_speed(speed);
         if let Some(audio) = self.audio.as_ref() {
             audio.set_speed(speed, anchor);
         }
