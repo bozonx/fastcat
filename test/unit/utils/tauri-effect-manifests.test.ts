@@ -328,12 +328,12 @@ describe('unified video effect manifests', () => {
         intensity: 0.75, // factor = 0.75
       },
       {
-        id: 'fx-pixelate-intensity',
+        id: 'fx-pixelate-mix',
         type: 'pixelate',
         enabled: true,
         target: 'video',
         size: 9,
-        intensity: 0.5, // factor = 0.5
+        mix: 0.5,
       },
       {
         id: 'fx-levels-intensity',
@@ -357,8 +357,8 @@ describe('unified video effect manifests', () => {
       { type: 'contrast', value: 1.0 },
       { type: 'saturation', value: 1.0 },
       { type: 'hue', degrees: 60 },
-      // Pixelate: 1.0 + (9.0 - 1.0) * 0.5 = 5.0
-      { type: 'pixelate', size: 5 },
+      // Pixelate: size stays as-is, mix controls blend with original
+      { type: 'pixelate', size: 9, mix: 0.5 },
       // Levels:
       // inBlack: 0.2 * 0.5 = 0.1
       // inWhite: 1.0 - (1.0 - 0.8) * 0.5 = 0.9
@@ -373,6 +373,23 @@ describe('unified video effect manifests', () => {
         out_black: 0.05,
         out_white: 0.95,
       },
+    ]);
+  });
+
+  it('maps legacy pixelate intensity to mix for backward compatibility', () => {
+    const specs = buildEffectSpecs([
+      {
+        id: 'fx-pixelate-legacy',
+        type: 'pixelate',
+        enabled: true,
+        target: 'video',
+        size: 12,
+        intensity: 0.3, // legacy field should be treated as mix
+      },
+    ]);
+
+    expect(specs).toEqual([
+      { type: 'pixelate', size: 12, mix: 0.3 },
     ]);
   });
 });

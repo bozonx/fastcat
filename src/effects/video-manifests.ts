@@ -470,11 +470,11 @@ export const videoEffectManifests: VideoEffectManifest[] = [
     renderer: 'wgsl-compute',
     defaultValues: {
       size: 8,
-      intensity: 1,
+      mix: 1,
     },
     paramRanges: {
       size: VIDEO_EFFECT_PARAM_RANGES.pixelSize,
-      intensity: VIDEO_EFFECT_PARAM_RANGES.intensity,
+      mix: VIDEO_EFFECT_PARAM_RANGES.intensity,
     },
     controls: [
       {
@@ -488,25 +488,26 @@ export const videoEffectManifests: VideoEffectManifest[] = [
       },
       {
         kind: 'slider',
-        key: 'intensity',
-        labelKey: 'fastcat.effects.video.intensity',
+        key: 'mix',
+        labelKey: 'fastcat.effects.video.mix',
         min: VIDEO_EFFECT_PARAM_RANGES.intensity.uiMin,
         max: VIDEO_EFFECT_PARAM_RANGES.intensity.uiMax,
         step: 0.01,
         format: percent,
       },
     ],
-    toEffectSpecs: (values) => {
-      const factor = finiteNumber(values.intensity, 1);
-      return [
-        spec('pixelate', {
-          size: clampRange(
-            1.0 + (finiteNumber(values.size, 8) - 1.0) * factor,
-            VIDEO_EFFECT_PARAM_RANGES.pixelSize,
-          ),
-        }),
-      ];
-    },
+    toEffectSpecs: (values) => [
+      spec('pixelate', {
+        size: clampRange(
+          finiteNumber(values.size, 8),
+          VIDEO_EFFECT_PARAM_RANGES.pixelSize,
+        ),
+        mix: clampRange(
+          finiteNumber(values.mix ?? values.intensity, 1),
+          VIDEO_EFFECT_PARAM_RANGES.intensity,
+        ),
+      }),
+    ],
   },
   {
     type: 'vignette',

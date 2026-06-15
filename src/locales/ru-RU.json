@@ -324,6 +324,7 @@
       "trackAudioTitle": "Эффекты аудио дорожки: {name}",
       "video": {
         "intensity": "Интенсивность",
+        "mix": "Смешивание",
         "bloom": {
           "description": "Эффект размытого свечения",
           "name": "Свечение (Bloom)",

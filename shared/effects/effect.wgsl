@@ -22,7 +22,7 @@
 //   1  brightness (p0)              2  contrast (p0)            3  saturation (p0)
 //   4  gaussian blur horizontal (p0=radius px)
 //   5  sharpen (p0=amount, p1=step px)
-//   6  pixelate (p0=size)
+//   6  pixelate (p0=size, p1=mix)
 //   8  vignette (p0=strength, p1=radius, p2=softness)
 //   9  noise (p0=amount, seed)      10 chromatic aberration (p0=amount px, p1=angle_deg)
 //   11 hue rotation (p0=degrees)    12 levels (p0..p4)
@@ -283,7 +283,8 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
         case 6u: {
             let size = max(effect.p0, 1.0);
             let px = vec2<i32>(i32(floor(f32(gid.x) / size) * size), i32(floor(f32(gid.y) / size) * size));
-            color = load_px(px);
+            let original = color;
+            color = mix(original, load_px(px), clamp(effect.p1, 0.0, 1.0));
         }
         case 8u: {
             // Aspect-correct radial distance so the vignette is circular, not

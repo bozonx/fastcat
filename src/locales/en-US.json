@@ -324,6 +324,7 @@
       "trackAudioTitle": "Audio Track Effects: {name}",
       "video": {
         "intensity": "Intensity",
+        "mix": "Mix",
         "bloom": {
           "description": "Soft bloom effect",
           "name": "Bloom",

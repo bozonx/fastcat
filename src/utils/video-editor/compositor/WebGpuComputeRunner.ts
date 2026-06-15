@@ -258,7 +258,16 @@ function effectUniform(
         0,
       );
     case 'pixelate':
-      return base(6, Math.max(1, Math.min(MAX_PIXELATE, effect.size * scale)), 0, 0, 0, 0, 0, 0);
+      return base(
+        6,
+        Math.max(1, Math.min(MAX_PIXELATE, effect.size * scale)),
+        Math.max(0, Math.min(1.0, effect.mix ?? 1)),
+        0,
+        0,
+        0,
+        0,
+        0,
+      );
     case 'vignette':
       return base(
         8,

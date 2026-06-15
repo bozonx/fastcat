@@ -19,6 +19,11 @@ use super::gpu_utils::image_pixels_rgba8;
 // (`src/types/generated/native-monitor/VideoEffectSpec.ts`). It is the single
 // cross-backend contract: frontend manifests (`toEffectSpecs`) emit it and both
 // the native wgpu compositor and the web WebGPU compute runner consume it.
+
+fn default_mix() -> f32 {
+    1.0
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, ts_rs::TS)]
 #[serde(tag = "type", rename_all = "kebab-case")]
 #[ts(
@@ -75,6 +80,8 @@ pub enum EffectSpec {
     },
     Pixelate {
         size: f32,
+        #[serde(default = "default_mix")]
+        mix: f32,
     },
     Bloom {
         threshold: f32,
@@ -1125,10 +1132,10 @@ fn effect_uniform(
             0.0,
             0,
         ),
-        EffectSpec::Pixelate { size } => base(
+        EffectSpec::Pixelate { size, mix } => base(
             6,
             (size * scale).clamp(1.0, MAX_PIXELATE),
-            0.0,
+            mix.clamp(0.0, 1.0),
             0.0,
             0.0,
             0.0,
@@ -1374,5 +1381,34 @@ mod tests {
         assert_eq!(passes[2].uniform.mode, 14); // blur_v
         assert_eq!(passes[3].uniform.mode, 18); // compose
         assert_eq!(passes[3].uniform.p1, 0.6);
+    }
+
+    #[test]
+    fn build_passes_pixelate_carries_size_and_mix() {
+        let passes = build_passes(
+            &[EffectSpec::Pixelate {
+                size: 16.0,
+                mix: 0.75,
+            }],
+            1920,
+            1080,
+        );
+        assert_eq!(passes.len(), 1);
+        assert_eq!(passes[0].uniform.mode, 6);
+        assert_eq!(passes[0].uniform.p0, 16.0);
+        assert_eq!(passes[0].uniform.p1, 0.75);
+    }
+
+    #[test]
+    fn pixelate_mix_defaults_to_one_for_backwards_compat() {
+        let passes = build_passes(
+            &[EffectSpec::Pixelate {
+                size: 8.0,
+                mix: default_mix(),
+            }],
+            1920,
+            1080,
+        );
+        assert_eq!(passes[0].uniform.p1, 1.0);
     }
 }
