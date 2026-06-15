@@ -220,11 +220,15 @@ export function useNativeMonitorBridge(): void {
 
   watch(
     () => ({
+      experimentalFeatures: workspaceStore.userSettings.experimentalFeatures,
       bufferSize: workspaceStore.userSettings.audioEngine.bufferSize,
       backend: workspaceStore.userSettings.audioEngine.backend,
     }),
-    (settings) => {
+    ({ experimentalFeatures, bufferSize, backend }) => {
       if (isNativeMonitorDisabled()) return;
+      const settings = experimentalFeatures
+        ? { bufferSize, backend }
+        : { bufferSize: 'default', backend: 'default' };
       void nativeMonitorIpc
         .setAudioSettings(settings)
         .catch((err) => warnMonitorFailure('monitor_set_audio_settings failed', err));

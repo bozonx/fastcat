@@ -1,13 +1,99 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { mountSuspended } from '@nuxt/test-utils/runtime';
 import { reactive } from 'vue';
 import { invoke } from '@tauri-apps/api/core';
-import SettingsAudio from '~/components/settings/SettingsAudio.vue';
-import { DEFAULT_USER_SETTINGS } from '~/utils/settings/defaults';
 
 // Mock workspace store
 const mockWorkspaceStore = {
-  userSettings: reactive(JSON.parse(JSON.stringify(DEFAULT_USER_SETTINGS))),
+  userSettings: reactive({
+    locale: 'en-US',
+    openLastProjectOnStart: false,
+    timeline: {
+      snapThresholdPx: 8,
+      defaultTransitionDurationUs: 2000000,
+      defaultStaticClipDurationUs: 5000000,
+      snapping: {
+        timelineEdges: true,
+        clips: true,
+        markers: true,
+        selection: true,
+        playhead: true,
+        playheadClick: true,
+      },
+      frameSnapMode: 'frames',
+      toolbarSnapMode: 'snap',
+      toolbarDragMode: 'pseudo_overlap',
+      toolbarDragModeEnabled: false,
+    },
+    stopFrames: {
+      qualityPercent: 85,
+    },
+    hotkeys: {
+      layer1: 'Shift',
+      layer2: 'Control',
+      bindings: {},
+    },
+    optimization: {
+      proxyMaxPixels: 1500000,
+      proxyVideoBitrateMbps: 2,
+      proxyAudioBitrateKbps: 128,
+      proxyVideoCodec: 'h264',
+      proxyCopyOpusAudio: true,
+      autoCreateProxies: false,
+      mediaTaskConcurrency: 2,
+      pixiRenderer: 'webgl',
+      videoFrameCacheMb: 256,
+      nativeFrameCacheMode: 'auto',
+      nativeFrameCacheCustomMb: 512,
+      ffmpegPath: 'ffmpeg',
+      ffprobePath: 'ffprobe',
+      hardwareAccelerationMode: 'none',
+      vaapiDevice: '/dev/dri/renderD128',
+      enableHardwareEncoding: false,
+      nativeMonitorSyncMode: 'balanced',
+    },
+    projectPresets: { custom: [], defaultTextPresetId: '', collapsed: {} },
+    exportPresets: { custom: [], defaultTextPresetId: '', collapsed: {} },
+    presets: {
+      custom: [],
+      defaultTextPresetId: '',
+      collapsed: {},
+    },
+    projectDefaults: {
+      width: 1920,
+      height: 1080,
+      fps: 25,
+      resolutionFormat: '1080p',
+      orientation: 'landscape',
+      aspectRatio: '16:9',
+      isCustomResolution: false,
+      sampleRate: 48000,
+      audioDeclickDurationUs: 5000,
+      defaultAudioFadeCurve: 'logarithmic',
+      audioScrubbingEnabled: true,
+    },
+    integrations: {
+      fastcatAccount: { enabled: false, bearerToken: '' },
+      fastcatPublicador: { enabled: false, bearerToken: '' },
+      manualFilesApi: { enabled: false, baseUrl: '', bearerToken: '', overrideFastCat: false },
+      stt: { provider: '', models: [], localModel: 'Xenova/whisper-tiny', language: '', restorePunctuation: true, formatText: false, includeWords: true }
+    },
+    mouse: {
+      ruler: { wheel: 'seek_frame', wheelShift: 'seek_second', wheelSecondary: 'scroll_horizontal', wheelSecondaryShift: 'zoom_horizontal', click: 'seek', middleClick: 'fit_zoom', doubleClick: 'add_marker', shiftClick: 'clear_selection', drag: 'move_playhead', middleDrag: 'pan', dragShift: 'select_area', horizontalMovement: 'none' },
+      timeline: { wheel: 'scroll_vertical', wheelShift: 'zoom_horizontal', wheelSecondary: 'scroll_horizontal', wheelSecondaryShift: 'zoom_vertical', click: 'select_item', drag: 'move_clips', middleClick: 'fit_zoom', middleDrag: 'pan', horizontalMovement: 'none', clipDragShift: 'select_area', clipDragCtrl: 'free_mode', clipDragRight: 'copy' },
+      trackHeaders: { wheel: 'scroll_vertical', wheelShift: 'zoom_vertical', wheelSecondary: 'resize_track', wheelSecondaryShift: 'none', click: 'select_track', middleClick: 'select_all_clips', doubleClick: 'select_all_clips' },
+      monitor: { wheel: 'zoom', wheelShift: 'scroll_horizontal', wheelSecondary: 'scroll_horizontal', wheelSecondaryShift: 'scroll_vertical', middleClick: 'fit', doubleClick: 'reset_zoom_center', middleDrag: 'pan' }
+    },
+    deleteWithoutConfirmation: false,
+    ui: { interfaceScale: 14, clipThumbnailMode: 'standard', defaultAudioWaveformMode: 'half' },
+    history: { maxEntries: 100 },
+    backup: { enabled: true, count: 5 },
+    autosave: { intervalMinutes: 2 },
+    experimentalFeatures: false,
+    audioEngine: {
+      bufferSize: 'default',
+      backend: 'default',
+    },
+  }),
 };
 
 vi.mock('~/stores/workspace.store', () => ({
@@ -42,10 +128,25 @@ vi.mock('~/utils/video-editor/worker-client', () => ({
   setProxyHostApi: vi.fn(),
 }));
 
+// Mock native-monitor-ipc
+const mockSetAudioSettings = vi.fn();
+vi.mock('~/composables/monitor/native-monitor-ipc', () => ({
+  nativeMonitorIpc: {
+    setAudioSettings: (...args: any[]) => mockSetAudioSettings(...args),
+  },
+}));
+
+import { mountSuspended } from '@nuxt/test-utils/runtime';
+import SettingsAudio from '~/components/settings/SettingsAudio.vue';
+
 describe('SettingsAudio', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockWorkspaceStore.userSettings = reactive(JSON.parse(JSON.stringify(DEFAULT_USER_SETTINGS)));
+    mockWorkspaceStore.userSettings.locale = 'en-US';
+    mockWorkspaceStore.userSettings.openLastProjectOnStart = false;
+    mockWorkspaceStore.userSettings.experimentalFeatures = false;
+    mockWorkspaceStore.userSettings.audioEngine.bufferSize = 'default';
+    mockWorkspaceStore.userSettings.audioEngine.backend = 'default';
   });
 
   afterEach(() => {
@@ -121,5 +222,60 @@ describe('SettingsAudio', () => {
     expect(wrapper.text()).toContain('AAC (Advanced Audio Coding)');
     expect(wrapper.text()).toContain('Opus');
     expect(wrapper.text()).toContain('AAC Decoder');
+  });
+
+  it('hides native settings and sends default values when experimentalFeatures is false', async () => {
+    mockIsTauriRuntime.mockReturnValue(true);
+    mockWorkspaceStore.userSettings.experimentalFeatures = false;
+    mockWorkspaceStore.userSettings.audioEngine.bufferSize = 'default';
+    mockWorkspaceStore.userSettings.audioEngine.backend = 'default';
+
+    const wrapper = await mountSuspended(SettingsAudio);
+    await new Promise((resolve) => setTimeout(resolve, 10));
+
+    // Native audio settings title should not be rendered
+    expect(wrapper.text()).not.toContain('videoEditor.settings.audio.nativeEngineTitle');
+
+    // Change a setting to trigger the watch
+    mockWorkspaceStore.userSettings.audioEngine.bufferSize = 512;
+    await new Promise((resolve) => setTimeout(resolve, 10));
+
+    // It should have called setAudioSettings with default values
+    expect(mockSetAudioSettings).toHaveBeenLastCalledWith({
+      bufferSize: 'default',
+      backend: 'default',
+    });
+  });
+
+  it('shows native settings and sends custom values when experimentalFeatures is true', async () => {
+    mockIsTauriRuntime.mockReturnValue(true);
+    mockWorkspaceStore.userSettings.experimentalFeatures = true;
+    mockWorkspaceStore.userSettings.audioEngine.bufferSize = 'default';
+    mockWorkspaceStore.userSettings.audioEngine.backend = 'default';
+
+    const wrapper = await mountSuspended(SettingsAudio);
+    await new Promise((resolve) => setTimeout(resolve, 10));
+
+    // Native audio settings title should be rendered
+    expect(wrapper.text()).toContain('videoEditor.settings.audio.nativeEngineTitle');
+
+    // Change a setting to trigger the watch
+    mockWorkspaceStore.userSettings.audioEngine.bufferSize = 512;
+    mockWorkspaceStore.userSettings.audioEngine.backend = 'alsa';
+    await new Promise((resolve) => setTimeout(resolve, 10));
+
+    // It should have called setAudioSettings with the user-defined values
+    expect(mockSetAudioSettings).toHaveBeenLastCalledWith({
+      bufferSize: 512,
+      backend: 'alsa',
+    });
+
+    // If we toggle experimentalFeatures to false, it should send default values
+    mockWorkspaceStore.userSettings.experimentalFeatures = false;
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    expect(mockSetAudioSettings).toHaveBeenLastCalledWith({
+      bufferSize: 'default',
+      backend: 'default',
+    });
   });
 });

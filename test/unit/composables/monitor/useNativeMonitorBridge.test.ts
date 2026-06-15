@@ -1,6 +1,84 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { reactive, effectScope } from 'vue';
+
+// Mock stores
+const mockWorkspaceStore = reactive({
+  userSettings: {
+    experimentalFeatures: false,
+    audioEngine: {
+      bufferSize: 512,
+      backend: 'alsa',
+    },
+    optimization: {
+      nativeMonitorSyncMode: 'balanced',
+      nativeFrameCacheMode: 'auto',
+      nativeFrameCacheCustomMb: 512,
+    },
+  },
+});
+
+const mockTimelineStore = reactive({
+  timelineDoc: null,
+  timelineFormat: null,
+  masterGain: 1,
+  audioMuted: false,
+  isPlaying: false,
+  playbackSpeed: 1,
+  currentTime: 0,
+  audioLevels: {},
+});
+
+const mockProjectStore = reactive({
+  currentProjectName: null,
+  currentTimelinePath: null,
+  activeMonitor: null,
+});
+
+const mockProxyStore = reactive({
+  existingProxies: [],
+  getProxyNativePath: vi.fn(),
+});
+
+vi.mock('~/stores/workspace.store', () => ({
+  useWorkspaceStore: () => mockWorkspaceStore,
+}));
+vi.mock('~/stores/timeline.store', () => ({
+  useTimelineStore: () => mockTimelineStore,
+}));
+vi.mock('~/stores/project.store', () => ({
+  useProjectStore: () => mockProjectStore,
+}));
+vi.mock('~/stores/proxy.store', () => ({
+  useProxyStore: () => mockProxyStore,
+}));
+vi.mock('~/utils/runtime', () => ({
+  isTauriRuntime: () => true,
+}));
+
+// Mock native-monitor-ipc
+const mockSetAudioSettings = vi.fn().mockResolvedValue(undefined);
+const mockSetSpeed = vi.fn().mockResolvedValue(undefined);
+const mockSetScene = vi.fn().mockResolvedValue(undefined);
+
+vi.mock('~/composables/monitor/native-monitor-ipc', () => ({
+  nativeMonitorIpc: {
+    setAudioSettings: (...args: any[]) => mockSetAudioSettings(...args),
+    setSpeed: (...args: any[]) => mockSetSpeed(...args),
+    setScene: (...args: any[]) => mockSetScene(...args),
+    pause: () => Promise.resolve(),
+    setViewport: () => Promise.resolve(),
+  },
+  onMonitorTime: () => Promise.resolve(() => {}),
+  onMonitorEnded: () => Promise.resolve(() => {}),
+  MONITOR_EVENTS: { audioLevels: 'audioLevels' },
+}));
+
+vi.mock('@tauri-apps/api/event', () => ({
+  listen: vi.fn().mockResolvedValue(() => {}),
+}));
 
 import {
+  useNativeMonitorBridge,
   isNativeMonitorSceneReady,
   resolveNativeAudioTrackSelection,
   shouldSyncNativeMonitorTime,
@@ -147,5 +225,53 @@ describe('syncNativeMonitorTransportAfterScene', () => {
     });
 
     expect(warnFailure).toHaveBeenCalledWith('monitor pause after scene sync failed', error);
+  });
+});
+
+describe('useNativeMonitorBridge settings sync', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('sends default audio settings when experimentalFeatures is false, and custom settings when true', async () => {
+    mockWorkspaceStore.userSettings.experimentalFeatures = false;
+    mockWorkspaceStore.userSettings.audioEngine.bufferSize = 512;
+    mockWorkspaceStore.userSettings.audioEngine.backend = 'alsa';
+
+    const scope = effectScope();
+    scope.run(() => {
+      useNativeMonitorBridge();
+    });
+
+    // Wait for watch to trigger
+    await new Promise((resolve) => setTimeout(resolve, 10));
+
+    // Should have sent default settings
+    expect(mockSetAudioSettings).toHaveBeenLastCalledWith({
+      bufferSize: 'default',
+      backend: 'default',
+    });
+
+    // Turn on experimentalFeatures
+    mockWorkspaceStore.userSettings.experimentalFeatures = true;
+    await new Promise((resolve) => setTimeout(resolve, 10));
+
+    // Should have sent the custom settings
+    expect(mockSetAudioSettings).toHaveBeenLastCalledWith({
+      bufferSize: 512,
+      backend: 'alsa',
+    });
+
+    // Turn off experimentalFeatures again
+    mockWorkspaceStore.userSettings.experimentalFeatures = false;
+    await new Promise((resolve) => setTimeout(resolve, 10));
+
+    // Should have reverted to default settings
+    expect(mockSetAudioSettings).toHaveBeenLastCalledWith({
+      bufferSize: 'default',
+      backend: 'default',
+    });
+
+    scope.stop();
   });
 });

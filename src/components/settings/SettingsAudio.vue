@@ -127,12 +127,16 @@ watch(
 // Forward native audio engine settings to the Rust backend.
 watch(
   () => ({
+    experimentalFeatures: workspaceStore.userSettings.experimentalFeatures,
     bufferSize: workspaceStore.userSettings.audioEngine.bufferSize,
     backend: workspaceStore.userSettings.audioEngine.backend,
   }),
-  async (settings) => {
+  async ({ experimentalFeatures, bufferSize, backend }) => {
     if (!isTauri.value) return;
     try {
+      const settings = experimentalFeatures
+        ? { bufferSize, backend }
+        : { bufferSize: 'default', backend: 'default' };
       await nativeMonitorIpc.setAudioSettings(settings);
     } catch (err) {
       log.error('Failed to update audio engine settings:', err);
@@ -236,7 +240,7 @@ const webAudioCodecs = computed(() => {
     </UiFormField>
 
     <!-- Native audio engine settings (Tauri only) -->
-    <template v-if="isTauri">
+    <template v-if="isTauri && workspaceStore.userSettings.experimentalFeatures">
       <div class="flex flex-col gap-4 pt-4 border-t border-ui-border-muted/50">
         <div class="text-sm font-medium text-ui-text">
           {{ t('videoEditor.settings.audio.nativeEngineTitle') }}
