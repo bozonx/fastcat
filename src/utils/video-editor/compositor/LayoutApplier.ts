@@ -118,8 +118,15 @@ export class LayoutApplier {
       },
     });
 
-    const textureW = clip.sprite?.texture?.source?.width ?? frameW;
-    const textureH = clip.sprite?.texture?.source?.height ?? frameH;
+    // The blur "bleed" path pads the effect output around the frame, so the
+    // sprite texture can be larger than frameW×frameH; derive that padding from
+    // the actual texture source size. `texture.source` isn't on Pixi's narrowed
+    // sprite type here, so read it through a loose cast.
+    const textureSource = (
+      clip.sprite as { texture?: { source?: { width?: number; height?: number } } } | undefined
+    )?.texture?.source;
+    const textureW = textureSource?.width ?? frameW;
+    const textureH = textureSource?.height ?? frameH;
     const paddingX = Math.max(0, Math.round((textureW - frameW) / 2));
     const paddingY = Math.max(0, Math.round((textureH - frameH) / 2));
 

@@ -734,7 +734,10 @@ mod tests {
         adjustment.kind = LayerKind::Adjustment;
         adjustment.z = 1;
         adjustment.effects =
-            vec![crate::compositor::effects::EffectSpec::GaussianBlur { radius: 12.0 }];
+            vec![crate::compositor::effects::EffectSpec::GaussianBlur {
+                radius: 12.0,
+                bleed: false,
+            }];
         let scene = MonitorScene {
             master_effects: Vec::new(),
             layers: vec![background, adjustment],

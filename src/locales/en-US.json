@@ -336,6 +336,7 @@
           "description": "Gaussian blur",
           "name": "Blur",
           "params": {
+            "blurPastEdges": "Blur past edges",
             "strength": "Strength"
           }
         },

@@ -253,6 +253,10 @@ export const videoEffectManifests: VideoEffectManifest[] = [
     renderer: 'wgsl-compute',
     defaultValues: {
       strength: 8,
+      // Off by default: safe for opaque video (clamps to the frame edges, no
+      // darkening). Turn on for PNGs / cutouts so the blur bleeds past the
+      // rectangle into transparency.
+      blurPastEdges: false,
     },
     paramRanges: {
       strength: VIDEO_EFFECT_PARAM_RANGES.blurRadius,
@@ -267,6 +271,11 @@ export const videoEffectManifests: VideoEffectManifest[] = [
         step: 1,
         format: pixels,
       },
+      {
+        kind: 'toggle',
+        key: 'blurPastEdges',
+        labelKey: 'fastcat.effects.video.blur.params.blurPastEdges',
+      },
     ],
     toEffectSpecs: (values) => [
       spec('gaussian-blur', {
@@ -274,6 +283,7 @@ export const videoEffectManifests: VideoEffectManifest[] = [
           finiteNumberFromKeys(values, ['strength', 'radius'], 8),
           VIDEO_EFFECT_PARAM_RANGES.blurRadius,
         ),
+        bleed: values.blurPastEdges === true,
       }),
     ],
   },
@@ -364,10 +374,7 @@ export const videoEffectManifests: VideoEffectManifest[] = [
     ],
     toEffectSpecs: (values) => [
       spec('sharpen', {
-        amount: clampRange(
-          finiteNumber(values.amount, 0),
-          VIDEO_EFFECT_PARAM_RANGES.sharpenAmount,
-        ),
+        amount: clampRange(finiteNumber(values.amount, 0), VIDEO_EFFECT_PARAM_RANGES.sharpenAmount),
       }),
     ],
   },

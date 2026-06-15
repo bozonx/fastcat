@@ -336,6 +336,7 @@
           "description": "Размытие по Гауссу",
           "name": "Размытие",
           "params": {
+            "blurPastEdges": "Размывать за края кадра",
             "strength": "Сила"
           }
         },

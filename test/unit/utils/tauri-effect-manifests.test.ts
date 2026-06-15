@@ -116,6 +116,7 @@ describe('unified video effect manifests', () => {
       {
         type: 'gaussian-blur',
         radius: 12,
+        bleed: false,
       },
       {
         type: 'brightness',
@@ -178,7 +179,7 @@ describe('unified video effect manifests', () => {
     ]);
 
     expect(specs).toEqual([
-      { type: 'gaussian-blur', radius: 500 },
+      { type: 'gaussian-blur', radius: 500, bleed: false },
       { type: 'bloom', threshold: 0.4, strength: 3.5, radius: 220 },
       { type: 'brightness', value: 3 },
       { type: 'contrast', value: 3.5 },
@@ -206,9 +207,24 @@ describe('unified video effect manifests', () => {
     ]);
 
     expect(specs).toEqual([
-      { type: 'gaussian-blur', radius: 96 },
+      { type: 'gaussian-blur', radius: 96, bleed: false },
       { type: 'noise', amount: 1, seed: 4_294_967_295 },
     ]);
+  });
+
+  it('emits bleed:true on blur when "blur past edges" is enabled', () => {
+    const specs = buildEffectSpecs([
+      {
+        id: 'fx-bleed',
+        type: 'blur',
+        enabled: true,
+        target: 'video',
+        strength: 24,
+        blurPastEdges: true,
+      },
+    ]);
+
+    expect(specs).toEqual([{ type: 'gaussian-blur', radius: 24, bleed: true }]);
   });
 
   it('serializes color-adjustment with non-zero hue value and omits it when zero', () => {

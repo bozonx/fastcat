@@ -30,6 +30,13 @@ use super::gpu_utils::image_pixels_rgba8;
 pub enum EffectSpec {
     GaussianBlur {
         radius: f32,
+        /// When true, the frame is padded so the blur can bleed past the
+        /// original rectangle into transparency — needed for PNGs / cutouts to
+        /// blur "off the edge" naturally. When false (the default), no padding
+        /// is added and the blur clamps to the frame edges, so opaque video
+        /// keeps a full-bleed, crisp border instead of darkening/fading.
+        #[serde(default)]
+        bleed: bool,
     },
     /// Internal compositor-space blur. Unlike `GaussianBlur`, the radius is
     /// already expressed in the target texture's pixels and is not normalized
@@ -251,29 +258,22 @@ pub struct EffectPipeline {
     sampler: wgpu::Sampler,
 }
 
+/// Padding (in target px) the frame must be grown by so blur can bleed past the
+/// original rectangle. Only `GaussianBlur` effects that opted into `bleed`
+/// contribute — everything else (opaque-video blur, bloom, internal pixel blur)
+/// stays unpadded and clamps to the frame edges, so it never darkens borders.
 fn calculate_padding(effects: &[EffectSpec], scale: f32) -> u32 {
     let mut max_r = 0.0f32;
     for effect in effects {
-        match effect {
-            EffectSpec::GaussianBlur { radius } => {
-                let r = radius * scale;
-                if r > max_r {
-                    max_r = r;
-                }
+        if let EffectSpec::GaussianBlur {
+            radius,
+            bleed: true,
+        } = effect
+        {
+            let r = radius * scale;
+            if r > max_r {
+                max_r = r;
             }
-            EffectSpec::GaussianBlurPixels { radius } => {
-                let r = *radius;
-                if r > max_r {
-                    max_r = r;
-                }
-            }
-            EffectSpec::Bloom { radius, .. } => {
-                let r = radius * scale;
-                if r > max_r {
-                    max_r = r;
-                }
-            }
-            _ => {}
         }
     }
     (max_r * 2.0).ceil() as u32
@@ -441,15 +441,18 @@ impl EffectPipeline {
         height: u32,
         need_input: bool,
     ) {
+        // The scratch textures must match the logical size *exactly*. The blur
+        // samples them with normalized UVs (`textureSampleLevel`), which map
+        // [0,1] over the texture's full extent — so a cached texture that is
+        // merely "big enough" (e.g. left over at the padded size after a `bleed`
+        // toggle, or sized by a larger sibling layer) would make the sampler
+        // read the wrong region and squish/duplicate the image. Reallocating on
+        // an exact-size miss is cheap for the common case (stable frame size
+        // never misses) and is the price of correctness for the rare resize.
         let mut recreate = true;
         if let Some(res) = &self.resources {
-            if res.width >= width && res.height >= height && (!need_input || res.input.is_some()) {
+            if res.width == width && res.height == height && (!need_input || res.input.is_some()) {
                 recreate = false;
-            }
-            // Shrink if the cached texture is more than 2x larger than needed
-            // to avoid monotonic GPU memory growth after resolution changes.
-            if !recreate && (res.width > width * 2 || res.height > height * 2) {
-                recreate = true;
             }
         }
 
@@ -955,7 +958,7 @@ fn build_passes(effects: &[EffectSpec], width: u32, height: u32) -> Vec<EffectPa
 
     for effect in effects {
         match *effect {
-            EffectSpec::GaussianBlur { radius } => {
+            EffectSpec::GaussianBlur { radius, .. } => {
                 cur = push_blur(
                     &mut passes,
                     cur,
@@ -1280,7 +1283,14 @@ mod tests {
 
     #[test]
     fn build_passes_gaussian_blur_splits_to_h_and_v() {
-        let passes = build_passes(&[EffectSpec::GaussianBlur { radius: 10.0 }], 1920, 1080);
+        let passes = build_passes(
+            &[EffectSpec::GaussianBlur {
+                radius: 10.0,
+                bleed: false,
+            }],
+            1920,
+            1080,
+        );
         assert_eq!(passes.len(), 2);
         assert_eq!(passes[0].uniform.mode, 4); // Horizontal
         assert_eq!(passes[1].uniform.mode, 14); // Vertical

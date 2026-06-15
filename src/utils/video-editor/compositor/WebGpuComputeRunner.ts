@@ -323,16 +323,15 @@ function effectUniform(
   }
 }
 
+// Padding (in source px) the frame must grow by so blur can bleed past the
+// original rectangle. Mirror of the Rust `calculate_padding`: only
+// `gaussian-blur` effects that opted into `bleed` contribute — opaque-video
+// blur, bloom and the internal pixel blur stay unpadded and clamp to the frame
+// edges, so they never darken/fade the borders.
 function calculatePadding(effects: VideoEffectSpec[], scale: number): number {
   let maxR = 0;
   for (const effect of effects) {
-    if (effect.type === 'gaussian-blur') {
-      const r = effect.radius * scale;
-      if (r > maxR) maxR = r;
-    } else if (effect.type === 'gaussian-blur-pixels') {
-      const r = effect.radius;
-      if (r > maxR) maxR = r;
-    } else if (effect.type === 'bloom') {
+    if (effect.type === 'gaussian-blur' && effect.bleed) {
       const r = effect.radius * scale;
       if (r > maxR) maxR = r;
     }
@@ -665,11 +664,16 @@ export class WebGpuComputeRunner {
   }
 
   private ensureTextures(width: number, height: number): void {
-    if (this.pingTexture && this.cachedWidth >= width && this.cachedHeight >= height) {
+    // Scratch textures must match the logical size *exactly*: the blur samples
+    // them with normalized UVs, which map [0,1] over the texture's full extent.
+    // A cached texture that is merely "big enough" (e.g. left over at the padded
+    // size after a `bleed` toggle) would make the sampler read the wrong region
+    // and squish/duplicate the image. Mirror of the native `ensure_resources`.
+    if (this.pingTexture && this.cachedWidth === width && this.cachedHeight === height) {
       return;
     }
 
-    // Destroy previous scratch textures before reallocating at a larger size.
+    // Destroy previous scratch textures before reallocating at the new size.
     this.pingTexture?.destroy();
     this.pongTexture?.destroy();
     this.auxTexture?.destroy();
