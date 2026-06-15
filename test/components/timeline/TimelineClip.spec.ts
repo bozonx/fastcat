@@ -235,19 +235,37 @@ describe('TimelineClip', () => {
     });
     const clipDiv = component.find('[data-clip-id="clip-1"]');
 
-    expect(clipDiv.classes()).toContain('opacity-60');
-    expect(clipDiv.classes()).toContain('bg-zinc-800/80!');
+    expect(clipDiv.classes()).toContain('opacity-40');
+    expect(clipDiv.classes()).not.toContain('bg-zinc-800/80!');
   });
 
-  it('displays muted track state correctly', async () => {
+  it('displays muted track state correctly (keeps background but adds dotted pattern)', async () => {
     const component = await mountClip({
       ...defaultProps,
-      track: { ...baseTrack, audioMuted: true },
+      track: { ...baseTrack, kind: 'audio', audioMuted: true },
     });
     const clipDiv = component.find('[data-clip-id="clip-1"]');
 
-    expect(clipDiv.classes()).toContain('opacity-60');
-    expect(clipDiv.classes()).toContain('bg-zinc-800/80!');
+    expect(clipDiv.classes()).not.toContain('opacity-60');
+    expect(clipDiv.classes()).not.toContain('bg-zinc-800/80!');
+
+    const dottedOverlay = component.find('.muted-track-dots');
+    expect(dottedOverlay.exists()).toBe(true);
+  });
+
+  it('displays muted clip state correctly (keeps background but adds dotted pattern)', async () => {
+    const component = await mountClip({
+      ...defaultProps,
+      track: { ...baseTrack, kind: 'audio' },
+      item: { ...baseItem, audioMuted: true },
+    });
+    const clipDiv = component.find('[data-clip-id="clip-1"]');
+
+    expect(clipDiv.classes()).not.toContain('opacity-60');
+    expect(clipDiv.classes()).not.toContain('bg-zinc-800/80!');
+
+    const dottedOverlay = component.find('.muted-track-dots');
+    expect(dottedOverlay.exists()).toBe(true);
   });
 
   it('displays locked state correctly', async () => {

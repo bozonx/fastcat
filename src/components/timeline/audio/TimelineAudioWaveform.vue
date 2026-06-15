@@ -536,7 +536,7 @@ function draw() {
   const binWidth = targetWidth / peakBins.length;
   const xAt = (i: number) => (i + 0.5) * binWidth;
 
-  ctx.fillStyle = muted ? '#ffffff66' : '#ffffff';
+  ctx.fillStyle = muted ? 'rgba(255, 255, 255, 0.25)' : '#ffffff';
   ctx.beginPath();
 
   if (mode === 'half') {

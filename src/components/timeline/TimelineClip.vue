@@ -427,12 +427,20 @@ const { isDraggingOver, handleDragLeave, handleDrop } = useClipDrop({
   ),
 });
 
-const isMutedOrDisabled = computed(() => {
+const isDisabled = computed(() => {
   if (!clipItem.value) return false;
   return (
     Boolean(clipItem.value.disabled) ||
+    Boolean(props.track.videoHidden) ||
+    (timelineContext.timelineDoc.value?.tracks.some((t) => t.audioSolo) && !props.track.audioSolo)
+  );
+});
+
+const isAudioMuted = computed(() => {
+  if (!clipItem.value) return false;
+  return (
     Boolean(clipItem.value.audioMuted) ||
-    Boolean(props.track.audioMuted)
+    (props.track.kind === 'audio' && Boolean(props.track.audioMuted))
   );
 });
 
@@ -725,15 +733,10 @@ function handleTransitionCreate(
         clipItem && typeof clipItem.freezeFrameSourceUs === 'number'
           ? 'outline-(--color-warning) outline-2'
           : '',
-        clipItem &&
-        (Boolean(track.videoHidden) ||
-          (timelineContext.timelineDoc.value?.tracks.some((t) => t.audioSolo) && !track.audioSolo))
+        isDisabled
           ? 'opacity-40'
-          : isMutedOrDisabled
-            ? 'opacity-60'
-            : '',
+          : '',
         isMediaMissing ? 'bg-red-600! border-red-800! text-white!' : '',
-        !isMediaMissing && isMutedOrDisabled ? 'bg-zinc-800/80! border-zinc-700/80!' : '',
         !isMediaMissing && isUnsupported ? 'bg-amber-600/50! border-amber-700!' : '',
         (clipItem && Boolean(clipItem.locked)) || track.locked ? 'cursor-not-allowed' : '',
         isMobile && isSelected ? 'touch-none' : '',
@@ -779,6 +782,12 @@ function handleTransitionCreate(
           :is-media-missing="isMediaMissing"
           :is-unsupported="isUnsupported"
           :clip-width-px="clipWidthPx"
+        />
+
+        <!-- Dotted pattern overlay for muted audio clips -->
+        <div
+          v-if="!isMediaMissing && track.kind === 'audio' && isAudioMuted && !isDisabled"
+          class="absolute inset-0 muted-track-dots pointer-events-none rounded opacity-80"
         />
 
         <!-- Sub-components for Transitions and Fades -->
