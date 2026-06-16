@@ -33,8 +33,9 @@ export interface RenderingEngineContext {
     monitorSyncMode: 'smooth' | 'balanced' | 'strict';
   }) => Promise<{ updatedClips: CompositorClip[] }>;
   sortStage: () => void;
-  prepareAdjustmentClips: (activeClips: CompositorClip[]) => void;
+  prepareAdjustmentClips: (activeClips: CompositorClip[]) => Promise<void>;
   applyShaderTransitions: (activeClips: CompositorClip[], timeUs: number) => Promise<void>;
+  applyWebGpuClipEffects?: (clip: CompositorClip) => Promise<void>;
   applyMasterEffects: () => void;
   setStageSortDirty: (value: boolean) => void;
   setActiveSortDirty: (value: boolean) => void;
@@ -129,7 +130,7 @@ export class RenderingEngine {
         context.setStageSortDirty(false);
       }
 
-      context.prepareAdjustmentClips(activeClips);
+      await context.prepareAdjustmentClips(activeClips);
 
       const stageChildren = [...context.app.stage.children];
       const previousStageVisibility = stageChildren.map((child) => child.visible);
@@ -142,8 +143,8 @@ export class RenderingEngine {
         }
 
         context.setLastRenderedTimeUs(timeUs);
-        context.applyMasterEffects();
         context.app.renderer.render(context.app.stage);
+        await context.applyMasterEffects();
       } finally {
         for (let i = 0; i < stageChildren.length; i += 1) {
           const child = stageChildren[i];

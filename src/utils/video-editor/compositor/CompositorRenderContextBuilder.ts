@@ -1,5 +1,6 @@
-import type { Application, Graphics, RenderTexture } from 'pixi.js';
+import { Sprite, Texture, type Application, type Graphics, type RenderTexture } from 'pixi.js';
 import type { VideoClipEffect } from '~/timeline/types';
+import { buildEffectSpecs } from '~/effects';
 import type { CanvasFallbackRenderer } from './renderers/CanvasFallbackRenderer';
 import type { ShapeRenderer } from './renderers/ShapeRenderer';
 import type { TextRenderer } from './renderers/TextRenderer';
@@ -7,6 +8,7 @@ import type { ClipResourceManager } from './ClipResourceManager';
 import type { EffectManager } from './EffectManager';
 import type { FrameSampleOrchestrator } from './FrameSampleOrchestrator';
 import type { LayoutApplier } from './LayoutApplier';
+import { createDevLogger } from '~/utils/dev-logger';
 import type { RenderingEngineContext } from './RenderingEngine';
 import type { ResourceManager } from './ResourceManager';
 import type { StageManager } from './StageManager';
@@ -17,6 +19,8 @@ import type { TransitionManager } from './TransitionManager';
 import type { TransitionRenderer } from './TransitionRenderer';
 import type { VideoFrameCache } from './VideoFrameCache';
 import type { CompositorClip } from './types';
+
+const log = createDevLogger('CompositorRenderContextBuilder');
 
 export interface CompositorRenderState {
   width: number;
@@ -42,7 +46,7 @@ export interface CompositorRenderContextBuilderParams {
     activeChanged: boolean;
   };
   hideInactiveClipSprites: (activeClips: CompositorClip[]) => void;
-  prepareAdjustmentClips: (activeClips: CompositorClip[]) => void;
+  prepareAdjustmentClips: (activeClips: CompositorClip[]) => Promise<void>;
   getVideoSampleForClip: (params: {
     clip: CompositorClip;
     sampleTimeS: number;
@@ -131,6 +135,11 @@ export class CompositorRenderContextBuilder {
               previewEffectsEnabled: params.getPreviewEffectsEnabled(),
             });
           },
+          applyWebGpuClipEffects: (clip) =>
+            params.clipResourceManager.applyEffectsToNonVideoClip(
+              clip,
+              params.getPreviewEffectsEnabled(),
+            ),
           drawHudClip: (clip, timeUs) => params.canvasFallbackRenderer.drawHudClip(clip, timeUs),
           drawShapeClip: (clip, size) => {
             params.shapeRenderer.draw({
@@ -168,7 +177,9 @@ export class CompositorRenderContextBuilder {
           getTrackById: (trackId) => params.trackRuntimeManager.getById(trackId),
         });
       },
-      prepareAdjustmentClips: params.prepareAdjustmentClips,
+      prepareAdjustmentClips: async (activeClips) => {
+        await params.prepareAdjustmentClips(activeClips);
+      },
       applyShaderTransitions: (activeClips, currentTimeUs) =>
         params.transitionRenderer.applyShaderTransitions(activeClips, currentTimeUs, {
           app,
@@ -202,13 +213,38 @@ export class CompositorRenderContextBuilder {
               params.getPreviewEffectsEnabled(),
             ),
         }),
-      applyMasterEffects: () => {
-        params.effectManager.applyMasterEffects(
-          app.stage,
-          state.masterEffects,
-          params.masterEffectFilters,
-          { previewEffectsEnabled: params.getPreviewEffectsEnabled() },
-        );
+      applyMasterEffects: async () => {
+        const previewEffectsEnabled = params.getPreviewEffectsEnabled();
+        if (!previewEffectsEnabled) {
+          params.effectManager.applyMasterEffects(
+            app.stage,
+            state.masterEffects,
+            params.masterEffectFilters,
+            { previewEffectsEnabled: false },
+          );
+          return;
+        }
+
+        const masterSpecs = buildEffectSpecs(state.masterEffects ?? undefined);
+        const runner = params.clipResourceManager.getComputeRunner();
+        if (!masterSpecs || masterSpecs.length === 0 || !runner?.isReady()) {
+          return;
+        }
+
+        try {
+          const bitmap = await createImageBitmap(canvas);
+          try {
+            const processed = await runner.applyEffects(bitmap, masterSpecs);
+            if (processed) {
+              const sprite = new Sprite(Texture.from(processed));
+              app.renderer.render({ container: sprite, clear: true });
+            }
+          } finally {
+            bitmap.close();
+          }
+        } catch (err) {
+          log.warn('[Compositor] Master WebGPU effects failed:', err);
+        }
       },
       setStageSortDirty: params.setStageSortDirty,
       setActiveSortDirty: params.setActiveSortDirty,

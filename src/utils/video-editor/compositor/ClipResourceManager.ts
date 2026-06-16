@@ -1,6 +1,6 @@
 import { createDevLogger } from '~/utils/dev-logger';
-import type { Sprite } from 'pixi.js';
-import { RenderTexture } from 'pixi.js';
+import type { Application, Sprite } from 'pixi.js';
+import { RenderTexture, Texture } from 'pixi.js';
 import { safeDispose } from '../utils';
 import type { LayoutApplier } from './LayoutApplier';
 import type { TransitionManager } from './TransitionManager';
@@ -28,6 +28,7 @@ export interface ClipResourceManagerContext {
   canvasFallbackRenderer: CanvasFallbackRenderer;
   getLayoutApplier: () => LayoutApplier;
   computeRunner?: WebGpuComputeRunner;
+  getApp?: () => Application;
 }
 
 export class ClipResourceManager {
@@ -38,6 +39,127 @@ export class ClipResourceManager {
   public setSize(width: number, height: number) {
     this.context.width = width;
     this.context.height = height;
+  }
+
+  public getComputeRunner(): WebGpuComputeRunner | undefined {
+    return this.context.computeRunner;
+  }
+
+  /**
+   * Applies WebGPU compute effects to non-video clips (image, text, shape, solid).
+   * Rasterises the clip source, runs the effect pipeline, and replaces the sprite
+   * texture with the processed result.
+   */
+  public async applyEffectsToNonVideoClip(
+    clip: CompositorClip,
+    previewEffectsEnabled: boolean,
+  ): Promise<void> {
+    if (!previewEffectsEnabled) return;
+    const hasEffects = (clip.effects?.length ?? 0) > 0;
+    const runner = this.context.computeRunner;
+    if (!hasEffects || !runner?.isReady()) return;
+
+    const effectSpecs = buildEffectSpecs(clip.effects);
+    if (!effectSpecs || effectSpecs.length === 0) return;
+
+    const sourceBitmap = await this.getNonVideoClipBitmap(clip);
+    if (!sourceBitmap) return;
+
+    try {
+      const blurFillIndex = effectSpecs.findIndex((e) => e.type === 'blur-fill');
+      let processed: ImageBitmap | null = null;
+
+      if (blurFillIndex >= 0) {
+        const blurFill = effectSpecs[blurFillIndex] as import('~/types/generated/native-monitor/VideoEffectSpec').VideoEffectSpec & { type: 'blur-fill' };
+        const otherSpecs = effectSpecs.filter((_, i) => i !== blurFillIndex);
+        let source = sourceBitmap;
+        if (otherSpecs.length > 0) {
+          const p = await runner.applyEffects(source, otherSpecs);
+          if (p) {
+            if (source !== sourceBitmap) source.close();
+            source = p;
+          }
+        }
+        processed = await runner.applyBlurFill(
+          source,
+          this.context.width,
+          this.context.height,
+          blurFill.fg_scale,
+          blurFill.bg_scale,
+          blurFill.blur,
+          blurFill.bg_dim,
+          blurFill.bg_saturation,
+          blurFill.tint_color,
+          blurFill.tint_strength,
+          blurFill.fg_offset_y,
+        );
+        if (source !== sourceBitmap) source.close();
+      } else {
+        processed = await runner.applyEffects(sourceBitmap, effectSpecs);
+      }
+
+      if (processed) {
+        const texture = Texture.from(processed);
+        if (clip.sprite) {
+          clip.sprite.texture = texture;
+        }
+        clip.imageSource = texture.source;
+        this.context.getLayoutApplier().applySpriteLayout(processed.width, processed.height, clip);
+      }
+    } catch (err) {
+      log.warn('[ClipResourceManager] Failed to apply effects to non-video clip:', err);
+    } finally {
+      if (sourceBitmap !== clip.bitmap) {
+        sourceBitmap.close();
+      }
+    }
+  }
+
+  private async getNonVideoClipBitmap(clip: CompositorClip): Promise<ImageBitmap | null> {
+    if (clip.clipKind === 'image') {
+      return clip.bitmap ?? null;
+    }
+
+    if (clip.clipKind === 'text') {
+      if (!clip.canvas) return null;
+      return await createImageBitmap(clip.canvas);
+    }
+
+    if (clip.clipKind === 'solid') {
+      const canvas = new OffscreenCanvas(this.context.width, this.context.height);
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return null;
+      ctx.fillStyle = clip.backgroundColor ?? '#000000';
+      ctx.fillRect(0, 0, this.context.width, this.context.height);
+      return await createImageBitmap(canvas);
+    }
+
+    if (clip.clipKind === 'shape') {
+      const app = this.context.getApp?.();
+      if (!app || !clip.sprite) return null;
+      const rt = RenderTexture.create({
+        width: this.context.width,
+        height: this.context.height,
+      });
+      try {
+        app.renderer.render({ container: clip.sprite, target: rt, clear: true });
+        const pixels = app.renderer.extract.pixels(rt);
+        const canvas = new OffscreenCanvas(this.context.width, this.context.height);
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return null;
+        const imageData = ctx.createImageData(this.context.width, this.context.height);
+        const pixelBytes = ArrayBuffer.isView(pixels)
+          ? new Uint8Array(pixels.buffer, pixels.byteOffset, pixels.byteLength)
+          : new Uint8Array(0);
+        imageData.data.set(pixelBytes);
+        ctx.putImageData(imageData, 0, 0);
+        return await createImageBitmap(canvas);
+      } finally {
+        rt.destroy();
+      }
+    }
+
+    return null;
   }
 
   public ensureClipRenderTexture(texture: RenderTexture | null): RenderTexture {
@@ -321,32 +443,83 @@ export class ClipResourceManager {
             const effectSpecs = buildEffectSpecs(clip.effects);
             if (effectSpecs && effectSpecs.length > 0) {
               try {
-                const processed = await runner.applyEffects(
-                  frame,
-                  effectSpecs as import('~/types/generated/native-monitor/VideoEffectSpec').VideoEffectSpec[],
-                );
-                if (processed) {
-                  safeDispose(frame);
-                  // The compute runner pads the output around the frame so blur /
-                  // bloom can bleed beyond the original rectangle, so the bitmap
-                  // is larger than frameW×frameH. The texture source must be sized
-                  // to the *padded* bitmap — otherwise `LayoutApplier` infers
-                  // padding=0 and the content/UV mapping is offset (content drifts
-                  // into a corner with a black/transparent border). `applySpriteLayout`
-                  // re-derives the padding from this source size and frameW/frameH.
-                  const processedW = (processed as { width?: number }).width ?? frameW;
-                  const processedH = (processed as { height?: number }).height ?? frameH;
-                  if (
-                    clip.imageSource.width !== processedW ||
-                    clip.imageSource.height !== processedH
-                  ) {
-                    clip.imageSource.resize(processedW, processedH);
+                const blurFillIndex = effectSpecs.findIndex((e) => e.type === 'blur-fill');
+                if (blurFillIndex >= 0) {
+                  const blurFill = effectSpecs[blurFillIndex] as import('~/types/generated/native-monitor/VideoEffectSpec').VideoEffectSpec & { type: 'blur-fill' };
+                  const otherSpecs = effectSpecs.filter((_, i) => i !== blurFillIndex);
+                  let source: VideoFrame | ImageBitmap = frame;
+                  if (otherSpecs.length > 0) {
+                    const processed = await runner.applyEffects(source, otherSpecs);
+                    if (processed) {
+                      if (source !== frame) {
+                        safeDispose(source as unknown as VideoFrame);
+                      } else {
+                        safeDispose(frame);
+                      }
+                      source = processed;
+                    }
                   }
-                  (clip.imageSource as { resource?: unknown }).resource = processed;
-                  clip.imageSource.update();
-                  clip.lastVideoFrame = processed as unknown as VideoFrame;
-                  this.context.getLayoutApplier().applySpriteLayout(frameW, frameH, clip);
-                  return;
+                  const projectW = this.context.width;
+                  const projectH = this.context.height;
+                  const processed = await runner.applyBlurFill(
+                    source,
+                    projectW,
+                    projectH,
+                    blurFill.fg_scale,
+                    blurFill.bg_scale,
+                    blurFill.blur,
+                    blurFill.bg_dim,
+                    blurFill.bg_saturation,
+                    blurFill.tint_color,
+                    blurFill.tint_strength,
+                    blurFill.fg_offset_y,
+                  );
+                  if (source !== frame) {
+                    safeDispose(source as unknown as VideoFrame);
+                  } else {
+                    safeDispose(frame);
+                  }
+                  if (processed) {
+                    if (
+                      clip.imageSource.width !== projectW ||
+                      clip.imageSource.height !== projectH
+                    ) {
+                      clip.imageSource.resize(projectW, projectH);
+                    }
+                    (clip.imageSource as { resource?: unknown }).resource = processed;
+                    clip.imageSource.update();
+                    clip.lastVideoFrame = processed as unknown as VideoFrame;
+                    this.context.getLayoutApplier().applySpriteLayout(projectW, projectH, clip);
+                    return;
+                  }
+                } else {
+                  const processed = await runner.applyEffects(
+                    frame,
+                    effectSpecs as import('~/types/generated/native-monitor/VideoEffectSpec').VideoEffectSpec[],
+                  );
+                  if (processed) {
+                    safeDispose(frame);
+                    // The compute runner pads the output around the frame so blur /
+                    // bloom can bleed beyond the original rectangle, so the bitmap
+                    // is larger than frameW×frameH. The texture source must be sized
+                    // to the *padded* bitmap — otherwise `LayoutApplier` infers
+                    // padding=0 and the content/UV mapping is offset (content drifts
+                    // into a corner with a black/transparent border). `applySpriteLayout`
+                    // re-derives the padding from this source size and frameW/frameH.
+                    const processedW = (processed as { width?: number }).width ?? frameW;
+                    const processedH = (processed as { height?: number }).height ?? frameH;
+                    if (
+                      clip.imageSource.width !== processedW ||
+                      clip.imageSource.height !== processedH
+                    ) {
+                      clip.imageSource.resize(processedW, processedH);
+                    }
+                    (clip.imageSource as { resource?: unknown }).resource = processed;
+                    clip.imageSource.update();
+                    clip.lastVideoFrame = processed as unknown as VideoFrame;
+                    this.context.getLayoutApplier().applySpriteLayout(frameW, frameH, clip);
+                    return;
+                  }
                 }
               } catch (computeErr) {
                 log.warn(

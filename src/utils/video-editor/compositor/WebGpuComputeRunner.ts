@@ -17,6 +17,7 @@ const MAX_CHROMATIC_ABERRATION = 256.0;
 const MAX_LEVELS_GAMMA = 16.0;
 const MAX_SHARPEN = 4.0;
 const MAX_PIXELATE = 256.0;
+const MAX_BLUR_FILL_SCALE = 8.0;
 
 export interface EffectUniform {
   mode: number;
@@ -167,6 +168,93 @@ function pushMix(
   return dst;
 }
 
+/**
+ * Builds the blur-fill pass chain (all at frame dims): cover-place the source
+ * into a full-frame background plate, separably blur it, desaturate/dim/tint
+ * the plate, then composite the contain-fit sharp foreground over it.
+ * Mirror of Rust `build_blur_fill_passes`.
+ */
+export function buildBlurFillPasses(
+  frameW: number,
+  frameH: number,
+  iw: number,
+  ih: number,
+  fgScale: number,
+  bgScale: number,
+  blur: number,
+  bgDim: number,
+  bgSaturation: number,
+  tintColor: [number, number, number, number],
+  tintStrength: number,
+  fgOffsetY: number,
+): ComputePass[] {
+  const scale = spatialScale(frameH);
+  const radius = Math.max(0, Math.min(MAX_BLUR_RADIUS, blur * scale));
+  const iwf = iw;
+  const ihf = ih;
+  const passes: ComputePass[] = [];
+
+  // Cover-place the source into the background plate (ping).
+  passes.push({
+    uniform: {
+      ...uniform(20, frameW, frameH),
+      p0: iwf,
+      p1: ihf,
+      p2: Math.max(0.01, Math.min(MAX_BLUR_FILL_SCALE, bgScale)),
+    },
+    src: 'input',
+    secondary: 'input',
+    dst: 'ping',
+  });
+
+  if (radius > 0) {
+    passes.push({
+      uniform: { ...uniform(4, frameW, frameH), p0: radius },
+      src: 'ping',
+      secondary: 'ping',
+      dst: 'pong',
+    });
+    passes.push({
+      uniform: { ...uniform(14, frameW, frameH), p0: radius },
+      src: 'pong',
+      secondary: 'pong',
+      dst: 'ping',
+    });
+  }
+
+  // Adjust the (blurred) plate: desaturate, dim, tint.
+  passes.push({
+    uniform: {
+      ...uniform(22, frameW, frameH),
+      p0: Math.max(0, Math.min(1.0, bgDim)),
+      p1: Math.max(0, Math.min(2.0, bgSaturation)),
+      p2: tintColor[0] / 255.0,
+      p3: tintColor[1] / 255.0,
+      p4: tintColor[2] / 255.0,
+      p5: Math.max(0, Math.min(1.0, tintStrength)),
+    },
+    src: 'ping',
+    secondary: 'ping',
+    dst: 'pong',
+  });
+
+  // Composite the sharp foreground over the prepared background.
+  passes.push({
+    uniform: {
+      ...uniform(21, frameW, frameH),
+      p0: iwf,
+      p1: ihf,
+      p2: Math.max(0.01, Math.min(MAX_BLUR_FILL_SCALE, fgScale)),
+      p3: Math.max(-0.5, Math.min(0.5, fgOffsetY)),
+    },
+    src: 'input',
+    secondary: 'pong',
+    dst: 'owned',
+  });
+
+  return passes;
+}
+
 export function buildPasses(
   effects: VideoEffectSpec[],
   width: number,
@@ -284,7 +372,8 @@ function effectUniform(
     case 'gaussian-blur':
     case 'gaussian-blur-pixels':
     case 'bloom':
-      return null; // handled in buildPasses
+    case 'blur-fill':
+      return null; // handled in buildPasses / applyBlurFill
     case 'sharpen':
       // Bidirectional: positive sharpens, negative softens.
       // p1 = sample step in px (resolution-normalized).
@@ -516,6 +605,223 @@ export class WebGpuComputeRunner {
 
   public isReady(): boolean {
     return this.device !== null && this.pipeline !== null;
+  }
+
+  public async applyBlurFill(
+    source: VideoFrame | ImageBitmap,
+    frameW: number,
+    frameH: number,
+    fgScale: number,
+    bgScale: number,
+    blur: number,
+    bgDim: number,
+    bgSaturation: number,
+    tintColor: [number, number, number, number],
+    tintStrength: number,
+    fgOffsetY: number,
+  ): Promise<ImageBitmap | null> {
+    if (!this.device || !this.pipeline || !this.bindLayout || !this.shaderModule) {
+      return null;
+    }
+
+    let uploadSource: ImageBitmap | VideoFrame = source;
+    if (source instanceof VideoFrame) {
+      uploadSource = await createImageBitmap(source);
+    }
+
+    const origW = Math.max(
+      1,
+      Math.round(
+        uploadSource instanceof VideoFrame
+          ? Number(
+              uploadSource.displayWidth ??
+                (uploadSource as unknown as { codedWidth?: number }).codedWidth ??
+                1,
+            )
+          : uploadSource.width,
+      ),
+    );
+    const origH = Math.max(
+      1,
+      Math.round(
+        uploadSource instanceof VideoFrame
+          ? Number(
+              uploadSource.displayHeight ??
+                (uploadSource as unknown as { codedHeight?: number }).codedHeight ??
+                1,
+            )
+          : uploadSource.height,
+      ),
+    );
+
+    const passes = buildBlurFillPasses(
+      frameW,
+      frameH,
+      origW,
+      origH,
+      fgScale,
+      bgScale,
+      blur,
+      bgDim,
+      bgSaturation,
+      tintColor,
+      tintStrength,
+      fgOffsetY,
+    );
+    if (passes.length === 0) return null;
+
+    this.ensureTextures(frameW, frameH);
+
+    const inputTexture = this.device.createTexture({
+      label: 'web-blur-fill-input',
+      size: { width: origW, height: origH, depthOrArrayLayers: 1 },
+      format: 'rgba8unorm',
+      usage:
+        GPUTextureUsage.TEXTURE_BINDING |
+        GPUTextureUsage.COPY_DST |
+        GPUTextureUsage.RENDER_ATTACHMENT,
+    });
+
+    try {
+      this.device.queue.copyExternalImageToTexture(
+        { source: uploadSource, flipY: false },
+        { texture: inputTexture, origin: { x: 0, y: 0, z: 0 } },
+        { width: origW, height: origH, depthOrArrayLayers: 1 },
+      );
+
+      if (uploadSource !== source && 'close' in uploadSource) {
+        (uploadSource as ImageBitmap).close();
+      }
+
+      const inputView = inputTexture.createView();
+      const owned = this.createOutputTexture(frameW, frameH);
+
+      try {
+        this.ensureUniformBuffer(passes.length);
+
+        const staging = new ArrayBuffer(this.uniformStride * passes.length);
+        const u32 = new Uint32Array(staging);
+        const f32 = new Float32Array(staging);
+
+        for (let i = 0; i < passes.length; i++) {
+          const base = (i * this.uniformStride) / 4;
+          const u = passes[i]!.uniform;
+          u32[base + 0] = u.mode;
+          u32[base + 1] = u.width;
+          u32[base + 2] = u.height;
+          u32[base + 3] = u.seed;
+          f32[base + 4] = u.p0;
+          f32[base + 5] = u.p1;
+          f32[base + 6] = u.p2;
+          f32[base + 7] = u.p3;
+          f32[base + 8] = u.p4;
+          f32[base + 9] = u.p5;
+          f32[base + 10] = u.p6;
+          f32[base + 11] = u.p7;
+        }
+
+        this.device.queue.writeBuffer(this.uniformBuffer!, 0, staging);
+
+        const encoder = this.device.createCommandEncoder({ label: 'web-blur-fill-encoder' });
+
+        const viewOf = (buf: Buf): GPUTextureView => {
+          switch (buf) {
+            case 'input':
+              return inputView;
+            case 'ping':
+              return this.pingView!;
+            case 'pong':
+              return this.pongView!;
+            case 'aux':
+              return this.auxView!;
+            case 'owned':
+              return owned.view;
+          }
+        };
+
+        for (let index = 0; index < passes.length; index++) {
+          const pass = passes[index]!;
+          const uniformOffset = index * this.uniformStride;
+
+          const bindSrc = viewOf(pass.src);
+          const bindSecondary = viewOf(pass.secondary);
+          const targetView = viewOf(pass.dst);
+
+          let pipeline = this.pipeline;
+          if (pass.customSource) {
+            pipeline = this.getOrCreateCustomPipeline(pass.customSource);
+          }
+
+          const bindGroup = this.device.createBindGroup({
+            label: 'web-blur-fill-bind-group',
+            layout: this.bindLayout,
+            entries: [
+              { binding: 0, resource: bindSrc },
+              { binding: 1, resource: targetView },
+              {
+                binding: 2,
+                resource: { buffer: this.uniformBuffer!, offset: 0, size: UNIFORM_SIZE },
+              },
+              { binding: 3, resource: bindSecondary },
+              { binding: 4, resource: this.sampler! },
+            ],
+          });
+
+          const computePass = encoder.beginComputePass({ label: 'web-blur-fill-pass' });
+          computePass.setPipeline(pipeline);
+          computePass.setBindGroup(0, bindGroup, [uniformOffset]);
+          computePass.dispatchWorkgroups(Math.ceil(frameW / 8), Math.ceil(frameH / 8), 1);
+          computePass.end();
+        }
+
+        this.device.queue.submit([encoder.finish()]);
+
+        const bytesPerRow = Math.ceil((frameW * 4) / 256) * 256;
+        const outputBuffer = this.device.createBuffer({
+          size: bytesPerRow * frameH,
+          usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ,
+        });
+
+        try {
+          const readEncoder = this.device.createCommandEncoder();
+          readEncoder.copyTextureToBuffer(
+            { texture: owned.texture },
+            { buffer: outputBuffer, bytesPerRow, rowsPerImage: frameH },
+            { width: frameW, height: frameH, depthOrArrayLayers: 1 },
+          );
+          this.device.queue.submit([readEncoder.finish()]);
+
+          await outputBuffer.mapAsync(GPUMapMode.READ);
+          const mappedRange = outputBuffer.getMappedRange();
+          const canvas = new OffscreenCanvas(frameW, frameH);
+          const ctx = canvas.getContext('2d')!;
+          const imageData = ctx.createImageData(frameW, frameH);
+          const data = imageData.data;
+
+          const rowSize = frameW * 4;
+          if (bytesPerRow === rowSize) {
+            data.set(new Uint8ClampedArray(mappedRange, 0, rowSize * frameH));
+          } else {
+            for (let y = 0; y < frameH; y++) {
+              const srcOffset = y * bytesPerRow;
+              const dstOffset = y * rowSize;
+              data.set(new Uint8ClampedArray(mappedRange, srcOffset, rowSize), dstOffset);
+            }
+          }
+
+          ctx.putImageData(imageData, 0, 0);
+          outputBuffer.unmap();
+
+          return await createImageBitmap(canvas);
+        } finally {
+          outputBuffer.destroy();
+        }
+      } finally {
+        owned.texture.destroy();
+      }
+    } finally {
+      inputTexture.destroy();
+    }
   }
 
   public async applyEffects(

@@ -1,6 +1,6 @@
 import { createDevLogger } from '~/utils/dev-logger';
 import { TimelineActiveTracker } from './TimelineActiveTracker';
-import { Texture } from 'pixi.js';
+import { Sprite, Texture } from 'pixi.js';
 import type { Application, Filter, RenderTexture } from 'pixi.js';
 import type { WorkerVideoPayloadItem } from '../../composables/timeline/export/types';
 import type { PreviewRenderOptions } from './worker-rpc';
@@ -45,6 +45,7 @@ import { createCompositorRuntime } from './compositor/CompositorRuntimeFactory';
 import { CompositorRenderContextBuilder } from './compositor/CompositorRenderContextBuilder';
 import { PixiCompositorLifecycle } from './compositor/PixiCompositorLifecycle';
 import { WebGpuComputeRunner } from './compositor/WebGpuComputeRunner';
+import { buildEffectSpecs } from '~/effects';
 const log = createDevLogger('VideoCompositor');
 
 export interface VideoCompositorInitOptions {
@@ -169,6 +170,7 @@ export class VideoCompositor {
       resourceManager: this.resourceManager,
       videoFrameCache: this.videoFrameCache,
       computeRunner: this.computeRunner,
+      getApp: () => this.app!,
     });
 
     this.layoutApplier = runtime.layoutApplier;
@@ -217,7 +219,7 @@ export class VideoCompositor {
     return true;
   }
 
-  private prepareAdjustmentClips(active: CompositorClip[]) {
+  private async prepareAdjustmentClips(active: CompositorClip[]) {
     if (!this.app?.renderer) return;
 
     const adjustmentClips = active
@@ -245,11 +247,53 @@ export class VideoCompositor {
       }
     }
 
+    const runner = this.computeRunner;
     for (const clip of adjustmentClips) {
       clip.adjustmentSourceTexture = this.ensureClipRenderTexture(
         clip.adjustmentSourceTexture ?? null,
       );
       this.renderLowerLayersToTexture(clip.layer, clip.adjustmentSourceTexture);
+
+      const effectSpecs = buildEffectSpecs(clip.effects);
+      if (
+        this.previewEffectsEnabled &&
+        effectSpecs &&
+        effectSpecs.length > 0 &&
+        runner?.isReady()
+      ) {
+        try {
+          const pixels = this.app.renderer.extract.pixels(clip.adjustmentSourceTexture);
+          const canvas = new OffscreenCanvas(this.width, this.height);
+          const ctx = canvas.getContext('2d');
+          if (ctx) {
+            const imageData = ctx.createImageData(this.width, this.height);
+            const pixelBytes = ArrayBuffer.isView(pixels)
+              ? new Uint8Array(pixels.buffer, pixels.byteOffset, pixels.byteLength)
+              : new Uint8Array(0);
+            imageData.data.set(pixelBytes);
+            ctx.putImageData(imageData, 0, 0);
+            const bitmap = await createImageBitmap(canvas);
+            try {
+              const processed = await runner.applyEffects(bitmap, effectSpecs);
+              if (processed) {
+                const texture = Texture.from(processed);
+                clip.adjustmentSourceTexture = this.ensureClipRenderTexture(null);
+                this.app.renderer.render({
+                  container: new Sprite(texture),
+                  target: clip.adjustmentSourceTexture,
+                  clear: true,
+                });
+                texture.destroy();
+              }
+            } finally {
+              bitmap.close();
+            }
+          }
+        } catch (err) {
+          log.warn('[VideoCompositor] Adjustment WebGPU effects failed:', err);
+        }
+      }
+
       if (clip.sprite) clip.sprite.texture = clip.adjustmentSourceTexture;
     }
   }

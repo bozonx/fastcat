@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import {
   buildPasses,
+  buildBlurFillPasses,
   WebGpuComputeRunner,
 } from '~/utils/video-editor/compositor/WebGpuComputeRunner';
 import type { VideoEffectSpec } from '~/types/generated/native-monitor/VideoEffectSpec';
@@ -251,5 +252,53 @@ describe('WebGpuComputeRunner', () => {
     expect(runner.isReady()).toBe(false);
 
     vi.unstubAllGlobals();
+  });
+
+  it('returns null from applyBlurFill when not initialized', async () => {
+    const runner = new WebGpuComputeRunner();
+    const bitmap = { width: 4, height: 4 } as unknown as ImageBitmap;
+    const result = await runner.applyBlurFill(bitmap, 1920, 1080, 1, 1, 0, 1, 1, [0, 0, 0, 0], 0, 0);
+    expect(result).toBeNull();
+  });
+});
+
+describe('buildBlurFillPasses', () => {
+  it('builds the blur-fill pass chain with all stages', () => {
+    const passes = buildBlurFillPasses(1920, 1080, 1280, 720, 1, 1.2, 15, 0.5, 0.8, [255, 0, 0, 255], 0.3, 0.1);
+    expect(passes.length).toBe(5);
+    // Cover-place background (mode 20)
+    expect(passes[0]!.uniform.mode).toBe(20);
+    expect(passes[0]!.uniform.p0).toBe(1280);
+    expect(passes[0]!.uniform.p1).toBe(720);
+    expect(passes[0]!.uniform.p2).toBe(1.2);
+    // Horizontal blur (mode 4)
+    expect(passes[1]!.uniform.mode).toBe(4);
+    // Vertical blur (mode 14)
+    expect(passes[2]!.uniform.mode).toBe(14);
+    // Background adjust (mode 22)
+    expect(passes[3]!.uniform.mode).toBe(22);
+    expect(passes[3]!.uniform.p0).toBe(0.5);
+    expect(passes[3]!.uniform.p1).toBe(0.8);
+    expect(passes[3]!.uniform.p5).toBe(0.3);
+    // Compose foreground (mode 21)
+    expect(passes[4]!.uniform.mode).toBe(21);
+    expect(passes[4]!.uniform.p0).toBe(1280);
+    expect(passes[4]!.uniform.p1).toBe(720);
+    expect(passes[4]!.uniform.p2).toBe(1);
+    expect(passes[4]!.uniform.p3).toBe(0.1);
+  });
+
+  it('skips blur passes when radius is zero', () => {
+    const passes = buildBlurFillPasses(1920, 1080, 1280, 720, 1, 1, 0, 1, 1, [0, 0, 0, 0], 0, 0);
+    expect(passes.length).toBe(3);
+    expect(passes[0]!.uniform.mode).toBe(20);
+    expect(passes[1]!.uniform.mode).toBe(22);
+    expect(passes[2]!.uniform.mode).toBe(21);
+  });
+
+  it('clamps bg_scale and fg_scale to MAX_BLUR_FILL_SCALE', () => {
+    const passes = buildBlurFillPasses(1920, 1080, 1280, 720, 1, 20, 0, 1, 1, [0, 0, 0, 0], 0, 0);
+    expect(passes[0]!.uniform.p2).toBe(8.0);
+    expect(passes[2]!.uniform.p2).toBe(1.0);
   });
 });

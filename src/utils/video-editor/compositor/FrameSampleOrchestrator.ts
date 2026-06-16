@@ -22,6 +22,7 @@ export interface FrameSampleOrchestratorParams {
   syncTransitionFilter: (clip: CompositorClip, timeUs: number) => void;
   computeTransitionOpacity: (clip: CompositorClip, timeUs: number) => number;
   applyClipEffects: (clip: CompositorClip) => void;
+  applyWebGpuClipEffects?: (clip: CompositorClip) => Promise<void>;
   drawHudClip: (clip: CompositorClip, timeUs: number) => void;
   drawShapeClip: (clip: CompositorClip, size: { width: number; height: number }) => void;
   drawTextClip: (clip: CompositorClip, size: { width: number; height: number }) => void;
@@ -115,6 +116,20 @@ export class FrameSampleOrchestrator {
     // had no maskState.lastVideoFrame yet and the mask filter never applied correctly.
     for (const clip of params.activeClips) {
       params.applyClipEffects(clip);
+    }
+
+    // WebGPU compute effects for non-video clips (image, text, shape, solid).
+    if (params.applyWebGpuClipEffects) {
+      for (const clip of params.activeClips) {
+        if (
+          clip.clipKind === 'image' ||
+          clip.clipKind === 'text' ||
+          clip.clipKind === 'shape' ||
+          clip.clipKind === 'solid'
+        ) {
+          await params.applyWebGpuClipEffects(clip);
+        }
+      }
     }
 
     return { updatedClips };

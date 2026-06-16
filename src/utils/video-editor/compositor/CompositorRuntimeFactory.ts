@@ -20,6 +20,7 @@ import { TimelineTrackRebinder } from './TimelineTrackRebinder';
 import { TimelineUpdateLifecycle } from './TimelineUpdateLifecycle';
 import type { VideoFrameCache } from './VideoFrameCache';
 import type { WebGpuComputeRunner } from './WebGpuComputeRunner';
+import type { Application } from 'pixi.js';
 
 export interface CompositorRuntimeFactoryParams {
   width: number;
@@ -28,6 +29,7 @@ export interface CompositorRuntimeFactoryParams {
   resourceManager: ResourceManager;
   videoFrameCache: VideoFrameCache;
   computeRunner?: WebGpuComputeRunner;
+  getApp?: () => Application;
 }
 
 export interface CompositorRuntime {
@@ -60,6 +62,7 @@ export function createCompositorRuntime(params: CompositorRuntimeFactoryParams):
     resourceManager,
     videoFrameCache,
     computeRunner,
+    getApp,
   } = params;
   const layoutApplier = new LayoutApplier({ width, height });
   const textRenderer = new TextRenderer();
@@ -120,6 +123,7 @@ export function createCompositorRuntime(params: CompositorRuntimeFactoryParams):
       canvasFallbackRenderer,
       getLayoutApplier: () => layoutApplier,
       computeRunner,
+      getApp,
     }),
   };
 }
