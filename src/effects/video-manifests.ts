@@ -119,6 +119,34 @@ export const VIDEO_EFFECT_PARAM_RANGES = {
     renderMin: 0,
     renderMax: 1,
   },
+  // Blur-fill fore/background scale (ratio; 1 = 100%). Render ceiling mirrors
+  // the Rust `MAX_BLUR_FILL_SCALE`.
+  fillScale: {
+    uiMin: 0.5,
+    uiMax: 2,
+    animationMin: 0.1,
+    animationMax: 8,
+    renderMin: 0.1,
+    renderMax: 8,
+  },
+  // Blur-fill background saturation (1 = normal, 0 = grayscale, 2 = boosted).
+  saturation: {
+    uiMin: 0,
+    uiMax: 2,
+    animationMin: 0,
+    animationMax: 2,
+    renderMin: 0,
+    renderMax: 2,
+  },
+  // Blur-fill foreground vertical offset as a fraction of frame height.
+  offset: {
+    uiMin: -0.5,
+    uiMax: 0.5,
+    animationMin: -0.5,
+    animationMax: 0.5,
+    renderMin: -0.5,
+    renderMax: 0.5,
+  },
 } satisfies Record<string, EffectParamRange>;
 
 const UINT32_MAX = 4_294_967_295;
@@ -201,6 +229,7 @@ export const videoEffectManifests: VideoEffectManifest[] = [
         min: VIDEO_EFFECT_PARAM_RANGES.colorMultiplier.uiMin,
         max: VIDEO_EFFECT_PARAM_RANGES.colorMultiplier.uiMax,
         step: 0.05,
+        defaultValue: 1,
         format: percentFromOne,
       },
       {
@@ -210,6 +239,7 @@ export const videoEffectManifests: VideoEffectManifest[] = [
         min: VIDEO_EFFECT_PARAM_RANGES.colorMultiplier.uiMin,
         max: VIDEO_EFFECT_PARAM_RANGES.colorMultiplier.uiMax,
         step: 0.05,
+        defaultValue: 1,
         format: percentFromOne,
       },
       {
@@ -219,6 +249,7 @@ export const videoEffectManifests: VideoEffectManifest[] = [
         min: VIDEO_EFFECT_PARAM_RANGES.colorMultiplier.uiMin,
         max: VIDEO_EFFECT_PARAM_RANGES.colorMultiplier.uiMax,
         step: 0.05,
+        defaultValue: 1,
         format: percentFromOne,
       },
       {
@@ -228,6 +259,7 @@ export const videoEffectManifests: VideoEffectManifest[] = [
         min: VIDEO_EFFECT_PARAM_RANGES.hueDegrees.uiMin,
         max: VIDEO_EFFECT_PARAM_RANGES.hueDegrees.uiMax,
         step: 1,
+        defaultValue: 0,
         format: degrees,
       },
       {
@@ -237,6 +269,7 @@ export const videoEffectManifests: VideoEffectManifest[] = [
         min: VIDEO_EFFECT_PARAM_RANGES.intensity.uiMin,
         max: VIDEO_EFFECT_PARAM_RANGES.intensity.uiMax,
         step: 0.01,
+        defaultValue: 1,
         format: percent,
       },
     ],
@@ -316,6 +349,7 @@ export const videoEffectManifests: VideoEffectManifest[] = [
         min: VIDEO_EFFECT_PARAM_RANGES.blurRadius.uiMin,
         max: VIDEO_EFFECT_PARAM_RANGES.blurRadius.uiMax,
         step: 1,
+        defaultValue: 8,
         format: pixels,
       },
       {
@@ -330,6 +364,7 @@ export const videoEffectManifests: VideoEffectManifest[] = [
         min: VIDEO_EFFECT_PARAM_RANGES.intensity.uiMin,
         max: VIDEO_EFFECT_PARAM_RANGES.intensity.uiMax,
         step: 0.01,
+        defaultValue: 1,
         format: percent,
       },
     ],
@@ -344,6 +379,105 @@ export const videoEffectManifests: VideoEffectManifest[] = [
         mix: clampRange(
           finiteNumber(values.mix ?? values.intensity, 1),
           VIDEO_EFFECT_PARAM_RANGES.intensity,
+        ),
+      }),
+    ],
+  },
+  {
+    type: 'blur-fill',
+    name: 'Blur Fill',
+    nameKey: 'fastcat.effects.video.blurFill.name',
+    description:
+      'Fill the frame with a blurred, zoomed copy of the video — show vertical clips in a landscape frame (and vice versa)',
+    descriptionKey: 'fastcat.effects.video.blurFill.description',
+    icon: 'i-heroicons-rectangle-group',
+    target: 'video',
+    renderer: 'wgsl-compute',
+    defaultValues: {
+      fgScale: 1,
+      bgScale: 1.1,
+      blur: 40,
+      bgDim: 0.85,
+      bgSaturation: 1,
+      fgOffsetY: 0,
+    },
+    paramRanges: {
+      fgScale: VIDEO_EFFECT_PARAM_RANGES.fillScale,
+      bgScale: VIDEO_EFFECT_PARAM_RANGES.fillScale,
+      blur: VIDEO_EFFECT_PARAM_RANGES.blurRadius,
+      bgDim: VIDEO_EFFECT_PARAM_RANGES.unit,
+      bgSaturation: VIDEO_EFFECT_PARAM_RANGES.saturation,
+      fgOffsetY: VIDEO_EFFECT_PARAM_RANGES.offset,
+    },
+    controls: [
+      {
+        kind: 'slider',
+        key: 'fgScale',
+        labelKey: 'fastcat.effects.video.blurFill.params.fgScale',
+        min: VIDEO_EFFECT_PARAM_RANGES.fillScale.uiMin,
+        max: VIDEO_EFFECT_PARAM_RANGES.fillScale.uiMax,
+        step: 0.01,
+        format: percent,
+      },
+      {
+        kind: 'slider',
+        key: 'fgOffsetY',
+        labelKey: 'fastcat.effects.video.blurFill.params.fgOffsetY',
+        min: VIDEO_EFFECT_PARAM_RANGES.offset.uiMin,
+        max: VIDEO_EFFECT_PARAM_RANGES.offset.uiMax,
+        step: 0.01,
+        format: percent,
+      },
+      {
+        kind: 'slider',
+        key: 'bgScale',
+        labelKey: 'fastcat.effects.video.blurFill.params.bgScale',
+        min: VIDEO_EFFECT_PARAM_RANGES.fillScale.uiMin,
+        max: VIDEO_EFFECT_PARAM_RANGES.fillScale.uiMax,
+        step: 0.01,
+        format: percent,
+      },
+      {
+        kind: 'slider',
+        key: 'blur',
+        labelKey: 'fastcat.effects.video.blurFill.params.blur',
+        min: VIDEO_EFFECT_PARAM_RANGES.blurRadius.uiMin,
+        max: VIDEO_EFFECT_PARAM_RANGES.blurRadius.uiMax,
+        step: 1,
+        format: pixels,
+      },
+      {
+        kind: 'slider',
+        key: 'bgDim',
+        labelKey: 'fastcat.effects.video.blurFill.params.bgDim',
+        min: VIDEO_EFFECT_PARAM_RANGES.unit.uiMin,
+        max: VIDEO_EFFECT_PARAM_RANGES.unit.uiMax,
+        step: 0.01,
+        format: percent,
+      },
+      {
+        kind: 'slider',
+        key: 'bgSaturation',
+        labelKey: 'fastcat.effects.video.blurFill.params.bgSaturation',
+        min: VIDEO_EFFECT_PARAM_RANGES.saturation.uiMin,
+        max: VIDEO_EFFECT_PARAM_RANGES.saturation.uiMax,
+        step: 0.01,
+        format: percent,
+      },
+    ],
+    toEffectSpecs: (values) => [
+      spec('blur-fill', {
+        fg_scale: clampRange(finiteNumber(values.fgScale, 1), VIDEO_EFFECT_PARAM_RANGES.fillScale),
+        bg_scale: clampRange(finiteNumber(values.bgScale, 1.1), VIDEO_EFFECT_PARAM_RANGES.fillScale),
+        blur: clampRange(finiteNumber(values.blur, 40), VIDEO_EFFECT_PARAM_RANGES.blurRadius),
+        bg_dim: clampRange(finiteNumber(values.bgDim, 0.85), VIDEO_EFFECT_PARAM_RANGES.unit),
+        bg_saturation: clampRange(
+          finiteNumber(values.bgSaturation, 1),
+          VIDEO_EFFECT_PARAM_RANGES.saturation,
+        ),
+        fg_offset_y: clampRange(
+          finiteNumber(values.fgOffsetY, 0),
+          VIDEO_EFFECT_PARAM_RANGES.offset,
         ),
       }),
     ],
@@ -379,6 +513,7 @@ export const videoEffectManifests: VideoEffectManifest[] = [
         min: VIDEO_EFFECT_PARAM_RANGES.unit.uiMin,
         max: VIDEO_EFFECT_PARAM_RANGES.unit.uiMax,
         step: 0.01,
+        defaultValue: 0.75,
         format: percent,
       },
       {
@@ -388,6 +523,7 @@ export const videoEffectManifests: VideoEffectManifest[] = [
         min: VIDEO_EFFECT_PARAM_RANGES.bloomStrength.uiMin,
         max: VIDEO_EFFECT_PARAM_RANGES.bloomStrength.uiMax,
         step: 0.05,
+        defaultValue: 0.6,
         format: percent,
       },
       {
@@ -397,6 +533,7 @@ export const videoEffectManifests: VideoEffectManifest[] = [
         min: VIDEO_EFFECT_PARAM_RANGES.bloomRadius.uiMin,
         max: VIDEO_EFFECT_PARAM_RANGES.bloomRadius.uiMax,
         step: 1,
+        defaultValue: 12,
         format: pixels,
       },
       {
@@ -406,6 +543,7 @@ export const videoEffectManifests: VideoEffectManifest[] = [
         min: VIDEO_EFFECT_PARAM_RANGES.bloomKnee.uiMin,
         max: VIDEO_EFFECT_PARAM_RANGES.bloomKnee.uiMax,
         step: 0.01,
+        defaultValue: 0.5,
         format: percent,
       },
       {
@@ -415,6 +553,7 @@ export const videoEffectManifests: VideoEffectManifest[] = [
         min: VIDEO_EFFECT_PARAM_RANGES.intensity.uiMin,
         max: VIDEO_EFFECT_PARAM_RANGES.intensity.uiMax,
         step: 0.01,
+        defaultValue: 1,
         format: percent,
       },
     ],
@@ -462,6 +601,7 @@ export const videoEffectManifests: VideoEffectManifest[] = [
         min: VIDEO_EFFECT_PARAM_RANGES.sharpenAmount.uiMin,
         max: VIDEO_EFFECT_PARAM_RANGES.sharpenAmount.uiMax,
         step: 0.01,
+        defaultValue: 0,
         format: percent,
       },
       {
@@ -471,6 +611,7 @@ export const videoEffectManifests: VideoEffectManifest[] = [
         min: VIDEO_EFFECT_PARAM_RANGES.intensity.uiMin,
         max: VIDEO_EFFECT_PARAM_RANGES.intensity.uiMax,
         step: 0.01,
+        defaultValue: 1,
         format: percent,
       },
     ],
@@ -512,6 +653,7 @@ export const videoEffectManifests: VideoEffectManifest[] = [
         min: VIDEO_EFFECT_PARAM_RANGES.pixelSize.uiMin,
         max: VIDEO_EFFECT_PARAM_RANGES.pixelSize.uiMax,
         step: 1,
+        defaultValue: 8,
         format: pixels,
       },
       {
@@ -521,6 +663,7 @@ export const videoEffectManifests: VideoEffectManifest[] = [
         min: VIDEO_EFFECT_PARAM_RANGES.intensity.uiMin,
         max: VIDEO_EFFECT_PARAM_RANGES.intensity.uiMax,
         step: 0.01,
+        defaultValue: 1,
         format: percent,
       },
     ],
@@ -566,6 +709,7 @@ export const videoEffectManifests: VideoEffectManifest[] = [
         min: VIDEO_EFFECT_PARAM_RANGES.unit.uiMin,
         max: VIDEO_EFFECT_PARAM_RANGES.unit.uiMax,
         step: 0.01,
+        defaultValue: 0.35,
         format: percent,
       },
       {
@@ -575,6 +719,7 @@ export const videoEffectManifests: VideoEffectManifest[] = [
         min: VIDEO_EFFECT_PARAM_RANGES.unit.uiMin,
         max: VIDEO_EFFECT_PARAM_RANGES.unit.uiMax,
         step: 0.01,
+        defaultValue: 0.75,
         format: percent,
       },
       {
@@ -584,6 +729,7 @@ export const videoEffectManifests: VideoEffectManifest[] = [
         min: VIDEO_EFFECT_PARAM_RANGES.unit.uiMin,
         max: VIDEO_EFFECT_PARAM_RANGES.unit.uiMax,
         step: 0.01,
+        defaultValue: 0.35,
         format: percent,
       },
       {
@@ -593,6 +739,7 @@ export const videoEffectManifests: VideoEffectManifest[] = [
         min: VIDEO_EFFECT_PARAM_RANGES.intensity.uiMin,
         max: VIDEO_EFFECT_PARAM_RANGES.intensity.uiMax,
         step: 0.01,
+        defaultValue: 1,
         format: percent,
       },
     ],
@@ -668,6 +815,7 @@ export const videoEffectManifests: VideoEffectManifest[] = [
         min: VIDEO_EFFECT_PARAM_RANGES.unit.uiMin,
         max: VIDEO_EFFECT_PARAM_RANGES.unit.uiMax,
         step: 0.01,
+        defaultValue: 0.08,
         format: percent,
       },
       {
@@ -685,6 +833,7 @@ export const videoEffectManifests: VideoEffectManifest[] = [
         min: 1,
         max: 100,
         step: 1,
+        defaultValue: 10,
         showIf: (values) => values.noiseType === 'perlin' || values.noiseType === 'simplex',
       },
       {
@@ -694,6 +843,7 @@ export const videoEffectManifests: VideoEffectManifest[] = [
         min: VIDEO_EFFECT_PARAM_RANGES.intensity.uiMin,
         max: VIDEO_EFFECT_PARAM_RANGES.intensity.uiMax,
         step: 0.01,
+        defaultValue: 1,
         format: percent,
       },
     ],
@@ -737,6 +887,7 @@ export const videoEffectManifests: VideoEffectManifest[] = [
         min: VIDEO_EFFECT_PARAM_RANGES.chromaticAmount.uiMin,
         max: VIDEO_EFFECT_PARAM_RANGES.chromaticAmount.uiMax,
         step: 0.5,
+        defaultValue: 4,
         format: pixels,
       },
       {
@@ -746,6 +897,7 @@ export const videoEffectManifests: VideoEffectManifest[] = [
         min: VIDEO_EFFECT_PARAM_RANGES.hueDegrees.uiMin,
         max: VIDEO_EFFECT_PARAM_RANGES.hueDegrees.uiMax,
         step: 1,
+        defaultValue: 0,
         format: degrees,
       },
       {
@@ -755,6 +907,7 @@ export const videoEffectManifests: VideoEffectManifest[] = [
         min: VIDEO_EFFECT_PARAM_RANGES.intensity.uiMin,
         max: VIDEO_EFFECT_PARAM_RANGES.intensity.uiMax,
         step: 0.01,
+        defaultValue: 1,
         format: percent,
       },
     ],
@@ -796,6 +949,7 @@ export const videoEffectManifests: VideoEffectManifest[] = [
         min: VIDEO_EFFECT_PARAM_RANGES.hueDegrees.uiMin,
         max: VIDEO_EFFECT_PARAM_RANGES.hueDegrees.uiMax,
         step: 1,
+        defaultValue: 0,
         format: degrees,
       },
     ],
@@ -838,6 +992,7 @@ export const videoEffectManifests: VideoEffectManifest[] = [
         min: VIDEO_EFFECT_PARAM_RANGES.unit.uiMin,
         max: VIDEO_EFFECT_PARAM_RANGES.unit.uiMax,
         step: 0.01,
+        defaultValue: 0,
         format: percent,
       },
       {
@@ -847,6 +1002,7 @@ export const videoEffectManifests: VideoEffectManifest[] = [
         min: VIDEO_EFFECT_PARAM_RANGES.unit.uiMin,
         max: VIDEO_EFFECT_PARAM_RANGES.unit.uiMax,
         step: 0.01,
+        defaultValue: 1,
         format: percent,
       },
       {
@@ -856,6 +1012,7 @@ export const videoEffectManifests: VideoEffectManifest[] = [
         min: VIDEO_EFFECT_PARAM_RANGES.gamma.uiMin,
         max: VIDEO_EFFECT_PARAM_RANGES.gamma.uiMax,
         step: 0.05,
+        defaultValue: 1,
         format: decimal,
       },
       {
@@ -865,6 +1022,7 @@ export const videoEffectManifests: VideoEffectManifest[] = [
         min: VIDEO_EFFECT_PARAM_RANGES.unit.uiMin,
         max: VIDEO_EFFECT_PARAM_RANGES.unit.uiMax,
         step: 0.01,
+        defaultValue: 0,
         format: percent,
       },
       {
@@ -874,6 +1032,7 @@ export const videoEffectManifests: VideoEffectManifest[] = [
         min: VIDEO_EFFECT_PARAM_RANGES.unit.uiMin,
         max: VIDEO_EFFECT_PARAM_RANGES.unit.uiMax,
         step: 0.01,
+        defaultValue: 1,
         format: percent,
       },
       {
@@ -883,6 +1042,7 @@ export const videoEffectManifests: VideoEffectManifest[] = [
         min: VIDEO_EFFECT_PARAM_RANGES.intensity.uiMin,
         max: VIDEO_EFFECT_PARAM_RANGES.intensity.uiMax,
         step: 0.01,
+        defaultValue: 1,
         format: percent,
       },
     ],
@@ -948,6 +1108,7 @@ export const videoEffectManifests: VideoEffectManifest[] = [
         min: VIDEO_EFFECT_PARAM_RANGES.unit.uiMin,
         max: VIDEO_EFFECT_PARAM_RANGES.unit.uiMax,
         step: 0.01,
+        defaultValue: 0.1,
         format: percent,
       },
       {
@@ -957,6 +1118,7 @@ export const videoEffectManifests: VideoEffectManifest[] = [
         min: VIDEO_EFFECT_PARAM_RANGES.unit.uiMin,
         max: VIDEO_EFFECT_PARAM_RANGES.unit.uiMax,
         step: 0.01,
+        defaultValue: 0.1,
         format: percent,
       },
     ],
