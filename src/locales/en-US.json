@@ -358,7 +358,9 @@
             "bgScale": "Background Scale",
             "blur": "Background Blur",
             "bgDim": "Background Brightness",
-            "bgSaturation": "Background Saturation"
+            "bgSaturation": "Background Saturation",
+            "tintColor": "Background Tint",
+            "tintStrength": "Tint Strength"
           }
         },
         "color-adjustment": {

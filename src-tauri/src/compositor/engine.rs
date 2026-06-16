@@ -528,6 +528,8 @@ impl Compositor {
                     blur,
                     bg_dim,
                     bg_saturation,
+                    tint_color,
+                    tint_strength,
                     fg_offset_y,
                 } = &layer.effects[bf_idx]
                 {
@@ -558,6 +560,8 @@ impl Compositor {
                         *blur,
                         *bg_dim,
                         *bg_saturation,
+                        *tint_color,
+                        *tint_strength,
                         *fg_offset_y,
                     )?;
                     let mut next = layer.clone();
@@ -1003,6 +1007,8 @@ impl Compositor {
         blur: f32,
         bg_dim: f32,
         bg_saturation: f32,
+        tint_color: [u8; 4],
+        tint_strength: f32,
         fg_offset_y: f32,
     ) -> Result<Arc<crate::media::SharedTexture>> {
         let cache = self.pipeline_caches.get(&dev_id);
@@ -1012,7 +1018,7 @@ impl Compositor {
             .or_insert_with(|| EffectPipeline::new(device, cache));
         match pipeline.apply_blur_fill(
             device, queue, source, frame_w, frame_h, fg_scale, bg_scale, blur, bg_dim,
-            bg_saturation, fg_offset_y,
+            bg_saturation, tint_color, tint_strength, fg_offset_y,
         ) {
             Ok(texture) => Ok(texture),
             Err(error) => {

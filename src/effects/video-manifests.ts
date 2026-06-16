@@ -399,6 +399,8 @@ export const videoEffectManifests: VideoEffectManifest[] = [
       blur: 40,
       bgDim: 0.85,
       bgSaturation: 1,
+      tintColor: '#000000',
+      tintStrength: 0,
       fgOffsetY: 0,
     },
     paramRanges: {
@@ -407,6 +409,7 @@ export const videoEffectManifests: VideoEffectManifest[] = [
       blur: VIDEO_EFFECT_PARAM_RANGES.blurRadius,
       bgDim: VIDEO_EFFECT_PARAM_RANGES.unit,
       bgSaturation: VIDEO_EFFECT_PARAM_RANGES.saturation,
+      tintStrength: VIDEO_EFFECT_PARAM_RANGES.unit,
       fgOffsetY: VIDEO_EFFECT_PARAM_RANGES.offset,
     },
     controls: [
@@ -464,23 +467,60 @@ export const videoEffectManifests: VideoEffectManifest[] = [
         step: 0.01,
         format: percent,
       },
+      {
+        kind: 'color',
+        key: 'tintColor',
+        labelKey: 'fastcat.effects.video.blurFill.params.tintColor',
+      },
+      {
+        kind: 'slider',
+        key: 'tintStrength',
+        labelKey: 'fastcat.effects.video.blurFill.params.tintStrength',
+        min: VIDEO_EFFECT_PARAM_RANGES.unit.uiMin,
+        max: VIDEO_EFFECT_PARAM_RANGES.unit.uiMax,
+        step: 0.01,
+        format: percent,
+      },
     ],
-    toEffectSpecs: (values) => [
-      spec('blur-fill', {
-        fg_scale: clampRange(finiteNumber(values.fgScale, 1), VIDEO_EFFECT_PARAM_RANGES.fillScale),
-        bg_scale: clampRange(finiteNumber(values.bgScale, 1.1), VIDEO_EFFECT_PARAM_RANGES.fillScale),
-        blur: clampRange(finiteNumber(values.blur, 40), VIDEO_EFFECT_PARAM_RANGES.blurRadius),
-        bg_dim: clampRange(finiteNumber(values.bgDim, 0.85), VIDEO_EFFECT_PARAM_RANGES.unit),
-        bg_saturation: clampRange(
-          finiteNumber(values.bgSaturation, 1),
-          VIDEO_EFFECT_PARAM_RANGES.saturation,
-        ),
-        fg_offset_y: clampRange(
-          finiteNumber(values.fgOffsetY, 0),
-          VIDEO_EFFECT_PARAM_RANGES.offset,
-        ),
-      }),
-    ],
+    toEffectSpecs: (values) => {
+      const hex = (typeof values.tintColor === 'string' ? values.tintColor : '#000000').replace(
+        '#',
+        '',
+      );
+      const tintColor: [number, number, number, number] = [
+        parseInt(hex.substring(0, 2), 16) || 0,
+        parseInt(hex.substring(2, 4), 16) || 0,
+        parseInt(hex.substring(4, 6), 16) || 0,
+        255,
+      ];
+      return [
+        spec('blur-fill', {
+          fg_scale: clampRange(
+            finiteNumber(values.fgScale, 1),
+            VIDEO_EFFECT_PARAM_RANGES.fillScale,
+          ),
+          bg_scale: clampRange(
+            finiteNumber(values.bgScale, 1.1),
+            VIDEO_EFFECT_PARAM_RANGES.fillScale,
+          ),
+          blur: clampRange(finiteNumber(values.blur, 40), VIDEO_EFFECT_PARAM_RANGES.blurRadius),
+          bg_dim: clampRange(finiteNumber(values.bgDim, 0.85), VIDEO_EFFECT_PARAM_RANGES.unit),
+          bg_saturation: clampRange(
+            finiteNumber(values.bgSaturation, 1),
+            VIDEO_EFFECT_PARAM_RANGES.saturation,
+          ),
+          tint_color: tintColor,
+          tint_strength: clampRange(
+            finiteNumber(values.tintStrength, 0),
+            VIDEO_EFFECT_PARAM_RANGES.unit,
+          ),
+          fg_offset_y: clampRange(
+            finiteNumber(values.fgOffsetY, 0),
+            VIDEO_EFFECT_PARAM_RANGES.offset,
+          ),
+        }),
+      ];
+    },
   },
   {
     type: 'bloom',

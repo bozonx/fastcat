@@ -153,6 +153,8 @@ describe('unified video effect manifests', () => {
           blur: 60,
           bgDim: 0.7,
           bgSaturation: 1.2,
+          tintColor: '#0000ff',
+          tintStrength: 0.5,
           fgOffsetY: -0.1,
         },
       ]),
@@ -164,6 +166,8 @@ describe('unified video effect manifests', () => {
         blur: 60,
         bg_dim: 0.7,
         bg_saturation: 1.2,
+        tint_color: [0, 0, 255, 255],
+        tint_strength: 0.5,
         fg_offset_y: -0.1,
       },
     ]);
@@ -179,6 +183,8 @@ describe('unified video effect manifests', () => {
         blur: 40,
         bg_dim: 0.85,
         bg_saturation: 1,
+        tint_color: [0, 0, 0, 255],
+        tint_strength: 0,
         fg_offset_y: 0,
       },
     ]);

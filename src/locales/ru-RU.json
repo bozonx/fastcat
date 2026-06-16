@@ -358,7 +358,9 @@
             "bgScale": "Масштаб фона",
             "blur": "Размытие фона",
             "bgDim": "Яркость фона",
-            "bgSaturation": "Насыщенность фона"
+            "bgSaturation": "Насыщенность фона",
+            "tintColor": "Оттенок фона",
+            "tintStrength": "Сила оттенка"
           }
         },
         "color-adjustment": {

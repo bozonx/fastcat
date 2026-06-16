@@ -35,6 +35,11 @@ fn default_blur_fill_blur() -> f32 {
     40.0
 }
 
+/// Default blur-fill tint colour (black; only matters once `tint_strength` > 0).
+fn default_tint_color() -> [u8; 4] {
+    [0, 0, 0, 255]
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, ts_rs::TS)]
 #[serde(tag = "type", rename_all = "kebab-case")]
 #[ts(
@@ -156,6 +161,13 @@ pub enum EffectSpec {
         /// Background saturation; 1.0 = normal, 0 = grayscale.
         #[serde(default = "default_mix")]
         bg_saturation: f32,
+        /// Background tint colour (RGBA; alpha ignored). Mixed into the
+        /// background by `tint_strength`.
+        #[serde(default = "default_tint_color")]
+        tint_color: [u8; 4],
+        /// Background tint strength; 0 = no tint, 1 = fully the tint colour.
+        #[serde(default)]
+        tint_strength: f32,
         /// Foreground vertical offset as a fraction of frame height (−0.5..0.5).
         #[serde(default)]
         fg_offset_y: f32,
@@ -875,6 +887,8 @@ impl EffectPipeline {
         blur: f32,
         bg_dim: f32,
         bg_saturation: f32,
+        tint_color: [u8; 4],
+        tint_strength: f32,
         fg_offset_y: f32,
     ) -> Result<Arc<crate::media::SharedTexture>> {
         let (iw, ih) = match source {
@@ -920,6 +934,8 @@ impl EffectPipeline {
             blur,
             bg_dim,
             bg_saturation,
+            tint_color,
+            tint_strength,
             fg_offset_y,
         );
 
@@ -1232,9 +1248,9 @@ fn push_mix(
 
 /// Builds the blur-fill pass chain (all at frame dims): cover-place the source
 /// into a full-frame background plate (mode 20), separably blur it (modes 4/14,
-/// skipped when the radius is zero), then composite the contain-fit sharp
-/// foreground over the dimmed/desaturated background (mode 21). `blur` is the
-/// raw radius in px @1080p; it is height-normalized and clamped here.
+/// skipped when the radius is zero), desaturate/dim/tint the plate (mode 22),
+/// then composite the contain-fit sharp foreground over it (mode 21). `blur` is
+/// the raw radius in px @1080p; it is height-normalized and clamped here.
 #[allow(clippy::too_many_arguments)]
 fn build_blur_fill_passes(
     frame_w: u32,
@@ -1246,12 +1262,15 @@ fn build_blur_fill_passes(
     blur: f32,
     bg_dim: f32,
     bg_saturation: f32,
+    tint_color: [u8; 4],
+    tint_strength: f32,
     fg_offset_y: f32,
 ) -> Vec<EffectPass> {
     let radius = (blur * spatial_scale(frame_h)).clamp(0.0, MAX_BLUR_RADIUS);
     let iwf = iw as f32;
     let ihf = ih as f32;
     let mut passes: Vec<EffectPass> = Vec::new();
+    // Cover-place the source into the background plate (Ping).
     passes.push(EffectPass {
         uniform: EffectUniform {
             mode: 20,
@@ -1298,6 +1317,27 @@ fn build_blur_fill_passes(
             dst: Buf::Ping,
         });
     }
+    // Adjust the (blurred) plate in Ping → Pong: desaturate, dim, tint.
+    passes.push(EffectPass {
+        uniform: EffectUniform {
+            mode: 22,
+            width: frame_w,
+            height: frame_h,
+            seed: 0,
+            p0: bg_dim.clamp(0.0, 1.0),
+            p1: bg_saturation.clamp(0.0, 2.0),
+            p2: tint_color[0] as f32 / 255.0,
+            p3: tint_color[1] as f32 / 255.0,
+            p4: tint_color[2] as f32 / 255.0,
+            p5: tint_strength.clamp(0.0, 1.0),
+            ..Default::default()
+        },
+        custom_source: None,
+        src: Buf::Ping,
+        secondary: Buf::Ping,
+        dst: Buf::Pong,
+    });
+    // Composite the sharp foreground over the prepared background (Pong).
     passes.push(EffectPass {
         uniform: EffectUniform {
             mode: 21,
@@ -1308,13 +1348,11 @@ fn build_blur_fill_passes(
             p1: ihf,
             p2: fg_scale.clamp(0.01, MAX_BLUR_FILL_SCALE),
             p3: fg_offset_y.clamp(-0.5, 0.5),
-            p4: bg_dim.clamp(0.0, 1.0),
-            p5: bg_saturation.clamp(0.0, 2.0),
             ..Default::default()
         },
         custom_source: None,
         src: Buf::Input,
-        secondary: Buf::Ping,
+        secondary: Buf::Pong,
         dst: Buf::Owned,
     });
     passes
@@ -1819,10 +1857,25 @@ mod tests {
     }
 
     #[test]
-    fn blur_fill_passes_cover_blur_compose_at_frame_dims() {
-        // 1080x1920 vertical source reframed into a 1920x1080 landscape frame.
-        let passes = build_blur_fill_passes(1920, 1080, 1080, 1920, 1.0, 1.2, 40.0, 0.8, 1.1, -0.1);
-        assert_eq!(passes.len(), 4);
+    fn blur_fill_passes_cover_blur_adjust_compose_at_frame_dims() {
+        // 1080x1920 vertical source reframed into a 1920x1080 landscape frame,
+        // with a half-strength blue tint.
+        let passes = build_blur_fill_passes(
+            1920,
+            1080,
+            1080,
+            1920,
+            1.0,
+            1.2,
+            40.0,
+            0.8,
+            1.1,
+            [0, 0, 255, 255],
+            0.5,
+            -0.1,
+        );
+        // cover + blur_h + blur_v + adjust + compose
+        assert_eq!(passes.len(), 5);
         // cover place
         assert_eq!(passes[0].uniform.mode, 20);
         assert_eq!(passes[0].uniform.width, 1920);
@@ -1837,26 +1890,50 @@ mod tests {
         assert_eq!(passes[2].uniform.mode, 14);
         // radius is height-normalized (frame 1080 → scale 1.0)
         assert_eq!(passes[1].uniform.p0, 40.0);
-        // compose: sharp fg over blurred bg, into the owned output
-        assert_eq!(passes[3].uniform.mode, 21);
-        assert_eq!(passes[3].src, Buf::Input);
-        assert_eq!(passes[3].secondary, Buf::Ping);
-        assert_eq!(passes[3].dst, Buf::Owned);
-        assert_eq!(passes[3].uniform.p2, 1.0); // fg scale
-        assert_eq!(passes[3].uniform.p3, -0.1); // fg offset y
-        assert_eq!(passes[3].uniform.p4, 0.8); // bg dim
-        assert_eq!(passes[3].uniform.p5, 1.1); // bg saturation
+        // background adjust: dim, saturation, tint
+        assert_eq!(passes[3].uniform.mode, 22);
+        assert_eq!(passes[3].src, Buf::Ping);
+        assert_eq!(passes[3].dst, Buf::Pong);
+        assert_eq!(passes[3].uniform.p0, 0.8); // bg dim
+        assert_eq!(passes[3].uniform.p1, 1.1); // bg saturation
+        assert_eq!(passes[3].uniform.p2, 0.0); // tint r
+        assert_eq!(passes[3].uniform.p3, 0.0); // tint g
+        assert_eq!(passes[3].uniform.p4, 1.0); // tint b
+        assert_eq!(passes[3].uniform.p5, 0.5); // tint strength
+        // compose: sharp fg over prepared bg, into the owned output
+        assert_eq!(passes[4].uniform.mode, 21);
+        assert_eq!(passes[4].src, Buf::Input);
+        assert_eq!(passes[4].secondary, Buf::Pong);
+        assert_eq!(passes[4].dst, Buf::Owned);
+        assert_eq!(passes[4].uniform.p2, 1.0); // fg scale
+        assert_eq!(passes[4].uniform.p3, -0.1); // fg offset y
     }
 
     #[test]
     fn blur_fill_skips_blur_passes_when_radius_zero() {
-        let passes = build_blur_fill_passes(1920, 1080, 1080, 1920, 1.0, 1.0, 0.0, 1.0, 1.0, 0.0);
-        // cover place + compose only
-        assert_eq!(passes.len(), 2);
+        let passes = build_blur_fill_passes(
+            1920,
+            1080,
+            1080,
+            1920,
+            1.0,
+            1.0,
+            0.0,
+            1.0,
+            1.0,
+            [0, 0, 0, 255],
+            0.0,
+            0.0,
+        );
+        // cover place + bg adjust + compose only
+        assert_eq!(passes.len(), 3);
         assert_eq!(passes[0].uniform.mode, 20);
-        assert_eq!(passes[1].uniform.mode, 21);
-        assert_eq!(passes[1].secondary, Buf::Ping); // composes over the cover plate
-        assert_eq!(passes[1].dst, Buf::Owned);
+        assert_eq!(passes[1].uniform.mode, 22);
+        assert_eq!(passes[1].src, Buf::Ping); // adjusts the cover plate directly
+        assert_eq!(passes[1].dst, Buf::Pong);
+        assert_eq!(passes[2].uniform.mode, 21);
+        assert_eq!(passes[2].secondary, Buf::Pong);
+        assert_eq!(passes[2].dst, Buf::Owned);
     }
 
     #[test]

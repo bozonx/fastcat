@@ -30,6 +30,15 @@ bg_dim: number,
  */
 bg_saturation: number, 
 /**
+ * Background tint colour (RGBA; alpha ignored). Mixed into the
+ * background by `tint_strength`.
+ */
+tint_color: [number, number, number, number], 
+/**
+ * Background tint strength; 0 = no tint, 1 = fully the tint colour.
+ */
+tint_strength: number, 
+/**
  * Foreground vertical offset as a fraction of frame height (−0.5..0.5).
  */
 fg_offset_y: number, } | { "type": "custom-wgsl", source: string, params: Record<string, unknown>, };
