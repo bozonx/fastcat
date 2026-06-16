@@ -26,6 +26,60 @@ function makeEmptyPeaks(channelCount: number, length: number): Float32Array[] {
   return Array.from({ length: channelCount }, () => new Float32Array(length));
 }
 
+/**
+ * In-memory LRU cache for *composed* nested-timeline peaks.
+ *
+ * `buildTimelinePeaks` mixes the constituent media peaks (themselves cached on
+ * disk) into a single envelope. That mixing is O(maxLength) and yields to the
+ * main thread, so recomputing it on every clip remount (scroll in/out of view)
+ * is wasteful. We cache the composed result keyed by the nested `.otio` path +
+ * its mtime, so an unchanged nested timeline reuses the envelope and an edited
+ * one (new mtime) recomputes. Bounded so long sessions can't grow unbounded.
+ */
+interface CachedComposedPeaks {
+  maxLength: number;
+  peaks: Float32Array[];
+}
+
+const composedPeaksCache = new Map<string, CachedComposedPeaks>();
+const COMPOSED_PEAKS_CACHE_LIMIT = 32;
+
+export function getCachedComposedTimelinePeaks(
+  key: string,
+  maxLength: number,
+): Float32Array[] | null {
+  const hit = composedPeaksCache.get(key);
+  if (!hit) return null;
+  // A cached envelope with at least the requested resolution is reusable —
+  // rendering resamples to the target bin count anyway.
+  if (hit.maxLength < maxLength) return null;
+  if (!hit.peaks.some((channel) => channel.length > 0)) return null;
+  // Refresh LRU position.
+  composedPeaksCache.delete(key);
+  composedPeaksCache.set(key, hit);
+  return hit.peaks;
+}
+
+export function setCachedComposedTimelinePeaks(
+  key: string,
+  maxLength: number,
+  peaks: Float32Array[],
+): void {
+  if (!peaks.some((channel) => channel.length > 0)) return;
+  composedPeaksCache.delete(key);
+  composedPeaksCache.set(key, { maxLength, peaks });
+  while (composedPeaksCache.size > COMPOSED_PEAKS_CACHE_LIMIT) {
+    const oldest = composedPeaksCache.keys().next().value;
+    if (oldest === undefined) break;
+    composedPeaksCache.delete(oldest);
+  }
+}
+
+/** Test/reset helper — drops all cached composed envelopes. */
+export function clearComposedTimelinePeaksCache(): void {
+  composedPeaksCache.clear();
+}
+
 function mixPeakValue(target: number, next: number) {
   return Math.min(1, Math.abs(target) + Math.abs(next));
 }

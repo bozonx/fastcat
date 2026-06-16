@@ -511,6 +511,71 @@ impl Compositor {
             } else {
                 self.layer_to_effect_source(dev_id, scene, &layer)?
             };
+
+            // Blur-fill reframes the layer to fill the whole project frame, so it
+            // produces a *frame-sized* texture and the transform is reset to map
+            // it 1:1 onto the frame (overriding the clip's letterbox fit). Any
+            // other effects in the chain are applied first at source resolution,
+            // then blur-fill last.
+            if let Some(bf_idx) = layer
+                .effects
+                .iter()
+                .position(|e| matches!(e, EffectSpec::BlurFill { .. }))
+            {
+                if let EffectSpec::BlurFill {
+                    fg_scale,
+                    bg_scale,
+                    blur,
+                    bg_dim,
+                    bg_saturation,
+                    fg_offset_y,
+                } = &layer.effects[bf_idx]
+                {
+                    let others: Vec<EffectSpec> = layer
+                        .effects
+                        .iter()
+                        .enumerate()
+                        .filter(|(i, _)| *i != bf_idx)
+                        .map(|(_, e)| e.clone())
+                        .collect();
+                    let base = if others.is_empty() {
+                        source
+                    } else {
+                        let (processed, _) = self.apply_effects_to_texture(
+                            dev_id, device, queue, &source, &others, false,
+                        )?;
+                        EffectSource::Gpu(processed)
+                    };
+                    let framed = self.apply_blur_fill_to_texture(
+                        dev_id,
+                        device,
+                        queue,
+                        &base,
+                        scene.width,
+                        scene.height,
+                        *fg_scale,
+                        *bg_scale,
+                        *blur,
+                        *bg_dim,
+                        *bg_saturation,
+                        *fg_offset_y,
+                    )?;
+                    let mut next = layer.clone();
+                    next.transform = Transform::center_fit(
+                        (scene.width, scene.height),
+                        (scene.width, scene.height),
+                    );
+                    next.kind = LayerKind::Raster {
+                        natural_size: (scene.width, scene.height),
+                        source: RasterSource::GpuTexture(framed),
+                        padding: None,
+                    };
+                    next.effects.clear();
+                    final_layers.push(next);
+                    continue;
+                }
+            }
+
             let (processed, padding) =
                 self.apply_effects_to_texture(dev_id, device, queue, &source, &layer.effects, true)?;
             let mut next = layer.clone();
@@ -918,6 +983,49 @@ impl Compositor {
         let kx = kx.min(MAX_DIM / (nw.max(1) as f64)).max(1.0);
         let ky = ky.min(MAX_DIM / (nh.max(1) as f64)).max(1.0);
         (kx, ky)
+    }
+
+    /// Reframe a layer source into a frame-sized blur-fill texture (industry
+    /// "blur fill"): the source fills the whole frame as a cover-scaled, blurred
+    /// background with a contain-fit sharp copy on top. Falls back to the raw
+    /// source on GPU failure.
+    #[allow(clippy::too_many_arguments)]
+    fn apply_blur_fill_to_texture(
+        &mut self,
+        dev_id: usize,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        source: &EffectSource,
+        frame_w: u32,
+        frame_h: u32,
+        fg_scale: f32,
+        bg_scale: f32,
+        blur: f32,
+        bg_dim: f32,
+        bg_saturation: f32,
+        fg_offset_y: f32,
+    ) -> Result<Arc<crate::media::SharedTexture>> {
+        let cache = self.pipeline_caches.get(&dev_id);
+        let pipeline = self
+            .effect_pipelines
+            .entry(dev_id)
+            .or_insert_with(|| EffectPipeline::new(device, cache));
+        match pipeline.apply_blur_fill(
+            device, queue, source, frame_w, frame_h, fg_scale, bg_scale, blur, bg_dim,
+            bg_saturation, fg_offset_y,
+        ) {
+            Ok(texture) => Ok(texture),
+            Err(error) => {
+                log::warn!("[compositor] blur-fill skipped: {error:?}");
+                let tex = match source {
+                    EffectSource::Cpu(img) => Arc::new(crate::media::SharedTexture::new_shared(
+                        Arc::new(image_to_texture(device, queue, img)?),
+                    )),
+                    EffectSource::Gpu(tex) => tex.clone(),
+                };
+                Ok(tex)
+            }
+        }
     }
 
     fn apply_effects_to_texture(

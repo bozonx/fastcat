@@ -29,6 +29,7 @@ describe('unified video effect manifests', () => {
     expect(types).toEqual([
       'color-adjustment',
       'blur',
+      'blur-fill',
       'bloom',
       'sharpen',
       'pixelate',
@@ -131,6 +132,54 @@ describe('unified video effect manifests', () => {
       {
         type: 'saturation',
         value: 1.1,
+      },
+    ]);
+  });
+
+  it('serializes blur-fill with snake_case ratio params and defaults', () => {
+    const manifest = getVideoEffectManifest('blur-fill');
+    expect(manifest?.renderer).toBe('wgsl-compute');
+
+    // Explicit values pass through (UI ratios → spec ratios).
+    expect(
+      buildEffectSpecs([
+        {
+          id: 'bf-1',
+          type: 'blur-fill',
+          enabled: true,
+          target: 'video',
+          fgScale: 0.9,
+          bgScale: 1.3,
+          blur: 60,
+          bgDim: 0.7,
+          bgSaturation: 1.2,
+          fgOffsetY: -0.1,
+        },
+      ]),
+    ).toEqual([
+      {
+        type: 'blur-fill',
+        fg_scale: 0.9,
+        bg_scale: 1.3,
+        blur: 60,
+        bg_dim: 0.7,
+        bg_saturation: 1.2,
+        fg_offset_y: -0.1,
+      },
+    ]);
+
+    // Missing values fall back to the manifest defaults.
+    expect(
+      buildEffectSpecs([{ id: 'bf-2', type: 'blur-fill', enabled: true, target: 'video' }]),
+    ).toEqual([
+      {
+        type: 'blur-fill',
+        fg_scale: 1,
+        bg_scale: 1.1,
+        blur: 40,
+        bg_dim: 0.85,
+        bg_saturation: 1,
+        fg_offset_y: 0,
       },
     ]);
   });

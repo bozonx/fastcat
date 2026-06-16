@@ -287,7 +287,7 @@ interface NestedClipWindow {
   parentLocalEndUs: number;
 }
 
-function getNestedClipWindow(params: {
+export function getNestedClipWindow(params: {
   nestedClip: WorkerTimelineClip;
   parentItem: TimelineTrackItem;
 }): NestedClipWindow | null {
@@ -324,7 +324,7 @@ function getNestedClipWindow(params: {
   };
 }
 
-function mergeNestedClipSpeed(params: {
+export function mergeNestedClipSpeed(params: {
   parentItem: TimelineTrackItem;
   nestedClip: WorkerTimelineClip;
 }): number | undefined {
@@ -336,7 +336,7 @@ function mergeNestedClipSpeed(params: {
   return combined === 1 && params.nestedClip.speed === undefined ? undefined : combined;
 }
 
-function trimNestedClipToParentWindow(params: {
+export function trimNestedClipToParentWindow(params: {
   nestedClip: WorkerTimelineClip;
   parentItem: TimelineTrackItem;
 }): WorkerTimelineClip | null {

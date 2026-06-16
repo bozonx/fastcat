@@ -32,6 +32,12 @@
 //   15 bloom bright-pass extract (p0=threshold, p1=knee)
 //   18 bloom compose (input=running image, secondary=blurred mask, p1=strength)
 //   19 mix with secondary (p0=mix) — blends input_tex over secondary_tex
+//   20 blur-fill cover place (p0=input_w, p1=input_h, p2=bg_scale) — samples
+//      input_tex cover-fit into the (frame-sized) output so it fills the frame
+//   21 blur-fill compose (input_tex=sharp source, secondary_tex=blurred bg;
+//      p0=input_w, p1=input_h, p2=fg_scale, p3=fg_offset_y (frac of frame H),
+//      p4=bg_dim (0..1), p5=bg_saturation (0..2)) — composites a contain-fit
+//      sharp foreground over the dimmed/desaturated blurred background
 // =============================================================================
 
 struct EffectUniform {
@@ -384,6 +390,57 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
         case 19u: {
             // Blend effect result (input_tex) over the original (secondary_tex).
             color = mix(load_secondary(coord), color, clamp(effect.p0, 0.0, 1.0));
+        }
+        case 20u: {
+            // Cover-fit the source (input_tex, native size p0×p1) into the
+            // frame-sized output so it fills the frame edge-to-edge, optionally
+            // zoomed further by p2. This becomes the background plate that the
+            // subsequent blur passes operate on. Sampled with the clamp-to-edge
+            // linear sampler, so any uncovered margin (bg_scale < 1) clamps.
+            let iw = max(effect.p0, 1.0);
+            let ih = max(effect.p1, 1.0);
+            let bg_scale = max(effect.p2, 0.01);
+            let fw = f32(effect.width);
+            let fh = f32(effect.height);
+            let k = max(fw / iw, fh / ih) * bg_scale;
+            let dispw = iw * k;
+            let disph = ih * k;
+            let ox = f32(gid.x) + 0.5;
+            let oy = f32(gid.y) + 0.5;
+            let u = (ox - (fw - dispw) * 0.5) / dispw;
+            let v = (oy - (fh - disph) * 0.5) / disph;
+            color = textureSampleLevel(input_tex, samp, vec2<f32>(u, v), 0.0);
+        }
+        case 21u: {
+            // Blur-fill compose. secondary_tex = blurred background (already
+            // frame-sized, from mode 20 + blur); input_tex = the sharp source at
+            // its native size (p0×p1). The background is desaturated (p5) and
+            // dimmed (p4) so the foreground reads; the foreground is contain-fit
+            // (scaled by p2, shifted vertically by p3) and composited on top.
+            let iw = max(effect.p0, 1.0);
+            let ih = max(effect.p1, 1.0);
+            let fg_scale = max(effect.p2, 0.01);
+            let off_y = effect.p3;
+            let bg_dim = effect.p4;
+            let bg_sat = effect.p5;
+            let fw = f32(effect.width);
+            let fh = f32(effect.height);
+            var bg = load_secondary(coord).rgb;
+            bg = mix(vec3<f32>(luma(bg)), bg, bg_sat);
+            bg = bg * bg_dim;
+            let k = min(fw / iw, fh / ih) * fg_scale;
+            let dispw = iw * k;
+            let disph = ih * k;
+            let ox = f32(gid.x) + 0.5;
+            let oy = f32(gid.y) + 0.5;
+            let u = (ox - (fw - dispw) * 0.5) / dispw;
+            let v = (oy - ((fh - disph) * 0.5 + off_y * fh)) / disph;
+            var outc = vec3<f32>(bg);
+            if (u >= 0.0 && u <= 1.0 && v >= 0.0 && v <= 1.0) {
+                let fg = textureSampleLevel(input_tex, samp, vec2<f32>(u, v), 0.0);
+                outc = mix(bg, fg.rgb, fg.a);
+            }
+            color = vec4<f32>(outc, 1.0);
         }
         default: {}
     }

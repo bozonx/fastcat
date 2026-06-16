@@ -16,6 +16,10 @@ import { randomToken } from '~/utils/ids';
 import { isTauriRuntime } from '~/utils/runtime';
 import { getNativeFileHandlePath, nativeVideoFrameWebps } from '~/utils/tauri-media-processing';
 import { normalizeMediaCachePath } from '~/utils/media-cache-path';
+import {
+  createTimelineFrameSource,
+  type ThumbnailFrameSource,
+} from '~/utils/timeline-frame-thumbnail-source';
 const log = createDevLogger('thumbnail-generator');
 const CLIP_THUMBNAIL_HASH_VERSION = 2;
 const NATIVE_THUMBNAIL_BATCH_SIZE = 128;
@@ -24,6 +28,12 @@ const WORKER_THUMBNAIL_BATCH_SIZE = 32;
 
 export interface ThumbnailTask extends BaseThumbnailTask {
   duration: number; // video duration in seconds
+  /**
+   * Source kind. `media` (default) decodes the source file frame-by-frame;
+   * `timeline` composites a nested `.otio` document at each requested time
+   * through the same compositor the monitor/export use.
+   */
+  sourceKind?: 'media' | 'timeline';
   requestedTimesS?: number[];
   listenerKey?: string;
   onProgress?: (progress: number, url: string, time: number) => void;
@@ -43,6 +53,23 @@ export function getClipThumbnailsHash(input: {
 }): string {
   const projectRelativePath = normalizeMediaCachePath(input.projectRelativePath);
   return hashString(`v${CLIP_THUMBNAIL_HASH_VERSION}:${input.projectId}:${projectRelativePath}`);
+}
+
+/**
+ * Hash for nested-timeline clip thumbnails. Folds a content `fingerprint`
+ * (e.g. the `.otio` file's mtime) into the key so edits to the nested timeline
+ * invalidate the cached frames instead of showing stale previews. The `nested:`
+ * segment also keeps these in a separate namespace from plain media clips.
+ */
+export function getNestedTimelineThumbnailsHash(input: {
+  projectId: string;
+  projectRelativePath: string;
+  fingerprint: number | string;
+}): string {
+  const projectRelativePath = normalizeMediaCachePath(input.projectRelativePath);
+  return hashString(
+    `v${CLIP_THUMBNAIL_HASH_VERSION}:nested:${input.projectId}:${projectRelativePath}:${input.fingerprint}`,
+  );
 }
 
 function getTimelineThumbnailVfsPath(projectId: string, hash?: string): string {
@@ -432,13 +459,26 @@ class ThumbnailGenerator extends BaseThumbnailGenerator<ThumbnailTask, Map<numbe
     }
   }
 
-  protected async executeTask(task: ThumbnailTask): Promise<void> {
+  /**
+   * Builds the frame source for a task. Media clips decode their source file;
+   * nested-timeline clips composite the `.otio` document. Returns `null` when a
+   * nested timeline has no visual content.
+   */
+  private async createFrameSource(task: ThumbnailTask): Promise<ThumbnailFrameSource | null> {
+    if (task.sourceKind === 'timeline') {
+      return createTimelineFrameSource({
+        projectRelativePath: task.projectRelativePath,
+        maxWidth: TIMELINE_CLIP_THUMBNAILS.WIDTH,
+        maxHeight: TIMELINE_CLIP_THUMBNAILS.HEIGHT,
+        quality: TIMELINE_CLIP_THUMBNAILS.QUALITY,
+      });
+    }
+    return this.createMediaFrameSource(task);
+  }
+
+  private async createMediaFrameSource(task: ThumbnailTask): Promise<ThumbnailFrameSource> {
     const workspaceStore = useWorkspaceStore();
     const projectStore = useProjectStore();
-
-    if (!workspaceStore.workspaceHandle && !isTauriRuntime()) {
-      throw new Error('Workspace is not opened');
-    }
 
     const sourceHandle = isTauriRuntime()
       ? await projectStore.getFileHandleByPath(task.projectRelativePath)
@@ -451,27 +491,77 @@ class ThumbnailGenerator extends BaseThumbnailGenerator<ThumbnailTask, Map<numbe
       throw new Error(`No native path for thumbnail task: ${task.projectRelativePath}`);
     }
 
-    const client = nativeSourcePath
-      ? null
-      : (() => {
-          setThumbnailHostApi(
-            createVideoCoreHostApi({
-              getCurrentProjectId: () => projectStore.currentProjectId,
-              getWorkspaceHandle: () => workspaceStore.workspaceHandle,
-              getResolvedStorageTopology: () => workspaceStore.resolvedStorageTopology,
-              getFileHandleByPath: async (path) => projectStore.getFileHandleByPath(path),
-              getFileByPath: async (path) => projectStore.getFileByPath(path),
-              onExportProgress: () => {},
-            }),
-          );
-          return getThumbnailWorkerClient().client;
-        })();
+    if (nativeSourcePath) {
+      return {
+        batchSize: NATIVE_THUMBNAIL_BATCH_SIZE,
+        extract: (chunkTimes) =>
+          nativeVideoFrameWebps({
+            sourcePath: nativeSourcePath,
+            timesSec: chunkTimes,
+            maxWidth: TIMELINE_CLIP_THUMBNAILS.WIDTH,
+            maxHeight: TIMELINE_CLIP_THUMBNAILS.HEIGHT,
+            quality: TIMELINE_CLIP_THUMBNAILS.QUALITY,
+            seekThresholdSec: NATIVE_THUMBNAIL_SEEK_THRESHOLD_SECONDS,
+          }),
+        dispose: async () => {},
+      };
+    }
 
-    const file = nativeSourcePath
-      ? null
-      : await projectStore.getFileByPath(task.projectRelativePath);
-    if (!nativeSourcePath && !file) {
+    setThumbnailHostApi(
+      createVideoCoreHostApi({
+        getCurrentProjectId: () => projectStore.currentProjectId,
+        getWorkspaceHandle: () => workspaceStore.workspaceHandle,
+        getResolvedStorageTopology: () => workspaceStore.resolvedStorageTopology,
+        getFileHandleByPath: async (path) => projectStore.getFileHandleByPath(path),
+        getFileByPath: async (path) => projectStore.getFileByPath(path),
+        onExportProgress: () => {},
+      }),
+    );
+    const client = getThumbnailWorkerClient().client;
+
+    const file = await projectStore.getFileByPath(task.projectRelativePath);
+    if (!file) {
       throw new Error(`Source file not found: ${task.projectRelativePath}`);
+    }
+
+    return {
+      batchSize: WORKER_THUMBNAIL_BATCH_SIZE,
+      extract: (chunkTimes) =>
+        client.extractVideoFrameBlobs(file, {
+          timesS: chunkTimes,
+          maxWidth: TIMELINE_CLIP_THUMBNAILS.WIDTH,
+          maxHeight: TIMELINE_CLIP_THUMBNAILS.HEIGHT,
+          quality: TIMELINE_CLIP_THUMBNAILS.QUALITY,
+          mimeType: 'image/webp',
+          taskId: task.id,
+          keepAlive: true,
+        }),
+      dispose: async () => {
+        try {
+          await client.releaseFrameExtractor(task.id);
+        } catch {
+          // ignore
+        }
+      },
+    };
+  }
+
+  protected async executeTask(task: ThumbnailTask): Promise<void> {
+    const workspaceStore = useWorkspaceStore();
+
+    if (!workspaceStore.workspaceHandle && !isTauriRuntime()) {
+      throw new Error('Workspace is not opened');
+    }
+
+    const frameSource = await this.createFrameSource(task);
+    // A nested timeline with no visual layers (audio-only / empty) has nothing
+    // to render — finish cleanly so listeners are not left hanging.
+    if (!frameSource) {
+      if (!this.isCancelled(task.id)) {
+        this.pendingRequestedTimes.delete(task.id);
+        task.onComplete?.();
+      }
+      return;
     }
 
     const vfs = useVfs();
@@ -495,33 +585,14 @@ class ThumbnailGenerator extends BaseThumbnailGenerator<ThumbnailTask, Map<numbe
 
         const totalFrames = requestedTimes.length;
         let framesProcessed = requestedTimes.length - missingTimesS.length;
-        const chunkSize = nativeSourcePath
-          ? NATIVE_THUMBNAIL_BATCH_SIZE
-          : WORKER_THUMBNAIL_BATCH_SIZE;
+        const chunkSize = frameSource.batchSize;
 
         for (let i = 0; i < missingTimesS.length && !this.isCancelled(task.id); i += chunkSize) {
           const chunkTimes = missingTimesS.slice(i, i + chunkSize);
           let blobs: (Blob | null)[] = [];
 
           try {
-            blobs = nativeSourcePath
-              ? await nativeVideoFrameWebps({
-                  sourcePath: nativeSourcePath,
-                  timesSec: chunkTimes,
-                  maxWidth: TIMELINE_CLIP_THUMBNAILS.WIDTH,
-                  maxHeight: TIMELINE_CLIP_THUMBNAILS.HEIGHT,
-                  quality: TIMELINE_CLIP_THUMBNAILS.QUALITY,
-                  seekThresholdSec: NATIVE_THUMBNAIL_SEEK_THRESHOLD_SECONDS,
-                })
-              : await client!.extractVideoFrameBlobs(file!, {
-                  timesS: chunkTimes,
-                  maxWidth: TIMELINE_CLIP_THUMBNAILS.WIDTH,
-                  maxHeight: TIMELINE_CLIP_THUMBNAILS.HEIGHT,
-                  quality: TIMELINE_CLIP_THUMBNAILS.QUALITY,
-                  mimeType: 'image/webp',
-                  taskId: task.id,
-                  keepAlive: true,
-                });
+            blobs = await frameSource.extract(chunkTimes, () => this.isCancelled(task.id));
           } catch (error) {
             if (this.isCancelled(task.id)) {
               return;
@@ -570,13 +641,7 @@ class ThumbnailGenerator extends BaseThumbnailGenerator<ThumbnailTask, Map<numbe
       }
     } finally {
       this.opfsExistingFiles.delete(task.id);
-      if (client) {
-        try {
-          await client.releaseFrameExtractor(task.id);
-        } catch {
-          // ignore
-        }
-      }
+      await frameSource.dispose();
     }
   }
 

@@ -349,6 +349,18 @@
             "radial": "Radial"
           }
         },
+        "blurFill": {
+          "description": "Fill the frame with a blurred, zoomed copy of the video — show vertical clips in a landscape frame (and vice versa)",
+          "name": "Blur Fill",
+          "params": {
+            "fgScale": "Video Scale",
+            "fgOffsetY": "Video Offset",
+            "bgScale": "Background Scale",
+            "blur": "Background Blur",
+            "bgDim": "Background Brightness",
+            "bgSaturation": "Background Saturation"
+          }
+        },
         "color-adjustment": {
           "description": "Adjust brightness, contrast, saturation, and hue",
           "name": "Color Correction",

@@ -10,8 +10,11 @@ import { useFileManager } from '~/composables/file-manager/useFileManager';
 import { isSvgFilename } from '~/utils/svg';
 import { timeUsToPx } from '~/utils/timeline/geometry';
 import { TIMELINE_CLIP_THUMBNAILS } from '~/utils/constants';
-import { getClipThumbnailsHash, thumbnailGenerator } from '~/utils/thumbnail-generator';
-import { fileThumbnailGenerator, getFileThumbnailHash } from '~/utils/file-thumbnail-generator';
+import {
+  getClipThumbnailsHash,
+  getNestedTimelineThumbnailsHash,
+  thumbnailGenerator,
+} from '~/utils/thumbnail-generator';
 const log = createDevLogger('useTimelineClipThumbnails');
 
 export interface ThumbnailTile {
@@ -136,17 +139,41 @@ export function useTimelineClipThumbnails(options: UseTimelineClipThumbnailsOpti
     return (options.item.value.sourceDurationUs || 0) / 1_000_000;
   });
 
+  // Content fingerprint (mtime) for a nested timeline's `.otio` file. Folded
+  // into the cache key so editing the nested timeline invalidates its preview
+  // frames. Null until resolved — clipHash stays empty so we don't key off a
+  // stale/missing fingerprint.
+  const nestedTimelineMtime = ref<number | null>(null);
+
+  watch(
+    [isNestedTimeline, fileUrl],
+    async ([nested, path]) => {
+      if (!nested || !path) {
+        nestedTimelineMtime.value = null;
+        return;
+      }
+      try {
+        const file = await fileManager.vfs.getFile(path);
+        nestedTimelineMtime.value = file?.lastModified ?? 0;
+      } catch (e) {
+        log.error('Failed to stat nested timeline for thumbnails:', e);
+        nestedTimelineMtime.value = 0;
+      }
+    },
+    { immediate: true },
+  );
+
   const clipHash = computed(() => {
     if (!fileUrl.value || !projectStore.currentProjectId) return '';
+    if (isNestedTimeline.value) {
+      if (nestedTimelineMtime.value === null) return '';
+      return getNestedTimelineThumbnailsHash({
+        projectId: projectStore.currentProjectId,
+        projectRelativePath: fileUrl.value,
+        fingerprint: nestedTimelineMtime.value,
+      });
+    }
     return getClipThumbnailsHash({
-      projectId: projectStore.currentProjectId,
-      projectRelativePath: fileUrl.value,
-    });
-  });
-
-  const fileThumbnailHash = computed(() => {
-    if (!fileUrl.value || !projectStore.currentProjectId) return '';
-    return getFileThumbnailHash({
       projectId: projectStore.currentProjectId,
       projectRelativePath: fileUrl.value,
     });
@@ -369,62 +396,22 @@ export function useTimelineClipThumbnails(options: UseTimelineClipThumbnailsOpti
     return tiles;
   });
 
-  async function generateNestedTimelinePreview() {
-    if (!fileUrl.value || duration.value <= 0 || !projectStore.currentProjectId) return;
-
-    const applySingleThumbnail = (url: string) => {
-      const nextMap = new Map<number, string>();
-      for (
-        let second = 0;
-        second < Math.max(1, Math.ceil(duration.value));
-        second += intervalSeconds
-      ) {
-        nextMap.set(second, url);
-      }
-      if (!nextMap.has(0)) {
-        nextMap.set(0, url);
-      }
-      thumbnailsBySecond.value = nextMap;
-      isGenerating.value = false;
-    };
-
-    if (fileThumbnailHash.value) {
-      fileThumbnailGenerator.addTask({
-        id: fileThumbnailHash.value,
-        projectId: projectStore.currentProjectId,
-        projectRelativePath: fileUrl.value,
-        onComplete: (url) => {
-          if (isUnmounted) return;
-          applySingleThumbnail(url);
-        },
-        onError: () => {
-          if (isUnmounted) return;
-          isGenerating.value = false;
-        },
-      });
-    } else {
-      isGenerating.value = false;
-    }
-  }
-
   const generate = (requestedTimesS = requestedThumbnailTimes.value) => {
     if (clipThumbnailMode.value === 'none') return;
     if (!fileUrl.value || duration.value <= 0 || !clipHash.value) return;
     if (!projectStore.currentProjectId) return;
     if (isImage.value) return;
-    if (requestedTimesS.length === 0 && !isNestedTimeline.value) return;
+    if (requestedTimesS.length === 0) return;
 
     isGenerating.value = true;
-
-    if (isNestedTimeline.value) {
-      void generateNestedTimelinePreview();
-      return;
-    }
 
     thumbnailGenerator.addTask({
       id: clipHash.value,
       projectId: projectStore.currentProjectId,
       projectRelativePath: fileUrl.value,
+      // Nested timelines composite their `.otio` document per frame; plain
+      // media clips decode their source file.
+      sourceKind: isNestedTimeline.value ? 'timeline' : 'media',
       duration: duration.value,
       requestedTimesS,
       listenerKey: options.item.value.id,
@@ -465,9 +452,6 @@ export function useTimelineClipThumbnails(options: UseTimelineClipThumbnailsOpti
     if (clipHash.value) {
       thumbnailGenerator.cancelTask(clipHash.value);
     }
-    if (fileThumbnailHash.value) {
-      fileThumbnailGenerator.cancelTask(fileThumbnailHash.value);
-    }
   });
 
   watch(clipHash, (newHash, oldHash) => {
@@ -477,12 +461,6 @@ export function useTimelineClipThumbnails(options: UseTimelineClipThumbnailsOpti
     thumbnailsBySecond.value = new Map();
     if (newHash && !isImage.value) {
       generate();
-    }
-  });
-
-  watch(fileThumbnailHash, (newHash, oldHash) => {
-    if (oldHash) {
-      fileThumbnailGenerator.cancelTask(oldHash);
     }
   });
 

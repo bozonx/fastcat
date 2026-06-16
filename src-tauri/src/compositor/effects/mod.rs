@@ -30,6 +30,11 @@ fn default_bloom_knee() -> f32 {
     0.5
 }
 
+/// Default background blur radius (px @1080p) for the blur-fill effect.
+fn default_blur_fill_blur() -> f32 {
+    40.0
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, ts_rs::TS)]
 #[serde(tag = "type", rename_all = "kebab-case")]
 #[ts(
@@ -128,6 +133,32 @@ pub enum EffectSpec {
         angle_deg: f32,
         #[serde(default = "default_mix")]
         mix: f32,
+    },
+    /// Blur-fill / blurred-background reframe (industry "blur fill"): show a
+    /// vertical video in a landscape frame (or vice versa) by filling the frame
+    /// with a cover-scaled, blurred copy of the source and compositing a
+    /// contain-fit sharp copy on top. Unlike every other effect this changes the
+    /// output to the *project frame* size; the engine resets the layer transform
+    /// to fill the frame. Handled by `apply_blur_fill`, not `build_passes`.
+    BlurFill {
+        /// Foreground (sharp video) scale; 1.0 = contain-fit.
+        #[serde(default = "default_mix")]
+        fg_scale: f32,
+        /// Background zoom on top of cover-fit; 1.0 = just cover the frame.
+        #[serde(default = "default_mix")]
+        bg_scale: f32,
+        /// Background blur radius in px @1080p.
+        #[serde(default = "default_blur_fill_blur")]
+        blur: f32,
+        /// Background brightness multiplier; 1.0 = no dim.
+        #[serde(default = "default_mix")]
+        bg_dim: f32,
+        /// Background saturation; 1.0 = normal, 0 = grayscale.
+        #[serde(default = "default_mix")]
+        bg_saturation: f32,
+        /// Foreground vertical offset as a fraction of frame height (−0.5..0.5).
+        #[serde(default)]
+        fg_offset_y: f32,
     },
     /// Arbitrary WGSL. Not executed by the built-in pipeline yet; keep the
     /// serialized contract available for future plugin-style effects.
@@ -823,6 +854,155 @@ impl EffectPipeline {
         queue.submit([encoder.finish()]);
         Ok((Arc::new(crate::media::SharedTexture::new_shared(owned)), padding))
     }
+
+    /// Blur-fill reframe: produce a `frame_w × frame_h` texture that fills the
+    /// whole project frame with a cover-scaled, blurred copy of `source` and a
+    /// contain-fit sharp copy composited on top (industry "blur fill"). Unlike
+    /// `apply_effects` the output size is the *frame*, not the source — the
+    /// source is sampled with computed UVs, so the input and output may differ
+    /// in size and aspect. The engine resets the layer transform so this output
+    /// maps 1:1 onto the frame.
+    #[allow(clippy::too_many_arguments)]
+    pub fn apply_blur_fill(
+        &mut self,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        source: &EffectSource,
+        frame_w: u32,
+        frame_h: u32,
+        fg_scale: f32,
+        bg_scale: f32,
+        blur: f32,
+        bg_dim: f32,
+        bg_saturation: f32,
+        fg_offset_y: f32,
+    ) -> Result<Arc<crate::media::SharedTexture>> {
+        let (iw, ih) = match source {
+            EffectSource::Cpu(img) => (img.width, img.height),
+            EffectSource::Gpu(tex) => (tex.width(), tex.height()),
+        };
+        let frame_w = frame_w.max(1);
+        let frame_h = frame_h.max(1);
+        if iw == 0 || ih == 0 {
+            return source_to_owned_texture(device, queue, source, iw.max(1), ih.max(1));
+        }
+
+        // Scratch buffers are frame-sized; the source is bound directly as the
+        // `input` view (no resize/pad copy) and sampled with computed UVs.
+        self.ensure_resources(device, frame_w, frame_h, false);
+        let resources = self
+            .resources
+            .as_ref()
+            .ok_or_else(|| anyhow!("effect resources not initialized"))?;
+        let ping_view = resources.ping_view.clone();
+        let pong_view = resources.pong_view.clone();
+        let aux_view = resources.aux_view.clone();
+
+        // The sharp source. A CPU source is uploaded to a GPU texture of its own
+        // size first (the scratch buffers are frame-sized, not source-sized).
+        // The created `TextureView` internally keeps its texture alive, so the
+        // uploaded texture need not be held separately.
+        let input_view = match source {
+            EffectSource::Gpu(tex) => tex.create_view(&wgpu::TextureViewDescriptor::default()),
+            EffectSource::Cpu(_) => {
+                let tex = source_to_owned_texture(device, queue, source, iw, ih)?;
+                tex.create_view(&wgpu::TextureViewDescriptor::default())
+            }
+        };
+
+        let passes = build_blur_fill_passes(
+            frame_w,
+            frame_h,
+            iw,
+            ih,
+            fg_scale,
+            bg_scale,
+            blur,
+            bg_dim,
+            bg_saturation,
+            fg_offset_y,
+        );
+
+        let (owned, owned_view) = self.owned_pool.acquire(device, frame_w, frame_h);
+        self.ensure_uniform_buffer(device, passes.len());
+        let stride = self.uniform_stride as usize;
+        let mut staging = vec![0u8; stride * passes.len()];
+        for (i, pass) in passes.iter().enumerate() {
+            let bytes = bytemuck::bytes_of(&pass.uniform);
+            staging[i * stride..i * stride + bytes.len()].copy_from_slice(bytes);
+        }
+        {
+            let uniform_buffer = self
+                .uniform_buffer
+                .as_ref()
+                .ok_or_else(|| anyhow!("effect uniform buffer not initialized"))?;
+            queue.write_buffer(uniform_buffer, 0, &staging);
+        }
+        let uniform_size = wgpu::BufferSize::new(std::mem::size_of::<EffectUniform>() as u64);
+        let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+            label: Some("native-blur-fill-encoder"),
+        });
+        macro_rules! view_of {
+            ($buf:expr) => {
+                match $buf {
+                    Buf::Input => &input_view,
+                    Buf::Ping => &ping_view,
+                    Buf::Pong => &pong_view,
+                    Buf::Aux => &aux_view,
+                    Buf::Owned => &owned_view,
+                }
+            };
+        }
+        for (index, pass) in passes.iter().enumerate() {
+            let uniform_offset = (index as u64 * self.uniform_stride) as u32;
+            let bind_src: &wgpu::TextureView = view_of!(pass.src);
+            let bind_secondary: &wgpu::TextureView = view_of!(pass.secondary);
+            let target_view: &wgpu::TextureView = view_of!(pass.dst);
+            let uniform_buffer = self
+                .uniform_buffer
+                .as_ref()
+                .ok_or_else(|| anyhow!("effect uniform buffer not initialized"))?;
+            let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+                label: Some("native-blur-fill-bind-group"),
+                layout: &self.bind_layout,
+                entries: &[
+                    wgpu::BindGroupEntry {
+                        binding: 0,
+                        resource: wgpu::BindingResource::TextureView(bind_src),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 1,
+                        resource: wgpu::BindingResource::TextureView(target_view),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 2,
+                        resource: wgpu::BindingResource::Buffer(wgpu::BufferBinding {
+                            buffer: uniform_buffer,
+                            offset: 0,
+                            size: uniform_size,
+                        }),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 3,
+                        resource: wgpu::BindingResource::TextureView(bind_secondary),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 4,
+                        resource: wgpu::BindingResource::Sampler(&self.sampler),
+                    },
+                ],
+            });
+            let mut cpass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                label: Some("native-blur-fill-pass"),
+                timestamp_writes: None,
+            });
+            cpass.set_pipeline(&self.pipeline);
+            cpass.set_bind_group(0, &bind_group, &[uniform_offset]);
+            cpass.dispatch_workgroups(frame_w.div_ceil(8), frame_h.div_ceil(8), 1);
+        }
+        queue.submit([encoder.finish()]);
+        Ok(Arc::new(crate::media::SharedTexture::new_shared(owned)))
+    }
 }
 
 /// Множитель для пространственных параметров эффектов (blur radius, pixelate size,
@@ -854,6 +1034,8 @@ const MAX_CHROMATIC_ABERRATION: f32 = 256.0;
 const MAX_LEVELS_GAMMA: f32 = 16.0;
 const MAX_SHARPEN: f32 = 4.0;
 const MAX_PIXELATE: f32 = 256.0;
+/// Max fore/background scale for the blur-fill effect.
+const MAX_BLUR_FILL_SCALE: f32 = 8.0;
 
 /// Pick a scratch buffer (`Ping`/`Pong`/`Aux`) not in `avoid`. Linear chains
 /// only ever exclude one buffer, so they alternate ping/pong and never touch
@@ -1048,6 +1230,96 @@ fn push_mix(
     dst
 }
 
+/// Builds the blur-fill pass chain (all at frame dims): cover-place the source
+/// into a full-frame background plate (mode 20), separably blur it (modes 4/14,
+/// skipped when the radius is zero), then composite the contain-fit sharp
+/// foreground over the dimmed/desaturated background (mode 21). `blur` is the
+/// raw radius in px @1080p; it is height-normalized and clamped here.
+#[allow(clippy::too_many_arguments)]
+fn build_blur_fill_passes(
+    frame_w: u32,
+    frame_h: u32,
+    iw: u32,
+    ih: u32,
+    fg_scale: f32,
+    bg_scale: f32,
+    blur: f32,
+    bg_dim: f32,
+    bg_saturation: f32,
+    fg_offset_y: f32,
+) -> Vec<EffectPass> {
+    let radius = (blur * spatial_scale(frame_h)).clamp(0.0, MAX_BLUR_RADIUS);
+    let iwf = iw as f32;
+    let ihf = ih as f32;
+    let mut passes: Vec<EffectPass> = Vec::new();
+    passes.push(EffectPass {
+        uniform: EffectUniform {
+            mode: 20,
+            width: frame_w,
+            height: frame_h,
+            seed: 0,
+            p0: iwf,
+            p1: ihf,
+            p2: bg_scale.clamp(0.01, MAX_BLUR_FILL_SCALE),
+            ..Default::default()
+        },
+        custom_source: None,
+        src: Buf::Input,
+        secondary: Buf::Input,
+        dst: Buf::Ping,
+    });
+    if radius > 0.0 {
+        passes.push(EffectPass {
+            uniform: EffectUniform {
+                mode: 4,
+                width: frame_w,
+                height: frame_h,
+                seed: 0,
+                p0: radius,
+                ..Default::default()
+            },
+            custom_source: None,
+            src: Buf::Ping,
+            secondary: Buf::Ping,
+            dst: Buf::Pong,
+        });
+        passes.push(EffectPass {
+            uniform: EffectUniform {
+                mode: 14,
+                width: frame_w,
+                height: frame_h,
+                seed: 0,
+                p0: radius,
+                ..Default::default()
+            },
+            custom_source: None,
+            src: Buf::Pong,
+            secondary: Buf::Pong,
+            dst: Buf::Ping,
+        });
+    }
+    passes.push(EffectPass {
+        uniform: EffectUniform {
+            mode: 21,
+            width: frame_w,
+            height: frame_h,
+            seed: 0,
+            p0: iwf,
+            p1: ihf,
+            p2: fg_scale.clamp(0.01, MAX_BLUR_FILL_SCALE),
+            p3: fg_offset_y.clamp(-0.5, 0.5),
+            p4: bg_dim.clamp(0.0, 1.0),
+            p5: bg_saturation.clamp(0.0, 2.0),
+            ..Default::default()
+        },
+        custom_source: None,
+        src: Buf::Input,
+        secondary: Buf::Ping,
+        dst: Buf::Owned,
+    });
+    passes
+}
+
 fn build_passes(effects: &[EffectSpec], width: u32, height: u32) -> Vec<EffectPass> {
     let scale = spatial_scale(height);
     let mut passes: Vec<EffectPass> = Vec::new();
@@ -1189,10 +1461,13 @@ fn effect_uniform(
             0.0,
             0,
         ),
-        // Multi-pass; routed in build_passes.
+        // Multi-pass; routed in build_passes. BlurFill is reframed by the engine
+        // via `apply_blur_fill` (it changes the output size) and never reaches
+        // the generic chain.
         EffectSpec::GaussianBlur { .. }
         | EffectSpec::GaussianBlurPixels { .. }
-        | EffectSpec::Bloom { .. } => return None,
+        | EffectSpec::Bloom { .. }
+        | EffectSpec::BlurFill { .. } => return None,
         // Bidirectional: positive sharpens (unsharp mask), negative softens.
         // p1 = sample step in px (resolution-normalized so sharpening looks the
         // same fraction-of-frame at any resolution).
@@ -1541,6 +1816,47 @@ mod tests {
         assert_eq!(passes.len(), 1);
         assert_eq!(passes[0].uniform.mode, 5);
         assert_eq!(passes[0].uniform.p2, 0.75);
+    }
+
+    #[test]
+    fn blur_fill_passes_cover_blur_compose_at_frame_dims() {
+        // 1080x1920 vertical source reframed into a 1920x1080 landscape frame.
+        let passes = build_blur_fill_passes(1920, 1080, 1080, 1920, 1.0, 1.2, 40.0, 0.8, 1.1, -0.1);
+        assert_eq!(passes.len(), 4);
+        // cover place
+        assert_eq!(passes[0].uniform.mode, 20);
+        assert_eq!(passes[0].uniform.width, 1920);
+        assert_eq!(passes[0].uniform.height, 1080);
+        assert_eq!(passes[0].uniform.p0, 1080.0); // input width
+        assert_eq!(passes[0].uniform.p1, 1920.0); // input height
+        assert_eq!(passes[0].uniform.p2, 1.2); // bg scale
+        assert_eq!(passes[0].src, Buf::Input);
+        assert_eq!(passes[0].dst, Buf::Ping);
+        // separable blur on the background plate
+        assert_eq!(passes[1].uniform.mode, 4);
+        assert_eq!(passes[2].uniform.mode, 14);
+        // radius is height-normalized (frame 1080 → scale 1.0)
+        assert_eq!(passes[1].uniform.p0, 40.0);
+        // compose: sharp fg over blurred bg, into the owned output
+        assert_eq!(passes[3].uniform.mode, 21);
+        assert_eq!(passes[3].src, Buf::Input);
+        assert_eq!(passes[3].secondary, Buf::Ping);
+        assert_eq!(passes[3].dst, Buf::Owned);
+        assert_eq!(passes[3].uniform.p2, 1.0); // fg scale
+        assert_eq!(passes[3].uniform.p3, -0.1); // fg offset y
+        assert_eq!(passes[3].uniform.p4, 0.8); // bg dim
+        assert_eq!(passes[3].uniform.p5, 1.1); // bg saturation
+    }
+
+    #[test]
+    fn blur_fill_skips_blur_passes_when_radius_zero() {
+        let passes = build_blur_fill_passes(1920, 1080, 1080, 1920, 1.0, 1.0, 0.0, 1.0, 1.0, 0.0);
+        // cover place + compose only
+        assert_eq!(passes.len(), 2);
+        assert_eq!(passes[0].uniform.mode, 20);
+        assert_eq!(passes[1].uniform.mode, 21);
+        assert_eq!(passes[1].secondary, Buf::Ping); // composes over the cover plate
+        assert_eq!(passes[1].dst, Buf::Owned);
     }
 
     #[test]

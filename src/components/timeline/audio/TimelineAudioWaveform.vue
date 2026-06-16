@@ -14,7 +14,11 @@ import {
   computeWaveformPeakLength,
 } from '~/utils/audio/waveform';
 import { computeWaveformPeakBinsFromMips } from '~/utils/audio/waveform-mips';
-import { buildTimelinePeaks } from '~/utils/audio/timeline-waveform';
+import {
+  buildTimelinePeaks,
+  getCachedComposedTimelinePeaks,
+  setCachedComposedTimelinePeaks,
+} from '~/utils/audio/timeline-waveform';
 import {
   scheduleWaveformRedraw,
   cancelWaveformRedraw,
@@ -209,6 +213,16 @@ const extractPeaks = async () => {
         return;
       }
 
+      // Reuse a previously composed envelope when the nested timeline file is
+      // unchanged (keyed by path + mtime). Avoids re-mixing on every remount.
+      const cacheKey = `${normalizedTimelinePath}@${file.lastModified}`;
+      const cachedPeaks = getCachedComposedTimelinePeaks(cacheKey, maxLength);
+      if (cachedPeaks) {
+        nestedAudioPeaks.value = cachedPeaks;
+        requestDraw();
+        return;
+      }
+
       const text = await file.text();
       if (shouldCancel()) {
         return;
@@ -251,7 +265,9 @@ const extractPeaks = async () => {
       }
 
       nestedAudioPeaks.value = peaks;
-      if (!peaks?.some((channel) => channel.length > 0)) {
+      if (peaks?.some((channel) => channel.length > 0)) {
+        setCachedComposedTimelinePeaks(cacheKey, maxLength, peaks);
+      } else {
         log.error('Nested timeline waveform extraction returned no peaks:', normalizedTimelinePath);
       }
       requestDraw();
