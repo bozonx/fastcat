@@ -112,6 +112,7 @@ function pushBloom(
   threshold: number,
   strength: number,
   radius: number,
+  knee: number,
   width: number,
   height: number,
 ): Buf {
@@ -119,7 +120,7 @@ function pushBloom(
   const base = cur;
   const a = pickScratch([base]);
   passes.push({
-    uniform: { ...uniform(15, width, height), p0: threshold },
+    uniform: { ...uniform(15, width, height), p0: threshold, p1: knee },
     src: base,
     secondary: base,
     dst: a,
@@ -216,6 +217,7 @@ export function buildPasses(
           Math.max(0, Math.min(1.0, effect.threshold)),
           Math.max(0, Math.min(MAX_BLOOM_STRENGTH, effect.strength)),
           Math.max(0, Math.min(MAX_BLOOM_RADIUS, effect.radius * scale)),
+          Math.max(0, Math.min(1.0, effect.knee ?? 0.5)),
           width,
           height,
         );

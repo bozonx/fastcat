@@ -37,9 +37,12 @@ export const VIDEO_EFFECT_PARAM_RANGES = {
   },
   bloomRadius: {
     uiMin: 0,
-    uiMax: 32,
+    // Raised from 32 so a genuinely *strong* blur is reachable from the slider
+    // (the old cap forced large glows through animation-only). Matches the
+    // comfortable blur range. animationMax == renderMax: no dead band above it.
+    uiMax: 100,
     animationMin: 0,
-    animationMax: 256,
+    animationMax: 512,
     renderMin: 0,
     renderMax: 512,
   },
@@ -50,6 +53,16 @@ export const VIDEO_EFFECT_PARAM_RANGES = {
     animationMax: 4,
     renderMin: 0,
     renderMax: 4,
+  },
+  // Bloom soft-knee width: 0 is a hard threshold (crisp highlight cutoff), 1 is
+  // a wide, gentle ramp that lets mid-bright pixels glow softly.
+  bloomKnee: {
+    uiMin: 0,
+    uiMax: 1,
+    animationMin: 0,
+    animationMax: 1,
+    renderMin: 0,
+    renderMax: 1,
   },
   unit: { uiMin: 0, uiMax: 1, animationMin: 0, animationMax: 1, renderMin: 0, renderMax: 1 },
   // Sharpen amount: bidirectional. 0 is neutral (identity); positive sharpens
@@ -348,12 +361,14 @@ export const videoEffectManifests: VideoEffectManifest[] = [
       threshold: 0.75,
       strength: 0.6,
       radius: 12,
+      knee: 0.5,
       mix: 1,
     },
     paramRanges: {
       threshold: VIDEO_EFFECT_PARAM_RANGES.unit,
       strength: VIDEO_EFFECT_PARAM_RANGES.bloomStrength,
       radius: VIDEO_EFFECT_PARAM_RANGES.bloomRadius,
+      knee: VIDEO_EFFECT_PARAM_RANGES.bloomKnee,
       mix: VIDEO_EFFECT_PARAM_RANGES.intensity,
     },
     controls: [
@@ -386,6 +401,15 @@ export const videoEffectManifests: VideoEffectManifest[] = [
       },
       {
         kind: 'slider',
+        key: 'knee',
+        labelKey: 'fastcat.effects.video.bloom.params.knee',
+        min: VIDEO_EFFECT_PARAM_RANGES.bloomKnee.uiMin,
+        max: VIDEO_EFFECT_PARAM_RANGES.bloomKnee.uiMax,
+        step: 0.01,
+        format: percent,
+      },
+      {
+        kind: 'slider',
         key: 'mix',
         labelKey: 'fastcat.effects.video.mix',
         min: VIDEO_EFFECT_PARAM_RANGES.intensity.uiMin,
@@ -405,6 +429,7 @@ export const videoEffectManifests: VideoEffectManifest[] = [
           finiteNumber(values.radius, 12),
           VIDEO_EFFECT_PARAM_RANGES.bloomRadius,
         ),
+        knee: clampRange(finiteNumber(values.knee, 0.5), VIDEO_EFFECT_PARAM_RANGES.bloomKnee),
         mix: clampRange(
           finiteNumber(values.mix ?? values.intensity, 1),
           VIDEO_EFFECT_PARAM_RANGES.intensity,

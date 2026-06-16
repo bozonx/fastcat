@@ -11,11 +11,11 @@ vi.mock('~/components/ui/UiWheelNumberInput.vue', () => ({
   },
 }));
 
-vi.mock('~/components/ui/UiWheelSlider.vue', () => ({
+vi.mock('~/components/ui/UiSliderInput.vue', () => ({
   default: {
-    name: 'UiWheelSlider',
-    template: '<div class="mock-wheel-slider">{{ modelValue }}</div>',
-    props: ['modelValue'],
+    name: 'UiSliderInput',
+    template: '<div class="mock-slider-input"><span v-if="label">{{ label }}</span><span v-if="formattedValue">{{ formattedValue }}</span><span>{{ modelValue }}</span></div>',
+    props: ['modelValue', 'label', 'formattedValue'],
   },
 }));
 
@@ -170,7 +170,7 @@ describe('ParamsRenderer', () => {
 
     expect(component.text()).toContain('Opacity');
     expect(component.text()).toContain('25%');
-    expect(component.find('.mock-wheel-slider').text()).toContain('25');
+    expect(component.find('.mock-slider-input').text()).toContain('25');
 
     await component.setProps({
       values: {
@@ -180,7 +180,7 @@ describe('ParamsRenderer', () => {
     await nextTick();
 
     expect(component.text()).toContain('80%');
-    expect(component.find('.mock-wheel-slider').text()).toContain('80');
+    expect(component.find('.mock-slider-input').text()).toContain('80');
   });
 
   it('re-evaluates showIf against current values before building visible entries', async () => {

@@ -95,6 +95,22 @@ describe('UiSliderInput', () => {
     expect(component.text()).toContain('3.142');
   });
 
+  it('renders number input alongside label when showInput is true', async () => {
+    const component = await mountSuspended(UiSliderInput, {
+      props: {
+        modelValue: 50,
+        min: 0,
+        max: 100,
+        label: 'Opacity',
+        showInput: true,
+      },
+    });
+
+    expect(component.text()).toContain('Opacity');
+    const wheelInput = component.findComponent({ name: 'UiWheelNumberInput' });
+    expect(wheelInput.exists()).toBe(true);
+  });
+
   it('displays 0 if modelValue is not finite', async () => {
     const component = await mountSuspended(UiSliderInput, {
       props: {

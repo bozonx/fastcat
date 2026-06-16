@@ -24,6 +24,12 @@ fn default_mix() -> f32 {
     1.0
 }
 
+/// Default soft-knee width for legacy bloom specs saved before `knee` existed.
+/// Approximates the old fixed `smoothstep(threshold, 1.0)` softness.
+fn default_bloom_knee() -> f32 {
+    0.5
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, ts_rs::TS)]
 #[serde(tag = "type", rename_all = "kebab-case")]
 #[ts(
@@ -95,6 +101,8 @@ pub enum EffectSpec {
         threshold: f32,
         strength: f32,
         radius: f32,
+        #[serde(default = "default_bloom_knee")]
+        knee: f32,
         #[serde(default = "default_mix")]
         mix: f32,
     },
@@ -937,6 +945,7 @@ fn push_bloom(
     threshold: f32,
     strength: f32,
     radius: f32,
+    knee: f32,
     width: u32,
     height: u32,
 ) -> Buf {
@@ -944,7 +953,7 @@ fn push_bloom(
         return cur;
     }
     let base = cur;
-    // Bright-pass extract (mode 15): base -> a.
+    // Bright-pass extract (mode 15): base -> a. p0=threshold, p1=knee.
     let a = pick_scratch(&[base]);
     passes.push(EffectPass {
         uniform: EffectUniform {
@@ -953,6 +962,7 @@ fn push_bloom(
             height,
             seed: 0,
             p0: threshold,
+            p1: knee,
             ..Default::default()
         },
         custom_source: None,
@@ -1083,6 +1093,7 @@ fn build_passes(effects: &[EffectSpec], width: u32, height: u32) -> Vec<EffectPa
                 threshold,
                 strength,
                 radius,
+                knee,
                 mix,
             } => {
                 let base = cur;
@@ -1090,8 +1101,9 @@ fn build_passes(effects: &[EffectSpec], width: u32, height: u32) -> Vec<EffectPa
                     &mut passes,
                     cur,
                     *threshold,
-                    *strength,
+                    strength.clamp(0.0, MAX_BLOOM_STRENGTH),
                     (*radius * scale).clamp(0.0, MAX_BLOOM_RADIUS),
+                    knee.clamp(0.0, 1.0),
                     width,
                     height,
                 );
@@ -1436,6 +1448,7 @@ mod tests {
                 threshold: 0.75,
                 strength: 0.6,
                 radius: 12.0,
+                knee: 0.5,
                 mix: 1.0,
             }],
             1920,
@@ -1503,6 +1516,7 @@ mod tests {
                 threshold: 0.75,
                 strength: 0.6,
                 radius: 12.0,
+                knee: 0.5,
                 mix: 0.25,
             }],
             1920,

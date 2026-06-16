@@ -18,6 +18,7 @@ const props = withDefaults(
     sliderClass?: string;
     wheelWithoutFocus?: boolean;
     disabled?: boolean;
+    showInput?: boolean;
   }>(),
   {
     label: undefined,
@@ -31,6 +32,7 @@ const props = withDefaults(
     sliderClass: '',
     wheelWithoutFocus: false,
     disabled: false,
+    showInput: false,
   },
 );
 
@@ -84,7 +86,7 @@ function onInputUpdate(value: unknown) {
         />
       </div>
 
-      <div v-if="!label" class="flex items-center gap-1.5 shrink-0">
+      <div v-if="!label || showInput" class="flex items-center gap-1.5 shrink-0">
         <UiWheelNumberInput
           :model-value="modelValue"
           size="2xs"

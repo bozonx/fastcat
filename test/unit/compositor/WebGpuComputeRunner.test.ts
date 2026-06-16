@@ -40,11 +40,13 @@ describe('buildPasses', () => {
 
   it('builds bloom as extract + blur_h + blur_v + compose', () => {
     const effects: VideoEffectSpec[] = [
-      { type: 'bloom', threshold: 0.75, strength: 0.6, radius: 12.0 },
+      { type: 'bloom', threshold: 0.75, strength: 0.6, radius: 12.0, knee: 0.5 },
     ];
     const passes = buildPasses(effects, 1920, 1080);
     expect(passes.length).toBe(4);
     expect(passes[0]!.uniform.mode).toBe(15);
+    expect(passes[0]!.uniform.p0).toBeCloseTo(0.75, 5);
+    expect(passes[0]!.uniform.p1).toBeCloseTo(0.5, 5);
     expect(passes[1]!.uniform.mode).toBe(4);
     expect(passes[2]!.uniform.mode).toBe(14);
     expect(passes[3]!.uniform.mode).toBe(18);
@@ -80,7 +82,7 @@ describe('buildPasses', () => {
 
   it('keeps animation-scale bloom radius and strength below hard caps', () => {
     const effects: VideoEffectSpec[] = [
-      { type: 'bloom', threshold: 0.75, strength: 3.5, radius: 220.0 },
+      { type: 'bloom', threshold: 0.75, strength: 3.5, radius: 220.0, knee: 0.5 },
     ];
     const passes = buildPasses(effects, 1920, 1080);
 

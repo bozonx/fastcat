@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import UiButtonGroup from '~/components/ui/UiButtonGroup.vue';
-import UiWheelSlider from '~/components/ui/UiWheelSlider.vue';
+import UiSliderInput from '~/components/ui/UiSliderInput.vue';
 import UiWheelNumberInput from '~/components/ui/UiWheelNumberInput.vue';
 import UiKnob from '~/components/ui/editor/UiKnob.vue';
 import UiSelect from '~/components/ui/UiSelect.vue';
@@ -377,23 +377,19 @@ function handleArrayItemUpdate(
         />
       </div>
 
-      <div v-else-if="entry.kind === 'slider'" class="flex flex-col gap-1">
-        <div class="flex justify-between text-xs text-ui-text-muted gap-2">
-          <span>{{ entry.label }}</span>
-          <span>
-            {{ entry.control.format ? entry.control.format(entry.numberValue) : entry.numberValue }}
-          </span>
-        </div>
-        <UiWheelSlider
-          :model-value="entry.numberValue"
-          :min="entry.control.min ?? 0"
-          :max="entry.control.max ?? 100"
-          :step="entry.control.step ?? 1"
-          :default-value="entry.control.defaultValue"
-          :disabled="entry.disabled"
-          @update:model-value="(value: number) => updateValue(entry.control.key, value)"
-        />
-      </div>
+      <UiSliderInput
+        v-else-if="entry.kind === 'slider'"
+        :model-value="entry.numberValue"
+        :label="entry.label"
+        :formatted-value="entry.control.format ? entry.control.format(entry.numberValue) : String(entry.numberValue)"
+        :min="entry.control.min ?? 0"
+        :max="entry.control.max ?? 100"
+        :step="entry.control.step ?? 1"
+        :default-value="entry.control.defaultValue"
+        :disabled="entry.disabled"
+        show-input
+        @update:model-value="(value: number) => updateValue(entry.control.key, value)"
+      />
 
       <div
         v-else-if="entry.kind === 'knob'"

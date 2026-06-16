@@ -29,7 +29,7 @@
 //   11 hue rotation (p0=degrees)    12 levels (p0..p4, p5=mix)
 //   13 chroma key (p0..p2=key rgb, p3=threshold, p4=smoothness)
 //   14 gaussian blur vertical (p0=radius px)
-//   15 bloom bright-pass extract (p0=threshold)
+//   15 bloom bright-pass extract (p0=threshold, p1=knee)
 //   18 bloom compose (input=running image, secondary=blurred mask, p1=strength)
 //   19 mix with secondary (p0=mix) — blends input_tex over secondary_tex
 // =============================================================================
@@ -359,8 +359,20 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
             }
         }
         case 15u: {
-            let bright = smoothstep(effect.p0, 1.0, luma(color.rgb));
-            color = vec4<f32>(color.rgb * bright, 1.0);
+            // Bright-pass extract with a soft knee. p0 = threshold, p1 = knee
+            // width. With knee≈0 this is a hard threshold (only the
+            // over-threshold luminance contributes); a wider knee ramps
+            // mid-bright pixels in smoothly so the glow has a soft, controllable
+            // falloff instead of a hard on/off edge. The over-threshold portion
+            // is kept proportional (max(soft, l-threshold)/l) so a strong, wide
+            // blur still has real energy to spread rather than a tiny clamped
+            // sliver — this is what lets a *weak* glow read at a *large* radius.
+            let l = luma(color.rgb);
+            let knee = max(effect.p1, 0.0001);
+            let soft = clamp(l - effect.p0 + knee, 0.0, 2.0 * knee);
+            let soft_contrib = (soft * soft) / (4.0 * knee);
+            let contrib = max(soft_contrib, l - effect.p0) / max(l, 0.0001);
+            color = vec4<f32>(color.rgb * max(contrib, 0.0), 1.0);
         }
         case 18u: {
             // input_tex = running image (bind_src), secondary_tex = blurred bright

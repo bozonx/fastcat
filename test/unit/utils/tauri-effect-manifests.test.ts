@@ -145,8 +145,8 @@ describe('unified video effect manifests', () => {
       renderMax: 1024,
     });
     expect(bloom?.paramRanges?.radius).toMatchObject({
-      uiMax: 32,
-      animationMax: 256,
+      uiMax: 100,
+      animationMax: 512,
       renderMax: 512,
     });
   });
@@ -182,7 +182,7 @@ describe('unified video effect manifests', () => {
 
     expect(specs).toEqual([
       { type: 'gaussian-blur', radius: 500, bleed: false, blur_type: 'gaussian', mix: 1 },
-      { type: 'bloom', threshold: 0.4, strength: 3.5, radius: 220, mix: 1 },
+      { type: 'bloom', threshold: 0.4, strength: 3.5, radius: 220, knee: 0.5, mix: 1 },
       { type: 'brightness', value: 3 },
       { type: 'contrast', value: 3.5 },
       { type: 'saturation', value: 4 },

@@ -329,6 +329,7 @@
           "description": "Soft bloom effect",
           "name": "Bloom",
           "params": {
+            "knee": "Knee",
             "radius": "Radius",
             "strength": "Strength",
             "threshold": "Threshold"
