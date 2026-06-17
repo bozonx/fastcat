@@ -398,7 +398,17 @@ export function useClipPropertiesActions(options: UseClipPropertiesActionsOption
       },
     });
 
-    // 3. Скорость
+    // 3. Переименовать
+    list.push({
+      id: 'rename',
+      label: t('common.rename'),
+      icon: 'i-heroicons-pencil',
+      onClick: () => {
+        /* Handled in components since it needs a modal state */
+      },
+    });
+
+    // 4. Скорость
     if (clipSupportsSpeedControls({ kind: options.trackKind.value }, clip)) {
       list.push({
         id: 'speed',
@@ -580,14 +590,6 @@ export function useClipPropertiesActions(options: UseClipPropertiesActionsOption
         label: t('common.delete'),
         icon: 'i-heroicons-trash',
         onClick: handleDeleteClip,
-      },
-      {
-        id: 'rename',
-        label: t('common.rename'),
-        icon: 'i-heroicons-pencil',
-        onClick: () => {
-          /* Handled in components since it needs a modal state */
-        },
       },
       {
         id: 'copy',

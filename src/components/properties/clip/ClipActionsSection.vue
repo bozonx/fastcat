@@ -58,6 +58,9 @@ const augmentedCommonActions = computed(() => {
 
 const augmentedOtherActions = computed(() => {
   return props.otherActions.map((action) => {
+    if (action.id === 'rename') {
+      return { ...action, onClick: () => emit('rename') };
+    }
     if (action.id === 'copy-parameters') {
       return { ...action, onClick: () => emit('copyParameters') };
     }

@@ -44,8 +44,8 @@ const toolbarWrapperClass = computed(() =>
  */
 const overlayClass = computed(() =>
   toolbarOrientation.value === 'vertical'
-    ? 'absolute left-full top-2 ml-2 z-50 flex items-center gap-2 px-3 py-2 w-max max-w-[60vw] rounded-xl bg-ui-bg-elevated border border-ui-border shadow-lg'
-    : 'absolute bottom-full left-0 right-0 z-50 flex items-center justify-between gap-2 px-3 py-2 bg-ui-bg-elevated border-b border-ui-border shadow-lg',
+    ? 'absolute left-full top-2 ml-2 z-50 flex flex-col gap-3 px-3 py-3 w-72 max-w-[60vw] rounded-xl bg-ui-bg-elevated border border-ui-border shadow-lg max-h-[80vh] overflow-y-auto'
+    : 'absolute bottom-full left-0 right-0 z-50 flex flex-col gap-3 px-3 py-3 bg-ui-bg-elevated border-b border-ui-border shadow-lg max-h-[60vh] overflow-y-auto',
 );
 
 const { t } = useI18n();
@@ -173,12 +173,34 @@ function toggleDeleteOverlay() {
   showDeleteOverlay.value = !showDeleteOverlay.value;
 }
 
-const isRenameModalOpen = ref(false);
+async function handleTrimLeft() {
+  if (isLocked.value) return;
+  await timelineStore.trimToPlayheadLeftNoRipple();
+}
 
-function handleRename(newName: string) {
-  if (!clip.value || !clipTrack.value) return;
-  timelineStore.renameItem(clipTrack.value.id, clip.value.id, newName);
-  isRenameModalOpen.value = false;
+async function handleTrimRight() {
+  if (isLocked.value) return;
+  await timelineStore.trimToPlayheadRightNoRipple();
+}
+
+async function handleRippleTrimLeft() {
+  if (isLocked.value) return;
+  await timelineStore.rippleTrimLeft();
+}
+
+async function handleRippleTrimRight() {
+  if (isLocked.value) return;
+  await timelineStore.rippleTrimRight();
+}
+
+async function handleAdvancedTrimLeft() {
+  if (isLocked.value) return;
+  await timelineStore.advancedRippleTrimLeft();
+}
+
+async function handleAdvancedTrimRight() {
+  if (isLocked.value) return;
+  await timelineStore.advancedRippleTrimRight();
 }
 
 const hasAudio = computed(() => {
@@ -202,15 +224,27 @@ const hasAudio = computed(() => {
         <!-- 1. Delete Overlay -->
         <Transition name="slide-up">
           <div v-if="showDeleteOverlay" :class="overlayClass">
-            <span class="text-xs font-bold text-ui-text-muted uppercase tracking-wider">
-              {{ t('fastcat.timeline.delete') }}
-            </span>
-            <div class="flex gap-2">
+            <!-- Delete section -->
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-bold text-ui-text-muted uppercase tracking-wider">
+                {{ t('fastcat.timeline.delete') }}
+              </span>
+              <UButton
+                size="xs"
+                color="gray"
+                variant="ghost"
+                icon="i-heroicons-x-mark"
+                class="cursor-pointer"
+                @click="closeDeleteOverlay"
+              />
+            </div>
+            <div class="grid grid-cols-3 gap-2">
               <UButton
                 size="sm"
                 color="gray"
-                variant="ghost"
-                class="cursor-pointer"
+                variant="soft"
+                class="cursor-pointer justify-center"
+                :disabled="isLocked"
                 @click="requestDelete"
               >
                 {{ t('fastcat.timeline.deleteLift') }}
@@ -219,7 +253,8 @@ const hasAudio = computed(() => {
                 size="sm"
                 color="red"
                 variant="soft"
-                class="cursor-pointer"
+                class="cursor-pointer justify-center"
+                :disabled="isLocked"
                 @click="requestRippleDelete"
               >
                 {{ t('fastcat.timeline.rippleDelete') }}
@@ -227,21 +262,88 @@ const hasAudio = computed(() => {
               <UButton
                 size="sm"
                 color="red"
-                variant="solid"
-                class="cursor-pointer"
+                variant="soft"
+                class="cursor-pointer justify-center"
+                :disabled="isLocked"
                 @click="requestExtractTimeline"
               >
                 {{ t('fastcat.timeline.extractRange') }}
               </UButton>
-              <div class="w-px h-6 bg-ui-border mx-1" />
-              <UButton
-                size="sm"
-                color="gray"
-                variant="ghost"
-                icon="i-heroicons-x-mark"
-                class="cursor-pointer"
-                @click="closeDeleteOverlay"
-              />
+            </div>
+
+            <!-- Playhead trim section -->
+            <div
+              class="bg-ui-bg rounded-xl border border-ui-border/80 overflow-hidden shadow-inner"
+            >
+              <!-- Column headers -->
+              <div class="grid grid-cols-2 divide-x divide-ui-border/80">
+                <div class="py-2 text-center">
+                  <span class="text-[10px] uppercase font-black text-ui-text-muted tracking-wider">
+                    {{ t('fastcat.timeline.leftTail') }}
+                  </span>
+                </div>
+                <div class="py-2 text-center">
+                  <span class="text-[10px] uppercase font-black text-ui-text-muted tracking-wider">
+                    {{ t('fastcat.timeline.rightTail') }}
+                  </span>
+                </div>
+              </div>
+
+              <div class="border-t border-ui-border/80 divide-y divide-ui-border/80">
+                <!-- Row 1: Basic trim -->
+                <div class="grid grid-cols-2 divide-x divide-ui-border/80">
+                  <button
+                    class="py-2.5 text-center text-xs font-semibold text-ui-text active:bg-blue-500/10 transition-colors disabled:opacity-40 disabled:pointer-events-none"
+                    :disabled="isLocked"
+                    @click="handleTrimLeft"
+                  >
+                    {{ t('fastcat.timeline.trim') }}
+                  </button>
+                  <button
+                    class="py-2.5 text-center text-xs font-semibold text-ui-text active:bg-blue-500/10 transition-colors disabled:opacity-40 disabled:pointer-events-none"
+                    :disabled="isLocked"
+                    @click="handleTrimRight"
+                  >
+                    {{ t('fastcat.timeline.trim') }}
+                  </button>
+                </div>
+
+                <!-- Row 2: Ripple trim -->
+                <div class="grid grid-cols-2 divide-x divide-ui-border/80">
+                  <button
+                    class="py-2.5 text-center text-xs font-semibold text-ui-text active:bg-blue-500/10 transition-colors disabled:opacity-40 disabled:pointer-events-none"
+                    :disabled="isLocked"
+                    @click="handleRippleTrimLeft"
+                  >
+                    {{ t('fastcat.timeline.trimWithOffset') }}
+                  </button>
+                  <button
+                    class="py-2.5 text-center text-xs font-semibold text-ui-text active:bg-blue-500/10 transition-colors disabled:opacity-40 disabled:pointer-events-none"
+                    :disabled="isLocked"
+                    @click="handleRippleTrimRight"
+                  >
+                    {{ t('fastcat.timeline.trimWithOffset') }}
+                  </button>
+                </div>
+
+                <!-- Row 3: Advanced ripple trim -->
+                <div class="grid grid-cols-2 divide-x divide-ui-border/80">
+                  <button
+                    class="py-2.5 text-center text-xs font-semibold text-ui-text active:bg-blue-500/10 transition-colors disabled:opacity-40 disabled:pointer-events-none"
+                    :disabled="isLocked"
+                    @click="handleAdvancedTrimLeft"
+                  >
+                    {{ t('fastcat.timeline.trimWithTimelineCut') }}
+                  </button>
+                  <button
+                    class="py-2.5 text-center text-xs font-semibold text-ui-text active:bg-blue-500/10 transition-colors disabled:opacity-40 disabled:pointer-events-none"
+                    :disabled="isLocked"
+                    @click="handleAdvancedTrimRight"
+                  >
+                    {{ t('fastcat.timeline.trimWithTimelineCut') }}
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         </Transition>
@@ -261,13 +363,12 @@ const hasAudio = computed(() => {
             icon="i-heroicons-arrows-right-left"
             :disabled="isLocked"
             @click="handleOpenTrimPanel"
- />
+          />
 
           <!-- 3. Split -->
           <MobileDrawerToolbarButton
-            icon="i-lucide-scissors"
+            icon="i-lucide-lab-razor"
             :disabled="isLocked"
-            :label="t('fastcat.timeline.split')"
             @click="handleSplit"
           />
 
@@ -303,14 +404,6 @@ const hasAudio = computed(() => {
             :disabled="isLocked"
             @click="handleCut"
           />
-
-          <!-- 9. Rename -->
-          <MobileDrawerToolbarButton
-            icon="i-heroicons-pencil"
-            :label="t('common.rename')"
-            :disabled="isLocked"
-            @click="isRenameModalOpen = true"
-          />
         </MobileDrawerToolbar>
       </div>
     </template>
@@ -318,14 +411,6 @@ const hasAudio = computed(() => {
     <div v-if="clip" class="px-4 pb-8 pt-4">
       <ClipProperties :clip="clip" is-mobile />
     </div>
-
-    <UiRenameModal
-      :open="isRenameModalOpen"
-      :current-name="clip?.name ?? ''"
-      :title="t('fastcat.clip.rename')"
-      @update:open="isRenameModalOpen = $event"
-      @rename="handleRename"
-    />
   </MobileTimelineDrawer>
 </template>
 

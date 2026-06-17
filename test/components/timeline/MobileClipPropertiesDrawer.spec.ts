@@ -135,7 +135,6 @@ describe('MobileClipPropertiesDrawer', () => {
           ClipProperties: {
             template: '<div />',
           },
-          UiRenameModal: true,
           UButton: {
             props: ['variant', 'color', 'size', 'icon'],
             emits: ['click'],
@@ -149,14 +148,14 @@ describe('MobileClipPropertiesDrawer', () => {
     });
 
     const buttons = wrapper.findAll('.toolbar-stub button');
-    // We expect: Delete Toggle, Trim, Split, Active, Mute, Lock, Copy, Cut, Rename
-    expect(buttons.length).toBe(9);
+    // We expect: Delete Toggle, Trim, Split, Active, Mute, Lock, Copy, Cut
+    expect(buttons.length).toBe(8);
 
     const deleteBtn = buttons[0];
     const trimBtn = buttons[1];
     expect(deleteBtn?.attributes('data-icon')).toBe('i-heroicons-trash');
     expect(trimBtn?.attributes('data-icon')).toBe('i-heroicons-arrows-right-left');
-    expect(buttons[2]?.attributes('data-icon')).toBe('i-lucide-scissors');
+    expect(buttons[2]?.attributes('data-icon')).toBe('i-lucide-lab-razor');
 
     // Overlays should not be visible initially
     expect(wrapper.findAll('.u-button').length).toBe(0);
@@ -197,7 +196,6 @@ describe('MobileClipPropertiesDrawer', () => {
           ClipProperties: {
             template: '<div />',
           },
-          UiRenameModal: true,
           UButton: {
             props: ['variant', 'color', 'size', 'icon'],
             emits: ['click'],
@@ -243,7 +241,6 @@ describe('MobileClipPropertiesDrawer', () => {
           ClipProperties: {
             template: '<div />',
           },
-          UiRenameModal: true,
           UButton: true,
           UIcon: {
             template: '<span />',
@@ -252,7 +249,7 @@ describe('MobileClipPropertiesDrawer', () => {
       },
     });
 
-    const splitBtn = wrapper.find('button[data-icon="i-lucide-scissors"]');
+    const splitBtn = wrapper.find('button[data-icon="i-lucide-lab-razor"]');
     expect(splitBtn.exists()).toBe(true);
     expect(splitBtn.attributes('disabled')).toBeUndefined();
     await splitBtn.trigger('click');

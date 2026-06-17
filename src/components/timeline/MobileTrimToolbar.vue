@@ -4,7 +4,7 @@ import { useTimelineStore } from '~/stores/timeline.store';
 import { useSelectionStore } from '~/stores/selection.store';
 import type { TimelineClipItem, TimelineTrack } from '~/timeline/types';
 
-const props = defineProps<{
+defineProps<{
   trimPreview?:
     | {
         itemId: string;
@@ -56,12 +56,6 @@ const currentClipAndTrack = computed(() => {
   return { track, item };
 });
 
-const isLocked = computed(() => {
-  const ctx = currentClipAndTrack.value;
-  if (!ctx) return true;
-  return Boolean(ctx.track.locked || ctx.item.locked);
-});
-
 function getTouchPoint(event: TouchEvent): { clientX: number; clientY: number } | null {
   const touch = event.touches[0] ?? event.changedTouches[0];
   if (!touch) return null;
@@ -102,36 +96,6 @@ function onEnd(event: TouchEvent) {
   event.preventDefault();
   emit('trim-end', touch);
 }
-
-async function handleTrimLeft() {
-  if (isLocked.value) return;
-  await timelineStore.trimToPlayheadLeftNoRipple();
-}
-
-async function handleTrimRight() {
-  if (isLocked.value) return;
-  await timelineStore.trimToPlayheadRightNoRipple();
-}
-
-async function handleRippleTrimLeft() {
-  if (isLocked.value) return;
-  await timelineStore.rippleTrimLeft();
-}
-
-async function handleRippleTrimRight() {
-  if (isLocked.value) return;
-  await timelineStore.rippleTrimRight();
-}
-
-async function handleAdvancedTrimLeft() {
-  if (isLocked.value) return;
-  await timelineStore.advancedRippleTrimLeft();
-}
-
-async function handleAdvancedTrimRight() {
-  if (isLocked.value) return;
-  await timelineStore.advancedRippleTrimRight();
-}
 </script>
 
 <template>
@@ -150,7 +114,7 @@ async function handleAdvancedTrimRight() {
       />
 
       <span class="text-xs font-bold text-ui-text uppercase tracking-wider">
-        {{ t('fastcat.timeline.trimByPlayhead') }}
+        {{ t('fastcat.timeline.manualTrim') }}
       </span>
 
       <UButton
@@ -161,79 +125,6 @@ async function handleAdvancedTrimRight() {
         class="shrink-0 bg-white/5 active:bg-white/10"
         @click="emit('close')"
       />
-    </div>
-
-    <!-- Playhead trim grid -->
-    <div class="bg-ui-bg-elevated/60 rounded-xl border border-ui-border/80 overflow-hidden shadow-inner mb-3">
-      <!-- Column headers -->
-      <div class="grid grid-cols-2 divide-x divide-ui-border/80">
-        <div class="py-2 text-center">
-          <span class="text-[10px] uppercase font-black text-ui-text-muted tracking-wider">
-            {{ t('fastcat.timeline.leftTail') }}
-          </span>
-        </div>
-        <div class="py-2 text-center">
-          <span class="text-[10px] uppercase font-black text-ui-text-muted tracking-wider">
-            {{ t('fastcat.timeline.rightTail') }}
-          </span>
-        </div>
-      </div>
-
-      <div class="border-t border-ui-border/80 divide-y divide-ui-border/80">
-        <!-- Row 1: Basic trim -->
-        <div class="grid grid-cols-2 divide-x divide-ui-border/80">
-          <button
-            class="py-2.5 text-center text-xs font-semibold text-ui-text active:bg-blue-500/10 transition-colors disabled:opacity-40 disabled:pointer-events-none"
-            :disabled="isLocked"
-            @click="handleTrimLeft"
-          >
-            {{ t('fastcat.timeline.trim') }}
-          </button>
-          <button
-            class="py-2.5 text-center text-xs font-semibold text-ui-text active:bg-blue-500/10 transition-colors disabled:opacity-40 disabled:pointer-events-none"
-            :disabled="isLocked"
-            @click="handleTrimRight"
-          >
-            {{ t('fastcat.timeline.trim') }}
-          </button>
-        </div>
-
-        <!-- Row 2: Ripple trim -->
-        <div class="grid grid-cols-2 divide-x divide-ui-border/80">
-          <button
-            class="py-2.5 text-center text-xs font-semibold text-ui-text active:bg-blue-500/10 transition-colors disabled:opacity-40 disabled:pointer-events-none"
-            :disabled="isLocked"
-            @click="handleRippleTrimLeft"
-          >
-            {{ t('fastcat.timeline.trimWithOffset') }}
-          </button>
-          <button
-            class="py-2.5 text-center text-xs font-semibold text-ui-text active:bg-blue-500/10 transition-colors disabled:opacity-40 disabled:pointer-events-none"
-            :disabled="isLocked"
-            @click="handleRippleTrimRight"
-          >
-            {{ t('fastcat.timeline.trimWithOffset') }}
-          </button>
-        </div>
-
-        <!-- Row 3: Advanced ripple trim -->
-        <div class="grid grid-cols-2 divide-x divide-ui-border/80">
-          <button
-            class="py-2.5 text-center text-xs font-semibold text-ui-text active:bg-blue-500/10 transition-colors disabled:opacity-40 disabled:pointer-events-none"
-            :disabled="isLocked"
-            @click="handleAdvancedTrimLeft"
-          >
-            {{ t('fastcat.timeline.trimWithTimelineCut') }}
-          </button>
-          <button
-            class="py-2.5 text-center text-xs font-semibold text-ui-text active:bg-blue-500/10 transition-colors disabled:opacity-40 disabled:pointer-events-none"
-            :disabled="isLocked"
-            @click="handleAdvancedTrimRight"
-          >
-            {{ t('fastcat.timeline.trimWithTimelineCut') }}
-          </button>
-        </div>
-      </div>
     </div>
 
     <!-- Manual trim -->

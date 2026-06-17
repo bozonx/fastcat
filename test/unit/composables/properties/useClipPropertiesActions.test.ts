@@ -262,9 +262,23 @@ describe('useClipPropertiesActions', () => {
       speedAction?.onClick();
       expect(uiStore.triggerSpeedModal).toHaveBeenCalledWith('v1', 'clip1', 1);
     });
+
+    it('includes rename after paste-parameters in other actions', () => {
+      const { actions } = build();
+      const ids = actions.otherActionsList.value.map((a) => a.id);
+      const pasteParametersIndex = ids.indexOf('paste-parameters');
+      const renameIndex = ids.indexOf('rename');
+      expect(renameIndex).toBeGreaterThan(-1);
+      expect(renameIndex).toBeGreaterThan(pasteParametersIndex);
+    });
   });
 
   describe('commonActionsList', () => {
+    it('does not include rename in common actions', () => {
+      const { actions } = build();
+      expect(actions.commonActionsList.value.some((a) => a.id === 'rename')).toBe(false);
+    });
+
     it('includes a mute toggle for audio-bearing clips and omits it otherwise', () => {
       const withAudio = build({ trackKind: 'audio', clip: makeClip({ trackId: 'a1' }) });
       expect(withAudio.actions.commonActionsList.value.some((a) => a.id === 'toggle-muted')).toBe(
