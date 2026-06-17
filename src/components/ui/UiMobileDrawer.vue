@@ -190,11 +190,19 @@ const containerStyle = computed(() =>
 );
 
 function applyDragTransform(dx: number, dy: number) {
-  if (!containerRef.value) return;
+  const el = containerRef.value;
+  if (!el) return;
   if (dx !== 0 || dy !== 0) {
-    containerRef.value.style.transform = `translate3d(${dx}px, ${dy}px, 0)`;
+    // Kill the container's standing `transition-all duration-300` while the finger
+    // drives the sheet, otherwise every transform update is interpolated over 300ms
+    // and the sheet visibly lags behind the finger (unlike the handle drag, which
+    // already disables the transition in setHandleTransform).
+    el.style.transition = 'none';
+    el.style.transform = `translate3d(${dx}px, ${dy}px, 0)`;
   } else {
-    containerRef.value.style.removeProperty('transform');
+    // Restore the CSS transition so the release settles back to 0 smoothly.
+    el.style.removeProperty('transition');
+    el.style.removeProperty('transform');
   }
 }
 

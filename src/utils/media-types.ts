@@ -122,3 +122,17 @@ export function isOpenableProjectFileName(filename: string): boolean {
   if (type === 'video' || type === 'audio' || type === 'image' || type === 'timeline') return true;
   return isOpenableProjectTextFilename(filename);
 }
+
+/**
+ * Checks whether a media file of the given type can be placed on a track of the given kind.
+ */
+export function validateMediaTrackCompatibility(
+  mediaType: MediaType,
+  trackKind: 'video' | 'audio',
+): boolean {
+  if (mediaType === 'audio') return trackKind === 'audio';
+  if (mediaType === 'video' || mediaType === 'image' || mediaType === 'timeline') {
+    return trackKind === 'video';
+  }
+  return false;
+}
