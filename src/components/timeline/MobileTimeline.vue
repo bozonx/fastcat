@@ -361,6 +361,15 @@ function onMobilePointerUp(e: PointerEvent) {
 function onMobilePointerCancel(e: PointerEvent) {
   clearScrollRectCache();
   stopEdgeScroll();
+
+  // A long-press gesture on touch frequently ends with `pointercancel` (the
+  // webview takes the gesture over) rather than `pointerup`. Reset the flag
+  // here too — otherwise it stays stuck `true` and the next tap is swallowed
+  // by the long-press guards, so additional clips can never be selected.
+  setTimeout(() => {
+    isLongPress.value = false;
+  }, MOBILE_LONG_PRESS_RESET_DELAY_MS);
+
   if (draggingMode.value) return;
   onGlobalPointerUp(e);
 }

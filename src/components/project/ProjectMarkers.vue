@@ -9,6 +9,7 @@ import MarkerColorFilter from '~/components/project/MarkerColorFilter.vue';
 
 defineProps<{
   compact?: boolean;
+  colorFilterOrientation?: 'horizontal' | 'vertical';
 }>();
 
 const emit = defineEmits<{
@@ -113,7 +114,11 @@ function isMarkerSelected(markerId: string): boolean {
 <template>
   <div class="h-full flex flex-col bg-ui-bg-elevated overflow-hidden select-none">
     <div class="flex items-center gap-2 px-3 h-9 border-b border-ui-border bg-ui-bg/30 shrink-0">
-      <MarkerColorFilter v-model="selectedColors" :available-colors="availableColors" />
+      <MarkerColorFilter
+        v-model="selectedColors"
+        :available-colors="availableColors"
+        :orientation="colorFilterOrientation"
+      />
       <div class="flex-1"></div>
       <UButton
         size="xs"

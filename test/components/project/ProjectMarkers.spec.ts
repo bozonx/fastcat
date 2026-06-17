@@ -133,6 +133,23 @@ describe('ProjectMarkers.vue', () => {
     expect(component.find('.modal-mock').exists()).toBe(true);
   });
 
+  it('passes vertical orientation to MarkerColorFilter', async () => {
+    mockTimelineStore.markers = [
+      { id: '1', timeUs: 1_000_000, text: 'Red', color: '#d0021b' },
+    ];
+
+    const component = await mountWithNuxt(ProjectMarkers, {
+      props: {
+        colorFilterOrientation: 'vertical',
+      },
+    });
+
+    const wrapper = component.find('.marker-color-filter');
+    expect(wrapper.exists()).toBe(true);
+    expect(wrapper.classes()).toContain('flex-col');
+    expect(wrapper.classes()).toContain('items-center');
+  });
+
   it('renders stacked end timecode only when duration is present', async () => {
     mockTimelineStore.markers = [
       { id: '1', timeUs: 1_000_000, durationUs: 5_000_000, text: 'Zone Marker' },

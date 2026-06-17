@@ -84,6 +84,25 @@ describe('MarkerColorFilter.vue', () => {
     expect(selectedColors.value.has('#d0021b')).toBe(false);
   });
 
+  it('renders vertically when orientation is vertical', async () => {
+    const selectedColors = ref(new Set<string>(['#d0021b']));
+    const component = await mountWithNuxt(MarkerColorFilter, {
+      props: {
+        availableColors: ['#d0021b', '#4a90e2'],
+        orientation: 'vertical',
+        modelValue: selectedColors.value,
+        'onUpdate:modelValue': (val: Set<string>) => {
+          selectedColors.value = val;
+        },
+      },
+    });
+
+    const wrapper = component.find('.marker-color-filter');
+    expect(wrapper.exists()).toBe(true);
+    expect(wrapper.classes()).toContain('flex-col');
+    expect(wrapper.classes()).toContain('items-center');
+  });
+
   it('toggles all colors with Select all button', async () => {
     const selectedColors = ref(new Set<string>(['#d0021b']));
     const component = await mountWithNuxt(MarkerColorFilter, {

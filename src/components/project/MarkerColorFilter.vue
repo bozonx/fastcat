@@ -3,6 +3,7 @@ import { computed } from 'vue';
 
 const props = defineProps<{
   availableColors: string[];
+  orientation?: 'horizontal' | 'vertical';
 }>();
 
 const selectedColors = defineModel<Set<string>>({ required: true });
@@ -43,8 +44,14 @@ function toggleAll() {
 </script>
 
 <template>
-  <div class="flex items-center gap-2">
-    <div class="marker-color-filter flex items-center gap-1.5">
+  <div
+    class="flex gap-2"
+    :class="props.orientation === 'vertical' ? 'flex-col items-center' : 'items-center'"
+  >
+    <div
+      class="marker-color-filter flex gap-1.5"
+      :class="props.orientation === 'vertical' ? 'flex-col items-center' : 'items-center'"
+    >
       <button
         v-for="color in availableColors"
         :key="color"

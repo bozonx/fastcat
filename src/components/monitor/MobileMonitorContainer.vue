@@ -665,7 +665,10 @@ const containerHeightClass = computed(() => {
         direction="bottom"
       >
         <div class="px-4 pb-4 h-full overflow-hidden">
-          <ProjectMarkers class="h-full" />
+          <ProjectMarkers
+            class="h-full"
+            :color-filter-orientation="isLandscape ? 'vertical' : 'horizontal'"
+          />
         </div>
       </UiMobileDrawer>
     </div>
