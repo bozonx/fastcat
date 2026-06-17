@@ -70,9 +70,7 @@ export function applyLoadedTimelineSessionSnapshot(
         zoom: input.zoom,
         trackHeights: { ...input.trackHeights },
         selectionRange: input.selectionRange ? { ...input.selectionRange } : undefined,
-        mobileTrackHeightsEnlarged: input.mobileTrackHeightsEnlarged
-          ? { ...input.mobileTrackHeightsEnlarged }
-          : undefined,
+        mobileTrackHeightsEnlarged: { ...(input.mobileTrackHeightsEnlarged ?? {}) },
       },
     },
   };
@@ -204,6 +202,7 @@ export const useProjectSettingsStore = defineStore('projectSettings', () => {
             zoom: timelineStore.timelineZoom,
             trackHeights: timelineStore.trackHeights,
             selectionRange: timelineStore.selectionRange,
+            mobileTrackHeightsEnlarged: timelineStore.mobileTrackHeightsEnlarged,
           });
 
           const fileManagerPaths: Record<string, string | null> = {};

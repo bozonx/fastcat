@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
+import { useWindowSize } from '@vueuse/core';
 import { useTimelineStore } from '~/stores/timeline.store';
 import MarkerProperties from '~/components/properties/MarkerProperties.vue';
 import MobilePropertiesDrawer from './MobilePropertiesDrawer.vue';
@@ -18,6 +19,9 @@ const activeSnapPoint = defineModel<string | number | null>('activeSnapPoint', {
 const emit = defineEmits<{
   (e: 'close'): void;
 }>();
+
+const { width, height } = useWindowSize();
+const toolbarOrientation = computed(() => (width.value > height.value ? 'vertical' : 'horizontal'));
 
 const timelineStore = useTimelineStore();
 
@@ -53,12 +57,25 @@ function confirmDelete() {
     @close="emit('close')"
   >
     <template #toolbar>
-      <div class="flex items-center gap-2 w-full overflow-hidden">
+      <div
+        class="flex items-center gap-2 overflow-hidden"
+        :class="toolbarOrientation === 'vertical' ? 'flex-col h-full' : 'w-full'"
+      >
         <MobileDrawerToolbarButton icon="i-heroicons-trash" @click="confirmDelete" />
 
-        <div class="w-px h-6 bg-ui-border mx-1 shrink-0" />
+        <div
+          class="bg-ui-border shrink-0"
+          :class="toolbarOrientation === 'vertical' ? 'h-px w-6 my-1' : 'w-px h-6 mx-1'"
+        />
 
-        <div class="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5 min-w-0">
+        <div
+          class="flex items-center gap-1.5 no-scrollbar"
+          :class="
+            toolbarOrientation === 'vertical'
+              ? 'flex-col overflow-y-auto px-0.5 min-h-0'
+              : 'overflow-x-auto py-0.5 min-w-0'
+          "
+        >
           <button
             v-for="colorValue in COLORS"
             :key="colorValue"

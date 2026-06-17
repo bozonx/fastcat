@@ -66,7 +66,11 @@ onUnmounted(() => {
 <template>
   <div
     class="mobile-drawer-toolbar relative overflow-hidden"
-    :class="isVertical ? 'h-full min-h-0' : 'flex-1 min-w-0'"
+    :class="
+      isVertical
+        ? 'h-full min-h-0 mobile-drawer-toolbar--vertical'
+        : 'flex-1 min-w-0 mobile-drawer-toolbar--horizontal'
+    "
   >
     <!-- Start (left / top) fade shadow -->
     <div
@@ -116,5 +120,10 @@ onUnmounted(() => {
 .no-scrollbar {
   -ms-overflow-style: none;
   scrollbar-width: none;
+}
+
+/* Landscape rail: buttons fill the rail width and stay square */
+.mobile-drawer-toolbar--vertical :deep(.mobile-drawer-toolbar-button) {
+  width: 100%;
 }
 </style>

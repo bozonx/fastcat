@@ -721,6 +721,7 @@ watch(isOpen, (val) => {
   </Teleport>
 
   <UDrawer
+    :key="effectiveDirection"
     v-model:open="isOpen"
     :direction="effectiveDirection"
     :title="drawerTitleForA11y"

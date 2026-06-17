@@ -270,6 +270,7 @@ export function createTimelinePersistenceModule(
     audioMuted: boolean;
     timelineZoom: number;
     trackHeights: Record<string, number>;
+    mobileTrackHeightsEnlarged: Record<string, boolean>;
     selectionRange: TimelineSelectionRange | null;
     history: unknown;
   }
@@ -292,6 +293,7 @@ export function createTimelinePersistenceModule(
       audioMuted: deps.audioMuted?.value ?? false,
       timelineZoom: deps.timelineZoom.value,
       trackHeights: { ...deps.trackHeights.value },
+      mobileTrackHeightsEnlarged: { ...(deps.mobileTrackHeightsEnlarged?.value ?? {}) },
       selectionRange: deps.selectionRange?.value ? { ...deps.selectionRange.value } : null,
       // Park the outgoing tab's undo stack out of the live store so it travels
       // with the tab (and can't bleed into the incoming tab's undo/redo).
@@ -332,6 +334,9 @@ export function createTimelinePersistenceModule(
     if (deps.audioMuted) deps.audioMuted.value = state.audioMuted;
     deps.timelineZoom.value = state.timelineZoom;
     deps.trackHeights.value = { ...state.trackHeights };
+    if (deps.mobileTrackHeightsEnlarged) {
+      deps.mobileTrackHeightsEnlarged.value = { ...state.mobileTrackHeightsEnlarged };
+    }
     if (deps.selectionRange) {
       deps.selectionRange.value = state.selectionRange ? { ...state.selectionRange } : null;
     }

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, watch } from 'vue';
-import { useWindowSize } from '@vueuse/core';
+import { useElementSize, useWindowSize } from '@vueuse/core';
 import {
   MOBILE_CLICK_MOVE_THRESHOLD_PX,
   MOBILE_LONG_PRESS_RESET_DELAY_MS,
@@ -194,6 +194,11 @@ function handleAddContent(trackId: string) {
 }
 
 const scrollEl = ref<HTMLElement | null>(null);
+
+// Reactive viewport width of the scroll container. Needed so clip thumbnails
+// know the visible window — without it the thumbnail strip computes a zero-width
+// range and renders nothing on mobile.
+const { width: scrollViewportWidth } = useElementSize(scrollEl);
 
 function scrollPlayheadIntoView() {
   const el = scrollEl.value;
@@ -845,6 +850,8 @@ async function handleConfirmCreateVersion(newName: string) {
             class="min-w-full"
             :tracks="tracks"
             :track-heights="trackHeights"
+            :scroll-left="timelineStore.timelineScrollLeftPx"
+            :viewport-width="scrollViewportWidth"
             :can-edit-clip-content="canEditClipContent"
             :dragging-mode="draggingMode"
             :dragging-item-id="draggingItemId"

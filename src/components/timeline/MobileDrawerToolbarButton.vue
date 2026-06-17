@@ -16,7 +16,7 @@ defineEmits<{ click: [] }>();
 <template>
   <button
     data-vaul-no-drag
-    class="flex flex-col items-center justify-center gap-0.5 rounded-xl px-3 py-2 min-w-[52px] shrink-0 transition-all outline-none"
+    class="mobile-drawer-toolbar-button flex flex-col items-center justify-center gap-0.5 rounded-xl px-3 py-2 min-w-[52px] shrink-0 transition-all outline-none aspect-square"
     :class="[
       danger
         ? 'text-red-400 bg-red-400/10'
@@ -33,6 +33,8 @@ defineEmits<{ click: [] }>();
     @click="$emit('click')"
   >
     <UIcon :name="icon" class="w-5 h-5 shrink-0" />
-    <span v-if="label" class="text-[10px] font-medium leading-tight antialiased">{{ label }}</span>
+    <span v-if="label" class="text-[10px] font-medium leading-tight antialiased line-clamp-2">{{
+      label
+    }}</span>
   </button>
 </template>
