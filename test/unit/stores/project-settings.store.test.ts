@@ -1,6 +1,7 @@
 /** @vitest-environment node */
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { setActivePinia, createPinia } from 'pinia';
+import { reactive, nextTick } from 'vue';
 import {
   applyLoadedTimelineSessionSnapshot,
   useProjectSettingsStore,
@@ -112,16 +113,17 @@ vi.mock('~/repositories/project-ui.repository', () => ({
   })),
 }));
 
-const { capturedAutoSave, uiSaveSpy } = vi.hoisted(() => ({
+const { capturedAutoSave, uiSaveSpy, markDirtySpy } = vi.hoisted(() => ({
   capturedAutoSave: { doSave: null as null | (() => Promise<unknown>) },
   uiSaveSpy: vi.fn().mockResolvedValue(undefined),
+  markDirtySpy: vi.fn(),
 }));
 
 vi.mock('~/utils/auto-save', () => ({
   createAutoSave: vi.fn((config: { doSave: () => Promise<unknown> }) => {
     capturedAutoSave.doSave = config.doSave;
     return {
-      markDirty: vi.fn(),
+      markDirty: markDirtySpy,
       markCleanForCurrentRevision: vi.fn(),
       reset: vi.fn(),
       requestSave: vi.fn().mockResolvedValue(undefined),
@@ -151,7 +153,10 @@ const timelineStoreMock = {
   trackHeights: {},
   selectionRange: null,
 };
-const fileManagerStoreMock = { selectedFolder: null, openFolderByPath: vi.fn() };
+const fileManagerStoreMock = reactive<{ selectedFolder: { path: string } | null; openFolderByPath: ReturnType<typeof vi.fn> }>({
+  selectedFolder: null,
+  openFolderByPath: vi.fn(),
+});
 
 vi.mock('~/stores/focus.store', () => ({
   useFocusStore: vi.fn(() => focusStoreMock),
@@ -178,6 +183,7 @@ describe('ProjectSettingsStore', () => {
     setActivePinia(createPinia());
     vi.clearAllMocks();
     workspaceMock.projectsHandle = {} as any;
+    fileManagerStoreMock.selectedFolder = null;
   });
 
   it('activeMonitor falls back to cut when view is unrecognized', () => {
@@ -325,6 +331,25 @@ describe('ProjectSettingsStore', () => {
     await capturedAutoSave.doSave!();
 
     expect(uiSaveSpy).toHaveBeenCalled();
+  });
+
+  it('marks project settings dirty when internal file manager folder changes', async () => {
+    const store = useProjectSettingsStore();
+    store.setContext({
+      getProjectDirHandle: async () => ({}) as any,
+      getCurrentProjectName: () => 'test',
+      getIsReadOnly: () => false,
+      getProjectMeta: () => null,
+      saveProjectMeta: async () => {},
+      getCurrentEditorView: () => 'cut',
+      getLastViewBeforeFullscreen: () => null,
+    });
+
+    // Simulate navigating to a folder in the mobile file manager
+    fileManagerStoreMock.selectedFolder = { path: '/videos' };
+    await nextTick();
+
+    expect(markDirtySpy).toHaveBeenCalled();
   });
 });
 

@@ -63,5 +63,11 @@ describe('MobileAddContentDrawer', () => {
     // After nextTick the media picker should be rendered
     await wrapper.vm.$nextTick();
     expect(wrapper.find('.media-picker-stub').exists()).toBe(true);
+
+    // Simulate picker finishing its work — it should NOT emit close from parent drawer
+    const picker = wrapper.findComponent({ name: 'MobileMediaPickerDrawer' });
+    await picker.vm.$emit('added');
+    // No extra 'close' should be fired because the parent is already closed
+    expect(wrapper.emitted('close')!.length).toBe(1);
   });
 });

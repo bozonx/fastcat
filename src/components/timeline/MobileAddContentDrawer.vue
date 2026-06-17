@@ -335,6 +335,5 @@ function addAudioTrack() {
   <MobileMediaPickerDrawer
     :is-open="isMediaPickerOpen"
     @close="isMediaPickerOpen = false"
-    @added="emit('close')"
   />
 </template>

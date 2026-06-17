@@ -517,6 +517,28 @@ export const useProjectSettingsStore = defineStore('projectSettings', () => {
     { deep: true },
   );
 
+  // Watch internal file-manager folder changes to ensure they are persisted.
+  // Without this, navigating folders in the mobile file browser (editor store)
+  // or files-page panels never marks project settings dirty, so the path stays
+  // stale in project.ui.json and an old folder is restored on reload.
+  watch(
+    () => {
+      const fileManagerStore = useFileManagerStore();
+      const filesPageStore = useFilesPageFileManagerStore();
+      const filesPageSidebarStore = useFilesPageSidebarFileManagerStore();
+      return [
+        fileManagerStore.selectedFolder?.path,
+        filesPageStore.selectedFolder?.path,
+        filesPageSidebarStore.selectedFolder?.path,
+      ];
+    },
+    () => {
+      if (isLoadingProjectSettings.value) return;
+      markProjectSettingsAsDirty();
+      void requestProjectSettingsSave();
+    },
+  );
+
   async function requestProjectSettingsSave(options?: { immediate?: boolean }) {
     await autoSave.requestSave(options);
   }

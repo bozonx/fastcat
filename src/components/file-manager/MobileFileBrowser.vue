@@ -1,7 +1,10 @@
 <script setup lang="ts">
-import { ref, computed, watch, onUnmounted } from 'vue';
+import { ref, computed, watch, onUnmounted, provide } from 'vue';
 import { useFileManagerStore } from '~/stores/file-manager.store';
-import { useFileManager } from '~/composables/file-manager/useFileManager';
+import {
+  useFileManager,
+  FILE_MANAGER_INJECTION_KEY,
+} from '~/composables/file-manager/useFileManager';
 import { useProjectStore } from '~/stores/project.store';
 import { useSelectionStore } from '~/stores/selection.store';
 import { useClipboardStore } from '~/stores/clipboard.store';
@@ -28,6 +31,7 @@ import UiEntityCreationModal from '~/components/ui/UiEntityCreationModal.vue';
 import MobileAddToTimelineModal from '~/components/timeline/MobileAddToTimelineModal.vue';
 import { useFileBrowserBulkSelection } from '~/composables/file-manager/useFileBrowserBulkSelection';
 import { useTimelineMediaUsageStore } from '~/stores/timeline-media-usage.store';
+import { useUiStore } from '~/stores/ui.store';
 import { useHotkeyLabel } from '~/composables/useHotkeyLabel';
 
 type MobileDrawerAction =
@@ -46,6 +50,9 @@ const { t } = useI18n();
 const { getHotkeyLabel } = useHotkeyLabel();
 const { target: teleportTarget } = useTeleportTarget();
 
+const fileManager = useFileManager({ shouldRecordFileManagerHistory: () => false });
+provide(FILE_MANAGER_INJECTION_KEY, fileManager);
+
 const {
   findEntryByPath,
   mediaCache,
@@ -60,7 +67,9 @@ const {
   copyEntry,
   moveEntry,
   readDirectory,
-} = useFileManager({ shouldRecordFileManagerHistory: () => false });
+} = fileManager;
+
+const uiStore = useUiStore();
 
 const isRemoteMode = ref(false);
 
@@ -187,6 +196,13 @@ onUnmounted(() => {
     clipboardStore.clearClipboardPayload();
   }
 });
+
+watch(
+  () => uiStore.fileManagerUpdateCounter,
+  () => {
+    void loadFolderContent();
+  },
+);
 
 const isAddToTimelineModalOpen = ref(false);
 const addToTimelineEntries = ref<FsEntry[]>([]);
