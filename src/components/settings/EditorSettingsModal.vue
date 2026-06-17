@@ -6,7 +6,6 @@ import SettingsGeneral from '~/components/settings/SettingsGeneral.vue';
 import SettingsHotkeys from '~/components/settings/SettingsHotkeys.vue';
 import SettingsMouse from '~/components/settings/SettingsMouse.vue';
 import SettingsOptimization from '~/components/settings/SettingsOptimization.vue';
-import SettingsProjectDefaults from '~/components/settings/SettingsProjectDefaults.vue';
 import SettingsExportDefaults from '~/components/settings/SettingsExportDefaults.vue';
 import SettingsIntegrations from '~/components/settings/SettingsIntegrations.vue';
 import SettingsVideo from '~/components/settings/SettingsVideo.vue';
@@ -34,7 +33,6 @@ type SettingsSection =
   | 'user.hotkeys'
   | 'user.mouse'
   | 'user.proxy'
-  | 'user.project'
   | 'user.export'
   | 'user.integrations'
   | 'user.video'
@@ -42,8 +40,11 @@ type SettingsSection =
   | 'user.ui'
   | 'workspace.storage';
 
+const savedSection = uiStore.editorSettingsActiveSection;
 const activeSection = ref<SettingsSection>(
-  (uiStore.editorSettingsActiveSection as SettingsSection) || 'user.general',
+  savedSection === 'user.project' || !savedSection
+    ? 'user.general'
+    : (savedSection as SettingsSection),
 );
 
 watch(activeSection, (section) => {
@@ -99,7 +100,7 @@ watch(
             </div>
             <UiToggleButton
               :model-value="activeSection === 'user.general'"
-              label="General"
+              :label="t('videoEditor.settings.userGeneral')"
               inactive-color="neutral"
               active-color="neutral"
               :active-bg="'color-mix(in srgb, var(--selection-accent-500) 15%, transparent)'"
@@ -112,7 +113,7 @@ watch(
             />
             <UiToggleButton
               :model-value="activeSection === 'user.hotkeys'"
-              label="Hotkeys"
+              :label="t('videoEditor.settings.userHotkeys')"
               inactive-color="neutral"
               active-color="neutral"
               :active-bg="'color-mix(in srgb, var(--selection-accent-500) 15%, transparent)'"
@@ -125,7 +126,7 @@ watch(
             />
             <UiToggleButton
               :model-value="activeSection === 'user.mouse'"
-              label="Mouse"
+              :label="t('videoEditor.settings.userMouse')"
               inactive-color="neutral"
               active-color="neutral"
               :active-bg="'color-mix(in srgb, var(--selection-accent-500) 15%, transparent)'"
@@ -137,21 +138,8 @@ watch(
               @click="activeSection = 'user.mouse'"
             />
             <UiToggleButton
-              :model-value="activeSection === 'user.project'"
-              label="Project presets"
-              inactive-color="neutral"
-              active-color="neutral"
-              :active-bg="'color-mix(in srgb, var(--selection-accent-500) 15%, transparent)'"
-              :active-text="'var(--selection-accent-400)'"
-              inactive-variant="ghost"
-              active-variant="soft"
-              no-toggle
-              class="justify-start"
-              @click="activeSection = 'user.project'"
-            />
-            <UiToggleButton
               :model-value="activeSection === 'user.export'"
-              label="Export presets"
+              :label="t('videoEditor.settings.userExport')"
               inactive-color="neutral"
               active-color="neutral"
               :active-bg="'color-mix(in srgb, var(--selection-accent-500) 15%, transparent)'"
@@ -164,7 +152,7 @@ watch(
             />
             <UiToggleButton
               :model-value="activeSection === 'user.proxy'"
-              label="Proxy"
+              :label="t('videoEditor.settings.userProxy')"
               inactive-color="neutral"
               active-color="neutral"
               :active-bg="'color-mix(in srgb, var(--selection-accent-500) 15%, transparent)'"
@@ -177,7 +165,7 @@ watch(
             />
             <UiToggleButton
               :model-value="activeSection === 'user.video'"
-              label="Video"
+              :label="t('videoEditor.settings.userVideo')"
               inactive-color="neutral"
               active-color="neutral"
               :active-bg="'color-mix(in srgb, var(--selection-accent-500) 15%, transparent)'"
@@ -190,7 +178,7 @@ watch(
             />
             <UiToggleButton
               :model-value="activeSection === 'user.audio'"
-              label="Audio"
+              :label="t('videoEditor.settings.userAudio')"
               inactive-color="neutral"
               active-color="neutral"
               :active-bg="'color-mix(in srgb, var(--selection-accent-500) 15%, transparent)'"
@@ -204,7 +192,7 @@ watch(
             <UiToggleButton
               v-if="workspaceStore.userSettings.experimentalFeatures"
               :model-value="activeSection === 'user.integrations'"
-              label="Integrations"
+              :label="t('videoEditor.settings.userIntegrations')"
               inactive-color="neutral"
               active-color="neutral"
               :active-bg="'color-mix(in srgb, var(--selection-accent-500) 15%, transparent)'"
@@ -236,7 +224,7 @@ watch(
             </div>
             <UiToggleButton
               :model-value="activeSection === 'workspace.storage'"
-              label="Storage"
+              :label="t('videoEditor.settings.workspaceStorage')"
               inactive-color="neutral"
               active-color="neutral"
               :active-bg="'color-mix(in srgb, var(--selection-accent-500) 15%, transparent)'"
@@ -256,7 +244,6 @@ watch(
         <SettingsHotkeys v-else-if="activeSection === 'user.hotkeys'" ref="hotkeysRef" />
         <SettingsMouse v-else-if="activeSection === 'user.mouse'" />
         <SettingsOptimization v-else-if="activeSection === 'user.proxy'" />
-        <SettingsProjectDefaults v-else-if="activeSection === 'user.project'" />
         <SettingsExportDefaults
           v-else-if="activeSection === 'user.export'"
           :is-active="activeSection === 'user.export'"

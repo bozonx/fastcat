@@ -3,7 +3,6 @@ import { computed, watch, onBeforeUnmount } from 'vue';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import SettingsGeneral from './SettingsGeneral.vue';
 import SettingsOptimization from './SettingsOptimization.vue';
-import SettingsProjectDefaults from './SettingsProjectDefaults.vue';
 import SettingsExportDefaults from './SettingsExportDefaults.vue';
 import SettingsVideo from './SettingsVideo.vue';
 import SettingsAudio from './SettingsAudio.vue';
@@ -15,7 +14,6 @@ import { useUiStore } from '~/stores/ui.store';
 type SettingsSection =
   | 'user.general'
   | 'user.proxy'
-  | 'user.project'
   | 'user.export'
   | 'user.video'
   | 'user.audio'
@@ -27,8 +25,11 @@ const { t } = useI18n();
 const workspaceStore = useWorkspaceStore();
 const uiStore = useUiStore();
 
+const savedSection = uiStore.editorSettingsActiveSection;
 const activeSection = ref<SettingsSection>(
-  (uiStore.editorSettingsActiveSection as SettingsSection) || 'user.general',
+  savedSection === 'user.project' || !savedSection
+    ? 'user.general'
+    : (savedSection as SettingsSection),
 );
 
 watch(activeSection, (section) => {
@@ -38,7 +39,6 @@ watch(activeSection, (section) => {
 const sections = computed(() => [
   { value: 'user.general', label: t('videoEditor.settings.userGeneral') },
   { value: 'user.proxy', label: t('videoEditor.settings.userProxy') },
-  { value: 'user.project', label: t('videoEditor.settings.userProject') },
   { value: 'user.export', label: t('videoEditor.settings.userExport') },
   { value: 'user.video', label: t('videoEditor.settings.userVideo') },
   { value: 'user.audio', label: t('videoEditor.settings.userAudio') },
@@ -71,7 +71,6 @@ onBeforeUnmount(() => {
     <div class="flex-1 overflow-y-auto p-4 custom-scrollbar">
       <SettingsGeneral v-if="activeSection === 'user.general'" />
       <SettingsOptimization v-else-if="activeSection === 'user.proxy'" />
-      <SettingsProjectDefaults v-else-if="activeSection === 'user.project'" />
       <SettingsExportDefaults
         v-else-if="activeSection === 'user.export'"
         :is-active="activeSection === 'user.export'"
