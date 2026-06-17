@@ -425,23 +425,22 @@ defineExpose({
 
 <template>
   <div class="w-full flex flex-col gap-2 text-ui-text">
-    <ClipActionsSection
-      v-if="!hideActions"
-      :common-actions="isMobile ? [] : commonActionsList"
-      :other-actions="otherActionsList"
-      @rename="isUiRenameModalOpen = true"
-      @copy="handleCopyClip"
-      @cut="handleCutClip"
-      @copy-parameters="copyClipParameters"
-      @paste-parameters="openPasteClipParameters"
-    />
-
     <UTabs v-model="activeTab" :items="tabs" variant="link" :content="false" class="mb-2" />
 
     <!-- Tab: Clip -->
     <div v-if="activeTab === 'clip'" class="flex flex-col gap-2">
+      <ClipActionsSection
+        v-if="!hideActions"
+        :common-actions="isMobile ? [] : commonActionsList"
+        :other-actions="otherActionsList"
+        @rename="isUiRenameModalOpen = true"
+        @copy="handleCopyClip"
+        @cut="handleCutClip"
+        @copy-parameters="copyClipParameters"
+        @paste-parameters="openPasteClipParameters"
+      />
+
       <ClipInfoSection
-        v-if="!isMobile"
         :clip="clip"
         :media-meta="mediaMeta"
         :show-source="false"

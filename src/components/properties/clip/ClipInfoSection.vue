@@ -39,7 +39,7 @@ const { t } = useI18n();
     <MediaMetadataList :media-meta="props.mediaMeta as any" />
   </PropertySection>
 
-  <PropertySection v-if="props.showInfo" class="hidden md:block">
+  <PropertySection v-if="props.showInfo">
     <PropertyTimecode
       :label="t('common.duration')"
       :model-value="props.clip.timelineRange.durationUs"
