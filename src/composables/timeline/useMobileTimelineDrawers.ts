@@ -52,6 +52,8 @@ export function useMobileTimelineDrawers() {
     isTransitionDrawerOpen.value = false;
     isMultiSelectionDrawerOpen.value = false;
     isTrimDrawerOpen.value = false;
+    isAddContentDrawerOpen.value = false;
+    isVirtualClipPresetDrawerOpen.value = false;
     isSettingsDrawerOpen.value = false;
   }
 

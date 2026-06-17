@@ -71,6 +71,7 @@ const props = defineProps<{
   draggingMode?: 'move' | 'slip' | 'trim_start' | 'trim_end' | null;
   draggingItemId?: string | null;
   isMobile?: boolean;
+  isAnyDrawerOpen?: boolean;
   onZoomToFit?: () => void;
 }>();
 
