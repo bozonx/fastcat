@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, watch, ref } from 'vue';
+import { computed, watch } from 'vue';
 import { useProjectStore } from '~/stores/project.store';
 import { useUiStore } from '~/stores/ui.store';
 import { useFocusStore } from '~/stores/focus.store';
@@ -11,7 +11,7 @@ import UiTextInput from '~/components/ui/UiTextInput.vue';
 import UiTextarea from '~/components/ui/UiTextarea.vue';
 import UiFormField from '~/components/ui/UiFormField.vue';
 import UiFormSectionHeader from '~/components/ui/UiFormSectionHeader.vue';
-import UiTabs from '~/components/ui/UiTabs.vue';
+import UiButtonGroup from '~/components/ui/UiButtonGroup.vue';
 
 import {
   BASE_VIDEO_CODEC_OPTIONS,
@@ -34,9 +34,6 @@ const projectStore = useProjectStore();
 const uiStore = useUiStore();
 const focusStore = useFocusStore();
 const fileManager = useFileManager();
-
-const isResolutionExpanded = ref(false);
-const isEncodingExpanded = ref(false);
 
 const {
   isExporting,
@@ -205,7 +202,7 @@ const filenamePlaceholder = computed(() =>
         </h2>
       </div>
 
-      <UiTabs v-model="exportType" :options="tabOptions" class="mb-6 shrink-0" />
+      <UiButtonGroup v-model="exportType" :options="tabOptions" class="mb-6 shrink-0" fluid />
 
       <div class="flex flex-col gap-6 max-w-2xl flex-1 shrink-0">
         <div
@@ -246,6 +243,7 @@ const filenamePlaceholder = computed(() =>
           <UiFormField
             :label="t('videoEditor.export.filename')"
             :error="filenameError ?? undefined"
+            :help="!isTauri ? t('videoEditor.export.saveLocationNote') : undefined"
           >
             <UiTextInput
               v-model="outputFilename"
@@ -254,13 +252,13 @@ const filenamePlaceholder = computed(() =>
               :placeholder="filenamePlaceholder"
             />
           </UiFormField>
-          <div v-if="isTauri" class="mt-1">
-            <div v-if="!customExportPath" class="flex items-center gap-1.5">
-              <UIcon
-                name="i-heroicons-information-circle"
-                class="h-4 w-4 shrink-0 text-ui-text-muted"
-              />
-              <span class="text-sm text-ui-text-muted leading-relaxed">
+          <template v-if="isTauri">
+            <div
+              v-if="!customExportPath"
+              class="flex items-center gap-1.5 mt-1 text-xs text-ui-text-muted"
+            >
+              <UIcon name="i-heroicons-information-circle" class="h-4 w-4 shrink-0" />
+              <span class="leading-relaxed">
                 {{ t('videoEditor.export.defaultExportFolderNote') }}
               </span>
               <UButton
@@ -272,7 +270,7 @@ const filenamePlaceholder = computed(() =>
                 @click="pickTauriExportPath"
               />
             </div>
-            <div v-else class="flex items-center gap-1.5 text-sm text-ui-text-muted">
+            <div v-else class="flex items-center gap-1.5 mt-1 text-xs text-ui-text-muted">
               <UIcon name="i-heroicons-check-circle" class="h-4 w-4 shrink-0 text-success" />
               <span
                 class="overflow-hidden whitespace-nowrap leading-relaxed"
@@ -289,120 +287,77 @@ const filenamePlaceholder = computed(() =>
                 @click="customExportPath = null"
               />
             </div>
-          </div>
-          <div v-else class="text-sm text-ui-text-muted flex items-center gap-1.5 mt-1">
-            <UIcon name="i-heroicons-information-circle" class="h-4 w-4 shrink-0" />
-            <span class="leading-relaxed">
-              {{ t('videoEditor.export.saveLocationNote') }}
-            </span>
-          </div>
+          </template>
         </div>
 
         <!-- Resolution & FPS Settings (Video only) -->
         <div v-show="exportType === 'video'" class="space-y-4">
-          <div
-            class="w-full flex justify-between items-center cursor-pointer group"
-            @click="isResolutionExpanded = !isResolutionExpanded"
-          >
-            <div class="flex items-center gap-2">
-              <h3 v-show="isResolutionExpanded" class="font-semibold text-ui-text">
-                {{ t('videoEditor.projectSettings.resolutionAndFps') }}
-              </h3>
-              <span v-show="!isResolutionExpanded" class="text-ui-text-muted font-normal">
-                {{ resolutionSummary }}
-              </span>
-            </div>
-            <UIcon
-              :name="
-                isResolutionExpanded
-                  ? 'i-heroicons-chevron-down-20-solid'
-                  : 'i-heroicons-chevron-right-20-solid'
-              "
-              class="w-5 h-5 text-ui-text-muted group-hover:text-ui-text transition-colors"
+          <div class="text-ui-text-muted font-normal">
+            {{ resolutionSummary }}
+          </div>
+
+          <div class="flex items-center gap-3">
+            <UCheckbox v-model="matchTimeline" :disabled="isExporting" />
+            <span class="text-ui-text text-sm">{{ t('videoEditor.export.matchTimeline') }}</span>
+            <UButton
+              v-if="isFieldDirty('matchTimeline')"
+              icon="i-heroicons-arrow-path-20-solid"
+              color="warning"
+              variant="ghost"
+              size="xs"
+              class="shrink-0"
+              @click="resetField('matchTimeline')"
             />
           </div>
 
-          <div v-show="isResolutionExpanded" class="pt-2 space-y-4">
-            <div class="flex items-center gap-3">
-              <UCheckbox v-model="matchTimeline" :disabled="isExporting" />
-              <span class="text-ui-text text-sm">{{ t('videoEditor.export.matchTimeline') }}</span>
-              <UButton
-                v-if="isFieldDirty('matchTimeline')"
-                icon="i-heroicons-arrow-path-20-solid"
-                color="warning"
-                variant="ghost"
-                size="xs"
-                class="shrink-0"
-                @click="resetField('matchTimeline')"
-              />
-            </div>
-            <MediaResolutionSettings
-              v-model:width="exportWidth"
-              v-model:height="exportHeight"
-              v-model:fps="exportFps"
-              v-model:resolution-format="resolutionFormat"
-              v-model:orientation="orientation"
-              v-model:aspect-ratio="aspectRatio"
-              v-model:is-custom-resolution="isCustomResolution"
-              :disabled="isExporting || matchTimeline"
-            />
-          </div>
+          <MediaResolutionSettings
+            v-show="!matchTimeline"
+            v-model:width="exportWidth"
+            v-model:height="exportHeight"
+            v-model:fps="exportFps"
+            v-model:resolution-format="resolutionFormat"
+            v-model:orientation="orientation"
+            v-model:aspect-ratio="aspectRatio"
+            v-model:is-custom-resolution="isCustomResolution"
+            v-model:sample-rate="audioSampleRate"
+            :disabled="isExporting || matchTimeline"
+          />
         </div>
 
         <div v-show="exportType === 'video'" class="h-px bg-ui-border"></div>
 
         <!-- Encoding Settings (Video only) -->
         <div v-show="exportType === 'video'" class="space-y-4">
-          <div
-            class="w-full flex justify-between items-center cursor-pointer group"
-            @click="isEncodingExpanded = !isEncodingExpanded"
-          >
-            <div class="flex items-center gap-2">
-              <h3 v-show="isEncodingExpanded" class="font-semibold text-ui-text">
-                {{ t('videoEditor.export.encodingSettings') }}
-              </h3>
-              <span v-show="!isEncodingExpanded" class="text-ui-text-muted font-normal">
-                {{ encodingSummary }}
-              </span>
-            </div>
-            <UIcon
-              :name="
-                isEncodingExpanded
-                  ? 'i-heroicons-chevron-down-20-solid'
-                  : 'i-heroicons-chevron-right-20-solid'
-              "
-              class="w-5 h-5 text-ui-text-muted group-hover:text-ui-text transition-colors"
-            />
+          <div class="text-ui-text-muted font-normal">
+            {{ encodingSummary }}
           </div>
 
-          <div v-show="isEncodingExpanded" class="pt-2">
-            <VideoEncodingForm
-              v-model:output-format="outputFormat"
-              v-model:video-codec="videoCodec"
-              v-model:bitrate-mbps="bitrateMbps"
-              v-model:exclude-audio="excludeAudio"
-              v-model:audio-codec="videoAudioCodec"
-              v-model:audio-bitrate-kbps="audioBitrateKbps"
-              v-model:audio-channels="audioChannels"
-              v-model:audio-sample-rate="audioSampleRate"
-              v-model:bitrate-mode="bitrateMode"
-              v-model:keyframe-interval-sec="keyframeIntervalSec"
-              v-model:export-alpha="exportAlpha"
-              v-model:fast-start="fastStart"
-              v-model:metadata-title="metadataTitle"
-              v-model:metadata-description="metadataDescription"
-              v-model:metadata-author="metadataAuthor"
-              v-model:metadata-tags="metadataTags"
-              :is-field-dirty="isFieldDirty"
-              :reset-field="resetField"
-              :show-audio-advanced="true"
-              :hide-audio-sample-rate="true"
-              :show-metadata="false"
-              :show-presets="true"
-              :disabled="isExporting"
-              :has-audio="true"
-            />
-          </div>
+          <VideoEncodingForm
+            v-model:output-format="outputFormat"
+            v-model:video-codec="videoCodec"
+            v-model:bitrate-mbps="bitrateMbps"
+            v-model:exclude-audio="excludeAudio"
+            v-model:audio-codec="videoAudioCodec"
+            v-model:audio-bitrate-kbps="audioBitrateKbps"
+            v-model:audio-channels="audioChannels"
+            v-model:audio-sample-rate="audioSampleRate"
+            v-model:bitrate-mode="bitrateMode"
+            v-model:keyframe-interval-sec="keyframeIntervalSec"
+            v-model:export-alpha="exportAlpha"
+            v-model:fast-start="fastStart"
+            v-model:metadata-title="metadataTitle"
+            v-model:metadata-description="metadataDescription"
+            v-model:metadata-author="metadataAuthor"
+            v-model:metadata-tags="metadataTags"
+            :is-field-dirty="isFieldDirty"
+            :reset-field="resetField"
+            :show-audio-advanced="true"
+            :hide-audio-sample-rate="true"
+            :show-metadata="false"
+            :show-presets="true"
+            :disabled="isExporting"
+            :has-audio="true"
+          />
         </div>
 
         <div v-show="exportType === 'video'" class="h-px bg-ui-border"></div>
