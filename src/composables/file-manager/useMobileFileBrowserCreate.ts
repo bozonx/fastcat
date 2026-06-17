@@ -7,7 +7,7 @@ interface CreateDeps {
   createFolder: (name: string, parentPath: string) => Promise<void>;
   createTimeline: (targetPath?: string) => Promise<string | null>;
   createMarkdown: (targetPath?: string) => Promise<string | null>;
-  handleFiles: (files: File[], targetPath: string) => Promise<unknown>;
+  handleFiles: (files: File[], targetPath?: string) => Promise<unknown>;
   loadFolderContent: () => Promise<void>;
 }
 
@@ -27,10 +27,18 @@ export function useMobileFileBrowserCreate({
 
   const fileInput = ref<HTMLInputElement | null>(null);
   const pendingUploadPath = ref<string | undefined>(undefined);
+  const isGlobalUpload = ref(false);
   const isCreateMenuOpen = ref(false);
 
   async function triggerFileUpload(targetPath?: string) {
+    isGlobalUpload.value = false;
     pendingUploadPath.value = targetPath;
+    fileInput.value?.click();
+  }
+
+  async function triggerGlobalFileUpload() {
+    isGlobalUpload.value = true;
+    pendingUploadPath.value = undefined;
     fileInput.value?.click();
   }
 
@@ -39,11 +47,15 @@ export function useMobileFileBrowserCreate({
     if (target.files) {
       const files = Array.from(target.files);
       target.value = '';
-      const targetPath = pendingUploadPath.value ?? fileManagerStore.selectedFolder?.path ?? '';
+      const targetPath = isGlobalUpload.value
+        ? undefined
+        : (pendingUploadPath.value ?? fileManagerStore.selectedFolder?.path ?? '');
       handleFiles(files, targetPath).then(() => {
         loadFolderContent();
         isCreateMenuOpen.value = false;
       });
+      isGlobalUpload.value = false;
+      pendingUploadPath.value = undefined;
     }
   }
 
@@ -101,8 +113,10 @@ export function useMobileFileBrowserCreate({
   return {
     fileInput,
     pendingUploadPath,
+    isGlobalUpload,
     isCreateMenuOpen,
     triggerFileUpload,
+    triggerGlobalFileUpload,
     onFileSelect,
     onCreateFolder,
     onCreateTimeline,

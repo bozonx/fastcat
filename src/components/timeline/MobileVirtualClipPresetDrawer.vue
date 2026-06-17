@@ -285,7 +285,6 @@ function selectPreset(item: PresetItem) {
     v-model:open="isOpenLocal"
     :show-close="false"
     :snap-points="[1]"
-    direction="bottom"
   >
     <div class="px-4 pb-8 overflow-y-auto">
       <!-- Standard presets -->

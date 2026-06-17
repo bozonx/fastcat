@@ -10,6 +10,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   (e: 'update:modelValue', value: boolean): void;
   (e: 'upload', path?: string): void;
+  (e: 'upload-global'): void;
   (e: 'create-folder'): void;
   (e: 'create-timeline', path?: string): void;
   (e: 'create-text-file', path?: string): void;
@@ -103,6 +104,30 @@ const isOpen = computed({
           <span class="text-xs font-semibold uppercase tracking-wider">{{
             t('common.quickCreateDefault')
           }}</span>
+        </div>
+
+        <div
+          class="flex flex-col gap-1 bg-ui-bg-muted/30 rounded-2xl overflow-hidden border border-ui-border/50 p-1"
+        >
+          <button
+            class="flex items-center gap-4 w-full p-3.5 rounded-xl hover:bg-ui-bg-elevated/40 transition-colors group text-left"
+            @click="emit('upload-global')"
+          >
+            <div
+              class="w-10 h-10 rounded-lg bg-violet-500/10 flex items-center justify-center group-active:scale-95 transition-transform"
+            >
+              <Icon name="lucide:folder-up" class="w-5 h-5 text-violet-400" />
+            </div>
+            <div class="flex flex-col min-w-0">
+              <span class="text-sm font-medium text-ui-text">{{
+                t('videoEditor.fileManager.actions.uploadWithAutoDetect')
+              }}</span>
+              <span class="text-xs text-violet-400/70 font-medium">{{
+                t('common.autoDetectFolder')
+              }}</span>
+            </div>
+            <Icon name="lucide:chevron-right" class="w-4 h-4 ml-auto opacity-20" />
+          </button>
         </div>
 
         <div class="grid grid-cols-2 gap-3">

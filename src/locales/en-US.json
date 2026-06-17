@@ -46,6 +46,7 @@
     "imagePreview": "Image preview",
     "inDirDocuments": "In _documents/",
     "inDirTimelines": "In _timelines/",
+    "autoDetectFolder": "Auto-detect folder",
     "items": "Items",
     "itemsSelected": "Selected: {count}",
     "language": "Language",
@@ -1237,7 +1238,8 @@
         "title": "Actions",
         "transcribe": "Transcribe",
         "uploadFiles": "Upload files",
-        "uploadToThisFolder": "Upload to this folder"
+        "uploadToThisFolder": "Upload to this folder",
+        "uploadWithAutoDetect": "Upload with auto-detect"
       },
       "audio": {
         "sound": "Sound",

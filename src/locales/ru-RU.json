@@ -46,6 +46,7 @@
     "imagePreview": "Предпросмотр изображения",
     "inDirDocuments": "В _documents/",
     "inDirTimelines": "В _timelines/",
+    "autoDetectFolder": "Автоопределение папки",
     "items": "Элементы",
     "itemsSelected": "Выбрано: {count}",
     "language": "Язык",
@@ -1237,7 +1238,8 @@
         "title": "Действия",
         "transcribe": "Транскрибировать",
         "uploadFiles": "Загрузить файлы",
-        "uploadToThisFolder": "Загрузить в эту папку"
+        "uploadToThisFolder": "Загрузить в эту папку",
+        "uploadWithAutoDetect": "Загрузить с автоопределением"
       },
       "audio": {
         "sound": "Звук",

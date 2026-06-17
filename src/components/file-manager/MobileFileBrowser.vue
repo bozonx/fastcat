@@ -108,6 +108,7 @@ const {
   fileInput,
   isCreateMenuOpen,
   triggerFileUpload,
+  triggerGlobalFileUpload,
   onFileSelect,
   onCreateFolder: runCreateFolder,
   onCreateTimeline,
@@ -116,8 +117,8 @@ const {
   createFolder,
   createTimeline,
   createMarkdown,
-  handleFiles: (files: File[], targetPath: string) =>
-    handleFiles(files, { targetDirPath: targetPath }),
+  handleFiles: (files: File[], targetPath?: string) =>
+    handleFiles(files, targetPath !== undefined ? { targetDirPath: targetPath } : {}),
   loadFolderContent,
 });
 
@@ -635,6 +636,7 @@ const menuItems = computed(() => [
       :selected-folder-name="fileManagerStore.selectedFolder?.name || '/'"
       :selected-folder-path="fileManagerStore.selectedFolder?.path || ''"
       @upload="triggerFileUpload"
+      @upload-global="triggerGlobalFileUpload"
       @create-folder="handleCreateFolderRequest"
       @create-timeline="onCreateTimeline"
       @create-text-file="onCreateTextFile"

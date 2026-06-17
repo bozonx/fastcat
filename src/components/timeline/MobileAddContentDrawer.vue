@@ -155,7 +155,7 @@ function addAudioTrack() {
 </script>
 
 <template>
-  <UiMobileDrawer v-model:open="isOpenLocal" :show-close="false" direction="bottom">
+  <UiMobileDrawer v-model:open="isOpenLocal" :show-close="false">
     <div class="px-4 pb-8 flex flex-col gap-3">
       <!-- Paste -->
       <Transition

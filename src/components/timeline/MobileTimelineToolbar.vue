@@ -292,7 +292,7 @@ function stopSnapLongPress() {
   </div>
 
   <!-- Snap mode drawer -->
-  <UiMobileDrawer v-model:open="isSnapDrawerOpen" :show-close="false" direction="bottom">
+  <UiMobileDrawer v-model:open="isSnapDrawerOpen" :show-close="false">
     <div class="px-4 pb-6 flex flex-col gap-5">
       <!-- Segmented control -->
       <div class="flex rounded-xl bg-ui-bg p-1 gap-1">

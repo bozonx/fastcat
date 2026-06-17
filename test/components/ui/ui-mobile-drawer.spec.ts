@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { mountSuspended } from '@nuxt/test-utils/runtime';
-import { ref } from 'vue';
+import { ref, nextTick } from 'vue';
 import UiMobileDrawer from '~/components/ui/UiMobileDrawer.vue';
 
 const drawerStub = {
@@ -254,5 +254,214 @@ describe('UiMobileDrawer', () => {
     expect(container.classes().some((className) => className.startsWith('backdrop-blur'))).toBe(
       false,
     );
+  });
+
+  it('auto-detects bottom direction in portrait and right in landscape', async () => {
+    const portrait = await mountSuspended(UiMobileDrawer, {
+      props: { open: true },
+      slots: { default: '<div>Body</div>' },
+      global: { stubs: { UDrawer: drawerStub } },
+    });
+    expect(portrait.findComponent(drawerStub).props('direction')).toBe('bottom');
+
+    mockWidth.value = 844;
+    mockHeight.value = 390;
+
+    const landscape = await mountSuspended(UiMobileDrawer, {
+      props: { open: true },
+      slots: { default: '<div>Body</div>' },
+      global: { stubs: { UDrawer: drawerStub } },
+    });
+    expect(landscape.findComponent(drawerStub).props('direction')).toBe('right');
+  });
+
+  it('renders side handle for right direction and hides vertical handle', async () => {
+    const wrapper = await mountSuspended(UiMobileDrawer, {
+      props: { open: true, direction: 'right' },
+      slots: { default: '<div>Body</div>' },
+      global: { stubs: { UDrawer: drawerStub } },
+    });
+
+    expect(wrapper.find('.absolute.top-0.bottom-0.flex.flex-col').exists()).toBe(true);
+    expect(wrapper.find('.group').exists()).toBe(false);
+  });
+
+  it('closes when clicking the backdrop', async () => {
+    vi.useFakeTimers();
+    const wrapper = await mountSuspended(UiMobileDrawer, {
+      props: { open: true, overlay: true },
+      slots: { default: '<div>Body</div>' },
+      global: { stubs: { UDrawer: drawerStub } },
+    });
+
+    vi.advanceTimersByTime(100);
+
+    const backdrops = document.querySelectorAll('.fixed.inset-0.bg-ui-bg\\/40');
+    expect(backdrops.length).toBeGreaterThan(0);
+    const backdrop = backdrops[backdrops.length - 1] as HTMLElement;
+    backdrop.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    await nextTick();
+
+    expect(wrapper.emitted('update:open')?.at(-1)).toEqual([false]);
+    expect(wrapper.emitted('close')).toBeTruthy();
+    vi.useRealTimers();
+  });
+
+  it('closes when clicking the close button', async () => {
+    const wrapper = await mountSuspended(UiMobileDrawer, {
+      props: { open: true, title: 'Test' },
+      slots: { default: '<div>Body</div>' },
+      global: { stubs: { UDrawer: drawerStub } },
+    });
+
+    const closeBtn = wrapper.find('button');
+    expect(closeBtn.exists()).toBe(true);
+    await closeBtn.trigger('click');
+
+    expect(wrapper.emitted('update:open')?.at(-1)).toEqual([false]);
+    expect(wrapper.emitted('close')).toBeTruthy();
+  });
+
+  it('renders footer slot', async () => {
+    const wrapper = await mountSuspended(UiMobileDrawer, {
+      props: { open: true },
+      slots: {
+        default: '<div>Body</div>',
+        footer: '<div class="footer-slot">Footer</div>',
+      },
+      global: { stubs: { UDrawer: drawerStub } },
+    });
+
+    expect(wrapper.find('.footer-slot').exists()).toBe(true);
+  });
+
+  it('renders custom header slot', async () => {
+    const wrapper = await mountSuspended(UiMobileDrawer, {
+      props: { open: true },
+      slots: {
+        default: '<div>Body</div>',
+        header: '<div class="header-slot">Custom Header</div>',
+      },
+      global: { stubs: { UDrawer: drawerStub } },
+    });
+
+    expect(wrapper.find('.header-slot').exists()).toBe(true);
+  });
+
+  it('passes title and description to UDrawer for a11y', async () => {
+    const wrapper = await mountSuspended(UiMobileDrawer, {
+      props: { open: true, title: 'My Title', description: 'My Description' },
+      slots: { default: '<div>Body</div>' },
+      global: { stubs: { UDrawer: drawerStub } },
+    });
+
+    const drawer = wrapper.findComponent(drawerStub);
+    expect(drawer.props('title')).toBe('My Title');
+    expect(drawer.props('description')).toBe('My Description');
+  });
+
+  it('falls back to default a11y title and description when props are empty', async () => {
+    const wrapper = await mountSuspended(UiMobileDrawer, {
+      props: { open: true },
+      slots: { default: '<div>Body</div>' },
+      global: { stubs: { UDrawer: drawerStub } },
+    });
+
+    const drawer = wrapper.findComponent(drawerStub);
+    expect(drawer.props('title')).toBe('Panel');
+    expect(drawer.props('description')).toBe('\u00A0');
+  });
+
+  it('computes correct backdrop z-index for custom z-index prop', async () => {
+    await mountSuspended(UiMobileDrawer, {
+      props: { open: true, zIndex: 'z-[100]' },
+      slots: { default: '<div>Body</div>' },
+      global: { stubs: { UDrawer: drawerStub } },
+    });
+
+    const backdrops = document.querySelectorAll('.fixed.inset-0.bg-ui-bg\\/40');
+    expect(backdrops.length).toBeGreaterThan(0);
+    const backdrop = backdrops[backdrops.length - 1] as HTMLElement;
+    expect(backdrop.className.includes('z-[99]')).toBe(true);
+  });
+
+  it('passes dismissible and shouldScaleBackground to UDrawer', async () => {
+    const wrapper = await mountSuspended(UiMobileDrawer, {
+      props: { open: true, dismissible: false, shouldScaleBackground: true },
+      slots: { default: '<div>Body</div>' },
+      global: { stubs: { UDrawer: drawerStub } },
+    });
+
+    const drawer = wrapper.findComponent(drawerStub);
+    expect(drawer.props('dismissible')).toBe(false);
+    expect(drawer.props('shouldScaleBackground')).toBe(true);
+  });
+
+  it('applies full-height class when isFullHeight is true without snap points', async () => {
+    const wrapper = await mountSuspended(UiMobileDrawer, {
+      props: { open: true, isFullHeight: true },
+      slots: { default: '<div>Body</div>' },
+      global: { stubs: { UDrawer: drawerStub } },
+    });
+
+    const container = wrapper.find('.pointer-events-auto');
+    expect(container.classes().join(' ')).toContain('h-[95dvh]');
+  });
+
+  it('does not render handle when withHandle is false', async () => {
+    const wrapper = await mountSuspended(UiMobileDrawer, {
+      props: { open: true, withHandle: false },
+      slots: { default: '<div>Body</div>' },
+      global: { stubs: { UDrawer: drawerStub } },
+    });
+
+    expect(wrapper.find('.group').exists()).toBe(false);
+    expect(wrapper.find('.absolute.top-0.bottom-0').exists()).toBe(false);
+  });
+
+  it('does not render close button when showClose is false', async () => {
+    const wrapper = await mountSuspended(UiMobileDrawer, {
+      props: { open: true, title: 'Test', showClose: false },
+      slots: { default: '<div>Body</div>' },
+      global: { stubs: { UDrawer: drawerStub } },
+    });
+
+    expect(wrapper.find('button').exists()).toBe(false);
+  });
+
+  it('maps rendered snap point back to original value on snap point change', async () => {
+    const wrapper = await mountSuspended(UiMobileDrawer, {
+      props: { open: true, snapPoints: [0.25, 0.92], activeSnapPoint: 0.92 },
+      slots: { default: '<div>Body</div>' },
+      global: { stubs: { UDrawer: drawerStub } },
+    });
+
+    const drawer = wrapper.findComponent(drawerStub);
+    await drawer.vm.$emit('update:activeSnapPoint', '211px');
+
+    expect(wrapper.emitted('update:activeSnapPoint')?.at(-1)).toEqual([0.25]);
+  });
+
+  it('keeps backdrop non-interactive when drawer is not expanded', async () => {
+    vi.useFakeTimers();
+    const wrapper = await mountSuspended(UiMobileDrawer, {
+      props: {
+        open: true,
+        snapPoints: ['116px', 0.92],
+        activeSnapPoint: '116px',
+        overlay: true,
+      },
+      slots: { default: '<div>Body</div>', toolbar: '<div>Toolbar</div>' },
+      global: { stubs: { UDrawer: drawerStub } },
+    });
+
+    vi.advanceTimersByTime(100);
+
+    const backdrop = document.querySelector('.fixed.inset-0.bg-ui-bg\\/40');
+    expect(backdrop).not.toBeNull();
+    expect((backdrop as HTMLElement).classList.contains('pointer-events-none')).toBe(true);
+    expect((backdrop as HTMLElement).classList.contains('opacity-0')).toBe(true);
+
+    vi.useRealTimers();
   });
 });

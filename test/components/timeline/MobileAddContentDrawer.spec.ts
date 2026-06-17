@@ -23,6 +23,58 @@ describe('MobileAddContentDrawer', () => {
     mockHeight.value = 844;
   });
 
+  it('renders as a bottom drawer in portrait mode', async () => {
+    mockWidth.value = 390;
+    mockHeight.value = 844;
+
+    const wrapper = await mountSuspended(MobileAddContentDrawer, {
+      props: { isOpen: true },
+      global: {
+        stubs: {
+          UiMobileDrawer: {
+            name: 'UiMobileDrawer',
+            props: ['open', 'showClose', 'direction'],
+            template: '<div v-if="open" class="ui-mobile-drawer-stub"><slot /></div>',
+          },
+          MobileMediaPickerDrawer: {
+            name: 'MobileMediaPickerDrawer',
+            props: ['isOpen'],
+            template: '<div v-if="isOpen" class="media-picker-stub" />',
+          },
+        },
+      },
+    });
+
+    const drawer = wrapper.findComponent({ name: 'UiMobileDrawer' });
+    expect(drawer.props('direction')).toBeUndefined();
+  });
+
+  it('renders as a side drawer in landscape mode', async () => {
+    mockWidth.value = 844;
+    mockHeight.value = 390;
+
+    const wrapper = await mountSuspended(MobileAddContentDrawer, {
+      props: { isOpen: true },
+      global: {
+        stubs: {
+          UiMobileDrawer: {
+            name: 'UiMobileDrawer',
+            props: ['open', 'showClose', 'direction'],
+            template: '<div v-if="open" class="ui-mobile-drawer-stub"><slot /></div>',
+          },
+          MobileMediaPickerDrawer: {
+            name: 'MobileMediaPickerDrawer',
+            props: ['isOpen'],
+            template: '<div v-if="isOpen" class="media-picker-stub" />',
+          },
+        },
+      },
+    });
+
+    const drawer = wrapper.findComponent({ name: 'UiMobileDrawer' });
+    expect(drawer.props('direction')).toBeUndefined();
+  });
+
   it('closes itself before opening the media picker', async () => {
     const wrapper = await mountSuspended(MobileAddContentDrawer, {
       props: {
