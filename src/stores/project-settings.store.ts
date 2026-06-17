@@ -49,7 +49,7 @@ export function applyLoadedTimelineSessionSnapshot(
     zoom: number;
     trackHeights: Record<string, number>;
     selectionRange?: { startUs: number; endUs: number } | null;
-    mobileTrackHeightEnlarged?: boolean;
+    mobileTrackHeightsEnlarged?: Record<string, boolean>;
   },
 ): FastCatProjectSettings['timelines'] {
   if (!input.activeTimelinePath || !input.timelineDoc) {
@@ -70,7 +70,9 @@ export function applyLoadedTimelineSessionSnapshot(
         zoom: input.zoom,
         trackHeights: { ...input.trackHeights },
         selectionRange: input.selectionRange ? { ...input.selectionRange } : undefined,
-        mobileTrackHeightEnlarged: input.mobileTrackHeightEnlarged,
+        mobileTrackHeightsEnlarged: input.mobileTrackHeightsEnlarged
+          ? { ...input.mobileTrackHeightsEnlarged }
+          : undefined,
       },
     },
   };
@@ -486,7 +488,7 @@ export const useProjectSettingsStore = defineStore('projectSettings', () => {
         timelineStore.masterGain,
         timelineStore.audioMuted,
         timelineStore.trackHeights,
-        timelineStore.mobileTrackHeightEnlarged,
+        timelineStore.mobileTrackHeightsEnlarged,
         timelineStore.selectionRange,
       ];
     },
@@ -506,7 +508,7 @@ export const useProjectSettingsStore = defineStore('projectSettings', () => {
             masterMuted: timelineStore.audioMuted ?? false,
             zoom: timelineStore.timelineZoom,
             trackHeights: timelineStore.trackHeights,
-            mobileTrackHeightEnlarged: timelineStore.mobileTrackHeightEnlarged,
+            mobileTrackHeightsEnlarged: timelineStore.mobileTrackHeightsEnlarged,
             selectionRange: timelineStore.selectionRange,
           },
         );

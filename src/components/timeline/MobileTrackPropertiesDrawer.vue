@@ -19,7 +19,7 @@ const activeSnapPoint = defineModel<string | number | null>('activeSnapPoint', {
 const emit = defineEmits<{
   (e: 'close'): void;
   (e: 'add-content', trackId: string): void;
-  (e: 'toggle-track-height'): void;
+  (e: 'toggle-track-height', trackId: string): void;
 }>();
 
 const trackHeightIcon = computed(() =>
@@ -143,7 +143,7 @@ function deleteGap() {
             ? t('fastcat.timeline.shrinkTrack')
             : t('fastcat.timeline.enlargeTrack')
         "
-        @click="emit('toggle-track-height')"
+        @click="selectedTrack && emit('toggle-track-height', selectedTrack.id)"
       />
 
       <div v-if="selectedTrack" class="w-px h-6 bg-ui-border mx-1 shrink-0" />

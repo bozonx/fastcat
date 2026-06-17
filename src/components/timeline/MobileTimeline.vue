@@ -257,15 +257,22 @@ const isAnyDrawerOpen = computed(
 
 const trackHeights = computed(() => {
   const heights: Record<string, number> = {};
-  const multiplier = timelineStore.mobileTrackHeightEnlarged ? 3 : 1;
+  const enlarged = timelineStore.mobileTrackHeightsEnlarged;
   for (const t of tracks.value) {
+    const multiplier = enlarged[t.id] ? 3 : 1;
     heights[t.id] = (t.kind === 'video' ? 64 : 48) * multiplier;
   }
   return heights;
 });
 
-function toggleTrackHeightEnlarged() {
-  timelineStore.mobileTrackHeightEnlarged = !timelineStore.mobileTrackHeightEnlarged;
+function toggleTrackHeightEnlarged(trackId: string) {
+  const enlarged = { ...timelineStore.mobileTrackHeightsEnlarged };
+  if (enlarged[trackId]) {
+    Reflect.deleteProperty(enlarged, trackId);
+  } else {
+    enlarged[trackId] = true;
+  }
+  timelineStore.mobileTrackHeightsEnlarged = enlarged;
 }
 
 const playheadPx = computed(() =>
@@ -700,7 +707,9 @@ async function handleConfirmCreateVersion(newName: string) {
       :is-open="isTrackPropertiesDrawerOpen"
       :track-id="selectedGap?.trackId ?? null"
       :gap-item-id="selectedGap?.itemId ?? null"
-      :is-track-height-enlarged="timelineStore.mobileTrackHeightEnlarged"
+      :is-track-height-enlarged="
+        Boolean(timelineStore.mobileTrackHeightsEnlarged[selectedGap?.trackId ?? ''])
+      "
       @close="
         () => {
           onUpdateDrawerOpen(false);

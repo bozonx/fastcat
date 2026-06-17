@@ -16,7 +16,7 @@ export interface TimelinePersistenceDeps {
   masterGain: Ref<number>;
   timelineZoom: Ref<number>;
   trackHeights: Ref<Record<string, number>>;
-  mobileTrackHeightEnlarged?: Ref<boolean>;
+  mobileTrackHeightsEnlarged?: Ref<Record<string, boolean>>;
   audioMuted?: Ref<boolean>;
   selectionRange?: Ref<TimelineSelectionRange | null>;
 
@@ -682,8 +682,10 @@ export function createTimelinePersistenceModule(
       deps.trackHeights.value = session?.trackHeights
         ? { ...(session.trackHeights as Record<string, number>) }
         : {};
-      if (deps.mobileTrackHeightEnlarged) {
-        deps.mobileTrackHeightEnlarged.value = Boolean(session?.mobileTrackHeightEnlarged ?? false);
+      if (deps.mobileTrackHeightsEnlarged) {
+        deps.mobileTrackHeightsEnlarged.value = session?.mobileTrackHeightsEnlarged
+          ? { ...(session.mobileTrackHeightsEnlarged as Record<string, boolean>) }
+          : {};
       }
       if (deps.selectionRange) {
         deps.selectionRange.value = session?.selectionRange

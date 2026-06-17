@@ -45,7 +45,7 @@ interface TimelineLifecycleDeps {
   audioLevels: Ref<Record<string, { rmsDb: number; peakDb: number }>>;
   timelineZoom: Ref<number>;
   trackHeights: Ref<Record<string, number>>;
-  mobileTrackHeightEnlarged: Ref<boolean>;
+  mobileTrackHeightsEnlarged: Ref<Record<string, boolean>>;
   selectionRange: Ref<TimelineSelectionRange | null>;
   historyStore: {
     clear: (scope: string) => void;
