@@ -30,6 +30,7 @@ const TimelineSessionSchema = z.object({
   masterMuted: z.coerce.boolean().catch(false),
   zoom: z.coerce.number().catch(1),
   trackHeights: z.record(z.string(), z.coerce.number()).catch({}),
+  mobileTrackHeightsEnlarged: z.record(z.string(), z.coerce.boolean()).catch({}),
   selectionRange: z
     .object({
       startUs: z.number(),
