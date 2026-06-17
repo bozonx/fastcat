@@ -38,6 +38,7 @@ export function useMobileTimelineDrawers() {
   const isTrackMixerDrawerOpen = ref(false);
   const isHistoryDrawerOpen = ref(false);
   const isMarkersDrawerOpen = ref(false);
+  const isTrackManagerDrawerOpen = ref(false);
   const virtualClipPresetType = ref<'text' | 'shape' | 'hud'>('text');
   const drawerActiveSnapPoint = ref<string | number | null>(null);
 
@@ -55,6 +56,34 @@ export function useMobileTimelineDrawers() {
     isAddContentDrawerOpen.value = false;
     isVirtualClipPresetDrawerOpen.value = false;
     isSettingsDrawerOpen.value = false;
+    isTrackMixerDrawerOpen.value = false;
+    isHistoryDrawerOpen.value = false;
+    isMarkersDrawerOpen.value = false;
+    isTrackManagerDrawerOpen.value = false;
+  }
+
+  /**
+   * Open a toolbar drawer exclusively: any other open drawer (selection-driven or
+   * toolbar) is closed first so only a single drawer is ever visible at a time.
+   */
+  function openTrackMixerDrawer() {
+    closeAllDrawers();
+    isTrackMixerDrawerOpen.value = true;
+  }
+
+  function openTrackManagerDrawer() {
+    closeAllDrawers();
+    isTrackManagerDrawerOpen.value = true;
+  }
+
+  function openHistoryDrawer() {
+    closeAllDrawers();
+    isHistoryDrawerOpen.value = true;
+  }
+
+  function openMarkersDrawer() {
+    closeAllDrawers();
+    isMarkersDrawerOpen.value = true;
   }
 
   watch(
@@ -257,12 +286,17 @@ export function useMobileTimelineDrawers() {
     isTrackMixerDrawerOpen,
     isHistoryDrawerOpen,
     isMarkersDrawerOpen,
+    isTrackManagerDrawerOpen,
     virtualClipPresetType,
     drawerActiveSnapPoint,
     isLongPress,
     suppressDrawerSelectionClear,
     suppressDrawerSelectionClearTemporarily,
     closeAllDrawers,
+    openTrackMixerDrawer,
+    openTrackManagerDrawer,
+    openHistoryDrawer,
+    openMarkersDrawer,
     onUpdateDrawerOpen,
     onClipPropertiesDrawerClose,
     onClipTrimDrawerClose,

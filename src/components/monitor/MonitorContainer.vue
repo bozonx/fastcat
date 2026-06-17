@@ -254,6 +254,10 @@ const isReadonly = computed(
   () => projectStore.currentView === 'sound' || projectStore.currentView === 'export',
 );
 
+const isInteractiveEditEnabled = computed(
+  () => workspaceStore.userSettings.ui.monitorInteractiveEdit === true,
+);
+
 const monitorZoomLabel = computed(() => {
   const zoom = projectStore.activeMonitor?.zoom ?? 1;
   return `x${zoom.toFixed(2)}`;
@@ -534,13 +538,13 @@ watch(viewportRef, (vp) => {
                 />
 
                 <MonitorTextTransformBox
-                  v-if="!isReadonly && isTextClipSelected"
+                  v-if="isInteractiveEditEnabled && !isReadonly && isTextClipSelected"
                   :render-width="renderWidth"
                   :render-height="renderHeight"
                 />
 
                 <MonitorTransformBox
-                  v-else-if="!isReadonly"
+                  v-else-if="isInteractiveEditEnabled && !isReadonly"
                   :render-width="renderWidth"
                   :render-height="renderHeight"
                 />

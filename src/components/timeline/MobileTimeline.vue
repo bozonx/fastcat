@@ -104,11 +104,16 @@ const {
   isTrackMixerDrawerOpen,
   isHistoryDrawerOpen,
   isMarkersDrawerOpen,
+  isTrackManagerDrawerOpen,
   virtualClipPresetType,
   drawerActiveSnapPoint,
   isLongPress,
   suppressDrawerSelectionClearTemporarily,
   closeAllDrawers,
+  openTrackMixerDrawer,
+  openTrackManagerDrawer,
+  openHistoryDrawer,
+  openMarkersDrawer,
   onUpdateDrawerOpen,
   onClipPropertiesDrawerClose,
   onClipTrimDrawerClose,
@@ -235,7 +240,6 @@ watch(
 const lastPointerType = ref('');
 const clickStartX = ref(0);
 const clickStartY = ref(0);
-const isTrackManagerDrawerOpen = ref(false);
 const addContentTargetTrackId = ref<string | undefined>(undefined);
 
 const isAnyDrawerOpen = computed(
@@ -550,10 +554,10 @@ async function handleConfirmCreateVersion(newName: string) {
       @confirm="handleConfirmCreateVersion"
     />
     <MobileTimelineToolbar
-      @open-track-mixer="isTrackMixerDrawerOpen = true"
-      @open-track-manager="isTrackManagerDrawerOpen = true"
-      @open-history="isHistoryDrawerOpen = true"
-      @open-markers="isMarkersDrawerOpen = true"
+      @open-track-mixer="openTrackMixerDrawer"
+      @open-track-manager="openTrackManagerDrawer"
+      @open-history="openHistoryDrawer"
+      @open-markers="openMarkersDrawer"
     />
 
     <!-- Backup Preview Banner (Mobile) -->
