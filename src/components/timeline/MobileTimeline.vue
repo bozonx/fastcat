@@ -255,13 +255,20 @@ const isAnyDrawerOpen = computed(
     isVirtualClipPresetDrawerOpen.value,
 );
 
+const isTrackHeightEnlarged = ref(false);
+
 const trackHeights = computed(() => {
   const heights: Record<string, number> = {};
+  const multiplier = isTrackHeightEnlarged.value ? 3 : 1;
   for (const t of tracks.value) {
-    heights[t.id] = t.kind === 'video' ? 64 : 48;
+    heights[t.id] = (t.kind === 'video' ? 64 : 48) * multiplier;
   }
   return heights;
 });
+
+function toggleTrackHeightEnlarged() {
+  isTrackHeightEnlarged.value = !isTrackHeightEnlarged.value;
+}
 
 const playheadPx = computed(() =>
   Math.round(timeUsToPx(timelineStore.currentTime, timelineStore.timelineZoom)),
@@ -695,6 +702,7 @@ async function handleConfirmCreateVersion(newName: string) {
       :is-open="isTrackPropertiesDrawerOpen"
       :track-id="selectedGap?.trackId ?? null"
       :gap-item-id="selectedGap?.itemId ?? null"
+      :is-track-height-enlarged="isTrackHeightEnlarged"
       @close="
         () => {
           onUpdateDrawerOpen(false);
@@ -707,6 +715,7 @@ async function handleConfirmCreateVersion(newName: string) {
         }
       "
       @add-content="handleAddContent"
+      @toggle-track-height="toggleTrackHeightEnlarged"
     />
 
     <!-- Marker Properties Drawer -->

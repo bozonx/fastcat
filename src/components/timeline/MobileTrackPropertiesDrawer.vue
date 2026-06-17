@@ -11,6 +11,7 @@ const props = defineProps<{
   isOpen: boolean;
   trackId?: string | null;
   gapItemId?: string | null;
+  isTrackHeightEnlarged?: boolean;
 }>();
 
 const activeSnapPoint = defineModel<string | number | null>('activeSnapPoint', { default: null });
@@ -18,7 +19,14 @@ const activeSnapPoint = defineModel<string | number | null>('activeSnapPoint', {
 const emit = defineEmits<{
   (e: 'close'): void;
   (e: 'add-content', trackId: string): void;
+  (e: 'toggle-track-height'): void;
 }>();
+
+const trackHeightIcon = computed(() =>
+  props.isTrackHeightEnlarged
+    ? 'i-heroicons-arrows-pointing-in'
+    : 'i-heroicons-arrows-pointing-out',
+);
 
 const { t } = useI18n();
 const timelineStore = useTimelineStore();
@@ -123,6 +131,19 @@ function deleteGap() {
         success
         :label="t('fastcat.timeline.addContent')"
         @click="selectedTrack && emit('add-content', selectedTrack.id)"
+      />
+
+      <!-- Toggle track height -->
+      <MobileDrawerToolbarButton
+        v-if="selectedTrack"
+        :icon="trackHeightIcon"
+        :active="isTrackHeightEnlarged"
+        :label="
+          isTrackHeightEnlarged
+            ? t('fastcat.timeline.shrinkTrack')
+            : t('fastcat.timeline.enlargeTrack')
+        "
+        @click="emit('toggle-track-height')"
       />
 
       <div v-if="selectedTrack" class="w-px h-6 bg-ui-border mx-1 shrink-0" />
