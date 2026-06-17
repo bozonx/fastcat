@@ -3,6 +3,7 @@ import { mount } from '@vue/test-utils';
 import MonitorViewport from '~/components/monitor/MonitorViewport.vue';
 import { ref } from 'vue';
 
+const mockShowTimecode = ref(true);
 const mockShowTransparencyGrid = ref(false);
 const mockSelectionRange = ref<{ startUs: number; endUs: number } | null>(null);
 const mockFps = ref(30);
@@ -10,7 +11,7 @@ const mockTimelineFormat = ref<{ fps: number } | null>(null);
 
 vi.mock('~/composables/monitor/useMonitorSettings', () => ({
   useMonitorSettings: () => ({
-    showTimecode: ref(true),
+    showTimecode: mockShowTimecode,
     showTransparencyGrid: mockShowTransparencyGrid,
   }),
 }));
@@ -60,6 +61,7 @@ vi.mock('~/composables/monitor/useMonitorGestures', () => ({
 
 describe('MonitorViewport', () => {
   beforeEach(() => {
+    mockShowTimecode.value = true;
     mockShowTransparencyGrid.value = false;
     mockSelectionRange.value = null;
     mockFps.value = 30;
@@ -205,5 +207,28 @@ describe('MonitorViewport', () => {
     const duration = wrapper.find('.text-ui-text-muted');
     expect(duration.exists()).toBe(true);
     expect(duration.text()).toBe('00:00:03:00');
+  });
+
+  it('keeps timecode element in DOM when showTimecode is toggled', async () => {
+    const wrapper = mount(MonitorViewport, {
+      props: {
+        renderWidth: 100,
+        renderHeight: 100,
+      },
+    });
+
+    const timecodeSpan = wrapper.find('span.min-h-7');
+    expect(timecodeSpan.exists()).toBe(true);
+    expect((timecodeSpan.element as HTMLElement).style.display).not.toBe('none');
+
+    mockShowTimecode.value = false;
+    await wrapper.vm.$nextTick();
+    expect(timecodeSpan.exists()).toBe(true);
+    expect((timecodeSpan.element as HTMLElement).style.display).toBe('none');
+
+    mockShowTimecode.value = true;
+    await wrapper.vm.$nextTick();
+    expect(timecodeSpan.exists()).toBe(true);
+    expect((timecodeSpan.element as HTMLElement).style.display).not.toBe('none');
   });
 });

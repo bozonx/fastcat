@@ -2,7 +2,7 @@
 import { computed, ref, watch, nextTick } from 'vue';
 
 import UiModal from '~/components/ui/UiModal.vue';
-import UiWheelNumberInput from '~/components/ui/UiWheelNumberInput.vue';
+import UiSliderInput from '~/components/ui/UiSliderInput.vue';
 
 const { t } = useI18n();
 
@@ -71,12 +71,15 @@ watch(
     @after:enter="handleAfterEnter"
   >
     <div class="flex flex-col gap-3">
-      <div class="flex items-center justify-between gap-3">
-        <span class="text-sm text-ui-text">{{ t('fastcat.timeline.speedValue') }}</span>
-        <span class="text-sm font-mono text-ui-text-muted">{{ speed.toFixed(2) }}</span>
-      </div>
-
-      <UiWheelNumberInput v-model="speedValue" :min="-10" :max="10" :step="0.05" />
+      <UiSliderInput
+        v-model="speedValue"
+        :label="t('fastcat.timeline.speedValue')"
+        :min="-10"
+        :max="10"
+        :step="0.05"
+        :unit="'x'"
+        show-input
+      />
 
       <UAlert
         v-if="showNegativeSpeedAudioWarning"

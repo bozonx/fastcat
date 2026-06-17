@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { reactive, ref, computed } from 'vue';
+import { reactive, ref, computed, nextTick } from 'vue';
 import { mountSuspended, mockNuxtImport } from '@nuxt/test-utils/runtime';
 import ClipProperties from '~/components/properties/ClipProperties.vue';
 
@@ -42,9 +42,6 @@ vi.mock('~/components/properties/clip/ClipTransformSection.vue', () => ({
 }));
 vi.mock('~/components/properties/clip/ClipTypeSection.vue', () => ({
   default: { name: 'ClipTypeSection', template: '<div></div>' },
-}));
-vi.mock('~/components/properties/clip/ClipSpeedSection.vue', () => ({
-  default: { name: 'ClipSpeedSection', template: '<div></div>' },
 }));
 vi.mock('~/components/properties/clip/ClipMaskSection.vue', () => ({
   default: { name: 'ClipMaskSection', template: '<div></div>' },
@@ -377,12 +374,11 @@ describe('ClipProperties.vue', () => {
     });
   });
 
-  it('toggles opacityActive, blendModeActive, transformActive, speedActive correctly', async () => {
+  it('toggles opacityActive, blendModeActive, transformActive correctly', async () => {
     const clip = createClip({
       opacityActive: true,
       blendModeActive: true,
       transformActive: true,
-      speedActive: true,
     });
     const wrapper = await mountComponent({ clip });
 
@@ -399,11 +395,6 @@ describe('ClipProperties.vue', () => {
     wrapper.vm.isTransformEnabled = false;
     expect(mockTimelineStore.updateClipProperties).toHaveBeenCalledWith('track-1', 'clip-1', {
       transformActive: false,
-    });
-
-    wrapper.vm.isSpeedEnabled = false;
-    expect(mockTimelineStore.updateClipProperties).toHaveBeenCalledWith('track-1', 'clip-1', {
-      speedActive: false,
     });
   });
 

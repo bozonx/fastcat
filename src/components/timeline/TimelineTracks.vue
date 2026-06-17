@@ -20,7 +20,6 @@ import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useMediaStore } from '~/stores/media.store';
 
 import TimelineGap from './TimelineGap.vue';
-import TimelineSpeedModal from './TimelineSpeedModal.vue';
 import AutoMontageModal from './AutoMontageModal.vue';
 import UiContextMenuPortal from '~/components/ui/UiContextMenuPortal.vue';
 import UiRenameModal from '~/components/ui/UiRenameModal.vue';
@@ -30,7 +29,6 @@ import { useTimelineEmptyAreaContextMenu } from '~/composables/timeline/useTimel
 import { useProvideTimelineContext } from '~/composables/timeline/useProvideTimelineContext';
 import { useTimelineTrackVirtualization } from '~/composables/timeline/useTimelineTrackVirtualization';
 import { useTimelineMovePreviews } from '~/composables/timeline/useTimelineMovePreviews';
-import { useTimelineSpeedModal } from '~/composables/timeline/useTimelineSpeedModal';
 import { useTimelineAutoMontage } from '~/composables/timeline/useTimelineAutoMontage';
 import { useTimelineTrackContextMenu } from '~/composables/timeline/useTimelineTrackContextMenu';
 import { useTimelinePasteParameters } from '~/composables/timeline/useTimelinePasteParameters';
@@ -84,6 +82,7 @@ const emit = defineEmits<{
   (e: 'clipAction', payload: TimelineClipActionPayload): void;
   (e: 'startTrimItem', event: PointerEvent, payload: TimelineTrimItemPayload): void;
   (e: 'long-press-item', itemId: string): void;
+  (e: 'open-speed-modal', payload: TimelineOpenSpeedModalPayload): void;
 }>();
 
 const containerRef = ref<HTMLElement | null>(null);
@@ -226,9 +225,6 @@ const slipPreviewTrackId = computed(() => {
   return null;
 });
 
-const { speedModal, openSpeedModal, saveSpeedModal, speedModalTargetHasAudio } =
-  useTimelineSpeedModal(() => props.tracks);
-
 const { autoMontageModal, applyAutoMontage, openAutoMontage } = useTimelineAutoMontage(
   () => props.tracks,
 );
@@ -352,14 +348,6 @@ watch(
   },
 );
 
-watch(
-  () => uiStore.speedModalTrigger,
-  (trigger) => {
-    if (trigger) {
-      openSpeedModal(trigger.trackId, trigger.itemId, trigger.speed);
-    }
-  },
-);
 </script>
 
 <template>
@@ -396,14 +384,6 @@ watch(
         v-if="isMarqueeSelecting"
         class="absolute border-2 border-primary-500 bg-primary-500/20 pointer-events-none z-50"
         :style="marqueeStyle"
-      />
-
-      <TimelineSpeedModal
-        v-if="speedModal"
-        v-model:open="speedModal.open"
-        v-model:speed="speedModal.speed"
-        :has-audio="speedModalTargetHasAudio"
-        @save="saveSpeedModal"
       />
 
       <AutoMontageModal
@@ -569,10 +549,7 @@ watch(
                 }
               }
             "
-            @open-speed-modal="
-              (p: TimelineOpenSpeedModalPayload) =>
-                openSpeedModal(trackViewModel.track.id, p.itemId, p.speed)
-            "
+            @open-speed-modal="(p: TimelineOpenSpeedModalPayload) => emit('open-speed-modal', p)"
             @reset-volume="
               (payload) =>
                 timelineStore.updateClipProperties(payload.trackId, payload.itemId, {

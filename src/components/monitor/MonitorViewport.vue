@@ -216,7 +216,7 @@ defineExpose({
 
         <!-- Timecode -->
         <span
-          v-if="showTimecode"
+          v-show="showTimecode"
           ref="timecodeEl"
           class="absolute text-xs text-ui-text-muted font-mono tabular-nums bg-ui-bg-elevated/85 backdrop-blur-sm px-2 py-1 rounded transition-all duration-300 select-none min-h-7"
           :class="[

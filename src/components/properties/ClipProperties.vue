@@ -33,7 +33,6 @@ import ClipBlendingModeSection from '~/components/properties/clip/ClipBlendingMo
 import ClipOpacitySection from '~/components/properties/clip/ClipOpacitySection.vue';
 import ClipTransformSection from '~/components/properties/clip/ClipTransformSection.vue';
 import ClipTypeSection from '~/components/properties/clip/ClipTypeSection.vue';
-import ClipSpeedSection from '~/components/properties/clip/ClipSpeedSection.vue';
 import ClipMaskSection from '~/components/properties/clip/ClipMaskSection.vue';
 import ClipParametersPasteModal from '~/components/properties/clip/ClipParametersPasteModal.vue';
 import { useClipAudio } from '~/composables/properties/useClipAudio';
@@ -140,12 +139,6 @@ const isTransformEnabled = computed({
   set: (val) =>
     timelineStore.updateClipProperties(props.clip.trackId, props.clip.id, { transformActive: val }),
 });
-const isSpeedEnabled = computed({
-  get: () => props.clip.speedActive !== false,
-  set: (val) =>
-    timelineStore.updateClipProperties(props.clip.trackId, props.clip.id, { speedActive: val }),
-});
-
 const clipRef = toRef(props, 'clip');
 
 const clipTrack = computed<TimelineTrack | undefined>(() =>
@@ -471,16 +464,6 @@ defineExpose({
         @update-stroke-width="handleUpdateStrokeWidth"
         @update-shape-config="handleUpdateShapeConfig"
         @update-hud-control="handleUpdateHudControl"
-      />
-
-      <ClipSpeedSection
-        v-model:enabled="isSpeedEnabled"
-        :clip="clip"
-        :can-edit-reversed="canEditReversed"
-        :track-kind="clipTrackKind"
-        @update-speed="
-          (speed: number) => timelineStore.updateClipProperties(clip.trackId, clip.id, { speed })
-        "
       />
 
       <ClipInfoSection :clip="clip" :media-meta="mediaMeta" :show-info="false" />

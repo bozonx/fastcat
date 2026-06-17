@@ -7,9 +7,10 @@ import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useFocusStore } from '~/stores/focus.store';
 import { useProjectStore } from '~/stores/project.store';
 import { useTimelineSettingsStore } from '~/stores/timeline-settings.store';
+import { useUiStore } from '~/stores/ui.store';
 import { useDraggedFile } from '~/composables/useDraggedFile';
 
-import type { TimelineClipActionPayload, TimelineTrack } from '~/timeline/types';
+import type { TimelineClipActionPayload, TimelineOpenSpeedModalPayload, TimelineTrack } from '~/timeline/types';
 import {
   computeTimelineScrollLeftForPlayhead,
   computeTimelinePlaybackAutoScrollLeft,
@@ -24,6 +25,7 @@ import TimelineToolbar from '~/components/timeline/TimelineToolbar.vue';
 import TimelineRuler from '~/components/timeline/TimelineRuler.vue';
 import UiContextMenuPortal from '~/components/ui/UiContextMenuPortal.vue';
 import UiTimecode from '~/components/ui/editor/UiTimecode.vue';
+import TimelineSpeedModal from '~/components/timeline/TimelineSpeedModal.vue';
 
 import { useTimelineSectionResize } from '~/composables/timeline/useTimelineSectionResize';
 import { useTimelineHorizontalScrollSync } from '~/composables/timeline/useTimelineHorizontalScrollSync';
@@ -35,6 +37,7 @@ import { useTimelineDropHandling } from '~/composables/timeline/useTimelineDropH
 import { useTimelineInteraction } from '~/composables/timeline/useTimelineInteraction';
 import { useTimelineEmptyAreaContextMenu } from '~/composables/timeline/useTimelineEmptyAreaContextMenu';
 import { useTimelineClipActions } from '~/composables/timeline/useTimelineClipActions';
+import { useTimelineSpeedModal } from '~/composables/timeline/useTimelineSpeedModal';
 import TextPresetSelectionModal from '~/components/timeline/TextPresetSelectionModal.vue';
 
 const { t } = useI18n();
@@ -46,7 +49,11 @@ const focusStore = useFocusStore();
 const timelineSettingsStore = useTimelineSettingsStore();
 const projectStore = useProjectStore();
 const selectionStore = useSelectionStore();
+const uiStore = useUiStore();
 const { draggedFile, setDraggedFile, clearDraggedFile } = useDraggedFile();
+
+const { speedModal, openSpeedModal, saveSpeedModal, speedModalTargetHasAudio } =
+  useTimelineSpeedModal(() => tracks.value);
 
 interface TauriInternalFileDropDetail {
   clientX: number;
@@ -417,6 +424,15 @@ watch(
 );
 
 watch(
+  () => uiStore.speedModalTrigger,
+  (trigger) => {
+    if (trigger) {
+      openSpeedModal(trigger.trackId, trigger.itemId, trigger.speed);
+    }
+  },
+);
+
+watch(
   masterScrollEl,
   (el) => {
     if (!el) return;
@@ -601,6 +617,14 @@ async function handleConfirmCreateVersion(newName: string) {
       @confirm="handleConfirmCreateVersion"
     />
 
+    <TimelineSpeedModal
+      v-if="speedModal"
+      v-model:open="speedModal.open"
+      v-model:speed="speedModal.speed"
+      :has-audio="speedModalTargetHasAudio"
+      @save="saveSpeedModal"
+    />
+
     <!-- Row 1: Toolbar -->
     <TimelineToolbar
       @drag-virtual-start="onDragVirtualStart"
@@ -755,6 +779,7 @@ async function handleConfirmCreateVersion(newName: string) {
         @select-item="selectItem"
         @start-trim-item="startTrimItem"
         @clip-action="onClipAction"
+        @open-speed-modal="(p: TimelineOpenSpeedModalPayload) => openSpeedModal(p.trackId, p.itemId, p.speed)"
         @update-track-height="updateTrackHeight"
       />
 
@@ -795,6 +820,7 @@ async function handleConfirmCreateVersion(newName: string) {
         @select-item="selectItem"
         @start-trim-item="startTrimItem"
         @clip-action="onClipAction"
+        @open-speed-modal="(p: TimelineOpenSpeedModalPayload) => openSpeedModal(p.trackId, p.itemId, p.speed)"
         @update-track-height="updateTrackHeight"
       />
 

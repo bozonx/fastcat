@@ -4,6 +4,7 @@ import type {
   TimelineTrack,
   TimelineClipActionPayload,
   TimelineMoveItemPayload,
+  TimelineOpenSpeedModalPayload,
   TimelineTrimItemPayload,
 } from '~/timeline/types';
 import TimelineTrackLabels from '~/components/timeline/TimelineTrackLabels.vue';
@@ -63,6 +64,7 @@ const emit = defineEmits<{
   (e: 'selectItem', event: PointerEvent, itemId: string): void;
   (e: 'startTrimItem', event: PointerEvent, payload: TimelineTrimItemPayload): void;
   (e: 'clipAction', payload: TimelineClipActionPayload): void;
+  (e: 'open-speed-modal', payload: TimelineOpenSpeedModalPayload): void;
   (e: 'click', event: MouseEvent): void;
   (e: 'scroll'): void;
   (e: 'labelsScroll'): void;
@@ -132,6 +134,7 @@ defineExpose({
           @select-item="(ev, id) => emit('selectItem', ev, id)"
           @start-trim-item="(ev, p) => emit('startTrimItem', ev, p)"
           @clip-action="(p) => emit('clipAction', p)"
+          @open-speed-modal="(p: TimelineOpenSpeedModalPayload) => emit('open-speed-modal', p)"
         />
       </div>
       <TimelinePlayheadOverlay
