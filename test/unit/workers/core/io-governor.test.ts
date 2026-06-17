@@ -134,6 +134,35 @@ describe('isTransientIoError', () => {
     expect(isTransientIoError(new Error('Other datapipe error'))).toBe(true);
     expect(isTransientIoError(new Error('Something else'))).toBe(false);
   });
+
+  it('flags the stale-handle InvalidStateError by message', () => {
+    expect(
+      isTransientIoError(
+        new Error(
+          'An operation that depends on state cached in an interface object was made but the state had changed since it was read from disk.',
+        ),
+      ),
+    ).toBe(true);
+  });
+
+  it('walks the cause chain when adapters wrap the platform error', () => {
+    // VFS adapters rewrite the DOMException into a VfsIoError (losing the
+    // `InvalidStateError` name on the outer error) but keep it on `.cause`.
+    const platform = Object.assign(new Error('boom'), { name: 'InvalidStateError' });
+    const wrapped = Object.assign(new Error('I/O error at _images/x.jpg'), {
+      name: 'VfsIoError',
+      cause: platform,
+    });
+    expect(isTransientIoError(wrapped)).toBe(true);
+  });
+
+  it('does not flag a genuine wrapped I/O fault', () => {
+    const wrapped = Object.assign(new Error('I/O error at _images/x.jpg'), {
+      name: 'VfsIoError',
+      cause: new Error('disk full'),
+    });
+    expect(isTransientIoError(wrapped)).toBe(false);
+  });
 });
 
 describe('runResilientWorkerFileIo', () => {

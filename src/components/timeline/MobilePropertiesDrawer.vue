@@ -37,7 +37,11 @@ const isOpenLocal = computed({
     <template #toolbar>
       <MobileDrawerToolbar
         :orientation="toolbarOrientation"
-        :class="toolbarOrientation === 'vertical' ? 'border-r border-ui-border' : 'border-b border-ui-border'"
+        :class="
+          toolbarOrientation === 'vertical'
+            ? 'border-r border-ui-border'
+            : 'border-b border-ui-border'
+        "
       >
         <slot name="toolbar" />
       </MobileDrawerToolbar>

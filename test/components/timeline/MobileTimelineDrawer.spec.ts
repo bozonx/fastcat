@@ -109,7 +109,7 @@ describe('MobileTimelineDrawer', () => {
     expect(wrapper.emitted('update:activeSnapPoint')?.at(-1)).toEqual([0.92]);
   });
 
-  it('always opens as a right drawer in landscape without snap points', async () => {
+  it('opens as a right drawer with vertical toolbar snaps in landscape', async () => {
     mockWidth.value = 844;
     mockHeight.value = 390;
 
@@ -117,6 +117,33 @@ describe('MobileTimelineDrawer', () => {
       props: {
         open: true,
         withToolbarSnap: true,
+      },
+      slots: {
+        default: '<div class="drawer-body">Body</div>',
+      },
+      global: {
+        stubs: {
+          UiMobileDrawer: uiMobileDrawerStub,
+        },
+      },
+    });
+
+    const drawer = wrapper.findComponent({ name: 'UiMobileDrawer' });
+
+    // Landscape: width-based snaps. Rail at toolbarSnapWidth, full at 45vw (844*0.45).
+    expect(drawer.props('direction')).toBe('right');
+    expect(drawer.props('snapPoints')).toEqual(['84px', '379px']);
+    // Starts collapsed to the rail (first snap), like the portrait toolbar mode.
+    expect(wrapper.emitted('update:activeSnapPoint')?.at(-1)).toEqual(['84px']);
+  });
+
+  it('omits snap points for a landscape side drawer without a toolbar', async () => {
+    mockWidth.value = 844;
+    mockHeight.value = 390;
+
+    const wrapper = await mountSuspended(MobileTimelineDrawer, {
+      props: {
+        open: true,
       },
       slots: {
         default: '<div class="drawer-body">Body</div>',

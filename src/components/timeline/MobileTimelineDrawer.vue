@@ -77,9 +77,7 @@ const snapPoints = computed(() => {
       : [snapFull.value];
   }
   // Landscape side drawer: only engage the rail/full snaps when a toolbar exists.
-  return props.withToolbarSnap
-    ? [props.toolbarSnapWidth, landscapeFullWidth.value]
-    : undefined;
+  return props.withToolbarSnap ? [props.toolbarSnapWidth, landscapeFullWidth.value] : undefined;
 });
 
 const initialSnapPoint = computed<string | number | null>(() => {
