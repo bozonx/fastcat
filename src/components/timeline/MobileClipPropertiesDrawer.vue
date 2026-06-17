@@ -361,28 +361,38 @@ const hasAudio = computed(() => {
             @click="toggleDeleteOverlay"
           />
 
-          <!-- 2. Open Trim Panel -->
+          <!-- 2. Copy -->
+          <MobileDrawerToolbarButton icon="i-heroicons-document-duplicate" @click="handleCopy" />
+
+          <!-- 3. Cut -->
+          <MobileDrawerToolbarButton
+            icon="i-heroicons-scissors"
+            :disabled="isLocked"
+            @click="handleCut"
+          />
+
+          <!-- 4. Open Trim Panel -->
           <MobileDrawerToolbarButton
             icon="i-heroicons-arrows-right-left"
             :disabled="isLocked"
             @click="handleOpenTrimPanel"
           />
 
-          <!-- 3. Split -->
+          <!-- 5. Split -->
           <MobileDrawerToolbarButton
             icon="i-lucide-lab-razor-blade"
             :disabled="isLocked"
             @click="handleSplit"
           />
 
-          <!-- 4. Active/disabled -->
+          <!-- 6. Active/disabled -->
           <MobileDrawerToolbarButton
             :icon="clip?.disabled ? 'i-heroicons-eye' : 'i-heroicons-eye-slash'"
             :active="clip?.disabled"
             @click="handleToggleDisabled"
           />
 
-          <!-- 5. Mute -->
+          <!-- 7. Mute -->
           <template v-if="hasAudio">
             <MobileDrawerToolbarButton
               :icon="clip?.audioMuted ? 'i-heroicons-speaker-wave' : 'i-heroicons-speaker-x-mark'"
@@ -391,21 +401,11 @@ const hasAudio = computed(() => {
             />
           </template>
 
-          <!-- 6. Locked -->
+          <!-- 8. Locked -->
           <MobileDrawerToolbarButton
             :icon="clip?.locked ? 'i-heroicons-lock-open' : 'i-heroicons-lock-closed'"
             :active="clip?.locked"
             @click="handleToggleLocked"
-          />
-
-          <!-- 7. Copy -->
-          <MobileDrawerToolbarButton icon="i-heroicons-document-duplicate" @click="handleCopy" />
-
-          <!-- 8. Cut -->
-          <MobileDrawerToolbarButton
-            icon="i-heroicons-scissors"
-            :disabled="isLocked"
-            @click="handleCut"
           />
         </MobileDrawerToolbar>
       </div>
