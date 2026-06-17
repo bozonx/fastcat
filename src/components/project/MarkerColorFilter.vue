@@ -44,7 +44,7 @@ function toggleAll() {
 
 <template>
   <div class="flex items-center gap-2">
-    <div class="flex items-center gap-1.5">
+    <div class="marker-color-filter flex items-center gap-1.5">
       <button
         v-for="color in availableColors"
         :key="color"

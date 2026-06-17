@@ -532,7 +532,7 @@ watch(viewportRef, (vp) => {
                 </g>
 
                 <MonitorInteractiveOverlay
-                  v-if="!isReadonly"
+                  v-if="isInteractiveEditEnabled && !isReadonly"
                   :render-width="renderWidth"
                   :render-height="renderHeight"
                 />

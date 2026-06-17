@@ -132,6 +132,38 @@ const renderedActiveSnapPoint = computed(() => {
 });
 
 /**
+ * vaul's snap geometry assumes the content spans the full viewport along the snap
+ * axis and translates it by `viewport - snap`. That works for the bottom sheet, but
+ * a right-anchored, width-capped side drawer gets pushed off-screen at the first
+ * snap. So the side toolbar does NOT delegate its snaps to vaul: it renders as a
+ * normal (fully open) side drawer and we drive the rail<->full transition ourselves
+ * via the container width (see {@link sideToolbarStyle}). vaul still owns the
+ * slide-out on close.
+ */
+const vaulSnapPoints = computed(() => (isSideDrawer.value ? undefined : renderedSnapPoints.value));
+const vaulActiveSnapPoint = computed(() =>
+  isSideDrawer.value ? undefined : renderedActiveSnapPoint.value,
+);
+
+/** Rail (first) and full (last) snap widths in px, for the side toolbar. */
+const sideRailFullPx = computed(() => {
+  const pts = renderedSnapPoints.value;
+  if (!isSideToolbar.value || !pts || pts.length < 2) return null;
+  const toPx = (v: string | number) => (typeof v === 'number' ? v : parseFloat(v) || 0);
+  return { rail: toPx(pts[0]!), full: toPx(pts[pts.length - 1]!) };
+});
+
+/** Live width while the side rail is dragged; null = settle to the snap width. */
+const sideDragWidth = ref<number | null>(null);
+const sideDragging = ref(false);
+
+const sideBaseWidth = computed(() => {
+  const rf = sideRailFullPx.value;
+  if (!rf) return null;
+  return isExpanded.value ? rf.full : rf.rail;
+});
+
+/**
  * Compute max-height from the largest snap point.
  * vaul-vue renders the DrawerContent at full viewport height and translates it,
  * so without this constraint the container overflows behind the screen edge.
@@ -142,18 +174,6 @@ const snapContentHeight = computed(() => {
   const lastPoint = props.snapPoints[props.snapPoints.length - 1];
   if (typeof lastPoint === 'number') return `${Math.floor(height.value * lastPoint)}px`;
   return undefined;
-});
-
-/**
- * Horizontal analogue of {@link snapContentHeight}: vaul renders the side drawer at
- * full width and translates it sideways, so the container is pinned to the largest
- * snap width. The first snap then peeks only the toolbar rail at the inner edge.
- */
-const snapContentWidth = computed(() => {
-  if (!props.snapPoints?.length || !isSideDrawer.value) return undefined;
-  const lastPoint = props.snapPoints[props.snapPoints.length - 1];
-  if (typeof lastPoint === 'number') return `${Math.floor(width.value * lastPoint)}px`;
-  return lastPoint;
 });
 
 const backdropZIndexClass = computed(() => {
@@ -253,7 +273,12 @@ const isBackdropInteractive = computed(
 
 const containerStyle = computed(() => {
   if (snapContentHeight.value) return { height: snapContentHeight.value };
-  if (snapContentWidth.value) return { width: snapContentWidth.value };
+  if (isSideToolbar.value && sideBaseWidth.value !== null) {
+    const w = sideDragWidth.value ?? sideBaseWidth.value;
+    // No transition while the finger drives the width, so the rail tracks the
+    // drag; the standing `transition-all duration-300` animates the settle.
+    return { width: `${w}px`, transition: sideDragging.value ? 'none' : undefined };
+  }
   return undefined;
 });
 
@@ -400,28 +425,39 @@ function displacementFrom(t: Touch) {
   return (axisCoord(t) - handleStart.value) * closeSign.value;
 }
 
+/** Clamp a close-positive displacement to the legal travel for the current mode. */
+function clampDisplacement(d: number) {
+  if (isExpanded.value) return d < 0 ? 0 : d; // full: can only move toward close
+  return d < -toolbarOffsetPx.value ? -toolbarOffsetPx.value : d; // rail: reveal up to full
+}
+
 function onHandleTouchStart(e: TouchEvent) {
   const t = e.touches[0];
   if (!t) return;
   handleStart.value = axisCoord(t);
   handleDragging.value = true;
   handleDragged.value = false;
+  if (isSideToolbar.value) {
+    sideDragging.value = true;
+    sideDragWidth.value = sideBaseWidth.value;
+  }
 }
 
 function onHandleTouchMove(e: TouchEvent) {
   if (!handleDragging.value) return;
   const t = e.touches[0];
   if (!t) return;
-  let d = displacementFrom(t);
+  const d = clampDisplacement(displacementFrom(t));
   if (Math.abs(d) > 6) handleDragged.value = true;
 
-  if (isExpanded.value) {
-    // Full mode: follow the close direction only; reverse swipe does nothing.
-    if (d < 0) d = 0;
-  } else {
-    // Toolbar mode: can't reveal more than the full extent.
-    if (d < -toolbarOffsetPx.value) d = -toolbarOffsetPx.value;
+  // Side toolbar: translate the drag into a live container width (grows leftward as
+  // it expands). A close-positive displacement shrinks the panel.
+  if (isSideToolbar.value) {
+    const rf = sideRailFullPx.value;
+    if (rf) sideDragWidth.value = Math.max(0, Math.min(rf.full, (sideBaseWidth.value ?? 0) - d));
+    return;
   }
+
   setHandleTransform(d);
 }
 
@@ -429,9 +465,23 @@ function onHandleTouchEnd(e: TouchEvent) {
   if (!handleDragging.value) return;
   handleDragging.value = false;
   const t = e.changedTouches[0];
-  let d = t ? displacementFrom(t) : 0;
-  if (isExpanded.value && d < 0) d = 0;
-  else if (!isExpanded.value && d < -toolbarOffsetPx.value) d = -toolbarOffsetPx.value;
+  const d = clampDisplacement(t ? displacementFrom(t) : 0);
+
+  // Side toolbar: hand the width back to the snap (CSS-animated) and pick the
+  // outcome from the same thresholds the vertical sheet uses; close just lets vaul
+  // slide the panel out.
+  if (isSideToolbar.value) {
+    sideDragging.value = false;
+    sideDragWidth.value = null;
+    if (Math.abs(d) < TAP_THRESHOLD_PX) return;
+    if (isExpanded.value) {
+      if (d > CLOSE_FULL_THRESHOLD_PX) requestClose();
+      return;
+    }
+    if (d > CLOSE_TOOLBAR_THRESHOLD_PX) requestClose();
+    else if (d < -EXPAND_THRESHOLD_PX) expandByHandle(d);
+    return;
+  }
 
   if (Math.abs(d) < TAP_THRESHOLD_PX) {
     resetHandleTransform();
@@ -459,6 +509,9 @@ function expandByHandle(fromD: number) {
   if (props.snapPoints?.length) {
     activeSnapPoint.value = props.snapPoints[props.snapPoints.length - 1] as string | number;
   }
+  // The side toolbar animates its width via the standing CSS transition once the
+  // snap (and thus sideBaseWidth) changes — no transform to settle.
+  if (isSideToolbar.value) return;
   animateHandle(fromD, 0, ANIMATION_EXPAND_MS, resetHandleTransform);
 }
 
@@ -672,8 +725,8 @@ watch(isOpen, (val) => {
     :direction="effectiveDirection"
     :title="drawerTitleForA11y"
     :description="drawerDescriptionForA11y"
-    :snap-points="renderedSnapPoints"
-    :active-snap-point="renderedActiveSnapPoint"
+    :snap-points="vaulSnapPoints"
+    :active-snap-point="vaulActiveSnapPoint"
     :dismissible="props.dismissible"
     :should-scale-background="props.shouldScaleBackground"
     :modal="false"
@@ -744,7 +797,7 @@ watch(isOpen, (val) => {
         <!-- Header + body + footer. In side toolbar mode they form the panel column
              beside the rail; otherwise `contents` keeps them as direct flex items of
              the sheet so the existing vertical layout is unchanged. -->
-        <div :class="isSideToolbar ? 'flex-1 min-w-0 flex flex-col' : 'contents'">
+        <div :class="isSideToolbar ? 'flex-1 min-w-0 overflow-hidden flex flex-col' : 'contents'">
           <!-- Header -->
           <div
             v-if="props.title || $slots.header || props.showClose"

@@ -6,12 +6,14 @@ import { useAppFullscreen } from '~/composables/useAppFullscreen';
 import { isTauriRuntime } from '~/utils/runtime';
 import { useMonitorGrid } from '~/composables/monitor/useMonitorGrid';
 import { useMonitorRuntime } from '~/composables/monitor/useMonitorRuntime';
+import MonitorInteractiveOverlay from './MonitorInteractiveOverlay.vue';
 import MonitorTextTransformBox from './MonitorTextTransformBox.vue';
 import MonitorViewport from './MonitorViewport.vue';
 import MonitorTransformBox from './MonitorTransformBox.vue';
 import MobileMonitorAudioControl from './MobileMonitorAudioControl.vue';
 import { useMonitorContainerControls } from '~/composables/monitor/useMonitorContainerControls';
 import ProjectMarkers from '~/components/project/ProjectMarkers.vue';
+import { useWorkspaceStore } from '~/stores/workspace.store';
 
 defineOptions({
   inheritAttrs: false,
@@ -372,6 +374,11 @@ const isReadonly = computed(
   () => projectStore.currentView === 'sound' || projectStore.currentView === 'export',
 );
 
+const workspaceStore = useWorkspaceStore();
+const isInteractiveEditEnabled = computed(
+  () => workspaceStore.userSettings.ui.monitorInteractiveEdit === true,
+);
+
 onMounted(() => {
   window.addEventListener('keydown', onMobileMonitorKeyDown, { capture: true });
   if (viewportRef.value) {
@@ -476,13 +483,18 @@ const containerHeightClass = computed(() => {
               stroke-width="1"
             />
           </g>
+          <MonitorInteractiveOverlay
+            v-if="isInteractiveEditEnabled && !isReadonly"
+            :render-width="renderWidth"
+            :render-height="renderHeight"
+          />
           <MonitorTextTransformBox
-            v-if="!isReadonly && isTextClipSelected"
+            v-if="isInteractiveEditEnabled && !isReadonly && isTextClipSelected"
             :render-width="renderWidth"
             :render-height="renderHeight"
           />
           <MonitorTransformBox
-            v-else-if="!isReadonly"
+            v-else-if="isInteractiveEditEnabled && !isReadonly"
             :render-width="renderWidth"
             :render-height="renderHeight"
           />
