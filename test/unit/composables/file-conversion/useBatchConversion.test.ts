@@ -183,4 +183,36 @@ describe('useBatchConversion', () => {
 
     expect(mockBackgroundTasksStore.addTask).not.toHaveBeenCalled();
   });
+
+  it('uses custom reloadDirectory callback when provided', async () => {
+    const batch = useBatchConversion();
+    const entries = [{ kind: 'file', name: 'a.png', path: '/a.png' }] as any[];
+
+    const customReload = vi.fn().mockResolvedValue(undefined);
+
+    batch.openModal('image', entries, false, customReload);
+
+    mockFileManager.vfs.getFile.mockResolvedValue(
+      new File(['x'], 'test.png', { type: 'image/png' }),
+    );
+
+    await batch.startConversion();
+    await new Promise((resolve) => setTimeout(resolve, 10));
+
+    expect(customReload).toHaveBeenCalledWith('');
+    expect(mockFileManager.reloadDirectory).not.toHaveBeenCalled();
+  });
+
+  it('resets reloadDirectory in finally after batch conversion', async () => {
+    const batch = useBatchConversion();
+    const entries = [{ kind: 'file', name: 'a.png', path: '/a.png' }] as any[];
+
+    const customReload = vi.fn().mockResolvedValue(undefined);
+
+    batch.openModal('image', entries, false, customReload);
+    await batch.startConversion();
+    await new Promise((resolve) => setTimeout(resolve, 10));
+
+    expect(batch.state.reloadDirectory).toBeNull();
+  });
 });

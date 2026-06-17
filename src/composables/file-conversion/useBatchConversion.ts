@@ -47,6 +47,7 @@ interface BatchConversionState {
   entries: FsEntry[];
   conversionType: BatchConversionType | null;
   targetIsExternal: boolean;
+  reloadDirectory: ((path: string) => Promise<void>) | null;
 }
 
 const state = reactive<BatchConversionState>({
@@ -57,6 +58,7 @@ const state = reactive<BatchConversionState>({
   entries: [],
   conversionType: null,
   targetIsExternal: false,
+  reloadDirectory: null,
 });
 
 const videoSettings = reactive({
@@ -265,12 +267,18 @@ export function useBatchConversion() {
     }
   }
 
-  async function openModal(type: BatchConversionType, entries: FsEntry[], isExternal: boolean) {
+  async function openModal(
+    type: BatchConversionType,
+    entries: FsEntry[],
+    isExternal: boolean,
+    reloadDirectory?: ((path: string) => Promise<void>) | null,
+  ) {
     state.conversionType = type;
     state.entries = entries.filter(
       (e) => e.kind === 'file' && e.path && getMediaTypeFromFilename(e.name) === type,
     );
     state.targetIsExternal = isExternal;
+    state.reloadDirectory = reloadDirectory ?? null;
     state.isConverting = false;
     state.conversionError = '';
     state.conversionWarnings = [];
@@ -355,12 +363,12 @@ export function useBatchConversion() {
         if (entry.path) {
           const dirPath = entry.path.split('/').slice(0, -1).join('/');
           lastDirPath = dirPath;
-          await fileManager.reloadDirectory(dirPath);
+          await (state.reloadDirectory ?? fileManager.reloadDirectory)(dirPath);
         }
       }
 
       if (lastDirPath) {
-        await fileManager.reloadDirectory(lastDirPath);
+        await (state.reloadDirectory ?? fileManager.reloadDirectory)(lastDirPath);
       }
       uiStore.notifyFileManagerUpdate();
     };
@@ -399,6 +407,7 @@ export function useBatchConversion() {
         state.isConverting = false;
         state.entries = [];
         state.conversionType = null;
+        state.reloadDirectory = null;
       });
   }
 

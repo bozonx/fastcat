@@ -622,7 +622,7 @@ export function useFileConversionActions(props: UseFileConversionActionsProps) {
           })
           .finally(async () => {
             props.isConverting.value = false;
-            await fileManager.reloadDirectory(dirPath);
+            await (props.targetReloadDirectory.value ?? fileManager.reloadDirectory)(dirPath);
             uiStore.notifyFileManagerUpdate();
           });
       } else if (request.type === 'image') {

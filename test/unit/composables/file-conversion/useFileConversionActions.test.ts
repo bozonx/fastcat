@@ -113,7 +113,7 @@ describe('useFileConversionActions', () => {
       targetEntry: ref(null),
       targetIsExternal: ref(false),
       targetVfs: ref(null),
-      targetReloadDirectory: ref(null),
+      targetReloadDirectory: ref<((path: string) => Promise<void>) | null>(null),
       mediaType: ref(mediaTypeVal) as any,
       videoSettings: {
         format: 'mp4',
@@ -476,5 +476,25 @@ describe('useFileConversionActions', () => {
     expect(bgTaskToast).toBeUndefined();
 
     vi.mocked(useMobileLayout).mockRestore?.();
+  });
+
+  it('uses targetReloadDirectory for background conversion when provided', async () => {
+    const props = createProps('audio');
+    const customReload = vi.fn().mockResolvedValue(undefined);
+    props.targetReloadDirectory.value = customReload as unknown as ((path: string) => Promise<void>) | null;
+
+    const { startConversion } = useFileConversionActions(props);
+
+    props.targetEntry.value = { name: 'test.mp3', path: '/test.mp3', kind: 'file' } as any;
+
+    mockProjectStore.getDirectoryHandleByPath.mockResolvedValue({
+      getFileHandle: vi.fn().mockResolvedValue({}),
+    });
+
+    await startConversion();
+    await new Promise((resolve) => setTimeout(resolve, 10));
+
+    expect(customReload).toHaveBeenCalledWith('');
+    expect(mockFileManager.reloadDirectory).not.toHaveBeenCalled();
   });
 });

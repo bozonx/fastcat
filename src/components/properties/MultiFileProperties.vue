@@ -113,15 +113,15 @@ async function handleBatchExtractAudio() {
 }
 
 function handleBatchConvertVideo() {
-  openBatchConversionModal('video', props.entries, props.isExternal ?? false);
+  openBatchConversionModal('video', props.entries, props.isExternal ?? false, fileManager.reloadDirectory);
 }
 
 function handleBatchConvertAudio() {
-  openBatchConversionModal('audio', props.entries, props.isExternal ?? false);
+  openBatchConversionModal('audio', props.entries, props.isExternal ?? false, fileManager.reloadDirectory);
 }
 
 function handleBatchConvertImages() {
-  openBatchConversionModal('image', props.entries, props.isExternal ?? false);
+  openBatchConversionModal('image', props.entries, props.isExternal ?? false, fileManager.reloadDirectory);
 }
 
 async function onCreateProxy() {
