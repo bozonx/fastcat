@@ -195,6 +195,7 @@ export interface FastCatUserSettings {
     interfaceScale: number;
     clipThumbnailMode: 'standard' | 'edges' | 'none';
     defaultAudioWaveformMode: 'half' | 'full' | 'none';
+    monitorInteractiveEdit: boolean;
   };
   history: {
     maxEntries: number;
@@ -366,6 +367,7 @@ export const DEFAULT_USER_SETTINGS: FastCatUserSettings = {
     interfaceScale: 14,
     clipThumbnailMode: 'standard',
     defaultAudioWaveformMode: 'half',
+    monitorInteractiveEdit: false,
   },
   history: {
     maxEntries: 100,

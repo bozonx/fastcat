@@ -1691,6 +1691,8 @@
       "experimentalFeatures": "Экспериментальные функции",
       "experimentalFeaturesHelp": "Включить экспериментальную функциональность, которая находится в разработке.",
       "experimentalFeaturesWarning": "Экспериментальные функции недостаточно протестированы и могут работать нестабильно. Используйте на свой страх и риск.",
+      "monitorInteractiveEdit": "Интерактивное редактирование в мониторе",
+      "monitorInteractiveEditHelp": "Показывать границы видимых клипов в мониторе и позволять выбор кликом.",
       "clipThumbnailMode": "Режим миниатюр клипов",
       "clipThumbnailModeEdges": "Только края",
       "clipThumbnailModeNone": "Отключено",

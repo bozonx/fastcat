@@ -1,27 +1,41 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 
 interface Props {
   /** Padding and other classes for the inner flex container */
   contentClass?: string;
+  /**
+   * Layout axis. `horizontal` is the portrait bottom-sheet toolbar (scrolls left
+   * to right); `vertical` is the landscape side-drawer rail (scrolls top to bottom).
+   */
+  orientation?: 'horizontal' | 'vertical';
 }
 
 const props = withDefaults(defineProps<Props>(), {
   contentClass: 'gap-1 px-2 py-1.5',
+  orientation: 'horizontal',
 });
 
+const isVertical = computed(() => props.orientation === 'vertical');
+
 const scrollContainer = ref<HTMLElement | null>(null);
-const showLeftShadow = ref(false);
-const showRightShadow = ref(false);
+const showStartShadow = ref(false);
+const showEndShadow = ref(false);
 
 function updateScrollState() {
   if (!scrollContainer.value) return;
 
-  const { scrollLeft, scrollWidth, clientWidth } = scrollContainer.value;
+  if (isVertical.value) {
+    const { scrollTop, scrollHeight, clientHeight } = scrollContainer.value;
+    // Use a small threshold to avoid flickering
+    showStartShadow.value = scrollTop > 4;
+    showEndShadow.value = scrollTop < scrollHeight - clientHeight - 4;
+    return;
+  }
 
-  // Use a small threshold to avoid flickering
-  showLeftShadow.value = scrollLeft > 4;
-  showRightShadow.value = scrollLeft < scrollWidth - clientWidth - 4;
+  const { scrollLeft, scrollWidth, clientWidth } = scrollContainer.value;
+  showStartShadow.value = scrollLeft > 4;
+  showEndShadow.value = scrollLeft < scrollWidth - clientWidth - 4;
 }
 
 let resizeObserver: ResizeObserver | null = null;
@@ -50,32 +64,46 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="mobile-drawer-toolbar relative flex-1 min-w-0 overflow-hidden">
-    <!-- Left shadow -->
+  <div
+    class="mobile-drawer-toolbar relative overflow-hidden"
+    :class="isVertical ? 'h-full min-h-0' : 'flex-1 min-w-0'"
+  >
+    <!-- Start (left / top) fade shadow -->
     <div
-      class="absolute left-0 top-0 bottom-0 w-12 z-10 pointer-events-none transition-opacity duration-300"
+      class="absolute z-10 pointer-events-none transition-opacity duration-300"
       :class="[
-        showLeftShadow ? 'opacity-100' : 'opacity-0',
-        'bg-linear-to-r from-ui-bg-elevated to-transparent',
+        showStartShadow ? 'opacity-100' : 'opacity-0',
+        isVertical
+          ? 'top-0 left-0 right-0 h-12 bg-linear-to-b from-ui-bg-elevated to-transparent'
+          : 'left-0 top-0 bottom-0 w-12 bg-linear-to-r from-ui-bg-elevated to-transparent',
       ]"
     />
 
     <div
       ref="scrollContainer"
-      class="overflow-x-auto no-scrollbar scroll-smooth"
+      class="scroll-smooth"
+      :class="isVertical ? 'h-full overflow-y-auto no-scrollbar' : 'overflow-x-auto no-scrollbar'"
       @scroll="updateScrollState"
     >
-      <div class="flex items-center w-max min-w-full" :class="props.contentClass">
+      <div
+        class="flex"
+        :class="[
+          isVertical ? 'flex-col items-center h-max min-h-full' : 'items-center w-max min-w-full',
+          props.contentClass,
+        ]"
+      >
         <slot />
       </div>
     </div>
 
-    <!-- Right shadow -->
+    <!-- End (right / bottom) fade shadow -->
     <div
-      class="absolute right-0 top-0 bottom-0 w-12 z-10 pointer-events-none transition-opacity duration-300"
+      class="absolute z-10 pointer-events-none transition-opacity duration-300"
       :class="[
-        showRightShadow ? 'opacity-100' : 'opacity-0',
-        'bg-linear-to-l from-ui-bg-elevated to-transparent',
+        showEndShadow ? 'opacity-100' : 'opacity-0',
+        isVertical
+          ? 'bottom-0 left-0 right-0 h-12 bg-linear-to-t from-ui-bg-elevated to-transparent'
+          : 'right-0 top-0 bottom-0 w-12 bg-linear-to-l from-ui-bg-elevated to-transparent',
       ]"
     />
   </div>

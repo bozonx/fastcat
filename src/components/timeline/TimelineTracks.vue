@@ -372,9 +372,13 @@ watch(
       :style="timelineContentStyle"
       @pointerdown="
         focusStore.setPanelFocus('timeline');
-        if (shouldStartMarquee($event)) {
+        if (!props.isAnyDrawerOpen && shouldStartMarquee($event)) {
           startMarquee($event);
-        } else if ($event.button !== 1 && $event.target === $event.currentTarget) {
+        } else if (
+          !props.isAnyDrawerOpen &&
+          $event.button !== 1 &&
+          $event.target === $event.currentTarget
+        ) {
           timelineStore.clearSelection();
           selectionStore.clearSelection();
           timelineStore.selectTrack(null);

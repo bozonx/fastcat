@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
+import { useWindowSize } from '@vueuse/core';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useSelectionStore } from '~/stores/selection.store';
 import { useAppClipboard } from '~/composables/useAppClipboard';
@@ -25,6 +26,27 @@ const activeSnapPoint = defineModel<string | number | null>('activeSnapPoint', {
 const emit = defineEmits<{
   (e: 'close' | 'open-trim-drawer'): void;
 }>();
+
+const { width, height } = useWindowSize();
+/** Landscape renders the drawer as a side panel, so the toolbar is a vertical rail. */
+const toolbarOrientation = computed(() => (width.value > height.value ? 'vertical' : 'horizontal'));
+
+/** Toolbar host: a top row in portrait, a full-height rail in landscape. */
+const toolbarWrapperClass = computed(() =>
+  toolbarOrientation.value === 'vertical'
+    ? 'relative border-r border-ui-border bg-ui-bg-elevated flex flex-col h-full'
+    : 'relative border-b border-ui-border bg-ui-bg-elevated flex flex-col w-full',
+);
+
+/**
+ * The action overlays (delete / trim) pop out from the toolbar edge: upward above
+ * the row in portrait, sideways from the rail in landscape.
+ */
+const overlayClass = computed(() =>
+  toolbarOrientation.value === 'vertical'
+    ? 'absolute left-full top-2 ml-2 z-50 flex items-center gap-2 px-3 py-2 w-max max-w-[60vw] rounded-xl bg-ui-bg-elevated border border-ui-border shadow-lg'
+    : 'absolute bottom-full left-0 right-0 z-50 flex items-center justify-between gap-2 px-3 py-2 bg-ui-bg-elevated border-b border-ui-border shadow-lg',
+);
 
 const { t } = useI18n();
 const timelineStore = useTimelineStore();
@@ -198,13 +220,10 @@ const hasAudio = computed(() => {
     with-toolbar-snap
   >
     <template #toolbar>
-      <div class="relative border-b border-ui-border bg-ui-bg-elevated flex flex-col w-full">
+      <div :class="toolbarWrapperClass">
         <!-- 1. Delete Overlay -->
         <Transition name="slide-up">
-          <div
-            v-if="showDeleteOverlay"
-            class="absolute bottom-full left-0 right-0 bg-ui-bg-elevated border-b border-ui-border px-3 py-2 flex items-center justify-between gap-2 shadow-lg z-50"
-          >
+          <div v-if="showDeleteOverlay" :class="overlayClass">
             <span class="text-xs font-bold text-ui-text-muted uppercase tracking-wider">
               {{ t('fastcat.timeline.delete') }}
             </span>
@@ -251,10 +270,7 @@ const hasAudio = computed(() => {
 
         <!-- 2. Trim Overlay -->
         <Transition name="slide-up">
-          <div
-            v-if="showTrimOverlay"
-            class="absolute bottom-full left-0 right-0 bg-ui-bg-elevated border-b border-ui-border px-3 py-2 flex items-center justify-between gap-2 shadow-lg z-50"
-          >
+          <div v-if="showTrimOverlay" :class="overlayClass">
             <span class="text-xs font-bold text-ui-text-muted uppercase tracking-wider">
               {{ t('fastcat.timeline.trimOptions') }}
             </span>
@@ -303,7 +319,7 @@ const hasAudio = computed(() => {
         </Transition>
 
         <!-- Main Toolbar Buttons -->
-        <MobileDrawerToolbar content-class="gap-1.5 px-2 py-1.5">
+        <MobileDrawerToolbar :orientation="toolbarOrientation" content-class="gap-1.5 px-2 py-1.5">
           <!-- 1. Toggle Delete Overlay -->
           <MobileDrawerToolbarButton
             icon="i-heroicons-trash"

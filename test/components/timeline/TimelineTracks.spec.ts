@@ -540,6 +540,31 @@ describe('TimelineTracks', () => {
     expect(clip.attributes('data-duration-us')).toBe('3000000');
   });
 
+  it('does not clear selection on container pointerdown when a drawer is open', async () => {
+    const component = await mountSuspended(TimelineTracks, {
+      props: {
+        ...defaultProps,
+        isMobile: true,
+        isAnyDrawerOpen: true,
+      },
+    });
+
+    const container = component.find('[tabindex="-1"]');
+    const event = new PointerEvent('pointerdown', {
+      bubbles: true,
+      cancelable: true,
+      button: 0,
+      clientX: 100,
+      clientY: 100,
+    });
+    Object.defineProperty(event, 'target', { value: container.element });
+    container.element.dispatchEvent(event);
+    await nextTick();
+
+    expect(clearSelectionSpy).not.toHaveBeenCalled();
+    expect(selectTrackSpy).not.toHaveBeenCalled();
+  });
+
   it('updates gap timeline geometry without waiting for a later track rerender', async () => {
     const tracks = [
       {

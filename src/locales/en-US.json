@@ -1691,6 +1691,8 @@
       "experimentalFeatures": "Experimental features",
       "experimentalFeaturesHelp": "Enable experimental functionality that is still in development.",
       "experimentalFeaturesWarning": "Experimental features are not fully tested and may be unstable. Use at your own risk.",
+      "monitorInteractiveEdit": "Monitor interactive editing",
+      "monitorInteractiveEditHelp": "Show bounding boxes for visible clips in the monitor and allow click-to-select.",
       "clipThumbnailMode": "Clip thumbnail mode",
       "clipThumbnailModeEdges": "Edges only",
       "clipThumbnailModeNone": "None",

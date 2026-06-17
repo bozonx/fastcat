@@ -84,7 +84,6 @@ const effectiveDirection = computed(() => {
  */
 const isExpanded = computed(() => {
   if (!props.snapPoints || props.snapPoints.length === 0) return true;
-  if (effectiveDirection.value === 'right' || effectiveDirection.value === 'left') return true;
   if (activeSnapPoint.value === null) return false;
 
   const lastPoint = props.snapPoints[props.snapPoints.length - 1];
@@ -95,9 +94,34 @@ const isVerticalDrawer = computed(
   () => effectiveDirection.value === 'bottom' || effectiveDirection.value === 'top',
 );
 
+const isSideDrawer = computed(
+  () => effectiveDirection.value === 'right' || effectiveDirection.value === 'left',
+);
+
+/**
+ * Side drawer that carries snap points behaves like the portrait toolbar sheet, but
+ * along the horizontal axis: a narrow vertical toolbar rail at the first snap that
+ * expands sideways to the full panel.
+ */
+const isSideToolbar = computed(() => isSideDrawer.value && !!props.snapPoints?.length);
+
+/**
+ * Sign of the "close" direction along the drag axis: a positive displacement always
+ * moves the sheet toward dismissal (down for bottom, up for top, right for right,
+ * left for left). The handle gesture logic is written in this close-positive space
+ * so a single code path drives both portrait (vertical) and landscape (horizontal).
+ */
+const closeSign = computed(() =>
+  effectiveDirection.value === 'top' || effectiveDirection.value === 'left' ? -1 : 1,
+);
+
 function toRenderedSnapPoint(point: number | string) {
-  if (typeof point === 'string' || !isVerticalDrawer.value) return point;
-  return `${Math.floor(height.value * point)}px`;
+  if (typeof point === 'string') return point;
+  // Numeric fractions are resolved to integer pixels (sharp text, no sub-pixel
+  // blur): of the viewport height for vertical drawers, of the width for side ones.
+  return isVerticalDrawer.value
+    ? `${Math.floor(height.value * point)}px`
+    : `${Math.floor(width.value * point)}px`;
 }
 
 const renderedSnapPoints = computed(() => props.snapPoints?.map(toRenderedSnapPoint));
@@ -120,6 +144,18 @@ const snapContentHeight = computed(() => {
   return undefined;
 });
 
+/**
+ * Horizontal analogue of {@link snapContentHeight}: vaul renders the side drawer at
+ * full width and translates it sideways, so the container is pinned to the largest
+ * snap width. The first snap then peeks only the toolbar rail at the inner edge.
+ */
+const snapContentWidth = computed(() => {
+  if (!props.snapPoints?.length || !isSideDrawer.value) return undefined;
+  const lastPoint = props.snapPoints[props.snapPoints.length - 1];
+  if (typeof lastPoint === 'number') return `${Math.floor(width.value * lastPoint)}px`;
+  return lastPoint;
+});
+
 const backdropZIndexClass = computed(() => {
   if (props.zIndex === 'z-[var(--z-fixed)]') {
     return 'z-[calc(var(--z-fixed)-1)]';
@@ -140,14 +176,38 @@ const drawerUi = computed(() => ({
   overlay: backdropZIndexClass.value,
 }));
 
+/**
+ * This sheet owns its own dismissal entirely (custom backdrop tap/swipe + drag
+ * handle), so we neutralize Reka's built-in "interact outside" auto-dismiss.
+ *
+ * Without this, opening one sheet directly from another flashes the new sheet open
+ * and then instantly closes it: when the first sheet finishes its close animation,
+ * Reka's non-modal `closeAutoFocus` restores focus to the button that opened it —
+ * a `focusin` OUTSIDE the new sheet. The new sheet's DismissableLayer treats that as
+ * an outside interaction and dismisses itself. Preventing `interactOutside` (the
+ * single chokepoint for both the focus- and pointer-driven dismiss paths) stops it.
+ */
+const drawerContentProps = {
+  onInteractOutside: (e: Event) => e.preventDefault(),
+  onFocusOutside: (e: Event) => e.preventDefault(),
+};
+
 /** Responsive container logic */
 const containerClasses = computed(() => {
-  const base = `flex flex-col relative shadow-2xl transition-all duration-300 pointer-events-auto ${props.zIndex}`;
+  const base = `relative shadow-2xl transition-all duration-300 pointer-events-auto ${props.zIndex}`;
   const bgColor = 'bg-ui-bg-elevated ring-1 ring-white/10';
 
-  if (effectiveDirection.value === 'right' || effectiveDirection.value === 'left') {
+  if (isSideDrawer.value) {
     const sideBorder = effectiveDirection.value === 'right' ? 'border-l' : 'border-r';
-    return `${base} max-h-dvh h-screen w-[55vw] sm:w-[45vw] ml-auto ${sideBorder} border-ui-border/80 ${bgColor} ${props.ui.container || ''}`;
+    // Toolbar mode lays the rail and panel out side-by-side; the width comes from
+    // the snap (containerStyle), so no fixed width class. A plain side drawer keeps
+    // its responsive width.
+    const flow = isSideToolbar.value ? 'flex flex-row' : 'flex flex-col';
+    const widthClass = props.snapPoints?.length ? '' : 'w-[55vw] sm:w-[45vw]';
+    return `${base} ${flow} max-h-dvh h-screen ${widthClass} ml-auto ${sideBorder} border-ui-border/80 ${bgColor} ${props.ui.container || ''}`.replace(
+      /  +/g,
+      ' ',
+    );
   }
 
   const heightClass = props.snapPoints?.length
@@ -155,11 +215,17 @@ const containerClasses = computed(() => {
     : props.isFullHeight
       ? 'h-[95dvh]'
       : 'max-h-[85dvh]';
-  return `${base} ${heightClass} w-full border-t border-ui-border/80 ${bgColor} rounded-t-2xl ${props.ui.container || ''}`.replace(
+  return `${base} flex flex-col ${heightClass} w-full border-t border-ui-border/80 ${bgColor} rounded-t-2xl ${props.ui.container || ''}`.replace(
     /  +/g,
     ' ',
   );
 });
+
+const toolbarWrapperClass = computed(() =>
+  isSideToolbar.value
+    ? `shrink-0 h-full overflow-hidden ${props.ui.toolbar || ''}`
+    : `shrink-0 ${props.ui.toolbar || ''}`,
+);
 
 const bodyClasses = computed(() => {
   return `flex-1 min-h-0 overflow-y-auto pb-safe custom-scrollbar ${props.ui.body || ''}`;
@@ -185,9 +251,11 @@ const isBackdropInteractive = computed(
       effectiveDirection.value === 'left'),
 );
 
-const containerStyle = computed(() =>
-  snapContentHeight.value ? { height: snapContentHeight.value } : undefined,
-);
+const containerStyle = computed(() => {
+  if (snapContentHeight.value) return { height: snapContentHeight.value };
+  if (snapContentWidth.value) return { width: snapContentWidth.value };
+  return undefined;
+});
 
 function applyDragTransform(dx: number, dy: number) {
   const el = containerRef.value;
@@ -237,7 +305,8 @@ const ANIMATION_CLOSE_MS = 280;
 const BACKDROP_SHOW_DELAY_MS = 80;
 const FOCUS_DELAY_MS = 400;
 
-const handleStartY = ref(0);
+/** Start coordinate of the active handle drag, along the drawer's drag axis. */
+const handleStart = ref(0);
 const handleDragging = ref(false);
 const handleDragged = ref(false);
 /** True while we slide the sheet out ourselves, so the close watcher leaves our
@@ -254,8 +323,20 @@ const toolbarOffsetPx = computed(() => {
 
 let handleAnim: Animation | null = null;
 
+/**
+ * Visual transform for a close-positive displacement `d`. `d` measures movement
+ * toward dismissal; the raw on-axis offset is `d * closeSign`, so the sheet always
+ * follows the finger regardless of which edge it is docked to.
+ */
+function transformForDisplacement(d: number) {
+  const offset = d * closeSign.value;
+  return isVerticalDrawer.value
+    ? `translate3d(0, ${offset}px, 0)`
+    : `translate3d(${offset}px, 0, 0)`;
+}
+
 /** Instant transform while the finger drives the sheet (no transition lag). */
-function setHandleTransform(dy: number) {
+function setHandleTransform(d: number) {
   const el = containerRef.value;
   if (!el) return;
   if (handleAnim) {
@@ -263,7 +344,7 @@ function setHandleTransform(dy: number) {
     handleAnim = null;
   }
   el.style.transition = 'none';
-  el.style.transform = dy === 0 ? '' : `translate3d(0, ${dy}px, 0)`;
+  el.style.transform = d === 0 ? '' : transformForDisplacement(d);
 }
 
 /**
@@ -272,13 +353,13 @@ function setHandleTransform(dy: number) {
  * the preceding instant drag transform does not fire reliably, which made the
  * sheet jump (disappear) instead of sliding. WAA is deterministic about the start.
  */
-function animateHandle(fromDy: number, toDy: number, ms: number, done?: () => void) {
+function animateHandle(fromD: number, toD: number, ms: number, done?: () => void) {
   const el = containerRef.value;
-  const from = `translate3d(0, ${fromDy}px, 0)`;
-  const to = toDy === 0 ? 'translate3d(0, 0, 0)' : `translate3d(0, ${toDy}px, 0)`;
+  const from = transformForDisplacement(fromD);
+  const to = transformForDisplacement(toD);
 
   if (!el || typeof el.animate !== 'function') {
-    if (el) el.style.transform = toDy === 0 ? '' : to;
+    if (el) el.style.transform = toD === 0 ? '' : to;
     done?.();
     return;
   }
@@ -291,7 +372,7 @@ function animateHandle(fromDy: number, toDy: number, ms: number, done?: () => vo
     fill: 'forwards',
   });
   handleAnim.onfinish = () => {
-    el.style.transform = toDy === 0 ? '' : to;
+    el.style.transform = toD === 0 ? '' : to;
     handleAnim?.cancel();
     handleAnim = null;
     done?.();
@@ -309,10 +390,20 @@ function resetHandleTransform() {
   el.style.removeProperty('transform');
 }
 
+/** Touch coordinate along the active drag axis. */
+function axisCoord(t: Touch) {
+  return isVerticalDrawer.value ? t.clientY : t.clientX;
+}
+
+/** Close-positive displacement of a touch from the drag start. */
+function displacementFrom(t: Touch) {
+  return (axisCoord(t) - handleStart.value) * closeSign.value;
+}
+
 function onHandleTouchStart(e: TouchEvent) {
   const t = e.touches[0];
   if (!t) return;
-  handleStartY.value = t.clientY;
+  handleStart.value = axisCoord(t);
   handleDragging.value = true;
   handleDragged.value = false;
 }
@@ -321,77 +412,80 @@ function onHandleTouchMove(e: TouchEvent) {
   if (!handleDragging.value) return;
   const t = e.touches[0];
   if (!t) return;
-  let dy = t.clientY - handleStartY.value;
-  if (Math.abs(dy) > 6) handleDragged.value = true;
+  let d = displacementFrom(t);
+  if (Math.abs(d) > 6) handleDragged.value = true;
 
   if (isExpanded.value) {
-    // Full mode: follow downward only; an upward swipe does nothing.
-    if (dy < 0) dy = 0;
+    // Full mode: follow the close direction only; reverse swipe does nothing.
+    if (d < 0) d = 0;
   } else {
-    // Toolbar mode: can't reveal more than the full height.
-    const maxUp = -toolbarOffsetPx.value;
-    if (dy < maxUp) dy = maxUp;
+    // Toolbar mode: can't reveal more than the full extent.
+    if (d < -toolbarOffsetPx.value) d = -toolbarOffsetPx.value;
   }
-  setHandleTransform(dy);
+  setHandleTransform(d);
 }
 
 function onHandleTouchEnd(e: TouchEvent) {
   if (!handleDragging.value) return;
   handleDragging.value = false;
   const t = e.changedTouches[0];
-  let dy = t ? t.clientY - handleStartY.value : 0;
-  if (isExpanded.value && dy < 0) dy = 0;
-  else if (!isExpanded.value && dy < -toolbarOffsetPx.value) dy = -toolbarOffsetPx.value;
+  let d = t ? displacementFrom(t) : 0;
+  if (isExpanded.value && d < 0) d = 0;
+  else if (!isExpanded.value && d < -toolbarOffsetPx.value) d = -toolbarOffsetPx.value;
 
-  if (Math.abs(dy) < TAP_THRESHOLD_PX) {
+  if (Math.abs(d) < TAP_THRESHOLD_PX) {
     resetHandleTransform();
     return;
   }
 
   if (isExpanded.value) {
-    if (dy > CLOSE_FULL_THRESHOLD_PX) closeByHandle(dy);
-    else settleHandle(dy);
+    if (d > CLOSE_FULL_THRESHOLD_PX) closeByHandle(d);
+    else settleHandle(d);
     return;
   }
 
-  if (dy > CLOSE_TOOLBAR_THRESHOLD_PX) closeByHandle(dy);
-  else if (dy < -EXPAND_THRESHOLD_PX) expandByHandle(dy);
-  else settleHandle(dy);
+  if (d > CLOSE_TOOLBAR_THRESHOLD_PX) closeByHandle(d);
+  else if (d < -EXPAND_THRESHOLD_PX) expandByHandle(d);
+  else settleHandle(d);
 }
 
 /** Ease back to the current snap position. */
-function settleHandle(fromDy: number) {
-  animateHandle(fromDy, 0, ANIMATION_SETTLE_MS, resetHandleTransform);
+function settleHandle(fromD: number) {
+  animateHandle(fromD, 0, ANIMATION_SETTLE_MS, resetHandleTransform);
 }
 
 /** Hand off to the full snap, syncing our offset with vaul's snap transition. */
-function expandByHandle(fromDy: number) {
+function expandByHandle(fromD: number) {
   if (props.snapPoints?.length) {
     activeSnapPoint.value = props.snapPoints[props.snapPoints.length - 1] as string | number;
   }
-  animateHandle(fromDy, 0, ANIMATION_EXPAND_MS, resetHandleTransform);
+  animateHandle(fromD, 0, ANIMATION_EXPAND_MS, resetHandleTransform);
 }
 
 /** Slide the sheet out from the release position, then unmount. */
-function closeByHandle(fromDy: number) {
+function closeByHandle(fromD: number) {
   handleClosing.value = true;
-  const viewportH = window.innerHeight || 900;
-
-  // Animate only as far as it takes the sheet's TOP edge to reach the bottom of
-  // the viewport. In toolbar mode the sheet already sits near the bottom, so a
-  // fixed `viewportH` target would push the visible part off-screen in the first
-  // few ms (with the fast-start easing) and the slide-down would be invisible.
-  // Deriving the target from the current rect keeps the on-screen travel — and
-  // thus the perceived speed — consistent across toolbar and full modes.
   const el = containerRef.value;
-  let toDy = viewportH;
-  if (el) {
-    // rect.top already reflects the in-flight drag transform (fromDy).
-    const rect = el.getBoundingClientRect();
-    toDy = fromDy + (viewportH - rect.top);
+  const rect = el?.getBoundingClientRect();
+
+  // Animate only as far as it takes the sheet's leading edge to clear the viewport.
+  // In toolbar mode the sheet already sits near the screen edge, so a fixed
+  // viewport-sized target would push the visible sliver off-screen in the first few
+  // ms (with the fast-start easing) and the slide-out would be invisible. Deriving
+  // the target from the current rect keeps the on-screen travel — and thus the
+  // perceived speed — consistent across toolbar and full modes. The rect already
+  // reflects the in-flight drag transform (fromD).
+  let toD: number;
+  if (isVerticalDrawer.value) {
+    const viewportH = window.innerHeight || 900;
+    toD = rect ? fromD + (viewportH - rect.top) : viewportH;
+  } else {
+    // Push the sheet out by its own width past the current position; this clears
+    // the screen edge regardless of which side it is docked to.
+    toD = fromD + (rect ? rect.width : window.innerWidth || 1200);
   }
 
-  animateHandle(fromDy, toDy, ANIMATION_CLOSE_MS, () => requestClose());
+  animateHandle(fromD, toD, ANIMATION_CLOSE_MS, () => requestClose());
 }
 
 function onBackdropTouchStart(e: TouchEvent) {
@@ -585,16 +679,15 @@ watch(isOpen, (val) => {
     :modal="false"
     :overlay="false"
     :handle="false"
+    :content="drawerContentProps"
     :ui="drawerUi"
     @update:active-snap-point="onSnapPointChange"
   >
     <template #content>
       <div ref="containerRef" :class="containerClasses" :style="containerStyle">
-        <!-- Vertical mode: drag handle -->
+        <!-- Vertical mode: drag handle (revealed edge = top) -->
         <div
-          v-if="
-            (effectiveDirection === 'bottom' || effectiveDirection === 'top') && props.withHandle
-          "
+          v-if="isVerticalDrawer && props.withHandle"
           class="shrink-0 relative z-10 cursor-pointer group"
           data-vaul-no-drag
           @click.stop="onHandleTap"
@@ -609,70 +702,95 @@ watch(isOpen, (val) => {
           </div>
         </div>
 
-        <!-- Side mode: lateral handle -->
+        <!-- Side toolbar mode: inline drag handle on the inner edge (in flex flow,
+             so it sits beside the rail rather than overlapping it). -->
         <div
-          v-if="
-            (effectiveDirection === 'right' || effectiveDirection === 'left') && props.withHandle
-          "
-          class="absolute top-0 bottom-0 flex flex-col items-center justify-center cursor-pointer pointer-events-auto"
-          :class="effectiveDirection === 'right' ? 'left-0 w-6' : 'right-0 w-6'"
+          v-if="isSideToolbar && props.withHandle"
+          class="shrink-0 self-stretch w-5 flex items-center justify-center cursor-pointer touch-none"
+          :class="effectiveDirection === 'right' ? 'order-first' : 'order-last'"
+          data-vaul-no-drag
           @click.stop="onHandleTap"
+          @touchstart.passive="onHandleTouchStart"
+          @touchmove.passive="onHandleTouchMove"
+          @touchend.passive="onHandleTouchEnd"
         >
           <div
             class="w-1 h-12 rounded-full bg-ui-border/60 transition-colors hover:bg-ui-text-muted/60"
           />
         </div>
 
-        <!-- Optional Toolbar (stays visible at first snap point) -->
-        <div v-if="$slots.toolbar" class="shrink-0" :class="props.ui.toolbar">
+        <!-- Plain side mode (no snap): lateral overlay handle -->
+        <div
+          v-if="isSideDrawer && !isSideToolbar && props.withHandle"
+          class="absolute top-0 bottom-0 flex flex-col items-center justify-center cursor-pointer pointer-events-auto touch-none"
+          :class="effectiveDirection === 'right' ? 'left-0 w-6' : 'right-0 w-6'"
+          data-vaul-no-drag
+          @click.stop="onHandleTap"
+          @touchstart.passive="onHandleTouchStart"
+          @touchmove.passive="onHandleTouchMove"
+          @touchend.passive="onHandleTouchEnd"
+        >
+          <div
+            class="w-1 h-12 rounded-full bg-ui-border/60 transition-colors hover:bg-ui-text-muted/60"
+          />
+        </div>
+
+        <!-- Optional Toolbar (stays visible at first snap point). In side mode it is
+             the vertical rail revealed at the inner edge; in portrait, the top row. -->
+        <div v-if="$slots.toolbar" :class="toolbarWrapperClass">
           <slot name="toolbar" />
         </div>
 
-        <!-- Header -->
-        <div
-          v-if="props.title || $slots.header || props.showClose"
-          class="shrink-0 pt-3 pb-3 px-5 border-b border-white/5 flex items-center justify-between gap-4"
-          :class="props.ui.header"
-          data-vaul-no-drag
-        >
-          <div class="flex-1 min-w-0">
-            <slot name="header">
-              <h3
-                v-if="props.title"
-                class="text-base font-bold text-ui-text leading-tight truncate"
-              >
-                {{ props.title }}
-              </h3>
-              <p v-if="props.description" class="mt-0.5 text-xs text-ui-text-muted line-clamp-2">
-                {{ props.description }}
-              </p>
-            </slot>
+        <!-- Header + body + footer. In side toolbar mode they form the panel column
+             beside the rail; otherwise `contents` keeps them as direct flex items of
+             the sheet so the existing vertical layout is unchanged. -->
+        <div :class="isSideToolbar ? 'flex-1 min-w-0 flex flex-col' : 'contents'">
+          <!-- Header -->
+          <div
+            v-if="props.title || $slots.header || props.showClose"
+            class="shrink-0 pt-3 pb-3 px-5 border-b border-white/5 flex items-center justify-between gap-4"
+            :class="props.ui.header"
+            data-vaul-no-drag
+          >
+            <div class="flex-1 min-w-0">
+              <slot name="header">
+                <h3
+                  v-if="props.title"
+                  class="text-base font-bold text-ui-text leading-tight truncate"
+                >
+                  {{ props.title }}
+                </h3>
+                <p v-if="props.description" class="mt-0.5 text-xs text-ui-text-muted line-clamp-2">
+                  {{ props.description }}
+                </p>
+              </slot>
+            </div>
+
+            <button
+              v-if="props.showClose"
+              class="shrink-0 p-2 -mr-2 rounded-full text-ui-text-muted hover:text-ui-text hover:bg-white/10 transition-colors"
+              :class="props.ui.close"
+              @click="onClose"
+            >
+              <UIcon name="i-heroicons-x-mark" class="w-5 h-5" />
+            </button>
           </div>
 
-          <button
-            v-if="props.showClose"
-            class="shrink-0 p-2 -mr-2 rounded-full text-ui-text-muted hover:text-ui-text hover:bg-white/10 transition-colors"
-            :class="props.ui.close"
-            @click="onClose"
+          <!-- Main Body -->
+          <div ref="bodyRef" data-vaul-no-drag :class="bodyClasses">
+            <slot />
+          </div>
+
+          <!-- Footer -->
+          <div
+            v-if="$slots.footer"
+            ref="footerRef"
+            class="shrink-0 px-5 py-4 border-t border-ui-border/60"
+            :class="props.ui.footer"
+            data-vaul-no-drag
           >
-            <UIcon name="i-heroicons-x-mark" class="w-5 h-5" />
-          </button>
-        </div>
-
-        <!-- Main Body -->
-        <div ref="bodyRef" data-vaul-no-drag :class="bodyClasses">
-          <slot />
-        </div>
-
-        <!-- Footer -->
-        <div
-          v-if="$slots.footer"
-          ref="footerRef"
-          class="shrink-0 px-5 py-4 border-t border-ui-border/60"
-          :class="props.ui.footer"
-          data-vaul-no-drag
-        >
-          <slot name="footer" />
+            <slot name="footer" />
+          </div>
         </div>
       </div>
     </template>

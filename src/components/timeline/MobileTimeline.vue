@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, watch } from 'vue';
+import { useWindowSize } from '@vueuse/core';
 import {
   MOBILE_CLICK_MOVE_THRESHOLD_PX,
   MOBILE_LONG_PRESS_RESET_DELAY_MS,
@@ -61,6 +62,12 @@ import { useTimelineClipActions } from '~/composables/timeline/useTimelineClipAc
 const TIMELINE_RULER_HEIGHT_PX = 32;
 
 const { target: teleportTarget } = useTeleportTarget();
+
+const { width: windowWidth, height: windowHeight } = useWindowSize();
+/** Landscape drawers dock to the side, so their toolbars render as a vertical rail. */
+const drawerToolbarOrientation = computed(() =>
+  windowWidth.value > windowHeight.value ? 'vertical' : 'horizontal',
+);
 
 const { t } = useI18n();
 const toast = useToast();
@@ -615,7 +622,14 @@ async function handleConfirmCreateVersion(newName: string) {
       @update:open="(value) => !value && onMultiSelectionDrawerClose()"
     >
       <template #toolbar>
-        <MobileDrawerToolbar class="border-b border-ui-border">
+        <MobileDrawerToolbar
+          :orientation="drawerToolbarOrientation"
+          :class="
+            drawerToolbarOrientation === 'vertical'
+              ? 'border-r border-ui-border'
+              : 'border-b border-ui-border'
+          "
+        >
           <MobileDrawerToolbarButton
             icon="i-heroicons-trash"
             :label="t('common.delete')"
@@ -808,6 +822,7 @@ async function handleConfirmCreateVersion(newName: string) {
             :move-preview="movePreview"
             :trim-preview="trimPreview"
             is-mobile
+            :is-any-drawer-open="isAnyDrawerOpen"
             @select-item="handleMobileTimelineItemSelect"
             @start-move-item="onStartMoveItem"
             @start-trim-item="onStartTrimItem"

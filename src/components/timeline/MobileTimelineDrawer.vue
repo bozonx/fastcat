@@ -6,9 +6,11 @@ import UiMobileDrawer from '~/components/ui/UiMobileDrawer.vue';
 interface Props {
   /** Snap height showing only the toolbar (portrait mode) */
   toolbarSnapHeight?: string;
+  /** Snap width showing only the vertical toolbar rail (landscape mode) */
+  toolbarSnapWidth?: string;
   /** Enables an intermediate snap point that leaves only the toolbar visible */
   withToolbarSnap?: boolean;
-  /** Initial drawer mode in portrait when toolbar snap is enabled */
+  /** Initial drawer mode when toolbar snap is enabled */
   initialMode?: 'toolbar' | 'full';
   /** Show close button */
   showClose?: boolean;
@@ -16,6 +18,7 @@ interface Props {
 
 const props = withDefaults(defineProps<Props>(), {
   toolbarSnapHeight: '124px',
+  toolbarSnapWidth: '84px',
   withToolbarSnap: false,
   initialMode: 'toolbar',
   showClose: false,
@@ -57,18 +60,32 @@ const effectiveDirection = computed<'bottom' | 'right'>(() =>
 
 const snapFull = computed(() => SNAP_FULL_PORTRAIT);
 
-const snapPoints = computed(() =>
-  effectiveDirection.value === 'bottom'
-    ? props.withToolbarSnap
+/**
+ * Landscape side drawer expanded width. Mirrors the plain side-drawer width
+ * (45–55vw) so the full panel keeps the same footprint as before, while the first
+ * snap reveals only the vertical toolbar rail.
+ */
+const landscapeFullWidth = computed(() => {
+  const fraction = width.value >= 640 ? 0.45 : 0.55;
+  return `${Math.floor(width.value * fraction)}px`;
+});
+
+const snapPoints = computed(() => {
+  if (effectiveDirection.value === 'bottom') {
+    return props.withToolbarSnap
       ? [effectiveToolbarSnapHeight.value, snapFull.value]
-      : [snapFull.value]
-    : undefined,
-);
+      : [snapFull.value];
+  }
+  // Landscape side drawer: only engage the rail/full snaps when a toolbar exists.
+  return props.withToolbarSnap
+    ? [props.toolbarSnapWidth, landscapeFullWidth.value]
+    : undefined;
+});
 
 const initialSnapPoint = computed<string | number | null>(() => {
   const points = snapPoints.value;
   if (!points?.length) return null;
-  if (!props.withToolbarSnap || isLandscape.value || props.initialMode === 'full') {
+  if (!props.withToolbarSnap || props.initialMode === 'full') {
     return points[points.length - 1] as string | number;
   }
   return points[0] as string | number;

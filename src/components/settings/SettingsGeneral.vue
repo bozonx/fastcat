@@ -36,6 +36,7 @@ function resetGeneralDefaults() {
   workspaceStore.userSettings.backup = { ...DEFAULT_USER_SETTINGS.backup };
   workspaceStore.userSettings.autosave = { ...DEFAULT_USER_SETTINGS.autosave };
   workspaceStore.userSettings.experimentalFeatures = DEFAULT_USER_SETTINGS.experimentalFeatures;
+  workspaceStore.userSettings.ui.monitorInteractiveEdit = DEFAULT_USER_SETTINGS.ui.monitorInteractiveEdit;
 
   isResetConfirmOpen.value = false;
 }
@@ -239,6 +240,14 @@ function clearCache() {
           :help="t('videoEditor.settings.experimentalFeaturesHelp')"
         >
           <UCheckbox v-model="workspaceStore.userSettings.experimentalFeatures" />
+        </UiFormField>
+
+        <UiFormField
+          v-if="workspaceStore.userSettings.experimentalFeatures"
+          :label="t('videoEditor.settings.monitorInteractiveEdit')"
+          :help="t('videoEditor.settings.monitorInteractiveEditHelp')"
+        >
+          <UCheckbox v-model="workspaceStore.userSettings.ui.monitorInteractiveEdit" />
         </UiFormField>
 
         <UAlert
