@@ -147,21 +147,18 @@ function requestDelete() {
   if (!clip.value || isLocked.value) return;
   handleDeleteClip();
   showDeleteOverlay.value = false;
-  emit('close');
 }
 
 function requestRippleDelete() {
   if (!clip.value || isLocked.value) return;
   timelineStore.rippleDeleteFirstSelectedItem();
   showDeleteOverlay.value = false;
-  emit('close');
 }
 
 function requestExtractTimeline() {
   if (!clip.value || isLocked.value) return;
   timelineStore.rippleDeleteSelectedClipRangeAllTracks();
   showDeleteOverlay.value = false;
-  emit('close');
 }
 
 function handleOpenTrimPanel() {
@@ -176,31 +173,37 @@ function toggleDeleteOverlay() {
 async function handleTrimLeft() {
   if (isLocked.value) return;
   await timelineStore.trimToPlayheadLeftNoRipple();
+  showDeleteOverlay.value = false;
 }
 
 async function handleTrimRight() {
   if (isLocked.value) return;
   await timelineStore.trimToPlayheadRightNoRipple();
+  showDeleteOverlay.value = false;
 }
 
 async function handleRippleTrimLeft() {
   if (isLocked.value) return;
   await timelineStore.rippleTrimLeft();
+  showDeleteOverlay.value = false;
 }
 
 async function handleRippleTrimRight() {
   if (isLocked.value) return;
   await timelineStore.rippleTrimRight();
+  showDeleteOverlay.value = false;
 }
 
 async function handleAdvancedTrimLeft() {
   if (isLocked.value) return;
   await timelineStore.advancedRippleTrimLeft();
+  showDeleteOverlay.value = false;
 }
 
 async function handleAdvancedTrimRight() {
   if (isLocked.value) return;
   await timelineStore.advancedRippleTrimRight();
+  showDeleteOverlay.value = false;
 }
 
 const hasAudio = computed(() => {
@@ -367,7 +370,7 @@ const hasAudio = computed(() => {
 
           <!-- 3. Split -->
           <MobileDrawerToolbarButton
-            icon="i-lucide-lab-razor"
+            icon="i-lucide-lab-razor-blade"
             :disabled="isLocked"
             @click="handleSplit"
           />

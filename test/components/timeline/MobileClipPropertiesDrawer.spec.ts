@@ -155,7 +155,7 @@ describe('MobileClipPropertiesDrawer', () => {
     const trimBtn = buttons[1];
     expect(deleteBtn?.attributes('data-icon')).toBe('i-heroicons-trash');
     expect(trimBtn?.attributes('data-icon')).toBe('i-heroicons-arrows-right-left');
-    expect(buttons[2]?.attributes('data-icon')).toBe('i-lucide-lab-razor');
+    expect(buttons[2]?.attributes('data-icon')).toBe('i-lucide-lab-razor-blade');
 
     // Overlays should not be visible initially
     expect(wrapper.findAll('.u-button').length).toBe(0);
@@ -249,7 +249,7 @@ describe('MobileClipPropertiesDrawer', () => {
       },
     });
 
-    const splitBtn = wrapper.find('button[data-icon="i-lucide-lab-razor"]');
+    const splitBtn = wrapper.find('button[data-icon="i-lucide-lab-razor-blade"]');
     expect(splitBtn.exists()).toBe(true);
     expect(splitBtn.attributes('disabled')).toBeUndefined();
     await splitBtn.trigger('click');
