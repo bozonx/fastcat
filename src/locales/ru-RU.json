@@ -614,7 +614,9 @@
     },
     "selectionRange": {
       "actions": "Действия",
-      "info": "Выбранная область"
+      "info": "Выбранная область",
+      "toZoneMarker": "В маркер-зону",
+      "rippleTrim": "Отрезать со сдвигом"
     },
     "shapeClip": {
       "baseLength": "Длина основания (%)",
@@ -1004,6 +1006,11 @@
       "trimMode": "Длительность",
       "trimOptions": "Настройки обрезки",
       "trimStart": "Начало",
+      "trimByPlayhead": "Обрезка по playhead",
+      "leftTail": "хвост слева",
+      "rightTail": "хвост справа",
+      "trimWithOffset": "Со смещением",
+      "trimWithTimelineCut": "С обрезкой таймлайна",
       "ungroup": "Разгруппировать",
       "ungroupClips": "Разгруппировать клипы",
       "unlinkAudio": "Открепить аудио",

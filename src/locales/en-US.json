@@ -614,7 +614,9 @@
     },
     "selectionRange": {
       "actions": "Actions",
-      "info": "Selected area"
+      "info": "Selected area",
+      "toZoneMarker": "To zone marker",
+      "rippleTrim": "Ripple trim"
     },
     "shapeClip": {
       "baseLength": "Base Length (%)",
@@ -1004,6 +1006,11 @@
       "trimMode": "Trim",
       "trimOptions": "Trim options",
       "trimStart": "Start",
+      "trimByPlayhead": "Trim by playhead",
+      "leftTail": "left tail",
+      "rightTail": "right tail",
+      "trimWithOffset": "With offset",
+      "trimWithTimelineCut": "With timeline cut",
       "ungroup": "Ungroup",
       "ungroupClips": "Ungroup clips",
       "unlinkAudio": "Unlink audio",

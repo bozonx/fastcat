@@ -54,12 +54,12 @@ function handleRippleTrim() {
 
       <MobileDrawerToolbarButton
         icon="i-heroicons-bookmark-square"
-        :label="t('fastcat.timeline.convertSelectionToZoneMarker')"
+        :label="t('fastcat.selectionRange.toZoneMarker')"
         @click="handleConvertToMarker"
       />
       <MobileDrawerToolbarButton
         icon="i-heroicons-scissors"
-        :label="t('fastcat.timeline.rippleTrimSelection')"
+        :label="t('fastcat.selectionRange.rippleTrim')"
         @click="handleRippleTrim"
       />
     </template>

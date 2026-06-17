@@ -76,4 +76,20 @@ describe('SelectionRangeProperties', () => {
     expect(rippleTrimAction).toBeDefined();
     expect(rippleTrimAction?.hidden).toBe(true);
   });
+
+  it('shows actions section on desktop', async () => {
+    const wrapper = await mountSuspended(SelectionRangeProperties);
+
+    const sections = wrapper.findAll('section');
+    expect(sections.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it('hides actions section on mobile', async () => {
+    const wrapper = await mountSuspended(SelectionRangeProperties, {
+      props: { isMobile: true },
+    });
+
+    const sections = wrapper.findAll('section');
+    expect(sections.length).toBe(1);
+  });
 });

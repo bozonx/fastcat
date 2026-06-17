@@ -67,18 +67,16 @@ const isOpenLocal = computed({
 });
 
 const showDeleteOverlay = ref(false);
-const showTrimOverlay = ref(false);
 
-function closeOverlays() {
+function closeDeleteOverlay() {
   showDeleteOverlay.value = false;
-  showTrimOverlay.value = false;
 }
 
 watch(
   () => props.isOpen,
   (newVal) => {
     if (!newVal) {
-      closeOverlays();
+      closeDeleteOverlay();
     }
   },
 );
@@ -148,51 +146,31 @@ function handleSplit() {
 function requestDelete() {
   if (!clip.value || isLocked.value) return;
   handleDeleteClip();
-  closeOverlays();
+  showDeleteOverlay.value = false;
   emit('close');
 }
 
 function requestRippleDelete() {
   if (!clip.value || isLocked.value) return;
   timelineStore.rippleDeleteFirstSelectedItem();
-  closeOverlays();
+  showDeleteOverlay.value = false;
   emit('close');
 }
 
 function requestExtractTimeline() {
   if (!clip.value || isLocked.value) return;
   timelineStore.rippleDeleteSelectedClipRangeAllTracks();
-  closeOverlays();
+  showDeleteOverlay.value = false;
   emit('close');
 }
 
-function handleRippleTrimLeft() {
-  if (!clip.value || isLocked.value) return;
-  void timelineStore.rippleTrimLeft();
-  closeOverlays();
-}
-
-function handleRippleTrimRight() {
-  if (!clip.value || isLocked.value) return;
-  void timelineStore.rippleTrimRight();
-  closeOverlays();
-}
-
-function handleManualTrim() {
-  closeOverlays();
+function handleOpenTrimPanel() {
   emit('open-trim-drawer');
 }
 
 function toggleDeleteOverlay() {
   if (isLocked.value) return;
   showDeleteOverlay.value = !showDeleteOverlay.value;
-  showTrimOverlay.value = false;
-}
-
-function toggleTrimOverlay() {
-  if (isLocked.value) return;
-  showTrimOverlay.value = !showTrimOverlay.value;
-  showDeleteOverlay.value = false;
 }
 
 const isRenameModalOpen = ref(false);
@@ -262,57 +240,7 @@ const hasAudio = computed(() => {
                 variant="ghost"
                 icon="i-heroicons-x-mark"
                 class="cursor-pointer"
-                @click="closeOverlays"
-              />
-            </div>
-          </div>
-        </Transition>
-
-        <!-- 2. Trim Overlay -->
-        <Transition name="slide-up">
-          <div v-if="showTrimOverlay" :class="overlayClass">
-            <span class="text-xs font-bold text-ui-text-muted uppercase tracking-wider">
-              {{ t('fastcat.timeline.trimOptions') }}
-            </span>
-            <div class="flex gap-2">
-              <UButton
-                size="sm"
-                color="gray"
-                variant="ghost"
-                icon="i-heroicons-arrow-left"
-                class="cursor-pointer"
-                @click="handleRippleTrimLeft"
-              >
-                {{ t('fastcat.timeline.rippleTrimLeft') }}
-              </UButton>
-              <UButton
-                size="sm"
-                color="gray"
-                variant="ghost"
-                icon="i-heroicons-arrow-right"
-                class="cursor-pointer"
-                @click="handleRippleTrimRight"
-              >
-                {{ t('fastcat.timeline.rippleTrimRight') }}
-              </UButton>
-              <UButton
-                size="sm"
-                color="primary"
-                variant="soft"
-                icon="i-heroicons-arrows-right-left"
-                class="cursor-pointer"
-                @click="handleManualTrim"
-              >
-                {{ t('fastcat.timeline.manualTrim') }}
-              </UButton>
-              <div class="w-px h-6 bg-ui-border mx-1" />
-              <UButton
-                size="sm"
-                color="gray"
-                variant="ghost"
-                icon="i-heroicons-x-mark"
-                class="cursor-pointer"
-                @click="closeOverlays"
+                @click="closeDeleteOverlay"
               />
             </div>
           </div>
@@ -328,13 +256,12 @@ const hasAudio = computed(() => {
             @click="toggleDeleteOverlay"
           />
 
-          <!-- 2. Toggle Trim Overlay -->
+          <!-- 2. Open Trim Panel -->
           <MobileDrawerToolbarButton
             icon="i-heroicons-arrows-right-left"
             :disabled="isLocked"
-            :active="showTrimOverlay"
-            @click="toggleTrimOverlay"
-          />
+            @click="handleOpenTrimPanel"
+ />
 
           <!-- 3. Split -->
           <MobileDrawerToolbarButton

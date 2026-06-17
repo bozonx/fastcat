@@ -149,7 +149,7 @@ describe('MobileClipPropertiesDrawer', () => {
     });
 
     const buttons = wrapper.findAll('.toolbar-stub button');
-    // We expect: Delete Toggle, Trim Toggle, Split, Active, Mute, Lock, Copy, Cut, Rename
+    // We expect: Delete Toggle, Trim, Split, Active, Mute, Lock, Copy, Cut, Rename
     expect(buttons.length).toBe(9);
 
     const deleteBtn = buttons[0];
@@ -171,10 +171,9 @@ describe('MobileClipPropertiesDrawer', () => {
     const extractBtn = uButtons.find((b) => b.text().includes('fastcat.timeline.extractRange'));
     expect(extractBtn).toBeDefined();
 
-    // Click Trim button to open Trim overlay (should close Delete overlay)
+    // Click Trim button to open trim panel directly
     await trimBtn?.trigger('click');
-    expect(deleteBtn?.classes()).not.toContain('active');
-    expect(trimBtn?.classes()).toContain('active');
+    expect(wrapper.emitted('open-trim-drawer')).toBeTruthy();
   });
 
   it('calls correct store/action methods when overlay buttons are clicked', async () => {
