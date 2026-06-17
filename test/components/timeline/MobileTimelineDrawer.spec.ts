@@ -130,9 +130,9 @@ describe('MobileTimelineDrawer', () => {
 
     const drawer = wrapper.findComponent({ name: 'UiMobileDrawer' });
 
-    // Landscape: width-based snaps. Rail at toolbarSnapWidth, full at 45vw (844*0.45).
+    // Landscape: width-based snaps. Rail at toolbarSnapWidth, full at 60vw (844*0.60).
     expect(drawer.props('direction')).toBe('right');
-    expect(drawer.props('snapPoints')).toEqual(['84px', '379px']);
+    expect(drawer.props('snapPoints')).toEqual(['84px', '506px']);
     // Starts collapsed to the rail (first snap), like the portrait toolbar mode.
     expect(wrapper.emitted('update:activeSnapPoint')?.at(-1)).toEqual(['84px']);
   });

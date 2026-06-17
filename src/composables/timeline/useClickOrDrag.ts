@@ -37,6 +37,11 @@ export function useClickOrDrag(options: UseClickOrDragOptions) {
 
     const startX = e.clientX;
     const startY = e.clientY;
+    // Tracks whether the pointer wandered far enough to be considered a
+    // scroll/drag intent rather than a stationary press. Used to decide whether
+    // a `pointercancel` should keep the long-press alive (still hold) or abort
+    // it (the user was scrolling).
+    let movedSignificantly = false;
 
     const cleanup = () => {
       window.removeEventListener('pointermove', onMove);
@@ -83,10 +88,17 @@ export function useClickOrDrag(options: UseClickOrDragOptions) {
       const dragThreshold =
         e.pointerType === 'touch' && options.onLongPress ? jitterThreshold : DRAG_MOVE_THRESHOLD_PX;
 
-      if ((dx > jitterThreshold || dy > jitterThreshold) && longPressTimer !== null) {
-        window.clearTimeout(longPressTimer);
-        longPressTimer = null;
+      if (dx > jitterThreshold || dy > jitterThreshold) {
+        movedSignificantly = true;
       }
+
+      // Attempt to start a drag. `startDrag` clears the long-press timer itself,
+      // but only when a drag actually begins. We deliberately do NOT cancel the
+      // timer on mere movement: on touch, dragging an unselected clip is
+      // rejected (`onDragStart` returns false), so cancelling here would kill
+      // the long press without starting a drag — the natural finger drift during
+      // a press would then swallow the gesture entirely. Scroll intent is
+      // instead handled in `onPointerCancel` via `movedSignificantly`.
       if (dx > dragThreshold || dy > dragThreshold) {
         startDrag();
       }
@@ -106,8 +118,11 @@ export function useClickOrDrag(options: UseClickOrDragOptions) {
       rightClickDragTriggered.value = false;
       // On touch devices the browser may fire pointercancel during a long
       // press (e.g. before showing the native context menu).  Keep the long
-      // press timer alive so the gesture still registers.
-      if (e.pointerType === 'touch' && longPressTimer !== null) {
+      // press timer alive so the gesture still registers — but only for a
+      // stationary press. If the pointer moved significantly the cancel is a
+      // scroll taking over, so the long press must be aborted (otherwise
+      // scrolling on a clip would trigger multi-selection after the delay).
+      if (e.pointerType === 'touch' && longPressTimer !== null && !movedSignificantly) {
         window.removeEventListener('pointermove', onMove);
         window.removeEventListener('pointerup', onPointerUp);
         window.removeEventListener('pointercancel', onPointerCancel);

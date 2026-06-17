@@ -61,12 +61,12 @@ const effectiveDirection = computed<'bottom' | 'right'>(() =>
 const snapFull = computed(() => SNAP_FULL_PORTRAIT);
 
 /**
- * Landscape side drawer expanded width. Mirrors the plain side-drawer width
- * (45–55vw) so the full panel keeps the same footprint as before, while the first
- * snap reveals only the vertical toolbar rail.
+ * Landscape side drawer expanded width. Uses 60–70 vw so the full panel is
+ * comfortably wide on mobile landscape, while the first snap reveals only the
+ * vertical toolbar rail.
  */
 const landscapeFullWidth = computed(() => {
-  const fraction = width.value >= 640 ? 0.45 : 0.55;
+  const fraction = width.value >= 640 ? 0.60 : 0.70;
   return `${Math.floor(width.value * fraction)}px`;
 });
 
