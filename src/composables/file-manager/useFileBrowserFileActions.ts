@@ -158,7 +158,7 @@ export function useFileBrowserFileActions({
     }
 
     if (action === 'paste') {
-      void onFileActionBase('paste', entry);
+      await onFileActionBase('paste', entry);
       return;
     }
 

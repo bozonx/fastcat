@@ -358,4 +358,27 @@ describe('MobileFileBrowser', () => {
       'common.invertSelection',
     ]);
   });
+
+  it('closes create folder modal after folder creation', async () => {
+    const wrapper = await mountSuspended(MobileFileBrowser, {
+      global: {
+        stubs: {
+          MobileFileBrowserNavbar: { template: '<div />' },
+          MobileFileBrowserGrid: { template: '<div />' },
+          Teleport: true,
+        },
+      },
+    });
+
+    const modal = wrapper.findComponent({ name: 'UiEntityCreationModal' });
+    expect(modal.exists()).toBe(true);
+
+    await modal.setValue(true, 'open');
+    expect(modal.props('open')).toBe(true);
+
+    await modal.vm.$emit('confirm', 'New Folder');
+    await nextTick();
+
+    expect(modal.props('open')).toBe(false);
+  });
 });

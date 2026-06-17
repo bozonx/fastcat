@@ -12,8 +12,6 @@ interface Props {
   snapPoints?: (number | string)[];
   /** Whether to scale the background when the drawer is open (iOS-style) */
   shouldScaleBackground?: boolean;
-  /** Whether the drawer is modal (blocks background interaction) */
-  modal?: boolean;
   /** Whether to show the dark overlay backdrop */
   overlay?: boolean;
   /** Whether to show the visual handle at the top */
@@ -47,7 +45,6 @@ const props = withDefaults(defineProps<Props>(), {
   dismissible: true,
   direction: undefined,
   isFullHeight: false,
-  modal: true,
   overlay: true,
   withHandle: true,
   showClose: true,
@@ -180,7 +177,6 @@ const footerRef = ref<HTMLElement | null>(null);
 
 const isBackdropInteractive = computed(
   () =>
-    !props.modal &&
     isOpen.value &&
     isExpanded.value &&
     (effectiveDirection.value === 'bottom' ||
@@ -442,7 +438,7 @@ function onBackdropClick(e: MouseEvent) {
   // Mouse path (touch is handled in onBackdropTouchEnd). Swallow the event so it
   // never reaches content below the backdrop.
   e.stopPropagation();
-  if (!props.modal) requestClose();
+  requestClose();
 }
 
 function onClose() {
@@ -536,7 +532,7 @@ watch(isOpen, (val) => {
 </script>
 
 <template>
-  <Teleport v-if="!props.modal" :to="effectiveTeleportTarget">
+  <Teleport :to="effectiveTeleportTarget">
     <div
       class="fixed inset-0 bg-ui-bg/40 backdrop-blur-[2px] transition-all duration-300"
       :class="[
@@ -562,8 +558,8 @@ watch(isOpen, (val) => {
     :active-snap-point="renderedActiveSnapPoint"
     :dismissible="props.dismissible"
     :should-scale-background="props.shouldScaleBackground"
-    :modal="props.modal"
-    :overlay="props.modal && props.overlay"
+    :modal="false"
+    :overlay="false"
     :handle="false"
     :ui="drawerUi"
     @update:active-snap-point="onSnapPointChange"

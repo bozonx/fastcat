@@ -458,6 +458,10 @@ const {
   experimentalFeatures: computed(() => workspaceStore.userSettings.experimentalFeatures),
 });
 
+const { isMobile: isMobileDevice } = useDevice();
+const { isMobileLayout } = useMobileLayout();
+const isMobile = computed(() => isMobileDevice || isMobileLayout.value);
+
 const {
   filteredDirectoryPrimaryActions,
   filteredFilePrimaryActions,
@@ -479,6 +483,7 @@ const {
   isRemoteContent,
   isRemoteFileEntry,
   isExternalContext,
+  isMobile,
   hasClipboardItems,
   selectedFsEntry: () => props.selectedFsEntry,
   onPaste,
@@ -486,10 +491,6 @@ const {
   createMarkdownInFolder,
   t,
 });
-
-const { isMobile: isMobileDevice } = useDevice();
-const { isMobileLayout } = useMobileLayout();
-const isMobile = computed(() => isMobileDevice || isMobileLayout.value);
 
 const hasVisibleSecondaryActions = (actions: unknown) => {
   const list = Array.isArray(actions) ? actions : (actions as { value?: unknown[] })?.value;

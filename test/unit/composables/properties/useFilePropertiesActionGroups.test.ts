@@ -16,6 +16,7 @@ function build(overrides: Record<string, any> = {}) {
     isRemoteContent: ref(false),
     isRemoteFileEntry: ref(false),
     isExternalContext: ref(false),
+    isMobile: ref(false),
     hasClipboardItems: ref(true),
     selectedFsEntry: () => ({ kind: 'file', name: 'a.txt', path: '/a.txt' }) as any,
     onPaste: vi.fn(),
@@ -93,6 +94,11 @@ describe('useFilePropertiesActionGroups', () => {
         'openAsProjectTab',
         'reveal',
       ]);
+    });
+
+    it('strips open-as actions on mobile', () => {
+      const { groups } = build({ isMobile: ref(true) });
+      expect(groups.filteredFileSecondaryActions.value.map((a) => a.id)).toEqual(['reveal']);
     });
   });
 

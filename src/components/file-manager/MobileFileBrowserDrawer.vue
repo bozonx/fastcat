@@ -297,6 +297,9 @@ function handleAction(actionId: DrawerAction) {
             preview-mode="original"
             :has-proxy="hasExistingProxy"
             :mobile-text-mode="isTextDocument"
+            :is-external="selectedFsEntry.isExternal"
+            :selection-origin="selectedFsEntry.origin"
+            :instance-id="selectedFsEntry.instanceId"
             @convert="
               (entry) =>
                 conversionStore.openConversionModal(entry, {

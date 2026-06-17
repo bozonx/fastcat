@@ -140,4 +140,28 @@ describe('useFileBrowserFileActions', () => {
       }),
     );
   });
+
+  it('awaits paste action before returning', async () => {
+    let resolved = false;
+    const onFileActionBase = vi.fn().mockImplementation(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 10));
+      resolved = true;
+    });
+
+    const { onFileAction } = useFileBrowserFileActions({
+      folderEntries: ref([]),
+      loadFolderContent: vi.fn(),
+      onFileActionBase,
+      conversionStore: {} as any,
+      openTranscriptionModal: vi.fn(),
+      extractAudio: audioExtraction.extractAudio,
+      vfs: {} as any,
+    });
+
+    const entry = { kind: 'directory', name: 'dir', path: 'dir' } as FsEntry;
+    await onFileAction('paste', entry);
+
+    expect(resolved).toBe(true);
+    expect(onFileActionBase).toHaveBeenCalledWith('paste', entry);
+  });
 });

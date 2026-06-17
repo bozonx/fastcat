@@ -15,6 +15,7 @@ export interface FilePropertiesActionGroupsDeps {
   isRemoteContent: Ref<boolean>;
   isRemoteFileEntry: Ref<boolean>;
   isExternalContext: Ref<boolean>;
+  isMobile: Ref<boolean>;
   hasClipboardItems: Ref<boolean>;
   selectedFsEntry: () => FsEntry;
   onPaste: () => void;
@@ -54,14 +55,18 @@ export function useFilePropertiesActionGroups(deps: FilePropertiesActionGroupsDe
   const filteredFileSecondaryActions = computed<SecondaryEntryAction[]>(() => {
     if (deps.isRemoteFileEntry.value) return [];
 
+    const isDesktopOnlyAction = (action: SecondaryEntryAction) =>
+      action.id === 'openAsPanelCut' ||
+      action.id === 'openAsPanelSound' ||
+      action.id === 'openAsProjectTab';
+
+    if (deps.isMobile.value) {
+      return deps.fileSecondaryActions.value.filter((action) => !isDesktopOnlyAction(action));
+    }
+
     if (!deps.isExternalContext.value) return deps.fileSecondaryActions.value;
 
-    return deps.fileSecondaryActions.value.filter(
-      (action) =>
-        action.id !== 'openAsPanelCut' &&
-        action.id !== 'openAsPanelSound' &&
-        action.id !== 'openAsProjectTab',
-    );
+    return deps.fileSecondaryActions.value.filter((action) => !isDesktopOnlyAction(action));
   });
 
   const virtualAllPrimaryActions = computed<PrimaryEntryAction[]>(() =>

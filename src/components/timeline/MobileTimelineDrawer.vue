@@ -112,7 +112,6 @@ watch(activeSnapPoint, (newVal, oldVal) => {
     v-model:active-snap-point="activeSnapPoint"
     :direction="effectiveDirection"
     :snap-points="snapPoints"
-    :modal="false"
     :overlay="true"
     :with-handle="true"
     :show-close="props.showClose"

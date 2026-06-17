@@ -281,6 +281,7 @@ function validateRename(newName: string): string | boolean | null {
 
 async function onCreateFolderConfirm(name: string) {
   await runCreateFolder(name);
+  isCreateFolderModalOpen.value = false;
 }
 
 function handlePendingBloggerDogCreateSubgroup(_entry: FsEntry) {
