@@ -27,6 +27,7 @@ export interface TimelineTracksModule {
     kind: 'video' | 'audio',
     options?: { durationUs?: number },
   ) => string;
+  getMobileSelectionKind: () => 'video' | 'audio' | null;
   renameTrack: (trackId: string, name: string) => void;
   updateTrackProperties: (
     trackId: string,
@@ -163,6 +164,27 @@ export function createTimelineTracksModule(deps: TimelineTracksDeps): TimelineTr
 
     // 4. Otherwise create a new track.
     return createMobileTargetTrack(kind);
+  }
+
+  // The kind of the user's current selection (selected clip's track, else selected track).
+  // Used to detect when an added clip gets routed to a different track kind than the one the
+  // user had focused, so the UI can explain the redirect with a non-blocking toast.
+  function getMobileSelectionKind(): 'video' | 'audio' | null {
+    const doc = deps.timelineDoc.value;
+    if (!doc) return null;
+
+    if (deps.selectedItemIds.value.length > 0) {
+      const selectedId = deps.selectedItemIds.value[0]!;
+      const track = doc.tracks.find((t) => t.items.some((it) => it.id === selectedId));
+      if (track) return track.kind;
+    }
+
+    if (deps.selectedTrackId.value) {
+      const track = doc.tracks.find((t) => t.id === deps.selectedTrackId.value);
+      if (track) return track.kind;
+    }
+
+    return null;
   }
 
   function renameTrack(trackId: string, name: string) {
@@ -386,6 +408,7 @@ export function createTimelineTracksModule(deps: TimelineTracksDeps): TimelineTr
     addTrack,
     resolveTargetVideoTrackIdForInsert,
     resolveMobileTargetTrackId,
+    getMobileSelectionKind,
     renameTrack,
     updateTrackProperties,
     toggleVideoHidden,

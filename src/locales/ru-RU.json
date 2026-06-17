@@ -798,6 +798,7 @@
       "nextMarker": "Следующий маркер",
       "noDroppableTrack": "Нет подходящего {kind}-трека — клип не размещён.",
       "mediaTypeNotSupportedOnTrack": "Этот тип медиа не поддерживается на этой дорожке.",
+      "clipAddedToCompatibleTrack": "Добавлено на {kind}дорожку, соответствующую типу медиа.",
       "noMedia": "Нет медиа",
       "noSupportedFiles": "Нет поддерживаемых файлов для импорта",
       "trackKindAudio": "аудио",

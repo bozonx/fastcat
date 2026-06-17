@@ -13,8 +13,10 @@ import { secondsToUs } from '~/utils/time';
 import type { FsEntry } from '~/types/fs';
 import MobileFileBrowserGrid from '~/components/file-manager/MobileFileBrowserGrid.vue';
 import { useUiStore } from '~/stores/ui.store';
+import { useMediaTrackRedirectToast } from '~/composables/timeline/useMediaTrackRedirectToast';
 const log = createDevLogger('MobileMediaPickerDrawer');
 const toast = useToast();
+const { captureSelectionKind, notifyRedirect } = useMediaTrackRedirectToast();
 
 const props = defineProps<{ isOpen: boolean; isReplaceMode?: boolean }>();
 const emit = defineEmits<{
@@ -146,6 +148,8 @@ async function addToTimeline() {
         uiStore.isMediaReplaceModalOpen = false;
       }
     } else {
+      const selectionKind = captureSelectionKind();
+      const addedKinds: ('video' | 'audio')[] = [];
       for (const entry of selectedFiles.value) {
         if (!entry.path) continue;
         const mediaType = getMediaTypeFromFilename(entry.name);
@@ -179,8 +183,10 @@ async function addToTimeline() {
             startUs: timelineStore.currentTime,
             pseudo: true,
           });
+          addedKinds.push(kind);
         }
       }
+      notifyRedirect(selectionKind, addedKinds);
     }
     selectedFiles.value = [];
     emit('added');

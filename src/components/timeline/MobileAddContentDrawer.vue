@@ -9,6 +9,7 @@ import { useWorkspaceStore } from '~/stores/workspace.store';
 import { secondsToUs } from '~/utils/time';
 
 import { useAppClipboard } from '~/composables/useAppClipboard';
+import { useMediaTrackRedirectToast } from '~/composables/timeline/useMediaTrackRedirectToast';
 
 const props = defineProps<{
   isOpen: boolean;
@@ -25,6 +26,7 @@ const mediaStore = useMediaStore();
 const workspaceStore = useWorkspaceStore();
 const { handleFiles } = useFileManager();
 const clipboardStore = useAppClipboard();
+const { captureSelectionKind, notifyRedirect } = useMediaTrackRedirectToast();
 
 const isOpenLocal = computed({
   get: () => props.isOpen,
@@ -105,6 +107,8 @@ async function onFilesSelected(e: Event) {
   emit('close');
   const results = await handleFiles(files);
   if (results && results.length > 0) {
+    const selectionKind = captureSelectionKind();
+    const addedKinds: ('video' | 'audio')[] = [];
     for (const r of results) {
       const mediaType = getMediaTypeFromFilename(r.fileName);
       if (mediaType === 'timeline') {
@@ -129,8 +133,14 @@ async function onFilesSelected(e: Event) {
           startUs: timelineStore.currentTime,
           pseudo: true,
         });
+        // Use the resolved track's actual kind: props.targetTrackId can override the
+        // media-derived kind, so the clip may not land on a track of `kind`.
+        const placedKind =
+          timelineStore.timelineDoc?.tracks.find((t) => t.id === trackId)?.kind ?? kind;
+        addedKinds.push(placedKind);
       }
     }
+    notifyRedirect(selectionKind, addedKinds);
   }
 }
 

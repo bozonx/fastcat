@@ -798,6 +798,7 @@
       "nextMarker": "Next marker",
       "noDroppableTrack": "No suitable {kind} track available — could not place the clip.",
       "mediaTypeNotSupportedOnTrack": "This media type is not supported on this track.",
+      "clipAddedToCompatibleTrack": "Added to a {kind} track to match the media type.",
       "noMedia": "No media",
       "noSupportedFiles": "No supported files",
       "trackKindAudio": "audio",
