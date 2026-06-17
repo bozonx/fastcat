@@ -135,7 +135,10 @@ async function onFilesSelected(e: Event) {
 }
 
 function openMediaPicker() {
-  isMediaPickerOpen.value = true;
+  isOpenLocal.value = false;
+  nextTick(() => {
+    isMediaPickerOpen.value = true;
+  });
 }
 
 function addVideoTrack() {

@@ -481,7 +481,9 @@ describe('useFileConversionActions', () => {
   it('uses targetReloadDirectory for background conversion when provided', async () => {
     const props = createProps('audio');
     const customReload = vi.fn().mockResolvedValue(undefined);
-    props.targetReloadDirectory.value = customReload as unknown as ((path: string) => Promise<void>) | null;
+    props.targetReloadDirectory.value = customReload as unknown as
+      | ((path: string) => Promise<void>)
+      | null;
 
     const { startConversion } = useFileConversionActions(props);
 
@@ -494,7 +496,7 @@ describe('useFileConversionActions', () => {
     await startConversion();
     await new Promise((resolve) => setTimeout(resolve, 10));
 
-    expect(customReload).toHaveBeenCalledWith('');
+    expect(customReload).toHaveBeenCalledWith('/');
     expect(mockFileManager.reloadDirectory).not.toHaveBeenCalled();
   });
 });
