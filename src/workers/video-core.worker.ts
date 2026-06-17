@@ -543,8 +543,8 @@ const api: Omit<VideoCoreWorkerAPI, 'initCompositor'> & {
           }
 
           const rotation = normalizeRotation(state.rotation);
-          const rawW = getThumbnailSourceWidth(imageSource, sample, isVideoFrame, rotation);
-          const rawH = getThumbnailSourceHeight(imageSource, sample, isVideoFrame, rotation);
+          const rawW = getThumbnailSourceWidth(imageSource, sample, rotation);
+          const rawH = getThumbnailSourceHeight(imageSource, sample, rotation);
 
           if (!rawW || !rawH) {
             results.push(null);
@@ -703,10 +703,20 @@ function getFinitePositiveNumber(value: unknown): number | null {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
 }
 
+// These helpers MUST return the *un-rotated coded* pixel dimensions: the caller
+// swaps them for quarter-turns (`visualW = rawH`) and `drawRotatedThumbnailFrame`
+// re-applies the rotation. Starting from already-rotated (display) dimensions
+// double-applies the rotation and squishes vertical videos.
+//
+// mediabunny's `VideoSampleSink` yields a `VideoSample` wrapper — NOT a global
+// `VideoFrame` — so `sample instanceof VideoFrame` is false even though
+// `imageSource` (its `toCanvasImageSource()`) is a real `VideoFrame` carrying
+// `codedWidth`/`codedHeight`. Read coded dimensions from the image source AND
+// the sample wrapper unconditionally so we never fall through to the
+// rotation-applied `displayWidth`/`displayHeight`.
 function getThumbnailSourceWidth(
   imageSource: CanvasImageSource,
   sample: unknown,
-  isVideoFrame: boolean,
   rotation: 0 | 90 | 180 | 270,
 ): number {
   const frame = sample as {
@@ -714,6 +724,7 @@ function getThumbnailSourceWidth(
     displayWidth?: unknown;
   };
   const source = imageSource as CanvasImageSource & {
+    codedWidth?: unknown;
     videoWidth?: unknown;
     naturalWidth?: unknown;
     width?: unknown;
@@ -722,7 +733,8 @@ function getThumbnailSourceWidth(
   const isQuarterTurn = rotation === 90 || rotation === 270;
 
   return (
-    (isVideoFrame && getFinitePositiveNumber(frame.codedWidth)) ||
+    getFinitePositiveNumber(source.codedWidth) ||
+    getFinitePositiveNumber(frame.codedWidth) ||
     getFinitePositiveNumber(source.videoWidth) ||
     getFinitePositiveNumber(source.naturalWidth) ||
     getFinitePositiveNumber(source.width) ||
@@ -735,7 +747,6 @@ function getThumbnailSourceWidth(
 function getThumbnailSourceHeight(
   imageSource: CanvasImageSource,
   sample: unknown,
-  isVideoFrame: boolean,
   rotation: 0 | 90 | 180 | 270,
 ): number {
   const frame = sample as {
@@ -743,6 +754,7 @@ function getThumbnailSourceHeight(
     displayHeight?: unknown;
   };
   const source = imageSource as CanvasImageSource & {
+    codedHeight?: unknown;
     videoHeight?: unknown;
     naturalHeight?: unknown;
     height?: unknown;
@@ -751,7 +763,8 @@ function getThumbnailSourceHeight(
   const isQuarterTurn = rotation === 90 || rotation === 270;
 
   return (
-    (isVideoFrame && getFinitePositiveNumber(frame.codedHeight)) ||
+    getFinitePositiveNumber(source.codedHeight) ||
+    getFinitePositiveNumber(frame.codedHeight) ||
     getFinitePositiveNumber(source.videoHeight) ||
     getFinitePositiveNumber(source.naturalHeight) ||
     getFinitePositiveNumber(source.height) ||
