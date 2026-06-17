@@ -287,7 +287,7 @@ const ticks = [12, 6, 0, -6, -12, -24, -36, -48, -60];
     <!-- Slider track -->
     <div
       ref="sliderRef"
-      class="relative w-4 h-full bg-ui-bg-muted border border-ui-border rounded-sm cursor-ns-resize outline-none transition-[box-shadow,border-color]"
+      class="relative w-4 h-full bg-ui-bg-muted border border-ui-border rounded-sm cursor-ns-resize outline-none touch-none transition-[box-shadow,border-color]"
       :class="[isFocused ? 'ring-2 ring-primary-500/50' : '']"
       tabindex="0"
       role="slider"

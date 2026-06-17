@@ -6,8 +6,9 @@ import PropertySection from '~/components/properties/PropertySection.vue';
 import PropertyActionsBlock from '~/components/properties/PropertyActionsBlock.vue';
 import PropertyTimecode from '~/components/properties/PropertyTimecode.vue';
 
-defineProps<{
+const props = defineProps<{
   hideActions?: boolean;
+  isMobile?: boolean;
 }>();
 
 const { t } = useI18n();
@@ -74,6 +75,7 @@ const mainActions = computed(() => [
     id: 'convert',
     label: t('fastcat.timeline.convertSelectionToZoneMarker'),
     icon: 'i-heroicons-bookmark-square',
+    hidden: props.isMobile,
     onClick: handleConvertToMarker,
   },
   {
@@ -81,6 +83,7 @@ const mainActions = computed(() => [
     label: t('fastcat.timeline.rippleTrimSelection'),
     icon: 'i-heroicons-scissors',
     color: 'warning' as const,
+    hidden: props.isMobile,
     onClick: handleRippleTrim,
   },
 ]);

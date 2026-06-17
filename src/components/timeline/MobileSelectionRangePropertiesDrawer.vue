@@ -18,6 +18,7 @@ const emit = defineEmits<{
   (e: 'close'): void;
 }>();
 
+const { t } = useI18n();
 const timelineStore = useTimelineStore();
 const selectionStore = useSelectionStore();
 
@@ -26,6 +27,16 @@ const selectionRange = computed(() => timelineStore.getSelectionRange());
 function handleDelete() {
   timelineStore.removeSelectionRange();
   selectionStore.clearSelection();
+  emit('close');
+}
+
+function handleConvertToMarker() {
+  timelineStore.convertSelectionRangeToMarker();
+  emit('close');
+}
+
+function handleRippleTrim() {
+  timelineStore.rippleTrimSelectionRange();
   emit('close');
 }
 </script>
@@ -38,10 +49,23 @@ function handleDelete() {
   >
     <template #toolbar>
       <MobileDrawerToolbarButton icon="i-heroicons-trash" @click="handleDelete" />
+
+      <div class="w-px h-6 bg-ui-border mx-1 shrink-0" />
+
+      <MobileDrawerToolbarButton
+        icon="i-heroicons-bookmark-square"
+        :label="t('fastcat.timeline.convertSelectionToZoneMarker')"
+        @click="handleConvertToMarker"
+      />
+      <MobileDrawerToolbarButton
+        icon="i-heroicons-scissors"
+        :label="t('fastcat.timeline.rippleTrimSelection')"
+        @click="handleRippleTrim"
+      />
     </template>
 
     <div v-if="selectionRange" class="px-4 pb-8 pt-4">
-      <SelectionRangeProperties />
+      <SelectionRangeProperties is-mobile />
     </div>
   </MobilePropertiesDrawer>
 </template>

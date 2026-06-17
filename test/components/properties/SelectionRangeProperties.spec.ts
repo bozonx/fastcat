@@ -1,0 +1,79 @@
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { reactive, ref } from 'vue';
+import { mountSuspended } from '@nuxt/test-utils/runtime';
+import SelectionRangeProperties from '~/components/properties/SelectionRangeProperties.vue';
+
+vi.stubGlobal('useDevice', () => ({ isMobile: false }));
+
+vi.mock('~/components/properties/PropertySection.vue', () => ({
+  default: { name: 'PropertySection', props: ['title'], template: '<section><slot /></section>' },
+}));
+
+vi.mock('~/components/properties/PropertyActionsBlock.vue', () => ({
+  default: {
+    name: 'PropertyActionsBlock',
+    props: ['quickActions', 'additionalActions'],
+    template: '<div data-testid="actions-block"></div>',
+  },
+}));
+
+vi.mock('~/components/properties/PropertyTimecode.vue', () => ({
+  default: { name: 'PropertyTimecode', props: ['label', 'modelValue'], template: '<div></div>' },
+}));
+
+const mockTimelineStore = reactive({
+  timelineDoc: {
+    tracks: [],
+    metadata: { fastcat: {} },
+  },
+  getSelectionRange: vi.fn(() => ({ startUs: 1_000_000, endUs: 5_000_000 })),
+  updateSelectionRange: vi.fn(),
+  convertSelectionRangeToMarker: vi.fn(),
+  rippleTrimSelectionRange: vi.fn(),
+  removeSelectionRange: vi.fn(),
+});
+
+const mockSelectionStore = reactive({
+  selectedEntity: null,
+  clearSelection: vi.fn(),
+});
+
+vi.mock('~/stores/timeline.store', () => ({ useTimelineStore: () => mockTimelineStore }));
+vi.mock('~/stores/selection.store', () => ({ useSelectionStore: () => mockSelectionStore }));
+
+describe('SelectionRangeProperties', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockTimelineStore.getSelectionRange.mockReturnValue({ startUs: 1_000_000, endUs: 5_000_000 });
+  });
+
+  it('shows convert and ripple-trim in mainActions on desktop', async () => {
+    const wrapper = await mountSuspended(SelectionRangeProperties);
+
+    const mainActions = (wrapper.vm as any).mainActions as Array<{ id: string; hidden?: boolean }>;
+    const convertAction = mainActions.find((a) => a.id === 'convert');
+    const rippleTrimAction = mainActions.find((a) => a.id === 'ripple-trim');
+
+    expect(convertAction).toBeDefined();
+    expect(convertAction?.hidden).toBeFalsy();
+
+    expect(rippleTrimAction).toBeDefined();
+    expect(rippleTrimAction?.hidden).toBeFalsy();
+  });
+
+  it('hides convert and ripple-trim in mainActions on mobile', async () => {
+    const wrapper = await mountSuspended(SelectionRangeProperties, {
+      props: { isMobile: true },
+    });
+
+    const mainActions = (wrapper.vm as any).mainActions as Array<{ id: string; hidden?: boolean }>;
+    const convertAction = mainActions.find((a) => a.id === 'convert');
+    const rippleTrimAction = mainActions.find((a) => a.id === 'ripple-trim');
+
+    expect(convertAction).toBeDefined();
+    expect(convertAction?.hidden).toBe(true);
+
+    expect(rippleTrimAction).toBeDefined();
+    expect(rippleTrimAction?.hidden).toBe(true);
+  });
+});
