@@ -2,7 +2,6 @@
 import { computed, watch, onMounted } from 'vue';
 
 import UiModal from '~/components/ui/UiModal.vue';
-import UiMobileDrawer from '~/components/ui/UiMobileDrawer.vue';
 import VideoEncodingForm from '~/components/media/VideoEncodingForm.vue';
 import MediaResolutionSettings from '~/components/media/MediaResolutionSettings.vue';
 import FileConversionAudioSettings from '~/components/file-manager/FileConversionAudioSettings.vue';
@@ -15,15 +14,10 @@ import { resolveAudioOnlyFileExtension } from '~/utils/conversion/helpers';
 
 import { AUDIO_EXPORT_CODEC_OPTIONS } from '~/utils/webcodecs';
 import { useExportCodecs } from '~/composables/timeline/export/core/useExportCodecs';
-import { useMobileLayout } from '~/composables/useMobileLayout';
 
 const { t } = useI18n();
-const { isMobile: isMobileDevice } = useDevice();
-const { isMobileLayout } = useMobileLayout();
-const isMobile = computed(() => isMobileDevice || isMobileLayout.value);
-const modalWrapper = computed(() => (isMobile.value ? UiMobileDrawer : UiModal));
+
 const modalUi = computed(() => {
-  if (isMobile.value) return {};
   if (mediaType.value === 'video') {
     return { content: 'sm:max-w-2xl' };
   }
@@ -142,13 +136,7 @@ const isFormValid = computed(() => {
 </script>
 
 <template>
-  <component
-    :is="modalWrapper"
-    v-model:open="isOpen"
-    :title="modalTitle"
-    :ui="modalUi"
-    :z-index="isMobile ? 'z-[var(--z-modal)]' : undefined"
-  >
+  <UiModal v-model:open="isOpen" :title="modalTitle" :ui="modalUi">
     <div class="flex flex-col gap-6">
       <div v-if="isExtractingMetadata" class="flex items-center gap-2 text-sm text-ui-text-muted">
         <UIcon name="i-lucide-loader-2" class="animate-spin" />
@@ -328,5 +316,5 @@ const isFormValid = computed(() => {
         </UButton>
       </div>
     </template>
-  </component>
+  </UiModal>
 </template>

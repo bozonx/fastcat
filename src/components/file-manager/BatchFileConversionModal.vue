@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import UiModal from '~/components/ui/UiModal.vue';
-import UiMobileDrawer from '~/components/ui/UiMobileDrawer.vue';
 import VideoEncodingForm from '~/components/media/VideoEncodingForm.vue';
 import FileConversionAudioSettings from '~/components/file-manager/FileConversionAudioSettings.vue';
 import UiWheelNumberInput from '~/components/ui/UiWheelNumberInput.vue';
@@ -11,15 +10,10 @@ import { useBatchConversion } from '~/composables/file-conversion/useBatchConver
 import { resolveAudioOnlyFileExtension } from '~/utils/conversion/helpers';
 import { AUDIO_EXPORT_CODEC_OPTIONS } from '~/utils/webcodecs';
 import { useExportCodecs } from '~/composables/timeline/export/core/useExportCodecs';
-import { useMobileLayout } from '~/composables/useMobileLayout';
 
 const { t } = useI18n();
-const { isMobile: isMobileDevice } = useDevice();
-const { isMobileLayout } = useMobileLayout();
-const isMobile = computed(() => isMobileDevice || isMobileLayout.value);
-const modalWrapper = computed(() => (isMobile.value ? UiMobileDrawer : UiModal));
+
 const modalUi = computed(() => {
-  if (isMobile.value) return {};
   if (conversionType.value === 'video') {
     return { content: 'sm:max-w-2xl' };
   }
@@ -113,13 +107,7 @@ const isFormValid = computed(() => {
 </script>
 
 <template>
-  <component
-    :is="modalWrapper"
-    v-model:open="isOpen"
-    :title="modalTitle"
-    :ui="modalUi"
-    :z-index="isMobile ? 'z-[var(--z-modal)]' : undefined"
-  >
+  <UiModal v-model:open="isOpen" :title="modalTitle" :ui="modalUi">
     <div class="flex flex-col gap-6">
       <div class="bg-ui-bg-muted/40 border border-ui-border/50 rounded-lg p-3.5 space-y-2">
         <div class="text-xs text-ui-text-muted">
@@ -267,5 +255,5 @@ const isFormValid = computed(() => {
         </UButton>
       </div>
     </template>
-  </component>
+  </UiModal>
 </template>
