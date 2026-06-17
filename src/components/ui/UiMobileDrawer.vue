@@ -375,7 +375,23 @@ function expandByHandle(fromDy: number) {
 /** Slide the sheet out from the release position, then unmount. */
 function closeByHandle(fromDy: number) {
   handleClosing.value = true;
-  animateHandle(fromDy, window.innerHeight || 900, ANIMATION_CLOSE_MS, () => requestClose());
+  const viewportH = window.innerHeight || 900;
+
+  // Animate only as far as it takes the sheet's TOP edge to reach the bottom of
+  // the viewport. In toolbar mode the sheet already sits near the bottom, so a
+  // fixed `viewportH` target would push the visible part off-screen in the first
+  // few ms (with the fast-start easing) and the slide-down would be invisible.
+  // Deriving the target from the current rect keeps the on-screen travel — and
+  // thus the perceived speed — consistent across toolbar and full modes.
+  const el = containerRef.value;
+  let toDy = viewportH;
+  if (el) {
+    // rect.top already reflects the in-flight drag transform (fromDy).
+    const rect = el.getBoundingClientRect();
+    toDy = fromDy + (viewportH - rect.top);
+  }
+
+  animateHandle(fromDy, toDy, ANIMATION_CLOSE_MS, () => requestClose());
 }
 
 function onBackdropTouchStart(e: TouchEvent) {

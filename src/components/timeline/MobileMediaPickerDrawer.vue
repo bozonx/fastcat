@@ -8,12 +8,13 @@ import { useTimelineStore } from '~/stores/timeline.store';
 import { useProjectStore } from '~/stores/project.store';
 import { useMediaStore } from '~/stores/media.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
-import { getMediaTypeFromFilename } from '~/utils/media-types';
+import { getMediaTypeFromFilename, validateMediaTrackCompatibility } from '~/utils/media-types';
 import { secondsToUs } from '~/utils/time';
 import type { FsEntry } from '~/types/fs';
 import MobileFileBrowserGrid from '~/components/file-manager/MobileFileBrowserGrid.vue';
 import { useUiStore } from '~/stores/ui.store';
 const log = createDevLogger('MobileMediaPickerDrawer');
+const toast = useToast();
 
 const props = defineProps<{ isOpen: boolean; isReplaceMode?: boolean }>();
 const emit = defineEmits<{
@@ -161,6 +162,15 @@ async function addToTimeline() {
           const kind = mediaType === 'audio' ? 'audio' : 'video';
           const durationUs = await resolveInsertDurationUs(entry, mediaType);
           const trackId = timelineStore.resolveMobileTargetTrackId(kind, { durationUs });
+
+          const targetTrack = timelineStore.timelineDoc?.tracks.find((t) => t.id === trackId);
+          if (!targetTrack || !validateMediaTrackCompatibility(mediaType, targetTrack.kind)) {
+            toast.add({
+              title: t('videoEditor.timeline.mediaTypeNotSupportedOnTrack'),
+              color: 'warning',
+            });
+            continue;
+          }
 
           await timelineStore.addClipToTimelineFromPath({
             trackId,
