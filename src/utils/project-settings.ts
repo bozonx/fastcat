@@ -43,6 +43,7 @@ export interface TimelineSessionState {
   zoom: number;
   trackHeights: Record<string, number>;
   selectionRange?: { startUs: number; endUs: number };
+  mobileTrackHeightEnlarged?: boolean;
 }
 
 export interface ProjectUiDynamicPanel {

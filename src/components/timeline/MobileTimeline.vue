@@ -255,11 +255,9 @@ const isAnyDrawerOpen = computed(
     isVirtualClipPresetDrawerOpen.value,
 );
 
-const isTrackHeightEnlarged = ref(false);
-
 const trackHeights = computed(() => {
   const heights: Record<string, number> = {};
-  const multiplier = isTrackHeightEnlarged.value ? 3 : 1;
+  const multiplier = timelineStore.mobileTrackHeightEnlarged ? 3 : 1;
   for (const t of tracks.value) {
     heights[t.id] = (t.kind === 'video' ? 64 : 48) * multiplier;
   }
@@ -267,7 +265,7 @@ const trackHeights = computed(() => {
 });
 
 function toggleTrackHeightEnlarged() {
-  isTrackHeightEnlarged.value = !isTrackHeightEnlarged.value;
+  timelineStore.mobileTrackHeightEnlarged = !timelineStore.mobileTrackHeightEnlarged;
 }
 
 const playheadPx = computed(() =>
@@ -702,7 +700,7 @@ async function handleConfirmCreateVersion(newName: string) {
       :is-open="isTrackPropertiesDrawerOpen"
       :track-id="selectedGap?.trackId ?? null"
       :gap-item-id="selectedGap?.itemId ?? null"
-      :is-track-height-enlarged="isTrackHeightEnlarged"
+      :is-track-height-enlarged="timelineStore.mobileTrackHeightEnlarged"
       @close="
         () => {
           onUpdateDrawerOpen(false);

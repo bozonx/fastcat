@@ -113,6 +113,7 @@ export const useTimelineStore = defineStore('timeline', () => {
   const scrollResetTicket = ref(0);
   const scrollToPlayheadRequest = ref(0);
   const trackHeights = ref<Record<string, number>>({});
+  const mobileTrackHeightEnlarged = ref(false);
   const selectionRange = ref<TimelineSelectionRange | null>(null);
 
   const fps = computed(() => {
@@ -393,6 +394,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     masterGain,
     timelineZoom,
     trackHeights,
+    mobileTrackHeightEnlarged,
     audioMuted,
     selectionRange,
 
@@ -516,6 +518,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     audioLevels,
     timelineZoom,
     trackHeights,
+    mobileTrackHeightEnlarged,
     selectionRange,
     historyStore,
     historyDebounce,
@@ -626,6 +629,7 @@ export const useTimelineStore = defineStore('timeline', () => {
       zoom: timelineZoom.value,
       trackHeights: { ...trackHeights.value },
       selectionRange: selectionRange.value ? { ...selectionRange.value } : undefined,
+      mobileTrackHeightEnlarged: mobileTrackHeightEnlarged.value,
     };
     projectSettingsStore.markProjectSettingsAsDirty();
     await projectSettingsStore.requestProjectSettingsSave({ immediate: true });
@@ -988,6 +992,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     selectedTransition,
     isTrimModeActive,
     trackHeights,
+    mobileTrackHeightEnlarged,
     loadTimeline,
     ensureTimelineDoc: () => commands.ensureTimelineDoc(),
     saveTimeline: lifecycle.saveTimeline,
