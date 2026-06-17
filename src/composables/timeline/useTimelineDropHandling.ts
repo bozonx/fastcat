@@ -128,11 +128,14 @@ export function useTimelineDropHandling(options: UseTimelineDropHandlingOptions)
     const name =
       params.kind === 'video' ? `Video ${sameKindCount + 1}` : `Audio ${sameKindCount + 1}`;
 
+    const existingIds = new Set((timelineStore.timelineDoc?.tracks ?? []).map((t) => t.id));
     timelineStore.addTrack(params.kind, name);
 
-    const created = (timelineStore.timelineDoc?.tracks ?? [])
-      .filter((t) => t.kind === params.kind)
-      .pop();
+    // Video tracks are prepended (new on top), audio appended (new at bottom);
+    // identify the new track by absence from the pre-add id set, not position.
+    const created = (timelineStore.timelineDoc?.tracks ?? []).find(
+      (t) => t.kind === params.kind && !existingIds.has(t.id),
+    );
     return created?.id ?? null;
   }
 

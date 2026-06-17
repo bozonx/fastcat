@@ -95,11 +95,15 @@ async function handleAdd() {
 
       // We need to wait for the track to be added to the doc to get its ID
       // addTrack is synchronous in store but the doc update might be processed next tick or immediate
+      const existingIds = new Set((timelineStore.timelineDoc?.tracks ?? []).map((t) => t.id));
       timelineStore.addTrack(kind, name);
 
-      // Find the last added track of this kind
-      const tracks = timelineStore.timelineDoc?.tracks || [];
-      const newTrack = tracks.filter((t) => t.kind === kind).pop();
+      // Find the freshly added track of this kind. Video tracks are prepended
+      // (new on top) and audio appended (new at bottom), so match by absence
+      // from the pre-add id set rather than relying on array position.
+      const newTrack = (timelineStore.timelineDoc?.tracks ?? []).find(
+        (t) => t.kind === kind && !existingIds.has(t.id),
+      );
       if (newTrack) {
         targetTrackId = newTrack.id;
       }
@@ -122,8 +126,11 @@ async function handleAdd() {
           trackIdForThisEntry = compatible.id;
         } else {
           const name = requiredKind === 'video' ? 'Video' : 'Audio';
+          const existingIds = new Set((timelineStore.timelineDoc?.tracks ?? []).map((t) => t.id));
           timelineStore.addTrack(requiredKind, name);
-          const nt = timelineStore.timelineDoc?.tracks.filter((t) => t.kind === requiredKind).pop();
+          const nt = (timelineStore.timelineDoc?.tracks ?? []).find(
+            (t) => t.kind === requiredKind && !existingIds.has(t.id),
+          );
           if (nt) trackIdForThisEntry = nt.id;
         }
       }

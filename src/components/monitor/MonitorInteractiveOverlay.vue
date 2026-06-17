@@ -6,7 +6,8 @@ import { useMediaStore } from '~/stores/media.store';
 import { useProjectStore } from '~/stores/project.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useMonitorTimeline } from '~/composables/monitor/useMonitorTimeline';
-import type { ClipSourceOrientation, ClipTransform, TextClipStyle, WorkerTimelineClip } from '~/timeline/types';
+import type { ClipSourceOrientation, ClipTransform, TextClipStyle } from '~/timeline/types';
+import type { WorkerTimelineClip } from '~/composables/monitor/types';
 import { computeClipBoxLayout, TRANSFORM_DESIGN_BASE } from '~/utils/video-editor/clip-layout';
 import { computeTextLayoutMetrics } from '~/utils/video-editor/text-layout';
 
@@ -85,10 +86,8 @@ const measureContext =
   typeof document !== 'undefined' ? document.createElement('canvas').getContext('2d') : null;
 
 const designSize = computed(() => ({
-  width:
-    timelineStore.timelineFormat?.width ?? projectStore.projectSettings?.project?.width ?? TRANSFORM_DESIGN_BASE.width,
-  height:
-    timelineStore.timelineFormat?.height ?? projectStore.projectSettings?.project?.height ?? TRANSFORM_DESIGN_BASE.height,
+  width: timelineStore.timelineFormat?.width ?? projectStore.projectSettings.project.width,
+  height: timelineStore.timelineFormat?.height ?? projectStore.projectSettings.project.height,
 }));
 
 interface BboxItem {
@@ -172,12 +171,7 @@ const bboxItems = computed(() => {
 });
 
 function selectClip(clip: WorkerTimelineClip) {
-  selectionStore.selectEntity({
-    source: 'timeline',
-    kind: 'clip',
-    trackId: clip.trackId ?? '',
-    itemId: clip.id,
-  });
+  selectionStore.selectTimelineItem(clip.trackId ?? '', clip.id, 'clip');
 }
 
 const isEnabled = computed(() => workspaceStore.userSettings.ui.monitorInteractiveEdit);

@@ -132,6 +132,7 @@ vi.mock('~/stores/workspace.store', () => ({
       },
       ui: {
         interfaceScale: 1,
+        monitorInteractiveEdit: false,
       },
       hotkeys: {
         layer1: 'Shift',

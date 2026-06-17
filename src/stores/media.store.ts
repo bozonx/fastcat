@@ -10,6 +10,7 @@ import { createMediaWorkerModule } from '~/stores/media/media-worker';
 import { runQueuedFileAccess } from '~/utils/file-access-queue';
 import { useVfs } from '~/composables/useVfs';
 import { postIoInitMessage } from '~/utils/io/io-budget-main';
+import { isTransientIoError } from '~/utils/io/transient-errors';
 import { getMediaTypeFromFilename, BROWSER_NATIVE_IMAGE_EXTENSIONS } from '~/utils/media-types';
 import {
   serializeWaveformPeaks,
@@ -30,6 +31,13 @@ import { isLazyTauriFile } from '~/stores/workspace/provider/tauri-handle';
 import { normalizeMediaCachePath } from '~/utils/media-cache-path';
 
 const log = createDevLogger('media.store');
+
+/**
+ * How many times to retry a metadata fetch that failed with a *transient* OPFS
+ * error (stale file handle / datapipe-pool exhaustion) before giving up. Each
+ * retry re-fetches a fresh file handle and backs off exponentially.
+ */
+const MAX_TRANSIENT_METADATA_RETRIES = 3;
 
 interface VideoColorSpaceInit {
   fullRange?: boolean;
@@ -288,6 +296,7 @@ export const useMediaStore = defineStore('media', () => {
     file: File,
     projectRelativePath: string,
     options?: { forceRefresh?: boolean },
+    transientAttempt = 0,
   ): Promise<MediaMetadata | null> {
     const cacheKey = projectRelativePath;
 
@@ -505,6 +514,45 @@ export const useMediaStore = defineStore('media', () => {
           throw new Error('Worker returned null metadata');
         }
       } catch (e) {
+        // Chromium routes OPFS reads through one renderer-wide datapipe pool, so
+        // a `getFile()`/read can fail mid-flight with a transient
+        // `InvalidStateError` (stale handle / pool exhaustion) — common right
+        // after an import while other I/O is in flight. That is NOT corruption:
+        // re-fetch a fresh handle and retry with backoff, and on exhaustion bail
+        // WITHOUT persisting `error: true` so a later access can retry, rather
+        // than flagging a perfectly good file as corrupt forever.
+        if (isTransientIoError(e)) {
+          if (transientAttempt < MAX_TRANSIENT_METADATA_RETRIES) {
+            log.debug(
+              'Transient I/O during metadata fetch; retrying',
+              projectRelativePath,
+              'attempt',
+              transientAttempt + 1,
+              (e as Error)?.message,
+            );
+            await new Promise((resolve) => setTimeout(resolve, 150 * 2 ** transientAttempt));
+            let freshFile: File | null = null;
+            try {
+              freshFile = await projectStore.getFileByPath(projectRelativePath);
+            } catch {
+              /* fall back to the existing handle below */
+            }
+            return await fetchMetadataInternal(
+              freshFile ?? file,
+              projectRelativePath,
+              options,
+              transientAttempt + 1,
+            );
+          }
+          log.warn(
+            'Metadata fetch failed transiently for',
+            projectRelativePath,
+            '— leaving unresolved for a later retry',
+            (e as Error)?.message,
+          );
+          return null;
+        }
+
         log.warn('Failed to fetch metadata for', projectRelativePath, (e as Error)?.message);
         metadataLoadFailed.value[projectRelativePath] = true;
 

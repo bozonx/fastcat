@@ -11,6 +11,7 @@ import { useMonitorGrid } from '~/composables/monitor/useMonitorGrid';
 import { useMonitorRuntime } from '~/composables/monitor/useMonitorRuntime';
 import type { MonitorSyncMode } from '~/composables/monitor/useMonitorPlayback';
 import MonitorAudioControl from './MonitorAudioControl.vue';
+import MonitorInteractiveOverlay from './MonitorInteractiveOverlay.vue';
 import MonitorTextTransformBox from './MonitorTextTransformBox.vue';
 import MonitorViewport from './MonitorViewport.vue';
 import MonitorTransformBox from './MonitorTransformBox.vue';
@@ -525,6 +526,12 @@ watch(viewportRef, (vp) => {
                     stroke-width="1"
                   />
                 </g>
+
+                <MonitorInteractiveOverlay
+                  v-if="!isReadonly"
+                  :render-width="renderWidth"
+                  :render-height="renderHeight"
+                />
 
                 <MonitorTextTransformBox
                   v-if="!isReadonly && isTextClipSelected"
