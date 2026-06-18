@@ -276,6 +276,48 @@ describe('TimelineCommandService', () => {
       });
       expect(deps.updateTimelineFormat).toHaveBeenCalledWith({ isAutoSettings: false });
     });
+
+    it('inherits the sample rate from an audio-only first clip, keeping geometry', async () => {
+      deps.getTimelineDoc.mockReturnValue({
+        timebase: { fps: 30 },
+        tracks: [{ id: 'a1', kind: 'audio', items: [] }],
+        metadata: {
+          fastcat: {
+            format: {
+              width: 1920,
+              height: 1080,
+              fps: 30,
+              sampleRate: 48000,
+              isAutoSettings: true,
+              settingsSource: 'projectDefaults',
+            },
+          },
+        },
+      });
+      // Audio-only clip: no video stream, only a sample rate.
+      deps.getOrFetchMetadataByPath.mockResolvedValue({
+        duration: 10,
+        audio: { sampleRate: 44100 },
+      });
+      deps.getFileByPath.mockResolvedValue(new File([], 'music.mp3'));
+
+      await service.addClipToTimelineFromPath({
+        trackId: 'a1',
+        name: 'Music',
+        path: 'audio/music.mp3',
+      });
+
+      // Sample rate is adopted; existing geometry/fps are preserved.
+      expect(deps.updateTimelineFormat).toHaveBeenCalledWith({
+        width: 1920,
+        height: 1080,
+        fps: 30,
+        sampleRate: 44100,
+        isAutoSettings: false,
+        settingsSource: 'firstClip',
+        useProjectSettings: false,
+      });
+    });
   });
 
   describe('circular dependencies', () => {

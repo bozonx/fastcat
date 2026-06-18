@@ -378,14 +378,24 @@ export function createTimelineCommandService(deps: TimelineCommandServiceDeps) {
 
     const warnings: AddClipWarning[] = [];
 
-    if (metadata?.video) {
+    if (metadata && (metadata.video || metadata.audio)) {
       const doc = deps.getTimelineDoc();
       const timelineFormat = getTimelineFormat(doc);
       if (timelineFormat.isAutoSettings && isTimelineEmpty(doc)) {
-        const rotation = metadata.video.rotation ?? 0;
-        const isRotated90 = Math.abs(rotation) === 90 || Math.abs(rotation) === 270;
-        const effectiveWidth = isRotated90 ? metadata.video.height : metadata.video.width;
-        const effectiveHeight = isRotated90 ? metadata.video.width : metadata.video.height;
+        // First clip on a fresh, auto-settings timeline determines the format.
+        // A video stream provides geometry (width/height/fps); audio provides the
+        // sample rate. An audio-only first clip keeps the current (default/project)
+        // geometry and only adopts its sample rate.
+        let effectiveWidth = timelineFormat.width;
+        let effectiveHeight = timelineFormat.height;
+        let effectiveFps = timelineFormat.fps;
+        if (metadata.video) {
+          const rotation = metadata.video.rotation ?? 0;
+          const isRotated90 = Math.abs(rotation) === 90 || Math.abs(rotation) === 270;
+          effectiveWidth = isRotated90 ? metadata.video.height : metadata.video.width;
+          effectiveHeight = isRotated90 ? metadata.video.width : metadata.video.height;
+          effectiveFps = metadata.video.fps;
+        }
         const effectiveSampleRate = metadata.audio?.sampleRate ?? timelineFormat.sampleRate;
 
         if (deps.getProjectSettings().project.isAutoSettings) {
@@ -396,7 +406,7 @@ export function createTimelineCommandService(deps: TimelineCommandServiceDeps) {
           deps.updateProjectFormat({
             width: effectiveWidth,
             height: effectiveHeight,
-            fps: metadata.video.fps,
+            fps: effectiveFps,
             sampleRate: effectiveSampleRate,
           });
           await deps.updateTimelineFormat({ isAutoSettings: false });
@@ -406,7 +416,7 @@ export function createTimelineCommandService(deps: TimelineCommandServiceDeps) {
           await deps.updateTimelineFormat({
             width: effectiveWidth,
             height: effectiveHeight,
-            fps: metadata.video.fps,
+            fps: effectiveFps,
             sampleRate: effectiveSampleRate,
             isAutoSettings: false,
             settingsSource: 'firstClip',
@@ -414,13 +424,17 @@ export function createTimelineCommandService(deps: TimelineCommandServiceDeps) {
           });
         }
 
-        warnings.push({
-          type: 'autoSettingsApplied',
-          width: effectiveWidth,
-          height: effectiveHeight,
-          fps: metadata.video.fps,
-        });
-      } else {
+        // The warning is about resolution/fps, so only surface it when geometry
+        // was actually derived from a video stream.
+        if (metadata.video) {
+          warnings.push({
+            type: 'autoSettingsApplied',
+            width: effectiveWidth,
+            height: effectiveHeight,
+            fps: effectiveFps,
+          });
+        }
+      } else if (metadata.video) {
         // Compare against the *effective* fps (project settings win when followed),
         // not the doc's stale snapshot, so the mismatch warning reflects reality.
         const effectiveFps = resolveEffectiveTimelineFormat(

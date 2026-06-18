@@ -577,11 +577,21 @@ export const useTimelineStore = defineStore('timeline', () => {
     updateProjectFormat: (settings) => {
       const proj = projectStore.projectSettings?.project;
       if (!proj) return;
-      // Derive resolution preset (format/orientation/aspect) from the geometry so
-      // the project's display fields stay consistent, then clear isAutoSettings to
-      // mark the project as explicitly configured. The project-settings store's
-      // deep watcher persists this automatically.
-      const normalized = normalizeTimelineFormat({ ...proj, ...settings });
+      // Derive resolution preset (format/orientation/aspect) from the *new*
+      // geometry so the project's display fields stay consistent, then clear
+      // isAutoSettings to mark the project as explicitly configured. The preset
+      // fields must be left undefined here — otherwise normalizeTimelineFormat
+      // keeps the project's stale preset (e.g. a portrait clip would inherit the
+      // old `landscape` orientation). The project-settings store's deep watcher
+      // persists this automatically.
+      const normalized = normalizeTimelineFormat({
+        ...proj,
+        ...settings,
+        resolutionFormat: undefined,
+        orientation: undefined,
+        aspectRatio: undefined,
+        isCustomResolution: undefined,
+      });
       proj.width = normalized.width;
       proj.height = normalized.height;
       proj.fps = normalized.fps;

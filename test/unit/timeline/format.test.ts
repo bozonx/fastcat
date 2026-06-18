@@ -7,6 +7,7 @@ import {
   getTimelineFormat,
   setTimelineFormat,
 } from '~/timeline/format';
+import { getResolutionPreset } from '~/utils/settings/helpers';
 
 vi.mock('~/utils/settings/helpers', () => ({
   getResolutionPreset: vi.fn(() => ({
@@ -56,6 +57,39 @@ describe('normalizeTimelineFormat', () => {
   it('preserves useProjectSettings flag if provided', () => {
     const result = normalizeTimelineFormat({ useProjectSettings: false });
     expect(result.useProjectSettings).toBe(false);
+  });
+
+  it('recomputes the resolution preset from geometry when preset fields are omitted', () => {
+    // This is what updateProjectFormat relies on: passing new geometry without
+    // preset fields must derive the preset from getResolutionPreset rather than
+    // keep stale values (e.g. a portrait clip inheriting the old `landscape`).
+    vi.mocked(getResolutionPreset).mockReturnValueOnce({
+      resolutionFormat: '1080p',
+      aspectRatio: '16:9',
+      orientation: 'portrait',
+      isCustomResolution: false,
+    });
+    const result = normalizeTimelineFormat({
+      width: 1080,
+      height: 1920,
+      // Stale landscape preset fields explicitly cleared, as updateProjectFormat does.
+      orientation: undefined,
+      resolutionFormat: undefined,
+      aspectRatio: undefined,
+      isCustomResolution: undefined,
+    });
+    expect(result.orientation).toBe('portrait');
+  });
+
+  it('keeps a stale orientation when the caller leaves preset fields populated', () => {
+    // The inverse contract: an explicit orientation always wins, which is exactly
+    // why updateProjectFormat must NOT forward the project's old preset fields.
+    const result = normalizeTimelineFormat({
+      width: 1080,
+      height: 1920,
+      orientation: 'landscape',
+    });
+    expect(result.orientation).toBe('landscape');
   });
 });
 
