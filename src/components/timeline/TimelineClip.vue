@@ -79,6 +79,8 @@ interface Props {
     trackHeight: number;
   } | null;
   isMobile?: boolean;
+  /** Mobile multi-selection mode is active: a selected clip counts as a multi-selection even alone. */
+  isMultiSelectMode?: boolean;
   scrollLeft?: number;
   viewportWidth?: number;
 }
@@ -126,6 +128,16 @@ const isTransitionCreateHandleActive = ref(false);
 // O(1) selection check via the shared Set view; avoids Array.includes() scans on
 // every render (this binding is read several times per clip per frame).
 const isSelected = computed(() => timelineContext.selectedItemIdSet.value.has(props.item.id));
+
+// Tint the outline differently for multi-selection so the user can tell a single-clip
+// selection apart from a multi-selection at a glance. This is true when more than one
+// item is selected (ctrl/shift on desktop) or whenever mobile multi-selection mode is
+// active — in that mode even a lone selected clip counts as a multi-selection.
+const isMultiSelected = computed(
+  () =>
+    isSelected.value &&
+    (props.isMultiSelectMode || timelineContext.selectedItemIdSet.value.size > 1),
+);
 
 const myTrimPreview = computed(() => {
   return props.trimPreview ?? null;
@@ -720,7 +732,11 @@ function handleTransitionCreate(
       }"
       :class="[
         getClipClass(item, track),
-        isSelected ? 'outline-(--color-primary) outline-2 z-10 shadow-lg' : 'outline-transparent',
+        isSelected
+          ? isMultiSelected
+            ? 'outline-orange-400 outline-2 z-10 shadow-lg'
+            : 'outline-(--color-primary) outline-2 z-10 shadow-lg'
+          : 'outline-transparent',
         clipItem && typeof clipItem.freezeFrameSourceUs === 'number'
           ? 'outline-(--color-warning) outline-2'
           : '',

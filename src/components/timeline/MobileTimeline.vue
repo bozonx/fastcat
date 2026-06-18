@@ -859,6 +859,7 @@ async function handleConfirmCreateVersion(newName: string) {
             :trim-preview="trimPreview"
             is-mobile
             :is-any-drawer-open="isAnyDrawerOpen"
+            :is-multi-select-mode="isMultiSelectionMode"
             @select-item="handleMobileTimelineItemSelect"
             @start-move-item="onStartMoveItem"
             @start-trim-item="onStartTrimItem"

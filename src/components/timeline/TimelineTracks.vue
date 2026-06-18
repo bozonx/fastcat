@@ -70,6 +70,8 @@ const props = defineProps<{
   draggingItemId?: string | null;
   isMobile?: boolean;
   isAnyDrawerOpen?: boolean;
+  /** Mobile multi-selection mode: tint selected clips as a multi-selection even with one selected. */
+  isMultiSelectMode?: boolean;
   onZoomToFit?: () => void;
 }>();
 
@@ -355,7 +357,6 @@ watch(
     }
   },
 );
-
 </script>
 
 <template>
@@ -539,6 +540,7 @@ watch(
             :slip-preview="slipPreview?.itemId === item.id ? slipPreview : null"
             :trim-preview="trimPreviewByItemId[item.id] ?? null"
             :is-mobile="isMobile"
+            :is-multi-select-mode="isMultiSelectMode"
             @select-item="(ev, id) => emit('selectItem', ev, id)"
             @start-move-item="(ev, payload) => emit('startMoveItem', ev, payload)"
             @start-trim-item="(ev, payload) => emit('startTrimItem', ev, payload)"
