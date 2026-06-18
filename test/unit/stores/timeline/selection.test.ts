@@ -61,6 +61,27 @@ describe('TimelineSelectionModule', () => {
     expect(deps.selectedTransition.value).toBeNull();
   });
 
+  it('selectTransition(input) clears items, selectTransition(null) preserves them', () => {
+    const deps = createMockDeps();
+    deps.selectedItemIds.value = ['clip-1'];
+    const mod = createTimelineSelectionModule(deps);
+
+    // Selecting a real transition replaces the clip selection.
+    mod.selectTransition({ trackId: 'track-1', itemId: 'clip-1', edge: 'in' });
+    expect(deps.selectedItemIds.value).toEqual([]);
+    expect(deps.selectedTransition.value).toEqual({
+      trackId: 'track-1',
+      itemId: 'clip-1',
+      edge: 'in',
+    });
+
+    // Deselecting the transition must NOT wipe a fresh clip selection.
+    deps.selectedItemIds.value = ['clip-2'];
+    mod.selectTransition(null);
+    expect(deps.selectedTransition.value).toBeNull();
+    expect(deps.selectedItemIds.value).toEqual(['clip-2']);
+  });
+
   it('selectTrack sets track and clears items/transition', () => {
     const deps = createMockDeps();
     deps.selectedItemIds.value = ['clip-1'];

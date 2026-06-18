@@ -32,9 +32,9 @@ import {
   getTimelineFormat,
   setTimelineFormat,
   resolveEffectiveTimelineFormat,
-  normalizeTimelineFormat,
   type TimelineFormatInput,
 } from '~/timeline/format';
+import { applyResolutionPreset } from '~/utils/settings/helpers';
 import { findNextMarkerTime, findPreviousMarkerTime } from '~/utils/timeline/marker-navigation';
 
 import { useProjectStore } from './project.store';
@@ -577,29 +577,23 @@ export const useTimelineStore = defineStore('timeline', () => {
     updateProjectFormat: (settings) => {
       const proj = projectStore.projectSettings?.project;
       if (!proj) return;
-      // Derive resolution preset (format/orientation/aspect) from the *new*
-      // geometry so the project's display fields stay consistent, then clear
-      // isAutoSettings to mark the project as explicitly configured. The preset
-      // fields must be left undefined here — otherwise normalizeTimelineFormat
-      // keeps the project's stale preset (e.g. a portrait clip would inherit the
-      // old `landscape` orientation). The project-settings store's deep watcher
-      // persists this automatically.
-      const normalized = normalizeTimelineFormat({
-        ...proj,
-        ...settings,
-        resolutionFormat: undefined,
-        orientation: undefined,
-        aspectRatio: undefined,
-        isCustomResolution: undefined,
+      // Derive the display fields (format/orientation/aspect) from the *new*
+      // geometry via the shared helper so a portrait clip can't inherit the
+      // project's old `landscape` orientation, then clear isAutoSettings to mark
+      // the project as explicitly configured. The project-settings store's deep
+      // watcher persists this automatically.
+      const derived = applyResolutionPreset({
+        width: settings.width,
+        height: settings.height,
       });
-      proj.width = normalized.width;
-      proj.height = normalized.height;
-      proj.fps = normalized.fps;
-      proj.sampleRate = normalized.sampleRate;
-      proj.resolutionFormat = normalized.resolutionFormat;
-      proj.orientation = normalized.orientation;
-      proj.aspectRatio = normalized.aspectRatio;
-      proj.isCustomResolution = normalized.isCustomResolution;
+      proj.width = derived.width;
+      proj.height = derived.height;
+      proj.fps = settings.fps;
+      proj.sampleRate = settings.sampleRate;
+      proj.resolutionFormat = derived.resolutionFormat;
+      proj.orientation = derived.orientation;
+      proj.aspectRatio = derived.aspectRatio;
+      proj.isCustomResolution = derived.isCustomResolution;
       proj.isAutoSettings = false;
     },
     hasProxy: (path: string) => proxyStore.existingProxies.has(normalizeMediaCachePath(path)),

@@ -75,8 +75,13 @@ export function createTimelineSelectionModule(
   }
 
   function selectTransition(input: { trackId: string; itemId: string; edge: 'in' | 'out' } | null) {
-    deps.selectedTrackId.value = null;
-    deps.selectedItemIds.value = [];
+    // Only clear the track/clip selection when actually selecting a transition.
+    // Calling this with `null` merely deselects the transition and must NOT wipe
+    // an existing clip selection (mirrors `selectTrack`'s guarded behavior).
+    if (input) {
+      deps.selectedTrackId.value = null;
+      deps.selectedItemIds.value = [];
+    }
     deps.selectedTransition.value = input;
   }
 

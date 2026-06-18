@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import type { FastCatUserSettings } from './settings/defaults';
 import { DEFAULT_USER_SETTINGS } from './settings/defaults';
-import { getResolutionPreset } from './settings/helpers';
+import { applyResolutionPreset } from './settings/helpers';
 import { resolveProjectPreset } from './settings/presets';
 
 interface ProjectSettingsUserDefaultsInput {
@@ -339,18 +339,13 @@ function createProjectSettingsSchema(defaults: FastCatProjectSettings) {
           .transform((val) => {
             const isWidthHeightCustom =
               val.width !== defaults.project.width || val.height !== defaults.project.height;
+            // Only re-derive the preset when the geometry diverges from the
+            // default, so an intentional custom-resolution flag on the default
+            // size isn't clobbered. The derivation itself is the shared helper.
             if (!isWidthHeightCustom) {
               return val;
             }
-
-            const preset = getResolutionPreset(val.width, val.height);
-            return {
-              ...val,
-              resolutionFormat: preset.resolutionFormat,
-              orientation: preset.orientation as 'landscape' | 'portrait',
-              aspectRatio: preset.aspectRatio,
-              isCustomResolution: preset.isCustomResolution,
-            };
+            return applyResolutionPreset(val);
           })
           .catch(defaults.project),
         monitor: projectMonitorSchema.catch(defaults.monitor),

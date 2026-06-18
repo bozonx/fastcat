@@ -7,7 +7,15 @@ import {
 } from './defaults';
 import { createDefaultExportPresets, createDefaultProjectPresets } from './presets';
 
-export function getResolutionPreset(width: number, height: number) {
+/** The geometry-derived display fields shared by every project/timeline format. */
+export interface ResolutionPreset {
+  isCustomResolution: boolean;
+  resolutionFormat: string;
+  orientation: 'landscape' | 'portrait';
+  aspectRatio: string;
+}
+
+export function getResolutionPreset(width: number, height: number): ResolutionPreset {
   const isPortrait = height > width;
   const w = isPortrait ? height : width;
   const h = isPortrait ? width : height;
@@ -31,6 +39,21 @@ export function getResolutionPreset(width: number, height: number) {
     orientation: isPortrait ? 'portrait' : 'landscape',
     aspectRatio,
   };
+}
+
+/**
+ * Returns a copy of `format` with its geometry-derived display fields
+ * (resolutionFormat/orientation/aspectRatio/isCustomResolution) recomputed from
+ * the *current* width/height. This is the single, well-tested way to keep those
+ * fields in sync with the geometry — every place that mutates width/height of a
+ * format should funnel through here instead of re-deriving orientation by hand,
+ * which is how stale `landscape`/`portrait` values used to leak in (notably for
+ * vertical clips).
+ */
+export function applyResolutionPreset<T extends { width: number; height: number }>(
+  format: T,
+): T & ResolutionPreset {
+  return { ...format, ...getResolutionPreset(format.width, format.height) };
 }
 
 export function createDefaultProjectDefaults(): FastCatUserSettings['projectDefaults'] {

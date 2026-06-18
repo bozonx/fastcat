@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { DEFAULT_USER_SETTINGS } from '../defaults';
-import { getResolutionPreset } from '../helpers';
+import { applyResolutionPreset } from '../helpers';
 import {
   createDefaultExportPresets,
   createDefaultProjectPresets,
@@ -52,14 +52,7 @@ export function normalizeProjectPresetItem(
           isCustomResolution: val.isCustomResolution ?? fallback.isCustomResolution,
         };
       }
-      const preset = getResolutionPreset(val.width, val.height);
-      return {
-        ...val,
-        resolutionFormat: preset.resolutionFormat,
-        orientation: preset.orientation as 'landscape' | 'portrait',
-        aspectRatio: preset.aspectRatio,
-        isCustomResolution: preset.isCustomResolution,
-      };
+      return applyResolutionPreset(val);
     })
     .catch(fallback);
 

@@ -14,6 +14,7 @@ import {
   TRACK_HEADERS_WHEEL_ACTIONS,
 } from '~/utils/mouse';
 import { normalizeTokenValue, normalizeUrlValue } from './shared';
+import { applyResolutionPreset } from '../helpers';
 
 export function normalizeUiSettings(raw: unknown): FastCatUserSettings['ui'] {
   const input = (raw as Record<string, unknown>)?.['ui'] as Record<string, unknown> | undefined;
@@ -281,6 +282,16 @@ export function normalizeProjectDefaults(raw: unknown): FastCatUserSettings['pro
       audioScrubbingEnabled: z
         .boolean()
         .catch(DEFAULT_USER_SETTINGS.projectDefaults.audioScrubbingEnabled),
+    })
+    .transform((val) => {
+      // Keep the display fields consistent with the geometry on load (parity with
+      // project-settings / preset normalizers), so stale orientation/format can't
+      // survive a round-trip. Only re-derive for non-default geometry, so an
+      // intentional custom-resolution flag on the default size isn't clobbered.
+      const isWidthHeightCustom =
+        val.width !== DEFAULT_USER_SETTINGS.projectDefaults.width ||
+        val.height !== DEFAULT_USER_SETTINGS.projectDefaults.height;
+      return isWidthHeightCustom ? applyResolutionPreset(val) : val;
     })
     .catch(DEFAULT_USER_SETTINGS.projectDefaults);
 
