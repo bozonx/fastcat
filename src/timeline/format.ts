@@ -91,6 +91,47 @@ export function createTimelineFormatFromProjectDefaults(project: TimelineFormatI
   });
 }
 
+/** Geometry/audio fields a timeline inherits from the project when following it. */
+export interface ProjectFormatSource {
+  width: number;
+  height: number;
+  fps: number;
+  resolutionFormat: string;
+  orientation: 'landscape' | 'portrait';
+  aspectRatio: string;
+  isCustomResolution: boolean;
+  sampleRate: number;
+}
+
+/**
+ * Resolves the *effective* timeline format: when the timeline follows the
+ * project (`useProjectSettings`, default true), its resolution/fps/sample-rate
+ * are overridden by the live project settings. The doc's own stored format is a
+ * stale snapshot taken at creation time and is NOT updated when project settings
+ * change, so every renderer (monitor, export, thumbnails) must resolve through
+ * here rather than reading `getTimelineFormat(doc)` directly — otherwise it
+ * composes at the snapshot size while the project has moved on.
+ */
+export function resolveEffectiveTimelineFormat(
+  format: TimelineFormat,
+  project: Partial<ProjectFormatSource> | null | undefined,
+): TimelineFormat {
+  if ((format.useProjectSettings ?? true) && project) {
+    return {
+      ...format,
+      width: project.width ?? format.width,
+      height: project.height ?? format.height,
+      fps: project.fps ?? format.fps,
+      resolutionFormat: project.resolutionFormat ?? format.resolutionFormat,
+      orientation: project.orientation ?? format.orientation,
+      aspectRatio: project.aspectRatio ?? format.aspectRatio,
+      isCustomResolution: project.isCustomResolution ?? format.isCustomResolution,
+      sampleRate: project.sampleRate ?? format.sampleRate,
+    };
+  }
+  return format;
+}
+
 export function getTimelineFormat(doc: TimelineDocument | null | undefined): TimelineFormat {
   return normalizeTimelineFormat(doc?.metadata?.fastcat?.format, {
     ...DEFAULT_TIMELINE_FORMAT,

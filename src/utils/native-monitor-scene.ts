@@ -12,7 +12,7 @@ import type { SceneLayer } from '~/types/generated/native-monitor/SceneLayer';
 import type { SceneAudioLayer } from '~/types/generated/native-monitor/SceneAudioLayer';
 import type { SceneAudioTrack } from '~/types/generated/native-monitor/SceneAudioTrack';
 import type { TimelineFormatInput } from '~/timeline/format';
-import { getTimelineFormat } from '~/timeline/format';
+import { getTimelineFormat, normalizeTimelineFormat } from '~/timeline/format';
 import { buildEffectiveAudioClipItems } from '~/utils/audio/track-bus';
 import {
   buildCanonicalAudioClipDescriptor,
@@ -579,10 +579,18 @@ async function buildAudioLayers(params: {
 export async function buildNativeMonitorScene(
   params: BuildNativeMonitorSceneParams,
 ): Promise<NativeMonitorScene> {
-  const format = getTimelineFormat(params.timelineDoc);
-  const fallbackFormat = params.fallbackFormat ?? format;
-  const sceneWidth = format.width;
-  const sceneHeight = format.height;
+  // The doc's own stored format is a creation-time snapshot; when the timeline
+  // follows project settings the effective format is supplied via `fallbackFormat`
+  // (the resolved `timelineStore.timelineFormat`). Scene dimensions and fps MUST
+  // come from that effective format, otherwise the monitor/export composes at the
+  // stale snapshot size while clip transforms scale against the (correct) effective
+  // one — wrong resolution/fps and aspect distortion after a project-settings change.
+  const docFormat = getTimelineFormat(params.timelineDoc);
+  const fallbackFormat = params.fallbackFormat
+    ? normalizeTimelineFormat(params.fallbackFormat, docFormat)
+    : docFormat;
+  const sceneWidth = fallbackFormat.width;
+  const sceneHeight = fallbackFormat.height;
   const proxy: ProxyResolution = {
     useProxyInMonitor: params.useProxyInMonitor ?? false,
     existingProxies: params.existingProxies,
@@ -715,7 +723,7 @@ export async function buildNativeMonitorScene(
     width: sceneWidth,
     height: sceneHeight,
     preview_scale: params.previewScale ?? 1,
-    preview_fps: format.fps,
+    preview_fps: fallbackFormat.fps,
     preview_sync_mode: params.syncMode ?? optimization.nativeMonitorSyncMode,
     frame_cache_mode: optimization.nativeFrameCacheMode ?? 'auto',
     frame_cache_custom_mb: Math.max(0, Math.round(optimization.nativeFrameCacheCustomMb ?? 0)),

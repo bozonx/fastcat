@@ -14,7 +14,7 @@ import { ensureProxyCommand } from '~/media-cache/application/proxyThumbnailComm
 import { buildEffectiveAudioClipItems } from '~/utils/audio/track-bus';
 import { secondsToUs } from '~/utils/time';
 import type { TimelineFormatInput } from '~/timeline/format';
-import { getTimelineFormat } from '~/timeline/format';
+import { getTimelineFormat, resolveEffectiveTimelineFormat } from '~/timeline/format';
 import { getMediaTypeFromFilename } from '~/utils/media-types';
 import {
   normalizeProjectPath,
@@ -75,6 +75,17 @@ export interface TimelineCommandServiceDeps {
     };
   };
   updateTimelineFormat: (settings: TimelineFormatInput) => Promise<void>;
+  /**
+   * Applies first-clip-derived geometry to the *project* settings (used when the
+   * project has no explicit settings yet). The timeline keeps following the
+   * project, so updating the project is what makes the clip's format take effect.
+   */
+  updateProjectFormat: (settings: {
+    width: number;
+    height: number;
+    fps: number;
+    sampleRate: number;
+  }) => void;
   mediaCache: Pick<ProxyThumbnailService, 'hasProxy' | 'ensureProxy'>;
   defaultImageDurationUs: number;
   defaultImageSourceDurationUs: number;
@@ -375,15 +386,33 @@ export function createTimelineCommandService(deps: TimelineCommandServiceDeps) {
         const isRotated90 = Math.abs(rotation) === 90 || Math.abs(rotation) === 270;
         const effectiveWidth = isRotated90 ? metadata.video.height : metadata.video.width;
         const effectiveHeight = isRotated90 ? metadata.video.width : metadata.video.height;
+        const effectiveSampleRate = metadata.audio?.sampleRate ?? timelineFormat.sampleRate;
 
-        await deps.updateTimelineFormat({
-          width: effectiveWidth,
-          height: effectiveHeight,
-          fps: metadata.video.fps,
-          sampleRate: metadata.audio?.sampleRate ?? timelineFormat.sampleRate,
-          isAutoSettings: false,
-          settingsSource: 'firstClip',
-        });
+        if (deps.getProjectSettings().project.isAutoSettings) {
+          // Project has no explicit settings yet: adopt the clip's format at the
+          // *project* level. The timeline keeps its inheritance flag, so it (and
+          // any other following timeline) picks up the new project format. We only
+          // clear the timeline's own auto flag so this doesn't retrigger.
+          deps.updateProjectFormat({
+            width: effectiveWidth,
+            height: effectiveHeight,
+            fps: metadata.video.fps,
+            sampleRate: effectiveSampleRate,
+          });
+          await deps.updateTimelineFormat({ isAutoSettings: false });
+        } else {
+          // Project is already configured: this timeline diverges from the project,
+          // so it breaks inheritance and takes the clip's format for itself.
+          await deps.updateTimelineFormat({
+            width: effectiveWidth,
+            height: effectiveHeight,
+            fps: metadata.video.fps,
+            sampleRate: effectiveSampleRate,
+            isAutoSettings: false,
+            settingsSource: 'firstClip',
+            useProjectSettings: false,
+          });
+        }
 
         warnings.push({
           type: 'autoSettingsApplied',
@@ -391,12 +420,20 @@ export function createTimelineCommandService(deps: TimelineCommandServiceDeps) {
           height: effectiveHeight,
           fps: metadata.video.fps,
         });
-      } else if (!areFpsClose(metadata.video.fps, timelineFormat.fps)) {
-        warnings.push({
-          type: 'fpsMismatch',
-          fileFps: metadata.video.fps,
-          projectFps: timelineFormat.fps,
-        });
+      } else {
+        // Compare against the *effective* fps (project settings win when followed),
+        // not the doc's stale snapshot, so the mismatch warning reflects reality.
+        const effectiveFps = resolveEffectiveTimelineFormat(
+          timelineFormat,
+          deps.getProjectSettings().project,
+        ).fps;
+        if (!areFpsClose(metadata.video.fps, effectiveFps)) {
+          warnings.push({
+            type: 'fpsMismatch',
+            fileFps: metadata.video.fps,
+            projectFps: effectiveFps,
+          });
+        }
       }
     }
 

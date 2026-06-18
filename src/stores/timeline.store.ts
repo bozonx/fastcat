@@ -28,7 +28,13 @@ import { createTimelineBackupModule } from '~/stores/timeline/backup';
 import type { TimelinePreviewBackupInfo } from '~/stores/timeline/backup';
 
 import { getDocFps } from '~/timeline/commands/utils';
-import { getTimelineFormat, setTimelineFormat, type TimelineFormatInput } from '~/timeline/format';
+import {
+  getTimelineFormat,
+  setTimelineFormat,
+  resolveEffectiveTimelineFormat,
+  normalizeTimelineFormat,
+  type TimelineFormatInput,
+} from '~/timeline/format';
 import { findNextMarkerTime, findPreviousMarkerTime } from '~/utils/timeline/marker-navigation';
 
 import { useProjectStore } from './project.store';
@@ -120,24 +126,12 @@ export const useTimelineStore = defineStore('timeline', () => {
     if (timelineDoc.value) return getDocFps(timelineDoc.value);
     return TIMELINE_DEFAULTS.FPS;
   });
-  const timelineFormat = computed(() => {
-    const format = getTimelineFormat(timelineDoc.value);
-    if ((format.useProjectSettings ?? true) && projectStore.projectSettings?.project) {
-      const proj = projectStore.projectSettings.project;
-      return {
-        ...format,
-        width: proj.width,
-        height: proj.height,
-        fps: proj.fps,
-        resolutionFormat: proj.resolutionFormat,
-        orientation: proj.orientation,
-        aspectRatio: proj.aspectRatio,
-        isCustomResolution: proj.isCustomResolution,
-        sampleRate: proj.sampleRate,
-      };
-    }
-    return format;
-  });
+  const timelineFormat = computed(() =>
+    resolveEffectiveTimelineFormat(
+      getTimelineFormat(timelineDoc.value),
+      projectStore.projectSettings?.project,
+    ),
+  );
 
   async function updateTimelineFormat(settings: TimelineFormatInput) {
     if (!timelineDoc.value) {
@@ -580,6 +574,24 @@ export const useTimelineStore = defineStore('timeline', () => {
     getUserSettings: () => workspaceStore.userSettings,
     getProjectSettings: () => projectStore.projectSettings,
     updateTimelineFormat,
+    updateProjectFormat: (settings) => {
+      const proj = projectStore.projectSettings?.project;
+      if (!proj) return;
+      // Derive resolution preset (format/orientation/aspect) from the geometry so
+      // the project's display fields stay consistent, then clear isAutoSettings to
+      // mark the project as explicitly configured. The project-settings store's
+      // deep watcher persists this automatically.
+      const normalized = normalizeTimelineFormat({ ...proj, ...settings });
+      proj.width = normalized.width;
+      proj.height = normalized.height;
+      proj.fps = normalized.fps;
+      proj.sampleRate = normalized.sampleRate;
+      proj.resolutionFormat = normalized.resolutionFormat;
+      proj.orientation = normalized.orientation;
+      proj.aspectRatio = normalized.aspectRatio;
+      proj.isCustomResolution = normalized.isCustomResolution;
+      proj.isAutoSettings = false;
+    },
     hasProxy: (path: string) => proxyStore.existingProxies.has(normalizeMediaCachePath(path)),
     ensureProxy: async (options: {
       file: File | FileSystemFileHandle;

@@ -291,6 +291,8 @@ function serializeTrackItems(
             fadeInCurve: item.audioFadeInCurve,
             fadeOutCurve: item.audioFadeOutCurve,
             muted: item.audioMuted,
+            waveformMode: item.audioWaveformMode,
+            showWaveform: item.showWaveform,
           },
           visual: {
             opacity: item.opacity,

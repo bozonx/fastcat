@@ -2,7 +2,7 @@ import { createDevLogger } from '~/utils/dev-logger';
 import { useProjectStore } from '~/stores/project.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { parseTimelineFromOtio } from '~/timeline/otio-serializer';
-import { getTimelineFormat } from '~/timeline/format';
+import { getTimelineFormat, resolveEffectiveTimelineFormat } from '~/timeline/format';
 import { isTauriRuntime } from '~/utils/runtime';
 
 const log = createDevLogger('timeline-frame-thumbnail-source');
@@ -142,7 +142,10 @@ export async function createTimelineFrameSource(params: {
   const clipsPayload = builtVideo.payload;
   if (clipsPayload.length === 0) return null;
 
-  const format = getTimelineFormat(doc);
+  const format = resolveEffectiveTimelineFormat(
+    getTimelineFormat(doc),
+    projectStore.projectSettings.project,
+  );
   const { width, height } = fitDimensions(
     format.width,
     format.height,

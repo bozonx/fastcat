@@ -23,6 +23,12 @@ export interface TimelineCommandsDeps {
   getUserSettings: () => unknown;
   getProjectSettings: () => unknown;
   updateTimelineFormat: (settings: TimelineFormatInput) => Promise<void>;
+  updateProjectFormat: (settings: {
+    width: number;
+    height: number;
+    fps: number;
+    sampleRate: number;
+  }) => void;
   hasProxy: (path: string) => boolean;
   ensureProxy: (options: {
     file: File | FileSystemFileHandle;
@@ -90,6 +96,7 @@ export function createTimelineCommandsModule(params: TimelineCommandsDeps): Time
     getUserSettings,
     getProjectSettings,
     updateTimelineFormat,
+    updateProjectFormat,
     hasProxy,
     ensureProxy,
     openProjectSettings,
@@ -129,6 +136,7 @@ export function createTimelineCommandsModule(params: TimelineCommandsDeps): Time
     getProjectSettings:
       getProjectSettings as () => import('~/utils/project-settings').FastCatProjectSettings,
     updateTimelineFormat,
+    updateProjectFormat,
     mediaCache: {
       hasProxy,
       ensureProxy,

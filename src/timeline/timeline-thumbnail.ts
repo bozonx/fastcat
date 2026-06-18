@@ -12,6 +12,7 @@ import {
   buildNativeMonitorScene as buildNativeMonitorScenePayload,
   type NativeMonitorScene,
 } from '~/utils/native-monitor-scene';
+import { getTimelineFormat, resolveEffectiveTimelineFormat } from '~/timeline/format';
 const log = createDevLogger('timeline-thumbnail');
 
 export type { NativeMonitorScene };
@@ -29,6 +30,12 @@ export async function buildNativeMonitorScene(
     masterMuted: false,
     previewScale: 1,
     includeAudio: false,
+    // Honour project-settings inheritance so thumbnails match the monitor/export
+    // size instead of the doc's stale creation-time snapshot.
+    fallbackFormat: resolveEffectiveTimelineFormat(
+      getTimelineFormat(timelineDoc),
+      projectStore.projectSettings.project,
+    ),
   });
 }
 

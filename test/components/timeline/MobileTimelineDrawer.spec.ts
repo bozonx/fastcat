@@ -206,6 +206,35 @@ describe('MobileTimelineDrawer', () => {
     expect(wrapper.emitted('update:open')?.at(-1)).toEqual([false]);
   });
 
+  it('does not auto-close when opening while the shared snap point still holds the full value', async () => {
+    // Simulates long-press opening the multi-selection drawer right after another
+    // drawer was shown at full snap: the shared activeSnapPoint model still holds
+    // 0.92, so opening assigns the toolbar snap and the net 0.92 -> toolbar change
+    // must NOT be mistaken for a user swipe-to-close.
+    const wrapper = await mountSuspended(MobileTimelineDrawer, {
+      props: {
+        open: false,
+        withToolbarSnap: true,
+        activeSnapPoint: 0.92,
+      },
+      slots: {
+        default: '<div class="drawer-body">Body</div>',
+      },
+      global: {
+        stubs: {
+          UiMobileDrawer: uiMobileDrawerStub,
+        },
+      },
+    });
+
+    await wrapper.setProps({ open: true });
+    await nextTick();
+    await nextTick();
+
+    expect(wrapper.emitted('update:open')?.some(([v]) => v === false)).toBeFalsy();
+    expect(wrapper.emitted('update:activeSnapPoint')?.at(-1)).toEqual(['124px']);
+  });
+
   it('passes toolbar slot through to UiMobileDrawer', async () => {
     const wrapper = await mountSuspended(MobileTimelineDrawer, {
       props: {

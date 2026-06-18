@@ -89,12 +89,26 @@ const initialSnapPoint = computed<string | number | null>(() => {
   return points[0] as string | number;
 });
 
+// When the drawer is opened we assign its initial snap point programmatically.
+// Vue batches that assignment with whatever value the (shared) snap-point model
+// held before, so the auto-close watcher below can observe a net
+// full-snap → toolbar-snap transition that never came from a user swipe. Guard
+// the next auto-close evaluation whenever we set the snap point ourselves.
+let suppressAutoCloseOnce = false;
+
 watch(
   [isOpen, snapPoints, initialSnapPoint],
   ([open, points, nextInitialSnapPoint], [prevOpen]) => {
     if (!open || !points?.length) return;
 
     if (!prevOpen || !points.includes(activeSnapPoint.value as string | number)) {
+      // Only guard the auto-close watcher for a genuine closed -> open
+      // transition. The initial/immediate run (prevOpen === undefined) executes
+      // before the auto-close watcher exists, so it can't consume a one-shot
+      // flag and must not leave it set for the next real change.
+      if (prevOpen === false) {
+        suppressAutoCloseOnce = true;
+      }
       activeSnapPoint.value = nextInitialSnapPoint;
     }
   },
@@ -109,6 +123,11 @@ watch(activeSnapPoint, (newVal, oldVal) => {
   if (!isOpen.value || !props.withToolbarSnap) return;
   const points = snapPoints.value;
   if (!points || points.length < 2) return;
+
+  if (suppressAutoCloseOnce) {
+    suppressAutoCloseOnce = false;
+    return;
+  }
 
   const fullSnap = points[points.length - 1];
   const toolbarSnap = points[0];

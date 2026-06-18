@@ -45,6 +45,7 @@ describe('TimelineCommandService', () => {
         project: { width: 1920, height: 1080, fps: 30, isAutoSettings: false },
       })),
       updateTimelineFormat: vi.fn(),
+      updateProjectFormat: vi.fn(),
       showAutoSettingsApplied: vi.fn(),
       mediaCache: { hasProxy: vi.fn(() => false), ensureProxy: vi.fn() },
       defaultImageDurationUs: 5_000_000,
@@ -96,6 +97,7 @@ describe('TimelineCommandService', () => {
               sampleRate: 48000,
               isAutoSettings: false,
               settingsSource: 'manual',
+              useProjectSettings: false,
             },
           },
         },
@@ -187,6 +189,7 @@ describe('TimelineCommandService', () => {
         sampleRate: 48000,
         isAutoSettings: false,
         settingsSource: 'firstClip',
+        useProjectSettings: false,
       });
     });
 
@@ -226,7 +229,52 @@ describe('TimelineCommandService', () => {
         sampleRate: 48000,
         isAutoSettings: false,
         settingsSource: 'firstClip',
+        useProjectSettings: false,
       });
+    });
+
+    it('adopts the first clip format into the project when the project is unconfigured', async () => {
+      deps.getTimelineDoc.mockReturnValue({
+        timebase: { fps: 30 },
+        tracks: [{ id: 'v1', kind: 'video', items: [] }],
+        metadata: {
+          fastcat: {
+            format: {
+              width: 1920,
+              height: 1080,
+              fps: 30,
+              sampleRate: 48000,
+              isAutoSettings: true,
+              settingsSource: 'projectDefaults',
+            },
+          },
+        },
+      });
+      // Project still in its default "auto" state — first clip should configure it.
+      deps.getProjectSettings.mockReturnValue({
+        project: { width: 1920, height: 1080, fps: 30, isAutoSettings: true },
+      });
+      deps.getOrFetchMetadataByPath.mockResolvedValue({
+        duration: 10,
+        video: { width: 1280, height: 720, fps: 24, canDecode: true },
+        audio: { sampleRate: 44100 },
+      });
+      deps.getFileByPath.mockResolvedValue(new File([], 'test.mp4'));
+
+      await service.addClipToTimelineFromPath({
+        trackId: 'v1',
+        name: 'Test Clip',
+        path: 'video/test.mp4',
+      });
+
+      // Project takes the clip's format; the timeline keeps following the project.
+      expect(deps.updateProjectFormat).toHaveBeenCalledWith({
+        width: 1280,
+        height: 720,
+        fps: 24,
+        sampleRate: 44100,
+      });
+      expect(deps.updateTimelineFormat).toHaveBeenCalledWith({ isAutoSettings: false });
     });
   });
 

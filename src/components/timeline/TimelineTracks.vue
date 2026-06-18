@@ -145,11 +145,19 @@ const timelineWidthPx = computed(() => {
   return timeUsToPx(maxUs, timelineStore.timelineZoom);
 });
 
-const timelineContentStyle = computed(() => ({
-  minWidth: `max(100%, ${timelineWidthPx.value}px)`,
-  transform: `translate3d(-${props.scrollLeft ?? 0}px, 0, 0)`,
-  willChange: 'transform',
-}));
+const timelineContentStyle = computed(() => {
+  const base = { minWidth: `max(100%, ${timelineWidthPx.value}px)` };
+  // Desktop scrolls by transforming the content (the outer container does not
+  // scroll natively). Mobile lives inside a native overflow-auto scroller, so
+  // applying the transform too would double-shift the content and push clips
+  // off-screen — scrollLeft is still forwarded for windowing/thumbnail calcs.
+  if (props.isMobile) return base;
+  return {
+    ...base,
+    transform: `translate3d(-${props.scrollLeft ?? 0}px, 0, 0)`,
+    willChange: 'transform',
+  };
+});
 
 const selectionRangeStyle = computed(() => {
   const range = timelineStore.getSelectionRange();
