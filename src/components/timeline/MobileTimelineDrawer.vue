@@ -17,7 +17,7 @@ interface Props {
 }
 
 const props = withDefaults(defineProps<Props>(), {
-  toolbarSnapHeight: '124px',
+  toolbarSnapHeight: '108px',
   toolbarSnapWidth: '84px',
   withToolbarSnap: false,
   initialMode: 'toolbar',
@@ -66,7 +66,7 @@ const snapFull = computed(() => SNAP_FULL_PORTRAIT);
  * vertical toolbar rail.
  */
 const landscapeFullWidth = computed(() => {
-  const fraction = width.value >= 640 ? 0.60 : 0.70;
+  const fraction = width.value >= 640 ? 0.6 : 0.7;
   return `${Math.floor(width.value * fraction)}px`;
 });
 
