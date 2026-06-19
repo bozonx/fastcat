@@ -521,6 +521,16 @@ fn run_decoder_loop(args: DecoderLoopArgs) {
                                 frame.texture = Some(shared_tex);
                             }
                             Err(error) => {
+                                // The dispatch failed but the texture itself is intact and
+                                // unused — return it to the pool instead of dropping it, so a
+                                // transient failure does not slowly drain the pooled slots.
+                                {
+                                    let mut pool = texture_pool.lock();
+                                    let slot = pool.entry((frame.width, frame.height)).or_default();
+                                    if slot.len() < super::decode::MAX_TEXTURES_PER_SIZE {
+                                        slot.push(tex);
+                                    }
+                                }
                                 yuv_upload_failures += 1;
                                 if yuv_upload_failures >= YUV_UPLOAD_FAILURE_LIMIT {
                                     log::warn!(

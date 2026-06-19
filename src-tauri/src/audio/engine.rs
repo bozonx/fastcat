@@ -279,14 +279,21 @@ impl NativeAudioEngine {
     ///
     /// Safe vs. the producer: each chunk re-locks and re-inserts the decoder it uses,
     /// and only clips NOT near the playhead (i.e. not being mixed) are dropped, so a
-    /// pruned decoder is never one mid-decode. `window_fill_in_flight` /
-    /// `active_window_fill_count` are left untouched — the `WindowFillGuard` self-clears
-    /// them and a distant clip is not re-requested.
+    /// pruned decoder is never one mid-decode. `active_window_fill_count` is left
+    /// untouched — the `WindowFillGuard` always decrements it on completion. The
+    /// `window_fill_in_flight` marker of a pruned layer IS dropped here: otherwise a
+    /// fill spawned before this prune would pass its `== Some(start)` guard on
+    /// completion and re-insert the very window we just evicted, partially undoing the
+    /// prune. Clearing the marker makes that landing a no-op (the guard's count
+    /// decrement still runs, so the slot is released either way).
     pub fn prune_distant_layers(&self, t: f64) {
         const KEEP_BEHIND_SEC: f64 = 5.0;
         const KEEP_AHEAD_SEC: f64 = 5.0;
         let mut state = self.shared.0.lock();
-        if state.decoders.is_empty() && state.layer_windows.is_empty() {
+        if state.decoders.is_empty()
+            && state.layer_windows.is_empty()
+            && state.window_fill_in_flight.is_empty()
+        {
             return;
         }
         let keep: std::collections::HashSet<String> = state
@@ -300,6 +307,9 @@ impl NativeAudioEngine {
             .collect();
         state.decoders.retain(|id, _| keep.contains(id));
         state.layer_windows.retain(|id, _| keep.contains(id));
+        state
+            .window_fill_in_flight
+            .retain(|id, _| keep.contains(id));
     }
 
     pub fn play(&self, pts_sec: f64) {

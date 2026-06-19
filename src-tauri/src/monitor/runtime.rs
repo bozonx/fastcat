@@ -616,12 +616,28 @@ impl LayerRuntimeManager {
                     .find(|l| l.id == id)
                     .map(|l| l.source_pts_at(self.last_tick_t))
                     .unwrap_or(0.0);
+                // Split the budget only across clips that can actually be on-screen
+                // together with THIS one (overlap its own timeline interval), not the
+                // global timeline maximum — otherwise a single transition/multicam
+                // anywhere in the project would shrink the cache of every isolated clip.
+                let concurrent = self
+                    .scene
+                    .iter()
+                    .find(|l| l.id == id)
+                    .map(|l| {
+                        max_concurrent_video_layers_within(
+                            &self.scene,
+                            l.timeline_start_sec,
+                            l.timeline_end_sec,
+                        )
+                    })
+                    .unwrap_or(1);
                 let cache_budget_bytes = frame_cache_budget_bytes(
                     self.frame_cache_mode,
                     self.frame_cache_custom_mb,
                     media_size,
                     pump.info.fps,
-                    max_concurrent_video_layers(&self.scene),
+                    concurrent,
                 );
                 let mut rt =
                     VideoLayerRt::new(pump, media_size, source_rotation, cache_budget_bytes);
@@ -1034,7 +1050,19 @@ impl LayerRuntimeManager {
                         .min(video_duration - half_frame)
                         .max(clip_local);
                     if !rt.has_buffered_through(target) {
-                        return false;
+                        // Tail guard: `clip_local` clamps to `source_range`, which can sit
+                        // ~a frame past the real last-frame PTS, so when the playhead is at
+                        // the extreme end of a clip the `.max(clip_local)` above defeats the
+                        // EOF clamp and no frame `>= target` can ever be decoded. Without
+                        // this, Play near the clip tail would wait the full PREBUFFER_TIMEOUT.
+                        // Accept readiness once the newest decoded frame is within half a
+                        // frame of target (the decoder has produced everything it can).
+                        let near_eof = rt
+                            .newest_buffered_pts()
+                            .is_some_and(|p| p >= target - half_frame);
+                        if !near_eof {
+                            return false;
+                        }
                     }
                 }
                 _ => return false,
@@ -1222,15 +1250,23 @@ fn frame_cache_budget_bytes(
     base / concurrent_video_layers.max(1)
 }
 
-/// Maximum number of video layers whose timeline intervals overlap at any single
-/// instant. This is the right divisor for splitting the frame-cache budget: it is
-/// 1 for clips laid out sequentially (only one decodes at a time) and rises only
-/// for genuine multicam / transition overlaps. Computed with an interval sweep.
-fn max_concurrent_video_layers(scene: &[SceneLayer]) -> usize {
+/// Maximum number of video layers simultaneously active at any instant *within the
+/// `[lo, hi)` window* (typically one clip's own timeline interval). This is the right
+/// divisor for splitting that clip's frame-cache budget: it is 1 for clips laid out
+/// sequentially (only one decodes while it is on-screen) and rises only for genuine
+/// multicam / transition overlaps that actually coincide with the clip — an unrelated
+/// overlap elsewhere on the timeline no longer penalises it. Computed with an interval
+/// sweep over each layer's interval clipped to `[lo, hi)`.
+fn max_concurrent_video_layers_within(scene: &[SceneLayer], lo: f64, hi: f64) -> usize {
     let mut events: Vec<(f64, i32)> = Vec::new();
     for layer in scene.iter().filter(|l| l.kind == LayerKind::Video) {
-        events.push((layer.timeline_start_sec, 1));
-        events.push((layer.timeline_end_sec, -1));
+        let s = layer.timeline_start_sec.max(lo);
+        let e = layer.timeline_end_sec.min(hi);
+        if e <= s {
+            continue;
+        }
+        events.push((s, 1));
+        events.push((e, -1));
     }
     // At an equal timestamp, process ends (-1) before starts (+1): a clip ending
     // exactly where the next begins does not count as an overlap.
@@ -1448,26 +1484,36 @@ mod tests {
 
     #[test]
     fn max_concurrent_video_layers_counts_temporal_overlap() {
-        use super::max_concurrent_video_layers;
+        use super::max_concurrent_video_layers_within;
 
-        // Sequential clips on a track never overlap → divisor 1 (no cache reduction).
+        // Sequential clips on a track never overlap → divisor 1 within any clip's interval.
         let sequential = vec![
             video_layer_span("a", 0.0, 5.0),
             video_layer_span("b", 5.0, 10.0),
             video_layer_span("c", 10.0, 15.0),
         ];
-        assert_eq!(max_concurrent_video_layers(&sequential), 1);
+        assert_eq!(max_concurrent_video_layers_within(&sequential, 0.0, 5.0), 1);
 
-        // Three genuinely overlapping (multicam) clips → divisor 3.
+        // Three genuinely overlapping (multicam) clips → divisor 3 within their span.
         let multicam = vec![
             video_layer_span("a", 0.0, 10.0),
             video_layer_span("b", 2.0, 12.0),
             video_layer_span("c", 4.0, 8.0),
         ];
-        assert_eq!(max_concurrent_video_layers(&multicam), 3);
+        assert_eq!(max_concurrent_video_layers_within(&multicam, 0.0, 10.0), 3);
+
+        // An overlap elsewhere on the timeline must NOT penalise an isolated clip:
+        // within the lone clip `solo`'s own interval only it is active → 1.
+        let mixed = vec![
+            video_layer_span("solo", 0.0, 5.0),
+            video_layer_span("m1", 20.0, 30.0),
+            video_layer_span("m2", 22.0, 28.0),
+        ];
+        assert_eq!(max_concurrent_video_layers_within(&mixed, 0.0, 5.0), 1);
+        assert_eq!(max_concurrent_video_layers_within(&mixed, 20.0, 30.0), 2);
 
         // Empty / no-video scene still yields at least 1 (never divides by zero).
-        assert_eq!(max_concurrent_video_layers(&[]), 1);
+        assert_eq!(max_concurrent_video_layers_within(&[], 0.0, 10.0), 1);
     }
 
     #[test]

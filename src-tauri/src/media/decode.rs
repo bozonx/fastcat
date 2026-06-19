@@ -80,7 +80,7 @@ impl std::ops::Deref for SharedTexture {
     }
 }
 
-const MAX_TEXTURES_PER_SIZE: usize = 4;
+pub(crate) const MAX_TEXTURES_PER_SIZE: usize = 4;
 
 impl Drop for SharedTexture {
     fn drop(&mut self) {

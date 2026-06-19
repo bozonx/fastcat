@@ -241,7 +241,24 @@ impl VideoLayerRt {
         self.cache.has_frame_ge(target_clip_local)
     }
 
+    /// PTS (seconds) of the newest decoded frame available, regardless of cache mode.
+    /// `None` when nothing has been decoded yet. Used by the readiness check to accept
+    /// a near-EOF tail where no frame at/after the clamped target can ever exist.
+    pub fn newest_buffered_pts(&self) -> Option<f64> {
+        if self.cache.is_disabled() {
+            self.uncached_latest.as_ref().map(|f| f.pts_sec)
+        } else {
+            self.cache.newest_pts()
+        }
+    }
+
     pub fn note_seek_requested(&mut self) {
+        // Reset the forward-progress baseline: after a seek the rotating cache may still
+        // hold higher-PTS frames from the previous position, so `newest_pts()` would not
+        // drop and `decoder_advancing` would spuriously report "stuck" for a tick or two.
+        // Clearing it makes the next `decoder_advancing` re-establish the baseline against
+        // the new generation's first decoded frame.
+        self.last_newest_pts = None;
         if self.cache.is_disabled() {
             self.uncached_latest = None;
             self.current = None;
@@ -675,6 +692,25 @@ mod tests {
         assert_eq!(big_frames, MIN_PREROLL_FRAMES);
         let expected_big = (MIN_PREROLL_FRAMES as f64 - 0.5) / fps;
         assert!((rt_big.expected_preroll_duration() - expected_big).abs() < 1e-9);
+    }
+
+    #[test]
+    fn newest_buffered_pts_reports_latest_decoded_frame() {
+        fn cached(pts: f64) -> DecodedVideoFrame {
+            DecodedVideoFrame {
+                pts_sec: pts,
+                image: None,
+                texture: None,
+            }
+        }
+
+        let mut rt = fixture_video_rt();
+        // Empty cache → nothing decoded yet.
+        assert_eq!(rt.newest_buffered_pts(), None);
+        rt.cache.insert(cached(1.0));
+        rt.cache.insert(cached(2.5));
+        // Tracks the newest decoded frame, which the tail-guard compares against target.
+        assert_eq!(rt.newest_buffered_pts(), Some(2.5));
     }
 
     #[test]

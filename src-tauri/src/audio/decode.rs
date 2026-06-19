@@ -129,7 +129,10 @@ pub(crate) fn decode_range_symphonia(
 
     // Seek to the window start (only when not at 0) and compute how many decoded
     // source frames to discard so the buffer begins exactly at `start_sec`.
-    let mut discard_frames_remaining = if start_sec > 0.0 {
+    // `discard_frames_remaining` is in SOURCE frames (dropped pre-resample so output
+    // begins at `start_sec`); `front_pad_frames` is in TARGET frames (prepended when
+    // the seek OVERSHOOT means there is no source audio before where it landed).
+    let (mut discard_frames_remaining, front_pad_frames) = if start_sec > 0.0 {
         let seeked_to = match format.seek(
             symphonia::core::formats::SeekMode::Accurate,
             symphonia::core::formats::SeekTo::Time {
@@ -152,12 +155,26 @@ pub(crate) fn decode_range_symphonia(
             t.seconds as f64 + t.frac
         };
         if actual_sec <= start_sec {
-            ((start_sec - actual_sec) * source_rate as f64).floor() as usize
+            (
+                ((start_sec - actual_sec) * source_rate as f64).floor() as usize,
+                0usize,
+            )
+        } else if actual_sec - start_sec > SEEK_TOLERANCE_MIN_SEC {
+            // Accurate seek overshot the requested start (rare, container-dependent):
+            // there is genuinely no source audio between `start_sec` and where the
+            // demuxer landed. Front-pad with that much silence so the window stays
+            // aligned to `start_sec` instead of shifting its content earlier. A
+            // sub-frame jitter under the tolerance is ignored so an aligned landing
+            // never injects a spurious silent gap.
+            (
+                0usize,
+                ((actual_sec - start_sec) * target_sample_rate as f64).round() as usize,
+            )
         } else {
-            0
+            (0usize, 0usize)
         }
     } else {
-        0
+        (0, 0)
     };
 
     // Stop once this many POST-discard source frames are collected: this is what
@@ -246,6 +263,11 @@ pub(crate) fn decode_range_symphonia(
         channels,
     )?;
     let interleaved = planar_to_interleaved(&resampled, output_channels);
+    if front_pad_frames > 0 {
+        let mut padded = vec![0.0f32; front_pad_frames * output_channels];
+        padded.extend_from_slice(&interleaved);
+        return Ok(padded);
+    }
     Ok(interleaved)
 }
 
@@ -987,8 +1009,28 @@ pub(crate) fn decode_audio_chunk(params: DecodeAudioChunkParams<'_>) -> Result<V
         // window would leave the playhead in a gap and thrash (miss → refill → …).
         if let Some(end) = window_end_frame {
             let margin_frames = (REFILL_MARGIN_SEC * sample_rate as f64) as usize;
-            let reached_source_end = source_end_frame.is_some_and(|source_end| end >= source_end);
+            // A window materially shorter than a full `WINDOW_SEC` was clamped by the
+            // source EOF (the only way `decode_range_symphonia` returns less), so its
+            // end already IS the source end. Catch this even when the clip declares no
+            // explicit source range (`source_end_frame == None`) — otherwise the last
+            // few seconds of such a clip re-decode a shrinking tail every chunk. One
+            // slack second absorbs resampler rounding on a genuinely full window. (A
+            // false positive only suppresses refill; the miss path then streams the
+            // gap inline, so it can never cause an audible drop.)
+            let full_window_frames = (WINDOW_SEC * sample_rate as f64) as usize;
+            let window_reached_eof = end.saturating_sub(win_start)
+                < full_window_frames.saturating_sub(sample_rate as usize);
+            let reached_source_end = window_reached_eof
+                || source_end_frame.is_some_and(|source_end| end >= source_end);
+            // Keep exactly ONE refill in flight per layer. The target tracks the moving
+            // playhead, so a per-start dedup in `spawn_window_fill` never matched during
+            // the margin window and the burst spawned several overlapping `WINDOW_SEC`
+            // decodes that superseded and discarded each other — wasted disk/CPU that
+            // competes with the producer's own inline reads. Gating on "any fill for
+            // this layer" keeps a single forward-slide running until it lands.
+            let already_filling = { shared.0.lock().window_fill_in_flight.contains_key(layer_id) };
             if !reached_source_end
+                && !already_filling
                 && end.saturating_sub(start_frame + frames_to_read) < margin_frames
             {
                 spawn_window_fill(
@@ -2127,11 +2169,15 @@ mod tests {
 
     #[test]
     fn window_refill_ahead_spawns_next_window() -> anyhow::Result<()> {
-        let path = write_temp_f32_wav(48000, 2, 48000 * 3)?; // 3s real source
+        // 16s source so the refill at ~11s still has forward audio to decode (and so the
+        // resident window below is a genuine, non-EOF `WINDOW_SEC` window). 8kHz mono
+        // keeps the temp file small; it is resampled to the 48kHz window target.
+        let path = write_temp_f32_wav(8000, 1, 8000 * 16)?;
         let path_str = path.to_string_lossy().to_string();
         let shared = Arc::new((Mutex::new(AudioShared::default()), Condvar::new()));
-        // Resident window [0, 1s); a chunk near its end is within the refill margin.
-        let end_frame = 48000;
+        // Resident FULL `WINDOW_SEC` window [0, 12s) — a chunk near its end is within the
+        // refill margin but the window is not EOF-clamped, so refill-ahead must fire.
+        let end_frame = (WINDOW_SEC * 48000.0) as usize;
         shared.0.lock().layer_windows.insert(
             "r1".to_string(),
             AudioWindow {
@@ -2143,11 +2189,11 @@ mod tests {
             },
         );
 
-        let start_frame = (0.9 * 48000.0) as usize;
+        let start_frame = (11.0 * 48000.0) as usize;
         let _ = decode_audio_chunk(DecodeAudioChunkParams {
             layer_id: "r1",
             path: &path_str,
-            source_start_sec: 0.9,
+            source_start_sec: 11.0,
             timeline_duration_sec: 0.05,
             speed: 1.0,
             target: AudioRenderTarget::monitor(48000, 2),
@@ -2221,6 +2267,76 @@ mod tests {
             "a window that already reaches the clip source end must not be refilled"
         );
         assert!(!state.window_fill_in_flight.contains_key("eof"));
+        drop(state);
+        let _ = std::fs::remove_file(path);
+        Ok(())
+    }
+
+    #[test]
+    fn short_window_without_declared_source_end_is_not_refilled() -> anyhow::Result<()> {
+        // A resident window materially shorter than `WINDOW_SEC` was clamped by EOF, so
+        // even when the clip declares no source range (`source_range_duration_sec` 0 →
+        // `source_end_frame` None) the refill-ahead must NOT keep re-decoding the
+        // shrinking tail near the clip end.
+        let path = write_temp_f32_wav(48000, 2, 48000)?; // 1s real source
+        let path_str = path.to_string_lossy().to_string();
+        let shared = Arc::new((Mutex::new(AudioShared::default()), Condvar::new()));
+        // Scene layer with NO source range → source end is unknown.
+        shared.0.lock().scene = vec![crate::monitor::scene::SceneAudioLayer {
+            id: "short".into(),
+            track_id: None,
+            path: path_str.clone(),
+            timeline_start_sec: 0.0,
+            timeline_end_sec: 1.0,
+            source_start_sec: 0.0,
+            source_range_duration_sec: 0.0,
+            speed: 1.0,
+            audio_gain: 1.0,
+            audio_balance: 0.0,
+            audio_fade_in_sec: 0.0,
+            audio_fade_out_sec: 0.0,
+            audio_fade_in_curve: crate::monitor::scene::AudioFadeCurve::Linear,
+            audio_fade_out_curve: crate::monitor::scene::AudioFadeCurve::Linear,
+            audio_effects: vec![],
+        }];
+        // Resident window [0, 1s): far shorter than WINDOW_SEC, so it reads as EOF.
+        shared.0.lock().layer_windows.insert(
+            "short".to_string(),
+            AudioWindow {
+                path: path_str.clone(),
+                source_start_frame: 0,
+                sample_rate: 48000,
+                channels: 2,
+                samples: Arc::new(vec![0.1f32; 48000 * 2]),
+            },
+        );
+
+        // A hit near the window end would be inside the refill margin.
+        let _ = decode_audio_chunk(DecodeAudioChunkParams {
+            layer_id: "short",
+            path: &path_str,
+            source_start_sec: 0.9,
+            timeline_duration_sec: 0.05,
+            speed: 1.0,
+            target: AudioRenderTarget::monitor(48000, 2),
+            reverse: false,
+            shared: &shared,
+        })?;
+
+        std::thread::sleep(std::time::Duration::from_millis(60));
+        let state = shared.0.lock();
+        assert!(
+            !state.window_fill_in_flight.contains_key("short"),
+            "an EOF-clamped short window must not be refilled even without a declared source end"
+        );
+        assert_eq!(
+            state
+                .layer_windows
+                .get("short")
+                .map(|w| w.source_start_frame),
+            Some(0),
+            "the short window must be left as-is"
+        );
         drop(state);
         let _ = std::fs::remove_file(path);
         Ok(())
