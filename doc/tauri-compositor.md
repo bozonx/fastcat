@@ -16,17 +16,27 @@
 `src/utils/native-monitor-scene.ts`. Это важно для совпадения preview, thumbnail и export
 с веб-движком по базовой семантике таймлайна:
 
-- video/image/svg/text/shape/background слои;
+- video/image/svg/text/shape/background/adjustment слои;
 - nested timelines через тот же resolver, что и web/export worker;
-- opacity, blend mode, transform, source orientation;
+- opacity, blend mode (все 17), transform, crop, source orientation;
 - video speed, reverse video и freeze frame;
+- видео-эффекты (общий `shared/effects/effect.wgsl`, спек `VideoEffectSpec` генерится из Rust)
+  и переходы (web-манифесты дублируются в native через `custom-wgsl`);
 - audio clips с gain, balance, fade in/out, solo/mute и отдельной master audio bus gain;
 - native export может muxить нативный офлайн-аудиомикс, если проект не требует неподдержанных
   визуальных или аудио-возможностей.
 
-Намеренно не перенесено в этот слой: masks/crop, effects, transitions, HUD и audio reverse.
-Если export обнаруживает такие активные возможности, он остаётся на старом web worker pipeline,
-чтобы не получить silent mismatch.
+Web и native — это два полностью отдельных конвейера (выбор по `isTauriRuntime()`), которые
+обязаны совпадать по фичам. Web-путь работает строго через WebGPU (Pixi-filter путь удалён;
+эффекты считает `WebGpuComputeRunner`), native — через wgpu/vello.
+
+Реально остаются **web-only** (намеренно не перенесено в native): masks, HUD и audio reverse.
+В native-сцене они просто не строятся.
+
+Замечание по сопровождению: разбиение эффектов на GPU-пассы написано вручную дважды —
+`src/utils/video-editor/compositor/WebGpuComputeRunner.ts` (`buildPasses`) и
+`src-tauri/src/compositor/effects/mod.rs` (`build_passes`). Они должны оставаться идентичными
+байт-в-байт (клампы, порядок пассов, упаковка uniform'ов); при правке одной стороны правь и вторую.
 
 ## Файловая структура
 

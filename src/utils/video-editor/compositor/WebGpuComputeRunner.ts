@@ -316,10 +316,11 @@ export function buildPasses(
       }
       default: {
         // `blur-fill` reframes the layer to the project frame size and resets
-        // the layer transform — that only exists in the native compositor
-        // (`apply_blur_fill`). `effectUniform` returns null for it here, so the
-        // Pixi fallback simply skips it (no crash); the native monitor/export is
-        // the path that renders it.
+        // the layer transform, so it can't be expressed as a plain in-place
+        // chain pass. `effectUniform` returns null for it here, so this generic
+        // chain skips it (no crash); both backends render it through a dedicated
+        // path instead — web via `applyBlurFill` (`ClipResourceManager`) and
+        // native via `apply_blur_fill`.
         const built = effectUniform(effect, width, height, scale);
         if (built) {
           const dst = pickScratch([cur]);

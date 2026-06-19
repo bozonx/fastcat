@@ -1390,7 +1390,10 @@ fn build_passes(effects: &[EffectSpec], width: u32, height: u32) -> Vec<EffectPa
                 cur = push_blur(
                     &mut passes,
                     cur,
-                    *radius,
+                    // Raw-pixel radius (no height scale), but still bounded by the
+                    // shared render ceiling — mirror of the web pass builder
+                    // (`WebGpuComputeRunner.ts` gaussian-blur-pixels case).
+                    radius.clamp(0.0, MAX_BLUR_RADIUS),
                     "gaussian",
                     width,
                     height,
@@ -1410,7 +1413,9 @@ fn build_passes(effects: &[EffectSpec], width: u32, height: u32) -> Vec<EffectPa
                 cur = push_bloom(
                     &mut passes,
                     cur,
-                    *threshold,
+                    // Clamp must mirror the web pass builder
+                    // (`WebGpuComputeRunner.ts` bloom case) byte-for-byte.
+                    threshold.clamp(0.0, 1.0),
                     strength.clamp(0.0, MAX_BLOOM_STRENGTH),
                     (*radius * scale).clamp(0.0, MAX_BLOOM_RADIUS),
                     knee.clamp(0.0, 1.0),
@@ -1752,6 +1757,39 @@ mod tests {
         assert_eq!(passes[1].uniform.mode, 14);
         assert_eq!(passes[0].uniform.p0, 10.0);
         assert_eq!(passes[1].uniform.p0, 10.0);
+    }
+
+    #[test]
+    fn build_passes_gaussian_blur_pixels_clamps_to_render_ceiling() {
+        // Mirror of the web pass builder: blur-pixels radius is bounded by
+        // MAX_BLUR_RADIUS, not passed through raw.
+        let passes = build_passes(
+            &[EffectSpec::GaussianBlurPixels { radius: 99_999.0, mix: 1.0 }],
+            1920,
+            1080,
+        );
+        assert_eq!(passes[0].uniform.p0, MAX_BLUR_RADIUS);
+        assert_eq!(passes[1].uniform.p0, MAX_BLUR_RADIUS);
+    }
+
+    #[test]
+    fn build_passes_bloom_clamps_threshold_to_unit_range() {
+        // Bright-pass threshold must be clamped to [0, 1], matching the web
+        // pass builder (`WebGpuComputeRunner.ts`).
+        let passes = build_passes(
+            &[EffectSpec::Bloom {
+                threshold: 5.0,
+                strength: 1.0,
+                radius: 8.0,
+                knee: 0.5,
+                mix: 1.0,
+            }],
+            1920,
+            1080,
+        );
+        // First bloom pass is the bright-pass extract (mode 15); p0 = threshold.
+        assert_eq!(passes[0].uniform.mode, 15);
+        assert_eq!(passes[0].uniform.p0, 1.0);
     }
 
     #[test]

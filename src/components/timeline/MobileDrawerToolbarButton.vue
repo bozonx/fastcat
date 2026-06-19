@@ -16,7 +16,7 @@ defineEmits<{ click: [] }>();
 <template>
   <button
     data-vaul-no-drag
-    class="mobile-drawer-toolbar-button flex flex-col items-center justify-center gap-0.5 rounded-xl px-3 py-2 min-w-[52px] shrink-0 transition-all outline-none aspect-square"
+    class="mobile-drawer-toolbar-button flex flex-col items-center justify-center gap-0.5 rounded-xl px-1.5 py-2 w-[60px] h-[60px] shrink-0 transition-all outline-none"
     :class="[
       danger
         ? 'text-red-400 bg-red-400/10'

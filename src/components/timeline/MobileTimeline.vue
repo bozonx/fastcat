@@ -348,7 +348,16 @@ function handleMobileTimelineItemLongPress(id: string) {
   });
 }
 
+// True while a trim is being driven by the fixed bottom trim toolbar. The
+// toolbar emits its own synthetic pointer events to drive the trim, but the
+// underlying real touch still bubbles pointer events up to the timeline root.
+// We must ignore those here: the finger sits at the very bottom of the screen
+// (on the toolbar), so feeding them to `updateEdgeScroll` would make the
+// timeline continuously auto-scroll down while the user slides.
+const isToolbarTrimActive = ref(false);
+
 function onMobilePointerMove(e: PointerEvent) {
+  if (isToolbarTrimActive.value) return;
   onGlobalPointerMove(e);
   updateEdgeScroll(e);
 }
@@ -417,6 +426,7 @@ function onTrimToolbarStart(payload: {
   const clipContext = selectedClipContext.value;
   if (!clipContext) return;
 
+  isToolbarTrimActive.value = true;
   startTrimItem(
     createSyntheticTouchPointerEvent({
       clientX: payload.clientX,
@@ -442,6 +452,7 @@ function onTrimToolbarMove(payload: { clientX: number; clientY: number }) {
 }
 
 function onTrimToolbarEnd(payload: { clientX: number; clientY: number }) {
+  isToolbarTrimActive.value = false;
   if (!draggingMode.value) return;
   onGlobalPointerUp(
     createSyntheticTouchPointerEvent({
