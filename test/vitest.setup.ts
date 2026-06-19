@@ -107,6 +107,7 @@ vi.mock('#i18n', () => ({
 }));
 
 const mockWorkspaceStore = vi.hoisted(() => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
   const { reactive } = require('vue');
   return reactive({
     isEphemeral: false,
