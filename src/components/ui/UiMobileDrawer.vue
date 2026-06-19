@@ -749,7 +749,7 @@ watch(isOpen, (val) => {
           @touchmove.passive="onHandleTouchMove"
           @touchend.passive="onHandleTouchEnd"
         >
-          <div class="flex justify-center py-2.5">
+          <div class="flex justify-center py-2">
             <div
               class="w-12 h-1.5 rounded-full bg-ui-border/40 group-hover:bg-ui-text-muted/60 transition-colors"
             ></div>

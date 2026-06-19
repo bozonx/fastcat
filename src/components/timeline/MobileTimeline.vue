@@ -690,44 +690,36 @@ async function handleConfirmCreateVersion(newName: string) {
         >
           <MobileDrawerToolbarButton
             icon="i-heroicons-trash"
-            :label="t('common.delete')"
             @click="handleDelete"
           />
           <MobileDrawerToolbarButton
             icon="i-heroicons-document-duplicate"
-            :label="t('common.copy')"
             @click="handleCopyClips"
           />
           <MobileDrawerToolbarButton
             icon="i-heroicons-scissors"
-            :label="t('common.cut')"
             @click="handleCutClips"
           />
           <MobileDrawerToolbarButton
-            icon="i-lucide-scissors"
-            :label="t('fastcat.timeline.splitClips')"
+            icon="i-lucide-lab-razor-blade"
             @click="handleBladeClips"
           />
           <MobileDrawerToolbarButton
             :icon="allDisabled ? 'i-heroicons-eye' : 'i-heroicons-eye-slash'"
-            :label="allDisabled ? t('fastcat.timeline.enable') : t('fastcat.timeline.disable')"
             @click="toggleDisabled"
           />
           <MobileDrawerToolbarButton
             v-if="hasAudioOrVideoWithAudio"
             :icon="allMuted ? 'i-heroicons-speaker-wave' : 'i-heroicons-speaker-x-mark'"
-            :label="allMuted ? t('fastcat.timeline.unmute') : t('fastcat.timeline.mute')"
             @click="toggleMuted"
           />
           <MobileDrawerToolbarButton
             :icon="allLocked ? 'i-heroicons-lock-closed' : 'i-heroicons-lock-open'"
-            :label="allLocked ? t('fastcat.timeline.unlock') : t('fastcat.timeline.lock')"
             @click="toggleLocked"
           />
           <div class="w-px h-6 bg-ui-border mx-1 shrink-0" />
           <MobileDrawerToolbarButton
             icon="i-heroicons-x-mark"
-            :label="t('common.clearSelection')"
             @click="onMultiSelectionDrawerClose"
           />
         </MobileDrawerToolbar>
