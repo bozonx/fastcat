@@ -57,25 +57,19 @@ export function planForwardChunkPlayback(input: ForwardSeamPlanInput): ForwardSe
     overlapS,
   } = input;
 
-  const nominalDurationS = Math.min(
-    chunkDurationS,
-    chunkNominalDurationS ?? chunkDurationS,
-  );
+  const nominalDurationS = Math.min(chunkDurationS, chunkNominalDurationS ?? chunkDurationS);
 
   const offsetInChunkS = Math.max(0, currentSourceTimeS - chunkStartS);
   const nominalEndS = chunkStartS + nominalDurationS;
   const nominalAvailableS = Math.max(0, nominalEndS - currentSourceTimeS);
   const playDurationS = Math.min(Math.max(0, remainingToPlayS), nominalAvailableS);
 
-  const reachedNominalEnd =
-    nominalAvailableS > EPS && playDurationS >= nominalAvailableS - EPS;
+  const reachedNominalEnd = nominalAvailableS > EPS && playDurationS >= nominalAvailableS - EPS;
   const hasSuccessor = remainingToPlayS - playDurationS > EPS;
 
   const bufferPastNominalS = Math.max(0, chunkStartS + chunkDurationS - nominalEndS);
   const tailOverlapS =
-    reachedNominalEnd && hasSuccessor
-      ? Math.max(0, Math.min(overlapS, bufferPastNominalS))
-      : 0;
+    reachedNominalEnd && hasSuccessor ? Math.max(0, Math.min(overlapS, bufferPastNominalS)) : 0;
 
   return {
     offsetInChunkS,

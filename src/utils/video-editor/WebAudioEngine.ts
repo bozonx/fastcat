@@ -1241,7 +1241,12 @@ export class WebAudioEngine implements IAudioEngine {
           startsAtKickoff ? TRANSITION_FADE_IN_S : CHUNK_EDGE_FADE_S,
           actualPlayDurationS / 2,
         );
-        applyEdgeFadeGain(chunkGainNode, state.scheduledCtxTimeS, actualPlayDurationS, fadeDurationS);
+        applyEdgeFadeGain(
+          chunkGainNode,
+          state.scheduledCtxTimeS,
+          actualPlayDurationS,
+          fadeDurationS,
+        );
 
         sourceNode.start(state.scheduledCtxTimeS, 0, playDurationS);
         registerSource(sourceNode, chunkGainNode);

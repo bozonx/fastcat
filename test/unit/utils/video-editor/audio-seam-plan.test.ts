@@ -71,7 +71,7 @@ describe('planForwardChunkPlayback', () => {
       currentSourceTimeS: 0,
       remainingToPlayS: 100,
       overlapS: OVERLAP, // wants 10ms
-      });
+    });
     expect(plan.tailOverlapS).toBeCloseTo(0.003, 9);
   });
 
