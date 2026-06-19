@@ -209,7 +209,7 @@ onBeforeUnmount(clearLongPress);
     <div v-else class="grid grid-cols-[repeat(auto-fill,minmax(150px,1fr))] gap-3">
       <div v-for="entry in entries" :key="entry.path" class="relative group">
         <button
-          class="flex flex-col w-full aspect-square rounded-2xl overflow-hidden bg-ui-bg-elevated border-2 transition-transform will-change-transform active:scale-95"
+          class="flex flex-col w-full aspect-square rounded-2xl overflow-hidden bg-ui-bg-elevated border-2 transition-transform active:scale-95"
           :class="[
             isSelected(entry)
               ? 'border-selection-accent-500 ring-2 ring-selection-accent-500/20 shadow-[0_0_15px_rgba(59,130,246,0.3)]'

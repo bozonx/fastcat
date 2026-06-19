@@ -16,10 +16,6 @@ const { getHotkeyTitle } = useHotkeyLabel();
 
 const emit = defineEmits(['open-project-settings', 'open-editor-settings', 'open-export-modal']);
 
-const isExportSettingsDirty = computed(() => {
-  return !!projectStore.projectSettings?.exportSettings;
-});
-
 const menuItems = computed(() => {
   const items = [
     {
@@ -170,10 +166,6 @@ const menuItems = computed(() => {
             @click="projectStore.goToExport()"
           >
             {{ t('videoEditor.export.title') }}
-            <span
-              v-if="isExportSettingsDirty"
-              class="w-1.5 h-1.5 rounded-full bg-amber-500 absolute top-1 right-1"
-            />
           </button>
         </UiTooltip>
       </div>

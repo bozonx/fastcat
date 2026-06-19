@@ -55,15 +55,15 @@ vi.mock('~/stores/timeline-media-usage.store', () => ({
 
 // --- Composable Mocks ---
 
-const mockEntries = ref<any[]>([]);
+const mockEntries = ref([] as any[]);
 const mockIsLoading = ref(false);
-const mockError = ref<string | null>(null);
-const mockBreadcrumbs = ref<any[]>([]);
+const mockError = ref(null as string | null);
+const mockBreadcrumbs = ref([] as any[]);
 const mockLoadFolderContent = vi.fn(async () => {});
 const mockIsSelectionMode = ref(false);
 const mockIsDrawerOpen = ref(false);
-const mockSelectedEntries = ref<any[]>([]);
-const mockFolderSizes = ref<Record<string, number>>({});
+const mockSelectedEntries = ref([] as any[]);
+const mockFolderSizes = ref({} as Record<string, number>);
 const mockIsCreateMenuOpen = ref(false);
 
 vi.mock('~/composables/file-manager/useFileManager', () => ({
@@ -98,21 +98,28 @@ vi.mock('~/composables/file-manager/useMobileFileBrowserNavigation', () => ({
 }));
 
 vi.mock('~/composables/file-manager/useMobileFileBrowserSelection', () => ({
-  useMobileFileBrowserSelection: vi.fn(() => ({
-    isSelectionMode: mockIsSelectionMode,
-    isDrawerOpen: mockIsDrawerOpen,
-    selectedEntries: mockSelectedEntries,
-    folderSizes: mockFolderSizes,
-    totalSelectedSize: ref(0),
-    calculateFolderSize: vi.fn(),
-    toggleSelectionMode: vi.fn(() => {
-      mockIsSelectionMode.value = !mockIsSelectionMode.value;
-    }),
-    handleLongPress: vi.fn(),
-    handleToggleSelection: vi.fn(),
-    handleEntryClick: vi.fn(),
-    closeAllUI: vi.fn(),
-  })),
+  useMobileFileBrowserSelection: vi.fn(() => {
+    console.log('MOCK useMobileFileBrowserSelection scope:', {
+      mockIsSelectionMode: typeof mockIsSelectionMode !== 'undefined' ? mockIsSelectionMode : 'undefined',
+      mockIsDrawerOpen: typeof mockIsDrawerOpen !== 'undefined' ? mockIsDrawerOpen : 'undefined',
+      mockSelectedEntries: typeof mockSelectedEntries !== 'undefined' ? mockSelectedEntries : 'undefined',
+    });
+    return {
+      isSelectionMode: mockIsSelectionMode,
+      isDrawerOpen: mockIsDrawerOpen,
+      selectedEntries: mockSelectedEntries,
+      folderSizes: mockFolderSizes,
+      totalSelectedSize: ref(0),
+      calculateFolderSize: vi.fn(),
+      toggleSelectionMode: vi.fn(() => {
+        mockIsSelectionMode.value = !mockIsSelectionMode.value;
+      }),
+      handleLongPress: vi.fn(),
+      handleToggleSelection: vi.fn(),
+      handleEntryClick: vi.fn(),
+      closeAllUI: vi.fn(),
+    };
+  }),
 }));
 
 vi.mock('~/composables/file-manager/useMobileFileBrowserCreate', () => ({

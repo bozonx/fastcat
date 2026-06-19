@@ -232,9 +232,8 @@ watch(
     <UiFormField :label="t('videoEditor.export.videoCodec')">
       <UiSelect
         :model-value="
-          filteredVideoCodecOptions.find(
-            (o: VideoCodecOptionResolved) => o.value === videoCodec,
-          ) || videoCodec
+          filteredVideoCodecOptions.find((o: VideoCodecOptionResolved) => o.value === videoCodec) ||
+          videoCodec
         "
         :items="filteredVideoCodecOptions"
         value-key="value"
@@ -314,9 +313,10 @@ watch(
 
     <div class="flex items-center justify-between">
       <span class="text-sm text-ui-text-muted">
-        {{ t('common.audio') }} ({{
+        {{ t('common.audio') }}:
+        {{
           audioCodecOptions.find((o) => o.value === audioCodec)?.label || audioCodec.toUpperCase()
-        }})
+        }}
       </span>
       <USwitch v-model="includeAudio" :disabled="isAudioDisabled" />
     </div>

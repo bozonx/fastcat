@@ -4,6 +4,8 @@
 
 .editor-splitpanes .splitpanes__pane {
   background-color: transparent;
+  backface-visibility: hidden;
+  transform: translateZ(0);
 }
 
 .editor-splitpanes > .splitpanes__splitter {

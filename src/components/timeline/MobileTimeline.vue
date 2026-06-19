@@ -688,22 +688,13 @@ async function handleConfirmCreateVersion(newName: string) {
               : 'border-b border-ui-border'
           "
         >
-          <MobileDrawerToolbarButton
-            icon="i-heroicons-trash"
-            @click="handleDelete"
-          />
+          <MobileDrawerToolbarButton icon="i-heroicons-trash" @click="handleDelete" />
           <MobileDrawerToolbarButton
             icon="i-heroicons-document-duplicate"
             @click="handleCopyClips"
           />
-          <MobileDrawerToolbarButton
-            icon="i-heroicons-scissors"
-            @click="handleCutClips"
-          />
-          <MobileDrawerToolbarButton
-            icon="i-lucide-lab-razor-blade"
-            @click="handleBladeClips"
-          />
+          <MobileDrawerToolbarButton icon="i-heroicons-scissors" @click="handleCutClips" />
+          <MobileDrawerToolbarButton icon="i-lucide-lab-razor-blade" @click="handleBladeClips" />
           <MobileDrawerToolbarButton
             :icon="allDisabled ? 'i-heroicons-eye' : 'i-heroicons-eye-slash'"
             @click="toggleDisabled"

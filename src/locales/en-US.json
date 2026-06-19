@@ -1632,7 +1632,6 @@
       "deleteProjectAction": "Delete",
       "deleteProjectConfirmDescription": "This will permanently delete the project folder and all its contents. This action cannot be undone.",
       "deleteProjectConfirmTitle": "Delete Project?",
-      "export": "Export",
       "metadata": "Metadata",
       "projectStorage": "Project Storage",
       "resetSettings": "Reset settings",

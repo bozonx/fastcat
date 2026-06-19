@@ -3,6 +3,8 @@ import { ref, nextTick } from 'vue';
 import { mountWithNuxt } from '../../utils/mount';
 import VideoEncodingForm from '~/components/media/VideoEncodingForm.vue';
 
+import UiSelect from '~/components/ui/UiSelect.vue';
+
 // Mock workspace store
 vi.mock('~/stores/workspace.store', () => {
   return {
@@ -78,8 +80,6 @@ vi.mock('vue-i18n', () => ({
     t: vi.fn((key: string) => key),
   })),
 }));
-
-import UiSelect from '~/components/ui/UiSelect.vue';
 
 // Test host component to emulate parent v-models
 const TestHost = {

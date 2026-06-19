@@ -6,7 +6,7 @@ import PropertySection from '~/components/properties/PropertySection.vue';
 import PropertyActionsBlock from '~/components/properties/PropertyActionsBlock.vue';
 import PropertyTimecode from '~/components/properties/PropertyTimecode.vue';
 
-const props = defineProps<{
+defineProps<{
   hideActions?: boolean;
   isMobile?: boolean;
 }>();
@@ -89,10 +89,7 @@ const mainActions = computed(() => [
 
 <template>
   <div v-if="selectionRange" class="w-full flex flex-col gap-2 text-ui-text">
-    <PropertySection
-      v-if="!hideActions"
-      :title="t('fastcat.selectionRange.actions')"
-    >
+    <PropertySection v-if="!hideActions" :title="t('fastcat.selectionRange.actions')">
       <PropertyActionsBlock :quick-actions="commonActions" :additional-actions="mainActions" />
     </PropertySection>
 

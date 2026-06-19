@@ -123,7 +123,7 @@ const encodingSummary = computed(() => {
 
   const aBitrate = `${audioBitrateKbps.value || 0} Kb/s`;
 
-  return `${t('videoEditor.projectSettings.export')}: ${format} ${vCodec} ${vBitrate} | ${aCodec} ${aBitrate}`;
+  return `${t('common.video')}: ${format} ${vCodec} ${vBitrate} | ${aCodec} ${aBitrate}`;
 });
 
 const exportRangeRadioItems = computed(() =>

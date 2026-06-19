@@ -1632,7 +1632,6 @@
       "deleteProjectAction": "Удалить",
       "deleteProjectConfirmDescription": "Это навсегда удалит папку проекта и все её содержимое. Это действие нельзя отменить.",
       "deleteProjectConfirmTitle": "Удалить проект?",
-      "export": "Экспорт",
       "metadata": "Метаданные",
       "projectStorage": "Размер файлов проекта",
       "resetSettings": "Сбросить настройки",

@@ -50,6 +50,8 @@ async function check() {
     'videoEditor.timeline.backups.actionsLabel.restore',
     'videoEditor.timeline.backups.actionsLabel.restoreMobile',
     'videoEditor.timeline.backups.size',
+    'fastcat.selectionRange.rippleTrim',
+    'fastcat.selectionRange.toZoneMarker',
   ]);
 
   const srcFiles = (await getFiles('src')).filter((f) =>
@@ -106,7 +108,12 @@ async function check() {
   }
 
   const potentiallyUnused = [...allLocaleKeys]
-    .filter((k) => !usedKeys.has(k) && ![...usedDynamicPrefixes].some((p) => k.startsWith(p)))
+    .filter(
+      (k) =>
+        !usedKeys.has(k) &&
+        ![...usedDynamicPrefixes].some((p) => k.startsWith(p)) &&
+        !IGNORED_KEYS.has(k),
+    )
     .sort();
   if (potentiallyUnused.length > 0) {
     console.error('--- Potentially Unused Keys ---');

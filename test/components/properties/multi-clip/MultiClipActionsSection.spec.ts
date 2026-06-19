@@ -9,9 +9,7 @@ describe('MultiClipActionsSection.vue', () => {
       { id: 'copy', title: 'Copy', icon: 'i-heroicons-document-duplicate', onClick: () => {} },
       { id: 'delete', title: 'Delete', icon: 'i-heroicons-trash', onClick: () => {} },
     ],
-    otherActions: [
-      { id: 'group', label: 'Group', icon: 'i-heroicons-link', onClick: () => {} },
-    ],
+    otherActions: [{ id: 'group', label: 'Group', icon: 'i-heroicons-link', onClick: () => {} }],
   };
 
   it('passes quickActions when isMobile is false', async () => {
@@ -24,7 +22,8 @@ describe('MultiClipActionsSection.vue', () => {
           },
           PropertyActionsBlock: {
             props: ['quickActions', 'additionalActions'],
-            template: '<div data-testid="actions-block" :data-quick="JSON.stringify(quickActions)" :data-additional="JSON.stringify(additionalActions)" />',
+            template:
+              '<div data-testid="actions-block" :data-quick="JSON.stringify(quickActions)" :data-additional="JSON.stringify(additionalActions)" />',
           },
         },
       },
@@ -47,7 +46,8 @@ describe('MultiClipActionsSection.vue', () => {
           },
           PropertyActionsBlock: {
             props: ['quickActions', 'additionalActions'],
-            template: '<div data-testid="actions-block" :data-quick="JSON.stringify(quickActions)" :data-additional="JSON.stringify(additionalActions)" />',
+            template:
+              '<div data-testid="actions-block" :data-quick="JSON.stringify(quickActions)" :data-additional="JSON.stringify(additionalActions)" />',
           },
         },
       },
