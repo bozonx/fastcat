@@ -20,6 +20,46 @@ use crate::audio::shared::{
 const SEEK_TOLERANCE_CHUNK_FRACTION: f64 = 0.25;
 const SEEK_TOLERANCE_MIN_SEC: f64 = 0.001;
 
+/// Message produced when a media file has no decodable audio track. A video
+/// re-encoded without sound (e.g. a silent screen capture or a video-only
+/// export) hits this — it is NOT an error condition, the layer just contributes
+/// silence. We key the silent-path cache on this so the mixer / window-fill stop
+/// re-probing the file (and stop spamming a warning) every 50 ms chunk.
+pub(crate) const NO_AUDIO_TRACK_MSG: &str = "no active audio track found";
+
+/// Paths proven to carry no audio track. Audio-track presence is an immutable
+/// property of a file path for the life of the process (a media replace / proxy
+/// swap changes the path string), so once seen we cache it and serve silence for
+/// that path without re-opening it. Bounds the otherwise-unbounded per-chunk
+/// re-probe of video-only sources.
+static NO_AUDIO_PATHS: std::sync::LazyLock<Mutex<std::collections::HashSet<String>>> =
+    std::sync::LazyLock::new(|| Mutex::new(std::collections::HashSet::new()));
+
+/// True when `path` is already known to have no audio track.
+pub(crate) fn path_known_silent(path: &str) -> bool {
+    NO_AUDIO_PATHS.lock().contains(path)
+}
+
+/// Record that `path` has no audio track so future chunks skip the decode.
+pub(crate) fn remember_silent_path(path: &str) {
+    let newly_inserted = NO_AUDIO_PATHS.lock().insert(path.to_string());
+    if newly_inserted {
+        log::info!("[audio] no audio track in {path}; treating layer as silent");
+    }
+}
+
+/// True when any cause in `error`'s chain is the no-audio-track condition.
+pub(crate) fn is_no_audio_track_error(error: &anyhow::Error) -> bool {
+    error
+        .chain()
+        .any(|cause| cause.to_string().contains(NO_AUDIO_TRACK_MSG))
+}
+
+#[cfg(test)]
+pub(crate) fn reset_silent_paths_for_test() {
+    NO_AUDIO_PATHS.lock().clear();
+}
+
 fn open_symphonia_format(
     path: &str,
     context: &str,
@@ -1208,6 +1248,12 @@ fn window_fill(
         start_frame: target_start_frame,
     };
 
+    // A path proven to have no audio track stays silent for the whole session:
+    // skip the decode entirely (no window stored → the miss path serves silence).
+    if path_known_silent(&path) {
+        return;
+    }
+
     let start_sec = target_start_frame as f64 / sample_rate.max(1) as f64;
     let result = decode_range_symphonia(&path, start_sec, WINDOW_SEC, sample_rate, output_channels);
     match result {
@@ -1233,7 +1279,13 @@ fn window_fill(
             // keeps streaming silence/tail for this region.
         }
         Err(error) => {
-            log::warn!("[audio] audio window fill failed for {path}: {error:?}");
+            // A video without an audio track is silence, not a failure: remember
+            // the path so neither this fill nor the live mix re-probes it.
+            if is_no_audio_track_error(&error) {
+                remember_silent_path(&path);
+            } else {
+                log::warn!("[audio] audio window fill failed for {path}: {error:?}");
+            }
         }
     }
 }
@@ -1256,6 +1308,32 @@ mod tests {
     use super::*;
     use crate::audio::shared::AudioShared;
     use std::process::Command;
+
+    #[test]
+    fn no_audio_track_error_is_detected_through_context_chain() {
+        reset_silent_paths_for_test();
+        let base = anyhow!(NO_AUDIO_TRACK_MSG);
+        let wrapped = base.context("decode audio layer clip_v2_x__audio");
+        assert!(
+            is_no_audio_track_error(&wrapped),
+            "the no-audio condition must be recognised even when wrapped in mixer context"
+        );
+
+        let other = anyhow!("disk read failed").context("decode audio layer clip_v2_y__audio");
+        assert!(!is_no_audio_track_error(&other));
+    }
+
+    #[test]
+    fn silent_path_cache_records_once_and_short_circuits() {
+        reset_silent_paths_for_test();
+        let path = "/tmp/fastcat-video-only-source.mp4";
+        assert!(!path_known_silent(path));
+        remember_silent_path(path);
+        assert!(path_known_silent(path));
+        // Idempotent: remembering again is a no-op (the info log fires only once).
+        remember_silent_path(path);
+        assert!(path_known_silent(path));
+    }
 
     fn write_temp_f32_wav(
         sample_rate: u32,

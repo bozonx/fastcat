@@ -1,7 +1,14 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { mountSuspended } from '@nuxt/test-utils/runtime';
+import { mountSuspended, mockNuxtImport } from '@nuxt/test-utils/runtime';
 import { reactive, ref, nextTick } from 'vue';
 import MobileFileBrowser from '~/components/file-manager/MobileFileBrowser.vue';
+
+mockNuxtImport('useI18n', () => {
+  return () => ({
+    t: (key: string) => key,
+    locale: { value: 'en' },
+  });
+});
 
 // --- Store Mocks ---
 
@@ -70,6 +77,7 @@ const mockPullDistance = ref(0);
 const mockIsRefreshing = ref(false);
 
 vi.mock('~/composables/file-manager/useFileManager', () => ({
+  FILE_MANAGER_INJECTION_KEY: Symbol('FILE_MANAGER_INJECTION_KEY'),
   useFileManager: vi.fn(() => ({
     readDirectory: vi.fn(async () => []),
     getFileIcon: vi.fn(() => 'i-heroicons-document'),

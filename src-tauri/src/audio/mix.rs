@@ -549,6 +549,12 @@ fn mix_layer_into(
     if layer.timeline_end_sec <= chunk_start_sec || layer.timeline_start_sec >= chunk_end_sec {
         return Ok(false);
     }
+    // A path proven to have no audio track (e.g. a video-only source) contributes
+    // silence in both preview and export. Skip it before any decode so we don't
+    // re-probe the file — and re-log — for every 50 ms chunk.
+    if crate::audio::decode::path_known_silent(&layer.path) {
+        return Ok(false);
+    }
     let raw_segment_start = chunk_start_sec.max(layer.timeline_start_sec);
     let raw_segment_end = chunk_end_sec.min(layer.timeline_end_sec);
     let (write_start_frame, frames_to_write) = chunk_write_range(
@@ -599,6 +605,13 @@ fn mix_layer_into(
     {
         Ok(decoded) => decoded,
         Err(error) => {
+            // No audio track is silence, not an error: cache the path (so later
+            // chunks short-circuit above) and skip — in preview AND export, so the
+            // two stay in agreement and a video-only layer never fails an export.
+            if crate::audio::decode::is_no_audio_track_error(&error) {
+                crate::audio::decode::remember_silent_path(&layer.path);
+                return Ok(false);
+            }
             if decode_error_policy == DecodeErrorPolicy::Propagate {
                 return Err(error);
             }

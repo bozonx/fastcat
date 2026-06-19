@@ -173,6 +173,7 @@ onBeforeUnmount(() => {
 <template>
   <UModal
     v-model:open="isOpen"
+    scrollable
     :content="modalContent"
     :dismissible="!props.preventClose"
     :title="props.title"

@@ -4,6 +4,16 @@
 
 .editor-splitpanes .splitpanes__pane {
   background-color: transparent;
+}
+
+/*
+ * Only promote panes to their own GPU layer WHILE resizing, for smoother
+ * repaints. Keeping `transform: translateZ(0)` on idle panes makes WebKitGTK
+ * rasterize the layer off the device-pixel grid, blurring text in panels such
+ * as the export form. See the note in main.css.
+ */
+.splitpanes--dragging .splitpanes__pane,
+.splitpanes--resizing .splitpanes__pane {
   backface-visibility: hidden;
   transform: translateZ(0);
 }

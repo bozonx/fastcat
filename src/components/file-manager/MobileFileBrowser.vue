@@ -212,6 +212,9 @@ const isRenameModalOpen = ref(false);
 const entryToRename = ref<FsEntry | null>(null);
 
 const isCreateFolderModalOpen = ref(false);
+const createFolderTitle = computed(() =>
+  typeof t === 'function' ? t('videoEditor.fileManager.actions.createFolder') : '',
+);
 
 const canAddSelectionToTimeline = computed(
   () =>
@@ -673,7 +676,7 @@ const menuItems = computed(() => [
     <!-- Create Folder Modal -->
     <UiEntityCreationModal
       v-model:open="isCreateFolderModalOpen"
-      :title="t('videoEditor.fileManager.actions.createFolder')"
+      :title="createFolderTitle"
       :validate="validateNewFolderName"
       @confirm="onCreateFolderConfirm"
     />
