@@ -1,11 +1,9 @@
 import { ref, inject } from 'vue';
 import { useFileManagerStore } from '~/stores/file-manager.store';
-import { useProjectStore } from '~/stores/project.store';
 import { DOCUMENTS_DIR_NAME } from '~/utils/constants';
 
 interface CreateDeps {
   createFolder: (name: string, parentPath: string) => Promise<void>;
-  createTimeline: (targetPath?: string) => Promise<string | null>;
   createMarkdown: (targetPath?: string) => Promise<string | null>;
   handleFiles: (files: File[], targetPath?: string) => Promise<unknown>;
   loadFolderContent: () => Promise<void>;
@@ -13,7 +11,6 @@ interface CreateDeps {
 
 export function useMobileFileBrowserCreate({
   createFolder,
-  createTimeline,
   createMarkdown,
   handleFiles,
   loadFolderContent,
@@ -21,9 +18,6 @@ export function useMobileFileBrowserCreate({
   const fileManagerStore =
     (inject('fileManagerStore', null) as ReturnType<typeof useFileManagerStore> | null) ||
     useFileManagerStore();
-  const projectStore = useProjectStore();
-  const { t } = useI18n();
-  const toast = useToast();
 
   const fileInput = ref<HTMLInputElement | null>(null);
   const pendingUploadPath = ref<string | undefined>(undefined);
@@ -68,23 +62,6 @@ export function useMobileFileBrowserCreate({
     }
   }
 
-  async function onCreateTimeline(targetPath?: string) {
-    const path = await createTimeline(targetPath);
-    if (path) {
-      await loadFolderContent();
-      isCreateMenuOpen.value = false;
-
-      await projectStore.openTimelineFile(path);
-      projectStore.setView('cut');
-
-      toast.add({
-        title: t('common.success'),
-        description: t('timelineCreation.successTitle'),
-        color: 'success',
-      });
-    }
-  }
-
   async function onCreateTextFile(targetPath?: string) {
     const path = await createMarkdown(targetPath);
     if (path) {
@@ -119,7 +96,6 @@ export function useMobileFileBrowserCreate({
     triggerGlobalFileUpload,
     onFileSelect,
     onCreateFolder,
-    onCreateTimeline,
     onCreateTextFile,
   };
 }

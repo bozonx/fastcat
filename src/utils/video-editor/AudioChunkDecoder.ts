@@ -43,6 +43,8 @@ export interface GetAudioChunksForRangeParams {
 
 export interface PrefetchAudioChunksOptions {
   shouldContinue?: () => boolean;
+  maxClips?: number;
+  concurrency?: number;
 }
 
 const DEFAULT_CHUNK_SIZE_S = 5;
@@ -100,16 +102,30 @@ export class AudioChunkDecoder {
 
   async prefetchHeadChunks(clips: AudioEngineClip[], options?: PrefetchAudioChunksOptions) {
     const chunksAhead = 2;
-    for (const clip of clips) {
-      if (options?.shouldContinue?.() === false) return;
+    const maxClips = Math.max(0, Math.round(options?.maxClips ?? 8));
+    const concurrency = Math.max(1, Math.round(options?.concurrency ?? 1));
+    const selectedClips: AudioEngineClip[] = [];
+    const selectedSources = new Set<string>();
 
+    for (const clip of [...clips].sort((a, b) => a.startUs - b.startUs)) {
       const sourceKey = clip.sourcePath;
-      if (!sourceKey) continue;
+      if (!sourceKey || selectedSources.has(sourceKey)) continue;
+      selectedSources.add(sourceKey);
+      selectedClips.push(clip);
+      if (selectedClips.length >= maxClips) break;
+    }
+
+    let nextClipIndex = 0;
+    const prefetchClip = async (clip: AudioEngineClip) => {
+      const sourceKey = clip.sourcePath;
+      if (!sourceKey) return;
 
       const startOffsetS = clip.sourceStartUs / 1_000_000;
       const sourceEndS = startOffsetS + clip.sourceRangeDurationUs / 1_000_000;
       const startChunkIndex = this.getChunkIndex(startOffsetS);
       const lastChunkIndex = this.getChunkIndex(Math.max(startOffsetS, sourceEndS - 1e-6));
+
+      const tasks: Array<Promise<AudioChunk | null>> = [];
       for (let offset = 0; offset < chunksAhead; offset += 1) {
         if (options?.shouldContinue?.() === false) return;
 
@@ -118,15 +134,29 @@ export class AudioChunkDecoder {
         const chunkKey = this.getChunkKey(sourceKey, targetIndex);
         if (this.chunkCache.get(sourceKey)?.some((c) => c.chunkIndex === targetIndex)) continue;
         if (this.chunkDecodeInFlight.has(chunkKey)) continue;
-        await this.ensureDecoded({
-          sourceKey,
-          fileHandle: clip.fileHandle,
-          chunkIndex: targetIndex,
-        });
+        tasks.push(
+          this.ensureDecoded({
+            sourceKey,
+            fileHandle: clip.fileHandle,
+            chunkIndex: targetIndex,
+          }),
+        );
       }
-      if (options?.shouldContinue?.() === false) return;
-      await new Promise<void>((resolve) => setTimeout(resolve, 0));
-    }
+      await Promise.all(tasks);
+    };
+
+    const worker = async () => {
+      while (options?.shouldContinue?.() !== false) {
+        const clip = selectedClips[nextClipIndex++];
+        if (!clip) return;
+        await prefetchClip(clip);
+        await new Promise<void>((resolve) => setTimeout(resolve, 0));
+      }
+    };
+
+    await Promise.all(
+      Array.from({ length: Math.min(concurrency, selectedClips.length) }, () => worker()),
+    );
   }
 
   cleanup(activeSourcePaths: Set<string>) {

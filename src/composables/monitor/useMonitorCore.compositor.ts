@@ -23,6 +23,9 @@ export function createMonitorCompositorRuntime(options: CreateMonitorCompositorR
   let compositorHeight = 0;
   let renderLoopInFlight = false;
   let latestRenderTimeUs: number | null = null;
+  let lastPrewarmTimeUs = -Infinity;
+
+  const VIDEO_PREWARM_INTERVAL_US = 250_000;
 
   function isReady() {
     return compositorReady;
@@ -114,6 +117,12 @@ export function createMonitorCompositorRuntime(options: CreateMonitorCompositorR
           const nextTimeUs = latestRenderTimeUs;
           latestRenderTimeUs = null;
           await options.client.renderFrame(nextTimeUs, options.getPreviewRenderOptions());
+          if (nextTimeUs - lastPrewarmTimeUs >= VIDEO_PREWARM_INTERVAL_US) {
+            lastPrewarmTimeUs = nextTimeUs;
+            void options.client.prewarmVideoFrames?.(nextTimeUs).catch((err) => {
+              log.warn('[Monitor] Video prewarm failed', err);
+            });
+          }
         }
       } catch (err) {
         log.error('[Monitor] Render failed', err);

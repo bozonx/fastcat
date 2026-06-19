@@ -268,9 +268,7 @@ export class WebAudioEngine implements IAudioEngine {
     );
     this.currentClips = clips;
     this.cleanupCache();
-    await this.chunkDecoder.prefetchHeadChunks(clips, {
-      shouldContinue: () => generation === this.layoutGeneration && !this.destroyed,
-    });
+    this.startBackgroundPrefetch(clips, generation);
   }
 
   async updateTimelineLayout(clips: AudioEngineClip[]) {
@@ -278,9 +276,7 @@ export class WebAudioEngine implements IAudioEngine {
     const generation = this.layoutGeneration;
     this.currentClips = clips;
     this.cleanupCache();
-    await this.chunkDecoder.prefetchHeadChunks(clips, {
-      shouldContinue: () => generation === this.layoutGeneration && !this.destroyed,
-    });
+    this.startBackgroundPrefetch(clips, generation);
     if (this.scheduler.isPlayingActive()) {
       // Re-evaluate playing nodes
       const currentTimeUs = this.getCurrentTimeUs();
@@ -288,6 +284,19 @@ export class WebAudioEngine implements IAudioEngine {
       this.scheduler.resetScheduledClips();
       void this.play(currentTimeUs, this.scheduler.getGlobalSpeed());
     }
+  }
+
+  private startBackgroundPrefetch(clips: AudioEngineClip[], generation: number) {
+    void this.chunkDecoder
+      .prefetchHeadChunks(clips, {
+        shouldContinue: () => generation === this.layoutGeneration && !this.destroyed,
+        maxClips: 8,
+        concurrency: 1,
+      })
+      .catch((error) => {
+        if (generation !== this.layoutGeneration || this.destroyed) return;
+        logger.warn('Background audio prefetch failed', error);
+      });
   }
 
   private cleanupCache() {

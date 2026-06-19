@@ -693,6 +693,60 @@ describe('useTimelineExport pure functions', () => {
     expect(clips[0]?.trackId).toBe('t1::nested1::v1');
   });
 
+  it('reuses a nested document for repeated references within one flattening pass', async () => {
+    const nestedOtio = JSON.stringify({
+      OTIO_SCHEMA: 'Timeline.1',
+      name: 'nested',
+      metadata: { fastcat: { timebase: { fps: 25 } } },
+      tracks: {
+        OTIO_SCHEMA: 'Stack.1',
+        children: [
+          {
+            OTIO_SCHEMA: 'Track.1',
+            name: 'V1',
+            kind: 'Video',
+            children: [],
+          },
+        ],
+      },
+    });
+    const getFileByPath = vi.fn(async () => {
+      return {
+        lastModified: 10,
+        text: async () => nestedOtio,
+      } as File;
+    });
+    const projectStoreMock = {
+      projectSettings: {
+        project: {
+          audioDeclickDurationUs: 5000,
+          fps: 25,
+        },
+      },
+      getFileByPath,
+    } as any;
+    const createNestedItem = (id: string, startUs: number) =>
+      ({
+        kind: 'clip',
+        clipType: 'timeline',
+        id,
+        trackId: 'track',
+        name: id,
+        source: { path: '_timelines/shared.otio' },
+        timelineRange: { startUs, durationUs: 1_000_000 },
+        sourceRange: { startUs: 0, durationUs: 1_000_000 },
+      }) as TimelineTrackItem;
+
+    await toWorkerTimelineClips(
+      [createNestedItem('nested-1', 0), createNestedItem('nested-2', 1_000_000)],
+      projectStoreMock,
+      wsMock,
+      { trackKind: 'video' },
+    );
+
+    expect(getFileByPath).toHaveBeenCalledTimes(1);
+  });
+
   it('toWorkerTimelineClips should map parent nested timeline speed into child clips', async () => {
     const nestedOtio = JSON.stringify({
       OTIO_SCHEMA: 'Timeline.1',

@@ -170,6 +170,47 @@ describe('VideoCompositor render optimization', () => {
     ]);
   });
 
+  it('prewarms only nearby upcoming video clips through the shared frame cache path', async () => {
+    const compositor = new VideoCompositor() as any;
+    compositor.clips = [
+      {
+        itemId: 'active',
+        clipKind: 'video',
+        sink: {},
+        startUs: 0,
+        sourceStartUs: 0,
+        sourceRangeDurationUs: 5_000_000,
+      },
+      {
+        itemId: 'near',
+        clipKind: 'video',
+        sink: {},
+        startUs: 2_000_000,
+        sourceStartUs: 500_000,
+        sourceRangeDurationUs: 5_000_000,
+      },
+      {
+        itemId: 'far',
+        clipKind: 'video',
+        sink: {},
+        startUs: 5_000_000,
+        sourceStartUs: 0,
+        sourceRangeDurationUs: 5_000_000,
+      },
+    ];
+    compositor.getVideoSampleForClip = vi.fn().mockResolvedValue({});
+
+    await compositor.prewarmVideoFrames(0, 2_500_000);
+
+    expect(compositor.getVideoSampleForClip).toHaveBeenCalledTimes(1);
+    expect(compositor.getVideoSampleForClip).toHaveBeenCalledWith(
+      expect.objectContaining({
+        clip: expect.objectContaining({ itemId: 'near' }),
+        sampleTimeS: 0.5,
+      }),
+    );
+  });
+
   it('does not mark text clip dirty when style values are unchanged', async () => {
     const compositor = new VideoCompositor() as any;
     const clipStyle = {

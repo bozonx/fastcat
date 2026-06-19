@@ -46,6 +46,7 @@ import { CompositorRenderContextBuilder } from './compositor/CompositorRenderCon
 import { PixiCompositorLifecycle } from './compositor/PixiCompositorLifecycle';
 import { WebGpuComputeRunner } from './compositor/WebGpuComputeRunner';
 import { buildEffectSpecs } from '~/effects';
+import { normalizeClipSpeed, resolveClipSourceTimeUs } from './source-time';
 const log = createDevLogger('VideoCompositor');
 
 export interface VideoCompositorInitOptions {
@@ -697,6 +698,49 @@ export class VideoCompositor {
     return this.runExclusive(
       () => this.updateTimelineLayoutLocked(timelineClips),
       'updateTimelineLayout',
+    );
+  }
+
+  prewarmVideoFrames(timeUs: number, lookaheadUs = 2_500_000): Promise<void> {
+    if (this.disposed) return Promise.resolve();
+    return this.runExclusive(
+      () => this.prewarmVideoFramesLocked(timeUs, lookaheadUs),
+      'prewarmVideoFrames',
+    );
+  }
+
+  private async prewarmVideoFramesLocked(timeUs: number, lookaheadUs: number): Promise<void> {
+    const startUs = Math.max(0, Math.round(timeUs));
+    const endUs = startUs + Math.max(0, Math.round(lookaheadUs));
+    const upcoming = this.clips
+      .filter(
+        (clip) =>
+          clip.clipKind === 'video' &&
+          Boolean(clip.sink) &&
+          clip.startUs > startUs &&
+          clip.startUs <= endUs,
+      )
+      .sort((a, b) => a.startUs - b.startUs)
+      .slice(0, 4);
+
+    await Promise.all(
+      upcoming.map(async (clip) => {
+        const sampleTimeUs =
+          typeof clip.freezeFrameSourceUs === 'number'
+            ? Math.max(0, clip.freezeFrameSourceUs)
+            : resolveClipSourceTimeUs({
+                localTimeUs: 0,
+                sourceStartUs: clip.sourceStartUs,
+                sourceRangeDurationUs: clip.sourceRangeDurationUs,
+                speed: normalizeClipSpeed(clip.speed),
+                frameRate: clip.frameRate,
+              });
+
+        await this.getVideoSampleForClip({
+          clip,
+          sampleTimeS: sampleTimeUs / 1_000_000,
+        });
+      }),
     );
   }
 

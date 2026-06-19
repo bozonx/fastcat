@@ -9,7 +9,8 @@ import { useProjectStore } from '~/stores/project.store';
 import { useSelectionStore } from '~/stores/selection.store';
 import { useClipboardStore } from '~/stores/clipboard.store';
 import { useTeleportTarget } from '~/composables/ui/useTeleportTarget';
-import { isOpenableProjectFileName } from '~/utils/media-types';
+import { isOpenableProjectFileName, getMediaTypeFromFilename } from '~/utils/media-types';
+import { TIMELINES_DIR_NAME } from '~/utils/constants';
 import { useFileBrowserShared } from '~/composables/file-manager/useFileBrowserShared';
 import { useFileBrowserEntries } from '~/composables/file-manager/useFileBrowserEntries';
 import { usePullToRefresh } from '~/composables/file-manager/usePullToRefresh';
@@ -59,7 +60,6 @@ const {
   vfs,
   handleFiles,
   createFolder,
-  createTimeline,
   createMarkdown,
   reloadDirectory,
   deleteEntry,
@@ -104,6 +104,18 @@ const {
   closeAllUI,
 } = useMobileFileBrowserSelection();
 
+// One project = one timeline on mobile: the single timeline is auto-opened on
+// the "edit" tab, so the `_timelines/` folder and `.otio` files are an internal
+// detail and stay hidden from the browser (no second timeline can be created or
+// switched to).
+const visibleEntries = computed(() =>
+  sortedEntries.value.filter((entry) => {
+    if (entry.kind === 'directory' && entry.name === TIMELINES_DIR_NAME) return false;
+    if (entry.kind === 'file' && getMediaTypeFromFilename(entry.name) === 'timeline') return false;
+    return true;
+  }),
+);
+
 const {
   fileInput,
   isCreateMenuOpen,
@@ -111,11 +123,9 @@ const {
   triggerGlobalFileUpload,
   onFileSelect,
   onCreateFolder: runCreateFolder,
-  onCreateTimeline,
   onCreateTextFile: runCreateTextFile,
 } = useMobileFileBrowserCreate({
   createFolder,
-  createTimeline,
   createMarkdown,
   handleFiles: (files: File[], targetPath?: string) =>
     handleFiles(files, targetPath !== undefined ? { targetDirPath: targetPath } : {}),
@@ -361,13 +371,6 @@ async function handleDrawerAction(action: MobileDrawerAction, entry: FsEntry | F
     closeAllUI();
   }
 
-  if (action === 'createTimeline') {
-    const e = Array.isArray(entry) ? entry[0] : entry;
-    if (e?.kind === 'directory') await onCreateTimeline(e.path);
-    closeAllUI();
-    return;
-  }
-
   if (action === 'createMarkdown') {
     const e = Array.isArray(entry) ? entry[0] : entry;
     if (e?.kind === 'directory') await onCreateTextFile(e.path);
@@ -393,7 +396,7 @@ async function handleDrawerAction(action: MobileDrawerAction, entry: FsEntry | F
 }
 
 const bulkSelection = useFileBrowserBulkSelection({
-  getVisibleEntries: () => sortedEntries.value,
+  getVisibleEntries: () => visibleEntries.value,
   getSelectedEntries: () => selectedEntries.value,
   selectEntries: (entries) => {
     selectionStore.selectFsEntries(entries);
@@ -475,11 +478,6 @@ const menuItems = computed(() => [
       label: `${t('videoEditor.fileManager.actions.createFolder')}${getHotkeyLabel('general.createFolder') ? ` (${getHotkeyLabel('general.createFolder')})` : ''}`,
       icon: 'i-heroicons-folder-plus',
       onSelect: handleCreateFolderRequest,
-    },
-    {
-      label: t('videoEditor.fileManager.actions.createTimeline'),
-      icon: 'i-heroicons-document-plus',
-      onSelect: onCreateTimeline,
     },
     {
       label: t('videoEditor.fileManager.actions.createMarkdown'),
@@ -566,7 +564,7 @@ const menuItems = computed(() => [
       </div>
 
       <MobileFileBrowserGrid
-        :entries="sortedEntries"
+        :entries="visibleEntries"
         :thumbnails="thumbnails"
         :file-compatibility="fileCompatibility"
         :selected-entry-path="
@@ -642,7 +640,6 @@ const menuItems = computed(() => [
       @upload="triggerFileUpload"
       @upload-global="triggerGlobalFileUpload"
       @create-folder="handleCreateFolderRequest"
-      @create-timeline="onCreateTimeline"
       @create-text-file="onCreateTextFile"
     />
 

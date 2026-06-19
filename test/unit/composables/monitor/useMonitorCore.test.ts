@@ -13,6 +13,7 @@ const mockClient = {
   updateTimelineLayout: vi.fn().mockResolvedValue(0),
   clearClips: vi.fn().mockResolvedValue(undefined),
   renderFrame: vi.fn().mockResolvedValue(undefined),
+  prewarmVideoFrames: vi.fn().mockResolvedValue(undefined),
   destroyCompositor: vi.fn().mockResolvedValue(undefined),
   initCompositor: vi.fn().mockResolvedValue(undefined),
 };

@@ -3,8 +3,6 @@ import { ref, computed, watch, inject } from 'vue';
 import type { FsEntry } from '~/types/fs';
 import { useSelectionStore } from '~/stores/selection.store';
 import { useFileManagerStore } from '~/stores/file-manager.store';
-import { useProjectStore } from '~/stores/project.store';
-import { getMediaTypeFromFilename } from '~/utils/media-types';
 import { computeDirectoryStatsByPath } from '~/utils/fs';
 import { useVfs } from '~/composables/useVfs';
 const log = createDevLogger('useMobileFileBrowserSelection');
@@ -14,7 +12,6 @@ export function useMobileFileBrowserSelection() {
   const fileManagerStore =
     (inject('fileManagerStore', null) as ReturnType<typeof useFileManagerStore> | null) ||
     useFileManagerStore();
-  const projectStore = useProjectStore();
   const vfs = useVfs();
 
   const isSelectionMode = ref(false);
@@ -95,12 +92,6 @@ export function useMobileFileBrowserSelection() {
     if (isSelectionMode.value) {
       handleToggleSelection(entry);
     } else {
-      if (getMediaTypeFromFilename(entry.name) === 'timeline' && entry.path) {
-        projectStore.openTimelineFile(entry.path);
-        projectStore.setView('cut');
-        return;
-      }
-
       selectionStore.selectFsEntry(entry);
       isDrawerOpen.value = true;
     }

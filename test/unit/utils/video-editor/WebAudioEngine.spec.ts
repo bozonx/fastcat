@@ -252,5 +252,21 @@ describe('WebAudioEngine', () => {
 
       expect((engine as any).currentClips).toEqual(clips);
     });
+
+    it('does not block layout updates on background audio prefetch', async () => {
+      const engine = new WebAudioEngine();
+      await engine.init();
+      const decoder = (engine as any).chunkDecoder;
+      decoder.prefetchHeadChunks.mockReturnValue(new Promise(() => {}));
+
+      await expect(engine.updateTimelineLayout([])).resolves.toBeUndefined();
+      expect(decoder.prefetchHeadChunks).toHaveBeenCalledWith(
+        [],
+        expect.objectContaining({
+          maxClips: 8,
+          concurrency: 1,
+        }),
+      );
+    });
   });
 });

@@ -302,6 +302,11 @@ const api: Omit<VideoCoreWorkerAPI, 'initCompositor'> & {
     }
   },
 
+  async prewarmVideoFrames(timeUs: number, lookaheadUs?: number) {
+    if (!compositor) return;
+    await compositor.prewarmVideoFrames(timeUs, lookaheadUs);
+  },
+
   async clearClips() {
     if (!compositor) return;
     await compositor.clearClips();

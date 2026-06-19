@@ -112,12 +112,18 @@ async function readNestedTimelineDoc(params: {
 }): Promise<TimelineDocument | null> {
   const path = normalizeProjectPath(params.path);
 
+  const requestCached = params.cache?.get(path);
+  if (requestCached) {
+    return requestCached;
+  }
+
   const file = await params.projectStore.getFileByPath(path);
   if (!file) return null;
 
   const mtime = file.lastModified;
   const cached = _nestedDocCache.get(path);
   if (cached && cached.mtime === mtime) {
+    params.cache?.set(path, cached.doc);
     return cached.doc;
   }
 

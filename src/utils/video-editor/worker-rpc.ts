@@ -161,6 +161,7 @@ export interface VideoCoreWorkerAPI {
     timeUs: number,
     options?: PreviewRenderOptions,
   ): Promise<OffscreenCanvas | HTMLCanvasElement | null>;
+  prewarmVideoFrames(timeUs: number, lookaheadUs?: number): Promise<void>;
   clearClips(): Promise<void>;
   destroyCompositor(): Promise<void>;
 
