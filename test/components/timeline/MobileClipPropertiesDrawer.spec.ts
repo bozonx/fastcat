@@ -111,9 +111,10 @@ vi.mock('~/stores/workspace.store', () => ({
 describe('MobileClipPropertiesDrawer', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockTimelineStore.timelineDoc.tracks[0].items[0].locked = false;
   });
 
-  it('renders correct toolbar buttons and toggles overlays', async () => {
+  it('renders toolbar buttons and emits requests for dedicated action drawers', async () => {
     const wrapper = await mountSuspended(MobileClipPropertiesDrawer, {
       props: {
         isOpen: true,
@@ -135,47 +136,29 @@ describe('MobileClipPropertiesDrawer', () => {
           ClipProperties: {
             template: '<div />',
           },
-          UButton: {
-            props: ['variant', 'color', 'size', 'icon'],
-            emits: ['click'],
-            template: '<button class="u-button" @click="$emit(\'click\')"><slot /></button>',
-          },
-          UIcon: {
-            template: '<span />',
-          },
         },
       },
     });
 
     const buttons = wrapper.findAll('.toolbar-stub button');
-    // We expect: Delete Toggle, Trim, Split, Active, Mute, Lock, Copy, Cut
     expect(buttons.length).toBe(8);
 
     const deleteBtn = buttons[0];
-    const trimBtn = buttons[1];
+    const trimBtn = buttons[3];
     expect(deleteBtn?.attributes('data-icon')).toBe('i-heroicons-trash');
     expect(trimBtn?.attributes('data-icon')).toBe('i-heroicons-arrows-right-left');
-    expect(buttons[2]?.attributes('data-icon')).toBe('i-lucide-lab-razor-blade');
+    expect(buttons[4]?.attributes('data-icon')).toBe('i-lucide-lab-razor-blade');
 
-    // Overlays should not be visible initially
-    expect(wrapper.findAll('.u-button').length).toBe(0);
-
-    // Click Delete button to open Delete overlay
     await deleteBtn?.trigger('click');
-    expect(deleteBtn?.classes()).toContain('active');
+    expect(wrapper.emitted('open-delete-drawer')).toBeTruthy();
 
-    const uButtons = wrapper.findAll('.u-button');
-    expect(uButtons.length).toBeGreaterThan(0);
-    // Find the extract range button
-    const extractBtn = uButtons.find((b) => b.text().includes('fastcat.timeline.extractRange'));
-    expect(extractBtn).toBeDefined();
-
-    // Click Trim button to open trim panel directly
     await trimBtn?.trigger('click');
     expect(wrapper.emitted('open-trim-drawer')).toBeTruthy();
   });
 
-  it('calls correct store/action methods when overlay buttons are clicked', async () => {
+  it('does not emit a delete drawer request for a locked clip', async () => {
+    mockTimelineStore.timelineDoc.tracks[0].items[0].locked = true;
+
     const wrapper = await mountSuspended(MobileClipPropertiesDrawer, {
       props: {
         isOpen: true,
@@ -185,38 +168,22 @@ describe('MobileClipPropertiesDrawer', () => {
           MobileTimelineDrawer: {
             template: '<div><slot name="toolbar" /><slot /></div>',
           },
-          MobileDrawerToolbar: {
-            template: '<div><slot /></div>',
-          },
+          MobileDrawerToolbar: { template: '<div><slot /></div>' },
           MobileDrawerToolbarButton: {
-            props: ['icon'],
+            props: ['icon', 'disabled'],
             emits: ['click'],
-            template: '<button :data-icon="icon" @click="$emit(\'click\')"></button>',
+            template:
+              '<button :data-icon="icon" :disabled="disabled" @click="$emit(\'click\')"></button>',
           },
-          ClipProperties: {
-            template: '<div />',
-          },
-          UButton: {
-            props: ['variant', 'color', 'size', 'icon'],
-            emits: ['click'],
-            template: '<button class="u-button" @click="$emit(\'click\')"><slot /></button>',
-          },
-          UIcon: {
-            template: '<span />',
-          },
+          ClipProperties: { template: '<div />' },
         },
       },
     });
 
     const deleteBtn = wrapper.find('button[data-icon="i-heroicons-trash"]');
+    expect(deleteBtn.attributes('disabled')).toBeDefined();
     await deleteBtn.trigger('click');
-
-    const uButtons = wrapper.findAll('.u-button');
-    const liftBtn = uButtons.find((b) => b.text().includes('fastcat.timeline.deleteLift'));
-    expect(liftBtn).toBeDefined();
-    await liftBtn!.trigger('click');
-    expect(handleDeleteClip).toHaveBeenCalled();
-    expect(wrapper.emitted('close')).toBeTruthy();
+    expect(wrapper.emitted('open-delete-drawer')).toBeUndefined();
   });
 
   it('calls splitClipAtPlayhead when split button is clicked', async () => {

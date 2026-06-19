@@ -56,7 +56,16 @@ export interface AudioChunk {
   // theoretical chunk boundary (chunkIndex * chunkSize) by up to one keyframe
   // interval because mediabunny seeks to the nearest key packet.
   startTimeS: number;
+  // Total playable length of `buffer` in seconds. Includes the trailing
+  // crossfade overlap (see `nominalDurationS`), so it can exceed the nominal
+  // chunk size by up to one seam-crossfade.
   durationS: number;
+  // The chunk's cursor-advancing extent in seconds (the configured chunk size).
+  // The playback scheduler advances the playhead by at most this much per chunk
+  // and treats `buffer` content past it as the trailing crossfade overlap that
+  // the next chunk fades in over. May be undefined for legacy cached chunks
+  // decoded before overlap support, in which case there is no overlap tail.
+  nominalDurationS?: number;
   buffer: AudioBuffer;
 }
 

@@ -9,6 +9,7 @@ import {
   readAudioChunkFromFileCache,
   writeAudioChunkToFileCache,
 } from '~/utils/video-editor/audio-chunk-file-cache';
+import { SEAM_CROSSFADE_S } from '~/utils/audio/crossfade';
 import type { IFileSystemAdapter } from '~/file-manager/core/vfs/types';
 const log = createDevLogger('AudioChunkDecoder');
 
@@ -202,16 +203,21 @@ export class AudioChunkDecoder {
           context: ctx,
         });
         if (cachedChunk) {
-          const chunk: AudioChunk = cachedChunk;
+          // The configured chunk size is the cursor-advancing extent; any buffer
+          // content past it is the trailing crossfade overlap.
+          const chunk: AudioChunk = { ...cachedChunk, nominalDurationS: this.chunkSizeS };
           this.addChunk(sourceKey, chunk, chunkKey);
           return chunk;
         }
 
+        // Decode one seam-crossfade past the nominal chunk so the next chunk has
+        // a shared-source region to crossfade in over, masking the per-chunk
+        // decode-boundary discontinuity without dipping to silence.
         const decoded = await this.decodeClient.decodeRange(
           blob,
           sourceKey,
           requestedStartTimeS,
-          this.chunkSizeS,
+          this.chunkSizeS + SEAM_CROSSFADE_S,
         );
 
         if (!decoded?.channelBuffers?.length) {
@@ -240,6 +246,7 @@ export class AudioChunkDecoder {
           chunkIndex,
           startTimeS: decoded.actualStartTimeS ?? requestedStartTimeS,
           durationS: totalFrames / sampleRate,
+          nominalDurationS: this.chunkSizeS,
           buffer: audioBuffer,
         };
 

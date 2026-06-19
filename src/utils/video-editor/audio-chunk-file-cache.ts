@@ -1,7 +1,9 @@
 import type { IFileSystemAdapter } from '~/file-manager/core/vfs/types';
 import { normalizeMediaCachePath } from '~/utils/media-cache-path';
 
-const AUDIO_CHUNK_CACHE_VERSION = 1;
+// v2: chunks are decoded with a trailing seam-crossfade overlap (durationS can
+// exceed chunkSizeS). Bumping invalidates v1 chunks that lack the overlap tail.
+const AUDIO_CHUNK_CACHE_VERSION = 2;
 const AUDIO_CHUNK_CACHE_MAGIC = 0x46434131; // FCA1
 const HEADER_PREFIX_BYTES = 8;
 

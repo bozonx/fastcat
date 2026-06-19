@@ -35,6 +35,7 @@ const workspaceStore = useWorkspaceStore();
 const selectionStore = useSelectionStore();
 const uiStore = useUiStore();
 const clipboardStore = useAppClipboard();
+const isMobile = computed(() => timelineStore.isMobileLayout);
 
 function handleCopyClips() {
   clipboardStore.setClipboardPayload({
@@ -592,6 +593,7 @@ const otherActions = computed(() => {
       :selected-count-label="selectedCountLabel"
       :common-actions="commonActions"
       :other-actions="otherActions"
+      :is-mobile="isMobile"
     />
 
     <MultiClipTimingSection

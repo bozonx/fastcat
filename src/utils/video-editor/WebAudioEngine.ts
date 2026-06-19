@@ -4,6 +4,8 @@ import type { IFileSystemAdapter } from '~/file-manager/core/vfs/types';
 import { getGainAtClipTime } from '~/utils/audio/envelope';
 import { buildAudioEffectGraph } from '~/utils/audio/effect-graph';
 import { AudioChunkDecoder } from '~/utils/video-editor/AudioChunkDecoder';
+import { planForwardChunkPlayback } from '~/utils/video-editor/audio-seam-plan';
+import { SEAM_CROSSFADE_S, equalPowerCurve } from '~/utils/audio/crossfade';
 import { AudioGraphBuilder } from '~/utils/video-editor/AudioGraphBuilder';
 import { AudioScheduler } from '~/utils/video-editor/AudioScheduler';
 import { scheduleGainCurve, stopNodeCollection } from '~/utils/video-editor/audio-node-utils';
@@ -27,6 +29,82 @@ import type {
 const logger = createDevLogger('WebAudioEngine');
 const TRANSITION_FADE_IN_S = 0.02;
 const CHUNK_EDGE_FADE_S = 0.005;
+
+// Equal-power seam curves, computed once and reused for every chunk boundary.
+const EQUAL_POWER_FADE_IN_CURVE = equalPowerCurve('in');
+const EQUAL_POWER_FADE_OUT_CURVE = equalPowerCurve('out');
+
+/** Legacy per-chunk edge envelope: fade in from / out to silence over `fadeS`,
+ *  holding unity in between. Still used for reverse playback. */
+function applyEdgeFadeGain(gain: GainNode, t0: number, ctxDurationS: number, fadeS: number) {
+  if (fadeS <= 0) {
+    gain.gain.setValueAtTime(1, t0);
+    return;
+  }
+  gain.gain.setValueAtTime(0, t0);
+  gain.gain.linearRampToValueAtTime(1, t0 + fadeS);
+  gain.gain.setValueAtTime(1, t0 + ctxDurationS - fadeS);
+  gain.gain.linearRampToValueAtTime(0, t0 + ctxDurationS);
+}
+
+interface ForwardSeamGainParams {
+  t0: number;
+  ctxTotalS: number; // total played span (nominal + tail)
+  ctxNominalS: number; // cursor-advancing span; tail crossfade-out starts here
+  ctxTailS: number; // equal-power crossfade-out span (0 ⇒ last/no overlap)
+  leadCtxS: number; // equal-power crossfade-in span from predecessor (0 ⇒ none)
+  startsAtKickoff: boolean;
+}
+
+/**
+ * Schedules the forward chunk gain envelope: an equal-power crossfade-in over
+ * the predecessor's overlap tail (or a kickoff/edge fade-in when there is no
+ * seam partner), unity through the body, then an equal-power crossfade-out over
+ * the overlap tail (or a brief fade to silence on the last chunk). Any engine
+ * that rejects the automation falls back to flat unity gain so playback can't
+ * break.
+ */
+function applyForwardSeamGain(gain: GainNode, p: ForwardSeamGainParams) {
+  const { t0, ctxTotalS, ctxNominalS, ctxTailS, leadCtxS, startsAtKickoff } = p;
+  try {
+    if (startsAtKickoff) {
+      const fadeIn = Math.min(TRANSITION_FADE_IN_S, ctxTotalS / 2);
+      gain.gain.setValueAtTime(0, t0);
+      if (fadeIn > 0) gain.gain.linearRampToValueAtTime(1, t0 + fadeIn);
+      else gain.gain.setValueAtTime(1, t0);
+    } else if (leadCtxS > 0) {
+      gain.gain.setValueCurveAtTime(
+        EQUAL_POWER_FADE_IN_CURVE,
+        t0,
+        Math.min(leadCtxS, ctxTotalS / 2),
+      );
+    } else {
+      // No seam partner (post-gap, or a legacy chunk decoded without overlap):
+      // fade in from silence to mask a possible boundary discontinuity.
+      const fadeIn = Math.min(CHUNK_EDGE_FADE_S, ctxTotalS / 2);
+      gain.gain.setValueAtTime(0, t0);
+      if (fadeIn > 0) gain.gain.linearRampToValueAtTime(1, t0 + fadeIn);
+      else gain.gain.setValueAtTime(1, t0);
+    }
+
+    if (ctxTailS > 0) {
+      gain.gain.setValueCurveAtTime(EQUAL_POWER_FADE_OUT_CURVE, t0 + ctxNominalS, ctxTailS);
+    } else {
+      const fadeOut = Math.min(CHUNK_EDGE_FADE_S, ctxTotalS / 2);
+      if (fadeOut > 0) {
+        gain.gain.setValueAtTime(1, t0 + ctxTotalS - fadeOut);
+        gain.gain.linearRampToValueAtTime(0, t0 + ctxTotalS);
+      }
+    }
+  } catch {
+    try {
+      gain.gain.cancelScheduledValues(t0);
+      gain.gain.setValueAtTime(1, t0);
+    } catch {
+      /* no-op */
+    }
+  }
+}
 
 export interface WebAudioEngineOptions {
   getVfs?: () => IFileSystemAdapter | null;
@@ -1047,6 +1125,10 @@ export class WebAudioEngine implements IAudioEngine {
       endedTotal: 0,
       streamingDone: false,
       teardownDone: false,
+      // Source-seconds of overlap that the previous chunk faded out over and
+      // that this chunk must crossfade in over. 0 ⇒ no seam partner (kickoff,
+      // post-gap, last chunk, or a legacy chunk decoded without overlap).
+      pendingLeadOverlapS: 0,
     };
 
     const teardown = async () => {
@@ -1098,93 +1180,22 @@ export class WebAudioEngine implements IAudioEngine {
       if (state.scheduledCtxTimeS >= ctxNow) return;
       const lostCtxS = ctxNow - state.scheduledCtxTimeS;
       const lostSourceS = lostCtxS * window.effectiveSpeed;
+      // The next chunk no longer abuts the previous one's faded tail, so it
+      // must fade in from silence rather than crossfade.
+      state.pendingLeadOverlapS = 0;
       state.scheduledCtxTimeS = ctxNow;
       state.currentSourceTimeS += lostSourceS;
       state.remainingToPlayS = Math.max(0, state.remainingToPlayS - lostSourceS);
     };
 
-    const scheduleSource = (chunk: AudioChunk) => {
-      compensateForRealTimeGap();
-      if (state.remainingToPlayS <= 0) return;
-
-      const chunkStartS = chunk.startTimeS;
-      const chunkEndS = chunk.startTimeS + chunk.durationS;
-
-      if (window.reversed) {
-        if (state.currentSourceTimeS <= chunkStartS) return;
-      } else {
-        if (state.currentSourceTimeS >= chunkEndS) return;
-      }
-
-      let offsetInChunkS = 0;
-      let availableInChunkS: number;
-
-      if (window.reversed) {
-        availableInChunkS = state.currentSourceTimeS - chunkStartS;
-      } else {
-        offsetInChunkS = Math.max(0, state.currentSourceTimeS - chunkStartS);
-        availableInChunkS = chunk.durationS - offsetInChunkS;
-      }
-
-      const playDurationS = Math.min(state.remainingToPlayS, availableInChunkS);
-      if (playDurationS <= 0) return;
-
-      if (window.reversed) {
-        offsetInChunkS = state.currentSourceTimeS - playDurationS - chunkStartS;
-      }
-
-      const sourceNode = ctx.createBufferSource();
-
-      let bufferToPlay: AudioBuffer;
-      let startOffsetS: number;
-      if (window.reversed) {
-        bufferToPlay = createReversedAudioBuffer(ctx, chunk.buffer, offsetInChunkS, playDurationS);
-        startOffsetS = 0;
-      } else {
-        bufferToPlay = chunk.buffer;
-        startOffsetS = offsetInChunkS;
-      }
-
-      sourceNode.buffer = bufferToPlay;
-      if (sourceNode.playbackRate) {
-        sourceNode.playbackRate.value = window.effectiveSpeed;
-      }
-
-      const chunkGainNode = ctx.createGain();
-      sourceNode.connect(chunkGainNode);
-      chunkGainNode.connect(clipInputNode);
-
-      const actualPlayDurationS = playDurationS / window.effectiveSpeed;
-      const startsAtKickoff =
-        Math.abs(state.scheduledCtxTimeS - this.scheduler.getPlaybackStartCtxTimeS()) < 1e-4;
-      const fadeDurationS = Math.min(
-        startsAtKickoff ? TRANSITION_FADE_IN_S : CHUNK_EDGE_FADE_S,
-        actualPlayDurationS / 2,
-      );
-      if (fadeDurationS > 0) {
-        chunkGainNode.gain.setValueAtTime(0, state.scheduledCtxTimeS);
-        chunkGainNode.gain.linearRampToValueAtTime(1, state.scheduledCtxTimeS + fadeDurationS);
-        chunkGainNode.gain.setValueAtTime(
-          1,
-          state.scheduledCtxTimeS + actualPlayDurationS - fadeDurationS,
-        );
-        chunkGainNode.gain.linearRampToValueAtTime(
-          0,
-          state.scheduledCtxTimeS + actualPlayDurationS,
-        );
-      } else {
-        chunkGainNode.gain.setValueAtTime(1, state.scheduledCtxTimeS);
-      }
-
-      sourceNode.start(state.scheduledCtxTimeS, startOffsetS, playDurationS);
-
+    // Wires a scheduled source+gain into the bookkeeping/teardown maps.
+    const registerSource = (sourceNode: AudioBufferSourceNode, chunkGainNode: GainNode) => {
       state.chunkNodes.push(sourceNode);
       state.chunkGainNodes.push(chunkGainNode);
       state.scheduledTotal += 1;
       targetNodeSet.add(sourceNode);
       targetGainMap.set(sourceNode, chunkGainNode);
       targetCleanupMap.set(sourceNode, teardown);
-
       sourceNode.onended = () => {
         targetNodeSet.delete(sourceNode);
         targetCleanupMap.delete(sourceNode);
@@ -1192,14 +1203,100 @@ export class WebAudioEngine implements IAudioEngine {
         state.endedTotal += 1;
         void maybeTeardown();
       };
+    };
 
-      state.scheduledCtxTimeS += playDurationS / window.effectiveSpeed;
+    const scheduleSource = (chunk: AudioChunk) => {
+      compensateForRealTimeGap();
+      if (state.remainingToPlayS <= 0) return;
+
+      const speed = window.effectiveSpeed;
+      const chunkStartS = chunk.startTimeS;
+      const chunkEndS = chunk.startTimeS + chunk.durationS;
+      const startsAtKickoff =
+        Math.abs(state.scheduledCtxTimeS - this.scheduler.getPlaybackStartCtxTimeS()) < 1e-4;
+
       if (window.reversed) {
+        // Reverse audio is muted in the native monitor and export; the web
+        // reverse path keeps the legacy per-chunk edge-fade behaviour.
+        if (state.currentSourceTimeS <= chunkStartS) return;
+        const availableInChunkS = state.currentSourceTimeS - chunkStartS;
+        const playDurationS = Math.min(state.remainingToPlayS, availableInChunkS);
+        if (playDurationS <= 0) return;
+        const offsetInChunkS = state.currentSourceTimeS - playDurationS - chunkStartS;
+
+        const sourceNode = ctx.createBufferSource();
+        sourceNode.buffer = createReversedAudioBuffer(
+          ctx,
+          chunk.buffer,
+          offsetInChunkS,
+          playDurationS,
+        );
+        if (sourceNode.playbackRate) sourceNode.playbackRate.value = speed;
+        const chunkGainNode = ctx.createGain();
+        sourceNode.connect(chunkGainNode);
+        chunkGainNode.connect(clipInputNode);
+
+        const actualPlayDurationS = playDurationS / speed;
+        const fadeDurationS = Math.min(
+          startsAtKickoff ? TRANSITION_FADE_IN_S : CHUNK_EDGE_FADE_S,
+          actualPlayDurationS / 2,
+        );
+        applyEdgeFadeGain(chunkGainNode, state.scheduledCtxTimeS, actualPlayDurationS, fadeDurationS);
+
+        sourceNode.start(state.scheduledCtxTimeS, 0, playDurationS);
+        registerSource(sourceNode, chunkGainNode);
+
+        state.scheduledCtxTimeS += actualPlayDurationS;
         state.currentSourceTimeS -= playDurationS;
-      } else {
-        state.currentSourceTimeS += playDurationS;
+        state.remainingToPlayS -= playDurationS;
+        return;
       }
-      state.remainingToPlayS -= playDurationS;
+
+      // Forward: advance the cursor only by the nominal content and play the
+      // decoded overlap tail at an equal-power fade so the next chunk crossfades
+      // in over the same source region (no dip-to-silence at the seam).
+      if (state.currentSourceTimeS >= chunkEndS) return;
+      const plan = planForwardChunkPlayback({
+        chunkStartS,
+        chunkDurationS: chunk.durationS,
+        chunkNominalDurationS: chunk.nominalDurationS,
+        currentSourceTimeS: state.currentSourceTimeS,
+        remainingToPlayS: state.remainingToPlayS,
+        overlapS: SEAM_CROSSFADE_S,
+      });
+      if (plan.playDurationS <= 0) return;
+
+      const sourceNode = ctx.createBufferSource();
+      sourceNode.buffer = chunk.buffer;
+      if (sourceNode.playbackRate) sourceNode.playbackRate.value = speed;
+      const chunkGainNode = ctx.createGain();
+      sourceNode.connect(chunkGainNode);
+      chunkGainNode.connect(clipInputNode);
+
+      const t0 = state.scheduledCtxTimeS;
+      const ctxNominalS = plan.playDurationS / speed;
+      const ctxTailS = plan.tailOverlapS / speed;
+      const ctxTotalS = plan.totalPlayS / speed;
+      const leadCtxS = state.pendingLeadOverlapS / speed;
+
+      applyForwardSeamGain(chunkGainNode, {
+        t0,
+        ctxTotalS,
+        ctxNominalS,
+        ctxTailS,
+        leadCtxS,
+        startsAtKickoff,
+      });
+
+      sourceNode.start(t0, plan.offsetInChunkS, plan.totalPlayS);
+      registerSource(sourceNode, chunkGainNode);
+
+      // The next chunk starts ctxTailS before this node's audio ends, so it
+      // overlaps the faded tail; the cursor itself moves by the nominal amount.
+      state.scheduledCtxTimeS = t0 + ctxNominalS;
+      state.currentSourceTimeS += plan.playDurationS;
+      state.remainingToPlayS -= plan.playDurationS;
+      state.pendingLeadOverlapS = plan.tailOverlapS;
     };
 
     // Schedule the first chunk synchronously so audio can start at kickoff.

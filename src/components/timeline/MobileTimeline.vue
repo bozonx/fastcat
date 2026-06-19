@@ -44,6 +44,7 @@ import MobileSelectionRangePropertiesDrawer from './MobileSelectionRangeProperti
 import MobileDrawerToolbar from './MobileDrawerToolbar.vue';
 import MobileDrawerToolbarButton from './MobileDrawerToolbarButton.vue';
 import MobileTrimToolbar from './MobileTrimToolbar.vue';
+import MobileClipDeleteDrawer from './MobileClipDeleteDrawer.vue';
 import MobileTimelineSettingsDrawer from './MobileTimelineSettingsDrawer.vue';
 import MobileTrackMixerDrawer from './MobileTrackMixerDrawer.vue';
 import MobileTrackManagerDrawer from './MobileTrackManagerDrawer.vue';
@@ -99,6 +100,7 @@ const {
   isMultiSelectionDrawerOpen,
   isAddContentDrawerOpen,
   isTrimDrawerOpen,
+  isDeleteDrawerOpen,
   isVirtualClipPresetDrawerOpen,
   isSettingsDrawerOpen,
   isTrackMixerDrawerOpen,
@@ -117,6 +119,7 @@ const {
   onUpdateDrawerOpen,
   onClipPropertiesDrawerClose,
   onClipTrimDrawerClose,
+  onClipDeleteDrawerClose,
   onMultiSelectionDrawerClose,
   onMarkerPropertiesDrawerClose,
   onSelectionRangeDrawerClose,
@@ -148,9 +151,7 @@ const {
   allDisabled,
   allMuted,
   allLocked,
-  allSoloed,
   toggleLocked,
-  toggleSolo,
   hasAudioOrVideoWithAudio,
 } = useClipBatchActions(
   computed(() => selectedClips.value ?? []),
@@ -184,8 +185,8 @@ function handleCutClips() {
   });
 }
 
-function handleSplitClips() {
-  void timelineStore.splitClipsAtPlayhead();
+function handleBladeClips() {
+  void timelineStore.splitAllClipsAtPlayhead();
 }
 
 function handleAddContent(trackId: string) {
@@ -256,6 +257,7 @@ const isAnyDrawerOpen = computed(
     isTransitionDrawerOpen.value ||
     isMultiSelectionDrawerOpen.value ||
     isTrimDrawerOpen.value ||
+    isDeleteDrawerOpen.value ||
     isAddContentDrawerOpen.value ||
     isVirtualClipPresetDrawerOpen.value,
 );
@@ -636,10 +638,25 @@ async function handleConfirmCreateVersion(newName: string) {
       v-model:active-snap-point="drawerActiveSnapPoint"
       :is-open="isClipPropertiesDrawerOpen"
       @close="onClipPropertiesDrawerClose"
+      @open-delete-drawer="
+        isDeleteDrawerOpen = true;
+        isClipPropertiesDrawerOpen = false;
+      "
       @open-trim-drawer="
         isTrimDrawerOpen = true;
         isClipPropertiesDrawerOpen = false;
       "
+    />
+
+    <MobileClipDeleteDrawer
+      v-if="isDeleteDrawerOpen"
+      v-model:active-snap-point="drawerActiveSnapPoint"
+      :is-open="isDeleteDrawerOpen"
+      @back="
+        isDeleteDrawerOpen = false;
+        isClipPropertiesDrawerOpen = true;
+      "
+      @close="onClipDeleteDrawerClose"
     />
 
     <MobileTrimToolbar
@@ -688,8 +705,8 @@ async function handleConfirmCreateVersion(newName: string) {
           />
           <MobileDrawerToolbarButton
             icon="i-lucide-scissors"
-            :label="t('fastcat.timeline.split')"
-            @click="handleSplitClips"
+            :label="t('fastcat.timeline.splitClips')"
+            @click="handleBladeClips"
           />
           <MobileDrawerToolbarButton
             :icon="allDisabled ? 'i-heroicons-eye' : 'i-heroicons-eye-slash'"
@@ -701,11 +718,6 @@ async function handleConfirmCreateVersion(newName: string) {
             :icon="allMuted ? 'i-heroicons-speaker-wave' : 'i-heroicons-speaker-x-mark'"
             :label="allMuted ? t('fastcat.timeline.unmute') : t('fastcat.timeline.mute')"
             @click="toggleMuted"
-          />
-          <MobileDrawerToolbarButton
-            :icon="allSoloed ? 'i-heroicons-musical-note-solid' : 'i-heroicons-musical-note'"
-            :label="allSoloed ? t('fastcat.timeline.unsolo') : t('fastcat.timeline.solo')"
-            @click="toggleSolo"
           />
           <MobileDrawerToolbarButton
             :icon="allLocked ? 'i-heroicons-lock-closed' : 'i-heroicons-lock-open'"

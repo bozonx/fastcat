@@ -33,6 +33,7 @@ export function useMobileTimelineDrawers() {
   const isMultiSelectionDrawerOpen = ref(false);
   const isAddContentDrawerOpen = ref(false);
   const isTrimDrawerOpen = ref(false);
+  const isDeleteDrawerOpen = ref(false);
   const isVirtualClipPresetDrawerOpen = ref(false);
   const isSettingsDrawerOpen = ref(false);
   const isTrackMixerDrawerOpen = ref(false);
@@ -53,6 +54,7 @@ export function useMobileTimelineDrawers() {
     isTransitionDrawerOpen.value = false;
     isMultiSelectionDrawerOpen.value = false;
     isTrimDrawerOpen.value = false;
+    isDeleteDrawerOpen.value = false;
     isAddContentDrawerOpen.value = false;
     isVirtualClipPresetDrawerOpen.value = false;
     isSettingsDrawerOpen.value = false;
@@ -96,7 +98,7 @@ export function useMobileTimelineDrawers() {
       gap: selectedGap.value,
     }),
     (state) => {
-      if (isTrimDrawerOpen.value) return;
+      if (isTrimDrawerOpen.value || isDeleteDrawerOpen.value) return;
       if (suppressDrawerSelectionClear.value) return;
 
       const { trackId, itemIds, entity, transition, markerId, gap } = state;
@@ -210,6 +212,14 @@ export function useMobileTimelineDrawers() {
     }
   }
 
+  function onClipDeleteDrawerClose() {
+    isDeleteDrawerOpen.value = false;
+    if (selectionStore.selectedEntity?.kind === 'clip') {
+      timelineStore.clearSelection();
+      selectionStore.clearSelection();
+    }
+  }
+
   function onMultiSelectionDrawerClose() {
     isMultiSelectionDrawerOpen.value = false;
     isLongPress.value = false;
@@ -281,6 +291,7 @@ export function useMobileTimelineDrawers() {
     isMultiSelectionDrawerOpen,
     isAddContentDrawerOpen,
     isTrimDrawerOpen,
+    isDeleteDrawerOpen,
     isVirtualClipPresetDrawerOpen,
     isSettingsDrawerOpen,
     isTrackMixerDrawerOpen,
@@ -300,6 +311,7 @@ export function useMobileTimelineDrawers() {
     onUpdateDrawerOpen,
     onClipPropertiesDrawerClose,
     onClipTrimDrawerClose,
+    onClipDeleteDrawerClose,
     onMultiSelectionDrawerClose,
     onMarkerPropertiesDrawerClose,
     onSelectionRangeDrawerClose,

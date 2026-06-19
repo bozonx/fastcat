@@ -7,6 +7,7 @@ defineProps<{
   selectedCountLabel: string;
   commonActions: PropertyActionItem[];
   otherActions: PropertyActionItem[];
+  isMobile?: boolean;
 }>();
 
 const { t } = useI18n();
@@ -19,7 +20,10 @@ const { t } = useI18n();
         {{ selectedCountLabel }}
       </span>
 
-      <PropertyActionsBlock :quick-actions="commonActions" :additional-actions="otherActions" />
+      <PropertyActionsBlock
+        :quick-actions="isMobile ? [] : commonActions"
+        :additional-actions="otherActions"
+      />
     </div>
   </PropertySection>
 </template>

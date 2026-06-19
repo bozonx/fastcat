@@ -3,9 +3,6 @@ import { reactive, ref } from 'vue';
 import { mountSuspended } from '@nuxt/test-utils/runtime';
 import MultiClipProperties from '~/components/properties/MultiClipProperties.vue';
 
-// Stub useDevice globally
-vi.stubGlobal('useDevice', () => ({ isMobile: false }));
-
 // Mock subcomponents
 vi.mock('~/components/properties/clip/ClipTransitionsSection.vue', () => ({
   default: {
@@ -25,7 +22,7 @@ vi.mock('~/components/properties/clip/ClipAudioSection.vue', () => ({
 vi.mock('~/components/properties/multi-clip/MultiClipActionsSection.vue', () => ({
   default: {
     name: 'MultiClipActionsSection',
-    props: ['selectedCountLabel'],
+    props: ['selectedCountLabel', 'isMobile'],
     template: '<div data-testid="actions-section">{{ selectedCountLabel }}</div>',
   },
 }));
@@ -65,6 +62,7 @@ const mockTimelineStore = reactive({
   cutSelectedClips: vi.fn(() => []),
   selectTransition: vi.fn(),
   clearSelection: vi.fn(),
+  isMobileLayout: false,
 });
 
 const mockSelectionStore = reactive({
@@ -424,6 +422,12 @@ describe('MultiClipProperties.vue', () => {
       { type: 'update_clip_transition', trackId: 'track-1', itemId: 'clip-1', transitionIn: null },
       { type: 'update_clip_transition', trackId: 'track-1', itemId: 'clip-2', transitionIn: null },
     ]);
+  });
+
+  it('passes isMobile=false to MultiClipActionsSection by default', async () => {
+    const wrapper = await mountComponent();
+    const actionsSection = wrapper.findComponent({ name: 'MultiClipActionsSection' });
+    expect(actionsSection.props('isMobile')).toBe(false);
   });
 
   it('batch updates transform property with computed delta scale and rotation', async () => {

@@ -13,6 +13,7 @@ import {
   applyAudioEffectsOffline,
   type AudioEffectData,
 } from '../../utils/audio/apply-audio-effects-offline';
+import { equalPowerGains } from '../../utils/audio/crossfade';
 import { clampFloat32 } from './utils';
 import { usToS } from './time';
 import { runResilientWorkerFileIo } from './io-governor';
@@ -656,8 +657,7 @@ function crossfadePendingTailIntoBlock(params: {
         continue;
       }
       const progress = i / (overlapFrames - 1);
-      const previousGain = Math.cos(progress * 0.5 * Math.PI);
-      const currentGain = Math.sin(progress * 0.5 * Math.PI);
+      const { out: previousGain, in: currentGain } = equalPowerGains(progress);
       block[i] = (pending[i] ?? 0) * previousGain + (block[i] ?? 0) * currentGain;
     }
   }
