@@ -4,7 +4,7 @@ import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useProjectActions } from '~/composables/editor/useProjectActions';
 import { useResizablePanel } from '~/composables/layout/useResizablePanel';
 
-import MobileFileBrowser from '~/components/file-manager/MobileFileBrowser.vue';
+import MobileFilesView from '~/components/file-manager/MobileFilesView.vue';
 import ExportForm from '~/components/export/ExportForm.vue';
 import MobileMonitorContainer from '~/components/monitor/MobileMonitorContainer.vue';
 import MobileTimeline from '~/components/timeline/MobileTimeline.vue';
@@ -174,7 +174,7 @@ const { onDividerPointerDown } = useResizablePanel({
       </div>
 
       <div v-else-if="activeTab === 'files'" class="h-full">
-        <MobileFileBrowser />
+        <MobileFilesView />
       </div>
 
       <div
