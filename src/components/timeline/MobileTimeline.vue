@@ -1,30 +1,14 @@
 <script setup lang="ts">
-import { computed, nextTick, ref, watch } from 'vue';
-import { useElementSize, useWindowSize } from '@vueuse/core';
-import {
-  MOBILE_CLICK_MOVE_THRESHOLD_PX,
-  MOBILE_LONG_PRESS_RESET_DELAY_MS,
-} from '~/utils/mobile/timeline';
+import { computed, ref } from 'vue';
+import { useWindowSize } from '@vueuse/core';
 import { storeToRefs } from 'pinia';
-import type {
-  TimelineClipActionPayload,
-  TimelineMoveItemPayload,
-  TimelineTrimItemPayload,
-  TimelineTrack,
-} from '~/timeline/types';
+import type { TimelineTrack } from '~/timeline/types';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useProjectStore } from '~/stores/project.store';
 import { useFocusStore } from '~/stores/focus.store';
 import { useSelectionStore } from '~/stores/selection.store';
-import { useTimelineSettingsStore } from '~/stores/timeline-settings.store';
-import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useTimelineInteraction } from '~/composables/timeline/useTimelineInteraction';
-import { resolvePlayheadClickTimeUs } from '~/composables/timeline/timeline-drag-domain';
-import {
-  computeTimelineScrollLeftForPlayhead,
-  timeUsToPx,
-  pxToTimeUs,
-} from '~/utils/timeline/geometry';
+import { timeUsToPx } from '~/utils/timeline/geometry';
 import MultiClipProperties from '~/components/properties/MultiClipProperties.vue';
 import { useClipBatchActions } from '~/composables/timeline/useClipBatchActions';
 import { useMediaStore } from '~/stores/media.store';
@@ -59,8 +43,12 @@ import { useMobileTimelineZoom } from '~/composables/timeline/useMobileTimelineZ
 import { useMobileTimelineEdgeScroll } from '~/composables/timeline/useMobileTimelineEdgeScroll';
 import { useScrollRectCache } from '~/composables/timeline/useScrollRectCache';
 import { useTimelineClipActions } from '~/composables/timeline/useTimelineClipActions';
-
-const TIMELINE_RULER_HEIGHT_PX = 32;
+import { useMobileTimelineScroll } from '~/composables/timeline/useMobileTimelineScroll';
+import { useMobileTimelineTrackHeights } from '~/composables/timeline/useMobileTimelineTrackHeights';
+import { useMobileTimelineBatchActions } from '~/composables/timeline/useMobileTimelineBatchActions';
+import { useMobileTimelineVersion } from '~/composables/timeline/useMobileTimelineVersion';
+import { useMobileTimelineTrim } from '~/composables/timeline/useMobileTimelineTrim';
+import { useMobileTimelineGestures } from '~/composables/timeline/useMobileTimelineGestures';
 
 const { target: teleportTarget } = useTeleportTarget();
 
@@ -71,14 +59,11 @@ const drawerToolbarOrientation = computed(() =>
 );
 
 const { t } = useI18n();
-const toast = useToast();
 
 const timelineStore = useTimelineStore();
-const timelineSettingsStore = useTimelineSettingsStore();
 const focusStore = useFocusStore();
 const projectStore = useProjectStore();
 const selectionStore = useSelectionStore();
-const workspaceStore = useWorkspaceStore();
 const mediaStore = useMediaStore();
 const clipboardStore = useAppClipboard();
 
@@ -163,89 +148,23 @@ const {
   },
 );
 
-function handleCopyClips() {
-  clipboardStore.setClipboardPayload({
-    source: 'timeline',
-    operation: 'copy',
-    items: timelineStore.copySelectedClips().map((item) => ({
-      sourceTrackId: item.sourceTrackId,
-      clip: item.clip,
-    })),
-  });
-}
-
-function handleCutClips() {
-  clipboardStore.setClipboardPayload({
-    source: 'timeline',
-    operation: 'cut',
-    items: timelineStore.cutSelectedClips().map((item) => ({
-      sourceTrackId: item.sourceTrackId,
-      clip: item.clip,
-    })),
-  });
-}
-
-function handleBladeClips() {
-  void timelineStore.splitAllClipsAtPlayhead();
-}
-
 function handleAddContent(trackId: string) {
   addContentTargetTrackId.value = trackId;
   isAddContentDrawerOpen.value = true;
 }
 
+const playheadPx = computed(() =>
+  Math.round(timeUsToPx(timelineStore.currentTime, timelineStore.timelineZoom)),
+);
+
 const scrollEl = ref<HTMLElement | null>(null);
 
-// Reactive viewport width of the scroll container. Needed so clip thumbnails
-// know the visible window — without it the thumbnail strip computes a zero-width
-// range and renders nothing on mobile.
-const { width: scrollViewportWidth } = useElementSize(scrollEl);
-
-function scrollPlayheadIntoView() {
-  const el = scrollEl.value;
-  if (!el) return;
-
-  const nextScrollLeft = computeTimelineScrollLeftForPlayhead({
-    playheadPx: playheadPx.value,
-    scrollLeft: el.scrollLeft,
-    viewportWidth: el.clientWidth,
-    maxScrollLeft: el.scrollWidth - el.clientWidth,
-  });
-
-  if (nextScrollLeft === null) {
-    timelineStore.timelineScrollLeftPx = el.scrollLeft;
-    return;
-  }
-
-  el.scrollLeft = nextScrollLeft;
-  timelineStore.timelineScrollLeftPx = el.scrollLeft;
-}
-
-// Keep the store's scroll position in sync with the mobile scrollEl so ruler/grid/playhead align.
-watch(
+const { scrollViewportWidth } = useMobileTimelineScroll({
   scrollEl,
-  (el, _oldEl, onCleanup) => {
-    if (!el) return;
-    const onScroll = () => {
-      timelineStore.timelineScrollLeftPx = el.scrollLeft;
-    };
-    el.addEventListener('scroll', onScroll, { passive: true });
-    nextTick(scrollPlayheadIntoView);
-    onCleanup(() => el.removeEventListener('scroll', onScroll));
-  },
-  { immediate: true },
-);
+  playheadPx,
+  timelineStore,
+});
 
-watch(
-  () => timelineStore.scrollToPlayheadRequest,
-  () => {
-    nextTick(scrollPlayheadIntoView);
-  },
-);
-
-const lastPointerType = ref('');
-const clickStartX = ref(0);
-const clickStartY = ref(0);
 const addContentTargetTrackId = ref<string | undefined>(undefined);
 
 const isAnyDrawerOpen = computed(
@@ -262,29 +181,10 @@ const isAnyDrawerOpen = computed(
     isVirtualClipPresetDrawerOpen.value,
 );
 
-const trackHeights = computed(() => {
-  const heights: Record<string, number> = {};
-  const enlarged = timelineStore.mobileTrackHeightsEnlarged;
-  for (const t of tracks.value) {
-    const multiplier = enlarged[t.id] ? 3 : 1;
-    heights[t.id] = (t.kind === 'video' ? 64 : 48) * multiplier;
-  }
-  return heights;
+const { trackHeights, toggleTrackHeightEnlarged } = useMobileTimelineTrackHeights({
+  tracks,
+  timelineStore,
 });
-
-function toggleTrackHeightEnlarged(trackId: string) {
-  const enlarged = { ...timelineStore.mobileTrackHeightsEnlarged };
-  if (enlarged[trackId]) {
-    Reflect.deleteProperty(enlarged, trackId);
-  } else {
-    enlarged[trackId] = true;
-  }
-  timelineStore.mobileTrackHeightsEnlarged = enlarged;
-}
-
-const playheadPx = computed(() =>
-  Math.round(timeUsToPx(timelineStore.currentTime, timelineStore.timelineZoom)),
-);
 
 const { getCachedScrollRect, clearScrollRectCache } = useScrollRectCache();
 
@@ -313,266 +213,65 @@ const { updateEdgeScroll, stopEdgeScroll } = useMobileTimelineEdgeScroll(
 
 const { onTouchStart, onTouchMove } = useMobileTimelineZoom(scrollEl, getCachedScrollRect);
 
-function handleMobileTimelineItemSelect(ev: PointerEvent, id: string) {
-  const pointerType = ev.pointerType || lastPointerType.value;
-  if (pointerType === 'touch') {
-    const wasLongPress = isLongPress.value;
-    isLongPress.value = false;
-
-    if (wasLongPress) {
-      return;
-    }
-
-    const entity = selectionStore.selectedEntity;
-    const isGapSelected =
-      entity?.source === 'timeline' && entity.kind === 'gap' && entity.itemId === id;
-    const isTrackSelected = entity?.source === 'timeline' && entity.kind === 'track';
-
-    if (isMultiSelectionMode.value && !isGapSelected && !isTrackSelected) {
-      suppressDrawerSelectionClearTemporarily(() => {
-        toggleMobileClipSelection(id);
-      });
-      return;
-    }
-
-    selectItem(ev, id);
-    return;
-  }
-
-  selectItem(ev, id);
-}
-
-function handleMobileTimelineItemLongPress(id: string) {
-  suppressDrawerSelectionClearTemporarily(() => {
-    isLongPress.value = true;
-    drawerActiveSnapPoint.value = null;
-    enterMobileMultiSelection(id);
-  });
-}
-
-// True while a trim is being driven by the fixed bottom trim toolbar. The
-// toolbar emits its own synthetic pointer events to drive the trim, but the
-// underlying real touch still bubbles pointer events up to the timeline root.
-// We must ignore those here: the finger sits at the very bottom of the screen
-// (on the toolbar), so feeding them to `updateEdgeScroll` would make the
-// timeline continuously auto-scroll down while the user slides.
-const isToolbarTrimActive = ref(false);
-
-function onMobilePointerMove(e: PointerEvent) {
-  if (isToolbarTrimActive.value) return;
-  onGlobalPointerMove(e);
-  updateEdgeScroll(e);
-}
-
-function onMobilePointerUp(e: PointerEvent) {
-  clearScrollRectCache();
-  stopEdgeScroll();
-  onGlobalPointerUp(e);
-
-  setTimeout(() => {
-    isLongPress.value = false;
-  }, MOBILE_LONG_PRESS_RESET_DELAY_MS);
-}
-
-function onMobilePointerCancel(e: PointerEvent) {
-  clearScrollRectCache();
-  stopEdgeScroll();
-
-  // A long-press gesture on touch frequently ends with `pointercancel` (the
-  // webview takes the gesture over) rather than `pointerup`. Reset the flag
-  // here too — otherwise it stays stuck `true` and the next tap is swallowed
-  // by the long-press guards, so additional clips can never be selected.
-  setTimeout(() => {
-    isLongPress.value = false;
-  }, MOBILE_LONG_PRESS_RESET_DELAY_MS);
-
-  if (draggingMode.value) return;
-  onGlobalPointerUp(e);
-}
-
-function onStartMoveItem(event: PointerEvent, payload: TimelineMoveItemPayload) {
-  startMoveItem(event, {
-    trackId: payload.trackId,
-    itemId: payload.itemId,
-    startUs: payload.startUs,
-  });
-}
-
-function onStartTrimItem(event: PointerEvent, payload: TimelineTrimItemPayload) {
-  startTrimItem(event, payload);
-}
-
-function createSyntheticTouchPointerEvent(position: {
-  clientX: number;
-  clientY: number;
-}): PointerEvent {
-  return new PointerEvent('pointermove', {
-    button: 0,
-    buttons: 1,
-    clientX: position.clientX,
-    clientY: position.clientY,
-    pointerId: 1,
-    pointerType: 'touch',
-    bubbles: false,
-    cancelable: false,
-  });
-}
-
-function onTrimToolbarStart(payload: {
-  trackId: string;
-  itemId: string;
-  edge: 'start' | 'end';
-  clientX: number;
-  clientY: number;
-}) {
-  const clipContext = selectedClipContext.value;
-  if (!clipContext) return;
-
-  isToolbarTrimActive.value = true;
-  startTrimItem(
-    createSyntheticTouchPointerEvent({
-      clientX: payload.clientX,
-      clientY: payload.clientY,
-    }),
-    {
-      trackId: payload.trackId,
-      itemId: payload.itemId,
-      edge: payload.edge,
-      startUs: clipContext.clip.timelineRange.startUs,
-    },
-  );
-}
-
-function onTrimToolbarMove(payload: { clientX: number; clientY: number }) {
-  if (!draggingMode.value) return;
-  onGlobalPointerMove(
-    createSyntheticTouchPointerEvent({
-      clientX: payload.clientX,
-      clientY: payload.clientY,
-    }),
-  );
-}
-
-function onTrimToolbarEnd(payload: { clientX: number; clientY: number }) {
-  isToolbarTrimActive.value = false;
-  if (!draggingMode.value) return;
-  onGlobalPointerUp(
-    createSyntheticTouchPointerEvent({
-      clientX: payload.clientX,
-      clientY: payload.clientY,
-    }),
-  );
-}
-
-function onTimelinePointerDownCapture(e: PointerEvent) {
-  if (e.button === 0) {
-    clickStartX.value = e.clientX;
-    clickStartY.value = e.clientY;
-    isLongPress.value = false;
-    lastPointerType.value = e.pointerType;
-  }
-}
-
-function onTimelineClick(e: MouseEvent) {
-  if (e.button !== 0) return;
-  const dx = Math.abs(e.clientX - clickStartX.value);
-  const dy = Math.abs(e.clientY - clickStartY.value);
-  if (
-    dx > MOBILE_CLICK_MOVE_THRESHOLD_PX ||
-    dy > MOBILE_CLICK_MOVE_THRESHOLD_PX ||
-    isLongPress.value
-  ) {
-    isLongPress.value = false;
-    return;
-  }
-
-  const target = e.target as HTMLElement | null;
-  if (target?.closest('button')) return;
-  if (target?.closest('.cursor-ew-resize')) return;
-  if (target?.closest('.cursor-ns-resize')) return;
-  if (target?.closest('[data-clip-id]')) return;
-  if (target?.closest('[data-gap-id]')) return;
-  if (target?.closest('[data-track-id]')) return;
-
-  const el = scrollEl.value;
-  if (!el) return;
-
-  const tracksHeight = Object.values(trackHeights.value).reduce((a, b) => a + b, 0);
-  const scrollerRectY = getCachedScrollRect(el);
-  const y = e.clientY - scrollerRectY.top + el.scrollTop;
-  if (y > tracksHeight + TIMELINE_RULER_HEIGHT_PX) {
-    timelineStore.selectTimelineProperties();
-    return;
-  }
-
-  const scrollX = el.scrollLeft;
-  const x = e.clientX - scrollerRectY.left + scrollX;
-  const rawTimeUs = pxToTimeUs(x, timelineStore.timelineZoom);
-  const timelineEndUs = Number.isFinite(timelineStore.duration)
-    ? Math.max(0, Math.round(timelineStore.duration))
-    : null;
-  const timeUs = resolvePlayheadClickTimeUs({
-    rawTimeUs,
-    zoom: timelineStore.timelineZoom,
-    snapThresholdPx: workspaceStore.userSettings.timeline.snapThresholdPx,
-    toolbarSnapMode: timelineSettingsStore.toolbarSnapMode,
-    snapping: workspaceStore.userSettings.timeline.snapping,
-    tracks: timelineStore.timelineDoc?.tracks ?? [],
-    markers: timelineStore.markers,
-    durationUs: timelineEndUs,
-    selectionRangeUs: timelineStore.selectionRange,
+const { isToolbarTrimActive, onTrimToolbarStart, onTrimToolbarMove, onTrimToolbarEnd } =
+  useMobileTimelineTrim({
+    selectedClipContext,
+    startTrimItem,
+    onGlobalPointerMove,
+    onGlobalPointerUp,
+    draggingMode,
   });
 
-  timelineStore.setCurrentTimeUs(timeUs);
-}
+const {
+  handleMobileTimelineItemSelect,
+  handleMobileTimelineItemLongPress,
+  onMobilePointerMove,
+  onMobilePointerUp,
+  onMobilePointerCancel,
+  onStartMoveItem,
+  onStartTrimItem,
+  onTimelinePointerDownCapture,
+  onTimelineClick,
+  onClipAction,
+} = useMobileTimelineGestures({
+  scrollEl,
+  isLongPress,
+  isToolbarTrimActive,
+  drawerActiveSnapPoint,
+  isMultiSelectionMode,
+  trackHeights,
+  draggingMode,
+  suppressDrawerSelectionClearTemporarily,
+  toggleMobileClipSelection,
+  enterMobileMultiSelection,
+  selectItem,
+  startMoveItem,
+  startTrimItem,
+  onGlobalPointerMove,
+  onGlobalPointerUp,
+  updateEdgeScroll,
+  stopEdgeScroll,
+  clearScrollRectCache,
+  getCachedScrollRect,
+  applyClipAction,
+});
 
-async function onClipAction(payload: TimelineClipActionPayload) {
-  try {
-    await applyClipAction(payload);
-  } catch (err: unknown) {
-    toast.add({
-      title: t('common.error'),
-      description: err instanceof Error ? err.message : String(err ?? ''),
-      icon: 'i-heroicons-exclamation-triangle',
-      color: 'error',
-    });
-  }
-}
+const { handleCopyClips, handleCutClips, handleBladeClips } = useMobileTimelineBatchActions({
+  clipboardStore,
+  timelineStore,
+});
 
-const isCreateVersionModalOpen = ref(false);
-const proposedVersionName = ref('');
-const existingNamesInFolder = ref<string[]>([]);
-
-async function handleCreateVersionFromPreview() {
-  if (timelineStore.currentTimelinePath) {
-    const parts = timelineStore.currentTimelinePath.split('/');
-    parts.pop();
-    const parentPath = parts.join('/');
-    existingNamesInFolder.value = await projectStore.listEntryNames(parentPath);
-  } else {
-    existingNamesInFolder.value = [];
-  }
-
-  proposedVersionName.value = await timelineStore.getNextVersionName();
-  isCreateVersionModalOpen.value = true;
-}
-
-function validateVersionName(newName: string): string | boolean | null {
-  const trimmed = newName.trim();
-  if (!trimmed) return false;
-  const finalName = trimmed.toLowerCase().endsWith('.otio') ? trimmed : `${trimmed}.otio`;
-  if (existingNamesInFolder.value.includes(finalName)) {
-    return t('common.validation.exists', 'Имя уже существует');
-  }
-  return true;
-}
-
-async function handleConfirmCreateVersion(newName: string) {
-  isCreateVersionModalOpen.value = false;
-  if (timelineStore.previewBackupInfo) {
-    await timelineStore.createVersionFromBackup(timelineStore.previewBackupInfo, newName);
-  }
-}
+const {
+  isCreateVersionModalOpen,
+  proposedVersionName,
+  handleCreateVersionFromPreview,
+  validateVersionName,
+  handleConfirmCreateVersion,
+} = useMobileTimelineVersion({
+  timelineStore,
+  projectStore,
+  t,
+});
 </script>
 
 <template>

@@ -2,6 +2,7 @@
 import { useProjectStore } from '~/stores/project.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useProjectActions } from '~/composables/editor/useProjectActions';
+import { useResizablePanel } from '~/composables/layout/useResizablePanel';
 
 import MobileFileBrowser from '~/components/file-manager/MobileFileBrowser.vue';
 import ExportForm from '~/components/export/ExportForm.vue';
@@ -119,43 +120,25 @@ const monitorStyle = computed(() =>
 
 const containerRef = ref<HTMLElement | null>(null);
 
-function onDividerPointerDown(e: PointerEvent) {
-  const el = containerRef.value;
-  const handle = e.currentTarget as HTMLElement;
-  if (!el || !handle) return;
+const panelOrientation = computed<'horizontal' | 'vertical'>(() =>
+  isLandscapeMode.value ? 'horizontal' : 'vertical',
+);
 
-  e.preventDefault();
-  handle.setPointerCapture(e.pointerId);
-
-  const rect = el.getBoundingClientRect();
-
-  const onMove = (ev: PointerEvent) => {
+const { onDividerPointerDown } = useResizablePanel({
+  containerRef,
+  orientation: panelOrientation,
+  minPercent: 20,
+  maxPercent: computed(() => (isLandscapeMode.value ? 70 : 65)),
+  getValue: () =>
+    isLandscapeMode.value ? landscapeMonitorWidth.value : portraitMonitorHeight.value,
+  setValue: (value: number) => {
     if (isLandscapeMode.value) {
-      if (!rect.width) return;
-      // In flex-row, the monitor is on the left
-      const pct = ((ev.clientX - rect.left) / rect.width) * 100;
-      if (!Number.isFinite(pct)) return;
-      landscapeMonitorWidth.value = Math.min(Math.max(pct, 20), 70);
+      landscapeMonitorWidth.value = value;
     } else {
-      if (!rect.height) return;
-      const pct = ((ev.clientY - rect.top) / rect.height) * 100;
-      if (!Number.isFinite(pct)) return;
-      portraitMonitorHeight.value = Math.min(Math.max(pct, 20), 65);
+      portraitMonitorHeight.value = value;
     }
-  };
-
-  const cleanup = () => {
-    handle.removeEventListener('pointermove', onMove);
-    handle.removeEventListener('pointerup', cleanup);
-    handle.removeEventListener('pointercancel', cleanup);
-    handle.removeEventListener('lostpointercapture', cleanup);
-  };
-
-  handle.addEventListener('pointermove', onMove);
-  handle.addEventListener('pointerup', cleanup);
-  handle.addEventListener('pointercancel', cleanup);
-  handle.addEventListener('lostpointercapture', cleanup);
-}
+  },
+});
 </script>
 
 <template>

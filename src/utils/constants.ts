@@ -92,6 +92,17 @@ export const VIDEO_CORE_LIMITS = {
    */
   OP_QUEUE_WATCHDOG_MS: 15_000,
   MAX_VIDEO_FRAME_CACHE_MB: 256,
+  /**
+   * Max number of upcoming clips a single prewarm tick warms ahead of the
+   * playhead. The prewarm op is exclusive against `renderFrame` (shared op
+   * queue), so this is deliberately bounded — a larger batch would hold the
+   * queue longer and hitch the next rendered frame. It is larger than
+   * MAX_CONCURRENT_VIDEO_SAMPLE_REQUESTS (which gates *concurrency*, not how
+   * many clips are queued) so a dense cut cluster — common when a nested
+   * timeline flattens to many short clips packed into the lookahead window —
+   * is fully covered instead of leaving the 5th+ cut cold (cut stutter).
+   */
+  MAX_PREWARM_CLIPS: 8,
   MAX_WORKER_RPC_PENDING_CALLS: 500,
   /** Max gap (µs) between adjacent clips to still apply blend shadow during transitions */
   BLEND_SHADOW_GAP_THRESHOLD_US: 200_000,

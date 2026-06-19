@@ -721,7 +721,7 @@ export class VideoCompositor {
           clip.startUs <= endUs,
       )
       .sort((a, b) => a.startUs - b.startUs)
-      .slice(0, 4);
+      .slice(0, Math.max(1, Math.round(VIDEO_CORE_LIMITS.MAX_PREWARM_CLIPS)));
 
     await Promise.all(
       upcoming.map(async (clip) => {
