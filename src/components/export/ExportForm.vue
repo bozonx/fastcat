@@ -299,15 +299,6 @@ const filenamePlaceholder = computed(() =>
           <div class="flex items-center gap-3">
             <UCheckbox v-model="matchTimeline" :disabled="isExporting" />
             <span class="text-ui-text text-sm">{{ t('videoEditor.export.matchTimeline') }}</span>
-            <UButton
-              v-if="isFieldDirty('matchTimeline')"
-              icon="i-heroicons-arrow-path-20-solid"
-              color="warning"
-              variant="ghost"
-              size="xs"
-              class="shrink-0"
-              @click="resetField('matchTimeline')"
-            />
           </div>
 
           <MediaResolutionSettings
@@ -349,8 +340,6 @@ const filenamePlaceholder = computed(() =>
             v-model:metadata-description="metadataDescription"
             v-model:metadata-author="metadataAuthor"
             v-model:metadata-tags="metadataTags"
-            :is-field-dirty="isFieldDirty"
-            :reset-field="resetField"
             :show-audio-advanced="true"
             :hide-audio-sample-rate="true"
             :show-metadata="false"

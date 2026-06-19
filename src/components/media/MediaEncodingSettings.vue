@@ -32,8 +32,6 @@ interface Props {
   hideAudioBitrate?: boolean;
   hideAudioSampleRate?: boolean;
   showBuiltinPresets?: boolean;
-  isFieldDirty?: (fieldName: string) => boolean;
-  resetField?: (fieldName: string) => void;
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -49,8 +47,6 @@ const props = withDefaults(defineProps<Props>(), {
   hideAudioBitrate: false,
   hideAudioSampleRate: false,
   showBuiltinPresets: true,
-  isFieldDirty: () => false,
-  resetField: () => {},
 });
 
 const outputFormat = defineModel<'mp4' | 'webm' | 'mkv'>('outputFormat', { required: true });
@@ -223,55 +219,31 @@ watch(
 <template>
   <div class="flex flex-col gap-4">
     <UiFormField :label="t('videoEditor.export.outputFormat')">
-      <div class="flex items-center gap-1.5 w-full">
-        <UiButtonGroup
-          v-model="outputFormat"
-          :options="props.formatOptions as any"
-          :disabled="props.disabled"
-          class="flex-grow"
-        />
-        <UButton
-          v-if="props.isFieldDirty?.('outputFormat')"
-          icon="i-heroicons-arrow-path-20-solid"
-          color="warning"
-          variant="ghost"
-          size="xs"
-          class="shrink-0"
-          @click="props.resetField?.('outputFormat')"
-        />
-      </div>
+      <UiButtonGroup
+        v-model="outputFormat"
+        :options="props.formatOptions as any"
+        :disabled="props.disabled"
+      />
     </UiFormField>
 
     <UiFormField :label="t('videoEditor.export.videoCodec')">
-      <div class="flex items-center gap-1.5 w-full">
-        <UiSelect
-          :model-value="
-            filteredVideoCodecOptions.find(
-              (o: VideoCodecOptionResolved) => o.value === videoCodec,
-            ) || videoCodec
-          "
-          :items="filteredVideoCodecOptions"
-          value-key="value"
-          label-key="label"
-          :disabled="props.disabled || props.isLoadingCodecSupport || outputFormat === 'webm'"
-          size="sm"
-          full-width
-          :search-input="false"
-          class="flex-grow"
-          @update:model-value="
-            (v: unknown) => (videoCodec = (v as { value: string })?.value ?? (v as string))
-          "
-        />
-        <UButton
-          v-if="props.isFieldDirty?.('videoCodec')"
-          icon="i-heroicons-arrow-path-20-solid"
-          color="warning"
-          variant="ghost"
-          size="xs"
-          class="shrink-0"
-          @click="props.resetField?.('videoCodec')"
-        />
-      </div>
+      <UiSelect
+        :model-value="
+          filteredVideoCodecOptions.find(
+            (o: VideoCodecOptionResolved) => o.value === videoCodec,
+          ) || videoCodec
+        "
+        :items="filteredVideoCodecOptions"
+        value-key="value"
+        label-key="label"
+        :disabled="props.disabled || props.isLoadingCodecSupport || outputFormat === 'webm'"
+        size="sm"
+        full-width
+        :search-input="false"
+        @update:model-value="
+          (v: unknown) => (videoCodec = (v as { value: string })?.value ?? (v as string))
+        "
+      />
     </UiFormField>
 
     <div class="flex gap-4">
@@ -284,118 +256,56 @@ watch(
             </UiTooltip>
           </div>
         </template>
-        <div class="flex items-center gap-1.5 w-full">
-          <UiWheelNumberInput
-            v-model="bitrateMbps"
-            :min="0"
-            :step="0.1"
-            :wheel-step-multiplier="10"
-            :class="{ 'ring-2 ring-error ring-inset': bitrateMbps <= 0 }"
-            class="flex-grow"
-          />
-          <UButton
-            v-if="props.isFieldDirty?.('bitrateMbps')"
-            icon="i-heroicons-arrow-path-20-solid"
-            color="warning"
-            variant="ghost"
-            size="xs"
-            class="shrink-0"
-            @click="props.resetField?.('bitrateMbps')"
-          />
-        </div>
+        <UiWheelNumberInput
+          v-model="bitrateMbps"
+          :min="0"
+          :step="0.1"
+          :wheel-step-multiplier="10"
+          :class="{ 'ring-2 ring-error ring-inset': bitrateMbps <= 0 }"
+        />
       </UiFormField>
 
       <UiFormField :label="t('videoEditor.export.keyframeInterval')" class="flex-1">
-        <div class="flex items-center gap-1.5 w-full">
-          <UiWheelNumberInput
-            v-model="keyframeIntervalSec"
-            :min="1"
-            :max="1000"
-            :step="1"
-            :wheel-step-multiplier="10"
-            class="flex-grow"
-          />
-          <UButton
-            v-if="props.isFieldDirty?.('keyframeIntervalSec')"
-            icon="i-heroicons-arrow-path-20-solid"
-            color="warning"
-            variant="ghost"
-            size="xs"
-            class="shrink-0"
-            @click="props.resetField?.('keyframeIntervalSec')"
-          />
-        </div>
+        <UiWheelNumberInput
+          v-model="keyframeIntervalSec"
+          :min="1"
+          :max="1000"
+          :step="1"
+          :wheel-step-multiplier="10"
+        />
       </UiFormField>
     </div>
 
     <UiFormField :label="t('videoEditor.export.bitrateMode')">
-      <div class="flex items-center gap-1.5 w-full">
-        <UiButtonGroup
-          v-model="bitrateMode"
-          :options="bitrateModeOptions"
-          :disabled="props.disabled"
-          class="flex-grow"
-          @change="
-            () => {
-              isBitrateModeTouched = true;
-            }
-          "
-        />
-        <UButton
-          v-if="props.isFieldDirty?.('bitrateMode')"
-          icon="i-heroicons-arrow-path-20-solid"
-          color="warning"
-          variant="ghost"
-          size="xs"
-          class="shrink-0"
-          @click="props.resetField?.('bitrateMode')"
-        />
-      </div>
+      <UiButtonGroup
+        v-model="bitrateMode"
+        :options="bitrateModeOptions"
+        :disabled="props.disabled"
+        @change="
+          () => {
+            isBitrateModeTouched = true;
+          }
+        "
+      />
     </UiFormField>
 
-    <div class="flex items-center justify-between">
-      <div class="flex items-center gap-2">
-        <UCheckbox
-          v-if="canExportAlpha"
-          v-model="exportAlpha"
-          :label="t('videoEditor.export.exportAlpha')"
-          :disabled="props.disabled"
-          :ui="{ label: 'text-sm text-ui-text-muted' }"
-          class="cursor-pointer"
-        />
-        <UButton
-          v-if="canExportAlpha && props.isFieldDirty?.('exportAlpha')"
-          icon="i-heroicons-arrow-path-20-solid"
-          color="warning"
-          variant="ghost"
-          size="xs"
-          class="shrink-0"
-          @click="props.resetField?.('exportAlpha')"
-        />
-      </div>
-    </div>
+    <UCheckbox
+      v-if="canExportAlpha"
+      v-model="exportAlpha"
+      :label="t('videoEditor.export.exportAlpha')"
+      :disabled="props.disabled"
+      :ui="{ label: 'text-sm text-ui-text-muted' }"
+      class="cursor-pointer"
+    />
 
-    <div class="flex items-center justify-between">
-      <div class="flex items-center gap-2">
-        <UCheckbox
-          v-if="outputFormat === 'mp4'"
-          v-model="fastStart"
-          :label="t('videoEditor.export.fastStart')"
-          :disabled="props.disabled"
-          :ui="{ label: 'text-sm text-ui-text-muted' }"
-          class="cursor-pointer"
-        />
-        <UButton
-          v-if="outputFormat === 'mp4' && props.isFieldDirty?.('fastStart')"
-          icon="i-heroicons-arrow-path-20-solid"
-          color="warning"
-          variant="ghost"
-          size="xs"
-          class="shrink-0"
-          @click="props.resetField?.('fastStart')"
-        />
-      </div>
-    </div>
+    <UCheckbox
+      v-if="outputFormat === 'mp4'"
+      v-model="fastStart"
+      :label="t('videoEditor.export.fastStart')"
+      :disabled="props.disabled"
+      :ui="{ label: 'text-sm text-ui-text-muted' }"
+      class="cursor-pointer"
+    />
 
     <div class="h-px bg-ui-border my-2"></div>
 
@@ -405,39 +315,16 @@ watch(
           audioCodecOptions.find((o) => o.value === audioCodec)?.label || audioCodec.toUpperCase()
         }})
       </span>
-      <div class="flex items-center gap-2">
-        <USwitch v-model="includeAudio" :disabled="isAudioDisabled" />
-        <UButton
-          v-if="props.isFieldDirty?.('excludeAudio')"
-          icon="i-heroicons-arrow-path-20-solid"
-          color="warning"
-          variant="ghost"
-          size="xs"
-          class="shrink-0"
-          @click="props.resetField?.('excludeAudio')"
-        />
-      </div>
+      <USwitch v-model="includeAudio" :disabled="isAudioDisabled" />
     </div>
 
     <div v-if="includeAudio && !props.hideAudioBitrate" class="flex flex-col gap-4">
       <UiFormField v-if="!props.showAudioAdvanced" :label="t('videoEditor.export.audioCodec')">
-        <div class="flex items-center gap-1.5 w-full">
-          <UiButtonGroup
-            v-model="audioCodec"
-            :options="audioCodecOptions"
-            :disabled="props.disabled"
-            class="flex-grow"
-          />
-          <UButton
-            v-if="props.isFieldDirty?.('audioCodec')"
-            icon="i-heroicons-arrow-path-20-solid"
-            color="warning"
-            variant="ghost"
-            size="xs"
-            class="shrink-0"
-            @click="props.resetField?.('audioCodec')"
-          />
-        </div>
+        <UiButtonGroup
+          v-model="audioCodec"
+          :options="audioCodecOptions"
+          :disabled="props.disabled"
+        />
       </UiFormField>
 
       <FileConversionAudioSettings
@@ -464,24 +351,12 @@ watch(
           )
         "
       >
-        <div class="flex items-center gap-1.5 w-full">
-          <UiWheelNumberInput
-            v-model="audioBitrateKbps"
-            :min="0"
-            :step="16"
-            :class="{ 'ring-2 ring-error ring-inset': audioBitrateKbps <= 0 }"
-            class="flex-grow"
-          />
-          <UButton
-            v-if="props.isFieldDirty?.('audioBitrateKbps')"
-            icon="i-heroicons-arrow-path-20-solid"
-            color="warning"
-            variant="ghost"
-            size="xs"
-            class="shrink-0"
-            @click="props.resetField?.('audioBitrateKbps')"
-          />
-        </div>
+        <UiWheelNumberInput
+          v-model="audioBitrateKbps"
+          :min="0"
+          :step="16"
+          :class="{ 'ring-2 ring-error ring-inset': audioBitrateKbps <= 0 }"
+        />
       </UiFormField>
     </div>
 

@@ -19,8 +19,6 @@ interface Props {
   hideAudioBitrate?: boolean;
   hideAudioSampleRate?: boolean;
   hasAudio?: boolean;
-  isFieldDirty?: (fieldName: string) => boolean;
-  resetField?: (fieldName: string) => void;
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -34,8 +32,6 @@ const props = withDefaults(defineProps<Props>(), {
   hideAudioBitrate: false,
   hideAudioSampleRate: false,
   hasAudio: true,
-  isFieldDirty: () => false,
-  resetField: () => {},
 });
 
 const outputFormat = defineModel<'mp4' | 'webm' | 'mkv'>('outputFormat', { required: true });
@@ -148,8 +144,6 @@ function applyPreset(presetId: string) {
       :format-options="formatOptions"
       :video-codec-options="videoCodecOptions"
       :show-builtin-presets="false"
-      :is-field-dirty="props.isFieldDirty"
-      :reset-field="props.resetField"
     />
   </div>
 </template>
