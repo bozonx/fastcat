@@ -45,6 +45,14 @@ const MAX_PREROLL_FRAMES: u32 = 8;
 /// Used by `preroll_frame_count` to convert to a frame count and by
 /// `expected_preroll_duration` to compute the actual ready threshold.
 pub(super) const PREROLL_LOOKAHEAD_SEC: f64 = 0.2;
+/// How far ahead to warm a FUTURE clip that is about to start PLAYING (not just
+/// being shown on pause). Larger than `PREROLL_LOOKAHEAD_SEC`: a paused layer only
+/// needs the playhead frame, but a clip about to play needs a head start so a
+/// decode-bound (4K / long-GOP) source does not immediately fall into smooth-lag at
+/// the cut. Bounded by the frame-cache capacity in `request_warm_ahead`, so it never
+/// decodes more than the cache can hold, and decoded in one shot so it does not keep
+/// stealing CPU from the still-active clip.
+const WARM_AHEAD_LOOKAHEAD_SEC: f64 = 0.5;
 
 // ---------------------------------------------------------------------------
 // Background loading results
@@ -281,6 +289,36 @@ impl VideoLayerRt {
         if let Err(e) = self.pump.prebuffer(frames, true) {
             log::error!("[monitor] prebuffer request: {e:?}");
         }
+    }
+
+    /// Deeper one-shot warm-up for an imminent FUTURE clip during playback.
+    ///
+    /// `request_prebuffer` (paused preroll) only needs the playhead frame, so on a
+    /// decode-bound source it warms just `MIN_PREROLL_FRAMES` — too small a head start
+    /// for a clip that is about to START PLAYING: at the cut it has ~2 frames and
+    /// immediately falls into smooth-lag (the "stutter at clip transitions"). This warms
+    /// `WARM_AHEAD_LOOKAHEAD_SEC` worth of frames instead, capped by the frame-cache
+    /// capacity (extra frames would only be evicted). It is a single prebuffer request,
+    /// so the decoder parks once filled and does not keep contending with the active clip.
+    pub fn request_warm_ahead(&self) {
+        let frames = self.warm_ahead_frame_count();
+        if let Err(e) = self.pump.prebuffer(frames, true) {
+            log::error!("[monitor] warm-ahead prebuffer request: {e:?}");
+        }
+    }
+
+    /// Frame count for `request_warm_ahead`: `ceil(WARM_AHEAD_LOOKAHEAD_SEC * fps) + 1`,
+    /// floored at `MIN_PREROLL_FRAMES` and capped at the cache capacity (extra frames
+    /// would only be evicted). A disabled cache still warms `MIN_PREROLL_FRAMES`.
+    pub fn warm_ahead_frame_count(&self) -> u32 {
+        let fps = if self.pump.info.fps > 0.0 {
+            self.pump.info.fps
+        } else {
+            30.0
+        };
+        let by_lookahead = (WARM_AHEAD_LOOKAHEAD_SEC * fps).ceil() as u32 + 1;
+        let cap = self.cache.capacity().max(MIN_PREROLL_FRAMES as usize) as u32;
+        by_lookahead.clamp(MIN_PREROLL_FRAMES, cap)
     }
 
     /// Expected warm-up duration in seconds, accounting for the per-layer
@@ -643,6 +681,53 @@ mod tests {
         rt.request_prebuffer();
         // preroll_frame_count должен вернуть минимум MIN_PREROLL_FRAMES
         assert!(rt.preroll_frame_count(0.2) >= MIN_PREROLL_FRAMES);
+    }
+
+    // V1 fix: an imminent FUTURE clip (about to play) must warm a real head start,
+    // not just the minimal paused preroll, so a decode-bound source does not stutter
+    // at the cut. The count must exceed the paused preroll yet stay bounded by the
+    // frame-cache capacity, and never panic.
+    #[test]
+    fn warm_ahead_decodes_deeper_than_paused_preroll_but_bounded_by_cache() {
+        let rt = fixture_video_rt();
+        let warm = rt.warm_ahead_frame_count();
+        // Deeper than the paused playhead-only preroll.
+        assert!(
+            warm > rt.preroll_frame_count(PREROLL_LOOKAHEAD_SEC),
+            "warm-ahead must give a bigger head start than paused preroll"
+        );
+        // Never more than the cache can hold (extra frames would be evicted).
+        assert!(warm as usize <= rt.cache.capacity().max(MIN_PREROLL_FRAMES as usize));
+        assert!(warm >= MIN_PREROLL_FRAMES);
+        // Does not panic when actually issued.
+        rt.request_warm_ahead();
+    }
+
+    // A frame-cache so small it holds only the minimum must still bound warm-ahead to
+    // that capacity rather than decoding ahead frames it would immediately evict.
+    #[test]
+    fn warm_ahead_respects_tiny_cache_capacity() {
+        let fixture = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .parent()
+            .unwrap()
+            .join("test/fixtures/media/sample-1s-720p.mp4");
+        let pump = DecodePump::open(crate::media::decode_thread::DecodeOpenParams {
+            path: &fixture,
+            max_output_long_edge: None,
+            on_frame_decoded: None,
+            device: None,
+            queue: None,
+            hw_mode: HwAccelMode::None,
+            vaapi_device: None,
+        })
+        .expect("open fixture decoder");
+        let media_size = (pump.info.width, pump.info.height);
+        let rotation = pump.info.rotation;
+        // Tiny budget → cache floors at its own MIN_FRAMES.
+        let rt = VideoLayerRt::new(pump, media_size, rotation, 1);
+        let warm = rt.warm_ahead_frame_count();
+        assert!(warm as usize <= rt.cache.capacity().max(MIN_PREROLL_FRAMES as usize));
+        assert!(warm >= MIN_PREROLL_FRAMES);
     }
 
     #[test]

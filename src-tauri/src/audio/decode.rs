@@ -1122,9 +1122,17 @@ pub(crate) fn spawn_window_fill(
         if state.window_fill_in_flight.get(layer_id) == Some(&target_start_frame) {
             return;
         }
-        // Future-clip prewarm is optional. Do not let it occupy the single ranged
-        // decode slot while live refill/miss work is already active.
-        if priority == WindowFillPriority::Speculative && state.active_window_fill_count > 0 {
+        // Future-clip prewarm is optional and must never push past the concurrency
+        // cap. Previously it was blocked whenever ANY fill was active, so during
+        // steady playback (where refill-ahead intermittently holds one slot) it
+        // almost never ran — and clips entering together at a section boundary fell
+        // to inline streaming on the realtime producer. Now it may use a genuinely
+        // FREE slot (below the cap) so the second slot actually serves its purpose;
+        // a live miss/refill that arrives while both slots are busy still has its
+        // documented safe fallback (inline streaming this one chunk + retry next).
+        if priority == WindowFillPriority::Speculative
+            && state.active_window_fill_count >= WINDOW_FILL_MAX_CONCURRENCY
+        {
             return;
         }
         // Throttle concurrency. When the slot is full we don't spawn; the caller
@@ -2504,29 +2512,50 @@ mod tests {
     }
 
     #[test]
-    fn speculative_window_fill_yields_to_active_live_fill() -> anyhow::Result<()> {
+    fn speculative_window_fill_is_capped_but_uses_a_free_slot() -> anyhow::Result<()> {
         let path = write_temp_f32_wav(48000, 2, 48000 * 2)?;
         let path_str = path.to_string_lossy().to_string();
         let shared = Arc::new((Mutex::new(AudioShared::default()), Condvar::new()));
 
-        shared.0.lock().active_window_fill_count = 1;
+        // Slots full → speculative must NOT push past the concurrency cap.
+        shared.0.lock().active_window_fill_count = WINDOW_FILL_MAX_CONCURRENCY;
         spawn_window_fill(
             &shared,
-            "future",
+            "full",
             &path_str,
             0,
             48000,
             2,
             WindowFillPriority::Speculative,
         );
+        {
+            let state = shared.0.lock();
+            assert!(
+                !state.window_fill_in_flight.contains_key("full"),
+                "speculative prewarm must never exceed the concurrency cap"
+            );
+            assert_eq!(state.active_window_fill_count, WINDOW_FILL_MAX_CONCURRENCY);
+        }
 
-        let state = shared.0.lock();
-        assert!(
-            !state.window_fill_in_flight.contains_key("future"),
-            "speculative prewarm must not claim the fill slot while live work is active"
-        );
-        assert_eq!(state.active_window_fill_count, 1);
-        drop(state);
+        // A genuinely free slot (below the cap, but with a live fill already active):
+        // speculative now uses it so future-clip windows actually get prewarmed
+        // instead of falling to inline streaming at section boundaries.
+        if WINDOW_FILL_MAX_CONCURRENCY >= 2 {
+            shared.0.lock().active_window_fill_count = WINDOW_FILL_MAX_CONCURRENCY - 1;
+            spawn_window_fill(
+                &shared,
+                "future",
+                &path_str,
+                0,
+                48000,
+                2,
+                WindowFillPriority::Speculative,
+            );
+            assert!(
+                wait_for_window(&shared, "future", 0),
+                "speculative prewarm must claim a free slot below the cap"
+            );
+        }
 
         let _ = std::fs::remove_file(path);
         Ok(())

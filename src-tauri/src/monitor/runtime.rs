@@ -30,8 +30,13 @@ use crate::media::decode_thread::DecodePump;
 use crate::media::image_decode::decode_image;
 
 /// Сколько секунд до начала будущего клипа на таймлайне должно оставаться,
-/// чтобы мы превентивно запустили фоновую инициализацию его декодера.
-const VIDEO_PREWARM_LOOKAHEAD_SEC: f64 = 1.5;
+/// чтобы мы превентивно запустили фоновую инициализацию его декодера. Должно
+/// перекрывать худшее время «открыть декодер + декодировать первый GOP» —
+/// для 4K/long-GOP открытие ffmpeg + первый GOP заметно дольше прежних 1.5с,
+/// поэтому при слишком коротком окне следующий клип на стыке всё равно стартовал
+/// «вхолодную» и заикался. Запас в секунду компенсирует ожидание пермита
+/// `decoder_load_gate`, когда активный слой ещё держит свой open.
+const VIDEO_PREWARM_LOOKAHEAD_SEC: f64 = 2.5;
 
 /// Окно удержания рантайма слоя вокруг playhead'а. Рантаймы клипов, чей timeline-интервал
 /// не пересекает `[t - KEEP_BEHIND, t + KEEP_AHEAD]`, вытесняются прямо во время
@@ -654,9 +659,13 @@ impl LayerRuntimeManager {
                 }
                 rt.last_pump_seek_pts = Some(clip_local);
                 rt.note_seek_requested();
-                // На паузе и для look-ahead будущего клипа сразу прогреваем первый
-                // GOP, но не даём future-runtime free-run'ить за стык.
-                if !self.playing || defer_play_until_active {
+                // Прогреваем первый GOP вперёд playhead'а, но не даём future-runtime
+                // free-run'ить за стык. Будущий клип, который вот-вот заиграет
+                // (defer во время воспроизведения), прогреваем глубже — иначе на
+                // decode-bound 4K он стартует с ~2 кадров и заикается на стыке.
+                if defer_play_until_active {
+                    rt.request_warm_ahead();
+                } else if !self.playing {
                     rt.request_prebuffer();
                 }
                 self.runtimes.insert(id, LayerRuntime::Video(rt));
@@ -1090,7 +1099,20 @@ impl LayerRuntimeManager {
         self.last_tick_t = t;
         let scene = self.scene.clone();
         for layer in scene.iter() {
-            if !layer.covers(t) || !is_refreshable_display_runtime(layer.kind) {
+            if !layer.covers(t) {
+                // Прогреваем декодер ближайшего будущего видеоклипа и на паузе, а не
+                // только в `tick` (который идёт лишь при воспроизведении). Иначе Play,
+                // нажатый когда playhead стоит/скрабит у стыка, заставал следующий клип
+                // неоткрытым — он стартовал «вхолодную» и заикался. На паузе активного
+                // декода нет, поэтому конкуренции за CPU/пермиты это не создаёт.
+                if layer.kind == LayerKind::Video
+                    && layer.covers(t + self.prewarm_lookahead_sec())
+                {
+                    self.ensure_runtime_for(layer, device.clone(), queue.clone());
+                }
+                continue;
+            }
+            if !is_refreshable_display_runtime(layer.kind) {
                 continue;
             }
             self.ensure_runtime_for(layer, device.clone(), queue.clone());
