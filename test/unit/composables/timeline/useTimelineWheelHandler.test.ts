@@ -26,6 +26,15 @@ vi.stubGlobal('cancelAnimationFrame', vi.fn());
 
 const mockWorkspaceStore = {
   userSettings: reactive(JSON.parse(JSON.stringify(DEFAULT_USER_SETTINGS))),
+  workspaceState: {
+    fileBrowser: {
+      instances: {},
+    },
+    presets: {
+      custom: [],
+      defaultText: '',
+    },
+  },
 };
 
 vi.mock('~/stores/workspace.store', () => ({

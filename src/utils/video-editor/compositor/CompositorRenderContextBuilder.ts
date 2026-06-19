@@ -1,4 +1,4 @@
-import { Sprite, Texture, type Application, type Graphics, type RenderTexture } from 'pixi.js';
+import { RenderTexture, Sprite, Texture, type Application, type Graphics } from 'pixi.js';
 import type { VideoClipEffect } from '~/timeline/types';
 import { buildEffectSpecs } from '~/effects';
 import type { CanvasFallbackRenderer } from './renderers/CanvasFallbackRenderer';
@@ -213,6 +213,115 @@ export class CompositorRenderContextBuilder {
               params.getPreviewEffectsEnabled(),
             ),
         }),
+      // Track-level WGSL effects. Mirrors the master path but scoped to one
+      // track: render the track's container in isolation to a texture, run the
+      // shared compute runner over those pixels, then swap the track's content
+      // for the processed sprite so it still composites with the track's own
+      // alpha/blendMode. Runs before the main stage render; the returned cleanup
+      // restores the original children and releases per-frame GPU resources.
+      applyTrackEffects: async (): Promise<() => void> => {
+        const noop = () => {};
+        if (!params.getPreviewEffectsEnabled()) return noop;
+
+        const runner = params.clipResourceManager.getComputeRunner();
+        if (!runner?.isReady()) return noop;
+
+        const cleanups: Array<() => void> = [];
+
+        for (const track of params.trackRuntimeManager.all) {
+          const specs = buildEffectSpecs(track.effects ?? undefined);
+          if (!specs || specs.length === 0) continue;
+
+          const container = track.container;
+          // Nothing visible on this track this frame → no pixels to process.
+          if (!container || !container.children.some((child) => child.visible)) {
+            continue;
+          }
+
+          const rt = RenderTexture.create({ width: state.width, height: state.height });
+          let bitmap: ImageBitmap | null = null;
+          try {
+            // Render the track content with its composite alpha/blendMode
+            // neutralised — those are applied once at the final stage composite
+            // (the processed sprite lives inside this same container), so baking
+            // them into the texture too would double them.
+            const prevAlpha = container.alpha;
+            const prevBlend = container.blendMode;
+            container.alpha = 1;
+            container.blendMode = 'normal';
+            try {
+              params.stageTextureRenderer.renderDisplayObjectToTextureForcedVisible(container, rt);
+            } finally {
+              container.alpha = prevAlpha;
+              container.blendMode = prevBlend;
+            }
+
+            const pixels = app.renderer.extract.pixels(rt);
+            const offscreen = new OffscreenCanvas(state.width, state.height);
+            const ctx = offscreen.getContext('2d');
+            if (!ctx) continue;
+            const imageData = ctx.createImageData(state.width, state.height);
+            const pixelBytes = ArrayBuffer.isView(pixels)
+              ? new Uint8Array(pixels.buffer, pixels.byteOffset, pixels.byteLength)
+              : new Uint8Array(0);
+            imageData.data.set(pixelBytes);
+            ctx.putImageData(imageData, 0, 0);
+            bitmap = await createImageBitmap(offscreen);
+
+            const processed = await runner.applyEffects(bitmap, specs);
+            if (!processed) continue;
+
+            // Hide the real children and drop a single processed sprite into the
+            // container. The container keeps its real alpha/blendMode, so it
+            // composites onto the stage exactly as before — just with the
+            // effect-processed pixels.
+            const children = [...container.children];
+            const prevVisible = children.map((child) => child.visible);
+            for (const child of children) child.visible = false;
+
+            const texture = Texture.from(processed);
+            const sprite = new Sprite(texture);
+            // applyEffects pads symmetrically so blur/bloom can bleed past the
+            // frame; centre the result on the track so content stays aligned.
+            sprite.x = (state.width - processed.width) / 2;
+            sprite.y = (state.height - processed.height) / 2;
+            container.addChild(sprite);
+
+            cleanups.push(() => {
+              try {
+                container.removeChild(sprite);
+              } catch {
+                // ignore
+              }
+              sprite.destroy();
+              texture.destroy(true);
+              (processed as { close?: () => void }).close?.();
+              for (let i = 0; i < children.length; i += 1) {
+                const child = children[i];
+                if (child && !(child as { destroyed?: boolean }).destroyed) {
+                  child.visible = prevVisible[i] ?? true;
+                }
+              }
+            });
+          } catch (err) {
+            log.warn('[Compositor] Track WebGPU effects failed:', err);
+          } finally {
+            rt.destroy();
+            bitmap?.close();
+          }
+        }
+
+        if (cleanups.length === 0) return noop;
+        return () => {
+          for (const cleanup of cleanups) {
+            try {
+              cleanup();
+            } catch {
+              // ignore
+            }
+          }
+        };
+      },
       applyMasterEffects: async () => {
         const previewEffectsEnabled = params.getPreviewEffectsEnabled();
         if (!previewEffectsEnabled) {

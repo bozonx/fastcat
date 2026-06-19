@@ -36,6 +36,7 @@ export interface RenderingEngineContext {
   prepareAdjustmentClips: (activeClips: CompositorClip[]) => Promise<void>;
   applyShaderTransitions: (activeClips: CompositorClip[], timeUs: number) => Promise<void>;
   applyWebGpuClipEffects?: (clip: CompositorClip) => Promise<void>;
+  applyTrackEffects: () => Promise<() => void>;
   applyMasterEffects: () => void;
   setStageSortDirty: (value: boolean) => void;
   setActiveSortDirty: (value: boolean) => void;
@@ -142,9 +143,20 @@ export class RenderingEngine {
           return null;
         }
 
-        context.setLastRenderedTimeUs(timeUs);
-        context.app.renderer.render(context.app.stage);
-        await context.applyMasterEffects();
+        // Track-level effects must be applied before the stage composites, so
+        // process each effected track's container into a sprite now; the cleanup
+        // restores the originals after the render.
+        const restoreTrackEffects = await context.applyTrackEffects();
+        try {
+          if (!context.app || !context.canvas || !context.app.renderer) {
+            return null;
+          }
+          context.setLastRenderedTimeUs(timeUs);
+          context.app.renderer.render(context.app.stage);
+          await context.applyMasterEffects();
+        } finally {
+          restoreTrackEffects();
+        }
       } finally {
         for (let i = 0; i < stageChildren.length; i += 1) {
           const child = stageChildren[i];

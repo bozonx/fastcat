@@ -49,6 +49,7 @@ function makeContext(overrides: Partial<RenderingEngineContext> = {}): {
     sortStage: vi.fn(),
     prepareAdjustmentClips: vi.fn(),
     applyShaderTransitions: vi.fn(() => Promise.resolve()),
+    applyTrackEffects: vi.fn(() => Promise.resolve(() => {})),
     applyMasterEffects: vi.fn(),
     setStageSortDirty: vi.fn(),
     setActiveSortDirty: vi.fn(),

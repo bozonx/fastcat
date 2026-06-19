@@ -50,6 +50,15 @@ vi.mock('~/stores/project.store', () => ({
 
 const mockWorkspaceStore = reactive({
   userSettings: JSON.parse(JSON.stringify(DEFAULT_USER_SETTINGS)),
+  workspaceState: {
+    fileBrowser: {
+      instances: {},
+    },
+    presets: {
+      custom: [],
+      defaultText: '',
+    },
+  },
 });
 
 vi.mock('~/stores/workspace.store', () => ({

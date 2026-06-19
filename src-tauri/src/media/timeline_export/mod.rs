@@ -470,8 +470,16 @@ pub fn export_timeline(
                         let dev_id = compositor
                             .ensure_offscreen_device()
                             .context("export: no GPU device")?;
+                        // Deeper pipeline = more in-flight slots so the GPU does not
+                        // stall waiting for `map_async` to complete. Each slot costs
+                        // one offscreen texture + readback buffer (~width*height*4
+                        // bytes). At 1080p that is ~8.3 MB/slot, so depth 4 is cheap;
+                        // at 4K it is ~33 MB/slot, so cap depth there to keep the
+                        // readback buffers bounded.
+                        let is_4k = width as u64 * height as u64 >= 3840 * 2160;
+                        let readback_depth = if is_4k { 3 } else { 4 };
                         let mut pipeline = compositor
-                            .begin_pipelined_readback(dev_id, width, height, 2)
+                            .begin_pipelined_readback(dev_id, width, height, readback_depth)
                             .context("export: failed to create pipelined readback")?;
                         for frame_scene in scene_rx.iter() {
                             if let Some(pixels) = compositor

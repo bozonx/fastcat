@@ -38,6 +38,15 @@ vi.mock('~/stores/workspace.store', () => ({
       timeline: { defaultStaticClipDurationUs: 5000000 },
     },
     workspaceHandle: null,
+    workspaceState: {
+      fileBrowser: {
+        instances: {},
+      },
+      presets: {
+        custom: [],
+        defaultText: '',
+      },
+    },
   }),
 }));
 
