@@ -241,11 +241,13 @@ const containerClasses = computed(() => {
   );
 });
 
-const toolbarWrapperClass = computed(() =>
-  isSideToolbar.value
-    ? `shrink-0 h-full overflow-hidden ${props.ui.toolbar || ''}`
-    : `shrink-0 ${props.ui.toolbar || ''}`,
-);
+const toolbarWrapperClass = computed(() => {
+  if (isSideToolbar.value) {
+    return `shrink-0 h-full overflow-hidden ${props.ui.toolbar || ''}`;
+  }
+  const snapClass = !isExpanded.value ? 'toolbar-snap-pb' : '';
+  return `shrink-0 ${snapClass} ${props.ui.toolbar || ''}`;
+});
 
 const bodyClasses = computed(() => {
   return `flex-1 min-h-0 overflow-y-auto pb-safe custom-scrollbar ${props.ui.body || ''}`;
@@ -859,6 +861,10 @@ watch(isOpen, (val) => {
  */
 .pb-safe {
   padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 1.5rem);
+}
+
+.toolbar-snap-pb {
+  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 8px);
 }
 
 .custom-scrollbar::-webkit-scrollbar {
