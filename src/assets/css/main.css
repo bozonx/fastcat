@@ -3,17 +3,20 @@
 
 @layer base {
   html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;
   }
 }
 
-/* Fix text blurriness in modals, drawers, and panel focus frames */
-[role="dialog"],
-.mobile-drawer-vaul-content,
-.panel-focus-frame {
-  backface-visibility: hidden;
-  transform: translateZ(0);
-}
+/*
+ * NOTE: Do NOT add `transform: translateZ(0)` / `backface-visibility: hidden`
+ * to modals, drawers, or `.panel-focus-frame`. Promoting those containers to
+ * their own GPU composite layer makes WebKitGTK (Tauri on Linux) rasterize the
+ * layer texture off the device-pixel grid at fractional display scales, which
+ * is what blurred the text in the export form, settings, and delete/other
+ * modals. Keeping these elements un-promoted lets text snap to the pixel grid.
+ */
 
 @import './themes/dark.css';
 @import './components/splitpanes.css';

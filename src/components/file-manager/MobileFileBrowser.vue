@@ -488,10 +488,10 @@ const menuItems = computed(() => [
   [
     {
       label:
-        fileManagerStore.sortOption.order === 'asc'
+        fileManagerStore?.sortOption?.order === 'asc'
           ? t('common.sortOrder.asc')
           : t('common.sortOrder.desc'),
-      icon: fileManagerStore.sortOption.order === 'asc' ? 'lucide:sort-asc' : 'lucide:sort-desc',
+      icon: fileManagerStore?.sortOption?.order === 'asc' ? 'lucide:sort-asc' : 'lucide:sort-desc',
       onSelect: toggleSortOrder,
     },
   ],
@@ -504,10 +504,10 @@ const menuItems = computed(() => [
   ],
   [
     {
-      label: fileManagerStore.showHiddenFiles
+      label: fileManagerStore?.showHiddenFiles
         ? t('common.hideHiddenFiles')
         : t('common.showHiddenFiles'),
-      icon: fileManagerStore.showHiddenFiles ? 'lucide:eye-off' : 'lucide:eye',
+      icon: fileManagerStore?.showHiddenFiles ? 'lucide:eye-off' : 'lucide:eye',
       onSelect: toggleHiddenFiles,
     },
   ],
@@ -521,16 +521,16 @@ const menuItems = computed(() => [
     <!-- Navigation (Breadcrumbs/Back) -->
     <MobileFileBrowserNavbar
       :is-selection-mode="isSelectionMode"
-      :selected-count="selectedEntries.length"
-      :total-selected-size="totalSelectedSize"
-      :breadcrumbs="breadcrumbs"
-      :has-folder-path="!!fileManagerStore.selectedFolder?.path"
+      :selected-count="selectedEntries?.length ?? 0"
+      :total-selected-size="totalSelectedSize ?? 0"
+      :breadcrumbs="breadcrumbs ?? []"
+      :has-folder-path="!!fileManagerStore?.selectedFolder?.path"
       :menu-items="menuItems"
       @back="goBack"
       @cancel-selection="toggleSelectionMode"
       @navigate-root="navigateToRoot"
       @navigate-breadcrumb="
-        (name, path) => fileManagerStore.openFolder({ kind: 'directory', name, path })
+        (name, path) => fileManagerStore?.openFolder?.({ kind: 'directory', name, path })
       "
     />
 
@@ -567,7 +567,8 @@ const menuItems = computed(() => [
         :thumbnails="thumbnails"
         :file-compatibility="fileCompatibility"
         :selected-entry-path="
-          (selectionStore.selectedEntity?.source === 'fileManager' &&
+          (selectionStore?.selectedEntity?.source === 'fileManager' &&
+          selectionStore?.selectedEntity &&
           'path' in selectionStore.selectedEntity
             ? (selectionStore.selectedEntity.path as string | null)
             : null) ?? null
@@ -604,9 +605,9 @@ const menuItems = computed(() => [
 
     <!-- Paste Mode Toolbar -->
     <MobileFileBrowserPasteToolbar
-      v-if="!isSelectionMode && clipboardStore.hasFileManagerPayload"
+      v-if="!isSelectionMode && clipboardStore?.hasFileManagerPayload"
       @paste="handlePaste"
-      @cancel="clipboardStore.clearClipboardPayload()"
+      @cancel="clipboardStore?.clearClipboardPayload?.()"
     />
 
     <!-- Action FAB -->
@@ -616,7 +617,7 @@ const menuItems = computed(() => [
           !isSelectionMode &&
           !isDrawerOpen &&
           !isCreateMenuOpen &&
-          !clipboardStore.hasFileManagerPayload
+          !clipboardStore?.hasFileManagerPayload
         "
         class="fixed bottom-20 right-6 z-40 transition-all duration-300"
       >
@@ -633,8 +634,8 @@ const menuItems = computed(() => [
     <!-- Create Menu Sheet -->
     <MobileFileBrowserCreateSheet
       v-model="isCreateMenuOpen"
-      :selected-folder-name="fileManagerStore.selectedFolder?.name || '/'"
-      :selected-folder-path="fileManagerStore.selectedFolder?.path || ''"
+      :selected-folder-name="fileManagerStore?.selectedFolder?.name || '/'"
+      :selected-folder-path="fileManagerStore?.selectedFolder?.path || ''"
       @upload="triggerFileUpload"
       @upload-global="triggerGlobalFileUpload"
       @create-folder="handleCreateFolderRequest"

@@ -13,11 +13,7 @@ import UiFormField from '~/components/ui/UiFormField.vue';
 import UiFormSectionHeader from '~/components/ui/UiFormSectionHeader.vue';
 import UiButtonGroup from '~/components/ui/UiButtonGroup.vue';
 
-import {
-  BASE_VIDEO_CODEC_OPTIONS,
-  AUDIO_EXPORT_CODEC_OPTIONS,
-  VIDEO_FORMAT_OPTIONS,
-} from '~/utils/webcodecs';
+import { BASE_VIDEO_CODEC_OPTIONS, VIDEO_FORMAT_OPTIONS } from '~/utils/webcodecs';
 import { formatFps, middleEllipsis, formatRenderDuration } from '~/utils/format';
 import { useExportForm } from '~/composables/timeline/export/useExportForm';
 
@@ -115,15 +111,7 @@ const encodingSummary = computed(() => {
 
   const vBitrate = `${bitrateMbps.value || 0}Mb/s`;
 
-  const aCodecLabel =
-    AUDIO_EXPORT_CODEC_OPTIONS.find((o) => o.value === audioCodec.value)?.label ||
-    audioCodec.value ||
-    '';
-  const aCodec = aCodecLabel.split(' ')[0]?.toUpperCase() || '';
-
-  const aBitrate = `${audioBitrateKbps.value || 0} Kb/s`;
-
-  return `${t('common.video')}: ${format} ${vCodec} ${vBitrate} | ${aCodec} ${aBitrate}`;
+  return `${t('common.video')}: ${format} ${vCodec} ${vBitrate}`;
 });
 
 const exportRangeRadioItems = computed(() =>

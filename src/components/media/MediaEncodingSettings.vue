@@ -314,9 +314,8 @@ watch(
     <div class="flex items-center justify-between">
       <span class="text-sm text-ui-text-muted">
         {{ t('common.audio') }}:
-        {{
-          audioCodecOptions.find((o) => o.value === audioCodec)?.label || audioCodec.toUpperCase()
-        }}
+        {{ audioCodecOptions.find((o) => o.value === audioCodec)?.label || audioCodec.toUpperCase()
+        }}{{ !props.hideAudioBitrate ? ` ${audioBitrateKbps} Kb/s` : '' }}
       </span>
       <USwitch v-model="includeAudio" :disabled="isAudioDisabled" />
     </div>
