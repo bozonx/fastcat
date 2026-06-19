@@ -75,7 +75,6 @@ const mainActions = computed(() => [
     id: 'convert',
     label: t('fastcat.timeline.convertSelectionToZoneMarker'),
     icon: 'i-heroicons-bookmark-square',
-    hidden: props.isMobile,
     onClick: handleConvertToMarker,
   },
   {
@@ -83,7 +82,6 @@ const mainActions = computed(() => [
     label: t('fastcat.timeline.rippleTrimSelection'),
     icon: 'i-heroicons-scissors',
     color: 'warning' as const,
-    hidden: props.isMobile,
     onClick: handleRippleTrim,
   },
 ]);
@@ -92,7 +90,7 @@ const mainActions = computed(() => [
 <template>
   <div v-if="selectionRange" class="w-full flex flex-col gap-2 text-ui-text">
     <PropertySection
-      v-if="!hideActions && !props.isMobile"
+      v-if="!hideActions"
       :title="t('fastcat.selectionRange.actions')"
     >
       <PropertyActionsBlock :quick-actions="commonActions" :additional-actions="mainActions" />

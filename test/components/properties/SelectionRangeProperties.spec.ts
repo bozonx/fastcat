@@ -61,22 +61,6 @@ describe('SelectionRangeProperties', () => {
     expect(rippleTrimAction?.hidden).toBeFalsy();
   });
 
-  it('hides convert and ripple-trim in mainActions on mobile', async () => {
-    const wrapper = await mountSuspended(SelectionRangeProperties, {
-      props: { isMobile: true },
-    });
-
-    const mainActions = (wrapper.vm as any).mainActions as Array<{ id: string; hidden?: boolean }>;
-    const convertAction = mainActions.find((a) => a.id === 'convert');
-    const rippleTrimAction = mainActions.find((a) => a.id === 'ripple-trim');
-
-    expect(convertAction).toBeDefined();
-    expect(convertAction?.hidden).toBe(true);
-
-    expect(rippleTrimAction).toBeDefined();
-    expect(rippleTrimAction?.hidden).toBe(true);
-  });
-
   it('shows actions section on desktop', async () => {
     const wrapper = await mountSuspended(SelectionRangeProperties);
 
@@ -84,12 +68,12 @@ describe('SelectionRangeProperties', () => {
     expect(sections.length).toBeGreaterThanOrEqual(2);
   });
 
-  it('hides actions section on mobile', async () => {
+  it('shows actions section on mobile', async () => {
     const wrapper = await mountSuspended(SelectionRangeProperties, {
       props: { isMobile: true },
     });
 
     const sections = wrapper.findAll('section');
-    expect(sections.length).toBe(1);
+    expect(sections.length).toBeGreaterThanOrEqual(2);
   });
 });
