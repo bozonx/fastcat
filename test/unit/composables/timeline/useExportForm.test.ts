@@ -185,6 +185,7 @@ vi.mock('~/composables/timeline/export', () => ({
     keyframeIntervalSec: ref(2),
     exportAlpha: ref(false),
     fastStart: ref(true),
+    includeMetadata: ref(false),
     metadataTitle: ref(''),
     metadataDescription: ref(''),
     metadataAuthor: ref(''),
@@ -604,5 +605,37 @@ describe('useExportForm', () => {
       expect.anything(),
       expect.any(Function),
     );
+  });
+
+  it('инициализирует includeMetadata как false и не передает метаданные по умолчанию', async () => {
+    const form = useExportForm();
+    await form.initializeExportForm();
+    expect(form.includeMetadata.value).toBe(false);
+
+    exportTimelineToFileMock.mockClear();
+    await form.handleStartExport();
+
+    expect(exportTimelineToFileMock.mock.calls[0]?.[0]).toMatchObject({
+      metadata: undefined,
+    });
+  });
+
+  it('передает метаданные, если includeMetadata установлен в true', async () => {
+    const form = useExportForm();
+    await form.initializeExportForm();
+    form.includeMetadata.value = true;
+    form.metadataTitle.value = 'Custom Title';
+
+    exportTimelineToFileMock.mockClear();
+    await form.handleStartExport();
+
+    expect(exportTimelineToFileMock.mock.calls[0]?.[0]).toMatchObject({
+      metadata: {
+        title: 'Custom Title',
+        description: 'Description',
+        author: 'Author',
+        tags: 'tag-1',
+      },
+    });
   });
 });

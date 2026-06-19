@@ -72,6 +72,7 @@ export function useExportForm() {
     keyframeIntervalSec,
     exportAlpha,
     fastStart,
+    includeMetadata,
     metadataTitle,
     metadataDescription,
     metadataAuthor,
@@ -170,6 +171,7 @@ export function useExportForm() {
       keyframeIntervalSec: keyframeIntervalSec.value,
       exportAlpha: exportAlpha.value,
       fastStart: fastStart.value,
+      includeMetadata: includeMetadata.value,
       metadataTitle: metadataTitle.value.trim(),
       metadataDescription: metadataDescription.value.trim(),
       metadataAuthor: metadataAuthor.value.trim(),
@@ -206,6 +208,7 @@ export function useExportForm() {
       Number(audioSampleRate.value) !== format.sampleRate;
 
     const isMetadataDifferent =
+      includeMetadata.value !== false ||
       metadataTitle.value !== (projectStore.projectMeta?.title || '') ||
       metadataDescription.value !== (projectStore.projectMeta?.description || '') ||
       metadataAuthor.value !== (projectStore.projectMeta?.author || '') ||
@@ -315,6 +318,7 @@ export function useExportForm() {
         customHeight.value = saved.customHeight ?? format.height;
         customFps.value = saved.customFps ?? format.fps;
         customAudioSampleRate.value = saved.customAudioSampleRate ?? format.sampleRate;
+        includeMetadata.value = saved.includeMetadata ?? false;
         metadataTitle.value = saved.metadataTitle ?? '';
         metadataDescription.value = saved.metadataDescription ?? '';
         metadataAuthor.value = saved.metadataAuthor ?? '';
@@ -339,6 +343,7 @@ export function useExportForm() {
         metadataDescription.value = projectStore.projectMeta?.description || '';
         metadataAuthor.value = projectStore.projectMeta?.author || '';
         metadataTags.value = projectStore.projectMeta?.tags.join(', ') || '';
+        includeMetadata.value = false;
 
         matchTimeline.value = true;
         customWidth.value = format.width;
@@ -467,12 +472,14 @@ export function useExportForm() {
             keyframeIntervalSec: keyframeIntervalSec.value,
             exportAlpha: effectiveExportAlpha,
             fastStart: fastStart.value,
-            metadata: {
-              title: metadataTitle.value,
-              description: metadataDescription.value,
-              author: metadataAuthor.value,
-              tags: metadataTags.value,
-            },
+            metadata: includeMetadata.value
+              ? {
+                  title: metadataTitle.value,
+                  description: metadataDescription.value,
+                  author: metadataAuthor.value,
+                  tags: metadataTags.value,
+                }
+              : undefined,
             exportRangeUs: selectedExportRange.value?.range,
           },
           tempFileHandle,
@@ -687,6 +694,9 @@ export function useExportForm() {
         customAudioSampleRate.value = format.sampleRate;
         audioSampleRate.value = format.sampleRate;
         break;
+      case 'includeMetadata':
+        includeMetadata.value = false;
+        break;
       case 'metadataTitle':
         metadataTitle.value = projectStore.projectMeta?.title || '';
         break;
@@ -739,6 +749,8 @@ export function useExportForm() {
         return exportFps.value !== format.fps;
       case 'customAudioSampleRate':
         return Number(audioSampleRate.value) !== format.sampleRate;
+      case 'includeMetadata':
+        return includeMetadata.value !== false;
       case 'metadataTitle':
         return metadataTitle.value !== (projectStore.projectMeta?.title || '');
       case 'metadataDescription':
@@ -771,6 +783,7 @@ export function useExportForm() {
       customHeight,
       customFps,
       customAudioSampleRate,
+      includeMetadata,
       metadataTitle,
       metadataDescription,
       metadataAuthor,
@@ -798,6 +811,7 @@ export function useExportForm() {
         customHeight: customHeight.value,
         customFps: customFps.value,
         customAudioSampleRate: customAudioSampleRate.value,
+        includeMetadata: includeMetadata.value,
         metadataTitle: metadataTitle.value,
         metadataDescription: metadataDescription.value,
         metadataAuthor: metadataAuthor.value,
@@ -837,6 +851,7 @@ export function useExportForm() {
     keyframeIntervalSec,
     exportAlpha,
     fastStart,
+    includeMetadata,
     metadataTitle,
     metadataDescription,
     metadataAuthor,

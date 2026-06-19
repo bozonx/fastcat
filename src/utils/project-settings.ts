@@ -121,6 +121,7 @@ export interface FastCatProjectSettings {
     customHeight: number;
     customFps: number;
     customAudioSampleRate: number;
+    includeMetadata: boolean;
     metadataTitle: string;
     metadataDescription: string;
     metadataAuthor: string;

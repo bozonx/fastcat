@@ -1178,6 +1178,7 @@
       "height": "Высота",
       "keyframeInterval": "Интервал ключевых кадров (GOP, сек)",
       "metadata": "Метаданные",
+      "includeMetadata": "Записать метаданные проекта",
       "metadataAuthor": "Автор",
       "metadataDescription": "Описание",
       "metadataTags": "Теги",

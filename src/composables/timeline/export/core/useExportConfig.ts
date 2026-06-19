@@ -29,6 +29,7 @@ export function useExportConfig() {
   const keyframeIntervalSec = ref<number>(2);
   const exportAlpha = ref<boolean>(false);
   const fastStart = ref<boolean>(true);
+  const includeMetadata = ref<boolean>(false);
   const metadataTitle = ref<string>('');
   const metadataDescription = ref<string>('');
   const metadataAuthor = ref<string>('');
@@ -137,6 +138,7 @@ export function useExportConfig() {
     keyframeIntervalSec,
     exportAlpha,
     fastStart,
+    includeMetadata,
     metadataTitle,
     metadataDescription,
     metadataAuthor,

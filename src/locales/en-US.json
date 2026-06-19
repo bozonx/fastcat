@@ -1178,6 +1178,7 @@
       "height": "Height",
       "keyframeInterval": "Keyframe Interval (GOP Size, sec)",
       "metadata": "Metadata",
+      "includeMetadata": "Write project metadata",
       "metadataAuthor": "Author",
       "metadataDescription": "Description",
       "metadataTags": "Tags",

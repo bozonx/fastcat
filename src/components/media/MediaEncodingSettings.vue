@@ -32,6 +32,7 @@ interface Props {
   hideAudioBitrate?: boolean;
   hideAudioSampleRate?: boolean;
   showBuiltinPresets?: boolean;
+  isApplyingPreset?: boolean;
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -47,6 +48,7 @@ const props = withDefaults(defineProps<Props>(), {
   hideAudioBitrate: false,
   hideAudioSampleRate: false,
   showBuiltinPresets: true,
+  isApplyingPreset: false,
 });
 
 const outputFormat = defineModel<'mp4' | 'webm' | 'mkv'>('outputFormat', { required: true });
@@ -210,6 +212,7 @@ watch(
     fastStart,
   ],
   () => {
+    if (props.isApplyingPreset) return;
     preset.value = 'custom';
   },
   { deep: true },

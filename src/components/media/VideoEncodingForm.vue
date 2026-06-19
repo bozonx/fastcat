@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref, nextTick } from 'vue';
 import { useVideoCodecs } from '~/composables/useVideoCodecs';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import MediaEncodingSettings, {
@@ -75,12 +75,15 @@ const presetOptions = computed(() => {
   return [...items, { value: 'custom', label: t('videoEditor.export.preset.custom') }];
 });
 
-function applyPreset(presetId: string) {
+const isApplyingPreset = ref(false);
+
+async function applyPreset(presetId: string) {
   if (presetId === 'custom') return;
 
   const found = workspaceStore.userSettings.exportPresets.items.find((p) => p.id === presetId);
   if (!found) return;
 
+  isApplyingPreset.value = true;
   outputFormat.value = found.format;
   videoCodec.value = found.videoCodec;
   bitrateMbps.value = found.bitrateMbps;
@@ -91,6 +94,9 @@ function applyPreset(presetId: string) {
   keyframeIntervalSec.value = found.keyframeIntervalSec;
   exportAlpha.value = found.exportAlpha;
   fastStart.value = found.fastStart;
+
+  await nextTick();
+  isApplyingPreset.value = false;
 }
 </script>
 
@@ -144,6 +150,7 @@ function applyPreset(presetId: string) {
       :format-options="formatOptions"
       :video-codec-options="videoCodecOptions"
       :show-builtin-presets="false"
+      :is-applying-preset="isApplyingPreset"
     />
   </div>
 </template>

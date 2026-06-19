@@ -91,6 +91,7 @@ const ProjectUiExportSettingsSchema = z
     customHeight: z.coerce.number().catch(1080),
     customFps: z.coerce.number().catch(30),
     customAudioSampleRate: z.coerce.number().catch(48000),
+    includeMetadata: z.coerce.boolean().catch(false),
     metadataTitle: z.string().catch(''),
     metadataDescription: z.string().catch(''),
     metadataAuthor: z.string().catch(''),

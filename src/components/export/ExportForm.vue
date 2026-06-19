@@ -64,6 +64,7 @@ const {
   keyframeIntervalSec,
   exportAlpha,
   fastStart,
+  includeMetadata,
   metadataTitle,
   metadataDescription,
   metadataAuthor,
@@ -368,89 +369,96 @@ const filenamePlaceholder = computed(() =>
         <div class="space-y-4">
           <UiFormSectionHeader :title="t('videoEditor.export.metadata')" />
 
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <UiFormField :label="t('videoEditor.export.metadataTitle')">
-              <div class="flex items-center gap-1.5 w-full">
-                <UiTextInput
-                  v-model="metadataTitle"
-                  :disabled="isExporting"
+          <div class="flex items-center gap-3">
+            <UCheckbox v-model="includeMetadata" :disabled="isExporting" />
+            <span class="text-ui-text text-sm">{{ t('videoEditor.export.includeMetadata') }}</span>
+          </div>
+
+          <div v-if="includeMetadata" class="space-y-4 pt-2">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <UiFormField :label="t('videoEditor.export.metadataTitle')">
+                <div class="flex items-center gap-1.5 w-full">
+                  <UiTextInput
+                    v-model="metadataTitle"
+                    :disabled="isExporting"
+                    full-width
+                    class="flex-grow"
+                  />
+                  <UButton
+                    v-if="isFieldDirty('metadataTitle')"
+                    icon="i-heroicons-arrow-path-20-solid"
+                    color="warning"
+                    variant="ghost"
+                    size="xs"
+                    class="shrink-0"
+                    @click="resetField('metadataTitle')"
+                  />
+                </div>
+              </UiFormField>
+              <UiFormField :label="t('videoEditor.export.metadataAuthor')">
+                <div class="flex items-center gap-1.5 w-full">
+                  <UiTextInput
+                    v-model="metadataAuthor"
+                    :disabled="isExporting"
+                    full-width
+                    class="flex-grow"
+                  />
+                  <UButton
+                    v-if="isFieldDirty('metadataAuthor')"
+                    icon="i-heroicons-arrow-path-20-solid"
+                    color="warning"
+                    variant="ghost"
+                    size="xs"
+                    class="shrink-0"
+                    @click="resetField('metadataAuthor')"
+                  />
+                </div>
+              </UiFormField>
+            </div>
+
+            <UiFormField :label="t('videoEditor.export.metadataDescription')">
+              <div class="flex items-start gap-1.5 w-full">
+                <UiTextarea
+                  v-model="metadataDescription"
+                  :disabled="isExporting || (exportType === 'audio' && audioCodec === 'pcm')"
+                  :rows="3"
+                  autoresize
+                  :maxrows="10"
                   full-width
                   class="flex-grow"
                 />
                 <UButton
-                  v-if="isFieldDirty('metadataTitle')"
+                  v-if="isFieldDirty('metadataDescription')"
                   icon="i-heroicons-arrow-path-20-solid"
                   color="warning"
                   variant="ghost"
                   size="xs"
-                  class="shrink-0"
-                  @click="resetField('metadataTitle')"
+                  class="shrink-0 mt-2"
+                  @click="resetField('metadataDescription')"
                 />
               </div>
             </UiFormField>
-            <UiFormField :label="t('videoEditor.export.metadataAuthor')">
+
+            <UiFormField :label="t('videoEditor.export.metadataTags')">
               <div class="flex items-center gap-1.5 w-full">
                 <UiTextInput
-                  v-model="metadataAuthor"
-                  :disabled="isExporting"
+                  v-model="metadataTags"
+                  :disabled="isExporting || (exportType === 'audio' && audioCodec === 'pcm')"
                   full-width
                   class="flex-grow"
                 />
                 <UButton
-                  v-if="isFieldDirty('metadataAuthor')"
+                  v-if="isFieldDirty('metadataTags')"
                   icon="i-heroicons-arrow-path-20-solid"
                   color="warning"
                   variant="ghost"
                   size="xs"
                   class="shrink-0"
-                  @click="resetField('metadataAuthor')"
+                  @click="resetField('metadataTags')"
                 />
               </div>
             </UiFormField>
           </div>
-
-          <UiFormField :label="t('videoEditor.export.metadataDescription')">
-            <div class="flex items-start gap-1.5 w-full">
-              <UiTextarea
-                v-model="metadataDescription"
-                :disabled="isExporting || (exportType === 'audio' && audioCodec === 'pcm')"
-                :rows="3"
-                autoresize
-                :maxrows="10"
-                full-width
-                class="flex-grow"
-              />
-              <UButton
-                v-if="isFieldDirty('metadataDescription')"
-                icon="i-heroicons-arrow-path-20-solid"
-                color="warning"
-                variant="ghost"
-                size="xs"
-                class="shrink-0 mt-2"
-                @click="resetField('metadataDescription')"
-              />
-            </div>
-          </UiFormField>
-
-          <UiFormField :label="t('videoEditor.export.metadataTags')">
-            <div class="flex items-center gap-1.5 w-full">
-              <UiTextInput
-                v-model="metadataTags"
-                :disabled="isExporting || (exportType === 'audio' && audioCodec === 'pcm')"
-                full-width
-                class="flex-grow"
-              />
-              <UButton
-                v-if="isFieldDirty('metadataTags')"
-                icon="i-heroicons-arrow-path-20-solid"
-                color="warning"
-                variant="ghost"
-                size="xs"
-                class="shrink-0"
-                @click="resetField('metadataTags')"
-              />
-            </div>
-          </UiFormField>
         </div>
 
         <div
