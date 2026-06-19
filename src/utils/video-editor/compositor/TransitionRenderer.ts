@@ -302,7 +302,10 @@ export class TransitionRenderer {
             ? Math.max(0, clip.sourceStartUs + clip.sourceRangeDurationUs - 1_000)
             : Math.min(
                 sourceRangeEndUs + transitionOffsetUs,
-                clip.sourceStartUs + clip.sourceDurationUs - 1_000,
+                // Upper bound is the end of the *source*, not offset by the trim-in
+                // point — mirrors the reversed `isNextClip` branch above. Adding
+                // sourceStartUs let this request a timestamp past EOF for trimmed clips.
+                clip.sourceDurationUs - 1_000,
               );
       }
     }

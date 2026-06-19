@@ -70,7 +70,11 @@ export class ClipResourceManager {
       let processed: ImageBitmap | null = null;
 
       if (blurFillIndex >= 0) {
-        const blurFill = effectSpecs[blurFillIndex] as import('~/types/generated/native-monitor/VideoEffectSpec').VideoEffectSpec & { type: 'blur-fill' };
+        const blurFill = effectSpecs[
+          blurFillIndex
+        ] as import('~/types/generated/native-monitor/VideoEffectSpec').VideoEffectSpec & {
+          type: 'blur-fill';
+        };
         const otherSpecs = effectSpecs.filter((_, i) => i !== blurFillIndex);
         let source = sourceBitmap;
         if (otherSpecs.length > 0) {
@@ -445,20 +449,20 @@ export class ClipResourceManager {
               try {
                 const blurFillIndex = effectSpecs.findIndex((e) => e.type === 'blur-fill');
                 if (blurFillIndex >= 0) {
-                  const blurFill = effectSpecs[blurFillIndex] as import('~/types/generated/native-monitor/VideoEffectSpec').VideoEffectSpec & { type: 'blur-fill' };
+                  const blurFill = effectSpecs[
+                    blurFillIndex
+                  ] as import('~/types/generated/native-monitor/VideoEffectSpec').VideoEffectSpec & {
+                    type: 'blur-fill';
+                  };
                   const otherSpecs = effectSpecs.filter((_, i) => i !== blurFillIndex);
-                  let source: VideoFrame | ImageBitmap = frame;
+                  // Keep `frame` alive until we know the final result. Disposing it
+                  // before blur-fill committed used to leave a closed VideoFrame as
+                  // the texture resource whenever blur-fill returned null or threw.
+                  let intermediate: VideoFrame | ImageBitmap | null = null;
                   if (otherSpecs.length > 0) {
-                    const processed = await runner.applyEffects(source, otherSpecs);
-                    if (processed) {
-                      if (source !== frame) {
-                        safeDispose(source as unknown as VideoFrame);
-                      } else {
-                        safeDispose(frame);
-                      }
-                      source = processed;
-                    }
+                    intermediate = await runner.applyEffects(frame, otherSpecs);
                   }
+                  const source: VideoFrame | ImageBitmap = intermediate ?? frame;
                   const projectW = this.context.width;
                   const projectH = this.context.height;
                   const processed = await runner.applyBlurFill(
@@ -474,12 +478,10 @@ export class ClipResourceManager {
                     blurFill.tint_strength,
                     blurFill.fg_offset_y,
                   );
-                  if (source !== frame) {
-                    safeDispose(source as unknown as VideoFrame);
-                  } else {
-                    safeDispose(frame);
-                  }
                   if (processed) {
+                    // Success: both the raw frame and the intermediate are consumed.
+                    safeDispose(frame);
+                    if (intermediate) safeDispose(intermediate as unknown as VideoFrame);
                     if (
                       clip.imageSource.width !== projectW ||
                       clip.imageSource.height !== projectH
@@ -490,6 +492,25 @@ export class ClipResourceManager {
                     clip.imageSource.update();
                     clip.lastVideoFrame = processed as unknown as VideoFrame;
                     this.context.getLayoutApplier().applySpriteLayout(projectW, projectH, clip);
+                    return;
+                  }
+                  // blur-fill failed: render the still-valid intermediate (the
+                  // padded output of the other effects) if we produced one, else
+                  // fall through to the raw-frame path below with the intact frame.
+                  if (intermediate) {
+                    safeDispose(frame);
+                    const intermediateW = (intermediate as { width?: number }).width ?? frameW;
+                    const intermediateH = (intermediate as { height?: number }).height ?? frameH;
+                    if (
+                      clip.imageSource.width !== intermediateW ||
+                      clip.imageSource.height !== intermediateH
+                    ) {
+                      clip.imageSource.resize(intermediateW, intermediateH);
+                    }
+                    (clip.imageSource as { resource?: unknown }).resource = intermediate as unknown;
+                    clip.imageSource.update();
+                    clip.lastVideoFrame = intermediate as unknown as VideoFrame;
+                    this.context.getLayoutApplier().applySpriteLayout(frameW, frameH, clip);
                     return;
                   }
                 } else {
@@ -550,8 +571,18 @@ export class ClipResourceManager {
   }
 
   public destroyClip(clip: CompositorClip, deps: { transitionManager: TransitionManager }) {
+    // Primary samples are keyed `${itemId}:idx`; HUD/mask mock clips use the
+    // suffixed ids `${itemId}_bg:`, `_ct:`, `_fr:` and `_mask:`. Drop in-flight
+    // tracking for all of them so a destroyed clip leaves nothing behind.
+    const inFlightPrefixes = [
+      `${clip.itemId}:`,
+      `${clip.itemId}_bg:`,
+      `${clip.itemId}_ct:`,
+      `${clip.itemId}_fr:`,
+      `${clip.itemId}_mask:`,
+    ];
     for (const key of this.inFlightSamples.keys()) {
-      if (key.startsWith(`${clip.itemId}:`)) {
+      if (inFlightPrefixes.some((prefix) => key.startsWith(prefix))) {
         this.inFlightSamples.delete(key);
       }
     }

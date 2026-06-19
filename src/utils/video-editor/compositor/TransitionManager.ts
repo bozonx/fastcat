@@ -19,31 +19,45 @@ export class TransitionManager {
   ) {
     const localTimeUs = timeUs - clip.startUs;
 
-    let transition = clip.transitionIn;
-    let edge: 'in' | 'out' = 'in';
-    let progress = 0;
+    const inTransition = clip.transitionIn;
+    const outTransition = clip.transitionOut;
+    const inDurUs = inTransition?.durationUs ?? 0;
+    const outDurUs = outTransition?.durationUs ?? 0;
+    const outStartUs = clip.durationUs - outDurUs;
 
-    if (
-      transition &&
-      transition.durationUs > 0 &&
-      localTimeUs >= 0 &&
-      localTimeUs < transition.durationUs
-    ) {
+    const inActive = !!inTransition && inDurUs > 0 && localTimeUs >= 0 && localTimeUs < inDurUs;
+    const outActive =
+      !!outTransition && outDurUs > 0 && localTimeUs >= outStartUs && localTimeUs < clip.durationUs;
+
+    // On clips shorter than transitionIn + transitionOut both windows overlap.
+    // Pick the nearer edge — the same rule computeTransitionOpacity uses — so the
+    // two never disagree about which transition is active.
+    let useIn = false;
+    let useOut = false;
+    if (inActive && outActive) {
+      const distToInEnd = inDurUs - localTimeUs;
+      const distToOutStart = localTimeUs - outStartUs;
+      if (distToInEnd <= distToOutStart) useIn = true;
+      else useOut = true;
+    } else if (inActive) {
+      useIn = true;
+    } else if (outActive) {
+      useOut = true;
+    }
+
+    let transition: typeof inTransition;
+    let edge: 'in' | 'out';
+    let progress: number;
+    if (useIn && inTransition) {
+      transition = inTransition;
       edge = 'in';
-      progress = Math.max(0, Math.min(1, localTimeUs / transition.durationUs));
+      progress = Math.max(0, Math.min(1, localTimeUs / inDurUs));
+    } else if (useOut && outTransition) {
+      transition = outTransition;
+      edge = 'out';
+      progress = Math.max(0, Math.min(1, (localTimeUs - outStartUs) / outDurUs));
     } else {
-      transition = clip.transitionOut;
-      if (transition && transition.durationUs > 0) {
-        const outStartUs = clip.durationUs - transition.durationUs;
-        if (localTimeUs >= outStartUs && localTimeUs < clip.durationUs) {
-          edge = 'out';
-          progress = Math.max(0, Math.min(1, (localTimeUs - outStartUs) / transition.durationUs));
-        } else {
-          return null;
-        }
-      } else {
-        return null;
-      }
+      return null;
     }
 
     const manifest = previewEffectsEnabled ? getTransitionManifest(transition.type) : null;

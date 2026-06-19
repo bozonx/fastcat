@@ -773,6 +773,115 @@ describe('AudioMixer.writeMixedToSource', () => {
     const mixedData = resultInstance.data.data;
     expect(mixedData[0]).toBeCloseTo(1.0); // Hard clamped to 1.0 after master effect (sum is 0.5+0.5=1.0, x2 = 2.0, clamped to 1.0)
   });
+
+  it('processes master effects continuously in overlapping blocks across the render', async () => {
+    // Regression: master effects used to be re-rendered in a fresh
+    // OfflineAudioContext per ~1s output chunk, which reset effect state (gating
+    // reverb tails / pumping dynamics) on every boundary. They now run over large
+    // overlapping blocks with an equal-power crossfade, like the per-clip path.
+    vi.mocked(applyAudioEffectsOffline).mockClear();
+    const sampleRate = 1000;
+    const numberOfChannels = 1;
+    const durationS = 25;
+    const audioSource = { add: vi.fn().mockResolvedValue(undefined) };
+
+    const customSink = new mockMediabunny.AudioSampleSink();
+    customSink.samples = vi.fn((startS: number, endS: number) => ({
+      [Symbol.asyncIterator]: async function* () {
+        const frames = Math.round((endS - startS) * sampleRate);
+        const data = new Float32Array(frames).fill(0.25);
+        yield {
+          numberOfFrames: frames,
+          sampleRate,
+          numberOfChannels: 1,
+          timestamp: startS,
+          allocationSize: () => frames * 4,
+          copyTo: (dst: Float32Array) => dst.set(data),
+        };
+      },
+    }));
+
+    // Master effect mock doubles the signal so we can see it was applied.
+    (applyAudioEffectsOffline as any).mockImplementation(({ planes, frames }: any) => {
+      const newPlanes = planes.map((p: Float32Array) => {
+        const out = new Float32Array(p.length);
+        for (let i = 0; i < p.length; i += 1) out[i] = p[i]! * 2;
+        return out;
+      });
+      return Promise.resolve({ planes: newPlanes, frames });
+    });
+
+    const prepared: PreparedClip[] = [
+      {
+        clipStartS: 0,
+        offsetS: 0,
+        playDurationS: durationS,
+        input: new mockMediabunny.Input() as any,
+        sink: customSink as any,
+        sourcePath: 'long-clip.mp3',
+        speed: 1,
+        reversed: false,
+        audioGain: 1,
+        audioBalance: 0,
+        audioFadeInS: 0,
+        audioFadeOutS: 0,
+        audioFadeInCurve: 'linear',
+        audioFadeOutCurve: 'linear',
+        audioEffects: [],
+      },
+    ];
+
+    // delayTime=0.5, feedback=0.5 → estimated tail 1s → overlap 1s, block 10s.
+    const masterAudioEffects = [
+      {
+        id: 'm1',
+        type: 'audio-echo',
+        enabled: true,
+        target: 'audio',
+        delayTime: 0.5,
+        feedback: 0.5,
+      },
+    ] as any;
+
+    await AudioMixer.writeMixedToSource({
+      prepared,
+      durationS,
+      audioSource,
+      chunkDurationS: 1,
+      sampleRate,
+      numberOfChannels,
+      reportExportWarning: vi.fn(),
+      AudioSample: mockMediabunny.AudioSample as any,
+      masterAudioEffects,
+    });
+
+    // The clip has no per-clip effects, so every applyAudioEffectsOffline call is
+    // a master block: blocks emit 10s with 1s overlap → blocks at [0,11), [10,21)
+    // and a final flush of the remainder = 3 master renders (not 25 per-chunk).
+    expect(applyAudioEffectsOffline).toHaveBeenCalledTimes(3);
+    expect(applyAudioEffectsOffline).toHaveBeenCalledWith(
+      expect.objectContaining({ effects: masterAudioEffects }),
+    );
+
+    // Concatenate every emitted sample back into one timeline buffer (mono).
+    const totalFrames = durationS * sampleRate;
+    const timeline = new Float32Array(totalFrames);
+    for (const call of audioSource.add.mock.calls) {
+      const params = call[0].data as { data: Float32Array; timestamp: number };
+      const startFrame = Math.round(params.timestamp * sampleRate);
+      timeline.set(
+        params.data.subarray(0, Math.min(params.data.length, totalFrames - startFrame)),
+        startFrame,
+      );
+    }
+
+    // Dry 0.25 → master ×2 = 0.5 everywhere outside the crossfade seams (which
+    // sit at the block emit boundaries 10s and 20s). The output is continuous.
+    expect(timeline[0]).toBeCloseTo(0.5);
+    expect(timeline[5_000]).toBeCloseTo(0.5);
+    expect(timeline[15_000]).toBeCloseTo(0.5);
+    expect(timeline[24_999]).toBeCloseTo(0.5);
+  });
 });
 
 describe('AudioMixer time-stretch via speed', () => {

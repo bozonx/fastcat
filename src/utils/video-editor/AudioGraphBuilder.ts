@@ -34,6 +34,20 @@ export class AudioGraphBuilder {
       createStereoPanner?: () => StereoPannerNode;
     };
 
+    // Force the per-clip signal to stereo so a mono source uses the SAME
+    // equal-power stereo pan law as the export/native mixer. A 1-channel input
+    // makes StereoPannerNode switch to its mono law (centre = -3 dB/channel),
+    // which left mono clips ~3 dB quieter and panned differently in preview than
+    // in the rendered file. Up-mixing mono -> [mono, mono] here mirrors
+    // AudioMixer.normalizeSampleChannels + getStereoPanMatrix.
+    try {
+      sourceNode.channelCountMode = 'explicit';
+      sourceNode.channelCount = 2;
+      sourceNode.channelInterpretation = 'speakers';
+    } catch {
+      /* some environments expose these as read-only — fall back to default routing */
+    }
+
     let sourceOutput: AudioNode = sourceNode;
     if (typeof anyContext.createStereoPanner === 'function') {
       const panner = anyContext.createStereoPanner();

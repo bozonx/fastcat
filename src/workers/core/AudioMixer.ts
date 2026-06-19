@@ -997,6 +997,212 @@ function buildAdjacencyMap(audioClips: AudioClipData[]): AdjacencyMap {
   return { prev, next };
 }
 
+interface EmittedInterleavedChunk {
+  interleaved: Float32Array;
+  frames: number;
+  startFrame: number;
+}
+
+function interleaveFromPlanes(
+  planes: Float32Array[],
+  startFrame: number,
+  frames: number,
+  channels: number,
+): Float32Array {
+  const out = new Float32Array(frames * channels);
+  for (let channel = 0; channel < channels; channel += 1) {
+    const plane = planes[channel];
+    let dst = channel;
+    for (let i = 0; i < frames; i += 1) {
+      out[dst] = plane?.[startFrame + i] ?? 0;
+      dst += channels;
+    }
+  }
+  return out;
+}
+
+/**
+ * Per-channel FIFO that lets the master-bus streamer retain the overlap region
+ * for re-processing while dropping already-emitted frames. Compacts/grows in
+ * place so appends stay amortised O(1).
+ */
+class PlanarFifo {
+  private data: Float32Array[];
+  private start = 0;
+  private end = 0;
+  private capacity: number;
+
+  constructor(
+    private readonly channels: number,
+    initialCapacity: number,
+  ) {
+    this.capacity = Math.max(1, initialCapacity);
+    this.data = Array.from({ length: channels }, () => new Float32Array(this.capacity));
+  }
+
+  get length(): number {
+    return this.end - this.start;
+  }
+
+  append(planes: Float32Array[], frames: number): void {
+    if (frames <= 0) return;
+    if (this.end + frames > this.capacity) {
+      const live = this.length;
+      const nextCapacity = Math.max(live + frames, this.capacity * 2);
+      const next = Array.from({ length: this.channels }, () => new Float32Array(nextCapacity));
+      for (let ch = 0; ch < this.channels; ch += 1) {
+        next[ch]!.set(this.data[ch]!.subarray(this.start, this.end), 0);
+      }
+      this.data = next;
+      this.capacity = nextCapacity;
+      this.end = live;
+      this.start = 0;
+    }
+    for (let ch = 0; ch < this.channels; ch += 1) {
+      const src = planes[ch];
+      if (src) this.data[ch]!.set(src.subarray(0, frames), this.end);
+    }
+    this.end += frames;
+  }
+
+  read(count: number): Float32Array[] {
+    const n = Math.min(count, this.length);
+    return Array.from({ length: this.channels }, (_, ch) =>
+      this.data[ch]!.slice(this.start, this.start + n),
+    );
+  }
+
+  drop(count: number): void {
+    this.start = Math.min(this.end, this.start + Math.max(0, count));
+    if (this.start >= this.end) {
+      this.start = 0;
+      this.end = 0;
+    }
+  }
+}
+
+/**
+ * Streams master-bus audio effects over the mixed signal in large overlapping
+ * blocks with an equal-power crossfade between blocks — the same technique the
+ * per-clip path uses. This keeps time-based master effects (reverb/echo/delay
+ * tails, compressor/limiter envelopes) continuous across the whole render,
+ * instead of resetting effect state on every output chunk (which gated reverb
+ * tails and pumped dynamics on each output-chunk boundary).
+ */
+class MasterEffectStreamer {
+  private readonly channels: number;
+  private readonly sampleRate: number;
+  private readonly effects: AudioEffectData[];
+  private readonly emitChunkFrames: number;
+  private readonly emitBlockFrames: number;
+  private readonly overlapFrames: number;
+  private readonly fifo: PlanarFifo;
+  private pendingTail: PendingProcessedTail | null = null;
+  private consumedFrames = 0;
+
+  constructor(params: {
+    channels: number;
+    sampleRate: number;
+    effects: AudioEffectData[];
+    emitChunkFrames: number;
+  }) {
+    this.channels = params.channels;
+    this.sampleRate = params.sampleRate;
+    this.effects = params.effects;
+    this.emitChunkFrames = Math.max(1, params.emitChunkFrames);
+    this.emitBlockFrames = Math.max(
+      1,
+      Math.round(CLIP_PROCESS_BLOCK_DURATION_S * params.sampleRate),
+    );
+    this.overlapFrames = Math.min(
+      this.emitBlockFrames,
+      Math.round(estimateClipProcessingOverlapS(params.effects) * params.sampleRate),
+    );
+    this.fifo = new PlanarFifo(
+      params.channels,
+      this.emitBlockFrames + this.overlapFrames + this.emitChunkFrames,
+    );
+  }
+
+  async push(interleaved: Float32Array, frames: number): Promise<EmittedInterleavedChunk[]> {
+    if (frames > 0) {
+      const planarContig = interleavedToPlanar({
+        interleaved,
+        frames,
+        numberOfChannels: this.channels,
+      });
+      const planes: Float32Array[] = [];
+      for (let ch = 0; ch < this.channels; ch += 1) {
+        planes.push(planarContig.subarray(ch * frames, (ch + 1) * frames));
+      }
+      this.fifo.append(planes, frames);
+    }
+    return this.drain(false);
+  }
+
+  async flush(): Promise<EmittedInterleavedChunk[]> {
+    return this.drain(true);
+  }
+
+  private async drain(flush: boolean): Promise<EmittedInterleavedChunk[]> {
+    const out: EmittedInterleavedChunk[] = [];
+    const blockSpan = this.emitBlockFrames + this.overlapFrames;
+
+    while (this.fifo.length > 0 && (flush || this.fifo.length >= blockSpan)) {
+      const take = Math.min(blockSpan, this.fifo.length);
+      const blockPlanes = this.fifo.read(take);
+
+      const processed = await applyAudioEffectsOffline({
+        planes: blockPlanes,
+        sampleRate: this.sampleRate,
+        frames: take,
+        channels: this.channels,
+        effects: this.effects,
+      });
+      const outPlanes = trimOrPadPlanes({
+        planes: processed.planes,
+        channels: this.channels,
+        frames: take,
+      });
+
+      crossfadePendingTailIntoBlock({
+        pendingTail: this.pendingTail,
+        blockPlanes: outPlanes,
+        channels: this.channels,
+      });
+      this.pendingTail = null;
+
+      const emitFrames = Math.min(this.emitBlockFrames, take);
+      for (let off = 0; off < emitFrames; off += this.emitChunkFrames) {
+        const n = Math.min(this.emitChunkFrames, emitFrames - off);
+        out.push({
+          interleaved: interleaveFromPlanes(outPlanes, off, n, this.channels),
+          frames: n,
+          startFrame: this.consumedFrames + off,
+        });
+      }
+
+      const tailFrames = Math.min(this.overlapFrames, take - emitFrames);
+      if (tailFrames > 0) {
+        this.pendingTail = {
+          startFrame: this.consumedFrames + emitFrames,
+          planes: slicePlanes({
+            planes: outPlanes,
+            startFrame: emitFrames,
+            frames: tailFrames,
+            channels: this.channels,
+          }),
+        };
+      }
+
+      this.fifo.drop(emitFrames);
+      this.consumedFrames += emitFrames;
+    }
+
+    return out;
+  }
+}
+
 // eslint-disable-next-line @typescript-eslint/no-extraneous-class
 export class AudioMixer {
   static async prepareClips(params: AudioMixerPrepareParams): Promise<PreparedClip[]> {
@@ -1015,6 +1221,12 @@ export class AudioMixer {
 
       const sourcePath = clipData.sourcePath || clipData.source?.path;
       if (!sourcePath) continue;
+
+      // Reversed (negative-speed) clips are intentionally muted: they are not
+      // played in the monitor and must not be exported either. Skip before any
+      // file I/O so we don't decode audio that will be silenced anyway.
+      const speedSign = Number(clipData.speed);
+      if (Number.isFinite(speedSign) && speedSign < 0) continue;
 
       let fileHandle: FileSystemFileHandle | null = clipData.fileHandle || null;
       if (!fileHandle && hostClient) {
@@ -1233,7 +1445,55 @@ export class AudioMixer {
     const totalChunks = Math.max(1, Math.ceil(totalFrames / chunkFrames));
 
     const mixedInterleavedPool = new Float32Array(chunkFrames * numberOfChannels);
-    const planarOutPool = new Float32Array(chunkFrames * numberOfChannels);
+
+    // Master effects must run continuously across the whole render, so they are
+    // applied over large overlapping blocks instead of per output chunk. Without
+    // a streamer the dry mix is emitted chunk-by-chunk as before.
+    const masterStreamer =
+      masterAudioEffects && masterAudioEffects.length > 0
+        ? new MasterEffectStreamer({
+            channels: numberOfChannels,
+            sampleRate,
+            effects: masterAudioEffects,
+            emitChunkFrames: chunkFrames,
+          })
+        : null;
+
+    // Final-stage emit: hard-clip to [-1, 1], count clipped frames once per
+    // frame (even for stereo), planar-pack and hand the sample to the encoder.
+    const emitInterleavedChunk = async (
+      interleaved: Float32Array,
+      frames: number,
+      startFrame: number,
+    ): Promise<void> => {
+      const len = interleaved.length;
+      for (let frame = 0; frame < frames; frame += 1) {
+        let clippedFrame = false;
+        for (let channel = 0; channel < numberOfChannels; channel += 1) {
+          const index = frame * numberOfChannels + channel;
+          if (index >= len) continue;
+          const v = interleaved[index] ?? 0;
+          const clamped = clampFloat32(v);
+          if (v !== clamped) clippedFrame = true;
+          interleaved[index] = clamped;
+        }
+        if (clippedFrame) clippedFrames += 1;
+      }
+
+      const planar = interleavedToPlanar({ interleaved, frames, numberOfChannels });
+      const audioSample = new AudioSample({
+        data: planar,
+        format: 'f32-planar',
+        numberOfChannels,
+        sampleRate,
+        timestamp: startFrame / sampleRate,
+      });
+      try {
+        await (audioSource as { add: (sample: unknown) => Promise<void> }).add(audioSample);
+      } finally {
+        safeDispose(audioSample);
+      }
+    };
 
     try {
       for (let chunkIndex = 0; chunkIndex < totalChunks; chunkIndex += 1) {
@@ -1319,49 +1579,8 @@ export class AudioMixer {
           }
         }
 
-        // Apply master audio effects post-mix (e.g. compressor / limiter / reverb).
-        if (masterAudioEffects && masterAudioEffects.length > 0) {
-          const planarTmp = interleavedToPlanar({
-            interleaved: mixedInterleaved,
-            frames: framesInChunk,
-            numberOfChannels,
-          });
-          const planes: Float32Array[] = [];
-          for (let c = 0; c < numberOfChannels; c += 1) {
-            planes.push(planarTmp.subarray(c * framesInChunk, (c + 1) * framesInChunk));
-          }
-          const { planes: processedPlanes } = await applyAudioEffectsOffline({
-            planes,
-            sampleRate,
-            frames: framesInChunk,
-            channels: numberOfChannels,
-            effects: masterAudioEffects,
-          });
-          for (let c = 0; c < numberOfChannels; c += 1) {
-            const plane = processedPlanes[c] ?? new Float32Array(framesInChunk);
-            let dstOffset = c;
-            for (let i = 0; i < framesInChunk; i += 1) {
-              mixedInterleaved[dstOffset] = plane[i] ?? 0;
-              dstOffset += numberOfChannels;
-            }
-          }
-        }
-
-        // Final clip pass — count clipped audio frames once even for stereo.
-        const mixLen = mixedInterleaved.length;
-        for (let frame = 0; frame < framesInChunk; frame += 1) {
-          let clippedFrame = false;
-          for (let channel = 0; channel < numberOfChannels; channel += 1) {
-            const index = frame * numberOfChannels + channel;
-            if (index >= mixLen) continue;
-            const v = mixedInterleaved[index] ?? 0;
-            const clamped = clampFloat32(v);
-            if (v !== clamped) clippedFrame = true;
-            mixedInterleaved[index] = clamped;
-          }
-          if (clippedFrame) clippedFrames += 1;
-        }
-
+        // Evict clips fully consumed by the end of this chunk before emitting,
+        // so finished generators are released and not re-scanned next chunk.
         for (let i = activeClips.length - 1; i >= 0; i -= 1) {
           const active = activeClips[i]!;
           const clipStartFrame = Math.round(active.clip.clipStartS * sampleRate);
@@ -1374,26 +1593,20 @@ export class AudioMixer {
           }
         }
 
-        const planarOut = planarOutPool.subarray(0, framesInChunk * numberOfChannels);
-        const planar = interleavedToPlanar({
-          interleaved: mixedInterleaved,
-          frames: framesInChunk,
-          numberOfChannels,
-          planarOut,
-        });
+        // Master effects (if any) run continuously across overlapping blocks and
+        // emit on their own cadence; otherwise emit the dry chunk straight away.
+        if (masterStreamer) {
+          for (const emitted of await masterStreamer.push(mixedInterleaved, framesInChunk)) {
+            await emitInterleavedChunk(emitted.interleaved, emitted.frames, emitted.startFrame);
+          }
+        } else {
+          await emitInterleavedChunk(mixedInterleaved, framesInChunk, chunkStartFrame);
+        }
+      }
 
-        const audioSample = new AudioSample({
-          data: planar.slice(),
-          format: 'f32-planar',
-          numberOfChannels,
-          sampleRate,
-          timestamp: chunkStartFrame / sampleRate,
-        });
-
-        try {
-          await (audioSource as { add: (sample: unknown) => Promise<void> }).add(audioSample);
-        } finally {
-          safeDispose(audioSample);
+      if (masterStreamer) {
+        for (const emitted of await masterStreamer.flush()) {
+          await emitInterleavedChunk(emitted.interleaved, emitted.frames, emitted.startFrame);
         }
       }
 

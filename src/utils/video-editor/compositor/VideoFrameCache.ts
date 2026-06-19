@@ -215,5 +215,5 @@ export function estimateVideoFrameSizeBytes(
 
   // Account for stride alignment (commonly 64 bytes) and GPU texture overhead
   const alignedWidth = Math.ceil(codedWidth / 64) * 64;
-  return alignedWidth * codedHeight * 4 * 1.5;
+  return Math.ceil(alignedWidth * codedHeight * 4 * 1.5);
 }

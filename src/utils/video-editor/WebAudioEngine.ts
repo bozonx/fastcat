@@ -79,6 +79,7 @@ export class WebAudioEngine implements IAudioEngine {
   private masterEffectInput: GainNode | null = null;
   private masterEffectGraph: { outputNode: AudioNode; destroy: () => Promise<void> } | null = null;
   private currentMasterAudioEffects: import('~/timeline/types').ClipEffect[] = [];
+  private masterEffectGeneration = 0;
   private schedulingClipIds = new Set<string>();
   private scheduleGeneration = 0;
   private layoutGeneration = 0;
@@ -775,12 +776,21 @@ export class WebAudioEngine implements IAudioEngine {
       });
     if (same) return;
 
+    // Bump the generation so any in-flight async build from a previous call is
+    // discarded instead of also connecting to masterGain (which would double the
+    // signal and leak the older, never-destroyed graph on rapid toggles).
+    this.masterEffectGeneration += 1;
+    const generation = this.masterEffectGeneration;
+
+    // Always detach masterEffectInput from whatever it currently feeds (the
+    // direct bypass to masterGain or a prior effect graph's input) before
+    // re-wiring, so we never end up connected to two destinations at once.
+    try {
+      this.masterEffectInput.disconnect();
+    } catch {
+      /* no-op */
+    }
     if (this.masterEffectGraph) {
-      try {
-        this.masterEffectInput.disconnect();
-      } catch {
-        /* no-op */
-      }
       void this.masterEffectGraph.destroy();
       this.masterEffectGraph = null;
     }
@@ -800,11 +810,19 @@ export class WebAudioEngine implements IAudioEngine {
           sourceNode: this.masterEffectInput,
           effects,
         });
+        // A newer setMasterAudioEffects() (or destroy()) ran while we awaited —
+        // throw this graph away so only the latest one is wired up.
+        if (generation !== this.masterEffectGeneration) {
+          void destroy();
+          return;
+        }
         outputNode.connect(this.masterGain);
         this.masterEffectGraph = { outputNode, destroy };
       } catch (err) {
         logger.error('Failed to build master audio effect graph', err);
-        this.masterEffectInput.connect(this.masterGain);
+        if (generation === this.masterEffectGeneration) {
+          this.masterEffectInput.connect(this.masterGain);
+        }
       }
     })();
   }

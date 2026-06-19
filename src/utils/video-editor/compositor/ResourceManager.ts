@@ -145,41 +145,11 @@ export class ResourceManager {
         throw new Error('Aborted before acquiring slot');
       }
 
-      // Wait for slot if busy
-      const max = Math.max(1, Math.round(VIDEO_CORE_LIMITS.MAX_CONCURRENT_VIDEO_SAMPLE_REQUESTS));
-      if (this.sampleRequestsInFlight >= max) {
-        await new Promise<void>((resolve, reject) => {
-          if (signal?.aborted) {
-            reject(new Error('Aborted before acquiring slot'));
-            return;
-          }
-
-          let onAbort: (() => void) | undefined;
-          const queueItem = {
-            resolve: () => {
-              if (onAbort && signal) signal.removeEventListener('abort', onAbort);
-              resolve();
-            },
-            signal,
-          };
-
-          if (signal) {
-            onAbort = () => {
-              if (onAbort) signal.removeEventListener('abort', onAbort);
-              const index = this.sampleRequestQueue.indexOf(queueItem);
-              if (index !== -1) {
-                this.sampleRequestQueue.splice(index, 1);
-              }
-              reject(new Error('Aborted while waiting for slot'));
-            };
-            signal.addEventListener('abort', onAbort);
-          }
-
-          this.sampleRequestQueue.push(queueItem);
-        });
-      }
-
-      this.sampleRequestsInFlight += 1;
+      // Acquire a concurrency slot. When the limit is reached this waits in the
+      // queue; the slot is reserved for us synchronously the moment it is granted
+      // (see processRequestQueue), so a single freed slot can never be handed out
+      // to more than one waiter.
+      await this.acquireSlot(signal);
 
       // Start the decode exactly once and hold the slot until it *actually*
       // settles — not until the caller stops waiting. mediabunny's getSample is
@@ -218,16 +188,70 @@ export class ResourceManager {
     throw lastError;
   }
 
+  /**
+   * Acquires a concurrency slot, reserving it (incrementing the in-flight count)
+   * the moment it becomes available. A waiter granted a slot from the queue is
+   * reserved inside `processRequestQueue` before being resolved — so the slot is
+   * never counted twice and never granted to more than one waiter.
+   */
+  private acquireSlot(signal?: AbortSignal): Promise<void> {
+    const max = Math.max(1, Math.round(VIDEO_CORE_LIMITS.MAX_CONCURRENT_VIDEO_SAMPLE_REQUESTS));
+
+    // A free slot is available: reserve it immediately.
+    if (this.sampleRequestsInFlight < max) {
+      this.sampleRequestsInFlight += 1;
+      return Promise.resolve();
+    }
+
+    // Otherwise wait in the queue. processRequestQueue increments the in-flight
+    // count before resolving us, so we must NOT increment again here.
+    return new Promise<void>((resolve, reject) => {
+      if (signal?.aborted) {
+        reject(new Error('Aborted before acquiring slot'));
+        return;
+      }
+
+      let onAbort: (() => void) | undefined;
+      const queueItem = {
+        resolve: () => {
+          if (onAbort && signal) signal.removeEventListener('abort', onAbort);
+          resolve();
+        },
+        signal,
+      };
+
+      if (signal) {
+        onAbort = () => {
+          if (onAbort) signal.removeEventListener('abort', onAbort);
+          const index = this.sampleRequestQueue.indexOf(queueItem);
+          if (index !== -1) {
+            this.sampleRequestQueue.splice(index, 1);
+          }
+          reject(new Error('Aborted while waiting for slot'));
+        };
+        signal.addEventListener('abort', onAbort);
+      }
+
+      this.sampleRequestQueue.push(queueItem);
+    });
+  }
+
   private processRequestQueue() {
+    const max = Math.max(1, Math.round(VIDEO_CORE_LIMITS.MAX_CONCURRENT_VIDEO_SAMPLE_REQUESTS));
     while (this.sampleRequestQueue.length > 0) {
-      const max = Math.max(1, Math.round(VIDEO_CORE_LIMITS.MAX_CONCURRENT_VIDEO_SAMPLE_REQUESTS));
       if (this.sampleRequestsInFlight >= max) break;
 
       const next = this.sampleRequestQueue.shift();
-      if (next) {
-        if (next.signal?.aborted) continue;
-        next.resolve();
-      }
+      if (!next) continue;
+      if (next.signal?.aborted) continue;
+
+      // Reserve the slot synchronously before handing it out. The waiter's own
+      // increment used to happen asynchronously (after its `await` resolved), so
+      // this loop could grant the same freed slot to every queued waiter in a
+      // single pass and blow past MAX_CONCURRENT_VIDEO_SAMPLE_REQUESTS. Reserving
+      // here keeps the in-flight count honest.
+      this.sampleRequestsInFlight += 1;
+      next.resolve();
     }
   }
 

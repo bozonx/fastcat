@@ -37,7 +37,6 @@ export interface ApplyAudioEffectsOfflineResult {
 
 /**
  * Applies enabled audio effects to an AudioBuffer via OfflineAudioContext.
- * Used by AudioEngine (preview path, main thread).
  * Returns a new AudioBuffer with effects applied, or the original if none apply.
  */
 export async function applyAudioEffects({

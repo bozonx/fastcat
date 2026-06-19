@@ -236,8 +236,23 @@ export class CompositorRenderContextBuilder {
           try {
             const processed = await runner.applyEffects(bitmap, masterSpecs);
             if (processed) {
-              const sprite = new Sprite(Texture.from(processed));
-              app.renderer.render({ container: sprite, clear: true });
+              const texture = Texture.from(processed);
+              const sprite = new Sprite(texture);
+              // applyEffects pads its output symmetrically (so blur/bloom can bleed
+              // past the frame), so `processed` can be larger than the canvas.
+              // Center it so the original content stays aligned with the canvas.
+              sprite.x = (state.width - processed.width) / 2;
+              sprite.y = (state.height - processed.height) / 2;
+              try {
+                app.renderer.render({ container: sprite, clear: true });
+              } finally {
+                // The sprite, its texture and the processed bitmap are recreated
+                // every frame; release them so playback with a master effect does
+                // not leak a GPU texture + ImageBitmap per frame.
+                sprite.destroy();
+                texture.destroy(true);
+                (processed as { close?: () => void }).close?.();
+              }
             }
           } finally {
             bitmap.close();
