@@ -257,14 +257,39 @@ describe('WebGpuComputeRunner', () => {
   it('returns null from applyBlurFill when not initialized', async () => {
     const runner = new WebGpuComputeRunner();
     const bitmap = { width: 4, height: 4 } as unknown as ImageBitmap;
-    const result = await runner.applyBlurFill(bitmap, 1920, 1080, 1, 1, 0, 1, 1, [0, 0, 0, 0], 0, 0);
+    const result = await runner.applyBlurFill(
+      bitmap,
+      1920,
+      1080,
+      1,
+      1,
+      0,
+      1,
+      1,
+      [0, 0, 0, 0],
+      0,
+      0,
+    );
     expect(result).toBeNull();
   });
 });
 
 describe('buildBlurFillPasses', () => {
   it('builds the blur-fill pass chain with all stages', () => {
-    const passes = buildBlurFillPasses(1920, 1080, 1280, 720, 1, 1.2, 15, 0.5, 0.8, [255, 0, 0, 255], 0.3, 0.1);
+    const passes = buildBlurFillPasses(
+      1920,
+      1080,
+      1280,
+      720,
+      1,
+      1.2,
+      15,
+      0.5,
+      0.8,
+      [255, 0, 0, 255],
+      0.3,
+      0.1,
+    );
     expect(passes.length).toBe(5);
     // Cover-place background (mode 20)
     expect(passes[0]!.uniform.mode).toBe(20);

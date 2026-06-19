@@ -2,6 +2,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { setActivePinia, createPinia } from 'pinia';
 import { useHistoryStore } from '~/stores/history.store';
+import { useWorkspaceStore } from '~/stores/workspace.store';
 import type { TimelineDocument } from '~/timeline/types';
 
 function makeDoc(id: string): TimelineDocument {
@@ -11,6 +12,19 @@ function makeDoc(id: string): TimelineDocument {
     name: id,
     timebase: { fps: 30 },
     tracks: [],
+  } as unknown as TimelineDocument;
+}
+
+/** A doc inflated with a payload string so its estimated byte size is large
+ *  enough to exercise the memory budget. */
+function makeBigDoc(id: string, payloadChars: number): TimelineDocument {
+  return {
+    OTIO_SCHEMA: 'Timeline.1',
+    id,
+    name: id,
+    timebase: { fps: 30 },
+    tracks: [],
+    payload: 'x'.repeat(payloadChars),
   } as unknown as TimelineDocument;
 }
 
@@ -179,6 +193,50 @@ describe('HistoryStore', () => {
 
     expect(store.past).toHaveLength(1);
     expect(store.future).toHaveLength(1);
+  });
+
+  describe('memory budget', () => {
+    // ~100 KB per snapshot (payload string is the dominant term).
+    const PAYLOAD_CHARS = 50_000;
+
+    it('trims oldest entries once the byte budget is exceeded', () => {
+      const workspace = useWorkspaceStore();
+      // ~0.25 MB budget: holds roughly two ~100 KB snapshots.
+      workspace.userSettings.history.maxMemoryMb = 0.25;
+      const store = useHistoryStore();
+
+      for (let i = 0; i < 10; i++) {
+        store.push('timeline', 'remove_item', makeBigDoc(`doc-${i}`, PAYLOAD_CHARS), `Edit ${i}`);
+      }
+
+      // Far fewer than the 10 pushed (entry-count cap is 100, so memory is the
+      // binding constraint here) but never fully emptied.
+      expect(store.past.length).toBeGreaterThanOrEqual(1);
+      expect(store.past.length).toBeLessThan(5);
+      // The most recent edit must survive so at least one undo step remains.
+      expect((store.past[store.past.length - 1]?.snapshot as TimelineDocument).id).toBe('doc-9');
+    });
+
+    it('keeps at least the most recent entry even when one snapshot exceeds the budget', () => {
+      const workspace = useWorkspaceStore();
+      workspace.userSettings.history.maxMemoryMb = 0.01; // smaller than a single snapshot
+      const store = useHistoryStore();
+
+      store.push('timeline', 'remove_item', makeBigDoc('a', PAYLOAD_CHARS), 'a');
+      store.push('timeline', 'remove_item', makeBigDoc('b', PAYLOAD_CHARS), 'b');
+
+      expect(store.past).toHaveLength(1);
+      expect((store.past[0]?.snapshot as TimelineDocument).id).toBe('b');
+      expect(store.canUndo('timeline')).toBe(true);
+    });
+
+    it('does not trim small snapshots under the default budget', () => {
+      const store = useHistoryStore();
+      for (let i = 0; i < 50; i++) {
+        store.push('timeline', 'remove_item', makeDoc(`doc-${i}`), `Edit ${i}`);
+      }
+      expect(store.past).toHaveLength(50);
+    });
   });
 
   describe('command-based scopes', () => {

@@ -199,6 +199,9 @@ export interface FastCatUserSettings {
   };
   history: {
     maxEntries: number;
+    /** Upper bound on total retained undo/redo snapshot memory, in megabytes.
+     *  Trims oldest entries beyond this regardless of `maxEntries`. */
+    maxMemoryMb: number;
   };
   backup: {
     /** Whether a backup version is written on every explicit (manual) save. */
@@ -371,6 +374,7 @@ export const DEFAULT_USER_SETTINGS: FastCatUserSettings = {
   },
   history: {
     maxEntries: 100,
+    maxMemoryMb: 512,
   },
   backup: {
     enabled: true,

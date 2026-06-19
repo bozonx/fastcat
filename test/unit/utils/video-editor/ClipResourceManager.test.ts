@@ -50,9 +50,13 @@ describe('ClipResourceManager.applyEffectsToNonVideoClip', () => {
       videoFrameCache: {} as any,
       canvasFallbackRenderer: {} as any,
       getLayoutApplier: () =>
-        ({ applySpriteLayout: vi.fn() }) as unknown as import('~/utils/video-editor/compositor/LayoutApplier').LayoutApplier,
+        ({
+          applySpriteLayout: vi.fn(),
+        }) as unknown as import('~/utils/video-editor/compositor/LayoutApplier').LayoutApplier,
     });
-    const clip = { effects: [{ id: '1', type: 'color-adjustment', brightness: 1.2, enabled: true }] } as CompositorClip;
+    const clip = {
+      effects: [{ id: '1', type: 'color-adjustment', brightness: 1.2, enabled: true }],
+    } as CompositorClip;
     await manager.applyEffectsToNonVideoClip(clip, false);
   });
 
@@ -65,10 +69,14 @@ describe('ClipResourceManager.applyEffectsToNonVideoClip', () => {
       videoFrameCache: {} as any,
       canvasFallbackRenderer: {} as any,
       getLayoutApplier: () =>
-        ({ applySpriteLayout: vi.fn() }) as unknown as import('~/utils/video-editor/compositor/LayoutApplier').LayoutApplier,
+        ({
+          applySpriteLayout: vi.fn(),
+        }) as unknown as import('~/utils/video-editor/compositor/LayoutApplier').LayoutApplier,
       computeRunner: runner,
     });
-    const clip = { effects: [{ id: '1', type: 'color-adjustment', brightness: 1.2, enabled: true }] } as CompositorClip;
+    const clip = {
+      effects: [{ id: '1', type: 'color-adjustment', brightness: 1.2, enabled: true }],
+    } as CompositorClip;
     await manager.applyEffectsToNonVideoClip(clip, true);
   });
 
@@ -88,7 +96,9 @@ describe('ClipResourceManager.applyEffectsToNonVideoClip', () => {
       videoFrameCache: {} as any,
       canvasFallbackRenderer: {} as any,
       getLayoutApplier: () =>
-        ({ applySpriteLayout: vi.fn() }) as unknown as import('~/utils/video-editor/compositor/LayoutApplier').LayoutApplier,
+        ({
+          applySpriteLayout: vi.fn(),
+        }) as unknown as import('~/utils/video-editor/compositor/LayoutApplier').LayoutApplier,
       computeRunner: runner,
     });
 

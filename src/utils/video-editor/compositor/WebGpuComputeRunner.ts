@@ -411,9 +411,19 @@ function effectUniform(
         0,
       );
     case 'noise': {
-      const typeVal = effect.noise_type === 'perlin' ? 1.0 : (effect.noise_type === 'simplex' ? 2.0 : 0.0);
+      const typeVal =
+        effect.noise_type === 'perlin' ? 1.0 : effect.noise_type === 'simplex' ? 2.0 : 0.0;
       const scaleVal = effect.scale || 10.0;
-      return base(9, Math.max(0, Math.min(1.0, effect.amount)), typeVal, scaleVal, Math.max(0, Math.min(1.0, effect.mix ?? 1)), 0, 0, effect.seed);
+      return base(
+        9,
+        Math.max(0, Math.min(1.0, effect.amount)),
+        typeVal,
+        scaleVal,
+        Math.max(0, Math.min(1.0, effect.mix ?? 1)),
+        0,
+        0,
+        effect.seed,
+      );
     }
     case 'chromatic-aberration':
       return base(

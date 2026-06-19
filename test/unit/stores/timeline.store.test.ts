@@ -774,6 +774,7 @@ describe('TimelineStore', () => {
         masterMuted: false,
         zoom: 3,
         trackHeights: { track1: 80 },
+        mobileTrackHeightsEnlarged: {},
         selectionRange: { startUs: 1000, endUs: 2000 },
       });
       expect(projectSettingsStoreMock.markProjectSettingsAsDirty).toHaveBeenCalled();
@@ -809,6 +810,7 @@ describe('TimelineStore', () => {
         masterMuted: false,
         zoom: 1,
         trackHeights: { track2: 120 },
+        mobileTrackHeightsEnlarged: {},
         selectionRange: undefined,
       });
     });
@@ -829,6 +831,7 @@ describe('TimelineStore', () => {
         masterMuted: false,
         zoom: 1,
         trackHeights: { track3: 150 },
+        mobileTrackHeightsEnlarged: {},
         selectionRange: undefined,
       });
     });

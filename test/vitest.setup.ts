@@ -2,7 +2,7 @@
 
 import { vi } from 'vitest';
 import { config } from '@vue/test-utils';
-import { ref } from 'vue';
+import { reactive, ref } from 'vue';
 import { createPinia, setActivePinia } from 'pinia';
 
 // Initialize a single Pinia instance for the test process.
@@ -106,8 +106,9 @@ vi.mock('#i18n', () => ({
   useSwitchLocalePath: vi.fn(() => (locale: string) => locale),
 }));
 
-vi.mock('~/stores/workspace.store', () => ({
-  useWorkspaceStore: vi.fn(() => ({
+const mockWorkspaceStore = vi.hoisted(() => {
+  const { reactive } = require('vue');
+  return reactive({
     isEphemeral: false,
     workspaceHandle: null,
     isSttModelDownloaded: false,
@@ -126,6 +127,7 @@ vi.mock('~/stores/workspace.store', () => ({
       },
       history: {
         maxEntries: 100,
+        maxMemoryMb: 512,
       },
       projectDefaults: {
         audioScrubbingEnabled: true,
@@ -179,7 +181,11 @@ vi.mock('~/stores/workspace.store', () => ({
     batchUpdateUserSettings: vi.fn(),
     batchUpdateWorkspaceState: vi.fn(),
     init: vi.fn(),
-  })),
+  });
+});
+
+vi.mock('~/stores/workspace.store', () => ({
+  useWorkspaceStore: vi.fn(() => mockWorkspaceStore),
 }));
 
 const { createNuxtMock } = vi.hoisted(() => ({

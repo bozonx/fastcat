@@ -91,7 +91,10 @@ const mainActions = computed(() => [
 
 <template>
   <div v-if="selectionRange" class="w-full flex flex-col gap-2 text-ui-text">
-    <PropertySection v-if="!hideActions && !props.isMobile" :title="t('fastcat.selectionRange.actions')">
+    <PropertySection
+      v-if="!hideActions && !props.isMobile"
+      :title="t('fastcat.selectionRange.actions')"
+    >
       <PropertyActionsBlock :quick-actions="commonActions" :additional-actions="mainActions" />
     </PropertySection>
 

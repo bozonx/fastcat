@@ -33,10 +33,12 @@ function resetGeneralDefaults() {
   workspaceStore.userSettings.deleteWithoutConfirmation =
     DEFAULT_USER_SETTINGS.deleteWithoutConfirmation;
   workspaceStore.userSettings.history.maxEntries = DEFAULT_USER_SETTINGS.history.maxEntries;
+  workspaceStore.userSettings.history.maxMemoryMb = DEFAULT_USER_SETTINGS.history.maxMemoryMb;
   workspaceStore.userSettings.backup = { ...DEFAULT_USER_SETTINGS.backup };
   workspaceStore.userSettings.autosave = { ...DEFAULT_USER_SETTINGS.autosave };
   workspaceStore.userSettings.experimentalFeatures = DEFAULT_USER_SETTINGS.experimentalFeatures;
-  workspaceStore.userSettings.ui.monitorInteractiveEdit = DEFAULT_USER_SETTINGS.ui.monitorInteractiveEdit;
+  workspaceStore.userSettings.ui.monitorInteractiveEdit =
+    DEFAULT_USER_SETTINGS.ui.monitorInteractiveEdit;
 
   isResetConfirmOpen.value = false;
 }
@@ -184,6 +186,19 @@ function clearCache() {
             :max="1000"
             :step="1"
             :wheel-step-multiplier="10"
+          />
+        </UiFormField>
+
+        <UiFormField
+          :label="t('videoEditor.settings.historyMaxMemory')"
+          :help="t('videoEditor.settings.historyMaxMemoryHelp')"
+        >
+          <UiWheelNumberInput
+            v-model="workspaceStore.userSettings.history.maxMemoryMb"
+            :min="16"
+            :max="8192"
+            :step="16"
+            :wheel-step-multiplier="8"
           />
         </UiFormField>
 

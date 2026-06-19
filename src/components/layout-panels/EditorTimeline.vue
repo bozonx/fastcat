@@ -10,7 +10,11 @@ import { useTimelineSettingsStore } from '~/stores/timeline-settings.store';
 import { useUiStore } from '~/stores/ui.store';
 import { useDraggedFile } from '~/composables/useDraggedFile';
 
-import type { TimelineClipActionPayload, TimelineOpenSpeedModalPayload, TimelineTrack } from '~/timeline/types';
+import type {
+  TimelineClipActionPayload,
+  TimelineOpenSpeedModalPayload,
+  TimelineTrack,
+} from '~/timeline/types';
 import {
   computeTimelineScrollLeftForPlayhead,
   computeTimelinePlaybackAutoScrollLeft,
@@ -779,7 +783,9 @@ async function handleConfirmCreateVersion(newName: string) {
         @select-item="selectItem"
         @start-trim-item="startTrimItem"
         @clip-action="onClipAction"
-        @open-speed-modal="(p: TimelineOpenSpeedModalPayload) => openSpeedModal(p.trackId, p.itemId, p.speed)"
+        @open-speed-modal="
+          (p: TimelineOpenSpeedModalPayload) => openSpeedModal(p.trackId, p.itemId, p.speed)
+        "
         @update-track-height="updateTrackHeight"
       />
 
@@ -820,7 +826,9 @@ async function handleConfirmCreateVersion(newName: string) {
         @select-item="selectItem"
         @start-trim-item="startTrimItem"
         @clip-action="onClipAction"
-        @open-speed-modal="(p: TimelineOpenSpeedModalPayload) => openSpeedModal(p.trackId, p.itemId, p.speed)"
+        @open-speed-modal="
+          (p: TimelineOpenSpeedModalPayload) => openSpeedModal(p.trackId, p.itemId, p.speed)
+        "
         @update-track-height="updateTrackHeight"
       />
 

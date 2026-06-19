@@ -604,10 +604,7 @@ export const videoEffectManifests: VideoEffectManifest[] = [
           finiteNumber(values.strength, 0.6),
           VIDEO_EFFECT_PARAM_RANGES.bloomStrength,
         ),
-        radius: clampRange(
-          finiteNumber(values.radius, 12),
-          VIDEO_EFFECT_PARAM_RANGES.bloomRadius,
-        ),
+        radius: clampRange(finiteNumber(values.radius, 12), VIDEO_EFFECT_PARAM_RANGES.bloomRadius),
         knee: clampRange(finiteNumber(values.knee, 0.5), VIDEO_EFFECT_PARAM_RANGES.bloomKnee),
         mix: clampRange(
           finiteNumber(values.mix ?? values.intensity, 1),
@@ -657,10 +654,7 @@ export const videoEffectManifests: VideoEffectManifest[] = [
     ],
     toEffectSpecs: (values) => [
       spec('sharpen', {
-        amount: clampRange(
-          finiteNumber(values.amount, 0),
-          VIDEO_EFFECT_PARAM_RANGES.sharpenAmount,
-        ),
+        amount: clampRange(finiteNumber(values.amount, 0), VIDEO_EFFECT_PARAM_RANGES.sharpenAmount),
         mix: clampRange(
           finiteNumber(values.mix ?? values.intensity, 1),
           VIDEO_EFFECT_PARAM_RANGES.intensity,
@@ -709,10 +703,7 @@ export const videoEffectManifests: VideoEffectManifest[] = [
     ],
     toEffectSpecs: (values) => [
       spec('pixelate', {
-        size: clampRange(
-          finiteNumber(values.size, 8),
-          VIDEO_EFFECT_PARAM_RANGES.pixelSize,
-        ),
+        size: clampRange(finiteNumber(values.size, 8), VIDEO_EFFECT_PARAM_RANGES.pixelSize),
         mix: clampRange(
           finiteNumber(values.mix ?? values.intensity, 1),
           VIDEO_EFFECT_PARAM_RANGES.intensity,
@@ -794,10 +785,7 @@ export const videoEffectManifests: VideoEffectManifest[] = [
           0.001,
           VIDEO_EFFECT_PARAM_RANGES.unit.renderMax,
         ),
-        mix: clampRange(
-          finiteNumber(values.mix, 1),
-          VIDEO_EFFECT_PARAM_RANGES.intensity,
-        ),
+        mix: clampRange(finiteNumber(values.mix, 1), VIDEO_EFFECT_PARAM_RANGES.intensity),
       }),
     ],
   },
@@ -893,10 +881,7 @@ export const videoEffectManifests: VideoEffectManifest[] = [
         seed: clamp(Math.round(finiteNumber(values.seed, 1)), 0, UINT32_MAX),
         noise_type: values.noiseType || 'white',
         scale: clamp(finiteNumber(values.scale, 10), 1, 500),
-        mix: clampRange(
-          finiteNumber(values.mix, 1),
-          VIDEO_EFFECT_PARAM_RANGES.intensity,
-        ),
+        mix: clampRange(finiteNumber(values.mix, 1), VIDEO_EFFECT_PARAM_RANGES.intensity),
       }),
     ],
   },
@@ -1088,27 +1073,15 @@ export const videoEffectManifests: VideoEffectManifest[] = [
     ],
     toEffectSpecs: (values) => [
       spec('levels', {
-        in_black: clampRange(
-          finiteNumber(values.inBlack, 0),
-          VIDEO_EFFECT_PARAM_RANGES.unit,
-        ),
+        in_black: clampRange(finiteNumber(values.inBlack, 0), VIDEO_EFFECT_PARAM_RANGES.unit),
         in_white: clamp(
           finiteNumber(values.inWhite, 1),
           0.001,
           VIDEO_EFFECT_PARAM_RANGES.unit.renderMax,
         ),
-        gamma: clampRange(
-          finiteNumber(values.gamma, 1),
-          VIDEO_EFFECT_PARAM_RANGES.gamma,
-        ),
-        out_black: clampRange(
-          finiteNumber(values.outBlack, 0),
-          VIDEO_EFFECT_PARAM_RANGES.unit,
-        ),
-        out_white: clampRange(
-          finiteNumber(values.outWhite, 1),
-          VIDEO_EFFECT_PARAM_RANGES.unit,
-        ),
+        gamma: clampRange(finiteNumber(values.gamma, 1), VIDEO_EFFECT_PARAM_RANGES.gamma),
+        out_black: clampRange(finiteNumber(values.outBlack, 0), VIDEO_EFFECT_PARAM_RANGES.unit),
+        out_white: clampRange(finiteNumber(values.outWhite, 1), VIDEO_EFFECT_PARAM_RANGES.unit),
         mix: clampRange(
           finiteNumber(values.mix ?? values.intensity, 1),
           VIDEO_EFFECT_PARAM_RANGES.intensity,

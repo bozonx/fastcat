@@ -281,11 +281,7 @@ function selectPreset(item: PresetItem) {
 </script>
 
 <template>
-  <UiMobileDrawer
-    v-model:open="isOpenLocal"
-    :show-close="false"
-    :snap-points="[1]"
-  >
+  <UiMobileDrawer v-model:open="isOpenLocal" :show-close="false" :snap-points="[1]">
     <div class="px-4 pb-8 overflow-y-auto">
       <!-- Standard presets -->
       <p class="text-xs font-semibold uppercase tracking-widest text-ui-text-muted px-1 mt-1 mb-3">

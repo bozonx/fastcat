@@ -281,7 +281,9 @@ describe('unified video effect manifests', () => {
       },
     ]);
 
-    expect(specs).toEqual([{ type: 'gaussian-blur', radius: 24, bleed: true, blur_type: 'gaussian', mix: 1 }]);
+    expect(specs).toEqual([
+      { type: 'gaussian-blur', radius: 24, bleed: true, blur_type: 'gaussian', mix: 1 },
+    ]);
   });
 
   it('serializes color-adjustment with non-zero hue value and omits it when zero', () => {
@@ -440,8 +442,6 @@ describe('unified video effect manifests', () => {
       },
     ]);
 
-    expect(specs).toEqual([
-      { type: 'pixelate', size: 12, mix: 0.3 },
-    ]);
+    expect(specs).toEqual([{ type: 'pixelate', size: 12, mix: 0.3 }]);
   });
 });

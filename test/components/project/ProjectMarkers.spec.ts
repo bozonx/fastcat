@@ -134,9 +134,7 @@ describe('ProjectMarkers.vue', () => {
   });
 
   it('passes vertical orientation to MarkerColorFilter', async () => {
-    mockTimelineStore.markers = [
-      { id: '1', timeUs: 1_000_000, text: 'Red', color: '#d0021b' },
-    ];
+    mockTimelineStore.markers = [{ id: '1', timeUs: 1_000_000, text: 'Red', color: '#d0021b' }];
 
     const component = await mountWithNuxt(ProjectMarkers, {
       props: {

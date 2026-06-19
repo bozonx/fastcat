@@ -14,7 +14,8 @@ vi.mock('~/components/ui/UiWheelNumberInput.vue', () => ({
 vi.mock('~/components/ui/UiSliderInput.vue', () => ({
   default: {
     name: 'UiSliderInput',
-    template: '<div class="mock-slider-input"><span v-if="label">{{ label }}</span><span v-if="formattedValue">{{ formattedValue }}</span><span>{{ modelValue }}</span></div>',
+    template:
+      '<div class="mock-slider-input"><span v-if="label">{{ label }}</span><span v-if="formattedValue">{{ formattedValue }}</span><span>{{ modelValue }}</span></div>',
     props: ['modelValue', 'label', 'formattedValue'],
   },
 }));

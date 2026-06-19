@@ -153,7 +153,10 @@ const timelineStoreMock = {
   trackHeights: {},
   selectionRange: null,
 };
-const fileManagerStoreMock = reactive<{ selectedFolder: { path: string } | null; openFolderByPath: ReturnType<typeof vi.fn> }>({
+const fileManagerStoreMock = reactive<{
+  selectedFolder: { path: string } | null;
+  openFolderByPath: ReturnType<typeof vi.fn>;
+}>({
   selectedFolder: null,
   openFolderByPath: vi.fn(),
 });
@@ -405,6 +408,7 @@ describe('applyLoadedTimelineSessionSnapshot', () => {
       masterMuted: true,
       zoom: 90,
       trackHeights: { a1: 72 },
+      mobileTrackHeightsEnlarged: {},
       selectionRange: { startUs: 1_000_000, endUs: 2_000_000 },
     });
   });

@@ -18,10 +18,44 @@ export interface HistoryEntry<T = unknown> {
    */
   snapshot: T;
   timestamp: number;
+  /** Estimated retained size of `snapshot` in bytes. Used to bound total
+   *  history memory independently of the entry count (snapshot scopes such as
+   *  `timeline` deep-clone the whole document, so a few large entries can dwarf
+   *  hundreds of small ones). */
+  bytes: number;
 }
 
 function generateHistoryEntryId(): string {
   return genUuid();
+}
+
+/** Rough in-memory size of a (already plain) snapshot. Walks the structure once
+ *  — same order of cost as the deep-clone we just did — so it is cheap relative
+ *  to the work history already performs per push. Strings count 2 bytes/char
+ *  (UTF-16), numbers 8, with a small per-container/key overhead. The absolute
+ *  figure does not need to be exact: it only has to be proportional so the
+ *  memory budget trims fairly. */
+function estimateSnapshotBytes(value: unknown, depth = 0): number {
+  if (value == null) return 4;
+  const t = typeof value;
+  if (t === 'string') return (value as string).length * 2 + 8;
+  if (t === 'number') return 8;
+  if (t === 'boolean') return 4;
+  if (t !== 'object') return 8;
+  if (depth > 64) return 0; // guard against cycles / pathological nesting
+  if (Array.isArray(value)) {
+    let total = 16;
+    for (let i = 0; i < value.length; i += 1) total += estimateSnapshotBytes(value[i], depth + 1);
+    return total;
+  }
+  let total = 16;
+  for (const key in value as Record<string, unknown>) {
+    if (Object.prototype.hasOwnProperty.call(value, key)) {
+      total +=
+        key.length * 2 + estimateSnapshotBytes((value as Record<string, unknown>)[key], depth + 1);
+    }
+  }
+  return total;
 }
 
 /** Deep plain copy for history snapshots. toRaw strips the top-level proxy
@@ -35,6 +69,9 @@ function cloneHistorySnapshot<T>(snapshot: T): T {
 export const useHistoryStore = defineStore('history', () => {
   const workspaceStore = useWorkspaceStore();
   const maxEntries = computed(() => workspaceStore.userSettings.history.maxEntries);
+  const maxMemoryBytes = computed(
+    () => Math.max(0, workspaceStore.userSettings.history.maxMemoryMb) * 1024 * 1024,
+  );
 
   /** Past states: index 0 is the oldest, last is the most recent undo target */
   const past = ref<HistoryEntry<unknown>[]>([]);
@@ -81,26 +118,60 @@ export const useHistoryStore = defineStore('history', () => {
    * Should be called BEFORE mutating the document.
    */
   function push<T>(scope: string, commandType: string, snapshot: T, labelKey: string) {
+    const storedSnapshot = isCommandScope(scope) ? snapshot : cloneHistorySnapshot(snapshot);
     const entry: HistoryEntry<T> = {
       id: generateHistoryEntryId(),
       labelKey,
       scope,
       commandType,
-      snapshot: isCommandScope(scope) ? snapshot : cloneHistorySnapshot(snapshot),
+      snapshot: storedSnapshot,
       timestamp: Date.now(),
+      bytes: estimateSnapshotBytes(storedSnapshot),
     };
 
     past.value.push(entry);
 
-    const total = past.value.length + future.value.length;
-    if (total > maxEntries.value) {
-      const toTrim = total - maxEntries.value;
-      past.value.splice(0, toTrim);
-    }
-
     // Branching: clear redo stack for this scope on new action
     // Global history: clear ALL future for any new action to stay consistent
     future.value = [];
+
+    enforceLimits();
+  }
+
+  /** Sum of estimated snapshot bytes retained across past + future. */
+  function currentMemoryBytes(): number {
+    let bytes = 0;
+    for (const e of past.value) bytes += e.bytes;
+    for (const e of future.value) bytes += e.bytes;
+    return bytes;
+  }
+
+  /**
+   * Bounds history by two independent caps:
+   *  - entry count (`maxEntries`) — trims oldest past entries first;
+   *  - retained memory (`maxMemoryMb`) — trims oldest past entries, then the
+   *    furthest redo entries, until under budget. Always keeps at least the
+   *    most recent past entry so a single undo step survives even when one
+   *    snapshot alone exceeds the budget.
+   */
+  function enforceLimits() {
+    const total = past.value.length + future.value.length;
+    if (total > maxEntries.value) {
+      past.value.splice(0, total - maxEntries.value);
+    }
+
+    const budget = maxMemoryBytes.value;
+    if (budget <= 0) return;
+
+    let bytes = currentMemoryBytes();
+    while (bytes > budget && past.value.length > 1) {
+      bytes -= past.value.shift()!.bytes;
+    }
+    // Still over budget: shed the furthest redo entries (index 0 is the next
+    // redo, so the oldest/least-likely-needed one is at the end).
+    while (bytes > budget && future.value.length > 0) {
+      bytes -= future.value.pop()!.bytes;
+    }
   }
 
   /**
@@ -122,12 +193,15 @@ export const useHistoryStore = defineStore('history', () => {
     if (isCommandScope(scope)) {
       future.value.unshift(entry);
     } else {
+      const redoSnapshot = cloneHistorySnapshot(currentDoc);
       future.value.unshift({
         ...entry,
-        snapshot: cloneHistorySnapshot(currentDoc),
+        snapshot: redoSnapshot,
+        bytes: estimateSnapshotBytes(redoSnapshot),
       });
     }
 
+    enforceLimits();
     return entry.snapshot as T;
   }
 
@@ -150,12 +224,15 @@ export const useHistoryStore = defineStore('history', () => {
     if (isCommandScope(scope)) {
       past.value.push(entry);
     } else {
+      const undoSnapshot = cloneHistorySnapshot(currentDoc);
       past.value.push({
         ...entry,
-        snapshot: cloneHistorySnapshot(currentDoc),
+        snapshot: undoSnapshot,
+        bytes: estimateSnapshotBytes(undoSnapshot),
       });
     }
 
+    enforceLimits();
     return entry.snapshot as T;
   }
 

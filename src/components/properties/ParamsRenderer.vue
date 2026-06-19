@@ -381,7 +381,9 @@ function handleArrayItemUpdate(
         v-else-if="entry.kind === 'slider'"
         :model-value="entry.numberValue"
         :label="entry.label"
-        :formatted-value="entry.control.format ? entry.control.format(entry.numberValue) : String(entry.numberValue)"
+        :formatted-value="
+          entry.control.format ? entry.control.format(entry.numberValue) : String(entry.numberValue)
+        "
         :min="entry.control.min ?? 0"
         :max="entry.control.max ?? 100"
         :step="entry.control.step ?? 1"

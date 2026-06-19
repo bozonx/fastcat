@@ -406,6 +406,11 @@ export function normalizeHistorySettings(raw: unknown): FastCatUserSettings['his
         .min(1)
         .max(1000)
         .catch(DEFAULT_USER_SETTINGS.history.maxEntries),
+      maxMemoryMb: z.coerce
+        .number()
+        .min(16)
+        .max(8192)
+        .catch(DEFAULT_USER_SETTINGS.history.maxMemoryMb),
     })
     .catch(DEFAULT_USER_SETTINGS.history)
     .parse((raw as Record<string, unknown>)?.['history'] ?? {});

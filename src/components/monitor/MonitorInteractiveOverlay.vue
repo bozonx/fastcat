@@ -8,7 +8,7 @@ import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useMonitorTimeline } from '~/composables/monitor/useMonitorTimeline';
 import type { ClipSourceOrientation, ClipTransform, TextClipStyle } from '~/timeline/types';
 import type { WorkerTimelineClip } from '~/composables/monitor/types';
-import { computeClipBoxLayout, TRANSFORM_DESIGN_BASE } from '~/utils/video-editor/clip-layout';
+import { computeClipBoxLayout } from '~/utils/video-editor/clip-layout';
 import { computeTextLayoutMetrics } from '~/utils/video-editor/text-layout';
 
 const props = defineProps<{
@@ -39,7 +39,8 @@ const selectedClipId = computed(() => {
 });
 
 function getSourceRotation(clip: WorkerTimelineClip): number {
-  const sourceOrientation = (clip as { sourceOrientation?: ClipSourceOrientation }).sourceOrientation;
+  const sourceOrientation = (clip as { sourceOrientation?: ClipSourceOrientation })
+    .sourceOrientation;
   if (sourceOrientation && sourceOrientation !== 'auto') {
     return Number(sourceOrientation);
   }
@@ -179,11 +180,7 @@ const isEnabled = computed(() => workspaceStore.userSettings.ui.monitorInteracti
 
 <template>
   <g v-if="isEnabled" style="pointer-events: auto">
-    <g
-      v-for="item in bboxItems"
-      :key="item.clip.id"
-      :transform="item.transform"
-    >
+    <g v-for="item in bboxItems" :key="item.clip.id" :transform="item.transform">
       <template v-if="item.clip.clipType === 'text' && item.textBoxW !== undefined">
         <rect
           :x="item.textBoxX"
