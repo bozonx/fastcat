@@ -96,41 +96,33 @@ describe('preview effect quality', () => {
 
   describe('resolvePreviewRenderScale', () => {
     it('derives the scale from the quality tier in auto mode', () => {
-      expect(resolvePreviewRenderScale({ quality: 'low', isPlaying: true })).toBe(0.5);
-      expect(resolvePreviewRenderScale({ quality: 'high', isPlaying: true })).toBe(0.85);
+      expect(resolvePreviewRenderScale({ quality: 'low' })).toBe(0.5);
+      expect(resolvePreviewRenderScale({ quality: 'high' })).toBe(0.85);
     });
 
-    it('pins a manual scale (clamped to full) during playback', () => {
-      expect(
-        resolvePreviewRenderScale({ quality: 'low', manualScale: 0.25, isPlaying: true }),
-      ).toBe(0.25);
-      expect(resolvePreviewRenderScale({ quality: 'low', manualScale: 2, isPlaying: true })).toBe(
-        1,
-      );
+    it('pins a manual scale (clamped to full)', () => {
+      expect(resolvePreviewRenderScale({ quality: 'low', manualScale: 0.25 })).toBe(0.25);
+      expect(resolvePreviewRenderScale({ quality: 'low', manualScale: 2 })).toBe(1);
     });
 
     it('treats a non-positive manual scale as auto', () => {
-      expect(
-        resolvePreviewRenderScale({ quality: 'medium', manualScale: 0, isPlaying: true }),
-      ).toBe(0.67);
+      expect(resolvePreviewRenderScale({ quality: 'medium', manualScale: 0 })).toBe(0.67);
     });
 
-    it('always renders at full resolution for export and still frames', () => {
+    it('renders at full resolution for export', () => {
       expect(resolvePreviewRenderScale({ quality: 'low', manualScale: 0.25, isExport: true })).toBe(
         1,
       );
-      expect(
-        resolvePreviewRenderScale({ quality: 'low', manualScale: 0.25, isPlaying: false }),
-      ).toBe(1);
     });
 
-    it('keeps a paused frame full-res regardless of effect tier (decoupled from settle)', () => {
-      // Render scale is deliberately decoupled from the interactive-settle window: changing
-      // preview_scale drops native video runtimes (black-frames the scrub), so a paused frame
-      // stays full-res even at the lowest effect tier. Only effect/blur quality is lowered while
-      // interactive.
-      expect(resolvePreviewRenderScale({ quality: 'low', isPlaying: false })).toBe(1);
-      expect(resolvePreviewRenderScale({ quality: 'ultra', isPlaying: false })).toBe(1);
+    it('is independent of play/pause (preview_scale must never flip → no decoder drop)', () => {
+      // The scale is a pure function of the menu choice / Auto tier — it does NOT bump to full
+      // res on a paused/still frame. A dynamic scale change would drop native video runtimes
+      // (black frames + stalled playback start), so paused and playing resolve identically.
+      const playing = resolvePreviewRenderScale({ quality: 'medium', manualScale: 0.5 });
+      const paused = resolvePreviewRenderScale({ quality: 'ultra', manualScale: 0.5 });
+      expect(paused).toBe(playing);
+      expect(paused).toBe(0.5);
     });
   });
 });

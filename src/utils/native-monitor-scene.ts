@@ -674,17 +674,26 @@ export async function buildNativeMonitorScene(
     height: sceneHeight,
     fps: fallbackFormat.fps,
   });
-  // Effective render scale: a finite `previewScale` > 0 pins it manually, otherwise the
-  // scale is derived from the resolved quality tier. Export and the paused/still frame
-  // always render at full resolution.
-  // NOTE: render scale intentionally does NOT receive `idleSettled` — changing preview_scale
-  // drops/re-decodes native video runtimes (monitor/runtime.rs), which would black-frame the
-  // scrub. Only effect/transition sample quality varies during the interactive window.
+  // Render scale = the user's "Preview Resolution" menu choice (`previewScale` > 0 pins it),
+  // or, in Auto mode, the scale derived from the steady MOTION quality tier. It MUST be
+  // independent of play/pause and of the effect-quality settle window: the native monitor
+  // drops & re-decodes every video runtime whenever `preview_scale` changes
+  // (monitor/runtime.rs ~289), so a play/pause or scrub-driven scale flip would black-frame
+  // the preview and stall playback start. The "still frame ⇒ full res" bump was removed for
+  // exactly this reason — pick "1/1" in the menu for a crisp paused frame. Only the (cheap)
+  // effect/transition sample budgets vary dynamically; geometric scale stays constant.
+  const scaleQuality = resolvePreviewEffectQuality({
+    setting: params.previewBlurQuality ?? params.projectStore.activeMonitor?.previewBlurQuality,
+    isPlaying: true, // force the steady motion tier so the scale never flips on pause
+    isMobile: params.isMobile,
+    width: sceneWidth,
+    height: sceneHeight,
+    fps: fallbackFormat.fps,
+  });
   const previewScale = resolvePreviewRenderScale({
     manualScale: params.previewScale,
-    quality: previewBlurQuality,
+    quality: scaleQuality,
     isExport: params.isExport,
-    isPlaying: params.isPlaying,
   });
   const builtVideo = await buildVideoWorkerPayloadFromTracks({
     tracks: params.timelineDoc.tracks,

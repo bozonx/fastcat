@@ -892,8 +892,8 @@ describe('buildNativeMonitorScene', () => {
       p7: 32,
     });
 
-    // A paused/still frame always renders at full fidelity, even though the user pinned
-    // 'low' for motion — the manual quality governs playback only.
+    // A settled paused/still frame upgrades the EFFECT/blur quality to ultra (full fidelity),
+    // even though the user pinned 'low' for motion — the manual quality governs motion only.
     const pausedScene = await buildNativeMonitorScene({
       timelineDoc: timelineDoc as never,
       projectStore: projectStore as never,
@@ -905,8 +905,20 @@ describe('buildNativeMonitorScene', () => {
     expect(pausedLayer?.transition_in?.spec?.params).toMatchObject({
       p7: 64,
     });
-    // Still frame also forces full render resolution regardless of any manual scale.
-    expect(pausedScene.preview_scale).toBe(1);
+    // ...but the render SCALE does NOT bump to full res on pause: preview_scale is a pure
+    // function of the resolution setting / quality tier and must stay constant across play/pause
+    // (a scale flip drops native video decoders). With 'low' + auto resolution it stays 0.5.
+    expect(pausedScene.preview_scale).toBe(0.5);
+
+    // Same scene while playing resolves to the identical scale — proving no play/pause flip.
+    const playingScaleScene = await buildNativeMonitorScene({
+      timelineDoc: timelineDoc as never,
+      projectStore: projectStore as never,
+      workspaceStore: workspaceStore as never,
+      isPlaying: true,
+      previewBlurQuality: 'low',
+    });
+    expect(playingScaleScene.preview_scale).toBe(pausedScene.preview_scale);
 
     const exportScene = await buildNativeMonitorScene({
       timelineDoc: timelineDoc as never,

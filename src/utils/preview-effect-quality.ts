@@ -81,18 +81,16 @@ export interface ResolvePreviewRenderScaleParams {
   /** Already-resolved effect quality tier (output of `resolvePreviewEffectQuality`). */
   quality: PreviewEffectQuality;
   isExport?: boolean;
-  isPlaying?: boolean;
 }
 
+// Geometric render scale for the preview. Deliberately independent of play/pause and of the
+// effect-quality settle window: the native monitor drops & re-decodes every video runtime
+// whenever `preview_scale` changes (monitor/runtime.rs), so any dynamic scale flip black-frames
+// the preview and stalls playback start. The scale is therefore a pure function of the user's
+// "Preview Resolution" choice (`manualScale` > 0) or the Auto quality tier. There is no
+// "still frame ⇒ full res" bump — choose "1/1" in the menu for a crisp paused frame.
 export function resolvePreviewRenderScale(params: ResolvePreviewRenderScaleParams): number {
   if (params.isExport) return 1;
-  // A paused/still frame always renders at full resolution. NOTE: render scale is deliberately
-  // NOT tied to the interactive-settle debounce (unlike effect quality). The native monitor
-  // drops & re-decodes all video runtimes whenever `preview_scale` changes (see
-  // monitor/runtime.rs), so toggling the scale during scrubbing/param drags would cause black
-  // frames + jitter. Scrub stays at the paused full-res scale; only the (cheap) effect/blur
-  // sample budgets are lowered while interactive.
-  if (params.isPlaying === false) return 1;
   const manual = Number(params.manualScale);
   if (Number.isFinite(manual) && manual > 0) return Math.min(1, manual);
   return previewEffectQualityRenderScale(params.quality);
