@@ -33,7 +33,11 @@ vi.mock('~/stores/project.store', () => ({
 
 const mockOpenConversionModal = vi.fn();
 vi.mock('~/stores/file-conversion.store', () => ({
-  useFileConversionStore: () => ({
+  useFileConversionStore: () => ({}),
+}));
+
+vi.mock('~/composables/file-conversion/useFileConversionStoreActions', () => ({
+  useFileConversionStoreActions: () => ({
     openConversionModal: mockOpenConversionModal,
   }),
 }));

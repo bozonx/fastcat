@@ -297,7 +297,6 @@ async function wrappedHandleDeleteConfirm() {
 
     <!-- Sorting Toolbar -->
     <div
-      v-if="!isSelectionMode || selectedEntries.length > 1"
       class="flex shrink-0 items-center justify-between border-b border-ui-border/60 bg-ui-bg px-4 py-2 gap-2"
     >
       <UiButtonGroup

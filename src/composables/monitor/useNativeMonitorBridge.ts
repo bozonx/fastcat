@@ -146,7 +146,9 @@ export function useNativeMonitorBridge(): void {
 
   async function buildScene(): Promise<NativeMonitorScene> {
     const doc = timelineStore.timelineDoc;
-    const previewScale = projectStore.activeMonitor?.previewResolution ?? 1;
+    // Raw `previewResolution`: a value > 0 pins the scale, while 0 (or missing) means
+    // "auto" — the scene builder then derives the render scale from the quality tier.
+    const previewScale = projectStore.activeMonitor?.previewResolution ?? 0;
     if (!doc?.tracks?.length) {
       const fmt = timelineStore.timelineFormat;
       return {
@@ -158,7 +160,8 @@ export function useNativeMonitorBridge(): void {
         audio_master_effects: [],
         width: fmt?.width ?? 1920,
         height: fmt?.height ?? 1080,
-        preview_scale: previewScale,
+        // Empty scene: nothing to render, so full res (auto sentinel 0 → 1).
+        preview_scale: previewScale > 0 ? previewScale : 1,
         preview_fps: fmt?.fps ?? 30,
         preview_sync_mode: isMobile.value
           ? 'balanced'

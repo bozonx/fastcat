@@ -67,16 +67,19 @@ function qualitySamples(quality: unknown, low: number, med: number, high: number
 
 /**
  * Resolves effective blur quality from export/playback state and user settings.
- * Priority: export → resolved preview quality → paused auto fallback → transition default.
+ * Priority: export → still/paused frame (ultra) → explicit user quality → transition default.
  */
 function resolveBlurQuality(
   options: { isExport?: boolean; isPlaying?: boolean; previewBlurQuality?: string } | undefined,
   perTransitionQuality: unknown,
 ): string {
   if (options?.isExport) return 'ultra';
+  // A still/paused frame always renders at full fidelity, even if the user pinned a lower
+  // quality for motion — so this must win over the explicit setting below (matches
+  // resolvePreviewEffectQuality).
+  if (options?.isPlaying === false) return 'ultra';
   const preview = options?.previewBlurQuality;
   if (preview && preview !== 'auto') return preview;
-  if (options?.isPlaying === false) return 'ultra';
   // 'auto' or unset: fall back to the per-transition setting (default 'medium')
   return typeof perTransitionQuality === 'string' ? perTransitionQuality : 'medium';
 }

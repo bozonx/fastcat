@@ -419,6 +419,7 @@ watch(
           trackViewModel.isHovered,
           trackViewModel.isDirectlySelected,
           trackViewModel.isVisuallySelected,
+          props.isMultiSelectMode,
           trackViewModel.visibleItems.length,
           trackViewModel.track.videoHidden,
           trackViewModel.track.audioMuted,

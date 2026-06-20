@@ -29,6 +29,7 @@ import type { TransitionMode } from '~/transitions/core/registry';
 import { buildNativeAudioEffectSpecs } from '~/utils/audio/audio-clip-descriptor';
 import {
   resolvePreviewEffectQuality,
+  resolvePreviewRenderScale,
   type PreviewEffectQuality,
   type PreviewEffectQualitySetting,
 } from '~/utils/preview-effect-quality';
@@ -541,16 +542,18 @@ function resolveNativePreviewEffectQuality(
     width: number;
     height: number;
     fps: number;
-    previewScale: number;
   },
 ): PreviewEffectQuality {
+  // Resolve the tier from the *full* scene resolution: the tier is the single dial that
+  // then derives both the effect sample budget and (in auto mode) the render scale, so it
+  // must not be fed the already-scaled size — that would be a circular dependency.
   return resolvePreviewEffectQuality({
     setting: params.previewBlurQuality,
     isExport: params.isExport,
     isPlaying: params.isPlaying,
     isMobile: params.isMobile,
-    width: params.width * params.previewScale,
-    height: params.height * params.previewScale,
+    width: params.width,
+    height: params.height,
     fps: params.fps,
   });
 }
@@ -660,7 +663,15 @@ export async function buildNativeMonitorScene(
     width: sceneWidth,
     height: sceneHeight,
     fps: fallbackFormat.fps,
-    previewScale: params.previewScale ?? 1,
+  });
+  // Effective render scale: a finite `previewScale` > 0 pins it manually, otherwise the
+  // scale is derived from the resolved quality tier. Export and the paused/still frame
+  // always render at full resolution.
+  const previewScale = resolvePreviewRenderScale({
+    manualScale: params.previewScale,
+    quality: previewBlurQuality,
+    isExport: params.isExport,
+    isPlaying: params.isPlaying,
   });
   const builtVideo = await buildVideoWorkerPayloadFromTracks({
     tracks: params.timelineDoc.tracks,
@@ -790,7 +801,7 @@ export async function buildNativeMonitorScene(
     ),
     width: sceneWidth,
     height: sceneHeight,
-    preview_scale: params.previewScale ?? 1,
+    preview_scale: previewScale,
     preview_fps: fallbackFormat.fps,
     preview_sync_mode: params.syncMode ?? optimization.nativeMonitorSyncMode,
     preview_effect_quality: previewBlurQuality,

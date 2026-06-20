@@ -65,6 +65,12 @@ vi.mock('~/stores/file-conversion.store', () => ({
   useFileConversionStore: () => conversionStore,
 }));
 
+vi.mock('~/composables/file-conversion/useFileConversionStoreActions', () => ({
+  useFileConversionStoreActions: () => ({
+    openConversionModal: vi.fn(),
+  }),
+}));
+
 vi.mock('~/composables/file-manager/useFileManager', () => ({
   useFileManager: () => ({
     findEntryByPath: vi.fn(() => null),

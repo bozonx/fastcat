@@ -1,5 +1,5 @@
 import { storeToRefs } from 'pinia';
-import { useFileConversionStore } from '~/stores/file-conversion.store';
+import type { useFileConversionStore } from '~/stores/file-conversion.store';
 import { useFileConversionActions } from '~/composables/file-conversion/useFileConversionActions';
 import type { IFileSystemAdapter } from '~/file-manager/core/vfs/types';
 

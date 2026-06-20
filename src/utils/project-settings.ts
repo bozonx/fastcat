@@ -132,7 +132,9 @@ export interface FastCatProjectSettings {
 }
 
 export const DEFAULT_PROJECT_MONITOR_SETTINGS: ProjectMonitorSettings = {
-  previewResolution: 0.5,
+  // 0 = "auto": derive the preview render scale from the quality tier (see
+  // resolvePreviewRenderScale). A value > 0 pins a manual scale.
+  previewResolution: 0,
   useProxy: true,
   previewEffectsEnabled: true,
   showGrid: false,
@@ -275,7 +277,7 @@ function createProjectSettingsSchema(defaults: FastCatProjectSettings) {
     })
     .passthrough();
   const projectMonitorSchema = z.object({
-    previewResolution: z.coerce.number().min(0.01).max(4320).catch(dm.previewResolution),
+    previewResolution: z.coerce.number().min(0).max(4320).catch(dm.previewResolution),
     useProxy: z.coerce.boolean().catch(dm.useProxy),
     previewEffectsEnabled: z.coerce.boolean().catch(dm.previewEffectsEnabled),
     showGrid: z.coerce.boolean().catch(dm.showGrid),

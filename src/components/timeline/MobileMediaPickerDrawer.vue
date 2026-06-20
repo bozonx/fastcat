@@ -59,6 +59,12 @@ const isOpenLocal = computed({
 const selectedFiles = ref<FsEntry[]>([]);
 const isAdding = ref(false);
 
+// The media type of the current multi-selection (first picked file). While set, only files of the
+// same type stay selectable so a batch always lands on a single track without mixed-kind routing.
+const selectedMediaType = computed(() =>
+  selectedFiles.value[0] ? getMediaTypeFromFilename(selectedFiles.value[0].name) : null,
+);
+
 function isSelectableEntry(entry: FsEntry): boolean {
   if (entry.kind !== 'file' || !entry.path || entry.path === projectStore.currentTimelinePath) {
     return false;
@@ -70,6 +76,9 @@ function isSelectableEntry(entry: FsEntry): boolean {
   if (props.isReplaceMode && uiStore.mediaReplaceTarget) {
     return mediaType === uiStore.mediaReplaceTarget.expectedType;
   }
+
+  // Forbid mixing media types within one multi-selection.
+  if (selectedMediaType.value && mediaType !== selectedMediaType.value) return false;
 
   return true;
 }
@@ -152,25 +161,36 @@ async function addToTimeline() {
       const selectionKind = captureSelectionKind();
       const addedKinds: ('video' | 'audio')[] = [];
 
+      // The selection is single-type (see isSelectableEntry), so resolve the target track once and
+      // lay the clips back-to-back starting at the playhead, advancing by each clip's duration.
+      let targetTrackId: string | null = null;
+      let cursorUs = timelineStore.currentTime;
+
       for (const entry of selectedFiles.value) {
         if (!entry.path) continue;
         const mediaType = getMediaTypeFromFilename(entry.name);
         const durationUs = await resolveInsertDurationUs(entry, mediaType);
+        const kind = mediaType === 'audio' ? 'audio' : 'video';
+
+        if (targetTrackId === null) {
+          targetTrackId = timelineStore.resolveMobileTargetTrackId(kind, { durationUs });
+        }
 
         if (mediaType === 'timeline') {
           await timelineStore.addTimelineClipToTimelineFromPath({
-            trackId: timelineStore.resolveMobileTargetTrackId('video', { durationUs }),
+            trackId: targetTrackId,
             name: entry.name,
             path: entry.path,
-            startUs: timelineStore.currentTime,
+            startUs: cursorUs,
             pseudo: true,
           });
+          cursorUs += durationUs ?? 0;
           continue;
         }
 
-        const kind = mediaType === 'audio' ? 'audio' : 'video';
-        const trackId = timelineStore.resolveMobileTargetTrackId(kind, { durationUs });
-        const targetTrack = timelineStore.timelineDoc?.tracks.find((track) => track.id === trackId);
+        const targetTrack = timelineStore.timelineDoc?.tracks.find(
+          (track) => track.id === targetTrackId,
+        );
 
         if (!targetTrack || !validateMediaTrackCompatibility(mediaType, targetTrack.kind)) {
           toast.add({
@@ -181,12 +201,13 @@ async function addToTimeline() {
         }
 
         await timelineStore.addClipToTimelineFromPath({
-          trackId,
+          trackId: targetTrackId,
           name: entry.name,
           path: entry.path,
-          startUs: timelineStore.currentTime,
+          startUs: cursorUs,
           pseudo: true,
         });
+        cursorUs += durationUs ?? 0;
         addedKinds.push(kind);
       }
 
@@ -266,14 +287,18 @@ watch(
         @touch-end="onTouchEnd"
       />
 
-      <div v-if="selectedFiles.length" class="absolute bottom-6 left-4 right-4 z-20">
+      <div
+        v-if="selectedFiles.length"
+        class="pointer-events-none absolute inset-x-0 bottom-0 z-20 bg-gradient-to-t from-ui-bg via-ui-bg/95 to-transparent px-4 pb-6 pt-12"
+      >
         <UButton
           block
           size="lg"
           color="primary"
+          variant="solid"
           :loading="isAdding"
           icon="lucide:plus"
-          class="rounded-2xl font-bold shadow-lg shadow-primary-500/20 active:scale-[0.98] transition-all"
+          class="pointer-events-auto rounded-2xl font-bold shadow-lg shadow-primary-500/30 active:scale-[0.98] transition-all"
           @click="addToTimeline"
         >
           <template v-if="props.isReplaceMode">

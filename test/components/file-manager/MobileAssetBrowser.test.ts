@@ -305,12 +305,13 @@ describe('MobileAssetBrowser', () => {
     expect(sections[2].attributes('style') || '').toContain('display: none');
   });
 
-  it('keeps the sorting toolbar visible during multi-selection', async () => {
+  it('keeps the sorting toolbar visible during selection mode', async () => {
     const wrapper = await mountSuspended(MobileAssetBrowser, {
       global: {
         stubs: {
           MobileFileBrowserGrid: true,
           MobileFileBrowserList: true,
+          MobileAssetCategoryList: true,
           UiButtonGroup: {
             name: 'UiButtonGroup',
             template: '<div />',
@@ -330,13 +331,13 @@ describe('MobileAssetBrowser', () => {
     // Visible when not in selection mode
     expect(wrapper.findComponent({ name: 'UiButtonGroup' }).exists()).toBe(true);
 
-    // Hidden for a single selected entry
+    // Visible when a single entry is selected
     mockSelectionMode.value = true;
     mockSelectedEntries.value = [audioEntries.value[0]];
     await wrapper.vm.$nextTick();
-    expect(wrapper.findComponent({ name: 'UiButtonGroup' }).exists()).toBe(false);
+    expect(wrapper.findComponent({ name: 'UiButtonGroup' }).exists()).toBe(true);
 
-    // Visible again when multiple entries are selected
+    // Visible when multiple entries are selected
     mockSelectedEntries.value = [audioEntries.value[0], audioEntries.value[1]];
     await wrapper.vm.$nextTick();
     expect(wrapper.findComponent({ name: 'UiButtonGroup' }).exists()).toBe(true);

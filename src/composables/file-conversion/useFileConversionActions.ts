@@ -1,5 +1,5 @@
 import { createDevLogger } from '~/utils/dev-logger';
-import type { Ref, ComputedRef } from 'vue';
+import type { Ref } from 'vue';
 import type { FsEntry } from '~/types/fs';
 import type { IFileSystemAdapter } from '~/file-manager/core/vfs/types';
 import { getMediaTypeFromFilename } from '~/utils/media-types';
@@ -28,7 +28,7 @@ import {
 } from '~/utils/tauri-media-processing';
 import { createGroupedWarningReporter } from '~/utils/grouped-warnings';
 import { useMobileLayout } from '~/composables/useMobileLayout';
-import { useFileManager } from '~/composables/file-manager/useFileManager';
+import type { useFileManager } from '~/composables/file-manager/useFileManager';
 import {
   DEFAULT_VIDEO_FORMAT,
   DEFAULT_VIDEO_CODEC,

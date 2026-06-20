@@ -892,6 +892,8 @@ describe('buildNativeMonitorScene', () => {
       p7: 32,
     });
 
+    // A paused/still frame always renders at full fidelity, even though the user pinned
+    // 'low' for motion — the manual quality governs playback only.
     const pausedScene = await buildNativeMonitorScene({
       timelineDoc: timelineDoc as never,
       projectStore: projectStore as never,
@@ -901,8 +903,10 @@ describe('buildNativeMonitorScene', () => {
     });
     const pausedLayer = pausedScene.layers.find((layer) => layer.id === 'clip-b');
     expect(pausedLayer?.transition_in?.spec?.params).toMatchObject({
-      p7: 8,
+      p7: 64,
     });
+    // Still frame also forces full render resolution regardless of any manual scale.
+    expect(pausedScene.preview_scale).toBe(1);
 
     const exportScene = await buildNativeMonitorScene({
       timelineDoc: timelineDoc as never,

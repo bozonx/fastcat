@@ -266,6 +266,19 @@ describe('TimelineClip', () => {
     expect(clipDiv.classes()).toContain('z-10');
   });
 
+  it('displays multi-selection state in mobile mode for a single selected clip', async () => {
+    mockTimelineStore.selectedItemIds = ['clip-1'];
+    const component = await mountClip({
+      ...defaultProps,
+      isMobile: true,
+      isMultiSelectMode: true,
+    });
+    const clipDiv = component.find('[data-clip-id="clip-1"]');
+
+    expect(clipDiv.classes()).toContain('outline-orange-400');
+    expect(clipDiv.classes()).toContain('z-10');
+  });
+
   it('displays disabled state correctly', async () => {
     const component = await mountClip({
       ...defaultProps,

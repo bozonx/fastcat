@@ -1,6 +1,10 @@
 import { ref, computed } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useProjectStore } from '~/stores/project.store';
+import {
+  resolvePreviewEffectQuality,
+  previewEffectQualityRenderScale,
+} from '~/utils/preview-effect-quality';
 
 export function useMonitorDisplay() {
   const timelineStore = useTimelineStore();
@@ -38,7 +42,18 @@ export function useMonitorDisplay() {
   const renderHeight = computed(() => {
     const value = Number(projectStore.activeMonitor?.previewResolution);
     if (!Number.isFinite(value) || value <= 0) {
-      return Math.round((exportHeight.value * 0.5) / 2) * 2;
+      // Auto: size the canvas for the motion tier derived from the quality dial. The
+      // still-frame full-res bump is handled by the native engine's preview_scale, so the
+      // DOM canvas stays stable across play/pause (no resize thrash).
+      const quality = resolvePreviewEffectQuality({
+        setting: projectStore.activeMonitor?.previewBlurQuality ?? 'auto',
+        isPlaying: true,
+        width: exportWidth.value,
+        height: exportHeight.value,
+        fps: timelineStore.timelineFormat?.fps,
+      });
+      const scale = previewEffectQualityRenderScale(quality);
+      return Math.round((exportHeight.value * scale) / 2) * 2;
     }
 
     // Interpret values <= 1 as scale factor relative to project height

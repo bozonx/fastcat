@@ -16,7 +16,7 @@ const MonitorViewSchema = z
   .passthrough();
 
 const ProjectMonitorSchema = z.object({
-  previewResolution: z.coerce.number().min(0.01).max(4320).catch(0.5),
+  previewResolution: z.coerce.number().min(0).max(4320).catch(0),
   useProxy: z.coerce.boolean().catch(true),
   previewEffectsEnabled: z.coerce.boolean().catch(true),
   showGrid: z.coerce.boolean().catch(false),

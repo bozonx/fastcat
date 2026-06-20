@@ -40,7 +40,9 @@ describe('project settings normalization', () => {
     );
 
     expect(normalized.project.sampleRate).toBe(48000);
-    expect(normalized.monitor.previewResolution).toBe(0.5);
+    // Out-of-range previewResolution falls back to the default, which is now 0 ("auto":
+    // derive the preview scale from the quality tier).
+    expect(normalized.monitor.previewResolution).toBe(0);
     expect(normalized.monitor.previewEffectsEnabled).toBe(false);
   });
 });

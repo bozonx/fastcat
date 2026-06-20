@@ -24,8 +24,8 @@ vi.mock('~/components/timeline/TimelineClip.vue', () => ({
   default: {
     name: 'TimelineClip',
     template:
-      '<div class="mock-timeline-clip" :data-clip-id="item.id" :data-item-id="item.id" :data-start-us="item.timelineRange.startUs" :data-duration-us="item.timelineRange.durationUs" :data-locked="item.locked" :data-disabled="item.disabled" :data-audio-muted="item.audioMuted" :data-show-waveform="item.showWaveform" :data-show-thumbnails="item.showThumbnails" :data-waveform-mode="item.audioWaveformMode" :data-is-move-preview="isMovePreviewCurrentItem" :data-has-slip-preview="Boolean(slipPreview)"><slot /></div>',
-    props: ['item', 'track', 'isMovePreviewCurrentItem', 'slipPreview'],
+      '<div class="mock-timeline-clip" :data-clip-id="item.id" :data-item-id="item.id" :data-start-us="item.timelineRange.startUs" :data-duration-us="item.timelineRange.durationUs" :data-locked="item.locked" :data-disabled="item.disabled" :data-audio-muted="item.audioMuted" :data-show-waveform="item.showWaveform" :data-show-thumbnails="item.showThumbnails" :data-waveform-mode="item.audioWaveformMode" :data-is-move-preview="isMovePreviewCurrentItem" :data-has-slip-preview="Boolean(slipPreview)" :data-is-multi-select-mode="isMultiSelectMode"><slot /></div>',
+    props: ['item', 'track', 'isMovePreviewCurrentItem', 'slipPreview', 'isMultiSelectMode'],
   },
 }));
 vi.mock('~/components/timeline/TimelineGap.vue', () => ({
@@ -180,6 +180,23 @@ describe('TimelineTracks', () => {
 
     const gaps = component.findAll('.mock-timeline-gap');
     expect(gaps.length).toBe(1);
+  });
+
+  it('propagates isMultiSelectMode to clips so the outline re-renders on state change', async () => {
+    const component = await mountSuspended(TimelineTracks, {
+      props: {
+        ...defaultProps,
+        isMultiSelectMode: false,
+      },
+    });
+
+    const clip = component.find('[data-clip-id="clip-1"]');
+    expect(clip.attributes('data-is-multi-select-mode')).toBe('false');
+
+    await component.setProps({ isMultiSelectMode: true });
+    await nextTick();
+
+    expect(clip.attributes('data-is-multi-select-mode')).toBe('true');
   });
 
   it('handles track click selection', async () => {

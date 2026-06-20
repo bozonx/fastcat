@@ -94,22 +94,34 @@ export function useMonitorContainerControls(options: UseMonitorContainerControls
     // Standard fractional preview resolutions (Full, 1/2, 1/4, 1/8)
     const scales = [1, 0.5, 0.25, 0.125];
 
-    return scales.map((scale) => {
-      const height = Math.max(1, Math.round((projectHeight * scale) / 2) * 2);
+    // 0 = "Auto": the render scale is derived from the quality tier (and bumps to full
+    // resolution on a still frame). This is the default and sits first in the menu.
+    const autoOption: PreviewResolutionOption = {
+      label: options.t('fastcat.timeline.transition.blurQualityAuto'),
+      shortLabel: options.t('fastcat.timeline.transition.blurQualityAuto'),
+      value: 0,
+      isProject: false,
+    };
 
-      const shortLabel = scale === 1 ? '1/1' : `1/${1 / scale}`;
-      let label = shortLabel;
+    return [
+      autoOption,
+      ...scales.map((scale) => {
+        const height = Math.max(1, Math.round((projectHeight * scale) / 2) * 2);
 
-      // Append absolute height for clarity
-      label += ` (${height}p)`;
+        const shortLabel = scale === 1 ? '1/1' : `1/${1 / scale}`;
+        let label = shortLabel;
 
-      return {
-        label,
-        shortLabel,
-        value: scale, // Stored as scale factor
-        isProject: scale === 1,
-      };
-    });
+        // Append absolute height for clarity
+        label += ` (${height}p)`;
+
+        return {
+          label,
+          shortLabel,
+          value: scale, // Stored as scale factor
+          isProject: scale === 1,
+        };
+      }),
+    ];
   });
 
   const toolbarPosition = computed(
