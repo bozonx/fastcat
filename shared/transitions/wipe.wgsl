@@ -6,9 +6,10 @@ struct TransitionUniform {
     progress: f32,
     width: u32,
     height: u32,
-    pad: u32,
+    speed: f32,
     p0: f32, p1: f32, p2: f32, p3: f32,
     p4: f32, p5: f32, p6: f32, p7: f32,
+    p8: f32, p9: f32, p10: f32, p11: f32,
 };
 @group(0) @binding(3) var<uniform> uni: TransitionUniform;
 

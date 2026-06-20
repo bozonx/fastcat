@@ -1,7 +1,10 @@
 <script setup lang="ts">
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useProjectActions } from '~/composables/editor/useProjectActions';
-import { useProjectManagement, usePendingNewProjectFiles } from '~/composables/project/useProjectManagement';
+import {
+  useProjectManagement,
+  usePendingNewProjectFiles,
+} from '~/composables/project/useProjectManagement';
 import { useProjectStore } from '~/stores/project.store';
 import { onMounted, ref } from 'vue';
 import { writeLocalStorageString, STORAGE_KEYS } from '~/stores/ui/uiLocalStorage';
@@ -112,7 +115,6 @@ async function onNewProjectFilesSelected(e: Event) {
     console.error('Failed to create project with files:', error);
   }
 }
-
 
 const isSettingsOpen = ref(false);
 

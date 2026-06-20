@@ -20,15 +20,6 @@ function normalizeDirection(value: unknown): 'left' | 'right' | 'up' | 'down' {
     : 'left';
 }
 
-/** Direction → screen-space unit vector (matches the web `getDirectionVector`). */
-function directionVector(value: unknown): [number, number] {
-  const direction = normalizeDirection(value);
-  if (direction === 'right') return [1, 0];
-  if (direction === 'up') return [0, -1];
-  if (direction === 'down') return [0, 1];
-  return [-1, 0];
-}
-
 function directionIndex(value: unknown): number {
   const direction = normalizeDirection(value);
   if (direction === 'right') return 1;
@@ -116,14 +107,6 @@ function centerFromAnchor(params: Record<string, unknown>): [number, number] {
   if (anchor === 'bottom-left') return [offsetX, 1 - offsetY];
   if (anchor === 'bottom-right') return [1 - offsetX, 1 - offsetY];
   return [0.5 + offsetX, 0.5 + offsetY];
-}
-
-function wipeAxis(direction: unknown, angleDeg: number): [number, number] {
-  const [bx, by] = directionVector(direction);
-  const a = (angleDeg * Math.PI) / 180;
-  const c = Math.cos(a);
-  const s = Math.sin(a);
-  return [bx * c - by * s, bx * s + by * c];
 }
 
 function normalizeCircleParams(params?: Record<string, unknown>): Record<string, unknown> {
@@ -262,116 +245,7 @@ fn get_in_weight(uv: vec2<f32>) -> f32 {
 }
 `;
 
-// ---- Wipe (direction + angle + gap/blur edge + gap color) -----------------
-const WIPE_WGSL = `${WGSL_HEAD}
-@compute @workgroup_size(8, 8, 1)
-fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
-    if (gid.x >= uni.width || gid.y >= uni.height) { return; }
-    let coord = vec2<i32>(i32(gid.x), i32(gid.y));
-    let uv = pixel_uv(gid);
-    let aspect = dims().x / dims().y;
-    let from_color = samp(from_tex, uv);
-    let to_color = samp(to_tex, uv);
-
-    let p = (uv - vec2<f32>(0.5, 0.5)) * vec2<f32>(aspect, 1.0);
-    let progress = clamp(uni.progress, 0.0, 1.0);
-    let axis = normalize(vec2<f32>(uni.p0, uni.p1));
-    let gap_half = uni.p2 * 0.5;
-    let max_dist = 0.5 * (aspect * abs(axis.x) + abs(axis.y));
-    let axis_value = dot(p, axis);
-    let edge = mix(-max_dist - gap_half, max_dist + gap_half, progress);
-    let cut_start = edge - gap_half;
-    let cut_end = edge + gap_half;
-    let aa = 1.5 / dims().y;
-    let blur = max(uni.p3, aa);
-    let blur_mix = smoothstep(edge - blur, edge + blur, axis_value);
-
-    var final_color: vec4<f32>;
-    if (uni.p4 < 0.5) {
-        // blur edge mode (applyToEdgeBlur is always true for shader transitions)
-        final_color = mix(to_color, from_color, blur_mix);
-    } else {
-        // gap mode with anti-aliased boundaries
-        let before_gap = 1.0 - smoothstep(cut_start - aa, cut_start + aa, axis_value);
-        let after_gap = smoothstep(cut_end - aa, cut_end + aa, axis_value);
-        let inside_gap = 1.0 - before_gap - after_gap;
-        let gap_color = vec4<f32>(uni.p5, uni.p6, uni.p7, 1.0);
-        final_color = to_color * before_gap + gap_color * inside_gap + from_color * after_gap;
-    }
-    textureStore(output_tex, coord, final_color);
-}`;
-
-// ---- Slide (axis, gap, gap color, motion blur, brightness/bloom) ----------
-const SLIDE_WGSL = `${WGSL_HEAD}
-fn slide_get(uv: vec2<f32>) -> vec4<f32> {
-    let axis = vec2<f32>(uni.p0, uni.p1);
-    let gap_vec = axis * uni.p2;
-    let from_off = axis * uni.progress + gap_vec * 0.5;
-    let to_off = axis * (uni.progress - 1.0) - gap_vec * 0.5;
-    let from_uv = uv - from_off;
-    let to_uv = uv - to_off;
-
-    let w_from = get_in_weight(from_uv);
-    let w_to = get_in_weight(to_uv);
-    let total_w = w_from + w_to;
-    if (total_w > 0.0) {
-        let c_from = samp(from_tex, from_uv);
-        let c_to = samp(to_tex, to_uv);
-        let tex_color = mix(c_to, c_from, w_from / total_w);
-        let gap_color = vec4<f32>(uni.p3, uni.p4, uni.p5, 1.0);
-        return mix(gap_color, tex_color, min(total_w, 1.0));
-    }
-    return vec4<f32>(uni.p3, uni.p4, uni.p5, 1.0);
-}
-
-fn slide_process(color: vec4<f32>) -> vec4<f32> {
-    let env = sin(clamp(uni.progress, 0.0, 1.0) * PI);
-    let brightness = uni.p10 * env;
-    var extra = brightness;
-    if (uni.p9 > 0.5) {
-        let lum = dot(color.rgb, vec3<f32>(0.2126, 0.7152, 0.0722));
-        extra = brightness * smoothstep(uni.p11, 1.0, lum);
-    }
-    return vec4<f32>(max(vec3<f32>(0.0), color.rgb * (1.0 + extra)), color.a);
-}
-
-@compute @workgroup_size(8, 8, 1)
-fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
-    if (gid.x >= uni.width || gid.y >= uni.height) { return; }
-    let coord = vec2<i32>(i32(gid.x), i32(gid.y));
-    let uv = pixel_uv(gid);
-
-    var final_color: vec4<f32>;
-    // Scale motion blur by the curve's instantaneous speed, matching web rendering.
-    let mb = uni.p6 * uni.speed;
-    if (mb <= 0.0) {
-        final_color = slide_process(slide_get(uv));
-    } else {
-        let max_samples = i32(uni.p7);
-        let axis = vec2<f32>(uni.p0, uni.p1);
-        // Scale sample count by pixel length of the blur
-        let pixel_blur = mb * length(axis * dims());
-        let samples = clamp(i32(ceil(pixel_blur)), 4, max_samples);
-        let step_size = mb / f32(samples - 1);
-        let start = -mb * 0.5;
-        var accum = vec4<f32>(0.0);
-        var tw = 0.0;
-        for (var i = 0; i < 64; i = i + 1) {
-            if (i >= samples) { break; }
-            let off = start + f32(i) * step_size;
-            let c = slide_process(slide_get(uv + axis * off));
-            var w = 1.0;
-            if (uni.p8 > 0.5) {
-                let lum = dot(c.rgb, vec3<f32>(0.2126, 0.7152, 0.0722));
-                w = smoothstep(uni.p11, 1.0, lum);
-            }
-            accum = accum + c * w;
-            tw = tw + w;
-        }
-        if (tw > 0.0) { final_color = accum / tw; } else { final_color = slide_process(slide_get(uv)); }
-    }
-    textureStore(output_tex, coord, final_color);
-}`;
+// ---- Wipe & Slide WGSL shaders have been moved to shared/transitions/ ----
 
 // ---- Motion Blur (full-frame directional blur through a crossfade) --------
 const MOTION_BLUR_WGSL = `${WGSL_HEAD}
@@ -1331,23 +1205,22 @@ export const transitionManifests: TransitionManifest[] = [
         step: 1,
       },
     ],
-    toTransitionSpec: (params: Record<string, unknown>) => {
-      const useGap = params.edgeMode !== 'blur';
-      const [ax, ay] = wipeAxis(params.direction, clamp(finiteNumber(params.angle, 0), -180, 180));
-      const [r, g, b] = hexToRgb01(params.gapColor, '#000000');
+    toTransitionSpec: (params: Record<string, unknown>): TransitionSpec => {
+      let baseAngle = 180; // 'left'
+      if (params.direction === 'right') {
+        baseAngle = 0;
+      } else if (params.direction === 'up') {
+        baseAngle = 270;
+      } else if (params.direction === 'down') {
+        baseAngle = 90;
+      }
+      const customAngle = clamp(finiteNumber(params.angle, 0), -180, 180);
+      const angle_deg = (baseAngle + customAngle) % 360;
+      const softness = clamp(finiteNumber(params.blur, 2) / 100, 0.0001, 1.0);
       return {
-        type: 'custom-wgsl',
-        source: WIPE_WGSL,
-        params: {
-          p0: ax,
-          p1: ay,
-          p2: useGap ? clamp(finiteNumber(params.gap, 0.02), 0, 0.2) : 0,
-          p3: clamp(finiteNumber(params.blur, 2) / 100, 0.0001, 0.2),
-          p4: useGap ? 1 : 0,
-          p5: r,
-          p6: g,
-          p7: b,
-        },
+        type: 'wipe',
+        angle_deg,
+        softness,
       };
     },
     computeOutOpacity: transparent,
@@ -1437,32 +1310,10 @@ export const transitionManifests: TransitionManifest[] = [
         step: 0.01,
       },
     ],
-    toTransitionSpec: (
-      params: Record<string, unknown>,
-      durationSec?: number,
-      options?: { isExport?: boolean; isPlaying?: boolean; previewBlurQuality?: string },
-    ): TransitionSpec => {
-      const [ax, ay] = directionVector(params.direction);
-      const [r, g, b] = hexToRgb01(params.gapColor, '#000000');
-      const q = resolveBlurQuality(options, params.blurQuality);
-      const samples = qualitySamples(q, 8, 16, 32, 64);
+    toTransitionSpec: (params: Record<string, unknown>): TransitionSpec => {
       return {
-        type: 'custom-wgsl',
-        source: SLIDE_WGSL,
-        params: {
-          p0: ax,
-          p1: ay,
-          p2: clamp(finiteNumber(params.gap, 0.02), 0, 0.2),
-          p3: r,
-          p4: g,
-          p5: b,
-          p6: motionBlurConst(clamp(finiteNumber(params.motionBlur, 0), 0, 10), durationSec),
-          p7: samples,
-          p8: params.motionBlurMode === 'bloom' ? 1 : 0,
-          p9: params.brightnessMode === 'bloom' ? 1 : 0,
-          p10: clamp(finiteNumber(params.brightness, 0), -10, 10),
-          p11: clamp(finiteNumber(params.bloomThreshold, 0.7), 0, 1),
-        },
+        type: 'slide',
+        direction: normalizeDirection(params.direction),
       };
     },
     computeOutOpacity: transparent,

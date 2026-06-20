@@ -35,7 +35,8 @@ const globalOptions = {
     UButton: {
       props: ['loading', 'disabled'],
       emits: ['click'],
-      template: '<button class="u-button" :disabled="disabled || loading" @click="$emit(\'click\')"><slot /></button>',
+      template:
+        '<button class="u-button" :disabled="disabled || loading" @click="$emit(\'click\')"><slot /></button>',
     },
     Icon: { props: ['name'], template: '<i :data-icon="name" />' },
   },
@@ -91,7 +92,10 @@ describe('MobileAddToTimelineModal', () => {
     });
 
     // Select the existing audio track
-    await wrapper.findAll('button').find((b) => b.text().includes('Audio 1'))!.trigger('click');
+    await wrapper
+      .findAll('button')
+      .find((b) => b.text().includes('Audio 1'))!
+      .trigger('click');
     await wrapper.find('.u-button').trigger('click');
     expect(addClipToTimelineFromPathMock).toHaveBeenCalled();
   });

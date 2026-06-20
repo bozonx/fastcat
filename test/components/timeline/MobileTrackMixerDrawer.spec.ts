@@ -8,8 +8,22 @@ const toggleTrackAudioSoloMock = vi.fn();
 const updateTrackPropertiesMock = vi.fn();
 const requestTimelineSaveMock = vi.fn();
 
-const audioTrack = { id: 'track-a', kind: 'audio', items: [{ id: 'item-a' }], audioGain: 1, audioMuted: false, audioSolo: false } as any;
-const videoTrack = { id: 'track-v', kind: 'video', items: [{ id: 'item-v' }], audioGain: 0.8, audioMuted: false, audioSolo: false } as any;
+const audioTrack = {
+  id: 'track-a',
+  kind: 'audio',
+  items: [{ id: 'item-a' }],
+  audioGain: 1,
+  audioMuted: false,
+  audioSolo: false,
+} as any;
+const videoTrack = {
+  id: 'track-v',
+  kind: 'video',
+  items: [{ id: 'item-v' }],
+  audioGain: 0.8,
+  audioMuted: false,
+  audioSolo: false,
+} as any;
 const emptyTrack = { id: 'track-e', kind: 'audio', items: [], audioGain: 1 } as any;
 
 const mockTimelineStore = reactive({
@@ -42,7 +56,8 @@ const globalOptions = {
     DbSlider: {
       props: ['modelValue'],
       emits: ['update:modelValue'],
-      template: '<input class="db-slider" type="range" :value="modelValue" @input="$emit(\'update:modelValue\', Number($event.target.value))" />',
+      template:
+        '<input class="db-slider" type="range" :value="modelValue" @input="$emit(\'update:modelValue\', Number($event.target.value))" />',
     },
     TrackProperties: { template: '<div class="track-properties" />' },
     SelectEffectModal: { template: '<div class="select-effect-modal" />' },
@@ -51,9 +66,13 @@ const globalOptions = {
     UiToggleButton: {
       props: ['modelValue', 'icon', 'label'],
       emits: ['click'],
-      template: '<button class="ui-toggle-button" :data-icon="icon" :data-label="label" @click="$emit(\'click\')"><slot /></button>',
+      template:
+        '<button class="ui-toggle-button" :data-icon="icon" :data-label="label" @click="$emit(\'click\')"><slot /></button>',
     },
-    UButton: { props: ['icon'], template: '<button class="u-button" :data-icon="icon"><slot /></button>' },
+    UButton: {
+      props: ['icon'],
+      template: '<button class="u-button" :data-icon="icon"><slot /></button>',
+    },
     UIcon: { props: ['name'], template: '<i :data-icon="name" />' },
   },
 };

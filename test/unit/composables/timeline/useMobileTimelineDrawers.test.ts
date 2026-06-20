@@ -120,7 +120,6 @@ describe('useMobileTimelineDrawers', () => {
     unmount();
   });
 
-
   it('opens the settings drawer with a high snap point for timeline properties', async () => {
     mockSelectionStore.selectedEntity = { source: 'timeline', kind: 'timeline-properties' };
     const { api, unmount } = mountDrawers();

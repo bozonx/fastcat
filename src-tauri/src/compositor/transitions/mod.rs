@@ -609,11 +609,11 @@ fn parse_hex_color(hex: &str) -> [f32; 3] {
 fn get_shader_source(spec: &TransitionSpec) -> String {
     match spec {
         TransitionSpec::CustomWgsl { source, .. } => source.clone(),
-        TransitionSpec::Crossfade => include_str!("shaders/crossfade.wgsl").to_string(),
-        TransitionSpec::Wipe { .. } => include_str!("shaders/wipe.wgsl").to_string(),
-        TransitionSpec::Slide { .. } => include_str!("shaders/slide.wgsl").to_string(),
+        TransitionSpec::Crossfade => include_str!("../../../../shared/transitions/crossfade.wgsl").to_string(),
+        TransitionSpec::Wipe { .. } => include_str!("../../../../shared/transitions/wipe.wgsl").to_string(),
+        TransitionSpec::Slide { .. } => include_str!("../../../../shared/transitions/slide.wgsl").to_string(),
         TransitionSpec::FadeThroughColor { .. } => {
-            include_str!("shaders/fade_through_color.wgsl").to_string()
+            include_str!("../../../../shared/transitions/fade_through_color.wgsl").to_string()
         }
     }
 }

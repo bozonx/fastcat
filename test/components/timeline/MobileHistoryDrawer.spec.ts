@@ -39,5 +39,4 @@ describe('MobileHistoryDrawer', () => {
     const history = wrapper.findComponent(globalOptions.stubs.ProjectHistory);
     expect(history.props('mobile')).toBe(true);
   });
-
 });

@@ -66,7 +66,8 @@ const globalOptions = {
     UiSelect: {
       props: ['modelValue', 'options'],
       emits: ['update:modelValue'],
-      template: '<select class="ui-select" :value="modelValue" @change="$emit(\'update:modelValue\', $event.target.value)"><option v-for="opt in options" :key="opt.value" :value="opt.value">{{ opt.label }}</option></select>',
+      template:
+        '<select class="ui-select" :value="modelValue" @change="$emit(\'update:modelValue\', $event.target.value)"><option v-for="opt in options" :key="opt.value" :value="opt.value">{{ opt.label }}</option></select>',
     },
     UIcon: { props: ['name'], template: '<i :data-icon="name" />' },
   },

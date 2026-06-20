@@ -17,7 +17,8 @@ const globalOptions = {
     UTabs: {
       props: ['modelValue', 'items'],
       emits: ['update:modelValue'],
-      template: '<div class="tabs"><button v-for="item in items" :key="item.value" class="tab" :data-value="item.value" @click="$emit(\'update:modelValue\', item.value)">{{ item.label }}</button></div>',
+      template:
+        '<div class="tabs"><button v-for="item in items" :key="item.value" class="tab" :data-value="item.value" @click="$emit(\'update:modelValue\', item.value)">{{ item.label }}</button></div>',
     },
     ResolutionSettings: { template: '<div class="resolution-settings" />' },
     AdvancedSettings: { template: '<div class="advanced-settings" />' },

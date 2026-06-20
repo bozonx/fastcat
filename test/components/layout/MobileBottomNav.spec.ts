@@ -11,16 +11,13 @@ const mockWorkspaceStore = reactive({ lastProjectName: '' as string });
 const mockFileManagerStore = reactive({ selectedFolder: { name: 'Root' } as unknown });
 
 mockNuxtImport('useRoute', () => () => mockRoute);
-mockNuxtImport(
-  'useRouter',
-  () => () => ({
-    push: pushMock,
-    replace: vi.fn(),
-    afterEach: vi.fn(),
-    beforeEach: vi.fn(),
-    onError: vi.fn(),
-  }),
-);
+mockNuxtImport('useRouter', () => () => ({
+  push: pushMock,
+  replace: vi.fn(),
+  afterEach: vi.fn(),
+  beforeEach: vi.fn(),
+  onError: vi.fn(),
+}));
 
 vi.mock('~/composables/editor/useProjectActions', () => ({
   useProjectActions: () => ({ leaveProject: leaveProjectMock }),

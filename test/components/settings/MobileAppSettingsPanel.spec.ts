@@ -29,7 +29,8 @@ const globalOptions = {
     UTabs: {
       props: ['modelValue', 'items'],
       emits: ['update:modelValue'],
-      template: '<div class="tabs"><button v-for="item in items" :key="item.value" class="tab" :data-value="item.value" @click="$emit(\'update:modelValue\', item.value)">{{ item.label }}</button></div>',
+      template:
+        '<div class="tabs"><button v-for="item in items" :key="item.value" class="tab" :data-value="item.value" @click="$emit(\'update:modelValue\', item.value)">{{ item.label }}</button></div>',
     },
     SettingsGeneral: { template: '<div class="settings-general" />' },
     SettingsOptimization: { template: '<div class="settings-optimization" />' },

@@ -307,4 +307,3 @@ export function usePendingNewProjectFiles() {
     pendingFilesForNewProject,
   };
 }
-

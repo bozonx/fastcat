@@ -118,8 +118,6 @@ export function useMobileTimelineDrawers() {
 
       if (isMultiSelectionDrawerOpen.value && itemIds.length > 0) return;
 
-
-
       if (entity?.kind === 'timeline-properties' && entity.source === 'timeline') {
         closeAllDrawers();
         drawerActiveSnapPoint.value = 0.92;
@@ -293,8 +291,6 @@ export function useMobileTimelineDrawers() {
       selectionStore.clearSelection();
     }
   }
-
-
 
   function onOpenVirtualClipPreset(type: 'text' | 'shape' | 'hud') {
     virtualClipPresetType.value = type;

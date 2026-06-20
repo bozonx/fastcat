@@ -283,7 +283,7 @@ onBeforeUnmount(() => {
               selectedTransition?.itemId === clip.id && selectedTransition?.edge === 'in',
               hasTransitionProblem('in'),
               'in',
-            )
+            ),
           ]"
           :title="getTransitionButtonTitle('in')"
           @click.stop="
@@ -363,7 +363,7 @@ onBeforeUnmount(() => {
               selectedTransition?.itemId === clip.id && selectedTransition?.edge === 'out',
               hasTransitionProblem('out'),
               'out',
-            )
+            ),
           ]"
           :title="getTransitionButtonTitle('out')"
           @click.stop="

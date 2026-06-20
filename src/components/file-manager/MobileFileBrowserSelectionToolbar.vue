@@ -48,8 +48,6 @@ const isGeneratingProxy = computed(() =>
   ),
 );
 
-
-
 const canCopySelection = computed(
   () =>
     props.selectedEntries.length > 0 &&

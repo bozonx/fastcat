@@ -23,9 +23,7 @@ const emit = defineEmits<{
 }>();
 
 const trackHeightIcon = computed(() =>
-  props.isTrackHeightEnlarged
-    ? 'i-lucide-fold-vertical'
-    : 'i-lucide-unfold-vertical',
+  props.isTrackHeightEnlarged ? 'i-lucide-fold-vertical' : 'i-lucide-unfold-vertical',
 );
 
 const { t } = useI18n();

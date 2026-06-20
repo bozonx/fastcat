@@ -1,6 +1,10 @@
 import type { VideoEffectSpec } from '~/types/generated/native-monitor/VideoEffectSpec';
 import type { TransitionSpec } from '~/transitions';
 import effectWgsl from '~shared/effects/effect.wgsl?raw';
+import crossfadeWgsl from '~shared/transitions/crossfade.wgsl?raw';
+import fadeThroughColorWgsl from '~shared/transitions/fade_through_color.wgsl?raw';
+import slideWgsl from '~shared/transitions/slide.wgsl?raw';
+import wipeWgsl from '~shared/transitions/wipe.wgsl?raw';
 import { createDevLogger } from '~/utils/dev-logger';
 import {
   previewEffectQualityTapBudget,
@@ -11,67 +15,6 @@ const log = createDevLogger('WebGpuComputeRunner');
 
 const UNIFORM_SIZE = 48; // 12 * 4 bytes
 const TRANSITION_UNIFORM_SIZE = 64;
-const CROSSFADE_WGSL = `@group(0) @binding(0) var from_tex: texture_2d<f32>;
-@group(0) @binding(1) var to_tex: texture_2d<f32>;
-@group(0) @binding(2) var output_tex: texture_storage_2d<rgba8unorm, write>;
-
-struct TransitionUniform {
-    progress: f32,
-    width: u32,
-    height: u32,
-    speed: f32,
-    p0: f32, p1: f32, p2: f32, p3: f32,
-    p4: f32, p5: f32, p6: f32, p7: f32,
-    p8: f32, p9: f32, p10: f32, p11: f32,
-};
-@group(0) @binding(3) var<uniform> uni: TransitionUniform;
-
-@compute @workgroup_size(8, 8, 1)
-fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
-    if (gid.x >= uni.width || gid.y >= uni.height) { return; }
-    let coord = vec2<i32>(i32(gid.x), i32(gid.y));
-    textureStore(
-        output_tex,
-        coord,
-        mix(textureLoad(from_tex, coord, 0), textureLoad(to_tex, coord, 0), uni.progress)
-    );
-}`;
-const FADE_THROUGH_COLOR_WGSL = `@group(0) @binding(0) var from_tex: texture_2d<f32>;
-@group(0) @binding(1) var to_tex: texture_2d<f32>;
-@group(0) @binding(2) var output_tex: texture_storage_2d<rgba8unorm, write>;
-
-struct TransitionUniform {
-    progress: f32,
-    width: u32,
-    height: u32,
-    speed: f32,
-    p0: f32, p1: f32, p2: f32, p3: f32,
-    p4: f32, p5: f32, p6: f32, p7: f32,
-    p8: f32, p9: f32, p10: f32, p11: f32,
-};
-@group(0) @binding(3) var<uniform> uni: TransitionUniform;
-
-@compute @workgroup_size(8, 8, 1)
-fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
-    if (gid.x >= uni.width || gid.y >= uni.height) { return; }
-    let coord = vec2<i32>(i32(gid.x), i32(gid.y));
-    let target_color = vec4<f32>(uni.p0, uni.p1, uni.p2, 1.0);
-    var final_color: vec4<f32>;
-    if (uni.progress < 0.5) {
-        final_color = mix(
-            textureLoad(from_tex, coord, 0),
-            target_color,
-            smoothstep(0.0, 1.0, uni.progress * 2.0)
-        );
-    } else {
-        final_color = mix(
-            target_color,
-            textureLoad(to_tex, coord, 0),
-            smoothstep(0.0, 1.0, (uni.progress - 0.5) * 2.0)
-        );
-    }
-    textureStore(output_tex, coord, final_color);
-}`;
 // Hard render ceilings — must stay byte-identical to the Rust side
 // (`src-tauri/src/compositor/effects/mod.rs`). These bound every value reaching
 // the GPU and are the ceiling an animation key can reach; the frontend
@@ -1223,7 +1166,13 @@ export class WebGpuComputeRunner {
         const value = (specParams as Record<string, unknown>)[`p${index}`];
         f32[4 + index] = typeof value === 'number' && Number.isFinite(value) ? value : 0;
       }
-      if (params.spec.type === 'fade-through-color') {
+      if (params.spec.type === 'wipe') {
+        f32[4] = typeof params.spec.angle_deg === 'number' ? params.spec.angle_deg : 0;
+        f32[5] = typeof params.spec.softness === 'number' ? params.spec.softness : 0.1;
+      } else if (params.spec.type === 'slide') {
+        const dir = params.spec.direction;
+        f32[4] = dir === 'left' ? 0.0 : dir === 'right' ? 1.0 : dir === 'up' ? 2.0 : 3.0;
+      } else if (params.spec.type === 'fade-through-color') {
         const color = String(params.spec.color ?? '#000000')
           .trim()
           .replace(/^#/, '');
@@ -1234,12 +1183,18 @@ export class WebGpuComputeRunner {
       }
       this.device.queue.writeBuffer(uniformBuffer, 0, values);
 
-      const source =
-        params.spec.type === 'custom-wgsl' && typeof params.spec.source === 'string'
-          ? params.spec.source
-          : params.spec.type === 'fade-through-color'
-            ? FADE_THROUGH_COLOR_WGSL
-            : CROSSFADE_WGSL;
+      let source: string;
+      if (params.spec.type === 'custom-wgsl' && typeof params.spec.source === 'string') {
+        source = params.spec.source;
+      } else if (params.spec.type === 'fade-through-color') {
+        source = fadeThroughColorWgsl;
+      } else if (params.spec.type === 'wipe') {
+        source = wipeWgsl;
+      } else if (params.spec.type === 'slide') {
+        source = slideWgsl;
+      } else {
+        source = crossfadeWgsl;
+      }
       const pipeline = this.getOrCreateTransitionPipeline(source);
       const bindGroup = this.device.createBindGroup({
         label: 'web-transition-bind-group',

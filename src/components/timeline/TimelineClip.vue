@@ -589,7 +589,8 @@ const transitionInOverlayGuideStyle = computed<Record<string, string> | null>(()
   const prevClip = getPrevClipForItem(props.track, props.item);
   const isSelected =
     props.selectedTransition?.trackId === props.track.id &&
-    ((props.selectedTransition?.itemId === props.item.id && props.selectedTransition?.edge === 'in') ||
+    ((props.selectedTransition?.itemId === props.item.id &&
+      props.selectedTransition?.edge === 'in') ||
       (prevClip &&
         props.selectedTransition?.itemId === prevClip.id &&
         props.selectedTransition?.edge === 'out'));
@@ -605,10 +606,7 @@ const transitionInOverlayGuideStyle = computed<Record<string, string> | null>(()
 
   const offsetPx = Math.max(
     0,
-    Math.min(
-      clipWidthPx.value,
-      timeUsToPx(timelineHandleUs, timelineContext.zoom.value),
-    ),
+    Math.min(clipWidthPx.value, timeUsToPx(timelineHandleUs, timelineContext.zoom.value)),
   );
   return {
     left: `${offsetPx}px`,
@@ -619,7 +617,8 @@ const transitionOutOverlayGuideStyle = computed<Record<string, string> | null>((
   const nextClip = getNextClipForItem(props.track, props.item);
   const isSelected =
     props.selectedTransition?.trackId === props.track.id &&
-    ((props.selectedTransition?.itemId === props.item.id && props.selectedTransition?.edge === 'out') ||
+    ((props.selectedTransition?.itemId === props.item.id &&
+      props.selectedTransition?.edge === 'out') ||
       (nextClip &&
         props.selectedTransition?.itemId === nextClip.id &&
         props.selectedTransition?.edge === 'in'));
@@ -635,10 +634,7 @@ const transitionOutOverlayGuideStyle = computed<Record<string, string> | null>((
 
   const offsetPx = Math.max(
     0,
-    Math.min(
-      clipWidthPx.value,
-      timeUsToPx(timelineHandleUs, timelineContext.zoom.value),
-    ),
+    Math.min(clipWidthPx.value, timeUsToPx(timelineHandleUs, timelineContext.zoom.value)),
   );
   return {
     left: `${Math.max(0, clipWidthPx.value - offsetPx)}px`,

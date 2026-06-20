@@ -446,8 +446,6 @@ const {
       @close="onSelectionRangeDrawerClose"
     />
 
-
-
     <!-- Timeline Settings Drawer -->
     <MobileTimelineSettingsDrawer
       v-model:active-snap-point="drawerActiveSnapPoint"

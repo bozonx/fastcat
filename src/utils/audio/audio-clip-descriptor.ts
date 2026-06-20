@@ -228,7 +228,7 @@ export function toNativeSceneAudioLayer(params: ToNativeSceneAudioLayerParams): 
 
   // Default (no crossfade): keep the clip's exact ranges and only override the
   // fades. The common case stays byte-for-byte identical to before plus de-click.
-  let timelineStartUs = startUs;
+  const timelineStartUs = startUs;
   let timelineDurationUs = durationUs;
   let layerSourceStartUs = sourceStartUs;
   let layerSourceRangeUs = sourceRangeDurationUs;

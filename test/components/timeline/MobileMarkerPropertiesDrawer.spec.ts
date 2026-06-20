@@ -7,9 +7,7 @@ const updateMarkerMock = vi.fn();
 const removeMarkerMock = vi.fn();
 
 const mockTimelineStore = reactive({
-  markers: [
-    { id: 'marker-1', color: '#eab308', label: 'Intro' },
-  ],
+  markers: [{ id: 'marker-1', color: '#eab308', label: 'Intro' }],
   updateMarker: updateMarkerMock,
   removeMarker: removeMarkerMock,
 });

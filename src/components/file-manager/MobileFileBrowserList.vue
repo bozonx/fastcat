@@ -245,7 +245,10 @@ onBeforeUnmount(clearLongPress);
             class="relative w-12 h-12 rounded-xl bg-ui-bg flex items-center justify-center overflow-hidden shrink-0"
           >
             <template v-if="isCheckingCompatibility(entry)">
-              <UIcon name="i-heroicons-arrow-path" class="w-5 h-5 animate-spin text-ui-text-muted" />
+              <UIcon
+                name="i-heroicons-arrow-path"
+                class="w-5 h-5 animate-spin text-ui-text-muted"
+              />
             </template>
             <template
               v-else-if="

@@ -41,9 +41,7 @@ describe('MobileForegroundTaskOverlay', () => {
   it('does not render on desktop even when tasks are active', async () => {
     isMobileLayout.value = false;
     mockBackgroundTasksStore.hasActiveTasks = true;
-    mockBackgroundTasksStore.activeTasks = [
-      { id: 't1', title: 'Export', progress: 0.5 },
-    ];
+    mockBackgroundTasksStore.activeTasks = [{ id: 't1', title: 'Export', progress: 0.5 }];
     const wrapper = await mountSuspended(MobileForegroundTaskOverlay);
     expect(wrapper.find('.fixed').exists()).toBe(false);
   });
@@ -76,9 +74,7 @@ describe('MobileForegroundTaskOverlay', () => {
 
   it('displays progress for each task without description', async () => {
     mockBackgroundTasksStore.hasActiveTasks = true;
-    mockBackgroundTasksStore.activeTasks = [
-      { id: 't1', title: 'Task A', progress: 0.33 },
-    ];
+    mockBackgroundTasksStore.activeTasks = [{ id: 't1', title: 'Task A', progress: 0.33 }];
     await mountSuspended(MobileForegroundTaskOverlay);
     const overlay = document.body.querySelector('.fixed');
     expect(overlay!.textContent).toContain('33%');

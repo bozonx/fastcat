@@ -40,11 +40,10 @@ function createFileManagerStoreSetup(contextId: string) {
     const defaults = createDefaultFileBrowserInstance();
     const viewMode = ref<FileViewMode>(workspaceInstance.value?.viewMode ?? defaults.viewMode);
     const sortOption = ref<FileSortOption>(
-      workspaceInstance.value?.sortOption ?? (
-        contextId === 'mobile-assets'
+      workspaceInstance.value?.sortOption ??
+        (contextId === 'mobile-assets'
           ? { field: 'modified', order: 'desc' }
-          : { ...defaults.sortOption }
-      ),
+          : { ...defaults.sortOption }),
     );
     const gridCardSize = ref<number>(
       workspaceInstance.value?.gridCardSize ?? defaults.gridCardSize,
