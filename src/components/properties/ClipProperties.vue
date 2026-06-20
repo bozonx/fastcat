@@ -530,6 +530,7 @@ defineExpose({
       />
 
       <ClipTransitionsSection
+        v-if="!isMobile"
         v-model:enabled="isTransitionsEnabled"
         :is-video-track="isVideoTrack"
         :transition-in="clip.transitionIn ?? null"
