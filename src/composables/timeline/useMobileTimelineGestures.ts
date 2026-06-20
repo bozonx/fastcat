@@ -15,8 +15,6 @@ import type {
   TimelineTrimItemPayload,
 } from '~/timeline/types';
 
-const TIMELINE_RULER_HEIGHT_PX = 32;
-
 export interface UseMobileTimelineGesturesOptions {
   scrollEl: Ref<HTMLElement | null>;
   isLongPress: Ref<boolean>;
@@ -192,8 +190,10 @@ export function useMobileTimelineGestures(options: UseMobileTimelineGesturesOpti
 
     const tracksHeight = Object.values(trackHeights.value).reduce((a, b) => a + b, 0);
     const scrollerRectY = getCachedScrollRect(el);
+    // `y` is measured inside scrollEl, which already starts below the ruler, so it is
+    // a pure track-content offset — compare directly against the stacked track height.
     const y = e.clientY - scrollerRectY.top + el.scrollTop;
-    if (y > tracksHeight + TIMELINE_RULER_HEIGHT_PX) {
+    if (y > tracksHeight) {
       timelineStore.selectTimelineProperties();
       return;
     }

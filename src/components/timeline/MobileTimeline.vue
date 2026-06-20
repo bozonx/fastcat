@@ -182,7 +182,12 @@ const isAnyDrawerOpen = computed(
     isTransitionsPanelOpen.value ||
     isDeleteDrawerOpen.value ||
     isAddContentDrawerOpen.value ||
-    isVirtualClipPresetDrawerOpen.value,
+    isVirtualClipPresetDrawerOpen.value ||
+    isSettingsDrawerOpen.value ||
+    isTrackMixerDrawerOpen.value ||
+    isHistoryDrawerOpen.value ||
+    isMarkersDrawerOpen.value ||
+    isTrackManagerDrawerOpen.value,
 );
 
 const { trackHeights, toggleTrackHeightEnlarged } = useMobileTimelineTrackHeights({
@@ -557,7 +562,7 @@ const {
         :scroll-el="scrollEl"
       />
 
-      <!-- Main scrollable tracks area: starts below ruler (top-8 = 32px) -->
+      <!-- Main scrollable tracks area: starts below ruler (top-12 = 48px) -->
       <div
         ref="scrollEl"
         class="absolute top-12 left-0 right-0 bottom-0 overflow-auto overscroll-none no-scrollbar"

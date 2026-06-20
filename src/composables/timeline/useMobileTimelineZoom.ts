@@ -75,7 +75,11 @@ export function useMobileTimelineZoom(
         const midpointX = ((e.touches[0] as Touch).clientX + (e.touches[1] as Touch).clientX) / 2;
         const viewportX = midpointX - rect.left;
         const anchorPx = el.scrollLeft + viewportX;
-        const anchorTimeUs = pxToTimeUs(anchorPx, initialZoomPosition);
+        // Decode the live anchor with the CURRENTLY applied zoom, not the gesture's
+        // starting zoom: after the first pinch step the watcher has already rewritten
+        // el.scrollLeft into the new zoom's pixel space, so using initialZoomPosition
+        // here makes the focal point drift out from under the fingers.
+        const anchorTimeUs = pxToTimeUs(anchorPx, timelineStore.timelineZoom);
 
         applyZoomWithAnchor({
           nextZoom: nextZoomPosition,

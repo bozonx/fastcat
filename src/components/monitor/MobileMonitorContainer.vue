@@ -150,15 +150,6 @@ let longPressStartY = 0;
 const DOUBLE_TAP_MS = 280;
 let viewportTapTimer: ReturnType<typeof setTimeout> | null = null;
 
-onBeforeUnmount(() => {
-  clearLongPressTimer();
-  if (viewportTapTimer !== null) {
-    clearTimeout(viewportTapTimer);
-    viewportTapTimer = null;
-  }
-  stopMarkerLongPress();
-});
-
 function clearLongPressTimer() {
   if (longPressTimer !== null) {
     clearTimeout(longPressTimer);
