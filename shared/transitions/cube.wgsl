@@ -47,20 +47,12 @@ fn pixel_uv(gid: vec3<u32>) -> vec2<f32> {
     return (vec2<f32>(f32(gid.x), f32(gid.y)) + vec2<f32>(0.5, 0.5)) / dims();
 }
 
-fn get_in_weight(uv: vec2<f32>) -> f32 {
-    let aa = 1.5 / dims();
-    let edge_x = smoothstep(0.0, aa.x, uv.x) * (1.0 - smoothstep(1.0 - aa.x, 1.0, uv.x));
-    let edge_y = smoothstep(0.0, aa.y, uv.y) * (1.0 - smoothstep(1.0 - aa.y, 1.0, uv.y));
-    return edge_x * edge_y;
-}
+// Maps a screen UV to the two cube-face source UVs. Faces not covering the pixel
+// are returned as (-1) so in_bounds() reports them as outside. Pure function of
+// the input UV so it can be evaluated at sub-pixel offsets for supersampling.
+struct CubePos { from_p: vec2<f32>, to_p: vec2<f32> };
 
-@compute @workgroup_size(8, 8, 1)
-fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
-    if (gid.x >= uni.width || gid.y >= uni.height) { return; }
-    let coord = vec2<i32>(i32(gid.x), i32(gid.y));
-    let uv = pixel_uv(gid);
-    let progress = clamp(uni.progress, 0.0, 1.0);
-
+fn map_cube(uv: vec2<f32>, progress: f32) -> CubePos {
     let unzoom = 0.3 * uni.p2;
     let uz = unzoom * 2.0 * (0.5 - abs(progress - 0.5));
     let p = vec2<f32>(-uz * 0.5) + (1.0 + uz) * uv;
@@ -134,14 +126,37 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
         }
     }
 
-    let w_from = get_in_weight(from_p);
-    let w_to = get_in_weight(to_p);
-    let total_w = w_from + w_to;
+    return CubePos(from_p, to_p);
+}
+
+@compute @workgroup_size(8, 8, 1)
+fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
+    if (gid.x >= uni.width || gid.y >= uni.height) { return; }
+    let coord = vec2<i32>(i32(gid.x), i32(gid.y));
+    let uv = pixel_uv(gid);
+    let progress = clamp(uni.progress, 0.0, 1.0);
+
+    // MSAA-style supersampling: evaluate the full mapping at a 4x4 ordered grid
+    // of sub-pixel offsets and average the result. This anti-aliases both the
+    // outer (perspective-foreshortened) silhouette and the seam between the two
+    // faces at any angle, where a fixed UV-space ramp collapses to sub-pixel.
+    let inv = 1.0 / dims();
     var color = vec4<f32>(0.0);
-    if (total_w > 0.0) {
-        let c_from = samp(from_tex, from_p);
-        let c_to = samp(to_tex, to_p);
-        color = mix(c_to, c_from, w_from / total_w) * min(total_w, 1.0);
+    for (var sy = 0; sy < 4; sy = sy + 1) {
+        for (var sx = 0; sx < 4; sx = sx + 1) {
+            let off = (vec2<f32>(f32(sx), f32(sy)) + 0.5) / 4.0 - 0.5;
+            let cpos = map_cube(uv + off * inv, progress);
+            let fin = in_bounds(cpos.from_p);
+            let tin = in_bounds(cpos.to_p);
+            if (fin && tin) {
+                color = color + mix(samp(to_tex, cpos.to_p), samp(from_tex, cpos.from_p), 0.5);
+            } else if (fin) {
+                color = color + samp(from_tex, cpos.from_p);
+            } else if (tin) {
+                color = color + samp(to_tex, cpos.to_p);
+            }
+        }
     }
+    color = color / 16.0;
     textureStore(output_tex, coord, color);
 }

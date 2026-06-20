@@ -47,13 +47,6 @@ fn pixel_uv(gid: vec3<u32>) -> vec2<f32> {
     return (vec2<f32>(f32(gid.x), f32(gid.y)) + vec2<f32>(0.5, 0.5)) / dims();
 }
 
-fn get_in_weight(uv: vec2<f32>) -> f32 {
-    let aa = 1.5 / dims();
-    let edge_x = smoothstep(0.0, aa.x, uv.x) * (1.0 - smoothstep(1.0 - aa.x, 1.0, uv.x));
-    let edge_y = smoothstep(0.0, aa.y, uv.y) * (1.0 - smoothstep(1.0 - aa.y, 1.0, uv.y));
-    return edge_x * edge_y;
-}
-
 fn zoom_rotate(pt: vec2<f32>, angle: f32, aspect: f32) -> vec2<f32> {
     let c = cos(angle);
     let s = sin(angle);
@@ -61,6 +54,26 @@ fn zoom_rotate(pt: vec2<f32>, angle: f32, aspect: f32) -> vec2<f32> {
     var r = vec2<f32>(x * c - pt.y * s, x * s + pt.y * c);
     r.x = r.x / aspect;
     return r;
+}
+
+// Source UV of a zoomed/rotated layer for a given screen UV. Pure function used
+// both for the center color sample and for sub-pixel coverage supersampling.
+fn layer_uv(uv: vec2<f32>, angle: f32, scale: f32, aspect: f32) -> vec2<f32> {
+    return zoom_rotate(uv - vec2<f32>(0.5), angle, aspect) / scale + vec2<f32>(0.5);
+}
+
+// MSAA-style coverage of a zoomed/rotated layer over a 4x4 ordered sub-pixel
+// grid. Replaces the hard step() mask so rotated layer edges are anti-aliased.
+fn layer_coverage(uv: vec2<f32>, angle: f32, scale: f32, aspect: f32) -> f32 {
+    let inv = 1.0 / dims();
+    var cov = 0.0;
+    for (var sy = 0; sy < 4; sy = sy + 1) {
+        for (var sx = 0; sx < 4; sx = sx + 1) {
+            let off = (vec2<f32>(f32(sx), f32(sy)) + 0.5) / 4.0 - 0.5;
+            if (in_bounds(layer_uv(uv + off * inv, angle, scale, aspect))) { cov = cov + 1.0; }
+        }
+    }
+    return cov / 16.0;
 }
 
 fn zoom_sample(tex: texture_2d<f32>, uv: vec2<f32>, blur_amount: f32, bright: f32, blur_fade: f32) -> vec4<f32> {
@@ -113,20 +126,18 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
     let from_angle = mix(0.0, uni.p1, progress);
     let from_blur = mix(0.0, uni.p3 * 0.005, progress);
     let from_bright = mix(1.0, 1.0 + uni.p6, progress);
-    var from_c = zoom_rotate(uv - vec2<f32>(0.5), from_angle, aspect);
-    let from_uv = from_c / from_scale + vec2<f32>(0.5);
+    let from_uv = layer_uv(uv, from_angle, from_scale, aspect);
     var from_color = zoom_sample(from_tex, from_uv, from_blur, from_bright, progress);
-    let from_inside = step(0.0, from_uv.x) * step(from_uv.x, 1.0) * step(0.0, from_uv.y) * step(from_uv.y, 1.0);
+    let from_inside = layer_coverage(uv, from_angle, from_scale, aspect);
     from_color = from_color * ((1.0 - progress) * from_inside);
 
     let to_scale = mix(uni.p0, 1.0, progress);
     let to_angle = mix(uni.p2, 0.0, progress);
     let to_blur = mix(uni.p3 * 0.005, 0.0, progress);
     let to_bright = mix(1.0 + uni.p6, 1.0, progress);
-    var to_c = zoom_rotate(uv - vec2<f32>(0.5), to_angle, aspect);
-    let to_uv = to_c / to_scale + vec2<f32>(0.5);
+    let to_uv = layer_uv(uv, to_angle, to_scale, aspect);
     var to_color = zoom_sample(to_tex, to_uv, to_blur, to_bright, 1.0 - progress);
-    let to_inside = step(0.0, to_uv.x) * step(to_uv.x, 1.0) * step(0.0, to_uv.y) * step(to_uv.y, 1.0);
+    let to_inside = layer_coverage(uv, to_angle, to_scale, aspect);
     to_color = to_color * (progress * to_inside);
 
     let result = from_color + to_color;
