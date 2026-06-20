@@ -65,9 +65,7 @@ const {
   updateTransitionType,
   updateTransitionCurve,
 } = useClipTransitions({
-  // useClipTransitions reads clip.value eagerly inside its actions; the template
-  // guards every call behind a non-null clip so the cast is safe.
-  clip: clip as unknown as import('vue').Ref<TimelineClipItem>,
+  clip,
   defaultDurationUs,
   selectTransition: () => {},
   selectTimelineTransition: () => {},
@@ -95,8 +93,27 @@ function maxDurationSec(edge: 'in' | 'out'): number {
   return Math.max(MIN_DURATION_SEC, (clipDurationUs.value - otherDurationUs) / 1_000_000);
 }
 
-function selectValue(value: unknown): string {
-  return (value as { value?: string })?.value ?? (value as string);
+function selectValue(value: unknown): string | undefined {
+  if (value === null || value === undefined) return undefined;
+  if (typeof value === 'string') return value;
+  if (typeof value === 'object' && 'value' in value) {
+    const nested = (value as Record<string, unknown>).value;
+    return typeof nested === 'string' ? nested : undefined;
+  }
+  return undefined;
+}
+
+function updateTypeFromSelect(edge: 'in' | 'out', value: unknown) {
+  const selected = selectValue(value);
+  if (selected) updateTransitionType(edge, selected);
+}
+
+function updateCurveFromSelect(edge: 'in' | 'out', value: unknown) {
+  const selected = selectValue(value);
+  const curves: readonly TransitionCurve[] = ['linear', 'smooth', 'ease-in', 'ease-out'];
+  if (selected && (curves as readonly string[]).includes(selected)) {
+    updateTransitionCurve(edge, selected as TransitionCurve);
+  }
 }
 
 // --- Swipe-to-adjust duration --------------------------------------------
@@ -237,7 +254,7 @@ function formatSeconds(value: number): string {
               label-key="label"
               size="xs"
               full-width
-              @update:model-value="(v: unknown) => v && updateTransitionType(edge, selectValue(v))"
+              @update:model-value="(v: unknown) => updateTypeFromSelect(edge, v)"
             />
 
             <UiSelect
@@ -247,9 +264,7 @@ function formatSeconds(value: number): string {
               label-key="label"
               size="xs"
               full-width
-              @update:model-value="
-                (v: unknown) => v && updateTransitionCurve(edge, selectValue(v) as TransitionCurve)
-              "
+              @update:model-value="(v: unknown) => updateCurveFromSelect(edge, v)"
             />
 
             <!-- Swipe to adjust duration -->

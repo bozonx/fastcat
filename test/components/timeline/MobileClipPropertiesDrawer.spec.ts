@@ -141,19 +141,25 @@ describe('MobileClipPropertiesDrawer', () => {
     });
 
     const buttons = wrapper.findAll('.toolbar-stub button');
-    expect(buttons.length).toBe(8);
+    expect(buttons.length).toBe(9);
 
     const deleteBtn = buttons[0];
     const trimBtn = buttons[3];
+    const splitBtn = buttons[4];
+    const transitionsBtn = buttons[5];
     expect(deleteBtn?.attributes('data-icon')).toBe('i-heroicons-trash');
     expect(trimBtn?.attributes('data-icon')).toBe('i-heroicons-arrows-right-left');
-    expect(buttons[4]?.attributes('data-icon')).toBe('i-lucide-lab-razor-blade');
+    expect(splitBtn?.attributes('data-icon')).toBe('i-lucide-lab-razor-blade');
+    expect(transitionsBtn?.attributes('data-icon')).toBe('i-lucide-blend');
 
     await deleteBtn?.trigger('click');
     expect(wrapper.emitted('open-delete-drawer')).toBeTruthy();
 
     await trimBtn?.trigger('click');
     expect(wrapper.emitted('open-trim-drawer')).toBeTruthy();
+
+    await transitionsBtn?.trigger('click');
+    expect(wrapper.emitted('open-transitions-drawer')).toBeTruthy();
   });
 
   it('does not emit a delete drawer request for a locked clip', async () => {

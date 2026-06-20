@@ -1,6 +1,7 @@
 /** @vitest-environment happy-dom */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { computed, ref } from 'vue';
+import type { TimelineClipItem } from '~/timeline/types';
 import { useMobileTimelineTrim } from '~/composables/timeline/useMobileTimelineTrim';
 
 describe('useMobileTimelineTrim', () => {

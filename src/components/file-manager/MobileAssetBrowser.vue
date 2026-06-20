@@ -14,7 +14,7 @@ import { useMobileFileBrowserCreate } from '~/composables/file-manager/useMobile
 import { useMobileAssetCategories } from '~/composables/file-manager/useMobileAssetCategories';
 import { usePullToRefresh } from '~/composables/file-manager/usePullToRefresh';
 import type { FsEntry } from '~/types/fs';
-import type { FileAction as FileManagerAction } from '~/composables/file-manager/useFileManagerActions';
+import type { MobileDrawerAction } from '~/types/file-manager';
 import type { FileCompatibility } from '~/composables/file-manager/useFileManagerCompatibility';
 import MobileFileBrowserGrid from './MobileFileBrowserGrid.vue';
 import MobileFileBrowserDrawer from './MobileFileBrowserDrawer.vue';
@@ -26,12 +26,6 @@ import UiRenameModal from '~/components/ui/UiRenameModal.vue';
 import MobileAddToTimelineModal from '~/components/timeline/MobileAddToTimelineModal.vue';
 import { useTimelineMediaUsageStore } from '~/stores/timeline-media-usage.store';
 import { useUiStore } from '~/stores/ui.store';
-
-type MobileDrawerAction =
-  | FileManagerAction
-  | 'openAsPanelCut'
-  | 'openAsPanelSound'
-  | 'openAsProjectTab';
 
 const projectStore = useProjectStore();
 const selectionStore = useSelectionStore();

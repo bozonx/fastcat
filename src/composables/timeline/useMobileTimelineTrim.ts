@@ -1,4 +1,5 @@
 import { ref, type ComputedRef, type Ref } from 'vue';
+import type { TimelineClipItem } from '~/timeline/types';
 
 export interface TrimToolbarStartPayload {
   trackId: string;
@@ -13,8 +14,12 @@ export interface TrimToolbarPointerPayload {
   clientY: number;
 }
 
+export interface SelectedClipContext {
+  clip: Pick<TimelineClipItem, 'timelineRange'>;
+}
+
 export interface UseMobileTimelineTrimOptions {
-  selectedClipContext: ComputedRef<{ clip: { timelineRange: { startUs: number } } } | null>;
+  selectedClipContext: ComputedRef<SelectedClipContext | null>;
   startTrimItem: (
     e: PointerEvent,
     input: { trackId: string; itemId: string; edge: 'start' | 'end'; startUs: number },

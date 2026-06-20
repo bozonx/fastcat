@@ -1,7 +1,8 @@
 import { computed, type Ref } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useSelectionStore } from '~/stores/selection.store';
-import type { TimelineTrack } from '~/timeline/types';
+import type { TimelineTrack, TimelineClipItem } from '~/timeline/types';
+import { isClipItem } from '~/timeline/types';
 
 export function useMobileTimelineSelection(
   tracks: Ref<TimelineTrack[]>,
@@ -42,15 +43,17 @@ export function useMobileTimelineSelection(
     return { trackId: entity.trackId, itemId: entity.itemId };
   });
 
-  const selectedClipContext = computed(() => {
-    const entity = selectionStore.selectedEntity;
-    if (entity?.source !== 'timeline' || entity.kind !== 'clip') return null;
-    const track = tracks.value.find((item) => item.id === entity.trackId);
-    if (!track) return null;
-    const clip = track.items.find((item) => item.id === entity.itemId);
-    if (!clip || clip.kind !== 'clip') return null;
-    return { track, clip };
-  });
+  const selectedClipContext = computed<{ track: TimelineTrack; clip: TimelineClipItem } | null>(
+    () => {
+      const entity = selectionStore.selectedEntity;
+      if (entity?.source !== 'timeline' || entity.kind !== 'clip') return null;
+      const track = tracks.value.find((item) => item.id === entity.trackId);
+      if (!track) return null;
+      const clip = track.items.find((item) => item.id === entity.itemId);
+      if (!clip || !isClipItem(clip)) return null;
+      return { track, clip };
+    },
+  );
 
   const itemToTrackMap = computed(() => {
     const map = new Map<string, { trackId: string; item: TimelineTrack['items'][number] }>();

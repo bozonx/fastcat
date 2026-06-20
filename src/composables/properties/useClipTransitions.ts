@@ -3,7 +3,7 @@ import type { TimelineClipItem } from '~/timeline/types';
 import { DEFAULT_TRANSITION_CURVE, DEFAULT_TRANSITION_MODE } from '~/transitions';
 
 interface UseClipTransitionsOptions {
-  clip: Ref<TimelineClipItem>;
+  clip: Ref<TimelineClipItem | null>;
   defaultDurationUs: Ref<number>;
   selectTransition: (payload: { trackId: string; itemId: string; edge: 'in' | 'out' }) => void;
   selectTimelineTransition: (trackId: string, itemId: string, edge: 'in' | 'out') => void;
@@ -22,8 +22,14 @@ function getClipTransition(clip: TimelineClipItem, edge: 'in' | 'out') {
 }
 
 export function useClipTransitions(options: UseClipTransitionsOptions) {
-  const transitionIn = computed(() => getClipTransition(options.clip.value, 'in') ?? null);
-  const transitionOut = computed(() => getClipTransition(options.clip.value, 'out') ?? null);
+  const transitionIn = computed(() => {
+    const clip = options.clip.value;
+    return clip ? (getClipTransition(clip, 'in') ?? null) : null;
+  });
+  const transitionOut = computed(() => {
+    const clip = options.clip.value;
+    return clip ? (getClipTransition(clip, 'out') ?? null) : null;
+  });
 
   function handleTransitionUpdate(payload: {
     trackId: string;
@@ -45,12 +51,14 @@ export function useClipTransitions(options: UseClipTransitionsOptions) {
 
   function selectTransitionEdge(edge: 'in' | 'out') {
     const clip = options.clip.value;
+    if (!clip) return;
     options.selectTransition({ trackId: clip.trackId, itemId: clip.id, edge });
     options.selectTimelineTransition(clip.trackId, clip.id, edge);
   }
 
   function toggleTransition(edge: 'in' | 'out') {
     const clip = options.clip.value;
+    if (!clip) return;
     const current = getClipTransition(clip, edge);
 
     if (current) {
@@ -81,6 +89,7 @@ export function useClipTransitions(options: UseClipTransitionsOptions) {
 
   function updateTransitionDuration(edge: 'in' | 'out', durationSec: number) {
     const clip = options.clip.value;
+    if (!clip) return;
     const current = getClipTransition(clip, edge);
     if (!current) return;
 
@@ -95,8 +104,9 @@ export function useClipTransitions(options: UseClipTransitionsOptions) {
     });
   }
 
-  function updateTransitionType(edge: 'in' | 'out', type: string) {
+  function updateTransitionType(edge: 'in' | 'out', type: string | undefined) {
     const clip = options.clip.value;
+    if (!clip) return;
     const current = getClipTransition(clip, edge);
     if (!current || !type) return;
 
@@ -113,9 +123,10 @@ export function useClipTransitions(options: UseClipTransitionsOptions) {
 
   function updateTransitionCurve(
     edge: 'in' | 'out',
-    curve: import('~/transitions').TransitionCurve,
+    curve: import('~/transitions').TransitionCurve | undefined,
   ) {
     const clip = options.clip.value;
+    if (!clip || !curve) return;
     const current = getClipTransition(clip, edge);
     if (!current) return;
 

@@ -154,12 +154,24 @@ function isCheckingCompatibility(entry: FsEntry) {
   return getCompatibilityStatus(entry) === 'checking';
 }
 
-function getThumbnail(entry: FsEntry) {
+function getThumbnail(entry: FsEntry): string | null {
   if (entry.kind === 'directory') return null;
   const status = getCompatibilityStatus(entry);
   if (status === 'checking' || status === 'fully_unsupported' || status === 'corrupt') return null;
-  return (entry as ExtendedFsEntry).objectUrl || (entry.path ? props.thumbnails[entry.path] : null);
+  return (
+    (entry as ExtendedFsEntry).objectUrl ||
+    (entry.path ? props.thumbnails[entry.path] : null) ||
+    null
+  );
 }
+
+const thumbnailsByPath = computed(() => {
+  const map: Record<string, string | null> = {};
+  for (const entry of props.entries) {
+    map[entry.path] = getThumbnail(entry);
+  }
+  return map;
+});
 
 function handleImageError(entry: ExtendedFsEntry) {
   if (entry.objectUrl) {
@@ -250,9 +262,9 @@ onBeforeUnmount(clearLongPress);
                 }}</span>
               </div>
             </template>
-            <template v-else-if="getThumbnail(entry)">
+            <template v-else-if="thumbnailsByPath[entry.path]">
               <img
-                :src="getThumbnail(entry)!"
+                :src="thumbnailsByPath[entry.path]!"
                 class="w-full h-full object-contain transition-transform duration-300"
                 :class="{ 'scale-110 blur-[1px] opacity-70': isSelected(entry) && isSelectionMode }"
                 loading="lazy"

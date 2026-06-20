@@ -61,14 +61,14 @@ interface ContextMenuDeps {
   experimentalFeatures?: boolean;
 }
 
-type ContextMenuItem = {
+export interface ContextMenuItem {
   label: string;
-  icon: string;
-  onSelect: () => void;
+  icon?: string;
+  onSelect: () => void | Promise<void>;
   color?: string;
   disabled?: boolean;
   kbds?: string[];
-};
+}
 
 export function useFileContextMenu(
   deps: ContextMenuDeps,

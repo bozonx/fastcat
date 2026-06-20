@@ -67,7 +67,7 @@ describe('MobileTrimToolbar', () => {
     };
   });
 
-  it('renders title and grid buttons', async () => {
+  it('renders manual trim title and clip name', async () => {
     const wrapper = await mountSuspended(MobileTrimToolbar, {
       global: {
         stubs: {
@@ -77,67 +77,13 @@ describe('MobileTrimToolbar', () => {
       },
     });
 
-    expect(wrapper.text()).toContain('fastcat.timeline.trimByPlayhead');
-    expect(wrapper.text()).toContain('fastcat.timeline.leftTail');
-    expect(wrapper.text()).toContain('fastcat.timeline.rightTail');
-    expect(wrapper.text()).toContain('fastcat.timeline.trim');
-    expect(wrapper.text()).toContain('fastcat.timeline.trimWithOffset');
-    expect(wrapper.text()).toContain('fastcat.timeline.trimWithTimelineCut');
+    expect(wrapper.text()).toContain('fastcat.timeline.manualTrim');
+    expect(wrapper.text()).toContain('fastcat.timeline.trimStart');
+    expect(wrapper.text()).toContain('fastcat.timeline.trimEnd');
+    expect(wrapper.text()).toContain('Test Clip');
   });
 
-  it('calls correct store methods when playhead trim buttons are clicked', async () => {
-    const wrapper = await mountSuspended(MobileTrimToolbar, {
-      global: {
-        stubs: {
-          UButton: { template: '<button><slot /></button>' },
-          UIcon: { template: '<span />' },
-        },
-      },
-    });
-
-    const buttons = wrapper.findAll('button');
-    // Grid buttons: 6 action buttons (2 cols x 3 rows)
-    const gridButtons = wrapper.findAll('.grid-cols-2 button');
-    expect(gridButtons.length).toBe(6);
-
-    await gridButtons[0].trigger('click');
-    expect(trimToPlayheadLeftNoRipple).toHaveBeenCalled();
-
-    await gridButtons[1].trigger('click');
-    expect(trimToPlayheadRightNoRipple).toHaveBeenCalled();
-
-    await gridButtons[2].trigger('click');
-    expect(rippleTrimLeft).toHaveBeenCalled();
-
-    await gridButtons[3].trigger('click');
-    expect(rippleTrimRight).toHaveBeenCalled();
-
-    await gridButtons[4].trigger('click');
-    expect(advancedRippleTrimLeft).toHaveBeenCalled();
-
-    await gridButtons[5].trigger('click');
-    expect(advancedRippleTrimRight).toHaveBeenCalled();
-  });
-
-  it('disables grid buttons when clip is locked', async () => {
-    mockTimelineStore.timelineDoc!.tracks[0].items[0].locked = true;
-
-    const wrapper = await mountSuspended(MobileTrimToolbar, {
-      global: {
-        stubs: {
-          UButton: { template: '<button><slot /></button>' },
-          UIcon: { template: '<span />' },
-        },
-      },
-    });
-
-    const gridButtons = wrapper.findAll('.grid-cols-2 button');
-    for (const btn of gridButtons) {
-      expect(btn.attributes('disabled')).toBeDefined();
-    }
-  });
-
-  it('emits trim events for manual trim areas', async () => {
+  it('emits trim-start events for manual trim areas', async () => {
     const wrapper = await mountSuspended(MobileTrimToolbar, {
       global: {
         stubs: {
@@ -159,5 +105,34 @@ describe('MobileTrimToolbar', () => {
       clientX: 100,
       clientY: 200,
     });
+
+    await manualAreas[1].trigger('touchstart', {
+      touches: [{ clientX: 300, clientY: 200 }],
+    });
+    expect(wrapper.emitted('trim-start')![1][0]).toMatchObject({
+      edge: 'end',
+      clientX: 300,
+      clientY: 200,
+    });
+  });
+
+  it('emits back and close events', async () => {
+    const wrapper = await mountSuspended(MobileTrimToolbar, {
+      global: {
+        stubs: {
+          UButton: { template: '<button><slot /></button>' },
+          UIcon: { template: '<span />' },
+        },
+      },
+    });
+
+    const buttons = wrapper.findAll('button');
+    expect(buttons.length).toBeGreaterThanOrEqual(2);
+
+    await buttons[0].trigger('click');
+    expect(wrapper.emitted('back')).toBeTruthy();
+
+    await buttons[1].trigger('click');
+    expect(wrapper.emitted('close')).toBeTruthy();
   });
 });

@@ -16,8 +16,7 @@ import { useDismissMenusOnEscape } from '~/composables/useDismissMenusOnEscape';
 import { loadFonts } from '~/utils/video-editor/load-fonts';
 const uiStore = useUiStore();
 const { t } = useI18n();
-const route = useRoute();
-const isMobileLayout = computed(() => route.path === '/m' || route.path.startsWith('/m/'));
+const { isMobileLayout } = useMobileLayout();
 
 const colorMode = useColorMode();
 const presetsStore = usePresetsStore();
@@ -117,7 +116,7 @@ if (colorMode.preference === 'system') {
       <template v-if="uiStore.extractingAudioError" #footer>
         <div class="flex justify-end w-full">
           <UButton color="neutral" variant="solid" @click="uiStore.isExtractingAudio = false">
-            {{ t('common.close', 'Закрыть') }}
+            {{ t('common.close') }}
           </UButton>
         </div>
       </template>

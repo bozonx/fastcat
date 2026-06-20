@@ -585,3 +585,12 @@ select {
     font-weight: 500 !important;
   }
 }
+
+/* Mobile safe-area utilities */
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom, 0);
+}
+
+.pt-safe {
+  padding-top: env(safe-area-inset-top, 0);
+}

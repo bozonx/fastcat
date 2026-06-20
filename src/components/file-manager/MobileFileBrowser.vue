@@ -18,7 +18,8 @@ import { useMobileFileBrowserNavigation } from '~/composables/file-manager/useMo
 import { useMobileFileBrowserSelection } from '~/composables/file-manager/useMobileFileBrowserSelection';
 import { useMobileFileBrowserCreate } from '~/composables/file-manager/useMobileFileBrowserCreate';
 import type { FsEntry } from '~/types/fs';
-import type { FileAction as FileManagerAction } from '~/composables/file-manager/useFileManagerActions';
+import type { MobileDrawerAction } from '~/types/file-manager';
+import type { ContextMenuItem } from '~/composables/file-manager/useFileContextMenu';
 import MobileFileBrowserGrid from './MobileFileBrowserGrid.vue';
 import MobileFileBrowserDrawer from './MobileFileBrowserDrawer.vue';
 import MobileFileBrowserNavbar from './MobileFileBrowserNavbar.vue';
@@ -35,12 +36,6 @@ import { useFileBrowserBulkSelection } from '~/composables/file-manager/useFileB
 import { useTimelineMediaUsageStore } from '~/stores/timeline-media-usage.store';
 import { useUiStore } from '~/stores/ui.store';
 import { useHotkeyLabel } from '~/composables/useHotkeyLabel';
-
-type MobileDrawerAction =
-  | FileManagerAction
-  | 'openAsPanelCut'
-  | 'openAsPanelSound'
-  | 'openAsProjectTab';
 
 const fileManagerStore = useFileManagerStore();
 const projectStore = useProjectStore();
@@ -436,7 +431,7 @@ function toggleHiddenFiles() {
   fileManagerStore.setShowHiddenFiles(!fileManagerStore.showHiddenFiles);
 }
 
-const sortItems = computed(() =>
+const sortItems = computed<ContextMenuItem[]>(() =>
   fileManagerStore.sortFields.map((f) => ({
     label: t(f.labelKey),
     icon: fileManagerStore.sortOption.field === f.value ? 'lucide:check' : undefined,
@@ -444,7 +439,7 @@ const sortItems = computed(() =>
   })),
 );
 
-const menuItems = computed(() => [
+const menuItems = computed<ContextMenuItem[][]>(() => [
   [
     {
       label: isSelectionMode.value ? t('common.cancelSelection') : t('common.selectItems'),
@@ -483,7 +478,9 @@ const menuItems = computed(() => [
     {
       label: t('videoEditor.fileManager.actions.createMarkdown'),
       icon: 'i-heroicons-document-text',
-      onSelect: () => onCreateTextFile(),
+      onSelect: () => {
+        void onCreateTextFile();
+      },
     },
   ],
   [...sortItems.value],

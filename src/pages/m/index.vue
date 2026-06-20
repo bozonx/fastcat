@@ -482,12 +482,7 @@ const sortedProjects = computed(() => {
           </UiFormField>
 
           <UiAlert v-if="!projectCreationSettings.isAdvancedSettingsOpen">
-            {{
-              t(
-                'fastcat.projects.autoDetectHint',
-                'Project resolution and framerate will be automatically detected from the first video added to the timeline.',
-              )
-            }}
+            {{ t('fastcat.projects.autoDetectHint') }}
           </UiAlert>
 
           <UCollapsible v-model:open="projectCreationSettings.isAdvancedSettingsOpen">
@@ -659,13 +654,6 @@ const sortedProjects = computed(() => {
 </template>
 
 <style scoped>
-.pt-safe {
-  padding-top: env(safe-area-inset-top, 0);
-}
-.pb-safe {
-  padding-bottom: env(safe-area-inset-bottom, 0);
-}
-
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }

@@ -98,8 +98,8 @@ describe('MobileTrackPropertiesDrawer', () => {
 
     const buttons = wrapper.findAll('button');
 
-    // In gap mode there are 8 toolbar buttons (delete gap, add content, delete track, rename, lock, video, mute, solo)
-    expect(buttons.length).toBe(8);
+    // In gap mode there are 9 toolbar buttons (delete gap, add content, toggle track height, video, mute, solo, lock, rename, delete track)
+    expect(buttons.length).toBe(9);
 
     const deleteGapButton = buttons[0];
     expect(deleteGapButton).toBeDefined();
@@ -145,17 +145,18 @@ describe('MobileTrackPropertiesDrawer', () => {
     });
 
     const buttonsGap = wrapperGap.findAll('button[data-icon]');
-    expect(buttonsGap.length).toBe(8);
+    expect(buttonsGap.length).toBe(9);
     expect(buttonsGap[0].attributes('data-icon')).toBe('i-heroicons-trash');
     expect(buttonsGap[0].attributes('data-primary')).toBe('true'); // gap delete is primary
     expect(buttonsGap[1].attributes('data-icon')).toBe('i-heroicons-plus'); // add content
-    expect(buttonsGap[2].attributes('data-icon')).toBe('i-heroicons-eye'); // active/disabled (visible)
-    expect(buttonsGap[3].attributes('data-icon')).toBe('i-heroicons-speaker-wave'); // mute
-    expect(buttonsGap[4].attributes('data-icon')).toBe('i-heroicons-musical-note'); // solo
-    expect(buttonsGap[5].attributes('data-icon')).toBe('i-heroicons-lock-closed'); // lock
-    expect(buttonsGap[6].attributes('data-icon')).toBe('i-heroicons-pencil-square'); // rename
-    expect(buttonsGap[7].attributes('data-icon')).toBe('i-heroicons-trash'); // delete track
-    expect(buttonsGap[7].attributes('data-primary')).toBeUndefined();
+    expect(buttonsGap[2].attributes('data-icon')).toBe('i-heroicons-arrows-pointing-out'); // toggle track height
+    expect(buttonsGap[3].attributes('data-icon')).toBe('i-heroicons-eye'); // active/disabled (visible)
+    expect(buttonsGap[4].attributes('data-icon')).toBe('i-heroicons-speaker-wave'); // mute
+    expect(buttonsGap[5].attributes('data-icon')).toBe('i-heroicons-musical-note'); // solo
+    expect(buttonsGap[6].attributes('data-icon')).toBe('i-heroicons-lock-closed'); // lock
+    expect(buttonsGap[7].attributes('data-icon')).toBe('i-heroicons-pencil-square'); // rename
+    expect(buttonsGap[8].attributes('data-icon')).toBe('i-heroicons-trash'); // delete track
+    expect(buttonsGap[8].attributes('data-primary')).toBeUndefined();
 
     // 2. Check track mode (gapItemId is null/undefined)
     const wrapperTrack = await mountSuspended(MobileTrackPropertiesDrawer, {
@@ -184,13 +185,14 @@ describe('MobileTrackPropertiesDrawer', () => {
     });
 
     const buttonsTrack = wrapperTrack.findAll('button[data-icon]');
-    expect(buttonsTrack.length).toBe(7);
+    expect(buttonsTrack.length).toBe(8);
     expect(buttonsTrack[0].attributes('data-icon')).toBe('i-heroicons-plus'); // add content
-    expect(buttonsTrack[1].attributes('data-icon')).toBe('i-heroicons-eye'); // active/disabled (visible)
-    expect(buttonsTrack[2].attributes('data-icon')).toBe('i-heroicons-speaker-wave'); // mute
-    expect(buttonsTrack[3].attributes('data-icon')).toBe('i-heroicons-musical-note'); // solo
-    expect(buttonsTrack[4].attributes('data-icon')).toBe('i-heroicons-lock-closed'); // lock
-    expect(buttonsTrack[5].attributes('data-icon')).toBe('i-heroicons-pencil-square'); // rename
-    expect(buttonsTrack[6].attributes('data-icon')).toBe('i-heroicons-trash'); // delete track
+    expect(buttonsTrack[1].attributes('data-icon')).toBe('i-heroicons-arrows-pointing-out'); // toggle track height
+    expect(buttonsTrack[2].attributes('data-icon')).toBe('i-heroicons-eye'); // active/disabled (visible)
+    expect(buttonsTrack[3].attributes('data-icon')).toBe('i-heroicons-speaker-wave'); // mute
+    expect(buttonsTrack[4].attributes('data-icon')).toBe('i-heroicons-musical-note'); // solo
+    expect(buttonsTrack[5].attributes('data-icon')).toBe('i-heroicons-lock-closed'); // lock
+    expect(buttonsTrack[6].attributes('data-icon')).toBe('i-heroicons-pencil-square'); // rename
+    expect(buttonsTrack[7].attributes('data-icon')).toBe('i-heroicons-trash'); // delete track
   });
 });

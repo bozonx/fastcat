@@ -3,12 +3,20 @@ import { useProjectActions } from '~/composables/editor/useProjectActions';
 import { useFileManagerStore } from '~/stores/file-manager.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 
+type TabId = 'files' | 'edit' | 'export' | 'settings';
+
+interface NavItem {
+  id: 'home' | TabId;
+  label: string;
+  icon: string;
+}
+
 const props = defineProps<{
-  activeTab?: 'files' | 'edit' | 'export' | 'settings';
+  activeTab?: TabId;
 }>();
 
 const emit = defineEmits<{
-  (e: 'update:activeTab', value: 'files' | 'edit' | 'export' | 'settings'): void;
+  (e: 'update:activeTab', value: TabId): void;
 }>();
 
 const { t } = useI18n();
@@ -27,7 +35,7 @@ const showNav = computed(() => {
   return !!lastProjectName.value;
 });
 
-const navItems = computed(() => [
+const navItems = computed<NavItem[]>(() => [
   { id: 'home', label: t('common.toHome'), icon: 'lucide:home' },
   { id: 'files', label: t('common.files'), icon: 'lucide:folder-open' },
   { id: 'edit', label: t('common.edit'), icon: 'lucide:clapperboard' },
@@ -35,7 +43,7 @@ const navItems = computed(() => [
   { id: 'settings', label: t('common.settings'), icon: 'lucide:settings' },
 ]);
 
-async function handleItemClick(itemId: string) {
+async function handleItemClick(itemId: NavItem['id']) {
   if (itemId === 'home') {
     if (isEditorPage.value) {
       await leaveProject('/m');
@@ -45,18 +53,16 @@ async function handleItemClick(itemId: string) {
     return;
   }
 
-  const tabId = itemId as 'files' | 'edit' | 'export' | 'settings';
-
   if (isEditorPage.value) {
-    if (props.activeTab === tabId && tabId === 'files') {
+    if (props.activeTab === itemId && itemId === 'files') {
       fileManagerStore.selectedFolder = null;
     } else {
-      emit('update:activeTab', tabId);
+      emit('update:activeTab', itemId);
     }
   } else if (lastProjectName.value) {
     router.push({
       path: `/m/editor/${encodeURIComponent(lastProjectName.value)}`,
-      query: { view: tabId },
+      query: { view: itemId },
     });
   }
 }
@@ -88,9 +94,3 @@ async function handleItemClick(itemId: string) {
     </div>
   </nav>
 </template>
-
-<style scoped>
-.pb-safe {
-  padding-bottom: env(safe-area-inset-bottom, 0);
-}
-</style>

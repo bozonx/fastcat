@@ -25,11 +25,26 @@ const { t } = useI18n();
 const workspaceStore = useWorkspaceStore();
 const uiStore = useUiStore();
 
+const SETTINGS_SECTIONS: readonly SettingsSection[] = [
+  'user.general',
+  'user.proxy',
+  'user.export',
+  'user.video',
+  'user.audio',
+  'user.integrations',
+  'user.ui',
+  'workspace.storage',
+];
+
+function isSettingsSection(value: string | undefined): value is SettingsSection {
+  return value !== undefined && (SETTINGS_SECTIONS as readonly string[]).includes(value);
+}
+
 const savedSection = uiStore.editorSettingsActiveSection;
 const activeSection = ref<SettingsSection>(
-  savedSection === 'user.project' || !savedSection
+  savedSection === 'user.project' || !isSettingsSection(savedSection)
     ? 'user.general'
-    : (savedSection as SettingsSection),
+    : savedSection,
 );
 
 watch(activeSection, (section) => {

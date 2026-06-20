@@ -2,6 +2,7 @@
 import { formatBytes } from '~/utils/format';
 import { blurOnDropdownMenuClose } from '~/composables/useDropdownMenuBlur';
 import { useProjectStore } from '~/stores/project.store';
+import type { ContextMenuItem } from '~/composables/file-manager/useFileContextMenu';
 
 interface Breadcrumb {
   name: string;
@@ -14,9 +15,7 @@ defineProps<{
   totalSelectedSize: number;
   breadcrumbs: Breadcrumb[];
   hasFolderPath: boolean;
-  // Context-menu entries are produced by useFileContextMenu and consumed verbatim
-  // by UDropdownMenu; their concrete shape is owned there, so keep it opaque here.
-  menuItems: unknown[];
+  menuItems: ContextMenuItem[] | ContextMenuItem[][];
 }>();
 
 const emit = defineEmits<{
@@ -83,7 +82,7 @@ const projectStore = useProjectStore();
     <div class="shrink-0 flex items-center ml-2">
       <UDropdownMenu
         v-if="!isSelectionMode"
-        :items="menuItems as any"
+        :items="menuItems"
         :ui="{ content: 'w-56 min-w-max' }"
         @update:open="blurOnDropdownMenuClose"
       >
