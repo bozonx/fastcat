@@ -115,7 +115,7 @@ describe('preview effect quality', () => {
       ).toBe(0.67);
     });
 
-    it('always renders at full resolution for export and settled still frames', () => {
+    it('always renders at full resolution for export and still frames', () => {
       expect(resolvePreviewRenderScale({ quality: 'low', manualScale: 0.25, isExport: true })).toBe(
         1,
       );
@@ -124,23 +124,13 @@ describe('preview effect quality', () => {
       ).toBe(1);
     });
 
-    it('keeps the cheaper scale while a paused frame is still interactive', () => {
-      // Unsettled paused frame uses the motion scale (manual override or quality tier)...
-      expect(
-        resolvePreviewRenderScale({ quality: 'low', isPlaying: false, idleSettled: false }),
-      ).toBe(0.5);
-      expect(
-        resolvePreviewRenderScale({
-          quality: 'low',
-          manualScale: 0.25,
-          isPlaying: false,
-          idleSettled: false,
-        }),
-      ).toBe(0.25);
-      // ...then jumps to full resolution once settled.
-      expect(
-        resolvePreviewRenderScale({ quality: 'low', isPlaying: false, idleSettled: true }),
-      ).toBe(1);
+    it('keeps a paused frame full-res regardless of effect tier (decoupled from settle)', () => {
+      // Render scale is deliberately decoupled from the interactive-settle window: changing
+      // preview_scale drops native video runtimes (black-frames the scrub), so a paused frame
+      // stays full-res even at the lowest effect tier. Only effect/blur quality is lowered while
+      // interactive.
+      expect(resolvePreviewRenderScale({ quality: 'low', isPlaying: false })).toBe(1);
+      expect(resolvePreviewRenderScale({ quality: 'ultra', isPlaying: false })).toBe(1);
     });
   });
 });

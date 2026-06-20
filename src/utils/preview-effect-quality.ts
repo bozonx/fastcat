@@ -82,16 +82,17 @@ export interface ResolvePreviewRenderScaleParams {
   quality: PreviewEffectQuality;
   isExport?: boolean;
   isPlaying?: boolean;
-  /** See {@link ResolvePreviewEffectQualityParams.idleSettled}. Defaults to settled (`true`):
-   * a still frame renders at full resolution only once it has settled. */
-  idleSettled?: boolean;
 }
 
 export function resolvePreviewRenderScale(params: ResolvePreviewRenderScaleParams): number {
   if (params.isExport) return 1;
-  // Mirror the effect-quality rule: a *settled* still frame is rendered at full resolution.
-  // While interactive (`idleSettled === false`) it stays at the cheaper motion scale.
-  if (params.isPlaying === false && params.idleSettled !== false) return 1;
+  // A paused/still frame always renders at full resolution. NOTE: render scale is deliberately
+  // NOT tied to the interactive-settle debounce (unlike effect quality). The native monitor
+  // drops & re-decodes all video runtimes whenever `preview_scale` changes (see
+  // monitor/runtime.rs), so toggling the scale during scrubbing/param drags would cause black
+  // frames + jitter. Scrub stays at the paused full-res scale; only the (cheap) effect/blur
+  // sample budgets are lowered while interactive.
+  if (params.isPlaying === false) return 1;
   const manual = Number(params.manualScale);
   if (Number.isFinite(manual) && manual > 0) return Math.min(1, manual);
   return previewEffectQualityRenderScale(params.quality);

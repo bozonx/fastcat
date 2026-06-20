@@ -677,12 +677,14 @@ export async function buildNativeMonitorScene(
   // Effective render scale: a finite `previewScale` > 0 pins it manually, otherwise the
   // scale is derived from the resolved quality tier. Export and the paused/still frame
   // always render at full resolution.
+  // NOTE: render scale intentionally does NOT receive `idleSettled` — changing preview_scale
+  // drops/re-decodes native video runtimes (monitor/runtime.rs), which would black-frame the
+  // scrub. Only effect/transition sample quality varies during the interactive window.
   const previewScale = resolvePreviewRenderScale({
     manualScale: params.previewScale,
     quality: previewBlurQuality,
     isExport: params.isExport,
     isPlaying: params.isPlaying,
-    idleSettled: params.idleSettled,
   });
   const builtVideo = await buildVideoWorkerPayloadFromTracks({
     tracks: params.timelineDoc.tracks,

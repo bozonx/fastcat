@@ -69,28 +69,6 @@ vi.mock('~/components/ui/UiFormSectionHeader.vue', () => ({
   },
 }));
 
-vi.mock('~/components/ui/UiSelect.vue', () => ({
-  default: {
-    name: 'UiSelect',
-    props: ['modelValue', 'items', 'valueKey', 'labelKey'],
-    template: `
-      <select :value="modelValue" @change="$emit('update:modelValue', $event.target.value); $emit('update:model-value', $event.target.value)">
-        <option v-for="item in items" :key="item[valueKey]" :value="item[valueKey]">
-          {{ item[labelKey] }}
-        </option>
-      </select>
-    `,
-  },
-}));
-
-vi.mock('~/components/ui/UiFormField.vue', () => ({
-  default: {
-    name: 'UiFormField',
-    props: ['label'],
-    template: '<div class="form-field"><label>{{ label }}</label><slot /></div>',
-  },
-}));
-
 vi.mock('~/components/media/MediaResolutionSettings.vue', () => ({
   default: {
     name: 'MediaResolutionSettings',
@@ -119,16 +97,12 @@ describe('ResolutionSettings.vue', () => {
     );
   });
 
-  it('applies a new preset when selected in dropdown', async () => {
+  it('renders MediaResolutionSettings with current project values', async () => {
     const component = await mountWithNuxt(ResolutionSettings);
 
-    const select = component.find('select');
-    await select.setValue('4k');
-    // setValue triggers change which emits update:modelValue
-    await component.vm.$nextTick();
-
-    expect(mockProjectStore.projectSettings.project.width).toBe(3840);
-    expect(mockProjectStore.projectSettings.project.height).toBe(2160);
-    expect(mockProjectStore.projectSettings.project.fps).toBe(60);
+    const resolutionInputs = component.find('.resolution-inputs');
+    expect(resolutionInputs.exists()).toBe(true);
+    expect(resolutionInputs.text()).toContain('1920x1080');
+    expect(resolutionInputs.text()).toContain('30');
   });
 });

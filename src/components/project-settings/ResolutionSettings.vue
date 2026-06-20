@@ -1,40 +1,11 @@
 <script setup lang="ts">
-import { computed, watch } from 'vue';
+import { watch } from 'vue';
 import { useProjectStore } from '~/stores/project.store';
-import { useWorkspaceStore } from '~/stores/workspace.store';
-import { resolveProjectPreset } from '~/utils/settings';
 import MediaResolutionSettings from '~/components/media/MediaResolutionSettings.vue';
-import UiSelect from '~/components/ui/UiSelect.vue';
-import UiFormField from '~/components/ui/UiFormField.vue';
 import UiFormSectionHeader from '~/components/ui/UiFormSectionHeader.vue';
 
 const { t } = useI18n();
 const projectStore = useProjectStore();
-const workspaceStore = useWorkspaceStore();
-
-const projectPresetOptions = computed(() =>
-  workspaceStore.userSettings.projectPresets.items.map((preset) => ({
-    value: preset.id,
-    label: preset.name,
-  })),
-);
-
-function applyProjectPreset(presetId: string) {
-  if (!projectStore.projectSettings) return;
-
-  const preset =
-    workspaceStore.userSettings.projectPresets.items.find((item) => item.id === presetId) ??
-    resolveProjectPreset(workspaceStore.userSettings.projectPresets);
-
-  projectStore.projectSettings.project.width = preset.width;
-  projectStore.projectSettings.project.height = preset.height;
-  projectStore.projectSettings.project.fps = preset.fps;
-  projectStore.projectSettings.project.resolutionFormat = preset.resolutionFormat;
-  projectStore.projectSettings.project.orientation = preset.orientation;
-  projectStore.projectSettings.project.aspectRatio = preset.aspectRatio;
-  projectStore.projectSettings.project.isCustomResolution = preset.isCustomResolution;
-  projectStore.projectSettings.project.sampleRate = preset.sampleRate;
-}
 
 watch(
   () => projectStore.projectSettings?.project,
@@ -57,29 +28,15 @@ watch(
 <template>
   <div v-if="projectStore.projectSettings" class="space-y-2 pt-2 px-0">
     <UiFormSectionHeader :title="t('videoEditor.projectSettings.resolutionAndFps')" />
-
-    <div class="space-y-4">
-      <UiFormField :label="t('videoEditor.export.presetLabel')">
-        <UiSelect
-          v-model="workspaceStore.userSettings.projectPresets.selectedPresetId"
-          :items="projectPresetOptions"
-          value-key="value"
-          label-key="label"
-          full-width
-          @update:model-value="(val) => applyProjectPreset(val as string)"
-        />
-      </UiFormField>
-
-      <MediaResolutionSettings
-        v-model:width="projectStore.projectSettings.project.width"
-        v-model:height="projectStore.projectSettings.project.height"
-        v-model:fps="projectStore.projectSettings.project.fps"
-        v-model:resolution-format="projectStore.projectSettings.project.resolutionFormat"
-        v-model:orientation="projectStore.projectSettings.project.orientation"
-        v-model:aspect-ratio="projectStore.projectSettings.project.aspectRatio"
-        v-model:is-custom-resolution="projectStore.projectSettings.project.isCustomResolution"
-        v-model:sample-rate="projectStore.projectSettings.project.sampleRate"
-      />
-    </div>
+    <MediaResolutionSettings
+      v-model:width="projectStore.projectSettings.project.width"
+      v-model:height="projectStore.projectSettings.project.height"
+      v-model:fps="projectStore.projectSettings.project.fps"
+      v-model:resolution-format="projectStore.projectSettings.project.resolutionFormat"
+      v-model:orientation="projectStore.projectSettings.project.orientation"
+      v-model:aspect-ratio="projectStore.projectSettings.project.aspectRatio"
+      v-model:is-custom-resolution="projectStore.projectSettings.project.isCustomResolution"
+      v-model:sample-rate="projectStore.projectSettings.project.sampleRate"
+    />
   </div>
 </template>
