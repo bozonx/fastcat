@@ -174,6 +174,10 @@ impl Scene {
 pub struct TransitionInfo {
     pub spec: super::transitions::TransitionSpec,
     pub progress: f32,
+    /// Мгновенная "скорость" кривой (производная curve в текущей точке,
+    /// нормированная так, что linear == 1.0). Используется шейдерами motion-blur,
+    /// чтобы размытие нарастало/спадало вместе с кривой (как в web-манифестах).
+    pub speed_multiplier: f32,
     pub from_layer_id: String,
 }
 

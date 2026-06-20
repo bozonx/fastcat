@@ -49,7 +49,10 @@ pub struct TransitionUniform {
     pub progress: f32,
     pub width: u32,
     pub height: u32,
-    pub pad: u32,
+    /// Мгновенная скорость кривой (производная, linear == 1.0). Шейдеры motion-blur
+    /// умножают на неё величину размытия. Занимает бывший слот выравнивания `pad`,
+    /// поэтому раскладка uniform-буфера (64 байта) не меняется.
+    pub speed: f32,
     pub p0: f32,
     pub p1: f32,
     pub p2: f32,
@@ -362,6 +365,7 @@ impl TransitionPipeline {
         to_source: &EffectSource,
         spec: &TransitionSpec,
         progress: f32,
+        speed: f32,
     ) -> Result<wgpu::Texture> {
         let (w_from, h_from) = match from_source {
             EffectSource::Cpu(img) => (img.width, img.height),
@@ -422,7 +426,7 @@ impl TransitionPipeline {
         let to_texture = to_tex.create_view(&wgpu::TextureViewDescriptor::default());
 
         // Заполнение Uniform буфера
-        let uniform_data = build_uniform(spec, progress, width, height);
+        let uniform_data = build_uniform(spec, progress, speed, width, height);
         let uniform_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("native-transition-uniform"),
             contents: bytemuck::bytes_of(&uniform_data),
@@ -513,6 +517,7 @@ fn create_temp_texture(
 fn build_uniform(
     spec: &TransitionSpec,
     progress: f32,
+    speed: f32,
     width: u32,
     height: u32,
 ) -> TransitionUniform {
@@ -520,7 +525,7 @@ fn build_uniform(
         progress,
         width,
         height,
-        pad: 0,
+        speed,
         p0: 0.0,
         p1: 0.0,
         p2: 0.0,
@@ -650,7 +655,7 @@ mod tests {
                 "p5": 1.0,
             }),
         };
-        let uni = build_uniform(&spec, 0.5, 1920, 1080);
+        let uni = build_uniform(&spec, 0.5, 1.0, 1920, 1080);
         assert_eq!(uni.progress, 0.5);
         assert_eq!(uni.width, 1920);
         assert_eq!(uni.height, 1080);

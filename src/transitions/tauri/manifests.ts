@@ -66,9 +66,12 @@ function qualitySamples(quality: unknown, low: number, med: number, high: number
 }
 
 /**
- * Motion-blur magnitude. The web manifests scale blur by the curve's
- * instantaneous speed (a per-frame derivative). The native specs are static, so
- * we approximate the derivative as 1.0 (exact for the default linear curve).
+ * Static part of the motion-blur magnitude (`baseSpeed * motionBlur * factor`).
+ * The web manifests additionally scale blur by the curve's instantaneous speed
+ * (a per-frame derivative). Native applies that derivative at render time via the
+ * per-frame `uni.speed` uniform (computed in `layer_builder.rs` from the curve),
+ * which the slide/blinds shaders multiply into this magnitude — so blur now grows
+ * and shrinks with the curve instead of staying flat.
  */
 function motionBlurConst(motionBlur: number, durationSec: number | undefined, factor = 0.05) {
   if (motionBlur > 0 && durationSec && durationSec > 0) {
@@ -113,7 +116,7 @@ struct TransitionUniform {
     progress: f32,
     width: u32,
     height: u32,
-    pad: u32,
+    speed: f32,
     p0: f32, p1: f32, p2: f32, p3: f32,
     p4: f32, p5: f32, p6: f32, p7: f32,
     p8: f32, p9: f32, p10: f32, p11: f32,
@@ -226,13 +229,16 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
     let uv = pixel_uv(gid);
 
     var final_color: vec4<f32>;
-    if (uni.p6 <= 0.0) {
+    // Величина motion-blur масштабируется мгновенной скоростью кривой (uni.speed),
+    // чтобы размытие нарастало в быстрой фазе и спадало в медленной (как в web).
+    let mb = uni.p6 * uni.speed;
+    if (mb <= 0.0) {
         final_color = slide_process(slide_get(uv));
     } else {
         let samples = i32(uni.p7);
         let axis = vec2<f32>(uni.p0, uni.p1);
-        let step_size = uni.p6 / f32(samples - 1);
-        let start = -uni.p6 * 0.5;
+        let step_size = mb / f32(samples - 1);
+        let start = -mb * 0.5;
         var accum = vec4<f32>(0.0);
         var tw = 0.0;
         for (var i = 0; i < 64; i = i + 1) {
@@ -351,10 +357,12 @@ fn blinds_process(color: vec4<f32>) -> vec4<f32> {
 }
 
 fn blinds_motion(uv: vec2<f32>) -> vec4<f32> {
-    if (uni.p7 <= 0.0) { return blinds_process(blinds_get(uv)); }
+    // Motion-blur масштабируется мгновенной скоростью кривой (uni.speed), как в web.
+    let mb = uni.p7 * uni.speed;
+    if (mb <= 0.0) { return blinds_process(blinds_get(uv)); }
     let samples = i32(uni.p6);
-    let step_size = uni.p7 / f32(samples - 1);
-    let start = -uni.p7 * 0.5;
+    let step_size = mb / f32(samples - 1);
+    let start = -mb * 0.5;
     let strip_coord = dot(uv - vec2<f32>(0.5), vec2<f32>(uni.p2, uni.p3)) + 0.5;
     let strip_index = floor(strip_coord * uni.p4);
     let dir = select(-1.0, 1.0, (strip_index % 2.0) == 0.0);
@@ -1290,7 +1298,7 @@ export const tauriTransitionManifests: TransitionManifest[] = [
       edgeMode: 'gap',
       gap: 0.02,
       gapColor: '#000000',
-      blur: 0.02,
+      blur: 2,
       blurMode: 'scaled',
       angle: 0,
     },
@@ -1338,9 +1346,9 @@ export const tauriTransitionManifests: TransitionManifest[] = [
         kind: 'number',
         key: 'blur',
         labelKey: 'fastcat.timeline.transition.paramWipeEdgeBlur',
-        min: 0.0001,
-        max: 0.2,
-        step: 0.005,
+        min: 0,
+        max: 20,
+        step: 0.5,
       },
       {
         kind: 'number',
@@ -1362,7 +1370,7 @@ export const tauriTransitionManifests: TransitionManifest[] = [
           p0: Math.cos(angle),
           p1: Math.sin(angle),
           p2: useGap ? clamp(finiteNumber(params.gap, 0.02), 0, 0.2) : 0,
-          p3: clamp(finiteNumber(params.blur, 0.02), 0.0001, 0.2),
+          p3: clamp(finiteNumber(params.blur, 2) / 100, 0.0001, 0.2),
           p4: useGap ? 1 : 0,
           p5: r,
           p6: g,

@@ -68,8 +68,10 @@ const baseItem = {
   audioWaveformMode: 'half' as const,
 };
 
+const mountedWrappers: Array<{ unmount: () => void }> = [];
+
 async function mountComponent(props = { item: baseItem }) {
-  return await mountSuspended(TimelineAudioWaveform, {
+  const wrapper = await mountSuspended(TimelineAudioWaveform, {
     props,
     global: {
       stubs: {
@@ -77,6 +79,8 @@ async function mountComponent(props = { item: baseItem }) {
       },
     },
   });
+  mountedWrappers.push(wrapper);
+  return wrapper;
 }
 
 describe('TimelineAudioWaveform.vue', () => {
@@ -363,6 +367,91 @@ describe('TimelineAudioWaveform.vue', () => {
       await vi.advanceTimersByTimeAsync(0);
 
       expect(fill.mock.calls.length).toBeGreaterThan(callsBeforeZoom);
+    });
+
+    it('keeps the painted window stable while scrolling within overscan, repaints past its edge', async () => {
+      // Run the redraw scheduler synchronously (rAF fires immediately) so these
+      // assertions don't depend on the frame-budget timing the global scheduler
+      // shares with other clips mounted by earlier tests in this file.
+      vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => {
+        callback(0);
+        return 0;
+      });
+      vi.stubGlobal('cancelAnimationFrame', () => undefined);
+
+      vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue({
+        beginPath: vi.fn(),
+        clearRect: vi.fn(),
+        closePath: vi.fn(),
+        fill: vi.fn(),
+        lineTo: vi.fn(),
+        moveTo: vi.fn(),
+        fillStyle: '',
+      } as unknown as CanvasRenderingContext2D);
+
+      mockTimelineStore.timelineZoom = 50; // 10 px/s
+      mockTimelineStore.timelineViewportWidth = 1920;
+      mockTimelineStore.timelineScrollLeftPx = 0;
+
+      // 2000 s clip → 20000 px strip → exceeds STATIC_MAX_PX, so it uses the
+      // windowed (scrolled) canvas path. Peaks are at full resolution so no
+      // extraction is triggered. We assert on this component's own
+      // `renderedFrac` (the painted source-fraction), which only changes when the
+      // backing store is actually re-rasterized.
+      const item = {
+        ...baseItem,
+        timelineRange: { startUs: 0, durationUs: 2_000_000_000 },
+        sourceRange: { startUs: 0, durationUs: 2_000_000_000 },
+        sourceDurationUs: 2_000_000_000,
+      };
+      mockMediaStore.mediaMetadata['media.mp4'] = {
+        duration: 2000,
+        audioPeaks: [new Float32Array(500_000).fill(0.5)],
+      };
+
+      const mipsMod = await import('~/utils/audio/waveform-mips');
+      const binCalls: any[] = [];
+      const origBins = mipsMod.computeWaveformPeakBinsFromMips;
+      vi.spyOn(mipsMod, 'computeWaveformPeakBinsFromMips').mockImplementation((p: any) => {
+        const r = origBins(p);
+        binCalls.push({
+          chLen: p.channels?.[0]?.length,
+          start: p.startIndex,
+          end: p.endIndex,
+          out: p.outputBins,
+          resLen: r.length,
+        });
+        return r;
+      });
+
+      const wrapper = await mountComponent({ item });
+      const vm = wrapper.vm as any;
+      await nextTick();
+      // Force a deterministic first paint: a visual-prop change always requests a
+      // redraw. (The mount-time auto-draw races against other clips left mounted by
+      // earlier tests on the shared redraw scheduler, so we don't rely on it here.)
+      await wrapper.setProps({ item: { ...item, audioGain: 0.9 } });
+      await nextTick();
+
+      const painted = vm.renderedFrac;
+      if (painted === null) {
+        throw new Error('DIAG binCalls=' + JSON.stringify(binCalls.slice(-6)));
+      }
+      expect(painted).not.toBeNull();
+      expect(painted.start).toBe(0);
+      expect(painted.width).toBeCloseTo(2920 / 20000, 5);
+
+      // Small scroll stays inside the rendered overscan → no re-rasterization, so
+      // the painted fraction object is left untouched (same reference).
+      mockTimelineStore.timelineScrollLeftPx = 400;
+      await nextTick();
+      expect(vm.renderedFrac).toBe(painted);
+
+      // Scrolling past the painted window's edge forces a repaint to a new window.
+      mockTimelineStore.timelineScrollLeftPx = 5000;
+      await nextTick();
+      expect(vm.renderedFrac).not.toBe(painted);
+      expect(vm.renderedFrac.start).toBeGreaterThan(0);
     });
   });
 });

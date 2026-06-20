@@ -537,7 +537,7 @@ describe('TimelineClip', () => {
     expect(clipDiv.classes()).toContain('bg-red-600!');
   });
 
-  it('renders out transition overlay guide only when the out transition is selected', async () => {
+  it('renders out transition overlay guide only when the out transition is selected directly or adjacent transition in is selected', async () => {
     const component = await mountClip({
       ...defaultProps,
       track: trackWithAdjacentOut,
@@ -546,18 +546,26 @@ describe('TimelineClip', () => {
 
     expect(component.find('.border-cyan-400\\/95').exists()).toBe(false);
 
+    // Direct selection of transitionOut on clip-1
     await component.setProps({
       selectedTransition: { trackId: 'track-1', itemId: 'clip-1', edge: 'out' },
     });
     expect(component.find('.border-cyan-400\\/95').exists()).toBe(true);
 
+    // Adjacent selection of transitionIn on clip-2
+    await component.setProps({
+      selectedTransition: { trackId: 'track-1', itemId: 'clip-2', edge: 'in' },
+    });
+    expect(component.find('.border-cyan-400\\/95').exists()).toBe(true);
+
+    // Some other transition selection
     await component.setProps({
       selectedTransition: { trackId: 'track-1', itemId: 'clip-1', edge: 'in' },
     });
     expect(component.find('.border-cyan-400\\/95').exists()).toBe(false);
   });
 
-  it('renders in transition overlay guide only when the in transition is selected', async () => {
+  it('renders in transition overlay guide only when the in transition is selected directly or adjacent transition out is selected', async () => {
     const component = await mountClip({
       ...defaultProps,
       track: trackWithAdjacentIn,
@@ -566,11 +574,19 @@ describe('TimelineClip', () => {
 
     expect(component.find('.border-yellow-400\\/95').exists()).toBe(false);
 
+    // Direct selection of transitionIn on clip-2
     await component.setProps({
       selectedTransition: { trackId: 'track-1', itemId: 'clip-2', edge: 'in' },
     });
     expect(component.find('.border-yellow-400\\/95').exists()).toBe(true);
 
+    // Adjacent selection of transitionOut on clip-1
+    await component.setProps({
+      selectedTransition: { trackId: 'track-1', itemId: 'clip-1', edge: 'out' },
+    });
+    expect(component.find('.border-yellow-400\\/95').exists()).toBe(true);
+
+    // Some other transition selection
     await component.setProps({
       selectedTransition: { trackId: 'track-1', itemId: 'clip-2', edge: 'out' },
     });

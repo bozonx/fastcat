@@ -33,6 +33,10 @@ import {
   isVideo,
   isAudio,
   clipHasAudio,
+  getPrevClipForItem,
+  getNextClipForItem,
+  getClipTailTimelineHandleUs,
+  getClipHeadTimelineHandleUs,
 } from '~/utils/timeline/clip';
 import { useClipDrop } from '~/composables/timeline/useClipDrop';
 import { useClipInteractions } from '~/composables/timeline/useClipInteractions';
@@ -582,42 +586,60 @@ const isFreePosition = computed(() =>
 );
 
 const transitionInOverlayGuideStyle = computed<Record<string, string> | null>(() => {
+  const prevClip = getPrevClipForItem(props.track, props.item);
   const isSelected =
     props.selectedTransition?.trackId === props.track.id &&
-    props.selectedTransition?.itemId === props.item.id &&
-    props.selectedTransition?.edge === 'in';
+    ((props.selectedTransition?.itemId === props.item.id && props.selectedTransition?.edge === 'in') ||
+      (prevClip &&
+        props.selectedTransition?.itemId === prevClip.id &&
+        props.selectedTransition?.edge === 'out'));
   if (!isSelected) return null;
 
-  const offsetPx = getOverlayGuideOffsetPx(
-    props.track,
-    clipItem.value,
-    'in',
-    clipWidthPx.value,
-    (us) => timeUsToPx(us, timelineContext.zoom.value),
-  );
-  if (offsetPx === null) return null;
+  const hasAdjacent =
+    clipItem.value?.transitionIn?.mode === 'adjacent' ||
+    prevClip?.transitionOut?.mode === 'adjacent';
+  if (!hasAdjacent || !prevClip) return null;
 
+  const timelineHandleUs = getClipTailTimelineHandleUs(prevClip);
+  if (!Number.isFinite(timelineHandleUs) || timelineHandleUs <= 0) return null;
+
+  const offsetPx = Math.max(
+    0,
+    Math.min(
+      clipWidthPx.value,
+      timeUsToPx(timelineHandleUs, timelineContext.zoom.value),
+    ),
+  );
   return {
     left: `${offsetPx}px`,
   };
 });
 
 const transitionOutOverlayGuideStyle = computed<Record<string, string> | null>(() => {
+  const nextClip = getNextClipForItem(props.track, props.item);
   const isSelected =
     props.selectedTransition?.trackId === props.track.id &&
-    props.selectedTransition?.itemId === props.item.id &&
-    props.selectedTransition?.edge === 'out';
+    ((props.selectedTransition?.itemId === props.item.id && props.selectedTransition?.edge === 'out') ||
+      (nextClip &&
+        props.selectedTransition?.itemId === nextClip.id &&
+        props.selectedTransition?.edge === 'in'));
   if (!isSelected) return null;
 
-  const offsetPx = getOverlayGuideOffsetPx(
-    props.track,
-    clipItem.value,
-    'out',
-    clipWidthPx.value,
-    (us) => timeUsToPx(us, timelineContext.zoom.value),
-  );
-  if (offsetPx === null) return null;
+  const hasAdjacent =
+    clipItem.value?.transitionOut?.mode === 'adjacent' ||
+    nextClip?.transitionIn?.mode === 'adjacent';
+  if (!hasAdjacent || !nextClip) return null;
 
+  const timelineHandleUs = getClipHeadTimelineHandleUs(nextClip);
+  if (!Number.isFinite(timelineHandleUs) || timelineHandleUs <= 0) return null;
+
+  const offsetPx = Math.max(
+    0,
+    Math.min(
+      clipWidthPx.value,
+      timeUsToPx(timelineHandleUs, timelineContext.zoom.value),
+    ),
+  );
   return {
     left: `${Math.max(0, clipWidthPx.value - offsetPx)}px`,
   };

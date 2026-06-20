@@ -504,9 +504,18 @@ pub fn finalize_layer(
                 let progress = (local_t / in_dur).clamp(0.0, 1.0);
                 let curve = t_in.curve.as_deref().unwrap_or("linear");
                 let progress_curved = apply_transition_curve(progress, curve) as f32;
+                // Мгновенная скорость кривой = её производная в текущей точке,
+                // нормированная так, что linear == 1.0 (центральная разность, как в
+                // web-манифестах slide/blinds). Шейдеры motion-blur умножают на неё
+                // величину размытия, чтобы оно нарастало с ускорением кривой.
+                let delta = 0.01;
+                let p_lo = apply_transition_curve((progress - delta).max(0.0), curve);
+                let p_hi = apply_transition_curve((progress + delta).min(1.0), curve);
+                let speed_multiplier = (((p_hi - p_lo) / (2.0 * delta)).max(0.0)) as f32;
                 transition = Some(TransitionInfo {
                     spec: spec.clone(),
                     progress: progress_curved,
+                    speed_multiplier,
                     from_layer_id: from_id.clone(),
                 });
             }

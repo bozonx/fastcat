@@ -148,7 +148,7 @@ function normalizeBarnDoorParams(params?: Record<string, unknown>): BarnDoorPara
     edgeMode,
     gap: clampNumber(params?.gap, 0, 0.2, 0.02),
     gapColor: sanitizeTransitionColor(params?.gapColor, '#000000'),
-    blur: clampNumber(params?.blur, 0.0001, 0.2, 0.02),
+    blur: clampNumber(params?.blur, 0, 20, 2),
     blurMode,
     angle: clampNumber(params?.angle, -180, 180, 0),
   };
@@ -207,9 +207,9 @@ export const barnDoorManifest: TransitionManifest<BarnDoorParams> = {
       key: 'blur',
       kind: 'number',
       labelKey: 'fastcat.timeline.transition.paramWipeEdgeBlur',
-      min: 0.0001,
-      max: 0.2,
-      step: 0.005,
+      min: 0,
+      max: 20,
+      step: 0.5,
     },
     {
       key: 'angle',
@@ -263,7 +263,7 @@ export const barnDoorManifest: TransitionManifest<BarnDoorParams> = {
     resources.uFromTexture = context.fromTexture?.source ?? Texture.WHITE.source;
     uniforms.uProgress = Math.max(0, Math.min(1, progress));
     uniforms.uGap = useGap ? params.gap : 0;
-    uniforms.uBlur = params.blur;
+    uniforms.uBlur = params.blur / 100;
     uniforms.uUseGap = useGap ? 1 : 0;
     uniforms.uApplyToEdgeBlur = !useGap && applyToEdgeBlur;
     uniforms.uAxis = [axisX, axisY];

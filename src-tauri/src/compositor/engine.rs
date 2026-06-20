@@ -452,6 +452,7 @@ impl Compositor {
                         &to_source,
                         &trans_info.spec,
                         trans_info.progress,
+                        trans_info.speed_multiplier,
                     ) {
                         Ok(processed) => {
                             layers[i].kind = LayerKind::Raster {

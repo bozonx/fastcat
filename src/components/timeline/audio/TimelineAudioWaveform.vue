@@ -418,8 +418,14 @@ const isMuted = computed(() => {
 });
 
 // Visible sub-rect of the waveform strip, in strip-local pixels. Static clips
-// always return the full strip; wide clips return the scrolled viewport window.
-const renderWindow = computed<{ leftPx: number; widthPx: number }>(() => {
+// always return the full strip; wide clips return a scrolled viewport window.
+// `overscanPx` is the slack rasterized on each side of the viewport so that
+// scrolling within that margin needs no re-rasterization: the parent merely
+// transform-translates and the canvas — anchored by source-fraction (see
+// `renderedFrac`) — rides along. `coreWindow` (overscan 0) is the strict
+// viewport the bitmap MUST cover; `renderWindow` adds the overscan and is what
+// we actually paint.
+function computeStripWindow(overscanPx: number): { leftPx: number; widthPx: number } {
   const totalW = totalWidthPx.value;
   if (totalW <= 0) return { leftPx: 0, widthPx: 0 };
   if (totalW <= STATIC_MAX_PX) return { leftPx: 0, widthPx: totalW };
@@ -432,10 +438,9 @@ const renderWindow = computed<{ leftPx: number; widthPx: number }>(() => {
   const scrollLeft = props.scrollLeft ?? timelineStore.timelineScrollLeftPx;
   const stripStartInTimeline = clipStartPx.value + waveformLeftPx.value;
   const visibleLeft = scrollLeft - stripStartInTimeline;
-  const overscan = Math.max(WINDOW_OVERSCAN_PX, viewportWidth * 0.5);
 
-  let left = Math.max(0, Math.floor(visibleLeft - overscan));
-  let right = Math.min(totalW, Math.ceil(visibleLeft + viewportWidth + overscan));
+  let left = Math.max(0, Math.floor(visibleLeft - overscanPx));
+  let right = Math.min(totalW, Math.ceil(visibleLeft + viewportWidth + overscanPx));
 
   // Reversed clips render the strip CSS-mirrored (`scaleX(-1)` on the container),
   // so a strip-local pixel `p` is displayed at `totalW - p`. The window above is
@@ -450,7 +455,52 @@ const renderWindow = computed<{ leftPx: number; widthPx: number }>(() => {
   }
 
   return { leftPx: left, widthPx: Math.max(0, right - left) };
+}
+
+const windowOverscanPx = computed(() => {
+  const viewportWidth = props.viewportWidth ?? timelineStore.timelineViewportWidth;
+  const vw = Number.isFinite(viewportWidth) ? Math.max(0, viewportWidth) : 0;
+  return Math.max(WINDOW_OVERSCAN_PX, vw * 0.5);
 });
+
+// The region we paint (viewport + overscan), in strip-local pixels.
+const renderWindow = computed<{ leftPx: number; widthPx: number }>(() =>
+  computeStripWindow(windowOverscanPx.value),
+);
+
+// The strict viewport the painted bitmap must cover (no overscan). When this is
+// no longer inside the already-rendered fraction, we re-rasterize.
+const coreWindow = computed<{ leftPx: number; widthPx: number }>(() => computeStripWindow(0));
+
+// Source-fraction [start, start+width] of the strip currently painted into the
+// backing canvas, updated only when `draw()` actually repaints. The canvas CSS
+// box is positioned/sized from THIS (as a percent of the strip container), not
+// from the live `renderWindow`. Because the container width tracks the zoom, a
+// percent-anchored canvas stretches in lock-step during a zoom gesture — the old
+// bitmap stays glued to its source region instead of jumping to a new window
+// while still showing stale content (which read as "waveform disappears on zoom",
+// most visibly on long audio clips that live in the windowed path).
+const renderedFrac = ref<{ start: number; width: number } | null>(null);
+
+const canvasBoxStyle = computed(() => {
+  const frac = renderedFrac.value;
+  if (!frac) return { left: '0%', width: '100%' };
+  return { left: `${frac.start * 100}%`, width: `${frac.width * 100}%` };
+});
+
+// True when the painted fraction still covers the strict viewport (so scrolling
+// stayed within the overscan slack and no re-rasterization is needed).
+function isCoreCovered(): boolean {
+  const frac = renderedFrac.value;
+  if (!frac) return false;
+  const totalW = totalWidthPx.value;
+  if (totalW <= 0) return false;
+  const core = coreWindow.value;
+  if (core.widthPx <= 0) return true; // nothing visible to cover
+  const renderedLeft = frac.start * totalW;
+  const renderedRight = (frac.start + frac.width) * totalW;
+  return core.leftPx >= renderedLeft - 0.5 && core.leftPx + core.widthPx <= renderedRight + 0.5;
+}
 
 function getWaveformPeakId(channels: readonly Float32Array[]) {
   const existing = waveformPeakIds.get(channels);
@@ -581,6 +631,9 @@ function draw() {
   ctx.closePath();
   ctx.fill();
   lastDrawSignature = drawSignature;
+  // Anchor the canvas CSS box to the source-fraction we just painted, so it only
+  // moves when the bitmap is repainted (see `renderedFrac`).
+  renderedFrac.value = { start: win.leftPx / totalW, width: win.widthPx / totalW };
 }
 
 function requestDraw() {
@@ -600,14 +653,17 @@ watch(
   { flush: 'sync' },
 );
 
-// Geometry/scroll changes: the strip + canvas CSS box follow `renderWindow`
-// reactively, so the existing bitmap stretches for free during a zoom gesture.
-// We only re-rasterize the backing store when the visible window changes — and
-// while a zoom gesture is in flight we defer that to the settle timer below.
+// Scroll/geometry changes: the canvas CSS box is anchored by source-fraction, so
+// scrolling within the rendered overscan needs no repaint — the parent merely
+// transform-translates and the canvas rides along. We only re-rasterize when the
+// strict viewport (`coreWindow`) leaves the painted fraction. During a zoom
+// gesture we defer to the settle timer below (the percent-anchored box stretches
+// the existing bitmap in the meantime).
 watch(
-  () => [renderWindow.value.leftPx, renderWindow.value.widthPx],
+  () => [coreWindow.value.leftPx, coreWindow.value.widthPx],
   () => {
     if (zoomSettleTimer) return;
+    if (isCoreCovered()) return;
     requestDraw();
   },
 );
@@ -684,10 +740,7 @@ onBeforeUnmount(() => {
       <canvas
         ref="canvasEl"
         class="absolute top-0 h-full max-w-none"
-        :style="{
-          left: `${renderWindow.leftPx}px`,
-          width: `${renderWindow.widthPx}px`,
-        }"
+        :style="canvasBoxStyle"
       ></canvas>
     </div>
   </div>
