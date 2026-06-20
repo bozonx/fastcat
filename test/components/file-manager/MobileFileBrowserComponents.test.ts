@@ -122,11 +122,17 @@ describe('MobileFileBrowserSelectionToolbar', () => {
     const wrapper = await mountSuspended(MobileFileBrowserSelectionToolbar, {
       props: { selectedEntries: entries, canAddToTimeline: true },
       global: {
-        stubs: { UButton: { template: '<button><slot /></button>' }, Icon: true },
+        stubs: {
+          MobileDrawerToolbar: { template: '<div><slot /></div>' },
+          MobileDrawerToolbarButton: {
+            props: ['label'],
+            template: '<button>{{ label }}</button>',
+          },
+          Icon: true,
+        },
       },
     });
 
-    expect(wrapper.text()).toContain('common.rename');
     expect(wrapper.text()).toContain('common.toTimeline');
   });
 
@@ -153,7 +159,6 @@ describe('MobileFileBrowserSelectionToolbar', () => {
 
     expect(wrapper.text()).toContain('videoEditor.fileManager.actions.createProxy');
     expect(wrapper.text()).toContain('videoEditor.fileManager.actions.deleteProxy');
-    expect(wrapper.text()).toContain('videoEditor.fileManager.actions.extractAudio');
   });
 
   it('emits action event when buttons are clicked', async () => {

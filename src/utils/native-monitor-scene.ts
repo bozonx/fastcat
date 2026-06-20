@@ -75,6 +75,8 @@ export interface BuildNativeMonitorSceneParams {
   isPlaying?: boolean;
   /** User-selected preview blur quality for playback. Defaults to 'auto'. */
   previewBlurQuality?: 'low' | 'medium' | 'high' | 'ultra' | 'auto';
+  /** Whether the preview is rendered in the mobile editor. Used by auto quality. */
+  isMobile?: boolean;
 }
 
 interface ProxyResolution {
@@ -401,7 +403,17 @@ function buildBaseLayer(params: {
   isPlaying?: boolean;
   previewBlurQuality?: string;
 }): Omit<NativeSceneLayer, 'kind'> {
-  const { clip, sceneWidth, sceneHeight, z, allClips, onWarning, isExport, isPlaying, previewBlurQuality } = params;
+  const {
+    clip,
+    sceneWidth,
+    sceneHeight,
+    z,
+    allClips,
+    onWarning,
+    isExport,
+    isPlaying,
+    previewBlurQuality,
+  } = params;
   const startUs = clip.timelineRange.startUs;
   const durationUs = clip.timelineRange.durationUs;
   const sourceStartUs = clip.sourceRange.startUs;
@@ -517,6 +529,19 @@ function buildBaseLayer(params: {
   };
 }
 
+function resolvePreviewBlurQuality(
+  params: Pick<
+    BuildNativeMonitorSceneParams,
+    'isExport' | 'isPlaying' | 'previewBlurQuality' | 'isMobile'
+  >,
+): 'low' | 'medium' | 'high' | 'ultra' {
+  if (params.isExport || params.isPlaying === false) return 'ultra';
+  if (params.previewBlurQuality && params.previewBlurQuality !== 'auto') {
+    return params.previewBlurQuality;
+  }
+  return params.isMobile ? 'low' : 'medium';
+}
+
 async function buildAudioLayers(params: {
   timelineDoc: TimelineDocument;
   projectStore: ReturnType<typeof useProjectStore>;
@@ -615,6 +640,11 @@ export async function buildNativeMonitorScene(
     getProxyNativePath: params.getProxyNativePath,
   };
   const nestedDocCache = new Map<string, TimelineDocument>();
+  const previewBlurQuality = resolvePreviewBlurQuality({
+    ...params,
+    previewBlurQuality:
+      params.previewBlurQuality ?? params.projectStore.activeMonitor?.previewBlurQuality,
+  });
   const builtVideo = await buildVideoWorkerPayloadFromTracks({
     tracks: params.timelineDoc.tracks,
     projectStore: params.projectStore,
@@ -638,7 +668,7 @@ export async function buildNativeMonitorScene(
       onWarning: params.onWarning,
       isExport: params.isExport,
       isPlaying: params.isPlaying,
-      previewBlurQuality: params.previewBlurQuality,
+      previewBlurQuality,
     });
 
     if (clip.clipType === 'adjustment') {

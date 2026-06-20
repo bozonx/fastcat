@@ -21,6 +21,7 @@ import {
 } from '~/utils/bloggerdog-file-manager';
 import { WORKSPACE_COMMON_PATH_PREFIX } from '~/utils/workspace-common';
 import { useFileConversionStore } from '~/stores/file-conversion.store';
+import { useFileConversionStoreActions } from '~/composables/file-conversion/useFileConversionStoreActions';
 import { useFileManager } from '~/composables/file-manager/useFileManager';
 import { useComputerVfs } from '~/composables/file-manager/useComputerVfs';
 import { normalizeMediaCachePath } from '~/utils/media-cache-path';
@@ -49,6 +50,7 @@ const clipboardStore = useAppClipboard();
 const fileManager = useFileManager();
 const { vfs: computerVfs } = useComputerVfs();
 const conversionStore = useFileConversionStore();
+const { openConversionModal } = useFileConversionStoreActions(conversionStore, fileManager);
 
 const isExternal = computed(() => {
   const entity = selectedFsEntry.value;
@@ -304,7 +306,7 @@ function handleAction(actionId: DrawerAction) {
             @close-drawer="emit('close')"
             @convert="
               (entry) =>
-                conversionStore.openConversionModal(entry, {
+                openConversionModal(entry, {
                   isExternal: isExternal,
                   vfs: isExternal ? (computerVfs ?? null) : fileManager.vfs,
                   reloadDirectory: fileManager.reloadDirectory,

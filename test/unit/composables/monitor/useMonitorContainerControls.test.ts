@@ -7,6 +7,14 @@ const { openNativeWindowMock } = vi.hoisted(() => ({
   openNativeWindowMock: vi.fn(async () => undefined),
 }));
 
+const mockActiveMonitor = {
+  toolbarPosition: 'bottom',
+  previewResolution: 1,
+  previewBlurQuality: 'auto' as 'auto' | 'low' | 'medium' | 'high' | 'ultra',
+  previewEffectsEnabled: true,
+  useProxy: false,
+};
+
 vi.mock('~/composables/monitor/native-monitor-ipc', () => ({
   nativeMonitorIpc: {
     openNativeWindow: () => openNativeWindowMock(),
@@ -25,12 +33,7 @@ function createControls() {
   return useMonitorContainerControls({
     t: (key: string) => key,
     projectStore: {
-      activeMonitor: {
-        toolbarPosition: 'bottom',
-        previewResolution: 1,
-        previewEffectsEnabled: true,
-        useProxy: false,
-      },
+      activeMonitor: mockActiveMonitor,
     } as never,
     timelineStore: {
       playbackSpeed: 1,
@@ -71,6 +74,7 @@ function flattenMenuItems(groups: unknown[][]): Array<{ label?: string; onSelect
 describe('useMonitorContainerControls', () => {
   beforeEach(() => {
     openNativeWindowMock.mockClear();
+    mockActiveMonitor.previewBlurQuality = 'auto';
     Object.defineProperty(window, '__TAURI_INTERNALS__', {
       configurable: true,
       value: {},
@@ -108,5 +112,19 @@ describe('useMonitorContainerControls', () => {
 
     expect(item).toBeTruthy();
     expect(item?.type).toBe('checkbox');
+  });
+
+  it('updates preview blur quality from the context menu', () => {
+    const controls = createControls();
+    const items = flattenMenuItems(controls.contextMenuItems.value);
+    const highQuality = items.find(
+      (entry) => entry.label === 'fastcat.timeline.transition.blurQualityHigh',
+    );
+
+    expect(highQuality).toBeTruthy();
+    highQuality?.onSelect?.();
+
+    expect(mockActiveMonitor.previewBlurQuality).toBe('high');
+    expect(items.some((entry) => entry.label === 'fastcat.monitor.previewBlurQuality:')).toBe(true);
   });
 });

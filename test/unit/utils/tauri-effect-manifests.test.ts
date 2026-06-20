@@ -56,6 +56,7 @@ describe('unified video effect manifests', () => {
       'wipe',
       'slide',
       'clock',
+      'motion-blur',
       'barn-door',
       'fade-to-black',
       'circle',

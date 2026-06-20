@@ -302,7 +302,7 @@ async function wrappedHandleDeleteConfirm() {
 
     <!-- Sorting Toolbar -->
     <div
-      v-if="!isSelectionMode"
+      v-if="!isSelectionMode || selectedEntries.length > 1"
       class="flex shrink-0 items-center justify-between border-b border-ui-border/60 bg-ui-bg px-4 py-2 gap-2"
     >
       <UiButtonGroup
@@ -316,7 +316,11 @@ async function wrappedHandleDeleteConfirm() {
         class="min-w-0"
       />
       <UButton
-        :icon="assetStore.sortOption.order === 'asc' ? 'lucide:arrow-up-narrow-wide' : 'lucide:arrow-down-wide-narrow'"
+        :icon="
+          assetStore.sortOption.order === 'asc'
+            ? 'lucide:arrow-up-narrow-wide'
+            : 'lucide:arrow-down-wide-narrow'
+        "
         size="sm"
         color="neutral"
         variant="ghost"
@@ -324,8 +328,6 @@ async function wrappedHandleDeleteConfirm() {
         @click="toggleSortOrder"
       />
     </div>
-
-
 
     <div
       class="flex-1 overflow-y-auto min-h-0 relative"
@@ -366,7 +368,11 @@ async function wrappedHandleDeleteConfirm() {
         </button>
 
         <component
-          :is="['audio', 'documents', 'files'].includes(category.id) ? MobileFileBrowserList : MobileFileBrowserGrid"
+          :is="
+            ['audio', 'documents', 'files'].includes(category.id)
+              ? MobileFileBrowserList
+              : MobileFileBrowserGrid
+          "
           v-show="!isCollapsed(category.id)"
           :entries="category.sortedEntries.value"
           :thumbnails="category.thumbnails.value"
@@ -445,6 +451,7 @@ async function wrappedHandleDeleteConfirm() {
     <UiRenameModal
       v-model:open="isRenameModalOpen"
       :initial-name="entryToRename?.name"
+      select-without-extension
       :validate="validateRename"
       @rename="onRenameConfirm"
     />

@@ -28,6 +28,7 @@ import ProjectTransitionProperties from '~/components/properties/ProjectTransiti
 import ProjectLibraryProperties from '~/components/properties/ProjectLibraryProperties.vue';
 import type { SelectedEntity } from '~/stores/selection.store';
 import { useFileConversionStore } from '~/stores/file-conversion.store';
+import { useFileConversionStoreActions } from '~/composables/file-conversion/useFileConversionStoreActions';
 import { usePropertiesPanelPendingActions } from '~/composables/properties/usePropertiesPanelPendingActions';
 import FileDeleteConfirmModal from '~/components/file-manager/modals/FileDeleteConfirmModal.vue';
 
@@ -56,6 +57,7 @@ const proxyStore = useProxyStore();
 const fileManager = useFileManager();
 const { vfs: computerVfs } = useComputerVfs();
 const conversionStore = useFileConversionStore();
+const { openConversionModal } = useFileConversionStoreActions(conversionStore, fileManager);
 
 const {
   isDeleteConfirmModalOpen: isPropertiesDeleteModalOpen,
@@ -478,7 +480,7 @@ const headerTitle = computed(() => {
         @update:preview-mode="(m) => (previewMode = m)"
         @convert="
           (entry) =>
-            conversionStore.openConversionModal(entry, {
+            openConversionModal(entry, {
               isExternal,
               vfs: isExternal ? (computerVfs ?? null) : fileManager.vfs,
               reloadDirectory: fileManager.reloadDirectory,

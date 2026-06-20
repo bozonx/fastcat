@@ -12,6 +12,7 @@ import { useFileManagerActions } from '~/composables/file-manager/useFileManager
 import { useProjectTabsStore } from '~/stores/project-tabs.store';
 import { useUiStore } from '~/stores/ui.store';
 import { useFileConversionStore } from '~/stores/file-conversion.store';
+import { useFileConversionStoreActions } from '~/composables/file-conversion/useFileConversionStoreActions';
 import { useAudioExtraction } from '~/composables/file-manager/useAudioExtraction';
 import { useFileManagerPanelPendingActions } from '~/composables/file-manager/useFileManagerPanelPendingActions';
 import { useFileManagerPanelBootstrap } from '~/composables/file-manager/useFileManagerPanelBootstrap';
@@ -56,13 +57,14 @@ fileManagerStore.setSelectionContext({
 });
 const focusStore = useFocusStore();
 const uiStore = useUiStore();
+const fileManager = useFileManager();
 const conversionStore = useFileConversionStore();
+const { openConversionModal } = useFileConversionStoreActions(conversionStore, fileManager);
 const { extractAudio } = useAudioExtraction();
 const { addFileTab, setActiveTab } = useProjectTabsStore();
 const clipboardStore = useAppClipboard();
 
 const { getHotkeyTitle } = useHotkeyLabel();
-const fileManager = useFileManager();
 
 const {
   rootEntries,
@@ -165,7 +167,7 @@ const { handleFileAction: onFileAction, createTimelineInDirectory } = useFileMan
   setActiveTab,
   onSelect: (entry) => emit('select', entry),
   handleConvert: (entry: FsEntry) => {
-    conversionStore.openConversionModal(entry, {
+    openConversionModal(entry, {
       isExternal: props.isExternal,
       vfs,
       reloadDirectory: fileManager.reloadDirectory,

@@ -449,13 +449,14 @@ export function useMonitorContainerControls(options: UseMonitorContainerControls
     })),
     [
       {
-        label: options.t('fastcat.timeline.transition.paramBlurQuality') + ':',
-        type: 'label' as any,
+        label: options.t('fastcat.monitor.previewBlurQuality') + ':',
+        disabled: true,
       },
       ...(['auto', 'low', 'medium', 'high', 'ultra'] as const).map((q) => {
-        const labelKey = q === 'auto'
-          ? 'fastcat.timeline.transition.blurQualityAuto'
-          : `fastcat.timeline.transition.blurQuality${q.charAt(0).toUpperCase() + q.slice(1)}`;
+        const labelKey =
+          q === 'auto'
+            ? 'fastcat.timeline.transition.blurQualityAuto'
+            : `fastcat.timeline.transition.blurQuality${q.charAt(0).toUpperCase() + q.slice(1)}`;
         return {
           label: options.t(labelKey),
           type: 'checkbox' as const,

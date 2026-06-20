@@ -85,8 +85,8 @@ describe('MobileTimelineDrawer', () => {
 
     const drawer = wrapper.findComponent({ name: 'UiMobileDrawer' });
 
-    expect(drawer.props('snapPoints')).toEqual(['94px', 0.92]);
-    expect(wrapper.emitted('update:activeSnapPoint')?.at(-1)).toEqual(['94px']);
+    expect(drawer.props('snapPoints')).toEqual(['96px', 0.92]);
+    expect(wrapper.emitted('update:activeSnapPoint')?.at(-1)).toEqual(['96px']);
   });
 
   it('can open immediately in full mode when requested', async () => {
@@ -132,9 +132,9 @@ describe('MobileTimelineDrawer', () => {
 
     // Landscape: width-based snaps. Rail at toolbarSnapWidth, full at 60vw (844*0.60).
     expect(drawer.props('direction')).toBe('right');
-    expect(drawer.props('snapPoints')).toEqual(['84px', '506px']);
+    expect(drawer.props('snapPoints')).toEqual(['74px', '506px']);
     // Starts collapsed to the rail (first snap), like the portrait toolbar mode.
-    expect(wrapper.emitted('update:activeSnapPoint')?.at(-1)).toEqual(['84px']);
+    expect(wrapper.emitted('update:activeSnapPoint')?.at(-1)).toEqual(['74px']);
   });
 
   it('omits snap points for a landscape side drawer without a toolbar', async () => {
@@ -200,7 +200,7 @@ describe('MobileTimelineDrawer', () => {
       },
     });
 
-    await wrapper.setProps({ activeSnapPoint: '94px' });
+    await wrapper.setProps({ activeSnapPoint: '96px' });
     await nextTick();
 
     expect(wrapper.emitted('update:open')?.at(-1)).toEqual([false]);
@@ -232,7 +232,7 @@ describe('MobileTimelineDrawer', () => {
     await nextTick();
 
     expect(wrapper.emitted('update:open')?.some(([v]) => v === false)).toBeFalsy();
-    expect(wrapper.emitted('update:activeSnapPoint')?.at(-1)).toEqual(['94px']);
+    expect(wrapper.emitted('update:activeSnapPoint')?.at(-1)).toEqual(['96px']);
   });
 
   it('passes toolbar slot through to UiMobileDrawer', async () => {
@@ -314,6 +314,6 @@ describe('MobileTimelineDrawer', () => {
     await wrapper.setProps({ open: false });
     await wrapper.setProps({ open: true });
 
-    expect(wrapper.emitted('update:activeSnapPoint')?.at(-1)).toEqual(['94px']);
+    expect(wrapper.emitted('update:activeSnapPoint')?.at(-1)).toEqual(['96px']);
   });
 });

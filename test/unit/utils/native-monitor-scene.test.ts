@@ -794,7 +794,7 @@ describe('buildNativeMonitorScene', () => {
     );
   });
 
-  it('applies ultra quality to transitions on export', async () => {
+  it('resolves preview blur quality from playback mode, device, and user setting', async () => {
     const timelineDoc = {
       version: 1,
       timebase: { fps: 30 },
@@ -852,19 +852,58 @@ describe('buildNativeMonitorScene', () => {
       recentProjects: [],
     };
 
-    // Preview scene (isExport: false) -> expects medium quality (16 samples)
-    const previewScene = await buildNativeMonitorScene({
+    const desktopAutoScene = await buildNativeMonitorScene({
       timelineDoc: timelineDoc as never,
       projectStore: projectStore as never,
       workspaceStore: workspaceStore as never,
-      isExport: false,
+      isPlaying: true,
+      previewBlurQuality: 'auto',
     });
-    const previewToLayer = previewScene.layers.find((layer) => layer.id === 'clip-b');
-    expect(previewToLayer?.transition_in?.spec?.params).toMatchObject({
+    const desktopAutoLayer = desktopAutoScene.layers.find((layer) => layer.id === 'clip-b');
+    expect(desktopAutoLayer?.transition_in?.spec?.params).toMatchObject({
       p7: 16,
     });
 
-    // Export scene (isExport: true) -> expects ultra quality (64 samples)
+    const mobileAutoScene = await buildNativeMonitorScene({
+      timelineDoc: timelineDoc as never,
+      projectStore: projectStore as never,
+      workspaceStore: workspaceStore as never,
+      isPlaying: true,
+      previewBlurQuality: 'auto',
+      isMobile: true,
+    });
+    const mobileAutoLayer = mobileAutoScene.layers.find((layer) => layer.id === 'clip-b');
+    expect(mobileAutoLayer?.transition_in?.spec?.params).toMatchObject({
+      p7: 8,
+    });
+
+    const selectedHighScene = await buildNativeMonitorScene({
+      timelineDoc: timelineDoc as never,
+      projectStore: {
+        ...projectStore,
+        activeMonitor: { previewBlurQuality: 'high' },
+      } as never,
+      workspaceStore: workspaceStore as never,
+      isPlaying: true,
+      isMobile: true,
+    });
+    const selectedHighLayer = selectedHighScene.layers.find((layer) => layer.id === 'clip-b');
+    expect(selectedHighLayer?.transition_in?.spec?.params).toMatchObject({
+      p7: 32,
+    });
+
+    const pausedScene = await buildNativeMonitorScene({
+      timelineDoc: timelineDoc as never,
+      projectStore: projectStore as never,
+      workspaceStore: workspaceStore as never,
+      isPlaying: false,
+      previewBlurQuality: 'low',
+    });
+    const pausedLayer = pausedScene.layers.find((layer) => layer.id === 'clip-b');
+    expect(pausedLayer?.transition_in?.spec?.params).toMatchObject({
+      p7: 64,
+    });
+
     const exportScene = await buildNativeMonitorScene({
       timelineDoc: timelineDoc as never,
       projectStore: projectStore as never,

@@ -186,6 +186,7 @@ export function useNativeMonitorBridge(): void {
       syncMode: isMobile.value ? 'balanced' : undefined,
       isPlaying: timelineStore.isPlaying,
       previewBlurQuality: projectStore.activeMonitor?.previewBlurQuality ?? 'auto',
+      isMobile: isMobile.value,
     });
   }
 

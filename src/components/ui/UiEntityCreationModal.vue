@@ -29,6 +29,39 @@ const name = ref(props.defaultValue || '');
 const inputRef = ref<HTMLElement | null>(null);
 const errorMsg = ref<string | null>(null);
 
+/**
+ * Focuses the input and selects the relevant part of its value.
+ * When `selectWithoutExtension` is set and the value has an extension,
+ * only the base name (before the last dot) is selected.
+ */
+function focusAndSelectInput() {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const exposedInput = (inputRef.value as any)?.input;
+  const input =
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (inputRef.value as any)?.$el?.querySelector('input') ||
+    (typeof exposedInput?.value === 'object' ? exposedInput.value : exposedInput);
+  if (!input) return;
+  input.focus();
+  const value = name.value;
+  if (props.selectWithoutExtension && value) {
+    const lastDot = value.lastIndexOf('.');
+    if (lastDot > 0) {
+      input.setSelectionRange(0, lastDot);
+    } else {
+      input.select();
+    }
+  } else {
+    input.select();
+  }
+}
+
+// Applies the selection after the modal finished its open animation, so it
+// runs after Reka UI's auto-focus (which would otherwise select the whole text).
+function handleAfterEnter() {
+  focusAndSelectInput();
+}
+
 function runValidation() {
   if (!props.validate) {
     errorMsg.value = null;
@@ -57,25 +90,11 @@ watch(
       errorMsg.value = null;
       await nextTick();
       runValidation();
+      // Fallback for environments where the modal's `after:enter` does not fire
+      // (e.g. unit tests without transitions). `handleAfterEnter` runs last in
+      // the browser and is responsible for the final selection.
       setTimeout(() => {
-        const exposedInput = (inputRef.value as any)?.input;
-        const input =
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          (inputRef.value as any)?.$el?.querySelector('input') ||
-          (typeof exposedInput?.value === 'object' ? exposedInput.value : exposedInput);
-        if (!input) return;
-        input.focus();
-        const value = name.value;
-        if (props.selectWithoutExtension && value) {
-          const lastDot = value.lastIndexOf('.');
-          if (lastDot > 0) {
-            input.setSelectionRange(0, lastDot);
-          } else {
-            input.select();
-          }
-        } else {
-          input.select();
-        }
+        focusAndSelectInput();
       }, INPUT_FOCUS_DELAY_MS);
     }
   },
@@ -103,7 +122,12 @@ function handleCancel() {
 </script>
 
 <template>
-  <UiModal v-model:open="isOpen" :title="title" @close="handleCancel">
+  <UiModal
+    v-model:open="isOpen"
+    :title="title"
+    @close="handleCancel"
+    @after:enter="handleAfterEnter"
+  >
     <div class="py-2 px-1">
       <form @submit.prevent="handleConfirm">
         <UiFormField :label="label || t('common.name')" :error="errorMsg || undefined">

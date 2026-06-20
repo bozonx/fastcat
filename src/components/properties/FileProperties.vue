@@ -923,6 +923,7 @@ const hasVisibleSecondaryActions = (actions: unknown) => {
         v-if="selectedFsEntry"
         :open="isRenameModalOpen"
         :current-name="selectedFsEntry.name"
+        select-without-extension
         @update:open="isRenameModalOpen = $event"
         @rename="handleRenameConfirm"
       />

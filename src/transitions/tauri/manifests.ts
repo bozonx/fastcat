@@ -145,6 +145,25 @@ function normalizeClockParams(params?: Record<string, unknown>): Record<string, 
   };
 }
 
+function normalizeMotionBlurParams(params?: Record<string, unknown>): Record<string, unknown> {
+  const blurQuality =
+    params?.blurQuality === 'low' ||
+    params?.blurQuality === 'medium' ||
+    params?.blurQuality === 'high' ||
+    params?.blurQuality === 'ultra'
+      ? params.blurQuality
+      : 'medium';
+
+  return {
+    angle: clamp(finiteNumber(params?.angle, 0), -180, 180),
+    motionBlur: clamp(finiteNumber(params?.motionBlur, 50), 0, 100),
+    blurQuality,
+    motionBlurMode: params?.motionBlurMode === 'bloom' ? 'bloom' : 'normal',
+    brightness: clamp(finiteNumber(params?.brightness, 0), -10, 10),
+    bloomThreshold: clamp(finiteNumber(params?.bloomThreshold, 0.7), 0, 1),
+  };
+}
+
 function normalizeRectangleParams(params?: Record<string, unknown>): Record<string, unknown> {
   const anchor =
     typeof params?.anchor === 'string' &&
@@ -153,7 +172,7 @@ function normalizeRectangleParams(params?: Record<string, unknown>): Record<stri
       : 'center';
 
   return {
-    blur: clamp(finiteNumber(params?.blur, 0.015), 0.0001, 0.2),
+    blur: clamp(finiteNumber(params?.blur, 1.5), 0, 20),
     blurMode: params?.blurMode === 'scaled' ? 'scaled' : 'fixed',
     direction: params?.direction === 'to-center' ? 'to-center' : 'from-center',
     anchor,
@@ -291,8 +310,7 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
     let uv = pixel_uv(gid);
 
     var final_color: vec4<f32>;
-    // Величина motion-blur масштабируется мгновенной скоростью кривой (uni.speed),
-    // чтобы размытие нарастало в быстрой фазе и спадало в медленной (как в web).
+    // Scale motion blur by the curve's instantaneous speed, matching web rendering.
     let mb = uni.p6 * uni.speed;
     if (mb <= 0.0) {
         final_color = slide_process(slide_get(uv));
@@ -321,6 +339,74 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
         if (tw > 0.0) { final_color = accum / tw; } else { final_color = slide_process(slide_get(uv)); }
     }
     textureStore(output_tex, coord, final_color);
+}`;
+
+// ---- Motion Blur (full-frame directional blur through a crossfade) --------
+const MOTION_BLUR_WGSL = `${WGSL_HEAD}
+fn motion_blur_process(color: vec4<f32>, envelope: f32) -> vec4<f32> {
+    let brightness = uni.p5 * envelope;
+    return vec4<f32>(max(vec3<f32>(0.0), color.rgb * (1.0 + brightness)), color.a);
+}
+
+fn motion_blur_sample(
+    tex: texture_2d<f32>,
+    uv: vec2<f32>,
+    axis: vec2<f32>,
+    amount: f32,
+    envelope: f32
+) -> vec4<f32> {
+    if (amount <= 0.0) {
+        return motion_blur_process(samp(tex, uv), envelope);
+    }
+
+    let max_samples = i32(uni.p3);
+    let pixel_blur = amount * max(dims().x, dims().y);
+    let samples = clamp(i32(ceil(pixel_blur)), 4, max_samples);
+    let step_size = amount / f32(samples - 1);
+    let start = -amount * 0.5;
+    var accum = vec4<f32>(0.0);
+    var total_weight = 0.0;
+
+    for (var i = 0; i < 64; i = i + 1) {
+        if (i >= samples) { break; }
+        let offset = start + f32(i) * step_size;
+        let color = motion_blur_process(samp(tex, uv + axis * offset), envelope);
+        var weight = 1.0;
+        if (uni.p4 > 0.5) {
+            weight = smoothstep(uni.p6, 1.0, luma(color.rgb));
+        }
+        accum = accum + color * weight;
+        total_weight = total_weight + weight;
+    }
+
+    if (total_weight > 0.0) {
+        return accum / total_weight;
+    }
+    return motion_blur_process(samp(tex, uv), envelope);
+}
+
+@compute @workgroup_size(8, 8, 1)
+fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
+    if (gid.x >= uni.width || gid.y >= uni.height) { return; }
+    let coord = vec2<i32>(i32(gid.x), i32(gid.y));
+    let uv = pixel_uv(gid);
+    let progress = clamp(uni.progress, 0.0, 1.0);
+
+    if (progress <= 0.0) {
+        textureStore(output_tex, coord, samp(from_tex, uv));
+        return;
+    }
+    if (progress >= 1.0) {
+        textureStore(output_tex, coord, samp(to_tex, uv));
+        return;
+    }
+
+    let envelope = sin(progress * PI);
+    let amount = uni.p2 * uni.speed * envelope;
+    let axis = normalize(vec2<f32>(uni.p0, uni.p1));
+    let from_color = motion_blur_sample(from_tex, uv, axis, amount, envelope);
+    let to_color = motion_blur_sample(to_tex, uv, -axis, amount, envelope);
+    textureStore(output_tex, coord, mix(from_color, to_color, progress));
 }`;
 
 // ---- Clock (clockwise / counterclockwise / symmetric) ---------------------
@@ -422,7 +508,7 @@ fn blinds_process(color: vec4<f32>) -> vec4<f32> {
 }
 
 fn blinds_motion(uv: vec2<f32>) -> vec4<f32> {
-    // Motion-blur масштабируется мгновенной скоростью кривой (uni.speed), как в web.
+    // Scale motion blur by the curve's instantaneous speed, matching web rendering.
     let mb = uni.p7 * uni.speed;
     if (mb <= 0.0) { return blinds_process(blinds_get(uv)); }
     let max_samples = i32(uni.p6);
@@ -924,12 +1010,10 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
     } else {
         let blur_fr = uni.p6 * (size_fr - 1.0) * 0.02;
         let blur_to = uni.p6 * (size_to - 1.0) * 0.02;
-        // Scale sample count by max pixel blur of from/to
-        let pixel_blur = max(blur_fr, blur_to) * max(dims().x, dims().y);
-        let samples = clamp(i32(ceil(pixel_blur)), 4, max_samples);
-        let f_samples = f32(samples);
-        if (pfr_in) { final_c_fr = card_blur_radial(from_tex, pfr, blur_fr, samples, f_samples, dark_fr); }
-        if (pto_in) { final_c_to = card_blur_radial(to_tex, pto, blur_to, samples, f_samples, dark_to); }
+        let samples_fr = clamp(i32(ceil(blur_fr * max(dims().x, dims().y))), 4, max_samples);
+        let samples_to = clamp(i32(ceil(blur_to * max(dims().x, dims().y))), 4, max_samples);
+        if (pfr_in) { final_c_fr = card_blur_radial(from_tex, pfr, blur_fr, samples_fr, f32(samples_fr), dark_fr); }
+        if (pto_in) { final_c_to = card_blur_radial(to_tex, pto, blur_to, samples_to, f32(samples_to), dark_to); }
     }
 
     var final_color = vec4<f32>(0.0);
@@ -1369,6 +1453,88 @@ export const tauriTransitionManifests: TransitionManifest[] = [
     computeInOpacity: transparent,
   },
   {
+    type: 'motion-blur',
+    name: 'Motion Blur',
+    nameKey: 'fastcat.transitions.motion-blur.name',
+    icon: 'i-heroicons-forward',
+    defaultDurationUs: 500_000,
+    defaultParams: normalizeMotionBlurParams(),
+    normalizeParams: normalizeMotionBlurParams,
+    renderMode: 'shader',
+    renderer: 'wgpu',
+    supportedModes: ['adjacent'],
+    paramFields: [
+      {
+        kind: 'number',
+        key: 'angle',
+        labelKey: 'fastcat.timeline.transition.paramAngle',
+        min: -180,
+        max: 180,
+        step: 1,
+      },
+      {
+        kind: 'number',
+        key: 'motionBlur',
+        labelKey: 'fastcat.timeline.transition.paramMotionBlur',
+        min: 0,
+        max: 100,
+        step: 1,
+      },
+      blurQualityField,
+      {
+        kind: 'button-group',
+        key: 'motionBlurMode',
+        labelKey: 'fastcat.timeline.transition.paramMotionBlurMode',
+        options: [
+          { value: 'normal', labelKey: 'fastcat.timeline.transition.motionBlurModeNormal' },
+          { value: 'bloom', labelKey: 'fastcat.timeline.transition.motionBlurModeBloom' },
+        ],
+      },
+      {
+        kind: 'number',
+        key: 'brightness',
+        labelKey: 'fastcat.timeline.transition.paramBrightness',
+        min: -10,
+        max: 10,
+        step: 0.1,
+      },
+      {
+        kind: 'number',
+        key: 'bloomThreshold',
+        labelKey: 'fastcat.timeline.transition.paramBloomThreshold',
+        min: 0,
+        max: 1,
+        step: 0.01,
+      },
+    ],
+    toTauriSpec: (
+      params: Record<string, unknown>,
+      durationSec?: number,
+      options?: { isExport?: boolean; isPlaying?: boolean; previewBlurQuality?: string },
+    ) => {
+      const normalized = normalizeMotionBlurParams(params);
+      const angle = finiteNumber(normalized.angle, 0);
+      const rad = (angle * Math.PI) / 180;
+      const quality = resolveBlurQuality(options, normalized.blurQuality);
+      const samples = qualitySamples(quality, 8, 16, 32, 64);
+      return {
+        type: 'custom-wgsl',
+        source: MOTION_BLUR_WGSL,
+        params: {
+          p0: Math.cos(rad),
+          p1: Math.sin(rad),
+          p2: motionBlurConst(finiteNumber(normalized.motionBlur, 50), durationSec, 0.005),
+          p3: samples,
+          p4: normalized.motionBlurMode === 'bloom' ? 1 : 0,
+          p5: finiteNumber(normalized.brightness, 0),
+          p6: finiteNumber(normalized.bloomThreshold, 0.7),
+        },
+      };
+    },
+    computeOutOpacity: transparent,
+    computeInOpacity: transparent,
+  },
+  {
     type: 'barn-door',
     name: 'Barn Door',
     nameKey: 'fastcat.transitions.barn-door.name',
@@ -1566,9 +1732,9 @@ export const tauriTransitionManifests: TransitionManifest[] = [
         kind: 'number',
         key: 'blur',
         labelKey: 'fastcat.timeline.transition.paramRectangleBlur',
-        min: 0.0001,
-        max: 0.2,
-        step: 0.0025,
+        min: 0,
+        max: 20,
+        step: 0.5,
       },
       blurModeField,
       {
@@ -1598,7 +1764,7 @@ export const tauriTransitionManifests: TransitionManifest[] = [
         type: 'custom-wgsl',
         source: RECTANGLE_WGSL,
         params: {
-          p0: clamp(finiteNumber(params.blur, 0.015), 0.0001, 0.2),
+          p0: clamp(finiteNumber(params.blur, 1.5) / 100, 0.0001, 0.2),
           p1: params.blurMode === 'scaled' ? 1 : 0,
           p2: params.direction === 'to-center' ? -1 : 1,
           p3: params.contentMode === 'zoom' ? 1 : 0,

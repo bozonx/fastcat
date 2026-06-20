@@ -544,6 +544,7 @@
       "playbackThrottled": "Воспроизведение ограничено",
       "playbackThrottledDetail": "Скорость воспроизведения снижена для сохранения стабильности",
       "previewError": "Ошибка предпросмотра",
+      "previewBlurQuality": "Качество размытия предпросмотра",
       "previewWithEffects": "Предпросмотр с эффектами",
       "previewWithoutEffects": "Предпросмотр без эффектов",
       "resetZoom": "Сбросить зум (100%)",
@@ -1085,6 +1086,9 @@
       },
       "falling-card": {
         "name": "Falling Card"
+      },
+      "motion-blur": {
+        "name": "Размытие в движении"
       },
       "noSettings": "Нет настроек",
       "rectangle": {
@@ -2047,4 +2051,3 @@
     "delete": "Удалить"
   }
 }
-

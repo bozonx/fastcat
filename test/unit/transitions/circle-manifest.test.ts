@@ -146,7 +146,7 @@ describe('circle transition blur parameter', () => {
     });
 
     expect(normalized?.direction).toBe('from-center');
-    expect(normalized?.blur).toBe(0.2);
+    expect(normalized?.blur).toBe(1);
     expect(normalized?.blurMode).toBe('scaled');
     expect(normalized?.anchor).toBe('center');
     expect(normalized?.offsetX).toBe(100);

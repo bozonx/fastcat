@@ -544,6 +544,7 @@
       "playbackThrottled": "Playback throttled",
       "playbackThrottledDetail": "Playback speed reduced to maintain stability",
       "previewError": "Preview error",
+      "previewBlurQuality": "Preview blur quality",
       "previewWithEffects": "Preview with effects",
       "previewWithoutEffects": "Preview without effects",
       "resetZoom": "Reset zoom (100%)",
@@ -1085,6 +1086,9 @@
       },
       "falling-card": {
         "name": "Falling Card"
+      },
+      "motion-blur": {
+        "name": "Motion Blur"
       },
       "noSettings": "No settings",
       "rectangle": {
@@ -2047,4 +2051,3 @@
     "delete": "Delete"
   }
 }
-

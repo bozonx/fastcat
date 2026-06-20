@@ -60,6 +60,8 @@ const loadAll = vi.fn(async () => {});
 const onTouchStart = vi.fn();
 const onTouchMove = vi.fn();
 const onTouchEnd = vi.fn();
+const mockSelectionMode = ref(false);
+const mockSelectedEntries = ref<typeof audioEntries.value>([]);
 const mockSelectionStore = reactive({
   selectedEntity: null as any,
 });
@@ -111,9 +113,9 @@ vi.mock('~/composables/file-manager/useMobileAssetCategories', () => ({
 }));
 vi.mock('~/composables/file-manager/useMobileFileBrowserSelection', () => ({
   useMobileFileBrowserSelection: () => ({
-    isSelectionMode: ref(true),
+    isSelectionMode: mockSelectionMode,
     isDrawerOpen: ref(false),
-    selectedEntries: ref([]),
+    selectedEntries: mockSelectedEntries,
     toggleSelectionMode: vi.fn(),
     handleLongPress: vi.fn(),
     handleToggleSelection: vi.fn(),
@@ -162,9 +164,12 @@ describe('MobileAssetBrowser', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockSelectionStore.selectedEntity = null;
+    mockSelectionMode.value = false;
+    mockSelectedEntries.value = [];
   });
 
   it('hides clipboard actions in asset toolbars', async () => {
+    mockSelectionMode.value = true;
     const wrapper = await mountSuspended(MobileAssetBrowser, {
       global: {
         stubs: {
@@ -231,8 +236,9 @@ describe('MobileAssetBrowser', () => {
     await drawer.props('onAction')('rename', audioEntries.value[0]);
 
     const renameModal = wrapper.findComponent({ name: 'UiRenameModal' });
-    const validate = renameModal.props('validate') as (name: string) => string | boolean | null;
+    expect(renameModal.props('selectWithoutExtension')).toBe(true);
 
+    const validate = renameModal.props('validate') as (name: string) => string | boolean | null;
     expect(validate('taken.mp3')).toBe('common.validation.exists');
     expect(validate('shared.mp4')).toBe(true);
   });
@@ -297,5 +303,42 @@ describe('MobileAssetBrowser', () => {
     expect(sections[1].attributes('style') || '').not.toContain('display: none');
     // images should be hidden (no files)
     expect(sections[2].attributes('style') || '').toContain('display: none');
+  });
+
+  it('keeps the sorting toolbar visible during multi-selection', async () => {
+    const wrapper = await mountSuspended(MobileAssetBrowser, {
+      global: {
+        stubs: {
+          MobileFileBrowserGrid: true,
+          MobileFileBrowserList: true,
+          UiButtonGroup: {
+            name: 'UiButtonGroup',
+            template: '<div />',
+          },
+          MobileFileBrowserDrawer: true,
+          MobileFileBrowserSelectionToolbar: true,
+          MobilePullToRefreshIndicator: true,
+          FileDeleteConfirmModal: true,
+          FileSttTranscriptionModal: true,
+          UiRenameModal: true,
+          MobileAddToTimelineModal: true,
+          Teleport: true,
+        },
+      },
+    });
+
+    // Visible when not in selection mode
+    expect(wrapper.findComponent({ name: 'UiButtonGroup' }).exists()).toBe(true);
+
+    // Hidden for a single selected entry
+    mockSelectionMode.value = true;
+    mockSelectedEntries.value = [audioEntries.value[0]];
+    await wrapper.vm.$nextTick();
+    expect(wrapper.findComponent({ name: 'UiButtonGroup' }).exists()).toBe(false);
+
+    // Visible again when multiple entries are selected
+    mockSelectedEntries.value = [audioEntries.value[0], audioEntries.value[1]];
+    await wrapper.vm.$nextTick();
+    expect(wrapper.findComponent({ name: 'UiButtonGroup' }).exists()).toBe(true);
   });
 });

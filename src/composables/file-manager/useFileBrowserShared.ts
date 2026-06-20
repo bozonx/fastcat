@@ -1,5 +1,6 @@
 import type { Ref } from 'vue';
 import { useFileConversionStore } from '~/stores/file-conversion.store';
+import { useFileConversionStoreActions } from '~/composables/file-conversion/useFileConversionStoreActions';
 import { useFileManagerActions } from '~/composables/file-manager/useFileManagerActions';
 import { useFileBrowserFileActions } from '~/composables/file-manager/useFileBrowserFileActions';
 import { useSttTranscription } from '~/composables/file-manager/useSttTranscription';
