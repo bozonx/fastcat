@@ -582,6 +582,12 @@ const isFreePosition = computed(() =>
 );
 
 const transitionInOverlayGuideStyle = computed<Record<string, string> | null>(() => {
+  const isSelected =
+    props.selectedTransition?.trackId === props.track.id &&
+    props.selectedTransition?.itemId === props.item.id &&
+    props.selectedTransition?.edge === 'in';
+  if (!isSelected) return null;
+
   const offsetPx = getOverlayGuideOffsetPx(
     props.track,
     clipItem.value,
@@ -597,6 +603,12 @@ const transitionInOverlayGuideStyle = computed<Record<string, string> | null>(()
 });
 
 const transitionOutOverlayGuideStyle = computed<Record<string, string> | null>(() => {
+  const isSelected =
+    props.selectedTransition?.trackId === props.track.id &&
+    props.selectedTransition?.itemId === props.item.id &&
+    props.selectedTransition?.edge === 'out';
+  if (!isSelected) return null;
+
   const offsetPx = getOverlayGuideOffsetPx(
     props.track,
     clipItem.value,

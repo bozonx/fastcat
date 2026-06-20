@@ -193,6 +193,43 @@ async function mountClip(props = defaultProps, options: any = {}) {
   });
 }
 
+const clipWithAdjacentOut = {
+  ...baseItem,
+  transitionOut: { type: 'dissolve', durationUs: 1_000_000, mode: 'adjacent' },
+};
+
+const nextClipWithHeadHandle = {
+  ...baseItem,
+  id: 'clip-2',
+  timelineRange: { startUs: 6_000_000, durationUs: 5_000_000 },
+  sourceRange: { startUs: 1_000_000, durationUs: 5_000_000 },
+  sourceDurationUs: 10_000_000,
+};
+
+const trackWithAdjacentOut = {
+  ...baseTrack,
+  items: [clipWithAdjacentOut, nextClipWithHeadHandle],
+} as any;
+
+const prevClipWithTailHandle = {
+  ...baseItem,
+  sourceDurationUs: 6_000_000,
+  timelineRange: { startUs: 1_000_000, durationUs: 5_000_000 },
+  sourceRange: { startUs: 0, durationUs: 5_000_000 },
+};
+
+const clipWithAdjacentIn = {
+  ...baseItem,
+  id: 'clip-2',
+  timelineRange: { startUs: 6_000_000, durationUs: 5_000_000 },
+  transitionIn: { type: 'dissolve', durationUs: 1_000_000, mode: 'adjacent' },
+};
+
+const trackWithAdjacentIn = {
+  ...baseTrack,
+  items: [prevClipWithTailHandle, clipWithAdjacentIn],
+} as any;
+
 describe('TimelineClip', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -498,5 +535,45 @@ describe('TimelineClip', () => {
 
     const clipDiv = component.find('[data-clip-id="clip-1"]');
     expect(clipDiv.classes()).toContain('bg-red-600!');
+  });
+
+  it('renders out transition overlay guide only when the out transition is selected', async () => {
+    const component = await mountClip({
+      ...defaultProps,
+      track: trackWithAdjacentOut,
+      item: clipWithAdjacentOut,
+    });
+
+    expect(component.find('.border-cyan-400\\/95').exists()).toBe(false);
+
+    await component.setProps({
+      selectedTransition: { trackId: 'track-1', itemId: 'clip-1', edge: 'out' },
+    });
+    expect(component.find('.border-cyan-400\\/95').exists()).toBe(true);
+
+    await component.setProps({
+      selectedTransition: { trackId: 'track-1', itemId: 'clip-1', edge: 'in' },
+    });
+    expect(component.find('.border-cyan-400\\/95').exists()).toBe(false);
+  });
+
+  it('renders in transition overlay guide only when the in transition is selected', async () => {
+    const component = await mountClip({
+      ...defaultProps,
+      track: trackWithAdjacentIn,
+      item: clipWithAdjacentIn,
+    });
+
+    expect(component.find('.border-yellow-400\\/95').exists()).toBe(false);
+
+    await component.setProps({
+      selectedTransition: { trackId: 'track-1', itemId: 'clip-2', edge: 'in' },
+    });
+    expect(component.find('.border-yellow-400\\/95').exists()).toBe(true);
+
+    await component.setProps({
+      selectedTransition: { trackId: 'track-1', itemId: 'clip-2', edge: 'out' },
+    });
+    expect(component.find('.border-yellow-400\\/95').exists()).toBe(false);
   });
 });
