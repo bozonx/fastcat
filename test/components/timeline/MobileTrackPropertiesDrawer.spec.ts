@@ -149,7 +149,7 @@ describe('MobileTrackPropertiesDrawer', () => {
     expect(buttonsGap[0].attributes('data-icon')).toBe('i-heroicons-trash');
     expect(buttonsGap[0].attributes('data-primary')).toBe('true'); // gap delete is primary
     expect(buttonsGap[1].attributes('data-icon')).toBe('i-heroicons-plus'); // add content
-    expect(buttonsGap[2].attributes('data-icon')).toBe('i-heroicons-arrows-pointing-out'); // toggle track height
+    expect(buttonsGap[2].attributes('data-icon')).toBe('i-lucide-unfold-vertical'); // toggle track height
     expect(buttonsGap[3].attributes('data-icon')).toBe('i-heroicons-eye'); // active/disabled (visible)
     expect(buttonsGap[4].attributes('data-icon')).toBe('i-heroicons-speaker-wave'); // mute
     expect(buttonsGap[5].attributes('data-icon')).toBe('i-heroicons-musical-note'); // solo
@@ -187,7 +187,7 @@ describe('MobileTrackPropertiesDrawer', () => {
     const buttonsTrack = wrapperTrack.findAll('button[data-icon]');
     expect(buttonsTrack.length).toBe(8);
     expect(buttonsTrack[0].attributes('data-icon')).toBe('i-heroicons-plus'); // add content
-    expect(buttonsTrack[1].attributes('data-icon')).toBe('i-heroicons-arrows-pointing-out'); // toggle track height
+    expect(buttonsTrack[1].attributes('data-icon')).toBe('i-lucide-unfold-vertical'); // toggle track height
     expect(buttonsTrack[2].attributes('data-icon')).toBe('i-heroicons-eye'); // active/disabled (visible)
     expect(buttonsTrack[3].attributes('data-icon')).toBe('i-heroicons-speaker-wave'); // mute
     expect(buttonsTrack[4].attributes('data-icon')).toBe('i-heroicons-musical-note'); // solo

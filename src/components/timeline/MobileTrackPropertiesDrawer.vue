@@ -24,8 +24,8 @@ const emit = defineEmits<{
 
 const trackHeightIcon = computed(() =>
   props.isTrackHeightEnlarged
-    ? 'i-heroicons-arrows-pointing-in'
-    : 'i-heroicons-arrows-pointing-out',
+    ? 'i-lucide-fold-vertical'
+    : 'i-lucide-unfold-vertical',
 );
 
 const { t } = useI18n();

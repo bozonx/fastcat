@@ -1,0 +1,78 @@
+import { describe, it, expect } from 'vitest';
+import { mountSuspended } from '@nuxt/test-utils/runtime';
+import MobileDrawerToolbarButton from '~/components/timeline/MobileDrawerToolbarButton.vue';
+
+const globalOptions = {
+  stubs: {
+    UIcon: {
+      props: ['name'],
+      template: '<i :data-icon="name" />',
+    },
+  },
+};
+
+describe('MobileDrawerToolbarButton', () => {
+  it('renders the icon and exposes the label for accessibility', async () => {
+    const wrapper = await mountSuspended(MobileDrawerToolbarButton, {
+      props: { icon: 'lucide:scissors', label: 'Cut' },
+      global: globalOptions,
+    });
+
+    expect(wrapper.find('[data-icon="lucide:scissors"]').exists()).toBe(true);
+    expect(wrapper.find('button').attributes('aria-label')).toBe('Cut');
+    expect(wrapper.find('button').attributes('title')).toBe('Cut');
+  });
+
+  it('emits a click event when pressed', async () => {
+    const wrapper = await mountSuspended(MobileDrawerToolbarButton, {
+      props: { icon: 'lucide:scissors' },
+      global: globalOptions,
+    });
+
+    await wrapper.find('button').trigger('click');
+    expect(wrapper.emitted('click')).toHaveLength(1);
+  });
+
+  it('applies danger styling', async () => {
+    const wrapper = await mountSuspended(MobileDrawerToolbarButton, {
+      props: { icon: 'x', danger: true },
+      global: globalOptions,
+    });
+    expect(wrapper.find('button').classes().join(' ')).toContain('text-red-400');
+  });
+
+  it('applies success styling', async () => {
+    const wrapper = await mountSuspended(MobileDrawerToolbarButton, {
+      props: { icon: 'x', success: true },
+      global: globalOptions,
+    });
+    expect(wrapper.find('button').classes().join(' ')).toContain('bg-ui-action');
+  });
+
+  it('applies primary styling', async () => {
+    const wrapper = await mountSuspended(MobileDrawerToolbarButton, {
+      props: { icon: 'x', primary: true },
+      global: globalOptions,
+    });
+    expect(wrapper.find('button').classes().join(' ')).toContain('bg-blue-500');
+  });
+
+  it('applies active styling', async () => {
+    const wrapper = await mountSuspended(MobileDrawerToolbarButton, {
+      props: { icon: 'x', active: true },
+      global: globalOptions,
+    });
+    expect(wrapper.find('button').classes().join(' ')).toContain('text-blue-400');
+  });
+
+  it('disables the button and removes the active press animation', async () => {
+    const wrapper = await mountSuspended(MobileDrawerToolbarButton, {
+      props: { icon: 'x', disabled: true },
+      global: globalOptions,
+    });
+
+    const button = wrapper.find('button');
+    expect(button.attributes('disabled')).toBeDefined();
+    expect(button.classes().join(' ')).toContain('pointer-events-none');
+  });
+});

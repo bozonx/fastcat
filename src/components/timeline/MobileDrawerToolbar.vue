@@ -125,5 +125,7 @@ onUnmounted(() => {
 /* Landscape rail: buttons fill the rail width and stay square */
 .mobile-drawer-toolbar--vertical :deep(.mobile-drawer-toolbar-button) {
   width: 100%;
+  height: auto;
+  aspect-ratio: 1 / 1;
 }
 </style>
