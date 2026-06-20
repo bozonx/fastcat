@@ -185,6 +185,22 @@ function normalizeRectangleParams(params?: Record<string, unknown>): Record<stri
   };
 }
 
+function normalizeCubeParams(params?: Record<string, unknown>): Record<string, unknown> {
+  const direction =
+    params?.direction === 'right' ||
+    params?.direction === 'up' ||
+    params?.direction === 'down' ||
+    params?.direction === 'left'
+      ? params.direction
+      : 'left';
+
+  const zoomMode = params?.zoomMode === 'fixed' ? 'fixed' : 'unzoom';
+  const perspective = typeof params?.perspective === 'number' ? params.perspective : 0.7;
+  const gapSize = typeof params?.gapSize === 'number' ? Math.max(0, params.gapSize) : 0;
+
+  return { direction, zoomMode, perspective, gapSize };
+}
+
 // ---------------------------------------------------------------------------
 // Shared WGSL prelude. The native transition pipeline binds:
 //   0: from_tex, 1: to_tex, 2: output_tex (storage), 3: uniform (progress + p0..p11)
@@ -2056,12 +2072,8 @@ export const tauriTransitionManifests: TransitionManifest[] = [
     nameKey: 'fastcat.transitions.cube.name',
     icon: 'i-heroicons-cube',
     defaultDurationUs: 500_000,
-    defaultParams: {
-      direction: 'left',
-      zoomMode: 'unzoom',
-      perspective: 0.7,
-      gapSize: 0,
-    },
+    defaultParams: normalizeCubeParams(),
+    normalizeParams: normalizeCubeParams,
     renderMode: 'shader',
     renderer: 'wgpu',
     supportedModes: ['adjacent'],

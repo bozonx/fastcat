@@ -69,4 +69,34 @@ describe('cube transition parameters in Tauri spec', () => {
 
     restoreTauriRuntime();
   });
+
+  it('normalizes params correctly via normalizeParams', () => {
+    mockTauriRuntime(true);
+    const manifest = getTauriTransitionManifest('cube');
+    expect(manifest).toBeDefined();
+    expect(manifest?.normalizeParams).toBeTypeOf('function');
+
+    const norm1 = manifest?.normalizeParams?.({
+      zoomMode: 'fixed',
+      direction: 'right',
+      perspective: 'invalid', // should be fallback
+    });
+
+    expect(norm1).toEqual({
+      direction: 'right',
+      zoomMode: 'fixed',
+      perspective: 0.7,
+      gapSize: 0,
+    });
+
+    const norm2 = manifest?.normalizeParams?.({});
+    expect(norm2).toEqual({
+      direction: 'left',
+      zoomMode: 'unzoom',
+      perspective: 0.7,
+      gapSize: 0,
+    });
+
+    restoreTauriRuntime();
+  });
 });
