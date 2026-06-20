@@ -32,7 +32,7 @@ export function useMobileTimelineBatchActions(options: UseMobileTimelineBatchAct
   }
 
   function handleBladeClips() {
-    void timelineStore.splitAllClipsAtPlayhead();
+    void timelineStore.splitClipAtPlayhead();
   }
 
   return {

@@ -9,7 +9,7 @@ const mockClipboardStore = {
 const mockTimelineStore = {
   copySelectedClips: vi.fn(() => [{ sourceTrackId: 't1', clip: { id: 'c1' } }]),
   cutSelectedClips: vi.fn(() => [{ sourceTrackId: 't2', clip: { id: 'c2' } }]),
-  splitAllClipsAtPlayhead: vi.fn(),
+  splitClipAtPlayhead: vi.fn(),
 };
 
 describe('useMobileTimelineBatchActions', () => {
@@ -45,7 +45,7 @@ describe('useMobileTimelineBatchActions', () => {
     });
   });
 
-  it('splits all clips at playhead', () => {
+  it('splits selected clips at playhead', () => {
     const { handleBladeClips } = useMobileTimelineBatchActions({
       clipboardStore: mockClipboardStore as any,
       timelineStore: mockTimelineStore as any,
@@ -53,6 +53,6 @@ describe('useMobileTimelineBatchActions', () => {
 
     handleBladeClips();
 
-    expect(mockTimelineStore.splitAllClipsAtPlayhead).toHaveBeenCalled();
+    expect(mockTimelineStore.splitClipAtPlayhead).toHaveBeenCalled();
   });
 });
