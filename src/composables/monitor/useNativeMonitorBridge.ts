@@ -76,6 +76,32 @@ export async function syncNativeMonitorTransportAfterScene(params: {
   }
 }
 
+export async function syncNativeMonitorScene(params: {
+  scene: NativeMonitorScene;
+  isPlaying: () => boolean;
+  isNativeMonitorDisabled: () => boolean;
+  setScene: (scene: NativeMonitorScene) => Promise<void>;
+  pause: () => Promise<void>;
+  warnFailure: (message: string, err: unknown) => void;
+}): Promise<void> {
+  await syncNativeMonitorTransportAfterScene({
+    isPlaying: params.isPlaying(),
+    isNativeMonitorDisabled: params.isNativeMonitorDisabled,
+    pause: params.pause,
+    warnFailure: params.warnFailure,
+  });
+
+  if (params.isNativeMonitorDisabled()) return;
+  await params.setScene(params.scene);
+
+  await syncNativeMonitorTransportAfterScene({
+    isPlaying: params.isPlaying(),
+    isNativeMonitorDisabled: params.isNativeMonitorDisabled,
+    pause: params.pause,
+    warnFailure: params.warnFailure,
+  });
+}
+
 export function resolveNativeAudioTrackSelection(params: {
   visibleVideoTracks: TimelineTrack[];
   audioTracks: TimelineTrack[];
@@ -250,10 +276,11 @@ export function useNativeMonitorBridge(): void {
       const json = JSON.stringify(scene);
       if (json === lastSceneJson) return;
       lastSceneJson = json;
-      await nativeMonitorIpc.setScene(scene);
-      await syncNativeMonitorTransportAfterScene({
-        isPlaying: timelineStore.isPlaying,
+      await syncNativeMonitorScene({
+        scene,
+        isPlaying: () => timelineStore.isPlaying,
         isNativeMonitorDisabled,
+        setScene: (nextScene) => nativeMonitorIpc.setScene(nextScene),
         pause: () => nativeMonitorIpc.pause(),
         warnFailure: warnMonitorFailure,
       });

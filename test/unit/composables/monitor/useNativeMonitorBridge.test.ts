@@ -6,9 +6,11 @@ import {
   isNativeMonitorSceneReady,
   resolveNativeAudioTrackSelection,
   shouldSyncNativeMonitorTime,
+  syncNativeMonitorScene,
   syncNativeMonitorTransportAfterScene,
 } from '~/composables/monitor/useNativeMonitorBridge';
 import type { TimelineDocument, TimelineTrack } from '~/timeline/types';
+import type { NativeMonitorScene } from '~/utils/native-monitor-scene';
 
 // Mock stores
 const mockWorkspaceStore = reactive({
@@ -225,6 +227,62 @@ describe('syncNativeMonitorTransportAfterScene', () => {
     });
 
     expect(warnFailure).toHaveBeenCalledWith('monitor pause after scene sync failed', error);
+  });
+});
+
+describe('syncNativeMonitorScene', () => {
+  const scene = {
+    layers: [],
+    audio_layers: [],
+    audio_tracks: [],
+    audio_master_gain: 1,
+    audio_master_muted: false,
+    audio_master_effects: [],
+    width: 1920,
+    height: 1080,
+    preview_scale: 1,
+    preview_fps: 30,
+    preview_sync_mode: 'balanced',
+    preview_effect_quality: 'ultra',
+    frame_cache_mode: 'auto',
+    frame_cache_custom_mb: 0,
+    master_effects: [],
+  } as NativeMonitorScene;
+
+  it('pauses before replacing a scene while the timeline is stopped', async () => {
+    const calls: string[] = [];
+
+    await syncNativeMonitorScene({
+      scene,
+      isPlaying: () => false,
+      isNativeMonitorDisabled: () => false,
+      setScene: vi.fn(async () => {
+        calls.push('scene');
+      }),
+      pause: vi.fn(async () => {
+        calls.push('pause');
+      }),
+      warnFailure: vi.fn(),
+    });
+
+    expect(calls).toEqual(['pause', 'scene', 'pause']);
+  });
+
+  it('does not pause scene replacement during active playback', async () => {
+    const pause = vi.fn(async () => undefined);
+    const setScene = vi.fn(async () => undefined);
+
+    await syncNativeMonitorScene({
+      scene,
+      isPlaying: () => true,
+      isNativeMonitorDisabled: () => false,
+      setScene,
+      pause,
+      warnFailure: vi.fn(),
+    });
+
+    expect(setScene).toHaveBeenCalledWith(scene);
+    expect(pause).not.toHaveBeenCalled();
   });
 });
 
