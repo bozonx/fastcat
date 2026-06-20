@@ -70,14 +70,23 @@ function qualitySamples(quality: unknown, low: number, med: number, high: number
  * Priority: export → still/paused frame (ultra) → explicit user quality → transition default.
  */
 function resolveBlurQuality(
-  options: { isExport?: boolean; isPlaying?: boolean; previewBlurQuality?: string } | undefined,
+  options:
+    | {
+        isExport?: boolean;
+        isPlaying?: boolean;
+        previewBlurQuality?: string;
+        idleSettled?: boolean;
+      }
+    | undefined,
   perTransitionQuality: unknown,
 ): string {
   if (options?.isExport) return 'ultra';
-  // A still/paused frame always renders at full fidelity, even if the user pinned a lower
+  // A *settled* still/paused frame renders at full fidelity, even if the user pinned a lower
   // quality for motion — so this must win over the explicit setting below (matches
-  // resolvePreviewEffectQuality).
-  if (options?.isPlaying === false) return 'ultra';
+  // resolvePreviewEffectQuality). While still interactive (`idleSettled === false`: scrubbing
+  // or dragging transition params) we keep the cheaper motion quality and upgrade to ultra
+  // only after the caller's settle debounce.
+  if (options?.isPlaying === false && options?.idleSettled !== false) return 'ultra';
   const preview = options?.previewBlurQuality;
   if (preview && preview !== 'auto') return preview;
   // 'auto' or unset: fall back to the per-transition setting (default 'medium')
@@ -1078,7 +1087,14 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
     let s = sin(angle);
     let dd = uni.p1;
     let d = 1.5;
-    let z_base = select(0.0, s * 0.8, dd < 0.0);
+    // Forward (toward-viewer) fold: push the whole card deeper so the falling
+    // (near) edge doesn't spill past the screen. uni.p3 (0..1) is the fractional
+    // overshoot allowed at full fold: near-edge width = (1 + p3) * screen width.
+    // overflow = 0 -> z_base = s -> near edge at depth 0 -> magnifies by exactly
+    // 1.0 (stays at screen width). Larger values let it bulge toward the viewer.
+    // Backward fold keeps z_base = 0 (already bounded, near edge recedes).
+    let overflow = clamp(uni.p3, 0.0, 1.0);
+    let z_base = select(0.0, s * (d / (1.0 + overflow) - (d - 1.0)), dd < 0.0);
     let dir = uni.p0;
 
     var p_moved = vec2<f32>(-1.0);
@@ -2259,6 +2275,7 @@ export const tauriTransitionManifests: TransitionManifest[] = [
       direction: 'down',
       depthDirection: 'backward',
       action: 'fall',
+      edgeOverflow: 0,
     },
     renderMode: 'shader',
     renderer: 'wgpu',
@@ -2293,6 +2310,14 @@ export const tauriTransitionManifests: TransitionManifest[] = [
           { value: 'forward', labelKey: 'fastcat.timeline.transition.depthDirectionForward' },
         ],
       },
+      {
+        kind: 'slider',
+        key: 'edgeOverflow',
+        labelKey: 'fastcat.timeline.transition.paramEdgeOverflow',
+        min: 0,
+        max: 1,
+        step: 0.05,
+      },
     ],
     toTauriSpec: (params: Record<string, unknown>) => {
       // down=1, up=0, left=2, right=3 (matches web updateFilter)
@@ -2305,6 +2330,9 @@ export const tauriTransitionManifests: TransitionManifest[] = [
           p0: dir,
           p1: params.depthDirection === 'forward' ? -1 : 1,
           p2: params.action === 'rise' ? 1 : 0,
+          // Forward-fold overshoot at full fold (0 = falling edge fits screen
+          // width, 1 = falling edge bulges to 2x). No effect when backward.
+          p3: clamp(finiteNumber(params.edgeOverflow, 0), 0, 1),
         },
       };
     },

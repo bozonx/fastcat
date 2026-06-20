@@ -41,7 +41,14 @@ const mediaStore = useMediaStore();
 const fileManager = useFileManager();
 
 const rootEl = ref<HTMLElement | null>(null);
-const canvasEl = ref<HTMLCanvasElement | null>(null);
+// The waveform is rendered into an OFFSCREEN canvas and presented as an <img>.
+// A live <canvas> positioned millions of px from the layout origin (which is what
+// happens inside a long clip at extreme zoom — the timeline content is
+// transform-translated, so clips keep their absolute positions) gets culled by
+// WebKitGTK and shows blank. <img> elements survive arbitrary offsets — this is
+// the same reason video thumbnail tiles never disappear at high zoom.
+const waveformImageUrl = ref<string>('');
+let offscreenCanvas: HTMLCanvasElement | null = null;
 const waveformPeakIds = new WeakMap<readonly Float32Array[], number>();
 
 let resizeObserver: ResizeObserver | null = null;
@@ -552,9 +559,10 @@ function effectiveDevicePixelRatio(): number {
 }
 
 function draw() {
-  const canvas = canvasEl.value;
   const root = rootEl.value;
-  if (!canvas || !root) return;
+  if (!root) return;
+  if (!offscreenCanvas) offscreenCanvas = document.createElement('canvas');
+  const canvas = offscreenCanvas;
 
   const channels = audioPeaks.value;
   if (!channels || channels.length === 0) return;
@@ -567,7 +575,7 @@ function draw() {
   const totalW = totalWidthPx.value;
   if (totalW <= 0) return;
 
-  const cssHeight = Math.max(1, canvas.parentElement?.clientHeight || root.clientHeight);
+  const cssHeight = Math.max(1, root.clientHeight);
   const cssWidth = Math.max(1, Math.round(win.widthPx));
 
   const renderBudget = computeWaveformRenderBudget({
@@ -664,6 +672,10 @@ function draw() {
 
   ctx.closePath();
   ctx.fill();
+  // Present the freshly painted bitmap as an <img> (see `waveformImageUrl`). The
+  // dedup guard above (`drawSignature === lastDrawSignature`) keeps this PNG
+  // encode off the hot path — it only runs when the visible window/peaks change.
+  waveformImageUrl.value = canvas.toDataURL();
   lastDrawSignature = drawSignature;
   // Anchor the canvas CSS box to the source-fraction we just painted, so it only
   // moves when the bitmap is repainted (see `renderedFrac`).
@@ -772,15 +784,18 @@ onBeforeUnmount(() => {
       class="absolute inset-y-0 h-full overflow-hidden"
       :style="canvasHostStyle"
     >
-      <canvas
-        ref="canvasEl"
+      <img
+        v-if="waveformImageUrl"
+        :src="waveformImageUrl"
+        alt=""
+        draggable="false"
         class="absolute inset-0 h-full w-full max-w-none"
         :style="{
           left: '0px',
           width: '100%',
           transform: isReversed ? 'scaleX(-1)' : undefined,
         }"
-      ></canvas>
+      />
     </div>
   </div>
 </template>

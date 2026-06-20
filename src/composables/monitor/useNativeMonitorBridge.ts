@@ -35,6 +35,13 @@ const NATIVE_TIME_STORE_SYNC_MS = 50;
 // шумом локального тика, а не реальным seek'ом — иначе натив дёргался бы на каждый тик
 // мастер-клока. Крупные прыжки (drag playhead) — реальная перемотка.
 const PLAYING_SEEK_IGNORE_US = 200_000;
+// После любого интерактивного действия на паузе (скрабинг, drag параметров клипа —
+// трансформации/эффекты/переходы, момент остановки воспроизведения) кадр сначала
+// рендерится в выбранном пользователем качестве (дёшево, без лагов), а на ultra
+// пересобирается лишь когда активность утихла на это время. 500мс — компромисс: длиннее
+// 250мс, чтобы не сработать посреди серии мелких правок слайдера, и заметно отзывчивее
+// секунды (чёткий кадр появляется почти сразу после того, как пользователь остановился).
+const ULTRA_SETTLE_DELAY_MS = 500;
 
 export function isNativeMonitorSceneReady(params: {
   currentProjectName: string | null;
@@ -136,6 +143,34 @@ export function useNativeMonitorBridge(): void {
   // Монотонный токен сборки сцены: buildScene() — async, и без него медленная сборка,
   // стартовавшая раньше, могла бы завершиться позже и отправить устаревшую сцену поверх свежей.
   let sceneBuildSeq = 0;
+  // Кадр «устоялся» (нет активного скрабинга/правок) → можно рендерить ultra. На время
+  // интерактива ставится false, и сцена строится в выбранном пользователем качестве; по
+  // дебаунсу флаг возвращается в true и сцена пересобирается в ultra. См. ULTRA_SETTLE_DELAY_MS.
+  let idleSettled = true;
+  let ultraSettleTimer: ReturnType<typeof setTimeout> | null = null;
+
+  function cancelUltraSettle(): void {
+    if (ultraSettleTimer !== null) {
+      clearTimeout(ultraSettleTimer);
+      ultraSettleTimer = null;
+    }
+  }
+
+  // Открывает интерактивное окно: кадр считается «не устоявшимся» (рендерится в выбранном
+  // качестве), а через ULTRA_SETTLE_DELAY_MS бездействия сцена пересобирается в ultra.
+  // Возвращает true, если флаг только что сменился с settled → interactive (вызывающему стоит
+  // сразу отправить сцену пониженного качества — например при старте скрабинга).
+  function beginInteractiveWindow(): boolean {
+    const wasSettled = idleSettled;
+    idleSettled = false;
+    cancelUltraSettle();
+    ultraSettleTimer = setTimeout(() => {
+      ultraSettleTimer = null;
+      idleSettled = true;
+      void syncScene();
+    }, ULTRA_SETTLE_DELAY_MS);
+    return wasSettled;
+  }
 
   function warnMonitorFailure(message: string, err: unknown): void {
     const disabledNow = markNativeMonitorInitFailure(err);
@@ -189,6 +224,7 @@ export function useNativeMonitorBridge(): void {
       getProxyNativePath: proxyStore.getProxyNativePath,
       syncMode: isMobile.value ? 'balanced' : undefined,
       isPlaying: timelineStore.isPlaying,
+      idleSettled,
       previewBlurQuality: projectStore.activeMonitor?.previewBlurQuality ?? 'auto',
       isMobile: isMobile.value,
     });
@@ -293,6 +329,10 @@ export function useNativeMonitorBridge(): void {
       () => projectStore.activeMonitor?.previewBlurQuality,
     ],
     () => {
+      // Правки клипа (трансформации/эффекты/переходы) и т.п. — интерактив: пересобираем
+      // сцену сразу в выбранном пользователем качестве (видно изменение без лагов), а ultra
+      // откладываем до конца серии правок (см. beginInteractiveWindow).
+      beginInteractiveWindow();
       void syncScene();
     },
     { deep: true, immediate: true },
@@ -322,8 +362,13 @@ export function useNativeMonitorBridge(): void {
         // Native start is deferred until decoders warm up; suppress seek-detection
         // until it confirms by emitting the first `monitor:time` (see flag docs).
         awaitingFirstNativeTime = true;
+        // Во время воспроизведения качество и так пользовательское — отложенный ultra-кадр
+        // не нужен (и шумел бы лишним IPC).
+        cancelUltraSettle();
       } else {
         awaitingFirstNativeTime = false;
+        // Остановка — тоже интерактив: показываем кадр в выбранном качестве, ultra по дебаунсу.
+        beginInteractiveWindow();
       }
       if (isNativeMonitorDisabled()) return;
       try {
@@ -331,8 +376,8 @@ export function useNativeMonitorBridge(): void {
       } catch (err) {
         warnMonitorFailure('monitor play/pause failed', err);
       }
-      // Rebuild scene on play/pause to update transition blur quality
-      // (paused = ultra, playing = user-selected quality)
+      // Rebuild scene on play/pause to update transition blur quality. Playing → user-selected
+      // quality; pausing → user quality now, upgraded to ultra after the settle debounce.
       void syncScene();
     },
   );
@@ -394,6 +439,13 @@ export function useNativeMonitorBridge(): void {
       }
 
       if (isNativeMonitorDisabled()) return;
+
+      // Скрабинг на паузе — интерактив: рендерим в выбранном качестве, ultra откладываем до
+      // конца перемотки. Если кадр был «устоявшимся» (ultra), сразу шлём сцену пониженного
+      // качества, иначе каждый seek упирался бы в дорогой ultra-рендер (источник тормозов).
+      if (!timelineStore.isPlaying && beginInteractiveWindow()) {
+        void syncScene();
+      }
 
       pendingSeekTimeSec = t / 1_000_000;
       if (seekThrottleId) {
@@ -516,6 +568,7 @@ export function useNativeMonitorBridge(): void {
       clearTimeout(seekThrottleId);
       seekThrottleId = null;
     }
+    cancelUltraSettle();
     if (!isNativeMonitorDisabled()) {
       // Pause playback and clear the scene to free resources, but do NOT close/kill the EventLoop
       // since winit EventLoop cannot be recreated in the same process on Linux.

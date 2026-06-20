@@ -965,6 +965,7 @@
         "paramContentMode": "Content mode",
         "paramDepthDirection": "Depth Direction",
         "paramDirection": "Direction",
+        "paramEdgeOverflow": "Edge overflow",
         "paramFadeColor": "Fade color",
         "paramFollowScale": "Follow Scale",
         "paramFromRotation": "Rotation (from clip, deg)",
@@ -1645,7 +1646,7 @@
       "resetSettings": "Reset settings",
       "resetConfirmDescription": "This will restore all project settings to the default values from your workspace settings.",
       "resetConfirmTitle": "Reset to defaults?",
-      "resolutionAndFps": "Resolution, FPS, Sample Rate",
+      "resolutionAndFps": "Resolution, FPS, Sample Rate for Creating Timelines",
       "storage": "Storage",
       "title": "Project Settings"
     },

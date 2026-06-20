@@ -965,6 +965,7 @@
         "paramContentMode": "Content mode",
         "paramDepthDirection": "Падение",
         "paramDirection": "Направление",
+        "paramEdgeOverflow": "Перелив за край",
         "paramFadeColor": "Цвет перехода",
         "paramFollowScale": "Следовать за масштабом",
         "paramFromRotation": "Вращение (уходящий, градусы)",
@@ -1645,7 +1646,7 @@
       "resetSettings": "Сбросить настройки",
       "resetConfirmDescription": "Это вернет все настройки текущего проекта к значениям по умолчанию из настроек рабочей области.",
       "resetConfirmTitle": "Сбросить на настройки по умолчанию?",
-      "resolutionAndFps": "Разрешение, FPS, sample rate",
+      "resolutionAndFps": "Разрешение, fps, sample rate для создания таймлайнов",
       "storage": "Хранилище",
       "title": "Настройки проекта"
     },

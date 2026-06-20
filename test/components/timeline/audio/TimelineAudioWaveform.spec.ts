@@ -94,6 +94,11 @@ async function mountComponent(props: MountComponentProps = { item: baseItem }) {
 describe('TimelineAudioWaveform.vue', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // The waveform is painted into an offscreen canvas and presented as an <img>;
+    // jsdom has no real toDataURL, so stub it to a deterministic data URL.
+    vi.spyOn(HTMLCanvasElement.prototype, 'toDataURL').mockReturnValue(
+      'data:image/png;base64,iVBORw0KGgo=',
+    );
     __resetWaveformSchedulerForTests();
     mockMediaStore.mediaMetadata = {};
     mockTimelineStore.isPlaying = false;
@@ -500,8 +505,8 @@ describe('TimelineAudioWaveform.vue', () => {
       const expectedVisibleLeft = anchoredScrollLeft - (vm.clipStartPx + vm.waveformLeftPx);
       expect(vm.coreWindow.leftPx).toBe(Math.floor(expectedVisibleLeft));
 
-      const canvas = wrapper.find('canvas').element as HTMLCanvasElement;
-      const canvasHost = canvas.parentElement as HTMLElement;
+      const img = wrapper.find('img').element as HTMLImageElement;
+      const canvasHost = img.parentElement as HTMLElement;
       expect(canvasHost.style.left).toMatch(/px$/);
       expect(canvasHost.style.width).toMatch(/px$/);
 
@@ -559,15 +564,15 @@ describe('TimelineAudioWaveform.vue', () => {
         const vm = wrapper.vm as any;
         expect(vm.totalWidthPx).toBeGreaterThan(10_000_000);
 
-        const canvas = wrapper.find('canvas').element as HTMLCanvasElement;
-        const canvasHost = canvas.parentElement as HTMLElement;
+        const img = wrapper.find('img').element as HTMLImageElement;
+        const canvasHost = img.parentElement as HTMLElement;
         const canvasLeftInClip = Number.parseFloat(canvasHost.style.left);
         const canvasWidth = Number.parseFloat(canvasHost.style.width);
 
         expect(Math.abs(canvasLeftInClip)).toBeLessThanOrEqual(1001);
         expect(canvasWidth).toBeLessThanOrEqual(3181);
-        expect(canvas.style.transform).toBe(expectedTransform);
-        expect(canvas.style.left).toBe('0px');
+        expect(img.style.transform).toBe(expectedTransform);
+        expect(img.style.left).toBe('0px');
         expect(canvasHost.parentElement).toBe(wrapper.element);
       },
     );
@@ -606,13 +611,13 @@ describe('TimelineAudioWaveform.vue', () => {
       const wrapper = await mountComponent({ item });
       await nextTick();
 
-      const canvas = wrapper.find('canvas').element as HTMLCanvasElement;
-      const canvasHost = canvas.parentElement as HTMLElement;
+      const img = wrapper.find('img').element as HTMLImageElement;
+      const canvasHost = img.parentElement as HTMLElement;
 
       expect(Number.parseFloat(canvasHost.style.left)).toBeGreaterThan(65_536);
       expect(Number.parseFloat(canvasHost.style.width)).toBeLessThanOrEqual(3181);
-      expect(canvas.style.left).toBe('0px');
-      expect(canvas.style.width).toBe('100%');
+      expect(img.style.left).toBe('0px');
+      expect(img.style.width).toBe('100%');
     });
   });
 });

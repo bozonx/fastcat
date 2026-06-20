@@ -34,7 +34,7 @@ preview_sync_mode: PreviewSyncMode,
 /**
  * Sampling budget for blur-heavy preview effects.
  */
-preview_effect_quality: EffectQuality,
+preview_effect_quality: EffectQuality, 
 /**
  * Native decoded frame cache policy. `custom + 0 MB` disables the rotating cache window.
  */

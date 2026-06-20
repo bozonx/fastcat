@@ -13,6 +13,15 @@ export interface ResolvePreviewEffectQualityParams {
   width?: number;
   height?: number;
   fps?: number;
+  /**
+   * Has the paused/still frame stayed static long enough to deserve the full-fidelity
+   * `ultra` upgrade? Defaults to `true` (settled) so non-debounced callers keep the old
+   * "paused ⇒ ultra" behaviour. The native monitor passes `false` during the interactive
+   * window (scrubbing / parameter drags / the moment playback stops) so those frames render
+   * at the user-selected motion quality, then re-renders once at `ultra` after the settle
+   * debounce. Ignored while playing (motion already uses the user quality).
+   */
+  idleSettled?: boolean;
 }
 
 const QUALITY_TAP_BUDGETS: Record<PreviewEffectQuality, number> = {
@@ -37,11 +46,13 @@ export function resolvePreviewEffectQuality(
   params: ResolvePreviewEffectQualityParams,
 ): PreviewEffectQuality {
   if (params.isExport) return 'ultra';
-  // A frozen/paused frame costs nothing extra to render at full fidelity, so always show
-  // the best image when not actively playing/scrubbing — even if the user pinned a lower
-  // quality. The manual setting governs *motion* (playback/scrubbing) only, so this must
-  // win over an explicit setting below.
-  if (params.isPlaying === false) return 'ultra';
+  // A frozen/paused frame costs nothing extra to render at full fidelity, so show the best
+  // image when not actively playing/scrubbing — even if the user pinned a lower quality. The
+  // manual setting governs *motion* (playback/scrubbing) only, so this must win over an
+  // explicit setting below. But only once the frame has *settled*: while the user is still
+  // scrubbing or dragging effect/transition params (`idleSettled === false`) we render at the
+  // cheaper motion quality and let the caller upgrade to ultra on the settle debounce.
+  if (params.isPlaying === false && params.idleSettled !== false) return 'ultra';
   if (params.setting && params.setting !== 'auto') return params.setting;
   if (params.isMobile) return 'low';
 
@@ -71,12 +82,16 @@ export interface ResolvePreviewRenderScaleParams {
   quality: PreviewEffectQuality;
   isExport?: boolean;
   isPlaying?: boolean;
+  /** See {@link ResolvePreviewEffectQualityParams.idleSettled}. Defaults to settled (`true`):
+   * a still frame renders at full resolution only once it has settled. */
+  idleSettled?: boolean;
 }
 
 export function resolvePreviewRenderScale(params: ResolvePreviewRenderScaleParams): number {
   if (params.isExport) return 1;
-  // Mirror the effect-quality rule: a still frame is always rendered at full resolution.
-  if (params.isPlaying === false) return 1;
+  // Mirror the effect-quality rule: a *settled* still frame is rendered at full resolution.
+  // While interactive (`idleSettled === false`) it stays at the cheaper motion scale.
+  if (params.isPlaying === false && params.idleSettled !== false) return 1;
   const manual = Number(params.manualScale);
   if (Number.isFinite(manual) && manual > 0) return Math.min(1, manual);
   return previewEffectQualityRenderScale(params.quality);

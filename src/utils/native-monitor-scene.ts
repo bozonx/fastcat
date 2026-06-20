@@ -76,8 +76,15 @@ export interface BuildNativeMonitorSceneParams {
   /** Hardcoded sync mode override (e.g. mobile always uses 'balanced'). */
   syncMode?: 'smooth' | 'balanced' | 'strict';
   isExport?: boolean;
-  /** Whether the timeline is currently playing. Auto uses Ultra while paused. */
+  /** Whether the timeline is currently playing. Auto uses Ultra while paused (and settled). */
   isPlaying?: boolean;
+  /**
+   * Whether the paused/still frame has settled (no scrub/param activity for the debounce
+   * window). Defaults to settled (`true`). The bridge passes `false` during the interactive
+   * window so the frame renders at the user motion quality, then rebuilds the scene at `ultra`
+   * once it settles. Ignored while playing.
+   */
+  idleSettled?: boolean;
   /** User-selected preview effect quality. Defaults to 'auto'. */
   previewBlurQuality?: PreviewEffectQualitySetting;
   /** Whether the preview is rendered in the mobile editor. Used by auto quality. */
@@ -406,6 +413,7 @@ function buildBaseLayer(params: {
   onWarning?: (message: string) => void;
   isExport?: boolean;
   isPlaying?: boolean;
+  idleSettled?: boolean;
   previewBlurQuality?: string;
 }): Omit<NativeSceneLayer, 'kind'> {
   const {
@@ -417,6 +425,7 @@ function buildBaseLayer(params: {
     onWarning,
     isExport,
     isPlaying,
+    idleSettled,
     previewBlurQuality,
   } = params;
   const startUs = clip.timelineRange.startUs;
@@ -447,7 +456,7 @@ function buildBaseLayer(params: {
         ? manifest.toTauriSpec(
             effectiveTransitionIn.params ?? {},
             effectiveTransitionIn.durationUs / 1_000_000,
-            { isExport, isPlaying, previewBlurQuality },
+            { isExport, isPlaying, idleSettled, previewBlurQuality },
           )
         : undefined;
 
@@ -488,7 +497,7 @@ function buildBaseLayer(params: {
         ? manifest.toTauriSpec(
             clip.transitionOut.params ?? {},
             clip.transitionOut.durationUs / 1_000_000,
-            { isExport, isPlaying, previewBlurQuality },
+            { isExport, isPlaying, idleSettled, previewBlurQuality },
           )
         : undefined;
 
@@ -537,7 +546,7 @@ function buildBaseLayer(params: {
 function resolveNativePreviewEffectQuality(
   params: Pick<
     BuildNativeMonitorSceneParams,
-    'isExport' | 'isPlaying' | 'previewBlurQuality' | 'isMobile'
+    'isExport' | 'isPlaying' | 'previewBlurQuality' | 'isMobile' | 'idleSettled'
   > & {
     width: number;
     height: number;
@@ -551,6 +560,7 @@ function resolveNativePreviewEffectQuality(
     setting: params.previewBlurQuality,
     isExport: params.isExport,
     isPlaying: params.isPlaying,
+    idleSettled: params.idleSettled,
     isMobile: params.isMobile,
     width: params.width,
     height: params.height,
@@ -672,6 +682,7 @@ export async function buildNativeMonitorScene(
     quality: previewBlurQuality,
     isExport: params.isExport,
     isPlaying: params.isPlaying,
+    idleSettled: params.idleSettled,
   });
   const builtVideo = await buildVideoWorkerPayloadFromTracks({
     tracks: params.timelineDoc.tracks,
@@ -696,6 +707,7 @@ export async function buildNativeMonitorScene(
       onWarning: params.onWarning,
       isExport: params.isExport,
       isPlaying: params.isPlaying,
+      idleSettled: params.idleSettled,
       previewBlurQuality,
     });
 

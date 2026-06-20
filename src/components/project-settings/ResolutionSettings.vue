@@ -3,21 +3,14 @@ import { computed, watch } from 'vue';
 import { useProjectStore } from '~/stores/project.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { resolveProjectPreset } from '~/utils/settings';
-import { formatFps } from '~/utils/format';
 import MediaResolutionSettings from '~/components/media/MediaResolutionSettings.vue';
-import SettingsSection from './SettingsSection.vue';
 import UiSelect from '~/components/ui/UiSelect.vue';
 import UiFormField from '~/components/ui/UiFormField.vue';
+import UiFormSectionHeader from '~/components/ui/UiFormSectionHeader.vue';
 
 const { t } = useI18n();
 const projectStore = useProjectStore();
 const workspaceStore = useWorkspaceStore();
-
-const resolutionSummary = computed(() => {
-  const p = projectStore.projectSettings?.project;
-  if (!p) return '';
-  return `${p.width}x${p.height}, ${formatFps(p.fps)}FPS, ${p.sampleRate / 1000}kHz`;
-});
 
 const projectPresetOptions = computed(() =>
   workspaceStore.userSettings.projectPresets.items.map((preset) => ({
@@ -62,31 +55,31 @@ watch(
 </script>
 
 <template>
-  <SettingsSection
-    v-if="projectStore.projectSettings"
-    :title="t('videoEditor.projectSettings.resolutionAndFps')"
-    :summary="resolutionSummary"
-  >
-    <UiFormField :label="t('videoEditor.export.presetLabel')">
-      <UiSelect
-        v-model="workspaceStore.userSettings.projectPresets.selectedPresetId"
-        :items="projectPresetOptions"
-        value-key="value"
-        label-key="label"
-        full-width
-        @update:model-value="(val) => applyProjectPreset(val as string)"
-      />
-    </UiFormField>
+  <div v-if="projectStore.projectSettings" class="space-y-2 pt-2 px-0">
+    <UiFormSectionHeader :title="t('videoEditor.projectSettings.resolutionAndFps')" />
 
-    <MediaResolutionSettings
-      v-model:width="projectStore.projectSettings.project.width"
-      v-model:height="projectStore.projectSettings.project.height"
-      v-model:fps="projectStore.projectSettings.project.fps"
-      v-model:resolution-format="projectStore.projectSettings.project.resolutionFormat"
-      v-model:orientation="projectStore.projectSettings.project.orientation"
-      v-model:aspect-ratio="projectStore.projectSettings.project.aspectRatio"
-      v-model:is-custom-resolution="projectStore.projectSettings.project.isCustomResolution"
-      v-model:sample-rate="projectStore.projectSettings.project.sampleRate"
-    />
-  </SettingsSection>
+    <div class="space-y-4">
+      <UiFormField :label="t('videoEditor.export.presetLabel')">
+        <UiSelect
+          v-model="workspaceStore.userSettings.projectPresets.selectedPresetId"
+          :items="projectPresetOptions"
+          value-key="value"
+          label-key="label"
+          full-width
+          @update:model-value="(val) => applyProjectPreset(val as string)"
+        />
+      </UiFormField>
+
+      <MediaResolutionSettings
+        v-model:width="projectStore.projectSettings.project.width"
+        v-model:height="projectStore.projectSettings.project.height"
+        v-model:fps="projectStore.projectSettings.project.fps"
+        v-model:resolution-format="projectStore.projectSettings.project.resolutionFormat"
+        v-model:orientation="projectStore.projectSettings.project.orientation"
+        v-model:aspect-ratio="projectStore.projectSettings.project.aspectRatio"
+        v-model:is-custom-resolution="projectStore.projectSettings.project.isCustomResolution"
+        v-model:sample-rate="projectStore.projectSettings.project.sampleRate"
+      />
+    </div>
+  </div>
 </template>

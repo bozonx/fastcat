@@ -19,6 +19,33 @@ describe('preview effect quality', () => {
     expect(resolvePreviewEffectQuality({ setting: 'low', isPlaying: false })).toBe('ultra');
   });
 
+  it('defers the paused ultra upgrade until the frame settles', () => {
+    // While interactive (scrubbing / dragging params) a paused frame stays at the user motion
+    // quality instead of jumping to ultra...
+    expect(
+      resolvePreviewEffectQuality({ setting: 'low', isPlaying: false, idleSettled: false }),
+    ).toBe('low');
+    // ...and an interactive paused 'auto' frame falls through to the motion (resolution) tier.
+    expect(
+      resolvePreviewEffectQuality({
+        setting: 'auto',
+        isPlaying: false,
+        idleSettled: false,
+        width: 1920,
+        height: 1080,
+        fps: 30,
+      }),
+    ).toBe('medium');
+    // Once settled it upgrades to ultra (and the default — omitted — is settled).
+    expect(
+      resolvePreviewEffectQuality({ setting: 'low', isPlaying: false, idleSettled: true }),
+    ).toBe('ultra');
+    // Export still wins over an unsettled interactive window.
+    expect(
+      resolvePreviewEffectQuality({ setting: 'low', isExport: true, idleSettled: false }),
+    ).toBe('ultra');
+  });
+
   it('adapts auto playback to device and pixel throughput', () => {
     expect(
       resolvePreviewEffectQuality({
@@ -74,24 +101,45 @@ describe('preview effect quality', () => {
     });
 
     it('pins a manual scale (clamped to full) during playback', () => {
-      expect(resolvePreviewRenderScale({ quality: 'low', manualScale: 0.25, isPlaying: true })).toBe(
-        0.25,
+      expect(
+        resolvePreviewRenderScale({ quality: 'low', manualScale: 0.25, isPlaying: true }),
+      ).toBe(0.25);
+      expect(resolvePreviewRenderScale({ quality: 'low', manualScale: 2, isPlaying: true })).toBe(
+        1,
       );
-      expect(resolvePreviewRenderScale({ quality: 'low', manualScale: 2, isPlaying: true })).toBe(1);
     });
 
     it('treats a non-positive manual scale as auto', () => {
-      expect(resolvePreviewRenderScale({ quality: 'medium', manualScale: 0, isPlaying: true })).toBe(
-        0.67,
-      );
+      expect(
+        resolvePreviewRenderScale({ quality: 'medium', manualScale: 0, isPlaying: true }),
+      ).toBe(0.67);
     });
 
-    it('always renders at full resolution for export and still frames', () => {
-      expect(
-        resolvePreviewRenderScale({ quality: 'low', manualScale: 0.25, isExport: true }),
-      ).toBe(1);
+    it('always renders at full resolution for export and settled still frames', () => {
+      expect(resolvePreviewRenderScale({ quality: 'low', manualScale: 0.25, isExport: true })).toBe(
+        1,
+      );
       expect(
         resolvePreviewRenderScale({ quality: 'low', manualScale: 0.25, isPlaying: false }),
+      ).toBe(1);
+    });
+
+    it('keeps the cheaper scale while a paused frame is still interactive', () => {
+      // Unsettled paused frame uses the motion scale (manual override or quality tier)...
+      expect(
+        resolvePreviewRenderScale({ quality: 'low', isPlaying: false, idleSettled: false }),
+      ).toBe(0.5);
+      expect(
+        resolvePreviewRenderScale({
+          quality: 'low',
+          manualScale: 0.25,
+          isPlaying: false,
+          idleSettled: false,
+        }),
+      ).toBe(0.25);
+      // ...then jumps to full resolution once settled.
+      expect(
+        resolvePreviewRenderScale({ quality: 'low', isPlaying: false, idleSettled: true }),
       ).toBe(1);
     });
   });

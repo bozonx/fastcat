@@ -66,7 +66,14 @@ export interface TransitionManifest<T = Record<string, unknown>> {
   toTauriSpec?: (
     params: T,
     durationSec?: number,
-    options?: { isExport?: boolean; isPlaying?: boolean; previewBlurQuality?: string },
+    options?: {
+      isExport?: boolean;
+      isPlaying?: boolean;
+      previewBlurQuality?: string;
+      /** When `false`, the paused frame is still interactive (scrub / param drag) so blur
+       * stays at the user motion quality instead of upgrading to ultra. Defaults to settled. */
+      idleSettled?: boolean;
+    },
   ) => TauriTransitionSpec;
   supportedModes?: TransitionMode[];
   /** Returns opacity [0..1] of the outgoing clip at `progress` [0..1] */
