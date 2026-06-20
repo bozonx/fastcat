@@ -474,18 +474,24 @@ const coreWindow = computed<{ leftPx: number; widthPx: number }>(() => computeSt
 
 // Source-fraction [start, start+width] of the strip currently painted into the
 // backing canvas, updated only when `draw()` actually repaints. The canvas CSS
-// box is positioned/sized from THIS (as a percent of the strip container), not
-// from the live `renderWindow`. Because the container width tracks the zoom, a
-// percent-anchored canvas stretches in lock-step during a zoom gesture — the old
-// bitmap stays glued to its source region instead of jumping to a new window
-// while still showing stale content (which read as "waveform disappears on zoom",
-// most visibly on long audio clips that live in the windowed path).
+// box is derived from THIS, not from the live `renderWindow`, so the old bitmap
+// stays glued to its source region while zooming and only moves when repainted.
 const renderedFrac = ref<{ start: number; width: number } | null>(null);
 
 const canvasBoxStyle = computed(() => {
   const frac = renderedFrac.value;
-  if (!frac) return { left: '0%', width: '100%' };
-  return { left: `${frac.start * 100}%`, width: `${frac.width * 100}%` };
+  const totalW = totalWidthPx.value;
+  if (!frac || totalW <= 0) return { left: '0px', width: `${Math.max(0, totalW)}px` };
+
+  // Explicit pixels are required here. WebKitGTK loses precision when resolving
+  // percentage offsets/sizes for a canvas inside a very wide source strip; the
+  // failure starts exactly when long audio sources cross into the windowed path.
+  // Recomputing pixels from the stable source fraction still scales the existing
+  // bitmap with zoom without binding its box to the next (not yet painted) window.
+  return {
+    left: `${frac.start * totalW}px`,
+    width: `${frac.width * totalW}px`,
+  };
 });
 
 // True when the painted fraction still covers the strict viewport (so scrolling

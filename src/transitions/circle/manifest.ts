@@ -122,7 +122,7 @@ function normalizeCircleParams(params?: Record<string, unknown>): CircleParams {
       : 'center';
 
   return {
-    blur: clampNumber(params?.blur, 0.0001, 0.2, 0.015),
+    blur: clampNumber(params?.blur, 0, 20, 1.5),
     blurMode: params?.blurMode === 'scaled' ? 'scaled' : 'fixed',
     direction: params?.direction === 'to-center' ? 'to-center' : 'from-center',
     anchor,
@@ -147,9 +147,9 @@ export const circleManifest: TransitionManifest<CircleParams> = {
       key: 'blur',
       kind: 'number',
       labelKey: 'fastcat.timeline.transition.paramCircleBlur',
-      min: 0.0001,
-      max: 0.2,
-      step: 0.0025,
+      min: 0,
+      max: 20,
+      step: 0.5,
     },
     {
       key: 'blurMode',
@@ -253,7 +253,7 @@ export const circleManifest: TransitionManifest<CircleParams> = {
     const params = normalizeCircleParams(context.params);
     resources.uFromTexture = context.fromTexture?.source ?? Texture.WHITE.source;
     uniforms.uProgress = Math.max(0, Math.min(1, progress));
-    uniforms.uBlur = params.blur;
+    uniforms.uBlur = params.blur / 100;
     uniforms.uBlurMode = params.blurMode === 'scaled' ? 1 : 0;
     uniforms.uDirection = params.direction === 'to-center' ? -1 : 1;
 

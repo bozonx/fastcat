@@ -101,6 +101,26 @@ function wipeAxis(direction: unknown, angleDeg: number): [number, number] {
   return [bx * c - by * s, bx * s + by * c];
 }
 
+function normalizeCircleParams(params?: Record<string, unknown>): Record<string, unknown> {
+  const anchor =
+    typeof params?.anchor === 'string' &&
+    ['center', 'top-left', 'top-right', 'bottom-left', 'bottom-right'].includes(params.anchor)
+      ? params.anchor
+      : 'center';
+
+  return {
+    blur: clamp(finiteNumber(params?.blur, 0.015), 0.0001, 0.2),
+    blurMode: params?.blurMode === 'scaled' ? 'scaled' : 'fixed',
+    direction: params?.direction === 'to-center' ? 'to-center' : 'from-center',
+    anchor,
+    offsetX: clamp(finiteNumber(params?.offsetX, 0), -100, 100),
+    offsetY: clamp(finiteNumber(params?.offsetY, 0), -100, 100),
+    scaleX: clamp(finiteNumber(params?.scaleX, 100), 1, 1000),
+    scaleY: clamp(finiteNumber(params?.scaleY, 100), 1, 1000),
+    followScale: params?.followScale === true,
+  };
+}
+
 // ---------------------------------------------------------------------------
 // Shared WGSL prelude. The native transition pipeline binds:
 //   0: from_tex, 1: to_tex, 2: output_tex (storage), 3: uniform (progress + p0..p11)
@@ -1410,7 +1430,7 @@ export const tauriTransitionManifests: TransitionManifest[] = [
     icon: 'i-heroicons-stop-circle',
     defaultDurationUs: 600_000,
     defaultParams: {
-      blur: 0.015,
+      blur: 1.5,
       blurMode: 'fixed',
       direction: 'from-center',
       anchor: 'center',
@@ -1428,9 +1448,9 @@ export const tauriTransitionManifests: TransitionManifest[] = [
         kind: 'number',
         key: 'blur',
         labelKey: 'fastcat.timeline.transition.paramCircleBlur',
-        min: 0.0001,
-        max: 0.2,
-        step: 0.0025,
+        min: 0,
+        max: 20,
+        step: 0.5,
       },
       blurModeField,
       fromToCenterField,
@@ -1464,7 +1484,7 @@ export const tauriTransitionManifests: TransitionManifest[] = [
         type: 'custom-wgsl',
         source: ELLIPSE_WGSL,
         params: {
-          p0: clamp(finiteNumber(params.blur, 0.015), 0.0001, 0.2),
+          p0: clamp(finiteNumber(params.blur, 1.5) / 100, 0.0001, 0.2),
           p1: params.blurMode === 'scaled' ? 1 : 0,
           p2: params.direction === 'to-center' ? -1 : 1,
           p3: center[0],

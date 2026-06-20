@@ -3,6 +3,7 @@ import { mountSuspended } from '@nuxt/test-utils/runtime';
 import { reactive, ref, nextTick } from 'vue';
 import TimelineAudioWaveform from '~/components/timeline/audio/TimelineAudioWaveform.vue';
 import { __resetWaveformSchedulerForTests } from '~/utils/audio/waveform-render-scheduler';
+import { timeUsToPx } from '~/utils/timeline/geometry';
 
 const mockMediaStore = reactive({
   mediaMetadata: {} as Record<string, any>,
@@ -432,6 +433,68 @@ describe('TimelineAudioWaveform.vue', () => {
       await nextTick();
       expect(vm.renderedFrac).not.toBe(painted);
       expect(vm.renderedFrac.start).toBeGreaterThan(0);
+    });
+
+    it('keeps a trimmed audio waveform covering the viewport after crossing into windowed rendering', async () => {
+      vi.useFakeTimers();
+      vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => {
+        return window.setTimeout(() => callback(0), 0);
+      });
+      vi.stubGlobal('cancelAnimationFrame', (handle: number) => clearTimeout(handle));
+
+      vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue({
+        beginPath: vi.fn(),
+        clearRect: vi.fn(),
+        closePath: vi.fn(),
+        fill: vi.fn(),
+        lineTo: vi.fn(),
+        moveTo: vi.fn(),
+        fillStyle: '',
+      } as unknown as CanvasRenderingContext2D);
+
+      const item = {
+        ...baseItem,
+        timelineRange: { startUs: 58_000_000, durationUs: 16_000_000 },
+        sourceRange: { startUs: 40_000_000, durationUs: 16_000_000 },
+        sourceDurationUs: 120_000_000,
+      };
+      mockMediaStore.mediaMetadata['media.mp4'] = {
+        duration: 120,
+        audioPeaks: [new Float32Array(500_000).fill(0.5)],
+      };
+      mockTimelineStore.timelineViewportWidth = 1180;
+      mockTimelineStore.timelineZoom = 69;
+      mockTimelineStore.timelineScrollLeftPx = timeUsToPx(item.timelineRange.startUs, 69);
+
+      const wrapper = await mountComponent({ item });
+      await nextTick();
+      await vi.advanceTimersByTimeAsync(0);
+
+      const vm = wrapper.vm as any;
+      expect(vm.totalWidthPx).toBeLessThanOrEqual(8000);
+
+      mockTimelineStore.timelineZoom = 70;
+      mockTimelineStore.timelineScrollLeftPx = timeUsToPx(item.timelineRange.startUs, 70);
+      await nextTick();
+      await vi.advanceTimersByTimeAsync(121);
+      await vi.advanceTimersByTimeAsync(0);
+      await nextTick();
+
+      expect(vm.totalWidthPx).toBeGreaterThan(8000);
+
+      const canvas = wrapper.find('canvas').element as HTMLCanvasElement;
+      expect(canvas.style.left).toMatch(/px$/);
+      expect(canvas.style.width).toMatch(/px$/);
+
+      const canvasLeftInClip = vm.waveformLeftPx + Number.parseFloat(canvas.style.left);
+      const canvasRightInClip = canvasLeftInClip + Number.parseFloat(canvas.style.width);
+      const visibleWidth = Math.min(
+        mockTimelineStore.timelineViewportWidth,
+        vm.waveformMetrics.clipWidthPx,
+      );
+
+      expect(canvasLeftInClip).toBeLessThanOrEqual(0);
+      expect(canvasRightInClip).toBeGreaterThanOrEqual(visibleWidth);
     });
   });
 });
