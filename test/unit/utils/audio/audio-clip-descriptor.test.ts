@@ -232,10 +232,13 @@ describe('audio clip descriptor adapters', () => {
       id: 'clip-1',
       track_id: 'track-1',
       path: '/project/audio/source.mp3',
-      timeline_start_sec: 0.9,
+      // Incoming clip is NOT shifted back: its fade-in stays on its own head so
+      // it crossfades during the video transition window [cut, cut+D), not before
+      // it. Only the outgoing 0.15s tail (×2 speed) extends the source window.
+      timeline_start_sec: 1,
       timeline_end_sec: 2.175,
-      source_start_sec: 0.3,
-      source_range_duration_sec: 2.55,
+      source_start_sec: 0.5,
+      source_range_duration_sec: 2.35,
       speed: 2,
       audio_fade_in_sec: 0.1, // matches transitionIn duration
       audio_fade_out_sec: 0.15, // matches transitionOut duration

@@ -212,8 +212,19 @@ export function toNativeSceneAudioLayer(params: ToNativeSceneAudioLayerParams): 
     defaultAudioFadeCurve: descriptor.defaultAudioFadeCurve,
   });
 
-  const inDurUs = adjacentTransitionDurationUs(descriptor.transitionIn);
-  const outDurUs = adjacentTransitionDurationUs(descriptor.transitionOut);
+  // The video transition for the cut between two adjacent clips A→B renders in
+  // the *incoming* clip's window `[cut, cut+D)` (after the cut). Keep audio in
+  // lockstep with it:
+  //   - the OUTGOING clip plays D seconds of its tail/handle past the cut and
+  //     fades out over `[cut, cut+D)` (forward extension below);
+  //   - the INCOMING clip fades in over its own first D seconds `[cut, cut+D)`
+  //     with NO backward extension — `fadeInS` already covers the head, and the
+  //     extended head is exactly the source frames the video crossfade samples.
+  // Resolve the effective outgoing transition the same way the fade durations
+  // are (own `transitionOut`, else the next clip's inherited `transitionIn`), so
+  // a transition stored on either side still extends the outgoing tail.
+  const outgoingTransition = descriptor.transitionOut ?? params.next?.transitionIn ?? undefined;
+  const outDurUs = adjacentTransitionDurationUs(outgoingTransition);
 
   // Default (no crossfade): keep the clip's exact ranges and only override the
   // fades. The common case stays byte-for-byte identical to before plus de-click.
@@ -222,35 +233,23 @@ export function toNativeSceneAudioLayer(params: ToNativeSceneAudioLayerParams): 
   let layerSourceStartUs = sourceStartUs;
   let layerSourceRangeUs = sourceRangeDurationUs;
 
-  if (inDurUs > 0 || outDurUs > 0) {
-    // Extend the clip into its neighbour so an adjacent transition actually
-    // overlaps and the two clips' fades cross, instead of dipping to silence at
-    // the butt seam. Mirrors the worker AudioMixer extension (incl. reverse and
-    // material clamping).
+  if (outDurUs > 0) {
+    // Extend the outgoing clip's tail past the cut so it overlaps the next clip
+    // and the two clips' fades cross over `[cut, cut+D)`, instead of dipping to
+    // silence at the butt seam. Mirrors the worker AudioMixer extension (incl.
+    // reverse and material clamping).
     let playDurationUs = Math.min(
       sourceRangeDurationUs / absSpeed,
       durationUs || sourceRangeDurationUs / absSpeed,
     );
-    let effectiveStartUs = startUs;
     let effectiveOffsetUs = sourceStartUs;
     let extraSourceTailUs = 0;
 
-    if (outDurUs > 0) {
-      playDurationUs += outDurUs;
-      if (reversed) {
-        effectiveOffsetUs = Math.max(0, effectiveOffsetUs - outDurUs * absSpeed);
-      } else {
-        extraSourceTailUs += outDurUs * absSpeed;
-      }
-    }
-    if (inDurUs > 0) {
-      playDurationUs += inDurUs;
-      effectiveStartUs = Math.max(0, startUs - inDurUs);
-      if (reversed) {
-        extraSourceTailUs += inDurUs * absSpeed;
-      } else {
-        effectiveOffsetUs = Math.max(0, effectiveOffsetUs - inDurUs * absSpeed);
-      }
+    playDurationUs += outDurUs;
+    if (reversed) {
+      effectiveOffsetUs = Math.max(0, effectiveOffsetUs - outDurUs * absSpeed);
+    } else {
+      extraSourceTailUs += outDurUs * absSpeed;
     }
 
     const offsetUs = Math.max(0, effectiveOffsetUs);
@@ -258,7 +257,6 @@ export function toNativeSceneAudioLayer(params: ToNativeSceneAudioLayerParams): 
     const maxPlayableUs = Math.max(0, materialDurationUs - offsetUs);
     const finalSourceWindowUs = Math.min(sourceWindowBaseUs, maxPlayableUs);
 
-    timelineStartUs = effectiveStartUs;
     timelineDurationUs = finalSourceWindowUs / absSpeed;
     layerSourceStartUs = offsetUs;
     layerSourceRangeUs = finalSourceWindowUs;
