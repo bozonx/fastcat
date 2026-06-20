@@ -182,7 +182,21 @@ pub struct TransitionInfo {
     /// нормированная так, что linear == 1.0). Используется шейдерами motion-blur,
     /// чтобы размытие нарастало/спадало вместе с кривой (как в web-манифестах).
     pub speed_multiplier: f32,
-    pub from_layer_id: String,
+    pub source: TransitionSource,
+    pub edge: TransitionEdge,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum TransitionSource {
+    Layer(String),
+    Background,
+    Transparent,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TransitionEdge {
+    In,
+    Out,
 }
 
 #[derive(Debug, Clone)]

@@ -155,18 +155,9 @@ function normalizeClockParams(params?: Record<string, unknown>): Record<string, 
 }
 
 function normalizeMotionBlurParams(params?: Record<string, unknown>): Record<string, unknown> {
-  const blurQuality =
-    params?.blurQuality === 'low' ||
-    params?.blurQuality === 'medium' ||
-    params?.blurQuality === 'high' ||
-    params?.blurQuality === 'ultra'
-      ? params.blurQuality
-      : 'medium';
-
   return {
     angle: clamp(finiteNumber(params?.angle, 0), -180, 180),
     motionBlur: clamp(finiteNumber(params?.motionBlur, 50), 0, 100),
-    blurQuality,
     motionBlurMode: params?.motionBlurMode === 'bloom' ? 'bloom' : 'normal',
     brightness: clamp(finiteNumber(params?.brightness, 0), -10, 10),
     bloomThreshold: clamp(finiteNumber(params?.bloomThreshold, 0.7), 0, 1),
@@ -262,6 +253,13 @@ fn luma(c: vec3<f32>) -> f32 { return dot(c, vec3<f32>(0.299, 0.587, 0.114)); }
 fn pixel_uv(gid: vec3<u32>) -> vec2<f32> {
     return (vec2<f32>(f32(gid.x), f32(gid.y)) + vec2<f32>(0.5, 0.5)) / dims();
 }
+
+fn get_in_weight(uv: vec2<f32>) -> f32 {
+    let aa = 1.5 / dims();
+    let edge_x = smoothstep(0.0, aa.x, uv.x) * (1.0 - smoothstep(1.0 - aa.x, 1.0, uv.x));
+    let edge_y = smoothstep(0.0, aa.y, uv.y) * (1.0 - smoothstep(1.0 - aa.y, 1.0, uv.y));
+    return edge_x * edge_y;
+}
 `;
 
 // ---- Wipe (direction + angle + gap/blur edge + gap color) -----------------
@@ -284,19 +282,21 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
     let edge = mix(-max_dist - gap_half, max_dist + gap_half, progress);
     let cut_start = edge - gap_half;
     let cut_end = edge + gap_half;
-    let blur = max(uni.p3, 0.00001);
+    let aa = 1.5 / dims().y;
+    let blur = max(uni.p3, aa);
     let blur_mix = smoothstep(edge - blur, edge + blur, axis_value);
 
     var final_color: vec4<f32>;
     if (uni.p4 < 0.5) {
         // blur edge mode (applyToEdgeBlur is always true for shader transitions)
         final_color = mix(to_color, from_color, blur_mix);
-    } else if (axis_value < cut_start) {
-        final_color = to_color;
-    } else if (axis_value > cut_end) {
-        final_color = from_color;
     } else {
-        final_color = vec4<f32>(uni.p5, uni.p6, uni.p7, 1.0);
+        // gap mode with anti-aliased boundaries
+        let before_gap = 1.0 - smoothstep(cut_start - aa, cut_start + aa, axis_value);
+        let after_gap = smoothstep(cut_end - aa, cut_end + aa, axis_value);
+        let inside_gap = 1.0 - before_gap - after_gap;
+        let gap_color = vec4<f32>(uni.p5, uni.p6, uni.p7, 1.0);
+        final_color = to_color * before_gap + gap_color * inside_gap + from_color * after_gap;
     }
     textureStore(output_tex, coord, final_color);
 }`;
@@ -310,10 +310,17 @@ fn slide_get(uv: vec2<f32>) -> vec4<f32> {
     let to_off = axis * (uni.progress - 1.0) - gap_vec * 0.5;
     let from_uv = uv - from_off;
     let to_uv = uv - to_off;
-    let from_in = from_uv.x >= 0.0 && from_uv.x <= 1.0 && from_uv.y >= 0.0 && from_uv.y <= 1.0;
-    let to_in = to_uv.x >= 0.0 && to_uv.x <= 1.0 && to_uv.y >= 0.0 && to_uv.y <= 1.0;
-    if (from_in) { return samp(from_tex, from_uv); }
-    if (to_in) { return samp(to_tex, to_uv); }
+
+    let w_from = get_in_weight(from_uv);
+    let w_to = get_in_weight(to_uv);
+    let total_w = w_from + w_to;
+    if (total_w > 0.0) {
+        let c_from = samp(from_tex, from_uv);
+        let c_to = samp(to_tex, to_uv);
+        let tex_color = mix(c_to, c_from, w_from / total_w);
+        let gap_color = vec4<f32>(uni.p3, uni.p4, uni.p5, 1.0);
+        return mix(gap_color, tex_color, min(total_w, 1.0));
+    }
     return vec4<f32>(uni.p3, uni.p4, uni.p5, 1.0);
 }
 
@@ -452,7 +459,9 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
         angle = angle * 2.0;
     }
     let progress = clamp(uni.progress, 0.0, 1.0);
-    let reveal = smoothstep(progress - 0.001, progress + 0.001, angle / (PI * 2.0));
+    let R = length(centered);
+    let aa = clamp((1.5 / dims().y) / (2.0 * PI * max(R, 0.0001)), 0.0001, 0.5);
+    let reveal = smoothstep(progress - aa, progress + aa, angle / (PI * 2.0));
     textureStore(output_tex, coord, mix(samp(from_tex, uv), samp(to_tex, uv), 1.0 - reveal));
 }`;
 
@@ -487,7 +496,8 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
     let is_to_inside = mode_open;
     let cut_start = threshold - gap_half;
     let cut_end = threshold + gap_half;
-    let blur = max(cur_blur, 0.00001);
+    let aa = 1.5 / dims().y;
+    let blur = max(cur_blur, aa);
     let blur_mix = smoothstep(threshold - blur, threshold + blur, dist);
 
     var final_color: vec4<f32>;
@@ -495,12 +505,15 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
         // blur edge mode (applyToEdgeBlur always true for shader transitions)
         if (is_to_inside) { final_color = mix(to_color, from_color, blur_mix); }
         else { final_color = mix(from_color, to_color, blur_mix); }
-    } else if (dist < cut_start) {
-        final_color = select(from_color, to_color, is_to_inside);
-    } else if (dist > cut_end) {
-        final_color = select(to_color, from_color, is_to_inside);
     } else {
-        final_color = vec4<f32>(uni.p5, uni.p6, uni.p7, 1.0);
+        // gap mode with anti-aliased boundaries
+        let before_gap = 1.0 - smoothstep(cut_start - aa, cut_start + aa, dist);
+        let after_gap = smoothstep(cut_end - aa, cut_end + aa, dist);
+        let inside_gap = 1.0 - before_gap - after_gap;
+        let gap_color = vec4<f32>(uni.p5, uni.p6, uni.p7, 1.0);
+        let tex_color = select(to_color, from_color, is_to_inside);
+        let alt_color = select(from_color, to_color, is_to_inside);
+        final_color = alt_color * before_gap + gap_color * inside_gap + tex_color * after_gap;
     }
     textureStore(output_tex, coord, final_color);
 }`;
@@ -514,10 +527,16 @@ fn blinds_get(uv: vec2<f32>) -> vec4<f32> {
     let mv = vec2<f32>(uni.p0, uni.p1) * dir;
     let from_uv = uv - mv * uni.progress;
     let to_uv = uv - mv * (uni.progress - 1.0);
-    let from_in = from_uv.x >= 0.0 && from_uv.x <= 1.0 && from_uv.y >= 0.0 && from_uv.y <= 1.0;
-    let to_in = to_uv.x >= 0.0 && to_uv.x <= 1.0 && to_uv.y >= 0.0 && to_uv.y <= 1.0;
-    if (from_in) { return samp(from_tex, from_uv); }
-    if (to_in) { return samp(to_tex, to_uv); }
+
+    let w_from = get_in_weight(from_uv);
+    let w_to = get_in_weight(to_uv);
+    let total_w = w_from + w_to;
+    if (total_w > 0.0) {
+        let c_from = samp(from_tex, from_uv);
+        let c_to = samp(to_tex, to_uv);
+        let tex_color = mix(c_to, c_from, w_from / total_w);
+        return mix(vec4<f32>(0.0, 0.0, 0.0, 1.0), tex_color, min(total_w, 1.0));
+    }
     return vec4<f32>(0.0, 0.0, 0.0, 1.0);
 }
 
@@ -614,7 +633,8 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
     let progress = clamp(uni.progress, 0.0, 1.0);
     let dir_pos = uni.p2 > 0.0;
     let t = select(1.0 - progress, progress, dir_pos);
-    let blur = max(0.0001, uni.p0 * select(1.0, t, uni.p1 > 0.5));
+    let aa = 1.5 / dims().y;
+    let blur = max(aa, uni.p0 * select(1.0, t, uni.p1 > 0.5));
     let center = vec2<f32>(uni.p4, uni.p5);
 
     var reveal = 0.0;
@@ -674,7 +694,8 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
     let dir_pos = uni.p2 > 0.0;
     let t = select(1.0 - progress, progress, dir_pos);
     let radius = t * max_radius;
-    let blur = max(0.0001, uni.p0 * select(1.0, t, uni.p1 > 0.5));
+    let aa = 1.5 / dims().y;
+    let blur = max(aa, uni.p0 * select(1.0, t, uni.p1 > 0.5));
     var reveal = 1.0 - smoothstep(radius - blur, radius + blur, dist);
     if (!dir_pos) { reveal = 1.0 - reveal; }
 
@@ -907,9 +928,15 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
         }
     }
 
+    let w_from = get_in_weight(from_p);
+    let w_to = get_in_weight(to_p);
+    let total_w = w_from + w_to;
     var color = vec4<f32>(0.0);
-    if (in_bounds(from_p)) { color = samp(from_tex, from_p); }
-    else if (in_bounds(to_p)) { color = samp(to_tex, to_p); }
+    if (total_w > 0.0) {
+        let c_from = samp(from_tex, from_p);
+        let c_to = samp(to_tex, to_p);
+        color = mix(c_to, c_from, w_from / total_w) * min(total_w, 1.0);
+    }
     textureStore(output_tex, coord, color);
 }`;
 
@@ -1169,18 +1196,6 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
 // Reusable param-field fragments.
 // ---------------------------------------------------------------------------
 
-const blurQualityField = {
-  kind: 'select' as const,
-  key: 'blurQuality',
-  labelKey: 'fastcat.timeline.transition.paramBlurQuality',
-  options: [
-    { value: 'low', labelKey: 'fastcat.timeline.transition.blurQualityLow' },
-    { value: 'medium', labelKey: 'fastcat.timeline.transition.blurQualityMedium' },
-    { value: 'high', labelKey: 'fastcat.timeline.transition.blurQualityHigh' },
-    { value: 'ultra', labelKey: 'fastcat.timeline.transition.blurQualityUltra' },
-  ],
-};
-
 const anchorField = {
   kind: 'select' as const,
   key: 'anchor',
@@ -1268,7 +1283,7 @@ export const transitionManifests: TransitionManifest[] = [
     },
     renderMode: 'shader',
     renderer: 'wgpu',
-    supportedModes: ['adjacent'],
+    supportedModes: ['adjacent', 'background', 'transparent'],
     paramFields: [
       {
         kind: 'select',
@@ -1357,7 +1372,7 @@ export const transitionManifests: TransitionManifest[] = [
     },
     renderMode: 'shader',
     renderer: 'wgpu',
-    supportedModes: ['adjacent'],
+    supportedModes: ['adjacent', 'background', 'transparent'],
     paramFields: [
       {
         kind: 'select',
@@ -1463,7 +1478,7 @@ export const transitionManifests: TransitionManifest[] = [
     normalizeParams: normalizeClockParams,
     renderMode: 'shader',
     renderer: 'wgpu',
-    supportedModes: ['adjacent'],
+    supportedModes: ['adjacent', 'background', 'transparent'],
     paramFields: [
       {
         kind: 'select',
@@ -1499,7 +1514,7 @@ export const transitionManifests: TransitionManifest[] = [
     normalizeParams: normalizeMotionBlurParams,
     renderMode: 'shader',
     renderer: 'wgpu',
-    supportedModes: ['adjacent'],
+    supportedModes: ['adjacent', 'background', 'transparent'],
     paramFields: [
       {
         kind: 'number',
@@ -1517,7 +1532,6 @@ export const transitionManifests: TransitionManifest[] = [
         max: 100,
         step: 1,
       },
-      blurQualityField,
       {
         kind: 'button-group',
         key: 'motionBlurMode',
@@ -1552,7 +1566,7 @@ export const transitionManifests: TransitionManifest[] = [
       const normalized = normalizeMotionBlurParams(params);
       const angle = finiteNumber(normalized.angle, 0);
       const rad = (angle * Math.PI) / 180;
-      const quality = resolveBlurQuality(options, normalized.blurQuality);
+      const quality = resolveBlurQuality(options, undefined);
       const samples = qualitySamples(quality, 8, 16, 32, 64);
       return {
         type: 'custom-wgsl',
@@ -1588,7 +1602,7 @@ export const transitionManifests: TransitionManifest[] = [
     },
     renderMode: 'shader',
     renderer: 'wgpu',
-    supportedModes: ['adjacent'],
+    supportedModes: ['adjacent', 'background', 'transparent'],
     paramFields: [
       {
         kind: 'button-group',
@@ -1676,7 +1690,7 @@ export const transitionManifests: TransitionManifest[] = [
     defaultParams: { color: '#000000' },
     renderMode: 'shader',
     renderer: 'wgpu',
-    supportedModes: ['adjacent'],
+    supportedModes: ['adjacent', 'background', 'transparent'],
     paramFields: [
       { kind: 'color', key: 'color', labelKey: 'fastcat.timeline.transition.paramFadeColor' },
     ],
@@ -1697,7 +1711,7 @@ export const transitionManifests: TransitionManifest[] = [
     normalizeParams: normalizeCircleParams,
     renderMode: 'shader',
     renderer: 'wgpu',
-    supportedModes: ['adjacent'],
+    supportedModes: ['adjacent', 'background', 'transparent'],
     paramFields: [
       {
         kind: 'number',
@@ -1763,7 +1777,7 @@ export const transitionManifests: TransitionManifest[] = [
     normalizeParams: normalizeRectangleParams,
     renderMode: 'shader',
     renderer: 'wgpu',
-    supportedModes: ['adjacent'],
+    supportedModes: ['adjacent', 'background', 'transparent'],
     paramFields: [
       {
         kind: 'number',
@@ -1832,7 +1846,7 @@ export const transitionManifests: TransitionManifest[] = [
     },
     renderMode: 'shader',
     renderer: 'wgpu',
-    supportedModes: ['adjacent'],
+    supportedModes: ['adjacent', 'background', 'transparent'],
     paramFields: [
       {
         kind: 'number',
@@ -1948,7 +1962,7 @@ export const transitionManifests: TransitionManifest[] = [
     },
     renderMode: 'shader',
     renderer: 'wgpu',
-    supportedModes: ['adjacent'],
+    supportedModes: ['adjacent', 'background', 'transparent'],
     paramFields: [
       {
         kind: 'number',
@@ -2033,7 +2047,7 @@ export const transitionManifests: TransitionManifest[] = [
     defaultParams: { brightness: 1.5, blurLevel: 1.0, mode: 'bloom' },
     renderMode: 'shader',
     renderer: 'wgpu',
-    supportedModes: ['adjacent'],
+    supportedModes: ['adjacent', 'background', 'transparent'],
     paramFields: [
       {
         kind: 'button-group',
@@ -2091,7 +2105,7 @@ export const transitionManifests: TransitionManifest[] = [
     normalizeParams: normalizeCubeParams,
     renderMode: 'shader',
     renderer: 'wgpu',
-    supportedModes: ['adjacent'],
+    supportedModes: ['adjacent', 'background', 'transparent'],
     paramFields: [
       {
         kind: 'select',
@@ -2168,7 +2182,7 @@ export const transitionManifests: TransitionManifest[] = [
     },
     renderMode: 'shader',
     renderer: 'wgpu',
-    supportedModes: ['adjacent'],
+    supportedModes: ['adjacent', 'background', 'transparent'],
     paramFields: [
       {
         kind: 'select',
@@ -2278,7 +2292,7 @@ export const transitionManifests: TransitionManifest[] = [
     },
     renderMode: 'shader',
     renderer: 'wgpu',
-    supportedModes: ['adjacent'],
+    supportedModes: ['adjacent', 'background', 'transparent'],
     paramFields: [
       {
         kind: 'select',

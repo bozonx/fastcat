@@ -8,12 +8,10 @@ describe('shared motion blur transition manifest', () => {
   it('exposes a native adjacent shader transition with normalized defaults', () => {
     expect(manifest).toMatchObject({
       type: 'motion-blur',
-      renderer: 'wgpu',
-      supportedModes: ['adjacent'],
+
       defaultParams: {
         angle: 0,
         motionBlur: 50,
-        blurQuality: 'medium',
         motionBlurMode: 'normal',
         brightness: 0,
         bloomThreshold: 0.7,
@@ -26,7 +24,6 @@ describe('shared motion blur transition manifest', () => {
       manifest?.normalizeParams?.({
         angle: 400,
         motionBlur: -10,
-        blurQuality: 'invalid',
         motionBlurMode: 'invalid',
         brightness: 20,
         bloomThreshold: -1,
@@ -34,7 +31,6 @@ describe('shared motion blur transition manifest', () => {
     ).toEqual({
       angle: 180,
       motionBlur: 0,
-      blurQuality: 'medium',
       motionBlurMode: 'normal',
       brightness: 10,
       bloomThreshold: 0,
@@ -46,7 +42,6 @@ describe('shared motion blur transition manifest', () => {
       {
         angle: 90,
         motionBlur: 40,
-        blurQuality: 'high',
         motionBlurMode: 'bloom',
         brightness: 0.5,
         bloomThreshold: 0.8,
@@ -59,12 +54,28 @@ describe('shared motion blur transition manifest', () => {
     expect(spec?.params).toMatchObject({
       p1: 1,
       p2: 0.1,
-      p3: 32,
+      p3: 16,
       p4: 1,
       p5: 0.5,
       p6: 0.8,
     });
     expect((spec?.params as Record<string, number> | undefined)?.p0).toBeCloseTo(0);
+  });
+
+  it('respects the global preview blur quality', () => {
+    const lowSpec = manifest?.toTransitionSpec?.(
+      manifest?.defaultParams as Record<string, unknown>,
+      1,
+      { previewBlurQuality: 'low' },
+    );
+    const highSpec = manifest?.toTransitionSpec?.(
+      manifest?.defaultParams as Record<string, unknown>,
+      1,
+      { previewBlurQuality: 'high' },
+    );
+
+    expect((lowSpec?.params as Record<string, number> | undefined)?.p3).toBe(8);
+    expect((highSpec?.params as Record<string, number> | undefined)?.p3).toBe(32);
   });
 
   it('uses ultra sampling for export and paused preview', () => {

@@ -28,7 +28,7 @@ use super::gpu_utils::image_pixels_rgba8;
 use super::readback::*;
 use super::scene::{
     BlendMode, Layer, LayerKind, RasterGpuSource, RasterSource, TextLayer, TextRenderMode,
-    Transform,
+    Transform, TransitionEdge, TransitionSource,
 };
 use super::transitions::TransitionPipeline;
 
@@ -420,60 +420,125 @@ impl Compositor {
 
         for i in 0..layers.len() {
             if let Some(trans_info) = layers[i].transition.clone() {
-                // A layer referencing itself as the from-layer would produce
-                // a zero-area transition and then be erroneously removed.
-                if trans_info.from_layer_id == layers[i].id {
+                let source_kind = trans_info.source.clone();
+                if matches!(&source_kind, TransitionSource::Layer(id) if id == &layers[i].id) {
                     continue;
                 }
-                let from_layer_opt = layers
-                    .iter()
-                    .find(|l| l.id == trans_info.from_layer_id)
-                    .cloned();
 
-                if let Some(from_layer) = from_layer_opt {
-                    // Эффекты слоёв запекаем ДО перехода: иначе эффекты `from`-клипа
-                    // терялись полностью (слой удаляется), а эффекты `to`-клипа
-                    // применялись поверх готового перехода, а не к исходному кадру.
-                    let from_source =
-                        self.layer_source_with_effects(dev_id, scene, &from_layer, device, queue)?;
+                let source = match &source_kind {
+                    TransitionSource::Layer(id) => {
+                        let Some(layer) = layers.iter().find(|layer| &layer.id == id).cloned()
+                        else {
+                            continue;
+                        };
+                        self.transition_layer_source(dev_id, scene, &layer, device, queue)?
+                    }
+                    TransitionSource::Background => {
+                        let lower_layers = layers[..i].to_vec();
+                        let background_scene = super::scene::Scene {
+                            width: scene.width,
+                            height: scene.height,
+                            time: scene.time,
+                            background: Color::TRANSPARENT,
+                            layers: lower_layers,
+                            master_effects: Vec::new(),
+                            effect_quality: scene.effect_quality,
+                        };
+                        let background_scene = self.materialize_transitions_and_effects(
+                            dev_id,
+                            &background_scene,
+                            device,
+                            queue,
+                        )?;
+                        let background_scene = self.materialize_adjustment_clips(
+                            dev_id,
+                            &background_scene,
+                            device,
+                            queue,
+                        )?;
+                        let texture = self.render_domain_scene_to_owned_texture(
+                            dev_id,
+                            &background_scene,
+                            scene.width,
+                            scene.height,
+                            Color::TRANSPARENT,
+                        )?;
+                        EffectSource::Gpu(Arc::new(crate::media::SharedTexture::new_shared(
+                            Arc::new(texture),
+                        )))
+                    }
+                    TransitionSource::Transparent => {
+                        let transparent_scene = super::scene::Scene {
+                            width: scene.width,
+                            height: scene.height,
+                            time: scene.time,
+                            background: Color::TRANSPARENT,
+                            layers: Vec::new(),
+                            master_effects: Vec::new(),
+                            effect_quality: scene.effect_quality,
+                        };
+                        let texture = self.render_domain_scene_to_owned_texture(
+                            dev_id,
+                            &transparent_scene,
+                            scene.width,
+                            scene.height,
+                            Color::TRANSPARENT,
+                        )?;
+                        EffectSource::Gpu(Arc::new(crate::media::SharedTexture::new_shared(
+                            Arc::new(texture),
+                        )))
+                    }
+                };
 
-                    let to_source =
-                        self.layer_source_with_effects(dev_id, scene, &layers[i], device, queue)?;
+                let current =
+                    self.transition_layer_source(dev_id, scene, &layers[i], device, queue)?;
+                let (from_source, to_source) = match trans_info.edge {
+                    TransitionEdge::In => (&source, &current),
+                    TransitionEdge::Out => (&current, &source),
+                };
 
-                    let cache = self.pipeline_caches.get(&dev_id);
-                    let pipeline = self
-                        .transition_pipelines
-                        .entry(dev_id)
-                        .or_insert_with(|| TransitionPipeline::new(device, cache));
+                let cache = self.pipeline_caches.get(&dev_id);
+                let pipeline = self
+                    .transition_pipelines
+                    .entry(dev_id)
+                    .or_insert_with(|| TransitionPipeline::new(device, cache));
 
-                    match pipeline.apply_transition(
-                        device,
-                        queue,
-                        &from_source,
-                        &to_source,
-                        &trans_info.spec,
-                        trans_info.progress,
-                        trans_info.speed_multiplier,
-                    ) {
-                        Ok(processed) => {
-                            layers[i].kind = LayerKind::Raster {
-                                natural_size: (processed.width(), processed.height()),
-                                source: RasterSource::GpuTexture(std::sync::Arc::new(
-                                    crate::media::SharedTexture::new_shared(std::sync::Arc::new(
-                                        processed,
-                                    )),
+                match pipeline.apply_transition(
+                    device,
+                    queue,
+                    from_source,
+                    to_source,
+                    &trans_info.spec,
+                    trans_info.progress,
+                    trans_info.speed_multiplier,
+                ) {
+                    Ok(processed) => {
+                        layers[i].kind = LayerKind::Raster {
+                            natural_size: (processed.width(), processed.height()),
+                            source: RasterSource::GpuTexture(std::sync::Arc::new(
+                                crate::media::SharedTexture::new_shared(std::sync::Arc::new(
+                                    processed,
                                 )),
-                                padding: None,
-                            };
-                            layers[i].transition = None;
-                            // Эффекты уже запечены в переход — не применять повторно в шаге 2.
-                            layers[i].effects.clear();
+                            )),
+                            padding: None,
+                        };
+                        layers[i].transform = Transform::identity();
+                        layers[i].opacity = 1.0;
+                        layers[i].transition = None;
+                        layers[i].effects.clear();
 
-                            to_remove.insert(from_layer.id.clone());
+                        match source_kind {
+                            TransitionSource::Layer(id) => {
+                                to_remove.insert(id);
+                            }
+                            TransitionSource::Background => {
+                                to_remove.extend(layers[..i].iter().map(|layer| layer.id.clone()));
+                            }
+                            TransitionSource::Transparent => {}
                         }
-                        Err(e) => {
-                            log::warn!("[compositor] transition failed: {e:?}");
-                        }
+                    }
+                    Err(e) => {
+                        log::warn!("[compositor] transition failed: {e:?}");
                     }
                 }
             }
@@ -746,6 +811,59 @@ impl Compositor {
             scene.effect_quality,
         )?;
         Ok(EffectSource::Gpu(processed))
+    }
+
+    fn transition_layer_source(
+        &mut self,
+        dev_id: usize,
+        scene: &super::scene::Scene,
+        layer: &Layer,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+    ) -> Result<EffectSource> {
+        let source = self.layer_source_with_effects(dev_id, scene, layer, device, queue)?;
+        let (source, natural_size) = match source {
+            EffectSource::Cpu(image) => {
+                let size = (image.width, image.height);
+                (RasterSource::Image(image), size)
+            }
+            EffectSource::Gpu(texture) => {
+                let size = (texture.width(), texture.height());
+                (RasterSource::GpuTexture(texture), size)
+            }
+        };
+        let isolated = super::scene::Scene {
+            width: scene.width,
+            height: scene.height,
+            time: scene.time,
+            background: Color::TRANSPARENT,
+            layers: vec![Layer {
+                id: layer.id.clone(),
+                kind: LayerKind::Raster {
+                    source,
+                    natural_size,
+                    padding: None,
+                },
+                transform: layer.transform.clone(),
+                opacity: layer.opacity,
+                blend: BlendMode::Normal,
+                mask: layer.mask.clone(),
+                effects: Vec::new(),
+                transition: None,
+            }],
+            master_effects: Vec::new(),
+            effect_quality: scene.effect_quality,
+        };
+        let texture = self.render_domain_scene_to_owned_texture(
+            dev_id,
+            &isolated,
+            scene.width,
+            scene.height,
+            Color::TRANSPARENT,
+        )?;
+        Ok(EffectSource::Gpu(Arc::new(
+            crate::media::SharedTexture::new_shared(Arc::new(texture)),
+        )))
     }
 
     fn materialize_text_shadow_blurs(

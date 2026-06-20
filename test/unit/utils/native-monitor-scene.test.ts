@@ -735,7 +735,7 @@ describe('buildNativeMonitorScene', () => {
     });
   });
 
-  it('warns and skips unsupported non-adjacent native shader transitions', async () => {
+  it('serializes non-adjacent native shader transitions with their source mode', async () => {
     const onWarning = vi.fn();
     const timelineDoc = {
       version: 1,
@@ -788,10 +788,12 @@ describe('buildNativeMonitorScene', () => {
       onWarning,
     });
 
-    expect(scene.layers[0]?.transition_out).toBeUndefined();
-    expect(onWarning).toHaveBeenCalledWith(
-      'Transition "wipe" on clip "clip-1" is not supported by the native Tauri renderer in "transparent" mode.',
-    );
+    expect(scene.layers[0]?.transition_out).toMatchObject({
+      type: 'wipe',
+      duration_sec: 0.25,
+      mode: 'transparent',
+    });
+    expect(onWarning).not.toHaveBeenCalled();
   });
 
   it('resolves preview blur quality from playback mode, device, and user setting', async () => {

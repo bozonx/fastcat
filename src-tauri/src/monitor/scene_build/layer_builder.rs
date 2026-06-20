@@ -11,7 +11,7 @@ use vello::peniko::Color;
 
 use crate::compositor::scene::{
     Layer, LayerKind as CompLayerKind, ShapeGeometry, ShapeLayer, TextLayer, TextRenderMode,
-    Transform, TransitionInfo,
+    Transform, TransitionEdge, TransitionInfo, TransitionSource,
 };
 use crate::media::ffmpeg_utils::is_quarter_turn;
 
@@ -487,36 +487,66 @@ pub fn finalize_layer(
     let local_t = time_sec - sl.timeline_start_sec;
     let opacity = compute_transition_opacity(sl, local_t, base_opacity);
 
-    // Все шейдерные переходы (включая dissolve → crossfade-spec) рендерятся через
-    // `transition_in` входящего клипа: он композитится поверх `from_layer`, чьи пиксели
-    // блендятся в шейдере. Для смежных клипов `transition_out` исходящего клипа
-    // наследуется следующим клипом через `getEffectiveTransitionIn` на фронте, поэтому
-    // переходы между соседними клипами РАБОТАЮТ как настоящий кроссфейд.
-    // Условие появления прохода — наличие `from_layer_id` + `spec`. Dissolve без
-    // from-слоя (первый клип на таймлайне) проявляется из фона через альфу в
-    // `compute_transition_opacity`. Standalone `transition_out` (в пустоту/background)
-    // в Rust поддержан только для dissolve — тоже через альфу.
+    // A transition source can be an adjacent layer, the lower-layer composite,
+    // or a transparent texture. OUT transitions reverse the shader inputs.
     let mut transition = None;
-    if let Some(t_in) = &sl.transition_in {
-        let in_dur = t_in.duration_sec;
-        if in_dur > 0.0 && local_t < in_dur && local_t >= 0.0 {
-            if let (Some(from_id), Some(spec)) = (&t_in.from_layer_id, &t_in.spec) {
-                let progress = (local_t / in_dur).clamp(0.0, 1.0);
-                let curve = t_in.curve.as_deref().unwrap_or("linear");
-                let progress_curved = apply_transition_curve(progress, curve) as f32;
-                // Мгновенная скорость кривой = её производная в текущей точке,
-                // нормированная так, что linear == 1.0 (центральная разность, как в
-                // web-манифестах slide/blinds). Шейдеры motion-blur умножают на неё
-                // величину размытия, чтобы оно нарастало с ускорением кривой.
+    let clip_dur = sl.timeline_end_sec - sl.timeline_start_sec;
+    let in_dur = sl
+        .transition_in
+        .as_ref()
+        .map(|value| value.duration_sec.clamp(0.0, clip_dur))
+        .unwrap_or(0.0);
+    let out_dur = sl
+        .transition_out
+        .as_ref()
+        .map(|value| value.duration_sec.clamp(0.0, clip_dur))
+        .unwrap_or(0.0);
+    let out_start = (clip_dur - out_dur).max(0.0);
+    let in_active = in_dur > 0.0 && local_t >= 0.0 && local_t < in_dur;
+    let out_active = out_dur > 0.0 && local_t >= out_start && local_t < clip_dur;
+    let use_in = in_active && (!out_active || in_dur - local_t <= local_t - out_start);
+    let selected = if use_in {
+        sl.transition_in
+            .as_ref()
+            .map(|value| (value, in_dur, TransitionEdge::In))
+    } else if out_active {
+        sl.transition_out
+            .as_ref()
+            .map(|value| (value, out_dur, TransitionEdge::Out))
+    } else {
+        None
+    };
+
+    if let Some((selected, duration, edge)) = selected {
+        if let Some(spec) = &selected.spec {
+            let source = match selected.mode.as_deref() {
+                Some("background") => Some(TransitionSource::Background),
+                Some("transparent") => Some(TransitionSource::Transparent),
+                Some("adjacent") | None => selected
+                    .from_layer_id
+                    .as_ref()
+                    .map(|id| TransitionSource::Layer(id.clone())),
+                Some(_) => None,
+            };
+
+            if let Some(source) = source {
+                let raw_progress = match edge {
+                    TransitionEdge::In => local_t / duration,
+                    TransitionEdge::Out => (local_t - out_start) / duration,
+                }
+                .clamp(0.0, 1.0);
+                let curve = selected.curve.as_deref().unwrap_or("linear");
+                let progress = apply_transition_curve(raw_progress, curve) as f32;
                 let delta = 0.01;
-                let p_lo = apply_transition_curve((progress - delta).max(0.0), curve);
-                let p_hi = apply_transition_curve((progress + delta).min(1.0), curve);
+                let p_lo = apply_transition_curve((raw_progress - delta).max(0.0), curve);
+                let p_hi = apply_transition_curve((raw_progress + delta).min(1.0), curve);
                 let speed_multiplier = (((p_hi - p_lo) / (2.0 * delta)).max(0.0)) as f32;
                 transition = Some(TransitionInfo {
                     spec: spec.clone(),
-                    progress: progress_curved,
+                    progress,
                     speed_multiplier,
-                    from_layer_id: from_id.clone(),
+                    source,
+                    edge,
                 });
             }
         }

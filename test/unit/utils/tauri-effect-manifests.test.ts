@@ -75,7 +75,11 @@ describe('unified video effect manifests', () => {
       'background',
       'transparent',
     ]);
-    expect(getTransitionManifest('wipe')?.supportedModes).toEqual(['adjacent']);
+    expect(getTransitionManifest('wipe')?.supportedModes).toEqual([
+      'adjacent',
+      'background',
+      'transparent',
+    ]);
     for (const manifest of getAllTransitionManifests()) {
       expect(manifest.toTransitionSpec, manifest.type).toBeTypeOf('function');
     }

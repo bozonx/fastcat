@@ -153,7 +153,14 @@ mod tests {
 
         let output = finalize_layer(&layer, test_shape_kind(), (1920, 1080), 11.0);
         let transition = output.transition.expect("transition info");
-        assert_eq!(transition.from_layer_id, "from");
+        assert_eq!(
+            transition.source,
+            crate::compositor::scene::TransitionSource::Layer("from".into())
+        );
+        assert_eq!(
+            transition.edge,
+            crate::compositor::scene::TransitionEdge::In
+        );
         assert!((transition.progress - 0.5).abs() < 1e-6);
         match transition.spec {
             crate::compositor::transitions::TransitionSpec::Wipe {
@@ -191,7 +198,10 @@ mod tests {
         let transition = output
             .transition
             .expect("dissolve must produce shader transition");
-        assert_eq!(transition.from_layer_id, "from");
+        assert_eq!(
+            transition.source,
+            crate::compositor::scene::TransitionSource::Layer("from".into())
+        );
         assert!((transition.progress - 0.5).abs() < 1e-6);
         assert!(matches!(
             transition.spec,
@@ -223,6 +233,80 @@ mod tests {
         let output = finalize_layer(&layer, test_shape_kind(), (1920, 1080), 1.0);
         assert!(output.transition.is_none());
         assert!((output.opacity - 0.5).abs() < 1e-5);
+    }
+
+    #[test]
+    fn finalize_layer_builds_background_shader_transition_without_adjacent_layer() {
+        let layer: SceneLayer = serde_json::from_value(json!({
+            "id": "to",
+            "kind": "video",
+            "timeline_start_sec": 10.0,
+            "timeline_end_sec": 20.0,
+            "source_start_sec": 0.0,
+            "z": 1,
+            "opacity": 1.0,
+            "transition_in": {
+                "type": "wipe",
+                "duration_sec": 2.0,
+                "curve": "linear",
+                "mode": "background",
+                "spec": {
+                    "type": "wipe",
+                    "angle_deg": 0.0,
+                    "softness": 0.1
+                }
+            }
+        }))
+        .unwrap();
+
+        let output = finalize_layer(&layer, test_shape_kind(), (1920, 1080), 11.0);
+        let transition = output.transition.expect("background transition info");
+        assert_eq!(
+            transition.source,
+            crate::compositor::scene::TransitionSource::Background
+        );
+        assert_eq!(
+            transition.edge,
+            crate::compositor::scene::TransitionEdge::In
+        );
+        assert!((transition.progress - 0.5).abs() < 1e-6);
+    }
+
+    #[test]
+    fn finalize_layer_builds_transparent_out_shader_transition() {
+        let layer: SceneLayer = serde_json::from_value(json!({
+            "id": "out",
+            "kind": "video",
+            "timeline_start_sec": 10.0,
+            "timeline_end_sec": 20.0,
+            "source_start_sec": 0.0,
+            "z": 1,
+            "opacity": 1.0,
+            "transition_out": {
+                "type": "wipe",
+                "duration_sec": 2.0,
+                "curve": "linear",
+                "mode": "transparent",
+                "spec": {
+                    "type": "wipe",
+                    "angle_deg": 0.0,
+                    "softness": 0.1
+                }
+            }
+        }))
+        .unwrap();
+
+        let output = finalize_layer(&layer, test_shape_kind(), (1920, 1080), 19.0);
+        let transition = output.transition.expect("transparent transition info");
+        assert_eq!(
+            transition.source,
+            crate::compositor::scene::TransitionSource::Transparent
+        );
+        assert_eq!(
+            transition.edge,
+            crate::compositor::scene::TransitionEdge::Out
+        );
+        assert!((transition.progress - 0.5).abs() < 1e-6);
     }
 
     #[test]

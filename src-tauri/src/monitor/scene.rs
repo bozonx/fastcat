@@ -194,6 +194,9 @@ pub struct SceneTransition {
     pub curve: Option<String>,
     #[ts(optional)]
     pub from_layer_id: Option<String>,
+    #[serde(default)]
+    #[ts(optional, type = "\"adjacent\" | \"background\" | \"transparent\"")]
+    pub mode: Option<String>,
     // Transition spec — produced by the frontend transition manifests.
     #[ts(
         optional,

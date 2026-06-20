@@ -44,7 +44,9 @@ pub fn compute_transition_opacity(sl: &SceneLayer, local_t: f64, base_opacity: f
             // `finalize_layer`); гасить альфой здесь же — двойное затухание. Альфа нужна
             // только когда блендить не с чем: dissolve без from-слоя (первый клип на
             // таймлайне) проявляется из фона.
-            let rendered_by_shader = t_in.from_layer_id.is_some() && t_in.spec.is_some();
+            let rendered_by_shader = t_in.spec.is_some()
+                && (t_in.from_layer_id.is_some()
+                    || matches!(t_in.mode.as_deref(), Some("background" | "transparent")));
             if t_in.transition_type == "dissolve" && !rendered_by_shader {
                 let raw_progress = (local_t / in_dur).clamp(0.0, 1.0);
                 let curve = t_in.curve.as_deref().unwrap_or("linear");
@@ -54,7 +56,10 @@ pub fn compute_transition_opacity(sl: &SceneLayer, local_t: f64, base_opacity: f
         }
     } else if apply_out {
         if let Some(t_out) = &sl.transition_out {
-            if t_out.transition_type == "dissolve" {
+            let rendered_by_shader = t_out.spec.is_some()
+                && (t_out.from_layer_id.is_some()
+                    || matches!(t_out.mode.as_deref(), Some("background" | "transparent")));
+            if t_out.transition_type == "dissolve" && !rendered_by_shader {
                 let raw_progress = ((local_t - out_start) / out_dur).clamp(0.0, 1.0);
                 let curve = t_out.curve.as_deref().unwrap_or("linear");
                 let progress = apply_transition_curve(raw_progress, curve);

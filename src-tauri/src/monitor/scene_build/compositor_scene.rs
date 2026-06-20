@@ -42,6 +42,20 @@ pub fn build_compositor_scene(
                     }
                 }
             }
+            if let Some(t_out) = &scene[i].transition_out {
+                let local_t = t - scene[i].timeline_start_sec;
+                let duration = scene[i].timeline_end_sec - scene[i].timeline_start_sec;
+                let out_start = (duration - t_out.duration_sec).max(0.0);
+                if local_t >= out_start && local_t < duration {
+                    if let Some(from_id) = &t_out.from_layer_id {
+                        if let Some(from_idx) =
+                            (0..scene.len()).find(|&idx| &scene[idx].id == from_id)
+                        {
+                            active_indices.insert(from_idx);
+                        }
+                    }
+                }
+            }
         }
     }
 

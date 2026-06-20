@@ -180,15 +180,14 @@ watch(
       }
     }
 
-    if (
-      sourceOptions.value.some((option) => option.value === selectedMode.value && !option.disabled)
-    ) {
+    const supportedModes = selectedManifest.value?.supportedModes;
+    if (!supportedModes || supportedModes.includes(selectedMode.value)) {
       return;
     }
 
-    const fallbackMode = sourceOptions.value.find((option) => !option.disabled)?.value;
+    const fallbackMode = supportedModes[0];
     if (fallbackMode) {
-      selectedMode.value = fallbackMode as TransitionMode;
+      selectedMode.value = fallbackMode;
     }
   },
   { immediate: true },

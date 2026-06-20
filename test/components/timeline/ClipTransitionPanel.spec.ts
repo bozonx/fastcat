@@ -88,7 +88,10 @@ vi.mock('~/composables/timeline/useClipTransitionPanel', () => ({
     edgeIcon: ref('i-heroicons-arrow-right-circle'),
     remove: vi.fn(),
     selectedCurve: ref('linear'),
-    selectedManifest: ref({ paramFields: [], supportedModes: ['adjacent'] }),
+    selectedManifest: ref({
+      paramFields: [],
+      supportedModes: ['adjacent', 'background', 'transparent'],
+    }),
     selectedMode: ref('adjacent'),
     selectedParams: ref({}),
     selectedType: ref('wipe'),
@@ -143,7 +146,7 @@ describe('ClipTransitionPanel', () => {
     expect(modal.exists()).toBe(true);
   });
 
-  it('disables source modes unsupported by the selected native transition', async () => {
+  it('enables all supported transition source modes', async () => {
     const component = await mountSuspended(ClipTransitionPanel, { props: defaultProps });
 
     const buttons = component.findAll('.mock-btn-group button');
@@ -152,8 +155,8 @@ describe('ClipTransitionPanel', () => {
     const transparent = buttons.find((button) => button.text() === 'transparent');
 
     expect(adjacent?.attributes('disabled')).toBeUndefined();
-    expect(background?.attributes('disabled')).toBeDefined();
-    expect(transparent?.attributes('disabled')).toBeDefined();
+    expect(background?.attributes('disabled')).toBeUndefined();
+    expect(transparent?.attributes('disabled')).toBeUndefined();
   });
 
   it('renders transition type options as a dropdown with icons and disabled state', async () => {

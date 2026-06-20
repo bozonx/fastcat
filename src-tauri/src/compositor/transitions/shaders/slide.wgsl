@@ -12,6 +12,13 @@ struct TransitionUniform {
 };
 @group(0) @binding(3) var<uniform> uni: TransitionUniform;
 
+fn get_in_weight(uv: vec2<f32>) -> f32 {
+    let aa = 1.5 / vec2<f32>(f32(uni.width), f32(uni.height));
+    let edge_x = smoothstep(0.0, aa.x, uv.x) * (1.0 - smoothstep(1.0 - aa.x, 1.0, uv.x));
+    let edge_y = smoothstep(0.0, aa.y, uv.y) * (1.0 - smoothstep(1.0 - aa.y, 1.0, uv.y));
+    return edge_x * edge_y;
+}
+
 @compute @workgroup_size(8, 8, 1)
 fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
     if (gid.x >= uni.width || gid.y >= uni.height) {
@@ -38,8 +45,6 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
         to_uv.y = uv.y + (1.0 - uni.progress);
     }
     
-    var final_color = vec4<f32>(0.0);
-    
     let wx = f32(uni.width) - 1.0;
     let hx = f32(uni.height) - 1.0;
     let from_coord = vec2<i32>(
@@ -51,13 +56,16 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
         i32(clamp(to_uv.y * f32(uni.height), 0.0, hx))
     );
 
-    let from_valid = from_uv.x >= 0.0 && from_uv.x <= 1.0 && from_uv.y >= 0.0 && from_uv.y <= 1.0;
-    let to_valid = to_uv.x >= 0.0 && to_uv.x <= 1.0 && to_uv.y >= 0.0 && to_uv.y <= 1.0;
+    let w_from = get_in_weight(from_uv);
+    let w_to = get_in_weight(to_uv);
+    let total_w = w_from + w_to;
     
-    if (to_valid) {
-        final_color = textureLoad(to_tex, to_coord, 0);
-    } else if (from_valid) {
-        final_color = textureLoad(from_tex, from_coord, 0);
+    var final_color = vec4<f32>(0.0, 0.0, 0.0, 1.0);
+    if (total_w > 0.0) {
+        let c_from = textureLoad(from_tex, from_coord, 0);
+        let c_to = textureLoad(to_tex, to_coord, 0);
+        let tex_color = mix(c_to, c_from, w_from / total_w);
+        final_color = mix(vec4<f32>(0.0, 0.0, 0.0, 1.0), tex_color, min(total_w, 1.0));
     }
     
     textureStore(output_tex, coord, final_color);

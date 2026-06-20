@@ -806,6 +806,23 @@ impl LayerRuntimeManager {
                         }
                     }
                 }
+                if let Some(t_out) = &layer.transition_out {
+                    let local_t = t - layer.timeline_start_sec;
+                    let duration = layer.timeline_end_sec - layer.timeline_start_sec;
+                    let out_start = (duration - t_out.duration_sec).max(0.0);
+                    if local_t >= out_start && local_t < duration {
+                        if let Some(from_id) = &t_out.from_layer_id {
+                            if let Some(from_idx) = scene.iter().position(|l| &l.id == from_id) {
+                                active.insert(from_idx);
+                                self.ensure_runtime_for(
+                                    &scene[from_idx],
+                                    device.clone(),
+                                    queue.clone(),
+                                );
+                            }
+                        }
+                    }
+                }
             } else if layer.covers(t + self.prewarm_lookahead_sec()) {
                 // Превентивно прогреваем декодер будущего слоя
                 self.ensure_runtime_for(layer, device.clone(), queue.clone());
@@ -1274,6 +1291,16 @@ fn transition_from_ids(scene: &[SceneLayer], t: f64) -> HashSet<String> {
             let local_t = t - layer.timeline_start_sec;
             if local_t >= 0.0 && local_t < t_in.duration_sec {
                 if let Some(from_id) = &t_in.from_layer_id {
+                    ids.insert(from_id.clone());
+                }
+            }
+        }
+        if let Some(t_out) = &layer.transition_out {
+            let local_t = t - layer.timeline_start_sec;
+            let duration = layer.timeline_end_sec - layer.timeline_start_sec;
+            let out_start = (duration - t_out.duration_sec).max(0.0);
+            if local_t >= out_start && local_t < duration {
+                if let Some(from_id) = &t_out.from_layer_id {
                     ids.insert(from_id.clone());
                 }
             }

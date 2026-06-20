@@ -244,11 +244,7 @@ function isNativeTransitionSupported(params: {
   mode: TransitionMode;
   hasAdjacentPeer: boolean;
 }): boolean {
-  if (params.type === 'dissolve') {
-    return true;
-  }
-
-  if (!params.hasAdjacentPeer) {
+  if (params.mode === 'adjacent' && !params.hasAdjacentPeer) {
     return false;
   }
 
@@ -465,6 +461,7 @@ function buildBaseLayer(params: {
         duration_sec: effectiveTransitionIn.durationUs / 1_000_000,
         curve: effectiveTransitionIn.curve,
         from_layer_id: fromClip?.id,
+        mode,
         spec,
       };
     }
@@ -505,6 +502,8 @@ function buildBaseLayer(params: {
         type,
         duration_sec: clip.transitionOut.durationUs / 1_000_000,
         curve: clip.transitionOut.curve,
+        from_layer_id: toClip?.id,
+        mode,
         spec,
       };
     }

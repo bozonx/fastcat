@@ -353,6 +353,21 @@ pub(crate) fn build_export_scene(
                     }
                 }
             }
+            if let Some(t_out) = &scene.layers[i].transition_out {
+                let local_t = time_sec - scene.layers[i].timeline_start_sec;
+                let duration =
+                    scene.layers[i].timeline_end_sec - scene.layers[i].timeline_start_sec;
+                let out_start = (duration - t_out.duration_sec).max(0.0);
+                if local_t >= out_start && local_t < duration {
+                    if let Some(from_id) = &t_out.from_layer_id {
+                        if let Some(from_idx) =
+                            (0..scene.layers.len()).find(|&idx| &scene.layers[idx].id == from_id)
+                        {
+                            active_indices.insert(from_idx);
+                        }
+                    }
+                }
+            }
         }
     }
 
@@ -677,6 +692,7 @@ mod tests {
                 duration_sec: 1.0,
                 curve: None,
                 from_layer_id: Some("from".into()),
+                mode: Some("adjacent".into()),
                 spec: None,
             }),
             transition_out: None,

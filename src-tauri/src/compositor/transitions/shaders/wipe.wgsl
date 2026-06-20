@@ -26,7 +26,8 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
     let pt = uv - vec2<f32>(0.5, 0.5);
     let d = dot(pt, dir) + 0.5;
     
-    let softness = max(uni.p1, 0.0001);
+    let aa = 1.5 / f32(uni.height);
+    let softness = max(uni.p1, aa);
     let alpha = smoothstep(uni.progress - softness, uni.progress + softness, d);
     
     let from_color = textureLoad(from_tex, coord, 0);
