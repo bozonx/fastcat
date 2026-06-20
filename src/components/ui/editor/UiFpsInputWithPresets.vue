@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import UiWheelNumberInput from '~/components/ui/UiWheelNumberInput.vue';
-import { blurOnDropdownMenuClose } from '~/composables/useDropdownMenuBlur';
+import UiSelect from '~/components/ui/UiSelect.vue';
 
 const props = defineProps<{
   modelValue: number;
@@ -25,15 +25,6 @@ const fpsPresets = [
 
 const displayValue = computed(() => parseFloat(props.modelValue.toFixed(3)));
 
-const fpsMenuItems = computed(() => [
-  fpsPresets.map((p) => ({
-    label: p.label,
-    type: 'checkbox' as const,
-    checked: Math.abs(props.modelValue - p.value) < 0.001,
-    onSelect: () => selectPreset(p.value),
-  })),
-]);
-
 function selectPreset(value: number) {
   emit('update:modelValue', value);
 }
@@ -51,21 +42,16 @@ function selectPreset(value: number) {
       full-width
       @update:model-value="(v) => emit('update:modelValue', v)"
     />
-    <UDropdownMenu
-      :items="fpsMenuItems"
+    <UiSelect
+      :model-value="displayValue"
+      :items="fpsPresets"
       :disabled="disabled"
-      :content="{ align: 'end' }"
-      :ui="{ content: 'min-w-24' }"
-      @update:open="blurOnDropdownMenuClose"
-    >
-      <UButton
-        color="neutral"
-        variant="ghost"
-        size="sm"
-        icon="i-lucide-chevron-down"
-        :disabled="disabled"
-        class="px-1"
-      />
-    </UDropdownMenu>
+      size="sm"
+      value-key="value"
+      label-key="label"
+      :search-input="false"
+      class="w-24"
+      @update:model-value="(v) => selectPreset(v as number)"
+    />
   </div>
 </template>

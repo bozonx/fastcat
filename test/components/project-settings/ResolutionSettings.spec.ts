@@ -61,12 +61,11 @@ vi.mock('~/stores/workspace.store', () => ({
   useWorkspaceStore: () => mockWorkspaceStore,
 }));
 
-vi.mock('~/components/project-settings/SettingsSection.vue', () => ({
+vi.mock('~/components/ui/UiFormSectionHeader.vue', () => ({
   default: {
-    name: 'SettingsSection',
-    props: ['title', 'summary'],
-    template:
-      '<div class="settings-section"><h2>{{ title }}</h2><p>{{ summary }}</p><slot /></div>',
+    name: 'UiFormSectionHeader',
+    props: ['title'],
+    template: '<div class="form-section-header">{{ title }}</div>',
   },
 }));
 
@@ -110,15 +109,14 @@ describe('ResolutionSettings.vue', () => {
     mockWorkspaceStore.userSettings.projectPresets.selectedPresetId = '1080p';
   });
 
-  it('renders settings section with title and correct summary', async () => {
+  it('renders form section header with resolution title', async () => {
     const component = await mountWithNuxt(ResolutionSettings);
 
     expect(component.exists()).toBe(true);
-    expect(component.find('.settings-section').exists()).toBe(true);
-    expect(component.find('.settings-section h2').text()).toContain(
+    expect(component.find('.form-section-header').exists()).toBe(true);
+    expect(component.find('.form-section-header').text()).toContain(
       'videoEditor.projectSettings.resolutionAndFps',
     );
-    expect(component.find('.settings-section p').text()).toBe('1920x1080, 30FPS, 48kHz');
   });
 
   it('applies a new preset when selected in dropdown', async () => {

@@ -1087,14 +1087,16 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
     let s = sin(angle);
     let dd = uni.p1;
     let d = 1.5;
-    // Forward (toward-viewer) fold: push the whole card deeper so the falling
-    // (near) edge doesn't spill past the screen. uni.p3 (0..1) is the fractional
-    // overshoot allowed at full fold: near-edge width = (1 + p3) * screen width.
-    // overflow = 0 -> z_base = s -> near edge at depth 0 -> magnifies by exactly
-    // 1.0 (stays at screen width). Larger values let it bulge toward the viewer.
-    // Backward fold keeps z_base = 0 (already bounded, near edge recedes).
+    // Depth offset of the card. 'fit' is the offset that makes the near edge sit
+    // exactly at the screen edge (no spill): for a forward/toward-viewer fold the
+    // near edge is the falling edge (fit = s); for a backward fold the near edge
+    // is the fixed hinge (fit = 0, the card just recedes). edgeOverflow (uni.p3,
+    // 0..1) then pulls the whole card toward the viewer so it bleeds past the
+    // screen by a controllable amount (1.0 ~= 2x magnification of the near edge).
+    // It is therefore visible in BOTH depth directions.
     let overflow = clamp(uni.p3, 0.0, 1.0);
-    let z_base = select(0.0, s * (d / (1.0 + overflow) - (d - 1.0)), dd < 0.0);
+    let fit = select(0.0, s, dd < 0.0);
+    let z_base = fit - overflow * s * (d * 0.5);
     let dir = uni.p0;
 
     var p_moved = vec2<f32>(-1.0);
@@ -2330,8 +2332,8 @@ export const tauriTransitionManifests: TransitionManifest[] = [
           p0: dir,
           p1: params.depthDirection === 'forward' ? -1 : 1,
           p2: params.action === 'rise' ? 1 : 0,
-          // Forward-fold overshoot at full fold (0 = falling edge fits screen
-          // width, 1 = falling edge bulges to 2x). No effect when backward.
+          // Edge bleed: 0 = card fits exactly inside the screen, 1 = near edge
+          // bulges toward the viewer to ~2x screen size. Works in both directions.
           p3: clamp(finiteNumber(params.edgeOverflow, 0), 0, 1),
         },
       };
