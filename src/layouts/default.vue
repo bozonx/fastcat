@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { onMounted, watch } from 'vue';
+import { readLocalStorageString, STORAGE_KEYS } from '~/stores/ui/uiLocalStorage';
 import 'splitpanes/dist/splitpanes.css';
 import { useEventListener } from '@vueuse/core';
 
@@ -120,7 +121,15 @@ onMounted(() => {
           workspaceStore.workspaceProviderId === 'tauri' && workspaceStore.lastProjectPath
             ? workspaceStore.lastProjectPath
             : workspaceStore.lastProjectName!;
-        void navigateTo(`/editor/${encodeURIComponent(target)}`);
+
+        const { isMobile } = useDevice();
+        const preferDesktop = readLocalStorageString(STORAGE_KEYS.APP.PREFER_DESKTOP) === 'true';
+
+        if (isMobile && !preferDesktop) {
+          void navigateTo(`/m/editor/${encodeURIComponent(target)}`);
+        } else {
+          void navigateTo(`/editor/${encodeURIComponent(target)}`);
+        }
       } else {
         isStartingUp.value = false;
       }

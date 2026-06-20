@@ -299,3 +299,12 @@ export function useProjectManagement(options: { isMobile?: boolean } = {}) {
     openProjectFromDisk,
   };
 }
+
+const pendingFilesForNewProject = ref<File[]>([]);
+
+export function usePendingNewProjectFiles() {
+  return {
+    pendingFilesForNewProject,
+  };
+}
+

@@ -12,6 +12,9 @@ import MobileSettingsView from '~/components/settings/MobileSettingsView.vue';
 
 import MobileBottomNav from '~/components/layout/MobileBottomNav.vue';
 import { until, useMediaQuery } from '@vueuse/core';
+import { usePendingNewProjectFiles } from '~/composables/project/useProjectManagement';
+import { useFileManager } from '~/composables/file-manager/useFileManager';
+import { useAddMediaToTimeline } from '~/composables/timeline/useAddMediaToTimeline';
 
 definePageMeta({
   layout: 'mobile',
@@ -67,10 +70,37 @@ onMounted(async () => {
       throw new Error('Project failed to open');
     }
 
+    // Enforce Edit tab by default on mobile
+    projectStore.setView('cut');
+
     // Handle view query parameter
     const viewParam = route.query.view as string;
     if (viewParam && ['files', 'edit', 'export', 'settings'].includes(viewParam)) {
       activeTab.value = viewParam as TabId;
+    }
+
+    // Auto-import pending files for new project
+    const { pendingFilesForNewProject } = usePendingNewProjectFiles();
+    if (pendingFilesForNewProject.value.length > 0) {
+      const filesToImport = [...pendingFilesForNewProject.value];
+      pendingFilesForNewProject.value = []; // Reset immediately to prevent double triggers
+
+      filesToImport.sort((a, b) => a.lastModified - b.lastModified);
+
+      const fileManager = useFileManager();
+      const { addMediaToTimeline } = useAddMediaToTimeline();
+
+      const uploadResults = await fileManager.handleFiles(filesToImport, {
+        selectInFileManager: false,
+      });
+
+      if (uploadResults && uploadResults.length > 0) {
+        const mediaEntries = uploadResults.map((r) => ({
+          name: r.fileName,
+          path: r.targetPath,
+        }));
+        await addMediaToTimeline(mediaEntries);
+      }
     }
   } catch (error: unknown) {
     projectOpenError.value = error instanceof Error ? error.message : 'Failed to open the project';

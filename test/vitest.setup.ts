@@ -133,6 +133,7 @@ const mockWorkspaceStore = vi.hoisted(() => {
       projectDefaults: {
         audioScrubbingEnabled: true,
       },
+      experimentalFeatures: false,
       ui: {
         interfaceScale: 1,
         monitorInteractiveEdit: false,

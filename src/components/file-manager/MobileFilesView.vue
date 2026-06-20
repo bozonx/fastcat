@@ -1,18 +1,31 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { computed, ref, watch } from 'vue';
+import { useWorkspaceStore } from '~/stores/workspace.store';
 import MobileAssetBrowser from './MobileAssetBrowser.vue';
 import MobileFileBrowser from './MobileFileBrowser.vue';
 
 type FilesTab = 'assets' | 'files';
 
 const { t } = useI18n();
+const workspaceStore = useWorkspaceStore();
+
+const experimentalFeatures = computed(() => workspaceStore.userSettings.experimentalFeatures);
 
 const activeTab = ref<FilesTab>('assets');
 
-const tabs: Array<{ id: FilesTab; labelKey: string; icon: string }> = [
-  { id: 'assets', labelKey: 'common.assets', icon: 'lucide:layers' },
-  { id: 'files', labelKey: 'common.files', icon: 'lucide:folder-open' },
-];
+const tabs = computed<Array<{ id: FilesTab; labelKey: string; icon: string }>>(() => {
+  const list = [{ id: 'assets' as FilesTab, labelKey: 'common.assets', icon: 'lucide:layers' }];
+  if (experimentalFeatures.value) {
+    list.push({ id: 'files', labelKey: 'common.files', icon: 'lucide:folder-open' });
+  }
+  return list;
+});
+
+watch(experimentalFeatures, (enabled) => {
+  if (!enabled && activeTab.value === 'files') {
+    activeTab.value = 'assets';
+  }
+});
 </script>
 
 <template>

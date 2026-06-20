@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useProjectActions } from '~/composables/editor/useProjectActions';
-import { useProjectManagement } from '~/composables/project/useProjectManagement';
-import { onMounted } from 'vue';
+import { useProjectManagement, usePendingNewProjectFiles } from '~/composables/project/useProjectManagement';
+import { useProjectStore } from '~/stores/project.store';
+import { onMounted, ref } from 'vue';
 import { writeLocalStorageString, STORAGE_KEYS } from '~/stores/ui/uiLocalStorage';
 import WelcomeScreen from '~/components/startup/WelcomeScreen.vue';
 import { blurOnDropdownMenuClose } from '~/composables/useDropdownMenuBlur';
@@ -23,7 +24,9 @@ definePageMeta({
 const { t, locale: _locale } = useI18n();
 const router = useRouter();
 const workspaceStore = useWorkspaceStore();
+const projectStore = useProjectStore();
 const { resetProjectState } = useProjectActions();
+const { pendingFilesForNewProject } = usePendingNewProjectFiles();
 
 // Сбрасываем состояние открытого проекта при попадании на список
 resetProjectState();
@@ -57,6 +60,59 @@ const {
   selectProjectLocation,
   openProjectFromDisk,
 } = useProjectManagement({ isMobile: true });
+
+const newProjectFileInput = ref<HTMLInputElement | null>(null);
+
+function triggerNewProjectSelection() {
+  newProjectFileInput.value?.click();
+}
+
+async function onNewProjectFilesSelected(e: Event) {
+  const target = e.target as HTMLInputElement;
+  if (!target.files || target.files.length === 0) return;
+
+  const files = Array.from(target.files);
+  target.value = '';
+
+  const now = new Date();
+  const pad = (n: number) => String(n).padStart(2, '0');
+  const dateStr = `${pad(now.getDate())}-${pad(now.getMonth() + 1)}-${now.getFullYear()} ${pad(now.getHours())}:${pad(now.getMinutes())}`;
+  const projectName = `Project ${dateStr}`;
+
+  pendingFilesForNewProject.value = files;
+
+  const options = {
+    presetId: undefined,
+    width: 1920,
+    height: 1080,
+    fps: 30,
+    resolutionFormat: '1080p',
+    orientation: 'landscape' as const,
+    aspectRatio: '16:9',
+    isCustomResolution: false,
+    sampleRate: 48000,
+    parentPath:
+      workspaceStore.workspaceProviderId === 'tauri'
+        ? projectCreationSettings.value.location
+        : undefined,
+  };
+
+  try {
+    await projectStore.createProject(projectName, options);
+    if (workspaceStore.error) {
+      pendingFilesForNewProject.value = [];
+      return;
+    }
+
+    const url = `/m/editor/${encodeURIComponent(projectName)}`;
+    router.push(url);
+  } catch (error) {
+    pendingFilesForNewProject.value = [];
+    // eslint-disable-next-line no-console
+    console.error('Failed to create project with files:', error);
+  }
+}
+
 
 const isSettingsOpen = ref(false);
 
@@ -122,6 +178,14 @@ const sortedProjects = computed(() => {
 
 <template>
   <div class="h-screen w-full">
+    <input
+      ref="newProjectFileInput"
+      type="file"
+      multiple
+      accept="video/*,image/*"
+      class="hidden"
+      @change="onNewProjectFilesSelected"
+    />
     <!-- Если идет инициализация или загрузка данных воркспейса -->
     <div
       v-if="workspaceStore.isInitializing || workspaceStore.isLoading"
@@ -177,7 +241,7 @@ const sortedProjects = computed(() => {
                   color="primary"
                   icon="i-heroicons-plus"
                   class="hidden landscape:flex shadow-lg shadow-ui-action/20 rounded-2xl font-bold uppercase tracking-wide bg-ui-action! hover:bg-ui-action-hover! text-white! border-none transition-all active:scale-[0.98]"
-                  @click="startCreateProject"
+                  @click="triggerNewProjectSelection"
                 >
                   {{ t('fastcat.projects.newProject') }}
                 </UButton>
@@ -246,7 +310,7 @@ const sortedProjects = computed(() => {
                 color="primary"
                 icon="i-heroicons-plus"
                 class="shadow-lg shadow-ui-action/20 py-4 px-8 rounded-2xl font-bold uppercase tracking-wide bg-ui-action! hover:bg-ui-action-hover! text-white! border-none transition-all active:scale-[0.98] mt-2 animate-bounce"
-                @click="startCreateProject"
+                @click="triggerNewProjectSelection"
               >
                 {{ t('fastcat.projects.newProject') }}
               </UButton>
@@ -274,7 +338,7 @@ const sortedProjects = computed(() => {
                     color="primary"
                     icon="i-heroicons-plus"
                     class="shadow-lg shadow-ui-action/20 py-4 rounded-2xl font-bold uppercase tracking-wide bg-ui-action! hover:bg-ui-action-hover! text-white! border-none transition-all active:scale-[0.98]"
-                    @click="startCreateProject"
+                    @click="triggerNewProjectSelection"
                   >
                     {{ t('fastcat.projects.newProject') }}
                   </UButton>
@@ -417,7 +481,7 @@ const sortedProjects = computed(() => {
                         size="sm"
                         class="rounded-full px-6 bg-ui-action! hover:bg-ui-action-hover! text-white! border-none shadow-ui-action/20"
                         :label="t('fastcat.projects.newProject')"
-                        @click="startCreateProject"
+                        @click="triggerNewProjectSelection"
                       />
                     </div>
                   </div>
