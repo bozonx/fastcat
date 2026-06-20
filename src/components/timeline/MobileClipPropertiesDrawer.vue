@@ -149,7 +149,10 @@ const hasAudio = computed(() => {
   >
     <template #toolbar>
       <div :class="toolbarWrapperClass">
-        <MobileDrawerToolbar :orientation="toolbarOrientation" content-class="gap-1.5 px-2 py-1.5">
+        <MobileDrawerToolbar
+          :orientation="toolbarOrientation"
+          content-class="gap-1.5 px-2 pt-0 pb-1.5"
+        >
           <MobileDrawerToolbarButton
             icon="i-heroicons-trash"
             :disabled="isLocked"
