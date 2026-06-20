@@ -93,4 +93,65 @@ describe('circle transition blur parameter', () => {
 
     restoreTauriRuntime();
   });
+
+  it('normalizes invalid direction inherited from another transition back to from-center', () => {
+    mockTauriRuntime(true);
+    const manifest = getTauriTransitionManifest('circle');
+    expect(manifest).toBeDefined();
+
+    const normalized = manifest?.normalizeParams?.({
+      direction: 'symmetric',
+      blur: 5,
+      blurMode: 'scaled',
+      anchor: 'top-left',
+      offsetX: 200,
+      scaleX: 2000,
+    });
+
+    expect(normalized?.direction).toBe('from-center');
+    expect(normalized?.blur).toBe(5);
+    expect(normalized?.blurMode).toBe('scaled');
+    expect(normalized?.anchor).toBe('top-left');
+    expect(normalized?.offsetX).toBe(100);
+    expect(normalized?.scaleX).toBe(1000);
+    expect(normalized?.scaleY).toBe(100);
+    expect(normalized?.followScale).toBe(false);
+
+    restoreTauriRuntime();
+  });
+
+  it('normalizes Tauri clock direction to a valid value', () => {
+    mockTauriRuntime(true);
+    const manifest = getTauriTransitionManifest('clock');
+    expect(manifest).toBeDefined();
+
+    expect(manifest?.normalizeParams?.({ direction: 'left' })?.direction).toBe('clockwise');
+    expect(manifest?.normalizeParams?.({ direction: 'symmetric' })?.direction).toBe('symmetric');
+
+    restoreTauriRuntime();
+  });
+
+  it('normalizes Tauri rectangle parameters inherited from another transition', () => {
+    mockTauriRuntime(true);
+    const manifest = getTauriTransitionManifest('rectangle');
+    expect(manifest).toBeDefined();
+
+    const normalized = manifest?.normalizeParams?.({
+      direction: 'symmetric',
+      blur: 1,
+      blurMode: 'scaled',
+      anchor: 'invalid',
+      offsetX: 200,
+      contentMode: 'invalid',
+    });
+
+    expect(normalized?.direction).toBe('from-center');
+    expect(normalized?.blur).toBe(0.2);
+    expect(normalized?.blurMode).toBe('scaled');
+    expect(normalized?.anchor).toBe('center');
+    expect(normalized?.offsetX).toBe(100);
+    expect(normalized?.contentMode).toBe('reveal');
+
+    restoreTauriRuntime();
+  });
 });

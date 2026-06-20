@@ -793,4 +793,87 @@ describe('buildNativeMonitorScene', () => {
       'Transition "wipe" on clip "clip-1" is not supported by the native Tauri renderer in "transparent" mode.',
     );
   });
+
+  it('applies ultra quality to transitions on export', async () => {
+    const timelineDoc = {
+      version: 1,
+      timebase: { fps: 30 },
+      tracks: [
+        {
+          id: 'v-track',
+          kind: 'video',
+          videoHidden: false,
+          items: [
+            {
+              id: 'clip-a',
+              kind: 'clip',
+              type: 'media',
+              trackId: 'v-track',
+              source: { path: '_video/source.mp4' },
+              timelineRange: { startUs: 0, durationUs: 1_000_000 },
+              sourceRange: { startUs: 0, durationUs: 1_000_000 },
+            },
+            {
+              id: 'clip-b',
+              kind: 'clip',
+              type: 'media',
+              trackId: 'v-track',
+              source: { path: '_video/source.mp4' },
+              timelineRange: { startUs: 1_000_000, durationUs: 1_000_000 },
+              sourceRange: { startUs: 0, durationUs: 1_000_000 },
+              transitionIn: {
+                type: 'slide',
+                durationUs: 250_000,
+                mode: 'adjacent',
+                params: {
+                  direction: 'left',
+                  blurQuality: 'medium',
+                },
+              },
+            },
+          ],
+        },
+      ],
+    };
+    const projectStore = {
+      projectSettings: {
+        project: { width: 1920, height: 1080, fps: 30, audioDeclickDurationUs: 0 },
+      },
+      getProjectDirHandle: vi.fn(async () => ({ path: '/workspace/project' })),
+      getFileByPath: vi.fn(),
+    };
+    const workspaceStore = {
+      userSettings: {
+        projectDefaults: { defaultAudioFadeCurve: 'linear' },
+        optimization: { nativeMonitorSyncMode: 'balanced' },
+      },
+      activeMonitor: { useProxy: false },
+      lastProjectPath: null,
+      recentProjects: [],
+    };
+
+    // Preview scene (isExport: false) -> expects medium quality (16 samples)
+    const previewScene = await buildNativeMonitorScene({
+      timelineDoc: timelineDoc as never,
+      projectStore: projectStore as never,
+      workspaceStore: workspaceStore as never,
+      isExport: false,
+    });
+    const previewToLayer = previewScene.layers.find((layer) => layer.id === 'clip-b');
+    expect(previewToLayer?.transition_in?.spec?.params).toMatchObject({
+      p7: 16,
+    });
+
+    // Export scene (isExport: true) -> expects ultra quality (64 samples)
+    const exportScene = await buildNativeMonitorScene({
+      timelineDoc: timelineDoc as never,
+      projectStore: projectStore as never,
+      workspaceStore: workspaceStore as never,
+      isExport: true,
+    });
+    const exportToLayer = exportScene.layers.find((layer) => layer.id === 'clip-b');
+    expect(exportToLayer?.transition_in?.spec?.params).toMatchObject({
+      p7: 64,
+    });
+  });
 });

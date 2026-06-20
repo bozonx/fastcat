@@ -182,6 +182,7 @@ export function useExportProcess(
           fallbackFormat: timelineStore.timelineFormat,
           includeAudio: options.audio,
           onWarning: reportWarning,
+          isExport: true,
         });
         ensureNotCancelled();
         const rangeStartUs = options.exportRangeUs?.startUs ?? 0;

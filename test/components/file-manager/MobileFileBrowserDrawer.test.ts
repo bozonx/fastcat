@@ -227,6 +227,39 @@ describe('MobileFileBrowserDrawer', () => {
     );
   });
 
+  it('emits close when FileProperties emits close-drawer', async () => {
+    const entry = { kind: 'file', name: 'clip.mp4', path: 'clip.mp4' };
+    mockSelectionStore.selectedEntity = {
+      source: 'fileManager',
+      kind: 'file',
+      name: entry.name,
+      path: entry.path,
+      entry,
+    };
+
+    const wrapper = await mountSuspended(MobileFileBrowserDrawer, {
+      props: {
+        isOpen: true,
+        isSelectionMode: false,
+      },
+      global: {
+        stubs: {
+          UiMobileDrawer: { template: '<div><slot /></div>' },
+          MobileDrawerToolbar: { template: '<div><slot /></div>' },
+          MobileDrawerToolbarButton: true,
+          MultiFileProperties: true,
+        },
+      },
+    });
+
+    const fileProps = wrapper.findComponent({ name: 'FileProperties' });
+    expect(fileProps.exists()).toBe(true);
+
+    await fileProps.vm.$emit('close-drawer');
+
+    expect(wrapper.emitted('close')).toBeTruthy();
+  });
+
   it('hides clipboard actions when requested', async () => {
     const entry = { kind: 'file', name: 'clip.mp4', path: 'clip.mp4' };
     mockSelectionStore.selectedEntity = {

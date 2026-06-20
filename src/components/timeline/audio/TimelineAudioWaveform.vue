@@ -417,6 +417,25 @@ const isMuted = computed(() => {
   );
 });
 
+// TimelineTracks is intentionally wrapped in v-memo and does not re-render its
+// clip subtree for every scroll update. Consequently, scrollLeft/viewportWidth
+// props can lag behind the store after an anchored zoom. The store is the live
+// source used by both desktop and mobile scroll synchronization; props remain a
+// fallback for isolated mounts before that synchronization is initialized.
+const viewportGeometry = computed(() => {
+  const storeViewportWidth = timelineStore.timelineViewportWidth;
+  const hasStoreGeometry = Number.isFinite(storeViewportWidth) && storeViewportWidth > 0;
+
+  return {
+    scrollLeft: hasStoreGeometry
+      ? timelineStore.timelineScrollLeftPx
+      : (props.scrollLeft ?? timelineStore.timelineScrollLeftPx),
+    viewportWidth: hasStoreGeometry
+      ? storeViewportWidth
+      : (props.viewportWidth ?? storeViewportWidth),
+  };
+});
+
 // Visible sub-rect of the waveform strip, in strip-local pixels. Static clips
 // always return the full strip; wide clips return a scrolled viewport window.
 // `overscanPx` is the slack rasterized on each side of the viewport so that
@@ -430,12 +449,11 @@ function computeStripWindow(overscanPx: number): { leftPx: number; widthPx: numb
   if (totalW <= 0) return { leftPx: 0, widthPx: 0 };
   if (totalW <= STATIC_MAX_PX) return { leftPx: 0, widthPx: totalW };
 
-  const viewportWidth = props.viewportWidth ?? timelineStore.timelineViewportWidth;
+  const { scrollLeft, viewportWidth } = viewportGeometry.value;
   if (!Number.isFinite(viewportWidth) || viewportWidth <= 0) {
     return { leftPx: 0, widthPx: Math.min(totalW, STATIC_MAX_PX) };
   }
 
-  const scrollLeft = props.scrollLeft ?? timelineStore.timelineScrollLeftPx;
   const stripStartInTimeline = clipStartPx.value + waveformLeftPx.value;
   const visibleLeft = scrollLeft - stripStartInTimeline;
 
@@ -458,7 +476,7 @@ function computeStripWindow(overscanPx: number): { leftPx: number; widthPx: numb
 }
 
 const windowOverscanPx = computed(() => {
-  const viewportWidth = props.viewportWidth ?? timelineStore.timelineViewportWidth;
+  const viewportWidth = viewportGeometry.value.viewportWidth;
   const vw = Number.isFinite(viewportWidth) ? Math.max(0, viewportWidth) : 0;
   return Math.max(WINDOW_OVERSCAN_PX, vw * 0.5);
 });
@@ -483,10 +501,7 @@ const canvasBoxStyle = computed(() => {
   const totalW = totalWidthPx.value;
   if (!frac || totalW <= 0) return { left: '0px', width: `${Math.max(0, totalW)}px` };
 
-  // Explicit pixels are required here. WebKitGTK loses precision when resolving
-  // percentage offsets/sizes for a canvas inside a very wide source strip; the
-  // failure starts exactly when long audio sources cross into the windowed path.
-  // Recomputing pixels from the stable source fraction still scales the existing
+  // Recomputing pixels from the stable source fraction scales the existing
   // bitmap with zoom without binding its box to the next (not yet painted) window.
   return {
     left: `${frac.start * totalW}px`,
@@ -663,7 +678,7 @@ watch(
 // scrolling within the rendered overscan needs no repaint — the parent merely
 // transform-translates and the canvas rides along. We only re-rasterize when the
 // strict viewport (`coreWindow`) leaves the painted fraction. During a zoom
-// gesture we defer to the settle timer below (the percent-anchored box stretches
+// gesture we defer to the settle timer below (the source-anchored box stretches
 // the existing bitmap in the meantime).
 watch(
   () => [coreWindow.value.leftPx, coreWindow.value.widthPx],

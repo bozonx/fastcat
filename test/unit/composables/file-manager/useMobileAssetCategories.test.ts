@@ -33,7 +33,6 @@ describe('useMobileAssetCategories', () => {
       { kind: 'file', name: `${path}.mp4`, path: `${path}/${path}.mp4` },
       { kind: 'directory', name: 'nested', path: `${path}/nested` },
     ]);
-    const reloadDirectory = vi.fn(async () => {});
     const vfs = {
       getMetadata: vi.fn(async () => ({ kind: 'directory' })),
     } as any;
@@ -41,20 +40,18 @@ describe('useMobileAssetCategories', () => {
     const { categories, loadAll } = useMobileAssetCategories({
       vfs,
       readDirectory,
-      reloadDirectory,
     });
 
     await loadAll(true);
 
     expect(readDirectory.mock.calls.map(([path]) => path)).toEqual([
-      '_video',
-      '_audio',
-      '_images',
       '_export',
+      '_video',
+      '_images',
+      '_audio',
       '_documents',
       '_files',
     ]);
-    expect(reloadDirectory).toHaveBeenCalledTimes(6);
     expect(categories.every((category) => category.sortedEntries.value.length === 1)).toBe(true);
   });
 
@@ -67,12 +64,47 @@ describe('useMobileAssetCategories', () => {
     const { categories, loadAll } = useMobileAssetCategories({
       vfs,
       readDirectory,
-      reloadDirectory: vi.fn(async () => {}),
     });
 
     await loadAll();
 
     expect(readDirectory).not.toHaveBeenCalled();
     expect(categories.every((category) => category.sortedEntries.value.length === 0)).toBe(true);
+  });
+
+  it('deduplicates concurrent loads and preserves unchanged entry arrays', async () => {
+    let resolveRead: ((entries: any[]) => void) | undefined;
+    const readDirectory = vi.fn(
+      async (path: string) =>
+        await new Promise<any[]>((resolve) => {
+          resolveRead = () =>
+            resolve([{ kind: 'file', name: `${path}.mp4`, path: `${path}/${path}.mp4` }]);
+        }),
+    );
+    const vfs = {
+      getMetadata: vi.fn(async () => ({ kind: 'directory' })),
+    } as any;
+
+    const { categories } = useMobileAssetCategories({
+      vfs,
+      readDirectory,
+    });
+    const category = categories[0]!;
+
+    const firstLoad = category.load();
+    const concurrentLoad = category.load();
+    await vi.waitFor(() => expect(readDirectory).toHaveBeenCalledOnce());
+    resolveRead?.([]);
+    await Promise.all([firstLoad, concurrentLoad]);
+
+    const initialEntries = category.sortedEntries.value;
+    readDirectory.mockImplementation(async (path: string) => [
+      { kind: 'file', name: `${path}.mp4`, path: `${path}/${path}.mp4` },
+    ]);
+
+    await category.load();
+
+    expect(category.sortedEntries.value).toBe(initialEntries);
+    expect(readDirectory).toHaveBeenCalledTimes(2);
   });
 });

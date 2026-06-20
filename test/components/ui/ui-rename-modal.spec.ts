@@ -43,6 +43,26 @@ describe('UiRenameModal', () => {
     expect((input.element as HTMLInputElement).value).toBe('Start Name');
   });
 
+  it('selects only the base name without extension when opening a file name', async () => {
+    const component = await mountSuspended(UiRenameModal, {
+      props: {
+        open: false,
+        initialName: 'video.mp4',
+      },
+      global: { stubs },
+    });
+
+    await component.setProps({ open: true });
+    await nextTick();
+    await new Promise((resolve) => setTimeout(resolve, 100));
+
+    const input = component.find('input');
+    const htmlInput = input.element as HTMLInputElement;
+    expect(htmlInput.value).toBe('video.mp4');
+    expect(htmlInput.selectionStart).toBe(0);
+    expect(htmlInput.selectionEnd).toBe(5);
+  });
+
   it('initializes input with currentName if initialName is not provided', async () => {
     const component = await mountSuspended(UiRenameModal, {
       props: {

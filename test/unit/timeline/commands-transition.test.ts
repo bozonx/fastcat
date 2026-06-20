@@ -325,7 +325,7 @@ describe('timeline/commands update_clip_transition', () => {
       curve: 'linear',
       params: {
         direction: 'from-center',
-        blur: 0.2,
+        blur: 20,
         anchor: 'center',
         blurMode: 'fixed',
         followScale: false,

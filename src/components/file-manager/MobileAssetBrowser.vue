@@ -17,6 +17,7 @@ import type { FsEntry } from '~/types/fs';
 import type { MobileDrawerAction } from '~/types/file-manager';
 import type { FileCompatibility } from '~/composables/file-manager/useFileManagerCompatibility';
 import MobileFileBrowserGrid from './MobileFileBrowserGrid.vue';
+import MobileFileBrowserList from './MobileFileBrowserList.vue';
 import MobileFileBrowserDrawer from './MobileFileBrowserDrawer.vue';
 import MobileFileBrowserSelectionToolbar from './MobileFileBrowserSelectionToolbar.vue';
 import MobilePullToRefreshIndicator from './MobilePullToRefreshIndicator.vue';
@@ -56,7 +57,6 @@ const {
 const { categories, loadAll, toggleCollapse, isCollapsed } = useMobileAssetCategories({
   vfs,
   readDirectory,
-  reloadDirectory,
 });
 
 // Flattened view of every visible asset across all categories — used for shared
@@ -315,7 +315,11 @@ async function wrappedHandleDeleteConfirm() {
 
       <section
         v-for="category in categories"
-        v-show="category.sortedEntries.value.length > 0 || category.isLoading.value || category.error.value"
+        v-show="
+          category.sortedEntries.value.length > 0 ||
+          category.isLoading.value ||
+          category.error.value
+        "
         :key="category.id"
         class="border-b border-ui-border/50"
       >
@@ -335,7 +339,8 @@ async function wrappedHandleDeleteConfirm() {
           </span>
         </button>
 
-        <MobileFileBrowserGrid
+        <component
+          :is="['audio', 'documents', 'files'].includes(category.id) ? MobileFileBrowserList : MobileFileBrowserGrid"
           v-show="!isCollapsed(category.id)"
           :entries="category.sortedEntries.value"
           :thumbnails="category.thumbnails.value"

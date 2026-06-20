@@ -63,7 +63,11 @@ export interface TransitionManifest<T = Record<string, unknown>> {
   renderer?: TransitionRenderer;
   createFilter?: () => Filter;
   updateFilter?: (filter: Filter, context: TransitionShaderContext) => void;
-  toTauriSpec?: (params: T, durationSec?: number) => TauriTransitionSpec;
+  toTauriSpec?: (
+    params: T,
+    durationSec?: number,
+    options?: { isExport?: boolean },
+  ) => TauriTransitionSpec;
   supportedModes?: TransitionMode[];
   /** Returns opacity [0..1] of the outgoing clip at `progress` [0..1] */
   computeOutOpacity: (progress: number, params: T, curve: TransitionCurve) => number;

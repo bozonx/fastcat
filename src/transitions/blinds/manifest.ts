@@ -222,17 +222,6 @@ export const blindsManifest: TransitionManifest<BlindsParams> = {
       step: 1,
     },
     {
-      key: 'blurQuality',
-      kind: 'select',
-      labelKey: 'fastcat.timeline.transition.paramBlurQuality',
-      options: [
-        { value: 'low', labelKey: 'fastcat.timeline.transition.blurQualityLow' },
-        { value: 'medium', labelKey: 'fastcat.timeline.transition.blurQualityMedium' },
-        { value: 'high', labelKey: 'fastcat.timeline.transition.blurQualityHigh' },
-        { value: 'ultra', labelKey: 'fastcat.timeline.transition.blurQualityUltra' },
-      ],
-    },
-    {
       key: 'motionBlur',
       kind: 'number',
       labelKey: 'fastcat.timeline.transition.paramMotionBlur',

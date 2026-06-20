@@ -68,6 +68,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   'update:previewMode': [val: 'original' | 'proxy'];
   convert: [entry: FsEntry];
+  'close-drawer': [];
 }>();
 
 const { t } = useI18n();
@@ -407,7 +408,10 @@ const {
   createSubfolder,
   createTimelineInFolder,
   createMarkdownInFolder,
-  generateProxiesForSelectedFolder,
+  generateProxiesForSelectedFolder: async () => {
+    await generateProxiesForSelectedFolder();
+    emit('close-drawer');
+  },
   stopProxyGenerationForSelectedFolder,
   onRename: () => {
     isRenameModalOpen.value = true;
@@ -422,6 +426,7 @@ const {
     const file = await projectStore.getFileByPath(selectedPath.value!);
     if (!file) return;
     await proxyStore.generateProxy(file, selectedPath.value!);
+    emit('close-drawer');
   },
   cancelProxy: () => proxyStore.cancelProxyGeneration(selectedPath.value!),
   deleteProxy: () => proxyStore.deleteProxy(selectedPath.value!),

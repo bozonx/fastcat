@@ -40,7 +40,14 @@ const CATEGORY_ICONS: Record<AssetCategoryId, string> = {
   files: 'lucide:folder-open',
 };
 
-const CATEGORY_ORDER: AssetCategoryId[] = ['video', 'audio', 'images', 'export', 'documents', 'files'];
+const CATEGORY_ORDER: AssetCategoryId[] = [
+  'export',
+  'video',
+  'images',
+  'audio',
+  'documents',
+  'files',
+];
 
 // Collapse state persists for the app lifetime so it survives switching between
 // the Assets/Files tabs (which mount/unmount the browser components).
@@ -56,7 +63,23 @@ const collapsedState = reactive<Record<AssetCategoryId, boolean>>({
 interface Deps {
   vfs: IFileSystemAdapter;
   readDirectory: (path?: string) => Promise<FsEntry[]>;
-  reloadDirectory: (path: string) => Promise<void>;
+}
+
+function areEntriesEqual(current: FsEntry[], next: FsEntry[]): boolean {
+  if (current.length !== next.length) return false;
+
+  return current.every((entry, index) => {
+    const nextEntry = next[index];
+    return (
+      nextEntry !== undefined &&
+      entry.kind === nextEntry.kind &&
+      entry.name === nextEntry.name &&
+      entry.path === nextEntry.path &&
+      entry.parentPath === nextEntry.parentPath &&
+      entry.size === nextEntry.size &&
+      entry.lastModified === nextEntry.lastModified
+    );
+  });
 }
 
 /**
@@ -65,35 +88,49 @@ interface Deps {
  * pipeline (sorting, thumbnails, compatibility). Only the top level of each
  * folder is read — nested folders are not supported yet.
  */
-export function useMobileAssetCategories({ vfs, readDirectory, reloadDirectory }: Deps) {
+export function useMobileAssetCategories({ vfs, readDirectory }: Deps) {
   const isRemoteMode = ref(false);
 
   const categories = CATEGORY_ORDER.map((id) => {
     const entries = useFileBrowserEntries({ isRemoteMode, vfs });
     const isLoading = ref(false);
     const error = ref<string | null>(null);
+    let activeLoad: Promise<void> | null = null;
 
-    async function load(force = false) {
+    async function performLoad() {
       const path = CATEGORY_DIRS[id];
       isLoading.value = true;
       error.value = null;
       try {
         const meta = await vfs.getMetadata(path).catch(() => null);
         if (!meta || meta.kind !== 'directory') {
-          entries.folderEntries.value = [];
+          if (entries.folderEntries.value.length > 0) {
+            entries.folderEntries.value = [];
+          }
           return;
         }
-        if (force) await reloadDirectory(path);
         const raw = await readDirectory(path);
         // Top level only: ignore nested folders for now.
         const files = raw.filter((e) => e.kind === 'file');
-        entries.folderEntries.value = await entries.supplementEntries(files);
+        const supplementedEntries = await entries.supplementEntries(files);
+        if (!areEntriesEqual(entries.folderEntries.value, supplementedEntries)) {
+          entries.folderEntries.value = supplementedEntries;
+        }
       } catch (err) {
         error.value = err instanceof Error ? err.message : String(err);
         entries.folderEntries.value = [];
       } finally {
         isLoading.value = false;
       }
+    }
+
+    function load(_force = false) {
+      if (activeLoad) return activeLoad;
+
+      activeLoad = performLoad().finally(() => {
+        activeLoad = null;
+      });
+      return activeLoad;
     }
 
     return {

@@ -69,6 +69,7 @@ export interface BuildNativeMonitorSceneParams {
   getProxyNativePath?: (projectRelativePath: string) => Promise<string | null>;
   /** Hardcoded sync mode override (e.g. mobile always uses 'balanced'). */
   syncMode?: 'smooth' | 'balanced' | 'strict';
+  isExport?: boolean;
 }
 
 interface ProxyResolution {
@@ -391,8 +392,9 @@ function buildBaseLayer(params: {
   z: number;
   allClips: WorkerTimelineClip[];
   onWarning?: (message: string) => void;
+  isExport?: boolean;
 }): Omit<NativeSceneLayer, 'kind'> {
-  const { clip, sceneWidth, sceneHeight, z, allClips, onWarning } = params;
+  const { clip, sceneWidth, sceneHeight, z, allClips, onWarning, isExport } = params;
   const startUs = clip.timelineRange.startUs;
   const durationUs = clip.timelineRange.durationUs;
   const sourceStartUs = clip.sourceRange.startUs;
@@ -421,6 +423,7 @@ function buildBaseLayer(params: {
         ? manifest.toTauriSpec(
             effectiveTransitionIn.params ?? {},
             effectiveTransitionIn.durationUs / 1_000_000,
+            { isExport },
           )
         : undefined;
 
@@ -461,6 +464,7 @@ function buildBaseLayer(params: {
         ? manifest.toTauriSpec(
             clip.transitionOut.params ?? {},
             clip.transitionOut.durationUs / 1_000_000,
+            { isExport },
           )
         : undefined;
 
@@ -625,6 +629,7 @@ export async function buildNativeMonitorScene(
       z,
       allClips: builtVideo.clips,
       onWarning: params.onWarning,
+      isExport: params.isExport,
     });
 
     if (clip.clipType === 'adjustment') {

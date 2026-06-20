@@ -369,17 +369,6 @@ export const cardSwapTransitionManifest: TransitionManifest<CardSwapParams> = {
       step: 0.05,
     },
     {
-      key: 'blurQuality',
-      kind: 'select',
-      labelKey: 'fastcat.timeline.transition.paramBlurQuality',
-      options: [
-        { value: 'low', labelKey: 'fastcat.timeline.transition.blurQualityLow' },
-        { value: 'medium', labelKey: 'fastcat.timeline.transition.blurQualityMedium' },
-        { value: 'high', labelKey: 'fastcat.timeline.transition.blurQualityHigh' },
-        { value: 'ultra', labelKey: 'fastcat.timeline.transition.blurQualityUltra' },
-      ],
-    },
-    {
       key: 'bloom',
       kind: 'slider',
       labelKey: 'fastcat.timeline.transition.paramBloom',

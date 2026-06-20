@@ -109,7 +109,7 @@ function normalizeCircleParams(params?: Record<string, unknown>): Record<string,
       : 'center';
 
   return {
-    blur: clamp(finiteNumber(params?.blur, 0.015), 0.0001, 0.2),
+    blur: clamp(finiteNumber(params?.blur, 1.5), 0, 20),
     blurMode: params?.blurMode === 'scaled' ? 'scaled' : 'fixed',
     direction: params?.direction === 'to-center' ? 'to-center' : 'from-center',
     anchor,
@@ -118,6 +118,32 @@ function normalizeCircleParams(params?: Record<string, unknown>): Record<string,
     scaleX: clamp(finiteNumber(params?.scaleX, 100), 1, 1000),
     scaleY: clamp(finiteNumber(params?.scaleY, 100), 1, 1000),
     followScale: params?.followScale === true,
+  };
+}
+
+function normalizeClockParams(params?: Record<string, unknown>): Record<string, unknown> {
+  const direction = params?.direction as string;
+  return {
+    direction:
+      direction === 'counterclockwise' || direction === 'symmetric' ? direction : 'clockwise',
+  };
+}
+
+function normalizeRectangleParams(params?: Record<string, unknown>): Record<string, unknown> {
+  const anchor =
+    typeof params?.anchor === 'string' &&
+    ['center', 'top-left', 'top-right', 'bottom-left', 'bottom-right'].includes(params.anchor)
+      ? params.anchor
+      : 'center';
+
+  return {
+    blur: clamp(finiteNumber(params?.blur, 0.015), 0.0001, 0.2),
+    blurMode: params?.blurMode === 'scaled' ? 'scaled' : 'fixed',
+    direction: params?.direction === 'to-center' ? 'to-center' : 'from-center',
+    anchor,
+    offsetX: clamp(finiteNumber(params?.offsetX, 0), -100, 100),
+    offsetY: clamp(finiteNumber(params?.offsetY, 0), -100, 100),
+    contentMode: params?.contentMode === 'zoom' ? 'zoom' : 'reveal',
   };
 }
 
@@ -1219,7 +1245,6 @@ export const tauriTransitionManifests: TransitionManifest[] = [
           { value: 'bloom', labelKey: 'fastcat.timeline.transition.motionBlurModeBloom' },
         ],
       },
-      blurQualityField,
       {
         kind: 'button-group',
         key: 'brightnessMode',
@@ -1246,10 +1271,15 @@ export const tauriTransitionManifests: TransitionManifest[] = [
         step: 0.01,
       },
     ],
-    toTauriSpec: (params: Record<string, unknown>, durationSec?: number): TauriTransitionSpec => {
+    toTauriSpec: (
+      params: Record<string, unknown>,
+      durationSec?: number,
+      options?: { isExport?: boolean },
+    ): TauriTransitionSpec => {
       const [ax, ay] = directionVector(params.direction);
       const [r, g, b] = hexToRgb01(params.gapColor, '#000000');
-      const samples = qualitySamples(params.blurQuality, 8, 16, 32, 64);
+      const q = options?.isExport ? 'ultra' : params.blurQuality;
+      const samples = qualitySamples(q, 8, 16, 32, 64);
       return {
         type: 'custom-wgsl',
         source: SLIDE_WGSL,
@@ -1278,7 +1308,8 @@ export const tauriTransitionManifests: TransitionManifest[] = [
     nameKey: 'fastcat.transitions.clock.name',
     icon: 'i-heroicons-clock',
     defaultDurationUs: 600_000,
-    defaultParams: { direction: 'clockwise' },
+    defaultParams: normalizeClockParams(),
+    normalizeParams: normalizeClockParams,
     renderMode: 'shader',
     renderer: 'wgpu',
     supportedModes: ['adjacent'],
@@ -1429,17 +1460,8 @@ export const tauriTransitionManifests: TransitionManifest[] = [
     nameKey: 'fastcat.transitions.circle.name',
     icon: 'i-heroicons-stop-circle',
     defaultDurationUs: 600_000,
-    defaultParams: {
-      blur: 1.5,
-      blurMode: 'fixed',
-      direction: 'from-center',
-      anchor: 'center',
-      offsetX: 0,
-      offsetY: 0,
-      scaleX: 100,
-      scaleY: 100,
-      followScale: false,
-    },
+    defaultParams: normalizeCircleParams(),
+    normalizeParams: normalizeCircleParams,
     renderMode: 'shader',
     renderer: 'wgpu',
     supportedModes: ['adjacent'],
@@ -1504,15 +1526,8 @@ export const tauriTransitionManifests: TransitionManifest[] = [
     nameKey: 'fastcat.transitions.rectangle.name',
     icon: 'i-heroicons-stop',
     defaultDurationUs: 600_000,
-    defaultParams: {
-      blur: 0.015,
-      blurMode: 'fixed',
-      direction: 'from-center',
-      anchor: 'center',
-      offsetX: 0,
-      offsetY: 0,
-      contentMode: 'reveal',
-    },
+    defaultParams: normalizeRectangleParams(),
+    normalizeParams: normalizeRectangleParams,
     renderMode: 'shader',
     renderer: 'wgpu',
     supportedModes: ['adjacent'],
@@ -1610,7 +1625,6 @@ export const tauriTransitionManifests: TransitionManifest[] = [
         max: 100,
         step: 1,
       },
-      blurQualityField,
       {
         kind: 'number',
         key: 'motionBlur',
@@ -1654,9 +1668,14 @@ export const tauriTransitionManifests: TransitionManifest[] = [
         step: 0.01,
       },
     ],
-    toTauriSpec: (params: Record<string, unknown>, durationSec?: number) => {
+    toTauriSpec: (
+      params: Record<string, unknown>,
+      durationSec?: number,
+      options?: { isExport?: boolean },
+    ) => {
       const rad = (clamp(finiteNumber(params.angle, 0), -360, 360) * Math.PI) / 180;
-      const samples = qualitySamples(params.blurQuality, 8, 16, 32, 64);
+      const q = options?.isExport ? 'ultra' : params.blurQuality;
+      const samples = qualitySamples(q, 8, 16, 32, 64);
       return {
         type: 'custom-wgsl',
         source: BLINDS_WGSL,
@@ -1714,7 +1733,6 @@ export const tauriTransitionManifests: TransitionManifest[] = [
         max: 100,
         step: 1,
       },
-      blurQualityField,
       {
         kind: 'button-group',
         key: 'brightnessMode',
@@ -1749,8 +1767,13 @@ export const tauriTransitionManifests: TransitionManifest[] = [
         step: 1,
       },
     ],
-    toTauriSpec: (params: Record<string, unknown>) => {
-      const samples = qualitySamples(params.blurQuality, 8, 16, 32, 64);
+    toTauriSpec: (
+      params: Record<string, unknown>,
+      durationSec?: number,
+      options?: { isExport?: boolean },
+    ) => {
+      const q = options?.isExport ? 'ultra' : params.blurQuality;
+      const samples = qualitySamples(q, 8, 16, 32, 64);
       return {
         type: 'custom-wgsl',
         source: ZOOM_WGSL,
@@ -1969,7 +1992,6 @@ export const tauriTransitionManifests: TransitionManifest[] = [
         max: 1,
         step: 0.05,
       },
-      blurQualityField,
       {
         kind: 'slider',
         key: 'bloom',
@@ -1979,8 +2001,13 @@ export const tauriTransitionManifests: TransitionManifest[] = [
         step: 0.05,
       },
     ],
-    toTauriSpec: (params: Record<string, unknown>) => {
-      const samples = qualitySamples(params.blurQuality, 4, 8, 16, 32);
+    toTauriSpec: (
+      params: Record<string, unknown>,
+      durationSec?: number,
+      options?: { isExport?: boolean },
+    ) => {
+      const q = options?.isExport ? 'ultra' : params.blurQuality;
+      const samples = qualitySamples(q, 4, 8, 16, 32);
       return {
         type: 'custom-wgsl',
         source: CARD_SWAP_WGSL,

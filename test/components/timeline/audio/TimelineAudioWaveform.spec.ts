@@ -4,6 +4,7 @@ import { reactive, ref, nextTick } from 'vue';
 import TimelineAudioWaveform from '~/components/timeline/audio/TimelineAudioWaveform.vue';
 import { __resetWaveformSchedulerForTests } from '~/utils/audio/waveform-render-scheduler';
 import { timeUsToPx } from '~/utils/timeline/geometry';
+import type { TimelineClipItem } from '~/timeline/types';
 
 const mockMediaStore = reactive({
   mediaMetadata: {} as Record<string, any>,
@@ -52,7 +53,7 @@ vi.mock('~/utils/audio/waveform-extraction-queue', () => ({
   runQueuedPeakExtraction: vi.fn(),
 }));
 
-const baseItem = {
+const baseItem: TimelineClipItem = {
   id: 'clip-1',
   kind: 'clip' as const,
   trackId: 'track-1',
@@ -71,7 +72,13 @@ const baseItem = {
 
 const mountedWrappers: Array<{ unmount: () => void }> = [];
 
-async function mountComponent(props = { item: baseItem }) {
+interface MountComponentProps {
+  item: TimelineClipItem;
+  scrollLeft?: number;
+  viewportWidth?: number;
+}
+
+async function mountComponent(props: MountComponentProps = { item: baseItem }) {
   const wrapper = await mountSuspended(TimelineAudioWaveform, {
     props,
     global: {
@@ -466,7 +473,13 @@ describe('TimelineAudioWaveform.vue', () => {
       mockTimelineStore.timelineZoom = 69;
       mockTimelineStore.timelineScrollLeftPx = timeUsToPx(item.timelineRange.startUs, 69);
 
-      const wrapper = await mountComponent({ item });
+      const initialScrollLeft = timeUsToPx(item.timelineRange.startUs, 69);
+      const wrapper = await mountComponent({
+        item,
+        // TimelineTracks v-memo can leave this prop at the pre-zoom value.
+        scrollLeft: initialScrollLeft,
+        viewportWidth: 1180,
+      });
       await nextTick();
       await vi.advanceTimersByTimeAsync(0);
 
@@ -474,13 +487,18 @@ describe('TimelineAudioWaveform.vue', () => {
       expect(vm.totalWidthPx).toBeLessThanOrEqual(8000);
 
       mockTimelineStore.timelineZoom = 70;
-      mockTimelineStore.timelineScrollLeftPx = timeUsToPx(item.timelineRange.startUs, 70);
+      const anchoredScrollLeft = timeUsToPx(item.timelineRange.startUs, 70);
+      mockTimelineStore.timelineScrollLeftPx = anchoredScrollLeft;
       await nextTick();
       await vi.advanceTimersByTimeAsync(121);
       await vi.advanceTimersByTimeAsync(0);
       await nextTick();
 
       expect(vm.totalWidthPx).toBeGreaterThan(8000);
+      expect(wrapper.props('scrollLeft')).toBe(initialScrollLeft);
+
+      const expectedVisibleLeft = anchoredScrollLeft - (vm.clipStartPx + vm.waveformLeftPx);
+      expect(vm.coreWindow.leftPx).toBe(Math.floor(expectedVisibleLeft));
 
       const canvas = wrapper.find('canvas').element as HTMLCanvasElement;
       expect(canvas.style.left).toMatch(/px$/);

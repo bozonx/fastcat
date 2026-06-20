@@ -301,6 +301,7 @@ function handleAction(actionId: DrawerAction) {
             :is-external="selectedFsEntry.isExternal"
             :selection-origin="selectedFsEntry.origin"
             :instance-id="selectedFsEntry.instanceId"
+            @close-drawer="emit('close')"
             @convert="
               (entry) =>
                 conversionStore.openConversionModal(entry, {

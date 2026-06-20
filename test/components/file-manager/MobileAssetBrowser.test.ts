@@ -169,6 +169,7 @@ describe('MobileAssetBrowser', () => {
       global: {
         stubs: {
           MobileFileBrowserGrid: true,
+          MobileFileBrowserList: true,
           MobileFileBrowserDrawer: {
             name: 'MobileFileBrowserDrawer',
             props: {
@@ -208,6 +209,7 @@ describe('MobileAssetBrowser', () => {
       global: {
         stubs: {
           MobileFileBrowserGrid: true,
+          MobileFileBrowserList: true,
           MobileFileBrowserDrawer: {
             name: 'MobileFileBrowserDrawer',
             props: ['onAction'],
@@ -238,6 +240,7 @@ describe('MobileAssetBrowser', () => {
       global: {
         stubs: {
           MobileFileBrowserGrid: true,
+          MobileFileBrowserList: true,
           MobileFileBrowserDrawer: true,
           MobileFileBrowserSelectionToolbar: true,
           MobilePullToRefreshIndicator: {
@@ -269,6 +272,7 @@ describe('MobileAssetBrowser', () => {
       global: {
         stubs: {
           MobileFileBrowserGrid: true,
+          MobileFileBrowserList: true,
           MobileFileBrowserDrawer: true,
           MobileFileBrowserSelectionToolbar: true,
           MobilePullToRefreshIndicator: true,
