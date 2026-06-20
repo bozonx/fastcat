@@ -504,7 +504,7 @@ describe('TimelineAudioWaveform.vue', () => {
       expect(canvas.style.left).toMatch(/px$/);
       expect(canvas.style.width).toMatch(/px$/);
 
-      const canvasLeftInClip = vm.waveformLeftPx + Number.parseFloat(canvas.style.left);
+      const canvasLeftInClip = Number.parseFloat(canvas.style.left);
       const canvasRightInClip = canvasLeftInClip + Number.parseFloat(canvas.style.width);
       const visibleWidth = Math.min(
         mockTimelineStore.timelineViewportWidth,
@@ -514,5 +514,59 @@ describe('TimelineAudioWaveform.vue', () => {
       expect(canvasLeftInClip).toBeLessThanOrEqual(0);
       expect(canvasRightInClip).toBeGreaterThanOrEqual(visibleWidth);
     });
+
+    it.each([
+      { speed: 1, expectedTransform: '' },
+      { speed: -1, expectedTransform: 'scaleX(-1)' },
+    ])(
+      'keeps only a viewport-sized canvas at extreme zoom for speed $speed',
+      async ({ speed, expectedTransform }) => {
+        vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => {
+          callback(0);
+          return 0;
+        });
+        vi.stubGlobal('cancelAnimationFrame', () => undefined);
+
+        vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue({
+          beginPath: vi.fn(),
+          clearRect: vi.fn(),
+          closePath: vi.fn(),
+          fill: vi.fn(),
+          lineTo: vi.fn(),
+          moveTo: vi.fn(),
+          fillStyle: '',
+        } as unknown as CanvasRenderingContext2D);
+
+        const item: TimelineClipItem = {
+          ...baseItem,
+          speed,
+          timelineRange: { startUs: 58_000_000, durationUs: 16_000_000 },
+          sourceRange: { startUs: 4_000_000_000, durationUs: 16_000_000 },
+          sourceDurationUs: 10_800_000_000,
+        };
+        mockMediaStore.mediaMetadata['media.mp4'] = {
+          duration: 10_800,
+          audioPeaks: [new Float32Array(500_000).fill(0.5)],
+        };
+        mockTimelineStore.timelineViewportWidth = 1180;
+        mockTimelineStore.timelineZoom = 102;
+        mockTimelineStore.timelineScrollLeftPx = timeUsToPx(item.timelineRange.startUs, 102);
+
+        const wrapper = await mountComponent({ item });
+        await nextTick();
+
+        const vm = wrapper.vm as any;
+        expect(vm.totalWidthPx).toBeGreaterThan(10_000_000);
+
+        const canvas = wrapper.find('canvas').element as HTMLCanvasElement;
+        const canvasLeftInClip = Number.parseFloat(canvas.style.left);
+        const canvasWidth = Number.parseFloat(canvas.style.width);
+
+        expect(Math.abs(canvasLeftInClip)).toBeLessThanOrEqual(1001);
+        expect(canvasWidth).toBeLessThanOrEqual(3181);
+        expect(canvas.style.transform).toBe(expectedTransform);
+        expect(canvas.parentElement).toBe(wrapper.element);
+      },
+    );
   });
 });

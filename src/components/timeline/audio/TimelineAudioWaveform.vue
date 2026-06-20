@@ -499,13 +499,27 @@ const renderedFrac = ref<{ start: number; width: number } | null>(null);
 const canvasBoxStyle = computed(() => {
   const frac = renderedFrac.value;
   const totalW = totalWidthPx.value;
-  if (!frac || totalW <= 0) return { left: '0px', width: `${Math.max(0, totalW)}px` };
+  if (totalW <= 0) {
+    return { left: '0px', width: '0px', transform: undefined };
+  }
 
-  // Recomputing pixels from the stable source fraction scales the existing
-  // bitmap with zoom without binding its box to the next (not yet painted) window.
+  // Before the first draw, use the current window instead of briefly creating a
+  // full-source box. After drawing, keep using the painted source fraction so the
+  // bitmap remains anchored to the same source region during a zoom gesture.
+  const sourceLeftPx = frac ? frac.start * totalW : renderWindow.value.leftPx;
+  const sourceWidthPx = frac ? frac.width * totalW : renderWindow.value.widthPx;
+
+  // Position the small rendered window directly in clip coordinates. Keeping a
+  // full-duration source container in the DOM reaches WebKitGTK's element-size
+  // and coordinate precision limits for long audio at extreme zoom levels.
+  const clipLeftPx = isReversed.value
+    ? waveformLeftPx.value + totalW - (sourceLeftPx + sourceWidthPx)
+    : waveformLeftPx.value + sourceLeftPx;
+
   return {
-    left: `${frac.start * totalW}px`,
-    width: `${frac.width * totalW}px`,
+    left: `${clipLeftPx}px`,
+    width: `${sourceWidthPx}px`,
+    transform: isReversed.value ? 'scaleX(-1)' : undefined,
   };
 });
 
@@ -754,20 +768,11 @@ onBeforeUnmount(() => {
       ></div>
     </div>
 
-    <div
+    <canvas
       v-else-if="audioPeaks"
-      class="absolute inset-y-0 h-full"
-      :style="{
-        left: `${waveformLeftPx}px`,
-        width: `${totalWidthPx}px`,
-        transform: isReversed ? 'scaleX(-1)' : undefined,
-      }"
-    >
-      <canvas
-        ref="canvasEl"
-        class="absolute top-0 h-full max-w-none"
-        :style="canvasBoxStyle"
-      ></canvas>
-    </div>
+      ref="canvasEl"
+      class="absolute top-0 h-full max-w-none"
+      :style="canvasBoxStyle"
+    ></canvas>
   </div>
 </template>

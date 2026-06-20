@@ -27,6 +27,8 @@ import UiRenameModal from '~/components/ui/UiRenameModal.vue';
 import MobileAddToTimelineModal from '~/components/timeline/MobileAddToTimelineModal.vue';
 import { useTimelineMediaUsageStore } from '~/stores/timeline-media-usage.store';
 import { useUiStore } from '~/stores/ui.store';
+import { useMobileAssetBrowserStore } from '~/stores/file-manager.store';
+import UiButtonGroup from '~/components/ui/UiButtonGroup.vue';
 
 const projectStore = useProjectStore();
 const selectionStore = useSelectionStore();
@@ -38,6 +40,19 @@ const { target: teleportTarget } = useTeleportTarget();
 
 const fileManager = useFileManager({ shouldRecordFileManagerHistory: () => false });
 provide(FILE_MANAGER_INJECTION_KEY, fileManager);
+
+const assetStore = useMobileAssetBrowserStore();
+provide('fileManagerStore', assetStore);
+
+const sortFieldOptions = computed(() => [
+  { label: t('common.modified'), value: 'modified' },
+  { label: t('common.name'), value: 'name' },
+  { label: t('common.size'), value: 'size' },
+]);
+
+function toggleSortOrder() {
+  assetStore.sortOption.order = assetStore.sortOption.order === 'asc' ? 'desc' : 'asc';
+}
 
 const {
   findEntryByPath,
@@ -283,6 +298,31 @@ async function wrappedHandleDeleteConfirm() {
 <template>
   <div class="flex flex-col h-full bg-ui-bg text-ui-text">
     <input ref="fileInput" type="file" multiple class="hidden" @change="onFileSelect" />
+
+    <!-- Sorting Toolbar -->
+    <div
+      v-if="!isSelectionMode"
+      class="flex shrink-0 items-center justify-between border-b border-ui-border/60 bg-ui-bg px-4 py-2 gap-2"
+    >
+      <UiButtonGroup
+        v-model="assetStore.sortOption.field"
+        :options="sortFieldOptions"
+        size="xs"
+        active-color="primary"
+        active-variant="solid"
+        variant="ghost"
+        color="neutral"
+        class="min-w-0"
+      />
+      <UButton
+        :icon="assetStore.sortOption.order === 'asc' ? 'lucide:arrow-up-narrow-wide' : 'lucide:arrow-down-wide-narrow'"
+        size="sm"
+        color="neutral"
+        variant="ghost"
+        class="shrink-0"
+        @click="toggleSortOrder"
+      />
+    </div>
 
     <!-- Selection-mode header (this view has no navbar, so it carries the exit action) -->
     <div

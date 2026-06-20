@@ -52,6 +52,10 @@ describe('UiRenameModal', () => {
       global: { stubs },
     });
 
+    const entityModal = component.findComponent({ name: 'UiEntityCreationModal' });
+    expect(entityModal.exists()).toBe(true);
+    expect(entityModal.props('selectWithoutExtension')).toBe(true);
+
     await component.setProps({ open: true });
     await nextTick();
     await new Promise((resolve) => setTimeout(resolve, 100));
