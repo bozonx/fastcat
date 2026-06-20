@@ -120,14 +120,6 @@ describe('useMobileTimelineDrawers', () => {
     unmount();
   });
 
-  it('opens the transition drawer when a transition is selected', async () => {
-    mockTimelineStore.selectedTransition = { trackId: 'track-1', itemId: 'clip-1', edge: 'in' };
-    const { api, unmount } = mountDrawers();
-    await nextTick();
-
-    expect(api.isTransitionDrawerOpen.value).toBe(true);
-    unmount();
-  });
 
   it('opens the settings drawer with a high snap point for timeline properties', async () => {
     mockSelectionStore.selectedEntity = { source: 'timeline', kind: 'timeline-properties' };

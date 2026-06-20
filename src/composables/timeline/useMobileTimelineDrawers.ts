@@ -29,7 +29,6 @@ export function useMobileTimelineDrawers() {
   const isClipPropertiesDrawerOpen = ref(false);
   const isMarkerPropertiesDrawerOpen = ref(false);
   const isSelectionRangeDrawerOpen = ref(false);
-  const isTransitionDrawerOpen = ref(false);
   const isMultiSelectionDrawerOpen = ref(false);
   const isAddContentDrawerOpen = ref(false);
   const isTrimDrawerOpen = ref(false);
@@ -54,7 +53,6 @@ export function useMobileTimelineDrawers() {
     isClipPropertiesDrawerOpen,
     isMarkerPropertiesDrawerOpen,
     isSelectionRangeDrawerOpen,
-    isTransitionDrawerOpen,
     isMultiSelectionDrawerOpen,
     isTrimDrawerOpen,
     isTransitionsPanelOpen,
@@ -120,11 +118,7 @@ export function useMobileTimelineDrawers() {
 
       if (isMultiSelectionDrawerOpen.value && itemIds.length > 0) return;
 
-      if (transition) {
-        closeAllDrawers();
-        isTransitionDrawerOpen.value = true;
-        return;
-      }
+
 
       if (entity?.kind === 'timeline-properties' && entity.source === 'timeline') {
         closeAllDrawers();
@@ -300,17 +294,7 @@ export function useMobileTimelineDrawers() {
     }
   }
 
-  function onTransitionDrawerClose() {
-    isTransitionDrawerOpen.value = false;
 
-    if (suppressDrawerSelectionClear.value) {
-      return;
-    }
-    if (selectionStore.selectedEntity?.kind === 'transition') {
-      timelineStore.selectTransition(null);
-      selectionStore.clearSelection();
-    }
-  }
 
   function onOpenVirtualClipPreset(type: 'text' | 'shape' | 'hud') {
     virtualClipPresetType.value = type;
@@ -325,7 +309,6 @@ export function useMobileTimelineDrawers() {
     isClipPropertiesDrawerOpen,
     isMarkerPropertiesDrawerOpen,
     isSelectionRangeDrawerOpen,
-    isTransitionDrawerOpen,
     isMultiSelectionDrawerOpen,
     isAddContentDrawerOpen,
     isTrimDrawerOpen,
@@ -360,7 +343,6 @@ export function useMobileTimelineDrawers() {
     onMultiSelectionDrawerClose,
     onMarkerPropertiesDrawerClose,
     onSelectionRangeDrawerClose,
-    onTransitionDrawerClose,
     onOpenVirtualClipPreset,
   };
 }

@@ -276,14 +276,15 @@ onBeforeUnmount(() => {
       >
         <button
           type="button"
-          class="w-full h-full overflow-hidden group/trans pointer-events-auto"
-          :class="
+          :class="[
+            'w-full h-full overflow-hidden group/trans',
+            isMobile ? 'pointer-events-none' : 'pointer-events-auto',
             getTransitionButtonClass(
               selectedTransition?.itemId === clip.id && selectedTransition?.edge === 'in',
               hasTransitionProblem('in'),
               'in',
             )
-          "
+          ]"
           :title="getTransitionButtonTitle('in')"
           @click.stop="
             canEdit &&
@@ -355,14 +356,15 @@ onBeforeUnmount(() => {
       >
         <button
           type="button"
-          class="w-full h-full overflow-hidden group/trans pointer-events-auto"
-          :class="
+          :class="[
+            'w-full h-full overflow-hidden group/trans',
+            isMobile ? 'pointer-events-none' : 'pointer-events-auto',
             getTransitionButtonClass(
               selectedTransition?.itemId === clip.id && selectedTransition?.edge === 'out',
               hasTransitionProblem('out'),
               'out',
             )
-          "
+          ]"
           :title="getTransitionButtonTitle('out')"
           @click.stop="
             canEdit &&

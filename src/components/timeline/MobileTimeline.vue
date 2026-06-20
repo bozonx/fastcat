@@ -23,7 +23,6 @@ import MobileTrackPropertiesDrawer from './MobileTrackPropertiesDrawer.vue';
 import MobileAddContentDrawer from './MobileAddContentDrawer.vue';
 import MobileVirtualClipPresetDrawer from './MobileVirtualClipPresetDrawer.vue';
 import MobileMarkerPropertiesDrawer from './MobileMarkerPropertiesDrawer.vue';
-import MobileTransitionPropertiesDrawer from './MobileTransitionPropertiesDrawer.vue';
 import MobileSelectionRangePropertiesDrawer from './MobileSelectionRangePropertiesDrawer.vue';
 import MobileDrawerToolbar from './MobileDrawerToolbar.vue';
 import MobileDrawerToolbarButton from './MobileDrawerToolbarButton.vue';
@@ -82,7 +81,6 @@ const {
   isClipPropertiesDrawerOpen,
   isMarkerPropertiesDrawerOpen,
   isSelectionRangeDrawerOpen,
-  isTransitionDrawerOpen,
   isMultiSelectionDrawerOpen,
   isAddContentDrawerOpen,
   isTrimDrawerOpen,
@@ -116,7 +114,6 @@ const {
   onMultiSelectionDrawerClose,
   onMarkerPropertiesDrawerClose,
   onSelectionRangeDrawerClose,
-  onTransitionDrawerClose,
   onOpenVirtualClipPreset,
 } = useMobileTimelineDrawers();
 
@@ -449,16 +446,7 @@ const {
       @close="onSelectionRangeDrawerClose"
     />
 
-    <!-- Transition Properties Drawer -->
-    <MobileTransitionPropertiesDrawer
-      v-if="timelineStore.selectedTransition && selectedTransitionContext"
-      v-model:active-snap-point="drawerActiveSnapPoint"
-      :is-open="isTransitionDrawerOpen"
-      :transition-selection="timelineStore.selectedTransition"
-      :clip="selectedTransitionContext.clip"
-      :track="selectedTransitionContext.track"
-      @close="onTransitionDrawerClose"
-    />
+
 
     <!-- Timeline Settings Drawer -->
     <MobileTimelineSettingsDrawer
