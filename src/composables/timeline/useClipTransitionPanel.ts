@@ -163,6 +163,14 @@ export function useClipTransitionPanel(options: UseClipTransitionPanelOptions) {
   const durationMax = computed(() => {
     return options.maxDuration?.value ?? defaultDurationMax;
   });
+
+  watch(durationMax, (maxVal) => {
+    if (durationSec.value > maxVal) {
+      durationSec.value = maxVal;
+      emitUpdate();
+    }
+  });
+
   const durationStep = 0.05;
 
   return {

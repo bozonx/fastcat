@@ -10,6 +10,7 @@ import type {
 } from '~/transitions/core/registry';
 import UiSliderInput from '~/components/ui/UiSliderInput.vue';
 import UiButtonGroup from '~/components/ui/UiButtonGroup.vue';
+import UiSelect from '~/components/ui/UiSelect.vue';
 import UiModal from '~/components/ui/UiModal.vue';
 import UiTextInput from '~/components/ui/UiTextInput.vue';
 import TransitionParamFields from '~/components/properties/TransitionParamFields.vue';
@@ -142,6 +143,30 @@ function isTransitionModeAvailable(
 function isManifestAvailable(manifest: TransitionManifest): boolean {
   const modes = manifest.supportedModes ?? ['adjacent', 'background', 'transparent'];
   return modes.some((mode) => isTransitionModeAvailable(manifest, mode));
+}
+
+const transitionOptions = computed(() =>
+  manifests.value.map((manifest) => ({
+    value: manifest.type,
+    label: manifest.name,
+    icon: manifest.icon,
+    disabled: !isManifestAvailable(manifest),
+  })),
+);
+
+function selectValue(value: unknown): string | undefined {
+  if (value === null || value === undefined) return undefined;
+  if (typeof value === 'string') return value;
+  if (typeof value === 'object' && 'value' in value) {
+    const nested = (value as Record<string, unknown>).value;
+    return typeof nested === 'string' ? nested : undefined;
+  }
+  return undefined;
+}
+
+function updateTypeFromSelect(value: unknown) {
+  const selected = selectValue(value);
+  if (selected) selectedType.value = selected;
 }
 
 watch(
@@ -326,26 +351,23 @@ defineExpose({
     </div>
 
     <!-- Transition type picker -->
-    <div class="flex flex-col gap-1.5">
-      <button
-        v-for="manifest in manifests"
-        :key="manifest.type"
-        type="button"
-        :disabled="!isManifestAvailable(manifest)"
-        class="flex items-center gap-2 px-2 py-1.5 rounded border transition-colors w-full"
-        :class="
-          !isManifestAvailable(manifest)
-            ? 'bg-ui-bg border-ui-border text-ui-text-muted opacity-50 cursor-not-allowed'
-            : selectedType === manifest.type
-              ? 'bg-primary-500/20 border-primary-500 text-primary-400'
-              : 'bg-ui-bg border-ui-border hover:bg-ui-bg-hover'
-        "
-        @click="selectedType = manifest.type"
-      >
-        <UIcon :name="manifest.icon" class="w-4 h-4 shrink-0" />
-        <span>{{ manifest.name }}</span>
-      </button>
-    </div>
+    <UiSelect
+      :model-value="selectedType"
+      :items="transitionOptions"
+      value-key="value"
+      label-key="label"
+      size="xs"
+      full-width
+      :searchable="false"
+      @update:model-value="updateTypeFromSelect"
+    >
+      <template #leading>
+        <UIcon v-if="selectedManifest" :name="selectedManifest.icon" class="w-4 h-4 shrink-0" />
+      </template>
+      <template #item-leading="{ item }">
+        <UIcon v-if="item.icon" :name="item.icon" class="w-4 h-4 shrink-0" />
+      </template>
+    </UiSelect>
 
     <UiFormField :label="t('fastcat.timeline.transition.duration')">
       <UiSliderInput

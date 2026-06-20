@@ -3,6 +3,12 @@ import { computed, ref } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
 import ClipTransitionPanel from '~/components/timeline/ClipTransitionPanel.vue';
 import type { TimelineClipItem, TimelineTrack } from '~/timeline/types';
+import {
+  getPrevClipForItem,
+  getNextClipForItem,
+  getClipTailTimelineHandleUs,
+  getClipHeadTimelineHandleUs,
+} from '~/utils/timeline/clip';
 
 const props = defineProps<{
   transitionSelection: {
@@ -32,7 +38,42 @@ const maxDurationSec = computed(() => {
       ? (props.clip.transitionOut?.durationUs ?? 0)
       : (props.clip.transitionIn?.durationUs ?? 0);
 
-  return Math.max(0.1, (clipDurationUs - oppositeTransitionUs) / 1_000_000);
+  let maxUs = clipDurationUs - oppositeTransitionUs;
+
+  const edge = props.transitionSelection.edge;
+  const transition = edge === 'in' ? props.clip.transitionIn : props.clip.transitionOut;
+  const mode = transition?.mode ?? 'adjacent';
+
+  if (mode === 'adjacent' && props.track) {
+    const adjacent =
+      edge === 'in'
+        ? getPrevClipForItem(props.track, props.clip)
+        : getNextClipForItem(props.track, props.clip);
+
+    if (adjacent) {
+      const clipEdgeUs =
+        edge === 'in'
+          ? props.clip.timelineRange.startUs
+          : props.clip.timelineRange.startUs + props.clip.timelineRange.durationUs;
+      const adjacentEdgeUs =
+        edge === 'in'
+          ? adjacent.timelineRange.startUs + adjacent.timelineRange.durationUs
+          : adjacent.timelineRange.startUs;
+
+      if (Math.abs(clipEdgeUs - adjacentEdgeUs) <= 1_000) {
+        const handleUs =
+          edge === 'in'
+            ? getClipTailTimelineHandleUs(adjacent)
+            : getClipHeadTimelineHandleUs(adjacent);
+
+        if (Number.isFinite(handleUs)) {
+          maxUs = Math.min(maxUs, handleUs);
+        }
+      }
+    }
+  }
+
+  return Math.max(0.1, maxUs / 1_000_000);
 });
 
 function handleTransitionUpdate(payload: {

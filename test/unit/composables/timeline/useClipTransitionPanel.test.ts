@@ -102,4 +102,38 @@ describe('useClipTransitionPanel', () => {
       },
     });
   });
+
+  it('clamps durationSec when durationMax decreases below it', async () => {
+    const onUpdate = vi.fn();
+    const maxDuration = ref(3);
+
+    const api = useClipTransitionPanel({
+      edge: ref<'in' | 'out'>('in'),
+      trackId: ref('v1'),
+      itemId: ref('c1'),
+      transition: ref<ClipTransition | undefined>({
+        type: 'dissolve',
+        durationUs: 2_000_000,
+        mode: 'adjacent',
+        curve: 'linear',
+      }),
+      maxDuration,
+      onUpdate,
+      debounceMs: 0,
+    });
+
+    expect(api.durationSec.value).toBe(2);
+
+    // Decrease max duration below 2 seconds (e.g. to 0.5 seconds)
+    maxDuration.value = 0.5;
+    await Promise.resolve();
+
+    expect(api.durationSec.value).toBe(0.5);
+    expect(onUpdate).toHaveBeenCalled();
+    expect(onUpdate.mock.calls.at(-1)?.[0]).toMatchObject({
+      transition: expect.objectContaining({
+        durationUs: 500_000,
+      }),
+    });
+  });
 });

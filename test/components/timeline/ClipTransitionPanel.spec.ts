@@ -24,6 +24,28 @@ vi.mock('~/components/ui/UiButtonGroup.vue', () => ({
     props: ['modelValue', 'options'],
   },
 }));
+vi.mock('~/components/ui/UiSelect.vue', () => ({
+  default: {
+    template: `
+      <div class="mock-select">
+        <span class="select-value">{{ modelValue }}</span>
+        <span class="select-leading"><slot name="leading" /></span>
+        <span class="select-options">
+          <span
+            v-for="item in items"
+            :key="item.value"
+            class="select-option"
+            :class="{ disabled: item.disabled }"
+          >
+            <span class="option-leading"><slot name="item-leading" :item="item" /></span>
+            <span class="option-label">{{ item.label }}</span>
+          </span>
+        </span>
+      </div>
+    `,
+    props: ['modelValue', 'items'],
+  },
+}));
 vi.mock('~/components/ui/UiModal.vue', () => ({
   default: {
     template: '<div class="mock-modal"><slot name="body" /><slot /></div>',
@@ -132,5 +154,20 @@ describe('ClipTransitionPanel', () => {
     expect(adjacent?.attributes('disabled')).toBeUndefined();
     expect(background?.attributes('disabled')).toBeDefined();
     expect(transparent?.attributes('disabled')).toBeDefined();
+  });
+
+  it('renders transition type options as a dropdown with icons and disabled state', async () => {
+    const component = await mountSuspended(ClipTransitionPanel, { props: defaultProps });
+
+    const options = component.findAll('.select-option');
+    expect(options.length).toBe(2);
+
+    expect(options[0].find('.option-label').text()).toBe('Dissolve');
+    expect(options[0].find('.option-leading .icon-mock').exists()).toBe(true);
+    expect(options[0].classes()).not.toContain('disabled');
+
+    expect(options[1].find('.option-label').text()).toBe('Wipe');
+    expect(options[1].find('.option-leading .icon-mock').exists()).toBe(true);
+    expect(options[1].classes()).not.toContain('disabled');
   });
 });
