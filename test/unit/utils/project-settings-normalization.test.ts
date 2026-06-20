@@ -45,4 +45,18 @@ describe('project settings normalization', () => {
     expect(normalized.monitor.previewResolution).toBe(0);
     expect(normalized.monitor.previewEffectsEnabled).toBe(false);
   });
+
+  it('migrates the retired "ultra" preview quality to "high"', () => {
+    const user = createDefaultUserSettings();
+
+    const normalized = normalizeProjectSettings(
+      {
+        project: { width: 1920, height: 1080, fps: 30 },
+        monitors: { cut: { previewBlurQuality: 'ultra' } },
+      },
+      user,
+    );
+
+    expect(normalized.monitor.previewBlurQuality).toBe('high');
+  });
 });

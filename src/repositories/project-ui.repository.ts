@@ -22,7 +22,10 @@ const ProjectMonitorSchema = z.object({
   showGrid: z.coerce.boolean().catch(false),
   showTimecode: z.coerce.boolean().catch(true),
   toolbarPosition: z.enum(['top', 'bottom', 'left', 'right']).catch('bottom'),
-  previewBlurQuality: z.enum(['low', 'medium', 'high', 'ultra', 'auto']).catch('auto'),
+  // `ultra` retired as a selectable tier — migrate persisted 'ultra' to 'high'.
+  previewBlurQuality: z
+    .preprocess((v) => (v === 'ultra' ? 'high' : v), z.enum(['low', 'medium', 'high', 'auto']))
+    .catch('auto'),
 });
 
 const TimelineSessionSchema = z.object({

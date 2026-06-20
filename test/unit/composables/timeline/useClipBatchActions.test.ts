@@ -278,4 +278,13 @@ describe('useClipBatchActions', () => {
     });
     expect(actions.isSingleGroupSelection.value).toBe(false);
   });
+
+  it('reports audio controls for video media clips and audio clips', () => {
+    const { actions } = build();
+    expect(actions.hasAudioOrVideoWithAudio.value).toBe(true);
+    expect(actions.audioClipRefs.value.map(({ clip }) => clip.id)).toEqual([
+      'video-1',
+      'audio-1',
+    ]);
+  });
 });

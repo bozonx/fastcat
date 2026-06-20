@@ -285,8 +285,13 @@ function createProjectSettingsSchema(defaults: FastCatProjectSettings) {
     toolbarPosition: z.enum(['top', 'bottom', 'left', 'right']).catch(dm.toolbarPosition),
     showTransparencyGrid: z.coerce.boolean().catch(dm.showTransparencyGrid),
     showMarkerTexts: z.coerce.boolean().catch(dm.showMarkerTexts),
+    // `ultra` is no longer a user-selectable tier; migrate any persisted 'ultra' to the
+    // highest remaining manual tier ('high') instead of resetting it to the default.
     previewBlurQuality: z
-      .enum(['low', 'medium', 'high', 'ultra', 'auto'])
+      .preprocess(
+        (v) => (v === 'ultra' ? 'high' : v),
+        z.enum(['low', 'medium', 'high', 'auto']),
+      )
       .catch(dm.previewBlurQuality ?? 'auto'),
   });
 
@@ -402,6 +407,9 @@ function pickProjectMonitorFields(
   if (typeof source.useProxy === 'boolean') out.useProxy = source.useProxy;
   if (typeof source.previewEffectsEnabled === 'boolean')
     out.previewEffectsEnabled = source.previewEffectsEnabled;
+  // Raw pass-through; the schema validates the enum and migrates the retired 'ultra' → 'high'.
+  if (typeof source.previewBlurQuality === 'string')
+    out.previewBlurQuality = source.previewBlurQuality as ProjectMonitorSettings['previewBlurQuality'];
   if (typeof source.showGrid === 'boolean') out.showGrid = source.showGrid;
   if (typeof source.showTimecode === 'boolean') out.showTimecode = source.showTimecode;
   if (typeof source.showTransparencyGrid === 'boolean')

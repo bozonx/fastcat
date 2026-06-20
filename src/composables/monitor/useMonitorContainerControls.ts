@@ -464,7 +464,7 @@ export function useMonitorContainerControls(options: UseMonitorContainerControls
         label: options.t('fastcat.monitor.previewBlurQuality') + ':',
         disabled: true,
       },
-      ...(['auto', 'low', 'medium', 'high', 'ultra'] as const).map((q) => {
+      ...(['auto', 'low', 'medium', 'high'] as const).map((q) => {
         const labelKey =
           q === 'auto'
             ? 'fastcat.timeline.transition.blurQualityAuto'

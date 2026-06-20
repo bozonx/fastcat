@@ -121,13 +121,14 @@ describe('useMobileTimelineSelection', () => {
     const isClipPropertiesDrawerOpen = ref(false);
     const isMultiSelectionDrawerOpen = ref(false);
 
-    const { toggleMobileClipSelection } = useMobileTimelineSelection(
-      tracks,
-      isClipPropertiesDrawerOpen,
-      isMultiSelectionDrawerOpen,
-      ref(false),
-      () => {},
-    );
+    const { toggleMobileClipSelection, selectedClips, isMultiSelectionMode } =
+      useMobileTimelineSelection(
+        tracks,
+        isClipPropertiesDrawerOpen,
+        isMultiSelectionDrawerOpen,
+        ref(false),
+        () => {},
+      );
 
     toggleMobileClipSelection('clip-a');
     await nextTick();
@@ -135,6 +136,9 @@ describe('useMobileTimelineSelection', () => {
     expect(mockTimelineStore.toggleSelection).toHaveBeenCalledWith('clip-a', { multi: true });
     expect(mockTimelineStore.selectTrack).toHaveBeenCalledWith(null);
     expect(mockTimelineStore.selectTransition).toHaveBeenCalledWith(null);
+    expect(selectedClips.value).toHaveLength(1);
+    expect(selectedClips.value![0]).toEqual({ trackId: 'track-1', itemId: 'clip-a' });
+    expect(isMultiSelectionMode.value).toBe(false);
   });
 
   it('enterMobileMultiSelection opens multi-selection drawer for already selected item', () => {

@@ -1,5 +1,9 @@
 export type PreviewEffectQuality = 'low' | 'medium' | 'high' | 'ultra';
-export type PreviewEffectQualitySetting = PreviewEffectQuality | 'auto';
+// User-selectable preview quality. `ultra` is intentionally NOT exposed here: a still/paused
+// frame already resolves to ultra, and ultra during playback is just slow — so the dial only
+// offers the meaningful motion tiers plus `auto`. `ultra` remains a valid *resolved*
+// `PreviewEffectQuality` (export, still frames).
+export type PreviewEffectQualitySetting = 'low' | 'medium' | 'high' | 'auto';
 
 export interface ResolvePreviewEffectQualityParams {
   setting?: PreviewEffectQualitySetting;
