@@ -111,6 +111,37 @@ export function useClipTransitions(options: UseClipTransitionsOptions) {
     });
   }
 
+  function updateTransitionCurve(
+    edge: 'in' | 'out',
+    curve: import('~/transitions').TransitionCurve,
+  ) {
+    const clip = options.clip.value;
+    const current = getClipTransition(clip, edge);
+    if (!current) return;
+
+    // Mirror the desktop curve presets: linear drops the bezier params, the
+    // eased curves seed bulge/offset so the rendered shape matches the picker.
+    const params = { ...(current.params ?? {}) } as Record<string, unknown>;
+    if (curve === 'linear') {
+      delete params.curveBulge;
+      delete params.curveOffset;
+    } else {
+      params.curveBulge = 0.8;
+      params.curveOffset = curve === 'ease-in' ? 1.0 : curve === 'ease-out' ? 0.0 : 0.5;
+    }
+
+    handleTransitionUpdate({
+      trackId: clip.trackId,
+      itemId: clip.id,
+      edge,
+      transition: {
+        ...current,
+        curve,
+        params,
+      },
+    });
+  }
+
   return {
     transitionIn,
     transitionOut,
@@ -118,5 +149,6 @@ export function useClipTransitions(options: UseClipTransitionsOptions) {
     toggleTransition,
     updateTransitionDuration,
     updateTransitionType,
+    updateTransitionCurve,
   };
 }

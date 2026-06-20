@@ -24,7 +24,7 @@ const props = defineProps<{
 const activeSnapPoint = defineModel<string | number | null>('activeSnapPoint', { default: null });
 
 const emit = defineEmits<{
-  (e: 'close' | 'open-delete-drawer' | 'open-trim-drawer'): void;
+  (e: 'close' | 'open-delete-drawer' | 'open-trim-drawer' | 'open-transitions-drawer'): void;
 }>();
 
 const { width, height } = useWindowSize();
@@ -120,6 +120,10 @@ function handleOpenTrimPanel() {
   emit('open-trim-drawer');
 }
 
+function handleOpenTransitionsPanel() {
+  emit('open-transitions-drawer');
+}
+
 function handleOpenDeleteDrawer() {
   if (isLocked.value) return;
   emit('open-delete-drawer');
@@ -172,6 +176,14 @@ const hasAudio = computed(() => {
             icon="i-lucide-lab-razor-blade"
             :disabled="isLocked"
             @click="handleSplit"
+          />
+
+          <!-- 5b. Transitions (video tracks only) -->
+          <MobileDrawerToolbarButton
+            v-if="clipTrackKind === 'video'"
+            icon="i-lucide-blend"
+            :disabled="isLocked"
+            @click="handleOpenTransitionsPanel"
           />
 
           <!-- 6. Active/disabled -->

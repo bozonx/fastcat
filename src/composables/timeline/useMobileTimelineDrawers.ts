@@ -33,6 +33,7 @@ export function useMobileTimelineDrawers() {
   const isMultiSelectionDrawerOpen = ref(false);
   const isAddContentDrawerOpen = ref(false);
   const isTrimDrawerOpen = ref(false);
+  const isTransitionsPanelOpen = ref(false);
   const isDeleteDrawerOpen = ref(false);
   const isVirtualClipPresetDrawerOpen = ref(false);
   const isSettingsDrawerOpen = ref(false);
@@ -54,6 +55,7 @@ export function useMobileTimelineDrawers() {
     isTransitionDrawerOpen.value = false;
     isMultiSelectionDrawerOpen.value = false;
     isTrimDrawerOpen.value = false;
+    isTransitionsPanelOpen.value = false;
     isDeleteDrawerOpen.value = false;
     isAddContentDrawerOpen.value = false;
     isVirtualClipPresetDrawerOpen.value = false;
@@ -98,7 +100,8 @@ export function useMobileTimelineDrawers() {
       gap: selectedGap.value,
     }),
     (state) => {
-      if (isTrimDrawerOpen.value || isDeleteDrawerOpen.value) return;
+      if (isTrimDrawerOpen.value || isTransitionsPanelOpen.value || isDeleteDrawerOpen.value)
+        return;
       if (suppressDrawerSelectionClear.value) return;
 
       const { trackId, itemIds, entity, transition, markerId, gap } = state;
@@ -212,6 +215,14 @@ export function useMobileTimelineDrawers() {
     }
   }
 
+  function onTransitionsPanelClose() {
+    isTransitionsPanelOpen.value = false;
+    if (selectionStore.selectedEntity?.kind === 'clip') {
+      timelineStore.clearSelection();
+      selectionStore.clearSelection();
+    }
+  }
+
   function onClipDeleteDrawerClose() {
     isDeleteDrawerOpen.value = false;
     if (selectionStore.selectedEntity?.kind === 'clip') {
@@ -291,6 +302,7 @@ export function useMobileTimelineDrawers() {
     isMultiSelectionDrawerOpen,
     isAddContentDrawerOpen,
     isTrimDrawerOpen,
+    isTransitionsPanelOpen,
     isDeleteDrawerOpen,
     isVirtualClipPresetDrawerOpen,
     isSettingsDrawerOpen,
@@ -311,6 +323,7 @@ export function useMobileTimelineDrawers() {
     onUpdateDrawerOpen,
     onClipPropertiesDrawerClose,
     onClipTrimDrawerClose,
+    onTransitionsPanelClose,
     onClipDeleteDrawerClose,
     onMultiSelectionDrawerClose,
     onMarkerPropertiesDrawerClose,
