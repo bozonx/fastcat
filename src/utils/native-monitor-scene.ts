@@ -483,6 +483,13 @@ function buildBaseLayer(params: {
     timeline_end_sec: (startUs + durationUs) / 1_000_000,
     source_start_sec: sourceStartUs / 1_000_000,
     source_range_duration_sec: Math.max(0, sourceDurationUs) / 1_000_000,
+    // Full media duration (not the trimmed range): lets the native renderer play
+    // the outgoing clip's tail/handle during a transition instead of freezing on
+    // the trimmed out-point, matching the web compositor. Omitted when unknown.
+    source_duration_sec:
+      typeof clip.sourceDurationUs === 'number' && clip.sourceDurationUs > 0
+        ? clip.sourceDurationUs / 1_000_000
+        : undefined,
     speed: sanitizeVideoSpeed(clip.speed),
     freeze_frame_source_sec:
       typeof clip.freezeFrameSourceUs === 'number'

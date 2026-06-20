@@ -315,6 +315,7 @@ async function wrappedHandleDeleteConfirm() {
 
       <section
         v-for="category in categories"
+        v-show="category.sortedEntries.value.length > 0 || category.isLoading.value || category.error.value"
         :key="category.id"
         class="border-b border-ui-border/50"
       >

@@ -117,6 +117,13 @@ pub struct SceneLayer {
     /// Длина доступного source-range в исходнике. Нужна для speed/reverse clamp.
     #[serde(default)]
     pub source_range_duration_sec: f64,
+    /// Полная длительность исходного медиа (секунды). Используется при переходах,
+    /// чтобы исходящий (from) клип проигрывал «хвост» за точкой обрезки во время
+    /// перехода (как в веб-версии), а не застывал на последнем видимом кадре.
+    /// `None` → длительность неизвестна, хвост недоступен → держим стоп-кадр.
+    #[serde(default)]
+    #[ts(optional)]
+    pub source_duration_sec: Option<f64>,
     /// Скорость воспроизведения video source. Отрицательные значения — reverse.
     #[serde(default = "one")]
     pub speed: f64,
@@ -357,6 +364,54 @@ impl SceneLayer {
             self.freeze_frame_source_sec,
         )
     }
+
+    /// Source PTS for this layer when it is the FROM side of a transition that runs
+    /// past its own `timeline_end_sec` (the transition overlap lives in the *next*
+    /// clip's `transition_in` window). Unlike [`source_pts_at`], which clamps to the
+    /// trimmed range and would therefore freeze the outgoing clip, this continues
+    /// into the clip's handle/tail material so the outgoing side keeps playing during
+    /// the transition — matching the web compositor (`TransitionRenderer`).
+    ///
+    /// Only meaningful for `timeline_sec >= timeline_end_sec`. The result is clamped
+    /// to the real media bounds so we never seek past EOF (or before frame 0 on
+    /// reverse). When the full media duration is unknown, or there is no tail beyond
+    /// the trim, the last visible frame is held (the previous native behaviour).
+    pub fn transition_tail_source_pts_at(&self, timeline_sec: f64) -> f64 {
+        if let Some(freeze) = self.freeze_frame_source_sec {
+            return freeze.max(0.0);
+        }
+        let speed = sanitize_clip_speed(self.speed);
+        let abs_speed = speed.abs();
+        let source_range =
+            if self.source_range_duration_sec.is_finite() && self.source_range_duration_sec > 0.0 {
+                self.source_range_duration_sec
+            } else {
+                (self.timeline_end_sec - self.timeline_start_sec).max(0.0) * abs_speed
+            };
+        // Seconds spent past this clip's visible end, mapped into source time.
+        let extra = (timeline_sec - self.timeline_end_sec).max(0.0) * abs_speed;
+
+        if speed < 0.0 {
+            // Reverse: the visible out-point sits at `source_start_sec`; the tail
+            // continues backwards toward the start of the media (never below 0,
+            // never forward past the out-point).
+            let hi = self.source_start_sec.max(0.0);
+            (self.source_start_sec - extra).clamp(0.0, hi)
+        } else {
+            // Forward: continue past the visible out-point into the trailing handle.
+            let visible_end = self.source_start_sec + source_range;
+            // Lower bound = last visible frame, so we never jump backwards at the cut.
+            let lo = (visible_end - SOURCE_END_GUARD_SEC).max(0.0);
+            match self.source_duration_sec {
+                Some(dur) if dur.is_finite() && dur > 0.0 => {
+                    let hi = (dur - SOURCE_END_GUARD_SEC).max(lo);
+                    (visible_end + extra).clamp(lo, hi)
+                }
+                // Unknown media duration: cannot read past the trim safely → hold.
+                _ => lo,
+            }
+        }
+    }
 }
 
 /// Shared implementation of source PTS computation for both video and audio layers.
@@ -413,6 +468,7 @@ mod tests {
             timeline_end_sec: end,
             source_start_sec: source_start,
             source_range_duration_sec: (end - start).max(0.0),
+            source_duration_sec: None,
             speed: 1.0,
             freeze_frame_source_sec: None,
             source_orientation: None,
@@ -474,6 +530,62 @@ mod tests {
     fn source_pts_clamps_to_zero_before_timeline_start() {
         let l = layer(10.0, 20.0, 0.0);
         assert_eq!(l.source_pts_at(5.0), 0.0);
+    }
+
+    #[test]
+    fn transition_tail_plays_into_handle_when_duration_known() {
+        // Clip shows source [2..5] on timeline [10..13]; media is 30s long, so there
+        // is plenty of tail. During a transition that runs past t=13 the outgoing
+        // clip must keep advancing past its out-point (5.0) instead of freezing.
+        let mut l = layer(10.0, 13.0, 2.0);
+        l.source_range_duration_sec = 3.0;
+        l.source_duration_sec = Some(30.0);
+        // At the cut it sits on the out-point (decoder serves the last visible frame).
+        assert!((l.transition_tail_source_pts_at(13.0) - 5.0).abs() < 1e-6);
+        // Half a second into the transition it has advanced into the tail.
+        assert!((l.transition_tail_source_pts_at(13.5) - 5.5).abs() < 1e-6);
+        assert!((l.transition_tail_source_pts_at(14.0) - 6.0).abs() < 1e-6);
+    }
+
+    #[test]
+    fn transition_tail_holds_last_frame_without_handle() {
+        // Out-point == end of media: no tail available → hold the last frame.
+        let mut l = layer(10.0, 13.0, 2.0);
+        l.source_range_duration_sec = 3.0;
+        l.source_duration_sec = Some(5.0); // 2.0 + 3.0 == media end
+        let held = l.transition_tail_source_pts_at(13.0);
+        assert!((l.transition_tail_source_pts_at(14.0) - held).abs() < 1e-9);
+        assert!(held <= 5.0);
+    }
+
+    #[test]
+    fn transition_tail_holds_last_frame_when_duration_unknown() {
+        let mut l = layer(10.0, 13.0, 2.0);
+        l.source_range_duration_sec = 3.0;
+        l.source_duration_sec = None;
+        let held = l.transition_tail_source_pts_at(13.0);
+        assert!((l.transition_tail_source_pts_at(20.0) - held).abs() < 1e-9);
+    }
+
+    #[test]
+    fn transition_tail_reverse_continues_toward_media_start() {
+        // Reverse clip: visible out-point at the cut sits at source_start (2.0); the
+        // tail continues backwards toward 0, never forward past 2.0.
+        let mut l = layer(10.0, 13.0, 2.0);
+        l.source_range_duration_sec = 3.0;
+        l.source_duration_sec = Some(30.0);
+        l.speed = -1.0;
+        assert!((l.transition_tail_source_pts_at(13.0) - 2.0).abs() < 1e-9);
+        assert!((l.transition_tail_source_pts_at(13.5) - 1.5).abs() < 1e-9);
+        assert_eq!(l.transition_tail_source_pts_at(20.0), 0.0);
+    }
+
+    #[test]
+    fn transition_tail_uses_freeze_frame() {
+        let mut l = layer(10.0, 13.0, 2.0);
+        l.source_duration_sec = Some(30.0);
+        l.freeze_frame_source_sec = Some(7.25);
+        assert_eq!(l.transition_tail_source_pts_at(14.0), 7.25);
     }
 
     #[test]

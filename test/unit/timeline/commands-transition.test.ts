@@ -293,7 +293,7 @@ describe('timeline/commands update_clip_transition', () => {
         gap: 0.025,
         gapColor: '#ff00ff',
         edgeMode: 'gap',
-        blur: 0.02,
+        blur: 2,
         angle: 0,
       },
       isOverridden: undefined,

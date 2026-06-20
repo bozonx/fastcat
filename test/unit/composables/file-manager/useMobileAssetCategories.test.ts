@@ -46,8 +46,15 @@ describe('useMobileAssetCategories', () => {
 
     await loadAll(true);
 
-    expect(readDirectory.mock.calls.map(([path]) => path)).toEqual(['_video', '_audio', '_images']);
-    expect(reloadDirectory).toHaveBeenCalledTimes(3);
+    expect(readDirectory.mock.calls.map(([path]) => path)).toEqual([
+      '_video',
+      '_audio',
+      '_images',
+      '_export',
+      '_documents',
+      '_files',
+    ]);
+    expect(reloadDirectory).toHaveBeenCalledTimes(6);
     expect(categories.every((category) => category.sortedEntries.value.length === 1)).toBe(true);
   });
 

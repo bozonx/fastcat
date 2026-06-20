@@ -2,29 +2,45 @@ import { ref, reactive } from 'vue';
 import type { FsEntry } from '~/types/fs';
 import type { IFileSystemAdapter } from '~/file-manager/core/vfs/types';
 import { useFileBrowserEntries } from '~/composables/file-manager/useFileBrowserEntries';
-import { VIDEO_DIR_NAME, AUDIO_DIR_NAME, IMAGES_DIR_NAME } from '~/utils/constants';
+import {
+  VIDEO_DIR_NAME,
+  AUDIO_DIR_NAME,
+  IMAGES_DIR_NAME,
+  EXPORT_DIR_NAME,
+  DOCUMENTS_DIR_NAME,
+  FILES_DIR_NAME,
+} from '~/utils/constants';
 
-export type AssetCategoryId = 'video' | 'audio' | 'images';
+export type AssetCategoryId = 'video' | 'audio' | 'images' | 'export' | 'documents' | 'files';
 
 const CATEGORY_DIRS: Record<AssetCategoryId, string> = {
   video: VIDEO_DIR_NAME,
   audio: AUDIO_DIR_NAME,
   images: IMAGES_DIR_NAME,
+  export: EXPORT_DIR_NAME,
+  documents: DOCUMENTS_DIR_NAME,
+  files: FILES_DIR_NAME,
 };
 
 const CATEGORY_LABEL_KEYS: Record<AssetCategoryId, string> = {
   video: 'common.video',
   audio: 'common.audio',
   images: 'common.images',
+  export: 'common.export',
+  documents: 'common.documents',
+  files: 'common.files',
 };
 
 const CATEGORY_ICONS: Record<AssetCategoryId, string> = {
   video: 'lucide:clapperboard',
   audio: 'lucide:music',
   images: 'lucide:image',
+  export: 'lucide:download',
+  documents: 'lucide:file-text',
+  files: 'lucide:folder-open',
 };
 
-const CATEGORY_ORDER: AssetCategoryId[] = ['video', 'audio', 'images'];
+const CATEGORY_ORDER: AssetCategoryId[] = ['video', 'audio', 'images', 'export', 'documents', 'files'];
 
 // Collapse state persists for the app lifetime so it survives switching between
 // the Assets/Files tabs (which mount/unmount the browser components).
@@ -32,6 +48,9 @@ const collapsedState = reactive<Record<AssetCategoryId, boolean>>({
   video: false,
   audio: false,
   images: false,
+  export: false,
+  documents: false,
+  files: false,
 });
 
 interface Deps {

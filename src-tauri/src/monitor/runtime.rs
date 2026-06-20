@@ -826,7 +826,16 @@ impl LayerRuntimeManager {
                 // Once per tick: is the decoder producing newer frames (moving forward)?
                 // Used below to suppress the reseek-on-lag thrash on decode-bound sources.
                 let advancing = rt.decoder_advancing();
-                let clip_local = layer.source_pts_at(t);
+                // An active layer that no longer `covers(t)` is here only as the FROM
+                // side of a transition (added above). Keep it advancing into its tail
+                // material instead of freezing on the trimmed out-point, mirroring the
+                // web compositor — otherwise the outgoing clip is a stop-frame for the
+                // whole transition.
+                let clip_local = if layer.covers(t) {
+                    layer.source_pts_at(t)
+                } else {
+                    layer.transition_tail_source_pts_at(t)
+                };
                 if playing && rt.play_deferred_until_active() {
                     rt.activate_deferred_playback(clip_local);
                 }
@@ -939,11 +948,22 @@ impl LayerRuntimeManager {
     pub fn seek(&mut self, t: f64, playing: bool) {
         self.last_tick_t = t;
         let scene = self.scene.clone();
+        // Ids of layers acting as the FROM side of an active transition at `t`. They
+        // do not `covers(t)` but must still be repositioned into their tail material,
+        // otherwise scrubbing into a transition leaves the outgoing clip on a stale
+        // frame (it is composited by `build_compositor_scene`).
+        let from_ids = transition_from_ids(&scene, t);
         for layer in scene.iter() {
-            if !layer.covers(t) || layer.kind != LayerKind::Video {
+            let is_covering = layer.covers(t);
+            let is_from = !is_covering && from_ids.contains(&layer.id);
+            if (!is_covering && !is_from) || layer.kind != LayerKind::Video {
                 continue;
             }
-            let clip_local = layer.source_pts_at(t);
+            let clip_local = if is_covering {
+                layer.source_pts_at(t)
+            } else {
+                layer.transition_tail_source_pts_at(t)
+            };
             if let Some(LayerRuntime::Video(rt)) = self.runtimes.get_mut(&layer.id) {
                 rt.pull_into_cache();
                 // Пауза + попадание в кеш → показываем кадр без блокирующего ожидания
@@ -1098,10 +1118,17 @@ impl LayerRuntimeManager {
     ) {
         self.last_tick_t = t;
         let scene = self.scene.clone();
+        // Outgoing (FROM) clips of transitions active at `t`: they no longer cover the
+        // playhead but are still composited, so on a paused frame they must be created
+        // and shown at their tail position — otherwise scrubbing into a transition
+        // shows the outgoing side missing or stale.
+        let from_ids = transition_from_ids(&scene, t);
         for layer in scene.iter() {
-            if !layer.covers(t) {
+            let is_covering = layer.covers(t);
+            let is_from = !is_covering && from_ids.contains(&layer.id);
+            if !is_covering && !is_from {
                 // Прогреваем декодер ближайшего будущего видеоклипа и на паузе, а не
-                // только в `tick` (который идёт лишь при воспроизведении). Иначе Play,
+                // только в `tick` (который идёт лишь во время воспроизведения). Иначе Play,
                 // нажатый когда playhead стоит/скрабит у стыка, заставал следующий клип
                 // неоткрытым — он стартовал «вхолодную» и заикался. На паузе активного
                 // декода нет, поэтому конкуренции за CPU/пермиты это не создаёт.
@@ -1119,9 +1146,33 @@ impl LayerRuntimeManager {
             if layer.kind != LayerKind::Video {
                 continue;
             }
-            let clip_local = layer.source_pts_at(t);
+            let clip_local = if is_covering {
+                layer.source_pts_at(t)
+            } else {
+                layer.transition_tail_source_pts_at(t)
+            };
             if let Some(LayerRuntime::Video(rt)) = self.runtimes.get_mut(&layer.id) {
                 rt.pull_into_cache();
+                // The from-layer's decoder may still sit at its trimmed out-point (its
+                // initial seek used the clamped pts); reposition into the tail so the
+                // paused frame matches the transition progress.
+                if is_from {
+                    let need_seek = match rt.last_pump_seek_pts {
+                        Some(last_pts) => (last_pts - clip_local).abs() > 1e-5,
+                        None => true,
+                    };
+                    if need_seek {
+                        if let Err(e) = rt.pump.seek(clip_local) {
+                            log::error!(
+                                "[monitor] transition-from refresh seek {}: {e:?}",
+                                layer.id
+                            );
+                        }
+                        rt.last_pump_seek_pts = Some(clip_local);
+                        rt.note_seek_requested();
+                    }
+                    rt.request_prebuffer();
+                }
                 let lead = Some(1.0 / rt.pump.info.fps.max(1.0));
                 rt.update_display(clip_local, None, lead);
             }
@@ -1203,6 +1254,29 @@ fn video_sync_lag_sec(mode: PreviewSyncMode, fps: f64) -> Option<f64> {
 
 fn has_loaded_runtime(kind: LayerKind) -> bool {
     matches!(kind, LayerKind::Video | LayerKind::Image | LayerKind::Svg)
+}
+
+/// Ids of layers acting as the FROM side of a transition active at timeline time `t`.
+/// The transition overlap lives in the *incoming* clip's `transition_in` window, so the
+/// outgoing clip no longer `covers(t)` yet must keep rendering (it is sampled by the
+/// transition shader). Shared by `seek`/`refresh_display` so both keep the outgoing
+/// clip alive and positioned in its tail material, consistent with `tick`.
+fn transition_from_ids(scene: &[SceneLayer], t: f64) -> HashSet<String> {
+    let mut ids = HashSet::new();
+    for layer in scene.iter() {
+        if !layer.covers(t) {
+            continue;
+        }
+        if let Some(t_in) = &layer.transition_in {
+            let local_t = t - layer.timeline_start_sec;
+            if local_t >= 0.0 && local_t < t_in.duration_sec {
+                if let Some(from_id) = &t_in.from_layer_id {
+                    ids.insert(from_id.clone());
+                }
+            }
+        }
+    }
+    ids
 }
 
 fn is_refreshable_display_runtime(kind: LayerKind) -> bool {
@@ -1622,6 +1696,7 @@ mod tests {
             timeline_end_sec: 1.0,
             source_start_sec: 0.0,
             source_range_duration_sec: 1.0,
+            source_duration_sec: None,
             speed: 1.0,
             freeze_frame_source_sec: None,
             source_orientation: source_orientation.map(str::to_string),

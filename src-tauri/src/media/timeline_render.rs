@@ -413,9 +413,18 @@ fn build_raster_kind(
     let built = match layer.kind {
         LayerKind::Adjustment => return Ok(None),
         LayerKind::Video => {
+            // A layer that does not `covers(time_sec)` but is still being rendered is
+            // the FROM side of a transition whose overlap runs past this clip's end.
+            // Play it into its tail material (matching the web compositor / live
+            // preview) instead of freezing on the trimmed out-point.
+            let source_pts = if layer.covers(time_sec) {
+                layer.source_pts_at(time_sec)
+            } else {
+                layer.transition_tail_source_pts_at(time_sec)
+            };
             let (frame, source_rotation) = match decode_video_frame_cached(
                 Path::new(&layer.path),
-                layer.source_pts_at(time_sec),
+                source_pts,
                 max_output_long_edge,
                 cache,
             ) {
@@ -618,6 +627,7 @@ mod tests {
             timeline_end_sec: 5.0,
             source_start_sec: 0.0,
             source_range_duration_sec: 5.0,
+            source_duration_sec: None,
             speed: 1.0,
             freeze_frame_source_sec: None,
             source_orientation: None,
@@ -645,6 +655,7 @@ mod tests {
             timeline_end_sec: 7.0,
             source_start_sec: 0.0,
             source_range_duration_sec: 5.0,
+            source_duration_sec: None,
             speed: 1.0,
             freeze_frame_source_sec: None,
             source_orientation: None,
@@ -710,6 +721,7 @@ mod tests {
             timeline_end_sec: 5.0,
             source_start_sec: 0.0,
             source_range_duration_sec: 5.0,
+            source_duration_sec: None,
             speed: 1.0,
             freeze_frame_source_sec: None,
             source_orientation: None,

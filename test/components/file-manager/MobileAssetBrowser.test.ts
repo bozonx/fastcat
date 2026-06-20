@@ -18,6 +18,7 @@ const audioEntries = ref([
   { kind: 'file', name: 'shared.mp4', path: '_audio/shared.mp4', parentPath: '_audio' },
   { kind: 'file', name: 'taken.mp3', path: '_audio/taken.mp3', parentPath: '_audio' },
 ]);
+const imagesEntries = ref([]);
 
 const categories = [
   {
@@ -36,6 +37,17 @@ const categories = [
     labelKey: 'common.audio',
     icon: 'lucide:music',
     sortedEntries: audioEntries,
+    thumbnails: ref({}),
+    fileCompatibility: ref({}),
+    isLoading: ref(false),
+    error: ref(null),
+    load: vi.fn(),
+  },
+  {
+    id: 'images',
+    labelKey: 'common.images',
+    icon: 'lucide:image',
+    sortedEntries: imagesEntries,
     thumbnails: ref({}),
     fileCompatibility: ref({}),
     isLoading: ref(false),
@@ -250,5 +262,32 @@ describe('MobileAssetBrowser', () => {
     expect(onTouchMove).toHaveBeenCalledOnce();
     expect(onTouchEnd).toHaveBeenCalledOnce();
     expect(wrapper.findComponent({ name: 'MobilePullToRefreshIndicator' }).exists()).toBe(true);
+  });
+
+  it('hides categories that have no files and are not loading or in error state', async () => {
+    const wrapper = await mountSuspended(MobileAssetBrowser, {
+      global: {
+        stubs: {
+          MobileFileBrowserGrid: true,
+          MobileFileBrowserDrawer: true,
+          MobileFileBrowserSelectionToolbar: true,
+          MobilePullToRefreshIndicator: true,
+          FileDeleteConfirmModal: true,
+          FileSttTranscriptionModal: true,
+          UiRenameModal: true,
+          MobileAddToTimelineModal: true,
+          Teleport: true,
+        },
+      },
+    });
+
+    const sections = wrapper.findAll('section');
+    expect(sections).toHaveLength(3);
+
+    // video and audio should be visible (they have mock files)
+    expect(sections[0].attributes('style') || '').not.toContain('display: none');
+    expect(sections[1].attributes('style') || '').not.toContain('display: none');
+    // images should be hidden (no files)
+    expect(sections[2].attributes('style') || '').toContain('display: none');
   });
 });

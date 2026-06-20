@@ -447,6 +447,7 @@ fn video_layer() -> crate::monitor::scene::SceneLayer {
         timeline_end_sec: 10.0,
         source_start_sec: 0.0,
         source_range_duration_sec: 10.0,
+        source_duration_sec: None,
         speed: 1.0,
         freeze_frame_source_sec: None,
         source_orientation: None,

@@ -97,7 +97,7 @@ describe('useClipTransitionPanel', () => {
           edgeMode: 'gap',
           gap: 0.05,
           gapColor: '#ff00ff',
-          blur: 0.02,
+          blur: 2,
         },
       },
     });
