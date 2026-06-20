@@ -38,6 +38,8 @@ export const useFileConversionStore = defineStore('file-conversion', () => {
     targetReloadDirectory,
     mediaType,
     sourceHasAudio,
+    isCancelRequested,
+    conversionModalRequestId,
 
     // Grouped settings
     video,

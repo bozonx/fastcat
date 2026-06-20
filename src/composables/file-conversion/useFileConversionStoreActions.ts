@@ -1,4 +1,4 @@
-import { toRef } from 'vue';
+import { storeToRefs } from 'pinia';
 import { useFileConversionStore } from '~/stores/file-conversion.store';
 import { useFileManager } from '~/composables/file-manager/useFileManager';
 import { useFileConversionActions } from '~/composables/file-conversion/useFileConversionActions';
@@ -7,23 +7,39 @@ export function useFileConversionStoreActions(
   store: ReturnType<typeof useFileConversionStore>,
   fileManager: ReturnType<typeof useFileManager>,
 ) {
+  const {
+    targetEntry,
+    targetIsExternal,
+    targetVfs,
+    targetReloadDirectory,
+    mediaType,
+    isCancelRequested,
+    isConverting,
+    isExtractingMetadata,
+    conversionError,
+    conversionWarnings,
+    isModalOpen,
+    conversionModalRequestId,
+    sourceHasAudio,
+  } = storeToRefs(store);
+
   return useFileConversionActions({
-    targetEntry: toRef(store, 'targetEntry'),
-    targetIsExternal: toRef(store, 'targetIsExternal'),
-    targetVfs: toRef(store, 'targetVfs'),
-    targetReloadDirectory: toRef(store, 'targetReloadDirectory'),
-    mediaType: toRef(store, 'mediaType'),
+    targetEntry,
+    targetIsExternal,
+    targetVfs,
+    targetReloadDirectory,
+    mediaType,
     videoSettings: store.video,
     audioSettings: store.audio,
     imageSettings: store.image,
-    isCancelRequested: toRef(store, 'isCancelRequested'),
-    isConverting: toRef(store, 'isConverting'),
-    isExtractingMetadata: toRef(store, 'isExtractingMetadata'),
-    conversionError: toRef(store, 'conversionError'),
-    conversionWarnings: toRef(store, 'conversionWarnings'),
-    isModalOpen: toRef(store, 'isModalOpen'),
-    conversionModalRequestId: toRef(store, 'conversionModalRequestId'),
-    sourceHasAudio: toRef(store, 'sourceHasAudio'),
+    isCancelRequested,
+    isConverting,
+    isExtractingMetadata,
+    conversionError,
+    conversionWarnings,
+    isModalOpen,
+    conversionModalRequestId,
+    sourceHasAudio,
     fileManager,
   });
 }

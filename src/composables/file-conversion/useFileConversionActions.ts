@@ -48,7 +48,7 @@ interface UseFileConversionActionsProps {
   targetIsExternal: Ref<boolean>;
   targetVfs: Ref<IFileSystemAdapter | null>;
   targetReloadDirectory: Ref<((path: string) => Promise<void>) | null>;
-  mediaType: ComputedRef<'video' | 'audio' | 'image' | 'text' | 'timeline' | 'unknown' | null>;
+  mediaType: Ref<'video' | 'audio' | 'image' | 'text' | 'timeline' | 'unknown' | null>;
   videoSettings: {
     format: 'mp4' | 'webm' | 'mkv';
     videoCodec: string;

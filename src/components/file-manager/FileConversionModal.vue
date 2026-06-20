@@ -10,6 +10,8 @@ import UiSliderInput from '~/components/ui/UiSliderInput.vue';
 import UiButtonGroup from '~/components/ui/UiButtonGroup.vue';
 import { storeToRefs } from 'pinia';
 import { useFileConversionStore } from '~/stores/file-conversion.store';
+import { useFileManager } from '~/composables/file-manager/useFileManager';
+import { useFileConversionStoreActions } from '~/composables/file-conversion/useFileConversionStoreActions';
 import { resolveAudioOnlyFileExtension } from '~/utils/conversion/helpers';
 
 import { AUDIO_EXPORT_CODEC_OPTIONS } from '~/utils/webcodecs';
@@ -25,6 +27,7 @@ const modalUi = computed(() => {
 });
 
 const fileConversionStore = useFileConversionStore();
+const fileManager = useFileManager();
 
 const {
   isModalOpen,
@@ -40,7 +43,10 @@ const {
   conversionWarnings,
 } = storeToRefs(fileConversionStore);
 
-const { startConversion: storeStartConversion } = fileConversionStore;
+const { startConversion: storeStartConversion } = useFileConversionStoreActions(
+  fileConversionStore,
+  fileManager,
+);
 
 function startConversion() {
   storeStartConversion();
