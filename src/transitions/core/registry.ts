@@ -247,6 +247,10 @@ export function normalizeTransitionParams<T = Record<string, unknown>>(
   if (manifest.normalizeParams) {
     return manifest.normalizeParams(params);
   }
+  const webManifest = registry.get(type);
+  if (webManifest && webManifest.normalizeParams) {
+    return webManifest.normalizeParams(params);
+  }
   return { ...(manifest.defaultParams as Record<string, unknown>), ...(params ?? {}) };
 }
 
