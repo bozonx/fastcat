@@ -66,6 +66,22 @@ function qualitySamples(quality: unknown, low: number, med: number, high: number
 }
 
 /**
+ * Resolves effective blur quality from export/playback state and user settings.
+ * Priority: isExport → paused → previewBlurQuality → per-transition blurQuality.
+ */
+function resolveBlurQuality(
+  options: { isExport?: boolean; isPlaying?: boolean; previewBlurQuality?: string } | undefined,
+  perTransitionQuality: unknown,
+): string {
+  if (options?.isExport) return 'ultra';
+  if (options?.isPlaying === false) return 'ultra';
+  const preview = options?.previewBlurQuality;
+  if (preview && preview !== 'auto') return preview;
+  // 'auto' or unset: fall back to the per-transition setting (default 'medium')
+  return typeof perTransitionQuality === 'string' ? perTransitionQuality : 'medium';
+}
+
+/**
  * Static part of the motion-blur magnitude (`baseSpeed * motionBlur * factor`).
  * The web manifests additionally scale blur by the curve's instantaneous speed
  * (a per-frame derivative). Native applies that derivative at render time via the
@@ -281,7 +297,10 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
     if (mb <= 0.0) {
         final_color = slide_process(slide_get(uv));
     } else {
-        let samples = i32(uni.p7);
+        let max_samples = i32(uni.p7);
+        // Scale sample count by pixel length of the blur
+        let pixel_blur = mb * max(dims().x, dims().y);
+        let samples = clamp(i32(ceil(pixel_blur)), 4, max_samples);
         let axis = vec2<f32>(uni.p0, uni.p1);
         let step_size = mb / f32(samples - 1);
         let start = -mb * 0.5;
@@ -406,7 +425,9 @@ fn blinds_motion(uv: vec2<f32>) -> vec4<f32> {
     // Motion-blur масштабируется мгновенной скоростью кривой (uni.speed), как в web.
     let mb = uni.p7 * uni.speed;
     if (mb <= 0.0) { return blinds_process(blinds_get(uv)); }
-    let samples = i32(uni.p6);
+    let max_samples = i32(uni.p6);
+    let pixel_blur = mb * max(dims().x, dims().y);
+    let samples = clamp(i32(ceil(pixel_blur)), 4, max_samples);
     let step_size = mb / f32(samples - 1);
     let start = -mb * 0.5;
     let strip_coord = dot(uv - vec2<f32>(0.5), vec2<f32>(uni.p2, uni.p3)) + 0.5;
@@ -572,7 +593,9 @@ fn zoom_rotate(pt: vec2<f32>, angle: f32, aspect: f32) -> vec2<f32> {
 
 fn zoom_sample(tex: texture_2d<f32>, uv: vec2<f32>, blur_amount: f32, bright: f32, blur_fade: f32) -> vec4<f32> {
     let orig = samp(tex, uv);
-    let samples = uni.p4;
+    let max_samples = uni.p4;
+    let pixel_blur = blur_amount * max(dims().x, dims().y);
+    let samples = clamp(ceil(pixel_blur), 4.0, max_samples);
     let dir = vec2<f32>(0.5, 0.5) - uv;
     if (uni.p5 < 0.5) {
         if (blur_amount < 0.001) { return vec4<f32>(orig.rgb * bright, orig.a); }
@@ -885,19 +908,26 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
         if (dist < max_d && max_d > 0.0) { shadow_to = (1.0 - dist / max_d) * uni.p5; }
     }
 
-    let samples = i32(uni.p7);
-    let f_samples = uni.p7;
+    let max_samples = i32(uni.p7);
     var final_c_fr = vec4<f32>(0.0);
     var final_c_to = vec4<f32>(0.0);
 
     if (mode_slide) {
         let blur_dir = select(vec2<f32>(0.0, 1.0), vec2<f32>(1.0, 0.0), dir_h);
         let blur_amount = uni.p6 * 0.1;
+        // Scale sample count by pixel blur length
+        let pixel_blur = blur_amount * max(dims().x, dims().y);
+        let samples = clamp(i32(ceil(pixel_blur)), 4, max_samples);
+        let f_samples = f32(samples);
         if (pfr_in) { final_c_fr = card_blur_slide(from_tex, pfr, blur_dir, blur_amount, samples, f_samples, dark_fr); }
         if (pto_in) { final_c_to = card_blur_slide(to_tex, pto, blur_dir, blur_amount, samples, f_samples, dark_to); }
     } else {
         let blur_fr = uni.p6 * (size_fr - 1.0) * 0.02;
         let blur_to = uni.p6 * (size_to - 1.0) * 0.02;
+        // Scale sample count by max pixel blur of from/to
+        let pixel_blur = max(blur_fr, blur_to) * max(dims().x, dims().y);
+        let samples = clamp(i32(ceil(pixel_blur)), 4, max_samples);
+        let f_samples = f32(samples);
         if (pfr_in) { final_c_fr = card_blur_radial(from_tex, pfr, blur_fr, samples, f_samples, dark_fr); }
         if (pto_in) { final_c_to = card_blur_radial(to_tex, pto, blur_to, samples, f_samples, dark_to); }
     }
@@ -1274,11 +1304,11 @@ export const tauriTransitionManifests: TransitionManifest[] = [
     toTauriSpec: (
       params: Record<string, unknown>,
       durationSec?: number,
-      options?: { isExport?: boolean },
+      options?: { isExport?: boolean; isPlaying?: boolean; previewBlurQuality?: string },
     ): TauriTransitionSpec => {
       const [ax, ay] = directionVector(params.direction);
       const [r, g, b] = hexToRgb01(params.gapColor, '#000000');
-      const q = options?.isExport ? 'ultra' : params.blurQuality;
+      const q = resolveBlurQuality(options, params.blurQuality);
       const samples = qualitySamples(q, 8, 16, 32, 64);
       return {
         type: 'custom-wgsl',
@@ -1671,10 +1701,10 @@ export const tauriTransitionManifests: TransitionManifest[] = [
     toTauriSpec: (
       params: Record<string, unknown>,
       durationSec?: number,
-      options?: { isExport?: boolean },
+      options?: { isExport?: boolean; isPlaying?: boolean; previewBlurQuality?: string },
     ) => {
       const rad = (clamp(finiteNumber(params.angle, 0), -360, 360) * Math.PI) / 180;
-      const q = options?.isExport ? 'ultra' : params.blurQuality;
+      const q = resolveBlurQuality(options, params.blurQuality);
       const samples = qualitySamples(q, 8, 16, 32, 64);
       return {
         type: 'custom-wgsl',
@@ -1770,9 +1800,9 @@ export const tauriTransitionManifests: TransitionManifest[] = [
     toTauriSpec: (
       params: Record<string, unknown>,
       durationSec?: number,
-      options?: { isExport?: boolean },
+      options?: { isExport?: boolean; isPlaying?: boolean; previewBlurQuality?: string },
     ) => {
-      const q = options?.isExport ? 'ultra' : params.blurQuality;
+      const q = resolveBlurQuality(options, params.blurQuality);
       const samples = qualitySamples(q, 8, 16, 32, 64);
       return {
         type: 'custom-wgsl',
@@ -2004,9 +2034,9 @@ export const tauriTransitionManifests: TransitionManifest[] = [
     toTauriSpec: (
       params: Record<string, unknown>,
       durationSec?: number,
-      options?: { isExport?: boolean },
+      options?: { isExport?: boolean; isPlaying?: boolean; previewBlurQuality?: string },
     ) => {
-      const q = options?.isExport ? 'ultra' : params.blurQuality;
+      const q = resolveBlurQuality(options, params.blurQuality);
       const samples = qualitySamples(q, 4, 8, 16, 32);
       return {
         type: 'custom-wgsl',

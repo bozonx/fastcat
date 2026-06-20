@@ -7,6 +7,7 @@ import MobileDrawerToolbarButton from '~/components/timeline/MobileDrawerToolbar
 import { useProxyStore } from '~/stores/proxy.store';
 import { normalizeMediaCachePath } from '~/utils/media-cache-path';
 import { canCopyBloggerDogEntry, canCutBloggerDogEntry } from '~/utils/bloggerdog-file-manager';
+import { getMediaTypeFromFilename } from '~/utils/media-types';
 
 const props = defineProps<{
   selectedEntries: FsEntry[];
@@ -17,6 +18,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   (e: 'action', action: FileAction, entries: FsEntry[] | FsEntry): void;
   (e: 'add-to-timeline'): void;
+  (e: 'cancel-selection'): void;
 }>();
 
 const { t } = useI18n();
@@ -63,15 +65,13 @@ const canCutSelection = computed(
 
 <template>
   <div
-    class="border-t border-ui-border bg-ui-bg-elevated flex flex-col z-40 shrink-0 pb-safe container-safe"
+    class="border-t border-ui-border bg-ui-bg-elevated flex flex-row items-center z-40 shrink-0 pb-safe container-safe"
   >
-    <MobileDrawerToolbar>
+    <MobileDrawerToolbar class="flex-1 min-w-0">
       <MobileDrawerToolbarButton
         icon="i-heroicons-trash"
         @click="emit('action', 'delete', props.selectedEntries)"
       />
-
-
 
       <MobileDrawerToolbarButton
         v-if="!hideClipboardActions && canCopySelection"
@@ -106,8 +106,6 @@ const canCutSelection = computed(
         @click="emit('action', 'deleteProxy', props.selectedEntries)"
       />
 
-
-
       <MobileDrawerToolbarButton
         v-if="canAddToTimeline"
         success
@@ -116,5 +114,15 @@ const canCutSelection = computed(
         @click="emit('add-to-timeline')"
       />
     </MobileDrawerToolbar>
+
+    <!-- Close / deselect button pinned to the right -->
+    <UButton
+      icon="lucide:x"
+      color="neutral"
+      variant="ghost"
+      size="sm"
+      class="shrink-0 mx-1"
+      @click="emit('cancel-selection')"
+    />
   </div>
 </template>

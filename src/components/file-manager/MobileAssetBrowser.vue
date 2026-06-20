@@ -325,22 +325,7 @@ async function wrappedHandleDeleteConfirm() {
       />
     </div>
 
-    <!-- Selection-mode header (this view has no navbar, so it carries the exit action) -->
-    <div
-      v-if="isSelectionMode"
-      class="flex shrink-0 items-center gap-3 border-b border-ui-border bg-ui-bg-elevated px-4 py-2.5"
-    >
-      <UButton
-        icon="lucide:x"
-        color="neutral"
-        variant="ghost"
-        size="sm"
-        @click="toggleSelectionMode"
-      />
-      <span class="text-sm font-medium">
-        {{ t('common.itemsSelected', { count: selectedEntries.length }) }}
-      </span>
-    </div>
+
 
     <div
       class="flex-1 overflow-y-auto min-h-0 relative"
@@ -418,6 +403,7 @@ async function wrappedHandleDeleteConfirm() {
       hide-clipboard-actions
       @action="handleDrawerAction"
       @add-to-timeline="handleAddSelectionToTimeline"
+      @cancel-selection="toggleSelectionMode"
     />
 
     <!-- Action FAB: uploads with auto-routing into _video / _audio / _images -->

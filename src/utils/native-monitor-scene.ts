@@ -70,6 +70,11 @@ export interface BuildNativeMonitorSceneParams {
   /** Hardcoded sync mode override (e.g. mobile always uses 'balanced'). */
   syncMode?: 'smooth' | 'balanced' | 'strict';
   isExport?: boolean;
+  /** Whether the timeline is currently playing. When false (paused/stopped),
+   *  transitions are rendered at maximum quality for a crisp static frame. */
+  isPlaying?: boolean;
+  /** User-selected preview blur quality for playback. Defaults to 'auto'. */
+  previewBlurQuality?: 'low' | 'medium' | 'high' | 'ultra' | 'auto';
 }
 
 interface ProxyResolution {
@@ -393,8 +398,10 @@ function buildBaseLayer(params: {
   allClips: WorkerTimelineClip[];
   onWarning?: (message: string) => void;
   isExport?: boolean;
+  isPlaying?: boolean;
+  previewBlurQuality?: string;
 }): Omit<NativeSceneLayer, 'kind'> {
-  const { clip, sceneWidth, sceneHeight, z, allClips, onWarning, isExport } = params;
+  const { clip, sceneWidth, sceneHeight, z, allClips, onWarning, isExport, isPlaying, previewBlurQuality } = params;
   const startUs = clip.timelineRange.startUs;
   const durationUs = clip.timelineRange.durationUs;
   const sourceStartUs = clip.sourceRange.startUs;
@@ -423,7 +430,7 @@ function buildBaseLayer(params: {
         ? manifest.toTauriSpec(
             effectiveTransitionIn.params ?? {},
             effectiveTransitionIn.durationUs / 1_000_000,
-            { isExport },
+            { isExport, isPlaying, previewBlurQuality },
           )
         : undefined;
 
@@ -464,7 +471,7 @@ function buildBaseLayer(params: {
         ? manifest.toTauriSpec(
             clip.transitionOut.params ?? {},
             clip.transitionOut.durationUs / 1_000_000,
-            { isExport },
+            { isExport, isPlaying, previewBlurQuality },
           )
         : undefined;
 
@@ -630,6 +637,8 @@ export async function buildNativeMonitorScene(
       allClips: builtVideo.clips,
       onWarning: params.onWarning,
       isExport: params.isExport,
+      isPlaying: params.isPlaying,
+      previewBlurQuality: params.previewBlurQuality,
     });
 
     if (clip.clipType === 'adjustment') {

@@ -895,6 +895,7 @@
         "bloom": "Свечение (Bloom)",
         "blurModeFixed": "Фиксированное",
         "blurModeScaled": "Масштабируемое",
+        "blurQualityAuto": "Авто",
         "blurQualityHigh": "Высокое",
         "blurQualityLow": "Низкое",
         "blurQualityMedium": "Среднее",

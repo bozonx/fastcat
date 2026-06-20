@@ -184,6 +184,8 @@ export function useNativeMonitorBridge(): void {
       existingProxies: proxyStore.existingProxies,
       getProxyNativePath: proxyStore.getProxyNativePath,
       syncMode: isMobile.value ? 'balanced' : undefined,
+      isPlaying: timelineStore.isPlaying,
+      previewBlurQuality: projectStore.activeMonitor?.previewBlurQuality ?? 'auto',
     });
   }
 
@@ -283,6 +285,7 @@ export function useNativeMonitorBridge(): void {
       () => proxyStore.existingProxies,
       () => workspaceStore.userSettings.optimization.nativeMonitorSyncMode,
       nativeMonitorMasterEffects,
+      () => projectStore.activeMonitor?.previewBlurQuality,
     ],
     () => {
       void syncScene();
@@ -323,6 +326,9 @@ export function useNativeMonitorBridge(): void {
       } catch (err) {
         warnMonitorFailure('monitor play/pause failed', err);
       }
+      // Rebuild scene on play/pause to update transition blur quality
+      // (paused = ultra, playing = user-selected quality)
+      void syncScene();
     },
   );
 

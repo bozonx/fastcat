@@ -66,7 +66,7 @@ export interface TransitionManifest<T = Record<string, unknown>> {
   toTauriSpec?: (
     params: T,
     durationSec?: number,
-    options?: { isExport?: boolean },
+    options?: { isExport?: boolean; isPlaying?: boolean; previewBlurQuality?: string },
   ) => TauriTransitionSpec;
   supportedModes?: TransitionMode[];
   /** Returns opacity [0..1] of the outgoing clip at `progress` [0..1] */

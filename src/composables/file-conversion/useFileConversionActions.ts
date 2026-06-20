@@ -6,7 +6,6 @@ import { getMediaTypeFromFilename } from '~/utils/media-types';
 import { useProjectStore } from '~/stores/project.store';
 import { useBackgroundTasksStore } from '~/stores/background-tasks.store';
 import { useUiStore } from '~/stores/ui.store';
-import { useFileManager } from '~/composables/file-manager/useFileManager';
 import { getExportWorkerClient, restartExportWorker } from '~/utils/video-editor/worker-client';
 import { getWorkspaceFileHandle } from '~/utils/workspace-fs';
 import { isTauriRuntime } from '~/utils/runtime';
@@ -92,11 +91,14 @@ interface UseFileConversionActionsProps {
   isModalOpen: Ref<boolean>;
   conversionModalRequestId: Ref<number>;
   sourceHasAudio: Ref<boolean>;
+  fileManager: {
+    vfs: IFileSystemAdapter;
+    reloadDirectory: (path: string) => Promise<void>;
+  };
 }
 
 export function useFileConversionActions(props: UseFileConversionActionsProps) {
   const projectStore = useProjectStore();
-  const fileManager = useFileManager();
   const uiStore = useUiStore();
   const backgroundTasksStore = useBackgroundTasksStore();
   const { isMobileLayout } = useMobileLayout();
@@ -182,7 +184,7 @@ export function useFileConversionActions(props: UseFileConversionActionsProps) {
     }
 
     try {
-      const file = await fileManager.vfs.getFile(path);
+      const file = await props.fileManager.vfs.getFile(path);
       if (file) return file;
     } catch {
       // Ignore VFS read errors and fall back to project FS.
@@ -488,7 +490,7 @@ export function useFileConversionActions(props: UseFileConversionActionsProps) {
       dirPath = request.dirPath;
       createdFilePath = target.filePath;
 
-      const vfs = props.targetVfs.value ?? fileManager.vfs;
+      const vfs = props.targetVfs.value ?? props.fileManager.vfs;
       const unique = await resolveUniqueFileName(
         (p) => vfs.exists(p),
         createdFilePath,
@@ -622,7 +624,7 @@ export function useFileConversionActions(props: UseFileConversionActionsProps) {
           })
           .finally(async () => {
             props.isConverting.value = false;
-            await (props.targetReloadDirectory.value ?? fileManager.reloadDirectory)(dirPath);
+            await (props.targetReloadDirectory.value ?? props.fileManager.reloadDirectory)(dirPath);
             uiStore.notifyFileManagerUpdate();
           });
       } else if (request.type === 'image') {
@@ -638,7 +640,7 @@ export function useFileConversionActions(props: UseFileConversionActionsProps) {
             isCancelRequested: () => props.isCancelRequested.value,
           });
           if (!createdFilePath) throw new Error('Failed to resolve target path');
-          await (props.targetVfs.value ?? fileManager.vfs).writeFile(createdFilePath, blob);
+          await (props.targetVfs.value ?? props.fileManager.vfs).writeFile(createdFilePath, blob);
           toast.add({
             title: t('videoEditor.fileManager.convert.success'),
             color: 'success',
@@ -647,7 +649,7 @@ export function useFileConversionActions(props: UseFileConversionActionsProps) {
         } catch (err) {
           if (isAbortError(err) || props.isCancelRequested.value) {
             if (createdFilePath) {
-              await (props.targetVfs.value ?? fileManager.vfs)
+              await (props.targetVfs.value ?? props.fileManager.vfs)
                 .deleteEntry(createdFilePath)
                 .catch(() => {});
             }
@@ -662,7 +664,7 @@ export function useFileConversionActions(props: UseFileConversionActionsProps) {
           }
         } finally {
           props.isConverting.value = false;
-          await (props.targetReloadDirectory.value ?? fileManager.reloadDirectory)(dirPath);
+          await (props.targetReloadDirectory.value ?? props.fileManager.reloadDirectory)(dirPath);
           uiStore.notifyFileManagerUpdate();
         }
       }

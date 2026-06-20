@@ -519,6 +519,7 @@ const menuItems = computed<ContextMenuItem[][]>(() => [
 
     <!-- Navigation (Breadcrumbs/Back) -->
     <MobileFileBrowserNavbar
+      v-if="!isSelectionMode"
       :is-selection-mode="isSelectionMode"
       :selected-count="selectedEntries?.length ?? 0"
       :total-selected-size="totalSelectedSize ?? 0"
@@ -585,6 +586,7 @@ const menuItems = computed<ContextMenuItem[][]>(() => [
       :can-add-to-timeline="canAddSelectionToTimeline"
       @action="handleDrawerAction"
       @add-to-timeline="handleAddSelectionToTimeline"
+      @cancel-selection="toggleSelectionMode"
     />
 
     <!-- Paste Mode Toolbar -->
@@ -647,6 +649,7 @@ const menuItems = computed<ContextMenuItem[][]>(() => [
     <UiRenameModal
       v-model:open="isRenameModalOpen"
       :initial-name="entryToRename?.name"
+      select-without-extension
       :validate="validateRename"
       @rename="onRenameConfirm"
     />

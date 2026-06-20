@@ -895,6 +895,7 @@
         "bloom": "Bloom",
         "blurModeFixed": "Fixed",
         "blurModeScaled": "Scaled",
+        "blurQualityAuto": "Auto",
         "blurQualityHigh": "High",
         "blurQualityLow": "Low",
         "blurQualityMedium": "Medium",

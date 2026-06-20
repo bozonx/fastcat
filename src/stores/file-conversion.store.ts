@@ -4,7 +4,6 @@ import type { FsEntry } from '~/types/fs';
 import type { IFileSystemAdapter } from '~/file-manager/core/vfs/types';
 import { getMediaTypeFromFilename } from '~/utils/media-types';
 import { useFileConversionSettings } from '~/composables/file-conversion/useFileConversionSettings';
-import { useFileConversionActions } from '~/composables/file-conversion/useFileConversionActions';
 
 export const useFileConversionStore = defineStore('file-conversion', () => {
   const isModalOpen = ref(false);
@@ -27,25 +26,6 @@ export const useFileConversionStore = defineStore('file-conversion', () => {
 
   const { video, audio, image } = useFileConversionSettings();
 
-  const { openConversionModal, startConversion, cancelConversion } = useFileConversionActions({
-    targetEntry,
-    targetIsExternal,
-    targetVfs,
-    targetReloadDirectory,
-    mediaType,
-    videoSettings: video,
-    audioSettings: audio,
-    imageSettings: image,
-    isCancelRequested,
-    isConverting,
-    isExtractingMetadata,
-    conversionError,
-    conversionWarnings,
-    isModalOpen,
-    conversionModalRequestId,
-    sourceHasAudio,
-  });
-
   return {
     isModalOpen,
     isConverting,
@@ -63,10 +43,5 @@ export const useFileConversionStore = defineStore('file-conversion', () => {
     video,
     audio,
     image,
-
-    // Actions
-    openConversionModal,
-    startConversion,
-    cancelConversion,
   };
 });
