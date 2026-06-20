@@ -51,6 +51,10 @@ export interface UseFileBrowserSharedDeps {
 export function useFileBrowserShared(deps: UseFileBrowserSharedDeps) {
   const conversionStore = useFileConversionStore();
   const { extractAudio } = useAudioExtraction();
+  const { openConversionModal } = useFileConversionStoreActions(conversionStore, {
+    vfs: deps.vfs,
+    reloadDirectory: deps.reloadDirectory,
+  });
 
   const fileManagerActions = useFileManagerActions(deps);
 
@@ -60,7 +64,7 @@ export function useFileBrowserShared(deps: UseFileBrowserSharedDeps) {
     folderEntries: deps.folderEntries,
     loadFolderContent: deps.loadFolderContent,
     onFileActionBase: fileManagerActions.onFileAction,
-    conversionStore,
+    openConversionModal,
     openTranscriptionModal: stt.openModal,
     extractAudio: (entry: FsEntry) =>
       extractAudio(entry, {

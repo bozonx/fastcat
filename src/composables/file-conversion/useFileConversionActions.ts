@@ -28,6 +28,7 @@ import {
 } from '~/utils/tauri-media-processing';
 import { createGroupedWarningReporter } from '~/utils/grouped-warnings';
 import { useMobileLayout } from '~/composables/useMobileLayout';
+import { useFileManager } from '~/composables/file-manager/useFileManager';
 import {
   DEFAULT_VIDEO_FORMAT,
   DEFAULT_VIDEO_CODEC,
@@ -91,10 +92,7 @@ interface UseFileConversionActionsProps {
   isModalOpen: Ref<boolean>;
   conversionModalRequestId: Ref<number>;
   sourceHasAudio: Ref<boolean>;
-  fileManager: {
-    vfs: IFileSystemAdapter;
-    reloadDirectory: (path: string) => Promise<void>;
-  };
+  fileManager: Pick<ReturnType<typeof useFileManager>, 'vfs' | 'reloadDirectory'>;
 }
 
 export function useFileConversionActions(props: UseFileConversionActionsProps) {

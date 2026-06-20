@@ -1,11 +1,14 @@
 import { storeToRefs } from 'pinia';
 import { useFileConversionStore } from '~/stores/file-conversion.store';
-import { useFileManager } from '~/composables/file-manager/useFileManager';
 import { useFileConversionActions } from '~/composables/file-conversion/useFileConversionActions';
+import type { IFileSystemAdapter } from '~/file-manager/core/vfs/types';
 
 export function useFileConversionStoreActions(
   store: ReturnType<typeof useFileConversionStore>,
-  fileManager: ReturnType<typeof useFileManager>,
+  fileManager: {
+    vfs: IFileSystemAdapter;
+    reloadDirectory: (path: string) => Promise<void>;
+  },
 ) {
   const {
     targetEntry,

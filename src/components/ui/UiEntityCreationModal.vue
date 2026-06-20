@@ -29,37 +29,67 @@ const name = ref(props.defaultValue || '');
 const inputRef = ref<HTMLElement | null>(null);
 const errorMsg = ref<string | null>(null);
 
-/**
- * Focuses the input and selects the relevant part of its value.
- * When `selectWithoutExtension` is set and the value has an extension,
- * only the base name (before the last dot) is selected.
- */
-function focusAndSelectInput() {
+// While true, focusing the input re-applies the base-name selection. This
+// outlasts Reka UI's focus-scope refocus (which calls input.select() and would
+// otherwise select the whole string when nested focus scopes fight, e.g. a
+// rename modal opened inside the mobile asset drawer).
+const shouldSelectOnFocus = ref(false);
+
+function resolveInputElement(): HTMLInputElement | null {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const exposedInput = (inputRef.value as any)?.input;
-  const input =
+  return (
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (inputRef.value as any)?.$el?.querySelector('input') ||
-    (typeof exposedInput?.value === 'object' ? exposedInput.value : exposedInput);
-  if (!input) return;
-  input.focus();
+    (typeof exposedInput?.value === 'object' ? exposedInput.value : exposedInput) ||
+    null
+  );
+}
+
+/**
+ * Selects the relevant part of the input value. When `selectWithoutExtension`
+ * is set and the value has an extension, only the base name (before the last
+ * dot) is selected; otherwise the whole value is selected.
+ */
+function applySelection(input: HTMLInputElement) {
   const value = name.value;
   if (props.selectWithoutExtension && value) {
     const lastDot = value.lastIndexOf('.');
     if (lastDot > 0) {
       input.setSelectionRange(0, lastDot);
-    } else {
-      input.select();
+      return;
     }
-  } else {
-    input.select();
   }
+  input.select();
+}
+
+function focusInput() {
+  const input = resolveInputElement();
+  if (!input) return;
+  input.focus();
+  // Defer to a macrotask so the selection runs after Reka UI's synchronous
+  // focus-scope `element.select()` call.
+  setTimeout(() => applySelection(input), 0);
+}
+
+// Re-apply the base-name selection whenever the input gains focus during the
+// open phase, deferred so it wins over Reka UI's whole-string select().
+function handleInputFocus() {
+  if (!shouldSelectOnFocus.value) return;
+  const input = resolveInputElement();
+  if (!input) return;
+  setTimeout(() => applySelection(input), 0);
+}
+
+// The user started editing/navigating: stop forcing the selection.
+function handleInputKeydown() {
+  shouldSelectOnFocus.value = false;
 }
 
 // Applies the selection after the modal finished its open animation, so it
-// runs after Reka UI's auto-focus (which would otherwise select the whole text).
+// runs after Reka UI's auto-focus.
 function handleAfterEnter() {
-  focusAndSelectInput();
+  focusInput();
 }
 
 function runValidation() {
@@ -88,14 +118,16 @@ watch(
     if (val) {
       name.value = props.defaultValue || '';
       errorMsg.value = null;
+      shouldSelectOnFocus.value = true;
       await nextTick();
       runValidation();
       // Fallback for environments where the modal's `after:enter` does not fire
-      // (e.g. unit tests without transitions). `handleAfterEnter` runs last in
-      // the browser and is responsible for the final selection.
+      // (e.g. unit tests without transitions).
       setTimeout(() => {
-        focusAndSelectInput();
+        focusInput();
       }, INPUT_FOCUS_DELAY_MS);
+    } else {
+      shouldSelectOnFocus.value = false;
     }
   },
   { immediate: true },
@@ -142,6 +174,8 @@ function handleCancel() {
             :ui="{
               base: errorMsg ? 'ring-2 ring-error-500! border-error-500!' : '',
             }"
+            @focus="handleInputFocus"
+            @keydown="handleInputKeydown"
           />
         </UiFormField>
       </form>

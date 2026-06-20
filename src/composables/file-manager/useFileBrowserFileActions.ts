@@ -12,7 +12,7 @@ export function useFileBrowserFileActions({
   folderEntries,
   loadFolderContent,
   onFileActionBase,
-  conversionStore,
+  openConversionModal,
   openTranscriptionModal,
   extractAudio,
   vfs,
@@ -25,16 +25,14 @@ export function useFileBrowserFileActions({
     entry: FsEntry | FsEntry[],
     getExistingNames?: () => string[],
   ) => Promise<void>;
-  conversionStore: {
-    openConversionModal: (
-      entry: FsEntry,
-      options?: {
-        isExternal?: boolean;
-        vfs?: IFileSystemAdapter | null;
-        reloadDirectory?: ((path: string) => Promise<void>) | null;
-      },
-    ) => void;
-  };
+  openConversionModal: (
+    entry: FsEntry,
+    options?: {
+      isExternal?: boolean;
+      vfs?: IFileSystemAdapter | null;
+      reloadDirectory?: ((path: string) => Promise<void>) | null;
+    },
+  ) => void;
   openTranscriptionModal: (entry: FsEntry) => void;
   extractAudio: (entry: FsEntry) => Promise<void>;
   vfs: IFileSystemAdapter;
@@ -128,7 +126,7 @@ export function useFileBrowserFileActions({
 
     if (action === 'convertFile') {
       if (entry.kind === 'file') {
-        conversionStore.openConversionModal(entry, {
+        openConversionModal(entry, {
           isExternal,
           vfs,
           reloadDirectory: loadFolderContent,
