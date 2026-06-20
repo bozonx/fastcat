@@ -41,6 +41,19 @@ export function useExportConfig() {
   const customFps = ref<number>(30);
   const customAudioSampleRate = ref<number>(48000);
 
+  const lastTimelinePath = ref<string | null>(null);
+
+  watch(
+    () => projectStore.currentFileName,
+    (newPath) => {
+      if (lastTimelinePath.value && lastTimelinePath.value !== newPath) {
+        matchTimeline.value = true;
+      }
+      lastTimelinePath.value = newPath || null;
+    },
+    { immediate: true },
+  );
+
   watch(
     [() => timelineStore.timelineFormat, matchTimeline],
     ([format, match]) => {

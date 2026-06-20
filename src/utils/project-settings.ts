@@ -128,6 +128,7 @@ export interface FastCatProjectSettings {
     metadataDescription: string;
     metadataAuthor: string;
     metadataTags: string;
+    customExportPath?: string | null;
   };
 }
 

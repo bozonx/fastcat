@@ -1,29 +1,19 @@
-import { ref } from 'vue';
+import { storeToRefs } from 'pinia';
+import { useExportStore } from '~/stores/export.store';
 
 export function useExportState() {
-  const isExporting = ref(false);
-  const exportProgress = ref(0);
-  const exportError = ref<string | null>(null);
-  const exportPhase = ref<'preparing' | 'encoding' | 'finalizing' | null>(null);
-  const exportWarnings = ref<string[]>([]);
-  const exportDurationMs = ref<number | null>(null);
-  const lastExportStatus = ref<'success' | 'error' | null>(null);
-
-  const cancelRequested = ref(false);
-  const activeExportTaskId = ref<string | null>(null);
-
-  function resetExportState() {
-    exportProgress.value = 0;
-    exportError.value = null;
-    exportPhase.value = null;
-    exportWarnings.value = [];
-    exportDurationMs.value = null;
-    lastExportStatus.value = null;
-    cancelRequested.value = false;
-    if (!isExporting.value) {
-      activeExportTaskId.value = null;
-    }
-  }
+  const store = useExportStore();
+  const {
+    isExporting,
+    exportProgress,
+    exportError,
+    exportPhase,
+    exportWarnings,
+    exportDurationMs,
+    lastExportStatus,
+    cancelRequested,
+    activeExportTaskId,
+  } = storeToRefs(store);
 
   return {
     isExporting,
@@ -35,6 +25,6 @@ export function useExportState() {
     lastExportStatus,
     cancelRequested,
     activeExportTaskId,
-    resetExportState,
+    resetExportState: store.resetExportProcessState,
   };
 }

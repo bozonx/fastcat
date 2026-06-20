@@ -290,7 +290,6 @@ export function useExportForm() {
       resetExportState();
       exportType.value = 'video';
       filenameError.value = null;
-      customExportPath.value = null;
       selectedExportRangeId.value = resolveDefaultExportRangeId();
 
       await loadCodecSupport();
@@ -323,6 +322,7 @@ export function useExportForm() {
         metadataDescription.value = saved.metadataDescription ?? '';
         metadataAuthor.value = saved.metadataAuthor ?? '';
         metadataTags.value = saved.metadataTags ?? '';
+        customExportPath.value = saved.customExportPath ?? null;
       } else {
         const encDefaults = resolveExportPreset(workspaceStore.userSettings.exportPresets);
         exportType.value = 'video';
@@ -350,6 +350,7 @@ export function useExportForm() {
         customHeight.value = format.height;
         customFps.value = format.fps;
         customAudioSampleRate.value = format.sampleRate;
+        customExportPath.value = null;
       }
 
       if (!supportsExportAlpha(outputFormat.value, videoCodec.value)) {
@@ -788,6 +789,7 @@ export function useExportForm() {
       metadataDescription,
       metadataAuthor,
       metadataTags,
+      customExportPath,
     ],
     () => {
       if (isInitializing.value) return;
@@ -816,6 +818,7 @@ export function useExportForm() {
         metadataDescription: metadataDescription.value,
         metadataAuthor: metadataAuthor.value,
         metadataTags: metadataTags.value,
+        customExportPath: customExportPath.value,
       };
     },
     { deep: true },
