@@ -4,13 +4,16 @@ import { DEFAULT_TRANSITION_MODE } from '~/transitions';
 import type { TransitionManager } from './TransitionManager';
 import { toPixiBlendMode, type CompositorClip, type CompositorTrack } from './types';
 import type { StageTextureRenderer } from './StageTextureRenderer';
+import type { PreviewEffectQuality } from '~/utils/preview-effect-quality';
 const log = createDevLogger('TransitionRenderer');
+const QUALITY_CONTROLLED_TRANSITIONS = new Set(['bloom', 'slide', 'blinds', 'zoom', 'card-swap']);
 
 export interface TransitionRendererParams {
   app: Application;
   clips: CompositorClip[];
   width: number;
   height: number;
+  previewEffectQuality?: PreviewEffectQuality;
   transitionManager: TransitionManager;
   stageTextureRenderer: StageTextureRenderer;
   getTrackById: (trackId: string) => CompositorTrack | undefined;
@@ -22,7 +25,12 @@ export interface TransitionRendererParams {
     progress: number;
     mode?: string;
     manifest?: { renderMode?: string } | null;
-    transition?: { mode?: string; durationUs?: number; params?: Record<string, unknown> };
+    transition?: {
+      type: string;
+      mode?: string;
+      durationUs?: number;
+      params?: Record<string, unknown>;
+    };
     edge?: 'in' | 'out';
     curve?: string;
   } | null;
@@ -143,6 +151,13 @@ export class TransitionRenderer {
         shaderFromTexture = clip.transitionToTexture;
       }
 
+      const transitionParams =
+        state.transition && QUALITY_CONTROLLED_TRANSITIONS.has(state.transition.type)
+          ? {
+              ...(state.transition.params ?? {}),
+              blurQuality: params.previewEffectQuality ?? 'ultra',
+            }
+          : (state.transition?.params ?? {});
       const transitionContext = {
         progress: state.progress,
         curve: state.curve,
@@ -152,7 +167,7 @@ export class TransitionRenderer {
             : timeUs - (clip.endUs - (state.transition?.durationUs ?? 0)),
         durationUs: state.transition?.durationUs ?? 0,
         edge: state.edge as 'in' | 'out',
-        params: state.transition?.params ?? {},
+        params: transitionParams,
         fromTexture: shaderFromTexture,
         toTexture: shaderToTexture,
       };

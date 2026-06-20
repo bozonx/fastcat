@@ -6,6 +6,7 @@ export interface BloomParams {
   brightness: number;
   blurLevel: number;
   mode: 'bloom' | 'normal';
+  blurQuality: 'low' | 'medium' | 'high' | 'ultra';
 }
 
 const vertex = `
@@ -48,6 +49,7 @@ uniform float uProgress;
 uniform float uBrightness;
 uniform float uBlurLevel;
 uniform float uIsBloom;
+uniform float uBlurSamples;
 
 // Extract bright parts
 vec4 extractBright(vec4 color) {
@@ -55,6 +57,24 @@ vec4 extractBright(vec4 color) {
   float threshold = 0.5;
   float intensity = smoothstep(threshold, threshold + 0.2, luminance);
   return color * intensity;
+}
+
+vec4 bloomTap(sampler2D tex, vec2 uv) {
+  vec4 color = texture(tex, uv);
+  return uIsBloom > 0.5 ? extractBright(color) : color;
+}
+
+vec4 bloomSample(sampler2D tex, vec2 uv, float blurAmount) {
+  float samples = clamp(uBlurSamples, 5.0, 25.0);
+  vec4 sum = vec4(0.0);
+  for (float i = 0.0; i < 25.0; i += 1.0) {
+    if (i >= samples) break;
+    float radius = sqrt((i + 0.5) / samples) * blurAmount;
+    float angle = i * 2.3999632;
+    vec2 offset = vec2(cos(angle), sin(angle)) * radius;
+    sum += bloomTap(tex, uv + offset);
+  }
+  return sum / samples;
 }
 
 out vec4 finalColor;
@@ -69,58 +89,16 @@ void main(void) {
   float peak = 1.0 - abs(progress - 0.5) * 2.0; // 0 at edges, 1 at middle
   float blurAmount = uBlurLevel * peak * 0.05;
   
-  vec4 blurColorFrom = vec4(0.0);
-  vec4 blurColorTo = vec4(0.0);
-  
+  vec4 blurColorFrom = bloomSample(uFromTexture, vNormalizedCoord, blurAmount);
+  vec4 blurColorTo = bloomSample(uTexture, vTextureCoord, blurAmount);
+
   if (uIsBloom > 0.5) {
-    // Bloom mode: blur only bright parts
-    blurColorFrom += extractBright(texture(uFromTexture, vNormalizedCoord + vec2(-1.0, -1.0) * blurAmount)) * 0.0625;
-    blurColorFrom += extractBright(texture(uFromTexture, vNormalizedCoord + vec2(0.0, -1.0) * blurAmount)) * 0.125;
-    blurColorFrom += extractBright(texture(uFromTexture, vNormalizedCoord + vec2(1.0, -1.0) * blurAmount)) * 0.0625;
-    blurColorFrom += extractBright(texture(uFromTexture, vNormalizedCoord + vec2(-1.0, 0.0) * blurAmount)) * 0.125;
-    blurColorFrom += extractBright(fromColor) * 0.25;
-    blurColorFrom += extractBright(texture(uFromTexture, vNormalizedCoord + vec2(1.0, 0.0) * blurAmount)) * 0.125;
-    blurColorFrom += extractBright(texture(uFromTexture, vNormalizedCoord + vec2(-1.0, 1.0) * blurAmount)) * 0.0625;
-    blurColorFrom += extractBright(texture(uFromTexture, vNormalizedCoord + vec2(0.0, 1.0) * blurAmount)) * 0.125;
-    blurColorFrom += extractBright(texture(uFromTexture, vNormalizedCoord + vec2(1.0, 1.0) * blurAmount)) * 0.0625;
-    
-    blurColorTo += extractBright(texture(uTexture, vTextureCoord + vec2(-1.0, -1.0) * blurAmount)) * 0.0625;
-    blurColorTo += extractBright(texture(uTexture, vTextureCoord + vec2(0.0, -1.0) * blurAmount)) * 0.125;
-    blurColorTo += extractBright(texture(uTexture, vTextureCoord + vec2(1.0, -1.0) * blurAmount)) * 0.0625;
-    blurColorTo += extractBright(texture(uTexture, vTextureCoord + vec2(-1.0, 0.0) * blurAmount)) * 0.125;
-    blurColorTo += extractBright(toColor) * 0.25;
-    blurColorTo += extractBright(texture(uTexture, vTextureCoord + vec2(1.0, 0.0) * blurAmount)) * 0.125;
-    blurColorTo += extractBright(texture(uTexture, vTextureCoord + vec2(-1.0, 1.0) * blurAmount)) * 0.0625;
-    blurColorTo += extractBright(texture(uTexture, vTextureCoord + vec2(0.0, 1.0) * blurAmount)) * 0.125;
-    blurColorTo += extractBright(texture(uTexture, vTextureCoord + vec2(1.0, 1.0) * blurAmount)) * 0.0625;
-    
     vec4 mixedBloom = mix(blurColorFrom, blurColorTo, progress);
     vec4 outColor = baseColor + mixedBloom * uBrightness * peak;
     outColor.rgb = min(outColor.rgb, vec3(1.0));
     outColor.a = baseColor.a;
     finalColor = outColor;
   } else {
-    // Normal mode: blur whole image and apply brightness uniformly
-    blurColorFrom += texture(uFromTexture, vNormalizedCoord + vec2(-1.0, -1.0) * blurAmount) * 0.0625;
-    blurColorFrom += texture(uFromTexture, vNormalizedCoord + vec2(0.0, -1.0) * blurAmount) * 0.125;
-    blurColorFrom += texture(uFromTexture, vNormalizedCoord + vec2(1.0, -1.0) * blurAmount) * 0.0625;
-    blurColorFrom += texture(uFromTexture, vNormalizedCoord + vec2(-1.0, 0.0) * blurAmount) * 0.125;
-    blurColorFrom += fromColor * 0.25;
-    blurColorFrom += texture(uFromTexture, vNormalizedCoord + vec2(1.0, 0.0) * blurAmount) * 0.125;
-    blurColorFrom += texture(uFromTexture, vNormalizedCoord + vec2(-1.0, 1.0) * blurAmount) * 0.0625;
-    blurColorFrom += texture(uFromTexture, vNormalizedCoord + vec2(0.0, 1.0) * blurAmount) * 0.125;
-    blurColorFrom += texture(uFromTexture, vNormalizedCoord + vec2(1.0, 1.0) * blurAmount) * 0.0625;
-    
-    blurColorTo += texture(uTexture, vTextureCoord + vec2(-1.0, -1.0) * blurAmount) * 0.0625;
-    blurColorTo += texture(uTexture, vTextureCoord + vec2(0.0, -1.0) * blurAmount) * 0.125;
-    blurColorTo += texture(uTexture, vTextureCoord + vec2(1.0, -1.0) * blurAmount) * 0.0625;
-    blurColorTo += texture(uTexture, vTextureCoord + vec2(-1.0, 0.0) * blurAmount) * 0.125;
-    blurColorTo += toColor * 0.25;
-    blurColorTo += texture(uTexture, vTextureCoord + vec2(1.0, 0.0) * blurAmount) * 0.125;
-    blurColorTo += texture(uTexture, vTextureCoord + vec2(-1.0, 1.0) * blurAmount) * 0.0625;
-    blurColorTo += texture(uTexture, vTextureCoord + vec2(0.0, 1.0) * blurAmount) * 0.125;
-    blurColorTo += texture(uTexture, vTextureCoord + vec2(1.0, 1.0) * blurAmount) * 0.0625;
-    
     vec4 mixedBlur = mix(blurColorFrom, blurColorTo, progress);
     
     // Apply brightness multiplier smoothly towards middle
@@ -137,8 +115,14 @@ function normalizeBloomParams(params?: Record<string, unknown>): BloomParams {
   const brightness = typeof params?.brightness === 'number' ? params.brightness : 1.5;
   const blurLevel = typeof params?.blurLevel === 'number' ? params.blurLevel : 1.0;
   const mode = params?.mode === 'normal' ? 'normal' : 'bloom';
+  const blurQuality =
+    params?.blurQuality === 'low' ||
+    params?.blurQuality === 'high' ||
+    params?.blurQuality === 'ultra'
+      ? params.blurQuality
+      : 'medium';
 
-  return { brightness, blurLevel, mode };
+  return { brightness, blurLevel, mode, blurQuality };
 }
 
 export const bloomManifest: TransitionManifest<BloomParams> = {
@@ -187,6 +171,7 @@ export const bloomManifest: TransitionManifest<BloomParams> = {
           uBrightness: { value: 1.5, type: 'f32' },
           uBlurLevel: { value: 1.0, type: 'f32' },
           uIsBloom: { value: 1.0, type: 'f32' },
+          uBlurSamples: { value: 9.0, type: 'f32' },
         },
       },
     }),
@@ -208,6 +193,14 @@ export const bloomManifest: TransitionManifest<BloomParams> = {
     uniforms.uBrightness = params.brightness;
     uniforms.uBlurLevel = params.blurLevel;
     uniforms.uIsBloom = params.mode === 'normal' ? 0.0 : 1.0;
+    uniforms.uBlurSamples =
+      params.blurQuality === 'low'
+        ? 5
+        : params.blurQuality === 'high'
+          ? 17
+          : params.blurQuality === 'ultra'
+            ? 25
+            : 9;
   },
   computeOutOpacity: () => 1,
   computeInOpacity: () => 1,

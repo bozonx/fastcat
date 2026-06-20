@@ -81,7 +81,7 @@ vec4 sampleFrom(vec2 uv, float blurAmount, float brightFactor, float blurFade) {
       float samples = uBlurSamples;
       for (float i = 0.0; i < 64.0; i += 1.0) {
          if (i >= samples) break;
-         float t = i / samples;
+         float t = i / max(samples - 1.0, 1.0);
          colorSum += texture(uFromTexture, uv + dir * (t * blurAmount));
       }
       vec4 blurred = colorSum / samples;
@@ -98,7 +98,7 @@ vec4 sampleFrom(vec2 uv, float blurAmount, float brightFactor, float blurFade) {
       float samples = uBlurSamples;
       for (float i = 0.0; i < 64.0; i += 1.0) {
          if (i >= samples) break;
-         float t = i / samples;
+         float t = i / max(samples - 1.0, 1.0);
          vec4 sColor = texture(uFromTexture, uv + dir * (t * blurAmount));
          float lum = getLuminance(sColor.rgb);
          float w = smoothstep(0.4, 1.0, lum);
@@ -125,7 +125,7 @@ vec4 sampleTo(vec2 uv, float blurAmount, float brightFactor, float blurFade) {
       float samples = uBlurSamples;
       for (float i = 0.0; i < 64.0; i += 1.0) {
          if (i >= samples) break;
-         float t = i / samples;
+         float t = i / max(samples - 1.0, 1.0);
          vec2 offsetNorm = dir * (t * blurAmount);
          colorSum += texture(uTexture, baseTexCoord + offsetNorm * vTexScale);
       }
@@ -143,7 +143,7 @@ vec4 sampleTo(vec2 uv, float blurAmount, float brightFactor, float blurFade) {
       float samples = uBlurSamples;
       for (float i = 0.0; i < 64.0; i += 1.0) {
          if (i >= samples) break;
-         float t = i / samples;
+         float t = i / max(samples - 1.0, 1.0);
          vec2 offsetNorm = dir * (t * blurAmount);
          vec4 sColor = texture(uTexture, baseTexCoord + offsetNorm * vTexScale);
          float lum = getLuminance(sColor.rgb);

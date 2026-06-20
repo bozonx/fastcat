@@ -18,6 +18,7 @@ import { toProjectTempVfsPath } from '~/utils/storage-topology';
 import type { WorkerTimelineClip } from './types';
 import type { UseMonitorCoreOptions } from './useMonitorCore.types';
 import { cloneWorkerPayload, createPreviewRenderOptions } from './useMonitorCore.helpers';
+import { resolvePreviewEffectQuality } from '~/utils/preview-effect-quality';
 import { mapAudioEngineClips } from './useMonitorCore.audio';
 import { createMonitorCompositorRuntime } from './useMonitorCore.compositor';
 import { createMonitorPreviewHostApi } from './useMonitorCore.hostApi';
@@ -119,6 +120,10 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
     return projectStore.activeMonitor?.previewEffectsEnabled !== false;
   });
 
+  const previewEffectQualitySetting = computed(
+    () => projectStore.activeMonitor?.previewBlurQuality ?? 'auto',
+  );
+
   const pixiRenderer = computed(() => {
     return workspaceStore.userSettings.optimization.pixiRenderer;
   });
@@ -131,6 +136,14 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
       monitorSyncMode: options.isMobile?.value
         ? 'balanced'
         : workspaceStore.userSettings.optimization.nativeMonitorSyncMode,
+      previewEffectQuality: resolvePreviewEffectQuality({
+        setting: projectStore.activeMonitor?.previewBlurQuality ?? 'auto',
+        isPlaying: timelineStore.isPlaying,
+        isMobile: options.isMobile?.value,
+        width: renderWidth.value,
+        height: renderHeight.value,
+        fps: timelineStore.timelineFormat?.fps,
+      }),
     });
   }
 
@@ -439,6 +452,7 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
     existingProxies: proxyStore.existingProxies,
     useProxyInMonitor,
     previewEffectsEnabled,
+    previewEffectQualitySetting,
     pixiRenderer,
     isLoading,
     getIsUnmounted: () => isUnmounted,

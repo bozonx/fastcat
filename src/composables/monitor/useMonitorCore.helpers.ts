@@ -1,6 +1,7 @@
 import type { PreviewRenderOptions } from '~/utils/video-editor/worker-rpc';
 import { cloneMonitorValue } from './useMonitorClone';
 import type { WorkerTimelineClip } from './types';
+import type { PreviewEffectQuality } from '~/utils/preview-effect-quality';
 
 export function cloneWorkerPayload<T>(value: T): T {
   return cloneMonitorValue(value);
@@ -22,12 +23,14 @@ export function createPreviewRenderOptions(params: {
   pixiRenderer: 'webgl' | 'webgpu';
   videoFrameCacheMb: number;
   monitorSyncMode: 'smooth' | 'balanced' | 'strict';
+  previewEffectQuality: PreviewEffectQuality;
 }): PreviewRenderOptions {
   return {
     previewEffectsEnabled: params.previewEffectsEnabled,
     pixiRenderer: params.pixiRenderer,
     videoFrameCacheMb: params.videoFrameCacheMb,
     monitorSyncMode: params.monitorSyncMode,
+    previewEffectQuality: params.previewEffectQuality,
   };
 }
 

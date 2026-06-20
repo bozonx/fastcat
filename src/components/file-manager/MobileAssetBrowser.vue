@@ -16,11 +16,9 @@ import { usePullToRefresh } from '~/composables/file-manager/usePullToRefresh';
 import type { FsEntry } from '~/types/fs';
 import type { MobileDrawerAction } from '~/types/file-manager';
 import type { FileCompatibility } from '~/composables/file-manager/useFileManagerCompatibility';
-import MobileFileBrowserGrid from './MobileFileBrowserGrid.vue';
-import MobileFileBrowserList from './MobileFileBrowserList.vue';
 import MobileFileBrowserDrawer from './MobileFileBrowserDrawer.vue';
 import MobileFileBrowserSelectionToolbar from './MobileFileBrowserSelectionToolbar.vue';
-import MobilePullToRefreshIndicator from './MobilePullToRefreshIndicator.vue';
+import MobileAssetCategoryList from './MobileAssetCategoryList.vue';
 import FileDeleteConfirmModal from './modals/FileDeleteConfirmModal.vue';
 import FileSttTranscriptionModal from './modals/FileTranscriptionModal.vue';
 import UiRenameModal from '~/components/ui/UiRenameModal.vue';
@@ -95,9 +93,6 @@ async function reloadAll() {
 
 const { isPulling, pullDistance, isRefreshing, onTouchStart, onTouchMove, onTouchEnd } =
   usePullToRefresh(reloadAll);
-
-// Assets are files only (no folders are listed), so folder sizes never apply.
-const EMPTY_FOLDER_SIZES: Record<string, number> = {};
 
 const {
   isSelectionMode,
@@ -329,67 +324,24 @@ async function wrappedHandleDeleteConfirm() {
       />
     </div>
 
-    <div
-      class="flex-1 overflow-y-auto min-h-0 relative"
-      @touchstart="onTouchStart"
-      @touchmove="onTouchMove"
-      @touchend="onTouchEnd"
-    >
-      <MobilePullToRefreshIndicator
-        :is-pulling="isPulling"
-        :is-refreshing="isRefreshing"
-        :pull-distance="pullDistance"
-      />
-
-      <section
-        v-for="category in categories"
-        v-show="
-          category.sortedEntries.value.length > 0 ||
-          category.isLoading.value ||
-          category.error.value
-        "
-        :key="category.id"
-        class="border-b border-ui-border/50"
-      >
-        <button
-          class="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors active:bg-ui-bg-elevated"
-          @click="toggleCollapse(category.id)"
-        >
-          <Icon
-            name="lucide:chevron-right"
-            class="w-4 h-4 shrink-0 text-ui-text-muted transition-transform"
-            :class="{ 'rotate-90': !isCollapsed(category.id) }"
-          />
-          <Icon :name="category.icon" class="w-5 h-5 shrink-0 text-ui-text-muted" />
-          <span class="text-sm font-semibold">{{ t(category.labelKey) }}</span>
-          <span class="ml-auto text-xs tabular-nums text-ui-text-muted">
-            {{ category.sortedEntries.value.length }}
-          </span>
-        </button>
-
-        <component
-          :is="
-            ['audio', 'documents', 'files'].includes(category.id)
-              ? MobileFileBrowserList
-              : MobileFileBrowserGrid
-          "
-          v-show="!isCollapsed(category.id)"
-          :entries="category.sortedEntries.value"
-          :thumbnails="category.thumbnails.value"
-          :file-compatibility="category.fileCompatibility.value"
-          :selected-entry-path="selectedEntryPath"
-          :selected-entries="selectedEntries"
-          :is-selection-mode="isSelectionMode"
-          :is-loading="category.isLoading.value"
-          :error="category.error.value"
-          :folder-sizes="EMPTY_FOLDER_SIZES"
-          @entry-click="handleEntryClick"
-          @long-press="handleLongPress"
-          @toggle-selection="handleToggleSelection"
-          @retry="category.load(true)"
-        />
-      </section>
-    </div>
+    <MobileAssetCategoryList
+      :categories="categories"
+      :selected-entry-path="selectedEntryPath"
+      :selected-entries="selectedEntries"
+      :is-selection-mode="isSelectionMode"
+      :is-collapsed="isCollapsed"
+      :is-pulling="isPulling"
+      :is-refreshing="isRefreshing"
+      :pull-distance="pullDistance"
+      @entry-click="handleEntryClick"
+      @long-press="handleLongPress"
+      @toggle-selection="handleToggleSelection"
+      @toggle-collapse="toggleCollapse"
+      @retry="categories.find((category) => category.id === $event)?.load(true)"
+      @touch-start="onTouchStart"
+      @touch-move="onTouchMove"
+      @touch-end="onTouchEnd"
+    />
 
     <!-- Properties Drawer (шторка) -->
     <MobileFileBrowserDrawer

@@ -368,6 +368,7 @@ impl Compositor {
                 )))),
                 &effective_scene.master_effects,
                 false,
+                effective_scene.effect_quality,
             )?;
             let mut out = VelloScene::new();
             let img = self
@@ -545,7 +546,13 @@ impl Compositor {
                         source
                     } else {
                         let (processed, _) = self.apply_effects_to_texture(
-                            dev_id, device, queue, &source, &others, false,
+                            dev_id,
+                            device,
+                            queue,
+                            &source,
+                            &others,
+                            false,
+                            scene.effect_quality,
                         )?;
                         EffectSource::Gpu(processed)
                     };
@@ -564,6 +571,7 @@ impl Compositor {
                         *tint_color,
                         *tint_strength,
                         *fg_offset_y,
+                        scene.effect_quality,
                     )?;
                     let mut next = layer.clone();
                     next.transform = Transform::center_fit(
@@ -581,13 +589,24 @@ impl Compositor {
                 }
             }
 
-            let (processed, padding) =
-                self.apply_effects_to_texture(dev_id, device, queue, &source, &layer.effects, true)?;
+            let (processed, padding) = self.apply_effects_to_texture(
+                dev_id,
+                device,
+                queue,
+                &source,
+                &layer.effects,
+                true,
+                scene.effect_quality,
+            )?;
             let mut next = layer.clone();
             next.kind = LayerKind::Raster {
                 natural_size: (processed.width(), processed.height()),
                 source: RasterSource::GpuTexture(processed),
-                padding: if padding > 0 { Some((padding, padding)) } else { None },
+                padding: if padding > 0 {
+                    Some((padding, padding))
+                } else {
+                    None
+                },
             };
             if is_vector {
                 next.transform.scale_x /= render_scale.0;
@@ -604,6 +623,7 @@ impl Compositor {
             background: scene.background,
             layers: final_layers,
             master_effects: Vec::new(),
+            effect_quality: scene.effect_quality,
         })
     }
 
@@ -641,6 +661,7 @@ impl Compositor {
                         background: scene.background,
                         layers: lower_layers.clone(),
                         master_effects: Vec::new(),
+                        effect_quality: scene.effect_quality,
                     };
                     let texture = self.render_domain_scene_to_owned_texture(
                         dev_id,
@@ -658,6 +679,7 @@ impl Compositor {
                         ))),
                         &layer.effects,
                         false,
+                        scene.effect_quality,
                     )?;
                     result_layers.push(Layer {
                         id: layer.id.clone(),
@@ -688,6 +710,7 @@ impl Compositor {
             background: scene.background,
             layers: result_layers,
             master_effects: scene.master_effects.clone(),
+            effect_quality: scene.effect_quality,
         })
     }
 
@@ -713,8 +736,15 @@ impl Compositor {
         if layer.effects.is_empty() {
             return Ok(base);
         }
-        let (processed, _) =
-            self.apply_effects_to_texture(dev_id, device, queue, &base, &layer.effects, false)?;
+        let (processed, _) = self.apply_effects_to_texture(
+            dev_id,
+            device,
+            queue,
+            &base,
+            &layer.effects,
+            false,
+            scene.effect_quality,
+        )?;
         Ok(EffectSource::Gpu(processed))
     }
 
@@ -810,6 +840,7 @@ impl Compositor {
                 mix: 1.0,
             }],
             false,
+            scene.effect_quality,
         )?;
 
         let mut text_spec = spec.clone();
@@ -849,6 +880,7 @@ impl Compositor {
                 ),
             ],
             master_effects: Vec::new(),
+            effect_quality: scene.effect_quality,
         };
         self.render_domain_scene_to_owned_texture(
             dev_id,
@@ -884,6 +916,7 @@ impl Compositor {
             background: Color::TRANSPARENT,
             layers: Vec::new(),
             master_effects: Vec::new(),
+            effect_quality: crate::compositor::effects::EffectQuality::Ultra,
         };
         self.render_layer_to_texture(dev_id, &scene, &layer, scale)
     }
@@ -971,6 +1004,7 @@ impl Compositor {
                 transition: None,
             }],
             master_effects: Vec::new(),
+            effect_quality: scene.effect_quality,
         };
         let vello = isolated.to_vello(width, height, |_| None);
         self.render_to_owned_texture(dev_id, &vello, width, height, Color::TRANSPARENT)
@@ -1011,6 +1045,7 @@ impl Compositor {
         tint_color: [u8; 4],
         tint_strength: f32,
         fg_offset_y: f32,
+        quality: crate::compositor::effects::EffectQuality,
     ) -> Result<Arc<crate::media::SharedTexture>> {
         let cache = self.pipeline_caches.get(&dev_id);
         let pipeline = self
@@ -1018,8 +1053,20 @@ impl Compositor {
             .entry(dev_id)
             .or_insert_with(|| EffectPipeline::new(device, cache));
         match pipeline.apply_blur_fill(
-            device, queue, source, frame_w, frame_h, fg_scale, bg_scale, blur, bg_dim,
-            bg_saturation, tint_color, tint_strength, fg_offset_y,
+            device,
+            queue,
+            source,
+            frame_w,
+            frame_h,
+            fg_scale,
+            bg_scale,
+            blur,
+            bg_dim,
+            bg_saturation,
+            tint_color,
+            tint_strength,
+            fg_offset_y,
+            quality,
         ) {
             Ok(texture) => Ok(texture),
             Err(error) => {
@@ -1043,23 +1090,22 @@ impl Compositor {
         source: &EffectSource,
         effects: &[EffectSpec],
         enable_padding: bool,
+        quality: crate::compositor::effects::EffectQuality,
     ) -> Result<(Arc<crate::media::SharedTexture>, u32)> {
         let cache = self.pipeline_caches.get(&dev_id);
         let pipeline = self
             .effect_pipelines
             .entry(dev_id)
             .or_insert_with(|| EffectPipeline::new(device, cache));
-        match pipeline.apply_effects(device, queue, source, effects, enable_padding) {
+        match pipeline.apply_effects(device, queue, source, effects, enable_padding, quality) {
             Ok((texture, padding)) => Ok((texture, padding)),
             Err(error) => {
                 log::warn!("[compositor] layer effects skipped: {error:?}");
                 // Fallback: отдать исходник как есть. GPU-текстура — дешёвый клон хэндла.
                 let tex = match source {
-                    EffectSource::Cpu(img) => {
-                        Arc::new(crate::media::SharedTexture::new_shared(Arc::new(
-                            image_to_texture(device, queue, img)?,
-                        )))
-                    }
+                    EffectSource::Cpu(img) => Arc::new(crate::media::SharedTexture::new_shared(
+                        Arc::new(image_to_texture(device, queue, img)?),
+                    )),
                     EffectSource::Gpu(tex) => tex.clone(),
                 };
                 Ok((tex, 0))

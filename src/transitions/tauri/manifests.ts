@@ -67,16 +67,16 @@ function qualitySamples(quality: unknown, low: number, med: number, high: number
 
 /**
  * Resolves effective blur quality from export/playback state and user settings.
- * Priority: isExport → paused → previewBlurQuality → per-transition blurQuality.
+ * Priority: export → resolved preview quality → paused auto fallback → transition default.
  */
 function resolveBlurQuality(
   options: { isExport?: boolean; isPlaying?: boolean; previewBlurQuality?: string } | undefined,
   perTransitionQuality: unknown,
 ): string {
   if (options?.isExport) return 'ultra';
-  if (options?.isPlaying === false) return 'ultra';
   const preview = options?.previewBlurQuality;
   if (preview && preview !== 'auto') return preview;
+  if (options?.isPlaying === false) return 'ultra';
   // 'auto' or unset: fall back to the per-transition setting (default 'medium')
   return typeof perTransitionQuality === 'string' ? perTransitionQuality : 'medium';
 }
@@ -316,10 +316,10 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
         final_color = slide_process(slide_get(uv));
     } else {
         let max_samples = i32(uni.p7);
-        // Scale sample count by pixel length of the blur
-        let pixel_blur = mb * max(dims().x, dims().y);
-        let samples = clamp(i32(ceil(pixel_blur)), 4, max_samples);
         let axis = vec2<f32>(uni.p0, uni.p1);
+        // Scale sample count by pixel length of the blur
+        let pixel_blur = mb * length(axis * dims());
+        let samples = clamp(i32(ceil(pixel_blur)), 4, max_samples);
         let step_size = mb / f32(samples - 1);
         let start = -mb * 0.5;
         var accum = vec4<f32>(0.0);
@@ -360,7 +360,7 @@ fn motion_blur_sample(
     }
 
     let max_samples = i32(uni.p3);
-    let pixel_blur = amount * max(dims().x, dims().y);
+    let pixel_blur = amount * length(axis * dims());
     let samples = clamp(i32(ceil(pixel_blur)), 4, max_samples);
     let step_size = amount / f32(samples - 1);
     let start = -amount * 0.5;
@@ -512,7 +512,7 @@ fn blinds_motion(uv: vec2<f32>) -> vec4<f32> {
     let mb = uni.p7 * uni.speed;
     if (mb <= 0.0) { return blinds_process(blinds_get(uv)); }
     let max_samples = i32(uni.p6);
-    let pixel_blur = mb * max(dims().x, dims().y);
+    let pixel_blur = mb * length(vec2<f32>(uni.p0, uni.p1) * dims());
     let samples = clamp(i32(ceil(pixel_blur)), 4, max_samples);
     let step_size = mb / f32(samples - 1);
     let start = -mb * 0.5;
@@ -680,15 +680,15 @@ fn zoom_rotate(pt: vec2<f32>, angle: f32, aspect: f32) -> vec2<f32> {
 fn zoom_sample(tex: texture_2d<f32>, uv: vec2<f32>, blur_amount: f32, bright: f32, blur_fade: f32) -> vec4<f32> {
     let orig = samp(tex, uv);
     let max_samples = uni.p4;
-    let pixel_blur = blur_amount * max(dims().x, dims().y);
-    let samples = clamp(ceil(pixel_blur), 4.0, max_samples);
     let dir = vec2<f32>(0.5, 0.5) - uv;
+    let pixel_blur = blur_amount * length(dir * dims());
+    let samples = clamp(ceil(pixel_blur), 4.0, max_samples);
     if (uni.p5 < 0.5) {
         if (blur_amount < 0.001) { return vec4<f32>(orig.rgb * bright, orig.a); }
         var sum = vec4<f32>(0.0);
         for (var i = 0.0; i < 64.0; i = i + 1.0) {
             if (i >= samples) { break; }
-            let t = i / samples;
+            let t = i / max(samples - 1.0, 1.0);
             sum = sum + samp(tex, uv + dir * (t * blur_amount));
         }
         let blurred = sum / samples;
@@ -703,7 +703,7 @@ fn zoom_sample(tex: texture_2d<f32>, uv: vec2<f32>, blur_amount: f32, bright: f3
     var bloom_sum = vec4<f32>(0.0);
     for (var i = 0.0; i < 64.0; i = i + 1.0) {
         if (i >= samples) { break; }
-        let t = i / samples;
+        let t = i / max(samples - 1.0, 1.0);
         let sc = samp(tex, uv + dir * (t * blur_amount));
         bloom_sum = bloom_sum + sc * smoothstep(0.4, 1.0, luma(sc.rgb));
     }
@@ -760,18 +760,18 @@ fn bloom_tap(tex: texture_2d<f32>, uv: vec2<f32>, is_bloom: bool) -> vec4<f32> {
     return c;
 }
 
-fn bloom9(tex: texture_2d<f32>, uv: vec2<f32>, ba: f32, is_bloom: bool) -> vec4<f32> {
-    var s = vec4<f32>(0.0);
-    s = s + bloom_tap(tex, uv + vec2<f32>(-1.0, -1.0) * ba, is_bloom) * 0.0625;
-    s = s + bloom_tap(tex, uv + vec2<f32>(0.0, -1.0) * ba, is_bloom) * 0.125;
-    s = s + bloom_tap(tex, uv + vec2<f32>(1.0, -1.0) * ba, is_bloom) * 0.0625;
-    s = s + bloom_tap(tex, uv + vec2<f32>(-1.0, 0.0) * ba, is_bloom) * 0.125;
-    s = s + bloom_tap(tex, uv, is_bloom) * 0.25;
-    s = s + bloom_tap(tex, uv + vec2<f32>(1.0, 0.0) * ba, is_bloom) * 0.125;
-    s = s + bloom_tap(tex, uv + vec2<f32>(-1.0, 1.0) * ba, is_bloom) * 0.0625;
-    s = s + bloom_tap(tex, uv + vec2<f32>(0.0, 1.0) * ba, is_bloom) * 0.125;
-    s = s + bloom_tap(tex, uv + vec2<f32>(1.0, 1.0) * ba, is_bloom) * 0.0625;
-    return s;
+fn bloom_sample(tex: texture_2d<f32>, uv: vec2<f32>, ba: f32, is_bloom: bool) -> vec4<f32> {
+    let samples = clamp(i32(uni.p3), 5, 25);
+    var sum = vec4<f32>(0.0);
+    for (var i = 0; i < 25; i = i + 1) {
+        if (i >= samples) { break; }
+        let fi = f32(i);
+        let radius = sqrt((fi + 0.5) / f32(samples)) * ba;
+        let angle = fi * 2.3999632;
+        let offset = vec2<f32>(cos(angle), sin(angle)) * radius;
+        sum = sum + bloom_tap(tex, uv + offset, is_bloom);
+    }
+    return sum / f32(samples);
 }
 
 @compute @workgroup_size(8, 8, 1)
@@ -787,8 +787,8 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
     let ba = uni.p1 * peak * 0.05;
     let is_bloom = uni.p2 > 0.5;
 
-    let bf = bloom9(from_tex, uv, ba, is_bloom);
-    let bt = bloom9(to_tex, uv, ba, is_bloom);
+    let bf = bloom_sample(from_tex, uv, ba, is_bloom);
+    let bt = bloom_sample(to_tex, uv, ba, is_bloom);
     var out_color: vec4<f32>;
     if (is_bloom) {
         let mixed = mix(bf, bt, progress);
@@ -1002,7 +1002,7 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
         let blur_dir = select(vec2<f32>(0.0, 1.0), vec2<f32>(1.0, 0.0), dir_h);
         let blur_amount = uni.p6 * 0.1;
         // Scale sample count by pixel blur length
-        let pixel_blur = blur_amount * max(dims().x, dims().y);
+        let pixel_blur = blur_amount * length(blur_dir * dims());
         let samples = clamp(i32(ceil(pixel_blur)), 4, max_samples);
         let f_samples = f32(samples);
         if (pfr_in) { final_c_fr = card_blur_slide(from_tex, pfr, blur_dir, blur_amount, samples, f_samples, dark_fr); }
@@ -2024,15 +2024,23 @@ export const tauriTransitionManifests: TransitionManifest[] = [
         step: 0.1,
       },
     ],
-    toTauriSpec: (params: Record<string, unknown>) => ({
-      type: 'custom-wgsl',
-      source: BLOOM_WGSL,
-      params: {
-        p0: clamp(finiteNumber(params.brightness, 1.5), 0.1, 5.0),
-        p1: clamp(finiteNumber(params.blurLevel, 1.0), 0.0, 3.0),
-        p2: params.mode === 'normal' ? 0.0 : 1.0,
-      },
-    }),
+    toTauriSpec: (
+      params: Record<string, unknown>,
+      _durationSec?: number,
+      options?: { isExport?: boolean; isPlaying?: boolean; previewBlurQuality?: string },
+    ) => {
+      const quality = resolveBlurQuality(options, 'medium');
+      return {
+        type: 'custom-wgsl',
+        source: BLOOM_WGSL,
+        params: {
+          p0: clamp(finiteNumber(params.brightness, 1.5), 0.1, 5.0),
+          p1: clamp(finiteNumber(params.blurLevel, 1.0), 0.0, 3.0),
+          p2: params.mode === 'normal' ? 0.0 : 1.0,
+          p3: qualitySamples(quality, 5, 9, 17, 25),
+        },
+      };
+    },
     computeOutOpacity: transparent,
     computeInOpacity: transparent,
   },

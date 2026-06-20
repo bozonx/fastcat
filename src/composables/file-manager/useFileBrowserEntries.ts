@@ -4,7 +4,7 @@ import type { Ref } from 'vue';
 import { useFileManagerStore } from '~/stores/file-manager.store';
 import { useFileManagerThumbnails } from '~/composables/file-manager/useFileManagerThumbnails';
 import { useFileManagerCompatibility } from '~/composables/file-manager/useFileManagerCompatibility';
-import { useFileSorting } from '~/composables/file-manager/useFileSorting';
+import { useFileSorting, type FileSortingStore } from '~/composables/file-manager/useFileSorting';
 import type { FsEntry } from '~/types/fs';
 import type { IFileSystemAdapter } from '~/file-manager/core/vfs/types';
 import { getMimeTypeFromFilename } from '~/utils/media-types';
@@ -25,11 +25,11 @@ export function useFileBrowserEntries({
 }: {
   isRemoteMode: Ref<boolean>;
   vfs: IFileSystemAdapter;
-  fileManagerStore?: ReturnType<typeof useFileManagerStore>;
+  fileManagerStore?: FileSortingStore;
 }) {
   const fileManagerStore =
     customStore ||
-    (inject('fileManagerStore', null) as ReturnType<typeof useFileManagerStore> | null) ||
+    (inject('fileManagerStore', null) as FileSortingStore | null) ||
     useFileManagerStore();
   const folderEntries = ref<FsEntry[]>([]);
   const folderSizes = ref<Record<string, number>>({});

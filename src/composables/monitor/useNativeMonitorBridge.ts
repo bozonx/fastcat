@@ -163,6 +163,7 @@ export function useNativeMonitorBridge(): void {
         preview_sync_mode: isMobile.value
           ? 'balanced'
           : workspaceStore.userSettings.optimization.nativeMonitorSyncMode,
+        preview_effect_quality: 'ultra',
         frame_cache_mode: workspaceStore.userSettings.optimization.nativeFrameCacheMode,
         frame_cache_custom_mb: Math.max(
           0,
@@ -531,6 +532,7 @@ export function useNativeMonitorBridge(): void {
           preview_scale: 1,
           preview_fps: 30,
           preview_sync_mode: 'balanced',
+          preview_effect_quality: 'ultra',
           frame_cache_mode: 'auto',
           frame_cache_custom_mb: 0,
           master_effects: [],

@@ -544,7 +544,7 @@
       "playbackThrottled": "Playback throttled",
       "playbackThrottledDetail": "Playback speed reduced to maintain stability",
       "previewError": "Preview error",
-      "previewBlurQuality": "Preview blur quality",
+      "previewBlurQuality": "Preview effect quality",
       "previewWithEffects": "Preview with effects",
       "previewWithoutEffects": "Preview without effects",
       "resetZoom": "Reset zoom (100%)",

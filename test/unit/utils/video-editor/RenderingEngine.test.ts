@@ -34,7 +34,9 @@ function makeContext(overrides: Partial<RenderingEngineContext> = {}): {
     activeSortDirty: false,
     contextLost: false,
     previewEffectsEnabled: true,
+    previewEffectQuality: 'ultra',
     setPreviewEffectsEnabled: vi.fn(),
+    setPreviewEffectQuality: vi.fn(),
     applyVideoFrameCacheLimit: vi.fn(),
     abortInFlightResources: vi.fn(),
     updateActiveClips: vi.fn(() => ({ activeClips, activeChanged: false })),
@@ -91,6 +93,19 @@ describe('RenderingEngine', () => {
 
     await engine.renderFrame(100, undefined, context);
 
+    expect(context.hideInactiveClipSprites).toHaveBeenCalledTimes(1);
+  });
+
+  it('re-renders the same frame when preview effect quality changes', async () => {
+    const engine = new RenderingEngine();
+    const { context } = makeContext({
+      lastRenderedTimeUs: 100,
+      previewEffectQuality: 'low',
+    });
+
+    await engine.renderFrame(100, { previewEffectQuality: 'high' }, context);
+
+    expect(context.setPreviewEffectQuality).toHaveBeenCalledWith('high');
     expect(context.hideInactiveClipSprites).toHaveBeenCalledTimes(1);
   });
 });

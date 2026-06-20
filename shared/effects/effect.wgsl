@@ -69,6 +69,13 @@ struct EffectUniform {
 // smooth (no banding, no per-frame popping) instead of aliasing.
 const MAX_BLUR_TAPS: i32 = 48;
 
+fn blur_tap_budget() -> i32 {
+    if (effect.p7 >= 1.0) {
+        return clamp(i32(effect.p7), 1, MAX_BLUR_TAPS);
+    }
+    return MAX_BLUR_TAPS;
+}
+
 fn clamp_coord(coord: vec2<i32>) -> vec2<i32> {
     return vec2<i32>(
         clamp(coord.x, 0, i32(effect.width) - 1),
@@ -181,7 +188,7 @@ fn gaussian_blur(uv: vec2<f32>, radius: f32, dir: vec2<f32>) -> vec4<f32> {
     if (safe_radius < 0.5) {
         return sample_uv(uv);
     }
-    let taps = i32(clamp(ceil(safe_radius), 1.0, f32(MAX_BLUR_TAPS)));
+    let taps = i32(clamp(ceil(safe_radius), 1.0, f32(blur_tap_budget())));
     let step = safe_radius / f32(taps); // texel-space spacing between taps
     let sigma = max(safe_radius * 0.5, 1.0);
     let double_sigma_sq = 2.0 * sigma * sigma;
@@ -204,7 +211,7 @@ fn box_blur(uv: vec2<f32>, radius: f32, dir: vec2<f32>) -> vec4<f32> {
     if (safe_radius < 0.5) {
         return sample_uv(uv);
     }
-    let taps = i32(clamp(ceil(safe_radius), 1.0, f32(MAX_BLUR_TAPS)));
+    let taps = i32(clamp(ceil(safe_radius), 1.0, f32(blur_tap_budget())));
     let step = safe_radius / f32(taps);
     let texel = texel_size();
     var sum = vec4<f32>(0.0);
@@ -228,7 +235,7 @@ fn radial_blur(uv: vec2<f32>, radius: f32) -> vec4<f32> {
         return sample_uv(uv);
     }
     let norm_dir = dir / max(dist, 0.0001);
-    let taps = i32(clamp(ceil(safe_radius), 1.0, f32(MAX_BLUR_TAPS)));
+    let taps = i32(clamp(ceil(safe_radius), 1.0, f32(blur_tap_budget())));
     let step = safe_radius / f32(taps);
     let texel = texel_size();
     var sum = vec4<f32>(0.0);

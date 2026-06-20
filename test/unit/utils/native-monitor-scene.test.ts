@@ -901,7 +901,7 @@ describe('buildNativeMonitorScene', () => {
     });
     const pausedLayer = pausedScene.layers.find((layer) => layer.id === 'clip-b');
     expect(pausedLayer?.transition_in?.spec?.params).toMatchObject({
-      p7: 64,
+      p7: 8,
     });
 
     const exportScene = await buildNativeMonitorScene({

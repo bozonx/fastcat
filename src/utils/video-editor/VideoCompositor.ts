@@ -47,6 +47,7 @@ import { PixiCompositorLifecycle } from './compositor/PixiCompositorLifecycle';
 import { WebGpuComputeRunner } from './compositor/WebGpuComputeRunner';
 import { buildEffectSpecs } from '~/effects';
 import { normalizeClipSpeed, resolveClipSourceTimeUs } from './source-time';
+import type { PreviewEffectQuality } from '~/utils/preview-effect-quality';
 const log = createDevLogger('VideoCompositor');
 
 export interface VideoCompositorInitOptions {
@@ -68,6 +69,7 @@ export class VideoCompositor {
   private lastRenderedTimeUs = 0;
   private contextLost = false;
   private previewEffectsEnabled = true;
+  private previewEffectQuality: PreviewEffectQuality = 'ultra';
 
   private masterEffects: VideoClipEffect[] | null = null;
   private masterEffectFilters = new Map<string, Filter>();
@@ -356,6 +358,7 @@ export class VideoCompositor {
       clips: this.clips,
       width: this.width,
       height: this.height,
+      previewEffectQuality: this.previewEffectQuality,
       transitionManager: this.transitionManager,
       stageTextureRenderer:
         stageTextureRenderer as import('./compositor/StageTextureRenderer').StageTextureRenderer,
@@ -817,6 +820,7 @@ export class VideoCompositor {
           activeSortDirty: this.activeSortDirty,
           contextLost: this.contextLost,
           previewEffectsEnabled: this.previewEffectsEnabled,
+          previewEffectQuality: this.previewEffectQuality,
           masterEffects: this.masterEffects,
         },
         activeTrackerUpdate: (currentTimeUs, lastTimeUs) =>
@@ -840,6 +844,10 @@ export class VideoCompositor {
         getPreviewEffectsEnabled: () => this.previewEffectsEnabled,
         setPreviewEffectsEnabled: (enabled) => {
           this.previewEffectsEnabled = enabled;
+        },
+        setPreviewEffectQuality: (quality) => {
+          this.previewEffectQuality = quality;
+          this.computeRunner.setPreviewEffectQuality(quality);
         },
         setStageSortDirty: (value) => {
           this.stageSortDirty = value;

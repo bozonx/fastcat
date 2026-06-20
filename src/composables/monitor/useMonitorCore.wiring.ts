@@ -1,6 +1,7 @@
 import { watch } from 'vue';
 import type { Ref } from 'vue';
 import type { WorkerTimelineClip } from './types';
+import type { PreviewEffectQualitySetting } from '~/utils/preview-effect-quality';
 import {
   hasProxyForMonitorSources,
   shouldScheduleAudioLayoutUpdate,
@@ -25,6 +26,7 @@ export interface RegisterMonitorCoreWatchersOptions {
   existingProxies: Ref<Set<string>>;
   useProxyInMonitor: Ref<boolean>;
   previewEffectsEnabled: Ref<boolean>;
+  previewEffectQualitySetting: Ref<PreviewEffectQualitySetting>;
   pixiRenderer: Ref<'webgl' | 'webgpu'>;
   isLoading: Ref<boolean>;
   getIsUnmounted: () => boolean;
@@ -101,6 +103,14 @@ export function registerMonitorCoreWatchers(options: RegisterMonitorCoreWatchers
 
   watch(
     () => options.previewEffectsEnabled.value,
+    () => {
+      if (options.getIsUnmounted()) return;
+      options.scheduleRender(options.getRenderTimeForLayoutUpdate());
+    },
+  );
+
+  watch(
+    () => options.previewEffectQualitySetting.value,
     () => {
       if (options.getIsUnmounted()) return;
       options.scheduleRender(options.getRenderTimeForLayoutUpdate());

@@ -3,14 +3,6 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { setActivePinia, createPinia } from 'pinia';
 import { useFileConversionStore } from '~/stores/file-conversion.store';
 
-vi.mock('~/composables/file-conversion/useFileConversionActions', () => ({
-  useFileConversionActions: vi.fn(() => ({
-    openConversionModal: vi.fn(),
-    startConversion: vi.fn(),
-    cancelConversion: vi.fn(),
-  })),
-}));
-
 describe('FileConversionStore', () => {
   beforeEach(() => {
     setActivePinia(createPinia());

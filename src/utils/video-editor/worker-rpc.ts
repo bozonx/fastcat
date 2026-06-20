@@ -7,12 +7,14 @@ import type {
 import type { MediaMetadata } from '~/stores/media.store';
 import type { VideoCoreHostAPI } from './worker-client';
 import { z } from 'zod';
+import type { PreviewEffectQuality } from '../preview-effect-quality';
 
 export interface PreviewRenderOptions {
   previewEffectsEnabled?: boolean;
   pixiRenderer?: 'webgl' | 'webgpu';
   videoFrameCacheMb?: number;
   monitorSyncMode?: 'smooth' | 'balanced' | 'strict';
+  previewEffectQuality?: PreviewEffectQuality;
 }
 
 export interface WorkerRpcErrorShape {
@@ -27,6 +29,7 @@ export const PreviewRenderOptionsSchema = z.object({
   pixiRenderer: z.enum(['webgl', 'webgpu']).optional(),
   videoFrameCacheMb: z.number().finite().nonnegative().optional(),
   monitorSyncMode: z.enum(['smooth', 'balanced', 'strict']).optional(),
+  previewEffectQuality: z.enum(['low', 'medium', 'high', 'ultra']).optional(),
 });
 
 const VideoColorSpaceSchema = z.object({

@@ -399,6 +399,7 @@ pub(crate) fn build_export_scene(
         background: Color::TRANSPARENT,
         layers,
         master_effects: scene.master_effects.clone(),
+        effect_quality: crate::compositor::effects::EffectQuality::Ultra,
     })
 }
 
@@ -694,6 +695,7 @@ mod tests {
             preview_scale: None,
             preview_fps: 30.0,
             preview_sync_mode: crate::monitor::scene::PreviewSyncMode::Balanced,
+            preview_effect_quality: crate::compositor::effects::EffectQuality::Ultra,
             frame_cache_mode: crate::monitor::scene::NativeFrameCacheMode::Auto,
             frame_cache_custom_mb: 0,
         };
@@ -745,13 +747,12 @@ mod tests {
         adjustment.id = "adj".into();
         adjustment.kind = LayerKind::Adjustment;
         adjustment.z = 1;
-        adjustment.effects =
-            vec![crate::compositor::effects::EffectSpec::GaussianBlur {
-                radius: 12.0,
-                bleed: false,
-                blur_type: "gaussian".to_string(),
-                mix: 1.0,
-            }];
+        adjustment.effects = vec![crate::compositor::effects::EffectSpec::GaussianBlur {
+            radius: 12.0,
+            bleed: false,
+            blur_type: "gaussian".to_string(),
+            mix: 1.0,
+        }];
         let scene = MonitorScene {
             master_effects: Vec::new(),
             layers: vec![background, adjustment],
@@ -765,6 +766,7 @@ mod tests {
             preview_scale: None,
             preview_fps: 30.0,
             preview_sync_mode: crate::monitor::scene::PreviewSyncMode::Balanced,
+            preview_effect_quality: crate::compositor::effects::EffectQuality::Ultra,
             frame_cache_mode: crate::monitor::scene::NativeFrameCacheMode::Auto,
             frame_cache_custom_mb: 0,
         };

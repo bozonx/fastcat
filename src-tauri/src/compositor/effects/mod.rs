@@ -15,6 +15,28 @@ use vello::peniko::ImageData;
 
 use super::gpu_utils::image_pixels_rgba8;
 
+#[derive(Debug, Clone, Copy, Default, Serialize, Deserialize, ts_rs::TS)]
+#[serde(rename_all = "lowercase")]
+#[ts(export, export_to = "../../src/types/generated/native-monitor/")]
+pub enum EffectQuality {
+    Low,
+    Medium,
+    High,
+    #[default]
+    Ultra,
+}
+
+impl EffectQuality {
+    fn tap_budget(self) -> f32 {
+        match self {
+            Self::Low => 8.0,
+            Self::Medium => 16.0,
+            Self::High => 32.0,
+            Self::Ultra => 48.0,
+        }
+    }
+}
+
 // ts-rs mirrors this tagged enum to the frontend as `VideoEffectSpec`
 // (`src/types/generated/native-monitor/VideoEffectSpec.ts`). It is the single
 // cross-backend contract: frontend manifests (`toEffectSpecs`) emit it and both
@@ -616,7 +638,6 @@ impl EffectPipeline {
         }
     }
 
-
     pub fn apply_effects(
         &mut self,
         device: &wgpu::Device,
@@ -624,6 +645,7 @@ impl EffectPipeline {
         source: &EffectSource,
         effects: &[EffectSpec],
         enable_padding: bool,
+        quality: EffectQuality,
     ) -> Result<(Arc<crate::media::SharedTexture>, u32)> {
         let (orig_width, orig_height) = match source {
             EffectSource::Cpu(img) => (img.width, img.height),
@@ -640,13 +662,19 @@ impl EffectPipeline {
         let width = orig_width + 2 * padding;
         let height = orig_height + 2 * padding;
 
-        let passes = build_passes(effects, width, height);
+        let passes = build_passes(effects, width, height, quality);
         if passes.is_empty() {
             let tex = source_to_owned_texture(device, queue, source, orig_width, orig_height)?;
             return Ok((tex, 0));
         }
         if orig_width == 0 || orig_height == 0 {
-            let tex = source_to_owned_texture(device, queue, source, orig_width.max(1), orig_height.max(1))?;
+            let tex = source_to_owned_texture(
+                device,
+                queue,
+                source,
+                orig_width.max(1),
+                orig_height.max(1),
+            )?;
             return Ok((tex, 0));
         }
 
@@ -668,10 +696,9 @@ impl EffectPipeline {
         // clean transparency instead of garbage.
         if padding > 0 {
             if let Some(input_tex) = resources.input.as_ref() {
-                let mut encoder =
-                    device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                        label: Some("native-effect-input-clear-encoder"),
-                    });
+                let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                    label: Some("native-effect-input-clear-encoder"),
+                });
                 encoder.clear_texture(input_tex, &wgpu::ImageSubresourceRange::default());
                 queue.submit(Some(encoder.finish()));
             }
@@ -723,9 +750,10 @@ impl EffectPipeline {
                         .input
                         .as_ref()
                         .ok_or_else(|| anyhow!("effect input texture missing"))?;
-                    let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                        label: Some("native-effect-input-copy-encoder"),
-                    });
+                    let mut encoder =
+                        device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                            label: Some("native-effect-input-copy-encoder"),
+                        });
                     encoder.copy_texture_to_texture(
                         wgpu::TexelCopyTextureInfo {
                             texture: &**tex,
@@ -864,7 +892,10 @@ impl EffectPipeline {
         }
 
         queue.submit([encoder.finish()]);
-        Ok((Arc::new(crate::media::SharedTexture::new_shared(owned)), padding))
+        Ok((
+            Arc::new(crate::media::SharedTexture::new_shared(owned)),
+            padding,
+        ))
     }
 
     /// Blur-fill reframe: produce a `frame_w × frame_h` texture that fills the
@@ -890,6 +921,7 @@ impl EffectPipeline {
         tint_color: [u8; 4],
         tint_strength: f32,
         fg_offset_y: f32,
+        quality: EffectQuality,
     ) -> Result<Arc<crate::media::SharedTexture>> {
         let (iw, ih) = match source {
             EffectSource::Cpu(img) => (img.width, img.height),
@@ -937,6 +969,7 @@ impl EffectPipeline {
             tint_color,
             tint_strength,
             fg_offset_y,
+            quality,
         );
 
         let (owned, owned_view) = self.owned_pool.acquire(device, frame_w, frame_h);
@@ -1074,6 +1107,7 @@ fn push_blur(
     blur_type: &str,
     width: u32,
     height: u32,
+    tap_budget: f32,
 ) -> Buf {
     if radius <= 0.0 {
         return cur;
@@ -1088,6 +1122,7 @@ fn push_blur(
                 seed: 0,
                 p0: radius,
                 p1: 2.0, // 2.0 = Radial
+                p7: tap_budget,
                 ..Default::default()
             },
             custom_source: None,
@@ -1107,6 +1142,7 @@ fn push_blur(
                 seed: 0,
                 p0: radius,
                 p1: type_val,
+                p7: tap_budget,
                 ..Default::default()
             },
             custom_source: None,
@@ -1123,6 +1159,7 @@ fn push_blur(
                 seed: 0,
                 p0: radius,
                 p1: type_val,
+                p7: tap_budget,
                 ..Default::default()
             },
             custom_source: None,
@@ -1146,6 +1183,7 @@ fn push_bloom(
     knee: f32,
     width: u32,
     height: u32,
+    tap_budget: f32,
 ) -> Buf {
     if radius <= 0.0 {
         return cur;
@@ -1178,6 +1216,7 @@ fn push_bloom(
             height,
             seed: 0,
             p0: radius,
+            p7: tap_budget,
             ..Default::default()
         },
         custom_source: None,
@@ -1192,6 +1231,7 @@ fn push_bloom(
             height,
             seed: 0,
             p0: radius,
+            p7: tap_budget,
             ..Default::default()
         },
         custom_source: None,
@@ -1265,6 +1305,7 @@ fn build_blur_fill_passes(
     tint_color: [u8; 4],
     tint_strength: f32,
     fg_offset_y: f32,
+    quality: EffectQuality,
 ) -> Vec<EffectPass> {
     let radius = (blur * spatial_scale(frame_h)).clamp(0.0, MAX_BLUR_RADIUS);
     let iwf = iw as f32;
@@ -1295,6 +1336,7 @@ fn build_blur_fill_passes(
                 height: frame_h,
                 seed: 0,
                 p0: radius,
+                p7: quality.tap_budget(),
                 ..Default::default()
             },
             custom_source: None,
@@ -1309,6 +1351,7 @@ fn build_blur_fill_passes(
                 height: frame_h,
                 seed: 0,
                 p0: radius,
+                p7: quality.tap_budget(),
                 ..Default::default()
             },
             custom_source: None,
@@ -1358,7 +1401,12 @@ fn build_blur_fill_passes(
     passes
 }
 
-fn build_passes(effects: &[EffectSpec], width: u32, height: u32) -> Vec<EffectPass> {
+fn build_passes(
+    effects: &[EffectSpec],
+    width: u32,
+    height: u32,
+    quality: EffectQuality,
+) -> Vec<EffectPass> {
     let scale = spatial_scale(height);
     let mut passes: Vec<EffectPass> = Vec::new();
     // The buffer currently holding the running image; effects chain off it.
@@ -1380,6 +1428,7 @@ fn build_passes(effects: &[EffectSpec], width: u32, height: u32) -> Vec<EffectPa
                     blur_type,
                     width,
                     height,
+                    quality.tap_budget(),
                 );
                 if *mix < 1.0 {
                     cur = push_mix(&mut passes, cur, base, *mix, width, height);
@@ -1397,6 +1446,7 @@ fn build_passes(effects: &[EffectSpec], width: u32, height: u32) -> Vec<EffectPa
                     "gaussian",
                     width,
                     height,
+                    quality.tap_budget(),
                 );
                 if *mix < 1.0 {
                     cur = push_mix(&mut passes, cur, base, *mix, width, height);
@@ -1421,6 +1471,7 @@ fn build_passes(effects: &[EffectSpec], width: u32, height: u32) -> Vec<EffectPa
                     knee.clamp(0.0, 1.0),
                     width,
                     height,
+                    quality.tap_budget(),
                 );
                 if *mix < 1.0 {
                     cur = push_mix(&mut passes, cur, base, *mix, width, height);
@@ -1549,15 +1600,34 @@ fn effect_uniform(
             0.0,
             0,
         ),
-        EffectSpec::Noise { amount, seed, noise_type, scale, mix } => {
+        EffectSpec::Noise {
+            amount,
+            seed,
+            noise_type,
+            scale,
+            mix,
+        } => {
             let type_val = match noise_type.as_str() {
                 "perlin" => 1.0,
                 "simplex" => 2.0,
                 _ => 0.0,
             };
-            base(9, amount.clamp(0.0, 1.0), type_val, *scale, mix.clamp(0.0, 1.0), 0.0, 0.0, *seed)
+            base(
+                9,
+                amount.clamp(0.0, 1.0),
+                type_val,
+                *scale,
+                mix.clamp(0.0, 1.0),
+                0.0,
+                0.0,
+                *seed,
+            )
         }
-        EffectSpec::ChromaticAberration { amount, angle_deg, mix } => base(
+        EffectSpec::ChromaticAberration {
+            amount,
+            angle_deg,
+            mix,
+        } => base(
             10,
             (amount * scale).clamp(0.0, MAX_CHROMATIC_ABERRATION),
             *angle_deg,
@@ -1694,6 +1764,10 @@ mod tests {
     use super::*;
     use vello::peniko::{Blob, ImageAlphaType, ImageFormat};
 
+    fn build_passes(effects: &[EffectSpec], width: u32, height: u32) -> Vec<EffectPass> {
+        super::build_passes(effects, width, height, EffectQuality::Ultra)
+    }
+
     #[test]
     fn build_passes_includes_custom_wgsl() {
         let passes = build_passes(
@@ -1746,9 +1820,29 @@ mod tests {
     }
 
     #[test]
+    fn build_passes_uses_effect_quality_tap_budget() {
+        let effects = [EffectSpec::GaussianBlur {
+            radius: 100.0,
+            bleed: false,
+            blur_type: "gaussian".to_string(),
+            mix: 1.0,
+        }];
+        let low = super::build_passes(&effects, 1920, 1080, EffectQuality::Low);
+        let high = super::build_passes(&effects, 1920, 1080, EffectQuality::High);
+
+        assert_eq!(low[0].uniform.p7, 8.0);
+        assert_eq!(low[1].uniform.p7, 8.0);
+        assert_eq!(high[0].uniform.p7, 32.0);
+        assert_eq!(high[1].uniform.p7, 32.0);
+    }
+
+    #[test]
     fn build_passes_gaussian_blur_pixels_keeps_texture_pixel_radius() {
         let passes = build_passes(
-            &[EffectSpec::GaussianBlurPixels { radius: 10.0, mix: 1.0 }],
+            &[EffectSpec::GaussianBlurPixels {
+                radius: 10.0,
+                mix: 1.0,
+            }],
             1920,
             540,
         );
@@ -1764,7 +1858,10 @@ mod tests {
         // Mirror of the web pass builder: blur-pixels radius is bounded by
         // MAX_BLUR_RADIUS, not passed through raw.
         let passes = build_passes(
-            &[EffectSpec::GaussianBlurPixels { radius: 99_999.0, mix: 1.0 }],
+            &[EffectSpec::GaussianBlurPixels {
+                radius: 99_999.0,
+                mix: 1.0,
+            }],
             1920,
             1080,
         );
@@ -1911,6 +2008,7 @@ mod tests {
             [0, 0, 255, 255],
             0.5,
             -0.1,
+            EffectQuality::Medium,
         );
         // cover + blur_h + blur_v + adjust + compose
         assert_eq!(passes.len(), 5);
@@ -1938,6 +2036,7 @@ mod tests {
         assert_eq!(passes[3].uniform.p3, 0.0); // tint g
         assert_eq!(passes[3].uniform.p4, 1.0); // tint b
         assert_eq!(passes[3].uniform.p5, 0.5); // tint strength
+
         // compose: sharp fg over prepared bg, into the owned output
         assert_eq!(passes[4].uniform.mode, 21);
         assert_eq!(passes[4].src, Buf::Input);
@@ -1962,6 +2061,7 @@ mod tests {
             [0, 0, 0, 255],
             0.0,
             0.0,
+            EffectQuality::Low,
         );
         // cover place + bg adjust + compose only
         assert_eq!(passes.len(), 3);

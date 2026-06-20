@@ -2,6 +2,7 @@ import type { Application } from 'pixi.js';
 import { toPixiBlendMode, type CompositorClip, type CompositorTrack } from './types';
 import type { PreviewRenderOptions } from '../worker-rpc';
 import { safeDispose } from '../utils';
+import type { PreviewEffectQuality } from '~/utils/preview-effect-quality';
 
 export interface RenderingEngineContext {
   app: Application;
@@ -15,7 +16,9 @@ export interface RenderingEngineContext {
   activeSortDirty: boolean;
   contextLost: boolean;
   previewEffectsEnabled: boolean;
+  previewEffectQuality: PreviewEffectQuality;
   setPreviewEffectsEnabled: (enabled: boolean) => void;
+  setPreviewEffectQuality: (quality: PreviewEffectQuality) => void;
   applyVideoFrameCacheLimit: (limitMb: number | undefined) => void;
   abortInFlightResources: () => void;
   updateActiveClips: (
@@ -62,6 +65,9 @@ export class RenderingEngine {
     const nextPreviewEffectsEnabled = options?.previewEffectsEnabled !== false;
     const previewEffectsChanged = context.previewEffectsEnabled !== nextPreviewEffectsEnabled;
     context.setPreviewEffectsEnabled(nextPreviewEffectsEnabled);
+    const nextPreviewEffectQuality = options?.previewEffectQuality ?? 'ultra';
+    const previewEffectQualityChanged = context.previewEffectQuality !== nextPreviewEffectQuality;
+    context.setPreviewEffectQuality(nextPreviewEffectQuality);
 
     if (context.contextLost) {
       return null;
@@ -76,6 +82,7 @@ export class RenderingEngine {
     if (
       timeUs === context.lastRenderedTimeUs &&
       !previewEffectsChanged &&
+      !previewEffectQualityChanged &&
       !context.stageSortDirty &&
       !context.activeSortDirty &&
       !hasDirtyClip

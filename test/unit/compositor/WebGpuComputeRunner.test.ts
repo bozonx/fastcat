@@ -29,6 +29,20 @@ describe('buildPasses', () => {
     expect(passes[1]!.uniform.p0).toBeCloseTo(10.0, 5);
   });
 
+  it('applies the selected quality budget to blur and bloom passes', () => {
+    const blur = buildPasses([{ type: 'gaussian-blur', radius: 100 }], 1920, 1080, 'low');
+    const bloom = buildPasses(
+      [{ type: 'bloom', threshold: 0.75, strength: 1, radius: 100 }],
+      1920,
+      1080,
+      'high',
+    );
+
+    expect(blur.map((pass) => pass.uniform.p7)).toEqual([8, 8]);
+    expect(bloom[1]!.uniform.p7).toBe(32);
+    expect(bloom[2]!.uniform.p7).toBe(32);
+  });
+
   it('keeps gaussian-blur-pixels radius in texture pixels', () => {
     const effects: VideoEffectSpec[] = [{ type: 'gaussian-blur-pixels', radius: 10.0 }];
     const passes = buildPasses(effects, 1920, 540);
@@ -49,9 +63,31 @@ describe('buildPasses', () => {
     expect(passes[0]!.uniform.p0).toBeCloseTo(0.75, 5);
     expect(passes[0]!.uniform.p1).toBeCloseTo(0.5, 5);
     expect(passes[1]!.uniform.mode).toBe(4);
+    expect(passes[1]!.uniform.p7).toBe(48);
     expect(passes[2]!.uniform.mode).toBe(14);
     expect(passes[3]!.uniform.mode).toBe(18);
     expect(passes[3]!.uniform.p1).toBeCloseTo(0.6, 5);
+  });
+
+  it('applies preview quality to blur-fill passes', () => {
+    const passes = buildBlurFillPasses(
+      1920,
+      1080,
+      1280,
+      720,
+      1,
+      1.2,
+      40,
+      0.8,
+      1,
+      [0, 0, 0, 255],
+      0,
+      0,
+      'medium',
+    );
+
+    expect(passes[1]!.uniform.p7).toBe(16);
+    expect(passes[2]!.uniform.p7).toBe(16);
   });
 
   it('scales spatial params by frame height', () => {

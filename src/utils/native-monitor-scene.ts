@@ -27,6 +27,11 @@ import { normalizeMediaCachePath } from '~/utils/media-cache-path';
 import { getTauriTransitionManifest } from '~/transitions/tauri/manifests';
 import type { TransitionMode } from '~/transitions/core/registry';
 import { buildNativeAudioEffectSpecs } from '~/utils/audio/audio-clip-descriptor';
+import {
+  resolvePreviewEffectQuality,
+  type PreviewEffectQuality,
+  type PreviewEffectQualitySetting,
+} from '~/utils/preview-effect-quality';
 
 export { buildNativeAudioEffectSpecs };
 
@@ -70,11 +75,10 @@ export interface BuildNativeMonitorSceneParams {
   /** Hardcoded sync mode override (e.g. mobile always uses 'balanced'). */
   syncMode?: 'smooth' | 'balanced' | 'strict';
   isExport?: boolean;
-  /** Whether the timeline is currently playing. When false (paused/stopped),
-   *  transitions are rendered at maximum quality for a crisp static frame. */
+  /** Whether the timeline is currently playing. Auto uses Ultra while paused. */
   isPlaying?: boolean;
-  /** User-selected preview blur quality for playback. Defaults to 'auto'. */
-  previewBlurQuality?: 'low' | 'medium' | 'high' | 'ultra' | 'auto';
+  /** User-selected preview effect quality. Defaults to 'auto'. */
+  previewBlurQuality?: PreviewEffectQualitySetting;
   /** Whether the preview is rendered in the mobile editor. Used by auto quality. */
   isMobile?: boolean;
 }
@@ -529,17 +533,26 @@ function buildBaseLayer(params: {
   };
 }
 
-function resolvePreviewBlurQuality(
+function resolveNativePreviewEffectQuality(
   params: Pick<
     BuildNativeMonitorSceneParams,
     'isExport' | 'isPlaying' | 'previewBlurQuality' | 'isMobile'
-  >,
-): 'low' | 'medium' | 'high' | 'ultra' {
-  if (params.isExport || params.isPlaying === false) return 'ultra';
-  if (params.previewBlurQuality && params.previewBlurQuality !== 'auto') {
-    return params.previewBlurQuality;
-  }
-  return params.isMobile ? 'low' : 'medium';
+  > & {
+    width: number;
+    height: number;
+    fps: number;
+    previewScale: number;
+  },
+): PreviewEffectQuality {
+  return resolvePreviewEffectQuality({
+    setting: params.previewBlurQuality,
+    isExport: params.isExport,
+    isPlaying: params.isPlaying,
+    isMobile: params.isMobile,
+    width: params.width * params.previewScale,
+    height: params.height * params.previewScale,
+    fps: params.fps,
+  });
 }
 
 async function buildAudioLayers(params: {
@@ -640,10 +653,14 @@ export async function buildNativeMonitorScene(
     getProxyNativePath: params.getProxyNativePath,
   };
   const nestedDocCache = new Map<string, TimelineDocument>();
-  const previewBlurQuality = resolvePreviewBlurQuality({
+  const previewBlurQuality = resolveNativePreviewEffectQuality({
     ...params,
     previewBlurQuality:
       params.previewBlurQuality ?? params.projectStore.activeMonitor?.previewBlurQuality,
+    width: sceneWidth,
+    height: sceneHeight,
+    fps: fallbackFormat.fps,
+    previewScale: params.previewScale ?? 1,
   });
   const builtVideo = await buildVideoWorkerPayloadFromTracks({
     tracks: params.timelineDoc.tracks,
@@ -776,6 +793,7 @@ export async function buildNativeMonitorScene(
     preview_scale: params.previewScale ?? 1,
     preview_fps: fallbackFormat.fps,
     preview_sync_mode: params.syncMode ?? optimization.nativeMonitorSyncMode,
+    preview_effect_quality: previewBlurQuality,
     frame_cache_mode: optimization.nativeFrameCacheMode ?? 'auto',
     frame_cache_custom_mb: Math.max(0, Math.round(optimization.nativeFrameCacheCustomMb ?? 0)),
     master_effects: buildEffectSpecs(params.timelineDoc.metadata?.fastcat?.masterEffects) ?? [],

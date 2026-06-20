@@ -10,7 +10,7 @@
 //! Extension: new layer kinds are added as variants of `LayerKind`
 //! (it is `#[non_exhaustive]`), plus a branch in `Scene::to_vello`.
 
-use super::effects::EffectSpec;
+use super::effects::{EffectQuality, EffectSpec};
 use kurbo::{Affine, BezPath, Rect, RoundedRect, Shape, Stroke};
 use parley::{fontique::FontWeight, LineHeight, PositionedLayoutItem, StyleProperty};
 use serde::{Deserialize, Serialize};
@@ -31,6 +31,7 @@ pub struct Scene {
     pub layers: Vec<Layer>,
     /// Video master effects applied to the final composited frame after all layers.
     pub master_effects: Vec<super::effects::EffectSpec>,
+    pub effect_quality: EffectQuality,
 }
 
 impl Scene {
@@ -83,7 +84,10 @@ impl Scene {
                 continue;
             }
             let padding = match &layer.kind {
-                LayerKind::Raster { padding: Some((px, py)), .. } => (*px as f64, *py as f64),
+                LayerKind::Raster {
+                    padding: Some((px, py)),
+                    ..
+                } => (*px as f64, *py as f64),
                 _ => (0.0, 0.0),
             };
             let inner = layer.transform.to_affine_with_padding(natural, padding);
@@ -447,7 +451,10 @@ impl Transform {
         Affine::translate((self.x, self.y))
             * Affine::rotate(self.rotation_deg.to_radians())
             * Affine::scale_non_uniform(self.scale_x, self.scale_y)
-            * Affine::translate((-self.anchor_x * nw - padding.0, -self.anchor_y * nh - padding.1))
+            * Affine::translate((
+                -self.anchor_x * nw - padding.0,
+                -self.anchor_y * nh - padding.1,
+            ))
     }
 }
 
@@ -1318,6 +1325,7 @@ mod tests {
         let layer = raster_layer((100, 100), transform, 1.0);
         let scene = Scene {
             master_effects: Vec::new(),
+            effect_quality: EffectQuality::Ultra,
             width: 100,
             height: 100,
             time: 0.0,
@@ -1333,6 +1341,7 @@ mod tests {
     fn to_vello_empty_scene_returns_empty() {
         let scene = Scene {
             master_effects: Vec::new(),
+            effect_quality: EffectQuality::Ultra,
             width: 1920,
             height: 1080,
             time: 0.0,
@@ -1348,6 +1357,7 @@ mod tests {
         // Smoke: opacity=0 — layer не должен вызывать draw, паники не должно быть.
         let scene = Scene {
             master_effects: Vec::new(),
+            effect_quality: EffectQuality::Ultra,
             width: 100,
             height: 100,
             time: 0.0,
@@ -1365,6 +1375,7 @@ mod tests {
     fn to_vello_handles_zero_viewport() {
         let scene = Scene {
             master_effects: Vec::new(),
+            effect_quality: EffectQuality::Ultra,
             width: 100,
             height: 100,
             time: 0.0,
@@ -1382,6 +1393,7 @@ mod tests {
         layer.effects = vec![EffectSpec::Brightness { value: 1.2 }];
         let scene = Scene {
             master_effects: Vec::new(),
+            effect_quality: EffectQuality::Ultra,
             width: 100,
             height: 100,
             time: 0.0,

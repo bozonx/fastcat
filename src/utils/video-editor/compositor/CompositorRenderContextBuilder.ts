@@ -19,6 +19,7 @@ import type { TransitionManager } from './TransitionManager';
 import type { TransitionRenderer } from './TransitionRenderer';
 import type { VideoFrameCache } from './VideoFrameCache';
 import type { CompositorClip } from './types';
+import type { PreviewEffectQuality } from '~/utils/preview-effect-quality';
 
 const log = createDevLogger('CompositorRenderContextBuilder');
 
@@ -31,6 +32,7 @@ export interface CompositorRenderState {
   activeSortDirty: boolean;
   contextLost: boolean;
   previewEffectsEnabled: boolean;
+  previewEffectQuality: PreviewEffectQuality;
   masterEffects: VideoClipEffect[] | null;
 }
 
@@ -59,6 +61,7 @@ export interface CompositorRenderContextBuilderParams {
   setClipSpriteVisible: (clip: CompositorClip, visible: boolean) => boolean;
   getPreviewEffectsEnabled: () => boolean;
   setPreviewEffectsEnabled: (enabled: boolean) => void;
+  setPreviewEffectQuality: (quality: PreviewEffectQuality) => void;
   setStageSortDirty: (value: boolean) => void;
   setActiveSortDirty: (value: boolean) => void;
   setLastRenderedTimeUs: (value: number) => void;
@@ -96,7 +99,9 @@ export class CompositorRenderContextBuilder {
       activeSortDirty: state.activeSortDirty,
       contextLost: state.contextLost,
       previewEffectsEnabled: state.previewEffectsEnabled,
+      previewEffectQuality: state.previewEffectQuality,
       setPreviewEffectsEnabled: params.setPreviewEffectsEnabled,
+      setPreviewEffectQuality: params.setPreviewEffectQuality,
       applyVideoFrameCacheLimit: (limitMb) => {
         params.videoFrameCache.applyLimitMb(limitMb);
       },
@@ -186,6 +191,7 @@ export class CompositorRenderContextBuilder {
           clips: state.clips,
           width: state.width,
           height: state.height,
+          previewEffectQuality: state.previewEffectQuality,
           transitionManager: params.transitionManager,
           stageTextureRenderer: params.stageTextureRenderer,
           getTrackById: (trackId) => params.trackRuntimeManager.getById(trackId),

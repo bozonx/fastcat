@@ -1,6 +1,10 @@
 import type { VideoEffectSpec } from '~/types/generated/native-monitor/VideoEffectSpec';
 import effectWgsl from '~shared/effects/effect.wgsl?raw';
 import { createDevLogger } from '~/utils/dev-logger';
+import {
+  previewEffectQualityTapBudget,
+  type PreviewEffectQuality,
+} from '~/utils/preview-effect-quality';
 
 const log = createDevLogger('WebGpuComputeRunner');
 
@@ -75,12 +79,13 @@ function pushBlur(
   blurType: string,
   width: number,
   height: number,
+  tapBudget: number,
 ): Buf {
   if (radius <= 0) return cur;
   if (blurType === 'radial') {
     const t1 = pickScratch([cur]);
     passes.push({
-      uniform: { ...uniform(4, width, height), p0: radius, p1: 2.0 },
+      uniform: { ...uniform(4, width, height), p0: radius, p1: 2.0, p7: tapBudget },
       src: cur,
       secondary: cur,
       dst: t1,
@@ -90,14 +95,14 @@ function pushBlur(
     const blurTypeVal = blurType === 'box' ? 1.0 : 0.0;
     const t1 = pickScratch([cur]);
     passes.push({
-      uniform: { ...uniform(4, width, height), p0: radius, p1: blurTypeVal },
+      uniform: { ...uniform(4, width, height), p0: radius, p1: blurTypeVal, p7: tapBudget },
       src: cur,
       secondary: cur,
       dst: t1,
     });
     const t2 = pickScratch([t1]);
     passes.push({
-      uniform: { ...uniform(14, width, height), p0: radius, p1: blurTypeVal },
+      uniform: { ...uniform(14, width, height), p0: radius, p1: blurTypeVal, p7: tapBudget },
       src: t1,
       secondary: t1,
       dst: t2,
@@ -116,6 +121,7 @@ function pushBloom(
   knee: number,
   width: number,
   height: number,
+  tapBudget: number,
 ): Buf {
   if (radius <= 0) return cur;
   const base = cur;
@@ -128,13 +134,13 @@ function pushBloom(
   });
   const b = pickScratch([base, a]);
   passes.push({
-    uniform: { ...uniform(4, width, height), p0: radius },
+    uniform: { ...uniform(4, width, height), p0: radius, p7: tapBudget },
     src: a,
     secondary: a,
     dst: b,
   });
   passes.push({
-    uniform: { ...uniform(14, width, height), p0: radius },
+    uniform: { ...uniform(14, width, height), p0: radius, p7: tapBudget },
     src: b,
     secondary: b,
     dst: a,
@@ -187,8 +193,10 @@ export function buildBlurFillPasses(
   tintColor: [number, number, number, number],
   tintStrength: number,
   fgOffsetY: number,
+  quality: PreviewEffectQuality = 'ultra',
 ): ComputePass[] {
   const scale = spatialScale(frameH);
+  const tapBudget = previewEffectQualityTapBudget(quality);
   const radius = Math.max(0, Math.min(MAX_BLUR_RADIUS, blur * scale));
   const iwf = iw;
   const ihf = ih;
@@ -209,13 +217,13 @@ export function buildBlurFillPasses(
 
   if (radius > 0) {
     passes.push({
-      uniform: { ...uniform(4, frameW, frameH), p0: radius },
+      uniform: { ...uniform(4, frameW, frameH), p0: radius, p7: tapBudget },
       src: 'ping',
       secondary: 'ping',
       dst: 'pong',
     });
     passes.push({
-      uniform: { ...uniform(14, frameW, frameH), p0: radius },
+      uniform: { ...uniform(14, frameW, frameH), p0: radius, p7: tapBudget },
       src: 'pong',
       secondary: 'pong',
       dst: 'ping',
@@ -259,8 +267,10 @@ export function buildPasses(
   effects: VideoEffectSpec[],
   width: number,
   height: number,
+  quality: PreviewEffectQuality = 'ultra',
 ): ComputePass[] {
   const scale = spatialScale(height);
+  const tapBudget = previewEffectQualityTapBudget(quality);
   const passes: ComputePass[] = [];
   // Buffer currently holding the running image; effects chain off it.
   let cur: Buf = 'input';
@@ -276,6 +286,7 @@ export function buildPasses(
           effect.blur_type || 'gaussian',
           width,
           height,
+          tapBudget,
         );
         if ((effect.mix ?? 1) < 1.0) {
           cur = pushMix(passes, cur, base, effect.mix ?? 1, width, height);
@@ -291,6 +302,7 @@ export function buildPasses(
           'gaussian',
           width,
           height,
+          tapBudget,
         );
         if ((effect.mix ?? 1) < 1.0) {
           cur = pushMix(passes, cur, base, effect.mix ?? 1, width, height);
@@ -308,6 +320,7 @@ export function buildPasses(
           Math.max(0, Math.min(1.0, effect.knee ?? 0.5)),
           width,
           height,
+          tapBudget,
         );
         if ((effect.mix ?? 1) < 1.0) {
           cur = pushMix(passes, cur, base, effect.mix ?? 1, width, height);
@@ -508,6 +521,7 @@ function calculatePadding(effects: VideoEffectSpec[], scale: number): number {
 }
 
 export class WebGpuComputeRunner {
+  private previewEffectQuality: PreviewEffectQuality = 'ultra';
   private device: GPUDevice | null = null;
   private bindLayout: GPUBindGroupLayout | null = null;
   private pipeline: GPUComputePipeline | null = null;
@@ -678,6 +692,7 @@ export class WebGpuComputeRunner {
       tintColor,
       tintStrength,
       fgOffsetY,
+      this.previewEffectQuality,
     );
     if (passes.length === 0) return null;
 
@@ -885,7 +900,7 @@ export class WebGpuComputeRunner {
     w = origW + 2 * padding;
     h = origH + 2 * padding;
 
-    const passes = buildPasses(effects, w, h);
+    const passes = buildPasses(effects, w, h, this.previewEffectQuality);
     if (passes.length === 0) return null;
 
     this.ensureTextures(w, h);
@@ -1046,6 +1061,10 @@ export class WebGpuComputeRunner {
     } finally {
       inputTexture.destroy();
     }
+  }
+
+  public setPreviewEffectQuality(quality: PreviewEffectQuality): void {
+    this.previewEffectQuality = quality;
   }
 
   private ensureTextures(width: number, height: number): void {

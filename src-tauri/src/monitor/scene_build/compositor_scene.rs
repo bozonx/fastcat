@@ -7,7 +7,7 @@ use std::collections::{HashMap, HashSet};
 
 use vello::peniko::Color;
 
-use crate::compositor::effects::EffectSpec;
+use crate::compositor::effects::{EffectQuality, EffectSpec};
 use crate::compositor::scene::{LayerKind as CompLayerKind, RasterSource, Scene};
 use crate::monitor::layer_runtime::LayerRuntime;
 use crate::monitor::scene::{LayerKind, SceneLayer};
@@ -21,6 +21,7 @@ pub fn build_compositor_scene(
     runtimes: &HashMap<String, LayerRuntime>,
     t: f64,
     master_effects: &[EffectSpec],
+    effect_quality: EffectQuality,
 ) -> Scene {
     let (scene_w, scene_h) = resolved_scene_size(scene, scene_size, runtimes);
 
@@ -103,6 +104,7 @@ pub fn build_compositor_scene(
         background: Color::TRANSPARENT,
         layers,
         master_effects: master_effects.to_vec(),
+        effect_quality,
     }
 }
 
@@ -144,7 +146,14 @@ mod tests {
     #[test]
     fn builds_virtual_background_without_runtime() {
         let layer = test_layer(LayerKind::Background, "bg", 0);
-        let scene = build_compositor_scene(&[layer], (1280, 720), &HashMap::new(), 0.0, &[]);
+        let scene = build_compositor_scene(
+            &[layer],
+            (1280, 720),
+            &HashMap::new(),
+            0.0,
+            &[],
+            EffectQuality::Ultra,
+        );
 
         assert_eq!(scene.width, 1280);
         assert_eq!(scene.height, 720);
@@ -154,7 +163,14 @@ mod tests {
     #[test]
     fn skips_raster_layer_without_runtime() {
         let layer = test_layer(LayerKind::Image, "img", 0);
-        let scene = build_compositor_scene(&[layer], (1280, 720), &HashMap::new(), 0.0, &[]);
+        let scene = build_compositor_scene(
+            &[layer],
+            (1280, 720),
+            &HashMap::new(),
+            0.0,
+            &[],
+            EffectQuality::Ultra,
+        );
 
         assert!(scene.layers.is_empty());
     }
@@ -196,7 +212,14 @@ mod tests {
         layer.timeline_start_sec = 0.0;
         layer.timeline_end_sec = 10.0;
         let fx = vec![EffectSpec::Brightness { value: 1.2 }];
-        let scene = build_compositor_scene(&[layer], (1280, 720), &HashMap::new(), 0.0, &fx);
+        let scene = build_compositor_scene(
+            &[layer],
+            (1280, 720),
+            &HashMap::new(),
+            0.0,
+            &fx,
+            EffectQuality::Ultra,
+        );
         assert_eq!(scene.master_effects.len(), 1);
     }
 
@@ -204,7 +227,14 @@ mod tests {
     fn includes_adjustment_layer_in_domain_scene() {
         let adj = test_layer(LayerKind::Adjustment, "adj-1", 10);
         let bg = test_layer(LayerKind::Background, "bg", 0);
-        let scene = build_compositor_scene(&[bg, adj], (1280, 720), &HashMap::new(), 0.5, &[]);
+        let scene = build_compositor_scene(
+            &[bg, adj],
+            (1280, 720),
+            &HashMap::new(),
+            0.5,
+            &[],
+            EffectQuality::Ultra,
+        );
 
         assert_eq!(scene.layers.len(), 2);
         assert!(scene
@@ -219,7 +249,14 @@ mod tests {
         adj.timeline_start_sec = 2.0;
         adj.timeline_end_sec = 4.0;
         let bg = test_layer(LayerKind::Background, "bg", 0);
-        let scene = build_compositor_scene(&[bg, adj], (1280, 720), &HashMap::new(), 0.5, &[]);
+        let scene = build_compositor_scene(
+            &[bg, adj],
+            (1280, 720),
+            &HashMap::new(),
+            0.5,
+            &[],
+            EffectQuality::Ultra,
+        );
 
         assert_eq!(scene.layers.len(), 1);
         assert!(!scene

@@ -322,6 +322,9 @@ pub struct MonitorScene {
     /// Политика синхронизации видео с аудио для preview.
     #[serde(default)]
     pub preview_sync_mode: PreviewSyncMode,
+    /// Sampling budget for blur-heavy preview effects.
+    #[serde(default)]
+    pub preview_effect_quality: crate::compositor::effects::EffectQuality,
     /// Native decoded frame cache policy. `custom + 0 MB` disables the rotating cache window.
     #[serde(default)]
     pub frame_cache_mode: NativeFrameCacheMode,

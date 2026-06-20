@@ -155,6 +155,7 @@ describe('useFileConversionActions', () => {
       isModalOpen: ref(false),
       conversionModalRequestId: ref(0),
       sourceHasAudio: ref(true),
+      fileManager: mockFileManager,
     };
   };
 

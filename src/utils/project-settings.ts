@@ -3,6 +3,7 @@ import type { FastCatUserSettings } from './settings/defaults';
 import { DEFAULT_USER_SETTINGS } from './settings/defaults';
 import { applyResolutionPreset } from './settings/helpers';
 import { resolveProjectPreset } from './settings/presets';
+import type { PreviewEffectQualitySetting } from './preview-effect-quality';
 
 interface ProjectSettingsUserDefaultsInput {
   projectDefaults: FastCatUserSettings['projectDefaults'];
@@ -27,7 +28,7 @@ export interface ProjectMonitorSettings {
   toolbarPosition: 'top' | 'bottom' | 'left' | 'right';
   showTransparencyGrid: boolean;
   showMarkerTexts: boolean;
-  previewBlurQuality: 'low' | 'medium' | 'high' | 'ultra' | 'auto';
+  previewBlurQuality: PreviewEffectQualitySetting;
 }
 
 /**
@@ -282,7 +283,9 @@ function createProjectSettingsSchema(defaults: FastCatProjectSettings) {
     toolbarPosition: z.enum(['top', 'bottom', 'left', 'right']).catch(dm.toolbarPosition),
     showTransparencyGrid: z.coerce.boolean().catch(dm.showTransparencyGrid),
     showMarkerTexts: z.coerce.boolean().catch(dm.showMarkerTexts),
-    previewBlurQuality: z.enum(['low', 'medium', 'high', 'ultra', 'auto']).catch(dm.previewBlurQuality ?? 'auto'),
+    previewBlurQuality: z
+      .enum(['low', 'medium', 'high', 'ultra', 'auto'])
+      .catch(dm.previewBlurQuality ?? 'auto'),
   });
 
   const sessionSchema = z.object({

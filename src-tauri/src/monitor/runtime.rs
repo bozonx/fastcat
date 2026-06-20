@@ -109,6 +109,7 @@ pub struct LayerRuntimeManager {
     pub preview_fps: f64,
     /// Политика AV-sync для preview.
     pub preview_sync_mode: PreviewSyncMode,
+    pub preview_effect_quality: crate::compositor::effects::EffectQuality,
     /// Global transport speed. Used to keep future-layer warmup measured in wall time:
     /// at 4x a 1.5s timeline window leaves only 375ms to open/decode the next clip.
     playback_speed: f64,
@@ -150,6 +151,7 @@ impl LayerRuntimeManager {
             preview_scale: None,
             preview_fps: 30.0,
             preview_sync_mode: PreviewSyncMode::Balanced,
+            preview_effect_quality: crate::compositor::effects::EffectQuality::default(),
             playback_speed: 1.0,
             frame_cache_mode: NativeFrameCacheMode::Auto,
             frame_cache_custom_mb: 0,
@@ -307,6 +309,7 @@ impl LayerRuntimeManager {
             self.loading_set.clear();
         }
         self.preview_scale = scene.preview_scale;
+        self.preview_effect_quality = scene.preview_effect_quality;
         self.frame_cache_mode = scene.frame_cache_mode;
         self.frame_cache_custom_mb = scene.frame_cache_custom_mb;
 
@@ -1132,8 +1135,7 @@ impl LayerRuntimeManager {
                 // нажатый когда playhead стоит/скрабит у стыка, заставал следующий клип
                 // неоткрытым — он стартовал «вхолодную» и заикался. На паузе активного
                 // декода нет, поэтому конкуренции за CPU/пермиты это не создаёт.
-                if layer.kind == LayerKind::Video
-                    && layer.covers(t + self.prewarm_lookahead_sec())
+                if layer.kind == LayerKind::Video && layer.covers(t + self.prewarm_lookahead_sec())
                 {
                     self.ensure_runtime_for(layer, device.clone(), queue.clone());
                 }
@@ -1217,6 +1219,7 @@ impl LayerRuntimeManager {
             &self.runtimes,
             t,
             &self.master_effects,
+            self.preview_effect_quality,
         )
     }
 
