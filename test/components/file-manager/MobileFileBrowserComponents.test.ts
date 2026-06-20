@@ -82,7 +82,6 @@ describe('MobileFileBrowserCreateSheet', () => {
   const defaultProps = {
     modelValue: true,
     selectedFolderName: 'Music',
-    selectedFolderPath: 'music',
   };
 
   it('renders folder name in header', async () => {

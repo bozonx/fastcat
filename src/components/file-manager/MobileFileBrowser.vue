@@ -636,11 +636,9 @@ const menuItems = computed(() => [
     <MobileFileBrowserCreateSheet
       v-model="isCreateMenuOpen"
       :selected-folder-name="fileManagerStore?.selectedFolder?.name || '/'"
-      :selected-folder-path="fileManagerStore?.selectedFolder?.path || ''"
       @upload="triggerFileUpload"
       @upload-global="triggerGlobalFileUpload"
       @create-folder="handleCreateFolderRequest"
-      @create-text-file="onCreateTextFile"
     />
 
     <!-- Delete Confirmation Modal -->
