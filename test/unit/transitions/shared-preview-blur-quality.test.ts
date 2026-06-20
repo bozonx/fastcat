@@ -1,10 +1,10 @@
 /** @vitest-environment node */
 import { describe, expect, it } from 'vitest';
-import { getTauriTransitionManifest } from '~/transitions/tauri/manifests';
+import { getTransitionManifestByType } from '~/transitions/manifests';
 
 function getShaderSource(type: string): string {
-  const manifest = getTauriTransitionManifest(type);
-  const spec = manifest?.toTauriSpec?.(manifest.defaultParams as Record<string, unknown>, 1, {
+  const manifest = getTransitionManifestByType(type);
+  const spec = manifest?.toTransitionSpec?.(manifest.defaultParams as Record<string, unknown>, 1, {
     isPlaying: true,
     previewBlurQuality: 'medium',
   });
@@ -13,7 +13,7 @@ function getShaderSource(type: string): string {
   return spec?.source ?? '';
 }
 
-describe('Tauri preview blur shader optimization', () => {
+describe('shared preview blur shader optimization', () => {
   it('scales slide, blinds, and zoom samples by pixel-space blur length', () => {
     expect(getShaderSource('slide')).toContain('let pixel_blur = mb * length(axis * dims());');
     expect(getShaderSource('blinds')).toContain(
@@ -29,17 +29,17 @@ describe('Tauri preview blur shader optimization', () => {
   });
 
   it('scales bloom transition disk sampling with preview quality', () => {
-    const manifest = getTauriTransitionManifest('bloom');
+    const manifest = getTransitionManifestByType('bloom');
     const params = manifest?.defaultParams as Record<string, unknown>;
 
     expect(
-      manifest?.toTauriSpec?.(params, 1, {
+      manifest?.toTransitionSpec?.(params, 1, {
         isPlaying: true,
         previewBlurQuality: 'low',
       }).params,
     ).toMatchObject({ p3: 5 });
     expect(
-      manifest?.toTauriSpec?.(params, 1, {
+      manifest?.toTransitionSpec?.(params, 1, {
         isPlaying: true,
         previewBlurQuality: 'ultra',
       }).params,

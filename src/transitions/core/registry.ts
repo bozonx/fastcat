@@ -1,8 +1,7 @@
 import { createDevLogger } from '~/utils/dev-logger';
 import type { Filter, Texture } from 'pixi.js';
 import type { ParamControl, ParamOption } from '~/components/properties/params';
-import { isTauriRuntime } from '~/utils/runtime';
-import { getTauriTransitionManifest, tauriTransitionManifests } from '../tauri/manifests';
+import { getTransitionManifestByType, transitionManifests } from '../manifests';
 const log = createDevLogger('registry');
 
 export type TransitionType = string;
@@ -12,7 +11,7 @@ export type TransitionMode = 'adjacent' | 'background' | 'transparent';
 export type TransitionCurve = 'linear' | 'smooth' | 'ease-in' | 'ease-out';
 export type TransitionRenderer = 'pixi' | 'wgpu';
 
-export interface TauriTransitionSpec {
+export interface TransitionSpec {
   type: string;
   [key: string]: unknown;
 }
@@ -63,7 +62,7 @@ export interface TransitionManifest<T = Record<string, unknown>> {
   renderer?: TransitionRenderer;
   createFilter?: () => Filter;
   updateFilter?: (filter: Filter, context: TransitionShaderContext) => void;
-  toTauriSpec?: (
+  toTransitionSpec?: (
     params: T,
     durationSec?: number,
     options?: {
@@ -74,7 +73,7 @@ export interface TransitionManifest<T = Record<string, unknown>> {
        * stays at the user motion quality instead of upgrading to ultra. Defaults to settled. */
       idleSettled?: boolean;
     },
-  ) => TauriTransitionSpec;
+  ) => TransitionSpec;
   supportedModes?: TransitionMode[];
   /** Returns opacity [0..1] of the outgoing clip at `progress` [0..1] */
   computeOutOpacity: (progress: number, params: T, curve: TransitionCurve) => number;
@@ -148,6 +147,23 @@ export function applyTransitionCurve(
   const x2 = 1 - (1 - offset) * bulge;
 
   return solveCubicBezier(t, x1, 0, x2, 1);
+}
+
+export function getTransitionCurveSpeed(
+  progress: number,
+  curve: TransitionCurve,
+  params?: Record<string, unknown>,
+): number {
+  const delta = 0.001;
+  const start = Math.max(0, progress - delta);
+  const end = Math.min(1, progress + delta);
+  if (end <= start) return 1;
+
+  return Math.max(
+    0,
+    (applyTransitionCurve(end, curve, params) - applyTransitionCurve(start, curve, params)) /
+      (end - start),
+  );
 }
 
 export function clampNumber(value: unknown, min: number, max: number, fallback: number): number {
@@ -226,11 +242,9 @@ export function registerTransition<T>(manifest: TransitionManifest<T>): void {
 export function getTransitionManifest(
   type: TransitionType,
 ): TransitionManifest<Record<string, unknown>> | undefined {
-  if (isTauriRuntime()) {
-    const manifest = getTauriTransitionManifest(type);
-    if (manifest) {
-      return manifest as TransitionManifest<Record<string, unknown>>;
-    }
+  const manifest = getTransitionManifestByType(type);
+  if (manifest) {
+    return manifest as TransitionManifest<Record<string, unknown>>;
   }
 
   return registry.get(type);
@@ -247,20 +261,53 @@ export function normalizeTransitionParams<T = Record<string, unknown>>(
   if (manifest.normalizeParams) {
     return manifest.normalizeParams(params);
   }
-  const webManifest = registry.get(type);
-  if (webManifest && webManifest.normalizeParams) {
-    return webManifest.normalizeParams(params);
+
+  const defaults = manifest.defaultParams as Record<string, unknown>;
+  const normalized: Record<string, unknown> = { ...defaults };
+  for (const [key, fallback] of Object.entries(defaults)) {
+    const value = params?.[key];
+    const field = manifest.paramFields?.find((candidate) => candidate.key === key);
+
+    if (typeof fallback === 'number') {
+      const numericField =
+        field?.kind === 'number' || field?.kind === 'slider' || field?.kind === 'knob'
+          ? field
+          : undefined;
+      normalized[key] = clampNumber(
+        value,
+        typeof numericField?.min === 'number' ? numericField.min : Number.NEGATIVE_INFINITY,
+        typeof numericField?.max === 'number' ? numericField.max : Number.POSITIVE_INFINITY,
+        fallback,
+      );
+      continue;
+    }
+
+    if (typeof fallback === 'boolean') {
+      normalized[key] = typeof value === 'boolean' ? value : fallback;
+      continue;
+    }
+
+    if (typeof fallback === 'string') {
+      if (field?.kind === 'color') {
+        normalized[key] = sanitizeTransitionColor(value, fallback);
+        continue;
+      }
+
+      const allowedValues =
+        field?.kind === 'select' || field?.kind === 'button-group'
+          ? field.options.map((option) => option.value)
+          : undefined;
+      normalized[key] =
+        typeof value === 'string' && (!allowedValues || allowedValues.includes(value))
+          ? value
+          : fallback;
+    }
   }
-  return { ...(manifest.defaultParams as Record<string, unknown>), ...(params ?? {}) };
+
+  return normalized;
 }
 
 export function getAllTransitionManifests(): TransitionManifest<Record<string, unknown>>[] {
-  if (isTauriRuntime()) {
-    const custom = Array.from(registry.values()).filter((manifest) => manifest.isCustom);
-    return [...tauriTransitionManifests, ...custom] as TransitionManifest<
-      Record<string, unknown>
-    >[];
-  }
-
-  return Array.from(registry.values());
+  const custom = Array.from(registry.values()).filter((manifest) => manifest.isCustom);
+  return [...transitionManifests, ...custom] as TransitionManifest<Record<string, unknown>>[];
 }

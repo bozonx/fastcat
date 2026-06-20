@@ -197,7 +197,7 @@ pub struct SceneTransition {
     // Transition spec — produced by the frontend transition manifests.
     #[ts(
         optional,
-        type = "import('~/transitions/core/registry').TauriTransitionSpec"
+        type = "import('~/transitions/core/registry').TransitionSpec"
     )]
     pub spec: Option<TransitionSpec>,
 }

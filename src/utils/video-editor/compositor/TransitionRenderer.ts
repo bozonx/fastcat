@@ -1,12 +1,17 @@
 import { createDevLogger } from '~/utils/dev-logger';
 import { Sprite, Texture, type Application, type RenderTexture } from 'pixi.js';
-import { DEFAULT_TRANSITION_MODE } from '~/transitions';
+import {
+  applyTransitionCurve,
+  DEFAULT_TRANSITION_MODE,
+  getTransitionCurveSpeed,
+  normalizeTransitionParams,
+} from '~/transitions';
 import type { TransitionManager } from './TransitionManager';
 import { toPixiBlendMode, type CompositorClip, type CompositorTrack } from './types';
 import type { StageTextureRenderer } from './StageTextureRenderer';
 import type { PreviewEffectQuality } from '~/utils/preview-effect-quality';
+import type { WebGpuComputeRunner } from './WebGpuComputeRunner';
 const log = createDevLogger('TransitionRenderer');
-const QUALITY_CONTROLLED_TRANSITIONS = new Set(['bloom', 'slide', 'blinds', 'zoom', 'card-swap']);
 
 export interface TransitionRendererParams {
   app: Application;
@@ -14,6 +19,8 @@ export interface TransitionRendererParams {
   width: number;
   height: number;
   previewEffectQuality?: PreviewEffectQuality;
+  computeRunner: WebGpuComputeRunner;
+  textureToBitmap?: (texture: RenderTexture) => Promise<ImageBitmap>;
   transitionManager: TransitionManager;
   stageTextureRenderer: StageTextureRenderer;
   getTrackById: (trackId: string) => CompositorTrack | undefined;
@@ -48,14 +55,7 @@ export interface TransitionRendererParams {
 }
 
 export class TransitionRenderer {
-  private filterQuadSprite: Sprite | null = null;
-
-  public destroy() {
-    if (this.filterQuadSprite) {
-      this.filterQuadSprite.destroy();
-      this.filterQuadSprite = null;
-    }
-  }
+  public destroy() {}
 
   public async applyShaderTransitions(
     active: CompositorClip[],
@@ -71,16 +71,17 @@ export class TransitionRenderer {
 
     for (const clip of active) {
       const state = params.getActiveTransitionState(clip, timeUs);
-      if (!state || state.manifest?.renderMode !== 'shader' || !clip.transitionFilter) {
+      if (
+        !state ||
+        state.manifest?.renderMode !== 'shader' ||
+        !state.transition ||
+        !params.computeRunner.isReady()
+      ) {
         continue;
       }
 
-      const transitionFilter = params.transitionManager.ensureUsableTransitionFilter(
-        clip,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        state.manifest as any,
-      );
-      if (!transitionFilter) {
+      const manifest = state.manifest as import('~/transitions').TransitionManifest;
+      if (!manifest.toTransitionSpec) {
         continue;
       }
 
@@ -151,50 +152,72 @@ export class TransitionRenderer {
         shaderFromTexture = clip.transitionToTexture;
       }
 
-      const transitionParams =
-        state.transition && QUALITY_CONTROLLED_TRANSITIONS.has(state.transition.type)
-          ? {
-              ...(state.transition.params ?? {}),
-              blurQuality: params.previewEffectQuality ?? 'ultra',
-            }
-          : (state.transition?.params ?? {});
-      const transitionContext = {
-        progress: state.progress,
-        curve: state.curve,
-        elapsedUs:
-          state.edge === 'in'
-            ? timeUs - clip.startUs
-            : timeUs - (clip.endUs - (state.transition?.durationUs ?? 0)),
-        durationUs: state.transition?.durationUs ?? 0,
-        edge: state.edge as 'in' | 'out',
-        params: transitionParams,
-        fromTexture: shaderFromTexture,
-        toTexture: shaderToTexture,
-      };
-
-      const filterUpdated = params.transitionManager.updateTransitionFilterSafely(
-        clip,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        state.manifest as any,
-        transitionFilter,
-        transitionContext,
+      const normalizedParams =
+        (normalizeTransitionParams(state.transition.type, state.transition.params) as Record<
+          string,
+          unknown
+        >) ?? {};
+      const spec = manifest.toTransitionSpec(
+        normalizedParams,
+        (state.transition.durationUs ?? 0) / 1_000_000,
+        {
+          isPlaying: true,
+          previewBlurQuality: params.previewEffectQuality,
+          idleSettled: false,
+        },
       );
-      if (!filterUpdated) {
+      const curve = state.curve as import('~/transitions').TransitionCurve;
+      const progress = applyTransitionCurve(state.progress, curve, normalizedParams);
+      const speed = getTransitionCurveSpeed(state.progress, curve, normalizedParams);
+
+      let fromBitmap: ImageBitmap | null = null;
+      let toBitmap: ImageBitmap | null = null;
+      let processed: ImageBitmap | null = null;
+      try {
+        fromBitmap = params.textureToBitmap
+          ? await params.textureToBitmap(shaderFromTexture)
+          : await this.renderTextureToBitmap(
+              params.app,
+              shaderFromTexture,
+              params.width,
+              params.height,
+            );
+        toBitmap = params.textureToBitmap
+          ? await params.textureToBitmap(shaderToTexture)
+          : await this.renderTextureToBitmap(
+              params.app,
+              shaderToTexture,
+              params.width,
+              params.height,
+            );
+        processed = await params.computeRunner.applyTransition({
+          from: fromBitmap,
+          to: toBitmap,
+          spec,
+          progress,
+          speed,
+        });
+        if (!processed) continue;
+
+        const texture = Texture.from(processed);
+        const outputSprite = new Sprite(texture);
+        outputSprite.width = params.width;
+        outputSprite.height = params.height;
+        params.app.renderer.render({
+          container: outputSprite,
+          target: clip.transitionOutputTexture,
+          clear: true,
+        });
+        outputSprite.destroy();
+        texture.destroy();
+      } catch (error) {
+        log.warn('[VideoCompositor] WebGPU transition failed:', error);
         continue;
+      } finally {
+        fromBitmap?.close();
+        toBitmap?.close();
+        processed?.close();
       }
-
-      const filterQuadSprite = this.ensureFilterQuadSprite();
-      filterQuadSprite.texture = shaderToTexture;
-      filterQuadSprite.scale.set(1, 1);
-      filterQuadSprite.width = params.width;
-      filterQuadSprite.height = params.height;
-      filterQuadSprite.filters = [filterUpdated];
-
-      params.app.renderer.render({
-        container: filterQuadSprite,
-        target: clip.transitionOutputTexture,
-        clear: true,
-      });
 
       const transitionSprite = params.stageTextureRenderer.ensureTransitionSprite(clip);
       transitionSprite.texture = clip.transitionOutputTexture;
@@ -232,15 +255,26 @@ export class TransitionRenderer {
     }
   }
 
-  private ensureFilterQuadSprite(): Sprite {
-    if (!this.filterQuadSprite) {
-      this.filterQuadSprite = new Sprite(Texture.EMPTY);
-      this.filterQuadSprite.x = 0;
-      this.filterQuadSprite.y = 0;
-      this.filterQuadSprite.anchor.set(0, 0);
+  private async renderTextureToBitmap(
+    app: Application,
+    texture: RenderTexture,
+    width: number,
+    height: number,
+  ): Promise<ImageBitmap> {
+    const pixels = app.renderer.extract.pixels(texture);
+    const canvas = new OffscreenCanvas(width, height);
+    const context = canvas.getContext('2d');
+    if (!context) {
+      throw new Error('Failed to create transition canvas context.');
     }
 
-    return this.filterQuadSprite;
+    const imageData = context.createImageData(width, height);
+    const bytes = ArrayBuffer.isView(pixels)
+      ? new Uint8Array(pixels.buffer, pixels.byteOffset, pixels.byteLength)
+      : new Uint8Array(0);
+    imageData.data.set(bytes);
+    context.putImageData(imageData, 0, 0);
+    return await createImageBitmap(canvas);
   }
 
   private async renderTransitionClipToTexture(

@@ -24,7 +24,7 @@ import { normalizeClipSpeed } from '~/utils/video-editor/source-time';
 import type { TauriDirectoryHandle } from '~/stores/workspace/provider/tauri-handle';
 import { buildEffectSpecs } from '~/effects';
 import { normalizeMediaCachePath } from '~/utils/media-cache-path';
-import { getTauriTransitionManifest } from '~/transitions/tauri/manifests';
+import { getTransitionManifest } from '~/transitions';
 import type { TransitionMode } from '~/transitions/core/registry';
 import { buildNativeAudioEffectSpecs } from '~/utils/audio/audio-clip-descriptor';
 import {
@@ -252,8 +252,8 @@ function isNativeTransitionSupported(params: {
     return false;
   }
 
-  const manifest = getTauriTransitionManifest(params.type);
-  if (!manifest?.toTauriSpec) {
+  const manifest = getTransitionManifest(params.type);
+  if (!manifest?.toTransitionSpec) {
     return false;
   }
 
@@ -451,9 +451,9 @@ function buildBaseLayer(params: {
         );
         return undefined;
       }
-      const manifest = getTauriTransitionManifest(type);
-      const spec = manifest?.toTauriSpec
-        ? manifest.toTauriSpec(
+      const manifest = getTransitionManifest(type);
+      const spec = manifest?.toTransitionSpec
+        ? manifest.toTransitionSpec(
             effectiveTransitionIn.params ?? {},
             effectiveTransitionIn.durationUs / 1_000_000,
             { isExport, isPlaying, idleSettled, previewBlurQuality },
@@ -492,9 +492,9 @@ function buildBaseLayer(params: {
         );
         return undefined;
       }
-      const manifest = getTauriTransitionManifest(type);
-      const spec = manifest?.toTauriSpec
-        ? manifest.toTauriSpec(
+      const manifest = getTransitionManifest(type);
+      const spec = manifest?.toTransitionSpec
+        ? manifest.toTransitionSpec(
             clip.transitionOut.params ?? {},
             clip.transitionOut.durationUs / 1_000_000,
             { isExport, isPlaying, idleSettled, previewBlurQuality },

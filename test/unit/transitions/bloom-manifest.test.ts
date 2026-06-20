@@ -1,34 +1,17 @@
 import { describe, expect, it } from 'vitest';
-import { bloomManifest } from '~/transitions/bloom/manifest';
+import { getTransitionManifestByType } from '~/transitions/manifests';
 
 describe('bloom transition quality', () => {
-  it('normalizes the hidden renderer quality parameter', () => {
-    expect(bloomManifest.normalizeParams?.({ blurQuality: 'low' })).toMatchObject({
-      blurQuality: 'low',
+  it('stores the quality-controlled sample budget in the shared transition spec', () => {
+    const manifest = getTransitionManifestByType('bloom');
+    const medium = manifest?.toTransitionSpec?.(manifest.defaultParams, 1, {
+      previewBlurQuality: 'medium',
     });
-    expect(bloomManifest.normalizeParams?.({ blurQuality: 'invalid' })).toMatchObject({
-      blurQuality: 'medium',
+    const ultra = manifest?.toTransitionSpec?.(manifest.defaultParams, 1, {
+      previewBlurQuality: 'ultra',
     });
-  });
 
-  it('stores the quality-controlled sample budget in the filter uniforms', () => {
-    const filter = bloomManifest.createFilter?.();
-    const uniforms = (
-      filter as unknown as {
-        resources?: { bloomUniforms?: { uniforms?: Record<string, unknown> } };
-      }
-    )?.resources?.bloomUniforms?.uniforms;
-
-    expect(uniforms?.uBlurSamples).toBe(9);
-    bloomManifest.updateFilter?.(
-      filter!,
-      {
-        progress: 0.5,
-        curve: 'linear',
-        params: { blurQuality: 'ultra' },
-      } as never,
-    );
-    expect(uniforms?.uBlurSamples).toBe(25);
-    filter?.destroy();
+    expect(medium?.params).toMatchObject({ p3: 9 });
+    expect(ultra?.params).toMatchObject({ p3: 25 });
   });
 });

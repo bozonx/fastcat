@@ -1,9 +1,9 @@
 /** @vitest-environment node */
 import { describe, expect, it } from 'vitest';
-import { getTauriTransitionManifest } from '~/transitions/tauri/manifests';
+import { getTransitionManifestByType } from '~/transitions/manifests';
 
-describe('Tauri motion blur transition manifest', () => {
-  const manifest = getTauriTransitionManifest('motion-blur');
+describe('shared motion blur transition manifest', () => {
+  const manifest = getTransitionManifestByType('motion-blur');
 
   it('exposes a native adjacent shader transition with normalized defaults', () => {
     expect(manifest).toMatchObject({
@@ -42,7 +42,7 @@ describe('Tauri motion blur transition manifest', () => {
   });
 
   it('builds a directional WGSL spec and scales blur by transition duration', () => {
-    const spec = manifest?.toTauriSpec?.(
+    const spec = manifest?.toTransitionSpec?.(
       {
         angle: 90,
         motionBlur: 40,
@@ -70,8 +70,8 @@ describe('Tauri motion blur transition manifest', () => {
   it('uses ultra sampling for export and paused preview', () => {
     const params = manifest?.defaultParams as Record<string, unknown>;
 
-    const exportSpec = manifest?.toTauriSpec?.(params, 1, { isExport: true });
-    const pausedSpec = manifest?.toTauriSpec?.(params, 1, { isPlaying: false });
+    const exportSpec = manifest?.toTransitionSpec?.(params, 1, { isExport: true });
+    const pausedSpec = manifest?.toTransitionSpec?.(params, 1, { isPlaying: false });
 
     expect(exportSpec?.params).toMatchObject({ p3: 64 });
     expect(pausedSpec?.params).toMatchObject({ p3: 64 });

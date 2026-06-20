@@ -1,7 +1,6 @@
 /** @vitest-environment node */
 import { describe, expect, it } from 'vitest';
-import { circleManifest } from '~/transitions/circle/manifest';
-import { getTauriTransitionManifest } from '~/transitions/tauri/manifests';
+import { getTransitionManifestByType } from '~/transitions/manifests';
 import { isTauriRuntime } from '~/utils/runtime';
 
 const originalTauriRuntime = isTauriRuntime();
@@ -17,28 +16,12 @@ function restoreTauriRuntime() {
 }
 
 describe('circle transition blur parameter', () => {
-  it('normalizes web blur to percentage range 0..20', () => {
-    const normalized = circleManifest.normalizeParams?.({ blur: 0.5 });
-
-    expect(normalized?.blur).toBe(0.5);
-    expect(circleManifest.normalizeParams?.({ blur: -10 })?.blur).toBe(0);
-    expect(circleManifest.normalizeParams?.({ blur: 100 })?.blur).toBe(20);
-  });
-
-  it('passes web blur percentage to shader as normalized UV value', () => {
-    const params = circleManifest.normalizeParams?.({ blur: 5 });
-
-    expect(params?.blur).toBe(5);
-    // updateFilter divides by 100 before setting the uniform.
-    expect((params?.blur ?? 0) / 100).toBe(0.05);
-  });
-
-  it('converts Tauri blur percentage to normalized UV in toTauriSpec', () => {
+  it('converts shared blur percentage to normalized UV in toTransitionSpec', () => {
     mockTauriRuntime(true);
-    const manifest = getTauriTransitionManifest('circle');
+    const manifest = getTransitionManifestByType('circle');
     expect(manifest).toBeDefined();
 
-    const spec = manifest?.toTauriSpec?.({
+    const spec = manifest?.toTransitionSpec?.({
       blur: 10,
       blurMode: 'fixed',
       direction: 'from-center',
@@ -57,11 +40,11 @@ describe('circle transition blur parameter', () => {
     restoreTauriRuntime();
   });
 
-  it('clamps Tauri blur percentage to the renderer range', () => {
+  it('clamps shared blur percentage to the renderer range', () => {
     mockTauriRuntime(true);
-    const manifest = getTauriTransitionManifest('circle');
+    const manifest = getTransitionManifestByType('circle');
 
-    const tooSmall = manifest?.toTauriSpec?.({
+    const tooSmall = manifest?.toTransitionSpec?.({
       blur: 0,
       blurMode: 'fixed',
       direction: 'from-center',
@@ -76,7 +59,7 @@ describe('circle transition blur parameter', () => {
       p0: 0.0001,
     });
 
-    const tooLarge = manifest?.toTauriSpec?.({
+    const tooLarge = manifest?.toTransitionSpec?.({
       blur: 50,
       blurMode: 'fixed',
       direction: 'from-center',
@@ -96,7 +79,7 @@ describe('circle transition blur parameter', () => {
 
   it('normalizes invalid direction inherited from another transition back to from-center', () => {
     mockTauriRuntime(true);
-    const manifest = getTauriTransitionManifest('circle');
+    const manifest = getTransitionManifestByType('circle');
     expect(manifest).toBeDefined();
 
     const normalized = manifest?.normalizeParams?.({
@@ -122,7 +105,7 @@ describe('circle transition blur parameter', () => {
 
   it('normalizes Tauri clock direction to a valid value', () => {
     mockTauriRuntime(true);
-    const manifest = getTauriTransitionManifest('clock');
+    const manifest = getTransitionManifestByType('clock');
     expect(manifest).toBeDefined();
 
     expect(manifest?.normalizeParams?.({ direction: 'left' })?.direction).toBe('clockwise');
@@ -133,7 +116,7 @@ describe('circle transition blur parameter', () => {
 
   it('normalizes Tauri rectangle parameters inherited from another transition', () => {
     mockTauriRuntime(true);
-    const manifest = getTauriTransitionManifest('rectangle');
+    const manifest = getTransitionManifestByType('rectangle');
     expect(manifest).toBeDefined();
 
     const normalized = manifest?.normalizeParams?.({

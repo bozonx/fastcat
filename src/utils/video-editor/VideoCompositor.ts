@@ -359,6 +359,7 @@ export class VideoCompositor {
       width: this.width,
       height: this.height,
       previewEffectQuality: this.previewEffectQuality,
+      computeRunner: this.computeRunner,
       transitionManager: this.transitionManager,
       stageTextureRenderer:
         stageTextureRenderer as import('./compositor/StageTextureRenderer').StageTextureRenderer,

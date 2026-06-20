@@ -1,7 +1,6 @@
 /** @vitest-environment node */
 import { describe, expect, it } from 'vitest';
-import { wipeManifest } from '~/transitions/wipe/manifest';
-import { getTauriTransitionManifest } from '~/transitions/tauri/manifests';
+import { getTransitionManifestByType } from '~/transitions/manifests';
 import { isTauriRuntime } from '~/utils/runtime';
 
 const originalTauriRuntime = isTauriRuntime();
@@ -17,28 +16,12 @@ function restoreTauriRuntime() {
 }
 
 describe('wipe transition blur parameter', () => {
-  it('normalizes web blur to percentage range 0..20', () => {
-    const normalized = wipeManifest.normalizeParams?.({ edgeMode: 'blur', blur: 0.5 });
-
-    expect(normalized?.blur).toBe(0.5);
-    expect(wipeManifest.normalizeParams?.({ edgeMode: 'blur', blur: -10 })?.blur).toBe(0);
-    expect(wipeManifest.normalizeParams?.({ edgeMode: 'blur', blur: 100 })?.blur).toBe(20);
-  });
-
-  it('passes web blur percentage to shader as normalized UV value', () => {
-    const params = wipeManifest.normalizeParams?.({ edgeMode: 'blur', blur: 5 });
-
-    expect(params?.blur).toBe(5);
-    // updateFilter divides by 100 before setting the uniform.
-    expect((params?.blur ?? 0) / 100).toBe(0.05);
-  });
-
-  it('converts Tauri blur percentage to normalized UV in toTauriSpec', () => {
+  it('converts shared blur percentage to normalized UV in toTransitionSpec', () => {
     mockTauriRuntime(true);
-    const manifest = getTauriTransitionManifest('wipe');
+    const manifest = getTransitionManifestByType('wipe');
     expect(manifest).toBeDefined();
 
-    const spec = manifest?.toTauriSpec?.({
+    const spec = manifest?.toTransitionSpec?.({
       edgeMode: 'blur',
       blur: 10,
       direction: 'left',
@@ -54,11 +37,11 @@ describe('wipe transition blur parameter', () => {
     restoreTauriRuntime();
   });
 
-  it('clamps Tauri blur percentage to the renderer range', () => {
+  it('clamps shared blur percentage to the renderer range', () => {
     mockTauriRuntime(true);
-    const manifest = getTauriTransitionManifest('wipe');
+    const manifest = getTransitionManifestByType('wipe');
 
-    const tooSmall = manifest?.toTauriSpec?.({
+    const tooSmall = manifest?.toTransitionSpec?.({
       edgeMode: 'blur',
       blur: 0,
       direction: 'left',
@@ -70,7 +53,7 @@ describe('wipe transition blur parameter', () => {
       p3: 0.0001,
     });
 
-    const tooLarge = manifest?.toTauriSpec?.({
+    const tooLarge = manifest?.toTransitionSpec?.({
       edgeMode: 'blur',
       blur: 50,
       direction: 'left',

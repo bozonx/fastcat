@@ -192,6 +192,7 @@ export class CompositorRenderContextBuilder {
           width: state.width,
           height: state.height,
           previewEffectQuality: state.previewEffectQuality,
+          computeRunner: params.clipResourceManager.getComputeRunner()!,
           transitionManager: params.transitionManager,
           stageTextureRenderer: params.stageTextureRenderer,
           getTrackById: (trackId) => params.trackRuntimeManager.getById(trackId),

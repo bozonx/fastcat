@@ -77,7 +77,7 @@ describe('unified video effect manifests', () => {
     ]);
     expect(getTransitionManifest('wipe')?.supportedModes).toEqual(['adjacent']);
     for (const manifest of getAllTransitionManifests()) {
-      expect(manifest.toTauriSpec, manifest.type).toBeTypeOf('function');
+      expect(manifest.toTransitionSpec, manifest.type).toBeTypeOf('function');
     }
   });
 

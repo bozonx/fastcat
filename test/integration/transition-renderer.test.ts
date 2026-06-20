@@ -30,9 +30,21 @@ vi.mock('pixi.js', async () => {
     Sprite: MockSprite,
     Texture: {
       EMPTY: { id: 'empty-texture' },
+      from: vi.fn(() => ({ destroy: vi.fn() })),
     },
   };
 });
+
+const bitmap = { close: vi.fn(), width: 1920, height: 1080 } as unknown as ImageBitmap;
+const computeRunner = {
+  isReady: vi.fn(() => true),
+  applyTransition: vi.fn(async () => bitmap),
+} as any;
+const textureToBitmap = vi.fn(async () => bitmap);
+const manifest = {
+  renderMode: 'shader',
+  toTransitionSpec: vi.fn(() => ({ type: 'crossfade' })),
+};
 
 describe('TransitionRenderer', () => {
   beforeEach(() => {
@@ -98,6 +110,8 @@ describe('TransitionRenderer', () => {
       clips: [inactiveClip, clip],
       width: 1920,
       height: 1080,
+      computeRunner,
+      textureToBitmap,
       transitionManager,
       stageTextureRenderer,
       getTrackById: (trackId) => {
@@ -110,11 +124,16 @@ describe('TransitionRenderer', () => {
         return undefined;
       },
       getActiveTransitionState: () => ({
-        manifest: { renderMode: 'shader' },
+        manifest,
         progress: 0.5,
         curve: 'linear',
         edge: 'in',
-        transition: { durationUs: 1_000, mode: 'background', params: { softness: 1 } },
+        transition: {
+          type: 'dissolve',
+          durationUs: 1_000,
+          mode: 'background',
+          params: { softness: 1 },
+        },
       }),
       ensureTransitionRenderTexture: textureFactory as any,
       findPrevClipOnLayer: vi.fn(),
@@ -135,10 +154,7 @@ describe('TransitionRenderer', () => {
       2,
       clip.transitionFromTexture,
     );
-    expect(transitionManager.ensureUsableTransitionFilter).toHaveBeenCalledWith(clip, {
-      renderMode: 'shader',
-    });
-    expect(transitionManager.updateTransitionFilterSafely).toHaveBeenCalledTimes(1);
+    expect(computeRunner.applyTransition).toHaveBeenCalledTimes(1);
     expect(app.renderer.render).toHaveBeenCalledTimes(1);
     expect(transitionSprite.texture).toBe(clip.transitionOutputTexture);
     expect(transitionSprite.visible).toBe(true);
@@ -213,15 +229,17 @@ describe('TransitionRenderer', () => {
       clips: [clip, prevClip],
       width: 1280,
       height: 720,
+      computeRunner,
+      textureToBitmap,
       transitionManager,
       stageTextureRenderer,
       getTrackById: vi.fn(),
       getActiveTransitionState: () => ({
-        manifest: { renderMode: 'shader' },
+        manifest,
         progress: 0.25,
         curve: 'linear',
         edge: 'in',
-        transition: { durationUs: 1_000, mode: 'adjacent', params: {} },
+        transition: { type: 'dissolve', durationUs: 1_000, mode: 'adjacent', params: {} },
       }),
       ensureTransitionRenderTexture: ((texture: any) => texture ?? { id: Math.random() }) as any,
       findPrevClipOnLayer: vi.fn(() => prevClip),
@@ -285,6 +303,8 @@ describe('TransitionRenderer', () => {
       clips: [clip, prevClip],
       width: 1280,
       height: 720,
+      computeRunner,
+      textureToBitmap,
       transitionManager: {
         ensureUsableTransitionFilter: vi.fn(() => ({ id: 'usable-filter' })),
         updateTransitionFilterSafely: vi.fn(() => ({ id: 'updated-filter' })),
@@ -292,11 +312,11 @@ describe('TransitionRenderer', () => {
       stageTextureRenderer,
       getTrackById: vi.fn(),
       getActiveTransitionState: () => ({
-        manifest: { renderMode: 'shader' },
+        manifest,
         progress: 0.25,
         curve: 'linear',
         edge: 'in',
-        transition: { durationUs: 1_000, mode: 'adjacent', params: {} },
+        transition: { type: 'dissolve', durationUs: 1_000, mode: 'adjacent', params: {} },
       }),
       ensureTransitionRenderTexture: ((texture: any) => texture ?? { id: Math.random() }) as any,
       findPrevClipOnLayer: vi.fn(() => prevClip),

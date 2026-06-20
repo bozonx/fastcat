@@ -1,9 +1,11 @@
 /** @vitest-environment node */
 import { describe, expect, it } from 'vitest';
-import { initTransitions, normalizeTransitionParams } from '~/transitions';
-import { isTauriRuntime } from '~/utils/runtime';
-
-const originalTauriRuntime = isTauriRuntime();
+import {
+  getAllTransitionManifests,
+  getTransitionManifest,
+  initTransitions,
+  normalizeTransitionParams,
+} from '~/transitions';
 
 function mockTauriRuntime(value: boolean) {
   (globalThis as unknown as { __TAURI_INTERNALS__?: unknown }).__TAURI_INTERNALS__ = value
@@ -11,61 +13,30 @@ function mockTauriRuntime(value: boolean) {
     : undefined;
 }
 
-function restoreTauriRuntime() {
-  mockTauriRuntime(originalTauriRuntime);
-}
-
-describe('normalizeTransitionParams fallback logic', () => {
+describe('shared transition registry', () => {
   initTransitions();
 
-  it('preserves compatible parameters and resets incompatible/unrelated parameters in web runtime', () => {
+  it('returns the same built-in manifests in web and Tauri runtimes', () => {
     mockTauriRuntime(false);
+    const webManifest = getTransitionManifest('wipe');
+    const webTypes = getAllTransitionManifests().map((manifest) => manifest.type);
 
-    // Switching to 'wipe' from a state with direction 'right' (compatible) and zoomMode 'fixed' (unrelated/incompatible)
-    const normalized = normalizeTransitionParams('wipe', {
-      direction: 'right',
-      zoomMode: 'fixed',
-      gap: 0.12,
-    });
+    mockTauriRuntime(true);
+    const tauriManifest = getTransitionManifest('wipe');
+    const tauriTypes = getAllTransitionManifests().map((manifest) => manifest.type);
 
-    expect(normalized).toEqual({
-      direction: 'right',
-      edgeMode: 'gap',
-      gap: 0.12,
-      gapColor: '#000000',
-      blur: 2,
-      angle: 0,
-    });
-
-    // Switching to 'wipe' with incompatible direction 'to-center' (should reset to default 'left')
-    const normalizedReset = normalizeTransitionParams('wipe', {
-      direction: 'to-center',
-      gap: 0.05,
-    });
-
-    expect(normalizedReset).toEqual({
-      direction: 'left',
-      edgeMode: 'gap',
-      gap: 0.05,
-      gapColor: '#000000',
-      blur: 2,
-      angle: 0,
-    });
-
-    restoreTauriRuntime();
+    expect(tauriManifest).toBe(webManifest);
+    expect(tauriTypes).toEqual(webTypes);
   });
 
-  it('preserves compatible parameters and resets incompatible/unrelated parameters in Tauri runtime (using fallback)', () => {
-    mockTauriRuntime(true);
-
-    // Switching to 'wipe' from a state with direction 'right' (compatible) and zoomMode 'fixed' (unrelated/incompatible)
-    const normalized = normalizeTransitionParams('wipe', {
-      direction: 'right',
-      zoomMode: 'fixed',
-      gap: 0.12,
-    });
-
-    expect(normalized).toEqual({
+  it('preserves compatible parameters and resets incompatible or unrelated parameters', () => {
+    expect(
+      normalizeTransitionParams('wipe', {
+        direction: 'right',
+        zoomMode: 'fixed',
+        gap: 0.12,
+      }),
+    ).toEqual({
       direction: 'right',
       edgeMode: 'gap',
       gap: 0.12,
@@ -74,13 +45,12 @@ describe('normalizeTransitionParams fallback logic', () => {
       angle: 0,
     });
 
-    // Switching to 'wipe' with incompatible direction 'to-center' (should reset to default 'left')
-    const normalizedReset = normalizeTransitionParams('wipe', {
-      direction: 'to-center',
-      gap: 0.05,
-    });
-
-    expect(normalizedReset).toEqual({
+    expect(
+      normalizeTransitionParams('wipe', {
+        direction: 'to-center',
+        gap: 0.05,
+      }),
+    ).toEqual({
       direction: 'left',
       edgeMode: 'gap',
       gap: 0.05,
@@ -88,7 +58,5 @@ describe('normalizeTransitionParams fallback logic', () => {
       blur: 2,
       angle: 0,
     });
-
-    restoreTauriRuntime();
   });
 });

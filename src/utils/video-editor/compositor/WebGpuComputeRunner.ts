@@ -1,4 +1,5 @@
 import type { VideoEffectSpec } from '~/types/generated/native-monitor/VideoEffectSpec';
+import type { TransitionSpec } from '~/transitions';
 import effectWgsl from '~shared/effects/effect.wgsl?raw';
 import { createDevLogger } from '~/utils/dev-logger';
 import {
@@ -9,6 +10,68 @@ import {
 const log = createDevLogger('WebGpuComputeRunner');
 
 const UNIFORM_SIZE = 48; // 12 * 4 bytes
+const TRANSITION_UNIFORM_SIZE = 64;
+const CROSSFADE_WGSL = `@group(0) @binding(0) var from_tex: texture_2d<f32>;
+@group(0) @binding(1) var to_tex: texture_2d<f32>;
+@group(0) @binding(2) var output_tex: texture_storage_2d<rgba8unorm, write>;
+
+struct TransitionUniform {
+    progress: f32,
+    width: u32,
+    height: u32,
+    speed: f32,
+    p0: f32, p1: f32, p2: f32, p3: f32,
+    p4: f32, p5: f32, p6: f32, p7: f32,
+    p8: f32, p9: f32, p10: f32, p11: f32,
+};
+@group(0) @binding(3) var<uniform> uni: TransitionUniform;
+
+@compute @workgroup_size(8, 8, 1)
+fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
+    if (gid.x >= uni.width || gid.y >= uni.height) { return; }
+    let coord = vec2<i32>(i32(gid.x), i32(gid.y));
+    textureStore(
+        output_tex,
+        coord,
+        mix(textureLoad(from_tex, coord, 0), textureLoad(to_tex, coord, 0), uni.progress)
+    );
+}`;
+const FADE_THROUGH_COLOR_WGSL = `@group(0) @binding(0) var from_tex: texture_2d<f32>;
+@group(0) @binding(1) var to_tex: texture_2d<f32>;
+@group(0) @binding(2) var output_tex: texture_storage_2d<rgba8unorm, write>;
+
+struct TransitionUniform {
+    progress: f32,
+    width: u32,
+    height: u32,
+    speed: f32,
+    p0: f32, p1: f32, p2: f32, p3: f32,
+    p4: f32, p5: f32, p6: f32, p7: f32,
+    p8: f32, p9: f32, p10: f32, p11: f32,
+};
+@group(0) @binding(3) var<uniform> uni: TransitionUniform;
+
+@compute @workgroup_size(8, 8, 1)
+fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
+    if (gid.x >= uni.width || gid.y >= uni.height) { return; }
+    let coord = vec2<i32>(i32(gid.x), i32(gid.y));
+    let target_color = vec4<f32>(uni.p0, uni.p1, uni.p2, 1.0);
+    var final_color: vec4<f32>;
+    if (uni.progress < 0.5) {
+        final_color = mix(
+            textureLoad(from_tex, coord, 0),
+            target_color,
+            smoothstep(0.0, 1.0, uni.progress * 2.0)
+        );
+    } else {
+        final_color = mix(
+            target_color,
+            textureLoad(to_tex, coord, 0),
+            smoothstep(0.0, 1.0, (uni.progress - 0.5) * 2.0)
+        );
+    }
+    textureStore(output_tex, coord, final_color);
+}`;
 // Hard render ceilings — must stay byte-identical to the Rust side
 // (`src-tauri/src/compositor/effects/mod.rs`). These bound every value reaching
 // the GPU and are the ceiling an animation key can reach; the frontend
@@ -541,6 +604,8 @@ export class WebGpuComputeRunner {
   private cachedHeight = 0;
 
   private customPipelines = new Map<string, GPUComputePipeline>();
+  private transitionBindLayout: GPUBindGroupLayout | null = null;
+  private transitionPipelines = new Map<string, GPUComputePipeline>();
 
   public async init(): Promise<boolean> {
     if (this.device) return true;
@@ -585,6 +650,31 @@ export class WebGpuComputeRunner {
             binding: 4,
             visibility: GPUShaderStage.COMPUTE,
             sampler: { type: 'filtering' },
+          },
+        ],
+      });
+      this.transitionBindLayout = this.device.createBindGroupLayout({
+        label: 'web-transition-bind-layout',
+        entries: [
+          {
+            binding: 0,
+            visibility: GPUShaderStage.COMPUTE,
+            texture: { sampleType: 'float', viewDimension: '2d' },
+          },
+          {
+            binding: 1,
+            visibility: GPUShaderStage.COMPUTE,
+            texture: { sampleType: 'float', viewDimension: '2d' },
+          },
+          {
+            binding: 2,
+            visibility: GPUShaderStage.COMPUTE,
+            storageTexture: { access: 'write-only', format: 'rgba8unorm', viewDimension: '2d' },
+          },
+          {
+            binding: 3,
+            visibility: GPUShaderStage.COMPUTE,
+            buffer: { type: 'uniform', minBindingSize: TRANSITION_UNIFORM_SIZE },
           },
         ],
       });
@@ -1063,6 +1153,121 @@ export class WebGpuComputeRunner {
     }
   }
 
+  public async applyTransition(params: {
+    from: ImageBitmap;
+    to: ImageBitmap;
+    spec: TransitionSpec;
+    progress: number;
+    speed: number;
+  }): Promise<ImageBitmap | null> {
+    if (!this.device || !this.transitionBindLayout) return null;
+
+    const width = Math.max(1, Math.round(params.to.width));
+    const height = Math.max(1, Math.round(params.to.height));
+    if (params.from.width !== width || params.from.height !== height) {
+      throw new Error('Transition inputs must have identical dimensions.');
+    }
+
+    const usage =
+      GPUTextureUsage.TEXTURE_BINDING |
+      GPUTextureUsage.COPY_DST |
+      GPUTextureUsage.RENDER_ATTACHMENT;
+    const fromTexture = this.device.createTexture({
+      label: 'web-transition-from',
+      size: { width, height },
+      format: 'rgba8unorm',
+      usage,
+    });
+    const toTexture = this.device.createTexture({
+      label: 'web-transition-to',
+      size: { width, height },
+      format: 'rgba8unorm',
+      usage,
+    });
+    const outputTexture = this.device.createTexture({
+      label: 'web-transition-output',
+      size: { width, height },
+      format: 'rgba8unorm',
+      usage: GPUTextureUsage.STORAGE_BINDING | GPUTextureUsage.COPY_SRC,
+    });
+    const uniformBuffer = this.device.createBuffer({
+      label: 'web-transition-uniform',
+      size: TRANSITION_UNIFORM_SIZE,
+      usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+    });
+
+    try {
+      this.device.queue.copyExternalImageToTexture(
+        { source: params.from },
+        { texture: fromTexture },
+        { width, height },
+      );
+      this.device.queue.copyExternalImageToTexture(
+        { source: params.to },
+        { texture: toTexture },
+        { width, height },
+      );
+
+      const values = new ArrayBuffer(TRANSITION_UNIFORM_SIZE);
+      const u32 = new Uint32Array(values);
+      const f32 = new Float32Array(values);
+      f32[0] = Math.max(0, Math.min(1, params.progress));
+      u32[1] = width;
+      u32[2] = height;
+      f32[3] = Math.max(0, params.speed);
+      const specParams =
+        typeof params.spec.params === 'object' && params.spec.params !== null
+          ? params.spec.params
+          : {};
+      for (let index = 0; index < 12; index += 1) {
+        const value = (specParams as Record<string, unknown>)[`p${index}`];
+        f32[4 + index] = typeof value === 'number' && Number.isFinite(value) ? value : 0;
+      }
+      if (params.spec.type === 'fade-through-color') {
+        const color = String(params.spec.color ?? '#000000')
+          .trim()
+          .replace(/^#/, '');
+        const parsed = /^[0-9a-fA-F]{6}$/.test(color) ? Number.parseInt(color, 16) : 0;
+        f32[4] = ((parsed >> 16) & 0xff) / 255;
+        f32[5] = ((parsed >> 8) & 0xff) / 255;
+        f32[6] = (parsed & 0xff) / 255;
+      }
+      this.device.queue.writeBuffer(uniformBuffer, 0, values);
+
+      const source =
+        params.spec.type === 'custom-wgsl' && typeof params.spec.source === 'string'
+          ? params.spec.source
+          : params.spec.type === 'fade-through-color'
+            ? FADE_THROUGH_COLOR_WGSL
+            : CROSSFADE_WGSL;
+      const pipeline = this.getOrCreateTransitionPipeline(source);
+      const bindGroup = this.device.createBindGroup({
+        label: 'web-transition-bind-group',
+        layout: this.transitionBindLayout,
+        entries: [
+          { binding: 0, resource: fromTexture.createView() },
+          { binding: 1, resource: toTexture.createView() },
+          { binding: 2, resource: outputTexture.createView() },
+          { binding: 3, resource: { buffer: uniformBuffer } },
+        ],
+      });
+      const encoder = this.device.createCommandEncoder({ label: 'web-transition-encoder' });
+      const pass = encoder.beginComputePass({ label: 'web-transition-pass' });
+      pass.setPipeline(pipeline);
+      pass.setBindGroup(0, bindGroup);
+      pass.dispatchWorkgroups(Math.ceil(width / 8), Math.ceil(height / 8), 1);
+      pass.end();
+      this.device.queue.submit([encoder.finish()]);
+
+      return await this.readTextureToBitmap(outputTexture, width, height);
+    } finally {
+      uniformBuffer.destroy();
+      outputTexture.destroy();
+      toTexture.destroy();
+      fromTexture.destroy();
+    }
+  }
+
   public setPreviewEffectQuality(quality: PreviewEffectQuality): void {
     this.previewEffectQuality = quality;
   }
@@ -1172,6 +1377,67 @@ export class WebGpuComputeRunner {
     return pipeline;
   }
 
+  private getOrCreateTransitionPipeline(source: string): GPUComputePipeline {
+    const cached = this.transitionPipelines.get(source);
+    if (cached) return cached;
+
+    const pipeline = this.device!.createComputePipeline({
+      label: 'web-transition-pipeline',
+      layout: this.device!.createPipelineLayout({
+        bindGroupLayouts: [this.transitionBindLayout!],
+      }),
+      compute: {
+        module: this.device!.createShaderModule({
+          label: 'web-transition-shader',
+          code: source,
+        }),
+        entryPoint: 'main',
+      },
+    });
+    this.transitionPipelines.set(source, pipeline);
+    return pipeline;
+  }
+
+  private async readTextureToBitmap(
+    texture: GPUTexture,
+    width: number,
+    height: number,
+  ): Promise<ImageBitmap> {
+    const bytesPerRow = Math.ceil((width * 4) / 256) * 256;
+    const outputBuffer = this.device!.createBuffer({
+      size: bytesPerRow * height,
+      usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ,
+    });
+
+    try {
+      const encoder = this.device!.createCommandEncoder();
+      encoder.copyTextureToBuffer(
+        { texture },
+        { buffer: outputBuffer, bytesPerRow, rowsPerImage: height },
+        { width, height },
+      );
+      this.device!.queue.submit([encoder.finish()]);
+      await outputBuffer.mapAsync(GPUMapMode.READ);
+
+      const mappedRange = outputBuffer.getMappedRange();
+      const canvas = new OffscreenCanvas(width, height);
+      const context = canvas.getContext('2d')!;
+      const imageData = context.createImageData(width, height);
+      const rowSize = width * 4;
+      for (let y = 0; y < height; y += 1) {
+        imageData.data.set(
+          new Uint8ClampedArray(mappedRange, y * bytesPerRow, rowSize),
+          y * rowSize,
+        );
+      }
+      context.putImageData(imageData, 0, 0);
+      outputBuffer.unmap();
+      return await createImageBitmap(canvas);
+    } finally {
+      outputBuffer.destroy();
+    }
+  }
+
   /**
    * Release all persistent GPU resources. Call when the compositor is destroyed
    * to avoid leaking GPU memory across page navigations or compositor re-inits.
@@ -1195,6 +1461,8 @@ export class WebGpuComputeRunner {
     this.uniformBuffer = null;
     this.uniformCapacity = 0;
     this.customPipelines.clear();
+    this.transitionPipelines.clear();
+    this.transitionBindLayout = null;
     this.bindLayout = null;
     this.pipeline = null;
     this.shaderModule = null;

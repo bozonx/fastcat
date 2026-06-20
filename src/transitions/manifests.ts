@@ -1,7 +1,7 @@
-import type { TransitionManifest, TauriTransitionSpec } from '../core/registry';
+import type { TransitionManifest, TransitionSpec } from './core/registry';
 
 // ---------------------------------------------------------------------------
-// Helpers (mirror the web manifests so the Tauri specs stay 1:1 with PixiJS).
+// Runtime-agnostic helpers shared by web preview and native rendering/export.
 // ---------------------------------------------------------------------------
 
 function finiteNumber(value: unknown, fallback: number): number {
@@ -95,11 +95,8 @@ function resolveBlurQuality(
 
 /**
  * Static part of the motion-blur magnitude (`baseSpeed * motionBlur * factor`).
- * The web manifests additionally scale blur by the curve's instantaneous speed
- * (a per-frame derivative). Native applies that derivative at render time via the
- * per-frame `uni.speed` uniform (computed in `layer_builder.rs` from the curve),
- * which the slide/blinds shaders multiply into this magnitude — so blur now grows
- * and shrinks with the curve instead of staying flat.
+ * The renderers additionally scale blur by the curve's instantaneous speed
+ * through the per-frame `uni.speed` uniform.
  */
 function motionBlurConst(motionBlur: number, durationSec: number | undefined, factor = 0.05) {
   if (motionBlur > 0 && durationSec && durationSec > 0) {
@@ -211,7 +208,7 @@ function normalizeCubeParams(params?: Record<string, unknown>): Record<string, u
 }
 
 // ---------------------------------------------------------------------------
-// Shared WGSL prelude. The native transition pipeline binds:
+// Shared WGSL prelude. Both transition pipelines bind:
 //   0: from_tex, 1: to_tex, 2: output_tex (storage), 3: uniform (progress + p0..p11)
 // Both inputs are pre-scaled (bilinear blit) to the output size, so `samp` reads
 // in normalized [0..1] space and is the identity at integer texel centers.
@@ -1169,7 +1166,7 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
 }`;
 
 // ---------------------------------------------------------------------------
-// Reusable param-field fragments (label keys match the web manifests / i18n).
+// Reusable param-field fragments.
 // ---------------------------------------------------------------------------
 
 const blurQualityField = {
@@ -1240,7 +1237,7 @@ const offsetFields = [
 // Manifests.
 // ---------------------------------------------------------------------------
 
-export const tauriTransitionManifests: TransitionManifest[] = [
+export const transitionManifests: TransitionManifest[] = [
   {
     type: 'dissolve',
     name: 'Dissolve',
@@ -1251,7 +1248,7 @@ export const tauriTransitionManifests: TransitionManifest[] = [
     renderMode: 'shader',
     renderer: 'wgpu',
     supportedModes: ['adjacent', 'background', 'transparent'],
-    toTauriSpec: () => ({ type: 'crossfade' }),
+    toTransitionSpec: () => ({ type: 'crossfade' }),
     computeOutOpacity: transparent,
     computeInOpacity: transparent,
   },
@@ -1319,7 +1316,7 @@ export const tauriTransitionManifests: TransitionManifest[] = [
         step: 1,
       },
     ],
-    toTauriSpec: (params: Record<string, unknown>) => {
+    toTransitionSpec: (params: Record<string, unknown>) => {
       const useGap = params.edgeMode !== 'blur';
       const [ax, ay] = wipeAxis(params.direction, clamp(finiteNumber(params.angle, 0), -180, 180));
       const [r, g, b] = hexToRgb01(params.gapColor, '#000000');
@@ -1425,11 +1422,11 @@ export const tauriTransitionManifests: TransitionManifest[] = [
         step: 0.01,
       },
     ],
-    toTauriSpec: (
+    toTransitionSpec: (
       params: Record<string, unknown>,
       durationSec?: number,
       options?: { isExport?: boolean; isPlaying?: boolean; previewBlurQuality?: string },
-    ): TauriTransitionSpec => {
+    ): TransitionSpec => {
       const [ax, ay] = directionVector(params.direction);
       const [r, g, b] = hexToRgb01(params.gapColor, '#000000');
       const q = resolveBlurQuality(options, params.blurQuality);
@@ -1482,7 +1479,7 @@ export const tauriTransitionManifests: TransitionManifest[] = [
         ],
       },
     ],
-    toTauriSpec: (params: Record<string, unknown>) => ({
+    toTransitionSpec: (params: Record<string, unknown>) => ({
       type: 'custom-wgsl',
       source: CLOCK_WGSL,
       params: {
@@ -1547,7 +1544,7 @@ export const tauriTransitionManifests: TransitionManifest[] = [
         step: 0.01,
       },
     ],
-    toTauriSpec: (
+    toTransitionSpec: (
       params: Record<string, unknown>,
       durationSec?: number,
       options?: { isExport?: boolean; isPlaying?: boolean; previewBlurQuality?: string },
@@ -1646,7 +1643,7 @@ export const tauriTransitionManifests: TransitionManifest[] = [
         step: 1,
       },
     ],
-    toTauriSpec: (params: Record<string, unknown>) => {
+    toTransitionSpec: (params: Record<string, unknown>) => {
       const useGap = params.edgeMode !== 'blur';
       const angle = (clamp(finiteNumber(params.angle, 0), -180, 180) * Math.PI) / 180;
       const [r, g, b] = hexToRgb01(params.gapColor, '#000000');
@@ -1683,7 +1680,7 @@ export const tauriTransitionManifests: TransitionManifest[] = [
     paramFields: [
       { kind: 'color', key: 'color', labelKey: 'fastcat.timeline.transition.paramFadeColor' },
     ],
-    toTauriSpec: (params: Record<string, unknown>) => ({
+    toTransitionSpec: (params: Record<string, unknown>) => ({
       type: 'fade-through-color',
       color: normalizeTransitionColor(params.color, '#000000'),
     }),
@@ -1736,7 +1733,7 @@ export const tauriTransitionManifests: TransitionManifest[] = [
         labelKey: 'fastcat.timeline.transition.paramFollowScale',
       },
     ],
-    toTauriSpec: (params: Record<string, unknown>) => {
+    toTransitionSpec: (params: Record<string, unknown>) => {
       const center = centerFromAnchor(params);
       return {
         type: 'custom-wgsl',
@@ -1798,7 +1795,7 @@ export const tauriTransitionManifests: TransitionManifest[] = [
         ],
       },
     ],
-    toTauriSpec: (params: Record<string, unknown>) => {
+    toTransitionSpec: (params: Record<string, unknown>) => {
       const center = centerFromAnchor(params);
       return {
         type: 'custom-wgsl',
@@ -1904,7 +1901,7 @@ export const tauriTransitionManifests: TransitionManifest[] = [
         step: 0.01,
       },
     ],
-    toTauriSpec: (
+    toTransitionSpec: (
       params: Record<string, unknown>,
       durationSec?: number,
       options?: { isExport?: boolean; isPlaying?: boolean; previewBlurQuality?: string },
@@ -2003,7 +2000,7 @@ export const tauriTransitionManifests: TransitionManifest[] = [
         step: 1,
       },
     ],
-    toTauriSpec: (
+    toTransitionSpec: (
       params: Record<string, unknown>,
       durationSec?: number,
       options?: { isExport?: boolean; isPlaying?: boolean; previewBlurQuality?: string },
@@ -2064,7 +2061,7 @@ export const tauriTransitionManifests: TransitionManifest[] = [
         step: 0.1,
       },
     ],
-    toTauriSpec: (
+    toTransitionSpec: (
       params: Record<string, unknown>,
       _durationSec?: number,
       options?: { isExport?: boolean; isPlaying?: boolean; previewBlurQuality?: string },
@@ -2133,7 +2130,7 @@ export const tauriTransitionManifests: TransitionManifest[] = [
         step: 0.01,
       },
     ],
-    toTauriSpec: (params: Record<string, unknown>) => {
+    toTransitionSpec: (params: Record<string, unknown>) => {
       const idx = directionIndex(params.direction); // 0 left, 1 right, 2 up, 3 down
       const dx = idx === 0 ? -1 : idx === 1 ? 1 : 0;
       const dy = idx === 2 ? -1 : idx === 3 ? 1 : 0;
@@ -2241,7 +2238,7 @@ export const tauriTransitionManifests: TransitionManifest[] = [
         step: 0.05,
       },
     ],
-    toTauriSpec: (
+    toTransitionSpec: (
       params: Record<string, unknown>,
       durationSec?: number,
       options?: { isExport?: boolean; isPlaying?: boolean; previewBlurQuality?: string },
@@ -2321,8 +2318,8 @@ export const tauriTransitionManifests: TransitionManifest[] = [
         step: 0.05,
       },
     ],
-    toTauriSpec: (params: Record<string, unknown>) => {
-      // down=1, up=0, left=2, right=3 (matches web updateFilter)
+    toTransitionSpec: (params: Record<string, unknown>) => {
+      // down=1, up=0, left=2, right=3 (matches the shared shader mapping)
       const d = params.direction;
       const dir = d === 'up' ? 0 : d === 'left' ? 2 : d === 'right' ? 3 : 1;
       return {
@@ -2343,10 +2340,10 @@ export const tauriTransitionManifests: TransitionManifest[] = [
   },
 ];
 
-const tauriTransitionManifestByType = new Map(
-  tauriTransitionManifests.map((manifest) => [manifest.type, manifest]),
+const transitionManifestByType = new Map(
+  transitionManifests.map((manifest) => [manifest.type, manifest]),
 );
 
-export function getTauriTransitionManifest(type: string): TransitionManifest | undefined {
-  return tauriTransitionManifestByType.get(type);
+export function getTransitionManifestByType(type: string): TransitionManifest | undefined {
+  return transitionManifestByType.get(type);
 }
