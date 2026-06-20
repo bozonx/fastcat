@@ -496,11 +496,11 @@ const coreWindow = computed<{ leftPx: number; widthPx: number }>(() => computeSt
 // stays glued to its source region while zooming and only moves when repainted.
 const renderedFrac = ref<{ start: number; width: number } | null>(null);
 
-const canvasBoxStyle = computed(() => {
+const canvasHostStyle = computed(() => {
   const frac = renderedFrac.value;
   const totalW = totalWidthPx.value;
   if (totalW <= 0) {
-    return { left: '0px', width: '0px', transform: undefined };
+    return { left: '0px', width: '0px' };
   }
 
   // Before the first draw, use the current window instead of briefly creating a
@@ -509,9 +509,9 @@ const canvasBoxStyle = computed(() => {
   const sourceLeftPx = frac ? frac.start * totalW : renderWindow.value.leftPx;
   const sourceWidthPx = frac ? frac.width * totalW : renderWindow.value.widthPx;
 
-  // Position the small rendered window directly in clip coordinates. Keeping a
-  // full-duration source container in the DOM reaches WebKitGTK's element-size
-  // and coordinate precision limits for long audio at extreme zoom levels.
+  // Position a small ordinary host in clip coordinates. The canvas itself stays
+  // at local x=0: WebKitGTK can cull a canvas whose own positioned offset grows
+  // past ~64K px inside a long clip, which happens around 17000% in real projects.
   const clipLeftPx = isReversed.value
     ? waveformLeftPx.value + totalW - (sourceLeftPx + sourceWidthPx)
     : waveformLeftPx.value + sourceLeftPx;
@@ -519,7 +519,6 @@ const canvasBoxStyle = computed(() => {
   return {
     left: `${clipLeftPx}px`,
     width: `${sourceWidthPx}px`,
-    transform: isReversed.value ? 'scaleX(-1)' : undefined,
   };
 });
 
@@ -768,11 +767,20 @@ onBeforeUnmount(() => {
       ></div>
     </div>
 
-    <canvas
+    <div
       v-else-if="audioPeaks"
-      ref="canvasEl"
-      class="absolute top-0 h-full max-w-none"
-      :style="canvasBoxStyle"
-    ></canvas>
+      class="absolute inset-y-0 h-full overflow-hidden"
+      :style="canvasHostStyle"
+    >
+      <canvas
+        ref="canvasEl"
+        class="absolute inset-0 h-full w-full max-w-none"
+        :style="{
+          left: '0px',
+          width: '100%',
+          transform: isReversed ? 'scaleX(-1)' : undefined,
+        }"
+      ></canvas>
+    </div>
   </div>
 </template>

@@ -2,6 +2,7 @@ import { ref, reactive } from 'vue';
 import type { FsEntry } from '~/types/fs';
 import type { IFileSystemAdapter } from '~/file-manager/core/vfs/types';
 import { useFileBrowserEntries } from '~/composables/file-manager/useFileBrowserEntries';
+import { useFileManagerStore } from '~/stores/file-manager.store';
 import {
   VIDEO_DIR_NAME,
   AUDIO_DIR_NAME,
@@ -63,6 +64,7 @@ const collapsedState = reactive<Record<AssetCategoryId, boolean>>({
 interface Deps {
   vfs: IFileSystemAdapter;
   readDirectory: (path?: string) => Promise<FsEntry[]>;
+  fileManagerStore?: ReturnType<typeof useFileManagerStore>;
 }
 
 function areEntriesEqual(current: FsEntry[], next: FsEntry[]): boolean {
@@ -88,11 +90,11 @@ function areEntriesEqual(current: FsEntry[], next: FsEntry[]): boolean {
  * pipeline (sorting, thumbnails, compatibility). Only the top level of each
  * folder is read — nested folders are not supported yet.
  */
-export function useMobileAssetCategories({ vfs, readDirectory }: Deps) {
+export function useMobileAssetCategories({ vfs, readDirectory, fileManagerStore }: Deps) {
   const isRemoteMode = ref(false);
 
   const categories = CATEGORY_ORDER.map((id) => {
-    const entries = useFileBrowserEntries({ isRemoteMode, vfs });
+    const entries = useFileBrowserEntries({ isRemoteMode, vfs, fileManagerStore });
     const isLoading = ref(false);
     const error = ref<string | null>(null);
     let activeLoad: Promise<void> | null = null;

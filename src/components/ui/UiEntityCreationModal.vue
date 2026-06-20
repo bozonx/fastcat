@@ -58,22 +58,23 @@ watch(
       await nextTick();
       runValidation();
       setTimeout(() => {
+        const exposedInput = (inputRef.value as any)?.input;
         const input =
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          (inputRef.value as any)?.$el?.querySelector('input') || (inputRef.value as any)?.input;
-        if (input) {
-          input.focus();
-          const value = name.value;
-          if (props.selectWithoutExtension && value) {
-            const lastDot = value.lastIndexOf('.');
-            if (lastDot > 0) {
-              input.setSelectionRange(0, lastDot);
-            } else {
-              input.select();
-            }
+          (inputRef.value as any)?.$el?.querySelector('input') ||
+          (typeof exposedInput?.value === 'object' ? exposedInput.value : exposedInput);
+        if (!input) return;
+        input.focus();
+        const value = name.value;
+        if (props.selectWithoutExtension && value) {
+          const lastDot = value.lastIndexOf('.');
+          if (lastDot > 0) {
+            input.setSelectionRange(0, lastDot);
           } else {
             input.select();
           }
+        } else {
+          input.select();
         }
       }, INPUT_FOCUS_DELAY_MS);
     }

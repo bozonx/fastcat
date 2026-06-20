@@ -27,6 +27,7 @@ export interface ProjectMonitorSettings {
   toolbarPosition: 'top' | 'bottom' | 'left' | 'right';
   showTransparencyGrid: boolean;
   showMarkerTexts: boolean;
+  previewBlurQuality: 'low' | 'medium' | 'high' | 'ultra' | 'auto';
 }
 
 /**
@@ -138,6 +139,7 @@ export const DEFAULT_PROJECT_MONITOR_SETTINGS: ProjectMonitorSettings = {
   toolbarPosition: 'bottom',
   showTransparencyGrid: false,
   showMarkerTexts: true,
+  previewBlurQuality: 'auto',
 };
 
 export const DEFAULT_MONITOR_VIEW_SETTINGS: MonitorViewSettings = {
@@ -280,6 +282,7 @@ function createProjectSettingsSchema(defaults: FastCatProjectSettings) {
     toolbarPosition: z.enum(['top', 'bottom', 'left', 'right']).catch(dm.toolbarPosition),
     showTransparencyGrid: z.coerce.boolean().catch(dm.showTransparencyGrid),
     showMarkerTexts: z.coerce.boolean().catch(dm.showMarkerTexts),
+    previewBlurQuality: z.enum(['low', 'medium', 'high', 'ultra', 'auto']).catch(dm.previewBlurQuality ?? 'auto'),
   });
 
   const sessionSchema = z.object({

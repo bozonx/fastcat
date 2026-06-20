@@ -21,11 +21,14 @@ export interface ExtendedFsEntry extends FsEntry {
 export function useFileBrowserEntries({
   isRemoteMode,
   vfs,
+  fileManagerStore: customStore,
 }: {
   isRemoteMode: Ref<boolean>;
   vfs: IFileSystemAdapter;
+  fileManagerStore?: ReturnType<typeof useFileManagerStore>;
 }) {
   const fileManagerStore =
+    customStore ||
     (inject('fileManagerStore', null) as ReturnType<typeof useFileManagerStore> | null) ||
     useFileManagerStore();
   const folderEntries = ref<FsEntry[]>([]);
@@ -108,7 +111,7 @@ export function useFileBrowserEntries({
     );
   }
 
-  const { sortedEntries } = useFileSorting(folderEntries, folderSizes);
+  const { sortedEntries } = useFileSorting(folderEntries, folderSizes, fileManagerStore);
 
   const { thumbnails: videoThumbnails } = useFileManagerThumbnails(sortedEntries, vfs);
   const { compatibility: fileCompatibility } = useFileManagerCompatibility(sortedEntries, {

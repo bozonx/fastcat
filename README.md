@@ -153,7 +153,8 @@ Waveform cache entries are validated against the source file size and modificati
 reuse. Long timeline waveforms are rendered through an overscanned viewport window so scrolling
 within the buffered region does not re-rasterize the canvas, while zooming temporarily scales the
 existing bitmap until the settled redraw. The window is positioned directly in clip coordinates,
-avoiding browser element-size limits for long audio sources at extreme timeline zoom.
+inside a small host that keeps the canvas at local x=0, avoiding browser element-size and canvas
+culling limits for long audio sources at extreme timeline zoom.
 
 Mode-specific behavior:
 

@@ -22,6 +22,7 @@ const ProjectMonitorSchema = z.object({
   showGrid: z.coerce.boolean().catch(false),
   showTimecode: z.coerce.boolean().catch(true),
   toolbarPosition: z.enum(['top', 'bottom', 'left', 'right']).catch('bottom'),
+  previewBlurQuality: z.enum(['low', 'medium', 'high', 'ultra', 'auto']).catch('auto'),
 });
 
 const TimelineSessionSchema = z.object({

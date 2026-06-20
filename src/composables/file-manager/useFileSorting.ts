@@ -2,8 +2,13 @@ import { computed, type Ref, toRaw, inject } from 'vue';
 import type { FsEntry } from '~/types/fs';
 import { useFileManagerStore } from '~/stores/file-manager.store';
 
-export function useFileSorting(entries: Ref<FsEntry[]>, folderSizes?: Ref<Record<string, number>>) {
-  const fileManagerStore =
+export function useFileSorting(
+  entries: Ref<FsEntry[]>,
+  folderSizes?: Ref<Record<string, number>>,
+  fileManagerStore?: ReturnType<typeof useFileManagerStore>,
+) {
+  const store =
+    fileManagerStore ||
     (inject('fileManagerStore', null) as ReturnType<typeof useFileManagerStore> | null) ||
     useFileManagerStore();
 
@@ -12,7 +17,7 @@ export function useFileSorting(entries: Ref<FsEntry[]>, folderSizes?: Ref<Record
     if (rawEntries.length === 0) return [];
 
     const arr = [...rawEntries];
-    const { field, order } = fileManagerStore.sortOption;
+    const { field, order } = store.sortOption;
     const modifier = order === 'asc' ? 1 : -1;
 
     const compare = (a: string | number, b: string | number) => {

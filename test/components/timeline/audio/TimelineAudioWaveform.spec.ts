@@ -501,11 +501,12 @@ describe('TimelineAudioWaveform.vue', () => {
       expect(vm.coreWindow.leftPx).toBe(Math.floor(expectedVisibleLeft));
 
       const canvas = wrapper.find('canvas').element as HTMLCanvasElement;
-      expect(canvas.style.left).toMatch(/px$/);
-      expect(canvas.style.width).toMatch(/px$/);
+      const canvasHost = canvas.parentElement as HTMLElement;
+      expect(canvasHost.style.left).toMatch(/px$/);
+      expect(canvasHost.style.width).toMatch(/px$/);
 
-      const canvasLeftInClip = Number.parseFloat(canvas.style.left);
-      const canvasRightInClip = canvasLeftInClip + Number.parseFloat(canvas.style.width);
+      const canvasLeftInClip = Number.parseFloat(canvasHost.style.left);
+      const canvasRightInClip = canvasLeftInClip + Number.parseFloat(canvasHost.style.width);
       const visibleWidth = Math.min(
         mockTimelineStore.timelineViewportWidth,
         vm.waveformMetrics.clipWidthPx,
@@ -559,14 +560,59 @@ describe('TimelineAudioWaveform.vue', () => {
         expect(vm.totalWidthPx).toBeGreaterThan(10_000_000);
 
         const canvas = wrapper.find('canvas').element as HTMLCanvasElement;
-        const canvasLeftInClip = Number.parseFloat(canvas.style.left);
-        const canvasWidth = Number.parseFloat(canvas.style.width);
+        const canvasHost = canvas.parentElement as HTMLElement;
+        const canvasLeftInClip = Number.parseFloat(canvasHost.style.left);
+        const canvasWidth = Number.parseFloat(canvasHost.style.width);
 
         expect(Math.abs(canvasLeftInClip)).toBeLessThanOrEqual(1001);
         expect(canvasWidth).toBeLessThanOrEqual(3181);
         expect(canvas.style.transform).toBe(expectedTransform);
-        expect(canvas.parentElement).toBe(wrapper.element);
+        expect(canvas.style.left).toBe('0px');
+        expect(canvasHost.parentElement).toBe(wrapper.element);
       },
     );
+
+    it('keeps the canvas at local x=0 when the real clip viewport offset exceeds 64K px', async () => {
+      vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => {
+        callback(0);
+        return 0;
+      });
+      vi.stubGlobal('cancelAnimationFrame', () => undefined);
+
+      vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue({
+        beginPath: vi.fn(),
+        clearRect: vi.fn(),
+        closePath: vi.fn(),
+        fill: vi.fn(),
+        lineTo: vi.fn(),
+        moveTo: vi.fn(),
+        fillStyle: '',
+      } as unknown as CanvasRenderingContext2D);
+
+      const item: TimelineClipItem = {
+        ...baseItem,
+        timelineRange: { startUs: 440_000, durationUs: 243_680_000 },
+        sourceRange: { startUs: 480_000, durationUs: 243_680_000 },
+        sourceDurationUs: 1_160_753_167,
+      };
+      mockMediaStore.mediaMetadata['media.mp4'] = {
+        duration: 1160.753167,
+        audioPeaks: [new Float32Array(500_000).fill(0.5)],
+      };
+      mockTimelineStore.timelineViewportWidth = 1180;
+      mockTimelineStore.timelineZoom = 102;
+      mockTimelineStore.timelineScrollLeftPx = timeUsToPx(46_480_000, 102) - 590;
+
+      const wrapper = await mountComponent({ item });
+      await nextTick();
+
+      const canvas = wrapper.find('canvas').element as HTMLCanvasElement;
+      const canvasHost = canvas.parentElement as HTMLElement;
+
+      expect(Number.parseFloat(canvasHost.style.left)).toBeGreaterThan(65_536);
+      expect(Number.parseFloat(canvasHost.style.width)).toBeLessThanOrEqual(3181);
+      expect(canvas.style.left).toBe('0px');
+      expect(canvas.style.width).toBe('100%');
+    });
   });
 });

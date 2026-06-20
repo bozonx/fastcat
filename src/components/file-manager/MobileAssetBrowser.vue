@@ -72,6 +72,7 @@ const {
 const { categories, loadAll, toggleCollapse, isCollapsed } = useMobileAssetCategories({
   vfs,
   readDirectory,
+  fileManagerStore: assetStore,
 });
 
 // Flattened view of every visible asset across all categories — used for shared

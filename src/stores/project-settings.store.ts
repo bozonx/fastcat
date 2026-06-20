@@ -106,6 +106,7 @@ export const useProjectSettingsStore = defineStore('projectSettings', () => {
     'toolbarPosition',
     'showTransparencyGrid',
     'showMarkerTexts',
+    'previewBlurQuality',
   ]);
 
   const activeMonitorView = computed<MonitorViewSettings>(() => {

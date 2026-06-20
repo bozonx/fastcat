@@ -447,6 +447,27 @@ export function useMonitorContainerControls(options: UseMonitorContainerControls
         }
       },
     })),
+    [
+      {
+        label: options.t('fastcat.timeline.transition.paramBlurQuality') + ':',
+        type: 'label' as any,
+      },
+      ...(['auto', 'low', 'medium', 'high', 'ultra'] as const).map((q) => {
+        const labelKey = q === 'auto'
+          ? 'fastcat.timeline.transition.blurQualityAuto'
+          : `fastcat.timeline.transition.blurQuality${q.charAt(0).toUpperCase() + q.slice(1)}`;
+        return {
+          label: options.t(labelKey),
+          type: 'checkbox' as const,
+          checked: (options.projectStore.activeMonitor?.previewBlurQuality ?? 'auto') === q,
+          onSelect: () => {
+            if (options.projectStore.activeMonitor) {
+              options.projectStore.activeMonitor.previewBlurQuality = q;
+            }
+          },
+        };
+      }),
+    ],
   ]);
 
   return {
