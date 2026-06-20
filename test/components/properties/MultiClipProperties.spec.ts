@@ -35,7 +35,7 @@ vi.mock('~/components/properties/multi-clip/MultiClipBlendOpacitySection.vue', (
 vi.mock('~/components/properties/multi-clip/MultiClipTimingSection.vue', () => ({
   default: {
     name: 'MultiClipTimingSection',
-    props: ['hideUniformDuration'],
+    props: ['hideUniformDuration', 'isMobile'],
     template: '<div data-testid="timing-section"></div>',
   },
 }));
@@ -175,6 +175,7 @@ describe('MultiClipProperties.vue', () => {
     mockClipboardStore.setClipboardPayload = vi.fn();
     mockTimelineStore.copySelectedClips = vi.fn(() => []);
     mockTimelineStore.cutSelectedClips = vi.fn(() => []);
+    mockTimelineStore.isMobileLayout = false;
 
     // Reset batch actions defaults
     mockClipBatchActions.selectedClips.value = [];
@@ -247,6 +248,20 @@ describe('MultiClipProperties.vue', () => {
     const wrapper = await mountComponent();
     const timingSection = wrapper.findComponent({ name: 'MultiClipTimingSection' });
     expect(timingSection.props('hideUniformDuration')).toBe(true);
+  });
+
+  it('passes isMobile=false to timing section when timeline is not in mobile layout', async () => {
+    mockTimelineStore.isMobileLayout = false;
+    const wrapper = await mountComponent();
+    const timingSection = wrapper.findComponent({ name: 'MultiClipTimingSection' });
+    expect(timingSection.props('isMobile')).toBe(false);
+  });
+
+  it('passes isMobile=true to timing section when timeline is in mobile layout', async () => {
+    mockTimelineStore.isMobileLayout = true;
+    const wrapper = await mountComponent();
+    const timingSection = wrapper.findComponent({ name: 'MultiClipTimingSection' });
+    expect(timingSection.props('isMobile')).toBe(true);
   });
 
   it('displays sub-panels depending on flags', async () => {

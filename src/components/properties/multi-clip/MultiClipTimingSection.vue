@@ -11,6 +11,7 @@ defineProps<{
   startShiftAccumulator: number;
   endShiftAccumulator: number;
   hideUniformDuration?: boolean;
+  isMobile?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -24,7 +25,7 @@ const { t } = useI18n();
 </script>
 
 <template>
-  <PropertySection :title="t('fastcat.clip.info')">
+  <PropertySection v-if="!isMobile" :title="t('fastcat.clip.info')">
     <PropertyTimecode
       v-if="!hideUniformDuration"
       :label="t('common.duration')"

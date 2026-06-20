@@ -602,6 +602,7 @@ const otherActions = computed(() => {
       :start-shift-accumulator="startShiftAccumulator"
       :end-shift-accumulator="endShiftAccumulator"
       :hide-uniform-duration="isSingleGroupSelection"
+      :is-mobile="isMobile"
       @set-uniform-duration="handleSetUniformDuration"
       @duration-shift-change="onDurationShiftChange"
       @start-shift-change="onStartShiftChange"
