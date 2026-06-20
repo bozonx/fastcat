@@ -17,7 +17,7 @@ interface Props {
 }
 
 const props = withDefaults(defineProps<Props>(), {
-  toolbarSnapHeight: '94px',
+  toolbarSnapHeight: '106px',
   toolbarSnapWidth: '84px',
   withToolbarSnap: false,
   initialMode: 'toolbar',
