@@ -1,0 +1,72 @@
+/** @vitest-environment node */
+import { describe, expect, it } from 'vitest';
+import { getTauriTransitionManifest } from '~/transitions/tauri/manifests';
+import { isTauriRuntime } from '~/utils/runtime';
+
+const originalTauriRuntime = isTauriRuntime();
+
+function mockTauriRuntime(value: boolean) {
+  (globalThis as unknown as { __TAURI_INTERNALS__?: unknown }).__TAURI_INTERNALS__ = value
+    ? {}
+    : undefined;
+}
+
+function restoreTauriRuntime() {
+  mockTauriRuntime(originalTauriRuntime);
+}
+
+describe('cube transition parameters in Tauri spec', () => {
+  it('converts zoomMode fixed to p2 = 0', () => {
+    mockTauriRuntime(true);
+    const manifest = getTauriTransitionManifest('cube');
+    expect(manifest).toBeDefined();
+
+    const spec = manifest?.toTauriSpec?.({
+      direction: 'left',
+      zoomMode: 'fixed',
+      perspective: 0.7,
+      gapSize: 0,
+    });
+
+    expect(spec?.params).toMatchObject({
+      p2: 0,
+    });
+
+    restoreTauriRuntime();
+  });
+
+  it('converts zoomMode unzoom to p2 = 1', () => {
+    mockTauriRuntime(true);
+    const manifest = getTauriTransitionManifest('cube');
+    expect(manifest).toBeDefined();
+
+    const spec = manifest?.toTauriSpec?.({
+      direction: 'left',
+      zoomMode: 'unzoom',
+      perspective: 0.7,
+      gapSize: 0,
+    });
+
+    expect(spec?.params).toMatchObject({
+      p2: 1,
+    });
+
+    restoreTauriRuntime();
+  });
+
+  it('defaults to p2 = 1 when zoomMode is missing or invalid', () => {
+    mockTauriRuntime(true);
+    const manifest = getTauriTransitionManifest('cube');
+    expect(manifest).toBeDefined();
+
+    const spec = manifest?.toTauriSpec?.({
+      direction: 'left',
+    });
+
+    expect(spec?.params).toMatchObject({
+      p2: 1,
+    });
+
+    restoreTauriRuntime();
+  });
+});

@@ -1003,7 +1003,10 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
 
     if (mode_slide) {
         let blur_dir = select(vec2<f32>(0.0, 1.0), vec2<f32>(1.0, 0.0), dir_h);
-        let blur_amount = uni.p6 * 0.1;
+        // Scale motion blur by the curve's instantaneous speed so it grows and fades
+        // with the easing (matching slide/blinds). Without this the blur snapped on
+        // at full strength regardless of the chosen curve.
+        let blur_amount = uni.p6 * 0.1 * uni.speed;
         // Scale sample count by pixel blur length
         let pixel_blur = blur_amount * length(blur_dir * dims());
         let samples = clamp(i32(ceil(pixel_blur)), 4, max_samples);
