@@ -30,6 +30,7 @@ type DrawerAction = FileManagerAction | 'openAsPanelCut' | 'openAsPanelSound' | 
 const props = defineProps<{
   isOpen: boolean;
   isSelectionMode: boolean;
+  hideClipboardActions?: boolean;
   onAction?: (action: DrawerAction, entry: FsEntry | FsEntry[]) => Promise<void>;
 }>();
 
@@ -264,17 +265,17 @@ function handleAction(actionId: DrawerAction) {
               @click="handleAction('rename')"
             />
             <MobileDrawerToolbarButton
-              v-if="canCopySelection"
+              v-if="!hideClipboardActions && canCopySelection"
               icon="i-heroicons-document-duplicate"
               @click="handleAction('copy')"
             />
             <MobileDrawerToolbarButton
-              v-if="canCutSelection"
+              v-if="!hideClipboardActions && canCutSelection"
               icon="i-heroicons-scissors"
               @click="handleAction('cut')"
             />
             <MobileDrawerToolbarButton
-              v-if="canPasteIntoSelection"
+              v-if="!hideClipboardActions && canPasteIntoSelection"
               icon="i-heroicons-clipboard"
               @click="handleAction('paste')"
             />

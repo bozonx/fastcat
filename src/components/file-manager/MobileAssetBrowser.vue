@@ -1,24 +1,25 @@
 <script setup lang="ts">
-import { ref, computed, watch, watchEffect, onMounted, onUnmounted, provide } from 'vue';
+import { ref, computed, watch, watchEffect, onMounted, provide } from 'vue';
 import {
   useFileManager,
   FILE_MANAGER_INJECTION_KEY,
 } from '~/composables/file-manager/useFileManager';
 import { useProjectStore } from '~/stores/project.store';
 import { useSelectionStore } from '~/stores/selection.store';
-import { useClipboardStore } from '~/stores/clipboard.store';
 import { useTeleportTarget } from '~/composables/ui/useTeleportTarget';
 import { isOpenableProjectFileName } from '~/utils/media-types';
 import { useFileBrowserShared } from '~/composables/file-manager/useFileBrowserShared';
 import { useMobileFileBrowserSelection } from '~/composables/file-manager/useMobileFileBrowserSelection';
 import { useMobileFileBrowserCreate } from '~/composables/file-manager/useMobileFileBrowserCreate';
 import { useMobileAssetCategories } from '~/composables/file-manager/useMobileAssetCategories';
+import { usePullToRefresh } from '~/composables/file-manager/usePullToRefresh';
 import type { FsEntry } from '~/types/fs';
 import type { FileAction as FileManagerAction } from '~/composables/file-manager/useFileManagerActions';
 import type { FileCompatibility } from '~/composables/file-manager/useFileManagerCompatibility';
 import MobileFileBrowserGrid from './MobileFileBrowserGrid.vue';
 import MobileFileBrowserDrawer from './MobileFileBrowserDrawer.vue';
 import MobileFileBrowserSelectionToolbar from './MobileFileBrowserSelectionToolbar.vue';
+import MobilePullToRefreshIndicator from './MobilePullToRefreshIndicator.vue';
 import FileDeleteConfirmModal from './modals/FileDeleteConfirmModal.vue';
 import FileSttTranscriptionModal from './modals/FileTranscriptionModal.vue';
 import UiRenameModal from '~/components/ui/UiRenameModal.vue';
@@ -34,7 +35,6 @@ type MobileDrawerAction =
 
 const projectStore = useProjectStore();
 const selectionStore = useSelectionStore();
-const clipboardStore = useClipboardStore();
 const timelineMediaUsageStore = useTimelineMediaUsageStore();
 const uiStore = useUiStore();
 const toast = useToast();
@@ -82,6 +82,9 @@ const combinedCompatibility = computed<Record<string, FileCompatibility>>(() => 
 async function reloadAll() {
   await loadAll(true);
 }
+
+const { isPulling, pullDistance, isRefreshing, onTouchStart, onTouchMove, onTouchEnd } =
+  usePullToRefresh(reloadAll);
 
 // Assets are files only (no folders are listed), so folder sizes never apply.
 const EMPTY_FOLDER_SIZES: Record<string, number> = {};
@@ -141,12 +144,6 @@ const {
 onMounted(() => {
   void timelineMediaUsageStore.refreshUsage();
   void loadAll();
-});
-
-onUnmounted(() => {
-  if (clipboardStore.hasFileManagerPayload) {
-    clipboardStore.clearClipboardPayload();
-  }
 });
 
 watch(
@@ -219,11 +216,18 @@ function validateRename(newName: string): string | boolean | null {
   if (entryToRename.value && trimmed.toLowerCase() === entryToRename.value.name.toLowerCase()) {
     return true;
   }
+  const parentPath =
+    entryToRename.value?.parentPath ??
+    entryToRename.value?.path?.split('/').slice(0, -1).join('/') ??
+    '';
   const exists = allEntries.value.some(
-    (e) => e.name.toLowerCase() === trimmed.toLowerCase() && e.path !== entryToRename.value?.path,
+    (entry) =>
+      entry.path !== entryToRename.value?.path &&
+      (entry.parentPath ?? entry.path?.split('/').slice(0, -1).join('/') ?? '') === parentPath &&
+      entry.name.toLowerCase() === trimmed.toLowerCase(),
   );
   if (exists) {
-    return t('common.validation.exists', 'Имя уже существует');
+    return t('common.validation.exists');
   }
   return true;
 }
@@ -303,7 +307,18 @@ async function wrappedHandleDeleteConfirm() {
       </span>
     </div>
 
-    <div class="flex-1 overflow-y-auto min-h-0">
+    <div
+      class="flex-1 overflow-y-auto min-h-0 relative"
+      @touchstart="onTouchStart"
+      @touchmove="onTouchMove"
+      @touchend="onTouchEnd"
+    >
+      <MobilePullToRefreshIndicator
+        :is-pulling="isPulling"
+        :is-refreshing="isRefreshing"
+        :pull-distance="pullDistance"
+      />
+
       <section
         v-for="category in categories"
         :key="category.id"
@@ -348,6 +363,7 @@ async function wrappedHandleDeleteConfirm() {
     <MobileFileBrowserDrawer
       :is-open="isDrawerOpen"
       :is-selection-mode="isSelectionMode"
+      hide-clipboard-actions
       :on-action="handleDrawerAction"
       @close="isDrawerOpen = false"
       @add-to-timeline="handleAddToProject"
@@ -358,6 +374,7 @@ async function wrappedHandleDeleteConfirm() {
       v-if="isSelectionMode"
       :selected-entries="selectedEntries"
       :can-add-to-timeline="canAddSelectionToTimeline"
+      hide-clipboard-actions
       @action="handleDrawerAction"
       @add-to-timeline="handleAddSelectionToTimeline"
     />

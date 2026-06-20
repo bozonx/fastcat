@@ -174,4 +174,27 @@ describe('MobileFileBrowserSelectionToolbar', () => {
     expect(wrapper.emitted('action')).toBeTruthy();
     expect(wrapper.emitted('action')?.[0]).toEqual(['delete', entries]);
   });
+
+  it('hides clipboard actions when requested', async () => {
+    const wrapper = await mountSuspended(MobileFileBrowserSelectionToolbar, {
+      props: {
+        selectedEntries: entries,
+        canAddToTimeline: false,
+        hideClipboardActions: true,
+      },
+      global: {
+        stubs: {
+          MobileDrawerToolbar: { template: '<div><slot /></div>' },
+          MobileDrawerToolbarButton: {
+            props: ['icon'],
+            template: '<button :data-icon="icon" />',
+          },
+        },
+      },
+    });
+
+    expect(wrapper.find('[data-icon="i-heroicons-document-duplicate"]').exists()).toBe(false);
+    expect(wrapper.find('[data-icon="i-heroicons-scissors"]').exists()).toBe(false);
+    expect(wrapper.find('[data-icon="i-heroicons-trash"]').exists()).toBe(true);
+  });
 });

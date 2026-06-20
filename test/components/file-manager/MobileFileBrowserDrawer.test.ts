@@ -226,4 +226,38 @@ describe('MobileFileBrowserDrawer', () => {
       }),
     );
   });
+
+  it('hides clipboard actions when requested', async () => {
+    const entry = { kind: 'file', name: 'clip.mp4', path: 'clip.mp4' };
+    mockSelectionStore.selectedEntity = {
+      source: 'fileManager',
+      kind: 'file',
+      name: entry.name,
+      path: entry.path,
+      entry,
+    };
+
+    const wrapper = await mountSuspended(MobileFileBrowserDrawer, {
+      props: {
+        isOpen: true,
+        isSelectionMode: false,
+        hideClipboardActions: true,
+      },
+      global: {
+        stubs: {
+          UiMobileDrawer: { template: '<div><slot /></div>' },
+          MobileDrawerToolbar: { template: '<div><slot /></div>' },
+          MobileDrawerToolbarButton: {
+            props: ['icon'],
+            template: '<button :data-icon="icon" />',
+          },
+          MultiFileProperties: true,
+        },
+      },
+    });
+
+    expect(wrapper.find('[data-icon="i-heroicons-document-duplicate"]').exists()).toBe(false);
+    expect(wrapper.find('[data-icon="i-heroicons-scissors"]').exists()).toBe(false);
+    expect(wrapper.find('[data-icon="i-heroicons-trash"]').exists()).toBe(true);
+  });
 });

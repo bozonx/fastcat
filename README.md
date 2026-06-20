@@ -14,6 +14,7 @@ Standalone video editor project extracted from FastCat.
 - File system access API integration for local file editing
 - FastCat integration settings with connect flow and manual API override support
 - Remote file browser mode backed by FastCat VFS in the middle file manager panel
+- Mobile asset browser groups top-level project video, audio, and image assets with shared file actions and pull-to-refresh
 - Remote-to-local download by drag-and-drop from remote files into the local folder tree
 - Local-to-remote upload action with remote folder picker and cancelable transfer progress modal
 - External service health checks for FastCat, Files API and STT API

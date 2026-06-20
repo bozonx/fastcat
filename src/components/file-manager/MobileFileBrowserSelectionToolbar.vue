@@ -13,6 +13,7 @@ import { normalizeMediaCachePath } from '~/utils/media-cache-path';
 const props = defineProps<{
   selectedEntries: FsEntry[];
   canAddToTimeline: boolean;
+  hideClipboardActions?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -87,13 +88,13 @@ const canCutSelection = computed(
       />
 
       <MobileDrawerToolbarButton
-        v-if="canCopySelection"
+        v-if="!hideClipboardActions && canCopySelection"
         icon="i-heroicons-document-duplicate"
         @click="emit('action', 'copy', props.selectedEntries)"
       />
 
       <MobileDrawerToolbarButton
-        v-if="canCutSelection"
+        v-if="!hideClipboardActions && canCutSelection"
         icon="i-heroicons-scissors"
         @click="emit('action', 'cut', props.selectedEntries)"
       />
