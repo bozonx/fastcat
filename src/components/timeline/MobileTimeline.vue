@@ -97,12 +97,17 @@ const {
   virtualClipPresetType,
   drawerActiveSnapPoint,
   isLongPress,
+  isAnyDrawerOpen,
   suppressDrawerSelectionClearTemporarily,
   closeAllDrawers,
   openTrackMixerDrawer,
   openTrackManagerDrawer,
   openHistoryDrawer,
   openMarkersDrawer,
+  openClipDeleteDrawer,
+  openClipTrimDrawer,
+  openClipTransitionsPanel,
+  backToClipProperties,
   onUpdateDrawerOpen,
   onClipPropertiesDrawerClose,
   onClipTrimDrawerClose,
@@ -169,26 +174,6 @@ const { scrollViewportWidth } = useMobileTimelineScroll({
 });
 
 const addContentTargetTrackId = ref<string | undefined>(undefined);
-
-const isAnyDrawerOpen = computed(
-  () =>
-    isTrackPropertiesDrawerOpen.value ||
-    isClipPropertiesDrawerOpen.value ||
-    isMarkerPropertiesDrawerOpen.value ||
-    isSelectionRangeDrawerOpen.value ||
-    isTransitionDrawerOpen.value ||
-    isMultiSelectionDrawerOpen.value ||
-    isTrimDrawerOpen.value ||
-    isTransitionsPanelOpen.value ||
-    isDeleteDrawerOpen.value ||
-    isAddContentDrawerOpen.value ||
-    isVirtualClipPresetDrawerOpen.value ||
-    isSettingsDrawerOpen.value ||
-    isTrackMixerDrawerOpen.value ||
-    isHistoryDrawerOpen.value ||
-    isMarkersDrawerOpen.value ||
-    isTrackManagerDrawerOpen.value,
-);
 
 const { trackHeights, toggleTrackHeightEnlarged } = useMobileTimelineTrackHeights({
   tracks,
@@ -346,38 +331,23 @@ const {
       v-model:active-snap-point="drawerActiveSnapPoint"
       :is-open="isClipPropertiesDrawerOpen"
       @close="onClipPropertiesDrawerClose"
-      @open-delete-drawer="
-        isDeleteDrawerOpen = true;
-        isClipPropertiesDrawerOpen = false;
-      "
-      @open-trim-drawer="
-        isTrimDrawerOpen = true;
-        isClipPropertiesDrawerOpen = false;
-      "
-      @open-transitions-drawer="
-        isTransitionsPanelOpen = true;
-        isClipPropertiesDrawerOpen = false;
-      "
+      @open-delete-drawer="openClipDeleteDrawer"
+      @open-trim-drawer="openClipTrimDrawer"
+      @open-transitions-drawer="openClipTransitionsPanel"
     />
 
     <MobileClipDeleteDrawer
       v-if="isDeleteDrawerOpen"
       v-model:active-snap-point="drawerActiveSnapPoint"
       :is-open="isDeleteDrawerOpen"
-      @back="
-        isDeleteDrawerOpen = false;
-        isClipPropertiesDrawerOpen = true;
-      "
+      @back="backToClipProperties"
       @close="onClipDeleteDrawerClose"
     />
 
     <MobileTrimToolbar
       v-if="isTrimDrawerOpen"
       :trim-preview="trimPreview"
-      @back="
-        isTrimDrawerOpen = false;
-        isClipPropertiesDrawerOpen = true;
-      "
+      @back="backToClipProperties"
       @close="onClipTrimDrawerClose"
       @trim-start="onTrimToolbarStart"
       @trim-move="onTrimToolbarMove"
@@ -386,10 +356,7 @@ const {
 
     <MobileTransitionToolbar
       v-if="isTransitionsPanelOpen"
-      @back="
-        isTransitionsPanelOpen = false;
-        isClipPropertiesDrawerOpen = true;
-      "
+      @back="backToClipProperties"
       @close="onTransitionsPanelClose"
     />
 

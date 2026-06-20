@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, type Ref } from 'vue';
 import type { TimelineClipItem, TimelineTrack } from '~/timeline/types';
 import { useClipPropertiesActions } from '~/composables/properties/useClipPropertiesActions';
 import { useFileManager } from '~/composables/file-manager/useFileManager';
@@ -62,8 +62,9 @@ const clipTrackKind = computed(() => clipTrack.value?.kind ?? 'video');
 const isLocked = computed(() => Boolean(clip.value?.locked || clipTrack.value?.locked));
 
 const { handleDeleteClip } = useClipPropertiesActions({
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  clip: clip as any,
+  // `requestDelete` guards on `clip.value` before invoking the action, so it is
+  // non-null at call time. Assert the shape (not `any`) to keep it type-checked.
+  clip: clip as Ref<TimelineClipItem>,
   trackKind: clipTrackKind,
   timelineStore,
   projectStore,

@@ -14,8 +14,9 @@ defineProps<{
   totalSelectedSize: number;
   breadcrumbs: Breadcrumb[];
   hasFolderPath: boolean;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  menuItems: any[];
+  // Context-menu entries are produced by useFileContextMenu and consumed verbatim
+  // by UDropdownMenu; their concrete shape is owned there, so keep it opaque here.
+  menuItems: unknown[];
 }>();
 
 const emit = defineEmits<{

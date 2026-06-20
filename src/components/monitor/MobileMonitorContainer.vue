@@ -14,6 +14,17 @@ import MobileMonitorAudioControl from './MobileMonitorAudioControl.vue';
 import { useMonitorContainerControls } from '~/composables/monitor/useMonitorContainerControls';
 import ProjectMarkers from '~/components/project/ProjectMarkers.vue';
 import { useWorkspaceStore } from '~/stores/workspace.store';
+import {
+  MOBILE_DOUBLE_TAP_MS,
+  MOBILE_LONG_PRESS_MOVE_THRESHOLD_PX,
+  MOBILE_MARKER_LONG_PRESS_MS,
+} from '~/utils/mobile/timeline';
+
+/** Subset of MonitorViewport's exposed instance API consumed here. */
+interface MonitorViewportExposed {
+  fitMonitor?: () => void;
+  timecodeEl?: HTMLElement | null;
+}
 
 defineOptions({
   inheritAttrs: false,
@@ -56,6 +67,11 @@ const {
   timecodeEl,
   uiCurrentTimeUs,
 } = useMonitorRuntime();
+
+/** Typed accessor for the MonitorViewport instance, avoiding ad-hoc casts at call sites. */
+function viewportApi(): MonitorViewportExposed | null {
+  return (viewportRef.value as MonitorViewportExposed | null) ?? null;
+}
 
 const canInteractPlayback = computed(
   () => !isLoading.value && (safeDurationUs.value > 0 || videoItems.value.length > 0),
@@ -142,12 +158,10 @@ const containerRef = ref<HTMLElement | null>(null);
 const { isFullscreen, toggle: toggleFullscreen } = useAppFullscreen(containerRef);
 const shouldTeleport = computed(() => isTauriRuntime() && isFullscreen.value);
 
-const LONG_PRESS_MOVE_THRESHOLD = 10;
 let longPressTimer: ReturnType<typeof setTimeout> | null = null;
 let longPressStartX = 0;
 let longPressStartY = 0;
 
-const DOUBLE_TAP_MS = 280;
 let viewportTapTimer: ReturnType<typeof setTimeout> | null = null;
 
 function clearLongPressTimer() {
@@ -161,7 +175,7 @@ function onLongPressPointerMove(e: PointerEvent) {
   if (longPressTimer === null) return;
   const dx = Math.abs(e.clientX - longPressStartX);
   const dy = Math.abs(e.clientY - longPressStartY);
-  if (dx > LONG_PRESS_MOVE_THRESHOLD || dy > LONG_PRESS_MOVE_THRESHOLD) {
+  if (dx > MOBILE_LONG_PRESS_MOVE_THRESHOLD_PX || dy > MOBILE_LONG_PRESS_MOVE_THRESHOLD_PX) {
     clearLongPressTimer();
   }
 }
@@ -184,11 +198,11 @@ function handleViewportClick(e: MouseEvent) {
     if (viewportTapTimer !== null) {
       clearTimeout(viewportTapTimer);
       viewportTapTimer = null;
-      (viewportRef.value as { fitMonitor?: () => void })?.fitMonitor?.();
+      viewportApi()?.fitMonitor?.();
     } else {
       viewportTapTimer = setTimeout(() => {
         viewportTapTimer = null;
-      }, DOUBLE_TAP_MS);
+      }, MOBILE_DOUBLE_TAP_MS);
     }
   }
 }
@@ -286,7 +300,7 @@ watch(isFullscreen, (val) => {
     }
     void nextTick(() => {
       void nextTick(() => {
-        (viewportRef.value as { fitMonitor?: () => void })?.fitMonitor?.();
+        viewportApi()?.fitMonitor?.();
       });
     });
   } else {
@@ -315,16 +329,16 @@ const internalLayout = computed<'left' | 'right' | 'top' | 'bottom'>(() => {
   if (isFullscreen.value) return isLandscape.value ? 'right' : 'bottom';
 
   if (isLandscape.value) {
-    // В ландшафтном режиме тулбар всегда справа для эргономики и высоты
+    // Landscape: toolbar is always on the right for ergonomics and available height.
     return 'right';
   }
 
   if (isVerticalProject.value) {
-    // Для вертикальных проектов в портретном режиме тулбар справа
+    // Vertical project in portrait: toolbar on the right.
     return 'right';
   }
 
-  // Для горизонтальных проектов в портретном режиме тулбар снизу
+  // Horizontal project in portrait: toolbar on the bottom.
   return 'bottom';
 });
 
@@ -336,8 +350,6 @@ const showSideControls = computed(
 const isMarkersDrawerOpen = ref(false);
 const markerLongPressTimer = ref<ReturnType<typeof setTimeout> | null>(null);
 const wasMarkerLongPress = ref(false);
-const MARKER_LONG_PRESS_MS = 500;
-
 function startMarkerLongPress() {
   wasMarkerLongPress.value = false;
   if (markerLongPressTimer.value) clearTimeout(markerLongPressTimer.value);
@@ -346,7 +358,7 @@ function startMarkerLongPress() {
     wasMarkerLongPress.value = true;
     markerLongPressTimer.value = null;
     if (navigator.vibrate) navigator.vibrate(50);
-  }, MARKER_LONG_PRESS_MS);
+  }, MOBILE_MARKER_LONG_PRESS_MS);
 }
 
 function stopMarkerLongPress() {
@@ -373,7 +385,7 @@ const isInteractiveEditEnabled = computed(
 onMounted(() => {
   window.addEventListener('keydown', onMobileMonitorKeyDown, { capture: true });
   if (viewportRef.value) {
-    timecodeEl.value = (viewportRef.value as { timecodeEl?: HTMLElement }).timecodeEl ?? null;
+    timecodeEl.value = viewportApi()?.timecodeEl ?? null;
   }
   if (isFullscreen.value) {
     showControlsTemporary();
@@ -386,9 +398,10 @@ onBeforeUnmount(() => {
 
 watch(viewportRef, (vp) => {
   if (vp) {
-    timecodeEl.value = (vp as { timecodeEl?: HTMLElement }).timecodeEl ?? null;
+    const api = vp as MonitorViewportExposed;
+    timecodeEl.value = api.timecodeEl ?? null;
     if (isFullscreen.value) {
-      (vp as { fitMonitor?: () => void })?.fitMonitor?.();
+      api.fitMonitor?.();
     }
   }
 });

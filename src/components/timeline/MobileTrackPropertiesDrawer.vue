@@ -113,7 +113,7 @@ function deleteGap() {
     @close="emit('close')"
   >
     <template #toolbar>
-      <!-- 1. Удалить гэп (только в режиме гэпа) -->
+      <!-- 1. Delete gap (only in gap mode) -->
       <MobileDrawerToolbarButton
         v-if="isGapMode"
         icon="i-heroicons-trash"

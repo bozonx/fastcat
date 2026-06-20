@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
-import { VueDraggable } from 'vue-draggable-plus';
+import { VueDraggable, type DraggableEvent } from 'vue-draggable-plus';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import type { TimelineTrack } from '~/timeline/types';
@@ -125,27 +125,26 @@ function addAudioTrack() {
 
 const isDragging = ref(false);
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function handleDragEnd(event: any) {
+// `@types/sortablejs` isn't resolvable here, so DraggableEvent loses the base
+// SortableEvent fields. Re-declare the ones we read on top of it.
+type TrackDragEndEvent = DraggableEvent & {
+  originalEvent?: MouseEvent | TouchEvent;
+  oldIndex?: number;
+};
+
+function handleDragEnd(event: TrackDragEndEvent) {
   isDragging.value = false;
 
   const originalEvent = event.originalEvent;
-  if (!originalEvent) return;
+  if (!originalEvent || event.oldIndex === undefined) return;
 
-  let clientX = originalEvent.clientX;
-  let clientY = originalEvent.clientY;
+  const point =
+    (originalEvent as TouchEvent).changedTouches?.[0] ??
+    (originalEvent as TouchEvent).touches?.[0] ??
+    (originalEvent as MouseEvent);
+  if (point.clientX === undefined || point.clientY === undefined) return;
 
-  if (originalEvent.changedTouches && originalEvent.changedTouches.length > 0) {
-    clientX = originalEvent.changedTouches[0].clientX;
-    clientY = originalEvent.changedTouches[0].clientY;
-  } else if (originalEvent.touches && originalEvent.touches.length > 0) {
-    clientX = originalEvent.touches[0].clientX;
-    clientY = originalEvent.touches[0].clientY;
-  }
-
-  if (clientX === undefined || clientY === undefined) return;
-
-  const element = document.elementFromPoint(clientX, clientY);
+  const element = document.elementFromPoint(point.clientX, point.clientY);
   const isOverDeleteZone = element?.closest('.delete-drop-zone');
 
   if (isOverDeleteZone) {

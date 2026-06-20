@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, type Ref } from 'vue';
 import { useWindowSize } from '@vueuse/core';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useSelectionStore } from '~/stores/selection.store';
@@ -73,8 +73,10 @@ const clipTrackKind = computed(() => clipTrack.value?.kind ?? 'video');
 const isLocked = computed(() => Boolean(clip.value?.locked || clipTrack.value?.locked));
 
 const { handleToggleDisabled, handleToggleLocked, handleToggleMuted } = useClipPropertiesActions({
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  clip: clip as any,
+  // These actions are only invoked from toolbar buttons that are visible while a
+  // clip is selected, so `clip` is non-null at call time. Assert the shape (not
+  // `any`) so the clip's structure stays type-checked.
+  clip: clip as Ref<TimelineClipItem>,
   trackKind: clipTrackKind,
   timelineStore,
   projectStore,

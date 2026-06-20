@@ -247,8 +247,7 @@ const customItems = computed<PresetItem[]>(() =>
           if (props.type === 'text') {
             timelineStore.addTextClipAtPlayhead({
               text: p.params?.text as string | undefined,
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              style: p.params?.style as any,
+              style: p.params?.style as TextClipStyle | undefined,
               pseudo: true,
               trackId,
             });

@@ -1,4 +1,4 @@
-import { ref, watch, computed, onBeforeUnmount, nextTick } from 'vue';
+import { ref, watch, computed, nextTick, type Ref } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useSelectionStore } from '~/stores/selection.store';
 
@@ -47,23 +47,33 @@ export function useMobileTimelineDrawers() {
   const isLongPress = ref(false);
   const suppressDrawerSelectionClear = ref(false);
 
+  // Single source of truth for "which drawers exist". `closeAllDrawers` and
+  // `isAnyDrawerOpen` both derive from this list so they can never drift apart.
+  const allDrawerOpenRefs: Ref<boolean>[] = [
+    isTrackPropertiesDrawerOpen,
+    isClipPropertiesDrawerOpen,
+    isMarkerPropertiesDrawerOpen,
+    isSelectionRangeDrawerOpen,
+    isTransitionDrawerOpen,
+    isMultiSelectionDrawerOpen,
+    isTrimDrawerOpen,
+    isTransitionsPanelOpen,
+    isDeleteDrawerOpen,
+    isAddContentDrawerOpen,
+    isVirtualClipPresetDrawerOpen,
+    isSettingsDrawerOpen,
+    isTrackMixerDrawerOpen,
+    isHistoryDrawerOpen,
+    isMarkersDrawerOpen,
+    isTrackManagerDrawerOpen,
+  ];
+
+  const isAnyDrawerOpen = computed(() => allDrawerOpenRefs.some((r) => r.value));
+
   function closeAllDrawers() {
-    isTrackPropertiesDrawerOpen.value = false;
-    isClipPropertiesDrawerOpen.value = false;
-    isMarkerPropertiesDrawerOpen.value = false;
-    isSelectionRangeDrawerOpen.value = false;
-    isTransitionDrawerOpen.value = false;
-    isMultiSelectionDrawerOpen.value = false;
-    isTrimDrawerOpen.value = false;
-    isTransitionsPanelOpen.value = false;
-    isDeleteDrawerOpen.value = false;
-    isAddContentDrawerOpen.value = false;
-    isVirtualClipPresetDrawerOpen.value = false;
-    isSettingsDrawerOpen.value = false;
-    isTrackMixerDrawerOpen.value = false;
-    isHistoryDrawerOpen.value = false;
-    isMarkersDrawerOpen.value = false;
-    isTrackManagerDrawerOpen.value = false;
+    for (const drawerOpen of allDrawerOpenRefs) {
+      drawerOpen.value = false;
+    }
   }
 
   /**
@@ -193,6 +203,38 @@ export function useMobileTimelineDrawers() {
     }
   }
 
+  /** Clear the active clip selection (timeline + selection stores) if a clip is selected. */
+  function clearClipSelectionIfActive() {
+    if (selectionStore.selectedEntity?.kind === 'clip') {
+      timelineStore.clearSelection();
+      selectionStore.clearSelection();
+    }
+  }
+
+  // ─── Clip sub-drawer transitions (delete / trim / transitions panel) ───
+  // Opening a sub-drawer hides the clip-properties drawer; "back" reverses it.
+  function openClipDeleteDrawer() {
+    isDeleteDrawerOpen.value = true;
+    isClipPropertiesDrawerOpen.value = false;
+  }
+
+  function openClipTrimDrawer() {
+    isTrimDrawerOpen.value = true;
+    isClipPropertiesDrawerOpen.value = false;
+  }
+
+  function openClipTransitionsPanel() {
+    isTransitionsPanelOpen.value = true;
+    isClipPropertiesDrawerOpen.value = false;
+  }
+
+  function backToClipProperties() {
+    isDeleteDrawerOpen.value = false;
+    isTrimDrawerOpen.value = false;
+    isTransitionsPanelOpen.value = false;
+    isClipPropertiesDrawerOpen.value = true;
+  }
+
   function onClipPropertiesDrawerClose() {
     isClipPropertiesDrawerOpen.value = false;
     isLongPress.value = false;
@@ -201,34 +243,22 @@ export function useMobileTimelineDrawers() {
       return;
     }
 
-    if (selectionStore.selectedEntity?.kind === 'clip') {
-      timelineStore.clearSelection();
-      selectionStore.clearSelection();
-    }
+    clearClipSelectionIfActive();
   }
 
   function onClipTrimDrawerClose() {
     isTrimDrawerOpen.value = false;
-    if (selectionStore.selectedEntity?.kind === 'clip') {
-      timelineStore.clearSelection();
-      selectionStore.clearSelection();
-    }
+    clearClipSelectionIfActive();
   }
 
   function onTransitionsPanelClose() {
     isTransitionsPanelOpen.value = false;
-    if (selectionStore.selectedEntity?.kind === 'clip') {
-      timelineStore.clearSelection();
-      selectionStore.clearSelection();
-    }
+    clearClipSelectionIfActive();
   }
 
   function onClipDeleteDrawerClose() {
     isDeleteDrawerOpen.value = false;
-    if (selectionStore.selectedEntity?.kind === 'clip') {
-      timelineStore.clearSelection();
-      selectionStore.clearSelection();
-    }
+    clearClipSelectionIfActive();
   }
 
   function onMultiSelectionDrawerClose() {
@@ -284,14 +314,11 @@ export function useMobileTimelineDrawers() {
 
   function onOpenVirtualClipPreset(type: 'text' | 'shape' | 'hud') {
     virtualClipPresetType.value = type;
-    setTimeout(() => {
+    // Defer opening one tick so the drawer mounts with the updated preset type.
+    void nextTick(() => {
       isVirtualClipPresetDrawerOpen.value = true;
-    }, 0);
+    });
   }
-
-  onBeforeUnmount(() => {
-    // no-op: cleanup handled by nextTick lifecycle
-  });
 
   return {
     isTrackPropertiesDrawerOpen,
@@ -313,6 +340,7 @@ export function useMobileTimelineDrawers() {
     virtualClipPresetType,
     drawerActiveSnapPoint,
     isLongPress,
+    isAnyDrawerOpen,
     suppressDrawerSelectionClear,
     suppressDrawerSelectionClearTemporarily,
     closeAllDrawers,
@@ -320,6 +348,10 @@ export function useMobileTimelineDrawers() {
     openTrackManagerDrawer,
     openHistoryDrawer,
     openMarkersDrawer,
+    openClipDeleteDrawer,
+    openClipTrimDrawer,
+    openClipTransitionsPanel,
+    backToClipProperties,
     onUpdateDrawerOpen,
     onClipPropertiesDrawerClose,
     onClipTrimDrawerClose,
