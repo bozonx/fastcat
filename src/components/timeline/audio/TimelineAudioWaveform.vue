@@ -677,7 +677,12 @@ watch(
 // External peaks updates (cache refresh / late extraction) must trigger a redraw,
 // otherwise the canvas stays empty until the user pans/zooms.
 watch(audioPeaks, () => {
-  if (audioPeaks.value) hasDeferredExtraction.value = false;
+  const maxLength = waveformMaxLength(effectiveSourceDurationUs.value / 1_000_000);
+  if (hasSufficientPeaks(audioPeaks.value, maxLength)) {
+    hasDeferredExtraction.value = false;
+  } else {
+    requestPeaksExtraction();
+  }
   lastDrawSignature = '';
   requestDraw();
 });

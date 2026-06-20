@@ -434,6 +434,9 @@ watch(
             : null,
           slipPreviewTrackId === trackViewModel.track.id ? (slipPreview?.deltaUs ?? null) : null,
           trimPreviewMemoByTrack[trackViewModel.track.id] ?? null,
+          selectedTransition?.trackId === trackViewModel.track.id
+            ? `${selectedTransition.itemId}-${selectedTransition.edge}`
+            : null,
         ]"
         :data-track-id="trackViewModel.track.id"
         class="flex items-center relative transition-colors border-b border-ui-border"

@@ -95,6 +95,9 @@ describe('TimelineAudioWaveform.vue', () => {
   });
 
   afterEach(() => {
+    for (const wrapper of mountedWrappers.splice(0)) {
+      wrapper.unmount();
+    }
     __resetWaveformSchedulerForTests();
     vi.useRealTimers();
     vi.restoreAllMocks();
@@ -409,34 +412,11 @@ describe('TimelineAudioWaveform.vue', () => {
         audioPeaks: [new Float32Array(500_000).fill(0.5)],
       };
 
-      const mipsMod = await import('~/utils/audio/waveform-mips');
-      const binCalls: any[] = [];
-      const origBins = mipsMod.computeWaveformPeakBinsFromMips;
-      vi.spyOn(mipsMod, 'computeWaveformPeakBinsFromMips').mockImplementation((p: any) => {
-        const r = origBins(p);
-        binCalls.push({
-          chLen: p.channels?.[0]?.length,
-          start: p.startIndex,
-          end: p.endIndex,
-          out: p.outputBins,
-          resLen: r.length,
-        });
-        return r;
-      });
-
       const wrapper = await mountComponent({ item });
       const vm = wrapper.vm as any;
       await nextTick();
-      // Force a deterministic first paint: a visual-prop change always requests a
-      // redraw. (The mount-time auto-draw races against other clips left mounted by
-      // earlier tests on the shared redraw scheduler, so we don't rely on it here.)
-      await wrapper.setProps({ item: { ...item, audioGain: 0.9 } });
-      await nextTick();
 
       const painted = vm.renderedFrac;
-      if (painted === null) {
-        throw new Error('DIAG binCalls=' + JSON.stringify(binCalls.slice(-6)));
-      }
       expect(painted).not.toBeNull();
       expect(painted.start).toBe(0);
       expect(painted.width).toBeCloseTo(2920 / 20000, 5);

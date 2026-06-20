@@ -149,6 +149,11 @@ Layout:
 - `<tempRoot>/projects/<projectId>/exports-tmp` — future export staging files
 - `<proxiesRoot>/<projectId>` — generated proxy media for the project
 
+Waveform cache entries are validated against the source file size and modification time before
+reuse. Long timeline waveforms are rendered through an overscanned viewport window so scrolling
+within the buffered region does not re-rasterize the canvas, while zooming temporarily scales the
+existing bitmap until the settled redraw.
+
 Mode-specific behavior:
 
 - **Desktop / system-default** — content/data/temp/proxies can use OS default locations or desktop path overrides
