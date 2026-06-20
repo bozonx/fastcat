@@ -1,0 +1,95 @@
+@group(0) @binding(0) var from_tex: texture_2d<f32>;
+@group(0) @binding(1) var to_tex: texture_2d<f32>;
+@group(0) @binding(2) var output_tex: texture_storage_2d<rgba8unorm, write>;
+
+struct TransitionUniform {
+    progress: f32,
+    width: u32,
+    height: u32,
+    speed: f32,
+    p0: f32, p1: f32, p2: f32, p3: f32,
+    p4: f32, p5: f32, p6: f32, p7: f32,
+    p8: f32, p9: f32, p10: f32, p11: f32,
+};
+@group(0) @binding(3) var<uniform> uni: TransitionUniform;
+
+const PI: f32 = 3.1415926535897932384626433832795;
+
+fn dims() -> vec2<f32> { return vec2<f32>(f32(uni.width), f32(uni.height)); }
+
+fn ld(tex: texture_2d<f32>, p: vec2<i32>) -> vec4<f32> {
+    let c = vec2<i32>(
+        clamp(p.x, 0, i32(uni.width) - 1),
+        clamp(p.y, 0, i32(uni.height) - 1)
+    );
+    return textureLoad(tex, c, 0);
+}
+
+// Bilinear sample in normalized UV (clamp-to-edge, matching PixiJS textures).
+fn samp(tex: texture_2d<f32>, uv: vec2<f32>) -> vec4<f32> {
+    let sp = uv * dims() - vec2<f32>(0.5, 0.5);
+    let i0 = vec2<i32>(i32(floor(sp.x)), i32(floor(sp.y)));
+    let f = fract(sp);
+    let c00 = ld(tex, i0);
+    let c10 = ld(tex, i0 + vec2<i32>(1, 0));
+    let c01 = ld(tex, i0 + vec2<i32>(0, 1));
+    let c11 = ld(tex, i0 + vec2<i32>(1, 1));
+    return mix(mix(c00, c10, f.x), mix(c01, c11, f.x), f.y);
+}
+
+fn in_bounds(p: vec2<f32>) -> bool {
+    return p.x > 0.0 && p.x < 1.0 && p.y > 0.0 && p.y < 1.0;
+}
+
+fn luma(c: vec3<f32>) -> f32 { return dot(c, vec3<f32>(0.299, 0.587, 0.114)); }
+
+fn pixel_uv(gid: vec3<u32>) -> vec2<f32> {
+    return (vec2<f32>(f32(gid.x), f32(gid.y)) + vec2<f32>(0.5, 0.5)) / dims();
+}
+
+fn get_in_weight(uv: vec2<f32>) -> f32 {
+    let aa = 1.5 / dims();
+    let edge_x = smoothstep(0.0, aa.x, uv.x) * (1.0 - smoothstep(1.0 - aa.x, 1.0, uv.x));
+    let edge_y = smoothstep(0.0, aa.y, uv.y) * (1.0 - smoothstep(1.0 - aa.y, 1.0, uv.y));
+    return edge_x * edge_y;
+}
+
+@compute @workgroup_size(8, 8, 1)
+fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
+    if (gid.x >= uni.width || gid.y >= uni.height) { return; }
+    let coord = vec2<i32>(i32(gid.x), i32(gid.y));
+    let uv = pixel_uv(gid);
+    let aspect = dims().x / dims().y;
+    let center = vec2<f32>(uni.p3, uni.p4);
+    let scale = max(vec2<f32>(0.001), vec2<f32>(uni.p5, uni.p6));
+
+    var centered = uv - center; centered.x = centered.x * aspect; centered = centered / scale;
+    let dist = length(centered);
+
+    var c0 = vec2<f32>(0.0, 0.0) - center; c0.x = c0.x * aspect; c0 = c0 / scale;
+    var c1 = vec2<f32>(1.0, 0.0) - center; c1.x = c1.x * aspect; c1 = c1 / scale;
+    var c2 = vec2<f32>(0.0, 1.0) - center; c2.x = c2.x * aspect; c2 = c2 / scale;
+    var c3 = vec2<f32>(1.0, 1.0) - center; c3.x = c3.x * aspect; c3 = c3 / scale;
+    let max_radius = max(max(length(c0), length(c1)), max(length(c2), length(c3)));
+
+    let progress = clamp(uni.progress, 0.0, 1.0);
+    let dir_pos = uni.p2 > 0.0;
+    let t = select(1.0 - progress, progress, dir_pos);
+    let radius = t * max_radius;
+    let aa = 1.5 / dims().y;
+    let blur = max(aa, uni.p0 * select(1.0, t, uni.p1 > 0.5));
+    var reveal = 1.0 - smoothstep(radius - blur, radius + blur, dist);
+    if (!dir_pos) { reveal = 1.0 - reveal; }
+
+    var uv_from = uv;
+    var norm_to = uv;
+    if (uni.p7 > 0.5) {
+        let s = min(1.0, radius * 2.0);
+        if (dir_pos) { norm_to = (norm_to - center) / max(0.0001, s) + center; }
+        else { uv_from = (uv_from - center) / max(0.0001, s) + center; }
+    }
+
+    let from_color = samp(from_tex, uv_from);
+    let to_color = samp(to_tex, norm_to);
+    textureStore(output_tex, coord, mix(from_color, to_color, reveal));
+}

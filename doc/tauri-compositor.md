@@ -21,7 +21,8 @@
 - opacity, blend mode (все 17), transform, crop, source orientation;
 - video speed, reverse video и freeze frame;
 - видео-эффекты (общий `shared/effects/effect.wgsl`, спек `VideoEffectSpec` генерится из Rust)
-  и переходы (web-манифесты дублируются в native через `custom-wgsl`);
+  и переходы (канонические шейдеры находятся в `shared/transitions/*.wgsl`, а манифесты
+  передают те же исходники в native через `custom-wgsl`);
 - audio clips с gain, balance, fade in/out, solo/mute и отдельной master audio bus gain;
 - native export может muxить нативный офлайн-аудиомикс, если проект не требует неподдержанных
   визуальных или аудио-возможностей.

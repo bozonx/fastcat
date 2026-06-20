@@ -1,4 +1,15 @@
 import type { TransitionManifest, TransitionSpec } from './core/registry';
+import barnDoorWgsl from '~shared/transitions/barn_door.wgsl?raw';
+import blindsWgsl from '~shared/transitions/blinds.wgsl?raw';
+import bloomWgsl from '~shared/transitions/bloom.wgsl?raw';
+import cardSwapWgsl from '~shared/transitions/card_swap.wgsl?raw';
+import clockWgsl from '~shared/transitions/clock.wgsl?raw';
+import cubeWgsl from '~shared/transitions/cube.wgsl?raw';
+import ellipseWgsl from '~shared/transitions/ellipse.wgsl?raw';
+import fallingCardWgsl from '~shared/transitions/falling_card.wgsl?raw';
+import motionBlurWgsl from '~shared/transitions/motion_blur.wgsl?raw';
+import rectangleWgsl from '~shared/transitions/rectangle.wgsl?raw';
+import zoomWgsl from '~shared/transitions/zoom.wgsl?raw';
 
 // ---------------------------------------------------------------------------
 // Runtime-agnostic helpers shared by web preview and native rendering/export.
@@ -180,891 +191,6 @@ function normalizeCubeParams(params?: Record<string, unknown>): Record<string, u
 
   return { direction, zoomMode, perspective, gapSize };
 }
-
-// ---------------------------------------------------------------------------
-// Shared WGSL prelude. Both transition pipelines bind:
-//   0: from_tex, 1: to_tex, 2: output_tex (storage), 3: uniform (progress + p0..p11)
-// Both inputs are pre-scaled (bilinear blit) to the output size, so `samp` reads
-// in normalized [0..1] space and is the identity at integer texel centers.
-// ---------------------------------------------------------------------------
-
-const WGSL_HEAD = `@group(0) @binding(0) var from_tex: texture_2d<f32>;
-@group(0) @binding(1) var to_tex: texture_2d<f32>;
-@group(0) @binding(2) var output_tex: texture_storage_2d<rgba8unorm, write>;
-
-struct TransitionUniform {
-    progress: f32,
-    width: u32,
-    height: u32,
-    speed: f32,
-    p0: f32, p1: f32, p2: f32, p3: f32,
-    p4: f32, p5: f32, p6: f32, p7: f32,
-    p8: f32, p9: f32, p10: f32, p11: f32,
-};
-@group(0) @binding(3) var<uniform> uni: TransitionUniform;
-
-const PI: f32 = 3.1415926535897932384626433832795;
-
-fn dims() -> vec2<f32> { return vec2<f32>(f32(uni.width), f32(uni.height)); }
-
-fn ld(tex: texture_2d<f32>, p: vec2<i32>) -> vec4<f32> {
-    let c = vec2<i32>(
-        clamp(p.x, 0, i32(uni.width) - 1),
-        clamp(p.y, 0, i32(uni.height) - 1)
-    );
-    return textureLoad(tex, c, 0);
-}
-
-// Bilinear sample in normalized UV (clamp-to-edge, matching PixiJS textures).
-fn samp(tex: texture_2d<f32>, uv: vec2<f32>) -> vec4<f32> {
-    let sp = uv * dims() - vec2<f32>(0.5, 0.5);
-    let i0 = vec2<i32>(i32(floor(sp.x)), i32(floor(sp.y)));
-    let f = fract(sp);
-    let c00 = ld(tex, i0);
-    let c10 = ld(tex, i0 + vec2<i32>(1, 0));
-    let c01 = ld(tex, i0 + vec2<i32>(0, 1));
-    let c11 = ld(tex, i0 + vec2<i32>(1, 1));
-    return mix(mix(c00, c10, f.x), mix(c01, c11, f.x), f.y);
-}
-
-fn in_bounds(p: vec2<f32>) -> bool {
-    return p.x > 0.0 && p.x < 1.0 && p.y > 0.0 && p.y < 1.0;
-}
-
-fn luma(c: vec3<f32>) -> f32 { return dot(c, vec3<f32>(0.299, 0.587, 0.114)); }
-
-fn pixel_uv(gid: vec3<u32>) -> vec2<f32> {
-    return (vec2<f32>(f32(gid.x), f32(gid.y)) + vec2<f32>(0.5, 0.5)) / dims();
-}
-
-fn get_in_weight(uv: vec2<f32>) -> f32 {
-    let aa = 1.5 / dims();
-    let edge_x = smoothstep(0.0, aa.x, uv.x) * (1.0 - smoothstep(1.0 - aa.x, 1.0, uv.x));
-    let edge_y = smoothstep(0.0, aa.y, uv.y) * (1.0 - smoothstep(1.0 - aa.y, 1.0, uv.y));
-    return edge_x * edge_y;
-}
-`;
-
-// ---- Wipe & Slide WGSL shaders have been moved to shared/transitions/ ----
-
-// ---- Motion Blur (full-frame directional blur through a crossfade) --------
-const MOTION_BLUR_WGSL = `${WGSL_HEAD}
-fn motion_blur_process(color: vec4<f32>, envelope: f32) -> vec4<f32> {
-    let brightness = uni.p5 * envelope;
-    return vec4<f32>(max(vec3<f32>(0.0), color.rgb * (1.0 + brightness)), color.a);
-}
-
-fn motion_blur_sample(
-    tex: texture_2d<f32>,
-    uv: vec2<f32>,
-    axis: vec2<f32>,
-    amount: f32,
-    envelope: f32
-) -> vec4<f32> {
-    if (amount <= 0.0) {
-        return motion_blur_process(samp(tex, uv), envelope);
-    }
-
-    let max_samples = i32(uni.p3);
-    let pixel_blur = amount * length(axis * dims());
-    let samples = clamp(i32(ceil(pixel_blur)), 4, max_samples);
-    let step_size = amount / f32(samples - 1);
-    let start = -amount * 0.5;
-    var accum = vec4<f32>(0.0);
-    var total_weight = 0.0;
-
-    for (var i = 0; i < 64; i = i + 1) {
-        if (i >= samples) { break; }
-        let offset = start + f32(i) * step_size;
-        let color = motion_blur_process(samp(tex, uv + axis * offset), envelope);
-        var weight = 1.0;
-        if (uni.p4 > 0.5) {
-            weight = smoothstep(uni.p6, 1.0, luma(color.rgb));
-        }
-        accum = accum + color * weight;
-        total_weight = total_weight + weight;
-    }
-
-    if (total_weight > 0.0) {
-        return accum / total_weight;
-    }
-    return motion_blur_process(samp(tex, uv), envelope);
-}
-
-@compute @workgroup_size(8, 8, 1)
-fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
-    if (gid.x >= uni.width || gid.y >= uni.height) { return; }
-    let coord = vec2<i32>(i32(gid.x), i32(gid.y));
-    let uv = pixel_uv(gid);
-    let progress = clamp(uni.progress, 0.0, 1.0);
-
-    if (progress <= 0.0) {
-        textureStore(output_tex, coord, samp(from_tex, uv));
-        return;
-    }
-    if (progress >= 1.0) {
-        textureStore(output_tex, coord, samp(to_tex, uv));
-        return;
-    }
-
-    let envelope = sin(progress * PI);
-    let amount = uni.p2 * uni.speed * envelope;
-    let axis = normalize(vec2<f32>(uni.p0, uni.p1));
-    let from_color = motion_blur_sample(from_tex, uv, axis, amount, envelope);
-    let to_color = motion_blur_sample(to_tex, uv, -axis, amount, envelope);
-    textureStore(output_tex, coord, mix(from_color, to_color, progress));
-}`;
-
-// ---- Clock (clockwise / counterclockwise / symmetric) ---------------------
-const CLOCK_WGSL = `${WGSL_HEAD}
-@compute @workgroup_size(8, 8, 1)
-fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
-    if (gid.x >= uni.width || gid.y >= uni.height) { return; }
-    let coord = vec2<i32>(i32(gid.x), i32(gid.y));
-    let uv = pixel_uv(gid);
-    let centered = uv - vec2<f32>(0.5, 0.5);
-    var angle = atan2(centered.x, -centered.y);
-    if (angle < 0.0) { angle = angle + PI * 2.0; }
-    if (uni.p0 < 0.0) {
-        angle = PI * 2.0 - angle;
-        if (angle >= PI * 2.0) { angle = angle - PI * 2.0; }
-    } else if (uni.p0 > 1.5) {
-        if (angle > PI) { angle = PI * 2.0 - angle; }
-        angle = angle * 2.0;
-    }
-    let progress = clamp(uni.progress, 0.0, 1.0);
-    let R = length(centered);
-    let aa = clamp((1.5 / dims().y) / (2.0 * PI * max(R, 0.0001)), 0.0001, 0.5);
-    let reveal = smoothstep(progress - aa, progress + aa, angle / (PI * 2.0));
-    textureStore(output_tex, coord, mix(samp(from_tex, uv), samp(to_tex, uv), 1.0 - reveal));
-}`;
-
-// ---- Barn Door (angle, open/close, gap/blur edge, gap color, blur mode) ----
-const BARN_DOOR_WGSL = `${WGSL_HEAD}
-@compute @workgroup_size(8, 8, 1)
-fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
-    if (gid.x >= uni.width || gid.y >= uni.height) { return; }
-    let coord = vec2<i32>(i32(gid.x), i32(gid.y));
-    let uv = pixel_uv(gid);
-    let from_color = samp(from_tex, uv);
-    let to_color = samp(to_tex, uv);
-    let aspect = dims().x / dims().y;
-    let p = (uv - vec2<f32>(0.5, 0.5)) * vec2<f32>(aspect, 1.0);
-    let progress = clamp(uni.progress, 0.0, 1.0);
-    let axis = normalize(vec2<f32>(uni.p0, uni.p1));
-    let gap_half = uni.p2 * 0.5;
-    let dist = abs(dot(p, axis));
-    let max_dist = 0.5 * (aspect * abs(axis.x) + abs(axis.y));
-
-    let mode_open = uni.p8 > 0.5;
-    let blur_scaled = uni.p9 > 0.5;
-    var threshold: f32;
-    var cur_blur: f32;
-    if (mode_open) {
-        threshold = max_dist * progress;
-        cur_blur = select(uni.p3, uni.p3 * progress, blur_scaled);
-    } else {
-        threshold = max_dist * (1.0 - progress);
-        cur_blur = select(uni.p3, uni.p3 * (1.0 - progress), blur_scaled);
-    }
-    let is_to_inside = mode_open;
-    let cut_start = threshold - gap_half;
-    let cut_end = threshold + gap_half;
-    let aa = 1.5 / dims().y;
-    let blur = max(cur_blur, aa);
-    let blur_mix = smoothstep(threshold - blur, threshold + blur, dist);
-
-    var final_color: vec4<f32>;
-    if (uni.p4 < 0.5) {
-        // blur edge mode (applyToEdgeBlur always true for shader transitions)
-        if (is_to_inside) { final_color = mix(to_color, from_color, blur_mix); }
-        else { final_color = mix(from_color, to_color, blur_mix); }
-    } else {
-        // gap mode with anti-aliased boundaries
-        let before_gap = 1.0 - smoothstep(cut_start - aa, cut_start + aa, dist);
-        let after_gap = smoothstep(cut_end - aa, cut_end + aa, dist);
-        let inside_gap = 1.0 - before_gap - after_gap;
-        let gap_color = vec4<f32>(uni.p5, uni.p6, uni.p7, 1.0);
-        let tex_color = select(to_color, from_color, is_to_inside);
-        let alt_color = select(from_color, to_color, is_to_inside);
-        final_color = alt_color * before_gap + gap_color * inside_gap + tex_color * after_gap;
-    }
-    textureStore(output_tex, coord, final_color);
-}`;
-
-// ---- Blinds (alternating sliding strips, motion/post blur, brightness) -----
-const BLINDS_WGSL = `${WGSL_HEAD}
-fn blinds_get(uv: vec2<f32>) -> vec4<f32> {
-    let strip_coord = dot(uv - vec2<f32>(0.5), vec2<f32>(uni.p2, uni.p3)) + 0.5;
-    let strip_index = floor(strip_coord * uni.p4);
-    let dir = select(-1.0, 1.0, (strip_index % 2.0) == 0.0);
-    let mv = vec2<f32>(uni.p0, uni.p1) * dir;
-    let from_uv = uv - mv * uni.progress;
-    let to_uv = uv - mv * (uni.progress - 1.0);
-
-    let w_from = get_in_weight(from_uv);
-    let w_to = get_in_weight(to_uv);
-    let total_w = w_from + w_to;
-    if (total_w > 0.0) {
-        let c_from = samp(from_tex, from_uv);
-        let c_to = samp(to_tex, to_uv);
-        let tex_color = mix(c_to, c_from, w_from / total_w);
-        return mix(vec4<f32>(0.0, 0.0, 0.0, 1.0), tex_color, min(total_w, 1.0));
-    }
-    return vec4<f32>(0.0, 0.0, 0.0, 1.0);
-}
-
-fn blinds_process(color: vec4<f32>) -> vec4<f32> {
-    let env = sin(clamp(uni.progress, 0.0, 1.0) * PI);
-    let brightness = uni.p10 * env;
-    var extra = brightness;
-    if (uni.p9 > 0.5) {
-        let lum = dot(color.rgb, vec3<f32>(0.2126, 0.7152, 0.0722));
-        extra = brightness * smoothstep(uni.p11, 1.0, lum);
-    }
-    return vec4<f32>(max(vec3<f32>(0.0), color.rgb * (1.0 + extra)), color.a);
-}
-
-fn blinds_motion(uv: vec2<f32>) -> vec4<f32> {
-    // Scale motion blur by the curve's instantaneous speed, matching web rendering.
-    let mb = uni.p7 * uni.speed;
-    if (mb <= 0.0) { return blinds_process(blinds_get(uv)); }
-    let max_samples = i32(uni.p6);
-    let pixel_blur = mb * length(vec2<f32>(uni.p0, uni.p1) * dims());
-    let samples = clamp(i32(ceil(pixel_blur)), 4, max_samples);
-    let step_size = mb / f32(samples - 1);
-    let start = -mb * 0.5;
-    let strip_coord = dot(uv - vec2<f32>(0.5), vec2<f32>(uni.p2, uni.p3)) + 0.5;
-    let strip_index = floor(strip_coord * uni.p4);
-    let dir = select(-1.0, 1.0, (strip_index % 2.0) == 0.0);
-    let blur_axis = vec2<f32>(uni.p0, uni.p1) * dir;
-    var accum = vec4<f32>(0.0);
-    var tw = 0.0;
-    for (var i = 0; i < 64; i = i + 1) {
-        if (i >= samples) { break; }
-        let off = start + f32(i) * step_size;
-        let c = blinds_process(blinds_get(uv + blur_axis * off));
-        var w = 1.0;
-        if (uni.p8 > 0.5) {
-            let lum = dot(c.rgb, vec3<f32>(0.2126, 0.7152, 0.0722));
-            w = smoothstep(uni.p11, 1.0, lum);
-        }
-        accum = accum + c * w;
-        tw = tw + w;
-    }
-    if (tw > 0.0) { return accum / tw; }
-    return blinds_process(blinds_get(uv));
-}
-
-@compute @workgroup_size(8, 8, 1)
-fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
-    if (gid.x >= uni.width || gid.y >= uni.height) { return; }
-    let coord = vec2<i32>(i32(gid.x), i32(gid.y));
-    let uv = pixel_uv(gid);
-    let post_blur = uni.p5 * 0.005 * sin(clamp(uni.progress, 0.0, 1.0) * PI);
-
-    if (post_blur <= 0.0) {
-        textureStore(output_tex, coord, blinds_motion(uv));
-        return;
-    }
-
-    let aspect = dims().x / dims().y;
-    let blur_radius = vec2<f32>(post_blur, post_blur * aspect);
-    var half_grid = 2;
-    if (uni.p6 > 30.0) { half_grid = 4; }
-    else if (uni.p6 > 15.0) { half_grid = 3; }
-    else if (uni.p6 < 10.0) { half_grid = 1; }
-
-    var accum = vec4<f32>(0.0);
-    var tw = 0.0;
-    for (var x = -4; x <= 4; x = x + 1) {
-        if (x > half_grid) { break; }
-        if (x < -half_grid) { continue; }
-        for (var y = -4; y <= 4; y = y + 1) {
-            if (y > half_grid) { break; }
-            if (y < -half_grid) { continue; }
-            let offset = vec2<f32>(f32(x), f32(y)) / f32(half_grid);
-            accum = accum + blinds_motion(uv + offset * blur_radius);
-            tw = tw + 1.0;
-        }
-    }
-    textureStore(output_tex, coord, accum / tw);
-}`;
-
-// ---- Rectangle (reveal / zoom content mode, blur mode, anchor) ------------
-const RECTANGLE_WGSL = `${WGSL_HEAD}
-fn rect_distance(p: vec2<f32>, center: vec2<f32>, size: vec2<f32>) -> f32 {
-    let d = abs(p - center) - size;
-    return length(max(d, vec2<f32>(0.0))) + min(max(d.x, d.y), 0.0);
-}
-
-@compute @workgroup_size(8, 8, 1)
-fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
-    if (gid.x >= uni.width || gid.y >= uni.height) { return; }
-    let coord = vec2<i32>(i32(gid.x), i32(gid.y));
-    let uv = pixel_uv(gid);
-    let aspect = dims().x / dims().y;
-    let progress = clamp(uni.progress, 0.0, 1.0);
-    let dir_pos = uni.p2 > 0.0;
-    let t = select(1.0 - progress, progress, dir_pos);
-    let aa = 1.5 / dims().y;
-    let blur = max(aa, uni.p0 * select(1.0, t, uni.p1 > 0.5));
-    let center = vec2<f32>(uni.p4, uni.p5);
-
-    var reveal = 0.0;
-    var uv_from = uv;
-    var coord_to = uv;
-
-    if (uni.p3 > 0.5) {
-        let scale = max(0.0001, t);
-        let uv_scaled = center + (uv - center) / scale;
-        if (dir_pos) { coord_to = uv_scaled; } else { uv_from = uv_scaled; }
-        let b_min = center - center * scale;
-        let b_max = center + (vec2<f32>(1.0) - center) * scale;
-        var pp = uv; pp.x = pp.x * aspect;
-        var box_min = b_min; box_min.x = box_min.x * aspect;
-        var box_max = b_max; box_max.x = box_max.x * aspect;
-        let box_center = (box_min + box_max) * 0.5;
-        let box_size = (box_max - box_min) * 0.5;
-        let d = rect_distance(pp, box_center, box_size);
-        reveal = 1.0 - smoothstep(-blur, blur, d);
-        if (!dir_pos) { reveal = 1.0 - reveal; }
-    } else {
-        var centered = uv - center; centered.x = centered.x * aspect;
-        let max_x = max(center.x, 1.0 - center.x) * aspect;
-        let max_y = max(center.y, 1.0 - center.y);
-        let cur_size = vec2<f32>(max_x, max_y) * t;
-        let d = rect_distance(centered, vec2<f32>(0.0), cur_size);
-        reveal = 1.0 - smoothstep(-blur, blur, d);
-        if (!dir_pos) { reveal = 1.0 - reveal; }
-    }
-
-    let from_color = samp(from_tex, uv_from);
-    let to_color = samp(to_tex, coord_to);
-    textureStore(output_tex, coord, mix(from_color, to_color, reveal));
-}`;
-
-// ---- Circle / Ellipse (scale, blur mode, anchor, follow scale) ------------
-const ELLIPSE_WGSL = `${WGSL_HEAD}
-@compute @workgroup_size(8, 8, 1)
-fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
-    if (gid.x >= uni.width || gid.y >= uni.height) { return; }
-    let coord = vec2<i32>(i32(gid.x), i32(gid.y));
-    let uv = pixel_uv(gid);
-    let aspect = dims().x / dims().y;
-    let center = vec2<f32>(uni.p3, uni.p4);
-    let scale = max(vec2<f32>(0.001), vec2<f32>(uni.p5, uni.p6));
-
-    var centered = uv - center; centered.x = centered.x * aspect; centered = centered / scale;
-    let dist = length(centered);
-
-    var c0 = vec2<f32>(0.0, 0.0) - center; c0.x = c0.x * aspect; c0 = c0 / scale;
-    var c1 = vec2<f32>(1.0, 0.0) - center; c1.x = c1.x * aspect; c1 = c1 / scale;
-    var c2 = vec2<f32>(0.0, 1.0) - center; c2.x = c2.x * aspect; c2 = c2 / scale;
-    var c3 = vec2<f32>(1.0, 1.0) - center; c3.x = c3.x * aspect; c3 = c3 / scale;
-    let max_radius = max(max(length(c0), length(c1)), max(length(c2), length(c3)));
-
-    let progress = clamp(uni.progress, 0.0, 1.0);
-    let dir_pos = uni.p2 > 0.0;
-    let t = select(1.0 - progress, progress, dir_pos);
-    let radius = t * max_radius;
-    let aa = 1.5 / dims().y;
-    let blur = max(aa, uni.p0 * select(1.0, t, uni.p1 > 0.5));
-    var reveal = 1.0 - smoothstep(radius - blur, radius + blur, dist);
-    if (!dir_pos) { reveal = 1.0 - reveal; }
-
-    var uv_from = uv;
-    var norm_to = uv;
-    if (uni.p7 > 0.5) {
-        let s = min(1.0, radius * 2.0);
-        if (dir_pos) { norm_to = (norm_to - center) / max(0.0001, s) + center; }
-        else { uv_from = (uv_from - center) / max(0.0001, s) + center; }
-    }
-
-    let from_color = samp(from_tex, uv_from);
-    let to_color = samp(to_tex, norm_to);
-    textureStore(output_tex, coord, mix(from_color, to_color, reveal));
-}`;
-
-// ---- Zoom (scale + rotation + radial blur + bloom) ------------------------
-const ZOOM_WGSL = `${WGSL_HEAD}
-fn zoom_rotate(pt: vec2<f32>, angle: f32, aspect: f32) -> vec2<f32> {
-    let c = cos(angle);
-    let s = sin(angle);
-    let x = pt.x * aspect;
-    var r = vec2<f32>(x * c - pt.y * s, x * s + pt.y * c);
-    r.x = r.x / aspect;
-    return r;
-}
-
-fn zoom_sample(tex: texture_2d<f32>, uv: vec2<f32>, blur_amount: f32, bright: f32, blur_fade: f32) -> vec4<f32> {
-    let orig = samp(tex, uv);
-    let max_samples = uni.p4;
-    let dir = vec2<f32>(0.5, 0.5) - uv;
-    let pixel_blur = blur_amount * length(dir * dims());
-    let samples = clamp(ceil(pixel_blur), 4.0, max_samples);
-    if (uni.p5 < 0.5) {
-        if (blur_amount < 0.001) { return vec4<f32>(orig.rgb * bright, orig.a); }
-        var sum = vec4<f32>(0.0);
-        for (var i = 0.0; i < 64.0; i = i + 1.0) {
-            if (i >= samples) { break; }
-            let t = i / max(samples - 1.0, 1.0);
-            sum = sum + samp(tex, uv + dir * (t * blur_amount));
-        }
-        let blurred = sum / samples;
-        return vec4<f32>(blurred.rgb * bright, blurred.a);
-    }
-    // bloom mode
-    if (blur_amount < 0.001) {
-        let lum = luma(orig.rgb);
-        let boost = smoothstep(0.4, 1.0, lum) * (bright - 1.0);
-        return vec4<f32>(orig.rgb + orig.rgb * boost, orig.a);
-    }
-    var bloom_sum = vec4<f32>(0.0);
-    for (var i = 0.0; i < 64.0; i = i + 1.0) {
-        if (i >= samples) { break; }
-        let t = i / max(samples - 1.0, 1.0);
-        let sc = samp(tex, uv + dir * (t * blur_amount));
-        bloom_sum = bloom_sum + sc * smoothstep(0.4, 1.0, luma(sc.rgb));
-    }
-    let bloom_color = bloom_sum / samples;
-    let lum = luma(orig.rgb);
-    let boost = smoothstep(0.4, 1.0, lum) * (bright - 1.0);
-    let extra = (bright - 1.0) * 2.0;
-    let rgb = orig.rgb + orig.rgb * boost + bloom_color.rgb * blur_fade * (1.0 + extra);
-    return vec4<f32>(rgb, orig.a);
-}
-
-@compute @workgroup_size(8, 8, 1)
-fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
-    if (gid.x >= uni.width || gid.y >= uni.height) { return; }
-    let coord = vec2<i32>(i32(gid.x), i32(gid.y));
-    let uv = pixel_uv(gid);
-    let aspect = dims().x / dims().y;
-    let progress = clamp(uni.progress, 0.0, 1.0);
-
-    let from_scale = mix(1.0, uni.p0, progress);
-    let from_angle = mix(0.0, uni.p1, progress);
-    let from_blur = mix(0.0, uni.p3 * 0.005, progress);
-    let from_bright = mix(1.0, 1.0 + uni.p6, progress);
-    var from_c = zoom_rotate(uv - vec2<f32>(0.5), from_angle, aspect);
-    let from_uv = from_c / from_scale + vec2<f32>(0.5);
-    var from_color = zoom_sample(from_tex, from_uv, from_blur, from_bright, progress);
-    let from_inside = step(0.0, from_uv.x) * step(from_uv.x, 1.0) * step(0.0, from_uv.y) * step(from_uv.y, 1.0);
-    from_color = from_color * ((1.0 - progress) * from_inside);
-
-    let to_scale = mix(uni.p0, 1.0, progress);
-    let to_angle = mix(uni.p2, 0.0, progress);
-    let to_blur = mix(uni.p3 * 0.005, 0.0, progress);
-    let to_bright = mix(1.0 + uni.p6, 1.0, progress);
-    var to_c = zoom_rotate(uv - vec2<f32>(0.5), to_angle, aspect);
-    let to_uv = to_c / to_scale + vec2<f32>(0.5);
-    var to_color = zoom_sample(to_tex, to_uv, to_blur, to_bright, 1.0 - progress);
-    let to_inside = step(0.0, to_uv.x) * step(to_uv.x, 1.0) * step(0.0, to_uv.y) * step(to_uv.y, 1.0);
-    to_color = to_color * (progress * to_inside);
-
-    let result = from_color + to_color;
-    textureStore(output_tex, coord, vec4<f32>(result.rgb, min(result.a, 1.0)));
-}`;
-
-// ---- Bloom (3x3 weighted blur, bright extraction) -------------------------
-const BLOOM_WGSL = `${WGSL_HEAD}
-fn extract_bright(color: vec4<f32>) -> vec4<f32> {
-    let l = luma(color.rgb);
-    return color * smoothstep(0.5, 0.7, l);
-}
-
-fn bloom_tap(tex: texture_2d<f32>, uv: vec2<f32>, is_bloom: bool) -> vec4<f32> {
-    let c = samp(tex, uv);
-    if (is_bloom) { return extract_bright(c); }
-    return c;
-}
-
-fn bloom_sample(tex: texture_2d<f32>, uv: vec2<f32>, ba: f32, is_bloom: bool) -> vec4<f32> {
-    let samples = clamp(i32(uni.p3), 5, 25);
-    var sum = vec4<f32>(0.0);
-    for (var i = 0; i < 25; i = i + 1) {
-        if (i >= samples) { break; }
-        let fi = f32(i);
-        let radius = sqrt((fi + 0.5) / f32(samples)) * ba;
-        let angle = fi * 2.3999632;
-        let offset = vec2<f32>(cos(angle), sin(angle)) * radius;
-        sum = sum + bloom_tap(tex, uv + offset, is_bloom);
-    }
-    return sum / f32(samples);
-}
-
-@compute @workgroup_size(8, 8, 1)
-fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
-    if (gid.x >= uni.width || gid.y >= uni.height) { return; }
-    let coord = vec2<i32>(i32(gid.x), i32(gid.y));
-    let uv = pixel_uv(gid);
-    let progress = clamp(uni.progress, 0.0, 1.0);
-    let from_color = samp(from_tex, uv);
-    let to_color = samp(to_tex, uv);
-    let base = mix(from_color, to_color, progress);
-    let peak = 1.0 - abs(progress - 0.5) * 2.0;
-    let ba = uni.p1 * peak * 0.05;
-    let is_bloom = uni.p2 > 0.5;
-
-    let bf = bloom_sample(from_tex, uv, ba, is_bloom);
-    let bt = bloom_sample(to_tex, uv, ba, is_bloom);
-    var out_color: vec4<f32>;
-    if (is_bloom) {
-        let mixed = mix(bf, bt, progress);
-        out_color = base + mixed * uni.p0 * peak;
-    } else {
-        let mixed = mix(bf, bt, progress);
-        out_color = mixed * mix(1.0, uni.p0, peak);
-    }
-    textureStore(output_tex, coord, vec4<f32>(min(out_color.rgb, vec3<f32>(1.0)), base.a));
-}`;
-
-// ---- Cube (true perspective cube rotation) --------------------------------
-const CUBE_WGSL = `${WGSL_HEAD}
-@compute @workgroup_size(8, 8, 1)
-fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
-    if (gid.x >= uni.width || gid.y >= uni.height) { return; }
-    let coord = vec2<i32>(i32(gid.x), i32(gid.y));
-    let uv = pixel_uv(gid);
-    let progress = clamp(uni.progress, 0.0, 1.0);
-
-    let unzoom = 0.3 * uni.p2;
-    let uz = unzoom * 2.0 * (0.5 - abs(progress - 0.5));
-    let p = vec2<f32>(-uz * 0.5) + (1.0 + uz) * uv;
-
-    var from_p = vec2<f32>(-1.0);
-    var to_p = vec2<f32>(-1.0);
-    let cap_p = mix(1.0, uni.p3, sin(progress * PI));
-    let gap_half = uni.p4 * 0.5;
-    let dx = uni.p0;
-    let dy = uni.p1;
-
-    if (dx < -0.5) {
-        let bound = 1.0 - progress;
-        let from_bound = bound - gap_half;
-        let to_bound = bound + gap_half;
-        let from_w = max(0.0001, from_bound);
-        let to_w = max(0.0001, 1.0 - to_bound);
-        if (p.x <= from_bound) {
-            let u = p.x / from_w;
-            let h = mix(1.0, cap_p, u);
-            from_p = vec2<f32>(u, (p.y - 0.5) / h + 0.5);
-        } else if (p.x >= to_bound) {
-            let u = (p.x - to_bound) / to_w;
-            let h = mix(cap_p, 1.0, u);
-            to_p = vec2<f32>(u, (p.y - 0.5) / h + 0.5);
-        }
-    } else if (dx > 0.5) {
-        let bound = progress;
-        let to_bound = bound - gap_half;
-        let from_bound = bound + gap_half;
-        let to_w = max(0.0001, to_bound);
-        let from_w = max(0.0001, 1.0 - from_bound);
-        if (p.x <= to_bound) {
-            let u = p.x / to_w;
-            let h = mix(1.0, cap_p, u);
-            to_p = vec2<f32>(u, (p.y - 0.5) / h + 0.5);
-        } else if (p.x >= from_bound) {
-            let u = (p.x - from_bound) / from_w;
-            let h = mix(cap_p, 1.0, u);
-            from_p = vec2<f32>(u, (p.y - 0.5) / h + 0.5);
-        }
-    } else if (dy < -0.5) {
-        let bound = 1.0 - progress;
-        let from_bound = bound - gap_half;
-        let to_bound = bound + gap_half;
-        let from_w = max(0.0001, from_bound);
-        let to_w = max(0.0001, 1.0 - to_bound);
-        if (p.y <= from_bound) {
-            let u = p.y / from_w;
-            let h = mix(1.0, cap_p, u);
-            from_p = vec2<f32>((p.x - 0.5) / h + 0.5, u);
-        } else if (p.y >= to_bound) {
-            let u = (p.y - to_bound) / to_w;
-            let h = mix(cap_p, 1.0, u);
-            to_p = vec2<f32>((p.x - 0.5) / h + 0.5, u);
-        }
-    } else {
-        let bound = progress;
-        let to_bound = bound - gap_half;
-        let from_bound = bound + gap_half;
-        let to_w = max(0.0001, to_bound);
-        let from_w = max(0.0001, 1.0 - from_bound);
-        if (p.y <= to_bound) {
-            let u = p.y / to_w;
-            let h = mix(1.0, cap_p, u);
-            to_p = vec2<f32>((p.x - 0.5) / h + 0.5, u);
-        } else if (p.y >= from_bound) {
-            let u = (p.y - from_bound) / from_w;
-            let h = mix(cap_p, 1.0, u);
-            from_p = vec2<f32>((p.x - 0.5) / h + 0.5, u);
-        }
-    }
-
-    let w_from = get_in_weight(from_p);
-    let w_to = get_in_weight(to_p);
-    let total_w = w_from + w_to;
-    var color = vec4<f32>(0.0);
-    if (total_w > 0.0) {
-        let c_from = samp(from_tex, from_p);
-        let c_to = samp(to_tex, to_p);
-        color = mix(c_to, c_from, w_from / total_w) * min(total_w, 1.0);
-    }
-    textureStore(output_tex, coord, color);
-}`;
-
-// ---- Card Swap (zoom / slide perspective cards with shadow + bloom) -------
-const CARD_SWAP_WGSL = `${WGSL_HEAD}
-fn card_blur_slide(tex: texture_2d<f32>, pos: vec2<f32>, blur_dir: vec2<f32>, blur_amount: f32, samples: i32, f_samples: f32, dark: f32) -> vec4<f32> {
-    var c = vec4<f32>(0.0);
-    var tw = 0.0;
-    for (var i = 0; i < 64; i = i + 1) {
-        if (i >= samples) { break; }
-        let off = (f32(i) / (f_samples - 1.0) - 0.5) * blur_amount;
-        let sc = samp(tex, pos + blur_dir * off);
-        let w = 1.0 + pow(luma(sc.rgb), 2.0) * uni.p8 * 5.0;
-        c = c + sc * w;
-        tw = tw + w;
-    }
-    c = c / tw;
-    c = vec4<f32>(c.rgb + c.rgb * max(0.0, luma(c.rgb) - 0.5) * uni.p8 * 2.0, c.a);
-    return vec4<f32>(c.rgb * (1.0 - dark), c.a);
-}
-
-fn card_blur_radial(tex: texture_2d<f32>, pos: vec2<f32>, blur_amount: f32, samples: i32, f_samples: f32, dark: f32) -> vec4<f32> {
-    var c = vec4<f32>(0.0);
-    var tw = 0.0;
-    for (var i = 0; i < 64; i = i + 1) {
-        if (i >= samples) { break; }
-        let fi = f32(i);
-        let off = vec2<f32>(cos(fi * 2.39996) * blur_amount, sin(fi * 2.39996) * blur_amount) * (fi / f_samples);
-        let sc = samp(tex, pos + off);
-        let w = 1.0 + pow(luma(sc.rgb), 2.0) * uni.p8 * 5.0;
-        c = c + sc * w;
-        tw = tw + w;
-    }
-    c = c / tw;
-    c = vec4<f32>(c.rgb + c.rgb * max(0.0, luma(c.rgb) - 0.5) * uni.p8 * 2.0, c.a);
-    return vec4<f32>(c.rgb * (1.0 - dark), c.a);
-}
-
-@compute @workgroup_size(8, 8, 1)
-fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
-    if (gid.x >= uni.width || gid.y >= uni.height) { return; }
-    let coord = vec2<i32>(i32(gid.x), i32(gid.y));
-    let progress = clamp(uni.progress, 0.0, 1.0);
-    let depth = 3.0;
-    let perspective = 0.2;
-
-    let dir_h = uni.p0 > 0.5;
-    let mode_slide = uni.p1 > 0.5;
-    let order_rev = uni.p2 > 0.5;
-    let sign_order = select(1.0, -1.0, order_rev);
-
-    var p = pixel_uv(gid);
-    if (sign_order < 0.0) {
-        if (dir_h) { p.x = 1.0 - p.x; } else { p.y = 1.0 - p.y; }
-    }
-
-    var pfr = vec2<f32>(-1.0);
-    var pto = vec2<f32>(-1.0);
-    var size_fr = 1.0;
-    var size_to = 1.0;
-    var dark_fr = 0.0;
-    var dark_to = 0.0;
-
-    if (mode_slide) {
-        let dirv = select(vec2<f32>(0.0, 1.0), vec2<f32>(1.0, 0.0), dir_h);
-        let mag = select(1.0 - progress, progress, progress < 0.5);
-        pfr = p + dirv * mag;
-        pto = p - dirv * mag;
-        dark_fr = select(uni.p3 * (2.0 * progress - 1.0), 0.0, progress < 0.5);
-        dark_to = select(0.0, uni.p3 * (1.0 - 2.0 * progress), progress < 0.5);
-    } else {
-        size_fr = mix(1.0, depth, progress);
-        let persp_fr = perspective * progress;
-        size_to = mix(1.0, depth, 1.0 - progress);
-        let persp_to = perspective * (1.0 - progress);
-        dark_fr = uni.p3 * progress;
-        dark_to = uni.p3 * (1.0 - progress);
-        if (dir_h) {
-            pfr = (p + vec2<f32>(0.0, -0.5)) * vec2<f32>(size_fr / (1.0 - perspective * progress), size_fr / (1.0 - size_fr * persp_fr * p.x)) + vec2<f32>(0.0, 0.5);
-            pto = (p + vec2<f32>(-1.0, -0.5)) * vec2<f32>(size_to / (1.0 - perspective * (1.0 - progress)), size_to / (1.0 - size_to * persp_to * (1.0 - p.x))) + vec2<f32>(1.0, 0.5);
-        } else {
-            pfr = (p + vec2<f32>(-0.5, 0.0)) * vec2<f32>(size_fr / (1.0 - size_fr * persp_fr * p.y), size_fr / (1.0 - perspective * progress)) + vec2<f32>(0.5, 0.0);
-            pto = (p + vec2<f32>(-0.5, -1.0)) * vec2<f32>(size_to / (1.0 - size_to * persp_to * (1.0 - p.y)), size_to / (1.0 - perspective * (1.0 - progress))) + vec2<f32>(0.5, 1.0);
-        }
-    }
-
-    if (sign_order < 0.0) {
-        if (dir_h) { pfr.x = 1.0 - pfr.x; pto.x = 1.0 - pto.x; }
-        else { pfr.y = 1.0 - pfr.y; pto.y = 1.0 - pto.y; }
-    }
-
-    let pfr_in = in_bounds(pfr);
-    let pto_in = in_bounds(pto);
-
-    var shadow_fr = 0.0;
-    if (!pfr_in && uni.p4 > 0.0 && uni.p5 > 0.0) {
-        let d2 = max(vec2<f32>(0.0) - pfr, pfr - vec2<f32>(1.0));
-        let dist = length(max(d2, vec2<f32>(0.0))) / size_fr;
-        let max_d = uni.p4 * 0.2;
-        if (dist < max_d && max_d > 0.0) { shadow_fr = (1.0 - dist / max_d) * uni.p5; }
-    }
-    var shadow_to = 0.0;
-    if (!pto_in && uni.p4 > 0.0 && uni.p5 > 0.0) {
-        let d2 = max(vec2<f32>(0.0) - pto, pto - vec2<f32>(1.0));
-        let dist = length(max(d2, vec2<f32>(0.0))) / size_to;
-        let max_d = uni.p4 * 0.2;
-        if (dist < max_d && max_d > 0.0) { shadow_to = (1.0 - dist / max_d) * uni.p5; }
-    }
-
-    let max_samples = i32(uni.p7);
-    var final_c_fr = vec4<f32>(0.0);
-    var final_c_to = vec4<f32>(0.0);
-
-    if (mode_slide) {
-        let blur_dir = select(vec2<f32>(0.0, 1.0), vec2<f32>(1.0, 0.0), dir_h);
-        // Scale motion blur by the curve's instantaneous speed so it grows and fades
-        // with the easing (matching slide/blinds). Without this the blur snapped on
-        // at full strength regardless of the chosen curve.
-        let blur_amount = uni.p6 * 0.1 * uni.speed;
-        // Scale sample count by pixel blur length
-        let pixel_blur = blur_amount * length(blur_dir * dims());
-        let samples = clamp(i32(ceil(pixel_blur)), 4, max_samples);
-        let f_samples = f32(samples);
-        if (pfr_in) { final_c_fr = card_blur_slide(from_tex, pfr, blur_dir, blur_amount, samples, f_samples, dark_fr); }
-        if (pto_in) { final_c_to = card_blur_slide(to_tex, pto, blur_dir, blur_amount, samples, f_samples, dark_to); }
-    } else {
-        let blur_fr = uni.p6 * (size_fr - 1.0) * 0.02;
-        let blur_to = uni.p6 * (size_to - 1.0) * 0.02;
-        let samples_fr = clamp(i32(ceil(blur_fr * max(dims().x, dims().y))), 4, max_samples);
-        let samples_to = clamp(i32(ceil(blur_to * max(dims().x, dims().y))), 4, max_samples);
-        if (pfr_in) { final_c_fr = card_blur_radial(from_tex, pfr, blur_fr, samples_fr, f32(samples_fr), dark_fr); }
-        if (pto_in) { final_c_to = card_blur_radial(to_tex, pto, blur_to, samples_to, f32(samples_to), dark_to); }
-    }
-
-    var final_color = vec4<f32>(0.0);
-    if (progress < 0.5) {
-        if (pfr_in) {
-            final_color = final_c_fr;
-        } else if (pto_in) {
-            let total_dark = min(1.0, dark_to + shadow_fr);
-            final_color = vec4<f32>(final_c_to.rgb * (1.0 - total_dark) / max(1.0 - dark_to, 0.001), final_c_to.a);
-        }
-    } else {
-        if (pto_in) {
-            final_color = final_c_to;
-        } else if (pfr_in) {
-            let total_dark = min(1.0, dark_fr + shadow_to);
-            final_color = vec4<f32>(final_c_fr.rgb * (1.0 - total_dark) / max(1.0 - dark_fr, 0.001), final_c_fr.a);
-        }
-    }
-    textureStore(output_tex, coord, final_color);
-}`;
-
-// ---- Falling Card (3D card fall/rise with perspective + depth) ------------
-const FALLING_CARD_WGSL = `${WGSL_HEAD}
-@compute @workgroup_size(8, 8, 1)
-fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
-    if (gid.x >= uni.width || gid.y >= uni.height) { return; }
-    let coord = vec2<i32>(i32(gid.x), i32(gid.y));
-    let uv = pixel_uv(gid);
-    let progress = clamp(uni.progress, 0.0, 1.0);
-    let to_color = samp(to_tex, uv);
-    let from_color = samp(from_tex, uv);
-
-    if (progress >= 1.0) { textureStore(output_tex, coord, to_color); return; }
-    if (progress <= 0.0) { textureStore(output_tex, coord, from_color); return; }
-
-    let is_rise = uni.p2 > 0.5;
-    let anim = select(progress, 1.0 - progress, is_rise);
-    let angle = anim * PI / 2.0;
-    let c = cos(angle);
-    let s = sin(angle);
-    let dd = uni.p1;
-    let d = 1.5;
-    // Depth offset of the card. 'fit' is the offset that makes the near edge sit
-    // exactly at the screen edge (no spill): for a forward/toward-viewer fold the
-    // near edge is the falling edge (fit = s); for a backward fold the near edge
-    // is the fixed hinge (fit = 0, the card just recedes). edgeOverflow (uni.p3,
-    // 0..1) then pulls the whole card toward the viewer so it bleeds past the
-    // screen by a controllable amount (1.0 ~= 2x magnification of the near edge).
-    // It is therefore visible in BOTH depth directions.
-    let overflow = clamp(uni.p3, 0.0, 1.0);
-    let fit = select(0.0, s, dd < 0.0);
-    let z_base = fit - overflow * s * (d * 0.5);
-    let dir = uni.p0;
-
-    var p_moved = vec2<f32>(-1.0);
-    var denom = 1.0;
-
-    if (dir < 0.5) {
-        let p = uv - vec2<f32>(0.5, 0.0);
-        denom = d * c - dd * p.y * s;
-        if (denom > 0.0) {
-            let py = p.y * (d + z_base) / denom;
-            let z = z_base + dd * py * s;
-            let px = p.x * (d + z) / d;
-            p_moved = vec2<f32>(px, py) + vec2<f32>(0.5, 0.0);
-        }
-    } else if (dir < 1.5) {
-        let p = uv - vec2<f32>(0.5, 1.0);
-        denom = d * c + dd * p.y * s;
-        if (denom > 0.0) {
-            let py = p.y * (d + z_base) / denom;
-            let z = z_base + dd * (-py) * s;
-            let px = p.x * (d + z) / d;
-            p_moved = vec2<f32>(px, py) + vec2<f32>(0.5, 1.0);
-        }
-    } else if (dir < 2.5) {
-        let p = uv - vec2<f32>(0.0, 0.5);
-        denom = d * c - dd * p.x * s;
-        if (denom > 0.0) {
-            let px = p.x * (d + z_base) / denom;
-            let z = z_base + dd * px * s;
-            let py = p.y * (d + z) / d;
-            p_moved = vec2<f32>(px, py) + vec2<f32>(0.0, 0.5);
-        }
-    } else {
-        let p = uv - vec2<f32>(1.0, 0.5);
-        denom = d * c + dd * p.x * s;
-        if (denom > 0.0) {
-            let px = p.x * (d + z_base) / denom;
-            let z = z_base + dd * (-px) * s;
-            let py = p.y * (d + z) / d;
-            p_moved = vec2<f32>(px, py) + vec2<f32>(1.0, 0.5);
-        }
-    }
-
-    if (denom <= 0.0) {
-        textureStore(output_tex, coord, select(to_color, from_color, is_rise));
-        return;
-    }
-
-    var final_color: vec4<f32>;
-    if (in_bounds(p_moved)) {
-        if (is_rise) {
-            let moving = samp(to_tex, p_moved);
-            let out_a = moving.a + from_color.a * (1.0 - moving.a);
-            if (out_a > 0.0) {
-                let rgb = (moving.rgb * moving.a + from_color.rgb * from_color.a * (1.0 - moving.a)) / out_a;
-                final_color = vec4<f32>(rgb * out_a, out_a);
-            } else { final_color = vec4<f32>(0.0); }
-        } else {
-            let moving = samp(from_tex, p_moved);
-            let out_a = moving.a + to_color.a * (1.0 - moving.a);
-            if (out_a > 0.0) {
-                let rgb = (moving.rgb * moving.a + to_color.rgb * to_color.a * (1.0 - moving.a)) / out_a;
-                final_color = vec4<f32>(rgb * out_a, out_a);
-            } else { final_color = vec4<f32>(0.0); }
-        }
-    } else {
-        final_color = select(to_color, from_color, is_rise);
-    }
-    textureStore(output_tex, coord, final_color);
-}`;
 
 // ---------------------------------------------------------------------------
 // Reusable param-field fragments.
@@ -1347,7 +473,7 @@ export const transitionManifests: TransitionManifest[] = [
     ],
     toTransitionSpec: (params: Record<string, unknown>) => ({
       type: 'custom-wgsl',
-      source: CLOCK_WGSL,
+      source: clockWgsl,
       params: {
         p0: params.direction === 'counterclockwise' ? -1 : params.direction === 'symmetric' ? 2 : 1,
       },
@@ -1421,7 +547,7 @@ export const transitionManifests: TransitionManifest[] = [
       const samples = qualitySamples(quality, 8, 16, 32, 64);
       return {
         type: 'custom-wgsl',
-        source: MOTION_BLUR_WGSL,
+        source: motionBlurWgsl,
         params: {
           p0: Math.cos(rad),
           p1: Math.sin(rad),
@@ -1514,7 +640,7 @@ export const transitionManifests: TransitionManifest[] = [
       const [r, g, b] = hexToRgb01(params.gapColor, '#000000');
       return {
         type: 'custom-wgsl',
-        source: BARN_DOOR_WGSL,
+        source: barnDoorWgsl,
         params: {
           p0: Math.cos(angle),
           p1: Math.sin(angle),
@@ -1602,7 +728,7 @@ export const transitionManifests: TransitionManifest[] = [
       const center = centerFromAnchor(params);
       return {
         type: 'custom-wgsl',
-        source: ELLIPSE_WGSL,
+        source: ellipseWgsl,
         params: {
           p0: clamp(finiteNumber(params.blur, 1.5) / 100, 0.0001, 0.2),
           p1: params.blurMode === 'scaled' ? 1 : 0,
@@ -1664,7 +790,7 @@ export const transitionManifests: TransitionManifest[] = [
       const center = centerFromAnchor(params);
       return {
         type: 'custom-wgsl',
-        source: RECTANGLE_WGSL,
+        source: rectangleWgsl,
         params: {
           p0: clamp(finiteNumber(params.blur, 1.5) / 100, 0.0001, 0.2),
           p1: params.blurMode === 'scaled' ? 1 : 0,
@@ -1776,7 +902,7 @@ export const transitionManifests: TransitionManifest[] = [
       const samples = qualitySamples(q, 8, 16, 32, 64);
       return {
         type: 'custom-wgsl',
-        source: BLINDS_WGSL,
+        source: blindsWgsl,
         params: {
           p0: Math.cos(rad),
           p1: Math.sin(rad),
@@ -1874,7 +1000,7 @@ export const transitionManifests: TransitionManifest[] = [
       const samples = qualitySamples(q, 8, 16, 32, 64);
       return {
         type: 'custom-wgsl',
-        source: ZOOM_WGSL,
+        source: zoomWgsl,
         params: {
           p0: clamp(finiteNumber(params.scale, 3.0), 1.1, 10.0),
           p1: (clamp(finiteNumber(params.fromRotation, 0), -360, 360) * Math.PI) / 180,
@@ -1934,7 +1060,7 @@ export const transitionManifests: TransitionManifest[] = [
       const quality = resolveBlurQuality(options, 'medium');
       return {
         type: 'custom-wgsl',
-        source: BLOOM_WGSL,
+        source: bloomWgsl,
         params: {
           p0: clamp(finiteNumber(params.brightness, 1.5), 0.1, 5.0),
           p1: clamp(finiteNumber(params.blurLevel, 1.0), 0.0, 3.0),
@@ -2001,7 +1127,7 @@ export const transitionManifests: TransitionManifest[] = [
       const dy = idx === 2 ? -1 : idx === 3 ? 1 : 0;
       return {
         type: 'custom-wgsl',
-        source: CUBE_WGSL,
+        source: cubeWgsl,
         params: {
           p0: dx,
           p1: dy,
@@ -2112,7 +1238,7 @@ export const transitionManifests: TransitionManifest[] = [
       const samples = qualitySamples(q, 4, 8, 16, 32);
       return {
         type: 'custom-wgsl',
-        source: CARD_SWAP_WGSL,
+        source: cardSwapWgsl,
         params: {
           p0: params.direction === 'vertical' ? 0 : 1,
           p1: params.mode === 'slide' ? 1 : 0,
@@ -2189,7 +1315,7 @@ export const transitionManifests: TransitionManifest[] = [
       const dir = d === 'up' ? 0 : d === 'left' ? 2 : d === 'right' ? 3 : 1;
       return {
         type: 'custom-wgsl',
-        source: FALLING_CARD_WGSL,
+        source: fallingCardWgsl,
         params: {
           p0: dir,
           p1: params.depthDirection === 'forward' ? -1 : 1,
