@@ -336,7 +336,7 @@ export const transitionManifests: TransitionManifest[] = [
     supportedModes: ['adjacent', 'background', 'transparent'],
     paramFields: [
       {
-        kind: 'select',
+        kind: 'button-group',
         key: 'direction',
         labelKey: 'fastcat.timeline.transition.paramDirection',
         options: [
@@ -435,7 +435,7 @@ export const transitionManifests: TransitionManifest[] = [
     supportedModes: ['adjacent', 'background', 'transparent'],
     paramFields: [
       {
-        kind: 'select',
+        kind: 'button-group',
         key: 'direction',
         labelKey: 'fastcat.timeline.transition.paramDirection',
         options: [

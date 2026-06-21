@@ -30,7 +30,7 @@ describe('circle transition blur parameter', () => {
       offsetY: 0,
       scaleX: 100,
       scaleY: 100,
-      followScale: false,
+      contentMode: 'reveal',
     });
 
     expect(spec?.params).toMatchObject({
@@ -53,7 +53,7 @@ describe('circle transition blur parameter', () => {
       offsetY: 0,
       scaleX: 100,
       scaleY: 100,
-      followScale: false,
+      contentMode: 'reveal',
     });
     expect(tooSmall?.params).toMatchObject({
       p0: 0.0001,
@@ -68,7 +68,7 @@ describe('circle transition blur parameter', () => {
       offsetY: 0,
       scaleX: 100,
       scaleY: 100,
-      followScale: false,
+      contentMode: 'reveal',
     });
     expect(tooLarge?.params).toMatchObject({
       p0: 0.2,
@@ -98,7 +98,7 @@ describe('circle transition blur parameter', () => {
     expect(normalized?.offsetX).toBe(100);
     expect(normalized?.scaleX).toBe(1000);
     expect(normalized?.scaleY).toBe(100);
-    expect(normalized?.followScale).toBe(false);
+    expect(normalized?.contentMode).toBe('reveal');
 
     restoreTauriRuntime();
   });

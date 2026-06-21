@@ -328,7 +328,7 @@ describe('timeline/commands update_clip_transition', () => {
         blur: 20,
         anchor: 'center',
         blurMode: 'fixed',
-        followScale: false,
+        contentMode: 'reveal',
         offsetX: 0,
         offsetY: 0,
         scaleX: 100,
