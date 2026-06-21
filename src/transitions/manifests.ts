@@ -151,7 +151,8 @@ function normalizeCircleParams(params?: Record<string, unknown>): Record<string,
     offsetY: clamp(finiteNumber(params?.offsetY, 0), -100, 100),
     scaleX: clamp(finiteNumber(params?.scaleX, 100), 1, 1000),
     scaleY: clamp(finiteNumber(params?.scaleY, 100), 1, 1000),
-    followScale: params?.followScale === true,
+    contentMode:
+      params?.contentMode === 'zoom' || params?.followScale === true ? 'zoom' : 'reveal',
   };
 }
 
@@ -265,6 +266,16 @@ const blurModeField = {
   options: [
     { value: 'fixed', labelKey: 'fastcat.timeline.transition.blurModeFixed' },
     { value: 'scaled', labelKey: 'fastcat.timeline.transition.blurModeScaled' },
+  ],
+};
+
+const contentModeField = {
+  kind: 'button-group' as const,
+  key: 'contentMode',
+  labelKey: 'fastcat.timeline.transition.paramContentMode',
+  options: [
+    { value: 'reveal', labelKey: 'fastcat.timeline.transition.contentModeReveal' },
+    { value: 'zoom', labelKey: 'fastcat.timeline.transition.contentModeZoom' },
   ],
 };
 
@@ -793,11 +804,7 @@ export const transitionManifests: TransitionManifest[] = [
         max: 1000,
         step: 1,
       },
-      {
-        kind: 'boolean',
-        key: 'followScale',
-        labelKey: 'fastcat.timeline.transition.paramFollowScale',
-      },
+      contentModeField,
     ],
     toTransitionSpec: (params: Record<string, unknown>) => {
       const center = centerFromAnchor(params);
@@ -812,7 +819,7 @@ export const transitionManifests: TransitionManifest[] = [
           p4: center[1],
           p5: clamp(finiteNumber(params.scaleX, 100), 1, 1000) / 100,
           p6: clamp(finiteNumber(params.scaleY, 100), 1, 1000) / 100,
-          p7: params.followScale === true ? 1 : 0,
+          p7: params.contentMode === 'zoom' ? 1 : 0,
         },
       };
     },
@@ -843,15 +850,7 @@ export const transitionManifests: TransitionManifest[] = [
       fromToCenterField,
       anchorField,
       ...offsetFields,
-      {
-        kind: 'button-group',
-        key: 'contentMode',
-        labelKey: 'fastcat.timeline.transition.paramContentMode',
-        options: [
-          { value: 'reveal', labelKey: 'fastcat.timeline.transition.contentModeReveal' },
-          { value: 'zoom', labelKey: 'fastcat.timeline.transition.contentModeZoom' },
-        ],
-      },
+      contentModeField,
     ],
     toTransitionSpec: (params: Record<string, unknown>) => {
       const center = centerFromAnchor(params);
