@@ -11,8 +11,7 @@ import type {
 import UiSliderInput from '~/components/ui/UiSliderInput.vue';
 import UiButtonGroup from '~/components/ui/UiButtonGroup.vue';
 import UiSelect from '~/components/ui/UiSelect.vue';
-import UiModal from '~/components/ui/UiModal.vue';
-import UiTextInput from '~/components/ui/UiTextInput.vue';
+import PresetSaveModal from '~/components/properties/PresetSaveModal.vue';
 import TransitionParamFields from '~/components/properties/TransitionParamFields.vue';
 import UiFormField from '~/components/ui/UiFormField.vue';
 import { useClipTransitionPanel } from '~/composables/timeline/useClipTransitionPanel';
@@ -490,25 +489,10 @@ defineExpose({
       </UiFormField>
     </div>
 
-    <UiModal v-model:open="isSaveModalOpen" :title="t('fastcat.effects.savePresetTitle')">
-      <div class="flex flex-col gap-4">
-        <UiFormField :label="t('common.name')">
-          <UiTextInput
-            v-model="newPresetName"
-            :placeholder="t('fastcat.effects.presetNamePlaceholder')"
-            autofocus
-            @keyup.enter="handleSavePreset"
-          />
-        </UiFormField>
-        <div class="flex justify-end gap-2">
-          <UButton variant="ghost" color="neutral" @click="isSaveModalOpen = false">
-            {{ t('common.cancel') }}
-          </UButton>
-          <UButton color="primary" :disabled="!newPresetName.trim()" @click="handleSavePreset">
-            {{ t('common.save') }}
-          </UButton>
-        </div>
-      </div>
-    </UiModal>
+    <PresetSaveModal
+      v-model:open="isSaveModalOpen"
+      v-model:name="newPresetName"
+      @save="handleSavePreset"
+    />
   </div>
 </template>

@@ -1,7 +1,5 @@
 <script setup lang="ts">
-import UiModal from '~/components/ui/UiModal.vue';
-import UiTextInput from '~/components/ui/UiTextInput.vue';
-import UiFormField from '~/components/ui/UiFormField.vue';
+import PresetSaveModal from '~/components/properties/PresetSaveModal.vue';
 
 import { computed, ref } from 'vue';
 import { VueDraggable } from 'vue-draggable-plus';
@@ -315,27 +313,10 @@ function resolveEffectName(manifest: EffectItem['manifest'], type: string) {
       @select="handleAddEffect"
     />
 
-    <UiModal v-model:open="isSaveModalOpen" :title="t('fastcat.effects.savePresetTitle')">
-      <template #body>
-        <div class="flex flex-col gap-4">
-          <UiFormField :label="t('common.name')">
-            <UiTextInput
-              v-model="newPresetName"
-              :placeholder="t('fastcat.effects.presetNamePlaceholder')"
-              autofocus
-              @keyup.enter="handleSavePreset"
-            />
-          </UiFormField>
-          <div class="flex justify-end gap-2">
-            <UButton variant="ghost" color="neutral" @click="isSaveModalOpen = false">
-              {{ t('common.cancel') }}
-            </UButton>
-            <UButton color="primary" :disabled="!newPresetName.trim()" @click="handleSavePreset">
-              {{ t('common.save') }}
-            </UButton>
-          </div>
-        </div>
-      </template>
-    </UiModal>
+    <PresetSaveModal
+      v-model:open="isSaveModalOpen"
+      v-model:name="newPresetName"
+      @save="handleSavePreset"
+    />
   </PropertySection>
 </template>

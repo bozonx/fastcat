@@ -1,14 +1,12 @@
 <script setup lang="ts">
-import UiModal from '~/components/ui/UiModal.vue';
-import UiTextInput from '~/components/ui/UiTextInput.vue';
-import UiFormField from '~/components/ui/UiFormField.vue';
-
-import { ref, watch, computed } from 'vue';
+import { computed } from 'vue';
 import { cloneValue } from '~/utils/clone';
 import { getEffectManifest } from '~/effects';
 import { usePresetsStore } from '~/stores/presets.store';
 import ParamsRenderer from '~/components/properties/ParamsRenderer.vue';
 import PropertyActionList from '~/components/properties/PropertyActionList.vue';
+import PresetSaveModal from '~/components/properties/PresetSaveModal.vue';
+import { usePropertyPresetEditor } from '~/composables/properties/usePropertyPresetEditor';
 
 const props = defineProps<{
   effectType: string;
@@ -19,65 +17,17 @@ const presetsStore = usePresetsStore();
 
 const manifest = computed(() => getEffectManifest(props.effectType));
 
-const params = ref<Record<string, unknown>>({});
-const isSaveModalOpen = ref(false);
-const newPresetName = ref('');
-
-watch(
-  () => props.effectType,
-  (type) => {
-    const man = getEffectManifest(type);
-    if (man) {
-      params.value = cloneValue(man.defaultValues || {});
-    } else {
-      params.value = {};
-    }
-  },
-  { immediate: true },
-);
-
-function handleUpdateParam(key: string, value: unknown) {
-  params.value[key] = value;
-}
-
-function handleSavePreset() {
-  if (!manifest.value || !newPresetName.value.trim()) return;
-
-  const baseType = manifest.value.baseType || manifest.value.type;
-  const target = manifest.value.target ?? 'video';
-  presetsStore.saveAsPreset('effect', baseType, newPresetName.value.trim(), params.value, target);
-
-  isSaveModalOpen.value = false;
-  newPresetName.value = '';
-}
-
-function handleUpdatePreset() {
-  if (!manifest.value || !manifest.value.isCustom) return;
-  presetsStore.updatePreset(manifest.value.type, params.value);
-}
-
-const actions = computed<import('~/components/properties/PropertyActionList.vue').PropertyAction[]>(
-  () => {
-    const list: import('~/components/properties/PropertyActionList.vue').PropertyAction[] = [];
-    if (manifest.value?.isCustom) {
-      list.push({
-        id: 'update-preset',
-        label: t('common.save'),
-        icon: 'i-heroicons-check',
-        onClick: handleUpdatePreset,
-      });
-    }
-    list.push({
-      id: 'save-as-preset',
-      label: manifest.value?.isCustom
-        ? t('fastcat.effects.saveAsNew')
-        : t('fastcat.effects.saveAsPreset'),
-      icon: 'i-heroicons-bookmark',
-      onClick: () => (isSaveModalOpen.value = true),
-    });
-    return list;
-  },
-);
+const { params, isSaveModalOpen, newPresetName, handleUpdateParam, handleSavePreset, actions } =
+  usePropertyPresetEditor({
+    manifest,
+    source: () => props.effectType,
+    initParams: (type) => cloneValue(getEffectManifest(type)?.defaultValues || {}),
+    saveAsPreset: (man, name, savedParams) => {
+      const baseType = man.baseType || man.type;
+      const target = man.target ?? 'video';
+      presetsStore.saveAsPreset('effect', baseType, name, savedParams, target);
+    },
+  });
 </script>
 
 <template>
@@ -103,28 +53,11 @@ const actions = computed<import('~/components/properties/PropertyActionList.vue'
 
     <PropertyActionList :actions="actions" :vertical="false" size="sm" />
 
-    <UiModal v-model:open="isSaveModalOpen" :title="t('fastcat.effects.savePresetTitle')">
-      <template #body>
-        <div class="flex flex-col gap-4">
-          <UiFormField :label="t('common.name')">
-            <UiTextInput
-              v-model="newPresetName"
-              :placeholder="t('fastcat.effects.presetNamePlaceholder')"
-              autofocus
-              @keyup.enter="handleSavePreset"
-            />
-          </UiFormField>
-          <div class="flex justify-end gap-2">
-            <UButton variant="ghost" color="neutral" @click="isSaveModalOpen = false">
-              {{ t('common.cancel') }}
-            </UButton>
-            <UButton color="primary" :disabled="!newPresetName.trim()" @click="handleSavePreset">
-              {{ t('common.save') }}
-            </UButton>
-          </div>
-        </div>
-      </template>
-    </UiModal>
+    <PresetSaveModal
+      v-model:open="isSaveModalOpen"
+      v-model:name="newPresetName"
+      @save="handleSavePreset"
+    />
   </div>
   <UiEmptyState v-else :message="t('common.notFound')" wrapper-class="p-4 text-sm not-italic" />
 </template>
