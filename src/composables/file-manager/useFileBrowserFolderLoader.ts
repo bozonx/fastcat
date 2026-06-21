@@ -22,7 +22,15 @@ export function useFileBrowserFolderLoader(options: UseFileBrowserFolderLoaderOp
   const isLoading = ref(false);
   const error = ref<string | null>(null);
 
+  // Monotonic token guarding against out-of-order resolution. Folder loads are
+  // async and can overlap (e.g. the mount-time `selectedFolder` watch firing for
+  // the previous folder while a "reveal in file manager" immediately opens a new
+  // one). Without this guard, whichever `readDirectory` resolves last wins and
+  // the list can snap back to a stale folder.
+  let loadToken = 0;
+
   async function loadFolderContent() {
+    const token = ++loadToken;
     const folder = fileManagerStore.selectedFolder;
     if (!folder) {
       options.folderEntries.value = [];
@@ -35,6 +43,8 @@ export function useFileBrowserFolderLoader(options: UseFileBrowserFolderLoaderOp
     try {
       const path = folder.path || '';
       let entries = await options.readDirectory(path);
+      // A newer load started while awaiting — discard this stale result.
+      if (token !== loadToken) return;
 
       if (!path && workspaceStore.userSettings.experimentalFeatures) {
         const commonMetadata = await options.vfs.getMetadata(WORKSPACE_COMMON_PATH_PREFIX);
@@ -54,13 +64,18 @@ export function useFileBrowserFolderLoader(options: UseFileBrowserFolderLoaderOp
       const filtered = entries.filter(
         (e) => fileManagerStore.showHiddenFiles || !e.name.startsWith('.'),
       );
-      options.folderEntries.value = await options.supplementEntries(filtered);
+      const supplemented = await options.supplementEntries(filtered);
+      // Re-check after the final await before committing to the shared ref.
+      if (token !== loadToken) return;
+      options.folderEntries.value = supplemented;
     } catch (err) {
+      if (token !== loadToken) return;
       const message = err instanceof Error ? err.message : String(err);
       error.value = message;
       options.folderEntries.value = [];
     } finally {
-      isLoading.value = false;
+      // Only the latest load owns the loading flag.
+      if (token === loadToken) isLoading.value = false;
     }
   }
 
