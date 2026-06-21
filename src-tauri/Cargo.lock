@@ -1489,6 +1489,7 @@ dependencies = [
  "tauri-plugin-log",
  "tauri-plugin-os",
  "tauri-plugin-single-instance",
+ "tempfile",
  "tokio",
  "ts-rs",
  "vello 0.9.0",

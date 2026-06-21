@@ -436,6 +436,11 @@ impl ApplicationHandler<MonitorCommand> for MonitorApp {
                     s.set_output_gain(gain);
                 }
             }
+            MonitorCommand::SetMasterGain(gain) => {
+                if let Some(s) = self.state.as_mut() {
+                    s.set_master_gain(gain);
+                }
+            }
             MonitorCommand::SetHwSettings(settings) => {
                 if let Some(s) = self.state.as_mut() {
                     s.update_hw_settings(settings);
@@ -1048,6 +1053,13 @@ impl WindowState {
         };
         if let Some(audio) = self.audio.as_ref() {
             audio.set_output_gain(self.audio_output_gain);
+        }
+    }
+
+    fn set_master_gain(&mut self, gain: f64) {
+        self.audio_master_gain = crate::audio::mix::sanitize_master_gain(gain);
+        if let Some(audio) = self.audio.as_ref() {
+            audio.set_master_gain(self.audio_master_gain);
         }
     }
 

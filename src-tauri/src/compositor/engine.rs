@@ -1261,6 +1261,16 @@ impl Compositor {
         }
     }
 
+    /// Whether a compatible wgpu adapter/device can be created on this machine.
+    ///
+    /// Used by integration tests to skip GPU-dependent cases gracefully on
+    /// headless CI that lacks a hardware or software (e.g. lavapipe) Vulkan
+    /// backend. Creates and discards a throwaway device, so call it sparingly.
+    pub fn is_gpu_available() -> bool {
+        let mut render_cx = RenderContext::new();
+        pollster::block_on(render_cx.device(None)).is_some()
+    }
+
     /// Возвращает первое существующее `dev_id` или инициализирует новое (нужно для offscreen-рендера,
     /// когда нет surface). Здесь мы шарим device между surface и offscreen — у Vello это OK.
     pub fn ensure_offscreen_device(&mut self) -> Result<usize> {

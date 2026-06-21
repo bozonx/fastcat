@@ -65,6 +65,8 @@ pub enum MonitorCommand {
     SetAudioSettings(crate::audio::engine::AudioEngineSettings),
     /// Post-mix monitor output gain/mute. Applies only to live monitor output.
     SetOutputGain(f64),
+    /// Timeline master gain. Updates the live mixer without replacing the scene.
+    SetMasterGain(f64),
     /// Обновление настроек FFmpeg/hwaccel для новых видеодекодеров.
     SetHwSettings(crate::FfmpegHardwareSettings),
     /// Фоновый поток загрузил слой — event-loop должен дренировать bg_rx.

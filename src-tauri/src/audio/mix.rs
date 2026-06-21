@@ -169,6 +169,53 @@ fn write_wave64_f32_header_placeholder(
     Ok(())
 }
 
+/// Test-only: render an audio scene to interleaved f32 PCM **in memory**,
+/// reusing the production [`render_scene_to_wav`] mixer (decode → resample →
+/// pan → master gain). Returns the interleaved samples. Available to
+/// integration tests via the `test-support` feature.
+///
+/// Internally round-trips through a temporary Wave64 file so the exact
+/// production code path is exercised; only the trailing PCM read is new.
+#[cfg(any(test, feature = "test-support"))]
+pub fn render_scene_to_samples(
+    scene: &[SceneAudioLayer],
+    tracks: &[SceneAudioTrack],
+    master_gain: f64,
+    start_sec: f64,
+    end_sec: f64,
+    sample_rate: u32,
+    output_channels: usize,
+) -> anyhow::Result<Vec<f32>> {
+    let tmp = crate::media::temp::temp_path("test-scene-pcm", "w64");
+    let result = (|| {
+        render_scene_to_wav(WavRenderParams {
+            scene,
+            tracks,
+            master_gain,
+            audio_master_effects: &[],
+            start_sec,
+            end_sec,
+            sample_rate,
+            output_channels,
+            target_path: &tmp,
+            should_cancel: None,
+            on_progress: None,
+        })?;
+        let bytes = std::fs::read(&tmp)?;
+        // Wave64 header is 104 bytes; the `data` chunk size at [96..104] counts
+        // the 24-byte GUID+size prefix plus the payload.
+        let data_size = u64::from_le_bytes(bytes[96..104].try_into().unwrap()) as usize;
+        let payload_len = data_size.saturating_sub(24).min(bytes.len() - 104);
+        let samples = bytes[104..104 + payload_len]
+            .chunks_exact(4)
+            .map(|b| f32::from_le_bytes([b[0], b[1], b[2], b[3]]))
+            .collect();
+        anyhow::Ok(samples)
+    })();
+    let _ = std::fs::remove_file(&tmp);
+    result
+}
+
 pub(crate) fn mix_chunk(
     scene: &[SceneAudioLayer],
     tracks: &[SceneAudioTrack],

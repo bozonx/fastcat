@@ -183,6 +183,14 @@ pub async fn monitor_set_output_gain(
 }
 
 #[tauri::command]
+pub async fn monitor_set_master_gain(
+    gain: f64,
+    engine: State<'_, VideoEngine>,
+) -> Result<(), String> {
+    send_monitor_cmd(&engine, MonitorCommand::SetMasterGain(gain))
+}
+
+#[tauri::command]
 pub async fn monitor_close(engine: State<'_, VideoEngine>) -> Result<(), String> {
     if let Some(m) = engine.monitor() {
         // Keep the winit EventLoop alive for the app session. On Linux it cannot be

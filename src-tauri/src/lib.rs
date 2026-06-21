@@ -255,6 +255,7 @@ pub fn run() {
             ipc::monitor_cmd::monitor_set_canvas_size,
             ipc::monitor_cmd::monitor_set_audio_settings,
             ipc::monitor_cmd::monitor_set_output_gain,
+            ipc::monitor_cmd::monitor_set_master_gain,
             ipc::monitor_cmd::monitor_close,
             ipc::monitor_cmd::monitor_reset,
             native_update_ffmpeg_settings,

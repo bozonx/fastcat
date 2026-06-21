@@ -46,3 +46,6 @@ mod producer;
 mod resample;
 mod ring;
 mod shared;
+
+#[cfg(any(test, feature = "test-support"))]
+pub mod test_support;

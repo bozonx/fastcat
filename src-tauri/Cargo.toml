@@ -61,3 +61,12 @@ webp = "0.3.1"
 
 [target.'cfg(any(target_os = "macos", windows, target_os = "linux"))'.dependencies]
 tauri-plugin-single-instance = "2.4.2"
+
+[features]
+# Exposes in-crate test doubles / offline helpers (mock audio backend,
+# scene→PCM render) to external integration tests under `tests/`.
+test-support = []
+
+[dev-dependencies]
+tempfile = "3"
+serde_json = "1.0"

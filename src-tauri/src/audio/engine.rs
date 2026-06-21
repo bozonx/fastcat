@@ -271,6 +271,13 @@ impl NativeAudioEngine {
         self.clock.set_output_gain(gain);
     }
 
+    pub fn set_master_gain(&self, gain: f64) {
+        let mut state = self.shared.0.lock();
+        state.master_gain = sanitize_master_gain(gain);
+        drop(state);
+        self.shared.1.notify_all();
+    }
+
     /// Drops per-layer streaming decoders and look-ahead windows for clips whose
     /// timeline interval is far from `t`. Without this a long uninterrupted
     /// playthrough accumulates one `CachedAudioDecoder` (with a large resampler) +
@@ -684,45 +691,25 @@ impl Drop for NativeAudioEngine {
     }
 }
 
+/// Test-only constructors, available to integration tests via the
+/// `test-support` feature. Uses an in-process mock backend so no real audio
+/// device is opened.
+#[cfg(any(test, feature = "test-support"))]
+impl NativeAudioEngine {
+    /// Build an engine backed by the mock output (48 kHz stereo, no device).
+    pub fn new_mock(settings: &AudioEngineSettings) -> Result<Self> {
+        Self::new_with_backend(
+            settings,
+            Box::new(crate::audio::test_support::MockAudioBackend::stereo_48k()),
+        )
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::audio::clock::RealtimeClock;
-    use crate::audio::output::{AudioBackend, AudioStream};
-    use crate::audio::ring::SpscRingBuffer;
+    use crate::audio::test_support::MockAudioBackend;
     use crate::monitor::scene::{AudioFadeCurve, SceneAudioLayer};
-    use std::sync::Arc;
-
-    struct MockAudioStream;
-
-    impl AudioStream for MockAudioStream {
-        fn play(&self) -> Result<()> {
-            Ok(())
-        }
-    }
-
-    struct MockAudioBackend {
-        sample_rate: u32,
-        channels: u16,
-    }
-
-    impl AudioBackend for MockAudioBackend {
-        fn sample_rate(&self) -> u32 {
-            self.sample_rate
-        }
-
-        fn channels(&self) -> u16 {
-            self.channels
-        }
-
-        fn build_output_stream(
-            &self,
-            _ring: Arc<SpscRingBuffer>,
-            _clock: Arc<RealtimeClock>,
-        ) -> Result<Box<dyn AudioStream>> {
-            Ok(Box::new(MockAudioStream))
-        }
-    }
 
     #[test]
     fn native_audio_engine_new_with_backend_sets_fields() {
@@ -1017,6 +1004,18 @@ mod tests {
         engine.set_scene(&[], &[], 0.5, &[]);
         let state = engine.shared.0.lock();
         assert_eq!(state.master_gain, 0.5);
+    }
+
+    #[test]
+    fn set_master_gain_updates_mix_without_scene_replacement() {
+        let engine = mock_engine();
+        let scene_serial = engine.shared.0.lock().scene_serial;
+
+        engine.set_master_gain(0.25);
+
+        let state = engine.shared.0.lock();
+        assert_eq!(state.master_gain, 0.25);
+        assert_eq!(state.scene_serial, scene_serial);
     }
 
     #[test]
