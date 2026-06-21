@@ -25,7 +25,7 @@ use crate::audio::plugins::AudioEffectSpec;
 use crate::compositor::{Compositor, PipelinedReadback};
 
 use super::clock::{Clock, PlaybackClock};
-use super::handle::{MonitorCommand, MonitorMode};
+use super::handle::{MonitorCommand, MonitorMode, ScrubTarget};
 use super::layer_runtime::{emit_layer_failed, BgLayerResult};
 use super::runtime::LayerRuntimeManager;
 use super::scene::{MonitorScene, SceneAudioLayer, SceneAudioTrack};
@@ -91,6 +91,7 @@ pub fn run_event_loop(
     app: AppHandle,
     proxy_tx: Sender<Result<EventLoopProxy<MonitorCommand>, String>>,
     audio_settings: AudioEngineSettings,
+    scrub_target: ScrubTarget,
 ) {
     log::info!("[monitor] run_event_loop starting");
     let event_loop = match build_event_loop() {
@@ -106,7 +107,7 @@ pub fn run_event_loop(
     }
 
     let (bg_tx, bg_rx) = mpsc::channel::<BgLayerResult>();
-    let mut app_handler = MonitorApp::new(app, proxy, bg_tx, bg_rx, audio_settings);
+    let mut app_handler = MonitorApp::new(app, proxy, bg_tx, bg_rx, audio_settings, scrub_target);
     event_loop.set_control_flow(ControlFlow::Wait);
     if let Err(e) = event_loop.run_app(&mut app_handler) {
         log::error!("[monitor] event loop terminated: {e:?}");
@@ -171,14 +172,15 @@ struct MonitorApp {
     resumed: bool,
     audio_settings: AudioEngineSettings,
     next_redraw_at: Option<Instant>,
-    /// Последняя позиция паузного скраба, ещё не отрисованная. Команды `Seek` на паузе
-    /// схлопываются сюда (только последняя), а фактический (синхронный, блокирующий
-    /// readback) рендер делается ОДИН раз за пробуждение цикла — в `about_to_wait` или
-    /// при сбросе непосредственно перед любой не-seek командой. Без этого каждый
-    /// накопившийся в очереди winit `Seek` тянул свой полный рендер, и при скрабе по
-    /// зоне перехода (два декодера + шейдер) кадры не выбрасывались — позиции
-    /// отрисовывались поочерёдно, давая «затуп».
-    pending_seek: Option<(f64, bool)>,
+    /// Latest-wins слот цели скраба. Писатель (`MonitorHandle::send` на каждую `Seek`)
+    /// перезаписывает его последней позицией; обработчик `Seek` в event-loop'е
+    /// read-and-clear'ит. Винит отдаёт user-события по одному за пробуждение, поэтому
+    /// схлопнуть их через батч в `about_to_wait` нельзя — но пока цикл синхронно
+    /// рендерит один кадр, в слот успевают записаться более свежие позиции, а
+    /// устаревшие `Seek`-события находят слот пустым и становятся no-op'ами. Так при
+    /// скрабе по зоне перехода (два декодера + шейдер) рендерится только последняя
+    /// позиция, а не каждая по очереди (источник «затупа»).
+    scrub_target: ScrubTarget,
 }
 
 impl MonitorApp {
@@ -188,6 +190,7 @@ impl MonitorApp {
         bg_tx: Sender<BgLayerResult>,
         bg_rx: Receiver<BgLayerResult>,
         audio_settings: AudioEngineSettings,
+        scrub_target: ScrubTarget,
     ) -> Self {
         Self {
             app,
@@ -203,28 +206,7 @@ impl MonitorApp {
             resumed: false,
             audio_settings,
             next_redraw_at: None,
-            pending_seek: None,
-        }
-    }
-
-    /// Применяет схлопнутую позицию паузного скраба (если есть): один `seek` +
-    /// один рендер. Вызывается из `about_to_wait` (раз за пробуждение цикла) и из
-    /// начала `user_event` перед любой не-seek командой — чтобы транспорт/сцена
-    /// видели актуальный playhead, а не устаревший.
-    fn flush_pending_seek(&mut self) {
-        let Some((time_sec, explicit)) = self.pending_seek.take() else {
-            return;
-        };
-        let Some(s) = self.state.as_mut() else {
-            return;
-        };
-        s.seek(time_sec, explicit);
-        // `seek` мог отменить прогрев и оставить транспорт «играющим» — путь рендера
-        // выбираем по факту, как в `user_event`.
-        if s.clock.is_playing() || s.pending_play_deadline.is_some() {
-            s.render_current_frame();
-        } else {
-            s.refresh_paused_display();
+            scrub_target,
         }
     }
 
@@ -347,11 +329,6 @@ impl ApplicationHandler<MonitorCommand> for MonitorApp {
     }
 
     fn user_event(&mut self, event_loop: &ActiveEventLoop, cmd: MonitorCommand) {
-        // Любая не-seek команда сначала фиксирует отложенную позицию скраба, чтобы
-        // транспорт/сцена работали от актуального playhead'а, а не от устаревшего.
-        if !matches!(cmd, MonitorCommand::Seek { .. }) {
-            self.flush_pending_seek();
-        }
         match cmd {
             MonitorCommand::SetScene(scene) => {
                 if let Some(s) = self.state.as_mut() {
@@ -384,33 +361,43 @@ impl ApplicationHandler<MonitorCommand> for MonitorApp {
                 }
                 self.next_redraw_at = None;
             }
-            MonitorCommand::Seek { time_sec, explicit } => {
-                let transport_playing = self
-                    .state
-                    .as_ref()
-                    .map(|s| s.clock.is_playing() || s.pending_play_deadline.is_some())
-                    .unwrap_or(false);
-                if transport_playing {
-                    // Во время воспроизведения (или micro-prime после явного seek'а)
-                    // рендерингом владеют tick/prebuffer — просто обновляем текущий кадр.
-                    if let Some(s) = self.state.as_mut() {
-                        s.seek(time_sec, explicit);
+            MonitorCommand::Seek {
+                time_sec: ev_time,
+                explicit: ev_explicit,
+            } => {
+                // Read-and-clear слот: схлопываем серию скраб-seek'ов в последнюю
+                // позицию. Свежий `Seek` всегда находит непустой слот (писатель
+                // перезаписывает его ПЕРЕД отправкой события); устаревший — пустой,
+                // т.к. предыдущее событие уже забрало последнюю цель → no-op. Так в
+                // зоне перехода (дорогой синхронный рендер) рисуется только последняя
+                // позиция, а не каждая по очереди. Фоллбэк на полезную нагрузку
+                // события — на случай рассинхрона (теоретически слот не пустеет до того,
+                // как событие обработано, но дешевле перестраховаться, чем дропнуть seek).
+                let target = match self.scrub_target.lock() {
+                    // None → этот `Seek` устарел (последнюю цель уже забрало предыдущее
+                    // событие) → ничего не делаем.
+                    Ok(mut slot) => slot.take(),
+                    // Отравленный mutex — крайне маловероятно; не теряем seek.
+                    Err(_) => Some((ev_time, ev_explicit)),
+                };
+                let Some((time_sec, explicit)) = target else {
+                    return;
+                };
+                if let Some(s) = self.state.as_mut() {
+                    s.seek(time_sec, explicit);
+                    // While playing (or warming up a micro-prime after an explicit
+                    // seek) the tick/prebuffer paths own rendering — just refresh the
+                    // current frame. While paused, `WindowState::seek` repositions any
+                    // EXISTING runtimes but never creates one, so a scrub into a clip
+                    // whose decoder was never opened (or was evicted) would show black
+                    // until Play. Route paused seeks through `refresh_paused_display`,
+                    // which guarantees `ensure_runtime_for` spawns the decoder at the
+                    // playhead and shows the frame as soon as it decodes.
+                    if s.clock.is_playing() || s.pending_play_deadline.is_some() {
                         s.render_current_frame();
+                    } else {
+                        s.refresh_paused_display();
                     }
-                } else {
-                    // Паузный скраб — интерактив. Схлопываем серию seek'ов в последнюю
-                    // позицию: фактический (синхронный, блокирующий readback) рендер
-                    // делает `flush_pending_seek` ОДИН раз за пробуждение цикла (в
-                    // `about_to_wait`). Иначе каждый накопившийся `Seek` тянул свой
-                    // полный рендер, и в зоне перехода (два декодера + шейдер) кадры не
-                    // выбрасывались — давая «затуп». winit всегда зовёт `about_to_wait`
-                    // после слива очереди событий, поэтому отдельное пробуждение не нужно.
-                    //
-                    // `flush_pending_seek` идёт через `refresh_paused_display`, который
-                    // (в отличие от `WindowState::seek`) гарантирует `ensure_runtime_for`
-                    // — иначе скраб в клип с незаоткрытым/вытесненным декодером показывал
-                    // бы чёрное до Play.
-                    self.pending_seek = Some((time_sec, explicit));
                 }
             }
             MonitorCommand::SetSpeed(speed) => {
@@ -597,9 +584,6 @@ impl ApplicationHandler<MonitorCommand> for MonitorApp {
     }
 
     fn about_to_wait(&mut self, event_loop: &ActiveEventLoop) {
-        // Точка схлопывания паузного скраба: очередь событий winit слита, рендерим
-        // только последнюю позицию. См. `pending_seek` / `user_event`.
-        self.flush_pending_seek();
         let Some(state) = self.state.as_ref() else {
             return;
         };

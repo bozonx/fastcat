@@ -3,7 +3,7 @@
 use std::panic;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use std::thread::JoinHandle;
 
 use anyhow::{anyhow, Result};
@@ -29,6 +29,12 @@ pub enum MonitorMode {
     Embedded,
     Canvas,
 }
+
+/// Latest-wins слот цели скраба, разделяемый между `MonitorHandle` (писатель) и
+/// event-loop'ом (читатель). Каждая `Seek`-команда перезаписывает его перед отправкой
+/// события; обработчик в цикле read-and-clear'ит, схлопывая серию скраб-seek'ов в
+/// последнюю позицию (см. `MonitorApp::scrub_target`).
+pub type ScrubTarget = Arc<Mutex<Option<(f64, bool)>>>;
 
 pub enum MonitorCommand {
     /// Полная замена сцены — фронт шлёт текущий снимок таймлайна.
@@ -95,18 +101,23 @@ pub struct MonitorHandle {
     _thread: Option<JoinHandle<()>>,
     /// Сбрасывается в false, когда event-loop завершился. Быстрее Ping-round-trip.
     alive: Arc<AtomicBool>,
+    /// Latest-wins цель скраба (см. `ScrubTarget`). Пишется в `send` перед каждой
+    /// `Seek`, читается event-loop'ом.
+    scrub_target: ScrubTarget,
 }
 
 impl MonitorHandle {
     pub fn spawn(app: AppHandle, audio_settings: AudioEngineSettings) -> Result<Self> {
         let alive = Arc::new(AtomicBool::new(true));
         let alive_clone = alive.clone();
+        let scrub_target: ScrubTarget = Arc::new(Mutex::new(None));
+        let scrub_target_loop = scrub_target.clone();
         let (tx, rx) = mpsc::channel::<Result<EventLoopProxy<MonitorCommand>, String>>();
         let thread = std::thread::Builder::new()
             .name("fastcat-monitor".into())
             .spawn(move || {
                 let result = panic::catch_unwind(panic::AssertUnwindSafe(|| {
-                    run_event_loop(app, tx, audio_settings);
+                    run_event_loop(app, tx, audio_settings, scrub_target_loop);
                 }));
                 if let Err(e) = result {
                     if let Some(s) = e.downcast_ref::<&str>() {
@@ -127,12 +138,21 @@ impl MonitorHandle {
             proxy,
             _thread: Some(thread),
             alive,
+            scrub_target,
         })
     }
 
     pub fn send(&self, cmd: MonitorCommand) -> Result<()> {
         if !self.is_alive() {
             return Err(anyhow!("monitor event loop is no longer alive"));
+        }
+        // Фиксируем последнюю цель скраба ДО отправки события: пока event-loop синхронно
+        // рендерит один кадр, более свежие `Seek`'и перезаписывают слот, а устаревшие
+        // события находят его пустым и схлопываются в no-op (см. `ScrubTarget`).
+        if let MonitorCommand::Seek { time_sec, explicit } = &cmd {
+            if let Ok(mut slot) = self.scrub_target.lock() {
+                *slot = Some((*time_sec, *explicit));
+            }
         }
         self.proxy
             .send_event(cmd)
