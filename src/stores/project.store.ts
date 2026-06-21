@@ -232,7 +232,6 @@ export const useProjectStore = defineStore('project', () => {
   async function createProject(
     name: string,
     options?: {
-      presetId?: string;
       width?: number;
       height?: number;
       fps?: number;
@@ -320,10 +319,6 @@ export const useProjectStore = defineStore('project', () => {
 
       const initialSettings = createDefaultProjectSettings(workspaceStore.userSettings);
       initialSettings.project.isAutoSettings = true;
-
-      if (options?.presetId) {
-        workspaceStore.userSettings.projectPresets.lastUsedPresetId = options.presetId;
-      }
 
       if (options) {
         // If user provided specific options, it's not "Auto" anymore

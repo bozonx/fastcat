@@ -140,6 +140,7 @@ const canExportAlpha = computed(() => {
 watch(outputFormat, (fmt) => {
   if (fmt === 'webm') {
     audioCodec.value = 'opus';
+    videoCodec.value = 'vp09.00.10.08';
   } else if (fmt === 'mp4' && (audioCodec.value === 'flac' || audioCodec.value === 'pcm')) {
     audioCodec.value = 'aac';
   }

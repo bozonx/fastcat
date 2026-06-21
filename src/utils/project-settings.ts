@@ -2,7 +2,6 @@ import { z } from 'zod';
 import type { FastCatUserSettings } from './settings/defaults';
 import { DEFAULT_USER_SETTINGS } from './settings/defaults';
 import { applyResolutionPreset } from './settings/helpers';
-import { resolveProjectPreset } from './settings/presets';
 import type { PreviewEffectQualitySetting } from './preview-effect-quality';
 
 interface ProjectSettingsUserDefaultsInput {
@@ -206,20 +205,18 @@ function getProjectSettingsFromUserDefaults(
   userSettings: ProjectSettingsUserDefaultsInput | undefined | null,
 ): Pick<FastCatProjectSettings, 'project'> {
   const settings = userSettings || DEFAULT_USER_SETTINGS;
-  const projectPreset = resolveProjectPreset(
-    settings.projectPresets || DEFAULT_USER_SETTINGS.projectPresets,
-  );
+  const baseProject = DEFAULT_PROJECT_SETTINGS.project;
 
   return {
     project: {
-      width: projectPreset.width,
-      height: projectPreset.height,
-      fps: projectPreset.fps,
-      resolutionFormat: projectPreset.resolutionFormat,
-      orientation: projectPreset.orientation,
-      aspectRatio: projectPreset.aspectRatio,
-      isCustomResolution: projectPreset.isCustomResolution,
-      sampleRate: projectPreset.sampleRate,
+      width: baseProject.width,
+      height: baseProject.height,
+      fps: baseProject.fps,
+      resolutionFormat: baseProject.resolutionFormat,
+      orientation: baseProject.orientation,
+      aspectRatio: baseProject.aspectRatio,
+      isCustomResolution: baseProject.isCustomResolution,
+      sampleRate: baseProject.sampleRate,
       audioDeclickDurationUs: (settings.projectDefaults || DEFAULT_USER_SETTINGS.projectDefaults)
         .audioDeclickDurationUs,
       isAutoSettings: true,

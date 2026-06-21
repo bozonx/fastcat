@@ -122,10 +122,7 @@ function clearCache() {
       />
     </UiFormField>
 
-    <UiFormField
-      :label="t('videoEditor.settings.defaultStaticClipDuration')"
-      :help="t('videoEditor.settings.defaultStaticClipDurationHint')"
-    >
+    <UiFormField :label="t('videoEditor.settings.defaultStaticClipDuration')">
       <UiWheelNumberInput
         :model-value="workspaceStore.userSettings.timeline.defaultStaticClipDurationUs / 1000000"
         :min="0.1"
@@ -141,10 +138,7 @@ function clearCache() {
       />
     </UiFormField>
 
-    <UiFormField
-      :label="t('videoEditor.settings.stopFramesQuality')"
-      :help="t('videoEditor.settings.stopFramesQualityHint')"
-    >
+    <UiFormField :label="t('videoEditor.settings.stopFramesQuality')">
       <UiWheelNumberInput
         v-model="workspaceStore.userSettings.stopFrames.qualityPercent"
         :min="1"
@@ -176,10 +170,7 @@ function clearCache() {
           />
         </UiFormField>
 
-        <UiFormField
-          :label="t('videoEditor.settings.historyMaxEntries')"
-          :help="t('videoEditor.settings.historyMaxEntriesHelp')"
-        >
+        <UiFormField :label="t('videoEditor.settings.historyMaxEntries')">
           <UiWheelNumberInput
             v-model="workspaceStore.userSettings.history.maxEntries"
             :min="1"
@@ -189,10 +180,7 @@ function clearCache() {
           />
         </UiFormField>
 
-        <UiFormField
-          :label="t('videoEditor.settings.historyMaxMemory')"
-          :help="t('videoEditor.settings.historyMaxMemoryHelp')"
-        >
+        <UiFormField :label="t('videoEditor.settings.historyMaxMemory')">
           <UiWheelNumberInput
             v-model="workspaceStore.userSettings.history.maxMemoryMb"
             :min="16"
@@ -215,12 +203,12 @@ function clearCache() {
           />
         </UiFormField>
 
-        <UiFormField
-          :label="t('videoEditor.settings.backupEnabled')"
-          :help="t('videoEditor.settings.backupEnabledHelp')"
-        >
+        <label class="flex items-center gap-3 cursor-pointer px-1">
           <UCheckbox v-model="workspaceStore.userSettings.backup.enabled" />
-        </UiFormField>
+          <span class="text-ui-text">
+            {{ t('videoEditor.settings.backupEnabled') }}
+          </span>
+        </label>
 
         <UiFormField
           v-if="workspaceStore.userSettings.backup.enabled"
@@ -250,20 +238,12 @@ function clearCache() {
           </UButton>
         </div>
 
-        <UiFormField
-          :label="t('videoEditor.settings.experimentalFeatures')"
-          :help="t('videoEditor.settings.experimentalFeaturesHelp')"
-        >
+        <label class="flex items-center gap-3 cursor-pointer px-1">
           <UCheckbox v-model="workspaceStore.userSettings.experimentalFeatures" />
-        </UiFormField>
-
-        <UiFormField
-          v-if="workspaceStore.userSettings.experimentalFeatures"
-          :label="t('videoEditor.settings.monitorInteractiveEdit')"
-          :help="t('videoEditor.settings.monitorInteractiveEditHelp')"
-        >
-          <UCheckbox v-model="workspaceStore.userSettings.ui.monitorInteractiveEdit" />
-        </UiFormField>
+          <span class="text-ui-text">
+            {{ t('videoEditor.settings.experimentalFeatures') }}
+          </span>
+        </label>
 
         <UAlert
           v-if="workspaceStore.userSettings.experimentalFeatures"

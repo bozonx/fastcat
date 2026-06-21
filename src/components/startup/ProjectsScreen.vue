@@ -3,7 +3,6 @@ import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useProjectManagement } from '~/composables/project/useProjectManagement';
 import UiSearchInput from '~/components/ui/UiSearchInput.vue';
 import UiModal from '~/components/ui/UiModal.vue';
-import UiSelect from '~/components/ui/UiSelect.vue';
 import UiTextInput from '~/components/ui/UiTextInput.vue';
 import UiFormField from '~/components/ui/UiFormField.vue';
 import FriendlyTime from '~/components/ui/FriendlyTime.vue';
@@ -30,7 +29,6 @@ const {
   duplicateValue,
   createNewProject,
   startCreateProject,
-  applyProjectCreationPreset,
   handleOpenProject,
   renameProject,
   startRename,
@@ -43,13 +41,6 @@ const {
   selectProjectLocation,
   openProjectFromDisk,
 } = useProjectManagement();
-
-const projectPresetOptions = computed(() =>
-  workspaceStore.userSettings.projectPresets.items.map((preset: { id: string; name: string }) => ({
-    value: preset.id,
-    label: preset.name,
-  })),
-);
 
 type SortBy = 'date' | 'name';
 type SortOrder = 'asc' | 'desc';
@@ -237,7 +228,7 @@ const sortedProjects = computed(() => {
               </h2>
 
               <div class="flex items-center gap-1">
-                <UTooltip :text="t('common.updated')">
+                <UTooltip :text="t('fastcat.projects.sortByDate')">
                   <UButton
                     variant="ghost"
                     size="xs"
@@ -247,7 +238,7 @@ const sortedProjects = computed(() => {
                     @click="sortBy = 'date'"
                   />
                 </UTooltip>
-                <UTooltip :text="t('common.name')">
+                <UTooltip :text="t('fastcat.projects.sortByName')">
                   <UButton
                     variant="ghost"
                     size="xs"
@@ -405,22 +396,6 @@ const sortedProjects = computed(() => {
 
         <template #content>
           <div class="pt-4 border-t border-ui-border mt-2">
-            <UiFormField :label="t('videoEditor.export.presetLabel')" class="mb-4">
-              <UiSelect
-                v-model="projectCreationSettings.presetId"
-                :items="projectPresetOptions"
-                value-key="value"
-                label-key="label"
-                full-width
-                @update:model-value="
-                  (value: unknown) =>
-                    applyProjectCreationPreset(
-                      (value as { value: string })?.value ?? (value as string),
-                    )
-                "
-              />
-            </UiFormField>
-
             <MediaResolutionSettings
               v-model:width="projectCreationSettings.width"
               v-model:height="projectCreationSettings.height"

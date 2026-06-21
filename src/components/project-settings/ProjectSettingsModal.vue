@@ -7,7 +7,7 @@ import { ref, computed } from 'vue';
 import { useProjectStore } from '~/stores/project.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useTimelineStore } from '~/stores/timeline.store';
-import { resolveProjectPreset, DEFAULT_PROJECT_PRESET_ID } from '~/utils/settings';
+import { DEFAULT_PROJECT_SETTINGS } from '~/utils/project-settings';
 
 import ResolutionSettings from './ResolutionSettings.vue';
 import AdvancedSettings from './AdvancedSettings.vue';
@@ -63,8 +63,8 @@ async function confirmDeleteProject() {
 async function resetToDefaults() {
   if (!projectStore.projectSettings) return;
 
-  // Reset project resolution and FPS to workspace defaults
-  const pDefaults = resolveProjectPreset(workspaceStore.userSettings.projectPresets);
+  // Reset project resolution and FPS to default project constants
+  const pDefaults = DEFAULT_PROJECT_SETTINGS.project;
   projectStore.projectSettings.project.width = pDefaults.width;
   projectStore.projectSettings.project.height = pDefaults.height;
   projectStore.projectSettings.project.fps = pDefaults.fps;
@@ -78,9 +78,6 @@ async function resetToDefaults() {
   // Reset advanced settings
   projectStore.projectSettings.project.audioDeclickDurationUs =
     workspaceStore.userSettings.projectDefaults.audioDeclickDurationUs;
-
-  // Reset selected preset IDs to defaults
-  workspaceStore.userSettings.projectPresets.selectedPresetId = DEFAULT_PROJECT_PRESET_ID;
 
   await projectStore.saveProjectMeta({
     title: '',
@@ -168,8 +165,6 @@ async function resetToDefaults() {
     />
 
     <div v-if="projectStore.projectSettings" class="space-y-6">
-      <div class="h-px bg-ui-border"></div>
-
       <ResolutionSettings />
 
       <div class="h-px bg-ui-border"></div>

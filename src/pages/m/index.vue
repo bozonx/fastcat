@@ -10,7 +10,6 @@ import { onMounted, ref } from 'vue';
 import { writeLocalStorageString, STORAGE_KEYS } from '~/stores/ui/uiLocalStorage';
 import WelcomeScreen from '~/components/startup/WelcomeScreen.vue';
 import { blurOnDropdownMenuClose } from '~/composables/useDropdownMenuBlur';
-import UiSelect from '~/components/ui/UiSelect.vue';
 import UiSearchInput from '~/components/ui/UiSearchInput.vue';
 import MediaResolutionSettings from '~/components/media/MediaResolutionSettings.vue';
 import ProjectThumbnail from '~/components/startup/ProjectThumbnail.vue';
@@ -49,8 +48,6 @@ const {
   isDuplicateModalOpen,
   duplicateValue,
   createNewProject,
-  startCreateProject,
-  applyProjectCreationPreset,
   handleOpenProject,
   renameProject,
   startRename,
@@ -85,7 +82,6 @@ async function onNewProjectFilesSelected(e: Event) {
   pendingFilesForNewProject.value = files;
 
   const options = {
-    presetId: undefined,
     width: 1920,
     height: 1080,
     fps: 30,
@@ -117,13 +113,6 @@ async function onNewProjectFilesSelected(e: Event) {
 }
 
 const isSettingsOpen = ref(false);
-
-const projectPresetOptions = computed(() =>
-  workspaceStore.userSettings.projectPresets.items.map((preset: { id: string; name: string }) => ({
-    value: preset.id,
-    label: preset.name,
-  })),
-);
 
 // Сортировка для основного списка по дате изменения (сначала новые)
 const sortedProjects = computed(() => {
@@ -567,23 +556,6 @@ const sortedProjects = computed(() => {
 
             <template #content>
               <div class="pt-6 border-t border-white/5 mt-4 space-y-6">
-                <UiFormField :label="t('videoEditor.export.presetLabel')">
-                  <UiSelect
-                    v-model="projectCreationSettings.presetId"
-                    :items="projectPresetOptions"
-                    value-key="value"
-                    label-key="label"
-                    full-width
-                    class="bg-ui-bg-elevated/50! rounded-2xl! h-12!"
-                    @update:model-value="
-                      (value: unknown) =>
-                        applyProjectCreationPreset(
-                          (value as { value: string })?.value ?? (value as string),
-                        )
-                    "
-                  />
-                </UiFormField>
-
                 <MediaResolutionSettings
                   v-model:width="projectCreationSettings.width"
                   v-model:height="projectCreationSettings.height"

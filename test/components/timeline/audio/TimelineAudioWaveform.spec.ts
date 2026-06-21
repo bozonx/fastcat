@@ -305,6 +305,30 @@ describe('TimelineAudioWaveform.vue', () => {
       );
       errorSpy.mockRestore();
     });
+
+    it('does not log an error when the file has no active audio track', async () => {
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+      const fileMock = new File([], 'media.mp4');
+      mockVfs.getFile.mockResolvedValue(fileMock);
+      mockMediaStore.getOrFetchMetadataByPath.mockResolvedValue({ duration: 5 });
+      mockMediaStore.extractPeaks.mockRejectedValue(new Error('no active audio track found'));
+
+      const { runQueuedPeakExtraction } = await import('~/utils/audio/waveform-extraction-queue');
+      vi.mocked(runQueuedPeakExtraction).mockImplementation(async ({ task }: any) => task());
+
+      const wrapper = await mountComponent();
+      await (wrapper.vm as any).ensureMediaPeaks({
+        path: 'media.mp4',
+        maxLength: 100,
+      });
+
+      expect(errorSpy).not.toHaveBeenCalledWith(
+        '[TimelineAudioWaveform]',
+        'Failed to extract peaks:',
+        expect.anything(),
+      );
+      errorSpy.mockRestore();
+    });
   });
 
   describe('extraction lifecycle', () => {

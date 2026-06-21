@@ -2,7 +2,6 @@ import { createDevLogger } from '~/utils/dev-logger';
 import { ref, computed } from 'vue';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useProjectStore } from '~/stores/project.store';
-import { resolveLastUsedProjectPreset } from '~/utils/settings';
 const log = createDevLogger('useProjectManagement');
 
 interface ProjectActionTarget {
@@ -12,53 +11,19 @@ interface ProjectActionTarget {
 }
 
 function createProjectCreationState(workspaceStore: ReturnType<typeof useWorkspaceStore>) {
-  const preset = resolveLastUsedProjectPreset(workspaceStore.userSettings.projectPresets);
-
   return {
     name: '',
-    presetId: preset.id,
-    width: preset.width,
-    height: preset.height,
-    fps: preset.fps,
-    resolutionFormat: preset.resolutionFormat,
-    orientation: preset.orientation,
-    aspectRatio: preset.aspectRatio,
-    isCustomResolution: preset.isCustomResolution,
-    sampleRate: preset.sampleRate,
+    width: 1920,
+    height: 1080,
+    fps: 30,
+    resolutionFormat: '1080p',
+    orientation: 'landscape' as const,
+    aspectRatio: '16:9',
+    isCustomResolution: false,
+    sampleRate: 48000,
     isAdvancedSettingsOpen: false,
     location: workspaceStore.resolvedStorageTopology.projectsRoot,
   };
-}
-
-function applyProjectCreationPresetById(
-  workspaceStore: ReturnType<typeof useWorkspaceStore>,
-  projectCreationSettings: {
-    name: string;
-    presetId: string;
-    width: number;
-    height: number;
-    fps: number;
-    resolutionFormat: string;
-    orientation: 'landscape' | 'portrait';
-    aspectRatio: string;
-    isCustomResolution: boolean;
-    sampleRate: number;
-  },
-  presetId: string,
-) {
-  const preset =
-    workspaceStore.userSettings.projectPresets.items.find((item) => item.id === presetId) ??
-    resolveLastUsedProjectPreset(workspaceStore.userSettings.projectPresets);
-
-  projectCreationSettings.presetId = preset.id;
-  projectCreationSettings.width = preset.width;
-  projectCreationSettings.height = preset.height;
-  projectCreationSettings.fps = preset.fps;
-  projectCreationSettings.resolutionFormat = preset.resolutionFormat;
-  projectCreationSettings.orientation = preset.orientation;
-  projectCreationSettings.aspectRatio = preset.aspectRatio;
-  projectCreationSettings.isCustomResolution = preset.isCustomResolution;
-  projectCreationSettings.sampleRate = preset.sampleRate;
 }
 
 export function useProjectManagement(options: { isMobile?: boolean } = {}) {
@@ -95,7 +60,6 @@ export function useProjectManagement(options: { isMobile?: boolean } = {}) {
     if (!name) return;
 
     const options = {
-      presetId: projectCreationSettings.value.presetId,
       width: projectCreationSettings.value.width,
       height: projectCreationSettings.value.height,
       fps: projectCreationSettings.value.fps,
@@ -116,10 +80,6 @@ export function useProjectManagement(options: { isMobile?: boolean } = {}) {
       return;
     }
 
-    if (options.presetId) {
-      workspaceStore.userSettings.projectPresets.lastUsedPresetId = options.presetId;
-    }
-
     if (workspaceStore.userSettings.openLastProjectOnStart) {
       if (workspaceStore.workspaceProviderId === 'tauri' && options.parentPath) {
         const { join } = await import('@tauri-apps/api/path');
@@ -136,10 +96,6 @@ export function useProjectManagement(options: { isMobile?: boolean } = {}) {
   function startCreateProject() {
     projectCreationSettings.value = createProjectCreationState(workspaceStore);
     isCreateModalOpen.value = true;
-  }
-
-  function applyProjectCreationPreset(presetId: string) {
-    applyProjectCreationPresetById(workspaceStore, projectCreationSettings.value, presetId);
   }
 
   function handleOpenProject(project: string) {
@@ -284,7 +240,6 @@ export function useProjectManagement(options: { isMobile?: boolean } = {}) {
     duplicateTargetProject,
     createNewProject,
     startCreateProject,
-    applyProjectCreationPreset,
     handleOpenProject,
     renameProject,
     startRename,

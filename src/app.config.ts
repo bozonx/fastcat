@@ -90,6 +90,11 @@ export default defineAppConfig({
         error: 'text-xs',
       },
     },
+    checkbox: {
+      slots: {
+        base: 'rounded-sm border border-ui-border overflow-hidden focus-visible:outline-2 focus-visible:outline-offset-2',
+      },
+    },
     modal: {
       slots: {
         overlay: 'bg-black/70 backdrop-blur-sm',

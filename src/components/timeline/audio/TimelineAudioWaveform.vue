@@ -174,11 +174,18 @@ async function ensureMediaPeaks(params: {
         }
         return null;
       } catch (err) {
-        log.error('Failed to extract peaks:', err);
+        if (!isMissingAudioTrackError(err)) {
+          log.error('Failed to extract peaks:', err);
+        }
         return null;
       }
     },
   });
+}
+
+function isMissingAudioTrackError(err: unknown): boolean {
+  const message = err instanceof Error ? err.message : String(err);
+  return message.includes('no active audio track found');
 }
 
 const extractPeaks = async () => {

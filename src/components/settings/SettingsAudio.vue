@@ -200,7 +200,7 @@ const webAudioCodecs = computed(() => {
       :help="
         t(
           'videoEditor.settings.defaultAudioFadeCurveHint',
-          'Default curve used for audio fades when you manually create a fade. (De-click always uses a short linear fade).',
+          'Default curve used when you manually create crossfades.',
         )
       "
     >
@@ -217,11 +217,11 @@ const webAudioCodecs = computed(() => {
     </UiFormField>
 
     <UiFormField
-      :label="t('videoEditor.settings.projectAudioDeclickTitle') + ' (ms)'"
+      :label="t('videoEditor.settings.projectAudioDeclickTitle')"
       :help="
         t(
           'videoEditor.settings.projectAudioDeclickHint',
-          'Micro-fades (linear) applied to edges of all clips to eliminate clicks. 0 disables it.',
+          'Crossfade duration (linear) applied to edges of all clips to eliminate clicks. 0 disables it.',
         )
       "
     >

@@ -22,7 +22,6 @@ export {
   createExportPresetId,
   createProjectPresetId,
   resolveExportPreset,
-  resolveLastUsedProjectPreset,
   resolveProjectPreset,
 } from './settings/presets';
 

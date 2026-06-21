@@ -29,7 +29,7 @@ const audioDeclickDurationMs = computed({
       :help="
         t(
           'videoEditor.settings.audioDeclickDurationHelp',
-          'Micro-fades (linear) applied to edges of all clips to eliminate clicks. 0 disables it.',
+          'Crossfade duration (linear) applied to edges of all clips to eliminate clicks. 0 disables it.',
         )
       "
     >
