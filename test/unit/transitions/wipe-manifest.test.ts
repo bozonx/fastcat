@@ -62,7 +62,7 @@ describe('wipe transition blur parameter', () => {
       gapColor: '#000000',
     });
     expect(tooLarge?.params).toMatchObject({
-      p3: 0.2,
+      p3: 0.5,
     });
 
     restoreTauriRuntime();

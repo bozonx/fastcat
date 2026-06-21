@@ -723,10 +723,10 @@ describe('buildNativeMonitorScene', () => {
 
     const fromLayer = scene.layers.find((layer) => layer.id === 'clip-a');
     const toLayer = scene.layers.find((layer) => layer.id === 'clip-b');
-    expect(fromLayer?.transition_out).toBeUndefined();
-    expect(toLayer?.transition_in).toMatchObject({
+    expect(toLayer?.transition_in).toBeUndefined();
+    expect(fromLayer?.transition_out).toMatchObject({
       type: 'wipe',
-      from_layer_id: 'clip-a',
+      from_layer_id: 'clip-b',
       spec: {
         type: 'custom-wgsl',
         source: expect.any(String),
@@ -824,12 +824,13 @@ describe('buildNativeMonitorScene', () => {
               timelineRange: { startUs: 1_000_000, durationUs: 1_000_000 },
               sourceRange: { startUs: 0, durationUs: 1_000_000 },
               transitionIn: {
-                type: 'slide',
+                type: 'bloom',
                 durationUs: 250_000,
                 mode: 'adjacent',
                 params: {
-                  direction: 'left',
-                  blurQuality: 'medium',
+                  brightness: 1.5,
+                  blurLevel: 1.0,
+                  mode: 'bloom',
                 },
               },
             },
@@ -863,7 +864,7 @@ describe('buildNativeMonitorScene', () => {
     });
     const desktopAutoLayer = desktopAutoScene.layers.find((layer) => layer.id === 'clip-b');
     expect(desktopAutoLayer?.transition_in?.spec?.params).toMatchObject({
-      p7: 16,
+      p3: 9,
     });
 
     const mobileAutoScene = await buildNativeMonitorScene({
@@ -876,7 +877,7 @@ describe('buildNativeMonitorScene', () => {
     });
     const mobileAutoLayer = mobileAutoScene.layers.find((layer) => layer.id === 'clip-b');
     expect(mobileAutoLayer?.transition_in?.spec?.params).toMatchObject({
-      p7: 8,
+      p3: 5,
     });
 
     const selectedHighScene = await buildNativeMonitorScene({
@@ -891,7 +892,7 @@ describe('buildNativeMonitorScene', () => {
     });
     const selectedHighLayer = selectedHighScene.layers.find((layer) => layer.id === 'clip-b');
     expect(selectedHighLayer?.transition_in?.spec?.params).toMatchObject({
-      p7: 32,
+      p3: 17,
     });
 
     // A settled paused/still frame upgrades the EFFECT/blur quality to ultra (full fidelity),
@@ -905,7 +906,7 @@ describe('buildNativeMonitorScene', () => {
     });
     const pausedLayer = pausedScene.layers.find((layer) => layer.id === 'clip-b');
     expect(pausedLayer?.transition_in?.spec?.params).toMatchObject({
-      p7: 64,
+      p3: 25,
     });
     // ...but the render SCALE does NOT bump to full res on pause: preview_scale is a pure
     // function of the resolution setting / quality tier and must stay constant across play/pause
@@ -930,7 +931,7 @@ describe('buildNativeMonitorScene', () => {
     });
     const exportToLayer = exportScene.layers.find((layer) => layer.id === 'clip-b');
     expect(exportToLayer?.transition_in?.spec?.params).toMatchObject({
-      p7: 64,
+      p3: 25,
     });
   });
 });

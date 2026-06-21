@@ -62,18 +62,20 @@ fn layer_uv(uv: vec2<f32>, angle: f32, scale: f32, aspect: f32) -> vec2<f32> {
     return zoom_rotate(uv - vec2<f32>(0.5), angle, aspect) / scale + vec2<f32>(0.5);
 }
 
-// MSAA-style coverage of a zoomed/rotated layer over an 8x8 ordered sub-pixel
-// grid. Replaces the hard step() mask so rotated layer edges are anti-aliased.
-fn layer_coverage(uv: vec2<f32>, angle: f32, scale: f32, aspect: f32) -> f32 {
+// MSAA-style coverage of a zoomed/rotated layer over a quality-controlled ordered
+// sub-pixel grid. Replaces the hard step() mask so rotated layer edges are
+// anti-aliased at high/ultra quality, while low/medium use a 1x1 grid (no AA).
+fn layer_coverage(uv: vec2<f32>, angle: f32, scale: f32, aspect: f32, ss: i32) -> f32 {
     let inv = 1.0 / dims();
+    let inv_ss = 1.0 / f32(ss);
     var cov = 0.0;
-    for (var sy = 0; sy < 8; sy = sy + 1) {
-        for (var sx = 0; sx < 8; sx = sx + 1) {
-            let off = (vec2<f32>(f32(sx), f32(sy)) + 0.5) / 8.0 - 0.5;
+    for (var sy = 0; sy < ss; sy = sy + 1) {
+        for (var sx = 0; sx < ss; sx = sx + 1) {
+            let off = (vec2<f32>(f32(sx), f32(sy)) + 0.5) * inv_ss - 0.5;
             if (in_bounds(layer_uv(uv + off * inv, angle, scale, aspect))) { cov = cov + 1.0; }
         }
     }
-    return cov / 64.0;
+    return cov / f32(ss * ss);
 }
 
 fn zoom_sample(tex: texture_2d<f32>, uv: vec2<f32>, blur_amount: f32, bright: f32, blur_fade: f32) -> vec4<f32> {
@@ -126,9 +128,11 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
     let from_angle = mix(0.0, uni.p1, progress);
     let from_blur = mix(0.0, uni.p3 * 0.005, progress);
     let from_bright = mix(1.0, 1.0 + uni.p6, progress);
+    let ss = i32(clamp(uni.p7, 1.0, 8.0));
+
     let from_uv = layer_uv(uv, from_angle, from_scale, aspect);
     var from_color = zoom_sample(from_tex, from_uv, from_blur, from_bright, progress);
-    let from_inside = layer_coverage(uv, from_angle, from_scale, aspect);
+    let from_inside = layer_coverage(uv, from_angle, from_scale, aspect, ss);
     from_color = from_color * ((1.0 - progress) * from_inside);
 
     let to_scale = mix(uni.p0, 1.0, progress);
@@ -137,7 +141,7 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
     let to_bright = mix(1.0 + uni.p6, 1.0, progress);
     let to_uv = layer_uv(uv, to_angle, to_scale, aspect);
     var to_color = zoom_sample(to_tex, to_uv, to_blur, to_bright, 1.0 - progress);
-    let to_inside = layer_coverage(uv, to_angle, to_scale, aspect);
+    let to_inside = layer_coverage(uv, to_angle, to_scale, aspect, ss);
     to_color = to_color * (progress * to_inside);
 
     let result = from_color + to_color;

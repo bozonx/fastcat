@@ -87,6 +87,7 @@ describe('cube transition parameters in Tauri spec', () => {
       zoomMode: 'fixed',
       perspective: 0.7,
       gapSize: 0,
+      unzoomDistance: 0.3,
     });
 
     const norm2 = manifest?.normalizeParams?.({});
@@ -95,6 +96,7 @@ describe('cube transition parameters in Tauri spec', () => {
       zoomMode: 'unzoom',
       perspective: 0.7,
       gapSize: 0,
+      unzoomDistance: 0.3,
     });
 
     restoreTauriRuntime();

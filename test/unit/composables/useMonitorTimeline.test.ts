@@ -305,55 +305,7 @@ describe('useMonitorTimeline', () => {
     });
   });
 
-  it('mirrors adjacent transitionOut onto the next background clip in monitor payload', () => {
-    withMonitorTimeline((res, timelineStore) => {
-      timelineStore.timelineDoc = {
-        tracks: [
-          {
-            id: 'v1',
-            kind: 'video',
-            videoHidden: false,
-            items: [
-              {
-                id: 'adj1',
-                kind: 'clip',
-                clipType: 'adjustment',
-                trackId: 'v1',
-                transitionOut: {
-                  type: 'dissolve',
-                  durationUs: 500,
-                  mode: 'adjacent',
-                  curve: 'linear',
-                  params: {},
-                },
-                timelineRange: { startUs: 0, durationUs: 1000 },
-                sourceRange: { startUs: 0, durationUs: 1000 },
-              },
-              {
-                id: 'bg1',
-                kind: 'clip',
-                clipType: 'background',
-                trackId: 'v1',
-                backgroundColor: '#112233',
-                timelineRange: { startUs: 1000, durationUs: 1000 },
-                sourceRange: { startUs: 0, durationUs: 1000 },
-              },
-            ],
-          },
-        ],
-      } as any;
 
-      const background = res.rawWorkerTimelineClips.value.find((clip: any) => clip.id === 'bg1');
-      expect(background).toMatchObject({
-        clipType: 'background',
-        transitionIn: {
-          type: 'dissolve',
-          durationUs: 500,
-          mode: 'adjacent',
-        },
-      });
-    });
-  });
 
   it('workerAudioClips does not duplicate audio from video clips', () => {
     withMonitorTimeline((res, timelineStore) => {

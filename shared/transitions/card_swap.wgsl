@@ -168,25 +168,28 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
         if (dist < max_d && max_d > 0.0) { shadow_to = (1.0 - dist / max_d) * uni.p5; }
     }
 
-    // MSAA-style edge coverage: evaluate the card geometry at an 8x8 ordered grid
-    // of sub-pixel offsets and average the in/out test. This anti-aliases the
-    // rotated/perspective card silhouettes correctly at any angle (unlike a
-    // fixed UV-space ramp, which collapses to sub-pixel under foreshortening).
-    // Only the cheap geometry math is supersampled; texture color is sampled
-    // once at the pixel center below.
+    // MSAA-style edge coverage: evaluate the card geometry at a quality-controlled
+    // ordered grid of sub-pixel offsets and average the in/out test. This
+    // anti-aliases the rotated/perspective card silhouettes correctly at any angle
+    // (unlike a fixed UV-space ramp, which collapses to sub-pixel under foreshortening).
+    // The grid size is controlled by the preview quality tier via uni.p9: 1x1 for
+    // low/medium (no anti-aliasing) and 8x8 for high/ultra. Only the cheap geometry
+    // math is supersampled; texture color is sampled once at the pixel center below.
     let inv = 1.0 / dims();
+    let ss = i32(clamp(uni.p9, 1.0, 8.0));
+    let inv_ss = 1.0 / f32(ss);
     var cov_fr = 0.0;
     var cov_to = 0.0;
-    for (var sy = 0; sy < 8; sy = sy + 1) {
-        for (var sx = 0; sx < 8; sx = sx + 1) {
-            let off = (vec2<f32>(f32(sx), f32(sy)) + 0.5) / 8.0 - 0.5;
+    for (var sy = 0; sy < ss; sy = sy + 1) {
+        for (var sx = 0; sx < ss; sx = sx + 1) {
+            let off = (vec2<f32>(f32(sx), f32(sy)) + 0.5) * inv_ss - 0.5;
             let scp = map_cards(center_uv + off * inv, dir_h, mode_slide, sign_order, progress);
             if (in_bounds(scp.pfr)) { cov_fr = cov_fr + 1.0; }
             if (in_bounds(scp.pto)) { cov_to = cov_to + 1.0; }
         }
     }
-    cov_fr = cov_fr / 64.0;
-    cov_to = cov_to / 64.0;
+    cov_fr = cov_fr / f32(ss * ss);
+    cov_to = cov_to / f32(ss * ss);
 
     let max_samples = i32(uni.p7);
     var final_c_fr = vec4<f32>(0.0);
@@ -205,8 +208,8 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
         if (cov_fr > 0.0) { final_c_fr = card_blur_slide(from_tex, pfr, blur_dir, blur_amount, samples, f_samples, dark_fr); }
         if (cov_to > 0.0) { final_c_to = card_blur_slide(to_tex, pto, blur_dir, blur_amount, samples, f_samples, dark_to); }
     } else {
-        let blur_fr = uni.p6 * (size_fr - 1.0) * 0.02;
-        let blur_to = uni.p6 * (size_to - 1.0) * 0.02;
+        let blur_fr = uni.p6 * pow(max(0.0, size_fr - 1.0), 2.0) * 0.01;
+        let blur_to = uni.p6 * pow(max(0.0, size_to - 1.0), 2.0) * 0.01;
         let samples_fr = clamp(i32(ceil(blur_fr * max(dims().x, dims().y))), 4, max_samples);
         let samples_to = clamp(i32(ceil(blur_to * max(dims().x, dims().y))), 4, max_samples);
         if (cov_fr > 0.0) { final_c_fr = card_blur_radial(from_tex, pfr, blur_fr, samples_fr, f32(samples_fr), dark_fr); }

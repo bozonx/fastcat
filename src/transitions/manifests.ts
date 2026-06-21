@@ -69,6 +69,19 @@ function qualitySamples(quality: unknown, low: number, med: number, high: number
   return med;
 }
 
+function qualityEdgeSamples(
+  quality: unknown,
+  low: number,
+  med: number,
+  high: number,
+  ultra: number,
+) {
+  if (quality === 'low') return low;
+  if (quality === 'high') return high;
+  if (quality === 'ultra') return ultra;
+  return med;
+}
+
 /**
  * Resolves effective blur quality from export/playback state and user settings.
  * Priority: export → still/paused frame (ultra) → explicit user quality → transition default.
@@ -147,6 +160,7 @@ function normalizeClockParams(params?: Record<string, unknown>): Record<string, 
   return {
     direction:
       direction === 'counterclockwise' || direction === 'symmetric' ? direction : 'clockwise',
+    softness: clamp(finiteNumber(params?.softness, 0), 0, 100),
   };
 }
 
@@ -190,8 +204,10 @@ function normalizeCubeParams(params?: Record<string, unknown>): Record<string, u
   const zoomMode = params?.zoomMode === 'fixed' ? 'fixed' : 'unzoom';
   const perspective = typeof params?.perspective === 'number' ? params.perspective : 0.7;
   const gapSize = typeof params?.gapSize === 'number' ? Math.max(0, params.gapSize) : 0;
+  const unzoomDistance =
+    typeof params?.unzoomDistance === 'number' ? clamp(params.unzoomDistance, 0.0, 1.0) : 0.3;
 
-  return { direction, zoomMode, perspective, gapSize };
+  return { direction, zoomMode, perspective, gapSize, unzoomDistance };
 }
 
 // ---------------------------------------------------------------------------
@@ -491,12 +507,21 @@ export const transitionManifests: TransitionManifest[] = [
           { value: 'symmetric', labelKey: 'fastcat.timeline.transition.directionSymmetric' },
         ],
       },
+      {
+        kind: 'number',
+        key: 'softness',
+        labelKey: 'fastcat.timeline.transition.paramClockSoftness',
+        min: 0,
+        max: 100,
+        step: 1,
+      },
     ],
     toTransitionSpec: (params: Record<string, unknown>) => ({
       type: 'custom-wgsl',
       source: clockWgsl,
       params: {
         p0: params.direction === 'counterclockwise' ? -1 : params.direction === 'symmetric' ? 2 : 1,
+        p1: clamp(finiteNumber(params.softness, 0) / 100, 0.0001, 0.5),
       },
     }),
     computeOutOpacity: transparent,
@@ -1019,6 +1044,7 @@ export const transitionManifests: TransitionManifest[] = [
     ) => {
       const q = resolveBlurQuality(options, params.blurQuality);
       const samples = qualitySamples(q, 8, 16, 32, 64);
+      const aaSamples = qualityEdgeSamples(q, 1, 1, 8, 8);
       return {
         type: 'custom-wgsl',
         source: zoomWgsl,
@@ -1030,6 +1056,7 @@ export const transitionManifests: TransitionManifest[] = [
           p4: samples,
           p5: params.brightnessMode === 'bloom' ? 1.0 : 0.0,
           p6: clamp(finiteNumber(params.brightness, 0), 0, 5),
+          p7: aaSamples,
         },
       };
     },
@@ -1141,11 +1168,24 @@ export const transitionManifests: TransitionManifest[] = [
         max: 0.5,
         step: 0.01,
       },
+      {
+        kind: 'slider',
+        key: 'unzoomDistance',
+        labelKey: 'fastcat.timeline.transition.paramUnzoomDistance',
+        min: 0.0,
+        max: 1.0,
+        step: 0.05,
+      },
     ],
-    toTransitionSpec: (params: Record<string, unknown>) => {
+    toTransitionSpec: (
+      params: Record<string, unknown>,
+      _durationSec?: number,
+      options?: { isExport?: boolean; isPlaying?: boolean; previewBlurQuality?: string },
+    ) => {
       const idx = directionIndex(params.direction); // 0 left, 1 right, 2 up, 3 down
       const dx = idx === 0 ? -1 : idx === 1 ? 1 : 0;
       const dy = idx === 2 ? -1 : idx === 3 ? 1 : 0;
+      const q = resolveBlurQuality(options, params.blurQuality);
       return {
         type: 'custom-wgsl',
         source: cubeWgsl,
@@ -1155,6 +1195,8 @@ export const transitionManifests: TransitionManifest[] = [
           p2: params.zoomMode === 'fixed' ? 0 : 1,
           p3: clamp(finiteNumber(params.perspective, 0.7), 0.1, 3.0),
           p4: clamp(finiteNumber(params.gapSize, 0), 0, 0.5),
+          p5: clamp(finiteNumber(params.unzoomDistance, 0.3), 0.0, 1.0),
+          p6: qualityEdgeSamples(q, 1, 1, 8, 8),
         },
       };
     },
@@ -1192,7 +1234,7 @@ export const transitionManifests: TransitionManifest[] = [
         ],
       },
       {
-        kind: 'select',
+        kind: 'button-group',
         key: 'direction',
         labelKey: 'fastcat.timeline.transition.paramDirection',
         options: [
@@ -1201,7 +1243,7 @@ export const transitionManifests: TransitionManifest[] = [
         ],
       },
       {
-        kind: 'select',
+        kind: 'button-group',
         key: 'slideOrder',
         labelKey: 'fastcat.timeline.transition.paramSlideOrder',
         options: [
@@ -1257,6 +1299,7 @@ export const transitionManifests: TransitionManifest[] = [
     ) => {
       const q = resolveBlurQuality(options, params.blurQuality);
       const samples = qualitySamples(q, 4, 8, 16, 32);
+      const aaSamples = qualityEdgeSamples(q, 1, 1, 8, 8);
       return {
         type: 'custom-wgsl',
         source: cardSwapWgsl,
@@ -1270,6 +1313,7 @@ export const transitionManifests: TransitionManifest[] = [
           p6: clamp(finiteNumber(params.blurStrength, 0.5), 0, 1),
           p7: samples,
           p8: clamp(finiteNumber(params.bloom, 0), 0, 1),
+          p9: aaSamples,
         },
       };
     },
@@ -1293,7 +1337,7 @@ export const transitionManifests: TransitionManifest[] = [
     supportedModes: ['adjacent', 'background', 'transparent'],
     paramFields: [
       {
-        kind: 'select',
+        kind: 'button-group',
         key: 'action',
         labelKey: 'fastcat.timeline.transition.paramAction',
         options: [
@@ -1302,7 +1346,7 @@ export const transitionManifests: TransitionManifest[] = [
         ],
       },
       {
-        kind: 'select',
+        kind: 'button-group',
         key: 'direction',
         labelKey: 'fastcat.timeline.transition.paramDirection',
         options: [
@@ -1313,7 +1357,7 @@ export const transitionManifests: TransitionManifest[] = [
         ],
       },
       {
-        kind: 'select',
+        kind: 'button-group',
         key: 'depthDirection',
         labelKey: 'fastcat.timeline.transition.paramDepthDirection',
         options: [
@@ -1330,10 +1374,15 @@ export const transitionManifests: TransitionManifest[] = [
         step: 0.05,
       },
     ],
-    toTransitionSpec: (params: Record<string, unknown>) => {
+    toTransitionSpec: (
+      params: Record<string, unknown>,
+      _durationSec?: number,
+      options?: { isExport?: boolean; isPlaying?: boolean; previewBlurQuality?: string },
+    ) => {
       // down=1, up=0, left=2, right=3 (matches the shared shader mapping)
       const d = params.direction;
       const dir = d === 'up' ? 0 : d === 'left' ? 2 : d === 'right' ? 3 : 1;
+      const q = resolveBlurQuality(options, params.blurQuality);
       return {
         type: 'custom-wgsl',
         source: fallingCardWgsl,
@@ -1344,6 +1393,7 @@ export const transitionManifests: TransitionManifest[] = [
           // Edge bleed: 0 = card fits exactly inside the screen, 1 = near edge
           // bulges toward the viewer to ~2x screen size. Works in both directions.
           p3: clamp(finiteNumber(params.edgeOverflow, 0), 0, 1),
+          p4: qualityEdgeSamples(q, 1, 1, 8, 8),
         },
       };
     },

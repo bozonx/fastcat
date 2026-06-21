@@ -53,7 +53,7 @@ fn pixel_uv(gid: vec3<u32>) -> vec2<f32> {
 struct CubePos { from_p: vec2<f32>, to_p: vec2<f32> };
 
 fn map_cube(uv: vec2<f32>, progress: f32) -> CubePos {
-    let unzoom = 0.3 * uni.p2;
+    let unzoom = uni.p5 * uni.p2;
     let uz = unzoom * 2.0 * (0.5 - abs(progress - 0.5));
     let p = vec2<f32>(-uz * 0.5) + (1.0 + uz) * uv;
 
@@ -141,13 +141,14 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
     // coverage run at a high rate without multiplying texture fetches. A fixed
     // UV-space ramp collapses to sub-pixel under perspective foreshortening, and
     // a low sample count leaves coarse stair-steps on the shallow top/bottom
-    // edges: an 8x8 grid quantises coverage to 1/64, smoothing them out.
+    // edges. The grid size is controlled by the preview quality tier via uni.p6:
+    // 1x1 for low/medium (no anti-aliasing) and 8x8 for high/ultra.
     let center = map_cube(uv, progress);
     let from_color = samp(from_tex, center.from_p);
     let to_color = samp(to_tex, center.to_p);
 
     let inv = 1.0 / dims();
-    let ss = 8;
+    let ss = i32(clamp(uni.p6, 1.0, 8.0));
     let inv_ss = 1.0 / f32(ss);
     var cov_from = 0.0;
     var cov_to = 0.0;

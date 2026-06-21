@@ -430,13 +430,18 @@ fn build_raster_kind(
         LayerKind::Adjustment => return Ok(None),
         LayerKind::Video => {
             // A layer that does not `covers(time_sec)` but is still being rendered is
-            // the FROM side of a transition whose overlap runs past this clip's end.
-            // Play it into its tail material (matching the web compositor / live
-            // preview) instead of freezing on the trimmed out-point.
+            // a transition peer: either the FROM side of an `in` transition whose
+            // overlap runs past this clip's end (→ trailing handle), or the incoming
+            // `to` side of the previous clip's `out` transition, composited before its
+            // own start (→ leading handle). `transition_peer_source_pts_at` picks the
+            // correct handle; using the tail unconditionally froze the incoming clip on
+            // its out-point (or seeked past EOF → decode failed → the layer was skipped
+            // and the transition vanished from exports/snapshots), matching neither the
+            // web compositor nor the live preview.
             let source_pts = if layer.covers(time_sec) {
                 layer.source_pts_at(time_sec)
             } else {
-                layer.transition_tail_source_pts_at(time_sec)
+                layer.transition_peer_source_pts_at(time_sec)
             };
             let (frame, source_rotation) = match decode_video_frame_cached(
                 Path::new(&layer.path),

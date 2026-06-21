@@ -72,6 +72,10 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
     let progress = clamp(uni.progress, 0.0, 1.0);
     let R = length(centered);
     let aa = clamp((1.5 / dims().y) / (2.0 * PI * max(R, 0.0001)), 0.0001, 0.5);
-    let reveal = smoothstep(progress - aa, progress + aa, angle / (PI * 2.0));
+    let blur = max(uni.p1, aa);
+    let val = angle / (PI * 2.0);
+    let diff = val - progress;
+    let cyclic_diff = diff - round(diff);
+    let reveal = smoothstep(-blur, blur, cyclic_diff);
     textureStore(output_tex, coord, mix(samp(from_tex, uv), samp(to_tex, uv), 1.0 - reveal));
 }
