@@ -9,6 +9,8 @@ import ellipseWgsl from '~shared/transitions/ellipse.wgsl?raw';
 import fallingCardWgsl from '~shared/transitions/falling_card.wgsl?raw';
 import motionBlurWgsl from '~shared/transitions/motion_blur.wgsl?raw';
 import rectangleWgsl from '~shared/transitions/rectangle.wgsl?raw';
+import slideWgsl from '~shared/transitions/slide.wgsl?raw';
+import wipeWgsl from '~shared/transitions/wipe.wgsl?raw';
 import zoomWgsl from '~shared/transitions/zoom.wgsl?raw';
 
 // ---------------------------------------------------------------------------
@@ -341,12 +343,23 @@ export const transitionManifests: TransitionManifest[] = [
         baseAngle = 90;
       }
       const customAngle = clamp(finiteNumber(params.angle, 0), -180, 180);
-      const angle_deg = (baseAngle + customAngle) % 360;
+      const angleRad = (((baseAngle + customAngle) % 360) * Math.PI) / 180;
+      const useGap = params.edgeMode !== 'blur';
       const softness = clamp(finiteNumber(params.blur, 2) / 100, 0.0001, 1.0);
+      const [r, g, b] = hexToRgb01(params.gapColor, '#000000');
       return {
-        type: 'wipe',
-        angle_deg,
-        softness,
+        type: 'custom-wgsl',
+        source: wipeWgsl,
+        params: {
+          p0: Math.cos(angleRad),
+          p1: Math.sin(angleRad),
+          p2: useGap ? clamp(finiteNumber(params.gap, 0.02), 0, 0.2) : 0,
+          p3: softness,
+          p4: useGap ? 1 : 0,
+          p5: r,
+          p6: g,
+          p7: b,
+        },
       };
     },
     computeOutOpacity: transparent,
@@ -437,9 +450,17 @@ export const transitionManifests: TransitionManifest[] = [
       },
     ],
     toTransitionSpec: (params: Record<string, unknown>): TransitionSpec => {
+      const [r, g, b] = hexToRgb01(params.gapColor, '#000000');
       return {
-        type: 'slide',
-        direction: normalizeDirection(params.direction),
+        type: 'custom-wgsl',
+        source: slideWgsl,
+        params: {
+          p0: directionIndex(params.direction),
+          p1: clamp(finiteNumber(params.gap, 0.02), 0, 0.2),
+          p2: r,
+          p3: g,
+          p4: b,
+        },
       };
     },
     computeOutOpacity: transparent,

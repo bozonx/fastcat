@@ -68,6 +68,22 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
         let tex_color = mix(c_to, c_from, w_from / total_w);
         final_color = mix(vec4<f32>(0.0, 0.0, 0.0, 1.0), tex_color, min(total_w, 1.0));
     }
-    
+
+    // p1: gap size, p2/p3/p4: gap color. A solid band painted over the seam
+    // between the outgoing/incoming clips so they appear separated by a gap.
+    if (uni.p1 > 0.0) {
+        let gap_half = uni.p1 * 0.5;
+        var coord_a: f32;
+        var seam: f32;
+        if (dir == 0) { coord_a = uv.x; seam = 1.0 - uni.progress; }
+        else if (dir == 1) { coord_a = uv.x; seam = uni.progress; }
+        else if (dir == 2) { coord_a = uv.y; seam = 1.0 - uni.progress; }
+        else { coord_a = uv.y; seam = uni.progress; }
+        let aa = select(1.5 / f32(uni.width), 1.5 / f32(uni.height), dir >= 2);
+        let band = 1.0 - smoothstep(gap_half - aa, gap_half + aa, abs(coord_a - seam));
+        let gap_color = vec4<f32>(uni.p2, uni.p3, uni.p4, 1.0);
+        final_color = mix(final_color, gap_color, band);
+    }
+
     textureStore(output_tex, coord, final_color);
 }
