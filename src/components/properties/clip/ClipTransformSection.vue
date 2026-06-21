@@ -121,6 +121,11 @@ const cropRightPx = computed({
 function clampNumber(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
 }
+
+function handleResetAll() {
+  resetAll();
+  emit('updateSourceOrientation', 'auto');
+}
 </script>
 
 <template>
@@ -136,7 +141,7 @@ function clampNumber(value: number, min: number, max: number): number {
         class="flex items-center gap-1 text-2xs text-ui-text-muted hover:text-ui-text disabled:opacity-50"
         :title="t('fastcat.clip.transform.resetAll')"
         :disabled="!isEnabled"
-        @click="resetAll"
+        @click="handleResetAll"
       >
         <UIcon name="i-heroicons-arrow-path" class="w-3.5 h-3.5 block" />
       </button>

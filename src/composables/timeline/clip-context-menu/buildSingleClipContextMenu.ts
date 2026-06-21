@@ -9,6 +9,7 @@ import {
 import { getApplicableClipParameterGroups } from '~/utils/timeline/clip-parameters';
 import { sanitizeFps } from '~/timeline/commands/utils';
 import { buildQuantizeClipCommands } from '~/utils/timeline/clip-quantize';
+import { useMediaStore, resolveMediaMetadata } from '~/stores/media.store';
 
 export function buildSingleClipMainGroup(options: UseClipContextMenuOptions): ContextMenuGroup[] {
   const track = options.track.value;
@@ -48,7 +49,11 @@ export function buildSingleClipMainGroup(options: UseClipContextMenuOptions): Co
     });
   }
 
-  const isMediaVideoClip = track.kind === 'video' && clipItem.clipType === 'media';
+  const mediaStore = useMediaStore();
+  const meta = clipItem.mediaSourcePath ? resolveMediaMetadata(mediaStore.mediaMetadata, clipItem.mediaSourcePath) : undefined;
+  const hasAudioTrack = clipItem.isImage ? false : (clipItem.clipType === 'media' && meta ? !!meta.audio : true);
+
+  const isMediaVideoClip = track.kind === 'video' && clipItem.clipType === 'media' && !clipItem.isImage;
   const hasFreezeFrame = typeof clipItem.freezeFrameSourceUs === 'number';
 
   if (isMediaVideoClip) {
@@ -97,7 +102,8 @@ export function buildSingleClipMainGroup(options: UseClipContextMenuOptions): Co
     track.kind === 'video' &&
     clipItem.clipType === 'media' &&
     !clipItem.isImage &&
-    !clipItem.audioMuted;
+    !clipItem.audioMuted &&
+    hasAudioTrack;
   if (canExtract) {
     montageGroup.push({
       label: options.t('fastcat.timeline.extractAudio'),
@@ -112,7 +118,7 @@ export function buildSingleClipMainGroup(options: UseClipContextMenuOptions): Co
   }
 
   // 3. stateGroup (Вейвформы, миниатюры, Включить/выключить, Заблокировать, Привязать к сетке)
-  const hasAudio = clipSupportsAudioControls(track, clipItem);
+  const hasAudio = clipSupportsAudioControls(track, clipItem) && hasAudioTrack;
   if (hasAudio) {
     const currentMode = clipItem.audioWaveformMode || 'half';
     stateGroup.push({
@@ -164,19 +170,21 @@ export function buildSingleClipMainGroup(options: UseClipContextMenuOptions): Co
   }
 
   // Включить/выключить клип
-  stateGroup.push({
-    label: clipItem.disabled
-      ? options.t('fastcat.timeline.enableClip')
-      : options.t('fastcat.timeline.disableClip'),
-    icon: clipItem.disabled ? 'i-heroicons-eye' : 'i-heroicons-eye-slash',
-    kbds: options.getHotkeyKbds('timeline.toggleDisableClip'),
-    onSelect: async () => {
-      options.updateClipProperties(track.id, clipItem.id, {
-        disabled: !clipItem.disabled,
-      });
-      await options.requestTimelineSave({ immediate: true });
-    },
-  });
+  if (track.kind !== 'audio') {
+    stateGroup.push({
+      label: clipItem.disabled
+        ? options.t('fastcat.timeline.enableClip')
+        : options.t('fastcat.timeline.disableClip'),
+      icon: clipItem.disabled ? 'i-heroicons-eye' : 'i-heroicons-eye-slash',
+      kbds: options.getHotkeyKbds('timeline.toggleDisableClip'),
+      onSelect: async () => {
+        options.updateClipProperties(track.id, clipItem.id, {
+          disabled: !clipItem.disabled,
+        });
+        await options.requestTimelineSave({ immediate: true });
+      },
+    });
+  }
 
   // Включить/выключить звук клипа
   if (hasAudio) {
@@ -296,16 +304,7 @@ export function buildSingleItemActionGroup(options: UseClipContextMenuOptions): 
     onSelect: () => options.cutSelectedClips(),
   });
 
-  if (clip) {
-    // Paste
-    actions.push({
-      label: options.t('common.paste'),
-      icon: 'i-heroicons-clipboard',
-      disabled: isTrackLocked || isLocked || !options.hasTimelineClipboard,
-      kbds: options.getHotkeyKbds('general.paste'),
-      onSelect: () => options.pasteClips(clip.timelineRange.startUs),
-    });
-  }
+
 
   // Delete
   actions.push({

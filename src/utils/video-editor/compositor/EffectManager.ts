@@ -36,7 +36,7 @@ export class EffectManager {
   }
 
   private syncMaskFilter(clip: CompositorClip): ClipMaskFilter | null {
-    if (!clip.mask || !clip.maskState) {
+    if (clip.maskActive === false || !clip.mask || !clip.maskState) {
       // Remove mask filter if it exists
       if (clip.effectFilters?.has('__mask')) {
         const filter = clip.effectFilters.get('__mask');

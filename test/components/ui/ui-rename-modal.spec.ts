@@ -48,6 +48,7 @@ describe('UiRenameModal', () => {
       props: {
         open: false,
         initialName: 'video.mp4',
+        selectWithoutExtension: true,
       },
       global: { stubs },
     });

@@ -282,6 +282,10 @@ export const useFileManagerStore = defineStore(
   'fileManager',
   createFileManagerStoreSetup('editor'),
 );
+export const useReplaceMediaFileManagerStore = defineStore(
+  'replaceMediaFileManager',
+  createFileManagerStoreSetup('replace-media'),
+);
 export const useFilesPageFileManagerStore = defineStore(
   'filesPageFileManager',
   createFileManagerStoreSetup('filesPage'),

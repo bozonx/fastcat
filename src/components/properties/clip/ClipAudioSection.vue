@@ -133,21 +133,28 @@ const fadeCurveOptions = [
                 :disabled="!isEnabled"
                 @update:model-value="(v: any) => emit('updateAudioFadeInSec', Number(v))"
               />
-              <UiSelect
-                :model-value="props.audioFadeInCurve"
-                :items="fadeCurveOptions"
-                value-key="value"
-                label-key="label"
-                size="xs"
-                :disabled="!isEnabled"
-                @update:model-value="
-                  (v: unknown) =>
-                    emit(
-                      'updateAudioFadeInCurve',
-                      ((v as { value: string })?.value ?? v) as AudioFadeCurve,
-                    )
-                "
-              />
+              <div class="flex rounded bg-ui-bg-dark border border-ui-border p-0.5 w-full">
+                <button
+                  type="button"
+                  class="flex-1 flex items-center justify-center gap-1 px-1.5 py-0.5 text-[10px] rounded font-medium transition-all cursor-pointer"
+                  :class="props.audioFadeInCurve === 'linear' ? 'bg-ui-element-bg text-ui-text shadow-xs' : 'text-ui-text-muted hover:text-ui-text'"
+                  :disabled="!isEnabled"
+                  @click="emit('updateAudioFadeInCurve', 'linear')"
+                >
+                  <UIcon name="i-heroicons-presentation-chart-line" class="w-3.5 h-3.5 block shrink-0" />
+                  <span class="truncate">{{ t('fastcat.clip.audioFade.curve.linear') }}</span>
+                </button>
+                <button
+                  type="button"
+                  class="flex-1 flex items-center justify-center gap-1 px-1.5 py-0.5 text-[10px] rounded font-medium transition-all cursor-pointer"
+                  :class="props.audioFadeInCurve === 'logarithmic' ? 'bg-ui-element-bg text-ui-text shadow-xs' : 'text-ui-text-muted hover:text-ui-text'"
+                  :disabled="!isEnabled"
+                  @click="emit('updateAudioFadeInCurve', 'logarithmic')"
+                >
+                  <UIcon name="i-heroicons-variable" class="w-3.5 h-3.5 block shrink-0" />
+                  <span class="truncate">{{ t('fastcat.clip.audioFade.curve.logarithmic') }}</span>
+                </button>
+              </div>
             </div>
           </div>
 
@@ -168,21 +175,28 @@ const fadeCurveOptions = [
                 :disabled="!isEnabled"
                 @update:model-value="(v: any) => emit('updateAudioFadeOutSec', Number(v))"
               />
-              <UiSelect
-                :model-value="props.audioFadeOutCurve"
-                :items="fadeCurveOptions"
-                value-key="value"
-                label-key="label"
-                size="xs"
-                :disabled="!isEnabled"
-                @update:model-value="
-                  (v: unknown) =>
-                    emit(
-                      'updateAudioFadeOutCurve',
-                      ((v as { value: string })?.value ?? v) as AudioFadeCurve,
-                    )
-                "
-              />
+              <div class="flex rounded bg-ui-bg-dark border border-ui-border p-0.5 w-full">
+                <button
+                  type="button"
+                  class="flex-1 flex items-center justify-center gap-1 px-1.5 py-0.5 text-[10px] rounded font-medium transition-all cursor-pointer"
+                  :class="props.audioFadeOutCurve === 'linear' ? 'bg-ui-element-bg text-ui-text shadow-xs' : 'text-ui-text-muted hover:text-ui-text'"
+                  :disabled="!isEnabled"
+                  @click="emit('updateAudioFadeOutCurve', 'linear')"
+                >
+                  <UIcon name="i-heroicons-presentation-chart-line" class="w-3.5 h-3.5 block shrink-0" />
+                  <span class="truncate">{{ t('fastcat.clip.audioFade.curve.linear') }}</span>
+                </button>
+                <button
+                  type="button"
+                  class="flex-1 flex items-center justify-center gap-1 px-1.5 py-0.5 text-[10px] rounded font-medium transition-all cursor-pointer"
+                  :class="props.audioFadeOutCurve === 'logarithmic' ? 'bg-ui-element-bg text-ui-text shadow-xs' : 'text-ui-text-muted hover:text-ui-text'"
+                  :disabled="!isEnabled"
+                  @click="emit('updateAudioFadeOutCurve', 'logarithmic')"
+                >
+                  <UIcon name="i-heroicons-variable" class="w-3.5 h-3.5 block shrink-0" />
+                  <span class="truncate">{{ t('fastcat.clip.audioFade.curve.logarithmic') }}</span>
+                </button>
+              </div>
             </div>
           </div>
         </div>

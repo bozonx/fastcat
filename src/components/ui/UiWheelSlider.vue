@@ -163,6 +163,14 @@ function onPointerDownCapture(event: PointerEvent) {
     lastPointerDownTime.value = now;
   }
 }
+
+function onPointerUp(event: PointerEvent) {
+  if (event.pointerType === 'mouse') {
+    if (wrapperRef.value && document.activeElement && wrapperRef.value.contains(document.activeElement)) {
+      (document.activeElement as HTMLElement).blur();
+    }
+  }
+}
 </script>
 
 <template>
@@ -178,6 +186,8 @@ function onPointerDownCapture(event: PointerEvent) {
       disabled ? 'opacity-50 pointer-events-none' : 'opacity-100',
     ]"
     @pointerdown.capture="onPointerDownCapture"
+    @pointerup="onPointerUp"
+    @pointercancel="onPointerUp"
     @dblclick.capture="resetToDefault"
   >
     <USlider

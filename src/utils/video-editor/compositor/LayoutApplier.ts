@@ -22,7 +22,7 @@ export class LayoutApplier {
       frameHeight: this.context.height,
       canvasWidth: this.context.width,
       canvasHeight: this.context.height,
-      transform: clip.transform,
+      transform: clip.transformActive !== false ? clip.transform : undefined,
     });
 
     this.applyTransformLayout({
@@ -113,8 +113,8 @@ export class LayoutApplier {
       canvasHeight: this.context.height,
       fitRotationDeg: sourceRotation,
       transform: {
-        ...(clip.transform ?? {}),
-        rotationDeg: (clip.transform?.rotationDeg ?? 0) + sourceRotation,
+        ...((clip.transformActive !== false ? clip.transform : undefined) ?? {}),
+        rotationDeg: ((clip.transformActive !== false ? clip.transform : undefined)?.rotationDeg ?? 0) + sourceRotation,
       },
     });
 
@@ -158,7 +158,7 @@ export class LayoutApplier {
     targetW: number,
     targetH: number,
   ) {
-    const transform = clip.transform;
+    const transform = clip.transformActive !== false ? clip.transform : undefined;
     const scaleX = typeof transform?.scale?.x === 'number' ? transform.scale.x : 1;
     const scaleY = typeof transform?.scale?.y === 'number' ? transform.scale.y : 1;
     const rotationDeg = typeof transform?.rotationDeg === 'number' ? transform.rotationDeg : 0;
@@ -231,19 +231,25 @@ export class LayoutApplier {
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (sprite as any).anchor?.set?.(anchorX, anchorY);
+
+    if (sprite.scale) {
+      sprite.scale.x = Math.abs(sprite.scale.x);
+      sprite.scale.y = Math.abs(sprite.scale.y);
+    }
+
     sprite.width = paddedW * fitScaleX;
     sprite.height = paddedH * fitScaleY;
 
     if (sprite.scale) {
-      sprite.scale.x *= input.scaleX;
-      sprite.scale.y *= input.scaleY;
+      sprite.scale.x *= Math.sign(input.scaleX);
+      sprite.scale.y *= Math.sign(input.scaleY);
     }
 
     sprite.rotation = (input.rotationDeg * Math.PI) / 180;
     sprite.x = input.baseX + input.anchorOffsetX + input.stagePosX;
     sprite.y = input.baseY + input.anchorOffsetY + input.stagePosY;
 
-    const crop = input.clip.transform?.crop;
+    const crop = input.clip.transformActive !== false ? input.clip.transform?.crop : undefined;
     if (crop && (crop.top || crop.bottom || crop.left || crop.right)) {
       if (!input.clip.cropMask) {
         input.clip.cropMask = new Graphics();

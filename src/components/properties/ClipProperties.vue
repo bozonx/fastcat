@@ -92,11 +92,15 @@ const tabs = computed(() => [
         },
       ]
     : []),
-  {
-    label: t('fastcat.clip.tabs.video'),
-    value: 'video',
-    icon: 'i-heroicons-sparkles',
-  },
+  ...(isVideoTrack.value
+    ? [
+        {
+          label: t('fastcat.clip.tabs.video'),
+          value: 'video',
+          icon: 'i-heroicons-sparkles',
+        },
+      ]
+    : []),
   ...(showAudioTab.value
     ? [
         {

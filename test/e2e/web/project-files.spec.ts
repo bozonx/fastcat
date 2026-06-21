@@ -33,7 +33,6 @@ test.describe('Web workspace file operations', () => {
         { name: '_video', kind: 'directory' },
         { name: '_audio', kind: 'directory' },
         { name: '_images', kind: 'directory' },
-        { name: '_documents', kind: 'directory' },
         { name: '_timelines', kind: 'directory' },
         { name: '_export', kind: 'directory' },
         { name: '.fastcat', kind: 'directory' },

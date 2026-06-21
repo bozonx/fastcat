@@ -128,12 +128,16 @@ function onDocPointerUp(event: PointerEvent) {
   activePointerId.value = null;
   clearDragListeners();
   emit('drag-end');
+  if (event.pointerType === 'mouse') {
+    sliderRef.value?.blur();
+  }
 }
 
 function onDocMouseUp() {
   activePointerId.value = null;
   clearDragListeners();
   emit('drag-end');
+  sliderRef.value?.blur();
 }
 
 function onPointerDown(event: PointerEvent) {

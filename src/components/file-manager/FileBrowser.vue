@@ -54,6 +54,9 @@ const props = defineProps<{
   hideSelectUnused?: boolean;
   rootName?: string;
   preventOpen?: boolean;
+  hideToolbar?: boolean;
+  singleClickFolders?: boolean;
+  disableMarquee?: boolean;
 }>();
 
 const instanceId = props.instanceId || 'default';
@@ -513,10 +516,25 @@ function focusBrowserPanel() {
 const {
   marqueeStyle,
   preventClickClear,
-  onMarqueePointerDown,
-  onMarqueePointerMove,
-  onMarqueePointerUp,
+  onMarqueePointerDown: onMarqueePointerDownBase,
+  onMarqueePointerMove: onMarqueePointerMoveBase,
+  onMarqueePointerUp: onMarqueePointerUpBase,
 } = useFileBrowserMarquee({ rootContainer, sortedEntries, onFocusPanel: focusBrowserPanel });
+
+function onMarqueePointerDown(e: PointerEvent) {
+  if (props.disableMarquee) return;
+  onMarqueePointerDownBase(e);
+}
+
+function onMarqueePointerMove(e: PointerEvent) {
+  if (props.disableMarquee) return;
+  onMarqueePointerMoveBase(e);
+}
+
+function onMarqueePointerUp(e: PointerEvent) {
+  if (props.disableMarquee) return;
+  onMarqueePointerUpBase(e);
+}
 
 function handleContainerClick() {
   focusBrowserPanel();
@@ -783,6 +801,7 @@ const { handleEntryClick, handleEntryDoubleClick, handleEntryEnter, handleSort, 
     instanceId,
     isExternal: isExternal.value,
     canInteractWithEntry: canUseFile,
+    singleClickFolders: props.singleClickFolders,
   });
 
 async function onDirectoryUploadChange(e: Event) {
@@ -812,9 +831,8 @@ async function onDirectoryUploadChange(e: Event) {
     }"
     @pointerdown.capture="focusBrowserPanel"
   >
-    <!-- Toolbar -->
     <FileBrowserToolbar
-      v-if="!(remoteModeOnly && (!isRemoteAvailable || remoteError))"
+      v-if="!hideToolbar && !(remoteModeOnly && (!isRemoteAvailable || remoteError))"
       :grid-sizes="fileBrowserGridSizes"
       :current-grid-size-name="currentGridSizeName"
       :grid-card-size="effectiveGridCardSize"

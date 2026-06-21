@@ -140,7 +140,7 @@ export class TransitionManager {
     timeUs: number,
     previewEffectsEnabled: boolean,
   ): number {
-    const baseOpacity = clip.opacity ?? 1;
+    const baseOpacity = clip.opacityActive !== false ? (clip.opacity ?? 1) : 1;
     const localTimeUs = timeUs - clip.startUs;
 
     const inDurUs = clip.transitionIn?.durationUs ?? 0;

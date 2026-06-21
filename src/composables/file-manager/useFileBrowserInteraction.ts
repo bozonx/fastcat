@@ -20,21 +20,24 @@ export interface FileBrowserInteractionOptions {
   instanceId?: string;
   isExternal?: boolean;
   canInteractWithEntry?: (entry: FsEntry) => boolean;
+  singleClickFolders?: boolean;
 }
 
-export function useFileBrowserInteraction({
-  isRemoteMode,
-  remoteCurrentFolder,
-  sortedEntries,
-  loadFolderContent,
-  loadParentFolders,
-  setSelectedFsEntry,
-  onFileAction,
-  preventOpen,
-  instanceId,
-  isExternal,
-  canInteractWithEntry,
-}: FileBrowserInteractionOptions) {
+export function useFileBrowserInteraction(options: FileBrowserInteractionOptions) {
+  const {
+    isRemoteMode,
+    remoteCurrentFolder,
+    sortedEntries,
+    loadFolderContent,
+    loadParentFolders,
+    setSelectedFsEntry,
+    onFileAction,
+    preventOpen,
+    instanceId,
+    isExternal,
+    canInteractWithEntry,
+    singleClickFolders,
+  } = options;
   const fileManagerStore =
     (inject('fileManagerStore', null) as ReturnType<typeof useFileManagerStore> | null) ||
     useFileManagerStore();
@@ -55,6 +58,10 @@ export function useFileBrowserInteraction({
       return;
     }
     handleSelectionClick(event, entry);
+
+    if (singleClickFolders && entry.kind === 'directory') {
+      handleEntryDoubleClick(entry);
+    }
   }
 
   function handleEntryDoubleClick(entry: FsEntry) {

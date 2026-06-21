@@ -293,7 +293,6 @@ export const useProjectStore = defineStore('project', () => {
         VIDEO_DIR_NAME,
         AUDIO_DIR_NAME,
         IMAGES_DIR_NAME,
-        DOCUMENTS_DIR_NAME,
         TIMELINES_DIR_NAME,
         EXPORT_DIR_NAME,
         '.fastcat',

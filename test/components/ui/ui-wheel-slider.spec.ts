@@ -140,4 +140,34 @@ describe('UiWheelSlider', () => {
     // Validates that the custom class exists somewhere in the rendered HTML (which Nuxt UI USlider will include)
     expect(component.html()).toContain('custom-track-class');
   });
+
+  it('blurs the active element inside the wrapper on pointerup with mouse pointerType', async () => {
+    const component = await mountSuspended(UiWheelSlider, {
+      props: {
+        modelValue: 50,
+        min: 0,
+        max: 100,
+      },
+      attachTo: document.body,
+    });
+
+    const wrapper = component.find('div.relative');
+    
+    // Create and append a dummy element to simulate a focused element inside the slider wrapper
+    const dummyInput = document.createElement('input');
+    wrapper.element.appendChild(dummyInput);
+    dummyInput.focus();
+    
+    expect(document.activeElement).toBe(dummyInput);
+    
+    const blurSpy = vi.spyOn(dummyInput, 'blur');
+    
+    await wrapper.trigger('pointerup', { pointerType: 'mouse' });
+    
+    expect(blurSpy).toHaveBeenCalled();
+    
+    // Clean up
+    dummyInput.remove();
+    component.unmount();
+  });
 });

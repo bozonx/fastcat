@@ -94,7 +94,8 @@ export function getTextBackgroundShadowOutsetPx(
 }
 
 function clampFinite(value: unknown, fallback: number, min?: number, max?: number): number {
-  const finite = sharedClampFinite(value, fallback);
+  const parsed = value !== null && value !== undefined && value !== '' ? Number(value) : NaN;
+  const finite = Number.isFinite(parsed) ? parsed : fallback;
   if (min === undefined && max === undefined) return finite;
   const safeMin = min ?? Number.NEGATIVE_INFINITY;
   const safeMax = max ?? Number.POSITIVE_INFINITY;

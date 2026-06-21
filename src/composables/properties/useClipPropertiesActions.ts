@@ -10,6 +10,7 @@ import { useAppClipboard } from '~/composables/useAppClipboard';
 import { getApplicableClipParameterGroups } from '~/utils/timeline/clip-parameters';
 import { isClipFrameAligned, clipSupportsSpeedControls } from '~/utils/timeline/clip-capabilities';
 import { buildQuantizeClipCommands } from '~/utils/timeline/clip-quantize';
+import { useMediaStore, resolveMediaMetadata } from '~/stores/media.store';
 
 interface TimelineStoreActions {
   timelineDoc: TimelineDocument | null;
@@ -134,13 +135,23 @@ export function useClipPropertiesActions(options: UseClipPropertiesActionsOption
     return track?.audioSolo === true;
   });
 
+  const mediaStore = useMediaStore();
+
   const hasAudio = computed(() => {
     const clip = options.clip.value;
-    return (
-      options.trackKind.value === 'audio' ||
-      clip.clipType === 'media' ||
-      clip.clipType === 'timeline'
-    );
+    if (clip.isImage) return false;
+    if (options.trackKind.value === 'audio') return true;
+    if (clip.clipType === 'timeline') return true;
+    if (clip.clipType === 'media') {
+      if (clip.mediaSourcePath) {
+        const meta = resolveMediaMetadata(mediaStore.mediaMetadata, clip.mediaSourcePath);
+        if (meta) {
+          return !!meta.audio;
+        }
+      }
+      return true;
+    }
+    return false;
   });
 
   const hasApplicableClipParameters = computed(() => {
@@ -156,7 +167,7 @@ export function useClipPropertiesActions(options: UseClipPropertiesActionsOption
   });
 
   const isMediaVideoClip = computed(() => {
-    return options.trackKind.value === 'video' && options.clip.value.clipType === 'media';
+    return options.trackKind.value === 'video' && options.clip.value.clipType === 'media' && !options.clip.value.isImage;
   });
 
   const hasFreezeFrame = computed(() => {
@@ -168,7 +179,8 @@ export function useClipPropertiesActions(options: UseClipPropertiesActionsOption
       options.trackKind.value === 'video' &&
       options.clip.value.clipType === 'media' &&
       !options.clip.value.isImage &&
-      !options.clip.value.audioMuted
+      !options.clip.value.audioMuted &&
+      hasAudio.value
     );
   });
 
@@ -540,7 +552,7 @@ export function useClipPropertiesActions(options: UseClipPropertiesActionsOption
     }
 
     // Скрыть/показать вейвформу
-    if (options.trackKind.value === 'video' || options.trackKind.value === 'audio') {
+    if ((options.trackKind.value === 'video' || options.trackKind.value === 'audio') && hasAudio.value) {
       list.push({
         id: 'toggleShowWaveform',
         label:
@@ -607,7 +619,10 @@ export function useClipPropertiesActions(options: UseClipPropertiesActionsOption
           /* Handled in components since it needs clipboard formatting */
         },
       },
-      {
+    ];
+
+    if (options.trackKind.value !== 'audio') {
+      actions.push({
         id: 'toggle-disabled',
         label: options.clip.value.disabled
           ? t('fastcat.timeline.enableClip')
@@ -616,8 +631,8 @@ export function useClipPropertiesActions(options: UseClipPropertiesActionsOption
         color: options.clip.value.disabled ? 'warning' : 'neutral',
         variant: options.clip.value.disabled ? 'solid' : 'ghost',
         onClick: handleToggleDisabled,
-      },
-    ];
+      });
+    }
 
     if (hasAudio.value) {
       actions.push({
