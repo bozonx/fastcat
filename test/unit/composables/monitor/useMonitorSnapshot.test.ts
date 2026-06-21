@@ -30,6 +30,7 @@ vi.mock('~/utils/video-editor/worker-client', () => ({
     client: mockWorkerClient,
   }),
   setThumbnailHostApi: vi.fn(),
+  setProxyHostApi: vi.fn(),
 }));
 
 vi.mock('~/utils/video-editor/createVideoCoreHostApi', () => ({

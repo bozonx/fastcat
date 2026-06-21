@@ -4,10 +4,13 @@ import type { FsEntry } from '~/types/fs';
 import { hasInternalFileManagerDragType } from '~/composables/file-manager/dragOperation';
 import { WORKSPACE_COMMON_PATH_PREFIX } from '~/utils/workspace-common';
 import GlobalDropOverlayTree from '~/components/file-manager/GlobalDropOverlayTree.vue';
+import { useWorkspaceStore } from '~/stores/workspace.store';
 
 const props = defineProps<{
   rootEntries: FsEntry[];
 }>();
+
+const workspaceStore = useWorkspaceStore();
 
 const emit = defineEmits<{
   (e: 'drop-to-auto', files: File[]): void;
@@ -34,6 +37,7 @@ const folderTree = computed(() => collectFolders(props.rootEntries));
 
 // Common folder virtual entry
 const commonFolder = computed<FsEntry | null>(() => {
+  if (!workspaceStore.userSettings.experimentalFeatures) return null;
   const found = props.rootEntries.find((e) => e.path === WORKSPACE_COMMON_PATH_PREFIX);
   return found ?? null;
 });

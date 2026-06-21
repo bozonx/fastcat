@@ -16,6 +16,8 @@ import { withFileIoSlot } from '~/utils/io/io-governor';
 import { dispatchTimelineThumbnailGeneration } from '~/timeline/services/timeline-thumbnail.service';
 import { cloneValue } from '~/utils/clone';
 import { isTauriRuntime } from '~/utils/runtime';
+import { useFileManager } from '~/composables/file-manager/useFileManager';
+
 const log = createDevLogger('useMonitorSnapshot');
 
 export function useMonitorSnapshot(input: {
@@ -31,6 +33,7 @@ export function useMonitorSnapshot(input: {
 }) {
   const toast = useToast();
   const uiStore = useUiStore();
+  const fileManager = useFileManager();
 
   const isSavingStopFrame = ref(false);
 
@@ -205,6 +208,8 @@ export function useMonitorSnapshot(input: {
           title: 'Snapshot created',
           description: `Saved to ${IMAGES_DIR_NAME}/stop_frames/${filename}`,
         });
+        await fileManager.reloadDirectory('');
+        await fileManager.reloadDirectory('images');
         uiStore.notifyFileManagerUpdate();
       } catch (err) {
         log.error('[Monitor] Failed to create stop frame snapshot', err);
@@ -286,6 +291,8 @@ export function useMonitorSnapshot(input: {
         description: `Saved to ${IMAGES_DIR_NAME}/stop_frames/${filename}`,
       });
 
+      await fileManager.reloadDirectory('');
+      await fileManager.reloadDirectory('images');
       uiStore.notifyFileManagerUpdate();
     } catch (err) {
       log.error('[Monitor] Failed to create stop frame snapshot', err);

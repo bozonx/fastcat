@@ -587,7 +587,8 @@ const hasVisibleSecondaryActions = (actions: unknown) => {
         v-if="
           !isWorkspaceRootProperties &&
           (fileInfo?.kind === 'file' || selectedFsEntry?.kind === 'file') &&
-          (isVideoFile || mediaType === 'audio')
+          (isVideoFile || mediaType === 'audio') &&
+          !isMediaFullyUnsupported
         "
         :media-meta="liveMediaMeta"
         :format-duration-seconds="formatDurationSeconds"
@@ -885,6 +886,7 @@ const hasVisibleSecondaryActions = (actions: unknown) => {
           !isWorkspaceRootProperties &&
           (fileInfo?.kind === 'file' || selectedFsEntry?.kind === 'file') &&
           (isVideoFile || isAudioFile) &&
+          !isMediaFullyUnsupported &&
           metadataYaml &&
           !['{}', '[]', 'null', ''].includes(metadataYaml.trim())
         "

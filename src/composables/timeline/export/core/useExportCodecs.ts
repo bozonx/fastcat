@@ -15,13 +15,14 @@ export interface AudioCodecSupport {
 }
 
 export function useExportCodecs() {
+  const isTauri = isTauriRuntime();
   const videoCodecSupport = ref<Record<string, boolean>>({});
   const audioCodecSupport = ref<AudioCodecSupport>({
     aac: true,
     opus: true,
-    flac: true,
+    flac: isTauri,
     pcm: true,
-    mp3: true,
+    mp3: isTauri,
   });
   const isLoadingCodecSupport = ref(false);
 
@@ -29,7 +30,6 @@ export function useExportCodecs() {
     if (isLoadingCodecSupport.value) return;
     isLoadingCodecSupport.value = true;
     try {
-      const isTauri = isTauriRuntime();
       if (isTauri) {
         videoCodecSupport.value = Object.fromEntries(
           BASE_VIDEO_CODEC_OPTIONS.map((option) => [option.value, true]),
@@ -72,9 +72,9 @@ export function useExportCodecs() {
             return {
               aac: !!aac,
               opus: !!opus,
-              flac: !!flac,
+              flac: isTauri && !!flac,
               pcm: true,
-              mp3: isTauri || !!mp3,
+              mp3: isTauri && !!mp3,
             };
           } catch {
             const support = await checkAudioCodecSupport([
@@ -86,9 +86,9 @@ export function useExportCodecs() {
             return {
               aac: support['mp4a.40.2'] !== false,
               opus: support['opus'] !== false,
-              flac: support['flac'] !== false,
+              flac: isTauri && support['flac'] !== false,
               pcm: true,
-              mp3: isTauri || support['mp3'] === true,
+              mp3: isTauri && support['mp3'] === true,
             };
           }
         })(),

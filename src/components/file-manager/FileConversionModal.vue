@@ -16,6 +16,7 @@ import { resolveAudioOnlyFileExtension } from '~/utils/conversion/helpers';
 
 import { AUDIO_EXPORT_CODEC_OPTIONS } from '~/utils/webcodecs';
 import { useExportCodecs } from '~/composables/timeline/export/core/useExportCodecs';
+import { isTauriRuntime } from '~/utils/runtime';
 
 const { t } = useI18n();
 
@@ -65,12 +66,19 @@ onMounted(() => {
   loadCodecSupport();
 });
 
-const audioFormatOptions = computed(() =>
-  AUDIO_EXPORT_CODEC_OPTIONS.map((opt) => ({
+const audioFormatOptions = computed(() => {
+  const isTauri = isTauriRuntime();
+  const filtered = AUDIO_EXPORT_CODEC_OPTIONS.filter((opt) => {
+    if (!isTauri && (opt.value === 'flac' || opt.value === 'mp3')) {
+      return false;
+    }
+    return true;
+  });
+  return filtered.map((opt) => ({
     ...opt,
     disabled: !audioCodecSupport.value[opt.value as keyof typeof audioCodecSupport.value],
-  })),
-);
+  }));
+});
 
 const fileName = computed(() => targetEntry.value?.name ?? '');
 

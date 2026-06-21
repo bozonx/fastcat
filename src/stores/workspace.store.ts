@@ -305,7 +305,6 @@ export const useWorkspaceStore = defineStore('workspace', () => {
 
     const folders = [
       workspaceTopology.projectsDirName,
-      workspaceTopology.commonDirName,
       workspaceTopology.tempRootDirName,
       workspaceTopology.configDirName,
     ];

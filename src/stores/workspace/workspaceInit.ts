@@ -49,7 +49,6 @@ export function createWorkspaceInitModule(deps: WorkspaceInitDeps): WorkspaceIni
 
     const folders = [
       workspaceTopology.projectsDirName,
-      workspaceTopology.commonDirName,
       workspaceTopology.tempRootDirName,
     ];
     for (const folder of folders) {

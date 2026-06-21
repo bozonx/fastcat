@@ -945,6 +945,7 @@ export function useFileManager(options?: {
     mediaStore,
     historyStore,
     shouldRecordFileManagerHistory: options?.shouldRecordFileManagerHistory ?? (() => true),
+    hideCommonRoot: !workspaceStore.userSettings.experimentalFeatures,
     mediaCache,
     isFileTreePathExpanded: (path) => uiStore.isFileTreePathExpanded(path),
     setFileTreePathExpanded: function setFileTreePathExpanded(path: string, expanded: boolean) {

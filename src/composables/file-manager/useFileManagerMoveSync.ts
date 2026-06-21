@@ -29,15 +29,35 @@ export function useFileManagerMoveSync(rootEntries: Ref<FsEntry[]>) {
       focusStore.setTempFocus('files-sidebar');
     }
 
-    if (
-      selectionStore.selectedEntity &&
-      selectionStore.selectedEntity.source === 'fileManager' &&
-      'path' in selectionStore.selectedEntity &&
-      selectionStore.selectedEntity.path === params.oldPath
-    ) {
-      const updatedEntry = findEntryByPathCore(rootEntries.value, params.newPath);
-      if (updatedEntry) {
-        selectionStore.selectFsEntry(updatedEntry);
+    const selected = selectionStore.selectedEntity;
+    if (selected && selected.source === 'fileManager') {
+      if (selected.kind === 'multiple') {
+        const nextEntries = selected.entries.map((entry) => {
+          if (entry.path === params.oldPath) {
+            return {
+              ...entry,
+              path: params.newPath,
+              name: getWorkspacePathFileName(params.newPath) || entry.name,
+            };
+          }
+          return entry;
+        });
+        selectionStore.selectedEntity = {
+          ...selected,
+          entries: nextEntries,
+        };
+      } else if ('path' in selected && selected.path === params.oldPath) {
+        const updatedEntry = findEntryByPathCore(rootEntries.value, params.newPath);
+        if (updatedEntry) {
+          selectionStore.selectFsEntry(updatedEntry, selected.instanceId, selected.isExternal);
+        } else {
+          const nextEntry: FsEntry = {
+            ...selected.entry,
+            path: params.newPath,
+            name: getWorkspacePathFileName(params.newPath) || selected.entry.name,
+          };
+          selectionStore.selectFsEntry(nextEntry, selected.instanceId, selected.isExternal);
+        }
       }
     }
   }

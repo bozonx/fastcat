@@ -113,6 +113,7 @@ function resetPathDefaults() {
     <div v-if="isDesktopTauri" class="flex flex-col gap-6">
       <!-- 1. Папка общих файлов (common) -->
       <UiFormField
+        v-if="workspaceStore.userSettings.experimentalFeatures"
         :label="t('videoEditor.settings.commonFilesFolder')"
         :help="t('videoEditor.settings.commonFilesFolderHelp')"
       >

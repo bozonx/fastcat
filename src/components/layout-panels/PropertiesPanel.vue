@@ -210,16 +210,6 @@ const displayMode = computed<
   if (entity?.source === 'project' && entity.kind === 'transition') return 'project-transition';
   if (entity?.source === 'project' && entity.kind === 'library-item') return 'project-library-item';
   if (entity?.source === 'timeline' && entity.kind === 'marker') return 'marker';
-  // .otio file → same timeline mode as top bar
-  if (
-    entity?.source === 'fileManager' &&
-    entity.kind === 'file' &&
-    entity.name?.toLowerCase().endsWith('.otio') &&
-    entity.instanceId !== 'computer' &&
-    entity.instanceId !== 'sidebar' &&
-    !entity.isExternal
-  )
-    return 'timeline';
   if (entity?.source === 'fileManager' && (entity.kind === 'file' || entity.kind === 'directory'))
     return 'file';
   if (entity?.source === 'fileManager' && entity.kind === 'multiple') return 'files';

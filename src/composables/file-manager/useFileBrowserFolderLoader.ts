@@ -1,6 +1,7 @@
 import { ref, inject } from 'vue';
 import type { Ref } from 'vue';
 import { useFileManagerStore } from '~/stores/file-manager.store';
+import { useWorkspaceStore } from '~/stores/workspace.store';
 import type { FsEntry } from '~/types/fs';
 import type { IFileSystemAdapter } from '~/file-manager/core/vfs/types';
 import { WORKSPACE_COMMON_DIR_NAME, WORKSPACE_COMMON_PATH_PREFIX } from '~/utils/workspace-common';
@@ -16,6 +17,7 @@ export function useFileBrowserFolderLoader(options: UseFileBrowserFolderLoaderOp
   const fileManagerStore =
     (inject('fileManagerStore', null) as ReturnType<typeof useFileManagerStore> | null) ||
     useFileManagerStore();
+  const workspaceStore = useWorkspaceStore();
 
   const isLoading = ref(false);
   const error = ref<string | null>(null);
@@ -34,7 +36,7 @@ export function useFileBrowserFolderLoader(options: UseFileBrowserFolderLoaderOp
       const path = folder.path || '';
       let entries = await options.readDirectory(path);
 
-      if (!path) {
+      if (!path && workspaceStore.userSettings.experimentalFeatures) {
         const commonMetadata = await options.vfs.getMetadata(WORKSPACE_COMMON_PATH_PREFIX);
         if (commonMetadata?.kind === 'directory') {
           const commonEntry: FsEntry = {

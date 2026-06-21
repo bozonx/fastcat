@@ -5,6 +5,7 @@ import UiSelect from '~/components/ui/UiSelect.vue';
 import UiButtonGroup from '~/components/ui/UiButtonGroup.vue';
 import { AUDIO_EXPORT_CODEC_OPTIONS } from '~/utils/webcodecs';
 import { useExportCodecs } from '~/composables/timeline/export/core/useExportCodecs';
+import { isTauriRuntime } from '~/utils/runtime';
 
 const props = withDefaults(
   defineProps<{
@@ -15,6 +16,7 @@ const props = withDefaults(
     hideSampleRate?: boolean;
     showReverse?: boolean;
     outputFormat?: 'mp4' | 'webm' | 'mkv' | string;
+    timelineSampleRate?: number | null;
   }>(),
   {
     disabled: false,
@@ -24,6 +26,7 @@ const props = withDefaults(
     hideSampleRate: false,
     showReverse: false,
     outputFormat: undefined,
+    timelineSampleRate: null,
   },
 );
 
@@ -42,7 +45,14 @@ onMounted(async () => {
 
 const audioCodecOptions = computed(() => {
   const format = props.outputFormat;
-  return AUDIO_EXPORT_CODEC_OPTIONS.map((opt) => {
+  const isTauri = isTauriRuntime();
+  const filtered = AUDIO_EXPORT_CODEC_OPTIONS.filter((opt) => {
+    if (!isTauri && (opt.value === 'flac' || opt.value === 'mp3')) {
+      return false;
+    }
+    return true;
+  });
+  return filtered.map((opt) => {
     let disabled = false;
     if (format === 'webm' && opt.value !== 'opus') {
       disabled = true;
@@ -119,6 +129,21 @@ const selectedSampleRate = computed({
     audioSampleRate.value = value as number | 'original';
   },
 });
+
+const showSampleRateReset = computed(() => {
+  if (props.timelineSampleRate === null || props.timelineSampleRate === undefined) return false;
+  const current = audioSampleRate.value === 'original' ? props.originalSampleRate : audioSampleRate.value;
+  if (current === null || current === undefined) {
+    return audioSampleRate.value !== props.timelineSampleRate;
+  }
+  return Number(current) !== Number(props.timelineSampleRate);
+});
+
+function resetSampleRate() {
+  if (props.timelineSampleRate !== null && props.timelineSampleRate !== undefined) {
+    audioSampleRate.value = props.timelineSampleRate;
+  }
+}
 </script>
 
 <template>
@@ -168,9 +193,19 @@ const selectedSampleRate = computed({
 
       <!-- Sample Rate Select -->
       <div v-if="!props.hideSampleRate" class="flex flex-col gap-2">
-        <label class="text-xs text-ui-text-muted font-medium">
-          {{ t('videoEditor.audio.sampleRate') }}
-        </label>
+        <div class="flex items-center justify-between">
+          <label class="text-xs text-ui-text-muted font-medium">
+            {{ t('videoEditor.audio.sampleRate') }}
+          </label>
+          <button
+            v-if="showSampleRateReset"
+            type="button"
+            class="text-[10px] text-primary-400 hover:text-primary-300 font-medium underline cursor-pointer focus:outline-none"
+            @click="resetSampleRate"
+          >
+            {{ t('common.reset') }}
+          </button>
+        </div>
         <UiSelect
           v-model="selectedSampleRate"
           :items="sampleRateOptions"

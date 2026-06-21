@@ -3,6 +3,7 @@ import { computed, watch } from 'vue';
 import { useProjectStore } from '~/stores/project.store';
 import { useUiStore } from '~/stores/ui.store';
 import { useFocusStore } from '~/stores/focus.store';
+import { useTimelineStore } from '~/stores/timeline.store';
 import { useFileManager } from '~/composables/file-manager/useFileManager';
 import VideoEncodingForm from '~/components/media/VideoEncodingForm.vue';
 import FileConversionAudioSettings from '~/components/file-manager/FileConversionAudioSettings.vue';
@@ -27,6 +28,7 @@ const emit = defineEmits<{
 
 const { t } = useI18n();
 const projectStore = useProjectStore();
+const timelineStore = useTimelineStore();
 const uiStore = useUiStore();
 const focusStore = useFocusStore();
 const fileManager = useFileManager();
@@ -349,6 +351,7 @@ const filenamePlaceholder = computed(() =>
             v-model:audio-sample-rate="audioSampleRate"
             :disabled="isExporting"
             :allow-original-sample-rate="false"
+            :timeline-sample-rate="timelineStore.timelineFormat?.sampleRate"
           />
         </div>
 

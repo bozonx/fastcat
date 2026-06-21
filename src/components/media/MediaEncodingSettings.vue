@@ -11,6 +11,7 @@ import UiTextInput from '~/components/ui/UiTextInput.vue';
 import UiButtonGroup from '~/components/ui/UiButtonGroup.vue';
 import FileConversionAudioSettings from '~/components/file-manager/FileConversionAudioSettings.vue';
 import { AUDIO_EXPORT_CODEC_OPTIONS, type VideoCodecOptionResolved } from '~/utils/webcodecs';
+import { isTauriRuntime } from '~/utils/runtime';
 
 export interface FormatOption {
   value: 'mp4' | 'webm' | 'mkv';
@@ -166,7 +167,14 @@ onMounted(() => {
 });
 
 const audioCodecOptions = computed(() => {
-  return AUDIO_EXPORT_CODEC_OPTIONS.map((opt) => {
+  const isTauri = isTauriRuntime();
+  const filtered = AUDIO_EXPORT_CODEC_OPTIONS.filter((opt) => {
+    if (!isTauri && (opt.value === 'flac' || opt.value === 'mp3')) {
+      return false;
+    }
+    return true;
+  });
+  return filtered.map((opt) => {
     let disabled = false;
 
     // Блокировка по формату контейнера
@@ -314,9 +322,7 @@ watch(
 
     <div class="flex items-center justify-between">
       <span class="text-sm text-ui-text-muted">
-        {{ t('common.audio') }}:
-        {{ audioCodecOptions.find((o) => o.value === audioCodec)?.label || audioCodec.toUpperCase()
-        }}{{ !props.hideAudioBitrate ? ` ${audioBitrateKbps} Kb/s` : '' }}
+        {{ t('common.audio') }}
       </span>
       <USwitch v-model="includeAudio" :disabled="isAudioDisabled" />
     </div>

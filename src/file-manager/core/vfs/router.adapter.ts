@@ -81,6 +81,19 @@ export class RouterFileSystemAdapter implements IFileSystemAdapter {
     return { adapter: this.defaultAdapter, mappedPath: path, route: null as VfsRoute | null };
   }
 
+  private async ensureCommonDirectory(route: VfsRoute | null, path: string): Promise<void> {
+    if (route && route.prefix === '@common') {
+      const mappedPath = route.stripPrefix(path);
+      const parts = mappedPath.split('/');
+      if (parts[0] === 'common') {
+        const exists = await route.adapter.exists('common');
+        if (!exists) {
+          await route.adapter.createDirectory('common');
+        }
+      }
+    }
+  }
+
   async init(): Promise<void> {
     await Promise.all([
       this.defaultAdapter.init(),
@@ -89,7 +102,8 @@ export class RouterFileSystemAdapter implements IFileSystemAdapter {
   }
 
   async readDirectory(path: string, options?: VfsReadDirectoryOptions): Promise<VfsEntry[]> {
-    const { adapter, mappedPath } = this.getRoute(path);
+    const { adapter, mappedPath, route } = this.getRoute(path);
+    await this.ensureCommonDirectory(route, path);
     const entries = await adapter.readDirectory(mappedPath, options);
     // Map paths back to routed paths
     return entries.map((entry) => ({
@@ -126,17 +140,20 @@ export class RouterFileSystemAdapter implements IFileSystemAdapter {
   }
 
   async createDirectory(path: string): Promise<void> {
-    const { adapter, mappedPath } = this.getRoute(path);
+    const { adapter, mappedPath, route } = this.getRoute(path);
+    await this.ensureCommonDirectory(route, path);
     return adapter.createDirectory(mappedPath);
   }
 
   async listEntryNames(path: string): Promise<string[]> {
-    const { adapter, mappedPath } = this.getRoute(path);
+    const { adapter, mappedPath, route } = this.getRoute(path);
+    await this.ensureCommonDirectory(route, path);
     return adapter.listEntryNames(mappedPath);
   }
 
   async readFile(path: string, options?: VfsOperationOptions): Promise<Blob> {
-    const { adapter, mappedPath } = this.getRoute(path);
+    const { adapter, mappedPath, route } = this.getRoute(path);
+    await this.ensureCommonDirectory(route, path);
     return adapter.readFile(mappedPath, options);
   }
 
@@ -145,7 +162,8 @@ export class RouterFileSystemAdapter implements IFileSystemAdapter {
     data: Blob | Uint8Array | string,
     options?: VfsOperationOptions,
   ): Promise<void> {
-    const { adapter, mappedPath } = this.getRoute(path);
+    const { adapter, mappedPath, route } = this.getRoute(path);
+    await this.ensureCommonDirectory(route, path);
     return adapter.writeFile(mappedPath, data, options);
   }
 
@@ -153,7 +171,8 @@ export class RouterFileSystemAdapter implements IFileSystemAdapter {
     path: string,
     options?: VfsOperationOptions,
   ): Promise<ReadableStream<Uint8Array>> {
-    const { adapter, mappedPath } = this.getRoute(path);
+    const { adapter, mappedPath, route } = this.getRoute(path);
+    await this.ensureCommonDirectory(route, path);
     return adapter.readStream(mappedPath, options);
   }
 
@@ -161,7 +180,8 @@ export class RouterFileSystemAdapter implements IFileSystemAdapter {
     path: string,
     options?: VfsOperationOptions,
   ): Promise<WritableStream<Uint8Array>> {
-    const { adapter, mappedPath } = this.getRoute(path);
+    const { adapter, mappedPath, route } = this.getRoute(path);
+    await this.ensureCommonDirectory(route, path);
     return adapter.writeStream(mappedPath, options);
   }
 
@@ -177,6 +197,9 @@ export class RouterFileSystemAdapter implements IFileSystemAdapter {
   ): Promise<void> {
     const sourceRoute = this.getRoute(sourcePath);
     const targetRoute = this.getRoute(targetPath);
+
+    await this.ensureCommonDirectory(sourceRoute.route, sourcePath);
+    await this.ensureCommonDirectory(targetRoute.route, targetPath);
 
     if (sourceRoute.adapter === targetRoute.adapter) {
       return sourceRoute.adapter.moveEntry(sourceRoute.mappedPath, targetRoute.mappedPath, options);
@@ -212,6 +235,9 @@ export class RouterFileSystemAdapter implements IFileSystemAdapter {
     const sourceRoute = this.getRoute(sourcePath);
     const targetRoute = this.getRoute(targetPath);
 
+    await this.ensureCommonDirectory(sourceRoute.route, sourcePath);
+    await this.ensureCommonDirectory(targetRoute.route, targetPath);
+
     if (sourceRoute.adapter === targetRoute.adapter) {
       return sourceRoute.adapter.copyFile(sourceRoute.mappedPath, targetRoute.mappedPath, options);
     }
@@ -236,6 +262,9 @@ export class RouterFileSystemAdapter implements IFileSystemAdapter {
   ): Promise<void> {
     const sourceRoute = this.getRoute(sourcePath);
     const targetRoute = this.getRoute(targetPath);
+
+    await this.ensureCommonDirectory(sourceRoute.route, sourcePath);
+    await this.ensureCommonDirectory(targetRoute.route, targetPath);
 
     if (sourceRoute.adapter === targetRoute.adapter) {
       return sourceRoute.adapter.copyDirectory(
@@ -264,7 +293,8 @@ export class RouterFileSystemAdapter implements IFileSystemAdapter {
   }
 
   async getMetadata(path: string): Promise<VfsEntryMetadata | null> {
-    const { adapter, mappedPath } = this.getRoute(path);
+    const { adapter, mappedPath, route } = this.getRoute(path);
+    await this.ensureCommonDirectory(route, path);
     return adapter.getMetadata(mappedPath);
   }
 
@@ -279,7 +309,8 @@ export class RouterFileSystemAdapter implements IFileSystemAdapter {
   }
 
   async writeJson(path: string, data: unknown, options?: VfsOperationOptions): Promise<void> {
-    const { adapter, mappedPath } = this.getRoute(path);
+    const { adapter, mappedPath, route } = this.getRoute(path);
+    await this.ensureCommonDirectory(route, path);
     return adapter.writeJson(mappedPath, data, options);
   }
 }
