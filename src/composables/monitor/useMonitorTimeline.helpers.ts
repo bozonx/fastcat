@@ -131,47 +131,6 @@ export function createShapeWorkerClip(
   };
 }
 
-export function applyAdjacentTransitions(clips: WorkerTimelineClip[]) {
-  const clipsByTrack = new Map<string, WorkerTimelineClip[]>();
-  for (const clip of clips) {
-    const trackId = clip.trackId;
-    if (!trackId) {
-      continue;
-    }
-
-    const trackClips = clipsByTrack.get(trackId) ?? [];
-    trackClips.push(clip);
-    clipsByTrack.set(trackId, trackClips);
-  }
-
-  for (const trackClips of clipsByTrack.values()) {
-    trackClips.sort((a, b) => a.timelineRange.startUs - b.timelineRange.startUs);
-
-    for (let index = 0; index < trackClips.length - 1; index += 1) {
-      const current = trackClips[index];
-      const next = trackClips[index + 1];
-      if (!current || !next) {
-        continue;
-      }
-
-      const transitionOut = current.transitionOut;
-      if (!transitionOut || (transitionOut.mode ?? 'transparent') !== 'adjacent') {
-        continue;
-      }
-
-      const currentEndUs = current.timelineRange.startUs + current.timelineRange.durationUs;
-      const gapUs = next.timelineRange.startUs - currentEndUs;
-      if (gapUs > 1_000) {
-        continue;
-      }
-
-      if (!next.transitionIn) {
-        next.transitionIn = cloneMonitorValue(transitionOut);
-      }
-    }
-  }
-}
-
 export function hashString(value: string): number {
   let hash = 2166136261;
   for (let index = 0; index < value.length; index += 1) {

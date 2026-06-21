@@ -196,41 +196,14 @@ function findNextAdjacentClip(
     .sort((a, b) => a.timelineRange.startUs - b.timelineRange.startUs)[0];
 }
 
-/**
- * An adjacent-mode `transitionOut` is rendered by the *next* clip's inherited
- * `transition_in` (see `getEffectiveTransitionIn`), where it becomes a real
- * shader crossfade over this clip's held frame. Emitting it on this clip too
- * would double-apply (for dissolve: an opacity fade-out that zeroes the very
- * from-frame the next clip crossfades from). So it is "consumed" exactly when
- * the next adjacent clip would inherit it.
- */
-function isTransitionOutConsumedByNextClip(
-  clip: WorkerTimelineClip,
-  allClips: WorkerTimelineClip[],
-): boolean {
-  const out = clip.transitionOut;
-  if (!out || (out.mode ?? 'transparent') !== 'adjacent') {
-    return false;
-  }
-  const next = findNextAdjacentClip(clip, allClips);
-  return Boolean(next && !next.transitionIn);
-}
-
-function getEffectiveTransitionIn(
-  clip: WorkerTimelineClip,
-  allClips: WorkerTimelineClip[],
-): WorkerTimelineClip['transitionIn'] {
-  if (clip.transitionIn) {
-    return clip.transitionIn;
-  }
-
-  const previous = findPreviousAdjacentClip(clip, allClips);
-  const previousOut = previous?.transitionOut;
-  if (previousOut && (previousOut.mode ?? 'transparent') === 'adjacent') {
-    return previousOut;
-  }
-
-  return undefined;
+function getEffectiveTransitionIn(clip: WorkerTimelineClip): WorkerTimelineClip['transitionIn'] {
+  // An adjacent `transitionOut` is rendered on its *own* clip (over that clip's
+  // tail, before the cut) with the next clip pre-rolled as the shader's `to`
+  // input — see `transition_out` in `buildBaseLayer` and the native
+  // `TransitionEdge::Out` path. It is no longer inherited as the next clip's
+  // `transition_in`, which used to push the whole transition past the cut into
+  // the start of the next clip. This matches the web compositor.
+  return clip.transitionIn;
 }
 
 function getTransitionMode(
@@ -430,7 +403,7 @@ function buildBaseLayer(params: {
   const sourceDurationUs = clip.sourceRange.durationUs;
 
   const transition_in = (() => {
-    const effectiveTransitionIn = getEffectiveTransitionIn(clip, allClips);
+    const effectiveTransitionIn = getEffectiveTransitionIn(clip);
     if (effectiveTransitionIn && effectiveTransitionIn.durationUs > 0) {
       const type = effectiveTransitionIn.type;
       const mode = getTransitionMode(effectiveTransitionIn);
@@ -469,11 +442,7 @@ function buildBaseLayer(params: {
   })();
 
   const transition_out = (() => {
-    if (
-      clip.transitionOut &&
-      clip.transitionOut.durationUs > 0 &&
-      !isTransitionOutConsumedByNextClip(clip, allClips)
-    ) {
+    if (clip.transitionOut && clip.transitionOut.durationUs > 0) {
       const type = clip.transitionOut.type;
       const mode = getTransitionMode(clip.transitionOut);
       const toClip = mode === 'adjacent' ? findNextAdjacentClip(clip, allClips) : undefined;

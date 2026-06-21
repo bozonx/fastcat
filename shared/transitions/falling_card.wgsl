@@ -132,21 +132,21 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
     let center = map_card(uv, dir, dd, c, s, z_base);
     let p_moved = center.p_moved;
 
-    // MSAA-style edge coverage: project a 4x4 ordered grid of sub-pixel offsets
+    // MSAA-style edge coverage: project an 8x8 ordered grid of sub-pixel offsets
     // through the fold and average the visibility test. This anti-aliases the
     // perspective card silhouette correctly at any fold angle, where a fixed
     // UV-space ramp would collapse to sub-pixel under foreshortening. Only the
     // cheap geometry is supersampled; texture color is sampled once at center.
     let inv = 1.0 / dims();
     var cover = 0.0;
-    for (var sy = 0; sy < 4; sy = sy + 1) {
-        for (var sx = 0; sx < 4; sx = sx + 1) {
-            let off = (vec2<f32>(f32(sx), f32(sy)) + 0.5) / 4.0 - 0.5;
+    for (var sy = 0; sy < 8; sy = sy + 1) {
+        for (var sx = 0; sx < 8; sx = sx + 1) {
+            let off = (vec2<f32>(f32(sx), f32(sy)) + 0.5) / 8.0 - 0.5;
             let m = map_card(uv + off * inv, dir, dd, c, s, z_base);
             if (m.valid) { cover = cover + 1.0; }
         }
     }
-    cover = cover / 16.0;
+    cover = cover / 64.0;
 
     // Background shown where the moving card does not cover the pixel.
     let bg_color = select(to_color, from_color, is_rise);

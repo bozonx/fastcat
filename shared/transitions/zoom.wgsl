@@ -62,18 +62,18 @@ fn layer_uv(uv: vec2<f32>, angle: f32, scale: f32, aspect: f32) -> vec2<f32> {
     return zoom_rotate(uv - vec2<f32>(0.5), angle, aspect) / scale + vec2<f32>(0.5);
 }
 
-// MSAA-style coverage of a zoomed/rotated layer over a 4x4 ordered sub-pixel
+// MSAA-style coverage of a zoomed/rotated layer over an 8x8 ordered sub-pixel
 // grid. Replaces the hard step() mask so rotated layer edges are anti-aliased.
 fn layer_coverage(uv: vec2<f32>, angle: f32, scale: f32, aspect: f32) -> f32 {
     let inv = 1.0 / dims();
     var cov = 0.0;
-    for (var sy = 0; sy < 4; sy = sy + 1) {
-        for (var sx = 0; sx < 4; sx = sx + 1) {
-            let off = (vec2<f32>(f32(sx), f32(sy)) + 0.5) / 4.0 - 0.5;
+    for (var sy = 0; sy < 8; sy = sy + 1) {
+        for (var sx = 0; sx < 8; sx = sx + 1) {
+            let off = (vec2<f32>(f32(sx), f32(sy)) + 0.5) / 8.0 - 0.5;
             if (in_bounds(layer_uv(uv + off * inv, angle, scale, aspect))) { cov = cov + 1.0; }
         }
     }
-    return cov / 16.0;
+    return cov / 64.0;
 }
 
 fn zoom_sample(tex: texture_2d<f32>, uv: vec2<f32>, blur_amount: f32, bright: f32, blur_fade: f32) -> vec4<f32> {

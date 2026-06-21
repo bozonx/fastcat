@@ -15,7 +15,6 @@ import { mergeBalance, mergeGain } from '~/utils/audio/envelope';
 import { buildEffectiveAudioClipItems } from '~/utils/audio/track-bus';
 import { sanitizeTimelineColor } from '~/utils/video-editor/utils';
 import {
-  applyAdjacentTransitions,
   createBackgroundWorkerClip,
   createBaseWorkerClip,
   createShapeWorkerClip,
@@ -145,8 +144,6 @@ export function useMonitorTimeline() {
         }
       }
     }
-
-    applyAdjacentTransitions(clips);
 
     return clips;
   });

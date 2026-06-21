@@ -65,6 +65,46 @@ export async function renderNativeTimelineThumbnail(params: {
   });
 }
 
+/**
+ * Renders a full-resolution timeline frame to a WebP blob via the native (Tauri)
+ * offscreen compositor at EXPORT (ultra) quality: full render scale and the ultra
+ * effect/transition sample budgets, matching `native_timeline_export` output. Used
+ * by the monitor "create stop-frame snapshot" action so saved frames look identical
+ * to an export still. Returns `null` when the scene has no visual layers.
+ */
+export async function renderNativeStopFrameWebp(params: {
+  timelineDoc: TimelineDocument;
+  timeUs: number;
+  quality: number;
+}): Promise<Blob | null> {
+  const projectStore = useProjectStore();
+  const workspaceStore = useWorkspaceStore();
+  const fallbackFormat = resolveEffectiveTimelineFormat(
+    getTimelineFormat(params.timelineDoc),
+    projectStore.projectSettings.project,
+  );
+  const scene = await buildNativeMonitorScenePayload({
+    timelineDoc: params.timelineDoc,
+    projectStore,
+    workspaceStore,
+    masterGain: params.timelineDoc.metadata?.fastcat?.masterGain ?? 1,
+    masterMuted: false,
+    previewScale: 1,
+    includeAudio: false,
+    // Ultra render scale + ultra effect quality, identical to the export pipeline.
+    isExport: true,
+    fallbackFormat,
+  });
+  if (scene.layers.length === 0) return null;
+  return await nativeRenderTimelineFrameWebp({
+    scene,
+    timeSec: params.timeUs / 1_000_000,
+    width: scene.width,
+    height: scene.height,
+    quality: params.quality,
+  });
+}
+
 export function generateTimelineThumbnail(params: {
   timelinePath: string;
   timelineDoc: TimelineDocument;

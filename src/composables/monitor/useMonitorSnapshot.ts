@@ -164,9 +164,58 @@ export function useMonitorSnapshot(input: {
     }
 
     isSavingStopFrame.value = true;
-    // Stop-frame snapshots require the web-based thumbnail worker; skip in Tauri.
+    // In Tauri the web thumbnail worker has no workspace handle; render the
+    // current frame through the native offscreen compositor at export (ultra)
+    // quality instead, so the saved stop frame matches an export still.
     if (isTauriRuntime()) {
-      isSavingStopFrame.value = false;
+      try {
+        const timelineDoc = input.timelineStore.timelineDoc;
+        if (!timelineDoc) return;
+        const { renderNativeStopFrameWebp } = await import('~/timeline/timeline-thumbnail');
+        const blob = await renderNativeStopFrameWebp({
+          timelineDoc,
+          timeUs,
+          quality,
+        });
+        if (!blob) {
+          throw new Error('Native compositor returned no frame');
+        }
+
+        const fileHandle = await input.projectStore.getProjectFileHandleByRelativePath({
+          relativePath: `${IMAGES_DIR_NAME}/stop_frames/${filename}`,
+          create: true,
+        });
+        if (!fileHandle) {
+          toast.add({
+            color: 'error',
+            title: 'Snapshot failed',
+            description: 'Could not access project folder for writing',
+          });
+          return;
+        }
+
+        await withFileIoSlot(async () => {
+          const writable = await fileHandle.createWritable();
+          await writable.write(blob);
+          await writable.close();
+        });
+
+        toast.add({
+          color: 'success',
+          title: 'Snapshot created',
+          description: `Saved to ${IMAGES_DIR_NAME}/stop_frames/${filename}`,
+        });
+        uiStore.notifyFileManagerUpdate();
+      } catch (err) {
+        log.error('[Monitor] Failed to create stop frame snapshot', err);
+        toast.add({
+          color: 'error',
+          title: 'Snapshot failed',
+          description: err instanceof Error ? err.message : 'Unknown error',
+        });
+      } finally {
+        isSavingStopFrame.value = false;
+      }
       return;
     }
     try {

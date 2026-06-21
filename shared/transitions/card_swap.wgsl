@@ -168,7 +168,7 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
         if (dist < max_d && max_d > 0.0) { shadow_to = (1.0 - dist / max_d) * uni.p5; }
     }
 
-    // MSAA-style edge coverage: evaluate the card geometry at a 4x4 ordered grid
+    // MSAA-style edge coverage: evaluate the card geometry at an 8x8 ordered grid
     // of sub-pixel offsets and average the in/out test. This anti-aliases the
     // rotated/perspective card silhouettes correctly at any angle (unlike a
     // fixed UV-space ramp, which collapses to sub-pixel under foreshortening).
@@ -177,16 +177,16 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
     let inv = 1.0 / dims();
     var cov_fr = 0.0;
     var cov_to = 0.0;
-    for (var sy = 0; sy < 4; sy = sy + 1) {
-        for (var sx = 0; sx < 4; sx = sx + 1) {
-            let off = (vec2<f32>(f32(sx), f32(sy)) + 0.5) / 4.0 - 0.5;
+    for (var sy = 0; sy < 8; sy = sy + 1) {
+        for (var sx = 0; sx < 8; sx = sx + 1) {
+            let off = (vec2<f32>(f32(sx), f32(sy)) + 0.5) / 8.0 - 0.5;
             let scp = map_cards(center_uv + off * inv, dir_h, mode_slide, sign_order, progress);
             if (in_bounds(scp.pfr)) { cov_fr = cov_fr + 1.0; }
             if (in_bounds(scp.pto)) { cov_to = cov_to + 1.0; }
         }
     }
-    cov_fr = cov_fr / 16.0;
-    cov_to = cov_to / 16.0;
+    cov_fr = cov_fr / 64.0;
+    cov_to = cov_to / 64.0;
 
     let max_samples = i32(uni.p7);
     var final_c_fr = vec4<f32>(0.0);

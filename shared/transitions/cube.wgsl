@@ -136,27 +136,35 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
     let uv = pixel_uv(gid);
     let progress = clamp(uni.progress, 0.0, 1.0);
 
-    // MSAA-style supersampling: evaluate the full mapping at a 4x4 ordered grid
-    // of sub-pixel offsets and average the result. This anti-aliases both the
-    // outer (perspective-foreshortened) silhouette and the seam between the two
-    // faces at any angle, where a fixed UV-space ramp collapses to sub-pixel.
+    // Color is sampled once per face at the pixel center (bilinear); only the
+    // cheap in/out geometry test is supersampled. Decoupling them lets the
+    // coverage run at a high rate without multiplying texture fetches. A fixed
+    // UV-space ramp collapses to sub-pixel under perspective foreshortening, and
+    // a low sample count leaves coarse stair-steps on the shallow top/bottom
+    // edges: an 8x8 grid quantises coverage to 1/64, smoothing them out.
+    let center = map_cube(uv, progress);
+    let from_color = samp(from_tex, center.from_p);
+    let to_color = samp(to_tex, center.to_p);
+
     let inv = 1.0 / dims();
-    var color = vec4<f32>(0.0);
-    for (var sy = 0; sy < 4; sy = sy + 1) {
-        for (var sx = 0; sx < 4; sx = sx + 1) {
-            let off = (vec2<f32>(f32(sx), f32(sy)) + 0.5) / 4.0 - 0.5;
-            let cpos = map_cube(uv + off * inv, progress);
-            let fin = in_bounds(cpos.from_p);
-            let tin = in_bounds(cpos.to_p);
-            if (fin && tin) {
-                color = color + mix(samp(to_tex, cpos.to_p), samp(from_tex, cpos.from_p), 0.5);
-            } else if (fin) {
-                color = color + samp(from_tex, cpos.from_p);
-            } else if (tin) {
-                color = color + samp(to_tex, cpos.to_p);
-            }
+    let ss = 8;
+    let inv_ss = 1.0 / f32(ss);
+    var cov_from = 0.0;
+    var cov_to = 0.0;
+    for (var sy = 0; sy < ss; sy = sy + 1) {
+        for (var sx = 0; sx < ss; sx = sx + 1) {
+            let off = (vec2<f32>(f32(sx), f32(sy)) + 0.5) * inv_ss - 0.5;
+            let cp = map_cube(uv + off * inv, progress);
+            if (in_bounds(cp.from_p)) { cov_from = cov_from + 1.0; }
+            if (in_bounds(cp.to_p)) { cov_to = cov_to + 1.0; }
         }
     }
-    color = color / 16.0;
+    let total = f32(ss * ss);
+    cov_from = cov_from / total;
+    cov_to = cov_to / total;
+
+    // Premultiplied-style accumulation (rgb scaled by coverage), matching how the
+    // outer silhouette fades to the black background.
+    let color = from_color * cov_from + to_color * cov_to;
     textureStore(output_tex, coord, color);
 }

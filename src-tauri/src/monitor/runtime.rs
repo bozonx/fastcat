@@ -847,14 +847,15 @@ impl LayerRuntimeManager {
                 // Used below to suppress the reseek-on-lag thrash on decode-bound sources.
                 let advancing = rt.decoder_advancing();
                 // An active layer that no longer `covers(t)` is here only as the FROM
-                // side of a transition (added above). Keep it advancing into its tail
-                // material instead of freezing on the trimmed out-point, mirroring the
-                // web compositor — otherwise the outgoing clip is a stop-frame for the
-                // whole transition.
+                // side of a transition (added above). Keep it advancing through its
+                // handle material — the trailing handle for an outgoing clip (`in`
+                // transition source) or the leading handle for the incoming next clip
+                // (`out` transition source) — instead of freezing on the trimmed
+                // edge, mirroring the web compositor.
                 let clip_local = if layer.covers(t) {
                     layer.source_pts_at(t)
                 } else {
-                    layer.transition_tail_source_pts_at(t)
+                    layer.transition_peer_source_pts_at(t)
                 };
                 if playing && rt.play_deferred_until_active() {
                     rt.activate_deferred_playback(clip_local);
@@ -982,7 +983,7 @@ impl LayerRuntimeManager {
             let clip_local = if is_covering {
                 layer.source_pts_at(t)
             } else {
-                layer.transition_tail_source_pts_at(t)
+                layer.transition_peer_source_pts_at(t)
             };
             if let Some(LayerRuntime::Video(rt)) = self.runtimes.get_mut(&layer.id) {
                 rt.pull_into_cache();
@@ -1168,7 +1169,7 @@ impl LayerRuntimeManager {
             let clip_local = if is_covering {
                 layer.source_pts_at(t)
             } else {
-                layer.transition_tail_source_pts_at(t)
+                layer.transition_peer_source_pts_at(t)
             };
             if let Some(LayerRuntime::Video(rt)) = self.runtimes.get_mut(&layer.id) {
                 rt.pull_into_cache();

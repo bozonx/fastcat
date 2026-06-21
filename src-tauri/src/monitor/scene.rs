@@ -418,6 +418,65 @@ impl SceneLayer {
             }
         }
     }
+
+    /// Source PTS for this layer when it is the *incoming* (`to`) side of a
+    /// transition that runs *before* its own `timeline_start_sec` — i.e. the next
+    /// clip composited during the previous clip's `transition_out` window. Mirrors
+    /// [`transition_tail_source_pts_at`] but for the leading handle: it reads the
+    /// frames *before* the trim-in point so the incoming clip rolls up to its first
+    /// visible frame exactly at the cut (matching the web `TransitionRenderer`
+    /// `isNextClip` branch), instead of freezing on the in-point or jumping to the
+    /// tail. Only meaningful for `timeline_sec <= timeline_start_sec`.
+    pub fn transition_head_source_pts_at(&self, timeline_sec: f64) -> f64 {
+        if let Some(freeze) = self.freeze_frame_source_sec {
+            return freeze.max(0.0);
+        }
+        let speed = sanitize_clip_speed(self.speed);
+        let abs_speed = speed.abs();
+        let source_range =
+            if self.source_range_duration_sec.is_finite() && self.source_range_duration_sec > 0.0 {
+                self.source_range_duration_sec
+            } else {
+                (self.timeline_end_sec - self.timeline_start_sec).max(0.0) * abs_speed
+            };
+        // Seconds before this clip's visible start, mapped into source time.
+        let lead = (self.timeline_start_sec - timeline_sec).max(0.0) * abs_speed;
+
+        if speed < 0.0 {
+            // Reverse: the visible in-point sits at `source_start + range`; the
+            // leading handle continues forward toward the media end (never past EOF).
+            let visible_in = self.source_start_sec + source_range;
+            match self.source_duration_sec {
+                Some(dur) if dur.is_finite() && dur - SOURCE_END_GUARD_SEC > visible_in => {
+                    let hi = dur - SOURCE_END_GUARD_SEC;
+                    (visible_in + lead).clamp(visible_in, hi)
+                }
+                // No handle past the in-point (or unknown duration): hold first frame.
+                _ => visible_in,
+            }
+        } else {
+            // Forward: the visible in-point sits at `source_start`; the leading
+            // handle reads earlier frames (before the trim-in), never below 0.
+            if self.source_start_sec <= SOURCE_END_GUARD_SEC {
+                // No handle before the in-point → hold the first frame.
+                self.source_start_sec.max(0.0)
+            } else {
+                (self.source_start_sec - lead).max(0.0)
+            }
+        }
+    }
+
+    /// Source PTS for a layer acting as the FROM/source side of a transition it does
+    /// not currently `covers`. Picks the trailing handle when `t` is past the clip
+    /// (outgoing clip, an `in` transition's source) or the leading handle when `t`
+    /// is before it (incoming next clip, an `out` transition's source).
+    pub fn transition_peer_source_pts_at(&self, timeline_sec: f64) -> f64 {
+        if timeline_sec < self.timeline_start_sec {
+            self.transition_head_source_pts_at(timeline_sec)
+        } else {
+            self.transition_tail_source_pts_at(timeline_sec)
+        }
+    }
 }
 
 /// Shared implementation of source PTS computation for both video and audio layers.
@@ -592,6 +651,70 @@ mod tests {
         l.source_duration_sec = Some(30.0);
         l.freeze_frame_source_sec = Some(7.25);
         assert_eq!(l.transition_tail_source_pts_at(14.0), 7.25);
+    }
+
+    #[test]
+    fn transition_head_rolls_into_leading_handle() {
+        // Incoming clip shows source [4..7] on timeline [13..16]. It is the `to` side
+        // of the previous clip's out transition over [12..13]. Before its start it
+        // must roll its leading handle up to the in-point (4.0) exactly at the cut,
+        // not freeze on 4.0 nor jump to its tail.
+        let mut l = layer(13.0, 16.0, 4.0);
+        l.source_range_duration_sec = 3.0;
+        l.source_duration_sec = Some(30.0);
+        // At the cut it sits exactly on the in-point.
+        assert!((l.transition_head_source_pts_at(13.0) - 4.0).abs() < 1e-6);
+        // Half a second before the cut it is half a second into the leading handle.
+        assert!((l.transition_head_source_pts_at(12.5) - 3.5).abs() < 1e-6);
+        assert!((l.transition_head_source_pts_at(12.0) - 3.0).abs() < 1e-6);
+    }
+
+    #[test]
+    fn transition_head_holds_first_frame_without_leading_handle() {
+        // In-point at the very start of the media: no leading handle → hold frame 0.
+        let mut l = layer(13.0, 16.0, 0.0);
+        l.source_range_duration_sec = 3.0;
+        l.source_duration_sec = Some(30.0);
+        assert_eq!(l.transition_head_source_pts_at(13.0), 0.0);
+        assert_eq!(l.transition_head_source_pts_at(12.0), 0.0);
+    }
+
+    #[test]
+    fn transition_head_clamps_to_zero_deep_into_handle() {
+        let mut l = layer(13.0, 16.0, 1.0);
+        l.source_range_duration_sec = 3.0;
+        l.source_duration_sec = Some(30.0);
+        // 2s of lead, only 1s of handle available before the in-point → clamps at 0.
+        assert_eq!(l.transition_head_source_pts_at(11.0), 0.0);
+    }
+
+    #[test]
+    fn transition_head_reverse_continues_toward_media_end() {
+        // Reverse clip: visible in-point at the cut sits at source_start + range
+        // (4+3=7); the leading handle continues forward toward the media end.
+        let mut l = layer(13.0, 16.0, 4.0);
+        l.source_range_duration_sec = 3.0;
+        l.source_duration_sec = Some(30.0);
+        l.speed = -1.0;
+        assert!((l.transition_head_source_pts_at(13.0) - 7.0).abs() < 1e-9);
+        assert!((l.transition_head_source_pts_at(12.5) - 7.5).abs() < 1e-9);
+    }
+
+    #[test]
+    fn transition_peer_picks_head_before_start_and_tail_after_end() {
+        let mut l = layer(13.0, 16.0, 4.0);
+        l.source_range_duration_sec = 3.0;
+        l.source_duration_sec = Some(30.0);
+        // Before its start → leading handle.
+        assert!(
+            (l.transition_peer_source_pts_at(12.5) - l.transition_head_source_pts_at(12.5)).abs()
+                < 1e-9
+        );
+        // After its end → trailing handle.
+        assert!(
+            (l.transition_peer_source_pts_at(16.5) - l.transition_tail_source_pts_at(16.5)).abs()
+                < 1e-9
+        );
     }
 
     #[test]
