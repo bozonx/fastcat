@@ -13,6 +13,19 @@ vi.mock('~/stores/workspace.store', () => ({
     userSettings: {
       timeline: {
         defaultStaticClipDurationUs: 5_000_000,
+        snapThresholdPx: 8,
+        snapping: {
+          timelineEdges: true,
+          clips: true,
+          markers: true,
+          selection: true,
+          playhead: true,
+          playheadClick: true,
+        },
+        frameSnapMode: 'frames',
+        toolbarSnapMode: 'snap',
+        toolbarDragMode: 'pseudo_overlap',
+        toolbarDragModeEnabled: false,
       },
       hotkeys: {
         layer1: 'Shift',
@@ -198,7 +211,7 @@ describe('useTimelineDropHandling', () => {
     expect(api.dragPreview.value?.durationUs).toBe(1_500_000);
   });
 
-  it('keeps original drop position when pseudo overlay modifier is active', async () => {
+  it('keeps overlap allowed while still snapping in pseudo overlay mode', async () => {
     const scrollEl = ref({
       scrollLeft: 0,
       getBoundingClientRect: () => ({ left: 0 }),
@@ -227,7 +240,38 @@ describe('useTimelineDropHandling', () => {
     );
 
     expect(api.dragPreview.value).not.toBeNull();
-    expect(api.dragPreview.value?.startUs).toBe(1_000_000);
+    expect(api.dragPreview.value?.startUs).toBe(500_000);
+  });
+
+  it('snaps file-manager drag preview to enabled timeline targets', async () => {
+    const scrollEl = ref({
+      scrollLeft: 0,
+      getBoundingClientRect: () => ({ left: 0 }),
+    } as unknown as HTMLElement);
+    const { setDraggedFile } = useDraggedFile();
+    const api = useTimelineDropHandling({ scrollEl });
+
+    setDraggedFile({
+      name: 'new.mp4',
+      kind: 'file',
+      path: '_video/new.mp4',
+    });
+
+    await api.onTrackDragOver(
+      {
+        clientX: 24,
+        shiftKey: false,
+        ctrlKey: false,
+        altKey: false,
+        metaKey: false,
+        dataTransfer: {
+          types: ['application/json'],
+        },
+      } as unknown as DragEvent,
+      'v1',
+    );
+
+    expect(api.dragPreview.value?.startUs).toBe(2_000_000);
   });
 
   it('imports external workspace file to project before creating clip on timeline', async () => {

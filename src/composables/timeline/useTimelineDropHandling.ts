@@ -6,7 +6,7 @@ import { useTimelineSettingsStore } from '~/stores/timeline-settings.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useFileManager } from '~/composables/file-manager/useFileManager';
 import { useDraggedFile } from '~/composables/useDraggedFile';
-import { pxToTimeUs } from '~/utils/timeline/geometry';
+import { computeSnappedStartUs, pxToTimeUs } from '~/utils/timeline/geometry';
 import { getMediaTypeFromFilename } from '~/utils/media-types';
 import { useTimelineMediaUsageStore } from '~/stores/timeline-media-usage.store';
 import { getWorkspacePathFileName } from '~/utils/workspace-common';
@@ -26,6 +26,7 @@ import { syncFileManagerDragCursor } from '~/composables/file-manager/dragCursor
 import { withFileIoSlot } from '~/utils/io/io-governor';
 import { useUploadProgress } from '~/composables/useUploadProgress';
 import { hasInternalFileManagerDragType } from '~/composables/file-manager/dragOperation';
+import { computeSnapTargetsUs } from './timeline-drag-domain';
 const log = createDevLogger('useTimelineDropHandling');
 
 export interface UseTimelineDropHandlingOptions {
@@ -245,6 +246,49 @@ export function useTimelineDropHandling(options: UseTimelineDropHandlingOptions)
     }
 
     return nextStartUs;
+  }
+
+  function resolvePreviewStartUs(params: {
+    trackId: string;
+    startUs: number;
+    durationUs: number;
+    pseudo: boolean;
+  }) {
+    const timelineDoc = timelineStore.timelineDoc;
+    if (!timelineDoc) return params.startUs;
+
+    const snapSettings = workspaceStore.userSettings.timeline.snapping;
+    const timelineEndUs = Number.isFinite(timelineStore.duration)
+      ? Math.max(0, Math.round(timelineStore.duration))
+      : null;
+    const snapTargetsUs = computeSnapTargetsUs({
+      tracks: timelineDoc.tracks,
+      includeTimelineStart: snapSettings.timelineEdges,
+      includeTimelineEndUs: snapSettings.timelineEdges ? timelineEndUs : null,
+      includePlayheadUs: snapSettings.playhead ? timelineStore.currentTime : null,
+      includeMarkers: snapSettings.markers,
+      markers: timelineStore.getMarkers(),
+      includeClips: snapSettings.clips,
+      selectionRangeUs: snapSettings.selection ? timelineStore.getSelectionRange() : null,
+    });
+    const snappedStartUs = computeSnappedStartUs({
+      rawStartUs: params.startUs,
+      draggingItemDurationUs: params.durationUs,
+      fps: sanitizeFps(timelineDoc.timebase.fps),
+      zoom: timelineStore.timelineZoom,
+      snapThresholdPx: timelineSettingsStore.snapThresholdPx,
+      snapTargetsUs,
+      enableFrameSnap:
+        timelineSettingsStore.frameSnapMode === 'frames' &&
+        timelineSettingsStore.toolbarSnapMode !== 'free_mode',
+      enableClipSnap: timelineSettingsStore.toolbarSnapMode === 'snap',
+      frameOffsetUs: 0,
+    });
+
+    return resolveInsertStartUs({
+      ...params,
+      startUs: snappedStartUs,
+    });
   }
 
   function resolveVirtualClipName(item: TimelineDropItem) {
@@ -615,7 +659,7 @@ export function useTimelineDropHandling(options: UseTimelineDropHandlingOptions)
     const pseudo =
       isLayer1Pressed(e, workspaceStore.userSettings) ||
       timelineSettingsStore.isPseudoOverlapEnabled;
-    const startUs = resolveInsertStartUs({
+    const startUs = resolvePreviewStartUs({
       trackId: targetTrackId,
       startUs: dropPositionUs,
       durationUs,
@@ -738,11 +782,17 @@ export function useTimelineDropHandling(options: UseTimelineDropHandlingOptions)
             files.length > 1
               ? t('fastcat.timeline.importFilesCount', { count: files.length })
               : (files[0]?.name ?? '');
+          const durationUs = workspaceStore.userSettings.timeline.defaultStaticClipDurationUs;
           dragPreview.value = {
             trackId,
-            startUs: dropPositionUs,
+            startUs: resolvePreviewStartUs({
+              trackId,
+              startUs: dropPositionUs,
+              durationUs,
+              pseudo: false,
+            }),
             label: fileLabel,
-            durationUs: workspaceStore.userSettings.timeline.defaultStaticClipDurationUs,
+            durationUs,
             kind: 'file',
           };
         }
@@ -773,11 +823,17 @@ export function useTimelineDropHandling(options: UseTimelineDropHandlingOptions)
 
         const dropPositionUs = getDropPosition(e);
         if (dropPositionUs !== null) {
+          const durationUs = workspaceStore.userSettings.timeline.defaultStaticClipDurationUs;
           dragPreview.value = {
             trackId,
-            startUs: dropPositionUs,
+            startUs: resolvePreviewStartUs({
+              trackId,
+              startUs: dropPositionUs,
+              durationUs,
+              pseudo: false,
+            }),
             label: payload.name,
-            durationUs: workspaceStore.userSettings.timeline.defaultStaticClipDurationUs,
+            durationUs,
             kind: 'file',
           };
         }

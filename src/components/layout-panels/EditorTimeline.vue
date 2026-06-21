@@ -506,7 +506,8 @@ function updateTrackHeight(trackId: string, height: number) {
 
 async function onDrop(e: DragEvent, trackId: string) {
   if (timelineStore.previewMode) return;
-  const startUs = getDropPosition(e);
+  const startUs =
+    dragPreview.value?.trackId === trackId ? dragPreview.value.startUs : getDropPosition(e);
   if (startUs === null) return;
 
   const pseudo =

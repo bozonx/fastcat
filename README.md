@@ -14,6 +14,7 @@ Standalone video editor project extracted from FastCat.
 - File system access API integration for local file editing
 - FastCat integration settings with connect flow and manual API override support
 - Remote file browser mode backed by FastCat VFS in the middle file manager panel
+- File-manager drag previews on the timeline follow the active frame and timeline snapping modes
 - Mobile asset browser and timeline media picker share categorized project assets, sorting, selection UI, and pull-to-refresh
 - Remote-to-local download by drag-and-drop from remote files into the local folder tree
 - Local-to-remote upload action with remote folder picker and cancelable transfer progress modal
