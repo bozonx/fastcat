@@ -225,11 +225,11 @@ function normalizeCubeParams(params?: Record<string, unknown>): Record<string, u
 
   const zoomMode = params?.zoomMode === 'fixed' ? 'fixed' : 'unzoom';
   const perspective = typeof params?.perspective === 'number' ? params.perspective : 0.7;
-  const gapSize = typeof params?.gapSize === 'number' ? Math.max(0, params.gapSize) : 0;
+  const gap = typeof params?.gap === 'number' ? Math.max(0, params.gap) : 0;
   const unzoomDistance =
     typeof params?.unzoomDistance === 'number' ? clamp(params.unzoomDistance, 0.0, 1.0) : 0.3;
 
-  return { direction, zoomMode, perspective, gapSize, unzoomDistance };
+  return { direction, zoomMode, perspective, gap, unzoomDistance };
 }
 
 // ---------------------------------------------------------------------------
@@ -441,10 +441,10 @@ export const transitionManifests: TransitionManifest[] = [
         key: 'direction',
         labelKey: 'fastcat.timeline.transition.paramDirection',
         options: [
-          { value: 'left', labelKey: 'fastcat.transitions.slide.options.left' },
-          { value: 'right', labelKey: 'fastcat.transitions.slide.options.right' },
-          { value: 'up', labelKey: 'fastcat.transitions.slide.options.up' },
-          { value: 'down', labelKey: 'fastcat.transitions.slide.options.down' },
+          { value: 'left', labelKey: 'fastcat.timeline.transition.directionLeft' },
+          { value: 'right', labelKey: 'fastcat.timeline.transition.directionRight' },
+          { value: 'up', labelKey: 'fastcat.timeline.transition.directionUp' },
+          { value: 'down', labelKey: 'fastcat.timeline.transition.directionDown' },
         ],
       },
       {
@@ -485,7 +485,7 @@ export const transitionManifests: TransitionManifest[] = [
         ],
       },
       {
-        kind: 'number',
+        kind: 'slider',
         key: 'brightness',
         labelKey: 'fastcat.timeline.transition.paramBrightness',
         min: -10,
@@ -782,18 +782,9 @@ export const transitionManifests: TransitionManifest[] = [
     renderer: 'wgpu',
     supportedModes: ['adjacent', 'background', 'transparent'],
     paramFields: [
-      {
-        kind: 'number',
-        key: 'blur',
-        labelKey: 'fastcat.timeline.transition.paramCircleBlur',
-        min: 0,
-        max: 20,
-        step: 0.5,
-      },
-      blurModeField,
       fromToCenterField,
       anchorField,
-      ...offsetFields,
+      contentModeField,
       {
         kind: 'number',
         key: 'scaleX',
@@ -810,7 +801,16 @@ export const transitionManifests: TransitionManifest[] = [
         max: 1000,
         step: 1,
       },
-      contentModeField,
+      ...offsetFields,
+      {
+        kind: 'number',
+        key: 'blur',
+        labelKey: 'fastcat.timeline.transition.paramCircleBlur',
+        min: 0,
+        max: 20,
+        step: 0.5,
+      },
+      blurModeField,
     ],
     toTransitionSpec: (params: Record<string, unknown>) => {
       const center = centerFromAnchor(params);
@@ -844,6 +844,10 @@ export const transitionManifests: TransitionManifest[] = [
     renderer: 'wgpu',
     supportedModes: ['adjacent', 'background', 'transparent'],
     paramFields: [
+      fromToCenterField,
+      anchorField,
+      contentModeField,
+      ...offsetFields,
       {
         kind: 'number',
         key: 'blur',
@@ -853,10 +857,6 @@ export const transitionManifests: TransitionManifest[] = [
         step: 0.5,
       },
       blurModeField,
-      fromToCenterField,
-      anchorField,
-      ...offsetFields,
-      contentModeField,
     ],
     toTransitionSpec: (params: Record<string, unknown>) => {
       const center = centerFromAnchor(params);
@@ -948,7 +948,7 @@ export const transitionManifests: TransitionManifest[] = [
         ],
       },
       {
-        kind: 'number',
+        kind: 'slider',
         key: 'brightness',
         labelKey: 'fastcat.timeline.transition.paramBrightness',
         min: -10,
@@ -1159,7 +1159,7 @@ export const transitionManifests: TransitionManifest[] = [
     supportedModes: ['adjacent', 'background', 'transparent'],
     paramFields: [
       {
-        kind: 'select',
+        kind: 'button-group',
         key: 'zoomMode',
         labelKey: 'fastcat.timeline.transition.paramMode',
         options: [
@@ -1188,7 +1188,7 @@ export const transitionManifests: TransitionManifest[] = [
       },
       {
         kind: 'number',
-        key: 'gapSize',
+        key: 'gap',
         labelKey: 'fastcat.timeline.transition.paramGapSize',
         min: 0,
         max: 0.5,
@@ -1223,7 +1223,7 @@ export const transitionManifests: TransitionManifest[] = [
           p1: dy,
           p2: params.zoomMode === 'fixed' ? 0 : 1,
           p3: clamp(finiteNumber(params.perspective, 0.7), 0.1, 3.0),
-          p4: clamp(finiteNumber(params.gapSize, 0), 0, 0.5),
+          p4: clamp(finiteNumber(params.gap, 0), 0, 0.5),
           p5: clamp(finiteNumber(params.unzoomDistance, 0.3), 0.0, 1.0),
           p6: qualityEdgeSamples(q, 1, 1, 8, 8),
         },
@@ -1254,7 +1254,7 @@ export const transitionManifests: TransitionManifest[] = [
     supportedModes: ['adjacent', 'background', 'transparent'],
     paramFields: [
       {
-        kind: 'select',
+        kind: 'button-group',
         key: 'mode',
         labelKey: 'fastcat.timeline.transition.paramCardSwapMode',
         options: [

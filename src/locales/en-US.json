@@ -1098,13 +1098,7 @@
         "name": "Rectangle"
       },
       "slide": {
-        "name": "Slide",
-        "options": {
-          "down": "Down",
-          "left": "Left",
-          "right": "Right",
-          "up": "Up"
-        }
+        "name": "Slide"
       },
       "title": "Transitions",
       "wipe": {

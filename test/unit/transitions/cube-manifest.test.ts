@@ -25,7 +25,7 @@ describe('cube transition parameters in Tauri spec', () => {
       direction: 'left',
       zoomMode: 'fixed',
       perspective: 0.7,
-      gapSize: 0,
+      gap: 0,
     });
 
     expect(spec?.params).toMatchObject({
@@ -44,7 +44,7 @@ describe('cube transition parameters in Tauri spec', () => {
       direction: 'left',
       zoomMode: 'unzoom',
       perspective: 0.7,
-      gapSize: 0,
+      gap: 0,
     });
 
     expect(spec?.params).toMatchObject({
@@ -86,7 +86,7 @@ describe('cube transition parameters in Tauri spec', () => {
       direction: 'right',
       zoomMode: 'fixed',
       perspective: 0.7,
-      gapSize: 0,
+      gap: 0,
       unzoomDistance: 0.3,
     });
 
@@ -95,7 +95,7 @@ describe('cube transition parameters in Tauri spec', () => {
       direction: 'left',
       zoomMode: 'unzoom',
       perspective: 0.7,
-      gapSize: 0,
+      gap: 0,
       unzoomDistance: 0.3,
     });
 
@@ -109,10 +109,10 @@ describe('cube transition parameters in Tauri spec', () => {
 
     const fields = manifest?.paramFields || [];
 
-    // zoomMode should be at index 0 and be a select control
+    // zoomMode should be at index 0 and be a button-group control
     expect(fields[0]).toMatchObject({
       key: 'zoomMode',
-      kind: 'select',
+      kind: 'button-group',
     });
 
     // direction should be at index 1 and be a button-group control
