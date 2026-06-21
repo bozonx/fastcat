@@ -1,4 +1,6 @@
 import { createDevLogger } from '~/utils/dev-logger';
+import { normalizeHexColor, hexToRgbUint } from '~/utils/color';
+import { usToS } from '~/utils/time';
 const log = createDevLogger('utils');
 export function safeDispose(resource: unknown): void {
   if (!resource || typeof resource !== 'object') return;
@@ -20,35 +22,25 @@ export function safeDispose(resource: unknown): void {
 }
 
 export function parseUsToS(us: number | string | undefined | null, fallback = 0): number {
-  if (us == null || isNaN(Number(us))) return fallback;
-  return Math.max(0, Number(us) / 1_000_000);
+  if (us == null) return fallback;
+  const parsed = Number(us);
+  if (Number.isNaN(parsed)) return fallback;
+  return usToS(parsed) || fallback;
 }
 
 export function parseUs(us: number | string | undefined | null, fallback = 0): number {
-  if (us == null || isNaN(Number(us))) return fallback;
-  return Math.max(0, Math.round(Number(us)));
+  if (us == null) return fallback;
+  const parsed = Number(us);
+  if (Number.isNaN(parsed)) return fallback;
+  return Math.max(0, Math.round(parsed));
 }
 
 export function sanitizeTimelineColor(value: unknown, fallback = '#000000'): string {
-  const raw = String(value ?? '')
-    .trim()
-    .replace(/^#/, '');
-  if (/^[0-9a-fA-F]{3}$/.test(raw)) {
-    const r = raw[0] ?? '0';
-    const g = raw[1] ?? '0';
-    const b = raw[2] ?? '0';
-    return `#${r}${r}${g}${g}${b}${b}`.toLowerCase();
-  }
-  if (/^[0-9a-fA-F]{6}$/.test(raw)) {
-    return `#${raw}`.toLowerCase();
-  }
-  return fallback.toLowerCase();
+  return normalizeHexColor(value, fallback);
 }
 
 export function parseHexColor(value: string): number {
-  const hex = sanitizeTimelineColor(value).slice(1);
-  const parsed = Number.parseInt(hex, 16);
-  return Number.isFinite(parsed) ? parsed : 0;
+  return hexToRgbUint(value, '#000000');
 }
 
 /**

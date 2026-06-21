@@ -1,3 +1,5 @@
+import { clamp } from '~/utils/math';
+
 export const MIN_TIMELINE_ZOOM_POSITION = 0;
 export const MAX_TIMELINE_ZOOM_POSITION = 110;
 export const DEFAULT_TIMELINE_ZOOM_POSITION = 50;
@@ -43,10 +45,6 @@ function createNiceZoomLevels(maxZoom: number): number[] {
 
 export const MONITOR_ZOOM_LEVELS = createNiceZoomLevels(MAX_MONITOR_ZOOM);
 const TIMELINE_ZOOM_SCALE_LEVELS = createNiceZoomLevels(400);
-
-function clamp(value: number, min: number, max: number): number {
-  return Math.min(max, Math.max(min, value));
-}
 
 function getFirstStep(steps: number[], fallback: number): number {
   return steps[0] ?? fallback;

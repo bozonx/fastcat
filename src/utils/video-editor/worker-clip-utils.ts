@@ -1,4 +1,4 @@
-import { clampNumber } from '~/utils/audio/envelope';
+import { clampNumber } from '~/utils/math';
 import { cloneValue } from '~/utils/clone';
 import {
   VIDEO_DIR_NAME,

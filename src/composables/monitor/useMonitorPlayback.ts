@@ -1,7 +1,8 @@
 import { createDevLogger } from '~/utils/dev-logger';
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue';
 
-import { normalizeTimeUs, sanitizeFps } from '~/utils/monitor-time';
+import { normalizeTimeUs } from '~/utils/monitor-time';
+import { sanitizeFps } from '~/utils/time';
 import { formatTimecode } from '~/utils/timecode';
 import { isTauriRuntime } from '~/utils/runtime';
 

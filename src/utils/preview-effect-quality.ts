@@ -42,9 +42,12 @@ const QUALITY_RENDER_SCALES: Record<PreviewEffectQuality, number> = {
   ultra: 1,
 };
 
-export function resolvePreviewEffectQuality(
-  params: ResolvePreviewEffectQualityParams,
-): PreviewEffectQuality {
+export function resolvePreviewQualityOverride(
+  params: Pick<
+    ResolvePreviewEffectQualityParams,
+    'isExport' | 'isPlaying' | 'idleSettled' | 'setting'
+  >,
+): PreviewEffectQuality | null {
   if (params.isExport) return 'ultra';
   // A frozen/paused frame costs nothing extra to render at full fidelity, so show the best
   // image when not actively playing/scrubbing — even if the user pinned a lower quality. The
@@ -54,6 +57,14 @@ export function resolvePreviewEffectQuality(
   // cheaper motion quality and let the caller upgrade to ultra on the settle debounce.
   if (params.isPlaying === false && params.idleSettled !== false) return 'ultra';
   if (params.setting && params.setting !== 'auto') return params.setting;
+  return null;
+}
+
+export function resolvePreviewEffectQuality(
+  params: ResolvePreviewEffectQualityParams,
+): PreviewEffectQuality {
+  const override = resolvePreviewQualityOverride(params);
+  if (override) return override;
   if (params.isMobile) return 'low';
 
   const width = Math.max(1, Number(params.width) || 1920);

@@ -33,6 +33,8 @@ import {
   type PreviewEffectQuality,
   type PreviewEffectQualitySetting,
 } from '~/utils/preview-effect-quality';
+import { isImagePath } from '~/utils/media-ext';
+import { clampFinite } from '~/utils/math';
 
 export { buildNativeAudioEffectSpecs };
 
@@ -45,9 +47,6 @@ async function getTauriJoin() {
   }
   return _tauriJoin;
 }
-
-const IMAGE_EXT = new Set(['png', 'jpg', 'jpeg', 'webp']);
-const SVG_EXT = new Set(['svg']);
 
 // The scene DTOs are generated from the Rust IPC structs (`src-tauri/src/
 // monitor/scene.rs`) by ts-rs — Rust is the single source of truth for the
@@ -120,21 +119,14 @@ async function resolveMediaSourceAbsolutePath(
   return resolveProjectAbsolutePath(projectRelativePath, projectStore, workspaceStore);
 }
 
-function extOf(path: string): string {
-  const i = path.lastIndexOf('.');
-  return i >= 0 ? path.slice(i + 1).toLowerCase() : '';
-}
-
 function isImageLayer(clip: WorkerTimelineClip): boolean {
-  return IMAGE_EXT.has(extOf(clip.source?.path ?? ''));
+  return isImagePath(clip.source?.path ?? '');
 }
 
 function isSvgLayer(clip: WorkerTimelineClip): boolean {
-  return SVG_EXT.has(extOf(clip.source?.path ?? ''));
-}
-
-function finite(value: unknown, fallback: number): number {
-  return typeof value === 'number' && Number.isFinite(value) ? value : fallback;
+  const path = clip.source?.path ?? '';
+  const ext = path.slice(path.lastIndexOf('.') + 1).toLowerCase();
+  return ext === 'svg';
 }
 
 function sanitizeVideoSpeed(value: unknown): number {
@@ -240,13 +232,13 @@ function buildNativeTransform(
   return {
     x:
       sceneWidth / 2 +
-      finite(transform.position?.x, 0) * (sceneWidth / TRANSFORM_DESIGN_BASE.width),
+      clampFinite(transform.position?.x, 0) * (sceneWidth / TRANSFORM_DESIGN_BASE.width),
     y:
       sceneHeight / 2 +
-      finite(transform.position?.y, 0) * (sceneHeight / TRANSFORM_DESIGN_BASE.height),
-    scale_x: finite(transform.scale?.x, 1),
-    scale_y: finite(transform.scale?.y, 1),
-    rotation_deg: finite(transform.rotationDeg, 0),
+      clampFinite(transform.position?.y, 0) * (sceneHeight / TRANSFORM_DESIGN_BASE.height),
+    scale_x: clampFinite(transform.scale?.x, 1),
+    scale_y: clampFinite(transform.scale?.y, 1),
+    rotation_deg: clampFinite(transform.rotationDeg, 0),
     anchor_x: anchor.x,
     anchor_y: anchor.y,
     crop_top: transform.crop?.top ?? 0,
@@ -268,8 +260,8 @@ function buildNativeTextTransform(params: {
   // scene resolution — identical to media (`buildNativeTransform`) and the web
   // compositor (`LayoutApplier.applyScreenSpaceLayout`). Using a uniform min()
   // here desynced text/shape placement from media on non-16:9 outputs.
-  const posX = finite(transform.position?.x, 0) * (sceneWidth / TRANSFORM_DESIGN_BASE.width);
-  const posY = finite(transform.position?.y, 0) * (sceneHeight / TRANSFORM_DESIGN_BASE.height);
+  const posX = clampFinite(transform.position?.x, 0) * (sceneWidth / TRANSFORM_DESIGN_BASE.width);
+  const posY = clampFinite(transform.position?.y, 0) * (sceneHeight / TRANSFORM_DESIGN_BASE.height);
   const anchor = resolveNormalizedAnchor(transform.anchor);
 
   return {
@@ -277,9 +269,9 @@ function buildNativeTextTransform(params: {
     // size. The front-end sends center-of-scene + design-position only.
     x: sceneWidth / 2 + posX,
     y: sceneHeight / 2 + posY,
-    scale_x: finite(transform.scale?.x, 1),
-    scale_y: finite(transform.scale?.y, 1),
-    rotation_deg: finite(transform.rotationDeg, 0),
+    scale_x: clampFinite(transform.scale?.x, 1),
+    scale_y: clampFinite(transform.scale?.y, 1),
+    rotation_deg: clampFinite(transform.rotationDeg, 0),
     anchor_x: anchor.x,
     anchor_y: anchor.y,
     crop_top: transform.crop?.top ?? 0,
@@ -315,15 +307,15 @@ function buildNativeShapeTransform(params: {
     // Position scales per-axis (design-space), matching media and the web compositor.
     x:
       sceneWidth / 2 +
-      finite(transform.position?.x, 0) * (sceneWidth / TRANSFORM_DESIGN_BASE.width) +
+      clampFinite(transform.position?.x, 0) * (sceneWidth / TRANSFORM_DESIGN_BASE.width) +
       (anchor.x - 0.5) * targetW,
     y:
       sceneHeight / 2 +
-      finite(transform.position?.y, 0) * (sceneHeight / TRANSFORM_DESIGN_BASE.height) +
+      clampFinite(transform.position?.y, 0) * (sceneHeight / TRANSFORM_DESIGN_BASE.height) +
       (anchor.y - 0.5) * targetH,
-    scale_x: finite(transform.scale?.x, 1),
-    scale_y: finite(transform.scale?.y, 1),
-    rotation_deg: finite(transform.rotationDeg, 0),
+    scale_x: clampFinite(transform.scale?.x, 1),
+    scale_y: clampFinite(transform.scale?.y, 1),
+    rotation_deg: clampFinite(transform.rotationDeg, 0),
     anchor_x: anchor.x,
     anchor_y: anchor.y,
     crop_top: transform.crop?.top ?? 0,
@@ -502,7 +494,7 @@ function buildBaseLayer(params: {
         : undefined,
     source_orientation: String(clip.sourceOrientation ?? 'auto'),
     z,
-    opacity: Math.max(0, Math.min(1, finite(clip.opacity, 1))),
+    opacity: Math.max(0, Math.min(1, clampFinite(clip.opacity, 1))),
     blend_mode: mapTimelineBlendModeToNative(clip.blendMode),
     effects: buildEffectSpecs(clip.effects) ?? [],
     transform: buildNativeTransform(clip.transform, sceneWidth, sceneHeight),
@@ -785,7 +777,7 @@ export async function buildNativeMonitorScene(
             proxy,
           }),
     audio_tracks,
-    audio_master_gain: Math.max(0, finite(params.masterGain, 1)),
+    audio_master_gain: Math.max(0, clampFinite(params.masterGain, 1)),
     audio_master_muted: Boolean(params.masterMuted),
     audio_master_effects: buildNativeAudioEffectSpecs(
       params.timelineDoc.metadata?.fastcat?.masterEffects,

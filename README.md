@@ -118,6 +118,11 @@ The application will be available at `http://localhost:3000`.
 - Clip transform `position` values are stored in 1920x1080 design-space units and are scaled to the active preview/export resolution during layout.
 - Timeline resolution, FPS and audio sample rate are stored per `.otio` timeline in FastCat metadata; project settings provide defaults for newly created timelines.
 - Text clip style sizing (`width`, `fontSize`, `padding`, `letterSpacing`) is normalized before persistence and scaled from the same design-space baseline during rendering.
+- `src/utils/math.ts`: Shared clamping helpers (`clamp`, `clampInt`, `clampFinite`, `clampPositive`, `clampNumber`).
+- `src/utils/color.ts`: Shared hex color normalization and RGB conversion (`normalizeHexColor`, `hexToRgb01`, `hexToRgbUint`).
+- `src/utils/time.ts`: Shared time conversion and FPS sanitization (`usToS`, `sToUs`, `sanitizeFps`).
+- `src/utils/media-ext.ts`: Shared image extension detection (`isImagePath`, `isImageMimeType`).
+- `src/utils/preview-effect-quality.ts`: Shared preview/effect quality resolution used by the compositor and transition manifests.
 - `src/utils/dev-logger.ts`: Dev-only logger for verbose diagnostics (disabled in production).
 - `src/workers/timeline-serializer.worker.ts`: Dedicated worker for background timeline serialization.
 - `src/workers/`: Web Workers for heavy lifting (video decoding/encoding).

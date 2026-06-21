@@ -7,8 +7,8 @@ import {
   resolveEffectiveFadeDurationsSeconds,
   type AudioEnvelopeClipLike,
 } from '~/utils/audio/envelope';
-
-const US_PER_SEC = 1_000_000;
+import { clampFinite } from '~/utils/math';
+import { US_PER_SEC } from '~/utils/time';
 
 interface AudioWorkerClip extends WorkerTimelineClip {
   defaultAudioFadeCurve?: 'linear' | 'logarithmic';
@@ -60,12 +60,8 @@ export interface ToNativeSceneAudioLayerParams {
   next?: CanonicalAudioClipDescriptor | null;
 }
 
-function finite(value: unknown, fallback: number): number {
-  return typeof value === 'number' && Number.isFinite(value) ? value : fallback;
-}
-
 export function sanitizeNativeAudioSpeed(value: unknown): number {
-  const raw = finite(value, 1) || 1;
+  const raw = clampFinite(value, 1) || 1;
   const clamped = Math.max(0.01, Math.min(100, Math.abs(raw)));
   return raw < 0 ? -clamped : clamped;
 }
@@ -183,7 +179,7 @@ function adjacentTransitionDurationUs(
 
 export function toNativeSceneAudioLayer(params: ToNativeSceneAudioLayerParams): SceneAudioLayer {
   const descriptor = params.descriptor;
-  const signedSpeed = finite(descriptor.speed, 1) || 1;
+  const signedSpeed = clampFinite(descriptor.speed, 1) || 1;
   const reversed = signedSpeed < 0;
   const absSpeed = Math.max(0.01, Math.min(100, Math.abs(signedSpeed)));
 
@@ -193,7 +189,7 @@ export function toNativeSceneAudioLayer(params: ToNativeSceneAudioLayerParams): 
   const sourceRangeDurationUs = Math.max(0, descriptor.sourceRangeDurationUs);
   const materialDurationUs = Math.max(
     0,
-    finite(descriptor.sourceDurationUs, sourceRangeDurationUs),
+    clampFinite(descriptor.sourceDurationUs, sourceRangeDurationUs),
   );
 
   // Effective fades fold in: manual fades, the auto de-click (removes the click at
@@ -271,10 +267,10 @@ export function toNativeSceneAudioLayer(params: ToNativeSceneAudioLayerParams): 
     source_start_sec: layerSourceStartUs / US_PER_SEC,
     source_range_duration_sec: Math.max(0, layerSourceRangeUs) / US_PER_SEC,
     speed: sanitizeNativeAudioSpeed(descriptor.speed),
-    audio_gain: Math.max(0, finite(descriptor.originalAudioGain ?? descriptor.audioGain, 1)),
+    audio_gain: Math.max(0, clampFinite(descriptor.originalAudioGain ?? descriptor.audioGain, 1)),
     audio_balance: Math.max(
       -1,
-      Math.min(1, finite(descriptor.originalAudioBalance ?? descriptor.audioBalance, 0)),
+      Math.min(1, clampFinite(descriptor.originalAudioBalance ?? descriptor.audioBalance, 0)),
     ),
     audio_fade_in_sec: Math.max(0, fadeInS),
     audio_fade_out_sec: Math.max(0, fadeOutS),

@@ -3,6 +3,7 @@ import {
   previewEffectQualityRenderScale,
   previewEffectQualityTapBudget,
   resolvePreviewEffectQuality,
+  resolvePreviewQualityOverride,
   resolvePreviewRenderScale,
 } from '~/utils/preview-effect-quality';
 
@@ -92,6 +93,33 @@ describe('preview effect quality', () => {
     for (let i = 1; i < scales.length; i += 1) {
       expect(scales[i]).toBeGreaterThan(scales[i - 1]);
     }
+  });
+
+  describe('resolvePreviewQualityOverride', () => {
+    it('returns null when no override applies', () => {
+      expect(resolvePreviewQualityOverride({})).toBeNull();
+      expect(resolvePreviewQualityOverride({ setting: 'auto' })).toBeNull();
+      expect(resolvePreviewQualityOverride({ setting: 'auto', isPlaying: true })).toBeNull();
+    });
+
+    it('overrides to ultra for export or settled paused frames', () => {
+      expect(resolvePreviewQualityOverride({ setting: 'low', isExport: true })).toBe('ultra');
+      expect(resolvePreviewQualityOverride({ setting: 'low', isPlaying: false })).toBe('ultra');
+      expect(
+        resolvePreviewQualityOverride({ setting: 'low', isPlaying: false, idleSettled: true }),
+      ).toBe('ultra');
+    });
+
+    it('keeps the explicit setting for interactive paused frames', () => {
+      expect(
+        resolvePreviewQualityOverride({ setting: 'low', isPlaying: false, idleSettled: false }),
+      ).toBe('low');
+    });
+
+    it('returns an explicit non-auto setting', () => {
+      expect(resolvePreviewQualityOverride({ setting: 'low' })).toBe('low');
+      expect(resolvePreviewQualityOverride({ setting: 'high' })).toBe('high');
+    });
   });
 
   describe('resolvePreviewRenderScale', () => {

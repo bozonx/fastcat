@@ -1,4 +1,7 @@
 import type { TransitionManifest, TransitionSpec } from './core/registry';
+import { clamp, clampFinite } from '~/utils/math';
+import { hexToRgb01, normalizeHexColor } from '~/utils/color';
+import { resolvePreviewQualityOverride } from '~/utils/preview-effect-quality';
 import barnDoorWgsl from '~shared/transitions/barn_door.wgsl?raw';
 import blindsWgsl from '~shared/transitions/blinds.wgsl?raw';
 import bloomWgsl from '~shared/transitions/bloom.wgsl?raw';
@@ -17,14 +20,6 @@ import zoomWgsl from '~shared/transitions/zoom.wgsl?raw';
 // Runtime-agnostic helpers shared by web preview and native rendering/export.
 // ---------------------------------------------------------------------------
 
-function finiteNumber(value: unknown, fallback: number): number {
-  return typeof value === 'number' && Number.isFinite(value) ? value : fallback;
-}
-
-function clamp(value: number, min: number, max: number): number {
-  return Math.max(min, Math.min(max, value));
-}
-
 const transparent = () => 1;
 
 function normalizeDirection(value: unknown): 'left' | 'right' | 'up' | 'down' {
@@ -39,27 +34,6 @@ function directionIndex(value: unknown): number {
   if (direction === 'up') return 2;
   if (direction === 'down') return 3;
   return 0;
-}
-
-function normalizeTransitionColor(value: unknown, fallback = '#000000'): string {
-  const raw = String(value ?? '')
-    .trim()
-    .replace(/^#/, '');
-  if (/^[0-9a-fA-F]{3}$/.test(raw)) {
-    const r = raw[0] ?? '0';
-    const g = raw[1] ?? '0';
-    const b = raw[2] ?? '0';
-    return `#${r}${r}${g}${g}${b}${b}`.toLowerCase();
-  }
-  return /^[0-9a-fA-F]{6}$/.test(raw) ? `#${raw}`.toLowerCase() : fallback;
-}
-
-/** Hex string → linear [0..1] rgb triple. */
-function hexToRgb01(value: unknown, fallback = '#000000'): [number, number, number] {
-  const hex = normalizeTransitionColor(value, fallback).slice(1);
-  const n = Number.parseInt(hex, 16);
-  if (!Number.isFinite(n)) return [0, 0, 0];
-  return [((n >> 16) & 0xff) / 255, ((n >> 8) & 0xff) / 255, (n & 0xff) / 255];
 }
 
 function qualitySamples(quality: unknown, low: number, med: number, high: number, ultra: number) {
@@ -97,15 +71,13 @@ function resolveBlurQuality(
     | undefined,
   perTransitionQuality: unknown,
 ): string {
-  if (options?.isExport) return 'ultra';
-  // A *settled* still/paused frame renders at full fidelity, even if the user pinned a lower
-  // quality for motion — so this must win over the explicit setting below (matches
-  // resolvePreviewEffectQuality). While still interactive (`idleSettled === false`: scrubbing
-  // or dragging transition params) we keep the cheaper motion quality and upgrade to ultra
-  // only after the caller's settle debounce.
-  if (options?.isPlaying === false && options?.idleSettled !== false) return 'ultra';
-  const preview = options?.previewBlurQuality;
-  if (preview && preview !== 'auto') return preview;
+  const override = resolvePreviewQualityOverride({
+    isExport: options?.isExport,
+    isPlaying: options?.isPlaying,
+    idleSettled: options?.idleSettled,
+    setting: options?.previewBlurQuality as 'low' | 'medium' | 'high' | 'auto' | undefined,
+  });
+  if (override) return override;
   // 'auto' or unset: fall back to the per-transition setting (default 'medium')
   return typeof perTransitionQuality === 'string' ? perTransitionQuality : 'medium';
 }
@@ -125,8 +97,8 @@ function motionBlurConst(motionBlur: number, durationSec: number | undefined, fa
 /** anchor + offset → normalized center, identical to the web rectangle/circle. */
 function centerFromAnchor(params: Record<string, unknown>): [number, number] {
   const anchor = typeof params.anchor === 'string' ? params.anchor : 'center';
-  const offsetX = clamp(finiteNumber(params.offsetX, 0), -100, 100) / 100;
-  const offsetY = clamp(finiteNumber(params.offsetY, 0), -100, 100) / 100;
+  const offsetX = clamp(clampFinite(params.offsetX, 0), -100, 100) / 100;
+  const offsetY = clamp(clampFinite(params.offsetY, 0), -100, 100) / 100;
 
   if (anchor === 'top-left') return [offsetX, offsetY];
   if (anchor === 'top-right') return [1 - offsetX, offsetY];
@@ -135,7 +107,7 @@ function centerFromAnchor(params: Record<string, unknown>): [number, number] {
   return [0.5 + offsetX, 0.5 + offsetY];
 }
 
-function normalizeCircleParams(params?: Record<string, unknown>): Record<string, unknown> {
+function normalizeAnchorBlurBase(params?: Record<string, unknown>): Record<string, unknown> {
   const anchor =
     typeof params?.anchor === 'string' &&
     ['center', 'top-left', 'top-right', 'bottom-left', 'bottom-right'].includes(params.anchor)
@@ -143,16 +115,21 @@ function normalizeCircleParams(params?: Record<string, unknown>): Record<string,
       : 'center';
 
   return {
-    blur: clamp(finiteNumber(params?.blur, 1.5), 0, 20),
+    blur: clamp(clampFinite(params?.blur, 1.5), 0, 20),
     blurMode: params?.blurMode === 'scaled' ? 'scaled' : 'fixed',
     direction: params?.direction === 'to-center' ? 'to-center' : 'from-center',
     anchor,
-    offsetX: clamp(finiteNumber(params?.offsetX, 0), -100, 100),
-    offsetY: clamp(finiteNumber(params?.offsetY, 0), -100, 100),
-    scaleX: clamp(finiteNumber(params?.scaleX, 100), 1, 1000),
-    scaleY: clamp(finiteNumber(params?.scaleY, 100), 1, 1000),
-    contentMode:
-      params?.contentMode === 'zoom' || params?.followScale === true ? 'zoom' : 'reveal',
+    offsetX: clamp(clampFinite(params?.offsetX, 0), -100, 100),
+    offsetY: clamp(clampFinite(params?.offsetY, 0), -100, 100),
+  };
+}
+
+function normalizeCircleParams(params?: Record<string, unknown>): Record<string, unknown> {
+  return {
+    ...normalizeAnchorBlurBase(params),
+    scaleX: clamp(clampFinite(params?.scaleX, 100), 1, 1000),
+    scaleY: clamp(clampFinite(params?.scaleY, 100), 1, 1000),
+    contentMode: params?.contentMode === 'zoom' || params?.followScale === true ? 'zoom' : 'reveal',
   };
 }
 
@@ -182,34 +159,23 @@ function normalizeClockParams(params?: Record<string, unknown>): Record<string, 
   ];
   return {
     direction: allowed.includes(direction) ? direction : 'clockwise',
-    softness: clamp(finiteNumber(params?.softness, 0), 0, 100),
+    softness: clamp(clampFinite(params?.softness, 0), 0, 100),
   };
 }
 
 function normalizeMotionBlurParams(params?: Record<string, unknown>): Record<string, unknown> {
   return {
-    angle: clamp(finiteNumber(params?.angle, 0), -180, 180),
-    motionBlur: clamp(finiteNumber(params?.motionBlur, 50), 0, 100),
+    angle: clamp(clampFinite(params?.angle, 0), -180, 180),
+    motionBlur: clamp(clampFinite(params?.motionBlur, 50), 0, 100),
     motionBlurMode: params?.motionBlurMode === 'bloom' ? 'bloom' : 'normal',
-    brightness: clamp(finiteNumber(params?.brightness, 0), -10, 10),
-    bloomThreshold: clamp(finiteNumber(params?.bloomThreshold, 0.7), 0, 1),
+    brightness: clamp(clampFinite(params?.brightness, 0), -10, 10),
+    bloomThreshold: clamp(clampFinite(params?.bloomThreshold, 0.7), 0, 1),
   };
 }
 
 function normalizeRectangleParams(params?: Record<string, unknown>): Record<string, unknown> {
-  const anchor =
-    typeof params?.anchor === 'string' &&
-    ['center', 'top-left', 'top-right', 'bottom-left', 'bottom-right'].includes(params.anchor)
-      ? params.anchor
-      : 'center';
-
   return {
-    blur: clamp(finiteNumber(params?.blur, 1.5), 0, 20),
-    blurMode: params?.blurMode === 'scaled' ? 'scaled' : 'fixed',
-    direction: params?.direction === 'to-center' ? 'to-center' : 'from-center',
-    anchor,
-    offsetX: clamp(finiteNumber(params?.offsetX, 0), -100, 100),
-    offsetY: clamp(finiteNumber(params?.offsetY, 0), -100, 100),
+    ...normalizeAnchorBlurBase(params),
     contentMode: params?.contentMode === 'zoom' ? 'zoom' : 'reveal',
   };
 }
@@ -392,10 +358,10 @@ export const transitionManifests: TransitionManifest[] = [
       } else if (params.direction === 'down') {
         baseAngle = 90;
       }
-      const customAngle = clamp(finiteNumber(params.angle, 0), -180, 180);
+      const customAngle = clamp(clampFinite(params.angle, 0), -180, 180);
       const angleRad = (((baseAngle + customAngle) % 360) * Math.PI) / 180;
       const useGap = params.edgeMode !== 'blur';
-      const softness = clamp(finiteNumber(params.blur, 2) / 100, 0.0001, 1.0);
+      const softness = clamp(clampFinite(params.blur, 2) / 100, 0.0001, 1.0);
       const [r, g, b] = hexToRgb01(params.gapColor, '#000000');
       return {
         type: 'custom-wgsl',
@@ -403,7 +369,7 @@ export const transitionManifests: TransitionManifest[] = [
         params: {
           p0: Math.cos(angleRad),
           p1: Math.sin(angleRad),
-          p2: useGap ? clamp(finiteNumber(params.gap, 0.02), 0, 0.2) : 0,
+          p2: useGap ? clamp(clampFinite(params.gap, 0.02), 0, 0.2) : 0,
           p3: softness,
           p4: useGap ? 1 : 0,
           p5: r,
@@ -508,7 +474,7 @@ export const transitionManifests: TransitionManifest[] = [
         source: slideWgsl,
         params: {
           p0: directionIndex(params.direction),
-          p1: clamp(finiteNumber(params.gap, 0.02), 0, 0.2),
+          p1: clamp(clampFinite(params.gap, 0.02), 0, 0.2),
           p2: r,
           p3: g,
           p4: b,
@@ -565,7 +531,7 @@ export const transitionManifests: TransitionManifest[] = [
       source: clockWgsl,
       params: {
         p0: clockDirectionCode(params.direction),
-        p1: clamp(finiteNumber(params.softness, 0) / 100, 0.0001, 0.5),
+        p1: clamp(clampFinite(params.softness, 0) / 100, 0.0001, 0.5),
       },
     }),
     computeOutOpacity: transparent,
@@ -631,7 +597,7 @@ export const transitionManifests: TransitionManifest[] = [
       options?: { isExport?: boolean; isPlaying?: boolean; previewBlurQuality?: string },
     ) => {
       const normalized = normalizeMotionBlurParams(params);
-      const angle = finiteNumber(normalized.angle, 0);
+      const angle = clampFinite(normalized.angle, 0);
       const rad = (angle * Math.PI) / 180;
       const quality = resolveBlurQuality(options, undefined);
       const samples = qualitySamples(quality, 8, 16, 32, 64);
@@ -641,11 +607,11 @@ export const transitionManifests: TransitionManifest[] = [
         params: {
           p0: Math.cos(rad),
           p1: Math.sin(rad),
-          p2: motionBlurConst(finiteNumber(normalized.motionBlur, 50), durationSec, 0.005),
+          p2: motionBlurConst(clampFinite(normalized.motionBlur, 50), durationSec, 0.005),
           p3: samples,
           p4: normalized.motionBlurMode === 'bloom' ? 1 : 0,
-          p5: finiteNumber(normalized.brightness, 0),
-          p6: finiteNumber(normalized.bloomThreshold, 0.7),
+          p5: clampFinite(normalized.brightness, 0),
+          p6: clampFinite(normalized.bloomThreshold, 0.7),
         },
       };
     },
@@ -728,7 +694,7 @@ export const transitionManifests: TransitionManifest[] = [
     ],
     toTransitionSpec: (params: Record<string, unknown>) => {
       const useGap = params.edgeMode !== 'blur';
-      const angle = (clamp(finiteNumber(params.angle, 0), -180, 180) * Math.PI) / 180;
+      const angle = (clamp(clampFinite(params.angle, 0), -180, 180) * Math.PI) / 180;
       const [r, g, b] = hexToRgb01(params.gapColor, '#000000');
       return {
         type: 'custom-wgsl',
@@ -736,8 +702,8 @@ export const transitionManifests: TransitionManifest[] = [
         params: {
           p0: Math.cos(angle),
           p1: Math.sin(angle),
-          p2: useGap ? clamp(finiteNumber(params.gap, 0.02), 0, 0.2) : 0,
-          p3: clamp(finiteNumber(params.blur, 2) / 100, 0.0001, 0.2),
+          p2: useGap ? clamp(clampFinite(params.gap, 0.02), 0, 0.2) : 0,
+          p3: clamp(clampFinite(params.blur, 2) / 100, 0.0001, 0.2),
           p4: useGap ? 1 : 0,
           p5: r,
           p6: g,
@@ -765,7 +731,7 @@ export const transitionManifests: TransitionManifest[] = [
     ],
     toTransitionSpec: (params: Record<string, unknown>) => ({
       type: 'fade-through-color',
-      color: normalizeTransitionColor(params.color, '#000000'),
+      color: normalizeHexColor(params.color, '#000000'),
     }),
     computeOutOpacity: transparent,
     computeInOpacity: transparent,
@@ -818,13 +784,13 @@ export const transitionManifests: TransitionManifest[] = [
         type: 'custom-wgsl',
         source: ellipseWgsl,
         params: {
-          p0: clamp(finiteNumber(params.blur, 1.5) / 100, 0.0001, 0.2),
+          p0: clamp(clampFinite(params.blur, 1.5) / 100, 0.0001, 0.2),
           p1: params.blurMode === 'scaled' ? 1 : 0,
           p2: params.direction === 'to-center' ? -1 : 1,
           p3: center[0],
           p4: center[1],
-          p5: clamp(finiteNumber(params.scaleX, 100), 1, 1000) / 100,
-          p6: clamp(finiteNumber(params.scaleY, 100), 1, 1000) / 100,
+          p5: clamp(clampFinite(params.scaleX, 100), 1, 1000) / 100,
+          p6: clamp(clampFinite(params.scaleY, 100), 1, 1000) / 100,
           p7: params.contentMode === 'zoom' ? 1 : 0,
         },
       };
@@ -864,7 +830,7 @@ export const transitionManifests: TransitionManifest[] = [
         type: 'custom-wgsl',
         source: rectangleWgsl,
         params: {
-          p0: clamp(finiteNumber(params.blur, 1.5) / 100, 0.0001, 0.2),
+          p0: clamp(clampFinite(params.blur, 1.5) / 100, 0.0001, 0.2),
           p1: params.blurMode === 'scaled' ? 1 : 0,
           p2: params.direction === 'to-center' ? -1 : 1,
           p3: params.contentMode === 'zoom' ? 1 : 0,
@@ -969,7 +935,7 @@ export const transitionManifests: TransitionManifest[] = [
       durationSec?: number,
       options?: { isExport?: boolean; isPlaying?: boolean; previewBlurQuality?: string },
     ) => {
-      const rad = (clamp(finiteNumber(params.angle, 0), -360, 360) * Math.PI) / 180;
+      const rad = (clamp(clampFinite(params.angle, 0), -360, 360) * Math.PI) / 180;
       const q = resolveBlurQuality(options, params.blurQuality);
       const samples = qualitySamples(q, 8, 16, 32, 64);
       return {
@@ -980,14 +946,14 @@ export const transitionManifests: TransitionManifest[] = [
           p1: Math.sin(rad),
           p2: -Math.sin(rad),
           p3: Math.cos(rad),
-          p4: Math.round(clamp(finiteNumber(params.stripCount, 10), 2, 100)),
-          p5: clamp(finiteNumber(params.blur, 0), 0, 100),
+          p4: Math.round(clamp(clampFinite(params.stripCount, 10), 2, 100)),
+          p5: clamp(clampFinite(params.blur, 0), 0, 100),
           p6: samples,
-          p7: motionBlurConst(clamp(finiteNumber(params.motionBlur, 0), 0, 100), durationSec),
+          p7: motionBlurConst(clamp(clampFinite(params.motionBlur, 0), 0, 100), durationSec),
           p8: params.motionBlurMode === 'bloom' ? 1 : 0,
           p9: params.brightnessMode === 'bloom' ? 1 : 0,
-          p10: clamp(finiteNumber(params.brightness, 0), -10, 10),
-          p11: clamp(finiteNumber(params.bloomThreshold, 0.7), 0, 1),
+          p10: clamp(clampFinite(params.brightness, 0), -10, 10),
+          p11: clamp(clampFinite(params.bloomThreshold, 0.7), 0, 1),
         },
       };
     },
@@ -1075,13 +1041,13 @@ export const transitionManifests: TransitionManifest[] = [
         type: 'custom-wgsl',
         source: zoomWgsl,
         params: {
-          p0: clamp(finiteNumber(params.scale, 3.0), 1.1, 10.0),
-          p1: (clamp(finiteNumber(params.fromRotation, 0), -360, 360) * Math.PI) / 180,
-          p2: (clamp(finiteNumber(params.toRotation, 0), -360, 360) * Math.PI) / 180,
-          p3: clamp(finiteNumber(params.blur, 20), 0, 100),
+          p0: clamp(clampFinite(params.scale, 3.0), 1.1, 10.0),
+          p1: (clamp(clampFinite(params.fromRotation, 0), -360, 360) * Math.PI) / 180,
+          p2: (clamp(clampFinite(params.toRotation, 0), -360, 360) * Math.PI) / 180,
+          p3: clamp(clampFinite(params.blur, 20), 0, 100),
           p4: samples,
           p5: params.brightnessMode === 'bloom' ? 1.0 : 0.0,
-          p6: clamp(finiteNumber(params.brightness, 0), 0, 5),
+          p6: clamp(clampFinite(params.brightness, 0), 0, 5),
           p7: aaSamples,
         },
       };
@@ -1136,8 +1102,8 @@ export const transitionManifests: TransitionManifest[] = [
         type: 'custom-wgsl',
         source: bloomWgsl,
         params: {
-          p0: clamp(finiteNumber(params.brightness, 1.5), 0.1, 5.0),
-          p1: clamp(finiteNumber(params.blurLevel, 1.0), 0.0, 3.0),
+          p0: clamp(clampFinite(params.brightness, 1.5), 0.1, 5.0),
+          p1: clamp(clampFinite(params.blurLevel, 1.0), 0.0, 3.0),
           p2: params.mode === 'normal' ? 0.0 : 1.0,
           p3: qualitySamples(quality, 5, 9, 17, 25),
         },
@@ -1222,9 +1188,9 @@ export const transitionManifests: TransitionManifest[] = [
           p0: dx,
           p1: dy,
           p2: params.zoomMode === 'fixed' ? 0 : 1,
-          p3: clamp(finiteNumber(params.perspective, 0.7), 0.1, 3.0),
-          p4: clamp(finiteNumber(params.gap, 0), 0, 0.5),
-          p5: clamp(finiteNumber(params.unzoomDistance, 0.3), 0.0, 1.0),
+          p3: clamp(clampFinite(params.perspective, 0.7), 0.1, 3.0),
+          p4: clamp(clampFinite(params.gap, 0), 0, 0.5),
+          p5: clamp(clampFinite(params.unzoomDistance, 0.3), 0.0, 1.0),
           p6: qualityEdgeSamples(q, 1, 1, 8, 8),
         },
       };
@@ -1336,12 +1302,12 @@ export const transitionManifests: TransitionManifest[] = [
           p0: params.direction === 'vertical' ? 0 : 1,
           p1: params.mode === 'slide' ? 1 : 0,
           p2: params.slideOrder === 'reverse' ? 1 : 0,
-          p3: clamp(finiteNumber(params.maxDarkness, 0.5), 0, 1),
-          p4: clamp(finiteNumber(params.shadowSize, 0.2), 0, 1),
-          p5: clamp(finiteNumber(params.shadowOpacity, 0.6), 0, 1),
-          p6: clamp(finiteNumber(params.blurStrength, 0.5), 0, 1),
+          p3: clamp(clampFinite(params.maxDarkness, 0.5), 0, 1),
+          p4: clamp(clampFinite(params.shadowSize, 0.2), 0, 1),
+          p5: clamp(clampFinite(params.shadowOpacity, 0.6), 0, 1),
+          p6: clamp(clampFinite(params.blurStrength, 0.5), 0, 1),
           p7: samples,
-          p8: clamp(finiteNumber(params.bloom, 0), 0, 1),
+          p8: clamp(clampFinite(params.bloom, 0), 0, 1),
           p9: aaSamples,
         },
       };
@@ -1421,7 +1387,7 @@ export const transitionManifests: TransitionManifest[] = [
           p2: params.action === 'rise' ? 1 : 0,
           // Edge bleed: 0 = card fits exactly inside the screen, 1 = near edge
           // bulges toward the viewer to ~2x screen size. Works in both directions.
-          p3: clamp(finiteNumber(params.edgeOverflow, 0), 0, 1),
+          p3: clamp(clampFinite(params.edgeOverflow, 0), 0, 1),
           p4: qualityEdgeSamples(q, 1, 1, 8, 8),
         },
       };

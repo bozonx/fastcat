@@ -1,3 +1,5 @@
+import { clamp } from '~/utils/math';
+
 export const EQ_CANVAS_WIDTH = 720;
 export const EQ_CANVAS_HEIGHT = 220;
 export const EQ_MIN_FREQUENCY = 20;
@@ -19,10 +21,6 @@ export interface ParametricEqPoint {
   frequency?: number;
   q?: number;
   gain?: number;
-}
-
-export function clamp(value: number, min: number, max: number) {
-  return Math.min(max, Math.max(min, value));
 }
 
 export function frequencyToX(frequency: number, canvasWidth: number = EQ_CANVAS_WIDTH) {

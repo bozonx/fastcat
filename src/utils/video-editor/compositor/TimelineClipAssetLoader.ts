@@ -1,4 +1,5 @@
 import { createDevLogger } from '~/utils/dev-logger';
+import { isImagePath } from '~/utils/media-ext';
 import { parseHexColor, sanitizeTimelineColor } from '../utils';
 import type { VideoClipEffect } from '~/timeline/types';
 import type { ClipFactory } from './ClipFactory';
@@ -139,8 +140,7 @@ export class TimelineClipAssetLoader {
       // For explicit timeline sources skip image detection and load as video
       if (sourceKind !== 'timeline') {
         const isImage =
-          (typeof file?.type === 'string' && file.type.startsWith('image/')) ||
-          path.match(/\.(jpe?g|png|webp|gif|svg)$/i);
+          (typeof file?.type === 'string' && file.type.startsWith('image/')) || isImagePath(path);
 
         if (isImage) {
           return await this.context.hudMediaLoader.loadImageState({
@@ -250,8 +250,7 @@ export class TimelineClipAssetLoader {
         (await runResilientWorkerFileIo(fileHandle, () => fileHandle.getFile()));
 
       const isImage =
-        (typeof file?.type === 'string' && file.type.startsWith('image/')) ||
-        maskPath.match(/\.(jpe?g|png|webp|gif|svg)$/i);
+        (typeof file?.type === 'string' && file.type.startsWith('image/')) || isImagePath(maskPath);
 
       if (isImage) {
         clip.maskState = await this.context.hudMediaLoader.loadImageState({

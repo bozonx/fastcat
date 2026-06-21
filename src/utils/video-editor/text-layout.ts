@@ -1,4 +1,5 @@
 import type { TextClipStyle } from '~/timeline/types';
+import { clamp as sharedClamp, clampFinite as sharedClampFinite } from '~/utils/math';
 import { TRANSFORM_DESIGN_BASE } from '~/utils/video-editor/clip-layout';
 
 export interface NormalizedTextPadding {
@@ -93,9 +94,11 @@ export function getTextBackgroundShadowOutsetPx(
 }
 
 function clampFinite(value: unknown, fallback: number, min?: number, max?: number): number {
-  if (typeof value !== 'number' || !Number.isFinite(value)) return fallback;
-  const clampedMin = min === undefined ? value : Math.max(min, value);
-  return max === undefined ? clampedMin : Math.min(max, clampedMin);
+  const finite = sharedClampFinite(value, fallback);
+  if (min === undefined && max === undefined) return finite;
+  const safeMin = min ?? Number.NEGATIVE_INFINITY;
+  const safeMax = max ?? Number.POSITIVE_INFINITY;
+  return sharedClamp(finite, safeMin, safeMax);
 }
 
 export function normalizeTextPadding(padding: TextClipStyle['padding']): NormalizedTextPadding {

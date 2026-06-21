@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
+import { clamp } from '~/utils/math';
 import {
-  clamp,
   frequencyToX,
   gainToY,
   getPointContribution,

@@ -6,6 +6,9 @@ import type {
   TimelineTrackItem,
 } from '../types';
 import { genUuid, genPrefixedIdBatch } from '~/utils/ids';
+import { sanitizeFps } from '~/utils/time';
+
+export { sanitizeFps };
 
 /**
  * Throws if the given item is a locked clip — single source of truth for the
@@ -16,22 +19,6 @@ export function assertClipNotLocked(item: TimelineTrackItem, action: string) {
   if (item.kind !== 'clip') return;
   if (!item.locked) return;
   throw new Error(`Locked clip: ${action}`);
-}
-
-export const FALLBACK_FPS = 30;
-export const MIN_FPS = 1;
-export const MAX_FPS = 240;
-
-/**
- * Sanitize fps preserving non-integer rates required for NTSC (29.97, 23.976, 59.94, …).
- * We clamp to a reasonable range and quantize to 3 decimal places to keep the value finite
- * and free of float noise without forcing integer-only fps.
- */
-export function sanitizeFps(value: unknown): number {
-  const parsed = Number(value);
-  if (!Number.isFinite(parsed)) return FALLBACK_FPS;
-  const clamped = Math.min(MAX_FPS, Math.max(MIN_FPS, parsed));
-  return Math.round(clamped * 1000) / 1000;
 }
 
 export function getDocFps(doc: TimelineDocument): number {

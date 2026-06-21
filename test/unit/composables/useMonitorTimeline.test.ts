@@ -305,8 +305,6 @@ describe('useMonitorTimeline', () => {
     });
   });
 
-
-
   it('workerAudioClips does not duplicate audio from video clips', () => {
     withMonitorTimeline((res, timelineStore) => {
       timelineStore.timelineDoc = {

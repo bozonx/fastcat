@@ -1,4 +1,5 @@
 import { createDevLogger } from '~/utils/dev-logger';
+import { clamp, clampFinite } from '~/utils/math';
 import { safeDispose } from '../../utils/video-editor/utils';
 import type { VideoCoreHostAPI } from '../../utils/video-editor/worker-client';
 import {
@@ -481,11 +482,6 @@ export function mixProcessedChunk(params: {
 
 const CLIP_PROCESS_BLOCK_DURATION_S = 10;
 
-function clampFiniteNumber(value: unknown, fallback: number, min: number, max: number): number {
-  const n = typeof value === 'number' && Number.isFinite(value) ? value : fallback;
-  return Math.max(min, Math.min(max, n));
-}
-
 function estimateEffectTailS(effect: AudioEffectData): number {
   if (!effect.enabled || effect.target !== 'audio') return 0;
 
@@ -493,11 +489,11 @@ function estimateEffectTailS(effect: AudioEffectData): number {
     case 'audio-reverb':
     case 'reverb':
       return (
-        clampFiniteNumber(effect.decay, 2.5, 0.1, 10) +
-        clampFiniteNumber(effect.preDelay, 0.01, 0, 0.5)
+        clamp(clampFinite(effect.decay, 2.5), 0.1, 10) +
+        clamp(clampFinite(effect.preDelay, 0.01), 0, 0.5)
       );
     case 'audio-env-stadium': {
-      const size = clampFiniteNumber(effect.size, 80, 0, 100);
+      const size = clamp(clampFinite(effect.size, 80), 0, 100);
       return 1 + (size / 100) * 4;
     }
     case 'audio-thought-monologue':
@@ -506,8 +502,8 @@ function estimateEffectTailS(effect: AudioEffectData): number {
       return 1;
     case 'audio-echo':
     case 'echo': {
-      const delayTime = clampFiniteNumber(effect.delayTime, 0.25, 0.02, 1);
-      const feedback = clampFiniteNumber(effect.feedback, 0.35, 0, 0.9);
+      const delayTime = clamp(clampFinite(effect.delayTime, 0.25), 0.02, 1);
+      const feedback = clamp(clampFinite(effect.feedback, 0.35), 0, 0.9);
       return Math.min(8, delayTime * Math.max(2, Math.ceil(1 / Math.max(0.1, 1 - feedback))));
     }
     case 'audio-flanger':

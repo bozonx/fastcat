@@ -1,6 +1,6 @@
 /** @vitest-environment node */
 import { describe, it, expect } from 'vitest';
-import { formatTime, secondsToUs } from '~/utils/time';
+import { formatTime, secondsToUs, usToS, sToUs, sanitizeFps } from '~/utils/time';
 
 describe('secondsToUs', () => {
   it('rounds by default', () => {
@@ -23,6 +23,48 @@ describe('secondsToUs', () => {
     expect(secondsToUs(Infinity)).toBe(0);
     expect(secondsToUs(-1)).toBe(0);
     expect(secondsToUs(0)).toBe(0);
+  });
+});
+
+describe('usToS', () => {
+  it('converts microseconds to seconds', () => {
+    expect(usToS(1_000_000)).toBe(1);
+    expect(usToS(500_000)).toBe(0.5);
+  });
+
+  it('returns 0 for non-finite or non-positive values', () => {
+    expect(usToS(NaN)).toBe(0);
+    expect(usToS(-1)).toBe(0);
+  });
+});
+
+describe('sToUs', () => {
+  it('converts seconds to microseconds', () => {
+    expect(sToUs(1)).toBe(1_000_000);
+    expect(sToUs(0.5)).toBe(500_000);
+  });
+
+  it('returns 0 for non-finite values', () => {
+    expect(sToUs(NaN)).toBe(0);
+    expect(sToUs(Infinity)).toBe(0);
+  });
+});
+
+describe('sanitizeFps', () => {
+  it('returns fallback for invalid values', () => {
+    expect(sanitizeFps(undefined)).toBe(30);
+    expect(sanitizeFps(NaN)).toBe(30);
+  });
+
+  it('clamps to min and max', () => {
+    expect(sanitizeFps(0)).toBe(1);
+    expect(sanitizeFps(1000)).toBe(240);
+  });
+
+  it('preserves NTSC rates', () => {
+    expect(sanitizeFps(29.97)).toBe(29.97);
+    expect(sanitizeFps(23.976)).toBe(23.976);
+    expect(sanitizeFps(59.94)).toBe(59.94);
   });
 });
 
