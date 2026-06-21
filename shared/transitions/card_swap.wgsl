@@ -47,9 +47,29 @@ fn pixel_uv(gid: vec3<u32>) -> vec2<f32> {
     return (vec2<f32>(f32(gid.x), f32(gid.y)) + vec2<f32>(0.5, 0.5)) / dims();
 }
 
+// 1D coverage of [0,1] by a box of width `g` (the coord's screen-space derivative)
+// centered at `c`: the exact average of the hard inside test over the pixel,
+// staying correct as `g` -> 0 (sharp edge) or grows large (perspective shrink).
+fn axis_cov(c: f32, g: f32) -> f32 {
+    let gg = max(g, 1e-6);
+    let h = gg * 0.5;
+    let lo = max(c - h, 0.0);
+    let hi = min(c + h, 1.0);
+    return max(hi - lo, 0.0) / gg;
+}
+
+// Analytic [0,1]^2 coverage from the source UV at the pixel center plus its two
+// one-pixel screen neighbours. ~3 map evaluations instead of an N*N grid, with
+// continuous sub-pixel edges that widen correctly under perspective.
+fn box_coverage(cp: vec2<f32>, cpx: vec2<f32>, cpy: vec2<f32>) -> f32 {
+    let gx = length(vec2<f32>(cpx.x - cp.x, cpy.x - cp.x));
+    let gy = length(vec2<f32>(cpx.y - cp.y, cpy.y - cp.y));
+    return axis_cov(cp.x, gx) * axis_cov(cp.y, gy);
+}
+
 // Maps a screen-space UV to the two card UV positions (from / to). Pure function
-// of the input UV so it can be evaluated at sub-pixel offsets for MSAA-style
-// edge coverage supersampling.
+// of the input UV so it can be evaluated at sub-pixel neighbours for analytic
+// edge coverage (box_coverage).
 struct CardPos { pfr: vec2<f32>, pto: vec2<f32> };
 
 fn map_cards(uv_in: vec2<f32>, dir_h: bool, mode_slide: bool, sign_order: f32, progress: f32) -> CardPos {
@@ -261,16 +281,13 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
             final_c_fr = vec4<f32>(final_c_fr.rgb, 1.0);
         }
     } else {
-        let ss = i32(clamp(uni.p9, 1.0, 8.0));
-        let inv_ss = 1.0 / f32(ss);
-        for (var sy = 0; sy < ss; sy = sy + 1) {
-            for (var sx = 0; sx < ss; sx = sx + 1) {
-                let off = (vec2<f32>(f32(sx), f32(sy)) + 0.5) * inv_ss - 0.5;
-                let scp = map_cards(center_uv + off * inv, dir_h, mode_slide, sign_order, progress);
-                if (in_bounds(scp.pfr)) { cov_fr = cov_fr + 1.0; }
-            }
+        if (uni.p9 > 1.5) {
+            let mx = map_cards(center_uv + vec2<f32>(inv.x, 0.0), dir_h, mode_slide, sign_order, progress);
+            let my = map_cards(center_uv + vec2<f32>(0.0, inv.y), dir_h, mode_slide, sign_order, progress);
+            cov_fr = box_coverage(pfr, mx.pfr, my.pfr);
+        } else {
+            cov_fr = select(0.0, 1.0, in_bounds(pfr));
         }
-        cov_fr = cov_fr / f32(ss * ss);
         if (cov_fr > 0.0) {
             final_c_fr = vec4<f32>(samp(from_tex, pfr).rgb * (1.0 - dark_fr), 1.0);
         }
@@ -293,16 +310,13 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
             final_c_to = vec4<f32>(final_c_to.rgb, 1.0);
         }
     } else {
-        let ss = i32(clamp(uni.p9, 1.0, 8.0));
-        let inv_ss = 1.0 / f32(ss);
-        for (var sy = 0; sy < ss; sy = sy + 1) {
-            for (var sx = 0; sx < ss; sx = sx + 1) {
-                let off = (vec2<f32>(f32(sx), f32(sy)) + 0.5) * inv_ss - 0.5;
-                let scp = map_cards(center_uv + off * inv, dir_h, mode_slide, sign_order, progress);
-                if (in_bounds(scp.pto)) { cov_to = cov_to + 1.0; }
-            }
+        if (uni.p9 > 1.5) {
+            let mx = map_cards(center_uv + vec2<f32>(inv.x, 0.0), dir_h, mode_slide, sign_order, progress);
+            let my = map_cards(center_uv + vec2<f32>(0.0, inv.y), dir_h, mode_slide, sign_order, progress);
+            cov_to = box_coverage(pto, mx.pto, my.pto);
+        } else {
+            cov_to = select(0.0, 1.0, in_bounds(pto));
         }
-        cov_to = cov_to / f32(ss * ss);
         if (cov_to > 0.0) {
             final_c_to = vec4<f32>(samp(to_tex, pto).rgb * (1.0 - dark_to), 1.0);
         }

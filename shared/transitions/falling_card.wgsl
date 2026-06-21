@@ -41,18 +41,37 @@ fn in_bounds(p: vec2<f32>) -> bool {
     return p.x > 0.0 && p.x < 1.0 && p.y > 0.0 && p.y < 1.0;
 }
 
-fn luma(c: vec3<f32>) -> f32 { return dot(c, vec3<f32>(0.299, 0.587, 0.114)); }
-
 fn pixel_uv(gid: vec3<u32>) -> vec2<f32> {
     return (vec2<f32>(f32(gid.x), f32(gid.y)) + vec2<f32>(0.5, 0.5)) / dims();
 }
 
-// Result of projecting a screen UV through the folding card. 'valid' is true
-// only when the pixel falls on the visible (non-folded, in-bounds) card surface.
-struct FallPos { p_moved: vec2<f32>, valid: bool };
+// 1D coverage of [0,1] by a box of width `g` (the coord's screen-space derivative)
+// centered at `c`: the exact average of the hard inside test over the pixel,
+// staying correct as `g` -> 0 (sharp edge) or grows large (foreshortening).
+fn axis_cov(c: f32, g: f32) -> f32 {
+    let gg = max(g, 1e-6);
+    let h = gg * 0.5;
+    let lo = max(c - h, 0.0);
+    let hi = min(c + h, 1.0);
+    return max(hi - lo, 0.0) / gg;
+}
 
-// Pure mapping of a screen UV to the folded card's source UV. Evaluated at
-// sub-pixel offsets for MSAA-style edge coverage supersampling.
+// Analytic [0,1]^2 coverage from the source UV at the pixel center plus its two
+// one-pixel screen neighbours. ~3 map evaluations instead of an N*N grid, with
+// continuous sub-pixel edges that widen correctly under perspective.
+fn box_coverage(cp: vec2<f32>, cpx: vec2<f32>, cpy: vec2<f32>) -> f32 {
+    let gx = length(vec2<f32>(cpx.x - cp.x, cpy.x - cp.x));
+    let gy = length(vec2<f32>(cpx.y - cp.y, cpy.y - cp.y));
+    return axis_cov(cp.x, gx) * axis_cov(cp.y, gy);
+}
+
+// Pure mapping of a screen UV to the folded card's source UV. The denominator is
+// floored to keep the projection finite even at the fold singularity; `denom` (the
+// un-floored value) is returned so the caller can drop the half-space behind the
+// fold (denom <= 0). p_moved stays a smooth function of UV, so it can be evaluated
+// at sub-pixel neighbours for analytic edge coverage.
+struct FallPos { p_moved: vec2<f32>, denom: f32 };
+
 fn map_card(uv: vec2<f32>, dir: f32, dd: f32, c: f32, s: f32, z_base: f32) -> FallPos {
     let d = 1.5;
     var p_moved = vec2<f32>(-1.0);
@@ -60,42 +79,37 @@ fn map_card(uv: vec2<f32>, dir: f32, dd: f32, c: f32, s: f32, z_base: f32) -> Fa
     if (dir < 0.5) {
         let p = uv - vec2<f32>(0.5, 0.0);
         denom = d * c - dd * p.y * s;
-        if (denom > 0.0) {
-            let py = p.y * (d + z_base) / denom;
-            let z = z_base + dd * py * s;
-            let px = p.x * (d + z) / d;
-            p_moved = vec2<f32>(px, py) + vec2<f32>(0.5, 0.0);
-        }
+        let safe = select(denom, 1e-5, abs(denom) < 1e-5);
+        let py = p.y * (d + z_base) / safe;
+        let z = z_base + dd * py * s;
+        let px = p.x * (d + z) / d;
+        p_moved = vec2<f32>(px, py) + vec2<f32>(0.5, 0.0);
     } else if (dir < 1.5) {
         let p = uv - vec2<f32>(0.5, 1.0);
         denom = d * c + dd * p.y * s;
-        if (denom > 0.0) {
-            let py = p.y * (d + z_base) / denom;
-            let z = z_base + dd * (-py) * s;
-            let px = p.x * (d + z) / d;
-            p_moved = vec2<f32>(px, py) + vec2<f32>(0.5, 1.0);
-        }
+        let safe = select(denom, 1e-5, abs(denom) < 1e-5);
+        let py = p.y * (d + z_base) / safe;
+        let z = z_base + dd * (-py) * s;
+        let px = p.x * (d + z) / d;
+        p_moved = vec2<f32>(px, py) + vec2<f32>(0.5, 1.0);
     } else if (dir < 2.5) {
         let p = uv - vec2<f32>(0.0, 0.5);
         denom = d * c - dd * p.x * s;
-        if (denom > 0.0) {
-            let px = p.x * (d + z_base) / denom;
-            let z = z_base + dd * px * s;
-            let py = p.y * (d + z) / d;
-            p_moved = vec2<f32>(px, py) + vec2<f32>(0.0, 0.5);
-        }
+        let safe = select(denom, 1e-5, abs(denom) < 1e-5);
+        let px = p.x * (d + z_base) / safe;
+        let z = z_base + dd * px * s;
+        let py = p.y * (d + z) / d;
+        p_moved = vec2<f32>(px, py) + vec2<f32>(0.0, 0.5);
     } else {
         let p = uv - vec2<f32>(1.0, 0.5);
         denom = d * c + dd * p.x * s;
-        if (denom > 0.0) {
-            let px = p.x * (d + z_base) / denom;
-            let z = z_base + dd * (-px) * s;
-            let py = p.y * (d + z) / d;
-            p_moved = vec2<f32>(px, py) + vec2<f32>(1.0, 0.5);
-        }
+        let safe = select(denom, 1e-5, abs(denom) < 1e-5);
+        let px = p.x * (d + z_base) / safe;
+        let z = z_base + dd * (-px) * s;
+        let py = p.y * (d + z) / d;
+        p_moved = vec2<f32>(px, py) + vec2<f32>(1.0, 0.5);
     }
-    let valid = denom > 0.0 && in_bounds(p_moved);
-    return FallPos(p_moved, valid);
+    return FallPos(p_moved, denom);
 }
 
 @compute @workgroup_size(8, 8, 1)
@@ -131,26 +145,23 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
 
     let center = map_card(uv, dir, dd, c, s, z_base);
     let p_moved = center.p_moved;
+    let front = center.denom > 0.0;
 
-    // MSAA-style edge coverage: project a quality-controlled ordered grid of
-    // sub-pixel offsets through the fold and average the visibility test. This
-    // anti-aliases the perspective card silhouette correctly at any fold angle,
-    // where a fixed UV-space ramp would collapse to sub-pixel under foreshortening.
-    // The grid size is controlled by the preview quality tier via uni.p4: 1x1 for
-    // low/medium (no anti-aliasing) and 8x8 for high/ultra. Only the cheap geometry
-    // is supersampled; texture color is sampled once at center.
-    let inv = 1.0 / dims();
-    let ss = i32(clamp(uni.p4, 1.0, 8.0));
-    let inv_ss = 1.0 / f32(ss);
+    // Coverage of the moving card silhouette. uni.p4 selects the path: <=1 for
+    // low/medium preview (hard edge, no AA), >1 for high/ultra (analytic edge AA
+    // via screen-space derivatives, ~3 map evaluations). The half-space behind the
+    // fold (denom <= 0) is always dropped so the card cannot reappear mirrored.
     var cover = 0.0;
-    for (var sy = 0; sy < ss; sy = sy + 1) {
-        for (var sx = 0; sx < ss; sx = sx + 1) {
-            let off = (vec2<f32>(f32(sx), f32(sy)) + 0.5) * inv_ss - 0.5;
-            let m = map_card(uv + off * inv, dir, dd, c, s, z_base);
-            if (m.valid) { cover = cover + 1.0; }
+    if (front) {
+        if (uni.p4 > 1.5) {
+            let inv = 1.0 / dims();
+            let mx = map_card(uv + vec2<f32>(inv.x, 0.0), dir, dd, c, s, z_base);
+            let my = map_card(uv + vec2<f32>(0.0, inv.y), dir, dd, c, s, z_base);
+            cover = box_coverage(p_moved, mx.p_moved, my.p_moved);
+        } else {
+            cover = select(0.0, 1.0, in_bounds(p_moved));
         }
     }
-    cover = cover / f32(ss * ss);
 
     // Background shown where the moving card does not cover the pixel.
     let bg_color = select(to_color, from_color, is_rise);

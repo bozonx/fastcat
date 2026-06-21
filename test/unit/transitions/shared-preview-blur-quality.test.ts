@@ -135,10 +135,23 @@ describe('shared preview blur shader optimization', () => {
     ).toMatchObject({ p7: 8 });
   });
 
-  it('reads the edge-AA grid size from quality uniforms in perspective shaders', () => {
-    expect(getShaderSource('cube')).toContain('let ss = i32(clamp(uni.p6, 1.0, 8.0));');
-    expect(getShaderSource('falling-card')).toContain('let ss = i32(clamp(uni.p4, 1.0, 8.0));');
-    expect(getShaderSource('card-swap')).toContain('let ss = i32(clamp(uni.p9, 1.0, 8.0));');
+  it('gates analytic edge AA on the quality uniform in perspective shaders', () => {
+    // Perspective transitions replace fixed N*N coverage supersampling with analytic
+    // box_coverage() from screen-space derivatives, gated on the quality uniform
+    // (>1.5 = high/ultra AA, otherwise a hard inside test for low/medium).
+    const cube = getShaderSource('cube');
+    expect(cube).toContain('if (uni.p6 > 1.5)');
+    expect(cube).toContain('box_coverage(center.from_p, px.from_p, py.from_p)');
+
+    const falling = getShaderSource('falling-card');
+    expect(falling).toContain('if (uni.p4 > 1.5)');
+    expect(falling).toContain('box_coverage(p_moved, mx.p_moved, my.p_moved)');
+
+    const card = getShaderSource('card-swap');
+    expect(card).toContain('if (uni.p9 > 1.5)');
+    expect(card).toContain('box_coverage(pfr, mx.pfr, my.pfr)');
+    expect(card).toContain('box_coverage(pto, mx.pto, my.pto)');
+
     expect(getShaderSource('zoom')).toContain(
       'fn layer_coverage(uv: vec2<f32>, angle: f32, scale: f32, aspect: f32, ss: i32)',
     );

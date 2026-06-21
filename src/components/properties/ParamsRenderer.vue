@@ -196,6 +196,8 @@ interface RenderableParamControl {
   placeholder?: string;
   rows?: number;
   step?: number;
+  suffix?: string;
+  displayMultiplier?: number;
 }
 
 interface VisibleControlEntry {
@@ -240,7 +242,11 @@ const visibleControlEntries = computed<VisibleControlEntry[]>(() => {
       if (control.kind === 'slider' || control.kind === 'knob') {
         numberValue = Number(rawValue ?? control.defaultValue ?? control.min);
       } else if (control.kind === 'number') {
-        numberValue = Number(rawValue ?? control.defaultValue ?? 0);
+        let val = Number(rawValue ?? control.defaultValue ?? 0);
+        if (control.displayMultiplier) {
+          val = val * control.displayMultiplier;
+        }
+        numberValue = val;
       } else if (control.kind === 'scale-xy') {
         scaleXYState = buildScaleXYState(control);
       } else if (control.kind === 'select' || control.kind === 'button-group') {
@@ -420,13 +426,17 @@ function handleArrayItemUpdate(
         <UiWheelNumberInput
           :model-value="entry.numberValue"
           :size="size"
-          :min="entry.control.min"
-          :max="entry.control.max"
-          :step="entry.control.step ?? 1"
+          :min="entry.control.min !== undefined ? (entry.control.displayMultiplier ? entry.control.min * entry.control.displayMultiplier : entry.control.min) : undefined"
+          :max="entry.control.max !== undefined ? (entry.control.displayMultiplier ? entry.control.max * entry.control.displayMultiplier : entry.control.max) : undefined"
+          :step="entry.control.step !== undefined ? (entry.control.displayMultiplier ? entry.control.step * entry.control.displayMultiplier : entry.control.step) : 1"
           :disabled="entry.disabled"
           :full-width="props.forceFullWidth"
-          @update:model-value="(value: number) => updateValue(entry.control.key, Number(value))"
-        />
+          @update:model-value="(value: number) => updateValue(entry.control.key, entry.control.displayMultiplier ? Number(value) / entry.control.displayMultiplier : Number(value))"
+        >
+          <template v-if="entry.control.suffix" #trailing>
+            <span class="text-xs text-ui-text-muted pr-1.5 select-none">{{ entry.control.suffix }}</span>
+          </template>
+        </UiWheelNumberInput>
       </div>
 
       <div v-else-if="entry.kind === 'scale-xy' && entry.scaleXYState" class="flex flex-col gap-2">

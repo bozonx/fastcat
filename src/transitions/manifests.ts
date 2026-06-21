@@ -362,6 +362,8 @@ export const transitionManifests: TransitionManifest[] = [
         min: 0,
         max: 0.2,
         step: 0.005,
+        displayMultiplier: 100,
+        suffix: '%',
       },
       { kind: 'color', key: 'gapColor', labelKey: 'fastcat.timeline.transition.paramGapColor' },
       {
@@ -452,6 +454,8 @@ export const transitionManifests: TransitionManifest[] = [
         min: 0,
         max: 0.2,
         step: 0.005,
+        displayMultiplier: 100,
+        suffix: '%',
       },
       { kind: 'color', key: 'gapColor', labelKey: 'fastcat.timeline.transition.paramGapColor' },
       {
@@ -701,6 +705,8 @@ export const transitionManifests: TransitionManifest[] = [
         min: 0,
         max: 0.2,
         step: 0.005,
+        displayMultiplier: 100,
+        suffix: '%',
       },
       { kind: 'color', key: 'gapColor', labelKey: 'fastcat.timeline.transition.paramGapColor' },
       {
@@ -1187,6 +1193,8 @@ export const transitionManifests: TransitionManifest[] = [
         min: 0,
         max: 0.5,
         step: 0.01,
+        displayMultiplier: 100,
+        suffix: '%',
       },
       {
         kind: 'slider',

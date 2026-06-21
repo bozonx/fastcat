@@ -29,6 +29,8 @@ export interface NumberParamControl extends BaseParamControl {
   max?: number;
   step?: number;
   defaultValue?: number;
+  suffix?: string;
+  displayMultiplier?: number;
 }
 
 export interface ToggleParamControl extends BaseParamControl {

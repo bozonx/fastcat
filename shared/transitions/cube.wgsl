@@ -41,15 +41,38 @@ fn in_bounds(p: vec2<f32>) -> bool {
     return p.x > 0.0 && p.x < 1.0 && p.y > 0.0 && p.y < 1.0;
 }
 
-fn luma(c: vec3<f32>) -> f32 { return dot(c, vec3<f32>(0.299, 0.587, 0.114)); }
-
 fn pixel_uv(gid: vec3<u32>) -> vec2<f32> {
     return (vec2<f32>(f32(gid.x), f32(gid.y)) + vec2<f32>(0.5, 0.5)) / dims();
 }
 
-// Maps a screen UV to the two cube-face source UVs. Faces not covering the pixel
-// are returned as (-1) so in_bounds() reports them as outside. Pure function of
-// the input UV so it can be evaluated at sub-pixel offsets for supersampling.
+// 1D coverage of the unit interval [0,1] by a box filter centered at `c` whose
+// width `g` is the source coordinate's screen-space derivative (how far the coord
+// travels across one output pixel). This is the exact average of the hard inside
+// test over the pixel footprint, so it stays correct for any `g` — tiny (sharp
+// edge) or huge (heavy foreshortening / fold singularity, where it -> 0).
+fn axis_cov(c: f32, g: f32) -> f32 {
+    let gg = max(g, 1e-6);
+    let h = gg * 0.5;
+    let lo = max(c - h, 0.0);
+    let hi = min(c + h, 1.0);
+    return max(hi - lo, 0.0) / gg;
+}
+
+// Analytic edge anti-aliasing: given a source UV at the pixel center (`cp`) and
+// one screen-pixel away in x (`cpx`) and y (`cpy`), return the fractional [0,1]^2
+// coverage. Replaces fixed N*N supersampling: ~3 map evaluations instead of 64,
+// with continuous sub-pixel coverage whose ramp width follows the true derivative.
+fn box_coverage(cp: vec2<f32>, cpx: vec2<f32>, cpy: vec2<f32>) -> f32 {
+    let gx = length(vec2<f32>(cpx.x - cp.x, cpy.x - cp.x));
+    let gy = length(vec2<f32>(cpx.y - cp.y, cpy.y - cp.y));
+    return axis_cov(cp.x, gx) * axis_cov(cp.y, gy);
+}
+
+// Maps a screen UV to the two cube-face source UVs as a *continuous* function
+// (no in/out gating): each face's u runs monotonically, landing in [0,1] only over
+// the screen span the face actually covers and extrapolating outside it, so the
+// gap and silhouette fall out of box_coverage() clipping the [0,1]^2 range. Pure
+// function of the input UV so it can be evaluated at sub-pixel offsets.
 struct CubePos { from_p: vec2<f32>, to_p: vec2<f32> };
 
 fn map_cube(uv: vec2<f32>, progress: f32) -> CubePos {
@@ -57,12 +80,13 @@ fn map_cube(uv: vec2<f32>, progress: f32) -> CubePos {
     let uz = unzoom * 2.0 * (0.5 - abs(progress - 0.5));
     let p = vec2<f32>(-uz * 0.5) + (1.0 + uz) * uv;
 
-    var from_p = vec2<f32>(-1.0);
-    var to_p = vec2<f32>(-1.0);
     let cap_p = mix(1.0, uni.p3, sin(progress * PI));
     let gap_half = uni.p4 * 0.5;
     let dx = uni.p0;
     let dy = uni.p1;
+
+    var from_p: vec2<f32>;
+    var to_p: vec2<f32>;
 
     if (dx < -0.5) {
         let bound = 1.0 - progress;
@@ -70,60 +94,40 @@ fn map_cube(uv: vec2<f32>, progress: f32) -> CubePos {
         let to_bound = bound + gap_half;
         let from_w = max(0.0001, from_bound);
         let to_w = max(0.0001, 1.0 - to_bound);
-        if (p.x <= from_bound) {
-            let u = p.x / from_w;
-            let h = mix(1.0, cap_p, u);
-            from_p = vec2<f32>(u, (p.y - 0.5) / h + 0.5);
-        } else if (p.x >= to_bound) {
-            let u = (p.x - to_bound) / to_w;
-            let h = mix(cap_p, 1.0, u);
-            to_p = vec2<f32>(u, (p.y - 0.5) / h + 0.5);
-        }
+        let uf = p.x / from_w;
+        from_p = vec2<f32>(uf, (p.y - 0.5) / mix(1.0, cap_p, uf) + 0.5);
+        let ut = (p.x - to_bound) / to_w;
+        to_p = vec2<f32>(ut, (p.y - 0.5) / mix(cap_p, 1.0, ut) + 0.5);
     } else if (dx > 0.5) {
         let bound = progress;
         let to_bound = bound - gap_half;
         let from_bound = bound + gap_half;
         let to_w = max(0.0001, to_bound);
         let from_w = max(0.0001, 1.0 - from_bound);
-        if (p.x <= to_bound) {
-            let u = p.x / to_w;
-            let h = mix(1.0, cap_p, u);
-            to_p = vec2<f32>(u, (p.y - 0.5) / h + 0.5);
-        } else if (p.x >= from_bound) {
-            let u = (p.x - from_bound) / from_w;
-            let h = mix(cap_p, 1.0, u);
-            from_p = vec2<f32>(u, (p.y - 0.5) / h + 0.5);
-        }
+        let ut = p.x / to_w;
+        to_p = vec2<f32>(ut, (p.y - 0.5) / mix(1.0, cap_p, ut) + 0.5);
+        let uf = (p.x - from_bound) / from_w;
+        from_p = vec2<f32>(uf, (p.y - 0.5) / mix(cap_p, 1.0, uf) + 0.5);
     } else if (dy < -0.5) {
         let bound = 1.0 - progress;
         let from_bound = bound - gap_half;
         let to_bound = bound + gap_half;
         let from_w = max(0.0001, from_bound);
         let to_w = max(0.0001, 1.0 - to_bound);
-        if (p.y <= from_bound) {
-            let u = p.y / from_w;
-            let h = mix(1.0, cap_p, u);
-            from_p = vec2<f32>((p.x - 0.5) / h + 0.5, u);
-        } else if (p.y >= to_bound) {
-            let u = (p.y - to_bound) / to_w;
-            let h = mix(cap_p, 1.0, u);
-            to_p = vec2<f32>((p.x - 0.5) / h + 0.5, u);
-        }
+        let uf = p.y / from_w;
+        from_p = vec2<f32>((p.x - 0.5) / mix(1.0, cap_p, uf) + 0.5, uf);
+        let ut = (p.y - to_bound) / to_w;
+        to_p = vec2<f32>((p.x - 0.5) / mix(cap_p, 1.0, ut) + 0.5, ut);
     } else {
         let bound = progress;
         let to_bound = bound - gap_half;
         let from_bound = bound + gap_half;
         let to_w = max(0.0001, to_bound);
         let from_w = max(0.0001, 1.0 - from_bound);
-        if (p.y <= to_bound) {
-            let u = p.y / to_w;
-            let h = mix(1.0, cap_p, u);
-            to_p = vec2<f32>((p.x - 0.5) / h + 0.5, u);
-        } else if (p.y >= from_bound) {
-            let u = (p.y - from_bound) / from_w;
-            let h = mix(cap_p, 1.0, u);
-            from_p = vec2<f32>((p.x - 0.5) / h + 0.5, u);
-        }
+        let ut = p.y / to_w;
+        to_p = vec2<f32>((p.x - 0.5) / mix(1.0, cap_p, ut) + 0.5, ut);
+        let uf = (p.y - from_bound) / from_w;
+        from_p = vec2<f32>((p.x - 0.5) / mix(cap_p, 1.0, uf) + 0.5, uf);
     }
 
     return CubePos(from_p, to_p);
@@ -137,32 +141,24 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
     let progress = clamp(uni.progress, 0.0, 1.0);
 
     // Color is sampled once per face at the pixel center (bilinear); only the
-    // cheap in/out geometry test is supersampled. Decoupling them lets the
-    // coverage run at a high rate without multiplying texture fetches. A fixed
-    // UV-space ramp collapses to sub-pixel under perspective foreshortening, and
-    // a low sample count leaves coarse stair-steps on the shallow top/bottom
-    // edges. The grid size is controlled by the preview quality tier via uni.p6:
-    // 1x1 for low/medium (no anti-aliasing) and 8x8 for high/ultra.
+    // cheap geometry coverage is anti-aliased. uni.p6 selects the path: <=1 for
+    // low/medium preview (hard edge, no AA), >1 for high/ultra (analytic AA).
     let center = map_cube(uv, progress);
     let from_color = samp(from_tex, center.from_p);
     let to_color = samp(to_tex, center.to_p);
 
-    let inv = 1.0 / dims();
-    let ss = i32(clamp(uni.p6, 1.0, 8.0));
-    let inv_ss = 1.0 / f32(ss);
-    var cov_from = 0.0;
-    var cov_to = 0.0;
-    for (var sy = 0; sy < ss; sy = sy + 1) {
-        for (var sx = 0; sx < ss; sx = sx + 1) {
-            let off = (vec2<f32>(f32(sx), f32(sy)) + 0.5) * inv_ss - 0.5;
-            let cp = map_cube(uv + off * inv, progress);
-            if (in_bounds(cp.from_p)) { cov_from = cov_from + 1.0; }
-            if (in_bounds(cp.to_p)) { cov_to = cov_to + 1.0; }
-        }
+    var cov_from: f32;
+    var cov_to: f32;
+    if (uni.p6 > 1.5) {
+        let inv = 1.0 / dims();
+        let px = map_cube(uv + vec2<f32>(inv.x, 0.0), progress);
+        let py = map_cube(uv + vec2<f32>(0.0, inv.y), progress);
+        cov_from = box_coverage(center.from_p, px.from_p, py.from_p);
+        cov_to = box_coverage(center.to_p, px.to_p, py.to_p);
+    } else {
+        cov_from = select(0.0, 1.0, in_bounds(center.from_p));
+        cov_to = select(0.0, 1.0, in_bounds(center.to_p));
     }
-    let total = f32(ss * ss);
-    cov_from = cov_from / total;
-    cov_to = cov_to / total;
 
     // Premultiplied-style accumulation (rgb scaled by coverage), matching how the
     // outer silhouette fades to the black background.

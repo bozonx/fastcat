@@ -37,21 +37,10 @@ fn samp(tex: texture_2d<f32>, uv: vec2<f32>) -> vec4<f32> {
     return mix(mix(c00, c10, f.x), mix(c01, c11, f.x), f.y);
 }
 
-fn in_bounds(p: vec2<f32>) -> bool {
-    return p.x > 0.0 && p.x < 1.0 && p.y > 0.0 && p.y < 1.0;
-}
-
 fn luma(c: vec3<f32>) -> f32 { return dot(c, vec3<f32>(0.299, 0.587, 0.114)); }
 
 fn pixel_uv(gid: vec3<u32>) -> vec2<f32> {
     return (vec2<f32>(f32(gid.x), f32(gid.y)) + vec2<f32>(0.5, 0.5)) / dims();
-}
-
-fn get_in_weight(uv: vec2<f32>) -> f32 {
-    let aa = 1.5 / dims();
-    let edge_x = smoothstep(0.0, aa.x, uv.x) * (1.0 - smoothstep(1.0 - aa.x, 1.0, uv.x));
-    let edge_y = smoothstep(0.0, aa.y, uv.y) * (1.0 - smoothstep(1.0 - aa.y, 1.0, uv.y));
-    return edge_x * edge_y;
 }
 
 fn extract_bright(color: vec4<f32>) -> vec4<f32> {
