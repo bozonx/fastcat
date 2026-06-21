@@ -58,10 +58,11 @@ describe('TimelineCommandService', () => {
   });
 
   describe('addClipToTimelineFromPath', () => {
-    it('adds a video clip and checks FPS', async () => {
+    it('warns on an uneven FPS cadence', async () => {
       deps.getOrFetchMetadataByPath.mockResolvedValue({
         duration: 10,
-        video: { width: 1920, height: 1080, fps: 60, canDecode: true }, // Project is 30, file is 60
+        // Project is 30, file is 50 — ratio 1.667 samples unevenly and judders.
+        video: { width: 1920, height: 1080, fps: 50, canDecode: true },
       });
       deps.getFileByPath.mockResolvedValue(new File([], 'test.mp4'));
 
@@ -81,7 +82,24 @@ describe('TimelineCommandService', () => {
       );
 
       // Should return FPS mismatch warning
-      expect(result.warnings).toEqual([{ type: 'fpsMismatch', fileFps: 60, projectFps: 30 }]);
+      expect(result.warnings).toEqual([{ type: 'fpsMismatch', fileFps: 50, projectFps: 30 }]);
+    });
+
+    it('does not warn when the FPS ratio is an integer multiple', async () => {
+      deps.getOrFetchMetadataByPath.mockResolvedValue({
+        duration: 10,
+        // Project is 30, file is 60 — even 2:1 cadence, no judder, no warning.
+        video: { width: 1920, height: 1080, fps: 60, canDecode: true },
+      });
+      deps.getFileByPath.mockResolvedValue(new File([], 'test.mp4'));
+
+      const result = await service.addClipToTimelineFromPath({
+        trackId: 'v1',
+        name: 'Test Clip',
+        path: 'video/test.mp4',
+      });
+
+      expect(result.warnings).toBeUndefined();
     });
 
     it('does not warn for tiny FPS metadata drift', async () => {

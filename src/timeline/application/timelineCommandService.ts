@@ -145,6 +145,23 @@ function areFpsClose(a: number, b: number) {
   return Math.abs(a - b) < 0.01;
 }
 
+// True when one fps is a (near-)integer multiple of the other, so held-frame
+// sampling onto the project's frame grid yields an EVEN cadence — each source
+// frame is shown a whole number of times (upsampling, e.g. 30→60) or dropped at a
+// fixed stride (downsampling, e.g. 60→30). Even cadences play back without the
+// uneven 3:2-style stutter; only genuinely non-integer ratios (24→30, 50→60,
+// 60→24) judder, so those are the only cases worth warning the user about.
+// A relative tolerance keeps broadcast rates (23.976↔24, 59.94↔30) on the "even"
+// side, matching how they're perceived.
+function fpsCadenceIsEven(fileFps: number, projectFps: number): boolean {
+  if (!Number.isFinite(fileFps) || !Number.isFinite(projectFps)) return false;
+  if (fileFps <= 0 || projectFps <= 0) return false;
+  const ratio = fileFps >= projectFps ? fileFps / projectFps : projectFps / fileFps;
+  const nearest = Math.round(ratio);
+  if (nearest < 1) return false;
+  return Math.abs(ratio - nearest) <= 0.02 * nearest;
+}
+
 export function createTimelineCommandService(deps: TimelineCommandServiceDeps) {
   async function resolveMetadataByPath(path: string): Promise<TimelineMediaMetadata> {
     const existing = deps.getMediaMetadataByPath(path);
@@ -441,7 +458,13 @@ export function createTimelineCommandService(deps: TimelineCommandServiceDeps) {
           timelineFormat,
           deps.getProjectSettings().project,
         ).fps;
-        if (!areFpsClose(metadata.video.fps, effectiveFps)) {
+        // Only warn for uneven cadences that actually judder. An integer-ratio
+        // mismatch (e.g. 60→30 or 30→60) samples evenly and plays back smoothly, so
+        // warning there is a false alarm.
+        if (
+          !areFpsClose(metadata.video.fps, effectiveFps) &&
+          !fpsCadenceIsEven(metadata.video.fps, effectiveFps)
+        ) {
           warnings.push({
             type: 'fpsMismatch',
             fileFps: metadata.video.fps,

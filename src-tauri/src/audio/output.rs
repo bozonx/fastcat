@@ -265,6 +265,39 @@ pub(crate) fn build_stream(
     }
 }
 
+thread_local! {
+    /// Per-callback-thread PRNG state for dither. The audio callback runs on a single
+    /// dedicated thread, so a thread-local needs no synchronisation and never blocks.
+    static DITHER_RNG: std::cell::Cell<u32> = const { std::cell::Cell::new(0x2545_f491) };
+}
+
+/// One xorshift32 step; cheap, allocation-free and realtime-safe.
+fn xorshift32(state: &mut u32) -> u32 {
+    let mut x = *state;
+    x ^= x << 13;
+    x ^= x >> 17;
+    x ^= x << 5;
+    *state = x;
+    x
+}
+
+/// Triangular-PDF dither in the open range (-1, 1) LSB. Summing two independent
+/// uniforms yields a triangular distribution, which (unlike rectangular dither)
+/// fully decorrelates the quantisation error from the signal AND keeps the error
+/// variance constant — so quiet passages and fades no longer carry the granular,
+/// signal-correlated distortion that plain truncation produced. TPDF is stateless
+/// (no noise-shaping history), which suits a lock-free per-sample call.
+fn tpdf_dither() -> f32 {
+    DITHER_RNG.with(|cell| {
+        let mut state = cell.get();
+        // 24-bit mantissa worth of resolution per uniform, in [0, 1).
+        let r1 = (xorshift32(&mut state) >> 8) as f32 / (1u32 << 24) as f32;
+        let r2 = (xorshift32(&mut state) >> 8) as f32 / (1u32 << 24) as f32;
+        cell.set(state);
+        r1 - r2
+    })
+}
+
 pub(crate) trait OutputSample {
     fn from_f32(value: f32) -> Self;
 }
@@ -277,13 +310,19 @@ impl OutputSample for f32 {
 
 impl OutputSample for i16 {
     fn from_f32(value: f32) -> Self {
-        (value.clamp(-1.0, 1.0) * i16::MAX as f32) as i16
+        // Dither (±1 LSB triangular) then round — NOT truncate. Truncation rounds
+        // toward zero and adds a signal-correlated DC-ish error; round + TPDF gives a
+        // clean, noise-floor-only result. The final clamp guards the rare case where
+        // dither pushes a full-scale sample one LSB past i16::MAX.
+        let scaled = value.clamp(-1.0, 1.0) * i16::MAX as f32 + tpdf_dither();
+        scaled.round().clamp(i16::MIN as f32, i16::MAX as f32) as i16
     }
 }
 
 impl OutputSample for u16 {
     fn from_f32(value: f32) -> Self {
-        ((value.clamp(-1.0, 1.0) * 0.5 + 0.5) * u16::MAX as f32) as u16
+        let scaled = (value.clamp(-1.0, 1.0) * 0.5 + 0.5) * u16::MAX as f32 + tpdf_dither();
+        scaled.round().clamp(0.0, u16::MAX as f32) as u16
     }
 }
 
@@ -540,5 +579,45 @@ mod tests {
         assert_eq!(data, vec![0.0, -0.0]);
         assert_eq!(clock.frames(), 2);
         assert_eq!(clock.output_levels_db(), (-60.0, -60.0));
+    }
+
+    #[test]
+    fn tpdf_dither_stays_within_one_lsb_triangular_range() {
+        // Triangular dither from two summed uniforms must lie in (-1, 1) LSB.
+        let mut min = f32::INFINITY;
+        let mut max = f32::NEG_INFINITY;
+        for _ in 0..100_000 {
+            let d = tpdf_dither();
+            min = min.min(d);
+            max = max.max(d);
+            assert!(d > -1.0 && d < 1.0, "dither out of range: {d}");
+        }
+        // Over many samples it should actually exercise most of the range.
+        assert!(min < -0.5 && max > 0.5, "dither range too narrow: [{min}, {max}]");
+    }
+
+    #[test]
+    fn i16_quantization_is_unbiased_and_clamped() {
+        // Over-range input must clamp to the rails, never wrap to the opposite
+        // sign even when dither nudges a full-scale sample one LSB further out.
+        for _ in 0..1000 {
+            let hi = i16::from_f32(2.0);
+            assert!(hi >= i16::MAX - 1, "positive full-scale wrapped: {hi}");
+            let lo = i16::from_f32(-2.0);
+            assert!(lo <= i16::MIN + 2, "negative full-scale wrapped: {lo}");
+        }
+
+        // A constant mid-level input should average (across dither noise) to the
+        // rounded ideal — i.e. dither adds zero-mean noise, not a DC offset. Plain
+        // truncation would bias every sample toward zero instead.
+        let target = 0.25f32;
+        let ideal = (target * i16::MAX as f32).round() as i64;
+        let n = 200_000i64;
+        let sum: i64 = (0..n).map(|_| i16::from_f32(target) as i64).sum();
+        let mean = sum as f64 / n as f64;
+        assert!(
+            (mean - ideal as f64).abs() < 1.0,
+            "dither introduced DC bias: mean={mean}, ideal={ideal}"
+        );
     }
 }
