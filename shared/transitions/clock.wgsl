@@ -59,23 +59,35 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
     if (gid.x >= uni.width || gid.y >= uni.height) { return; }
     let coord = vec2<i32>(i32(gid.x), i32(gid.y));
     let uv = pixel_uv(gid);
-    let centered = uv - vec2<f32>(0.5, 0.5);
-    var angle = atan2(centered.x, -centered.y);
-    if (angle < 0.0) { angle = angle + PI * 2.0; }
-    if (uni.p0 < 0.0) {
-        angle = PI * 2.0 - angle;
-        if (angle >= PI * 2.0) { angle = angle - PI * 2.0; }
-    } else if (uni.p0 > 1.5) {
-        if (angle > PI) { angle = PI * 2.0 - angle; }
-        angle = angle * 2.0;
-    }
     let progress = clamp(uni.progress, 0.0, 1.0);
-    let R = length(centered);
-    let aa = clamp((1.5 / dims().y) / (2.0 * PI * max(R, 0.0001)), 0.0001, 0.5);
+
+    var val: f32;
+    var aa: f32;
+    if (uni.p0 > 2.5) {
+        // Line modes: a horizontal sweep line instead of a rotating clock hand.
+        // p0 == 3 -> top-to-bottom ("clockwise"), p0 == 4 -> bottom-to-top.
+        var y = uv.y;
+        if (uni.p0 > 3.5) { y = 1.0 - y; }
+        val = y;
+        aa = 1.5 / dims().y;
+    } else {
+        // Clock-hand modes: the reveal boundary is a single radial line that
+        // sweeps around the center (two mirrored lines in symmetric mode).
+        let centered = uv - vec2<f32>(0.5, 0.5);
+        var angle = atan2(centered.x, -centered.y);
+        if (angle < 0.0) { angle = angle + PI * 2.0; }
+        if (uni.p0 < 0.0) {
+            angle = PI * 2.0 - angle;
+            if (angle >= PI * 2.0) { angle = angle - PI * 2.0; }
+        } else if (uni.p0 > 1.5) {
+            if (angle > PI) { angle = PI * 2.0 - angle; }
+            angle = angle * 2.0;
+        }
+        let R = length(centered);
+        aa = clamp((1.5 / dims().y) / (2.0 * PI * max(R, 0.0001)), 0.0001, 0.5);
+        val = angle / (PI * 2.0);
+    }
     let blur = max(uni.p1, aa);
-    let val = angle / (PI * 2.0);
-    let diff = val - progress;
-    let cyclic_diff = diff - round(diff);
-    let reveal = smoothstep(-blur, blur, cyclic_diff);
+    let reveal = smoothstep(progress - blur, progress + blur, val);
     textureStore(output_tex, coord, mix(samp(from_tex, uv), samp(to_tex, uv), 1.0 - reveal));
 }

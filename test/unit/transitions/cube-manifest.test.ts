@@ -101,4 +101,24 @@ describe('cube transition parameters in Tauri spec', () => {
 
     restoreTauriRuntime();
   });
+
+  it('has correct order and control types for UI fields', () => {
+    const manifest = getTransitionManifestByType('cube');
+    expect(manifest).toBeDefined();
+    expect(manifest?.paramFields).toBeDefined();
+
+    const fields = manifest?.paramFields || [];
+
+    // zoomMode should be at index 0 and be a select control
+    expect(fields[0]).toMatchObject({
+      key: 'zoomMode',
+      kind: 'select',
+    });
+
+    // direction should be at index 1 and be a button-group control
+    expect(fields[1]).toMatchObject({
+      key: 'direction',
+      kind: 'button-group',
+    });
+  });
 });

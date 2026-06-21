@@ -66,4 +66,32 @@ describe('clock transition manifest', () => {
 
     restoreTauriRuntime();
   });
+
+  it('maps each direction to the correct p0 shader code', () => {
+    mockTauriRuntime(true);
+    const manifest = getTransitionManifestByType('clock');
+
+    const code = (direction: string) =>
+      manifest?.toTransitionSpec?.({ direction, softness: 0 })?.params?.p0;
+
+    expect(code('clockwise')).toBe(1);
+    expect(code('counterclockwise')).toBe(-1);
+    expect(code('symmetric')).toBe(2);
+    expect(code('lineClockwise')).toBe(3);
+    expect(code('lineCounterclockwise')).toBe(4);
+
+    restoreTauriRuntime();
+  });
+
+  it('keeps the new line directions through normalization', () => {
+    const manifest = getTransitionManifestByType('clock');
+
+    expect(manifest?.normalizeParams?.({ direction: 'lineClockwise' })?.direction).toBe(
+      'lineClockwise',
+    );
+    expect(manifest?.normalizeParams?.({ direction: 'lineCounterclockwise' })?.direction).toBe(
+      'lineCounterclockwise',
+    );
+    expect(manifest?.normalizeParams?.({ direction: 'bogus' })?.direction).toBe('clockwise');
+  });
 });

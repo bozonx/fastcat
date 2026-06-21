@@ -86,37 +86,84 @@ fn map_cards(uv_in: vec2<f32>, dir_h: bool, mode_slide: bool, sign_order: f32, p
     return CardPos(pfr, pto);
 }
 
-fn card_blur_slide(tex: texture_2d<f32>, pos: vec2<f32>, blur_dir: vec2<f32>, blur_amount: f32, samples: i32, f_samples: f32, dark: f32) -> vec4<f32> {
+fn card_blur_slide(
+    tex: texture_2d<f32>,
+    center_uv: vec2<f32>,
+    blur_dir: vec2<f32>,
+    blur_amount: f32,
+    samples: i32,
+    f_samples: f32,
+    dark: f32,
+    dir_h: bool,
+    mode_slide: bool,
+    sign_order: f32,
+    progress: f32,
+    is_from: bool
+) -> vec4<f32> {
     var c = vec4<f32>(0.0);
     var tw = 0.0;
+    var total_alpha = 0.0;
     for (var i = 0; i < 64; i = i + 1) {
         if (i >= samples) { break; }
         let off = (f32(i) / (f_samples - 1.0) - 0.5) * blur_amount;
-        let sc = samp(tex, pos + blur_dir * off);
-        let w = 1.0 + pow(luma(sc.rgb), 2.0) * uni.p8 * 5.0;
-        c = c + sc * w;
-        tw = tw + w;
+        let sample_uv = center_uv + blur_dir * off;
+        let cp = map_cards(sample_uv, dir_h, mode_slide, sign_order, progress);
+        let card_pos = select(cp.pto, cp.pfr, is_from);
+        if (in_bounds(card_pos)) {
+            let sc = samp(tex, card_pos);
+            let w = 1.0 + pow(luma(sc.rgb), 2.0) * uni.p8 * 5.0;
+            c = c + sc * w;
+            tw = tw + w;
+            total_alpha = total_alpha + 1.0;
+        }
+    }
+    if (total_alpha == 0.0) {
+        return vec4<f32>(0.0);
     }
     c = c / tw;
     c = vec4<f32>(c.rgb + c.rgb * max(0.0, luma(c.rgb) - 0.5) * uni.p8 * 2.0, c.a);
-    return vec4<f32>(c.rgb * (1.0 - dark), c.a);
+    let coverage = total_alpha / f_samples;
+    return vec4<f32>(c.rgb * (1.0 - dark), coverage);
 }
 
-fn card_blur_radial(tex: texture_2d<f32>, pos: vec2<f32>, blur_amount: f32, samples: i32, f_samples: f32, dark: f32) -> vec4<f32> {
+fn card_blur_radial(
+    tex: texture_2d<f32>,
+    center_uv: vec2<f32>,
+    blur_amount: f32,
+    samples: i32,
+    f_samples: f32,
+    dark: f32,
+    dir_h: bool,
+    mode_slide: bool,
+    sign_order: f32,
+    progress: f32,
+    is_from: bool
+) -> vec4<f32> {
     var c = vec4<f32>(0.0);
     var tw = 0.0;
+    var total_alpha = 0.0;
     for (var i = 0; i < 64; i = i + 1) {
         if (i >= samples) { break; }
         let fi = f32(i);
         let off = vec2<f32>(cos(fi * 2.39996) * blur_amount, sin(fi * 2.39996) * blur_amount) * (fi / f_samples);
-        let sc = samp(tex, pos + off);
-        let w = 1.0 + pow(luma(sc.rgb), 2.0) * uni.p8 * 5.0;
-        c = c + sc * w;
-        tw = tw + w;
+        let sample_uv = center_uv + off;
+        let cp = map_cards(sample_uv, dir_h, mode_slide, sign_order, progress);
+        let card_pos = select(cp.pto, cp.pfr, is_from);
+        if (in_bounds(card_pos)) {
+            let sc = samp(tex, card_pos);
+            let w = 1.0 + pow(luma(sc.rgb), 2.0) * uni.p8 * 5.0;
+            c = c + sc * w;
+            tw = tw + w;
+            total_alpha = total_alpha + 1.0;
+        }
+    }
+    if (total_alpha == 0.0) {
+        return vec4<f32>(0.0);
     }
     c = c / tw;
     c = vec4<f32>(c.rgb + c.rgb * max(0.0, luma(c.rgb) - 0.5) * uni.p8 * 2.0, c.a);
-    return vec4<f32>(c.rgb * (1.0 - dark), c.a);
+    let coverage = total_alpha / f_samples;
+    return vec4<f32>(c.rgb * (1.0 - dark), coverage);
 }
 
 @compute @workgroup_size(8, 8, 1)
@@ -168,63 +215,106 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
         if (dist < max_d && max_d > 0.0) { shadow_to = (1.0 - dist / max_d) * uni.p5; }
     }
 
-    // MSAA-style edge coverage: evaluate the card geometry at a quality-controlled
-    // ordered grid of sub-pixel offsets and average the in/out test. This
-    // anti-aliases the rotated/perspective card silhouettes correctly at any angle
-    // (unlike a fixed UV-space ramp, which collapses to sub-pixel under foreshortening).
-    // The grid size is controlled by the preview quality tier via uni.p9: 1x1 for
-    // low/medium (no anti-aliasing) and 8x8 for high/ultra. Only the cheap geometry
-    // math is supersampled; texture color is sampled once at the pixel center below.
-    let inv = 1.0 / dims();
-    let ss = i32(clamp(uni.p9, 1.0, 8.0));
-    let inv_ss = 1.0 / f32(ss);
-    var cov_fr = 0.0;
-    var cov_to = 0.0;
-    for (var sy = 0; sy < ss; sy = sy + 1) {
-        for (var sx = 0; sx < ss; sx = sx + 1) {
-            let off = (vec2<f32>(f32(sx), f32(sy)) + 0.5) * inv_ss - 0.5;
-            let scp = map_cards(center_uv + off * inv, dir_h, mode_slide, sign_order, progress);
-            if (in_bounds(scp.pfr)) { cov_fr = cov_fr + 1.0; }
-            if (in_bounds(scp.pto)) { cov_to = cov_to + 1.0; }
-        }
-    }
-    cov_fr = cov_fr / f32(ss * ss);
-    cov_to = cov_to / f32(ss * ss);
-
     let max_samples = i32(uni.p7);
-    var final_c_fr = vec4<f32>(0.0);
-    var final_c_to = vec4<f32>(0.0);
+    let inv = 1.0 / dims();
 
+    // Calculate blur radius on screen in pixels to decide between blur and MSAA paths
+    var rad_pixels_fr = 0.0;
+    var rad_pixels_to = 0.0;
     if (mode_slide) {
-        let blur_dir = select(vec2<f32>(0.0, 1.0), vec2<f32>(1.0, 0.0), dir_h);
-        // Scale motion blur by the curve's instantaneous speed so it grows and fades
-        // with the easing (matching slide/blinds). Without this the blur snapped on
-        // at full strength regardless of the chosen curve.
         let blur_amount = uni.p6 * 0.1 * uni.speed;
-        // Scale sample count by pixel blur length
-        let pixel_blur = blur_amount * length(blur_dir * dims());
-        let samples = clamp(i32(ceil(pixel_blur)), 4, max_samples);
-        let f_samples = f32(samples);
-        if (cov_fr > 0.0) { final_c_fr = card_blur_slide(from_tex, pfr, blur_dir, blur_amount, samples, f_samples, dark_fr); }
-        if (cov_to > 0.0) { final_c_to = card_blur_slide(to_tex, pto, blur_dir, blur_amount, samples, f_samples, dark_to); }
+        let blur_dir = select(vec2<f32>(0.0, 1.0), vec2<f32>(1.0, 0.0), dir_h);
+        rad_pixels_fr = blur_amount * length(blur_dir * dims());
+        rad_pixels_to = rad_pixels_fr;
     } else {
         let blur_fr = uni.p6 * pow(max(0.0, size_fr - 1.0), 2.0) * 0.01;
         let blur_to = uni.p6 * pow(max(0.0, size_to - 1.0), 2.0) * 0.01;
-        let samples_fr = clamp(i32(ceil(blur_fr * max(dims().x, dims().y))), 4, max_samples);
-        let samples_to = clamp(i32(ceil(blur_to * max(dims().x, dims().y))), 4, max_samples);
-        if (cov_fr > 0.0) { final_c_fr = card_blur_radial(from_tex, pfr, blur_fr, samples_fr, f32(samples_fr), dark_fr); }
-        if (cov_to > 0.0) { final_c_to = card_blur_radial(to_tex, pto, blur_to, samples_to, f32(samples_to), dark_to); }
+        rad_pixels_fr = blur_fr * max(dims().x, dims().y);
+        rad_pixels_to = blur_to * max(dims().x, dims().y);
+    }
+
+    var cov_fr = 0.0;
+    var cov_to = 0.0;
+    var final_c_fr = vec4<f32>(0.0);
+    var final_c_to = vec4<f32>(0.0);
+
+    let d2_fr = max(vec2<f32>(0.0) - pfr, pfr - vec2<f32>(1.0));
+    let dist_fr = length(max(d2_fr, vec2<f32>(0.0))) / size_fr;
+
+    let d2_to = max(vec2<f32>(0.0) - pto, pto - vec2<f32>(1.0));
+    let dist_to = length(max(d2_to, vec2<f32>(0.0))) / size_to;
+
+    // --- CARD FROM ---
+    if (rad_pixels_fr > 1.0) {
+        let blur_fr_uv = select(uni.p6 * pow(max(0.0, size_fr - 1.0), 2.0) * 0.01, uni.p6 * 0.1 * uni.speed, mode_slide);
+        let max_dist = select(blur_fr_uv, blur_fr_uv * 0.5, mode_slide);
+        if (dist_fr <= max_dist) {
+            if (mode_slide) {
+                let blur_dir = select(vec2<f32>(0.0, 1.0), vec2<f32>(1.0, 0.0), dir_h);
+                let samples = clamp(i32(ceil(rad_pixels_fr)), 4, max_samples);
+                final_c_fr = card_blur_slide(from_tex, center_uv, blur_dir, blur_fr_uv, samples, f32(samples), dark_fr, dir_h, mode_slide, sign_order, progress, true);
+            } else {
+                let samples = clamp(i32(ceil(rad_pixels_fr)), 4, max_samples);
+                final_c_fr = card_blur_radial(from_tex, center_uv, blur_fr_uv, samples, f32(samples), dark_fr, dir_h, mode_slide, sign_order, progress, true);
+            }
+            cov_fr = final_c_fr.a;
+            final_c_fr = vec4<f32>(final_c_fr.rgb, 1.0);
+        }
+    } else {
+        let ss = i32(clamp(uni.p9, 1.0, 8.0));
+        let inv_ss = 1.0 / f32(ss);
+        for (var sy = 0; sy < ss; sy = sy + 1) {
+            for (var sx = 0; sx < ss; sx = sx + 1) {
+                let off = (vec2<f32>(f32(sx), f32(sy)) + 0.5) * inv_ss - 0.5;
+                let scp = map_cards(center_uv + off * inv, dir_h, mode_slide, sign_order, progress);
+                if (in_bounds(scp.pfr)) { cov_fr = cov_fr + 1.0; }
+            }
+        }
+        cov_fr = cov_fr / f32(ss * ss);
+        if (cov_fr > 0.0) {
+            final_c_fr = vec4<f32>(samp(from_tex, pfr).rgb * (1.0 - dark_fr), 1.0);
+        }
+    }
+
+    // --- CARD TO ---
+    if (rad_pixels_to > 1.0) {
+        let blur_to_uv = select(uni.p6 * pow(max(0.0, size_to - 1.0), 2.0) * 0.01, uni.p6 * 0.1 * uni.speed, mode_slide);
+        let max_dist = select(blur_to_uv, blur_to_uv * 0.5, mode_slide);
+        if (dist_to <= max_dist) {
+            if (mode_slide) {
+                let blur_dir = select(vec2<f32>(0.0, 1.0), vec2<f32>(1.0, 0.0), dir_h);
+                let samples = clamp(i32(ceil(rad_pixels_to)), 4, max_samples);
+                final_c_to = card_blur_slide(to_tex, center_uv, blur_dir, blur_to_uv, samples, f32(samples), dark_to, dir_h, mode_slide, sign_order, progress, false);
+            } else {
+                let samples = clamp(i32(ceil(rad_pixels_to)), 4, max_samples);
+                final_c_to = card_blur_radial(to_tex, center_uv, blur_to_uv, samples, f32(samples), dark_to, dir_h, mode_slide, sign_order, progress, false);
+            }
+            cov_to = final_c_to.a;
+            final_c_to = vec4<f32>(final_c_to.rgb, 1.0);
+        }
+    } else {
+        let ss = i32(clamp(uni.p9, 1.0, 8.0));
+        let inv_ss = 1.0 / f32(ss);
+        for (var sy = 0; sy < ss; sy = sy + 1) {
+            for (var sx = 0; sx < ss; sx = sx + 1) {
+                let off = (vec2<f32>(f32(sx), f32(sy)) + 0.5) * inv_ss - 0.5;
+                let scp = map_cards(center_uv + off * inv, dir_h, mode_slide, sign_order, progress);
+                if (in_bounds(scp.pto)) { cov_to = cov_to + 1.0; }
+            }
+        }
+        cov_to = cov_to / f32(ss * ss);
+        if (cov_to > 0.0) {
+            final_c_to = vec4<f32>(samp(to_tex, pto).rgb * (1.0 - dark_to), 1.0);
+        }
     }
 
     var final_color = vec4<f32>(0.0);
     if (progress < 0.5) {
-        // Bottom card (to) darkened by the shadow cast from the top card (from).
         let total_dark = min(1.0, dark_to + shadow_fr);
         let bottom = vec4<f32>(final_c_to.rgb * (1.0 - total_dark) / max(1.0 - dark_to, 0.001), final_c_to.a);
         final_color = mix(vec4<f32>(0.0), bottom, cov_to);
         final_color = mix(final_color, final_c_fr, cov_fr);
     } else {
-        // Bottom card (from) darkened by the shadow cast from the top card (to).
         let total_dark = min(1.0, dark_fr + shadow_to);
         let bottom = vec4<f32>(final_c_fr.rgb * (1.0 - total_dark) / max(1.0 - dark_fr, 0.001), final_c_fr.a);
         final_color = mix(vec4<f32>(0.0), bottom, cov_fr);

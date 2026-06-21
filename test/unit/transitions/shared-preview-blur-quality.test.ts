@@ -49,12 +49,10 @@ describe('shared preview blur shader optimization', () => {
   it('scales each card-swap radial branch independently with a four-sample minimum', () => {
     const source = getShaderSource('card-swap');
 
-    expect(source).toContain(
-      'let samples_fr = clamp(i32(ceil(blur_fr * max(dims().x, dims().y))), 4, max_samples);',
-    );
-    expect(source).toContain(
-      'let samples_to = clamp(i32(ceil(blur_to * max(dims().x, dims().y))), 4, max_samples);',
-    );
+    expect(source).toContain('rad_pixels_fr = blur_fr * max(dims().x, dims().y);');
+    expect(source).toContain('rad_pixels_to = blur_to * max(dims().x, dims().y);');
+    expect(source).toContain('let samples = clamp(i32(ceil(rad_pixels_fr)), 4, max_samples);');
+    expect(source).toContain('let samples = clamp(i32(ceil(rad_pixels_to)), 4, max_samples);');
   });
 
   it('disables edge anti-aliasing for perspective transitions in low/medium preview quality', () => {

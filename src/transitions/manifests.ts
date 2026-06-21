@@ -155,11 +155,32 @@ function normalizeCircleParams(params?: Record<string, unknown>): Record<string,
   };
 }
 
+function clockDirectionCode(direction: unknown): number {
+  switch (direction) {
+    case 'counterclockwise':
+      return -1;
+    case 'symmetric':
+      return 2;
+    case 'lineClockwise':
+      return 3;
+    case 'lineCounterclockwise':
+      return 4;
+    default:
+      return 1;
+  }
+}
+
 function normalizeClockParams(params?: Record<string, unknown>): Record<string, unknown> {
   const direction = params?.direction as string;
+  const allowed = [
+    'clockwise',
+    'counterclockwise',
+    'symmetric',
+    'lineClockwise',
+    'lineCounterclockwise',
+  ];
   return {
-    direction:
-      direction === 'counterclockwise' || direction === 'symmetric' ? direction : 'clockwise',
+    direction: allowed.includes(direction) ? direction : 'clockwise',
     softness: clamp(finiteNumber(params?.softness, 0), 0, 100),
   };
 }
@@ -228,7 +249,7 @@ const anchorField = {
 };
 
 const fromToCenterField = {
-  kind: 'select' as const,
+  kind: 'button-group' as const,
   key: 'direction',
   labelKey: 'fastcat.timeline.transition.paramDirection',
   options: [
@@ -505,6 +526,14 @@ export const transitionManifests: TransitionManifest[] = [
             labelKey: 'fastcat.timeline.transition.directionCounterclockwise',
           },
           { value: 'symmetric', labelKey: 'fastcat.timeline.transition.directionSymmetric' },
+          {
+            value: 'lineClockwise',
+            labelKey: 'fastcat.timeline.transition.directionLineClockwise',
+          },
+          {
+            value: 'lineCounterclockwise',
+            labelKey: 'fastcat.timeline.transition.directionLineCounterclockwise',
+          },
         ],
       },
       {
@@ -520,7 +549,7 @@ export const transitionManifests: TransitionManifest[] = [
       type: 'custom-wgsl',
       source: clockWgsl,
       params: {
-        p0: params.direction === 'counterclockwise' ? -1 : params.direction === 'symmetric' ? 2 : 1,
+        p0: clockDirectionCode(params.direction),
         p1: clamp(finiteNumber(params.softness, 0) / 100, 0.0001, 0.5),
       },
     }),
@@ -811,15 +840,7 @@ export const transitionManifests: TransitionManifest[] = [
         step: 0.5,
       },
       blurModeField,
-      {
-        kind: 'button-group',
-        key: 'direction',
-        labelKey: 'fastcat.timeline.transition.paramDirection',
-        options: [
-          { value: 'from-center', labelKey: 'fastcat.timeline.transition.directionFromCenter' },
-          { value: 'to-center', labelKey: 'fastcat.timeline.transition.directionToCenter' },
-        ],
-      },
+      fromToCenterField,
       anchorField,
       ...offsetFields,
       {
@@ -1134,6 +1155,15 @@ export const transitionManifests: TransitionManifest[] = [
     paramFields: [
       {
         kind: 'select',
+        key: 'zoomMode',
+        labelKey: 'fastcat.timeline.transition.paramMode',
+        options: [
+          { value: 'unzoom', labelKey: 'fastcat.timeline.transition.modeUnzoom' },
+          { value: 'fixed', labelKey: 'fastcat.timeline.transition.modeFixed' },
+        ],
+      },
+      {
+        kind: 'button-group',
         key: 'direction',
         labelKey: 'fastcat.timeline.transition.paramDirection',
         options: [
@@ -1141,15 +1171,6 @@ export const transitionManifests: TransitionManifest[] = [
           { value: 'right', labelKey: 'fastcat.timeline.transition.directionRight' },
           { value: 'up', labelKey: 'fastcat.timeline.transition.directionUp' },
           { value: 'down', labelKey: 'fastcat.timeline.transition.directionDown' },
-        ],
-      },
-      {
-        kind: 'button-group',
-        key: 'zoomMode',
-        labelKey: 'fastcat.timeline.transition.paramMode',
-        options: [
-          { value: 'unzoom', labelKey: 'fastcat.timeline.transition.modeUnzoom' },
-          { value: 'fixed', labelKey: 'fastcat.timeline.transition.modeFixed' },
         ],
       },
       {
@@ -1175,6 +1196,7 @@ export const transitionManifests: TransitionManifest[] = [
         min: 0.0,
         max: 1.0,
         step: 0.05,
+        showIf: (params: Record<string, unknown>) => params.zoomMode === 'unzoom',
       },
     ],
     toTransitionSpec: (
