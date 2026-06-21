@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import UiWheelNumberInput from '~/components/ui/UiWheelNumberInput.vue';
-import UiSelect from '~/components/ui/UiSelect.vue';
 import DbSlider from '~/components/audio/DbSlider.vue';
 import UiSliderInput from '~/components/ui/UiSliderInput.vue';
 import PropertySection from '~/components/properties/PropertySection.vue';
@@ -59,17 +58,6 @@ function onVolumeDragEnd() {
 function onVolumeUpdate(db: number) {
   emit('updateAudioGain', dbToLinear(db), { skipHistory: isDragging.value });
 }
-
-const fadeCurveOptions = [
-  {
-    label: t('fastcat.clip.audioFade.curve.linear'),
-    value: 'linear',
-  },
-  {
-    label: t('fastcat.clip.audioFade.curve.logarithmic'),
-    value: 'logarithmic',
-  },
-];
 </script>
 
 <template>
@@ -137,17 +125,28 @@ const fadeCurveOptions = [
                 <button
                   type="button"
                   class="flex-1 flex items-center justify-center gap-1 px-1.5 py-0.5 text-[10px] rounded font-medium transition-all cursor-pointer"
-                  :class="props.audioFadeInCurve === 'linear' ? 'bg-ui-element-bg text-ui-text shadow-xs' : 'text-ui-text-muted hover:text-ui-text'"
+                  :class="
+                    props.audioFadeInCurve === 'linear'
+                      ? 'bg-ui-element-bg text-ui-text shadow-xs'
+                      : 'text-ui-text-muted hover:text-ui-text'
+                  "
                   :disabled="!isEnabled"
                   @click="emit('updateAudioFadeInCurve', 'linear')"
                 >
-                  <UIcon name="i-heroicons-presentation-chart-line" class="w-3.5 h-3.5 block shrink-0" />
+                  <UIcon
+                    name="i-heroicons-presentation-chart-line"
+                    class="w-3.5 h-3.5 block shrink-0"
+                  />
                   <span class="truncate">{{ t('fastcat.clip.audioFade.curve.linear') }}</span>
                 </button>
                 <button
                   type="button"
                   class="flex-1 flex items-center justify-center gap-1 px-1.5 py-0.5 text-[10px] rounded font-medium transition-all cursor-pointer"
-                  :class="props.audioFadeInCurve === 'logarithmic' ? 'bg-ui-element-bg text-ui-text shadow-xs' : 'text-ui-text-muted hover:text-ui-text'"
+                  :class="
+                    props.audioFadeInCurve === 'logarithmic'
+                      ? 'bg-ui-element-bg text-ui-text shadow-xs'
+                      : 'text-ui-text-muted hover:text-ui-text'
+                  "
                   :disabled="!isEnabled"
                   @click="emit('updateAudioFadeInCurve', 'logarithmic')"
                 >
@@ -179,17 +178,28 @@ const fadeCurveOptions = [
                 <button
                   type="button"
                   class="flex-1 flex items-center justify-center gap-1 px-1.5 py-0.5 text-[10px] rounded font-medium transition-all cursor-pointer"
-                  :class="props.audioFadeOutCurve === 'linear' ? 'bg-ui-element-bg text-ui-text shadow-xs' : 'text-ui-text-muted hover:text-ui-text'"
+                  :class="
+                    props.audioFadeOutCurve === 'linear'
+                      ? 'bg-ui-element-bg text-ui-text shadow-xs'
+                      : 'text-ui-text-muted hover:text-ui-text'
+                  "
                   :disabled="!isEnabled"
                   @click="emit('updateAudioFadeOutCurve', 'linear')"
                 >
-                  <UIcon name="i-heroicons-presentation-chart-line" class="w-3.5 h-3.5 block shrink-0" />
+                  <UIcon
+                    name="i-heroicons-presentation-chart-line"
+                    class="w-3.5 h-3.5 block shrink-0"
+                  />
                   <span class="truncate">{{ t('fastcat.clip.audioFade.curve.linear') }}</span>
                 </button>
                 <button
                   type="button"
                   class="flex-1 flex items-center justify-center gap-1 px-1.5 py-0.5 text-[10px] rounded font-medium transition-all cursor-pointer"
-                  :class="props.audioFadeOutCurve === 'logarithmic' ? 'bg-ui-element-bg text-ui-text shadow-xs' : 'text-ui-text-muted hover:text-ui-text'"
+                  :class="
+                    props.audioFadeOutCurve === 'logarithmic'
+                      ? 'bg-ui-element-bg text-ui-text shadow-xs'
+                      : 'text-ui-text-muted hover:text-ui-text'
+                  "
                   :disabled="!isEnabled"
                   @click="emit('updateAudioFadeOutCurve', 'logarithmic')"
                 >

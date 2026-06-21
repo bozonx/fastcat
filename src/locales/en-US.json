@@ -47,8 +47,6 @@
     "history": "History",
     "imagePreview": "Image preview",
     "images": "Images",
-    "inDirDocuments": "In _documents/",
-    "inDirTimelines": "In _timelines/",
     "autoDetectFolder": "Auto-detect folder",
     "items": "Items",
     "itemsSelected": "Selected: {count}",
@@ -100,8 +98,6 @@
     "success": "Success",
     "tags": "Tags",
     "text": "Text",
-    "textDocument": "Text document",
-    "timeline": "Timeline",
     "title": "Title",
     "toHome": "Home",
     "toTimeline": "To timeline",
@@ -1436,7 +1432,6 @@
         "success": "Proxy created successfully",
         "alreadyExists": "{count} file(s) already have a proxy and were skipped."
       },
-      "root": "Root",
       "skipOtio": {
         "description": "{fileName} is a project file and cannot be imported this way. Use Create Timeline instead.",
         "title": "Project files skipped"

@@ -47,8 +47,6 @@
     "history": "История",
     "imagePreview": "Предпросмотр изображения",
     "images": "Картинки",
-    "inDirDocuments": "В _documents/",
-    "inDirTimelines": "В _timelines/",
     "autoDetectFolder": "Автоопределение папки",
     "items": "Элементы",
     "itemsSelected": "Выбрано: {count}",
@@ -100,8 +98,6 @@
     "success": "Успешно",
     "tags": "Теги",
     "text": "Текст",
-    "textDocument": "Текстовый документ",
-    "timeline": "Таймлайн",
     "title": "Заголовок",
     "toHome": "На главную",
     "toTimeline": "На таймлайн",
@@ -1436,7 +1432,6 @@
         "success": "Прокси успешно создано",
         "alreadyExists": "{count} файл(ов) уже имеют прокси и были пропущены."
       },
-      "root": "Корень",
       "skipOtio": {
         "description": "{fileName} является файлом проекта и не может быть импортирован таким образом. Используйте «Создать Таймлайн».",
         "title": "Пропущенные файлы проекта"

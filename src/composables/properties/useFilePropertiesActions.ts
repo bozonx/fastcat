@@ -281,21 +281,30 @@ export function useFilePropertiesActions(options: UseFilePropertiesActionsOption
       id: 'openAsPanelCut',
       label: options.t('videoEditor.fileManager.actions.openAsPanelCut'),
       icon: 'i-heroicons-window',
-      hidden: !options.canOpenAsPanel.value || options.isExternal?.value || !options.experimentalFeatures?.value,
+      hidden:
+        !options.canOpenAsPanel.value ||
+        options.isExternal?.value ||
+        !options.experimentalFeatures?.value,
       onClick: options.openAsPanelCut,
     },
     {
       id: 'openAsPanelSound',
       label: options.t('videoEditor.fileManager.actions.openAsPanelSound'),
       icon: 'i-heroicons-window',
-      hidden: !options.canOpenAsPanel.value || options.isExternal?.value || !options.experimentalFeatures?.value,
+      hidden:
+        !options.canOpenAsPanel.value ||
+        options.isExternal?.value ||
+        !options.experimentalFeatures?.value,
       onClick: options.openAsPanelSound,
     },
     {
       id: 'openAsProjectTab',
       label: options.t('videoEditor.fileManager.actions.openAsProjectTab'),
       icon: 'i-heroicons-squares-plus',
-      hidden: !options.canOpenAsProjectTab.value || options.isExternal?.value || !options.experimentalFeatures?.value,
+      hidden:
+        !options.canOpenAsProjectTab.value ||
+        options.isExternal?.value ||
+        !options.experimentalFeatures?.value,
       onClick: options.openAsProjectTab,
     },
     {

@@ -56,7 +56,7 @@ describe('MobileVirtualClipPresetDrawer', () => {
       props: { isOpen: true, type: 'text' },
       global: globalOptions,
     });
-    expect(wrapper.text()).toContain('fastcat.library.texts');
+    expect(wrapper.text()).toContain('fastcat.library.texts.default');
   });
 
   it('renders the shape drawer title', async () => {
@@ -64,7 +64,7 @@ describe('MobileVirtualClipPresetDrawer', () => {
       props: { isOpen: true, type: 'shape' },
       global: globalOptions,
     });
-    expect(wrapper.text()).toContain('fastcat.library.shapes');
+    expect(wrapper.text()).toContain('fastcat.library.shapes.square');
   });
 
   it('renders the hud drawer title', async () => {
@@ -72,7 +72,7 @@ describe('MobileVirtualClipPresetDrawer', () => {
       props: { isOpen: true, type: 'hud' },
       global: globalOptions,
     });
-    expect(wrapper.text()).toContain('fastcat.library.hud');
+    expect(wrapper.text()).toContain('fastcat.library.huds.media_frame');
   });
 
   it('adds a default text clip when a preset is selected', async () => {

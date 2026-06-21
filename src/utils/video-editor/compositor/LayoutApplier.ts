@@ -114,7 +114,9 @@ export class LayoutApplier {
       fitRotationDeg: sourceRotation,
       transform: {
         ...((clip.transformActive !== false ? clip.transform : undefined) ?? {}),
-        rotationDeg: ((clip.transformActive !== false ? clip.transform : undefined)?.rotationDeg ?? 0) + sourceRotation,
+        rotationDeg:
+          ((clip.transformActive !== false ? clip.transform : undefined)?.rotationDeg ?? 0) +
+          sourceRotation,
       },
     });
 

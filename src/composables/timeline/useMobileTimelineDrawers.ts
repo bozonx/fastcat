@@ -112,7 +112,7 @@ export function useMobileTimelineDrawers() {
         return;
       if (suppressDrawerSelectionClear.value) return;
 
-      const { trackId, itemIds, entity, transition, markerId, gap } = state;
+      const { trackId, itemIds, entity, transition: _transition, markerId, gap } = state;
 
       if (isLongPress.value) return;
 

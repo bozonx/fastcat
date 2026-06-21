@@ -50,10 +50,17 @@ export function buildSingleClipMainGroup(options: UseClipContextMenuOptions): Co
   }
 
   const mediaStore = useMediaStore();
-  const meta = clipItem.mediaSourcePath ? resolveMediaMetadata(mediaStore.mediaMetadata, clipItem.mediaSourcePath) : undefined;
-  const hasAudioTrack = clipItem.isImage ? false : (clipItem.clipType === 'media' && meta ? !!meta.audio : true);
+  const meta = clipItem.source?.path
+    ? resolveMediaMetadata(mediaStore.mediaMetadata, clipItem.source.path)
+    : undefined;
+  const hasAudioTrack = clipItem.isImage
+    ? false
+    : clipItem.clipType === 'media' && meta
+      ? !!meta.audio
+      : true;
 
-  const isMediaVideoClip = track.kind === 'video' && clipItem.clipType === 'media' && !clipItem.isImage;
+  const isMediaVideoClip =
+    track.kind === 'video' && clipItem.clipType === 'media' && !clipItem.isImage;
   const hasFreezeFrame = typeof clipItem.freezeFrameSourceUs === 'number';
 
   if (isMediaVideoClip) {
@@ -303,8 +310,6 @@ export function buildSingleItemActionGroup(options: UseClipContextMenuOptions): 
     kbds: options.getHotkeyKbds('general.cut'),
     onSelect: () => options.cutSelectedClips(),
   });
-
-
 
   // Delete
   actions.push({

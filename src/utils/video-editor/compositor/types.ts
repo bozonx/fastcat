@@ -66,9 +66,12 @@ export interface BaseCompositorClip {
   ctx: OffscreenCanvasRenderingContext2D | null;
   bitmap: ImageBitmap | null;
   opacity?: number;
+  opacityActive?: boolean;
   blendMode?: TimelineBlendMode;
+  blendModeActive?: boolean;
   effects?: VideoClipEffect[];
   transform?: ClipTransform;
+  transformActive?: boolean;
   sourceOrientation?: ClipSourceOrientation;
   effectFilters?: Map<string, Filter>;
   transitionIn?: ClipTransition;
@@ -84,6 +87,7 @@ export interface BaseCompositorClip {
   cropMask?: import('pixi.js').Graphics;
   cropMaskKey?: string;
   mask?: ClipMask;
+  maskActive?: boolean;
   maskState?: HudMediaState | null;
   backgroundColor?: string;
   text?: string;

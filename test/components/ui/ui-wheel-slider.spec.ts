@@ -152,20 +152,20 @@ describe('UiWheelSlider', () => {
     });
 
     const wrapper = component.find('div.relative');
-    
+
     // Create and append a dummy element to simulate a focused element inside the slider wrapper
     const dummyInput = document.createElement('input');
     wrapper.element.appendChild(dummyInput);
     dummyInput.focus();
-    
+
     expect(document.activeElement).toBe(dummyInput);
-    
+
     const blurSpy = vi.spyOn(dummyInput, 'blur');
-    
+
     await wrapper.trigger('pointerup', { pointerType: 'mouse' });
-    
+
     expect(blurSpy).toHaveBeenCalled();
-    
+
     // Clean up
     dummyInput.remove();
     component.unmount();

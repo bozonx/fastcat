@@ -47,10 +47,7 @@ export function createWorkspaceInitModule(deps: WorkspaceInitDeps): WorkspaceIni
     deps.workspaceHandle.value = handle;
     deps.settingsRepo.value = createWorkspaceSettingsRepository({ vfs: deps.getVfs() });
 
-    const folders = [
-      workspaceTopology.projectsDirName,
-      workspaceTopology.tempRootDirName,
-    ];
+    const folders = [workspaceTopology.projectsDirName, workspaceTopology.tempRootDirName];
     for (const folder of folders) {
       if (folder === workspaceTopology.projectsDirName) {
         deps.projectsHandle.value = await handle.getDirectoryHandle(folder, { create: true });

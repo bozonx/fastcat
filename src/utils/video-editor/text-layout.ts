@@ -1,5 +1,5 @@
 import type { TextClipStyle } from '~/timeline/types';
-import { clamp as sharedClamp, clampFinite as sharedClampFinite } from '~/utils/math';
+import { clamp as sharedClamp, clampFinite as _sharedClampFinite } from '~/utils/math';
 import { TRANSFORM_DESIGN_BASE } from '~/utils/video-editor/clip-layout';
 
 export interface NormalizedTextPadding {

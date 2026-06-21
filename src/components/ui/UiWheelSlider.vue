@@ -166,7 +166,11 @@ function onPointerDownCapture(event: PointerEvent) {
 
 function onPointerUp(event: PointerEvent) {
   if (event.pointerType === 'mouse') {
-    if (wrapperRef.value && document.activeElement && wrapperRef.value.contains(document.activeElement)) {
+    if (
+      wrapperRef.value &&
+      document.activeElement &&
+      wrapperRef.value.contains(document.activeElement)
+    ) {
       (document.activeElement as HTMLElement).blur();
     }
   }

@@ -144,8 +144,8 @@ export function useClipPropertiesActions(options: UseClipPropertiesActionsOption
     if (options.trackKind.value === 'audio') return true;
     if (clip.clipType === 'timeline') return true;
     if (clip.clipType === 'media') {
-      if (clip.mediaSourcePath) {
-        const meta = resolveMediaMetadata(mediaStore.mediaMetadata, clip.mediaSourcePath);
+      if (clip.source?.path) {
+        const meta = resolveMediaMetadata(mediaStore.mediaMetadata, clip.source.path);
         if (meta) {
           return !!meta.audio;
         }
@@ -168,7 +168,11 @@ export function useClipPropertiesActions(options: UseClipPropertiesActionsOption
   });
 
   const isMediaVideoClip = computed(() => {
-    return options.trackKind.value === 'video' && options.clip.value.clipType === 'media' && !options.clip.value.isImage;
+    return (
+      options.trackKind.value === 'video' &&
+      options.clip.value.clipType === 'media' &&
+      !options.clip.value.isImage
+    );
   });
 
   const hasFreezeFrame = computed(() => {
@@ -554,7 +558,10 @@ export function useClipPropertiesActions(options: UseClipPropertiesActionsOption
     }
 
     // Скрыть/показать вейвформу
-    if ((options.trackKind.value === 'video' || options.trackKind.value === 'audio') && hasAudio.value) {
+    if (
+      (options.trackKind.value === 'video' || options.trackKind.value === 'audio') &&
+      hasAudio.value
+    ) {
       list.push({
         id: 'toggleShowWaveform',
         label:

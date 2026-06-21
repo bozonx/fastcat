@@ -50,7 +50,9 @@ export class TimelineActiveClipProcessor {
       const effectiveOpacity = params.computeTransitionOpacity(clip, timeUs);
       if (clip.sprite) {
         clip.sprite.alpha = effectiveOpacity;
-        clip.sprite.blendMode = toPixiBlendMode(clip.blendModeActive !== false ? clip.blendMode : 'normal');
+        clip.sprite.blendMode = toPixiBlendMode(
+          clip.blendModeActive !== false ? clip.blendMode : 'normal',
+        );
       }
 
       if (
@@ -195,7 +197,11 @@ export class TimelineActiveClipProcessor {
 
       sampleRequests.push(params.createPrimaryVideoSampleRequest(clip, sampleTimeS));
 
-      if (clip.maskActive !== false && clip.maskState?.clipKind === 'video' && clip.maskState.sink) {
+      if (
+        clip.maskActive !== false &&
+        clip.maskState?.clipKind === 'video' &&
+        clip.maskState.sink
+      ) {
         const mockClip = {
           itemId: clip.itemId + '_mask',
           sink: clip.maskState.sink,

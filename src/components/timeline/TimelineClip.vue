@@ -29,7 +29,6 @@ import { useClipContextMenu } from '~/composables/timeline/useClipContextMenu';
 import { useHotkeyLabel } from '~/composables/useHotkeyLabel';
 import {
   getClipClass,
-  getOverlayGuideOffsetPx,
   isVideo,
   isAudio,
   clipHasAudio,

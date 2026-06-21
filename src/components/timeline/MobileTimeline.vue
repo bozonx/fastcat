@@ -119,7 +119,7 @@ const {
 
 const {
   selectedMarkerId,
-  selectedTransitionContext,
+  selectedTransitionContext: _selectedTransitionContext,
   selectedGap,
   selectedClipContext,
   selectedClips,

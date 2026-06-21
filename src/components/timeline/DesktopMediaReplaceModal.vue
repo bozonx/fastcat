@@ -95,7 +95,10 @@ function handleSelectFile(entry: FsEntry) {
         single-click-folders
         disable-marquee
       />
-      <div v-if="isReplaceModalFileSelected && selectedFileEntry" class="absolute bottom-4 right-4 z-10">
+      <div
+        v-if="isReplaceModalFileSelected && selectedFileEntry"
+        class="absolute bottom-4 right-4 z-10"
+      >
         <UButton
           icon="i-heroicons-check"
           color="primary"

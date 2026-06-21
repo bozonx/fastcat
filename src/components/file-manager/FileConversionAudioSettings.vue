@@ -132,7 +132,8 @@ const selectedSampleRate = computed({
 
 const showSampleRateReset = computed(() => {
   if (props.timelineSampleRate === null || props.timelineSampleRate === undefined) return false;
-  const current = audioSampleRate.value === 'original' ? props.originalSampleRate : audioSampleRate.value;
+  const current =
+    audioSampleRate.value === 'original' ? props.originalSampleRate : audioSampleRate.value;
   if (current === null || current === undefined) {
     return audioSampleRate.value !== props.timelineSampleRate;
   }
