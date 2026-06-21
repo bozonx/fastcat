@@ -64,12 +64,21 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
     var val: f32;
     var aa: f32;
     if (uni.p0 > 2.5) {
-        // Line modes: a horizontal sweep line instead of a rotating clock hand.
-        // p0 == 3 -> top-to-bottom ("clockwise"), p0 == 4 -> bottom-to-top.
-        var y = uv.y;
-        if (uni.p0 > 3.5) { y = 1.0 - y; }
-        val = y;
-        aa = 1.5 / dims().y;
+        // Line modes: a full diameter line pinned at the center that rotates
+        // around it. Folding the angle to a half-turn makes the two opposite
+        // ends behave as a single straight line sweeping 180 degrees.
+        // p0 == 3 -> clockwise, p0 == 4 -> counterclockwise.
+        let centered = uv - vec2<f32>(0.5, 0.5);
+        var angle = atan2(centered.x, -centered.y);
+        if (angle < 0.0) { angle = angle + PI * 2.0; }
+        if (uni.p0 > 3.5) {
+            angle = PI * 2.0 - angle;
+            if (angle >= PI * 2.0) { angle = angle - PI * 2.0; }
+        }
+        angle = angle - floor(angle / PI) * PI;
+        let R = length(centered);
+        aa = clamp((1.5 / dims().y) / (PI * max(R, 0.0001)), 0.0001, 0.5);
+        val = angle / PI;
     } else {
         // Clock-hand modes: the reveal boundary is a single radial line that
         // sweeps around the center (two mirrored lines in symmetric mode).
