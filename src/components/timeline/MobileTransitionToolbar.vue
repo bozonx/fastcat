@@ -1,9 +1,8 @@
 <script setup lang="ts">
 import { computed, reactive } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
-import { useSelectionStore } from '~/stores/selection.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
-import type { TimelineClipItem, TimelineTrack } from '~/timeline/types';
+import { useSelectedTimelineClip } from '~/composables/timeline/useSelectedTimelineClip';
 import { getAllTransitionManifests } from '~/transitions';
 import type { TransitionCurve } from '~/transitions';
 import { useClipTransitions } from '~/composables/properties/useClipTransitions';
@@ -16,31 +15,13 @@ const emit = defineEmits<{
 
 const { t } = useI18n();
 const timelineStore = useTimelineStore();
-const selectionStore = useSelectionStore();
 const workspaceStore = useWorkspaceStore();
 
 /** Pixels of horizontal swipe required to add one second of transition. */
 const PX_PER_SECOND = 100;
 const MIN_DURATION_SEC = 0.1;
 
-const currentClipAndTrack = computed(() => {
-  const entity = selectionStore.selectedEntity;
-  if (entity?.source !== 'timeline' || entity.kind !== 'clip') return null;
-
-  const track = timelineStore.timelineDoc?.tracks?.find((item) => item.id === entity.trackId) as
-    | TimelineTrack
-    | undefined;
-  if (!track) return null;
-
-  const item = track.items.find((clip) => clip.id === entity.itemId) as
-    | TimelineClipItem
-    | undefined;
-  if (!item || item.kind !== 'clip') return null;
-
-  return { track, item };
-});
-
-const clip = computed(() => currentClipAndTrack.value?.item ?? null);
+const { clip } = useSelectedTimelineClip();
 
 const clipDurationUs = computed(() =>
   Math.max(0, Math.round(Number(clip.value?.timelineRange?.durationUs ?? 0))),

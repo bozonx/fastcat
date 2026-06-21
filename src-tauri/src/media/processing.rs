@@ -441,23 +441,7 @@ fn build_proxy_ffmpeg_args(
     let (width, height) = scaled_even_size(display_w, display_h, options.max_pixels);
     let mut args = Vec::new();
 
-    if hw_encode == HwAccelMode::Vaapi {
-        push_vaapi_init_device_args(&mut args, vaapi_dev);
-    }
-
-    args.extend([
-        "-nostdin".to_string(),
-        "-y".to_string(),
-        "-loglevel".to_string(),
-        "warning".to_string(),
-        // `-loglevel warning` alone suppresses the periodic `frame=… time=…` stats
-        // lines that `run_ffmpeg_task` parses for progress; `-stats` re-enables them
-        // so the background-task progress bar advances (and the stall watchdog keeps
-        // seeing activity during long encodes).
-        "-stats".to_string(),
-    ]);
-
-    push_hw_accel_decode_args(&mut args, hw_decode, vaapi_dev);
+    push_transcode_preamble(&mut args, hw_encode, hw_decode, vaapi_dev, true);
     args.extend(["-i".to_string(), source_path.display().to_string()]);
     args.extend([
         "-map".to_string(),
@@ -519,21 +503,13 @@ fn build_convert_ffmpeg_args(
 ) -> Result<Vec<String>> {
     let mut args = Vec::new();
 
-    if hw_encode == HwAccelMode::Vaapi && options.kind == "video" {
-        push_vaapi_init_device_args(&mut args, vaapi_dev);
-    }
-
-    args.extend([
-        "-nostdin".to_string(),
-        "-y".to_string(),
-        "-loglevel".to_string(),
-        "warning".to_string(),
-        "-stats".to_string(),
-    ]);
-
-    if options.kind == "video" {
-        push_hw_accel_decode_args(&mut args, hw_decode, vaapi_dev);
-    }
+    push_transcode_preamble(
+        &mut args,
+        hw_encode,
+        hw_decode,
+        vaapi_dev,
+        options.kind == "video",
+    );
 
     args.extend(["-i".to_string(), source_path.display().to_string()]);
 

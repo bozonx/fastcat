@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import { useWindowSize } from '@vueuse/core';
 import { useTimelineStore } from '~/stores/timeline.store';
 import MarkerProperties from '~/components/properties/MarkerProperties.vue';
 import MobilePropertiesDrawer from './MobilePropertiesDrawer.vue';
 import MobileDrawerToolbarButton from './MobileDrawerToolbarButton.vue';
+import { useDrawerToolbarOrientation } from '~/composables/timeline/useDrawerToolbarOrientation';
 import { TRACK_COLOR_PRESETS } from '~/utils/constants';
 
 interface Props {
@@ -20,8 +20,7 @@ const emit = defineEmits<{
   (e: 'close'): void;
 }>();
 
-const { width, height } = useWindowSize();
-const toolbarOrientation = computed(() => (width.value > height.value ? 'vertical' : 'horizontal'));
+const { toolbarOrientation } = useDrawerToolbarOrientation();
 
 const timelineStore = useTimelineStore();
 

@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { computed } from 'vue';
-import { useWindowSize } from '@vueuse/core';
 import MobileTimelineDrawer from './MobileTimelineDrawer.vue';
 import MobileDrawerToolbar from './MobileDrawerToolbar.vue';
+import { useDrawerToolbarOrientation } from '~/composables/timeline/useDrawerToolbarOrientation';
+import { useCloseModel } from '~/composables/ui/useCloseModel';
 
 interface Props {
   isOpen: boolean;
@@ -10,9 +10,8 @@ interface Props {
 
 const props = defineProps<Props>();
 
-const { width, height } = useWindowSize();
 /** Landscape uses a side drawer, so the toolbar becomes a vertical rail. */
-const toolbarOrientation = computed(() => (width.value > height.value ? 'vertical' : 'horizontal'));
+const { toolbarOrientation } = useDrawerToolbarOrientation();
 
 const activeSnapPoint = defineModel<string | number | null>('activeSnapPoint', { default: null });
 
@@ -20,12 +19,10 @@ const emit = defineEmits<{
   (e: 'close'): void;
 }>();
 
-const isOpenLocal = computed({
-  get: () => props.isOpen,
-  set: (val) => {
-    if (!val) emit('close');
-  },
-});
+const isOpenLocal = useCloseModel(
+  () => props.isOpen,
+  () => emit('close'),
+);
 </script>
 
 <template>

@@ -1,8 +1,6 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
-import { useTimelineStore } from '~/stores/timeline.store';
-import { useSelectionStore } from '~/stores/selection.store';
-import type { TimelineClipItem, TimelineTrack } from '~/timeline/types';
+import { ref } from 'vue';
+import { useSelectedTimelineClip } from '~/composables/timeline/useSelectedTimelineClip';
 
 defineProps<{
   trimPreview?:
@@ -34,27 +32,10 @@ const emit = defineEmits<{
 }>();
 
 const { t } = useI18n();
-const timelineStore = useTimelineStore();
-const selectionStore = useSelectionStore();
 
 const activeEdge = ref<'start' | 'end' | null>(null);
 
-const currentClipAndTrack = computed(() => {
-  const entity = selectionStore.selectedEntity;
-  if (entity?.source !== 'timeline' || entity.kind !== 'clip') return null;
-
-  const track = timelineStore.timelineDoc?.tracks?.find((item) => item.id === entity.trackId) as
-    | TimelineTrack
-    | undefined;
-  if (!track) return null;
-
-  const item = track.items.find((clip) => clip.id === entity.itemId) as
-    | TimelineClipItem
-    | undefined;
-  if (!item || item.kind !== 'clip') return null;
-
-  return { track, item };
-});
+const { clipAndTrack: currentClipAndTrack } = useSelectedTimelineClip();
 
 function getTouchPoint(event: TouchEvent): { clientX: number; clientY: number } | null {
   const touch = event.touches[0] ?? event.changedTouches[0];

@@ -30,6 +30,7 @@ import type { SelectedEntity } from '~/stores/selection.store';
 import { useFileConversionStore } from '~/stores/file-conversion.store';
 import { useFileConversionStoreActions } from '~/composables/file-conversion/useFileConversionStoreActions';
 import { usePropertiesPanelPendingActions } from '~/composables/properties/usePropertiesPanelPendingActions';
+import { resolveSelectedClip } from '~/composables/timeline/useSelectedTimelineClip';
 import FileDeleteConfirmModal from '~/components/file-manager/modals/FileDeleteConfirmModal.vue';
 
 const props = defineProps<{
@@ -73,12 +74,12 @@ function clearAllSelection() {
 }
 
 const selectedClip = computed<TimelineClipItem | null>(() => {
-  const entity = props.entity !== undefined ? props.entity : selectionStore.selectedEntity;
   if (selectedClips.value) return null;
-  if (entity?.source !== 'timeline' || entity.kind !== 'clip') return null;
-  const track = timelineStore.timelineDoc?.tracks.find((t) => t.id === entity.trackId);
-  const item = track?.items.find((it) => it.id === entity.itemId);
-  return item && item.kind === 'clip' ? (item as TimelineClipItem) : null;
+  const entity = props.entity !== undefined ? props.entity : selectionStore.selectedEntity;
+  return (
+    resolveSelectedClip(entity, timelineStore.timelineDoc?.tracks as TimelineTrack[] | undefined)
+      ?.item ?? null
+  );
 });
 
 const selectedTransition = computed(() => {

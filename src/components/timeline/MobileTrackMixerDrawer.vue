@@ -10,6 +10,7 @@ import SelectEffectModal from '~/components/effects/SelectEffectModal.vue';
 import TrackAudioEffectsModal from '~/components/audio/TrackAudioEffectsModal.vue';
 import UiRenameModal from '~/components/ui/UiRenameModal.vue';
 import { getAudioEffectManifest } from '~/effects';
+import { useCloseModel } from '~/composables/ui/useCloseModel';
 
 const props = defineProps<{
   isOpen: boolean;
@@ -24,12 +25,10 @@ const { t } = useI18n();
 const timelineStore = useTimelineStore();
 const mediaStore = useMediaStore();
 
-const isOpenLocal = computed({
-  get: () => props.isOpen,
-  set: (val) => {
-    if (!val) emit('close');
-  },
-});
+const isOpenLocal = useCloseModel(
+  () => props.isOpen,
+  () => emit('close'),
+);
 
 const tracks = computed(() => (timelineStore.timelineDoc?.tracks as TimelineTrack[]) ?? []);
 

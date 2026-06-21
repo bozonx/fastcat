@@ -206,28 +206,24 @@ pub fn build_text_layer(sl: &SceneLayer, scene_size: (u32, u32)) -> TextLayer {
     );
     let background_radius = number(&style, "backgroundRadius", 0.0).max(0.0) * render_scale;
 
+    // A shadow's blur/spread/offset values are authored in the 1920x1080 design
+    // space and only contribute when the shadow is enabled; this folds the
+    // "enabled ? value * render_scale : 0" pattern shared by every shadow field.
+    let scaled_when = |enabled: bool, key: &str, clamp_non_negative: bool| -> f32 {
+        if !enabled {
+            return 0.0;
+        }
+        let raw = number(&style, key, 0.0);
+        let raw = if clamp_non_negative { raw.max(0.0) } else { raw };
+        (raw * render_scale) as f32
+    };
+
     // Background Shadow
     let bg_shadow_enabled = bool_value(&style, "backgroundShadowEnabled", false);
-    let bg_shadow_blur = if bg_shadow_enabled {
-        (number(&style, "backgroundShadowBlur", 0.0).max(0.0) * render_scale) as f32
-    } else {
-        0.0
-    };
-    let bg_shadow_spread = if bg_shadow_enabled {
-        (number(&style, "backgroundShadowSpread", 0.0).max(0.0) * render_scale) as f32
-    } else {
-        0.0
-    };
-    let bg_shadow_offset_x = if bg_shadow_enabled {
-        (number(&style, "backgroundShadowOffsetX", 0.0) * render_scale) as f32
-    } else {
-        0.0
-    };
-    let bg_shadow_offset_y = if bg_shadow_enabled {
-        (number(&style, "backgroundShadowOffsetY", 0.0) * render_scale) as f32
-    } else {
-        0.0
-    };
+    let bg_shadow_blur = scaled_when(bg_shadow_enabled, "backgroundShadowBlur", true);
+    let bg_shadow_spread = scaled_when(bg_shadow_enabled, "backgroundShadowSpread", true);
+    let bg_shadow_offset_x = scaled_when(bg_shadow_enabled, "backgroundShadowOffsetX", false);
+    let bg_shadow_offset_y = scaled_when(bg_shadow_enabled, "backgroundShadowOffsetY", false);
     let bg_shadow_color = parse_color(
         string_value(&style, "backgroundShadowColor", "#000000").as_str(),
         number(&style, "backgroundShadowAlpha", 1.0).clamp(0.0, 1.0),
@@ -235,26 +231,10 @@ pub fn build_text_layer(sl: &SceneLayer, scene_size: (u32, u32)) -> TextLayer {
 
     // Text Shadow
     let text_shadow_enabled = bool_value(&style, "textShadowEnabled", false);
-    let text_shadow_blur = if text_shadow_enabled {
-        (number(&style, "textShadowBlur", 0.0).max(0.0) * render_scale) as f32
-    } else {
-        0.0
-    };
-    let text_shadow_spread = if text_shadow_enabled {
-        (number(&style, "textShadowSpread", 0.0).max(0.0) * render_scale) as f32
-    } else {
-        0.0
-    };
-    let text_shadow_offset_x = if text_shadow_enabled {
-        (number(&style, "textShadowOffsetX", 0.0) * render_scale) as f32
-    } else {
-        0.0
-    };
-    let text_shadow_offset_y = if text_shadow_enabled {
-        (number(&style, "textShadowOffsetY", 0.0) * render_scale) as f32
-    } else {
-        0.0
-    };
+    let text_shadow_blur = scaled_when(text_shadow_enabled, "textShadowBlur", true);
+    let text_shadow_spread = scaled_when(text_shadow_enabled, "textShadowSpread", true);
+    let text_shadow_offset_x = scaled_when(text_shadow_enabled, "textShadowOffsetX", false);
+    let text_shadow_offset_y = scaled_when(text_shadow_enabled, "textShadowOffsetY", false);
     let text_shadow_color = parse_color(
         string_value(&style, "textShadowColor", "#000000").as_str(),
         number(&style, "textShadowAlpha", 1.0).clamp(0.0, 1.0),

@@ -27,33 +27,29 @@ pub fn build_compositor_scene(
 
     let mut active_indices = HashSet::new();
     for i in 0..scene.len() {
-        if scene[i].covers(t) {
-            active_indices.insert(i);
+        if !scene[i].covers(t) {
+            continue;
+        }
+        active_indices.insert(i);
 
-            if let Some(t_in) = &scene[i].transition_in {
-                let local_t = t - scene[i].timeline_start_sec;
-                if local_t < t_in.duration_sec && local_t >= 0.0 {
-                    if let Some(from_id) = &t_in.from_layer_id {
-                        if let Some(from_idx) =
-                            (0..scene.len()).find(|&idx| &scene[idx].id == from_id)
-                        {
-                            active_indices.insert(from_idx);
-                        }
-                    }
-                }
+        let local_t = t - scene[i].timeline_start_sec;
+        let in_active = scene[i]
+            .transition_in
+            .as_ref()
+            .map(|tr| (local_t >= 0.0 && local_t < tr.duration_sec, tr));
+        let duration = scene[i].timeline_end_sec - scene[i].timeline_start_sec;
+        let out_active = scene[i].transition_out.as_ref().map(|tr| {
+            let out_start = (duration - tr.duration_sec).max(0.0);
+            (local_t >= out_start && local_t < duration, tr)
+        });
+
+        for (active, transition) in [in_active, out_active].into_iter().flatten() {
+            if !active {
+                continue;
             }
-            if let Some(t_out) = &scene[i].transition_out {
-                let local_t = t - scene[i].timeline_start_sec;
-                let duration = scene[i].timeline_end_sec - scene[i].timeline_start_sec;
-                let out_start = (duration - t_out.duration_sec).max(0.0);
-                if local_t >= out_start && local_t < duration {
-                    if let Some(from_id) = &t_out.from_layer_id {
-                        if let Some(from_idx) =
-                            (0..scene.len()).find(|&idx| &scene[idx].id == from_id)
-                        {
-                            active_indices.insert(from_idx);
-                        }
-                    }
+            if let Some(from_id) = &transition.from_layer_id {
+                if let Some(from_idx) = (0..scene.len()).find(|&idx| &scene[idx].id == from_id) {
+                    active_indices.insert(from_idx);
                 }
             }
         }

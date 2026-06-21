@@ -1,7 +1,9 @@
 <script setup lang="ts">
-import { computed, type Ref } from 'vue';
-import type { TimelineClipItem, TimelineTrack } from '~/timeline/types';
+import type { Ref } from 'vue';
+import type { TimelineClipItem } from '~/timeline/types';
 import { useClipPropertiesActions } from '~/composables/properties/useClipPropertiesActions';
+import { useSelectedTimelineClip } from '~/composables/timeline/useSelectedTimelineClip';
+import { useCloseModel } from '~/composables/ui/useCloseModel';
 import { useFileManager } from '~/composables/file-manager/useFileManager';
 import { useFileManagerStore } from '~/stores/file-manager.store';
 import { useFocusStore } from '~/stores/focus.store';
@@ -32,34 +34,12 @@ const projectStore = useProjectStore();
 const fileManager = useFileManager();
 const { setActiveTab } = useProjectTabsStore();
 
-const isOpenLocal = computed({
-  get: () => props.isOpen,
-  set: (value) => {
-    if (!value) emit('close');
-  },
-});
+const isOpenLocal = useCloseModel(
+  () => props.isOpen,
+  () => emit('close'),
+);
 
-const currentClipAndTrack = computed(() => {
-  const entity = selectionStore.selectedEntity;
-  if (entity?.source !== 'timeline' || entity.kind !== 'clip') return null;
-
-  const track = timelineStore.timelineDoc?.tracks?.find((item) => item.id === entity.trackId) as
-    | TimelineTrack
-    | undefined;
-  if (!track) return null;
-
-  const item = track.items.find((clip) => clip.id === entity.itemId) as
-    | TimelineClipItem
-    | undefined;
-  if (!item || item.kind !== 'clip') return null;
-
-  return { item, track };
-});
-
-const clip = computed(() => currentClipAndTrack.value?.item ?? null);
-const clipTrack = computed(() => currentClipAndTrack.value?.track ?? null);
-const clipTrackKind = computed(() => clipTrack.value?.kind ?? 'video');
-const isLocked = computed(() => Boolean(clip.value?.locked || clipTrack.value?.locked));
+const { clip, trackKind: clipTrackKind, isLocked } = useSelectedTimelineClip();
 
 const { handleDeleteClip } = useClipPropertiesActions({
   // `requestDelete` guards on `clip.value` before invoking the action, so it is

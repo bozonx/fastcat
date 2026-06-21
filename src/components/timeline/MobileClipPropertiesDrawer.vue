@@ -1,15 +1,17 @@
 <script setup lang="ts">
 import { computed, type Ref } from 'vue';
-import { useWindowSize } from '@vueuse/core';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useSelectionStore } from '~/stores/selection.store';
 import { useAppClipboard } from '~/composables/useAppClipboard';
-import type { TimelineClipItem, TimelineTrack } from '~/timeline/types';
+import type { TimelineClipItem } from '~/timeline/types';
 import ClipProperties from '~/components/properties/ClipProperties.vue';
 import MobileTimelineDrawer from './MobileTimelineDrawer.vue';
 import MobileDrawerToolbar from './MobileDrawerToolbar.vue';
 import MobileDrawerToolbarButton from './MobileDrawerToolbarButton.vue';
 import { useClipPropertiesActions } from '~/composables/properties/useClipPropertiesActions';
+import { useSelectedTimelineClip } from '~/composables/timeline/useSelectedTimelineClip';
+import { useDrawerToolbarOrientation } from '~/composables/timeline/useDrawerToolbarOrientation';
+import { useCloseModel } from '~/composables/ui/useCloseModel';
 import { useUiStore } from '~/stores/ui.store';
 import { useFileManagerStore } from '~/stores/file-manager.store';
 import { useFocusStore } from '~/stores/focus.store';
@@ -27,9 +29,8 @@ const emit = defineEmits<{
   (e: 'close' | 'open-delete-drawer' | 'open-trim-drawer' | 'open-transitions-drawer'): void;
 }>();
 
-const { width, height } = useWindowSize();
 /** Landscape renders the drawer as a side panel, so the toolbar is a vertical rail. */
-const toolbarOrientation = computed(() => (width.value > height.value ? 'vertical' : 'horizontal'));
+const { toolbarOrientation } = useDrawerToolbarOrientation();
 
 /** Toolbar host: a top row in portrait, a full-height rail in landscape. */
 const toolbarWrapperClass = computed(() =>
@@ -48,29 +49,12 @@ const fileManager = useFileManager();
 const { setActiveTab } = useProjectTabsStore();
 const projectStore = useProjectStore();
 
-const isOpenLocal = computed({
-  get: () => props.isOpen,
-  set: (val) => {
-    if (!val) emit('close');
-  },
-});
+const isOpenLocal = useCloseModel(
+  () => props.isOpen,
+  () => emit('close'),
+);
 
-const currentClipAndTrack = computed(() => {
-  const entity = selectionStore.selectedEntity;
-  if (entity?.source !== 'timeline' || entity.kind !== 'clip') return null;
-  const track = timelineStore.timelineDoc?.tracks?.find((tr) => tr.id === entity.trackId) as
-    | TimelineTrack
-    | undefined;
-  if (!track) return null;
-  const item = track.items.find((i) => i.id === entity.itemId) as TimelineClipItem | undefined;
-  if (!item || item.kind !== 'clip') return null;
-  return { track, item };
-});
-
-const clip = computed(() => currentClipAndTrack.value?.item ?? null);
-const clipTrack = computed(() => currentClipAndTrack.value?.track ?? null);
-const clipTrackKind = computed(() => clipTrack.value?.kind ?? 'video');
-const isLocked = computed(() => Boolean(clip.value?.locked || clipTrack.value?.locked));
+const { clip, track: clipTrack, trackKind: clipTrackKind, isLocked } = useSelectedTimelineClip();
 
 const { handleToggleDisabled, handleToggleLocked, handleToggleMuted } = useClipPropertiesActions({
   // These actions are only invoked from toolbar buttons that are visible while a

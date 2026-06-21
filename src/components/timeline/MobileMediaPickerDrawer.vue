@@ -19,6 +19,7 @@ import { getMediaTypeFromFilename, validateMediaTrackCompatibility } from '~/uti
 import { secondsToUs } from '~/utils/time';
 import MobileAssetCategoryList from '~/components/file-manager/MobileAssetCategoryList.vue';
 import UiButtonGroup from '~/components/ui/UiButtonGroup.vue';
+import { useCloseModel } from '~/composables/ui/useCloseModel';
 
 const log = createDevLogger('MobileMediaPickerDrawer');
 
@@ -49,12 +50,10 @@ const { categories, loadAll, toggleCollapse, isCollapsed } = useMobileAssetCateg
   fileManagerStore: assetStore,
 });
 
-const isOpenLocal = computed({
-  get: () => props.isOpen,
-  set: (value) => {
-    if (!value) emit('close');
-  },
-});
+const isOpenLocal = useCloseModel(
+  () => props.isOpen,
+  () => emit('close'),
+);
 
 const selectedFiles = ref<FsEntry[]>([]);
 const isAdding = ref(false);

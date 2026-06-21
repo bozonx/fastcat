@@ -38,6 +38,21 @@ impl_apply_hw_settings!(NativeProxyOptions);
 impl_apply_hw_settings!(NativeConvertOptions);
 impl_apply_hw_settings!(NativeExportOptions);
 
+/// Runs a blocking, fallible operation on the blocking thread pool and flattens the
+/// two error layers (join error + operation error) into a single `String` so Tauri
+/// commands stay thin. Shared by every blocking media command to keep the
+/// `spawn_blocking(...).await.map_err(...)?.map_err(...)` boilerplate in one place.
+async fn run_blocking<T, F>(f: F) -> Result<T, String>
+where
+    F: FnOnce() -> anyhow::Result<T> + Send + 'static,
+    T: Send + 'static,
+{
+    tokio::task::spawn_blocking(f)
+        .await
+        .map_err(|e| e.to_string())?
+        .map_err(|e| format!("{e:?}"))
+}
+
 /// Thin service layer that wraps `NativeMediaTasks` so Tauri commands stay
 /// adapter-only and the business logic is unit-testable without the IPC layer.
 #[derive(Default, Clone)]
@@ -180,7 +195,7 @@ pub async fn native_media_generate_proxy(
     let hw = hw_settings.read().clone();
     options.apply_hw_settings(&hw);
 
-    tokio::task::spawn_blocking(move || {
+    run_blocking(move || {
         service.generate_proxy(
             &task_id,
             &source_path,
@@ -198,8 +213,6 @@ pub async fn native_media_generate_proxy(
         )
     })
     .await
-    .map_err(|e| e.to_string())?
-    .map_err(|e| format!("{e:?}"))
 }
 
 #[tauri::command]
@@ -222,7 +235,7 @@ pub async fn native_media_convert(
     let app_clone = app.clone();
     let task_id_clone = task_id.clone();
 
-    tokio::task::spawn_blocking(move || {
+    run_blocking(move || {
         service.convert_media(
             &task_id,
             &source_path,
@@ -249,8 +262,6 @@ pub async fn native_media_convert(
         )
     })
     .await
-    .map_err(|e| e.to_string())?
-    .map_err(|e| format!("{e:?}"))
 }
 
 #[tauri::command]
@@ -266,7 +277,7 @@ pub async fn native_media_extract_audio(
     let target_path = PathBuf::from(target_path);
     let hw = hw_settings.read().clone();
 
-    tokio::task::spawn_blocking(move || {
+    run_blocking(move || {
         service.extract_audio(
             &task_id,
             &source_path,
@@ -276,8 +287,6 @@ pub async fn native_media_extract_audio(
         )
     })
     .await
-    .map_err(|e| e.to_string())?
-    .map_err(|e| format!("{e:?}"))
 }
 
 #[tauri::command]
@@ -329,7 +338,7 @@ pub async fn native_timeline_export(
     let hw = hw_settings.read().clone();
     options.apply_hw_settings(&hw);
 
-    tokio::task::spawn_blocking(move || {
+    run_blocking(move || {
         service.export_timeline(
             &task_id,
             scene,
@@ -356,8 +365,6 @@ pub async fn native_timeline_export(
         )
     })
     .await
-    .map_err(|e| e.to_string())?
-    .map_err(|e| format!("{e:?}"))
 }
 
 #[tauri::command]
@@ -372,7 +379,7 @@ pub async fn native_timeline_render_frame_to_file(
 ) -> Result<(), String> {
     let target_path = PathBuf::from(target_path);
     let hw = hw_settings.read().clone();
-    tokio::task::spawn_blocking(move || {
+    run_blocking(move || {
         render_timeline_frame_to_file(
             TimelineFrameRequest {
                 scene,
@@ -387,8 +394,6 @@ pub async fn native_timeline_render_frame_to_file(
         )
     })
     .await
-    .map_err(|e| e.to_string())?
-    .map_err(|e| format!("{e:?}"))
 }
 
 #[tauri::command]
@@ -401,7 +406,7 @@ pub async fn native_timeline_render_frame_webp(
     hw_settings: State<'_, parking_lot::RwLock<crate::FfmpegHardwareSettings>>,
 ) -> Result<Vec<u8>, String> {
     let hw = hw_settings.read().clone();
-    tokio::task::spawn_blocking(move || {
+    run_blocking(move || {
         render_timeline_frame_to_webp(TimelineFrameRequest {
             scene,
             time_sec,
@@ -413,8 +418,6 @@ pub async fn native_timeline_render_frame_webp(
         })
     })
     .await
-    .map_err(|e| e.to_string())?
-    .map_err(|e| format!("{e:?}"))
 }
 
 #[tauri::command]
@@ -429,7 +432,7 @@ pub async fn native_video_frame_webp(
 ) -> Result<Vec<u8>, String> {
     let source_path = PathBuf::from(source_path);
     let hw = hw_settings.read().clone();
-    tokio::task::spawn_blocking(move || {
+    run_blocking(move || {
         extract_video_frame_webp(crate::media::processing::ExtractWebpParams {
             source_path: &source_path,
             time_sec,
@@ -441,8 +444,6 @@ pub async fn native_video_frame_webp(
         })
     })
     .await
-    .map_err(|e| e.to_string())?
-    .map_err(|e| format!("{e:?}"))
 }
 
 #[tauri::command]
@@ -466,7 +467,7 @@ pub async fn native_video_frame_webps(
     }
     let source_path = PathBuf::from(source_path);
     let hw = hw_settings.read().clone();
-    let frames = tokio::task::spawn_blocking(move || {
+    let frames = run_blocking(move || {
         extract_video_frame_webps(
             &source_path,
             &times_sec,
@@ -477,9 +478,7 @@ pub async fn native_video_frame_webps(
             &hw,
         )
     })
-    .await
-    .map_err(|e| e.to_string())?
-    .map_err(|e| format!("{e:?}"))?;
+    .await?;
 
     Ok(pack_webp_frames(frames))
 }
@@ -930,13 +929,11 @@ pub async fn native_media_extract_peaks(
     _precision: usize,
 ) -> Result<Vec<u8>, String> {
     let path = PathBuf::from(path);
-    tokio::task::spawn_blocking(move || {
+    run_blocking(move || {
         crate::audio::peaks::extract_peaks(&path, max_length)
             .map(|peaks| crate::audio::peaks::pack_peaks(&peaks))
     })
     .await
-    .map_err(|e| e.to_string())?
-    .map_err(|e| format!("{e:?}"))
 }
 
 #[cfg(test)]

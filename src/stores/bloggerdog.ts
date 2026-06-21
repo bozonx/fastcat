@@ -20,6 +20,7 @@ import {
   getRemoteThumbnailUrl,
   renameRemoteCollection,
   renameRemoteItem,
+  updateRemoteItem,
   type RemoteVfsClientConfig,
 } from '~/utils/remote-vfs';
 const log = createDevLogger('bloggerdog');
@@ -52,7 +53,8 @@ export const useBloggerDogStore = defineStore('bloggerDog', () => {
 
       if (!resolved) return null;
       return { baseUrl: resolved.baseUrl, bearerToken: resolved.bearerToken };
-    } catch {
+    } catch (e) {
+      console.error("CONFIG ERROR DETAILS:", e);
       return null;
     }
   });

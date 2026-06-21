@@ -1,9 +1,15 @@
 use std::collections::HashMap;
+use std::path::Path;
+
+use anyhow::{anyhow, Context, Result};
+use symphonia::core::codecs::{Decoder, DecoderOptions};
+use symphonia::core::formats::{FormatReader, Track};
+use symphonia::core::meta::MetadataOptions;
+use symphonia::core::probe::Hint;
+use symphonia::core::units::TimeBase;
 
 use crate::audio::plugins::AudioEffectSpec;
 use crate::monitor::scene::{SceneAudioLayer, SceneAudioTrack};
-
-use symphonia::core::formats::Track;
 
 pub(crate) const CHUNK_DURATION_SEC: f64 = 0.05;
 /// Minimum fill before the real-time output callback starts consuming after a
@@ -47,6 +53,87 @@ pub(crate) fn find_audio_track(tracks: &[Track]) -> Option<&Track> {
                 || params.channels.is_some()
                 || params.sample_format.is_some())
     })
+}
+
+/// Metadata describing the audio track found by `open_symphonia_audio` together with
+/// the opened format reader, so callers can build a decoder or decode packets.
+pub(crate) struct SymphoniaAudioInfo {
+    pub(crate) format: Box<dyn FormatReader>,
+    pub(crate) track_id: u32,
+    pub(crate) channels: usize,
+    pub(crate) sample_rate: u32,
+    pub(crate) time_base: TimeBase,
+}
+
+impl SymphoniaAudioInfo {
+    /// Returns the probed audio track from the still-open format reader.
+    pub(crate) fn track(&self) -> Option<&Track> {
+        self.format.tracks().iter().find(|t| t.id == self.track_id)
+    }
+}
+
+/// Opens a media file and probes its format using Symphonia. The `context` string is
+/// included in error messages so failures are easy to attribute.
+pub(crate) fn open_symphonia_format(
+    path: impl AsRef<Path>,
+    context: &str,
+) -> Result<Box<dyn FormatReader>> {
+    use symphonia::core::formats::FormatOptions;
+
+    let path = path.as_ref();
+    let path_str = path.to_string_lossy();
+    let file = std::fs::File::open(path)
+        .with_context(|| format!("failed to open audio file for {context}: {path_str}"))?;
+    let mss = symphonia::core::io::MediaSourceStream::new(Box::new(file), Default::default());
+
+    let mut hint = Hint::new();
+    if let Some(ext) = path.extension().and_then(|e| e.to_str()) {
+        hint.with_extension(ext);
+    }
+
+    let probed = symphonia::default::get_probe()
+        .format(&hint, mss, &FormatOptions::default(), &MetadataOptions::default())
+        .with_context(|| format!("failed to probe media format for {context}: {path_str}"))?;
+
+    Ok(probed.format)
+}
+
+/// Opens a file, probes it, and locates the active audio track. The returned
+/// `SymphoniaAudioInfo` holds the open format reader so callers can build a decoder
+/// and read packets without re-opening the file.
+///
+/// `fallback_rate` is used when the container does not declare a sample rate; the
+/// streaming and ranged decode paths pass the target output rate so the resampler
+/// ratio is 1.0 and the decoded output is not silently resampled from a wrong guess.
+pub(crate) fn open_symphonia_audio(
+    path: impl AsRef<Path>,
+    context: &str,
+    fallback_rate: u32,
+) -> Result<SymphoniaAudioInfo> {
+    let format = open_symphonia_format(path, context)?;
+    let track =
+        find_audio_track(format.tracks()).ok_or_else(|| anyhow!("no active audio track found"))?;
+    let track_id = track.id;
+    let sample_rate = track.codec_params.sample_rate.unwrap_or(fallback_rate);
+    let channels = track.codec_params.channels.map(|c| c.count()).unwrap_or(1).max(1);
+    let time_base = track
+        .codec_params
+        .time_base
+        .unwrap_or(TimeBase::new(1, sample_rate.max(1)));
+    Ok(SymphoniaAudioInfo {
+        format,
+        track_id,
+        channels,
+        sample_rate,
+        time_base,
+    })
+}
+
+/// Creates a Symphonia decoder for the given audio track.
+pub(crate) fn make_symphonia_decoder(track: &Track) -> Result<Box<dyn Decoder>> {
+    symphonia::default::get_codecs()
+        .make(&track.codec_params, &DecoderOptions::default())
+        .context("failed to create symphonia decoder")
 }
 
 /// A one-shot forward-scrub audio preview requested by the UI while NOT playing.

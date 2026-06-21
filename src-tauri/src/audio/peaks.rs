@@ -2,13 +2,9 @@ use anyhow::{anyhow, Context, Result};
 use std::io::Read;
 use std::path::Path;
 use symphonia::core::audio::SampleBuffer;
-use symphonia::core::codecs::{Decoder, DecoderOptions};
-use symphonia::core::formats::{FormatOptions, FormatReader};
-use symphonia::core::meta::MetadataOptions;
-use symphonia::core::probe::Hint;
 
 use crate::audio::ffmpeg_decode::{spawn_ffmpeg_f32le, FfmpegDecodeParams};
-use crate::audio::shared::find_audio_track;
+use crate::audio::shared::{make_symphonia_decoder, open_symphonia_audio, SymphoniaAudioInfo};
 
 const MAX_PEAK_LENGTH: usize = 500_000;
 
@@ -22,72 +18,17 @@ const MIP_OVERSAMPLE: usize = 8;
 const MAX_MIP_BUCKETS: usize = 2_000_000;
 
 struct AudioDecoderState {
-    format: Box<dyn FormatReader>,
-    decoder: Box<dyn Decoder>,
-    track_id: u32,
-    channels: usize,
-}
-
-struct AudioProbe {
-    format: Box<dyn FormatReader>,
-    track_id: u32,
-    channels: usize,
-    sample_rate: u32,
-}
-
-fn probe_audio(path: &Path) -> Result<AudioProbe> {
-    let file = std::fs::File::open(path)
-        .with_context(|| format!("failed to open audio file: {}", path.display()))?;
-    let mss = symphonia::core::io::MediaSourceStream::new(Box::new(file), Default::default());
-
-    let mut hint = Hint::new();
-    if let Some(ext) = path.extension().and_then(|e| e.to_str()) {
-        hint.with_extension(ext);
-    }
-
-    let probed = symphonia::default::get_probe()
-        .format(
-            &hint,
-            mss,
-            &FormatOptions::default(),
-            &MetadataOptions::default(),
-        )
-        .context("failed to probe media format")?;
-
-    let format = probed.format;
-    let track =
-        find_audio_track(format.tracks()).ok_or_else(|| anyhow!("no active audio track found"))?;
-    let track_id = track.id;
-    let channels = track.codec_params.channels.map(|c| c.count()).unwrap_or(1);
-    let sample_rate = track.codec_params.sample_rate.unwrap_or(48_000);
-
-    Ok(AudioProbe {
-        track_id,
-        channels,
-        sample_rate,
-        format,
-    })
+    info: SymphoniaAudioInfo,
+    decoder: Box<dyn symphonia::core::codecs::Decoder>,
 }
 
 fn open_audio_decoder(path: &Path) -> Result<AudioDecoderState> {
-    let probe = probe_audio(path)?;
-    let track = probe
-        .format
-        .tracks()
-        .iter()
-        .find(|track| track.id == probe.track_id)
+    let info = open_symphonia_audio(path, "peak decode", 48_000)?;
+    let track = info
+        .track()
         .ok_or_else(|| anyhow!("probed audio track disappeared"))?;
-
-    let decoder = symphonia::default::get_codecs()
-        .make(&track.codec_params, &DecoderOptions::default())
-        .context("failed to create decoder")?;
-
-    Ok(AudioDecoderState {
-        track_id: probe.track_id,
-        channels: probe.channels,
-        format: probe.format,
-        decoder,
-    })
+    let decoder = make_symphonia_decoder(track)?;
+    Ok(AudioDecoderState { info, decoder })
 }
 
 /// Collapses each pair of adjacent mip buckets into one (taking the max), halving
@@ -241,10 +182,10 @@ fn extract_peaks_symphonia(
     target_buckets: usize,
 ) -> Result<Vec<Vec<f32>>> {
     let mut state = open_audio_decoder(path)?;
-    let mut accumulator = PeakAccumulator::new(state.channels, target_buckets);
+    let mut accumulator = PeakAccumulator::new(state.info.channels, target_buckets);
 
     loop {
-        let packet = match state.format.next_packet() {
+        let packet = match state.info.format.next_packet() {
             Ok(packet) => packet,
             Err(symphonia::core::errors::Error::IoError(ref err))
                 if err.kind() == std::io::ErrorKind::UnexpectedEof =>
@@ -254,7 +195,7 @@ fn extract_peaks_symphonia(
             Err(err) => return Err(err).context("failed to read next packet"),
         };
 
-        if packet.track_id() != state.track_id {
+        if packet.track_id() != state.info.track_id {
             continue;
         }
 
@@ -289,13 +230,13 @@ fn extract_peaks_ffmpeg(
     max_length: usize,
     target_buckets: usize,
 ) -> Result<Vec<Vec<f32>>> {
-    let probe = probe_audio(path)?;
-    let channels = probe.channels.max(1);
+    let info = open_symphonia_audio(path, "ffmpeg peak fallback", 48_000)?;
+    let channels = info.channels.max(1);
     let mut reader = spawn_ffmpeg_f32le(FfmpegDecodeParams {
         path,
         start_sec: 0.0,
         duration_sec: None,
-        target_sample_rate: probe.sample_rate.max(1),
+        target_sample_rate: info.sample_rate.max(1),
         output_channels: channels,
     })?;
     let mut accumulator = PeakAccumulator::new(channels, target_buckets);

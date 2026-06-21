@@ -10,8 +10,9 @@ use crate::audio::resample::{
     resample_planar_with_speed, RESAMPLER_CHUNK_SIZE,
 };
 use crate::audio::shared::{
-    find_audio_track, AudioRenderTarget, AudioShared, AudioSourceMetadata, AudioWindow,
-    FfmpegStreamSource, LayerDecoder, SymphoniaDecoder, REFILL_MARGIN_SEC, WINDOW_SEC,
+    make_symphonia_decoder, open_symphonia_audio, AudioRenderTarget, AudioShared,
+    AudioSourceMetadata, AudioWindow, FfmpegStreamSource, LayerDecoder, SymphoniaDecoder,
+    REFILL_MARGIN_SEC, WINDOW_SEC,
 };
 
 /// Fraction of the current source chunk tolerated as scheduling jitter before
@@ -60,55 +61,12 @@ pub(crate) fn reset_silent_paths_for_test() {
     NO_AUDIO_PATHS.lock().clear();
 }
 
-fn open_symphonia_format(
-    path: &str,
-    context: &str,
-) -> Result<Box<dyn symphonia::core::formats::FormatReader>> {
-    use symphonia::core::formats::FormatOptions;
-    use symphonia::core::meta::MetadataOptions;
-    use symphonia::core::probe::Hint;
-
-    let file = std::fs::File::open(path)
-        .with_context(|| format!("failed to open audio file for {context}: {path}"))?;
-    let mss = symphonia::core::io::MediaSourceStream::new(Box::new(file), Default::default());
-
-    let mut hint = Hint::new();
-    if let Some(ext) = Path::new(path).extension().and_then(|e| e.to_str()) {
-        hint.with_extension(ext);
-    }
-
-    let probed = symphonia::default::get_probe()
-        .format(
-            &hint,
-            mss,
-            &FormatOptions::default(),
-            &MetadataOptions::default(),
-        )
-        .with_context(|| format!("failed to probe media format for {context}: {path}"))?;
-
-    Ok(probed.format)
-}
-
 #[allow(dead_code)]
 pub(crate) fn probe_audio_source_metadata(path: &str) -> Result<AudioSourceMetadata> {
-    let format = open_symphonia_format(path, "metadata")?;
-
-    let track =
-        find_audio_track(format.tracks()).ok_or_else(|| anyhow!("no active audio track found"))?;
-    let sample_rate = track
-        .codec_params
-        .sample_rate
-        .ok_or_else(|| anyhow!("audio track has no declared sample rate"))?;
-    let channels = track
-        .codec_params
-        .channels
-        .map(|channels| channels.count())
-        .unwrap_or(1)
-        .max(1);
-
+    let info = open_symphonia_audio(path, "metadata", 48_000)?;
     Ok(AudioSourceMetadata {
-        sample_rate,
-        channels,
+        sample_rate: info.sample_rate,
+        channels: info.channels,
     })
 }
 
@@ -129,21 +87,18 @@ pub(crate) fn decode_range_symphonia(
     target_sample_rate: u32,
     output_channels: usize,
 ) -> Result<Vec<f32>> {
-    use symphonia::core::codecs::DecoderOptions;
-
     let start_sec = start_sec.max(0.0);
     let duration_sec = duration_sec.max(0.0);
 
-    let mut format = open_symphonia_format(path, "decode")?;
-    let track =
-        find_audio_track(format.tracks()).ok_or_else(|| anyhow!("no active audio track found"))?;
+    let mut info = open_symphonia_audio(path, "decode", target_sample_rate)?;
+    let track = info
+        .track()
+        .ok_or_else(|| anyhow!("probed audio track disappeared"))?;
 
     // symphonia can't decode this codec (Opus today, and a safety net for any other
     // codec it lacks): fall back to a one-shot ranged ffmpeg decode. The streaming
     // path makes the same decision in `open_layer_decoder`.
-    let mut decoder = match symphonia::default::get_codecs()
-        .make(&track.codec_params, &DecoderOptions::default())
-    {
+    let mut decoder = match make_symphonia_decoder(track) {
         Ok(decoder) => decoder,
         Err(_) => {
             log::warn!("[audio] symphonia cannot decode codec; ranged ffmpeg fallback: {path}");
@@ -158,14 +113,10 @@ pub(crate) fn decode_range_symphonia(
         }
     };
 
-    let track_id = track.id;
-    let source_rate = track.codec_params.sample_rate.unwrap_or(target_sample_rate);
-    let time_base = track
-        .codec_params
-        .time_base
-        .unwrap_or(symphonia::core::units::TimeBase::new(1, source_rate.max(1)));
-    let declared_channels = track.codec_params.channels.map(|c| c.count()).unwrap_or(0);
-    let mut channels = declared_channels.max(1);
+    let track_id = info.track_id;
+    let source_rate = info.sample_rate;
+    let time_base = info.time_base;
+    let mut channels = info.channels;
 
     // Seek to the window start (only when not at 0) and compute how many decoded
     // source frames to discard so the buffer begins exactly at `start_sec`.
@@ -173,7 +124,7 @@ pub(crate) fn decode_range_symphonia(
     // begins at `start_sec`); `front_pad_frames` is in TARGET frames (prepended when
     // the seek OVERSHOOT means there is no source audio before where it landed).
     let (mut discard_frames_remaining, front_pad_frames) = if start_sec > 0.0 {
-        let seeked_to = match format.seek(
+        let seeked_to = match info.format.seek(
             symphonia::core::formats::SeekMode::Accurate,
             symphonia::core::formats::SeekTo::Time {
                 time: symphonia::core::units::Time {
@@ -227,7 +178,7 @@ pub(crate) fn decode_range_symphonia(
         if collected_frames >= wanted_source_frames {
             break;
         }
-        let packet = match format.next_packet() {
+        let packet = match info.format.next_packet() {
             Ok(packet) => packet,
             Err(symphonia::core::errors::Error::IoError(ref err))
                 if err.kind() == std::io::ErrorKind::UnexpectedEof =>
@@ -389,34 +340,21 @@ pub(crate) fn stream_layer_chunk(params: StreamChunkParams<'_>) -> Result<Vec<f3
 /// for any other codec symphonia lacks — the ranged path decides the same way in
 /// `decode_range_symphonia`).
 fn open_layer_decoder(path: &str, req: &StreamChunkRequest) -> Result<LayerDecoder> {
-    use symphonia::core::codecs::DecoderOptions;
+    let info = open_symphonia_audio(path, "chunk decode", req.target_sample_rate)?;
+    let track = info
+        .track()
+        .ok_or_else(|| anyhow!("probed audio track disappeared"))?;
 
-    let format = open_symphonia_format(path, "chunk decode")?;
-    let track =
-        find_audio_track(format.tracks()).ok_or_else(|| anyhow!("no active audio track found"))?;
-
-    match symphonia::default::get_codecs().make(&track.codec_params, &DecoderOptions::default()) {
+    match make_symphonia_decoder(track) {
         Ok(decoder) => {
-            let track_id = track.id;
-            let source_rate = track
-                .codec_params
-                .sample_rate
-                .unwrap_or(req.target_sample_rate);
-            let channels = track
-                .codec_params
-                .channels
-                .map(|c| c.count())
-                .unwrap_or(1)
-                .max(1);
-            let time_base = track
-                .codec_params
-                .time_base
-                .unwrap_or(symphonia::core::units::TimeBase::new(1, source_rate));
+            let source_rate = info.sample_rate;
+            let channels = info.channels;
+            let time_base = info.time_base;
             Ok(LayerDecoder::Symphonia(SymphoniaDecoder {
                 path: path.to_string(),
-                format,
+                format: info.format,
                 decoder,
-                track_id,
+                track_id: info.track_id,
                 source_rate,
                 channels,
                 time_base,

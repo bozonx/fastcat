@@ -10,6 +10,7 @@ import { secondsToUs } from '~/utils/time';
 
 import { useAppClipboard } from '~/composables/useAppClipboard';
 import { useMediaTrackRedirectToast } from '~/composables/timeline/useMediaTrackRedirectToast';
+import { useCloseModel } from '~/composables/ui/useCloseModel';
 
 const props = defineProps<{
   isOpen: boolean;
@@ -28,12 +29,10 @@ const { handleFiles } = useFileManager();
 const clipboardStore = useAppClipboard();
 const { captureSelectionKind, notifyRedirect } = useMediaTrackRedirectToast();
 
-const isOpenLocal = computed({
-  get: () => props.isOpen,
-  set: (val) => {
-    if (!val) emit('close');
-  },
-});
+const isOpenLocal = useCloseModel(
+  () => props.isOpen,
+  () => emit('close'),
+);
 
 const isMediaPickerOpen = ref(false);
 const fileInputRef = ref<HTMLInputElement | null>(null);

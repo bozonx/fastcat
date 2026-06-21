@@ -211,6 +211,37 @@ pub fn push_video_encode_filter_args_with_extra(
     }
 }
 
+/// Pushes the shared transcode preamble used by the proxy and convert paths:
+/// optional VAAPI encode-device init, the common `-nostdin -y -loglevel warning
+/// -stats` flags, and optional hardware-decode flags. `apply_hw` gates the
+/// hardware-specific flags so the audio-only convert path skips them.
+///
+/// `-loglevel warning` alone suppresses the periodic `frame=… time=…` stats lines
+/// that `run_ffmpeg_task` parses for progress; `-stats` re-enables them so the
+/// background-task progress bar advances (and the stall watchdog keeps seeing
+/// activity during long encodes).
+pub fn push_transcode_preamble(
+    args: &mut Vec<String>,
+    hw_encode: HwAccelMode,
+    hw_decode: HwAccelMode,
+    vaapi_device: &str,
+    apply_hw: bool,
+) {
+    if apply_hw && hw_encode == HwAccelMode::Vaapi {
+        push_vaapi_init_device_args(args, vaapi_device);
+    }
+    args.extend([
+        "-nostdin".to_string(),
+        "-y".to_string(),
+        "-loglevel".to_string(),
+        "warning".to_string(),
+        "-stats".to_string(),
+    ]);
+    if apply_hw {
+        push_hw_accel_decode_args(args, hw_decode, vaapi_device);
+    }
+}
+
 /// Appends VAAPI-specific device initialisation flags required when *encoding*
 /// through VAAPI (not just decoding).
 pub fn push_vaapi_init_device_args(args: &mut Vec<String>, vaapi_device: &str) {
