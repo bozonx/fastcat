@@ -6,6 +6,7 @@ import type {
   VfsReadDirectoryOptions,
 } from './types';
 import { copyDirectoryTree } from './copyTree';
+import { createGovernedReadStream } from './streaming';
 import {
   VfsConflictError,
   VfsInvalidArgumentError,
@@ -623,37 +624,7 @@ export class OpfsFileSystemAdapter implements IFileSystemAdapter {
     if (!file) throw new VfsNotFoundError(path);
     const releaseIo = await acquireStreamingFileIoSlot();
     const reader = file.stream().getReader();
-    let released = false;
-    const releaseOnce = () => {
-      if (released) return;
-      released = true;
-      releaseIo();
-    };
-
-    return new ReadableStream<Uint8Array>({
-      async pull(controller) {
-        try {
-          throwIfAborted(options?.signal, path);
-          const { done, value } = await reader.read();
-          if (done) {
-            controller.close();
-            releaseOnce();
-            return;
-          }
-          if (value) controller.enqueue(value);
-        } catch (e) {
-          releaseOnce();
-          controller.error(e);
-        }
-      },
-      async cancel(reason) {
-        try {
-          await reader.cancel(reason);
-        } finally {
-          releaseOnce();
-        }
-      },
-    });
+    return createGovernedReadStream(reader, { releaseIo, signal: options?.signal, path });
   }
 
   async writeStream(

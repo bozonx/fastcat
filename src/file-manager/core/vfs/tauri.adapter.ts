@@ -6,6 +6,7 @@ import type {
   VfsReadDirectoryOptions,
 } from './types';
 import { copyDirectoryTree } from './copyTree';
+import { createGovernedReadStream } from './streaming';
 import {
   VfsInvalidArgumentError,
   VfsNotFoundError,
@@ -506,37 +507,7 @@ export class TauriFileSystemAdapter implements IFileSystemAdapter {
     try {
       const source = await openReadFileStream(await this.resolveStreamPath(path));
       const reader = source.getReader();
-      let released = false;
-      const releaseOnce = () => {
-        if (released) return;
-        released = true;
-        releaseIo();
-      };
-
-      return new ReadableStream<Uint8Array>({
-        async pull(controller) {
-          try {
-            throwIfAborted(options?.signal, path);
-            const { done, value } = await reader.read();
-            if (done) {
-              controller.close();
-              releaseOnce();
-              return;
-            }
-            if (value) controller.enqueue(value);
-          } catch (e) {
-            releaseOnce();
-            controller.error(e);
-          }
-        },
-        async cancel(reason) {
-          try {
-            await reader.cancel(reason);
-          } finally {
-            releaseOnce();
-          }
-        },
-      });
+      return createGovernedReadStream(reader, { releaseIo, signal: options?.signal, path });
     } catch (e) {
       releaseIo();
       if (isNotFoundError(e)) throw new VfsNotFoundError(path, { cause: e });
