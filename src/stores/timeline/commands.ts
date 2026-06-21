@@ -24,10 +24,10 @@ export interface TimelineCommandsDeps {
   getProjectSettings: () => unknown;
   updateTimelineFormat: (settings: TimelineFormatInput) => Promise<void>;
   updateProjectFormat: (settings: {
-    width: number;
-    height: number;
-    fps: number;
-    sampleRate: number;
+    width?: number;
+    height?: number;
+    fps?: number;
+    sampleRate?: number;
   }) => void;
   hasProxy: (path: string) => boolean;
   ensureProxy: (options: {

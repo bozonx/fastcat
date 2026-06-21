@@ -80,7 +80,18 @@ export interface FastCatProjectSettings {
     isCustomResolution: boolean;
     sampleRate: number;
     audioDeclickDurationUs: number;
+    /**
+     * Intent flag: `true` = the project is in "auto" mode (the user did not pin
+     * explicit settings), so geometry/sample-rate are detected from the first
+     * dropped clips. `false` = the user configured the project manually.
+     * This is *intent* — it does not track whether detection has happened yet;
+     * that is `geometryResolved`/`sampleRateResolved` (state).
+     */
     isAutoSettings: boolean;
+    /** State: width/height/fps have been determined (auto-detected or set manually). */
+    geometryResolved: boolean;
+    /** State: sampleRate has been determined (auto-detected or set manually). */
+    sampleRateResolved: boolean;
   };
   /** Project-wide monitor settings (effects, proxy, resolution, grid, timecode, toolbar position). */
   monitor: ProjectMonitorSettings;
@@ -170,6 +181,8 @@ export const DEFAULT_PROJECT_SETTINGS: FastCatProjectSettings = {
     sampleRate: 48000,
     audioDeclickDurationUs: 5_000,
     isAutoSettings: true,
+    geometryResolved: false,
+    sampleRateResolved: false,
   },
   monitor: { ...DEFAULT_PROJECT_MONITOR_SETTINGS },
   monitors: {
@@ -220,8 +233,39 @@ function getProjectSettingsFromUserDefaults(
       audioDeclickDurationUs: (settings.projectDefaults || DEFAULT_USER_SETTINGS.projectDefaults)
         .audioDeclickDurationUs,
       isAutoSettings: true,
+      geometryResolved: false,
+      sampleRateResolved: false,
     },
   };
+}
+
+/** Project-format intent/state flags, mutated in place by the helpers below. */
+export type ProjectAutoFlags = Pick<
+  FastCatProjectSettings['project'],
+  'isAutoSettings' | 'geometryResolved' | 'sampleRateResolved'
+>;
+
+/**
+ * Marks the project as explicitly configured by the user: auto-detection is off
+ * and both geometry and sample rate count as resolved. Use this for every manual
+ * configuration path (create-with-settings, manual edits) so the "clear auto"
+ * logic lives in one place.
+ */
+export function markProjectSettingsManual(project: ProjectAutoFlags): void {
+  project.isAutoSettings = false;
+  project.geometryResolved = true;
+  project.sampleRateResolved = true;
+}
+
+/**
+ * Marks the project as "auto": detection is on and nothing is resolved yet, so
+ * the next dropped video/audio clips re-derive geometry/sample rate. Use this for
+ * create-without-settings and "reset to defaults".
+ */
+export function markProjectSettingsAuto(project: ProjectAutoFlags): void {
+  project.isAutoSettings = true;
+  project.geometryResolved = false;
+  project.sampleRateResolved = false;
 }
 
 export function createDefaultProjectSettings(
@@ -344,17 +388,29 @@ function createProjectSettingsSchema(defaults: FastCatProjectSettings) {
               .max(1_000_000)
               .catch(defaults.project.audioDeclickDurationUs),
             isAutoSettings: z.coerce.boolean().catch(defaults.project.isAutoSettings),
+            geometryResolved: z.coerce.boolean().optional(),
+            sampleRateResolved: z.coerce.boolean().optional(),
           })
           .transform((val) => {
+            // Backward compat: projects saved before these flags existed only
+            // had `isAutoSettings`. A manually-configured legacy project
+            // (isAutoSettings=false) is fully resolved; an auto one is not.
+            const resolvedFallback = !val.isAutoSettings;
+            const normalized = {
+              ...val,
+              geometryResolved: val.geometryResolved ?? resolvedFallback,
+              sampleRateResolved: val.sampleRateResolved ?? resolvedFallback,
+            };
             const isWidthHeightCustom =
-              val.width !== defaults.project.width || val.height !== defaults.project.height;
+              normalized.width !== defaults.project.width ||
+              normalized.height !== defaults.project.height;
             // Only re-derive the preset when the geometry diverges from the
             // default, so an intentional custom-resolution flag on the default
             // size isn't clobbered. The derivation itself is the shared helper.
             if (!isWidthHeightCustom) {
-              return val;
+              return normalized;
             }
-            return applyResolutionPreset(val);
+            return applyResolutionPreset(normalized);
           })
           .catch(defaults.project),
         monitor: projectMonitorSchema.catch(defaults.monitor),

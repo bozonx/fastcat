@@ -7,7 +7,7 @@ import { ref, computed } from 'vue';
 import { useProjectStore } from '~/stores/project.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useTimelineStore } from '~/stores/timeline.store';
-import { DEFAULT_PROJECT_SETTINGS } from '~/utils/project-settings';
+import { DEFAULT_PROJECT_SETTINGS, markProjectSettingsAuto } from '~/utils/project-settings';
 
 import ResolutionSettings from './ResolutionSettings.vue';
 import AdvancedSettings from './AdvancedSettings.vue';
@@ -73,7 +73,9 @@ async function resetToDefaults() {
   projectStore.projectSettings.project.aspectRatio = pDefaults.aspectRatio;
   projectStore.projectSettings.project.isCustomResolution = pDefaults.isCustomResolution;
   projectStore.projectSettings.project.sampleRate = pDefaults.sampleRate;
-  projectStore.projectSettings.project.isAutoSettings = true;
+  // Re-enable auto-detection: clears resolved state so the next dropped clips
+  // re-derive geometry/sample rate again.
+  markProjectSettingsAuto(projectStore.projectSettings.project);
 
   // Reset advanced settings
   projectStore.projectSettings.project.audioDeclickDurationUs =

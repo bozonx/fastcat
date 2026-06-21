@@ -367,8 +367,15 @@ const sortedProjects = computed(() => {
         </div>
       </UiFormField>
 
+      <div class="flex items-center gap-3">
+        <UCheckbox v-model="projectCreationSettings.specifyProjectSettings" />
+        <span class="text-ui-text text-sm">{{
+          t('fastcat.projects.specifyProjectSettings', 'Specify project settings')
+        }}</span>
+      </div>
+
       <div
-        v-if="!projectCreationSettings.isAdvancedSettingsOpen"
+        v-if="!projectCreationSettings.specifyProjectSettings"
         class="text-xs text-ui-text-muted bg-ui-bg-accent p-3 rounded-lg flex gap-2 border border-ui-border"
       >
         <UIcon name="i-heroicons-information-circle" class="w-4 h-4 shrink-0 text-primary-400" />
@@ -380,35 +387,18 @@ const sortedProjects = computed(() => {
         }}
       </div>
 
-      <UCollapsible v-model:open="projectCreationSettings.isAdvancedSettingsOpen">
-        <UButton
-          color="neutral"
-          variant="ghost"
-          size="sm"
-          class="p-0 hover:bg-transparent"
-          :icon="
-            projectCreationSettings.isAdvancedSettingsOpen
-              ? 'i-heroicons-chevron-down-20-solid'
-              : 'i-heroicons-chevron-right-20-solid'
-          "
-          :label="t('videoEditor.projectSettings.advanced')"
+      <div v-else class="pt-4 border-t border-ui-border mt-2">
+        <MediaResolutionSettings
+          v-model:width="projectCreationSettings.width"
+          v-model:height="projectCreationSettings.height"
+          v-model:fps="projectCreationSettings.fps"
+          v-model:resolution-format="projectCreationSettings.resolutionFormat"
+          v-model:orientation="projectCreationSettings.orientation"
+          v-model:aspect-ratio="projectCreationSettings.aspectRatio"
+          v-model:is-custom-resolution="projectCreationSettings.isCustomResolution"
+          v-model:sample-rate="projectCreationSettings.sampleRate"
         />
-
-        <template #content>
-          <div class="pt-4 border-t border-ui-border mt-2">
-            <MediaResolutionSettings
-              v-model:width="projectCreationSettings.width"
-              v-model:height="projectCreationSettings.height"
-              v-model:fps="projectCreationSettings.fps"
-              v-model:resolution-format="projectCreationSettings.resolutionFormat"
-              v-model:orientation="projectCreationSettings.orientation"
-              v-model:aspect-ratio="projectCreationSettings.aspectRatio"
-              v-model:is-custom-resolution="projectCreationSettings.isCustomResolution"
-              v-model:sample-rate="projectCreationSettings.sampleRate"
-            />
-          </div>
-        </template>
-      </UCollapsible>
+      </div>
     </div>
 
     <template #footer>

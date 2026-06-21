@@ -577,24 +577,33 @@ export const useTimelineStore = defineStore('timeline', () => {
     updateProjectFormat: (settings) => {
       const proj = projectStore.projectSettings?.project;
       if (!proj) return;
-      // Derive the display fields (format/orientation/aspect) from the *new*
-      // geometry via the shared helper so a portrait clip can't inherit the
-      // project's old `landscape` orientation, then clear isAutoSettings to mark
-      // the project as explicitly configured. The project-settings store's deep
-      // watcher persists this automatically.
-      const derived = applyResolutionPreset({
-        width: settings.width,
-        height: settings.height,
-      });
-      proj.width = derived.width;
-      proj.height = derived.height;
-      proj.fps = settings.fps;
-      proj.sampleRate = settings.sampleRate;
-      proj.resolutionFormat = derived.resolutionFormat;
-      proj.orientation = derived.orientation;
-      proj.aspectRatio = derived.aspectRatio;
-      proj.isCustomResolution = derived.isCustomResolution;
-      proj.isAutoSettings = false;
+      // Auto-detection writer. Geometry and sample rate are applied independently
+      // (an audio-only first clip sets only the sample rate, a video-only one only
+      // geometry) and each marks its own `*Resolved` state flag. We deliberately
+      // do NOT touch `isAutoSettings`: this is detection, so the project stays in
+      // "auto" intent until the user configures it manually. The project-settings
+      // store's deep watcher persists these mutations automatically.
+      if (settings.width !== undefined && settings.height !== undefined) {
+        // Derive the display fields (format/orientation/aspect) from the *new*
+        // geometry via the shared helper so a portrait clip can't inherit the
+        // project's old `landscape` orientation.
+        const derived = applyResolutionPreset({
+          width: settings.width,
+          height: settings.height,
+        });
+        proj.width = derived.width;
+        proj.height = derived.height;
+        if (settings.fps !== undefined) proj.fps = settings.fps;
+        proj.resolutionFormat = derived.resolutionFormat;
+        proj.orientation = derived.orientation;
+        proj.aspectRatio = derived.aspectRatio;
+        proj.isCustomResolution = derived.isCustomResolution;
+        proj.geometryResolved = true;
+      }
+      if (settings.sampleRate !== undefined) {
+        proj.sampleRate = settings.sampleRate;
+        proj.sampleRateResolved = true;
+      }
     },
     hasProxy: (path: string) => proxyStore.existingProxies.has(normalizeMediaCachePath(path)),
     ensureProxy: async (options: {

@@ -536,39 +536,29 @@ const sortedProjects = computed(() => {
             </div>
           </UiFormField>
 
-          <UiAlert v-if="!projectCreationSettings.isAdvancedSettingsOpen">
+          <div class="flex items-center gap-3">
+            <UCheckbox v-model="projectCreationSettings.specifyProjectSettings" />
+            <span class="text-ui-text text-sm">{{
+              t('fastcat.projects.specifyProjectSettings', 'Specify project settings')
+            }}</span>
+          </div>
+
+          <UiAlert v-if="!projectCreationSettings.specifyProjectSettings">
             {{ t('fastcat.projects.autoDetectHint') }}
           </UiAlert>
 
-          <UCollapsible v-model:open="projectCreationSettings.isAdvancedSettingsOpen">
-            <UButton
-              color="neutral"
-              variant="ghost"
-              size="sm"
-              class="p-0 hover:bg-transparent text-ui-text-muted font-black uppercase tracking-[0.2em] text-[10px]"
-              :icon="
-                projectCreationSettings.isAdvancedSettingsOpen
-                  ? 'i-heroicons-chevron-down-20-solid'
-                  : 'i-heroicons-chevron-right-20-solid'
-              "
-              :label="t('videoEditor.projectSettings.advanced')"
+          <div v-else class="pt-6 border-t border-white/5 mt-4 space-y-6">
+            <MediaResolutionSettings
+              v-model:width="projectCreationSettings.width"
+              v-model:height="projectCreationSettings.height"
+              v-model:fps="projectCreationSettings.fps"
+              v-model:resolution-format="projectCreationSettings.resolutionFormat"
+              v-model:orientation="projectCreationSettings.orientation"
+              v-model:aspect-ratio="projectCreationSettings.aspectRatio"
+              v-model:is-custom-resolution="projectCreationSettings.isCustomResolution"
+              v-model:sample-rate="projectCreationSettings.sampleRate"
             />
-
-            <template #content>
-              <div class="pt-6 border-t border-white/5 mt-4 space-y-6">
-                <MediaResolutionSettings
-                  v-model:width="projectCreationSettings.width"
-                  v-model:height="projectCreationSettings.height"
-                  v-model:fps="projectCreationSettings.fps"
-                  v-model:resolution-format="projectCreationSettings.resolutionFormat"
-                  v-model:orientation="projectCreationSettings.orientation"
-                  v-model:aspect-ratio="projectCreationSettings.aspectRatio"
-                  v-model:is-custom-resolution="projectCreationSettings.isCustomResolution"
-                  v-model:sample-rate="projectCreationSettings.sampleRate"
-                />
-              </div>
-            </template>
-          </UCollapsible>
+          </div>
         </div>
 
         <template #footer>

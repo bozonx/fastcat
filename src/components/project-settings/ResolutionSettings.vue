@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { watch } from 'vue';
 import { useProjectStore } from '~/stores/project.store';
+import { markProjectSettingsManual } from '~/utils/project-settings';
 import MediaResolutionSettings from '~/components/media/MediaResolutionSettings.vue';
 import UiFormSectionHeader from '~/components/ui/UiFormSectionHeader.vue';
 
@@ -17,8 +18,10 @@ watch(
       newVal.fps !== oldVal.fps ||
       newVal.sampleRate !== oldVal.sampleRate ||
       newVal.orientation !== oldVal.orientation;
+    // A manual edit pins the project: turn auto-detection off and mark geometry
+    // and sample rate as resolved (single source of truth for "clear auto").
     if (changed && newVal.isAutoSettings) {
-      newVal.isAutoSettings = false;
+      markProjectSettingsManual(newVal);
     }
   },
   { deep: true },

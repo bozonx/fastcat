@@ -42,7 +42,15 @@ describe('TimelineCommandService', () => {
         projectDefaults: { defaultAudioFadeCurve: 's_curve' },
       })),
       getProjectSettings: vi.fn(() => ({
-        project: { width: 1920, height: 1080, fps: 30, isAutoSettings: false },
+        project: {
+          width: 1920,
+          height: 1080,
+          fps: 30,
+          sampleRate: 48000,
+          isAutoSettings: false,
+          geometryResolved: true,
+          sampleRateResolved: true,
+        },
       })),
       updateTimelineFormat: vi.fn(),
       updateProjectFormat: vi.fn(),
@@ -171,21 +179,17 @@ describe('TimelineCommandService', () => {
       expect(deps.applyTimeline).not.toHaveBeenCalled();
     });
 
-    it('updates timeline settings if auto settings are enabled', async () => {
-      deps.getTimelineDoc.mockReturnValue({
-        timebase: { fps: 30 },
-        tracks: [{ id: 'v1', kind: 'video', items: [] }],
-        metadata: {
-          fastcat: {
-            format: {
-              width: 1920,
-              height: 1080,
-              fps: 30,
-              sampleRate: 48000,
-              isAutoSettings: true,
-              settingsSource: 'projectDefaults',
-            },
-          },
+    it('adopts the first video geometry into the project while it is in auto mode', async () => {
+      // Project in auto mode with geometry not yet resolved; timeline follows it.
+      deps.getProjectSettings.mockReturnValue({
+        project: {
+          width: 1920,
+          height: 1080,
+          fps: 30,
+          sampleRate: 48000,
+          isAutoSettings: true,
+          geometryResolved: false,
+          sampleRateResolved: false,
         },
       });
       deps.getOrFetchMetadataByPath.mockResolvedValue({
@@ -200,32 +204,26 @@ describe('TimelineCommandService', () => {
         path: 'video/test.mp4',
       });
 
-      expect(deps.updateTimelineFormat).toHaveBeenCalledWith({
+      // No audio stream → only geometry is written to the project. The timeline
+      // keeps following the project (no updateTimelineFormat call).
+      expect(deps.updateProjectFormat).toHaveBeenCalledWith({
         width: 1280,
         height: 720,
         fps: 24,
-        sampleRate: 48000,
-        isAutoSettings: false,
-        settingsSource: 'firstClip',
-        useProjectSettings: false,
       });
+      expect(deps.updateTimelineFormat).not.toHaveBeenCalled();
     });
 
     it('uses effective portrait dimensions for the first rotated video', async () => {
-      deps.getTimelineDoc.mockReturnValue({
-        timebase: { fps: 30 },
-        tracks: [{ id: 'v1', kind: 'video', items: [] }],
-        metadata: {
-          fastcat: {
-            format: {
-              width: 1920,
-              height: 1080,
-              fps: 30,
-              sampleRate: 48000,
-              isAutoSettings: true,
-              settingsSource: 'projectDefaults',
-            },
-          },
+      deps.getProjectSettings.mockReturnValue({
+        project: {
+          width: 1920,
+          height: 1080,
+          fps: 30,
+          sampleRate: 48000,
+          isAutoSettings: true,
+          geometryResolved: false,
+          sampleRateResolved: false,
         },
       });
       deps.getOrFetchMetadataByPath.mockResolvedValue({
@@ -240,37 +238,25 @@ describe('TimelineCommandService', () => {
         path: 'video/vertical.mp4',
       });
 
-      expect(deps.updateTimelineFormat).toHaveBeenCalledWith({
+      expect(deps.updateProjectFormat).toHaveBeenCalledWith({
         width: 1080,
         height: 1920,
         fps: 30,
-        sampleRate: 48000,
-        isAutoSettings: false,
-        settingsSource: 'firstClip',
-        useProjectSettings: false,
       });
     });
 
     it('adopts the first clip format into the project when the project is unconfigured', async () => {
-      deps.getTimelineDoc.mockReturnValue({
-        timebase: { fps: 30 },
-        tracks: [{ id: 'v1', kind: 'video', items: [] }],
-        metadata: {
-          fastcat: {
-            format: {
-              width: 1920,
-              height: 1080,
-              fps: 30,
-              sampleRate: 48000,
-              isAutoSettings: true,
-              settingsSource: 'projectDefaults',
-            },
-          },
-        },
-      });
       // Project still in its default "auto" state — first clip should configure it.
       deps.getProjectSettings.mockReturnValue({
-        project: { width: 1920, height: 1080, fps: 30, isAutoSettings: true },
+        project: {
+          width: 1920,
+          height: 1080,
+          fps: 30,
+          sampleRate: 48000,
+          isAutoSettings: true,
+          geometryResolved: false,
+          sampleRateResolved: false,
+        },
       });
       deps.getOrFetchMetadataByPath.mockResolvedValue({
         duration: 10,
@@ -285,17 +271,18 @@ describe('TimelineCommandService', () => {
         path: 'video/test.mp4',
       });
 
-      // Project takes the clip's format; the timeline keeps following the project.
+      // Project takes the clip's geometry and sample rate; the timeline keeps
+      // following the project (no per-timeline override).
       expect(deps.updateProjectFormat).toHaveBeenCalledWith({
         width: 1280,
         height: 720,
         fps: 24,
         sampleRate: 44100,
       });
-      expect(deps.updateTimelineFormat).toHaveBeenCalledWith({ isAutoSettings: false });
+      expect(deps.updateTimelineFormat).not.toHaveBeenCalled();
     });
 
-    it('inherits the sample rate from an audio-only first clip, keeping geometry', async () => {
+    it('resolves only the sample rate from an audio-only first clip, leaving geometry pending', async () => {
       deps.getTimelineDoc.mockReturnValue({
         timebase: { fps: 30 },
         tracks: [{ id: 'a1', kind: 'audio', items: [] }],
@@ -312,6 +299,17 @@ describe('TimelineCommandService', () => {
           },
         },
       });
+      deps.getProjectSettings.mockReturnValue({
+        project: {
+          width: 1920,
+          height: 1080,
+          fps: 30,
+          sampleRate: 48000,
+          isAutoSettings: true,
+          geometryResolved: false,
+          sampleRateResolved: false,
+        },
+      });
       // Audio-only clip: no video stream, only a sample rate.
       deps.getOrFetchMetadataByPath.mockResolvedValue({
         duration: 10,
@@ -325,16 +323,10 @@ describe('TimelineCommandService', () => {
         path: 'audio/music.mp3',
       });
 
-      // Sample rate is adopted; existing geometry/fps are preserved.
-      expect(deps.updateTimelineFormat).toHaveBeenCalledWith({
-        width: 1920,
-        height: 1080,
-        fps: 30,
-        sampleRate: 44100,
-        isAutoSettings: false,
-        settingsSource: 'firstClip',
-        useProjectSettings: false,
-      });
+      // Only the sample rate is written; geometry stays unresolved for a later
+      // video clip, and the timeline keeps following the project.
+      expect(deps.updateProjectFormat).toHaveBeenCalledWith({ sampleRate: 44100 });
+      expect(deps.updateTimelineFormat).not.toHaveBeenCalled();
     });
   });
 

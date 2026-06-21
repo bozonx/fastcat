@@ -10,7 +10,7 @@ import { isTauriRuntime } from '~/utils/runtime';
 import { joinTauriFsPath } from '~/utils/tauri-local-path';
 import { createTimelineFormatFromProjectDefaults } from '~/timeline/format';
 
-import { createDefaultProjectSettings } from '~/utils/project-settings';
+import { createDefaultProjectSettings, markProjectSettingsManual } from '~/utils/project-settings';
 
 import {
   VIDEO_DIR_NAME,
@@ -316,11 +316,13 @@ export const useProjectStore = defineStore('project', () => {
         log.warn('Failed to create project settings file', e);
       }
 
+      // Defaults already mark the project as "auto" (geometry/sample rate
+      // pending), so an empty/name-only create waits for the first dropped clip.
       const initialSettings = createDefaultProjectSettings(workspaceStore.userSettings);
-      initialSettings.project.isAutoSettings = true;
 
       if (options) {
-        // If user provided specific options, it's not "Auto" anymore
+        // If the user explicitly specified any format option, the project is
+        // configured manually (auto-detection off, everything counts as resolved).
         const hasProjectOptions =
           options.width !== undefined ||
           options.height !== undefined ||
@@ -331,7 +333,7 @@ export const useProjectStore = defineStore('project', () => {
           options.sampleRate !== undefined;
 
         if (hasProjectOptions) {
-          initialSettings.project.isAutoSettings = false;
+          markProjectSettingsManual(initialSettings.project);
         }
 
         if (options.width !== undefined) initialSettings.project.width = options.width;

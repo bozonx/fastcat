@@ -72,19 +72,23 @@ export interface TimelineCommandServiceDeps {
       fps: number;
       sampleRate: number;
       isAutoSettings: boolean;
+      geometryResolved: boolean;
+      sampleRateResolved: boolean;
     };
   };
   updateTimelineFormat: (settings: TimelineFormatInput) => Promise<void>;
   /**
-   * Applies first-clip-derived geometry to the *project* settings (used when the
-   * project has no explicit settings yet). The timeline keeps following the
-   * project, so updating the project is what makes the clip's format take effect.
+   * Applies first-clip-derived format to the *project* settings (used while the
+   * project is in auto mode). The timeline keeps following the project, so
+   * updating the project is what makes the clip's format take effect. Geometry
+   * (`width`+`height`+`fps`) and `sampleRate` are independent — pass only what a
+   * given clip provides; the writer marks the corresponding `*Resolved` flag.
    */
   updateProjectFormat: (settings: {
-    width: number;
-    height: number;
-    fps: number;
-    sampleRate: number;
+    width?: number;
+    height?: number;
+    fps?: number;
+    sampleRate?: number;
   }) => void;
   mediaCache: Pick<ProxyThumbnailService, 'hasProxy' | 'ensureProxy'>;
   defaultImageDurationUs: number;
@@ -214,10 +218,6 @@ export function createTimelineCommandService(deps: TimelineCommandServiceDeps) {
       hasVideo,
       hasAudio,
     };
-  }
-
-  function isTimelineEmpty(doc: TimelineDocument | null) {
-    return !doc?.tracks.some((track) => track.items.some((item) => item.kind === 'clip'));
   }
 
   async function resolveNestedTimeline(path: string, name: string) {
@@ -398,66 +398,57 @@ export function createTimelineCommandService(deps: TimelineCommandServiceDeps) {
     if (metadata && (metadata.video || metadata.audio)) {
       const doc = deps.getTimelineDoc();
       const timelineFormat = getTimelineFormat(doc);
-      if (timelineFormat.isAutoSettings && isTimelineEmpty(doc)) {
-        // First clip on a fresh, auto-settings timeline determines the format.
-        // A video stream provides geometry (width/height/fps); audio provides the
-        // sample rate. An audio-only first clip keeps the current (default/project)
-        // geometry and only adopts its sample rate.
-        let effectiveWidth = timelineFormat.width;
-        let effectiveHeight = timelineFormat.height;
-        let effectiveFps = timelineFormat.fps;
-        if (metadata.video) {
+      const followsProject = timelineFormat.useProjectSettings ?? true;
+      const project = deps.getProjectSettings().project;
+
+      let appliedWidth = 0;
+      let appliedHeight = 0;
+      let appliedFps = 0;
+      let geometryApplied = false;
+
+      // Auto-detection writes only to the *project* (the shared source of truth)
+      // and only while the timeline follows the project and the project is still
+      // in auto mode. Geometry and sample rate are tracked independently: a video
+      // clip with no audio track resolves geometry while leaving the sample rate
+      // pending for a later audio clip, and vice versa. A timeline that has opted
+      // out of following the project (`useProjectSettings: false`) is left alone —
+      // its format was already frozen when the user unchecked the box.
+      if (followsProject && project.isAutoSettings) {
+        const patch: { width?: number; height?: number; fps?: number; sampleRate?: number } = {};
+        if (metadata.video && !project.geometryResolved) {
           const rotation = metadata.video.rotation ?? 0;
           const isRotated90 = Math.abs(rotation) === 90 || Math.abs(rotation) === 270;
-          effectiveWidth = isRotated90 ? metadata.video.height : metadata.video.width;
-          effectiveHeight = isRotated90 ? metadata.video.width : metadata.video.height;
-          effectiveFps = metadata.video.fps;
+          appliedWidth = isRotated90 ? metadata.video.height : metadata.video.width;
+          appliedHeight = isRotated90 ? metadata.video.width : metadata.video.height;
+          appliedFps = metadata.video.fps;
+          patch.width = appliedWidth;
+          patch.height = appliedHeight;
+          patch.fps = appliedFps;
+          geometryApplied = true;
         }
-        const effectiveSampleRate = metadata.audio?.sampleRate ?? timelineFormat.sampleRate;
+        if (metadata.audio && !project.sampleRateResolved) {
+          patch.sampleRate = metadata.audio.sampleRate;
+        }
+        if (patch.width !== undefined || patch.sampleRate !== undefined) {
+          deps.updateProjectFormat(patch);
+        }
+      }
 
-        if (deps.getProjectSettings().project.isAutoSettings) {
-          // Project has no explicit settings yet: adopt the clip's format at the
-          // *project* level. The timeline keeps its inheritance flag, so it (and
-          // any other following timeline) picks up the new project format. We only
-          // clear the timeline's own auto flag so this doesn't retrigger.
-          deps.updateProjectFormat({
-            width: effectiveWidth,
-            height: effectiveHeight,
-            fps: effectiveFps,
-            sampleRate: effectiveSampleRate,
-          });
-          await deps.updateTimelineFormat({ isAutoSettings: false });
-        } else {
-          // Project is already configured: this timeline diverges from the project,
-          // so it breaks inheritance and takes the clip's format for itself.
-          await deps.updateTimelineFormat({
-            width: effectiveWidth,
-            height: effectiveHeight,
-            fps: effectiveFps,
-            sampleRate: effectiveSampleRate,
-            isAutoSettings: false,
-            settingsSource: 'firstClip',
-            useProjectSettings: false,
-          });
-        }
-
-        // The warning is about resolution/fps, so only surface it when geometry
-        // was actually derived from a video stream.
-        if (metadata.video) {
-          warnings.push({
-            type: 'autoSettingsApplied',
-            width: effectiveWidth,
-            height: effectiveHeight,
-            fps: effectiveFps,
-          });
-        }
+      if (geometryApplied) {
+        // Surface the auto-applied resolution/fps only when geometry was actually
+        // derived from this clip's video stream.
+        warnings.push({
+          type: 'autoSettingsApplied',
+          width: appliedWidth,
+          height: appliedHeight,
+          fps: appliedFps,
+        });
       } else if (metadata.video) {
-        // Compare against the *effective* fps (project settings win when followed),
-        // not the doc's stale snapshot, so the mismatch warning reflects reality.
-        const effectiveFps = resolveEffectiveTimelineFormat(
-          timelineFormat,
-          deps.getProjectSettings().project,
-        ).fps;
+        // Geometry was already settled (manual project, already-resolved auto, or
+        // an independent timeline). Compare against the *effective* fps (project
+        // settings win when followed), not the doc's stale snapshot, so the
+        // mismatch warning reflects reality.
+        const effectiveFps = resolveEffectiveTimelineFormat(timelineFormat, project).fps;
         // Only warn for uneven cadences that actually judder. An integer-ratio
         // mismatch (e.g. 60→30 or 30→60) samples evenly and plays back smoothly, so
         // warning there is a false alarm.

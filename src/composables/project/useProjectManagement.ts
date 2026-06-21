@@ -15,13 +15,15 @@ function createProjectCreationState(workspaceStore: ReturnType<typeof useWorkspa
     name: '',
     width: 1920,
     height: 1080,
-    fps: 30,
+    fps: 25,
     resolutionFormat: '1080p',
     orientation: 'landscape' as const,
     aspectRatio: '16:9',
     isCustomResolution: false,
     sampleRate: 48000,
-    isAdvancedSettingsOpen: false,
+    // Explicit opt-in: when unchecked, the project stays in "auto" mode and its
+    // resolution/fps/sample rate are detected from the first dropped clips.
+    specifyProjectSettings: false,
     location: workspaceStore.resolvedStorageTopology.projectsRoot,
   };
 }
@@ -59,20 +61,28 @@ export function useProjectManagement(options: { isMobile?: boolean } = {}) {
     const name = projectCreationSettings.value.name.trim();
     if (!name) return;
 
-    const options = {
-      width: projectCreationSettings.value.width,
-      height: projectCreationSettings.value.height,
-      fps: projectCreationSettings.value.fps,
-      resolutionFormat: projectCreationSettings.value.resolutionFormat,
-      orientation: projectCreationSettings.value.orientation,
-      aspectRatio: projectCreationSettings.value.aspectRatio,
-      isCustomResolution: projectCreationSettings.value.isCustomResolution,
-      sampleRate: projectCreationSettings.value.sampleRate,
-      parentPath:
-        workspaceStore.workspaceProviderId === 'tauri'
-          ? projectCreationSettings.value.location
-          : undefined,
-    };
+    const parentPath =
+      workspaceStore.workspaceProviderId === 'tauri'
+        ? projectCreationSettings.value.location
+        : undefined;
+
+    // Only pass format options when the user explicitly opted in. Otherwise omit
+    // them entirely so the project is created in "auto" mode and detects its
+    // format from the first dropped clip (createProject treats any provided
+    // option as a manual configuration).
+    const options = projectCreationSettings.value.specifyProjectSettings
+      ? {
+          width: projectCreationSettings.value.width,
+          height: projectCreationSettings.value.height,
+          fps: projectCreationSettings.value.fps,
+          resolutionFormat: projectCreationSettings.value.resolutionFormat,
+          orientation: projectCreationSettings.value.orientation,
+          aspectRatio: projectCreationSettings.value.aspectRatio,
+          isCustomResolution: projectCreationSettings.value.isCustomResolution,
+          sampleRate: projectCreationSettings.value.sampleRate,
+          parentPath,
+        }
+      : { parentPath };
 
     await projectStore.createProject(name, options);
 
