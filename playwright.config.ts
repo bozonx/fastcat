@@ -23,11 +23,17 @@ export default defineConfig({
 
     launchOptions: {
       args: [
-        '--enable-features=FileSystemAccessAPI',
+        '--enable-features=FileSystemAccessAPI,Vulkan',
         '--ignore-gpu-blocklist',
         '--autoplay-policy=no-user-gesture-required',
         '--disable-background-timer-throttling',
         '--disable-renderer-backgrounding',
+        // WebGPU: headless Chromium does not expose `navigator.gpu` without
+        // these. On machines without a real GPU (CI/Docker) a Vulkan software
+        // rasteriser is required — see scripts/e2e-docker.sh / docker image.
+        '--enable-unsafe-webgpu',
+        '--enable-unsafe-swiftshader',
+        '--disable-vulkan-surface',
       ],
     },
   },
