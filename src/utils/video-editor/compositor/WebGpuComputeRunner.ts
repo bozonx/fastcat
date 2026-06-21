@@ -550,6 +550,21 @@ export class WebGpuComputeRunner {
   private transitionBindLayout: GPUBindGroupLayout | null = null;
   private transitionPipelines = new Map<string, GPUComputePipeline>();
 
+  // Persistent transition resources, reused across frames. Allocating the
+  // from/to/output textures + uniform buffer per call (the previous behaviour)
+  // churned the GPU allocator every frame of every transition. They are
+  // reallocated only when the frame size changes.
+  private transFromTexture: GPUTexture | null = null;
+  private transToTexture: GPUTexture | null = null;
+  private transOutputTexture: GPUTexture | null = null;
+  private transUniformBuffer: GPUBuffer | null = null;
+  private transBindGroup: GPUBindGroup | null = null;
+  private transCachedWidth = 0;
+  private transCachedHeight = 0;
+  // Pooled readback staging buffer for the transition output (MAP_READ).
+  private transReadbackBuffer: GPUBuffer | null = null;
+  private transReadbackCapacity = 0;
+
   public async init(): Promise<boolean> {
     if (this.device) return true;
     if (typeof navigator === 'undefined' || !navigator.gpu) {
@@ -1111,35 +1126,13 @@ export class WebGpuComputeRunner {
       throw new Error('Transition inputs must have identical dimensions.');
     }
 
-    const usage =
-      GPUTextureUsage.TEXTURE_BINDING |
-      GPUTextureUsage.COPY_DST |
-      GPUTextureUsage.RENDER_ATTACHMENT;
-    const fromTexture = this.device.createTexture({
-      label: 'web-transition-from',
-      size: { width, height },
-      format: 'rgba8unorm',
-      usage,
-    });
-    const toTexture = this.device.createTexture({
-      label: 'web-transition-to',
-      size: { width, height },
-      format: 'rgba8unorm',
-      usage,
-    });
-    const outputTexture = this.device.createTexture({
-      label: 'web-transition-output',
-      size: { width, height },
-      format: 'rgba8unorm',
-      usage: GPUTextureUsage.STORAGE_BINDING | GPUTextureUsage.COPY_SRC,
-    });
-    const uniformBuffer = this.device.createBuffer({
-      label: 'web-transition-uniform',
-      size: TRANSITION_UNIFORM_SIZE,
-      usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
-    });
+    this.ensureTransitionResources(width, height);
+    const fromTexture = this.transFromTexture!;
+    const toTexture = this.transToTexture!;
+    const outputTexture = this.transOutputTexture!;
+    const uniformBuffer = this.transUniformBuffer!;
 
-    try {
+    {
       this.device.queue.copyExternalImageToTexture(
         { source: params.from },
         { texture: fromTexture },
@@ -1196,16 +1189,10 @@ export class WebGpuComputeRunner {
         source = crossfadeWgsl;
       }
       const pipeline = this.getOrCreateTransitionPipeline(source);
-      const bindGroup = this.device.createBindGroup({
-        label: 'web-transition-bind-group',
-        layout: this.transitionBindLayout,
-        entries: [
-          { binding: 0, resource: fromTexture.createView() },
-          { binding: 1, resource: toTexture.createView() },
-          { binding: 2, resource: outputTexture.createView() },
-          { binding: 3, resource: { buffer: uniformBuffer } },
-        ],
-      });
+      // The bind group only references the pooled textures + uniform buffer
+      // (never the pipeline), so it stays valid until the frame size changes
+      // and `ensureTransitionResources` rebuilds it.
+      const bindGroup = this.transBindGroup!;
       const encoder = this.device.createCommandEncoder({ label: 'web-transition-encoder' });
       const pass = encoder.beginComputePass({ label: 'web-transition-pass' });
       pass.setPipeline(pipeline);
@@ -1215,12 +1202,71 @@ export class WebGpuComputeRunner {
       this.device.queue.submit([encoder.finish()]);
 
       return await this.readTextureToBitmap(outputTexture, width, height);
-    } finally {
-      uniformBuffer.destroy();
-      outputTexture.destroy();
-      toTexture.destroy();
-      fromTexture.destroy();
     }
+  }
+
+  /**
+   * Allocate (or reuse) the persistent from/to/output textures, uniform buffer
+   * and bind group for the transition compute pass. Mirrors `ensureTextures`
+   * for the effect path: everything is rebuilt only when the size changes.
+   */
+  private ensureTransitionResources(width: number, height: number): void {
+    if (
+      this.transFromTexture &&
+      this.transCachedWidth === width &&
+      this.transCachedHeight === height
+    ) {
+      return;
+    }
+
+    this.transFromTexture?.destroy();
+    this.transToTexture?.destroy();
+    this.transOutputTexture?.destroy();
+    // The uniform buffer is size-independent, so allocate it once and keep it.
+
+    const inputUsage =
+      GPUTextureUsage.TEXTURE_BINDING |
+      GPUTextureUsage.COPY_DST |
+      GPUTextureUsage.RENDER_ATTACHMENT;
+    this.transFromTexture = this.device!.createTexture({
+      label: 'web-transition-from',
+      size: { width, height },
+      format: 'rgba8unorm',
+      usage: inputUsage,
+    });
+    this.transToTexture = this.device!.createTexture({
+      label: 'web-transition-to',
+      size: { width, height },
+      format: 'rgba8unorm',
+      usage: inputUsage,
+    });
+    this.transOutputTexture = this.device!.createTexture({
+      label: 'web-transition-output',
+      size: { width, height },
+      format: 'rgba8unorm',
+      usage: GPUTextureUsage.STORAGE_BINDING | GPUTextureUsage.COPY_SRC,
+    });
+    if (!this.transUniformBuffer) {
+      this.transUniformBuffer = this.device!.createBuffer({
+        label: 'web-transition-uniform',
+        size: TRANSITION_UNIFORM_SIZE,
+        usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+      });
+    }
+
+    this.transBindGroup = this.device!.createBindGroup({
+      label: 'web-transition-bind-group',
+      layout: this.transitionBindLayout!,
+      entries: [
+        { binding: 0, resource: this.transFromTexture.createView() },
+        { binding: 1, resource: this.transToTexture.createView() },
+        { binding: 2, resource: this.transOutputTexture.createView() },
+        { binding: 3, resource: { buffer: this.transUniformBuffer } },
+      ],
+    });
+
+    this.transCachedWidth = width;
+    this.transCachedHeight = height;
   }
 
   public setPreviewEffectQuality(quality: PreviewEffectQuality): void {
@@ -1359,38 +1405,41 @@ export class WebGpuComputeRunner {
     height: number,
   ): Promise<ImageBitmap> {
     const bytesPerRow = Math.ceil((width * 4) / 256) * 256;
-    const outputBuffer = this.device!.createBuffer({
-      size: bytesPerRow * height,
-      usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ,
-    });
-
-    try {
-      const encoder = this.device!.createCommandEncoder();
-      encoder.copyTextureToBuffer(
-        { texture },
-        { buffer: outputBuffer, bytesPerRow, rowsPerImage: height },
-        { width, height },
-      );
-      this.device!.queue.submit([encoder.finish()]);
-      await outputBuffer.mapAsync(GPUMapMode.READ);
-
-      const mappedRange = outputBuffer.getMappedRange();
-      const canvas = new OffscreenCanvas(width, height);
-      const context = canvas.getContext('2d')!;
-      const imageData = context.createImageData(width, height);
-      const rowSize = width * 4;
-      for (let y = 0; y < height; y += 1) {
-        imageData.data.set(
-          new Uint8ClampedArray(mappedRange, y * bytesPerRow, rowSize),
-          y * rowSize,
-        );
-      }
-      context.putImageData(imageData, 0, 0);
-      outputBuffer.unmap();
-      return await createImageBitmap(canvas);
-    } finally {
-      outputBuffer.destroy();
+    const needed = bytesPerRow * height;
+    // Reuse a single MAP_READ staging buffer across frames. Calls are awaited
+    // sequentially, so the buffer is always unmapped again before the next use;
+    // it is only reallocated when a larger output appears.
+    if (!this.transReadbackBuffer || this.transReadbackCapacity < needed) {
+      this.transReadbackBuffer?.destroy();
+      this.transReadbackBuffer = this.device!.createBuffer({
+        label: 'web-transition-readback',
+        size: needed,
+        usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ,
+      });
+      this.transReadbackCapacity = needed;
     }
+    const outputBuffer = this.transReadbackBuffer;
+
+    const encoder = this.device!.createCommandEncoder();
+    encoder.copyTextureToBuffer(
+      { texture },
+      { buffer: outputBuffer, bytesPerRow, rowsPerImage: height },
+      { width, height },
+    );
+    this.device!.queue.submit([encoder.finish()]);
+    await outputBuffer.mapAsync(GPUMapMode.READ, 0, needed);
+
+    const mappedRange = outputBuffer.getMappedRange(0, needed);
+    const canvas = new OffscreenCanvas(width, height);
+    const context = canvas.getContext('2d')!;
+    const imageData = context.createImageData(width, height);
+    const rowSize = width * 4;
+    for (let y = 0; y < height; y += 1) {
+      imageData.data.set(new Uint8ClampedArray(mappedRange, y * bytesPerRow, rowSize), y * rowSize);
+    }
+    context.putImageData(imageData, 0, 0);
+    outputBuffer.unmap();
+    return await createImageBitmap(canvas);
   }
 
   /**
@@ -1402,6 +1451,11 @@ export class WebGpuComputeRunner {
     this.pongTexture?.destroy();
     this.auxTexture?.destroy();
     this.uniformBuffer?.destroy();
+    this.transFromTexture?.destroy();
+    this.transToTexture?.destroy();
+    this.transOutputTexture?.destroy();
+    this.transUniformBuffer?.destroy();
+    this.transReadbackBuffer?.destroy();
     // GPUShaderModule has no .destroy(); releasing the device reclaims all
     // child objects (pipelines, shader modules, bind group layouts).
     this.device?.destroy();
@@ -1415,6 +1469,15 @@ export class WebGpuComputeRunner {
     this.sampler = null;
     this.uniformBuffer = null;
     this.uniformCapacity = 0;
+    this.transFromTexture = null;
+    this.transToTexture = null;
+    this.transOutputTexture = null;
+    this.transUniformBuffer = null;
+    this.transBindGroup = null;
+    this.transReadbackBuffer = null;
+    this.transReadbackCapacity = 0;
+    this.transCachedWidth = 0;
+    this.transCachedHeight = 0;
     this.customPipelines.clear();
     this.transitionPipelines.clear();
     this.transitionBindLayout = null;

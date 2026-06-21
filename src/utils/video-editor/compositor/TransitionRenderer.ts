@@ -55,7 +55,15 @@ export interface TransitionRendererParams {
 }
 
 export class TransitionRenderer {
-  public destroy() {}
+  // Reusable sprite for blitting the transition result into the clip's output
+  // texture. Kept on the instance so we don't allocate a Sprite every frame of
+  // every transition (the Texture still wraps a fresh ImageBitmap each frame).
+  private blitSprite: Sprite | null = null;
+
+  public destroy() {
+    this.blitSprite?.destroy();
+    this.blitSprite = null;
+  }
 
   public async applyShaderTransitions(
     active: CompositorClip[],
@@ -200,7 +208,12 @@ export class TransitionRenderer {
         if (!processed) continue;
 
         const texture = Texture.from(processed);
-        const outputSprite = new Sprite(texture);
+        if (!this.blitSprite) {
+          this.blitSprite = new Sprite(texture);
+        } else {
+          this.blitSprite.texture = texture;
+        }
+        const outputSprite = this.blitSprite;
         outputSprite.width = params.width;
         outputSprite.height = params.height;
         params.app.renderer.render({
@@ -208,7 +221,8 @@ export class TransitionRenderer {
           target: clip.transitionOutputTexture,
           clear: true,
         });
-        outputSprite.destroy();
+        // The sprite is reused next frame; only the per-frame texture (backed by
+        // the just-consumed ImageBitmap) is released.
         texture.destroy();
       } catch (error) {
         log.warn('[VideoCompositor] WebGPU transition failed:', error);
