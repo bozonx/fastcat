@@ -11,6 +11,7 @@ import { toPixiBlendMode, type CompositorClip, type CompositorTrack } from './ty
 import type { StageTextureRenderer } from './StageTextureRenderer';
 import type { PreviewEffectQuality } from '~/utils/preview-effect-quality';
 import type { WebGpuComputeRunner } from './WebGpuComputeRunner';
+import { getExtractedPixelBytes } from './pixelExtraction';
 const log = createDevLogger('TransitionRenderer');
 
 export interface TransitionRendererParams {
@@ -283,9 +284,7 @@ export class TransitionRenderer {
     }
 
     const imageData = context.createImageData(width, height);
-    const bytes = ArrayBuffer.isView(pixels)
-      ? new Uint8Array(pixels.buffer, pixels.byteOffset, pixels.byteLength)
-      : new Uint8Array(0);
+    const bytes = getExtractedPixelBytes(pixels);
     imageData.data.set(bytes);
     context.putImageData(imageData, 0, 0);
     return await createImageBitmap(canvas);

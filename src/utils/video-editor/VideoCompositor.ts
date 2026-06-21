@@ -45,6 +45,7 @@ import { createCompositorRuntime } from './compositor/CompositorRuntimeFactory';
 import { CompositorRenderContextBuilder } from './compositor/CompositorRenderContextBuilder';
 import { PixiCompositorLifecycle } from './compositor/PixiCompositorLifecycle';
 import { WebGpuComputeRunner } from './compositor/WebGpuComputeRunner';
+import { getExtractedPixelBytes } from './compositor/pixelExtraction';
 import { buildEffectSpecs } from '~/effects';
 import { normalizeClipSpeed, resolveClipSourceTimeUs } from './source-time';
 import type { PreviewEffectQuality } from '~/utils/preview-effect-quality';
@@ -270,9 +271,7 @@ export class VideoCompositor {
           const ctx = canvas.getContext('2d');
           if (ctx) {
             const imageData = ctx.createImageData(this.width, this.height);
-            const pixelBytes = ArrayBuffer.isView(pixels)
-              ? new Uint8Array(pixels.buffer, pixels.byteOffset, pixels.byteLength)
-              : new Uint8Array(0);
+            const pixelBytes = getExtractedPixelBytes(pixels);
             imageData.data.set(pixelBytes);
             ctx.putImageData(imageData, 0, 0);
             const bitmap = await createImageBitmap(canvas);

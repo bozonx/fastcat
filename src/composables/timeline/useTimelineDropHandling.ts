@@ -592,7 +592,12 @@ export function useTimelineDropHandling(options: UseTimelineDropHandlingOptions)
     });
 
     // After awaiting metadata fetch, the user may have dropped, cancelled the
-    // drag, or replaced the payload. Re-validate everything we relied on.
+    // drag, or replaced the payload. Re-validate everything we relied on. If a
+    // drop / drag-end / drag-leave cleared the preview while we awaited, the
+    // token changed — bail without resurrecting the ghost.
+    if (buildToken !== previewBuildToken) {
+      return null;
+    }
     const currentPayload = draggedFile.draggedFile.value;
     if (
       !currentPayload ||

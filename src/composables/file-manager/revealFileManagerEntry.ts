@@ -8,6 +8,13 @@ interface RevealFileManagerEntryOptions {
   beforeReveal?: () => void | Promise<void>;
   findEntryByPath: (path: string) => FsEntry | null | undefined;
   toggleDirectory: (entry: FsEntry) => Promise<void>;
+  /**
+   * Expand a directory and ensure its children are loaded. Preferred over
+   * {@link toggleDirectory} while walking down the path: a directory can be
+   * flagged `expanded` while its children are still unloaded, in which case
+   * relying on the flag leaves the target entry unfindable.
+   */
+  ensureDirectoryExpanded?: (entry: FsEntry) => Promise<void>;
   openFolder: (entry: FsEntry) => void;
   selectEntry: (entry: FsEntry) => void;
   setSelectedFsEntry: (entry: FsEntry) => void;
@@ -32,8 +39,16 @@ export async function revealFileManagerEntry(options: RevealFileManagerEntryOpti
 
     currentPath = currentPath ? `${currentPath}/${part}` : part;
     const directoryEntry = options.findEntryByPath(currentPath);
-    if (directoryEntry?.kind === 'directory' && !directoryEntry.expanded) {
-      await options.toggleDirectory(directoryEntry);
+    if (directoryEntry?.kind === 'directory') {
+      // Expand *and* ensure children are loaded. A directory may already be
+      // flagged `expanded` while its children are still `undefined` (restored
+      // persisted state), so guarding on `!expanded` alone would skip loading
+      // and leave the deeper entry — including the target file — unfindable.
+      if (options.ensureDirectoryExpanded) {
+        await options.ensureDirectoryExpanded(directoryEntry);
+      } else if (!directoryEntry.expanded) {
+        await options.toggleDirectory(directoryEntry);
+      }
     }
   }
 

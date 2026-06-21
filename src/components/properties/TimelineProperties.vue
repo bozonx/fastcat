@@ -223,6 +223,7 @@ async function handleSelectInFileManager() {
     notifyFileManagerUpdate: uiStore.notifyFileManagerUpdate,
     findEntryByPath: fileManager.findEntryByPath,
     toggleDirectory: fileManager.toggleDirectory,
+    ensureDirectoryExpanded: fileManager.ensureDirectoryExpanded,
     openFolder: fileManagerStore.openFolder,
     setSelectedFsEntry: (e) => {
       uiStore.selectedFsEntry = {

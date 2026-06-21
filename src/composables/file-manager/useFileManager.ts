@@ -237,6 +237,19 @@ export function createFileManager(deps: FileManagerCreateDeps) {
     });
   }
 
+  async function ensureDirectoryExpanded(entry: FsEntry) {
+    if (entry.kind !== 'directory') return;
+    await runWithUiFeedback({
+      action: async () => {
+        await service.ensureDirectoryExpanded(entry);
+      },
+      defaultErrorMessage: 'Failed to read folder',
+      toastTitle: 'Folder error',
+      toastDescription: () => error.value || 'Failed to read folder',
+      ignoreError: () => false,
+    });
+  }
+
   async function loadProjectDirectory(options?: { fullRefresh?: boolean }) {
     const projectName = deps.getProjectName();
     if (!projectName) {
@@ -803,6 +816,7 @@ export function createFileManager(deps: FileManagerCreateDeps) {
     },
     loadProjectDirectory,
     toggleDirectory,
+    ensureDirectoryExpanded,
     handleFiles,
     createFolder,
     deleteEntry,

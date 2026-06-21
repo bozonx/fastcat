@@ -15,6 +15,7 @@ import {
 } from './VideoFrameCache';
 import type { CanvasFallbackRenderer } from './renderers/CanvasFallbackRenderer';
 import type { WebGpuComputeRunner } from './WebGpuComputeRunner';
+import { getExtractedPixelBytes } from './pixelExtraction';
 import { buildEffectSpecs } from '~/effects';
 const log = createDevLogger('ClipResourceManager');
 
@@ -152,9 +153,7 @@ export class ClipResourceManager {
         const ctx = canvas.getContext('2d');
         if (!ctx) return null;
         const imageData = ctx.createImageData(this.context.width, this.context.height);
-        const pixelBytes = ArrayBuffer.isView(pixels)
-          ? new Uint8Array(pixels.buffer, pixels.byteOffset, pixels.byteLength)
-          : new Uint8Array(0);
+        const pixelBytes = getExtractedPixelBytes(pixels);
         imageData.data.set(pixelBytes);
         ctx.putImageData(imageData, 0, 0);
         return await createImageBitmap(canvas);

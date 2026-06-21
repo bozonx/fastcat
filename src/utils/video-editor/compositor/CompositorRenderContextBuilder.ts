@@ -20,6 +20,7 @@ import type { TransitionRenderer } from './TransitionRenderer';
 import type { VideoFrameCache } from './VideoFrameCache';
 import type { CompositorClip } from './types';
 import type { PreviewEffectQuality } from '~/utils/preview-effect-quality';
+import { getExtractedPixelBytes } from './pixelExtraction';
 
 const log = createDevLogger('CompositorRenderContextBuilder');
 
@@ -268,9 +269,7 @@ export class CompositorRenderContextBuilder {
             const ctx = offscreen.getContext('2d');
             if (!ctx) continue;
             const imageData = ctx.createImageData(state.width, state.height);
-            const pixelBytes = ArrayBuffer.isView(pixels)
-              ? new Uint8Array(pixels.buffer, pixels.byteOffset, pixels.byteLength)
-              : new Uint8Array(0);
+            const pixelBytes = getExtractedPixelBytes(pixels);
             imageData.data.set(pixelBytes);
             ctx.putImageData(imageData, 0, 0);
             bitmap = await createImageBitmap(offscreen);

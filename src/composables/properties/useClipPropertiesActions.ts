@@ -82,6 +82,7 @@ interface FileManagerActions {
   loadProjectDirectory: () => Promise<void>;
   findEntryByPath: (path: string) => FsEntry | null | undefined;
   toggleDirectory: (entry: FsEntry) => Promise<void>;
+  ensureDirectoryExpanded: (entry: FsEntry) => Promise<void>;
 }
 
 interface UseClipPropertiesActionsOptions {
@@ -270,6 +271,7 @@ export function useClipPropertiesActions(options: UseClipPropertiesActionsOption
       notifyFileManagerUpdate: uiStore.notifyFileManagerUpdate,
       findEntryByPath: fileManager.findEntryByPath,
       toggleDirectory: fileManager.toggleDirectory,
+      ensureDirectoryExpanded: fileManager.ensureDirectoryExpanded,
       openFolder: fileManagerStore.openFolder,
       setSelectedFsEntry: (entry) => {
         uiStore.selectedFsEntry = {

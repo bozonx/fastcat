@@ -366,13 +366,40 @@ function onTrackAreaPointerDownCapture(e: PointerEvent) {
   }
 }
 
+// Safety net for the drop ghost. The `dragPreview` is set on `dragover` over a
+// track, but is only cleared by the track's own drop/leave handlers. When a drag
+// ends without a real drop on a track — released over a gap, the ruler, the
+// resize handle, empty area, or (for OS-file drags from the file manager) a
+// final dragover that didn't preventDefault — none of those handlers run and the
+// gray phantom clip lingers. External (OS) drags additionally never fire an
+// in-page `dragend`, so we listen for every terminal drag signal at window level
+// and always clear the preview. This is purely visual cleanup; real insertion is
+// handled independently by `onDrop`, so clearing here can never drop a clip.
+function onWindowDragTerminated() {
+  clearDragPreview();
+}
+
+function onWindowDragLeave(e: DragEvent) {
+  // Only react when the pointer actually leaves the document (relatedTarget is
+  // null and there's no element under the cursor), i.e. the drag left the
+  // window. Intra-document dragleave is handled per-track.
+  if (e.relatedTarget !== null) return;
+  clearDragPreview();
+}
+
 onBeforeUnmount(() => {
   clearPointerRectCache();
   window.removeEventListener('fastcat:tauri-internal-file-drop', onTauriInternalFileDrop);
+  window.removeEventListener('drop', onWindowDragTerminated, true);
+  window.removeEventListener('dragend', onWindowDragTerminated, true);
+  window.removeEventListener('dragleave', onWindowDragLeave, true);
 });
 
 onMounted(() => {
   window.addEventListener('fastcat:tauri-internal-file-drop', onTauriInternalFileDrop);
+  window.addEventListener('drop', onWindowDragTerminated, true);
+  window.addEventListener('dragend', onWindowDragTerminated, true);
+  window.addEventListener('dragleave', onWindowDragLeave, true);
 });
 
 function onTrackAreaAuxClick(e: MouseEvent) {

@@ -35,6 +35,7 @@ export interface FileManagerService {
   findEntryByPath: (path: string) => FsEntry | null;
   mergeEntries: (prev: FsEntry[] | undefined, next: FsEntry[]) => FsEntry[];
   toggleDirectory: (entry: FsEntry) => Promise<void>;
+  ensureDirectoryExpanded: (entry: FsEntry) => Promise<void>;
   refreshExpandedChildren: (entries: FsEntry[]) => Promise<void>;
   expandPersistedDirectories: () => Promise<void>;
   loadProjectDirectory: (
@@ -199,6 +200,52 @@ export function createFileManagerService(deps: FileManagerServiceDeps): FileMana
     }
   }
 
+  /**
+   * Expand a directory and guarantee its children are loaded. Unlike
+   * {@link toggleDirectory}, this never collapses and it loads children even
+   * when the directory is already flagged `expanded` but its `children` are
+   * still `undefined` (e.g. restored-from-persisted expansion state). This is
+   * what "reveal in file manager" needs while walking down a path — relying on
+   * the `expanded` flag alone intermittently leaves ancestors unloaded, so the
+   * target entry can't be found and never gets selected.
+   */
+  async function ensureDirectoryExpanded(entry: FsEntry): Promise<void> {
+    if (entry.kind !== 'directory') return;
+
+    const path = entry.path;
+    if (!path) return;
+
+    const current = findEntryByPathCore(deps.rootEntries.value, path);
+    if (!current || current.kind !== 'directory') return;
+
+    if (!current.expanded) {
+      deps.rootEntries.value = updateEntryByPath(deps.rootEntries.value, path, (e) => ({
+        ...e,
+        expanded: true,
+      }));
+      deps.setPathExpanded(path, true);
+    }
+
+    const afterExpand = findEntryByPathCore(deps.rootEntries.value, path);
+    if (!afterExpand || afterExpand.kind !== 'directory') return;
+    if (afterExpand.children !== undefined) return;
+
+    try {
+      const children = await readDirectory(path);
+      deps.rootEntries.value = updateEntryByPath(deps.rootEntries.value, path, (e) => ({
+        ...e,
+        children,
+      }));
+      deps.onDirectoryLoaded?.();
+    } catch (e) {
+      deps.onError?.({
+        title: 'File manager error',
+        message: `Failed to read folder: ${path}`,
+        error: e,
+      });
+    }
+  }
+
   async function refreshExpandedChildren(entries: FsEntry[]): Promise<void> {
     for (const entry of entries) {
       if (entry.kind !== 'directory') continue;
@@ -355,6 +402,7 @@ export function createFileManagerService(deps: FileManagerServiceDeps): FileMana
     findEntryByPath,
     mergeEntries,
     toggleDirectory,
+    ensureDirectoryExpanded,
     refreshExpandedChildren,
     expandPersistedDirectories,
     loadProjectDirectory,
