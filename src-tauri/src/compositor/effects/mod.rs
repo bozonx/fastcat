@@ -13,7 +13,7 @@ use std::hash::{Hash, Hasher};
 use std::sync::Arc;
 use vello::peniko::ImageData;
 
-use super::gpu_utils::image_pixels_rgba8;
+use super::gpu_utils::{create_rgba8_texture, image_pixels_rgba8};
 
 #[derive(Debug, Clone, Copy, Default, Serialize, Deserialize, ts_rs::TS)]
 #[serde(rename_all = "lowercase")]
@@ -314,22 +314,15 @@ impl OwnedTexturePool {
             Arc::strong_count(&e.texture) > 1 || (e.width == width && e.height == height)
         });
 
-        let texture = Arc::new(device.create_texture(&wgpu::TextureDescriptor {
-            label: Some("native-effect-owned-output"),
-            size: wgpu::Extent3d {
-                width,
-                height,
-                depth_or_array_layers: 1,
-            },
-            mip_level_count: 1,
-            sample_count: 1,
-            dimension: wgpu::TextureDimension::D2,
-            format: wgpu::TextureFormat::Rgba8Unorm,
-            usage: wgpu::TextureUsages::COPY_SRC
+        let texture = Arc::new(create_rgba8_texture(
+            device,
+            "native-effect-owned-output",
+            width,
+            height,
+            wgpu::TextureUsages::COPY_SRC
                 | wgpu::TextureUsages::TEXTURE_BINDING
                 | wgpu::TextureUsages::STORAGE_BINDING,
-            view_formats: &[],
-        }));
+        ));
         let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
         self.entries.push(PooledTexture {
             texture: texture.clone(),
@@ -562,66 +555,26 @@ impl EffectPipeline {
         if recreate {
             let new_w = width.max(1);
             let new_h = height.max(1);
-            let new_size = wgpu::Extent3d {
-                width: new_w,
-                height: new_h,
-                depth_or_array_layers: 1,
-            };
 
             let usage = wgpu::TextureUsages::COPY_DST
                 | wgpu::TextureUsages::COPY_SRC
                 | wgpu::TextureUsages::TEXTURE_BINDING
                 | wgpu::TextureUsages::STORAGE_BINDING;
 
-            let input = if need_input {
-                Some(device.create_texture(&wgpu::TextureDescriptor {
-                    label: Some("native-effect-cached-input"),
-                    size: new_size,
-                    mip_level_count: 1,
-                    sample_count: 1,
-                    dimension: wgpu::TextureDimension::D2,
-                    format: wgpu::TextureFormat::Rgba8Unorm,
-                    usage,
-                    view_formats: &[],
-                }))
-            } else {
-                None
-            };
-
-            let ping = device.create_texture(&wgpu::TextureDescriptor {
-                label: Some("native-effect-cached-ping"),
-                size: new_size,
-                mip_level_count: 1,
-                sample_count: 1,
-                dimension: wgpu::TextureDimension::D2,
-                format: wgpu::TextureFormat::Rgba8Unorm,
-                usage,
-                view_formats: &[],
+            let input = need_input.then(|| {
+                create_rgba8_texture(device, "native-effect-cached-input", new_w, new_h, usage)
             });
+
+            let ping =
+                create_rgba8_texture(device, "native-effect-cached-ping", new_w, new_h, usage);
             let ping_view = ping.create_view(&wgpu::TextureViewDescriptor::default());
 
-            let pong = device.create_texture(&wgpu::TextureDescriptor {
-                label: Some("native-effect-cached-pong"),
-                size: new_size,
-                mip_level_count: 1,
-                sample_count: 1,
-                dimension: wgpu::TextureDimension::D2,
-                format: wgpu::TextureFormat::Rgba8Unorm,
-                usage,
-                view_formats: &[],
-            });
+            let pong =
+                create_rgba8_texture(device, "native-effect-cached-pong", new_w, new_h, usage);
             let pong_view = pong.create_view(&wgpu::TextureViewDescriptor::default());
 
-            let aux = device.create_texture(&wgpu::TextureDescriptor {
-                label: Some("native-effect-cached-aux"),
-                size: new_size,
-                mip_level_count: 1,
-                sample_count: 1,
-                dimension: wgpu::TextureDimension::D2,
-                format: wgpu::TextureFormat::Rgba8Unorm,
-                usage,
-                view_formats: &[],
-            });
+            let aux =
+                create_rgba8_texture(device, "native-effect-cached-aux", new_w, new_h, usage);
             let aux_view = aux.create_view(&wgpu::TextureViewDescriptor::default());
 
             self.resources = Some(CachedResources {
@@ -1710,22 +1663,15 @@ fn source_to_owned_texture(
 ) -> Result<Arc<crate::media::SharedTexture>> {
     match source {
         EffectSource::Cpu(img) => {
-            let texture = device.create_texture(&wgpu::TextureDescriptor {
-                label: Some("native-effect-owned-cpu-source"),
-                size: wgpu::Extent3d {
-                    width,
-                    height,
-                    depth_or_array_layers: 1,
-                },
-                mip_level_count: 1,
-                sample_count: 1,
-                dimension: wgpu::TextureDimension::D2,
-                format: wgpu::TextureFormat::Rgba8Unorm,
-                usage: wgpu::TextureUsages::COPY_SRC
+            let texture = create_rgba8_texture(
+                device,
+                "native-effect-owned-cpu-source",
+                width,
+                height,
+                wgpu::TextureUsages::COPY_SRC
                     | wgpu::TextureUsages::COPY_DST
                     | wgpu::TextureUsages::TEXTURE_BINDING,
-                view_formats: &[],
-            });
+            );
             let pixels = image_pixels_rgba8(img)?;
             queue.write_texture(
                 wgpu::TexelCopyTextureInfo {

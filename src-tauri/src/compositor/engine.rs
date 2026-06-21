@@ -24,7 +24,7 @@ use vello::{AaConfig, AaSupport, RenderParams, Renderer, RendererOptions, Scene 
 use winit::window::Window;
 
 use super::effects::{EffectPipeline, EffectSource, EffectSpec};
-use super::gpu_utils::image_pixels_rgba8;
+use super::gpu_utils::{create_readback_target, create_rgba8_texture, image_pixels_rgba8};
 use super::readback::*;
 use super::scene::{
     BlendMode, Layer, LayerKind, RasterGpuSource, RasterSource, TextLayer, TextRenderMode,
@@ -1310,30 +1310,8 @@ impl Compositor {
             None => true,
         };
         if need_rebuild {
-            let row_bytes = width as usize * 4;
-            let aligned_row_bytes = (row_bytes + 255) & !255;
-            let buffer_size = (aligned_row_bytes * height as usize) as u64;
-            let texture = device.create_texture(&wgpu::TextureDescriptor {
-                label: Some("monitor-offscreen"),
-                size: wgpu::Extent3d {
-                    width,
-                    height,
-                    depth_or_array_layers: 1,
-                },
-                mip_level_count: 1,
-                sample_count: 1,
-                dimension: wgpu::TextureDimension::D2,
-                format: wgpu::TextureFormat::Rgba8Unorm,
-                usage: wgpu::TextureUsages::STORAGE_BINDING | wgpu::TextureUsages::COPY_SRC,
-                view_formats: &[],
-            });
-            let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
-            let buffer = device.create_buffer(&wgpu::BufferDescriptor {
-                label: Some("monitor-readback"),
-                size: buffer_size,
-                usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
-                mapped_at_creation: false,
-            });
+            let (texture, view, buffer, aligned_row_bytes) =
+                create_readback_target(device, "monitor", width, height);
             self.offscreen.insert(
                 dev_id,
                 OffscreenTarget {
@@ -1429,22 +1407,15 @@ impl Compositor {
         let device_handle = &self.render_cx.devices[dev_id];
         let device = &device_handle.device;
         let queue = &device_handle.queue;
-        let texture = device.create_texture(&wgpu::TextureDescriptor {
-            label: Some("compositor-owned-vello-layer"),
-            size: wgpu::Extent3d {
-                width,
-                height,
-                depth_or_array_layers: 1,
-            },
-            mip_level_count: 1,
-            sample_count: 1,
-            dimension: wgpu::TextureDimension::D2,
-            format: wgpu::TextureFormat::Rgba8Unorm,
-            usage: wgpu::TextureUsages::STORAGE_BINDING
+        let texture = create_rgba8_texture(
+            device,
+            "compositor-owned-vello-layer",
+            width,
+            height,
+            wgpu::TextureUsages::STORAGE_BINDING
                 | wgpu::TextureUsages::COPY_SRC
                 | wgpu::TextureUsages::TEXTURE_BINDING,
-            view_formats: &[],
-        });
+        );
         let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
         let renderer = self
             .renderers
@@ -1533,22 +1504,15 @@ fn image_to_texture(
     queue: &wgpu::Queue,
     image: &ImageData,
 ) -> Result<wgpu::Texture> {
-    let texture = device.create_texture(&wgpu::TextureDescriptor {
-        label: Some("compositor-owned-image-texture"),
-        size: wgpu::Extent3d {
-            width: image.width.max(1),
-            height: image.height.max(1),
-            depth_or_array_layers: 1,
-        },
-        mip_level_count: 1,
-        sample_count: 1,
-        dimension: wgpu::TextureDimension::D2,
-        format: wgpu::TextureFormat::Rgba8Unorm,
-        usage: wgpu::TextureUsages::COPY_SRC
+    let texture = create_rgba8_texture(
+        device,
+        "compositor-owned-image-texture",
+        image.width.max(1),
+        image.height.max(1),
+        wgpu::TextureUsages::COPY_SRC
             | wgpu::TextureUsages::COPY_DST
             | wgpu::TextureUsages::TEXTURE_BINDING,
-        view_formats: &[],
-    });
+    );
     let pixels = image_pixels_rgba8(image)?;
     queue.write_texture(
         wgpu::TexelCopyTextureInfo {

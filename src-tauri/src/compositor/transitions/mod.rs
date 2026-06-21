@@ -11,7 +11,7 @@ use vello::peniko::ImageData;
 use wgpu::util::DeviceExt;
 
 use crate::compositor::effects::EffectSource;
-use crate::compositor::gpu_utils::image_pixels_rgba8;
+use crate::compositor::gpu_utils::{create_rgba8_texture, image_pixels_rgba8};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "kebab-case")]
@@ -265,22 +265,15 @@ impl TransitionPipeline {
             }
         };
 
-        let dst = device.create_texture(&wgpu::TextureDescriptor {
-            label: Some("native-transition-scaled-input"),
-            size: wgpu::Extent3d {
-                width,
-                height,
-                depth_or_array_layers: 1,
-            },
-            mip_level_count: 1,
-            sample_count: 1,
-            dimension: wgpu::TextureDimension::D2,
-            format: wgpu::TextureFormat::Rgba8Unorm,
-            usage: wgpu::TextureUsages::COPY_SRC
+        let dst = create_rgba8_texture(
+            device,
+            "native-transition-scaled-input",
+            width,
+            height,
+            wgpu::TextureUsages::COPY_SRC
                 | wgpu::TextureUsages::TEXTURE_BINDING
                 | wgpu::TextureUsages::STORAGE_BINDING,
-            view_formats: &[],
-        });
+        );
         let src_view = src_tex.create_view(&wgpu::TextureViewDescriptor::default());
         let dst_view = dst.create_view(&wgpu::TextureViewDescriptor::default());
         let uniform = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
@@ -404,22 +397,15 @@ impl TransitionPipeline {
         // каждый переход на кадр. Результат всё равно уходит вверх по сцене как owned-Arc,
         // так что финальная текстура и есть таргет compute-пасса. Кеш не нужен: аллокация
         // ровно одной выходной текстуры за вызов — то же, что делал прежний `copy_texture_owned`.
-        let output = device.create_texture(&wgpu::TextureDescriptor {
-            label: Some("native-transition-owned-output"),
-            size: wgpu::Extent3d {
-                width,
-                height,
-                depth_or_array_layers: 1,
-            },
-            mip_level_count: 1,
-            sample_count: 1,
-            dimension: wgpu::TextureDimension::D2,
-            format: wgpu::TextureFormat::Rgba8Unorm,
-            usage: wgpu::TextureUsages::COPY_SRC
+        let output = create_rgba8_texture(
+            device,
+            "native-transition-owned-output",
+            width,
+            height,
+            wgpu::TextureUsages::COPY_SRC
                 | wgpu::TextureUsages::TEXTURE_BINDING
                 | wgpu::TextureUsages::STORAGE_BINDING,
-            view_formats: &[],
-        });
+        );
         let output_view = output.create_view(&wgpu::TextureViewDescriptor::default());
 
         let from_texture = from_tex.create_view(&wgpu::TextureViewDescriptor::default());
@@ -478,21 +464,13 @@ fn create_temp_texture(
     queue: &wgpu::Queue,
     img: &ImageData,
 ) -> Result<wgpu::Texture> {
-    let size = wgpu::Extent3d {
-        width: img.width,
-        height: img.height,
-        depth_or_array_layers: 1,
-    };
-    let tex = device.create_texture(&wgpu::TextureDescriptor {
-        label: Some("native-transition-temp-source"),
-        size,
-        mip_level_count: 1,
-        sample_count: 1,
-        dimension: wgpu::TextureDimension::D2,
-        format: wgpu::TextureFormat::Rgba8Unorm,
-        usage: wgpu::TextureUsages::COPY_DST | wgpu::TextureUsages::TEXTURE_BINDING,
-        view_formats: &[],
-    });
+    let tex = create_rgba8_texture(
+        device,
+        "native-transition-temp-source",
+        img.width,
+        img.height,
+        wgpu::TextureUsages::COPY_DST | wgpu::TextureUsages::TEXTURE_BINDING,
+    );
 
     let pixels = image_pixels_rgba8(img)?;
     queue.write_texture(
@@ -508,7 +486,11 @@ fn create_temp_texture(
             bytes_per_row: Some(img.width * 4),
             rows_per_image: Some(img.height),
         },
-        size,
+        wgpu::Extent3d {
+            width: img.width,
+            height: img.height,
+            depth_or_array_layers: 1,
+        },
     );
 
     Ok(tex)

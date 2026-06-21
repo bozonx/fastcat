@@ -1,6 +1,7 @@
 use anyhow::{anyhow, Result};
 use bytemuck::{Pod, Zeroable};
 
+use crate::compositor::gpu_utils::create_texture_2d;
 use crate::media::decode::{YuvColorMatrix, YuvColorRange, YuvFrame};
 
 #[repr(C)]
@@ -293,34 +294,22 @@ impl YuvToRgbaPipeline {
         if current_matches {
             return;
         }
-        let y = device.create_texture(&wgpu::TextureDescriptor {
-            label: Some("native-yuv-y-plane"),
-            size: wgpu::Extent3d {
-                width,
-                height,
-                depth_or_array_layers: 1,
-            },
-            mip_level_count: 1,
-            sample_count: 1,
-            dimension: wgpu::TextureDimension::D2,
-            format: wgpu::TextureFormat::R8Unorm,
-            usage: wgpu::TextureUsages::COPY_DST | wgpu::TextureUsages::TEXTURE_BINDING,
-            view_formats: &[],
-        });
-        let uv = device.create_texture(&wgpu::TextureDescriptor {
-            label: Some("native-yuv-uv-plane"),
-            size: wgpu::Extent3d {
-                width: uv_width,
-                height: uv_height,
-                depth_or_array_layers: 1,
-            },
-            mip_level_count: 1,
-            sample_count: 1,
-            dimension: wgpu::TextureDimension::D2,
-            format: wgpu::TextureFormat::Rg8Unorm,
-            usage: wgpu::TextureUsages::COPY_DST | wgpu::TextureUsages::TEXTURE_BINDING,
-            view_formats: &[],
-        });
+        let y = create_texture_2d(
+            device,
+            "native-yuv-y-plane",
+            width,
+            height,
+            wgpu::TextureFormat::R8Unorm,
+            wgpu::TextureUsages::COPY_DST | wgpu::TextureUsages::TEXTURE_BINDING,
+        );
+        let uv = create_texture_2d(
+            device,
+            "native-yuv-uv-plane",
+            uv_width,
+            uv_height,
+            wgpu::TextureFormat::Rg8Unorm,
+            wgpu::TextureUsages::COPY_DST | wgpu::TextureUsages::TEXTURE_BINDING,
+        );
         self.textures = Some(YuvTextures {
             width,
             height,

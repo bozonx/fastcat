@@ -10,6 +10,7 @@ use std::sync::mpsc::{Receiver, TryRecvError};
 
 use anyhow::{anyhow, Result};
 
+use crate::compositor::gpu_utils::create_readback_target;
 use crate::compositor::Compositor;
 
 pub(crate) enum SlotState {
@@ -51,32 +52,11 @@ impl PipelinedReadback {
         depth: usize,
     ) -> Self {
         let row_bytes = width as usize * 4;
-        let aligned_row_bytes = (row_bytes + 255) & !255;
-        let buffer_size = (aligned_row_bytes * height as usize) as u64;
         let depth = depth.max(2);
         let mut slots = Vec::with_capacity(depth);
         for i in 0..depth {
-            let texture = device.create_texture(&wgpu::TextureDescriptor {
-                label: Some(&format!("pipelined-offscreen-{i}")),
-                size: wgpu::Extent3d {
-                    width,
-                    height,
-                    depth_or_array_layers: 1,
-                },
-                mip_level_count: 1,
-                sample_count: 1,
-                dimension: wgpu::TextureDimension::D2,
-                format: wgpu::TextureFormat::Rgba8Unorm,
-                usage: wgpu::TextureUsages::STORAGE_BINDING | wgpu::TextureUsages::COPY_SRC,
-                view_formats: &[],
-            });
-            let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
-            let buffer = device.create_buffer(&wgpu::BufferDescriptor {
-                label: Some(&format!("pipelined-readback-{i}")),
-                size: buffer_size,
-                usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
-                mapped_at_creation: false,
-            });
+            let (texture, view, buffer, aligned_row_bytes) =
+                create_readback_target(device, &format!("pipelined-{i}"), width, height);
             slots.push(ReadbackSlot {
                 texture,
                 view,
