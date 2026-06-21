@@ -25,6 +25,7 @@ describe('timeline-selection-range', () => {
     clearSelection = vi.fn();
     markerService = {
       getMarkers: vi.fn().mockReturnValue([]),
+      addMarker: vi.fn().mockReturnValue('new-marker'),
       addMarkerAtPlayhead: vi.fn(),
       updateMarker: vi.fn(),
       removeMarker: vi.fn(),
@@ -72,5 +73,25 @@ describe('timeline-selection-range', () => {
 
     expect(selectionRange.getSelectionRange()).toEqual({ startUs: 2000000, endUs: 7000000 });
     expect(selectTimelineSelectionRange).toHaveBeenCalled();
+  });
+
+  it('converts selection to a zone marker created directly at the range, without touching other markers', () => {
+    // An existing zone sits later than the playhead — it must not be mutated.
+    markerService.getMarkers.mockReturnValue([
+      { id: 'existing', timeUs: 20000000, durationUs: 5000000, text: '' },
+    ]);
+    currentTime.value = 0;
+    selectionRange.updateSelectionRange({ startUs: 4000000, endUs: 8000000 });
+
+    selectionRange.convertSelectionRangeToMarker();
+
+    // New marker is created straight at the selection range (no stray playhead marker, no update).
+    expect(markerService.addMarker).toHaveBeenCalledWith({
+      timeUs: 4000000,
+      durationUs: 4000000,
+    });
+    expect(markerService.addMarkerAtPlayhead).not.toHaveBeenCalled();
+    expect(markerService.updateMarker).not.toHaveBeenCalled();
+    expect(selectionRange.getSelectionRange()).toBeNull();
   });
 });

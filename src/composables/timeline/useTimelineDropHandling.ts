@@ -84,6 +84,13 @@ export function useTimelineDropHandling(options: UseTimelineDropHandlingOptions)
 
   const dragPreview = ref<DragPreview | null>(null);
 
+  // Monotonic token bumped on every clear. The drag preview build is throttled
+  // and async (it awaits clip metadata), so a build that started before a drop /
+  // drag-end / drag-leave could otherwise resolve afterwards and re-set the
+  // ghost, leaving a phantom clip on the timeline. Each build captures the token
+  // at start and bails if it changed.
+  let previewBuildToken = 0;
+
   const {
     isActive: isImporting,
     progress: importProgress,
@@ -96,6 +103,7 @@ export function useTimelineDropHandling(options: UseTimelineDropHandlingOptions)
   } = useUploadProgress();
 
   function clearDragPreview() {
+    previewBuildToken++;
     dragPreview.value = null;
   }
 
@@ -554,6 +562,7 @@ export function useTimelineDropHandling(options: UseTimelineDropHandlingOptions)
   }
 
   const buildDragPreview = useThrottleFn(async (e: DragEvent, trackId: string) => {
+    const buildToken = previewBuildToken;
     const payload = draggedFile.draggedFile.value;
     if (!payload || payload.isExternal) {
       clearDragPreview();

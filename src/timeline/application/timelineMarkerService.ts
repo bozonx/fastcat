@@ -11,6 +11,10 @@ export interface TimelineMarkerServiceDeps {
 
 export interface TimelineMarkerService {
   getMarkers: () => TimelineMarker[];
+  addMarker: (
+    input: { timeUs: number; durationUs?: number; text?: string; color?: string },
+    options?: Record<string, unknown>,
+  ) => string;
   addMarkerAtPlayhead: (options?: Record<string, unknown>) => void;
   addZoneMarkerAtPlayhead: (options?: Record<string, unknown>) => void;
   updateMarker: (
@@ -35,27 +39,32 @@ export function createTimelineMarkerService(
     return Array.isArray(raw) ? (raw as TimelineMarker[]) : [];
   }
 
-  function addMarkerAtPlayhead(options?: Record<string, unknown>) {
+  function addMarker(
+    input: { timeUs: number; durationUs?: number; text?: string; color?: string },
+    options?: Record<string, unknown>,
+  ): string {
+    const id = generateMarkerId();
     deps.applyTimeline(
       {
         type: 'add_marker',
-        id: generateMarkerId(),
-        timeUs: deps.getCurrentTime(),
-        text: '',
+        id,
+        timeUs: input.timeUs,
+        ...(input.durationUs !== undefined ? { durationUs: input.durationUs } : {}),
+        text: input.text ?? '',
+        ...(input.color !== undefined ? { color: input.color } : {}),
       },
       options,
     );
+    return id;
+  }
+
+  function addMarkerAtPlayhead(options?: Record<string, unknown>) {
+    addMarker({ timeUs: deps.getCurrentTime(), text: '' }, options);
   }
 
   function addZoneMarkerAtPlayhead(options?: Record<string, unknown>) {
-    deps.applyTimeline(
-      {
-        type: 'add_marker',
-        id: generateMarkerId(),
-        timeUs: deps.getCurrentTime(),
-        durationUs: deps.defaultZoneDurationUs,
-        text: '',
-      },
+    addMarker(
+      { timeUs: deps.getCurrentTime(), durationUs: deps.defaultZoneDurationUs, text: '' },
       options,
     );
   }
@@ -106,6 +115,7 @@ export function createTimelineMarkerService(
 
   return {
     getMarkers,
+    addMarker,
     addMarkerAtPlayhead,
     addZoneMarkerAtPlayhead,
     updateMarker,

@@ -148,16 +148,10 @@ export function createTimelineSelectionRangeModule(
     const range = getSelectionRange();
     if (!range) return;
 
-    markerService.addMarkerAtPlayhead();
-    const markers = markerService.getMarkers();
-    const lastMarker = markers[markers.length - 1];
-
-    if (lastMarker) {
-      markerService.updateMarker(lastMarker.id, {
-        timeUs: range.startUs,
-        durationUs: range.endUs - range.startUs,
-      });
-    }
+    markerService.addMarker({
+      timeUs: range.startUs,
+      durationUs: range.endUs - range.startUs,
+    });
 
     removeSelectionRange();
   }
