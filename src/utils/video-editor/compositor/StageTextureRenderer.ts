@@ -10,6 +10,7 @@ export interface StageTextureRendererContext {
 
 export class StageTextureRenderer {
   private transitionCombineSprite: Sprite | null = null;
+  private bitmapCaptureSprite: Sprite | null = null;
 
   constructor(private readonly context: StageTextureRendererContext) {}
 
@@ -22,6 +23,10 @@ export class StageTextureRenderer {
     if (this.transitionCombineSprite) {
       this.transitionCombineSprite.destroy();
       this.transitionCombineSprite = null;
+    }
+    if (this.bitmapCaptureSprite) {
+      this.bitmapCaptureSprite.destroy();
+      this.bitmapCaptureSprite = null;
     }
   }
 
@@ -114,6 +119,27 @@ export class StageTextureRenderer {
     } finally {
       displayObject.visible = previousVisible;
     }
+  }
+
+  public async renderTextureToBitmap(texture: RenderTexture): Promise<ImageBitmap> {
+    if (!this.bitmapCaptureSprite) {
+      this.bitmapCaptureSprite = new Sprite(Texture.EMPTY);
+      this.bitmapCaptureSprite.anchor.set(0, 0);
+    }
+
+    this.bitmapCaptureSprite.texture = texture;
+    this.bitmapCaptureSprite.x = 0;
+    this.bitmapCaptureSprite.y = 0;
+    this.bitmapCaptureSprite.scale.set(
+      this.context.width / Math.max(1, texture.width),
+      this.context.height / Math.max(1, texture.height),
+    );
+
+    this.context.app.renderer.render({
+      container: this.bitmapCaptureSprite,
+      clear: true,
+    });
+    return await createImageBitmap(this.context.app.canvas);
   }
 
   public renderSingleClipToTexture(

@@ -1,5 +1,5 @@
 /** @vitest-environment node */
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
   resolveMonitorSampleFallbackTimeS,
@@ -8,6 +8,10 @@ import {
 import type { CompositorClip } from '~/utils/video-editor/compositor/types';
 import type { WebGpuComputeRunner } from '~/utils/video-editor/compositor/WebGpuComputeRunner';
 import { initEffects } from '~/effects';
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
 
 describe('resolveMonitorSampleFallbackTimeS', () => {
   it('does not fall back in strict mode', () => {
@@ -113,5 +117,37 @@ describe('ClipResourceManager.applyEffectsToNonVideoClip', () => {
     await manager.applyEffectsToNonVideoClip(clip, true);
 
     expect(runner.applyEffects).toHaveBeenCalled();
+  });
+
+  it('captures shape clips through the compositor canvas without pixel extraction', async () => {
+    const bitmap = { width: 320, height: 180 } as ImageBitmap;
+    const createImageBitmapMock = vi.fn().mockResolvedValue(bitmap);
+    vi.stubGlobal('createImageBitmap', createImageBitmapMock);
+    const sprite = { visible: false };
+    const canvas = { width: 320, height: 180 };
+    const render = vi.fn();
+    const manager = new ClipResourceManager({
+      width: 320,
+      height: 180,
+      resourceManager: {} as any,
+      videoFrameCache: {} as any,
+      canvasFallbackRenderer: {} as any,
+      getLayoutApplier: () => ({}) as any,
+      getApp: () =>
+        ({
+          canvas,
+          renderer: { render },
+        }) as any,
+    });
+
+    const result = await (manager as any).getNonVideoClipBitmap({
+      clipKind: 'shape',
+      sprite,
+    });
+
+    expect(result).toBe(bitmap);
+    expect(render).toHaveBeenCalledWith({ container: sprite, clear: true });
+    expect(createImageBitmapMock).toHaveBeenCalledWith(canvas);
+    expect(sprite.visible).toBe(false);
   });
 });

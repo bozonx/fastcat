@@ -333,4 +333,73 @@ describe('TransitionRenderer', () => {
     );
     expect(prevClip.sprite.visible).toBe(false);
   });
+
+  it('captures transition textures through StageTextureRenderer when no override is provided', async () => {
+    const renderer = new TransitionRenderer();
+    const fromBitmap = { close: vi.fn() } as unknown as ImageBitmap;
+    const toBitmap = { close: vi.fn() } as unknown as ImageBitmap;
+    const transitionSprite = {
+      visible: false,
+      filters: null,
+      scale: { set: vi.fn() },
+      width: 0,
+      height: 0,
+      alpha: 0,
+      blendMode: 'normal',
+      texture: null,
+    } as any;
+    const clip = {
+      itemId: 'clip-current',
+      startUs: 1_000,
+      layer: 1,
+      clipKind: 'video',
+      sprite: { visible: true },
+      transitionSprite,
+      transitionFromTexture: null,
+      transitionToTexture: null,
+      transitionOutputTexture: null,
+    } as any;
+    const renderTextureToBitmap = vi
+      .fn()
+      .mockResolvedValueOnce(fromBitmap)
+      .mockResolvedValueOnce(toBitmap);
+    const stageTextureRenderer = {
+      renderSingleClipToTexture: vi.fn(),
+      renderLowerLayersToTexture: vi.fn(),
+      renderTextureToBitmap,
+      ensureTransitionSprite: vi.fn(() => transitionSprite),
+    } as any;
+
+    await renderer.applyShaderTransitions([clip], 1_500, {
+      app: {
+        renderer: { render: vi.fn() },
+        stage: { children: [] },
+      } as any,
+      clips: [clip],
+      width: 1280,
+      height: 720,
+      computeRunner,
+      transitionManager: {} as any,
+      stageTextureRenderer,
+      getTrackById: vi.fn(),
+      getActiveTransitionState: () => ({
+        manifest,
+        progress: 0.5,
+        curve: 'linear',
+        edge: 'in',
+        transition: { type: 'dissolve', durationUs: 1_000, mode: 'background', params: {} },
+      }),
+      ensureTransitionRenderTexture: ((texture: any) => texture ?? { id: Math.random() }) as any,
+      findPrevClipOnLayer: vi.fn(),
+      findNextClipOnLayer: vi.fn(),
+      createAbortController: vi.fn(() => new AbortController()),
+      getVideoSampleForClip: vi.fn(),
+      updateClipTextureFromSample: vi.fn(),
+    });
+
+    expect(renderTextureToBitmap).toHaveBeenCalledTimes(2);
+    expect(computeRunner.applyTransition).toHaveBeenCalledWith(
+      expect.objectContaining({ from: fromBitmap, to: toBitmap }),
+    );
+  });
 });

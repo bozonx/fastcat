@@ -15,7 +15,6 @@ import {
 } from './VideoFrameCache';
 import type { CanvasFallbackRenderer } from './renderers/CanvasFallbackRenderer';
 import type { WebGpuComputeRunner } from './WebGpuComputeRunner';
-import { getExtractedPixelBytes } from './pixelExtraction';
 import { buildEffectSpecs } from '~/effects';
 const log = createDevLogger('ClipResourceManager');
 
@@ -142,23 +141,13 @@ export class ClipResourceManager {
     if (clip.clipKind === 'shape') {
       const app = this.context.getApp?.();
       if (!app || !clip.sprite) return null;
-      const rt = RenderTexture.create({
-        width: this.context.width,
-        height: this.context.height,
-      });
+      const previousVisible = clip.sprite.visible;
+      clip.sprite.visible = true;
       try {
-        app.renderer.render({ container: clip.sprite, target: rt, clear: true });
-        const pixels = app.renderer.extract.pixels(rt);
-        const canvas = new OffscreenCanvas(this.context.width, this.context.height);
-        const ctx = canvas.getContext('2d');
-        if (!ctx) return null;
-        const imageData = ctx.createImageData(this.context.width, this.context.height);
-        const pixelBytes = getExtractedPixelBytes(pixels);
-        imageData.data.set(pixelBytes);
-        ctx.putImageData(imageData, 0, 0);
-        return await createImageBitmap(canvas);
+        app.renderer.render({ container: clip.sprite, clear: true });
+        return await createImageBitmap(app.canvas);
       } finally {
-        rt.destroy();
+        clip.sprite.visible = previousVisible;
       }
     }
 

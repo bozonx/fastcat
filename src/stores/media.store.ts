@@ -1,6 +1,7 @@
 import { createDevLogger } from '~/utils/dev-logger';
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
+import PQueue from 'p-queue';
 
 import { useWorkspaceStore } from './workspace.store';
 import { useProjectStore } from './project.store';
@@ -10,6 +11,7 @@ import { createMediaWorkerModule } from '~/stores/media/media-worker';
 import { runQueuedFileAccess } from '~/utils/file-access-queue';
 import { useVfs } from '~/composables/useVfs';
 import { postIoInitMessage } from '~/utils/io/io-budget-main';
+import { runResilientFileIo } from '~/utils/io/io-governor';
 import { isToolingUnavailableError, isTransientIoError } from '~/utils/io/transient-errors';
 import { getMediaTypeFromFilename, BROWSER_NATIVE_IMAGE_EXTENSIONS } from '~/utils/media-types';
 import {
@@ -38,6 +40,7 @@ const log = createDevLogger('media.store');
  * retry re-fetches a fresh file handle and backs off exponentially.
  */
 const MAX_TRANSIENT_METADATA_RETRIES = 3;
+const metadataExtractionQueue = new PQueue({ concurrency: 2 });
 
 interface VideoColorSpaceInit {
   fullRange?: boolean;
@@ -164,6 +167,45 @@ export const useMediaStore = defineStore('media', () => {
     return await runQueuedFileAccess({
       key: `opfs-media-cache:${projectId}:${kind}:${fileName}`,
       task,
+    });
+  }
+
+  function shouldRefreshProjectFile(projectRelativePath: string): boolean {
+    return (
+      !isTauriRuntime() &&
+      !projectRelativePath.startsWith('external:') &&
+      !projectRelativePath.startsWith('/') &&
+      !/^[A-Za-z]:[\\/]/.test(projectRelativePath)
+    );
+  }
+
+  async function getFreshProjectFile(projectRelativePath: string): Promise<File | null> {
+    if (!shouldRefreshProjectFile(projectRelativePath)) return null;
+
+    return await runResilientFileIo(
+      async () => {
+        const handle = await projectStore.getFileHandleByPath(projectRelativePath);
+        if (!handle) return null;
+        return await handle.getFile();
+      },
+      { attempts: MAX_TRANSIENT_METADATA_RETRIES + 1, baseDelayMs: 150 },
+    );
+  }
+
+  async function extractMetadataWithFreshFile(
+    file: File,
+    projectRelativePath: string,
+    transientAttempt: number,
+    sourceIsFresh: boolean,
+  ): Promise<MediaMetadata> {
+    return await metadataExtractionQueue.add(async () => {
+      const freshFile = sourceIsFresh ? file : await getFreshProjectFile(projectRelativePath);
+      if (!freshFile && transientAttempt > 0 && shouldRefreshProjectFile(projectRelativePath)) {
+        const error = new Error(`Fresh file handle unavailable for ${projectRelativePath}`);
+        error.name = 'InvalidStateError';
+        throw error;
+      }
+      return await workerModule.extractMetadata(freshFile ?? file);
     });
   }
 
@@ -297,6 +339,7 @@ export const useMediaStore = defineStore('media', () => {
     projectRelativePath: string,
     options?: { forceRefresh?: boolean },
     transientAttempt = 0,
+    sourceIsFresh = false,
   ): Promise<MediaMetadata | null> {
     const cacheKey = projectRelativePath;
 
@@ -503,7 +546,12 @@ export const useMediaStore = defineStore('media', () => {
         }
 
         if (!meta) {
-          meta = await workerModule.extractMetadata(file);
+          meta = await extractMetadataWithFreshFile(
+            file,
+            projectRelativePath,
+            transientAttempt,
+            sourceIsFresh,
+          );
         }
 
         if (meta) {
@@ -543,15 +591,17 @@ export const useMediaStore = defineStore('media', () => {
             await new Promise((resolve) => setTimeout(resolve, 150 * 2 ** transientAttempt));
             let freshFile: File | null = null;
             try {
-              freshFile = await projectStore.getFileByPath(projectRelativePath);
+              freshFile = await getFreshProjectFile(projectRelativePath);
             } catch {
-              /* fall back to the existing handle below */
+              // The next extraction attempt obtains a fresh handle again inside
+              // the bounded queue. It must not feed the stale File to the worker.
             }
             return await fetchMetadataInternal(
               freshFile ?? file,
               projectRelativePath,
               options,
               transientAttempt + 1,
+              freshFile !== null,
             );
           }
           log.warn(

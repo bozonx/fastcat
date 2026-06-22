@@ -11,7 +11,6 @@ import { toPixiBlendMode, type CompositorClip, type CompositorTrack } from './ty
 import type { StageTextureRenderer } from './StageTextureRenderer';
 import type { PreviewEffectQuality } from '~/utils/preview-effect-quality';
 import type { WebGpuComputeRunner } from './WebGpuComputeRunner';
-import { getExtractedPixelBytes } from './pixelExtraction';
 const log = createDevLogger('TransitionRenderer');
 
 export interface TransitionRendererParams {
@@ -185,20 +184,10 @@ export class TransitionRenderer {
       try {
         fromBitmap = params.textureToBitmap
           ? await params.textureToBitmap(shaderFromTexture)
-          : await this.renderTextureToBitmap(
-              params.app,
-              shaderFromTexture,
-              params.width,
-              params.height,
-            );
+          : await params.stageTextureRenderer.renderTextureToBitmap(shaderFromTexture);
         toBitmap = params.textureToBitmap
           ? await params.textureToBitmap(shaderToTexture)
-          : await this.renderTextureToBitmap(
-              params.app,
-              shaderToTexture,
-              params.width,
-              params.height,
-            );
+          : await params.stageTextureRenderer.renderTextureToBitmap(shaderToTexture);
         processed = await params.computeRunner.applyTransition({
           from: fromBitmap,
           to: toBitmap,
@@ -268,26 +257,6 @@ export class TransitionRenderer {
         }
       }
     }
-  }
-
-  private async renderTextureToBitmap(
-    app: Application,
-    texture: RenderTexture,
-    width: number,
-    height: number,
-  ): Promise<ImageBitmap> {
-    const pixels = app.renderer.extract.pixels(texture);
-    const canvas = new OffscreenCanvas(width, height);
-    const context = canvas.getContext('2d');
-    if (!context) {
-      throw new Error('Failed to create transition canvas context.');
-    }
-
-    const imageData = context.createImageData(width, height);
-    const bytes = getExtractedPixelBytes(pixels);
-    imageData.data.set(bytes);
-    context.putImageData(imageData, 0, 0);
-    return await createImageBitmap(canvas);
   }
 
   private async renderTransitionClipToTexture(

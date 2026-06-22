@@ -505,6 +505,45 @@ describe('MediaStore', () => {
     expect(r1).toEqual(r2);
   });
 
+  it('reopens the project file before retrying transient metadata extraction failures', async () => {
+    const originalFile = { size: 100, lastModified: 100, name: 'a.mp4', id: 'original' } as any;
+    const firstSnapshot = {
+      size: 100,
+      lastModified: 100,
+      name: 'a.mp4',
+      id: 'first-snapshot',
+    } as any;
+    const freshSnapshot = {
+      size: 100,
+      lastModified: 101,
+      name: 'a.mp4',
+      id: 'fresh-snapshot',
+    } as any;
+    const getFile = vi.fn().mockResolvedValueOnce(firstSnapshot).mockResolvedValue(freshSnapshot);
+    vi.mocked(useProjectStore).mockReturnValue({
+      currentProjectId: 'test-project',
+      getFileHandleByPath: vi.fn().mockResolvedValue({ getFile }),
+      getFileByPath: vi.fn().mockResolvedValue(originalFile),
+    } as any);
+    const store = useMediaStore();
+    const transientError = new Error(
+      'An operation that depends on state cached in an interface object was made but the state had changed since it was read from disk.',
+    );
+    transientError.name = 'InvalidStateError';
+    extractMetadataMock.mockRejectedValueOnce(transientError).mockResolvedValueOnce({
+      source: { size: 100, lastModified: 101 },
+      duration: 10,
+    });
+
+    const result = await store.getOrFetchMetadata(originalFile, 'video/a.mp4');
+
+    expect(result?.duration).toBe(10);
+    expect(extractMetadataMock).toHaveBeenCalledTimes(2);
+    expect(extractMetadataMock.mock.calls[0]?.[0]).toBe(firstSnapshot);
+    expect(extractMetadataMock.mock.calls[1]?.[0]).toBe(freshSnapshot);
+    expect(extractMetadataMock.mock.calls[1]?.[0]).not.toBe(originalFile);
+  });
+
   it('returns in-memory cached metadata when file size and lastModified match', async () => {
     const store = useMediaStore();
     store.mediaMetadata = {

@@ -38,4 +38,35 @@ describe('StageTextureRenderer', () => {
     expect(lower.visible).toBe(true);
     expect(upper.visible).toBe(true);
   });
+
+  it('captures a render texture through the renderer canvas without pixel extraction', async () => {
+    const bitmap = { width: 640, height: 360 } as ImageBitmap;
+    const createImageBitmapMock = vi.fn().mockResolvedValue(bitmap);
+    vi.stubGlobal('createImageBitmap', createImageBitmapMock);
+
+    const canvas = { width: 640, height: 360 };
+    const render = vi.fn();
+    const renderer = new StageTextureRenderer({
+      app: {
+        canvas,
+        stage: { children: [] },
+        renderer: { render },
+      } as any,
+      width: 640,
+      height: 360,
+      getTrackById: () => undefined,
+    });
+    const texture = { width: 640, height: 360 } as any;
+
+    const result = await renderer.renderTextureToBitmap(texture);
+
+    expect(result).toBe(bitmap);
+    expect(render).toHaveBeenCalledWith({
+      container: expect.objectContaining({
+        texture,
+      }),
+      clear: true,
+    });
+    expect(createImageBitmapMock).toHaveBeenCalledWith(canvas);
+  });
 });
