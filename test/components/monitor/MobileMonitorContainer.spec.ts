@@ -32,6 +32,7 @@ vi.mock('~/composables/monitor/useMonitorRuntime', () => ({
     videoItems: mockVideoItems,
     safeDurationUs: ref(1000000),
     isTextClipSelected: ref(false),
+    isAdjustmentClipSelected: ref(false),
     containerEl: ref(null),
     renderWidth: ref(1920),
     renderHeight: ref(1080),
@@ -140,6 +141,7 @@ describe('MobileMonitorContainer', () => {
     MobileMonitorAudioControl: {
       template: '<div class="audio-control-stub"></div>',
     },
+    MonitorOverlayContent: true,
     MonitorTextTransformBox: true,
     MonitorTransformBox: true,
     UButton: {

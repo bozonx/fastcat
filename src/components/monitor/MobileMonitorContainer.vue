@@ -6,12 +6,11 @@ import { useAppFullscreen } from '~/composables/useAppFullscreen';
 import { isTauriRuntime } from '~/utils/runtime';
 import { useMonitorGrid } from '~/composables/monitor/useMonitorGrid';
 import { useMonitorRuntime } from '~/composables/monitor/useMonitorRuntime';
-import MonitorInteractiveOverlay from './MonitorInteractiveOverlay.vue';
-import MonitorTextTransformBox from './MonitorTextTransformBox.vue';
 import MonitorViewport from './MonitorViewport.vue';
-import MonitorTransformBox from './MonitorTransformBox.vue';
+import MonitorOverlayContent from './MonitorOverlayContent.vue';
 import MobileMonitorAudioControl from './MobileMonitorAudioControl.vue';
 import { useMonitorContainerControls } from '~/composables/monitor/useMonitorContainerControls';
+import { useMonitorFullscreenViewport } from '~/composables/monitor/useMonitorFullscreenViewport';
 import ProjectMarkers from '~/components/project/ProjectMarkers.vue';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import {
@@ -264,24 +263,8 @@ function onToolbarPointerDown(e: PointerEvent) {
   showControlsTemporary();
 }
 
-const savedPanelViewport = ref<{ zoom: number; panX: number; panY: number } | null>(null);
-
-function capturePanelViewport() {
-  if (savedPanelViewport.value) return;
-  const m = projectStore.activeMonitor;
-  if (!m) return;
-  savedPanelViewport.value = { zoom: m.zoom, panX: m.panX, panY: m.panY };
-}
-
-function restorePanelViewport() {
-  const m = projectStore.activeMonitor;
-  const s = savedPanelViewport.value;
-  if (!m || !s) return;
-  m.zoom = s.zoom;
-  m.panX = s.panX;
-  m.panY = s.panY;
-  savedPanelViewport.value = null;
-}
+const { savedPanelViewport, capturePanelViewport, restorePanelViewport } =
+  useMonitorFullscreenViewport(projectStore);
 
 function onPopState(_event: PopStateEvent) {
   if (isFullscreen.value) {
@@ -476,32 +459,15 @@ const containerHeightClass = computed(() => {
           <div ref="containerEl" class="absolute inset-0" style="pointer-events: none" />
         </template>
         <template #svg-overlay>
-          <g v-if="showGrid">
-            <line
-              v-for="(line, i) in getGridLines(renderWidth, renderHeight)"
-              :key="i"
-              :x1="line.x1"
-              :y1="line.y1"
-              :x2="line.x2"
-              :y2="line.y2"
-              stroke="rgba(255,255,255,0.5)"
-              stroke-width="1"
-            />
-          </g>
-          <MonitorInteractiveOverlay
-            v-if="isInteractiveEditEnabled && !isReadonly"
+          <MonitorOverlayContent
             :render-width="renderWidth"
             :render-height="renderHeight"
-          />
-          <MonitorTextTransformBox
-            v-if="isInteractiveEditEnabled && !isReadonly && isTextClipSelected"
-            :render-width="renderWidth"
-            :render-height="renderHeight"
-          />
-          <MonitorTransformBox
-            v-else-if="isInteractiveEditEnabled && !isReadonly && !isAdjustmentClipSelected"
-            :render-width="renderWidth"
-            :render-height="renderHeight"
+            :show-grid="showGrid"
+            :get-grid-lines="getGridLines"
+            :is-interactive-edit-enabled="isInteractiveEditEnabled"
+            :is-readonly="isReadonly"
+            :is-text-clip-selected="isTextClipSelected"
+            :is-adjustment-clip-selected="isAdjustmentClipSelected"
           />
         </template>
         <template #default>

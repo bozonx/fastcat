@@ -1,0 +1,465 @@
+{
+  "duplicates": [
+    {
+      "firstFile": {
+        "end": 376,
+        "endLoc": {
+          "column": 22,
+          "line": 376,
+          "position": 14344
+        },
+        "name": "editor/useGlobalDragAndDrop.ts",
+        "start": 360,
+        "startLoc": {
+          "column": 18,
+          "line": 360,
+          "position": 13631
+        }
+      },
+      "format": "typescript",
+      "fragment": "",
+      "lines": 17,
+      "secondFile": {
+        "end": 446,
+        "endLoc": {
+          "column": 16,
+          "line": 446,
+          "position": 15428
+        },
+        "name": "file-manager/useFileManagerActions.ts",
+        "start": 432,
+        "startLoc": {
+          "column": 12,
+          "line": 432,
+          "position": 14833
+        }
+      },
+      "tokens": 97
+    },
+    {
+      "firstFile": {
+        "end": 406,
+        "endLoc": {
+          "column": 7,
+          "line": 406,
+          "position": 14372
+        },
+        "name": "file-manager/useFileBrowserDragAndDrop.ts",
+        "start": 389,
+        "startLoc": {
+          "column": 28,
+          "line": 389,
+          "position": 13708
+        }
+      },
+      "format": "typescript",
+      "fragment": "",
+      "lines": 18,
+      "secondFile": {
+        "end": 636,
+        "endLoc": {
+          "column": 9,
+          "line": 636,
+          "position": 22354
+        },
+        "name": "file-manager/useFileBrowserDragAndDrop.ts",
+        "start": 619,
+        "startLoc": {
+          "column": 37,
+          "line": 619,
+          "position": 21658
+        }
+      },
+      "tokens": 102
+    },
+    {
+      "firstFile": {
+        "end": 520,
+        "endLoc": {
+          "column": 20,
+          "line": 520,
+          "position": 18323
+        },
+        "name": "file-manager/useFileBrowserDragAndDrop.ts",
+        "start": 498,
+        "startLoc": {
+          "column": 56,
+          "line": 498,
+          "position": 17613
+        }
+      },
+      "format": "typescript",
+      "fragment": "",
+      "lines": 23,
+      "secondFile": {
+        "end": 749,
+        "endLoc": {
+          "column": 20,
+          "line": 749,
+          "position": 26058
+        },
+        "name": "file-manager/useFileBrowserDragAndDrop.ts",
+        "start": 727,
+        "startLoc": {
+          "column": 27,
+          "line": 727,
+          "position": 25348
+        }
+      },
+      "tokens": 90
+    },
+    {
+      "firstFile": {
+        "end": 736,
+        "endLoc": {
+          "column": 30,
+          "line": 736,
+          "position": 25689
+        },
+        "name": "file-manager/useFileBrowserDragAndDrop.ts",
+        "start": 718,
+        "startLoc": {
+          "column": 9,
+          "line": 718,
+          "position": 25084
+        }
+      },
+      "format": "typescript",
+      "fragment": "",
+      "lines": 19,
+      "secondFile": {
+        "end": 291,
+        "endLoc": {
+          "column": 28,
+          "line": 291,
+          "position": 10642
+        },
+        "name": "file-manager/useFileDrop.ts",
+        "start": 274,
+        "startLoc": {
+          "column": 82,
+          "line": 274,
+          "position": 10074
+        }
+      },
+      "tokens": 88
+    },
+    {
+      "firstFile": {
+        "end": 32,
+        "endLoc": {
+          "column": 24,
+          "line": 32,
+          "position": 1527
+        },
+        "name": "file-manager/useFileBrowserShared.ts",
+        "start": 16,
+        "startLoc": {
+          "column": 2,
+          "line": 16,
+          "position": 931
+        }
+      },
+      "format": "typescript",
+      "fragment": "",
+      "lines": 17,
+      "secondFile": {
+        "end": 80,
+        "endLoc": {
+          "column": 24,
+          "line": 80,
+          "position": 2900
+        },
+        "name": "file-manager/useFileManagerActions.ts",
+        "start": 64,
+        "startLoc": {
+          "column": 2,
+          "line": 64,
+          "position": 2304
+        }
+      },
+      "tokens": 130
+    },
+    {
+      "firstFile": {
+        "end": 17,
+        "endLoc": {
+          "column": 34,
+          "line": 17,
+          "position": 494
+        },
+        "name": "monitor/types.ts",
+        "start": 1,
+        "startLoc": {
+          "column": 0,
+          "line": 1,
+          "position": 0
+        }
+      },
+      "format": "typescript",
+      "fragment": "",
+      "lines": 17,
+      "secondFile": {
+        "end": 122,
+        "endLoc": {
+          "column": 34,
+          "line": 122,
+          "position": 3887
+        },
+        "name": "timeline/export/types.ts",
+        "start": 99,
+        "startLoc": {
+          "column": 0,
+          "line": 99,
+          "position": 2993
+        }
+      },
+      "tokens": 89
+    },
+    {
+      "firstFile": {
+        "end": 364,
+        "endLoc": {
+          "column": 25,
+          "line": 364,
+          "position": 11755
+        },
+        "name": "monitor/useMonitorGestures.ts",
+        "start": 334,
+        "startLoc": {
+          "column": 25,
+          "line": 334,
+          "position": 10751
+        }
+      },
+      "format": "typescript",
+      "fragment": "",
+      "lines": 31,
+      "secondFile": {
+        "end": 164,
+        "endLoc": {
+          "column": 25,
+          "line": 164,
+          "position": 4577
+        },
+        "name": "preview/useImagePanZoom.ts",
+        "start": 136,
+        "startLoc": {
+          "column": 26,
+          "line": 136,
+          "position": 3650
+        }
+      },
+      "tokens": 190
+    },
+    {
+      "firstFile": {
+        "end": 114,
+        "endLoc": {
+          "column": 5,
+          "line": 114,
+          "position": 4027
+        },
+        "name": "monitor/useNativeMonitorViewport.ts",
+        "start": 92,
+        "startLoc": {
+          "column": 19,
+          "line": 92,
+          "position": 3590
+        }
+      },
+      "format": "typescript",
+      "fragment": "",
+      "lines": 23,
+      "secondFile": {
+        "end": 141,
+        "endLoc": {
+          "column": 5,
+          "line": 141,
+          "position": 4551
+        },
+        "name": "monitor/useNativeMonitorViewport.ts",
+        "start": 120,
+        "startLoc": {
+          "column": 20,
+          "line": 120,
+          "position": 4134
+        }
+      },
+      "tokens": 102
+    },
+    {
+      "firstFile": {
+        "end": 596,
+        "endLoc": {
+          "column": 50,
+          "line": 596,
+          "position": 22294
+        },
+        "name": "timeline/export/payloadBuilder.ts",
+        "start": 569,
+        "startLoc": {
+          "column": 53,
+          "line": 569,
+          "position": 21324
+        }
+      },
+      "format": "typescript",
+      "fragment": "",
+      "lines": 28,
+      "secondFile": {
+        "end": 672,
+        "endLoc": {
+          "column": 48,
+          "line": 672,
+          "position": 25638
+        },
+        "name": "timeline/export/payloadBuilder.ts",
+        "start": 645,
+        "startLoc": {
+          "column": 30,
+          "line": 645,
+          "position": 24716
+        }
+      },
+      "tokens": 104
+    },
+    {
+      "firstFile": {
+        "end": 57,
+        "endLoc": {
+          "column": 43,
+          "line": 57,
+          "position": 1539
+        },
+        "name": "timeline/export/types.ts",
+        "start": 38,
+        "startLoc": {
+          "column": 5,
+          "line": 38,
+          "position": 1016
+        }
+      },
+      "format": "typescript",
+      "fragment": "",
+      "lines": 20,
+      "secondFile": {
+        "end": 92,
+        "endLoc": {
+          "column": 43,
+          "line": 92,
+          "position": 2769
+        },
+        "name": "timeline/export/types.ts",
+        "start": 74,
+        "startLoc": {
+          "column": 23,
+          "line": 74,
+          "position": 2251
+        }
+      },
+      "tokens": 187
+    },
+    {
+      "firstFile": {
+        "end": 42,
+        "endLoc": {
+          "column": 3,
+          "line": 42,
+          "position": 1892
+        },
+        "name": "timeline/useAddMediaToTimeline.ts",
+        "start": 18,
+        "startLoc": {
+          "column": 14,
+          "line": 18,
+          "position": 916
+        }
+      },
+      "format": "typescript",
+      "fragment": "",
+      "lines": 25,
+      "secondFile": {
+        "end": 249,
+        "endLoc": {
+          "column": 3,
+          "line": 249,
+          "position": 9329
+        },
+        "name": "timeline/useTimelineDropHandling.ts",
+        "start": 226,
+        "startLoc": {
+          "column": 14,
+          "line": 226,
+          "position": 8460
+        }
+      },
+      "tokens": 139
+    },
+    {
+      "firstFile": {
+        "end": 22,
+        "endLoc": {
+          "column": 7,
+          "line": 22,
+          "position": 699
+        },
+        "name": "timeline/useMobileTimelineDrawers.ts",
+        "start": 5,
+        "startLoc": {
+          "column": 41,
+          "line": 5,
+          "position": 228
+        }
+      },
+      "format": "typescript",
+      "fragment": "",
+      "lines": 18,
+      "secondFile": {
+        "end": 30,
+        "endLoc": {
+          "column": 7,
+          "line": 30,
+          "position": 980
+        },
+        "name": "timeline/useMobileTimelineSelection.ts",
+        "start": 13,
+        "startLoc": {
+          "column": 0,
+          "line": 13,
+          "position": 509
+        }
+      },
+      "tokens": 85
+    }
+  ],
+  "statistics": {
+    "detectionDate": "2026-06-22T16:19:27.478Z",
+    "formats": {
+      "typescript": {
+        "clones": 12,
+        "duplicatedLines": 244,
+        "duplicatedTokens": 1403,
+        "lines": 42285,
+        "newClones": 0,
+        "newDuplicatedLines": 0,
+        "percentage": 0.5770367742698356,
+        "percentageTokens": 0.6013870909667629,
+        "sources": 221,
+        "tokens": 233294
+      }
+    },
+    "total": {
+      "clones": 12,
+      "duplicatedLines": 244,
+      "duplicatedTokens": 1403,
+      "lines": 42285,
+      "newClones": 0,
+      "newDuplicatedLines": 0,
+      "percentage": 0.5770367742698356,
+      "percentageTokens": 0.6013870909667629,
+      "sources": 221,
+      "tokens": 233294
+    }
+  }
+}

@@ -15,6 +15,7 @@ vi.mock('~/composables/monitor/useMonitorRuntime', () => ({
     videoItems: ref([]),
     safeDurationUs: ref(1000000),
     isTextClipSelected: ref(false),
+    isAdjustmentClipSelected: ref(false),
     containerEl: ref(null),
     renderWidth: ref(1920),
     renderHeight: ref(1080),
@@ -129,6 +130,7 @@ describe('MonitorContainer', () => {
             template:
               '<div class="viewport-stub"><slot name="canvas" /><slot name="svg-overlay" /><slot /></div>',
           },
+          MonitorOverlayContent: true,
           MonitorAudioControl: true,
           UiTooltip: { template: '<div><slot /></div>' },
           UButton: { template: '<button @click="$emit(\'click\', $event)"><slot /></button>' },
