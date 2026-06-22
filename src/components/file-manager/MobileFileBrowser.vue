@@ -5,11 +5,10 @@ import {
   useFileManager,
   FILE_MANAGER_INJECTION_KEY,
 } from '~/composables/file-manager/useFileManager';
-import { useProjectStore } from '~/stores/project.store';
 import { useSelectionStore } from '~/stores/selection.store';
 import { useClipboardStore } from '~/stores/clipboard.store';
 import { useTeleportTarget } from '~/composables/ui/useTeleportTarget';
-import { isOpenableProjectFileName, getMediaTypeFromFilename } from '~/utils/media-types';
+import { getMediaTypeFromFilename } from '~/utils/media-types';
 import { TIMELINES_DIR_NAME } from '~/utils/constants';
 import { useFileBrowserShared } from '~/composables/file-manager/useFileBrowserShared';
 import { useFileBrowserEntries } from '~/composables/file-manager/useFileBrowserEntries';
@@ -17,6 +16,7 @@ import { usePullToRefresh } from '~/composables/file-manager/usePullToRefresh';
 import { useMobileFileBrowserNavigation } from '~/composables/file-manager/useMobileFileBrowserNavigation';
 import { useMobileFileBrowserSelection } from '~/composables/file-manager/useMobileFileBrowserSelection';
 import { useMobileFileBrowserCreate } from '~/composables/file-manager/useMobileFileBrowserCreate';
+import { useMobileFileBrowserModals } from '~/composables/file-manager/useMobileFileBrowserModals';
 import type { FsEntry } from '~/types/fs';
 import type { MobileDrawerAction } from '~/types/file-manager';
 import type { ContextMenuItem } from '~/composables/file-manager/useFileContextMenu';
@@ -38,11 +38,9 @@ import { useUiStore } from '~/stores/ui.store';
 import { useHotkeyLabel } from '~/composables/useHotkeyLabel';
 
 const fileManagerStore = useFileManagerStore();
-const projectStore = useProjectStore();
 const selectionStore = useSelectionStore();
 const clipboardStore = useClipboardStore();
 const timelineMediaUsageStore = useTimelineMediaUsageStore();
-const toast = useToast();
 const { t } = useI18n();
 const { getHotkeyLabel } = useHotkeyLabel();
 const { target: teleportTarget } = useTeleportTarget();
@@ -211,70 +209,10 @@ watch(
   },
 );
 
-const isAddToTimelineModalOpen = ref(false);
-const addToTimelineEntries = ref<FsEntry[]>([]);
-
-const isRenameModalOpen = ref(false);
-const entryToRename = ref<FsEntry | null>(null);
-
 const isCreateFolderModalOpen = ref(false);
 const createFolderTitle = computed(() =>
   typeof t === 'function' ? t('videoEditor.fileManager.actions.createFolder') : '',
 );
-
-const canAddSelectionToTimeline = computed(
-  () =>
-    isSelectionMode.value &&
-    selectedEntries.value.some((e) => {
-      if (e.kind !== 'file' || !e.path) return false;
-      if (fileCompatibility.value[e.path]?.status === 'fully_unsupported') return false;
-      return isOpenableProjectFileName(e.name);
-    }),
-);
-
-async function handleAddToProject() {
-  const entity = selectionStore.selectedEntity;
-  if (!entity || entity.source !== 'fileManager' || entity.kind !== 'file' || !entity.path) return;
-
-  addToTimelineEntries.value = [entity.entry];
-  isDrawerOpen.value = false;
-  isAddToTimelineModalOpen.value = true;
-}
-
-async function handleAddSelectionToTimeline() {
-  const supportedEntries = selectedEntries.value.filter((e) => {
-    if (e.kind !== 'file' || !e.path) return false;
-    if (fileCompatibility.value[e.path]?.status === 'fully_unsupported') return false;
-    return isOpenableProjectFileName(e.name);
-  });
-  if (supportedEntries.length === 0) return;
-
-  addToTimelineEntries.value = supportedEntries;
-  isDrawerOpen.value = false;
-  isAddToTimelineModalOpen.value = true;
-}
-
-function onAddedToTimeline() {
-  toast.add({
-    title: t('common.success'),
-    description: t('common.addedToTimeline'),
-    color: 'success',
-  });
-  closeAllUI();
-  projectStore.setView('cut');
-}
-
-async function handlePaste() {
-  const target = fileManagerStore.selectedFolder;
-  if (!target) return;
-  await onFileAction('paste', target);
-  await loadFolderContent();
-}
-
-async function handleRename(entry: FsEntry) {
-  entryToRename.value = entry;
-  isRenameModalOpen.value = true;
-}
 
 function handleCreateFolderRequest() {
   isCreateFolderModalOpen.value = true;
@@ -284,21 +222,6 @@ function validateNewFolderName(newName: string): string | boolean | null {
   const trimmed = newName.trim();
   if (!trimmed) return false;
   const exists = folderEntries.value.some((e) => e.name.toLowerCase() === trimmed.toLowerCase());
-  if (exists) {
-    return t('common.validation.exists', 'Имя уже существует');
-  }
-  return true;
-}
-
-function validateRename(newName: string): string | boolean | null {
-  const trimmed = newName.trim();
-  if (!trimmed) return false;
-  if (entryToRename.value && trimmed.toLowerCase() === entryToRename.value.name.toLowerCase()) {
-    return true;
-  }
-  const exists = folderEntries.value.some(
-    (e) => e.name.toLowerCase() === trimmed.toLowerCase() && e.path !== entryToRename.value?.path,
-  );
   if (exists) {
     return t('common.validation.exists', 'Имя уже существует');
   }
@@ -318,55 +241,56 @@ function handlePendingBloggerDogCreateItem(_entry: FsEntry) {
   // BloggerDog content item creation is not supported in mobile file browser
 }
 
-async function onRenameConfirm(newName: string) {
-  if (!entryToRename.value || newName === entryToRename.value.name) return;
+const {
+  isAddToTimelineModalOpen,
+  addToTimelineEntries,
+  canAddSelectionToTimeline,
+  handleAddToProject,
+  handleAddSelectionToTimeline,
+  onAddedToTimeline,
+  isRenameModalOpen,
+  entryToRename,
+  handleRename,
+  validateRename,
+  onRenameConfirm,
+  handleDrawerAction: handleModalDrawerAction,
+  wrappedHandleDeleteConfirm,
+} = useMobileFileBrowserModals({
+  entries: folderEntries,
+  compatibility: fileCompatibility,
+  isSelectionMode,
+  selectedEntries,
+  isDrawerOpen,
+  closeAllUI,
+  renameEntry,
+  reload: loadFolderContent,
+  onFileAction,
+  handleDeleteConfirm,
+  openTranscriptionModal,
+  validateRename: (newName: string) => {
+    const trimmed = newName.trim();
+    if (!trimmed) return false;
+    if (entryToRename.value && trimmed.toLowerCase() === entryToRename.value.name.toLowerCase()) {
+      return true;
+    }
+    const exists = folderEntries.value.some(
+      (e) => e.name.toLowerCase() === trimmed.toLowerCase() && e.path !== entryToRename.value?.path,
+    );
+    if (exists) {
+      return t('common.validation.exists', 'Имя уже существует');
+    }
+    return true;
+  },
+});
 
-  try {
-    await renameEntry(entryToRename.value, newName);
-    await loadFolderContent();
-    toast.add({
-      title: t('common.success'),
-      description: t('common.saveSuccess'),
-      color: 'success',
-    });
-  } catch (err) {
-    toast.add({
-      title: t('common.error'),
-      description: String((err as { message?: string })?.message || err),
-      color: 'error',
-    });
-  } finally {
-    entryToRename.value = null;
-  }
+async function handlePaste() {
+  const target = fileManagerStore.selectedFolder;
+  if (!target) return;
+  await onFileAction('paste', target);
+  await loadFolderContent();
 }
 
 async function handleDrawerAction(action: MobileDrawerAction, entry: FsEntry | FsEntry[]) {
-  if (['copy', 'cut'].includes(action)) {
-    closeAllUI();
-  }
-
-  if (action === 'rename') {
-    const entryToProcess = Array.isArray(entry) ? entry[0] : entry;
-    if (entryToProcess) {
-      await handleRename(entryToProcess);
-    }
-    closeAllUI();
-    return;
-  }
-
-  if (action === 'transcribe') {
-    const entryToProcess = Array.isArray(entry) ? entry[0] : entry;
-    if (entryToProcess) {
-      openTranscriptionModal(entryToProcess);
-    }
-    closeAllUI();
-    return;
-  }
-
-  if (action === 'delete') {
-    closeAllUI();
-  }
-
   if (action === 'createMarkdown') {
     const e = Array.isArray(entry) ? entry[0] : entry;
     if (e?.kind === 'directory') await onCreateTextFile(e.path);
@@ -388,7 +312,7 @@ async function handleDrawerAction(action: MobileDrawerAction, entry: FsEntry | F
     return;
   }
 
-  await onFileAction(action, entry);
+  await handleModalDrawerAction(action, entry);
 }
 
 const bulkSelection = useFileBrowserBulkSelection({
@@ -407,11 +331,6 @@ const bulkSelection = useFileBrowserBulkSelection({
   getUsedPaths: () => new Set(Object.keys(timelineMediaUsageStore.mediaPathToTimelines)),
   refreshUsage: async () => await timelineMediaUsageStore.refreshUsage(),
 });
-
-async function wrappedHandleDeleteConfirm() {
-  await handleDeleteConfirm();
-  closeAllUI();
-}
 
 function onSortFieldSelect(field: string) {
   fileManagerStore.sortOption.field = field as typeof fileManagerStore.sortOption.field;

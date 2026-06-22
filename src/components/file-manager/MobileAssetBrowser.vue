@@ -4,17 +4,15 @@ import {
   useFileManager,
   FILE_MANAGER_INJECTION_KEY,
 } from '~/composables/file-manager/useFileManager';
-import { useProjectStore } from '~/stores/project.store';
 import { useSelectionStore } from '~/stores/selection.store';
 import { useTeleportTarget } from '~/composables/ui/useTeleportTarget';
-import { isOpenableProjectFileName } from '~/utils/media-types';
 import { useFileBrowserShared } from '~/composables/file-manager/useFileBrowserShared';
 import { useMobileFileBrowserSelection } from '~/composables/file-manager/useMobileFileBrowserSelection';
 import { useMobileFileBrowserCreate } from '~/composables/file-manager/useMobileFileBrowserCreate';
 import { useMobileAssetCategories } from '~/composables/file-manager/useMobileAssetCategories';
 import { usePullToRefresh } from '~/composables/file-manager/usePullToRefresh';
+import { useMobileFileBrowserModals } from '~/composables/file-manager/useMobileFileBrowserModals';
 import type { FsEntry } from '~/types/fs';
-import type { MobileDrawerAction } from '~/types/file-manager';
 import type { FileCompatibility } from '~/composables/file-manager/useFileManagerCompatibility';
 import MobileFileBrowserDrawer from './MobileFileBrowserDrawer.vue';
 import MobileFileBrowserSelectionToolbar from './MobileFileBrowserSelectionToolbar.vue';
@@ -28,11 +26,9 @@ import { useUiStore } from '~/stores/ui.store';
 import { useMobileAssetBrowserStore } from '~/stores/file-manager.store';
 import UiButtonGroup from '~/components/ui/UiButtonGroup.vue';
 
-const projectStore = useProjectStore();
 const selectionStore = useSelectionStore();
 const timelineMediaUsageStore = useTimelineMediaUsageStore();
 const uiStore = useUiStore();
-const toast = useToast();
 const { t } = useI18n();
 const { target: teleportTarget } = useTeleportTarget();
 
@@ -158,12 +154,6 @@ watch(
   },
 );
 
-const isAddToTimelineModalOpen = ref(false);
-const addToTimelineEntries = ref<FsEntry[]>([]);
-
-const isRenameModalOpen = ref(false);
-const entryToRename = ref<FsEntry | null>(null);
-
 const selectedEntryPath = computed<string | null>(() => {
   const entity = selectionStore.selectedEntity;
   if (entity?.source === 'fileManager' && entity && 'path' in entity) {
@@ -172,123 +162,33 @@ const selectedEntryPath = computed<string | null>(() => {
   return null;
 });
 
-function isAddableEntry(entry: FsEntry): boolean {
-  if (entry.kind !== 'file' || !entry.path) return false;
-  if (combinedCompatibility.value[entry.path]?.status === 'fully_unsupported') return false;
-  return isOpenableProjectFileName(entry.name);
-}
-
-const canAddSelectionToTimeline = computed(
-  () => isSelectionMode.value && selectedEntries.value.some(isAddableEntry),
-);
-
-async function handleAddToProject() {
-  const entity = selectionStore.selectedEntity;
-  if (!entity || entity.source !== 'fileManager' || entity.kind !== 'file' || !entity.path) return;
-
-  addToTimelineEntries.value = [entity.entry];
-  isDrawerOpen.value = false;
-  isAddToTimelineModalOpen.value = true;
-}
-
-async function handleAddSelectionToTimeline() {
-  const supportedEntries = selectedEntries.value.filter(isAddableEntry);
-  if (supportedEntries.length === 0) return;
-
-  addToTimelineEntries.value = supportedEntries;
-  isDrawerOpen.value = false;
-  isAddToTimelineModalOpen.value = true;
-}
-
-function onAddedToTimeline() {
-  toast.add({
-    title: t('common.success'),
-    description: t('common.addedToTimeline'),
-    color: 'success',
-  });
-  closeAllUI();
-  projectStore.setView('cut');
-}
-
-async function handleRename(entry: FsEntry) {
-  entryToRename.value = entry;
-  isRenameModalOpen.value = true;
-}
-
-function validateRename(newName: string): string | boolean | null {
-  const trimmed = newName.trim();
-  if (!trimmed) return false;
-  if (entryToRename.value && trimmed.toLowerCase() === entryToRename.value.name.toLowerCase()) {
-    return true;
-  }
-  const parentPath =
-    entryToRename.value?.parentPath ??
-    entryToRename.value?.path?.split('/').slice(0, -1).join('/') ??
-    '';
-  const exists = allEntries.value.some(
-    (entry) =>
-      entry.path !== entryToRename.value?.path &&
-      (entry.parentPath ?? entry.path?.split('/').slice(0, -1).join('/') ?? '') === parentPath &&
-      entry.name.toLowerCase() === trimmed.toLowerCase(),
-  );
-  if (exists) {
-    return t('common.validation.exists');
-  }
-  return true;
-}
-
-async function onRenameConfirm(newName: string) {
-  if (!entryToRename.value || newName === entryToRename.value.name) return;
-
-  try {
-    await renameEntry(entryToRename.value, newName);
-    await reloadAll();
-    toast.add({
-      title: t('common.success'),
-      description: t('common.saveSuccess'),
-      color: 'success',
-    });
-  } catch (err) {
-    toast.add({
-      title: t('common.error'),
-      description: String((err as { message?: string })?.message || err),
-      color: 'error',
-    });
-  } finally {
-    entryToRename.value = null;
-  }
-}
-
-async function handleDrawerAction(action: MobileDrawerAction, entry: FsEntry | FsEntry[]) {
-  if (['copy', 'cut'].includes(action)) {
-    closeAllUI();
-  }
-
-  if (action === 'rename') {
-    const entryToProcess = Array.isArray(entry) ? entry[0] : entry;
-    if (entryToProcess) await handleRename(entryToProcess);
-    closeAllUI();
-    return;
-  }
-
-  if (action === 'transcribe') {
-    const entryToProcess = Array.isArray(entry) ? entry[0] : entry;
-    if (entryToProcess) openTranscriptionModal(entryToProcess);
-    closeAllUI();
-    return;
-  }
-
-  if (action === 'delete') {
-    closeAllUI();
-  }
-
-  await onFileAction(action, entry);
-}
-
-async function wrappedHandleDeleteConfirm() {
-  await handleDeleteConfirm();
-  closeAllUI();
-}
+const {
+  isAddToTimelineModalOpen,
+  addToTimelineEntries,
+  canAddSelectionToTimeline,
+  handleAddToProject,
+  handleAddSelectionToTimeline,
+  onAddedToTimeline,
+  isRenameModalOpen,
+  entryToRename,
+  handleRename,
+  validateRename,
+  onRenameConfirm,
+  handleDrawerAction,
+  wrappedHandleDeleteConfirm,
+} = useMobileFileBrowserModals({
+  entries: allEntries,
+  compatibility: combinedCompatibility,
+  isSelectionMode,
+  selectedEntries,
+  isDrawerOpen,
+  closeAllUI,
+  renameEntry,
+  reload: reloadAll,
+  onFileAction,
+  handleDeleteConfirm,
+  openTranscriptionModal,
+});
 </script>
 
 <template>
