@@ -236,7 +236,6 @@ export interface PreparedClip {
   sink: MediabunnyAudioSampleSink;
   sourcePath: string;
   speed: number;
-  reversed: boolean;
   audioGain: number;
   audioBalance: number;
   audioFadeInS: number;
@@ -800,17 +799,8 @@ async function* processClipAudio(args: {
     const blockStartS = blockStartFrame / targetSampleRate;
     const outputDurationS = targetFrames / targetSampleRate;
 
-    let sourceStartS: number;
-    let sourceEndS: number;
-    if (clip.reversed) {
-      const clipDurationSourceS = clip.playDurationS * clip.speed;
-      const blockEndS = blockStartS + outputDurationS;
-      sourceStartS = Math.max(0, clip.offsetS + clipDurationSourceS - blockEndS * clip.speed);
-      sourceEndS = Math.max(0, clip.offsetS + clipDurationSourceS - blockStartS * clip.speed);
-    } else {
-      sourceStartS = Math.max(0, clip.offsetS + blockStartS * clip.speed);
-      sourceEndS = Math.max(sourceStartS, sourceStartS + outputDurationS * clip.speed);
-    }
+    const sourceStartS = Math.max(0, clip.offsetS + blockStartS * clip.speed);
+    const sourceEndS = Math.max(sourceStartS, sourceStartS + outputDurationS * clip.speed);
 
     const loaded = await loadClipSourcePlanes({
       sink: clip.sink,
@@ -866,15 +856,6 @@ async function* processClipAudio(args: {
       frames: targetFrames,
     });
     blockOutputFrames = targetFrames;
-
-    if (clip.reversed && blockPlanes) {
-      for (let channel = 0; channel < numberOfChannels; channel++) {
-        const data = blockPlanes[channel];
-        if (data) {
-          data.reverse();
-        }
-      }
-    }
 
     if (clip.audioEffects.length > 0) {
       const processed = await applyAudioEffectsOffline({
@@ -1251,7 +1232,6 @@ export class AudioMixer {
         Number.isFinite(speedRaw) && speedRaw !== 0
           ? Math.max(0.0001, Math.min(10, Math.abs(speedRaw)))
           : 1;
-      const reversed = Number.isFinite(speedRaw) && speedRaw < 0;
 
       const previousClip = adjacency.prev.get(clipData) ?? null;
       const nextClip = adjacency.next.get(clipData) ?? null;
@@ -1299,8 +1279,6 @@ export class AudioMixer {
       );
 
       // Extend duration and adjust start for adjacent transitions (handles).
-      // For reversed playback the source window extends from the other end, so
-      // the in-handle pushes the source-end further, not the source-start.
       let playDurationS = baseClipDurationS;
       let effectiveClipStartS = clipStartS;
       let effectiveOffsetS = rawOffsetS;
@@ -1313,11 +1291,6 @@ export class AudioMixer {
       ) {
         const outExtensionS = usToS(Number(transitionOut.durationUs));
         playDurationS += outExtensionS;
-        if (reversed) {
-          // For reversed clips the "tail" of the timeline corresponds to the
-          // start of the source, so the source-start must move earlier.
-          effectiveOffsetS = Math.max(0, effectiveOffsetS - outExtensionS * speed);
-        }
       }
 
       const transitionIn = clipData.transitionIn ?? clipData.fastcat?.transitionIn;
@@ -1329,9 +1302,7 @@ export class AudioMixer {
         const inExtensionS = usToS(Number(transitionIn.durationUs));
         playDurationS += inExtensionS;
         effectiveClipStartS = Math.max(0, clipStartS - inExtensionS);
-        if (!reversed) {
-          effectiveOffsetS = Math.max(0, effectiveOffsetS - inExtensionS * speed);
-        }
+        effectiveOffsetS = Math.max(0, effectiveOffsetS - inExtensionS * speed);
       }
 
       if (playDurationS <= 0) continue;
@@ -1384,7 +1355,6 @@ export class AudioMixer {
           sink,
           sourcePath,
           speed,
-          reversed,
           audioGain,
           audioBalance,
           audioFadeInS,

@@ -860,6 +860,9 @@ impl LayerRuntimeManager {
                 } else {
                     layer.transition_peer_source_pts_at(t)
                 };
+                // Reverse clips need a backward-aware re-seek policy: the decoder
+                // runs forward, so the (decreasing) target slips below the cache.
+                let reversed = layer.speed < 0.0;
                 if playing && rt.play_deferred_until_active() {
                     rt.activate_deferred_playback(clip_local);
                 }
@@ -881,7 +884,13 @@ impl LayerRuntimeManager {
                         if rt.current.is_none() {
                             rt.clear_display();
                         }
-                        if self.preview_sync_mode == PreviewSyncMode::Strict {
+                        if reversed {
+                            // No frame ≤ a reversed target: re-seek backward (see
+                            // `maybe_reseek_for_reverse`) instead of the symmetric
+                            // miss/lag logic, which never fires on reverse.
+                            rt.note_synced();
+                            rt.maybe_reseek_for_reverse(clip_local);
+                        } else if self.preview_sync_mode == PreviewSyncMode::Strict {
                             // Strict/точно не имеет smooth fallback: stale-кадр за пределами
                             // окна синка не считается валидным preview-кадром. Принудительно
                             // двигаем декодер к target, а до прихода корректного кадра слой

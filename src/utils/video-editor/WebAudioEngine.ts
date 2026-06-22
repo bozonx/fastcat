@@ -34,19 +34,6 @@ const CHUNK_EDGE_FADE_S = 0.005;
 const EQUAL_POWER_FADE_IN_CURVE = equalPowerCurve('in');
 const EQUAL_POWER_FADE_OUT_CURVE = equalPowerCurve('out');
 
-/** Legacy per-chunk edge envelope: fade in from / out to silence over `fadeS`,
- *  holding unity in between. Still used for reverse playback. */
-function applyEdgeFadeGain(gain: GainNode, t0: number, ctxDurationS: number, fadeS: number) {
-  if (fadeS <= 0) {
-    gain.gain.setValueAtTime(1, t0);
-    return;
-  }
-  gain.gain.setValueAtTime(0, t0);
-  gain.gain.linearRampToValueAtTime(1, t0 + fadeS);
-  gain.gain.setValueAtTime(1, t0 + ctxDurationS - fadeS);
-  gain.gain.linearRampToValueAtTime(0, t0 + ctxDurationS);
-}
-
 interface ForwardSeamGainParams {
   t0: number;
   ctxTotalS: number; // total played span (nominal + tail)
@@ -985,12 +972,8 @@ export class WebAudioEngine implements IAudioEngine {
         ? audioNowS + (window.effectiveStartS - currentTimeS) / this.scheduler.getGlobalSpeed()
         : audioNowS;
 
-    const sourceEndS = window.reversed
-      ? currentSourceTimeS - window.remainingInClipS * window.clipSpeed
-      : currentSourceTimeS + window.remainingInClipS * window.clipSpeed;
-    const lastChunkIndex = this.chunkDecoder.getChunkIndex(
-      Math.max(0, window.reversed ? sourceEndS : sourceEndS - 1e-6),
-    );
+    const sourceEndS = currentSourceTimeS + window.remainingInClipS * window.clipSpeed;
+    const lastChunkIndex = this.chunkDecoder.getChunkIndex(Math.max(0, sourceEndS - 1e-6));
 
     this.streamClipPlayback({
       clip,
@@ -1224,48 +1207,6 @@ export class WebAudioEngine implements IAudioEngine {
       const startsAtKickoff =
         Math.abs(state.scheduledCtxTimeS - this.scheduler.getPlaybackStartCtxTimeS()) < 1e-4;
 
-      if (window.reversed) {
-        // Reverse audio is muted in the native monitor and export; the web
-        // reverse path keeps the legacy per-chunk edge-fade behaviour.
-        if (state.currentSourceTimeS <= chunkStartS) return;
-        const availableInChunkS = state.currentSourceTimeS - chunkStartS;
-        const playDurationS = Math.min(state.remainingToPlayS, availableInChunkS);
-        if (playDurationS <= 0) return;
-        const offsetInChunkS = state.currentSourceTimeS - playDurationS - chunkStartS;
-
-        const sourceNode = ctx.createBufferSource();
-        sourceNode.buffer = createReversedAudioBuffer(
-          ctx,
-          chunk.buffer,
-          offsetInChunkS,
-          playDurationS,
-        );
-        if (sourceNode.playbackRate) sourceNode.playbackRate.value = speed;
-        const chunkGainNode = ctx.createGain();
-        sourceNode.connect(chunkGainNode);
-        chunkGainNode.connect(clipInputNode);
-
-        const actualPlayDurationS = playDurationS / speed;
-        const fadeDurationS = Math.min(
-          startsAtKickoff ? TRANSITION_FADE_IN_S : CHUNK_EDGE_FADE_S,
-          actualPlayDurationS / 2,
-        );
-        applyEdgeFadeGain(
-          chunkGainNode,
-          state.scheduledCtxTimeS,
-          actualPlayDurationS,
-          fadeDurationS,
-        );
-
-        sourceNode.start(state.scheduledCtxTimeS, 0, playDurationS);
-        registerSource(sourceNode, chunkGainNode);
-
-        state.scheduledCtxTimeS += actualPlayDurationS;
-        state.currentSourceTimeS -= playDurationS;
-        state.remainingToPlayS -= playDurationS;
-        return;
-      }
-
       // Forward: advance the cursor only by the nominal content and play the
       // decoded overlap tail at an equal-power fade so the next chunk crossfades
       // in over the same source region (no dip-to-silence at the seam).
@@ -1326,8 +1267,8 @@ export class WebAudioEngine implements IAudioEngine {
     // out — it only tears down when the user stops, the generation flips, or
     // the clip is fully scheduled and all sources have ended (maybeTeardown).
     void (async () => {
-      let i = window.reversed ? firstChunkIndex - 1 : firstChunkIndex + 1;
-      while (window.reversed ? i >= lastChunkIndex : i <= lastChunkIndex) {
+      let i = firstChunkIndex + 1;
+      while (i <= lastChunkIndex) {
         if (state.teardownDone) return;
         if (state.remainingToPlayS <= 0) break;
 
@@ -1341,16 +1282,9 @@ export class WebAudioEngine implements IAudioEngine {
         if (state.remainingToPlayS <= 0) break;
 
         const expectedChunkIdx = this.chunkDecoder.getChunkIndex(state.currentSourceTimeS);
-        if (window.reversed) {
-          if (expectedChunkIdx < i) {
-            i = expectedChunkIdx;
-            continue;
-          }
-        } else {
-          if (expectedChunkIdx > i) {
-            i = expectedChunkIdx;
-            continue;
-          }
+        if (expectedChunkIdx > i) {
+          i = expectedChunkIdx;
+          continue;
         }
 
         const chunk = await this.chunkDecoder.ensureDecoded({
@@ -1370,7 +1304,7 @@ export class WebAudioEngine implements IAudioEngine {
         if (chunk) {
           scheduleSource(chunk);
         }
-        i = window.reversed ? i - 1 : i + 1;
+        i += 1;
       }
 
       state.streamingDone = true;
@@ -1428,33 +1362,4 @@ export class WebAudioEngine implements IAudioEngine {
 
     this.chunkDecoder.destroy();
   }
-}
-
-function createReversedAudioBuffer(
-  ctx: BaseAudioContext,
-  sourceBuffer: AudioBuffer,
-  offsetS: number,
-  durationS: number,
-): AudioBuffer {
-  const sampleRate = sourceBuffer.sampleRate;
-  const startSample = Math.floor(offsetS * sampleRate);
-  const durationSamples = Math.floor(durationS * sampleRate);
-
-  const reversedBuffer = ctx.createBuffer(
-    sourceBuffer.numberOfChannels,
-    durationSamples,
-    sampleRate,
-  );
-
-  for (let channel = 0; channel < sourceBuffer.numberOfChannels; channel++) {
-    const sourceData = sourceBuffer.getChannelData(channel);
-    const targetData = reversedBuffer.getChannelData(channel);
-
-    for (let i = 0; i < durationSamples; i++) {
-      const sourceIndex = startSample + durationSamples - 1 - i;
-      targetData[i] = sourceData[sourceIndex] ?? 0;
-    }
-  }
-
-  return reversedBuffer;
 }

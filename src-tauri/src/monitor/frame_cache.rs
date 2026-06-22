@@ -177,6 +177,15 @@ impl VideoFrameCache {
         self.frames.range(key..).next().is_some()
     }
 
+    /// Есть ли в кеше кадр с PTS ≤ `target_pts` — т.е. кадр, который `frame_le`
+    /// сможет показать. На reverse-воспроизведении это критерий того, что декодер
+    /// всё ещё перекрывает (убывающий) target снизу; как только перестаёт —
+    /// нужен обратный reseek, иначе слой застывает.
+    pub fn has_frame_le(&self, target_pts: f64) -> bool {
+        let key = self.index_of(target_pts);
+        self.frames.range(..=key).next_back().is_some()
+    }
+
     pub fn is_disabled(&self) -> bool {
         self.capacity == 0
     }
@@ -382,6 +391,20 @@ mod tests {
         assert!(c.has_frame_ge(2.0));
         // Декодер ещё не дошёл до 2.5 — не готов.
         assert!(!c.has_frame_ge(2.5));
+    }
+
+    #[test]
+    fn has_frame_le_tracks_backward_coverage_for_reverse() {
+        let mut c = cache();
+        assert!(!c.has_frame_le(5.0));
+        c.insert(frame(2.0));
+        c.insert(frame(3.0));
+        // Reverse target внутри/над покрытием — кадр ≤ target есть.
+        assert!(c.has_frame_le(2.0));
+        assert!(c.has_frame_le(2.5));
+        assert!(c.has_frame_le(10.0));
+        // Target опустился ниже самого раннего кадра — кадра ≤ target нет → нужен reseek.
+        assert!(!c.has_frame_le(1.9));
     }
 
     #[test]

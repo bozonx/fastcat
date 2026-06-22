@@ -33,10 +33,19 @@ export function applyClipSpeedChange(params: {
   }
   if (speed === undefined) {
     delete nextProps.speed;
+    nextProps.speedActive = false;
     return null;
   }
 
   nextProps.speed = speed;
+  // The document model (OTIO time-effects) and the worker/native playback payload
+  // only honour `speed` when `speedActive` is set: `serializeTimeEffects` emits the
+  // LinearTimeWarp only if `speedActive` is truthy, and the payload builder gates
+  // `speed` on `item.speedActive !== false`. A speed/reverse edit that left this
+  // flag untouched therefore changed the waveform (read from the live `speed`) but
+  // never reached playback — video kept playing forward and reversed-clip audio was
+  // not muted. Unit speed (1×) carries no time-warp, so the flag clears there.
+  nextProps.speedActive = speed !== 1;
   const nextDurationUsRaw = Math.round(item.sourceRange.durationUs / Math.abs(speed));
   const nextDurationUs = Math.max(0, quantizeTimeUsToFrames(nextDurationUsRaw, fps, 'round'));
   const startUs = item.timelineRange.startUs;
@@ -68,6 +77,7 @@ export function applyClipSpeedChange(params: {
       return {
         ...c,
         speed,
+        speedActive: speed !== 1,
         timelineRange: { ...c.timelineRange, durationUs: nextDurationUs },
       };
     });

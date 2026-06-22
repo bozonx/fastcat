@@ -8,7 +8,7 @@ import type { SceneAudioTrack } from "./SceneAudioTrack";
 import type { SceneLayer } from "./SceneLayer";
 import type { SceneVideoTrack } from "./SceneVideoTrack";
 
-export type MonitorScene = { layers: Array<SceneLayer>, video_tracks: Array<SceneVideoTrack>, audio_layers: Array<SceneAudioLayer>, audio_tracks: Array<SceneAudioTrack>,
+export type MonitorScene = { layers: Array<SceneLayer>, video_tracks: Array<SceneVideoTrack>, audio_layers: Array<SceneAudioLayer>, audio_tracks: Array<SceneAudioTrack>, 
 /**
  * Master audio bus gain. Effects/track buses подключатся поверх этой модели позже.
  */

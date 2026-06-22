@@ -276,8 +276,52 @@ describe('timeline/commands update_clip_properties', () => {
 
     const clip = (next.tracks[0] as TimelineTrack).items[0] as any;
     expect(clip.speed).toBe(2);
+    // A non-unit speed must activate the time-warp so it survives OTIO
+    // serialization and reaches the playback payload (not just the waveform).
+    expect(clip.speedActive).toBe(true);
     expect(clip.timelineRange.durationUs).toBeGreaterThan(0);
     expect(clip.timelineRange.durationUs).toBeLessThan(1_000_000);
+  });
+
+  it('activates the time-warp on reverse and clears it back at unity speed', () => {
+    const makeReverseDoc = () =>
+      makeDoc({
+        id: 'v1',
+        kind: 'video',
+        name: 'V1',
+        items: [
+          {
+            kind: 'clip',
+            clipType: 'media',
+            id: 'c1',
+            trackId: 'v1',
+            name: 'C1',
+            source: { path: 'a.mp4' },
+            sourceDurationUs: 10_000_000,
+            timelineRange: { startUs: 0, durationUs: 1_000_000 },
+            sourceRange: { startUs: 0, durationUs: 1_000_000 },
+          },
+        ],
+      });
+
+    const apply = (doc: TimelineDocument, speed: number) =>
+      applyTimelineCommand(doc, {
+        type: 'update_clip_properties',
+        trackId: 'v1',
+        itemId: 'c1',
+        properties: { speed },
+      }).next;
+
+    // Reverse (negative speed) must activate the warp so video actually plays
+    // backwards and the clip's audio is muted downstream.
+    const reversed = (apply(makeReverseDoc(), -1).tracks[0] as TimelineTrack).items[0] as any;
+    expect(reversed.speed).toBe(-1);
+    expect(reversed.speedActive).toBe(true);
+
+    // Un-reversing back to 1× clears the flag (no time-warp to persist).
+    const restored = (apply(makeReverseDoc(), 1).tracks[0] as TimelineTrack).items[0] as any;
+    expect(restored.speed).toBe(1);
+    expect(restored.speedActive).toBe(false);
   });
 
   it('keeps sourceRange as the anchor so repeated speed edits do not accumulate drift', () => {

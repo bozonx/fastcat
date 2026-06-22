@@ -274,7 +274,6 @@ describe('AudioMixer.writeMixedToSource', () => {
         sink: new mockMediabunny.AudioSampleSink() as any,
         sourcePath: 'test1.mp3',
         speed: 1,
-        reversed: false,
         audioGain: 1,
         audioBalance: 0,
         audioFadeInS: 0,
@@ -291,7 +290,6 @@ describe('AudioMixer.writeMixedToSource', () => {
         sink: new mockMediabunny.AudioSampleSink() as any,
         sourcePath: 'test2.mp3',
         speed: 1,
-        reversed: false,
         audioGain: 1,
         audioBalance: 0,
         audioFadeInS: 0,
@@ -333,7 +331,6 @@ describe('AudioMixer.writeMixedToSource', () => {
         sink: new mockMediabunny.AudioSampleSink() as any,
         sourcePath: 'test1.mp3',
         speed: 1,
-        reversed: false,
         audioGain: 0.5,
         audioBalance: 0,
         audioFadeInS: 0,
@@ -390,7 +387,6 @@ describe('AudioMixer.writeMixedToSource', () => {
         sink: customSink as any,
         sourcePath: 'test1.mp3',
         speed: 1,
-        reversed: false,
         audioGain: 1,
         audioBalance: 0,
         audioFadeInS: 1.0,
@@ -434,7 +430,6 @@ describe('AudioMixer.writeMixedToSource', () => {
         sink: new mockMediabunny.AudioSampleSink() as any,
         sourcePath: 'panning.mp3',
         speed: 1,
-        reversed: false,
         audioGain: 1,
         audioBalance: -1.0,
         audioFadeInS: 0,
@@ -464,66 +459,6 @@ describe('AudioMixer.writeMixedToSource', () => {
     expect(mixedData[48000]).toBeCloseTo(0);
   });
 
-  it('mixes reversed clips correctly (audio rendered reversed)', async () => {
-    const sampleRate = 1000;
-    const numberOfChannels = 1;
-    const durationS = 1;
-    const audioSource = { add: vi.fn().mockResolvedValue(undefined) };
-
-    const customSink = new mockMediabunny.AudioSampleSink();
-    customSink.samples = vi.fn().mockReturnValue({
-      [Symbol.asyncIterator]: async function* () {
-        const data = new Float32Array(1000);
-        for (let i = 0; i < 1000; i++) data[i] = i / 1000;
-        yield {
-          numberOfFrames: 1000,
-          sampleRate: 1000,
-          numberOfChannels: 1,
-          timestamp: 0,
-          allocationSize: () => 4000,
-          copyTo: (dst: Float32Array) => dst.set(data),
-        };
-      },
-    });
-
-    const prepared: PreparedClip[] = [
-      {
-        clipStartS: 0,
-        offsetS: 0,
-        playDurationS: 1,
-        input: new mockMediabunny.Input() as any,
-        sink: customSink as any,
-        sourcePath: 'reverse.mp3',
-        speed: 1,
-        reversed: true,
-        audioGain: 1,
-        audioBalance: 0,
-        audioFadeInS: 0,
-        audioFadeOutS: 0,
-        audioFadeInCurve: 'linear',
-        audioFadeOutCurve: 'linear',
-        audioEffects: [],
-      },
-    ];
-
-    await AudioMixer.writeMixedToSource({
-      prepared,
-      durationS,
-      audioSource,
-      chunkDurationS: 1,
-      sampleRate,
-      numberOfChannels,
-      reportExportWarning: vi.fn(),
-      AudioSample: mockMediabunny.AudioSample as any,
-    });
-
-    const resultInstance = audioSource.add.mock.calls[0][0];
-    const mixedData = resultInstance.data.data;
-    expect(mixedData[0]).toBeCloseTo(0.999);
-    expect(mixedData[500]).toBeCloseTo(0.499);
-    expect(mixedData[999]).toBeCloseTo(0.0);
-  });
-
   it('applies audio effects if present', async () => {
     const sampleRate = 48000;
     const numberOfChannels = 1;
@@ -539,7 +474,6 @@ describe('AudioMixer.writeMixedToSource', () => {
         sink: new mockMediabunny.AudioSampleSink() as any,
         sourcePath: 'effects.mp3',
         speed: 1,
-        reversed: false,
         audioGain: 1,
         audioBalance: 0,
         audioFadeInS: 0,
@@ -617,7 +551,6 @@ describe('AudioMixer.writeMixedToSource', () => {
         sink: customSink as any,
         sourcePath: 'long-effects.mp3',
         speed: 1,
-        reversed: false,
         audioGain: 1,
         audioBalance: 0,
         audioFadeInS: 0,
@@ -660,7 +593,7 @@ describe('AudioMixer.writeMixedToSource', () => {
     expect(mixedData[24_999]).toBeCloseTo(0.5);
   });
 
-  it('mixes negative-speed clips with fades correctly', async () => {
+  it('applies an audio fade-in across the mixed output', async () => {
     const sampleRate = 1000;
     const numberOfChannels = 1;
     const durationS = 1;
@@ -688,9 +621,8 @@ describe('AudioMixer.writeMixedToSource', () => {
         playDurationS: 1,
         input: new mockMediabunny.Input() as any,
         sink: customSink as any,
-        sourcePath: 'reverse-fade.mp3',
+        sourcePath: 'fade.mp3',
         speed: 1,
-        reversed: true,
         audioGain: 1,
         audioBalance: 0,
         audioFadeInS: 0.5,
@@ -735,7 +667,6 @@ describe('AudioMixer.writeMixedToSource', () => {
         sink: new mockMediabunny.AudioSampleSink() as any,
         sourcePath: 'clip1.mp3',
         speed: 1,
-        reversed: false,
         audioGain: 1,
         audioBalance: 0,
         audioFadeInS: 0,
@@ -752,7 +683,6 @@ describe('AudioMixer.writeMixedToSource', () => {
         sink: new mockMediabunny.AudioSampleSink() as any,
         sourcePath: 'clip2.mp3',
         speed: 1,
-        reversed: false,
         audioGain: 1,
         audioBalance: 0,
         audioFadeInS: 0,
@@ -846,7 +776,6 @@ describe('AudioMixer.writeMixedToSource', () => {
         sink: customSink as any,
         sourcePath: 'long-clip.mp3',
         speed: 1,
-        reversed: false,
         audioGain: 1,
         audioBalance: 0,
         audioFadeInS: 0,
@@ -960,7 +889,6 @@ describe('AudioMixer time-stretch via speed', () => {
         sink: customSink as any,
         sourcePath: 'speed2.mp3',
         speed: 2,
-        reversed: false,
         audioGain: 1,
         audioBalance: 0,
         audioFadeInS: 0,
@@ -1024,7 +952,6 @@ describe('AudioMixer clip warning', () => {
       sink: makeSink() as any,
       sourcePath: 'a.mp3',
       speed: 1,
-      reversed: false,
       audioGain: 1,
       audioBalance: 0,
       audioFadeInS: 0,
@@ -1133,7 +1060,6 @@ describe('AudioMixer fade boundary precision', () => {
         sink: customSink as any,
         sourcePath: 'fade-tail.mp3',
         speed: 1,
-        reversed: false,
         audioGain: 1,
         audioBalance: 0,
         audioFadeInS: 0,
@@ -1200,7 +1126,6 @@ describe('AudioMixer fade boundary precision', () => {
         sink: customSink as any,
         sourcePath: 'fade-head.mp3',
         speed: 1,
-        reversed: false,
         audioGain: 1,
         audioBalance: 0,
         audioFadeInS: fadeInS,
@@ -1279,7 +1204,6 @@ describe('AudioMixer adjacent clips precision', () => {
         sink: customSink1 as any,
         sourcePath: 'adjacent1.mp3',
         speed: 1,
-        reversed: false,
         audioGain: 1,
         audioBalance: 0,
         audioFadeInS: 0,
@@ -1296,7 +1220,6 @@ describe('AudioMixer adjacent clips precision', () => {
         sink: customSink2 as any,
         sourcePath: 'adjacent2.mp3',
         speed: 1,
-        reversed: false,
         audioGain: 1,
         audioBalance: 0,
         audioFadeInS: 0,

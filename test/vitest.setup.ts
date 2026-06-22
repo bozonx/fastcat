@@ -136,7 +136,6 @@ const mockWorkspaceStore = vi.hoisted(() => {
       experimentalFeatures: false,
       ui: {
         interfaceScale: 1,
-        monitorInteractiveEdit: false,
       },
       hotkeys: {
         layer1: 'Shift',

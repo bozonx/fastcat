@@ -24,6 +24,10 @@ const RESEEK_MISS_DISTANCE_SEC: f64 = 0.5;
 /// Minimum interval between re-seeks for a single layer so an in-flight seek
 /// can finish and we avoid command storms to the decoder.
 const RESEEK_COOLDOWN_SEC: f64 = 0.15;
+/// Reverse playback: how far *before* the target to re-seek so the forward decode
+/// run brackets the (decreasing) target from below for a stretch before the next
+/// re-seek. One GOP's worth keeps the re-seek cadence low while staying responsive.
+const REVERSE_RESEEK_BACK_SEC: f64 = 0.5;
 /// After this many consecutive ticks lagged beyond the sync window we treat the
 /// source as decode-bound (the decoder can't keep up with realtime, e.g. 4K) and
 /// stop re-seeking-on-lag: re-seeking only flushes the decoder and re-decodes the
@@ -385,6 +389,42 @@ impl VideoLayerRt {
             log::error!("[monitor] reseek-on-miss seek: {e:?}");
         }
         self.last_pump_seek_pts = Some(target_clip_local);
+        self.note_seek_requested();
+        if let Some(frame) = self.cache.frame_nearest(target_clip_local) {
+            self.current = Some(frame);
+        }
+    }
+
+    /// Reverse playback re-seek. The decoder only ever produces frames *forward*
+    /// from its seek point, so as the reversed target steps backwards it eventually
+    /// drops below the current GOP's keyframe and there is no frame ≤ target to show.
+    /// `maybe_reseek_on_miss` does not help here: its symmetric far-miss gate sees the
+    /// keyframe sitting just *above* the target as "near" and never fires, freezing
+    /// the layer. So reverse needs its own trigger — re-seek to just before the target
+    /// (so the forward decode run re-brackets it from below) whenever the cache can no
+    /// longer satisfy `frame_le(target)`, and meanwhile show the nearest frame so the
+    /// picture keeps moving instead of freezing between re-seeks.
+    pub fn maybe_reseek_for_reverse(&mut self, target_clip_local: f64) {
+        if self.cache.has_frame_le(target_clip_local) {
+            return; // decoder still covers the target from below — keep stepping back
+        }
+        let now = Instant::now();
+        let throttled = self
+            .last_reseek
+            .is_some_and(|last| now.duration_since(last).as_secs_f64() < RESEEK_COOLDOWN_SEC);
+        if throttled {
+            // Don't storm the decoder, but don't freeze either: show the closest frame.
+            if let Some(frame) = self.cache.frame_nearest(target_clip_local) {
+                self.current = Some(frame);
+            }
+            return;
+        }
+        self.last_reseek = Some(now);
+        let seek_to = (target_clip_local - REVERSE_RESEEK_BACK_SEC).max(0.0);
+        if let Err(e) = self.pump.seek(seek_to) {
+            log::error!("[monitor] reverse reseek seek: {e:?}");
+        }
+        self.last_pump_seek_pts = Some(seek_to);
         self.note_seek_requested();
         if let Some(frame) = self.cache.frame_nearest(target_clip_local) {
             self.current = Some(frame);
