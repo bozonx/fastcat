@@ -137,8 +137,6 @@ watch(
         />
       </div>
 
-
-
       <!-- Delete Project -->
       <div
         class="flex items-center justify-between gap-3 p-3 rounded border border-error-500/20 bg-error-500/5"

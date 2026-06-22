@@ -53,7 +53,6 @@ export function useMonitorSnapshot(input: {
     } catch (error) {
       log.error('Failed to save timeline thumbnail:', error);
     }
-
   }
 
   async function createStopFrameSnapshot() {

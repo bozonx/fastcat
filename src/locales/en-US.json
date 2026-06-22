@@ -1621,9 +1621,7 @@
     },
     "projectSettings": {
       "advanced": "Advanced",
-      "clearBackups": "Clear backups",
       "clearBackupsDescription": "This will remove all backup files for this project.",
-      "clearBackupsHint": "Remove all backups",
       "clearBackupsTitle": "Clear backups",
       "clearTemp": "Clear temporary files",
       "clearTempAction": "Clear",

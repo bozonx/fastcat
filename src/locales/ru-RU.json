@@ -1621,9 +1621,7 @@
     },
     "projectSettings": {
       "advanced": "Расширенные",
-      "clearBackups": "Очистить резервные копии",
       "clearBackupsDescription": "Это удалит все резервные копии для этого проекта.",
-      "clearBackupsHint": "Удалить все резервные копии",
       "clearBackupsTitle": "Очистить резервные копии",
       "clearTemp": "Очистить временные файлы",
       "clearTempAction": "Очистить",

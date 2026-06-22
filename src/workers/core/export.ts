@@ -247,7 +247,10 @@ async function waitForVideoBackpressure(videoSource: { encodeQueueSize?: number 
 
 function fillCanvasBlack(canvas: OffscreenCanvas | HTMLCanvasElement | undefined | null) {
   if (!canvas) return;
-  const context = canvas.getContext('2d');
+  const context = canvas.getContext('2d') as
+    | CanvasRenderingContext2D
+    | OffscreenCanvasRenderingContext2D
+    | null;
   if (!context) return;
   context.save();
   context.fillStyle = '#000';

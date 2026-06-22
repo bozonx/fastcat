@@ -40,9 +40,7 @@ export function createNativeMediaProcessor(): IMediaProcessor {
       });
     },
 
-    async extractVideoFrameBlobs(
-      options: ExtractVideoFrameBlobsOptions,
-    ): Promise<(Blob | null)[]> {
+    async extractVideoFrameBlobs(options: ExtractVideoFrameBlobsOptions): Promise<(Blob | null)[]> {
       const projectStore = useProjectStore();
       const sourceHandle = await projectStore.getFileHandleByPath(options.projectRelativePath);
       const sourcePath = getNativeFileHandlePath(sourceHandle);
@@ -60,9 +58,7 @@ export function createNativeMediaProcessor(): IMediaProcessor {
       });
     },
 
-    async extractTimelineFrameBlob(
-      options: ExtractTimelineFrameBlobOptions,
-    ): Promise<Blob | null> {
+    async extractTimelineFrameBlob(options: ExtractTimelineFrameBlobOptions): Promise<Blob | null> {
       const projectStore = useProjectStore();
       const workspaceStore = useWorkspaceStore();
       const fallbackFormat = resolveEffectiveTimelineFormat(

@@ -38,11 +38,6 @@ const visibleClips = computed(() =>
   }),
 );
 
-const selectedClipId = computed(() => {
-  const entity = selectionStore.selectedEntity;
-  return entity?.kind === 'clip' ? entity.itemId : null;
-});
-
 function getSourceRotation(clip: WorkerTimelineClip): number {
   const sourceOrientation = (clip as { sourceOrientation?: ClipSourceOrientation })
     .sourceOrientation;

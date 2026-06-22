@@ -1,5 +1,4 @@
 import { createDevLogger } from '~/utils/dev-logger';
-import { useProjectStore } from '~/stores/project.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { TIMELINE_CLIP_THUMBNAILS } from '~/utils/constants';
 import {
@@ -473,7 +472,8 @@ class ThumbnailGenerator extends BaseThumbnailGenerator<ThumbnailTask, Map<numbe
     const processor = useMediaProcessor();
 
     return {
-      batchSize: processor.id === 'native' ? NATIVE_THUMBNAIL_BATCH_SIZE : WORKER_THUMBNAIL_BATCH_SIZE,
+      batchSize:
+        processor.id === 'native' ? NATIVE_THUMBNAIL_BATCH_SIZE : WORKER_THUMBNAIL_BATCH_SIZE,
       extract: (chunkTimes) =>
         processor.extractVideoFrameBlobs({
           projectRelativePath: task.projectRelativePath,

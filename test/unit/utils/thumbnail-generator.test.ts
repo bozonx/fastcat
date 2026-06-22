@@ -493,12 +493,16 @@ describe('Thumbnail Generators', () => {
       await new Promise((resolve) => setTimeout(resolve, 10));
 
       expect(mockMediaProcessor.extractVideoFrameBlobs).toHaveBeenCalledTimes(2);
-      expect(vi.mocked(mockMediaProcessor.extractVideoFrameBlobs).mock.calls[0]?.[0]).toMatchObject({
-        timesSec: requestedTimesS.slice(0, 128),
-      });
-      expect(vi.mocked(mockMediaProcessor.extractVideoFrameBlobs).mock.calls[1]?.[0]).toMatchObject({
-        timesSec: requestedTimesS.slice(128),
-      });
+      expect(vi.mocked(mockMediaProcessor.extractVideoFrameBlobs).mock.calls[0]?.[0]).toMatchObject(
+        {
+          timesSec: requestedTimesS.slice(0, 128),
+        },
+      );
+      expect(vi.mocked(mockMediaProcessor.extractVideoFrameBlobs).mock.calls[1]?.[0]).toMatchObject(
+        {
+          timesSec: requestedTimesS.slice(128),
+        },
+      );
     });
 
     it('should generate file thumbnails successfully when workspaceHandle is null in Tauri', async () => {

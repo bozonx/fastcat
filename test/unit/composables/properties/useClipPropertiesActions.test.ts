@@ -268,7 +268,9 @@ describe('useClipPropertiesActions', () => {
       expect(video.actions.otherActionsList.value.some((a) => a.id === 'reverse-speed')).toBe(true);
 
       const audio = build({ trackKind: 'audio', clip: makeClip({ trackId: 'a1' }) });
-      expect(audio.actions.otherActionsList.value.some((a) => a.id === 'reverse-speed')).toBe(false);
+      expect(audio.actions.otherActionsList.value.some((a) => a.id === 'reverse-speed')).toBe(
+        false,
+      );
     });
 
     it('includes rename after paste-parameters in other actions', () => {

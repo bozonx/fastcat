@@ -102,7 +102,12 @@ export async function createTimelineFrameSource(params: {
     }
   }
 
-  const { width, height } = fitDimensions(format.width, format.height, params.maxWidth, params.maxHeight);
+  const { width, height } = fitDimensions(
+    format.width,
+    format.height,
+    params.maxWidth,
+    params.maxHeight,
+  );
 
   return {
     batchSize: processor.id === 'native' ? 8 : 4,

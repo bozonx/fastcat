@@ -81,7 +81,10 @@ async function resizeImage(file: File, maxWidth: number, maxHeight: number): Pro
       canvas.height = height;
     }
 
-    const ctx = canvas.getContext('2d');
+    const ctx = canvas.getContext('2d') as
+      | CanvasRenderingContext2D
+      | OffscreenCanvasRenderingContext2D
+      | null;
     if (!ctx) throw new Error('Failed to get 2d context for image resize');
     ctx.drawImage(imageBitmap, 0, 0, width, height);
 

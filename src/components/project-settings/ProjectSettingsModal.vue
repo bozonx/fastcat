@@ -6,7 +6,6 @@ import UiConfirmModal from '~/components/ui/UiConfirmModal.vue';
 import { ref } from 'vue';
 import { useProjectStore } from '~/stores/project.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
-import { useTimelineStore } from '~/stores/timeline.store';
 import { DEFAULT_PROJECT_SETTINGS, markProjectSettingsAuto } from '~/utils/project-settings';
 
 import ResolutionSettings from './ResolutionSettings.vue';
@@ -28,7 +27,6 @@ const emit = defineEmits<{
 const { t } = useI18n();
 const projectStore = useProjectStore();
 const workspaceStore = useWorkspaceStore();
-const timelineStore = useTimelineStore();
 
 const storageStatsKey = ref(0);
 

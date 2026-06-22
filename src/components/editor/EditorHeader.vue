@@ -91,18 +91,14 @@ const menuItems = computed(() => {
         size="sm"
         variant="ghost"
         color="neutral"
-        :icon="
-          timelineStore.isSavingTimeline
-            ? 'i-heroicons-arrow-path'
-            : 'i-lucide-save'
-        "
+        :icon="timelineStore.isSavingTimeline ? 'i-heroicons-arrow-path' : 'i-lucide-save'"
         :disabled="timelineStore.isSavingTimeline || !timelineStore.timelineDoc"
         :title="getHotkeyTitle(t('common.save'), 'general.save')"
         :class="[
           timelineStore.isSavingTimeline ? 'animate-spin' : '',
-          (!timelineStore.isSavingTimeline && timelineStore.isTimelineDirty)
+          !timelineStore.isSavingTimeline && timelineStore.isTimelineDirty
             ? 'text-selection-accent-500 hover:text-selection-accent-400'
-            : ''
+            : '',
         ]"
         @click="timelineStore.saveTimeline()"
       />

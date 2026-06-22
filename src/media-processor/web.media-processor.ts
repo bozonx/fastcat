@@ -49,9 +49,7 @@ export function createWebMediaProcessor(): IMediaProcessor {
       return blobs[0] ?? null;
     },
 
-    async extractVideoFrameBlobs(
-      options: ExtractVideoFrameBlobsOptions,
-    ): Promise<(Blob | null)[]> {
+    async extractVideoFrameBlobs(options: ExtractVideoFrameBlobsOptions): Promise<(Blob | null)[]> {
       const projectStore = useProjectStore();
       const file = await projectStore.getFileByPath(options.projectRelativePath);
       if (!file) {
@@ -75,9 +73,7 @@ export function createWebMediaProcessor(): IMediaProcessor {
       });
     },
 
-    async extractTimelineFrameBlob(
-      options: ExtractTimelineFrameBlobOptions,
-    ): Promise<Blob | null> {
+    async extractTimelineFrameBlob(options: ExtractTimelineFrameBlobOptions): Promise<Blob | null> {
       const projectStore = useProjectStore();
       const workspaceStore = useWorkspaceStore();
       if (!workspaceStore.workspaceHandle) {
