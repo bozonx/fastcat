@@ -238,7 +238,11 @@ export class StageTextureRenderer {
         {
           resizeWidth: this.context.width,
           resizeHeight: this.context.height,
-          resizeQuality: 'high',
+          // Bilinear (positive weights only) rather than 'high'/Lanczos, whose
+          // negative side-lobes can ring into a faint dark rim at the clamped
+          // crop edge — which a large adjustment-clip blur then spreads inward
+          // as a vignette. The upscale here is ~1.004x, so quality is unchanged.
+          resizeQuality: 'low',
         },
       );
     } finally {

@@ -433,7 +433,7 @@ describe('VideoCompositor render optimization', () => {
       expect.arrayContaining([expect.objectContaining({ type: 'gaussian-blur', bleed: true })]),
       { enablePadding: false },
     );
-    expect(renderLowerLayersToBitmap).toHaveBeenCalledWith(1, { edgeInsetPixels: 1 });
+    expect(renderLowerLayersToBitmap).toHaveBeenCalledWith(1, { edgeInsetPixels: 2 });
     expect(sourceBitmap.close).toHaveBeenCalled();
     warn.mockRestore();
   });

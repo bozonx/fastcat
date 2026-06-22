@@ -278,11 +278,16 @@ export class VideoCompositor {
         sourceBitmap = await this.ensureStageTextureRenderer(this.app).renderLowerLayersToBitmap(
           clip.layer,
           {
-            // Pixi's browser capture can leave a one-pixel background/alpha
-            // fringe at the project boundary. A large blur spreads that fringe
-            // inward as a dark vignette. Use the nearest interior texels as the
-            // frame boundary, matching the native full-frame raster.
-            edgeInsetPixels: 1,
+            // Pixi's browser capture anti-aliases the top sprite against the
+            // opaque background at the project boundary, leaving a dark fringe
+            // that can span ~2px. With no effect padding, the blur clamps to
+            // that edge and spreads it inward as a dark vignette (visible on
+            // adjustment-clip blur but not on direct-clip blur, which pads).
+            // Inset past the whole AA band so the nearest *clean* interior
+            // texels become the frame boundary, matching the native full-frame
+            // raster (which feeds a GPU texture straight into the effect shader
+            // with no readback fringe).
+            edgeInsetPixels: 2,
           },
         );
         // Native adjustment layers always process the project-sized scene

@@ -28,12 +28,12 @@ describe('StageTextureRenderer', () => {
         }) as any,
     });
 
-    await renderer.renderLowerLayersToBitmap(1, { edgeInsetPixels: 1 });
+    await renderer.renderLowerLayersToBitmap(1, { edgeInsetPixels: 2 });
 
-    expect(createImageBitmapMock).toHaveBeenCalledWith(canvas, 1, 1, 1918, 1078, {
+    expect(createImageBitmapMock).toHaveBeenCalledWith(canvas, 2, 2, 1916, 1076, {
       resizeWidth: 1920,
       resizeHeight: 1080,
-      resizeQuality: 'high',
+      resizeQuality: 'low',
     });
     expect(lower.visible).toBe(true);
     expect(upper.visible).toBe(true);
