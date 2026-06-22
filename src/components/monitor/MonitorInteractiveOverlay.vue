@@ -108,7 +108,7 @@ interface BboxItem {
 }
 
 const bboxItems = computed(() => {
-  if (!workspaceStore.userSettings.ui.monitorInteractiveEdit) return [];
+  if (!workspaceStore.userSettings.experimentalFeatures) return [];
 
   const items: BboxItem[] = [];
 
@@ -180,7 +180,7 @@ function selectClip(clip: WorkerTimelineClip) {
   selectionStore.selectTimelineItem(clip.trackId ?? '', clip.id, 'clip');
 }
 
-const isEnabled = computed(() => workspaceStore.userSettings.ui.monitorInteractiveEdit);
+const isEnabled = computed(() => workspaceStore.userSettings.experimentalFeatures === true);
 </script>
 
 <template>
@@ -193,10 +193,6 @@ const isEnabled = computed(() => workspaceStore.userSettings.ui.monitorInteracti
           :width="item.textBoxW"
           :height="item.textBoxH"
           fill="rgba(255,255,255,0.03)"
-          :stroke="selectedClipId === item.clip.id ? 'var(--ui-primary)' : 'rgba(255,255,255,0.4)'"
-          stroke-width="1"
-          stroke-dasharray="4 2"
-          vector-effect="non-scaling-stroke"
           class="cursor-pointer"
           @pointerdown.stop="selectClip(item.clip)"
         />
@@ -208,10 +204,6 @@ const isEnabled = computed(() => workspaceStore.userSettings.ui.monitorInteracti
           :width="item.targetW"
           :height="item.targetH"
           fill="rgba(255,255,255,0.03)"
-          :stroke="selectedClipId === item.clip.id ? 'var(--ui-primary)' : 'rgba(255,255,255,0.4)'"
-          stroke-width="1"
-          stroke-dasharray="4 2"
-          vector-effect="non-scaling-stroke"
           class="cursor-pointer"
           @pointerdown.stop="selectClip(item.clip)"
         />

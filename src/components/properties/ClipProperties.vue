@@ -35,6 +35,7 @@ import ClipTransformSection from '~/components/properties/clip/ClipTransformSect
 import ClipTypeSection from '~/components/properties/clip/ClipTypeSection.vue';
 import ClipMaskSection from '~/components/properties/clip/ClipMaskSection.vue';
 import ClipParametersPasteModal from '~/components/properties/clip/ClipParametersPasteModal.vue';
+import ClipBackgroundProperties from '~/components/properties/clip/ClipBackgroundProperties.vue';
 import { useClipAudio } from '~/composables/properties/useClipAudio';
 import { useClipTransitions } from '~/composables/properties/useClipTransitions';
 import { useClipPropertiesActions } from '~/composables/properties/useClipPropertiesActions';
@@ -429,6 +430,12 @@ defineExpose({
 
 <template>
   <div class="w-full flex flex-col gap-2 text-ui-text">
+    <ClipBackgroundProperties
+      v-if="clip.clipType === 'background'"
+      :clip="clip"
+      @update-background-color="handleUpdateBackgroundColor"
+    />
+
     <UTabs v-model="activeTab" :items="tabs" variant="link" :content="false" class="mb-2" />
 
     <!-- Tab: Clip -->

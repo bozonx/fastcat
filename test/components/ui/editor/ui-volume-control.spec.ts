@@ -114,4 +114,43 @@ describe('UiVolumeControl', () => {
     expect(component.emitted('update:isMuted')).toBeTruthy();
     expect(component.emitted('update:isMuted')?.[0]).toEqual([false]);
   });
+
+  it('sets color to error when muted or volume is 0', async () => {
+    const component = await mountSuspended(UiVolumeControl, {
+      props: {
+        volume: 0.5,
+        isMuted: true,
+      },
+      global: { stubs: { UiTooltip: tooltipStub } },
+    });
+
+    const button = component.find('button');
+    expect(button.attributes('color')).toBe('error');
+  });
+
+  it('sets color to warning when volume is less than 20% and not muted', async () => {
+    const component = await mountSuspended(UiVolumeControl, {
+      props: {
+        volume: 0.15,
+        isMuted: false,
+      },
+      global: { stubs: { UiTooltip: tooltipStub } },
+    });
+
+    const button = component.find('button');
+    expect(button.attributes('color')).toBe('warning');
+  });
+
+  it('sets color to neutral when volume is 20% or more and not muted', async () => {
+    const component = await mountSuspended(UiVolumeControl, {
+      props: {
+        volume: 0.2,
+        isMuted: false,
+      },
+      global: { stubs: { UiTooltip: tooltipStub } },
+    });
+
+    const button = component.find('button');
+    expect(button.attributes('color')).toBe('neutral');
+  });
 });

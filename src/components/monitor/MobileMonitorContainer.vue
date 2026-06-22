@@ -380,7 +380,7 @@ const isReadonly = computed(
 
 const workspaceStore = useWorkspaceStore();
 const isInteractiveEditEnabled = computed(
-  () => workspaceStore.userSettings.ui.monitorInteractiveEdit === true,
+  () => workspaceStore.userSettings.experimentalFeatures === true,
 );
 
 onMounted(() => {

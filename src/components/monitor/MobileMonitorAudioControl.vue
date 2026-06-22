@@ -22,6 +22,14 @@ const volumeIcon = computed(() => {
   return 'i-heroicons-speaker-wave';
 });
 
+const volumeColor = computed(() => {
+  const currentVolume = monitorMuted.value ? 0 : monitorVolume.value;
+  const pct = Math.round(currentVolume * 100);
+  if (pct === 0) return 'error';
+  if (pct < 20) return 'warning';
+  return 'neutral';
+});
+
 function onVolumeUpdate(v: number | undefined) {
   const val = Number(v ?? 1);
   monitorVolume.value = val;
@@ -37,7 +45,7 @@ function onVolumeUpdate(v: number | undefined) {
       <UButton
         size="md"
         variant="ghost"
-        color="neutral"
+        :color="volumeColor"
         :icon="volumeIcon"
         class="p-1 h-full aspect-square rounded-full shadow-md m-0 flex items-center justify-center bg-ui-bg-elevated/50"
         :aria-label="

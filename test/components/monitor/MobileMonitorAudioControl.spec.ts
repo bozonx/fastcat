@@ -31,8 +31,8 @@ describe('MobileMonitorAudioControl', () => {
         template: '<div class="slider-stub" @click="$emit(\'update:modelValue\', 0.8)"></div>',
       },
       UButton: {
-        props: ['label', 'icon'],
-        template: '<button class="button-stub" :class="icon">{{ label }}<slot /></button>',
+        props: ['label', 'icon', 'color'],
+        template: '<button class="button-stub" :class="[icon, color]">{{ label }}<slot /></button>',
       },
       UIcon: true,
     },
@@ -106,5 +106,33 @@ describe('MobileMonitorAudioControl', () => {
 
     expect(uiStore.monitorVolume).toBe(1);
     expect(uiStore.monitorMuted).toBe(false);
+  });
+
+  it('sets correct UButton color based on volume state', async () => {
+    const wrapper = mount(MobileMonitorAudioControl, {
+      global: globalOptions,
+    });
+
+    const uiStore = useUiStore();
+    const button = wrapper.find('.button-stub');
+
+    // Initial 0.5 volume -> neutral
+    expect(button.classes()).toContain('neutral');
+
+    // Less than 20% (e.g. 0.15) -> warning
+    uiStore.monitorVolume = 0.15;
+    await wrapper.vm.$nextTick();
+    expect(button.classes()).toContain('warning');
+
+    // 0 volume -> error
+    uiStore.monitorVolume = 0;
+    await wrapper.vm.$nextTick();
+    expect(button.classes()).toContain('error');
+
+    // Muted -> error
+    uiStore.monitorVolume = 0.5;
+    uiStore.monitorMuted = true;
+    await wrapper.vm.$nextTick();
+    expect(button.classes()).toContain('error');
   });
 });

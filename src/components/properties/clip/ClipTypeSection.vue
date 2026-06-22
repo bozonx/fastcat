@@ -4,11 +4,9 @@ import type {
   ShapeType,
   TimelineClipItem,
   TimelineTextClipItem,
-  TimelineBackgroundClipItem,
 } from '~/timeline/types';
 import type { ParamControl } from '~/components/properties/params';
 import { usePresetsStore } from '~/stores/presets.store';
-import ClipBackgroundProperties from './ClipBackgroundProperties.vue';
 import ClipTextProperties from './ClipTextProperties.vue';
 import ClipShapeProperties from './ClipShapeProperties.vue';
 import ClipHudProperties from './ClipHudProperties.vue';
@@ -134,14 +132,8 @@ function confirmSavePreset() {
 </script>
 
 <template>
-  <ClipBackgroundProperties
-    v-if="props.clip.clipType === 'background'"
-    :clip="props.clip as TimelineBackgroundClipItem"
-    @update-background-color="emit('updateBackgroundColor', $event)"
-  />
-
   <ClipTextProperties
-    v-else-if="props.clip.clipType === 'text' && !props.hideTextProperties"
+    v-if="props.clip.clipType === 'text' && !props.hideTextProperties"
     :clip="props.clip as TimelineTextClipItem"
     :presets="textPresets"
     @update-text="emit('updateText', $event)"

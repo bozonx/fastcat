@@ -36,6 +36,14 @@ const { target: teleportTarget } = useTeleportTarget();
 
 const volumePercent = computed(() => Math.round((props.isMuted ? 0 : props.volume) * 100));
 
+const volumeColor = computed(() => {
+  const currentVolume = props.isMuted ? 0 : props.volume;
+  const pct = Math.round(currentVolume * 100);
+  if (pct === 0) return 'error';
+  if (pct < 20) return 'warning';
+  return 'neutral';
+});
+
 function toggleMute() {
   emit('update:isMuted', !props.isMuted);
   (document.activeElement as HTMLElement | null)?.blur?.();
@@ -138,7 +146,7 @@ onBeforeUnmount(() => {
       <UButton
         size="sm"
         variant="ghost"
-        color="neutral"
+        :color="volumeColor"
         :icon="
           isMuted || volume === 0
             ? 'i-heroicons-speaker-x-mark'
@@ -184,7 +192,7 @@ onBeforeUnmount(() => {
       <UButton
         size="sm"
         variant="ghost"
-        color="neutral"
+        :color="volumeColor"
         :icon="
           isMuted || volume === 0
             ? 'i-heroicons-speaker-x-mark'
@@ -233,7 +241,7 @@ onBeforeUnmount(() => {
               <UButton
                 size="xs"
                 variant="ghost"
-                color="neutral"
+                :color="volumeColor"
                 :icon="
                   isMuted || volume === 0
                     ? 'i-heroicons-speaker-x-mark'

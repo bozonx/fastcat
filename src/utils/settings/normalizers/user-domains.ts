@@ -33,10 +33,6 @@ export function normalizeUiSettings(raw: unknown): FastCatUserSettings['ui'] {
       .enum(['half', 'full', 'none'])
       .catch(DEFAULT_USER_SETTINGS.ui.defaultAudioWaveformMode)
       .parse(input?.defaultAudioWaveformMode),
-    monitorInteractiveEdit: z
-      .boolean()
-      .catch(DEFAULT_USER_SETTINGS.ui.monitorInteractiveEdit)
-      .parse(input?.monitorInteractiveEdit),
   };
 }
 
