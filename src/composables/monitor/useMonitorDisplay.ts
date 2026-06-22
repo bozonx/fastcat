@@ -1,4 +1,4 @@
-import { ref, computed } from 'vue';
+import { ref, computed, type Ref } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useProjectStore } from '~/stores/project.store';
 import {
@@ -6,7 +6,7 @@ import {
   previewEffectQualityRenderScale,
 } from '~/utils/preview-effect-quality';
 
-export function useMonitorDisplay() {
+export function useMonitorDisplay(options?: { isMobile?: Ref<boolean> }) {
   const timelineStore = useTimelineStore();
   const projectStore = useProjectStore();
 
@@ -48,6 +48,11 @@ export function useMonitorDisplay() {
       const quality = resolvePreviewEffectQuality({
         setting: projectStore.activeMonitor?.previewBlurQuality ?? 'auto',
         isPlaying: true,
+        // Must mirror the native render-scale tier (native-monitor-scene.ts scaleQuality),
+        // which passes isMobile — otherwise the DOM canvas is sized from the desktop tier
+        // while native renders at the mobile (low) scale, leaving the texture smaller than
+        // the canvas (extra upscale / blur).
+        isMobile: options?.isMobile?.value,
         width: exportWidth.value,
         height: exportHeight.value,
         fps: timelineStore.timelineFormat?.fps,

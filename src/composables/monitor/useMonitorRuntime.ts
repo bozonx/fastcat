@@ -63,7 +63,16 @@ export function useMonitorRuntime() {
     () => selectedTimelineClip.value?.clipType === 'adjustment',
   );
 
-  const { containerEl, renderWidth, renderHeight, updateCanvasDisplaySize } = useMonitorDisplay();
+  const {
+    containerEl,
+    renderWidth,
+    renderHeight,
+    exportWidth,
+    exportHeight,
+    updateCanvasDisplaySize,
+  } = useMonitorDisplay({
+    isMobile,
+  });
 
   const viewportRef = ref<MonitorViewportPublicApi | null>(null);
   const viewportEl = computed(
@@ -115,6 +124,8 @@ export function useMonitorRuntime() {
       viewportEl,
       renderWidth,
       renderHeight,
+      exportWidth,
+      exportHeight,
       updateCanvasDisplaySize,
     },
     isMobile,

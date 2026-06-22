@@ -94,8 +94,10 @@ export function useMonitorContainerControls(options: UseMonitorContainerControls
     // Standard fractional preview resolutions (Full, 1/2, 1/4, 1/8)
     const scales = [1, 0.5, 0.25, 0.125];
 
-    // 0 = "Auto": the render scale is derived from the quality tier (and bumps to full
-    // resolution on a still frame). This is the default and sits first in the menu.
+    // 0 = "Auto": the render scale is derived from the steady motion quality tier. The scale is
+    // deliberately constant across play/pause (no "still frame ⇒ full res" bump — that was removed
+    // because flipping preview_scale drops & re-decodes every native video runtime; see
+    // resolvePreviewRenderScale). This is the default and sits first in the menu.
     const autoOption: PreviewResolutionOption = {
       label: options.t('fastcat.timeline.transition.blurQualityAuto'),
       shortLabel: options.t('fastcat.timeline.transition.blurQualityAuto'),
@@ -452,7 +454,7 @@ export function useMonitorContainerControls(options: UseMonitorContainerControls
       icon: 'i-lucide-monitor',
       type: 'checkbox' as const,
       checked:
-        Math.abs((options.projectStore.activeMonitor?.previewResolution ?? 1) - res.value) < 0.001,
+        Math.abs((options.projectStore.activeMonitor?.previewResolution ?? 0) - res.value) < 0.001,
       onSelect: () => {
         if (options.projectStore.activeMonitor) {
           options.projectStore.activeMonitor.previewResolution = res.value;

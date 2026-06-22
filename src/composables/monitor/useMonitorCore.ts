@@ -57,8 +57,15 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
     audioClipLayoutSignature,
   } = monitorTimeline;
 
-  const { containerEl, viewportEl, renderWidth, renderHeight, updateCanvasDisplaySize } =
-    monitorDisplay;
+  const {
+    containerEl,
+    viewportEl,
+    renderWidth,
+    renderHeight,
+    exportWidth,
+    exportHeight,
+    updateCanvasDisplaySize,
+  } = monitorDisplay;
 
   const isLoading = ref(false);
   const loadError = ref<string | null>(null);
@@ -140,8 +147,12 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
         setting: projectStore.activeMonitor?.previewBlurQuality ?? 'auto',
         isPlaying: timelineStore.isPlaying,
         isMobile: options.isMobile?.value,
-        width: renderWidth.value,
-        height: renderHeight.value,
+        // Feed the *full* scene size, never the already-scaled render size: the tier is the
+        // single dial that derives both the effect budget and (in auto mode) the render scale,
+        // so scaled dims would double-count the scaling and diverge from the native path
+        // (native-monitor-scene.ts resolveNativePreviewEffectQuality).
+        width: exportWidth.value,
+        height: exportHeight.value,
         fps: timelineStore.timelineFormat?.fps,
       }),
     });

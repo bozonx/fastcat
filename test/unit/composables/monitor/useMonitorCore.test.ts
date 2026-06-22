@@ -235,6 +235,8 @@ describe('useMonitorCore', () => {
             viewportEl,
             renderWidth: ref(640),
             renderHeight: ref(360),
+            exportWidth: ref(1920),
+            exportHeight: ref(1080),
             updateCanvasDisplaySize: vi.fn(),
           },
         });
@@ -305,6 +307,8 @@ describe('useMonitorCore', () => {
             viewportEl,
             renderWidth: ref(640),
             renderHeight: ref(360),
+            exportWidth: ref(1920),
+            exportHeight: ref(1080),
             updateCanvasDisplaySize: vi.fn(),
           },
         });
@@ -386,6 +390,8 @@ describe('useMonitorCore', () => {
             viewportEl,
             renderWidth: ref(640),
             renderHeight: ref(360),
+            exportWidth: ref(1920),
+            exportHeight: ref(1080),
             updateCanvasDisplaySize: vi.fn(),
           },
         });
@@ -457,6 +463,8 @@ describe('useMonitorCore', () => {
             viewportEl,
             renderWidth: ref(640),
             renderHeight: ref(360),
+            exportWidth: ref(1920),
+            exportHeight: ref(1080),
             updateCanvasDisplaySize: vi.fn(),
           },
         });
@@ -533,6 +541,8 @@ describe('useMonitorCore', () => {
             viewportEl,
             renderWidth: ref(640),
             renderHeight: ref(360),
+            exportWidth: ref(1920),
+            exportHeight: ref(1080),
             updateCanvasDisplaySize: vi.fn(),
           },
         });
@@ -616,6 +626,8 @@ describe('useMonitorCore', () => {
             viewportEl,
             renderWidth: ref(640),
             renderHeight: ref(360),
+            exportWidth: ref(1920),
+            exportHeight: ref(1080),
             updateCanvasDisplaySize: vi.fn(),
           },
         });
@@ -708,6 +720,8 @@ describe('useMonitorCore', () => {
             viewportEl,
             renderWidth: ref(640),
             renderHeight: ref(360),
+            exportWidth: ref(1920),
+            exportHeight: ref(1080),
             updateCanvasDisplaySize: vi.fn(),
           },
         });
@@ -794,6 +808,8 @@ describe('useMonitorCore', () => {
             viewportEl,
             renderWidth: ref(640),
             renderHeight: ref(360),
+            exportWidth: ref(1920),
+            exportHeight: ref(1080),
             updateCanvasDisplaySize: vi.fn(),
           },
         });

@@ -26,6 +26,8 @@ export interface MonitorDisplayState {
   viewportEl: Ref<HTMLDivElement | null>;
   renderWidth: Ref<number>;
   renderHeight: Ref<number>;
+  exportWidth: Ref<number>;
+  exportHeight: Ref<number>;
   updateCanvasDisplaySize: () => void;
 }
 
