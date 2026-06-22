@@ -263,6 +263,14 @@ describe('useClipPropertiesActions', () => {
       expect(uiStore.triggerSpeedModal).toHaveBeenCalledWith('v1', 'clip1', 1);
     });
 
+    it('includes reverse action for video clips but not for audio clips', () => {
+      const video = build({ trackKind: 'video' });
+      expect(video.actions.otherActionsList.value.some((a) => a.id === 'reverse-speed')).toBe(true);
+
+      const audio = build({ trackKind: 'audio', clip: makeClip({ trackId: 'a1' }) });
+      expect(audio.actions.otherActionsList.value.some((a) => a.id === 'reverse-speed')).toBe(false);
+    });
+
     it('includes rename after paste-parameters in other actions', () => {
       const { actions } = build();
       const ids = actions.otherActionsList.value.map((a) => a.id);

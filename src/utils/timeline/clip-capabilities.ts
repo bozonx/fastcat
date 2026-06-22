@@ -39,6 +39,13 @@ export function clipSupportsSpeedControls(
   return clip.clipType === 'media' && !clip.isImage;
 }
 
+export function clipSupportsReverseControls(
+  track: Pick<TimelineTrack, 'kind'>,
+  clip: Pick<TimelineClipItem, 'clipType' | 'isImage'>,
+): boolean {
+  return track.kind === 'video' && clipSupportsSpeedControls(track, clip);
+}
+
 export function clipSupportsVisualControls(track: Pick<TimelineTrack, 'kind'>): boolean {
   return track.kind === 'video';
 }

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   clipSupportsAudioControls,
+  clipSupportsReverseControls,
   clipSupportsSpeedControls,
   clipSupportsThumbnailControls,
   isClipFrameAligned,
@@ -49,6 +50,18 @@ describe('clip-capabilities', () => {
       expect(clipSupportsThumbnailControls({ kind: 'video' }, { clipType: 'media' })).toBe(true);
       expect(clipSupportsThumbnailControls({ kind: 'video' }, { clipType: 'timeline' })).toBe(true);
       expect(clipSupportsThumbnailControls({ kind: 'audio' }, { clipType: 'media' })).toBe(false);
+    });
+
+    it('allows reverse controls only for video clips with speed support', () => {
+      expect(
+        clipSupportsReverseControls({ kind: 'video' }, { clipType: 'media', isImage: false }),
+      ).toBe(true);
+      expect(
+        clipSupportsReverseControls({ kind: 'audio' }, { clipType: 'media', isImage: false }),
+      ).toBe(false);
+      expect(
+        clipSupportsReverseControls({ kind: 'video' }, { clipType: 'media', isImage: true }),
+      ).toBe(false);
     });
   });
 });

@@ -3,6 +3,7 @@ import { isClipFreePosition } from './utils';
 import {
   clipSupportsAudioControls,
   clipSupportsAutoMontage,
+  clipSupportsReverseControls,
   clipSupportsSpeedControls,
   clipSupportsThumbnailControls,
 } from '~/utils/timeline/clip-capabilities';
@@ -36,17 +37,19 @@ export function buildSingleClipMainGroup(options: UseClipContextMenuOptions): Co
           speed: currentSpeed,
         }),
     });
-    speedGroup.push({
-      label: options.t('videoEditor.audio.reverse'),
-      icon: 'i-heroicons-arrow-path',
-      kbds: options.getHotkeyKbds('timeline.reverseSpeed'),
-      onSelect: async () => {
-        options.updateClipProperties(track.id, clipItem.id, {
-          speed: -currentSpeed,
-        });
-        await options.requestTimelineSave({ immediate: true });
-      },
-    });
+    if (clipSupportsReverseControls(track, clipItem)) {
+      speedGroup.push({
+        label: options.t('videoEditor.audio.reverse'),
+        icon: 'i-heroicons-arrow-path',
+        kbds: options.getHotkeyKbds('timeline.reverseSpeed'),
+        onSelect: async () => {
+          options.updateClipProperties(track.id, clipItem.id, {
+            speed: -currentSpeed,
+          });
+          await options.requestTimelineSave({ immediate: true });
+        },
+      });
+    }
   }
 
   const mediaStore = useMediaStore();

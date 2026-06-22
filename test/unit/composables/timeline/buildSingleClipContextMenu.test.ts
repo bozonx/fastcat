@@ -94,6 +94,35 @@ describe('buildSingleClipContextMenu', () => {
     expect(labels.some((label) => label.startsWith('fastcat.timeline.speed'))).toBe(false);
   });
 
+  it('does not expose reverse for audio clips', () => {
+    const options = createOptions({
+      track: ref({
+        id: 'track-1',
+        kind: 'audio',
+        locked: false,
+        items: [],
+      }),
+      item: ref({
+        id: 'clip-1',
+        kind: 'clip',
+        trackId: 'track-1',
+        clipType: 'media',
+        name: 'Audio 1',
+        timelineRange: { startUs: 0, durationUs: 5_000_000 },
+        sourceRange: { startUs: 0, durationUs: 5_000_000 },
+        sourceDurationUs: 5_000_000,
+        showWaveform: true,
+      } as any),
+    });
+
+    const labels = buildSingleClipMainGroup(options).flatMap((group) =>
+      group.map((action) => action.label),
+    );
+
+    expect(labels.some((label) => label.startsWith('fastcat.timeline.speed'))).toBe(true);
+    expect(labels).not.toContain('videoEditor.audio.reverse');
+  });
+
   it('does not expose audio controls for text clips', () => {
     const options = createOptions({
       item: ref({

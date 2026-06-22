@@ -8,7 +8,11 @@ import { normalizeWorkspaceFilePath } from '~/utils/workspace-common';
 import { revealFileManagerEntry } from '~/composables/file-manager/revealFileManagerEntry';
 import { useAppClipboard } from '~/composables/useAppClipboard';
 import { getApplicableClipParameterGroups } from '~/utils/timeline/clip-parameters';
-import { isClipFrameAligned, clipSupportsSpeedControls } from '~/utils/timeline/clip-capabilities';
+import {
+  isClipFrameAligned,
+  clipSupportsSpeedControls,
+  clipSupportsReverseControls,
+} from '~/utils/timeline/clip-capabilities';
 import { buildQuantizeClipCommands } from '~/utils/timeline/clip-quantize';
 import { useMediaStore, resolveMediaMetadata } from '~/stores/media.store';
 
@@ -439,7 +443,7 @@ export function useClipPropertiesActions(options: UseClipPropertiesActionsOption
     }
 
     // 4. Реверс
-    if (clipSupportsSpeedControls({ kind: options.trackKind.value }, clip)) {
+    if (clipSupportsReverseControls({ kind: options.trackKind.value }, clip)) {
       list.push({
         id: 'reverse-speed',
         label: t('videoEditor.audio.reverse'),
