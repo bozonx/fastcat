@@ -25,6 +25,8 @@ use crate::monitor::scene::{LayerKind, SceneLayer};
 
 /// Visible extent of a Gaussian blur as a multiple of the CSS-like blur radius.
 /// blur radius → σ ≈ blur/2, and the perceptible tail reaches ~3σ = 1.5·blur.
+/// Must match the web compositor's `SHADOW_BLUR_EXTENT_FACTOR` in
+/// `src/utils/video-editor/text-layout.ts` so both reserve identical headroom.
 const SHADOW_BLUR_EXTENT_FACTOR: f32 = 1.5;
 
 /// Строит «виртуальный» (не требующий декода) `CompLayerKind` для слоёв
@@ -123,11 +125,16 @@ fn parse_padding(style: &serde_json::Value) -> Padding {
         bottom = left;
     }
 
+    // Mirror web `normalizeTextPadding`: each side is clamped to [0, 10000].
+    // Without this the native path accepted negative / unbounded padding (the
+    // object form used `unwrap_or(0.0)` with no `max`), diverging from web layout.
+    let clamp_pad = |v: f64| v.clamp(0.0, 10_000.0);
+
     Padding {
-        top,
-        right,
-        bottom,
-        left,
+        top: clamp_pad(top),
+        right: clamp_pad(right),
+        bottom: clamp_pad(bottom),
+        left: clamp_pad(left),
     }
 }
 

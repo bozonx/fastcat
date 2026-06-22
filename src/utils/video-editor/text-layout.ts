@@ -2,6 +2,16 @@ import type { TextClipStyle } from '~/timeline/types';
 import { clamp as sharedClamp, clampFinite as _sharedClampFinite } from '~/utils/math';
 import { TRANSFORM_DESIGN_BASE } from '~/utils/video-editor/clip-layout';
 
+/**
+ * A blur radius maps to a Gaussian with σ ≈ blur/2; its visible tail reaches
+ * ~3σ = 1.5·blur. We reserve that much room around the text frame when sizing
+ * the shadow's bounding box so the blurred halo is not clipped at the texture
+ * edge. Must match the native compositor's `SHADOW_BLUR_EXTENT_FACTOR`
+ * (`src-tauri/.../scene_build/layer_builder.rs`) so web preview, native preview
+ * and export all reserve the same headroom.
+ */
+export const SHADOW_BLUR_EXTENT_FACTOR = 1.5;
+
 export interface NormalizedTextPadding {
   top: number;
   right: number;
@@ -440,8 +450,8 @@ export function computeTextLayoutMetrics(input: {
       : 0;
   const baseBackgroundX = frameLeftPx;
   const baseBackgroundY = frameTopPx;
-  const backgroundShadowBlurPx = normalizedStyle.backgroundShadowEnabled
-    ? Math.round(normalizedStyle.backgroundShadowBlur * renderScale)
+  const backgroundShadowBlurExtentPx = normalizedStyle.backgroundShadowEnabled
+    ? Math.round(normalizedStyle.backgroundShadowBlur * renderScale * SHADOW_BLUR_EXTENT_FACTOR)
     : 0;
   const backgroundShadowSpreadPx = normalizedStyle.backgroundShadowEnabled
     ? Math.round(normalizedStyle.backgroundShadowSpread * renderScale)
@@ -452,8 +462,8 @@ export function computeTextLayoutMetrics(input: {
   const backgroundShadowOffsetYPx = normalizedStyle.backgroundShadowEnabled
     ? Math.round(normalizedStyle.backgroundShadowOffsetY * renderScale)
     : 0;
-  const textShadowBlurPx = normalizedStyle.textShadowEnabled
-    ? Math.round(normalizedStyle.textShadowBlur * renderScale)
+  const textShadowBlurExtentPx = normalizedStyle.textShadowEnabled
+    ? Math.round(normalizedStyle.textShadowBlur * renderScale * SHADOW_BLUR_EXTENT_FACTOR)
     : 0;
   const textShadowSpreadPx = normalizedStyle.textShadowEnabled
     ? Math.round(normalizedStyle.textShadowSpread * renderScale)
@@ -466,23 +476,23 @@ export function computeTextLayoutMetrics(input: {
     : 0;
   const shadowLeft = Math.max(
     0,
-    backgroundShadowBlurPx + backgroundShadowSpreadPx - backgroundShadowOffsetXPx,
-    textShadowBlurPx + textShadowSpreadPx - textShadowOffsetXPx,
+    backgroundShadowBlurExtentPx + backgroundShadowSpreadPx - backgroundShadowOffsetXPx,
+    textShadowBlurExtentPx + textShadowSpreadPx - textShadowOffsetXPx,
   );
   const shadowRight = Math.max(
     0,
-    backgroundShadowBlurPx + backgroundShadowSpreadPx + backgroundShadowOffsetXPx,
-    textShadowBlurPx + textShadowSpreadPx + textShadowOffsetXPx,
+    backgroundShadowBlurExtentPx + backgroundShadowSpreadPx + backgroundShadowOffsetXPx,
+    textShadowBlurExtentPx + textShadowSpreadPx + textShadowOffsetXPx,
   );
   const shadowTop = Math.max(
     0,
-    backgroundShadowBlurPx + backgroundShadowSpreadPx - backgroundShadowOffsetYPx,
-    textShadowBlurPx + textShadowSpreadPx - textShadowOffsetYPx,
+    backgroundShadowBlurExtentPx + backgroundShadowSpreadPx - backgroundShadowOffsetYPx,
+    textShadowBlurExtentPx + textShadowSpreadPx - textShadowOffsetYPx,
   );
   const shadowBottom = Math.max(
     0,
-    backgroundShadowBlurPx + backgroundShadowSpreadPx + backgroundShadowOffsetYPx,
-    textShadowBlurPx + textShadowSpreadPx + textShadowOffsetYPx,
+    backgroundShadowBlurExtentPx + backgroundShadowSpreadPx + backgroundShadowOffsetYPx,
+    textShadowBlurExtentPx + textShadowSpreadPx + textShadowOffsetYPx,
   );
   const backgroundX = baseBackgroundX - borderWidthPx - shadowLeft;
   const backgroundY = baseBackgroundY - borderWidthPx - shadowTop;

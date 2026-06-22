@@ -693,6 +693,20 @@ mod tests {
     }
 
     #[test]
+    fn padding_is_clamped_to_web_range() {
+        // Mirror web `normalizeTextPadding`: negative -> 0, oversized -> 10000.
+        // render_scale is 1.0 at 1920x1080, so design-space values map 1:1.
+        let layer = text_layer_with_style(json!({
+            "paddingLinked": false,
+            "padding": { "top": -50.0, "right": 999999.0, "bottom": 0.0, "left": 12.0 },
+        }));
+        assert_eq!(layer.padding_top, 0.0);
+        assert_eq!(layer.padding_right, 10_000.0);
+        assert_eq!(layer.padding_bottom, 0.0);
+        assert_eq!(layer.padding_left, 12.0);
+    }
+
+    #[test]
     fn test_build_text_layer_scales_style_to_scene_resolution() {
         let sl = SceneLayer {
             id: "text-layer-720p".into(),

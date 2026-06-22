@@ -63,6 +63,31 @@ describe('text-layout', () => {
     expect(metrics.backgroundHeight).toBeGreaterThan(metrics.lineHeightPx);
   });
 
+  it('reserves 1.5x the text-shadow blur as bounding-box headroom so the halo is not clipped', () => {
+    const baseStyle = {
+      fontSize: 40,
+      padding: 0,
+      align: 'left' as const,
+      verticalAlign: 'top' as const,
+    };
+    const common = {
+      text: 'hi',
+      canvasWidth: 1920,
+      canvasHeight: 1080,
+      measureText: (text: string) => text.length * 10,
+    };
+
+    const noShadow = computeTextLayoutMetrics({ ...common, style: baseStyle });
+    const withShadow = computeTextLayoutMetrics({
+      ...common,
+      style: { ...baseStyle, textShadowEnabled: true, textShadowBlur: 20 },
+    });
+
+    // renderScale = 1 here; reserved headroom per side = round(20 * 1.5) = 30.
+    expect(withShadow.backgroundWidth).toBe(noShadow.backgroundWidth + 60);
+    expect(withShadow.backgroundHeight).toBe(noShadow.backgroundHeight + 60);
+  });
+
   it('scales text metrics from the project dimensions, not the fixed 1080p design base', () => {
     const metrics = computeTextLayoutMetrics({
       text: 'text',
