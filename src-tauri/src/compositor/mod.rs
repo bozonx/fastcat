@@ -24,6 +24,11 @@ pub mod yuv;
 mod engine;
 pub use engine::Compositor;
 
+mod render_telemetry;
+pub use render_telemetry::{RenderPrepareTiming, RenderStageTiming, RenderTelemetry};
+
+mod text_engine;
+
 mod readback;
 pub use readback::PipelinedReadback;
 

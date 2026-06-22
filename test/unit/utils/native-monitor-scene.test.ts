@@ -145,6 +145,61 @@ describe('buildNativeAudioEffectSpecs', () => {
 });
 
 describe('buildNativeMonitorScene', () => {
+  it('keeps track z ranges disjoint with more than 1000 clips', async () => {
+    const makeItems = (trackId: string, count: number) =>
+      Array.from({ length: count }, (_, index) => ({
+        id: `${trackId}-${index}`,
+        kind: 'clip',
+        clipType: 'background',
+        trackId,
+        backgroundColor: '#000000',
+        timelineRange: { startUs: index, durationUs: 1_000_000 },
+        sourceRange: { startUs: 0, durationUs: 1_000_000 },
+      }));
+    const scene = await buildNativeMonitorScene({
+      timelineDoc: {
+        version: 1,
+        timebase: { fps: 30 },
+        tracks: [
+          {
+            id: 'upper',
+            kind: 'video',
+            videoHidden: false,
+            items: makeItems('upper', 1),
+          },
+          {
+            id: 'lower',
+            kind: 'video',
+            videoHidden: false,
+            items: makeItems('lower', 1001),
+          },
+        ],
+      } as never,
+      projectStore: {
+        projectSettings: {
+          project: {
+            width: 1920,
+            height: 1080,
+            fps: 30,
+            audioDeclickDurationUs: 0,
+          },
+        },
+      } as never,
+      workspaceStore: {
+        userSettings: {
+          projectDefaults: { defaultAudioFadeCurve: 'linear' },
+          optimization: { nativeMonitorSyncMode: 'balanced' },
+        },
+        recentProjects: [],
+      } as never,
+    });
+
+    const lowerZ = scene.layers.filter((layer) => layer.id.startsWith('lower-')).map((l) => l.z);
+    const upperZ = scene.layers.filter((layer) => layer.id.startsWith('upper-')).map((l) => l.z);
+
+    expect(Math.max(...lowerZ)).toBeLessThan(Math.min(...upperZ));
+  });
+
   it('serializes full blend mode set and crop for native scene layers', async () => {
     const timelineDoc = {
       version: 1,
@@ -154,6 +209,17 @@ describe('buildNativeMonitorScene', () => {
           id: 'v-track',
           kind: 'video',
           videoHidden: false,
+          opacity: 0.5,
+          blendMode: 'screen',
+          effects: [
+            {
+              id: 'track-blur',
+              type: 'blur',
+              target: 'video',
+              enabled: true,
+              radius: 12,
+            },
+          ],
           items: [
             {
               id: 'clip-1',
@@ -212,12 +278,23 @@ describe('buildNativeMonitorScene', () => {
     });
 
     expect(scene.layers[0]?.blend_mode).toBe('soft_light');
+    expect(scene.layers[0]?.opacity).toBe(1);
     expect(scene.layers[0]?.transform).toMatchObject({
       crop_top: 10,
       crop_bottom: 20,
       crop_left: 30,
       crop_right: 40,
     });
+    expect(scene.video_tracks).toEqual([
+      expect.objectContaining({
+        id: 'v-track',
+        z: 0,
+        layer_ids: ['clip-1'],
+        opacity: 0.5,
+        blend_mode: 'screen',
+        effects: [expect.objectContaining({ type: 'gaussian-blur', radius: 12 })],
+      }),
+    ]);
   });
 
   it('uses original project media paths even when monitor proxy preview is enabled', async () => {

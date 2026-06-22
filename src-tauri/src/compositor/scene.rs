@@ -29,9 +29,20 @@ pub struct Scene {
     pub background: Color,
     /// Layers are pre-sorted bottom-to-top (by source `z`).
     pub layers: Vec<Layer>,
+    pub video_tracks: Vec<VideoTrack>,
     /// Video master effects applied to the final composited frame after all layers.
     pub master_effects: Vec<super::effects::EffectSpec>,
     pub effect_quality: EffectQuality,
+}
+
+#[derive(Debug, Clone)]
+pub struct VideoTrack {
+    pub id: String,
+    pub z: i32,
+    pub layer_ids: Vec<String>,
+    pub opacity: f32,
+    pub blend: BlendMode,
+    pub effects: Vec<EffectSpec>,
 }
 
 impl Scene {
@@ -1345,6 +1356,7 @@ mod tests {
             time: 0.0,
             background: Color::BLACK,
             layers: vec![layer],
+            video_tracks: Vec::new(),
         };
 
         let vello_scene = scene.to_vello(100, 100, |_| None);
@@ -1361,6 +1373,7 @@ mod tests {
             time: 0.0,
             background: Color::BLACK,
             layers: Vec::new(),
+            video_tracks: Vec::new(),
         };
         // Должно вернуть без паники.
         let _ = scene.to_vello(1280, 720, |_| None);
@@ -1381,6 +1394,7 @@ mod tests {
                 Transform::center_fit((50, 50), (100, 100)),
                 0.0,
             )],
+            video_tracks: Vec::new(),
         };
         let _ = scene.to_vello(100, 100, |_| None);
     }
@@ -1395,6 +1409,7 @@ mod tests {
             time: 0.0,
             background: Color::BLACK,
             layers: vec![raster_layer((10, 10), Transform::identity(), 1.0)],
+            video_tracks: Vec::new(),
         };
         // Не должен паниковать при нулевом viewport'е.
         let _ = scene.to_vello(0, 0, |_| None);
@@ -1413,6 +1428,7 @@ mod tests {
             time: 0.0,
             background: Color::BLACK,
             layers: vec![layer],
+            video_tracks: Vec::new(),
         };
         let mut calls = 0;
 

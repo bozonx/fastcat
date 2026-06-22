@@ -135,6 +135,7 @@ pub struct LayerRuntimeManager {
     hw_settings: crate::FfmpegHardwareSettings,
     /// Video master effects applied to the final composited frame.
     pub master_effects: Vec<crate::compositor::effects::EffectSpec>,
+    pub video_tracks: Vec<crate::monitor::scene::SceneVideoTrack>,
 }
 
 impl LayerRuntimeManager {
@@ -167,6 +168,7 @@ impl LayerRuntimeManager {
             proxy,
             hw_settings,
             master_effects: Vec::new(),
+            video_tracks: Vec::new(),
         }
     }
 
@@ -359,6 +361,7 @@ impl LayerRuntimeManager {
         self.scene_size = (scene.width, scene.height);
         self.scene = Arc::new(scene.layers);
         self.master_effects = scene.master_effects;
+        self.video_tracks = scene.video_tracks;
         true
     }
 
@@ -1236,6 +1239,7 @@ impl LayerRuntimeManager {
             self.scene_size,
             &self.runtimes,
             t,
+            &self.video_tracks,
             &self.master_effects,
             self.preview_effect_quality,
         )

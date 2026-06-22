@@ -9,6 +9,7 @@
 //! - `scene`    — IPC-DTO от фронта: `MonitorScene`, `SceneLayer`, `SceneLayerTransform`.
 
 mod app;
+mod audio_telemetry;
 mod clock;
 mod frame_cache;
 mod handle;

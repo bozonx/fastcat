@@ -186,6 +186,21 @@ pub struct SceneLayer {
 
 #[derive(Debug, Clone, Deserialize, TS)]
 #[ts(export, export_to = "../../src/types/generated/native-monitor/")]
+pub struct SceneVideoTrack {
+    pub id: String,
+    pub z: i32,
+    pub layer_ids: Vec<String>,
+    #[serde(default = "one")]
+    pub opacity: f64,
+    #[serde(default = "default_blend")]
+    pub blend_mode: BlendMode,
+    #[serde(default)]
+    #[ts(type = "import('~/effects').VideoEffectSpec[]")]
+    pub effects: Vec<EffectSpec>,
+}
+
+#[derive(Debug, Clone, Deserialize, TS)]
+#[ts(export, export_to = "../../src/types/generated/native-monitor/")]
 pub struct SceneTransition {
     #[serde(rename = "type")]
     pub transition_type: String,
@@ -298,6 +313,8 @@ pub struct SceneAudioTrack {
 #[ts(export, export_to = "../../src/types/generated/native-monitor/")]
 pub struct MonitorScene {
     pub layers: Vec<SceneLayer>,
+    #[serde(default)]
+    pub video_tracks: Vec<SceneVideoTrack>,
     #[serde(default)]
     pub audio_layers: Vec<SceneAudioLayer>,
     #[serde(default)]

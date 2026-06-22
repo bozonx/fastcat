@@ -100,6 +100,22 @@ export class StageTextureRenderer {
     }
   }
 
+  public async renderDisplayObjectToBitmapForcedVisible(
+    displayObject: Container,
+  ): Promise<ImageBitmap> {
+    const previousVisible = displayObject.visible;
+    displayObject.visible = true;
+    try {
+      this.context.app.renderer.render({
+        container: displayObject,
+        clear: true,
+      });
+      return await createImageBitmap(this.context.app.canvas);
+    } finally {
+      displayObject.visible = previousVisible;
+    }
+  }
+
   public renderSingleClipToTexture(
     clip: CompositorClip,
     texture: RenderTexture,
@@ -170,6 +186,33 @@ export class StageTextureRenderer {
         target: texture,
         clear: true,
       });
+    } finally {
+      for (let i = 0; i < children.length; i++) {
+        const child = children[i];
+        if (!child) continue;
+        child.visible = previous[i] ?? true;
+      }
+    }
+  }
+
+  public async renderLowerLayersToBitmap(layer: number): Promise<ImageBitmap> {
+    const children = this.context.app.stage.children;
+    const previous = children.map((child) => child.visible);
+
+    for (let i = 0; i < children.length; i++) {
+      const child = children[i] as { visible: boolean; __trackId?: string } | undefined;
+      if (!child) continue;
+      const track = this.context.getTrackById(child.__trackId ?? '');
+      const childLayer = typeof track?.layer === 'number' ? track.layer : Number.POSITIVE_INFINITY;
+      child.visible = childLayer < layer;
+    }
+
+    try {
+      this.context.app.renderer.render({
+        container: this.context.app.stage,
+        clear: true,
+      });
+      return await createImageBitmap(this.context.app.canvas);
     } finally {
       for (let i = 0; i < children.length; i++) {
         const child = children[i];

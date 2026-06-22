@@ -188,9 +188,12 @@ async function buildVideoTrackTree(
         trackKind: 'video',
         visitedPaths,
         nestedPathStack,
-        parentOpacity: trackOpacity,
-        parentBlendMode: trackBlendMode,
-        parentEffects: trackEffects,
+        parentOpacity: inheritedTrackOpacity,
+        parentBlendMode: params.inheritedTrackBlendMode,
+        parentEffects: inheritedTrackEffects,
+        nestedParentOpacity: trackOpacity,
+        nestedParentBlendMode: trackBlendMode,
+        nestedParentEffects: trackEffects,
         fallbackFormat: params.fallbackFormat,
         onWarning: params.onWarning,
         nestedTimelinePath: params.nestedTimelinePath,
@@ -377,6 +380,9 @@ export async function toWorkerTimelineClips(
     parentOpacity?: number;
     parentBlendMode?: TimelineBlendMode;
     parentEffects?: ClipEffect[];
+    nestedParentOpacity?: number;
+    nestedParentBlendMode?: TimelineBlendMode;
+    nestedParentEffects?: ClipEffect[];
     parentAudioGain?: number;
     parentAudioBalance?: number;
     fallbackFormat?: TimelineFormatInput;
@@ -517,8 +523,15 @@ export async function toWorkerTimelineClips(
               const nestedLayer = (options?.layer ?? 0) + (nestedVideoTracks.length - 1 - i);
 
               const trackEffects = Array.isArray(track.effects) ? cloneEffects(track.effects) : [];
+              const inheritedNestedEffects = options?.nestedParentEffects ?? [];
               const combinedTrackEffects =
-                combinedEffects.length > 0 ? [...trackEffects, ...combinedEffects] : trackEffects;
+                combinedEffects.length > 0 || inheritedNestedEffects.length > 0
+                  ? [...trackEffects, ...combinedEffects, ...inheritedNestedEffects]
+                  : trackEffects;
+              const nestedTrackOpacity =
+                (options?.nestedParentOpacity ?? 1) * combinedOpacity * (track.opacity ?? 1);
+              const nestedTrackBlendMode =
+                track.blendMode ?? combinedBlendMode ?? options?.nestedParentBlendMode;
 
               const nextTrackIdPrefix = `${options?.trackIdPrefix ?? ''}${item.trackId}::${item.id}::`;
               const nestedTrackId = `${nextTrackIdPrefix}${track.id}`;
@@ -527,8 +540,8 @@ export async function toWorkerTimelineClips(
                 options.onTrackBuilt({
                   id: nestedTrackId,
                   layer: nestedLayer,
-                  opacity: combinedOpacity * (track.opacity ?? 1),
-                  blendMode: track.blendMode ?? combinedBlendMode,
+                  opacity: nestedTrackOpacity,
+                  blendMode: nestedTrackBlendMode,
                   effects: combinedTrackEffects.length > 0 ? combinedTrackEffects : undefined,
                 });
               }
@@ -542,9 +555,12 @@ export async function toWorkerTimelineClips(
                   trackKind: 'video',
                   visitedPaths: nextVisited,
                   nestedPathStack: nextNestedPathStack,
-                  parentOpacity: combinedOpacity,
-                  parentBlendMode: combinedBlendMode,
-                  parentEffects: combinedTrackEffects,
+                  parentOpacity: 1,
+                  parentBlendMode: undefined,
+                  parentEffects: undefined,
+                  nestedParentOpacity: nestedTrackOpacity,
+                  nestedParentBlendMode: nestedTrackBlendMode,
+                  nestedParentEffects: combinedTrackEffects,
                   fallbackFormat: { fps: nestedDoc.timebase.fps },
                   onWarning: options?.onWarning,
                   nestedTimelinePath: path,

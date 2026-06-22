@@ -11,6 +11,7 @@ import type { MonitorScene } from '~/types/generated/native-monitor/MonitorScene
 import type { SceneLayer } from '~/types/generated/native-monitor/SceneLayer';
 import type { SceneAudioLayer } from '~/types/generated/native-monitor/SceneAudioLayer';
 import type { SceneAudioTrack } from '~/types/generated/native-monitor/SceneAudioTrack';
+import type { SceneVideoTrack } from '~/types/generated/native-monitor/SceneVideoTrack';
 import type { TimelineFormatInput } from '~/timeline/format';
 import { getTimelineFormat, normalizeTimelineFormat } from '~/timeline/format';
 import { buildEffectiveAudioClipItems } from '~/utils/audio/track-bus';
@@ -54,6 +55,7 @@ async function getTauriJoin() {
 export type NativeSceneLayer = SceneLayer;
 export type NativeSceneAudioLayer = SceneAudioLayer;
 export type NativeAudioTrack = SceneAudioTrack;
+export type NativeVideoTrack = SceneVideoTrack;
 export type NativeMonitorScene = MonitorScene;
 
 export interface BuildNativeMonitorSceneParams {
@@ -664,11 +666,17 @@ export async function buildNativeMonitorScene(
     onWarning: params.onWarning,
     nestedDocCache,
   });
+  const orderedTracks = [...builtVideo.tracks].sort(
+    (a, b) => a.layer - b.layer || a.id.localeCompare(b.id),
+  );
+  const trackOrderById = new Map(orderedTracks.map((track, index) => [track.id, index]));
+  const zStride = builtVideo.clips.length + 1;
 
   const layers: NativeSceneLayer[] = [];
   for (const [index, clip] of builtVideo.clips.entries()) {
     if (clip.clipType === 'hud') continue;
-    const z = clip.layer * 1000 + index;
+    const trackOrder = clip.trackId ? (trackOrderById.get(clip.trackId) ?? 0) : 0;
+    const z = trackOrder * zStride + index;
     const base = buildBaseLayer({
       clip,
       sceneWidth,
@@ -775,6 +783,16 @@ export async function buildNativeMonitorScene(
 
   return {
     layers,
+    video_tracks: orderedTracks.map((track, index) => ({
+      id: track.id,
+      z: index,
+      layer_ids: builtVideo.clips
+        .filter((clip) => clip.trackId === track.id)
+        .map((clip) => clip.id),
+      opacity: Math.max(0, Math.min(1, clampFinite(track.opacity, 1))),
+      blend_mode: mapTimelineBlendModeToNative(track.blendMode),
+      effects: buildEffectSpecs(track.effects) ?? [],
+    })),
     audio_layers:
       params.includeAudio === false
         ? []

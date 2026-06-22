@@ -34,22 +34,6 @@ use tauri::ipc::{Channel, InvokeResponseBody};
 const DEFAULT_TITLE: &str = "FastCat Monitor";
 const EVT_TIME: &str = "monitor:time";
 const EVT_ENDED: &str = "monitor:ended";
-const EVT_AUDIO_LEVELS: &str = "monitor:audio-levels";
-
-#[derive(Debug, Clone, Copy, serde::Serialize)]
-#[serde(rename_all = "camelCase")]
-struct TrackLevelsPayload {
-    rms_db: f64,
-    peak_db: f64,
-}
-
-#[derive(Debug, Clone, serde::Serialize)]
-#[serde(rename_all = "camelCase")]
-struct AudioLevelsPayload {
-    rms_db: f64,
-    peak_db: f64,
-    tracks: std::collections::HashMap<String, TrackLevelsPayload>,
-}
 
 /// Жёсткий потолок ожидания прогрева. Если декодер не успел (очень тяжёлый источник,
 /// ошибка открытия, медленный диск/сеть) — стартуем как есть, чтобы Play никогда не
@@ -1091,19 +1075,15 @@ impl WindowState {
         // last pre-pause value. Push one zeroed update so it falls to the floor, and
         // record it as the new baseline so the next tick's dedup compares against the
         // floor (not the stale loud value, which would force a redundant re-emit).
-        self.last_emit_levels = (-60.0, -60.0);
+        self.last_emit_levels = (
+            super::audio_telemetry::LEVEL_FLOOR_DB,
+            super::audio_telemetry::LEVEL_FLOOR_DB,
+        );
         self.last_emit_tracks.clear();
         if let Some(audio) = self.audio.as_ref() {
             audio.clear_track_levels();
         }
-        let _ = self.app.emit(
-            EVT_AUDIO_LEVELS,
-            AudioLevelsPayload {
-                rms_db: -60.0,
-                peak_db: -60.0,
-                tracks: std::collections::HashMap::new(),
-            },
-        );
+        super::audio_telemetry::emit_audio_levels_floor(&self.app);
     }
 
     fn seek(&mut self, timeline_sec: f64, explicit: bool) {
@@ -1256,60 +1236,11 @@ impl WindowState {
         let Some(audio) = self.audio.as_ref() else {
             return;
         };
-        let (rms_db, peak_db) = audio.output_levels_db();
-        let track_levels = audio.track_levels_db();
-
-        let mut changed = false;
-        let (last_rms, last_peak) = self.last_emit_levels;
-        if last_rms.is_nan() || last_peak.is_nan() {
-            changed = true;
-        } else if (rms_db - last_rms).abs() > 0.1 || (peak_db - last_peak).abs() > 0.1 {
-            changed = true;
-        }
-
-        if !changed {
-            if track_levels.len() != self.last_emit_tracks.len() {
-                changed = true;
-            } else {
-                for (tid, &(rms, peak)) in &track_levels {
-                    if let Some(&(l_rms, l_peak)) = self.last_emit_tracks.get(tid) {
-                        if (rms - l_rms).abs() > 0.5 || (peak - l_peak).abs() > 0.5 {
-                            changed = true;
-                            break;
-                        }
-                    } else {
-                        changed = true;
-                        break;
-                    }
-                }
-            }
-        }
-
-        if !changed {
-            return;
-        }
-
-        self.last_emit_levels = (rms_db, peak_db);
-        self.last_emit_tracks = track_levels.clone();
-
-        let mut tracks_payload = std::collections::HashMap::new();
-        for (track_id, (rms, peak)) in track_levels {
-            tracks_payload.insert(
-                track_id,
-                TrackLevelsPayload {
-                    rms_db: rms,
-                    peak_db: peak,
-                },
-            );
-        }
-
-        let _ = self.app.emit(
-            EVT_AUDIO_LEVELS,
-            AudioLevelsPayload {
-                rms_db,
-                peak_db,
-                tracks: tracks_payload,
-            },
+        super::audio_telemetry::emit_audio_levels(
+            &self.app,
+            audio,
+            &mut self.last_emit_levels,
+            &mut self.last_emit_tracks,
         );
     }
 

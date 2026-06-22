@@ -473,6 +473,7 @@ fn one_clip_scene(layer: crate::monitor::scene::SceneLayer) -> crate::monitor::s
     crate::monitor::scene::MonitorScene {
         master_effects: Vec::new(),
         layers: vec![layer],
+        video_tracks: vec![],
         audio_layers: vec![],
         audio_tracks: vec![],
         audio_master_gain: 1.0,
@@ -526,6 +527,18 @@ fn plan_direct_rejects_non_trivial_scenes() {
     let mut l = video_layer();
     l.speed = 2.0;
     assert!(!call(&one_clip_scene(l)));
+
+    // Track compositing is applied after all clips in the track are combined.
+    let mut scene = one_clip_scene(video_layer());
+    scene.video_tracks.push(crate::monitor::scene::SceneVideoTrack {
+        id: "track-1".into(),
+        z: 0,
+        layer_ids: vec!["clip".into()],
+        opacity: 0.5,
+        blend_mode: crate::compositor::scene::BlendMode::Normal,
+        effects: Vec::new(),
+    });
+    assert!(!call(&scene));
 
     // Two layers must be composited.
     let scene = crate::monitor::scene::MonitorScene {

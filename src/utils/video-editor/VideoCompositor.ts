@@ -45,7 +45,6 @@ import { createCompositorRuntime } from './compositor/CompositorRuntimeFactory';
 import { CompositorRenderContextBuilder } from './compositor/CompositorRenderContextBuilder';
 import { PixiCompositorLifecycle } from './compositor/PixiCompositorLifecycle';
 import { WebGpuComputeRunner } from './compositor/WebGpuComputeRunner';
-import { getExtractedPixelBytes } from './compositor/pixelExtraction';
 import { buildEffectSpecs } from '~/effects';
 import { normalizeClipSpeed, resolveClipSourceTimeUs } from './source-time';
 import type { PreviewEffectQuality } from '~/utils/preview-effect-quality';
@@ -71,6 +70,7 @@ export class VideoCompositor {
   private contextLost = false;
   private previewEffectsEnabled = true;
   private previewEffectQuality: PreviewEffectQuality = 'ultra';
+  private computeUnavailableWarningShown = false;
 
   private masterEffects: VideoClipEffect[] | null = null;
   private masterEffectFilters = new Map<string, Filter>();
@@ -148,6 +148,10 @@ export class VideoCompositor {
 
   public async initComputeRunner(): Promise<boolean> {
     return this.computeRunner.init();
+  }
+
+  public supportsComputeEffects(): boolean {
+    return this.computeRunner.isReady();
   }
 
   public get tracks(): CompositorTrack[] {
@@ -253,50 +257,55 @@ export class VideoCompositor {
 
     const runner = this.computeRunner;
     for (const clip of adjustmentClips) {
-      clip.adjustmentSourceTexture = this.ensureClipRenderTexture(
-        clip.adjustmentSourceTexture ?? null,
-      );
-      this.renderLowerLayersToTexture(clip.layer, clip.adjustmentSourceTexture);
-
       const effectSpecs = buildEffectSpecs(clip.effects);
       if (
-        this.previewEffectsEnabled &&
-        effectSpecs &&
-        effectSpecs.length > 0 &&
-        runner?.isReady()
+        !this.previewEffectsEnabled ||
+        !effectSpecs ||
+        effectSpecs.length === 0 ||
+        !runner?.isReady()
       ) {
-        try {
-          const pixels = this.app.renderer.extract.pixels(clip.adjustmentSourceTexture);
-          const canvas = new OffscreenCanvas(this.width, this.height);
-          const ctx = canvas.getContext('2d');
-          if (ctx) {
-            const imageData = ctx.createImageData(this.width, this.height);
-            const pixelBytes = getExtractedPixelBytes(pixels);
-            imageData.data.set(pixelBytes);
-            ctx.putImageData(imageData, 0, 0);
-            const bitmap = await createImageBitmap(canvas);
-            try {
-              const processed = await runner.applyEffects(bitmap, effectSpecs);
-              if (processed) {
-                const texture = Texture.from(processed);
-                clip.adjustmentSourceTexture = this.ensureClipRenderTexture(null);
-                this.app.renderer.render({
-                  container: new Sprite(texture),
-                  target: clip.adjustmentSourceTexture,
-                  clear: true,
-                });
-                texture.destroy();
-              }
-            } finally {
-              bitmap.close();
-            }
-          }
-        } catch (err) {
-          log.warn('[VideoCompositor] Adjustment WebGPU effects failed:', err);
-        }
+        clip.adjustmentSourceTexture = this.ensureClipRenderTexture(
+          clip.adjustmentSourceTexture ?? null,
+        );
+        this.renderLowerLayersToTexture(clip.layer, clip.adjustmentSourceTexture);
+        if (clip.sprite) clip.sprite.texture = clip.adjustmentSourceTexture;
+        continue;
       }
 
-      if (clip.sprite) clip.sprite.texture = clip.adjustmentSourceTexture;
+      let sourceBitmap: ImageBitmap | null = null;
+      let processedBitmap: ImageBitmap | null = null;
+      try {
+        sourceBitmap = await this.ensureStageTextureRenderer(this.app).renderLowerLayersToBitmap(
+          clip.layer,
+        );
+        processedBitmap = await runner.applyEffects(sourceBitmap, effectSpecs);
+
+        const output = processedBitmap ?? sourceBitmap;
+        const texture = Texture.from(output);
+        const sprite = new Sprite(texture);
+        clip.adjustmentSourceTexture = this.ensureClipRenderTexture(
+          clip.adjustmentSourceTexture ?? null,
+        );
+        try {
+          this.app.renderer.render({
+            container: sprite,
+            target: clip.adjustmentSourceTexture,
+            clear: true,
+          });
+        } finally {
+          sprite.destroy();
+          texture.destroy(true);
+        }
+      } catch (err) {
+        log.warn('[VideoCompositor] Adjustment rendering failed:', err);
+      } finally {
+        processedBitmap?.close();
+        sourceBitmap?.close();
+      }
+
+      if (clip.sprite && clip.adjustmentSourceTexture) {
+        clip.sprite.texture = clip.adjustmentSourceTexture;
+      }
     }
   }
 
@@ -522,10 +531,10 @@ export class VideoCompositor {
     this.contextLost = false;
     this.resetRuntimeDependencies();
 
-    // Initialize WebGPU compute runner lazily; failures are non-fatal.
-    this.computeRunner.init().catch((err) => {
-      log.error('Failed to initialize WebGPU compute runner lazily:', err);
-    });
+    // Complete compute initialization before the first render so effects are
+    // never silently omitted during the adapter/device startup window.
+    await this.computeRunner.init();
+    this.computeUnavailableWarningShown = false;
 
     const { app, canvas } = await this.pixiLifecycle.init({
       width,
@@ -789,6 +798,19 @@ export class VideoCompositor {
     options?: PreviewRenderOptions,
   ): Promise<OffscreenCanvas | HTMLCanvasElement | null> {
     if (this.disposed || !this.app || !this.canvas) return null;
+    if (
+      this.previewEffectsEnabled &&
+      !this.computeRunner.isReady() &&
+      !this.computeUnavailableWarningShown &&
+      (this.masterEffects?.length ||
+        this.clips.some((clip) => clip.effects?.length) ||
+        this.tracks.some((track) => track.effects?.length))
+    ) {
+      this.computeUnavailableWarningShown = true;
+      log.error(
+        'WebGPU compute is unavailable; video effects and shader transitions cannot be rendered.',
+      );
+    }
     // Capture into locals: the guard's narrowing of the mutable this.app/
     // this.canvas does not survive into the runExclusive closure below.
     const app = this.app;

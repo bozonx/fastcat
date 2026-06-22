@@ -70,6 +70,8 @@ fn evaluate_direct(
     fps: f64,
     frame_count: u64,
 ) -> Result<DirectPlan, String> {
+    const EPS: f64 = 1e-6;
+
     if !options.video_enabled.unwrap_or(true) {
         return Err("video is disabled".into());
     }
@@ -81,6 +83,13 @@ fn evaluate_direct(
     // Master effects apply to the final composite frame; the direct path has no compositor.
     if !scene.master_effects.is_empty() {
         return Err("scene has master effects".into());
+    }
+    if scene.video_tracks.iter().any(|track| {
+        (track.opacity - 1.0).abs() > EPS
+            || !matches!(track.blend_mode, BlendMode::Normal)
+            || !track.effects.is_empty()
+    }) {
+        return Err("scene has non-default video track compositing".into());
     }
 
     // Exactly one visible layer, and it must be a plain video clip.
@@ -102,7 +111,6 @@ fn evaluate_direct(
     }
 
     // It must span the entire export range (no gaps where the background shows).
-    const EPS: f64 = 1e-6;
     if layer.timeline_start_sec > start + EPS || layer.timeline_end_sec < end - EPS {
         return Err(format!(
             "clip [{:.3}s,{:.3}s] does not cover the export range [{:.3}s,{:.3}s]",

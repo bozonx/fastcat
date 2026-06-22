@@ -8,9 +8,9 @@ use std::collections::{HashMap, HashSet};
 use vello::peniko::Color;
 
 use crate::compositor::effects::{EffectQuality, EffectSpec};
-use crate::compositor::scene::{LayerKind as CompLayerKind, RasterSource, Scene};
+use crate::compositor::scene::{LayerKind as CompLayerKind, RasterSource, Scene, VideoTrack};
 use crate::monitor::layer_runtime::LayerRuntime;
-use crate::monitor::scene::{LayerKind, SceneLayer};
+use crate::monitor::scene::{LayerKind, SceneLayer, SceneVideoTrack};
 
 use super::{build_virtual_kind, finalize_layer, layer_with_auto_source_rotation};
 
@@ -20,6 +20,7 @@ pub fn build_compositor_scene(
     scene_size: (u32, u32),
     runtimes: &HashMap<String, LayerRuntime>,
     t: f64,
+    video_tracks: &[SceneVideoTrack],
     master_effects: &[EffectSpec],
     effect_quality: EffectQuality,
 ) -> Scene {
@@ -113,6 +114,17 @@ pub fn build_compositor_scene(
         time: t,
         background: Color::TRANSPARENT,
         layers,
+        video_tracks: video_tracks
+            .iter()
+            .map(|track| VideoTrack {
+                id: track.id.clone(),
+                z: track.z,
+                layer_ids: track.layer_ids.clone(),
+                opacity: track.opacity.clamp(0.0, 1.0) as f32,
+                blend: track.blend_mode,
+                effects: track.effects.clone(),
+            })
+            .collect(),
         master_effects: master_effects.to_vec(),
         effect_quality,
     }
@@ -151,7 +163,7 @@ pub fn resolved_scene_size(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::monitor::scene::SceneLayer;
+    use crate::monitor::scene::{SceneLayer, SceneVideoTrack};
 
     #[test]
     fn builds_virtual_background_without_runtime() {
@@ -161,6 +173,7 @@ mod tests {
             (1280, 720),
             &HashMap::new(),
             0.0,
+            &[],
             &[],
             EffectQuality::Ultra,
         );
@@ -178,6 +191,7 @@ mod tests {
             (1280, 720),
             &HashMap::new(),
             0.0,
+            &[],
             &[],
             EffectQuality::Ultra,
         );
@@ -227,10 +241,38 @@ mod tests {
             (1280, 720),
             &HashMap::new(),
             0.0,
+            &[],
             &fx,
             EffectQuality::Ultra,
         );
         assert_eq!(scene.master_effects.len(), 1);
+    }
+
+    #[test]
+    fn propagates_video_track_compositing_state() {
+        let layer = test_layer(LayerKind::Background, "bg", 0);
+        let tracks = vec![SceneVideoTrack {
+            id: "track-1".into(),
+            z: 0,
+            layer_ids: vec!["bg".into()],
+            opacity: 0.5,
+            blend_mode: crate::compositor::scene::BlendMode::Screen,
+            effects: vec![EffectSpec::Brightness { value: 1.2 }],
+        }];
+        let scene = build_compositor_scene(
+            &[layer],
+            (1280, 720),
+            &HashMap::new(),
+            0.0,
+            &tracks,
+            &[],
+            EffectQuality::Ultra,
+        );
+
+        assert_eq!(scene.video_tracks.len(), 1);
+        assert_eq!(scene.video_tracks[0].layer_ids, vec!["bg"]);
+        assert_eq!(scene.video_tracks[0].opacity, 0.5);
+        assert_eq!(scene.video_tracks[0].effects.len(), 1);
     }
 
     #[test]
@@ -242,6 +284,7 @@ mod tests {
             (1280, 720),
             &HashMap::new(),
             0.5,
+            &[],
             &[],
             EffectQuality::Ultra,
         );
@@ -264,6 +307,7 @@ mod tests {
             (1280, 720),
             &HashMap::new(),
             0.5,
+            &[],
             &[],
             EffectQuality::Ultra,
         );

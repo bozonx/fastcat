@@ -214,6 +214,7 @@ export function useNativeMonitorBridge(): void {
       const fmt = timelineStore.timelineFormat;
       return {
         layers: [],
+        video_tracks: [],
         audio_layers: [],
         audio_tracks: [],
         audio_master_gain: Math.max(0, Number(timelineStore.masterGain ?? 1)),
@@ -605,6 +606,7 @@ export function useNativeMonitorBridge(): void {
       void nativeMonitorIpc
         .setScene({
           layers: [],
+          video_tracks: [],
           audio_layers: [],
           audio_tracks: [],
           audio_master_gain: 0,

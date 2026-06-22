@@ -15,7 +15,7 @@
 use std::collections::HashMap;
 use std::num::NonZeroUsize;
 use std::sync::Arc;
-use std::time::{Duration, Instant};
+use std::time::Instant;
 
 use anyhow::{anyhow, Context, Result};
 use vello::peniko::{Color, ImageData};
@@ -26,9 +26,11 @@ use winit::window::Window;
 use super::effects::{EffectPipeline, EffectSource, EffectSpec};
 use super::gpu_utils::{create_readback_target, create_rgba8_texture, image_pixels_rgba8};
 use super::readback::*;
+use super::render_telemetry::{RenderPrepareTiming, RenderStageTiming, RenderTelemetry};
+use super::text_engine::{render_text_layer_with_gpu_shadow, text_layer_needs_gpu_shadow};
 use super::scene::{
-    BlendMode, Layer, LayerKind, RasterGpuSource, RasterSource, TextLayer, TextRenderMode,
-    Transform, TransitionEdge, TransitionSource,
+    BlendMode, Layer, LayerKind, RasterGpuSource, RasterSource, Transform, TransitionEdge,
+    TransitionSource,
 };
 use super::transitions::TransitionPipeline;
 
@@ -42,102 +44,6 @@ struct OffscreenTarget {
     view: wgpu::TextureView,
     buffer: wgpu::Buffer,
     aligned_row_bytes: usize,
-}
-
-#[derive(Clone, Copy, Default)]
-struct RenderStageTiming {
-    materialize_ms: f64,
-    build_vello_ms: f64,
-    render_ms: f64,
-    total_ms: f64,
-}
-
-#[derive(Default)]
-struct RenderPrepareTiming {
-    materialize_ms: f64,
-    build_vello_ms: f64,
-}
-
-struct RenderTelemetry {
-    enabled: bool,
-    records: u64,
-    frames: u64,
-    warmup_frames: u64,
-    last_log: Instant,
-    materialize_sum_ms: f64,
-    build_vello_sum_ms: f64,
-    render_sum_ms: f64,
-    total_sum_ms: f64,
-}
-
-impl RenderTelemetry {
-    const INITIAL_WARMUP_CUTOFF_MS: f64 = 250.0;
-
-    fn new() -> Self {
-        Self::with_enabled(std::env::var("FASTCAT_RENDER_TIMING").is_ok_and(|value| value != "0"))
-    }
-
-    fn with_enabled(enabled: bool) -> Self {
-        Self {
-            enabled,
-            records: 0,
-            frames: 0,
-            warmup_frames: 0,
-            last_log: Instant::now(),
-            materialize_sum_ms: 0.0,
-            build_vello_sum_ms: 0.0,
-            render_sum_ms: 0.0,
-            total_sum_ms: 0.0,
-        }
-    }
-
-    fn record(&mut self, target: &'static str, timing: RenderStageTiming) {
-        if !self.enabled {
-            return;
-        }
-        self.records += 1;
-
-        if self.frames == 0 && timing.total_ms >= Self::INITIAL_WARMUP_CUTOFF_MS {
-            self.warmup_frames += 1;
-            log::info!(
-                "[compositor-timing] {target}: warmup total={:.2}ms materialize={:.2}ms build_vello={:.2}ms render={:.2}ms; excluded from avg",
-                timing.total_ms,
-                timing.materialize_ms,
-                timing.build_vello_ms,
-                timing.render_ms,
-            );
-            self.last_log = Instant::now();
-            return;
-        }
-
-        self.frames += 1;
-        self.materialize_sum_ms += timing.materialize_ms;
-        self.build_vello_sum_ms += timing.build_vello_ms;
-        self.render_sum_ms += timing.render_ms;
-        self.total_sum_ms += timing.total_ms;
-
-        let should_log_periodic = self.frames.is_multiple_of(120);
-        let should_log_slow =
-            timing.total_ms >= 50.0 && self.last_log.elapsed() >= Duration::from_secs(1);
-        if !should_log_periodic && !should_log_slow {
-            return;
-        }
-
-        let frames = self.frames as f64;
-        log::info!(
-            "[compositor-timing] {target}: last total={:.2}ms materialize={:.2}ms build_vello={:.2}ms render={:.2}ms; avg total={:.2}ms materialize={:.2}ms build_vello={:.2}ms render={:.2}ms over {} frames",
-            timing.total_ms,
-            timing.materialize_ms,
-            timing.build_vello_ms,
-            timing.render_ms,
-            self.total_sum_ms / frames,
-            self.materialize_sum_ms / frames,
-            self.build_vello_sum_ms / frames,
-            self.render_sum_ms / frames,
-            self.frames,
-        );
-        self.last_log = Instant::now();
-    }
 }
 
 pub struct Compositor {
@@ -341,7 +247,11 @@ impl Compositor {
         let effective_scene =
             self.materialize_transitions_and_effects(dev_id, scene, &device, &queue)?;
         let effective_scene =
+            self.materialize_video_tracks(dev_id, &effective_scene, &device, &queue)?;
+        let effective_scene =
             self.materialize_adjustment_clips(dev_id, &effective_scene, &device, &queue)?;
+        let effective_scene =
+            self.materialize_video_tracks(dev_id, &effective_scene, &device, &queue)?;
         let materialize_ms = elapsed_ms(materialize_started);
         let build_started = Instant::now();
         let vello = self.build_vello_scene_from_materialized(
@@ -441,6 +351,7 @@ impl Compositor {
                             time: scene.time,
                             background: Color::TRANSPARENT,
                             layers: lower_layers,
+                            video_tracks: Vec::new(),
                             master_effects: Vec::new(),
                             effect_quality: scene.effect_quality,
                         };
@@ -450,7 +361,19 @@ impl Compositor {
                             device,
                             queue,
                         )?;
+                        let background_scene = self.materialize_video_tracks(
+                            dev_id,
+                            &background_scene,
+                            device,
+                            queue,
+                        )?;
                         let background_scene = self.materialize_adjustment_clips(
+                            dev_id,
+                            &background_scene,
+                            device,
+                            queue,
+                        )?;
+                        let background_scene = self.materialize_video_tracks(
                             dev_id,
                             &background_scene,
                             device,
@@ -474,6 +397,7 @@ impl Compositor {
                             time: scene.time,
                             background: Color::TRANSPARENT,
                             layers: Vec::new(),
+                            video_tracks: Vec::new(),
                             master_effects: Vec::new(),
                             effect_quality: scene.effect_quality,
                         };
@@ -687,7 +611,8 @@ impl Compositor {
             time: scene.time,
             background: scene.background,
             layers: final_layers,
-            master_effects: Vec::new(),
+            video_tracks: scene.video_tracks.clone(),
+            master_effects: scene.master_effects.clone(),
             effect_quality: scene.effect_quality,
         })
     }
@@ -725,6 +650,7 @@ impl Compositor {
                         time: scene.time,
                         background: scene.background,
                         layers: lower_layers.clone(),
+                        video_tracks: Vec::new(),
                         master_effects: Vec::new(),
                         effect_quality: scene.effect_quality,
                     };
@@ -774,6 +700,120 @@ impl Compositor {
             time: scene.time,
             background: scene.background,
             layers: result_layers,
+            video_tracks: scene.video_tracks.clone(),
+            master_effects: scene.master_effects.clone(),
+            effect_quality: scene.effect_quality,
+        })
+    }
+
+    fn materialize_video_tracks(
+        &mut self,
+        dev_id: usize,
+        scene: &super::scene::Scene,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+    ) -> Result<super::scene::Scene> {
+        let mut layers = scene.layers.clone();
+        let mut tracks = scene.video_tracks.clone();
+        tracks.sort_by_key(|track| track.z);
+
+        for track in tracks {
+            let needs_group = track.opacity < 1.0
+                || !matches!(track.blend, BlendMode::Normal)
+                || !track.effects.is_empty();
+            if !needs_group {
+                continue;
+            }
+
+            let member_ids: std::collections::HashSet<&str> =
+                track.layer_ids.iter().map(String::as_str).collect();
+            let member_positions: Vec<usize> = layers
+                .iter()
+                .enumerate()
+                .filter_map(|(index, layer)| member_ids.contains(layer.id.as_str()).then_some(index))
+                .collect();
+            let Some(insert_at) = member_positions.first().copied() else {
+                continue;
+            };
+            let member_layers: Vec<Layer> = member_positions
+                .iter()
+                .filter_map(|index| layers.get(*index).cloned())
+                .collect();
+            if member_layers.is_empty() {
+                continue;
+            }
+            if member_layers
+                .iter()
+                .any(|layer| matches!(layer.kind, LayerKind::Adjustment))
+            {
+                continue;
+            }
+
+            let isolated = super::scene::Scene {
+                width: scene.width,
+                height: scene.height,
+                time: scene.time,
+                background: Color::TRANSPARENT,
+                layers: member_layers,
+                video_tracks: Vec::new(),
+                master_effects: Vec::new(),
+                effect_quality: scene.effect_quality,
+            };
+            let texture = self.render_domain_scene_to_owned_texture(
+                dev_id,
+                &isolated,
+                scene.width,
+                scene.height,
+                Color::TRANSPARENT,
+            )?;
+            let source = EffectSource::Gpu(Arc::new(
+                crate::media::SharedTexture::new_shared(Arc::new(texture)),
+            ));
+            let output = if track.effects.is_empty() {
+                match source {
+                    EffectSource::Gpu(texture) => texture,
+                    EffectSource::Cpu(_) => unreachable!("track source is always GPU-backed"),
+                }
+            } else {
+                self.apply_effects_to_texture(
+                    dev_id,
+                    device,
+                    queue,
+                    &source,
+                    &track.effects,
+                    false,
+                    scene.effect_quality,
+                )?
+                .0
+            };
+
+            layers.retain(|layer| !member_ids.contains(layer.id.as_str()));
+            layers.insert(
+                insert_at.min(layers.len()),
+                Layer {
+                    id: format!("__track:{}", track.id),
+                    kind: LayerKind::Raster {
+                        source: RasterSource::GpuTexture(output),
+                        natural_size: (scene.width, scene.height),
+                        padding: None,
+                    },
+                    transform: Transform::identity(),
+                    opacity: track.opacity,
+                    blend: track.blend,
+                    mask: None,
+                    effects: Vec::new(),
+                    transition: None,
+                },
+            );
+        }
+
+        Ok(super::scene::Scene {
+            width: scene.width,
+            height: scene.height,
+            time: scene.time,
+            background: scene.background,
+            layers,
+            video_tracks: Vec::new(),
             master_effects: scene.master_effects.clone(),
             effect_quality: scene.effect_quality,
         })
@@ -789,9 +829,9 @@ impl Compositor {
         device: &wgpu::Device,
         queue: &wgpu::Queue,
     ) -> Result<EffectSource> {
-        let base = if Self::text_layer_needs_gpu_shadow(layer) {
+        let base = if text_layer_needs_gpu_shadow(layer) {
             let texture =
-                self.render_text_layer_with_gpu_shadow(dev_id, scene, layer, device, queue)?;
+                render_text_layer_with_gpu_shadow(self, dev_id, scene, layer, device, queue)?;
             EffectSource::Gpu(Arc::new(crate::media::SharedTexture::new_shared(Arc::new(
                 texture,
             ))))
@@ -851,6 +891,7 @@ impl Compositor {
                 effects: Vec::new(),
                 transition: None,
             }],
+            video_tracks: Vec::new(),
             master_effects: Vec::new(),
             effect_quality: scene.effect_quality,
         };
@@ -875,12 +916,12 @@ impl Compositor {
         layers: &mut [Layer],
     ) -> Result<()> {
         for layer in layers {
-            if !Self::text_layer_needs_gpu_shadow(layer) {
+            if !text_layer_needs_gpu_shadow(layer) {
                 continue;
             }
 
             let render_scale = Self::vector_effect_render_scale(layer);
-            match self.render_text_layer_with_gpu_shadow(dev_id, scene, layer, device, queue) {
+            match render_text_layer_with_gpu_shadow(self, dev_id, scene, layer, device, queue) {
                 Ok(texture) => {
                     layer.kind = LayerKind::Raster {
                         natural_size: (texture.width(), texture.height()),
@@ -898,166 +939,6 @@ impl Compositor {
             }
         }
         Ok(())
-    }
-
-    fn text_layer_needs_gpu_shadow(layer: &Layer) -> bool {
-        let LayerKind::Text(spec) = &layer.kind else {
-            return false;
-        };
-        spec.text_shadow_enabled
-            && spec.text_shadow_blur > 0.0
-            && spec.text_shadow_color.to_rgba8().a > 0
-    }
-
-    fn render_text_layer_with_gpu_shadow(
-        &mut self,
-        dev_id: usize,
-        scene: &super::scene::Scene,
-        layer: &Layer,
-        device: &wgpu::Device,
-        queue: &wgpu::Queue,
-    ) -> Result<wgpu::Texture> {
-        let LayerKind::Text(spec) = &layer.kind else {
-            return Err(anyhow!("gpu text shadow requested for non-text layer"));
-        };
-        let render_scale = Self::vector_effect_render_scale(layer);
-
-        // Тень текста должна лежать МЕЖДУ фоном и глифами (как в CSS / старом CPU-пути),
-        // иначе непрозрачный фон-подложка полностью её перекрывает. Поэтому композитим
-        // три слоя: фон+рамка (низ) → размытая тень → основной текст (верх).
-        let mut bg_spec = spec.clone();
-        bg_spec.render_mode = TextRenderMode::BackgroundOnly;
-        let background = self.render_text_spec_to_texture(
-            dev_id,
-            scene.time,
-            layer.id.as_str(),
-            bg_spec,
-            render_scale,
-        )?;
-
-        let mut shadow_spec = spec.clone();
-        shadow_spec.render_mode = TextRenderMode::TextShadowMask;
-        shadow_spec.text_shadow_blur = 0.0;
-        let shadow_mask = self.render_text_spec_to_texture(
-            dev_id,
-            scene.time,
-            layer.id.as_str(),
-            shadow_spec,
-            render_scale,
-        )?;
-        let blur_scale = ((render_scale.0 + render_scale.1) * 0.5) as f32;
-        let (blurred_shadow, _) = self.apply_effects_to_texture(
-            dev_id,
-            device,
-            queue,
-            &EffectSource::Gpu(Arc::new(crate::media::SharedTexture::new_shared(Arc::new(
-                shadow_mask,
-            )))),
-            &[EffectSpec::GaussianBlurPixels {
-                radius: spec.text_shadow_blur * blur_scale,
-                mix: 1.0,
-            }],
-            false,
-            scene.effect_quality,
-        )?;
-
-        let mut text_spec = spec.clone();
-        text_spec.render_mode = TextRenderMode::TextOnly;
-        let text = self.render_text_spec_to_texture(
-            dev_id,
-            scene.time,
-            layer.id.as_str(),
-            text_spec,
-            render_scale,
-        )?;
-
-        let width = text.width();
-        let height = text.height();
-        let composite = super::scene::Scene {
-            width,
-            height,
-            time: scene.time,
-            background: Color::TRANSPARENT,
-            layers: vec![
-                Self::gpu_texture_layer(
-                    format!("{}:gpu-text-bg", layer.id),
-                    Arc::new(crate::media::SharedTexture::new_shared(Arc::new(
-                        background,
-                    ))),
-                    (width, height),
-                ),
-                Self::gpu_texture_layer(
-                    format!("{}:gpu-text-shadow", layer.id),
-                    blurred_shadow,
-                    (width, height),
-                ),
-                Self::gpu_texture_layer(
-                    format!("{}:gpu-text-glyphs", layer.id),
-                    Arc::new(crate::media::SharedTexture::new_shared(Arc::new(text))),
-                    (width, height),
-                ),
-            ],
-            master_effects: Vec::new(),
-            effect_quality: scene.effect_quality,
-        };
-        self.render_domain_scene_to_owned_texture(
-            dev_id,
-            &composite,
-            width,
-            height,
-            Color::TRANSPARENT,
-        )
-    }
-
-    fn render_text_spec_to_texture(
-        &mut self,
-        dev_id: usize,
-        time: f64,
-        layer_id: &str,
-        spec: TextLayer,
-        scale: (f64, f64),
-    ) -> Result<wgpu::Texture> {
-        let layer = Layer {
-            id: layer_id.to_string(),
-            kind: LayerKind::Text(spec),
-            transform: Transform::identity(),
-            opacity: 1.0,
-            blend: BlendMode::Normal,
-            mask: None,
-            effects: Vec::new(),
-            transition: None,
-        };
-        let scene = super::scene::Scene {
-            width: layer.kind.natural_size().0,
-            height: layer.kind.natural_size().1,
-            time,
-            background: Color::TRANSPARENT,
-            layers: Vec::new(),
-            master_effects: Vec::new(),
-            effect_quality: crate::compositor::effects::EffectQuality::Ultra,
-        };
-        self.render_layer_to_texture(dev_id, &scene, &layer, scale)
-    }
-
-    fn gpu_texture_layer(
-        id: String,
-        texture: Arc<crate::media::SharedTexture>,
-        natural_size: (u32, u32),
-    ) -> Layer {
-        Layer {
-            id,
-            kind: LayerKind::Raster {
-                source: RasterSource::GpuTexture(texture),
-                natural_size,
-                padding: None,
-            },
-            transform: Transform::identity(),
-            opacity: 1.0,
-            blend: BlendMode::Normal,
-            mask: None,
-            effects: Vec::new(),
-            transition: None,
-        }
     }
 
     fn layer_to_effect_source(
@@ -1090,7 +971,7 @@ impl Compositor {
     /// в `natural × k` пикселей, чтобы при последующем композите с увеличением не было
     /// алиасинга/мыла (вектор остаётся резким). Вызывающий обязан поделить scale слоя
     /// на `k`, иначе результат увеличится дважды.
-    fn render_layer_to_texture(
+    pub(crate) fn render_layer_to_texture(
         &mut self,
         dev_id: usize,
         scene: &super::scene::Scene,
@@ -1121,6 +1002,7 @@ impl Compositor {
                 effects: Vec::new(),
                 transition: None,
             }],
+            video_tracks: Vec::new(),
             master_effects: Vec::new(),
             effect_quality: scene.effect_quality,
         };
@@ -1131,7 +1013,7 @@ impl Compositor {
     /// Степень сверхдискретизации для растеризации векторного слоя под эффект:
     /// берём абсолютный scale слоя (на сколько он увеличивается на сцене), кламп в
     /// `[1; 8]` и ограничиваем итоговый размер текстуры (8192 px на сторону).
-    fn vector_effect_render_scale(layer: &Layer) -> (f64, f64) {
+    pub(crate) fn vector_effect_render_scale(layer: &Layer) -> (f64, f64) {
         const MAX_K: f64 = 8.0;
         const MAX_DIM: f64 = 8192.0;
         let (nw, nh) = layer.kind.natural_size();
@@ -1200,7 +1082,7 @@ impl Compositor {
         }
     }
 
-    fn apply_effects_to_texture(
+    pub(crate) fn apply_effects_to_texture(
         &mut self,
         dev_id: usize,
         device: &wgpu::Device,
@@ -1448,7 +1330,7 @@ impl Compositor {
         Ok(texture)
     }
 
-    fn render_domain_scene_to_owned_texture(
+    pub(crate) fn render_domain_scene_to_owned_texture(
         &mut self,
         dev_id: usize,
         scene: &super::scene::Scene,
@@ -1733,93 +1615,5 @@ fn elapsed_ms(started: Instant) -> f64 {
 impl Default for Compositor {
     fn default() -> Self {
         Self::new()
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn render_telemetry_disabled_ignores_records() {
-        let mut telemetry = RenderTelemetry::with_enabled(false);
-
-        telemetry.record(
-            "surface",
-            RenderStageTiming {
-                materialize_ms: 1.0,
-                build_vello_ms: 2.0,
-                render_ms: 3.0,
-                total_ms: 6.0,
-            },
-        );
-
-        assert_eq!(telemetry.records, 0);
-        assert_eq!(telemetry.frames, 0);
-        assert_eq!(telemetry.total_sum_ms, 0.0);
-    }
-
-    #[test]
-    fn render_telemetry_enabled_accumulates_stage_totals() {
-        let mut telemetry = RenderTelemetry::with_enabled(true);
-
-        telemetry.record(
-            "surface",
-            RenderStageTiming {
-                materialize_ms: 1.0,
-                build_vello_ms: 2.0,
-                render_ms: 3.0,
-                total_ms: 6.0,
-            },
-        );
-        telemetry.record(
-            "pixels",
-            RenderStageTiming {
-                materialize_ms: 4.0,
-                build_vello_ms: 5.0,
-                render_ms: 6.0,
-                total_ms: 15.0,
-            },
-        );
-
-        assert_eq!(telemetry.records, 2);
-        assert_eq!(telemetry.frames, 2);
-        assert_eq!(telemetry.warmup_frames, 0);
-        assert_eq!(telemetry.materialize_sum_ms, 5.0);
-        assert_eq!(telemetry.build_vello_sum_ms, 7.0);
-        assert_eq!(telemetry.render_sum_ms, 9.0);
-        assert_eq!(telemetry.total_sum_ms, 21.0);
-    }
-
-    #[test]
-    fn render_telemetry_excludes_initial_slow_warmup_from_averages() {
-        let mut telemetry = RenderTelemetry::with_enabled(true);
-
-        telemetry.record(
-            "surface",
-            RenderStageTiming {
-                materialize_ms: 0.1,
-                build_vello_ms: 0.1,
-                render_ms: 999.8,
-                total_ms: 1000.0,
-            },
-        );
-        telemetry.record(
-            "surface",
-            RenderStageTiming {
-                materialize_ms: 1.0,
-                build_vello_ms: 2.0,
-                render_ms: 3.0,
-                total_ms: 6.0,
-            },
-        );
-
-        assert_eq!(telemetry.records, 2);
-        assert_eq!(telemetry.frames, 1);
-        assert_eq!(telemetry.warmup_frames, 1);
-        assert_eq!(telemetry.materialize_sum_ms, 1.0);
-        assert_eq!(telemetry.build_vello_sum_ms, 2.0);
-        assert_eq!(telemetry.render_sum_ms, 3.0);
-        assert_eq!(telemetry.total_sum_ms, 6.0);
     }
 }

@@ -5,7 +5,7 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use vello::peniko::{Blob, Color, ImageAlphaType, ImageData, ImageFormat as VelloImageFormat};
 
-use crate::compositor::scene::{LayerKind as CompLayerKind, RasterSource, Scene};
+use crate::compositor::scene::{LayerKind as CompLayerKind, RasterSource, Scene, VideoTrack};
 use crate::compositor::Compositor;
 use crate::media::decode::{open as open_decoder, VideoDecoder};
 use crate::media::image_decode::decode_image;
@@ -413,6 +413,18 @@ pub(crate) fn build_export_scene(
         time: time_sec,
         background: Color::TRANSPARENT,
         layers,
+        video_tracks: scene
+            .video_tracks
+            .iter()
+            .map(|track| VideoTrack {
+                id: track.id.clone(),
+                z: track.z,
+                layer_ids: track.layer_ids.clone(),
+                opacity: track.opacity.clamp(0.0, 1.0) as f32,
+                blend: track.blend_mode,
+                effects: track.effects.clone(),
+            })
+            .collect(),
         master_effects: scene.master_effects.clone(),
         effect_quality: crate::compositor::effects::EffectQuality::Ultra,
     })
@@ -451,21 +463,19 @@ fn build_raster_kind(
             ) {
                 Ok(decoded) => decoded,
                 Err(e) => {
-                    // A single unreadable frame must not abort the whole export;
-                    // skip this layer for this frame and keep going.
                     let message = format!(
-                        "Video layer could not be decoded and was skipped: {}. Some exported frames may be blank.",
-                        layer.path
+                        "Video layer could not be decoded at {time_sec:.3}s: {}.",
+                        layer.path,
                     );
                     log::warn!(
-                        "[native-export] skipping video layer {} at {:.3}s: {e}",
+                        "[native-export] aborting after video decode failure {} at {:.3}s: {e}",
                         layer.path,
                         time_sec
                     );
                     if let Some(callback) = on_warning {
-                        callback(message);
+                        callback(message.clone());
                     }
-                    return Ok(None);
+                    return Err(anyhow!("{message} {e}"));
                 }
             };
             let size = (frame.width, frame.height);
@@ -706,6 +716,7 @@ mod tests {
         let scene = MonitorScene {
             master_effects: Vec::new(),
             layers: vec![from, to],
+            video_tracks: vec![],
             audio_layers: vec![],
             audio_tracks: vec![],
             audio_master_gain: 1.0,
@@ -777,6 +788,7 @@ mod tests {
         let scene = MonitorScene {
             master_effects: Vec::new(),
             layers: vec![background, adjustment],
+            video_tracks: vec![],
             audio_layers: vec![],
             audio_tracks: vec![],
             audio_master_gain: 1.0,

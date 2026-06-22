@@ -576,31 +576,27 @@ struct MixLayerParams<'a> {
     shared: &'a Arc<(Mutex<AudioShared>, Condvar)>,
 }
 
-/// Decodes, optionally reverses, and mixes a single layer into `buffer`.
-/// Returns `true` if the layer contributed audio to this chunk.
-fn mix_layer_into(
-    params: MixLayerParams<'_>,
-    decode_error_policy: DecodeErrorPolicy,
-) -> anyhow::Result<bool> {
-    let MixLayerParams {
-        buffer,
-        layer,
-        chunk_start_sec,
-        chunk_end_sec,
-        frames,
-        sample_rate,
-        output_channels,
-        target,
-        shared,
-    } = params;
+/// Portion of a layer that overlaps the current chunk, expressed both in mix-buffer
+/// frame offsets and in timeline seconds.
+struct SegmentWindow {
+    write_start_frame: usize,
+    frames_to_write: usize,
+    segment_start: f64,
+    segment_duration: f64,
+    segment_end: f64,
+}
+
+/// Computes where (and how much of) `layer` lands in the current chunk's mix buffer.
+/// Returns `None` when the layer does not overlap the chunk or contributes no frames.
+fn compute_layer_segment(
+    layer: &SceneAudioLayer,
+    chunk_start_sec: f64,
+    chunk_end_sec: f64,
+    frames: usize,
+    sample_rate: u32,
+) -> Option<SegmentWindow> {
     if layer.timeline_end_sec <= chunk_start_sec || layer.timeline_start_sec >= chunk_end_sec {
-        return Ok(false);
-    }
-    // A path proven to have no audio track (e.g. a video-only source) contributes
-    // silence in both preview and export. Skip it before any decode so we don't
-    // re-probe the file — and re-log — for every 50 ms chunk.
-    if crate::audio::decode::path_known_silent(&layer.path) {
-        return Ok(false);
+        return None;
     }
     let raw_segment_start = chunk_start_sec.max(layer.timeline_start_sec);
     let raw_segment_end = chunk_end_sec.min(layer.timeline_end_sec);
@@ -612,31 +608,51 @@ fn mix_layer_into(
         frames,
     );
     if frames_to_write == 0 {
-        return Ok(false);
+        return None;
     }
     let segment_start = chunk_start_sec + write_start_frame as f64 / sample_rate as f64;
     let segment_duration = frames_to_write as f64 / sample_rate as f64;
-    let segment_end = segment_start + segment_duration;
+    Some(SegmentWindow {
+        write_start_frame,
+        frames_to_write,
+        segment_start,
+        segment_duration,
+        segment_end: segment_start + segment_duration,
+    })
+}
 
-    // Reverse audio is NOT supported in this version. A clip with negative `speed`
-    // (a per-layer reversed clip, while the global transport still runs forward)
-    // produces NO sound — neither in the monitor preview NOR in export — so the two
-    // always agree. Global reverse PLAYBACK (negative transport speed) is likewise
-    // silent, gated upstream in the producer (`global_speed > 0.0`), so this only
-    // covers the per-layer case. The forward-decode + frame-reverse plumbing below
-    // is intentionally left in place (and stays compiler-reachable) for a future
-    // version, but is never executed while reverse audio is unsupported.
-    let reversed = layer.speed < 0.0;
-    if reversed {
-        return Ok(false);
-    }
+struct DecodePrepareParams<'a> {
+    layer: &'a SceneAudioLayer,
+    source_start: f64,
+    segment_duration: f64,
+    speed: f64,
+    reversed: bool,
+    sample_rate: u32,
+    output_channels: usize,
+    target: AudioRenderTarget,
+    shared: &'a Arc<(Mutex<AudioShared>, Condvar)>,
+    chunk_start_sec: f64,
+}
 
-    let speed = sanitize_speed(layer.speed.abs());
-    let source_start = if reversed {
-        layer.source_pts_at(segment_end)
-    } else {
-        layer.source_pts_at(segment_start)
-    };
+/// Decodes one layer's chunk, applying optional reversal and per-layer audio effects.
+/// Returns `Ok(None)` when the layer should be silently skipped (no audio track, or a
+/// non-propagated decode error), `Ok(Some(samples))` with the prepared interleaved buffer.
+fn decode_and_prepare_layer(
+    params: DecodePrepareParams<'_>,
+    decode_error_policy: DecodeErrorPolicy,
+) -> anyhow::Result<Option<Vec<f32>>> {
+    let DecodePrepareParams {
+        layer,
+        source_start,
+        segment_duration,
+        speed,
+        reversed,
+        sample_rate,
+        output_channels,
+        target,
+        shared,
+        chunk_start_sec,
+    } = params;
 
     let mut decoded = match decode_audio_chunk(crate::audio::decode::DecodeAudioChunkParams {
         layer_id: &layer.id,
@@ -657,7 +673,7 @@ fn mix_layer_into(
             // two stay in agreement and a video-only layer never fails an export.
             if crate::audio::decode::is_no_audio_track_error(&error) {
                 crate::audio::decode::remember_silent_path(&layer.path);
-                return Ok(false);
+                return Ok(None);
             }
             if decode_error_policy == DecodeErrorPolicy::Propagate {
                 return Err(error);
@@ -666,7 +682,7 @@ fn mix_layer_into(
                 "[audio] skipping layer {} at {chunk_start_sec:.3}s: {error:?}",
                 layer.id
             );
-            return Ok(false);
+            return Ok(None);
         }
     };
 
@@ -688,19 +704,90 @@ fn mix_layer_into(
         );
     }
 
-    let frames_to_write = frames_to_write.min(decoded.len() / output_channels);
+    Ok(Some(decoded))
+}
+
+/// Decodes, optionally reverses, and mixes a single layer into `buffer`.
+/// Returns `true` if the layer contributed audio to this chunk.
+fn mix_layer_into(
+    params: MixLayerParams<'_>,
+    decode_error_policy: DecodeErrorPolicy,
+) -> anyhow::Result<bool> {
+    let MixLayerParams {
+        buffer,
+        layer,
+        chunk_start_sec,
+        chunk_end_sec,
+        frames,
+        sample_rate,
+        output_channels,
+        target,
+        shared,
+    } = params;
+    // A path proven to have no audio track (e.g. a video-only source) contributes
+    // silence in both preview and export. Skip it before any decode so we don't
+    // re-probe the file — and re-log — for every 50 ms chunk.
+    if crate::audio::decode::path_known_silent(&layer.path) {
+        return Ok(false);
+    }
+    let Some(segment) =
+        compute_layer_segment(layer, chunk_start_sec, chunk_end_sec, frames, sample_rate)
+    else {
+        return Ok(false);
+    };
+
+    // Reverse audio is NOT supported in this version. A clip with negative `speed`
+    // (a per-layer reversed clip, while the global transport still runs forward)
+    // produces NO sound — neither in the monitor preview NOR in export — so the two
+    // always agree. Global reverse PLAYBACK (negative transport speed) is likewise
+    // silent, gated upstream in the producer (`global_speed > 0.0`), so this only
+    // covers the per-layer case. The forward-decode + frame-reverse plumbing below
+    // is intentionally left in place (and stays compiler-reachable) for a future
+    // version, but is never executed while reverse audio is unsupported.
+    let reversed = layer.speed < 0.0;
+    if reversed {
+        return Ok(false);
+    }
+
+    let speed = sanitize_speed(layer.speed.abs());
+    let source_start = if reversed {
+        layer.source_pts_at(segment.segment_end)
+    } else {
+        layer.source_pts_at(segment.segment_start)
+    };
+
+    let Some(decoded) = decode_and_prepare_layer(
+        DecodePrepareParams {
+            layer,
+            source_start,
+            segment_duration: segment.segment_duration,
+            speed,
+            reversed,
+            sample_rate,
+            output_channels,
+            target,
+            shared,
+            chunk_start_sec,
+        },
+        decode_error_policy,
+    )?
+    else {
+        return Ok(false);
+    };
+
+    let frames_to_write = segment.frames_to_write.min(decoded.len() / output_channels);
     debug_assert!(
-        write_start_frame + frames_to_write <= buffer.len() / output_channels,
+        segment.write_start_frame + frames_to_write <= buffer.len() / output_channels,
         "layer write range exceeds mix buffer"
     );
     apply_layer_mix(ApplyLayerMixParams {
         mixed: buffer,
         decoded: &decoded,
-        write_start_frame,
+        write_start_frame: segment.write_start_frame,
         frames_to_write,
         sample_rate,
         layer,
-        segment_start_sec: segment_start,
+        segment_start_sec: segment.segment_start,
         channels: output_channels,
     });
     Ok(true)

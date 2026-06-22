@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  buildVideoWorkerPayloadFromTracks,
   buildWorkerVideoTracks,
   getNestedClipWindow,
   mergeNestedClipSpeed,
@@ -55,6 +56,61 @@ describe('buildWorkerVideoTracks', () => {
       track({ id: 'v1', opacity: 0.5, blendMode: 'screen', effects }),
     ]);
     expect(out).toMatchObject({ opacity: 0.5, blendMode: 'screen', effects });
+  });
+});
+
+describe('buildVideoWorkerPayloadFromTracks', () => {
+  it('keeps track opacity and blend separate from clip properties', async () => {
+    const result = await buildVideoWorkerPayloadFromTracks({
+      tracks: [
+        track({
+          id: 'v1',
+          opacity: 0.5,
+          blendMode: 'screen',
+          items: [
+            {
+              id: 'clip-1',
+              kind: 'clip',
+              clipType: 'media',
+              trackId: 'v1',
+              source: { path: '_video/source.mp4' },
+              timelineRange: { startUs: 0, durationUs: 1_000_000 },
+              sourceRange: { startUs: 0, durationUs: 1_000_000 },
+              opacity: 0.8,
+              blendMode: 'multiply',
+            },
+          ],
+        }),
+      ],
+      projectStore: {
+        projectSettings: {
+          project: {
+            width: 1920,
+            height: 1080,
+            fps: 30,
+            audioDeclickDurationUs: 0,
+          },
+        },
+      } as never,
+      workspaceStore: {
+        userSettings: {
+          projectDefaults: {
+            defaultAudioFadeCurve: 'linear',
+          },
+        },
+      } as never,
+    });
+
+    expect(result.tracks[0]).toMatchObject({
+      id: 'v1',
+      opacity: 0.5,
+      blendMode: 'screen',
+    });
+    expect(result.clips[0]).toMatchObject({
+      id: 'clip-1',
+      opacity: 0.8,
+      blendMode: 'multiply',
+    });
   });
 });
 

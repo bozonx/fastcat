@@ -641,6 +641,24 @@ export async function runExport(
         },
         checkCancel,
       );
+      const requiresCompute = timelineClips.some((item) => {
+        if (!item || typeof item !== 'object') return false;
+        if (item.kind === 'meta') {
+          return Array.isArray(item.masterEffects) && item.masterEffects.length > 0;
+        }
+        if (item.kind === 'track') {
+          return Array.isArray(item.effects) && item.effects.length > 0;
+        }
+        return (
+          (Array.isArray(item.effects) && item.effects.length > 0) ||
+          Boolean(item.transitionIn || item.transitionOut)
+        );
+      });
+      if (requiresCompute && !localCompositor.supportsComputeEffects()) {
+        throw new Error(
+          'WebGPU is required to export timelines with video effects or shader transitions.',
+        );
+      }
     }
 
     const maxAudioDurationUs = options.audio ? computeMaxAudioDurationUs(audioClips) : 0;

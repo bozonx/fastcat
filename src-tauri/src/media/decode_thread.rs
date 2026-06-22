@@ -236,6 +236,236 @@ impl Drop for DecodePump {
     }
 }
 
+/// Consecutive YUV→RGBA GPU upload failures tolerated before the decoder gives up
+/// the GPU fast path. A single failure can be transient (a momentary allocation
+/// hiccup), so the fast path is only disabled once it fails repeatedly.
+const YUV_UPLOAD_FAILURE_LIMIT: u32 = 3;
+
+/// Scheduling state of the decoder loop: playback flag, post-seek bookkeeping and
+/// the preroll / pre-seek budgets that decide when the thread parks vs. decodes ahead.
+struct ScheduleState {
+    playing: bool,
+    decoded_after_seek: bool,
+    /// Frames still owed to an in-flight `Prebuffer`: while > 0 the (paused) decoder
+    /// keeps decoding forward instead of parking after the first frame.
+    preroll_remaining: u32,
+    /// Whether the active Prebuffer should emit pre-seek frames (opportunistic caching).
+    preroll_keep_preseek: bool,
+    /// Seek target (stream-time seconds) not yet reached after the last seek. While
+    /// `Some`, decoded intra-GOP frames before it are "pre-seek" frames retained only
+    /// for backward-scrub caching; they must not consume the forward preroll budget,
+    /// and the decoder must not park before a frame at/after the target is emitted.
+    preseek_target: Option<f64>,
+    /// Hard cap on how many pre-seek frames are RETAINED, bounding warm-up memory on
+    /// huge-GOP / keyframe-less sources.
+    preseek_cap_remaining: u32,
+    at_eof: bool,
+    current_gen: u64,
+}
+
+/// Commands drained from the channel in one batch, merged so rapid duplicates don't
+/// fight each other (max preroll frames, OR-ed keep-preseek, latest seek wins).
+#[derive(Default)]
+struct DrainedCommands {
+    latest_seek: Option<(u64, f64)>,
+    pending_preroll: Option<(u32, bool)>,
+    set_playing: Option<bool>,
+    stop: bool,
+}
+
+impl DrainedCommands {
+    fn push(&mut self, cmd: DecoderCmd) {
+        match cmd {
+            DecoderCmd::Seek {
+                generation,
+                time_sec,
+            } => {
+                self.latest_seek = Some((generation, time_sec));
+            }
+            DecoderCmd::Prebuffer {
+                frames,
+                keep_preseek_frames,
+            } => {
+                // Take the max frames so multiple rapid Prebuffer commands don't reduce
+                // the budget, and OR the keep-preseek flag so a request that asked to
+                // cache the whole GOP (keep=true) is never downgraded by a later merge.
+                let (prev_frames, prev_keep) = self.pending_preroll.unwrap_or((0, false));
+                self.pending_preroll =
+                    Some((prev_frames.max(frames), prev_keep || keep_preseek_frames));
+            }
+            DecoderCmd::Play => self.set_playing = Some(true),
+            DecoderCmd::Pause => self.set_playing = Some(false),
+            DecoderCmd::Stop => self.stop = true,
+        }
+    }
+}
+
+/// Drains all currently-queued commands without blocking. Returns `None` if the
+/// command channel disconnected (the loop must terminate).
+fn drain_pending_commands(cmd_rx: &Receiver<DecoderCmd>) -> Option<DrainedCommands> {
+    let mut drained = DrainedCommands::default();
+    loop {
+        match cmd_rx.try_recv() {
+            Ok(cmd) => {
+                drained.push(cmd);
+                if drained.stop {
+                    break;
+                }
+            }
+            Err(TryRecvError::Empty) => break,
+            Err(TryRecvError::Disconnected) => return None,
+        }
+    }
+    Some(drained)
+}
+
+/// Applies a batch of drained commands to the schedule state, performing the actual
+/// `decoder.seek` when a seek was requested. A fresh seek discards any leftover preroll
+/// budget; a bare Prebuffer extends the forward budget at the current playhead.
+fn apply_drained_commands(
+    decoder: &mut Box<dyn super::decode::VideoDecoder>,
+    state: &mut ScheduleState,
+    drained: DrainedCommands,
+) {
+    if let Some(playing) = drained.set_playing {
+        state.playing = playing;
+    }
+    if let Some((generation, time_sec)) = drained.latest_seek {
+        state.current_gen = generation;
+        if let Some((frames, keep)) = drained.pending_preroll {
+            state.preroll_remaining = frames;
+            state.preroll_keep_preseek = keep;
+            state.preseek_cap_remaining = frames;
+        } else {
+            state.preroll_remaining = 0;
+            state.preroll_keep_preseek = false;
+            state.preseek_cap_remaining = 0;
+        }
+        // Must decode through the GOP to this exact target before parking, so the
+        // displayed paused frame is the playhead frame, not a near-keyframe one.
+        state.preseek_target = Some(time_sec);
+        if let Err(e) = decoder.seek(time_sec) {
+            // A failed seek must not kill the decode thread permanently: the layer
+            // would freeze forever with no retry. Park as if at EOF; a later seek
+            // (e.g. another user scrub) resets this and retries.
+            log::error!("[decode] seek({time_sec}) failed: {e:?}");
+            state.at_eof = true;
+            state.decoded_after_seek = true;
+            state.preseek_target = None;
+        } else {
+            state.at_eof = false;
+            state.decoded_after_seek = false;
+        }
+    } else if let Some((frames, keep)) = drained.pending_preroll {
+        // Prebuffer without an accompanying seek (already positioned past any prior
+        // target): keep decoding forward from here. No pre-seek phase.
+        state.preroll_remaining = state.preroll_remaining.max(frames);
+        state.preroll_keep_preseek = keep;
+        state.preseek_cap_remaining = state.preseek_cap_remaining.max(frames);
+    }
+}
+
+/// Uploads a decoded frame to a pooled GPU texture, converting YUV on the GPU when
+/// available and falling back to a plain RGBA `write_texture` otherwise. Returns
+/// `false` on a transient YUV upload failure, signalling the caller to skip this frame
+/// (the loop should `continue`); `true` once `frame.texture` is populated.
+fn upload_frame_to_gpu(
+    frame: &mut VideoFrame,
+    device: &wgpu::Device,
+    queue: &wgpu::Queue,
+    texture_pool: &super::GpuTexturePool,
+    yuv_pipeline: &mut Option<YuvToRgbaPipeline>,
+    yuv_upload_failures: &mut u32,
+    prefer_yuv: &mut bool,
+) -> bool {
+    let tex = {
+        let mut pool = texture_pool.lock();
+        let slot = pool.entry((frame.width, frame.height)).or_default();
+        slot.pop().unwrap_or_else(|| {
+            device.create_texture(&wgpu::TextureDescriptor {
+                label: Some("decode-gpu-frame"),
+                size: wgpu::Extent3d {
+                    width: frame.width,
+                    height: frame.height,
+                    depth_or_array_layers: 1,
+                },
+                mip_level_count: 1,
+                sample_count: 1,
+                dimension: wgpu::TextureDimension::D2,
+                format: wgpu::TextureFormat::Rgba8Unorm,
+                usage: wgpu::TextureUsages::COPY_DST
+                    | wgpu::TextureUsages::TEXTURE_BINDING
+                    | wgpu::TextureUsages::COPY_SRC
+                    | wgpu::TextureUsages::STORAGE_BINDING,
+                view_formats: &[],
+            })
+        })
+    };
+    if let Some(yuv) = frame.yuv.as_ref() {
+        let pipeline = yuv_pipeline.get_or_insert_with(|| YuvToRgbaPipeline::new(device, None));
+        match pipeline.upload_and_convert(device, queue, yuv, frame.width, frame.height, &tex) {
+            Ok(()) => {
+                *yuv_upload_failures = 0;
+                frame.texture = Some(Arc::new(super::decode::SharedTexture::new_owned(
+                    tex,
+                    texture_pool.clone(),
+                )));
+            }
+            Err(error) => {
+                // The dispatch failed but the texture itself is intact and unused —
+                // return it to the pool instead of dropping it, so a transient failure
+                // does not slowly drain the pooled slots.
+                {
+                    let mut pool = texture_pool.lock();
+                    let slot = pool.entry((frame.width, frame.height)).or_default();
+                    if slot.len() < super::decode::MAX_TEXTURES_PER_SIZE {
+                        slot.push(tex);
+                    }
+                }
+                *yuv_upload_failures += 1;
+                if *yuv_upload_failures >= YUV_UPLOAD_FAILURE_LIMIT {
+                    log::warn!(
+                        "[decode] YUV GPU upload failed {yuv_upload_failures}× — \
+                         disabling YUV fast path, falling back to RGBA decode: {error:?}"
+                    );
+                    *prefer_yuv = false;
+                } else {
+                    log::warn!(
+                        "[decode] YUV GPU upload failed ({yuv_upload_failures}/\
+                         {YUV_UPLOAD_FAILURE_LIMIT}), retrying YUV fast path: {error:?}"
+                    );
+                }
+                return false;
+            }
+        }
+    } else {
+        queue.write_texture(
+            wgpu::TexelCopyTextureInfo {
+                texture: &tex,
+                mip_level: 0,
+                origin: wgpu::Origin3d::ZERO,
+                aspect: wgpu::TextureAspect::All,
+            },
+            &frame.pixels,
+            wgpu::TexelCopyBufferLayout {
+                offset: 0,
+                bytes_per_row: Some(frame.width * 4),
+                rows_per_image: Some(frame.height),
+            },
+            wgpu::Extent3d {
+                width: frame.width,
+                height: frame.height,
+                depth_or_array_layers: 1,
+            },
+        );
+        frame.texture = Some(Arc::new(super::decode::SharedTexture::new_owned(
+            tex,
+            texture_pool.clone(),
+        )));
+    }
+    true
+}
+
 fn run_decoder_loop(args: DecoderLoopArgs) {
     let DecoderLoopArgs {
         mut decoder,
@@ -247,215 +477,78 @@ fn run_decoder_loop(args: DecoderLoopArgs) {
         queue,
         texture_pool,
     } = args;
-    let mut playing = false;
-    let mut decoded_after_seek = false;
-    // Frames still owed to an in-flight `Prebuffer` request: while > 0 the (paused)
-    // decoder keeps decoding forward instead of parking after the first frame. Hard
-    // cap on warm-up memory (see `DecoderCmd::Prebuffer`).
-    let mut preroll_remaining: u32 = 0;
-    // Whether the active Prebuffer should emit pre-seek frames (opportunistic caching).
-    let mut preroll_keep_preseek: bool = false;
-    // Seek target (stream-time seconds) not yet reached after the last seek. While it is
-    // `Some`, decoded intra-GOP frames whose PTS lies before it are "pre-seek" frames: they
-    // are retained only for backward-scrub caching and must NOT consume the forward preroll
-    // budget, and the decoder must NOT park before a frame at/after the target is emitted.
-    // Without this, a long-GOP / 4K paused warm-up spends its whole (tiny) preroll budget on
-    // near-keyframe frames and parks, so the monitor displays a frame seconds behind the
-    // playhead instead of the playhead frame.
-    let mut preseek_target: Option<f64> = None;
-    // Hard cap on how many pre-seek frames are RETAINED (emitted) for caching, bounding
-    // warm-up memory on huge-GOP / keyframe-less sources. Once exhausted the decoder keeps
-    // decoding toward the target but stops keeping pre-seek frames (they are discarded).
-    let mut preseek_cap_remaining: u32 = 0;
     // PTS tolerance for "reached the seek target", matching the decoder's own intra-GOP skip.
     let seek_tolerance_sec = 0.5 / decoder.info().fps.max(1.0);
-    let mut current_gen = gen.load(Ordering::SeqCst);
-    let mut at_eof = false;
     let mut prefer_yuv = device.is_some() && queue.is_some();
     let mut yuv_pipeline: Option<YuvToRgbaPipeline> = None;
-    // Consecutive YUV→RGBA GPU upload failures. A single failure can be transient
-    // (e.g. a momentary allocation hiccup), so we keep the fast path and only fall
-    // back to RGBA-on-CPU permanently once it fails repeatedly — a persistent failure
-    // signals a real device problem. Reset on every success.
     let mut yuv_upload_failures: u32 = 0;
-    const YUV_UPLOAD_FAILURE_LIMIT: u32 = 3;
+    let mut state = ScheduleState {
+        playing: false,
+        decoded_after_seek: false,
+        preroll_remaining: 0,
+        preroll_keep_preseek: false,
+        preseek_target: None,
+        preseek_cap_remaining: 0,
+        at_eof: false,
+        current_gen: gen.load(Ordering::SeqCst),
+    };
 
     loop {
-        // 1) Обработать все накопившиеся команды.
-        let mut latest_seek = None;
-        let mut pending_preroll: Option<(u32, bool)> = None;
-        let mut stop = false;
-
-        loop {
-            match cmd_rx.try_recv() {
-                Ok(DecoderCmd::Seek {
-                    generation,
-                    time_sec,
-                }) => {
-                    latest_seek = Some((generation, time_sec));
-                }
-                Ok(DecoderCmd::Prebuffer {
-                    frames,
-                    keep_preseek_frames,
-                }) => {
-                    // Take the max frames so multiple rapid Prebuffer commands don't
-                    // reduce the budget, and OR the keep-preseek flag so a request that
-                    // asked to cache the whole GOP (keep=true) is never downgraded by a
-                    // later keep=false merge.
-                    let (prev_frames, prev_keep) = pending_preroll.unwrap_or((0, false));
-                    pending_preroll =
-                        Some((prev_frames.max(frames), prev_keep || keep_preseek_frames));
-                }
-                Ok(DecoderCmd::Play) => {
-                    playing = true;
-                }
-                Ok(DecoderCmd::Pause) => {
-                    playing = false;
-                }
-                Ok(DecoderCmd::Stop) => {
-                    stop = true;
-                    break;
-                }
-                Err(TryRecvError::Empty) => break,
-                Err(TryRecvError::Disconnected) => return,
-            }
-        }
-
-        if stop {
+        // 1) Drain and apply all queued commands non-blocking.
+        let Some(drained) = drain_pending_commands(&cmd_rx) else {
+            return;
+        };
+        if drained.stop {
             return;
         }
+        apply_drained_commands(&mut decoder, &mut state, drained);
 
-        if let Some((generation, time_sec)) = latest_seek {
-            current_gen = generation;
-            // A fresh seek discards any leftover preroll budget — only the warm-up
-            // requested for THIS position (if any) applies.
-            if let Some((frames, keep)) = pending_preroll {
-                preroll_remaining = frames;
-                preroll_keep_preseek = keep;
-                preseek_cap_remaining = frames;
-            } else {
-                preroll_remaining = 0;
-                preroll_keep_preseek = false;
-                preseek_cap_remaining = 0;
-            }
-            // Must decode through the GOP to this exact target before parking, so the
-            // displayed paused frame is the playhead frame, not a near-keyframe one.
-            preseek_target = Some(time_sec);
-            if let Err(e) = decoder.seek(time_sec) {
-                // A failed seek must not kill the decode thread permanently: the
-                // layer would freeze forever with no retry. Park until the next
-                // command (e.g. another seek from the user) and try again then.
-                log::error!("[decode] seek({time_sec}) failed: {e:?}");
-                at_eof = true;
-                decoded_after_seek = true;
-                preseek_target = None;
-            } else {
-                at_eof = false;
-                decoded_after_seek = false;
-            }
-        } else if let Some((frames, keep)) = pending_preroll {
-            // Prebuffer without an accompanying seek (already positioned past any prior
-            // target): keep decoding forward from here. No pre-seek phase.
-            preroll_remaining = preroll_remaining.max(frames);
-            preroll_keep_preseek = keep;
-            preseek_cap_remaining = preseek_cap_remaining.max(frames);
-        }
-
-        // Если мы не проигрываем, и уже декодировали один кадр после seek, то нам нечего делать — ждём команду блокирующе.
-        // Пока есть невыбранный preroll-бюджет ИЛИ ещё не достигнут seek-target — не
-        // паркуемся, декодим кадры вперёд.
-        if (!playing && preroll_remaining == 0 && preseek_target.is_none() && decoded_after_seek)
-            || at_eof
+        // 2) Nothing to do (paused, no budget, target reached, one frame already shown)
+        // or at EOF — block until the next command, apply it, and re-evaluate.
+        if (!state.playing
+            && state.preroll_remaining == 0
+            && state.preseek_target.is_none()
+            && state.decoded_after_seek)
+            || state.at_eof
         {
             match cmd_rx.recv() {
                 Ok(cmd) => {
-                    let mut latest_seek = None;
-                    let mut pending_preroll: Option<(u32, bool)> = None;
-                    let mut stop = false;
-
-                    let mut process_cmd = |cmd: DecoderCmd| match cmd {
-                        DecoderCmd::Seek {
-                            generation,
-                            time_sec,
-                        } => {
-                            latest_seek = Some((generation, time_sec));
+                    let mut drained = DrainedCommands::default();
+                    drained.push(cmd);
+                    match drain_pending_commands(&cmd_rx) {
+                        Some(rest) => {
+                            if let Some((g, t)) = rest.latest_seek {
+                                drained.latest_seek = Some((g, t));
+                            }
+                            if let Some((frames, keep)) = rest.pending_preroll {
+                                let (pf, pk) = drained.pending_preroll.unwrap_or((0, false));
+                                drained.pending_preroll = Some((pf.max(frames), pk || keep));
+                            }
+                            if let Some(p) = rest.set_playing {
+                                drained.set_playing = Some(p);
+                            }
+                            drained.stop |= rest.stop;
                         }
-                        DecoderCmd::Prebuffer {
-                            frames,
-                            keep_preseek_frames,
-                        } => {
-                            // Max frames, OR keep-preseek (see the merge in the main loop).
-                            let (prev_frames, prev_keep) = pending_preroll.unwrap_or((0, false));
-                            pending_preroll =
-                                Some((prev_frames.max(frames), prev_keep || keep_preseek_frames));
-                        }
-                        DecoderCmd::Play => {
-                            playing = true;
-                        }
-                        DecoderCmd::Pause => {
-                            playing = false;
-                        }
-                        DecoderCmd::Stop => {
-                            stop = true;
-                        }
-                    };
-
-                    process_cmd(cmd);
-
-                    loop {
-                        match cmd_rx.try_recv() {
-                            Ok(cmd) => process_cmd(cmd),
-                            Err(TryRecvError::Empty) => break,
-                            Err(TryRecvError::Disconnected) => return,
-                        }
+                        None => return,
                     }
-
-                    if stop {
+                    if drained.stop {
                         return;
                     }
-
-                    if let Some((generation, time_sec)) = latest_seek {
-                        current_gen = generation;
-                        if let Some((frames, keep)) = pending_preroll {
-                            preroll_remaining = frames;
-                            preroll_keep_preseek = keep;
-                            preseek_cap_remaining = frames;
-                        } else {
-                            preroll_remaining = 0;
-                            preroll_keep_preseek = false;
-                            preseek_cap_remaining = 0;
-                        }
-                        preseek_target = Some(time_sec);
-                        if let Err(e) = decoder.seek(time_sec) {
-                            // Stay alive and parked; a later seek can recover.
-                            log::error!("[decode] seek({time_sec}) failed: {e:?}");
-                            at_eof = true;
-                            decoded_after_seek = true;
-                            preseek_target = None;
-                        } else {
-                            at_eof = false;
-                            decoded_after_seek = false;
-                        }
-                    } else if let Some((frames, keep)) = pending_preroll {
-                        // Warm-up at the already-positioned playhead: decode forward.
-                        preroll_remaining = preroll_remaining.max(frames);
-                        preroll_keep_preseek = keep;
-                        preseek_cap_remaining = preseek_cap_remaining.max(frames);
-                    }
+                    apply_drained_commands(&mut decoder, &mut state, drained);
                     continue;
                 }
                 Err(_) => return,
             }
         }
 
-        // 3) Тянем следующий кадр. Во время Prebuffer с keep_preseek=true используем
-        // next_frame_keep_preseek*, чтобы кадры до seek-target также попали в кэш.
-        // Retain pre-seek (intra-GOP) frames only while warming up toward an unreached
-        // seek target AND the retention cap is not yet spent. Once the target is reached
-        // (`preseek_target == None`) or the cap is spent, fall back to the skipping decode
-        // so the decoder advances to the target without retaining more GOP interior.
-        let keep_preseek_now =
-            preroll_keep_preseek && preseek_target.is_some() && preseek_cap_remaining > 0;
+        // 3) Pull the next frame. During Prebuffer with keep_preseek=true use the
+        // *_keep_preseek* variants so intra-GOP frames before the seek target also land in
+        // the cache. Retain pre-seek frames only while warming up toward an unreached
+        // target AND the retention cap is not spent; otherwise fall back to the skipping
+        // decode so the decoder advances to the target without retaining more GOP interior.
+        let keep_preseek_now = state.preroll_keep_preseek
+            && state.preseek_target.is_some()
+            && state.preseek_cap_remaining > 0;
         let decoded = if keep_preseek_now {
             if prefer_yuv {
                 decoder.next_frame_keep_preseek_for_gpu()
@@ -469,148 +562,63 @@ fn run_decoder_loop(args: DecoderLoopArgs) {
         };
         match decoded {
             Ok(Some(mut frame)) => {
-                // Если consumer уже сделал seek во время нашего read_exact —
-                // отбросим этот кадр, не нагружая канал. Generation atomics свежее.
-                let live_gen = gen.load(Ordering::SeqCst);
-                if live_gen != current_gen {
+                // If the consumer seeked while we were decoding, drop this frame without
+                // loading the channel. The generation atomic is fresher than current_gen.
+                if gen.load(Ordering::SeqCst) != state.current_gen {
                     continue;
                 }
 
-                // Загружаем кадр на GPU, если доступны device и queue
                 if let (Some(device), Some(queue)) = (&device, &queue) {
-                    let tex = {
-                        let mut pool = texture_pool.lock();
-                        let slot = pool.entry((frame.width, frame.height)).or_default();
-                        slot.pop().unwrap_or_else(|| {
-                            device.create_texture(&wgpu::TextureDescriptor {
-                                label: Some("decode-gpu-frame"),
-                                size: wgpu::Extent3d {
-                                    width: frame.width,
-                                    height: frame.height,
-                                    depth_or_array_layers: 1,
-                                },
-                                mip_level_count: 1,
-                                sample_count: 1,
-                                dimension: wgpu::TextureDimension::D2,
-                                format: wgpu::TextureFormat::Rgba8Unorm,
-                                usage: wgpu::TextureUsages::COPY_DST
-                                    | wgpu::TextureUsages::TEXTURE_BINDING
-                                    | wgpu::TextureUsages::COPY_SRC
-                                    | wgpu::TextureUsages::STORAGE_BINDING,
-                                view_formats: &[],
-                            })
-                        })
-                    };
-                    if let Some(yuv) = frame.yuv.as_ref() {
-                        let pipeline = yuv_pipeline
-                            .get_or_insert_with(|| YuvToRgbaPipeline::new(device, None));
-                        match pipeline.upload_and_convert(
-                            device,
-                            queue,
-                            yuv,
-                            frame.width,
-                            frame.height,
-                            &tex,
-                        ) {
-                            Ok(()) => {
-                                yuv_upload_failures = 0;
-                                let shared_tex = Arc::new(super::decode::SharedTexture::new_owned(
-                                    tex,
-                                    texture_pool.clone(),
-                                ));
-                                frame.texture = Some(shared_tex);
-                            }
-                            Err(error) => {
-                                // The dispatch failed but the texture itself is intact and
-                                // unused — return it to the pool instead of dropping it, so a
-                                // transient failure does not slowly drain the pooled slots.
-                                {
-                                    let mut pool = texture_pool.lock();
-                                    let slot = pool.entry((frame.width, frame.height)).or_default();
-                                    if slot.len() < super::decode::MAX_TEXTURES_PER_SIZE {
-                                        slot.push(tex);
-                                    }
-                                }
-                                yuv_upload_failures += 1;
-                                if yuv_upload_failures >= YUV_UPLOAD_FAILURE_LIMIT {
-                                    log::warn!(
-                                        "[decode] YUV GPU upload failed {yuv_upload_failures}× — \
-                                         disabling YUV fast path, falling back to RGBA decode: {error:?}"
-                                    );
-                                    prefer_yuv = false;
-                                } else {
-                                    log::warn!(
-                                        "[decode] YUV GPU upload failed ({yuv_upload_failures}/\
-                                         {YUV_UPLOAD_FAILURE_LIMIT}), retrying YUV fast path: {error:?}"
-                                    );
-                                }
-                                continue;
-                            }
-                        }
-                    } else {
-                        queue.write_texture(
-                            wgpu::TexelCopyTextureInfo {
-                                texture: &tex,
-                                mip_level: 0,
-                                origin: wgpu::Origin3d::ZERO,
-                                aspect: wgpu::TextureAspect::All,
-                            },
-                            &frame.pixels,
-                            wgpu::TexelCopyBufferLayout {
-                                offset: 0,
-                                bytes_per_row: Some(frame.width * 4),
-                                rows_per_image: Some(frame.height),
-                            },
-                            wgpu::Extent3d {
-                                width: frame.width,
-                                height: frame.height,
-                                depth_or_array_layers: 1,
-                            },
-                        );
-                        let shared_tex = Arc::new(super::decode::SharedTexture::new_owned(
-                            tex,
-                            texture_pool.clone(),
-                        ));
-                        frame.texture = Some(shared_tex);
+                    if !upload_frame_to_gpu(
+                        &mut frame,
+                        device,
+                        queue,
+                        &texture_pool,
+                        &mut yuv_pipeline,
+                        &mut yuv_upload_failures,
+                        &mut prefer_yuv,
+                    ) {
+                        continue;
                     }
                 }
 
                 let frame_pts = frame.pts_sec;
                 let msg = DecodedFrameMsg {
-                    generation: current_gen,
+                    generation: state.current_gen,
                     frame,
                 };
                 if frame_tx.send(msg).is_err() {
                     return; // consumer ушёл
                 }
-                decoded_after_seek = true;
+                state.decoded_after_seek = true;
                 // Account the emitted frame. A "pre-seek" frame (PTS before the active seek
                 // target) is an intra-GOP frame retained only for backward-scrub caching: it
                 // spends the retention cap but must NOT consume the forward preroll budget nor
                 // count as reaching the target. Only a frame at/after the target clears the
                 // target and spends the forward budget — guaranteeing the displayed paused
                 // frame is the playhead frame, not a near-keyframe one.
-                let is_preseek =
-                    preseek_target.is_some_and(|target| frame_pts < target - seek_tolerance_sec);
+                let is_preseek = state
+                    .preseek_target
+                    .is_some_and(|target| frame_pts < target - seek_tolerance_sec);
                 if is_preseek {
-                    preseek_cap_remaining = preseek_cap_remaining.saturating_sub(1);
+                    state.preseek_cap_remaining = state.preseek_cap_remaining.saturating_sub(1);
                 } else {
-                    preseek_target = None;
-                    preroll_remaining = preroll_remaining.saturating_sub(1);
+                    state.preseek_target = None;
+                    state.preroll_remaining = state.preroll_remaining.saturating_sub(1);
                 }
                 if let Some(ref cb) = on_frame_decoded {
                     cb();
                 }
             }
             Ok(None) => {
-                at_eof = true;
+                state.at_eof = true;
             }
             Err(e) => {
-                // Don't tear down the thread on a transient decode error — that
-                // would freeze the layer with no way back. Park as if at EOF; a
-                // subsequent seek resets `at_eof` and retries decoding.
+                // Don't tear down the thread on a transient decode error — that would
+                // freeze the layer with no way back. Park as if at EOF; a subsequent seek
+                // resets `at_eof` and retries decoding.
                 log::error!("[decode] next_frame failed: {e:?}");
-                at_eof = true;
+                state.at_eof = true;
             }
         }
     }

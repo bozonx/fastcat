@@ -1,4 +1,4 @@
-import { RenderTexture, Sprite, Texture, type Application, type Graphics } from 'pixi.js';
+import { Sprite, Texture, type Application, type Graphics, type RenderTexture } from 'pixi.js';
 import type { VideoClipEffect } from '~/timeline/types';
 import { buildEffectSpecs } from '~/effects';
 import type { CanvasFallbackRenderer } from './renderers/CanvasFallbackRenderer';
@@ -20,7 +20,6 @@ import type { TransitionRenderer } from './TransitionRenderer';
 import type { VideoFrameCache } from './VideoFrameCache';
 import type { CompositorClip } from './types';
 import type { PreviewEffectQuality } from '~/utils/preview-effect-quality';
-import { getExtractedPixelBytes } from './pixelExtraction';
 
 const log = createDevLogger('CompositorRenderContextBuilder');
 
@@ -246,7 +245,6 @@ export class CompositorRenderContextBuilder {
             continue;
           }
 
-          const rt = RenderTexture.create({ width: state.width, height: state.height });
           let bitmap: ImageBitmap | null = null;
           try {
             // Render the track content with its composite alpha/blendMode
@@ -258,21 +256,16 @@ export class CompositorRenderContextBuilder {
             container.alpha = 1;
             container.blendMode = 'normal';
             try {
-              params.stageTextureRenderer.renderDisplayObjectToTextureForcedVisible(container, rt);
+              bitmap =
+                await params.stageTextureRenderer.renderDisplayObjectToBitmapForcedVisible(
+                  container,
+                );
             } finally {
               container.alpha = prevAlpha;
               container.blendMode = prevBlend;
             }
 
-            const pixels = app.renderer.extract.pixels(rt);
-            const offscreen = new OffscreenCanvas(state.width, state.height);
-            const ctx = offscreen.getContext('2d');
-            if (!ctx) continue;
-            const imageData = ctx.createImageData(state.width, state.height);
-            const pixelBytes = getExtractedPixelBytes(pixels);
-            imageData.data.set(pixelBytes);
-            ctx.putImageData(imageData, 0, 0);
-            bitmap = await createImageBitmap(offscreen);
+            if (!bitmap) continue;
 
             const processed = await runner.applyEffects(bitmap, specs);
             if (!processed) continue;
@@ -312,7 +305,6 @@ export class CompositorRenderContextBuilder {
           } catch (err) {
             log.warn('[Compositor] Track WebGPU effects failed:', err);
           } finally {
-            rt.destroy();
             bitmap?.close();
           }
         }
