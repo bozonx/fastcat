@@ -1028,16 +1028,11 @@ fn spatial_scale(height: u32) -> f32 {
 // the shader's tap budget the tap step grows and bilinear filtering keeps the
 // result smooth (no banding / no per-frame popping), so large animated radii
 // are safe and continuous.
-const MAX_BLUR_RADIUS: f32 = 1024.0;
-const MAX_BLOOM_RADIUS: f32 = 512.0;
-const MAX_COLOR_MULTIPLIER: f32 = 4.0;
-const MAX_BLOOM_STRENGTH: f32 = 4.0;
-const MAX_CHROMATIC_ABERRATION: f32 = 256.0;
-const MAX_LEVELS_GAMMA: f32 = 16.0;
-const MAX_SHARPEN: f32 = 4.0;
-const MAX_PIXELATE: f32 = 256.0;
-/// Max fore/background scale for the blur-fill effect.
-const MAX_BLUR_FILL_SCALE: f32 = 8.0;
+//
+// The values are defined once in `shared/effects/render-ceilings.json` and
+// emitted as `const MAX_*: f32` by `build.rs`, so they stay identical to the
+// web pass builder (which imports the same JSON). Edit the JSON, not here.
+include!(concat!(env!("OUT_DIR"), "/render_ceilings.rs"));
 
 /// Pick a scratch buffer (`Ping`/`Pong`/`Aux`) not in `avoid`. Linear chains
 /// only ever exclude one buffer, so they alternate ping/pong and never touch

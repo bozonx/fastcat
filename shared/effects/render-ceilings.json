@@ -1,0 +1,12 @@
+{
+  "_comment": "Single source of truth for the hard render ceilings applied to every effect value before it reaches the GPU. These are the absolute clamps (and the max an animation key can reach). Consumed by BOTH backends so they can never drift: the web pass builder imports this file (effect-render-ceilings.ts) and the Rust pass builder generates its constants from it at compile time (src-tauri/build.rs -> render_ceilings.rs). Edit values HERE only; both sides follow automatically.",
+  "maxBlurRadius": 1024.0,
+  "maxBloomRadius": 512.0,
+  "maxColorMultiplier": 4.0,
+  "maxBloomStrength": 4.0,
+  "maxChromaticAberration": 256.0,
+  "maxLevelsGamma": 16.0,
+  "maxSharpen": 4.0,
+  "maxPixelate": 256.0,
+  "maxBlurFillScale": 8.0
+}

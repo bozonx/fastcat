@@ -369,6 +369,13 @@ impl TransitionPipeline {
             EffectSource::Gpu(tex) => (tex.width(), tex.height()),
         };
 
+        // Backend-parity contract: native receives raw decoded frames that may
+        // differ in size, so it runs the transition at `max(from, to)` and
+        // blits each input up to it (see `prepare_input` / `BLIT_SHADER`). The
+        // web path instead requires equal-size inputs and runs at that size
+        // (see `WebGpuComputeRunner` runTransition). The blend result matches:
+        // every transition shader samples with normalized UVs, so only the
+        // sampling resolution differs.
         let width = w_from.max(w_to);
         let height = h_from.max(h_to);
         if width == 0 || height == 0 {

@@ -10,24 +10,22 @@ import {
   previewEffectQualityTapBudget,
   type PreviewEffectQuality,
 } from '~/utils/preview-effect-quality';
+import {
+  MAX_BLUR_RADIUS,
+  MAX_BLOOM_RADIUS,
+  MAX_COLOR_MULTIPLIER,
+  MAX_BLOOM_STRENGTH,
+  MAX_CHROMATIC_ABERRATION,
+  MAX_LEVELS_GAMMA,
+  MAX_SHARPEN,
+  MAX_PIXELATE,
+  MAX_BLUR_FILL_SCALE,
+} from '~/utils/video-editor/compositor/effect-render-ceilings';
 
 const log = createDevLogger('WebGpuComputeRunner');
 
 const UNIFORM_SIZE = 48; // 12 * 4 bytes
 const TRANSITION_UNIFORM_SIZE = 64;
-// Hard render ceilings — must stay byte-identical to the Rust side
-// (`src-tauri/src/compositor/effects/mod.rs`). These bound every value reaching
-// the GPU and are the ceiling an animation key can reach; the frontend
-// `renderMin/renderMax` in `video-manifests.ts` mirror them.
-const MAX_BLUR_RADIUS = 1024.0;
-const MAX_BLOOM_RADIUS = 512.0;
-const MAX_COLOR_MULTIPLIER = 4.0;
-const MAX_BLOOM_STRENGTH = 4.0;
-const MAX_CHROMATIC_ABERRATION = 256.0;
-const MAX_LEVELS_GAMMA = 16.0;
-const MAX_SHARPEN = 4.0;
-const MAX_PIXELATE = 256.0;
-const MAX_BLUR_FILL_SCALE = 8.0;
 
 export interface EffectUniform {
   mode: number;
@@ -1122,6 +1120,14 @@ export class WebGpuComputeRunner {
 
     const width = Math.max(1, Math.round(params.to.width));
     const height = Math.max(1, Math.round(params.to.height));
+    // Backend-parity contract: the web path requires both inputs to already be
+    // the same size (the caller composites/scales them to the output frame
+    // before this call) and runs the transition at that size. The native path
+    // (`src-tauri/src/compositor/transitions/mod.rs`) instead receives raw
+    // decoded frames at differing resolutions and blits each up to `max(from,
+    // to)` internally — hence its blit shader has no web counterpart. The blend
+    // math is identical because every transition shader samples with normalized
+    // UVs; only the sampling resolution differs (benign).
     if (params.from.width !== width || params.from.height !== height) {
       throw new Error('Transition inputs must have identical dimensions.');
     }
