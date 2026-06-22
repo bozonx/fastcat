@@ -1,9 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import { clamp } from '../../utils/math';
-import { useWheelSupport } from '../../composables/useWheelSupport';
-import { useWorkspaceStore } from '../../stores/workspace.store';
-import { isLayer1Active } from '../../utils/hotkeys/layerUtils';
+import { useWheelControl } from '~/composables/ui/useWheelControl';
 
 interface UiWheelSliderProps {
   modelValue: number;
@@ -104,17 +102,14 @@ const value = computed({
   },
 });
 
-const wrapperRef = ref<HTMLElement | null>(null);
-const workspaceStore = useWorkspaceStore();
-
-useWheelSupport({
-  wrapperRef,
-  disabled: () => props.disabled,
-  step: () => props.step,
-  wheelStepMultiplier: () => props.wheelStepMultiplier,
-  useWheelStepMultiplier: (e) => isLayer1Active(e, workspaceStore.userSettings),
-  focusOnly: computed(() => !props.wheelWithoutFocus).value,
-  onWheelStep: (direction, wheelStep, precision) => {
+const { wrapperRef } = useWheelControl(
+  {
+    disabled: () => props.disabled,
+    step: () => props.step,
+    wheelStepMultiplier: () => props.wheelStepMultiplier,
+    focusOnly: () => !props.wheelWithoutFocus,
+  },
+  (direction, wheelStep, precision) => {
     const current = Number(props.modelValue);
     const safeCurrent = Number.isFinite(current) ? current : props.min;
 
@@ -128,7 +123,7 @@ useWheelSupport({
     const clamped = clampValue(rounded);
     emit('update:modelValue', clamped);
   },
-});
+);
 
 function resetToDefault() {
   if (props.disabled) return;

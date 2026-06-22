@@ -35,7 +35,7 @@ const transitionOptions = computed(() =>
 <template>
   <PropertySection
     v-if="props.isVideoTrack"
-    v-model:toggle-value="isEnabled"
+    v-model:enabled="isEnabled"
     :title="t('fastcat.timeline.transitions')"
     has-toggle
   >

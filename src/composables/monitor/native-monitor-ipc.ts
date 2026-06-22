@@ -121,6 +121,10 @@ export const nativeMonitorIpc = {
   setOutputGain(gain: number): Promise<void> {
     return invoke('monitor_set_output_gain', { gain });
   },
+  /** Timeline master gain. Updates the native mixer without rebuilding the scene. */
+  setMasterGain(gain: number): Promise<void> {
+    return invoke('monitor_set_master_gain', { gain });
+  },
   close(): Promise<void> {
     return invoke('monitor_close');
   },

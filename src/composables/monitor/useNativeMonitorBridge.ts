@@ -365,11 +365,11 @@ export function useNativeMonitorBridge(): void {
     { deep: true, immediate: true },
   );
 
-  // Master gain/muted — debounced to avoid a scene-rebuild storm during drag.
-  // The WebAudio engine already reacts instantly via the monitor-core wiring,
-  // so a small delay for the native monitor scene is imperceptible.
+  // Master gain is updated through TauriAudioEngine's dedicated live IPC.
+  // Master mute still changes the scene because it is part of the persisted
+  // timeline mix state and must stay shared with export.
   watch(
-    [() => timelineStore.masterGain, () => timelineStore.audioMuted],
+    () => timelineStore.audioMuted,
     () => {
       scheduleSyncScene(100);
     },

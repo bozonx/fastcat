@@ -1304,7 +1304,6 @@ export class AudioMixer {
       let playDurationS = baseClipDurationS;
       let effectiveClipStartS = clipStartS;
       let effectiveOffsetS = rawOffsetS;
-      let extraSourceTailS = 0;
 
       const transitionOut = clipData.transitionOut ?? clipData.fastcat?.transitionOut;
       if (
@@ -1318,8 +1317,6 @@ export class AudioMixer {
           // For reversed clips the "tail" of the timeline corresponds to the
           // start of the source, so the source-start must move earlier.
           effectiveOffsetS = Math.max(0, effectiveOffsetS - outExtensionS * speed);
-        } else {
-          extraSourceTailS += outExtensionS * speed;
         }
       }
 
@@ -1332,11 +1329,7 @@ export class AudioMixer {
         const inExtensionS = usToS(Number(transitionIn.durationUs));
         playDurationS += inExtensionS;
         effectiveClipStartS = Math.max(0, clipStartS - inExtensionS);
-        if (reversed) {
-          // For reversed clips the "head" of the timeline corresponds to the
-          // end of the source, so we instead need to read more from the tail.
-          extraSourceTailS += inExtensionS * speed;
-        } else {
+        if (!reversed) {
           effectiveOffsetS = Math.max(0, effectiveOffsetS - inExtensionS * speed);
         }
       }
@@ -1368,7 +1361,7 @@ export class AudioMixer {
 
         const offsetS = Math.max(0, effectiveOffsetS);
         const trackDurationS = (aTrack as { duration?: number }).duration;
-        const sourceWindowBaseS = playDurationS * speed + extraSourceTailS;
+        const sourceWindowBaseS = playDurationS * speed;
         const maxPlayableS = Math.max(
           0,
           (Number.isFinite(trackDurationS) ? Number(trackDurationS) : Number.POSITIVE_INFINITY) -

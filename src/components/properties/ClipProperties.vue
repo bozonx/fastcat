@@ -548,7 +548,7 @@ defineExpose({
 
       <div ref="effectsSectionRef">
         <ClipEffectsEditor
-          v-model:toggle-value="isVideoEffectsEnabled"
+          v-model:enabled="isVideoEffectsEnabled"
           target="video"
           :effects="clipVideoEffects"
           :title="t('fastcat.effects.videoTitle')"
@@ -589,7 +589,7 @@ defineExpose({
 
       <ClipEffectsEditor
         v-if="canEditAudioEffects"
-        v-model:toggle-value="isAudioEffectsEnabled"
+        v-model:enabled="isAudioEffectsEnabled"
         target="audio"
         :effects="clipAudioEffects"
         :has-toggle="true"

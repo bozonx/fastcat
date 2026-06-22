@@ -3,7 +3,7 @@ import { createDevLogger } from '~/utils/dev-logger';
 
 import UiModal from '~/components/ui/UiModal.vue';
 import UiConfirmModal from '~/components/ui/UiConfirmModal.vue';
-import { ref, computed } from 'vue';
+import { ref } from 'vue';
 import { useProjectStore } from '~/stores/project.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useTimelineStore } from '~/stores/timeline.store';
@@ -14,6 +14,8 @@ import AdvancedSettings from './AdvancedSettings.vue';
 import MetadataSettings from './MetadataSettings.vue';
 import StorageSettings from './StorageSettings.vue';
 import UiFormSectionHeader from '~/components/ui/UiFormSectionHeader.vue';
+import { useModalOpenModel } from '~/composables/ui/useModalOpenModel';
+
 const _log = createDevLogger('ProjectSettingsModal');
 const props = defineProps<{
   open: boolean;
@@ -30,10 +32,7 @@ const timelineStore = useTimelineStore();
 
 const storageStatsKey = ref(0);
 
-const isOpen = computed({
-  get: () => props.open,
-  set: (value) => emit('update:open', value),
-});
+const isOpen = useModalOpenModel(props, emit);
 
 const isClearProjectVardataConfirmOpen = ref(false);
 const isClearBackupsConfirmOpen = ref(false);

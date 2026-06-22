@@ -24,7 +24,7 @@ describe('export.store', () => {
   describe('resetExportProcessState', () => {
     it('resets all state properties to default values', () => {
       const store = useExportStore();
-      
+
       store.isExporting = false;
       store.exportProgress = 50;
       store.exportError = 'some error';
@@ -49,7 +49,7 @@ describe('export.store', () => {
 
     it('does not reset activeExportTaskId if isExporting is true', () => {
       const store = useExportStore();
-      
+
       store.isExporting = true;
       store.activeExportTaskId = 'task-id-123';
       store.exportProgress = 80;

@@ -2,6 +2,7 @@
 import UiModal from '~/components/ui/UiModal.vue';
 import { computed } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
+import { useModalOpenModel } from '~/composables/ui/useModalOpenModel';
 import ClipEffectsEditor from '~/components/effects/ClipEffectsEditor.vue';
 import type { AudioClipEffect, VideoClipEffect } from '~/timeline/types';
 
@@ -16,10 +17,7 @@ const emit = defineEmits<{
 const timelineStore = useTimelineStore();
 const { t } = useI18n();
 
-const isOpen = computed({
-  get: () => props.open,
-  set: (val) => emit('update:open', val),
-});
+const isOpen = useModalOpenModel(props, emit);
 
 const masterEffects = computed(
   () => (timelineStore.timelineDoc?.metadata?.fastcat?.masterEffects ?? []) as AudioClipEffect[],

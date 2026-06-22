@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import UiModal from '~/components/ui/UiModal.vue';
+import { useModalOpenModel } from '~/composables/ui/useModalOpenModel';
 
 const props = defineProps<{
   open: boolean;
@@ -17,10 +18,7 @@ const emit = defineEmits<{
 
 const { t } = useI18n();
 
-const isOpen = computed({
-  get: () => props.open,
-  set: (value) => emit('update:open', value),
-});
+const isOpen = useModalOpenModel(props, emit);
 
 const progressPercent = computed(() =>
   Math.max(0, Math.min(100, Math.round(props.progress * 100))),

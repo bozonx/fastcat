@@ -208,51 +208,64 @@ export function toNativeSceneAudioLayer(params: ToNativeSceneAudioLayerParams): 
     defaultAudioFadeCurve: descriptor.defaultAudioFadeCurve,
   });
 
-  // The video transition for the cut between two adjacent clips A→B renders in
-  // the *incoming* clip's window `[cut, cut+D)` (after the cut). Keep audio in
-  // lockstep with it:
-  //   - the OUTGOING clip plays D seconds of its tail/handle past the cut and
-  //     fades out over `[cut, cut+D)` (forward extension below);
-  //   - the INCOMING clip fades in over its own first D seconds `[cut, cut+D)`
-  //     with NO backward extension — `fadeInS` already covers the head, and the
-  //     extended head is exactly the source frames the video crossfade samples.
-  // Resolve the effective outgoing transition the same way the fade durations
-  // are (own `transitionOut`, else the next clip's inherited `transitionIn`), so
-  // a transition stored on either side still extends the outgoing tail.
-  const outgoingTransition = descriptor.transitionOut ?? params.next?.transitionIn ?? undefined;
-  const outDurUs = adjacentTransitionDurationUs(outgoingTransition);
+  // Adjacent transitions render as a true audio crossfade by extending the clip
+  // past the cut into its source handles, keyed off the clip's OWN transition —
+  // exactly like the web live engine (`buildClipPlaybackWindow`) and the export
+  // mixer (`AudioMixer`), and matching the native video compositor's
+  // `transition_head_source_pts_at` / `transition_tail_source_pts_at`:
+  //   - own `transitionOut` → play `D` seconds of the trailing handle past the
+  //     clip's end and fade out over it (the OUTGOING side of the cut);
+  //   - own `transitionIn` → start `D` seconds early on the leading handle and
+  //     fade in over it (the INCOMING side of the cut).
+  // The side that *owns* the transition object is the side that extends, so we
+  // never inherit the neighbour's transition for the structural extension (the
+  // fade *durations* still inherit via resolveEffectiveFadeDurationsSeconds).
+  // Earlier this only extended the outgoing tail and left the incoming clip
+  // un-shifted, which desynced the native monitor/export from the web engine on
+  // a transition stored as `transitionIn`.
+  const inDurUs = adjacentTransitionDurationUs(descriptor.transitionIn);
+  const outDurUs = adjacentTransitionDurationUs(descriptor.transitionOut);
 
   // Default (no crossfade): keep the clip's exact ranges and only override the
   // fades. The common case stays byte-for-byte identical to before plus de-click.
-  const timelineStartUs = startUs;
+  let timelineStartUs = startUs;
   let timelineDurationUs = durationUs;
   let layerSourceStartUs = sourceStartUs;
   let layerSourceRangeUs = sourceRangeDurationUs;
 
-  if (outDurUs > 0) {
-    // Extend the outgoing clip's tail past the cut so it overlaps the next clip
-    // and the two clips' fades cross over `[cut, cut+D)`, instead of dipping to
-    // silence at the butt seam. Mirrors the worker AudioMixer extension (incl.
-    // reverse and material clamping).
+  if (inDurUs > 0 || outDurUs > 0) {
+    // Mirrors the worker AudioMixer handle extension (incl. reverse and material
+    // clamping) so the native monitor + export agree with the web paths.
     let playDurationUs = Math.min(
       sourceRangeDurationUs / absSpeed,
       durationUs || sourceRangeDurationUs / absSpeed,
     );
+    let effectiveStartUs = startUs;
     let effectiveOffsetUs = sourceStartUs;
-    let extraSourceTailUs = 0;
 
-    playDurationUs += outDurUs;
-    if (reversed) {
-      effectiveOffsetUs = Math.max(0, effectiveOffsetUs - outDurUs * absSpeed);
-    } else {
-      extraSourceTailUs += outDurUs * absSpeed;
+    if (outDurUs > 0) {
+      playDurationUs += outDurUs;
+      if (reversed) {
+        // Reverse: the timeline tail maps to the start of the source, so the
+        // source-start moves earlier instead of reading a trailing handle.
+        effectiveOffsetUs = Math.max(0, effectiveOffsetUs - outDurUs * absSpeed);
+      }
+    }
+
+    if (inDurUs > 0) {
+      playDurationUs += inDurUs;
+      effectiveStartUs = Math.max(0, startUs - inDurUs);
+      if (!reversed) {
+        effectiveOffsetUs = Math.max(0, effectiveOffsetUs - inDurUs * absSpeed);
+      }
     }
 
     const offsetUs = Math.max(0, effectiveOffsetUs);
-    const sourceWindowBaseUs = playDurationUs * absSpeed + extraSourceTailUs;
+    const sourceWindowBaseUs = playDurationUs * absSpeed;
     const maxPlayableUs = Math.max(0, materialDurationUs - offsetUs);
     const finalSourceWindowUs = Math.min(sourceWindowBaseUs, maxPlayableUs);
 
+    timelineStartUs = effectiveStartUs;
     timelineDurationUs = finalSourceWindowUs / absSpeed;
     layerSourceStartUs = offsetUs;
     layerSourceRangeUs = finalSourceWindowUs;
@@ -267,11 +280,15 @@ export function toNativeSceneAudioLayer(params: ToNativeSceneAudioLayerParams): 
     source_start_sec: layerSourceStartUs / US_PER_SEC,
     source_range_duration_sec: Math.max(0, layerSourceRangeUs) / US_PER_SEC,
     speed: sanitizeNativeAudioSpeed(descriptor.speed),
+    // Gain stays split: the layer carries the clip-only gain and the native bus
+    // re-applies the track gain (a scalar — multiplying layer×bus reproduces the
+    // web merge exactly). Balance, however, can NOT be split: cascading two
+    // equal-power pans (layer then bus) ≠ the web's single StereoPanner over the
+    // *summed* balance. So we carry the already-merged (track+clip) balance here
+    // and neutralize the bus pan (see native-monitor-scene.ts), giving the same
+    // additive single-pan as the web live engine and export mixer.
     audio_gain: Math.max(0, clampFinite(descriptor.originalAudioGain ?? descriptor.audioGain, 1)),
-    audio_balance: Math.max(
-      -1,
-      Math.min(1, clampFinite(descriptor.originalAudioBalance ?? descriptor.audioBalance, 0)),
-    ),
+    audio_balance: Math.max(-1, Math.min(1, clampFinite(descriptor.audioBalance, 0))),
     audio_fade_in_sec: Math.max(0, fadeInS),
     audio_fade_out_sec: Math.max(0, fadeOutS),
     audio_fade_in_curve: fadeInCurve,

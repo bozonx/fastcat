@@ -1,9 +1,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { useBlurOnPointerDownOutside } from '~/composables/useBlurOnPointerDownOutside';
-import { useWheelSupport } from '../../composables/useWheelSupport';
-import { useWorkspaceStore } from '../../stores/workspace.store';
-import { isLayer1Active } from '../../utils/hotkeys/layerUtils';
+import { useWheelControl } from '~/composables/ui/useWheelControl';
 
 interface UiWheelNumberInputProps {
   modelValue: number;
@@ -89,19 +87,14 @@ function flushDebounced() {
   pendingEmitValue = null;
 }
 
-const wrapperRef = ref<HTMLElement | null>(null);
-const workspaceStore = useWorkspaceStore();
-
-useBlurOnPointerDownOutside(wrapperRef);
-
-useWheelSupport({
-  wrapperRef,
-  disabled: () => props.disabled,
-  step: () => props.step,
-  wheelStepMultiplier: () => props.wheelStepMultiplier,
-  useWheelStepMultiplier: (e) => isLayer1Active(e, workspaceStore.userSettings),
-  focusOnly: true,
-  onWheelStep: (direction, wheelStep, precision) => {
+const { wrapperRef } = useWheelControl(
+  {
+    disabled: () => props.disabled,
+    step: () => props.step,
+    wheelStepMultiplier: () => props.wheelStepMultiplier,
+    focusOnly: () => true,
+  },
+  (direction, wheelStep, precision) => {
     const current = Number(localValue.value);
     const safeCurrent = Number.isFinite(current) ? current : (props.min ?? 0);
 
@@ -127,7 +120,9 @@ useWheelSupport({
     localValue.value = clamped;
     scheduleEmit(clamped);
   },
-});
+);
+
+useBlurOnPointerDownOutside(wrapperRef);
 
 function onPointerDown(e: PointerEvent) {
   if (e.button === 1 && props.defaultValue !== undefined && !props.disabled) {

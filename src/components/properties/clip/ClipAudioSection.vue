@@ -66,28 +66,19 @@ function onVolumeUpdate(db: number) {
       props.canEditAudioFades &&
       (props.selectedTrackKind === 'audio' || props.selectedTrackKind === 'video')
     "
-    v-model:toggle-value="isEnabled"
+    v-model:enabled="isEnabled"
     :title="t('fastcat.clip.audioFade.title')"
     has-toggle
+    show-reset
+    :on-reset="
+      () => {
+        emit('updateAudioBalance', 0);
+        emit('updateAudioFadeInSec', 0);
+        emit('updateAudioFadeOutSec', 0);
+        emit('updateAudioGain', 1);
+      }
+    "
   >
-    <template #header-actions>
-      <button
-        class="flex items-center gap-1 text-2xs text-ui-text-muted hover:text-ui-text disabled:opacity-50"
-        :title="t('common.actions.reset')"
-        :disabled="!isEnabled"
-        @click="
-          () => {
-            emit('updateAudioBalance', 0);
-            emit('updateAudioFadeInSec', 0);
-            emit('updateAudioFadeOutSec', 0);
-            emit('updateAudioGain', 1);
-          }
-        "
-      >
-        <UIcon name="i-heroicons-arrow-path" class="w-3.5 h-3.5 block" />
-      </button>
-    </template>
-
     <div class="flex gap-4" :class="{ 'opacity-50 pointer-events-none': !isEnabled }">
       <!-- Left column: Balance and Fades -->
       <div class="flex-1 flex flex-col gap-4">

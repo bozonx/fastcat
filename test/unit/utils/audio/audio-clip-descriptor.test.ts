@@ -6,6 +6,7 @@ import {
   toAudioEngineClip,
   toNativeSceneAudioLayer,
 } from '~/utils/audio/audio-clip-descriptor';
+import { buildClipPlaybackWindow } from '~/utils/video-editor/audio-playback-window';
 
 interface AudioWorkerClip extends WorkerTimelineClip {
   defaultAudioFadeCurve?: 'linear' | 'logarithmic';
@@ -128,8 +129,12 @@ describe('audio clip descriptor adapters', () => {
       'audio-disabled',
     ]);
 
+    // Gain is split (layer = clip-only 0.5, bus re-applies track gain), but
+    // balance carries the merged (track+clip) value so the native single pan
+    // matches the web StereoPanner instead of cascading two pans.
     expect(nativeLayer.audio_gain).toBe(0.5);
-    expect(nativeLayer.audio_balance).toBe(0.2);
+    expect(nativeLayer.audio_balance).toBe(-0.25);
+    expect(webClip.audioBalance).toBe(nativeLayer.audio_balance);
     expect(nativeLayer.audio_effects).toEqual([
       {
         id: 'audio-enabled',
@@ -141,11 +146,11 @@ describe('audio clip descriptor adapters', () => {
     ]);
   });
 
-  it('uses originalAudioGain/originalAudioBalance for native layer to avoid double track application', () => {
+  it('uses clip-only gain (bus re-applies track gain) and merged balance (single pan)', () => {
     const descriptor = buildCanonicalAudioClipDescriptor({
       clip: createClip({
         audioGain: 0.5, // merged track * clip gain
-        audioBalance: -0.5, // merged track * clip balance
+        audioBalance: -0.5, // merged track + clip balance
         originalAudioGain: 1.0, // clip-only gain
         originalAudioBalance: 0.0, // clip-only balance
       }),
@@ -153,10 +158,12 @@ describe('audio clip descriptor adapters', () => {
     });
     const nativeLayer = toNativeSceneAudioLayer({ descriptor });
 
-    // The native mixer applies track gain/balance on the bus, so the layer
-    // must carry clip-only values. Using merged values would double-apply.
+    // Gain: the native bus re-applies the track gain, so the layer carries the
+    // clip-only value (layer×bus = merged). Balance: the bus pan is neutralized
+    // (native-monitor-scene.ts), so the layer must carry the MERGED balance for a
+    // single additive pan matching the web StereoPanner.
     expect(nativeLayer.audio_gain).toBe(1.0);
-    expect(nativeLayer.audio_balance).toBe(0.0);
+    expect(nativeLayer.audio_balance).toBe(-0.5);
   });
 
   it('sanitizes native-only scalar fields without changing web fields', () => {
@@ -200,6 +207,7 @@ describe('audio clip descriptor adapters', () => {
   it('resolves de-click, adjacent transitions, and neighbor context in native layer', () => {
     const descriptor = buildCanonicalAudioClipDescriptor({
       clip: createClip({
+        timelineRange: { startUs: 1_000_000, durationUs: 875_000 },
         audioFadeInUs: undefined,
         audioFadeOutUs: undefined,
         audioDeclickDurationUs: 5_000, // 5ms auto-declick
@@ -232,17 +240,41 @@ describe('audio clip descriptor adapters', () => {
       id: 'clip-1',
       track_id: 'track-1',
       path: '/project/audio/source.mp3',
-      // Incoming clip is NOT shifted back: its fade-in stays on its own head so
-      // it crossfades during the video transition window [cut, cut+D), not before
-      // it. Only the outgoing 0.15s tail (×2 speed) extends the source window.
-      timeline_start_sec: 1,
-      timeline_end_sec: 2.175,
-      source_start_sec: 0.5,
-      source_range_duration_sec: 2.35,
+      // Own transitionIn (0.1s) shifts the clip back onto its leading handle and
+      // own transitionOut (0.15s) extends its trailing handle — both keyed off
+      // the clip's OWN transition, mirroring the web engine + export mixer so the
+      // incoming side of a transition crossfades over the same window everywhere.
+      // start: 1.0 - 0.1 = 0.9; source_start: 0.5 - 0.1*2 = 0.3.
+      timeline_start_sec: 0.9,
+      timeline_end_sec: 2.025,
+      source_start_sec: 0.3,
+      source_range_duration_sec: 2.25,
       speed: 2,
       audio_fade_in_sec: 0.1, // matches transitionIn duration
       audio_fade_out_sec: 0.15, // matches transitionOut duration
     });
+
+    const webClip = toAudioEngineClip({
+      descriptor,
+      fileHandle: {} as FileSystemFileHandle,
+    });
+    const webWindow = buildClipPlaybackWindow({
+      clip: webClip,
+      currentTimeS: nativeLayer.timeline_start_sec,
+      speed: 1,
+      startAtS: 0,
+      adjacentClips: { previousClip: null, nextClip: null },
+    });
+
+    expect(webWindow).not.toBeNull();
+    expect(nativeLayer.timeline_start_sec).toBeCloseTo(webWindow?.effectiveStartS ?? 0);
+    expect(nativeLayer.timeline_end_sec - nativeLayer.timeline_start_sec).toBeCloseTo(
+      webWindow?.remainingInClipS ?? 0,
+    );
+    expect(nativeLayer.source_start_sec).toBeCloseTo(webWindow?.effectiveSourceStartS ?? 0);
+    expect(nativeLayer.source_range_duration_sec).toBeCloseTo(
+      (webWindow?.effectiveSourceEndS ?? 0) - (webWindow?.effectiveSourceStartS ?? 0),
+    );
   });
 });
 

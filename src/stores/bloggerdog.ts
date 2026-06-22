@@ -54,7 +54,7 @@ export const useBloggerDogStore = defineStore('bloggerDog', () => {
       if (!resolved) return null;
       return { baseUrl: resolved.baseUrl, bearerToken: resolved.bearerToken };
     } catch (e) {
-      console.error("CONFIG ERROR DETAILS:", e);
+      log.error('CONFIG ERROR DETAILS:', e);
       return null;
     }
   });

@@ -1,14 +1,11 @@
 <script setup lang="ts">
 import EditorDynamicPanelsView from '~/components/editor/EditorDynamicPanelsView.vue';
 import type { PanelFocusId } from '~/stores/focus.store';
-import type { DynamicPanel, PanelColumn } from '~/stores/editor-view.store';
-
+import type { PanelColumn } from '~/stores/editor-view.store';
 import { useFileManagerStore } from '~/stores/file-manager.store';
 import { provide } from 'vue';
-
-interface SplitResizeEvent {
-  panes: Array<{ size: number }>;
-}
+import type { EditorPanelEvents } from '~/types/editor-panels';
+import { createEditorPanelEventListeners } from '~/utils/editor-panels';
 
 interface Props {
   columns: PanelColumn[];
@@ -28,25 +25,8 @@ interface Props {
 
 defineProps<Props>();
 
-const emit = defineEmits<{
-  topResize: [event: SplitResizeEvent];
-  verticalResize: [
-    event: SplitResizeEvent | Array<{ size: number }>,
-    colId: string,
-    view: 'cut' | 'sound',
-  ];
-  dragStart: [event: DragEvent, panelId: string];
-  dragOver: [event: DragEvent, panelId: string, view: 'cut' | 'sound'];
-  dragLeave: [event: DragEvent, panelId: string];
-  drop: [event: DragEvent, panelId: string, view: 'cut' | 'sound'];
-  dragEnd: [];
-  focus: [panelId: string];
-  close: [panel: DynamicPanel, view: 'cut' | 'sound'];
-  moveToView: [panel: DynamicPanel, view: 'cut' | 'sound'];
-  topReset: [view: 'cut' | 'sound'];
-  verticalReset: [colId: string, view: 'cut' | 'sound'];
-  panelPointerDown: [event: PointerEvent, panelId: string, view: 'cut' | 'sound'];
-}>();
+const emit = defineEmits<EditorPanelEvents>();
+const listeners = createEditorPanelEventListeners(emit);
 
 provide('fileManagerStore', useFileManagerStore());
 </script>
@@ -64,18 +44,6 @@ provide('fileManagerStore', useFileManagerStore());
     :get-vertical-size="getVerticalSize"
     :is-focused="isFocused"
     :get-focus-id="getFocusId"
-    @top-resize="(event) => emit('topResize', event)"
-    @vertical-resize="(event, colId, view) => emit('verticalResize', event, colId, view)"
-    @drag-start="(event, panelId) => emit('dragStart', event, panelId)"
-    @drag-over="(event, panelId, view) => emit('dragOver', event, panelId, view)"
-    @drag-leave="(event, panelId) => emit('dragLeave', event, panelId)"
-    @drop="(event, panelId, view) => emit('drop', event, panelId, view)"
-    @drag-end="emit('dragEnd')"
-    @focus="(panelId) => emit('focus', panelId)"
-    @close="(panel, view) => emit('close', panel, view)"
-    @move-to-view="(panel, view) => emit('moveToView', panel, view)"
-    @top-reset="(view) => emit('topReset', view)"
-    @vertical-reset="(colId, view) => emit('verticalReset', colId, view)"
-    @panel-pointer-down="(event, panelId, view) => emit('panelPointerDown', event, panelId, view)"
+    v-on="listeners"
   />
 </template>

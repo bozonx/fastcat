@@ -5,6 +5,7 @@ export interface VideoCodecOption {
 
 export interface VideoCodecOptionResolved extends CodecOption {
   disabled: boolean;
+  [key: string]: unknown;
 }
 
 export type CodecOption = VideoCodecOption;

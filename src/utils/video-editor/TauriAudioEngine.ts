@@ -132,7 +132,9 @@ export class TauriAudioEngine implements IAudioEngine {
 
   setMasterVolume(volume: number) {
     this.currentMasterVolume = Math.max(0, Math.min(10, volume));
-    // Native volume is handled by Rust; this is only for frontend state.
+    void nativeMonitorIpc.setMasterGain(this.currentMasterVolume).catch((error) => {
+      logger.warn('Failed to set native master gain', error);
+    });
   }
 
   setMonitorVolume(volume: number) {
@@ -151,6 +153,12 @@ export class TauriAudioEngine implements IAudioEngine {
   }
 
   getLevels(trackId?: string): { rmsDb: number; peakDb: number } {
+    // Match WebAudioEngine: meters fall to silence when not actively playing
+    // instead of holding the last value pushed from the native engine. Without
+    // this the native meters would freeze at their last level on pause/stop.
+    if (!this.scheduler.isPlayingActive()) {
+      return { rmsDb: -60, peakDb: -60 };
+    }
     if (trackId) {
       return this.currentTrackLevels.get(trackId) ?? { rmsDb: -60, peakDb: -60 };
     }

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch, computed } from 'vue';
+import { computed } from 'vue';
 import {
   getAllVideoEffectManifests,
   getAllAudioEffectManifests,
@@ -12,6 +12,7 @@ import CollapsibleEffectGroup from './CollapsibleEffectGroup.vue';
 import EffectCard from './EffectCard.vue';
 
 import UiModal from '~/components/ui/UiModal.vue';
+import { useModalOpenModel } from '~/composables/ui/useModalOpenModel';
 
 const props = withDefaults(
   defineProps<{
@@ -31,20 +32,7 @@ const emit = defineEmits<{
 const { t } = useI18n();
 const presetsStore = usePresetsStore();
 const workspaceStore = useWorkspaceStore();
-const isOpen = ref(props.open);
-
-watch(
-  () => props.open,
-  (val) => {
-    isOpen.value = val;
-  },
-);
-
-watch(isOpen, (val) => {
-  if (val !== props.open) {
-    emit('update:open', val);
-  }
-});
+const isOpen = useModalOpenModel(props, emit);
 
 const allManifests = computed(() => {
   const manifests =

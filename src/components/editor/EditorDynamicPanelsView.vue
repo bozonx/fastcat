@@ -2,13 +2,10 @@
 import { Pane, Splitpanes } from 'splitpanes';
 import EditorDynamicPanelContent from '~/components/editor/EditorDynamicPanelContent.vue';
 import type { PanelFocusId } from '~/stores/focus.store';
-import type { DynamicPanel, PanelColumn } from '~/stores/editor-view.store';
+import type { PanelColumn } from '~/stores/editor-view.store';
 import UiContextMenuPortal from '~/components/ui/UiContextMenuPortal.vue';
 import { ref, computed } from 'vue';
-
-interface SplitResizeEvent {
-  panes: Array<{ size: number }>;
-}
+import type { EditorPanelEvents, SplitResizeEvent } from '~/types/editor-panels';
 
 interface Props {
   view: 'cut' | 'sound';
@@ -31,25 +28,7 @@ interface Props {
 
 const props = defineProps<Props>();
 
-const emit = defineEmits<{
-  topResize: [event: SplitResizeEvent];
-  verticalResize: [
-    event: SplitResizeEvent | Array<{ size: number }>,
-    colId: string,
-    view: 'cut' | 'sound',
-  ];
-  dragStart: [event: DragEvent, panelId: string];
-  dragOver: [event: DragEvent, panelId: string, view: 'cut' | 'sound'];
-  dragLeave: [event: DragEvent, panelId: string];
-  drop: [event: DragEvent, panelId: string, view: 'cut' | 'sound'];
-  dragEnd: [];
-  focus: [panelId: string];
-  close: [panel: DynamicPanel, view: 'cut' | 'sound'];
-  moveToView: [panel: DynamicPanel, view: 'cut' | 'sound'];
-  topReset: [view: 'cut' | 'sound'];
-  verticalReset: [colId: string, view: 'cut' | 'sound'];
-  panelPointerDown: [event: PointerEvent, panelId: string, view: 'cut' | 'sound'];
-}>();
+const emit = defineEmits<EditorPanelEvents>();
 
 const { t } = useI18n();
 const menuRef = ref<InstanceType<typeof UiContextMenuPortal> | null>(null);

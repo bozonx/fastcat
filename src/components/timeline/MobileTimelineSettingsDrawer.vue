@@ -4,7 +4,7 @@ import MobileTimelineDrawer from './MobileTimelineDrawer.vue';
 import TimelineProperties from '~/components/properties/TimelineProperties.vue';
 import { useProjectStore } from '~/stores/project.store';
 import { useFileManager } from '~/composables/file-manager/useFileManager';
-import { useCloseModel } from '~/composables/ui/useCloseModel';
+import { useMobileDrawerOpen } from '~/composables/ui/useMobileDrawerOpen';
 
 const props = defineProps<{
   isOpen: boolean;
@@ -20,10 +20,7 @@ const { t } = useI18n();
 const projectStore = useProjectStore();
 const fileManager = useFileManager();
 
-const isOpenLocal = useCloseModel(
-  () => props.isOpen,
-  () => emit('close'),
-);
+const isOpenLocal = useMobileDrawerOpen(props, emit);
 
 const timelineFsEntry = computed(() => {
   const currentTimelinePath = projectStore.currentTimelinePath;

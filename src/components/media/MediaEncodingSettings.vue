@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { computed, watch, ref, onMounted } from 'vue';
-import { useExportCodecs } from '~/composables/timeline/export/core/useExportCodecs';
+import { computed, watch, ref } from 'vue';
+import { useAudioCodecOptions } from '~/composables/timeline/export/core/useAudioCodecOptions';
 import UiWheelNumberInput from '~/components/ui/UiWheelNumberInput.vue';
 import UiSelect from '~/components/ui/UiSelect.vue';
 import UiTextarea from '~/components/ui/UiTextarea.vue';
@@ -10,8 +10,7 @@ import UiTooltip from '~/components/ui/UiTooltip.vue';
 import UiTextInput from '~/components/ui/UiTextInput.vue';
 import UiButtonGroup from '~/components/ui/UiButtonGroup.vue';
 import FileConversionAudioSettings from '~/components/file-manager/FileConversionAudioSettings.vue';
-import { AUDIO_EXPORT_CODEC_OPTIONS, type VideoCodecOptionResolved } from '~/utils/webcodecs';
-import { isTauriRuntime } from '~/utils/runtime';
+import type { VideoCodecOptionResolved } from '~/utils/webcodecs';
 
 export interface FormatOption {
   value: 'mp4' | 'webm' | 'mkv';
@@ -160,46 +159,10 @@ watch(videoCodec, () => {
   }
 });
 
-const { audioCodecSupport, loadCodecSupport } = useExportCodecs();
-
-onMounted(() => {
-  loadCodecSupport();
-});
-
-const audioCodecOptions = computed(() => {
-  const isTauri = isTauriRuntime();
-  const filtered = AUDIO_EXPORT_CODEC_OPTIONS.filter((opt) => {
-    if (!isTauri && (opt.value === 'flac' || opt.value === 'mp3')) {
-      return false;
-    }
-    return true;
-  });
-  return filtered.map((opt) => {
-    let disabled = false;
-
-    // Блокировка по формату контейнера
-    if (outputFormat.value === 'webm') {
-      disabled = opt.value !== 'opus';
-    } else if (outputFormat.value === 'mp4') {
-      // MP4 не поддерживает PCM и FLAC в нашем экспортере
-      disabled = opt.value === 'pcm' || opt.value === 'flac';
-    }
-
-    // Блокировка по системе (браузер / ОС / Tauri)
-    const isSupported =
-      audioCodecSupport.value[opt.value as keyof typeof audioCodecSupport.value] !== false;
-
-    return {
-      value: opt.value,
-      label:
-        opt.value === 'aac'
-          ? t('videoEditor.export.codec.aac')
-          : opt.value === 'opus'
-            ? t('videoEditor.export.codec.opus')
-            : opt.label,
-      disabled: disabled || !isSupported,
-    };
-  });
+const { audioCodecOptions } = useAudioCodecOptions({
+  format: outputFormat,
+  disableByFormat: true,
+  relabel: true,
 });
 
 const bitrateModeOptions = [

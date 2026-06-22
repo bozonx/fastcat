@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch, nextTick } from 'vue';
+import { ref, watch, nextTick } from 'vue';
 
 import UiWheelNumberInput from '~/components/ui/UiWheelNumberInput.vue';
 import UiTextInput from '~/components/ui/UiTextInput.vue';
@@ -9,6 +9,7 @@ import {
   createDefaultCaptionGenerationSettings,
   type CaptionGenerationSettings,
 } from '~/utils/transcription/captions';
+import { useModalOpenModel } from '~/composables/ui/useModalOpenModel';
 
 const props = defineProps<{
   open: boolean;
@@ -24,10 +25,7 @@ const { t } = useI18n();
 const toast = useToast();
 const timelineStore = useTimelineStore();
 
-const isOpen = computed({
-  get: () => props.open,
-  set: (value: boolean) => emit('update:open', value),
-});
+const isOpen = useModalOpenModel(props, emit);
 
 const isGenerating = ref(false);
 const settings = ref<CaptionGenerationSettings>(createDefaultCaptionGenerationSettings());

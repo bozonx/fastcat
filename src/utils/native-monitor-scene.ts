@@ -753,12 +753,22 @@ export async function buildNativeMonitorScene(
 
   const audioTracksForBuses = params.timelineDoc.tracks.filter((t) => t.kind === 'audio');
   const videoTracksForBuses = params.timelineDoc.tracks.filter((t) => t.kind === 'video');
+  // The bus carries only the track GAIN (a scalar that composes with the layer's
+  // clip-only gain to reproduce the web merge). It deliberately does NOT carry
+  // the track BALANCE: the track balance is already folded additively into each
+  // layer's merged balance (see toNativeSceneAudioLayer), so re-panning on the
+  // bus would cascade two equal-power pans and diverge from the web's single
+  // additive StereoPanner. Hence `audio_balance: 0` (identity pan) here.
+  //
+  // Muted/soloed tracks (and disabled/clip-muted items) are already filtered out
+  // upstream by buildEffectiveAudioClipItems. Keep the native bus flags neutral
+  // so there is one authoritative solo/mute implementation.
   const audio_tracks = [...audioTracksForBuses, ...videoTracksForBuses].map((track) => ({
     id: track.id,
     audio_gain: typeof track.audioGain === 'number' ? track.audioGain : 1.0,
-    audio_balance: typeof track.audioBalance === 'number' ? track.audioBalance : 0.0,
-    audio_muted: Boolean(track.audioMuted),
-    audio_solo: Boolean(track.audioSolo),
+    audio_balance: 0,
+    audio_muted: false,
+    audio_solo: false,
   }));
 
   const optimization = params.workspaceStore.userSettings.optimization;

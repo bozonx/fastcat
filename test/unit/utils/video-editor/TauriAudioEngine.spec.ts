@@ -12,6 +12,7 @@ vi.mock('@tauri-apps/api/event', () => ({
 const scrubPreviewMock = vi.hoisted(() => vi.fn());
 const stopScrubPreviewMock = vi.hoisted(() => vi.fn());
 const setOutputGainMock = vi.hoisted(() => vi.fn());
+const setMasterGainMock = vi.hoisted(() => vi.fn());
 
 vi.mock('~/composables/monitor/native-monitor-ipc', () => ({
   MONITOR_EVENTS: {
@@ -21,6 +22,7 @@ vi.mock('~/composables/monitor/native-monitor-ipc', () => ({
     scrubPreview: scrubPreviewMock,
     stopScrubPreview: stopScrubPreviewMock,
     setOutputGain: setOutputGainMock,
+    setMasterGain: setMasterGainMock,
   },
 }));
 
@@ -38,6 +40,7 @@ describe('TauriAudioEngine', () => {
     scrubPreviewMock.mockResolvedValue(undefined);
     stopScrubPreviewMock.mockResolvedValue(undefined);
     setOutputGainMock.mockResolvedValue(undefined);
+    setMasterGainMock.mockResolvedValue(undefined);
   });
 
   it('declares correct capabilities', async () => {
@@ -121,6 +124,9 @@ describe('TauriAudioEngine', () => {
     expect((engine as any).currentMasterVolume).toBe(0);
     engine.setMasterVolume(15);
     expect((engine as any).currentMasterVolume).toBe(10);
+    expect(setMasterGainMock).toHaveBeenNthCalledWith(1, 5);
+    expect(setMasterGainMock).toHaveBeenNthCalledWith(2, 0);
+    expect(setMasterGainMock).toHaveBeenNthCalledWith(3, 10);
   });
 
   it('setMonitorVolume clamps to [0, 10]', async () => {
@@ -147,6 +153,7 @@ describe('TauriAudioEngine', () => {
 
   it('getLevels returns native master levels and track levels when present', async () => {
     const engine = await createEngine();
+    await engine.play(0);
     const levelsHandler = listenMock.mock.calls[1]?.[1] as (event: { payload: any }) => void;
 
     levelsHandler({
@@ -162,6 +169,17 @@ describe('TauriAudioEngine', () => {
     expect(engine.getLevels()).toEqual({ rmsDb: -18, peakDb: -6 });
     expect(engine.getLevels('track-1')).toEqual({ rmsDb: -12, peakDb: -3 });
     expect(engine.getLevels('track-2')).toEqual({ rmsDb: -60, peakDb: -60 });
+  });
+
+  it('getLevels returns silence while paused', async () => {
+    const engine = await createEngine();
+    await engine.play(0);
+    const levelsHandler = listenMock.mock.calls[1]?.[1] as (event: { payload: any }) => void;
+    levelsHandler({ payload: { rmsDb: -18, peakDb: -6 } });
+
+    engine.stop();
+
+    expect(engine.getLevels()).toEqual({ rmsDb: -60, peakDb: -60 });
   });
 
   it('previewScrubForward delegates to native IPC for forward spans', async () => {

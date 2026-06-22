@@ -11,7 +11,7 @@ import MobileDrawerToolbarButton from './MobileDrawerToolbarButton.vue';
 import { useClipPropertiesActions } from '~/composables/properties/useClipPropertiesActions';
 import { useSelectedTimelineClip } from '~/composables/timeline/useSelectedTimelineClip';
 import { useDrawerToolbarOrientation } from '~/composables/timeline/useDrawerToolbarOrientation';
-import { useCloseModel } from '~/composables/ui/useCloseModel';
+import { useMobileDrawerOpen } from '~/composables/ui/useMobileDrawerOpen';
 import { useUiStore } from '~/stores/ui.store';
 import { useFileManagerStore } from '~/stores/file-manager.store';
 import { useFocusStore } from '~/stores/focus.store';
@@ -49,10 +49,7 @@ const fileManager = useFileManager();
 const { setActiveTab } = useProjectTabsStore();
 const projectStore = useProjectStore();
 
-const isOpenLocal = useCloseModel(
-  () => props.isOpen,
-  () => emit('close'),
-);
+const isOpenLocal = useMobileDrawerOpen(props, emit);
 
 const { clip, track: clipTrack, trackKind: clipTrackKind, isLocked } = useSelectedTimelineClip();
 

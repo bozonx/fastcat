@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
-import type { TimelineTrack } from '~/timeline/types';
+import type { AudioClipEffect, TimelineTrack } from '~/timeline/types';
 import UiWheelSlider from '~/components/ui/UiWheelSlider.vue';
 import DbSlider from './DbSlider.vue';
 import { linearToDb, dbToLinear } from '~/utils/audio';
-import { getAudioEffectManifest } from '~/effects';
+import { useAudioEffectCreation } from '~/composables/timeline/useAudioEffectCreation';
 import SelectEffectModal from '~/components/effects/SelectEffectModal.vue';
 import TrackAudioEffectsModal from './TrackAudioEffectsModal.vue';
 import UiRenameModal from '~/components/ui/UiRenameModal.vue';
@@ -58,42 +58,28 @@ function handleRenameTrack(name: string) {
   isRenameModalOpen.value = false;
 }
 
-// Effects
-const isEffectsModalOpen = ref(false);
-const isSelectEffectModalOpen = ref(false);
+const audioEffects = computed(() =>
+  (props.track.effects ?? []).filter((e): e is AudioClipEffect => e?.target === 'audio'),
+);
 
-const audioEffectsCount = computed(() => {
-  return (props.track.effects ?? []).filter((e) => e?.target === 'audio').length;
+const audioEffectsCount = computed(() => audioEffects.value.length);
+
+const {
+  isEffectsModalOpen,
+  isSelectEffectModalOpen,
+  openSelectEffect,
+  openEffectsEditor,
+  handleSelectEffect,
+} = useAudioEffectCreation({
+  effectIdPrefix: 'audio_effect',
+  getEffects: () => audioEffects.value,
+  applyEffects: (effects) => {
+    const videoEffects = (props.track.effects ?? []).filter((e) => e?.target !== 'audio');
+    timelineStore.updateTrackProperties(props.track.id, {
+      effects: [...videoEffects, ...effects],
+    });
+  },
 });
-
-function openSelectEffect() {
-  isSelectEffectModalOpen.value = true;
-}
-
-function openEffectsEditor() {
-  isEffectsModalOpen.value = true;
-}
-
-function handleSelectEffect(type: string) {
-  const manifest = getAudioEffectManifest(type);
-  if (!manifest) return;
-
-  const newEffect = {
-    id: `audio_effect_${Date.now()}`,
-    type,
-    enabled: true,
-    target: 'audio',
-    ...(manifest.defaultValues || {}),
-  };
-
-  const currentEffects = props.track.effects ?? [];
-  timelineStore.updateTrackProperties(props.track.id, {
-    effects: [...currentEffects, newEffect as import('~/timeline/types').ClipEffect],
-  });
-
-  isSelectEffectModalOpen.value = false;
-  isEffectsModalOpen.value = true;
-}
 </script>
 
 <template>

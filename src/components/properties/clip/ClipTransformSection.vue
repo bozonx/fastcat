@@ -131,7 +131,7 @@ function handleResetAll() {
 <template>
   <PropertySection
     v-if="canEditTransform || props.canEditReversed"
-    v-model:toggle-value="isEnabled"
+    v-model:enabled="isEnabled"
     :title="t('fastcat.clip.transform.title')"
     has-toggle
   >

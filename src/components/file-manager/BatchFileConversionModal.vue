@@ -8,9 +8,7 @@ import UiSliderInput from '~/components/ui/UiSliderInput.vue';
 import UiButtonGroup from '~/components/ui/UiButtonGroup.vue';
 import { useBatchConversion } from '~/composables/file-conversion/useBatchConversion';
 import { resolveAudioOnlyFileExtension } from '~/utils/conversion/helpers';
-import { AUDIO_EXPORT_CODEC_OPTIONS } from '~/utils/webcodecs';
-import { useExportCodecs } from '~/composables/timeline/export/core/useExportCodecs';
-import { isTauriRuntime } from '~/utils/runtime';
+import { useAudioCodecOptions } from '~/composables/timeline/export/core/useAudioCodecOptions';
 
 const { t } = useI18n();
 
@@ -41,24 +39,9 @@ const isOpen = computed({
   },
 });
 
-const { audioCodecSupport, loadCodecSupport } = useExportCodecs();
-
-onMounted(() => {
-  loadCodecSupport();
-});
-
-const audioFormatOptions = computed(() => {
-  const isTauri = isTauriRuntime();
-  const filtered = AUDIO_EXPORT_CODEC_OPTIONS.filter((opt) => {
-    if (!isTauri && (opt.value === 'flac' || opt.value === 'mp3')) {
-      return false;
-    }
-    return true;
-  });
-  return filtered.map((opt) => ({
-    ...opt,
-    disabled: !audioCodecSupport.value[opt.value as keyof typeof audioCodecSupport.value],
-  }));
+const { audioCodecOptions: audioFormatOptions } = useAudioCodecOptions({
+  disableByFormat: false,
+  relabel: false,
 });
 
 const fileCount = computed(() => state.entries.length);

@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
 import DbSlider from './DbSlider.vue';
 import { linearToDb, dbToLinear } from '~/utils/audio';
-import { getAudioEffectManifest } from '~/effects';
+import { useAudioEffectCreation } from '~/composables/timeline/useAudioEffectCreation';
 import SelectEffectModal from '~/components/effects/SelectEffectModal.vue';
 import MasterAudioEffectsModal from './MasterAudioEffectsModal.vue';
 
@@ -34,43 +34,28 @@ function toggleMute() {
   timelineStore.audioMuted = !timelineStore.audioMuted;
 }
 
-// Effects
-const isEffectsModalOpen = ref(false);
-const isSelectEffectModalOpen = ref(false);
+const masterEffects = computed(
+  () => timelineStore.timelineDoc?.metadata?.fastcat?.masterEffects ?? [],
+);
 
-const masterEffectsCount = computed(() => {
-  return (timelineStore.timelineDoc?.metadata?.fastcat?.masterEffects ?? []).length;
+const masterEffectsCount = computed(() => masterEffects.value.length);
+
+const {
+  isSelectEffectModalOpen,
+  isEffectsModalOpen,
+  openSelectEffect,
+  openEffectsEditor,
+  handleSelectEffect,
+} = useAudioEffectCreation({
+  effectIdPrefix: 'master_effect',
+  getEffects: () => masterEffects.value as import('~/timeline/types').ClipEffect[],
+  applyEffects: (effects) => {
+    timelineStore.applyTimeline({
+      type: 'update_master_effects',
+      effects,
+    });
+  },
 });
-
-function openSelectEffect() {
-  isSelectEffectModalOpen.value = true;
-}
-
-function openEffectsEditor() {
-  isEffectsModalOpen.value = true;
-}
-
-function handleSelectEffect(type: string) {
-  const manifest = getAudioEffectManifest(type);
-  if (!manifest) return;
-
-  const newEffect = {
-    id: `master_effect_${Date.now()}`,
-    type,
-    enabled: true,
-    target: 'audio',
-    ...(manifest.defaultValues || {}),
-  };
-
-  const currentEffects = timelineStore.timelineDoc?.metadata?.fastcat?.masterEffects ?? [];
-  timelineStore.applyTimeline({
-    type: 'update_master_effects',
-    effects: [...currentEffects, newEffect as import('~/timeline/types').ClipEffect],
-  });
-
-  isSelectEffectModalOpen.value = false;
-  isEffectsModalOpen.value = true;
-}
 </script>
 
 <template>

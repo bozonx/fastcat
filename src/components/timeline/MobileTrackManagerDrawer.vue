@@ -7,7 +7,7 @@ import type { TimelineTrack } from '~/timeline/types';
 import UiMobileDrawer from '~/components/ui/UiMobileDrawer.vue';
 import UiConfirmModal from '~/components/ui/UiConfirmModal.vue';
 import UiRenameModal from '~/components/ui/UiRenameModal.vue';
-import { useCloseModel } from '~/composables/ui/useCloseModel';
+import { useMobileDrawerOpen } from '~/composables/ui/useMobileDrawerOpen';
 
 const props = defineProps<{
   isOpen: boolean;
@@ -21,10 +21,7 @@ const { t } = useI18n();
 const timelineStore = useTimelineStore();
 const workspaceStore = useWorkspaceStore();
 
-const isOpenLocal = useCloseModel(
-  () => props.isOpen,
-  () => emit('close'),
-);
+const isOpenLocal = useMobileDrawerOpen(props, emit);
 
 const tracks = computed(() => (timelineStore.timelineDoc?.tracks as TimelineTrack[]) ?? []);
 

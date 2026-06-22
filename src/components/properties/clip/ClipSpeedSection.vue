@@ -49,21 +49,12 @@ function resetSpeed() {
 <template>
   <PropertySection
     v-if="props.canEditReversed"
-    v-model:toggle-value="isEnabled"
+    v-model:enabled="isEnabled"
     :title="t('fastcat.clip.speed.title')"
     has-toggle
+    show-reset
+    :on-reset="resetSpeed"
   >
-    <template #header-actions>
-      <button
-        class="flex items-center gap-1 text-2xs text-ui-text-muted hover:text-ui-text disabled:opacity-50"
-        :title="t('common.actions.reset')"
-        :disabled="!isEnabled"
-        @click="resetSpeed"
-      >
-        <UIcon name="i-heroicons-arrow-path" class="w-3.5 h-3.5 block" />
-      </button>
-    </template>
-
     <div class="flex flex-col gap-4" :class="{ 'opacity-50 pointer-events-none': !isEnabled }">
       <div class="space-y-4">
         <UiSliderInput

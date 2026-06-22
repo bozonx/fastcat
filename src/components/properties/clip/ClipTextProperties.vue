@@ -439,7 +439,7 @@ const fontWeightOptions = ['100', '200', '300', '400', '500', '600', '700', '800
     </PropertySection>
 
     <PropertySection
-      v-model:toggle-value="textShadowEnabled"
+      v-model:enabled="textShadowEnabled"
       :title="t('fastcat.textClip.textShadow')"
       has-toggle
     >
@@ -507,7 +507,7 @@ const fontWeightOptions = ['100', '200', '300', '400', '500', '600', '700', '800
     </PropertySection>
 
     <PropertySection
-      v-model:toggle-value="backgroundEnabled"
+      v-model:enabled="backgroundEnabled"
       :title="t('fastcat.textClip.backgroundBlock')"
       has-toggle
     >
@@ -571,7 +571,7 @@ const fontWeightOptions = ['100', '200', '300', '400', '500', '600', '700', '800
 
     <PropertySection
       v-if="backgroundEnabled"
-      v-model:toggle-value="backgroundShadowEnabled"
+      v-model:enabled="backgroundShadowEnabled"
       :title="t('fastcat.textClip.backgroundShadow')"
       has-toggle
     >
@@ -639,7 +639,7 @@ const fontWeightOptions = ['100', '200', '300', '400', '500', '600', '700', '800
     </PropertySection>
 
     <PropertySection
-      v-model:toggle-value="borderEnabled"
+      v-model:enabled="borderEnabled"
       :title="t('fastcat.textClip.borderBlock')"
       has-toggle
     >

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { usePresetsStore } from '~/stores/presets.store';
+import { getCustomPresetsByCategory } from '~/utils/presets';
 import UiModal from '~/components/ui/UiModal.vue';
 
 defineProps<{
@@ -24,12 +25,9 @@ const standardPresets = [
   { id: 'subtitle', name: t('fastcat.library.texts.subtitle'), icon: 'i-heroicons-h2' },
 ];
 
-const customPresets = computed(() => {
-  return presetsStore.customPresets
-    .filter((p) => p.category === 'text')
-    .slice()
-    .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
-});
+const customPresets = computed(() =>
+  getCustomPresetsByCategory(presetsStore.customPresets, 'text'),
+);
 
 function selectPreset(id: string) {
   emit('select', id);

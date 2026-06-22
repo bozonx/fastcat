@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { ref } from 'vue';
 import UiModal from '~/components/ui/UiModal.vue';
+import { useModalOpenModel } from '~/composables/ui/useModalOpenModel';
 
 /**
  * Modal for configuring automatic montage (silence trimming) based on STT data.
@@ -26,10 +27,7 @@ const emit = defineEmits<{
   ): void;
 }>();
 
-const isOpen = computed({
-  get: () => props.open,
-  set: (v) => emit('update:open', v),
-});
+const isOpen = useModalOpenModel(props, emit);
 
 const trimStart = ref(false);
 const trimEnd = ref(false);

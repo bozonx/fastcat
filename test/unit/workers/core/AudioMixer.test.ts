@@ -230,6 +230,32 @@ describe('AudioMixer.prepareClips', () => {
 
     expect(prepared).toHaveLength(2);
   });
+
+  it('extends adjacent transition handles exactly once', async () => {
+    const prepared = await AudioMixer.prepareClips({
+      audioClips: [
+        {
+          sourcePath: 'test.mp3',
+          startUs: 1_000_000,
+          durationUs: 1_000_000,
+          sourceStartUs: 500_000,
+          sourceDurationUs: 1_000_000,
+          speed: 1,
+          transitionIn: { durationUs: 100_000, mode: 'adjacent' },
+          transitionOut: { durationUs: 150_000, mode: 'adjacent' },
+        },
+      ],
+      hostClient: mockHostClient,
+      reportExportWarning: vi.fn(),
+      mediabunny: mockMediabunny as any,
+    });
+
+    expect(prepared[0]).toMatchObject({
+      clipStartS: 0.9,
+      offsetS: 0.4,
+      playDurationS: 1.25,
+    });
+  });
 });
 
 describe('AudioMixer.writeMixedToSource', () => {

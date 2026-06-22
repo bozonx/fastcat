@@ -2,7 +2,7 @@
 import MobileTimelineDrawer from './MobileTimelineDrawer.vue';
 import MobileDrawerToolbar from './MobileDrawerToolbar.vue';
 import { useDrawerToolbarOrientation } from '~/composables/timeline/useDrawerToolbarOrientation';
-import { useCloseModel } from '~/composables/ui/useCloseModel';
+import { useMobileDrawerOpen } from '~/composables/ui/useMobileDrawerOpen';
 
 interface Props {
   isOpen: boolean;
@@ -19,10 +19,7 @@ const emit = defineEmits<{
   (e: 'close'): void;
 }>();
 
-const isOpenLocal = useCloseModel(
-  () => props.isOpen,
-  () => emit('close'),
-);
+const isOpenLocal = useMobileDrawerOpen(props, emit);
 </script>
 
 <template>

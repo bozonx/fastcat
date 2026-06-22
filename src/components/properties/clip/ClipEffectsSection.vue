@@ -22,7 +22,7 @@ const isAudioEnabled = defineModel<boolean>('audioEnabled', { default: true });
 
 <template>
   <ClipEffectsEditor
-    v-model:toggle-value="isVideoEnabled"
+    v-model:enabled="isVideoEnabled"
     target="video"
     :effects="props.videoEffects"
     :title="t('fastcat.effects.videoTitle')"
@@ -35,7 +35,7 @@ const isAudioEnabled = defineModel<boolean>('audioEnabled', { default: true });
 
   <ClipEffectsEditor
     v-if="props.canEditAudioEffects"
-    v-model:toggle-value="isAudioEnabled"
+    v-model:enabled="isAudioEnabled"
     target="audio"
     :effects="props.audioEffects"
     :has-toggle="true"

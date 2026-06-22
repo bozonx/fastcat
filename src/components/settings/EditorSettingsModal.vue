@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
+import { ref, watch } from 'vue';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import UiModal from '~/components/ui/UiModal.vue';
 import SettingsGeneral from '~/components/settings/SettingsGeneral.vue';
@@ -13,6 +13,7 @@ import SettingsAudio from '~/components/settings/SettingsAudio.vue';
 import SettingsStorage from '~/components/settings/SettingsStorage.vue';
 import SettingsUi from '~/components/settings/SettingsUi.vue';
 import { useUiStore } from '~/stores/ui.store';
+import { useModalOpenModel } from '~/composables/ui/useModalOpenModel';
 
 interface Props {
   open: boolean;
@@ -60,10 +61,7 @@ watch(
   },
 );
 
-const isOpen = computed({
-  get: () => props.open,
-  set: (v) => emit('update:open', v),
-});
+const isOpen = useModalOpenModel(props, emit);
 
 const hotkeysRef = ref<InstanceType<typeof SettingsHotkeys> | null>(null);
 

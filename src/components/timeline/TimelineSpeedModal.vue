@@ -3,6 +3,7 @@ import { computed, ref, watch, nextTick } from 'vue';
 
 import UiModal from '~/components/ui/UiModal.vue';
 import UiSliderInput from '~/components/ui/UiSliderInput.vue';
+import { useModalOpenModel } from '~/composables/ui/useModalOpenModel';
 
 const { t } = useI18n();
 
@@ -23,10 +24,7 @@ const speedValue = computed({
   set: (v) => emit('update:speed', v),
 });
 
-const isOpen = computed({
-  get: () => props.open,
-  set: (v) => emit('update:open', v),
-});
+const isOpen = useModalOpenModel(props, emit);
 
 const showNegativeSpeedAudioWarning = computed(() => props.speed < 0 && props.hasAudio);
 const showLowSpeedWarning = computed(

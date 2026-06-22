@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed, nextTick } from 'vue';
+import { computed } from 'vue';
+import { useSelectBlurUpdate } from '~/composables/ui/useSelectBlurUpdate';
 
 defineOptions({ inheritAttrs: false });
 
@@ -37,12 +38,7 @@ const ui = computed(() => ({
   trailingIcon: 'w-3 h-3',
 }));
 
-function onUpdate(val: unknown) {
-  emit('update:modelValue', val);
-  nextTick(() => {
-    (document.activeElement as HTMLElement)?.blur();
-  });
-}
+const onUpdate = useSelectBlurUpdate(emit);
 </script>
 
 <template>

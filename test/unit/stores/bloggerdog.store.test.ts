@@ -3,6 +3,20 @@ import { createPinia, setActivePinia } from 'pinia';
 import { useBloggerDogStore } from '~/stores/bloggerdog';
 import { mockNuxtImport } from '@nuxt/test-utils/runtime';
 
+import { resolveExternalServiceConfig } from '~/utils/external-integrations';
+import {
+  createRemoteCollection,
+  createRemoteItem,
+  updateRemoteItem,
+  deleteRemoteCollection,
+  deleteRemoteItem,
+  fetchRemoteCollections,
+  fetchRemoteItems,
+  getRemoteThumbnailUrl,
+  renameRemoteCollection,
+  renameRemoteItem,
+} from '~/utils/remote-vfs';
+
 mockNuxtImport('useRuntimeConfig', () => {
   return () => ({
     public: {
@@ -63,20 +77,6 @@ vi.mock('~/stores/workspace.store', () => ({
 vi.mock('~/utils/external-integrations', () => externalIntegrationsMock);
 
 vi.mock('~/utils/remote-vfs', () => remoteVfsMock);
-
-import { resolveExternalServiceConfig } from '~/utils/external-integrations';
-import {
-  createRemoteCollection,
-  createRemoteItem,
-  updateRemoteItem,
-  deleteRemoteCollection,
-  deleteRemoteItem,
-  fetchRemoteCollections,
-  fetchRemoteItems,
-  getRemoteThumbnailUrl,
-  renameRemoteCollection,
-  renameRemoteItem,
-} from '~/utils/remote-vfs';
 
 describe('bloggerdog.store', () => {
   beforeEach(() => {
@@ -202,7 +202,10 @@ describe('bloggerdog.store', () => {
       const store = useBloggerDogStore();
       expect(store.getThumbnailUrl({ id: '1', type: 'file' } as any)).toBeNull();
 
-      externalIntegrationsMock.resolveExternalServiceConfig.mockReturnValue({ baseUrl: 'x', bearerToken: 'y' });
+      externalIntegrationsMock.resolveExternalServiceConfig.mockReturnValue({
+        baseUrl: 'x',
+        bearerToken: 'y',
+      });
       expect(store.getThumbnailUrl({ id: '1', type: 'directory' } as any)).toBeNull();
       expect(store.getThumbnailUrl({ id: '1', type: 'file', media: [] } as any)).toBeNull();
     });
@@ -220,7 +223,7 @@ describe('bloggerdog.store', () => {
         type: 'file',
         media: [{ thumbnailUrl: 'http://xyz' }],
       };
-      
+
       const thumb = store.getThumbnailUrl(entry as any);
       expect(thumb).toBe('https://api.test/thumb.png');
       expect(remoteVfsMock.getRemoteThumbnailUrl).toHaveBeenCalledWith({
@@ -240,7 +243,12 @@ describe('bloggerdog.store', () => {
 
     it('wraps createCollection', async () => {
       const store = useBloggerDogStore();
-      await store.createCollection({ name: 'Folder', scope: 'personal', projectId: 'p1', parentId: 'parent1' });
+      await store.createCollection({
+        name: 'Folder',
+        scope: 'personal',
+        projectId: 'p1',
+        parentId: 'parent1',
+      });
       expect(remoteVfsMock.createRemoteCollection).toHaveBeenCalledWith({
         config: { baseUrl: 'https://api.test', bearerToken: 'token' },
         name: 'Folder',

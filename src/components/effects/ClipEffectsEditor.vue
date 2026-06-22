@@ -195,7 +195,7 @@ function resolveEffectName(manifest: EffectItem['manifest'], type: string) {
 
 <template>
   <PropertySection
-    v-model:toggle-value="modelValue"
+    v-model:enabled="modelValue"
     :title="safeTitle"
     class="mt-2"
     :has-toggle="props.hasToggle"

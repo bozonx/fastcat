@@ -2,15 +2,15 @@
 import { computed, ref, watch } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useMediaStore } from '~/stores/media.store';
-import type { TimelineTrack } from '~/timeline/types';
+import type { AudioClipEffect, TimelineTrack } from '~/timeline/types';
 import TrackProperties from '~/components/properties/TrackProperties.vue';
 import { linearToDb, dbToLinear, trackHasAudio } from '~/utils/audio';
 import DbSlider from '~/components/audio/DbSlider.vue';
 import SelectEffectModal from '~/components/effects/SelectEffectModal.vue';
 import TrackAudioEffectsModal from '~/components/audio/TrackAudioEffectsModal.vue';
 import UiRenameModal from '~/components/ui/UiRenameModal.vue';
-import { getAudioEffectManifest } from '~/effects';
-import { useCloseModel } from '~/composables/ui/useCloseModel';
+import { useAudioEffectCreation } from '~/composables/timeline/useAudioEffectCreation';
+import { useMobileDrawerOpen } from '~/composables/ui/useMobileDrawerOpen';
 
 const props = defineProps<{
   isOpen: boolean;
@@ -25,10 +25,7 @@ const { t } = useI18n();
 const timelineStore = useTimelineStore();
 const mediaStore = useMediaStore();
 
-const isOpenLocal = useCloseModel(
-  () => props.isOpen,
-  () => emit('close'),
-);
+const isOpenLocal = useMobileDrawerOpen(props, emit);
 
 const tracks = computed(() => (timelineStore.timelineDoc?.tracks as TimelineTrack[]) ?? []);
 
@@ -87,45 +84,41 @@ function getTrackGain(track: TimelineTrack) {
   return typeof track.audioGain === 'number' ? track.audioGain : 1;
 }
 
-const isSelectEffectModalOpen = ref(false);
-const isEffectsModalOpen = ref(false);
 const selectedTrackIdForEffects = ref<string | null>(null);
 
-function openSelectEffect(trackId: string) {
+const audioEffectsForSelected = computed(() => {
+  const track = selectedTrackForEffects.value;
+  if (!track) return [];
+  return (track.effects ?? []).filter((e): e is AudioClipEffect => e?.target === 'audio');
+});
+
+const {
+  isSelectEffectModalOpen,
+  isEffectsModalOpen,
+  openSelectEffect,
+  openEffectsEditor,
+  handleSelectEffect,
+} = useAudioEffectCreation({
+  effectIdPrefix: 'audio_effect',
+  getEffects: () => audioEffectsForSelected.value,
+  applyEffects: (effects) => {
+    const track = selectedTrackForEffects.value;
+    if (!track) return;
+    const videoEffects = (track.effects ?? []).filter((e) => e?.target !== 'audio');
+    timelineStore.updateTrackProperties(track.id, {
+      effects: [...videoEffects, ...effects],
+    });
+  },
+});
+
+function openSelectEffectForTrack(trackId: string) {
   selectedTrackIdForEffects.value = trackId;
-  isSelectEffectModalOpen.value = true;
+  openSelectEffect();
 }
 
-function openEffectsEditor(trackId: string) {
+function openEffectsEditorForTrack(trackId: string) {
   selectedTrackIdForEffects.value = trackId;
-  isEffectsModalOpen.value = true;
-}
-
-function handleSelectEffect(type: string) {
-  const trackId = selectedTrackIdForEffects.value;
-  if (!trackId) return;
-
-  const manifest = getAudioEffectManifest(type);
-  if (!manifest) return;
-
-  const track = tracks.value.find((t) => t.id === trackId);
-  if (!track) return;
-
-  const newEffect = {
-    id: `audio_effect_${Date.now()}`,
-    type,
-    enabled: true,
-    target: 'audio',
-    ...(manifest.defaultValues || {}),
-  };
-
-  const currentEffects = track.effects ?? [];
-  timelineStore.updateTrackProperties(trackId, {
-    effects: [...currentEffects, newEffect as import('~/timeline/types').ClipEffect],
-  });
-
-  isSelectEffectModalOpen.value = false;
-  isEffectsModalOpen.value = true;
+  openEffectsEditor();
 }
 
 function getAudioEffectsCount(track: TimelineTrack) {
@@ -297,7 +290,7 @@ function handleRenameTrack(name: string) {
                   color="neutral"
                   icon="i-heroicons-plus-circle"
                   class="w-full h-6 text-3xs px-1 py-0 justify-center whitespace-nowrap overflow-hidden hover:bg-primary-500/10 hover:text-primary-400 border border-transparent hover:border-primary-500/30"
-                  @click="openSelectEffect(track.id)"
+                  @click="openSelectEffectForTrack(track.id)"
                 >
                   {{ $t('fastcat.effects.addEffect') }}
                 </UButton>
@@ -305,7 +298,7 @@ function handleRenameTrack(name: string) {
               <div
                 v-else
                 class="w-full h-6 bg-primary-500/10 hover:bg-primary-500/20 text-primary-400 border border-primary-500/30 rounded flex items-center justify-center cursor-pointer transition-colors"
-                @click="openEffectsEditor(track.id)"
+                @click="openEffectsEditorForTrack(track.id)"
               >
                 <span class="text-3xs font-bold uppercase truncate px-1">
                   {{ $t('fastcat.effects.effectsCount', { count: getAudioEffectsCount(track) }) }}

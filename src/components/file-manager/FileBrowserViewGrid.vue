@@ -2,6 +2,7 @@
 import { useProjectStore } from '~/stores/project.store';
 import type { FsEntry } from '~/types/fs';
 import type { FileCompatibility } from '~/composables/file-manager/useFileManagerCompatibility';
+import type { ExtendedFsEntry, FileBrowserViewEmits } from '~/types/file-browser';
 import {
   useFileBrowserEntry,
   useRenameTimer,
@@ -10,14 +11,6 @@ import {
 } from '~/composables/file-manager/useFileBrowserEntry';
 import InlineNameEditor from '~/components/file-manager/InlineNameEditor.vue';
 import UiProgressSpinner from '~/components/ui/UiProgressSpinner.vue';
-
-// Local type for entries that might have objectUrl
-type ExtendedFsEntry = FsEntry & {
-  objectUrl?: string;
-  size?: number;
-  mimeType?: string;
-  created?: number;
-};
 
 const props = defineProps<{
   entries: ExtendedFsEntry[];
@@ -35,24 +28,7 @@ const props = defineProps<{
   instanceId?: string;
 }>();
 
-const emit = defineEmits<{
-  (e: 'rootDragOver', event: DragEvent): void;
-  (e: 'rootDragEnter', event: DragEvent): void;
-  (e: 'rootDragLeave', event: DragEvent): void;
-  (e: 'rootDrop', event: DragEvent): void;
-  (e: 'entryDragStart', event: DragEvent, entry: FsEntry): void;
-  (e: 'entryDragEnd'): void;
-  (e: 'entryDragEnter', event: DragEvent, entry: FsEntry): void;
-  (e: 'entryDragOver', event: DragEvent, entry: FsEntry): void;
-  (e: 'entryDragLeave', event: DragEvent, entry: FsEntry): void;
-  (e: 'entryDrop', event: DragEvent, entry: FsEntry): void;
-  (e: 'entryClick', event: MouseEvent, entry: FsEntry): void;
-  (e: 'entryDoubleClick', entry: FsEntry): void;
-  (e: 'entryEnter', entry: FsEntry): void;
-  (e: 'commitRename', entry: FsEntry, name: string): void;
-  (e: 'stopRename'): void;
-  (e: 'fileAction', action: string, entry: FsEntry): void;
-}>();
+const emit = defineEmits<FileBrowserViewEmits>();
 
 const { t } = useI18n();
 const projectStore = useProjectStore();

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, watch, onMounted } from 'vue';
+import { computed, watch } from 'vue';
 
 import UiModal from '~/components/ui/UiModal.vue';
 import VideoEncodingForm from '~/components/media/VideoEncodingForm.vue';
@@ -13,10 +13,7 @@ import { useFileConversionStore } from '~/stores/file-conversion.store';
 import { useFileManager } from '~/composables/file-manager/useFileManager';
 import { useFileConversionStoreActions } from '~/composables/file-conversion/useFileConversionStoreActions';
 import { resolveAudioOnlyFileExtension } from '~/utils/conversion/helpers';
-
-import { AUDIO_EXPORT_CODEC_OPTIONS } from '~/utils/webcodecs';
-import { useExportCodecs } from '~/composables/timeline/export/core/useExportCodecs';
-import { isTauriRuntime } from '~/utils/runtime';
+import { useAudioCodecOptions } from '~/composables/timeline/export/core/useAudioCodecOptions';
 
 const { t } = useI18n();
 
@@ -60,24 +57,9 @@ const isOpen = computed({
   },
 });
 
-const { audioCodecSupport, loadCodecSupport } = useExportCodecs();
-
-onMounted(() => {
-  loadCodecSupport();
-});
-
-const audioFormatOptions = computed(() => {
-  const isTauri = isTauriRuntime();
-  const filtered = AUDIO_EXPORT_CODEC_OPTIONS.filter((opt) => {
-    if (!isTauri && (opt.value === 'flac' || opt.value === 'mp3')) {
-      return false;
-    }
-    return true;
-  });
-  return filtered.map((opt) => ({
-    ...opt,
-    disabled: !audioCodecSupport.value[opt.value as keyof typeof audioCodecSupport.value],
-  }));
+const { audioCodecOptions: audioFormatOptions } = useAudioCodecOptions({
+  disableByFormat: false,
+  relabel: false,
 });
 
 const fileName = computed(() => targetEntry.value?.name ?? '');

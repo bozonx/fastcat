@@ -6,6 +6,7 @@ import { useTimelineStore } from '~/stores/timeline.store';
 import { getMediaTypeFromFilename } from '~/utils/media-types';
 import type { FsEntry } from '~/types/fs';
 import { formatDurationSeconds } from '~/utils/format';
+import { useModalOpenModel } from '~/composables/ui/useModalOpenModel';
 const log = createDevLogger('MobileAddToTimelineModal');
 
 const props = defineProps<{
@@ -21,10 +22,7 @@ const emit = defineEmits<{
 const timelineStore = useTimelineStore();
 const { t } = useI18n();
 
-const isOpen = computed({
-  get: () => props.open,
-  set: (val) => emit('update:open', val),
-});
+const isOpen = useModalOpenModel(props, emit);
 
 const mediaTypes = computed(() => {
   const types = new Set<string>();

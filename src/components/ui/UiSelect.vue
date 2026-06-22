@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { nextTick } from 'vue';
+import { useSelectBlurUpdate } from '~/composables/ui/useSelectBlurUpdate';
 
 defineOptions({ inheritAttrs: false });
 
@@ -32,12 +32,7 @@ const props = withDefaults(defineProps<UiSelectProps>(), {
 
 const emit = defineEmits<{ (e: 'update:modelValue', value: unknown): void }>();
 
-function onUpdate(val: unknown) {
-  emit('update:modelValue', val);
-  nextTick(() => {
-    (document.activeElement as HTMLElement)?.blur();
-  });
-}
+const onUpdate = useSelectBlurUpdate(emit);
 </script>
 
 <template>

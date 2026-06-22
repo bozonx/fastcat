@@ -4,6 +4,7 @@ import { VueDraggable } from 'vue-draggable-plus';
 import { useSelectionStore } from '~/stores/selection.store';
 import { usePresetsStore } from '~/stores/presets.store';
 import type { ShapeType, HudType } from '~/timeline/types';
+import { getCustomPresetsByCategory } from '~/utils/presets';
 import CollapsibleEffectGroup from '~/components/effects/CollapsibleEffectGroup.vue';
 
 defineProps<{
@@ -68,26 +69,13 @@ const standardHuds = [
   { type: 'media_frame' as HudType, name: 'Media Frame', icon: 'i-heroicons-photo' },
 ];
 
-const customTexts = computed(() => {
-  return presetsStore.customPresets
-    .filter((p) => p.category === 'text')
-    .slice()
-    .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
-});
+const customTexts = computed(() => getCustomPresetsByCategory(presetsStore.customPresets, 'text'));
 
-const customShapes = computed(() => {
-  return presetsStore.customPresets
-    .filter((p) => p.category === 'shape')
-    .slice()
-    .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
-});
+const customShapes = computed(() =>
+  getCustomPresetsByCategory(presetsStore.customPresets, 'shape'),
+);
 
-const customHuds = computed(() => {
-  return presetsStore.customPresets
-    .filter((p) => p.category === 'hud')
-    .slice()
-    .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
-});
+const customHuds = computed(() => getCustomPresetsByCategory(presetsStore.customPresets, 'hud'));
 
 function handleDragStart(
   event: DragEvent,

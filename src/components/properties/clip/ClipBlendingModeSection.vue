@@ -21,7 +21,7 @@ const isEnabled = defineModel<boolean>('enabled', { default: true });
 <template>
   <PropertySection
     v-if="props.clipType !== 'adjustment'"
-    v-model:toggle-value="isEnabled"
+    v-model:enabled="isEnabled"
     :title="t('fastcat.clip.blendMode.title')"
     has-toggle
   >

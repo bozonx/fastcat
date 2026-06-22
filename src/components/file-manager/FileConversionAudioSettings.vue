@@ -1,11 +1,9 @@
 <script setup lang="ts">
-import { computed, onMounted } from 'vue';
+import { computed } from 'vue';
 import UiWheelNumberInput from '~/components/ui/UiWheelNumberInput.vue';
 import UiSelect from '~/components/ui/UiSelect.vue';
 import UiButtonGroup from '~/components/ui/UiButtonGroup.vue';
-import { AUDIO_EXPORT_CODEC_OPTIONS } from '~/utils/webcodecs';
-import { useExportCodecs } from '~/composables/timeline/export/core/useExportCodecs';
-import { isTauriRuntime } from '~/utils/runtime';
+import { useAudioCodecOptions } from '~/composables/timeline/export/core/useAudioCodecOptions';
 
 const props = withDefaults(
   defineProps<{
@@ -37,41 +35,11 @@ const audioReverse = defineModel<boolean>('audioReverse', { default: false });
 const audioCodec = defineModel<'aac' | 'opus' | 'flac' | 'pcm' | 'mp3' | undefined>('audioCodec');
 
 const { t } = useI18n();
-const { audioCodecSupport, loadCodecSupport } = useExportCodecs();
 
-onMounted(async () => {
-  await loadCodecSupport();
-});
-
-const audioCodecOptions = computed(() => {
-  const format = props.outputFormat;
-  const isTauri = isTauriRuntime();
-  const filtered = AUDIO_EXPORT_CODEC_OPTIONS.filter((opt) => {
-    if (!isTauri && (opt.value === 'flac' || opt.value === 'mp3')) {
-      return false;
-    }
-    return true;
-  });
-  return filtered.map((opt) => {
-    let disabled = false;
-    if (format === 'webm' && opt.value !== 'opus') {
-      disabled = true;
-    } else if (format === 'mp4' && (opt.value === 'flac' || opt.value === 'pcm')) {
-      disabled = true;
-    }
-    const isSupported =
-      audioCodecSupport.value[opt.value as keyof typeof audioCodecSupport.value] !== false;
-    return {
-      value: opt.value,
-      label:
-        opt.value === 'aac'
-          ? t('videoEditor.export.codec.aac', 'AAC')
-          : opt.value === 'opus'
-            ? t('videoEditor.export.codec.opus', 'Opus')
-            : opt.label,
-      disabled: disabled || !isSupported,
-    };
-  });
+const { audioCodecOptions } = useAudioCodecOptions({
+  format: () => props.outputFormat,
+  disableByFormat: true,
+  relabel: true,
 });
 
 function formatSampleRateLabel(sampleRate: number | null) {

@@ -4,7 +4,7 @@ import { usePresetsStore } from '~/stores/presets.store';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import type { ShapeType, HudType, TextClipStyle } from '~/timeline/types';
-import { useCloseModel } from '~/composables/ui/useCloseModel';
+import { useMobileDrawerOpen } from '~/composables/ui/useMobileDrawerOpen';
 
 const props = defineProps<{
   isOpen: boolean;
@@ -18,10 +18,7 @@ const timelineStore = useTimelineStore();
 const presetsStore = usePresetsStore();
 const workspaceStore = useWorkspaceStore();
 
-const isOpenLocal = useCloseModel(
-  () => props.isOpen,
-  () => emit('close'),
-);
+const isOpenLocal = useMobileDrawerOpen(props, emit);
 
 interface PresetItem {
   id: string;
