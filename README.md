@@ -251,6 +251,9 @@ Behavior:
 
 Video track properties now expose a **Generate captions** action.
 
+Clip video properties can temporarily disable blending, opacity, transform, and mask groups
+without discarding their configured values.
+
 Behavior:
 
 - caption generation never starts transcription by itself

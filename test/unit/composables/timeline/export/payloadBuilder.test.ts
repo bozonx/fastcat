@@ -112,6 +112,62 @@ describe('buildVideoWorkerPayloadFromTracks', () => {
       blendMode: 'multiply',
     });
   });
+
+  it('omits disabled video parameter groups from compositor clips', async () => {
+    const result = await buildVideoWorkerPayloadFromTracks({
+      tracks: [
+        track({
+          id: 'v1',
+          items: [
+            {
+              id: 'clip-1',
+              kind: 'clip',
+              clipType: 'media',
+              trackId: 'v1',
+              source: { path: '_video/source.mp4' },
+              timelineRange: { startUs: 0, durationUs: 1_000_000 },
+              sourceRange: { startUs: 0, durationUs: 1_000_000 },
+              opacity: 0.5,
+              opacityActive: false,
+              blendMode: 'multiply',
+              blendModeActive: false,
+              transform: { position: { x: 100, y: 200 } },
+              transformActive: false,
+              sourceOrientation: '90',
+              mask: { source: { path: 'mask.png' }, mode: 'alpha' },
+              maskActive: false,
+            },
+          ],
+        }),
+      ],
+      projectStore: {
+        projectSettings: {
+          project: {
+            width: 1920,
+            height: 1080,
+            fps: 30,
+            audioDeclickDurationUs: 0,
+          },
+        },
+      } as never,
+      workspaceStore: {
+        userSettings: {
+          projectDefaults: {
+            defaultAudioFadeCurve: 'linear',
+          },
+        },
+      } as never,
+    });
+
+    expect(result.clips[0]).toMatchObject({
+      id: 'clip-1',
+      opacity: undefined,
+      blendMode: undefined,
+      transform: undefined,
+      sourceOrientation: undefined,
+      mask: undefined,
+    });
+  });
 });
 
 describe('trimWorkerClipToRange', () => {

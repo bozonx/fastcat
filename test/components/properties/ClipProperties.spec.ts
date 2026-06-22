@@ -377,11 +377,12 @@ describe('ClipProperties.vue', () => {
     });
   });
 
-  it('toggles opacityActive, blendModeActive, transformActive correctly', async () => {
+  it('toggles supported video parameter groups correctly', async () => {
     const clip = createClip({
       opacityActive: true,
       blendModeActive: true,
       transformActive: true,
+      maskActive: true,
     });
     const wrapper = await mountComponent({ clip });
 
@@ -398,6 +399,11 @@ describe('ClipProperties.vue', () => {
     wrapper.vm.isTransformEnabled = false;
     expect(mockTimelineStore.updateClipProperties).toHaveBeenCalledWith('track-1', 'clip-1', {
       transformActive: false,
+    });
+
+    wrapper.vm.isMaskEnabled = false;
+    expect(mockTimelineStore.updateClipProperties).toHaveBeenCalledWith('track-1', 'clip-1', {
+      maskActive: false,
     });
   });
 

@@ -448,7 +448,7 @@ export async function toWorkerTimelineClips(
       effects: combinedEffects.length > 0 ? combinedEffects : undefined,
       mask: item.maskActive !== false ? clonePlain(item.mask) : undefined,
       transform: item.transformActive !== false ? clonePlain(item.transform) : undefined,
-      sourceOrientation: item.sourceOrientation,
+      sourceOrientation: item.transformActive !== false ? item.sourceOrientation : undefined,
       transitionIn: clonePlain(item.transitionIn),
       transitionOut: clonePlain(item.transitionOut),
       sourceDurationUs:

@@ -64,6 +64,8 @@ export function createBaseWorkerClip(params: {
   layer: number;
   clipType: WorkerTimelineClip['clipType'];
 }): WorkerTimelineClip {
+  const isTransformActive = params.item.transformActive !== false;
+
   return {
     kind: 'clip',
     clipType: params.clipType,
@@ -72,12 +74,18 @@ export function createBaseWorkerClip(params: {
     layer: params.layer,
     speed: sanitizeMonitorSpeed(params.item.speed) ?? 1,
     freezeFrameSourceUs: params.item.freezeFrameSourceUs,
-    opacity: params.item.opacity,
-    blendMode: params.item.blendMode as TimelineBlendMode | undefined,
+    opacity: params.item.opacityActive !== false ? params.item.opacity : undefined,
+    blendMode:
+      params.item.blendModeActive !== false
+        ? (params.item.blendMode as TimelineBlendMode | undefined)
+        : undefined,
     effects: cloneMonitorEffects(params.item.effects),
-    mask: params.item.mask ? cloneMonitorValue(params.item.mask) : undefined,
-    transform: params.item.transform,
-    sourceOrientation: params.item.sourceOrientation,
+    mask:
+      params.item.maskActive !== false && params.item.mask
+        ? cloneMonitorValue(params.item.mask)
+        : undefined,
+    transform: isTransformActive ? params.item.transform : undefined,
+    sourceOrientation: isTransformActive ? params.item.sourceOrientation : undefined,
     transitionIn: sanitizeMonitorTransition(params.item.transitionIn),
     transitionOut: sanitizeMonitorTransition(params.item.transitionOut),
     sourceDurationUs:

@@ -229,6 +229,49 @@ describe('useMonitorTimeline', () => {
     });
   });
 
+  it('removes disabled video parameter groups from raw monitor clips', () => {
+    withMonitorTimeline((res, timelineStore) => {
+      timelineStore.timelineDoc = {
+        tracks: [
+          {
+            id: 'v1',
+            kind: 'video',
+            videoHidden: false,
+            items: [
+              {
+                id: 'clip1',
+                kind: 'clip',
+                clipType: 'media',
+                trackId: 'v1',
+                source: { path: 'a.mp4' },
+                opacity: 0.5,
+                opacityActive: false,
+                blendMode: 'multiply',
+                blendModeActive: false,
+                transform: { position: { x: 100, y: 200 } },
+                transformActive: false,
+                sourceOrientation: '90',
+                mask: { source: { path: 'mask.png' }, mode: 'alpha' },
+                maskActive: false,
+                timelineRange: { startUs: 0, durationUs: 1000 },
+                sourceRange: { startUs: 0, durationUs: 1000 },
+              },
+            ],
+          },
+        ],
+      } as any;
+
+      expect(res.rawWorkerTimelineClips.value[0]).toMatchObject({
+        id: 'clip1',
+        opacity: undefined,
+        blendMode: undefined,
+        transform: undefined,
+        sourceOrientation: undefined,
+        mask: undefined,
+      });
+    });
+  });
+
   it('normalizes background clip color in raw worker timeline clips', () => {
     withMonitorTimeline((res, timelineStore) => {
       timelineStore.timelineDoc = {
@@ -421,6 +464,44 @@ describe('useMonitorTimeline', () => {
       timelineStore.timelineDoc.tracks[0].blendMode = 'multiply';
 
       expect(clipLayoutSignature.value).not.toBe(layoutBeforeTrackBlend);
+    });
+  });
+
+  it('updates clip layout signature when video parameter groups are toggled', () => {
+    withMonitorTimeline((res, timelineStore) => {
+      timelineStore.timelineDoc = {
+        tracks: [
+          {
+            id: 'v1',
+            kind: 'video',
+            videoHidden: false,
+            items: [
+              {
+                id: 'clip1',
+                kind: 'clip',
+                clipType: 'media',
+                trackId: 'v1',
+                source: { path: 'a.mp4' },
+                opacity: 0.5,
+                blendMode: 'multiply',
+                transform: { position: { x: 100, y: 200 } },
+                mask: { source: { path: 'mask.png' }, mode: 'alpha' },
+                timelineRange: { startUs: 0, durationUs: 1000 },
+                sourceRange: { startUs: 0, durationUs: 1000 },
+              },
+            ],
+          },
+        ],
+      } as any;
+
+      const item = timelineStore.timelineDoc.tracks[0].items[0];
+      const fields = ['opacityActive', 'blendModeActive', 'transformActive', 'maskActive'] as const;
+
+      for (const field of fields) {
+        const previousSignature = res.clipLayoutSignature.value;
+        item[field] = false;
+        expect(res.clipLayoutSignature.value).not.toBe(previousSignature);
+      }
     });
   });
 
