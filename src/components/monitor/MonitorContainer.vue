@@ -57,6 +57,7 @@ const {
   videoItems,
   safeDurationUs,
   isTextClipSelected,
+  isAdjustmentClipSelected,
   containerEl,
   renderWidth,
   renderHeight,
@@ -544,7 +545,7 @@ watch(viewportRef, (vp) => {
                 />
 
                 <MonitorTransformBox
-                  v-else-if="isInteractiveEditEnabled && !isReadonly"
+                  v-else-if="isInteractiveEditEnabled && !isReadonly && !isAdjustmentClipSelected"
                   :render-width="renderWidth"
                   :render-height="renderHeight"
                 />

@@ -420,8 +420,9 @@ describe('VideoCompositor render optimization', () => {
     compositor.computeRunner = { isReady: () => true, applyEffects };
     compositor.app = { renderer: { render: vi.fn() } };
     compositor.clips = [adjustment];
+    const renderLowerLayersToBitmap = vi.fn().mockResolvedValue(sourceBitmap);
     compositor.ensureStageTextureRenderer = vi.fn().mockReturnValue({
-      renderLowerLayersToBitmap: vi.fn().mockResolvedValue(sourceBitmap),
+      renderLowerLayersToBitmap,
     });
     compositor.ensureClipRenderTexture = vi.fn().mockReturnValue(adjustmentTexture);
 
@@ -432,6 +433,7 @@ describe('VideoCompositor render optimization', () => {
       expect.arrayContaining([expect.objectContaining({ type: 'gaussian-blur', bleed: true })]),
       { enablePadding: false },
     );
+    expect(renderLowerLayersToBitmap).toHaveBeenCalledWith(1, { edgeInsetPixels: 1 });
     expect(sourceBitmap.close).toHaveBeenCalled();
     warn.mockRestore();
   });

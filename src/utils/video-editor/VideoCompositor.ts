@@ -277,6 +277,13 @@ export class VideoCompositor {
       try {
         sourceBitmap = await this.ensureStageTextureRenderer(this.app).renderLowerLayersToBitmap(
           clip.layer,
+          {
+            // Pixi's browser capture can leave a one-pixel background/alpha
+            // fringe at the project boundary. A large blur spreads that fringe
+            // inward as a dark vignette. Use the nearest interior texels as the
+            // frame boundary, matching the native full-frame raster.
+            edgeInsetPixels: 1,
+          },
         );
         // Native adjustment layers always process the project-sized scene
         // without effect padding. Keep the web path identical: a padded bitmap

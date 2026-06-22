@@ -27,6 +27,11 @@ const currentTimeUs = computed(() => timelineStore.currentTime);
 
 const visibleClips = computed(() =>
   rawWorkerTimelineClips.value.filter((clip) => {
+    // Adjustment clips always cover the project frame and have no useful
+    // direct manipulation target. Their full-frame dashed hit box only looks
+    // like a canvas render artifact.
+    if (clip.clipType === 'adjustment') return false;
+
     const startUs = clip.timelineRange.startUs;
     const endUs = startUs + clip.timelineRange.durationUs;
     return currentTimeUs.value >= startUs && currentTimeUs.value < endUs;

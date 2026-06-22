@@ -195,7 +195,10 @@ export class StageTextureRenderer {
     }
   }
 
-  public async renderLowerLayersToBitmap(layer: number): Promise<ImageBitmap> {
+  public async renderLowerLayersToBitmap(
+    layer: number,
+    options: { edgeInsetPixels?: number } = {},
+  ): Promise<ImageBitmap> {
     const children = this.context.app.stage.children;
     const previous = children.map((child) => child.visible);
 
@@ -212,7 +215,32 @@ export class StageTextureRenderer {
         container: this.context.app.stage,
         clear: true,
       });
-      return await createImageBitmap(this.context.app.canvas);
+
+      const edgeInsetPixels = Math.max(0, Math.floor(options.edgeInsetPixels ?? 0));
+      const maxInset = Math.max(
+        0,
+        Math.min(
+          Math.floor((this.context.width - 1) / 2),
+          Math.floor((this.context.height - 1) / 2),
+        ),
+      );
+      const inset = Math.min(edgeInsetPixels, maxInset);
+      if (inset === 0) {
+        return await createImageBitmap(this.context.app.canvas);
+      }
+
+      return await createImageBitmap(
+        this.context.app.canvas,
+        inset,
+        inset,
+        this.context.width - inset * 2,
+        this.context.height - inset * 2,
+        {
+          resizeWidth: this.context.width,
+          resizeHeight: this.context.height,
+          resizeQuality: 'high',
+        },
+      );
     } finally {
       for (let i = 0; i < children.length; i++) {
         const child = children[i];

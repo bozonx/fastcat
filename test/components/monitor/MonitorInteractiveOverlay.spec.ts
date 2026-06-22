@@ -153,6 +153,23 @@ describe('MonitorInteractiveOverlay', () => {
     expect(rects[0].exists()).toBe(true);
   });
 
+  it('does not render a full-frame bounding box for adjustment clips', () => {
+    rawWorkerTimelineClips.value = [
+      {
+        id: 'adjustment-1',
+        clipType: 'adjustment',
+        trackId: 'track-2',
+        timelineRange: { startUs: 0, durationUs: 5_000_000 },
+      },
+    ] as any;
+
+    const wrapper = mount(MonitorInteractiveOverlay, {
+      props: { renderWidth: 1920, renderHeight: 1080 },
+    });
+
+    expect(wrapper.find('rect').exists()).toBe(false);
+  });
+
   it('calls selectTimelineItem on pointerdown', async () => {
     const selectTimelineItem = vi.fn();
     vi.mocked(useSelectionStore).mockReturnValue({

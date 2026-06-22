@@ -83,7 +83,7 @@ function getSafeTransform(clip: TimelineClipItem): ClipTransform {
 
 export function useClipTransform(options: UseClipTransformOptions) {
   const canEditTransform = computed(() => {
-    if (options.trackKind) {
+    if (options.trackKind && options.clip.value.clipType !== 'adjustment') {
       return options.trackKind.value === 'video';
     }
     return false;

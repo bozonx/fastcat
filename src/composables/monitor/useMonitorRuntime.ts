@@ -59,6 +59,9 @@ export function useMonitorRuntime() {
   });
 
   const isTextClipSelected = computed(() => selectedTimelineClip.value?.clipType === 'text');
+  const isAdjustmentClipSelected = computed(
+    () => selectedTimelineClip.value?.clipType === 'adjustment',
+  );
 
   const { containerEl, renderWidth, renderHeight, updateCanvasDisplaySize } = useMonitorDisplay();
 
@@ -178,6 +181,7 @@ export function useMonitorRuntime() {
     safeDurationUs,
     selectedTimelineClip,
     isTextClipSelected,
+    isAdjustmentClipSelected,
     containerEl,
     renderWidth,
     renderHeight,
