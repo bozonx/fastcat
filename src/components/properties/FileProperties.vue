@@ -820,64 +820,11 @@ const hasVisibleSecondaryActions = (actions: unknown) => {
         />
       </PropertySection>
 
-      <FileGeneralInfoSection
-        v-if="
-          !isWorkspaceRootProperties &&
-          selectedFsEntry &&
-          !isProjectRootDirInContext &&
-          selectedFsEntry.kind === 'file'
-        "
-        :title="generalInfoTitle"
-        :file-info="(fileInfo || selectedFsEntry) as any"
-        :selected-path="selectedPath"
-        :is-hidden="isHidden"
-        :format-bytes="formatBytes"
-        :media-count="remoteMediaCount"
-        :instance-id="props.instanceId"
-        :is-external="isExternalContext"
-        :hide-header="
-          (props.selectedFsEntry as { mimeType?: string })?.mimeType === 'application/octet-stream'
-        "
-      >
-        <template v-if="mediaType === 'text' && lineCount !== null">
-          <PropertyRow :label="t('fastcat.file.lineCount')" :value="lineCount" />
-        </template>
-      </FileGeneralInfoSection>
-
       <FileTimelineUsageSection
         v-if="!isWorkspaceRootProperties && selectedFsEntry.kind === 'file' && !isExternalContext"
         :usages="timelinesUsingSelectedFile"
         :open-timeline-from-usage="openTimelineFromUsage"
       />
-
-      <FileGeneralInfoSection
-        v-if="
-          !isWorkspaceRootProperties &&
-          selectedFsEntry &&
-          !isProjectRootDirInContext &&
-          selectedFsEntry.kind === 'directory' &&
-          !isRemoteRoot &&
-          !isVirtualAll &&
-          !isPersonalLibrary &&
-          !isProjectLibraries &&
-          !isBloggerDogProject &&
-          !isBloggerDogContentItem &&
-          !isBloggerDogGroup
-        "
-        :title="generalInfoTitle"
-        :file-info="(fileInfo || selectedFsEntry) as any"
-        :selected-path="selectedPath"
-        :path-link="bloggerDogDeepLink"
-        :is-hidden="isHidden"
-        :format-bytes="formatBytes"
-        :media-count="remoteMediaCount"
-        :instance-id="props.instanceId"
-        :is-external="isExternalContext"
-      >
-        <template v-if="selectedFsEntry?.source === 'remote' && remoteItemsCount !== undefined">
-          <PropertyRow :label="t('fastcat.file.itemsCount')" :value="remoteItemsCount" />
-        </template>
-      </FileGeneralInfoSection>
 
       <!-- General info for files moved to top -->
 
@@ -911,6 +858,59 @@ const hasVisibleSecondaryActions = (actions: unknown) => {
         :on-toggle="() => (isExifExpanded = !isExifExpanded)"
         :on-copy="copyToClipboard"
       />
+
+      <FileGeneralInfoSection
+        v-if="
+          !isWorkspaceRootProperties &&
+          selectedFsEntry &&
+          !isProjectRootDirInContext &&
+          selectedFsEntry.kind === 'file'
+        "
+        :title="generalInfoTitle"
+        :file-info="(fileInfo || selectedFsEntry) as any"
+        :selected-path="selectedPath"
+        :is-hidden="isHidden"
+        :format-bytes="formatBytes"
+        :media-count="remoteMediaCount"
+        :instance-id="props.instanceId"
+        :is-external="isExternalContext"
+        :hide-header="
+          (props.selectedFsEntry as { mimeType?: string })?.mimeType === 'application/octet-stream'
+        "
+      >
+        <template v-if="mediaType === 'text' && lineCount !== null">
+          <PropertyRow :label="t('fastcat.file.lineCount')" :value="lineCount" />
+        </template>
+      </FileGeneralInfoSection>
+
+      <FileGeneralInfoSection
+        v-if="
+          !isWorkspaceRootProperties &&
+          selectedFsEntry &&
+          !isProjectRootDirInContext &&
+          selectedFsEntry.kind === 'directory' &&
+          !isRemoteRoot &&
+          !isVirtualAll &&
+          !isPersonalLibrary &&
+          !isProjectLibraries &&
+          !isBloggerDogProject &&
+          !isBloggerDogContentItem &&
+          !isBloggerDogGroup
+        "
+        :title="generalInfoTitle"
+        :file-info="(fileInfo || selectedFsEntry) as any"
+        :selected-path="selectedPath"
+        :path-link="bloggerDogDeepLink"
+        :is-hidden="isHidden"
+        :format-bytes="formatBytes"
+        :media-count="remoteMediaCount"
+        :instance-id="props.instanceId"
+        :is-external="isExternalContext"
+      >
+        <template v-if="selectedFsEntry?.source === 'remote' && remoteItemsCount !== undefined">
+          <PropertyRow :label="t('fastcat.file.itemsCount')" :value="remoteItemsCount" />
+        </template>
+      </FileGeneralInfoSection>
 
       <FileTranscriptionModal
         v-model:open="isTranscriptionModalOpen"

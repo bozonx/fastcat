@@ -261,9 +261,12 @@ export class TimelineClipLoader {
     reusable.layer = descriptor.layer;
     reusable.trackId = descriptor.trackId;
     reusable.opacity = clipData.opacity as number | undefined;
+    reusable.opacityActive = clipData.opacityActive as boolean | undefined;
     reusable.blendMode = resolveBlendMode(clipData.blendMode as string | undefined);
+    reusable.blendModeActive = clipData.blendModeActive as boolean | undefined;
     reusable.effects = toVideoEffects(clipData.effects);
     reusable.transform = clipData.transform as import('~/timeline/types').ClipTransform | undefined;
+    reusable.transformActive = clipData.transformActive as boolean | undefined;
     reusable.transitionIn = clipData.transitionIn as
       | import('~/timeline/types').ClipTransition
       | undefined;
@@ -271,6 +274,7 @@ export class TimelineClipLoader {
       | import('~/timeline/types').ClipTransition
       | undefined;
     reusable.mask = clipData.mask as import('~/timeline/types').ClipMask | undefined;
+    reusable.maskActive = clipData.maskActive as boolean | undefined;
 
     if (reusable.clipKind === 'text') {
       const nextText = String(clipData.text ?? '');

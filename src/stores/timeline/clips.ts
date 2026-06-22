@@ -699,7 +699,7 @@ export function createTimelineClipsModule(deps: TimelineClipsDeps): TimelineClip
           blendMode: clip.blendMode,
           effects: cloneClip(clip.effects ?? []),
           freezeFrameSourceUs: clip.freezeFrameSourceUs,
-          speed: clip.speed,
+          ...(clip.speed !== undefined ? { speed: clip.speed } : {}),
           speedActive: clip.speedActive,
           transform: cloneValue(clip.transform),
           transformActive: clip.transformActive,

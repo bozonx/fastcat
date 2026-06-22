@@ -60,3 +60,30 @@ export function isTransientIoError(error: unknown): boolean {
  * write-side retries explicitly. Behaviour is identical to {@link isTransientIoError}.
  */
 export const isTransientWriteError = isTransientIoError;
+
+// Native (Tauri) metadata extraction shells out to ffprobe/ffmpeg. When those
+// binaries are missing/misconfigured, or the project-relative path can't be
+// resolved to a real OS path yet, every probe fails — but the *file* is fine.
+// Persisting that as `error: true` would brand the whole media library corrupt
+// forever (until the file's mtime changes), so we treat it like a transient
+// failure: leave it unresolved and let a later access retry once the tooling is
+// available. Mirrors the messages produced by `processing.rs` / `media.store.ts`.
+const TOOLING_UNAVAILABLE_PATTERN =
+  /binary check failed|failed to run ffprobe|failed to run ffmpeg|could not resolve native file path/i;
+
+/**
+ * Whether a native metadata failure stems from unavailable tooling / an
+ * unresolved path rather than a corrupt or unsupported file. Such failures must
+ * not be cached as permanent corruption.
+ */
+export function isToolingUnavailableError(error: unknown): boolean {
+  let current: unknown = error;
+  for (let depth = 0; depth < 8 && current; depth += 1) {
+    if (typeof current !== 'object' && typeof current !== 'function') break;
+    const candidate = current as ErrorLike;
+    const message = typeof candidate.message === 'string' ? candidate.message : '';
+    if (TOOLING_UNAVAILABLE_PATTERN.test(message)) return true;
+    current = candidate.cause;
+  }
+  return false;
+}

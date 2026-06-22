@@ -6,8 +6,8 @@ use tauri::{AppHandle, Emitter, State};
 use crate::media::audio_extract::extract_audio_stream;
 use crate::media::processing::{
     convert_media_with_warnings, extract_video_frame_webp, extract_video_frame_webps,
-    generate_proxy, probe_media, NativeConvertOptions, NativeMediaMetadata, NativeMediaTasks,
-    NativeProxyOptions,
+    generate_proxy, probe_media, probe_media_validated, NativeConvertOptions, NativeMediaMetadata,
+    NativeMediaTasks, NativeProxyOptions,
 };
 use crate::media::timeline_export::{export_timeline, NativeExportOptions};
 use crate::media::timeline_render::{
@@ -171,11 +171,16 @@ pub async fn native_media_metadata(
     hw_settings: State<'_, parking_lot::RwLock<crate::FfmpegHardwareSettings>>,
 ) -> Result<NativeMediaMetadata, String> {
     let path = PathBuf::from(path);
-    let ffprobe_path = hw_settings.read().ffprobe_path.clone();
-    tokio::task::spawn_blocking(move || probe_media(&path, &ffprobe_path))
-        .await
-        .map_err(|e| e.to_string())?
-        .map_err(|e| format!("{e:#}"))
+    let (ffprobe_path, ffmpeg_path) = {
+        let settings = hw_settings.read();
+        (settings.ffprobe_path.clone(), settings.ffmpeg_path.clone())
+    };
+    tokio::task::spawn_blocking(move || {
+        probe_media_validated(&path, &ffprobe_path, &ffmpeg_path)
+    })
+    .await
+    .map_err(|e| e.to_string())?
+    .map_err(|e| format!("{e:#}"))
 }
 
 #[tauri::command]

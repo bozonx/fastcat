@@ -16,12 +16,16 @@ export interface NativeMediaMetadata {
     codec: string;
     bitrate?: number | null;
     rotation: number;
+    /** Whether ffmpeg decoded the first frame. Absent on non-validating probes. */
+    canDecode?: boolean;
   } | null;
   audio?: {
     codec: string;
     bitrate?: number | null;
     sampleRate?: number | null;
     channels?: number | null;
+    /** Whether ffmpeg decoded the first frame. Absent on non-validating probes. */
+    canDecode?: boolean;
   } | null;
 }
 

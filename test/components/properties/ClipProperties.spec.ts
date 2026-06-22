@@ -18,6 +18,9 @@ vi.mock('~/components/ui/UiRenameModal.vue', () => ({
 vi.mock('~/components/properties/clip/ClipAudioSection.vue', () => ({
   default: { name: 'ClipAudioSection', template: '<div></div>' },
 }));
+vi.mock('~/components/properties/clip/ClipBackgroundProperties.vue', () => ({
+  default: { name: 'ClipBackgroundProperties', template: '<div></div>' },
+}));
 vi.mock('~/components/properties/clip/ClipTransitionsSection.vue', () => ({
   default: { name: 'ClipTransitionsSection', template: '<div></div>' },
 }));

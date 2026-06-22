@@ -94,13 +94,16 @@ const menuItems = computed(() => {
         :icon="
           timelineStore.isSavingTimeline
             ? 'i-heroicons-arrow-path'
-            : timelineStore.isTimelineDirty
-              ? 'i-heroicons-circle-stack'
-              : 'i-heroicons-check-circle'
+            : 'i-lucide-save'
         "
         :disabled="timelineStore.isSavingTimeline || !timelineStore.timelineDoc"
         :title="getHotkeyTitle(t('common.save'), 'general.save')"
-        :class="timelineStore.isSavingTimeline ? 'animate-spin' : ''"
+        :class="[
+          timelineStore.isSavingTimeline ? 'animate-spin' : '',
+          (!timelineStore.isSavingTimeline && timelineStore.isTimelineDirty)
+            ? 'text-selection-accent-500 hover:text-selection-accent-400'
+            : ''
+        ]"
         @click="timelineStore.saveTimeline()"
       />
 

@@ -39,6 +39,13 @@ pub struct NativeVideoMetadata {
     pub codec: String,
     pub bitrate: Option<u64>,
     pub rotation: i32,
+    /// Whether ffmpeg could actually decode the first frame. `None` when the
+    /// caller skipped the (relatively costly) decode-validation pass; the cheap
+    /// `probe_media` path used by proxy/convert leaves this unset. Mirrors the web
+    /// worker's "decode one sample" check so the desktop build flags
+    /// truncated/partially-corrupt sources the same way the browser build does.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub can_decode: Option<bool>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -48,6 +55,9 @@ pub struct NativeAudioMetadata {
     pub bitrate: Option<u64>,
     pub sample_rate: Option<u32>,
     pub channels: Option<u32>,
+    /// See [`NativeVideoMetadata::can_decode`].
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub can_decode: Option<bool>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -185,6 +195,7 @@ fn metadata_from_ffprobe(json: Value) -> Result<NativeMediaMetadata> {
                 .and_then(|v| v.as_str())
                 .and_then(|s| s.parse::<u64>().ok()),
             rotation: probe_rotation(stream),
+            can_decode: None,
         });
 
     let audio = streams
@@ -208,6 +219,7 @@ fn metadata_from_ffprobe(json: Value) -> Result<NativeMediaMetadata> {
                 .get("channels")
                 .and_then(|v| v.as_u64())
                 .map(|v| v as u32),
+            can_decode: None,
         });
 
     Ok(NativeMediaMetadata {
@@ -216,6 +228,82 @@ fn metadata_from_ffprobe(json: Value) -> Result<NativeMediaMetadata> {
         video,
         audio,
     })
+}
+
+/// Which elementary stream to validate.
+#[derive(Clone, Copy)]
+enum StreamKind {
+    Video,
+    Audio,
+}
+
+/// Decodes a single frame of the requested stream with ffmpeg, discarding output.
+/// Returns `true` only when ffmpeg exits cleanly with no error-level diagnostics —
+/// the desktop equivalent of the web worker decoding its first sample. A container
+/// that `ffprobe` parses can still have a payload ffmpeg cannot decode (truncated
+/// file, unsupported codec build), so this catches the cases the metadata-only
+/// probe misses.
+fn validate_stream_decodes(path: &Path, ffmpeg_path: &str, kind: StreamKind) -> bool {
+    let (map, frames_flag, drop_other) = match kind {
+        StreamKind::Video => ("0:v:0", "-frames:v", "-an"),
+        StreamKind::Audio => ("0:a:0", "-frames:a", "-vn"),
+    };
+
+    let output = Command::new(ffmpeg_path)
+        .args(["-v", "error", "-nostdin"])
+        .arg("-i")
+        .arg(path)
+        .arg(drop_other)
+        .args(["-map", map, frames_flag, "1", "-f", "null", "-"])
+        .stdin(Stdio::null())
+        .stdout(Stdio::null())
+        .output();
+
+    match output {
+        Ok(out) => out.status.success() && out.stderr.is_empty(),
+        Err(e) => {
+            log::warn!(
+                "[validate_stream_decodes] ffmpeg failed to run for {}: {}",
+                path.display(),
+                e
+            );
+            false
+        }
+    }
+}
+
+/// Like [`probe_media`], but additionally validates that each present stream can
+/// actually be decoded (one-frame decode), populating `can_decode`. Used by the
+/// media-metadata IPC so the file browser flags corrupt/undecodable sources up
+/// front, matching the web build. Costlier than `probe_media` (extra ffmpeg runs),
+/// so the proxy/convert/audio-extract paths keep using the plain probe.
+pub fn probe_media_validated(
+    path: &Path,
+    ffprobe_path: &str,
+    ffmpeg_path: &str,
+) -> Result<NativeMediaMetadata> {
+    let mut metadata = probe_media(path, ffprobe_path)?;
+
+    // Decode validation needs ffmpeg. If it's unavailable, degrade gracefully:
+    // keep the (ffprobe-derived) metadata and leave `can_decode` unset rather than
+    // failing the whole probe — an unset flag is treated as decodable downstream,
+    // so a missing ffmpeg never falsely brands files as corrupt.
+    if let Err(e) = verify_ffmpeg_binary(ffmpeg_path) {
+        log::warn!(
+            "[probe_media_validated] skipping decode validation, ffmpeg unavailable: {:#}",
+            e
+        );
+        return Ok(metadata);
+    }
+
+    if let Some(video) = metadata.video.as_mut() {
+        video.can_decode = Some(validate_stream_decodes(path, ffmpeg_path, StreamKind::Video));
+    }
+    if let Some(audio) = metadata.audio.as_mut() {
+        audio.can_decode = Some(validate_stream_decodes(path, ffmpeg_path, StreamKind::Audio));
+    }
+
+    Ok(metadata)
 }
 
 pub fn generate_proxy(
@@ -922,6 +1010,7 @@ mod tests {
             codec: "h264".into(),
             bitrate: None,
             rotation: 90,
+            can_decode: None,
         };
 
         assert_eq!(video_frame_thumbnail_size(&video, 320, 320), (180, 320));
@@ -1010,12 +1099,14 @@ mod tests {
                 codec: "h264".into(),
                 bitrate: None,
                 rotation: 0,
+                can_decode: None,
             }),
             audio: Some(NativeAudioMetadata {
                 codec: "aac".into(),
                 bitrate: None,
                 sample_rate: Some(48_000),
                 channels: Some(2),
+                can_decode: None,
             }),
         };
         let options = NativeProxyOptions {
@@ -1063,6 +1154,7 @@ mod tests {
                 codec: "h264".into(),
                 bitrate: None,
                 rotation: 90,
+                can_decode: None,
             }),
             audio: None,
         };

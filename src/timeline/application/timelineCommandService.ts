@@ -16,6 +16,7 @@ import { secondsToUs } from '~/utils/time';
 import type { TimelineFormatInput } from '~/timeline/format';
 import { getTimelineFormat, resolveEffectiveTimelineFormat } from '~/timeline/format';
 import { getMediaTypeFromFilename } from '~/utils/media-types';
+import { isAudioUndecodable, isVideoUndecodable } from '~/utils/media/compatibility';
 import {
   normalizeProjectPath,
   resolveNestedMediaPath,
@@ -183,10 +184,10 @@ export function createTimelineCommandService(deps: TimelineCommandServiceDeps) {
     const hasAudio = Boolean(metadata.audio);
     const isImageLike = !hasVideo && !hasAudio;
 
-    if (track.kind === 'video' && metadata.video?.canDecode === false) {
+    if (track.kind === 'video' && isVideoUndecodable(metadata)) {
       throw new Error('Video codec is not supported for preview or export');
     }
-    if (track.kind === 'audio' && metadata.audio?.canDecode === false) {
+    if (track.kind === 'audio' && isAudioUndecodable(metadata)) {
       throw new Error('Audio codec is not supported for preview or export');
     }
     if (track.kind === 'video' && !hasVideo && !isImageLike) {

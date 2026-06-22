@@ -85,11 +85,15 @@ export class TimelineClipLayoutUpdater {
         ? (n['trackId'] as string)
         : (fallbackTrackId ?? undefined);
     clip.opacity = n['opacity'] as number | undefined;
+    clip.opacityActive = n['opacityActive'] as boolean | undefined;
     clip.blendMode = resolveBlendMode(n['blendMode']);
+    clip.blendModeActive = n['blendModeActive'] as boolean | undefined;
     clip.effects = toVideoEffects(n['effects']);
     clip.transform = n['transform'] as CompositorClip['transform'];
+    clip.transformActive = n['transformActive'] as boolean | undefined;
     clip.sourceOrientation = n['sourceOrientation'] as CompositorClip['sourceOrientation'];
     clip.mask = n['mask'] as CompositorClip['mask'];
+    clip.maskActive = n['maskActive'] as boolean | undefined;
     applyClipLayoutForCurrentSource(clip);
 
     const prevTransitionInType = clip.transitionIn?.type ?? null;

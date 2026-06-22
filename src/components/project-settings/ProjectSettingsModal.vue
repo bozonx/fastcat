@@ -35,7 +35,6 @@ const storageStatsKey = ref(0);
 const isOpen = useModalOpenModel(props, emit);
 
 const isClearProjectVardataConfirmOpen = ref(false);
-const isClearBackupsConfirmOpen = ref(false);
 const isDeleteProjectConfirmOpen = ref(false);
 const isResetConfirmOpen = ref(false);
 
@@ -43,12 +42,6 @@ async function confirmClearProjectVardata() {
   isClearProjectVardataConfirmOpen.value = false;
   if (!projectStore.currentProjectId) return;
   await workspaceStore.clearProjectVardata(projectStore.currentProjectId);
-  storageStatsKey.value++;
-}
-
-async function confirmClearBackups() {
-  isClearBackupsConfirmOpen.value = false;
-  await timelineStore.clearAllBackups();
   storageStatsKey.value++;
 }
 
@@ -118,22 +111,6 @@ async function resetToDefaults() {
     />
 
     <UiConfirmModal
-      v-model:open="isClearBackupsConfirmOpen"
-      :title="t('videoEditor.projectSettings.clearBackupsTitle')"
-      :description="
-        t(
-          'videoEditor.projectSettings.clearBackupsDescription',
-          'This will delete all auto-saved timeline backups for this project. This action cannot be undone.',
-        )
-      "
-      :confirm-text="t('videoEditor.projectSettings.clearTempConfirm')"
-      :cancel-text="t('common.cancel')"
-      color="warning"
-      icon="i-heroicons-trash"
-      @confirm="confirmClearBackups"
-    />
-
-    <UiConfirmModal
       v-model:open="isDeleteProjectConfirmOpen"
       :title="t('videoEditor.projectSettings.deleteProjectConfirmTitle')"
       :description="
@@ -186,7 +163,6 @@ async function resetToDefaults() {
         <StorageSettings
           :key="storageStatsKey"
           @clear-temp="isClearProjectVardataConfirmOpen = true"
-          @clear-backups="isClearBackupsConfirmOpen = true"
           @delete-project="isDeleteProjectConfirmOpen = true"
         />
       </div>

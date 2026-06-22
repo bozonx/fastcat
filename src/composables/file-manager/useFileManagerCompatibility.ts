@@ -1,14 +1,14 @@
 import { computed, watch, type Ref } from 'vue';
 import { useMediaStore } from '~/stores/media.store';
-import { BROWSER_NATIVE_IMAGE_EXTENSIONS, getMediaTypeFromFilename } from '~/utils/media-types';
+import { getMediaTypeFromFilename } from '~/utils/media-types';
+import {
+  computeMediaCompatibilityStatus,
+  fileExtension,
+  type FileCompatibilityStatus,
+} from '~/utils/media/compatibility';
 import type { FsEntry } from '~/types/fs';
 
-export type FileCompatibilityStatus =
-  | 'ok'
-  | 'checking'
-  | 'fully_unsupported'
-  | 'audio_unsupported'
-  | 'corrupt';
+export type { FileCompatibilityStatus } from '~/utils/media/compatibility';
 
 export interface FileCompatibility {
   status: FileCompatibilityStatus;
@@ -34,46 +34,20 @@ function computeStatus(
   const meta = (mediaMetadata[cacheKey] ?? mediaMetadata[externalKey]) as
     | Record<string, unknown>
     | undefined;
-  const isFailed = metadataLoadFailed[cacheKey] || metadataLoadFailed[externalKey];
-  const isLoading = metadataLoading[cacheKey] || metadataLoading[externalKey];
+  const isFailed = Boolean(metadataLoadFailed[cacheKey] || metadataLoadFailed[externalKey]);
+  const isLoading = Boolean(metadataLoading[cacheKey] || metadataLoading[externalKey]);
 
-  if (meta?.error || isFailed) return 'corrupt';
+  const isRemote = entry.source === 'remote';
+  const isExternal = path.startsWith('/') || /^[A-Za-z]:[\\/]/.test(path);
 
-  if (!meta) {
-    if (isLoading) return 'checking';
-    const isRemote = entry.source === 'remote';
-    const isExternal = path.startsWith('/') || /^[A-Za-z]:[\\/]/.test(path);
-    if (isRemote || isExternal) {
-      return 'ok';
-    }
-    return 'checking';
-  }
-
-  if (mediaType === 'image') {
-    const ext = entry.name.split('.').pop()?.toLowerCase() ?? '';
-    const canDisplay = (meta.image as Record<string, unknown> | undefined)?.canDisplay;
-    if (canDisplay === false) {
-      return BROWSER_NATIVE_IMAGE_EXTENSIONS.includes(ext) ? 'corrupt' : 'fully_unsupported';
-    }
-    return 'ok';
-  }
-
-  if (mediaType === 'video') {
-    const videoCanDecode = (meta.video as Record<string, unknown> | undefined)?.canDecode;
-    const audioCanDecode = (meta.audio as Record<string, unknown> | undefined)?.canDecode;
-
-    if (videoCanDecode === false) return 'fully_unsupported';
-    if (audioCanDecode === false) return 'audio_unsupported';
-    return 'ok';
-  }
-
-  if (mediaType === 'audio') {
-    const audioCanDecode = (meta.audio as Record<string, unknown> | undefined)?.canDecode;
-    if (audioCanDecode === false) return 'fully_unsupported';
-    return 'ok';
-  }
-
-  return 'ok';
+  return computeMediaCompatibilityStatus({
+    meta,
+    mediaType,
+    ext: fileExtension(entry.name),
+    isFailed,
+    isLoading,
+    treatUnknownAsOk: isRemote || isExternal,
+  });
 }
 
 export function useFileManagerCompatibility(

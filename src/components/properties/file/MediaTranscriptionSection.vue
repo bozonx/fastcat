@@ -12,7 +12,7 @@ const { t } = useI18n();
 
 <template>
   <div class="flex flex-col gap-2">
-    <div v-if="props.latestTranscriptionCacheKey" class="flex flex-wrap gap-2 pt-1">
+    <div v-if="props.latestTranscriptionCacheKey && props.latestTranscriptionText" class="flex flex-wrap gap-2 pt-1">
       <span class="text-xs text-ui-text-muted self-center">
         {{
           props.latestTranscriptionWasCached

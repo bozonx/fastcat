@@ -10,7 +10,7 @@ import { createMediaWorkerModule } from '~/stores/media/media-worker';
 import { runQueuedFileAccess } from '~/utils/file-access-queue';
 import { useVfs } from '~/composables/useVfs';
 import { postIoInitMessage } from '~/utils/io/io-budget-main';
-import { isTransientIoError } from '~/utils/io/transient-errors';
+import { isToolingUnavailableError, isTransientIoError } from '~/utils/io/transient-errors';
 import { getMediaTypeFromFilename, BROWSER_NATIVE_IMAGE_EXTENSIONS } from '~/utils/media-types';
 import {
   serializeWaveformPeaks,
@@ -444,11 +444,18 @@ export const useMediaStore = defineStore('media', () => {
 
             if (mediaType === 'image') {
               const ext = projectRelativePath.split('.').pop()?.toLowerCase() ?? '';
+              // ffprobe surfaces still images as a single video stream, and the
+              // validating probe decodes its first frame — so `video.canDecode`
+              // tells us the bytes actually decoded, not just that the extension
+              // looks right. Require both a renderer-displayable format and a
+              // successful decode (matching the web worker's createImageBitmap
+              // check); treat an unset flag as "not validated => assume ok".
+              const decoded = nativeMeta.video?.canDecode;
               meta = {
                 source: { size: file.size, lastModified: file.lastModified },
                 duration: 0,
                 image: {
-                  canDisplay: BROWSER_NATIVE_IMAGE_EXTENSIONS.includes(ext),
+                  canDisplay: BROWSER_NATIVE_IMAGE_EXTENSIONS.includes(ext) && decoded !== false,
                   width: nativeMeta.video?.width ?? 0,
                   height: nativeMeta.video?.height ?? 0,
                 },
@@ -473,7 +480,10 @@ export const useMediaStore = defineStore('media', () => {
                   parsedCodec: nativeMeta.video.codec,
                   fps: nativeMeta.video.fps,
                   bitrate: nativeMeta.video.bitrate ?? undefined,
-                  canDecode: true,
+                  // The validating native probe decodes the first frame; an unset
+                  // flag (non-validating probe) is treated as decodable so we never
+                  // regress a healthy file to "unsupported".
+                  canDecode: nativeMeta.video.canDecode ?? true,
                 };
               }
               if (nativeMeta.audio) {
@@ -483,7 +493,7 @@ export const useMediaStore = defineStore('media', () => {
                   sampleRate: nativeMeta.audio.sampleRate ?? 48000,
                   channels: nativeMeta.audio.channels ?? 2,
                   bitrate: nativeMeta.audio.bitrate ?? undefined,
-                  canDecode: true,
+                  canDecode: nativeMeta.audio.canDecode ?? true,
                 };
               }
             }
@@ -546,6 +556,19 @@ export const useMediaStore = defineStore('media', () => {
           }
           log.warn(
             'Metadata fetch failed transiently for',
+            projectRelativePath,
+            '— leaving unresolved for a later retry',
+            (e as Error)?.message,
+          );
+          return null;
+        }
+
+        // ffprobe/ffmpeg missing or path-not-yet-resolvable is an environment
+        // problem, not corruption: bail without persisting `error: true` so the
+        // file isn't branded corrupt forever once the tooling becomes available.
+        if (isToolingUnavailableError(e)) {
+          log.warn(
+            'Native media tooling unavailable while probing',
             projectRelativePath,
             '— leaving unresolved for a later retry',
             (e as Error)?.message,

@@ -1,6 +1,12 @@
 import { computed, type Ref } from 'vue';
 import type { FsEntry } from '~/types/fs';
-import { BROWSER_NATIVE_IMAGE_EXTENSIONS } from '~/utils/media-types';
+import {
+  fileExtension,
+  isAudioUndecodable,
+  isImageUndisplayable,
+  isVideoUndecodable,
+  type MediaCompatibilityMeta,
+} from '~/utils/media/compatibility';
 
 interface MediaSupportMediaStore {
   metadataLoadFailed: Record<string, boolean>;
@@ -34,24 +40,18 @@ export function useFileMediaSupport(deps: FileMediaSupportDeps) {
     ),
   );
 
-  const isVideoCodecUnsupported = computed(
-    () => (deps.mediaMeta.value?.video as unknown as Record<string, unknown>)?.canDecode === false,
+  const meta = computed(
+    () => (deps.mediaMeta.value ?? undefined) as MediaCompatibilityMeta | undefined,
   );
 
-  const isAudioCodecUnsupported = computed(
-    () => (deps.mediaMeta.value?.audio as unknown as Record<string, unknown>)?.canDecode === false,
-  );
+  const isVideoCodecUnsupported = computed(() => isVideoUndecodable(meta.value));
+
+  const isAudioCodecUnsupported = computed(() => isAudioUndecodable(meta.value));
 
   const isImageUnsupported = computed(() => {
     if (deps.mediaType.value !== 'image') return false;
-    const ext = deps.selectedFsEntry()?.name.split('.').pop()?.toLowerCase() ?? '';
-    if (
-      BROWSER_NATIVE_IMAGE_EXTENSIONS.includes(ext) &&
-      (deps.mediaMeta.value?.image as unknown as Record<string, unknown>)?.canDisplay === false
-    ) {
-      return true;
-    }
-    return false;
+    const ext = fileExtension(deps.selectedFsEntry()?.name ?? '');
+    return isImageUndisplayable(meta.value, ext);
   });
 
   const isMediaFullyUnsupported = computed(

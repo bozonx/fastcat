@@ -325,16 +325,14 @@ export function useClipTransform(options: UseClipTransformOptions) {
     const current = getSafeTransform(options.clip.value);
     const x = -(current.scale?.x ?? 1);
     const y = current.scale?.y ?? 1;
-    const linked = Boolean(current.scale?.linked);
-    updateSelectedClipTransform({ scale: { x, y, linked } });
+    updateSelectedClipTransform({ scale: { x, y, linked: false } });
   }
 
   function toggleFlipVertical() {
     const current = getSafeTransform(options.clip.value);
     const x = current.scale?.x ?? 1;
     const y = -(current.scale?.y ?? 1);
-    const linked = Boolean(current.scale?.linked);
-    updateSelectedClipTransform({ scale: { x, y, linked } });
+    updateSelectedClipTransform({ scale: { x, y, linked: false } });
   }
 
   function resetScale() {
