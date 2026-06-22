@@ -31,7 +31,7 @@ export interface FileManagerServiceDeps {
 }
 
 export interface FileManagerService {
-  readDirectory: (path?: string) => Promise<FsEntry[]>;
+  readDirectory: (path?: string, options?: { checkChildren?: boolean }) => Promise<FsEntry[]>;
   findEntryByPath: (path: string) => FsEntry | null;
   mergeEntries: (prev: FsEntry[] | undefined, next: FsEntry[]) => FsEntry[];
   toggleDirectory: (entry: FsEntry) => Promise<void>;
@@ -90,10 +90,12 @@ export function createFileManagerService(deps: FileManagerServiceDeps): FileMana
   // Throws on adapter failure; callers must decide whether to surface the error
   // or fall back to existing state. Returning [] here would conflate a failed
   // read with an empty directory and let mergeEntries wipe out expanded children.
-  async function readDirectory(path = ''): Promise<FsEntry[]> {
-    // By default, we skip expensive checkChildren (hasChildren/hasDirectories) to avoid O(N^2) performance hits.
-    // The tree will assume folders might have children (show chevron) until they are opened.
-    const entries = await deps.vfs.readDirectory(path, { checkChildren: false });
+  async function readDirectory(
+    path = '',
+    options?: { checkChildren?: boolean },
+  ): Promise<FsEntry[]> {
+    const checkChildren = options?.checkChildren ?? false;
+    const entries = await deps.vfs.readDirectory(path, { checkChildren });
 
     const normalizedEntries = entries
       .filter((entry) => deps.showHiddenFiles() || !entry.name.startsWith('.'))
@@ -108,7 +110,7 @@ export function createFileManagerService(deps: FileManagerServiceDeps): FileMana
             parentPath: entry.parentPath,
             lastModified: entry.lastModified,
             size: entry.size,
-            // If adapter didn't check children, we assume true for directories to show the chevron.
+            // Unknown child state remains optimistic until the tree performs an exact read.
             hasChildren: entry.kind === 'directory' ? (entry.hasChildren ?? true) : false,
             hasDirectories: entry.kind === 'directory' ? (entry.hasDirectories ?? true) : false,
           }) satisfies FsEntry,
@@ -133,6 +135,19 @@ export function createFileManagerService(deps: FileManagerServiceDeps): FileMana
     });
 
     return uniqueEntries.sort(compareEntries);
+  }
+
+  function readTreeDirectory(path = ''): Promise<FsEntry[]> {
+    return readDirectory(path, { checkChildren: true });
+  }
+
+  function withLoadedChildrenState(entry: FsEntry, children: FsEntry[]): FsEntry {
+    return {
+      ...entry,
+      children,
+      hasChildren: children.length > 0,
+      hasDirectories: children.some((child) => child.kind === 'directory'),
+    };
   }
 
   function reportReadError(path: string, error: unknown): void {
@@ -181,14 +196,12 @@ export function createFileManagerService(deps: FileManagerServiceDeps): FileMana
 
     const afterExpand = findEntryByPathCore(deps.rootEntries.value, path);
     if (!afterExpand || afterExpand.kind !== 'directory') return;
-    if (afterExpand.children !== undefined) return;
 
     try {
-      const children = await readDirectory(path);
-      deps.rootEntries.value = updateEntryByPath(deps.rootEntries.value, path, (e) => ({
-        ...e,
-        children,
-      }));
+      const children = await readTreeDirectory(path);
+      deps.rootEntries.value = updateEntryByPath(deps.rootEntries.value, path, (e) =>
+        withLoadedChildrenState(e, mergeEntries(e.children, children)),
+      );
       deps.onDirectoryLoaded?.();
     } catch (e) {
       applyExpandedState(false);
@@ -231,11 +244,10 @@ export function createFileManagerService(deps: FileManagerServiceDeps): FileMana
     if (afterExpand.children !== undefined) return;
 
     try {
-      const children = await readDirectory(path);
-      deps.rootEntries.value = updateEntryByPath(deps.rootEntries.value, path, (e) => ({
-        ...e,
-        children,
-      }));
+      const children = await readTreeDirectory(path);
+      deps.rootEntries.value = updateEntryByPath(deps.rootEntries.value, path, (e) =>
+        withLoadedChildrenState(e, mergeEntries(e.children, children)),
+      );
       deps.onDirectoryLoaded?.();
     } catch (e) {
       deps.onError?.({
@@ -249,25 +261,24 @@ export function createFileManagerService(deps: FileManagerServiceDeps): FileMana
   async function refreshExpandedChildren(entries: FsEntry[]): Promise<void> {
     for (const entry of entries) {
       if (entry.kind !== 'directory') continue;
-      if (!entry.expanded) continue;
       if (entry.children === undefined) continue;
 
+      let refreshedChildren = entry.children;
       try {
-        const nextChildren = await readDirectory(entry.path);
+        const nextChildren = await readTreeDirectory(entry.path);
         if (entry.path) {
-          const merged = mergeEntries(entry.children, nextChildren);
-          deps.rootEntries.value = updateEntryByPath(deps.rootEntries.value, entry.path, (e) => ({
-            ...e,
-            children: merged,
-          }));
+          refreshedChildren = mergeEntries(entry.children, nextChildren);
+          deps.rootEntries.value = updateEntryByPath(
+            deps.rootEntries.value,
+            entry.path,
+            (current) => withLoadedChildrenState(current, refreshedChildren),
+          );
         }
       } catch (e) {
         reportReadError(entry.path, e);
       }
 
-      if (entry.children) {
-        await refreshExpandedChildren(entry.children);
-      }
+      await refreshExpandedChildren(refreshedChildren);
     }
   }
 
@@ -293,11 +304,13 @@ export function createFileManagerService(deps: FileManagerServiceDeps): FileMana
           await toggleDirectory(entry);
         } else if (entry.children === undefined) {
           try {
-            const children = await readDirectory(entry.path);
-            deps.rootEntries.value = updateEntryByPath(deps.rootEntries.value, entry.path, (e) => ({
-              ...e,
-              children,
-            }));
+            const children = await readTreeDirectory(entry.path);
+            deps.rootEntries.value = updateEntryByPath(
+              deps.rootEntries.value,
+              entry.path,
+              (current) =>
+                withLoadedChildrenState(current, mergeEntries(current.children, children)),
+            );
           } catch (e) {
             reportReadError(entry.path, e);
             break;
@@ -330,7 +343,7 @@ export function createFileManagerService(deps: FileManagerServiceDeps): FileMana
 
     let nextRoot: FsEntry[];
     try {
-      nextRoot = await readDirectory(rootPath);
+      nextRoot = await readTreeDirectory(rootPath);
     } catch (e) {
       // Preserve existing rootEntries on read failure; never overwrite with [].
       reportReadError(rootPath, e);
@@ -374,7 +387,7 @@ export function createFileManagerService(deps: FileManagerServiceDeps): FileMana
   async function reloadDirectory(path: string) {
     if (!path) {
       try {
-        const nextRoot = await readDirectory('');
+        const nextRoot = await readTreeDirectory('');
         deps.rootEntries.value = mergeEntries(deps.rootEntries.value, nextRoot);
         deps.onDirectoryLoaded?.();
       } catch (e) {
@@ -385,12 +398,16 @@ export function createFileManagerService(deps: FileManagerServiceDeps): FileMana
     const entry = findEntryByPath(path);
     if (!entry || entry.kind !== 'directory') return;
     try {
-      const nextChildren = await readDirectory(path);
-      deps.rootEntries.value = updateEntryByPath(deps.rootEntries.value, path, (e) => ({
-        ...e,
-        expanded: deps.isPathExpanded(path),
-        children: mergeEntries(e.children, nextChildren),
-      }));
+      const nextChildren = await readTreeDirectory(path);
+      deps.rootEntries.value = updateEntryByPath(deps.rootEntries.value, path, (entry) =>
+        withLoadedChildrenState(
+          {
+            ...entry,
+            expanded: deps.isPathExpanded(path),
+          },
+          mergeEntries(entry.children, nextChildren),
+        ),
+      );
       deps.onDirectoryLoaded?.();
     } catch (e) {
       reportReadError(path, e);

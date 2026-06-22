@@ -124,7 +124,7 @@ export function useFileManagerPanelActions({
     }
 
     if (action === 'refresh') {
-      void loadProjectDirectory({ fullRefresh: true });
+      await loadProjectDirectory({ fullRefresh: true });
     } else if (action === 'createFolder') {
       const target: FsEntry = entry ?? {
         kind: 'directory',

@@ -149,4 +149,42 @@ describe('useFileManagerPanelActions', () => {
     const getExistingNames = onFileActionBase.mock.calls[0][2];
     expect(getExistingNames()).toEqual(['a.txt']);
   });
+
+  it('waits for a full tree refresh', async () => {
+    let resolveRefresh: (() => void) | undefined;
+    const loadProjectDirectory = vi.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveRefresh = resolve;
+        }),
+    );
+    const actions = useFileManagerPanelActions({
+      vfs: { readFile: vi.fn() },
+      loadProjectDirectory,
+      reloadDirectory: vi.fn().mockResolvedValue(undefined),
+      findEntryByPath: vi.fn().mockReturnValue(null),
+      onFileActionBase: vi.fn(),
+      handleConvert: vi.fn(),
+      openTranscriptionModal: vi.fn(),
+      extractAudio: vi.fn().mockResolvedValue(undefined),
+      addFileTab: vi.fn(),
+      setActiveTab: vi.fn(),
+      onSelect: vi.fn(),
+    });
+    let completed = false;
+
+    const refresh = actions
+      .handleFileAction('refresh', { kind: 'directory', name: '/', path: '' })
+      .then(() => {
+        completed = true;
+      });
+    await Promise.resolve();
+
+    expect(completed).toBe(false);
+    expect(loadProjectDirectory).toHaveBeenCalledWith({ fullRefresh: true });
+
+    resolveRefresh?.();
+    await refresh;
+    expect(completed).toBe(true);
+  });
 });

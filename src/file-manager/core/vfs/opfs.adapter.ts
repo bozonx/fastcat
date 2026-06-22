@@ -173,9 +173,9 @@ export class OpfsFileSystemAdapter implements IFileSystemAdapter {
       let hasDirectories: boolean | undefined;
 
       if (entryHandle.kind === 'directory' && options?.checkChildren) {
-        hasChildren = false;
-        hasDirectories = false;
         try {
+          hasChildren = false;
+          hasDirectories = false;
           for await (const [, childHandle] of entryHandle.entries()) {
             hasChildren = true;
             if (childHandle.kind === 'directory') {
@@ -184,8 +184,8 @@ export class OpfsFileSystemAdapter implements IFileSystemAdapter {
             }
           }
         } catch {
-          hasChildren = false;
-          hasDirectories = false;
+          hasChildren = undefined;
+          hasDirectories = undefined;
         }
       }
 

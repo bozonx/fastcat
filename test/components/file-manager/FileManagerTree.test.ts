@@ -200,6 +200,23 @@ describe('FileManagerTree', () => {
     expect(wrapper.text()).toContain('child.mp4');
   });
 
+  it('does not render a chevron for a loaded empty directory', () => {
+    const wrapper = mountTree([
+      {
+        name: 'empty',
+        kind: 'directory',
+        path: 'empty',
+        expanded: true,
+        children: [],
+        hasChildren: true,
+      },
+    ]);
+
+    expect(wrapper.find('[data-entry-path="empty"] .i-heroicons-chevron-right').exists()).toBe(
+      false,
+    );
+  });
+
   it('emits requestMove on internal move drop', async () => {
     const dir: FsEntry = { name: '_video', kind: 'directory', path: '_video', expanded: false };
     const wrapper = mountTree([dir]);

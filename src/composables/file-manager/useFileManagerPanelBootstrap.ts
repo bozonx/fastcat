@@ -5,7 +5,10 @@ import { useSelectionStore } from '~/stores/selection.store';
 import { useUiStore } from '~/stores/ui.store';
 
 export interface FileManagerPanelBootstrapOptions {
-  loadProjectDirectory: () => Promise<void>;
+  loadProjectDirectory: (options?: {
+    fullRefresh?: boolean;
+    suppressNotification?: boolean;
+  }) => Promise<void>;
   onRootEntrySelected: (entry: FsEntry) => void;
   shouldSelectRoot?: () => boolean;
 }
@@ -18,6 +21,16 @@ export function useFileManagerPanelBootstrap({
   const projectStore = useProjectStore();
   const selectionStore = useSelectionStore();
   const uiStore = useUiStore();
+
+  watch(
+    () => uiStore.fileManagerUpdateCounter,
+    async () => {
+      await loadProjectDirectory({
+        fullRefresh: true,
+        suppressNotification: true,
+      });
+    },
+  );
 
   watch(
     () => projectStore.currentProjectId,

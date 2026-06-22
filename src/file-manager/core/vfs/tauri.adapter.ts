@@ -252,11 +252,11 @@ export class TauriFileSystemAdapter implements IFileSystemAdapter {
                   hasDirectories: childEntries.some((childEntry) => childEntry.isDirectory),
                 };
               } catch {
-                return { hasChildren: false, hasDirectories: false };
+                return undefined;
               }
             });
-            hasChildren = childStats?.hasChildren ?? false;
-            hasDirectories = childStats?.hasDirectories ?? false;
+            hasChildren = childStats?.hasChildren ?? true;
+            hasDirectories = childStats?.hasDirectories ?? true;
           } else if (entry.isDirectory) {
             // Default: assume children might exist so the chevron renders.
             // Avoids O(N²) reads unless `checkChildren` is set.

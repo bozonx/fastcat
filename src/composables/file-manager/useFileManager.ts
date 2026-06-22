@@ -130,9 +130,8 @@ export function createFileManager(deps: FileManagerCreateDeps) {
     getExpandedPaths: () => deps.getExpandedPaths(),
     checkExistingProxies: (videoPaths) => deps.mediaCache.checkExistingProxies(videoPaths),
     onDirectoryLoaded: () => {
+      if (suppressDirectoryLoadedNotification) return;
       deps.onDirectoryLoaded?.();
-      const uiStore = useUiStore();
-      uiStore.notifyFileManagerUpdate();
     },
     onDirectoryMoved: (params) => deps.onDirectoryMoved?.(params),
     onDirectoryCopied: (params) => deps.onDirectoryCopied?.(params),
@@ -150,10 +149,15 @@ export function createFileManager(deps: FileManagerCreateDeps) {
 
   watch(
     () => deps.showHiddenFiles.value,
-    () => {
-      void loadProjectDirectory({ fullRefresh: true });
+    async () => {
+      await loadProjectDirectory({ fullRefresh: true });
+      useUiStore().notifyFileManagerUpdate();
     },
   );
+
+  function notifyFileManagerUpdate(): void {
+    useUiStore().notifyFileManagerUpdate();
+  }
 
   function findEntryByPath(path: string): FsEntry | null {
     return service.findEntryByPath(path);
@@ -191,6 +195,8 @@ export function createFileManager(deps: FileManagerCreateDeps) {
     return service.mergeEntries(prev, next);
   }
 
+  let suppressDirectoryLoadedNotification = false;
+
   async function withWorkspaceCommonRoot(entries: FsEntry[]): Promise<FsEntry[]> {
     const commonMetadata = await deps.vfs.getMetadata(WORKSPACE_COMMON_PATH_PREFIX);
     if (!commonMetadata || commonMetadata.kind !== 'directory') return entries;
@@ -203,7 +209,9 @@ export function createFileManager(deps: FileManagerCreateDeps) {
     );
     let commonChildren: FsEntry[];
     try {
-      commonChildren = await service.readDirectory(WORKSPACE_COMMON_PATH_PREFIX);
+      commonChildren = await service.readDirectory(WORKSPACE_COMMON_PATH_PREFIX, {
+        checkChildren: true,
+      });
     } catch {
       commonChildren = previousCommonEntry?.children ?? [];
     }
@@ -218,6 +226,8 @@ export function createFileManager(deps: FileManagerCreateDeps) {
       children: deps.isFileTreePathExpanded(WORKSPACE_COMMON_PATH_PREFIX)
         ? mergeEntries(previousCommonEntry?.children, commonChildren)
         : undefined,
+      hasChildren: commonChildren.length > 0,
+      hasDirectories: commonChildren.some((entry) => entry.kind === 'directory'),
     };
 
     const withoutCommon = entries.filter((entry) => entry.path !== WORKSPACE_COMMON_PATH_PREFIX);
@@ -250,7 +260,10 @@ export function createFileManager(deps: FileManagerCreateDeps) {
     });
   }
 
-  async function loadProjectDirectory(options?: { fullRefresh?: boolean }) {
+  async function loadProjectDirectory(options?: {
+    fullRefresh?: boolean;
+    suppressNotification?: boolean;
+  }) {
     const projectName = deps.getProjectName();
     if (!projectName) {
       deps.rootEntries.value = [];
@@ -260,23 +273,31 @@ export function createFileManager(deps: FileManagerCreateDeps) {
 
     const shouldFullRefresh = options?.fullRefresh ?? false;
 
-    await runWithUiFeedback({
-      action: async () => {
-        await service.loadProjectDirectory('', {
-          refreshExpandedChildren: shouldFullRefresh,
-          expandPersistedDirectories: true,
-          autoExpandMediaDirs: true,
-        });
-        if (!deps.hideCommonRoot) {
-          deps.rootEntries.value = await withWorkspaceCommonRoot(deps.rootEntries.value);
-        }
-      },
+    const previousSuppressNotification = suppressDirectoryLoadedNotification;
+    suppressDirectoryLoadedNotification =
+      previousSuppressNotification || Boolean(options?.suppressNotification);
 
-      defaultErrorMessage: 'Failed to open project folder',
-      toastTitle: 'Project error',
-      toastDescription: () => error.value || 'Failed to open project folder',
-      ignoreError: (e: unknown) => e instanceof Error && e.name === 'AbortError',
-    });
+    try {
+      await runWithUiFeedback({
+        action: async () => {
+          await service.loadProjectDirectory('', {
+            refreshExpandedChildren: shouldFullRefresh,
+            expandPersistedDirectories: true,
+            autoExpandMediaDirs: true,
+          });
+          if (!deps.hideCommonRoot) {
+            deps.rootEntries.value = await withWorkspaceCommonRoot(deps.rootEntries.value);
+          }
+        },
+
+        defaultErrorMessage: 'Failed to open project folder',
+        toastTitle: 'Project error',
+        toastDescription: () => error.value || 'Failed to open project folder',
+        ignoreError: (e: unknown) => e instanceof Error && e.name === 'AbortError',
+      });
+    } finally {
+      suppressDirectoryLoadedNotification = previousSuppressNotification;
+    }
 
     void timelineMediaUsageStore.refreshUsage();
   }
@@ -431,6 +452,10 @@ export function createFileManager(deps: FileManagerCreateDeps) {
       }
     }
 
+    if (uploadResults && uploadResults.length > 0) {
+      notifyFileManagerUpdate();
+    }
+
     return uploadResults;
   }
 
@@ -438,7 +463,7 @@ export function createFileManager(deps: FileManagerCreateDeps) {
     const projectName = deps.getProjectName();
     if (!projectName) return;
 
-    await runWithUiFeedback({
+    const created = await runWithUiFeedback({
       action: async () => {
         if (parentPath) {
           deps.setFileTreePathExpanded(parentPath, true);
@@ -460,11 +485,15 @@ export function createFileManager(deps: FileManagerCreateDeps) {
         }
 
         await reloadDirectory(parentPath);
+        return true;
       },
       defaultErrorMessage: 'Failed to create folder',
       toastTitle: 'Folder error',
       toastDescription: () => error.value || 'Failed to create folder',
     });
+    if (created) {
+      notifyFileManagerUpdate();
+    }
   }
 
   async function triggerMediaIntegrityCheck() {
@@ -512,7 +541,7 @@ export function createFileManager(deps: FileManagerCreateDeps) {
   }
 
   async function deleteEntry(target: FsEntry) {
-    await runWithUiFeedback({
+    const deleted = await runWithUiFeedback({
       action: async () => {
         const deletedFilePaths = await deleteEntryCommand(target, {
           vfs: deps.vfs,
@@ -569,11 +598,15 @@ export function createFileManager(deps: FileManagerCreateDeps) {
         const parentPath = getParentPath(target.path);
         await reloadDirectory(parentPath);
         await triggerMediaIntegrityCheck();
+        return true;
       },
       defaultErrorMessage: 'Failed to delete',
       toastTitle: 'Delete error',
       toastDescription: () => error.value || 'Failed to delete',
     });
+    if (deleted) {
+      notifyFileManagerUpdate();
+    }
   }
 
   async function renameEntry(target: FsEntry, newName: string) {
@@ -586,7 +619,7 @@ export function createFileManager(deps: FileManagerCreateDeps) {
       textWrapperRenameResult?.newPath ??
       (oldPath ? (parentPath ? `${parentPath}/${newName}` : newName) : '');
 
-    await runWithUiFeedback({
+    const renamed = await runWithUiFeedback({
       action: async () => {
         await renameEntryCommand(
           { target, newName },
@@ -614,11 +647,15 @@ export function createFileManager(deps: FileManagerCreateDeps) {
           textWrapperRenameResult?.reloadDirPath ?? getParentPath(target.path);
         await reloadDirectory(parentPathForRename);
         await triggerMediaIntegrityCheck();
+        return true;
       },
       defaultErrorMessage: 'Failed to rename',
       toastTitle: 'Rename error',
       toastDescription: () => error.value || 'Failed to rename',
     });
+    if (renamed) {
+      notifyFileManagerUpdate();
+    }
   }
 
   async function moveEntry(params: { source: FsEntry; targetDirPath: string }) {
@@ -634,7 +671,7 @@ export function createFileManager(deps: FileManagerCreateDeps) {
 
     if (!isMoveAllowed({ sourcePath, targetDirPath })) return;
 
-    return await runWithUiFeedback({
+    const newPath = await runWithUiFeedback({
       action: async () => {
         const { newPath } = await moveEntryCommand(
           {
@@ -692,6 +729,10 @@ export function createFileManager(deps: FileManagerCreateDeps) {
       toastTitle: 'Move error',
       toastDescription: () => error.value || 'Failed to move',
     });
+    if (newPath) {
+      notifyFileManagerUpdate();
+    }
+    return newPath;
   }
 
   async function copyEntry(params: {
@@ -708,7 +749,7 @@ export function createFileManager(deps: FileManagerCreateDeps) {
 
     if (!isCopyAllowed({ sourcePath, targetDirPath })) return null;
 
-    return await runWithUiFeedback({
+    const newPath = await runWithUiFeedback({
       action: async () => {
         const { newPath } = await copyEntryCommand(
           {
@@ -745,10 +786,14 @@ export function createFileManager(deps: FileManagerCreateDeps) {
       toastDescription: () => error.value || 'Failed to copy',
       ignoreError: (e: unknown) => e instanceof Error && e.name === 'AbortError',
     });
+    if (newPath) {
+      notifyFileManagerUpdate();
+    }
+    return newPath;
   }
 
   async function createTimeline(parentPath?: string): Promise<string | null> {
-    return await runWithUiFeedback({
+    const createdPath = await runWithUiFeedback({
       action: async () => {
         const createdPath = await createTimelineCommand({
           vfs: deps.vfs,
@@ -764,10 +809,14 @@ export function createFileManager(deps: FileManagerCreateDeps) {
       toastTitle: t('timelineCreation.errorTitle'),
       toastDescription: () => error.value || t('timelineCreation.failed'),
     });
+    if (createdPath) {
+      notifyFileManagerUpdate();
+    }
+    return createdPath;
   }
 
   async function createMarkdown(parentPath?: string): Promise<string | null> {
-    return await runWithUiFeedback({
+    const createdPath = await runWithUiFeedback({
       action: async () => {
         const dirPath = parentPath && parentPath.trim() !== '' ? parentPath : DOCUMENTS_DIR_NAME;
         const createdPath = await createMarkdownCommand({
@@ -781,6 +830,10 @@ export function createFileManager(deps: FileManagerCreateDeps) {
       toastTitle: 'Document error',
       toastDescription: () => error.value || 'Failed to create document',
     });
+    if (createdPath) {
+      notifyFileManagerUpdate();
+    }
+    return createdPath;
   }
 
   function getFileIcon(entry: FsEntry): string {
@@ -801,7 +854,6 @@ export function createFileManager(deps: FileManagerCreateDeps) {
     if (!path && !deps.hideCommonRoot) {
       deps.rootEntries.value = await withWorkspaceCommonRoot([...deps.rootEntries.value]);
     }
-    deps.onDirectoryLoaded?.();
   }
 
   return {
@@ -1097,9 +1149,6 @@ export function useFileManager(options?: {
       newPath: string;
     }) => {
       // No need to clear cache for existing files. New copied files don't have cache yet.
-    },
-    onDirectoryLoaded: () => {
-      uiStore.notifyFileManagerUpdate();
     },
   });
 

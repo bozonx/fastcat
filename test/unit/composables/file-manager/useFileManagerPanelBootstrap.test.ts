@@ -1,5 +1,6 @@
 /** @vitest-environment node */
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { nextTick, reactive } from 'vue';
 
 import { useFileManagerPanelBootstrap } from '~/composables/file-manager/useFileManagerPanelBootstrap';
 
@@ -8,10 +9,11 @@ const projectStore = {
   currentProjectId: 'project-1',
 };
 const selectionStore = { selectFsEntry: vi.fn() };
-const uiStore = {
+const uiStore = reactive({
   restoreFileTreeStateOnce: vi.fn(),
   selectedFsEntry: null as any,
-};
+  fileManagerUpdateCounter: 0,
+});
 
 vi.mock('~/stores/project.store', () => ({
   useProjectStore: () => projectStore,
@@ -31,6 +33,7 @@ describe('useFileManagerPanelBootstrap', () => {
     selectionStore.selectFsEntry.mockClear();
     uiStore.restoreFileTreeStateOnce.mockClear();
     uiStore.selectedFsEntry = null;
+    uiStore.fileManagerUpdateCounter = 0;
   });
 
   it('loads project directory and selects root entry on immediate watch', async () => {
@@ -54,5 +57,25 @@ describe('useFileManagerPanelBootstrap', () => {
     });
     expect(selectionStore.selectFsEntry).toHaveBeenCalledWith(uiStore.selectedFsEntry);
     expect(onRootEntrySelected).toHaveBeenCalledWith(uiStore.selectedFsEntry);
+  });
+
+  it('fully refreshes the tree after a global file manager update without notifying again', async () => {
+    const loadProjectDirectory = vi.fn().mockResolvedValue(undefined);
+
+    useFileManagerPanelBootstrap({
+      loadProjectDirectory,
+      onRootEntrySelected: vi.fn(),
+    });
+    await Promise.resolve();
+    await Promise.resolve();
+    loadProjectDirectory.mockClear();
+
+    uiStore.fileManagerUpdateCounter++;
+    await nextTick();
+
+    expect(loadProjectDirectory).toHaveBeenCalledWith({
+      fullRefresh: true,
+      suppressNotification: true,
+    });
   });
 });

@@ -250,10 +250,15 @@ function getEntryViewModel(entry: FsEntry): EntryViewModel {
     .filter(Boolean)
     .join(' ');
 
-  const showChevron =
-    entry.kind === 'directory' &&
-    (props.foldersOnly ? entry.hasDirectories !== false : entry.hasChildren !== false) &&
-    (!props.foldersOnly || !entry.children || entry.children.some((c) => c.kind === 'directory'));
+  const hasVisibleChildren =
+    entry.children !== undefined
+      ? props.foldersOnly
+        ? entry.children.some((child) => child.kind === 'directory')
+        : entry.children.length > 0
+      : props.foldersOnly
+        ? entry.hasDirectories !== false
+        : entry.hasChildren !== false;
+  const showChevron = entry.kind === 'directory' && hasVisibleChildren;
 
   return { selected, isDot, isCommonRoot, isCut, isCopy, iconClass, nameClass, meta, showChevron };
 }

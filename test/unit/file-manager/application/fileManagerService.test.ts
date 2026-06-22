@@ -143,6 +143,126 @@ describe('fileManagerService', () => {
     expect(updated?.children?.map((e) => e.name)).toEqual(['child.txt']);
   });
 
+  it('removes the chevron state after opening an empty directory', async () => {
+    const rootEntries = ref<FsEntry[]>([
+      {
+        name: 'empty',
+        kind: 'directory',
+        path: 'empty',
+        expanded: false,
+        hasChildren: true,
+      },
+    ]);
+    const vfs = {
+      readDirectory: vi.fn(async () => []),
+    } as any;
+    const service = createFileManagerService({
+      rootEntries,
+      sortMode: ref('name'),
+      showHiddenFiles: () => true,
+      isPathExpanded: () => false,
+      setPathExpanded: vi.fn(),
+      getExpandedPaths: () => [],
+      vfs,
+      checkExistingProxies: vi.fn(async () => undefined),
+    });
+
+    await service.toggleDirectory(rootEntries.value[0]!);
+
+    expect(vfs.readDirectory).toHaveBeenCalledWith('empty', { checkChildren: true });
+    expect(rootEntries.value[0]).toMatchObject({
+      expanded: true,
+      children: [],
+      hasChildren: false,
+      hasDirectories: false,
+    });
+  });
+
+  it('reloads a previously loaded directory when it is expanded again', async () => {
+    const rootEntries = ref<FsEntry[]>([
+      {
+        name: 'folder',
+        kind: 'directory',
+        path: 'folder',
+        expanded: false,
+        children: [],
+        hasChildren: false,
+      },
+    ]);
+    const vfs = {
+      readDirectory: vi.fn(async () => [
+        {
+          kind: 'file',
+          name: 'new.txt',
+          path: 'folder/new.txt',
+          parentPath: 'folder',
+        },
+      ]),
+    } as any;
+    const service = createFileManagerService({
+      rootEntries,
+      sortMode: ref('name'),
+      showHiddenFiles: () => true,
+      isPathExpanded: () => false,
+      setPathExpanded: vi.fn(),
+      getExpandedPaths: () => [],
+      vfs,
+      checkExistingProxies: vi.fn(async () => undefined),
+    });
+
+    await service.toggleDirectory(rootEntries.value[0]!);
+
+    expect(rootEntries.value[0]?.children?.map((entry) => entry.name)).toEqual(['new.txt']);
+    expect(rootEntries.value[0]?.hasChildren).toBe(true);
+  });
+
+  it('refreshes loaded children of collapsed directories during a full refresh', async () => {
+    const rootEntries = ref<FsEntry[]>([
+      {
+        name: 'folder',
+        kind: 'directory',
+        path: 'folder',
+        expanded: false,
+        children: [],
+        hasChildren: false,
+      },
+    ]);
+    const vfs = {
+      readDirectory: vi.fn(async (path?: string) => {
+        if (!path) {
+          return [{ kind: 'directory', name: 'folder', path: 'folder', parentPath: '' }];
+        }
+        return [
+          {
+            kind: 'file',
+            name: 'new.txt',
+            path: 'folder/new.txt',
+            parentPath: 'folder',
+          },
+        ];
+      }),
+    } as any;
+    const service = createFileManagerService({
+      rootEntries,
+      sortMode: ref('name'),
+      showHiddenFiles: () => true,
+      isPathExpanded: () => false,
+      setPathExpanded: vi.fn(),
+      getExpandedPaths: () => [],
+      vfs,
+      checkExistingProxies: vi.fn(async () => undefined),
+    });
+
+    await service.loadProjectDirectory('', {
+      refreshExpandedChildren: true,
+      expandPersistedDirectories: false,
+      autoExpandMediaDirs: false,
+    });
+
+    expect(rootEntries.value[0]?.expanded).toBe(false);
+    expect(rootEntries.value[0]?.children?.map((entry) => entry.name)).toEqual(['new.txt']);
+  });
+
   it('readDirectory propagates adapter errors so callers can preserve existing state', async () => {
     const rootEntries = ref<FsEntry[]>([]);
     const sortMode = ref<'name' | 'type'>('name');
