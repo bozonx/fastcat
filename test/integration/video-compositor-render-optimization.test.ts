@@ -390,6 +390,52 @@ describe('VideoCompositor render optimization', () => {
     expect(inactiveAdjustment.sprite.texture).not.toEqual({ stale: true });
   });
 
+  it('disables effect padding for adjustment clips', async () => {
+    const compositor = new VideoCompositor() as any;
+    const applyEffects = vi.fn().mockResolvedValue(null);
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const sourceBitmap = { width: 1920, height: 1080, close: vi.fn() };
+    const adjustmentTexture = { id: 'adjustment-texture' };
+    const adjustment = {
+      itemId: 'adj-blur',
+      clipKind: 'adjustment',
+      layer: 1,
+      startUs: 0,
+      sprite: { destroyed: false, visible: true, texture: null },
+      adjustmentSourceTexture: null,
+      effects: [
+        {
+          id: 'blur',
+          type: 'blur',
+          enabled: true,
+          strength: 24,
+          blurPastEdges: true,
+        },
+      ],
+    } as any;
+
+    compositor.width = 1920;
+    compositor.height = 1080;
+    compositor.previewEffectsEnabled = true;
+    compositor.computeRunner = { isReady: () => true, applyEffects };
+    compositor.app = { renderer: { render: vi.fn() } };
+    compositor.clips = [adjustment];
+    compositor.ensureStageTextureRenderer = vi.fn().mockReturnValue({
+      renderLowerLayersToBitmap: vi.fn().mockResolvedValue(sourceBitmap),
+    });
+    compositor.ensureClipRenderTexture = vi.fn().mockReturnValue(adjustmentTexture);
+
+    await compositor.prepareAdjustmentClips([adjustment]);
+
+    expect(applyEffects).toHaveBeenCalledWith(
+      sourceBitmap,
+      expect.arrayContaining([expect.objectContaining({ type: 'gaussian-blur', bleed: true })]),
+      { enablePadding: false },
+    );
+    expect(sourceBitmap.close).toHaveBeenCalled();
+    warn.mockRestore();
+  });
+
   it('normalizes background color when updating solid clips in updateTimelineLayout', async () => {
     const compositor = new VideoCompositor() as any;
     compositor.width = 1920;

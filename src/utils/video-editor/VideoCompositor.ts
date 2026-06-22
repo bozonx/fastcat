@@ -278,11 +278,22 @@ export class VideoCompositor {
         sourceBitmap = await this.ensureStageTextureRenderer(this.app).renderLowerLayersToBitmap(
           clip.layer,
         );
-        processedBitmap = await runner.applyEffects(sourceBitmap, effectSpecs);
+        // Native adjustment layers always process the project-sized scene
+        // without effect padding. Keep the web path identical: a padded bitmap
+        // is larger than the adjustment render target and shifts the result
+        // when "blur past edges" is enabled.
+        processedBitmap = await runner.applyEffects(sourceBitmap, effectSpecs, {
+          enablePadding: false,
+        });
 
         const output = processedBitmap ?? sourceBitmap;
         const texture = Texture.from(output);
         const sprite = new Sprite(texture);
+        sprite.anchor.set(0, 0);
+        sprite.x = 0;
+        sprite.y = 0;
+        sprite.width = this.width;
+        sprite.height = this.height;
         clip.adjustmentSourceTexture = this.ensureClipRenderTexture(
           clip.adjustmentSourceTexture ?? null,
         );

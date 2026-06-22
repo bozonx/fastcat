@@ -59,6 +59,10 @@ export interface ComputePass {
   dst: Buf;
 }
 
+export interface ApplyEffectsOptions {
+  enablePadding?: boolean;
+}
+
 function spatialScale(height: number): number {
   return Math.max(0.1, Math.min(8.0, height / 1080.0));
 }
@@ -899,6 +903,7 @@ export class WebGpuComputeRunner {
   public async applyEffects(
     source: VideoFrame | ImageBitmap,
     effects: VideoEffectSpec[],
+    options: ApplyEffectsOptions = {},
   ): Promise<ImageBitmap | null> {
     if (!this.device || !this.pipeline || !this.bindLayout || !this.shaderModule) {
       return null;
@@ -942,7 +947,7 @@ export class WebGpuComputeRunner {
     const origW = w;
     const origH = h;
     const scale = Math.max(0.1, Math.min(8.0, origH / 1080.0));
-    const padding = calculatePadding(effects, scale);
+    const padding = options.enablePadding === false ? 0 : calculatePadding(effects, scale);
     w = origW + 2 * padding;
     h = origH + 2 * padding;
 
