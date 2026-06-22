@@ -3,6 +3,8 @@ import { ensureVectorImageRaster } from '~/media-cache/application/vectorImageCa
 import type { ResolvedStorageTopology } from '~/utils/storage-topology';
 import type { IFileSystemAdapter } from '~/file-manager/core/vfs/types';
 import { useVfs } from '~/composables/useVfs';
+import { useProjectStore } from '~/stores/project.store';
+import { useWorkspaceStore } from '~/stores/workspace.store';
 
 export interface CreateVideoCoreHostApiParams {
   getCurrentProjectId: () => string | null;
@@ -49,4 +51,25 @@ export function createVideoCoreHostApi(params: CreateVideoCoreHostApiParams): Vi
     onExportPhase: params.onExportPhase,
     onExportWarning: params.onExportWarning,
   };
+}
+
+/**
+ * Convenience builder that wires the host API to the current Pinia stores.
+ * Accepts optional overrides for any param; common uses are custom
+ * `getFileHandleByPath` / `getFileByPath` (e.g. workspace-external files).
+ */
+export function createProjectHostApi(
+  overrides?: Partial<CreateVideoCoreHostApiParams>,
+): VideoCoreHostAPI {
+  const projectStore = useProjectStore();
+  const workspaceStore = useWorkspaceStore();
+  return createVideoCoreHostApi({
+    getCurrentProjectId: () => projectStore.currentProjectId,
+    getWorkspaceHandle: () => workspaceStore.workspaceHandle,
+    getResolvedStorageTopology: () => workspaceStore.resolvedStorageTopology,
+    getFileHandleByPath: async (path) => projectStore.getFileHandleByPath(path),
+    getFileByPath: async (path) => projectStore.getFileByPath(path),
+    onExportProgress: () => {},
+    ...overrides,
+  });
 }

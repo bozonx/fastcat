@@ -35,6 +35,7 @@ vi.mock('~/utils/video-editor/worker-client', () => ({
 
 vi.mock('~/utils/video-editor/createVideoCoreHostApi', () => ({
   createVideoCoreHostApi: vi.fn().mockReturnValue({}),
+  createProjectHostApi: vi.fn().mockReturnValue({}),
 }));
 
 describe('useMonitorSnapshot', () => {

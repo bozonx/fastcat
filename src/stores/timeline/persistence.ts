@@ -1,6 +1,7 @@
 import { createDevLogger } from '~/utils/dev-logger';
 import { toRaw, type Ref } from 'vue';
 import { createAutoSave } from '~/utils/auto-save';
+import { toError } from '~/utils/errors';
 import { withFileIoSlot } from '~/utils/io/io-governor';
 import { postIoInitMessage } from '~/utils/io/io-budget-main';
 import { TIMELINE_DEFAULTS } from '~/utils/constants';
@@ -242,7 +243,7 @@ function serializeInWorker(doc: TimelineDocument): Promise<string> {
       log.error('[timeline persistence] non-cloneable value in TimelineDocument at', path, e);
       log.error('[timeline persistence] raw doc snapshot:', raw);
       worker.terminate();
-      reject(e instanceof Error ? e : new Error(String(e)));
+      reject(toError(e));
     }
   });
 }

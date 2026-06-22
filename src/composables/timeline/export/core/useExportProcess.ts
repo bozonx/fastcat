@@ -17,7 +17,7 @@ import {
   terminateExportWorker,
   unregisterExportTaskHostApi,
 } from '~/utils/video-editor/worker-client';
-import { createVideoCoreHostApi } from '~/utils/video-editor/createVideoCoreHostApi';
+import { createProjectHostApi } from '~/utils/video-editor/createVideoCoreHostApi';
 import { buildEffectiveAudioClipItems } from '~/utils/audio/track-bus';
 import type { TimelineDocument } from '~/timeline/types';
 import { buildNativeMonitorScene } from '~/utils/native-monitor-scene';
@@ -236,16 +236,7 @@ export function useExportProcess(
       const { client } = getExportWorkerClient();
       await broadcastPixiRendererPreference(workspaceStore.userSettings.optimization.pixiRenderer);
 
-      setExportHostApi(
-        createVideoCoreHostApi({
-          getCurrentProjectId: () => projectStore.currentProjectId,
-          getWorkspaceHandle: () => workspaceStore.workspaceHandle,
-          getResolvedStorageTopology: () => workspaceStore.resolvedStorageTopology,
-          getFileHandleByPath: async (path) => projectStore.getFileHandleByPath(path),
-          getFileByPath: async (path) => projectStore.getFileByPath(path),
-          onExportProgress: () => {},
-        }),
-      );
+      setExportHostApi(createProjectHostApi());
       registerExportTaskHostApi(exportTaskId, {
         onExportProgress: (progress) => onProgress(progress / 100),
         onExportPhase: (phase) => {

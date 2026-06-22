@@ -19,6 +19,7 @@ vi.mock('~/utils/video-editor/worker-client', () => ({
 
 vi.mock('~/utils/video-editor/createVideoCoreHostApi', () => ({
   createVideoCoreHostApi: (params: unknown) => params,
+  createProjectHostApi: vi.fn(() => ({})),
 }));
 
 function createMockWritable() {

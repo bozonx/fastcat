@@ -1,6 +1,6 @@
 import type { FsEntry } from '~/types/fs';
 import { getExportWorkerClient, setExportHostApi } from '~/utils/video-editor/worker-client';
-import { createVideoCoreHostApi } from '~/utils/video-editor/createVideoCoreHostApi';
+import { createProjectHostApi } from '~/utils/video-editor/createVideoCoreHostApi';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useProjectStore } from '~/stores/project.store';
 import { useFileManager } from '~/composables/file-manager/useFileManager';
@@ -104,10 +104,7 @@ export function useAudioExtractionCore() {
       // projectStore resolving into the project directory.
       // For project context: use projectStore (original behavior).
       setExportHostApi(
-        createVideoCoreHostApi({
-          getCurrentProjectId: () => projectStore.currentProjectId,
-          getWorkspaceHandle: () => workspaceStore.workspaceHandle,
-          getResolvedStorageTopology: () => workspaceStore.resolvedStorageTopology,
+        createProjectHostApi({
           getFileHandleByPath: async (path) =>
             isExternal
               ? ((await getWorkspaceFileHandle(path)) ?? projectStore.getFileHandleByPath(path))
@@ -125,7 +122,6 @@ export function useAudioExtractionCore() {
             }
             return projectStore.getFileByPath(path);
           },
-          onExportProgress: () => {},
         }),
       );
 

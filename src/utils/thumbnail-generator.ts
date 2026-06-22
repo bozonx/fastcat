@@ -10,10 +10,12 @@ import {
 import { toProjectTempVfsPath } from '~/utils/storage-topology';
 import { useVfs } from '~/composables/useVfs';
 import { getThumbnailWorkerClient, setThumbnailHostApi } from '~/utils/video-editor/worker-client';
-import { createVideoCoreHostApi } from '~/utils/video-editor/createVideoCoreHostApi';
+import { createProjectHostApi } from '~/utils/video-editor/createVideoCoreHostApi';
 import { addMediaTask, MEDIA_TASK_PRIORITIES } from '~/utils/media-task-queue';
 import { randomToken } from '~/utils/ids';
 import { isTauriRuntime } from '~/utils/runtime';
+import { toError } from '~/utils/errors';
+import { isNotFoundError } from '~/utils/error-helpers';
 import { getNativeFileHandlePath, nativeVideoFrameWebps } from '~/utils/tauri-media-processing';
 import { normalizeMediaCachePath } from '~/utils/media-cache-path';
 import {
@@ -296,7 +298,7 @@ class ThumbnailGenerator extends BaseThumbnailGenerator<ThumbnailTask, Map<numbe
             onError: (err) => this.emitError(task.id, err),
           });
         } catch (e) {
-          const err = e instanceof Error ? e : new Error(String(e));
+          const err = toError(e);
           log.error(`Task ${task.id} failed:`, err);
           this.emitError(task.id, err);
         } finally {
@@ -328,7 +330,7 @@ class ThumbnailGenerator extends BaseThumbnailGenerator<ThumbnailTask, Map<numbe
                       onError: (err) => this.emitError(task.id, err),
                     });
                   } catch (e) {
-                    const err = e instanceof Error ? e : new Error(String(e));
+                    const err = toError(e);
                     log.error(`Task ${task.id} failed:`, err);
                     this.emitError(task.id, err);
                   } finally {
@@ -338,7 +340,7 @@ class ThumbnailGenerator extends BaseThumbnailGenerator<ThumbnailTask, Map<numbe
                 },
                 { priority: this.taskPriority },
               ).catch((e) => {
-                const err = e instanceof Error ? e : new Error(String(e));
+                const err = toError(e);
                 this.queuedTasks.delete(task.id);
                 this.cancelledTasks.delete(task.id);
                 log.error(`Task ${task.id} failed:`, err);
@@ -353,7 +355,7 @@ class ThumbnailGenerator extends BaseThumbnailGenerator<ThumbnailTask, Map<numbe
       },
       { priority: this.taskPriority },
     ).catch((e) => {
-      const err = e instanceof Error ? e : new Error(String(e));
+      const err = toError(e);
       this.queuedTasks.delete(task.id);
       this.cancelledTasks.delete(task.id);
       log.error(`Task ${task.id} failed:`, err);
@@ -393,8 +395,7 @@ class ThumbnailGenerator extends BaseThumbnailGenerator<ThumbnailTask, Map<numbe
             }
           }
         } catch (e: unknown) {
-          const err = e as { name?: string };
-          if (err?.name !== 'NotFoundError' && err?.name !== 'VfsNotFoundError') {
+          if (!isNotFoundError(e)) {
             throw e;
           }
         }
@@ -430,8 +431,7 @@ class ThumbnailGenerator extends BaseThumbnailGenerator<ThumbnailTask, Map<numbe
             task.onProgress?.(framesProcessed / totalFrames, url, time);
           }
         } catch (e: unknown) {
-          const err = e as { name?: string };
-          if (err?.name !== 'NotFoundError' && err?.name !== 'VfsNotFoundError') {
+          if (!isNotFoundError(e)) {
             throw e;
           }
         }
@@ -451,8 +451,7 @@ class ThumbnailGenerator extends BaseThumbnailGenerator<ThumbnailTask, Map<numbe
 
       return urls;
     } catch (e: unknown) {
-      const err = e as { name?: string };
-      if (err?.name !== 'NotFoundError' && err?.name !== 'VfsNotFoundError') {
+      if (!isNotFoundError(e)) {
         log.warn('Failed to load thumbnails from VFS', task.id, e);
       }
       return null;
@@ -477,7 +476,6 @@ class ThumbnailGenerator extends BaseThumbnailGenerator<ThumbnailTask, Map<numbe
   }
 
   private async createMediaFrameSource(task: ThumbnailTask): Promise<ThumbnailFrameSource> {
-    const workspaceStore = useWorkspaceStore();
     const projectStore = useProjectStore();
 
     const sourceHandle = isTauriRuntime()
@@ -507,16 +505,7 @@ class ThumbnailGenerator extends BaseThumbnailGenerator<ThumbnailTask, Map<numbe
       };
     }
 
-    setThumbnailHostApi(
-      createVideoCoreHostApi({
-        getCurrentProjectId: () => projectStore.currentProjectId,
-        getWorkspaceHandle: () => workspaceStore.workspaceHandle,
-        getResolvedStorageTopology: () => workspaceStore.resolvedStorageTopology,
-        getFileHandleByPath: async (path) => projectStore.getFileHandleByPath(path),
-        getFileByPath: async (path) => projectStore.getFileByPath(path),
-        onExportProgress: () => {},
-      }),
-    );
+    setThumbnailHostApi(createProjectHostApi());
     const client = getThumbnailWorkerClient().client;
 
     const file = await projectStore.getFileByPath(task.projectRelativePath);
@@ -664,8 +653,7 @@ class ThumbnailGenerator extends BaseThumbnailGenerator<ThumbnailTask, Map<numbe
       const vfsPath = getTimelineThumbnailVfsPath(input.projectId, input.hash);
       await vfs.deleteEntry(vfsPath, true);
     } catch (e: unknown) {
-      const err = e as { name?: string };
-      if (err?.name !== 'NotFoundError' && err?.name !== 'VfsNotFoundError') {
+      if (!isNotFoundError(e)) {
         log.warn('Failed to clear thumbnails for', input.hash, e);
       }
     }

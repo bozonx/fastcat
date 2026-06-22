@@ -1,6 +1,7 @@
 import { createDevLogger } from '~/utils/dev-logger';
 import { useProjectStore } from '~/stores/project.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
+import { createProjectHostApi } from '~/utils/video-editor/createVideoCoreHostApi';
 import { parseTimelineFromOtio } from '~/timeline/otio-serializer';
 import { getTimelineFormat, resolveEffectiveTimelineFormat } from '~/timeline/format';
 import { isTauriRuntime } from '~/utils/runtime';
@@ -120,15 +121,11 @@ export async function createTimelineFrameSource(params: {
   }
 
   // Web runtime: composite through the thumbnail worker.
-  const [
-    { buildVideoWorkerPayloadFromTracks },
-    { getThumbnailWorkerClient, setThumbnailHostApi },
-    { createVideoCoreHostApi },
-  ] = await Promise.all([
-    import('~/composables/timeline/export'),
-    import('~/utils/video-editor/worker-client'),
-    import('~/utils/video-editor/createVideoCoreHostApi'),
-  ]);
+  const [{ buildVideoWorkerPayloadFromTracks }, { getThumbnailWorkerClient, setThumbnailHostApi }] =
+    await Promise.all([
+      import('~/composables/timeline/export'),
+      import('~/utils/video-editor/worker-client'),
+    ]);
 
   if (!workspaceStore.workspaceHandle) {
     throw new Error('Workspace is not opened');
@@ -153,16 +150,7 @@ export async function createTimelineFrameSource(params: {
     params.maxHeight,
   );
 
-  setThumbnailHostApi(
-    createVideoCoreHostApi({
-      getCurrentProjectId: () => projectStore.currentProjectId,
-      getWorkspaceHandle: () => workspaceStore.workspaceHandle,
-      getResolvedStorageTopology: () => workspaceStore.resolvedStorageTopology,
-      getFileHandleByPath: async (path) => projectStore.getFileHandleByPath(path),
-      getFileByPath: async (path) => projectStore.getFileByPath(path),
-      onExportProgress: () => {},
-    }),
-  );
+  setThumbnailHostApi(createProjectHostApi());
   const { client } = getThumbnailWorkerClient();
 
   return {

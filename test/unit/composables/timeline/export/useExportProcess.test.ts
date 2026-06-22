@@ -58,6 +58,7 @@ vi.mock('~/utils/video-editor/worker-client', () => ({
 
 vi.mock('~/utils/video-editor/createVideoCoreHostApi', () => ({
   createVideoCoreHostApi: vi.fn(() => ({})),
+  createProjectHostApi: vi.fn(() => ({})),
 }));
 
 vi.mock('~/composables/timeline/export/payloadBuilder', () => ({

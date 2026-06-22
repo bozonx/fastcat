@@ -14,12 +14,13 @@ import {
 import { useVfs } from '~/composables/useVfs';
 import { toProjectTempVfsPath } from '~/utils/storage-topology';
 import { getThumbnailWorkerClient, setThumbnailHostApi } from '~/utils/video-editor/worker-client';
-import { createVideoCoreHostApi } from '~/utils/video-editor/createVideoCoreHostApi';
+import { createProjectHostApi } from '~/utils/video-editor/createVideoCoreHostApi';
 import { MEDIA_TASK_PRIORITIES } from '~/utils/media-task-queue';
 import { getMediaTypeFromFilename } from '~/utils/media-types';
 import { isTauriRuntime } from '~/utils/runtime';
 import { getNativeFileHandlePath, nativeVideoFrameWebp } from '~/utils/tauri-media-processing';
 import { isNotFoundError } from '~/utils/error-helpers';
+import { toError } from '~/utils/errors';
 import { normalizeMediaCachePath } from '~/utils/media-cache-path';
 const log = createDevLogger('file-thumbnail-generator');
 const FILE_THUMBNAIL_HASH_VERSION = 2;
@@ -245,7 +246,7 @@ class FileThumbnailGenerator extends BaseThumbnailGenerator<FileThumbnailTask, s
         );
       } catch (e) {
         if (!this.isCancelled(task.id)) {
-          task.onError?.(e instanceof Error ? e : new Error(String(e)));
+          task.onError?.(toError(e));
         }
         return;
       }
@@ -266,7 +267,7 @@ class FileThumbnailGenerator extends BaseThumbnailGenerator<FileThumbnailTask, s
             });
           } catch (e) {
             if (!this.isCancelled(task.id)) {
-              task.onError?.(e instanceof Error ? e : new Error(String(e)));
+              task.onError?.(toError(e));
             }
             return;
           }
@@ -277,16 +278,7 @@ class FileThumbnailGenerator extends BaseThumbnailGenerator<FileThumbnailTask, s
           return;
         }
       } else {
-        setThumbnailHostApi(
-          createVideoCoreHostApi({
-            getCurrentProjectId: () => projectStore.currentProjectId,
-            getWorkspaceHandle: () => workspaceStore.workspaceHandle,
-            getResolvedStorageTopology: () => workspaceStore.resolvedStorageTopology,
-            getFileHandleByPath: async (path) => projectStore.getFileHandleByPath(path),
-            getFileByPath: async (path) => projectStore.getFileByPath(path),
-            onExportProgress: () => {},
-          }),
-        );
+        setThumbnailHostApi(createProjectHostApi());
 
         const { client } = getThumbnailWorkerClient();
 
@@ -319,7 +311,7 @@ class FileThumbnailGenerator extends BaseThumbnailGenerator<FileThumbnailTask, s
           blob = blobs[0] ?? null;
         } catch (e) {
           if (!this.isCancelled(task.id)) {
-            task.onError?.(e instanceof Error ? e : new Error(String(e)));
+            task.onError?.(toError(e));
           }
           return;
         }

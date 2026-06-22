@@ -13,3 +13,8 @@ export function isAbortError(error: unknown): boolean {
 
   return (error as { name?: unknown }).name === 'AbortError';
 }
+
+/** Normalizes any thrown value into an {@link Error}. */
+export function toError(value: unknown): Error {
+  return value instanceof Error ? value : new Error(String(value));
+}

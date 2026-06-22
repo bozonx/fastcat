@@ -7,10 +7,9 @@ import {
   setExportHostApi,
   unregisterExportTaskHostApi,
 } from '~/utils/video-editor/worker-client';
-import { createVideoCoreHostApi } from '~/utils/video-editor/createVideoCoreHostApi';
+import { createProjectHostApi } from '~/utils/video-editor/createVideoCoreHostApi';
 import { getWorkspaceFileHandle } from '~/utils/workspace-fs';
 import { useProjectStore } from '~/stores/project.store';
-import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useBackgroundTasksStore } from '~/stores/background-tasks.store';
 import { withFileIoSlot } from '~/utils/io/io-governor';
 import type { ConversionRequest } from '~/types/conversion';
@@ -34,7 +33,6 @@ export async function executeMediaConversion(params: {
   signal?: AbortSignal;
 }) {
   const projectStore = useProjectStore();
-  const workspaceStore = useWorkspaceStore();
   const backgroundTasksStore = useBackgroundTasksStore();
 
   async function getSourceFile(path: string): Promise<File | null> {
@@ -72,16 +70,12 @@ export async function executeMediaConversion(params: {
       const { client } = getExportWorkerClient();
 
       setExportHostApi(
-        createVideoCoreHostApi({
-          getCurrentProjectId: () => projectStore.currentProjectId,
-          getWorkspaceHandle: () => workspaceStore.workspaceHandle,
-          getResolvedStorageTopology: () => workspaceStore.resolvedStorageTopology,
+        createProjectHostApi({
           getFileHandleByPath: async (path) =>
             params.isExternal
               ? ((await getWorkspaceFileHandle(path)) ?? projectStore.getFileHandleByPath(path))
               : projectStore.getFileHandleByPath(path),
           getFileByPath: async (path) => await getSourceFile(path),
-          onExportProgress: () => {},
         }),
       );
       registerExportTaskHostApi(params.taskId, {
