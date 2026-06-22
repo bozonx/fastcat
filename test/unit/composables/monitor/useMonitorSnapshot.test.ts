@@ -17,25 +17,13 @@ const mockUiStore = {
   notifyFileManagerUpdate: vi.fn(),
 };
 
-const mockWorkerClient = {
-  extractFrameToBlob: vi.fn().mockResolvedValue(new Blob(['test'], { type: 'image/webp' })),
-};
-
 vi.mock('~/stores/ui.store', () => ({
   useUiStore: () => mockUiStore,
 }));
 
-vi.mock('~/utils/video-editor/worker-client', () => ({
-  getThumbnailWorkerClient: () => ({
-    client: mockWorkerClient,
-  }),
-  setThumbnailHostApi: vi.fn(),
-  setProxyHostApi: vi.fn(),
-}));
-
-vi.mock('~/utils/video-editor/createVideoCoreHostApi', () => ({
-  createVideoCoreHostApi: vi.fn().mockReturnValue({}),
-  createProjectHostApi: vi.fn().mockReturnValue({}),
+vi.mock('~/timeline/timeline-thumbnail', () => ({
+  renderStopFrameWebp: vi.fn().mockResolvedValue(new Blob(['test'], { type: 'image/webp' })),
+  renderTimelineThumbnail: vi.fn().mockResolvedValue(new Blob(['test'], { type: 'image/webp' })),
 }));
 
 describe('useMonitorSnapshot', () => {
@@ -67,19 +55,14 @@ describe('useMonitorSnapshot', () => {
     const isLoading = ref(false);
     const loadError = ref(null);
     const uiCurrentTimeUs = ref(1000000);
-    const workerTimelineClips = ref([]);
-    const workerTimelinePayload = ref([]);
 
     const { createStopFrameSnapshot } = useMonitorSnapshot({
       projectStore: mockProjectStore as any,
-      timelineStore: {} as any,
+      timelineStore: { timelineDoc: { id: 'test', name: 'test', tracks: [] } } as any,
       workspaceStore: mockWorkspaceStore as any,
       isLoading,
       loadError,
       uiCurrentTimeUs,
-      workerTimelineClips,
-      rawWorkerTimelineClips: ref(undefined),
-      workerTimelinePayload,
     });
 
     const mockFileHandle = {
@@ -96,7 +79,6 @@ describe('useMonitorSnapshot', () => {
     await createStopFrameSnapshot();
 
     expect(mockProjectStore.getProjectFileHandleByRelativePath).toHaveBeenCalled();
-    expect(mockWorkerClient.extractFrameToBlob).toHaveBeenCalled();
     expect(mockToast.add).toHaveBeenCalledWith(
       expect.objectContaining({
         title: 'Snapshot created',
@@ -108,14 +90,11 @@ describe('useMonitorSnapshot', () => {
   it('handles name collisions', async () => {
     const { createStopFrameSnapshot } = useMonitorSnapshot({
       projectStore: mockProjectStore as any,
-      timelineStore: {} as any,
+      timelineStore: { timelineDoc: { id: 'test', name: 'test', tracks: [] } } as any,
       workspaceStore: mockWorkspaceStore as any,
       isLoading: ref(false),
       loadError: ref(null),
       uiCurrentTimeUs: ref(1000000),
-      workerTimelineClips: ref([]),
-      rawWorkerTimelineClips: ref(undefined),
-      workerTimelinePayload: ref([]),
     });
 
     mockProjectStore.getProjectFileHandleByRelativePath

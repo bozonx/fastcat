@@ -155,12 +155,6 @@ export function useMonitorRuntime() {
     isLoading,
     loadError,
     uiCurrentTimeUs,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    workerTimelineClips: workerTimelineClips as any,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    rawWorkerTimelineClips: rawWorkerTimelineClips as any,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    workerTimelinePayload: workerTimelinePayload as any,
   });
 
   watch(

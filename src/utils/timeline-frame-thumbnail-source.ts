@@ -1,10 +1,8 @@
 import { createDevLogger } from '~/utils/dev-logger';
 import { useProjectStore } from '~/stores/project.store';
-import { useWorkspaceStore } from '~/stores/workspace.store';
-import { createProjectHostApi } from '~/utils/video-editor/createVideoCoreHostApi';
 import { parseTimelineFromOtio } from '~/timeline/otio-serializer';
-import { getTimelineFormat, resolveEffectiveTimelineFormat } from '~/timeline/format';
-import { isTauriRuntime } from '~/utils/runtime';
+import { useMediaProcessor } from '~/composables/useMediaProcessor';
+import { fitDimensions } from '~/media-processor/media-processor.utils';
 
 const log = createDevLogger('timeline-frame-thumbnail-source');
 
@@ -25,21 +23,6 @@ export interface ThumbnailFrameSource {
   dispose(): Promise<void>;
 }
 
-export function fitDimensions(
-  width: number,
-  height: number,
-  maxWidth: number,
-  maxHeight: number,
-): { width: number; height: number } {
-  const safeW = width > 0 ? width : 16;
-  const safeH = height > 0 ? height : 9;
-  const scale = Math.min(1, maxWidth / safeW, maxHeight / safeH);
-  return {
-    width: Math.max(2, Math.round(safeW * scale)),
-    height: Math.max(2, Math.round(safeH * scale)),
-  };
-}
-
 /**
  * Builds a frame source that renders frames from a nested timeline document
  * (an `.otio` clip used as a timeline clip) at arbitrary times. Rendering goes
@@ -55,7 +38,6 @@ export async function createTimelineFrameSource(params: {
   quality: number;
 }): Promise<ThumbnailFrameSource | null> {
   const projectStore = useProjectStore();
-  const workspaceStore = useWorkspaceStore();
 
   const file = await projectStore.getFileByPath(params.projectRelativePath);
   if (!file) {
@@ -68,93 +50,62 @@ export async function createTimelineFrameSource(params: {
     format: projectStore.projectSettings.project,
   });
 
-  if (isTauriRuntime()) {
-    const [{ buildNativeMonitorScene }, { nativeRenderTimelineFrameWebp }] = await Promise.all([
-      import('~/timeline/timeline-thumbnail'),
-      import('~/utils/tauri-media-processing'),
-    ]);
+  const processor = useMediaProcessor();
 
-    const scene = await buildNativeMonitorScene(doc);
-    if (scene.layers.length === 0) return null;
-
-    const { width, height } = fitDimensions(
-      scene.width,
-      scene.height,
-      params.maxWidth,
-      params.maxHeight,
-    );
-
-    return {
-      // Native frames render one seek at a time; keep batches small so the
-      // OPFS/cache loop can persist progress frequently.
-      batchSize: 8,
-      async extract(timesSec, isCancelled) {
-        const blobs: (Blob | null)[] = [];
-        for (const timeSec of timesSec) {
-          if (isCancelled()) {
-            blobs.push(null);
-            continue;
-          }
-          try {
-            blobs.push(
-              await nativeRenderTimelineFrameWebp({
-                scene,
-                timeSec,
-                width,
-                height,
-                quality: Math.round(params.quality * 100) / 100,
-              }),
-            );
-          } catch (e) {
-            if (isCancelled()) {
-              blobs.push(null);
-              continue;
-            }
-            log.warn('Failed to render nested timeline frame', timeSec, e);
-            blobs.push(null);
-          }
-        }
-        return blobs;
-      },
-      async dispose() {},
-    };
-  }
-
-  // Web runtime: composite through the thumbnail worker.
-  const [{ buildVideoWorkerPayloadFromTracks }, { getThumbnailWorkerClient, setThumbnailHostApi }] =
-    await Promise.all([
-      import('~/composables/timeline/export'),
-      import('~/utils/video-editor/worker-client'),
-    ]);
-
-  if (!workspaceStore.workspaceHandle) {
-    throw new Error('Workspace is not opened');
-  }
-
-  const builtVideo = await buildVideoWorkerPayloadFromTracks({
-    tracks: doc.tracks,
-    projectStore,
-    workspaceStore,
+  // Validate that the timeline has visual content by rendering a test frame at 0.
+  const testBlob = await processor.extractTimelineFrameBlob({
+    timelineDoc: doc,
+    timeUs: 0,
+    maxWidth: params.maxWidth,
+    maxHeight: params.maxHeight,
+    quality: params.quality,
   });
-  const clipsPayload = builtVideo.payload;
-  if (clipsPayload.length === 0) return null;
+  if (!testBlob) return null;
 
-  const format = resolveEffectiveTimelineFormat(
-    getTimelineFormat(doc),
-    projectStore.projectSettings.project,
-  );
-  const { width, height } = fitDimensions(
-    format.width,
-    format.height,
-    params.maxWidth,
-    params.maxHeight,
-  );
+  // Re-resolve dimensions so the source reports a consistent size for every frame.
+  let format: { width: number; height: number };
+  if (processor.id === 'native') {
+    const { buildNativeMonitorScene } = await import('~/utils/native-monitor-scene');
+    const { useWorkspaceStore } = await import('~/stores/workspace.store');
+    const { resolveEffectiveTimelineFormat, getTimelineFormat } = await import('~/timeline/format');
+    const scene = await buildNativeMonitorScene({
+      timelineDoc: doc,
+      projectStore,
+      workspaceStore: useWorkspaceStore(),
+      masterGain: doc.metadata?.fastcat?.masterGain ?? 1,
+      masterMuted: false,
+      previewScale: 1,
+      includeAudio: false,
+      fallbackFormat: resolveEffectiveTimelineFormat(
+        getTimelineFormat(doc),
+        projectStore.projectSettings.project,
+      ),
+    });
+    format = { width: scene.width, height: scene.height };
+  } else {
+    const { buildVideoWorkerPayloadFromTracks } = await import('~/composables/timeline/export');
+    const { useWorkspaceStore } = await import('~/stores/workspace.store');
+    const { resolveEffectiveTimelineFormat, getTimelineFormat } = await import('~/timeline/format');
+    const builtVideo = await buildVideoWorkerPayloadFromTracks({
+      tracks: doc.tracks,
+      projectStore,
+      workspaceStore: useWorkspaceStore(),
+    });
+    const payload = builtVideo.payload;
+    if (payload.length === 0) {
+      format = { width: 0, height: 0 };
+    } else {
+      format = resolveEffectiveTimelineFormat(
+        getTimelineFormat(doc),
+        projectStore.projectSettings.project,
+      );
+    }
+  }
 
-  setThumbnailHostApi(createProjectHostApi());
-  const { client } = getThumbnailWorkerClient();
+  const { width, height } = fitDimensions(format.width, format.height, params.maxWidth, params.maxHeight);
 
   return {
-    batchSize: 4,
+    batchSize: processor.id === 'native' ? 8 : 4,
     async extract(timesSec, isCancelled) {
       const blobs: (Blob | null)[] = [];
       for (const timeSec of timesSec) {
@@ -164,20 +115,20 @@ export async function createTimelineFrameSource(params: {
         }
         try {
           blobs.push(
-            await client.extractFrameToBlob(
-              Math.round(timeSec * 1_000_000),
+            await processor.extractTimelineFrameBlob({
+              timelineDoc: doc,
+              timeUs: Math.round(timeSec * 1_000_000),
               width,
               height,
-              clipsPayload,
-              params.quality,
-            ),
+              quality: params.quality,
+            }),
           );
         } catch (e) {
           if (isCancelled()) {
             blobs.push(null);
             continue;
           }
-          log.warn('Failed to render nested timeline frame (web)', timeSec, e);
+          log.warn('Failed to render nested timeline frame', timeSec, e);
           blobs.push(null);
         }
       }

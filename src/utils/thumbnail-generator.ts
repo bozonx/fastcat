@@ -9,14 +9,11 @@ import {
 } from './base-thumbnail-generator';
 import { toProjectTempVfsPath } from '~/utils/storage-topology';
 import { useVfs } from '~/composables/useVfs';
-import { getThumbnailWorkerClient, setThumbnailHostApi } from '~/utils/video-editor/worker-client';
-import { createProjectHostApi } from '~/utils/video-editor/createVideoCoreHostApi';
+import { useMediaProcessor } from '~/composables/useMediaProcessor';
 import { addMediaTask, MEDIA_TASK_PRIORITIES } from '~/utils/media-task-queue';
 import { randomToken } from '~/utils/ids';
-import { isTauriRuntime } from '~/utils/runtime';
 import { toError } from '~/utils/errors';
 import { isNotFoundError } from '~/utils/error-helpers';
-import { getNativeFileHandlePath, nativeVideoFrameWebps } from '~/utils/tauri-media-processing';
 import { normalizeMediaCachePath } from '~/utils/media-cache-path';
 import {
   createTimelineFrameSource,
@@ -25,7 +22,6 @@ import {
 const log = createDevLogger('thumbnail-generator');
 const CLIP_THUMBNAIL_HASH_VERSION = 2;
 const NATIVE_THUMBNAIL_BATCH_SIZE = 128;
-const NATIVE_THUMBNAIL_SEEK_THRESHOLD_SECONDS = 1;
 const WORKER_THUMBNAIL_BATCH_SIZE = 32;
 
 export interface ThumbnailTask extends BaseThumbnailTask {
@@ -239,11 +235,9 @@ class ThumbnailGenerator extends BaseThumbnailGenerator<ThumbnailTask, Map<numbe
     this.opfsCheckedTimes.delete(id);
     this.opfsExistingFiles.delete(id);
     if (this.activeTasks.has(id)) {
-      if (!isTauriRuntime()) {
-        void getThumbnailWorkerClient()
-          .client.cancelExport(id)
-          .catch(() => {});
-      }
+      void useMediaProcessor()
+        .cancelVideoFrameExtraction(id)
+        .catch(() => {});
     }
     super.cancelTask(id);
   }
@@ -476,58 +470,23 @@ class ThumbnailGenerator extends BaseThumbnailGenerator<ThumbnailTask, Map<numbe
   }
 
   private async createMediaFrameSource(task: ThumbnailTask): Promise<ThumbnailFrameSource> {
-    const projectStore = useProjectStore();
-
-    const sourceHandle = isTauriRuntime()
-      ? await projectStore.getFileHandleByPath(task.projectRelativePath)
-      : null;
-    const nativeSourcePath = getNativeFileHandlePath(sourceHandle);
-
-    // In Tauri mode we must have a native filesystem path; without it we cannot
-    // generate thumbnails (web worker is unavailable in the native runtime).
-    if (isTauriRuntime() && !nativeSourcePath) {
-      throw new Error(`No native path for thumbnail task: ${task.projectRelativePath}`);
-    }
-
-    if (nativeSourcePath) {
-      return {
-        batchSize: NATIVE_THUMBNAIL_BATCH_SIZE,
-        extract: (chunkTimes) =>
-          nativeVideoFrameWebps({
-            sourcePath: nativeSourcePath,
-            timesSec: chunkTimes,
-            maxWidth: TIMELINE_CLIP_THUMBNAILS.WIDTH,
-            maxHeight: TIMELINE_CLIP_THUMBNAILS.HEIGHT,
-            quality: TIMELINE_CLIP_THUMBNAILS.QUALITY,
-            seekThresholdSec: NATIVE_THUMBNAIL_SEEK_THRESHOLD_SECONDS,
-          }),
-        dispose: async () => {},
-      };
-    }
-
-    setThumbnailHostApi(createProjectHostApi());
-    const client = getThumbnailWorkerClient().client;
-
-    const file = await projectStore.getFileByPath(task.projectRelativePath);
-    if (!file) {
-      throw new Error(`Source file not found: ${task.projectRelativePath}`);
-    }
+    const processor = useMediaProcessor();
 
     return {
-      batchSize: WORKER_THUMBNAIL_BATCH_SIZE,
+      batchSize: processor.id === 'native' ? NATIVE_THUMBNAIL_BATCH_SIZE : WORKER_THUMBNAIL_BATCH_SIZE,
       extract: (chunkTimes) =>
-        client.extractVideoFrameBlobs(file, {
-          timesS: chunkTimes,
+        processor.extractVideoFrameBlobs({
+          projectRelativePath: task.projectRelativePath,
+          timesSec: chunkTimes,
           maxWidth: TIMELINE_CLIP_THUMBNAILS.WIDTH,
           maxHeight: TIMELINE_CLIP_THUMBNAILS.HEIGHT,
           quality: TIMELINE_CLIP_THUMBNAILS.QUALITY,
-          mimeType: 'image/webp',
           taskId: task.id,
           keepAlive: true,
         }),
       dispose: async () => {
         try {
-          await client.releaseFrameExtractor(task.id);
+          await processor.releaseVideoFrameExtractor(task.id);
         } catch {
           // ignore
         }

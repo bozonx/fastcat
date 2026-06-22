@@ -203,6 +203,15 @@ const { createNuxtMock } = vi.hoisted(() => ({
       createDirectory: vi.fn().mockResolvedValue(undefined),
       readFile: vi.fn().mockResolvedValue(new Uint8Array()),
     },
+    $mediaProcessor: {
+      id: 'web',
+      extractVideoFrameBlob: vi.fn().mockResolvedValue(null),
+      extractVideoFrameBlobs: vi.fn().mockResolvedValue([]),
+      extractTimelineFrameBlob: vi.fn().mockResolvedValue(null),
+      cancelVideoFrameExtraction: vi.fn().mockResolvedValue(undefined),
+      releaseVideoFrameExtractor: vi.fn().mockResolvedValue(undefined),
+      dispose: vi.fn().mockResolvedValue(undefined),
+    },
     _route: {
       path: '/',
       fullPath: '/',

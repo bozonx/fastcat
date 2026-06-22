@@ -1,21 +1,12 @@
 import { createDevLogger } from '~/utils/dev-logger';
 import { ref, type Ref } from 'vue';
-import type {
-  WorkerTimelineClip,
-  WorkerVideoPayloadItem,
-} from '~/composables/timeline/export/types';
 import type { useProjectStore } from '~/stores/project.store';
 import type { useTimelineStore } from '~/stores/timeline.store';
 import type { useWorkspaceStore } from '~/stores/workspace.store';
 import { useUiStore } from '~/stores/ui.store';
 import { buildStopFrameBaseName } from '~/utils/stop-frames';
-import { getThumbnailWorkerClient, setThumbnailHostApi } from '~/utils/video-editor/worker-client';
-import { createVideoCoreHostApi } from '~/utils/video-editor/createVideoCoreHostApi';
 import { IMAGES_DIR_NAME } from '~/utils/constants';
 import { withFileIoSlot } from '~/utils/io/io-governor';
-import { dispatchTimelineThumbnailGeneration } from '~/timeline/services/timeline-thumbnail.service';
-import { cloneValue } from '~/utils/clone';
-import { isTauriRuntime } from '~/utils/runtime';
 import { useFileManager } from '~/composables/file-manager/useFileManager';
 
 const log = createDevLogger('useMonitorSnapshot');
@@ -27,9 +18,6 @@ export function useMonitorSnapshot(input: {
   isLoading: Ref<boolean>;
   loadError: Ref<string | null>;
   uiCurrentTimeUs: Ref<number>;
-  workerTimelineClips: Ref<WorkerTimelineClip[]>;
-  rawWorkerTimelineClips: Ref<WorkerTimelineClip[] | undefined>;
-  workerTimelinePayload: Ref<WorkerVideoPayloadItem[]>;
 }) {
   const toast = useToast();
   const uiStore = useUiStore();
@@ -37,91 +25,35 @@ export function useMonitorSnapshot(input: {
 
   const isSavingStopFrame = ref(false);
 
-  function getClipsPayload(): WorkerVideoPayloadItem[] {
-    const payload =
-      input.workerTimelinePayload.value?.length > 0
-        ? input.workerTimelinePayload.value
-        : input.workerTimelineClips.value?.length > 0
-          ? input.workerTimelineClips.value
-          : (input.rawWorkerTimelineClips.value ?? []);
-    return cloneValue(payload) as WorkerVideoPayloadItem[];
-  }
-
   async function saveTimelineThumbnail() {
     if (input.isLoading.value || input.loadError.value) return;
     if (!input.projectStore.currentProjectId || !input.projectStore.currentTimelinePath) return;
-    // In Tauri the web thumbnail worker has no workspace handle; render the
-    // current frame through the native offscreen compositor instead.
-    if (isTauriRuntime()) {
-      const timelineDoc = input.timelineStore.timelineDoc;
-      if (!timelineDoc) return;
-      try {
-        const [{ renderNativeTimelineThumbnail }, { fileThumbnailGenerator }] = await Promise.all([
-          import('~/timeline/timeline-thumbnail'),
-          import('~/utils/file-thumbnail-generator'),
-        ]);
-        const blob = await renderNativeTimelineThumbnail({
-          timelineDoc,
-          timeUs: input.uiCurrentTimeUs.value,
-          maxSize: 1280,
-          quality: 0.8,
-        });
-        if (!blob) return;
-        await fileThumbnailGenerator.saveManualThumbnail({
-          projectId: input.projectStore.currentProjectId,
-          projectRelativePath: input.projectStore.currentTimelinePath,
-          blob,
-        });
-        uiStore.notifyFileManagerUpdate();
-      } catch (error) {
-        log.error('Failed to save native timeline thumbnail:', error);
-      }
-      return;
+
+    const timelineDoc = input.timelineStore.timelineDoc;
+    if (!timelineDoc) return;
+
+    try {
+      const [{ renderTimelineThumbnail }, { fileThumbnailGenerator }] = await Promise.all([
+        import('~/timeline/timeline-thumbnail'),
+        import('~/utils/file-thumbnail-generator'),
+      ]);
+      const blob = await renderTimelineThumbnail({
+        timelineDoc,
+        timeUs: input.uiCurrentTimeUs.value,
+        maxSize: 1280,
+        quality: 0.8,
+      });
+      if (!blob) return;
+      await fileThumbnailGenerator.saveManualThumbnail({
+        projectId: input.projectStore.currentProjectId,
+        projectRelativePath: input.projectStore.currentTimelinePath,
+        blob,
+      });
+      uiStore.notifyFileManagerUpdate();
+    } catch (error) {
+      log.error('Failed to save timeline thumbnail:', error);
     }
 
-    if (!input.workspaceStore.workspaceHandle) return;
-
-    const projectWidth = Number(
-      input.timelineStore.timelineFormat?.width ??
-        input.projectStore.projectSettings?.project?.width ??
-        1280,
-    );
-    const projectHeight = Number(
-      input.timelineStore.timelineFormat?.height ??
-        input.projectStore.projectSettings?.project?.height ??
-        720,
-    );
-    const maxSide = 1280;
-
-    let targetWidth = projectWidth;
-    let targetHeight = projectHeight;
-
-    if (projectWidth > projectHeight) {
-      if (projectWidth > maxSide) {
-        targetWidth = maxSide;
-        targetHeight = Math.round((projectHeight * maxSide) / projectWidth);
-      }
-    } else {
-      if (projectHeight > maxSide) {
-        targetHeight = maxSide;
-        targetWidth = Math.round((projectWidth * maxSide) / projectHeight);
-      }
-    }
-
-    dispatchTimelineThumbnailGeneration({
-      projectId: input.projectStore.currentProjectId,
-      timelinePath: input.projectStore.currentTimelinePath,
-      timeUs: input.uiCurrentTimeUs.value,
-      clipsPayload: getClipsPayload(),
-      workspaceHandle: input.workspaceStore.workspaceHandle,
-      resolvedStorageTopology: input.workspaceStore.resolvedStorageTopology,
-      getFileHandleByPath: async (path: string) => input.projectStore.getFileHandleByPath(path),
-      getFileByPath: async (path: string) => input.projectStore.getFileByPath(path),
-      width: targetWidth,
-      height: targetHeight,
-      quality: 0.8,
-      notifyUi: true,
-    });
   }
 
   async function createStopFrameSnapshot() {
@@ -167,109 +99,24 @@ export function useMonitorSnapshot(input: {
     }
 
     isSavingStopFrame.value = true;
-    // In Tauri the web thumbnail worker has no workspace handle; render the
-    // current frame through the native offscreen compositor at export (ultra)
-    // quality instead, so the saved stop frame matches an export still.
-    if (isTauriRuntime()) {
-      try {
-        const timelineDoc = input.timelineStore.timelineDoc;
-        if (!timelineDoc) return;
-        const { renderNativeStopFrameWebp } = await import('~/timeline/timeline-thumbnail');
-        const blob = await renderNativeStopFrameWebp({
-          timelineDoc,
-          timeUs,
-          quality,
-        });
-        if (!blob) {
-          throw new Error('Native compositor returned no frame');
-        }
 
-        const fileHandle = await input.projectStore.getProjectFileHandleByRelativePath({
-          relativePath: `${IMAGES_DIR_NAME}/stop_frames/${filename}`,
-          create: true,
-        });
-        if (!fileHandle) {
-          toast.add({
-            color: 'error',
-            title: 'Snapshot failed',
-            description: 'Could not access project folder for writing',
-          });
-          return;
-        }
-
-        await withFileIoSlot(async () => {
-          const writable = await fileHandle.createWritable();
-          await writable.write(blob);
-          await writable.close();
-        });
-
-        toast.add({
-          color: 'success',
-          title: 'Snapshot created',
-          description: `Saved to ${IMAGES_DIR_NAME}/stop_frames/${filename}`,
-        });
-        await fileManager.reloadDirectory('');
-        await fileManager.reloadDirectory('images');
-        uiStore.notifyFileManagerUpdate();
-      } catch (err) {
-        log.error('[Monitor] Failed to create stop frame snapshot', err);
-        toast.add({
-          color: 'error',
-          title: 'Snapshot failed',
-          description: err instanceof Error ? err.message : 'Unknown error',
-        });
-      } finally {
-        isSavingStopFrame.value = false;
-      }
-      return;
-    }
     try {
-      const exportWidth = Math.round(
-        Number(
-          input.timelineStore.timelineFormat?.width ??
-            input.projectStore.projectSettings?.project?.width ??
-            0,
-        ),
-      );
-      const exportHeight = Math.round(
-        Number(
-          input.timelineStore.timelineFormat?.height ??
-            input.projectStore.projectSettings?.project?.height ??
-            0,
-        ),
-      );
-
-      const { client } = getThumbnailWorkerClient();
-      setThumbnailHostApi(
-        createVideoCoreHostApi({
-          getCurrentProjectId: () => input.projectStore.currentProjectId,
-          getWorkspaceHandle: () => input.workspaceStore.workspaceHandle,
-          getResolvedStorageTopology: () => input.workspaceStore.resolvedStorageTopology,
-          getFileHandleByPath: async (path: string) => input.projectStore.getFileHandleByPath(path),
-          getFileByPath: async (path: string) => input.projectStore.getFileByPath(path),
-          onExportProgress: () => {},
-        }),
-      );
-
-      const clipsPayload = getClipsPayload();
-
-      const blob = await client.extractFrameToBlob(
+      const timelineDoc = input.timelineStore.timelineDoc;
+      if (!timelineDoc) return;
+      const { renderStopFrameWebp } = await import('~/timeline/timeline-thumbnail');
+      const blob = await renderStopFrameWebp({
+        timelineDoc,
         timeUs,
-        exportWidth,
-        exportHeight,
-        clipsPayload,
         quality,
-      );
-
+      });
       if (!blob) {
-        throw new Error('Worker returned empty blob');
+        throw new Error('Compositor returned no frame');
       }
 
       const fileHandle = await input.projectStore.getProjectFileHandleByRelativePath({
         relativePath: `${IMAGES_DIR_NAME}/stop_frames/${filename}`,
         create: true,
       });
-
       if (!fileHandle) {
         toast.add({
           color: 'error',
@@ -290,7 +137,6 @@ export function useMonitorSnapshot(input: {
         title: 'Snapshot created',
         description: `Saved to ${IMAGES_DIR_NAME}/stop_frames/${filename}`,
       });
-
       await fileManager.reloadDirectory('');
       await fileManager.reloadDirectory('images');
       uiStore.notifyFileManagerUpdate();

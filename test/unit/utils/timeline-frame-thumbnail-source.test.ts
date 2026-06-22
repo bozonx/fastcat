@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { fitDimensions } from '~/utils/timeline-frame-thumbnail-source';
+import { fitDimensions } from '~/media-processor/media-processor.utils';
 
 describe('fitDimensions', () => {
   it('downscales a landscape scene to fit the max box while preserving aspect', () => {

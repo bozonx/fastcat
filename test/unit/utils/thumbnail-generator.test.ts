@@ -5,7 +5,6 @@ import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useProjectStore } from '~/stores/project.store';
 import { getClipThumbnailsHash, thumbnailGenerator } from '~/utils/thumbnail-generator';
 import { getFileThumbnailHash, fileThumbnailGenerator } from '~/utils/file-thumbnail-generator';
-import { nativeVideoFrameWebps } from '~/utils/tauri-media-processing';
 
 const mockFile = new File([], 'test.mp4');
 const mockVfs = vi.hoisted(() => ({
@@ -35,18 +34,22 @@ interface TimelineThumbnailGeneratorInternals extends CacheBackedGenerator {
   ) => void;
 }
 
-let mockIsTauri = false;
-vi.mock('~/utils/runtime', () => ({
-  isTauriRuntime: vi.fn(() => mockIsTauri),
+let mockIsNative = false;
+const mockMediaProcessor = vi.hoisted(() => ({
+  id: 'web',
+  extractVideoFrameBlob: vi.fn().mockResolvedValue(new Blob(['test'], { type: 'image/webp' })),
+  extractVideoFrameBlobs: vi.fn().mockResolvedValue([new Blob(['test'], { type: 'image/webp' })]),
+  extractTimelineFrameBlob: vi.fn().mockResolvedValue(new Blob(['test'], { type: 'image/webp' })),
+  cancelVideoFrameExtraction: vi.fn().mockResolvedValue(undefined),
+  releaseVideoFrameExtractor: vi.fn().mockResolvedValue(undefined),
+  dispose: vi.fn().mockResolvedValue(undefined),
 }));
 
-vi.mock('~/utils/tauri-media-processing', () => ({
-  getNativeFileHandlePath: (handle: any) => handle?.path || null,
-  nativeVideoFrameWebps: vi.fn(async (params: any) =>
-    (params.timesSec ?? []).map(() => new Blob(['tauri-frame'], { type: 'image/webp' })),
-  ),
-  nativeVideoFrameWebp: vi.fn(async () => new Blob(['tauri-frame'], { type: 'image/webp' })),
-  nativeMediaMetadata: vi.fn(async () => ({ duration: 10 })),
+vi.mock('~/composables/useMediaProcessor', () => ({
+  useMediaProcessor: vi.fn(() => ({
+    ...mockMediaProcessor,
+    id: mockIsNative ? 'native' : 'web',
+  })),
 }));
 
 vi.mock('~/stores/workspace.store', () => ({
@@ -55,24 +58,6 @@ vi.mock('~/stores/workspace.store', () => ({
 
 vi.mock('~/stores/project.store', () => ({
   useProjectStore: vi.fn(),
-}));
-
-vi.mock('~/utils/video-editor/worker-client', () => ({
-  getThumbnailWorkerClient: vi.fn(() => ({
-    client: {
-      extractVideoFrameBlobs: vi
-        .fn()
-        .mockResolvedValue([new Blob(['test'], { type: 'image/webp' })]),
-      cancelExport: vi.fn().mockResolvedValue(undefined),
-      releaseFrameExtractor: vi.fn().mockResolvedValue(undefined),
-    },
-  })),
-  setThumbnailHostApi: vi.fn(),
-}));
-
-vi.mock('~/utils/video-editor/createVideoCoreHostApi', () => ({
-  createVideoCoreHostApi: vi.fn().mockReturnValue({}),
-  createProjectHostApi: vi.fn().mockReturnValue({}),
 }));
 
 vi.mock('~/utils/media-task-queue', () => ({
@@ -102,7 +87,7 @@ describe('Thumbnail Generators', () => {
   beforeEach(() => {
     setActivePinia(createPinia());
     vi.clearAllMocks();
-    mockIsTauri = false;
+    mockIsNative = false;
 
     // Both generators are module-level singletons; reset them so each spec
     // starts from a clean cache/queue instead of inheriting prior state.
@@ -457,7 +442,7 @@ describe('Thumbnail Generators', () => {
 
   describe('Tauri workspace-less support', () => {
     beforeEach(() => {
-      mockIsTauri = true;
+      mockIsNative = true;
       vi.mocked(useWorkspaceStore).mockReturnValue({
         workspaceHandle: null,
         hasPersistentStorage: true,
@@ -507,14 +492,12 @@ describe('Thumbnail Generators', () => {
 
       await new Promise((resolve) => setTimeout(resolve, 10));
 
-      expect(nativeVideoFrameWebps).toHaveBeenCalledTimes(2);
-      expect(vi.mocked(nativeVideoFrameWebps).mock.calls[0]?.[0]).toMatchObject({
+      expect(mockMediaProcessor.extractVideoFrameBlobs).toHaveBeenCalledTimes(2);
+      expect(vi.mocked(mockMediaProcessor.extractVideoFrameBlobs).mock.calls[0]?.[0]).toMatchObject({
         timesSec: requestedTimesS.slice(0, 128),
-        seekThresholdSec: 1,
       });
-      expect(vi.mocked(nativeVideoFrameWebps).mock.calls[1]?.[0]).toMatchObject({
+      expect(vi.mocked(mockMediaProcessor.extractVideoFrameBlobs).mock.calls[1]?.[0]).toMatchObject({
         timesSec: requestedTimesS.slice(128),
-        seekThresholdSec: 1,
       });
     });
 

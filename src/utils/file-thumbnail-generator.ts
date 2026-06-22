@@ -12,13 +12,10 @@ import {
   hashString,
 } from './base-thumbnail-generator';
 import { useVfs } from '~/composables/useVfs';
+import { useMediaProcessor } from '~/composables/useMediaProcessor';
 import { toProjectTempVfsPath } from '~/utils/storage-topology';
-import { getThumbnailWorkerClient, setThumbnailHostApi } from '~/utils/video-editor/worker-client';
-import { createProjectHostApi } from '~/utils/video-editor/createVideoCoreHostApi';
 import { MEDIA_TASK_PRIORITIES } from '~/utils/media-task-queue';
 import { getMediaTypeFromFilename } from '~/utils/media-types';
-import { isTauriRuntime } from '~/utils/runtime';
-import { getNativeFileHandlePath, nativeVideoFrameWebp } from '~/utils/tauri-media-processing';
 import { isNotFoundError } from '~/utils/error-helpers';
 import { toError } from '~/utils/errors';
 import { normalizeMediaCachePath } from '~/utils/media-cache-path';
@@ -251,70 +248,20 @@ class FileThumbnailGenerator extends BaseThumbnailGenerator<FileThumbnailTask, s
         return;
       }
     } else {
-      if (isTauriRuntime()) {
-        const handle = await projectStore.getFileHandleByPath(task.projectRelativePath);
-        const sourcePath = getNativeFileHandlePath(handle);
-        if (sourcePath) {
-          try {
-            // The native command derives the timestamp from the duration it probes
-            // internally, so we avoid a second ffprobe round-trip here.
-            blob = await nativeVideoFrameWebp({
-              sourcePath,
-              positionFraction: FILE_MANAGER_THUMBNAILS.POSITION_FRACTION,
-              maxWidth: FILE_MANAGER_THUMBNAILS.MAX_SIZE,
-              maxHeight: FILE_MANAGER_THUMBNAILS.MAX_SIZE,
-              quality: FILE_MANAGER_THUMBNAILS.QUALITY,
-            });
-          } catch (e) {
-            if (!this.isCancelled(task.id)) {
-              task.onError?.(toError(e));
-            }
-            return;
-          }
-        } else {
-          task.onError?.(
-            new Error(`No native path for thumbnail task: ${task.projectRelativePath}`),
-          );
-          return;
+      try {
+        const processor = useMediaProcessor();
+        blob = await processor.extractVideoFrameBlob({
+          projectRelativePath: task.projectRelativePath,
+          positionFraction: FILE_MANAGER_THUMBNAILS.POSITION_FRACTION,
+          maxWidth: FILE_MANAGER_THUMBNAILS.MAX_SIZE,
+          maxHeight: FILE_MANAGER_THUMBNAILS.MAX_SIZE,
+          quality: FILE_MANAGER_THUMBNAILS.QUALITY,
+        });
+      } catch (e) {
+        if (!this.isCancelled(task.id)) {
+          task.onError?.(toError(e));
         }
-      } else {
-        setThumbnailHostApi(createProjectHostApi());
-
-        const { client } = getThumbnailWorkerClient();
-
-        try {
-          let timeSec: number = FILE_MANAGER_THUMBNAILS.POSITION_FRACTION;
-          try {
-            const videoUrl = URL.createObjectURL(file);
-            const video = document.createElement('video');
-            video.preload = 'metadata';
-            video.src = videoUrl;
-            await new Promise<void>((resolve, reject) => {
-              video.onloadedmetadata = () => resolve();
-              video.onerror = () => reject(new Error('Failed to load video metadata'));
-              setTimeout(() => reject(new Error('Video metadata timeout')), 5000);
-            });
-            timeSec = Math.max(0, video.duration * FILE_MANAGER_THUMBNAILS.POSITION_FRACTION);
-            URL.revokeObjectURL(videoUrl);
-          } catch {
-            // Fallback to fraction-as-seconds for very short clips
-          }
-          const blobs = await client.extractVideoFrameBlobs(file, {
-            timesS: [timeSec as number],
-            maxWidth: FILE_MANAGER_THUMBNAILS.MAX_SIZE,
-            maxHeight: FILE_MANAGER_THUMBNAILS.MAX_SIZE,
-            quality: FILE_MANAGER_THUMBNAILS.QUALITY,
-            mimeType: 'image/webp',
-            taskId: task.id,
-            keepAlive: false,
-          });
-          blob = blobs[0] ?? null;
-        } catch (e) {
-          if (!this.isCancelled(task.id)) {
-            task.onError?.(toError(e));
-          }
-          return;
-        }
+        return;
       }
     }
 

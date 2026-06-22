@@ -7,8 +7,6 @@ import { useTimelineStore } from '~/stores/timeline.store';
 import { useProjectStore } from '~/stores/project.store';
 import { fileThumbnailGenerator } from '~/utils/file-thumbnail-generator';
 import { dispatchMarkerThumbnailGeneration } from '~/timeline/services/marker-thumbnail.service';
-import { isTauriRuntime } from '~/utils/runtime';
-import { buildNativeMonitorScene } from '~/timeline/timeline-thumbnail';
 const log = createDevLogger('MarkerThumbnail');
 
 const props = defineProps<{
@@ -41,29 +39,8 @@ async function loadThumbnail() {
       return;
     }
 
-    // 2. Prepare payload and dispatch generation
+    // 2. Dispatch generation
     if (!timelineStore.timelineDoc) {
-      isLoading.value = false;
-      return;
-    }
-
-    const nativeScene = isTauriRuntime()
-      ? await buildNativeMonitorScene(timelineStore.timelineDoc)
-      : undefined;
-    const clipsPayload = nativeScene
-      ? undefined
-      : await (async () => {
-          const { buildVideoWorkerPayloadFromTracks } =
-            await import('~/composables/timeline/export');
-          const builtVideo = await buildVideoWorkerPayloadFromTracks({
-            tracks: timelineStore.timelineDoc!.tracks,
-            projectStore,
-            workspaceStore,
-          });
-          return builtVideo.payload;
-        })();
-
-    if (!nativeScene && !clipsPayload?.length) {
       isLoading.value = false;
       return;
     }
@@ -72,12 +49,7 @@ async function loadThumbnail() {
       projectId: projectStore.currentProjectId,
       markerId: props.markerId,
       timeUs: props.timeUs,
-      nativeScene,
-      clipsPayload,
-      workspaceHandle: workspaceStore.workspaceHandle,
-      resolvedStorageTopology: workspaceStore.resolvedStorageTopology,
-      getFileHandleByPath: (path) => projectStore.getFileHandleByPath(path),
-      getFileByPath: (path) => projectStore.getFileByPath(path),
+      timelineDoc: timelineStore.timelineDoc,
       onComplete: (url) => {
         thumbnailUrl.value = url;
         isLoading.value = false;

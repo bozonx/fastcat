@@ -9,6 +9,12 @@ declare module '*.vue' {
   export default component;
 }
 
+declare module '#app' {
+  interface NuxtApp {
+    $mediaProcessor: import('~/media-processor/media-processor.types').IMediaProcessor;
+  }
+}
+
 interface FileSystemDirectoryHandle {
   values(): AsyncIterableIterator<FileSystemHandle>;
 }
