@@ -7,7 +7,7 @@ import UiSelect from '~/components/ui/UiSelect.vue';
 import UiWheelNumberInput from '~/components/ui/UiWheelNumberInput.vue';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { DEFAULT_USER_SETTINGS } from '~/utils/settings/defaults';
-import { isTauriRuntime } from '~/utils/runtime';
+import { getPlatformCapabilities } from '~/utils/capabilities';
 import { nativeMonitorIpc } from '~/composables/monitor/native-monitor-ipc';
 import { createDevLogger } from '~/utils/dev-logger';
 
@@ -37,7 +37,7 @@ interface FfmpegDiagnostics {
 
 const { t } = useI18n();
 const workspaceStore = useWorkspaceStore();
-const isTauri = computed(() => isTauriRuntime());
+const isTauri = computed(() => getPlatformCapabilities().nativeAudioEngine);
 
 const isResetConfirmOpen = ref(false);
 

@@ -7,7 +7,7 @@ import UiWheelNumberInput from '~/components/ui/UiWheelNumberInput.vue';
 import UiSelect from '~/components/ui/UiSelect.vue';
 import UiTextarea from '~/components/ui/UiTextarea.vue';
 import UiColorBlendPicker from '~/components/ui/UiColorBlendPicker.vue';
-import { isTauriRuntime } from '~/utils/runtime';
+import { getPlatformCapabilities } from '~/utils/capabilities';
 import { nativeSystemFonts } from '~/utils/tauri-media-processing';
 import { createDevLogger } from '~/utils/dev-logger';
 import { computeTextLayoutMetrics } from '~/utils/video-editor/text-layout';
@@ -218,9 +218,10 @@ const genericFontFamilyOptions = [
 
 const log = createDevLogger('ClipTextProperties');
 const systemFontFamilies = ref<string[]>([]);
+const { systemFonts: supportsSystemFonts } = getPlatformCapabilities();
 
 onMounted(async () => {
-  if (!isTauriRuntime()) return;
+  if (!supportsSystemFonts) return;
   try {
     systemFontFamilies.value = await nativeSystemFonts();
   } catch (e) {
@@ -230,7 +231,7 @@ onMounted(async () => {
 
 const fontFamilyOptions = computed(() => {
   // Web build: curated Google-Fonts list.
-  if (!isTauriRuntime() || systemFontFamilies.value.length === 0) {
+  if (!supportsSystemFonts || systemFontFamilies.value.length === 0) {
     return webFontFamilyOptions;
   }
 

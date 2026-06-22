@@ -112,7 +112,7 @@ export function generateTimelineThumbnail(params: {
   const projectStore = useProjectStore();
   const workspaceStore = useWorkspaceStore();
 
-  if (!projectStore.currentProjectId || (!workspaceStore.workspaceHandle && !isTauriRuntime())) {
+  if (!projectStore.currentProjectId || !workspaceStore.hasPersistentStorage) {
     return;
   }
 

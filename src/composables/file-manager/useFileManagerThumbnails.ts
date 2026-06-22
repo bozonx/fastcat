@@ -8,7 +8,6 @@ import { useWorkspaceStore } from '~/stores/workspace.store';
 import { fileThumbnailGenerator, getFileThumbnailHash } from '~/utils/file-thumbnail-generator';
 import { getMediaTypeFromFilename } from '~/utils/media-types';
 import type { IFileSystemAdapter } from '~/file-manager/core/vfs/types';
-import { isTauriRuntime } from '~/utils/runtime';
 const log = createDevLogger('useFileManagerThumbnails');
 
 const SUPPORTED_IMAGE_EXTS = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'avif', 'bmp', 'svg'];
@@ -55,7 +54,6 @@ export function useFileManagerThumbnails(entries: Ref<FsEntry[]>, vfs?: IFileSys
     async (currentEntries) => {
       const workspaceStore = useWorkspaceStore();
       const projectId = projectStore.currentProjectId;
-      const workspaceHandle = workspaceStore.workspaceHandle;
 
       // When the user has disabled thumbnail generation globally, skip video decoding
       // for file manager thumbnails too — it prevents unnecessary heavy Worker work.
@@ -81,7 +79,7 @@ export function useFileManagerThumbnails(entries: Ref<FsEntry[]>, vfs?: IFileSys
           const path = entry.path;
           const type = getMediaTypeFromFilename(entry.name);
           const isTimeline = entry.name.toLowerCase().endsWith('.otio');
-          const hasProjectContext = Boolean(projectId && (workspaceHandle || isTauriRuntime()));
+          const hasProjectContext = Boolean(projectId && workspaceStore.hasPersistentStorage);
 
           if (
             projectId &&

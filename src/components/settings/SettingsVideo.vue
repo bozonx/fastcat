@@ -12,7 +12,7 @@ import {
   broadcastPixiRendererPreference,
   getPreviewWorkerClient,
 } from '~/utils/video-editor/worker-client';
-import { isTauriRuntime } from '~/utils/runtime';
+import { getPlatformCapabilities } from '~/utils/capabilities';
 import { createDevLogger } from '~/utils/dev-logger';
 import UiConfirmModal from '~/components/ui/UiConfirmModal.vue';
 import UiWheelNumberInput from '~/components/ui/UiWheelNumberInput.vue';
@@ -45,7 +45,7 @@ interface FfmpegDiagnostics {
 
 const { t } = useI18n();
 const workspaceStore = useWorkspaceStore();
-const isTauri = computed(() => isTauriRuntime());
+const isTauri = computed(() => getPlatformCapabilities().hardwareEncoding);
 
 const diagnostics = ref<VideoDiagnosticsSnapshot | null>(null);
 const isLoadingDiagnostics = ref(false);

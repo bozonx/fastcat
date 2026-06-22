@@ -368,7 +368,7 @@ class ThumbnailGenerator extends BaseThumbnailGenerator<ThumbnailTask, Map<numbe
     requestedTimes: number[],
   ): Promise<Map<number, string> | null> {
     const workspaceStore = useWorkspaceStore();
-    if (!workspaceStore.workspaceHandle && !isTauriRuntime()) return null;
+    if (!workspaceStore.hasPersistentStorage) return null;
 
     const checked = this.opfsCheckedTimes.get(task.id) ?? new Set<number>();
     const timesToCheck = requestedTimes.filter((t) => !checked.has(Math.round(t)));
@@ -538,7 +538,7 @@ class ThumbnailGenerator extends BaseThumbnailGenerator<ThumbnailTask, Map<numbe
   protected async executeTask(task: ThumbnailTask): Promise<void> {
     const workspaceStore = useWorkspaceStore();
 
-    if (!workspaceStore.workspaceHandle && !isTauriRuntime()) {
+    if (!workspaceStore.hasPersistentStorage) {
       throw new Error('Workspace is not opened');
     }
 

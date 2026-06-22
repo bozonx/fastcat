@@ -163,7 +163,7 @@ class FileThumbnailGenerator extends BaseThumbnailGenerator<FileThumbnailTask, s
 
   private async loadThumbnailFromVfs(task: FileThumbnailTask): Promise<string | null> {
     const workspaceStore = useWorkspaceStore();
-    if (!workspaceStore.workspaceHandle && !isTauriRuntime()) return null;
+    if (!workspaceStore.hasPersistentStorage) return null;
 
     try {
       const vfs = useVfs();
@@ -216,7 +216,7 @@ class FileThumbnailGenerator extends BaseThumbnailGenerator<FileThumbnailTask, s
     const workspaceStore = useWorkspaceStore();
     const projectStore = useProjectStore();
 
-    if (!workspaceStore.workspaceHandle && !isTauriRuntime()) {
+    if (!workspaceStore.hasPersistentStorage) {
       throw new Error('Workspace is not opened');
     }
 
@@ -348,7 +348,7 @@ class FileThumbnailGenerator extends BaseThumbnailGenerator<FileThumbnailTask, s
 
   async saveManualThumbnail(input: { projectId: string; projectRelativePath: string; blob: Blob }) {
     const workspaceStore = useWorkspaceStore();
-    if (!workspaceStore.workspaceHandle && !isTauriRuntime()) return;
+    if (!workspaceStore.hasPersistentStorage) return;
     const projectRelativePath = normalizeMediaCachePath(input.projectRelativePath);
 
     const hash = getFileThumbnailHash({
@@ -399,7 +399,7 @@ class FileThumbnailGenerator extends BaseThumbnailGenerator<FileThumbnailTask, s
     }
 
     const workspaceStore = useWorkspaceStore();
-    if (!workspaceStore.workspaceHandle && !isTauriRuntime()) return;
+    if (!workspaceStore.hasPersistentStorage) return;
 
     try {
       const isTimeline = projectRelativePath.toLowerCase().endsWith('.otio');
@@ -429,7 +429,7 @@ class FileThumbnailGenerator extends BaseThumbnailGenerator<FileThumbnailTask, s
     timeUs: number;
   }): Promise<string | null> {
     const workspaceStore = useWorkspaceStore();
-    if (!workspaceStore.workspaceHandle && !isTauriRuntime()) return null;
+    if (!workspaceStore.hasPersistentStorage) return null;
 
     const cacheKey = `marker:${input.markerId}`;
 
@@ -499,7 +499,7 @@ class FileThumbnailGenerator extends BaseThumbnailGenerator<FileThumbnailTask, s
 
     // Persist to the VFS when there is somewhere to write; otherwise keep an
     // in-memory URL only so the UI can still display the freshly generated frame.
-    if (workspaceStore.workspaceHandle || isTauriRuntime()) {
+    if (workspaceStore.hasPersistentStorage) {
       try {
         const vfs = useVfs();
         const filePath = getThumbnailFileVfsPath({
@@ -526,7 +526,7 @@ class FileThumbnailGenerator extends BaseThumbnailGenerator<FileThumbnailTask, s
 
   async clearAllThumbnails(projectId: string) {
     const workspaceStore = useWorkspaceStore();
-    if (!workspaceStore.workspaceHandle && !isTauriRuntime()) return;
+    if (!workspaceStore.hasPersistentStorage) return;
 
     try {
       const vfs = useVfs();

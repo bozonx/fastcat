@@ -65,6 +65,7 @@ describe('useFileManagerThumbnails', () => {
     } as any);
     vi.mocked(useWorkspaceStore).mockReturnValue({
       workspaceHandle: {},
+      hasPersistentStorage: true,
     } as any);
     vi.mocked(useMediaStore).mockReturnValue({
       mediaMetadata,

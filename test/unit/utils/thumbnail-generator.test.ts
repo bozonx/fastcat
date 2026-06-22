@@ -121,6 +121,7 @@ describe('Thumbnail Generators', () => {
         h.getDirectoryHandle.mockResolvedValue(h);
         return h;
       })(),
+      hasPersistentStorage: true,
       resolvedStorageTopology: {
         tempRoot: '',
         proxiesRoot: '',
@@ -459,6 +460,7 @@ describe('Thumbnail Generators', () => {
       mockIsTauri = true;
       vi.mocked(useWorkspaceStore).mockReturnValue({
         workspaceHandle: null,
+        hasPersistentStorage: true,
         resolvedStorageTopology: {
           tempRoot: '',
           proxiesRoot: '',

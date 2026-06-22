@@ -1,6 +1,6 @@
 import { createDevLogger } from '~/utils/dev-logger';
 import { defineStore, skipHydrate } from 'pinia';
-import { ref, watch } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { createWorkspaceSettingsRepository } from '~/repositories/workspace-settings.repository';
 import type { WorkspaceSettingsRepository } from '~/repositories/workspace-settings.repository';
 import { getWorkspaceStorageTopology } from '~/utils/storage-roots';
@@ -281,6 +281,12 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   const isApiSupported = workspaceProvider.isSupported;
   const workspaceProviderId = workspaceProvider.id;
 
+  // True when there is a durable place to persist files: the native filesystem
+  // (Tauri) or an opened OPFS workspace handle in the browser. Replaces the
+  // repeated `!workspaceHandle && !isTauriRuntime()` guard scattered across the
+  // thumbnail/proxy/media pipelines.
+  const hasPersistentStorage = computed(() => isTauriRuntime() || workspaceHandle.value !== null);
+
   async function syncFfmpegSettingsToNative() {
     if (!isTauriRuntime()) return;
     try {
@@ -462,6 +468,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     error,
     isApiSupported,
     workspaceProviderId,
+    hasPersistentStorage,
     tauriAppPaths: skipHydrate(tauriAppPaths),
     lastProjectName: skipHydrate(lastProjectName),
     lastProjectPath: skipHydrate(lastProjectPath),

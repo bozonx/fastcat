@@ -24,8 +24,7 @@ const thumbnailUrl = ref<string | null>(null);
 const isLoading = ref(false);
 
 async function loadThumbnail() {
-  if (!projectStore.currentProjectId || (!workspaceStore.workspaceHandle && !isTauriRuntime()))
-    return;
+  if (!projectStore.currentProjectId || !workspaceStore.hasPersistentStorage) return;
 
   isLoading.value = true;
   try {
