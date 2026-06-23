@@ -4,7 +4,7 @@ import { setActivePinia, createPinia } from 'pinia';
 import { nextTick } from 'vue';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { InMemoryFileSystemAdapter } from '~/file-manager/core/vfs/adapters/InMemoryFileSystemAdapter';
-import { readDir, exists } from '@tauri-apps/plugin-fs';
+import { readDir, exists, readTextFile } from '@tauri-apps/plugin-fs';
 
 vi.unmock('~/stores/workspace.store');
 
@@ -382,7 +382,6 @@ describe('WorkspaceStore', () => {
     it('scans projectsRoot and merges with recentProjects in tauri mode', async () => {
       const store = useWorkspaceStore();
       await nextTick();
-      const projectsRoot = store.resolvedStorageTopology.projectsRoot;
 
       store.recentProjects = [
         {
@@ -397,11 +396,19 @@ describe('WorkspaceStore', () => {
         { name: 'disk-only', isDirectory: true, isFile: false, isSymlink: false },
         { name: 'recent-only', isDirectory: true, isFile: false, isSymlink: false },
       ]);
+      (exists as ReturnType<typeof vi.fn>).mockResolvedValue(true);
+      (readTextFile as ReturnType<typeof vi.fn>).mockResolvedValue(
+        JSON.stringify({ id: 'disk-id', updatedAt: '2024-01-03' }),
+      );
 
       await store.loadProjects();
 
       expect(store.projects).toEqual(['disk-only', 'recent-only']);
       expect(readDir).toHaveBeenCalledWith(store.resolvedStorageTopology.projectsRoot);
+      const diskProj = store.recentProjects.find((p) => p.projectName === 'disk-only');
+      expect(diskProj).toBeDefined();
+      expect(diskProj?.projectId).toBe('disk-id');
+      expect(diskProj?.updatedAt).toBe('2024-01-03');
     });
 
     it('falls back to default projectsRoot when custom root is not set in tauri mode', async () => {
@@ -413,11 +420,15 @@ describe('WorkspaceStore', () => {
       (readDir as ReturnType<typeof vi.fn>).mockResolvedValue([
         { name: 'default-project', isDirectory: true, isFile: false, isSymlink: false },
       ]);
+      (exists as ReturnType<typeof vi.fn>).mockResolvedValue(false);
 
       await store.loadProjects();
 
       expect(store.projects).toEqual(['default-project']);
       expect(readDir).toHaveBeenCalledWith('/mock/documents/FastCat/projects');
+      const defaultProj = store.recentProjects.find((p) => p.projectName === 'default-project');
+      expect(defaultProj).toBeDefined();
+      expect(defaultProj?.projectId).toBe('');
     });
 
     it('does not delete files on disk and removes project from recentProjects when deleting a tauri project', async () => {
@@ -431,6 +442,8 @@ describe('WorkspaceStore', () => {
           projectPath: '/mock/projects/p1',
         },
       ];
+
+      (readDir as ReturnType<typeof vi.fn>).mockResolvedValue([]);
 
       await store.deleteProject('p1');
 

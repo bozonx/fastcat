@@ -225,7 +225,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     recentProjects,
     (newRecent) => {
       if (workspaceProvider.id === 'tauri') {
-        projects.value = newRecent.map((p) => p.projectName);
+        projects.value = newRecent.map((p) => p.projectName).sort((a, b) => a.localeCompare(b));
       }
     },
     { immediate: true, deep: true },

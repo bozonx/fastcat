@@ -429,6 +429,14 @@ export class ClipResourceManager {
           }
 
           if (clip.imageSource.width !== frameW || clip.imageSource.height !== frameH) {
+            // pixi re-uploads the source's *current* resource during resize(). The
+            // previously-bound frame may already be closed/evicted (e.g. when the
+            // playhead jumps onto this clip), which surfaces as "Browser fails
+            // extracting valid resource" / "video frame that doesn't have back
+            // resource". Point the source at the fresh, valid frame first so the
+            // resize-triggered upload reads it. Effects paths below overwrite the
+            // resource (and resize again) with their padded output as needed.
+            (clip.imageSource as { resource?: unknown }).resource = frame as unknown;
             clip.imageSource.resize(frameW, frameH);
           }
 

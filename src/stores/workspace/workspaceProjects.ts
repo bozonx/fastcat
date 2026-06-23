@@ -116,19 +116,59 @@ export function createWorkspaceProjectsModule(params: {
   async function loadProjects() {
     const { isTauriRuntime } = await import('~/utils/runtime');
     if (isTauriRuntime()) {
-      const projectNames = new Set(params.recentProjects.value.map((p) => p.projectName));
+      const { readDir, exists, readTextFile } = await import('@tauri-apps/plugin-fs');
+      const { join } = await import('@tauri-apps/api/path');
+
+      const projectsRoot = params.resolvedStorageTopology.value.projectsRoot;
+      const recentList = [...params.recentProjects.value];
+      const recentPaths = new Set(recentList.map((p) => p.projectPath).filter(Boolean));
+      const recentNames = new Set(recentList.map((p) => p.projectName));
+
+      let updatedRecent = false;
+
       try {
-        const { readDir } = await import('@tauri-apps/plugin-fs');
-        const entries = await readDir(params.resolvedStorageTopology.value.projectsRoot);
+        const entries = await readDir(projectsRoot);
         for (const entry of entries) {
           if (entry.isDirectory) {
-            projectNames.add(entry.name);
+            const projectPath = await join(projectsRoot, entry.name);
+
+            if (!recentPaths.has(projectPath) && !recentNames.has(entry.name)) {
+              let projectId = '';
+              let updatedAt = new Date().toISOString();
+
+              const metaPath = await join(projectPath, '.fastcat', 'project.meta.json');
+              if (await exists(metaPath)) {
+                try {
+                  const text = await readTextFile(metaPath);
+                  const meta = JSON.parse(text) as Record<string, unknown>;
+                  projectId = (meta.id as string) || '';
+                  if (meta.updatedAt) {
+                    updatedAt = meta.updatedAt as string;
+                  }
+                } catch (e) {
+                  log.warn('Failed to parse meta for auto-detected project', entry.name, e);
+                }
+              }
+
+              recentList.push({
+                projectName: entry.name,
+                projectId,
+                updatedAt,
+                projectPath,
+              });
+              updatedRecent = true;
+            }
           }
         }
       } catch (e: unknown) {
         log.warn('Failed to scan Tauri projects root', e);
       }
-      params.projects.value = [...projectNames].sort((a, b) => a.localeCompare(b));
+
+      if (updatedRecent) {
+        params.recentProjects.value = recentList;
+      }
+
+      params.projects.value = recentList.map((p) => p.projectName).sort((a, b) => a.localeCompare(b));
       return;
     }
 
