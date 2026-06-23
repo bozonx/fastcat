@@ -214,6 +214,32 @@ describe('WorkspaceStore', () => {
     });
   });
 
+  describe('forgetProject', () => {
+    it('removes project from recentProjects but keeps the files', async () => {
+      const store = useWorkspaceStore();
+      store.recentProjects = [
+        { projectName: 'p1', projectId: 'id1', updatedAt: '2024-01-01' },
+        { projectName: 'p2', projectId: 'id2', updatedAt: '2024-01-02' },
+      ];
+      store.projects = ['p1', 'p2'];
+      store.lastProjectName = 'p1';
+
+      await mockVfs.createDirectory('@project/p1');
+      await mockVfs.createDirectory('@project/p2');
+      store.projectsHandle = { name: 'projects' } as any;
+      store.workspaceHandle = { name: 'root' } as any;
+
+      await store.forgetProject('p1');
+
+      expect(store.recentProjects).toHaveLength(1);
+      expect(store.recentProjects[0].projectName).toBe('p2');
+      expect(store.lastProjectName).toBeNull();
+
+      const p1Exists = await mockVfs.exists('@project/p1');
+      expect(p1Exists).toBe(true);
+    });
+  });
+
   describe('renameProject', () => {
     it('updates project name in recentProjects', async () => {
       const store = useWorkspaceStore();
@@ -394,16 +420,24 @@ describe('WorkspaceStore', () => {
       expect(readDir).toHaveBeenCalledWith('/mock/documents/FastCat/projects');
     });
 
-    it('sets error when deleting a tauri project with unknown path and missing fallback', async () => {
+    it('does not delete files on disk and removes project from recentProjects when deleting a tauri project', async () => {
       const store = useWorkspaceStore();
       store.resolvedStorageTopology.projectsRoot = '/mock/projects';
-      store.recentProjects = [];
+      store.recentProjects = [
+        {
+          projectName: 'p1',
+          projectId: 'id1',
+          updatedAt: '2024-01-01',
+          projectPath: '/mock/projects/p1',
+        },
+      ];
 
-      (exists as ReturnType<typeof vi.fn>).mockResolvedValue(false);
+      await store.deleteProject('p1');
 
-      await store.deleteProject('missing-project');
-
-      expect(store.error).toBe('Cannot resolve project path for "missing-project"');
+      expect(store.recentProjects).toHaveLength(0);
+      expect(store.error).toBeNull();
+      const { remove } = await import('@tauri-apps/plugin-fs');
+      expect(remove).not.toHaveBeenCalled();
     });
 
     it('sets error when renaming a tauri project with unknown path and missing fallback', async () => {

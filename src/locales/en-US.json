@@ -599,7 +599,10 @@
       "projectLocation": "Project Location",
       "openProjectDisk": "Open Project from Disk",
       "welcomeTitle": "Create Your First Masterpiece",
-      "welcomeSubtitle": "Your dashboard is empty. Create a new project to start."
+      "welcomeSubtitle": "Your dashboard is empty. Create a new project to start.",
+      "removeFromList": "Remove from list",
+      "forgetProjectTitle": "Remove project from list",
+      "forgetProjectConfirm": "Are you sure you want to remove the project \"{name}\" from the recent list? The project files will remain on disk."
     },
     "properties": {
       "blur": "Blur",

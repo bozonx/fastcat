@@ -178,6 +178,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     clearVardata,
     clearProjectVardata,
     deleteProject,
+    forgetProject,
     renameProject,
     duplicateProject,
   } = projectsModule;
@@ -502,6 +503,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     clearVardata,
     clearProjectVardata,
     deleteProject,
+    forgetProject,
     renameProject,
     duplicateProject,
     recentProjects: skipHydrate(recentProjects),

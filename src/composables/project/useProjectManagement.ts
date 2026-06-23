@@ -45,6 +45,9 @@ export function useProjectManagement(options: { isMobile?: boolean } = {}) {
   const isDeleteModalOpen = ref(false);
   const deleteTargetProject = ref<ProjectActionTarget | null>(null);
 
+  const isForgetModalOpen = ref(false);
+  const forgetTargetProject = ref<ProjectActionTarget | null>(null);
+
   const isDuplicateModalOpen = ref(false);
   const duplicateValue = ref('');
   const duplicateTargetProject = ref<ProjectActionTarget | null>(null);
@@ -178,6 +181,44 @@ export function useProjectManagement(options: { isMobile?: boolean } = {}) {
     deleteTargetProject.value = null;
   }
 
+  function startForget(project: ProjectActionTarget | string) {
+    forgetTargetProject.value =
+      typeof project === 'string' ? { projectName: project } : { ...project };
+    isForgetModalOpen.value = true;
+  }
+
+  async function confirmForget() {
+    const target = forgetTargetProject.value;
+    if (!target) return;
+    try {
+      await workspaceStore.forgetProject({
+        name: target.projectName,
+        projectId: target.projectId,
+        projectPath: target.projectPath,
+      });
+    } catch (e) {
+      log.error('Failed to forget project', e);
+    } finally {
+      closeForgetModal();
+    }
+  }
+
+  function closeForgetModal() {
+    isForgetModalOpen.value = false;
+    forgetTargetProject.value = null;
+  }
+
+  function isExternalProject(projectPath?: string): boolean {
+    if (!projectPath) return false;
+    const root = workspaceStore.resolvedStorageTopology.projectsRoot;
+    if (!root) return false;
+
+    const normPath = projectPath.replace(/\\/g, '/').replace(/\/$/, '');
+    const normRoot = root.replace(/\\/g, '/').replace(/\/$/, '');
+
+    return normPath !== normRoot && !normPath.startsWith(normRoot + '/');
+  }
+
   function startDuplicate(project: ProjectActionTarget | string) {
     duplicateTargetProject.value =
       typeof project === 'string' ? { projectName: project } : { ...project };
@@ -245,6 +286,8 @@ export function useProjectManagement(options: { isMobile?: boolean } = {}) {
     renameTargetProject,
     isDeleteModalOpen,
     deleteTargetProject,
+    isForgetModalOpen,
+    forgetTargetProject,
     isDuplicateModalOpen,
     duplicateValue,
     duplicateTargetProject,
@@ -257,6 +300,10 @@ export function useProjectManagement(options: { isMobile?: boolean } = {}) {
     startDelete,
     confirmDelete,
     closeDeleteModal,
+    startForget,
+    confirmForget,
+    closeForgetModal,
+    isExternalProject,
     startDuplicate,
     confirmDuplicate,
     closeDuplicateModal,

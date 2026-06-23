@@ -14,6 +14,7 @@ export interface WorkspaceProjectsModule {
   clearVardata: () => Promise<void>;
   clearProjectVardata: (projectId: string) => Promise<void>;
   deleteProject: (input: DeleteProjectInput | string, projectId?: string) => Promise<void>;
+  forgetProject: (input: DeleteProjectInput | string, projectId?: string) => Promise<void>;
   renameProject: (
     input: RenameProjectInput | string,
     newName?: string,
@@ -276,45 +277,9 @@ export function createWorkspaceProjectsModule(params: {
     const deleteInput = normalizeDeleteInput(input, projectId);
     const { isTauriRuntime } = await import('~/utils/runtime');
     if (isTauriRuntime()) {
-      try {
-        if (deleteInput.projectId) {
-          await clearProjectVardata(deleteInput.projectId);
-        }
-
-        const { join } = await import('@tauri-apps/api/path');
-        const { remove, exists } = await import('@tauri-apps/plugin-fs');
-        const project = findRecentProject(deleteInput);
-        let projectPath = deleteInput.projectPath ?? project?.projectPath;
-        if (!projectPath) {
-          const fallbackPath = await join(
-            params.resolvedStorageTopology.value.projectsRoot,
-            deleteInput.name,
-          );
-          if (await exists(fallbackPath)) {
-            projectPath = fallbackPath;
-          } else {
-            params.error.value = `Cannot resolve project path for "${deleteInput.name}"`;
-            return;
-          }
-        }
-        if (await exists(projectPath)) {
-          await remove(projectPath, { recursive: true });
-        }
-        await loadProjects();
-
-        if (params.lastProjectName.value === deleteInput.name) {
-          params.lastProjectName.value = null;
-        }
-
-        params.recentProjects.value = params.recentProjects.value.filter((recent) => {
-          if (deleteInput.projectId) return recent.projectId !== deleteInput.projectId;
-          if (deleteInput.projectPath) return recent.projectPath !== deleteInput.projectPath;
-          return recent.projectName !== deleteInput.name;
-        });
-      } catch (e: unknown) {
-        log.warn('Failed to delete project', deleteInput.name, e);
-        throw e;
-      }
+      // In Tauri mode, we do not physically delete project files from disk.
+      // We only remove the project from the recent projects list.
+      await forgetProject(deleteInput);
       return;
     }
 
@@ -341,6 +306,30 @@ export function createWorkspaceProjectsModule(params: {
         throw e;
       }
     }
+  }
+
+  async function forgetProject(input: DeleteProjectInput | string, projectId?: string) {
+    const forgetInput = normalizeDeleteInput(input, projectId);
+
+    try {
+      if (forgetInput.projectId) {
+        await clearProjectVardata(forgetInput.projectId);
+      }
+    } catch (e: unknown) {
+      log.warn('Failed to clear project vardata during forget', forgetInput.name, e);
+    }
+
+    if (params.lastProjectName.value === forgetInput.name) {
+      params.lastProjectName.value = null;
+    }
+
+    params.recentProjects.value = params.recentProjects.value.filter((recent) => {
+      if (forgetInput.projectId) return recent.projectId !== forgetInput.projectId;
+      if (forgetInput.projectPath) return recent.projectPath !== forgetInput.projectPath;
+      return recent.projectName !== forgetInput.name;
+    });
+
+    await loadProjects();
   }
 
   async function renameProject(
@@ -580,6 +569,7 @@ export function createWorkspaceProjectsModule(params: {
     clearVardata,
     clearProjectVardata,
     deleteProject,
+    forgetProject,
     renameProject,
     duplicateProject,
   };

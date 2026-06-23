@@ -25,6 +25,8 @@ const {
   filteredProjects,
   isRenameModalOpen,
   isDeleteModalOpen,
+  isForgetModalOpen,
+  forgetTargetProject,
   isDuplicateModalOpen,
   duplicateValue,
   createNewProject,
@@ -35,12 +37,47 @@ const {
   startDelete,
   confirmDelete,
   closeDeleteModal,
+  startForget,
+  confirmForget,
+  closeForgetModal,
+  isExternalProject,
   startDuplicate,
   confirmDuplicate,
   closeDuplicateModal,
   selectProjectLocation,
   openProjectFromDisk,
 } = useProjectManagement();
+
+const getProjectMenuItems = (project: any) => {
+  const items = [
+    {
+      label: t('common.rename'),
+      icon: 'i-heroicons-pencil-square',
+      onSelect: () => startRename(project),
+    },
+    {
+      label: t('common.duplicate'),
+      icon: 'i-heroicons-document-duplicate',
+      onSelect: () => startDuplicate(project),
+    },
+  ];
+
+  if (workspaceStore.workspaceProviderId === 'tauri') {
+    items.push({
+      label: t('fastcat.projects.removeFromList'),
+      icon: 'i-heroicons-minus-circle',
+      onSelect: () => startForget(project),
+    });
+  } else {
+    items.push({
+      label: t('common.delete'),
+      icon: 'i-heroicons-trash',
+      onSelect: () => startDelete(project),
+    });
+  }
+
+  return [items];
+};
 
 type SortBy = 'date' | 'name';
 type SortOrder = 'asc' | 'desc';
@@ -296,25 +333,7 @@ const sortedProjects = computed(() => {
                       <FriendlyTime :date="project.updatedAt" fallback="" />
                     </span>
                     <UDropdownMenu
-                      :items="[
-                        [
-                          {
-                            label: t('common.rename'),
-                            icon: 'i-heroicons-pencil-square',
-                            onSelect: () => startRename(project),
-                          },
-                          {
-                            label: t('common.duplicate'),
-                            icon: 'i-heroicons-document-duplicate',
-                            onSelect: () => startDuplicate(project),
-                          },
-                          {
-                            label: t('common.delete'),
-                            icon: 'i-heroicons-trash',
-                            onSelect: () => startDelete(project),
-                          },
-                        ],
-                      ]"
+                      :items="getProjectMenuItems(project)"
                       @update:open="blurOnDropdownMenuClose"
                     >
                       <UButton
@@ -415,6 +434,32 @@ const sortedProjects = computed(() => {
           :loading="workspaceStore.isLoading"
           :label="t('common.create')"
           @click="createNewProject"
+        />
+      </div>
+    </template>
+  </UiModal>
+
+  <!-- Forget Project Confirmation Modal -->
+  <UiModal
+    v-model:open="isForgetModalOpen"
+    :title="t('fastcat.projects.forgetProjectTitle')"
+    :description="t('fastcat.projects.forgetProjectConfirm', { name: forgetTargetProject?.projectName })"
+    :ui="{ content: 'sm:max-w-md' }"
+  >
+    <template #footer>
+      <div class="flex justify-end gap-3 w-full">
+        <UButton
+          variant="ghost"
+          color="neutral"
+          :label="t('common.cancel')"
+          @click="closeForgetModal"
+        />
+        <UButton
+          color="error"
+          :label="t('fastcat.projects.removeFromList')"
+          :loading="workspaceStore.isLoading"
+          data-primary-focus="true"
+          @click="confirmForget"
         />
       </div>
     </template>
