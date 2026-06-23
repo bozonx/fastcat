@@ -325,7 +325,136 @@ impl Compositor {
     ) -> Result<super::scene::Scene> {
         let mut layers = scene.layers.clone();
 
-        // 1. Применяем переходы
+        self.apply_transitions(dev_id, scene, device, queue, &mut layers)?;
+        self.materialize_text_shadow_blurs(dev_id, scene, device, queue, &mut layers)?;
+
+        // Apply effects to the remaining layers (adjustment layers handled separately).
+        let mut final_layers = Vec::with_capacity(layers.len());
+        for layer in layers {
+            if matches!(layer.kind, LayerKind::Adjustment) || layer.effects.is_empty() {
+                final_layers.push(layer);
+                continue;
+            }
+            final_layers
+                .push(self.materialize_layer_effects(dev_id, scene, &layer, device, queue)?);
+        }
+
+        Ok(super::scene::Scene {
+            width: scene.width,
+            height: scene.height,
+            time: scene.time,
+            background: scene.background,
+            layers: final_layers,
+            video_tracks: scene.video_tracks.clone(),
+            master_effects: scene.master_effects.clone(),
+            effect_quality: scene.effect_quality,
+        })
+    }
+
+    /// Renders the transition's *source* side (the other clip / background / transparency)
+    /// into an `EffectSource`. `None` means the named source layer no longer exists, so the
+    /// caller skips this transition.
+    fn resolve_transition_source(
+        &mut self,
+        dev_id: usize,
+        scene: &super::scene::Scene,
+        source_kind: &TransitionSource,
+        layers: &[super::scene::Layer],
+        i: usize,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+    ) -> Result<Option<EffectSource>> {
+        let source = match source_kind {
+            TransitionSource::Layer(id) => {
+                let Some(layer) = layers.iter().find(|layer| &layer.id == id).cloned()
+                else {
+                    return Ok(None);
+                };
+                self.transition_layer_source(dev_id, scene, &layer, device, queue)?
+            }
+            TransitionSource::Background => {
+                let lower_layers = layers[..i].to_vec();
+                let background_scene = super::scene::Scene {
+                    width: scene.width,
+                    height: scene.height,
+                    time: scene.time,
+                    background: Color::TRANSPARENT,
+                    layers: lower_layers,
+                    video_tracks: Vec::new(),
+                    master_effects: Vec::new(),
+                    effect_quality: scene.effect_quality,
+                };
+                let background_scene = self.materialize_transitions_and_effects(
+                    dev_id,
+                    &background_scene,
+                    device,
+                    queue,
+                )?;
+                let background_scene = self.materialize_video_tracks(
+                    dev_id,
+                    &background_scene,
+                    device,
+                    queue,
+                )?;
+                let background_scene = self.materialize_adjustment_clips(
+                    dev_id,
+                    &background_scene,
+                    device,
+                    queue,
+                )?;
+                let background_scene = self.materialize_video_tracks(
+                    dev_id,
+                    &background_scene,
+                    device,
+                    queue,
+                )?;
+                let texture = self.render_domain_scene_to_owned_texture(
+                    dev_id,
+                    &background_scene,
+                    scene.width,
+                    scene.height,
+                    Color::TRANSPARENT,
+                )?;
+                EffectSource::Gpu(Arc::new(crate::media::SharedTexture::new_shared(
+                    Arc::new(texture),
+                )))
+            }
+            TransitionSource::Transparent => {
+                let transparent_scene = super::scene::Scene {
+                    width: scene.width,
+                    height: scene.height,
+                    time: scene.time,
+                    background: Color::TRANSPARENT,
+                    layers: Vec::new(),
+                    video_tracks: Vec::new(),
+                    master_effects: Vec::new(),
+                    effect_quality: scene.effect_quality,
+                };
+                let texture = self.render_domain_scene_to_owned_texture(
+                    dev_id,
+                    &transparent_scene,
+                    scene.width,
+                    scene.height,
+                    Color::TRANSPARENT,
+                )?;
+                EffectSource::Gpu(Arc::new(crate::media::SharedTexture::new_shared(
+                    Arc::new(texture),
+                )))
+            }
+        };
+        Ok(Some(source))
+    }
+
+    /// Phase 1: resolve each layer's transition through the transition pipeline into a
+    /// flat raster layer, then drop the source layers it consumed.
+    fn apply_transitions(
+        &mut self,
+        dev_id: usize,
+        scene: &super::scene::Scene,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        layers: &mut Vec<super::scene::Layer>,
+    ) -> Result<()> {
         let mut to_remove = std::collections::HashSet::new();
 
         for i in 0..layers.len() {
@@ -335,83 +464,11 @@ impl Compositor {
                     continue;
                 }
 
-                let source = match &source_kind {
-                    TransitionSource::Layer(id) => {
-                        let Some(layer) = layers.iter().find(|layer| &layer.id == id).cloned()
-                        else {
-                            continue;
-                        };
-                        self.transition_layer_source(dev_id, scene, &layer, device, queue)?
-                    }
-                    TransitionSource::Background => {
-                        let lower_layers = layers[..i].to_vec();
-                        let background_scene = super::scene::Scene {
-                            width: scene.width,
-                            height: scene.height,
-                            time: scene.time,
-                            background: Color::TRANSPARENT,
-                            layers: lower_layers,
-                            video_tracks: Vec::new(),
-                            master_effects: Vec::new(),
-                            effect_quality: scene.effect_quality,
-                        };
-                        let background_scene = self.materialize_transitions_and_effects(
-                            dev_id,
-                            &background_scene,
-                            device,
-                            queue,
-                        )?;
-                        let background_scene = self.materialize_video_tracks(
-                            dev_id,
-                            &background_scene,
-                            device,
-                            queue,
-                        )?;
-                        let background_scene = self.materialize_adjustment_clips(
-                            dev_id,
-                            &background_scene,
-                            device,
-                            queue,
-                        )?;
-                        let background_scene = self.materialize_video_tracks(
-                            dev_id,
-                            &background_scene,
-                            device,
-                            queue,
-                        )?;
-                        let texture = self.render_domain_scene_to_owned_texture(
-                            dev_id,
-                            &background_scene,
-                            scene.width,
-                            scene.height,
-                            Color::TRANSPARENT,
-                        )?;
-                        EffectSource::Gpu(Arc::new(crate::media::SharedTexture::new_shared(
-                            Arc::new(texture),
-                        )))
-                    }
-                    TransitionSource::Transparent => {
-                        let transparent_scene = super::scene::Scene {
-                            width: scene.width,
-                            height: scene.height,
-                            time: scene.time,
-                            background: Color::TRANSPARENT,
-                            layers: Vec::new(),
-                            video_tracks: Vec::new(),
-                            master_effects: Vec::new(),
-                            effect_quality: scene.effect_quality,
-                        };
-                        let texture = self.render_domain_scene_to_owned_texture(
-                            dev_id,
-                            &transparent_scene,
-                            scene.width,
-                            scene.height,
-                            Color::TRANSPARENT,
-                        )?;
-                        EffectSource::Gpu(Arc::new(crate::media::SharedTexture::new_shared(
-                            Arc::new(texture),
-                        )))
-                    }
+                let Some(source) = self.resolve_transition_source(
+                    dev_id, scene, &source_kind, layers, i, device, queue,
+                )?
+                else {
+                    continue;
                 };
 
                 let current =
@@ -469,152 +526,135 @@ impl Compositor {
         }
 
         layers.retain(|l| !to_remove.contains(&l.id));
-        self.materialize_text_shadow_blurs(dev_id, scene, device, queue, &mut layers)?;
+        Ok(())
+    }
 
-        // 2. Применяем эффекты к оставшимся слоям (adjustment layers handled separately)
-        let mut final_layers = Vec::with_capacity(layers.len());
-        for layer in layers {
-            if matches!(layer.kind, LayerKind::Adjustment) {
-                final_layers.push(layer);
-                continue;
-            }
-            if layer.effects.is_empty() {
-                final_layers.push(layer);
-                continue;
-            }
+    /// Phase 2: rasterize one layer and apply its effect chain (handling blur-fill, which
+    /// reframes to the full project frame, as a special last step). Returns the flattened
+    /// raster layer.
+    fn materialize_layer_effects(
+        &mut self,
+        dev_id: usize,
+        scene: &super::scene::Scene,
+        layer: &super::scene::Layer,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+    ) -> Result<super::scene::Layer> {
+        let is_vector = matches!(layer.kind, LayerKind::Shape(_) | LayerKind::Text(_));
+        let render_scale = if is_vector {
+            Self::vector_effect_render_scale(layer)
+        } else {
+            (1.0, 1.0)
+        };
 
-            // Векторные слои (Shape/Text) растеризуем под эффект в ЭКРАННОМ разрешении
-            // (natural × scale), иначе крупная фигура/текст рендерилась бы в natural_size
-            // и увеличивалась при композите → лесенка/мыло. Затем компенсируем scale слоя,
-            // чтобы итоговый размер не удвоился. Растровые слои уже пиксельные — без k.
-            let is_vector = matches!(layer.kind, LayerKind::Shape(_) | LayerKind::Text(_));
-            let render_scale = if is_vector {
-                Self::vector_effect_render_scale(&layer)
-            } else {
-                (1.0, 1.0)
-            };
+        let source = if is_vector {
+            let texture = self.render_layer_to_texture(dev_id, scene, layer, render_scale)?;
+            EffectSource::Gpu(Arc::new(crate::media::SharedTexture::new_shared(Arc::new(
+                texture,
+            ))))
+        } else {
+            self.layer_to_effect_source(dev_id, scene, layer)?
+        };
 
-            let source = if is_vector {
-                let texture = self.render_layer_to_texture(dev_id, scene, &layer, render_scale)?;
-                EffectSource::Gpu(Arc::new(crate::media::SharedTexture::new_shared(Arc::new(
-                    texture,
-                ))))
-            } else {
-                self.layer_to_effect_source(dev_id, scene, &layer)?
-            };
-
-            // Blur-fill reframes the layer to fill the whole project frame, so it
-            // produces a *frame-sized* texture and the transform is reset to map
-            // it 1:1 onto the frame (overriding the clip's letterbox fit). Any
-            // other effects in the chain are applied first at source resolution,
-            // then blur-fill last.
-            if let Some(bf_idx) = layer
-                .effects
-                .iter()
-                .position(|e| matches!(e, EffectSpec::BlurFill { .. }))
+        // Blur-fill reframes the layer to fill the whole project frame, so it
+        // produces a *frame-sized* texture and the transform is reset to map
+        // it 1:1 onto the frame (overriding the clip's letterbox fit). Any
+        // other effects in the chain are applied first at source resolution,
+        // then blur-fill last.
+        if let Some(bf_idx) = layer
+            .effects
+            .iter()
+            .position(|e| matches!(e, EffectSpec::BlurFill { .. }))
+        {
+            if let EffectSpec::BlurFill {
+                fg_scale,
+                bg_scale,
+                blur,
+                bg_dim,
+                bg_saturation,
+                tint_color,
+                tint_strength,
+                fg_offset_y,
+            } = &layer.effects[bf_idx]
             {
-                if let EffectSpec::BlurFill {
-                    fg_scale,
-                    bg_scale,
-                    blur,
-                    bg_dim,
-                    bg_saturation,
-                    tint_color,
-                    tint_strength,
-                    fg_offset_y,
-                } = &layer.effects[bf_idx]
-                {
-                    let others: Vec<EffectSpec> = layer
-                        .effects
-                        .iter()
-                        .enumerate()
-                        .filter(|(i, _)| *i != bf_idx)
-                        .map(|(_, e)| e.clone())
-                        .collect();
-                    let base = if others.is_empty() {
-                        source
-                    } else {
-                        let (processed, _) = self.apply_effects_to_texture(
-                            dev_id,
-                            device,
-                            queue,
-                            &source,
-                            &others,
-                            false,
-                            scene.effect_quality,
-                        )?;
-                        EffectSource::Gpu(processed)
-                    };
-                    let framed = self.apply_blur_fill_to_texture(
+                let others: Vec<EffectSpec> = layer
+                    .effects
+                    .iter()
+                    .enumerate()
+                    .filter(|(i, _)| *i != bf_idx)
+                    .map(|(_, e)| e.clone())
+                    .collect();
+                let base = if others.is_empty() {
+                    source
+                } else {
+                    let (processed, _) = self.apply_effects_to_texture(
                         dev_id,
                         device,
                         queue,
-                        &base,
-                        scene.width,
-                        scene.height,
-                        *fg_scale,
-                        *bg_scale,
-                        *blur,
-                        *bg_dim,
-                        *bg_saturation,
-                        *tint_color,
-                        *tint_strength,
-                        *fg_offset_y,
+                        &source,
+                        &others,
+                        false,
                         scene.effect_quality,
                     )?;
-                    let mut next = layer.clone();
-                    next.transform = Transform::center_fit(
-                        (scene.width, scene.height),
-                        (scene.width, scene.height),
-                    );
-                    next.kind = LayerKind::Raster {
-                        natural_size: (scene.width, scene.height),
-                        source: RasterSource::GpuTexture(framed),
-                        padding: None,
-                    };
-                    next.effects.clear();
-                    final_layers.push(next);
-                    continue;
-                }
+                    EffectSource::Gpu(processed)
+                };
+                let framed = self.apply_blur_fill_to_texture(
+                    dev_id,
+                    device,
+                    queue,
+                    &base,
+                    scene.width,
+                    scene.height,
+                    *fg_scale,
+                    *bg_scale,
+                    *blur,
+                    *bg_dim,
+                    *bg_saturation,
+                    *tint_color,
+                    *tint_strength,
+                    *fg_offset_y,
+                    scene.effect_quality,
+                )?;
+                let mut next = layer.clone();
+                next.transform = Transform::center_fit(
+                    (scene.width, scene.height),
+                    (scene.width, scene.height),
+                );
+                next.kind = LayerKind::Raster {
+                    natural_size: (scene.width, scene.height),
+                    source: RasterSource::GpuTexture(framed),
+                    padding: None,
+                };
+                next.effects.clear();
+                return Ok(next);
             }
-
-            let (processed, padding) = self.apply_effects_to_texture(
-                dev_id,
-                device,
-                queue,
-                &source,
-                &layer.effects,
-                true,
-                scene.effect_quality,
-            )?;
-            let mut next = layer.clone();
-            next.kind = LayerKind::Raster {
-                natural_size: (processed.width(), processed.height()),
-                source: RasterSource::GpuTexture(processed),
-                padding: if padding > 0 {
-                    Some((padding, padding))
-                } else {
-                    None
-                },
-            };
-            if is_vector {
-                next.transform.scale_x /= render_scale.0;
-                next.transform.scale_y /= render_scale.1;
-            }
-            next.effects.clear();
-            final_layers.push(next);
         }
 
-        Ok(super::scene::Scene {
-            width: scene.width,
-            height: scene.height,
-            time: scene.time,
-            background: scene.background,
-            layers: final_layers,
-            video_tracks: scene.video_tracks.clone(),
-            master_effects: scene.master_effects.clone(),
-            effect_quality: scene.effect_quality,
-        })
+        let (processed, padding) = self.apply_effects_to_texture(
+            dev_id,
+            device,
+            queue,
+            &source,
+            &layer.effects,
+            true,
+            scene.effect_quality,
+        )?;
+        let mut next = layer.clone();
+        next.kind = LayerKind::Raster {
+            natural_size: (processed.width(), processed.height()),
+            source: RasterSource::GpuTexture(processed),
+            padding: if padding > 0 {
+                Some((padding, padding))
+            } else {
+                None
+            },
+        };
+        if is_vector {
+            next.transform.scale_x /= render_scale.0;
+            next.transform.scale_y /= render_scale.1;
+        }
+        next.effects.clear();
+        Ok(next)
     }
 
     /// Materializes adjustment clips by rendering lower layers into a texture,

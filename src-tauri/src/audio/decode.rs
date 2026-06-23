@@ -389,6 +389,23 @@ impl LayerDecoder {
     }
 }
 
+/// Per-chunk decode parameters threaded into the decode/resample loop. All scalar
+/// (Copy) so the loop body can destructure it into plain locals.
+#[derive(Clone, Copy)]
+struct ChunkDecodeCtx {
+    /// Interleaved output samples this chunk must produce.
+    target_samples: usize,
+    /// Source frames spanning the chunk's timeline duration (sizes the decode batch).
+    chunk_source_frames: usize,
+    output_channels: usize,
+    target_sample_rate: u32,
+    speed: f64,
+    /// target_rate / (source_rate * speed); reused when the channel layout changes.
+    current_ratio: f64,
+    /// Whether the resampler is engaged (rate/speed differ from passthrough).
+    resampling_active: bool,
+}
+
 impl SymphoniaDecoder {
     /// Decodes one chunk of `timeline_duration_sec` to interleaved f32 at the target
     /// rate/channels, continuing sequentially from the previous chunk where possible
@@ -397,7 +414,6 @@ impl SymphoniaDecoder {
         let target_sample_rate = req.target_sample_rate;
         let output_channels = req.output_channels;
         let speed = req.speed;
-        let reverse = req.reverse;
         let source_start_sec = req.source_start_sec;
         let timeline_duration_sec = req.timeline_duration_sec;
         let target_samples = (timeline_duration_sec.max(0.0) * target_sample_rate as f64).round()
@@ -405,66 +421,141 @@ impl SymphoniaDecoder {
             * output_channels;
 
         let source_advance_sec = timeline_duration_sec * speed;
-        let seek_tolerance_sec =
-            (source_advance_sec.abs() * SEEK_TOLERANCE_CHUNK_FRACTION).max(SEEK_TOLERANCE_MIN_SEC);
-        let needs_seek = reverse
-            || source_start_sec < self.last_decode_end_sec - seek_tolerance_sec
-            || source_start_sec > self.last_decode_end_sec + seek_tolerance_sec;
         let current_ratio = target_sample_rate as f64 / (self.source_rate as f64 * speed);
 
-        let (_actual_sec, discard_frames_remaining) = if needs_seek {
-            let seeked_to = match self.format.seek(
-                symphonia::core::formats::SeekMode::Accurate,
-                symphonia::core::formats::SeekTo::Time {
-                    time: symphonia::core::units::Time {
-                        seconds: source_start_sec.floor() as u64,
-                        frac: source_start_sec.fract(),
-                    },
-                    track_id: Some(self.track_id),
-                },
-            ) {
-                Ok(seeked_to) => seeked_to,
-                Err(error) if is_audio_seek_past_end(&error) => {
-                    self.last_decode_end_sec = source_start_sec;
-                    return Ok(vec![0.0f32; target_samples]);
-                }
-                Err(error) => return Err(error).context("failed to seek in format reader"),
+        // Phase 1: reseek on a discontinuity (or any reverse chunk) and re-prime the
+        // resampler. `None` means the seek landed past end-of-stream → emit silence.
+        let discard_frames_remaining =
+            match self.seek_and_reprime(req, current_ratio, source_advance_sec)? {
+                Some(discard) => discard,
+                None => return Ok(vec![0.0f32; target_samples]),
             };
 
-            self.decoder.reset();
-            if self.resampler.is_some() && (self.last_resample_ratio - current_ratio).abs() <= 1e-6
-            {
-                if let Some(r) = self.resampler.as_mut() {
-                    use rubato::Resampler;
-                    r.reset();
-                }
-            } else {
-                self.resampler = None;
-            }
-            self.resample_remainder = vec![Vec::new(); self.channels];
-            self.resample_output_remainder.clear();
-            self.last_resample_ratio = current_ratio;
-            self.resampler_primed = false;
-
-            let actual_sec = {
-                let t = self.time_base.calc_time(seeked_to.actual_ts);
-                t.seconds as f64 + t.frac
-            };
-            let (decode_start_sec, discard_frames) = if actual_sec <= source_start_sec {
-                let discard_sec = source_start_sec - actual_sec;
-                let discard_frames = (discard_sec * self.source_rate as f64).floor() as usize;
-                (actual_sec, discard_frames)
-            } else {
-                (actual_sec, 0usize)
-            };
-            (decode_start_sec, discard_frames)
-        } else {
-            (source_start_sec, 0usize)
-        };
-        let mut discard_frames_remaining = discard_frames_remaining;
-
+        // Phase 2: (re)build the resampler for this chunk's ratio if needed.
         let resampling_active =
             !((current_ratio - 1.0).abs() < 1e-6 && self.source_rate == target_sample_rate);
+        self.ensure_resampler(current_ratio, resampling_active)?;
+
+        // Source frames spanning this chunk's timeline duration. Used only to size the
+        // per-iteration decode batch and to advance the logical decode cursor — the
+        // amount we actually decode is driven by how much OUTPUT we still need.
+        let chunk_source_frames =
+            (timeline_duration_sec * speed * self.source_rate as f64).round() as usize;
+
+        // Phase 3: decode + resample until a full chunk of output is collected (or EOF),
+        // flushing the resampler's group-delay tail at end-of-stream.
+        let ctx = ChunkDecodeCtx {
+            target_samples,
+            chunk_source_frames,
+            output_channels,
+            target_sample_rate,
+            speed,
+            current_ratio,
+            resampling_active,
+        };
+        let (mut combined, total_collected, hit_eof) =
+            self.fill_chunk_output(&ctx, discard_frames_remaining)?;
+
+        if total_collected == 0 && combined.is_empty() {
+            self.last_decode_end_sec = source_start_sec;
+            return Ok(vec![0.0f32; target_samples]);
+        }
+
+        let out = if combined.len() >= target_samples {
+            self.resample_output_remainder = combined.split_off(target_samples);
+            combined
+        } else {
+            combined.resize(target_samples, 0.0);
+            combined
+        };
+        self.resampler_primed = true;
+
+        // Advance the logical cursor by exactly one chunk on a complete decode. The
+        // loop may have read AHEAD of this (its surplus is buffered in
+        // `resample_output_remainder`), so the cursor tracks the logical timeline
+        // position, not the physical reader position — the next sequential chunk's
+        // `source_start` then matches and skips a reseek. On EOF the source ran out
+        // before a full chunk, so leave the cursor put (the producer's next advance
+        // will exceed the seek tolerance and reseek, as before).
+        let logical_source_end_sec = source_start_sec + source_advance_sec;
+        self.last_decode_end_sec = if hit_eof {
+            source_start_sec
+        } else {
+            logical_source_end_sec
+        };
+
+        Ok(out)
+    }
+
+    /// Phase 1: seeks to `req.source_start_sec` when the request isn't a sequential
+    /// continuation (or is reversed) and re-primes the resampler/remainder state.
+    /// Returns the number of leading source frames to discard so decoding starts exactly
+    /// at the requested position, or `None` if the seek landed past end-of-stream (the
+    /// caller emits a silent chunk).
+    fn seek_and_reprime(
+        &mut self,
+        req: &StreamChunkRequest,
+        current_ratio: f64,
+        source_advance_sec: f64,
+    ) -> Result<Option<usize>> {
+        let source_start_sec = req.source_start_sec;
+        let seek_tolerance_sec =
+            (source_advance_sec.abs() * SEEK_TOLERANCE_CHUNK_FRACTION).max(SEEK_TOLERANCE_MIN_SEC);
+        let needs_seek = req.reverse
+            || source_start_sec < self.last_decode_end_sec - seek_tolerance_sec
+            || source_start_sec > self.last_decode_end_sec + seek_tolerance_sec;
+        if !needs_seek {
+            return Ok(Some(0));
+        }
+
+        let seeked_to = match self.format.seek(
+            symphonia::core::formats::SeekMode::Accurate,
+            symphonia::core::formats::SeekTo::Time {
+                time: symphonia::core::units::Time {
+                    seconds: source_start_sec.floor() as u64,
+                    frac: source_start_sec.fract(),
+                },
+                track_id: Some(self.track_id),
+            },
+        ) {
+            Ok(seeked_to) => seeked_to,
+            Err(error) if is_audio_seek_past_end(&error) => {
+                self.last_decode_end_sec = source_start_sec;
+                return Ok(None);
+            }
+            Err(error) => return Err(error).context("failed to seek in format reader"),
+        };
+
+        self.decoder.reset();
+        if self.resampler.is_some() && (self.last_resample_ratio - current_ratio).abs() <= 1e-6 {
+            if let Some(r) = self.resampler.as_mut() {
+                use rubato::Resampler;
+                r.reset();
+            }
+        } else {
+            self.resampler = None;
+        }
+        self.resample_remainder = vec![Vec::new(); self.channels];
+        self.resample_output_remainder.clear();
+        self.last_resample_ratio = current_ratio;
+        self.resampler_primed = false;
+
+        let actual_sec = {
+            let t = self.time_base.calc_time(seeked_to.actual_ts);
+            t.seconds as f64 + t.frac
+        };
+        let discard_frames = if actual_sec <= source_start_sec {
+            let discard_sec = source_start_sec - actual_sec;
+            (discard_sec * self.source_rate as f64).floor() as usize
+        } else {
+            0
+        };
+        Ok(Some(discard_frames))
+    }
+
+    /// Phase 2: drops a resampler whose ratio no longer matches and builds a fresh one
+    /// when resampling is engaged but none is cached. Records the active ratio either way.
+    fn ensure_resampler(&mut self, current_ratio: f64, resampling_active: bool) -> Result<()> {
         if self.resampler.is_some() && (self.last_resample_ratio - current_ratio).abs() > 1e-6 {
             self.resampler = None;
             self.resample_remainder = vec![Vec::new(); self.channels];
@@ -478,12 +569,28 @@ impl SymphoniaDecoder {
             self.resample_remainder = vec![Vec::new(); self.channels];
             self.resampler_primed = false;
         }
+        Ok(())
+    }
 
-        // Source frames spanning this chunk's timeline duration. Used only to size the
-        // per-iteration decode batch and to advance the logical decode cursor — the
-        // amount we actually decode is driven by how much OUTPUT we still need.
-        let chunk_source_frames =
-            (timeline_duration_sec * speed * self.source_rate as f64).round() as usize;
+    /// Phase 3: decode source packets and resample until a full chunk of OUTPUT is
+    /// collected (or end-of-stream), draining the resampler's sub-block remainder and
+    /// group-delay tail at EOF. Returns the interleaved output (possibly longer than the
+    /// chunk; the surplus is stashed in `resample_output_remainder` by the caller), the
+    /// source frames collected, and whether EOF was hit.
+    fn fill_chunk_output(
+        &mut self,
+        ctx: &ChunkDecodeCtx,
+        mut discard_frames_remaining: usize,
+    ) -> Result<(Vec<f32>, usize, bool)> {
+        let ChunkDecodeCtx {
+            target_samples,
+            chunk_source_frames,
+            output_channels,
+            target_sample_rate,
+            speed,
+            current_ratio,
+            resampling_active,
+        } = *ctx;
 
         // Output already buffered from previous chunks' resampler surplus. The decode
         // loop tops this up to a full chunk; the surplus is carried to the next chunk.
@@ -679,35 +786,7 @@ impl SymphoniaDecoder {
             combined.extend_from_slice(&interleaved);
         }
 
-        if total_collected == 0 && combined.is_empty() {
-            self.last_decode_end_sec = source_start_sec;
-            return Ok(vec![0.0f32; target_samples]);
-        }
-
-        let out = if combined.len() >= target_samples {
-            self.resample_output_remainder = combined.split_off(target_samples);
-            combined
-        } else {
-            combined.resize(target_samples, 0.0);
-            combined
-        };
-        self.resampler_primed = true;
-
-        // Advance the logical cursor by exactly one chunk on a complete decode. The
-        // loop may have read AHEAD of this (its surplus is buffered in
-        // `resample_output_remainder`), so the cursor tracks the logical timeline
-        // position, not the physical reader position — the next sequential chunk's
-        // `source_start` then matches and skips a reseek. On EOF the source ran out
-        // before a full chunk, so leave the cursor put (the producer's next advance
-        // will exceed the seek tolerance and reseek, as before).
-        let logical_source_end_sec = source_start_sec + source_advance_sec;
-        self.last_decode_end_sec = if hit_eof {
-            source_start_sec
-        } else {
-            logical_source_end_sec
-        };
-
-        Ok(out)
+        Ok((combined, total_collected, hit_eof))
     }
 }
 
