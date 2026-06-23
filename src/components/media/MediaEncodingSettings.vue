@@ -141,8 +141,16 @@ watch(outputFormat, (fmt) => {
   if (fmt === 'webm') {
     audioCodec.value = 'opus';
     videoCodec.value = 'vp09.00.10.08';
-  } else if (fmt === 'mp4' && (audioCodec.value === 'flac' || audioCodec.value === 'pcm')) {
-    audioCodec.value = 'aac';
+  } else if (fmt === 'mp4') {
+    videoCodec.value = 'avc1.640032';
+    if (audioCodec.value === 'flac' || audioCodec.value === 'pcm') {
+      audioCodec.value = 'aac';
+    }
+  } else if (fmt === 'mkv') {
+    const mkvAllowed = ['avc1.640032', 'vp09.00.10.08', 'av01.0.05M.08'];
+    if (!mkvAllowed.includes(videoCodec.value)) {
+      videoCodec.value = 'av01.0.05M.08';
+    }
   }
 
   isBitrateModeTouched.value = false;

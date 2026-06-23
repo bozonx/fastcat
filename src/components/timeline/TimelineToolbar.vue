@@ -56,19 +56,70 @@ const emit = defineEmits<{
 const trimMenuItems = computed(() => {
   const isNoClipSelected = timelineStore.getHotkeyTargetClip() === null;
 
+  const keyTrimL = getHotkeyLabel('timeline.trimToPlayheadLeft');
+  const keyTrimR = getHotkeyLabel('timeline.trimToPlayheadRight');
+  const keyRippleL = getHotkeyLabel('timeline.rippleTrimLeft');
+  const keyRippleR = getHotkeyLabel('timeline.rippleTrimRight');
+  const keyAdvL = getHotkeyLabel('timeline.advancedRippleTrimLeft');
+  const keyAdvR = getHotkeyLabel('timeline.advancedRippleTrimRight');
+  const keySplit = getHotkeyLabel('timeline.splitAtPlayhead');
+  const keySplitAll = getHotkeyLabel('timeline.splitAllAtPlayhead');
+
+  const formatLabel = (text: string, key?: string | null) => (key ? `${text} (${key})` : text);
+
   return [
     [
       {
-        label: t('fastcat.timeline.rippleTrimLeft'),
+        label: formatLabel(t('videoEditor.hotkeys.timeline.trimToPlayheadLeft'), keyTrimL),
+        icon: 'i-heroicons-scissors',
+        disabled: isNoClipSelected,
+        onSelect: () => timelineStore.trimToPlayheadLeftNoRipple(),
+      },
+      {
+        label: formatLabel(t('videoEditor.hotkeys.timeline.trimToPlayheadRight'), keyTrimR),
+        icon: 'i-heroicons-scissors',
+        disabled: isNoClipSelected,
+        onSelect: () => timelineStore.trimToPlayheadRightNoRipple(),
+      },
+    ],
+    [
+      {
+        label: formatLabel(t('videoEditor.hotkeys.timeline.rippleTrimLeft'), keyRippleL),
         icon: 'i-heroicons-arrow-left',
         disabled: isNoClipSelected,
         onSelect: () => timelineStore.rippleTrimLeft(),
       },
       {
-        label: t('fastcat.timeline.rippleTrimRight'),
+        label: formatLabel(t('videoEditor.hotkeys.timeline.rippleTrimRight'), keyRippleR),
         icon: 'i-heroicons-arrow-right',
         disabled: isNoClipSelected,
         onSelect: () => timelineStore.rippleTrimRight(),
+      },
+    ],
+    [
+      {
+        label: formatLabel(t('videoEditor.hotkeys.timeline.advancedRippleTrimLeft'), keyAdvL),
+        icon: 'i-heroicons-backward',
+        disabled: isNoClipSelected,
+        onSelect: () => timelineStore.advancedRippleTrimLeft(),
+      },
+      {
+        label: formatLabel(t('videoEditor.hotkeys.timeline.advancedRippleTrimRight'), keyAdvR),
+        icon: 'i-heroicons-forward',
+        disabled: isNoClipSelected,
+        onSelect: () => timelineStore.advancedRippleTrimRight(),
+      },
+    ],
+    [
+      {
+        label: formatLabel(t('videoEditor.hotkeys.timeline.splitAtPlayhead'), keySplit),
+        icon: 'i-heroicons-scissors',
+        onSelect: () => timelineStore.splitClipAtPlayhead(),
+      },
+      {
+        label: formatLabel(t('videoEditor.hotkeys.timeline.splitAllAtPlayhead'), keySplitAll),
+        icon: 'i-heroicons-scissors',
+        onSelect: () => timelineStore.splitAllClipsAtPlayhead(),
       },
     ],
   ];
