@@ -16,6 +16,9 @@ use crate::compositor::effects::EffectSpec;
 use crate::compositor::scene::BlendMode;
 use crate::compositor::transitions::TransitionSpec;
 
+/// Сборка доменной `compositor::scene::Scene` из этих IPC-DTO.
+pub mod build;
+
 // ts-rs generates the TypeScript mirror of these IPC DTOs into
 // `src/types/generated/native-monitor/` (see `export_to` below). The frontend
 // scene builder imports them so the contract has a single source of truth.

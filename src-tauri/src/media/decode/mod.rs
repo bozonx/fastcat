@@ -7,6 +7,8 @@
 //! Contract: always returns dense RGBA8 (`width * height * 4`) and PTS in seconds.
 
 mod ffmpeg_next;
+pub mod gate;
+pub mod thread;
 mod types;
 mod utils;
 

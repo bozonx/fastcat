@@ -1,7 +1,7 @@
 //! Трансформации, ориентация и crop-логика для слоёв.
 
 use crate::compositor::scene::{LayerKind as CompLayerKind, Transform};
-use crate::media::ffmpeg_utils::is_quarter_turn;
+use crate::media::ffmpeg::utils::is_quarter_turn;
 use crate::monitor::scene::SceneLayerTransform;
 
 impl From<&SceneLayerTransform> for Transform {

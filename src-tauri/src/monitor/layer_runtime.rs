@@ -11,7 +11,7 @@ use tauri::{AppHandle, Emitter};
 use vello::peniko::{Blob, ImageAlphaType, ImageData, ImageFormat};
 
 use crate::media::decode::VideoFrame;
-use crate::media::decode_thread::DecodePump;
+use crate::media::decode::thread::DecodePump;
 
 use super::frame_cache::{DecodedVideoFrame, VideoFrameCache};
 
@@ -593,7 +593,7 @@ mod tests {
             .parent()
             .unwrap()
             .join("test/fixtures/media/sample-1s-720p.mp4");
-        let pump = DecodePump::open(crate::media::decode_thread::DecodeOpenParams {
+        let pump = DecodePump::open(crate::media::decode::thread::DecodeOpenParams {
             path: &fixture,
             max_output_long_edge: None,
             on_frame_decoded: None,
@@ -751,7 +751,7 @@ mod tests {
             .parent()
             .unwrap()
             .join("test/fixtures/media/sample-1s-720p.mp4");
-        let pump = DecodePump::open(crate::media::decode_thread::DecodeOpenParams {
+        let pump = DecodePump::open(crate::media::decode::thread::DecodeOpenParams {
             path: &fixture,
             max_output_long_edge: None,
             on_frame_decoded: None,

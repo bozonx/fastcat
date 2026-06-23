@@ -795,7 +795,7 @@ impl WindowState {
         }
     }
 
-    fn update_hw_settings(&mut self, settings: crate::FfmpegHardwareSettings) {
+    fn update_hw_settings(&mut self, settings: crate::FfmpegHwSettings) {
         let t = self.clock.current_pts();
         let playing = self.clock.is_playing();
         if self.layers.update_hw_settings(settings) {
@@ -1387,7 +1387,7 @@ fn init_state(
         }
     };
     let hw_settings = app
-        .state::<parking_lot::RwLock<crate::FfmpegHardwareSettings>>()
+        .state::<parking_lot::RwLock<crate::FfmpegHwSettings>>()
         .read()
         .clone();
     Ok(WindowState {

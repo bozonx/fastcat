@@ -5,11 +5,12 @@ use std::path::Path;
 use std::process::{Command, Stdio};
 
 use crate::media::decode::probe_rotation;
-use crate::media::decode_gate::decoder_load_gate;
-use crate::media::ffmpeg_args::*;
-use crate::media::ffmpeg_runner::{emit_media_warning, run_ffmpeg_task};
-pub(crate) use crate::media::ffmpeg_runner::{now_millis, spawn_stderr_drain};
-use crate::media::ffmpeg_utils::*;
+use crate::media::decode::gate::decoder_load_gate;
+use crate::media::ffmpeg::args::*;
+use crate::media::ffmpeg::hw::FfmpegHwOptions;
+use crate::media::ffmpeg::runner::{emit_media_warning, run_ffmpeg_task};
+pub(crate) use crate::media::ffmpeg::runner::{now_millis, spawn_stderr_drain};
+use crate::media::ffmpeg::utils::*;
 pub use crate::media::tasks::NativeMediaTasks;
 use crate::media::timeline_render::encode_rgba_as_webp;
 use crate::media::types::HwAccelMode;
@@ -70,16 +71,8 @@ pub struct NativeProxyOptions {
     pub copy_opus_audio: bool,
 
     // Hardware acceleration options
-    #[serde(default)]
-    pub ffmpeg_path: Option<String>,
-    #[serde(default)]
-    pub ffprobe_path: Option<String>,
-    #[serde(default)]
-    pub hardware_acceleration_mode: Option<HwAccelMode>,
-    #[serde(default)]
-    pub vaapi_device: Option<String>,
-    #[serde(default)]
-    pub enable_hardware_encoding: Option<bool>,
+    #[serde(flatten)]
+    pub hw: FfmpegHwOptions,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -100,16 +93,8 @@ pub struct NativeConvertOptions {
     pub audio_reverse: Option<bool>,
 
     // Hardware acceleration options
-    #[serde(default)]
-    pub ffmpeg_path: Option<String>,
-    #[serde(default)]
-    pub ffprobe_path: Option<String>,
-    #[serde(default)]
-    pub hardware_acceleration_mode: Option<HwAccelMode>,
-    #[serde(default)]
-    pub vaapi_device: Option<String>,
-    #[serde(default)]
-    pub enable_hardware_encoding: Option<bool>,
+    #[serde(flatten)]
+    pub hw: FfmpegHwOptions,
 }
 
 pub fn probe_media(path: &Path, ffprobe_path: &str) -> Result<NativeMediaMetadata> {
@@ -314,8 +299,7 @@ pub fn generate_proxy(
     options: NativeProxyOptions,
     on_progress: Option<&(dyn Fn(f64) + Send + Sync)>,
 ) -> Result<()> {
-    let ffprobe_cmd = options.ffprobe_path.as_deref().unwrap_or("ffprobe");
-    let metadata = probe_media(source_path, ffprobe_cmd)?;
+    let metadata = probe_media(source_path, options.hw.ffprobe_cmd())?;
     metadata
         .video
         .as_ref()
@@ -323,21 +307,9 @@ pub fn generate_proxy(
 
     let duration = metadata.duration.max(0.0);
 
-    let hw_accel = options
-        .hardware_acceleration_mode
-        .as_ref()
-        .unwrap_or(&HwAccelMode::None);
-    let vaapi_dev = options
-        .vaapi_device
-        .as_deref()
-        .unwrap_or(DEFAULT_VAAPI_DEVICE);
-    let hw_decode = resolve_hw_decode_mode(hw_accel, vaapi_dev);
-
-    let hw_encode = if options.enable_hardware_encoding.unwrap_or(false) {
-        hw_decode
-    } else {
-        HwAccelMode::None
-    };
+    let vaapi_dev = options.hw.vaapi_dev().to_string();
+    let hw_decode = options.hw.hw_decode_mode();
+    let hw_encode = options.hw.hw_encode_mode();
 
     let args = build_proxy_ffmpeg_args(
         source_path,
@@ -346,10 +318,10 @@ pub fn generate_proxy(
         &options,
         hw_decode,
         hw_encode,
-        vaapi_dev,
+        &vaapi_dev,
     )?;
 
-    let ffmpeg_cmd = options.ffmpeg_path.as_deref().unwrap_or("ffmpeg");
+    let ffmpeg_cmd = options.hw.ffmpeg_cmd();
     match run_ffmpeg_task(
         tasks,
         task_id,
@@ -371,7 +343,7 @@ pub fn generate_proxy(
         Err(e) if hw_encode != HwAccelMode::None && !e.to_string().contains("cancelled") => {
             log::warn!("[native-media] HW proxy failed ({e}), falling back to software encoding");
             let mut sw_options = options.clone();
-            sw_options.enable_hardware_encoding = Some(false);
+            sw_options.hw.enable_hardware_encoding = Some(false);
             generate_proxy(
                 tasks,
                 task_id,
@@ -413,10 +385,7 @@ pub fn convert_media_with_warnings(
     on_progress: Option<&(dyn Fn(f64) + Send + Sync)>,
 ) -> Result<()> {
     let mut options = options;
-    let ffprobe_cmd = options
-        .ffprobe_path
-        .clone()
-        .unwrap_or_else(|| "ffprobe".to_string());
+    let ffprobe_cmd = options.hw.ffprobe_cmd().to_string();
     let duration = match probe_media(source_path, &ffprobe_cmd) {
         Ok(meta) => {
             if options.width.is_none() {
@@ -436,21 +405,9 @@ pub fn convert_media_with_warnings(
         }
     };
 
-    let hw_accel = options
-        .hardware_acceleration_mode
-        .as_ref()
-        .unwrap_or(&HwAccelMode::None);
-    let vaapi_dev = options
-        .vaapi_device
-        .as_deref()
-        .unwrap_or(DEFAULT_VAAPI_DEVICE);
-    let hw_decode = resolve_hw_decode_mode(hw_accel, vaapi_dev);
-
-    let hw_encode = if options.enable_hardware_encoding.unwrap_or(false) {
-        hw_decode
-    } else {
-        HwAccelMode::None
-    };
+    let vaapi_dev = options.hw.vaapi_dev().to_string();
+    let hw_decode = options.hw.hw_decode_mode();
+    let hw_encode = options.hw.hw_encode_mode();
 
     let args = build_convert_ffmpeg_args(
         source_path,
@@ -458,11 +415,11 @@ pub fn convert_media_with_warnings(
         &options,
         hw_decode,
         hw_encode,
-        vaapi_dev,
+        &vaapi_dev,
         on_warning,
     )?;
 
-    let ffmpeg_cmd = options.ffmpeg_path.as_deref().unwrap_or("ffmpeg");
+    let ffmpeg_cmd = options.hw.ffmpeg_cmd();
     match run_ffmpeg_task(
         tasks,
         task_id,
@@ -486,7 +443,7 @@ pub fn convert_media_with_warnings(
                 "[native-media] HW conversion failed ({e}), falling back to software encoding"
             );
             let mut sw_options = options.clone();
-            sw_options.enable_hardware_encoding = Some(false);
+            sw_options.hw.enable_hardware_encoding = Some(false);
             convert_media_with_warnings(
                 tasks,
                 task_id,
@@ -680,14 +637,14 @@ pub struct ExtractWebpParams<'a> {
     pub max_width: u32,
     pub max_height: u32,
     pub quality: f32,
-    pub hw_settings: crate::FfmpegHardwareSettings,
+    pub hw_settings: crate::FfmpegHwSettings,
 }
 
 pub fn extract_video_frame_webp(params: ExtractWebpParams<'_>) -> Result<Vec<u8>> {
     // Throttle concurrent decoder/ffmpeg spawns the same way the monitor does, so a
     // media panel full of clips can't flood the machine with parallel ffmpeg starts.
     let _permit = decoder_load_gate()
-        .acquire_with_priority(crate::media::decode_gate::LoadPriority::Background, &|| {
+        .acquire_with_priority(crate::media::decode::gate::LoadPriority::Background, &|| {
             false
         })
         .expect("Background without cancel always succeeds");
@@ -784,7 +741,7 @@ pub fn extract_video_frame_webps(
     max_height: u32,
     quality: f32,
     seek_threshold_sec: Option<f64>,
-    hw_settings: &crate::FfmpegHardwareSettings,
+    hw_settings: &crate::FfmpegHwSettings,
 ) -> Result<Vec<Option<Vec<u8>>>> {
     let mut sorted_times: Vec<(usize, f64)> = times_sec.iter().copied().enumerate().collect();
     sorted_times.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal));
@@ -796,7 +753,7 @@ pub fn extract_video_frame_webps(
     );
     let mut decoder = {
         let _permit = decoder_load_gate()
-            .acquire_with_priority(crate::media::decode_gate::LoadPriority::Background, &|| {
+            .acquire_with_priority(crate::media::decode::gate::LoadPriority::Background, &|| {
                 false
             })
             .expect("Background without cancel always succeeds");
@@ -1115,11 +1072,7 @@ mod tests {
             audio_bitrate_bps: 128_000,
             video_codec: "h264".into(),
             copy_opus_audio: false,
-            ffmpeg_path: None,
-            ffprobe_path: None,
-            hardware_acceleration_mode: None,
-            vaapi_device: None,
-            enable_hardware_encoding: None,
+            hw: FfmpegHwOptions::default(),
         };
 
         let args = build_proxy_ffmpeg_args(
@@ -1164,11 +1117,7 @@ mod tests {
             audio_bitrate_bps: 128_000,
             video_codec: "h264".into(),
             copy_opus_audio: false,
-            ffmpeg_path: None,
-            ffprobe_path: None,
-            hardware_acceleration_mode: None,
-            vaapi_device: None,
-            enable_hardware_encoding: None,
+            hw: FfmpegHwOptions::default(),
         };
 
         let args = build_proxy_ffmpeg_args(
@@ -1207,11 +1156,7 @@ mod tests {
             audio_channels: Some(2),
             audio_sample_rate: Some(48_000),
             audio_reverse: None,
-            ffmpeg_path: None,
-            ffprobe_path: None,
-            hardware_acceleration_mode: None,
-            vaapi_device: None,
-            enable_hardware_encoding: None,
+            hw: FfmpegHwOptions::default(),
         };
 
         let args = build_convert_ffmpeg_args(
@@ -1268,11 +1213,7 @@ mod tests {
                 audio_channels: Some(2),
                 audio_sample_rate: Some(48_000),
                 audio_reverse: Some(true),
-                ffmpeg_path: None,
-                ffprobe_path: None,
-                hardware_acceleration_mode: None,
-                vaapi_device: None,
-                enable_hardware_encoding: None,
+            hw: FfmpegHwOptions::default(),
             };
 
             let result = convert_media(
@@ -1321,11 +1262,7 @@ mod tests {
             audio_channels: Some(2),
             audio_sample_rate: Some(48_000),
             audio_reverse: None,
-            ffmpeg_path: None,
-            ffprobe_path: None,
-            hardware_acceleration_mode: None,
-            vaapi_device: None,
-            enable_hardware_encoding: None,
+            hw: FfmpegHwOptions::default(),
         };
 
         let args = build_convert_ffmpeg_args(

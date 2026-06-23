@@ -23,10 +23,10 @@ use winit::event_loop::EventLoopProxy;
 use super::handle::MonitorCommand;
 use super::layer_runtime::*;
 use super::scene::{LayerKind, MonitorScene, NativeFrameCacheMode, PreviewSyncMode, SceneLayer};
-use super::scene_build::{build_compositor_scene, rasterize_svg};
+use super::scene::build::{build_compositor_scene, rasterize_svg};
 use crate::compositor::scene::Scene;
-use crate::media::decode_gate::decoder_load_gate;
-use crate::media::decode_thread::DecodePump;
+use crate::media::decode::gate::decoder_load_gate;
+use crate::media::decode::thread::DecodePump;
 use crate::media::image_decode::decode_image;
 
 /// Сколько секунд до начала будущего клипа на таймлайне должно оставаться,
@@ -132,7 +132,7 @@ pub struct LayerRuntimeManager {
     frame_event_gate: Arc<AtomicBool>,
     bg_tx: Sender<BgLayerResult>,
     proxy: EventLoopProxy<MonitorCommand>,
-    hw_settings: crate::FfmpegHardwareSettings,
+    hw_settings: crate::FfmpegHwSettings,
     /// Video master effects applied to the final composited frame.
     pub master_effects: Vec<crate::compositor::effects::EffectSpec>,
     pub video_tracks: Vec<crate::monitor::scene::SceneVideoTrack>,
@@ -143,7 +143,7 @@ impl LayerRuntimeManager {
         app: AppHandle,
         bg_tx: Sender<BgLayerResult>,
         proxy: EventLoopProxy<MonitorCommand>,
-        hw_settings: crate::FfmpegHardwareSettings,
+        hw_settings: crate::FfmpegHwSettings,
     ) -> Self {
         Self {
             app,
@@ -200,7 +200,7 @@ impl LayerRuntimeManager {
         self.playback_speed = sanitize_transport_speed(speed).abs();
     }
 
-    pub fn update_hw_settings(&mut self, hw_settings: crate::FfmpegHardwareSettings) -> bool {
+    pub fn update_hw_settings(&mut self, hw_settings: crate::FfmpegHwSettings) -> bool {
         if self.hw_settings == hw_settings {
             return false;
         }
@@ -435,7 +435,7 @@ impl LayerRuntimeManager {
                                 || epoch != live_epoch.load(Ordering::Relaxed)
                         };
                         let permit = match decoder_load_gate().acquire_with_priority(
-                            crate::media::decode_gate::LoadPriority::Live,
+                            crate::media::decode::gate::LoadPriority::Live,
                             &cancel_fn,
                         ) {
                             Some(p) => p,
@@ -458,7 +458,7 @@ impl LayerRuntimeManager {
                             }
                         });
                         let result =
-                            match DecodePump::open(crate::media::decode_thread::DecodeOpenParams {
+                            match DecodePump::open(crate::media::decode::thread::DecodeOpenParams {
                                 path: &path,
                                 max_output_long_edge: max_long_edge,
                                 on_frame_decoded: Some(on_frame),
@@ -504,7 +504,7 @@ impl LayerRuntimeManager {
                                 || epoch != live_epoch.load(Ordering::Relaxed)
                         };
                         let permit = match decoder_load_gate().acquire_with_priority(
-                            crate::media::decode_gate::LoadPriority::Live,
+                            crate::media::decode::gate::LoadPriority::Live,
                             &cancel_fn,
                         ) {
                             Some(p) => p,
@@ -553,7 +553,7 @@ impl LayerRuntimeManager {
                                 || epoch != live_epoch.load(Ordering::Relaxed)
                         };
                         let permit = match decoder_load_gate().acquire_with_priority(
-                            crate::media::decode_gate::LoadPriority::Live,
+                            crate::media::decode::gate::LoadPriority::Live,
                             &cancel_fn,
                         ) {
                             Some(p) => p,
@@ -1456,7 +1456,7 @@ mod tests {
     use super::video_sync_lag_sec;
     use super::{BALANCED_VIDEO_SYNC_LAG_SEC, STRICT_VIDEO_SYNC_LAG_SEC};
     use crate::monitor::scene::{LayerKind, PreviewSyncMode, SceneLayer};
-    use crate::monitor::scene_build::layer_with_auto_source_rotation;
+    use crate::monitor::scene::build::layer_with_auto_source_rotation;
 
     #[test]
     fn layer_near_playhead_keeps_window_around_t() {

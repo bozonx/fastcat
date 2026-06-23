@@ -15,20 +15,18 @@ use crate::media::timeline_render::{
 };
 use crate::monitor::MonitorScene;
 
+use crate::media::ffmpeg::hw::FfmpegHwOptions;
+
 /// Trait for structs that carry per-request hardware acceleration overrides.
 pub trait ApplyHwSettings {
-    fn apply_hw_settings(&mut self, hw: &crate::FfmpegHardwareSettings);
+    fn apply_hw_settings(&mut self, hw: &crate::FfmpegHwSettings);
 }
 
 macro_rules! impl_apply_hw_settings {
     ($type:ty) => {
         impl ApplyHwSettings for $type {
-            fn apply_hw_settings(&mut self, hw: &crate::FfmpegHardwareSettings) {
-                self.ffmpeg_path = Some(hw.ffmpeg_path.clone());
-                self.ffprobe_path = Some(hw.ffprobe_path.clone());
-                self.hardware_acceleration_mode = Some(hw.hardware_acceleration_mode.clone());
-                self.vaapi_device = Some(hw.vaapi_device.clone());
-                self.enable_hardware_encoding = Some(hw.enable_hardware_encoding);
+            fn apply_hw_settings(&mut self, hw: &crate::FfmpegHwSettings) {
+                self.hw = FfmpegHwOptions::from_settings(hw);
             }
         }
     };
@@ -168,7 +166,7 @@ impl NativeMediaService {
 #[tauri::command]
 pub async fn native_media_metadata(
     path: String,
-    hw_settings: State<'_, parking_lot::RwLock<crate::FfmpegHardwareSettings>>,
+    hw_settings: State<'_, parking_lot::RwLock<crate::FfmpegHwSettings>>,
 ) -> Result<NativeMediaMetadata, String> {
     let path = PathBuf::from(path);
     let (ffprobe_path, ffmpeg_path) = {
@@ -191,7 +189,7 @@ pub async fn native_media_generate_proxy(
     mut options: NativeProxyOptions,
     app: AppHandle,
     service: State<'_, NativeMediaService>,
-    hw_settings: State<'_, parking_lot::RwLock<crate::FfmpegHardwareSettings>>,
+    hw_settings: State<'_, parking_lot::RwLock<crate::FfmpegHwSettings>>,
 ) -> Result<(), String> {
     let service = service.inner().clone();
     let source_path = PathBuf::from(source_path);
@@ -228,7 +226,7 @@ pub async fn native_media_convert(
     mut options: NativeConvertOptions,
     app: AppHandle,
     service: State<'_, NativeMediaService>,
-    hw_settings: State<'_, parking_lot::RwLock<crate::FfmpegHardwareSettings>>,
+    hw_settings: State<'_, parking_lot::RwLock<crate::FfmpegHwSettings>>,
 ) -> Result<(), String> {
     let service = service.inner().clone();
     let source_path = PathBuf::from(source_path);
@@ -275,7 +273,7 @@ pub async fn native_media_extract_audio(
     source_path: String,
     target_path: String,
     service: State<'_, NativeMediaService>,
-    hw_settings: State<'_, parking_lot::RwLock<crate::FfmpegHardwareSettings>>,
+    hw_settings: State<'_, parking_lot::RwLock<crate::FfmpegHwSettings>>,
 ) -> Result<(), String> {
     let service = service.inner().clone();
     let source_path = PathBuf::from(source_path);
@@ -335,7 +333,7 @@ pub async fn native_timeline_export(
     target_path: String,
     app: AppHandle,
     service: State<'_, NativeMediaService>,
-    hw_settings: State<'_, parking_lot::RwLock<crate::FfmpegHardwareSettings>>,
+    hw_settings: State<'_, parking_lot::RwLock<crate::FfmpegHwSettings>>,
 ) -> Result<(), String> {
     let service = service.inner().clone();
     let target_path = PathBuf::from(target_path);
@@ -380,7 +378,7 @@ pub async fn native_timeline_render_frame_to_file(
     height: u32,
     target_path: String,
     quality: f32,
-    hw_settings: State<'_, parking_lot::RwLock<crate::FfmpegHardwareSettings>>,
+    hw_settings: State<'_, parking_lot::RwLock<crate::FfmpegHwSettings>>,
 ) -> Result<(), String> {
     let target_path = PathBuf::from(target_path);
     let hw = hw_settings.read().clone();
@@ -408,7 +406,7 @@ pub async fn native_timeline_render_frame_webp(
     width: u32,
     height: u32,
     quality: f32,
-    hw_settings: State<'_, parking_lot::RwLock<crate::FfmpegHardwareSettings>>,
+    hw_settings: State<'_, parking_lot::RwLock<crate::FfmpegHwSettings>>,
 ) -> Result<Vec<u8>, String> {
     let hw = hw_settings.read().clone();
     run_blocking(move || {
@@ -433,7 +431,7 @@ pub async fn native_video_frame_webp(
     max_width: u32,
     max_height: u32,
     quality: f32,
-    hw_settings: tauri::State<'_, parking_lot::RwLock<crate::FfmpegHardwareSettings>>,
+    hw_settings: tauri::State<'_, parking_lot::RwLock<crate::FfmpegHwSettings>>,
 ) -> Result<Vec<u8>, String> {
     let source_path = PathBuf::from(source_path);
     let hw = hw_settings.read().clone();
@@ -459,7 +457,7 @@ pub async fn native_video_frame_webps(
     max_height: u32,
     quality: f32,
     seek_threshold_sec: Option<f64>,
-    hw_settings: State<'_, parking_lot::RwLock<crate::FfmpegHardwareSettings>>,
+    hw_settings: State<'_, parking_lot::RwLock<crate::FfmpegHwSettings>>,
 ) -> Result<Vec<u8>, String> {
     if times_sec.len() > 1000 {
         return Err("too many frames requested (max 1000)".into());

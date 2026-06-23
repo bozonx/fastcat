@@ -5,7 +5,7 @@ use std::sync::OnceLock;
 
 use parking_lot::Mutex;
 
-use super::types::HwAccelMode;
+use crate::media::types::HwAccelMode;
 
 /// Verifies that an ffmpeg/ffprobe binary is available and executable.
 ///

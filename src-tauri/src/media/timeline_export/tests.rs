@@ -1,6 +1,7 @@
 use std::path::Path;
 
-use super::super::ffmpeg_utils::resolve_audio_encoder;
+use super::super::ffmpeg::hw::FfmpegHwOptions;
+use super::super::ffmpeg::utils::resolve_audio_encoder;
 use super::export_frame_sample_time;
 use super::ffmpeg_args_builder::{build_ffmpeg_args, export_uses_alpha};
 use super::options::NativeExportOptions;
@@ -27,11 +28,7 @@ fn base_options() -> NativeExportOptions {
         metadata_description: None,
         metadata_author: None,
         metadata_tags: None,
-        ffmpeg_path: None,
-        ffprobe_path: None,
-        hardware_acceleration_mode: None,
-        vaapi_device: None,
-        enable_hardware_encoding: None,
+        hw: FfmpegHwOptions::default(),
         export_alpha: None,
         fast_start: None,
     }
@@ -60,11 +57,7 @@ fn test_build_ffmpeg_args_webm_forces_opus() {
         metadata_description: None,
         metadata_author: None,
         metadata_tags: None,
-        ffmpeg_path: None,
-        ffprobe_path: None,
-        hardware_acceleration_mode: None,
-        vaapi_device: None,
-        enable_hardware_encoding: None,
+        hw: FfmpegHwOptions::default(),
         export_alpha: None,
         fast_start: None,
     };
@@ -126,11 +119,7 @@ fn test_build_ffmpeg_args_vp9_alpha_adds_auto_alt_ref() {
         metadata_description: None,
         metadata_author: None,
         metadata_tags: None,
-        ffmpeg_path: None,
-        ffprobe_path: None,
-        hardware_acceleration_mode: None,
-        vaapi_device: None,
-        enable_hardware_encoding: None,
+        hw: FfmpegHwOptions::default(),
         export_alpha: Some(true),
         fast_start: None,
     };
@@ -182,11 +171,7 @@ fn test_build_ffmpeg_args_mp4_ignores_alpha() {
         metadata_description: None,
         metadata_author: None,
         metadata_tags: None,
-        ffmpeg_path: None,
-        ffprobe_path: None,
-        hardware_acceleration_mode: None,
-        vaapi_device: None,
-        enable_hardware_encoding: None,
+        hw: FfmpegHwOptions::default(),
         export_alpha: Some(true),
         fast_start: None,
     };
@@ -611,9 +596,12 @@ fn build_direct_args_vaapi_uploads_for_hardware_encode() {
         duration_sec: 3.0,
     };
     let options = NativeExportOptions {
-        hardware_acceleration_mode: Some(crate::media::types::HwAccelMode::Vaapi),
-        enable_hardware_encoding: Some(true),
-        vaapi_device: Some("/dev/dri/renderD128".into()),
+        hw: FfmpegHwOptions {
+            hardware_acceleration_mode: Some(crate::media::types::HwAccelMode::Vaapi),
+            enable_hardware_encoding: Some(true),
+            vaapi_device: Some("/dev/dri/renderD128".into()),
+            ..FfmpegHwOptions::default()
+        },
         ..base_options()
     };
     let args = build_direct_ffmpeg_args(

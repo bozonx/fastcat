@@ -3,8 +3,6 @@ use std::path::{Path, PathBuf};
 use tauri::Manager;
 use tauri_plugin_fs::FsExt;
 
-use crate::media::types::HwAccelMode;
-
 pub mod video_render;
 
 /// Best-effort resolution of the current user's home directory without pulling
@@ -84,32 +82,12 @@ pub mod ipc;
 pub mod media;
 pub mod monitor;
 
-#[derive(Debug, Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct FfmpegHardwareSettings {
-    pub ffmpeg_path: String,
-    pub ffprobe_path: String,
-    pub hardware_acceleration_mode: HwAccelMode,
-    pub vaapi_device: String,
-    pub enable_hardware_encoding: bool,
-}
-
-impl Default for FfmpegHardwareSettings {
-    fn default() -> Self {
-        Self {
-            ffmpeg_path: "ffmpeg".to_string(),
-            ffprobe_path: "ffprobe".to_string(),
-            hardware_acceleration_mode: HwAccelMode::None,
-            vaapi_device: "/dev/dri/renderD128".to_string(),
-            enable_hardware_encoding: false,
-        }
-    }
-}
+pub use crate::media::ffmpeg::FfmpegHwSettings;
 
 #[tauri::command]
 fn native_update_ffmpeg_settings(
-    settings: FfmpegHardwareSettings,
-    state: tauri::State<'_, parking_lot::RwLock<FfmpegHardwareSettings>>,
+    settings: FfmpegHwSettings,
+    state: tauri::State<'_, parking_lot::RwLock<FfmpegHwSettings>>,
     engine: tauri::State<'_, engine::VideoEngine>,
 ) {
     let changed = {
@@ -263,7 +241,7 @@ pub fn run() {
             ipc::fonts_cmd::native_system_fonts,
         ])
         .manage(ipc::media_cmd::NativeMediaService::new())
-        .manage(parking_lot::RwLock::new(FfmpegHardwareSettings::default()))
+        .manage(parking_lot::RwLock::new(FfmpegHwSettings::default()))
         .setup(|app| {
             if cfg!(debug_assertions) {
                 app.handle().plugin(

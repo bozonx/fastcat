@@ -8,7 +8,7 @@ use std::time::{Duration, SystemTime};
 use anyhow::{anyhow, Context, Result};
 use parking_lot::Mutex;
 
-use crate::media::ffmpeg_utils::verify_ffmpeg_binary;
+use crate::media::ffmpeg::utils::verify_ffmpeg_binary;
 use crate::media::tasks::NativeMediaTasks;
 
 /// Kill a job if ffmpeg makes no progress (no stderr output) for this long. A

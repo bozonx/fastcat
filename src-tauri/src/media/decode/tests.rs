@@ -11,7 +11,7 @@ use crate::media::decode::{
         probe_rotation, visual_dimensions, yuv_color,
     },
 };
-use crate::media::ffmpeg_utils::{format_fps, parse_rational};
+use crate::media::ffmpeg::utils::{format_fps, parse_rational};
 use crate::media::types::HwAccelMode;
 
 #[test]

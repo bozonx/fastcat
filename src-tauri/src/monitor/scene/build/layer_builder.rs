@@ -13,7 +13,7 @@ use crate::compositor::scene::{
     Layer, LayerKind as CompLayerKind, ShapeGeometry, ShapeLayer, TextLayer, TextRenderMode,
     Transform, TransitionEdge, TransitionInfo, TransitionSource,
 };
-use crate::media::ffmpeg_utils::is_quarter_turn;
+use crate::media::ffmpeg::utils::is_quarter_turn;
 
 use super::ipc_parsers::*;
 use super::transform::{

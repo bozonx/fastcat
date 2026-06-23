@@ -1,5 +1,5 @@
-use super::ffmpeg_utils::even;
-use super::types::HwAccelMode;
+use super::utils::even;
+use crate::media::types::HwAccelMode;
 
 /// Output colour signalling for an encode. The vello export path feeds ffmpeg raw
 /// **RGB** frames; swscale's default RGB→YUV matrix is BT.601 and it writes the stream

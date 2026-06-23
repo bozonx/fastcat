@@ -1,7 +1,7 @@
 use std::path::Path;
 
-use super::super::ffmpeg_args::*;
-use super::super::ffmpeg_utils::*;
+use super::super::ffmpeg::args::*;
+use super::super::ffmpeg::utils::*;
 use super::super::types::HwAccelMode;
 use super::options::NativeExportOptions;
 
@@ -21,11 +21,7 @@ pub(crate) fn build_ffmpeg_args(
     let mut args = Vec::new();
 
     if hw_mode == HwAccelMode::Vaapi {
-        let vaapi_dev = options
-            .vaapi_device
-            .as_deref()
-            .unwrap_or(DEFAULT_VAAPI_DEVICE);
-        push_vaapi_init_device_args(&mut args, vaapi_dev);
+        push_vaapi_init_device_args(&mut args, options.hw.vaapi_dev());
     }
 
     args.extend([
@@ -265,22 +261,13 @@ pub(crate) fn build_direct_ffmpeg_args(
     target_path: &Path,
 ) -> Vec<String> {
     let hw_encode = resolve_export_hw_mode(options);
-    let vaapi_dev = options
-        .vaapi_device
-        .as_deref()
-        .unwrap_or(DEFAULT_VAAPI_DEVICE);
-    let hw_decode = resolve_hw_decode_mode(
-        options
-            .hardware_acceleration_mode
-            .as_ref()
-            .unwrap_or(&HwAccelMode::None),
-        vaapi_dev,
-    );
+    let vaapi_dev = options.hw.vaapi_dev().to_string();
+    let hw_decode = options.hw.hw_decode_mode();
     let has_audio = audio_input.is_some();
     let mut args = Vec::new();
 
     if hw_encode == HwAccelMode::Vaapi {
-        push_vaapi_init_device_args(&mut args, vaapi_dev);
+        push_vaapi_init_device_args(&mut args, &vaapi_dev);
     }
     args.extend([
         "-y".to_string(),
@@ -292,7 +279,7 @@ pub(crate) fn build_direct_ffmpeg_args(
         "pipe:1".to_string(),
     ]);
 
-    push_hw_accel_decode_args(&mut args, hw_decode, vaapi_dev);
+    push_hw_accel_decode_args(&mut args, hw_decode, &vaapi_dev);
     // `-ss` before `-i` is a fast keyframe seek followed by decode-and-discard, so it
     // stays frame-accurate while skipping the bulk of the file.
     args.extend([
@@ -354,20 +341,16 @@ pub(crate) fn export_uses_alpha(options: &NativeExportOptions) -> bool {
 /// applying the same auto-detection used to build the ffmpeg args. Centralised so
 /// the fallback decision and the arg builder can never disagree.
 pub(crate) fn resolve_export_hw_mode(options: &NativeExportOptions) -> HwAccelMode {
-    if !options.enable_hardware_encoding.unwrap_or(false) || export_uses_alpha(options) {
+    if !options.hw.enable_hardware_encoding.unwrap_or(false) || export_uses_alpha(options) {
         return HwAccelMode::None;
     }
     let hw_accel = options
+        .hw
         .hardware_acceleration_mode
-        .as_ref()
-        .unwrap_or(&HwAccelMode::None);
-    let vaapi_device = options
-        .vaapi_device
-        .as_deref()
-        .unwrap_or(DEFAULT_VAAPI_DEVICE);
-    let mode = resolve_hw_decode_mode(hw_accel, vaapi_device);
+        .unwrap_or(HwAccelMode::None);
+    let mode = options.hw.hw_decode_mode();
     if mode == HwAccelMode::None
-        && *hw_accel == HwAccelMode::Auto
+        && hw_accel == HwAccelMode::Auto
         && std::path::Path::new("/dev/nvidia0").exists()
     {
         // No VAAPI render node, but an NVIDIA device is present — use NVENC

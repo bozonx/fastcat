@@ -1,6 +1,6 @@
 use serde::Deserialize;
 
-use crate::media::types::HwAccelMode;
+use crate::media::ffmpeg::hw::FfmpegHwOptions;
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -39,16 +39,8 @@ pub struct NativeExportOptions {
     pub metadata_tags: Option<String>,
 
     // Hardware Acceleration Settings
-    #[serde(default)]
-    pub ffmpeg_path: Option<String>,
-    #[serde(default)]
-    pub hardware_acceleration_mode: Option<HwAccelMode>,
-    #[serde(default)]
-    pub vaapi_device: Option<String>,
-    #[serde(default)]
-    pub enable_hardware_encoding: Option<bool>,
-    #[serde(default)]
-    pub ffprobe_path: Option<String>,
+    #[serde(flatten)]
+    pub hw: FfmpegHwOptions,
     #[serde(default)]
     pub export_alpha: Option<bool>,
     #[serde(default)]

@@ -1,6 +1,6 @@
 //! Tauri-команды, связанные со шрифтами.
 
-use crate::monitor::scene_build::system_font_families;
+use crate::monitor::scene::build::system_font_families;
 
 /// Возвращает список семейств шрифтов, установленных в системе. Используется
 /// фронтом, чтобы в десктоп-версии показывать в свойствах текстового клипа ровно

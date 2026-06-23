@@ -1,7 +1,7 @@
 use ffmpeg_next as ffmpeg;
 
 use super::types::{YuvColor, YuvColorMatrix, YuvColorRange, YuvFrame};
-use crate::media::ffmpeg_utils::is_quarter_turn;
+use crate::media::ffmpeg::utils::is_quarter_turn;
 
 /// Stream start time in seconds, or 0 when unset. `start_time` is `AV_NOPTS_VALUE`
 /// (`i64::MIN`) when the demuxer doesn't expose one; a negative start (some edit

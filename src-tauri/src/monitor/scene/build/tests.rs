@@ -3,7 +3,7 @@
 mod tests {
     use crate::compositor::scene::{BlendMode, ShapeGeometry, ShapeLayer, Transform};
     use crate::monitor::scene::{LayerKind, SceneLayer, SceneLayerTransform};
-    use crate::monitor::scene_build::*;
+    use crate::monitor::scene::build::*;
     use serde_json::json;
     use vello::peniko::Color;
 

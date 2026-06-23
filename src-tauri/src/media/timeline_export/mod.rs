@@ -25,7 +25,7 @@ use crate::audio::engine::render_scene_to_wav;
 use crate::compositor::Compositor;
 use crate::monitor::scene::MonitorScene;
 
-use super::ffmpeg_utils::*;
+use super::ffmpeg::utils::*;
 use super::processing::{now_millis, spawn_stderr_drain, NativeMediaTasks};
 use super::types::HwAccelMode;
 
@@ -142,17 +142,8 @@ pub fn export_timeline(
     // Otherwise an "auto" export on a machine without a VAAPI device would render the
     // whole timeline through software, then needlessly render it a second time.
     let effective_hw = resolve_export_hw_mode(&options);
-    let effective_decode_hw = resolve_hw_decode_mode(
-        options
-            .hardware_acceleration_mode
-            .as_ref()
-            .unwrap_or(&HwAccelMode::None),
-        options
-            .vaapi_device
-            .as_deref()
-            .unwrap_or(DEFAULT_VAAPI_DEVICE),
-    );
-    let decode_vaapi_device = options.vaapi_device.clone();
+    let effective_decode_hw = options.hw.hw_decode_mode();
+    let decode_vaapi_device = options.hw.vaapi_device.clone();
 
     // Render the native audio mix once so hardware-to-software fallback can reuse the
     // same temporary file instead of running the expensive offline mix twice.
@@ -265,7 +256,7 @@ pub fn export_timeline(
                 target_path,
             ),
         };
-        let ffmpeg_cmd = opts.ffmpeg_path.as_deref().unwrap_or("ffmpeg");
+        let ffmpeg_cmd = opts.hw.ffmpeg_cmd();
         verify_ffmpeg_binary(ffmpeg_cmd).context("ffmpeg binary check failed")?;
         let mut child = Command::new(ffmpeg_cmd)
             .args(&args)
@@ -621,7 +612,7 @@ pub fn export_timeline(
         {
             log::warn!("[native-media] HW export failed ({e}), falling back to software encoding");
             let mut sw_options = options.clone();
-            sw_options.enable_hardware_encoding = Some(false);
+            sw_options.hw.enable_hardware_encoding = Some(false);
             run_attempt(&sw_options)
         }
         other => other,

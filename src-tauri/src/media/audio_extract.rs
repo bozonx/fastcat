@@ -2,7 +2,7 @@ use std::path::Path;
 
 use anyhow::{anyhow, Result};
 
-use crate::media::ffmpeg_runner::run_ffmpeg_task;
+use crate::media::ffmpeg::runner::run_ffmpeg_task;
 use crate::media::tasks::NativeMediaTasks;
 
 use super::processing::probe_media;

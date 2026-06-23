@@ -68,7 +68,7 @@ pub enum MonitorCommand {
     /// Timeline master gain. Updates the live mixer without replacing the scene.
     SetMasterGain(f64),
     /// Обновление настроек FFmpeg/hwaccel для новых видеодекодеров.
-    SetHwSettings(crate::FfmpegHardwareSettings),
+    SetHwSettings(crate::FfmpegHwSettings),
     /// Фоновый поток загрузил слой — event-loop должен дренировать bg_rx.
     BgReady,
     /// Видеокадр декодирован.

@@ -22,8 +22,9 @@ use anyhow::{anyhow, Context, Result};
 
 use crate::compositor::yuv::YuvToRgbaPipeline;
 
-use super::decode::{FfmpegNextDecoderFactory, MediaInfo, VideoDecoderFactory, VideoFrame};
-use super::types::HwAccelMode;
+use super::{FfmpegNextDecoderFactory, MediaInfo, VideoDecoderFactory, VideoFrame};
+use crate::media::types::HwAccelMode;
+use crate::media::GpuTexturePool;
 
 // Размер очереди декодированных кадров. Каждый кадр = ширина × высота × 4 байта.
 // Для 1080×1920 это ~8 МБ/кадр, так что 2 = 16 МБ буфера на слой — достаточно для smooth
@@ -43,14 +44,14 @@ pub struct DecodeOpenParams<'a> {
 }
 
 struct DecoderLoopArgs {
-    decoder: Box<dyn super::decode::VideoDecoder>,
+    decoder: Box<dyn super::VideoDecoder>,
     frame_tx: SyncSender<DecodedFrameMsg>,
     cmd_rx: Receiver<DecoderCmd>,
     gen: Arc<AtomicU64>,
     on_frame_decoded: Option<DecodeCallback>,
     device: Option<wgpu::Device>,
     queue: Option<wgpu::Queue>,
-    texture_pool: super::GpuTexturePool,
+    texture_pool: GpuTexturePool,
 }
 
 pub struct DecodedFrameMsg {
@@ -108,7 +109,7 @@ impl DecodePump {
         let generation = Arc::new(AtomicU64::new(0));
         let gen_in_thread = generation.clone();
         let path_str = params.path.display().to_string();
-        let texture_pool: super::GpuTexturePool = Arc::new(Mutex::new(HashMap::new()));
+        let texture_pool: GpuTexturePool = Arc::new(Mutex::new(HashMap::new()));
         let texture_pool_thread = texture_pool.clone();
 
         let (init_tx, init_rx) = mpsc::channel::<Result<MediaInfo>>();
@@ -323,7 +324,7 @@ fn drain_pending_commands(cmd_rx: &Receiver<DecoderCmd>) -> Option<DrainedComman
 /// `decoder.seek` when a seek was requested. A fresh seek discards any leftover preroll
 /// budget; a bare Prebuffer extends the forward budget at the current playhead.
 fn apply_drained_commands(
-    decoder: &mut Box<dyn super::decode::VideoDecoder>,
+    decoder: &mut Box<dyn super::VideoDecoder>,
     state: &mut ScheduleState,
     drained: DrainedCommands,
 ) {
@@ -373,7 +374,7 @@ fn upload_frame_to_gpu(
     frame: &mut VideoFrame,
     device: &wgpu::Device,
     queue: &wgpu::Queue,
-    texture_pool: &super::GpuTexturePool,
+    texture_pool: &GpuTexturePool,
     yuv_pipeline: &mut Option<YuvToRgbaPipeline>,
     yuv_upload_failures: &mut u32,
     prefer_yuv: &mut bool,
@@ -406,7 +407,7 @@ fn upload_frame_to_gpu(
         match pipeline.upload_and_convert(device, queue, yuv, frame.width, frame.height, &tex) {
             Ok(()) => {
                 *yuv_upload_failures = 0;
-                frame.texture = Some(Arc::new(super::decode::SharedTexture::new_owned(
+                frame.texture = Some(Arc::new(super::SharedTexture::new_owned(
                     tex,
                     texture_pool.clone(),
                 )));
@@ -418,7 +419,7 @@ fn upload_frame_to_gpu(
                 {
                     let mut pool = texture_pool.lock();
                     let slot = pool.entry((frame.width, frame.height)).or_default();
-                    if slot.len() < super::decode::MAX_TEXTURES_PER_SIZE {
+                    if slot.len() < super::MAX_TEXTURES_PER_SIZE {
                         slot.push(tex);
                     }
                 }
@@ -458,7 +459,7 @@ fn upload_frame_to_gpu(
                 depth_or_array_layers: 1,
             },
         );
-        frame.texture = Some(Arc::new(super::decode::SharedTexture::new_owned(
+        frame.texture = Some(Arc::new(super::SharedTexture::new_owned(
             tex,
             texture_pool.clone(),
         )));

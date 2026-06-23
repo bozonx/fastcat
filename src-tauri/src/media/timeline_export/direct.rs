@@ -17,7 +17,7 @@
 use std::path::{Path, PathBuf};
 
 use crate::compositor::scene::BlendMode;
-use crate::media::ffmpeg_utils::even;
+use crate::media::ffmpeg::utils::even;
 use crate::media::types::HwAccelMode;
 use crate::monitor::scene::{LayerKind, MonitorScene};
 
