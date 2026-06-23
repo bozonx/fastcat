@@ -67,16 +67,21 @@ export const EXTENSION_MIME_MAPPING: Record<string, string> = {
 
 export type MediaType = 'video' | 'audio' | 'image' | 'text' | 'timeline' | 'unknown';
 
-function extractExtension(filename: string): string {
-  const clean = filename.split(/[?#]/)[0] ?? filename;
-  return clean.split('.').pop()?.toLowerCase() || '';
+/**
+ * Returns the lowercased extension of a path/filename, without the dot and
+ * with any query/hash suffix stripped. Returns '' when there is no extension.
+ */
+export function extOf(path: string): string {
+  const clean = path.split(/[?#]/)[0] ?? path;
+  const i = clean.lastIndexOf('.');
+  return i >= 0 ? clean.slice(i + 1).toLowerCase() : '';
 }
 
 /**
  * Returns the media type for a filename.
  */
 export function getMediaTypeFromFilename(filename: string): MediaType {
-  const ext = extractExtension(filename);
+  const ext = extOf(filename);
   if (VIDEO_EXTENSIONS.includes(ext)) return 'video';
   if (AUDIO_EXTENSIONS.includes(ext)) return 'audio';
   if (IMAGE_EXTENSIONS.includes(ext)) return 'image';
@@ -89,7 +94,7 @@ export function getMediaTypeFromFilename(filename: string): MediaType {
  * Returns the mime type for a filename based on its extension.
  */
 export function getMimeTypeFromFilename(filename: string): string {
-  const ext = extractExtension(filename);
+  const ext = extOf(filename);
   return EXTENSION_MIME_MAPPING[ext] || 'application/octet-stream';
 }
 
@@ -135,4 +140,14 @@ export function validateMediaTrackCompatibility(
     return trackKind === 'video';
   }
   return false;
+}
+
+/** Whether a path points to an image, based on its extension. */
+export function isImagePath(path: string): boolean {
+  return IMAGE_EXTENSIONS.includes(extOf(path));
+}
+
+/** Whether a MIME type string denotes an image. */
+export function isImageMimeType(type: string): boolean {
+  return type.startsWith('image/');
 }

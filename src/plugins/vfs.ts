@@ -25,7 +25,7 @@ import {
 } from '~/utils/workspace-common';
 import { PROJECTS_ROOT_DIR_NAME } from '~/utils/storage-roots';
 import { isTauriRuntime } from '~/utils/runtime';
-import { joinTauriFsPath } from '~/utils/tauri-local-path';
+import { joinTauriFsPath } from '~/utils/path';
 
 /**
  * Bridges core VFS progress reporting to the Nuxt-side background-tasks store

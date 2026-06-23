@@ -18,7 +18,7 @@ import { MEDIA_TASK_PRIORITIES } from '~/utils/media-task-queue';
 import { getMediaTypeFromFilename } from '~/utils/media-types';
 import { isNotFoundError } from '~/utils/error-helpers';
 import { toError } from '~/utils/errors';
-import { normalizeMediaCachePath } from '~/utils/media-cache-path';
+import { normalizeMediaCachePath } from '~/utils/path';
 const log = createDevLogger('file-thumbnail-generator');
 const FILE_THUMBNAIL_HASH_VERSION = 2;
 

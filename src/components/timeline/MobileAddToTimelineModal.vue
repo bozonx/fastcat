@@ -5,7 +5,7 @@ import { computed, ref, watch } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { getMediaTypeFromFilename } from '~/utils/media-types';
 import type { FsEntry } from '~/types/fs';
-import { formatDurationSeconds } from '~/utils/format';
+import { formatDurationSeconds } from '~/utils/time';
 import { useModalOpenModel } from '~/composables/ui/useModalOpenModel';
 const log = createDevLogger('MobileAddToTimelineModal');
 

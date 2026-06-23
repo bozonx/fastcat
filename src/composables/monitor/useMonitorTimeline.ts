@@ -10,7 +10,7 @@ import type {
   TimelineTrackItem,
 } from '~/timeline/types';
 import type { WorkerTimelineClip } from './types';
-import { normalizeTimeUs } from '~/utils/monitor-time';
+import { normalizeTimeUs } from '~/utils/time';
 import { mergeBalance, mergeGain } from '~/utils/audio/envelope';
 import { buildEffectiveAudioClipItems } from '~/utils/audio/track-bus';
 import { sanitizeTimelineColor } from '~/utils/video-editor/utils';

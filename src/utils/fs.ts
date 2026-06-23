@@ -1,7 +1,78 @@
 import type { IFileSystemAdapter } from '~/file-manager/core/vfs/types';
+import { useWorkspaceStore } from '~/stores/workspace.store';
+import type { FsEntry } from '~/types/fs';
 import { withFileIoSlot } from '~/utils/io/io-governor';
+import { VIDEO_EXTENSIONS } from '~/utils/media-types';
 
 export type FsDirectoryHandleWithIteration = FileSystemDirectoryHandle;
+
+/**
+ * Resolves a FileSystemFileHandle for a project-relative path within the
+ * current workspace. Returns null if the workspace handle is unavailable or
+ * the path cannot be resolved.
+ */
+export async function getWorkspaceFileHandle(
+  path: string,
+  options?: { create?: boolean },
+): Promise<FileSystemFileHandle | null> {
+  const workspaceStore = useWorkspaceStore();
+  const workspaceHandle = workspaceStore.workspaceHandle;
+  if (!workspaceHandle) return null;
+
+  const parts = path.split('/').filter(Boolean);
+  const fileName = parts.pop();
+  if (!fileName) return null;
+
+  try {
+    let currentDir = workspaceHandle;
+    for (const part of parts) {
+      currentDir = await currentDir.getDirectoryHandle(part, {
+        create: options?.create ?? false,
+      });
+    }
+
+    return await currentDir.getFileHandle(fileName, {
+      create: options?.create ?? false,
+    });
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Checks if a proxy is currently being generated for any direct child of the given directory.
+ */
+export function isGeneratingProxyInDirectory(
+  entry: FsEntry,
+  generatingProxies: Set<string> | string[],
+): boolean {
+  if (entry.kind !== 'directory') return false;
+  const dirPath = entry.path;
+  for (const p of generatingProxies) {
+    if (!dirPath) {
+      if (!p.includes('/')) return true;
+    } else {
+      if (p.startsWith(`${dirPath}/`)) {
+        const rel = p.slice(dirPath.length + 1);
+        if (!rel.includes('/')) return true;
+      }
+    }
+  }
+  return false;
+}
+
+/**
+ * Checks if any direct file children of a directory have a video extension.
+ */
+export function folderHasVideos(entry: FsEntry): boolean {
+  if (entry.kind !== 'directory') return false;
+  const children = Array.isArray(entry.children) ? entry.children : [];
+  return children.some(
+    (child) =>
+      child.kind === 'file' &&
+      VIDEO_EXTENSIONS.includes(child.name.split('.').pop()?.toLowerCase() ?? ''),
+  );
+}
 
 export async function generateUniqueFsEntryName(params: {
   vfs: IFileSystemAdapter;

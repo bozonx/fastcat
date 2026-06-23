@@ -1,6 +1,6 @@
 import type { ResolvedStorageTopology } from '~/utils/storage-topology';
 import { toProjectProxiesVfsPath } from '~/utils/storage-topology';
-import { normalizeMediaCachePath } from '~/utils/media-cache-path';
+import { normalizeMediaCachePath } from '~/utils/path';
 
 /**
  * Builds VFS addresses for the per-project proxy video files.

@@ -36,7 +36,7 @@ import { useFileContextMenu } from '~/composables/file-manager/useFileContextMen
 import { isRemoteFsEntry, type RemoteFsEntry } from '~/utils/remote-vfs';
 import type { IFileSystemAdapter } from '~/file-manager/core/vfs/types';
 import { isWorkspaceCommonPath, WORKSPACE_COMMON_PATH_PREFIX } from '~/utils/workspace-common';
-import { isGeneratingProxyInDirectory, folderHasVideos } from '~/utils/fs-entry-utils';
+import { isGeneratingProxyInDirectory, folderHasVideos } from '~/utils/fs';
 import {
   getDropTargetEntryPath,
   isFileManagerDropCancellationTarget,

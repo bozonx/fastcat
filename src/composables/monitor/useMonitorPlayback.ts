@@ -1,9 +1,7 @@
 import { createDevLogger } from '~/utils/dev-logger';
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue';
 
-import { normalizeTimeUs } from '~/utils/monitor-time';
-import { sanitizeFps } from '~/utils/time';
-import { formatTimecode } from '~/utils/timecode';
+import { formatTimecode, normalizeTimeUs, sanitizeFps } from '~/utils/time';
 import { isTauriRuntime } from '~/utils/runtime';
 
 import type { IAudioEngine } from '~/utils/video-editor/AudioEngine';

@@ -5,7 +5,7 @@ import type { FileAction } from '~/composables/file-manager/useFileManagerAction
 import MobileDrawerToolbar from '~/components/timeline/MobileDrawerToolbar.vue';
 import MobileDrawerToolbarButton from '~/components/timeline/MobileDrawerToolbarButton.vue';
 import { useProxyStore } from '~/stores/proxy.store';
-import { normalizeMediaCachePath } from '~/utils/media-cache-path';
+import { normalizeMediaCachePath } from '~/utils/path';
 import { canCopyBloggerDogEntry, canCutBloggerDogEntry } from '~/utils/bloggerdog-file-manager';
 import { getMediaTypeFromFilename } from '~/utils/media-types';
 

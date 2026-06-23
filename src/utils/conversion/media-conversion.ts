@@ -8,7 +8,7 @@ import {
   unregisterExportTaskHostApi,
 } from '~/utils/video-editor/worker-client';
 import { createProjectHostApi } from '~/utils/video-editor/createVideoCoreHostApi';
-import { getWorkspaceFileHandle } from '~/utils/workspace-fs';
+import { getWorkspaceFileHandle } from '~/utils/fs';
 import { useProjectStore } from '~/stores/project.store';
 import { useBackgroundTasksStore } from '~/stores/background-tasks.store';
 import { withFileIoSlot } from '~/utils/io/io-governor';

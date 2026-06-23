@@ -1,5 +1,5 @@
 import { createDevLogger } from '~/utils/dev-logger';
-import { normalizeTimeUs } from '~/utils/monitor-time';
+import { normalizeTimeUs } from '~/utils/time';
 import type { PreviewRenderOptions, VideoCoreWorkerAPI } from '~/utils/video-editor/worker-rpc';
 const log = createDevLogger('useMonitorCore.compositor');
 

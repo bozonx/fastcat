@@ -1,7 +1,7 @@
 import type { TimelineTrack, TimelineTrackItem, ClipEffect } from '~/timeline/types';
 import { mergeBalance, mergeGain } from '~/utils/audio/envelope';
 import { cloneEffects } from '~/utils/video-editor/worker-clip-utils';
-import { isImagePath } from '~/utils/media-ext';
+import { isImagePath } from '~/utils/media-types';
 
 export interface BuildEffectiveAudioClipItemsParams {
   audioTracks: TimelineTrack[];

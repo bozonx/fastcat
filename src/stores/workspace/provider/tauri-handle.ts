@@ -13,7 +13,7 @@ import { acquireStreamingFileIoSlot, withFileWriteSlot } from '~/utils/io/io-gov
 import { withTauriReadHandle } from '~/stores/workspace/provider/tauri-read-handle-pool';
 import { randomToken } from '~/utils/ids';
 import { openReadFileStream, openWriteFileStream } from 'tauri-plugin-fs-stream-api';
-import { joinTauriFsPath } from '~/utils/tauri-local-path';
+import { joinTauriFsPath } from '~/utils/path';
 import { getMimeTypeFromFilename } from '~/utils/media-types';
 
 const STREAM_WRITER_THRESHOLD_BYTES = 1024 * 1024;

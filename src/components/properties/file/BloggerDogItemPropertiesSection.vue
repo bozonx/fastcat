@@ -6,7 +6,7 @@ import type { RemoteVfsFileEntry } from '~/types/remote-vfs';
 import PropertySection from '~/components/properties/PropertySection.vue';
 import PropertyRow from '~/components/properties/PropertyRow.vue';
 import ExpandableYamlSection from '~/components/properties/file/ExpandableYamlSection.vue';
-import { formatDurationSeconds } from '~/utils/format';
+import { formatDurationSeconds } from '~/utils/time';
 import yaml from 'js-yaml';
 const log = createDevLogger('BloggerDogItemPropertiesSection');
 

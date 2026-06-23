@@ -15,7 +15,7 @@ import {
   nativeGenerateProxy,
   nativeMediaMetadata,
 } from '~/utils/tauri-media-processing';
-import { normalizeMediaCachePath } from '~/utils/media-cache-path';
+import { normalizeMediaCachePath } from '~/utils/path';
 const log = createDevLogger('proxyService');
 
 export interface ProxyService {

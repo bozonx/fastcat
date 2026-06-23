@@ -1,5 +1,5 @@
 import { readDir, stat, remove } from '@tauri-apps/plugin-fs';
-import { joinTauriFsPath } from '~/utils/tauri-local-path';
+import { joinTauriFsPath } from '~/utils/path';
 
 /**
  * Sweeps orphaned atomic-write temp files left under app-managed directories.

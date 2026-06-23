@@ -30,7 +30,7 @@ import {
   nativeMediaExtractPeaks,
 } from '~/utils/tauri-media-processing';
 import { isLazyTauriFile } from '~/stores/workspace/provider/tauri-handle';
-import { normalizeMediaCachePath } from '~/utils/media-cache-path';
+import { normalizeMediaCachePath } from '~/utils/path';
 
 const log = createDevLogger('media.store');
 

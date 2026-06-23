@@ -7,7 +7,7 @@ import type { TimelineDocument } from '~/timeline/types';
 import { createDefaultTimelineDocument, serializeTimelineToOtio } from '~/timeline/otio-serializer';
 import { toProjectStoragePath } from '~/utils/workspace-common';
 import { isTauriRuntime } from '~/utils/runtime';
-import { joinTauriFsPath } from '~/utils/tauri-local-path';
+import { joinTauriFsPath } from '~/utils/path';
 import { createTimelineFormatFromProjectDefaults } from '~/timeline/format';
 
 import { createDefaultProjectSettings, markProjectSettingsManual } from '~/utils/project-settings';

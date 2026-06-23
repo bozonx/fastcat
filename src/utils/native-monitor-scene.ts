@@ -24,7 +24,7 @@ import { resolveNormalizedAnchor, TRANSFORM_DESIGN_BASE } from '~/utils/video-ed
 import { normalizeClipSpeed } from '~/utils/video-editor/source-time';
 import type { TauriDirectoryHandle } from '~/stores/workspace/provider/tauri-handle';
 import { buildEffectSpecs } from '~/effects';
-import { normalizeMediaCachePath } from '~/utils/media-cache-path';
+import { normalizeMediaCachePath } from '~/utils/path';
 import { getTransitionManifest } from '~/transitions';
 import type { TransitionMode } from '~/transitions/core/registry';
 import { buildNativeAudioEffectSpecs } from '~/utils/audio/audio-clip-descriptor';
@@ -34,7 +34,7 @@ import {
   type PreviewEffectQuality,
   type PreviewEffectQualitySetting,
 } from '~/utils/preview-effect-quality';
-import { isImagePath } from '~/utils/media-ext';
+import { isImagePath } from '~/utils/media-types';
 import { clampFinite } from '~/utils/math';
 
 export { buildNativeAudioEffectSpecs };

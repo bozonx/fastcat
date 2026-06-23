@@ -2,7 +2,7 @@
 import { computed, ref, watch } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useSelectionStore } from '~/stores/selection.store';
-import { formatTimecode } from '~/utils/timecode';
+import { formatTimecode } from '~/utils/time';
 import MarkerThumbnail from '~/components/project/MarkerThumbnail.vue';
 import MarkerExportModal from '~/components/project/MarkerExportModal.vue';
 import MarkerColorFilter from '~/components/project/MarkerColorFilter.vue';

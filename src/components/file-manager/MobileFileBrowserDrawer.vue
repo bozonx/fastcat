@@ -24,7 +24,7 @@ import { useFileConversionStore } from '~/stores/file-conversion.store';
 import { useFileConversionStoreActions } from '~/composables/file-conversion/useFileConversionStoreActions';
 import { useFileManager } from '~/composables/file-manager/useFileManager';
 import { useComputerVfs } from '~/composables/file-manager/useComputerVfs';
-import { normalizeMediaCachePath } from '~/utils/media-cache-path';
+import { normalizeMediaCachePath } from '~/utils/path';
 
 type DrawerAction = FileManagerAction | 'openAsPanelCut' | 'openAsPanelSound' | 'openAsProjectTab';
 

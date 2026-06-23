@@ -5,7 +5,7 @@ import { useBlurOnPointerDownOutside } from '~/composables/useBlurOnPointerDownO
 import { isLayer1Active } from '~/utils/hotkeys/layerUtils';
 import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue';
 
-import { formatTimecode } from '~/utils/timecode';
+import { formatTimecode } from '~/utils/time';
 
 const props = withDefaults(
   defineProps<{

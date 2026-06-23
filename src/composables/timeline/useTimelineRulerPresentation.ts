@@ -1,7 +1,7 @@
 import { computed, type Ref } from 'vue';
 import { timeUsToPx, zoomToPxPerSecond } from '~/utils/timeline/geometry';
 
-import { formatTimecode } from '~/utils/timecode';
+import { formatTimecode } from '~/utils/time';
 
 interface MarkerLike {
   id: string;

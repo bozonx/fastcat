@@ -7,8 +7,7 @@ import {
   quantizeTimeUsToFrames,
   sanitizeFps,
 } from '~/timeline/commands/utils';
-import { formatTimecode } from '~/utils/timecode';
-import { sanitizeFps as sanitizeMonitorFps } from '~/utils/time';
+import { formatTimecode, sanitizeFps as sanitizeMonitorFps } from '~/utils/time';
 import { buildMonitorTimecodeText } from '~/composables/monitor/useMonitorPlayback';
 
 /**

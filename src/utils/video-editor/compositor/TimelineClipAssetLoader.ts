@@ -1,5 +1,5 @@
 import { createDevLogger } from '~/utils/dev-logger';
-import { isImagePath } from '~/utils/media-ext';
+import { isImagePath } from '~/utils/media-types';
 import { parseHexColor, sanitizeTimelineColor } from '../utils';
 import type { VideoClipEffect } from '~/timeline/types';
 import type { ClipFactory } from './ClipFactory';

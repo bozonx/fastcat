@@ -11,7 +11,7 @@ import {
 } from '~/utils/video-editor/worker-client';
 
 import { createAudioEngine } from '~/utils/video-editor/AudioEngine';
-import { clampTimeUs } from '~/utils/monitor-time';
+import { clampTimeUs } from '~/utils/time';
 import { useVfs } from '~/composables/useVfs';
 import { toProjectTempVfsPath } from '~/utils/storage-topology';
 

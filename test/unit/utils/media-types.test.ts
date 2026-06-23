@@ -1,14 +1,57 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  extOf,
   getMimeTypeFromFilename,
   getMediaTypeFromFilename,
+  isImageMimeType,
+  isImagePath,
   isOpenableProjectFileName,
   isOpenableProjectTextFilename,
   validateMediaTrackCompatibility,
 } from '~/utils/media-types';
 
 describe('media-types', () => {
+  describe('extOf', () => {
+    it('returns lowercase extension', () => {
+      expect(extOf('file.PNG')).toBe('png');
+      expect(extOf('file.jpg')).toBe('jpg');
+      expect(extOf('file')).toBe('');
+    });
+
+    it('ignores query and hash suffixes', () => {
+      expect(extOf('clip.mp4?v=1')).toBe('mp4');
+      expect(extOf('clip.mp4#frag')).toBe('mp4');
+    });
+  });
+
+  describe('isImagePath', () => {
+    it('returns true for image extensions', () => {
+      expect(isImagePath('file.png')).toBe(true);
+      expect(isImagePath('file.jpg')).toBe(true);
+      expect(isImagePath('file.jpeg')).toBe(true);
+      expect(isImagePath('file.webp')).toBe(true);
+      expect(isImagePath('file.gif')).toBe(true);
+      expect(isImagePath('file.svg')).toBe(true);
+    });
+
+    it('returns false for non-image extensions', () => {
+      expect(isImagePath('file.mp4')).toBe(false);
+      expect(isImagePath('file')).toBe(false);
+    });
+  });
+
+  describe('isImageMimeType', () => {
+    it('returns true for image mime types', () => {
+      expect(isImageMimeType('image/png')).toBe(true);
+      expect(isImageMimeType('image/jpeg')).toBe(true);
+    });
+
+    it('returns false for non-image mime types', () => {
+      expect(isImageMimeType('video/mp4')).toBe(false);
+    });
+  });
+
   it('treats known text formats as openable project text files', () => {
     expect(isOpenableProjectTextFilename('notes.md')).toBe(true);
     expect(isOpenableProjectTextFilename('scene.json')).toBe(true);

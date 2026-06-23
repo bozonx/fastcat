@@ -12,7 +12,7 @@ import { useNativeMonitorViewport } from '~/composables/monitor/useNativeMonitor
 import { useMonitorMode, useNativeMonitorCanvas } from '~/composables/monitor/useNativeMonitorMode';
 import { useProjectStore } from '~/stores/project.store';
 import { useTimelineStore } from '~/stores/timeline.store';
-import { formatTimecode } from '~/utils/timecode';
+import { formatTimecode } from '~/utils/time';
 import type { TimelineMarker } from '~/timeline/types';
 
 const props = withDefaults(

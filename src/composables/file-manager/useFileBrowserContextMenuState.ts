@@ -10,7 +10,7 @@ import { getMediaTypeFromFilename, isOpenableProjectFileName } from '~/utils/med
 import {
   isGeneratingProxyInDirectory as hasGeneratingProxyInDirectory,
   folderHasVideos,
-} from '~/utils/fs-entry-utils';
+} from '~/utils/fs';
 
 interface SelectedFileManagerEntity {
   source?: string;

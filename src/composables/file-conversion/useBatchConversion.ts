@@ -6,7 +6,7 @@ import { useBackgroundTasksStore } from '~/stores/background-tasks.store';
 import { useFileManager } from '~/composables/file-manager/useFileManager';
 import { useUiStore } from '~/stores/ui.store';
 import { getExportWorkerClient } from '~/utils/video-editor/worker-client';
-import { getWorkspaceFileHandle } from '~/utils/workspace-fs';
+import { getWorkspaceFileHandle } from '~/utils/fs';
 import { isTauriRuntime } from '~/utils/runtime';
 import type { ConversionRequest } from '~/types/conversion';
 import {

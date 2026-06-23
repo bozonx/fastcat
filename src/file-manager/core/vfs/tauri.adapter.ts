@@ -40,7 +40,7 @@ import { normalizeFsPath } from '~/file-manager/core/path';
 import { acquireStreamingFileIoSlot, withFileWriteSlot } from '~/utils/io/io-governor';
 import { isTauriRuntime } from '~/utils/runtime';
 import { randomToken } from '~/utils/ids';
-import { joinTauriFsPath } from '~/utils/tauri-local-path';
+import { joinTauriFsPath } from '~/utils/path';
 
 /** Marker string for the Tauri AppData base directory. */
 export const TAURI_APP_DATA_BASE_PATH = 'app-data';

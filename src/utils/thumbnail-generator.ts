@@ -13,7 +13,7 @@ import { addMediaTask, MEDIA_TASK_PRIORITIES } from '~/utils/media-task-queue';
 import { randomToken } from '~/utils/ids';
 import { toError } from '~/utils/errors';
 import { isNotFoundError } from '~/utils/error-helpers';
-import { normalizeMediaCachePath } from '~/utils/media-cache-path';
+import { normalizeMediaCachePath } from '~/utils/path';
 import {
   createTimelineFrameSource,
   type ThumbnailFrameSource,

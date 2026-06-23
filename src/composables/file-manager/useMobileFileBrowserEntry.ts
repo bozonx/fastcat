@@ -6,8 +6,8 @@ import { useFileManager } from '~/composables/file-manager/useFileManager';
 import { useTimelineMediaUsageStore } from '~/stores/timeline-media-usage.store';
 import type { FileCompatibility } from '~/composables/file-manager/useFileManagerCompatibility';
 import { useProxyStore } from '~/stores/proxy.store';
-import { isGeneratingProxyInDirectory } from '~/utils/fs-entry-utils';
-import { normalizeMediaCachePath } from '~/utils/media-cache-path';
+import { isGeneratingProxyInDirectory } from '~/utils/fs';
+import { normalizeMediaCachePath } from '~/utils/path';
 
 export interface ExtendedFsEntry extends FsEntry {
   objectUrl?: string;

@@ -1,6 +1,17 @@
 /** @vitest-environment node */
 import { describe, it, expect } from 'vitest';
-import { formatTime, secondsToUs, usToS, sToUs, sanitizeFps } from '~/utils/time';
+import {
+  clampTimeUs,
+  formatDurationSeconds,
+  formatHms,
+  formatTime,
+  formatTimecode,
+  normalizeTimeUs,
+  sToUs,
+  sanitizeFps,
+  secondsToUs,
+  usToS,
+} from '~/utils/time';
 
 describe('secondsToUs', () => {
   it('rounds by default', () => {
@@ -102,5 +113,79 @@ describe('formatTime', () => {
     expect(formatTime(undefined)).toBe('00:00');
     // @ts-expect-error testing invalid input
     expect(formatTime(null)).toBe('00:00');
+  });
+});
+
+describe('formatTimecode', () => {
+  it('returns 00:00:00:00 for invalid fps', () => {
+    expect(formatTimecode(1_000_000, 0)).toBe('00:00:00:00');
+    expect(formatTimecode(1_000_000, -1)).toBe('00:00:00:00');
+    expect(formatTimecode(1_000_000, NaN)).toBe('00:00:00:00');
+  });
+
+  it('formats zero time', () => {
+    expect(formatTimecode(0, 30)).toBe('00:00:00:00');
+  });
+
+  it('formats one second at 30fps', () => {
+    expect(formatTimecode(1_000_000, 30)).toBe('00:00:01:00');
+  });
+
+  it('formats one second at 25fps', () => {
+    expect(formatTimecode(1_000_000, 25)).toBe('00:00:01:00');
+  });
+
+  it('formats negative time', () => {
+    expect(formatTimecode(-1_000_000, 30)).toBe('-00:00:01:00');
+  });
+
+  it('calculates frames correctly', () => {
+    expect(formatTimecode(33_333, 30)).toBe('00:00:00:01');
+    expect(formatTimecode(1_000_000 + 33_333, 30)).toBe('00:00:01:01');
+  });
+});
+
+describe('formatHms', () => {
+  it('formats zero time', () => {
+    expect(formatHms(0)).toBe('00:00:00');
+  });
+
+  it('formats positive time', () => {
+    expect(formatHms(1_000_000)).toBe('00:00:01');
+    expect(formatHms(65_000_000)).toBe('00:01:05');
+    expect(formatHms(3600_000_000)).toBe('01:00:00');
+    expect(formatHms(3661_000_000)).toBe('01:01:01');
+  });
+
+  it('formats negative time', () => {
+    expect(formatHms(-1_000_000)).toBe('-00:00:01');
+    expect(formatHms(-3661_000_000)).toBe('-01:01:01');
+  });
+});
+
+describe('formatDurationSeconds', () => {
+  it('formats mm:ss and h:mm:ss', () => {
+    expect(formatDurationSeconds(undefined)).toBe('0:00');
+    expect(formatDurationSeconds(1)).toBe('0:01');
+    expect(formatDurationSeconds(61)).toBe('1:01');
+    expect(formatDurationSeconds(3661)).toBe('1:01:01');
+  });
+});
+
+describe('normalizeTimeUs', () => {
+  it('returns rounded positive integer and guards invalid values', () => {
+    expect(normalizeTimeUs(10.4)).toBe(10);
+    expect(normalizeTimeUs(10.6)).toBe(11);
+    expect(normalizeTimeUs(-1)).toBe(0);
+    expect(normalizeTimeUs(Number.NaN)).toBe(0);
+  });
+});
+
+describe('clampTimeUs', () => {
+  it('clamps value to [0, duration] with normalization', () => {
+    expect(clampTimeUs(1200.8, 1000.2)).toBe(1000);
+    expect(clampTimeUs(-50, 1000)).toBe(0);
+    expect(clampTimeUs(400.7, 1000)).toBe(401);
+    expect(clampTimeUs(500, 0)).toBe(500);
   });
 });

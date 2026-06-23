@@ -4,7 +4,7 @@ import { toProjectTempVfsPath } from '~/utils/storage-topology';
 import { withFileIoSlot } from '~/utils/io/io-governor';
 import type { IFileSystemAdapter } from '~/file-manager/core/vfs/types';
 import { CACHE_ROOT_DIR_NAME } from '~/utils/storage-roots';
-import { normalizeMediaCachePath } from '~/utils/media-cache-path';
+import { normalizeMediaCachePath } from '~/utils/path';
 import { hashString } from '~/utils/base-thumbnail-generator';
 const log = createDevLogger('vectorImageCache');
 

@@ -48,7 +48,7 @@ import { useUiStore } from './ui.store';
 import { useProjectSettingsStore } from './project-settings.store';
 import { MAX_TIMELINE_ZOOM_POSITION, MIN_TIMELINE_ZOOM_POSITION } from '~/utils/zoom';
 import { TIMELINE_DEFAULTS } from '~/utils/constants';
-import { normalizeMediaCachePath } from '~/utils/media-cache-path';
+import { normalizeMediaCachePath } from '~/utils/path';
 import { useNuxtApp } from 'nuxt/app';
 import { useTimelineMediaUsageStore } from './timeline-media-usage.store';
 

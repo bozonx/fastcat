@@ -1,5 +1,5 @@
 import type { IFileSystemAdapter } from '~/file-manager/core/vfs/types';
-import { normalizeMediaCachePath } from '~/utils/media-cache-path';
+import { normalizeMediaCachePath } from '~/utils/path';
 
 // v2: chunks are decoded with a trailing seam-crossfade overlap (durationS can
 // exceed chunkSizeS). Bumping invalidates v1 chunks that lack the overlap tail.

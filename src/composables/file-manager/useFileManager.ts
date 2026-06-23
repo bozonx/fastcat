@@ -28,7 +28,7 @@ import {
   removeProxyCommand,
 } from '~/media-cache/application/proxyThumbnailCommands';
 import { clearVectorImageRasterVfs } from '~/media-cache/application/vectorImageCache';
-import { normalizeMediaCachePath } from '~/utils/media-cache-path';
+import { normalizeMediaCachePath } from '~/utils/path';
 import type { FsEntry } from '~/types/fs';
 import { getBdPayload } from '~/types/bloggerdog';
 import type { IFileSystemAdapter } from '~/file-manager/core/vfs/types';

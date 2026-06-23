@@ -1,4 +1,4 @@
-import { normalizeTimeUs } from '~/utils/monitor-time';
+import { normalizeTimeUs } from '~/utils/time';
 import type { useProjectStore } from '~/stores/project.store';
 import type { useWorkspaceStore } from '~/stores/workspace.store';
 import type { ClipEffect, TimelineTrack } from '~/timeline/types';

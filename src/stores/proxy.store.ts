@@ -12,7 +12,7 @@ import { useVfs } from '~/composables/useVfs';
 import { ensureResolvedProjectProxiesDir } from '~/utils/storage-handles';
 import { isTauriRuntime } from '~/utils/runtime';
 import { getNativeFileHandlePath } from '~/utils/tauri-media-processing';
-import { normalizeMediaCachePath } from '~/utils/media-cache-path';
+import { normalizeMediaCachePath } from '~/utils/path';
 
 export const useProxyStore = defineStore('proxy', () => {
   const workspaceStore = useWorkspaceStore();
