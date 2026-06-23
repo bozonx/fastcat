@@ -41,6 +41,7 @@ FastCat coordinates file-system access across the main thread and multiple Web W
 - **Streaming pool** — governs long-lived writable streams during export/transcode (`MAX_CONCURRENT_FILE_IO_STREAMING = 1`).
 - **Governed Blob wrapper** — `governedBlob()` / `governedBlobWorker()` intercept `arrayBuffer()`, `text()`, and `slice()` on Blobs so every random read performed by `BlobSource` (mediabunny) is budgeted.
 - **Transient-error retry** — `runResilientWorkerFileIo` and `runResilientFileWrite` detect `InvalidStateError` / "datapipe" exhaustion and retry with exponential backoff.
+- **Held-slot watchdog** — reports operations that retain a budget slot unusually long, but never force-releases a live slot because that would allow unsafe OPFS concurrency.
 - **Metadata extraction queue** — browser metadata probes are limited to two concurrent tasks and reopen project files through a fresh OPFS handle before extraction and transient retries, preventing queued stale `File` snapshots from being reused after atomic replacement.
 
 Workers receive the budget buffer via an `io-init` postMessage immediately after creation. Fallback `LocalBudget` is used when `SharedArrayBuffer` is unavailable; the metadata queue still limits the highest-volume probe path in this mode.

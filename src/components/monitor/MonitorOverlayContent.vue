@@ -49,7 +49,9 @@ const props = defineProps<{
   />
 
   <MonitorTransformBox
-    v-else-if="props.isInteractiveEditEnabled && !props.isReadonly && !props.isAdjustmentClipSelected"
+    v-else-if="
+      props.isInteractiveEditEnabled && !props.isReadonly && !props.isAdjustmentClipSelected
+    "
     :render-width="props.renderWidth"
     :render-height="props.renderHeight"
   />

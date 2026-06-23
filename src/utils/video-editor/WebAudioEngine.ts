@@ -185,7 +185,7 @@ export class WebAudioEngine implements IAudioEngine {
     const channelCount = options?.audioChannels === 'mono' ? 1 : 2;
 
     if (this.ctx && this.ctx.sampleRate !== sampleRate) {
-      void this.ctx.close();
+      await this.ctx.close();
       this.ctx = null;
     }
 

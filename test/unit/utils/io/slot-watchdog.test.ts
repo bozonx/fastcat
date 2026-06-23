@@ -37,6 +37,21 @@ describe('watchHeldSlot', () => {
     expect(inner).toHaveBeenCalledTimes(1);
   });
 
+  it('never releases a live operation automatically', () => {
+    vi.useFakeTimers();
+    const inner = vi.fn();
+    const warn = vi.fn();
+    const release = watchHeldSlot(inner, { label: 'streaming', warnMs: 1000, warn });
+
+    vi.advanceTimersByTime(10_000);
+
+    expect(warn).toHaveBeenCalledTimes(1);
+    expect(inner).not.toHaveBeenCalled();
+
+    release();
+    expect(inner).toHaveBeenCalledTimes(1);
+  });
+
   it('disables the watchdog when warnMs <= 0 but still forwards release once', () => {
     const inner = vi.fn();
     const warn = vi.fn();

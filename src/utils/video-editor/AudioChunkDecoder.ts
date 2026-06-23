@@ -309,7 +309,8 @@ export class AudioChunkDecoder {
     if (durationS <= 0) return [];
 
     const startIndex = this.getChunkIndex(startTimeS);
-    const endIndex = this.getChunkIndex(startTimeS + durationS);
+    const rangeEndS = startTimeS + durationS;
+    const endIndex = Math.max(startIndex, Math.ceil(rangeEndS / this.chunkSizeS) - 1);
     const requests: Promise<AudioChunk | null>[] = [];
     for (let i = startIndex; i <= endIndex; i += 1) {
       requests.push(this.ensureDecoded({ sourceKey, fileHandle, chunkIndex: i }));

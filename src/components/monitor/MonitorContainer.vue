@@ -148,8 +148,7 @@ const monitorMenuPortal = computed(() =>
   effectiveFullscreen.value ? (panelRef.value ?? false) : true,
 );
 
-const { savedPanelViewport, capturePanelViewport, restorePanelViewport } =
-  useMonitorFullscreenViewport(projectStore);
+const { capturePanelViewport, restorePanelViewport } = useMonitorFullscreenViewport(projectStore);
 
 function restoreViewAfterFullscreen() {
   if (projectStore.lastViewBeforeFullscreen) {

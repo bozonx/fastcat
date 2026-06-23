@@ -34,7 +34,7 @@ const emit = defineEmits<{
   (e: 'open-markers'): void;
 }>();
 
-const { currentSnapOption, isSnapEnabled } = useSnapSettings();
+const { currentSnapOption } = useSnapSettings();
 
 const isPseudoOverlapMode = computed(
   () => settingsStore.toolbarDragModeEnabled && settingsStore.toolbarDragMode === 'pseudo_overlap',

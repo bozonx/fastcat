@@ -171,7 +171,6 @@ const {
   onAddedToTimeline,
   isRenameModalOpen,
   entryToRename,
-  handleRename,
   validateRename,
   onRenameConfirm,
   handleDrawerAction,

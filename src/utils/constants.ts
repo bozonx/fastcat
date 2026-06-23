@@ -70,15 +70,6 @@ export const FILE_IO_LIMITS = {
    * streaming pool is tiny.
    */
   SLOT_HOLD_WARN_MS_STREAMING: 1_800_000,
-  /**
-   * Hard force-release timeout for interactive slots. If a slot is still held
-   * after this duration it is force-released so the pool does not stall forever.
-   */
-  SLOT_HOLD_HARD_RELEASE_MS_INTERACTIVE: 300_000,
-  /**
-   * Hard force-release timeout for streaming slots.
-   */
-  SLOT_HOLD_HARD_RELEASE_MS_STREAMING: 3_600_000,
 } as const;
 
 export const VIDEO_CORE_LIMITS = {

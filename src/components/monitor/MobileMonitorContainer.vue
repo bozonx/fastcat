@@ -263,8 +263,7 @@ function onToolbarPointerDown(e: PointerEvent) {
   showControlsTemporary();
 }
 
-const { savedPanelViewport, capturePanelViewport, restorePanelViewport } =
-  useMonitorFullscreenViewport(projectStore);
+const { capturePanelViewport, restorePanelViewport } = useMonitorFullscreenViewport(projectStore);
 
 function onPopState(_event: PopStateEvent) {
   if (isFullscreen.value) {

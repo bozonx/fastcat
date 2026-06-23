@@ -42,7 +42,9 @@ export function useSnapSettings(): UseSnapSettingsReturn {
   ]);
 
   const currentSnapOption = computed(
-    () => snapModeOptions.value.find((o) => o.value === settingsStore.toolbarSnapMode) ?? snapModeOptions.value[0]!,
+    () =>
+      snapModeOptions.value.find((o) => o.value === settingsStore.toolbarSnapMode) ??
+      snapModeOptions.value[0]!,
   );
 
   const isSnapEnabled = computed(() => settingsStore.toolbarSnapMode !== 'no_snap');

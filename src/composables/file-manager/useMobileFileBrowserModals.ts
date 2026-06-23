@@ -11,7 +11,9 @@ export interface UseMobileFileBrowserModalsOptions {
   /** All entries visible to the browser — used for rename validation. */
   entries: Ref<FsEntry[]> | ComputedRef<FsEntry[]>;
   /** Compatibility map for the current entries. */
-  compatibility: Ref<Record<string, FileCompatibility>> | ComputedRef<Record<string, FileCompatibility>>;
+  compatibility:
+    | Ref<Record<string, FileCompatibility>>
+    | ComputedRef<Record<string, FileCompatibility>>;
   /** Selection mode flag from the parent component. */
   isSelectionMode: Ref<boolean> | ComputedRef<boolean>;
   /** Currently selected entries. */
@@ -58,7 +60,9 @@ export function useMobileFileBrowserModals(options: UseMobileFileBrowserModalsOp
 
   async function handleAddToProject() {
     const entity = selectionStore.selectedEntity;
-    if (!entity || entity.source !== 'fileManager' || entity.kind !== 'file' || !entity.path) return;
+    if (!entity || entity.source !== 'fileManager' || entity.kind !== 'file' || !entity.path) {
+      return;
+    }
 
     addToTimelineEntries.value = [entity.entry];
     options.isDrawerOpen.value = false;

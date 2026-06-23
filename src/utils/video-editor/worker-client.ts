@@ -360,7 +360,15 @@ function createChannelClient(channel: WorkerChannel): {
         args,
       } as VideoCoreWorkerRpcMessage;
 
-      ensureWorker(channel).postMessage(message, transferables ?? []);
+      try {
+        ensureWorker(channel).postMessage(message, transferables ?? []);
+      } catch (error) {
+        if (timeoutId !== undefined) {
+          window.clearTimeout(timeoutId);
+        }
+        state.pendingCalls.delete(id);
+        reject(toError(error));
+      }
     });
   }
 

@@ -134,6 +134,42 @@ describe('WebAudioEngine', () => {
     });
   });
 
+  describe('initialization', () => {
+    it('waits for the previous context to close before changing sample rate', async () => {
+      let resolveClose: (() => void) | undefined;
+      const closePromise = new Promise<void>((resolve) => {
+        resolveClose = resolve;
+      });
+      const contexts: ControlledAudioContext[] = [];
+
+      class ControlledAudioContext extends FakeAudioContext {
+        override close = vi.fn(() => (contexts[0] === this ? closePromise : Promise.resolve()));
+
+        constructor(options?: AudioContextOptions) {
+          super();
+          this.sampleRate = options?.sampleRate ?? 48_000;
+          contexts.push(this);
+        }
+      }
+
+      vi.stubGlobal('AudioContext', ControlledAudioContext);
+      const engine = new WebAudioEngine();
+      await engine.init({ sampleRate: 48_000 });
+
+      const reinitialize = engine.init({ sampleRate: 44_100 });
+      await Promise.resolve();
+
+      expect(contexts).toHaveLength(1);
+      expect(contexts[0]?.close).toHaveBeenCalledTimes(1);
+
+      resolveClose?.();
+      await reinitialize;
+
+      expect(contexts).toHaveLength(2);
+      expect(contexts[1]?.sampleRate).toBe(44_100);
+    });
+  });
+
   describe('getLevels', () => {
     it('returns silence when not playing', () => {
       const engine = new WebAudioEngine();
