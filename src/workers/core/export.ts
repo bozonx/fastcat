@@ -393,6 +393,44 @@ async function buildPassthroughAudioTrack(params: {
   }
 }
 
+interface OutputFormatConstructors {
+  Mp4OutputFormat: new () => unknown;
+  WebMOutputFormat: new () => unknown;
+  MkvOutputFormat: new () => unknown;
+  AdtsOutputFormat: new () => unknown;
+  OggOutputFormat: new () => unknown;
+  FlacOutputFormat: new () => unknown;
+  WavOutputFormat: new () => unknown;
+}
+
+/**
+ * Maps the export format string to a mediabunny output-format instance. Pure:
+ * the format constructors are passed in (they come from a dynamic import in the
+ * caller) so this stays trivially testable and free of side effects.
+ */
+function selectOutputFormat(format: ExportOptions['format'], ctors: OutputFormatConstructors) {
+  switch (format) {
+    case 'webm':
+      return new ctors.WebMOutputFormat();
+    case 'mkv':
+      return new ctors.MkvOutputFormat();
+    case 'aac':
+      return new ctors.AdtsOutputFormat();
+    case 'opus':
+    case 'ogg':
+      return new ctors.OggOutputFormat();
+    case 'flac':
+      return new ctors.FlacOutputFormat();
+    case 'wav':
+    case 'pcm':
+      return new ctors.WavOutputFormat();
+    case 'mp3':
+      throw new Error('MP3 export is not supported in the web version');
+    default:
+      return new ctors.Mp4OutputFormat();
+  }
+}
+
 export async function runExport(
   targetHandle: FileSystemFileHandle,
   options: ExportOptions,
@@ -673,24 +711,82 @@ export async function runExport(
     const durationS = usToS(maxDurationUs);
     const hasAnyAudio = options.audio && audioClips.length > 0;
 
-    const format =
-      options.format === 'webm'
-        ? new WebMOutputFormat()
-        : options.format === 'mkv'
-          ? new MkvOutputFormat()
-          : options.format === 'aac'
-            ? new AdtsOutputFormat()
-            : options.format === 'opus' || options.format === 'ogg'
-              ? new OggOutputFormat()
-              : options.format === 'flac'
-                ? new FlacOutputFormat()
-                : options.format === 'wav' || options.format === 'pcm'
-                  ? new WavOutputFormat()
-                  : options.format === 'mp3'
-                    ? (() => {
-                        throw new Error('MP3 export is not supported in the web version');
-                      })()
-                    : new Mp4OutputFormat();
+    const format = selectOutputFormat(options.format, {
+      Mp4OutputFormat,
+      WebMOutputFormat,
+      MkvOutputFormat,
+      AdtsOutputFormat,
+      OggOutputFormat,
+      FlacOutputFormat,
+      WavOutputFormat,
+    });
+
+    // Builds the output's audio track: tries Opus passthrough for a single
+    // compatible clip, otherwise falls back to a re-encoded mixed track. Adds
+    // the chosen source to `output` and returns the handles the encode loop
+    // needs.
+    async function setupAudioTracks(output: { addAudioTrack: (source: unknown) => void }): Promise<{
+      audioSource: unknown;
+      writeMixedAudioToSource: (() => Promise<void>) | null;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      audioPacketState: any;
+    }> {
+      let audioSource: unknown = null;
+      let writeMixedAudioToSource: (() => Promise<void>) | null = null;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      let audioPacketState: any = null;
+
+      if (!(options.audio && hasAnyAudio)) {
+        return { audioSource, writeMixedAudioToSource, audioPacketState };
+      }
+
+      if (options.audioPassthrough && audioClips.length === 1 && audioClips[0] !== undefined) {
+        const compat = isPassthroughCompatibleClip(audioClips[0], options);
+        if (!compat.ok) {
+          await reportExportWarning(
+            `[Worker Export] Opus audio passthrough disabled (${compat.reason}); re-encoding audio.`,
+          );
+        } else {
+          audioPacketState = await buildPassthroughAudioTrack({
+            clip: audioClips[0] as PassthroughClip,
+            hostClient,
+            reportExportWarning,
+            options,
+          });
+          if (audioPacketState) {
+            audioSource = audioPacketState.audioSource;
+            output.addAudioTrack(audioSource);
+          } else {
+            await reportExportWarning(
+              '[Worker Export] Opus audio passthrough not available; falling back to re-encode.',
+            );
+          }
+        }
+      }
+
+      if (!audioSource) {
+        const audioTrack = await buildMixedAudioTrack(
+          options,
+          audioClips,
+          durationS,
+          hostClient,
+          reportExportWarning,
+          checkCancel,
+          masterAudioEffects,
+        );
+        if (audioTrack) {
+          audioSource = audioTrack.audioSource;
+          writeMixedAudioToSource = audioTrack.writeMixedToSource;
+          output.addAudioTrack(audioSource);
+        } else {
+          await reportExportWarning(
+            '[Worker Export] No decodable audio track found; exporting without audio.',
+          );
+        }
+      }
+
+      return { audioSource, writeMixedAudioToSource, audioPacketState };
+    }
 
     async function runExportWithHardwareAcceleration(
       preference: 'prefer-hardware' | 'prefer-software',
@@ -741,58 +837,9 @@ export async function runExport(
         (output as any).addVideoTrack(videoSource);
       }
 
-      let audioSource: unknown = null;
-      let writeMixedAudioToSource: (() => Promise<void>) | null = null;
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      let audioPacketState: any = null;
-      if (options.audio && hasAnyAudio) {
-        if (options.audioPassthrough && audioClips.length === 1 && audioClips[0] !== undefined) {
-          const compat = isPassthroughCompatibleClip(audioClips[0], options);
-          if (!compat.ok) {
-            await reportExportWarning(
-              `[Worker Export] Opus audio passthrough disabled (${compat.reason}); re-encoding audio.`,
-            );
-          } else {
-            audioPacketState = await buildPassthroughAudioTrack({
-              clip: audioClips[0] as PassthroughClip,
-              hostClient,
-              reportExportWarning,
-              options,
-            });
-            if (audioPacketState) {
-              audioSource = audioPacketState.audioSource;
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              (output as any).addAudioTrack(audioSource);
-            } else {
-              await reportExportWarning(
-                '[Worker Export] Opus audio passthrough not available; falling back to re-encode.',
-              );
-            }
-          }
-        }
-
-        if (!audioSource) {
-          const audioTrack = await buildMixedAudioTrack(
-            options,
-            audioClips,
-            durationS,
-            hostClient,
-            reportExportWarning,
-            checkCancel,
-            masterAudioEffects,
-          );
-          if (audioTrack) {
-            audioSource = audioTrack.audioSource;
-            writeMixedAudioToSource = audioTrack.writeMixedToSource;
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            (output as any).addAudioTrack(audioSource);
-          } else {
-            await reportExportWarning(
-              '[Worker Export] No decodable audio track found; exporting without audio.',
-            );
-          }
-        }
-      }
+      const { audioSource, writeMixedAudioToSource, audioPacketState } = await setupAudioTracks(
+        output as unknown as { addAudioTrack: (source: unknown) => void },
+      );
 
       let finalized = false;
       try {

@@ -682,23 +682,18 @@ export class WebGpuComputeRunner {
     return this.device !== null && this.pipeline !== null;
   }
 
-  public async applyBlurFill(
-    source: VideoFrame | ImageBitmap,
-    frameW: number,
-    frameH: number,
-    fgScale: number,
-    bgScale: number,
-    blur: number,
-    bgDim: number,
-    bgSaturation: number,
-    tintColor: [number, number, number, number],
-    tintStrength: number,
-    fgOffsetY: number,
-  ): Promise<ImageBitmap | null> {
-    if (!this.device || !this.pipeline || !this.bindLayout || !this.shaderModule) {
-      return null;
-    }
-
+  /**
+   * Normalises a decode source to an upload-ready bitmap and reports its
+   * original dimensions. VideoFrame from WebCodecs may carry YUV pixel formats
+   * that Chrome's copyExternalImageToTexture rejects, so we convert to
+   * ImageBitmap first (always RGBA), matching the Rust side which uploads raw
+   * RGBA bytes. The caller owns disposal via {@link runComputeChain}.
+   */
+  private async prepareUploadSource(source: VideoFrame | ImageBitmap): Promise<{
+    uploadSource: ImageBitmap | VideoFrame;
+    origW: number;
+    origH: number;
+  }> {
     let uploadSource: ImageBitmap | VideoFrame = source;
     if (source instanceof VideoFrame) {
       uploadSource = await createImageBitmap(source);
@@ -729,28 +724,55 @@ export class WebGpuComputeRunner {
       ),
     );
 
-    const passes = buildBlurFillPasses(
-      frameW,
-      frameH,
-      origW,
-      origH,
-      fgScale,
-      bgScale,
-      blur,
-      bgDim,
-      bgSaturation,
-      tintColor,
-      tintStrength,
-      fgOffsetY,
-      this.previewEffectQuality,
-    );
-    if (passes.length === 0) return null;
+    return { uploadSource, origW, origH };
+  }
 
-    this.ensureTextures(frameW, frameH);
+  /**
+   * Shared GPU execution for the single-input compute paths (effects and
+   * blur-fill): uploads the source into an input texture, runs the pass chain
+   * into the pooled ping/pong/owned textures, and reads the owned output back
+   * into an ImageBitmap. The two callers differ only in input/output sizes, the
+   * copy origin (blur-fill writes at 0,0; effects insets by `padding`) and the
+   * debug `label`. Disposes `uploadSource` after upload when it was created from
+   * a VideoFrame.
+   */
+  private async runComputeChain(params: {
+    source: VideoFrame | ImageBitmap;
+    uploadSource: ImageBitmap | VideoFrame;
+    passes: ComputePass[];
+    inputWidth: number;
+    inputHeight: number;
+    copyOriginX: number;
+    copyOriginY: number;
+    copyWidth: number;
+    copyHeight: number;
+    outputWidth: number;
+    outputHeight: number;
+    label: string;
+  }): Promise<ImageBitmap | null> {
+    if (!this.device || !this.pipeline || !this.bindLayout || !this.shaderModule) {
+      return null;
+    }
+    const {
+      source,
+      uploadSource,
+      passes,
+      inputWidth,
+      inputHeight,
+      copyOriginX,
+      copyOriginY,
+      copyWidth,
+      copyHeight,
+      outputWidth,
+      outputHeight,
+      label,
+    } = params;
+
+    this.ensureTextures(outputWidth, outputHeight);
 
     const inputTexture = this.device.createTexture({
-      label: 'web-blur-fill-input',
-      size: { width: origW, height: origH, depthOrArrayLayers: 1 },
+      label: `${label}-input`,
+      size: { width: inputWidth, height: inputHeight, depthOrArrayLayers: 1 },
       format: 'rgba8unorm',
       usage:
         GPUTextureUsage.TEXTURE_BINDING |
@@ -761,16 +783,18 @@ export class WebGpuComputeRunner {
     try {
       this.device.queue.copyExternalImageToTexture(
         { source: uploadSource, flipY: false },
-        { texture: inputTexture, origin: { x: 0, y: 0, z: 0 } },
-        { width: origW, height: origH, depthOrArrayLayers: 1 },
+        { texture: inputTexture, origin: { x: copyOriginX, y: copyOriginY, z: 0 } },
+        { width: copyWidth, height: copyHeight, depthOrArrayLayers: 1 },
       );
 
+      // Release the intermediate ImageBitmap immediately after upload to avoid
+      // leaking GPU-backed bitmap memory.
       if (uploadSource !== source && 'close' in uploadSource) {
         (uploadSource as ImageBitmap).close();
       }
 
       const inputView = inputTexture.createView();
-      const owned = this.createOutputTexture(frameW, frameH);
+      const owned = this.createOutputTexture(outputWidth, outputHeight);
 
       try {
         this.ensureUniformBuffer(passes.length);
@@ -798,8 +822,10 @@ export class WebGpuComputeRunner {
 
         this.device.queue.writeBuffer(this.uniformBuffer!, 0, staging);
 
-        const encoder = this.device.createCommandEncoder({ label: 'web-blur-fill-encoder' });
+        const encoder = this.device.createCommandEncoder({ label: `${label}-encoder` });
 
+        // Map a logical buffer slot to its concrete view (mirror of the Rust
+        // `view_of` routing). The final pass is routed to `owned` by the builder.
         const viewOf = (buf: Buf): GPUTextureView => {
           switch (buf) {
             case 'input':
@@ -829,7 +855,7 @@ export class WebGpuComputeRunner {
           }
 
           const bindGroup = this.device.createBindGroup({
-            label: 'web-blur-fill-bind-group',
+            label: `${label}-bind-group`,
             layout: this.bindLayout,
             entries: [
               { binding: 0, resource: bindSrc },
@@ -843,18 +869,23 @@ export class WebGpuComputeRunner {
             ],
           });
 
-          const computePass = encoder.beginComputePass({ label: 'web-blur-fill-pass' });
+          const computePass = encoder.beginComputePass({ label: `${label}-pass` });
           computePass.setPipeline(pipeline);
           computePass.setBindGroup(0, bindGroup, [uniformOffset]);
-          computePass.dispatchWorkgroups(Math.ceil(frameW / 8), Math.ceil(frameH / 8), 1);
+          computePass.dispatchWorkgroups(
+            Math.ceil(outputWidth / 8),
+            Math.ceil(outputHeight / 8),
+            1,
+          );
           computePass.end();
         }
 
         this.device.queue.submit([encoder.finish()]);
 
-        const bytesPerRow = Math.ceil((frameW * 4) / 256) * 256;
+        // Read output back to CPU and create ImageBitmap
+        const bytesPerRow = Math.ceil((outputWidth * 4) / 256) * 256;
         const outputBuffer = this.device.createBuffer({
-          size: bytesPerRow * frameH,
+          size: bytesPerRow * outputHeight,
           usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ,
         });
 
@@ -862,23 +893,23 @@ export class WebGpuComputeRunner {
           const readEncoder = this.device.createCommandEncoder();
           readEncoder.copyTextureToBuffer(
             { texture: owned.texture },
-            { buffer: outputBuffer, bytesPerRow, rowsPerImage: frameH },
-            { width: frameW, height: frameH, depthOrArrayLayers: 1 },
+            { buffer: outputBuffer, bytesPerRow, rowsPerImage: outputHeight },
+            { width: outputWidth, height: outputHeight, depthOrArrayLayers: 1 },
           );
           this.device.queue.submit([readEncoder.finish()]);
 
           await outputBuffer.mapAsync(GPUMapMode.READ);
           const mappedRange = outputBuffer.getMappedRange();
-          const canvas = new OffscreenCanvas(frameW, frameH);
+          const canvas = new OffscreenCanvas(outputWidth, outputHeight);
           const ctx = canvas.getContext('2d')!;
-          const imageData = ctx.createImageData(frameW, frameH);
+          const imageData = ctx.createImageData(outputWidth, outputHeight);
           const data = imageData.data;
 
-          const rowSize = frameW * 4;
+          const rowSize = outputWidth * 4;
           if (bytesPerRow === rowSize) {
-            data.set(new Uint8ClampedArray(mappedRange, 0, rowSize * frameH));
+            data.set(new Uint8ClampedArray(mappedRange, 0, rowSize * outputHeight));
           } else {
-            for (let y = 0; y < frameH; y++) {
+            for (let y = 0; y < outputHeight; y++) {
               const srcOffset = y * bytesPerRow;
               const dstOffset = y * rowSize;
               data.set(new Uint8ClampedArray(mappedRange, srcOffset, rowSize), dstOffset);
@@ -900,6 +931,58 @@ export class WebGpuComputeRunner {
     }
   }
 
+  public async applyBlurFill(
+    source: VideoFrame | ImageBitmap,
+    frameW: number,
+    frameH: number,
+    fgScale: number,
+    bgScale: number,
+    blur: number,
+    bgDim: number,
+    bgSaturation: number,
+    tintColor: [number, number, number, number],
+    tintStrength: number,
+    fgOffsetY: number,
+  ): Promise<ImageBitmap | null> {
+    if (!this.device || !this.pipeline || !this.bindLayout || !this.shaderModule) {
+      return null;
+    }
+
+    const { uploadSource, origW, origH } = await this.prepareUploadSource(source);
+
+    const passes = buildBlurFillPasses(
+      frameW,
+      frameH,
+      origW,
+      origH,
+      fgScale,
+      bgScale,
+      blur,
+      bgDim,
+      bgSaturation,
+      tintColor,
+      tintStrength,
+      fgOffsetY,
+      this.previewEffectQuality,
+    );
+    if (passes.length === 0) return null;
+
+    return this.runComputeChain({
+      source,
+      uploadSource,
+      passes,
+      inputWidth: origW,
+      inputHeight: origH,
+      copyOriginX: 0,
+      copyOriginY: 0,
+      copyWidth: origW,
+      copyHeight: origH,
+      outputWidth: frameW,
+      outputHeight: frameH,
+      label: 'web-blur-fill',
+    });
+  }
+
   public async applyEffects(
     source: VideoFrame | ImageBitmap,
     effects: VideoEffectSpec[],
@@ -910,208 +993,30 @@ export class WebGpuComputeRunner {
     }
     if (effects.length === 0) return null;
 
-    // VideoFrame from WebCodecs may carry YUV pixel formats that Chrome's
-    // copyExternalImageToTexture rejects. Convert to ImageBitmap first so the
-    // upload path is always RGBA and matches the Rust side (which uploads raw
-    // RGBA bytes via queue.write_texture).
-    let uploadSource: ImageBitmap | VideoFrame = source;
-    if (source instanceof VideoFrame) {
-      uploadSource = await createImageBitmap(source);
-    }
+    const { uploadSource, origW, origH } = await this.prepareUploadSource(source);
 
-    let w = Math.max(
-      1,
-      Math.round(
-        uploadSource instanceof VideoFrame
-          ? Number(
-              uploadSource.displayWidth ??
-                (uploadSource as unknown as { codedWidth?: number }).codedWidth ??
-                1,
-            )
-          : uploadSource.width,
-      ),
-    );
-    let h = Math.max(
-      1,
-      Math.round(
-        uploadSource instanceof VideoFrame
-          ? Number(
-              uploadSource.displayHeight ??
-                (uploadSource as unknown as { codedHeight?: number }).codedHeight ??
-                1,
-            )
-          : uploadSource.height,
-      ),
-    );
-
-    const origW = w;
-    const origH = h;
     const scale = Math.max(0.1, Math.min(8.0, origH / 1080.0));
     const padding = options.enablePadding === false ? 0 : calculatePadding(effects, scale);
-    w = origW + 2 * padding;
-    h = origH + 2 * padding;
+    const w = origW + 2 * padding;
+    const h = origH + 2 * padding;
 
     const passes = buildPasses(effects, w, h, this.previewEffectQuality);
     if (passes.length === 0) return null;
 
-    this.ensureTextures(w, h);
-
-    const inputTexture = this.device.createTexture({
-      label: 'web-effect-input',
-      size: { width: w, height: h, depthOrArrayLayers: 1 },
-      format: 'rgba8unorm',
-      usage:
-        GPUTextureUsage.TEXTURE_BINDING |
-        GPUTextureUsage.COPY_DST |
-        GPUTextureUsage.RENDER_ATTACHMENT,
+    return this.runComputeChain({
+      source,
+      uploadSource,
+      passes,
+      inputWidth: w,
+      inputHeight: h,
+      copyOriginX: padding,
+      copyOriginY: padding,
+      copyWidth: origW,
+      copyHeight: origH,
+      outputWidth: w,
+      outputHeight: h,
+      label: 'web-effect',
     });
-
-    try {
-      this.device.queue.copyExternalImageToTexture(
-        { source: uploadSource, flipY: false },
-        { texture: inputTexture, origin: { x: padding, y: padding, z: 0 } },
-        { width: origW, height: origH, depthOrArrayLayers: 1 },
-      );
-
-      // Release the intermediate ImageBitmap immediately after upload to avoid
-      // leaking GPU-backed bitmap memory.
-      if (uploadSource !== source && 'close' in uploadSource) {
-        (uploadSource as ImageBitmap).close();
-      }
-
-      const inputView = inputTexture.createView();
-      const owned = this.createOutputTexture(w, h);
-
-      try {
-        this.ensureUniformBuffer(passes.length);
-
-        const staging = new ArrayBuffer(this.uniformStride * passes.length);
-        const u32 = new Uint32Array(staging);
-        const f32 = new Float32Array(staging);
-
-        for (let i = 0; i < passes.length; i++) {
-          const base = (i * this.uniformStride) / 4;
-          const u = passes[i]!.uniform;
-          u32[base + 0] = u.mode;
-          u32[base + 1] = u.width;
-          u32[base + 2] = u.height;
-          u32[base + 3] = u.seed;
-          f32[base + 4] = u.p0;
-          f32[base + 5] = u.p1;
-          f32[base + 6] = u.p2;
-          f32[base + 7] = u.p3;
-          f32[base + 8] = u.p4;
-          f32[base + 9] = u.p5;
-          f32[base + 10] = u.p6;
-          f32[base + 11] = u.p7;
-        }
-
-        this.device.queue.writeBuffer(this.uniformBuffer!, 0, staging);
-
-        const encoder = this.device.createCommandEncoder({ label: 'web-effect-encoder' });
-
-        // Map a logical buffer slot to its concrete view (mirror of the Rust
-        // `view_of` routing). The final pass is routed to `owned` by buildPasses.
-        const viewOf = (buf: Buf): GPUTextureView => {
-          switch (buf) {
-            case 'input':
-              return inputView;
-            case 'ping':
-              return this.pingView!;
-            case 'pong':
-              return this.pongView!;
-            case 'aux':
-              return this.auxView!;
-            case 'owned':
-              return owned.view;
-          }
-        };
-
-        for (let index = 0; index < passes.length; index++) {
-          const pass = passes[index]!;
-          const uniformOffset = index * this.uniformStride;
-
-          const bindSrc = viewOf(pass.src);
-          const bindSecondary = viewOf(pass.secondary);
-          const targetView = viewOf(pass.dst);
-
-          let pipeline = this.pipeline;
-          if (pass.customSource) {
-            pipeline = this.getOrCreateCustomPipeline(pass.customSource);
-          }
-
-          const bindGroup = this.device.createBindGroup({
-            label: 'web-effect-bind-group',
-            layout: this.bindLayout,
-            entries: [
-              { binding: 0, resource: bindSrc },
-              { binding: 1, resource: targetView },
-              {
-                binding: 2,
-                resource: { buffer: this.uniformBuffer!, offset: 0, size: UNIFORM_SIZE },
-              },
-              { binding: 3, resource: bindSecondary },
-              { binding: 4, resource: this.sampler! },
-            ],
-          });
-
-          const computePass = encoder.beginComputePass({ label: 'web-effect-pass' });
-          computePass.setPipeline(pipeline);
-          computePass.setBindGroup(0, bindGroup, [uniformOffset]);
-          computePass.dispatchWorkgroups(Math.ceil(w / 8), Math.ceil(h / 8), 1);
-          computePass.end();
-        }
-
-        this.device.queue.submit([encoder.finish()]);
-
-        // Read output back to CPU and create ImageBitmap
-        const bytesPerRow = Math.ceil((w * 4) / 256) * 256;
-        const outputBuffer = this.device.createBuffer({
-          size: bytesPerRow * h,
-          usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ,
-        });
-
-        try {
-          const readEncoder = this.device.createCommandEncoder();
-          readEncoder.copyTextureToBuffer(
-            { texture: owned.texture },
-            { buffer: outputBuffer, bytesPerRow, rowsPerImage: h },
-            { width: w, height: h, depthOrArrayLayers: 1 },
-          );
-          this.device.queue.submit([readEncoder.finish()]);
-
-          await outputBuffer.mapAsync(GPUMapMode.READ);
-          const mappedRange = outputBuffer.getMappedRange();
-          const canvas = new OffscreenCanvas(w, h);
-          const ctx = canvas.getContext('2d')!;
-          const imageData = ctx.createImageData(w, h);
-          const data = imageData.data;
-
-          const rowSize = w * 4;
-          if (bytesPerRow === rowSize) {
-            data.set(new Uint8ClampedArray(mappedRange, 0, rowSize * h));
-          } else {
-            for (let y = 0; y < h; y++) {
-              const srcOffset = y * bytesPerRow;
-              const dstOffset = y * rowSize;
-              data.set(new Uint8ClampedArray(mappedRange, srcOffset, rowSize), dstOffset);
-            }
-          }
-
-          ctx.putImageData(imageData, 0, 0);
-          outputBuffer.unmap();
-
-          const result = await createImageBitmap(canvas);
-          return result;
-        } finally {
-          outputBuffer.destroy();
-        }
-      } finally {
-        owned.texture.destroy();
-      }
-    } finally {
-      inputTexture.destroy();
-    }
   }
 
   public async applyTransition(params: {

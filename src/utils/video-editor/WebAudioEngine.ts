@@ -8,6 +8,7 @@ import { planForwardChunkPlayback } from '~/utils/video-editor/audio-seam-plan';
 import { SEAM_CROSSFADE_S, equalPowerCurve } from '~/utils/audio/crossfade';
 import { AudioGraphBuilder } from '~/utils/video-editor/AudioGraphBuilder';
 import { AudioScheduler } from '~/utils/video-editor/AudioScheduler';
+import { AudioLevelMeter } from '~/utils/video-editor/audio-level-meter';
 import { scheduleGainCurve, stopNodeCollection } from '~/utils/video-editor/audio-node-utils';
 import {
   buildClipPlaybackWindow,
@@ -149,8 +150,7 @@ export class WebAudioEngine implements IAudioEngine {
   private scheduleGeneration = 0;
   private layoutGeneration = 0;
 
-  private analyserNodes = new Map<string, AnalyserNode>(); // map by trackId or "master"
-  private analyserData = new Float32Array(2048);
+  private readonly levelMeter = new AudioLevelMeter();
 
   constructor(options: WebAudioEngineOptions = {}) {
     this.chunkDecoder = new AudioChunkDecoder({
@@ -199,8 +199,7 @@ export class WebAudioEngine implements IAudioEngine {
 
       this.masterEffectInput = this.ctx.createGain();
 
-      const masterAnalyser = this.ctx.createAnalyser();
-      masterAnalyser.fftSize = 2048;
+      const masterAnalyser = this.levelMeter.createMasterAnalyser(this.ctx);
 
       // Chain: MasterEffectInput -> MasterGain -> Analyser -> MonitorGain -> Destination
       // When master effects are active they bridge MasterEffectInput to MasterGain.
@@ -208,8 +207,6 @@ export class WebAudioEngine implements IAudioEngine {
       masterAnalyser.connect(this.monitorGain);
       this.monitorGain.connect(this.ctx.destination);
       this.masterEffectInput.connect(this.masterGain);
-
-      this.analyserNodes.set('master', masterAnalyser);
 
       this.setDestinationChannelCount(channelCount);
     } else {
@@ -298,47 +295,11 @@ export class WebAudioEngine implements IAudioEngine {
         .map((clip) => clip.trackId)
         .filter((trackId): trackId is string => !!trackId),
     );
-    for (const [id, analyser] of this.analyserNodes) {
-      if (id === 'master' || activeTrackIds.has(id)) continue;
-      try {
-        analyser.disconnect();
-      } catch {
-        /* no-op */
-      }
-      this.analyserNodes.delete(id);
-    }
+    this.levelMeter.cleanup(activeTrackIds);
   }
 
   getLevels(trackId?: string): { rmsDb: number; peakDb: number } {
-    if (!this.ctx || !this.scheduler.isPlayingActive()) return { rmsDb: -60, peakDb: -60 };
-
-    const id = trackId || 'master';
-    const analyser = this.analyserNodes.get(id);
-    if (!analyser) {
-      return { rmsDb: -60, peakDb: -60 };
-    }
-
-    analyser.getFloatTimeDomainData(this.analyserData);
-
-    let sumSquares = 0;
-    let peak = 0;
-    let count = 0;
-    const len = this.analyserData.length;
-    for (let i = 0; i < len; i++) {
-      const val = this.analyserData[i];
-      if (val === undefined || !Number.isFinite(val)) continue;
-      const abs = Math.abs(val);
-      sumSquares += abs * abs;
-      if (abs > peak) peak = abs;
-      count += 1;
-    }
-
-    const rms = count > 0 ? Math.sqrt(sumSquares / count) : 0;
-
-    return {
-      rmsDb: rms > 0.001 ? 20 * Math.log10(rms) : -60,
-      peakDb: peak > 0.001 ? 20 * Math.log10(peak) : -60,
-    };
+    return this.levelMeter.getLevels(trackId, !!this.ctx && this.scheduler.isPlayingActive());
   }
 
   private async getDecodedChunks(clip: AudioEngineClip): Promise<AudioChunk[]> {
@@ -437,7 +398,7 @@ export class WebAudioEngine implements IAudioEngine {
       clipGain,
       masterGain: this.masterEffectInput!,
       trackId: clip.trackId,
-      analyserNodes: this.analyserNodes,
+      analyserNodes: this.levelMeter.analyserNodes,
     });
 
     const startAtS = window.startAtS;
@@ -1029,7 +990,7 @@ export class WebAudioEngine implements IAudioEngine {
         clipGain,
         masterGain: this.masterEffectInput!,
         trackId: clip.trackId,
-        analyserNodes: this.analyserNodes,
+        analyserNodes: this.levelMeter.analyserNodes,
       });
       destroyEffects = graph.destroy;
     } catch (err) {
@@ -1358,7 +1319,7 @@ export class WebAudioEngine implements IAudioEngine {
       this.ctx = null;
     }
     this.masterEffectInput = null;
-    this.analyserNodes.clear();
+    this.levelMeter.clear();
 
     this.chunkDecoder.destroy();
   }

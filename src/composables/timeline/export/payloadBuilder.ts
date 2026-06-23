@@ -6,6 +6,7 @@ import type { TimelineFormatInput } from '~/timeline/format';
 import type {
   TimelineTrack,
   TimelineTrackItem,
+  TimelineClipItem,
   TimelineSelectionRange,
   TimelineBlendMode,
   ClipEffect,
@@ -368,30 +369,282 @@ export function trimNestedClipToParentWindow(params: {
   };
 }
 
+type ToWorkerTimelineClipsOptions = {
+  layer?: number;
+  trackKind?: 'video' | 'audio';
+  visitedPaths?: Set<string>;
+  nestedPathStack?: string[];
+  parentOpacity?: number;
+  parentBlendMode?: TimelineBlendMode;
+  parentEffects?: ClipEffect[];
+  nestedParentOpacity?: number;
+  nestedParentBlendMode?: TimelineBlendMode;
+  nestedParentEffects?: ClipEffect[];
+  parentAudioGain?: number;
+  parentAudioBalance?: number;
+  fallbackFormat?: TimelineFormatInput;
+  onWarning?: (message: string) => void;
+  nestedTimelinePath?: string;
+  nestedDocCache?: Map<string, TimelineDocument>;
+  trackIdPrefix?: string;
+  onTrackBuilt?: (track: WorkerTrackPayloadSource) => void;
+};
+
+/**
+ * Expands a `clipType: 'timeline'` clip into the flattened worker clips that
+ * represent its inner document. Recurses through {@link toWorkerTimelineClips}
+ * for each inner track (video) or the effective audio item set (audio), then
+ * windows/trims every produced clip to the parent clip's timeline range and
+ * merges parent fades. Returns the clips to push; an empty array means the
+ * nested doc was missing (the caller skips the clip). Throws are propagated so
+ * the caller can warn and fall back to a plain clip.
+ */
+async function expandNestedTimeline(params: {
+  item: TimelineClipItem;
+  path: string;
+  trackKind: 'video' | 'audio';
+  visitedPaths: Set<string>;
+  nestedPathStack: string[];
+  nestedDocCache: Map<string, TimelineDocument>;
+  combinedOpacity: number;
+  combinedBlendMode: TimelineBlendMode | undefined;
+  combinedEffects: ClipEffect[];
+  parentAudioGain: number;
+  parentAudioBalance: number;
+  projectStore: ReturnType<typeof useProjectStore>;
+  workspaceStore: ReturnType<typeof useWorkspaceStore>;
+  options: ToWorkerTimelineClipsOptions | undefined;
+}): Promise<WorkerTimelineClip[]> {
+  const {
+    item,
+    path,
+    trackKind,
+    visitedPaths,
+    nestedPathStack,
+    nestedDocCache,
+    combinedOpacity,
+    combinedBlendMode,
+    combinedEffects,
+    parentAudioGain,
+    parentAudioBalance,
+    projectStore,
+    workspaceStore,
+    options,
+  } = params;
+
+  const out: WorkerTimelineClip[] = [];
+
+  const nestedDoc = await readNestedTimelineDoc({
+    path,
+    projectStore,
+    fallbackFormat: options?.fallbackFormat,
+    cache: nestedDocCache,
+  });
+  if (!nestedDoc) {
+    log.warn(`Nested timeline file not found: ${path}`);
+    return out;
+  }
+
+  const nextVisited = new Set(visitedPaths).add(path);
+  const nextNestedPathStack = [...nestedPathStack, path];
+
+  if (trackKind === 'video') {
+    const nestedVideoTracks = nestedDoc.tracks.filter((t) => t.kind === 'video' && !t.videoHidden);
+    for (let i = 0; i < nestedVideoTracks.length; i++) {
+      const track = nestedVideoTracks[i];
+      if (!track) continue;
+      const nestedLayer = (options?.layer ?? 0) + (nestedVideoTracks.length - 1 - i);
+
+      const trackEffects = Array.isArray(track.effects) ? cloneEffects(track.effects) : [];
+      const inheritedNestedEffects = options?.nestedParentEffects ?? [];
+      const combinedTrackEffects =
+        combinedEffects.length > 0 || inheritedNestedEffects.length > 0
+          ? [...trackEffects, ...combinedEffects, ...inheritedNestedEffects]
+          : trackEffects;
+      const nestedTrackOpacity =
+        (options?.nestedParentOpacity ?? 1) * combinedOpacity * (track.opacity ?? 1);
+      const nestedTrackBlendMode =
+        track.blendMode ?? combinedBlendMode ?? options?.nestedParentBlendMode;
+
+      const nextTrackIdPrefix = `${options?.trackIdPrefix ?? ''}${item.trackId}::${item.id}::`;
+      const nestedTrackId = `${nextTrackIdPrefix}${track.id}`;
+
+      if (options?.onTrackBuilt) {
+        options.onTrackBuilt({
+          id: nestedTrackId,
+          layer: nestedLayer,
+          opacity: nestedTrackOpacity,
+          blendMode: nestedTrackBlendMode,
+          effects: combinedTrackEffects.length > 0 ? combinedTrackEffects : undefined,
+        });
+      }
+
+      const nestedWorkerClips = await toWorkerTimelineClips(
+        track.items,
+        projectStore,
+        workspaceStore,
+        {
+          layer: nestedLayer,
+          trackKind: 'video',
+          visitedPaths: nextVisited,
+          nestedPathStack: nextNestedPathStack,
+          parentOpacity: 1,
+          parentBlendMode: undefined,
+          parentEffects: undefined,
+          nestedParentOpacity: nestedTrackOpacity,
+          nestedParentBlendMode: nestedTrackBlendMode,
+          nestedParentEffects: combinedTrackEffects,
+          fallbackFormat: { fps: nestedDoc.timebase.fps },
+          onWarning: options?.onWarning,
+          nestedTimelinePath: path,
+          nestedDocCache,
+          trackIdPrefix: nextTrackIdPrefix,
+          onTrackBuilt: options?.onTrackBuilt,
+        },
+      );
+
+      for (const nClip of nestedWorkerClips) {
+        const resolvedNClip: WorkerTimelineClip =
+          nClip.clipType === 'media' && nClip.source?.path
+            ? {
+                ...nClip,
+                source: {
+                  path: resolveNestedMediaPath({
+                    nestedTimelinePath: path,
+                    mediaPath: nClip.source.path,
+                  }),
+                },
+              }
+            : nClip;
+
+        const window = getNestedClipWindow({
+          nestedClip: resolvedNClip,
+          parentItem: item,
+        });
+        const trimmedNestedClip = trimNestedClipToParentWindow({
+          nestedClip: resolvedNClip,
+          parentItem: item,
+        });
+
+        if (window && trimmedNestedClip) {
+          out.push({
+            ...trimmedNestedClip,
+            id: `${item.id}_nested_${resolvedNClip.id}`,
+            trackId: resolvedNClip.trackId
+              ? `${item.trackId}::${item.id}::${resolvedNClip.trackId}`
+              : undefined,
+            layer: nestedLayer,
+            audioGain: resolvedNClip.audioGain,
+            audioBalance: resolvedNClip.audioBalance,
+            audioFadeInUs: mergeFadeInUs({
+              childFadeInUs: resolvedNClip.audioFadeInUs,
+              parentFadeInUs: item.audioFadeInUs,
+              parentLocalStartUs: window.parentLocalStartUs,
+            }),
+            audioFadeOutUs: mergeFadeOutUs({
+              childFadeOutUs: resolvedNClip.audioFadeOutUs,
+              parentFadeOutUs: item.audioFadeOutUs,
+              parentLocalEndUs: window.parentLocalEndUs,
+              parentDurationUs: Math.max(0, Math.round(item.timelineRange.durationUs)),
+            }),
+            audioFadeInCurve: resolvedNClip.audioFadeInCurve ?? item.audioFadeInCurve,
+            audioFadeOutCurve: resolvedNClip.audioFadeOutCurve ?? item.audioFadeOutCurve,
+          });
+        }
+      }
+    }
+  } else if (trackKind === 'audio') {
+    const nestedAudioResult = buildEffectiveAudioClipItems({
+      audioTracks: nestedDoc.tracks.filter((t) => t.kind === 'audio'),
+      videoTracks: nestedDoc.tracks.filter((t) => t.kind === 'video'),
+    });
+
+    const nestedWorkerClips = await toWorkerTimelineClips(
+      nestedAudioResult.items,
+      projectStore,
+      workspaceStore,
+      {
+        layer: 0,
+        trackKind: 'audio',
+        visitedPaths: nextVisited,
+        nestedPathStack: nextNestedPathStack,
+        parentOpacity: combinedOpacity,
+        parentBlendMode: combinedBlendMode,
+        parentEffects: combinedEffects,
+        parentAudioGain: mergeGain(parentAudioGain, item.audioGain),
+        parentAudioBalance: mergeBalance(parentAudioBalance, item.audioBalance),
+        onWarning: options?.onWarning,
+        nestedTimelinePath: path,
+        nestedDocCache,
+      },
+    );
+
+    for (const nClip of nestedWorkerClips) {
+      const resolvedNClip: WorkerTimelineClip =
+        nClip.clipType === 'media' && nClip.source?.path
+          ? {
+              ...nClip,
+              source: {
+                path: resolveNestedMediaPath({
+                  nestedTimelinePath: path,
+                  mediaPath: nClip.source.path,
+                }),
+              },
+            }
+          : nClip;
+
+      const window = getNestedClipWindow({
+        nestedClip: resolvedNClip,
+        parentItem: item,
+      });
+      const trimmedNestedClip = trimNestedClipToParentWindow({
+        nestedClip: resolvedNClip,
+        parentItem: item,
+      });
+
+      if (window && trimmedNestedClip) {
+        const parentDurationUs = Math.max(0, Math.round(item.timelineRange.durationUs));
+
+        out.push({
+          ...trimmedNestedClip,
+          id: `${item.id}_nested_${resolvedNClip.id}`,
+          trackId: resolvedNClip.trackId,
+          layer: 0,
+          audioGain: resolvedNClip.audioGain,
+          audioBalance: resolvedNClip.audioBalance,
+          // A nested clip's track_id is the *inner* doc's track, which has no
+          // matching native bus (the scene only exposes outer-doc tracks), so
+          // the layer is mixed straight into master as an orphan. It must
+          // therefore carry the full merged gain/balance — not the clip-only
+          // value — since no bus will re-apply the (already-merged) track stage.
+          originalAudioGain: resolvedNClip.audioGain,
+          originalAudioBalance: resolvedNClip.audioBalance,
+          audioFadeInUs: mergeFadeInUs({
+            childFadeInUs: resolvedNClip.audioFadeInUs,
+            parentFadeInUs: item.audioFadeInUs,
+            parentLocalStartUs: window.parentLocalStartUs,
+          }),
+          audioFadeOutUs: mergeFadeOutUs({
+            childFadeOutUs: resolvedNClip.audioFadeOutUs,
+            parentFadeOutUs: item.audioFadeOutUs,
+            parentLocalEndUs: window.parentLocalEndUs,
+            parentDurationUs,
+          }),
+          audioFadeInCurve: resolvedNClip.audioFadeInCurve ?? item.audioFadeInCurve,
+          audioFadeOutCurve: resolvedNClip.audioFadeOutCurve ?? item.audioFadeOutCurve,
+        });
+      }
+    }
+  }
+
+  return out;
+}
+
 export async function toWorkerTimelineClips(
   items: TimelineTrackItem[],
   projectStore: ReturnType<typeof useProjectStore>,
   workspaceStore: ReturnType<typeof useWorkspaceStore>,
-  options?: {
-    layer?: number;
-    trackKind?: 'video' | 'audio';
-    visitedPaths?: Set<string>;
-    nestedPathStack?: string[];
-    parentOpacity?: number;
-    parentBlendMode?: TimelineBlendMode;
-    parentEffects?: ClipEffect[];
-    nestedParentOpacity?: number;
-    nestedParentBlendMode?: TimelineBlendMode;
-    nestedParentEffects?: ClipEffect[];
-    parentAudioGain?: number;
-    parentAudioBalance?: number;
-    fallbackFormat?: TimelineFormatInput;
-    onWarning?: (message: string) => void;
-    nestedTimelinePath?: string;
-    nestedDocCache?: Map<string, TimelineDocument>;
-    trackIdPrefix?: string;
-    onTrackBuilt?: (track: WorkerTrackPayloadSource) => void;
-  },
+  options?: ToWorkerTimelineClipsOptions,
 ): Promise<WorkerTimelineClip[]> {
   const clips: WorkerTimelineClip[] = [];
   const trackKind = options?.trackKind ?? 'video';
@@ -499,209 +752,24 @@ export async function toWorkerTimelineClips(
         }
 
         try {
-          const nestedDoc = await readNestedTimelineDoc({
+          const nestedClips = await expandNestedTimeline({
+            item,
             path,
+            trackKind,
+            visitedPaths,
+            nestedPathStack,
+            nestedDocCache,
+            combinedOpacity,
+            combinedBlendMode,
+            combinedEffects,
+            parentAudioGain,
+            parentAudioBalance,
             projectStore,
-            fallbackFormat: options?.fallbackFormat,
-            cache: nestedDocCache,
+            workspaceStore,
+            options,
           });
-          if (!nestedDoc) {
-            log.warn(`Nested timeline file not found: ${path}`);
-            continue;
-          }
-
-          const nextVisited = new Set(visitedPaths).add(path);
-          const nextNestedPathStack = [...nestedPathStack, path];
-
-          if (trackKind === 'video') {
-            const nestedVideoTracks = nestedDoc.tracks.filter(
-              (t) => t.kind === 'video' && !t.videoHidden,
-            );
-            for (let i = 0; i < nestedVideoTracks.length; i++) {
-              const track = nestedVideoTracks[i];
-              if (!track) continue;
-              const nestedLayer = (options?.layer ?? 0) + (nestedVideoTracks.length - 1 - i);
-
-              const trackEffects = Array.isArray(track.effects) ? cloneEffects(track.effects) : [];
-              const inheritedNestedEffects = options?.nestedParentEffects ?? [];
-              const combinedTrackEffects =
-                combinedEffects.length > 0 || inheritedNestedEffects.length > 0
-                  ? [...trackEffects, ...combinedEffects, ...inheritedNestedEffects]
-                  : trackEffects;
-              const nestedTrackOpacity =
-                (options?.nestedParentOpacity ?? 1) * combinedOpacity * (track.opacity ?? 1);
-              const nestedTrackBlendMode =
-                track.blendMode ?? combinedBlendMode ?? options?.nestedParentBlendMode;
-
-              const nextTrackIdPrefix = `${options?.trackIdPrefix ?? ''}${item.trackId}::${item.id}::`;
-              const nestedTrackId = `${nextTrackIdPrefix}${track.id}`;
-
-              if (options?.onTrackBuilt) {
-                options.onTrackBuilt({
-                  id: nestedTrackId,
-                  layer: nestedLayer,
-                  opacity: nestedTrackOpacity,
-                  blendMode: nestedTrackBlendMode,
-                  effects: combinedTrackEffects.length > 0 ? combinedTrackEffects : undefined,
-                });
-              }
-
-              const nestedWorkerClips = await toWorkerTimelineClips(
-                track.items,
-                projectStore,
-                workspaceStore,
-                {
-                  layer: nestedLayer,
-                  trackKind: 'video',
-                  visitedPaths: nextVisited,
-                  nestedPathStack: nextNestedPathStack,
-                  parentOpacity: 1,
-                  parentBlendMode: undefined,
-                  parentEffects: undefined,
-                  nestedParentOpacity: nestedTrackOpacity,
-                  nestedParentBlendMode: nestedTrackBlendMode,
-                  nestedParentEffects: combinedTrackEffects,
-                  fallbackFormat: { fps: nestedDoc.timebase.fps },
-                  onWarning: options?.onWarning,
-                  nestedTimelinePath: path,
-                  nestedDocCache,
-                  trackIdPrefix: nextTrackIdPrefix,
-                  onTrackBuilt: options?.onTrackBuilt,
-                },
-              );
-
-              for (const nClip of nestedWorkerClips) {
-                const resolvedNClip: WorkerTimelineClip =
-                  nClip.clipType === 'media' && nClip.source?.path
-                    ? {
-                        ...nClip,
-                        source: {
-                          path: resolveNestedMediaPath({
-                            nestedTimelinePath: path,
-                            mediaPath: nClip.source.path,
-                          }),
-                        },
-                      }
-                    : nClip;
-
-                const window = getNestedClipWindow({
-                  nestedClip: resolvedNClip,
-                  parentItem: item,
-                });
-                const trimmedNestedClip = trimNestedClipToParentWindow({
-                  nestedClip: resolvedNClip,
-                  parentItem: item,
-                });
-
-                if (window && trimmedNestedClip) {
-                  clips.push({
-                    ...trimmedNestedClip,
-                    id: `${item.id}_nested_${resolvedNClip.id}`,
-                    trackId: resolvedNClip.trackId
-                      ? `${item.trackId}::${item.id}::${resolvedNClip.trackId}`
-                      : undefined,
-                    layer: nestedLayer,
-                    audioGain: resolvedNClip.audioGain,
-                    audioBalance: resolvedNClip.audioBalance,
-                    audioFadeInUs: mergeFadeInUs({
-                      childFadeInUs: resolvedNClip.audioFadeInUs,
-                      parentFadeInUs: item.audioFadeInUs,
-                      parentLocalStartUs: window.parentLocalStartUs,
-                    }),
-                    audioFadeOutUs: mergeFadeOutUs({
-                      childFadeOutUs: resolvedNClip.audioFadeOutUs,
-                      parentFadeOutUs: item.audioFadeOutUs,
-                      parentLocalEndUs: window.parentLocalEndUs,
-                      parentDurationUs: Math.max(0, Math.round(item.timelineRange.durationUs)),
-                    }),
-                    audioFadeInCurve: resolvedNClip.audioFadeInCurve ?? item.audioFadeInCurve,
-                    audioFadeOutCurve: resolvedNClip.audioFadeOutCurve ?? item.audioFadeOutCurve,
-                  });
-                }
-              }
-            }
-          } else if (trackKind === 'audio') {
-            const nestedAudioResult = buildEffectiveAudioClipItems({
-              audioTracks: nestedDoc.tracks.filter((t) => t.kind === 'audio'),
-              videoTracks: nestedDoc.tracks.filter((t) => t.kind === 'video'),
-            });
-
-            const nestedWorkerClips = await toWorkerTimelineClips(
-              nestedAudioResult.items,
-              projectStore,
-              workspaceStore,
-              {
-                layer: 0,
-                trackKind: 'audio',
-                visitedPaths: nextVisited,
-                nestedPathStack: nextNestedPathStack,
-                parentOpacity: combinedOpacity,
-                parentBlendMode: combinedBlendMode,
-                parentEffects: combinedEffects,
-                parentAudioGain: mergeGain(parentAudioGain, item.audioGain),
-                parentAudioBalance: mergeBalance(parentAudioBalance, item.audioBalance),
-                onWarning: options?.onWarning,
-                nestedTimelinePath: path,
-                nestedDocCache,
-              },
-            );
-
-            for (const nClip of nestedWorkerClips) {
-              const resolvedNClip: WorkerTimelineClip =
-                nClip.clipType === 'media' && nClip.source?.path
-                  ? {
-                      ...nClip,
-                      source: {
-                        path: resolveNestedMediaPath({
-                          nestedTimelinePath: path,
-                          mediaPath: nClip.source.path,
-                        }),
-                      },
-                    }
-                  : nClip;
-
-              const window = getNestedClipWindow({
-                nestedClip: resolvedNClip,
-                parentItem: item,
-              });
-              const trimmedNestedClip = trimNestedClipToParentWindow({
-                nestedClip: resolvedNClip,
-                parentItem: item,
-              });
-
-              if (window && trimmedNestedClip) {
-                const parentDurationUs = Math.max(0, Math.round(item.timelineRange.durationUs));
-
-                clips.push({
-                  ...trimmedNestedClip,
-                  id: `${item.id}_nested_${resolvedNClip.id}`,
-                  trackId: resolvedNClip.trackId,
-                  layer: 0,
-                  audioGain: resolvedNClip.audioGain,
-                  audioBalance: resolvedNClip.audioBalance,
-                  // A nested clip's track_id is the *inner* doc's track, which has no
-                  // matching native bus (the scene only exposes outer-doc tracks), so
-                  // the layer is mixed straight into master as an orphan. It must
-                  // therefore carry the full merged gain/balance — not the clip-only
-                  // value — since no bus will re-apply the (already-merged) track stage.
-                  originalAudioGain: resolvedNClip.audioGain,
-                  originalAudioBalance: resolvedNClip.audioBalance,
-                  audioFadeInUs: mergeFadeInUs({
-                    childFadeInUs: resolvedNClip.audioFadeInUs,
-                    parentFadeInUs: item.audioFadeInUs,
-                    parentLocalStartUs: window.parentLocalStartUs,
-                  }),
-                  audioFadeOutUs: mergeFadeOutUs({
-                    childFadeOutUs: resolvedNClip.audioFadeOutUs,
-                    parentFadeOutUs: item.audioFadeOutUs,
-                    parentLocalEndUs: window.parentLocalEndUs,
-                    parentDurationUs,
-                  }),
-                  audioFadeInCurve: resolvedNClip.audioFadeInCurve ?? item.audioFadeInCurve,
-                  audioFadeOutCurve: resolvedNClip.audioFadeOutCurve ?? item.audioFadeOutCurve,
-                });
-              }
-            }
+          for (const nestedClip of nestedClips) {
+            clips.push(nestedClip);
           }
           continue;
         } catch (e) {
