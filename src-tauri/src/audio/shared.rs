@@ -8,6 +8,7 @@ use symphonia::core::meta::MetadataOptions;
 use symphonia::core::probe::Hint;
 use symphonia::core::units::TimeBase;
 
+use crate::audio::decode::LayerDecoder;
 use crate::audio::plugins::AudioEffectSpec;
 use crate::monitor::scene::{SceneAudioLayer, SceneAudioTrack};
 
@@ -92,7 +93,12 @@ pub(crate) fn open_symphonia_format(
     }
 
     let probed = symphonia::default::get_probe()
-        .format(&hint, mss, &FormatOptions::default(), &MetadataOptions::default())
+        .format(
+            &hint,
+            mss,
+            &FormatOptions::default(),
+            &MetadataOptions::default(),
+        )
         .with_context(|| format!("failed to probe media format for {context}: {path_str}"))?;
 
     Ok(probed.format)
@@ -115,7 +121,12 @@ pub(crate) fn open_symphonia_audio(
         find_audio_track(format.tracks()).ok_or_else(|| anyhow!("no active audio track found"))?;
     let track_id = track.id;
     let sample_rate = track.codec_params.sample_rate.unwrap_or(fallback_rate);
-    let channels = track.codec_params.channels.map(|c| c.count()).unwrap_or(1).max(1);
+    let channels = track
+        .codec_params
+        .channels
+        .map(|c| c.count())
+        .unwrap_or(1)
+        .max(1);
     let time_base = track
         .codec_params
         .time_base
@@ -182,76 +193,6 @@ impl AudioRenderTarget {
     pub(crate) fn is_export(self) -> bool {
         matches!(self.mode, AudioRenderMode::Export)
     }
-}
-
-/// Native (in-process) streaming decoder backed by symphonia + a rubato resampler.
-/// One of the two `LayerDecoder` backends; used for every codec symphonia can decode.
-pub(crate) struct SymphoniaDecoder {
-    /// Source file this decoder was opened for. `decoders` is keyed by layer id, but a
-    /// layer's `path` can change under the same id (proxy on/off, media replace). The
-    /// streaming entry validates this before reuse and rebuilds on a mismatch, otherwise
-    /// it would keep decoding the OLD file's audio after a path swap.
-    pub(crate) path: String,
-    pub(crate) format: Box<dyn symphonia::core::formats::FormatReader>,
-    pub(crate) decoder: Box<dyn symphonia::core::codecs::Decoder>,
-    pub(crate) track_id: u32,
-    pub(crate) source_rate: u32,
-    pub(crate) channels: usize,
-    pub(crate) time_base: symphonia::core::units::TimeBase,
-    // Cached resampler to avoid rebuilding it every chunk.
-    // Stored as Option<Box<...>> because resamplers are large and rarely change ratio.
-    pub(crate) resampler: Option<Box<rubato::SincFixedIn<f32>>>,
-    pub(crate) last_resample_ratio: f64,
-    // False whenever the resampler was just created/reset (its delay line is
-    // empty). The next decode then primes it with `output_delay`-worth of extra
-    // source frames so the first emitted chunk isn't short by the resampler
-    // latency (which would zero-pad a ~3 ms silent gap into the tail after every
-    // seek and into every chunk of a reversed clip).
-    pub(crate) resampler_primed: bool,
-    // Last source position we decoded up to; used to skip seeks on sequential chunks.
-    pub(crate) last_decode_end_sec: f64,
-    // Planar input frames not yet consumed by the fixed-size resampler. Carried
-    // across sequential chunks so block boundaries don't inject zero-padding,
-    // which would otherwise create periodic clicks in the output.
-    pub(crate) resample_remainder: Vec<Vec<f32>>,
-    // Interleaved resampled output produced beyond what a chunk requested. The
-    // block-based resampler emits a variable frame count per call; without this
-    // FIFO the surplus would be truncated (and the deficit zero-padded) every
-    // chunk, leaking samples and clicking at boundaries. Drained first by the
-    // next chunk so output length is exact and lossless.
-    pub(crate) resample_output_remainder: Vec<f32>,
-}
-
-/// Fallback streaming decoder backed by a long-lived ffmpeg child. The other
-/// `LayerDecoder` backend; used for any codec symphonia can't decode natively
-/// (currently Opus). Unlike a one-shot-per-chunk `ffmpeg -ss`, this keeps ONE
-/// ffmpeg/swr session alive and reads it sequentially chunk-by-chunk, so back-to-back
-/// chunks are sample-continuous — a fresh seek+resample per chunk left audible clicks
-/// at the ~50 ms boundaries (heard on Opus-audio exports). Reseeks only on a
-/// non-sequential request; speed/reverse chunks fall to a per-chunk one-shot decode.
-pub(crate) struct FfmpegStreamSource {
-    /// Source file this stream was opened for; rebuilt on a path change (proxy swap /
-    /// media replace under the same layer id), like `SymphoniaDecoder::path`.
-    pub(crate) path: String,
-    /// Target rate/channels the ffmpeg child is emitting at; a change rebuilds it.
-    pub(crate) sample_rate: u32,
-    pub(crate) channels: usize,
-    /// Source position (sec) the stream will next emit. A request within tolerance of
-    /// this continues reading the live process; a jump reseeks (kill + respawn).
-    pub(crate) next_source_sec: f64,
-    /// The running ffmpeg, or `None` once the stream hit EOF (further sequential
-    /// reads past the source end return silence without respawning).
-    pub(crate) reader: Option<crate::audio::ffmpeg_decode::FfmpegPcmReader>,
-}
-
-/// One per-layer streaming decoder. The codec is probed ONCE when the decoder is
-/// built (see `open_layer_decoder`): symphonia if it can decode the codec, otherwise
-/// the ffmpeg fallback. The realtime/export streaming path holds only this enum and
-/// never re-decides per chunk, so both backends share one cache, one seek/continuation
-/// contract, and one eviction policy. Decode logic lives in `audio/decode.rs`.
-pub(crate) enum LayerDecoder {
-    Symphonia(SymphoniaDecoder),
-    Ffmpeg(FfmpegStreamSource),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

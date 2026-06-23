@@ -22,44 +22,29 @@ use winit::event_loop::EventLoopProxy;
 
 use super::handle::MonitorCommand;
 use super::layer_runtime::*;
-use super::scene::{LayerKind, MonitorScene, NativeFrameCacheMode, PreviewSyncMode, SceneLayer};
 use super::scene::build::{build_compositor_scene, rasterize_svg};
+use super::scene::{LayerKind, MonitorScene, NativeFrameCacheMode, PreviewSyncMode, SceneLayer};
 use crate::compositor::scene::Scene;
 use crate::media::decode::gate::decoder_load_gate;
 use crate::media::decode::thread::DecodePump;
 use crate::media::image_decode::decode_image;
 
-/// Сколько секунд до начала будущего клипа на таймлайне должно оставаться,
-/// чтобы мы превентивно запустили фоновую инициализацию его декодера. Должно
-/// перекрывать худшее время «открыть декодер + декодировать первый GOP» —
-/// для 4K/long-GOP открытие ffmpeg + первый GOP заметно дольше прежних 1.5с,
-/// поэтому при слишком коротком окне следующий клип на стыке всё равно стартовал
-/// «вхолодную» и заикался. Запас в секунду компенсирует ожидание пермита
-/// `decoder_load_gate`, когда активный слой ещё держит свой open.
-const VIDEO_PREWARM_LOOKAHEAD_SEC: f64 = 2.5;
+mod policy;
 
-/// Окно удержания рантайма слоя вокруг playhead'а. Рантаймы клипов, чей timeline-интервал
-/// не пересекает `[t - KEEP_BEHIND, t + KEEP_AHEAD]`, вытесняются прямо во время
-/// воспроизведения (а не только при `apply_scene`). Без этого при длинном таймлайне
-/// накапливались бы живые ffmpeg-декодеры + кадровые кэши на КАЖДЫЙ пройденный клип
-/// (память и число потоков росли бы с числом проигранных клипов, а не с рабочим
-/// множеством у playhead). `KEEP_AHEAD` ≥ `VIDEO_PREWARM_LOOKAHEAD_SEC`, иначе только что
-/// прогретый будущий клип вытеснялся бы тем же тиком (thrash «прогрел → выкинул → прогрел»).
-const RUNTIME_KEEP_BEHIND_SEC: f64 = 3.0;
-const RUNTIME_KEEP_AHEAD_SEC: f64 = VIDEO_PREWARM_LOOKAHEAD_SEC + 1.0;
+use policy::{
+    active_layer_indices, allows_stale_video_fallback, approx_eq_opt_scale,
+    frame_cache_budget_bytes, has_loaded_runtime, is_refreshable_display_runtime,
+    layer_near_playhead, max_concurrent_video_layers_within, sanitize_transport_speed,
+    scaled_prewarm_lookahead_sec, svg_target_long_edge, transition_from_ids, video_sync_lag_sec,
+};
 
-const MB: usize = 1024 * 1024;
-const LOW_CACHE_BUDGET_BYTES: usize = 96 * MB;
-const BALANCED_CACHE_BUDGET_BYTES: usize = 192 * MB;
-const HIGH_CACHE_BUDGET_BYTES: usize = 512 * MB;
-const AUTO_CACHE_MIN_FRAMES: usize = 6;
-const AUTO_CACHE_MAX_BYTES: usize = 512 * MB;
-const AUTO_CACHE_TARGET_WINDOW_SEC: f64 = 0.5;
+pub use policy::sanitize_preview_fps;
 
-const STRICT_VIDEO_SYNC_LAG_FRAMES: f64 = 2.0;
-const STRICT_VIDEO_SYNC_LAG_SEC: f64 = 0.08;
-const BALANCED_VIDEO_SYNC_LAG_FRAMES: f64 = 6.0;
-const BALANCED_VIDEO_SYNC_LAG_SEC: f64 = 0.22;
+#[cfg(test)]
+use policy::{
+    BALANCED_VIDEO_SYNC_LAG_SEC, RUNTIME_KEEP_AHEAD_SEC, RUNTIME_KEEP_BEHIND_SEC,
+    STRICT_VIDEO_SYNC_LAG_SEC, VIDEO_PREWARM_LOOKAHEAD_SEC,
+};
 
 /// Identifies which decoded SOURCE frames a layer's runtime must hold. Deliberately
 /// excludes the clip's `timeline_start/end`: moving a clip along the timeline (or
@@ -785,47 +770,10 @@ impl LayerRuntimeManager {
         let scene = self.scene.clone();
         // Активные слои храним индексами в `scene`, а не клонами String id — иначе на
         // каждый кадр (30–60 fps) аллоцировались бы строки для всех видимых слоёв.
-        let mut active: HashSet<usize> = HashSet::new();
-
+        let active = active_layer_indices(&scene, t);
         for (i, layer) in scene.iter().enumerate() {
-            if layer.covers(t) {
-                active.insert(i);
+            if active.contains(&i) {
                 self.ensure_runtime_for(layer, device.clone(), queue.clone());
-
-                if let Some(t_in) = &layer.transition_in {
-                    let local_t = t - layer.timeline_start_sec;
-                    // Любой шейдерный переход (включая dissolve) блендит пиксели
-                    // from-слоя — держим его рантайм живым в окне перехода.
-                    if local_t < t_in.duration_sec && local_t >= 0.0 {
-                        if let Some(from_id) = &t_in.from_layer_id {
-                            if let Some(from_idx) = scene.iter().position(|l| &l.id == from_id) {
-                                active.insert(from_idx);
-                                self.ensure_runtime_for(
-                                    &scene[from_idx],
-                                    device.clone(),
-                                    queue.clone(),
-                                );
-                            }
-                        }
-                    }
-                }
-                if let Some(t_out) = &layer.transition_out {
-                    let local_t = t - layer.timeline_start_sec;
-                    let duration = layer.timeline_end_sec - layer.timeline_start_sec;
-                    let out_start = (duration - t_out.duration_sec).max(0.0);
-                    if local_t >= out_start && local_t < duration {
-                        if let Some(from_id) = &t_out.from_layer_id {
-                            if let Some(from_idx) = scene.iter().position(|l| &l.id == from_id) {
-                                active.insert(from_idx);
-                                self.ensure_runtime_for(
-                                    &scene[from_idx],
-                                    device.clone(),
-                                    queue.clone(),
-                                );
-                            }
-                        }
-                    }
-                }
             } else if layer.covers(t + self.prewarm_lookahead_sec()) {
                 // Превентивно прогреваем декодер будущего слоя
                 self.ensure_runtime_for(layer, device.clone(), queue.clone());
@@ -1259,194 +1207,6 @@ impl LayerRuntimeManager {
     }
 }
 
-/// Защищает preview-FPS: только конечные положительные значения, зажатые в разумный
-/// диапазон. Невалидный вход → 30 fps (как `default_fps`).
-pub fn sanitize_preview_fps(fps: f64) -> f64 {
-    if fps.is_finite() && fps > 0.0 {
-        fps.clamp(1.0, 240.0)
-    } else {
-        30.0
-    }
-}
-
-fn video_sync_lag_sec(mode: PreviewSyncMode, fps: f64) -> Option<f64> {
-    let fps = if fps.is_finite() && fps > 0.0 {
-        fps
-    } else {
-        30.0
-    };
-    match mode {
-        PreviewSyncMode::Smooth => None,
-        PreviewSyncMode::Balanced => {
-            Some((BALANCED_VIDEO_SYNC_LAG_FRAMES / fps).min(BALANCED_VIDEO_SYNC_LAG_SEC))
-        }
-        PreviewSyncMode::Strict => {
-            Some((STRICT_VIDEO_SYNC_LAG_FRAMES / fps).min(STRICT_VIDEO_SYNC_LAG_SEC))
-        }
-    }
-}
-
-fn has_loaded_runtime(kind: LayerKind) -> bool {
-    matches!(kind, LayerKind::Video | LayerKind::Image | LayerKind::Svg)
-}
-
-/// Ids of layers acting as the FROM side of a transition active at timeline time `t`.
-/// The transition overlap lives in the *incoming* clip's `transition_in` window, so the
-/// outgoing clip no longer `covers(t)` yet must keep rendering (it is sampled by the
-/// transition shader). Shared by `seek`/`refresh_display` so both keep the outgoing
-/// clip alive and positioned in its tail material, consistent with `tick`.
-fn transition_from_ids(scene: &[SceneLayer], t: f64) -> HashSet<String> {
-    let mut ids = HashSet::new();
-    for layer in scene.iter() {
-        if !layer.covers(t) {
-            continue;
-        }
-        if let Some(t_in) = &layer.transition_in {
-            let local_t = t - layer.timeline_start_sec;
-            if local_t >= 0.0 && local_t < t_in.duration_sec {
-                if let Some(from_id) = &t_in.from_layer_id {
-                    ids.insert(from_id.clone());
-                }
-            }
-        }
-        if let Some(t_out) = &layer.transition_out {
-            let local_t = t - layer.timeline_start_sec;
-            let duration = layer.timeline_end_sec - layer.timeline_start_sec;
-            let out_start = (duration - t_out.duration_sec).max(0.0);
-            if local_t >= out_start && local_t < duration {
-                if let Some(from_id) = &t_out.from_layer_id {
-                    ids.insert(from_id.clone());
-                }
-            }
-        }
-    }
-    ids
-}
-
-fn is_refreshable_display_runtime(kind: LayerKind) -> bool {
-    matches!(kind, LayerKind::Video | LayerKind::Image | LayerKind::Svg)
-}
-
-/// Пересекает ли timeline-интервал слоя окно удержания `[t - BEHIND, t + AHEAD]`.
-/// Используется для вытеснения далёких рантаймов во время воспроизведения.
-fn layer_near_playhead(layer: &SceneLayer, t: f64, prewarm_lookahead_sec: f64) -> bool {
-    let keep_ahead = RUNTIME_KEEP_AHEAD_SEC.max(prewarm_lookahead_sec + 1.0);
-    layer.timeline_start_sec < t + keep_ahead
-        && layer.timeline_end_sec > t - RUNTIME_KEEP_BEHIND_SEC
-}
-
-fn sanitize_transport_speed(speed: f64) -> f64 {
-    if speed.is_finite() && speed != 0.0 {
-        speed.clamp(-100.0, 100.0)
-    } else {
-        1.0
-    }
-}
-
-fn scaled_prewarm_lookahead_sec(playback_speed: f64) -> f64 {
-    VIDEO_PREWARM_LOOKAHEAD_SEC * sanitize_transport_speed(playback_speed).abs().max(1.0)
-}
-
-fn allows_stale_video_fallback(mode: PreviewSyncMode) -> bool {
-    matches!(mode, PreviewSyncMode::Smooth | PreviewSyncMode::Balanced)
-}
-
-fn frame_cache_budget_bytes(
-    mode: NativeFrameCacheMode,
-    custom_mb: u32,
-    media_size: (u32, u32),
-    fps: f64,
-    concurrent_video_layers: usize,
-) -> usize {
-    let base = match mode {
-        NativeFrameCacheMode::Low => LOW_CACHE_BUDGET_BYTES,
-        NativeFrameCacheMode::Balanced => BALANCED_CACHE_BUDGET_BYTES,
-        NativeFrameCacheMode::High => HIGH_CACHE_BUDGET_BYTES,
-        NativeFrameCacheMode::Custom => (custom_mb as usize).saturating_mul(MB),
-        NativeFrameCacheMode::Auto => {
-            let frame_bytes = (media_size.0 as usize)
-                .saturating_mul(media_size.1 as usize)
-                .saturating_mul(4)
-                .max(1);
-            let fps = if fps.is_finite() && fps > 0.0 {
-                fps
-            } else {
-                30.0
-            };
-            let target_frames =
-                ((fps * AUTO_CACHE_TARGET_WINDOW_SEC).ceil() as usize).max(AUTO_CACHE_MIN_FRAMES);
-            frame_bytes
-                .saturating_mul(target_frames)
-                .clamp(BALANCED_CACHE_BUDGET_BYTES, AUTO_CACHE_MAX_BYTES)
-        }
-    };
-    // Treat the configured budget as a GLOBAL pool split across video layers that
-    // are on screen at the same time, so total decoded-frame memory stays bounded
-    // on multicam timelines (without it, N simultaneous 4K layers could each hold
-    // the full budget → multiple GB). Sequential clips on a track never overlap, so
-    // the divisor is 1 for the common single-clip-at-a-time case (no reduction).
-    // The per-layer `VideoFrameCache` still floors at its own MIN_FRAMES, so each
-    // layer keeps a usable scrub/lookahead window regardless of the split.
-    base / concurrent_video_layers.max(1)
-}
-
-/// Maximum number of video layers simultaneously active at any instant *within the
-/// `[lo, hi)` window* (typically one clip's own timeline interval). This is the right
-/// divisor for splitting that clip's frame-cache budget: it is 1 for clips laid out
-/// sequentially (only one decodes while it is on-screen) and rises only for genuine
-/// multicam / transition overlaps that actually coincide with the clip — an unrelated
-/// overlap elsewhere on the timeline no longer penalises it. Computed with an interval
-/// sweep over each layer's interval clipped to `[lo, hi)`.
-fn max_concurrent_video_layers_within(scene: &[SceneLayer], lo: f64, hi: f64) -> usize {
-    let mut events: Vec<(f64, i32)> = Vec::new();
-    for layer in scene.iter().filter(|l| l.kind == LayerKind::Video) {
-        let s = layer.timeline_start_sec.max(lo);
-        let e = layer.timeline_end_sec.min(hi);
-        if e <= s {
-            continue;
-        }
-        events.push((s, 1));
-        events.push((e, -1));
-    }
-    // At an equal timestamp, process ends (-1) before starts (+1): a clip ending
-    // exactly where the next begins does not count as an overlap.
-    events.sort_by(|a, b| {
-        a.0.partial_cmp(&b.0)
-            .unwrap_or(std::cmp::Ordering::Equal)
-            .then(a.1.cmp(&b.1))
-    });
-    let mut current = 0i32;
-    let mut max = 0i32;
-    for (_, delta) in events {
-        current += delta;
-        max = max.max(current);
-    }
-    (max.max(1)) as usize
-}
-
-/// Целевое разрешение растеризации SVG: длинная сторона сцены × preview_scale.
-/// `None`/невалидный scale → длинная сторона сцены без даунскейла. Если размер
-/// сцены ещё неизвестен — дефолт 1920 (перерастеризация произойдёт при пересборке
-/// рантайма после прихода реального scene_size).
-fn svg_target_long_edge(scene_size: (u32, u32), preview_scale: Option<f32>) -> u32 {
-    let long = scene_size.0.max(scene_size.1);
-    let long = if long == 0 { 1920 } else { long };
-    let scale = preview_scale.filter(|s| *s > 0.0).unwrap_or(1.0);
-    ((long as f32 * scale).round() as u32).max(1)
-}
-
-// ---------------------------------------------------------------------------
-// Вспомогательные функции
-// ---------------------------------------------------------------------------
-
-/// Сравнение scale с трактовкой `None == Some(1.0)` (нет даунскейла).
-/// Без этого первый приход `Some(1.0)` после `None` сбрасывал бы живые декодеры.
-fn approx_eq_opt_scale(a: Option<f32>, b: Option<f32>) -> bool {
-    let a = a.unwrap_or(1.0);
-    let b = b.unwrap_or(1.0);
-    (a - b).abs() < 1e-4
-}
-
 #[cfg(test)]
 mod tests {
     use super::allows_stale_video_fallback;
@@ -1455,8 +1215,8 @@ mod tests {
     use super::svg_target_long_edge;
     use super::video_sync_lag_sec;
     use super::{BALANCED_VIDEO_SYNC_LAG_SEC, STRICT_VIDEO_SYNC_LAG_SEC};
-    use crate::monitor::scene::{LayerKind, PreviewSyncMode, SceneLayer};
     use crate::monitor::scene::build::layer_with_auto_source_rotation;
+    use crate::monitor::scene::{LayerKind, PreviewSyncMode, SceneLayer};
 
     #[test]
     fn layer_near_playhead_keeps_window_around_t() {
@@ -1714,6 +1474,29 @@ mod tests {
             0.0,
             VIDEO_PREWARM_LOOKAHEAD_SEC * 4.0
         ));
+    }
+
+    #[test]
+    fn active_layer_indices_include_transition_source_once() {
+        use super::active_layer_indices;
+        use crate::monitor::scene::SceneTransition;
+
+        let outgoing = video_layer_span("outgoing", 0.0, 5.0);
+        let mut incoming = video_layer_span("incoming", 5.0, 10.0);
+        incoming.transition_in = Some(SceneTransition {
+            transition_type: "dissolve".into(),
+            duration_sec: 1.0,
+            curve: None,
+            from_layer_id: Some(outgoing.id.clone()),
+            mode: None,
+            spec: None,
+        });
+
+        let active = active_layer_indices(&[outgoing, incoming], 5.5);
+
+        assert_eq!(active.len(), 2);
+        assert!(active.contains(&0));
+        assert!(active.contains(&1));
     }
 
     fn video_layer_span(id: &str, start: f64, end: f64) -> SceneLayer {

@@ -27,36 +27,22 @@ use super::effects::{EffectPipeline, EffectSource, EffectSpec};
 use super::gpu_utils::{create_readback_target, create_rgba8_texture, image_pixels_rgba8};
 use super::readback::*;
 use super::render_telemetry::{RenderPrepareTiming, RenderStageTiming, RenderTelemetry};
-use super::text_engine::{render_text_layer_with_gpu_shadow, text_layer_needs_gpu_shadow};
 use super::scene::{
     BlendMode, Layer, LayerKind, RasterGpuSource, RasterSource, Transform, TransitionEdge,
     TransitionSource,
 };
+use super::text_engine::{render_text_layer_with_gpu_shadow, text_layer_needs_gpu_shadow};
 use super::transitions::TransitionPipeline;
 
-/// Закешированный таргет offscreen-рендера. Пересоздаётся только при изменении размера.
-/// Без кеша мы аллоцировали бы 8-16 МБ wgpu Buffer + текстуру на каждый кадр (60 FPS = 480-960 МБ/с
-/// allocations), что давало взрывной рост памяти и нагрузку на CPU.
-struct OffscreenTarget {
-    width: u32,
-    height: u32,
-    texture: wgpu::Texture,
-    view: wgpu::TextureView,
-    buffer: wgpu::Buffer,
-    aligned_row_bytes: usize,
-}
+mod device_context;
+mod materializer;
+
+use device_context::{DeviceContext, OffscreenTarget};
 
 pub struct Compositor {
-    render_cx: RenderContext,
-    renderers: HashMap<usize, Renderer>,
+    devices: DeviceContext,
     effect_pipelines: HashMap<usize, EffectPipeline>,
     transition_pipelines: HashMap<usize, TransitionPipeline>,
-    /// Offscreen target — отдельный на каждый wgpu device. Текстура и readback-buffer
-    /// привязаны к конкретному `wgpu::Device`; шарить один `Option` между device'ами
-    /// приводило бы к молотьбе rebuild'ов при чередовании (preview ↔ export-device).
-    offscreen: HashMap<usize, OffscreenTarget>,
-    /// Кэш скомпилированных GPU пайплайнов (шейдеров) для каждого wgpu-устройства.
-    pipeline_caches: HashMap<usize, wgpu::PipelineCache>,
     /// Reusable scratch buffer for image registration, avoiding per-frame allocations.
     scratch_images: Vec<ImageData>,
     render_telemetry: RenderTelemetry,
@@ -65,12 +51,9 @@ pub struct Compositor {
 impl Compositor {
     pub fn new() -> Self {
         Self {
-            render_cx: RenderContext::new(),
-            renderers: HashMap::new(),
+            devices: DeviceContext::new(),
             effect_pipelines: HashMap::new(),
             transition_pipelines: HashMap::new(),
-            offscreen: HashMap::new(),
-            pipeline_caches: HashMap::new(),
             scratch_images: Vec::with_capacity(16),
             render_telemetry: RenderTelemetry::new(),
         }
@@ -83,6 +66,7 @@ impl Compositor {
         height: u32,
     ) -> Result<RenderSurface<'static>> {
         let surface = self
+            .devices
             .render_cx
             .create_surface(
                 window,
@@ -102,7 +86,8 @@ impl Compositor {
         width: u32,
         height: u32,
     ) {
-        self.render_cx
+        self.devices
+            .render_cx
             .resize_surface(surface, width.max(1), height.max(1));
     }
 
@@ -115,13 +100,15 @@ impl Compositor {
     ) -> Result<()> {
         let width = surface.config.width;
         let height = surface.config.height;
-        let device_handle = &self.render_cx.devices[surface.dev_id];
+        let device_handle = &self.devices.render_cx.devices[surface.dev_id];
 
         let surface_texture = match surface.surface.get_current_texture() {
             wgpu::CurrentSurfaceTexture::Success(t)
             | wgpu::CurrentSurfaceTexture::Suboptimal(t) => t,
             wgpu::CurrentSurfaceTexture::Outdated | wgpu::CurrentSurfaceTexture::Lost => {
-                self.render_cx.resize_surface(surface, width, height);
+                self.devices
+                    .render_cx
+                    .resize_surface(surface, width, height);
                 return Ok(());
             }
             other => {
@@ -131,6 +118,7 @@ impl Compositor {
         };
 
         let renderer = self
+            .devices
             .renderers
             .get_mut(&surface.dev_id)
             .ok_or_else(|| anyhow!("no renderer for device {}", surface.dev_id))?;
@@ -240,63 +228,14 @@ impl Compositor {
         viewport_h: u32,
         registered_images: &mut Vec<ImageData>,
     ) -> Result<(VelloScene, RenderPrepareTiming)> {
-        let device_handle = &self.render_cx.devices[dev_id];
-        let device = device_handle.device.clone();
-        let queue = device_handle.queue.clone();
-        let materialize_started = Instant::now();
-        let effective_scene =
-            self.materialize_transitions_and_effects(dev_id, scene, &device, &queue)?;
-        let effective_scene =
-            self.materialize_video_tracks(dev_id, &effective_scene, &device, &queue)?;
-        let effective_scene =
-            self.materialize_adjustment_clips(dev_id, &effective_scene, &device, &queue)?;
-        let effective_scene =
-            self.materialize_video_tracks(dev_id, &effective_scene, &device, &queue)?;
-        let materialize_ms = elapsed_ms(materialize_started);
-        let build_started = Instant::now();
-        let vello = self.build_vello_scene_from_materialized(
+        materializer::prepare_vello_scene(
+            self,
             dev_id,
-            &effective_scene,
+            scene,
             viewport_w,
             viewport_h,
             registered_images,
-        )?;
-        let vello = if !effective_scene.master_effects.is_empty() {
-            let texture = self.render_to_owned_texture(
-                dev_id,
-                &vello,
-                viewport_w,
-                viewport_h,
-                effective_scene.background,
-            )?;
-            let (processed, _) = self.apply_effects_to_texture(
-                dev_id,
-                &device,
-                &queue,
-                &EffectSource::Gpu(Arc::new(crate::media::SharedTexture::new_shared(Arc::new(
-                    texture,
-                )))),
-                &effective_scene.master_effects,
-                false,
-                effective_scene.effect_quality,
-            )?;
-            let mut out = VelloScene::new();
-            let img = self
-                .register_texture_for_vello(dev_id, &*processed, registered_images)
-                .map_err(|e| anyhow!("register master-effect texture: {e:?}"))?;
-            out.draw_image(&img, vello::kurbo::Affine::IDENTITY);
-            out
-        } else {
-            vello
-        };
-        let build_vello_ms = elapsed_ms(build_started);
-        Ok((
-            vello,
-            RenderPrepareTiming {
-                materialize_ms,
-                build_vello_ms,
-            },
-        ))
+        )
     }
 
     fn build_vello_scene_from_materialized(
@@ -366,8 +305,7 @@ impl Compositor {
     ) -> Result<Option<EffectSource>> {
         let source = match source_kind {
             TransitionSource::Layer(id) => {
-                let Some(layer) = layers.iter().find(|layer| &layer.id == id).cloned()
-                else {
+                let Some(layer) = layers.iter().find(|layer| &layer.id == id).cloned() else {
                     return Ok(None);
                 };
                 self.transition_layer_source(dev_id, scene, &layer, device, queue)?
@@ -390,24 +328,12 @@ impl Compositor {
                     device,
                     queue,
                 )?;
-                let background_scene = self.materialize_video_tracks(
-                    dev_id,
-                    &background_scene,
-                    device,
-                    queue,
-                )?;
-                let background_scene = self.materialize_adjustment_clips(
-                    dev_id,
-                    &background_scene,
-                    device,
-                    queue,
-                )?;
-                let background_scene = self.materialize_video_tracks(
-                    dev_id,
-                    &background_scene,
-                    device,
-                    queue,
-                )?;
+                let background_scene =
+                    self.materialize_video_tracks(dev_id, &background_scene, device, queue)?;
+                let background_scene =
+                    self.materialize_adjustment_clips(dev_id, &background_scene, device, queue)?;
+                let background_scene =
+                    self.materialize_video_tracks(dev_id, &background_scene, device, queue)?;
                 let texture = self.render_domain_scene_to_owned_texture(
                     dev_id,
                     &background_scene,
@@ -415,9 +341,9 @@ impl Compositor {
                     scene.height,
                     Color::TRANSPARENT,
                 )?;
-                EffectSource::Gpu(Arc::new(crate::media::SharedTexture::new_shared(
-                    Arc::new(texture),
-                )))
+                EffectSource::Gpu(Arc::new(crate::media::SharedTexture::new_shared(Arc::new(
+                    texture,
+                ))))
             }
             TransitionSource::Transparent => {
                 let transparent_scene = super::scene::Scene {
@@ -437,9 +363,9 @@ impl Compositor {
                     scene.height,
                     Color::TRANSPARENT,
                 )?;
-                EffectSource::Gpu(Arc::new(crate::media::SharedTexture::new_shared(
-                    Arc::new(texture),
-                )))
+                EffectSource::Gpu(Arc::new(crate::media::SharedTexture::new_shared(Arc::new(
+                    texture,
+                ))))
             }
         };
         Ok(Some(source))
@@ -465,7 +391,13 @@ impl Compositor {
                 }
 
                 let Some(source) = self.resolve_transition_source(
-                    dev_id, scene, &source_kind, layers, i, device, queue,
+                    dev_id,
+                    scene,
+                    &source_kind,
+                    layers,
+                    i,
+                    device,
+                    queue,
                 )?
                 else {
                     continue;
@@ -478,7 +410,7 @@ impl Compositor {
                     TransitionEdge::Out => (&current, &source),
                 };
 
-                let cache = self.pipeline_caches.get(&dev_id);
+                let cache = self.devices.pipeline_caches.get(&dev_id);
                 let pipeline = self
                     .transition_pipelines
                     .entry(dev_id)
@@ -616,10 +548,8 @@ impl Compositor {
                     scene.effect_quality,
                 )?;
                 let mut next = layer.clone();
-                next.transform = Transform::center_fit(
-                    (scene.width, scene.height),
-                    (scene.width, scene.height),
-                );
+                next.transform =
+                    Transform::center_fit((scene.width, scene.height), (scene.width, scene.height));
                 next.kind = LayerKind::Raster {
                     natural_size: (scene.width, scene.height),
                     source: RasterSource::GpuTexture(framed),
@@ -770,7 +700,9 @@ impl Compositor {
             let member_positions: Vec<usize> = layers
                 .iter()
                 .enumerate()
-                .filter_map(|(index, layer)| member_ids.contains(layer.id.as_str()).then_some(index))
+                .filter_map(|(index, layer)| {
+                    member_ids.contains(layer.id.as_str()).then_some(index)
+                })
                 .collect();
             let Some(insert_at) = member_positions.first().copied() else {
                 continue;
@@ -806,9 +738,9 @@ impl Compositor {
                 scene.height,
                 Color::TRANSPARENT,
             )?;
-            let source = EffectSource::Gpu(Arc::new(
-                crate::media::SharedTexture::new_shared(Arc::new(texture)),
-            ));
+            let source = EffectSource::Gpu(Arc::new(crate::media::SharedTexture::new_shared(
+                Arc::new(texture),
+            )));
             let output = if track.effects.is_empty() {
                 match source {
                     EffectSource::Gpu(texture) => texture,
@@ -1087,7 +1019,7 @@ impl Compositor {
         fg_offset_y: f32,
         quality: crate::compositor::effects::EffectQuality,
     ) -> Result<Arc<crate::media::SharedTexture>> {
-        let cache = self.pipeline_caches.get(&dev_id);
+        let cache = self.devices.pipeline_caches.get(&dev_id);
         let pipeline = self
             .effect_pipelines
             .entry(dev_id)
@@ -1132,7 +1064,7 @@ impl Compositor {
         enable_padding: bool,
         quality: crate::compositor::effects::EffectQuality,
     ) -> Result<(Arc<crate::media::SharedTexture>, u32)> {
-        let cache = self.pipeline_caches.get(&dev_id);
+        let cache = self.devices.pipeline_caches.get(&dev_id);
         let pipeline = self
             .effect_pipelines
             .entry(dev_id)
@@ -1165,6 +1097,7 @@ impl Compositor {
         // Источник всегда имеет COPY_SRC (видеокадры из decode_thread, выходы
         // effect/transition-пайплайнов) — требование `register_texture` соблюдено.
         let renderer = self
+            .devices
             .renderers
             .get_mut(&dev_id)
             .ok_or_else(|| anyhow!("no renderer for device {}", dev_id))?;
@@ -1174,7 +1107,7 @@ impl Compositor {
     }
 
     fn unregister_images(&mut self, dev_id: usize, images: &mut Vec<ImageData>) {
-        let Some(renderer) = self.renderers.get_mut(&dev_id) else {
+        let Some(renderer) = self.devices.renderers.get_mut(&dev_id) else {
             images.clear();
             return;
         };
@@ -1196,25 +1129,27 @@ impl Compositor {
     /// Возвращает первое существующее `dev_id` или инициализирует новое (нужно для offscreen-рендера,
     /// когда нет surface). Здесь мы шарим device между surface и offscreen — у Vello это OK.
     pub fn ensure_offscreen_device(&mut self) -> Result<usize> {
-        if let Some(dev_id) = self.renderers.keys().copied().next() {
+        if let Some(dev_id) = self.devices.renderers.keys().copied().next() {
             return Ok(dev_id);
         }
         // Создаём device через RenderContext без surface (адаптер выберется автоматически).
-        let dev_id = pollster::block_on(self.render_cx.device(None))
+        let dev_id = pollster::block_on(self.devices.render_cx.device(None))
             .ok_or_else(|| anyhow!("vello device: no compatible adapter"))?;
         self.ensure_renderer(dev_id)?;
         Ok(dev_id)
     }
 
     pub fn device(&self, dev_id: usize) -> Option<wgpu::Device> {
-        self.render_cx
+        self.devices
+            .render_cx
             .devices
             .get(dev_id)
             .map(|dh| dh.device.clone())
     }
 
     pub fn queue(&self, dev_id: usize) -> Option<wgpu::Queue> {
-        self.render_cx
+        self.devices
+            .render_cx
             .devices
             .get(dev_id)
             .map(|dh| dh.queue.clone())
@@ -1231,20 +1166,20 @@ impl Compositor {
         height: u32,
         base_color: Color,
     ) -> Result<Vec<u8>> {
-        let device_handle = &self.render_cx.devices[dev_id];
+        let device_handle = &self.devices.render_cx.devices[dev_id];
         let device = &device_handle.device;
         let queue = &device_handle.queue;
 
         // (Пере)создаём offscreen target только при изменении размера. Ключ — dev_id,
         // чтобы при работе с несколькими device'ами они не вытесняли друг друга.
-        let need_rebuild = match self.offscreen.get(&dev_id) {
+        let need_rebuild = match self.devices.offscreen.get(&dev_id) {
             Some(t) => t.width != width || t.height != height,
             None => true,
         };
         if need_rebuild {
             let (texture, view, buffer, aligned_row_bytes) =
                 create_readback_target(device, "monitor", width, height);
-            self.offscreen.insert(
+            self.devices.offscreen.insert(
                 dev_id,
                 OffscreenTarget {
                     width,
@@ -1257,11 +1192,13 @@ impl Compositor {
             );
         }
         let target = self
+            .devices
             .offscreen
             .get(&dev_id)
             .ok_or_else(|| anyhow!("offscreen target missing for device {dev_id}"))?;
 
         let renderer = self
+            .devices
             .renderers
             .get_mut(&dev_id)
             .ok_or_else(|| anyhow!("no renderer for device {}", dev_id))?;
@@ -1336,7 +1273,7 @@ impl Compositor {
         height: u32,
         base_color: Color,
     ) -> Result<wgpu::Texture> {
-        let device_handle = &self.render_cx.devices[dev_id];
+        let device_handle = &self.devices.render_cx.devices[dev_id];
         let device = &device_handle.device;
         let queue = &device_handle.queue;
         let texture = create_rgba8_texture(
@@ -1350,6 +1287,7 @@ impl Compositor {
         );
         let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
         let renderer = self
+            .devices
             .renderers
             .get_mut(&dev_id)
             .ok_or_else(|| anyhow!("no renderer for device {}", dev_id))?;
@@ -1392,13 +1330,14 @@ impl Compositor {
     }
 
     fn ensure_renderer(&mut self, dev_id: usize) -> Result<()> {
-        if self.renderers.contains_key(&dev_id) {
+        if self.devices.renderers.contains_key(&dev_id) {
             return Ok(());
         }
-        let device_handle = &self.render_cx.devices[dev_id];
+        let device_handle = &self.devices.render_cx.devices[dev_id];
 
         // Получаем или создаем PipelineCache для этого устройства
         let pipeline_cache = self
+            .devices
             .pipeline_caches
             .entry(dev_id)
             .or_insert_with(|| {
@@ -1426,7 +1365,7 @@ impl Compositor {
         )
         .map_err(|e| anyhow!("vello renderer: {e:?}"))
         .context("Compositor::ensure_renderer")?;
-        self.renderers.insert(dev_id, renderer);
+        self.devices.renderers.insert(dev_id, renderer);
         Ok(())
     }
 }
@@ -1477,7 +1416,7 @@ impl Compositor {
         height: u32,
         depth: usize,
     ) -> Result<PipelinedReadback> {
-        let device_handle = &self.render_cx.devices[dev_id];
+        let device_handle = &self.devices.render_cx.devices[dev_id];
         Ok(PipelinedReadback::new(
             &device_handle.device,
             dev_id,
@@ -1503,12 +1442,13 @@ impl Compositor {
             self.drain_slot(session, slot_idx)?;
         }
 
-        let device_handle = &self.render_cx.devices[session.dev_id];
+        let device_handle = &self.devices.render_cx.devices[session.dev_id];
         let device = &device_handle.device;
         let queue = &device_handle.queue;
         let slot = &mut session.slots[slot_idx];
 
         let renderer = self
+            .devices
             .renderers
             .get_mut(&session.dev_id)
             .ok_or_else(|| anyhow!("no renderer for device {}", session.dev_id))?;
@@ -1619,7 +1559,7 @@ impl Compositor {
         session: &mut PipelinedReadback,
         slot_idx: usize,
     ) -> Result<()> {
-        let device_handle = &self.render_cx.devices[session.dev_id];
+        let device_handle = &self.devices.render_cx.devices[session.dev_id];
         let device = &device_handle.device;
         let slot = &mut session.slots[slot_idx];
 

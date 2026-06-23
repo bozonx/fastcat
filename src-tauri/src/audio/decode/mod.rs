@@ -11,9 +11,48 @@ use crate::audio::resample::{
 };
 use crate::audio::shared::{
     make_symphonia_decoder, open_symphonia_audio, AudioRenderTarget, AudioShared,
-    AudioSourceMetadata, AudioWindow, FfmpegStreamSource, LayerDecoder, SymphoniaDecoder,
-    REFILL_MARGIN_SEC, WINDOW_SEC,
+    AudioSourceMetadata, REFILL_MARGIN_SEC, WINDOW_SEC,
 };
+
+mod window_cache;
+
+#[cfg(test)]
+use crate::audio::shared::AudioWindow;
+#[cfg(test)]
+use window_cache::WINDOW_FILL_MAX_CONCURRENCY;
+pub(crate) use window_cache::{spawn_window_fill, WindowFillPriority};
+
+/// Native streaming decoder backed by Symphonia and a cached rubato resampler.
+pub(crate) struct SymphoniaDecoder {
+    path: String,
+    format: Box<dyn symphonia::core::formats::FormatReader>,
+    decoder: Box<dyn symphonia::core::codecs::Decoder>,
+    track_id: u32,
+    source_rate: u32,
+    channels: usize,
+    time_base: symphonia::core::units::TimeBase,
+    resampler: Option<Box<rubato::SincFixedIn<f32>>>,
+    last_resample_ratio: f64,
+    resampler_primed: bool,
+    last_decode_end_sec: f64,
+    resample_remainder: Vec<Vec<f32>>,
+    resample_output_remainder: Vec<f32>,
+}
+
+/// Fallback streaming decoder backed by one long-lived ffmpeg process.
+pub(crate) struct FfmpegStreamSource {
+    path: String,
+    sample_rate: u32,
+    channels: usize,
+    next_source_sec: f64,
+    reader: Option<crate::audio::ffmpeg_decode::FfmpegPcmReader>,
+}
+
+/// Stateful per-layer streaming decoder selected once when its source is opened.
+pub(crate) enum LayerDecoder {
+    Symphonia(SymphoniaDecoder),
+    Ffmpeg(FfmpegStreamSource),
+}
 
 /// Fraction of the current source chunk tolerated as scheduling jitter before
 /// the streaming decoder treats the request as a discontinuity and reseeks.
@@ -1077,8 +1116,8 @@ pub(crate) fn decode_audio_chunk(params: DecodeAudioChunkParams<'_>) -> Result<V
             let full_window_frames = (WINDOW_SEC * sample_rate as f64) as usize;
             let window_reached_eof = end.saturating_sub(win_start)
                 < full_window_frames.saturating_sub(sample_rate as usize);
-            let reached_source_end = window_reached_eof
-                || source_end_frame.is_some_and(|source_end| end >= source_end);
+            let reached_source_end =
+                window_reached_eof || source_end_frame.is_some_and(|source_end| end >= source_end);
             // Keep exactly ONE refill in flight per layer. The target tracks the moving
             // playhead, so a per-start dedup in `spawn_window_fill` never matched during
             // the margin window and the burst spawned several overlapping `WINDOW_SEC`
@@ -1134,177 +1173,6 @@ fn source_end_frame_for_layer(
         return None;
     }
     Some(((layer.source_start_sec + layer.source_range_duration_sec) * sample_rate as f64) as usize)
-}
-
-/// Max concurrent background window-fill decodes. Each ranged decode reads from a
-/// (possibly multi-GB) container, so this is kept small to avoid thrashing the disk
-/// badly enough that the realtime producer's inline streaming reads miss the 50ms
-/// chunk deadline (decode-behind → ring drain → crackle).
-///
-/// Set to 2 (was 1): with a single slot, a project with several audio layers all
-/// missing at once on Play/seek filled their windows strictly one-at-a-time, so
-/// every not-yet-windowed layer fell back to inline streaming on the RT producer
-/// thread every chunk. For many simultaneous tracks that sustained inline load was
-/// itself a deadline risk. Two slots roughly halve the worst-case time before all
-/// live layers are on the memcpy fast path while still bounding disk contention.
-/// Speculative (future-clip) prewarm is gated to never run while any fill is active
-/// (see `spawn_window_fill`), so it can't consume these slots ahead of live work.
-pub(crate) const WINDOW_FILL_MAX_CONCURRENCY: usize = 2;
-
-/// Requests a bounded background decode of one `WINDOW_SEC` look-ahead window for
-/// `layer_id`, starting at `target_start_frame` (target-rate frames). Bounded
-/// memory: it decodes only the window, never the whole file. Idempotent and
-/// concurrency-gated; safe to call every chunk (the streaming/refill paths do).
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) enum WindowFillPriority {
-    Live,
-    Speculative,
-}
-
-pub(crate) fn spawn_window_fill(
-    shared: &Arc<(Mutex<AudioShared>, Condvar)>,
-    layer_id: &str,
-    path: &str,
-    target_start_frame: usize,
-    sample_rate: u32,
-    output_channels: usize,
-    priority: WindowFillPriority,
-) {
-    {
-        let mut state = shared.0.lock();
-        // Already filling this exact start for this layer → nothing to do. (We do NOT
-        // skip when a resident window already covers the start: refill-ahead
-        // deliberately re-fills an overlapping, forward-slid window so the look-ahead
-        // never runs out — the concurrency gate below still prevents pile-ups.)
-        if state.window_fill_in_flight.get(layer_id) == Some(&target_start_frame) {
-            return;
-        }
-        // Future-clip prewarm is optional and must never push past the concurrency
-        // cap. Previously it was blocked whenever ANY fill was active, so during
-        // steady playback (where refill-ahead intermittently holds one slot) it
-        // almost never ran — and clips entering together at a section boundary fell
-        // to inline streaming on the realtime producer. Now it may use a genuinely
-        // FREE slot (below the cap) so the second slot actually serves its purpose;
-        // a live miss/refill that arrives while both slots are busy still has its
-        // documented safe fallback (inline streaming this one chunk + retry next).
-        if priority == WindowFillPriority::Speculative
-            && state.active_window_fill_count >= WINDOW_FILL_MAX_CONCURRENCY
-        {
-            return;
-        }
-        // Throttle concurrency. When the slot is full we don't spawn; the caller
-        // re-requests next chunk, so the actively-playing layer is retried as soon
-        // as a running fill finishes.
-        if state.active_window_fill_count >= WINDOW_FILL_MAX_CONCURRENCY {
-            return;
-        }
-        state
-            .window_fill_in_flight
-            .insert(layer_id.to_string(), target_start_frame);
-        state.active_window_fill_count += 1;
-    }
-
-    let shared_thread = shared.clone();
-    let layer_id_thread = layer_id.to_string();
-    let path_thread = path.to_string();
-    let spawned = std::thread::Builder::new()
-        .name("fastcat-audio-window-fill".into())
-        .spawn(move || {
-            window_fill(
-                shared_thread,
-                layer_id_thread,
-                path_thread,
-                target_start_frame,
-                sample_rate,
-                output_channels,
-            );
-        });
-    if spawned.is_err() {
-        // Spawn failed (e.g. thread limit); release the in-flight marker + slot so a
-        // later chunk can retry instead of streaming forever.
-        let mut state = shared.0.lock();
-        if state.window_fill_in_flight.get(layer_id) == Some(&target_start_frame) {
-            state.window_fill_in_flight.remove(layer_id);
-        }
-        state.active_window_fill_count = state.active_window_fill_count.saturating_sub(1);
-        log::warn!("[audio] failed to spawn audio window fill for {path}");
-    }
-}
-
-/// RAII release of a window fill's in-flight marker + concurrency slot. Only clears
-/// the marker if it still matches THIS fill's start (a newer seek may have replaced
-/// it with a different start that another fill now owns).
-struct WindowFillGuard {
-    shared: Arc<(Mutex<AudioShared>, Condvar)>,
-    layer_id: String,
-    start_frame: usize,
-}
-
-impl Drop for WindowFillGuard {
-    fn drop(&mut self) {
-        let mut state = self.shared.0.lock();
-        if state.window_fill_in_flight.get(&self.layer_id) == Some(&self.start_frame) {
-            state.window_fill_in_flight.remove(&self.layer_id);
-        }
-        state.active_window_fill_count = state.active_window_fill_count.saturating_sub(1);
-        self.shared.1.notify_all();
-    }
-}
-
-fn window_fill(
-    shared: Arc<(Mutex<AudioShared>, Condvar)>,
-    layer_id: String,
-    path: String,
-    target_start_frame: usize,
-    sample_rate: u32,
-    output_channels: usize,
-) {
-    let _guard = WindowFillGuard {
-        shared: shared.clone(),
-        layer_id: layer_id.clone(),
-        start_frame: target_start_frame,
-    };
-
-    // A path proven to have no audio track stays silent for the whole session:
-    // skip the decode entirely (no window stored → the miss path serves silence).
-    if path_known_silent(&path) {
-        return;
-    }
-
-    let start_sec = target_start_frame as f64 / sample_rate.max(1) as f64;
-    let result = decode_range_symphonia(&path, start_sec, WINDOW_SEC, sample_rate, output_channels);
-    match result {
-        Ok(samples) if !samples.is_empty() => {
-            let window = AudioWindow {
-                path: path.clone(),
-                source_start_frame: target_start_frame,
-                sample_rate,
-                channels: output_channels,
-                samples: Arc::new(samples),
-            };
-            let mut state = shared.0.lock();
-            // Only store if this fill still owns the in-flight slot for this start —
-            // a newer seek may have superseded us; clobbering would replace a fresher
-            // window with stale audio.
-            if state.window_fill_in_flight.get(&layer_id) == Some(&target_start_frame) {
-                state.layer_windows.insert(layer_id, window);
-                shared.1.notify_all();
-            }
-        }
-        Ok(_) => {
-            // Empty range (seek past end / no frames). Leave no window; the miss path
-            // keeps streaming silence/tail for this region.
-        }
-        Err(error) => {
-            // A video without an audio track is silence, not a failure: remember
-            // the path so neither this fill nor the live mix re-probes it.
-            if is_no_audio_track_error(&error) {
-                remember_silent_path(&path);
-            } else {
-                log::warn!("[audio] audio window fill failed for {path}: {error:?}");
-            }
-        }
-    }
 }
 
 fn is_audio_seek_past_end(error: &symphonia::core::errors::Error) -> bool {
