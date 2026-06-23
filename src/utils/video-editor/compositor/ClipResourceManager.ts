@@ -386,13 +386,18 @@ export class ClipResourceManager {
     clip: CompositorClip,
     previewEffectsEnabled = true,
   ) {
+    // The previously-bound frame is still referenced by `clip.imageSource.resource`.
+    // The `resize()` calls below force pixi to re-upload the *current* resource, so
+    // disposing the old frame before the new one is committed would make that upload
+    // read a closed VideoFrame ("video frame that doesn't have back resource" → the
+    // GPU texture is destroyed yet still used in submit). Defer disposal to `finally`,
+    // after every success/return path has swapped in the new resource.
+    let prevFrame: VideoFrame | null = null;
     try {
       const sampleObj = sample as { toVideoFrame?: () => VideoFrame };
       if (typeof sampleObj?.toVideoFrame === 'function') {
-        if (clip.lastVideoFrame) {
-          safeDispose(clip.lastVideoFrame);
-          clip.lastVideoFrame = null;
-        }
+        prevFrame = clip.lastVideoFrame;
+        clip.lastVideoFrame = null;
 
         const frame = sampleObj.toVideoFrame() as VideoFrame;
 
@@ -553,6 +558,11 @@ export class ClipResourceManager {
       }
     } catch (err) {
       log.warn('[VideoCompositor] VideoFrame path failed, falling back to canvas:', err);
+    } finally {
+      // The new frame is now committed as the texture resource (or we are about to
+      // switch the source over to the canvas fallback), so the old frame is no
+      // longer referenced by any pending GPU upload and is safe to release.
+      if (prevFrame) safeDispose(prevFrame);
     }
 
     await this.context.canvasFallbackRenderer.drawSampleToCanvas(sample, clip);
