@@ -6,28 +6,16 @@ import { runResilientWorkerFileIo } from '../../../workers/core/io-governor';
 import type { WorkerVideoPayloadItem } from '../../../composables/timeline/export/types';
 import type { VideoClipEffect } from '~/timeline/types';
 import type { MediaClipLoader, MediaClipLoaderMediabunny } from './MediaClipLoader';
-import type { RasterImageLoader } from './RasterImageLoader';
+import type { RasterImageLoader, MediaSourceLoaderDeps } from './RasterImageLoader';
 import type { TimelineClipDescriptor, TimelineClipLoader } from './TimelineClipLoader';
 import type { TimelineClipAssetLoader } from './TimelineClipAssetLoader';
 import type { ClipFactory } from './ClipFactory';
 import type { LayoutApplier } from './LayoutApplier';
 import type { CompositorClip, CompositorTrack } from './types';
 import { resolveBlendMode } from './types';
-import type { VectorImageRasterCacheResult } from '../worker-client';
 const log = createDevLogger('TimelineLoadOrchestrator');
 
-export interface TimelineLoadOrchestratorDeps {
-  getFileHandleByPath: (path: string) => Promise<FileSystemFileHandle | null>;
-  getFileByPath?: (path: string) => Promise<File | null>;
-  getCurrentProjectId?: () => Promise<string | null>;
-  ensureVectorImageRaster?: (params: {
-    projectId: string;
-    projectRelativePath: string;
-    width: number;
-    height: number;
-    sourceFileHandle: FileSystemFileHandle;
-  }) => Promise<VectorImageRasterCacheResult | null>;
-}
+export type TimelineLoadOrchestratorDeps = MediaSourceLoaderDeps;
 
 export interface TimelineLoadOrchestratorContext {
   timelineClipLoader: TimelineClipLoader;

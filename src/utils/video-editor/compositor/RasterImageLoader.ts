@@ -3,7 +3,12 @@ import { isSvgFile } from '../../svg';
 import { runResilientWorkerFileIo } from '../../../workers/core/io-governor';
 import type { VectorImageRasterCacheResult } from '../worker-client';
 
-export interface RasterImageLoaderDeps {
+/**
+ * Dependencies for resolving and rasterising a media source (file handle/blob
+ * lookup plus optional SVG → raster caching). Shared by every compositor media
+ * loader so the contract stays in one place.
+ */
+export interface MediaSourceLoaderDeps {
   getFileHandleByPath: (path: string) => Promise<FileSystemFileHandle | null>;
   getFileByPath?: (path: string) => Promise<File | null>;
   getCurrentProjectId?: () => Promise<string | null>;
@@ -15,6 +20,8 @@ export interface RasterImageLoaderDeps {
     sourceFileHandle: FileSystemFileHandle;
   }) => Promise<VectorImageRasterCacheResult | null>;
 }
+
+export type RasterImageLoaderDeps = MediaSourceLoaderDeps;
 
 export interface RasterImageLoaderContext {
   width: number;

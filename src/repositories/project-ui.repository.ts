@@ -77,6 +77,14 @@ const ProjectUiLayoutSchema = z.object({
   timelineHeights: z.record(z.string(), z.coerce.number()).catch({}),
 });
 
+const DEFAULT_UI_LAYOUT = {
+  cutPanels: null,
+  soundPanels: null,
+  splitSizes: {},
+  verticalSplitSizes: {},
+  timelineHeights: {},
+} as const;
+
 const ProjectUiExportSettingsSchema = z
   .object({
     exportType: z.enum(['video', 'audio']).catch('video'),
@@ -121,13 +129,7 @@ export const ProjectUiSettingsSchema = z.object({
       tabOrder: z.array(z.string()).catch([]),
       hiddenStaticTabs: z.array(z.string()).catch([]),
       fileManagerPaths: z.record(z.string(), z.string().nullable()).catch({}),
-      layout: ProjectUiLayoutSchema.catch({
-        cutPanels: null,
-        soundPanels: null,
-        splitSizes: {},
-        verticalSplitSizes: {},
-        timelineHeights: {},
-      }),
+      layout: ProjectUiLayoutSchema.catch({ ...DEFAULT_UI_LAYOUT }),
     })
     .catch({
       activeTabId: null,
@@ -136,13 +138,7 @@ export const ProjectUiSettingsSchema = z.object({
       tabOrder: [],
       hiddenStaticTabs: [],
       fileManagerPaths: {},
-      layout: {
-        cutPanels: null,
-        soundPanels: null,
-        splitSizes: {},
-        verticalSplitSizes: {},
-        timelineHeights: {},
-      },
+      layout: { ...DEFAULT_UI_LAYOUT },
     }),
   exportSettings: ProjectUiExportSettingsSchema,
 });

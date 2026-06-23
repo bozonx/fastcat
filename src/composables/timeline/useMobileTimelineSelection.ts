@@ -1,6 +1,7 @@
 import { computed, type Ref } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useSelectionStore } from '~/stores/selection.store';
+import { useTimelineSelectionEntities } from './useTimelineSelectionEntities';
 import type { TimelineTrack, TimelineClipItem } from '~/timeline/types';
 import { isClipItem } from '~/timeline/types';
 
@@ -14,19 +15,6 @@ export function useMobileTimelineSelection(
   const timelineStore = useTimelineStore();
   const selectionStore = useSelectionStore();
 
-  const selectedMarkerId = computed(() => {
-    if (
-      selectionStore.selectedEntity?.source === 'timeline' &&
-      selectionStore.selectedEntity.kind === 'marker'
-    ) {
-      const markerId = selectionStore.selectedEntity.markerId;
-      if (timelineStore.markers.some((m) => m.id === markerId)) {
-        return markerId;
-      }
-    }
-    return null;
-  });
-
   const selectedTransitionContext = computed(() => {
     const sel = timelineStore.selectedTransition;
     if (!sel) return null;
@@ -37,11 +25,7 @@ export function useMobileTimelineSelection(
     return { track, clip };
   });
 
-  const selectedGap = computed(() => {
-    const entity = selectionStore.selectedEntity;
-    if (entity?.source !== 'timeline' || entity.kind !== 'gap') return null;
-    return { trackId: entity.trackId, itemId: entity.itemId };
-  });
+  const { selectedMarkerId, selectedGap } = useTimelineSelectionEntities();
 
   const selectedClipContext = computed<{ track: TimelineTrack; clip: TimelineClipItem } | null>(
     () => {

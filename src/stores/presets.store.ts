@@ -4,16 +4,11 @@ import { useWorkspaceStore } from './workspace.store';
 import { getVideoEffectManifest, getAudioEffectManifest, registerEffect } from '~/effects';
 import { getTransitionManifest, registerTransition } from '~/transitions';
 import { cloneValue } from '~/utils/clone';
+import type { CustomPreset } from '~/utils/settings/presets';
 
-export interface CustomPreset {
-  id: string; // Used as the type in registry
-  baseType: string;
-  name: string;
-  category: 'effect' | 'transition' | 'shape' | 'hud' | 'text';
-  effectTarget?: 'video' | 'audio';
-  params: Record<string, unknown>;
-  order: number;
-}
+// Canonical definition lives in `~/utils/settings/presets`; re-exported here so
+// existing `~/stores/presets.store` import sites keep working.
+export type { CustomPreset } from '~/utils/settings/presets';
 
 export const usePresetsStore = defineStore('presets', () => {
   const workspaceStore = useWorkspaceStore();

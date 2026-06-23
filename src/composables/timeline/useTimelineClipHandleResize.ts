@@ -1,4 +1,4 @@
-import { onBeforeUnmount, ref, computed } from 'vue';
+import { onBeforeUnmount, ref } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useProjectStore } from '~/stores/project.store';
 import { useTimelineSettingsStore } from '~/stores/timeline-settings.store';
@@ -16,13 +16,8 @@ import type {
 import { isLayer1Active } from '~/utils/hotkeys/layerUtils';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useTimelinePointerSession } from '~/composables/timeline/useTimelinePointerSession';
-import { DEFAULT_HOTKEYS } from '~/utils/hotkeys/defaultHotkeys';
-import { getEffectiveHotkeyBindings } from '~/utils/hotkeys/effectiveHotkeys';
-import {
-  createDefaultHotkeyLookup,
-  createHotkeyLookup,
-  isCommandMatched,
-} from '~/utils/hotkeys/runtime';
+import { useEffectiveHotkeys } from '~/composables/editor/hotkeys/useEffectiveHotkeys';
+import { isCommandMatched } from '~/utils/hotkeys/runtime';
 import {
   computeMaxResizableTransitionDurationUs as computeMaxResizableTransitionDurationUsPure,
   computeTransitionHandleSnapDurationUs as computeTransitionHandleSnapDurationUsPure,
@@ -51,12 +46,7 @@ export function useTimelineClipHandleResize(
   const workspaceStore = useWorkspaceStore();
   const { bindSession, clearSession, scheduleUpdate } = useTimelinePointerSession();
 
-  const commandOrder = DEFAULT_HOTKEYS.commands.map((c) => c.id);
-  const effectiveHotkeys = computed(() =>
-    getEffectiveHotkeyBindings(workspaceStore.userSettings.hotkeys),
-  );
-  const hotkeyLookup = computed(() => createHotkeyLookup(effectiveHotkeys.value, commandOrder));
-  const defaultHotkeyLookup = computed(() => createDefaultHotkeyLookup(commandOrder));
+  const { hotkeyLookup, defaultHotkeyLookup } = useEffectiveHotkeys();
 
   function getClipResizeFields(item: TimelineClipItem): ClipResizeFields {
     return item as TimelineClipItem & ClipResizeFields;

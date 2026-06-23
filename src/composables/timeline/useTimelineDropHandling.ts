@@ -20,7 +20,7 @@ import { useAppClipboard } from '~/composables/useAppClipboard';
 import { crossVfsCopy } from '~/file-manager/core/vfs/crossVfs';
 import { LARGE_UPLOAD_BACKGROUND_THRESHOLD_BYTES } from '~/file-manager/application/fileManagerCommands';
 import { parseTimelineFromOtio } from '~/timeline/otio-serializer';
-import { quantizeTimeUsToFrames, sanitizeFps } from '~/timeline/commands/utils';
+import { resolveNonOverlappingStartUs, sanitizeFps } from '~/timeline/commands/utils';
 import { secondsToUs } from '~/utils/time';
 import { syncFileManagerDragCursor } from '~/composables/file-manager/dragCursor';
 import { withFileIoSlot } from '~/utils/io/io-governor';
@@ -225,27 +225,8 @@ export function useTimelineDropHandling(options: UseTimelineDropHandlingOptions)
     if (!track) return params.startUs;
     if (pseudo) return params.startUs;
 
-    // Quantize to the same frame grid as `addClipToTrack` to prevent post-quantize
-    // overlap with neighbour clips on non-integer fps.
     const fps = sanitizeFps(timelineStore.timelineDoc?.timebase.fps);
-    let nextStartUs = quantizeTimeUsToFrames(Math.max(0, params.startUs), fps, 'round');
-    const durationUs = quantizeTimeUsToFrames(Math.max(0, params.durationUs), fps, 'round');
-
-    for (const item of track.items) {
-      if (item.kind !== 'clip') continue;
-
-      const itemStartUs = item.timelineRange.startUs;
-      const itemEndUs = itemStartUs + item.timelineRange.durationUs;
-      const nextEndUs = nextStartUs + durationUs;
-
-      if (nextEndUs <= itemStartUs || nextStartUs >= itemEndUs) {
-        continue;
-      }
-
-      nextStartUs = quantizeTimeUsToFrames(itemEndUs, fps, 'ceil');
-    }
-
-    return nextStartUs;
+    return resolveNonOverlappingStartUs(track, params.startUs, params.durationUs, fps);
   }
 
   function resolvePreviewStartUs(params: {

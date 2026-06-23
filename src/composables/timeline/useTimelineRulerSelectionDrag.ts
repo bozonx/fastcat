@@ -3,13 +3,8 @@ import { pxToTimeUs, pickBestSnapCandidateUs, zoomToPxPerSecond } from '~/utils/
 import { TIMELINE_RULER_CONSTANTS } from '~/utils/constants';
 import { quantizeTimeUsToFrames } from '~/timeline/commands/utils';
 import { useWorkspaceStore } from '~/stores/workspace.store';
-import { DEFAULT_HOTKEYS } from '~/utils/hotkeys/defaultHotkeys';
-import { getEffectiveHotkeyBindings } from '~/utils/hotkeys/effectiveHotkeys';
-import {
-  createDefaultHotkeyLookup,
-  createHotkeyLookup,
-  isCommandMatched,
-} from '~/utils/hotkeys/runtime';
+import { useEffectiveHotkeys } from '~/composables/editor/hotkeys/useEffectiveHotkeys';
+import { isCommandMatched } from '~/utils/hotkeys/runtime';
 
 export type TimelineRulerSelectionDragPart = 'move' | 'left' | 'right';
 
@@ -44,12 +39,7 @@ export function useTimelineRulerSelectionDrag(options: UseTimelineRulerSelection
   const draggedSelectionPatch = ref<{ startUs: number; endUs: number } | null>(null);
   const workspaceStore = useWorkspaceStore();
 
-  const commandOrder = DEFAULT_HOTKEYS.commands.map((c) => c.id);
-  const effectiveHotkeys = computed(() =>
-    getEffectiveHotkeyBindings(workspaceStore.userSettings.hotkeys),
-  );
-  const hotkeyLookup = computed(() => createHotkeyLookup(effectiveHotkeys.value, commandOrder));
-  const defaultHotkeyLookup = computed(() => createDefaultHotkeyLookup(commandOrder));
+  const { hotkeyLookup, defaultHotkeyLookup } = useEffectiveHotkeys();
 
   const suppressNextRulerClick = ref(false);
   const isCreatingSelectionRange = ref(false);

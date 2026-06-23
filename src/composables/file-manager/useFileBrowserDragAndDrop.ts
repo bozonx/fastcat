@@ -4,13 +4,8 @@ import { useUiStore } from '~/stores/ui.store';
 import { useFileManagerStore } from '~/stores/file-manager.store';
 import { useSelectionStore } from '~/stores/selection.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
-import { DEFAULT_HOTKEYS } from '~/utils/hotkeys/defaultHotkeys';
-import { getEffectiveHotkeyBindings } from '~/utils/hotkeys/effectiveHotkeys';
-import {
-  createDefaultHotkeyLookup,
-  createHotkeyLookup,
-  isCommandMatched,
-} from '~/utils/hotkeys/runtime';
+import { useEffectiveHotkeys } from '~/composables/editor/hotkeys/useEffectiveHotkeys';
+import { isCommandMatched } from '~/utils/hotkeys/runtime';
 import { useFileDrop } from '~/composables/file-manager/useFileDrop';
 import {
   FILE_MANAGER_COPY_DRAG_TYPE,
@@ -79,12 +74,7 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
   const { t } = useI18n();
   const toast = useToast();
 
-  const commandOrder = DEFAULT_HOTKEYS.commands.map((c) => c.id);
-  const effectiveHotkeys = computed(() =>
-    getEffectiveHotkeyBindings(workspaceStore.userSettings.hotkeys),
-  );
-  const hotkeyLookup = computed(() => createHotkeyLookup(effectiveHotkeys.value, commandOrder));
-  const defaultHotkeyLookup = computed(() => createDefaultHotkeyLookup(commandOrder));
+  const { hotkeyLookup, defaultHotkeyLookup } = useEffectiveHotkeys();
 
   function onGlobalKeyDown(e: KeyboardEvent) {
     if (!uiStore.isFileManagerDragging) return;

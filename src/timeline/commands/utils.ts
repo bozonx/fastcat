@@ -494,11 +494,7 @@ export function computeTrackEndUs(track: TimelineTrack): number {
   return end;
 }
 
-export function clampInt(value: number, min: number, max: number): number {
-  if (!Number.isFinite(value)) return min;
-  if (max < min) return min;
-  return Math.min(max, Math.max(min, Math.round(value)));
-}
+export { clampInt } from '~/utils/math';
 
 /**
  * Minimum clip duration in microseconds below which transitions are removed entirely.
@@ -654,4 +650,41 @@ export function autoAdaptChangedTracks(
     if (orig && orig.items === t.items) return t;
     return { ...t, items: autoAdaptClipEdgeDurations(t.items) };
   });
+}
+
+/**
+ * Resolve a non-overlapping insertion start (µs) on a track.
+ *
+ * The candidate start/duration are quantized to the track's frame grid — the
+ * same grid `addClipToTrack` uses — so the collision search runs in the final
+ * coordinate space and cannot leave the inserted clip overlapping a neighbour
+ * due to post-quantization rounding. When the candidate would overlap an
+ * existing clip, the start is pushed to that clip's (frame-ceiled) end.
+ *
+ * Shared by add-media and drop-handling so both stay in lockstep.
+ */
+export function resolveNonOverlappingStartUs(
+  track: { items: ReadonlyArray<TimelineTrackItem> },
+  startUs: number,
+  durationUs: number,
+  fps: number,
+): number {
+  let nextStartUs = quantizeTimeUsToFrames(Math.max(0, startUs), fps, 'round');
+  const dur = quantizeTimeUsToFrames(Math.max(0, durationUs), fps, 'round');
+
+  for (const item of track.items) {
+    if (item.kind !== 'clip') continue;
+
+    const itemStartUs = item.timelineRange.startUs;
+    const itemEndUs = itemStartUs + item.timelineRange.durationUs;
+    const nextEndUs = nextStartUs + dur;
+
+    if (nextEndUs <= itemStartUs || nextStartUs >= itemEndUs) {
+      continue;
+    }
+
+    nextStartUs = quantizeTimeUsToFrames(itemEndUs, fps, 'ceil');
+  }
+
+  return nextStartUs;
 }

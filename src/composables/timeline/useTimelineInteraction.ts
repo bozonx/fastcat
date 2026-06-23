@@ -5,13 +5,8 @@ import type { TimelineTrack, TimelineMoveItemPayload } from '~/timeline/types';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useProjectStore } from '~/stores/project.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
-import { DEFAULT_HOTKEYS } from '~/utils/hotkeys/defaultHotkeys';
-import { getEffectiveHotkeyBindings } from '~/utils/hotkeys/effectiveHotkeys';
-import {
-  createDefaultHotkeyLookup,
-  createHotkeyLookup,
-  isCommandMatched,
-} from '~/utils/hotkeys/runtime';
+import { useEffectiveHotkeys } from '~/composables/editor/hotkeys/useEffectiveHotkeys';
+import { isCommandMatched } from '~/utils/hotkeys/runtime';
 import { pxToTimeUs } from '~/utils/timeline/geometry';
 import { useTimelinePlayheadDrag } from '~/composables/timeline/useTimelinePlayheadDrag';
 import { useTimelineItemSelection } from '~/composables/timeline/useTimelineItemSelection';
@@ -26,12 +21,7 @@ export function useTimelineInteraction(
   const projectStore = useProjectStore();
   const workspaceStore = useWorkspaceStore();
 
-  const commandOrder = DEFAULT_HOTKEYS.commands.map((c) => c.id);
-  const effectiveHotkeys = computed(() =>
-    getEffectiveHotkeyBindings(workspaceStore.userSettings.hotkeys),
-  );
-  const hotkeyLookup = computed(() => createHotkeyLookup(effectiveHotkeys.value, commandOrder));
-  const defaultHotkeyLookup = computed(() => createDefaultHotkeyLookup(commandOrder));
+  const { hotkeyLookup, defaultHotkeyLookup } = useEffectiveHotkeys();
 
   const {
     isDraggingPlayhead,

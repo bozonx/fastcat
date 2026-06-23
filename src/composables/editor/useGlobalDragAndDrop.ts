@@ -1,17 +1,12 @@
 import { createDevLogger } from '~/utils/dev-logger';
-import { ref, onMounted, onUnmounted, computed } from 'vue';
+import { ref, onMounted, onUnmounted } from 'vue';
 import { useUiStore } from '~/stores/ui.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useProjectStore } from '~/stores/project.store';
 import { useFileManager } from '~/composables/file-manager/useFileManager';
 import { hasInternalFileManagerDragType } from '~/composables/file-manager/dragOperation';
-import { DEFAULT_HOTKEYS } from '~/utils/hotkeys/defaultHotkeys';
-import { getEffectiveHotkeyBindings } from '~/utils/hotkeys/effectiveHotkeys';
-import {
-  createDefaultHotkeyLookup,
-  createHotkeyLookup,
-  isCommandMatched,
-} from '~/utils/hotkeys/runtime';
+import { useEffectiveHotkeys } from '~/composables/editor/hotkeys/useEffectiveHotkeys';
+import { isCommandMatched } from '~/utils/hotkeys/runtime';
 import { LARGE_UPLOAD_BACKGROUND_THRESHOLD_BYTES } from '~/file-manager/application/fileManagerCommands';
 import { isTauriRuntime } from '~/utils/runtime';
 import { useDraggedFile } from '~/composables/useDraggedFile';
@@ -37,12 +32,7 @@ export function useGlobalDragAndDrop() {
   const { t } = useI18n();
   const { draggedFile } = useDraggedFile();
 
-  const commandOrder = DEFAULT_HOTKEYS.commands.map((c) => c.id);
-  const effectiveHotkeys = computed(() =>
-    getEffectiveHotkeyBindings(workspaceStore.userSettings.hotkeys),
-  );
-  const hotkeyLookup = computed(() => createHotkeyLookup(effectiveHotkeys.value, commandOrder));
-  const defaultHotkeyLookup = computed(() => createDefaultHotkeyLookup(commandOrder));
+  const { hotkeyLookup, defaultHotkeyLookup } = useEffectiveHotkeys();
   const {
     isActive: isUploading,
     progress: uploadProgress,

@@ -3,7 +3,7 @@ import { useFileManager } from '~/composables/file-manager/useFileManager';
 import { getMediaTypeFromFilename } from '~/utils/media-types';
 import { useMediaStore } from '~/stores/media.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
-import { quantizeTimeUsToFrames, sanitizeFps } from '~/timeline/commands/utils';
+import { resolveNonOverlappingStartUs, sanitizeFps } from '~/timeline/commands/utils';
 import { secondsToUs } from '~/utils/time';
 import { withFileIoSlot } from '~/utils/io/io-governor';
 
@@ -17,28 +17,8 @@ export function useAddMediaToTimeline() {
     const track = timelineStore.timelineDoc?.tracks.find((item) => item.id === params.trackId);
     if (!track) return params.startUs;
 
-    // Quantize candidate to the same frame grid that addClipToTrack will use, so the
-    // collision search below operates in the final coordinate space and we cannot end
-    // up overlapping a neighbour clip due to post-quantization rounding.
     const fps = sanitizeFps(timelineStore.timelineDoc?.timebase.fps);
-    let nextStartUs = quantizeTimeUsToFrames(Math.max(0, params.startUs), fps, 'round');
-    const durationUs = quantizeTimeUsToFrames(Math.max(0, params.durationUs), fps, 'round');
-
-    for (const item of track.items) {
-      if (item.kind !== 'clip') continue;
-
-      const itemStartUs = item.timelineRange.startUs;
-      const itemEndUs = itemStartUs + item.timelineRange.durationUs;
-      const nextEndUs = nextStartUs + durationUs;
-
-      if (nextEndUs <= itemStartUs || nextStartUs >= itemEndUs) {
-        continue;
-      }
-
-      nextStartUs = quantizeTimeUsToFrames(itemEndUs, fps, 'ceil');
-    }
-
-    return nextStartUs;
+    return resolveNonOverlappingStartUs(track, params.startUs, params.durationUs, fps);
   }
 
   /**

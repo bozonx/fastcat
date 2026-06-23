@@ -126,21 +126,12 @@ class FileThumbnailGenerator extends BaseThumbnailGenerator<FileThumbnailTask, s
     URL.revokeObjectURL(url);
   }
 
-  protected override evictCacheIfNeeded() {
-    while (this.cache.size > this.maxCacheEntries) {
-      const oldestKey = this.cache.keys().next().value as string | undefined;
-      if (!oldestKey) return;
-      const value = this.cache.get(oldestKey);
-      if (value) {
-        this.revokeCacheValue(value);
-      }
-      this.cache.delete(oldestKey);
-      this.cacheProjectIds.delete(oldestKey);
-      for (const [key, val] of this.pathHashes.entries()) {
-        if (val === oldestKey) {
-          this.pathHashes.delete(key);
-          break;
-        }
+  protected override onCacheEntryEvicted(id: string): void {
+    this.cacheProjectIds.delete(id);
+    for (const [key, val] of this.pathHashes.entries()) {
+      if (val === id) {
+        this.pathHashes.delete(key);
+        break;
       }
     }
   }

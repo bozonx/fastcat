@@ -5,7 +5,7 @@ import type {
   VfsOperationOptions,
   VfsReadDirectoryOptions,
 } from './types';
-import { copyDirectoryTree } from './copyTree';
+import { copyDirectoryViaTree } from './copyTree';
 import { normalizeBloggerDogTextWrapperTitle } from '~/utils/bloggerdog-file-manager';
 import {
   VfsConflictError,
@@ -995,16 +995,7 @@ export class BloggerDogVfsAdapter implements IFileSystemAdapter {
     targetPath: string,
     options?: VfsOperationOptions,
   ): Promise<void> {
-    await copyDirectoryTree(
-      {
-        readDirectory: (path) => this.readDirectory(path),
-        createDirectory: (path) => this.createDirectory(path),
-        copyFile: (source, target, copyOptions) => this.copyFile(source, target, copyOptions),
-      },
-      sourcePath,
-      targetPath,
-      options,
-    );
+    await copyDirectoryViaTree(this, sourcePath, targetPath, options);
   }
 
   async exists(path: string): Promise<boolean> {

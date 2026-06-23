@@ -1,3 +1,4 @@
+import { normalizeHexColor } from '~/utils/color';
 import { createDevLogger } from '~/utils/dev-logger';
 import type { Filter, Texture } from 'pixi.js';
 import type { ParamControl, ParamOption } from '~/components/properties/params';
@@ -173,19 +174,7 @@ export function clampNumber(value: unknown, min: number, max: number, fallback: 
 }
 
 export function sanitizeTransitionColor(value: unknown, fallback = '#000000'): string {
-  const raw = String(value ?? '')
-    .trim()
-    .replace(/^#/, '');
-  if (/^[0-9a-fA-F]{3}$/.test(raw)) {
-    const r = raw[0] ?? '0';
-    const g = raw[1] ?? '0';
-    const b = raw[2] ?? '0';
-    return `#${r}${r}${g}${g}${b}${b}`.toLowerCase();
-  }
-  if (/^[0-9a-fA-F]{6}$/.test(raw)) {
-    return `#${raw}`.toLowerCase();
-  }
-  return fallback.toLowerCase();
+  return normalizeHexColor(value, fallback);
 }
 
 export function hexColorToRgb01(color: string): { r: number; g: number; b: number } {

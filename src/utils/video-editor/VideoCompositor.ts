@@ -6,7 +6,6 @@ import type { WorkerVideoPayloadItem } from '../../composables/timeline/export/t
 import type { PreviewRenderOptions } from './worker-rpc';
 import { VIDEO_CORE_LIMITS } from '../constants';
 import type { VideoClipEffect } from '~/timeline/types';
-import type { VectorImageRasterCacheResult } from './worker-client';
 
 // Internal modules
 import type { CompositorClip, CompositorTrack } from './compositor/types';
@@ -21,7 +20,7 @@ import type { ClipFactory } from './compositor/ClipFactory';
 import type { TimelineClipLoader } from './compositor/TimelineClipLoader';
 import type { HudMediaLoader } from './compositor/HudMediaLoader';
 import type { MediaClipLoader } from './compositor/MediaClipLoader';
-import type { RasterImageLoader } from './compositor/RasterImageLoader';
+import type { RasterImageLoader, MediaSourceLoaderDeps } from './compositor/RasterImageLoader';
 import type { TimelineApplyLifecycle } from './compositor/TimelineApplyLifecycle';
 import type { TimelineClipLayoutUpdater } from './compositor/TimelineClipLayoutUpdater';
 import type { TimelineClipAssetLoader } from './compositor/TimelineClipAssetLoader';
@@ -600,18 +599,7 @@ export class VideoCompositor {
 
   async loadTimeline(
     timelineClips: ReadonlyArray<WorkerVideoPayloadItem>,
-    deps: {
-      getFileHandleByPath: (path: string) => Promise<FileSystemFileHandle | null>;
-      getFileByPath?: (path: string) => Promise<File | null>;
-      getCurrentProjectId?: () => Promise<string | null>;
-      ensureVectorImageRaster?: (params: {
-        projectId: string;
-        projectRelativePath: string;
-        width: number;
-        height: number;
-        sourceFileHandle: FileSystemFileHandle;
-      }) => Promise<VectorImageRasterCacheResult | null>;
-    },
+    deps: MediaSourceLoaderDeps,
     checkCancel?: () => boolean,
   ): Promise<number> {
     if (this.disposed || !this.app) throw new Error('VideoCompositor not initialized');
@@ -656,18 +644,7 @@ export class VideoCompositor {
 
   private async loadTimelineLocked(
     timelineClips: ReadonlyArray<WorkerVideoPayloadItem>,
-    deps: {
-      getFileHandleByPath: (path: string) => Promise<FileSystemFileHandle | null>;
-      getFileByPath?: (path: string) => Promise<File | null>;
-      getCurrentProjectId?: () => Promise<string | null>;
-      ensureVectorImageRaster?: (params: {
-        projectId: string;
-        projectRelativePath: string;
-        width: number;
-        height: number;
-        sourceFileHandle: FileSystemFileHandle;
-      }) => Promise<VectorImageRasterCacheResult | null>;
-    },
+    deps: MediaSourceLoaderDeps,
     checkCancel?: () => boolean,
     abortSignal?: AbortSignal,
   ): Promise<number> {

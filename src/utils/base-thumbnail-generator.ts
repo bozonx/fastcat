@@ -40,10 +40,14 @@ export abstract class BaseThumbnailGenerator<TTask extends BaseThumbnailTask, TC
         this.revokeCacheValue(value);
       }
       this.cache.delete(oldestKey);
+      this.onCacheEntryEvicted(oldestKey);
     }
   }
 
   protected abstract revokeCacheValue(value: TCache): void;
+
+  /** Hook for subclasses to drop extra per-entry bookkeeping during eviction. */
+  protected onCacheEntryEvicted(_id: string): void {}
 
   cancelTask(id: string) {
     if (!id) return;

@@ -5,6 +5,7 @@ import { withFileIoSlot } from '~/utils/io/io-governor';
 import type { IFileSystemAdapter } from '~/file-manager/core/vfs/types';
 import { CACHE_ROOT_DIR_NAME } from '~/utils/storage-roots';
 import { normalizeMediaCachePath } from '~/utils/media-cache-path';
+import { hashString } from '~/utils/base-thumbnail-generator';
 const log = createDevLogger('vectorImageCache');
 
 const VECTOR_IMAGE_CACHE_VERSION = 'v3';
@@ -16,15 +17,6 @@ export interface EnsureVectorImageRasterParams {
   height: number;
   sourceFileHandle: FileSystemFileHandle;
   vfs: IFileSystemAdapter;
-}
-
-function hashString(input: string): string {
-  let hash = 2166136261;
-  for (let i = 0; i < input.length; i++) {
-    hash ^= input.charCodeAt(i);
-    hash = Math.imul(hash, 16777619);
-  }
-  return `h${(hash >>> 0).toString(16)}`;
 }
 
 function normalizeDimension(value: number): number {

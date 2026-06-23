@@ -30,6 +30,29 @@ export async function copyDirectoryTree(
   await copyDirectoryTreeAt(ctx, sourcePath, targetPath, options, 0);
 }
 
+/**
+ * Recursively copy a directory using an adapter's own primitives. Shared by the
+ * VFS adapters (BloggerDog/OPFS/Tauri), whose `copyDirectory` implementations
+ * are otherwise identical wiring around {@link copyDirectoryTree}.
+ */
+export async function copyDirectoryViaTree(
+  adapter: CopyTreeContext,
+  sourcePath: string,
+  targetPath: string,
+  options?: CopyTreeOptions,
+): Promise<void> {
+  await copyDirectoryTree(
+    {
+      readDirectory: (path) => adapter.readDirectory(path),
+      createDirectory: (path) => adapter.createDirectory(path),
+      copyFile: (source, target, copyOptions) => adapter.copyFile(source, target, copyOptions),
+    },
+    sourcePath,
+    targetPath,
+    options,
+  );
+}
+
 async function copyDirectoryTreeAt(
   ctx: CopyTreeContext,
   sourcePath: string,

@@ -1,29 +1,13 @@
 import { ref, watch, computed, nextTick, type Ref } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useSelectionStore } from '~/stores/selection.store';
+import { useTimelineSelectionEntities } from './useTimelineSelectionEntities';
 
 export function useMobileTimelineDrawers() {
   const timelineStore = useTimelineStore();
   const selectionStore = useSelectionStore();
 
-  const selectedMarkerId = computed(() => {
-    if (
-      selectionStore.selectedEntity?.source === 'timeline' &&
-      selectionStore.selectedEntity.kind === 'marker'
-    ) {
-      const markerId = selectionStore.selectedEntity.markerId;
-      if (timelineStore.markers.some((m) => m.id === markerId)) {
-        return markerId;
-      }
-    }
-    return null;
-  });
-
-  const selectedGap = computed(() => {
-    const entity = selectionStore.selectedEntity;
-    if (entity?.source !== 'timeline' || entity.kind !== 'gap') return null;
-    return { trackId: entity.trackId, itemId: entity.itemId };
-  });
+  const { selectedMarkerId, selectedGap } = useTimelineSelectionEntities();
 
   const isTrackPropertiesDrawerOpen = ref(false);
   const isClipPropertiesDrawerOpen = ref(false);

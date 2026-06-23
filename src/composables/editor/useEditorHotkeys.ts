@@ -1,25 +1,19 @@
-import { computed, onMounted, onUnmounted } from 'vue';
+import { onMounted, onUnmounted } from 'vue';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useFocusStore } from '~/stores/focus.store';
 import { useProjectStore } from '~/stores/project.store';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { getActiveElement } from '~/utils/browser-api';
-import { getEffectiveHotkeyBindings } from '~/utils/hotkeys/effectiveHotkeys';
+import { useEffectiveHotkeys } from '~/composables/editor/hotkeys/useEffectiveHotkeys';
 import {
   hotkeyFromKeyboardEvent,
   hotkeyFromMouseEvent,
   isEditableTarget,
 } from '~/utils/hotkeys/hotkeyUtils';
-import {
-  DEFAULT_HOTKEYS,
-  type HotkeyCommandId,
-  type HotkeyCombo,
-} from '~/utils/hotkeys/defaultHotkeys';
+import type { HotkeyCommandId, HotkeyCombo } from '~/utils/hotkeys/defaultHotkeys';
 import { createHotkeyHoldRunner } from '~/utils/hotkeys/holdRunner';
 import {
   canExecuteHotkeyCommand,
-  createDefaultHotkeyLookup,
-  createHotkeyLookup,
   getFocusAwareHotkeyOrder,
   getMatchedHotkeyCommands,
   shouldBlurAfterHotkey,
@@ -70,12 +64,7 @@ export function useEditorHotkeys() {
     }
   }
 
-  const commandOrder = DEFAULT_HOTKEYS.commands.map((c) => c.id);
-  const effectiveHotkeys = computed(() =>
-    getEffectiveHotkeyBindings(workspaceStore.userSettings.hotkeys),
-  );
-  const hotkeyLookup = computed(() => createHotkeyLookup(effectiveHotkeys.value, commandOrder));
-  const defaultHotkeyLookup = computed(() => createDefaultHotkeyLookup(commandOrder));
+  const { hotkeyLookup, defaultHotkeyLookup } = useEffectiveHotkeys();
 
   function isFullscreen() {
     return projectStore.currentView === 'fullscreen';

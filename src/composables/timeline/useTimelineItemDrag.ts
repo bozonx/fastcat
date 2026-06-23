@@ -20,13 +20,8 @@ import {
   getUpdateClipPropertiesLabelKey,
 } from '~/stores/timeline/history-labels';
 
-import { DEFAULT_HOTKEYS } from '~/utils/hotkeys/defaultHotkeys';
-import { getEffectiveHotkeyBindings } from '~/utils/hotkeys/effectiveHotkeys';
-import {
-  createDefaultHotkeyLookup,
-  createHotkeyLookup,
-  isCommandMatched,
-} from '~/utils/hotkeys/runtime';
+import { useEffectiveHotkeys } from '~/composables/editor/hotkeys/useEffectiveHotkeys';
+import { isCommandMatched } from '~/utils/hotkeys/runtime';
 
 import {
   zoomToPxPerSecond,
@@ -133,12 +128,7 @@ export function useTimelineItemDrag(
     commandType: 'trim_item' | 'trim_items' | 'overlay_trim_item';
   } | null>(null);
 
-  const commandOrder = DEFAULT_HOTKEYS.commands.map((c) => c.id);
-  const effectiveHotkeys = computed(() =>
-    getEffectiveHotkeyBindings(workspaceStore.userSettings.hotkeys),
-  );
-  const hotkeyLookup = computed(() => createHotkeyLookup(effectiveHotkeys.value, commandOrder));
-  const defaultHotkeyLookup = computed(() => createDefaultHotkeyLookup(commandOrder));
+  const { hotkeyLookup, defaultHotkeyLookup } = useEffectiveHotkeys();
 
   const dragStartSnapshot = ref<TimelineDocument | null>(null);
   const lastDragAppliedCmd = ref<TimelineCommand | null>(null);

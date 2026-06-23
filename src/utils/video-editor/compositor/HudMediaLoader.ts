@@ -1,20 +1,8 @@
 import { ImageSource, Sprite, Texture } from 'pixi.js';
 import type { HudMediaState } from './types';
-import { RasterImageLoader } from './RasterImageLoader';
-import type { VectorImageRasterCacheResult } from '../worker-client';
+import { RasterImageLoader, type MediaSourceLoaderDeps } from './RasterImageLoader';
 
-export interface HudMediaLoaderDeps {
-  getFileHandleByPath: (path: string) => Promise<FileSystemFileHandle | null>;
-  getFileByPath?: (path: string) => Promise<File | null>;
-  getCurrentProjectId?: () => Promise<string | null>;
-  ensureVectorImageRaster?: (params: {
-    projectId: string;
-    projectRelativePath: string;
-    width: number;
-    height: number;
-    sourceFileHandle: FileSystemFileHandle;
-  }) => Promise<VectorImageRasterCacheResult | null>;
-}
+export type HudMediaLoaderDeps = MediaSourceLoaderDeps;
 
 export interface HudMediaLoaderContext {
   width: number;
