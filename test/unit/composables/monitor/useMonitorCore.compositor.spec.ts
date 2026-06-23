@@ -9,6 +9,8 @@ function makeOptions(client: unknown = null) {
     containerEl: { value: null as HTMLDivElement | null },
     renderWidth: { value: 1920 },
     renderHeight: { value: 1080 },
+    designWidth: { value: 3840 },
+    designHeight: { value: 2160 },
     isUnmounted: () => false,
     getPreviewRenderOptions: (): PreviewRenderOptions => ({
       quality: 0.9,
@@ -125,6 +127,31 @@ describe('createMonitorCompositorRuntime', () => {
     const runtime = createMonitorCompositorRuntime(makeOptions(mockClient));
     await runtime.destroy();
     expect(mockClient.destroyCompositor).toHaveBeenCalled();
+  });
+
+  it('initializes the preview compositor with project design dimensions', async () => {
+    const mockClient = {
+      destroyCompositor: vi.fn().mockResolvedValue(undefined),
+      initCompositor: vi.fn().mockResolvedValue(undefined),
+    } as unknown as import('~/utils/video-editor/worker-rpc').VideoCoreWorkerAPI;
+    const options = makeOptions(mockClient);
+    options.containerEl.value = document.createElement('div');
+    HTMLCanvasElement.prototype.transferControlToOffscreen = vi
+      .fn()
+      .mockReturnValue({} as OffscreenCanvas);
+
+    const runtime = createMonitorCompositorRuntime(options);
+    await runtime.ensureReady();
+
+    expect(mockClient.initCompositor).toHaveBeenCalledWith(
+      expect.anything(),
+      1920,
+      1080,
+      '#000',
+      'webgl',
+      3840,
+      2160,
+    );
   });
 
   it('throttles video prewarm while rendering playback frames', async () => {

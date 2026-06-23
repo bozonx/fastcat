@@ -25,6 +25,8 @@ import type { Application } from 'pixi.js';
 export interface CompositorRuntimeFactoryParams {
   width: number;
   height: number;
+  designWidth: number;
+  designHeight: number;
   clipPreferBitmapFallback: Map<string, boolean>;
   resourceManager: ResourceManager;
   videoFrameCache: VideoFrameCache;
@@ -58,14 +60,16 @@ export function createCompositorRuntime(params: CompositorRuntimeFactoryParams):
   const {
     width,
     height,
+    designWidth,
+    designHeight,
     clipPreferBitmapFallback,
     resourceManager,
     videoFrameCache,
     computeRunner,
     getApp,
   } = params;
-  const layoutApplier = new LayoutApplier({ width, height });
-  const textRenderer = new TextRenderer();
+  const layoutApplier = new LayoutApplier({ width, height, designWidth, designHeight });
+  const textRenderer = new TextRenderer({ designWidth, designHeight });
   const shapeRenderer = new ShapeRenderer();
   const canvasFallbackRenderer = new CanvasFallbackRenderer({
     width,

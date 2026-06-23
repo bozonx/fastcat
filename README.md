@@ -122,7 +122,7 @@ The application will be available at `http://localhost:3000`.
 - Clip transforms use a shared layout helper in `src/utils/video-editor/clip-layout.ts` so monitor overlays and compositor rendering resolve the same anchor, fit and translation math.
 - Clip transform `position` values are stored in 1920x1080 design-space units and are scaled to the active preview/export resolution during layout.
 - Timeline resolution, FPS and audio sample rate are stored per `.otio` timeline in FastCat metadata; project settings provide defaults for newly created timelines.
-- Text clip style sizing (`width`, `fontSize`, `padding`, `letterSpacing`) is normalized before persistence and scaled from the same design-space baseline during rendering.
+- Text clip style sizing (`width`, `height`, `fontSize`, `lineHeight`, `padding`, `letterSpacing`) is normalized before persistence and scaled from the project resolution during web preview and rendering. Fractional preview pixels are preserved until the final canvas allocation.
 - `src/utils/math.ts`: Shared clamping helpers (`clamp`, `clampInt`, `clampFinite`, `clampPositive`, `clampNumber`).
 - `src/utils/color.ts`: Shared hex color normalization and RGB conversion (`normalizeHexColor`, `hexToRgb01`, `hexToRgbUint`).
 - `src/utils/time/`: Shared time conversion, normalization and formatting utilities.

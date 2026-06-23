@@ -103,6 +103,8 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
     containerEl,
     renderWidth,
     renderHeight,
+    designWidth: exportWidth,
+    designHeight: exportHeight,
     isUnmounted: () => isUnmounted,
     getPreviewRenderOptions,
   });

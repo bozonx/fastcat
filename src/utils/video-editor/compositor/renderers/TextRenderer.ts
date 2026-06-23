@@ -1,8 +1,19 @@
 import { CanvasSource, Texture } from 'pixi.js';
 import type { CompositorClip } from '../types';
 import { computeTextLayoutMetrics, getTextBackgroundShadowOutsetPx } from '../../text-layout';
+import { TRANSFORM_DESIGN_BASE } from '../../clip-layout';
 
 export class TextRenderer {
+  constructor(
+    private readonly context: {
+      designWidth: number;
+      designHeight: number;
+    } = {
+      designWidth: TRANSFORM_DESIGN_BASE.width,
+      designHeight: TRANSFORM_DESIGN_BASE.height,
+    },
+  ) {}
+
   /**
    * Ensures the clip has a valid OffscreenCanvas + 2D context for text rendering.
    * Switches the sprite texture source to a CanvasSource if needed.
@@ -50,6 +61,8 @@ export class TextRenderer {
       style,
       canvasWidth,
       canvasHeight,
+      designWidth: this.context.designWidth,
+      designHeight: this.context.designHeight,
       measureText: (t, font) => {
         ctx.font = font;
         return ctx.measureText(t).width;

@@ -11,6 +11,8 @@ import { Graphics } from 'pixi.js';
 export interface LayoutApplierContext {
   width: number;
   height: number;
+  designWidth?: number;
+  designHeight?: number;
 }
 
 export class LayoutApplier {
@@ -67,6 +69,8 @@ export class LayoutApplier {
       style: clip.style,
       canvasWidth: this.context.width,
       canvasHeight: this.context.height,
+      designWidth: this.context.designWidth ?? this.context.width,
+      designHeight: this.context.designHeight ?? this.context.height,
       measureText: (text, font) => {
         clip.ctx!.font = font;
         return clip.ctx!.measureText(text).width;

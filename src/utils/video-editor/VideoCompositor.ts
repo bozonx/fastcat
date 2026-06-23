@@ -51,6 +51,8 @@ const log = createDevLogger('VideoCompositor');
 
 export interface VideoCompositorInitOptions {
   rendererPreference?: 'webgl' | 'webgpu';
+  designWidth?: number;
+  designHeight?: number;
 }
 
 export class VideoCompositor {
@@ -61,6 +63,8 @@ export class VideoCompositor {
 
   private width = 1920;
   private height = 1080;
+  private designWidth = 1920;
+  private designHeight = 1080;
   private clipById = new Map<string, CompositorClip>();
   private prevClipById = new Map<string, CompositorClip | null>();
   private nextClipById = new Map<string, CompositorClip | null>();
@@ -173,6 +177,8 @@ export class VideoCompositor {
     const runtime = createCompositorRuntime({
       width: this.width,
       height: this.height,
+      designWidth: this.designWidth,
+      designHeight: this.designHeight,
       clipPreferBitmapFallback: this.clipPreferBitmapFallback,
       resourceManager: this.resourceManager,
       videoFrameCache: this.videoFrameCache,
@@ -550,6 +556,14 @@ export class VideoCompositor {
 
     this.width = width;
     this.height = height;
+    this.designWidth =
+      typeof options.designWidth === 'number' && Number.isFinite(options.designWidth)
+        ? Math.max(1, options.designWidth)
+        : width;
+    this.designHeight =
+      typeof options.designHeight === 'number' && Number.isFinite(options.designHeight)
+        ? Math.max(1, options.designHeight)
+        : height;
     this.contextLost = false;
     this.resetRuntimeDependencies();
 

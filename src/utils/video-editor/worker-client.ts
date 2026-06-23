@@ -383,10 +383,12 @@ function createChannelClient(channel: WorkerChannel): {
             height: number,
             bgColor: string,
             rendererPreference?: 'webgl' | 'webgpu',
+            designWidth?: number,
+            designHeight?: number,
           ) => {
             return postWorkerCall(
               'initCompositor',
-              [canvas, width, height, bgColor, rendererPreference],
+              [canvas, width, height, bgColor, rendererPreference, designWidth, designHeight],
               [canvas],
             );
           };

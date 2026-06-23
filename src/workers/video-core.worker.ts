@@ -126,6 +126,8 @@ const api: Omit<VideoCoreWorkerAPI, 'initCompositor'> & {
     height: number,
     bgColor: string,
     rendererPreference?: 'webgl' | 'webgpu',
+    designWidth?: number,
+    designHeight?: number,
   ): Promise<void>;
 } = {
   async setPixiRendererPreference(preference: 'webgl' | 'webgpu') {
@@ -162,6 +164,8 @@ const api: Omit<VideoCoreWorkerAPI, 'initCompositor'> & {
     height: number,
     bgColor: string,
     rendererPreference: 'webgl' | 'webgpu' = 'webgl',
+    designWidth?: number,
+    designHeight?: number,
   ) {
     if (
       typeof (globalThis as unknown as { __TAURI_INTERNALS__?: unknown }).__TAURI_INTERNALS__ !==
@@ -174,6 +178,8 @@ const api: Omit<VideoCoreWorkerAPI, 'initCompositor'> & {
     const nextCompositor = new VideoCompositor();
     await nextCompositor.init(width, height, bgColor, true, canvas, {
       rendererPreference,
+      designWidth,
+      designHeight,
     });
 
     if (compositor) {

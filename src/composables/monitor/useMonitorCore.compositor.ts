@@ -8,6 +8,8 @@ export interface CreateMonitorCompositorRuntimeOptions {
   containerEl: { value: HTMLDivElement | null };
   renderWidth: { value: number };
   renderHeight: { value: number };
+  designWidth: { value: number };
+  designHeight: { value: number };
   isUnmounted: () => boolean;
   getPreviewRenderOptions: () => PreviewRenderOptions;
 }
@@ -76,6 +78,8 @@ export function createMonitorCompositorRuntime(options: CreateMonitorCompositorR
       targetHeight,
       '#000',
       options.getPreviewRenderOptions().pixiRenderer,
+      options.designWidth.value,
+      options.designHeight.value,
     );
 
     if (options.isUnmounted()) {

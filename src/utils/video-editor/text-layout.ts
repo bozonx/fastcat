@@ -306,22 +306,22 @@ export function computeTextLayoutMetrics(input: {
     safeCanvasHeight / safeDesignHeight,
   );
   const normalizedStyle = normalizeTextClipStyle(input.style);
-  const fontSizePx = Math.max(1, Math.round(normalizedStyle.fontSize * renderScale));
-  const lineHeightPx = Math.max(1, Math.round(fontSizePx * normalizedStyle.lineHeight));
-  const letterSpacingPx = Math.round(normalizedStyle.letterSpacing * renderScale);
+  const fontSizePx = Math.max(1, normalizedStyle.fontSize * renderScale);
+  const lineHeightPx = Math.max(1, fontSizePx * normalizedStyle.lineHeight);
+  const letterSpacingPx = normalizedStyle.letterSpacing * renderScale;
   const paddingPx = {
-    top: Math.round(normalizedStyle.padding.top * renderScale),
-    right: Math.round(normalizedStyle.padding.right * renderScale),
-    bottom: Math.round(normalizedStyle.padding.bottom * renderScale),
-    left: Math.round(normalizedStyle.padding.left * renderScale),
+    top: normalizedStyle.padding.top * renderScale,
+    right: normalizedStyle.padding.right * renderScale,
+    bottom: normalizedStyle.padding.bottom * renderScale,
+    left: normalizedStyle.padding.left * renderScale,
   };
   const explicitWidthPx =
     normalizedStyle.width !== undefined
-      ? Math.max(1, Math.round(normalizedStyle.width * renderScale))
+      ? Math.max(1, normalizedStyle.width * renderScale)
       : undefined;
   const explicitHeightPx =
     normalizedStyle.height !== undefined
-      ? Math.max(1, Math.round(normalizedStyle.height * renderScale))
+      ? Math.max(1, normalizedStyle.height * renderScale)
       : undefined;
   const contentWidthPx =
     explicitWidthPx !== undefined

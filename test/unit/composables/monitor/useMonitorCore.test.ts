@@ -485,6 +485,8 @@ describe('useMonitorCore', () => {
       360,
       '#000',
       'webgl',
+      1920,
+      1080,
     );
     wrapper.unmount();
   });

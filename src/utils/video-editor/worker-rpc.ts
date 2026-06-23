@@ -147,6 +147,8 @@ export interface VideoCoreWorkerAPI {
     height: number,
     bgColor: string,
     rendererPreference?: 'webgl' | 'webgpu',
+    designWidth?: number,
+    designHeight?: number,
   ): Promise<void>;
   /**
    * Full rebuild of the compositor timeline. Cancels any in-flight load and

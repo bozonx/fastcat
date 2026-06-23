@@ -109,6 +109,34 @@ describe('text-layout', () => {
     expect(metrics.backgroundWidth).toBe(74);
   });
 
+  it('preserves fractional values at reduced preview resolution', () => {
+    const metrics = computeTextLayoutMetrics({
+      text: 'abcd',
+      style: {
+        width: 401,
+        height: 201,
+        fontSize: 65,
+        lineHeight: 1.15,
+        letterSpacing: 3,
+        padding: { x: 11, y: 7 },
+        paddingLinked: false,
+      },
+      canvasWidth: 480,
+      canvasHeight: 270,
+      designWidth: 1920,
+      designHeight: 1080,
+      measureText: (text) => text.length * 8.125,
+    });
+
+    expect(metrics.renderScale).toBe(0.25);
+    expect(metrics.fontSizePx).toBe(16.25);
+    expect(metrics.lineHeightPx).toBeCloseTo(18.6875);
+    expect(metrics.letterSpacingPx).toBe(0.75);
+    expect(metrics.explicitWidthPx).toBe(100.25);
+    expect(metrics.frameHeight).toBe(50.25);
+    expect(metrics.paddingPx).toEqual({ top: 1.75, right: 2.75, bottom: 1.75, left: 2.75 });
+  });
+
   it('uses measured longest line width when explicit width is not set', () => {
     const metrics = computeTextLayoutMetrics({
       text: 'short\nlonger line',

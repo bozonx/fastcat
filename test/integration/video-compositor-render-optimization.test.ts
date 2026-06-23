@@ -331,7 +331,7 @@ describe('VideoCompositor render optimization', () => {
     ]);
 
     expect(sprite.x).toBe(1080);
-    expect(sprite.y).toBe(500);
+    expect(sprite.y).toBeCloseTo(500.1);
   });
 
   it('prepares adjustment textures for all active adjustment clips', () => {
