@@ -5,18 +5,15 @@ import {
   useFileManager,
   FILE_MANAGER_INJECTION_KEY,
 } from '~/composables/file-manager/useFileManager';
+import { useMobileFileBrowserShell } from '~/composables/file-manager/useMobileFileBrowserShell';
 import { useSelectionStore } from '~/stores/selection.store';
 import { useClipboardStore } from '~/stores/clipboard.store';
 import { useTeleportTarget } from '~/composables/ui/useTeleportTarget';
 import { getMediaTypeFromFilename } from '~/utils/media-types';
 import { TIMELINES_DIR_NAME } from '~/utils/constants';
-import { useFileBrowserShared } from '~/composables/file-manager/useFileBrowserShared';
 import { useFileBrowserEntries } from '~/composables/file-manager/useFileBrowserEntries';
-import { usePullToRefresh } from '~/composables/file-manager/usePullToRefresh';
 import { useMobileFileBrowserNavigation } from '~/composables/file-manager/useMobileFileBrowserNavigation';
-import { useMobileFileBrowserSelection } from '~/composables/file-manager/useMobileFileBrowserSelection';
-import { useMobileFileBrowserCreate } from '~/composables/file-manager/useMobileFileBrowserCreate';
-import { useMobileFileBrowserModals } from '~/composables/file-manager/useMobileFileBrowserModals';
+import { useFileBrowserBulkSelection } from '~/composables/file-manager/useFileBrowserBulkSelection';
 import type { FsEntry } from '~/types/fs';
 import type { MobileDrawerAction } from '~/types/file-manager';
 import type { ContextMenuItem } from '~/composables/file-manager/useFileContextMenu';
@@ -32,7 +29,6 @@ import FileSttTranscriptionModal from './modals/FileTranscriptionModal.vue';
 import UiRenameModal from '~/components/ui/UiRenameModal.vue';
 import UiEntityCreationModal from '~/components/ui/UiEntityCreationModal.vue';
 import MobileAddToTimelineModal from '~/components/timeline/MobileAddToTimelineModal.vue';
-import { useFileBrowserBulkSelection } from '~/composables/file-manager/useFileBrowserBulkSelection';
 import { useTimelineMediaUsageStore } from '~/stores/timeline-media-usage.store';
 import { useUiStore } from '~/stores/ui.store';
 import { useHotkeyLabel } from '~/composables/useHotkeyLabel';
@@ -44,26 +40,10 @@ const timelineMediaUsageStore = useTimelineMediaUsageStore();
 const { t } = useI18n();
 const { getHotkeyLabel } = useHotkeyLabel();
 const { target: teleportTarget } = useTeleportTarget();
+const uiStore = useUiStore();
 
 const fileManager = useFileManager({ shouldRecordFileManagerHistory: () => false });
 provide(FILE_MANAGER_INJECTION_KEY, fileManager);
-
-const {
-  findEntryByPath,
-  mediaCache,
-  vfs,
-  handleFiles,
-  createFolder,
-  createMarkdown,
-  reloadDirectory,
-  deleteEntry,
-  renameEntry,
-  copyEntry,
-  moveEntry,
-  readDirectory,
-} = fileManager;
-
-const uiStore = useUiStore();
 
 const isRemoteMode = ref(false);
 
@@ -75,18 +55,31 @@ const {
   folderSizes: browserFolderSizes,
   calculateFolderSize: browserCalculateFolderSize,
   supplementEntries,
-} = useFileBrowserEntries({ isRemoteMode, vfs });
+} = useFileBrowserEntries({ isRemoteMode, vfs: fileManager.vfs });
 
 const { isLoading, error, breadcrumbs, loadFolderContent, navigateToRoot, goBack } =
   useMobileFileBrowserNavigation({
-    readDirectory,
-    vfs,
-    findEntryByPath: (path: string) => findEntryByPath(path) || undefined,
+    readDirectory: fileManager.readDirectory,
+    vfs: fileManager.vfs,
+    findEntryByPath: (path: string) => fileManager.findEntryByPath(path) || undefined,
     folderEntries,
     supplementEntries,
   });
 
+async function refreshFolder() {
+  const path = fileManagerStore.selectedFolder?.path || '';
+  await fileManager.reloadDirectory(path);
+  await loadFolderContent();
+}
+
 const {
+  fileInput,
+  triggerFileUpload,
+  triggerGlobalFileUpload,
+  onFileSelect,
+  runCreateFolder,
+  runCreateTextFile,
+  isCreateMenuOpen,
   isSelectionMode,
   isDrawerOpen,
   selectedEntries,
@@ -96,7 +89,56 @@ const {
   handleToggleSelection,
   handleEntryClick,
   closeAllUI,
-} = useMobileFileBrowserSelection();
+  isPulling,
+  pullDistance,
+  isRefreshing,
+  onTouchStart,
+  onTouchMove,
+  onTouchEnd,
+  onFileAction,
+  isDeleteConfirmModalOpen,
+  deleteTargets,
+  transcriptionModalOpen,
+  transcriptionLanguage,
+  transcriptionError,
+  isTranscribing,
+  isModelReady,
+  transcriptionEntry,
+  submitTranscription,
+  isAddToTimelineModalOpen,
+  addToTimelineEntries,
+  canAddSelectionToTimeline,
+  handleAddToProject,
+  handleAddSelectionToTimeline,
+  onAddedToTimeline,
+  isRenameModalOpen,
+  entryToRename,
+  validateRename,
+  onRenameConfirm,
+  handleDrawerAction: handleModalDrawerAction,
+  wrappedHandleDeleteConfirm,
+} = useMobileFileBrowserShell({
+  fileManager,
+  fileManagerStore,
+  entries: folderEntries,
+  compatibility: fileCompatibility,
+  reload: refreshFolder,
+  loadFolderContent,
+  validateRename: (newName: string) => {
+    const trimmed = newName.trim();
+    if (!trimmed) return false;
+    if (entryToRename.value && trimmed.toLowerCase() === entryToRename.value.name.toLowerCase()) {
+      return true;
+    }
+    const exists = folderEntries.value.some(
+      (e) => e.name.toLowerCase() === trimmed.toLowerCase() && e.path !== entryToRename.value?.path,
+    );
+    if (exists) {
+      return t('common.validation.exists', 'Имя уже существует');
+    }
+    return true;
+  },
+});
 
 // One project = one timeline on mobile: the single timeline is auto-opened on
 // the "edit" tab, so the `_timelines/` folder and `.otio` files are an internal
@@ -110,22 +152,6 @@ const visibleEntries = computed(() =>
   }),
 );
 
-const {
-  fileInput,
-  isCreateMenuOpen,
-  triggerFileUpload,
-  triggerGlobalFileUpload,
-  onFileSelect,
-  onCreateFolder: runCreateFolder,
-  onCreateTextFile: runCreateTextFile,
-} = useMobileFileBrowserCreate({
-  createFolder,
-  createMarkdown,
-  handleFiles: (files: File[], targetPath?: string) =>
-    handleFiles(files, targetPath !== undefined ? { targetDirPath: targetPath } : {}),
-  loadFolderContent,
-});
-
 async function onCreateTextFile(targetPath?: string) {
   const path = await runCreateTextFile(targetPath);
   if (path) {
@@ -138,49 +164,6 @@ async function onCreateTextFile(targetPath?: string) {
     handleEntryClick(entry);
   }
 }
-
-// Pull-to-refresh for mobile file grid
-const { isPulling, pullDistance, isRefreshing, onTouchStart, onTouchMove, onTouchEnd } =
-  usePullToRefresh(async () => {
-    const path = fileManagerStore.selectedFolder?.path || '';
-    await reloadDirectory(path);
-    await loadFolderContent();
-  });
-
-const {
-  onFileAction,
-  isDeleteConfirmModalOpen,
-  deleteTargets,
-  handleDeleteConfirm,
-  modalOpen: transcriptionModalOpen,
-  language: transcriptionLanguage,
-  errorMessage: transcriptionError,
-  isTranscribing,
-  isModelReady,
-  pendingEntry: transcriptionEntry,
-  openModal: openTranscriptionModal,
-  submitTranscription,
-} = useFileBrowserShared({
-  vfs,
-  folderEntries,
-  loadFolderContent,
-  createFolder,
-  renameEntry,
-  deleteEntry,
-  loadProjectDirectory: async () => {
-    await loadFolderContent();
-  },
-  handleFiles,
-  mediaCache,
-  findEntryByPath,
-  readDirectory,
-  reloadDirectory,
-  copyEntry,
-  moveEntry,
-  isExternal: false,
-  onAfterRename: loadFolderContent,
-  onAfterDelete: loadFolderContent,
-});
 
 // Lazily calculate sizes of newly appeared folders only
 watch(
@@ -241,47 +224,6 @@ function handlePendingBloggerDogCreateItem(_entry: FsEntry) {
   // BloggerDog content item creation is not supported in mobile file browser
 }
 
-const {
-  isAddToTimelineModalOpen,
-  addToTimelineEntries,
-  canAddSelectionToTimeline,
-  handleAddToProject,
-  handleAddSelectionToTimeline,
-  onAddedToTimeline,
-  isRenameModalOpen,
-  entryToRename,
-  validateRename,
-  onRenameConfirm,
-  handleDrawerAction: handleModalDrawerAction,
-  wrappedHandleDeleteConfirm,
-} = useMobileFileBrowserModals({
-  entries: folderEntries,
-  compatibility: fileCompatibility,
-  isSelectionMode,
-  selectedEntries,
-  isDrawerOpen,
-  closeAllUI,
-  renameEntry,
-  reload: loadFolderContent,
-  onFileAction,
-  handleDeleteConfirm,
-  openTranscriptionModal,
-  validateRename: (newName: string) => {
-    const trimmed = newName.trim();
-    if (!trimmed) return false;
-    if (entryToRename.value && trimmed.toLowerCase() === entryToRename.value.name.toLowerCase()) {
-      return true;
-    }
-    const exists = folderEntries.value.some(
-      (e) => e.name.toLowerCase() === trimmed.toLowerCase() && e.path !== entryToRename.value?.path,
-    );
-    if (exists) {
-      return t('common.validation.exists', 'Имя уже существует');
-    }
-    return true;
-  },
-});
-
 async function handlePaste() {
   const target = fileManagerStore.selectedFolder;
   if (!target) return;
@@ -337,12 +279,6 @@ function onSortFieldSelect(field: string) {
 
 function toggleSortOrder() {
   fileManagerStore.sortOption.order = fileManagerStore.sortOption.order === 'asc' ? 'desc' : 'asc';
-}
-
-async function refreshFolder() {
-  const path = fileManagerStore.selectedFolder?.path || '';
-  await reloadDirectory(path);
-  await loadFolderContent();
 }
 
 function toggleHiddenFiles() {

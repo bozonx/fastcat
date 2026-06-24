@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { useWorkspaceStore } from '~/stores/workspace.store';
-import { useProjectManagement } from '~/composables/project/useProjectManagement';
+import {
+  useProjectManagement,
+  type ProjectActionTarget,
+} from '~/composables/project/useProjectManagement';
 import UiSearchInput from '~/components/ui/UiSearchInput.vue';
 import UiModal from '~/components/ui/UiModal.vue';
 import UiTextInput from '~/components/ui/UiTextInput.vue';
@@ -40,7 +43,6 @@ const {
   startForget,
   confirmForget,
   closeForgetModal,
-  isExternalProject,
   startDuplicate,
   confirmDuplicate,
   closeDuplicateModal,
@@ -48,7 +50,7 @@ const {
   openProjectFromDisk,
 } = useProjectManagement();
 
-const getProjectMenuItems = (project: any) => {
+const getProjectMenuItems = (project: ProjectActionTarget) => {
   const items = [
     {
       label: t('common.rename'),
@@ -443,7 +445,9 @@ const sortedProjects = computed(() => {
   <UiModal
     v-model:open="isForgetModalOpen"
     :title="t('fastcat.projects.forgetProjectTitle')"
-    :description="t('fastcat.projects.forgetProjectConfirm', { name: forgetTargetProject?.projectName })"
+    :description="
+      t('fastcat.projects.forgetProjectConfirm', { name: forgetTargetProject?.projectName })
+    "
     :ui="{ content: 'sm:max-w-md' }"
   >
     <template #footer>

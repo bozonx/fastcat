@@ -168,7 +168,9 @@ export function createWorkspaceProjectsModule(params: {
         params.recentProjects.value = recentList;
       }
 
-      params.projects.value = recentList.map((p) => p.projectName).sort((a, b) => a.localeCompare(b));
+      params.projects.value = recentList
+        .map((p) => p.projectName)
+        .sort((a, b) => a.localeCompare(b));
       return;
     }
 

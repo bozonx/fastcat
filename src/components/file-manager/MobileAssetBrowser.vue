@@ -4,14 +4,13 @@ import {
   useFileManager,
   FILE_MANAGER_INJECTION_KEY,
 } from '~/composables/file-manager/useFileManager';
+import { useMobileFileBrowserShell } from '~/composables/file-manager/useMobileFileBrowserShell';
+import { useMobileAssetCategories } from '~/composables/file-manager/useMobileAssetCategories';
 import { useSelectionStore } from '~/stores/selection.store';
 import { useTeleportTarget } from '~/composables/ui/useTeleportTarget';
-import { useFileBrowserShared } from '~/composables/file-manager/useFileBrowserShared';
-import { useMobileFileBrowserSelection } from '~/composables/file-manager/useMobileFileBrowserSelection';
-import { useMobileFileBrowserCreate } from '~/composables/file-manager/useMobileFileBrowserCreate';
-import { useMobileAssetCategories } from '~/composables/file-manager/useMobileAssetCategories';
-import { usePullToRefresh } from '~/composables/file-manager/usePullToRefresh';
-import { useMobileFileBrowserModals } from '~/composables/file-manager/useMobileFileBrowserModals';
+import { useTimelineMediaUsageStore } from '~/stores/timeline-media-usage.store';
+import { useUiStore } from '~/stores/ui.store';
+import { useMobileAssetBrowserStore } from '~/stores/file-manager.store';
 import type { FsEntry } from '~/types/fs';
 import type { FileCompatibility } from '~/composables/file-manager/useFileManagerCompatibility';
 import MobileFileBrowserDrawer from './MobileFileBrowserDrawer.vue';
@@ -21,9 +20,6 @@ import FileDeleteConfirmModal from './modals/FileDeleteConfirmModal.vue';
 import FileSttTranscriptionModal from './modals/FileTranscriptionModal.vue';
 import UiRenameModal from '~/components/ui/UiRenameModal.vue';
 import MobileAddToTimelineModal from '~/components/timeline/MobileAddToTimelineModal.vue';
-import { useTimelineMediaUsageStore } from '~/stores/timeline-media-usage.store';
-import { useUiStore } from '~/stores/ui.store';
-import { useMobileAssetBrowserStore } from '~/stores/file-manager.store';
 import UiButtonGroup from '~/components/ui/UiButtonGroup.vue';
 
 const selectionStore = useSelectionStore();
@@ -32,11 +28,10 @@ const uiStore = useUiStore();
 const { t } = useI18n();
 const { target: teleportTarget } = useTeleportTarget();
 
+const assetStore = useMobileAssetBrowserStore();
+
 const fileManager = useFileManager({ shouldRecordFileManagerHistory: () => false });
 provide(FILE_MANAGER_INJECTION_KEY, fileManager);
-
-const assetStore = useMobileAssetBrowserStore();
-provide('fileManagerStore', assetStore);
 
 const sortFieldOptions = computed(() => [
   { label: t('common.modified'), value: 'modified' },
@@ -48,31 +43,17 @@ function toggleSortOrder() {
   assetStore.sortOption.order = assetStore.sortOption.order === 'asc' ? 'desc' : 'asc';
 }
 
-const {
-  findEntryByPath,
-  mediaCache,
-  vfs,
-  handleFiles,
-  createFolder,
-  createMarkdown,
-  reloadDirectory,
-  deleteEntry,
-  renameEntry,
-  copyEntry,
-  moveEntry,
-  readDirectory,
-} = fileManager;
-
-const { categories, loadAll, toggleCollapse, isCollapsed } = useMobileAssetCategories({
-  vfs,
-  readDirectory,
-  fileManagerStore: assetStore,
-});
-
 // Flattened view of every visible asset across all categories — used for shared
 // actions, bulk-selection and the selection toolbar. Kept as a writable ref so it
 // satisfies the shared composables that expect a mutable Ref<FsEntry[]>.
 const allEntries = ref<FsEntry[]>([]);
+
+const { categories, loadAll, toggleCollapse, isCollapsed } = useMobileAssetCategories({
+  vfs: fileManager.vfs,
+  readDirectory: fileManager.readDirectory,
+  fileManagerStore: assetStore,
+});
+
 watchEffect(() => {
   allEntries.value = categories.flatMap((c) => c.sortedEntries.value);
 });
@@ -87,10 +68,10 @@ async function reloadAll() {
   await loadAll(true);
 }
 
-const { isPulling, pullDistance, isRefreshing, onTouchStart, onTouchMove, onTouchEnd } =
-  usePullToRefresh(reloadAll);
-
 const {
+  fileInput,
+  triggerGlobalFileUpload,
+  onFileSelect,
   isSelectionMode,
   isDrawerOpen,
   selectedEntries,
@@ -98,48 +79,40 @@ const {
   handleLongPress,
   handleToggleSelection,
   handleEntryClick,
-  closeAllUI,
-} = useMobileFileBrowserSelection();
-
-const { fileInput, triggerGlobalFileUpload, onFileSelect } = useMobileFileBrowserCreate({
-  createFolder,
-  createMarkdown,
-  handleFiles: (files: File[], targetPath?: string) =>
-    handleFiles(files, targetPath !== undefined ? { targetDirPath: targetPath } : {}),
-  loadFolderContent: reloadAll,
-});
-
-const {
-  onFileAction,
+  isPulling,
+  pullDistance,
+  isRefreshing,
+  onTouchStart,
+  onTouchMove,
+  onTouchEnd,
   isDeleteConfirmModalOpen,
   deleteTargets,
-  handleDeleteConfirm,
-  modalOpen: transcriptionModalOpen,
-  language: transcriptionLanguage,
-  errorMessage: transcriptionError,
+  transcriptionModalOpen,
+  transcriptionLanguage,
+  transcriptionError,
   isTranscribing,
   isModelReady,
-  pendingEntry: transcriptionEntry,
-  openModal: openTranscriptionModal,
+  transcriptionEntry,
   submitTranscription,
-} = useFileBrowserShared({
-  vfs,
-  folderEntries: allEntries,
+  isAddToTimelineModalOpen,
+  addToTimelineEntries,
+  canAddSelectionToTimeline,
+  handleAddToProject,
+  handleAddSelectionToTimeline,
+  onAddedToTimeline,
+  isRenameModalOpen,
+  entryToRename,
+  validateRename,
+  onRenameConfirm,
+  handleDrawerAction,
+  wrappedHandleDeleteConfirm,
+} = useMobileFileBrowserShell({
+  fileManager,
+  fileManagerStore: assetStore,
+  entries: allEntries,
+  compatibility: combinedCompatibility,
+  reload: reloadAll,
   loadFolderContent: reloadAll,
-  createFolder,
-  renameEntry,
-  deleteEntry,
-  loadProjectDirectory: reloadAll,
-  handleFiles,
-  mediaCache,
-  findEntryByPath,
-  readDirectory,
-  reloadDirectory,
-  copyEntry,
-  moveEntry,
-  isExternal: false,
-  onAfterRename: reloadAll,
-  onAfterDelete: reloadAll,
 });
 
 onMounted(() => {
@@ -160,33 +133,6 @@ const selectedEntryPath = computed<string | null>(() => {
     return (entity.path as string | null) ?? null;
   }
   return null;
-});
-
-const {
-  isAddToTimelineModalOpen,
-  addToTimelineEntries,
-  canAddSelectionToTimeline,
-  handleAddToProject,
-  handleAddSelectionToTimeline,
-  onAddedToTimeline,
-  isRenameModalOpen,
-  entryToRename,
-  validateRename,
-  onRenameConfirm,
-  handleDrawerAction,
-  wrappedHandleDeleteConfirm,
-} = useMobileFileBrowserModals({
-  entries: allEntries,
-  compatibility: combinedCompatibility,
-  isSelectionMode,
-  selectedEntries,
-  isDrawerOpen,
-  closeAllUI,
-  renameEntry,
-  reload: reloadAll,
-  onFileAction,
-  handleDeleteConfirm,
-  openTranscriptionModal,
 });
 </script>
 

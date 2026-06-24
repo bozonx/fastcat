@@ -190,8 +190,8 @@ describe('useFileManager', () => {
         clearVideoThumbnails: vi.fn(),
         clearWaveforms: vi.fn(),
       } as any,
-      mediaStore: {} as any,
-      historyStore: { push: vi.fn() } as any,
+      mediaStore: { revalidateMissingMedia: vi.fn() } as any,
+      historyStore: { push: vi.fn(), registerCommandScope: vi.fn() } as any,
       shouldRecordFileManagerHistory: vi.fn(() => false),
       hideCommonRoot: true,
       onDirectoryLoaded: loadProjectDirectory,
@@ -249,6 +249,7 @@ describe('useFileManager', () => {
     const openFolderSpy = vi.spyOn(fileManagerStore, 'openFolderByPath');
     const selectFsEntrySpy = vi.spyOn(selectionStore, 'selectFsEntryWithUiUpdate');
 
+    const resolveEntryByPathSpy = vi.spyOn(manager, 'resolveEntryByPath');
     await manager.handleFiles([file], { selectInFileManager: true });
 
     expect(openFolderSpy).toHaveBeenCalledWith('_video');

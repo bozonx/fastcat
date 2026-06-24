@@ -40,8 +40,12 @@ import { useTeleportTarget } from '~/composables/ui/useTeleportTarget';
 import { useMobileTimelineDrawers } from '~/composables/timeline/useMobileTimelineDrawers';
 import { useMobileTimelineSelection } from '~/composables/timeline/useMobileTimelineSelection';
 import { useMobileTimelineZoom } from '~/composables/timeline/useMobileTimelineZoom';
-import { useMobileTimelineEdgeScroll } from '~/composables/timeline/useMobileTimelineEdgeScroll';
+import { useTimelineEdgeScroll } from '~/composables/timeline/useTimelineEdgeScroll';
 import { useScrollRectCache } from '~/composables/timeline/useScrollRectCache';
+import {
+  MOBILE_EDGE_SCROLL_ZONE_PX,
+  MOBILE_EDGE_SCROLL_MAX_SPEED_PX,
+} from '~/utils/mobile/timeline';
 import { useTimelineClipActions } from '~/composables/timeline/useTimelineClipActions';
 import { useMobileTimelineScroll } from '~/composables/timeline/useMobileTimelineScroll';
 import { useMobileTimelineTrackHeights } from '~/composables/timeline/useMobileTimelineTrackHeights';
@@ -195,12 +199,15 @@ const {
 
 const { applyClipAction } = useTimelineClipActions();
 
-const { updateEdgeScroll, stopEdgeScroll } = useMobileTimelineEdgeScroll(
+const { updateEdgeScroll, stopEdgeScroll } = useTimelineEdgeScroll({
   scrollEl,
-  draggingMode,
-  scheduleDragReapply,
-  getCachedScrollRect,
-);
+  isActive: computed(() => draggingMode.value !== null),
+  onScrollStep: scheduleDragReapply,
+  getRect: getCachedScrollRect,
+  zonePx: MOBILE_EDGE_SCROLL_ZONE_PX,
+  maxSpeedPx: MOBILE_EDGE_SCROLL_MAX_SPEED_PX,
+  axes: { horizontal: true, vertical: true },
+});
 
 const { onTouchStart, onTouchMove } = useMobileTimelineZoom(scrollEl, getCachedScrollRect);
 

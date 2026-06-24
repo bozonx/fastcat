@@ -219,11 +219,11 @@ export function useTimelineItemDrag(
     scheduleDragApply();
   }
 
-  const { updateEdgeScroll, stopEdgeScroll } = useTimelineEdgeScroll(
+  const { updateEdgeScroll, stopEdgeScroll } = useTimelineEdgeScroll({
     scrollEl,
-    computed(() => draggingMode.value !== null),
-    scheduleDragReapplyFromLastPointerPosition,
-  );
+    isActive: computed(() => draggingMode.value !== null),
+    onScrollStep: scheduleDragReapplyFromLastPointerPosition,
+  });
 
   function bindDragSession() {
     bindSession({

@@ -4,7 +4,7 @@ import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useProjectStore } from '~/stores/project.store';
 const log = createDevLogger('useProjectManagement');
 
-interface ProjectActionTarget {
+export interface ProjectActionTarget {
   projectName: string;
   projectId?: string;
   projectPath?: string;

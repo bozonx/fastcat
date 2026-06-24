@@ -1,4 +1,4 @@
-import { ref, shallowRef, computed, watch, type Ref, inject, type InjectionKey } from 'vue';
+import { ref, shallowRef, computed, type Ref, inject, type InjectionKey } from 'vue';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useProjectStore } from '~/stores/project.store';
 import { useUiStore } from '~/stores/ui.store';
@@ -7,135 +7,60 @@ import { useMediaStore } from '~/stores/media.store';
 import { useI18n } from 'vue-i18n';
 import { useProxyStore } from '~/stores/proxy.store';
 import { useTimelineMediaUsageStore } from '~/stores/timeline-media-usage.store';
+import { useTimelineStore } from '~/stores/timeline.store';
+import { useHistoryStore } from '~/stores/history.store';
 import type { TimelineClipItem } from '~/timeline/types';
-import {
-  VIDEO_DIR_NAME,
-  AUDIO_DIR_NAME,
-  TIMELINES_DIR_NAME,
-  DOCUMENTS_DIR_NAME,
-} from '~/utils/constants';
-import {
-  getWorkspacePathFileName,
-  getWorkspacePathParent,
-  WORKSPACE_COMMON_PATH_PREFIX,
-} from '~/utils/workspace-common';
-import { getMediaTypeFromFilename, getIconForMediaType } from '~/utils/media-types';
+import { VIDEO_DIR_NAME, AUDIO_DIR_NAME } from '~/utils/constants';
 import { getClipThumbnailsHash, thumbnailGenerator } from '~/utils/thumbnail-generator';
 import { fileThumbnailGenerator } from '~/utils/file-thumbnail-generator';
 import { createProxyThumbnailService } from '~/media-cache/application/proxyThumbnailService';
-import {
-  onVideoPathMovedCommand,
-  removeProxyCommand,
-} from '~/media-cache/application/proxyThumbnailCommands';
+import { onVideoPathMovedCommand } from '~/media-cache/application/proxyThumbnailCommands';
 import { clearVectorImageRasterVfs } from '~/media-cache/application/vectorImageCache';
 import { normalizeMediaCachePath } from '~/utils/path';
 import type { FsEntry } from '~/types/fs';
-import { getBdPayload } from '~/types/bloggerdog';
 import type { IFileSystemAdapter } from '~/file-manager/core/vfs/types';
-import {
-  getBloggerDogTextWrapperRenameResult,
-  isBloggerDogTextWrapper,
-} from '~/utils/bloggerdog-file-manager';
-import {
-  isMoveAllowed as isMoveAllowedCore,
-  isCopyAllowed as isCopyAllowedCore,
-} from '~/file-manager/core/rules';
 import { createFileManagerService } from '~/file-manager/application/fileManagerService';
-import {
-  handleFilesCommand,
-  moveEntryCommand,
-  renameEntryCommand,
-  resolveDefaultTargetDir,
-  createFolderCommand,
-  deleteEntryCommand,
-  copyEntryCommand,
-  createTimelineCommand,
-  createMarkdownCommand,
-  LARGE_UPLOAD_BACKGROUND_THRESHOLD_BYTES,
-  type UploadResult,
-  type HandleFilesDeps,
-} from '~/file-manager/application/fileManagerCommands';
-import {
-  createTimelineFormatFromProjectDefaults,
-  DEFAULT_TIMELINE_FORMAT,
-} from '~/timeline/format';
-import type { FastCatProjectSettings } from '~/utils/project-settings';
+import { resolveDefaultTargetDir } from '~/file-manager/application/fileManagerCommands';
 import { useVfs } from '~/composables/useVfs';
 import { createUiActionRunner } from './useUiActionRunner';
 import { useFileManagerMoveSync } from './useFileManagerMoveSync';
-import { useBackgroundTasksStore } from '~/stores/background-tasks.store';
+import { isMoveAllowed, isCopyAllowed, createFileManagerCrud } from './useFileManagerCrud';
+import { createFileManagerDirectory } from './useFileManagerDirectory';
+import { createFileManagerUpload } from './useFileManagerUpload';
+import { createFileManagerCreate } from './useFileManagerCreate';
+import { createFileManagerCache } from './useFileManagerCache';
+import { createFileManagerHistory } from './useFileManagerHistory';
+import { getFileIcon, getParentPath } from './useFileManagerHelpers';
+import type {
+  FileManagerCreateDeps,
+  FileManagerContext,
+  FileTreeSortMode,
+} from './fileManagerContext';
 
-type FileTreeSortMode = 'name' | 'type';
-
-export function isMoveAllowed(params: { sourcePath: string; targetDirPath: string }): boolean {
-  return isMoveAllowedCore(params);
-}
-
-export function isCopyAllowed(params: { sourcePath: string; targetDirPath: string }): boolean {
-  return isCopyAllowedCore(params);
-}
-
-export interface FileManagerCreateDeps {
-  t: ReturnType<typeof useI18n>['t'];
-  toast: ReturnType<typeof useToast>;
-  vfs: IFileSystemAdapter;
-  isApiSupported: Ref<boolean>;
-  rootEntries: Ref<FsEntry[]>;
-  sortMode: Ref<FileTreeSortMode>;
-  showHiddenFiles: Ref<boolean>;
-  isFileTreePathExpanded: (path: string) => boolean;
-  setFileTreePathExpanded: (path: string, expanded: boolean) => void;
-  getExpandedPaths: () => string[];
-  getWorkspaceHandle: () => FileSystemDirectoryHandle | null;
-  getProjectName: () => string | null;
-  getProjectId: () => string | null;
-  getProjectSize: () => { width: number; height: number };
-  getProjectSettings?: () => FastCatProjectSettings;
-  onMediaImported: (params: { projectRelativePath: string }) => void;
-  onFileDeleted?: (params: { path: string }) => void | Promise<void>;
-  mediaCache: import('~/media-cache/application/proxyThumbnailService').ProxyThumbnailService;
-  onEntryPathChanged?: (params: { oldPath: string; newPath: string }) => void | Promise<void>;
-  onDirectoryMoved?: (params: { oldPath: string; newPath: string }) => void | Promise<void>;
-  onDirectoryCopied?: (params: { oldPath: string; newPath: string }) => void | Promise<void>;
-  onDirectoryLoaded?: () => void;
-  mediaStore: ReturnType<typeof useMediaStore>;
-  historyStore: ReturnType<typeof useHistoryStore>;
-
-  /** When false, file-manager undo entries are not pushed (e.g. on `/m/` mobile app routes). */
-  shouldRecordFileManagerHistory: () => boolean;
-  hideCommonRoot?: boolean;
-}
+export { isMoveAllowed, isCopyAllowed };
+export type { FileManagerCreateDeps, FileTreeSortMode };
 
 export function createFileManager(deps: FileManagerCreateDeps) {
   const isLoading = ref(false);
   const error = ref<string | null>(null);
-  const t = deps.t;
   const runWithUiFeedback = createUiActionRunner({ isLoading, error }, { toast: deps.toast });
-  const timelineMediaUsageStore = useTimelineMediaUsageStore();
-  let isRestoringHistory = false;
 
   const service = createFileManagerService({
     rootEntries: deps.rootEntries,
     sortMode: deps.sortMode,
     showHiddenFiles: () => deps.showHiddenFiles.value,
     vfs: deps.vfs,
-    hasPersistedFileTreeState: function hasPersistedFileTreeState(): boolean {
-      const projectName = deps.getProjectName();
-      if (!projectName) return false;
-      const uiStore = useUiStore();
-      return uiStore.hasPersistedFileTreeState();
-    },
+    hasPersistedFileTreeState: deps.hasPersistedFileTreeState,
     isPathExpanded: (path) => deps.isFileTreePathExpanded(path),
     setPathExpanded: (path, expanded) => deps.setFileTreePathExpanded(path, expanded),
     getExpandedPaths: () => deps.getExpandedPaths(),
     checkExistingProxies: (videoPaths) => deps.mediaCache.checkExistingProxies(videoPaths),
     onDirectoryLoaded: () => {
-      if (suppressDirectoryLoadedNotification) return;
       deps.onDirectoryLoaded?.();
     },
     onDirectoryMoved: (params) => deps.onDirectoryMoved?.(params),
     onDirectoryCopied: (params) => deps.onDirectoryCopied?.(params),
-    onError: (params: { title?: string; message: string; error?: unknown }) => {
+    onError: (params) => {
       const description = params.error
         ? `${params.message}: ${String((params.error as Error)?.message ?? params.error)}`
         : params.message;
@@ -147,714 +72,41 @@ export function createFileManager(deps: FileManagerCreateDeps) {
     },
   });
 
-  watch(
-    () => deps.showHiddenFiles.value,
-    async () => {
-      await loadProjectDirectory({ fullRefresh: true });
-      useUiStore().notifyFileManagerUpdate();
-    },
-  );
-
   function notifyFileManagerUpdate(): void {
-    useUiStore().notifyFileManagerUpdate();
+    deps.notifyFileManagerUpdate?.();
   }
 
-  function findEntryByPath(path: string): FsEntry | null {
-    return service.findEntryByPath(path);
-  }
-
-  async function resolveEntryByPath(path: string): Promise<FsEntry | null> {
-    const existingEntry = findEntryByPath(path);
-    if (existingEntry) return existingEntry;
-
-    const normalizedPath = path.trim();
-    if (!normalizedPath) return null;
-
-    if (normalizedPath === WORKSPACE_COMMON_PATH_PREFIX) {
-      return {
-        name: deps.t('videoEditor.fileManager.commonFolder'),
-        kind: 'directory',
-        path: WORKSPACE_COMMON_PATH_PREFIX,
-      };
-    }
-
-    const metadata = await deps.vfs.getMetadata(normalizedPath);
-    if (!metadata) return null;
-
-    return {
-      name: getWorkspacePathFileName(normalizedPath) || normalizedPath,
-      kind: metadata.kind,
-      path: normalizedPath,
-      parentPath: getParentPath(normalizedPath) || undefined,
-      lastModified: metadata.lastModified,
-      size: metadata.size,
-    };
-  }
-
-  function mergeEntries(prev: FsEntry[] | undefined, next: FsEntry[]): FsEntry[] {
-    return service.mergeEntries(prev, next);
-  }
-
-  let suppressDirectoryLoadedNotification = false;
-
-  async function withWorkspaceCommonRoot(entries: FsEntry[]): Promise<FsEntry[]> {
-    const commonMetadata = await deps.vfs.getMetadata(WORKSPACE_COMMON_PATH_PREFIX);
-    if (!commonMetadata || commonMetadata.kind !== 'directory') return entries;
-
-    // service.readDirectory throws on adapter errors so callers can preserve
-    // existing state. Here we fall back to the previously known children to
-    // avoid wiping out the common folder when a transient read fails.
-    const previousCommonEntry = entries.find(
-      (entry) => entry.path === WORKSPACE_COMMON_PATH_PREFIX,
-    );
-    let commonChildren: FsEntry[];
-    try {
-      commonChildren = await service.readDirectory(WORKSPACE_COMMON_PATH_PREFIX, {
-        checkChildren: true,
-      });
-    } catch {
-      commonChildren = previousCommonEntry?.children ?? [];
-    }
-    const commonEntry: FsEntry = {
-      name: deps.t('videoEditor.fileManager.commonFolder'),
-      kind: 'directory',
-      path: WORKSPACE_COMMON_PATH_PREFIX,
-      parentPath: undefined,
-      lastModified: commonMetadata.lastModified,
-      size: commonMetadata.size,
-      expanded: deps.isFileTreePathExpanded(WORKSPACE_COMMON_PATH_PREFIX),
-      children: deps.isFileTreePathExpanded(WORKSPACE_COMMON_PATH_PREFIX)
-        ? mergeEntries(previousCommonEntry?.children, commonChildren)
-        : undefined,
-      hasChildren: commonChildren.length > 0,
-      hasDirectories: commonChildren.some((entry) => entry.kind === 'directory'),
-    };
-
-    const withoutCommon = entries.filter((entry) => entry.path !== WORKSPACE_COMMON_PATH_PREFIX);
-    return [commonEntry, ...withoutCommon];
-  }
-
-  async function toggleDirectory(entry: FsEntry) {
-    if (entry.kind !== 'directory') return;
-    await runWithUiFeedback({
-      action: async () => {
-        await service.toggleDirectory(entry);
-      },
-      defaultErrorMessage: 'Failed to read folder',
-      toastTitle: 'Folder error',
-      toastDescription: () => error.value || 'Failed to read folder',
-      ignoreError: () => false,
-    });
-  }
-
-  async function ensureDirectoryExpanded(entry: FsEntry) {
-    if (entry.kind !== 'directory') return;
-    await runWithUiFeedback({
-      action: async () => {
-        await service.ensureDirectoryExpanded(entry);
-      },
-      defaultErrorMessage: 'Failed to read folder',
-      toastTitle: 'Folder error',
-      toastDescription: () => error.value || 'Failed to read folder',
-      ignoreError: () => false,
-    });
-  }
-
-  async function loadProjectDirectory(options?: {
-    fullRefresh?: boolean;
-    suppressNotification?: boolean;
-  }) {
-    const projectName = deps.getProjectName();
-    if (!projectName) {
-      deps.rootEntries.value = [];
-      void timelineMediaUsageStore.refreshUsage();
-      return;
-    }
-
-    const shouldFullRefresh = options?.fullRefresh ?? false;
-
-    const previousSuppressNotification = suppressDirectoryLoadedNotification;
-    suppressDirectoryLoadedNotification =
-      previousSuppressNotification || Boolean(options?.suppressNotification);
-
-    try {
-      await runWithUiFeedback({
-        action: async () => {
-          await service.loadProjectDirectory('', {
-            refreshExpandedChildren: shouldFullRefresh,
-            expandPersistedDirectories: true,
-            autoExpandMediaDirs: true,
-          });
-          if (!deps.hideCommonRoot) {
-            deps.rootEntries.value = await withWorkspaceCommonRoot(deps.rootEntries.value);
-          }
-        },
-
-        defaultErrorMessage: 'Failed to open project folder',
-        toastTitle: 'Project error',
-        toastDescription: () => error.value || 'Failed to open project folder',
-        ignoreError: (e: unknown) => e instanceof Error && e.name === 'AbortError',
-      });
-    } finally {
-      suppressDirectoryLoadedNotification = previousSuppressNotification;
-    }
-
-    void timelineMediaUsageStore.refreshUsage();
-  }
-
-  async function handleFiles(
-    files: FileList | File[],
-    options?: {
-      targetDirPath?: string;
-      abortSignal?: AbortSignal;
-      onProgress?: HandleFilesDeps['onProgress'];
-      backgroundMode?: 'auto' | 'never';
-      selectInFileManager?: boolean;
-    },
-  ) {
-    const projectName = deps.getProjectName();
-    if (!projectName) return;
-
-    const {
-      targetDirPath,
-      abortSignal,
-      onProgress,
-      backgroundMode = 'auto',
-      selectInFileManager = true,
-    } = options ?? {};
-    const inputFiles = Array.from(files);
-    const totalBytes = inputFiles.reduce((acc, file) => acc + file.size, 0);
-    const shouldUseBackgroundTask =
-      backgroundMode === 'auto' && totalBytes >= LARGE_UPLOAD_BACKGROUND_THRESHOLD_BYTES;
-    const backgroundTasksStore = shouldUseBackgroundTask ? useBackgroundTasksStore() : null;
-    const taskAbortController = shouldUseBackgroundTask ? new AbortController() : null;
-    const signal = shouldUseBackgroundTask ? taskAbortController?.signal : abortSignal;
-    const backgroundTaskId = backgroundTasksStore?.addTask({
-      title:
-        inputFiles.length === 1
-          ? deps.t('videoEditor.fileManager.actions.importingFile', {
-              fileName: inputFiles[0]?.name ?? '',
-            })
-          : deps.t('fastcat.timeline.importFilesCount', { count: inputFiles.length }),
-      type: 'file-operation',
-      status: 'running',
-      progress: 0,
-      cancel: () => taskAbortController?.abort(),
-    });
-
-    const uploadResults = await runWithUiFeedback({
-      action: async () => {
-        const results = await handleFilesCommand(
-          inputFiles,
-          {
-            targetDirPath,
-            abortSignal: signal,
-          },
-          {
-            vfs: deps.vfs,
-            getTargetDirPath: async ({ file }) => await resolveDefaultTargetDir({ file }),
-            onSkipProjectFile: ({ file }) => {
-              deps.toast.add({
-                color: 'neutral',
-                title: deps.t('videoEditor.fileManager.skipOtio.title'),
-                description: deps.t('videoEditor.fileManager.skipOtio.description', {
-                  fileName: file.name,
-                }),
-              });
-            },
-            onMediaImported: ({ projectRelativePath }) => {
-              deps.onMediaImported({ projectRelativePath });
-            },
-            onProgress: (progress) => {
-              onProgress?.(progress);
-              if (backgroundTasksStore && backgroundTaskId) {
-                const total = progress.totalBytes ?? totalBytes;
-                const loaded = progress.loadedBytes ?? 0;
-                backgroundTasksStore.updateTaskProgress(
-                  backgroundTaskId,
-                  total > 0 ? loaded / total : 0,
-                );
-              }
-            },
-          },
-        );
-
-        if (targetDirPath !== undefined) {
-          await reloadDirectory(targetDirPath);
-        } else {
-          await loadProjectDirectory({ fullRefresh: true });
-        }
-        return results;
-      },
-      defaultErrorMessage: 'Failed to upload files',
-      toastTitle: 'Upload error',
-      toastDescription: () => error.value || 'Failed to upload files',
-      ignoreError: (e: unknown) => e instanceof Error && e.name === 'AbortError',
-    });
-
-    if (backgroundTasksStore && backgroundTaskId) {
-      const wasAborted = signal?.aborted === true;
-      if (wasAborted) {
-        backgroundTasksStore.updateTaskStatus(backgroundTaskId, 'cancelled');
-      } else if (uploadResults) {
-        backgroundTasksStore.updateTaskProgress(backgroundTaskId, 1);
-        backgroundTasksStore.updateTaskStatus(backgroundTaskId, 'completed');
-      } else {
-        backgroundTasksStore.updateTaskStatus(
-          backgroundTaskId,
-          'failed',
-          error.value || deps.t('videoEditor.backgroundTasks.uploadFailed'),
-        );
-      }
-    }
-
-    if (uploadResults && uploadResults.length > 0) {
-      const grouped = new Map<string, { count: number; type: string; folder: string }>();
-      uploadResults.forEach((r: UploadResult) => {
-        const type = getMediaTypeFromFilename(r.fileName) || 'file';
-        const key = `${r.targetDir}:${type}`;
-        const existing = grouped.get(key) || { count: 0, type, folder: r.targetDir };
-        grouped.set(key, { ...existing, count: existing.count + 1 });
-      });
-
-      const summaries: string[] = [];
-      grouped.forEach((val) => {
-        const typeLabel = deps.t(`videoEditor.fileManager.upload.types.${val.type}`, val.type);
-        summaries.push(
-          deps.t('videoEditor.fileManager.upload.summary', {
-            count: val.count,
-            type: typeLabel,
-            folder: val.folder || '/',
-          }),
-        );
-      });
-
-      deps.toast.add({
-        color: 'success',
-        title: !targetDirPath
-          ? deps.t('videoEditor.fileManager.upload.autoUploadTitle')
-          : deps.t('videoEditor.fileManager.upload.successTitle'),
-        description: summaries.join(', '),
-      });
-
-      if (selectInFileManager) {
-        const lastResult = uploadResults[uploadResults.length - 1];
-        if (lastResult) {
-          const fileManagerStore = useFileManagerStore();
-          fileManagerStore.openFolderByPath(lastResult.targetDir);
-
-          const newEntry = await resolveEntryByPath(lastResult.targetPath);
-          if (newEntry) {
-            const selectionStore = useSelectionStore();
-            selectionStore.selectFsEntryWithUiUpdate(newEntry);
-          }
-        }
-      }
-    }
-
-    if (uploadResults && uploadResults.length > 0) {
-      notifyFileManagerUpdate();
-    }
-
-    return uploadResults;
-  }
-
-  async function createFolder(name: string, parentPath: string = '') {
-    const projectName = deps.getProjectName();
-    if (!projectName) return;
-
-    const created = await runWithUiFeedback({
-      action: async () => {
-        if (parentPath) {
-          deps.setFileTreePathExpanded(parentPath, true);
-        }
-
-        await createFolderCommand({ name, parentPath, vfs: deps.vfs });
-        const createdPath = parentPath ? `${parentPath}/${name}` : name;
-
-        if (deps.shouldRecordFileManagerHistory() && !isRestoringHistory) {
-          deps.historyStore.push(
-            'fileManager',
-            'createFolder',
-            {
-              undo: { type: 'delete', path: createdPath },
-              redo: { type: 'createFolder', parentPath, name },
-            },
-            'videoEditor.fileManager.history.entries.createFolder',
-          );
-        }
-
-        await reloadDirectory(parentPath);
-        return true;
-      },
-      defaultErrorMessage: 'Failed to create folder',
-      toastTitle: 'Folder error',
-      toastDescription: () => error.value || 'Failed to create folder',
-    });
-    if (created) {
-      notifyFileManagerUpdate();
-    }
-  }
-
-  async function triggerMediaIntegrityCheck() {
-    await timelineMediaUsageStore.refreshUsage();
-    const usedPaths = Object.keys(timelineMediaUsageStore.mediaPathToTimelines);
-    await deps.mediaStore.revalidateMissingMedia(usedPaths);
-  }
-
-  async function clearVectorCacheForPath(path: string) {
-    const projectId = deps.getProjectId();
-    if (!projectId) return;
-
-    await clearVectorImageRasterVfs({
-      vfs: deps.vfs,
-      projectId,
-      projectRelativePath: path,
-    });
-  }
-
-  async function clearVectorCacheForDirectory(oldPath: string, newPath: string) {
-    const projectId = deps.getProjectId();
-    if (!projectId) return;
-
-    async function walk(dirPath: string): Promise<void> {
-      const entries = await deps.vfs.readDirectory(dirPath);
-      for (const entry of entries) {
-        if (entry.kind === 'directory') {
-          await walk(entry.path);
-        } else {
-          const oldFilePath = `${oldPath}${entry.path.slice(newPath.length)}`;
-          await clearVectorImageRasterVfs({
-            vfs: deps.vfs,
-            projectId: projectId!,
-            projectRelativePath: oldFilePath,
-          });
-        }
-      }
-    }
-
-    try {
-      await walk(newPath);
-    } catch {
-      // ignore
-    }
-  }
-
-  async function deleteEntry(target: FsEntry) {
-    const deleted = await runWithUiFeedback({
-      action: async () => {
-        const deletedFilePaths = await deleteEntryCommand(target, {
-          vfs: deps.vfs,
-          onFileDeleted: async ({ path }) => {
-            await clearVectorCacheForPath(path);
-            await deps.onFileDeleted?.({ path });
-          },
-        });
-
-        const videoPaths: string[] = [];
-        const mediaPaths: string[] = [];
-
-        for (const path of deletedFilePaths) {
-          if (path.startsWith(`${VIDEO_DIR_NAME}/`)) {
-            videoPaths.push(path);
-            mediaPaths.push(path);
-          } else if (path.startsWith(`${AUDIO_DIR_NAME}/`)) {
-            mediaPaths.push(path);
-          }
-        }
-
-        if (videoPaths.length > 0) {
-          await deps.mediaCache.removeProxyBatch({
-            projectRelativePaths: videoPaths,
-          });
-
-          const projectId = deps.getProjectId();
-          if (projectId) {
-            await Promise.all(
-              videoPaths.map((path) =>
-                deps.mediaCache.clearVideoThumbnails({
-                  projectId,
-                  projectRelativePath: path,
-                }),
-              ),
-            );
-          }
-        }
-
-        if (mediaPaths.length > 0) {
-          const projectId = deps.getProjectId();
-          if (projectId) {
-            await Promise.all(
-              mediaPaths.map((path) =>
-                deps.mediaCache.clearWaveforms({
-                  projectId,
-                  projectRelativePath: path,
-                }),
-              ),
-            );
-          }
-        }
-
-        const parentPath = getParentPath(target.path);
-        await reloadDirectory(parentPath);
-        await triggerMediaIntegrityCheck();
-        return true;
-      },
-      defaultErrorMessage: 'Failed to delete',
-      toastTitle: 'Delete error',
-      toastDescription: () => error.value || 'Failed to delete',
-    });
-    if (deleted) {
-      notifyFileManagerUpdate();
-    }
-  }
-
-  async function renameEntry(target: FsEntry, newName: string) {
-    const oldPath = target.path;
-    const parentPath = oldPath ? oldPath.split('/').slice(0, -1).join('/') : '';
-    const textWrapperRenameResult = isBloggerDogTextWrapper(target)
-      ? getBloggerDogTextWrapperRenameResult(target, newName)
-      : null;
-    const newPath =
-      textWrapperRenameResult?.newPath ??
-      (oldPath ? (parentPath ? `${parentPath}/${newName}` : newName) : '');
-
-    const renamed = await runWithUiFeedback({
-      action: async () => {
-        await renameEntryCommand(
-          { target, newName },
-          {
-            vfs: deps.vfs,
-          },
-        );
-
-        if (oldPath && newPath) {
-          if (deps.shouldRecordFileManagerHistory() && !isRestoringHistory) {
-            deps.historyStore.push(
-              'fileManager',
-              'rename',
-              {
-                undo: { type: 'rename', from: newPath, to: target.name },
-                redo: { type: 'rename', from: oldPath, to: newName },
-              },
-              'videoEditor.fileManager.history.entries.renameEntry',
-            );
-          }
-          await deps.onEntryPathChanged?.({ oldPath, newPath });
-        }
-
-        const parentPathForRename =
-          textWrapperRenameResult?.reloadDirPath ?? getParentPath(target.path);
-        await reloadDirectory(parentPathForRename);
-        await triggerMediaIntegrityCheck();
-        return true;
-      },
-      defaultErrorMessage: 'Failed to rename',
-      toastTitle: 'Rename error',
-      toastDescription: () => error.value || 'Failed to rename',
-    });
-    if (renamed) {
-      notifyFileManagerUpdate();
-    }
-  }
-
-  async function moveEntry(params: { source: FsEntry; targetDirPath: string }) {
-    const projectName = deps.getProjectName();
-    if (!projectName) return;
-
-    const sourcePath = params.source.path;
-    const targetDirPath = params.targetDirPath ?? '';
-    if (!sourcePath) return;
-
-    const sourceParentPath = getParentPath(sourcePath);
-    if (sourceParentPath === targetDirPath) return;
-
-    if (!isMoveAllowed({ sourcePath, targetDirPath })) return;
-
-    const newPath = await runWithUiFeedback({
-      action: async () => {
-        const { newPath } = await moveEntryCommand(
-          {
-            source: params.source,
-            targetDirPath,
-          },
-          {
-            vfs: deps.vfs,
-            onFileMoved: async ({ oldPath, newPath }) => {
-              if (deps.shouldRecordFileManagerHistory() && !isRestoringHistory) {
-                deps.historyStore.push(
-                  'fileManager',
-                  'move',
-                  {
-                    undo: { type: 'move', from: newPath, to: sourceParentPath },
-                    redo: { type: 'move', from: oldPath, to: targetDirPath },
-                  },
-                  'videoEditor.fileManager.history.entries.moveEntry',
-                );
-              }
-              await deps.onEntryPathChanged?.({ oldPath, newPath });
-
-              if (oldPath.startsWith(`${VIDEO_DIR_NAME}/`)) {
-                const projectId = deps.getProjectId();
-                if (!projectId) {
-                  await removeProxyCommand({
-                    service: deps.mediaCache,
-                    projectRelativePath: oldPath,
-                  });
-                  deps.mediaCache.clearExistingProxies();
-                  await deps.mediaCache.checkExistingProxies([newPath]);
-                }
-              }
-            },
-            onDirectoryMoved: async ({ oldPath, newPath }) => {
-              await deps.onDirectoryMoved?.({ oldPath, newPath });
-              if (!oldPath || !newPath) {
-                deps.mediaCache.clearExistingProxies();
-              }
-            },
-          },
-        );
-
-        if (targetDirPath) {
-          deps.setFileTreePathExpanded(targetDirPath, true);
-        }
-
-        await reloadDirectory(sourceParentPath);
-        await reloadDirectory(targetDirPath);
-        await triggerMediaIntegrityCheck();
-
-        return newPath;
-      },
-      defaultErrorMessage: 'Failed to move',
-      toastTitle: 'Move error',
-      toastDescription: () => error.value || 'Failed to move',
-    });
-    if (newPath) {
-      notifyFileManagerUpdate();
-    }
-    return newPath;
-  }
-
-  async function copyEntry(params: {
-    source: FsEntry;
-    targetDirPath: string;
-    abortSignal?: AbortSignal;
-  }) {
-    const projectName = deps.getProjectName();
-    if (!projectName) return null;
-
-    const sourcePath = params.source.path;
-    const targetDirPath = params.targetDirPath ?? '';
-    if (!sourcePath) return null;
-
-    if (!isCopyAllowed({ sourcePath, targetDirPath })) return null;
-
-    const newPath = await runWithUiFeedback({
-      action: async () => {
-        const { newPath } = await copyEntryCommand(
-          {
-            source: params.source,
-            targetDirPath,
-            abortSignal: params.abortSignal,
-          },
-          {
-            vfs: deps.vfs,
-            onFileCopied: async ({ newPath }) => {
-              await deps.mediaStore.removeMediaCache(newPath);
-            },
-            onDirectoryCopied: async ({ oldPath, newPath }) => {
-              await deps.onDirectoryCopied?.({ oldPath, newPath });
-            },
-          },
-        );
-
-        if (targetDirPath) {
-          deps.setFileTreePathExpanded(targetDirPath, true);
-        }
-
-        await reloadDirectory(targetDirPath);
-        const sourceParentPath = getParentPath(sourcePath);
-        if (sourceParentPath && sourceParentPath !== targetDirPath) {
-          await reloadDirectory(sourceParentPath);
-        }
-        await triggerMediaIntegrityCheck();
-
-        return newPath;
-      },
-      defaultErrorMessage: 'Failed to copy',
-      toastTitle: 'Copy error',
-      toastDescription: () => error.value || 'Failed to copy',
-      ignoreError: (e: unknown) => e instanceof Error && e.name === 'AbortError',
-    });
-    if (newPath) {
-      notifyFileManagerUpdate();
-    }
-    return newPath;
-  }
-
-  async function createTimeline(parentPath?: string): Promise<string | null> {
-    const createdPath = await runWithUiFeedback({
-      action: async () => {
-        const createdPath = await createTimelineCommand({
-          vfs: deps.vfs,
-          timelinesDirName: parentPath ?? TIMELINES_DIR_NAME,
-          format: createTimelineFormatFromProjectDefaults(
-            deps.getProjectSettings?.().project ?? DEFAULT_TIMELINE_FORMAT,
-          ),
-        });
-        await reloadDirectory(parentPath ?? TIMELINES_DIR_NAME);
-        return createdPath;
-      },
-      defaultErrorMessage: t('timelineCreation.failed'),
-      toastTitle: t('timelineCreation.errorTitle'),
-      toastDescription: () => error.value || t('timelineCreation.failed'),
-    });
-    if (createdPath) {
-      notifyFileManagerUpdate();
-    }
-    return createdPath;
-  }
-
-  async function createMarkdown(parentPath?: string): Promise<string | null> {
-    const createdPath = await runWithUiFeedback({
-      action: async () => {
-        const dirPath = parentPath && parentPath.trim() !== '' ? parentPath : DOCUMENTS_DIR_NAME;
-        const createdPath = await createMarkdownCommand({
-          vfs: deps.vfs,
-          dirPath,
-        });
-        await reloadDirectory(dirPath);
-        return createdPath;
-      },
-      defaultErrorMessage: 'Failed to create document',
-      toastTitle: 'Document error',
-      toastDescription: () => error.value || 'Failed to create document',
-    });
-    if (createdPath) {
-      notifyFileManagerUpdate();
-    }
-    return createdPath;
-  }
-
-  function getFileIcon(entry: FsEntry): string {
-    const bd = getBdPayload(entry);
-    if (bd?.type === 'content-item') return 'i-heroicons-document-text';
-    if (entry.kind === 'directory') return 'i-heroicons-folder';
-    if (entry.name.toLowerCase().endsWith('.otio')) return 'i-heroicons-queue-list';
-    const type = getMediaTypeFromFilename(entry.name);
-    return getIconForMediaType(type);
-  }
-
-  function getParentPath(path?: string): string {
-    return getWorkspacePathParent(path);
-  }
-
-  async function reloadDirectory(path: string) {
-    await service.reloadDirectory(path);
-    if (!path && !deps.hideCommonRoot) {
-      deps.rootEntries.value = await withWorkspaceCommonRoot([...deps.rootEntries.value]);
-    }
-  }
+  const ctx: FileManagerContext = {
+    deps,
+    service,
+    runWithUiFeedback,
+    notifyFileManagerUpdate,
+    isRestoringHistory: false,
+    reloadDirectory: async () => {},
+    loadProjectDirectory: async () => {},
+    triggerMediaIntegrityCheck: async () => {},
+    clearVectorCacheForPath: async () => {},
+    clearVectorCacheForDirectory: async () => {},
+    resolveEntryByPath: async () => null,
+    getParentPath,
+  };
+
+  const directory = createFileManagerDirectory(ctx);
+  const cache = createFileManagerCache(ctx);
+
+  ctx.resolveEntryByPath = directory.resolveEntryByPath;
+  ctx.reloadDirectory = directory.reloadDirectory;
+  ctx.loadProjectDirectory = directory.loadProjectDirectory;
+  ctx.triggerMediaIntegrityCheck = cache.triggerMediaIntegrityCheck;
+  ctx.clearVectorCacheForPath = cache.clearVectorCacheForPath;
+  ctx.clearVectorCacheForDirectory = cache.clearVectorCacheForDirectory;
+
+  const upload = createFileManagerUpload(ctx);
+  const crud = createFileManagerCrud(ctx);
+  const create = createFileManagerCreate(ctx);
+  const history = createFileManagerHistory(ctx, { ...directory, ...crud });
+
+  deps.historyStore.registerCommandScope('fileManager');
 
   return {
     rootEntries: deps.rootEntries,
@@ -866,63 +118,36 @@ export function createFileManager(deps: FileManagerCreateDeps) {
     setSortMode: (v: FileTreeSortMode) => {
       deps.sortMode.value = v;
     },
-    loadProjectDirectory,
-    toggleDirectory,
-    ensureDirectoryExpanded,
-    handleFiles,
-    createFolder,
-    deleteEntry,
-    renameEntry,
-    findEntryByPath,
-    resolveEntryByPath,
-    mergeEntries,
-    moveEntry,
-    copyEntry,
-    createTimeline,
-    createMarkdown,
+    loadProjectDirectory: directory.loadProjectDirectory,
+    toggleDirectory: directory.toggleDirectory,
+    ensureDirectoryExpanded: directory.ensureDirectoryExpanded,
+    handleFiles: upload.handleFiles,
+    createFolder: crud.createFolder,
+    deleteEntry: crud.deleteEntry,
+    renameEntry: crud.renameEntry,
+    findEntryByPath: directory.findEntryByPath,
+    resolveEntryByPath: directory.resolveEntryByPath,
+    mergeEntries: directory.mergeEntries,
+    moveEntry: crud.moveEntry,
+    copyEntry: crud.copyEntry,
+    createTimeline: create.createTimeline,
+    createMarkdown: create.createMarkdown,
     getFileIcon,
     readDirectory: service.readDirectory,
     vfs: deps.vfs,
-    reloadDirectory,
+    reloadDirectory: directory.reloadDirectory,
     setFileTreePathExpanded: deps.setFileTreePathExpanded,
     resolveDefaultTargetDir: async (params: { file: File } | { name: string }) =>
       await resolveDefaultTargetDir(params),
     runWithUiFeedback,
-    clearVectorCacheForDirectory,
-    async restoreHistory(snapshot: unknown) {
-      const op = snapshot as Record<string, unknown>;
-      if (!op || !op.type) return;
-      isRestoringHistory = true;
-
-      await runWithUiFeedback({
-        action: async () => {
-          if (op.type === 'rename') {
-            const entry = findEntryByPath(op.from as string);
-            if (!entry) throw new Error(`Entry to rename not found: ${op.from as string}`);
-            await renameEntry(entry, op.to as string);
-          } else if (op.type === 'move') {
-            const entry = findEntryByPath(op.from as string);
-            if (!entry) throw new Error(`Entry to move not found: ${op.from as string}`);
-            await moveEntry({ source: entry, targetDirPath: op.to as string });
-          } else if (op.type === 'delete') {
-            const entry = findEntryByPath(op.path as string);
-            if (!entry) throw new Error(`Entry to delete not found: ${op.path as string}`);
-            await deleteEntry(entry);
-          } else if (op.type === 'createFolder') {
-            await createFolder(op.name as string, op.parentPath as string);
-          }
-        },
-        defaultErrorMessage: 'Failed to restore file operation',
-        toastTitle: 'History error',
-        ignoreError: () => false,
-      });
-      isRestoringHistory = false;
-    },
+    clearVectorCacheForDirectory: cache.clearVectorCacheForDirectory,
+    restoreHistory: history.restoreHistory,
   };
 }
 
-export const FILE_MANAGER_INJECTION_KEY: InjectionKey<ReturnType<typeof createFileManager>> =
-  Symbol('FileManager');
+export type FileManager = ReturnType<typeof createFileManager>;
+
+export const FILE_MANAGER_INJECTION_KEY: InjectionKey<FileManager> = Symbol('FileManager');
 
 export function useFileManager(options?: {
   rootEntries?: Ref<FsEntry[]>;
@@ -943,14 +168,13 @@ export function useFileManager(options?: {
   const sortMode = options?.sortMode ?? ref<FileTreeSortMode>('name');
 
   const workspaceStore = useWorkspaceStore();
-
   const projectStore = useProjectStore();
   const uiStore = useUiStore();
   const mediaStore = useMediaStore();
   const proxyStore = useProxyStore();
-
   const timelineStore = useTimelineStore();
   const historyStore = useHistoryStore();
+  const timelineMediaUsageStore = useTimelineMediaUsageStore();
 
   const isApiSupported = computed(() => workspaceStore.isApiSupported);
   const fileManagerStore = useFileManagerStore();
@@ -962,7 +186,6 @@ export function useFileManager(options?: {
   async function clearVectorCacheForPath(path: string) {
     const projectId = projectStore.currentProjectId;
     if (!projectId) return;
-
     await clearVectorImageRasterVfs({
       vfs,
       projectId,
@@ -994,12 +217,12 @@ export function useFileManager(options?: {
         projectRelativePath,
       });
     },
-    clearWaveforms: async ({ projectId: _projectId, projectRelativePath }) => {
+    clearWaveforms: async ({ projectRelativePath }) => {
       await mediaStore.removeMediaCache(projectRelativePath);
     },
   });
 
-  const api = createFileManager({
+  return createFileManager({
     t,
     toast,
     vfs,
@@ -1007,17 +230,16 @@ export function useFileManager(options?: {
     rootEntries,
     sortMode,
     showHiddenFiles,
-
-    mediaStore,
-    historyStore,
-    shouldRecordFileManagerHistory: options?.shouldRecordFileManagerHistory ?? (() => true),
-    hideCommonRoot: !workspaceStore.userSettings.experimentalFeatures,
-    mediaCache,
     isFileTreePathExpanded: (path) => uiStore.isFileTreePathExpanded(path),
-    setFileTreePathExpanded: function setFileTreePathExpanded(path: string, expanded: boolean) {
+    setFileTreePathExpanded: (path, expanded) => {
       uiStore.setFileTreePathExpanded(path, expanded);
     },
     getExpandedPaths: () => Object.keys(uiStore.fileTreeExpandedPaths),
+    hasPersistedFileTreeState: () => {
+      const projectName = projectStore.currentProjectName;
+      if (!projectName) return false;
+      return uiStore.hasPersistedFileTreeState();
+    },
     getWorkspaceHandle: () => workspaceStore.workspaceHandle,
     getProjectName: () => projectStore.currentProjectName,
     getProjectId: () => projectStore.currentProjectId,
@@ -1037,8 +259,10 @@ export function useFileManager(options?: {
       }
       useProjectTabsStore().removeFileTabByPath(path);
     },
+    mediaCache,
+    mediaStore,
+    historyStore,
     onEntryPathChanged: async ({ oldPath, newPath }) => {
-      // Update media state
       await mediaStore.removeMediaCache(oldPath);
       await mediaStore.removeMediaCache(newPath);
       await clearVectorCacheForPath(oldPath);
@@ -1046,7 +270,6 @@ export function useFileManager(options?: {
       updateSelectionPath({ oldPath, newPath });
       await syncTimelinePathsOnMove({ oldPath, newPath });
 
-      // Update Timeline References
       if (timelineStore.timelineDoc) {
         const affectedClips: { trackId: string; itemId: string; source: { path: string } }[] = [];
         timelineStore.timelineDoc.tracks.forEach((track) => {
@@ -1078,30 +301,29 @@ export function useFileManager(options?: {
         const projectId = projectStore.currentProjectId;
         if (projectId) {
           await onVideoPathMovedCommand({
-            service: api.mediaCache,
+            service: mediaCache,
             projectId,
             oldPath,
             newPath,
           });
         }
       } else if (oldPath.startsWith(`${AUDIO_DIR_NAME}/`)) {
-        // For audio, we don't have proxies yet, but we might have waveforms
         const projectId = projectStore.currentProjectId;
         if (projectId) {
-          await api.mediaCache.clearWaveforms({
+          await mediaCache.clearWaveforms({
             projectId,
             projectRelativePath: oldPath,
           });
         }
       }
     },
-    onDirectoryMoved: async ({ oldPath, newPath }: { oldPath: string; newPath: string }) => {
+    onDirectoryMoved: async ({ oldPath, newPath }) => {
       await mediaStore.removeMediaCacheForDirectory(oldPath);
-      await api.clearVectorCacheForDirectory(oldPath, newPath);
+      await clearVectorCacheForPath(oldPath);
+      await clearVectorCacheForPath(newPath);
       updateSelectionForDirectoryMove({ oldPath, newPath });
       await syncTimelinePathsOnMove({ oldPath, newPath });
 
-      // Update Timeline References (Recursive)
       if (timelineStore.timelineDoc) {
         const affectedClips: { trackId: string; itemId: string; source: unknown }[] = [];
         timelineStore.timelineDoc.tracks.forEach((track) => {
@@ -1136,23 +358,20 @@ export function useFileManager(options?: {
       }
 
       if (oldPath && newPath) {
-        await api.mediaCache.renameProxyDir({ oldPath, newPath });
+        await mediaCache.renameProxyDir({ oldPath, newPath });
       } else {
-        api.mediaCache.clearExistingProxies();
+        mediaCache.clearExistingProxies();
       }
     },
-    onDirectoryCopied: async ({
-      oldPath: _oldPath,
-      newPath: _newPath,
-    }: {
-      oldPath: string;
-      newPath: string;
-    }) => {
+    onDirectoryCopied: async () => {
       // No need to clear cache for existing files. New copied files don't have cache yet.
     },
+    onDirectoryLoaded: () => {
+      // Default no-op; callers may override via injection if needed.
+    },
+    notifyFileManagerUpdate: () => uiStore.notifyFileManagerUpdate(),
+    timelineMediaUsageStore,
+    shouldRecordFileManagerHistory: options?.shouldRecordFileManagerHistory ?? (() => true),
+    hideCommonRoot: !workspaceStore.userSettings.experimentalFeatures,
   });
-
-  historyStore.registerCommandScope('fileManager');
-
-  return api;
 }
