@@ -1,0 +1,29 @@
+{
+  "_comment": [
+    "Cross-engine parity contract: the set of supported blend modes must be identical.",
+    "  - web:    resolveBlendMode() in src/utils/video-editor/compositor/types.ts",
+    "  - native: BlendMode enum / BlendMode::ALL in src-tauri/src/compositor/scene.rs",
+    "Catches the 'added a blend mode to one engine but not the other' drift class.",
+    "Names are the canonical timeline (kebab-case) form; the native enum uses the same",
+    "set in snake_case (kebab '-' -> '_')."
+  ],
+  "modes": [
+    "normal",
+    "add",
+    "multiply",
+    "screen",
+    "overlay",
+    "darken",
+    "lighten",
+    "color-dodge",
+    "color-burn",
+    "hard-light",
+    "soft-light",
+    "difference",
+    "exclusion",
+    "hue",
+    "saturation",
+    "color",
+    "luminosity"
+  ]
+}

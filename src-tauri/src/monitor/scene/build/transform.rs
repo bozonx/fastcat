@@ -69,7 +69,17 @@ pub fn local_crop_from_display_transform(
 }
 
 pub fn source_orientation_deg(sl: &crate::monitor::scene::SceneLayer) -> f64 {
-    match sl.source_orientation.as_deref() {
+    orientation_str_to_deg(sl.source_orientation.as_deref())
+}
+
+/// Maps an explicit clip source orientation string to degrees. `auto`, `0`, `None`
+/// and any unrecognized value mean 0.
+///
+/// Cross-engine parity contract: the web engine maps the same values in
+/// `sourceOrientationToDeg` (src/utils/video-editor/worker-clip-utils.ts), pinned by
+/// `shared/parity/source-orientation-deg.cases.json`.
+pub fn orientation_str_to_deg(orientation: Option<&str>) -> f64 {
+    match orientation {
         Some("90") => 90.0,
         Some("180") => 180.0,
         Some("270") => 270.0,
@@ -118,6 +128,32 @@ pub fn text_anchor_offset(
             let _nw = natural.0 as f64;
             let _nh = natural.1 as f64;
             ((anchor_x - 0.5) * _nw, (anchor_y - 0.5) * _nh)
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Cross-engine parity contract — pairs with the web test
+    /// `test/unit/utils/video-editor/source-orientation.parity.test.ts`.
+    #[test]
+    fn source_orientation_deg_matches_shared_parity_fixture() {
+        const FIXTURE: &str =
+            include_str!("../../../../../shared/parity/source-orientation-deg.cases.json");
+        let parsed: serde_json::Value =
+            serde_json::from_str(FIXTURE).expect("valid fixture json");
+        let cases = parsed["cases"].as_array().expect("cases array");
+        assert!(!cases.is_empty());
+        for c in cases {
+            let orientation = c["orientation"].as_str();
+            let got = orientation_str_to_deg(orientation);
+            let want = c["expected"].as_f64().unwrap();
+            assert!(
+                (got - want).abs() < 1e-9,
+                "orientation `{orientation:?}`: got {got}, want {want}"
+            );
         }
     }
 }

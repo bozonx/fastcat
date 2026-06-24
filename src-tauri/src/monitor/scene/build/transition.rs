@@ -132,3 +132,30 @@ pub fn apply_transition_curve(progress: f64, curve: &str) -> f64 {
         _ => t,
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Cross-engine parity contract — pairs with the web test
+    /// `test/unit/transitions/transition-curve.parity.test.ts`.
+    #[test]
+    fn curve_matches_shared_parity_fixture() {
+        const FIXTURE: &str =
+            include_str!("../../../../../shared/parity/transition-curve.cases.json");
+        let parsed: serde_json::Value =
+            serde_json::from_str(FIXTURE).expect("valid fixture json");
+        let cases = parsed["cases"].as_array().expect("cases array");
+        assert!(!cases.is_empty());
+        for c in cases {
+            let curve = c["curve"].as_str().unwrap();
+            let progress = c["progress"].as_f64().unwrap();
+            let got = apply_transition_curve(progress, curve);
+            let want = c["expected"].as_f64().unwrap();
+            assert!(
+                (got - want).abs() < 1e-9,
+                "curve `{curve}`@{progress}: got {got}, want {want}"
+            );
+        }
+    }
+}

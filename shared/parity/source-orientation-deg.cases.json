@@ -1,0 +1,17 @@
+{
+  "_comment": [
+    "Cross-engine parity contract for clip source-orientation → degrees.",
+    "  - web:    sourceOrientationToDeg() in src/utils/video-editor/worker-clip-utils.ts",
+    "  - native: source_orientation_deg() in src-tauri/src/monitor/scene/build/transform.rs",
+    "Drives the auto-rotation of phone/vertical video. 'auto', '0', null and any",
+    "unrecognized value mean 0 degrees."
+  ],
+  "cases": [
+    { "orientation": "auto", "expected": 0 },
+    { "orientation": "0", "expected": 0 },
+    { "orientation": "90", "expected": 90 },
+    { "orientation": "180", "expected": 180 },
+    { "orientation": "270", "expected": 270 },
+    { "orientation": null, "expected": 0 }
+  ]
+}

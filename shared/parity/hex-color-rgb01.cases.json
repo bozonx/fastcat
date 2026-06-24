@@ -1,0 +1,24 @@
+{
+  "_comment": [
+    "Cross-engine parity contract for hex-color → normalized rgb [0..1].",
+    "  - web:    hexToRgb01() in src/utils/color.ts (used by transition manifests)",
+    "  - native: parse_hex_color() in src-tauri/src/compositor/transitions/mod.rs",
+    "Both feed the same shared transition WGSL color uniforms.",
+    "",
+    "Scope: 6-digit hex (with or without leading '#', surrounding whitespace), the",
+    "region where both engines agree exactly.",
+    "",
+    "KNOWN INTENTIONAL DIVERGENCE (NOT covered): 3-digit shorthand ('#f00') — web",
+    "expands it ('#ff0000'), native treats it as invalid → black [0,0,0]. See each",
+    "engine's color test."
+  ],
+  "cases": [
+    { "name": "white", "hex": "#ffffff", "expected": [1.0, 1.0, 1.0] },
+    { "name": "black", "hex": "#000000", "expected": [0.0, 0.0, 0.0] },
+    { "name": "red", "hex": "#ff0000", "expected": [1.0, 0.0, 0.0] },
+    { "name": "green_mid", "hex": "#008000", "expected": [0.0, 0.5019607843137255, 0.0] },
+    { "name": "no_hash_prefix", "hex": "ff8800", "expected": [1.0, 0.5333333333333333, 0.0] },
+    { "name": "surrounding_whitespace", "hex": "  #3366cc  ", "expected": [0.2, 0.4, 0.8] },
+    { "name": "invalid_falls_back_to_black", "hex": "not-a-color", "expected": [0.0, 0.0, 0.0] }
+  ]
+}

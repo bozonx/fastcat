@@ -1,0 +1,27 @@
+{
+  "_comment": [
+    "Cross-engine parity contract for the transition progress easing curve.",
+    "  - web:    applyTransitionCurve() in src/transitions/core/registry.ts",
+    "  - native: apply_transition_curve() in src-tauri/src/monitor/scene/build/transition.rs",
+    "Both ease the 0..1 transition progress before it reaches the shared WGSL.",
+    "",
+    "Scope: the four named curves with DEFAULT params (no curveBulge/curveOffset).",
+    "",
+    "KNOWN INTENTIONAL DIVERGENCE (NOT covered): custom curve params (curveBulge /",
+    "curveOffset) are honored by the web engine only; the native engine ignores them.",
+    "Unknown curve names: web defaults to the 'smooth' bezier, native to linear."
+  ],
+  "cases": [
+    { "curve": "linear", "progress": 0.25, "expected": 0.25 },
+    { "curve": "linear", "progress": 0.75, "expected": 0.75 },
+    { "curve": "smooth", "progress": 0.25, "expected": 0.1353071650090296 },
+    { "curve": "smooth", "progress": 0.5, "expected": 0.5 },
+    { "curve": "smooth", "progress": 0.75, "expected": 0.8646928349909704 },
+    { "curve": "ease-in", "progress": 0.25, "expected": 0.035783633863673 },
+    { "curve": "ease-in", "progress": 0.5, "expected": 0.16075494229149684 },
+    { "curve": "ease-in", "progress": 0.75, "expected": 0.4224270719328906 },
+    { "curve": "ease-out", "progress": 0.25, "expected": 0.5775729280671095 },
+    { "curve": "ease-out", "progress": 0.5, "expected": 0.8392450577085031 },
+    { "curve": "ease-out", "progress": 0.75, "expected": 0.9642163661363269 }
+  ]
+}

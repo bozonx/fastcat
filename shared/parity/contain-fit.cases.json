@@ -1,0 +1,36 @@
+{
+  "_comment": [
+    "Cross-engine parity contract for aspect-preserving centered 'contain' fit.",
+    "  - web:    computeContainFit() in src/utils/video-editor/clip-layout.ts",
+    "  - native: fit_into() in src-tauri/src/compositor/scene.rs",
+    "Given a natural box fitted into a viewport, both engines must produce the same",
+    "uniform scale and centered top-left offset. (orientedFitScale / oriented_fit_scale",
+    "add the quarter-turn swap on top of this; see source-orientation fixture.)"
+  ],
+  "cases": [
+    {
+      "name": "same_aspect_no_letterbox",
+      "natural": [1920, 1080],
+      "viewport": [1280, 720],
+      "expected": { "scale": 0.6666666666666666, "offsetX": 0.0, "offsetY": 0.0 }
+    },
+    {
+      "name": "letterbox_top_bottom",
+      "natural": [1920, 1080],
+      "viewport": [1920, 1920],
+      "expected": { "scale": 1.0, "offsetX": 0.0, "offsetY": 420.0 }
+    },
+    {
+      "name": "pillarbox_left_right",
+      "natural": [1080, 1920],
+      "viewport": [1920, 1080],
+      "expected": { "scale": 0.5625, "offsetX": 656.25, "offsetY": 0.0 }
+    },
+    {
+      "name": "upscale_small_into_large",
+      "natural": [200, 200],
+      "viewport": [800, 400],
+      "expected": { "scale": 2.0, "offsetX": 200.0, "offsetY": 0.0 }
+    }
+  ]
+}

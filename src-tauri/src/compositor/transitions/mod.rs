@@ -684,6 +684,31 @@ mod tests {
         assert_eq!(parse_hex_color("not-hex"), [0.0, 0.0, 0.0]);
     }
 
+    /// Cross-engine parity contract — pairs with the web test
+    /// `test/unit/utils/color.parity.test.ts`.
+    #[test]
+    fn parse_hex_color_matches_shared_parity_fixture() {
+        const FIXTURE: &str =
+            include_str!("../../../../shared/parity/hex-color-rgb01.cases.json");
+        let parsed: serde_json::Value =
+            serde_json::from_str(FIXTURE).expect("valid fixture json");
+        let cases = parsed["cases"].as_array().expect("cases array");
+        assert!(!cases.is_empty());
+        for c in cases {
+            let name = c["name"].as_str().unwrap_or("?");
+            let hex = c["hex"].as_str().unwrap();
+            let rgb = parse_hex_color(hex);
+            let exp = c["expected"].as_array().unwrap();
+            for (i, channel) in rgb.iter().enumerate() {
+                let want = exp[i].as_f64().unwrap() as f32;
+                assert!(
+                    (channel - want).abs() < 1e-6,
+                    "case `{name}` channel {i}: got {channel}, want {want}"
+                );
+            }
+        }
+    }
+
     #[test]
     fn test_get_shader_sources_not_empty() {
         let specs = [

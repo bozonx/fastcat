@@ -590,6 +590,28 @@ impl BlendMode {
             BlendMode::Luminosity => Mix::Luminosity.into(),
         }
     }
+
+    /// Every supported blend mode. Cross-engine parity contract: the set must match
+    /// the web `resolveBlendMode` set, pinned by `shared/parity/blend-modes.json`.
+    pub const ALL: [BlendMode; 17] = [
+        BlendMode::Normal,
+        BlendMode::Add,
+        BlendMode::Multiply,
+        BlendMode::Screen,
+        BlendMode::Overlay,
+        BlendMode::Darken,
+        BlendMode::Lighten,
+        BlendMode::ColorDodge,
+        BlendMode::ColorBurn,
+        BlendMode::HardLight,
+        BlendMode::SoftLight,
+        BlendMode::Difference,
+        BlendMode::Exclusion,
+        BlendMode::Hue,
+        BlendMode::Saturation,
+        BlendMode::Color,
+        BlendMode::Luminosity,
+    ];
 }
 
 fn draw_shape(scene: &mut VelloScene, spec: &ShapeLayer, xform: Affine) {
@@ -1430,6 +1452,66 @@ mod tests {
         // 70+70=140 scaled by 100/140 → 50 each → collapses to x=50 (centered).
         assert!(approx(rect.x0, 50.0));
         assert!(approx(rect.x1, 50.0));
+    }
+
+    /// Cross-engine parity contract — pairs with the web test
+    /// `test/unit/utils/video-editor/contain-fit.parity.test.ts`.
+    #[test]
+    fn fit_into_matches_shared_parity_fixture() {
+        const FIXTURE: &str = include_str!("../../../shared/parity/contain-fit.cases.json");
+        let parsed: serde_json::Value =
+            serde_json::from_str(FIXTURE).expect("valid fixture json");
+        let cases = parsed["cases"].as_array().expect("cases array");
+        assert!(!cases.is_empty());
+        for c in cases {
+            let name = c["name"].as_str().unwrap_or("?");
+            let nat = &c["natural"];
+            let vp = &c["viewport"];
+            let natural = (nat[0].as_u64().unwrap() as u32, nat[1].as_u64().unwrap() as u32);
+            let into = (vp[0].as_u64().unwrap() as u32, vp[1].as_u64().unwrap() as u32);
+            let a = fit_into(natural, into);
+            // Apply to natural-space origin and (w,h) to recover scale + offset.
+            let (ox, oy) = affine_apply(a, (0.0, 0.0));
+            let (fx, _fy) = affine_apply(a, (natural.0 as f64, 0.0));
+            let scale = (fx - ox) / natural.0 as f64;
+            let exp = &c["expected"];
+            assert!(approx(scale, exp["scale"].as_f64().unwrap()), "case `{name}` scale");
+            assert!(approx(ox, exp["offsetX"].as_f64().unwrap()), "case `{name}` offsetX");
+            assert!(approx(oy, exp["offsetY"].as_f64().unwrap()), "case `{name}` offsetY");
+        }
+    }
+
+    /// Cross-engine parity contract — pairs with the web test
+    /// `test/unit/utils/video-editor/blend-modes.parity.test.ts`.
+    #[test]
+    fn blend_modes_match_shared_parity_fixture() {
+        const FIXTURE: &str = include_str!("../../../shared/parity/blend-modes.json");
+        let parsed: serde_json::Value =
+            serde_json::from_str(FIXTURE).expect("valid fixture json");
+        let modes: Vec<String> = parsed["modes"]
+            .as_array()
+            .expect("modes array")
+            .iter()
+            .map(|m| m.as_str().unwrap().to_string())
+            .collect();
+
+        // Same count.
+        assert_eq!(modes.len(), BlendMode::ALL.len(), "blend-mode count mismatch");
+
+        // Every fixture mode (kebab → snake) deserializes into a native variant.
+        for kebab in &modes {
+            let snake = kebab.replace('-', "_");
+            let value = serde_json::Value::String(snake.clone());
+            serde_json::from_value::<BlendMode>(value)
+                .unwrap_or_else(|_| panic!("native missing blend mode `{kebab}`"));
+        }
+
+        // Every native variant is present in the fixture (no native-only mode).
+        for mode in BlendMode::ALL {
+            let snake = serde_json::to_value(mode).unwrap();
+            let kebab = snake.as_str().unwrap().replace('_', "-");
+            assert!(modes.contains(&kebab), "fixture missing native blend mode `{kebab}`");
+        }
     }
 
     #[test]

@@ -53,7 +53,14 @@ export function mergeFadeOutUs(input: {
   return Math.max(child, remaining);
 }
 
-function sourceOrientationToDeg(orientation: ClipSourceOrientation | undefined): number {
+/**
+ * Maps an explicit clip source orientation to degrees.
+ *
+ * Cross-engine parity contract: the native engine maps the same values in
+ * `source_orientation_deg` (src-tauri/src/monitor/scene/build/transform.rs),
+ * pinned by `shared/parity/source-orientation-deg.cases.json`.
+ */
+export function sourceOrientationToDeg(orientation: ClipSourceOrientation | undefined): number {
   switch (orientation) {
     case '90':
       return 90;

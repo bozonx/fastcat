@@ -181,16 +181,69 @@ export function computeCropMaskPolygon(params: {
   };
 }
 
+export interface ContainFit {
+  scale: number;
+  offsetX: number;
+  offsetY: number;
+}
+
+/**
+ * Aspect-preserving "contain" fit of a `natural` box into a `viewport`, centered
+ * (letterbox/pillarbox). Returns the uniform scale and the top-left offset.
+ *
+ * Cross-engine parity contract: the native engine computes the same fit in
+ * `fit_into` (src-tauri/src/compositor/scene.rs), pinned by
+ * `shared/parity/contain-fit.cases.json`. `orientedFitScale` adds the quarter-turn
+ * swap on top of this (mirrors native `oriented_fit_scale`).
+ */
+export function computeContainFit(
+  naturalWidth: number,
+  naturalHeight: number,
+  viewportWidth: number,
+  viewportHeight: number,
+): ContainFit {
+  const nw = Math.max(1, naturalWidth);
+  const nh = Math.max(1, naturalHeight);
+  const vw = Math.max(1, viewportWidth);
+  const vh = Math.max(1, viewportHeight);
+  const scale = Math.min(vw / nw, vh / nh);
+  return {
+    scale,
+    offsetX: (vw - nw * scale) / 2,
+    offsetY: (vh - nh * scale) / 2,
+  };
+}
+
+/**
+ * Uniform "contain" fit scale that accounts for a quarter-turn source rotation
+ * (the rotated box is fitted, so a 90°/270° clip fills the frame correctly).
+ * Mirrors native `oriented_fit_scale`.
+ */
+export function orientedFitScale(
+  naturalWidth: number,
+  naturalHeight: number,
+  sceneWidth: number,
+  sceneHeight: number,
+  rotationDeg: number,
+): number {
+  const fitW = isQuarterTurn(rotationDeg) ? naturalHeight : naturalWidth;
+  const fitH = isQuarterTurn(rotationDeg) ? naturalWidth : naturalHeight;
+  return computeContainFit(fitW, fitH, sceneWidth, sceneHeight).scale;
+}
+
 export function computeClipBoxLayout(input: ClipBoxLayoutInput): ClipBoxLayout {
   const safeFrameWidth = Math.max(1, input.frameWidth);
   const safeFrameHeight = Math.max(1, input.frameHeight);
   const safeCanvasWidth = Math.max(1, input.canvasWidth);
   const safeCanvasHeight = Math.max(1, input.canvasHeight);
 
-  const rotatedFit = isQuarterTurn(clampFinite(input.fitRotationDeg, 0));
-  const fitFrameWidth = rotatedFit ? safeFrameHeight : safeFrameWidth;
-  const fitFrameHeight = rotatedFit ? safeFrameWidth : safeFrameHeight;
-  const fitScale = Math.min(safeCanvasWidth / fitFrameWidth, safeCanvasHeight / fitFrameHeight);
+  const fitScale = orientedFitScale(
+    safeFrameWidth,
+    safeFrameHeight,
+    safeCanvasWidth,
+    safeCanvasHeight,
+    clampFinite(input.fitRotationDeg, 0),
+  );
   const targetWidth = safeFrameWidth * fitScale;
   const targetHeight = safeFrameHeight * fitScale;
   const baseX = (safeCanvasWidth - targetWidth) / 2;
