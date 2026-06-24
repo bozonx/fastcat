@@ -98,7 +98,7 @@ vi.mock('~/composables/file-manager/useMobileAssetCategories', () => ({
 }));
 
 vi.mock('~/stores/file-manager.store', () => ({
-  useMobileAssetBrowserStore: () => mockAssetStore,
+  useMobileMediaPickerStore: () => mockAssetStore,
 }));
 
 vi.mock('~/composables/timeline/useMediaTrackRedirectToast', () => ({
@@ -203,5 +203,35 @@ describe('MobileMediaPickerDrawer', () => {
     });
 
     expect(wrapper.findAll('.entry').map((entry) => entry.text())).toEqual(['cover.png']);
+  });
+
+  it('hides the currently installed clip source file in replace mode', async () => {
+    mockTimelineStore.timelineDoc = {
+      tracks: [
+        {
+          id: 'track-1',
+          kind: 'video',
+          items: [{ id: 'clip-1', source: { path: 'current.mp4' } }],
+        },
+      ],
+    } as any;
+    mockUiStore.mediaReplaceTarget = {
+      trackId: 'track-1',
+      itemId: 'clip-1',
+      expectedType: 'video',
+    };
+    assetEntries.value = [
+      { name: 'current.mp4', kind: 'file', path: 'current.mp4' },
+      { name: 'replacement.mp4', kind: 'file', path: 'replacement.mp4' },
+    ];
+
+    const wrapper = await mountSuspended(MobileMediaPickerDrawer, {
+      props: { isOpen: true, isReplaceMode: true },
+      global: globalOptions,
+    });
+
+    const entryNames = wrapper.findAll('.entry').map((entry) => entry.text());
+    expect(entryNames).not.toContain('current.mp4');
+    expect(entryNames).toEqual(['replacement.mp4']);
   });
 });

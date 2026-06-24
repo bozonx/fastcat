@@ -8,7 +8,7 @@ import { useMobileAssetCategories } from '~/composables/file-manager/useMobileAs
 import { usePullToRefresh } from '~/composables/file-manager/usePullToRefresh';
 import { useMediaTrackRedirectToast } from '~/composables/timeline/useMediaTrackRedirectToast';
 import { useMediaStore } from '~/stores/media.store';
-import { useMobileAssetBrowserStore } from '~/stores/file-manager.store';
+import { useMobileMediaPickerStore } from '~/stores/file-manager.store';
 import { useProjectStore } from '~/stores/project.store';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useUiStore } from '~/stores/ui.store';
@@ -36,7 +36,7 @@ const timelineStore = useTimelineStore();
 const projectStore = useProjectStore();
 const mediaStore = useMediaStore();
 const workspaceStore = useWorkspaceStore();
-const assetStore = useMobileAssetBrowserStore();
+const assetStore = useMobileMediaPickerStore();
 const { captureSelectionKind, notifyRedirect } = useMediaTrackRedirectToast();
 
 const fileManager = useFileManager({ shouldRecordFileManagerHistory: () => false });
@@ -70,7 +70,15 @@ function isSelectableEntry(entry: FsEntry): boolean {
   if (!['video', 'audio', 'image', 'timeline'].includes(mediaType)) return false;
 
   if (props.isReplaceMode && uiStore.mediaReplaceTarget) {
-    return mediaType === uiStore.mediaReplaceTarget.expectedType;
+    if (mediaType !== uiStore.mediaReplaceTarget.expectedType) return false;
+
+    // Hide the file that is already set as the clip's source.
+    const clip = timelineStore.timelineDoc?.tracks
+      .find((track) => track.id === uiStore.mediaReplaceTarget!.trackId)
+      ?.items.find((item) => item.id === uiStore.mediaReplaceTarget!.itemId);
+    if (clip && 'source' in clip && clip.source?.path === entry.path) return false;
+
+    return true;
   }
 
   // Forbid mixing media types within one multi-selection.

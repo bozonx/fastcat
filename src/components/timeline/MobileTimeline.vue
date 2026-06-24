@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { useWindowSize } from '@vueuse/core';
 import { storeToRefs } from 'pinia';
 import type { TimelineTrack } from '~/timeline/types';
@@ -7,6 +7,7 @@ import { useTimelineStore } from '~/stores/timeline.store';
 import { useProjectStore } from '~/stores/project.store';
 import { useFocusStore } from '~/stores/focus.store';
 import { useSelectionStore } from '~/stores/selection.store';
+import { useUiStore } from '~/stores/ui.store';
 import { useTimelineInteraction } from '~/composables/timeline/useTimelineInteraction';
 import { timeUsToPx } from '~/utils/timeline/geometry';
 import MultiClipProperties from '~/components/properties/MultiClipProperties.vue';
@@ -70,6 +71,7 @@ const projectStore = useProjectStore();
 const selectionStore = useSelectionStore();
 const mediaStore = useMediaStore();
 const clipboardStore = useAppClipboard();
+const uiStore = useUiStore();
 
 const { currentView } = storeToRefs(projectStore);
 
@@ -120,6 +122,15 @@ const {
   onSelectionRangeDrawerClose,
   onOpenVirtualClipPreset,
 } = useMobileTimelineDrawers();
+
+// Close all timeline drawers when the media replace picker opens on mobile,
+// so clip properties are not visible behind the picker's backdrop.
+watch(
+  () => uiStore.isMediaReplaceModalOpen,
+  (isOpen) => {
+    if (isOpen) closeAllDrawers();
+  },
+);
 
 const {
   selectedMarkerId,

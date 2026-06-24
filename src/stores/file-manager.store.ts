@@ -303,3 +303,8 @@ export const useMobileAssetBrowserStore = defineStore(
   'mobileAssetBrowser',
   createFileManagerStoreSetup('mobile-assets'),
 );
+
+export const useMobileMediaPickerStore = defineStore(
+  'mobileMediaPicker',
+  createFileManagerStoreSetup('mobile-media-picker'),
+);
