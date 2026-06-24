@@ -166,9 +166,7 @@ const webAudioCodecs = computed(() => {
     <UiConfirmModal
       v-model:open="isResetConfirmOpen"
       :title="t('videoEditor.settings.resetAudioSettingsConfirmTitle')"
-      :description="
-        t('videoEditor.settings.resetAudioSettingsConfirmDesc')
-      "
+      :description="t('videoEditor.settings.resetAudioSettingsConfirmDesc')"
       :confirm-text="t('videoEditor.settings.hotkeysResetAllConfirmAction')"
       :cancel-text="t('common.cancel')"
       color="warning"
@@ -194,9 +192,7 @@ const webAudioCodecs = computed(() => {
 
     <UiFormField
       :label="t('videoEditor.settings.defaultAudioFadeCurveTitle')"
-      :help="
-        t('videoEditor.settings.defaultAudioFadeCurveHint')
-      "
+      :help="t('videoEditor.settings.defaultAudioFadeCurveHint')"
     >
       <UiButtonGroup
         v-model="workspaceStore.userSettings.projectDefaults.defaultAudioFadeCurve"
@@ -212,9 +208,7 @@ const webAudioCodecs = computed(() => {
 
     <UiFormField
       :label="t('videoEditor.settings.projectAudioDeclickTitle')"
-      :help="
-        t('videoEditor.settings.projectAudioDeclickHint')
-      "
+      :help="t('videoEditor.settings.projectAudioDeclickHint')"
     >
       <UiWheelNumberInput
         :model-value="workspaceStore.userSettings.projectDefaults.audioDeclickDurationUs / 1000"

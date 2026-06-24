@@ -103,17 +103,13 @@ const handleAfterEnter = () => {
   <UiModal
     v-model:open="isOpen"
     :title="t('fastcat.captions.modalTitle')"
-    :description="
-      t('fastcat.captions.modalDescription')
-    "
+    :description="t('fastcat.captions.modalDescription')"
     :ui="{ content: 'sm:max-w-2xl' }"
     @after:enter="handleAfterEnter"
   >
     <div class="flex flex-col gap-4">
       <div class="text-xs text-ui-text-muted bg-ui-bg-elevated rounded border border-ui-border p-3">
-        {{
-          t('fastcat.captions.timelineWideDescription')
-        }}
+        {{ t('fastcat.captions.timelineWideDescription') }}
       </div>
 
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">

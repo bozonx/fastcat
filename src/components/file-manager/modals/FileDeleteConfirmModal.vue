@@ -19,9 +19,7 @@ const { t } = useI18n();
   <UiConfirmModal
     v-model:open="isOpen"
     :title="t('videoEditor.fileManager.delete.confirmTitle')"
-    :description="
-      t('common.confirmDelete')
-    "
+    :description="t('common.confirmDelete')"
     color="primary"
     icon="i-heroicons-exclamation-triangle"
     @confirm="emit('confirm')"

@@ -156,10 +156,9 @@ export function useFilePropertiesTranscription(options: UseFilePropertiesTranscr
 
       options.toast.add({
         title: options.t('videoEditor.fileManager.audio.transcriptionCompleted'),
-        description: options.t(
-          'videoEditor.fileManager.audio.transcriptionFinishedDescription',
-          { name: selectedEntry.name },
-        ),
+        description: options.t('videoEditor.fileManager.audio.transcriptionFinishedDescription', {
+          name: selectedEntry.name,
+        }),
         color: 'success',
       });
     } catch (error: unknown) {

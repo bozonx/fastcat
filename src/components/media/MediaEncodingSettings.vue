@@ -324,9 +324,7 @@ watch(
       <UiFormField
         v-else
         :label="t('videoEditor.export.audioBitrate')"
-        :help="
-          t('videoEditor.export.audioBitrateHelp')
-        "
+        :help="t('videoEditor.export.audioBitrateHelp')"
       >
         <UiWheelNumberInput
           v-model="audioBitrateKbps"

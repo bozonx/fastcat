@@ -95,9 +95,7 @@ async function resetToDefaults() {
     <UiConfirmModal
       v-model:open="isClearProjectVardataConfirmOpen"
       :title="t('videoEditor.projectSettings.clearTempTitle')"
-      :description="
-        t('videoEditor.projectSettings.clearTempDescription')
-      "
+      :description="t('videoEditor.projectSettings.clearTempDescription')"
       :confirm-text="t('videoEditor.projectSettings.clearTempConfirm')"
       :cancel-text="t('common.cancel')"
       color="warning"
@@ -108,9 +106,7 @@ async function resetToDefaults() {
     <UiConfirmModal
       v-model:open="isDeleteProjectConfirmOpen"
       :title="t('videoEditor.projectSettings.deleteProjectConfirmTitle')"
-      :description="
-        t('videoEditor.projectSettings.deleteProjectConfirmDescription')
-      "
+      :description="t('videoEditor.projectSettings.deleteProjectConfirmDescription')"
       :confirm-text="t('videoEditor.projectSettings.deleteProjectAction')"
       :cancel-text="t('common.cancel')"
       color="error"
@@ -121,9 +117,7 @@ async function resetToDefaults() {
     <UiConfirmModal
       v-model:open="isResetConfirmOpen"
       :title="t('videoEditor.projectSettings.resetConfirmTitle')"
-      :description="
-        t('videoEditor.projectSettings.resetConfirmDescription')
-      "
+      :description="t('videoEditor.projectSettings.resetConfirmDescription')"
       :confirm-text="t('videoEditor.projectSettings.resetSettings')"
       :cancel-text="t('common.cancel')"
       color="warning"

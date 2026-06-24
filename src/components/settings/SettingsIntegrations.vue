@@ -104,9 +104,7 @@ watch(
     <UiConfirmModal
       v-model:open="isResetConfirmOpen"
       :title="t('videoEditor.settings.resetIntegrationsSettingsConfirmTitle')"
-      :description="
-        t('videoEditor.settings.resetIntegrationsSettingsConfirmDesc')
-      "
+      :description="t('videoEditor.settings.resetIntegrationsSettingsConfirmDesc')"
       :confirm-text="t('videoEditor.settings.hotkeysResetAllConfirmAction')"
       :cancel-text="t('common.cancel')"
       color="warning"

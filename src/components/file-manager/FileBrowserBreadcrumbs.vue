@@ -24,12 +24,7 @@ const { getHotkeyTitle } = useHotkeyLabel();
     class="file-browser-breadcrumbs flex items-center gap-1 px-4 py-2 border-b border-ui-border/50 bg-ui-bg-accent/30 shrink-0"
   >
     <UiTooltip
-      :text="
-        getHotkeyTitle(
-          t('videoEditor.hotkeys.general.navigateBack'),
-          'general.navigateBack',
-        )
-      "
+      :text="getHotkeyTitle(t('videoEditor.hotkeys.general.navigateBack'), 'general.navigateBack')"
     >
       <UButton
         variant="ghost"
@@ -42,10 +37,7 @@ const { getHotkeyTitle } = useHotkeyLabel();
     </UiTooltip>
     <UiTooltip
       :text="
-        getHotkeyTitle(
-          t('videoEditor.hotkeys.general.navigateForward'),
-          'general.navigateForward',
-        )
+        getHotkeyTitle(t('videoEditor.hotkeys.general.navigateForward'), 'general.navigateForward')
       "
     >
       <UButton

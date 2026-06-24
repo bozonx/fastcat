@@ -224,9 +224,7 @@ function resetPathDefaults() {
     <UiConfirmModal
       v-model:open="isClearWorkspaceVardataConfirmOpen"
       :title="t('videoEditor.settings.clearTempWorkspaceTitle')"
-      :description="
-        t('videoEditor.settings.clearTempWorkspaceDescription')
-      "
+      :description="t('videoEditor.settings.clearTempWorkspaceDescription')"
       :confirm-text="t('videoEditor.settings.clearTempWorkspaceConfirm')"
       :cancel-text="t('common.cancel')"
       color="warning"
@@ -243,9 +241,7 @@ function resetPathDefaults() {
           {{ t('videoEditor.settings.clearTempWorkspace') }}
         </div>
         <div class="text-xs text-ui-text-muted">
-          {{
-            t('videoEditor.settings.clearTempWorkspaceHint')
-          }}
+          {{ t('videoEditor.settings.clearTempWorkspaceHint') }}
         </div>
       </div>
 

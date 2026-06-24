@@ -189,9 +189,7 @@ function getFolderIcon(name: string): string {
           {{ t('videoEditor.fileManager.dropOverlay.autoTitle') }}
         </h3>
         <p class="text-sm text-ui-text-muted text-center mb-5 max-w-xs leading-relaxed">
-          {{
-            t('videoEditor.fileManager.dropOverlay.autoDescription')
-          }}
+          {{ t('videoEditor.fileManager.dropOverlay.autoDescription') }}
         </p>
         <div class="flex flex-col gap-2 w-full max-w-xs">
           <div class="flex items-center gap-2.5 px-3 py-1.5 rounded-lg bg-ui-bg-accent/40">
@@ -227,9 +225,7 @@ function getFolderIcon(name: string): string {
           {{ t('videoEditor.fileManager.dropOverlay.folderTitle') }}
         </h3>
         <p class="text-xs text-ui-text-muted mb-4 text-center">
-          {{
-            t('videoEditor.fileManager.dropOverlay.folderDescription')
-          }}
+          {{ t('videoEditor.fileManager.dropOverlay.folderDescription') }}
         </p>
 
         <div class="flex-1 overflow-y-auto min-h-0 -mx-2 px-2">

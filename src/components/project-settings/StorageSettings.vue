@@ -110,9 +110,7 @@ watch(
             {{ t('videoEditor.projectSettings.clearTemp') }}
           </div>
           <div class="text-sm text-ui-text-muted mb-1">
-            {{
-              t('videoEditor.projectSettings.clearTempHint')
-            }}
+            {{ t('videoEditor.projectSettings.clearTempHint') }}
           </div>
           <div class="text-xs flex items-center gap-1.5">
             <span class="text-ui-text-muted">{{ t('common.size') }}:</span>
@@ -143,9 +141,7 @@ watch(
             {{ t('videoEditor.projectSettings.deleteProject') }}
           </div>
           <div class="text-sm text-error-400/70">
-            {{
-              t('videoEditor.projectSettings.deleteProjectConfirmDescription')
-            }}
+            {{ t('videoEditor.projectSettings.deleteProjectConfirmDescription') }}
           </div>
         </div>
 

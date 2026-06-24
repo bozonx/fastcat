@@ -104,7 +104,9 @@ const menuItems = computed(() => {
       />
 
       <!-- Window Switcher -->
-      <div class="flex items-stretch bg-ui-bg rounded-md border border-ui-border divide-x divide-ui-border overflow-hidden mr-2 h-8">
+      <div
+        class="flex items-stretch bg-ui-bg rounded-md border border-ui-border divide-x divide-ui-border overflow-hidden mr-2 h-8"
+      >
         <UiTooltip
           v-if="workspaceStore.userSettings.experimentalFeatures"
           :text="getHotkeyTitle(t('videoEditor.fileManager.tabs.files'), 'general.switchViewFiles')"

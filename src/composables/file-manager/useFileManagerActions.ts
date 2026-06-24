@@ -152,9 +152,7 @@ export function useFileManagerActions(actions: FileManagerActions) {
       : null;
     await actions.renameEntry(entry, trimmed);
     const parentPath =
-      textWrapperRenameResult?.reloadDirPath ??
-      entry.parentPath ??
-      getParentPath(entry.path);
+      textWrapperRenameResult?.reloadDirPath ?? entry.parentPath ?? getParentPath(entry.path);
     await actions.reloadDirectory(parentPath);
     stopRename();
     actions.onAfterRename?.();
@@ -383,9 +381,7 @@ export function useFileManagerActions(actions: FileManagerActions) {
     validateFn: (e: FsEntry) => boolean,
   ): void {
     const entries = Array.isArray(entry) ? entry : [entry];
-    const validEntries = entries.filter(
-      (e) => typeof e.path === 'string' && validateFn(e),
-    );
+    const validEntries = entries.filter((e) => typeof e.path === 'string' && validateFn(e));
     if (validEntries.length !== entries.length) return;
     if (validEntries.length === 0) return;
     clipboardStore.setClipboardPayload({

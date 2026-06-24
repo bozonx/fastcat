@@ -38,9 +38,7 @@ function resetDefaults() {
     <UiConfirmModal
       v-model:open="isResetConfirmOpen"
       :title="t('videoEditor.settings.resetProxySettingsConfirmTitle')"
-      :description="
-        t('videoEditor.settings.resetProxySettingsConfirmDesc')
-      "
+      :description="t('videoEditor.settings.resetProxySettingsConfirmDesc')"
       :confirm-text="t('videoEditor.settings.hotkeysResetAllConfirmAction')"
       :cancel-text="t('common.cancel')"
       color="warning"
@@ -115,24 +113,18 @@ function resetDefaults() {
 
     <label
       class="flex items-center gap-3 cursor-pointer"
-      :title="
-        t('videoEditor.settings.proxyCopyOpusAudioHelp')
-      "
+      :title="t('videoEditor.settings.proxyCopyOpusAudioHelp')"
     >
       <UCheckbox v-model="workspaceStore.userSettings.optimization.proxyCopyOpusAudio" />
       <span class="text-sm text-ui-text">
-        {{
-          t('videoEditor.settings.proxyCopyOpusAudio')
-        }}
+        {{ t('videoEditor.settings.proxyCopyOpusAudio') }}
       </span>
     </label>
 
     <label class="flex items-center gap-3 cursor-pointer">
       <UCheckbox v-model="workspaceStore.userSettings.optimization.autoCreateProxies" />
       <span class="text-sm text-ui-text">
-        {{
-          t('videoEditor.settings.autoCreateProxies')
-        }}
+        {{ t('videoEditor.settings.autoCreateProxies') }}
       </span>
     </label>
   </div>

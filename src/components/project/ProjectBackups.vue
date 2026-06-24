@@ -95,9 +95,7 @@ const versions = computed(() => timelineStore.backupVersions);
     <UiConfirmModal
       v-model:open="isClearBackupsConfirmOpen"
       :title="t('videoEditor.projectSettings.clearBackupsTitle')"
-      :description="
-        t('videoEditor.projectSettings.clearBackupsDescription')
-      "
+      :description="t('videoEditor.projectSettings.clearBackupsDescription')"
       :confirm-text="t('videoEditor.projectSettings.clearTempConfirm')"
       :cancel-text="t('common.cancel')"
       color="warning"

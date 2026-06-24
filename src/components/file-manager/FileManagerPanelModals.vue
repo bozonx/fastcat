@@ -54,9 +54,7 @@ const { t } = useI18n();
   <UiConfirmModal
     :open="props.isDeleteConfirmModalOpen"
     :title="t('common.delete')"
-    :description="
-      t('common.confirmDelete')
-    "
+    :description="t('common.confirmDelete')"
     color="error"
     icon="i-heroicons-exclamation-triangle"
     @update:open="emit('update:isDeleteConfirmModalOpen', $event)"
@@ -114,9 +112,7 @@ const { t } = useI18n();
   >
     <div class="flex flex-col gap-4">
       <div class="text-sm text-ui-text-muted">
-        {{
-          t('videoEditor.fileManager.audio.transcriptionHint')
-        }}
+        {{ t('videoEditor.fileManager.audio.transcriptionHint') }}
       </div>
 
       <div v-if="props.transcriptionEntry" class="text-xs text-ui-text-muted break-all">

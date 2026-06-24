@@ -33,9 +33,7 @@ const emit = defineEmits<{
   >
     <div class="flex flex-col gap-4">
       <div class="text-sm text-ui-text-muted">
-        {{
-          t('videoEditor.fileManager.audio.transcriptionHint')
-        }}
+        {{ t('videoEditor.fileManager.audio.transcriptionHint') }}
       </div>
 
       <div v-if="props.transcriptionEntry" class="text-xs text-ui-text-muted break-all">

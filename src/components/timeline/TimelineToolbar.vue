@@ -177,14 +177,11 @@ const zoomCombinedTooltip = computed(() => {
   const zoomFitLabel = getHotkeyLabel('general.zoomFit');
 
   const parts = [];
-  if (zoomInLabel)
-    parts.push(`${t('videoEditor.hotkeys.general.zoomIn')} (${zoomInLabel})`);
-  if (zoomOutLabel)
-    parts.push(`${t('videoEditor.hotkeys.general.zoomOut')} (${zoomOutLabel})`);
+  if (zoomInLabel) parts.push(`${t('videoEditor.hotkeys.general.zoomIn')} (${zoomInLabel})`);
+  if (zoomOutLabel) parts.push(`${t('videoEditor.hotkeys.general.zoomOut')} (${zoomOutLabel})`);
   if (zoomResetLabel)
     parts.push(`${t('videoEditor.hotkeys.general.zoomReset')} (${zoomResetLabel})`);
-  if (zoomFitLabel)
-    parts.push(`${t('fastcat.timeline.zoomToFit')} (${zoomFitLabel})`);
+  if (zoomFitLabel) parts.push(`${t('fastcat.timeline.zoomToFit')} (${zoomFitLabel})`);
 
   return parts.join(' | ');
 });
