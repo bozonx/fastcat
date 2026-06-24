@@ -6,6 +6,7 @@ import {
   IMAGES_DIR_NAME,
   TIMELINES_DIR_NAME,
 } from '~/utils/constants';
+import type { ClipTransform, ClipSourceOrientation } from '~/timeline/types';
 
 // Deep clone of a clip's effects array before it crosses into a worker payload.
 // Named separately from `clonePlain` to document intent at call sites; both
@@ -50,6 +51,98 @@ export function mergeFadeOutUs(input: {
   if (remaining <= 0) return child;
   if (child === undefined) return remaining;
   return Math.max(child, remaining);
+}
+
+function sourceOrientationToDeg(orientation: ClipSourceOrientation | undefined): number {
+  switch (orientation) {
+    case '90':
+      return 90;
+    case '180':
+      return 180;
+    case '270':
+      return 270;
+    default:
+      return 0;
+  }
+}
+
+function isIdentityTransform(t: ClipTransform | undefined): boolean {
+  if (!t) return true;
+  const sx = t.scale?.x ?? 1;
+  const sy = t.scale?.y ?? 1;
+  const px = t.position?.x ?? 0;
+  const py = t.position?.y ?? 0;
+  const rot = t.rotationDeg ?? 0;
+  const crop = t.crop;
+  const hasCrop =
+    !!crop && ((crop.top ?? 0) || (crop.bottom ?? 0) || (crop.left ?? 0) || (crop.right ?? 0));
+  return sx === 1 && sy === 1 && px === 0 && py === 0 && rot === 0 && !hasCrop;
+}
+
+/**
+ * Composes a nested-timeline clip's (parent) transform onto one of its expanded
+ * inner clips (child) so the nested block behaves like a normal video clip.
+ *
+ * Both transforms are expressed in the shared design-base coordinate space
+ * (position in design-base px, scale unitless, rotation in degrees) and are
+ * composed about the centered fit box — i.e. `world = Parent(Child(v))`:
+ *
+ *   scaleFinal      = scaleParent · scaleChild
+ *   rotationFinal   = rotationParent + rotationChild
+ *   positionFinal   = R(rotationParent) · (scaleParent ⊙ positionChild) + positionParent
+ *
+ * The child's anchor and crop are preserved (they describe the inner content);
+ * the parent's anchor and crop are intentionally dropped because in the flat
+ * (non-sub-scene) model there is no nested frame to anchor/crop against. The
+ * decomposition is exact for a uniform parent scale; a non-uniform parent scale
+ * combined with rotation introduces shear that is approximated as scale+rotate.
+ * The parent's `sourceOrientation` (quarter turns) folds into the rotation.
+ */
+export function composeNestedTransform(params: {
+  parent: ClipTransform | undefined;
+  parentOrientation?: ClipSourceOrientation;
+  child: ClipTransform | undefined;
+}): ClipTransform | undefined {
+  const parentOrientationDeg = sourceOrientationToDeg(params.parentOrientation);
+  if (isIdentityTransform(params.parent) && parentOrientationDeg === 0) {
+    return params.child ? clonePlain(params.child) : undefined;
+  }
+
+  const p = params.parent;
+  const c = params.child;
+
+  const pSx = p?.scale?.x ?? 1;
+  const pSy = p?.scale?.y ?? 1;
+  const pRot = (p?.rotationDeg ?? 0) + parentOrientationDeg;
+  const pPx = p?.position?.x ?? 0;
+  const pPy = p?.position?.y ?? 0;
+
+  const cSx = c?.scale?.x ?? 1;
+  const cSy = c?.scale?.y ?? 1;
+  const cRot = c?.rotationDeg ?? 0;
+  const cPx = c?.position?.x ?? 0;
+  const cPy = c?.position?.y ?? 0;
+
+  const rad = (pRot * Math.PI) / 180;
+  const cos = Math.cos(rad);
+  const sin = Math.sin(rad);
+  const scaledChildX = pSx * cPx;
+  const scaledChildY = pSy * cPy;
+
+  const positionX = cos * scaledChildX - sin * scaledChildY + pPx;
+  const positionY = sin * scaledChildX + cos * scaledChildY + pPy;
+
+  const result: ClipTransform = {
+    scale: { x: pSx * cSx, y: pSy * cSy },
+    rotationDeg: pRot + cRot,
+    position: { x: positionX, y: positionY },
+  };
+
+  // Preserve the inner content's anchor and crop; the parent's are dropped.
+  if (c?.anchor) result.anchor = clonePlain(c.anchor);
+  if (c?.crop) result.crop = clonePlain(c.crop);
+
+  return result;
 }
 
 export function isProbablyUrlLike(path: string): boolean {

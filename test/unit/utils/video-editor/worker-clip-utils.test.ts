@@ -8,10 +8,73 @@ import {
   joinPaths,
   normalizeProjectPath,
   resolveNestedMediaPath,
+  composeNestedTransform,
 } from '~/utils/video-editor/worker-clip-utils';
 import { VIDEO_DIR_NAME } from '~/utils/constants';
 
 describe('worker-clip-utils', () => {
+  describe('composeNestedTransform', () => {
+    it('returns the child transform when the parent is identity', () => {
+      const child = { scale: { x: 2, y: 2 }, position: { x: 10, y: 20 }, rotationDeg: 30 };
+      expect(composeNestedTransform({ parent: undefined, child })).toEqual(child);
+    });
+
+    it('returns the parent transform when the child is identity', () => {
+      const parent = { scale: { x: 0.5, y: 0.5 }, position: { x: 100, y: 0 }, rotationDeg: 0 };
+      const result = composeNestedTransform({ parent, child: undefined });
+      expect(result?.scale).toEqual({ x: 0.5, y: 0.5 });
+      expect(result?.position).toEqual({ x: 100, y: 0 });
+      expect(result?.rotationDeg).toBe(0);
+    });
+
+    it('multiplies scale and adds rotation', () => {
+      const result = composeNestedTransform({
+        parent: { scale: { x: 2, y: 3 }, rotationDeg: 10 },
+        child: { scale: { x: 1.5, y: 0.5 }, rotationDeg: 25 },
+      });
+      expect(result?.scale).toEqual({ x: 3, y: 1.5 });
+      expect(result?.rotationDeg).toBe(35);
+    });
+
+    it('scales the child position by the parent scale (no parent rotation)', () => {
+      const result = composeNestedTransform({
+        parent: { scale: { x: 2, y: 2 }, position: { x: 100, y: 50 } },
+        child: { position: { x: 10, y: 20 } },
+      });
+      // pos = scaleParent ⊙ childPos + parentPos
+      expect(result?.position?.x).toBeCloseTo(2 * 10 + 100, 6);
+      expect(result?.position?.y).toBeCloseTo(2 * 20 + 50, 6);
+    });
+
+    it('rotates the child position by the parent rotation', () => {
+      const result = composeNestedTransform({
+        parent: { rotationDeg: 90, position: { x: 0, y: 0 } },
+        child: { position: { x: 10, y: 0 } },
+      });
+      // 90° rotation of (10, 0) → (0, 10)
+      expect(result?.position?.x).toBeCloseTo(0, 6);
+      expect(result?.position?.y).toBeCloseTo(10, 6);
+    });
+
+    it('folds the parent source orientation into the rotation', () => {
+      const result = composeNestedTransform({
+        parent: undefined,
+        parentOrientation: '90',
+        child: { rotationDeg: 5 },
+      });
+      expect(result?.rotationDeg).toBe(95);
+    });
+
+    it('preserves the child anchor and crop, drops the parent crop', () => {
+      const result = composeNestedTransform({
+        parent: { scale: { x: 2, y: 2 }, crop: { left: 10 } },
+        child: { anchor: { preset: 'topLeft' }, crop: { top: 5 } },
+      });
+      expect(result?.anchor).toEqual({ preset: 'topLeft' });
+      expect(result?.crop).toEqual({ top: 5 });
+    });
+  });
+
   describe('mergeFadeInUs', () => {
     it('returns child fade if no parent fade', () => {
       expect(

@@ -16,6 +16,7 @@ import { buildEffectiveAudioClipItems } from '~/utils/audio/track-bus';
 import {
   cloneEffects,
   clonePlain,
+  composeNestedTransform,
   mergeFadeInUs,
   mergeFadeOutUs,
   normalizeProjectPath,
@@ -470,6 +471,20 @@ function finalizeNestedClips(params: {
   const out: WorkerTimelineClip[] = [];
   const parentDurationUs = Math.max(0, Math.round(item.timelineRange.durationUs));
 
+  // The parent nested-timeline clip's transform / orientation / transitions must
+  // be applied to its expanded inner clips so the block behaves like a regular
+  // video clip (transform composes onto every inner layer; an entry/exit
+  // transition fades the inner layers visible at the parent's edges — a
+  // cross-dissolve with a neighbour is not representable while flattened).
+  const parentTransform = item.transformActive !== false ? item.transform : undefined;
+  const parentOrientation = item.transformActive !== false ? item.sourceOrientation : undefined;
+  const parentStartUs = item.timelineRange.startUs;
+  const parentEndUs = parentStartUs + item.timelineRange.durationUs;
+  const parentTransitionIn = item.transitionIn;
+  const parentTransitionOut = item.transitionOut;
+  const transitionInEndUs = parentStartUs + (parentTransitionIn?.durationUs ?? 0);
+  const transitionOutStartUs = parentEndUs - (parentTransitionOut?.durationUs ?? 0);
+
   for (const nClip of nestedWorkerClips) {
     const resolvedNClip = resolveNestedMediaClipPath(nClip, nestedTimelinePath);
     const clipWindow = getNestedClipWindow({ nestedClip: resolvedNClip, parentItem: item });
@@ -479,10 +494,35 @@ function finalizeNestedClips(params: {
     });
     if (!clipWindow || !trimmedNestedClip) continue;
 
+    const isVideo = mode === 'video';
+    const composedTransform = isVideo
+      ? composeNestedTransform({
+          parent: parentTransform,
+          parentOrientation,
+          child: trimmedNestedClip.transform,
+        })
+      : trimmedNestedClip.transform;
+
+    // Apply the parent transition to inner clips touching the parent's edge.
+    // Keep an inner clip's own transition when present (it owns that edge).
+    const clipStartUs = trimmedNestedClip.timelineRange.startUs;
+    const clipEndUs = clipStartUs + trimmedNestedClip.timelineRange.durationUs;
+    const transitionIn =
+      isVideo && parentTransitionIn && clipStartUs < transitionInEndUs
+        ? (trimmedNestedClip.transitionIn ?? clonePlain(parentTransitionIn))
+        : trimmedNestedClip.transitionIn;
+    const transitionOut =
+      isVideo && parentTransitionOut && clipEndUs > transitionOutStartUs
+        ? (trimmedNestedClip.transitionOut ?? clonePlain(parentTransitionOut))
+        : trimmedNestedClip.transitionOut;
+
     out.push({
       ...trimmedNestedClip,
       id: `${item.id}_nested_${resolvedNClip.id}`,
       layer,
+      transform: composedTransform,
+      transitionIn,
+      transitionOut,
       trackId:
         mode === 'video'
           ? resolvedNClip.trackId
