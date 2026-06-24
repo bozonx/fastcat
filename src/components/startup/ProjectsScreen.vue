@@ -369,6 +369,7 @@ const sortedProjects = computed(() => {
         <UiTextInput
           v-model="projectCreationSettings.name"
           :placeholder="t('fastcat.projects.projectNamePlaceholder')"
+          full-width
           autofocus
           @keyup.enter="createNewProject"
         />
@@ -379,7 +380,7 @@ const sortedProjects = computed(() => {
         :label="t('fastcat.projects.projectLocation')"
       >
         <div class="flex gap-2 w-full">
-          <UiTextInput v-model="projectCreationSettings.location" readonly class="flex-1" />
+          <UiTextInput v-model="projectCreationSettings.location" readonly full-width class="flex-1" />
           <UButton
             color="neutral"
             variant="subtle"
@@ -473,6 +474,7 @@ const sortedProjects = computed(() => {
       <UiTextInput
         v-model="renameValue"
         :placeholder="t('fastcat.projects.projectNamePlaceholder')"
+        full-width
         autofocus
         @keyup.enter="renameProject"
       />
