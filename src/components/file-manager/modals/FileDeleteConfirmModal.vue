@@ -20,10 +20,7 @@ const { t } = useI18n();
     v-model:open="isOpen"
     :title="t('videoEditor.fileManager.delete.confirmTitle')"
     :description="
-      t(
-        'common.confirmDelete',
-        'Are you sure you want to delete this? This action cannot be undone.',
-      )
+      t('common.confirmDelete')
     "
     color="primary"
     icon="i-heroicons-exclamation-triangle"

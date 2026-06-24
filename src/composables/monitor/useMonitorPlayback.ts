@@ -553,10 +553,7 @@ export function useMonitorPlayback(options: UseMonitorPlaybackOptions) {
               toast.add({
                 color: 'warning',
                 title: t('fastcat.monitor.playbackThrottled'),
-                description: t(
-                  'fastcat.monitor.playbackThrottledDetail',
-                  'The browser slowed down background playback. Return to this tab for smooth editing.',
-                ),
+                description: t('fastcat.monitor.playbackThrottledDetail'),
               });
             }
           }

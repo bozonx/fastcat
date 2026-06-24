@@ -96,10 +96,7 @@ const versions = computed(() => timelineStore.backupVersions);
       v-model:open="isClearBackupsConfirmOpen"
       :title="t('videoEditor.projectSettings.clearBackupsTitle')"
       :description="
-        t(
-          'videoEditor.projectSettings.clearBackupsDescription',
-          'This will delete all auto-saved timeline backups for this project. This action cannot be undone.',
-        )
+        t('videoEditor.projectSettings.clearBackupsDescription')
       "
       :confirm-text="t('videoEditor.projectSettings.clearTempConfirm')"
       :cancel-text="t('common.cancel')"

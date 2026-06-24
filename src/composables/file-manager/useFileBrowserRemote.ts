@@ -324,10 +324,7 @@ export function useFileBrowserRemote({
     remoteTransferAbortController.value = controller;
     remoteTransferFileName.value = params.entry.name;
     remoteTransferProgress.value = 0;
-    remoteTransferPhase.value = t(
-      'videoEditor.fileManager.actions.downloadFiles',
-      'Download files',
-    );
+    remoteTransferPhase.value = t('videoEditor.fileManager.actions.downloadFiles');
     remoteTransferOpen.value = true;
 
     try {

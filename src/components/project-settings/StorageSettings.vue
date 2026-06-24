@@ -111,10 +111,7 @@ watch(
           </div>
           <div class="text-sm text-ui-text-muted mb-1">
             {{
-              t(
-                'videoEditor.projectSettings.clearTempHint',
-                'Removes all files from vardata for this project',
-              )
+              t('videoEditor.projectSettings.clearTempHint')
             }}
           </div>
           <div class="text-xs flex items-center gap-1.5">
@@ -147,10 +144,7 @@ watch(
           </div>
           <div class="text-sm text-error-400/70">
             {{
-              t(
-                'videoEditor.projectSettings.deleteProjectConfirmDescription',
-                'Permanently delete project folder and all its content',
-              )
+              t('videoEditor.projectSettings.deleteProjectConfirmDescription')
             }}
           </div>
         </div>

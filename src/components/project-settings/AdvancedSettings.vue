@@ -27,10 +27,7 @@ const audioDeclickDurationMs = computed({
     <UiFormField
       :label="t('videoEditor.settings.audioDeclickDuration') + ' (ms)'"
       :help="
-        t(
-          'videoEditor.settings.audioDeclickDurationHelp',
-          'Crossfade duration (linear) applied to edges of all clips to eliminate clicks. 0 disables it.',
-        )
+        t('videoEditor.settings.audioDeclickDurationHelp')
       "
     >
       <UiWheelNumberInput v-model="audioDeclickDurationMs" :min="0" :max="500" :step="1" />

@@ -134,8 +134,8 @@ describe('FileBrowserToolbar', () => {
     const tooltip = sliderContainer.attributes('data-text');
 
     expect(tooltip).toContain('videoEditor.fileManager.cardScale: m');
-    expect(tooltip).toContain('Zoom in (=)');
-    expect(tooltip).toContain('Zoom out (-)');
-    expect(tooltip).toContain('Reset zoom (0)');
+    expect(tooltip).toContain('videoEditor.hotkeys.general.zoomIn (=)');
+    expect(tooltip).toContain('videoEditor.hotkeys.general.zoomOut (-)');
+    expect(tooltip).toContain('videoEditor.hotkeys.general.zoomReset (0)');
   });
 });

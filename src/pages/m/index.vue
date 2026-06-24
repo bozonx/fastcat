@@ -539,7 +539,7 @@ const sortedProjects = computed(() => {
           <div class="flex items-center gap-3">
             <UCheckbox v-model="projectCreationSettings.specifyProjectSettings" />
             <span class="text-ui-text text-sm">{{
-              t('fastcat.projects.specifyProjectSettings', 'Specify project settings')
+              t('fastcat.projects.specifyProjectSettings')
             }}</span>
           </div>
 

@@ -244,10 +244,7 @@ const { emptyAreaContextMenuItems: propertiesContextMenuItems } = useTimelineEmp
       v-model:open="isConfirmDeleteOpen"
       :title="t('fastcat.timeline.deleteTrackTitle')"
       :description="
-        t(
-          'fastcat.timeline.deleteTrackDescription',
-          'Track is not empty. This action cannot be undone.',
-        )
+        t('fastcat.timeline.deleteTrackDescription')
       "
       color="error"
       icon="i-heroicons-exclamation-triangle"

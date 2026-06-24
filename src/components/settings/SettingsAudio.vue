@@ -167,10 +167,7 @@ const webAudioCodecs = computed(() => {
       v-model:open="isResetConfirmOpen"
       :title="t('videoEditor.settings.resetAudioSettingsConfirmTitle')"
       :description="
-        t(
-          'videoEditor.settings.resetAudioSettingsConfirmDesc',
-          'This will restore all audio settings to their default values.',
-        )
+        t('videoEditor.settings.resetAudioSettingsConfirmDesc')
       "
       :confirm-text="t('videoEditor.settings.hotkeysResetAllConfirmAction')"
       :cancel-text="t('common.cancel')"
@@ -198,10 +195,7 @@ const webAudioCodecs = computed(() => {
     <UiFormField
       :label="t('videoEditor.settings.defaultAudioFadeCurveTitle')"
       :help="
-        t(
-          'videoEditor.settings.defaultAudioFadeCurveHint',
-          'Default curve used when you manually create crossfades.',
-        )
+        t('videoEditor.settings.defaultAudioFadeCurveHint')
       "
     >
       <UiButtonGroup
@@ -219,10 +213,7 @@ const webAudioCodecs = computed(() => {
     <UiFormField
       :label="t('videoEditor.settings.projectAudioDeclickTitle')"
       :help="
-        t(
-          'videoEditor.settings.projectAudioDeclickHint',
-          'Crossfade duration (linear) applied to edges of all clips to eliminate clicks. 0 disables it.',
-        )
+        t('videoEditor.settings.projectAudioDeclickHint')
       "
     >
       <UiWheelNumberInput

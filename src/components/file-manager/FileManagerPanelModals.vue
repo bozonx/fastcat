@@ -55,10 +55,7 @@ const { t } = useI18n();
     :open="props.isDeleteConfirmModalOpen"
     :title="t('common.delete')"
     :description="
-      t(
-        'common.confirmDelete',
-        'Are you sure you want to delete this? This action cannot be undone.',
-      )
+      t('common.confirmDelete')
     "
     color="error"
     icon="i-heroicons-exclamation-triangle"
@@ -118,10 +115,7 @@ const { t } = useI18n();
     <div class="flex flex-col gap-4">
       <div class="text-sm text-ui-text-muted">
         {{
-          t(
-            'videoEditor.fileManager.audio.transcriptionHint',
-            'Send the current audio file to the configured STT service. Language is optional.',
-          )
+          t('videoEditor.fileManager.audio.transcriptionHint')
         }}
       </div>
 

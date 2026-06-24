@@ -54,13 +54,13 @@ const gridScaleTooltip = computed(() => {
   const parts = [`${t('videoEditor.fileManager.cardScale')}: ${props.currentGridSizeName}`];
 
   if (zoomInLabel) {
-    parts.push(`${t('videoEditor.hotkeys.general.zoomIn', 'Zoom in')} (${zoomInLabel})`);
+    parts.push(`${t('videoEditor.hotkeys.general.zoomIn')} (${zoomInLabel})`);
   }
   if (zoomOutLabel) {
-    parts.push(`${t('videoEditor.hotkeys.general.zoomOut', 'Zoom out')} (${zoomOutLabel})`);
+    parts.push(`${t('videoEditor.hotkeys.general.zoomOut')} (${zoomOutLabel})`);
   }
   if (zoomResetLabel) {
-    parts.push(`${t('videoEditor.hotkeys.general.zoomReset', 'Reset zoom')} (${zoomResetLabel})`);
+    parts.push(`${t('videoEditor.hotkeys.general.zoomReset')} (${zoomResetLabel})`);
   }
 
   return parts.join(' | ');

@@ -190,10 +190,7 @@ function getFolderIcon(name: string): string {
         </h3>
         <p class="text-sm text-ui-text-muted text-center mb-5 max-w-xs leading-relaxed">
           {{
-            t(
-              'videoEditor.fileManager.dropOverlay.autoDescription',
-              'Drop files here or anywhere outside the folder tree. Files will be automatically sorted by type:',
-            )
+            t('videoEditor.fileManager.dropOverlay.autoDescription')
           }}
         </p>
         <div class="flex flex-col gap-2 w-full max-w-xs">
@@ -231,10 +228,7 @@ function getFolderIcon(name: string): string {
         </h3>
         <p class="text-xs text-ui-text-muted mb-4 text-center">
           {{
-            t(
-              'videoEditor.fileManager.dropOverlay.folderDescription',
-              'Drop files on a specific folder to upload there',
-            )
+            t('videoEditor.fileManager.dropOverlay.folderDescription')
           }}
         </p>
 

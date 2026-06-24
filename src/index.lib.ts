@@ -13,7 +13,6 @@ const log = createDevLogger('index.lib');
 const i18n = createI18n({
   legacy: false,
   locale: 'en-US',
-  fallbackLocale: 'en-US',
   messages: {
     'en-US': enUS,
     'ru-RU': ruRU,
@@ -49,7 +48,8 @@ const FastcatElement = defineCustomElement({
       add: (msg: unknown) => log.log('[Embedded Editor] Notification:', msg),
     });
     provide('i18nService', {
-      t: (key: string, defaultValue?: string) => i18n.global.t(key) || defaultValue || key,
+      t: (key: string, ...args: unknown[]) =>
+        (i18n.global.t as (key: string, ...args: unknown[]) => string)(key, ...args),
     });
     provide('i18n', i18n.global);
 

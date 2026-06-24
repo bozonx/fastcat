@@ -155,13 +155,9 @@ export function useFilePropertiesTranscription(options: UseFilePropertiesTranscr
       latestTranscriptionWasCached.value = false; // Fresh result
 
       options.toast.add({
-        title: options.t(
-          'videoEditor.fileManager.audio.transcriptionCompleted',
-          'Transcription completed',
-        ),
+        title: options.t('videoEditor.fileManager.audio.transcriptionCompleted'),
         description: options.t(
           'videoEditor.fileManager.audio.transcriptionFinishedDescription',
-          'Transcription for {name} has been completed successfully.',
           { name: selectedEntry.name },
         ),
         color: 'success',
@@ -176,10 +172,7 @@ export function useFilePropertiesTranscription(options: UseFilePropertiesTranscr
       transcriptionError.value =
         error instanceof Error
           ? error.message
-          : options.t(
-              'videoEditor.fileManager.audio.transcriptionAudioFailed',
-              'Failed to transcribe audio',
-            );
+          : options.t('videoEditor.fileManager.audio.transcriptionAudioFailed');
     } finally {
       isTranscribingAudio.value = false;
     }

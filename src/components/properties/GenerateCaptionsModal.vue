@@ -104,10 +104,7 @@ const handleAfterEnter = () => {
     v-model:open="isOpen"
     :title="t('fastcat.captions.modalTitle')"
     :description="
-      t(
-        'fastcat.captions.modalDescription',
-        'Create text clips from transcription cache of active audio and video clips across the timeline.',
-      )
+      t('fastcat.captions.modalDescription')
     "
     :ui="{ content: 'sm:max-w-2xl' }"
     @after:enter="handleAfterEnter"
@@ -115,10 +112,7 @@ const handleAfterEnter = () => {
     <div class="flex flex-col gap-4">
       <div class="text-xs text-ui-text-muted bg-ui-bg-elevated rounded border border-ui-border p-3">
         {{
-          t(
-            'fastcat.captions.timelineWideDescription',
-            'The editor will scan all active audio and video media clips on non-muted, visible tracks, load their existing transcription cache, account for trims, and keep only the top visible source on overlaps.',
-          )
+          t('fastcat.captions.timelineWideDescription')
         }}
       </div>
 

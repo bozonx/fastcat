@@ -16,16 +16,12 @@ globalThis.$fetch = vi.fn().mockImplementation(() => Promise.resolve({})) as any
 const createI18nMock = () => ({
   mode: 'composition',
   locale: ref('en-US'),
-  fallbackLocale: ref('en-US'),
-  t: (key: string, params?: string | Record<string, unknown>) =>
-    typeof params === 'string' ? params : key,
+  t: (key: string) => key,
   mergeLocaleMessage: vi.fn(),
   setLocaleMessage: vi.fn(),
   global: {
-    t: (key: string, params?: string | Record<string, unknown>) =>
-      typeof params === 'string' ? params : key,
+    t: (key: string) => key,
     locale: ref('en-US'),
-    fallbackLocale: ref('en-US'),
     mergeLocaleMessage: vi.fn(),
     setLocaleMessage: vi.fn(),
   },
@@ -35,8 +31,7 @@ const createI18nMock = () => ({
 // Explicitly define named exports via a separate object to ensure Vitest sees them
 const vueI18nMock = {
   useI18n: vi.fn(() => ({
-    t: (key: string, params?: string | Record<string, unknown>) =>
-      typeof params === 'string' ? params : key,
+    t: (key: string) => key,
     locale: ref('en-US'),
   })),
   createI18n: vi.fn(createI18nMock),
@@ -96,8 +91,7 @@ vi.mock('vue-router', () => ({
 
 vi.mock('#i18n', () => ({
   useI18n: vi.fn(() => ({
-    t: (key: string, params?: string | Record<string, unknown>) =>
-      typeof params === 'string' ? params : key,
+    t: (key: string) => key,
     locale: ref('en-US'),
   })),
   useLocaleRoute: vi.fn(() => (route: any) => route),
@@ -192,7 +186,7 @@ vi.mock('~/stores/workspace.store', () => ({
 const { createNuxtMock } = vi.hoisted(() => ({
   createNuxtMock: vi.fn(() => ({
     $notificationService: { add: vi.fn() },
-    $i18nService: { t: (key: string, fallback?: string) => fallback ?? key },
+    $i18nService: { t: (key: string) => key },
     $vfs: {
       getMetadata: vi.fn(),
       getFile: vi.fn(),
@@ -399,8 +393,7 @@ config.global.stubs = {
 
 config.global.mocks = {
   ...config.global.mocks,
-  $t: (key: string, params?: string | Record<string, unknown>) =>
-    typeof params === 'string' ? params : key,
+  $t: (key: string) => key,
 };
 
 // LocalStorage mock

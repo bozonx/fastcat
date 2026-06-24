@@ -39,10 +39,7 @@ function resetDefaults() {
       v-model:open="isResetConfirmOpen"
       :title="t('videoEditor.settings.resetProxySettingsConfirmTitle')"
       :description="
-        t(
-          'videoEditor.settings.resetProxySettingsConfirmDesc',
-          'This will restore all proxy settings to their default values.',
-        )
+        t('videoEditor.settings.resetProxySettingsConfirmDesc')
       "
       :confirm-text="t('videoEditor.settings.hotkeysResetAllConfirmAction')"
       :cancel-text="t('common.cancel')"
@@ -119,19 +116,13 @@ function resetDefaults() {
     <label
       class="flex items-center gap-3 cursor-pointer"
       :title="
-        t(
-          'videoEditor.settings.proxyCopyOpusAudioHelp',
-          'Enabling this will skip audio transcoding if the source already has Opus audio, preserving quality and saving time.',
-        )
+        t('videoEditor.settings.proxyCopyOpusAudioHelp')
       "
     >
       <UCheckbox v-model="workspaceStore.userSettings.optimization.proxyCopyOpusAudio" />
       <span class="text-sm text-ui-text">
         {{
-          t(
-            'videoEditor.settings.proxyCopyOpusAudio',
-            'If the file has Opus audio codec, copy the audio track without re-encoding, as is',
-          )
+          t('videoEditor.settings.proxyCopyOpusAudio')
         }}
       </span>
     </label>
@@ -140,10 +131,7 @@ function resetDefaults() {
       <UCheckbox v-model="workspaceStore.userSettings.optimization.autoCreateProxies" />
       <span class="text-sm text-ui-text">
         {{
-          t(
-            'videoEditor.settings.autoCreateProxies',
-            'Automatically create proxies when adding media to the timeline',
-          )
+          t('videoEditor.settings.autoCreateProxies')
         }}
       </span>
     </label>

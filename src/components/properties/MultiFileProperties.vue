@@ -232,7 +232,7 @@ function onCut() {
         <div v-if="totalSize > 0 || isCalculatingSize" class="flex justify-between text-xs">
           <span class="text-ui-text-muted">{{ t('common.totalSize') }}</span>
           <span v-if="isCalculatingSize" class="text-ui-text italic opacity-70"
-            >{{ t('common.calculating', 'Calculating...') }}...</span
+            >{{ t('common.calculating') }}...</span
           >
           <span v-else class="text-ui-text font-mono">{{ formatBytes(totalSize) }}</span>
         </div>
@@ -279,10 +279,7 @@ function onCut() {
           },
           {
             id: 'cancelProxy',
-            label: t(
-              'videoEditor.fileManager.actions.cancelProxyGeneration',
-              'Cancel proxy generation',
-            ),
+            label: t('videoEditor.fileManager.actions.cancelProxyGeneration'),
             icon: 'i-heroicons-x-circle',
             color: 'error',
             hidden: props.isExternal || !isGeneratingProxy,

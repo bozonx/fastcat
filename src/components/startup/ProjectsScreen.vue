@@ -391,7 +391,7 @@ const sortedProjects = computed(() => {
       <div class="flex items-center gap-3">
         <UCheckbox v-model="projectCreationSettings.specifyProjectSettings" />
         <span class="text-ui-text text-sm">{{
-          t('fastcat.projects.specifyProjectSettings', 'Specify project settings')
+          t('fastcat.projects.specifyProjectSettings')
         }}</span>
       </div>
 
@@ -401,10 +401,7 @@ const sortedProjects = computed(() => {
       >
         <UIcon name="i-heroicons-information-circle" class="w-4 h-4 shrink-0 text-primary-400" />
         {{
-          t(
-            'fastcat.projects.autoDetectHint',
-            'Project resolution and framerate will be automatically detected from the first video added to the timeline.',
-          )
+          t('fastcat.projects.autoDetectHint')
         }}
       </div>
 

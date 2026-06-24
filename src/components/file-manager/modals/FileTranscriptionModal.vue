@@ -34,10 +34,7 @@ const emit = defineEmits<{
     <div class="flex flex-col gap-4">
       <div class="text-sm text-ui-text-muted">
         {{
-          t(
-            'videoEditor.fileManager.audio.transcriptionHint',
-            'Send the current audio file to the configured STT service. Language is optional.',
-          )
+          t('videoEditor.fileManager.audio.transcriptionHint')
         }}
       </div>
 

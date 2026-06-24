@@ -78,15 +78,9 @@ function getTitleParts(cmdId: HotkeyCommandId) {
                   ]"
                   :title="
                     isConflicting(cmd.id, combo)
-                      ? t(
-                          'videoEditor.settings.hotkeysConflict',
-                          'Conflict: used by another command',
-                        )
+                      ? t('videoEditor.settings.hotkeysConflict')
                       : isOverriding(cmd.id, combo)
-                        ? t(
-                            'videoEditor.settings.hotkeysOverride',
-                            'Overrides a command in another context',
-                          )
+                        ? t('videoEditor.settings.hotkeysOverride')
                         : undefined
                   "
                 >

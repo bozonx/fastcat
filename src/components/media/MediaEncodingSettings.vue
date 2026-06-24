@@ -325,10 +325,7 @@ watch(
         v-else
         :label="t('videoEditor.export.audioBitrate')"
         :help="
-          t(
-            'videoEditor.export.audioBitrateHelp',
-            'Higher bitrate = better quality and larger file',
-          )
+          t('videoEditor.export.audioBitrateHelp')
         "
       >
         <UiWheelNumberInput

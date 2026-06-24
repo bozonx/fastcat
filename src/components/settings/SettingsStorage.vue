@@ -225,10 +225,7 @@ function resetPathDefaults() {
       v-model:open="isClearWorkspaceVardataConfirmOpen"
       :title="t('videoEditor.settings.clearTempWorkspaceTitle')"
       :description="
-        t(
-          'videoEditor.settings.clearTempWorkspaceDescription',
-          'Nothing will happen to your important project files. Only auto-generated and temporary data will be removed: proxy files, thumbnails, waveforms, cache, and temporary import/export files.',
-        )
+        t('videoEditor.settings.clearTempWorkspaceDescription')
       "
       :confirm-text="t('videoEditor.settings.clearTempWorkspaceConfirm')"
       :cancel-text="t('common.cancel')"
@@ -247,10 +244,7 @@ function resetPathDefaults() {
         </div>
         <div class="text-xs text-ui-text-muted">
           {{
-            t(
-              'videoEditor.settings.clearTempWorkspaceHint',
-              'Nothing will happen to your important project files. Only auto-generated and temporary data will be deleted: proxy files, thumbnails, waveforms, cache, and temporary import/export files.',
-            )
+            t('videoEditor.settings.clearTempWorkspaceHint')
           }}
         </div>
       </div>

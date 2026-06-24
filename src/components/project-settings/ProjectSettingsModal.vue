@@ -96,10 +96,7 @@ async function resetToDefaults() {
       v-model:open="isClearProjectVardataConfirmOpen"
       :title="t('videoEditor.projectSettings.clearTempTitle')"
       :description="
-        t(
-          'videoEditor.projectSettings.clearTempDescription',
-          'This will delete generated proxies, thumbnails and cached data for this project.',
-        )
+        t('videoEditor.projectSettings.clearTempDescription')
       "
       :confirm-text="t('videoEditor.projectSettings.clearTempConfirm')"
       :cancel-text="t('common.cancel')"
@@ -112,10 +109,7 @@ async function resetToDefaults() {
       v-model:open="isDeleteProjectConfirmOpen"
       :title="t('videoEditor.projectSettings.deleteProjectConfirmTitle')"
       :description="
-        t(
-          'videoEditor.projectSettings.deleteProjectConfirmDescription',
-          'This will permanently delete the project folder and all its contents. This action cannot be undone.',
-        )
+        t('videoEditor.projectSettings.deleteProjectConfirmDescription')
       "
       :confirm-text="t('videoEditor.projectSettings.deleteProjectAction')"
       :cancel-text="t('common.cancel')"
@@ -128,10 +122,7 @@ async function resetToDefaults() {
       v-model:open="isResetConfirmOpen"
       :title="t('videoEditor.projectSettings.resetConfirmTitle')"
       :description="
-        t(
-          'videoEditor.projectSettings.resetConfirmDescription',
-          'This will restore all project settings to the default values from your workspace settings.',
-        )
+        t('videoEditor.projectSettings.resetConfirmDescription')
       "
       :confirm-text="t('videoEditor.projectSettings.resetSettings')"
       :cancel-text="t('common.cancel')"

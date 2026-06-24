@@ -316,10 +316,7 @@ export function useFileContextMenu(
       if (generatingProxy) {
         items.push([
           {
-            label: t(
-              'videoEditor.fileManager.actions.cancelProxyGeneration',
-              'Cancel proxy generation',
-            ),
+            label: t('videoEditor.fileManager.actions.cancelProxyGeneration'),
             icon: 'i-heroicons-x-circle',
             color: 'error',
             onSelect: () => onAction('cancelProxy', selectedEntries),
@@ -461,19 +458,13 @@ export function useFileContextMenu(
         items.push([
           deps.isGeneratingProxyInDirectory(entry)
             ? {
-                label: t(
-                  'videoEditor.fileManager.actions.cancelProxyGeneration',
-                  'Cancel proxy generation',
-                ),
+                label: t('videoEditor.fileManager.actions.cancelProxyGeneration'),
                 icon: 'i-heroicons-x-circle',
                 color: 'error',
                 onSelect: () => onAction('cancelProxyForFolder', entry),
               }
             : {
-                label: t(
-                  'videoEditor.fileManager.actions.createProxyForAll',
-                  'Create proxy for all videos',
-                ),
+                label: t('videoEditor.fileManager.actions.createProxyForAll'),
                 icon: 'i-heroicons-film',
                 onSelect: () => onAction('createProxyForFolder', entry),
               },
@@ -542,10 +533,7 @@ export function useFileContextMenu(
       if (meta.generatingProxy) {
         items.push([
           {
-            label: t(
-              'videoEditor.fileManager.actions.cancelProxyGeneration',
-              'Cancel proxy generation',
-            ),
+            label: t('videoEditor.fileManager.actions.cancelProxyGeneration'),
             icon: 'i-heroicons-x-circle',
             color: 'error',
             onSelect: () => onAction('cancelProxy', entry),

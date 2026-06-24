@@ -36,10 +36,7 @@ function handleResetDefaults() {
       v-model:open="isResetConfirmOpen"
       :title="t('videoEditor.settings.resetMouseSettingsConfirmTitle')"
       :description="
-        t(
-          'videoEditor.settings.resetMouseSettingsConfirmDesc',
-          'This will restore all mouse actions to their default values.',
-        )
+        t('videoEditor.settings.resetMouseSettingsConfirmDesc')
       "
       :confirm-text="t('videoEditor.settings.resetMouseSettingsConfirmAction')"
       :cancel-text="t('common.cancel')"

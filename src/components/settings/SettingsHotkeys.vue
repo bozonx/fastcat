@@ -270,10 +270,7 @@ defineExpose({ finishCapture, isDuplicateConfirmOpen });
       </UButton>
       <div v-if="isCapturingHotkey" class="text-xs text-primary-500 font-medium animate-pulse">
         {{
-          t(
-            'videoEditor.settings.hotkeysCaptureHint',
-            'Listening for key combination (Esc to cancel)',
-          )
+          t('videoEditor.settings.hotkeysCaptureHint')
         }}
       </div>
     </div>

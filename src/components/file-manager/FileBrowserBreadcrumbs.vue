@@ -26,7 +26,7 @@ const { getHotkeyTitle } = useHotkeyLabel();
     <UiTooltip
       :text="
         getHotkeyTitle(
-          t('videoEditor.hotkeys.general.navigateBack', 'Back'),
+          t('videoEditor.hotkeys.general.navigateBack'),
           'general.navigateBack',
         )
       "
@@ -43,7 +43,7 @@ const { getHotkeyTitle } = useHotkeyLabel();
     <UiTooltip
       :text="
         getHotkeyTitle(
-          t('videoEditor.hotkeys.general.navigateForward', 'Forward'),
+          t('videoEditor.hotkeys.general.navigateForward'),
           'general.navigateForward',
         )
       "
