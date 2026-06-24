@@ -1,10 +1,3 @@
-import type {
-  ClipTransform,
-  ClipEffect,
-  TimelineBlendMode,
-  ClipSourceOrientation,
-} from '~/timeline/types';
-
 import { z } from 'zod';
 import {
   BlendModeSchema,
@@ -96,71 +89,11 @@ export const TranscodeOptionsSchema = z.object({
 });
 
 export type TranscodeOptions = z.infer<typeof TranscodeOptionsSchema>;
-export interface WorkerTimelineClip {
-  kind: 'clip';
-  clipType: 'media' | 'adjustment' | 'background' | 'text' | 'shape' | 'hud';
-  id: string;
-  trackId?: string;
-  layer: number;
-  speed?: number;
 
-  audioGain?: number;
-  audioBalance?: number;
-  /**
-   * Clip-only gain/balance, *excluding* the owning track's bus contribution.
-   * The native mixer applies the track bus separately (see `audio_tracks`), so
-   * the layer must carry only the clip's own value to avoid applying the track
-   * gain/balance twice. `audioGain`/`audioBalance` stay the fully-merged values
-   * used by the web export mixer (which has no separate bus stage).
-   */
-  originalAudioGain?: number;
-  originalAudioBalance?: number;
-  audioFadeInUs?: number;
-  audioFadeOutUs?: number;
-  audioFadeInCurve?: 'linear' | 'logarithmic';
-  audioFadeOutCurve?: 'linear' | 'logarithmic';
-  audioDeclickDurationUs?: number;
-  defaultAudioFadeCurve?: 'linear' | 'logarithmic';
-  source?: { path: string };
-  backgroundColor?: string;
-  text?: string;
-  style?: import('~/timeline/types').TextClipStyle;
-  shapeType?: 'square' | 'circle' | 'triangle' | 'star' | 'cloud' | 'speech_bubble' | 'bang';
-  fillColor?: string;
-  strokeColor?: string;
-  strokeWidth?: number;
-  shapeConfig?: import('~/timeline/types').ShapeConfig;
-  hudType?: 'media_frame';
-  background?: import('~/timeline/types').HudMediaParams;
-  content?: import('~/timeline/types').HudMediaParams;
-  frame?: import('~/timeline/types').HudMediaParams;
-  freezeFrameSourceUs?: number;
-  opacity?: number;
-  blendMode?: TimelineBlendMode;
-  effects?: ClipEffect[];
-  mask?: import('~/timeline/types').ClipMask;
-  transform?: ClipTransform;
-  sourceOrientation?: ClipSourceOrientation;
-  transitionIn?: import('~/timeline/types').ClipTransition;
-  transitionOut?: import('~/timeline/types').ClipTransition;
-  sourceDurationUs?: number;
-  timelineRange: { startUs: number; durationUs: number };
-  sourceRange: { startUs: number; durationUs: number };
-}
-
-export interface WorkerTimelineTrack {
-  kind: 'track';
-  id: string;
-  layer: number;
-  opacity?: number;
-  blendMode?: TimelineBlendMode;
-  effects?: ClipEffect[];
-}
-
-export interface WorkerTimelineMeta {
-  kind: 'meta';
-  masterEffects: ClipEffect[];
-}
+// `WorkerTimelineClip`, `WorkerTimelineTrack` and `WorkerTimelineMeta` are
+// derived from their zod schemas (see below) so the runtime validation and the
+// compile-time type can never drift apart — the schema is the single source of
+// truth for the worker-boundary shape.
 
 export type WorkerTrackPayloadSource = Pick<
   import('~/timeline/types').TimelineTrack,
@@ -188,6 +121,11 @@ const WorkerTimelineClipSchema = z.object({
 
   audioGain: z.number().optional(),
   audioBalance: z.number().optional(),
+  // Clip-only gain/balance, *excluding* the owning track's bus contribution.
+  // The native mixer applies the track bus separately (see `audio_tracks`), so
+  // the layer must carry only the clip's own value to avoid applying the track
+  // gain/balance twice. `audioGain`/`audioBalance` stay the fully-merged values
+  // used by the web export mixer (which has no separate bus stage).
   originalAudioGain: z.number().optional(),
   originalAudioBalance: z.number().optional(),
   audioFadeInUs: z.number().optional(),
@@ -239,6 +177,10 @@ const WorkerTimelineMetaSchema = z.object({
   kind: z.literal('meta'),
   masterEffects: z.array(ClipEffectSchema),
 });
+
+export type WorkerTimelineClip = z.infer<typeof WorkerTimelineClipSchema>;
+export type WorkerTimelineTrack = z.infer<typeof WorkerTimelineTrackSchema>;
+export type WorkerTimelineMeta = z.infer<typeof WorkerTimelineMetaSchema>;
 
 export const WorkerVideoPayloadItemSchema = z.union([
   WorkerTimelineClipSchema,

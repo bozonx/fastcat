@@ -114,7 +114,31 @@ interface BuildVideoTrackTreeParams {
   nestedDocCache?: Map<string, TimelineDocument>;
 }
 
+// Cross-request cache of parsed nested timeline docs, bounded with simple LRU
+// eviction so a long editing session that touches many nested files can't grow
+// memory without limit. Entries are keyed by normalized path and invalidated by
+// the file's mtime.
+const MAX_NESTED_DOC_CACHE_ENTRIES = 64;
 const _nestedDocCache = new Map<string, { doc: TimelineDocument; mtime: number }>();
+
+function getCachedNestedDoc(path: string, mtime: number): TimelineDocument | null {
+  const cached = _nestedDocCache.get(path);
+  if (!cached || cached.mtime !== mtime) return null;
+  // Refresh recency: re-insert so the most-recently-used key is last.
+  _nestedDocCache.delete(path);
+  _nestedDocCache.set(path, cached);
+  return cached.doc;
+}
+
+function setCachedNestedDoc(path: string, doc: TimelineDocument, mtime: number): void {
+  _nestedDocCache.delete(path);
+  _nestedDocCache.set(path, { doc, mtime });
+  while (_nestedDocCache.size > MAX_NESTED_DOC_CACHE_ENTRIES) {
+    const oldest = _nestedDocCache.keys().next().value;
+    if (oldest === undefined) break;
+    _nestedDocCache.delete(oldest);
+  }
+}
 
 export function clearNestedDocCacheForTests(): void {
   _nestedDocCache.clear();
@@ -137,10 +161,10 @@ async function readNestedTimelineDoc(params: {
   if (!file) return null;
 
   const mtime = file.lastModified;
-  const cached = _nestedDocCache.get(path);
-  if (cached && cached.mtime === mtime) {
-    params.cache?.set(path, cached.doc);
-    return cached.doc;
+  const cachedDoc = getCachedNestedDoc(path, mtime);
+  if (cachedDoc) {
+    params.cache?.set(path, cachedDoc);
+    return cachedDoc;
   }
 
   const text = await withFileIoSlot(() => file.text());
@@ -150,7 +174,7 @@ async function readNestedTimelineDoc(params: {
     format: params.fallbackFormat ?? params.projectStore.projectSettings.project,
   });
 
-  _nestedDocCache.set(path, { doc, mtime });
+  setCachedNestedDoc(path, doc, mtime);
   params.cache?.set(path, doc);
   return doc;
 }
@@ -297,10 +321,9 @@ export function trimWorkerClipToRange(
   };
 }
 
-function getTimelinePlaybackSpeed(raw: unknown): number {
-  const value = Number(raw);
-  if (!Number.isFinite(value) || value === 0) return 1;
-  return value;
+function getTimelinePlaybackSpeed(raw: number | undefined): number {
+  if (raw === undefined || !Number.isFinite(raw) || raw === 0) return 1;
+  return raw;
 }
 
 interface NestedClipWindow {
@@ -314,17 +337,15 @@ interface NestedClipWindow {
 
 export function getNestedClipWindow(params: {
   nestedClip: WorkerTimelineClip;
-  parentItem: TimelineTrackItem;
+  parentItem: TimelineClipItem;
 }): NestedClipWindow | null {
   const { nestedClip, parentItem } = params;
-  const parentSpeedRaw = getTimelinePlaybackSpeed(
-    (parentItem as import('~/timeline/types').TimelineClipItem).speed,
-  );
+  const parentSpeedRaw = getTimelinePlaybackSpeed(parentItem.speed);
   const parentSpeed = Math.abs(parentSpeedRaw);
   const isReversed = parentSpeedRaw < 0;
   const nestedStartUs = nestedClip.timelineRange.startUs;
   const nestedEndUs = nestedStartUs + nestedClip.timelineRange.durationUs;
-  const parentSourceRange = (parentItem as import('~/timeline/types').TimelineClipItem).sourceRange;
+  const parentSourceRange = parentItem.sourceRange;
   const windowStartUs = parentSourceRange.startUs;
   const windowEndUs = windowStartUs + parentSourceRange.durationUs;
   const overlapStartUs = Math.max(nestedStartUs, windowStartUs);
@@ -350,12 +371,10 @@ export function getNestedClipWindow(params: {
 }
 
 export function mergeNestedClipSpeed(params: {
-  parentItem: TimelineTrackItem;
+  parentItem: TimelineClipItem;
   nestedClip: WorkerTimelineClip;
 }): number | undefined {
-  const parentSpeedRaw = getTimelinePlaybackSpeed(
-    (params.parentItem as import('~/timeline/types').TimelineClipItem).speed,
-  );
+  const parentSpeedRaw = getTimelinePlaybackSpeed(params.parentItem.speed);
   const nestedSpeedRaw = getTimelinePlaybackSpeed(params.nestedClip.speed);
   const combined = parentSpeedRaw * nestedSpeedRaw;
   return combined === 1 && params.nestedClip.speed === undefined ? undefined : combined;
@@ -363,14 +382,14 @@ export function mergeNestedClipSpeed(params: {
 
 export function trimNestedClipToParentWindow(params: {
   nestedClip: WorkerTimelineClip;
-  parentItem: TimelineTrackItem;
+  parentItem: TimelineClipItem;
 }): WorkerTimelineClip | null {
-  const window = getNestedClipWindow(params);
-  if (!window) return null;
+  const clipWindow = getNestedClipWindow(params);
+  if (!clipWindow) return null;
 
   const trimmed = trimWorkerClipToRange(params.nestedClip, {
-    startUs: window.overlapStartUs,
-    endUs: window.overlapEndUs,
+    startUs: clipWindow.overlapStartUs,
+    endUs: clipWindow.overlapEndUs,
   });
   if (!trimmed) return null;
 
@@ -378,8 +397,8 @@ export function trimNestedClipToParentWindow(params: {
     ...trimmed,
     speed: mergeNestedClipSpeed(params),
     timelineRange: {
-      startUs: window.parentStartUs,
-      durationUs: window.parentDurationUs,
+      startUs: clipWindow.parentStartUs,
+      durationUs: clipWindow.parentDurationUs,
     },
   };
 }
@@ -404,6 +423,197 @@ type ToWorkerTimelineClipsOptions = {
   trackIdPrefix?: string;
   onTrackBuilt?: (track: WorkerTrackPayloadSource) => void;
 };
+
+function cloneEffectList(effects: ClipEffect[] | undefined): ClipEffect[] {
+  return Array.isArray(effects) ? cloneEffects(effects) : [];
+}
+
+/**
+ * The worker scene has no `timeline` clip kind: a nested-timeline clip is
+ * expanded into its inner clips, and any residual reference degrades to media.
+ */
+function toWorkerClipType(
+  clipType: 'timeline' | WorkerTimelineClip['clipType'],
+): WorkerTimelineClip['clipType'] {
+  return clipType === 'timeline' ? 'media' : clipType;
+}
+
+/** Re-roots a nested media clip's source path relative to its nested doc. */
+function resolveNestedMediaClipPath(
+  nClip: WorkerTimelineClip,
+  nestedTimelinePath: string,
+): WorkerTimelineClip {
+  if (nClip.clipType !== 'media' || !nClip.source?.path) return nClip;
+  return {
+    ...nClip,
+    source: {
+      path: resolveNestedMediaPath({ nestedTimelinePath, mediaPath: nClip.source.path }),
+    },
+  };
+}
+
+/**
+ * Windows every produced inner clip to the parent clip's range, merges the
+ * parent fades, and rewrites identity (id/trackId/layer). Shared by the video
+ * and audio expansion paths — the only differences are the layer, how the
+ * track id is composed, and (audio only) that the orphaned inner layer carries
+ * the fully-merged gain/balance as its `original*` value (see comment below).
+ */
+function finalizeNestedClips(params: {
+  nestedWorkerClips: WorkerTimelineClip[];
+  item: TimelineClipItem;
+  nestedTimelinePath: string;
+  mode: 'video' | 'audio';
+  layer: number;
+}): WorkerTimelineClip[] {
+  const { nestedWorkerClips, item, nestedTimelinePath, mode, layer } = params;
+  const out: WorkerTimelineClip[] = [];
+  const parentDurationUs = Math.max(0, Math.round(item.timelineRange.durationUs));
+
+  for (const nClip of nestedWorkerClips) {
+    const resolvedNClip = resolveNestedMediaClipPath(nClip, nestedTimelinePath);
+    const clipWindow = getNestedClipWindow({ nestedClip: resolvedNClip, parentItem: item });
+    const trimmedNestedClip = trimNestedClipToParentWindow({
+      nestedClip: resolvedNClip,
+      parentItem: item,
+    });
+    if (!clipWindow || !trimmedNestedClip) continue;
+
+    out.push({
+      ...trimmedNestedClip,
+      id: `${item.id}_nested_${resolvedNClip.id}`,
+      layer,
+      trackId:
+        mode === 'video'
+          ? resolvedNClip.trackId
+            ? `${item.trackId}::${item.id}::${resolvedNClip.trackId}`
+            : undefined
+          : resolvedNClip.trackId,
+      audioGain: resolvedNClip.audioGain,
+      audioBalance: resolvedNClip.audioBalance,
+      // A nested audio clip's track_id is the *inner* doc's track, which has no
+      // matching native bus (the scene only exposes outer-doc tracks), so the
+      // layer is mixed straight into master as an orphan. It must therefore
+      // carry the full merged gain/balance — not the clip-only value — since no
+      // bus will re-apply the (already-merged) track stage.
+      ...(mode === 'audio'
+        ? {
+            originalAudioGain: resolvedNClip.audioGain,
+            originalAudioBalance: resolvedNClip.audioBalance,
+          }
+        : null),
+      audioFadeInUs: mergeFadeInUs({
+        childFadeInUs: resolvedNClip.audioFadeInUs,
+        parentFadeInUs: item.audioFadeInUs,
+        parentLocalStartUs: clipWindow.parentLocalStartUs,
+      }),
+      audioFadeOutUs: mergeFadeOutUs({
+        childFadeOutUs: resolvedNClip.audioFadeOutUs,
+        parentFadeOutUs: item.audioFadeOutUs,
+        parentLocalEndUs: clipWindow.parentLocalEndUs,
+        parentDurationUs,
+      }),
+      audioFadeInCurve: resolvedNClip.audioFadeInCurve ?? item.audioFadeInCurve,
+      audioFadeOutCurve: resolvedNClip.audioFadeOutCurve ?? item.audioFadeOutCurve,
+    });
+  }
+
+  return out;
+}
+
+/**
+ * Builds the clip-type-agnostic fields every worker clip shares. Type-specific
+ * fields (source/text/shape/hud/background) are added by the callers so the
+ * discriminated union stays clean.
+ */
+function buildBaseWorkerClip(params: {
+  item: TimelineClipItem;
+  clipType: 'timeline' | WorkerTimelineClip['clipType'];
+  layer: number;
+  combinedOpacity: number;
+  combinedBlendMode: TimelineBlendMode | undefined;
+  combinedEffects: ClipEffect[];
+  parentAudioGain: number;
+  parentAudioBalance: number;
+  projectStore: WorkerPayloadProjectContext;
+  workspaceStore: WorkerPayloadWorkspaceContext;
+}): WorkerTimelineClip {
+  const { item, projectStore, workspaceStore } = params;
+  return {
+    kind: 'clip',
+    clipType: toWorkerClipType(params.clipType),
+    id: item.id,
+    trackId: item.trackId,
+    layer: params.layer,
+    speed: item.speedActive !== false ? item.speed : undefined,
+    audioGain: mergeGain(params.parentAudioGain, item.audioGain),
+    audioBalance: mergeBalance(params.parentAudioBalance, item.audioBalance),
+    // Clip-only gain/balance (track bus excluded). The native mixer applies the
+    // owning track's gain/balance separately on its bus, so the layer must not
+    // also carry it — otherwise track gain/balance is applied twice. The
+    // `audioGain`/`audioBalance` above are the merged track×clip value the web
+    // mixer needs; the originals are the clip's own value.
+    originalAudioGain: mergeGain(params.parentAudioGain, item.originalAudioGain),
+    originalAudioBalance: mergeBalance(params.parentAudioBalance, item.originalAudioBalance),
+    audioFadeInUs: item.audioFadesActive !== false ? item.audioFadeInUs : undefined,
+    audioFadeOutUs: item.audioFadesActive !== false ? item.audioFadeOutUs : undefined,
+    audioFadeInCurve: item.audioFadesActive !== false ? item.audioFadeInCurve : undefined,
+    audioFadeOutCurve: item.audioFadesActive !== false ? item.audioFadeOutCurve : undefined,
+    audioDeclickDurationUs: projectStore.projectSettings.project.audioDeclickDurationUs,
+    defaultAudioFadeCurve: workspaceStore.userSettings.projectDefaults.defaultAudioFadeCurve,
+    opacity: item.opacityActive !== false ? params.combinedOpacity : undefined,
+    blendMode: item.blendModeActive !== false ? params.combinedBlendMode : undefined,
+    effects: params.combinedEffects.length > 0 ? params.combinedEffects : undefined,
+    mask: item.maskActive !== false ? clonePlain(item.mask) : undefined,
+    transform: item.transformActive !== false ? clonePlain(item.transform) : undefined,
+    sourceOrientation: item.transformActive !== false ? item.sourceOrientation : undefined,
+    transitionIn: clonePlain(item.transitionIn),
+    transitionOut: clonePlain(item.transitionOut),
+    sourceDurationUs: typeof item.sourceDurationUs === 'number' ? item.sourceDurationUs : undefined,
+    timelineRange: {
+      startUs: item.timelineRange.startUs,
+      durationUs: item.timelineRange.durationUs,
+    },
+    sourceRange: {
+      startUs: item.sourceRange.startUs,
+      durationUs: item.sourceRange.durationUs,
+    },
+  };
+}
+
+/** Adds the type-specific fields for non-media clip kinds onto a base clip. */
+function buildTypedWorkerClip(
+  base: WorkerTimelineClip,
+  item: TimelineClipItem,
+  clipType: WorkerTimelineClip['clipType'],
+): WorkerTimelineClip {
+  if (clipType === 'background') {
+    return { ...base, backgroundColor: sanitizeTimelineColor(item.backgroundColor, '#000000') };
+  }
+  if (clipType === 'text') {
+    return { ...base, text: String(item.text ?? ''), style: clonePlain(item.style) };
+  }
+  if (clipType === 'shape') {
+    return {
+      ...base,
+      shapeType: item.shapeType ?? 'square',
+      fillColor: typeof item.fillColor === 'string' ? item.fillColor : undefined,
+      strokeColor: typeof item.strokeColor === 'string' ? item.strokeColor : undefined,
+      strokeWidth: typeof item.strokeWidth === 'number' ? item.strokeWidth : undefined,
+      shapeConfig: clonePlain(item.shapeConfig),
+    };
+  }
+  if (clipType === 'hud') {
+    return {
+      ...base,
+      hudType: item.hudType ?? 'media_frame',
+      background: clonePlain(item.background),
+      content: clonePlain(item.content),
+      frame: clonePlain(item.frame),
+    };
+  }
+  return base;
+}
 
 /**
  * Expands a `clipType: 'timeline'` clip into the flattened worker clips that
@@ -470,7 +680,7 @@ async function expandNestedTimeline(params: {
       if (!track) continue;
       const nestedLayer = (options?.layer ?? 0) + (nestedVideoTracks.length - 1 - i);
 
-      const trackEffects = Array.isArray(track.effects) ? cloneEffects(track.effects) : [];
+      const trackEffects = cloneEffectList(track.effects);
       const inheritedNestedEffects = options?.nestedParentEffects ?? [];
       const combinedTrackEffects =
         combinedEffects.length > 0 || inheritedNestedEffects.length > 0
@@ -518,55 +728,15 @@ async function expandNestedTimeline(params: {
         },
       );
 
-      for (const nClip of nestedWorkerClips) {
-        const resolvedNClip: WorkerTimelineClip =
-          nClip.clipType === 'media' && nClip.source?.path
-            ? {
-                ...nClip,
-                source: {
-                  path: resolveNestedMediaPath({
-                    nestedTimelinePath: path,
-                    mediaPath: nClip.source.path,
-                  }),
-                },
-              }
-            : nClip;
-
-        const window = getNestedClipWindow({
-          nestedClip: resolvedNClip,
-          parentItem: item,
-        });
-        const trimmedNestedClip = trimNestedClipToParentWindow({
-          nestedClip: resolvedNClip,
-          parentItem: item,
-        });
-
-        if (window && trimmedNestedClip) {
-          out.push({
-            ...trimmedNestedClip,
-            id: `${item.id}_nested_${resolvedNClip.id}`,
-            trackId: resolvedNClip.trackId
-              ? `${item.trackId}::${item.id}::${resolvedNClip.trackId}`
-              : undefined,
-            layer: nestedLayer,
-            audioGain: resolvedNClip.audioGain,
-            audioBalance: resolvedNClip.audioBalance,
-            audioFadeInUs: mergeFadeInUs({
-              childFadeInUs: resolvedNClip.audioFadeInUs,
-              parentFadeInUs: item.audioFadeInUs,
-              parentLocalStartUs: window.parentLocalStartUs,
-            }),
-            audioFadeOutUs: mergeFadeOutUs({
-              childFadeOutUs: resolvedNClip.audioFadeOutUs,
-              parentFadeOutUs: item.audioFadeOutUs,
-              parentLocalEndUs: window.parentLocalEndUs,
-              parentDurationUs: Math.max(0, Math.round(item.timelineRange.durationUs)),
-            }),
-            audioFadeInCurve: resolvedNClip.audioFadeInCurve ?? item.audioFadeInCurve,
-            audioFadeOutCurve: resolvedNClip.audioFadeOutCurve ?? item.audioFadeOutCurve,
-          });
-        }
-      }
+      out.push(
+        ...finalizeNestedClips({
+          nestedWorkerClips,
+          item,
+          nestedTimelinePath: path,
+          mode: 'video',
+          layer: nestedLayer,
+        }),
+      );
     }
   } else if (trackKind === 'audio') {
     const nestedAudioResult = buildEffectiveAudioClipItems({
@@ -594,62 +764,15 @@ async function expandNestedTimeline(params: {
       },
     );
 
-    for (const nClip of nestedWorkerClips) {
-      const resolvedNClip: WorkerTimelineClip =
-        nClip.clipType === 'media' && nClip.source?.path
-          ? {
-              ...nClip,
-              source: {
-                path: resolveNestedMediaPath({
-                  nestedTimelinePath: path,
-                  mediaPath: nClip.source.path,
-                }),
-              },
-            }
-          : nClip;
-
-      const window = getNestedClipWindow({
-        nestedClip: resolvedNClip,
-        parentItem: item,
-      });
-      const trimmedNestedClip = trimNestedClipToParentWindow({
-        nestedClip: resolvedNClip,
-        parentItem: item,
-      });
-
-      if (window && trimmedNestedClip) {
-        const parentDurationUs = Math.max(0, Math.round(item.timelineRange.durationUs));
-
-        out.push({
-          ...trimmedNestedClip,
-          id: `${item.id}_nested_${resolvedNClip.id}`,
-          trackId: resolvedNClip.trackId,
-          layer: 0,
-          audioGain: resolvedNClip.audioGain,
-          audioBalance: resolvedNClip.audioBalance,
-          // A nested clip's track_id is the *inner* doc's track, which has no
-          // matching native bus (the scene only exposes outer-doc tracks), so
-          // the layer is mixed straight into master as an orphan. It must
-          // therefore carry the full merged gain/balance — not the clip-only
-          // value — since no bus will re-apply the (already-merged) track stage.
-          originalAudioGain: resolvedNClip.audioGain,
-          originalAudioBalance: resolvedNClip.audioBalance,
-          audioFadeInUs: mergeFadeInUs({
-            childFadeInUs: resolvedNClip.audioFadeInUs,
-            parentFadeInUs: item.audioFadeInUs,
-            parentLocalStartUs: window.parentLocalStartUs,
-          }),
-          audioFadeOutUs: mergeFadeOutUs({
-            childFadeOutUs: resolvedNClip.audioFadeOutUs,
-            parentFadeOutUs: item.audioFadeOutUs,
-            parentLocalEndUs: window.parentLocalEndUs,
-            parentDurationUs,
-          }),
-          audioFadeInCurve: resolvedNClip.audioFadeInCurve ?? item.audioFadeInCurve,
-          audioFadeOutCurve: resolvedNClip.audioFadeOutCurve ?? item.audioFadeOutCurve,
-        });
-      }
-    }
+    out.push(
+      ...finalizeNestedClips({
+        nestedWorkerClips,
+        item,
+        nestedTimelinePath: path,
+        mode: 'audio',
+        layer: 0,
+      }),
+    );
   }
 
   return out;
@@ -677,68 +800,29 @@ export async function toWorkerTimelineClips(
     const combinedOpacity = parentOpacity * itemOpacity;
     const combinedBlendMode = item.blendMode ?? options?.parentBlendMode;
 
-    const itemEffects = Array.isArray(item.effects) ? cloneEffects(item.effects) : [];
     // Track-level effects are applied to the track container by the compositor;
     // merging them into every clip would cause double-application.
-    const combinedEffects = itemEffects;
+    const combinedEffects = cloneEffectList(item.effects);
 
     const parentAudioBalance = options?.parentAudioBalance ?? 0;
     const parentAudioGain = options?.parentAudioGain ?? 1;
 
-    const base: WorkerTimelineClip = {
-      kind: 'clip',
-      clipType: clipType === 'timeline' ? 'media' : clipType,
-      id: item.id,
-      trackId: item.trackId,
-      layer:
-        options?.layer ??
-        (typeof item.layer === 'number' && Number.isFinite(item.layer)
-          ? Math.round(item.layer)
-          : 0),
-      speed: item.speedActive !== false ? item.speed : undefined,
-      audioGain: mergeGain(parentAudioGain, item.audioGain),
-      audioBalance: mergeBalance(parentAudioBalance, item.audioBalance),
-      // Clip-only gain/balance (track bus excluded). The native mixer applies the
-      // owning track's gain/balance separately on its bus, so the layer must not
-      // also carry it — otherwise track gain/balance is applied twice. `item.audioGain`
-      // above is the merged track×clip value the web mixer needs; the originals are
-      // the clip's own value, set by buildEffectiveAudioClipItems.
-      originalAudioGain: mergeGain(parentAudioGain, item.originalAudioGain),
-      originalAudioBalance: mergeBalance(parentAudioBalance, item.originalAudioBalance),
-      audioFadeInUs: item.audioFadesActive !== false ? item.audioFadeInUs : undefined,
-      audioFadeOutUs: item.audioFadesActive !== false ? item.audioFadeOutUs : undefined,
-      audioFadeInCurve: item.audioFadesActive !== false ? item.audioFadeInCurve : undefined,
-      audioFadeOutCurve: item.audioFadesActive !== false ? item.audioFadeOutCurve : undefined,
-      audioDeclickDurationUs: projectStore.projectSettings.project.audioDeclickDurationUs,
-      defaultAudioFadeCurve: workspaceStore.userSettings.projectDefaults.defaultAudioFadeCurve,
-      opacity: item.opacityActive !== false ? combinedOpacity : undefined,
-      blendMode: item.blendModeActive !== false ? combinedBlendMode : undefined,
-      effects: combinedEffects.length > 0 ? combinedEffects : undefined,
-      mask: item.maskActive !== false ? clonePlain(item.mask) : undefined,
-      transform: item.transformActive !== false ? clonePlain(item.transform) : undefined,
-      sourceOrientation: item.transformActive !== false ? item.sourceOrientation : undefined,
-      transitionIn: clonePlain(item.transitionIn),
-      transitionOut: clonePlain(item.transitionOut),
-      sourceDurationUs:
-        typeof item.sourceDurationUs === 'number' ? item.sourceDurationUs : undefined,
-      shapeType: item.shapeType,
-      fillColor: item.fillColor,
-      strokeColor: item.strokeColor,
-      strokeWidth: item.strokeWidth,
-      shapeConfig: clonePlain(item.shapeConfig),
-      hudType: item.hudType,
-      background: clonePlain(item.background),
-      content: clonePlain(item.content),
-      frame: clonePlain(item.frame),
-      timelineRange: {
-        startUs: item.timelineRange.startUs,
-        durationUs: item.timelineRange.durationUs,
-      },
-      sourceRange: {
-        startUs: item.sourceRange.startUs,
-        durationUs: item.sourceRange.durationUs,
-      },
-    };
+    const layer =
+      options?.layer ??
+      (typeof item.layer === 'number' && Number.isFinite(item.layer) ? Math.round(item.layer) : 0);
+
+    const base = buildBaseWorkerClip({
+      item,
+      clipType,
+      layer,
+      combinedOpacity,
+      combinedBlendMode,
+      combinedEffects,
+      parentAudioGain,
+      parentAudioBalance,
+      projectStore,
+      workspaceStore,
+    });
 
     if (clipType === 'media' || clipType === 'timeline') {
       const rawPath = item.source?.path;
@@ -800,36 +884,8 @@ export async function toWorkerTimelineClips(
         source: { path },
         freezeFrameSourceUs: item.freezeFrameSourceUs,
       });
-    } else if (clipType === 'background') {
-      clips.push({
-        ...base,
-        backgroundColor: sanitizeTimelineColor(item.backgroundColor, '#000000'),
-      });
-    } else if (clipType === 'text') {
-      clips.push({
-        ...base,
-        text: String(item.text ?? ''),
-        style: clonePlain(item.style),
-      });
-    } else if (clipType === 'shape') {
-      clips.push({
-        ...base,
-        shapeType: item.shapeType ?? 'square',
-        fillColor: typeof item.fillColor === 'string' ? item.fillColor : undefined,
-        strokeColor: typeof item.strokeColor === 'string' ? item.strokeColor : undefined,
-        strokeWidth: typeof item.strokeWidth === 'number' ? item.strokeWidth : undefined,
-        shapeConfig: clonePlain(item.shapeConfig),
-      });
-    } else if (clipType === 'hud') {
-      clips.push({
-        ...base,
-        hudType: item.hudType ?? 'media_frame',
-        background: clonePlain(item.background),
-        content: clonePlain(item.content),
-        frame: clonePlain(item.frame),
-      });
     } else {
-      clips.push(base);
+      clips.push(buildTypedWorkerClip(base, item, base.clipType));
     }
   }
   return clips;
