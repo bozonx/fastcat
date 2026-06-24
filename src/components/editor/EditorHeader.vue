@@ -36,7 +36,7 @@ const menuItems = computed(() => {
 
 <template>
   <div
-    class="flex items-center justify-between px-4 h-10 pt-1 bg-ui-bg-elevated border-b border-ui-border"
+    class="flex items-center justify-between px-4 h-10 bg-ui-bg-elevated border-b border-ui-border"
   >
     <div class="flex items-center gap-2 h-full flex-1 min-w-0">
       <UButton
@@ -104,17 +104,17 @@ const menuItems = computed(() => {
       />
 
       <!-- Window Switcher -->
-      <div class="flex items-center bg-ui-bg/50 p-1 rounded-lg border border-ui-border gap-1 mr-2">
+      <div class="flex items-stretch bg-ui-bg rounded-md border border-ui-border divide-x divide-ui-border overflow-hidden mr-2 h-8">
         <UiTooltip
           v-if="workspaceStore.userSettings.experimentalFeatures"
           :text="getHotkeyTitle(t('videoEditor.fileManager.tabs.files'), 'general.switchViewFiles')"
         >
           <button
-            class="px-3 py-1 rounded text-sm font-medium transition-colors"
+            class="px-4 h-full flex items-center text-xs font-bold uppercase tracking-wider transition-colors"
             :class="
               projectStore.currentView === 'files'
-                ? 'bg-ui-bg-elevated text-selection-accent-500 shadow-sm'
-                : 'text-ui-text-muted hover:text-ui-text hover:bg-ui-bg-elevated/50'
+                ? 'bg-ui-bg-accent text-selection-accent-400 font-bold'
+                : 'text-ui-text-muted hover:text-ui-text hover:bg-ui-bg-hover/30'
             "
             @click="projectStore.goToFiles()"
           >
@@ -125,11 +125,11 @@ const menuItems = computed(() => {
           :text="getHotkeyTitle(t('videoEditor.timeline.tabs.cut'), 'general.switchViewCut')"
         >
           <button
-            class="px-3 py-1 rounded text-sm font-medium transition-colors"
+            class="px-4 h-full flex items-center text-xs font-bold uppercase tracking-wider transition-colors"
             :class="
               projectStore.currentView === 'cut'
-                ? 'bg-ui-bg-elevated text-selection-accent-500 shadow-sm'
-                : 'text-ui-text-muted hover:text-ui-text hover:bg-ui-bg-elevated/50'
+                ? 'bg-ui-bg-accent text-selection-accent-400 font-bold'
+                : 'text-ui-text-muted hover:text-ui-text hover:bg-ui-bg-hover/30'
             "
             @click="projectStore.goToCut()"
           >
@@ -141,11 +141,11 @@ const menuItems = computed(() => {
           :text="getHotkeyTitle(t('videoEditor.timeline.tabs.sound'), 'general.switchViewSound')"
         >
           <button
-            class="px-3 py-1 rounded text-sm font-medium transition-colors"
+            class="px-4 h-full flex items-center text-xs font-bold uppercase tracking-wider transition-colors"
             :class="
               projectStore.currentView === 'sound'
-                ? 'bg-ui-bg-elevated text-selection-accent-500 shadow-sm'
-                : 'text-ui-text-muted hover:text-ui-text hover:bg-ui-bg-elevated/50'
+                ? 'bg-ui-bg-accent text-selection-accent-400 font-bold'
+                : 'text-ui-text-muted hover:text-ui-text hover:bg-ui-bg-hover/30'
             "
             @click="projectStore.goToSound()"
           >
@@ -156,11 +156,11 @@ const menuItems = computed(() => {
           :text="getHotkeyTitle(t('videoEditor.export.title'), 'general.switchViewExport')"
         >
           <button
-            class="px-3 py-1 rounded text-sm font-medium transition-colors relative"
+            class="px-4 h-full flex items-center text-xs font-bold uppercase tracking-wider transition-colors relative"
             :class="
               projectStore.currentView === 'export'
-                ? 'bg-ui-bg-elevated text-selection-accent-500 shadow-sm'
-                : 'text-ui-text-muted hover:text-ui-text hover:bg-ui-bg-elevated/50'
+                ? 'bg-ui-bg-accent text-selection-accent-400 font-bold'
+                : 'text-ui-text-muted hover:text-ui-text hover:bg-ui-bg-hover/30'
             "
             @click="projectStore.goToExport()"
           >

@@ -2,7 +2,25 @@ import { createDevLogger } from '~/utils/dev-logger';
 import { ref, computed } from 'vue';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useProjectStore } from '~/stores/project.store';
+import { isValidFsEntryName } from '~/file-manager/core/rules';
 const log = createDevLogger('useProjectManagement');
+
+const I18N_KEYS = {
+  nameRequired: 'fastcat.projects.nameRequired',
+  nameInvalid: 'fastcat.projects.nameInvalid',
+  nameAlreadyExists: 'fastcat.projects.nameAlreadyExists',
+  nameSameAsCurrent: 'fastcat.projects.nameSameAsCurrent',
+  nameSameAsSource: 'fastcat.projects.nameSameAsSource',
+} as const;
+
+type ValidationErrorKey = (typeof I18N_KEYS)[keyof typeof I18N_KEYS];
+
+function getProjectNameValidationError(name: string): ValidationErrorKey | null {
+  const trimmed = name.trim();
+  if (!trimmed) return I18N_KEYS.nameRequired;
+  if (!isValidFsEntryName(trimmed)) return I18N_KEYS.nameInvalid;
+  return null;
+}
 
 export interface ProjectActionTarget {
   projectName: string;
@@ -60,9 +78,53 @@ export function useProjectManagement(options: { isMobile?: boolean } = {}) {
     return workspaceStore.projects.filter((p) => p.toLowerCase().includes(query));
   });
 
+  function isProjectNameExists(name: string, excludeName?: string): boolean {
+    if (excludeName && name === excludeName) return false;
+    return (
+      workspaceStore.projects.includes(name) ||
+      workspaceStore.recentProjects.some((p) => p.projectName === name)
+    );
+  }
+
+  const createError = computed<ValidationErrorKey | null>(() => {
+    const name = projectCreationSettings.value.name;
+    const validationError = getProjectNameValidationError(name);
+    if (validationError) return validationError;
+    if (isProjectNameExists(name.trim())) return I18N_KEYS.nameAlreadyExists;
+    return null;
+  });
+
+  const isCreateNameValid = computed(() => !createError.value);
+
+  const renameError = computed<ValidationErrorKey | null>(() => {
+    const name = renameValue.value;
+    const target = renameTargetProject.value;
+    const validationError = getProjectNameValidationError(name);
+    if (validationError) return validationError;
+    if (target && name.trim() === target.projectName.trim()) return I18N_KEYS.nameSameAsCurrent;
+    if (target && isProjectNameExists(name.trim(), target.projectName.trim())) {
+      return I18N_KEYS.nameAlreadyExists;
+    }
+    return null;
+  });
+
+  const isRenameNameValid = computed(() => !renameError.value);
+
+  const duplicateError = computed<ValidationErrorKey | null>(() => {
+    const name = duplicateValue.value;
+    const target = duplicateTargetProject.value;
+    const validationError = getProjectNameValidationError(name);
+    if (validationError) return validationError;
+    if (target && name.trim() === target.projectName.trim()) return I18N_KEYS.nameSameAsSource;
+    if (isProjectNameExists(name.trim())) return I18N_KEYS.nameAlreadyExists;
+    return null;
+  });
+
+  const isDuplicateNameValid = computed(() => !duplicateError.value);
+
   async function createNewProject() {
     const name = projectCreationSettings.value.name.trim();
-    if (!name) return;
+    if (!isCreateNameValid.value) return;
 
     const parentPath =
       workspaceStore.workspaceProviderId === 'tauri'
@@ -124,8 +186,7 @@ export function useProjectManagement(options: { isMobile?: boolean } = {}) {
 
   async function renameProject() {
     const oldName = renameTargetProject.value;
-    if (!oldName || !renameValue.value.trim() || renameValue.value === oldName.projectName) {
-      closeRenameModal();
+    if (!oldName || !isRenameNameValid.value) {
       return;
     }
     try {
@@ -228,8 +289,7 @@ export function useProjectManagement(options: { isMobile?: boolean } = {}) {
 
   async function confirmDuplicate() {
     const target = duplicateTargetProject.value;
-    if (!target || !duplicateValue.value.trim()) {
-      closeDuplicateModal();
+    if (!target || !isDuplicateNameValid.value) {
       return;
     }
     try {
@@ -291,6 +351,12 @@ export function useProjectManagement(options: { isMobile?: boolean } = {}) {
     isDuplicateModalOpen,
     duplicateValue,
     duplicateTargetProject,
+    createError,
+    isCreateNameValid,
+    renameError,
+    isRenameNameValid,
+    duplicateError,
+    isDuplicateNameValid,
     createNewProject,
     startCreateProject,
     handleOpenProject,

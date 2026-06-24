@@ -47,6 +47,12 @@ const {
   isDeleteModalOpen,
   isDuplicateModalOpen,
   duplicateValue,
+  createError,
+  isCreateNameValid,
+  renameError,
+  isRenameNameValid,
+  duplicateError,
+  isDuplicateNameValid,
   createNewProject,
   handleOpenProject,
   renameProject,
@@ -499,7 +505,10 @@ const sortedProjects = computed(() => {
       <!-- Create Project Modal (iOS Style Sheet) -->
       <UiMobileDrawer v-model:open="isCreateModalOpen" :title="t('fastcat.projects.newProject')">
         <div class="space-y-6 px-6 pt-2 pb-6">
-          <UiFormField :label="t('fastcat.projects.projectNamePlaceholder')">
+          <UiFormField
+            :label="t('fastcat.projects.projectNamePlaceholder')"
+            :error="createError ? t(createError) : undefined"
+          >
             <UiTextInput
               v-model="projectCreationSettings.name"
               :placeholder="t('fastcat.projects.projectNamePlaceholder')"
@@ -571,7 +580,7 @@ const sortedProjects = computed(() => {
             />
             <UButton
               color="success"
-              :disabled="!projectCreationSettings.name.trim()"
+              :disabled="!isCreateNameValid"
               :loading="workspaceStore.isLoading"
               :label="t('common.create')"
               @click="createNewProject"
@@ -588,7 +597,10 @@ const sortedProjects = computed(() => {
       <!-- Rename Project Drawer -->
       <UiMobileDrawer v-model:open="isRenameModalOpen" :title="t('common.rename')">
         <div class="space-y-6 px-6 pt-2 pb-6">
-          <UiFormField :label="t('fastcat.projects.projectNamePlaceholder')">
+          <UiFormField
+            :label="t('fastcat.projects.projectNamePlaceholder')"
+            :error="renameError ? t(renameError) : undefined"
+          >
             <UiTextInput
               v-model="renameValue"
               :placeholder="t('fastcat.projects.projectNamePlaceholder')"
@@ -608,7 +620,7 @@ const sortedProjects = computed(() => {
             <UButton variant="ghost" color="neutral" @click="isRenameModalOpen = false">
               {{ t('common.cancel') }}
             </UButton>
-            <UButton color="primary" :disabled="!renameValue.trim()" @click="renameProject">
+            <UButton color="primary" :disabled="!isRenameNameValid" @click="renameProject">
               {{ t('common.rename') }}
             </UButton>
           </div>
@@ -646,7 +658,10 @@ const sortedProjects = computed(() => {
       <!-- Duplicate Project Drawer -->
       <UiMobileDrawer v-model:open="isDuplicateModalOpen" :title="t('common.duplicate')">
         <div class="space-y-6 px-6 pt-2 pb-6">
-          <UiFormField :label="t('fastcat.projects.projectNamePlaceholder')">
+          <UiFormField
+            :label="t('fastcat.projects.projectNamePlaceholder')"
+            :error="duplicateError ? t(duplicateError) : undefined"
+          >
             <UiTextInput
               v-model="duplicateValue"
               :placeholder="t('fastcat.projects.projectNamePlaceholder')"
@@ -668,7 +683,7 @@ const sortedProjects = computed(() => {
             </UButton>
             <UButton
               color="primary"
-              :disabled="!duplicateValue.trim()"
+              :disabled="!isDuplicateNameValid"
               :loading="workspaceStore.isLoading"
               @click="confirmDuplicate"
             >

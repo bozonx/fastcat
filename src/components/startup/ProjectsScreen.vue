@@ -32,6 +32,12 @@ const {
   forgetTargetProject,
   isDuplicateModalOpen,
   duplicateValue,
+  createError,
+  isCreateNameValid,
+  renameError,
+  isRenameNameValid,
+  duplicateError,
+  isDuplicateNameValid,
   createNewProject,
   startCreateProject,
   handleOpenProject,
@@ -365,7 +371,10 @@ const sortedProjects = computed(() => {
     :ui="{ content: 'sm:max-w-lg max-h-[90vh]', body: 'overflow-y-auto' }"
   >
     <div class="space-y-6">
-      <UiFormField :label="t('fastcat.projects.projectNamePlaceholder')">
+      <UiFormField
+        :label="t('fastcat.projects.projectNamePlaceholder')"
+        :error="createError ? t(createError) : undefined"
+      >
         <UiTextInput
           v-model="projectCreationSettings.name"
           :placeholder="t('fastcat.projects.projectNamePlaceholder')"
@@ -380,7 +389,12 @@ const sortedProjects = computed(() => {
         :label="t('fastcat.projects.projectLocation')"
       >
         <div class="flex gap-2 w-full">
-          <UiTextInput v-model="projectCreationSettings.location" readonly full-width class="flex-1" />
+          <UiTextInput
+            v-model="projectCreationSettings.location"
+            readonly
+            full-width
+            class="flex-1"
+          />
           <UButton
             color="neutral"
             variant="subtle"
@@ -427,7 +441,7 @@ const sortedProjects = computed(() => {
         />
         <UButton
           color="primary"
-          :disabled="!projectCreationSettings.name.trim()"
+          :disabled="!isCreateNameValid"
           :loading="workspaceStore.isLoading"
           :label="t('common.create')"
           @click="createNewProject"
@@ -470,7 +484,10 @@ const sortedProjects = computed(() => {
     :title="t('common.rename')"
     :ui="{ content: 'sm:max-w-lg' }"
   >
-    <UiFormField :label="t('fastcat.projects.projectNamePlaceholder')">
+    <UiFormField
+      :label="t('fastcat.projects.projectNamePlaceholder')"
+      :error="renameError ? t(renameError) : undefined"
+    >
       <UiTextInput
         v-model="renameValue"
         :placeholder="t('fastcat.projects.projectNamePlaceholder')"
@@ -490,7 +507,7 @@ const sortedProjects = computed(() => {
         />
         <UButton
           color="primary"
-          :disabled="!renameValue.trim()"
+          :disabled="!isRenameNameValid"
           :label="t('common.rename')"
           @click="renameProject"
         />
@@ -530,7 +547,10 @@ const sortedProjects = computed(() => {
     :title="t('common.duplicate')"
     :ui="{ content: 'sm:max-w-lg' }"
   >
-    <UiFormField :label="t('fastcat.projects.projectNamePlaceholder')">
+    <UiFormField
+      :label="t('fastcat.projects.projectNamePlaceholder')"
+      :error="duplicateError ? t(duplicateError) : undefined"
+    >
       <UiTextInput
         v-model="duplicateValue"
         :placeholder="t('fastcat.projects.projectNamePlaceholder')"
@@ -549,7 +569,7 @@ const sortedProjects = computed(() => {
         />
         <UButton
           color="primary"
-          :disabled="!duplicateValue.trim()"
+          :disabled="!isDuplicateNameValid"
           :loading="workspaceStore.isLoading"
           :label="t('common.duplicate')"
           @click="confirmDuplicate"

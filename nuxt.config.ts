@@ -60,6 +60,18 @@ export default defineNuxtConfig({
 
   css: ['~/assets/css/main.css'],
 
+  // Bundle all used icons into the client build so they never get fetched from
+  // api.iconify.design at runtime. The Tauri (WebKitGTK) webview is offline and
+  // the remote fetch fails there, leaving the Iconify dot-placeholder instead of
+  // the real glyph (e.g. the "3 dots" ellipsis menu rendering as a dot blob).
+  icon: {
+    clientBundle: {
+      scan: true,
+      sizeLimitKb: 1024,
+    },
+    fallbackToApi: false,
+  },
+
   colorMode: {
     preference: 'dark',
     fallback: 'dark',
