@@ -154,9 +154,6 @@ export function normalizeOptimizationSettings(raw: unknown): FastCatUserSettings
         .min(32)
         .max(512)
         .catch(DEFAULT_USER_SETTINGS.optimization.proxyAudioBitrateKbps),
-      proxyVideoCodec: z
-        .enum(['h264', 'av1'])
-        .catch(DEFAULT_USER_SETTINGS.optimization.proxyVideoCodec),
       proxyCopyOpusAudio: z.boolean().catch(DEFAULT_USER_SETTINGS.optimization.proxyCopyOpusAudio),
       autoCreateProxies: z.boolean().catch(DEFAULT_USER_SETTINGS.optimization.autoCreateProxies),
       mediaTaskConcurrency: z.coerce

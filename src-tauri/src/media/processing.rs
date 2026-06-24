@@ -512,9 +512,21 @@ fn build_proxy_ffmpeg_args(
     args.extend([
         "-c:v".to_string(),
         video_codec.to_string(),
+        "-profile:v".to_string(),
+        "high".to_string(),
         "-b:v".to_string(),
         options.video_bitrate_bps.to_string(),
     ]);
+
+    // Software x264 benefits from a speed preset; hardware encoders have their
+    // own rate-control defaults and don't accept the x264 preset names.
+    if video_codec == "libx264" {
+        args.extend(["-preset".to_string(), "veryfast".to_string()]);
+    }
+
+    // GOP = 2×fps for responsive seeking in the editor.
+    let gop = (video.fps * 2.0).round().max(1.0) as u32;
+    args.extend(["-g".to_string(), gop.to_string()]);
 
     args.extend(["-movflags".to_string(), "+faststart".to_string()]);
 
@@ -1092,6 +1104,10 @@ mod tests {
         assert!(args.windows(2).any(|pair| pair == ["-map", "0:a:0?"]));
         assert!(args.contains(&"-sn".to_string()));
         assert!(args.contains(&"-dn".to_string()));
+        assert!(args.windows(2).any(|pair| pair == ["-profile:v", "high"]));
+        assert!(args.windows(2).any(|pair| pair == ["-preset", "veryfast"]));
+        // GOP = 2×fps = 2×30 = 60
+        assert!(args.windows(2).any(|pair| pair == ["-g", "60"]));
     }
 
     #[test]

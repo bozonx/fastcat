@@ -39,7 +39,6 @@ const mockWorkspaceStore = {
       proxyMaxPixels: 1500000,
       proxyVideoBitrateMbps: 2,
       proxyAudioBitrateKbps: 128,
-      proxyVideoCodec: 'h264',
       proxyCopyOpusAudio: true,
       autoCreateProxies: false,
       mediaTaskConcurrency: 2,

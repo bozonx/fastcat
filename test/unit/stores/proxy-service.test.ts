@@ -168,7 +168,6 @@ function createService(overrides: Partial<Parameters<typeof createProxyService>[
       proxyMaxPixels: 640 * 360,
       proxyVideoBitrateMbps: 1,
       proxyAudioBitrateKbps: 96,
-      proxyVideoCodec: 'h264' as const,
       proxyCopyOpusAudio: false,
     }),
     getProxyTaskTitle: ({ fileName }) => `Generating proxy: ${fileName}`,
@@ -305,7 +304,6 @@ describe('createProxyService', () => {
           proxyMaxPixels: 640 * 360,
           proxyVideoBitrateMbps: 1,
           proxyAudioBitrateKbps: 96,
-          proxyVideoCodec: 'h264' as const,
           proxyCopyOpusAudio: true,
         }),
       });

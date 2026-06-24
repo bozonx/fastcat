@@ -106,7 +106,6 @@ export interface FastCatUserSettings {
     proxyMaxPixels: number;
     proxyVideoBitrateMbps: number;
     proxyAudioBitrateKbps: number;
-    proxyVideoCodec: 'h264' | 'av1';
     proxyCopyOpusAudio: boolean;
     autoCreateProxies: boolean;
     mediaTaskConcurrency: number;
@@ -254,7 +253,6 @@ export const DEFAULT_USER_SETTINGS: FastCatUserSettings = {
     proxyMaxPixels: 1_500_000,
     proxyVideoBitrateMbps: 2,
     proxyAudioBitrateKbps: 128,
-    proxyVideoCodec: 'h264',
     proxyCopyOpusAudio: true,
     autoCreateProxies: false,
     mediaTaskConcurrency: 2,

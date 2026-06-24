@@ -6,7 +6,6 @@ import { DEFAULT_USER_SETTINGS } from '~/utils/settings/defaults';
 import UiWheelNumberInput from '~/components/ui/UiWheelNumberInput.vue';
 import UiSelect from '~/components/ui/UiSelect.vue';
 import UiConfirmModal from '~/components/ui/UiConfirmModal.vue';
-import UiButtonGroup from '~/components/ui/UiButtonGroup.vue';
 
 const { t } = useI18n();
 const workspaceStore = useWorkspaceStore();
@@ -62,17 +61,6 @@ function resetDefaults() {
     </div>
 
     <div class="grid grid-cols-2 gap-4">
-      <UiFormField :label="t('videoEditor.settings.proxyVideoCodec')">
-        <UiButtonGroup
-          v-model="workspaceStore.userSettings.optimization.proxyVideoCodec"
-          :options="[
-            { label: 'AV1', value: 'av1' },
-            { label: 'H264', value: 'h264' },
-          ]"
-          fluid
-        />
-      </UiFormField>
-
       <UiFormField :label="t('videoEditor.settings.proxyMaxPixels')">
         <UiSelect
           v-model="workspaceStore.userSettings.optimization.proxyMaxPixels"

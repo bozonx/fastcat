@@ -86,6 +86,7 @@ function deletePreset() {
     workspaceStore.userSettings.exportPresets.selectedPresetId = nextPreset.id;
   }
 
+  isDeleteModalOpen.value = false;
   presetIdToDelete.value = null;
 }
 
