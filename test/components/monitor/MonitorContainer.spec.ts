@@ -247,6 +247,35 @@ describe('MonitorContainer', () => {
     expect(wrapper.findComponent(dropdownMenuStub).props('portal')).toBe(panel);
   });
 
+  it('renders the more menu button with a vertical ellipsis icon', async () => {
+    wrapper = mount(MonitorContainer, {
+      global: {
+        plugins: [pinia],
+        stubs: {
+          MonitorViewport: true,
+          MonitorAudioControl: true,
+          UiTooltip: { template: '<div><slot /></div>' },
+          UButton: {
+            props: ['icon', 'title', 'ariaLabel'],
+            template:
+              '<button class="u-button-stub" :title="title" :aria-label="ariaLabel" :data-icon="icon"><slot /></button>',
+          },
+          UiActionButton: true,
+          UiToggleButton: true,
+          UDropdownMenu: { template: '<div data-dropdown-menu><slot /></div>' },
+          UContextMenu: { template: '<div><slot /></div>' },
+          UiContextMenuPortal: true,
+          UIcon: true,
+        },
+      },
+    });
+
+    await wrapper.vm.$nextTick();
+
+    const moreButton = wrapper.find('[data-icon="i-heroicons-ellipsis-vertical"]');
+    expect(moreButton.exists()).toBe(true);
+  });
+
   it('renders monitor sync dropdown with item titles', async () => {
     const dropdownMenuStub = {
       name: 'UDropdownMenu',

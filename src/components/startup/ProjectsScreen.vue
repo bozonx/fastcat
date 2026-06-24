@@ -343,7 +343,8 @@ const sortedProjects = computed(() => {
                         variant="ghost"
                         color="neutral"
                         icon="i-heroicons-ellipsis-vertical"
-                        class="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                        square
+                        class="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
                         @click.stop
                       />
                     </UDropdownMenu>
@@ -390,9 +391,7 @@ const sortedProjects = computed(() => {
 
       <div class="flex items-center gap-3">
         <UCheckbox v-model="projectCreationSettings.specifyProjectSettings" />
-        <span class="text-ui-text text-sm">{{
-          t('fastcat.projects.specifyProjectSettings')
-        }}</span>
+        <span class="text-ui-text text-sm">{{ t('fastcat.projects.specifyProjectSettings') }}</span>
       </div>
 
       <div
@@ -400,9 +399,7 @@ const sortedProjects = computed(() => {
         class="text-xs text-ui-text-muted bg-ui-bg-accent p-3 rounded-lg flex gap-2 border border-ui-border"
       >
         <UIcon name="i-heroicons-information-circle" class="w-4 h-4 shrink-0 text-primary-400" />
-        {{
-          t('fastcat.projects.autoDetectHint')
-        }}
+        {{ t('fastcat.projects.autoDetectHint') }}
       </div>
 
       <div v-else class="pt-4 border-t border-ui-border mt-2">

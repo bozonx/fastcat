@@ -800,7 +800,8 @@ watch(viewportRef, (vp) => {
                 size="xs"
                 color="neutral"
                 variant="ghost"
-                icon="i-heroicons-ellipsis-horizontal"
+                icon="i-heroicons-ellipsis-vertical"
+                square
                 :title="t('common.more')"
               />
             </UDropdownMenu>

@@ -233,10 +233,11 @@ const toolbarMenuItems = computed(() => {
         @update:open="blurOnDropdownMenuClose"
       >
         <UiActionButton
-          icon="i-heroicons-ellipsis-horizontal"
+          icon="i-heroicons-ellipsis-vertical"
           variant="ghost"
           color="neutral"
           size="xs"
+          square
         />
       </UDropdownMenu>
     </div>
