@@ -96,12 +96,13 @@ export function createFileManagerCrud(ctx: FileManagerContext) {
           }
         }
 
+        const projectId = deps.getProjectId();
+
         if (videoPaths.length > 0) {
           await deps.mediaCache.removeProxyBatch({
             projectRelativePaths: videoPaths,
           });
 
-          const projectId = deps.getProjectId();
           if (projectId) {
             await Promise.all(
               videoPaths.map((path) =>
@@ -114,18 +115,15 @@ export function createFileManagerCrud(ctx: FileManagerContext) {
           }
         }
 
-        if (mediaPaths.length > 0) {
-          const projectId = deps.getProjectId();
-          if (projectId) {
-            await Promise.all(
-              mediaPaths.map((path) =>
-                deps.mediaCache.clearWaveforms({
-                  projectId,
-                  projectRelativePath: path,
-                }),
-              ),
-            );
-          }
+        if (mediaPaths.length > 0 && projectId) {
+          await Promise.all(
+            mediaPaths.map((path) =>
+              deps.mediaCache.clearWaveforms({
+                projectId,
+                projectRelativePath: path,
+              }),
+            ),
+          );
         }
 
         const parentPath = getParentPath(target.path);
@@ -144,7 +142,7 @@ export function createFileManagerCrud(ctx: FileManagerContext) {
 
   async function renameEntry(target: FsEntry, newName: string) {
     const oldPath = target.path;
-    const parentPath = oldPath ? oldPath.split('/').slice(0, -1).join('/') : '';
+    const parentPath = getParentPath(oldPath);
     const textWrapperRenameResult = isBloggerDogTextWrapper(target)
       ? getBloggerDogTextWrapperRenameResult(target, newName)
       : null;
@@ -219,6 +217,8 @@ export function createFileManagerCrud(ctx: FileManagerContext) {
               }
               await deps.onEntryPathChanged?.({ oldPath, newPath });
 
+              // When there is no project context, proxies cannot be tracked by project ID,
+              // so remove the old proxy and re-check the new path from scratch.
               if (oldPath.startsWith(`${VIDEO_DIR_NAME}/`)) {
                 const projectId = deps.getProjectId();
                 if (!projectId) {

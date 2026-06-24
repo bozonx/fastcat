@@ -34,6 +34,7 @@ import {
   canPasteIntoBloggerDogEntry,
   canTransferClipboardItemToOrFromBloggerDog,
 } from '~/utils/bloggerdog-file-manager';
+import { getParentPath } from './useFileManagerHelpers';
 const log = createDevLogger('useFileManagerActions');
 
 export type { FileAction } from '~/types/file-manager';
@@ -153,8 +154,7 @@ export function useFileManagerActions(actions: FileManagerActions) {
     const parentPath =
       textWrapperRenameResult?.reloadDirPath ??
       entry.parentPath ??
-      entry.path?.split('/').slice(0, -1).join('/') ??
-      '';
+      getParentPath(entry.path);
     await actions.reloadDirectory(parentPath);
     stopRename();
     actions.onAfterRename?.();
@@ -196,7 +196,7 @@ export function useFileManagerActions(actions: FileManagerActions) {
     const trimmed = newName.trim();
     if (!trimmed) return false;
     if (existingNamesInPendingFolder.value.includes(trimmed)) {
-      return t('common.validation.exists', 'Имя уже существует');
+      return t('common.validation.exists');
     }
     return true;
   }
@@ -228,7 +228,7 @@ export function useFileManagerActions(actions: FileManagerActions) {
     if (entry.kind !== 'file') return;
     if (!entry.name.toLowerCase().endsWith('.otio')) return;
 
-    const parentPath = entry.parentPath ?? entry.path.split('/').slice(0, -1).join('/');
+    const parentPath = entry.parentPath ?? getParentPath(entry.path);
 
     const existingNames = await actions.vfs.listEntryNames(parentPath);
 
@@ -295,11 +295,12 @@ export function useFileManagerActions(actions: FileManagerActions) {
         fileManagerStore.openFolder(dirEntry);
       }
 
-      // Select and scroll to new file
+      // Wait for DOM to render the new entry before scrolling
+      const SCROLL_TO_FILE_DELAY_MS = 50;
       setTimeout(() => {
         selectionStore.selectFsEntryWithUiUpdate(newEntry);
         uiStore.triggerScrollToFileTreeEntry(newEntry.path);
-      }, 50);
+      }, SCROLL_TO_FILE_DELAY_MS);
     }
   }
 
@@ -374,6 +375,30 @@ export function useFileManagerActions(actions: FileManagerActions) {
     } finally {
       deleteTargets.value = [];
     }
+  }
+
+  function setClipboardPayload(
+    entry: FsEntry | FsEntry[],
+    operation: 'copy' | 'cut',
+    validateFn: (e: FsEntry) => boolean,
+  ): void {
+    const entries = Array.isArray(entry) ? entry : [entry];
+    const validEntries = entries.filter(
+      (e) => typeof e.path === 'string' && validateFn(e),
+    );
+    if (validEntries.length !== entries.length) return;
+    if (validEntries.length === 0) return;
+    clipboardStore.setClipboardPayload({
+      source: 'fileManager',
+      operation,
+      items: validEntries.map((e) => ({
+        path: e.path!,
+        kind: e.kind,
+        name: e.name,
+        source: e.source,
+      })),
+      sourceInstanceId: actions.instanceId,
+    });
   }
 
   const fileActionHandlers: Partial<
@@ -522,52 +547,12 @@ export function useFileManagerActions(actions: FileManagerActions) {
       const e = Array.isArray(entry) ? entry[0] : entry;
       await createMarkdownInDirectory(e?.kind === 'directory' ? e.path : undefined);
     },
-    copy: (entry) => {
-      const entries = Array.isArray(entry) ? entry : [entry];
-      const validEntries = entries.filter(
-        (e) => typeof e.path === 'string' && canCopyBloggerDogEntry(e),
-      );
-      if (validEntries.length !== entries.length) return;
-      if (validEntries.length === 0) return;
-      clipboardStore.setClipboardPayload({
-        source: 'fileManager',
-        operation: 'copy',
-        items: validEntries.map((e) => ({
-          path: e.path!,
-          kind: e.kind,
-          name: e.name,
-          source: e.source,
-        })),
-        sourceInstanceId: actions.instanceId,
-      });
-    },
-    cut: (entry) => {
-      const entries = Array.isArray(entry) ? entry : [entry];
-      const validEntries = entries.filter(
-        (e) => typeof e.path === 'string' && canCutBloggerDogEntry(e),
-      );
-      if (validEntries.length !== entries.length) return;
-      if (validEntries.length === 0) return;
-      clipboardStore.setClipboardPayload({
-        source: 'fileManager',
-        operation: 'cut',
-        items: validEntries.map((e) => ({
-          path: e.path!,
-          kind: e.kind,
-          name: e.name,
-          source: e.source,
-        })),
-        sourceInstanceId: actions.instanceId,
-      });
-    },
+    copy: (entry) => setClipboardPayload(entry, 'copy', canCopyBloggerDogEntry),
+    cut: (entry) => setClipboardPayload(entry, 'cut', canCutBloggerDogEntry),
     paste: async (entry) => {
-      // paste with cut operation moves files — that is a write operation
-      const payload = clipboardStore.clipboardPayload;
-      if (payload?.source === 'fileManager' && payload.operation === 'cut') {
-        if (isReadOnlyGuard()) return;
-      }
-      // paste with copy operation from an external source to this project is also a write
+      // Paste is always a write operation (cut = move, copy = duplicate)
       if (isReadOnlyGuard()) return;
+      const payload = clipboardStore.clipboardPayload;
       if (!payload || payload.source !== 'fileManager' || payload.items.length === 0) return;
       const targetEntry = Array.isArray(entry) ? entry[0] : entry;
       if (targetEntry?.source === 'remote' && !canPasteIntoBloggerDogEntry(targetEntry)) return;

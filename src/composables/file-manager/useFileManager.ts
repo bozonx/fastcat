@@ -9,7 +9,7 @@ import { useProxyStore } from '~/stores/proxy.store';
 import { useTimelineMediaUsageStore } from '~/stores/timeline-media-usage.store';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useHistoryStore } from '~/stores/history.store';
-import type { TimelineClipItem } from '~/timeline/types';
+import { isClipItem, isSourceClipItem } from '~/timeline/types';
 import { VIDEO_DIR_NAME, AUDIO_DIR_NAME } from '~/utils/constants';
 import { getClipThumbnailsHash, thumbnailGenerator } from '~/utils/thumbnail-generator';
 import { fileThumbnailGenerator } from '~/utils/file-thumbnail-generator';
@@ -137,8 +137,8 @@ export function createFileManager(deps: FileManagerCreateDeps) {
     vfs: deps.vfs,
     reloadDirectory: directory.reloadDirectory,
     setFileTreePathExpanded: deps.setFileTreePathExpanded,
-    resolveDefaultTargetDir: async (params: { file: File } | { name: string }) =>
-      await resolveDefaultTargetDir(params),
+    resolveDefaultTargetDir: (params: { file: File } | { name: string }) =>
+      resolveDefaultTargetDir(params),
     runWithUiFeedback,
     clearVectorCacheForDirectory: cache.clearVectorCacheForDirectory,
     restoreHistory: history.restoreHistory,
@@ -148,6 +148,47 @@ export function createFileManager(deps: FileManagerCreateDeps) {
 export type FileManager = ReturnType<typeof createFileManager>;
 
 export const FILE_MANAGER_INJECTION_KEY: InjectionKey<FileManager> = Symbol('FileManager');
+
+/**
+ * Scans timeline clips whose source path matches `matchFn` and applies
+ * `pathTransform` to update their source path via batchApplyTimeline.
+ * Replaces duplicated inline scanning in onEntryPathChanged and onDirectoryMoved.
+ */
+function updateTimelineClipPaths(
+  timelineStore: ReturnType<typeof useTimelineStore>,
+  matchFn: (clipPath: string) => boolean,
+  pathTransform: (clipPath: string) => string,
+): void {
+  if (!timelineStore.timelineDoc) return;
+
+  const cmds: {
+    type: 'update_clip_properties';
+    trackId: string;
+    itemId: string;
+    properties: { source: { path: string } };
+  }[] = [];
+
+  for (const track of timelineStore.timelineDoc.tracks) {
+    for (const item of track.items) {
+      if (!isClipItem(item)) continue;
+      if (!isSourceClipItem(item)) continue;
+      const clipPath = item.source?.path;
+      if (!clipPath || !matchFn(clipPath)) continue;
+      cmds.push({
+        type: 'update_clip_properties',
+        trackId: track.id,
+        itemId: item.id,
+        properties: {
+          source: { ...item.source, path: pathTransform(clipPath) },
+        },
+      });
+    }
+  }
+
+  if (cmds.length > 0) {
+    timelineStore.batchApplyTimeline(cmds, { skipHistory: true });
+  }
+}
 
 export function useFileManager(options?: {
   rootEntries?: Ref<FsEntry[]>;
@@ -270,32 +311,11 @@ export function useFileManager(options?: {
       updateSelectionPath({ oldPath, newPath });
       await syncTimelinePathsOnMove({ oldPath, newPath });
 
-      if (timelineStore.timelineDoc) {
-        const affectedClips: { trackId: string; itemId: string; source: { path: string } }[] = [];
-        timelineStore.timelineDoc.tracks.forEach((track) => {
-          track.items.forEach((item) => {
-            if (item.kind === 'clip' && (item as TimelineClipItem).source?.path === oldPath) {
-              affectedClips.push({
-                trackId: track.id,
-                itemId: item.id,
-                source: (item as TimelineClipItem).source ?? { path: '' },
-              });
-            }
-          });
-        });
-
-        if (affectedClips.length > 0) {
-          const cmds = affectedClips.map((clip) => ({
-            type: 'update_clip_properties' as const,
-            trackId: clip.trackId,
-            itemId: clip.itemId,
-            properties: {
-              source: { ...clip.source, path: newPath },
-            },
-          }));
-          timelineStore.batchApplyTimeline(cmds, { skipHistory: true });
-        }
-      }
+      updateTimelineClipPaths(
+        timelineStore,
+        (clipPath) => clipPath === oldPath,
+        () => newPath,
+      );
 
       if (oldPath.startsWith(`${VIDEO_DIR_NAME}/`)) {
         const projectId = projectStore.currentProjectId;
@@ -324,38 +344,11 @@ export function useFileManager(options?: {
       updateSelectionForDirectoryMove({ oldPath, newPath });
       await syncTimelinePathsOnMove({ oldPath, newPath });
 
-      if (timelineStore.timelineDoc) {
-        const affectedClips: { trackId: string; itemId: string; source: unknown }[] = [];
-        timelineStore.timelineDoc.tracks.forEach((track) => {
-          track.items.forEach((item) => {
-            if (
-              item.kind === 'clip' &&
-              (item as { source?: { path?: string } }).source?.path?.startsWith(`${oldPath}/`)
-            ) {
-              affectedClips.push({
-                trackId: track.id,
-                itemId: item.id,
-                source: (item as { source?: unknown }).source,
-              });
-            }
-          });
-        });
-
-        if (affectedClips.length > 0) {
-          const cmds = affectedClips.map((clip) => ({
-            type: 'update_clip_properties' as const,
-            trackId: clip.trackId,
-            itemId: clip.itemId,
-            properties: {
-              source: {
-                ...(clip.source as Record<string, unknown>),
-                path: `${newPath}${((clip.source as Record<string, unknown>).path as string).slice(oldPath.length)}`,
-              },
-            },
-          }));
-          timelineStore.batchApplyTimeline(cmds, { skipHistory: true });
-        }
-      }
+      updateTimelineClipPaths(
+        timelineStore,
+        (clipPath) => clipPath.startsWith(`${oldPath}/`),
+        (clipPath) => `${newPath}${clipPath.slice(oldPath.length)}`,
+      );
 
       if (oldPath && newPath) {
         await mediaCache.renameProxyDir({ oldPath, newPath });
