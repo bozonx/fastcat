@@ -408,6 +408,7 @@ const navigation = useFileBrowserNavigation({
   readDirectory,
   rootName: props.rootName || projectStore.currentProjectName || 'Project',
   allowedMediaTypes: computed(() => props.allowedMediaTypes),
+  isolatedSelection: props.isolatedSelection,
 });
 const {
   parentFolders,
@@ -615,6 +616,15 @@ watch(
     }
   },
   { immediate: true },
+);
+
+watch(
+  () => fileManagerStore.selectedFolder?.path,
+  () => {
+    if (!props.isolatedSelection) return;
+    if (!isolatedSelectedEntry.value) return;
+    setSelectedFsEntry(null);
+  },
 );
 
 function getColumnCount(): number {
@@ -850,6 +860,7 @@ const { handleEntryClick, handleEntryDoubleClick, handleEntryEnter, handleSort, 
     isExternal: isExternal.value,
     canInteractWithEntry: canUseFile,
     singleClickFolders: props.singleClickFolders,
+    isolatedSelection: props.isolatedSelection,
   });
 
 async function onDirectoryUploadChange(e: Event) {

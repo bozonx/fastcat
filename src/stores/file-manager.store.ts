@@ -122,7 +122,11 @@ function createFileManagerStoreSetup(contextId: string) {
 
     function openFolder(
       entry: FsEntry | null,
-      options: { skipHistory?: boolean; selectionContext?: FileManagerSelectionContext } = {},
+      options: {
+        skipHistory?: boolean;
+        skipSelection?: boolean;
+        selectionContext?: FileManagerSelectionContext;
+      } = {},
     ) {
       if (entry && entry.kind === 'directory') {
         if (!options.skipHistory && selectedFolder.value) {
@@ -134,12 +138,14 @@ function createFileManagerStoreSetup(contextId: string) {
           }
         }
         selectedFolder.value = entry;
-        const nextSelectionContext = options.selectionContext ?? selectionContext.value;
-        selectionStore.selectFsEntry(
-          entry,
-          nextSelectionContext.instanceId,
-          nextSelectionContext.isExternal,
-        );
+        if (!options.skipSelection) {
+          const nextSelectionContext = options.selectionContext ?? selectionContext.value;
+          selectionStore.selectFsEntry(
+            entry,
+            nextSelectionContext.instanceId,
+            nextSelectionContext.isExternal,
+          );
+        }
       } else {
         selectedFolder.value = null;
       }

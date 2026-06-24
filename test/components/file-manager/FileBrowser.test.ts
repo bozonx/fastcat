@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { mountSuspended } from '@nuxt/test-utils/runtime';
-import { reactive, ref } from 'vue';
+import { nextTick, reactive, ref } from 'vue';
 import FileBrowser from '~/components/file-manager/FileBrowser.vue';
 
 // --- Mocks ---
@@ -12,6 +12,7 @@ const {
   rawFocusStore,
   rawFileManager,
   rawFileBrowserEntries,
+  rawUseFileBrowserInteraction,
 } = vi.hoisted(() => {
   const rawFileManagerStore = {
     selectedFolder: null as any,
@@ -87,6 +88,16 @@ const {
     cleanupObjectUrls: vi.fn(),
   };
 
+  const rawUseFileBrowserInteraction = vi.fn((options: any) => ({
+    handleEntryClick: vi.fn((event: MouseEvent, entry: any) => {
+      options.setSelectedFsEntry(entry);
+    }),
+    handleEntryDoubleClick: vi.fn(),
+    handleEntryEnter: vi.fn(),
+    handleSort: vi.fn(),
+    onResizeStart: vi.fn(),
+  }));
+
   return {
     rawFileManagerStore,
     rawSelectionStore,
@@ -94,6 +105,7 @@ const {
     rawFocusStore,
     rawFileManager,
     rawFileBrowserEntries,
+    rawUseFileBrowserInteraction,
   };
 });
 
@@ -226,15 +238,7 @@ vi.mock('~/composables/file-manager/useFileBrowserCreateActions', () => ({
   useFileBrowserCreateActions: () => ({}),
 }));
 vi.mock('~/composables/file-manager/useFileBrowserInteraction', () => ({
-  useFileBrowserInteraction: (options: any) => ({
-    handleEntryClick: vi.fn((event: MouseEvent, entry: any) => {
-      options.setSelectedFsEntry(entry);
-    }),
-    handleEntryDoubleClick: vi.fn(),
-    handleEntryEnter: vi.fn(),
-    handleSort: vi.fn(),
-    onResizeStart: vi.fn(),
-  }),
+  useFileBrowserInteraction: rawUseFileBrowserInteraction,
 }));
 vi.mock('~/composables/file-manager/useFileBrowserDragAndDrop', () => ({
   useFileBrowserDragAndDrop: () => ({
@@ -280,6 +284,7 @@ describe('FileBrowser', () => {
     mockFileBrowserEntries.folderEntries.value = [];
     mockFileBrowserEntries.sortedEntries.value = [];
     mockSelectionStore.selectedEntity = null;
+    rawUseFileBrowserInteraction.mockClear();
   });
 
   it('renders empty state when no folder is selected', async () => {
@@ -413,5 +418,42 @@ describe('FileBrowser', () => {
 
     expect(mockSelectionStore.selectFsEntryWithUiUpdate).not.toHaveBeenCalled();
     expect(wrapper.emitted('select')).toEqual([[entry]]);
+    expect(rawUseFileBrowserInteraction).toHaveBeenLastCalledWith(
+      expect.objectContaining({ isolatedSelection: true }),
+    );
+  });
+
+  it('clears isolated selection when current folder changes', async () => {
+    mockFileManagerStore.selectedFolder = { name: 'Root', kind: 'directory', path: '' };
+    const entry = { name: 'replacement.mp4', kind: 'file', path: 'replacement.mp4' };
+    mockFileBrowserEntries.folderEntries.value = [entry];
+    mockFileBrowserEntries.sortedEntries.value = [entry];
+
+    const wrapper = await mountSuspended(FileBrowser, {
+      props: {
+        isolatedSelection: true,
+      },
+      global: {
+        stubs: {
+          FileBrowserToolbar: true,
+          FileBrowserBreadcrumbs: true,
+          FileBrowserModals: true,
+          FileBrowserContent: {
+            template:
+              '<button data-test="entry" @click="$emit(\'entry-click\', $event, sortedEntries[0])">entry</button>',
+            props: ['sortedEntries'],
+            emits: ['entry-click'],
+          },
+          UContextMenu: { template: '<div><slot /></div>' },
+          UIcon: true,
+        },
+      },
+    });
+
+    await wrapper.find('[data-test="entry"]').trigger('click');
+    mockFileManagerStore.selectedFolder = { name: 'Nested', kind: 'directory', path: 'nested' };
+    await nextTick();
+
+    expect(wrapper.emitted('select')).toEqual([[entry], [null]]);
   });
 });

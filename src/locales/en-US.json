@@ -1910,7 +1910,7 @@
         "accelerationDiagnostics": "Acceleration diagnostics",
         "accelerationDiagnosticsHelp": "Checks Pixi preview compositing, media import/decode APIs, WebCodecs export support, and WebGPU adapter details.",
         "loadingDiagnostics": "Loading diagnostics",
-        "performance": "Performance",
+        "performance": "Video",
         "unavailableDiagnostics": "Diagnostics unavailable",
         "ffmpegSettings": "FFmpeg & Hardware Acceleration (Linux)",
         "hwaccelMode": "Hardware Acceleration",

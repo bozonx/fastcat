@@ -21,6 +21,7 @@ export interface FileBrowserInteractionOptions {
   isExternal?: boolean;
   canInteractWithEntry?: (entry: FsEntry) => boolean;
   singleClickFolders?: boolean;
+  isolatedSelection?: boolean;
 }
 
 export function useFileBrowserInteraction(options: FileBrowserInteractionOptions) {
@@ -37,6 +38,7 @@ export function useFileBrowserInteraction(options: FileBrowserInteractionOptions
     isExternal,
     canInteractWithEntry,
     singleClickFolders,
+    isolatedSelection,
   } = options;
   const fileManagerStore =
     (inject('fileManagerStore', null) as ReturnType<typeof useFileManagerStore> | null) ||
@@ -57,7 +59,12 @@ export function useFileBrowserInteraction(options: FileBrowserInteractionOptions
       setSelectedFsEntry(entry);
       return;
     }
-    handleSelectionClick(event, entry);
+
+    if (isolatedSelection) {
+      setSelectedFsEntry(entry);
+    } else {
+      handleSelectionClick(event, entry);
+    }
 
     if (singleClickFolders && entry.kind === 'directory') {
       handleEntryDoubleClick(entry);
@@ -85,7 +92,7 @@ export function useFileBrowserInteraction(options: FileBrowserInteractionOptions
     }
 
     if (entry.kind === 'directory') {
-      fileManagerStore.openFolder(entry);
+      fileManagerStore.openFolder(entry, { skipSelection: isolatedSelection });
       setSelectedFsEntry(entry);
     } else {
       if (preventOpen || isExternal) return;
@@ -108,7 +115,11 @@ export function useFileBrowserInteraction(options: FileBrowserInteractionOptions
     if (entry.kind === 'file' && canInteractWithEntry && !canInteractWithEntry(entry)) return;
 
     if (!isRemoteMode.value) {
-      selectSingle(entry);
+      if (isolatedSelection) {
+        setSelectedFsEntry(entry);
+      } else {
+        selectSingle(entry);
+      }
     } else {
       setSelectedFsEntry(entry);
     }

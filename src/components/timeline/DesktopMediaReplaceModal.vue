@@ -71,7 +71,7 @@ watch(isOpen, (newVal) => {
       name: projectStore.currentProjectName || 'Project',
       path: '',
       source: 'local',
-    });
+    }, { skipSelection: true });
   }
 });
 

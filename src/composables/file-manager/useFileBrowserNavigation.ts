@@ -31,6 +31,7 @@ export function useFileBrowserNavigation({
   readDirectory,
   rootName,
   allowedMediaTypes,
+  isolatedSelection,
 }: {
   rootContainer: Ref<HTMLElement | null>;
   isRemoteMode: Ref<boolean>;
@@ -47,6 +48,7 @@ export function useFileBrowserNavigation({
   readDirectory: (path: string | undefined) => Promise<FsEntry[]>;
   rootName: string;
   allowedMediaTypes?: Ref<MediaType[] | undefined>;
+  isolatedSelection?: boolean;
 }) {
   const fileManagerStore =
     (inject('fileManagerStore', null) as ReturnType<typeof useFileManagerStore> | null) ||
@@ -152,7 +154,7 @@ export function useFileBrowserNavigation({
       path: '',
       source: 'local',
     };
-    fileManagerStore.openFolder(rootEntry);
+    fileManagerStore.openFolder(rootEntry, { skipSelection: isolatedSelection });
   }
 
   function navigateBack(): void {
@@ -175,7 +177,10 @@ export function useFileBrowserNavigation({
       void loadParentFolders();
     } else {
       isRemoteMode.value = false;
-      fileManagerStore.openFolder(prev, { skipHistory: true });
+      fileManagerStore.openFolder(prev, {
+        skipHistory: true,
+        skipSelection: isolatedSelection,
+      });
     }
   }
 
@@ -199,7 +204,10 @@ export function useFileBrowserNavigation({
       void loadParentFolders();
     } else {
       isRemoteMode.value = false;
-      fileManagerStore.openFolder(next, { skipHistory: true });
+      fileManagerStore.openFolder(next, {
+        skipHistory: true,
+        skipSelection: isolatedSelection,
+      });
     }
   }
 
@@ -216,7 +224,7 @@ export function useFileBrowserNavigation({
           void loadFolderContent();
           void loadParentFolders();
         } else {
-          fileManagerStore.openFolder(target as FsEntry);
+          fileManagerStore.openFolder(target as FsEntry, { skipSelection: isolatedSelection });
         }
       }
     } else if (parentFolders.value.length === 1) {
@@ -239,7 +247,7 @@ export function useFileBrowserNavigation({
       return;
     }
 
-    fileManagerStore.openFolder(targetFolder as FsEntry);
+    fileManagerStore.openFolder(targetFolder as FsEntry, { skipSelection: isolatedSelection });
   }
 
   function tryScrollToPendingEntry() {

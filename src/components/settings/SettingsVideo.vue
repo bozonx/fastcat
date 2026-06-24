@@ -18,6 +18,7 @@ import UiConfirmModal from '~/components/ui/UiConfirmModal.vue';
 import UiWheelNumberInput from '~/components/ui/UiWheelNumberInput.vue';
 import UiFormField from '~/components/ui/UiFormField.vue';
 import UiButtonGroup from '~/components/ui/UiButtonGroup.vue';
+import UiScaleSlider from '~/components/ui/UiScaleSlider.vue';
 
 const log = createDevLogger('SettingsVideo');
 
@@ -318,9 +319,9 @@ const tauriVideoCodecs = computed(() => {
             :label="t('videoEditor.settings.video.nativeFrameCacheMode')"
             :help="t('videoEditor.settings.video.nativeFrameCacheModeHelp')"
           >
-            <UiSelect
+            <UiScaleSlider
               v-model="workspaceStore.userSettings.optimization.nativeFrameCacheMode"
-              :items="[
+              :options="[
                 { label: t('videoEditor.settings.video.nativeFrameCacheAuto'), value: 'auto' },
                 { label: t('videoEditor.settings.video.nativeFrameCacheLow'), value: 'low' },
                 {
@@ -330,8 +331,6 @@ const tauriVideoCodecs = computed(() => {
                 { label: t('videoEditor.settings.video.nativeFrameCacheHigh'), value: 'high' },
                 { label: t('videoEditor.settings.video.nativeFrameCacheCustom'), value: 'custom' },
               ]"
-              class="max-w-xs"
-              full-width
             />
           </UiFormField>
 

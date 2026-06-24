@@ -1910,7 +1910,7 @@
         "accelerationDiagnostics": "Диагностика ускорения",
         "accelerationDiagnosticsHelp": "Проверяет композитинг предпросмотра Pixi, API импорта и декодирования, поддержку экспорта WebCodecs и данные адаптера WebGPU.",
         "loadingDiagnostics": "Диагностика загрузки",
-        "performance": "Производительность",
+        "performance": "Видео",
         "unavailableDiagnostics": "Диагностика недоступна",
         "ffmpegSettings": "FFmpeg и аппаратное ускорение (Linux)",
         "hwaccelMode": "Аппаратное ускорение",

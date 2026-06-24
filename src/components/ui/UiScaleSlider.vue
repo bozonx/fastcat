@@ -2,42 +2,98 @@
 import { computed, ref } from 'vue';
 import { clamp } from '~/utils/math';
 
+interface ScaleSliderOption {
+  label: string;
+  value: string;
+}
+
 interface UiScaleSliderProps {
   min?: number;
   max?: number;
+  options?: ScaleSliderOption[];
 }
 
 const props = withDefaults(defineProps<UiScaleSliderProps>(), {
   min: 10,
   max: 20,
+  options: undefined,
 });
 
-const modelValue = defineModel<number>({ required: true });
+const modelValue = defineModel<number | string>({ required: true });
 
 const trackRef = ref<HTMLElement | null>(null);
 const isDragging = ref(false);
 
-const clampedValue = computed(() => clamp(modelValue.value, props.min, props.max));
+const isDiscreteMode = computed(() => !!props.options);
 
-// Percentage position of the thumb along the track
+const clampedValue = computed(() => clamp(modelValue.value as number, props.min, props.max));
+
+const currentIndex = computed(() => {
+  if (!props.options) return 0;
+  const idx = props.options.findIndex((o) => o.value === modelValue.value);
+  return idx < 0 ? 0 : idx;
+});
+
+interface Tick {
+  key: string | number;
+  label: string;
+  percent: number;
+  isActive: boolean;
+  isEdge: boolean;
+}
+
+const ticks = computed<Tick[]>(() => {
+  if (isDiscreteMode.value) {
+    const opts = props.options!;
+    const count = opts.length;
+    return opts.map((opt, i) => ({
+      key: opt.value,
+      label: opt.label,
+      percent: count <= 1 ? 0 : (i / (count - 1)) * 100,
+      isActive: i <= currentIndex.value,
+      isEdge: i === 0 || i === count - 1,
+    }));
+  }
+  const result: Tick[] = [];
+  for (let i = props.min; i <= props.max; i++) {
+    result.push({
+      key: i,
+      label: String(i),
+      percent: ((i - props.min) / (props.max - props.min)) * 100,
+      isActive: i <= clampedValue.value,
+      isEdge: i === props.min || i === props.max,
+    });
+  }
+  return result;
+});
+
 const thumbPercent = computed(() => {
+  if (isDiscreteMode.value) {
+    const count = props.options!.length;
+    if (count <= 1) return 0;
+    return (currentIndex.value / (count - 1)) * 100;
+  }
   const range = props.max - props.min;
   if (range === 0) return 0;
   return ((clampedValue.value - props.min) / range) * 100;
 });
 
-const ticks = computed(() => {
-  const result: number[] = [];
-  for (let i = props.min; i <= props.max; i++) {
-    result.push(i);
+const thumbLabel = computed(() => {
+  if (isDiscreteMode.value) {
+    return props.options?.[currentIndex.value]?.label ?? '';
   }
-  return result;
+  return String(clampedValue.value);
 });
 
-function valueFromPointer(event: PointerEvent): number {
+function valueFromPointer(event: PointerEvent): number | string {
   if (!trackRef.value) return modelValue.value;
   const rect = trackRef.value.getBoundingClientRect();
   const ratio = clamp((event.clientX - rect.left) / rect.width, 0, 1);
+  if (isDiscreteMode.value) {
+    const count = props.options!.length;
+    const idx = Math.round(ratio * (count - 1));
+    return props.options![idx]!.value;
+  }
   const raw = props.min + ratio * (props.max - props.min);
   return Math.round(raw);
 }
@@ -70,9 +126,10 @@ function onPointerUp(event: PointerEvent) {
       ref="trackRef"
       class="relative h-10 flex items-center cursor-pointer"
       role="slider"
-      :aria-valuenow="clampedValue"
-      :aria-valuemin="min"
-      :aria-valuemax="max"
+      :aria-valuenow="isDiscreteMode ? currentIndex + 1 : clampedValue"
+      :aria-valuemin="isDiscreteMode ? 1 : min"
+      :aria-valuemax="isDiscreteMode ? (options?.length ?? 1) : max"
+      :aria-valuetext="thumbLabel"
       @pointerdown="onTrackPointerDown"
       @pointermove="onPointerMove"
       @pointerup="onPointerUp"
@@ -90,24 +147,27 @@ function onPointerUp(event: PointerEvent) {
       <!-- Tick marks -->
       <div
         v-for="tick in ticks"
-        :key="tick"
+        :key="tick.key"
         class="absolute flex flex-col items-center gap-0.5 -translate-x-1/2"
-        :style="{ left: `${((tick - min) / (max - min)) * 100}%` }"
+        :style="{ left: `${tick.percent}%` }"
       >
         <!-- Tick line -->
         <div
           class="w-px transition-colors duration-75"
           :class="[
-            tick <= clampedValue ? 'bg-primary-500' : 'bg-ui-border',
-            tick === min || tick === max ? 'h-3' : 'h-2',
+            tick.isActive ? 'bg-primary-500' : 'bg-ui-border',
+            tick.isEdge ? 'h-3' : 'h-2',
           ]"
         />
         <!-- Tick label -->
         <span
-          class="text-[9px] leading-none font-mono transition-colors duration-75 mt-0.5"
-          :class="[tick === clampedValue ? 'text-primary-400 font-semibold' : 'text-ui-text-muted']"
+          class="text-[9px] leading-none transition-colors duration-75 mt-0.5"
+          :class="[
+            isDiscreteMode ? '' : 'font-mono',
+            tick.key === modelValue ? 'text-primary-400 font-semibold' : 'text-ui-text-muted',
+          ]"
         >
-          {{ tick }}
+          {{ tick.label }}
         </span>
       </div>
 
@@ -120,11 +180,11 @@ function onPointerUp(event: PointerEvent) {
         <div class="flex flex-col items-center" style="margin-top: -26px">
           <!-- Rounded pill body showing current value -->
           <div
-            class="w-6 h-4 rounded bg-primary-500 shadow-md flex items-center justify-center transition-transform duration-75"
-            :class="isDragging ? 'scale-110' : ''"
+            class="h-4 rounded bg-primary-500 shadow-md flex items-center justify-center transition-transform duration-75 px-1"
+            :class="[isDragging ? 'scale-110' : '', isDiscreteMode ? 'min-w-[3rem]' : 'w-6']"
           >
-            <span class="text-[9px] font-mono font-bold text-white leading-none">
-              {{ clampedValue }}
+            <span class="text-[9px] font-bold text-white leading-none whitespace-nowrap">
+              {{ thumbLabel }}
             </span>
           </div>
           <!-- Downward-pointing triangle (sharp end pointing at the value) -->
