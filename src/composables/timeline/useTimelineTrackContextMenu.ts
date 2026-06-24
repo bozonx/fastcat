@@ -34,10 +34,11 @@ export function useTimelineTrackContextMenu(tracks: () => TimelineTrack[]) {
       trackToRename.value = track;
       isTrackRenameModalOpen.value = true;
     },
-    onPaste: (_trackId) => {
+    onPaste: (trackId) => {
       const payload = clipboardStore.clipboardPayload;
       if (!payload || payload.source !== 'timeline' || payload.items.length === 0) return;
       void timelineStore.pasteClips(payload.items, {
+        targetTrackId: trackId,
         insertStartUs: timelineStore.currentTime,
       });
       if (payload.operation === 'cut') clipboardStore.setClipboardPayload(null);
