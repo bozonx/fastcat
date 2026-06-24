@@ -59,6 +59,13 @@ const props = defineProps<{
   singleClickFolders?: boolean;
   disableMarquee?: boolean;
   allowedMediaTypes?: MediaType[];
+  excludedPaths?: string[];
+  isolatedSelection?: boolean;
+  hideUsageIndicators?: boolean;
+}>();
+
+const emit = defineEmits<{
+  (e: 'select', entry: FsEntry | null): void;
 }>();
 
 const instanceId = props.instanceId || 'default';
@@ -80,6 +87,7 @@ const clipboardStore = useAppClipboard();
 const { t } = useI18n();
 const toast = useToast();
 const fileManager = useFileManager();
+const isolatedSelectedEntry = ref<FsEntry | null>(null);
 const {
   readDirectory,
   loadProjectDirectory,
@@ -124,6 +132,12 @@ const {
 
 // --- setSelectedFsEntry (shared between remote & navigation) ---
 function setSelectedFsEntry(entry: FsEntry | null) {
+  if (props.isolatedSelection) {
+    isolatedSelectedEntry.value = entry;
+    emit('select', entry);
+    return;
+  }
+
   if (!entry) {
     selectionStore.clearSelection();
     return;
@@ -132,16 +146,30 @@ function setSelectedFsEntry(entry: FsEntry | null) {
 }
 
 function getSelectedEntries(): FsEntry[] {
+  if (props.isolatedSelection) {
+    return isolatedSelectedEntry.value ? [isolatedSelectedEntry.value] : [];
+  }
+
   const selectedEntity = selectionStore.selectedEntity;
   if (!selectedEntity || selectedEntity.source !== 'fileManager') return [];
   if (selectedEntity.kind === 'multiple') return selectedEntity.entries;
   return [selectedEntity.entry];
 }
 
+const excludedPathSet = computed(() => new Set(props.excludedPaths ?? []));
+const visibleEntries = computed(() =>
+  sortedEntries.value.filter((entry) => !entry.path || !excludedPathSet.value.has(entry.path)),
+);
+const selectedEntryPaths = computed(() =>
+  props.isolatedSelection && isolatedSelectedEntry.value?.path
+    ? [isolatedSelectedEntry.value.path]
+    : undefined,
+);
+
 const isExternal = computed(() => !!props.vfs);
 
 const bulkSelection = useFileBrowserBulkSelection({
-  getVisibleEntries: () => sortedEntries.value,
+  getVisibleEntries: () => visibleEntries.value,
   getSelectedEntries,
   selectEntries: (entries, nextInstanceId, nextIsExternal) => {
     selectionStore.selectFsEntries(entries, nextInstanceId, nextIsExternal);
@@ -547,7 +575,7 @@ function handleContainerClick() {
     if (remoteCurrentFolder.value && !remoteError.value && isRemoteAvailable.value) {
       setSelectedFsEntry(remoteCurrentFolder.value as unknown as FsEntry);
     } else {
-      selectionStore.clearSelection();
+      setSelectedFsEntry(null);
     }
   } else {
     const currentFolder = fileManagerStore.selectedFolder;
@@ -564,8 +592,13 @@ const selectionAnchor = ref<FsEntry | null>(null);
 
 // Automatically track the selection anchor when selection changes
 watch(
-  () => selectionStore.selectedEntity,
+  () => (props.isolatedSelection ? isolatedSelectedEntry.value : selectionStore.selectedEntity),
   (selected) => {
+    if (props.isolatedSelection) {
+      selectionAnchor.value = selected as FsEntry | null;
+      return;
+    }
+
     if (!selected || selected.source !== 'fileManager' || selected.instanceId !== instanceId) {
       selectionAnchor.value = null;
       return;
@@ -636,27 +669,37 @@ function onContainerKeyDown(event: KeyboardEvent) {
 
   // Handle case where nothing was focused/selected yet
   if (currentIndex === -1) {
-    const selected = selectionStore.selectedEntity;
-    if (selected?.source === 'fileManager' && selected.instanceId === instanceId) {
-      const selectedPath =
-        selected.kind === 'multiple' ? selected.entries[0]?.path : selected.entry?.path;
+    if (props.isolatedSelection) {
+      const selectedPath = isolatedSelectedEntry.value?.path;
       if (selectedPath) {
-        const foundIdx = sortedEntries.value.findIndex((e) => e.path === selectedPath);
-        if (foundIdx !== -1) {
-          nextIndex = foundIdx;
+        const foundIdx = visibleEntries.value.findIndex((e) => e.path === selectedPath);
+        nextIndex = foundIdx !== -1 ? foundIdx : 0;
+      } else {
+        nextIndex = 0;
+      }
+    } else {
+      const selected = selectionStore.selectedEntity;
+      if (selected?.source === 'fileManager' && selected.instanceId === instanceId) {
+        const selectedPath =
+          selected.kind === 'multiple' ? selected.entries[0]?.path : selected.entry?.path;
+        if (selectedPath) {
+          const foundIdx = visibleEntries.value.findIndex((e) => e.path === selectedPath);
+          if (foundIdx !== -1) {
+            nextIndex = foundIdx;
+          } else {
+            nextIndex = 0;
+          }
         } else {
           nextIndex = 0;
         }
       } else {
         nextIndex = 0;
       }
-    } else {
-      nextIndex = 0;
     }
   }
 
   if (nextIndex >= 0 && nextIndex < items.length) {
-    const targetEntry = sortedEntries.value[nextIndex];
+    const targetEntry = visibleEntries.value[nextIndex];
     if (!targetEntry) return;
 
     // Focus the target DOM element
@@ -666,19 +709,21 @@ function onContainerKeyDown(event: KeyboardEvent) {
     if (event.shiftKey) {
       // Range selection
       if (!selectionAnchor.value) {
-        const currentEntry = currentIndex >= 0 ? sortedEntries.value[currentIndex] : null;
-        selectionAnchor.value = currentEntry ?? sortedEntries.value[0] ?? null;
+        const currentEntry = currentIndex >= 0 ? visibleEntries.value[currentIndex] : null;
+        selectionAnchor.value = currentEntry ?? visibleEntries.value[0] ?? null;
       }
 
       if (selectionAnchor.value) {
-        const anchorIdx = sortedEntries.value.findIndex(
+        const anchorIdx = visibleEntries.value.findIndex(
           (e) => e.path === selectionAnchor.value?.path,
         );
         if (anchorIdx !== -1) {
           const start = Math.min(anchorIdx, nextIndex);
           const end = Math.max(anchorIdx, nextIndex);
-          const range = sortedEntries.value.slice(start, end + 1);
-          selectionStore.selectFsEntries(range, instanceId, isExternal.value);
+          const range = visibleEntries.value.slice(start, end + 1);
+          if (!props.isolatedSelection) {
+            selectionStore.selectFsEntries(range, instanceId, isExternal.value);
+          }
         } else {
           setSelectedFsEntry(targetEntry);
         }
@@ -888,8 +933,8 @@ async function onDirectoryUploadChange(e: Event) {
       :empty-space-context-menu-items="emptySpaceContextMenuItems"
       :is-remote-mode="isRemoteMode"
       :remote-error="remoteError"
-      :folder-entries-length="folderEntries.length"
-      :sorted-entries="sortedEntries"
+      :folder-entries-length="visibleEntries.length"
+      :sorted-entries="visibleEntries"
       :drag-over-entry-path="dragOverEntryPath"
       :current-drag-operation="currentDragOperation"
       :current-grid-size-name="currentGridSizeName"
@@ -901,6 +946,8 @@ async function onDirectoryUploadChange(e: Event) {
       :video-thumbnails="videoThumbnails"
       :file-compatibility="fileCompatibility"
       :instance-id="instanceId"
+      :selected-entry-paths="selectedEntryPaths"
+      :hide-usage-indicators="hideUsageIndicators"
       :folder-sizes-loading="folderSizesLoading"
       :folder-sizes="folderSizes"
       :show-grid-view="remoteModeOnly || fileManagerStore.viewMode === 'grid'"

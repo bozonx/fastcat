@@ -1842,7 +1842,7 @@
       "resetAudioSettingsConfirmDesc": "This will restore all audio settings to their default values.",
       "resetAudioSettingsConfirmTitle": "Reset audio settings?",
       "resetDefaults": "Reset to defaults",
-      "resetGeneralSettingsConfirmDesc": "This will restore all general settings to their default values.",
+      "resetGeneralSettingsConfirmDesc": "This will restore all general settings to their default values. The language setting will not be changed.",
       "resetGeneralSettingsConfirmTitle": "Reset general settings?",
       "resetIntegrationsSettingsConfirmDesc": "This will restore all integration settings to their default values.",
       "resetIntegrationsSettingsConfirmTitle": "Reset integrations?",

@@ -1842,7 +1842,7 @@
       "resetAudioSettingsConfirmDesc": "Это вернет все настройки аудио к значениям по умолчанию.",
       "resetAudioSettingsConfirmTitle": "Сбросить настройки аудио?",
       "resetDefaults": "Сбросить настройки",
-      "resetGeneralSettingsConfirmDesc": "Это вернет все общие настройки к значениям по умолчанию.",
+      "resetGeneralSettingsConfirmDesc": "Это вернет все общие настройки к значениям по умолчанию. Настройка языка не изменится.",
       "resetGeneralSettingsConfirmTitle": "Сбросить общие настройки?",
       "resetIntegrationsSettingsConfirmDesc": "Это вернет все настройки интеграций к значениям по умолчанию.",
       "resetIntegrationsSettingsConfirmTitle": "Сбросить настройки интеграций?",

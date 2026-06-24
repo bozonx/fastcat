@@ -16,7 +16,7 @@ const workspaceStore = useWorkspaceStore();
 const isResetConfirmOpen = ref(false);
 
 function resetGeneralDefaults() {
-  workspaceStore.userSettings.locale = DEFAULT_USER_SETTINGS.locale;
+  // Preserve the user's language choice during a general reset.
   workspaceStore.userSettings.openLastProjectOnStart = DEFAULT_USER_SETTINGS.openLastProjectOnStart;
 
   // Reset timeline section

@@ -226,8 +226,10 @@ vi.mock('~/composables/file-manager/useFileBrowserCreateActions', () => ({
   useFileBrowserCreateActions: () => ({}),
 }));
 vi.mock('~/composables/file-manager/useFileBrowserInteraction', () => ({
-  useFileBrowserInteraction: () => ({
-    handleEntryClick: vi.fn(),
+  useFileBrowserInteraction: (options: any) => ({
+    handleEntryClick: vi.fn((event: MouseEvent, entry: any) => {
+      options.setSelectedFsEntry(entry);
+    }),
     handleEntryDoubleClick: vi.fn(),
     handleEntryEnter: vi.fn(),
     handleSort: vi.fn(),
@@ -277,6 +279,7 @@ describe('FileBrowser', () => {
     mockUiStore.fileBrowserSelectAllTrigger = 0;
     mockFileBrowserEntries.folderEntries.value = [];
     mockFileBrowserEntries.sortedEntries.value = [];
+    mockSelectionStore.selectedEntity = null;
   });
 
   it('renders empty state when no folder is selected', async () => {
@@ -346,5 +349,69 @@ describe('FileBrowser', () => {
     mockFileManagerStore.viewMode = 'list';
     await wrapper.vm.$nextTick();
     expect(wrapper.find('[data-test="list-view"]').exists()).toBe(true);
+  });
+
+  it('filters excluded paths from rendered entries', async () => {
+    mockFileManagerStore.selectedFolder = { name: 'Root', kind: 'directory', path: '' };
+    const currentEntry = { name: 'current.mp4', kind: 'file', path: 'current.mp4' };
+    const replacementEntry = { name: 'replacement.mp4', kind: 'file', path: 'replacement.mp4' };
+    mockFileBrowserEntries.folderEntries.value = [currentEntry, replacementEntry];
+    mockFileBrowserEntries.sortedEntries.value = [currentEntry, replacementEntry];
+
+    const wrapper = await mountSuspended(FileBrowser, {
+      props: {
+        excludedPaths: ['current.mp4'],
+      },
+      global: {
+        stubs: {
+          FileBrowserToolbar: true,
+          FileBrowserBreadcrumbs: true,
+          FileBrowserModals: true,
+          FileBrowserViewGrid: {
+            template:
+              '<div data-test="grid-view"><span v-for="entry in entries" :key="entry.path" class="entry-name">{{ entry.name }}</span></div>',
+            props: ['entries'],
+          },
+          UContextMenu: { template: '<div><slot /></div>' },
+          UIcon: true,
+        },
+      },
+    });
+
+    expect(wrapper.text()).not.toContain('current.mp4');
+    expect(wrapper.text()).toContain('replacement.mp4');
+  });
+
+  it('keeps isolated selection local and emits select', async () => {
+    mockFileManagerStore.selectedFolder = { name: 'Root', kind: 'directory', path: '' };
+    const entry = { name: 'replacement.mp4', kind: 'file', path: 'replacement.mp4' };
+    mockFileBrowserEntries.folderEntries.value = [entry];
+    mockFileBrowserEntries.sortedEntries.value = [entry];
+
+    const wrapper = await mountSuspended(FileBrowser, {
+      props: {
+        isolatedSelection: true,
+      },
+      global: {
+        stubs: {
+          FileBrowserToolbar: true,
+          FileBrowserBreadcrumbs: true,
+          FileBrowserModals: true,
+          FileBrowserContent: {
+            template:
+              '<button data-test="entry" @click="$emit(\'entry-click\', $event, sortedEntries[0])">entry</button>',
+            props: ['sortedEntries'],
+            emits: ['entry-click'],
+          },
+          UContextMenu: { template: '<div><slot /></div>' },
+          UIcon: true,
+        },
+      },
+    });
+
+    await wrapper.find('[data-test="entry"]').trigger('click');
+
+    expect(mockSelectionStore.selectFsEntryWithUiUpdate).not.toHaveBeenCalled();
+    expect(wrapper.emitted('select')).toEqual([[entry]]);
   });
 });

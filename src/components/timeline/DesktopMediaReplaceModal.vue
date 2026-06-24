@@ -1,10 +1,14 @@
 <script setup lang="ts">
-import { computed, provide, watch } from 'vue';
+import { computed, provide, ref, watch } from 'vue';
 import { useUiStore } from '~/stores/ui.store';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useSelectionStore } from '~/stores/selection.store';
 import { useProjectStore } from '~/stores/project.store';
 import { useReplaceMediaFileManagerStore } from '~/stores/file-manager.store';
+import {
+  FILE_MANAGER_INJECTION_KEY,
+  useFileManager,
+} from '~/composables/file-manager/useFileManager';
 import FileBrowser from '~/components/file-manager/FileBrowser.vue';
 import { useI18n } from 'vue-i18n';
 import type { FsEntry } from '~/types/fs';
@@ -16,6 +20,8 @@ const selectionStore = useSelectionStore();
 const { t } = useI18n();
 
 const replaceStore = useReplaceMediaFileManagerStore();
+const replaceFileManager = useFileManager({ shouldRecordFileManagerHistory: () => false });
+provide(FILE_MANAGER_INJECTION_KEY, replaceFileManager);
 provide('fileManagerStore', replaceStore);
 
 const route = useRoute();
@@ -35,8 +41,24 @@ const allowedMediaTypes = computed(() => {
   return target ? [target.expectedType] : undefined;
 });
 
+const currentSourcePath = computed(() => {
+  const target = uiStore.mediaReplaceTarget;
+  if (!target) return null;
+
+  const clip = timelineStore.timelineDoc?.tracks
+    .find((track) => track.id === target.trackId)
+    ?.items.find((item) => item.id === target.itemId);
+
+  return clip && 'source' in clip ? clip.source?.path : null;
+});
+
+const excludedPaths = computed(() => (currentSourcePath.value ? [currentSourcePath.value] : []));
+const selectedFileEntry = ref<FsEntry | null>(null);
+
 watch(isOpen, (newVal) => {
   if (newVal) {
+    selectedFileEntry.value = null;
+
     // Clear selection for replace-modal instance to avoid leftover selections
     const selected = selectionStore.selectedEntity;
     if (selected?.source === 'fileManager' && selected.instanceId === 'replace-modal') {
@@ -53,26 +75,11 @@ watch(isOpen, (newVal) => {
   }
 });
 
-const isReplaceModalFileSelected = computed(() => {
-  const selected = selectionStore.selectedEntity;
-  return (
-    selected?.source === 'fileManager' &&
-    selected.kind === 'file' &&
-    selected.instanceId === 'replace-modal'
-  );
-});
+const isReplaceModalFileSelected = computed(() => selectedFileEntry.value?.kind === 'file');
 
-const selectedFileEntry = computed<FsEntry | null>(() => {
-  const selected = selectionStore.selectedEntity;
-  if (
-    selected?.source === 'fileManager' &&
-    selected.kind === 'file' &&
-    selected.instanceId === 'replace-modal'
-  ) {
-    return selected.entry;
-  }
-  return null;
-});
+function handlePickerSelect(entry: FsEntry | null) {
+  selectedFileEntry.value = entry?.kind === 'file' ? entry : null;
+}
 
 function handleSelectFile(entry: FsEntry) {
   if (entry.kind !== 'file' || !entry.path) return;
@@ -110,7 +117,11 @@ function handleSelectFile(entry: FsEntry) {
         hide-toolbar
         single-click-folders
         disable-marquee
+        isolated-selection
+        hide-usage-indicators
         :allowed-media-types="allowedMediaTypes"
+        :excluded-paths="excludedPaths"
+        @select="handlePickerSelect"
       />
       <div
         v-if="isReplaceModalFileSelected && selectedFileEntry"

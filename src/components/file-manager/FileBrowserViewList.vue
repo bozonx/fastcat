@@ -29,6 +29,8 @@ const props = defineProps<{
   videoThumbnails?: Record<string, string>;
   fileCompatibility?: Record<string, FileCompatibility>;
   instanceId?: string;
+  selectedEntryPaths?: string[];
+  hideUsageIndicators?: boolean;
 }>();
 
 const emit = defineEmits<FileBrowserListViewEmits>();
@@ -56,6 +58,13 @@ const {
 const { onNameClick, onNameDblClick } = useRenameTimer({
   onRename: (entry) => emit('fileAction', 'rename', entry),
 });
+
+function isEntrySelected(entry: FsEntry): boolean {
+  if (props.selectedEntryPaths) {
+    return Boolean(entry.path && props.selectedEntryPaths.includes(entry.path));
+  }
+  return isSelected(entry);
+}
 
 // formatDate removed in favor of FriendlyTime component
 </script>
@@ -203,7 +212,7 @@ const { onNameClick, onNameDblClick } = useRenameTimer({
               class="hover:bg-ui-bg-elevated cursor-pointer group border-b border-ui-border/30 transition-colors focus:outline-none"
               :class="{
                 'ring-1 ring-(--selection-ring) ring-inset z-10 relative bg-(--selection-range-bg)':
-                  isSelected(entry) && editingEntryPath !== entry.path,
+                  isEntrySelected(entry) && editingEntryPath !== entry.path,
                 'opacity-30': entry.name.startsWith('.'),
                 'opacity-50': isCutEntry(entry),
                 'text-(--color-success)!':
@@ -238,7 +247,9 @@ const { onNameClick, onNameDblClick } = useRenameTimer({
                 <div
                   class="h-4 flex items-center justify-center shrink-0"
                   :class="[
-                    entry.path && timelineMediaUsageStore.mediaPathToTimelines[entry.path]?.length
+                    !props.hideUsageIndicators &&
+                    entry.path &&
+                    timelineMediaUsageStore.mediaPathToTimelines[entry.path]?.length
                       ? 'border-b-2 border-red-500'
                       : '',
                   ]"
@@ -321,7 +332,7 @@ const { onNameClick, onNameDblClick } = useRenameTimer({
                     getCompatibilityStatus(entry) !== 'checking'
                       ? 'text-red-400!'
                       : '',
-                    isSelected(entry)
+                    isEntrySelected(entry)
                       ? 'hover:border-(--selection-accent-500)/50 border-(--selection-accent-500)/35 cursor-text'
                       : '',
                   ]"

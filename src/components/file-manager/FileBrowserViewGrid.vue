@@ -26,6 +26,8 @@ const props = defineProps<{
   videoThumbnails?: Record<string, string>;
   fileCompatibility?: Record<string, FileCompatibility>;
   instanceId?: string;
+  selectedEntryPaths?: string[];
+  hideUsageIndicators?: boolean;
 }>();
 
 const emit = defineEmits<FileBrowserViewEmits>();
@@ -50,8 +52,15 @@ const {
 
 const { onNameClick, onNameDblClick } = useRenameTimer({
   onRename: (entry) => emit('fileAction', 'rename', entry),
-  canRename: (entry) => isSelected(entry),
+  canRename: (entry) => isEntrySelected(entry),
 });
+
+function isEntrySelected(entry: FsEntry): boolean {
+  if (props.selectedEntryPaths) {
+    return Boolean(entry.path && props.selectedEntryPaths.includes(entry.path));
+  }
+  return isSelected(entry);
+}
 </script>
 
 <template>
@@ -62,7 +71,7 @@ const { onNameClick, onNameDblClick } = useRenameTimer({
         class="flex flex-col items-center p-2 rounded-lg border border-transparent hover:border-ui-border hover:bg-ui-bg-elevated cursor-pointer group transition-all shrink-0 focus:outline-none"
         :class="{
           'ring-1 ring-(--selection-ring) bg-(--selection-range-bg)':
-            isSelected(entry) && editingEntryPath !== entry.path,
+            isEntrySelected(entry) && editingEntryPath !== entry.path,
           'text-(--color-success)!':
             fileManager.mediaCache?.hasProxy?.(entry.path || '') &&
             !proxyStore.generatingProxies.has(entry.path || ''),
@@ -70,7 +79,9 @@ const { onNameClick, onNameDblClick } = useRenameTimer({
             proxyStore.generatingProxies.has(entry.path || '') ||
             isGeneratingProxyInDirectory(entry),
           'border-b-2 border-b-red-500':
-            entry.path && timelineMediaUsageStore.mediaPathToTimelines[entry.path]?.length,
+            !props.hideUsageIndicators &&
+            entry.path &&
+            timelineMediaUsageStore.mediaPathToTimelines[entry.path]?.length,
           'opacity-30': entry.name.startsWith('.'),
           'opacity-50': isCutEntry(entry),
           'ring-2 ring-red-500 bg-red-500/10':
@@ -215,7 +226,7 @@ const { onNameClick, onNameDblClick } = useRenameTimer({
                 currentGridSizeName.toLowerCase() === 'l' ||
                 currentGridSizeName.toLowerCase() === 'xl',
             },
-            isSelected(entry)
+            isEntrySelected(entry)
               ? 'hover:border-(--selection-accent-500)/50 border-(--selection-accent-500)/35 cursor-text'
               : '',
           ]"

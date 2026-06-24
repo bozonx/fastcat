@@ -39,6 +39,8 @@ interface FileBrowserContentProps {
   isLoadingMore: boolean;
   remoteHasMore: boolean;
   rootSpacerStyle: Record<string, string | number>;
+  selectedEntryPaths?: string[];
+  hideUsageIndicators?: boolean;
 }
 
 const props = defineProps<FileBrowserContentProps>();
@@ -197,6 +199,8 @@ function emitResizeStart(event: MouseEvent, column: string) {
           :video-thumbnails="props.videoThumbnails"
           :file-compatibility="props.fileCompatibility"
           :instance-id="props.instanceId"
+          :selected-entry-paths="props.selectedEntryPaths"
+          :hide-usage-indicators="props.hideUsageIndicators"
           @entry-drag-start="emitEntryDragStart"
           @entry-drag-end="emit('entryDragEnd')"
           @entry-drag-enter="emitEntryDragEnter"
@@ -225,6 +229,8 @@ function emitResizeStart(event: MouseEvent, column: string) {
           :video-thumbnails="props.videoThumbnails"
           :file-compatibility="props.fileCompatibility"
           :instance-id="props.instanceId"
+          :selected-entry-paths="props.selectedEntryPaths"
+          :hide-usage-indicators="props.hideUsageIndicators"
           @entry-drag-start="emitEntryDragStart"
           @entry-drag-end="emit('entryDragEnd')"
           @entry-drag-enter="emitEntryDragEnter"
