@@ -1,4 +1,4 @@
-import type { WorkerTimelineClip } from '~/composables/monitor/types';
+import type { WorkerTimelineClip } from '~/types/worker-payload';
 import type { AudioClipEffect, ClipEffect } from '~/timeline/types';
 import type { AudioEffectSpec } from '~/types/generated/native-monitor/AudioEffectSpec';
 import type { SceneAudioLayer } from '~/types/generated/native-monitor/SceneAudioLayer';

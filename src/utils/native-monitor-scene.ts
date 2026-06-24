@@ -1,13 +1,15 @@
 import {
   buildVideoWorkerPayloadFromTracks,
   toWorkerTimelineClips,
-} from '~/composables/timeline/export';
-import type { WorkerTimelineClip } from '~/composables/timeline/export/types';
-import type { useProjectStore } from '~/stores/project.store';
-import type { useWorkspaceStore } from '~/stores/workspace.store';
+  type WorkerPayloadProjectContext,
+  type WorkerPayloadWorkspaceContext,
+} from '~/timeline/application/workerPayloadBuilder';
+import type { WorkerTimelineClip } from '~/types/worker-payload';
 import type { ClipTransform, TimelineBlendMode, TimelineDocument } from '~/timeline/types';
 import type { BlendMode } from '~/types/generated/native-monitor/BlendMode';
 import type { MonitorScene } from '~/types/generated/native-monitor/MonitorScene';
+import type { NativeFrameCacheMode } from '~/types/generated/native-monitor/NativeFrameCacheMode';
+import type { PreviewSyncMode } from '~/types/generated/native-monitor/PreviewSyncMode';
 import type { SceneLayer } from '~/types/generated/native-monitor/SceneLayer';
 import type { SceneAudioLayer } from '~/types/generated/native-monitor/SceneAudioLayer';
 import type { SceneAudioTrack } from '~/types/generated/native-monitor/SceneAudioTrack';
@@ -22,7 +24,6 @@ import {
 } from '~/utils/audio/audio-clip-descriptor';
 import { resolveNormalizedAnchor, TRANSFORM_DESIGN_BASE } from '~/utils/video-editor/clip-layout';
 import { normalizeClipSpeed } from '~/utils/video-editor/source-time';
-import type { TauriDirectoryHandle } from '~/stores/workspace/provider/tauri-handle';
 import { buildEffectSpecs } from '~/effects';
 import { normalizeMediaCachePath } from '~/utils/path';
 import { getTransitionManifest } from '~/transitions';
@@ -58,10 +59,33 @@ export type NativeAudioTrack = SceneAudioTrack;
 export type NativeVideoTrack = SceneVideoTrack;
 export type NativeMonitorScene = MonitorScene;
 
+interface NativeMonitorProjectContext extends WorkerPayloadProjectContext {
+  activeMonitor?: {
+    previewBlurQuality?: PreviewEffectQualitySetting;
+  } | null;
+  currentProjectName?: string | null;
+  getProjectDirHandle: () => Promise<(FileSystemDirectoryHandle & { path?: string }) | null>;
+}
+
+interface NativeMonitorWorkspaceContext extends WorkerPayloadWorkspaceContext {
+  lastProjectPath?: string | null;
+  recentProjects: Array<{
+    projectName?: string | null;
+    projectPath?: string | null;
+  }>;
+  userSettings: WorkerPayloadWorkspaceContext['userSettings'] & {
+    optimization: {
+      nativeMonitorSyncMode?: PreviewSyncMode;
+      nativeFrameCacheMode?: NativeFrameCacheMode;
+      nativeFrameCacheCustomMb?: number;
+    };
+  };
+}
+
 export interface BuildNativeMonitorSceneParams {
   timelineDoc: TimelineDocument;
-  projectStore: ReturnType<typeof useProjectStore>;
-  workspaceStore: ReturnType<typeof useWorkspaceStore>;
+  projectStore: NativeMonitorProjectContext;
+  workspaceStore: NativeMonitorWorkspaceContext;
   masterGain?: number;
   masterMuted?: boolean;
   previewScale?: number;
@@ -106,8 +130,8 @@ interface ProxyResolution {
  */
 async function resolveMediaSourceAbsolutePath(
   projectRelativePath: string,
-  projectStore: ReturnType<typeof useProjectStore>,
-  workspaceStore: ReturnType<typeof useWorkspaceStore>,
+  projectStore: NativeMonitorProjectContext,
+  workspaceStore: NativeMonitorWorkspaceContext,
   proxy: ProxyResolution | undefined,
 ): Promise<string> {
   if (
@@ -329,8 +353,8 @@ function buildNativeShapeTransform(params: {
 
 async function resolveProjectAbsolutePath(
   projectRelativePath: string,
-  projectStore: ReturnType<typeof useProjectStore>,
-  workspaceStore: ReturnType<typeof useWorkspaceStore>,
+  projectStore: NativeMonitorProjectContext,
+  workspaceStore: NativeMonitorWorkspaceContext,
 ): Promise<string> {
   const isAbsolute =
     /^[\\/]/.test(projectRelativePath) || /^[a-zA-Z]:[\\/]/.test(projectRelativePath);
@@ -338,7 +362,7 @@ async function resolveProjectAbsolutePath(
 
   try {
     const handle = await projectStore.getProjectDirHandle();
-    const projectPath = (handle as unknown as TauriDirectoryHandle | null)?.path;
+    const projectPath = handle?.path;
     if (projectPath) {
       const join = await getTauriJoin();
       return await join(projectPath, projectRelativePath);
@@ -532,8 +556,8 @@ function resolveNativePreviewEffectQuality(
 
 async function buildAudioLayers(params: {
   timelineDoc: TimelineDocument;
-  projectStore: ReturnType<typeof useProjectStore>;
-  workspaceStore: ReturnType<typeof useWorkspaceStore>;
+  projectStore: NativeMonitorProjectContext;
+  workspaceStore: NativeMonitorWorkspaceContext;
   fallbackFormat: TimelineFormatInput;
   onWarning?: (message: string) => void;
   proxy?: ProxyResolution;
@@ -814,7 +838,7 @@ export async function buildNativeMonitorScene(
     height: sceneHeight,
     preview_scale: previewScale,
     preview_fps: fallbackFormat.fps,
-    preview_sync_mode: params.syncMode ?? optimization.nativeMonitorSyncMode,
+    preview_sync_mode: params.syncMode ?? optimization.nativeMonitorSyncMode ?? 'balanced',
     preview_effect_quality: previewBlurQuality,
     frame_cache_mode: optimization.nativeFrameCacheMode ?? 'auto',
     frame_cache_custom_mb: Math.max(0, Math.round(optimization.nativeFrameCacheCustomMb ?? 0)),

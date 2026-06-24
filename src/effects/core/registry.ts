@@ -1,4 +1,4 @@
-import type { ParamControl } from '~/components/properties/params';
+import type { ParamControl } from '~/types/params';
 import type { VideoEffectSpec } from '~/types/generated/native-monitor/VideoEffectSpec';
 import { getVideoEffectManifestByType, videoEffectManifests } from '../video-manifests';
 

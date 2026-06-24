@@ -1,5 +1,6 @@
-import { resolveMediaMetadata, type MediaMetadata } from '~/stores/media.store';
+import type { MediaMetadata } from '~/types/media';
 import type { TimelineClipItem, TimelineTrack, TimelineTrackItem } from '~/timeline/types';
+import { resolveMediaMetadataEntry } from '~/utils/media-metadata';
 
 export function formatAudioChannels(channels: number | undefined): string {
   if (!channels || channels <= 0) return '-';
@@ -54,7 +55,7 @@ export function clipHasAudio(
   if (clip.clipType !== 'media' && clip.clipType !== 'timeline') return track.kind === 'audio';
   if (!clip.source?.path) return track.kind === 'audio';
 
-  const meta = resolveMediaMetadata(mediaMetadata, clip.source.path);
+  const meta = resolveMediaMetadataEntry(mediaMetadata, clip.source.path);
   return Boolean(meta?.audio) || track.kind === 'audio';
 }
 

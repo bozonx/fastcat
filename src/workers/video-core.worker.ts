@@ -12,12 +12,12 @@ import type {
   VideoCoreWorkerRpcMessage,
   WorkerRpcErrorShape,
 } from '../utils/video-editor/worker-rpc';
-import type { MediaMetadata } from '../stores/media.store';
+import type { MediaMetadata } from '../types/media';
 import {
   ExportOptionsSchema,
   parseWorkerVideoPayload,
   TranscodeOptionsSchema,
-} from '../composables/timeline/export/types';
+} from '../types/worker-payload';
 import { initEffects } from '../effects';
 import { initTransitions } from '../transitions';
 import { normalizeRpcError } from './core/utils';

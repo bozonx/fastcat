@@ -4,19 +4,13 @@ import type { FsEntry } from '~/types/fs';
 import { useSelectionStore } from '~/stores/selection.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { createDefaultFileBrowserInstance } from '~/utils/workspace-state';
+import type { FileSortOption, FileViewMode } from '~/types/file-browser';
 
-export type FileViewMode = 'grid' | 'list';
-export type FileSortField = 'name' | 'type' | 'size' | 'modified' | 'created';
-export type SortOrder = 'asc' | 'desc';
+export type { FileSortField, FileSortOption, FileViewMode, SortOrder } from '~/types/file-browser';
 
 export interface FileManagerSelectionContext {
   instanceId?: string;
   isExternal?: boolean;
-}
-
-export interface FileSortOption {
-  field: FileSortField;
-  order: SortOrder;
 }
 
 export type FilesPageTab = 'computer' | 'bloggerdog' | 'fastcat';

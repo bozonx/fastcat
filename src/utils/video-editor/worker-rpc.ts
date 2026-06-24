@@ -3,8 +3,8 @@ import type {
   ExportOptions,
   TranscodeOptions,
   WorkerVideoPayloadItem,
-} from '~/composables/timeline/export/types';
-import type { MediaMetadata } from '~/stores/media.store';
+} from '~/types/worker-payload';
+import type { MediaMetadata } from '~/types/media';
 import type { VideoCoreHostAPI } from './worker-client';
 import { z } from 'zod';
 import type { PreviewEffectQuality } from '../preview-effect-quality';

@@ -1,7 +1,7 @@
 import { normalizeHexColor } from '~/utils/color';
 import { createDevLogger } from '~/utils/dev-logger';
 import type { Filter, Texture } from 'pixi.js';
-import type { ParamControl, ParamOption } from '~/components/properties/params';
+import type { ParamControl, ParamOption } from '~/types/params';
 import { getTransitionManifestByType, transitionManifests } from '../manifests';
 const log = createDevLogger('registry');
 

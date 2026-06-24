@@ -83,7 +83,8 @@ export async function createTimelineFrameSource(params: {
     });
     format = { width: scene.width, height: scene.height };
   } else {
-    const { buildVideoWorkerPayloadFromTracks } = await import('~/composables/timeline/export');
+    const { buildVideoWorkerPayloadFromTracks } =
+      await import('~/timeline/application/workerPayloadBuilder');
     const { useWorkspaceStore } = await import('~/stores/workspace.store');
     const { resolveEffectiveTimelineFormat, getTimelineFormat } = await import('~/timeline/format');
     const builtVideo = await buildVideoWorkerPayloadFromTracks({

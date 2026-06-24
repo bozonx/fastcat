@@ -2,38 +2,13 @@ import { ref, computed, watch, type Ref } from 'vue';
 import type { FsEntry } from '~/types/fs';
 import type { ProjectUiLayoutState } from '~/utils/project-settings';
 import { genUuid } from '~/utils/ids';
+import type { DynamicPanel, EditorView, PanelColumn, PanelPosition } from '~/types/editor-panels';
 
-export type EditorView = 'files' | 'cut' | 'sound' | 'export' | 'fullscreen' | 'settings';
+export type { DynamicPanel, EditorView, PanelColumn, PanelPosition } from '~/types/editor-panels';
 
 interface ViewConfig {
   timelineHeight: number;
 }
-
-export interface DynamicPanel {
-  id: string;
-  type:
-    | 'fileManager'
-    | 'monitor'
-    | 'properties'
-    | 'text'
-    | 'media'
-    | 'history'
-    | 'effects'
-    | 'library'
-    | 'markers'
-    | 'backups';
-  title?: string;
-  // If type is text or media, store file details
-  filePath?: string;
-  mediaType?: 'video' | 'audio' | 'image' | 'unknown' | null;
-}
-
-export interface PanelColumn {
-  id: string;
-  panels: DynamicPanel[];
-}
-
-export type PanelPosition = 'left' | 'right' | 'top' | 'bottom';
 
 /**
  * Default Cut layout when no layout is stored yet.

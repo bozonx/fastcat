@@ -31,6 +31,8 @@ import {
 } from '~/utils/tauri-media-processing';
 import { isLazyTauriFile } from '~/stores/workspace/provider/tauri-handle';
 import { normalizeMediaCachePath } from '~/utils/path';
+import type { MediaMetadata } from '~/types/media';
+import { resolveMediaMetadataEntry } from '~/utils/media-metadata';
 
 const log = createDevLogger('media.store');
 
@@ -42,74 +44,8 @@ const log = createDevLogger('media.store');
 const MAX_TRANSIENT_METADATA_RETRIES = 3;
 const metadataExtractionQueue = new PQueue({ concurrency: 2 });
 
-interface VideoColorSpaceInit {
-  fullRange?: boolean;
-  matrix?: string;
-  primaries?: string;
-  transfer?: string;
-}
-
-export interface MediaMetadata {
-  source: {
-    size: number;
-    lastModified: number;
-  };
-  mimeType?: string;
-  container?: string;
-  duration: number;
-  video?: {
-    width: number;
-    height: number;
-    displayWidth: number;
-    displayHeight: number;
-    rotation: number;
-    codec: string;
-    parsedCodec: string;
-    fps: number;
-    bitrate?: number;
-    colorSpace?: VideoColorSpaceInit;
-    canDecode?: boolean;
-  };
-  audio?: {
-    codec: string;
-    parsedCodec: string;
-    sampleRate: number;
-    channels: number;
-    bitrate?: number;
-    canDecode?: boolean;
-  };
-  image?: {
-    canDisplay?: boolean;
-    width?: number;
-    height?: number;
-  };
-  /** Per-channel waveform peaks. Stored as Float32Array (4 B/sample) rather
-   *  than `number[]` (~28 B/sample) so a 1-hour stereo source costs ~5.7 MB
-   *  in RAM instead of ~40 MB. Persisted to OPFS via a fingerprinted binary
-   *  envelope (see serializeWaveformCacheEntry); legacy JSON `number[][]` and
-   *  bare-binary blobs are still read for backward compatibility. */
-  audioPeaks?: Float32Array[];
-  error?: boolean;
-}
-
-export function resolveMediaMetadata<T>(
-  mediaMetadata: Record<string, T | undefined>,
-  path: string,
-): T | undefined {
-  if (!path) return undefined;
-  const direct = mediaMetadata[path];
-  if (direct) return direct;
-  const normalized = normalizeMediaCachePath(path);
-  if (normalized !== path && mediaMetadata[normalized]) {
-    return mediaMetadata[normalized];
-  }
-  if (path.startsWith('external:')) {
-    const clean = path.slice('external:'.length);
-    return mediaMetadata[clean];
-  }
-  const prefixed = `external:${path}`;
-  return mediaMetadata[prefixed];
-}
+export type { MediaMetadata } from '~/types/media';
+export { resolveMediaMetadataEntry as resolveMediaMetadata } from '~/utils/media-metadata';
 
 function resolveMediaMetadataKey<T>(
   mediaMetadata: Record<string, T | undefined>,
@@ -1007,7 +943,7 @@ export const useMediaStore = defineStore('media', () => {
   }
 
   function getCachedMetadata(path: string): MediaMetadata | undefined {
-    return resolveMediaMetadata(mediaMetadata.value, path);
+    return resolveMediaMetadataEntry(mediaMetadata.value, path);
   }
 
   return {

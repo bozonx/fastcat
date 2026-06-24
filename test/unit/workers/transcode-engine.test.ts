@@ -6,7 +6,7 @@ import {
   ensureNotCancelled,
   notifyPhase,
 } from '~/workers/core/transcode-engine';
-import type { ExportOptions } from '~/composables/timeline/export/types';
+import type { ExportOptions } from '~/types/worker-payload';
 
 function createMockAudioSample(): new (...args: any[]) => unknown {
   return function (this: Record<string, unknown>, params: Record<string, unknown>) {

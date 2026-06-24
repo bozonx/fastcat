@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { WorkerTimelineClip } from '~/composables/monitor/types';
+import type { WorkerTimelineClip } from '~/types/worker-payload';
 import {
   buildCanonicalAudioClipDescriptor,
   sanitizeNativeAudioSpeed,

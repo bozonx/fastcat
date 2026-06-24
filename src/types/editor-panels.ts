@@ -1,4 +1,29 @@
-import type { DynamicPanel } from '~/stores/editor-view.store';
+export type EditorView = 'files' | 'cut' | 'sound' | 'export' | 'fullscreen' | 'settings';
+
+export interface DynamicPanel {
+  id: string;
+  type:
+    | 'fileManager'
+    | 'monitor'
+    | 'properties'
+    | 'text'
+    | 'media'
+    | 'history'
+    | 'effects'
+    | 'library'
+    | 'markers'
+    | 'backups';
+  title?: string;
+  filePath?: string;
+  mediaType?: 'video' | 'audio' | 'image' | 'unknown' | null;
+}
+
+export interface PanelColumn {
+  id: string;
+  panels: DynamicPanel[];
+}
+
+export type PanelPosition = 'left' | 'right' | 'top' | 'bottom';
 
 export interface SplitResizeEvent {
   panes: Array<{ size: number }>;

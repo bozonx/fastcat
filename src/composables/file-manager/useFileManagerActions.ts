@@ -10,6 +10,7 @@ import { useFocusStore } from '~/stores/focus.store';
 import { useAppClipboard } from '~/composables/useAppClipboard';
 import { getBdPayload } from '~/types/bloggerdog';
 import type { FsEntry } from '~/types/fs';
+import type { FileAction } from '~/types/file-manager';
 import type { ProxyThumbnailService } from '~/media-cache/application/proxyThumbnailService';
 import { generateUniqueFsEntryName } from '~/utils/fs';
 import { createMarkdownCommand } from '~/file-manager/application/fileManagerCommands';
@@ -35,30 +36,7 @@ import {
 } from '~/utils/bloggerdog-file-manager';
 const log = createDevLogger('useFileManagerActions');
 
-export type FileAction =
-  | 'createFolder'
-  | 'upload'
-  | 'rename'
-  | 'delete'
-  | 'deleteProxy'
-  | 'createProxy'
-  | 'cancelProxy'
-  | 'openInNewTab'
-  | 'createOtioVersion'
-  | 'createMarkdown'
-  | 'createTimeline'
-  | 'createSubgroup'
-  | 'createContentItem'
-  | 'createProxyForFolder'
-  | 'cancelProxyForFolder'
-  | 'convertFile'
-  | 'openAsPanel'
-  | 'openAsProjectTab'
-  | 'extractAudio'
-  | 'copy'
-  | 'cut'
-  | 'paste'
-  | 'transcribe';
+export type { FileAction } from '~/types/file-manager';
 
 interface FileManagerActions {
   createFolder: (name: string, parentPath?: string) => Promise<void>;

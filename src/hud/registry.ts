@@ -1,4 +1,4 @@
-import type { ParamControl } from '~/components/properties/params';
+import type { ParamControl } from '~/types/params';
 import type { HudType } from '~/timeline/types';
 
 export interface HudManifest {

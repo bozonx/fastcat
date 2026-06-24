@@ -1,6 +1,6 @@
 import { useProjectStore } from '~/stores/project.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
-import { buildVideoWorkerPayloadFromTracks } from '~/composables/timeline/export';
+import { buildVideoWorkerPayloadFromTracks } from '~/timeline/application/workerPayloadBuilder';
 import { getTimelineFormat, resolveEffectiveTimelineFormat } from '~/timeline/format';
 import { createProjectHostApi } from '~/utils/video-editor/createVideoCoreHostApi';
 import { getThumbnailWorkerClient, setThumbnailHostApi } from '~/utils/video-editor/worker-client';

@@ -1,5 +1,5 @@
 import type { VideoCoreHostAPI } from '../../utils/video-editor/worker-client';
-import type { TranscodeOptions } from '~/composables/timeline/export/types';
+import type { TranscodeOptions } from '~/types/worker-payload';
 
 export interface ReversibleAudioSample {
   data: Float32Array;

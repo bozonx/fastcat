@@ -22,8 +22,8 @@ import {
 } from '../../utils/media-types';
 import { runResilientWorkerFileIo, acquireStreamingWorkerFileIoSlot } from './io-governor';
 import { governedBlobWorker } from '~/utils/io/governed-blob-worker';
-import type { ExportOptions, WorkerTimelineClip } from '~/composables/timeline/export/types';
-import type { MediaMetadata } from '~/stores/media.store';
+import type { ExportOptions, WorkerTimelineClip } from '~/types/worker-payload';
+import type { MediaMetadata } from '~/types/media';
 const log = createDevLogger('export');
 
 interface DisposableSampleSink {
@@ -434,7 +434,7 @@ function selectOutputFormat(format: ExportOptions['format'], ctors: OutputFormat
 export async function runExport(
   targetHandle: FileSystemFileHandle,
   options: ExportOptions,
-  timelineClips: import('~/composables/timeline/export/types').WorkerVideoPayloadItem[],
+  timelineClips: import('~/types/worker-payload').WorkerVideoPayloadItem[],
   audioClips: WorkerTimelineClip[],
   hostClient: VideoCoreHostAPI | null,
   reportExportWarning: (msg: string, taskId?: string) => Promise<void>,

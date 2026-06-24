@@ -18,7 +18,7 @@ import {
   AUDIO_ONLY_EXPORT_PLACEHOLDER_DIMENSION,
   AUDIO_ONLY_EXPORT_PLACEHOLDER_FPS,
 } from './constants';
-import type { TranscodeOptions } from '~/composables/timeline/export/types';
+import type { TranscodeOptions } from '~/types/worker-payload';
 const log = createDevLogger('media-conversion');
 
 const METADATA_TIMEOUT_MS = 30000;

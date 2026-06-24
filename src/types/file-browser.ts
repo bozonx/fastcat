@@ -1,6 +1,14 @@
 /* eslint-disable @typescript-eslint/unified-signatures */
-import type { FileSortField } from '~/stores/file-manager.store';
 import type { FsEntry } from './fs';
+
+export type FileViewMode = 'grid' | 'list';
+export type FileSortField = 'name' | 'type' | 'size' | 'modified' | 'created';
+export type SortOrder = 'asc' | 'desc';
+
+export interface FileSortOption {
+  field: FileSortField;
+  order: SortOrder;
+}
 
 export type ExtendedFsEntry = FsEntry & {
   objectUrl?: string;
