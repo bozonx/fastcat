@@ -4,6 +4,8 @@ import {
   zoomToPxPerSecond,
   pxPerSecondToZoom,
   timeUsToPx,
+  timeUsToViewportPx,
+  absolutePxToViewportPx,
   timelineRangeToRoundedPx,
   pxToTimeUs,
   pxToDeltaUs,
@@ -67,6 +69,31 @@ describe('timelineRangeToRoundedPx', () => {
     const right = timelineRangeToRoundedPx({ startUs: 1_000_000, durationUs: 1_000_000 }, zoom, 1);
 
     expect(left.endPx).toBe(right.leftPx);
+  });
+});
+
+describe('absolutePxToViewportPx / timeUsToViewportPx', () => {
+  it('rounds in absolute space, then subtracts the raw scroll offset', () => {
+    expect(absolutePxToViewportPx(10.4, 3.2)).toBe(10 - 3.2);
+    expect(timeUsToViewportPx(1_000_000, 50, 3.2)).toBe(
+      Math.round(timeUsToPx(1_000_000, 50)) - 3.2,
+    );
+  });
+
+  it('keeps a playhead pixel-aligned with a clip edge on the same instant for fractional scrollLeft', () => {
+    // The clip edge screen position = round(timeUsToPx(start)) shifted by the
+    // container transform (-scrollLeft). The playhead must resolve to the exact
+    // same screen pixel so they never drift apart as scrollLeft varies.
+    const zoom = 73;
+    const timeUs = 12_345_678;
+
+    const clipLeftPx = timelineRangeToRoundedPx({ startUs: timeUs, durationUs: 1 }, zoom, 2).leftPx;
+
+    for (const scrollLeft of [0, 1, 2.5, 100.4, 257.35, 999.9]) {
+      const playheadViewportX = timeUsToViewportPx(timeUs, zoom, scrollLeft);
+      const clipViewportX = clipLeftPx - scrollLeft;
+      expect(playheadViewportX).toBe(clipViewportX);
+    }
   });
 });
 

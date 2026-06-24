@@ -1,5 +1,10 @@
 import { computed, type Ref } from 'vue';
-import { timeUsToPx, zoomToPxPerSecond } from '~/utils/timeline/geometry';
+import {
+  absolutePxToViewportPx,
+  timeUsToPx,
+  timeUsToViewportPx,
+  zoomToPxPerSecond,
+} from '~/utils/timeline/geometry';
 
 import { formatTimecode } from '~/utils/time';
 
@@ -50,9 +55,17 @@ export function useTimelineRulerPresentation(options: UseTimelineRulerPresentati
 
     return options.markers.value
       .map((marker) => {
-        const x = timeUsToPx(marker.timeUs, currentZoom) - startPx;
+        // Round both endpoints in absolute space (clip convention) so the ruler
+        // pin/band aligns with the marker's vertical guide line in the tracks
+        // overlay for any scrollLeft.
+        const x = absolutePxToViewportPx(timeUsToPx(marker.timeUs, currentZoom), startPx);
         const width =
-          marker.durationUs !== undefined ? timeUsToPx(marker.durationUs, currentZoom) : 0;
+          marker.durationUs !== undefined
+            ? absolutePxToViewportPx(
+                timeUsToPx(marker.timeUs + marker.durationUs, currentZoom),
+                startPx,
+              ) - x
+            : 0;
 
         return {
           id: marker.id,
@@ -76,8 +89,9 @@ export function useTimelineRulerPresentation(options: UseTimelineRulerPresentati
 
     const currentZoom = options.zoom.value;
     const startPx = options.scrollLeft.value;
-    const x = timeUsToPx(range.startUs, currentZoom) - startPx;
-    const width = Math.max(1, timeUsToPx(range.endUs - range.startUs, currentZoom));
+    const x = absolutePxToViewportPx(timeUsToPx(range.startUs, currentZoom), startPx);
+    const endX = absolutePxToViewportPx(timeUsToPx(range.endUs, currentZoom), startPx);
+    const width = Math.max(1, endX - x);
 
     return {
       x,
@@ -99,9 +113,16 @@ export function useTimelineRulerPresentation(options: UseTimelineRulerPresentati
     const currentFrameStartUs = Math.round((currentFrameIndex * 1_000_000) / currentFps);
     const nextFrameStartUs = Math.round(((currentFrameIndex + 1) * 1_000_000) / currentFps);
 
-    const currentFrameStartX =
-      timeUsToPx(currentFrameStartUs, currentZoom) - options.scrollLeft.value;
-    const nextFrameStartX = timeUsToPx(nextFrameStartUs, currentZoom) - options.scrollLeft.value;
+    const currentFrameStartX = timeUsToViewportPx(
+      currentFrameStartUs,
+      currentZoom,
+      options.scrollLeft.value,
+    );
+    const nextFrameStartX = timeUsToViewportPx(
+      nextFrameStartUs,
+      currentZoom,
+      options.scrollLeft.value,
+    );
 
     return {
       transform: `translate3d(${currentFrameStartX}px, 0, 0)`,
@@ -110,8 +131,10 @@ export function useTimelineRulerPresentation(options: UseTimelineRulerPresentati
   });
 
   const playheadStyle = computed(() => {
-    const playheadX = Math.round(
-      timeUsToPx(options.currentTime.value, options.zoom.value) - options.scrollLeft.value,
+    const playheadX = timeUsToViewportPx(
+      options.currentTime.value,
+      options.zoom.value,
+      options.scrollLeft.value,
     );
     return {
       transform: `translate3d(${playheadX}px, 0, 0)`,

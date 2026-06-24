@@ -3,7 +3,7 @@ import { computed } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useSelectionStore } from '~/stores/selection.store';
 import { useTimelineHoverState } from '~/composables/timeline/useTimelineHoverState';
-import { timeUsToPx, zoomToPxPerSecond } from '~/utils/timeline/geometry';
+import { absolutePxToViewportPx, timeUsToPx, zoomToPxPerSecond } from '~/utils/timeline/geometry';
 
 const props = defineProps<{ scrollEl?: HTMLElement | null; scrollLeft?: number }>();
 
@@ -14,7 +14,7 @@ const { hoveredMarkerId } = useTimelineHoverState();
 const fps = computed(() => timelineStore.timelineFormat.fps || 30);
 
 function viewportX(absolutePx: number): number {
-  return Math.round(absolutePx - (props.scrollLeft ?? timelineStore.timelineScrollLeftPx));
+  return absolutePxToViewportPx(absolutePx, props.scrollLeft ?? timelineStore.timelineScrollLeftPx);
 }
 
 const playheadTransform = computed(() => {

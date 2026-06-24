@@ -22,7 +22,6 @@ defineOptions({
 const props = defineProps<{
   tracks: TimelineTrack[];
   trackHeights: Record<string, number>;
-  scrollbarCompensation?: number;
   onZoomToFit?: () => void;
 }>();
 
@@ -235,7 +234,9 @@ const { emptyAreaContextMenuItems: propertiesContextMenuItems } = useTimelineEmp
           />
         </template>
         <div class="w-full flex-1 min-h-7 shrink-0" />
-        <div class="shrink-0" :style="{ height: `calc(4rem + ${scrollbarCompensation || 0}px)` }" />
+        <!-- Trailing spacer mirrors TimelineTracks.vue so labels and tracks share
+             identical scroll content height and stay vertically aligned. -->
+        <div class="h-16 shrink-0" />
       </div>
     </div>
 
@@ -243,9 +244,7 @@ const { emptyAreaContextMenuItems: propertiesContextMenuItems } = useTimelineEmp
       v-if="selectedTrack"
       v-model:open="isConfirmDeleteOpen"
       :title="t('fastcat.timeline.deleteTrackTitle')"
-      :description="
-        t('fastcat.timeline.deleteTrackDescription')
-      "
+      :description="t('fastcat.timeline.deleteTrackDescription')"
       color="error"
       icon="i-heroicons-exclamation-triangle"
       :confirm-text="t('common.delete')"

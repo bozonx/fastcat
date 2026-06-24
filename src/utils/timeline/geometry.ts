@@ -46,6 +46,27 @@ export function pxToTimeUs(px: number, zoom = 100) {
   return Math.max(0, Math.round((px / pxPerSecond) * 1e6));
 }
 
+/**
+ * Project an absolute timeline pixel coordinate into the viewport.
+ *
+ * The single rounding convention shared by every horizontal element (clips,
+ * ruler ticks, playhead, markers, selection range): round in *absolute* space
+ * first, then subtract the raw scroll offset. Rounding the absolute coordinate
+ * — rather than the post-scroll result — is what keeps a playhead, a marker
+ * line and a clip edge that all sit on the same timeUs pixel-aligned with each
+ * other for *any* `scrollLeft`, including the fractional values HiDPI trackpads
+ * produce. Clips already do this via `timelineRangeToRoundedPx`; this helper
+ * lets overlays match them exactly instead of computing `round(abs - scroll)`.
+ */
+export function absolutePxToViewportPx(absolutePx: number, scrollLeft: number): number {
+  return Math.round(absolutePx) - scrollLeft;
+}
+
+/** Convenience wrapper: project a timeUs straight into viewport pixels. */
+export function timeUsToViewportPx(timeUs: number, zoom: number, scrollLeft: number): number {
+  return absolutePxToViewportPx(timeUsToPx(timeUs, zoom), scrollLeft);
+}
+
 export function quantizeTimeUsToPixelGrid(timeUs: number, zoom = 100) {
   return pxToTimeUs(Math.round(timeUsToPx(timeUs, zoom)), zoom);
 }
