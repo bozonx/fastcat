@@ -1,4 +1,4 @@
-//! Декод растровых ресурсов: SVG → `ImageData` + глобальная база шрифтов.
+//! Decoding raster assets: SVG → `ImageData` + the global font database.
 
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -137,18 +137,18 @@ fn global_rasterizer() -> &'static SvgRasterizer {
     GLOBAL_RASTERIZER.get_or_init(SvgRasterizer::new)
 }
 
-/// Уникальные имена семейств шрифтов, установленных в системе, отсортированные
-/// по алфавиту. Берётся из той же глобальной базы, что и растеризация SVG, поэтому
-/// список ровно соответствует тому, чем реально умеет рисовать нативный рендер.
+/// Unique names of font families installed on the system, sorted alphabetically.
+/// Taken from the same global database as SVG rasterization, so the list matches
+/// exactly what the native renderer can actually draw with.
 pub fn system_font_families() -> Vec<String> {
     global_rasterizer().system_font_families()
 }
 
-/// Растеризует SVG в `ImageData`, целясь в `target_long_edge` пикселей по длинной
-/// стороне (= разрешение, в котором слой будет показан: монитор для preview,
-/// export-кадр для экспорта). Раньше растеризация шла всегда в натуральном размере
-/// SVG, из-за чего мелкие иконки на весь экран были мыными, а большие SVG в
-/// маленьком preview зря жгли память.
+/// Rasterizes an SVG into `ImageData`, targeting `target_long_edge` pixels on the
+/// long side (= the resolution the layer will be shown at: the monitor for preview,
+/// the export frame for export). Previously rasterization always used the SVG's
+/// natural size, which made small icons blurry when shown full-screen and large SVGs
+/// in a small preview waste memory.
 pub fn rasterize_svg(path: &Path, target_long_edge: u32) -> Result<(ImageData, (u32, u32))> {
     global_rasterizer().rasterize_svg(path, target_long_edge)
 }

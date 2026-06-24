@@ -8,12 +8,22 @@ use anyhow::{Context, Result};
 use parking_lot::{Condvar, Mutex};
 
 use crate::audio::clock::RealtimeClock;
-use crate::audio::mix::{mix_chunk, mix_chunk_ramped};
+use crate::audio::mix::{mix_chunk, MixChunkParams};
 use crate::audio::ring::SpscRingBuffer;
 use crate::audio::shared::{
     AudioRenderTarget, AudioShared, CHUNK_DURATION_SEC, MAX_SCRUB_PREVIEW_SEC, PREBUFFER_CHUNKS,
     START_PREBUFFER_CHUNKS,
 };
+
+/// Producer-local snapshot of the audio scene, re-cloned only when
+/// `scene_serial` changes so a static timeline doesn't re-clone the whole scene
+/// ~20×/sec. See the refresh site in `producer_loop`.
+struct CachedSceneAudio {
+    scene_serial: u64,
+    scene: Vec<crate::monitor::scene::SceneAudioLayer>,
+    tracks: Vec<crate::monitor::scene::SceneAudioTrack>,
+    audio_master_effects: Vec<crate::audio::plugins::AudioEffectSpec>,
+}
 
 pub(crate) fn spawn_producer_thread(
     shared: Arc<(Mutex<AudioShared>, Condvar)>,
@@ -68,12 +78,7 @@ pub(crate) fn producer_loop(
 
     // Cached clones of the scene/tracks, refreshed only when `scene_serial`
     // changes, so a static timeline doesn't re-clone the whole scene 20×/sec.
-    let mut cached: Option<(
-        u64,
-        Vec<crate::monitor::scene::SceneAudioLayer>,
-        Vec<crate::monitor::scene::SceneAudioTrack>,
-        Vec<crate::audio::plugins::AudioEffectSpec>,
-    )> = None;
+    let mut cached: Option<CachedSceneAudio> = None;
 
     // Throttled underrun reporting. The real-time callback only bumps the atomic
     // counters; here we log at most once per second when new underruns appear, so
@@ -196,13 +201,13 @@ pub(crate) fn producer_loop(
                     && ring.len() < limit_samples
                 {
                     // Refresh the cached scene clone only on a real change.
-                    if cached.as_ref().map(|(s, _, _, _)| *s) != Some(state.scene_serial) {
-                        cached = Some((
-                            state.scene_serial,
-                            state.scene.clone(),
-                            state.tracks.clone(),
-                            state.audio_master_effects.clone(),
-                        ));
+                    if cached.as_ref().map(|c| c.scene_serial) != Some(state.scene_serial) {
+                        cached = Some(CachedSceneAudio {
+                            scene_serial: state.scene_serial,
+                            scene: state.scene.clone(),
+                            tracks: state.tracks.clone(),
+                            audio_master_effects: state.audio_master_effects.clone(),
+                        });
                     }
 
                     // The producer mixes contiguously from `producer_pts_sec`; the
@@ -253,7 +258,13 @@ pub(crate) fn producer_loop(
         let Some((master_gain, chunk_start, seek_serial, speed)) = snapshot else {
             continue;
         };
-        let Some((_, scene, tracks, audio_master_effects)) = cached.as_ref() else {
+        let Some(CachedSceneAudio {
+            scene,
+            tracks,
+            audio_master_effects,
+            ..
+        }) = cached.as_ref()
+        else {
             continue;
         };
 
@@ -283,17 +294,17 @@ pub(crate) fn producer_loop(
         // varispeed pitch-shift happens further down through the streaming resampler.
         let mix_frames = (mix_duration * sample_rate as f64).round().max(1.0) as usize;
         let mixed = match panic::catch_unwind(AssertUnwindSafe(|| {
-            mix_chunk_ramped(
+            mix_chunk(MixChunkParams {
                 scene,
                 tracks,
                 master_gain,
                 audio_master_effects,
-                ramp_prev_master_gain,
-                chunk_start,
-                mix_duration,
+                prev_master_gain: ramp_prev_master_gain,
+                chunk_start_sec: chunk_start,
+                chunk_duration_sec: mix_duration,
                 target,
-                &shared,
-            )
+                shared: &shared,
+            })
         })) {
             Ok(mixed) => mixed,
             Err(error) => {
@@ -460,16 +471,17 @@ fn service_scrub_preview(
                 if piece_dur <= 0.0 {
                     break;
                 }
-                let mut piece = mix_chunk(
-                    &scene,
-                    &tracks,
+                let mut piece = mix_chunk(MixChunkParams {
+                    scene: &scene,
+                    tracks: &tracks,
                     master_gain,
-                    &[],
-                    req.from_sec + offset,
-                    piece_dur,
+                    audio_master_effects: &[],
+                    prev_master_gain: None,
+                    chunk_start_sec: req.from_sec + offset,
+                    chunk_duration_sec: piece_dur,
                     target,
                     shared,
-                );
+                });
                 samples.append(&mut piece);
                 offset += piece_dur;
             }

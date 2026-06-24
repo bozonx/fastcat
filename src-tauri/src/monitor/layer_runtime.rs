@@ -107,7 +107,10 @@ pub enum BgLayerResult {
 // ---------------------------------------------------------------------------
 
 pub enum LayerRuntime {
-    Video(VideoLayerRt),
+    // Boxed: `VideoLayerRt` is far larger than the other variants, so keeping it
+    // inline made every `LayerRuntime` (incl. the cheap `Loading`/`Failed`/`Image`
+    // states stored per layer) pay its full size. The box keeps the enum small.
+    Video(Box<VideoLayerRt>),
     Image(ImageLayerRt),
     /// Background loader thread is running — result not yet received.
     Loading,
@@ -356,9 +359,9 @@ impl VideoLayerRt {
             .saturating_mul(self.media_size.1 as usize)
             .saturating_mul(4)
             .max(1);
-        // Применяем MIN_PREROLL_FRAMES как нижнюю границу: даже один 4K-кадр > бюджета
-        // должен прогреть минимум MIN_PREROLL_FRAMES кадров, чтобы декодер прошёл
-        // мимо keyframe и Play не стартовал с фриза на первом GOP-декоде.
+        // Apply MIN_PREROLL_FRAMES as a lower bound: even a single 4K frame > budget
+        // must warm at least MIN_PREROLL_FRAMES frames so the decoder gets past the
+        // keyframe and Play doesn't start with a freeze on the first GOP decode.
         let by_memory =
             (PREROLL_BUDGET_BYTES / frame_bytes).max(MIN_PREROLL_FRAMES as usize) as u32;
         by_lookahead
@@ -679,12 +682,12 @@ mod tests {
         }
 
         let mut rt = fixture_video_rt();
-        // Пустой кеш — прогресса нет.
+        // Empty cache — no progress.
         assert!(!rt.decoder_advancing());
         rt.cache.insert(cached(1.0));
-        // Появился новейший кадр — прогресс есть.
+        // A newer frame appeared — there is progress.
         assert!(rt.decoder_advancing());
-        // Тот же новейший кадр — декодер не двинулся.
+        // Same newest frame — the decoder did not move.
         assert!(!rt.decoder_advancing());
         rt.cache.insert(cached(2.0));
         assert!(rt.decoder_advancing());
@@ -708,18 +711,19 @@ mod tests {
         assert_eq!(rt.last_pump_seek_pts, Some(1.0));
     }
 
-    /// Регрессионный тест: `request_prebuffer` при seek на паузе с кэш-хитом не должна
-    /// паниковать, и кадры вперёд playhead'а не должны считаться «готовыми» до декода.
+    /// Regression test: `request_prebuffer` on a paused cache-hit seek must not panic,
+    /// and frames ahead of the playhead must not count as "ready" before decode.
     ///
-    /// До фикса `LayerRuntimeManager::seek` делал `continue` без вызова `request_prebuffer`
-    /// при `has_cached_near` — форвард-буфер оставался пустым, Play стартовал без прогрева
-    /// и слышался треск/повтор аудио на первых секундах.
+    /// Before the fix `LayerRuntimeManager::seek` did `continue` without calling
+    /// `request_prebuffer` when `has_cached_near` — the forward buffer stayed empty,
+    /// Play started without warm-up, and a crackle/audio repeat was heard in the first
+    /// seconds.
     #[test]
     fn request_prebuffer_does_not_panic_on_cache_hit_seek() {
         let rt = fixture_video_rt();
-        // Вызов без паники — базовый контракт.
+        // Calling it without panic — the basic contract.
         rt.request_prebuffer();
-        // preroll_frame_count должен вернуть минимум MIN_PREROLL_FRAMES
+        // preroll_frame_count must return at least MIN_PREROLL_FRAMES
         assert!(rt.preroll_frame_count(0.2) >= MIN_PREROLL_FRAMES);
     }
 
@@ -789,12 +793,12 @@ mod tests {
         assert_eq!(rt.last_pump_seek_pts, Some(0.25));
     }
 
-    /// Контракт `has_buffered_through`: пока ни один кадр не декодирован вперёд `target`,
-    /// должна возвращать `false` — прогрев не считается завершённым.
+    /// `has_buffered_through` contract: while no frame has been decoded past `target`,
+    /// it must return `false` — warm-up is not considered complete.
     #[test]
     fn has_buffered_through_is_false_before_forward_frames_decoded() {
         let rt = fixture_video_rt();
-        // Кэш пуст — нет кадров вперёд target.
+        // Cache empty — no frames ahead of target.
         assert!(
             !rt.has_buffered_through(0.5),
             "empty cache must report not buffered through"
@@ -804,13 +808,13 @@ mod tests {
     #[test]
     fn expected_preroll_duration_matches_memory_budget() {
         let rt = fixture_video_rt();
-        // В нормальном случае duration = (frames - 0.5) / fps
+        // In the normal case duration = (frames - 0.5) / fps
         let fps = rt.pump.info.fps.max(1.0);
         let normal_frames = rt.preroll_frame_count(PREROLL_LOOKAHEAD_SEC);
         let expected_normal = (normal_frames as f64 - 0.5) / fps;
         assert!((rt.expected_preroll_duration() - expected_normal).abs() < 1e-9);
 
-        // В случае огромных кадров, preroll_frame_count должен упасть до MIN_PREROLL_FRAMES
+        // For huge frames, preroll_frame_count must fall to MIN_PREROLL_FRAMES
         let mut rt_big = fixture_video_rt();
         rt_big.media_size = (7680, 4320); // 8K
         let big_frames = rt_big.preroll_frame_count(PREROLL_LOOKAHEAD_SEC);
@@ -847,7 +851,7 @@ mod tests {
         let half_frame = 0.5 / fps;
         let lookahead = rt.expected_preroll_duration();
 
-        // Помещаем в кэш последний кадр (на самом eof).
+        // Put the last frame in the cache (right at eof).
         fn cached(pts: f64) -> DecodedVideoFrame {
             DecodedVideoFrame {
                 pts_sec: pts,
@@ -857,21 +861,21 @@ mod tests {
         }
         rt.cache.insert(cached(video_duration - half_frame));
 
-        // Playhead находится близко к eof, например в video_duration - 0.05 (0.95s).
+        // The playhead is close to eof, e.g. at video_duration - 0.05 (0.95s).
         let clip_local = video_duration - 0.05;
 
-        // С EOF-защитой (как в runtime.rs):
+        // With EOF protection (as in runtime.rs):
         let target = (clip_local + lookahead)
             .min(video_duration - half_frame)
             .max(clip_local);
 
-        // Убеждаемся, что target зажат до video_duration - half_frame
+        // Confirm target is clamped to video_duration - half_frame
         assert_eq!(target, video_duration - half_frame);
 
-        // И теперь has_buffered_through(target) должен вернуть true немедленно
+        // And now has_buffered_through(target) must return true immediately
         assert!(rt.has_buffered_through(target));
 
-        // А без EOF-защиты (где target был бы clip_local + lookahead = 0.95 + lookahead > 1.0)
+        // Whereas without EOF protection (where target would be clip_local + lookahead = 0.95 + lookahead > 1.0)
         let target_no_eof_protection = clip_local + lookahead;
         assert!(!rt.has_buffered_through(target_no_eof_protection));
     }

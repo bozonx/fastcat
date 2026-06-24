@@ -1,11 +1,11 @@
-//! Tauri-команды, связанные со шрифтами.
+//! Tauri commands related to fonts.
 
 use crate::monitor::scene::build::system_font_families;
 
-/// Возвращает список семейств шрифтов, установленных в системе. Используется
-/// фронтом, чтобы в десктоп-версии показывать в свойствах текстового клипа ровно
-/// те шрифты, которыми реально умеет рисовать нативный рендер (тот же fontdb,
-/// что и при растеризации SVG / шейпинге текста).
+/// Returns the list of font families installed on the system. Used by the
+/// frontend so the desktop build shows, in the text clip's properties, exactly
+/// the fonts the native renderer can actually draw with (the same fontdb used
+/// for SVG rasterization / text shaping).
 #[tauri::command]
 pub async fn native_system_fonts() -> Result<Vec<String>, String> {
     tokio::task::spawn_blocking(system_font_families)

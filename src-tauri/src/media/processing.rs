@@ -9,7 +9,7 @@ use crate::media::decode::gate::decoder_load_gate;
 use crate::media::ffmpeg::args::*;
 use crate::media::ffmpeg::hw::FfmpegHwOptions;
 use crate::media::ffmpeg::runner::{emit_media_warning, run_ffmpeg_task};
-pub(crate) use crate::media::ffmpeg::runner::{now_millis, spawn_stderr_drain};
+pub(crate) use crate::media::ffmpeg::runner::{now_millis, spawn_stderr_drain, StderrDrain};
 use crate::media::ffmpeg::utils::*;
 pub use crate::media::tasks::NativeMediaTasks;
 use crate::media::timeline_render::encode_rgba_as_webp;
@@ -575,15 +575,17 @@ fn build_convert_ffmpeg_args(
                 width,
                 height,
                 false,
-                // Convert is a single-clip transcode where the user picks an output
-                // resolution that may not match the source aspect ratio; fit instead
-                // of stretching. (Proxy pre-computes an aspect-matched size, so it
-                // keeps the exact-scale path via push_video_encode_filter_args.)
-                true,
-                &[format!("fps={fps}")],
-                // Convert/proxy transcode a real source whose colour metadata ffmpeg
-                // already propagates; don't re-tag.
-                None,
+                ExtraEncodeFilters {
+                    // Convert is a single-clip transcode where the user picks an output
+                    // resolution that may not match the source aspect ratio; fit instead
+                    // of stretching. (Proxy pre-computes an aspect-matched size, so it
+                    // keeps the exact-scale path via push_video_encode_filter_args.)
+                    preserve_aspect: true,
+                    extra_filters: &[format!("fps={fps}")],
+                    // Convert/proxy transcode a real source whose colour metadata ffmpeg
+                    // already propagates; don't re-tag.
+                    color: None,
+                },
             );
 
             let raw_video_codec = options.video_codec.as_deref().unwrap_or("avc1");

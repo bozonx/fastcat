@@ -1,11 +1,11 @@
-//! Описание мульти-слойной сцены, которую играет нативный монитор.
+//! Description of the multi-layer scene the native monitor plays.
 //!
-//! Фронт шлёт «снимок» всех клипов на таймлайне (video + image) разом — монитор сам
-//! решает, какие слои сейчас «активны» по timeline-PTS, лениво открывает декодеры
-//! и композитит результат через Vello.
+//! The frontend sends a "snapshot" of all clips on the timeline (video + image) at
+//! once — the monitor itself decides which layers are "active" by timeline-PTS, lazily
+//! opens decoders, and composites the result via Vello.
 //!
-//! Граница: этот модуль — IPC-DTO (сериализуемые данные от фронта).
-//! Рендер-снимок в момент `t` живёт в [`crate::compositor::scene::Scene`].
+//! Boundary: this module is the IPC DTO (serializable data from the frontend).
+//! The render snapshot at a moment `t` lives in [`crate::compositor::scene::Scene`].
 
 use serde::Deserialize;
 use serde_json::Value;
@@ -16,7 +16,7 @@ use crate::compositor::effects::EffectSpec;
 use crate::compositor::scene::BlendMode;
 use crate::compositor::transitions::TransitionSpec;
 
-/// Сборка доменной `compositor::scene::Scene` из этих IPC-DTO.
+/// Building the domain `compositor::scene::Scene` from these IPC DTOs.
 pub mod build;
 
 // ts-rs generates the TypeScript mirror of these IPC DTOs into
@@ -47,7 +47,9 @@ pub enum LayerKind {
     export_to = "../../src/types/generated/native-monitor/",
     rename_all = "lowercase"
 )]
+#[derive(Default)]
 pub enum NativeFrameCacheMode {
+    #[default]
     Auto,
     Low,
     Balanced,
@@ -55,23 +57,18 @@ pub enum NativeFrameCacheMode {
     Custom,
 }
 
-impl Default for NativeFrameCacheMode {
-    fn default() -> Self {
-        Self::Auto
-    }
-}
 
-/// 2D-трансформ слоя в координатах сцены (пиксели scene-space).
+/// 2D layer transform in scene coordinates (scene-space pixels).
 ///
-/// Семантика `anchor`: точка привязки внутри натуральной bbox слоя в долях [0..1].
-/// Она «прикрепляется» к позиции `(x, y)` после rotate+scale.
+/// `anchor` semantics: an anchor point inside the layer's natural bbox in fractions
+/// [0..1]. It is "pinned" to position `(x, y)` after rotate+scale.
 ///
-/// Если `transform` не задан в JSON (None), слой вписывается в сцену методом
-/// letterbox/center-fit через `Transform::center_fit` (поведение по умолчанию).
+/// If `transform` is absent in the JSON (None), the layer is fitted into the scene by
+/// letterbox/center-fit via `Transform::center_fit` (the default behavior).
 #[derive(Debug, Clone, Deserialize, TS)]
 #[ts(export, export_to = "../../src/types/generated/native-monitor/")]
 pub struct SceneLayerTransform {
-    /// Позиция anchor-точки в scene-space (пиксели; (0,0) = left-top сцены).
+    /// Anchor-point position in scene-space (pixels; (0,0) = scene top-left).
     pub x: f64,
     pub y: f64,
     #[serde(default = "one")]
@@ -80,10 +77,10 @@ pub struct SceneLayerTransform {
     pub scale_y: f64,
     #[serde(default)]
     pub rotation_deg: f64,
-    /// Горизонтальная anchor-точка в долях натуральной ширины слоя. 0.5 = центр.
+    /// Horizontal anchor point in fractions of the layer's natural width. 0.5 = center.
     #[serde(default = "half")]
     pub anchor_x: f64,
-    /// Вертикальная anchor-точка в долях натуральной высоты слоя. 0.5 = центр.
+    /// Vertical anchor point in fractions of the layer's natural height. 0.5 = center.
     #[serde(default = "half")]
     pub anchor_y: f64,
     #[serde(default)]
@@ -106,43 +103,43 @@ fn half() -> f64 {
 #[derive(Debug, Clone, Deserialize, TS)]
 #[ts(export, export_to = "../../src/types/generated/native-monitor/")]
 pub struct SceneLayer {
-    /// Стабильный идентификатор клипа — ключ для diff'а scene и кеша рантаймов.
+    /// Stable clip identifier — the key for the scene diff and the runtime cache.
     pub id: String,
     pub kind: LayerKind,
-    /// Абсолютный путь к файлу-источнику. Нужен только для video/image/svg.
+    /// Absolute path to the source file. Needed only for video/image/svg.
     #[serde(default)]
     pub path: String,
-    /// `[timeline_start_sec; timeline_end_sec)` — окно видимости на таймлайне.
+    /// `[timeline_start_sec; timeline_end_sec)` — the visibility window on the timeline.
     pub timeline_start_sec: f64,
     pub timeline_end_sec: f64,
-    /// PTS внутри исходника в момент `timeline_start_sec`.
+    /// PTS inside the source at `timeline_start_sec`.
     pub source_start_sec: f64,
-    /// Длина доступного source-range в исходнике. Нужна для speed/reverse clamp.
+    /// Length of the available source range in the source. Needed for speed/reverse clamp.
     #[serde(default)]
     pub source_range_duration_sec: f64,
-    /// Полная длительность исходного медиа (секунды). Используется при переходах,
-    /// чтобы исходящий (from) клип проигрывал «хвост» за точкой обрезки во время
-    /// перехода (как в веб-версии), а не застывал на последнем видимом кадре.
-    /// `None` → длительность неизвестна, хвост недоступен → держим стоп-кадр.
+    /// Full duration of the source media (seconds). Used during transitions so the
+    /// outgoing (from) clip plays its "tail" past the cut point during the transition
+    /// (as in the web version) instead of freezing on the last visible frame.
+    /// `None` → duration unknown, no tail available → hold a freeze frame.
     #[serde(default)]
     #[ts(optional)]
     pub source_duration_sec: Option<f64>,
-    /// Скорость воспроизведения video source. Отрицательные значения — reverse.
+    /// Playback speed of the video source. Negative values mean reverse.
     #[serde(default = "one")]
     pub speed: f64,
-    /// Стоп-кадр: абсолютный PTS внутри исходника.
+    /// Freeze frame: an absolute PTS inside the source.
     #[serde(default)]
     #[ts(optional)]
     pub freeze_frame_source_sec: Option<f64>,
-    /// Явная ориентация источника (`auto`, `0`, `90`, `180`, `270`).
+    /// Explicit source orientation (`auto`, `0`, `90`, `180`, `270`).
     #[serde(default)]
     #[ts(optional)]
     pub source_orientation: Option<String>,
-    /// Чем выше — тем поверх. Сортируем по возрастанию.
+    /// Higher = on top. Sorted ascending.
     pub z: i32,
-    /// `[0; 1]`, домножается на альфа-канал слоя.
+    /// `[0; 1]`, multiplied into the layer's alpha channel.
     pub opacity: f64,
-    /// Blend mode из таймлайна. Поддерживаем текущий frontend-набор.
+    /// Blend mode from the timeline. We support the current frontend set.
     #[serde(default = "default_blend")]
     pub blend_mode: BlendMode,
     #[serde(default)]
@@ -170,8 +167,8 @@ pub struct SceneLayer {
     #[serde(default)]
     #[ts(optional, type = "import('~/timeline/types').ShapeConfig")]
     pub shape_config: Option<Value>,
-    /// Явный трансформ слоя в scene-space.
-    /// `None` → letterbox center-fit (поведение по умолчанию, совместимость с предыдущими версиями).
+    /// Explicit layer transform in scene-space.
+    /// `None` → letterbox center-fit (the default, backward-compatible with older versions).
     #[serde(default)]
     #[ts(optional)]
     pub transform: Option<SceneLayerTransform>,
@@ -263,7 +260,7 @@ pub struct SceneAudioLayer {
     pub timeline_start_sec: f64,
     pub timeline_end_sec: f64,
     pub source_start_sec: f64,
-    /// Длина доступного source-range в исходнике. Нужна для speed/reverse clamp.
+    /// Length of the available source range in the source. Needed for speed/reverse clamp.
     #[serde(default)]
     pub source_range_duration_sec: f64,
     #[serde(default = "one")]
@@ -322,7 +319,7 @@ pub struct MonitorScene {
     pub audio_layers: Vec<SceneAudioLayer>,
     #[serde(default)]
     pub audio_tracks: Vec<SceneAudioTrack>,
-    /// Master audio bus gain. Effects/track buses подключатся поверх этой модели позже.
+    /// Master audio bus gain. Effects/track buses will be layered on top of this model later.
     #[serde(default = "one")]
     pub audio_master_gain: f64,
     #[serde(default)]
@@ -332,14 +329,14 @@ pub struct MonitorScene {
     pub width: u32,
     #[serde(default)]
     pub height: u32,
-    /// Preview-scale: 1.0 = 1/1, 0.5 = 1/2 и т.д. Прокидывается в ffmpeg `-vf scale`.
-    /// Даёт значительную экономию CPU/GPU на 4K source'ах в маленьком preview.
-    /// `None` или отсутствие → декод в нативном разрешении.
+    /// Preview scale: 1.0 = 1/1, 0.5 = 1/2, etc. Passed through to ffmpeg `-vf scale`.
+    /// Saves significant CPU/GPU on 4K sources in a small preview.
+    /// `None` or absent → decode at native resolution.
     #[serde(default)]
     #[ts(optional)]
     pub preview_scale: Option<f32>,
-    /// Целевой FPS preview-рендера. По умолчанию 30. Большинство source — 24/25/30,
-    /// поэтому 30 достаточно; для 60fps source укажите 60.
+    /// Target FPS of the preview render. Default 30. Most sources are 24/25/30, so 30
+    /// is enough; for 60fps sources specify 60.
     #[serde(default = "default_fps")]
     pub preview_fps: f64,
     /// Политика синхронизации видео с аудио для preview.
@@ -367,8 +364,9 @@ fn default_fps() -> f64 {
     30.0
 }
 
-/// Защита от выхода за конец доступного source-range: последний «читаемый» PTS = конец
-/// диапазона минус этот зазор (1 мс), иначе seek/decoder могли бы запросить кадр за EOF.
+/// Guard against running past the end of the available source range: the last
+/// "readable" PTS = the range end minus this gap (1 ms), otherwise the seek/decoder
+/// could request a frame past EOF.
 const SOURCE_END_GUARD_SEC: f64 = 0.001;
 fn default_blend() -> BlendMode {
     BlendMode::Normal

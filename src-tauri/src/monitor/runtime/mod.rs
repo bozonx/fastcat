@@ -85,14 +85,14 @@ impl VideoRuntimeKey {
 
 pub struct LayerRuntimeManager {
     app: AppHandle,
-    /// Сцена «как заказал фронт». Arc — cheap clone для split-borrow.
+    /// The scene "as the frontend ordered it". Arc — cheap clone for split-borrow.
     pub scene: Arc<Vec<SceneLayer>>,
-    /// Размер композитного кадра (может прийти как MonitorScene.width/height).
+    /// Composite frame size (may arrive as MonitorScene.width/height).
     pub scene_size: (u32, u32),
     pub preview_scale: Option<f32>,
-    /// Целевой FPS preview-монитора; устанавливается из MonitorScene.preview_fps.
+    /// Target FPS of the preview monitor; set from MonitorScene.preview_fps.
     pub preview_fps: f64,
-    /// Политика AV-sync для preview.
+    /// AV-sync policy for the preview.
     pub preview_sync_mode: PreviewSyncMode,
     pub preview_effect_quality: crate::compositor::effects::EffectQuality,
     /// Global transport speed. Used to keep future-layer warmup measured in wall time:
@@ -101,8 +101,8 @@ pub struct LayerRuntimeManager {
     frame_cache_mode: NativeFrameCacheMode,
     frame_cache_custom_mb: u32,
     pub playing: bool,
-    /// Последний timeline-PTS из `tick`/`seek`. Нужен, чтобы лениво открытый рантайм
-    /// сикался на текущий playhead, а не на начало клипа.
+    /// The last timeline-PTS from `tick`/`seek`. Needed so a lazily-opened runtime
+    /// seeks to the current playhead rather than the clip start.
     last_tick_t: f64,
     runtimes: HashMap<String, LayerRuntime>,
     loading_set: HashSet<String>,
@@ -161,10 +161,10 @@ impl LayerRuntimeManager {
         self.scene.is_empty()
     }
 
-    /// Включает/выключает эмит `VideoFrameReady` из декодер-потоков. Во время активного
-    /// воспроизведения событие не нужно (кадры забираются по таймеру пейсинга) и лишь
-    /// будит event-loop вхолостую — выключаем. На паузе/прогреве/микро-прайме оно двигает
-    /// отображение и проверку готовности старта — включаем.
+    /// Enables/disables emitting `VideoFrameReady` from the decoder threads. During
+    /// active playback the event is not needed (frames are pulled on the pacing timer)
+    /// and only wakes the event loop for nothing — disable it. While paused/warming/
+    /// micro-priming it drives display and the start-readiness check — enable it.
     pub fn set_frame_events_enabled(&self, enabled: bool) {
         self.frame_event_gate.store(enabled, Ordering::Relaxed);
     }
@@ -223,7 +223,7 @@ impl LayerRuntimeManager {
         true
     }
 
-    /// Конец последнего слоя сцены (секунды timeline). 0.0 если сцена пуста.
+    /// End of the last scene layer (timeline seconds). 0.0 if the scene is empty.
     pub fn scene_end(&self) -> f64 {
         self.scene
             .iter()
@@ -232,37 +232,37 @@ impl LayerRuntimeManager {
     }
 
     // -----------------------------------------------------------------------
-    // Применение сцены
+    // Scene application
     // -----------------------------------------------------------------------
 
-    /// Обновляет сцену, дропает вышедшие рантаймы, сбрасывает видео при смене scale.
-    /// Возвращает `true`, если нужно перерисовать окно.
+    /// Updates the scene, drops runtimes that left, and resets video on a scale change.
+    /// Returns `true` if the window needs a redraw.
     pub fn apply_scene(&mut self, scene: MonitorScene) -> bool {
-        // Санитайз: фронт может прислать 0/NaN/отрицательное, а `preview_fps` идёт в
-        // `Duration::from_secs_f64(1.0 / fps)` в event-loop, который паникует на не-finite.
+        // Sanitize: the frontend may send 0/NaN/negative, and `preview_fps` feeds
+        // `Duration::from_secs_f64(1.0 / fps)` in the event loop, which panics on non-finite.
         self.preview_fps = sanitize_preview_fps(scene.preview_fps);
         self.preview_sync_mode = scene.preview_sync_mode;
         let cache_policy_changed = self.frame_cache_mode != scene.frame_cache_mode
             || self.frame_cache_custom_mb != scene.frame_cache_custom_mb;
         let new_ids: HashSet<String> = scene.layers.iter().map(|l| l.id.clone()).collect();
 
-        // Decode-key по id в НОВОЙ сцене — чтобы заметить смену файла или source mapping
-        // у того же слоя. id остаётся прежним, но старый декодер/кэш уже не соответствует
-        // кадрам, которые нужно показывать после trim/speed/freeze edits.
+        // Decode-key by id in the NEW scene — to notice a file or source-mapping change
+        // for the same layer. The id stays the same, but the old decoder/cache no longer
+        // matches the frames that need to be shown after trim/speed/freeze edits.
         let new_decode_keys: HashMap<&str, VideoRuntimeKey> = scene
             .layers
             .iter()
             .filter(|l| has_loaded_runtime(l.kind))
             .map(|l| (l.id.as_str(), VideoRuntimeKey::from_layer(l)))
             .collect();
-        // Старые decode-key по id (текущая сцена ещё не перезаписана) для сравнения.
+        // Old decode-keys by id (the current scene is not yet overwritten) for comparison.
         let old_decode_keys: HashMap<String, VideoRuntimeKey> = self
             .scene
             .iter()
             .filter(|l| has_loaded_runtime(l.kind))
             .map(|l| (l.id.clone(), VideoRuntimeKey::from_layer(l)))
             .collect();
-        // Сменился ли decode-key хоть у одного слоя, доживающего до новой сцены.
+        // Whether the decode-key changed for any layer surviving into the new scene.
         let any_decode_key_changed = old_decode_keys.iter().any(|(id, old)| {
             new_decode_keys
                 .get(id.as_str())
@@ -270,9 +270,9 @@ impl LayerRuntimeManager {
         });
 
         let scale_changed = !approx_eq_opt_scale(self.preview_scale, scene.preview_scale);
-        // И смена preview_scale, и смена источника/source mapping требуют сбросить эпоху:
-        // иначе фоновый декод, стартовавший под старые параметры, мог бы прилететь позже
-        // и подменить свежий рантайм устаревшим источником.
+        // Both a preview_scale change and a source/source-mapping change require bumping
+        // the epoch: otherwise a background decode started under the old parameters could
+        // arrive later and replace a fresh runtime with a stale source.
         if scale_changed || any_decode_key_changed || cache_policy_changed {
             if scale_changed {
                 log::info!(
@@ -300,8 +300,8 @@ impl LayerRuntimeManager {
         self.frame_cache_mode = scene.frame_cache_mode;
         self.frame_cache_custom_mb = scene.frame_cache_custom_mb;
 
-        // Diff рантаймов: сохраняем живые, остальные дропаем в фоне.
-        // DecodePump::drop блокирует до завершения ffmpeg + join — делаем в отдельном потоке.
+        // Runtime diff: keep the live ones, drop the rest in the background.
+        // DecodePump::drop blocks until ffmpeg finishes + join — do it on a separate thread.
         let prev = std::mem::take(&mut self.runtimes);
         let mut to_drop: Vec<LayerRuntime> = Vec::new();
         for (id, rt) in prev {
@@ -313,8 +313,9 @@ impl LayerRuntimeManager {
                 };
             let gone = !new_ids.contains(&id);
             let failed_retry = matches!(rt, LayerRuntime::Failed);
-            // Источник/source mapping слоя сменился: старый декодер/кэш держит другие кадры,
-            // его нужно дропнуть, чтобы `ensure_runtime_for` поднял актуальный runtime.
+            // The layer's source/source-mapping changed: the old decoder/cache holds
+            // different frames, so it must be dropped for `ensure_runtime_for` to bring up
+            // the current runtime.
             let decode_key_changed =
                 match (old_decode_keys.get(&id), new_decode_keys.get(id.as_str())) {
                     (Some(old), Some(new)) => old != new,
@@ -331,8 +332,8 @@ impl LayerRuntimeManager {
             }
         }
         if !to_drop.is_empty() {
-            // GPU-текстуры выбывших слоёв освобождаются дропом их кадров (Arc) внутри
-            // самого рантайма — отдельной разсинхронизации с внешним кешем не требуется.
+            // The departing layers' GPU textures are released by dropping their frames
+            // (Arc) inside the runtime itself — no separate desync with an external cache.
             if let Err(e) = std::thread::Builder::new()
                 .name("fastcat-rt-drop".into())
                 .spawn(move || drop(to_drop))
@@ -357,7 +358,7 @@ impl LayerRuntimeManager {
     }
 
     // -----------------------------------------------------------------------
-    // Фоновая загрузка
+    // Background loading
     // -----------------------------------------------------------------------
 
     fn ensure_runtime_for(
@@ -392,187 +393,224 @@ impl LayerRuntimeManager {
 
         let id = layer.id.clone();
         let path = PathBuf::from(&layer.path);
-        let bg_tx = self.bg_tx.clone();
-        let proxy = self.proxy.clone();
         let epoch = self.load_epoch;
 
         match layer.kind {
             LayerKind::Adjustment => unreachable!("adjustment layers do not need runtime loading"),
-            LayerKind::Video => {
-                let max_long_edge = match (self.scene_size, self.preview_scale) {
-                    ((w, h), Some(scale)) if w > 0 && h > 0 && scale > 0.0 => {
-                        let long = w.max(h) as f32 * scale;
-                        Some(long.round().max(2.0) as u32)
-                    }
-                    _ => None,
-                };
-                let hw_mode = self.hw_settings.hardware_acceleration_mode;
-                let vaapi_dev = self.hw_settings.vaapi_device.clone();
-                log::info!("[monitor] spawn video decoder {id} (max_long_edge={max_long_edge:?})");
-                let spawn_id = id.clone();
-                let live_epoch = self.live_epoch.clone();
-                let frame_event_gate = self.frame_event_gate.clone();
-                if let Err(e) = std::thread::Builder::new()
-                    .name(format!("fastcat-load-video:{}", path.display()))
-                    .spawn(move || {
-                        let cancel_fn = || {
-                            cancel.load(Ordering::Relaxed)
-                                || epoch != live_epoch.load(Ordering::Relaxed)
-                        };
-                        let permit = match decoder_load_gate().acquire_with_priority(
-                            crate::media::decode::gate::LoadPriority::Live,
-                            &cancel_fn,
-                        ) {
-                            Some(p) => p,
-                            None => {
-                                let _ = bg_tx.send(BgLayerResult::Dropped {
-                                    id: spawn_id.clone(),
-                                });
-                                return;
-                            }
-                        };
-                        let _permit = permit;
-                        let proxy_cb = proxy.clone();
-                        let gate = frame_event_gate.clone();
-                        let on_frame = Box::new(move || {
-                            // На активном воспроизведении кадры забираются по таймеру, а
-                            // обработчик VideoFrameReady — no-op: событие лишь будит
-                            // event-loop. Эмитим только когда оно реально нужно (пауза/прогрев).
-                            if gate.load(Ordering::Relaxed) {
-                                let _ = proxy_cb.send_event(MonitorCommand::VideoFrameReady);
-                            }
-                        });
-                        let result =
-                            match DecodePump::open(crate::media::decode::thread::DecodeOpenParams {
-                                path: &path,
-                                max_output_long_edge: max_long_edge,
-                                on_frame_decoded: Some(on_frame),
-                                device,
-                                queue,
-                                hw_mode,
-                                vaapi_device: Some(vaapi_dev.as_str()),
-                            }) {
-                                Ok(pump) => {
-                                    let media_size = (pump.info.width, pump.info.height);
-                                    let source_rotation = pump.info.rotation;
-                                    BgLayerResult::VideoOk {
-                                        epoch,
-                                        id: spawn_id,
-                                        pump,
-                                        media_size,
-                                        source_rotation,
-                                    }
-                                }
-                                Err(e) => BgLayerResult::VideoErr {
-                                    epoch,
-                                    id: spawn_id,
-                                    error: format!("{e:?}"),
-                                },
-                            };
-                        let _ = bg_tx.send(result);
-                        let _ = proxy.send_event(MonitorCommand::BgReady);
-                    })
-                {
-                    log::error!("[monitor] failed to spawn video loader for {id}: {e:?}");
-                    self.loading_set.remove(&id);
-                    self.runtimes.insert(id, LayerRuntime::Failed);
-                }
-            }
-            LayerKind::Image => {
-                let spawn_id = id.clone();
-                let live_epoch = self.live_epoch.clone();
-                if let Err(e) = std::thread::Builder::new()
-                    .name(format!("fastcat-load-img:{}", path.display()))
-                    .spawn(move || {
-                        let cancel_fn = || {
-                            cancel.load(Ordering::Relaxed)
-                                || epoch != live_epoch.load(Ordering::Relaxed)
-                        };
-                        let permit = match decoder_load_gate().acquire_with_priority(
-                            crate::media::decode::gate::LoadPriority::Live,
-                            &cancel_fn,
-                        ) {
-                            Some(p) => p,
-                            None => {
-                                let _ = bg_tx.send(BgLayerResult::Dropped {
-                                    id: spawn_id.clone(),
-                                });
-                                return;
-                            }
-                        };
-                        let _permit = permit;
-                        let result = match decode_image(&path) {
-                            Ok(img) => BgLayerResult::ImageOk {
-                                epoch,
-                                id: spawn_id,
-                                image: img.image,
-                                size: (img.width, img.height),
-                            },
-                            Err(e) => BgLayerResult::ImageErr {
-                                epoch,
-                                id: spawn_id,
-                                error: format!("{e:?}"),
-                            },
-                        };
-                        let _ = bg_tx.send(result);
-                        let _ = proxy.send_event(MonitorCommand::BgReady);
-                    })
-                {
-                    log::error!("[monitor] failed to spawn image loader for {id}: {e:?}");
-                    self.loading_set.remove(&id);
-                    self.runtimes.insert(id, LayerRuntime::Failed);
-                }
-            }
-            LayerKind::Svg => {
-                // Целевое разрешение растеризации = разрешение, в котором слой будет
-                // показан на мониторе (scene long edge × preview_scale). Так SVG не
-                // мылится при увеличении и не жжёт память при маленьком preview.
-                let target_long_edge = svg_target_long_edge(self.scene_size, self.preview_scale);
-                let spawn_id = id.clone();
-                let live_epoch = self.live_epoch.clone();
-                if let Err(e) = std::thread::Builder::new()
-                    .name(format!("fastcat-load-svg:{}", path.display()))
-                    .spawn(move || {
-                        let cancel_fn = || {
-                            cancel.load(Ordering::Relaxed)
-                                || epoch != live_epoch.load(Ordering::Relaxed)
-                        };
-                        let permit = match decoder_load_gate().acquire_with_priority(
-                            crate::media::decode::gate::LoadPriority::Live,
-                            &cancel_fn,
-                        ) {
-                            Some(p) => p,
-                            None => {
-                                let _ = bg_tx.send(BgLayerResult::Dropped {
-                                    id: spawn_id.clone(),
-                                });
-                                return;
-                            }
-                        };
-                        let _permit = permit;
-                        let result = match rasterize_svg(&path, target_long_edge) {
-                            Ok((image, size)) => BgLayerResult::SvgOk {
-                                epoch,
-                                id: spawn_id,
-                                image,
-                                size,
-                            },
-                            Err(e) => BgLayerResult::SvgErr {
-                                epoch,
-                                id: spawn_id,
-                                error: format!("{e:?}"),
-                            },
-                        };
-                        let _ = bg_tx.send(result);
-                        let _ = proxy.send_event(MonitorCommand::BgReady);
-                    })
-                {
-                    log::error!("[monitor] failed to spawn svg loader for {id}: {e:?}");
-                    self.loading_set.remove(&id);
-                    self.runtimes.insert(id, LayerRuntime::Failed);
-                }
-            }
+            LayerKind::Video => self.spawn_video_loader(id, path, cancel, epoch, device, queue),
+            LayerKind::Image => self.spawn_image_loader(id, path, cancel, epoch),
+            LayerKind::Svg => self.spawn_svg_loader(id, path, cancel, epoch),
             LayerKind::Text | LayerKind::Shape | LayerKind::Background => {}
+        }
+    }
+
+    /// Acquire a Live decoder-load permit inside a loader thread, reporting
+    /// `Dropped` and returning `None` if the load was cancelled or the scene epoch
+    /// advanced while waiting. The caller keeps the returned permit alive for the
+    /// whole decode.
+    fn acquire_live_load_permit(
+        cancel: &AtomicBool,
+        epoch: u64,
+        live_epoch: &AtomicU64,
+        bg_tx: &Sender<BgLayerResult>,
+        id: &str,
+    ) -> Option<crate::media::decode::gate::SemaphorePermit<'static>> {
+        let cancel_fn =
+            || cancel.load(Ordering::Relaxed) || epoch != live_epoch.load(Ordering::Relaxed);
+        match decoder_load_gate()
+            .acquire_with_priority(crate::media::decode::gate::LoadPriority::Live, &cancel_fn)
+        {
+            Some(permit) => Some(permit),
+            None => {
+                let _ = bg_tx.send(BgLayerResult::Dropped { id: id.to_string() });
+                None
+            }
+        }
+    }
+
+    /// Spawn the background loader for a video layer (decoder open + first-frame
+    /// callback). On spawn failure the runtime is marked `Failed` for retry.
+    fn spawn_video_loader(
+        &mut self,
+        id: String,
+        path: PathBuf,
+        cancel: Arc<AtomicBool>,
+        epoch: u64,
+        device: Option<wgpu::Device>,
+        queue: Option<wgpu::Queue>,
+    ) {
+        let max_long_edge = match (self.scene_size, self.preview_scale) {
+            ((w, h), Some(scale)) if w > 0 && h > 0 && scale > 0.0 => {
+                let long = w.max(h) as f32 * scale;
+                Some(long.round().max(2.0) as u32)
+            }
+            _ => None,
+        };
+        let hw_mode = self.hw_settings.hardware_acceleration_mode;
+        let vaapi_dev = self.hw_settings.vaapi_device.clone();
+        log::info!("[monitor] spawn video decoder {id} (max_long_edge={max_long_edge:?})");
+        let bg_tx = self.bg_tx.clone();
+        let proxy = self.proxy.clone();
+        let live_epoch = self.live_epoch.clone();
+        let frame_event_gate = self.frame_event_gate.clone();
+        let spawn_id = id.clone();
+        if let Err(e) = std::thread::Builder::new()
+            .name(format!("fastcat-load-video:{}", path.display()))
+            .spawn(move || {
+                let _permit = match Self::acquire_live_load_permit(
+                    &cancel,
+                    epoch,
+                    &live_epoch,
+                    &bg_tx,
+                    &spawn_id,
+                ) {
+                    Some(permit) => permit,
+                    None => return,
+                };
+                let proxy_cb = proxy.clone();
+                let gate = frame_event_gate.clone();
+                let on_frame = Box::new(move || {
+                    // During active playback frames are pulled on a timer and the
+                    // VideoFrameReady handler is a no-op: the event only wakes the
+                    // event loop. Emit it only when actually needed (pause/warm-up).
+                    if gate.load(Ordering::Relaxed) {
+                        let _ = proxy_cb.send_event(MonitorCommand::VideoFrameReady);
+                    }
+                });
+                let result =
+                    match DecodePump::open(crate::media::decode::thread::DecodeOpenParams {
+                        path: &path,
+                        max_output_long_edge: max_long_edge,
+                        on_frame_decoded: Some(on_frame),
+                        device,
+                        queue,
+                        hw_mode,
+                        vaapi_device: Some(vaapi_dev.as_str()),
+                    }) {
+                        Ok(pump) => {
+                            let media_size = (pump.info.width, pump.info.height);
+                            let source_rotation = pump.info.rotation;
+                            BgLayerResult::VideoOk {
+                                epoch,
+                                id: spawn_id,
+                                pump,
+                                media_size,
+                                source_rotation,
+                            }
+                        }
+                        Err(e) => BgLayerResult::VideoErr {
+                            epoch,
+                            id: spawn_id,
+                            error: format!("{e:?}"),
+                        },
+                    };
+                let _ = bg_tx.send(result);
+                let _ = proxy.send_event(MonitorCommand::BgReady);
+            })
+        {
+            log::error!("[monitor] failed to spawn video loader for {id}: {e:?}");
+            self.loading_set.remove(&id);
+            self.runtimes.insert(id, LayerRuntime::Failed);
+        }
+    }
+
+    /// Spawn the background loader for a raster image layer.
+    fn spawn_image_loader(
+        &mut self,
+        id: String,
+        path: PathBuf,
+        cancel: Arc<AtomicBool>,
+        epoch: u64,
+    ) {
+        let bg_tx = self.bg_tx.clone();
+        let proxy = self.proxy.clone();
+        let live_epoch = self.live_epoch.clone();
+        let spawn_id = id.clone();
+        if let Err(e) = std::thread::Builder::new()
+            .name(format!("fastcat-load-img:{}", path.display()))
+            .spawn(move || {
+                let _permit = match Self::acquire_live_load_permit(
+                    &cancel,
+                    epoch,
+                    &live_epoch,
+                    &bg_tx,
+                    &spawn_id,
+                ) {
+                    Some(permit) => permit,
+                    None => return,
+                };
+                let result = match decode_image(&path) {
+                    Ok(img) => BgLayerResult::ImageOk {
+                        epoch,
+                        id: spawn_id,
+                        image: img.image,
+                        size: (img.width, img.height),
+                    },
+                    Err(e) => BgLayerResult::ImageErr {
+                        epoch,
+                        id: spawn_id,
+                        error: format!("{e:?}"),
+                    },
+                };
+                let _ = bg_tx.send(result);
+                let _ = proxy.send_event(MonitorCommand::BgReady);
+            })
+        {
+            log::error!("[monitor] failed to spawn image loader for {id}: {e:?}");
+            self.loading_set.remove(&id);
+            self.runtimes.insert(id, LayerRuntime::Failed);
+        }
+    }
+
+    /// Spawn the background loader for an SVG layer (rasterized at preview size).
+    fn spawn_svg_loader(
+        &mut self,
+        id: String,
+        path: PathBuf,
+        cancel: Arc<AtomicBool>,
+        epoch: u64,
+    ) {
+        // Target rasterization resolution = the resolution the layer is shown at on
+        // the monitor (scene long edge × preview_scale). This keeps the SVG sharp
+        // when zoomed in without burning memory at a small preview size.
+        let target_long_edge = svg_target_long_edge(self.scene_size, self.preview_scale);
+        let bg_tx = self.bg_tx.clone();
+        let proxy = self.proxy.clone();
+        let live_epoch = self.live_epoch.clone();
+        let spawn_id = id.clone();
+        if let Err(e) = std::thread::Builder::new()
+            .name(format!("fastcat-load-svg:{}", path.display()))
+            .spawn(move || {
+                let _permit = match Self::acquire_live_load_permit(
+                    &cancel,
+                    epoch,
+                    &live_epoch,
+                    &bg_tx,
+                    &spawn_id,
+                ) {
+                    Some(permit) => permit,
+                    None => return,
+                };
+                let result = match rasterize_svg(&path, target_long_edge) {
+                    Ok((image, size)) => BgLayerResult::SvgOk {
+                        epoch,
+                        id: spawn_id,
+                        image,
+                        size,
+                    },
+                    Err(e) => BgLayerResult::SvgErr {
+                        epoch,
+                        id: spawn_id,
+                        error: format!("{e:?}"),
+                    },
+                };
+                let _ = bg_tx.send(result);
+                let _ = proxy.send_event(MonitorCommand::BgReady);
+            })
+        {
+            log::error!("[monitor] failed to spawn svg loader for {id}: {e:?}");
+            self.loading_set.remove(&id);
+            self.runtimes.insert(id, LayerRuntime::Failed);
         }
     }
 
@@ -585,91 +623,21 @@ impl LayerRuntimeManager {
                 media_size,
                 source_rotation,
             } => {
-                if epoch != self.load_epoch {
+                if !self.claim_completed_load(epoch, &id) {
                     return;
                 }
-                if !self.loading_set.remove(&id) {
-                    return;
-                }
-                self.loading_cancels.remove(&id);
                 if !self.scene.iter().any(|l| l.id == id) {
                     self.runtimes.remove(&id);
                     return;
                 }
-                log::info!(
-                    "[monitor] opened video {id}: {}x{} @ {:.3}fps codec={}",
-                    pump.info.width,
-                    pump.info.height,
-                    pump.info.fps,
-                    pump.info.codec,
-                );
-                // Сикаем на ТЕКУЩИЙ playhead, а не на начало клипа: иначе при открытии
-                // клипа на середине таймлайна декодер начал бы форвардом от source_start
-                // и playhead показывал бы чёрное/стопкадр, пока декод не догонит позицию.
-                let clip_local = self
-                    .scene
-                    .iter()
-                    .find(|l| l.id == id)
-                    .map(|l| l.source_pts_at(self.last_tick_t))
-                    .unwrap_or(0.0);
-                // Split the budget only across clips that can actually be on-screen
-                // together with THIS one (overlap its own timeline interval), not the
-                // global timeline maximum — otherwise a single transition/multicam
-                // anywhere in the project would shrink the cache of every isolated clip.
-                let concurrent = self
-                    .scene
-                    .iter()
-                    .find(|l| l.id == id)
-                    .map(|l| {
-                        max_concurrent_video_layers_within(
-                            &self.scene,
-                            l.timeline_start_sec,
-                            l.timeline_end_sec,
-                        )
-                    })
-                    .unwrap_or(1);
-                let cache_budget_bytes = frame_cache_budget_bytes(
-                    self.frame_cache_mode,
-                    self.frame_cache_custom_mb,
-                    media_size,
-                    pump.info.fps,
-                    concurrent,
-                );
-                let mut rt =
-                    VideoLayerRt::new(pump, media_size, source_rotation, cache_budget_bytes);
-                let is_active_at_playhead = self
-                    .scene
-                    .iter()
-                    .find(|l| l.id == id)
-                    .is_some_and(|l| l.covers(self.last_tick_t));
-                let defer_play_until_active = self.playing && !is_active_at_playhead;
-                rt.set_play_deferred_until_active(defer_play_until_active);
-                rt.set_transport_playing(self.playing);
-                if let Err(e) = rt.pump.seek(clip_local) {
-                    log::error!("[monitor] initial seek {id}: {e:?}");
-                }
-                rt.last_pump_seek_pts = Some(clip_local);
-                rt.note_seek_requested();
-                // Прогреваем первый GOP вперёд playhead'а, но не даём future-runtime
-                // free-run'ить за стык. Будущий клип, который вот-вот заиграет
-                // (defer во время воспроизведения), прогреваем глубже — иначе на
-                // decode-bound 4K он стартует с ~2 кадров и заикается на стыке.
-                if defer_play_until_active {
-                    rt.request_warm_ahead();
-                } else if !self.playing {
-                    rt.request_prebuffer();
-                }
-                self.runtimes.insert(id, LayerRuntime::Video(rt));
+                self.apply_video_ok(id, pump, media_size, source_rotation);
             }
             BgLayerResult::VideoErr { epoch, id, error } => {
-                if epoch != self.load_epoch {
+                if !self.claim_completed_load(epoch, &id) {
                     return;
                 }
-                if !self.loading_set.remove(&id) {
-                    return;
-                }
-                self.loading_cancels.remove(&id);
                 log::error!("[monitor] open pump {id}: {error}");
+                // Keep an already-opened video runtime (a late error must not clobber it).
                 if !matches!(self.runtimes.get(&id), Some(LayerRuntime::Video(_))) {
                     self.runtimes.insert(id.clone(), LayerRuntime::Failed);
                 }
@@ -681,35 +649,20 @@ impl LayerRuntimeManager {
                 image,
                 size,
             } => {
-                if epoch != self.load_epoch {
+                if !self.claim_completed_load(epoch, &id) {
                     return;
                 }
-                if !self.loading_set.remove(&id) {
-                    return;
-                }
-                self.loading_cancels.remove(&id);
                 if !self.scene.iter().any(|l| l.id == id) {
                     self.runtimes.remove(&id);
                     return;
                 }
                 log::info!("[monitor] decoded image {id}: {}x{}", size.0, size.1);
-                self.runtimes.insert(
-                    id,
-                    LayerRuntime::Image(ImageLayerRt {
-                        image,
-                        size,
-                        is_svg: false,
-                    }),
-                );
+                self.insert_raster_runtime(id, image, size, false);
             }
             BgLayerResult::ImageErr { epoch, id, error } => {
-                if epoch != self.load_epoch {
+                if !self.claim_completed_load(epoch, &id) {
                     return;
                 }
-                if !self.loading_set.remove(&id) {
-                    return;
-                }
-                self.loading_cancels.remove(&id);
                 log::error!("[monitor] decode image {id}: {error}");
                 self.runtimes.insert(id.clone(), LayerRuntime::Failed);
                 emit_layer_failed(&self.app, &id, "image", &error);
@@ -720,35 +673,20 @@ impl LayerRuntimeManager {
                 image,
                 size,
             } => {
-                if epoch != self.load_epoch {
+                if !self.claim_completed_load(epoch, &id) {
                     return;
                 }
-                if !self.loading_set.remove(&id) {
-                    return;
-                }
-                self.loading_cancels.remove(&id);
                 if !self.scene.iter().any(|l| l.id == id) {
                     self.runtimes.remove(&id);
                     return;
                 }
                 log::info!("[monitor] decoded svg {id}: {}x{}", size.0, size.1);
-                self.runtimes.insert(
-                    id,
-                    LayerRuntime::Image(ImageLayerRt {
-                        image,
-                        size,
-                        is_svg: true,
-                    }),
-                );
+                self.insert_raster_runtime(id, image, size, true);
             }
             BgLayerResult::SvgErr { epoch, id, error } => {
-                if epoch != self.load_epoch {
+                if !self.claim_completed_load(epoch, &id) {
                     return;
                 }
-                if !self.loading_set.remove(&id) {
-                    return;
-                }
-                self.loading_cancels.remove(&id);
                 log::error!("[monitor] decode svg {id}: {error}");
                 self.runtimes.insert(id.clone(), LayerRuntime::Failed);
                 emit_layer_failed(&self.app, &id, "svg", &error);
@@ -760,29 +698,137 @@ impl LayerRuntimeManager {
         }
     }
 
+    /// Common prologue for a completed background load: drop results from a
+    /// superseded scene epoch or a load that is no longer tracked, then clear the
+    /// load bookkeeping. Returns `false` when the result should be ignored.
+    fn claim_completed_load(&mut self, epoch: u64, id: &str) -> bool {
+        if epoch != self.load_epoch {
+            return false;
+        }
+        if !self.loading_set.remove(id) {
+            return false;
+        }
+        self.loading_cancels.remove(id);
+        true
+    }
+
+    /// Install a freshly-decoded raster (image or rasterized SVG) runtime.
+    fn insert_raster_runtime(
+        &mut self,
+        id: String,
+        image: vello::peniko::ImageData,
+        size: (u32, u32),
+        is_svg: bool,
+    ) {
+        self.runtimes.insert(
+            id,
+            LayerRuntime::Image(ImageLayerRt {
+                image,
+                size,
+                is_svg,
+            }),
+        );
+    }
+
+    /// Install a freshly-opened video runtime: seek it to the current playhead,
+    /// size its frame cache, and arm its initial warm-up. The caller has already
+    /// verified the layer is still in the scene.
+    fn apply_video_ok(
+        &mut self,
+        id: String,
+        pump: DecodePump,
+        media_size: (u32, u32),
+        source_rotation: i32,
+    ) {
+        log::info!(
+            "[monitor] opened video {id}: {}x{} @ {:.3}fps codec={}",
+            pump.info.width,
+            pump.info.height,
+            pump.info.fps,
+            pump.info.codec,
+        );
+        // Seek to the CURRENT playhead, not the clip start: otherwise opening a clip
+        // in the middle of the timeline would have the decoder run forward from
+        // source_start and the playhead would show black / a frozen frame until the
+        // decode caught up to the position.
+        let clip_local = self
+            .scene
+            .iter()
+            .find(|l| l.id == id)
+            .map(|l| l.source_pts_at(self.last_tick_t))
+            .unwrap_or(0.0);
+        // Split the budget only across clips that can actually be on-screen
+        // together with THIS one (overlap its own timeline interval), not the
+        // global timeline maximum — otherwise a single transition/multicam
+        // anywhere in the project would shrink the cache of every isolated clip.
+        let concurrent = self
+            .scene
+            .iter()
+            .find(|l| l.id == id)
+            .map(|l| {
+                max_concurrent_video_layers_within(
+                    &self.scene,
+                    l.timeline_start_sec,
+                    l.timeline_end_sec,
+                )
+            })
+            .unwrap_or(1);
+        let cache_budget_bytes = frame_cache_budget_bytes(
+            self.frame_cache_mode,
+            self.frame_cache_custom_mb,
+            media_size,
+            pump.info.fps,
+            concurrent,
+        );
+        let mut rt = VideoLayerRt::new(pump, media_size, source_rotation, cache_budget_bytes);
+        let is_active_at_playhead = self
+            .scene
+            .iter()
+            .find(|l| l.id == id)
+            .is_some_and(|l| l.covers(self.last_tick_t));
+        let defer_play_until_active = self.playing && !is_active_at_playhead;
+        rt.set_play_deferred_until_active(defer_play_until_active);
+        rt.set_transport_playing(self.playing);
+        if let Err(e) = rt.pump.seek(clip_local) {
+            log::error!("[monitor] initial seek {id}: {e:?}");
+        }
+        rt.last_pump_seek_pts = Some(clip_local);
+        rt.note_seek_requested();
+        // Warm the first GOP ahead of the playhead, but don't let a future runtime
+        // free-run past the seam. A future clip that is about to play (deferred
+        // during playback) is warmed deeper — otherwise on a decode-bound 4K source
+        // it starts with ~2 frames and stutters at the seam.
+        if defer_play_until_active {
+            rt.request_warm_ahead();
+        } else if !self.playing {
+            rt.request_prebuffer();
+        }
+        self.runtimes.insert(id, LayerRuntime::Video(Box::new(rt)));
+    }
+
     // -----------------------------------------------------------------------
-    // Тик (вызывается каждый кадр)
+    // Tick (called every frame)
     // -----------------------------------------------------------------------
 
-    /// Запускает фоновую загрузку для активных слоёв и прокачивает видеокадры.
+    /// Starts background loading for active layers and pumps video frames.
     pub fn tick(&mut self, t: f64, device: Option<wgpu::Device>, queue: Option<wgpu::Queue>) {
         self.last_tick_t = t;
         let scene = self.scene.clone();
-        // Активные слои храним индексами в `scene`, а не клонами String id — иначе на
-        // каждый кадр (30–60 fps) аллоцировались бы строки для всех видимых слоёв.
+        // Active layers are kept as indices into `scene`, not String id clones — otherwise
+        // every frame (30–60 fps) would allocate strings for all visible layers.
         let active = active_layer_indices(&scene, t);
         for (i, layer) in scene.iter().enumerate() {
             if active.contains(&i) {
                 self.ensure_runtime_for(layer, device.clone(), queue.clone());
             } else if layer.covers(t + self.prewarm_lookahead_sec()) {
-                // Превентивно прогреваем декодер будущего слоя
+                // Proactively warm the decoder of a future layer
                 self.ensure_runtime_for(layer, device.clone(), queue.clone());
             }
         }
 
         let playing = self.playing;
-        // Сначала прокачиваем все видео-рантаймы (включая прогревающиеся неактивные),
-        // чтобы вычитать готовые кадры из фонового канала и заполнить кэш.
+        // First pump all video runtimes (including warming inactive ones) to read ready
+        // frames from the background channel and fill the cache.
         for rt in self.runtimes.values_mut() {
             if let LayerRuntime::Video(v) = rt {
                 v.pull_into_cache();
@@ -816,8 +862,8 @@ impl LayerRuntimeManager {
                 }
                 let max_lag_sec = video_sync_lag_sec(self.preview_sync_mode, rt.pump.info.fps);
 
-                // Сначала пробуем кадр в окне синка (balanced/strict). Smooth не имеет
-                // конечного окна и всегда показывает свежайший доступный кадр <= target.
+                // First try a frame within the sync window (balanced/strict). Smooth has
+                // no finite window and always shows the freshest available frame <= target.
                 let shown_in_window = rt.update_display(clip_local, max_lag_sec, None);
                 let shown_any = shown_in_window
                     || (allows_stale_video_fallback(self.preview_sync_mode)
@@ -825,10 +871,10 @@ impl LayerRuntimeManager {
 
                 if playing {
                     if !shown_any {
-                        // Не гасим слой мгновенно — оставляем freeze frame (last known good
-                        // frame), чтобы таймаут прогрева или кратковременный лаг декодера
-                        // не превращались в черную вспышку. Только если кадра никогда не
-                        // было (current == None), тогда слой действительно чёрный.
+                        // Don't blank the layer instantly — keep a freeze frame (last known
+                        // good frame) so a warm-up timeout or a brief decoder lag doesn't
+                        // turn into a black flash. Only if there was never a frame
+                        // (current == None) is the layer genuinely black.
                         if rt.current.is_none() {
                             rt.clear_display();
                         }
@@ -839,27 +885,28 @@ impl LayerRuntimeManager {
                             rt.note_synced();
                             rt.maybe_reseek_for_reverse(clip_local);
                         } else if self.preview_sync_mode == PreviewSyncMode::Strict {
-                            // Strict/точно не имеет smooth fallback: stale-кадр за пределами
-                            // окна синка не считается валидным preview-кадром. Принудительно
-                            // двигаем декодер к target, а до прихода корректного кадра слой
-                            // не показывает устаревшую картинку.
+                            // Strict has no smooth fallback: a stale frame outside the sync
+                            // window does not count as a valid preview frame. Force the
+                            // decoder toward target, and until a correct frame arrives the
+                            // layer does not show a stale picture.
                             rt.note_lagged();
                             if let Some(max_lag_sec) = max_lag_sec {
                                 rt.maybe_reseek_on_sync_lag(clip_local, max_lag_sec);
                             }
                         } else {
-                            // Вообще нет кадра ≤ target (reverse / до начала клипа): репозиция.
+                            // No frame ≤ target at all (reverse / before the clip start): reposition.
                             rt.note_synced();
                             rt.maybe_reseek_on_miss(clip_local);
                         }
                     } else if !shown_in_window {
-                        // Отстали за окно синка. Reseek скидывает бэклог ради синка — полезно,
-                        // только если декодер декодит GOP→target быстрее реалтайма. На
-                        // decode-bound источнике (4K) он лишь флашит буфер и пере-декодит →
-                        // фризы (тот самый «фриз на 1–2 сек на старте»). Поэтому reseek-им,
-                        // ТОЛЬКО если декодер не двигается вперёд (реально застрял/в чужом
-                        // месте). Если он декодит вперёд, но медленнее реалтайма — сразу
-                        // отступаем в плавный smooth-lag, не дожидаясь decode-bound порога.
+                        // Fell behind the sync window. A reseek drops the backlog for the
+                        // sake of sync — useful only if the decoder decodes GOP→target
+                        // faster than realtime. On a decode-bound source (4K) it only
+                        // flushes the buffer and re-decodes → freezes (the "1–2s freeze at
+                        // start"). So reseek ONLY if the decoder is not moving forward
+                        // (genuinely stuck / in the wrong place). If it decodes forward but
+                        // slower than realtime — fall back to smooth-lag immediately,
+                        // without waiting for the decode-bound threshold.
                         rt.note_lagged();
                         if !advancing && !rt.is_decode_bound() {
                             if let Some(max_lag_sec) = max_lag_sec {
@@ -873,21 +920,21 @@ impl LayerRuntimeManager {
             }
         }
 
-        // Вытесняем рантаймы клипов, ушедших далеко от playhead'а: освобождаем их
-        // ffmpeg-декодеры, кадровые кэши и GPU-текстуры, не дожидаясь смены сцены.
+        // Evict runtimes of clips that drifted far from the playhead: free their
+        // ffmpeg decoders, frame caches and GPU textures without waiting for a scene change.
         self.evict_distant_runtimes(t, &scene, &active);
     }
 
-    /// Дропает рантаймы (видео/изображение/svg/loading), чей слой не входит в активный
-    /// набор и чей timeline-интервал не пересекает окно удержания вокруг playhead'а.
-    /// Иначе при длинном воспроизведении рантайм каждого пройденного клипа жил бы до
-    /// следующего `apply_scene` — копились бы потоки декодеров и декодированные кадры.
+    /// Drops runtimes (video/image/svg/loading) whose layer is not in the active set and
+    /// whose timeline interval doesn't intersect the keep window around the playhead.
+    /// Otherwise, during long playback the runtime of every passed clip would live until
+    /// the next `apply_scene` — decoder threads and decoded frames would pile up.
     fn evict_distant_runtimes(&mut self, t: f64, scene: &[SceneLayer], active: &HashSet<usize>) {
         if self.runtimes.is_empty() {
             return;
         }
-        // id'ы слоёв, которые держим: активные (covers t / прогрев / transition-from)
-        // ИЛИ близкие к playhead'у в пределах окна удержания.
+        // Ids of layers we keep: active ones (covers t / warming / transition-from)
+        // OR close to the playhead within the keep window.
         let mut keep: HashSet<&str> = HashSet::new();
         for (i, layer) in scene.iter().enumerate() {
             if active.contains(&i) || layer_near_playhead(layer, t, self.prewarm_lookahead_sec()) {
@@ -913,9 +960,9 @@ impl LayerRuntimeManager {
                 cancel.store(true, Ordering::Relaxed);
             }
         }
-        // GPU-текстуры выбывших слоёв освобождаются дропом их кадров (Arc) внутри
-        // рантайма. `DecodePump::drop` блокирует до join'а ffmpeg-потока — дропаем в
-        // отдельном потоке, чтобы не подвесить event-loop монитора.
+        // The departing layers' GPU textures are released by dropping their frames (Arc)
+        // inside the runtime. `DecodePump::drop` blocks until the ffmpeg thread joins — do
+        // it on a separate thread so the monitor event loop isn't stalled.
         if let Err(e) = std::thread::Builder::new()
             .name("fastcat-rt-evict-drop".into())
             .spawn(move || drop(to_drop))
@@ -924,8 +971,8 @@ impl LayerRuntimeManager {
         }
     }
 
-    /// Seek активных видеослоёв на `t`. На паузе при попадании в кеш показывает кадр без
-    /// респауна ffmpeg (дешёвый скраб); иначе перепозиционирует декодер.
+    /// Seek active video layers to `t`. While paused, on a cache hit it shows the frame
+    /// without respawning ffmpeg (cheap scrub); otherwise it repositions the decoder.
     pub fn seek(&mut self, t: f64, playing: bool) {
         self.last_tick_t = t;
         let scene = self.scene.clone();
@@ -947,18 +994,18 @@ impl LayerRuntimeManager {
             };
             if let Some(LayerRuntime::Video(rt)) = self.runtimes.get_mut(&layer.id) {
                 rt.pull_into_cache();
-                // Пауза + попадание в кеш → показываем кадр без блокирующего ожидания
-                // декода (мгновенный скраб из кеша).
+                // Paused + cache hit → show the frame without a blocking wait on decode
+                // (instant scrub from cache).
                 if !playing && rt.has_cached_near(clip_local, 1) {
                     let lead = Some(1.0 / rt.pump.info.fps.max(1.0));
                     rt.update_display(clip_local, None, lead);
-                    // Всё равно прогреваем вперёд playhead'а для последующего Play. Но
-                    // декодер мог стоять на другом месте (после прошлого воспроизведения/
-                    // скраба): прогрев БЕЗ репозиции декодил бы кадры от чужой позиции —
-                    // форвард-буфер вокруг playhead'а так и остался бы пустым, а кеш
-                    // засорялся бы нерелевантными кадрами. Поэтому сначала перепозиционируем
-                    // декодер на playhead (асинхронно, кадр уже показан из кеша — скраб
-                    // остаётся мгновенным), затем прогреваем.
+                    // Still warm ahead of the playhead for the subsequent Play. But the
+                    // decoder may sit elsewhere (after a previous playback/scrub): warming
+                    // WITHOUT repositioning would decode frames from the wrong position —
+                    // the forward buffer around the playhead would stay empty and the cache
+                    // would fill with irrelevant frames. So first reposition the decoder to
+                    // the playhead (asynchronously; the frame is already shown from cache,
+                    // so the scrub stays instant), then warm.
                     let need_seek = match rt.last_pump_seek_pts {
                         Some(last_pts) => (last_pts - clip_local).abs() > 1e-5,
                         None => true,
@@ -984,9 +1031,9 @@ impl LayerRuntimeManager {
                     rt.last_pump_seek_pts = Some(clip_local);
                     rt.note_seek_requested();
                 }
-                // На паузе сразу прогреваем первый GOP вперёд playhead'а, чтобы
-                // последующий Play не фризил на декоде 4К от ключевого кадра. На
-                // воспроизведении декодер и так стримит вперёд — отдельный прогрев не нужен.
+                // While paused, warm the first GOP ahead of the playhead immediately so a
+                // subsequent Play doesn't freeze decoding 4K from a keyframe. During
+                // playback the decoder streams forward anyway — no separate warm-up needed.
                 if !playing {
                     rt.request_prebuffer();
                 }
@@ -1008,32 +1055,32 @@ impl LayerRuntimeManager {
         }
     }
 
-    /// Есть ли активный видеослой в момент `t` — нужно ли прогревать декодеры перед
-    /// стартом воспроизведения (для аудио/картинок прогрев не требуется).
+    /// Whether there is an active video layer at `t` — i.e. whether decoders need
+    /// warming before playback starts (audio/images need no warm-up).
     pub fn has_active_video(&self, t: f64) -> bool {
         self.scene
             .iter()
             .any(|l| l.kind == LayerKind::Video && l.covers(t))
     }
 
-    /// Все активные видеослои декодировали кадр на глубину `expected_preroll_duration()`
-    /// секунд впереди playhead'а (с учётом лимитов памяти на каждый слой) — значит можно
-    /// стартовать воспроизведение без фриза на GOP-декоде.
+    /// Whether all active video layers have decoded frames to a depth of
+    /// `expected_preroll_duration()` seconds ahead of the playhead (accounting for each
+    /// layer's memory limits) — meaning playback can start without a GOP-decode freeze.
     ///
-    /// Два ключевых улучшения по сравнению с предыдущей версией:
+    /// Two key improvements over the previous version:
     ///
-    /// 1. **Динамический порог** — порог готовности для каждого слоя вычисляется из
-    ///    `expected_preroll_duration()`, которая отражает реальный объём запрошенного
-    ///    прогрева с учётом лимита памяти. Для 4K-видео с бюджетом на 2 кадра порог
-    ///    составит ~2/fps вместо статических 0.12 сек, поэтому проверка проходит
-    ///    сразу после декода этих двух кадров, а не зависает в таймауте.
+    /// 1. **Dynamic threshold** — each layer's readiness threshold is computed from
+    ///    `expected_preroll_duration()`, which reflects the real amount of requested
+    ///    warm-up given the memory limit. For 4K video with a 2-frame budget the
+    ///    threshold becomes ~2/fps instead of a static 0.12s, so the check passes right
+    ///    after those two frames decode rather than hanging on a timeout.
     ///
-    /// 2. **EOF-защита** — если playhead находится ближе чем на `lookahead` к концу
-    ///    видео, target прижимается к `duration_sec - half_frame`. Это гарантирует
-    ///    немедленное прохождение проверки у конца клипа без ожидания таймаута.
+    /// 2. **EOF protection** — if the playhead is closer than `lookahead` to the end of
+    ///    the video, target is clamped to `duration_sec - half_frame`. This guarantees
+    ///    the check passes immediately near the clip end without waiting for a timeout.
     ///
-    /// Слой в состоянии `Loading`/`Failed` считается «ещё не готов» (рассосётся по
-    /// таймауту прогрева в вызывающем коде).
+    /// A layer in the `Loading`/`Failed` state counts as "not ready yet" (resolved by
+    /// the warm-up timeout in the calling code).
     pub fn active_videos_ready(&mut self, t: f64) -> bool {
         let scene = self.scene.clone();
         for layer in scene.iter() {
@@ -1081,16 +1128,18 @@ impl LayerRuntimeManager {
         true
     }
 
-    /// На паузе: ГАРАНТИРУЕТ создание рантаймов активных raster-слоёв (video/image/svg),
-    /// подтягивает свежедекодированные видеокадры в кеш и показывает кадр на playhead'е.
+    /// While paused: GUARANTEES creating runtimes for active raster layers
+    /// (video/image/svg), pulls freshly-decoded video frames into the cache, and shows
+    /// the frame at the playhead.
     ///
-    /// Раньше `ensure_runtime_for` звался ТОЛЬКО из `tick` (а tick идёт лишь во время
-    /// воспроизведения), поэтому на паузе декодеры вообще не создавались: монитор был
-    /// чёрным на загрузке проекта, а первый Play стартовал в пустоту (декодер только
-    /// тогда спавнился и догонял уже ушедший playhead) — и лишь повторный Play играл
-    /// нормально. Теперь runtime спавнится и на паузе: video позиционируется на playhead в
-    /// `apply_bg_result` (+ preroll), а image/svg догружаются до следующего `BgReady`.
-    /// `device`/`queue` нужны для GPU-аплоада кадра внутри декодер-потока (как в `tick`).
+    /// Previously `ensure_runtime_for` was called ONLY from `tick` (and tick runs only
+    /// during playback), so while paused decoders were never created: the monitor was
+    /// black on project load, and the first Play started into nothing (the decoder only
+    /// then spawned and chased the already-departed playhead) — only a second Play played
+    /// normally. Now the runtime spawns while paused too: video positions to the playhead
+    /// in `apply_bg_result` (+ preroll), and image/svg finish loading by the next
+    /// `BgReady`. `device`/`queue` are needed for GPU upload of the frame inside the
+    /// decoder thread (as in `tick`).
     pub fn refresh_display(
         &mut self,
         t: f64,
@@ -1108,11 +1157,11 @@ impl LayerRuntimeManager {
             let is_covering = layer.covers(t);
             let is_from = !is_covering && from_ids.contains(&layer.id);
             if !is_covering && !is_from {
-                // Прогреваем декодер ближайшего будущего видеоклипа и на паузе, а не
-                // только в `tick` (который идёт лишь во время воспроизведения). Иначе Play,
-                // нажатый когда playhead стоит/скрабит у стыка, заставал следующий клип
-                // неоткрытым — он стартовал «вхолодную» и заикался. На паузе активного
-                // декода нет, поэтому конкуренции за CPU/пермиты это не создаёт.
+                // Warm the decoder of the nearest future video clip while paused too, not
+                // only in `tick` (which runs only during playback). Otherwise a Play
+                // pressed while the playhead sits/scrubs near a seam found the next clip
+                // unopened — it started "cold" and stuttered. While paused there is no
+                // active decode, so this creates no contention for CPU/permits.
                 if layer.kind == LayerKind::Video && layer.covers(t + self.prewarm_lookahead_sec())
                 {
                     self.ensure_runtime_for(layer, device.clone(), queue.clone());
@@ -1159,8 +1208,8 @@ impl LayerRuntimeManager {
         }
     }
 
-    /// Перепозиционирует декодеры активных видеослоёв к `t`. Вызывается при старте
-    /// воспроизведения, чтобы после скраба по кешу forward-стрим был корректным.
+    /// Repositions the decoders of active video layers to `t`. Called at playback start
+    /// so the forward stream is correct after a cache scrub.
     pub fn resync_active_videos(&mut self, t: f64) {
         self.last_tick_t = t;
         let scene = self.scene.clone();
@@ -1186,10 +1235,10 @@ impl LayerRuntimeManager {
     }
 
     // -----------------------------------------------------------------------
-    // Сборка compositor-сцены
+    // Compositor scene assembly
     // -----------------------------------------------------------------------
 
-    /// Строит снимок доменной сцены в момент `t` для передачи в `Compositor`.
+    /// Builds a domain-scene snapshot at time `t` to hand to the `Compositor`.
     pub fn build_compositor_scene(&self, t: f64) -> Scene {
         build_compositor_scene(
             &self.scene,
@@ -1250,9 +1299,8 @@ mod tests {
             10.0 - RUNTIME_KEEP_AHEAD_SEC - 0.1,
             VIDEO_PREWARM_LOOKAHEAD_SEC
         ));
-        // The ahead window must cover the prewarm lookahead so a just-prewarmed clip
-        // is never evicted the same tick it was warmed.
-        assert!(RUNTIME_KEEP_AHEAD_SEC >= VIDEO_PREWARM_LOOKAHEAD_SEC);
+        // (`RUNTIME_KEEP_AHEAD_SEC >= VIDEO_PREWARM_LOOKAHEAD_SEC` is now enforced at
+        // compile time next to the constants in `policy.rs`.)
     }
 
     #[test]
@@ -1276,15 +1324,15 @@ mod tests {
 
     #[test]
     fn sanitize_preview_fps_guards_against_non_finite_and_nonpositive() {
-        // Валидные значения проходят как есть.
+        // Valid values pass through as-is.
         assert_eq!(sanitize_preview_fps(30.0), 30.0);
         assert_eq!(sanitize_preview_fps(60.0), 60.0);
-        // 0/отрицательное/NaN/inf → дефолт 30 (иначе паника в Duration::from_secs_f64).
+        // 0/negative/NaN/inf → default 30 (otherwise a panic in Duration::from_secs_f64).
         assert_eq!(sanitize_preview_fps(0.0), 30.0);
         assert_eq!(sanitize_preview_fps(-5.0), 30.0);
         assert_eq!(sanitize_preview_fps(f64::NAN), 30.0);
         assert_eq!(sanitize_preview_fps(f64::INFINITY), 30.0);
-        // Кламп сверху.
+        // Clamp from above.
         assert_eq!(sanitize_preview_fps(100000.0), 240.0);
     }
 
@@ -1293,7 +1341,7 @@ mod tests {
         assert_eq!(svg_target_long_edge((1920, 1080), None), 1920);
         assert_eq!(svg_target_long_edge((1920, 1080), Some(0.5)), 960);
         assert_eq!(svg_target_long_edge((1080, 1920), Some(1.0)), 1920);
-        // Неизвестный размер сцены → дефолт 1920.
+        // Unknown scene size → default 1920.
         assert_eq!(svg_target_long_edge((0, 0), Some(1.0)), 1920);
     }
 

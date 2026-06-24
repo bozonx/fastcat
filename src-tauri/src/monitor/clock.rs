@@ -1,10 +1,10 @@
-//! Таймлайн-клок воспроизведения.
+//! Playback timeline clock.
 //!
-//! Отслеживает текущую позицию (`pts`) по двум источникам:
-//!   - во время паузы — `pts_origin` (стоп-кадр);
-//!   - во время воспроизведения — `pts_origin + (wall_now − wall_origin)`.
+//! Tracks the current position (`pts`) from two sources:
+//!   - while paused — `pts_origin` (the stop frame);
+//!   - while playing — `pts_origin + (wall_now − wall_origin)`.
 //!
-//! Не знает о сцене, слоях или GPU — чистая арифметика времени.
+//! Knows nothing about the scene, layers or GPU — pure time arithmetic.
 
 use std::time::Instant;
 
@@ -16,27 +16,28 @@ pub trait Clock: Send + Sync {
     fn pause(&mut self) -> f64;
     fn seek(&mut self, t: f64);
     fn sync_to_audio_pts(&mut self, audio_pts: f64);
-    /// Глобальная скорость транспорта (мультипликатор таймлайн-времени относительно
-    /// wall-clock). 1.0 — норма, 2.0 — 2× вперёд, -1.0 — реверс 1×.
+    /// Global transport speed (timeline-time multiplier relative to wall-clock).
+    /// 1.0 = normal, 2.0 = 2× forward, -1.0 = reverse 1×.
     fn set_speed(&mut self, speed: f64);
     fn speed(&self) -> f64;
 }
 
 pub struct PlaybackClock {
-    /// PTS в момент последнего pause/seek (секунды timeline).
+    /// PTS at the last pause/seek (timeline seconds).
     pts_origin: f64,
-    /// Wall-time начала воспроизведения. `None` — на паузе.
+    /// Wall-time when playback started. `None` = paused.
     wall_origin: Option<Instant>,
-    /// Скорость воспроизведения: timeline-секунд на одну wall-секунду. Может быть
-    /// отрицательной (реверс) — тогда `current_pts` идёт назад.
+    /// Playback speed: timeline seconds per one wall second. May be negative
+    /// (reverse) — then `current_pts` runs backward.
     speed: f64,
 }
 
 impl PlaybackClock {
-    /// Окно допуска рассинхрона wall-clock↔audio. Должно быть больше джиттера audible-PTS
-    /// (≈ один аудио-чанк, ~50мс) И startup prebuffer (~100мс), иначе клок дёргается на
-    /// старте: аудио начинает с задержкой prebuffer, а wall-клок уже тикает → синк
-    /// телепортирует видео назад на 100мс, кэш не попадает → черная вспышка.
+    /// Tolerance window for wall-clock↔audio drift. Must exceed audible-PTS jitter
+    /// (≈ one audio chunk, ~50ms) AND the startup prebuffer (~100ms), otherwise the
+    /// clock jerks at start: audio begins after the prebuffer delay while the wall
+    /// clock already ticks → sync teleports video back 100ms, the cache misses → a
+    /// black flash.
     const RESYNC_THRESHOLD_SEC: f64 = 0.2;
 
     pub fn new() -> Self {
@@ -72,8 +73,8 @@ impl PlaybackClock {
         }
     }
 
-    /// Меняет скорость, переанкоривая позицию на текущий PTS, чтобы переключение было
-    /// бесшовным (без скачка времени). При воспроизведении заново берёт wall-origin.
+    /// Changes the speed, re-anchoring the position to the current PTS so the switch
+    /// is seamless (no time jump). While playing it re-takes the wall-origin.
     pub fn set_speed(&mut self, speed: f64) {
         let now_pts = self.current_pts();
         self.pts_origin = now_pts;
@@ -89,7 +90,7 @@ impl PlaybackClock {
         }
     }
 
-    /// Фиксирует текущий PTS, возвращает его.
+    /// Pins the current PTS and returns it.
     pub fn pause(&mut self) -> f64 {
         let t = self.current_pts();
         self.pts_origin = t;
@@ -99,20 +100,21 @@ impl PlaybackClock {
 
     pub fn seek(&mut self, t: f64) {
         self.pts_origin = t.max(0.0);
-        // Если играли — сбрасываем wall_origin, чтобы продолжить с новой позиции.
+        // If we were playing, reset wall_origin to continue from the new position.
         if self.wall_origin.is_some() {
             self.wall_origin = Some(Instant::now());
         }
     }
 
-    /// Корректирует wall-clock по реальному audio PTS, чтобы он не дрейфовал относительно
-    /// аудио. Вызывается каждый кадр монитора.
+    /// Corrects the wall-clock against the real audio PTS so it doesn't drift relative
+    /// to the audio. Called every monitor frame.
     ///
-    /// ВАЖНО: `audio_pts` (audible-позиция) джиттерит на величину аудио-чанка (±~50мс),
-    /// потому что вычитает мгновенную заполненность ринга. Если корректировать клок на КАЖДЫЙ
-    /// кадр, этот джиттер впрыскивается в `current_pts()` → видеокадры дёргаются назад. Поэтому
-    /// клок свободно идёт по wall-clock (плавно, монотонно) и жёстко подтягивается к аудио
-    /// только при значимом дрейфе (за пределами джиттер-окна) — например, после underrun/seek.
+    /// IMPORTANT: `audio_pts` (the audible position) jitters by an audio-chunk amount
+    /// (±~50ms) because it subtracts the instantaneous ring fill. Correcting the clock
+    /// on EVERY frame injects that jitter into `current_pts()` → video frames jerk
+    /// backward. So the clock free-runs on the wall-clock (smooth, monotonic) and is
+    /// hard-pulled to audio only on significant drift (outside the jitter window) —
+    /// e.g. after an underrun/seek.
     pub fn sync_to_audio_pts(&mut self, audio_pts: f64) {
         if let Some(origin) = self.wall_origin {
             let elapsed = Instant::now().duration_since(origin).as_secs_f64();
@@ -194,7 +196,7 @@ mod tests {
         c.seek(1.0);
         c.play();
         assert!(c.is_playing());
-        // Небольшая задержка — PTS должен быть чуть больше 1.0.
+        // Small delay — PTS should be a bit above 1.0.
         std::thread::sleep(std::time::Duration::from_millis(10));
         assert!(c.current_pts() > 1.0);
     }
@@ -204,7 +206,7 @@ mod tests {
         let mut c = PlaybackClock::new();
         c.play();
         c.seek(10.0);
-        // После seek PTS должен быть около 10 (не дрейфовать от wall).
+        // After seek PTS should be around 10 (not drift from wall).
         assert!((c.current_pts() - 10.0).abs() < 0.1);
     }
 
@@ -225,8 +227,8 @@ mod tests {
         c.play();
         std::thread::sleep(std::time::Duration::from_millis(20));
         let before = c.current_pts();
-        // audible-PTS джиттерит назад в пределах окна — клок НЕ должен откатываться,
-        // иначе видеокадры дёргаются назад. Wall-clock продолжает идти вперёд.
+        // audible-PTS jitters backward within the window — the clock must NOT roll
+        // back, otherwise video frames jerk backward. The wall-clock keeps advancing.
         c.sync_to_audio_pts(before - 0.02);
         let after = c.current_pts();
         assert!(
@@ -241,7 +243,7 @@ mod tests {
         c.play();
         std::thread::sleep(std::time::Duration::from_millis(20));
         let before = c.current_pts();
-        // Значимый дрейф (аудио заметно впереди) — жёсткая коррекция к audio_pts.
+        // Significant drift (audio clearly ahead) — hard-correct to audio_pts.
         c.sync_to_audio_pts(before + 1.0);
         let after = c.current_pts();
         assert!(

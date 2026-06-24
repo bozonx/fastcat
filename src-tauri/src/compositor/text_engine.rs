@@ -13,7 +13,7 @@ use super::effects::{EffectSpec, EffectSource};
 use super::scene::{
     BlendMode, Layer, LayerKind, RasterSource, Scene, TextLayer, TextRenderMode, Transform,
 };
-use super::Compositor;
+use super::{Compositor, GpuCtx};
 
 /// Whether a text layer needs a GPU-rendered shadow pass.
 pub(crate) fn text_layer_needs_gpu_shadow(layer: &Layer) -> bool {
@@ -40,9 +40,9 @@ pub(crate) fn render_text_layer_with_gpu_shadow(
     };
     let render_scale = Compositor::vector_effect_render_scale(layer);
 
-    // Тень текста должна лежать МЕЖДУ фоном и глифами (как в CSS / старом CPU-пути),
-    // иначе непрозрачный фон-подложка полностью её перекрывает. Поэтому композитим
-    // три слоя: фон+рамка (низ) → размытая тень → основной текст (верх).
+    // The text shadow must sit BETWEEN the background and the glyphs (as in CSS /
+    // the old CPU path), otherwise an opaque background plate fully covers it. So we
+    // composite three layers: bg+border (bottom) → blurred shadow → main text (top).
     let mut bg_spec = spec.clone();
     bg_spec.render_mode = TextRenderMode::BackgroundOnly;
     let background = render_text_spec_to_texture(
@@ -68,8 +68,7 @@ pub(crate) fn render_text_layer_with_gpu_shadow(
     let blur_scale = ((render_scale.0 + render_scale.1) * 0.5) as f32;
     let (blurred_shadow, _) = compositor.apply_effects_to_texture(
         dev_id,
-        device,
-        queue,
+        GpuCtx { device, queue },
         &EffectSource::Gpu(Arc::new(crate::media::SharedTexture::new_shared(Arc::new(
             shadow_mask,
         )))),

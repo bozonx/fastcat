@@ -481,11 +481,11 @@ impl NativeAudioEngine {
             if (pts - current).abs() < SEEK_IGNORE_SEC {
                 return;
             }
-            // Диагностика «двойного» аудио на старте: реальная перемотка НАЗАД во время
-            // воспроизведения заставляет продюсер пере-декодить и заново проиграть уже
-            // прозвучавший участок (слышно как повтор). Если это логируется в первые
-            // секунды после Play — корень дубля именно тут (эхо-seek назад), а не в
-            // продюсере. Сними лог, когда причина подтверждена/устранена.
+            // Diagnostic for "doubled" audio at start: a real BACKWARD seek during
+            // playback makes the producer re-decode and replay an already-heard
+            // region (heard as a repeat). If this logs in the first seconds after
+            // Play, the root of the double is here (an echo seek backward), not in
+            // the producer. Remove the log once the cause is confirmed/fixed.
             if pts + SEEK_IGNORE_SEC < current {
                 log::warn!(
                     "[audio] backward seek during playback: {current:.3}s -> {pts:.3}s \
@@ -820,19 +820,19 @@ mod tests {
         assert_eq!(engine.shared.0.lock().origin_pts_sec, 10.0);
     }
 
-    /// Регрессионный тест: seek в пределах prebuffer window не должен сбрасывать ring.
+    /// Regression test: a seek within the prebuffer window must not reset the ring.
     ///
-    /// До фикса `SEEK_IGNORE_SEC = 0.4s` < `PREBUFFER_CHUNKS × 0.05s = 0.8s`: сразу
-    /// после `release_output` `audible_pts_sec = origin`, ring держит 0.8s вперёд.
-    /// Frontend-seek на +0.7s от origin воспринимался как «реальный», сбрасывал ring
-    /// и продюсер начинал пере-декодировать — слышался треск + ускоренный повтор.
+    /// Before the fix `SEEK_IGNORE_SEC = 0.4s` < `PREBUFFER_CHUNKS × 0.05s = 0.8s`:
+    /// right after `release_output` `audible_pts_sec = origin`, the ring holds 0.8s
+    /// ahead. A frontend seek of +0.7s from origin was treated as "real", reset the
+    /// ring, and the producer started re-decoding — heard as a crackle + sped-up repeat.
     #[test]
     fn seek_within_prebuffer_window_is_ignored() {
         let engine = mock_engine();
         engine.play(10.0);
         let before = seek_serial(&engine);
 
-        // 0.7s вперёд — внутри prebuffer window (0.8s), старый порог 0.4s пропускал это.
+        // 0.7s ahead — inside the prebuffer window (0.8s); the old 0.4s threshold let this through.
         // Non-explicit (echo) seek: must be swallowed.
         engine.seek(10.0 + 0.7, true, false);
         assert_eq!(
@@ -842,10 +842,10 @@ mod tests {
         );
     }
 
-    /// Регрессионный тест для UX-бага: явный пользовательский seek в пределах
-    /// `SEEK_IGNORE_SEC` во время воспроизведения ДОЛЖЕН отрабатывать (не глотаться).
-    /// Иначе клик по таймлайну ближе ~1с ощущался как «не сработал»: аудио игнорило
-    /// seek, а видеоклок откатывался назад по `sync_to_audio_pts`.
+    /// Regression test for a UX bug: an explicit user seek within `SEEK_IGNORE_SEC`
+    /// during playback MUST take effect (not be swallowed). Otherwise a timeline click
+    /// closer than ~1s felt like it "did nothing": audio ignored the
+    /// seek while the video clock rolled back via `sync_to_audio_pts`.
     #[test]
     fn explicit_seek_within_window_is_honored_during_playback() {
         let engine = mock_engine();
@@ -956,7 +956,7 @@ mod tests {
     fn set_scene_pure_mix_param_edit_does_not_flush() {
         let engine = mock_engine();
         let l = layer("l1", "/tmp/a.wav", 0.0, 10.0, 1.0);
-        engine.set_scene(&[l.clone()], &[], 1.0, &[]);
+        engine.set_scene(std::slice::from_ref(&l), &[], 1.0, &[]);
         let seek_serial_after_first = seek_serial(&engine);
 
         // Change only gain — pure mix param.
@@ -974,7 +974,7 @@ mod tests {
     fn set_scene_position_change_triggers_flush() {
         let engine = mock_engine();
         let l = layer("l1", "/tmp/a.wav", 0.0, 10.0, 1.0);
-        engine.set_scene(&[l.clone()], &[], 1.0, &[]);
+        engine.set_scene(std::slice::from_ref(&l), &[], 1.0, &[]);
         let before = seek_serial(&engine);
 
         let mut l2 = l.clone();
@@ -988,7 +988,7 @@ mod tests {
     fn set_scene_speed_change_triggers_flush() {
         let engine = mock_engine();
         let l = layer("l1", "/tmp/a.wav", 0.0, 10.0, 1.0);
-        engine.set_scene(&[l.clone()], &[], 1.0, &[]);
+        engine.set_scene(std::slice::from_ref(&l), &[], 1.0, &[]);
         let before = seek_serial(&engine);
 
         let mut l2 = l.clone();
@@ -1193,7 +1193,7 @@ mod tests {
         let l = layer("l1", "/tmp/a.wav", 0.0, 10.0, 1.0);
         engine.set_scene(&[l], &[], 1.0, &[]);
 
-        // Мануально ставим pending_ring_clear в true, как при старте
+        // Manually set pending_ring_clear to true, as on start
         {
             let mut state = engine.shared.0.lock();
             state.playing = true;

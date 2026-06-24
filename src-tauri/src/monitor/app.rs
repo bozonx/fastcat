@@ -35,11 +35,11 @@ const DEFAULT_TITLE: &str = "FastCat Monitor";
 const EVT_TIME: &str = "monitor:time";
 const EVT_ENDED: &str = "monitor:ended";
 
-/// Жёсткий потолок ожидания прогрева. Если декодер не успел (очень тяжёлый источник,
-/// ошибка открытия, медленный диск/сеть) — стартуем как есть, чтобы Play никогда не
-/// зависал. Реальные сцены проходят проверку раньше: порог готовности для каждого
-/// видеослоя рассчитывается динамически в `active_videos_ready` через
-/// `expected_preroll_duration()` с учётом лимита памяти на кадры.
+/// Hard cap on warm-up waiting. If the decoder didn't make it (a very heavy source,
+/// an open error, a slow disk/network) we start as-is so Play never hangs. Real scenes
+/// pass the check earlier: each video layer's readiness threshold is computed
+/// dynamically in `active_videos_ready` via `expected_preroll_duration()`, accounting
+/// for the per-layer frame memory limit.
 const PREBUFFER_TIMEOUT: Duration = Duration::from_millis(3000);
 /// Polling cadence while warming up before playback. Video readiness is normally
 /// driven by `VideoFrameReady`/`BgReady` events, but audio-only scenes (or audio
@@ -57,7 +57,7 @@ const PREBUFFER_POLL_INTERVAL: Duration = Duration::from_millis(10);
 /// genuine scrubs to re-target the prime.
 const SEEK_PRIME_REDUNDANT_SEC: f64 = 0.05;
 
-/// Заказ положения offscreen/native-окна монитора в физических пикселях.
+/// Requested position/size of the offscreen/native monitor window in physical pixels.
 #[derive(Debug, Clone, Copy)]
 struct ViewportSpec {
     x: i32,
@@ -109,14 +109,14 @@ fn build_event_loop() -> Result<EventLoop<MonitorCommand>> {
         use winit::platform::x11::EventLoopBuilderExtX11;
         EventLoopBuilderExtWayland::with_any_thread(&mut builder, true);
         EventLoopBuilderExtX11::with_any_thread(&mut builder, true);
-        // Монитор крутит winit-event-loop в отдельном потоке (см. MonitorHandle::spawn),
-        // а не в главном. Wayland-backend winit в этом контексте не инициализируется и
-        // `build()` падает с "EventLoop::build failed" — а раз WAYLAND_DISPLAY выставлен,
-        // winit выбирает Wayland и НЕ откатывается на X11 сам. Форсируем X11: на Wayland-
-        // сессии это XWayland, который надёжно поднимается из потока. GTK/Tauri-оболочка
-        // при этом остаётся на нативном Wayland (GDK_BACKEND не трогаем) — монитор по
-        // умолчанию offscreen (Canvas), а standalone-окно как XWayland пользователю
-        // неотличимо от нативного.
+        // The monitor runs the winit event loop on a separate thread (see
+        // MonitorHandle::spawn), not the main one. winit's Wayland backend doesn't
+        // initialize in this context and `build()` fails with "EventLoop::build failed" —
+        // and since WAYLAND_DISPLAY is set, winit picks Wayland and does NOT fall back to
+        // X11 on its own. Force X11: on a Wayland session that's XWayland, which comes up
+        // reliably from a thread. The GTK/Tauri shell stays on native Wayland (we don't
+        // touch GDK_BACKEND) — the monitor is offscreen (Canvas) by default, and the
+        // standalone XWayland window is indistinguishable from native to the user.
         EventLoopBuilderExtX11::with_x11(&mut builder);
     }
     #[cfg(target_os = "windows")]
@@ -143,27 +143,27 @@ struct MonitorApp {
     bg_tx: Sender<BgLayerResult>,
     bg_rx: Receiver<BgLayerResult>,
     state: Option<WindowState>,
-    /// Сцена, пришедшая до первого SetViewport.
+    /// A scene that arrived before the first SetViewport.
     pending_scene: Option<MonitorScene>,
-    /// Последний viewport. Если окна ещё нет — создадим по нему в resumed/SetViewport.
+    /// The latest viewport. If there's no window yet, we create it from this in resumed/SetViewport.
     pending_viewport: Option<ViewportSpec>,
-    /// Команды canvas-режима могут прийти раньше первого SetViewport, когда WindowState
-    /// ещё не создан. Храним их, чтобы первичная canvas-подписка не терялась.
+    /// Canvas-mode commands can arrive before the first SetViewport, when WindowState
+    /// doesn't exist yet. We stash them so the initial canvas subscription isn't lost.
     pending_mode: MonitorMode,
     pending_frame_channel: Option<Channel<InvokeResponseBody>>,
     pending_canvas_size: Option<(u32, u32)>,
-    /// True после первого вызова `resumed` — до него create_window падает.
+    /// True after the first `resumed` call — before that, create_window fails.
     resumed: bool,
     audio_settings: AudioEngineSettings,
     next_redraw_at: Option<Instant>,
-    /// Latest-wins слот цели скраба. Писатель (`MonitorHandle::send` на каждую `Seek`)
-    /// перезаписывает его последней позицией; обработчик `Seek` в event-loop'е
-    /// read-and-clear'ит. Винит отдаёт user-события по одному за пробуждение, поэтому
-    /// схлопнуть их через батч в `about_to_wait` нельзя — но пока цикл синхронно
-    /// рендерит один кадр, в слот успевают записаться более свежие позиции, а
-    /// устаревшие `Seek`-события находят слот пустым и становятся no-op'ами. Так при
-    /// скрабе по зоне перехода (два декодера + шейдер) рендерится только последняя
-    /// позиция, а не каждая по очереди (источник «затупа»).
+    /// Latest-wins scrub-target slot. The writer (`MonitorHandle::send` on each `Seek`)
+    /// overwrites it with the latest position; the `Seek` handler in the event loop
+    /// read-and-clears it. winit delivers user events one per wake-up, so they can't be
+    /// collapsed via a batch in `about_to_wait` — but while the loop synchronously
+    /// renders one frame, fresher positions get written to the slot, and stale `Seek`
+    /// events find it empty and become no-ops. So when scrubbing across a transition zone
+    /// (two decoders + a shader) only the last position is rendered, not each in turn (the
+    /// source of the "lag").
     scrub_target: ScrubTarget,
 }
 
@@ -194,9 +194,9 @@ impl MonitorApp {
         }
     }
 
-    /// Опрашивает прогрев декодеров. Если воспроизведение только что стартовало —
-    /// взводит сетку пейсинга и перерисовывает. Вызывается из источников, которые
-    /// двигают прогрев: декодированные кадры, открытие декодера, таймаут.
+    /// Polls decoder warm-up. If playback has just started, arms the pacing grid and
+    /// redraws. Called from the sources that drive warm-up: decoded frames, decoder
+    /// open, and the timeout.
     fn drive_prebuffer(&mut self) {
         let started = match self.state.as_mut() {
             Some(s) => s.poll_prebuffer(),
@@ -254,6 +254,113 @@ impl MonitorApp {
             Err(e) => log::error!("[monitor] init failed: {e:?}"),
         }
     }
+
+    // ---- `user_event` command handlers (split out to keep the dispatch small) ----
+
+    /// `MonitorCommand::Play`.
+    fn handle_play(&mut self) {
+        if let Some(s) = self.state.as_mut() {
+            s.play();
+            // If the start is instant (no video to warm up) we arm the pacing grid
+            // here. Otherwise prewarm is driven by VideoFrameReady / timeout (see
+            // drive_prebuffer), and about_to_wait sleeps until the warm-up deadline.
+            if s.clock.is_playing() {
+                self.next_redraw_at = Some(Instant::now());
+            }
+            s.render_current_frame();
+        }
+    }
+
+    /// `MonitorCommand::Seek`.
+    fn handle_seek(&mut self, ev_time: f64, ev_explicit: bool) {
+        // Read-and-clear slot: collapse a burst of scrub-seeks down to the latest
+        // position. A fresh `Seek` always finds a non-empty slot (the writer
+        // overwrites it BEFORE sending the event); a stale one finds it empty,
+        // because the previous event already took the latest target → no-op. So in
+        // the transition zone (expensive synchronous render) only the last position
+        // is drawn, not every one in turn. The event payload is a fallback in case
+        // of desync (in theory the slot is never empty before the event is handled,
+        // but it's cheaper to be safe than to drop a seek).
+        let target = match self.scrub_target.lock() {
+            // None → this `Seek` is stale (the latest target was already taken by a
+            // previous event) → do nothing.
+            Ok(mut slot) => slot.take(),
+            // Poisoned mutex — extremely unlikely; don't lose the seek.
+            Err(_) => Some((ev_time, ev_explicit)),
+        };
+        let Some((time_sec, explicit)) = target else {
+            return;
+        };
+        if let Some(s) = self.state.as_mut() {
+            s.seek(time_sec, explicit);
+            // While playing (or warming up a micro-prime after an explicit
+            // seek) the tick/prebuffer paths own rendering — just refresh the
+            // current frame. While paused, `WindowState::seek` repositions any
+            // EXISTING runtimes but never creates one, so a scrub into a clip
+            // whose decoder was never opened (or was evicted) would show black
+            // until Play. Route paused seeks through `refresh_paused_display`,
+            // which guarantees `ensure_runtime_for` spawns the decoder at the
+            // playhead and shows the frame as soon as it decodes.
+            if s.clock.is_playing() || s.pending_play_deadline.is_some() {
+                s.render_current_frame();
+            } else {
+                s.refresh_paused_display();
+            }
+        }
+    }
+
+    /// `MonitorCommand::BgReady`: drain background-load results, then advance the
+    /// prebuffer (a decoder may have just opened during warm-up) or refresh display.
+    fn handle_bg_ready(&mut self) {
+        while let Ok(result) = self.bg_rx.try_recv() {
+            if let Some(s) = self.state.as_mut() {
+                s.layers.apply_bg_result(result);
+            }
+        }
+        if self.is_prebuffering() {
+            self.drive_prebuffer();
+        } else if let Some(s) = self.state.as_mut() {
+            if s.clock.is_playing() {
+                s.render_current_frame();
+            } else {
+                s.refresh_paused_display();
+            }
+        }
+    }
+
+    /// `MonitorCommand::VideoFrameReady`.
+    fn handle_video_frame_ready(&mut self) {
+        // Pre-start warm-up: every decoded frame is a chance to check whether we
+        // have accumulated enough ahead of the playhead to start.
+        if self.is_prebuffering() {
+            self.drive_prebuffer();
+        } else if let Some(s) = self.state.as_mut() {
+            // While playing, frames are picked up on the next timer-paced tick (see
+            // about_to_wait/new_events) — an extra redraw here would only spin the
+            // loop. It is only needed while paused/scrubbing, to show a frame that
+            // has just caught up.
+            if !s.clock.is_playing() {
+                s.refresh_paused_display();
+            }
+        }
+    }
+
+    /// `MonitorCommand::OpenNativeWindow`.
+    fn handle_open_native_window(&mut self, event_loop: &ActiveEventLoop) {
+        log::info!("[monitor] open native window requested");
+        if self.pending_viewport.is_none() {
+            self.pending_viewport = Some(default_native_window_viewport());
+        }
+        if self.state.is_none() {
+            self.try_create_state();
+        }
+        if let Some(s) = self.state.as_mut() {
+            if let Err(error) = s.open_native_window(event_loop) {
+                log::error!("[monitor] open native window failed: {error:?}");
+            }
+            s.render_current_frame();
+        }
+    }
 }
 
 impl ApplicationHandler<MonitorCommand> for MonitorApp {
@@ -264,19 +371,20 @@ impl ApplicationHandler<MonitorCommand> for MonitorApp {
     }
 
     fn new_events(&mut self, _event_loop: &ActiveEventLoop, cause: StartCause) {
-        // Кадр воспроизведения отрисовываем строго когда истёк WaitUntil-дедлайн,
-        // выставленный в about_to_wait — это и есть пейсинг по preview_fps.
+        // We draw a playback frame strictly when the WaitUntil deadline set in
+        // about_to_wait expires — that is the preview_fps pacing.
         //
-        // ИНВАРИАНТ ПЕЙСИНГА МОНИТОРА (история: монитор тормозил до ~10fps на 4K/XWayland,
-        // см. memory monitor-playback-seek-thrash). Три связанных правила, ломать порознь нельзя:
-        //   1) рендерим ЗДЕСЬ, напрямую, а не через `request_redraw` (та под XWayland добавляет
-        //      ~65мс латентности доставки RedrawRequested);
-        //   2) дедлайн следующего кадра двигаем ТОЛЬКО здесь, после рендера;
-        //   3) `about_to_wait` дедлайн НЕ пересчитывает, лишь пере-взводит сохранённый —
-        //      иначе посторонние пробуждения (WaitCancelled) сдвигают сетку и роняют fps вдвое.
+        // MONITOR PACING INVARIANT (history: the monitor dropped to ~10fps on 4K/XWayland,
+        // see memory monitor-playback-seek-thrash). Three linked rules, not to be broken
+        // separately:
+        //   1) render HERE, directly, not via `request_redraw` (which under XWayland adds
+        //      ~65ms of RedrawRequested delivery latency);
+        //   2) advance the next-frame deadline ONLY here, after rendering;
+        //   3) `about_to_wait` does NOT recompute the deadline, only re-arms the saved one —
+        //      otherwise spurious wake-ups (WaitCancelled) shift the grid and halve the fps.
         if matches!(cause, StartCause::ResumeTimeReached { .. }) {
-            // Таймаут прогрева перед стартом: дедлайн истёк — стартуем воспроизведение,
-            // даже если декодер не успел декодировать кадры впереди (фоллбэк от зависания).
+            // Pre-start warm-up timeout: the deadline expired — start playback even if
+            // the decoder didn't decode frames ahead (the anti-hang fallback).
             if self.is_prebuffering() {
                 self.drive_prebuffer();
             }
@@ -286,10 +394,10 @@ impl ApplicationHandler<MonitorCommand> for MonitorApp {
                 .map(|s| s.clock.is_playing())
                 .unwrap_or(false);
             if is_playing {
-                // Рендерим НАПРЯМУЮ по таймеру пейсинга. Путь `request_redraw` →
-                // `RedrawRequested` под X11/XWayland добавляет ~65мс латентности на доставку
-                // (замерено), упирая монитор в ~10fps. Таймер уже пейсит (см. about_to_wait),
-                // поэтому busy-loop не возникает.
+                // Render DIRECTLY on the pacing timer. The `request_redraw` →
+                // `RedrawRequested` path under X11/XWayland adds ~65ms of delivery latency
+                // (measured), capping the monitor at ~10fps. The timer already paces (see
+                // about_to_wait), so no busy-loop arises.
                 let frame_duration = self
                     .state
                     .as_ref()
@@ -298,10 +406,10 @@ impl ApplicationHandler<MonitorCommand> for MonitorApp {
                 if let Some(s) = self.state.as_mut() {
                     s.tick_and_render();
                 }
-                // Дедлайн следующего кадра продвигаем ТОЛЬКО после реального рендера. Иначе
-                // посторонние пробуждения (WaitCancelled от IPC фронта, приходящие прямо у
-                // дедлайна) заставляли `about_to_wait` перескакивать сетку на +кадр и ронять
-                // каждый второй кадр (fps вдвое). about_to_wait теперь лишь пере-взводит это.
+                // Advance the next-frame deadline ONLY after a real render. Otherwise
+                // spurious wake-ups (WaitCancelled from frontend IPC arriving right at the
+                // deadline) made `about_to_wait` jump the grid by +1 frame and drop every
+                // other frame (halved fps). about_to_wait now only re-arms it.
                 let base = self.next_redraw_at.unwrap_or_else(Instant::now);
                 self.next_redraw_at = Some(next_redraw_deadline(
                     Some(base),
@@ -322,74 +430,27 @@ impl ApplicationHandler<MonitorCommand> for MonitorApp {
                     self.try_create_state();
                 }
             }
-            MonitorCommand::Play => {
-                if let Some(s) = self.state.as_mut() {
-                    s.play();
-                    // Если старт мгновенный (нет видео для прогрева) — взводим сетку пейсинга.
-                    // Иначе прогрев двигают VideoFrameReady/таймаут (см. drive_prebuffer),
-                    // а about_to_wait спит до дедлайна прогрева.
-                    if s.clock.is_playing() {
-                        self.next_redraw_at = Some(Instant::now());
-                    }
-                    s.render_current_frame();
-                }
-            }
+            MonitorCommand::Play => self.handle_play(),
             MonitorCommand::Pause => {
                 if let Some(s) = self.state.as_mut() {
                     s.pause();
-                    // Рендерим точный стоп-кадр синхронно: во время воспроизведения
-                    // canvas-стрим идёт через pipelined readback (1 кадр латентности),
-                    // поэтому последний показанный кадр на 1 позади точки паузы. Этот
-                    // синхронный рендер (путь !is_playing) ставит ровно кадр playhead'а.
+                    // Render the exact stop frame synchronously: while playing, the
+                    // canvas stream runs through a pipelined readback (1 frame of
+                    // latency), so the last shown frame is 1 behind the pause point.
+                    // This synchronous render (the !is_playing path) lands exactly on
+                    // the playhead frame.
                     s.render_current_frame();
                 }
                 self.next_redraw_at = None;
             }
-            MonitorCommand::Seek {
-                time_sec: ev_time,
-                explicit: ev_explicit,
-            } => {
-                // Read-and-clear слот: схлопываем серию скраб-seek'ов в последнюю
-                // позицию. Свежий `Seek` всегда находит непустой слот (писатель
-                // перезаписывает его ПЕРЕД отправкой события); устаревший — пустой,
-                // т.к. предыдущее событие уже забрало последнюю цель → no-op. Так в
-                // зоне перехода (дорогой синхронный рендер) рисуется только последняя
-                // позиция, а не каждая по очереди. Фоллбэк на полезную нагрузку
-                // события — на случай рассинхрона (теоретически слот не пустеет до того,
-                // как событие обработано, но дешевле перестраховаться, чем дропнуть seek).
-                let target = match self.scrub_target.lock() {
-                    // None → этот `Seek` устарел (последнюю цель уже забрало предыдущее
-                    // событие) → ничего не делаем.
-                    Ok(mut slot) => slot.take(),
-                    // Отравленный mutex — крайне маловероятно; не теряем seek.
-                    Err(_) => Some((ev_time, ev_explicit)),
-                };
-                let Some((time_sec, explicit)) = target else {
-                    return;
-                };
-                if let Some(s) = self.state.as_mut() {
-                    s.seek(time_sec, explicit);
-                    // While playing (or warming up a micro-prime after an explicit
-                    // seek) the tick/prebuffer paths own rendering — just refresh the
-                    // current frame. While paused, `WindowState::seek` repositions any
-                    // EXISTING runtimes but never creates one, so a scrub into a clip
-                    // whose decoder was never opened (or was evicted) would show black
-                    // until Play. Route paused seeks through `refresh_paused_display`,
-                    // which guarantees `ensure_runtime_for` spawns the decoder at the
-                    // playhead and shows the frame as soon as it decodes.
-                    if s.clock.is_playing() || s.pending_play_deadline.is_some() {
-                        s.render_current_frame();
-                    } else {
-                        s.refresh_paused_display();
-                    }
-                }
-            }
+            MonitorCommand::Seek { time_sec, explicit } => self.handle_seek(time_sec, explicit),
             MonitorCommand::SetSpeed(speed) => {
                 if let Some(s) = self.state.as_mut() {
                     let playing = s.clock.is_playing();
                     s.set_speed(speed);
-                    // Реверс/изменение скорости должны немедленно тикать клок — пере-взводим
-                    // дедлайн, иначе при ранее остановленном таймере кадр не обновится.
+                    // Reverse / speed changes must tick the clock immediately — re-arm
+                    // the deadline, otherwise a previously stopped timer never updates
+                    // the frame.
                     if playing {
                         self.next_redraw_at = Some(Instant::now());
                     }
@@ -435,37 +496,8 @@ impl ApplicationHandler<MonitorCommand> for MonitorApp {
                 log::info!("[monitor] received Close command, exiting event loop");
                 event_loop.exit();
             }
-            MonitorCommand::BgReady => {
-                while let Ok(result) = self.bg_rx.try_recv() {
-                    if let Some(s) = self.state.as_mut() {
-                        s.layers.apply_bg_result(result);
-                    }
-                }
-                // Декодер мог только что открыться во время прогрева — двигаем его.
-                if self.is_prebuffering() {
-                    self.drive_prebuffer();
-                } else if let Some(s) = self.state.as_mut() {
-                    if s.clock.is_playing() {
-                        s.render_current_frame();
-                    } else {
-                        s.refresh_paused_display();
-                    }
-                }
-            }
-            MonitorCommand::VideoFrameReady => {
-                // Прогрев перед стартом: каждый декодированный кадр — повод проверить,
-                // не накопили ли мы достаточно впереди playhead'а, чтобы стартовать.
-                if self.is_prebuffering() {
-                    self.drive_prebuffer();
-                } else if let Some(s) = self.state.as_mut() {
-                    // Во время play кадры забираются на следующем тике, отмеренном таймером
-                    // (см. about_to_wait/new_events) — лишний redraw тут только раскручивал бы
-                    // цикл. Нужен он лишь на паузе/скрабе, чтобы показать догнавший кадр.
-                    if !s.clock.is_playing() {
-                        s.refresh_paused_display();
-                    }
-                }
-            }
+            MonitorCommand::BgReady => self.handle_bg_ready(),
+            MonitorCommand::VideoFrameReady => self.handle_video_frame_ready(),
             MonitorCommand::SetViewport {
                 x,
                 y,
@@ -487,26 +519,7 @@ impl ApplicationHandler<MonitorCommand> for MonitorApp {
                     self.try_create_state();
                 }
             }
-            MonitorCommand::OpenNativeWindow => {
-                log::info!("[monitor] open native window requested");
-                if self.pending_viewport.is_none() {
-                    self.pending_viewport = Some(default_native_window_viewport());
-                }
-                if let Some(s) = self.state.as_mut() {
-                    if let Err(error) = s.open_native_window(event_loop) {
-                        log::error!("[monitor] open native window failed: {error:?}");
-                    }
-                    s.render_current_frame();
-                } else {
-                    self.try_create_state();
-                    if let Some(s) = self.state.as_mut() {
-                        if let Err(error) = s.open_native_window(event_loop) {
-                            log::error!("[monitor] open native window failed: {error:?}");
-                        }
-                        s.render_current_frame();
-                    }
-                }
-            }
+            MonitorCommand::OpenNativeWindow => self.handle_open_native_window(event_loop),
             MonitorCommand::SetMode(mode) => {
                 self.pending_mode = mode;
                 if let Some(s) = self.state.as_mut() {
@@ -579,9 +592,10 @@ impl ApplicationHandler<MonitorCommand> for MonitorApp {
         if !state.clock.is_playing() {
             self.next_redraw_at = None;
             match state.pending_play_deadline {
-                // Прогрев перед стартом: периодически опрашиваем готовность видео И аудио
-                // (см. PREBUFFER_POLL_INTERVAL) — аудио-only сцены не шлют VideoFrameReady,
-                // иначе старт ждал бы полного таймаута. Не позже самого дедлайна прогрева.
+                // Pre-start warm-up: periodically poll video AND audio readiness (see
+                // PREBUFFER_POLL_INTERVAL) — audio-only scenes don't send VideoFrameReady,
+                // otherwise the start would wait for the full timeout. No later than the
+                // warm-up deadline itself.
                 Some(deadline) => {
                     let poll_at = (Instant::now() + PREBUFFER_POLL_INTERVAL).min(deadline);
                     event_loop.set_control_flow(ControlFlow::WaitUntil(poll_at));
@@ -590,11 +604,11 @@ impl ApplicationHandler<MonitorCommand> for MonitorApp {
             }
             return;
         }
-        // ИНВАРИАНТ ПЕЙСИНГА (парно с new_events, см. там): дедлайн продвигается ТОЛЬКО
-        // после рендера (в new_events). Здесь мы лишь (пере-)взводим уже сохранённый дедлайн —
-        // пересчёт на каждом пробуждении позволял бы посторонним событиям (WaitCancelled)
-        // сдвигать сетку и ронять fps вдвое. Рендер происходит в new_events(ResumeTimeReached),
-        // а не тут, иначе redraw диспатчился бы сразу (busy-loop, 100% GPU).
+        // PACING INVARIANT (paired with new_events, see there): the deadline advances ONLY
+        // after a render (in new_events). Here we only (re-)arm the already-saved deadline —
+        // recomputing it on every wake-up would let spurious events (WaitCancelled) shift
+        // the grid and halve the fps. The render happens in new_events(ResumeTimeReached),
+        // not here, otherwise a redraw would dispatch immediately (busy-loop, 100% GPU).
         let deadline = match self.next_redraw_at {
             Some(d) => d,
             None => {
@@ -609,8 +623,8 @@ impl ApplicationHandler<MonitorCommand> for MonitorApp {
     }
 }
 
-/// Отправляет RGBA-кадр фронту через canvas-канал: 8-байтный заголовок
-/// (`u32 LE width`, `u32 LE height`) + плотные RGBA8-пиксели.
+/// Sends an RGBA frame to the frontend over the canvas channel: an 8-byte header
+/// (`u32 LE width`, `u32 LE height`) + tightly-packed RGBA8 pixels.
 fn send_canvas_frame(
     channel: &Channel<InvokeResponseBody>,
     width: u32,
@@ -677,20 +691,20 @@ struct WindowState {
     last_audio_prune: Instant,
     last_viewport: ViewportSpec,
     mode: MonitorMode,
-    /// Канал для стрима RGBA-кадров фронту (только в режиме Canvas).
+    /// Channel for streaming RGBA frames to the frontend (Canvas mode only).
     frame_channel: Option<Channel<InvokeResponseBody>>,
-    /// Размер render target'а в canvas-режиме (физические пиксели).
+    /// Render target size in canvas mode (physical pixels).
     canvas_size: (u32, u32),
-    /// dev_id wgpu для offscreen-рендера; берём из существующего surface'а.
+    /// wgpu dev_id for the offscreen render; taken from the existing surface.
     offscreen_dev_id: usize,
-    /// Pipelined (async-map) readback для canvas-стрима во время воспроизведения.
-    /// Снимает блокирующий `device.poll(wait_indefinitely)` с event-loop'а ценой
-    /// одного кадра латентности. На паузе/скрабе НЕ используется (там нужен
-    /// гарантированный кадр синхронно), и сбрасывается в `None`, освобождая GPU-буферы.
+    /// Pipelined (async-map) readback for the canvas stream during playback.
+    /// Removes the blocking `device.poll(wait_indefinitely)` from the event loop at the
+    /// cost of one frame of latency. NOT used while paused/scrubbing (there a guaranteed
+    /// frame is needed synchronously), and reset to `None`, freeing the GPU buffers.
     canvas_readback: Option<PipelinedReadback>,
-    /// Дедлайн прогрева декодеров перед стартом часов. `Some` — Play запрошен, но
-    /// воспроизведение ещё не началось (ждём кадры впереди playhead'а или таймаут).
-    /// `None` — либо играем, либо стоим на паузе.
+    /// Decoder warm-up deadline before the clock starts. `Some` — Play was requested but
+    /// playback hasn't begun yet (waiting for frames ahead of the playhead or a timeout).
+    /// `None` — either playing or paused.
     pending_play_deadline: Option<Instant>,
     native_window: Option<NativeWindowState>,
 }
@@ -717,10 +731,11 @@ impl WindowState {
             );
         }
         self.layers.apply_scene(scene);
-        // На паузе сразу спавним/позиционируем декодеры активных видеослоёв на playhead,
-        // иначе они не создавались бы до первого Play (декодеры спавнятся только здесь и в
-        // tick): монитор был бы чёрным на загрузке, а первый Play стартовал бы в пустоту.
-        // Во время воспроизведения tick сам поднимает рантаймы — повторный прогрев не нужен.
+        // While paused, immediately spawn/position the active video layers' decoders at
+        // the playhead, otherwise they wouldn't be created until the first Play (decoders
+        // spawn only here and in tick): the monitor would be black on load and the first
+        // Play would start into nothing. During playback tick brings up runtimes itself —
+        // no repeat warm-up needed.
         if !self.clock.is_playing() {
             self.refresh_paused_display();
         } else {
@@ -800,14 +815,15 @@ impl WindowState {
         let playing = self.clock.is_playing();
         if self.layers.update_hw_settings(settings) {
             if playing {
-                // Во время воспроизведения декодеры пересоздаст ближайший `tick`
-                // (он зовёт `ensure_runtime_for`), здесь только перепозиционируем.
+                // During playback the next `tick` recreates the decoders (it calls
+                // `ensure_runtime_for`); here we only reposition.
                 self.layers.seek(t, playing);
             } else {
-                // На паузе `tick` не идёт, а `layers.seek` НЕ создаёт рантаймы — после
-                // дропа видеодекодеров (смена hwaccel сбрасывает их) сцена осталась бы
-                // без декодеров и монитор чёрным до следующего Play/скраба. Идём через
-                // refresh_paused_display: он гарантированно спавнит декодеры на playhead.
+                // While paused `tick` doesn't run, and `layers.seek` does NOT create
+                // runtimes — after dropping the video decoders (an hwaccel change resets
+                // them) the scene would be left with no decoders and the monitor black
+                // until the next Play/scrub. Go through refresh_paused_display: it reliably
+                // spawns decoders at the playhead.
                 self.refresh_paused_display();
             }
         }
@@ -851,9 +867,10 @@ impl WindowState {
                         .with_title(DEFAULT_TITLE)
                         .with_decorations(true)
                         .with_resizable(true)
-                        // Создаём окно скрытым: показываем его только после первого рендера
-                        // в surface (ниже). Иначе WM мапит окно до того, как в swapchain
-                        // попал первый кадр, и оно вспыхивает чёрным на 1–2 кадра в начале.
+                        // Create the window hidden: show it only after the first render
+                        // into the surface (below). Otherwise the WM maps the window before
+                        // the first frame reaches the swapchain, and it flashes black for
+                        // 1–2 frames at the start.
                         .with_visible(false)
                         .with_inner_size(PhysicalSize::new(1280, 720))
                         .with_position(PhysicalPosition::new(80, 80)),
@@ -867,8 +884,8 @@ impl WindowState {
             size.height.max(1),
         ))?;
         self.native_window = Some(NativeWindowState { window, surface });
-        // Первый кадр рисуем в surface ДО показа окна — тогда оно появляется уже с
-        // картинкой, без чёрной вспышки.
+        // Draw the first frame into the surface BEFORE showing the window — then it
+        // appears already with a picture, without a black flash.
         self.render_current_frame();
         if let Some(native) = self.native_window.as_ref() {
             native.window.set_visible(true);
@@ -893,9 +910,9 @@ impl WindowState {
         self.render(t);
     }
 
-    /// На паузе: подтягивает догнавшие playhead кадры в `current` и перерисовывает.
-    /// Без этого кадр, декодированный уже после seek/открытия декодера, оставался бы в
-    /// кеше непоказанным, а монитор — чёрным до первого Play.
+    /// While paused: pulls frames that caught up to the playhead into `current` and
+    /// redraws. Without this, a frame decoded after a seek/decoder-open would stay in the
+    /// cache unshown and the monitor black until the first Play.
     fn refresh_paused_display(&mut self) {
         let t = self.clock.current_pts();
         let dev_id = self.offscreen_dev_id;
@@ -905,10 +922,10 @@ impl WindowState {
         self.render(t);
     }
 
-    /// Запрашивает воспроизведение. Для сцен с видео сначала прогревает декодеры до
-    /// playhead'а (prebuffer), а часы/аудио стартуют позже в `begin_playback`, когда
-    /// кадры уже декодированы вперёд — иначе 4К фризит на старте, пока декодится GOP.
-    /// Для сцен без активного видео (только аудио/картинки) старт мгновенный.
+    /// Requests playback. For scenes with video it first warms decoders up to the
+    /// playhead (prebuffer), and the clock/audio start later in `begin_playback`, once
+    /// frames are decoded ahead — otherwise 4K freezes at start while the GOP decodes.
+    /// For scenes with no active video (audio/images only) the start is instant.
     fn play(&mut self) {
         if self.clock.is_playing() || self.pending_play_deadline.is_some() {
             return;
@@ -922,25 +939,25 @@ impl WindowState {
             "[monitor] play requested at pts={t:.3}s has_audio={has_audio} has_video={}",
             self.layers.has_active_video(t)
         );
-        // Заводим декодеры: говорим им играть и перепозиционируем на playhead, чтобы
-        // forward-стрим был корректным после скраба по кешу. Часы при этом ещё стоят.
+        // Bring up the decoders: tell them to play and reposition to the playhead so the
+        // forward stream is correct after a cache scrub. The clock is still stopped here.
         self.layers.set_playing(true);
         self.layers.resync_active_videos(t);
-        // На время прогрева перед стартом VideoFrameReady нужен (двигает poll_prebuffer);
-        // begin_playback выключит его, когда кадры пойдут по таймеру пейсинга.
+        // During pre-start warm-up VideoFrameReady is needed (it drives poll_prebuffer);
+        // begin_playback disables it once frames flow on the pacing timer.
         self.layers.set_frame_events_enabled(true);
 
-        // Прогреваем аудио параллельно видео: продюсер наполняет кольцо до полного
-        // префетча, но вывод держится беззвучным (hold_output) до `begin_playback`.
-        // Так первый Play после холодной загрузки стартует с полным буфером, а не с
-        // мгновенным underrun (треск + ускоренный звук).
+        // Warm audio in parallel with video: the producer fills the ring to a full
+        // prefetch, but output is held silent (hold_output) until `begin_playback`. So the
+        // first Play after a cold load starts with a full buffer rather than an immediate
+        // underrun (crackle + sped-up sound).
         if has_audio {
             if let Some(audio) = self.audio.as_ref() {
                 audio.start_priming(t.max(0.0));
             }
         }
 
-        // Нечего прогревать (нет ни активного видео, ни аудио) — стартуем сразу.
+        // Nothing to warm (no active video and no audio) — start immediately.
         if !self.layers.has_active_video(t) && !has_audio {
             self.begin_playback();
             return;
@@ -948,13 +965,13 @@ impl WindowState {
         self.pending_play_deadline = Some(Instant::now() + PREBUFFER_TIMEOUT);
     }
 
-    /// Фактический старт воспроизведения: запускает мастер-часы и аудио от текущего
-    /// playhead'а. Декодеры уже играют и спозиционированы (см. `play`).
+    /// The actual playback start: starts the master clock and audio from the current
+    /// playhead. The decoders are already playing and positioned (see `play`).
     fn begin_playback(&mut self) {
         let pts = self.clock.current_pts();
         log::info!("[monitor] begin_playback at pts={pts:.3}s");
         self.pending_play_deadline = None;
-        // Кадры теперь забираются по таймеру пейсинга — гасим холостые VideoFrameReady.
+        // Frames are now pulled on the pacing timer — disable idle VideoFrameReady.
         self.layers.set_frame_events_enabled(false);
         // Start wall-clock first so the audio output and video layers share the
         // exact same origin. Reversing the order lets audio buffer ahead of the
@@ -968,9 +985,9 @@ impl WindowState {
         }
     }
 
-    /// Опрашивает прогрев. Возвращает `true`, если воспроизведение только что стартовало
-    /// (часы пошли) — вызывающий код должен взвести сетку пейсинга и перерисовать.
-    /// Стартует по готовности кадров впереди playhead'а либо по таймауту.
+    /// Polls warm-up. Returns `true` if playback has just started (the clock began) —
+    /// the caller must arm the pacing grid and redraw. Starts when frames ahead of the
+    /// playhead are ready, or on the timeout.
     fn poll_prebuffer(&mut self) -> bool {
         let Some(deadline) = self.pending_play_deadline else {
             return false;
@@ -1004,20 +1021,20 @@ impl WindowState {
             self.begin_playback();
             true
         } else {
-            // Ещё греемся. Стоп-кадр playhead'а уже на экране: его отрисовал
-            // синхронный путь при входе в Play/Seek (render_current_frame), а во время
-            // прогрева `current` не меняется (poll лишь тянет кадры в кеш, не двигая
-            // отображаемый кадр). Поэтому НЕ перерисовываем здесь — иначе на каждом
-            // poll (каждые ~10мс + на каждый VideoFrameReady) шёл бы полный композит с
-            // блокирующим GPU-readback одного и того же кадра, отбирая ресурсы у
-            // декодера ровно в момент прогрева (особенно больно на 4K).
+            // Still warming. The playhead stop frame is already on screen: the synchronous
+            // path drew it on entering Play/Seek (render_current_frame), and during warm-up
+            // `current` doesn't change (poll only pulls frames into the cache, without
+            // moving the displayed frame). So do NOT redraw here — otherwise every poll
+            // (every ~10ms + on each VideoFrameReady) would do a full composite with a
+            // blocking GPU readback of the same frame, taking resources from the decoder
+            // exactly during warm-up (especially painful on 4K).
             false
         }
     }
 
-    /// Глобальная скорость транспорта. Переанкоривает мастер-клок и аудио-движок на
-    /// текущую позицию, чтобы переключение было бесшовным. Реверс (<0) и не-1× аудио
-    /// обрабатываются ниже по тракту (клок/producer).
+    /// Global transport speed. Re-anchors the master clock and audio engine to the
+    /// current position so the switch is seamless. Reverse (<0) and non-1× audio are
+    /// handled further down the chain (clock/producer).
     fn set_speed(&mut self, speed: f64) {
         self.clock.set_speed(speed);
         // The clock is the authoritative timeline position and stays correct even
@@ -1048,11 +1065,11 @@ impl WindowState {
     }
 
     fn pause(&mut self) {
-        // Прогрев прерван запросом паузы — отменяем отложенный старт.
+        // Warm-up interrupted by a pause request — cancel the deferred start.
         self.pending_play_deadline = None;
-        // На реверсе/не-аудибельной скорости аудио молчит и мастер-клок — это сам
-        // PlaybackClock, поэтому замораживаем его позицию. На обычном forward-аудио
-        // источник истины — звуковой ринг, поэтому подтягиваемся к audible-позиции.
+        // On reverse / non-audible speed, audio is silent and the master clock is the
+        // PlaybackClock itself, so we freeze its position. On normal forward audio the
+        // source of truth is the audio ring, so we pull to the audible position.
         let reverse = self.clock.speed() < 0.0;
         if let Some(audio) = self.audio.as_ref() {
             let audio_pts = audio.pause();
@@ -1067,8 +1084,8 @@ impl WindowState {
             self.clock.pause();
         }
         self.layers.set_playing(false);
-        // На паузе VideoFrameReady снова нужен: он подтягивает догнавший playhead кадр в
-        // отображение (refresh_paused_display).
+        // While paused VideoFrameReady is needed again: it pulls a frame that caught up to
+        // the playhead into the display (refresh_paused_display).
         self.layers.set_frame_events_enabled(true);
         // The output callback drops to silence on pause, but `emit_audio_levels`
         // only runs while ticking, so the UI meter would otherwise freeze at its
@@ -1145,8 +1162,8 @@ impl WindowState {
                     audio.start_priming(t);
                     self.layers.set_playing(true);
                     self.layers.resync_active_videos(t);
-                    // Часы заморожены на время микро-прайма — VideoFrameReady снова двигает
-                    // прогрев (begin_playback выключит его при фактическом старте).
+                    // The clock is frozen during the micro-prime — VideoFrameReady drives
+                    // warm-up again (begin_playback disables it at the actual start).
                     self.layers.set_frame_events_enabled(true);
                     self.pending_play_deadline = Some(Instant::now() + PREBUFFER_TIMEOUT);
                 }
@@ -1155,24 +1172,25 @@ impl WindowState {
     }
 
     // -----------------------------------------------------------------------
-    // Главный тик
+    // Main tick
     // -----------------------------------------------------------------------
 
     fn tick_and_render(&mut self) {
         // Recover from a dead output device before reading the audio clock, so a
         // rebuilt engine is the one driving this frame's sync.
         self.check_audio_health();
-        // ИНВАРИАНТ ИСТОЧНИКА ВРЕМЕНИ: для выбора кадра берём СГЛАЖЕННЫЙ `clock.current_pts()`,
-        // НЕ сырой `audio_pts`. `current_pts` (audible position) джиттерит на величину аудио-чанка
-        // (~50мс), т.к. вычитает мгновенную заполненность ринга — при выводе напрямую кадры
-        // скачут назад. `PlaybackClock` идёт по wall-clock и подтягивается к аудио только при
-        // значимом дрейфе (см. `sync_to_audio_pts`), поэтому `t` монотонный и плавный.
+        // TIME-SOURCE INVARIANT: to pick a frame we use the SMOOTHED `clock.current_pts()`,
+        // NOT the raw `audio_pts`. `current_pts` (the audible position) jitters by an
+        // audio-chunk amount (~50ms) because it subtracts the instantaneous ring fill —
+        // used directly, frames jump backward. `PlaybackClock` runs on the wall-clock and
+        // pulls to audio only on significant drift (see `sync_to_audio_pts`), so `t` is
+        // monotonic and smooth.
         if let Some(audio_pts) = self.audio.as_ref().and_then(NativeAudioEngine::current_pts) {
             self.clock.sync_to_audio_pts(audio_pts);
         }
         let t = self.clock.current_pts();
 
-        // Реверс достиг начала таймлайна — останавливаемся на нуле.
+        // Reverse reached the start of the timeline — stop at zero.
         if self.clock.is_playing() && self.clock.speed() < 0.0 && t <= 0.0 {
             self.clock.seek(0.0);
             self.pause();
@@ -1182,7 +1200,7 @@ impl WindowState {
             return;
         }
 
-        // Детектируем конец сцены во время воспроизведения (только forward).
+        // Detect the end of the scene during playback (forward only).
         if self.clock.is_playing() && self.clock.speed() > 0.0 {
             let video_end = self.layers.scene_end();
             let audio_end = self
@@ -1195,9 +1213,9 @@ impl WindowState {
                 self.pause();
                 let _ = self.app.emit(EVT_ENDED, ());
                 self.emit_time(scene_end);
-                // covers() — полуоткрытый интервал [start; end): при t == scene_end ни один
-                // слой не активен и сцена была бы пустой (чёрный кадр). Рендерим на 1 мс
-                // раньше конца, чтобы удержать последний кадр клипа.
+                // covers() is a half-open interval [start; end): at t == scene_end no layer
+                // is active and the scene would be empty (a black frame). Render 1 ms before
+                // the end to hold the clip's last frame.
                 let last_frame_t = (scene_end - 0.001).max(0.0);
                 self.render(last_frame_t);
                 return;
@@ -1224,7 +1242,7 @@ impl WindowState {
     }
 
     fn emit_time(&mut self, t: f64) {
-        // Подавляем дубли: на паузе/повторных redraw'ах не шлём тот же PTS дважды.
+        // Suppress duplicates: on pause / repeated redraws don't send the same PTS twice.
         if (t - self.last_emit_pts).abs() < 1e-6 {
             return;
         }
@@ -1245,7 +1263,7 @@ impl WindowState {
     }
 
     // -----------------------------------------------------------------------
-    // Рендер
+    // Render
     // -----------------------------------------------------------------------
 
     fn render(&mut self, t: f64) {
@@ -1294,10 +1312,10 @@ impl WindowState {
                 let dev_id = self.offscreen_dev_id;
 
                 if self.clock.is_playing() {
-                    // Воспроизведение: непрерывный поток кадров — используем pipelined
-                    // async-readback, чтобы НЕ блокировать event-loop на `device.poll`
-                    // (иначе IPC/аудио/события декодеров ждут весь readback; больно на
-                    // высоком preview_fps и тяжёлых сценах). Цена — 1 кадр латентности.
+                    // Playback: a continuous stream of frames — use pipelined async
+                    // readback so the event loop is NOT blocked on `device.poll` (otherwise
+                    // IPC/audio/decoder events wait for the whole readback; painful at high
+                    // preview_fps and on heavy scenes). The cost is 1 frame of latency.
                     let need_new = match &self.canvas_readback {
                         Some(s) => !s.matches(dev_id, width, height),
                         None => true,
@@ -1320,14 +1338,14 @@ impl WindowState {
                             .render_scene_to_pixels_pipelined(&mut session, &scene);
                         self.canvas_readback = Some(session);
                         match result {
-                            // Самый старый готовый кадр (предыдущий) — отдаём фронту.
+                            // The oldest ready frame (the previous one) — hand it to the frontend.
                             Ok(Some(pixels)) => {
                                 if !send_canvas_frame(&channel, width, height, pixels) {
                                     self.frame_channel = None;
                                     self.canvas_readback = None;
                                 }
                             }
-                            // GPU ещё не догнал (первый кадр после старта) — пропускаем,
+                            // The GPU hasn't caught up yet (the first frame after start) — skip,
                             // на экране держится последний синхронный стоп-кадр.
                             Ok(None) => {}
                             Err(e) => {
@@ -1342,9 +1360,9 @@ impl WindowState {
                         }
                     }
                 } else {
-                    // Пауза/скраб/одиночный кадр: нужен ГАРАНТИРОВАННЫЙ кадр прямо сейчас
-                    // (следующего рендера может не быть), поэтому синхронный readback.
-                    // Освобождаем pipelined-сессию — её GPU-буферы не нужны на паузе.
+                    // Pause/scrub/single frame: a GUARANTEED frame is needed right now
+                    // (there may be no next render), so do a synchronous readback. Release
+                    // the pipelined session — its GPU buffers aren't needed while paused.
                     self.canvas_readback = None;
                     match self
                         .compositor
@@ -1367,7 +1385,7 @@ impl WindowState {
 }
 
 // ---------------------------------------------------------------------------
-// Инициализация окна
+// Window initialization
 // ---------------------------------------------------------------------------
 
 fn init_state(

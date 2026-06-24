@@ -1,4 +1,4 @@
-//! Тонкий handle к потоку монитора. Хранится в `VideoEngine` и шарится между Tauri-командами.
+//! Thin handle to the monitor thread. Held in `VideoEngine` and shared across Tauri commands.
 
 use std::panic;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -17,10 +17,10 @@ use crate::audio::engine::AudioEngineSettings;
 use super::app::run_event_loop;
 use super::scene::MonitorScene;
 
-/// Режим вывода монитора.
-/// - `Embedded` — нативное окно монитора как отдельное platform window.
-/// - `Canvas` — offscreen-рендер, стрим RGBA-кадров в HTML `<canvas>` через Tauri Channel.
-///   Позволяет ставить SVG/HTML-оверлеи (transform handles, grid, timecode) поверх изображения.
+/// Monitor output mode.
+/// - `Embedded` — the native monitor window as a separate platform window.
+/// - `Canvas` — offscreen render, streaming RGBA frames to an HTML `<canvas>` via a Tauri Channel.
+///   Lets SVG/HTML overlays (transform handles, grid, timecode) sit on top of the image.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 #[derive(Default)]
@@ -30,51 +30,51 @@ pub enum MonitorMode {
     Canvas,
 }
 
-/// Latest-wins слот цели скраба, разделяемый между `MonitorHandle` (писатель) и
-/// event-loop'ом (читатель). Каждая `Seek`-команда перезаписывает его перед отправкой
-/// события; обработчик в цикле read-and-clear'ит, схлопывая серию скраб-seek'ов в
-/// последнюю позицию (см. `MonitorApp::scrub_target`).
+/// Latest-wins scrub-target slot, shared between `MonitorHandle` (writer) and the
+/// event loop (reader). Each `Seek` command overwrites it before sending the event;
+/// the handler read-and-clears it in the loop, collapsing a burst of scrub-seeks into
+/// the last position (see `MonitorApp::scrub_target`).
 pub type ScrubTarget = Arc<Mutex<Option<(f64, bool)>>>;
 
 pub enum MonitorCommand {
-    /// Полная замена сцены — фронт шлёт текущий снимок таймлайна.
+    /// Full scene replacement — the frontend sends the current timeline snapshot.
     SetScene(MonitorScene),
     Play,
     Pause,
-    /// Seek по timeline-времени (секунды). `explicit` — это явный пользовательский
-    /// скраб (клик/драг плейхеда), который НИКОГДА не должен быть проглочен guard'ом
-    /// от эхо-сиков. `false` — программный/возможно-эхо seek (страховочный путь).
+    /// Seek by timeline time (seconds). `explicit` means an explicit user scrub
+    /// (playhead click/drag) that must NEVER be swallowed by the echo-seek guard.
+    /// `false` means a programmatic / possibly-echo seek (the safety path).
     Seek {
         time_sec: f64,
         explicit: bool,
     },
-    /// Глобальная скорость транспорта (мультипликатор таймлайн-времени).
-    /// >0 — вперёд (1.0 норма), <0 — реверс (аудио глушится).
+    /// Global transport speed (timeline-time multiplier).
+    /// >0 — forward (1.0 normal), <0 — reverse (audio is muted).
     SetSpeed(f64),
-    /// Превью звука при скрабинге вперёд: одноразовый сниппет
-    /// `[from_sec, from_sec + duration_sec)`, играется только когда не идёт
-    /// обычное воспроизведение и не двигает транспорт.
+    /// Audio preview while scrubbing forward: a one-shot snippet
+    /// `[from_sec, from_sec + duration_sec)`, played only when normal playback is not
+    /// running and without moving the transport.
     ScrubPreview {
         from_sec: f64,
         duration_sec: f64,
     },
-    /// Остановить текущее превью скрабинга (перетаскивание закончилось).
+    /// Stop the current scrub preview (the drag has ended).
     StopScrubPreview,
     Close,
-    /// Обновление настроек нативного аудио-движка.
+    /// Update the native audio engine settings.
     SetAudioSettings(crate::audio::engine::AudioEngineSettings),
     /// Post-mix monitor output gain/mute. Applies only to live monitor output.
     SetOutputGain(f64),
     /// Timeline master gain. Updates the live mixer without replacing the scene.
     SetMasterGain(f64),
-    /// Обновление настроек FFmpeg/hwaccel для новых видеодекодеров.
+    /// Update FFmpeg/hwaccel settings for new video decoders.
     SetHwSettings(crate::FfmpegHwSettings),
-    /// Фоновый поток загрузил слой — event-loop должен дренировать bg_rx.
+    /// A background thread finished loading a layer — the event loop must drain bg_rx.
     BgReady,
-    /// Видеокадр декодирован.
+    /// A video frame was decoded.
     VideoFrameReady,
-    /// Положение/размер offscreen/native-окна монитора в физических пикселях.
-    /// Первый вызов с непустым прямоугольником создаёт окно; последующие — двигают/ресайзят.
+    /// Position/size of the offscreen/native monitor window in physical pixels.
+    /// The first call with a non-empty rect creates the window; later ones move/resize it.
     SetViewport {
         x: i32,
         y: i32,
@@ -82,16 +82,16 @@ pub enum MonitorCommand {
         height: u32,
         visible: bool,
     },
-    /// Показать standalone-окно нативного монитора.
+    /// Show the standalone native monitor window.
     OpenNativeWindow,
-    /// Переключение режима вывода (см. `MonitorMode`).
+    /// Switch the output mode (see `MonitorMode`).
     SetMode(MonitorMode),
-    /// Регистрация channel'а для стрима RGBA-кадров в canvas-режиме.
-    /// Каждый кадр: 8-байтный header (`u32 LE width`, `u32 LE height`) + RGBA8 пиксели.
+    /// Register the channel for streaming RGBA frames in canvas mode.
+    /// Each frame: an 8-byte header (`u32 LE width`, `u32 LE height`) + RGBA8 pixels.
     SetFrameChannel(Channel<InvokeResponseBody>),
-    /// Сброс channel'а стрима RGBA-кадров (например, при unmount canvas-элемента).
+    /// Reset the RGBA-frame stream channel (e.g. when the canvas element unmounts).
     UnsetFrameChannel,
-    /// Размер render target'а в canvas-режиме (физические пиксели). Может отличаться от `SetViewport`.
+    /// Render target size in canvas mode (physical pixels). May differ from `SetViewport`.
     SetCanvasSize {
         width: u32,
         height: u32,
@@ -101,10 +101,10 @@ pub enum MonitorCommand {
 pub struct MonitorHandle {
     proxy: EventLoopProxy<MonitorCommand>,
     _thread: Option<JoinHandle<()>>,
-    /// Сбрасывается в false, когда event-loop завершился. Быстрее Ping-round-trip.
+    /// Set to false when the event loop has exited. Faster than a Ping round-trip.
     alive: Arc<AtomicBool>,
-    /// Latest-wins цель скраба (см. `ScrubTarget`). Пишется в `send` перед каждой
-    /// `Seek`, читается event-loop'ом.
+    /// Latest-wins scrub target (see `ScrubTarget`). Written in `send` before each
+    /// `Seek`, read by the event loop.
     scrub_target: ScrubTarget,
 }
 
@@ -148,9 +148,9 @@ impl MonitorHandle {
         if !self.is_alive() {
             return Err(anyhow!("monitor event loop is no longer alive"));
         }
-        // Фиксируем последнюю цель скраба ДО отправки события: пока event-loop синхронно
-        // рендерит один кадр, более свежие `Seek`'и перезаписывают слот, а устаревшие
-        // события находят его пустым и схлопываются в no-op (см. `ScrubTarget`).
+        // Record the latest scrub target BEFORE sending the event: while the event loop
+        // synchronously renders one frame, newer `Seek`s overwrite the slot, and stale
+        // events find it empty and collapse into a no-op (see `ScrubTarget`).
         if let MonitorCommand::Seek { time_sec, explicit } = &cmd {
             if let Ok(mut slot) = self.scrub_target.lock() {
                 *slot = Some((*time_sec, *explicit));

@@ -1,7 +1,7 @@
-//! Декод статичных изображений (PNG/JPEG/WebP) через crate `image`.
+//! Decoding static images (PNG/JPEG/WebP) via the `image` crate.
 //!
-//! Возвращаем RGBA8 `ImageData` для прямой отрисовки Vello-композитором.
-//! Альфа важна: PNG/WebP могут нести прозрачность — отдаём её как straight alpha.
+//! Returns RGBA8 `ImageData` for direct drawing by the Vello compositor.
+//! Alpha matters: PNG/WebP can carry transparency — we return it as straight alpha.
 
 use std::path::Path;
 use std::sync::Arc;
@@ -33,7 +33,7 @@ pub fn decode_image(path: &Path) -> Result<DecodedImage> {
     let image = ImageData {
         data: blob,
         format: ImageFormat::Rgba8,
-        // `image` отдаёт straight (unpremultiplied) RGBA.
+        // `image` returns straight (unpremultiplied) RGBA.
         alpha_type: ImageAlphaType::Alpha,
         width,
         height,
@@ -45,8 +45,8 @@ pub fn decode_image(path: &Path) -> Result<DecodedImage> {
     })
 }
 
-/// Расширения, которые мы трактуем как «статичное изображение» — это маркер для
-/// бриджа/IPC, чтобы он мог разделить video vs image без перепарсинга.
+/// Extensions we treat as a "static image" — this is a marker for the
+/// bridge/IPC so it can separate video vs image without re-parsing.
 pub fn is_image_extension(ext: &str) -> bool {
     matches!(
         ext.to_ascii_lowercase().as_str(),

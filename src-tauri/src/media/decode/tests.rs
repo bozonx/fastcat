@@ -294,29 +294,29 @@ fn ffmpeg_next_decoder_seek_keep_preseek_emits_preseek_frames() {
     let target = 0.5;
     decoder.seek(target).unwrap();
 
-    // В режиме keep_preseek мы должны получить кадры ДО target (начиная с keyframe на 0.0)
+    // In keep_preseek mode we must get frames BEFORE target (starting from the keyframe at 0.0)
     let mut frames = Vec::new();
     while let Some(frame) = decoder.next_frame_keep_preseek().unwrap() {
         frames.push(frame);
-        // Прервем, если дошли до target (чтобы не декодировать весь файл до конца)
+        // Stop once we reach target (so we don't decode the whole file to the end)
         if decoder.seek_target.is_none() {
             break;
         }
     }
 
-    // Мы должны получить несколько кадров
+    // We must get several frames
     assert!(
         frames.len() > 1,
         "expected multiple preseek frames, got {}",
         frames.len()
     );
-    // Первый кадр должен быть около 0.0 (ключевой кадр)
+    // The first frame should be near 0.0 (the keyframe)
     assert!(
         frames[0].pts_sec < 0.1,
         "first frame should be keyframe, got {}",
         frames[0].pts_sec
     );
-    // Последний кадр должен быть близок к target
+    // The last frame should be close to target
     let last_pts = frames.last().unwrap().pts_sec;
     let fps = decoder.effective_fps();
     assert!(

@@ -39,6 +39,14 @@ mod materializer;
 
 use device_context::{DeviceContext, OffscreenTarget};
 
+/// The wgpu device + queue pair. They are always passed together through the
+/// materialization passes, so bundling them keeps those signatures readable.
+#[derive(Clone, Copy)]
+pub(crate) struct GpuCtx<'a> {
+    pub device: &'a wgpu::Device,
+    pub queue: &'a wgpu::Queue,
+}
+
 pub struct Compositor {
     devices: DeviceContext,
     effect_pipelines: HashMap<usize, EffectPipeline>,
@@ -291,9 +299,9 @@ impl Compositor {
         source_kind: &TransitionSource,
         layers: &[super::scene::Layer],
         i: usize,
-        device: &wgpu::Device,
-        queue: &wgpu::Queue,
+        ctx: GpuCtx<'_>,
     ) -> Result<Option<EffectSource>> {
+        let GpuCtx { device, queue } = ctx;
         let source = match source_kind {
             TransitionSource::Layer(id) => {
                 let Some(layer) = layers.iter().find(|layer| &layer.id == id).cloned() else {
@@ -365,8 +373,7 @@ impl Compositor {
                     &source_kind,
                     layers,
                     i,
-                    device,
-                    queue,
+                    GpuCtx { device, queue },
                 )?
                 else {
                     continue;
@@ -388,11 +395,13 @@ impl Compositor {
                 match pipeline.apply_transition(
                     device,
                     queue,
-                    from_source,
-                    to_source,
-                    &trans_info.spec,
-                    trans_info.progress,
-                    trans_info.speed_multiplier,
+                    crate::compositor::transitions::TransitionRequest {
+                        from_source,
+                        to_source,
+                        spec: &trans_info.spec,
+                        progress: trans_info.progress,
+                        speed: trans_info.speed_multiplier,
+                    },
                 ) {
                     Ok(processed) => {
                         layers[i].kind = LayerKind::Raster {
@@ -488,8 +497,7 @@ impl Compositor {
                 } else {
                     let (processed, _) = self.apply_effects_to_texture(
                         dev_id,
-                        device,
-                        queue,
+                        GpuCtx { device, queue },
                         &source,
                         &others,
                         false,
@@ -531,8 +539,7 @@ impl Compositor {
 
         let (processed, padding) = self.apply_effects_to_texture(
             dev_id,
-            device,
-            queue,
+            GpuCtx { device, queue },
             &source,
             &layer.effects,
             true,
@@ -598,8 +605,7 @@ impl Compositor {
                     )?;
                     let (processed, _) = self.apply_effects_to_texture(
                         dev_id,
-                        device,
-                        queue,
+                        GpuCtx { device, queue },
                         &EffectSource::from_texture(texture),
                         &layer.effects,
                         false,
@@ -694,8 +700,7 @@ impl Compositor {
             } else {
                 self.apply_effects_to_texture(
                     dev_id,
-                    device,
-                    queue,
+                    GpuCtx { device, queue },
                     &source,
                     &track.effects,
                     false,
@@ -753,8 +758,7 @@ impl Compositor {
         }
         let (processed, _) = self.apply_effects_to_texture(
             dev_id,
-            device,
-            queue,
+            GpuCtx { device, queue },
             &base,
             &layer.effects,
             false,
@@ -789,7 +793,7 @@ impl Compositor {
                 natural_size,
                 padding: None,
             },
-            transform: layer.transform.clone(),
+            transform: layer.transform,
             opacity: layer.opacity,
             blend: BlendMode::Normal,
             mask: layer.mask.clone(),
@@ -956,13 +960,13 @@ impl Compositor {
     pub(crate) fn apply_effects_to_texture(
         &mut self,
         dev_id: usize,
-        device: &wgpu::Device,
-        queue: &wgpu::Queue,
+        ctx: GpuCtx<'_>,
         source: &EffectSource,
         effects: &[EffectSpec],
         enable_padding: bool,
         quality: crate::compositor::effects::EffectQuality,
     ) -> Result<(Arc<crate::media::SharedTexture>, u32)> {
+        let GpuCtx { device, queue } = ctx;
         let cache = self.devices.pipeline_caches.get(&dev_id);
         let pipeline = self
             .effect_pipelines

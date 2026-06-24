@@ -1,12 +1,12 @@
-//! Нативный монитор: отдельное winit-окно с wgpu surface, рендер через Vello.
+//! Native monitor: a separate winit window with a wgpu surface, rendered via Vello.
 //!
-//! Раскладка:
+//! Layout:
 //! - `app`      — winit ApplicationHandler (`MonitorApp`) + `WindowState` (coordinator).
-//! - `clock`    — `PlaybackClock`: арифметика timeline-времени без знания о GPU/UI.
-//! - `frame_cache` — `VideoFrameCache` + sampler: кеш декодированных кадров на слой.
-//! - `runtime`  — `LayerRuntimeManager`: lifecycle декодеров, diff сцен, compositor-снимок.
-//! - `handle`   — `MonitorHandle`: тонкий proxy к потоку монитора.
-//! - `scene`    — IPC-DTO от фронта: `MonitorScene`, `SceneLayer`, `SceneLayerTransform`.
+//! - `clock`    — `PlaybackClock`: timeline-time arithmetic with no knowledge of GPU/UI.
+//! - `frame_cache` — `VideoFrameCache` + sampler: per-layer cache of decoded frames.
+//! - `runtime`  — `LayerRuntimeManager`: decoder lifecycle, scene diff, compositor snapshot.
+//! - `handle`   — `MonitorHandle`: a thin proxy to the monitor thread.
+//! - `scene`    — IPC DTOs from the frontend: `MonitorScene`, `SceneLayer`, `SceneLayerTransform`.
 
 mod app;
 mod audio_telemetry;

@@ -23,6 +23,7 @@ pub(crate) mod yuv;
 
 mod engine;
 pub use engine::Compositor;
+pub(crate) use engine::GpuCtx;
 
 mod render_telemetry;
 

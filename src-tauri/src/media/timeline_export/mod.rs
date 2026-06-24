@@ -26,7 +26,7 @@ use crate::compositor::Compositor;
 use crate::monitor::scene::MonitorScene;
 
 use super::ffmpeg::utils::*;
-use super::processing::{now_millis, spawn_stderr_drain, NativeMediaTasks};
+use super::processing::{now_millis, spawn_stderr_drain, NativeMediaTasks, StderrDrain};
 use super::types::HwAccelMode;
 
 pub(crate) mod audio;
@@ -168,7 +168,7 @@ pub fn export_timeline(
             .unwrap_or(DEFAULT_AUDIO_SAMPLE_RATE)
             .clamp(8_000, 192_000);
         let last_reported_pct = std::sync::atomic::AtomicU32::new(0);
-        if let Err(e) = render_scene_to_wav(crate::audio::mix::WavRenderParams {
+        render_scene_to_wav(crate::audio::mix::WavRenderParams {
             scene: &scene.audio_layers,
             tracks: &scene.audio_tracks,
             master_gain,
@@ -189,11 +189,7 @@ pub fn export_timeline(
                 }
             }),
         })
-        .context("failed to render native audio mix")
-        {
-            // `temp_audio` (the guard) drops on return and removes the file.
-            return Err(e);
-        }
+        .context("failed to render native audio mix")?;
         Some(path)
     } else {
         None
@@ -206,12 +202,14 @@ pub fn export_timeline(
     let direct_plan = plan_direct(
         &scene,
         &options,
-        width,
-        height,
-        start,
-        end,
-        fps,
-        frame_count,
+        direct::DirectExportParams {
+            width,
+            height,
+            start,
+            end,
+            fps,
+            frame_count,
+        },
     );
     if direct_plan.is_some() {
         log::info!("[native-export] using direct transcode (single untouched clip)");
@@ -279,7 +277,11 @@ pub fn export_timeline(
         // Drain stderr in background to avoid pipe deadlock, recording the last time
         // ffmpeg emitted anything so the watchdog can tell a true stall from a slow
         // but otherwise healthy encode.
-        let (stderr_handle, last_activity, _stderr_buf) = spawn_stderr_drain(&mut child);
+        let StderrDrain {
+            handle: stderr_handle,
+            last_activity,
+            ..
+        } = spawn_stderr_drain(&mut child);
 
         // Register the process so `native_media_cancel(task_id)` can stop it.
         let child = tasks.insert(task_id, child);

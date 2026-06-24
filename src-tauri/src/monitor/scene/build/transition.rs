@@ -1,4 +1,4 @@
-//! Логика переходов (dissolve, wipe и т.д.) и кривые Безье.
+//! Transition logic (dissolve, wipe, etc.) and Bézier curves.
 
 use crate::monitor::scene::SceneLayer;
 
@@ -40,10 +40,11 @@ pub fn compute_transition_opacity(sl: &SceneLayer, local_t: f64, base_opacity: f
 
     if apply_in {
         if let Some(t_in) = &sl.transition_in {
-            // Dissolve с from-слоем и spec рендерится как шейдерный crossfade (см.
-            // `finalize_layer`); гасить альфой здесь же — двойное затухание. Альфа нужна
-            // только когда блендить не с чем: dissolve без from-слоя (первый клип на
-            // таймлайне) проявляется из фона.
+            // A dissolve with a from-layer and spec is rendered as a shader crossfade
+            // (see `finalize_layer`); fading with alpha here too would double-fade.
+            // Alpha is only needed when there is nothing to blend with: a dissolve
+            // without a from-layer (the first clip on the timeline) fades in from the
+            // background.
             let rendered_by_shader = t_in.spec.is_some()
                 && (t_in.from_layer_id.is_some()
                     || matches!(t_in.mode.as_deref(), Some("background" | "transparent")));

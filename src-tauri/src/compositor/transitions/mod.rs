@@ -1,5 +1,5 @@
-//! Переходы между двумя сценами (например A→B на стыке клипов).
-//! Каждый transition — wgpu shader pass над двумя текстурами (from, to) + прогресс 0..1.
+//! Transitions between two scenes (e.g. A→B at a clip seam).
+//! Each transition is a wgpu shader pass over two textures (from, to) + progress 0..1.
 
 use anyhow::{anyhow, Result};
 use bytemuck::{Pod, Zeroable};
@@ -12,6 +12,18 @@ use wgpu::util::DeviceExt;
 
 use crate::compositor::effects::EffectSource;
 use crate::compositor::gpu_utils::{create_rgba8_texture, image_pixels_rgba8};
+
+/// One transition to render: the two input frames, the shader spec, and where
+/// along the transition we currently are.
+pub struct TransitionRequest<'a> {
+    pub from_source: &'a EffectSource,
+    pub to_source: &'a EffectSource,
+    pub spec: &'a TransitionSpec,
+    /// Eased progress in `0.0..=1.0`.
+    pub progress: f32,
+    /// Playback speed multiplier (used by motion-aware transitions).
+    pub speed: f32,
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "kebab-case")]
@@ -27,7 +39,7 @@ pub enum TransitionSpec {
     FadeThroughColor {
         color: String,
     },
-    /// Произвольный WGSL.
+    /// Arbitrary WGSL.
     CustomWgsl {
         source: String,
         params: serde_json::Value,
@@ -49,9 +61,9 @@ pub struct TransitionUniform {
     pub progress: f32,
     pub width: u32,
     pub height: u32,
-    /// Мгновенная скорость кривой (производная, linear == 1.0). Шейдеры motion-blur
-    /// умножают на неё величину размытия. Занимает бывший слот выравнивания `pad`,
-    /// поэтому раскладка uniform-буфера (64 байта) не меняется.
+    /// Instantaneous curve speed (derivative, linear == 1.0). Motion-blur shaders
+    /// multiply the blur amount by it. Occupies the former `pad` alignment slot, so
+    /// the uniform buffer layout (64 bytes) is unchanged.
     pub speed: f32,
     pub p0: f32,
     pub p1: f32,
@@ -71,7 +83,7 @@ pub struct TransitionPipeline {
     bind_layout: wgpu::BindGroupLayout,
     pipelines: HashMap<u64, Arc<wgpu::ComputePipeline>>,
     pipeline_cache: Option<wgpu::PipelineCache>,
-    /// Билинейный blit-проход: приводит входы перехода к выходному размеру.
+    /// Bilinear blit pass: brings transition inputs to the output size.
     blit_layout: wgpu::BindGroupLayout,
     blit_pipeline: wgpu::ComputePipeline,
 }
@@ -85,9 +97,9 @@ struct BlitUniform {
     src_h: u32,
 }
 
-/// Билинейное масштабирование `src` → выходной размер. Шейдеры переходов читают обе
-/// текстуры по координатам выходного размера (`max(from, to)`); без этого blit'а
-/// меньший вход давал `textureLoad` за границей (= чёрные/прозрачные края).
+/// Bilinear scale of `src` → the output size. Transition shaders read both textures
+/// at output-size coordinates (`max(from, to)`); without this blit a smaller input
+/// would `textureLoad` out of bounds (= black/transparent edges).
 const BLIT_SHADER: &str = r#"
 struct BlitU { out_w: u32, out_h: u32, src_w: u32, src_h: u32 };
 @group(0) @binding(0) var src_tex: texture_2d<f32>;
@@ -233,11 +245,12 @@ impl TransitionPipeline {
         }
     }
 
-    /// Готовит вход перехода как текстуру РОВНО `width×height`. Если источник уже
-    /// нужного размера — отдаёт его напрямую (GPU: дешёвый клон хэндла; CPU: залитую
-    /// временную текстуру без лишнего blit-копи); иначе билинейно масштабирует.
-    /// Blit-проход пишется в переданный `encoder` — вызывающий сабмитит один раз вместе
-    /// с самим переходом, без отдельных `queue.submit` на каждый вход.
+    /// Prepares a transition input as a texture of EXACTLY `width×height`. If the
+    /// source is already the needed size it is returned directly (GPU: a cheap handle
+    /// clone; CPU: an uploaded temporary texture with no extra blit copy); otherwise it
+    /// is bilinearly scaled. The blit pass is written into the supplied `encoder` — the
+    /// caller submits once together with the transition itself, with no separate
+    /// `queue.submit` per input.
     fn prepare_input(
         &self,
         device: &wgpu::Device,
@@ -250,8 +263,8 @@ impl TransitionPipeline {
         let (src_tex, src_w, src_h) = match source {
             EffectSource::Cpu(img) => {
                 let tex = create_temp_texture(device, queue, img)?;
-                // CPU-вход уже точного размера — отдаём залитую текстуру напрямую
-                // (она read-only для шейдера перехода), без полнокадрового blit-копи.
+                // CPU input is already the exact size — return the uploaded texture
+                // directly (it's read-only for the transition shader), no full-frame blit copy.
                 if img.width == width && img.height == height {
                     return Ok(tex);
                 }
@@ -354,12 +367,15 @@ impl TransitionPipeline {
         &mut self,
         device: &wgpu::Device,
         queue: &wgpu::Queue,
-        from_source: &EffectSource,
-        to_source: &EffectSource,
-        spec: &TransitionSpec,
-        progress: f32,
-        speed: f32,
+        request: TransitionRequest<'_>,
     ) -> Result<wgpu::Texture> {
+        let TransitionRequest {
+            from_source,
+            to_source,
+            spec,
+            progress,
+            speed,
+        } = request;
         let (w_from, h_from) = match from_source {
             EffectSource::Cpu(img) => (img.width, img.height),
             EffectSource::Gpu(tex) => (tex.width(), tex.height()),
@@ -382,28 +398,30 @@ impl TransitionPipeline {
             return Err(anyhow!("Invalid texture size for transition: 0x0"));
         }
 
-        // Выбор/компиляция шейдера (выполняется до заимствования resources, так как требует &mut self)
+        // Select/compile the shader (done before borrowing resources, since it needs &mut self)
         let shader_source = get_shader_source(spec);
         let pipeline = self.get_or_create_pipeline(device, &shader_source)?;
 
-        // Весь переход (оба blit'а входов + сам compute-пасс) пишем в ОДИН encoder и
-        // сабмитим единожды — раньше каждый `prepare_input` делал свой `queue.submit`,
-        // т.е. до трёх сабмитов на переход на кадр (лишний driver-overhead).
+        // Write the whole transition (both input blits + the compute pass itself) into
+        // ONE encoder and submit once — previously each `prepare_input` did its own
+        // `queue.submit`, i.e. up to three submits per transition per frame (extra
+        // driver overhead).
         let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
             label: Some("native-transition-encoder"),
         });
 
-        // Приводим оба входа к выходному размеру (билинейно), иначе вход меньшего
-        // размера читался бы за границей в шейдере перехода → чёрные края.
+        // Bring both inputs to the output size (bilinearly), otherwise a smaller input
+        // would be read out of bounds in the transition shader → black edges.
         let from_tex =
             self.prepare_input(device, queue, &mut encoder, from_source, width, height)?;
         let to_tex = self.prepare_input(device, queue, &mut encoder, to_source, width, height)?;
 
-        // Рендерим переход сразу в owned-текстуру результата. Раньше писали в кешированную
-        // `resources.output` и копировали её наружу — лишний полнокадровый GPU→GPU копи на
-        // каждый переход на кадр. Результат всё равно уходит вверх по сцене как owned-Arc,
-        // так что финальная текстура и есть таргет compute-пасса. Кеш не нужен: аллокация
-        // ровно одной выходной текстуры за вызов — то же, что делал прежний `copy_texture_owned`.
+        // Render the transition straight into an owned result texture. Previously we
+        // wrote into a cached `resources.output` and copied it out — an extra full-frame
+        // GPU→GPU copy per transition per frame. The result goes up the scene as an
+        // owned Arc anyway, so the final texture IS the compute pass target. No cache
+        // needed: allocating exactly one output texture per call — the same as the old
+        // `copy_texture_owned` did.
         let output = create_rgba8_texture(
             device,
             "native-transition-owned-output",
@@ -418,7 +436,7 @@ impl TransitionPipeline {
         let from_texture = from_tex.create_view(&wgpu::TextureViewDescriptor::default());
         let to_texture = to_tex.create_view(&wgpu::TextureViewDescriptor::default());
 
-        // Заполнение Uniform буфера
+        // Fill the uniform buffer
         let uniform_data = build_uniform(spec, progress, speed, width, height);
         let uniform_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("native-transition-uniform"),
@@ -426,7 +444,7 @@ impl TransitionPipeline {
             usage: wgpu::BufferUsages::UNIFORM,
         });
 
-        // Создание Bind Group
+        // Create the bind group
         let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("native-transition-bind-group"),
             layout: &self.bind_layout,

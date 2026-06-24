@@ -96,9 +96,11 @@ pub(crate) fn build_ffmpeg_args(
             0,
             0,
             export_alpha,
-            false,
-            &extra,
-            color,
+            ExtraEncodeFilters {
+                preserve_aspect: false,
+                extra_filters: &extra,
+                color,
+            },
         );
     } else {
         args.push("-vn".to_string());
@@ -311,13 +313,15 @@ pub(crate) fn build_direct_ffmpeg_args(
         width,
         height,
         false,
-        true,
-        // `setsar=1` pins square output pixels so the geometry matches the vello path
-        // (which always renders square); a normal SAR=1 source is unaffected.
-        &[format!("fps={}", format_fps(fps)), "setsar=1".to_string()],
-        // Direct transcode decodes a real source; ffmpeg already carries its colour
-        // metadata through, so don't override it.
-        None,
+        ExtraEncodeFilters {
+            preserve_aspect: true,
+            // `setsar=1` pins square output pixels so the geometry matches the vello path
+            // (which always renders square); a normal SAR=1 source is unaffected.
+            extra_filters: &[format!("fps={}", format_fps(fps)), "setsar=1".to_string()],
+            // Direct transcode decodes a real source; ffmpeg already carries its colour
+            // metadata through, so don't override it.
+            color: None,
+        },
     );
 
     push_audio_metadata_output_tail(&mut args, options, true, has_audio, target_path);

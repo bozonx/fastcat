@@ -75,12 +75,13 @@ pub(super) fn calculate_padding(effects: &[EffectSpec], scale: f32) -> u32 {
     (max_r * 2.0).ceil() as u32
 }
 
-/// Множитель для пространственных параметров эффектов (blur radius, pixelate size,
-/// chromatic aberration, …), задаваемых пользователем в «пикселях @1080p». Текстура
-/// эффекта = кадр в его реальном разрешении (preview-scaled или export full-res),
-/// поэтому без нормировки одинаковый radius давал РАЗНЫЙ визуальный масштаб в preview
-/// и в экспорте. Нормируем к высоте 1080 → эффект становится фиксированной долей кадра
-/// и совпадает между preview/export и между разными разрешениями источника.
+/// Scale factor for spatial effect parameters (blur radius, pixelate size,
+/// chromatic aberration, …) that the user specifies in "pixels @1080p". The effect
+/// texture is the frame at its real resolution (preview-scaled or export full-res),
+/// so without normalization the same radius produced a DIFFERENT visual scale in
+/// preview and in export. We normalize to a height of 1080 → the effect becomes a
+/// fixed fraction of the frame and matches between preview/export and across
+/// different source resolutions.
 pub(super) fn spatial_scale(height: u32) -> f32 {
     (height as f32 / 1080.0).clamp(0.1, 8.0)
 }
@@ -170,20 +171,32 @@ fn push_blur(
     }
 }
 
+/// Already-clamped bloom shaping parameters (see the caller, which mirrors the
+/// web pass builder's clamps byte-for-byte).
+struct BloomParams {
+    threshold: f32,
+    strength: f32,
+    radius: f32,
+    knee: f32,
+}
+
 /// Bloom: extract bright pass → blur → compose over the *running* image. The
 /// running image (`cur`) is pinned in `base` for the whole effect so compose
 /// blends glow on top of earlier effects' output, not the pristine source.
 fn push_bloom(
     passes: &mut Vec<EffectPass>,
     cur: Buf,
-    threshold: f32,
-    strength: f32,
-    radius: f32,
-    knee: f32,
+    params: BloomParams,
     width: u32,
     height: u32,
     tap_budget: f32,
 ) -> Buf {
+    let BloomParams {
+        threshold,
+        strength,
+        radius,
+        knee,
+    } = params;
     if radius <= 0.0 {
         return cur;
     }
@@ -464,10 +477,12 @@ pub(super) fn build_passes(
                     cur,
                     // Clamp must mirror the web pass builder
                     // (`WebGpuComputeRunner.ts` bloom case) byte-for-byte.
-                    threshold.clamp(0.0, 1.0),
-                    strength.clamp(0.0, MAX_BLOOM_STRENGTH),
-                    (*radius * scale).clamp(0.0, MAX_BLOOM_RADIUS),
-                    knee.clamp(0.0, 1.0),
+                    BloomParams {
+                        threshold: threshold.clamp(0.0, 1.0),
+                        strength: strength.clamp(0.0, MAX_BLOOM_STRENGTH),
+                        radius: (*radius * scale).clamp(0.0, MAX_BLOOM_RADIUS),
+                        knee: knee.clamp(0.0, 1.0),
+                    },
                     width,
                     height,
                     quality.tap_budget(),

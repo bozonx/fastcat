@@ -93,10 +93,20 @@ pub fn push_video_encode_filter_args(
         width,
         height,
         export_alpha,
-        false,
-        &[],
-        None,
+        ExtraEncodeFilters::default(),
     );
+}
+
+/// Extra software filters layered on top of the base video-encode filter chain
+/// by [`push_video_encode_filter_args_with_extra`].
+#[derive(Default)]
+pub struct ExtraEncodeFilters<'a> {
+    /// Letterbox-by-fit instead of stretching when scaling.
+    pub preserve_aspect: bool,
+    /// Software filters prepended before the scale/format/hwupload step.
+    pub extra_filters: &'a [String],
+    /// Optional colour-space matrix/range to pin (and tag) on the output.
+    pub color: Option<ColorSpec>,
 }
 
 /// Builds the `scale=W:H[...]` filter. When `preserve_aspect` is set, the target
@@ -124,10 +134,13 @@ pub fn push_video_encode_filter_args_with_extra(
     width: u32,
     height: u32,
     export_alpha: bool,
-    preserve_aspect: bool,
-    extra_filters: &[String],
-    color: Option<ColorSpec>,
+    extra: ExtraEncodeFilters<'_>,
 ) {
+    let ExtraEncodeFilters {
+        preserve_aspect,
+        extra_filters,
+        color,
+    } = extra;
     let has_scale = width > 0 && height > 0;
     let with_extra = |tail: String| {
         if extra_filters.is_empty() {
@@ -287,9 +300,11 @@ mod tests {
             1280,
             720,
             false,
-            true,
-            &["fps=24".to_string()],
-            None,
+            ExtraEncodeFilters {
+                preserve_aspect: true,
+                extra_filters: &["fps=24".to_string()],
+                color: None,
+            },
         );
         let vf = args
             .windows(2)
@@ -314,9 +329,11 @@ mod tests {
             1920,
             1080,
             false,
-            true,
-            &["fps=30".to_string()],
-            None,
+            ExtraEncodeFilters {
+                preserve_aspect: true,
+                extra_filters: &["fps=30".to_string()],
+                color: None,
+            },
         );
         let vf = args
             .windows(2)
@@ -357,9 +374,11 @@ mod tests {
             0,
             0,
             false,
-            false,
-            &[],
-            Some(ColorSpec::for_output_height(1080)),
+            ExtraEncodeFilters {
+                preserve_aspect: false,
+                extra_filters: &[],
+                color: Some(ColorSpec::for_output_height(1080)),
+            },
         );
         let vf = find_arg(&args, "-vf").expect("expected -vf");
         assert_eq!(vf, "scale=out_color_matrix=bt709:out_range=tv");
@@ -382,9 +401,11 @@ mod tests {
             0,
             0,
             false,
-            false,
-            &[],
-            Some(ColorSpec::for_output_height(480)),
+            ExtraEncodeFilters {
+                preserve_aspect: false,
+                extra_filters: &[],
+                color: Some(ColorSpec::for_output_height(480)),
+            },
         );
         let vf = find_arg(&args, "-vf").expect("expected -vf");
         assert!(vf.contains("out_color_matrix=bt601"), "got: {vf}");
@@ -405,9 +426,11 @@ mod tests {
             0,
             0,
             true,
-            false,
-            &[],
-            Some(ColorSpec::for_output_height(1080)),
+            ExtraEncodeFilters {
+                preserve_aspect: false,
+                extra_filters: &[],
+                color: Some(ColorSpec::for_output_height(1080)),
+            },
         );
         assert!(
             find_arg(&args, "-vf").is_none(),
@@ -426,9 +449,11 @@ mod tests {
             0,
             0,
             false,
-            false,
-            &[],
-            Some(ColorSpec::for_output_height(1080)),
+            ExtraEncodeFilters {
+                preserve_aspect: false,
+                extra_filters: &[],
+                color: Some(ColorSpec::for_output_height(1080)),
+            },
         );
         let vf = find_arg(&args, "-vf").expect("expected -vf");
         assert_eq!(

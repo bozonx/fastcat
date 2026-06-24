@@ -207,7 +207,7 @@ mod tests {
             transition.spec,
             crate::compositor::transitions::TransitionSpec::Crossfade
         ));
-        // И альфа НЕ должна гаситься (шейдер уже блендит) — иначе двойное затухание.
+        // And alpha must NOT be faded (the shader already blends) — otherwise double fade.
         assert!((output.opacity - 1.0).abs() < 1e-6);
     }
 
@@ -653,26 +653,26 @@ mod tests {
 
     #[test]
     fn explicit_background_enabled_false_overrides_present_color() {
-        // Регрессия: явный `backgroundEnabled:false` должен выключать фон даже при
-        // сохранённом непустом `backgroundColor` (раньше OR не давал выключить).
+        // Regression: an explicit `backgroundEnabled:false` must disable the background
+        // even with a saved non-empty `backgroundColor` (previously OR prevented disabling).
         let layer = text_layer_with_style(json!({
             "backgroundEnabled": false,
             "backgroundColor": "#0000ff",
         }));
         assert!(!layer.background_enabled);
 
-        // Без явного флага — включаем по непустому цвету (как web).
+        // Without an explicit flag — enable based on a non-empty color (like web).
         let layer = text_layer_with_style(json!({ "backgroundColor": "#0000ff" }));
         assert!(layer.background_enabled);
 
-        // Явный true остаётся включённым.
+        // An explicit true stays enabled.
         let layer = text_layer_with_style(json!({ "backgroundEnabled": true }));
         assert!(layer.background_enabled);
     }
 
     #[test]
     fn linked_padding_applies_left_to_all_edges() {
-        // Связанные отступы (дефолт): все стороны = left.
+        // Linked padding (default): all sides = left.
         let layer = text_layer_with_style(json!({
             "padding": { "top": 5.0, "right": 5.0, "bottom": 5.0, "left": 40.0 },
         }));
@@ -681,7 +681,7 @@ mod tests {
         assert_eq!(layer.padding_bottom, 40.0);
         assert_eq!(layer.padding_left, 40.0);
 
-        // Несвязанные — каждая сторона своя.
+        // Unlinked — each side independent.
         let layer = text_layer_with_style(json!({
             "paddingLinked": false,
             "padding": { "top": 5.0, "right": 10.0, "bottom": 15.0, "left": 20.0 },

@@ -1,8 +1,8 @@
-//! Сборка доменной `compositor::scene::Scene` из IPC-DTO `MonitorScene`.
+//! Building the domain `compositor::scene::Scene` from the `MonitorScene` IPC DTO.
 //!
-//! Растровые kind'ы (`Video | Image | Svg`) этот модуль НЕ резолвит — он строит
-//! только «виртуальные» слои (`Background | Shape | Text`) и финализирует любой
-//! `CompLayerKind` в `Layer` (transform + opacity + blend).
+//! This module does NOT resolve raster kinds (`Video | Image | Svg`) — it builds
+//! only the "virtual" layers (`Background | Shape | Text`) and finalizes any
+//! `CompLayerKind` into a `Layer` (transform + opacity + blend).
 
 use parley::fontique::FontWeight;
 use parley::style::LineHeight;
@@ -29,9 +29,9 @@ use crate::monitor::scene::{LayerKind, SceneLayer};
 /// `src/utils/video-editor/text-layout.ts` so both reserve identical headroom.
 const SHADOW_BLUR_EXTENT_FACTOR: f32 = 1.5;
 
-/// Строит «виртуальный» (не требующий декода) `CompLayerKind` для слоёв
-/// `Background | Shape | Text`. Для растровых kind'ов возвращает `None` —
-/// их резолвит вызывающий (из кеша или синхронным декодом).
+/// Builds a "virtual" (decode-free) `CompLayerKind` for `Background | Shape | Text`
+/// layers. For raster kinds it returns `None` — those are resolved by the caller
+/// (from the cache or by synchronous decode).
 pub fn build_virtual_kind(sl: &SceneLayer, scene_size: (u32, u32)) -> Option<CompLayerKind> {
     let (scene_w, scene_h) = scene_size;
     match sl.kind {
@@ -195,10 +195,10 @@ pub fn build_text_layer(sl: &SceneLayer, scene_size: (u32, u32)) -> TextLayer {
     );
 
     // Background.
-    // Зеркалит web `normalizeTextClipStyle`: явный булев `backgroundEnabled`
-    // ВСЕГДА авторитетен (в т.ч. `false` = выключено). Только при его отсутствии
-    // включаем по факту непустого `backgroundColor`. Раньше тут было `||`, из-за
-    // чего сохранённый цвет не давал выключить фон.
+    // Mirrors web `normalizeTextClipStyle`: an explicit boolean `backgroundEnabled`
+    // is ALWAYS authoritative (incl. `false` = disabled). Only when it is absent do
+    // we enable based on a non-empty `backgroundColor`. This used to be `||`, which
+    // meant a saved color prevented disabling the background.
     let background_enabled = match style.get("backgroundEnabled").and_then(|v| v.as_bool()) {
         Some(explicit) => explicit,
         None => style
@@ -403,8 +403,8 @@ pub fn layer_with_auto_source_rotation(layer: &SceneLayer, source_rotation: i32)
     }
 }
 
-/// Финализирует `CompLayerKind` в `Layer`: transform (явный или center-fit),
-/// opacity и blend-mode из IPC-слоя.
+/// Finalizes a `CompLayerKind` into a `Layer`: transform (explicit or center-fit),
+/// opacity and blend mode from the IPC layer.
 pub fn finalize_layer(
     sl: &SceneLayer,
     kind: CompLayerKind,

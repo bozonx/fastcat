@@ -1,4 +1,4 @@
-//! Текстовый рендер: parley (layout + shaping) -> vello Glyph runs.
+//! Text rendering: parley (layout + shaping) -> vello Glyph runs.
 
 use parley::fontique::GenericFamily;
 use parley::{FontContext, LayoutContext};

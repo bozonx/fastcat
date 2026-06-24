@@ -6,58 +6,58 @@ import type { SceneTransition } from "./SceneTransition";
 
 export type SceneLayer = { 
 /**
- * Стабильный идентификатор клипа — ключ для diff'а scene и кеша рантаймов.
+ * Stable clip identifier — the key for the scene diff and the runtime cache.
  */
 id: string, kind: LayerKind, 
 /**
- * Абсолютный путь к файлу-источнику. Нужен только для video/image/svg.
+ * Absolute path to the source file. Needed only for video/image/svg.
  */
 path: string, 
 /**
- * `[timeline_start_sec; timeline_end_sec)` — окно видимости на таймлайне.
+ * `[timeline_start_sec; timeline_end_sec)` — the visibility window on the timeline.
  */
 timeline_start_sec: number, timeline_end_sec: number, 
 /**
- * PTS внутри исходника в момент `timeline_start_sec`.
+ * PTS inside the source at `timeline_start_sec`.
  */
 source_start_sec: number, 
 /**
- * Длина доступного source-range в исходнике. Нужна для speed/reverse clamp.
+ * Length of the available source range in the source. Needed for speed/reverse clamp.
  */
 source_range_duration_sec: number, 
 /**
- * Полная длительность исходного медиа (секунды). Используется при переходах,
- * чтобы исходящий (from) клип проигрывал «хвост» за точкой обрезки во время
- * перехода (как в веб-версии), а не застывал на последнем видимом кадре.
- * `None` → длительность неизвестна, хвост недоступен → держим стоп-кадр.
+ * Full duration of the source media (seconds). Used during transitions so the
+ * outgoing (from) clip plays its "tail" past the cut point during the transition
+ * (as in the web version) instead of freezing on the last visible frame.
+ * `None` → duration unknown, no tail available → hold a freeze frame.
  */
 source_duration_sec?: number, 
 /**
- * Скорость воспроизведения video source. Отрицательные значения — reverse.
+ * Playback speed of the video source. Negative values mean reverse.
  */
 speed: number, 
 /**
- * Стоп-кадр: абсолютный PTS внутри исходника.
+ * Freeze frame: an absolute PTS inside the source.
  */
 freeze_frame_source_sec?: number, 
 /**
- * Явная ориентация источника (`auto`, `0`, `90`, `180`, `270`).
+ * Explicit source orientation (`auto`, `0`, `90`, `180`, `270`).
  */
 source_orientation?: string, 
 /**
- * Чем выше — тем поверх. Сортируем по возрастанию.
+ * Higher = on top. Sorted ascending.
  */
 z: number, 
 /**
- * `[0; 1]`, домножается на альфа-канал слоя.
+ * `[0; 1]`, multiplied into the layer's alpha channel.
  */
 opacity: number, 
 /**
- * Blend mode из таймлайна. Поддерживаем текущий frontend-набор.
+ * Blend mode from the timeline. We support the current frontend set.
  */
 blend_mode: BlendMode, background_color?: string, text?: string, style?: import('~/timeline/types').TextClipStyle, shape_type?: string, fill_color?: string, stroke_color?: string, stroke_width?: number, shape_config?: import('~/timeline/types').ShapeConfig, 
 /**
- * Явный трансформ слоя в scene-space.
- * `None` → letterbox center-fit (поведение по умолчанию, совместимость с предыдущими версиями).
+ * Explicit layer transform in scene-space.
+ * `None` → letterbox center-fit (the default, backward-compatible with older versions).
  */
 transform?: SceneLayerTransform, transition_in?: SceneTransition, transition_out?: SceneTransition, effects: import('~/effects').VideoEffectSpec[], };

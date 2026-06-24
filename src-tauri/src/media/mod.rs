@@ -1,7 +1,7 @@
-//! Media pipeline: декод видео на стороне Rust.
+//! Media pipeline: video decoding on the Rust side.
 //!
-//! Сейчас: один процесс ffmpeg на открытый клип, frame queue читается из отдельного потока.
-//! Аудио в Tauri-сборке намеренно отключено — звук обеспечивает веб-AudioEngine (web-сборка).
+//! Currently: one ffmpeg process per open clip; the frame queue is read from a separate thread.
+//! Audio in the Tauri build is intentionally disabled — sound is provided by the web AudioEngine (web build).
 
 use std::collections::HashMap;
 use std::sync::Arc;

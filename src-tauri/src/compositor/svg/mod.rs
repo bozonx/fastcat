@@ -1,6 +1,6 @@
-//! SVG-слой.
+//! SVG layer.
 //!
-//! SVG сейчас приходит в compositor уже как raster `ImageData`: live-preview делает это в
-//! `monitor::runtime`, thumbnail/export — в `media::timeline_render`, общий rasterizer живёт в
-//! `monitor::scene::build::rasterize_svg`. Размер растра выбирается под целевую длинную сторону:
-//! monitor preview учитывает `preview_scale`, export/thumbnail — выходное разрешение кадра.
+//! SVG currently arrives at the compositor already as a raster `ImageData`: live preview does this in
+//! `monitor::runtime`, thumbnail/export in `media::timeline_render`, and the shared rasterizer lives in
+//! `monitor::scene::build::rasterize_svg`. The raster size is chosen for the target long edge:
+//! monitor preview accounts for `preview_scale`, export/thumbnail for the output frame resolution.

@@ -479,10 +479,22 @@ fn one_clip_scene(layer: crate::monitor::scene::SceneLayer) -> crate::monitor::s
 /// path may only engage on a single untouched, frame-filling clip.
 #[test]
 fn plan_direct_rejects_non_trivial_scenes() {
-    use super::direct::plan_direct;
+    use super::direct::{plan_direct, DirectExportParams};
     let opts = base_options();
     let call = |scene: &crate::monitor::scene::MonitorScene| {
-        plan_direct(scene, &opts, 1920, 1080, 0.0, 10.0, 30.0, 300).is_some()
+        plan_direct(
+            scene,
+            &opts,
+            DirectExportParams {
+                width: 1920,
+                height: 1080,
+                start: 0.0,
+                end: 10.0,
+                fps: 30.0,
+                frame_count: 300,
+            },
+        )
+        .is_some()
     };
 
     // An effect forces real compositing.
@@ -533,17 +545,19 @@ fn plan_direct_rejects_non_trivial_scenes() {
     assert!(!call(&scene));
 
     // Export viewport differs from the scene (vello's scene→viewport fit is non-trivial).
-    assert!(!plan_direct(
+    assert!(plan_direct(
         &one_clip_scene(video_layer()),
         &opts,
-        1280,
-        720,
-        0.0,
-        10.0,
-        30.0,
-        300
+        DirectExportParams {
+            width: 1280,
+            height: 720,
+            start: 0.0,
+            end: 10.0,
+            fps: 30.0,
+            frame_count: 300,
+        },
     )
-    .is_some());
+    .is_none());
 }
 
 #[test]

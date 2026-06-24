@@ -23,13 +23,17 @@ pub(crate) fn now_millis() -> u64 {
         .as_millis() as u64
 }
 
-pub(crate) fn spawn_stderr_drain(
-    child: &mut Child,
-) -> (
-    Option<JoinHandle<Vec<u8>>>,
-    Arc<AtomicU64>,
-    Arc<Mutex<Vec<u8>>>,
-) {
+/// Background drain of an ffmpeg child's stderr.
+pub(crate) struct StderrDrain {
+    /// Join handle yielding the full captured stderr bytes once the pipe closes.
+    pub handle: Option<JoinHandle<Vec<u8>>>,
+    /// Millis of the last stderr activity, used by the stall guard.
+    pub last_activity: Arc<AtomicU64>,
+    /// Live partial stderr buffer, readable while the process is still running.
+    pub shared_buf: Arc<Mutex<Vec<u8>>>,
+}
+
+pub(crate) fn spawn_stderr_drain(child: &mut Child) -> StderrDrain {
     let last_activity = Arc::new(AtomicU64::new(now_millis()));
     let activity = last_activity.clone();
     let shared_buf = Arc::new(Mutex::new(Vec::new()));
@@ -52,7 +56,11 @@ pub(crate) fn spawn_stderr_drain(
             buf
         })
     });
-    (handle, last_activity, shared_buf)
+    StderrDrain {
+        handle,
+        last_activity,
+        shared_buf,
+    }
 }
 
 fn parse_ffmpeg_time(stderr_text: &str) -> Option<f64> {
@@ -93,7 +101,11 @@ pub(crate) fn run_ffmpeg_task(
         .spawn()
         .context("failed to spawn ffmpeg")?;
 
-    let (stderr_handle, last_activity, shared_buf) = spawn_stderr_drain(&mut child);
+    let StderrDrain {
+        handle: stderr_handle,
+        last_activity,
+        shared_buf,
+    } = spawn_stderr_drain(&mut child);
     let child = tasks.insert(task_id, child);
 
     loop {

@@ -4,6 +4,6 @@ import type { AudioFadeCurve } from "./AudioFadeCurve";
 
 export type SceneAudioLayer = { id: string, track_id?: string, path: string, timeline_start_sec: number, timeline_end_sec: number, source_start_sec: number, 
 /**
- * Длина доступного source-range в исходнике. Нужна для speed/reverse clamp.
+ * Length of the available source range in the source. Needed for speed/reverse clamp.
  */
 source_range_duration_sec: number, speed: number, audio_gain: number, audio_balance: number, audio_fade_in_sec: number, audio_fade_out_sec: number, audio_fade_in_curve: AudioFadeCurve, audio_fade_out_curve: AudioFadeCurve, audio_effects: Array<AudioEffectSpec>, };

@@ -1,12 +1,12 @@
-//! Парсинг IPC-полей из `serde_json::Value` в типы compositor.
+//! Parsing IPC fields from `serde_json::Value` into compositor types.
 
 use vello::peniko::Color;
 
 use crate::compositor::scene::{BlendMode, ShapeGeometry, TextAlign, TextVerticalAlign};
 
-/// Маппинг строкового blend-mode из таймлайна в `compositor::scene::BlendMode`.
-/// Поддерживает полный набор CSS/Pixi-режимов (тот же список, что фронтовый
-/// `TimelineBlendMode`). Неизвестное значение → `Normal`.
+/// Maps a string blend mode from the timeline to `compositor::scene::BlendMode`.
+/// Supports the full set of CSS/Pixi modes (the same list as the frontend
+/// `TimelineBlendMode`). An unknown value → `Normal`.
 pub fn parse_blend_mode(value: &str) -> BlendMode {
     match value {
         "add" | "plus" | "linear-dodge" => BlendMode::Add,
@@ -167,7 +167,7 @@ pub fn number_opt(value: &serde_json::Value, key: &str) -> Option<f64> {
         .filter(|v| v.is_finite())
 }
 
-/// Доля из процентного поля: `number/100`, clamp 0..10.
+/// Fraction from a percentage field: `number/100`, clamped to 0..10.
 pub fn percent(value: &serde_json::Value, key: &str, fallback: f64) -> f64 {
     (number(value, key, fallback) / 100.0).clamp(0.0, 10.0)
 }

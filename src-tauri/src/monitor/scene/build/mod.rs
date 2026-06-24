@@ -1,15 +1,15 @@
-//! Сборка доменной `compositor::scene::Scene` из IPC-DTO `MonitorScene`.
+//! Building the domain `compositor::scene::Scene` from the `MonitorScene` IPC DTO.
 //!
-//! Раньше эта логика была продублирована в `monitor::runtime` (live-preview) и
-//! `media::timeline_render` (thumbnail/export) — два почти идентичных набора
-//! `parse_*`-хелперов и веток сборки слоёв. Теперь общий код живёт здесь, а
-//! вызывающие отличаются только тем, КАК резолвят растровые слои (video/image/svg):
-//!   - live: из кеша декодеров (`LayerRuntimeManager`);
-//!   - export/thumbnail: синхронным декодом.
+//! This logic used to be duplicated in `monitor::runtime` (live preview) and
+//! `media::timeline_render` (thumbnail/export) — two nearly identical sets of
+//! `parse_*` helpers and layer-build branches. The shared code now lives here, and
+//! the callers differ only in HOW they resolve raster layers (video/image/svg):
+//!   - live: from the decoder cache (`LayerRuntimeManager`);
+//!   - export/thumbnail: by synchronous decode.
 //!
-//! Растровые kind'ы (`Video | Image | Svg`) этот модуль НЕ резолвит — он строит
-//! только «виртуальные» слои (`Background | Shape | Text`) и финализирует любой
-//! `CompLayerKind` в `Layer` (transform + opacity + blend).
+//! This module does NOT resolve raster kinds (`Video | Image | Svg`) — it builds
+//! only the "virtual" layers (`Background | Shape | Text`) and finalizes any
+//! `CompLayerKind` into a `Layer` (transform + opacity + blend).
 
 pub mod compositor_scene;
 pub mod ipc_parsers;

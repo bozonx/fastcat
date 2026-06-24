@@ -10,7 +10,7 @@ import type { SceneVideoTrack } from "./SceneVideoTrack";
 
 export type MonitorScene = { layers: Array<SceneLayer>, video_tracks: Array<SceneVideoTrack>, audio_layers: Array<SceneAudioLayer>, audio_tracks: Array<SceneAudioTrack>, 
 /**
- * Master audio bus gain. Effects/track buses подключатся поверх этой модели позже.
+ * Master audio bus gain. Effects/track buses will be layered on top of this model later.
  */
 audio_master_gain: number, audio_master_muted: boolean, 
 /**
@@ -18,14 +18,14 @@ audio_master_gain: number, audio_master_muted: boolean,
  */
 width: number, height: number, 
 /**
- * Preview-scale: 1.0 = 1/1, 0.5 = 1/2 и т.д. Прокидывается в ffmpeg `-vf scale`.
- * Даёт значительную экономию CPU/GPU на 4K source'ах в маленьком preview.
- * `None` или отсутствие → декод в нативном разрешении.
+ * Preview scale: 1.0 = 1/1, 0.5 = 1/2, etc. Passed through to ffmpeg `-vf scale`.
+ * Saves significant CPU/GPU on 4K sources in a small preview.
+ * `None` or absent → decode at native resolution.
  */
 preview_scale?: number, 
 /**
- * Целевой FPS preview-рендера. По умолчанию 30. Большинство source — 24/25/30,
- * поэтому 30 достаточно; для 60fps source укажите 60.
+ * Target FPS of the preview render. Default 30. Most sources are 24/25/30, so 30
+ * is enough; for 60fps sources specify 60.
  */
 preview_fps: number, 
 /**

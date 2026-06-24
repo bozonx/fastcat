@@ -1,4 +1,4 @@
-//! Трансформации, ориентация и crop-логика для слоёв.
+//! Layer transform, orientation and crop logic.
 
 use crate::compositor::scene::{LayerKind as CompLayerKind, Transform};
 use crate::media::ffmpeg::utils::is_quarter_turn;

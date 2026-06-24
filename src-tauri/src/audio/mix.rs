@@ -73,16 +73,17 @@ pub fn render_scene_to_wav(params: WavRenderParams<'_>) -> anyhow::Result<()> {
             .max(1);
         let chunk_duration = chunk_frames as f64 / target.sample_rate as f64;
         let chunk_start = start + written_frames as f64 / target.sample_rate as f64;
-        let chunk = mix_chunk_strict(
-            params.scene,
-            params.tracks,
-            params.master_gain,
-            params.audio_master_effects,
-            chunk_start,
-            chunk_duration,
+        let chunk = mix_chunk_strict(MixChunkParams {
+            scene: params.scene,
+            tracks: params.tracks,
+            master_gain: params.master_gain,
+            audio_master_effects: params.audio_master_effects,
+            prev_master_gain: None,
+            chunk_start_sec: chunk_start,
+            chunk_duration_sec: chunk_duration,
             target,
-            &shared,
-        )?;
+            shared: &shared,
+        })?;
         let samples_to_write = chunk_frames as usize * target.channels;
         for sample in chunk.into_iter().take(samples_to_write) {
             file.write_all(&sample.to_le_bytes())?;
@@ -216,51 +217,47 @@ pub fn render_scene_to_samples(
     result
 }
 
-pub(crate) fn mix_chunk(
-    scene: &[SceneAudioLayer],
-    tracks: &[SceneAudioTrack],
-    master_gain: f64,
-    audio_master_effects: &[crate::audio::plugins::AudioEffectSpec],
-    chunk_start_sec: f64,
-    chunk_duration_sec: f64,
-    target: AudioRenderTarget,
-    shared: &Arc<(Mutex<AudioShared>, Condvar)>,
-) -> Vec<f32> {
-    mix_chunk_ramped_result(
-        scene,
-        tracks,
-        master_gain,
-        audio_master_effects,
-        None,
-        chunk_start_sec,
-        chunk_duration_sec,
-        target,
-        shared,
-        DecodeErrorPolicy::WarnAndSkip,
-    )
-    .expect("warn-and-skip audio mix policy must not return decode errors")
+/// Common inputs to the chunk mixer. Bundled into a struct because the mixer is
+/// driven from several paths (realtime producer, offline export, scrub preview,
+/// tests) with the same wide parameter set.
+pub(crate) struct MixChunkParams<'a> {
+    pub scene: &'a [SceneAudioLayer],
+    pub tracks: &'a [SceneAudioTrack],
+    pub master_gain: f64,
+    pub audio_master_effects: &'a [crate::audio::plugins::AudioEffectSpec],
+    /// When `Some`, ramp the master gain linearly from this previous-chunk value
+    /// to `master_gain` across the chunk instead of applying it as a per-chunk
+    /// step. This removes the "zipper" heard when the master volume is dragged
+    /// during playback (each 50 ms chunk otherwise jumped to a new constant
+    /// gain). `None` keeps the exact per-chunk behaviour, so offline export,
+    /// scrub previews and tests are unaffected — the ramp only engages on the
+    /// realtime producer path mid-drag.
+    pub prev_master_gain: Option<f64>,
+    pub chunk_start_sec: f64,
+    pub chunk_duration_sec: f64,
+    pub target: AudioRenderTarget,
+    pub shared: &'a Arc<(Mutex<AudioShared>, Condvar)>,
 }
 
-/// Same as [`mix_chunk`] but, when `prev_master_gain` is `Some`, ramps the master
-/// gain linearly from the previous chunk's value to `master_gain` across this
-/// chunk instead of applying it as a per-chunk step. This removes the "zipper"
-/// heard when the master volume is dragged during playback (each 50 ms chunk
-/// otherwise jumped to a new constant gain). `None` keeps the exact original
-/// per-chunk behaviour, so offline export, scrub previews and tests are
-/// unaffected — the ramp only engages on the realtime producer path mid-drag.
-#[allow(clippy::too_many_arguments)]
-pub(crate) fn mix_chunk_ramped(
-    scene: &[SceneAudioLayer],
-    tracks: &[SceneAudioTrack],
-    master_gain: f64,
-    audio_master_effects: &[crate::audio::plugins::AudioEffectSpec],
-    prev_master_gain: Option<f64>,
-    chunk_start_sec: f64,
-    chunk_duration_sec: f64,
-    target: AudioRenderTarget,
-    shared: &Arc<(Mutex<AudioShared>, Condvar)>,
-) -> Vec<f32> {
-    mix_chunk_ramped_result(
+/// Mix one chunk, warning-and-skipping any layer that fails to decode. Used by
+/// the realtime and preview paths, where a single bad layer must not abort
+/// playback.
+pub(crate) fn mix_chunk(params: MixChunkParams<'_>) -> Vec<f32> {
+    mix_chunk_ramped_result(params, DecodeErrorPolicy::WarnAndSkip)
+        .expect("warn-and-skip audio mix policy must not return decode errors")
+}
+
+/// Mix one chunk, propagating any layer decode error. Used by offline export,
+/// where a failed layer must surface as an error rather than silently drop.
+pub(crate) fn mix_chunk_strict(params: MixChunkParams<'_>) -> anyhow::Result<Vec<f32>> {
+    mix_chunk_ramped_result(params, DecodeErrorPolicy::Propagate)
+}
+
+fn mix_chunk_ramped_result(
+    params: MixChunkParams<'_>,
+    decode_error_policy: DecodeErrorPolicy,
+) -> anyhow::Result<Vec<f32>> {
+    let MixChunkParams {
         scene,
         tracks,
         master_gain,
@@ -270,48 +267,7 @@ pub(crate) fn mix_chunk_ramped(
         chunk_duration_sec,
         target,
         shared,
-        DecodeErrorPolicy::WarnAndSkip,
-    )
-    .expect("warn-and-skip audio mix policy must not return decode errors")
-}
-
-pub(crate) fn mix_chunk_strict(
-    scene: &[SceneAudioLayer],
-    tracks: &[SceneAudioTrack],
-    master_gain: f64,
-    audio_master_effects: &[crate::audio::plugins::AudioEffectSpec],
-    chunk_start_sec: f64,
-    chunk_duration_sec: f64,
-    target: AudioRenderTarget,
-    shared: &Arc<(Mutex<AudioShared>, Condvar)>,
-) -> anyhow::Result<Vec<f32>> {
-    mix_chunk_ramped_result(
-        scene,
-        tracks,
-        master_gain,
-        audio_master_effects,
-        None,
-        chunk_start_sec,
-        chunk_duration_sec,
-        target,
-        shared,
-        DecodeErrorPolicy::Propagate,
-    )
-}
-
-#[allow(clippy::too_many_arguments)]
-fn mix_chunk_ramped_result(
-    scene: &[SceneAudioLayer],
-    tracks: &[SceneAudioTrack],
-    master_gain: f64,
-    audio_master_effects: &[crate::audio::plugins::AudioEffectSpec],
-    prev_master_gain: Option<f64>,
-    chunk_start_sec: f64,
-    chunk_duration_sec: f64,
-    target: AudioRenderTarget,
-    shared: &Arc<(Mutex<AudioShared>, Condvar)>,
-    decode_error_policy: DecodeErrorPolicy,
-) -> anyhow::Result<Vec<f32>> {
+    } = params;
     let sample_rate = target.sample_rate;
     let output_channels = target.channels;
     let frames = (chunk_duration_sec * sample_rate as f64).round().max(1.0) as usize;
@@ -348,7 +304,7 @@ fn mix_chunk_ramped_result(
         let mut rms = 0.0f64;
         let mut peak = 0.0f64;
 
-        let active = !(has_solo && !track.audio_solo) && !(!has_solo && track.audio_muted);
+        let active = (!has_solo || track.audio_solo) && (has_solo || !track.audio_muted);
         if active {
             if let Some(layers) = track_layers.get(&track.id) {
                 track_mixed.iter_mut().for_each(|s| *s = 0.0);
@@ -380,7 +336,7 @@ fn mix_chunk_ramped_result(
                 );
 
                 if has_audio_on_track {
-                    let gain = track.audio_gain.max(0.0) as f64;
+                    let gain = track.audio_gain.max(0.0);
                     for &sample in &track_mixed {
                         let abs = sample.abs() as f64 * gain;
                         rms += abs * abs;
@@ -421,7 +377,7 @@ fn mix_chunk_ramped_result(
             mix_layer_into(
                 MixLayerParams {
                     buffer: &mut mixed,
-                    layer: *layer,
+                    layer,
                     chunk_start_sec,
                     chunk_end_sec,
                     frames,
@@ -1223,16 +1179,17 @@ mod tests {
         future.source_start_sec = 0.0;
         future.source_range_duration_sec = 1.0;
 
-        let _ = mix_chunk(
-            &[future],
-            &[],
-            1.0,
-            &[],
-            0.0,
-            0.05,
-            AudioRenderTarget::monitor(48000, 2),
-            &shared,
-        );
+        let _ = mix_chunk(MixChunkParams {
+            scene: &[future],
+            tracks: &[],
+            master_gain: 1.0,
+            audio_master_effects: &[],
+            prev_master_gain: None,
+            chunk_start_sec: 0.0,
+            chunk_duration_sec: 0.05,
+            target: AudioRenderTarget::monitor(48000, 2),
+            shared: &shared,
+        });
 
         assert!(
             wait_for_window(&shared, "future", 0),
@@ -1318,12 +1275,33 @@ mod tests {
 
     #[test]
     fn mix_chunk_none_prev_matches_constant_master_gain() {
-        // `prev_master_gain = None` must be byte-for-byte identical to `mix_chunk`.
+        // Ramping the master gain from an equal previous value must be
+        // byte-for-byte identical to the constant (`prev_master_gain = None`) path.
         let l = layer();
         let shared = Arc::new((Mutex::new(AudioShared::default()), Condvar::new()));
         let target = AudioRenderTarget::monitor(48000, 2);
-        let a = mix_chunk(&[l.clone()], &[], 0.5, &[], 0.0, 0.05, target, &shared);
-        let b = mix_chunk_ramped(&[l], &[], 0.5, &[], None, 0.0, 0.05, target, &shared);
+        let a = mix_chunk(MixChunkParams {
+            scene: std::slice::from_ref(&l),
+            tracks: &[],
+            master_gain: 0.5,
+            audio_master_effects: &[],
+            prev_master_gain: None,
+            chunk_start_sec: 0.0,
+            chunk_duration_sec: 0.05,
+            target,
+            shared: &shared,
+        });
+        let b = mix_chunk(MixChunkParams {
+            scene: &[l],
+            tracks: &[],
+            master_gain: 0.5,
+            audio_master_effects: &[],
+            prev_master_gain: Some(0.5),
+            chunk_start_sec: 0.0,
+            chunk_duration_sec: 0.05,
+            target,
+            shared: &shared,
+        });
         assert_eq!(a, b);
     }
 
@@ -1409,7 +1387,17 @@ mod tests {
 
         let shared = Arc::new((Mutex::new(AudioShared::default()), Condvar::new()));
         let target = AudioRenderTarget::monitor(48000, 2);
-        let chunk = mix_chunk(&[l1, l2], &[t1, t2], 1.0, &[], 0.0, 1.0, target, &shared);
+        let chunk = mix_chunk(MixChunkParams {
+            scene: &[l1, l2],
+            tracks: &[t1, t2],
+            master_gain: 1.0,
+            audio_master_effects: &[],
+            prev_master_gain: None,
+            chunk_start_sec: 0.0,
+            chunk_duration_sec: 1.0,
+            target,
+            shared: &shared,
+        });
         assert_eq!(chunk.len(), (1.0f64 * 48000.0).round() as usize * 2);
     }
 
@@ -1423,7 +1411,17 @@ mod tests {
 
         let shared = Arc::new((Mutex::new(AudioShared::default()), Condvar::new()));
         let target = AudioRenderTarget::monitor(48000, 2);
-        let chunk = mix_chunk(&[l, l2], &[], 10.0, &[], 0.0, 0.01, target, &shared);
+        let chunk = mix_chunk(MixChunkParams {
+            scene: &[l, l2],
+            tracks: &[],
+            master_gain: 10.0,
+            audio_master_effects: &[],
+            prev_master_gain: None,
+            chunk_start_sec: 0.0,
+            chunk_duration_sec: 0.01,
+            target,
+            shared: &shared,
+        });
         assert!(
             chunk.iter().all(|s| s.is_finite()),
             "mix produced non-finite sample"
@@ -1897,28 +1895,30 @@ mod tests {
             );
         }
 
-        let baseline = mix_chunk_strict(
-            &[l.clone()],
-            &[t.clone()],
-            1.0,
-            &[],
-            0.0,
-            0.05,
+        let baseline = mix_chunk_strict(MixChunkParams {
+            scene: std::slice::from_ref(&l),
+            tracks: std::slice::from_ref(&t),
+            master_gain: 1.0,
+            audio_master_effects: &[],
+            prev_master_gain: None,
+            chunk_start_sec: 0.0,
+            chunk_duration_sec: 0.05,
             target,
-            &shared,
-        )
+            shared: &shared,
+        })
         .unwrap();
 
-        let processed = mix_chunk_strict(
-            &[l],
-            &[t],
-            0.5,
-            &[master_effect],
-            0.0,
-            0.05,
+        let processed = mix_chunk_strict(MixChunkParams {
+            scene: &[l],
+            tracks: &[t],
+            master_gain: 0.5,
+            audio_master_effects: &[master_effect],
+            prev_master_gain: None,
+            chunk_start_sec: 0.0,
+            chunk_duration_sec: 0.05,
             target,
-            &shared,
-        )
+            shared: &shared,
+        })
         .unwrap();
 
         assert_eq!(baseline.len(), processed.len());

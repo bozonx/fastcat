@@ -34,20 +34,26 @@ pub(crate) struct DirectPlan {
     pub duration_sec: f64,
 }
 
+/// Frame geometry and timing of the export, shared by [`plan_direct`] and its gate.
+#[derive(Clone, Copy)]
+pub(crate) struct DirectExportParams {
+    pub width: u32,
+    pub height: u32,
+    pub start: f64,
+    pub end: f64,
+    pub fps: f64,
+    pub frame_count: u64,
+}
+
 /// Returns a [`DirectPlan`] when the scene is a single untouched video clip that fills
 /// the export frame, or `None` (fall back to the vello pipeline) otherwise. The reason
 /// for any fall-back is logged at info level so the slow path is never a silent mystery.
 pub(crate) fn plan_direct(
     scene: &MonitorScene,
     options: &NativeExportOptions,
-    width: u32,
-    height: u32,
-    start: f64,
-    end: f64,
-    fps: f64,
-    frame_count: u64,
+    params: DirectExportParams,
 ) -> Option<DirectPlan> {
-    match evaluate_direct(scene, options, width, height, start, end, fps, frame_count) {
+    match evaluate_direct(scene, options, params) {
         Ok(plan) => Some(plan),
         Err(reason) => {
             log::info!(
@@ -63,13 +69,16 @@ pub(crate) fn plan_direct(
 fn evaluate_direct(
     scene: &MonitorScene,
     options: &NativeExportOptions,
-    width: u32,
-    height: u32,
-    start: f64,
-    end: f64,
-    fps: f64,
-    frame_count: u64,
+    params: DirectExportParams,
 ) -> Result<DirectPlan, String> {
+    let DirectExportParams {
+        width,
+        height,
+        start,
+        end,
+        fps,
+        frame_count,
+    } = params;
     const EPS: f64 = 1e-6;
 
     if !options.video_enabled.unwrap_or(true) {

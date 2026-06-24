@@ -26,9 +26,9 @@ use super::{FfmpegNextDecoderFactory, MediaInfo, VideoDecoderFactory, VideoFrame
 use crate::media::types::HwAccelMode;
 use crate::media::GpuTexturePool;
 
-// Размер очереди декодированных кадров. Каждый кадр = ширина × высота × 4 байта.
-// Для 1080×1920 это ~8 МБ/кадр, так что 2 = 16 МБ буфера на слой — достаточно для smooth
-// playback (всегда есть `current` + 1 `upcoming` для lookahead) и не раздувает память.
+// Size of the decoded-frame queue. Each frame = width × height × 4 bytes.
+// For 1080×1920 that's ~8 MB/frame, so 2 = 16 MB of buffer per layer — enough for smooth
+// playback (always a `current` + 1 `upcoming` for lookahead) without bloating memory.
 const QUEUE_CAPACITY: usize = 2;
 
 pub type DecodeCallback = Box<dyn Fn() + Send + Sync + 'static>;
@@ -91,8 +91,8 @@ pub struct DecodePump {
 }
 
 impl DecodePump {
-    /// `max_output_long_edge` — кап на длинную сторону декодированного кадра в пикселях.
-    /// Прокидывается в ffmpeg `-vf scale`. `None` = декод в нативе.
+    /// `max_output_long_edge` — cap on the decoded frame's long side in pixels.
+    /// Passed through to ffmpeg `-vf scale`. `None` = decode at native size.
     pub fn open(params: DecodeOpenParams<'_>) -> Result<Self> {
         Self::open_with_factory(params, FfmpegNextDecoderFactory)
     }
@@ -209,8 +209,8 @@ impl DecodePump {
         self.generation.load(Ordering::SeqCst)
     }
 
-    /// Неблокирующий приём одного кадра из декодера.
-    /// `None` — канал пуст или декодер завершился.
+    /// Non-blocking receive of one frame from the decoder.
+    /// `None` — the channel is empty or the decoder has finished.
     pub fn try_recv_frame(&self) -> Option<DecodedFrameMsg> {
         match self.rx.try_recv() {
             Ok(msg) => Some(msg),
@@ -221,12 +221,12 @@ impl DecodePump {
 
 impl Drop for DecodePump {
     fn drop(&mut self) {
-        // ВАЖНО: дропаем frame receiver ДО join'а потока. Иначе:
-        // - sync_channel frame_tx может блокировать decoder-поток в `send()` (очередь полна);
-        // - decoder проверяет cmd_rx только между send'ами → Stop команду не увидит;
-        // - handle.join() ждёт поток вечно;
-        // - self.rx автодропается только после возврата из fn drop → deadlock.
-        // Меняем self.rx на dummy receiver — оригинальный rx моментально дропается,
+        // IMPORTANT: drop the frame receiver BEFORE joining the thread. Otherwise:
+        // - the sync_channel frame_tx can block the decoder thread in `send()` (queue full);
+        // - the decoder checks cmd_rx only between sends → never sees the Stop command;
+        // - handle.join() waits for the thread forever;
+        // - self.rx is auto-dropped only after fn drop returns → deadlock.
+        // We swap self.rx for a dummy receiver — the original rx is dropped instantly,
         // frame_tx.send() в decoder возвращает Err, поток выходит, join завершается.
         let (_dummy_tx, dummy_rx) = mpsc::sync_channel::<DecodedFrameMsg>(0);
         let _ = std::mem::replace(&mut self.rx, dummy_rx);
@@ -589,7 +589,7 @@ fn run_decoder_loop(args: DecoderLoopArgs) {
                     frame,
                 };
                 if frame_tx.send(msg).is_err() {
-                    return; // consumer ушёл
+                    return; // consumer is gone
                 }
                 state.decoded_after_seek = true;
                 // Account the emitted frame. A "pre-seek" frame (PTS before the active seek

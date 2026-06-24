@@ -1,29 +1,32 @@
-//! Кеш декодированных видеокадров на слой + политика выборки кадра (sampler).
+//! Per-layer cache of decoded video frames + the frame-selection policy (sampler).
 //!
-//! Зачем: раньше любой seek назад приводил к респауну ffmpeg и пере-декоду от ключевого
-//! кадра — дорого при скрабе. Кеш хранит «окно» недавно декодированных кадров вокруг
-//! текущей позиции; скраб в пределах окна обслуживается без перезапуска декодера.
+//! Why: previously any backward seek respawned ffmpeg and re-decoded from the keyframe
+//! — expensive while scrubbing. The cache holds a "window" of recently decoded frames
+//! around the current position; scrubbing within the window is served without restarting
+//! the decoder.
 //!
-//! Это нативный аналог `VideoFrameCache` + `FrameSampleOrchestrator` из старого веб-ядра:
-//! - кеш (`VideoFrameCache`) — хранение/вытеснение кадров по индексу PTS;
-//! - sampler — выбор кадра на момент времени (`frame_le` — кадр с PTS ≤ target) и
-//!   эвристика вытеснения «дальше всех от текущей позиции» (локальность скраба).
+//! This is the native analogue of `VideoFrameCache` + `FrameSampleOrchestrator` from the
+//! old web core:
+//! - the cache (`VideoFrameCache`) — store/evict frames by PTS index;
+//! - the sampler — pick a frame for a moment in time (`frame_le` — the frame with PTS ≤
+//!   target) plus the "farthest from the current position" eviction heuristic (scrub
+//!   locality).
 //!
-//! Память ограничена бюджетом байт на слой; вытесняется кадр, наиболее удалённый по
-//! индексу от последнего запрошенного времени.
+//! Memory is bounded by a byte budget per layer; the evicted frame is the one farthest
+//! by index from the last requested time.
 
 use std::collections::BTreeMap;
 use std::sync::Arc;
 
 use vello::peniko::ImageData;
 
-/// Один декодированный кадр внутри исходника (PTS в секундах).
+/// One decoded frame inside the source (PTS in seconds).
 ///
-/// GPU-резидентный кадр держит `texture` (Arc на `wgpu::Texture`) — текстура жива ровно
-/// пока кадр в кеше или показывается (`current`), без отдельного глобального кеша с
-/// независимым вытеснением. `image` (CPU-blob RGBA) хранится ТОЛЬКО как fallback, когда
-/// GPU-аплоад недоступен (у декодера нет wgpu device): иначе это был бы чистый дубль
-/// GPU-кадра (~8 МБ @1080p на кадр впустую).
+/// A GPU-resident frame holds `texture` (an Arc to a `wgpu::Texture`) — the texture lives
+/// exactly as long as the frame is in the cache or being shown (`current`), with no
+/// separate global cache with independent eviction. `image` (a CPU RGBA blob) is held ONLY
+/// as a fallback when GPU upload is unavailable (the decoder has no wgpu device): otherwise
+/// it would be a pure duplicate of the GPU frame (~8 MB @1080p per frame wasted).
 #[derive(Clone)]
 pub struct DecodedVideoFrame {
     pub pts_sec: f64,
@@ -37,16 +40,16 @@ const MAX_FRAMES: usize = 300;
 pub struct VideoFrameCache {
     fps: f64,
     capacity: usize,
-    /// Ключ — PTS, квантованный к миллисекундам (`round(pts * 1000)`): абсолютная позиция
-    /// в исходнике, стабильная между поколениями декодера (один файл+scale). Миллисекундная
-    /// сетка (а не `round(pts*fps)`) не схлопывает соседние кадры на VFR-источниках, где
-    /// реальный интервал между кадрами не равен 1/avg_fps.
+    /// The key is the PTS quantized to milliseconds (`round(pts * 1000)`): an absolute
+    /// position in the source, stable across decoder generations (same file+scale). A
+    /// millisecond grid (rather than `round(pts*fps)`) does not collapse adjacent frames on
+    /// VFR sources, where the real inter-frame interval is not 1/avg_fps.
     frames: BTreeMap<i64, DecodedVideoFrame>,
-    /// Последний запрошенный ключ (мс) — центр локальности для вытеснения.
+    /// The last requested key (ms) — the locality center for eviction.
     last_request: i64,
 }
 
-/// Квантизация PTS (секунды) в ключ кеша — миллисекунды.
+/// Quantization of PTS (seconds) into the cache key — milliseconds.
 const CACHE_KEY_HZ: f64 = 1000.0;
 
 impl VideoFrameCache {
@@ -73,8 +76,9 @@ impl VideoFrameCache {
         (pts_sec * CACHE_KEY_HZ).round() as i64
     }
 
-    /// Вставляет кадр. Вытесненные/перезаписанные кадры освобождают свою GPU-текстуру
-    /// автоматически через `Drop` Arc'а — отдельной синхронизации с внешним кешем не нужно.
+    /// Inserts a frame. Evicted/overwritten frames release their GPU texture
+    /// automatically via the Arc's `Drop` — no separate synchronization with an external
+    /// cache is needed.
     pub fn insert(&mut self, frame: DecodedVideoFrame) {
         if self.capacity == 0 {
             self.frames.clear();
@@ -86,7 +90,7 @@ impl VideoFrameCache {
         self.evict();
     }
 
-    /// Кадр с наибольшим PTS ≤ target (то, что должно быть на экране в момент target).
+    /// The frame with the greatest PTS ≤ target (what should be on screen at `target`).
     pub fn frame_le(&mut self, target_pts: f64) -> Option<DecodedVideoFrame> {
         let key = self.index_of(target_pts);
         self.last_request = key;
@@ -96,8 +100,8 @@ impl VideoFrameCache {
             .map(|(_, f)| f.clone())
     }
 
-    /// Кадр с наибольшим PTS ≤ target, но только если он не отстал дальше
-    /// допустимого AV-sync окна.
+    /// The frame with the greatest PTS ≤ target, but only if it has not fallen further
+    /// behind than the allowed AV-sync window.
     pub fn frame_le_with_max_lag(
         &mut self,
         target_pts: f64,
@@ -111,9 +115,9 @@ impl VideoFrameCache {
         }
     }
 
-    /// Кадр с наибольшим PTS ≤ target, а если такого нет — первый кадр в интервале
-    /// (target, target + max_lead_sec]. Позволяет показывать ближайший кадр на паузе,
-    /// даже если он лежит чуть-чуть в будущем из-за неточного seek/округления PTS.
+    /// The frame with the greatest PTS ≤ target, or, if there is none, the first frame in
+    /// the interval (target, target + max_lead_sec]. Lets the nearest frame be shown while
+    /// paused even if it lies slightly in the future due to an inexact seek / PTS rounding.
     pub fn frame_le_with_lead(
         &mut self,
         target_pts: f64,
@@ -122,12 +126,12 @@ impl VideoFrameCache {
         let key = self.index_of(target_pts);
         self.last_request = key;
 
-        // Сначала ищем кадр с PTS ≤ target_pts (полноценный floor)
+        // First look for a frame with PTS ≤ target_pts (a proper floor)
         if let Some((_, f)) = self.frames.range(..=key).next_back() {
             return Some(f.clone());
         }
 
-        // Если не нашли, ищем первый кадр в пределах max_lead_sec
+        // If none found, look for the first frame within max_lead_sec
         let lead_key = self.index_of(target_pts + max_lead_sec);
         if let Some((_, f)) = self.frames.range(key..=lead_key).next() {
             return Some(f.clone());
@@ -136,7 +140,7 @@ impl VideoFrameCache {
         None
     }
 
-    /// Есть ли в кеше кадр в пределах `tolerance_frames` от target (для fast-path seek).
+    /// Whether the cache has a frame within `tolerance_frames` of target (for fast-path seek).
     pub fn has_near(&mut self, target_pts: f64, tolerance_frames: i64) -> bool {
         let key = self.index_of(target_pts);
         self.last_request = key;
@@ -156,13 +160,13 @@ impl VideoFrameCache {
             (None, Some(b)) => b,
             (None, None) => return false,
         };
-        // Ключи в миллисекундах → переводим допуск из кадров в мс по fps.
+        // Keys are in milliseconds → convert the tolerance from frames to ms via fps.
         let tolerance_ms = ((tolerance_frames as f64) * CACHE_KEY_HZ / self.fps).round() as i64;
         best <= tolerance_ms
     }
 
-    /// PTS (секунды) новейшего декодированного кадра в кеше. `None` — кеш пуст.
-    /// Используется для детектора forward-прогресса декодера (decode-bound 4K).
+    /// PTS (seconds) of the newest decoded frame in the cache. `None` — cache empty.
+    /// Used by the decoder forward-progress detector (decode-bound 4K).
     pub fn newest_pts(&self) -> Option<f64> {
         self.frames
             .keys()
@@ -170,17 +174,17 @@ impl VideoFrameCache {
             .map(|k| *k as f64 / CACHE_KEY_HZ)
     }
 
-    /// Есть ли в кеше кадр с PTS ≥ `target_pts` (декодировано «вперёд» от playhead'а).
-    /// Критерий готовности прогрева перед стартом воспроизведения.
+    /// Whether the cache has a frame with PTS ≥ `target_pts` (decoded "ahead" of the
+    /// playhead). The warm-up readiness criterion before starting playback.
     pub fn has_frame_ge(&self, target_pts: f64) -> bool {
         let key = self.index_of(target_pts);
         self.frames.range(key..).next().is_some()
     }
 
-    /// Есть ли в кеше кадр с PTS ≤ `target_pts` — т.е. кадр, который `frame_le`
-    /// сможет показать. На reverse-воспроизведении это критерий того, что декодер
-    /// всё ещё перекрывает (убывающий) target снизу; как только перестаёт —
-    /// нужен обратный reseek, иначе слой застывает.
+    /// Whether the cache has a frame with PTS ≤ `target_pts` — i.e. a frame `frame_le`
+    /// can show. During reverse playback this is the criterion that the decoder still
+    /// covers the (decreasing) target from below; once it stops, a backward reseek is
+    /// needed, otherwise the layer freezes.
     pub fn has_frame_le(&self, target_pts: f64) -> bool {
         let key = self.index_of(target_pts);
         self.frames.range(..=key).next_back().is_some()
@@ -190,16 +194,16 @@ impl VideoFrameCache {
         self.capacity == 0
     }
 
-    /// Сколько кадров кеш может удержать (бюджет / размер кадра, зажатый в
-    /// [MIN_FRAMES, MAX_FRAMES]). Используется прогревом будущего клипа, чтобы не
-    /// декодировать вперёд больше, чем кеш всё равно сможет сохранить (лишние кадры
-    /// были бы тут же вытеснены — впустую отнятый у активного слоя декод).
+    /// How many frames the cache can hold (budget / frame size, clamped to
+    /// [MIN_FRAMES, MAX_FRAMES]). Used by future-clip warm-up so it doesn't decode
+    /// further ahead than the cache can keep anyway (extra frames would be evicted
+    /// immediately — decode time uselessly taken from the active layer).
     pub fn capacity(&self) -> usize {
         self.capacity
     }
 
-    /// Расстояние (секунды) до ближайшего кешированного кадра от `target`.
-    /// `None` — кеш пуст. Не трогает `last_request` (чистый запрос для эвристик).
+    /// Distance (seconds) from `target` to the nearest cached frame.
+    /// `None` — cache empty. Does not touch `last_request` (a pure query for heuristics).
     pub fn nearest_distance_sec(&self, target_pts: f64) -> Option<f64> {
         let key = self.index_of(target_pts);
         let floor = self
@@ -221,8 +225,8 @@ impl VideoFrameCache {
         Some(best as f64 / CACHE_KEY_HZ)
     }
 
-    /// Ближайший кадр к `target` в любую сторону (для показа во время репозиции
-    /// декодера, чтобы экран не застывал при reverse/fast-forward).
+    /// The nearest frame to `target` in either direction (to show while the decoder
+    /// repositions, so the screen doesn't freeze during reverse/fast-forward).
     pub fn frame_nearest(&mut self, target_pts: f64) -> Option<DecodedVideoFrame> {
         let key = self.index_of(target_pts);
         self.last_request = key;
@@ -244,15 +248,15 @@ impl VideoFrameCache {
 
     fn evict(&mut self) {
         while self.frames.len() > self.capacity {
-            // Вытесняем кадр, наиболее удалённый по индексу от последнего запроса:
-            // при скрабе/воспроизведении локальность доступа — вокруг текущей позиции.
+            // Evict the frame farthest by index from the last request: during
+            // scrubbing/playback, access locality is around the current position.
             let victim = self
                 .frames
                 .keys()
                 .copied()
                 .max_by_key(|k| (*k - self.last_request).abs());
             match victim {
-                // GPU-текстура вытесненного кадра освобождается дропом его Arc.
+                // The evicted frame's GPU texture is released by dropping its Arc.
                 Some(k) => {
                     self.frames.remove(&k);
                 }
@@ -312,23 +316,23 @@ mod tests {
     #[test]
     fn frame_le_with_lead_allows_small_future_frames() {
         let mut c = cache();
-        // У нас есть только кадр в будущем (1.001)
+        // We have only a future frame (1.001)
         c.insert(frame(1.001));
 
-        // Ищем на позиции 1.000
-        // Без lead - None
+        // Query at position 1.000
+        // Without lead - None
         assert_eq!(c.frame_le(1.000).map(|f| f.pts_sec), None);
 
-        // С lead в 0.033 секунды (1 кадр при 30fps) - должен найти 1.001
+        // With a 0.033 second lead (1 frame at 30fps) - should find 1.001
         assert_eq!(
             c.frame_le_with_lead(1.000, 0.033).map(|f| f.pts_sec),
             Some(1.001)
         );
 
-        // Слишком маленький lead (например, 0.0001) - не найдет
+        // Too small a lead (e.g. 0.0001) - won't find it
         assert_eq!(c.frame_le_with_lead(1.000, 0.0001).map(|f| f.pts_sec), None);
 
-        // Если есть и прошедший, и будущий кадр, то приоритет прошедшему (floor)
+        // If both a past and a future frame exist, the past one wins (floor)
         c.insert(frame(0.999));
         assert_eq!(
             c.frame_le_with_lead(1.000, 0.033).map(|f| f.pts_sec),
@@ -346,8 +350,8 @@ mod tests {
 
     #[test]
     fn vfr_frames_closer_than_avg_interval_do_not_collide() {
-        // avg fps=30 → интервал 33мс. Два кадра в 10мс друг от друга (типично для VFR)
-        // при старом ключе round(pts*fps) схлопнулись бы в один индекс; мс-ключ их различает.
+        // avg fps=30 → 33ms interval. Two frames 10ms apart (typical for VFR) would
+        // collapse to one index under the old round(pts*fps) key; the ms key keeps them apart.
         let mut c = cache();
         c.insert(frame(1.00));
         c.insert(frame(1.01));
@@ -363,7 +367,7 @@ mod tests {
         c.insert(frame(1.0));
         c.insert(frame(3.0));
         assert!((c.nearest_distance_sec(1.2).unwrap() - 0.2).abs() < 1e-6);
-        // Ближе к 3.0 (0.4), чем к 1.0 (0.6).
+        // Closer to 3.0 (0.4) than to 1.0 (0.6).
         assert!((c.nearest_distance_sec(2.6).unwrap() - 0.4).abs() < 1e-6);
     }
 
@@ -372,7 +376,7 @@ mod tests {
         let mut c = cache();
         c.insert(frame(1.0));
         c.insert(frame(3.0));
-        // Промах le (target < min) всё равно даёт ближайший кадр, а не None.
+        // An le miss (target < min) still yields the nearest frame, not None.
         assert_eq!(c.frame_nearest(0.0).map(|f| f.pts_sec), Some(1.0));
         assert_eq!(c.frame_nearest(2.9).map(|f| f.pts_sec), Some(3.0));
         assert_eq!(c.frame_nearest(1.9).map(|f| f.pts_sec), Some(1.0));
@@ -386,10 +390,10 @@ mod tests {
         c.insert(frame(1.0));
         c.insert(frame(2.0));
         assert_eq!(c.newest_pts(), Some(2.0));
-        // Есть кадр на/после playhead'а.
+        // There is a frame at/after the playhead.
         assert!(c.has_frame_ge(1.5));
         assert!(c.has_frame_ge(2.0));
-        // Декодер ещё не дошёл до 2.5 — не готов.
+        // The decoder hasn't reached 2.5 yet — not ready.
         assert!(!c.has_frame_ge(2.5));
     }
 
@@ -399,11 +403,11 @@ mod tests {
         assert!(!c.has_frame_le(5.0));
         c.insert(frame(2.0));
         c.insert(frame(3.0));
-        // Reverse target внутри/над покрытием — кадр ≤ target есть.
+        // Reverse target within/above coverage — a frame ≤ target exists.
         assert!(c.has_frame_le(2.0));
         assert!(c.has_frame_le(2.5));
         assert!(c.has_frame_le(10.0));
-        // Target опустился ниже самого раннего кадра — кадра ≤ target нет → нужен reseek.
+        // Target dropped below the earliest frame — no frame ≤ target → reseek needed.
         assert!(!c.has_frame_le(1.9));
     }
 
@@ -422,7 +426,7 @@ mod tests {
         for i in 0..20 {
             c.insert(frame(i as f64));
         }
-        // Запрос у конца — дальние от него (нулевые) кадры должны быть вытеснены.
+        // Request near the end — frames far from it (near zero) should be evicted.
         let _ = c.frame_le(19.0);
         c.insert(frame(20.0));
         assert!(c.frames.len() <= MIN_FRAMES + 1);

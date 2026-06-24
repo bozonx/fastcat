@@ -5,6 +5,9 @@ use crate::monitor::scene::{LayerKind, NativeFrameCacheMode, PreviewSyncMode, Sc
 pub(super) const VIDEO_PREWARM_LOOKAHEAD_SEC: f64 = 2.5;
 pub(super) const RUNTIME_KEEP_BEHIND_SEC: f64 = 3.0;
 pub(super) const RUNTIME_KEEP_AHEAD_SEC: f64 = VIDEO_PREWARM_LOOKAHEAD_SEC + 1.0;
+// The ahead window must cover the prewarm lookahead so a just-prewarmed clip is
+// never evicted on the same tick it was warmed. Enforced at compile time.
+const _: () = assert!(RUNTIME_KEEP_AHEAD_SEC >= VIDEO_PREWARM_LOOKAHEAD_SEC);
 
 const MB: usize = 1024 * 1024;
 const LOW_CACHE_BUDGET_BYTES: usize = 96 * MB;

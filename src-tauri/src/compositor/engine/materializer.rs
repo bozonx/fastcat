@@ -10,7 +10,7 @@ use std::time::Instant;
 use vello::peniko::ImageData;
 use vello::Scene as VelloScene;
 
-use super::{elapsed_ms, Compositor};
+use super::{elapsed_ms, Compositor, GpuCtx};
 use crate::compositor::effects::EffectSource;
 use crate::compositor::render_telemetry::RenderPrepareTiming;
 
@@ -56,8 +56,10 @@ pub(super) fn prepare_vello_scene(
         )?;
         let (processed, _) = compositor.apply_effects_to_texture(
             dev_id,
-            &device,
-            &queue,
+            GpuCtx {
+                device: &device,
+                queue: &queue,
+            },
             &EffectSource::Gpu(Arc::new(crate::media::SharedTexture::new_shared(Arc::new(
                 texture,
             )))),
@@ -67,7 +69,7 @@ pub(super) fn prepare_vello_scene(
         )?;
         let mut out = VelloScene::new();
         let image = compositor
-            .register_texture_for_vello(dev_id, &*processed, registered_images)
+            .register_texture_for_vello(dev_id, &processed, registered_images)
             .map_err(|error| anyhow!("register master-effect texture: {error:?}"))?;
         out.draw_image(&image, vello::kurbo::Affine::IDENTITY);
         out

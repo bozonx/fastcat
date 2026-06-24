@@ -1,15 +1,15 @@
-//! Глобальный ограничитель параллелизма «тяжёлых» операций открытия медиа.
+//! Global concurrency limiter for "heavy" media-open operations.
 //!
-//! Каждый видеослой при загрузке делает `ffprobe` + спавн `ffmpeg` + первичный декод —
-//! это всплеск CPU/процессов. При сцене с многими video/image/svg-слоями (или при быстром
-//! скрабе, когда слои часто появляются/исчезают) без ограничителя стартует столько же
-//! параллельных тяжёлых открытий. Семафор ограничивает число ОДНОВРЕМЕННЫХ открытий;
-//! продолжающийся декод живёт в своём потоке уже без пермита (число живых ffmpeg-процессов
-//! всё равно ограничено числом одновременно видимых видеослоёв).
+//! Each video layer, on load, runs `ffprobe` + spawns `ffmpeg` + does an initial decode —
+//! a burst of CPU/processes. With a scene of many video/image/svg layers (or during fast
+//! scrubbing, when layers appear/disappear often), without a limiter just as many parallel
+//! heavy opens would start. The semaphore caps the number of CONCURRENT opens; the
+//! continuing decode lives in its own thread without a permit (the number of live ffmpeg
+//! processes is still bounded by the number of simultaneously visible video layers).
 //!
-//! Это нативный аналог идеи браузерного `io-governor` (см. `src/utils/io/`), но без
-//! `SharedArrayBuffer`/OPFS-семантики: в Tauri доступ к ФС прямой, ограничивать нужно
-//! именно параллелизм декодеров/процессов, а не датапайпы Chromium.
+//! This is the native analogue of the browser `io-governor` idea (see `src/utils/io/`), but
+//! without `SharedArrayBuffer`/OPFS semantics: in Tauri filesystem access is direct, so what
+//! must be limited is decoder/process parallelism, not Chromium data pipes.
 //!
 //! Audio is intentionally NOT routed through this gate — it has its own bounded
 //! windowed look-ahead (audio/shared.rs, WINDOW_SEC=12). Do NOT route audio
@@ -33,8 +33,8 @@ pub enum LoadPriority {
     Background,
 }
 
-/// Простой счётный семафор (std не предоставляет блокирующего семафора, tokio —
-/// только async; здесь нужен блокирующий из обычных потоков).
+/// A simple counting semaphore (std has no blocking semaphore, tokio's is async
+/// only; here we need a blocking one usable from plain threads).
 pub struct Semaphore {
     permits: Mutex<usize>,
     available: Condvar,
@@ -136,13 +136,13 @@ impl DecoderLoadGate {
 
 static DECODER_LOAD_GATE: OnceLock<DecoderLoadGate> = OnceLock::new();
 
-/// Глобальный гейт открытий медиа-декодеров. Лениво инициализируется по числу ядер.
+/// Global gate for media-decoder opens. Lazily initialized from the core count.
 pub fn decoder_load_gate() -> &'static DecoderLoadGate {
     DECODER_LOAD_GATE.get_or_init(DecoderLoadGate::default)
 }
 
-/// Половина логических ядер, зажатая в [2; 4]: достаточно для параллельной загрузки,
-/// но не насыщает CPU пачкой одновременных ffmpeg-стартов.
+/// Half the logical cores, clamped to [2; 4]: enough for parallel loading without
+/// saturating the CPU with a burst of simultaneous ffmpeg starts.
 fn default_permits() -> usize {
     std::thread::available_parallelism()
         .map(|n| (n.get() / 2).clamp(2, 4))
