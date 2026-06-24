@@ -1111,6 +1111,106 @@ mod tests {
     }
 
     #[test]
+    fn proxy_args_copy_opus_audio_when_source_is_opus() {
+        let metadata = NativeMediaMetadata {
+            duration: 10.0,
+            container: "matroska".into(),
+            video: Some(NativeVideoMetadata {
+                width: 1920,
+                height: 1080,
+                fps: 30.0,
+                codec: "h264".into(),
+                bitrate: None,
+                rotation: 0,
+                can_decode: None,
+            }),
+            audio: Some(NativeAudioMetadata {
+                codec: "opus".into(),
+                bitrate: None,
+                sample_rate: Some(48_000),
+                channels: Some(2),
+                can_decode: None,
+            }),
+        };
+        let options = NativeProxyOptions {
+            max_pixels: 1920 * 1080,
+            video_bitrate_bps: 2_000_000,
+            audio_bitrate_bps: 128_000,
+            video_codec: "h264".into(),
+            copy_opus_audio: true,
+            hw: FfmpegHwOptions::default(),
+        };
+
+        let args = build_proxy_ffmpeg_args(
+            Path::new("in.mkv"),
+            Path::new("out.mp4"),
+            &metadata,
+            &options,
+            HwAccelMode::None,
+            HwAccelMode::None,
+            DEFAULT_VAAPI_DEVICE,
+        )
+        .expect("proxy args build");
+
+        assert!(
+            args.windows(2).any(|pair| pair == ["-c:a", "copy"]),
+            "Opus source with copy_opus_audio should use -c:a copy"
+        );
+    }
+
+    #[test]
+    fn proxy_args_reencodes_audio_when_copy_opus_but_source_is_aac() {
+        let metadata = NativeMediaMetadata {
+            duration: 10.0,
+            container: "mov".into(),
+            video: Some(NativeVideoMetadata {
+                width: 1920,
+                height: 1080,
+                fps: 30.0,
+                codec: "h264".into(),
+                bitrate: None,
+                rotation: 0,
+                can_decode: None,
+            }),
+            audio: Some(NativeAudioMetadata {
+                codec: "aac".into(),
+                bitrate: None,
+                sample_rate: Some(48_000),
+                channels: Some(2),
+                can_decode: None,
+            }),
+        };
+        let options = NativeProxyOptions {
+            max_pixels: 1920 * 1080,
+            video_bitrate_bps: 2_000_000,
+            audio_bitrate_bps: 128_000,
+            video_codec: "h264".into(),
+            copy_opus_audio: true,
+            hw: FfmpegHwOptions::default(),
+        };
+
+        let args = build_proxy_ffmpeg_args(
+            Path::new("in.mov"),
+            Path::new("out.mp4"),
+            &metadata,
+            &options,
+            HwAccelMode::None,
+            HwAccelMode::None,
+            DEFAULT_VAAPI_DEVICE,
+        )
+        .expect("proxy args build");
+
+        assert!(
+            !args.windows(2).any(|pair| pair == ["-c:a", "copy"]),
+            "AAC source should not use -c:a copy even with copy_opus_audio enabled"
+        );
+        assert!(
+            args.windows(2).any(|pair| pair == ["-c:a", "libopus"]),
+            "AAC source should re-encode to libopus"
+        );
+    }
+
+    #[test]
     fn proxy_args_scale_follows_display_orientation_for_rotated_source() {
         // Phone-shot portrait clip: stored landscape (1920x1080) with a 90° display
         // matrix. ffmpeg auto-rotates before the scale filter, so the scale target

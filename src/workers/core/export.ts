@@ -313,8 +313,8 @@ export function isPassthroughCompatibleClip(
   if (Number.isFinite(speedRaw) && speedRaw !== 1) {
     return { ok: false, reason: 'clip has non-unit speed or reverse' };
   }
-  // Output sampleRate/channels are checked once we have decoder info; we still
-  // record the request for the caller to compare against.
+  // Passthrough copies encoded packets as-is; sample rate and channel count
+  // are inherited from the source decoder config, so no further checks needed.
   return { ok: true };
 }
 
@@ -322,9 +322,8 @@ async function buildPassthroughAudioTrack(params: {
   clip: PassthroughClip;
   hostClient: VideoCoreHostAPI | null;
   reportExportWarning: (message: string) => Promise<void>;
-  options: { audioSampleRate?: number; audioChannels?: 'mono' | 'stereo' };
 }) {
-  const { clip, hostClient, reportExportWarning, options } = params;
+  const { clip, hostClient, reportExportWarning } = params;
   const sourcePath = clip.sourcePath || clip.source?.path;
   if (!sourcePath || !hostClient) return null;
 
@@ -350,26 +349,10 @@ async function buildPassthroughAudioTrack(params: {
     const codec = codecParam || audioTrack.codec || '';
     if (!isOpusCodec(codec)) return null;
 
-    const requestedSampleRate = Number(options.audioSampleRate) || 48000;
-    const requestedChannels = options.audioChannels === 'mono' ? 1 : 2;
-    const sourceSampleRate =
-      Number((audioTrack as unknown as { sampleRate?: number }).sampleRate) || 0;
-    const sourceChannels =
-      Number((audioTrack as unknown as { numberOfChannels?: number }).numberOfChannels) || 0;
-    if (sourceSampleRate > 0 && sourceSampleRate !== requestedSampleRate) {
-      await reportExportWarning(
-        `[Worker Export] Opus passthrough disabled: source sample rate ${sourceSampleRate}Hz differs from requested ${requestedSampleRate}Hz.`,
-      );
-      safeDispose(input);
-      return null;
-    }
-    if (sourceChannels > 0 && sourceChannels !== requestedChannels) {
-      await reportExportWarning(
-        `[Worker Export] Opus passthrough disabled: source has ${sourceChannels} channel(s); requested ${requestedChannels}.`,
-      );
-      safeDispose(input);
-      return null;
-    }
+    // Passthrough copies encoded packets as-is with the source's decoder config,
+    // so the output inherits the source's sample rate and channel count.
+    // No need to validate against requestedSampleRate/requestedChannels —
+    // those only apply to the re-encode path.
 
     const decoderConfig = await audioTrack.getDecoderConfig();
     if (!decoderConfig) {
@@ -751,7 +734,6 @@ export async function runExport(
             clip: audioClips[0] as PassthroughClip,
             hostClient,
             reportExportWarning,
-            options,
           });
           if (audioPacketState) {
             audioSource = audioPacketState.audioSource;
