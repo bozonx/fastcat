@@ -139,7 +139,7 @@ const mockWorkspaceStore = {
     deleteWithoutConfirmation: false,
     ui: { interfaceScale: 14, clipThumbnailMode: 'standard', defaultAudioWaveformMode: 'half' },
     history: { maxEntries: 100 },
-    backup: { enabled: true, count: 5 },
+    backup: { count: 5 },
     autosave: { intervalMinutes: 2 },
     experimentalFeatures: false,
     audioEngine: {

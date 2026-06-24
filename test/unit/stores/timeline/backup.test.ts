@@ -46,7 +46,7 @@ function createMockDeps(overrides: Partial<TimelineBackupDeps> = {}): TimelineBa
     isMobile: ref(false),
     isDirty: ref(false),
     projectStore: makeProjectStoreMock(),
-    workspaceStore: { userSettings: { backup: { enabled: true, count: 5 } } },
+    workspaceStore: { userSettings: { backup: { count: 5 } } },
     toast: { add: vi.fn() },
     t: ((key: string) => key) as TimelineBackupDeps['t'],
     loadTimeline: vi.fn().mockResolvedValue(undefined),
@@ -127,7 +127,7 @@ describe('createTimelineBackupModule', () => {
       const projectStore = makeProjectStoreMock();
       const deps = createMockDeps({
         projectStore,
-        workspaceStore: { userSettings: { backup: { enabled: false, count: 5 } } },
+        workspaceStore: { userSettings: { backup: { count: 0 } } },
       });
       const backup = createTimelineBackupModule(deps);
 
@@ -146,7 +146,7 @@ describe('createTimelineBackupModule', () => {
       expect(projectStore.writeTextByPath).not.toHaveBeenCalled();
     });
 
-    it('writes a backup file when enabled', async () => {
+    it('writes a backup file when count > 0', async () => {
       const projectStore = makeProjectStoreMock();
       const deps = createMockDeps({ projectStore });
       const backup = createTimelineBackupModule(deps);
@@ -190,7 +190,7 @@ describe('createTimelineBackupModule', () => {
         projectStore,
         readTimelineFile,
         deleteTimelineAutosaveFile,
-        workspaceStore: { userSettings: { backup: { enabled: false, count: 5 } } },
+        workspaceStore: { userSettings: { backup: { count: 0 } } },
       });
       const backup = createTimelineBackupModule(deps);
 

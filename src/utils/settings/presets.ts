@@ -1,4 +1,9 @@
 import { randomToken } from '~/utils/ids';
+import {
+  AUDIO_EXPORT_CODEC_OPTIONS,
+  BASE_VIDEO_CODEC_OPTIONS,
+  VIDEO_FORMAT_OPTIONS,
+} from '~/utils/webcodecs';
 
 export interface CustomPreset {
   id: string; // Used as the type in registry
@@ -51,6 +56,32 @@ export interface UserExportPresetsSettings {
 
 export const DEFAULT_PROJECT_PRESET_ID = 'fhd-25-desktop';
 export const DEFAULT_EXPORT_PRESET_ID = 'optimal';
+
+export const BUILT_IN_EXPORT_PRESET_IDS: readonly string[] = [
+  'optimal',
+  'social',
+  'high',
+  'lossless',
+];
+
+export function isBuiltInExportPreset(preset: ExportSettingsPreset): boolean {
+  return BUILT_IN_EXPORT_PRESET_IDS.includes(preset.id);
+}
+
+export function getExportPresetSummary(preset: ExportSettingsPreset): string {
+  const format =
+    VIDEO_FORMAT_OPTIONS.find((opt) => opt.value === preset.format)?.label ?? preset.format;
+  const videoCodec =
+    BASE_VIDEO_CODEC_OPTIONS.find((opt) => opt.value === preset.videoCodec)?.label ??
+    preset.videoCodec;
+  const audioCodec =
+    AUDIO_EXPORT_CODEC_OPTIONS.find((opt) => opt.value === preset.audioCodec)?.label ??
+    preset.audioCodec;
+
+  const audio = preset.excludeAudio ? 'no audio' : `${audioCodec} ${preset.audioBitrateKbps} kbps`;
+
+  return `${format} · ${videoCodec} · ${preset.bitrateMbps} Mbps · ${audio}`;
+}
 
 export function createDefaultProjectPresets(): UserProjectPresetsSettings {
   const items: ProjectSettingsPreset[] = [

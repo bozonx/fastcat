@@ -50,7 +50,7 @@ export interface TimelineBackupDeps {
     createFallbackTimelineDoc: () => TimelineDocument;
   };
   workspaceStore: {
-    userSettings: { backup?: { enabled?: boolean; count: number } };
+    userSettings: { backup?: { count: number } };
   };
   toast: AppNotificationService;
   t: I18nService['t'];
@@ -109,13 +109,13 @@ export function createTimelineBackupModule(deps: TimelineBackupDeps): TimelineBa
   // Backups are a history of EXPLICIT saves (for rollback), so one is taken on
   // every manual save — `handleBackup` is only wired into `onSaveSuccess`, which
   // fires from `saveTimeline`, never from the periodic crash-recovery autosave.
-  // `backup.enabled` is the on/off toggle; `backup.count` controls rotation.
-  // `force` bypasses the toggle for one-off preservation (e.g. discarding an
+  // `backup.count` controls rotation; 0 disables backups.
+  // `force` bypasses the check for one-off preservation (e.g. discarding an
   // unsaved sidecar) so the work is never lost even when backups are disabled.
   async function handleBackup(serialized: string, options?: { force?: boolean }) {
     if (!deps.currentTimelinePath.value) return;
     const backupSettings = deps.workspaceStore.userSettings.backup;
-    if (!options?.force && (!backupSettings || !backupSettings.enabled)) return;
+    if (!options?.force && (!backupSettings || backupSettings.count <= 0)) return;
     const rotationCount = backupSettings?.count ?? 5;
 
     try {

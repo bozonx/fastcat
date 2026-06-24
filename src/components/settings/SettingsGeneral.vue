@@ -201,25 +201,25 @@ function clearCache() {
           />
         </UiFormField>
 
-        <label class="flex items-center gap-3 cursor-pointer px-1">
-          <UCheckbox v-model="workspaceStore.userSettings.backup.enabled" />
-          <span class="text-ui-text">
-            {{ t('videoEditor.settings.backupEnabled') }}
-          </span>
-        </label>
-
         <UiFormField
-          v-if="workspaceStore.userSettings.backup.enabled"
           :label="t('videoEditor.settings.backupCount')"
           :help="t('videoEditor.settings.backupCountHelp')"
         >
-          <UiWheelNumberInput
-            v-model="workspaceStore.userSettings.backup.count"
-            :min="1"
-            :max="50"
-            :step="1"
-            :wheel-step-multiplier="5"
-          />
+          <div class="flex items-center gap-4">
+            <UiScaleSlider
+              :model-value="workspaceStore.userSettings.backup.count"
+              :min="0"
+              :max="5"
+              @update:model-value="workspaceStore.userSettings.backup.count = $event as number"
+            />
+            <UiWheelNumberInput
+              v-model="workspaceStore.userSettings.backup.count"
+              :min="0"
+              :max="50"
+              :step="1"
+              :wheel-step-multiplier="5"
+            />
+          </div>
         </UiFormField>
 
         <div class="flex items-center justify-between gap-3 pt-2">
