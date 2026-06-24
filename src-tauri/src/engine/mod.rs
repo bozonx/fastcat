@@ -1,7 +1,7 @@
-//! Видео-движок-singleton: владелец нативного `MonitorHandle` + `AppHandle` для эмита событий.
+//! Video engine singleton: owns the native `MonitorHandle` + `AppHandle` for emitting events.
 //!
-//! Compositor + GPU-ресурсы живут ВНУТРИ потока монитора (см. `monitor::app`) — там, где
-//! находятся wgpu device/surface/vello renderer, и где их безопасно мутировать.
+//! Compositor + GPU resources live INSIDE the monitor thread (see `monitor::app`) — where
+//! the wgpu device/surface/vello renderer are, and where they can be safely mutated.
 
 use crate::audio::engine::AudioEngineSettings;
 use anyhow::Result;
@@ -37,8 +37,8 @@ impl VideoEngine {
         changed
     }
 
-    /// Лениво создаёт окно монитора. Если предыдущее окно умерло (юзер закрыл / Close),
-    /// автоматически респавнит.
+    /// Lazily creates the monitor window. If the previous window died (user closed / Close),
+    /// automatically respawns it.
     pub fn ensure_monitor(&self) -> Result<Arc<MonitorHandle>> {
         let audio_settings = self.audio_settings.lock().clone();
         let mut guard = self.monitor.lock();
@@ -56,7 +56,7 @@ impl VideoEngine {
         Ok(handle)
     }
 
-    /// Возвращает текущий handle, если он есть и жив; иначе None (и чистит протухший).
+    /// Returns the current handle if it exists and is alive; otherwise None (and clears the stale one).
     pub fn monitor(&self) -> Option<Arc<MonitorHandle>> {
         let mut guard = self.monitor.lock();
         if let Some(h) = guard.as_ref() {
@@ -69,8 +69,8 @@ impl VideoEngine {
         None
     }
 
-    /// Принудительно сбрасывает handle. Использовать после Close, чтобы следующий
-    /// `ensure_monitor` спавнил с нуля даже если event-loop ещё не успел упасть.
+    /// Forcefully clears the handle. Use after Close, so the next
+    /// `ensure_monitor` spawns from scratch even if the event-loop hasn't died yet.
     pub fn clear_monitor(&self) {
         log::info!("[engine] clear_monitor called");
         *self.monitor.lock() = None;

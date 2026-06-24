@@ -207,7 +207,7 @@ pub async fn native_media_generate_proxy(
             Some(&|progress: f64| {
                 let _ = app.emit(
                     "native-media-generate-proxy:progress",
-                    NativeMediaGenerateProxyProgress {
+                    NativeMediaProgress {
                         task_id: &task_id,
                         progress,
                     },
@@ -256,7 +256,7 @@ pub async fn native_media_convert(
             Some(&|progress| {
                 let _ = app_clone.emit(
                     "native-media-convert:progress",
-                    NativeMediaConvertProgress {
+                    NativeMediaProgress {
                         task_id: &task_id_clone,
                         progress,
                     },
@@ -299,7 +299,7 @@ pub fn native_media_cancel(task_id: String, service: State<'_, NativeMediaServic
 
 #[derive(Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
-struct NativeTimelineExportProgress<'a> {
+struct NativeMediaProgress<'a> {
     task_id: &'a str,
     progress: f64,
 }
@@ -309,20 +309,6 @@ struct NativeTimelineExportProgress<'a> {
 struct NativeMediaWarning<'a> {
     task_id: &'a str,
     message: &'a str,
-}
-
-#[derive(Clone, Serialize)]
-#[serde(rename_all = "camelCase")]
-struct NativeMediaGenerateProxyProgress<'a> {
-    task_id: &'a str,
-    progress: f64,
-}
-
-#[derive(Clone, Serialize)]
-#[serde(rename_all = "camelCase")]
-struct NativeMediaConvertProgress<'a> {
-    task_id: &'a str,
-    progress: f64,
 }
 
 #[tauri::command]
@@ -350,7 +336,7 @@ pub async fn native_timeline_export(
             &|progress| {
                 let _ = app.emit(
                     "native-timeline-export:progress",
-                    NativeTimelineExportProgress {
+                    NativeMediaProgress {
                         task_id: &task_id,
                         progress,
                     },

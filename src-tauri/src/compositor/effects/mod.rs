@@ -212,13 +212,39 @@ pub enum EffectSource {
     Gpu(Arc<crate::media::SharedTexture>),
 }
 
+impl EffectSource {
+    /// Wraps a `wgpu::Texture` into the GPU variant of `EffectSource`.
+    /// Eliminates the repeated `Arc::new(SharedTexture::new_shared(Arc::new(texture)))` pattern.
+    pub fn from_texture(texture: wgpu::Texture) -> Self {
+        EffectSource::Gpu(Arc::new(crate::media::SharedTexture::new_shared(Arc::new(
+            texture,
+        ))))
+    }
+}
+
+/// Parameters for the blur-fill effect, extracted from `EffectSpec::BlurFill`.
+/// Passed as a single struct to avoid excessive function arguments.
+pub struct BlurFillParams {
+    pub frame_w: u32,
+    pub frame_h: u32,
+    pub fg_scale: f32,
+    pub bg_scale: f32,
+    pub blur: f32,
+    pub bg_dim: f32,
+    pub bg_saturation: f32,
+    pub tint_color: [u8; 4],
+    pub tint_strength: f32,
+    pub fg_offset_y: f32,
+    pub quality: EffectQuality,
+}
+
 struct CachedResources {
     width: u32,
     height: u32,
     input: Option<wgpu::Texture>,
-    // Текстуры держим как канонических владельцев; пассы пишут/читают через *_view.
-    // Финальный пасс теперь целится в отдельную owned-текстуру (см. `apply_effects`),
-    // поэтому сами `ping`/`pong` напрямую больше не читаются — только их вью.
+    // Textures are kept as canonical owners; passes read/write through *_view.
+    // The final pass now targets a separate owned texture (see `apply_effects`),
+    // so `ping`/`pong` themselves are no longer read directly — only their views.
     #[allow(dead_code)]
     ping: wgpu::Texture,
     ping_view: wgpu::TextureView,
@@ -232,9 +258,9 @@ struct CachedResources {
     aux_view: wgpu::TextureView,
 }
 
-/// Запись пула owned-выходов эффектов. Текстура отдаётся вызывающему как
-/// `Arc`, а пул держит свой клон — когда `strong_count` падает до 1 (остался
-/// только пул), кадр-потребитель уже освободил её и текстуру можно переиспользовать.
+/// Pool entry for owned effect outputs. The texture is given to the caller as
+/// `Arc`, and the pool keeps its own clone — when `strong_count` drops to 1 (only
+/// the pool remains), the consuming frame has released it and the texture can be reused.
 struct PooledTexture {
     texture: Arc<wgpu::Texture>,
     view: wgpu::TextureView,
@@ -242,10 +268,10 @@ struct PooledTexture {
     height: u32,
 }
 
-/// Пул owned-текстур для финального выхода эффектов. Раньше на КАЖДЫЙ слой с
-/// эффектами на КАЖДЫЙ кадр делался `device.create_texture` (+ view) — постоянное
-/// давление на GPU-аллокатор и фрагментация. Пул возвращает свободную текстуру
-/// нужного размера (reclaim по `Arc::strong_count == 1`) или создаёт новую.
+/// Pool of owned textures for final effect outputs. Previously, EVERY layer with
+/// effects got a `device.create_texture` (+ view) on EVERY frame — constant
+/// pressure on the GPU allocator and fragmentation. The pool returns a free texture
+/// of the needed size (reclaim via `Arc::strong_count == 1`) or creates a new one.
 #[derive(Default)]
 struct OwnedTexturePool {
     entries: Vec<PooledTexture>,
@@ -258,7 +284,7 @@ impl OwnedTexturePool {
         width: u32,
         height: u32,
     ) -> (Arc<wgpu::Texture>, wgpu::TextureView) {
-        // Свободная (никто кроме пула не держит) текстура точного размера — переиспользуем.
+        // A free (only the pool holds it) texture of exact size — reuse it.
         if let Some(entry) = self
             .entries
             .iter()
@@ -267,8 +293,8 @@ impl OwnedTexturePool {
             return (entry.texture.clone(), entry.view.clone());
         }
 
-        // Промах: выкидываем свободные записи другого размера, чтобы пул не рос
-        // монотонно после смены разрешения (preview ↔ export, ресайз окна).
+        // Miss: evict free entries of a different size so the pool does not grow
+        // monotonically after a resolution change (preview ↔ export, window resize).
         self.entries.retain(|e| {
             Arc::strong_count(&e.texture) > 1 || (e.width == width && e.height == height)
         });
@@ -299,9 +325,9 @@ pub struct EffectPipeline {
     resources: Option<CachedResources>,
     pipeline_cache: Option<wgpu::PipelineCache>,
     custom_pipelines: HashMap<u64, Arc<wgpu::ComputePipeline>>,
-    /// Один постоянный uniform-буфер на все пассы кадра: пассы адресуются через
-    /// dynamic offset (`uniform_stride`), значения пишутся одним `write_buffer`.
-    /// Раньше каждый пасс делал `create_buffer_init` — аллокация в горячем цикле.
+    /// One persistent uniform buffer for all passes in a frame: passes are addressed via
+    /// dynamic offset (`uniform_stride`), values written with a single `write_buffer`.
+    /// Previously each pass did `create_buffer_init` — allocation in the hot loop.
     uniform_buffer: Option<wgpu::Buffer>,
     uniform_capacity: u64,
     uniform_stride: u64,
@@ -388,8 +414,8 @@ impl EffectPipeline {
                 cache,
             }),
         );
-        // Шаг между uniform'ами пассов в общем буфере: размер uniform'а,
-        // выровненный до `min_uniform_buffer_offset_alignment` (требование dynamic offset).
+        // Stride between pass uniforms in the shared buffer: uniform size
+        // aligned to `min_uniform_buffer_offset_alignment` (dynamic offset requirement).
         let uniform_size = std::mem::size_of::<EffectUniform>() as u64;
         let align = device.limits().min_uniform_buffer_offset_alignment.max(1) as u64;
         let uniform_stride = uniform_size.div_ceil(align) * align;
@@ -417,8 +443,8 @@ impl EffectPipeline {
         }
     }
 
-    /// Гарантирует, что постоянный uniform-буфер вмещает `pass_count` пассов.
-    /// Растёт по мере надобности; стабильные цепочки эффектов аллокаций не делают.
+    /// Ensures the persistent uniform buffer can hold `pass_count` passes.
+    /// Grows as needed; stable effect chains do not cause allocations.
     fn ensure_uniform_buffer(&mut self, device: &wgpu::Device, pass_count: usize) {
         let needed = self.uniform_stride * pass_count.max(1) as u64;
         if self.uniform_buffer.is_some() && self.uniform_capacity >= needed {
@@ -677,17 +703,18 @@ impl EffectPipeline {
         let ping_view = resources.ping_view.clone();
         let pong_view = resources.pong_view.clone();
         let aux_view = resources.aux_view.clone();
-        // `resources` (immutable borrow of self) больше не нужен — дальше идут
-        // мутабельные вызовы (uniform-буфер, пул owned-текстур).
+        // `resources` (immutable borrow of self) is no longer needed — mutable
+        // calls follow (uniform buffer, owned texture pool).
 
-        // Финальный результат пишем сразу в owned-текстуру, а не в кешированную ping/pong
-        // с последующей копией: раньше `copy_texture_owned` делал лишний полнокадровый
-        // GPU→GPU копи на каждый слой с эффектами на каждый кадр. Последний пасс целится
-        // прямо в эту текстуру; промежуточные по-прежнему пинг-понгуют по кешу.
-        // Текстуру берём из пула (reclaim по strong_count), а не аллоцируем каждый кадр.
+        // The final result is written directly to an owned texture, not to a cached
+        // ping/pong with a subsequent copy: previously `copy_texture_owned` did an
+        // extra full-frame GPU→GPU copy for every layer with effects on every frame.
+        // The last pass targets this texture directly; intermediate passes still
+        // ping-pong through the cache.
+        // The texture is taken from the pool (reclaim by strong_count), not allocated every frame.
         let (owned, owned_view) = self.owned_pool.acquire(device, width, height);
 
-        // Все uniform'ы пассов — в один постоянный буфер; пассы адресуются dynamic offset'ом.
+        // All pass uniforms go into one persistent buffer; passes are addressed via dynamic offset.
         self.ensure_uniform_buffer(device, passes.len());
         let stride = self.uniform_stride as usize;
         let mut staging = vec![0u8; stride * passes.len()];
@@ -729,8 +756,8 @@ impl EffectPipeline {
             let bind_src: &wgpu::TextureView = view_of!(pass.src);
             let bind_secondary: &wgpu::TextureView = view_of!(pass.secondary);
             let target_view: &wgpu::TextureView = view_of!(pass.dst);
-            // Сначала разрешаем pipeline (&mut self для кеша кастомных шейдеров),
-            // затем берём иммутабельную ссылку на постоянный uniform-буфер.
+            // First resolve the pipeline (&mut self for custom shader cache),
+            // then take an immutable reference to the persistent uniform buffer.
             let pipeline = if let Some(ref src) = pass.custom_source {
                 self.get_or_create_custom_pipeline(device, src)?
             } else {
@@ -795,30 +822,19 @@ impl EffectPipeline {
     /// source is sampled with computed UVs, so the input and output may differ
     /// in size and aspect. The engine resets the layer transform so this output
     /// maps 1:1 onto the frame.
-    #[allow(clippy::too_many_arguments)]
     pub fn apply_blur_fill(
         &mut self,
         device: &wgpu::Device,
         queue: &wgpu::Queue,
         source: &EffectSource,
-        frame_w: u32,
-        frame_h: u32,
-        fg_scale: f32,
-        bg_scale: f32,
-        blur: f32,
-        bg_dim: f32,
-        bg_saturation: f32,
-        tint_color: [u8; 4],
-        tint_strength: f32,
-        fg_offset_y: f32,
-        quality: EffectQuality,
+        params: &BlurFillParams,
     ) -> Result<Arc<crate::media::SharedTexture>> {
         let (iw, ih) = match source {
             EffectSource::Cpu(img) => (img.width, img.height),
             EffectSource::Gpu(tex) => (tex.width(), tex.height()),
         };
-        let frame_w = frame_w.max(1);
-        let frame_h = frame_h.max(1);
+        let frame_w = params.frame_w.max(1);
+        let frame_h = params.frame_h.max(1);
         if iw == 0 || ih == 0 {
             return source_to_owned_texture(device, queue, source, iw.max(1), ih.max(1));
         }
@@ -851,15 +867,15 @@ impl EffectPipeline {
             frame_h,
             iw,
             ih,
-            fg_scale,
-            bg_scale,
-            blur,
-            bg_dim,
-            bg_saturation,
-            tint_color,
-            tint_strength,
-            fg_offset_y,
-            quality,
+            params.fg_scale,
+            params.bg_scale,
+            params.blur,
+            params.bg_dim,
+            params.bg_saturation,
+            params.tint_color,
+            params.tint_strength,
+            params.fg_offset_y,
+            params.quality,
         );
 
         let (owned, owned_view) = self.owned_pool.acquire(device, frame_w, frame_h);

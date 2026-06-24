@@ -59,12 +59,13 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_os::init())
-        // НЕ включать: несовместим с capability-scope (`fs:scope` с glob'ами `$HOME/**/*` и т.п.).
-        // Плагин при сохранении канонизирует/экранирует пути и glob'ы (UNC-форма `\\?\C:`,
-        // экранирование `?`,`(`), а при восстановлении искажённые паттерны уже не матчат реальные
-        // пути → любой путь становится "forbidden path" (проверено: запись в project `_images/`
-        // падала с VfsPermissionError). Статический scope уже покрывает workspace ($HOME/**/*),
-        // а доступ к файлам вне его выдаётся рантаймом (`allow_dropped_file_scope`).
+        // Do NOT enable: incompatible with capability-scope (`fs:scope` with globs
+        // like `$HOME/**/*` etc.). The plugin canonicalizes/escapes paths and globs
+        // on save (UNC form `\\?\C:`, escaping `?`,`(`), and on restore the mangled
+        // patterns no longer match real paths → any path becomes "forbidden path"
+        // (verified: writing to project `_images/` failed with VfsPermissionError).
+        // The static scope already covers the workspace ($HOME/**/*), and access to
+        // files outside it is granted at runtime (`allow_dropped_file_scope`).
         // .plugin(tauri_plugin_persisted_scope::init())
         .plugin(tauri_plugin_fs_stream::init())
         .invoke_handler(tauri::generate_handler![
@@ -112,20 +113,21 @@ pub fn run() {
                 app.handle().plugin(
                     tauri_plugin_log::Builder::default()
                         .level(log::LevelFilter::Info)
-                        // На Wayland + GL backend wgpu_hal каждое кадра логирует
-                        // `EGL 'eglSwapInterval' code 0x300d` (EGL_BAD_SURFACE) — это
-                        // безвредный варнинг (swapInterval не настраивается на лету),
-                        // но он засоряет терминал. Поднимаем порог именно для него.
+                        // On Wayland + GL backend wgpu_hal logs `EGL 'eglSwapInterval'
+                        // code 0x300d` (EGL_BAD_SURFACE) every frame — this is a
+                        // harmless warning (swapInterval cannot be reconfigured on
+                        // the fly), but it clutters the terminal. Raise the threshold
+                        // specifically for it.
                         .level_for("wgpu_hal::gles::egl", log::LevelFilter::Off)
                         .level_for("wgpu_hal::gles", log::LevelFilter::Warn)
-                        // symphonia_format_isomp4 логирует [WARN] ignoring stss atom
-                        // при демуксе MP4-контейнеров. stss — это видео-атом (ключевые
-                        // кадры), для аудио-декодинга он безвреден, но засоряет лог.
+                        // symphonia_format_isomp4 logs [WARN] ignoring stss atom
+                        // when demuxing MP4 containers. stss is a video atom (key
+                        // frames), harmless for audio decoding, but clutters the log.
                         .level_for("symphonia_format_isomp4", log::LevelFilter::Error)
                         .build(),
                 )?;
             }
-            // Видео-движок-singleton; AppHandle нужен, чтобы натив мог эмитить события на фронт.
+            // Video engine singleton; AppHandle is needed so the native side can emit events to the frontend.
             app.manage(engine::VideoEngine::new(app.handle().clone()));
             // Reclaim ephemeral temp files orphaned by a previous crashed/killed
             // run. Off-thread so a slow temp FS can't delay window creation.

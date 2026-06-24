@@ -46,6 +46,38 @@ pub struct VideoTrack {
 }
 
 impl Scene {
+    /// Creates an isolated scene with the same dimensions, time, and quality
+    /// as `self`, but with a transparent background, empty video tracks, and
+    /// empty master effects. Used when rendering a subset of layers to a
+    /// texture for effects, transitions, or adjustment clips.
+    pub fn isolated(&self, layers: Vec<Layer>) -> Self {
+        Scene {
+            width: self.width,
+            height: self.height,
+            time: self.time,
+            background: Color::TRANSPARENT,
+            layers,
+            video_tracks: Vec::new(),
+            master_effects: Vec::new(),
+            effect_quality: self.effect_quality,
+        }
+    }
+
+    /// Creates a scene with the same dimensions, time, background, quality,
+    /// video tracks, and master effects as `self`, but with replaced layers.
+    pub fn with_layers(&self, layers: Vec<Layer>) -> Self {
+        Scene {
+            width: self.width,
+            height: self.height,
+            time: self.time,
+            background: self.background,
+            layers,
+            video_tracks: self.video_tracks.clone(),
+            master_effects: self.master_effects.clone(),
+            effect_quality: self.effect_quality,
+        }
+    }
+
     /// Composites the scene into a `vello::Scene`. Fits (`scene.width × scene.height`)
     /// into (`viewport_w × viewport_h`) while preserving aspect ratio (letterbox).
     ///
@@ -104,7 +136,7 @@ impl Scene {
             let inner = layer.transform.to_affine_with_padding(natural, padding);
             let xform = outer * inner;
 
-            // Расчет обрезанного bbox (crop)
+            // Cropped bbox calculation (crop)
             let nw = natural.0 as f64;
             let nh = natural.1 as f64;
             let mut crop_left = (layer.transform.crop_left.clamp(0.0, 100.0) / 100.0) * nw;
@@ -177,7 +209,7 @@ impl Scene {
             if needs_composite_layer || needs_clip_layer {
                 out.pop_layer();
             }
-            // TODO: layer.mask — kurbo::BezPath из layer.mask.path, push_layer как clip.
+            // TODO: layer.mask — kurbo::BezPath from layer.mask.path, push_layer as clip.
             // TODO: shape/text layer effects need offscreen subscene rendering before Vello compose.
         }
 
@@ -189,9 +221,9 @@ impl Scene {
 pub struct TransitionInfo {
     pub spec: super::transitions::TransitionSpec,
     pub progress: f32,
-    /// Мгновенная "скорость" кривой (производная curve в текущей точке,
-    /// нормированная так, что linear == 1.0). Используется шейдерами motion-blur,
-    /// чтобы размытие нарастало/спадало вместе с кривой (как в web-манифестах).
+    /// Instantaneous "speed" of the curve (derivative of the curve at the current point,
+    /// normalized so that linear == 1.0). Used by motion-blur shaders so the blur
+    /// grows/falls with the curve (as in web manifests).
     pub speed_multiplier: f32,
     pub source: TransitionSource,
     pub edge: TransitionEdge,
@@ -222,14 +254,15 @@ pub struct Layer {
     pub transition: Option<TransitionInfo>,
 }
 
-/// Тип слоя. `#[non_exhaustive]` — добавление новых вариантов (Text, Svg, Shape,
-/// Group, ...) не ломает консьюмеров и сразу заставляет `to_vello` дать новую ветку.
+/// Layer kind. `#[non_exhaustive]` — adding new variants (Text, Svg, Shape,
+/// Group, ...) does not break consumers and immediately forces `to_vello` to
+/// provide a new branch.
 #[derive(Debug, Clone)]
 #[non_exhaustive]
 pub enum LayerKind {
-    /// Растровый слой (видеокадр или статичная картинка). Источник прячется
-    /// за [`RasterSource`], чтобы CPU-blob и future GPU-handle отличались
-    /// только в одной точке.
+    /// Raster layer (video frame or static image). The source is hidden behind
+    /// [`RasterSource`] so that CPU-blob and future GPU-handle differ only at
+    /// one point.
     Raster {
         source: RasterSource,
         natural_size: (u32, u32),
@@ -262,10 +295,10 @@ pub struct ShapeLayer {
     pub natural_size: (u32, u32),
 }
 
-/// Типизированная геометрия фигуры. Поля-доли уже нормализованы (проценты делятся на 100
-/// и клампятся 0..10) на границе IPC — см. `crate::monitor::runtime::parse_shape_geometry`.
-/// Раньше тут лежал `shape_type: String` + `config: serde_json::Value`, который парсился
-/// строковыми ключами на каждом кадре; перенос в enum убрал stringly-typing и дубли.
+/// Typed shape geometry. Fraction fields are already normalized (percentages divided by 100
+/// and clamped to 0..10) at the IPC boundary — see `crate::monitor::runtime::parse_shape_geometry`.
+/// Previously this held `shape_type: String` + `config: serde_json::Value`, parsed with string
+/// keys on every frame; moving to an enum removed stringly-typing and duplication.
 #[derive(Debug, Clone)]
 pub enum ShapeGeometry {
     Rectangle {
@@ -367,11 +400,11 @@ pub enum TextRenderMode {
     Full,
     WithoutTextShadow,
     TextShadowMask,
-    /// Только подложка: bg-тень + фон + рамка (без текста и тени текста).
-    /// Нижний слой GPU-композита тени текста.
+    /// Only background: bg shadow + bg + border (no text or text shadow).
+    /// Bottom layer of the text-shadow GPU composite.
     BackgroundOnly,
-    /// Только глифы основного текста (без фона/рамки/тени).
-    /// Верхний слой GPU-композита тени текста.
+    /// Only main text glyphs (no bg/border/shadow).
+    /// Top layer of the text-shadow GPU composite.
     TextOnly,
 }
 
@@ -389,19 +422,19 @@ pub enum TextVerticalAlign {
     Bottom,
 }
 
-/// Источник пикселей для `LayerKind::Raster`.
+/// Pixel source for `LayerKind::Raster`.
 ///
-/// `#[non_exhaustive]` — задел для GPU-resident вариантов (HW-decoded frame,
-/// group-offscreen cache). Сейчас весь рендер идёт через CPU-blob; Vello внутренне
-/// кеширует аплоад в GPU-текстуру по identity `peniko::Blob`, так что повторный
-/// клон того же `ImageData` (статичный image-слой) не перезаливается.
+/// `#[non_exhaustive]` — reserved for GPU-resident variants (HW-decoded frame,
+/// group-offscreen cache). Currently all rendering goes through CPU-blob; Vello
+/// internally caches the upload to GPU texture by identity `peniko::Blob`, so
+/// re-cloning the same `ImageData` (static image layer) does not re-upload.
 #[derive(Debug, Clone)]
 #[non_exhaustive]
 pub enum RasterSource {
     Image(ImageData),
-    /// GPU-resident кадр. `Arc` владеет текстурой ровно столько, сколько слой/кадр
-    /// на неё ссылается — отдельного кеша с независимым вытеснением больше нет, поэтому
-    /// хэндл никогда не «протухает» под живым кадром (раньше для этого держался CPU-дубль).
+    /// GPU-resident frame. `Arc` owns the texture for exactly as long as the layer/frame
+    /// references it — there is no separate cache with independent eviction, so the
+    /// handle never goes "stale" under a live frame (previously a CPU copy was held for this).
     GpuTexture(Arc<crate::media::SharedTexture>),
 }
 
@@ -409,10 +442,10 @@ pub enum RasterGpuSource<'a> {
     Texture(&'a crate::media::SharedTexture),
 }
 
-/// 2D-transform слоя в координатах композитного кадра.
+/// 2D layer transform in composite frame coordinates.
 ///
-/// Семантика: `anchor` — точка внутри натуральной bbox слоя в долях `[0..1]`,
-/// которая переходит в `(x, y)` после rotate+scale. Сборка affine — в `to_affine`.
+/// Semantics: `anchor` — a point inside the layer's natural bbox in fractions `[0..1]`,
+/// which maps to `(x, y)` after rotate+scale. Affine assembly is in `to_affine`.
 #[derive(Debug, Clone, Copy)]
 pub struct Transform {
     pub x: f64,
@@ -445,9 +478,9 @@ impl Transform {
         }
     }
 
-    /// Transform, который вписывает натуральный bbox `natural` в `into` с
-    /// сохранением аспекта и центрирует результат. Anchor = центр слоя,
-    /// позиция = центр сцены.
+    /// Transform that fits the natural bbox `natural` into `into` while
+    /// preserving aspect ratio and centering the result. Anchor = layer center,
+    /// position = scene center.
     pub fn center_fit(natural: (u32, u32), into: (u32, u32)) -> Self {
         let s = (into.0 as f64 / natural.0 as f64).min(into.1 as f64 / natural.1 as f64);
         Self {
@@ -465,7 +498,7 @@ impl Transform {
         }
     }
 
-    /// Сборка `Affine` из Transform и натуральных размеров слоя.
+    /// Builds an `Affine` from the Transform and the layer's natural dimensions.
     pub fn to_affine(self, natural: (u32, u32)) -> Affine {
         self.to_affine_with_padding(natural, (0.0, 0.0))
     }
@@ -650,7 +683,7 @@ fn draw_text(scene: &mut VelloScene, spec: &TextLayer, xform: Affine) {
         draw_text_border(scene, spec, xform, frame_x, frame_y);
     }
 
-    // Подложка нарисована — текст/тень в этом режиме не нужны.
+    // Background drawn — text/shadow not needed in this mode.
     if matches!(spec.render_mode, TextRenderMode::BackgroundOnly) {
         return;
     }
@@ -719,8 +752,8 @@ fn draw_text(scene: &mut VelloScene, spec: &TextLayer, xform: Affine) {
     }
 }
 
-/// Background shadow — настоящий гауссов blur нативной примитивой vello
-/// (`draw_blurred_rounded_rect`), а не 9 смещённых копий, как раньше.
+/// Background shadow — a real Gaussian blur via the native vello primitive
+/// (`draw_blurred_rounded_rect`), not 9 offset copies as before.
 fn draw_text_background_shadow(
     scene: &mut VelloScene,
     spec: &TextLayer,
@@ -728,8 +761,8 @@ fn draw_text_background_shadow(
     frame_x: f32,
     frame_y: f32,
 ) {
-    // Тень рисуем только при включённом фоне (как web: `backgroundEnabled &&
-    // backgroundShadowEnabled`) — тень от невидимой подложки не имеет смысла.
+    // Only draw shadow when background is enabled (like web: `backgroundEnabled &&
+    // backgroundShadowEnabled`) — shadow from an invisible background makes no sense.
     if !(spec.background_enabled && spec.bg_shadow_enabled && spec.bg_shadow_color.to_rgba8().a > 0)
     {
         return;
@@ -747,8 +780,8 @@ fn draw_text_background_shadow(
     let radius = (spec.background_radius + ext as f64).max(0.0);
 
     if spec.bg_shadow_blur > 0.0 {
-        // CSS-подобный blur-radius → σ ≈ blur/2. Один точный гауссов примитив,
-        // полная альфа (без раздачи по проходам).
+        // CSS-like blur-radius → σ ≈ blur/2. One precise Gaussian primitive,
+        // full alpha (no multi-pass spreading).
         let std_dev = (spec.bg_shadow_blur as f64) * 0.5;
         scene.draw_blurred_rounded_rect(xform, rect, spec.bg_shadow_color, radius, std_dev);
     } else {
@@ -967,10 +1000,11 @@ fn draw_text_shadows(
             1.0,
         );
     } else if spec.text_shadow_blur > 0.0 {
-        // У глифов нет нативного blur'а в vello, поэтому аппроксимируем гауссиану
-        // ДИСКРЕТНОЙ СВЁРТКОЙ силуэта: сетка отсчётов в пределах ±2σ с весами
-        // exp(-(x²+y²)/2σ²), нормированными к сумме 1. Это 2D-ядро вместо кольца из
-        // 8 копий на одном радиусе (которое давало «8 призраков» при крупном blur).
+        // Glyphs have no native blur in vello, so we approximate a Gaussian
+        // with a DISCRETE CONVOLUTION of the silhouette: a grid of taps within ±2σ
+        // with weights exp(-(x²+y²)/2σ²), normalized to sum 1. This is a 2D kernel
+        // instead of a ring of 8 copies at one radius (which produced "8 ghosts"
+        // at large blur).
         for (dx, dy, w) in gaussian_kernel_taps(spec.text_shadow_blur * 0.5) {
             draw_shadow_pass(
                 scene,
@@ -1026,10 +1060,10 @@ fn text_background_shadow_outset(spec: &TextLayer) -> f32 {
     (border_outset + spec.bg_shadow_spread).max(0.0)
 }
 
-/// Отсчёты дискретного 2D-гауссова ядра для аппроксимации размытия тени текста
-/// перерисовкой силуэта со смещениями. Возвращает `(dx, dy, weight)` на сетке в
-/// пределах ±2σ; веса нормированы к сумме 1, ничтожные (<4%) отброшены ради скорости.
-/// При σ≤0 — единственный отсчёт (0,0,1).
+/// Discrete 2D Gaussian kernel taps for approximating text shadow blur
+/// by redrawing the silhouette with offsets. Returns `(dx, dy, weight)` on a grid
+/// within ±2σ; weights are normalized to sum 1, negligible ones (<4%) are dropped for speed.
+/// At σ≤0 — a single tap (0,0,1).
 fn gaussian_kernel_taps(sigma: f32) -> Vec<(f32, f32, f32)> {
     let sigma = sigma.max(0.0);
     if sigma < 0.5 {
@@ -1162,13 +1196,13 @@ fn cloud_path(cx: f64, cy: f64, half: f64, cloud_type: i32) -> BezPath {
 
 #[derive(Debug, Clone)]
 pub struct Mask {
-    /// SVG path d-string в локальных координатах слоя.
+    /// SVG path d-string in the layer's local coordinates.
     pub path: String,
     pub inverted: bool,
 }
 
-/// Letterbox-fit натуральных размеров `natural` в `into`. Возвращает Affine
-/// для применения к слою/сцене (используется как outer transform в `to_vello`).
+/// Letterbox-fit natural dimensions `natural` into `into`. Returns an Affine
+/// to apply to the layer/scene (used as outer transform in `to_vello`).
 pub fn fit_into(natural: (u32, u32), into: (u32, u32)) -> Affine {
     let s = (into.0 as f64 / natural.0 as f64).min(into.1 as f64 / natural.1 as f64);
     let dw = natural.0 as f64 * s;
@@ -1277,7 +1311,7 @@ mod tests {
 
     #[test]
     fn fit_into_widens_to_letterbox_height() {
-        // 16:9 в 4:3 → должно ужаться по ширине, по высоте чёрные полосы.
+        // 16:9 into 4:3 → should shrink width, black bars top/bottom.
         let a = fit_into((1920, 1080), (1280, 960));
         let (x0, y0) = affine_apply(a, (0.0, 0.0));
         let (x1, y1) = affine_apply(a, (1920.0, 1080.0));
@@ -1291,7 +1325,7 @@ mod tests {
 
     #[test]
     fn fit_into_pillarbox_when_target_wider() {
-        // 4:3 в 16:9 → fit по высоте, по ширине pillarbox.
+        // 4:3 into 16:9 → fit by height, pillarbox on sides.
         let a = fit_into((640, 480), (1920, 1080));
         let (x0, _) = affine_apply(a, (0.0, 0.0));
         let (x1, _) = affine_apply(a, (640.0, 0.0));
@@ -1321,7 +1355,7 @@ mod tests {
 
     #[test]
     fn transform_center_fit_preserves_aspect_and_corners() {
-        // Квадрат 200×200 в 800×400 → fit по высоте (scale=2), pillar по бокам.
+        // Square 200×200 into 800×400 → fit by height (scale=2), pillarbox on sides.
         let t = Transform::center_fit((200, 200), (800, 400));
         let a = t.to_affine((200, 200));
         let (x0, y0) = affine_apply(a, (0.0, 0.0));
@@ -1379,13 +1413,13 @@ mod tests {
             layers: Vec::new(),
             video_tracks: Vec::new(),
         };
-        // Должно вернуть без паники.
+        // Should return without panicking.
         let _ = scene.to_vello(1280, 720, |_| None);
     }
 
     #[test]
     fn to_vello_skips_zero_opacity_layer() {
-        // Smoke: opacity=0 — layer не должен вызывать draw, паники не должно быть.
+        // Smoke: opacity=0 — layer should not trigger draw, no panic.
         let scene = Scene {
             master_effects: Vec::new(),
             effect_quality: EffectQuality::Ultra,
@@ -1415,7 +1449,7 @@ mod tests {
             layers: vec![raster_layer((10, 10), Transform::identity(), 1.0)],
             video_tracks: Vec::new(),
         };
-        // Не должен паниковать при нулевом viewport'е.
+        // Should not panic with zero viewport.
         let _ = scene.to_vello(0, 0, |_| None);
         let _ = scene.to_vello(100, 0, |_| None);
     }
@@ -1452,7 +1486,7 @@ mod tests {
 
     #[test]
     fn fit_into_same_aspect_no_translation() {
-        // Если аспект совпадает — letterbox/pillarbox нулевые.
+        // If aspect matches — letterbox/pillarbox is zero.
         let a = fit_into((1920, 1080), (960, 540));
         let (x0, y0) = affine_apply(a, (0.0, 0.0));
         let (x1, y1) = affine_apply(a, (1920.0, 1080.0));
@@ -1464,7 +1498,7 @@ mod tests {
 
     #[test]
     fn blend_mode_all_variants_map_without_panic() {
-        // Исчерпывающая проверка: ни одна ветка match не упадёт.
+        // Exhaustive check: no match branch should panic.
         let modes = [
             BlendMode::Normal,
             BlendMode::Multiply,
@@ -1490,13 +1524,13 @@ mod tests {
 
     #[test]
     fn gaussian_kernel_taps_normalized_and_centered() {
-        // σ≤0 → один центральный отсчёт с весом 1.
+        // σ≤0 → single central tap with weight 1.
         let z = gaussian_kernel_taps(0.0);
         assert_eq!(z.len(), 1);
         assert_eq!(z[0], (0.0, 0.0, 1.0));
 
-        // Заметный σ → несколько отсчётов, веса нормированы к сумме 1,
-        // центральный — самый тяжёлый, ядро симметрично.
+        // Significant σ → multiple taps, weights normalized to sum 1,
+        // central tap is heaviest, kernel is symmetric.
         let taps = gaussian_kernel_taps(6.0);
         assert!(taps.len() > 1);
         let wsum: f32 = taps.iter().map(|t| t.2).sum();
@@ -1516,7 +1550,7 @@ mod tests {
 
     #[test]
     fn transform_rotation_90deg_maps_x_to_y() {
-        // Поворот на 90° вокруг начала координат: (1,0) → (0,1).
+        // 90° rotation around origin: (1,0) → (0,1).
         let t = Transform {
             x: 0.0,
             y: 0.0,
@@ -1530,10 +1564,10 @@ mod tests {
             crop_left: 0.0,
             crop_right: 0.0,
         };
-        let a = t.to_affine((0, 0)); // natural size не используется при anchor=0
+        let a = t.to_affine((0, 0)); // natural size unused when anchor=0
         let (px, py) = affine_apply(a, (1.0, 0.0));
-        // После rotate(90°): x→-y, y→x, т.е. (1,0)→(0,1) в математических осях.
-        // В экранных координатах (y вниз): (1,0)→(0,-1)?
+        // After rotate(90°): x→-y, y→x, i.e. (1,0)→(0,1) in math axes.
+        // In screen coordinates (y down): (1,0)→(0,-1)?
         // kurbo::Affine::rotate(π/2): [[cos, -sin],[sin, cos]] = [[0,-1],[1,0]] → (1,0)→(0,1).
         assert!(approx(px.abs(), 0.0));
         assert!(approx(py.abs(), 1.0));

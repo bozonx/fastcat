@@ -263,9 +263,9 @@ pub(crate) struct AudioShared {
     /// first Play after a cold page load starts with a full buffer instead of an
     /// immediate underrun (crackle + sped-up audio). Cleared in `release_output`.
     pub(crate) hold_output: bool,
-    /// Глобальная скорость транспорта (мультипликатор таймлайн-времени). >0 —
-    /// вперёд (1.0 норма, !=1 даёт варипитч-ресемпл), <=0 — реверс/стоп: producer
-    /// не миксует (аудио молчит), мастер-клок ведёт само видео.
+    /// Global transport speed (timeline time multiplier). >0 — forward
+    /// (1.0 normal, !=1 gives varispeed resample), <=0 — reverse/stop: producer
+    /// does not mix (audio is silent), master clock is driven by video alone.
     pub(crate) global_speed: f64,
     pub(crate) origin_pts_sec: f64,
     pub(crate) producer_pts_sec: f64,

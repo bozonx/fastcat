@@ -28,7 +28,7 @@ use super::gpu_utils::{create_readback_target, create_rgba8_texture, image_pixel
 use super::readback::*;
 use super::render_telemetry::{RenderPrepareTiming, RenderStageTiming, RenderTelemetry};
 use super::scene::{
-    BlendMode, Layer, LayerKind, RasterGpuSource, RasterSource, Transform, TransitionEdge,
+    BlendMode, Layer, LayerKind, RasterGpuSource, RasterSource, Scene, Transform, TransitionEdge,
     TransitionSource,
 };
 use super::text_engine::{render_text_layer_with_gpu_shadow, text_layer_needs_gpu_shadow};
@@ -91,7 +91,7 @@ impl Compositor {
             .resize_surface(surface, width.max(1), height.max(1));
     }
 
-    /// Рендерит готовую `vello::Scene` в окно. Внутри: render_to_texture → blit на свопчейн.
+    /// Renders a ready `vello::Scene` to the window. Internally: render_to_texture → blit to swapchain.
     pub fn render_to_surface(
         &mut self,
         surface: &mut RenderSurface<'static>,
@@ -159,8 +159,8 @@ impl Compositor {
         Ok(())
     }
 
-    /// High-level: составляет доменную `Scene` в vello и рендерит в окно.
-    /// `scene.background` используется как базовый цвет.
+    /// High-level: composes a domain `Scene` into vello and renders to the window.
+    /// `scene.background` is used as the base color.
     pub fn render_scene_to_surface(
         &mut self,
         scene: &super::scene::Scene,
@@ -190,7 +190,7 @@ impl Compositor {
         result
     }
 
-    /// High-level: составляет доменную `Scene` в vello и читает пиксели в `Vec<u8>` (RGBA, `w×h×4`).
+    /// High-level: composes a domain `Scene` into vello and reads pixels into `Vec<u8>` (RGBA, `w×h×4`).
     pub fn render_scene_to_pixels(
         &mut self,
         dev_id: usize,
@@ -278,16 +278,7 @@ impl Compositor {
                 .push(self.materialize_layer_effects(dev_id, scene, &layer, device, queue)?);
         }
 
-        Ok(super::scene::Scene {
-            width: scene.width,
-            height: scene.height,
-            time: scene.time,
-            background: scene.background,
-            layers: final_layers,
-            video_tracks: scene.video_tracks.clone(),
-            master_effects: scene.master_effects.clone(),
-            effect_quality: scene.effect_quality,
-        })
+        Ok(scene.with_layers(final_layers))
     }
 
     /// Renders the transition's *source* side (the other clip / background / transparency)
@@ -312,16 +303,7 @@ impl Compositor {
             }
             TransitionSource::Background => {
                 let lower_layers = layers[..i].to_vec();
-                let background_scene = super::scene::Scene {
-                    width: scene.width,
-                    height: scene.height,
-                    time: scene.time,
-                    background: Color::TRANSPARENT,
-                    layers: lower_layers,
-                    video_tracks: Vec::new(),
-                    master_effects: Vec::new(),
-                    effect_quality: scene.effect_quality,
-                };
+                let background_scene = scene.isolated(lower_layers);
                 let background_scene = self.materialize_transitions_and_effects(
                     dev_id,
                     &background_scene,
@@ -341,21 +323,10 @@ impl Compositor {
                     scene.height,
                     Color::TRANSPARENT,
                 )?;
-                EffectSource::Gpu(Arc::new(crate::media::SharedTexture::new_shared(Arc::new(
-                    texture,
-                ))))
+                EffectSource::from_texture(texture)
             }
             TransitionSource::Transparent => {
-                let transparent_scene = super::scene::Scene {
-                    width: scene.width,
-                    height: scene.height,
-                    time: scene.time,
-                    background: Color::TRANSPARENT,
-                    layers: Vec::new(),
-                    video_tracks: Vec::new(),
-                    master_effects: Vec::new(),
-                    effect_quality: scene.effect_quality,
-                };
+                let transparent_scene = scene.isolated(Vec::new());
                 let texture = self.render_domain_scene_to_owned_texture(
                     dev_id,
                     &transparent_scene,
@@ -363,9 +334,7 @@ impl Compositor {
                     scene.height,
                     Color::TRANSPARENT,
                 )?;
-                EffectSource::Gpu(Arc::new(crate::media::SharedTexture::new_shared(Arc::new(
-                    texture,
-                ))))
+                EffectSource::from_texture(texture)
             }
         };
         Ok(Some(source))
@@ -481,9 +450,7 @@ impl Compositor {
 
         let source = if is_vector {
             let texture = self.render_layer_to_texture(dev_id, scene, layer, render_scale)?;
-            EffectSource::Gpu(Arc::new(crate::media::SharedTexture::new_shared(Arc::new(
-                texture,
-            ))))
+            EffectSource::from_texture(texture)
         } else {
             self.layer_to_effect_source(dev_id, scene, layer)?
         };
@@ -535,17 +502,19 @@ impl Compositor {
                     device,
                     queue,
                     &base,
-                    scene.width,
-                    scene.height,
-                    *fg_scale,
-                    *bg_scale,
-                    *blur,
-                    *bg_dim,
-                    *bg_saturation,
-                    *tint_color,
-                    *tint_strength,
-                    *fg_offset_y,
-                    scene.effect_quality,
+                    &super::effects::BlurFillParams {
+                        frame_w: scene.width,
+                        frame_h: scene.height,
+                        fg_scale: *fg_scale,
+                        bg_scale: *bg_scale,
+                        blur: *blur,
+                        bg_dim: *bg_dim,
+                        bg_saturation: *bg_saturation,
+                        tint_color: *tint_color,
+                        tint_strength: *tint_strength,
+                        fg_offset_y: *fg_offset_y,
+                        quality: scene.effect_quality,
+                    },
                 )?;
                 let mut next = layer.clone();
                 next.transform =
@@ -614,15 +583,11 @@ impl Compositor {
                     if lower_layers.is_empty() {
                         continue;
                     }
-                    let temp_scene = super::scene::Scene {
-                        width: scene.width,
-                        height: scene.height,
-                        time: scene.time,
+                    let temp_scene = scene.isolated(lower_layers.clone());
+                    // Keep the original background for adjustment clip rendering.
+                    let temp_scene = Scene {
                         background: scene.background,
-                        layers: lower_layers.clone(),
-                        video_tracks: Vec::new(),
-                        master_effects: Vec::new(),
-                        effect_quality: scene.effect_quality,
+                        ..temp_scene
                     };
                     let texture = self.render_domain_scene_to_owned_texture(
                         dev_id,
@@ -635,9 +600,7 @@ impl Compositor {
                         dev_id,
                         device,
                         queue,
-                        &EffectSource::Gpu(Arc::new(crate::media::SharedTexture::new_shared(
-                            Arc::new(texture),
-                        ))),
+                        &EffectSource::from_texture(texture),
                         &layer.effects,
                         false,
                         scene.effect_quality,
@@ -664,16 +627,7 @@ impl Compositor {
 
         result_layers.extend(lower_layers);
 
-        Ok(super::scene::Scene {
-            width: scene.width,
-            height: scene.height,
-            time: scene.time,
-            background: scene.background,
-            layers: result_layers,
-            video_tracks: scene.video_tracks.clone(),
-            master_effects: scene.master_effects.clone(),
-            effect_quality: scene.effect_quality,
-        })
+        Ok(scene.with_layers(result_layers))
     }
 
     fn materialize_video_tracks(
@@ -721,16 +675,7 @@ impl Compositor {
                 continue;
             }
 
-            let isolated = super::scene::Scene {
-                width: scene.width,
-                height: scene.height,
-                time: scene.time,
-                background: Color::TRANSPARENT,
-                layers: member_layers,
-                video_tracks: Vec::new(),
-                master_effects: Vec::new(),
-                effect_quality: scene.effect_quality,
-            };
+            let isolated = scene.isolated(member_layers);
             let texture = self.render_domain_scene_to_owned_texture(
                 dev_id,
                 &isolated,
@@ -738,13 +683,13 @@ impl Compositor {
                 scene.height,
                 Color::TRANSPARENT,
             )?;
-            let source = EffectSource::Gpu(Arc::new(crate::media::SharedTexture::new_shared(
-                Arc::new(texture),
-            )));
+            let source = EffectSource::from_texture(texture);
             let output = if track.effects.is_empty() {
                 match source {
                     EffectSource::Gpu(texture) => texture,
-                    EffectSource::Cpu(_) => unreachable!("track source is always GPU-backed"),
+                    EffectSource::Cpu(_) => {
+                        return Err(anyhow!("track source must be GPU-backed"));
+                    }
                 }
             } else {
                 self.apply_effects_to_texture(
@@ -779,20 +724,15 @@ impl Compositor {
             );
         }
 
-        Ok(super::scene::Scene {
-            width: scene.width,
-            height: scene.height,
-            time: scene.time,
-            background: scene.background,
+        Ok(Scene {
             layers,
             video_tracks: Vec::new(),
-            master_effects: scene.master_effects.clone(),
-            effect_quality: scene.effect_quality,
+            ..scene.with_layers(Vec::new())
         })
     }
 
-    /// Источник пикселей слоя с УЖЕ применёнными собственными эффектами слоя.
-    /// Если эффектов нет — возвращает сырой источник без лишнего прохода.
+    /// Returns the layer's pixel source with its own effects already applied.
+    /// If there are no effects, returns the raw source without an extra pass.
     fn layer_source_with_effects(
         &mut self,
         dev_id: usize,
@@ -804,9 +744,7 @@ impl Compositor {
         let base = if text_layer_needs_gpu_shadow(layer) {
             let texture =
                 render_text_layer_with_gpu_shadow(self, dev_id, scene, layer, device, queue)?;
-            EffectSource::Gpu(Arc::new(crate::media::SharedTexture::new_shared(Arc::new(
-                texture,
-            ))))
+            EffectSource::from_texture(texture)
         } else {
             self.layer_to_effect_source(dev_id, scene, layer)?
         };
@@ -844,29 +782,20 @@ impl Compositor {
                 (RasterSource::GpuTexture(texture), size)
             }
         };
-        let isolated = super::scene::Scene {
-            width: scene.width,
-            height: scene.height,
-            time: scene.time,
-            background: Color::TRANSPARENT,
-            layers: vec![Layer {
-                id: layer.id.clone(),
-                kind: LayerKind::Raster {
-                    source,
-                    natural_size,
-                    padding: None,
-                },
-                transform: layer.transform.clone(),
-                opacity: layer.opacity,
-                blend: BlendMode::Normal,
-                mask: layer.mask.clone(),
-                effects: Vec::new(),
-                transition: None,
-            }],
-            video_tracks: Vec::new(),
-            master_effects: Vec::new(),
-            effect_quality: scene.effect_quality,
-        };
+        let isolated = scene.isolated(vec![Layer {
+            id: layer.id.clone(),
+            kind: LayerKind::Raster {
+                source,
+                natural_size,
+                padding: None,
+            },
+            transform: layer.transform.clone(),
+            opacity: layer.opacity,
+            blend: BlendMode::Normal,
+            mask: layer.mask.clone(),
+            effects: Vec::new(),
+            transition: None,
+        }]);
         let texture = self.render_domain_scene_to_owned_texture(
             dev_id,
             &isolated,
@@ -874,9 +803,7 @@ impl Compositor {
             scene.height,
             Color::TRANSPARENT,
         )?;
-        Ok(EffectSource::Gpu(Arc::new(
-            crate::media::SharedTexture::new_shared(Arc::new(texture)),
-        )))
+        Ok(EffectSource::from_texture(texture))
     }
 
     fn materialize_text_shadow_blurs(
@@ -925,11 +852,9 @@ impl Compositor {
                 RasterSource::GpuTexture(texture) => Ok(EffectSource::Gpu(texture.clone())),
             },
             LayerKind::Shape(_) | LayerKind::Text(_) => {
-                // 1:1 — путь переходов; сверхдискретизация под эффекты делается в шаге 2.
+                // 1:1 — transition path; supersampling for effects is done in step 2.
                 let texture = self.render_layer_to_texture(dev_id, scene, layer, (1.0, 1.0))?;
-                Ok(EffectSource::Gpu(Arc::new(
-                    crate::media::SharedTexture::new_shared(Arc::new(texture)),
-                )))
+                Ok(EffectSource::from_texture(texture))
             }
             LayerKind::Adjustment => Err(anyhow!(
                 "layer_to_effect_source called on adjustment layer {}",
@@ -938,11 +863,11 @@ impl Compositor {
         }
     }
 
-    /// Растеризует векторный слой (Shape/Text) в изолированную текстуру для применения
-    /// GPU-эффектов. `scale` задаёт сверхдискретизацию: при `(kx,ky) > 1` слой рисуется
-    /// в `natural × k` пикселей, чтобы при последующем композите с увеличением не было
-    /// алиасинга/мыла (вектор остаётся резким). Вызывающий обязан поделить scale слоя
-    /// на `k`, иначе результат увеличится дважды.
+    /// Rasterizes a vector layer (Shape/Text) into an isolated texture for applying
+    /// GPU effects. `scale` sets supersampling: at `(kx,ky) > 1` the layer is drawn
+    /// at `natural × k` pixels so that subsequent compositing with upscaling does
+    /// not produce aliasing/blur (the vector stays sharp). The caller must divide
+    /// the layer's scale by `k`, otherwise the result will be scaled twice.
     pub(crate) fn render_layer_to_texture(
         &mut self,
         dev_id: usize,
@@ -962,7 +887,7 @@ impl Compositor {
             layers: vec![Layer {
                 id: layer.id.clone(),
                 kind: layer.kind.clone(),
-                // Рисуем слой увеличенным в k раз внутри текстуры (без сдвига/поворота).
+                // Draw the layer scaled by k inside the texture (no shift/rotation).
                 transform: Transform {
                     scale_x: kx,
                     scale_y: ky,
@@ -982,9 +907,9 @@ impl Compositor {
         self.render_to_owned_texture(dev_id, &vello, width, height, Color::TRANSPARENT)
     }
 
-    /// Степень сверхдискретизации для растеризации векторного слоя под эффект:
-    /// берём абсолютный scale слоя (на сколько он увеличивается на сцене), кламп в
-    /// `[1; 8]` и ограничиваем итоговый размер текстуры (8192 px на сторону).
+    /// Supersampling factor for rasterizing a vector layer for effects:
+    /// takes the absolute scale of the layer (how much it is enlarged on the scene),
+    /// clamps to `[1; 8]` and limits the final texture size (8192 px per side).
     pub(crate) fn vector_effect_render_scale(layer: &Layer) -> (f64, f64) {
         const MAX_K: f64 = 8.0;
         const MAX_DIM: f64 = 8192.0;
@@ -1000,46 +925,20 @@ impl Compositor {
     /// "blur fill"): the source fills the whole frame as a cover-scaled, blurred
     /// background with a contain-fit sharp copy on top. Falls back to the raw
     /// source on GPU failure.
-    #[allow(clippy::too_many_arguments)]
     fn apply_blur_fill_to_texture(
         &mut self,
         dev_id: usize,
         device: &wgpu::Device,
         queue: &wgpu::Queue,
         source: &EffectSource,
-        frame_w: u32,
-        frame_h: u32,
-        fg_scale: f32,
-        bg_scale: f32,
-        blur: f32,
-        bg_dim: f32,
-        bg_saturation: f32,
-        tint_color: [u8; 4],
-        tint_strength: f32,
-        fg_offset_y: f32,
-        quality: crate::compositor::effects::EffectQuality,
+        params: &super::effects::BlurFillParams,
     ) -> Result<Arc<crate::media::SharedTexture>> {
         let cache = self.devices.pipeline_caches.get(&dev_id);
         let pipeline = self
             .effect_pipelines
             .entry(dev_id)
             .or_insert_with(|| EffectPipeline::new(device, cache));
-        match pipeline.apply_blur_fill(
-            device,
-            queue,
-            source,
-            frame_w,
-            frame_h,
-            fg_scale,
-            bg_scale,
-            blur,
-            bg_dim,
-            bg_saturation,
-            tint_color,
-            tint_strength,
-            fg_offset_y,
-            quality,
-        ) {
+        match pipeline.apply_blur_fill(device, queue, source, params) {
             Ok(texture) => Ok(texture),
             Err(error) => {
                 log::warn!("[compositor] blur-fill skipped: {error:?}");
@@ -1073,7 +972,7 @@ impl Compositor {
             Ok((texture, padding)) => Ok((texture, padding)),
             Err(error) => {
                 log::warn!("[compositor] layer effects skipped: {error:?}");
-                // Fallback: отдать исходник как есть. GPU-текстура — дешёвый клон хэндла.
+                // Fallback: return the source as-is. GPU texture is a cheap handle clone.
                 let tex = match source {
                     EffectSource::Cpu(img) => Arc::new(crate::media::SharedTexture::new_shared(
                         Arc::new(image_to_texture(device, queue, img)?),
@@ -1091,11 +990,11 @@ impl Compositor {
         texture: &wgpu::Texture,
         registered_images: &mut Vec<ImageData>,
     ) -> Result<ImageData> {
-        // `wgpu::Texture` — это refcounted-хэндл (Arc внутри), а `register_texture`
-        // лишь добавляет override в renderer и копирует пиксели в свой атлас в начале
-        // кадра. Поэтому отдаём дешёвый клон хэндла вместо полной GPU-копии каждый кадр.
-        // Источник всегда имеет COPY_SRC (видеокадры из decode_thread, выходы
-        // effect/transition-пайплайнов) — требование `register_texture` соблюдено.
+        // `wgpu::Texture` is a refcounted handle (Arc internally), and `register_texture`
+        // merely adds an override to the renderer and copies pixels into its atlas at the
+        // start of a frame. So we pass a cheap handle clone instead of a full GPU copy every frame.
+        // The source always has COPY_SRC (video frames from decode_thread, outputs of
+        // effect/transition pipelines) — the `register_texture` requirement is satisfied.
         let renderer = self
             .devices
             .renderers
@@ -1126,13 +1025,14 @@ impl Compositor {
         pollster::block_on(render_cx.device(None)).is_some()
     }
 
-    /// Возвращает первое существующее `dev_id` или инициализирует новое (нужно для offscreen-рендера,
-    /// когда нет surface). Здесь мы шарим device между surface и offscreen — у Vello это OK.
+    /// Returns the first existing `dev_id` or initializes a new one (needed for offscreen
+    /// rendering when there is no surface). We share the device between surface and offscreen —
+    /// Vello supports this.
     pub fn ensure_offscreen_device(&mut self) -> Result<usize> {
         if let Some(dev_id) = self.devices.renderers.keys().copied().next() {
             return Ok(dev_id);
         }
-        // Создаём device через RenderContext без surface (адаптер выберется автоматически).
+        // Create a device via RenderContext without a surface (adapter is chosen automatically).
         let dev_id = pollster::block_on(self.devices.render_cx.device(None))
             .ok_or_else(|| anyhow!("vello device: no compatible adapter"))?;
         self.ensure_renderer(dev_id)?;
@@ -1155,9 +1055,9 @@ impl Compositor {
             .map(|dh| dh.queue.clone())
     }
 
-    /// Рендерит сцену в Rgba8 texture и читает её обратно в `Vec<u8>` (RGBA, length = w*h*4).
-    /// `(width, height)` должны быть кратны 256 / 64 — это требование `copy_texture_to_buffer`
-    /// учитываем выравниванием `bytes_per_row`; здесь не требуем кратности от вызывающего.
+    /// Renders a scene to an Rgba8 texture and reads it back into `Vec<u8>` (RGBA, length = w*h*4).
+    /// `(width, height)` must be multiples of 256 / 64 — this is a `copy_texture_to_buffer`
+    /// requirement handled by aligning `bytes_per_row`; we do not require alignment from the caller.
     pub fn render_to_pixels(
         &mut self,
         dev_id: usize,
@@ -1170,8 +1070,8 @@ impl Compositor {
         let device = &device_handle.device;
         let queue = &device_handle.queue;
 
-        // (Пере)создаём offscreen target только при изменении размера. Ключ — dev_id,
-        // чтобы при работе с несколькими device'ами они не вытесняли друг друга.
+        // (Re)create the offscreen target only when the size changes. Keyed by dev_id
+        // so multiple devices do not evict each other.
         let need_rebuild = match self.devices.offscreen.get(&dev_id) {
             Some(t) => t.width != width || t.height != height,
             None => true,
@@ -1335,7 +1235,7 @@ impl Compositor {
         }
         let device_handle = &self.devices.render_cx.devices[dev_id];
 
-        // Получаем или создаем PipelineCache для этого устройства
+        // Get or create a PipelineCache for this device
         let pipeline_cache = self
             .devices
             .pipeline_caches
@@ -1408,7 +1308,7 @@ fn image_to_texture(
 }
 
 impl Compositor {
-    /// Создать pipelined readback-сессию для заданного device и размера.
+    /// Create a pipelined readback session for the given device and size.
     pub fn begin_pipelined_readback(
         &mut self,
         dev_id: usize,
@@ -1426,8 +1326,8 @@ impl Compositor {
         ))
     }
 
-    /// Рендерит сцену и возвращает пиксели самого старого готового кадра,
-    /// либо `None`, если GPU ещё не догнал.
+    /// Renders a scene and returns pixels from the oldest ready frame,
+    /// or `None` if the GPU has not caught up yet.
     pub fn render_to_pixels_pipelined(
         &mut self,
         session: &mut PipelinedReadback,
@@ -1437,7 +1337,7 @@ impl Compositor {
         let slot_idx = session.next_slot % session.slots.len();
         session.next_slot += 1;
 
-        // Если слот занят — сначала забираем его (блокирующе, редкий случай).
+        // If the slot is occupied — drain it first (blocking, rare case).
         if !matches!(session.slots[slot_idx].state, SlotState::Idle) {
             self.drain_slot(session, slot_idx)?;
         }
@@ -1502,13 +1402,13 @@ impl Compositor {
         slot.state = SlotState::InFlight { frame, map_rx: rx };
         session.frame_seq += 1;
 
-        // Неблокирующий poll — заставляет wgpu вызвать уже готовые callbacks.
+        // Non-blocking poll — forces wgpu to invoke ready callbacks.
         device.poll(wgpu::PollType::Poll).ok();
 
-        // Собираем всё, что уже mapped.
+        // Collect everything that is already mapped.
         collect_ready_slots(session)?;
 
-        // Возвращаем самый старый готовый кадр.
+        // Return the oldest ready frame.
         if let Some((_, pixels)) = session.pending.pop_first() {
             session.emitted += 1;
             Ok(Some(pixels))
@@ -1517,7 +1417,7 @@ impl Compositor {
         }
     }
 
-    /// High-level pipelined аналог `render_scene_to_pixels`.
+    /// High-level pipelined equivalent of `render_scene_to_pixels`.
     pub fn render_scene_to_pixels_pipelined(
         &mut self,
         session: &mut PipelinedReadback,
@@ -1553,7 +1453,7 @@ impl Compositor {
         result
     }
 
-    /// Дождаться конкретного слота и скопировать данные в `pending`.
+    /// Wait for a specific slot and copy its data into `pending`.
     pub(crate) fn drain_slot(
         &mut self,
         session: &mut PipelinedReadback,
