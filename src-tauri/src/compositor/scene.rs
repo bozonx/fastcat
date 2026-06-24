@@ -136,34 +136,13 @@ impl Scene {
             let inner = layer.transform.to_affine_with_padding(natural, padding);
             let xform = outer * inner;
 
-            // Cropped bbox calculation (crop)
-            let nw = natural.0 as f64;
-            let nh = natural.1 as f64;
-            let mut crop_left = (layer.transform.crop_left.clamp(0.0, 100.0) / 100.0) * nw;
-            let mut crop_right = (layer.transform.crop_right.clamp(0.0, 100.0) / 100.0) * nw;
-            let mut crop_top = (layer.transform.crop_top.clamp(0.0, 100.0) / 100.0) * nh;
-            let mut crop_bottom = (layer.transform.crop_bottom.clamp(0.0, 100.0) / 100.0) * nh;
+            // Cropped bbox calculation (crop) — see `Transform::crop_inset_rect`.
+            let crop_bbox = layer.transform.crop_inset_rect(natural);
 
-            // Prevent inverted bbox when opposing crops overlap.
-            if crop_left + crop_right > nw {
-                let scale = nw / (crop_left + crop_right);
-                crop_left *= scale;
-                crop_right *= scale;
-            }
-            if crop_top + crop_bottom > nh {
-                let scale = nh / (crop_top + crop_bottom);
-                crop_top *= scale;
-                crop_bottom *= scale;
-            }
-
-            let x_min = crop_left;
-            let x_max = (nw - crop_right).max(x_min);
-            let y_min = crop_top;
-            let y_max = (nh - crop_bottom).max(y_min);
-            let crop_bbox = Rect::new(x_min, y_min, x_max, y_max);
-
-            let has_crop =
-                crop_left > 0.0 || crop_right > 0.0 || crop_top > 0.0 || crop_bottom > 0.0;
+            let has_crop = layer.transform.crop_left > 0.0
+                || layer.transform.crop_right > 0.0
+                || layer.transform.crop_top > 0.0
+                || layer.transform.crop_bottom > 0.0;
 
             // Isolation is needed for opacity and non-normal blend. Crop-only should
             // use a clip layer so it does not alter the backdrop seen by later blends.
@@ -513,6 +492,46 @@ impl Transform {
                 -self.anchor_x * nw - padding.0,
                 -self.anchor_y * nh - padding.1,
             ))
+    }
+
+    /// Visible crop rectangle in the layer's natural (local) space, from the four
+    /// `crop_*` percentages. `Rect::new(x_min, y_min, x_max, y_max)`.
+    ///
+    /// Cross-engine parity contract: the web compositor computes the same inset
+    /// rectangle in `computeCropInsetRect` (src/utils/video-editor/clip-layout.ts).
+    /// Both agree for non-overlapping crops (the region pinned by
+    /// `shared/parity/crop-inset-rect.cases.json`).
+    ///
+    /// KNOWN INTENTIONAL DIVERGENCE when opposing crops overlap (left+right > 100%
+    /// or top+bottom > 100%): the native engine scales BOTH opposing edges down
+    /// proportionally so the bbox collapses to a centered zero-width line, whereas
+    /// the web engine keeps the first edge and clamps the second to the remaining
+    /// space. This degenerate case is excluded from the shared fixture.
+    pub fn crop_inset_rect(&self, natural: (u32, u32)) -> Rect {
+        let nw = natural.0 as f64;
+        let nh = natural.1 as f64;
+        let mut crop_left = (self.crop_left.clamp(0.0, 100.0) / 100.0) * nw;
+        let mut crop_right = (self.crop_right.clamp(0.0, 100.0) / 100.0) * nw;
+        let mut crop_top = (self.crop_top.clamp(0.0, 100.0) / 100.0) * nh;
+        let mut crop_bottom = (self.crop_bottom.clamp(0.0, 100.0) / 100.0) * nh;
+
+        // Prevent inverted bbox when opposing crops overlap.
+        if crop_left + crop_right > nw {
+            let scale = nw / (crop_left + crop_right);
+            crop_left *= scale;
+            crop_right *= scale;
+        }
+        if crop_top + crop_bottom > nh {
+            let scale = nh / (crop_top + crop_bottom);
+            crop_top *= scale;
+            crop_bottom *= scale;
+        }
+
+        let x_min = crop_left;
+        let x_max = (nw - crop_right).max(x_min);
+        let y_min = crop_top;
+        let y_max = (nh - crop_bottom).max(y_min);
+        Rect::new(x_min, y_min, x_max, y_max)
     }
 }
 
@@ -1366,6 +1385,51 @@ mod tests {
         assert!(approx(y0, 0.0));
         assert!(approx(x1, 600.0));
         assert!(approx(y1, 400.0));
+    }
+
+    /// Cross-engine parity contract. This test and the web test
+    /// `test/unit/utils/video-editor/crop-inset-rect.parity.test.ts` read the SAME
+    /// fixture, so `Transform::crop_inset_rect` and the web `computeCropInsetRect`
+    /// can never drift apart for non-overlapping crops.
+    #[test]
+    fn crop_inset_rect_matches_shared_parity_fixture() {
+        const FIXTURE: &str =
+            include_str!("../../../shared/parity/crop-inset-rect.cases.json");
+        let parsed: serde_json::Value =
+            serde_json::from_str(FIXTURE).expect("valid parity fixture json");
+        let cases = parsed["cases"].as_array().expect("cases array");
+        assert!(!cases.is_empty(), "fixture has cases");
+        for c in cases {
+            let name = c["name"].as_str().unwrap_or("?");
+            let width = c["width"].as_f64().unwrap();
+            let height = c["height"].as_f64().unwrap();
+            let crop = &c["crop"];
+            let mut t = Transform::identity();
+            t.crop_top = crop["top"].as_f64().unwrap_or(0.0);
+            t.crop_bottom = crop["bottom"].as_f64().unwrap_or(0.0);
+            t.crop_left = crop["left"].as_f64().unwrap_or(0.0);
+            t.crop_right = crop["right"].as_f64().unwrap_or(0.0);
+            let rect = t.crop_inset_rect((width as u32, height as u32));
+            let exp = &c["expected"];
+            assert!(approx(rect.x0, exp["xMin"].as_f64().unwrap()), "case `{name}` xMin");
+            assert!(approx(rect.y0, exp["yMin"].as_f64().unwrap()), "case `{name}` yMin");
+            assert!(approx(rect.x1, exp["xMax"].as_f64().unwrap()), "case `{name}` xMax");
+            assert!(approx(rect.y1, exp["yMax"].as_f64().unwrap()), "case `{name}` yMax");
+        }
+    }
+
+    /// KNOWN INTENTIONAL DIVERGENCE FROM THE WEB ENGINE (excluded from the fixture):
+    /// overlapping opposing crops scale both edges down proportionally (centered
+    /// collapse) instead of clamping the second edge.
+    #[test]
+    fn crop_inset_rect_collapses_overlap_to_center() {
+        let mut t = Transform::identity();
+        t.crop_left = 70.0;
+        t.crop_right = 70.0;
+        let rect = t.crop_inset_rect((100, 100));
+        // 70+70=140 scaled by 100/140 → 50 each → collapses to x=50 (centered).
+        assert!(approx(rect.x0, 50.0));
+        assert!(approx(rect.x1, 50.0));
     }
 
     #[test]

@@ -1,0 +1,57 @@
+{
+  "_comment": [
+    "Cross-engine parity contract for the visible crop inset-rect computation.",
+    "Single source of truth shared by BOTH video engines:",
+    "  - web:    computeCropInsetRect() in src/utils/video-editor/clip-layout.ts",
+    "  - native: Transform::crop_inset_rect() in src-tauri/src/compositor/scene.rs",
+    "Each engine has a test that reads this file and asserts it reproduces every case.",
+    "",
+    "Given a local box (width x height) and four crop percentages (0..100), both",
+    "engines must produce the same visible rectangle [xMin,yMin .. xMax,yMax] in local",
+    "space.",
+    "",
+    "Scope: NON-overlapping crops only (left+right <= 100 AND top+bottom <= 100), the",
+    "region where both engines agree exactly.",
+    "",
+    "KNOWN INTENTIONAL DIVERGENCE (NOT covered): when opposing crops overlap, native",
+    "scales both edges down proportionally (centered collapse) while web keeps the",
+    "first edge and clamps the second. See each engine's crop test for that case."
+  ],
+  "cases": [
+    {
+      "name": "no_crop_is_full_box",
+      "width": 1920.0,
+      "height": 1080.0,
+      "crop": { "top": 0, "bottom": 0, "left": 0, "right": 0 },
+      "expected": { "xMin": 0.0, "yMin": 0.0, "xMax": 1920.0, "yMax": 1080.0 }
+    },
+    {
+      "name": "left_10pct",
+      "width": 1920.0,
+      "height": 1080.0,
+      "crop": { "top": 0, "bottom": 0, "left": 10, "right": 0 },
+      "expected": { "xMin": 192.0, "yMin": 0.0, "xMax": 1920.0, "yMax": 1080.0 }
+    },
+    {
+      "name": "all_edges_equal",
+      "width": 1000.0,
+      "height": 800.0,
+      "crop": { "top": 25, "bottom": 25, "left": 25, "right": 25 },
+      "expected": { "xMin": 250.0, "yMin": 200.0, "xMax": 750.0, "yMax": 600.0 }
+    },
+    {
+      "name": "asymmetric_edges",
+      "width": 1280.0,
+      "height": 720.0,
+      "crop": { "top": 10, "bottom": 30, "left": 5, "right": 15 },
+      "expected": { "xMin": 64.0, "yMin": 72.0, "xMax": 1088.0, "yMax": 504.0 }
+    },
+    {
+      "name": "exactly_touching_no_overlap",
+      "width": 100.0,
+      "height": 100.0,
+      "crop": { "top": 50, "bottom": 50, "left": 40, "right": 60 },
+      "expected": { "xMin": 40.0, "yMin": 50.0, "xMax": 40.0, "yMax": 50.0 }
+    }
+  ]
+}

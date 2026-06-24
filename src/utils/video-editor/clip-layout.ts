@@ -64,6 +64,45 @@ export function resolveNormalizedAnchor(anchor?: ClipAnchor): { x: number; y: nu
   }
 }
 
+export interface CropInsetRect {
+  xMin: number;
+  yMin: number;
+  xMax: number;
+  yMax: number;
+}
+
+/**
+ * Visible crop rectangle in the layer's local space, from the four crop
+ * percentages (0..100 each) and the local box size.
+ *
+ * Cross-engine parity contract: the native compositor computes the same inset
+ * rectangle in `Transform::crop_inset_rect` (src-tauri/src/compositor/scene.rs).
+ * Both agree for non-overlapping crops (the region pinned by
+ * `shared/parity/crop-inset-rect.cases.json`).
+ *
+ * KNOWN INTENTIONAL DIVERGENCE when opposing crops overlap (left+right > 100% or
+ * top+bottom > 100%): this engine keeps the first edge and clamps the second to
+ * the remaining space, whereas the native engine scales BOTH opposing edges down
+ * proportionally. This degenerate case is excluded from the shared fixture.
+ */
+export function computeCropInsetRect(
+  width: number,
+  height: number,
+  crop: { top?: number; bottom?: number; left?: number; right?: number },
+): CropInsetRect {
+  const rawT = (Math.max(0, Math.min(100, crop.top ?? 0)) / 100) * height;
+  const rawB = (Math.max(0, Math.min(100, crop.bottom ?? 0)) / 100) * height;
+  const rawL = (Math.max(0, Math.min(100, crop.left ?? 0)) / 100) * width;
+  const rawR = (Math.max(0, Math.min(100, crop.right ?? 0)) / 100) * width;
+
+  const t = rawT;
+  const b = Math.min(rawB, Math.max(0, height - rawT));
+  const l = rawL;
+  const r = Math.min(rawR, Math.max(0, width - rawL));
+
+  return { xMin: l, yMin: t, xMax: width - r, yMax: height - b };
+}
+
 export interface CropMaskPolygon {
   /** Flat array of 8 world-space coordinates: [x0,y0, x1,y1, x2,y2, x3,y3] (TL, TR, BR, BL) */
   points: [number, number, number, number, number, number, number, number];
@@ -107,16 +146,12 @@ export function computeCropMaskPolygon(params: {
     spritePosY,
   } = params;
 
-  const rawT = (Math.max(0, Math.min(100, crop.top ?? 0)) / 100) * targetH;
-  const rawB = (Math.max(0, Math.min(100, crop.bottom ?? 0)) / 100) * targetH;
-  const rawL = (Math.max(0, Math.min(100, crop.left ?? 0)) / 100) * targetW;
-  const rawR = (Math.max(0, Math.min(100, crop.right ?? 0)) / 100) * targetW;
-
-  // Clamp opposing edges so they don't overlap (prevents degenerate polygon)
-  const t = rawT;
-  const b = Math.min(rawB, Math.max(0, targetH - rawT));
-  const l = rawL;
-  const r = Math.min(rawR, Math.max(0, targetW - rawL));
+  // Visible inset rect in local space (shared with the native engine).
+  const { xMin: l, yMin: t, xMax: rightEdge, yMax: bottomEdge } = computeCropInsetRect(
+    targetW,
+    targetH,
+    crop,
+  );
 
   const cosR = Math.cos(rot);
   const sinR = Math.sin(rot);
@@ -136,12 +171,12 @@ export function computeCropMaskPolygon(params: {
     points: [
       toWorldX(l, t),
       toWorldY(l, t),
-      toWorldX(targetW - r, t),
-      toWorldY(targetW - r, t),
-      toWorldX(targetW - r, targetH - b),
-      toWorldY(targetW - r, targetH - b),
-      toWorldX(l, targetH - b),
-      toWorldY(l, targetH - b),
+      toWorldX(rightEdge, t),
+      toWorldY(rightEdge, t),
+      toWorldX(rightEdge, bottomEdge),
+      toWorldY(rightEdge, bottomEdge),
+      toWorldX(l, bottomEdge),
+      toWorldY(l, bottomEdge),
     ],
   };
 }
