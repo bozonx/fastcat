@@ -58,7 +58,13 @@ impl SharedTexture {
 impl std::ops::Deref for SharedTexture {
     type Target = wgpu::Texture;
     fn deref(&self) -> &Self::Target {
-        match self.source.as_ref().unwrap() {
+        // `source` is `Some` for the entire life of a `SharedTexture` (both constructors
+        // set it); it is only `take()`n in `Drop`, after which `deref` is unreachable.
+        match self
+            .source
+            .as_ref()
+            .expect("SharedTexture::source is taken only in Drop")
+        {
             TextureSource::Owned(ref tex) => tex,
             TextureSource::Shared(ref arc) => arc.as_ref(),
         }

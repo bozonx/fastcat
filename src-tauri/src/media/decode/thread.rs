@@ -746,17 +746,29 @@ mod tests {
         .expect("open mock pump")
     }
 
-    fn drain_until_pts_ge(pump: &DecodePump, target: f64, timeout: Duration) -> Vec<f64> {
+    /// Drains frames of the given `generation` until one reaches `target`. Frames from an
+    /// older generation are skipped, exactly as the real consumer does in
+    /// `LayerRuntime::pull_into_cache`. This matters because opening a pump always decodes
+    /// one initial frame (≈0s) before parking; that stale frame races with the test's
+    /// `seek`, so without the generation filter the drain non-deterministically picks it up.
+    fn drain_generation_until_pts_ge(
+        pump: &DecodePump,
+        generation: u64,
+        target: f64,
+        timeout: Duration,
+    ) -> Vec<f64> {
         let deadline = Instant::now() + timeout;
         let mut seen = Vec::new();
         while Instant::now() < deadline {
             match pump.try_recv_frame() {
-                Some(msg) => {
+                Some(msg) if msg.generation == generation => {
                     seen.push(msg.frame.pts_sec);
                     if msg.frame.pts_sec >= target {
                         break;
                     }
                 }
+                // Stale-generation frame (e.g. the open-time initial frame): ignore it.
+                Some(_) => {}
                 None => std::thread::sleep(Duration::from_millis(2)),
             }
         }
@@ -774,11 +786,12 @@ mod tests {
         let pump = open_mock_pump(fps, 100.0);
         let target = 5.0; // frame ~150, far past the keyframe at 0
 
-        pump.seek(target).expect("seek");
+        let generation = pump.seek(target).expect("seek");
         // Tiny budget, as for a 4K source; keep_preseek=true as request_prebuffer uses.
         pump.prebuffer(2, true).expect("prebuffer");
 
-        let seen = drain_until_pts_ge(&pump, target - 0.5 / fps, Duration::from_secs(3));
+        let seen =
+            drain_generation_until_pts_ge(&pump, generation, target - 0.5 / fps, Duration::from_secs(3));
         let max_pts = seen.iter().cloned().fold(f64::MIN, f64::max);
         assert!(
             max_pts >= target - 0.5 / fps,
@@ -799,9 +812,10 @@ mod tests {
         let fps = 30.0;
         let pump = open_mock_pump(fps, 100.0);
         let target = 3.0;
-        pump.seek(target).expect("seek");
+        let generation = pump.seek(target).expect("seek");
 
-        let seen = drain_until_pts_ge(&pump, target - 0.5 / fps, Duration::from_secs(3));
+        let seen =
+            drain_generation_until_pts_ge(&pump, generation, target - 0.5 / fps, Duration::from_secs(3));
         assert_eq!(
             seen.len(),
             1,

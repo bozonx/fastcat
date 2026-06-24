@@ -161,7 +161,11 @@ pub(crate) fn resample_planar_cached(
         *remainder = vec![Vec::new(); num_channels];
     }
 
-    let resampler = cached_resampler.as_mut().unwrap();
+    // Guaranteed `Some`: the `is_none()` branch above just created it (or returned early
+    // on `make_sinc_resampler` failure).
+    let resampler = cached_resampler
+        .as_mut()
+        .expect("cached_resampler is initialized above when None");
     let chunk_size = resampler.input_frames_max();
 
     // Combine carried-over remainder with the freshly decoded input.
