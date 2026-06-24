@@ -29,6 +29,7 @@ import { handleFilesCommand } from '~/file-manager/application/fileManagerComman
 import { useAppClipboard } from '~/composables/useAppClipboard';
 import type { FsEntry } from '~/types/fs';
 import type { RemoteFsEntry } from '~/utils/remote-vfs';
+import type { MediaType } from '~/utils/media-types';
 import { useTimelineMediaUsageStore } from '~/stores/timeline-media-usage.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import FileBrowserToolbar from '~/components/file-manager/FileBrowserToolbar.vue';
@@ -57,6 +58,7 @@ const props = defineProps<{
   hideToolbar?: boolean;
   singleClickFolders?: boolean;
   disableMarquee?: boolean;
+  allowedMediaTypes?: MediaType[];
 }>();
 
 const instanceId = props.instanceId || 'default';
@@ -377,6 +379,7 @@ const navigation = useFileBrowserNavigation({
   vfs,
   readDirectory,
   rootName: props.rootName || projectStore.currentProjectName || 'Project',
+  allowedMediaTypes: computed(() => props.allowedMediaTypes),
 });
 const {
   parentFolders,

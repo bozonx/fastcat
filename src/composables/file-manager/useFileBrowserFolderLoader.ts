@@ -5,12 +5,14 @@ import { useWorkspaceStore } from '~/stores/workspace.store';
 import type { FsEntry } from '~/types/fs';
 import type { IFileSystemAdapter } from '~/file-manager/core/vfs/types';
 import { WORKSPACE_COMMON_DIR_NAME, WORKSPACE_COMMON_PATH_PREFIX } from '~/utils/workspace-common';
+import { getMediaTypeFromFilename, type MediaType } from '~/utils/media-types';
 
 export interface UseFileBrowserFolderLoaderOptions {
   vfs: IFileSystemAdapter;
   readDirectory: (path?: string) => Promise<FsEntry[]>;
   folderEntries: Ref<FsEntry[]>;
   supplementEntries: (entries: FsEntry[]) => Promise<FsEntry[]>;
+  allowedMediaTypes?: Ref<MediaType[] | undefined>;
 }
 
 export function useFileBrowserFolderLoader(options: UseFileBrowserFolderLoaderOptions) {
@@ -61,9 +63,19 @@ export function useFileBrowserFolderLoader(options: UseFileBrowserFolderLoaderOp
         }
       }
 
-      const filtered = entries.filter(
+      let filtered = entries.filter(
         (e) => fileManagerStore.showHiddenFiles || !e.name.startsWith('.'),
       );
+
+      if (options.allowedMediaTypes?.value) {
+        const allowed = options.allowedMediaTypes.value;
+        filtered = filtered.filter((e) => {
+          if (e.kind === 'directory') return true;
+          const mediaType = getMediaTypeFromFilename(e.name);
+          return allowed.includes(mediaType);
+        });
+      }
+
       const supplemented = await options.supplementEntries(filtered);
       // Re-check after the final await before committing to the shared ref.
       if (token !== loadToken) return;

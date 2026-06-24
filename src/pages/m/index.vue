@@ -444,7 +444,7 @@ const sortedProjects = computed(() => {
                                 size="sm"
                                 variant="ghost"
                                 color="neutral"
-                                icon="i-heroicons-ellipsis-vertical"
+                                icon="i-heroicons-ellipsis-vertical-16-solid"
                                 class="rounded-full w-9 h-9 p-0 text-ui-text-muted active:text-white active:bg-white/5 transition-colors"
                                 @click.stop
                               />

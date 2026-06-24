@@ -104,7 +104,7 @@ export const useUiStore = defineStore('ui', () => {
   const mediaReplaceTarget = ref<{
     trackId: string;
     itemId: string;
-    expectedType: 'video' | 'image';
+    expectedType: 'video' | 'image' | 'audio';
   } | null>(null);
   const isMediaReplaceModalOpen = ref(false);
 

@@ -732,9 +732,7 @@ describe('TimelineTracks', () => {
     expect(component.vm.isPasteParametersModalOpen).toBe(false);
 
     uiStore.triggerClipPasteParameters('track-1', 'clip-1');
-    await new Promise((resolve) => setTimeout(resolve, 10));
-    await nextTick();
-    expect(component.vm.isPasteParametersModalOpen).toBe(true);
+    await vi.waitFor(() => expect(component.vm.isPasteParametersModalOpen).toBe(true));
   });
 
   it('opens auto montage modal only if at least one item belongs to props.tracks', async () => {

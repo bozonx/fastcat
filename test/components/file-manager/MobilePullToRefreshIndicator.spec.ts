@@ -2,40 +2,65 @@ import { describe, it, expect } from 'vitest';
 import { mountSuspended } from '@nuxt/test-utils/runtime';
 import MobilePullToRefreshIndicator from '~/components/file-manager/MobilePullToRefreshIndicator.vue';
 
+const iconStub = {
+  template: '<div class="iconify" :data-icon-name="name"><slot /></div>',
+  props: ['name'],
+};
+
+function mountIndicator(props: {
+  isPulling: boolean;
+  isRefreshing: boolean;
+  pullDistance: number;
+}) {
+  return mountSuspended(MobilePullToRefreshIndicator, {
+    props,
+    global: { stubs: { Icon: iconStub } },
+  });
+}
+
 describe('MobilePullToRefreshIndicator', () => {
   it('is hidden when neither pulling nor refreshing', async () => {
-    const wrapper = await mountSuspended(MobilePullToRefreshIndicator, {
-      props: { isPulling: false, isRefreshing: false, pullDistance: 0 },
+    const wrapper = await mountIndicator({
+      isPulling: false,
+      isRefreshing: false,
+      pullDistance: 0,
     });
 
     expect(wrapper.find('.iconify').exists()).toBe(false);
   });
 
   it('shows the arrow icon while pulling', async () => {
-    const wrapper = await mountSuspended(MobilePullToRefreshIndicator, {
-      props: { isPulling: true, isRefreshing: false, pullDistance: 40 },
+    const wrapper = await mountIndicator({
+      isPulling: true,
+      isRefreshing: false,
+      pullDistance: 40,
     });
 
     const icon = wrapper.find('.iconify');
+    console.log('ARROW HTML', icon.html());
     expect(icon.exists()).toBe(true);
-    expect(icon.classes()).toContain('i-lucide:arrow-down');
+    expect(icon.attributes('data-icon-name')).toBe('lucide:arrow-down');
     expect(icon.classes()).not.toContain('animate-spin');
   });
 
   it('shows the spinner icon while refreshing', async () => {
-    const wrapper = await mountSuspended(MobilePullToRefreshIndicator, {
-      props: { isPulling: false, isRefreshing: true, pullDistance: 96 },
+    const wrapper = await mountIndicator({
+      isPulling: false,
+      isRefreshing: true,
+      pullDistance: 96,
     });
 
     const icon = wrapper.find('.iconify');
     expect(icon.exists()).toBe(true);
-    expect(icon.classes()).toContain('i-lucide:loader-2');
+    expect(icon.attributes('data-icon-name')).toBe('lucide:loader-2');
     expect(icon.classes()).toContain('animate-spin');
   });
 
   it('translates and fades according to pull distance', async () => {
-    const wrapper = await mountSuspended(MobilePullToRefreshIndicator, {
-      props: { isPulling: true, isRefreshing: false, pullDistance: 24 },
+    const wrapper = await mountIndicator({
+      isPulling: true,
+      isRefreshing: false,
+      pullDistance: 24,
     });
 
     const style = wrapper.find('div').attributes('style') ?? '';

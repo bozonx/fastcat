@@ -82,7 +82,7 @@ export interface TimelineContext {
   mediaReplaceTarget: Ref<{
     trackId: string;
     itemId: string;
-    expectedType: 'video' | 'image';
+    expectedType: 'audio' | 'video' | 'image';
   } | null>;
   isMediaReplaceModalOpen: Ref<boolean>;
 }

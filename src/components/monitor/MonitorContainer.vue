@@ -800,7 +800,7 @@ watch(viewportRef, (vp) => {
                 size="xs"
                 color="neutral"
                 variant="ghost"
-                icon="i-heroicons-ellipsis-vertical"
+                icon="i-heroicons-ellipsis-vertical-16-solid"
                 square
                 :title="t('common.more')"
               />

@@ -253,6 +253,58 @@ describe('useClipPropertiesActions', () => {
       );
     });
 
+    it('triggers replaceMedia action setting correct expectedType', () => {
+      // 1. Video clip on a video track
+      const { actions: videoActions, uiStore: videoUiStore } = build({ trackKind: 'video' });
+      const replaceVideoAction = videoActions.otherActionsList.value.find(
+        (a) => a.id === 'replaceMedia',
+      );
+      expect(replaceVideoAction).toBeTruthy();
+      replaceVideoAction?.onClick();
+      expect(videoUiStore.mediaReplaceTarget).toEqual({
+        trackId: 'v1',
+        itemId: 'clip1',
+        expectedType: 'video',
+      });
+      expect(videoUiStore.isMediaReplaceModalOpen).toBe(true);
+
+      // 2. Image clip on a video track
+      const imageClip = makeClip({ isImage: true });
+      const { actions: imageActions, uiStore: imageUiStore } = build({
+        trackKind: 'video',
+        clip: imageClip,
+      });
+      const replaceImageAction = imageActions.otherActionsList.value.find(
+        (a) => a.id === 'replaceMedia',
+      );
+      expect(replaceImageAction).toBeTruthy();
+      replaceImageAction?.onClick();
+      expect(imageUiStore.mediaReplaceTarget).toEqual({
+        trackId: 'v1',
+        itemId: 'clip1',
+        expectedType: 'image',
+      });
+      expect(imageUiStore.isMediaReplaceModalOpen).toBe(true);
+
+      // 3. Audio clip on an audio track
+      const audioClip = makeClip({ trackId: 'a1' });
+      const { actions: audioActions, uiStore: audioUiStore } = build({
+        trackKind: 'audio',
+        clip: audioClip,
+      });
+      const replaceAudioAction = audioActions.otherActionsList.value.find(
+        (a) => a.id === 'replaceMedia',
+      );
+      expect(replaceAudioAction).toBeTruthy();
+      replaceAudioAction?.onClick();
+      expect(audioUiStore.mediaReplaceTarget).toEqual({
+        trackId: 'a1',
+        itemId: 'clip1',
+        expectedType: 'audio',
+      });
+      expect(audioUiStore.isMediaReplaceModalOpen).toBe(true);
+    });
+
     it('includes speed action for speed-controllable clips and triggers modal', () => {
       const { actions, uiStore } = build();
       const speedAction = actions.otherActionsList.value.find((a) => a.id === 'speed');

@@ -14,6 +14,7 @@ import {
 import type { ExtendedFsEntry } from '~/composables/file-manager/useFileBrowserEntries';
 import { useFileBrowserFolderLoader } from '~/composables/file-manager/useFileBrowserFolderLoader';
 import type { IFileSystemAdapter } from '~/file-manager/core/vfs/types';
+import type { MediaType } from '~/utils/media-types';
 // const log = createDevLogger('useFileBrowserNavigation');
 
 export function useFileBrowserNavigation({
@@ -29,6 +30,7 @@ export function useFileBrowserNavigation({
   vfs,
   readDirectory,
   rootName,
+  allowedMediaTypes,
 }: {
   rootContainer: Ref<HTMLElement | null>;
   isRemoteMode: Ref<boolean>;
@@ -44,6 +46,7 @@ export function useFileBrowserNavigation({
   };
   readDirectory: (path: string | undefined) => Promise<FsEntry[]>;
   rootName: string;
+  allowedMediaTypes?: Ref<MediaType[] | undefined>;
 }) {
   const fileManagerStore =
     (inject('fileManagerStore', null) as ReturnType<typeof useFileManagerStore> | null) ||
@@ -56,6 +59,7 @@ export function useFileBrowserNavigation({
     readDirectory,
     folderEntries,
     supplementEntries,
+    allowedMediaTypes,
   });
 
   async function loadFolderContent(options: { append?: boolean } = {}) {

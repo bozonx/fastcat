@@ -183,7 +183,7 @@ const menuItems = computed(() => {
           size="sm"
           variant="ghost"
           color="neutral"
-          icon="i-heroicons-ellipsis-vertical"
+          icon="i-heroicons-ellipsis-vertical-16-solid"
           square
         />
       </UDropdownMenu>

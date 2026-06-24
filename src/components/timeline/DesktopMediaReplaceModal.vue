@@ -3,6 +3,7 @@ import { computed, provide, watch } from 'vue';
 import { useUiStore } from '~/stores/ui.store';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useSelectionStore } from '~/stores/selection.store';
+import { useProjectStore } from '~/stores/project.store';
 import { useReplaceMediaFileManagerStore } from '~/stores/file-manager.store';
 import FileBrowser from '~/components/file-manager/FileBrowser.vue';
 import { useI18n } from 'vue-i18n';
@@ -20,11 +21,18 @@ provide('fileManagerStore', replaceStore);
 const route = useRoute();
 const isMobileLayout = computed(() => route.path === '/m' || route.path.startsWith('/m/'));
 
+const projectStore = useProjectStore();
+
 const isOpen = computed({
   get: () => uiStore.isMediaReplaceModalOpen && !isMobileLayout.value,
   set: (val) => {
     uiStore.isMediaReplaceModalOpen = val;
   },
+});
+
+const allowedMediaTypes = computed(() => {
+  const target = uiStore.mediaReplaceTarget;
+  return target ? [target.expectedType] : undefined;
 });
 
 watch(isOpen, (newVal) => {
@@ -34,6 +42,14 @@ watch(isOpen, (newVal) => {
     if (selected?.source === 'fileManager' && selected.instanceId === 'replace-modal') {
       selectionStore.clearSelection();
     }
+
+    // Open project root directory
+    replaceStore.openFolder({
+      kind: 'directory',
+      name: projectStore.currentProjectName || 'Project',
+      path: '',
+      source: 'local',
+    });
   }
 });
 
@@ -94,6 +110,7 @@ function handleSelectFile(entry: FsEntry) {
         hide-toolbar
         single-click-folders
         disable-marquee
+        :allowed-media-types="allowedMediaTypes"
       />
       <div
         v-if="isReplaceModalFileSelected && selectedFileEntry"

@@ -60,11 +60,17 @@ export default defineNuxtConfig({
 
   css: ['~/assets/css/main.css'],
 
-  // Bundle all used icons into the client build so they never get fetched from
-  // api.iconify.design at runtime. The Tauri (WebKitGTK) webview is offline and
-  // the remote fetch fails there, leaving the Iconify dot-placeholder instead of
-  // the real glyph (e.g. the "3 dots" ellipsis menu rendering as a dot blob).
+  // Render icons as inline <svg> instead of the default CSS-mask mode. The CSS
+  // mode emits `mask-image: var(--svg)`, and WebKitGTK (the Tauri webview)
+  // cannot resolve a `var()` inside mask-image, so masked icons render with
+  // artifacts (e.g. the "3 dots" ellipsis-vertical menu showing as a 5-dot
+  // blob). Inline SVG is rendered natively by WebKitGTK, no mask/var() involved.
+  //
+  // clientBundle.scan vendors every used icon into the client build so nothing
+  // is fetched from api.iconify.design at runtime (the desktop webview is
+  // effectively offline); fallbackToApi:false hard-disables that network path.
   icon: {
+    mode: 'svg',
     clientBundle: {
       scan: true,
       sizeLimitKb: 1024,

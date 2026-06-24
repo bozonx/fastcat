@@ -61,7 +61,11 @@ interface ProjectStoreActions {
 
 interface UiStoreActions {
   selectedFsEntry: Partial<FsEntry> | null;
-  mediaReplaceTarget: { trackId: string; itemId: string; expectedType: 'video' | 'image' } | null;
+  mediaReplaceTarget: {
+    trackId: string;
+    itemId: string;
+    expectedType: 'video' | 'image' | 'audio';
+  } | null;
   isMediaReplaceModalOpen: boolean;
   notifyFileManagerUpdate: () => void;
   triggerScrollToFileTreeEntry: (path: string) => void;
@@ -315,10 +319,18 @@ export function useClipPropertiesActions(options: UseClipPropertiesActionsOption
   function handleReplaceMedia() {
     const clip = options.clip.value;
     if (clip.clipType !== 'media') return;
+
+    let expectedType: 'video' | 'image' | 'audio' = 'video';
+    if (options.trackKind.value === 'audio') {
+      expectedType = 'audio';
+    } else if (clip.isImage) {
+      expectedType = 'image';
+    }
+
     uiStore.mediaReplaceTarget = {
       trackId: clip.trackId,
       itemId: clip.id,
-      expectedType: clip.isImage ? 'image' : 'video',
+      expectedType,
     };
     uiStore.isMediaReplaceModalOpen = true;
   }

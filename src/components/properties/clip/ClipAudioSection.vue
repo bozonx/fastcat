@@ -112,14 +112,14 @@ function onVolumeUpdate(db: number) {
                 :disabled="!isEnabled"
                 @update:model-value="(v: any) => emit('updateAudioFadeInSec', Number(v))"
               />
-              <div class="flex rounded bg-ui-bg-dark border border-ui-border p-0.5 w-full">
+              <div class="flex rounded bg-ui-bg border border-ui-border p-0.5 w-full">
                 <button
                   type="button"
-                  class="flex-1 flex items-center justify-center gap-1 px-1.5 py-0.5 text-[10px] rounded font-medium transition-all cursor-pointer"
+                  class="flex-1 flex items-center justify-center gap-1 px-1.5 py-0.5 text-[10px] rounded font-medium transition-all cursor-pointer border"
                   :class="
                     props.audioFadeInCurve === 'linear'
-                      ? 'bg-ui-element-bg text-ui-text shadow-xs'
-                      : 'text-ui-text-muted hover:text-ui-text'
+                      ? 'bg-ui-bg-hover text-ui-text shadow-xs border-ui-border/60'
+                      : 'text-ui-text-muted hover:text-ui-text border-transparent'
                   "
                   :disabled="!isEnabled"
                   @click="emit('updateAudioFadeInCurve', 'linear')"
@@ -132,11 +132,11 @@ function onVolumeUpdate(db: number) {
                 </button>
                 <button
                   type="button"
-                  class="flex-1 flex items-center justify-center gap-1 px-1.5 py-0.5 text-[10px] rounded font-medium transition-all cursor-pointer"
+                  class="flex-1 flex items-center justify-center gap-1 px-1.5 py-0.5 text-[10px] rounded font-medium transition-all cursor-pointer border"
                   :class="
                     props.audioFadeInCurve === 'logarithmic'
-                      ? 'bg-ui-element-bg text-ui-text shadow-xs'
-                      : 'text-ui-text-muted hover:text-ui-text'
+                      ? 'bg-ui-bg-hover text-ui-text shadow-xs border-ui-border/60'
+                      : 'text-ui-text-muted hover:text-ui-text border-transparent'
                   "
                   :disabled="!isEnabled"
                   @click="emit('updateAudioFadeInCurve', 'logarithmic')"
@@ -165,14 +165,14 @@ function onVolumeUpdate(db: number) {
                 :disabled="!isEnabled"
                 @update:model-value="(v: any) => emit('updateAudioFadeOutSec', Number(v))"
               />
-              <div class="flex rounded bg-ui-bg-dark border border-ui-border p-0.5 w-full">
+              <div class="flex rounded bg-ui-bg border border-ui-border p-0.5 w-full">
                 <button
                   type="button"
-                  class="flex-1 flex items-center justify-center gap-1 px-1.5 py-0.5 text-[10px] rounded font-medium transition-all cursor-pointer"
+                  class="flex-1 flex items-center justify-center gap-1 px-1.5 py-0.5 text-[10px] rounded font-medium transition-all cursor-pointer border"
                   :class="
                     props.audioFadeOutCurve === 'linear'
-                      ? 'bg-ui-element-bg text-ui-text shadow-xs'
-                      : 'text-ui-text-muted hover:text-ui-text'
+                      ? 'bg-ui-bg-hover text-ui-text shadow-xs border-ui-border/60'
+                      : 'text-ui-text-muted hover:text-ui-text border-transparent'
                   "
                   :disabled="!isEnabled"
                   @click="emit('updateAudioFadeOutCurve', 'linear')"
@@ -185,11 +185,11 @@ function onVolumeUpdate(db: number) {
                 </button>
                 <button
                   type="button"
-                  class="flex-1 flex items-center justify-center gap-1 px-1.5 py-0.5 text-[10px] rounded font-medium transition-all cursor-pointer"
+                  class="flex-1 flex items-center justify-center gap-1 px-1.5 py-0.5 text-[10px] rounded font-medium transition-all cursor-pointer border"
                   :class="
                     props.audioFadeOutCurve === 'logarithmic'
-                      ? 'bg-ui-element-bg text-ui-text shadow-xs'
-                      : 'text-ui-text-muted hover:text-ui-text'
+                      ? 'bg-ui-bg-hover text-ui-text shadow-xs border-ui-border/60'
+                      : 'text-ui-text-muted hover:text-ui-text border-transparent'
                   "
                   :disabled="!isEnabled"
                   @click="emit('updateAudioFadeOutCurve', 'logarithmic')"

@@ -272,7 +272,7 @@ describe('MonitorContainer', () => {
 
     await wrapper.vm.$nextTick();
 
-    const moreButton = wrapper.find('[data-icon="i-heroicons-ellipsis-vertical"]');
+    const moreButton = wrapper.find('[data-icon="i-heroicons-ellipsis-vertical-16-solid"]');
     expect(moreButton.exists()).toBe(true);
   });
 
