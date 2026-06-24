@@ -75,7 +75,7 @@ function onVolumeUpdate(v: number | undefined) {
             color="neutral"
             class="font-mono tabular-nums min-w-[56px] justify-center ml-1 border border-ui-border shrink-0"
             :label="volumePercent + '%'"
-            title="Reset volume to 100%"
+            :title="t('fastcat.monitor.resetVolume')"
             @click.stop="resetVolume"
           />
         </div>

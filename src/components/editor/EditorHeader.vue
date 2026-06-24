@@ -66,42 +66,45 @@ const menuItems = computed(() => {
     </div>
 
     <div class="flex items-center gap-2">
-      <UiActionButton
-        size="sm"
-        variant="ghost"
-        color="neutral"
-        icon="i-heroicons-arrow-uturn-left"
-        :disabled="!timelineStore.historyStore.canUndo('timeline')"
-        :title="getHotkeyTitle(t('common.undo'), 'general.undo')"
-        @click="timelineStore.undoTimeline()"
-      />
-      <UiActionButton
-        size="sm"
-        variant="ghost"
-        color="neutral"
-        icon="i-heroicons-arrow-uturn-right"
-        :disabled="!timelineStore.historyStore.canRedo('timeline')"
-        :title="getHotkeyTitle(t('common.redo'), 'general.redo')"
-        @click="timelineStore.redoTimeline()"
-      />
+      <UiTooltip :text="getHotkeyTitle(t('common.undo'), 'general.undo')">
+        <UiActionButton
+          size="sm"
+          variant="ghost"
+          color="neutral"
+          icon="i-heroicons-arrow-uturn-left"
+          :disabled="!timelineStore.historyStore.canUndo('timeline')"
+          @click="timelineStore.undoTimeline()"
+        />
+      </UiTooltip>
+      <UiTooltip :text="getHotkeyTitle(t('common.redo'), 'general.redo')">
+        <UiActionButton
+          size="sm"
+          variant="ghost"
+          color="neutral"
+          icon="i-heroicons-arrow-uturn-right"
+          :disabled="!timelineStore.historyStore.canRedo('timeline')"
+          @click="timelineStore.redoTimeline()"
+        />
+      </UiTooltip>
 
       <div class="w-px h-4 bg-ui-border mx-1" />
 
-      <UiActionButton
-        size="sm"
-        variant="ghost"
-        color="neutral"
-        :icon="timelineStore.isSavingTimeline ? 'i-heroicons-arrow-path' : 'i-lucide-save'"
-        :disabled="timelineStore.isSavingTimeline || !timelineStore.timelineDoc"
-        :title="getHotkeyTitle(t('common.save'), 'general.save')"
-        :class="[
-          timelineStore.isSavingTimeline ? 'animate-spin' : '',
-          !timelineStore.isSavingTimeline && timelineStore.isTimelineDirty
-            ? 'text-selection-accent-500 hover:text-selection-accent-400'
-            : '',
-        ]"
-        @click="timelineStore.saveTimeline()"
-      />
+      <UiTooltip :text="getHotkeyTitle(t('common.save'), 'general.save')">
+        <UiActionButton
+          size="sm"
+          variant="ghost"
+          color="neutral"
+          :icon="timelineStore.isSavingTimeline ? 'i-heroicons-arrow-path' : 'i-lucide-save'"
+          :disabled="timelineStore.isSavingTimeline || !timelineStore.timelineDoc"
+          :class="[
+            timelineStore.isSavingTimeline ? 'animate-spin' : '',
+            !timelineStore.isSavingTimeline && timelineStore.isTimelineDirty
+              ? 'text-selection-accent-500 hover:text-selection-accent-400'
+              : '',
+          ]"
+          @click="timelineStore.saveTimeline()"
+        />
+      </UiTooltip>
 
       <!-- Window Switcher -->
       <div

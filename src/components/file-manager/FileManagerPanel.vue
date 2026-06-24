@@ -478,22 +478,26 @@ useFileManagerPanelBootstrap({
             @click="onCreateTimeline"
           />
         </UiTooltip>
-        <UButton
-          icon="i-heroicons-document-text"
-          variant="ghost"
-          color="neutral"
-          size="xs"
-          :title="`${t('videoEditor.fileManager.actions.createMarkdown')} (In _documents folder)`"
-          @click="onCreateMarkdown"
-        />
-        <UButton
-          icon="i-heroicons-arrow-up-tray"
-          variant="ghost"
-          color="neutral"
-          size="xs"
-          :title="t('videoEditor.fileManager.actions.uploadFiles')"
-          @click="triggerFileUpload"
-        />
+        <UiTooltip
+          :text="`${t('videoEditor.fileManager.actions.createMarkdown')} (In _documents folder)`"
+        >
+          <UButton
+            icon="i-heroicons-document-text"
+            variant="ghost"
+            color="neutral"
+            size="xs"
+            @click="onCreateMarkdown"
+          />
+        </UiTooltip>
+        <UiTooltip :text="t('videoEditor.fileManager.actions.uploadFiles')">
+          <UButton
+            icon="i-heroicons-arrow-up-tray"
+            variant="ghost"
+            color="neutral"
+            size="xs"
+            @click="triggerFileUpload"
+          />
+        </UiTooltip>
 
         <span
           v-if="!props.isExternal && !props.hideProjectLabel"

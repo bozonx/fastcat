@@ -274,26 +274,26 @@ onBeforeUnmount(() => {
         class="absolute left-0 top-0 bottom-0 z-10"
         :style="{ width: `${transitionUsToPx(clip.transitionIn.durationUs)}px` }"
       >
-        <button
-          type="button"
-          :class="[
-            'w-full h-full overflow-hidden group/trans',
-            isMobile ? 'pointer-events-none' : 'pointer-events-auto',
-            getTransitionButtonClass(
-              selectedTransition?.itemId === clip.id && selectedTransition?.edge === 'in',
-              hasTransitionProblem('in'),
-              'in',
-            ),
-          ]"
-          :title="getTransitionButtonTitle('in')"
-          @click.stop="
-            canEdit &&
-            emit('select', $event as PointerEvent, {
-              trackId: clip.trackId,
-              itemId: clip.id,
-              edge: 'in',
-            })
-          "
+        <UiTooltip :text="getTransitionButtonTitle('in')" :disabled="!getTransitionButtonTitle('in')">
+          <button
+            type="button"
+            :class="[
+              'w-full h-full overflow-hidden group/trans',
+              isMobile ? 'pointer-events-none' : 'pointer-events-auto',
+              getTransitionButtonClass(
+                selectedTransition?.itemId === clip.id && selectedTransition?.edge === 'in',
+                hasTransitionProblem('in'),
+                'in',
+              ),
+            ]"
+            @click.stop="
+              canEdit &&
+              emit('select', $event as PointerEvent, {
+                trackId: clip.trackId,
+                itemId: clip.id,
+                edge: 'in',
+              })
+            "
         >
           <template v-if="isTransitionTransparentMode('in')">
             <svg
@@ -328,7 +328,7 @@ onBeforeUnmount(() => {
           <span
             v-if="hasTransitionProblem('in')"
             class="absolute top-1 left-1 w-2 h-2 rounded-full bg-red-500 z-50"
-            :title="getTransitionButtonTitle('in')"
+            :aria-label="getTransitionButtonTitle('in')"
           />
           <span
             v-if="isTransitionAdjacentMode('in')"
@@ -345,7 +345,8 @@ onBeforeUnmount(() => {
               emit('resize', $event, { edge: 'in', durationUs: clip.transitionIn!.durationUs })
             "
           />
-        </button>
+          </button>
+        </UiTooltip>
       </div>
 
       <!-- Transition Out -->
@@ -354,26 +355,26 @@ onBeforeUnmount(() => {
         class="absolute right-0 top-0 bottom-0 z-10"
         :style="{ width: `${transitionUsToPx(clip.transitionOut.durationUs)}px` }"
       >
-        <button
-          type="button"
-          :class="[
-            'w-full h-full overflow-hidden group/trans',
-            isMobile ? 'pointer-events-none' : 'pointer-events-auto',
-            getTransitionButtonClass(
-              selectedTransition?.itemId === clip.id && selectedTransition?.edge === 'out',
-              hasTransitionProblem('out'),
-              'out',
-            ),
-          ]"
-          :title="getTransitionButtonTitle('out')"
-          @click.stop="
-            canEdit &&
-            emit('select', $event as PointerEvent, {
-              trackId: clip.trackId,
-              itemId: clip.id,
-              edge: 'out',
-            })
-          "
+        <UiTooltip :text="getTransitionButtonTitle('out')" :disabled="!getTransitionButtonTitle('out')">
+          <button
+            type="button"
+            :class="[
+              'w-full h-full overflow-hidden group/trans',
+              isMobile ? 'pointer-events-none' : 'pointer-events-auto',
+              getTransitionButtonClass(
+                selectedTransition?.itemId === clip.id && selectedTransition?.edge === 'out',
+                hasTransitionProblem('out'),
+                'out',
+              ),
+            ]"
+            @click.stop="
+              canEdit &&
+              emit('select', $event as PointerEvent, {
+                trackId: clip.trackId,
+                itemId: clip.id,
+                edge: 'out',
+              })
+            "
         >
           <template v-if="isTransitionTransparentMode('out')">
             <svg
@@ -408,7 +409,7 @@ onBeforeUnmount(() => {
           <span
             v-if="hasTransitionProblem('out')"
             class="absolute top-1 right-1 w-2 h-2 rounded-full bg-red-500 z-50"
-            :title="getTransitionButtonTitle('out')"
+            :aria-label="getTransitionButtonTitle('out')"
           />
           <span
             v-if="isTransitionAdjacentMode('out')"
@@ -426,6 +427,7 @@ onBeforeUnmount(() => {
             "
           />
         </button>
+        </UiTooltip>
       </div>
     </div>
 

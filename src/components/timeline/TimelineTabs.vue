@@ -255,57 +255,60 @@ onBeforeUnmount(() => {
           :animation="150"
           ghost-class="tab-ghost"
         >
-          <div
+          <UiTooltip
             v-for="(path, index) in openPaths"
             :key="path"
-            :data-path="path"
-            class="group relative flex items-center h-full px-4 gap-2 border-r border-ui-border cursor-pointer min-w-[120px] max-w-[220px] transition-all duration-200 border-b"
-            :class="[
-              isActive(path)
-                ? 'active-tab text-selection-accent-400 border-b-transparent'
-                : 'text-ui-text-muted bg-black/10 hover:bg-black/5 hover:text-ui-text border-b-ui-border',
-            ]"
-            :title="
+            :text="
               index < 9
                 ? getHotkeyTitle(path, ('general.tab' + (index + 1)) as HotkeyCommandId)
                 : path
             "
-            @mousedown="onTabMouseDown($event)"
-            @auxclick="onTabAuxClick($event, path)"
-            @click="selectTab(path)"
           >
-            <div v-if="isActive(path)" class="absolute top-0 left-0 right-0 h-0.5 bg-primary-500" />
-
-            <UIcon
-              name="i-heroicons-film-20-solid"
-              class="w-4 h-4 shrink-0"
-              :class="
+            <div
+              :data-path="path"
+              class="group relative flex items-center h-full px-4 gap-2 border-r border-ui-border cursor-pointer min-w-[120px] max-w-[220px] transition-all duration-200 border-b"
+              :class="[
                 isActive(path)
-                  ? 'text-primary-500'
-                  : 'text-ui-text-disabled group-hover:text-ui-text-muted'
-              "
-            />
-
-            <span
-              class="text-2xs truncate flex-1 font-bold tracking-widest uppercase"
-              :title="getFileName(path)"
+                  ? 'active-tab text-selection-accent-400 border-b-transparent'
+                  : 'text-ui-text-muted bg-black/10 hover:bg-black/5 hover:text-ui-text border-b-ui-border',
+              ]"
+              @mousedown="onTabMouseDown($event)"
+              @auxclick="onTabAuxClick($event, path)"
+              @click="selectTab(path)"
             >
-              {{ getFileName(path) }}
-            </span>
+              <div v-if="isActive(path)" class="absolute top-0 left-0 right-0 h-0.5 bg-primary-500" />
 
-            <span
-              v-if="isDirty(path)"
-              class="w-2 h-2 rounded-full bg-amber-400 ring-2 ring-amber-400/20 shrink-0"
-              :title="$t('videoEditor.timeline.unsavedChanges')"
-            />
+              <UIcon
+                name="i-heroicons-film-20-solid"
+                class="w-4 h-4 shrink-0"
+                :class="
+                  isActive(path)
+                    ? 'text-primary-500'
+                    : 'text-ui-text-disabled group-hover:text-ui-text-muted'
+                "
+              />
 
-            <button
-              class="tab-close-btn text-ui-text-muted hover:bg-red-500/10 hover:text-red-500 p-0.5 rounded-md transition-all duration-200"
-              @click="closeTab(path, $event)"
-            >
-              <UIcon name="i-heroicons-x-mark-20-solid" class="w-4 h-4" />
-            </button>
-          </div>
+              <span
+                class="text-2xs truncate flex-1 font-bold tracking-widest uppercase"
+                :aria-label="getFileName(path)"
+              >
+                {{ getFileName(path) }}
+              </span>
+
+              <span
+                v-if="isDirty(path)"
+                class="w-2 h-2 rounded-full bg-amber-400 ring-2 ring-amber-400/20 shrink-0"
+                :aria-label="$t('videoEditor.timeline.unsavedChanges')"
+              />
+
+              <button
+                class="tab-close-btn text-ui-text-muted hover:bg-red-500/10 hover:text-red-500 p-0.5 rounded-md transition-all duration-200"
+                @click="closeTab(path, $event)"
+              >
+                <UIcon name="i-heroicons-x-mark-20-solid" class="w-4 h-4" />
+              </button>
+            </div>
+          </UiTooltip>
         </VueDraggable>
       </UContextMenu>
     </div>

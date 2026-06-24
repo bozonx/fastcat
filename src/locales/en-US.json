@@ -120,6 +120,7 @@
       "main": "MAIN",
       "master": "Master",
       "mute": "M",
+      "muteMaster": "Mute master",
       "noTracks": "No tracks with audio yet.",
       "output": "output",
       "solo": "S",
@@ -525,6 +526,7 @@
     },
     "monitor": {
       "audioMute": "Mute",
+      "resetVolume": "Reset volume to 100%",
       "audioUnmute": "Unmute",
       "audioVolume": "Audio volume",
       "center": "Center",
@@ -1277,6 +1279,8 @@
         "transcriptionSavedVideoDescription": "Video audio track was transcribed and saved next to the source file."
       },
       "cardScale": "Card scale",
+      "gridViewTooltip": "Grid view",
+      "listViewTooltip": "List view",
       "commonFolder": "Shared Files",
       "compatibility": {
         "audioCodecUnsupported": "Audio codec not supported",

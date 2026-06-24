@@ -102,27 +102,29 @@ const {
     </div>
 
     <!-- DB Value -->
-    <div
-      class="text-xs font-mono mb-2 text-ui-text cursor-default hover:text-primary-400 transition-colors"
-      :title="t('common.actions.reset')"
-      @click="volumeDb = 0"
-    >
-      {{ volumeDb <= -59.9 ? '-∞' : volumeDb.toFixed(1) }} dB
-    </div>
+    <UiTooltip :text="t('common.actions.reset')">
+      <div
+        class="text-xs font-mono mb-2 text-ui-text cursor-default hover:text-primary-400 transition-colors"
+        @click="volumeDb = 0"
+      >
+        {{ volumeDb <= -59.9 ? '-∞' : volumeDb.toFixed(1) }} dB
+      </div>
+    </UiTooltip>
 
     <!-- Controls -->
     <div class="flex gap-1 mb-2">
-      <UiToggleButton
-        :model-value="isMuted"
-        size="sm"
-        label="MUTE"
-        active-color="error"
-        inactive-color="primary"
-        inactive-variant="soft"
-        active-variant="solid"
-        title="Mute"
-        @click="toggleMute"
-      />
+      <UiTooltip :text="t('fastcat.timeline.mute')">
+        <UiToggleButton
+          :model-value="isMuted"
+          size="sm"
+          label="MUTE"
+          active-color="error"
+          inactive-color="primary"
+          inactive-variant="soft"
+          active-variant="solid"
+          @click="toggleMute"
+        />
+      </UiTooltip>
     </div>
 
     <!-- Label -->

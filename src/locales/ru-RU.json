@@ -120,6 +120,7 @@
       "main": "MAIN",
       "master": "Мастер",
       "mute": "M",
+      "muteMaster": "Беззвучный мастер",
       "noTracks": "Звуковых дорожек пока нет.",
       "output": "выход",
       "solo": "S",
@@ -525,6 +526,7 @@
     },
     "monitor": {
       "audioMute": "Выключить звук",
+      "resetVolume": "Сбросить громкость до 100%",
       "audioUnmute": "Включить звук",
       "audioVolume": "Громкость аудио",
       "center": "По центру",
@@ -1277,6 +1279,8 @@
         "transcriptionSavedVideoDescription": "Аудиодорожка видео была транскрибирована и сохранена рядом с файлом."
       },
       "cardScale": "Масштаб карточек",
+      "gridViewTooltip": "Сетка",
+      "listViewTooltip": "Список",
       "commonFolder": "Общие файлы",
       "compatibility": {
         "audioCodecUnsupported": "Аудио кодек не поддерживается",

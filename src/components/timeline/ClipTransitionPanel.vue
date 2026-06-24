@@ -315,36 +315,41 @@ defineExpose({
         <span>{{ edge === 'in' ? 'IN' : 'OUT' }} {{ t('fastcat.timeline.transition.title') }}</span>
       </div>
       <div class="flex items-center gap-1">
-        <UButton
-          color="neutral"
-          variant="ghost"
-          size="xs"
-          icon="i-heroicons-arrow-uturn-left"
-          :title="t('fastcat.timeline.transition.goToClip')"
-          @click="handleGoToClip"
-        />
-        <UButton
-          v-if="transition"
-          color="primary"
-          variant="ghost"
-          size="xs"
-          icon="i-heroicons-bookmark"
-          :title="t('fastcat.effects.saveAsPreset')"
-          @click="isSaveModalOpen = true"
-        />
-        <UButton
-          v-if="transition"
-          color="red"
-          variant="ghost"
-          size="xs"
-          icon="i-heroicons-trash"
-          :title="
+        <UiTooltip :text="t('fastcat.timeline.transition.goToClip')">
+          <UButton
+            color="neutral"
+            variant="ghost"
+            size="xs"
+            icon="i-heroicons-arrow-uturn-left"
+            @click="handleGoToClip"
+          />
+        </UiTooltip>
+        <UiTooltip :text="t('fastcat.effects.saveAsPreset')">
+          <UButton
+            v-if="transition"
+            color="primary"
+            variant="ghost"
+            size="xs"
+            icon="i-heroicons-bookmark"
+            @click="isSaveModalOpen = true"
+          />
+        </UiTooltip>
+        <UiTooltip
+          :text="
             edge === 'in'
               ? t('fastcat.timeline.removeTransitionIn')
               : t('fastcat.timeline.removeTransitionOut')
           "
-          @click="remove"
-        />
+        >
+          <UButton
+            v-if="transition"
+            color="red"
+            variant="ghost"
+            size="xs"
+            icon="i-heroicons-trash"
+            @click="remove"
+          />
+        </UiTooltip>
       </div>
     </div>
 

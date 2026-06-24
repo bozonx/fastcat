@@ -241,7 +241,7 @@ function handleRenameTrack(name: string) {
               inactive-color="neutral"
               inactive-variant="ghost"
               active-variant="soft"
-              title="Mute master"
+              :title="t('fastcat.audioMixer.muteMaster')"
               class="w-8 h-8"
               @click="toggleMasterMute"
             />

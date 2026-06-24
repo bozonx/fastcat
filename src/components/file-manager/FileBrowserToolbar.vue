@@ -165,41 +165,44 @@ const toolbarMenuItems = computed(() => {
     class="flex items-center gap-4 px-4 py-2 border-b border-ui-border shrink-0 bg-ui-bg-elevated/50"
   >
     <div v-if="!isRemotePanel && !hideViewSwitcher" class="flex items-center gap-1">
-      <UiToggleButton
-        :model-value="fileManagerStore.viewMode === 'grid'"
-        icon="i-heroicons-squares-2x2"
-        inactive-color="neutral"
-        active-color="primary"
-        size="sm"
-        title="Grid view"
-        no-toggle
-        @click="fileManagerStore.setViewMode('grid')"
-      />
-      <UiToggleButton
-        :model-value="fileManagerStore.viewMode === 'list'"
-        icon="i-heroicons-list-bullet"
-        inactive-color="neutral"
-        active-color="primary"
-        size="sm"
-        title="List view"
-        no-toggle
-        @click="fileManagerStore.setViewMode('list')"
-      />
+      <UiTooltip :text="t('videoEditor.fileManager.gridViewTooltip')">
+        <UiToggleButton
+          :model-value="fileManagerStore.viewMode === 'grid'"
+          icon="i-heroicons-squares-2x2"
+          inactive-color="neutral"
+          active-color="primary"
+          size="sm"
+          no-toggle
+          @click="fileManagerStore.setViewMode('grid')"
+        />
+      </UiTooltip>
+      <UiTooltip :text="t('videoEditor.fileManager.listViewTooltip')">
+        <UiToggleButton
+          :model-value="fileManagerStore.viewMode === 'list'"
+          icon="i-heroicons-list-bullet"
+          inactive-color="neutral"
+          active-color="primary"
+          size="sm"
+          no-toggle
+          @click="fileManagerStore.setViewMode('list')"
+        />
+      </UiTooltip>
     </div>
 
     <div v-if="!isRemotePanel && !hideActions" class="flex items-center gap-1">
       <div v-if="!hideViewSwitcher" class="w-px h-4 bg-ui-border mx-2"></div>
 
-      <UiActionButton
-        icon="i-heroicons-folder-plus"
-        variant="ghost"
-        color="neutral"
-        size="sm"
-        :title="
-          getHotkeyTitle(t('videoEditor.fileManager.actions.createFolder'), 'general.createFolder')
-        "
-        @click="emit('createFolder')"
-      />
+      <UiTooltip
+        :text="getHotkeyTitle(t('videoEditor.fileManager.actions.createFolder'), 'general.createFolder')"
+      >
+        <UiActionButton
+          icon="i-heroicons-folder-plus"
+          variant="ghost"
+          color="neutral"
+          size="sm"
+          @click="emit('createFolder')"
+        />
+      </UiTooltip>
     </div>
 
     <UiTooltip
