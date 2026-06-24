@@ -1,0 +1,84 @@
+{
+  "_comment": [
+    "Cross-engine parity contract for the clip source-PTS algorithm.",
+    "Single source of truth shared by BOTH video engines:",
+    "  - web:   resolveClipSourceTimeUs() in src/utils/video-editor/source-time.ts",
+    "  - native: SceneLayer::source_pts_at() / compute_source_pts_at() in",
+    "            src-tauri/src/monitor/scene/mod.rs",
+    "Each engine has a test that reads this file and asserts it reproduces every case,",
+    "so the two implementations can never drift silently.",
+    "",
+    "Scope: these cases are intentionally frame-rate-independent (no frameRate) and use",
+    "an explicit positive sourceRangeDurationSec, the region where both engines are",
+    "specified to agree exactly. The readable-tail guard is a flat guardSec here.",
+    "",
+    "KNOWN INTENTIONAL DIVERGENCE (NOT covered by this fixture):",
+    "When the web engine is given a clip frameRate, clampToLastReadableSourceUs() pulls",
+    "the readable tail back by half a frame instead of guardSec, because the web path",
+    "seeks an exact PTS via mediabunny, whereas the native path snaps to the nearest",
+    "decoded frame. See source-time.parity.test.ts ('web-only half-frame guard')."
+  ],
+  "guardSec": 0.001,
+  "cases": [
+    {
+      "name": "at_clip_start_returns_source_start",
+      "timelineStartSec": 10.0,
+      "timelineEndSec": 20.0,
+      "sourceStartSec": 2.0,
+      "sourceRangeDurationSec": 10.0,
+      "speed": 1.0,
+      "timelineSec": 10.0,
+      "expectedSourceSec": 2.0
+    },
+    {
+      "name": "offset_forward_1x",
+      "timelineStartSec": 10.0,
+      "timelineEndSec": 20.0,
+      "sourceStartSec": 3.5,
+      "sourceRangeDurationSec": 10.0,
+      "speed": 1.0,
+      "timelineSec": 12.0,
+      "expectedSourceSec": 5.5
+    },
+    {
+      "name": "offset_forward_2x",
+      "timelineStartSec": 10.0,
+      "timelineEndSec": 20.0,
+      "sourceStartSec": 3.5,
+      "sourceRangeDurationSec": 20.0,
+      "speed": 2.0,
+      "timelineSec": 12.0,
+      "expectedSourceSec": 7.5
+    },
+    {
+      "name": "reverse_2x_at_start",
+      "timelineStartSec": 10.0,
+      "timelineEndSec": 20.0,
+      "sourceStartSec": 3.5,
+      "sourceRangeDurationSec": 20.0,
+      "speed": -2.0,
+      "timelineSec": 10.0,
+      "expectedSourceSec": 23.499
+    },
+    {
+      "name": "reverse_2x_midway",
+      "timelineStartSec": 10.0,
+      "timelineEndSec": 20.0,
+      "sourceStartSec": 3.5,
+      "sourceRangeDurationSec": 20.0,
+      "speed": -2.0,
+      "timelineSec": 12.0,
+      "expectedSourceSec": 19.499
+    },
+    {
+      "name": "tail_clamp_forward_past_range",
+      "timelineStartSec": 10.0,
+      "timelineEndSec": 20.0,
+      "sourceStartSec": 0.0,
+      "sourceRangeDurationSec": 5.0,
+      "speed": 1.0,
+      "timelineSec": 18.0,
+      "expectedSourceSec": 4.999
+    }
+  ]
+}

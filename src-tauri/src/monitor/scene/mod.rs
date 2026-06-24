@@ -615,6 +615,37 @@ mod tests {
         assert_eq!(l.source_pts_at(5.0), 0.0);
     }
 
+    /// Cross-engine parity contract. This test and the web test
+    /// `test/unit/utils/video-editor/source-time.parity.test.ts` read the SAME
+    /// fixture, so `SceneLayer::source_pts_at` and the web `resolveClipSourceTimeUs`
+    /// can never drift apart on the shared algorithm.
+    #[test]
+    fn clip_source_pts_matches_shared_parity_fixture() {
+        const FIXTURE: &str =
+            include_str!("../../../../shared/parity/clip-source-pts.cases.json");
+        let parsed: Value = serde_json::from_str(FIXTURE).expect("valid parity fixture json");
+        let guard = parsed["guardSec"].as_f64().expect("guardSec");
+        assert!((guard - SOURCE_END_GUARD_SEC).abs() < 1e-12, "fixture guard must equal SOURCE_END_GUARD_SEC");
+        let cases = parsed["cases"].as_array().expect("cases array");
+        assert!(!cases.is_empty(), "fixture has cases");
+        for c in cases {
+            let name = c["name"].as_str().unwrap_or("?");
+            let mut l = layer(
+                c["timelineStartSec"].as_f64().unwrap(),
+                c["timelineEndSec"].as_f64().unwrap(),
+                c["sourceStartSec"].as_f64().unwrap(),
+            );
+            l.source_range_duration_sec = c["sourceRangeDurationSec"].as_f64().unwrap();
+            l.speed = c["speed"].as_f64().unwrap();
+            let got = l.source_pts_at(c["timelineSec"].as_f64().unwrap());
+            let want = c["expectedSourceSec"].as_f64().unwrap();
+            assert!(
+                (got - want).abs() < 1e-6,
+                "case `{name}`: got {got}, want {want}"
+            );
+        }
+    }
+
     #[test]
     fn transition_tail_plays_into_handle_when_duration_known() {
         // Clip shows source [2..5] on timeline [10..13]; media is 30s long, so there
