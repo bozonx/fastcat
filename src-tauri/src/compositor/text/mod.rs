@@ -78,13 +78,6 @@ pub fn build_font_family<'a>(
     parley::style::FontFamily::from(generic_family_str(fallback))
 }
 
-pub fn clean_font_family(raw: &str) -> String {
-    let first_part = raw.split(',').next().unwrap_or(raw).trim();
-    first_part
-        .trim_matches(|c| c == '\'' || c == '"')
-        .to_string()
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;

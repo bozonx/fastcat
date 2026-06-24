@@ -16,20 +16,19 @@
 
 pub mod effects;
 pub mod scene;
-pub mod svg;
-pub mod text;
+pub(crate) mod svg;
+pub(crate) mod text;
 pub mod transitions;
-pub mod yuv;
+pub(crate) mod yuv;
 
 mod engine;
 pub use engine::Compositor;
 
 mod render_telemetry;
-pub use render_telemetry::{RenderPrepareTiming, RenderStageTiming, RenderTelemetry};
 
 mod text_engine;
 
 mod readback;
-pub use readback::PipelinedReadback;
+pub(crate) use readback::PipelinedReadback;
 
 mod gpu_utils;

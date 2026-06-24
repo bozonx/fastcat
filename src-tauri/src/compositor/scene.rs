@@ -491,7 +491,11 @@ impl Default for Transform {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, ts_rs::TS)]
 #[serde(rename_all = "snake_case")]
-#[ts(rename_all = "snake_case")]
+#[ts(
+    export,
+    export_to = "../../src/types/generated/native-monitor/",
+    rename_all = "snake_case"
+)]
 pub enum BlendMode {
     Normal,
     Add,

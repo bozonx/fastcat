@@ -6,7 +6,7 @@ import type { WorkerTimelineClip } from '~/composables/timeline/export/types';
 import type { useProjectStore } from '~/stores/project.store';
 import type { useWorkspaceStore } from '~/stores/workspace.store';
 import type { ClipTransform, TimelineBlendMode, TimelineDocument } from '~/timeline/types';
-import type { BlendMode } from '../../src-tauri/bindings/BlendMode';
+import type { BlendMode } from '~/types/generated/native-monitor/BlendMode';
 import type { MonitorScene } from '~/types/generated/native-monitor/MonitorScene';
 import type { SceneLayer } from '~/types/generated/native-monitor/SceneLayer';
 import type { SceneAudioLayer } from '~/types/generated/native-monitor/SceneAudioLayer';

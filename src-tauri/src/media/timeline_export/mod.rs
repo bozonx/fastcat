@@ -29,9 +29,9 @@ use super::ffmpeg::utils::*;
 use super::processing::{now_millis, spawn_stderr_drain, NativeMediaTasks};
 use super::types::HwAccelMode;
 
-pub mod audio;
-pub mod direct;
-pub mod ffmpeg_args_builder;
+pub(crate) mod audio;
+pub(crate) mod direct;
+pub(crate) mod ffmpeg_args_builder;
 pub mod options;
 #[cfg(test)]
 mod tests;
