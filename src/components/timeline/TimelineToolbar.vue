@@ -346,7 +346,6 @@ function onToolbarContextMenu(e: MouseEvent) {
               :color="settingsStore.toolbarSnapMode === 'snap' ? 'primary' : 'neutral'"
               icon="i-heroicons-link"
               class="hover:bg-ui-bg-hover/60"
-              :title="t('fastcat.timeline.snapModeFullDescription')"
               @click="selectToolbarSnapMode('snap')"
             />
           </UiTooltip>
@@ -364,7 +363,6 @@ function onToolbarContextMenu(e: MouseEvent) {
               :color="settingsStore.toolbarSnapMode === 'no_snap' ? 'primary' : 'neutral'"
               icon="i-heroicons-link-slash"
               class="hover:bg-ui-bg-hover/60"
-              :title="t('fastcat.timeline.snapModeFramesDescription')"
               @click="selectToolbarSnapMode('no_snap')"
             />
           </UiTooltip>
@@ -382,7 +380,6 @@ function onToolbarContextMenu(e: MouseEvent) {
               :color="settingsStore.toolbarSnapMode === 'free_mode' ? 'primary' : 'neutral'"
               icon="i-heroicons-arrows-pointing-out"
               class="hover:bg-ui-bg-hover/60"
-              :title="t('fastcat.timeline.snapModeFreeDescription')"
               @click="selectToolbarSnapMode('free_mode')"
             />
           </UiTooltip>
@@ -395,7 +392,6 @@ function onToolbarContextMenu(e: MouseEvent) {
             color="neutral"
             icon="i-heroicons-cog-6-tooth"
             class="hover:bg-ui-bg-hover/60"
-            :title="t('videoEditor.settings.snappingTitle')"
             :disabled="isSnapSettingsDisabled"
             @click="isSnapSettingsModalOpen = true"
           />
@@ -411,7 +407,6 @@ function onToolbarContextMenu(e: MouseEvent) {
               :color="currentMoveMode === opt.value ? 'primary' : 'neutral'"
               :icon="opt.icon"
               class="hover:bg-ui-bg-hover/60"
-              :title="opt.tooltip"
               @click="currentMoveMode = opt.value"
             />
           </UiTooltip>
@@ -426,7 +421,6 @@ function onToolbarContextMenu(e: MouseEvent) {
                 color: timelineStore.isTrimModeActive ? 'primary' : 'neutral',
                 icon: 'i-heroicons-scissors',
                 'aria-label': t('fastcat.timeline.trim'),
-                title: t('fastcat.timeline.trim'),
                 items: trimMenuItems,
                 buttonClass: 'hover:bg-ui-bg-hover/60',
                 caretButtonClass: 'px-0.5 hover:bg-ui-bg-hover/60',
@@ -446,7 +440,6 @@ function onToolbarContextMenu(e: MouseEvent) {
               variant="solid"
               icon="i-heroicons-musical-note"
               class="h-6 text-2xs px-2 gap-1 font-bold animate-pulse hover:animate-none"
-              :title="t('fastcat.timeline.clearSolos')"
               :disabled="timelineStore.previewMode"
               @click="
                 (e) => {
@@ -471,7 +464,6 @@ function onToolbarContextMenu(e: MouseEvent) {
               color="neutral"
               icon="i-heroicons-adjustments-horizontal"
               class="hover:bg-ui-bg-hover/60"
-              :title="t('fastcat.timeline.addAdjustment')"
               :disabled="timelineStore.previewMode"
               @click="
                 (e) => {
@@ -493,7 +485,6 @@ function onToolbarContextMenu(e: MouseEvent) {
               color="neutral"
               icon="i-heroicons-swatch"
               class="hover:bg-ui-bg-hover/60"
-              :title="t('fastcat.timeline.addBackground')"
               :disabled="timelineStore.previewMode"
               @click="
                 (e) => {
@@ -516,7 +507,6 @@ function onToolbarContextMenu(e: MouseEvent) {
                 color="neutral"
                 icon="i-heroicons-chat-bubble-bottom-center-text"
                 class="hover:bg-ui-bg-hover/60"
-                :title="t('fastcat.timeline.addText')"
                 :disabled="timelineStore.previewMode"
                 @click="
                   (e) => {
@@ -543,7 +533,6 @@ function onToolbarContextMenu(e: MouseEvent) {
               color="neutral"
               icon="i-heroicons-chevron-left"
               class="hover:bg-ui-bg-hover/60"
-              :title="t('fastcat.timeline.previousMarker')"
               @click="timelineStore.goToPreviousMarker()"
             />
           </UiTooltip>
@@ -555,7 +544,6 @@ function onToolbarContextMenu(e: MouseEvent) {
               color="neutral"
               icon="i-heroicons-bookmark"
               class="hover:bg-ui-bg-hover/60"
-              :title="t('fastcat.timeline.addMarker')"
               :disabled="timelineStore.previewMode"
               @click="timelineStore.addMarkerAtPlayhead()"
             />
@@ -568,7 +556,6 @@ function onToolbarContextMenu(e: MouseEvent) {
               color="neutral"
               icon="i-heroicons-chevron-right"
               class="hover:bg-ui-bg-hover/60"
-              :title="t('fastcat.timeline.nextMarker')"
               @click="timelineStore.goToNextMarker()"
             />
           </UiTooltip>
@@ -587,7 +574,6 @@ function onToolbarContextMenu(e: MouseEvent) {
             variant="ghost"
             icon="i-heroicons-arrows-pointing-out"
             class="hover:bg-ui-bg-hover/60"
-            :title="t('fastcat.timeline.zoomToFit')"
             @click="timelineStore.fitTimelineZoom()"
           />
         </UiTooltip>
@@ -621,7 +607,6 @@ function onToolbarContextMenu(e: MouseEvent) {
             color="neutral"
             icon="i-heroicons-cog-6-tooth"
             class="hover:bg-ui-bg-hover/60"
-            :title="t('fastcat.timeline.properties.title')"
             @click="timelineStore.selectTimelineProperties()"
           />
         </UiTooltip>

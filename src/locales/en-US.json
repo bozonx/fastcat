@@ -546,7 +546,7 @@
       "resetZoom": "Reset zoom (100%)",
       "rewind": "Rewind",
       "showGrid": "Show grid",
-      "showTransparencyGrid": "Show transparency grid",
+      "showTransparencyGrid": "Show checkerboard background",
       "showTimecode": "Show Timecode",
       "showMarkerTexts": "Show Marker Texts",
       "snapshot": "Snapshot",

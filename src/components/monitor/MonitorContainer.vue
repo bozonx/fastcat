@@ -658,7 +658,6 @@ watch(viewportRef, (vp) => {
                 active-variant="soft"
                 :active-bg="'color-mix(in srgb, var(--selection-accent-500) 12%, transparent)'"
                 :active-text="'var(--selection-accent-400)'"
-                title="Use proxy"
                 no-toggle
                 @click="toggleProxyUsage"
               />
@@ -678,7 +677,6 @@ watch(viewportRef, (vp) => {
                   color="neutral"
                   variant="ghost"
                   :icon="selectedMonitorSyncOption.icon"
-                  :title="selectedMonitorSyncTitle"
                   :aria-label="t('fastcat.monitor.syncMode')"
                   class="px-1.5"
                 >
@@ -704,7 +702,6 @@ watch(viewportRef, (vp) => {
                 active-variant="soft"
                 :active-bg="'color-mix(in srgb, var(--selection-accent-500) 12%, transparent)'"
                 :active-text="'var(--selection-accent-400)'"
-                title="Preview effects"
                 no-toggle
                 @click="togglePreviewEffects"
               />
