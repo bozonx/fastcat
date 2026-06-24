@@ -2,6 +2,7 @@ import { createDevLogger } from '~/utils/dev-logger';
 import type { IFileSystemAdapter } from '~/file-manager/core/vfs/types';
 
 import { getGainAtClipTime } from '~/utils/audio/envelope';
+import { clampGain } from '~/utils/audio/clamp';
 import { buildAudioEffectGraph } from '~/utils/audio/effect-graph';
 import { AudioChunkDecoder } from '~/utils/video-editor/AudioChunkDecoder';
 import { planForwardChunkPlayback } from '~/utils/video-editor/audio-seam-plan';
@@ -779,7 +780,7 @@ export class WebAudioEngine implements IAudioEngine {
   }
 
   setMasterVolume(volume: number) {
-    this.currentMasterVolume = Math.max(0, Math.min(10, volume));
+    this.currentMasterVolume = clampGain(volume);
     if (this.masterGain) {
       const gain = this.masterGain.gain as AudioParam & {
         setValueAtTime?: (value: number, startTime: number) => AudioParam;
@@ -795,7 +796,7 @@ export class WebAudioEngine implements IAudioEngine {
   }
 
   setMonitorVolume(volume: number) {
-    this.currentMonitorVolume = Math.max(0, Math.min(10, volume));
+    this.currentMonitorVolume = clampGain(volume);
     if (this.monitorGain) {
       this.monitorGain.gain.value = this.currentMonitorVolume;
     }

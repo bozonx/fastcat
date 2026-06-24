@@ -1,6 +1,7 @@
 /** @vitest-environment node */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { TauriAudioEngine } from '~/utils/video-editor/TauriAudioEngine';
+import { runAudioEngineContract } from './audio-engine-contract';
 
 const listenMock = vi.hoisted(() => vi.fn());
 const unlistenMock = vi.hoisted(() => vi.fn());
@@ -43,6 +44,10 @@ describe('TauriAudioEngine', () => {
     setMasterGainMock.mockResolvedValue(undefined);
   });
 
+  // Cross-engine behaviour shared with WebAudioEngine (transport clock, idle
+  // metering silence, capability-gated peaks, tolerant setters).
+  runAudioEngineContract('TauriAudioEngine', { createEngine });
+
   it('declares correct capabilities', async () => {
     const engine = await createEngine();
     expect(engine.capabilities).toEqual({
@@ -74,46 +79,11 @@ describe('TauriAudioEngine', () => {
     expect((engine as any).currentClips).toEqual(second);
   });
 
-  it('play delegates to scheduler and starts wall-clock timing', async () => {
-    const engine = await createEngine();
-    await engine.play(5_000_000, 2);
-    const timeUs = engine.getCurrentTimeUs();
-    expect(timeUs).toBeGreaterThanOrEqual(4_900_000);
-    expect(timeUs).toBeLessThanOrEqual(5_100_000);
-  });
-
-  it('stop halts playback', async () => {
-    const engine = await createEngine();
-    await engine.play(10_000_000);
-    engine.stop();
-    expect(engine.getCurrentTimeUs()).toBe(10_000_000);
-  });
-
-  it('seek reanchors while playing', async () => {
-    const engine = await createEngine();
-    await engine.play(0);
-    engine.seek(20_000_000);
-    const timeUs = engine.getCurrentTimeUs();
-    expect(timeUs).toBeGreaterThanOrEqual(19_900_000);
-    expect(timeUs).toBeLessThanOrEqual(20_100_000);
-  });
-
-  it('seek is ignored when stopped', () => {
-    const engine = new TauriAudioEngine();
-    engine.seek(30_000_000);
-    expect(engine.getCurrentTimeUs()).toBe(0);
-  });
-
   it('setGlobalSpeed updates scheduler speed', async () => {
     const engine = await createEngine();
     await engine.play(0, 1);
     engine.setGlobalSpeed(2);
     expect((engine as any).scheduler.getGlobalSpeed()).toBe(2);
-  });
-
-  it('resumeContext is a no-op', async () => {
-    const engine = await createEngine();
-    await expect(engine.resumeContext()).resolves.toBeUndefined();
   });
 
   it('setMasterVolume clamps to [0, 10]', async () => {
@@ -205,12 +175,6 @@ describe('TauriAudioEngine', () => {
     const engine = await createEngine();
     engine.stopScrubPreview();
     expect(stopScrubPreviewMock).toHaveBeenCalled();
-  });
-
-  it('extractPeaks returns null', async () => {
-    const engine = await createEngine();
-    const result = await engine.extractPeaks(null as any, 'key');
-    expect(result).toBeNull();
   });
 
   it('destroy unregisters time listener and marks destroyed', async () => {

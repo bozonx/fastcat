@@ -2,6 +2,7 @@ import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 import { MONITOR_EVENTS, nativeMonitorIpc } from '~/composables/monitor/native-monitor-ipc';
 import { createDevLogger } from '~/utils/dev-logger';
 import { AudioScheduler } from '~/utils/video-editor/AudioScheduler';
+import { clampGain } from '~/utils/audio/clamp';
 import type { AudioEngineClip } from '~/utils/video-editor/audio-engine.types';
 import type {
   AudioEngineOptions,
@@ -131,14 +132,14 @@ export class TauriAudioEngine implements IAudioEngine {
   }
 
   setMasterVolume(volume: number) {
-    this.currentMasterVolume = Math.max(0, Math.min(10, volume));
+    this.currentMasterVolume = clampGain(volume);
     void nativeMonitorIpc.setMasterGain(this.currentMasterVolume).catch((error) => {
       logger.warn('Failed to set native master gain', error);
     });
   }
 
   setMonitorVolume(volume: number) {
-    this.currentMonitorVolume = Math.max(0, Math.min(10, volume));
+    this.currentMonitorVolume = clampGain(volume);
     void nativeMonitorIpc.setOutputGain(this.currentMonitorVolume).catch((error) => {
       logger.debug('setMonitorVolume failed', error);
     });

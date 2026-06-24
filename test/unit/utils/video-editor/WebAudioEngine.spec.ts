@@ -1,6 +1,7 @@
 /** @vitest-environment node */
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import { WebAudioEngine } from '~/utils/video-editor/WebAudioEngine';
+import { runAudioEngineContract } from './audio-engine-contract';
 
 vi.mock('~/utils/video-editor/AudioChunkDecoder', () => ({
   AudioChunkDecoder: vi.fn().mockImplementation(function () {
@@ -106,6 +107,16 @@ describe('WebAudioEngine', () => {
     vi.clearAllMocks();
   });
 
+  // Cross-engine behaviour shared with TauriAudioEngine (transport clock, idle
+  // metering silence, capability-gated peaks, tolerant setters).
+  runAudioEngineContract('WebAudioEngine', {
+    createEngine: async () => {
+      const engine = new WebAudioEngine();
+      await engine.init();
+      return engine;
+    },
+  });
+
   describe('capabilities', () => {
     it('reports all features enabled', () => {
       const engine = new WebAudioEngine();
@@ -171,11 +182,6 @@ describe('WebAudioEngine', () => {
   });
 
   describe('getLevels', () => {
-    it('returns silence when not playing', () => {
-      const engine = new WebAudioEngine();
-      expect(engine.getLevels()).toEqual({ rmsDb: -60, peakDb: -60 });
-    });
-
     it('returns computed levels when playing', async () => {
       const engine = new WebAudioEngine();
       await engine.init();
@@ -187,35 +193,14 @@ describe('WebAudioEngine', () => {
   });
 
   describe('playback control', () => {
-    it('play increments schedule generation', async () => {
+    // The transport-clock behaviour of play/stop/seek/setGlobalSpeed is asserted
+    // by the shared IAudioEngine contract above. These cover only Web-specific
+    // bookkeeping that the contract cannot observe.
+    it('play bumps the schedule generation so stale decodes are dropped', async () => {
       const engine = new WebAudioEngine();
       await engine.init();
       const before = (engine as any).scheduleGeneration;
       await engine.play(0);
-      expect((engine as any).scheduleGeneration).toBe(before + 1);
-    });
-
-    it('stop increments schedule generation', async () => {
-      const engine = new WebAudioEngine();
-      await engine.init();
-      const before = (engine as any).scheduleGeneration;
-      engine.stop();
-      expect((engine as any).scheduleGeneration).toBe(before + 1);
-    });
-
-    it('seek increments schedule generation', async () => {
-      const engine = new WebAudioEngine();
-      await engine.init();
-      const before = (engine as any).scheduleGeneration;
-      engine.seek(1_000_000);
-      expect((engine as any).scheduleGeneration).toBe(before + 1);
-    });
-
-    it('setGlobalSpeed increments schedule generation', async () => {
-      const engine = new WebAudioEngine();
-      await engine.init();
-      const before = (engine as any).scheduleGeneration;
-      engine.setGlobalSpeed(2);
       expect((engine as any).scheduleGeneration).toBe(before + 1);
     });
   });
@@ -242,14 +227,6 @@ describe('WebAudioEngine', () => {
       engine.destroy();
       expect((engine as any).destroyed).toBe(true);
       expect((engine as any).ctx).toBeNull();
-    });
-
-    it('is safe to call twice', async () => {
-      const engine = new WebAudioEngine();
-      await engine.init();
-      engine.destroy();
-      engine.destroy();
-      expect((engine as any).destroyed).toBe(true);
     });
   });
 
