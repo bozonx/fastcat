@@ -60,6 +60,10 @@ test.describe('Web engine parity @parity', () => {
 
       const mediaMapping: Record<string, string> = {};
 
+      // Navigate to the parity page first so OPFS APIs (navigator.storage) are available.
+      await page.goto('/test/parity');
+      await page.waitForLoadState('domcontentloaded');
+
       for (const layer of scene.layers) {
         const relPath = layer.path as string | undefined;
         if (!relPath) continue;
@@ -72,9 +76,6 @@ test.describe('Web engine parity @parity', () => {
         const bytes = readFileSync(absPath);
         await writeFileToOpfs(page, { path: opfsPath, data: new Uint8Array(bytes) });
       }
-
-      // Navigate to the app origin so browser APIs are available.
-      await page.goto('/');
 
       const results = await renderWebFrames(page, sceneData, mediaMapping);
 
