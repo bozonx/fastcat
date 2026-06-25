@@ -1543,12 +1543,39 @@ mod tests {
             video_tracks: Vec::new(),
         };
 
+        // A crop-clipped raster layer must produce encoding commands (clip layer + draw_image).
         let vello_scene = scene.to_vello(100, 100, |_| None);
-        assert!(!vello_scene.encoding().is_empty());
+        assert!(
+            !vello_scene.encoding().is_empty(),
+            "crop-clipped layer must produce encoding commands"
+        );
+        // Crop clipping pushes a clip layer — verify n_clips increased.
+        assert!(
+            vello_scene.encoding().n_clips > 0,
+            "crop-clipped layer must push at least one clip layer"
+        );
+
+        // Compare against the same layer without crop — n_clips must be zero.
+        let no_crop_layer = raster_layer((100, 100), Transform::identity(), 1.0);
+        let no_crop_scene = Scene {
+            master_effects: Vec::new(),
+            effect_quality: EffectQuality::Ultra,
+            width: 100,
+            height: 100,
+            time: 0.0,
+            background: Color::BLACK,
+            layers: vec![no_crop_layer],
+            video_tracks: Vec::new(),
+        };
+        let no_crop_encoding = no_crop_scene.to_vello(100, 100, |_| None);
+        assert_eq!(
+            no_crop_encoding.encoding().n_clips, 0,
+            "no-crop layer must not push any clip layers"
+        );
     }
 
     #[test]
-    fn to_vello_empty_scene_returns_empty() {
+    fn to_vello_empty_scene_returns_empty_encoding() {
         let scene = Scene {
             master_effects: Vec::new(),
             effect_quality: EffectQuality::Ultra,
@@ -1559,13 +1586,15 @@ mod tests {
             layers: Vec::new(),
             video_tracks: Vec::new(),
         };
-        // Should return without panicking.
-        let _ = scene.to_vello(1280, 720, |_| None);
+        let vello_scene = scene.to_vello(1280, 720, |_| None);
+        assert!(
+            vello_scene.encoding().is_empty(),
+            "empty scene must produce no encoding commands"
+        );
     }
 
     #[test]
     fn to_vello_skips_zero_opacity_layer() {
-        // Smoke: opacity=0 — layer should not trigger draw, no panic.
         let scene = Scene {
             master_effects: Vec::new(),
             effect_quality: EffectQuality::Ultra,
@@ -1580,7 +1609,23 @@ mod tests {
             )],
             video_tracks: Vec::new(),
         };
-        let _ = scene.to_vello(100, 100, |_| None);
+        // The image processor must NOT be called for a zero-opacity layer.
+        let mut calls = 0;
+        let vello_scene = scene.to_vello_with_image_processor(
+            100,
+            100,
+            |_| None,
+            |image, _| {
+                calls += 1;
+                image.clone()
+            },
+        );
+        assert_eq!(calls, 0, "zero-opacity layer must not invoke image processor");
+        // With no visible layers the encoding should be empty.
+        assert!(
+            vello_scene.encoding().is_empty(),
+            "zero-opacity layer must produce no encoding commands"
+        );
     }
 
     #[test]
@@ -1595,9 +1640,11 @@ mod tests {
             layers: vec![raster_layer((10, 10), Transform::identity(), 1.0)],
             video_tracks: Vec::new(),
         };
-        // Should not panic with zero viewport.
-        let _ = scene.to_vello(0, 0, |_| None);
-        let _ = scene.to_vello(100, 0, |_| None);
+        // Zero viewport must return an empty encoding (early-exit guard).
+        let vello_scene = scene.to_vello(0, 0, |_| None);
+        assert!(vello_scene.encoding().is_empty());
+        let vello_scene = scene.to_vello(100, 0, |_| None);
+        assert!(vello_scene.encoding().is_empty());
     }
 
     #[test]
