@@ -1,0 +1,81 @@
+{
+  "_comment": [
+    "Cross-engine parity scene: an adjustment layer applies brightness over an image clip.",
+    "The adjustment layer sits above the image and should affect all lower layers."
+  ],
+  "scene": {
+    "width": 320,
+    "height": 240,
+    "layers": [
+      {
+        "id": "bg",
+        "kind": "background",
+        "path": "",
+        "timeline_start_sec": 0,
+        "timeline_end_sec": 1,
+        "source_start_sec": 0,
+        "source_range_duration_sec": 0,
+        "speed": 1,
+        "z": 0,
+        "opacity": 1,
+        "blend_mode": "normal",
+        "background_color": "#222222"
+      },
+      {
+        "id": "image",
+        "kind": "image",
+        "path": "image/image.jpg",
+        "timeline_start_sec": 0,
+        "timeline_end_sec": 1,
+        "source_start_sec": 0,
+        "source_range_duration_sec": 1,
+        "speed": 1,
+        "z": 1,
+        "opacity": 1,
+        "blend_mode": "normal",
+        "transform": {
+          "x": 160,
+          "y": 120,
+          "scale_x": 0.5,
+          "scale_y": 0.5,
+          "rotation_deg": 0,
+          "anchor_x": 0.5,
+          "anchor_y": 0.5
+        }
+      },
+      {
+        "id": "adjust",
+        "kind": "adjustment",
+        "path": "",
+        "timeline_start_sec": 0,
+        "timeline_end_sec": 1,
+        "source_start_sec": 0,
+        "source_range_duration_sec": 0,
+        "speed": 1,
+        "z": 2,
+        "opacity": 1,
+        "blend_mode": "normal",
+        "effects": [
+          {
+            "type": "brightness",
+            "value": 1.5
+          }
+        ]
+      }
+    ],
+    "video_tracks": [],
+    "audio_layers": [],
+    "audio_tracks": [],
+    "audio_master_gain": 1,
+    "audio_master_muted": false,
+    "preview_fps": 30,
+    "preview_sync_mode": "balanced",
+    "preview_effect_quality": "high",
+    "frame_cache_mode": "auto",
+    "frame_cache_custom_mb": 0,
+    "master_effects": [],
+    "audio_master_effects": []
+  },
+  "sample_times_sec": [0.5],
+  "tolerance": 20
+}

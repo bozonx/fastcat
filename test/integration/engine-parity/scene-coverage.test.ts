@@ -227,6 +227,17 @@ describe('scene coverage integration', () => {
         }
       }
     });
+
+    it('effect-chroma-key scene has a chroma-key effect', () => {
+      const scene = scenes.find((s) => s.filename === 'effect-chroma-key.json');
+      expect(scene).toBeDefined();
+      const layers = scene!.fixture.scene.layers as Array<Record<string, unknown>>;
+      const img = layers.find((l) => l.kind === 'image');
+      const effects = img!.effects as Array<Record<string, unknown>>;
+      expect(effects).toHaveLength(1);
+      expect(effects[0].type).toBe('chroma-key');
+      expect(effects[0].threshold).toBe(0.2);
+    });
   });
 
   describe('transitions coverage', () => {
@@ -327,6 +338,133 @@ describe('scene coverage integration', () => {
         expect(videoPaths).toContain('video/video-h264-aac.mp4');
         expect(multiPaths).toContain('video/video-h264-aac.mp4');
       }
+    });
+  });
+
+  describe('blend mode coverage', () => {
+    it('covers every supported blend mode', () => {
+      const blendModes = [
+        'normal',
+        'add',
+        'multiply',
+        'screen',
+        'overlay',
+        'darken',
+        'lighten',
+        'color-dodge',
+        'color-burn',
+        'hard-light',
+        'soft-light',
+        'difference',
+        'exclusion',
+        'hue',
+        'saturation',
+        'color',
+        'luminosity',
+      ];
+      const used = new Set<string>();
+      for (const { fixture } of scenes) {
+        for (const layer of fixture.scene.layers as Array<Record<string, unknown>>) {
+          used.add(layer.blend_mode as string);
+        }
+      }
+      for (const mode of blendModes) {
+        expect(used.has(mode), `missing blend mode "${mode}"`).toBe(true);
+      }
+    });
+  });
+
+  describe('shape type coverage', () => {
+    it('covers every supported shape type', () => {
+      const shapeTypes = ['square', 'circle', 'triangle', 'star', 'cloud', 'speech_bubble', 'bang'];
+      const used = new Set<string>();
+      for (const { fixture } of scenes) {
+        for (const layer of fixture.scene.layers as Array<Record<string, unknown>>) {
+          if (layer.kind === 'shape') {
+            used.add(layer.shape_type as string);
+          }
+        }
+      }
+      for (const type of shapeTypes) {
+        expect(used.has(type), `missing shape type "${type}"`).toBe(true);
+      }
+    });
+  });
+
+  describe('extra effects coverage', () => {
+    it('effects-extra scene covers additional non-text video effects', () => {
+      const scene = scenes.find((s) => s.filename === 'effects-extra.json');
+      expect(scene).toBeDefined();
+      const types = new Set<string>();
+      for (const layer of scene!.fixture.scene.layers as Array<Record<string, unknown>>) {
+        const effects = layer.effects as Array<Record<string, unknown>> | undefined;
+        effects?.forEach((e) => types.add(e.type as string));
+      }
+      const expected = [
+        'gaussian-blur',
+        'bloom',
+        'sharpen',
+        'pixelate',
+        'vignette',
+        'chromatic-aberration',
+        'hue',
+        'levels',
+        'noise',
+      ];
+      for (const t of expected) {
+        expect(types.has(t), `missing effect type "${t}"`).toBe(true);
+      }
+    });
+  });
+
+  describe('transition type coverage', () => {
+    it('covers wipe, slide, and fade-to-black transitions', () => {
+      const used = new Set<string>();
+      for (const { fixture } of scenes) {
+        for (const layer of fixture.scene.layers as Array<Record<string, unknown>>) {
+          const tin = layer.transition_in as Record<string, unknown> | undefined;
+          const tout = layer.transition_out as Record<string, unknown> | undefined;
+          if (tin) used.add(tin.type as string);
+          if (tout) used.add(tout.type as string);
+        }
+      }
+      expect(used.has('wipe')).toBe(true);
+      expect(used.has('slide')).toBe(true);
+      expect(used.has('fade-to-black')).toBe(true);
+    });
+  });
+
+  describe('adjustment layer coverage', () => {
+    it('covers adjustment layers', () => {
+      const hasAdjustment = scenes.some(({ fixture }) =>
+        (fixture.scene.layers as Array<Record<string, unknown>>).some(
+          (l) => l.kind === 'adjustment',
+        ),
+      );
+      expect(hasAdjustment).toBe(true);
+    });
+  });
+
+  describe('source orientation coverage', () => {
+    it('covers explicit source orientation', () => {
+      const hasOrientation = scenes.some(({ fixture }) =>
+        (fixture.scene.layers as Array<Record<string, unknown>>).some(
+          (l) => typeof l.source_orientation === 'string',
+        ),
+      );
+      expect(hasOrientation).toBe(true);
+    });
+  });
+
+  describe('transform flip coverage', () => {
+    it('transform-flip scene uses negative scale_x for horizontal flip', () => {
+      const scene = scenes.find((s) => s.filename === 'transform-flip.json');
+      expect(scene).toBeDefined();
+      const img = (scene!.fixture.scene.layers as Array<Record<string, unknown>>).find(
+        (l) => l.kind === 'image',
+      );
+      const transform = img!.transform as Record<string, unknown>;
+      expect(transform.scale_x).toBe(-1);
     });
   });
 });

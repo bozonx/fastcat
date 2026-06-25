@@ -1,0 +1,255 @@
+{
+  "_comment": [
+    "Cross-engine parity scene: every supported shape geometry type,",
+    "drawn as small tiles on a dark background."
+  ],
+  "scene": {
+    "width": 320,
+    "height": 240,
+    "layers": [
+      {
+        "id": "bg",
+        "kind": "background",
+        "path": "",
+        "timeline_start_sec": 0,
+        "timeline_end_sec": 1,
+        "source_start_sec": 0,
+        "source_range_duration_sec": 0,
+        "speed": 1,
+        "z": 0,
+        "opacity": 1,
+        "blend_mode": "normal",
+        "background_color": "#2a2a3a"
+      },
+      {
+        "id": "shape-circle",
+        "kind": "shape",
+        "path": "",
+        "timeline_start_sec": 0,
+        "timeline_end_sec": 1,
+        "source_start_sec": 0,
+        "source_range_duration_sec": 0,
+        "speed": 1,
+        "z": 1,
+        "opacity": 1,
+        "blend_mode": "normal",
+        "shape_type": "circle",
+        "fill_color": "#ff5555",
+        "stroke_color": "#000000",
+        "stroke_width": 2,
+        "shape_config": {
+          "squashX": 0,
+          "squashY": 0
+        },
+        "transform": {
+          "x": 40,
+          "y": 60,
+          "scale_x": 0.3,
+          "scale_y": 0.3,
+          "rotation_deg": 0,
+          "anchor_x": 0.5,
+          "anchor_y": 0.5
+        }
+      },
+      {
+        "id": "shape-square",
+        "kind": "shape",
+        "path": "",
+        "timeline_start_sec": 0,
+        "timeline_end_sec": 1,
+        "source_start_sec": 0,
+        "source_range_duration_sec": 0,
+        "speed": 1,
+        "z": 2,
+        "opacity": 1,
+        "blend_mode": "normal",
+        "shape_type": "square",
+        "fill_color": "#55ff55",
+        "stroke_color": "#000000",
+        "stroke_width": 2,
+        "shape_config": {
+          "width": 80,
+          "height": 80,
+          "cornerRadius": 10
+        },
+        "transform": {
+          "x": 120,
+          "y": 60,
+          "scale_x": 0.3,
+          "scale_y": 0.3,
+          "rotation_deg": 0,
+          "anchor_x": 0.5,
+          "anchor_y": 0.5
+        }
+      },
+      {
+        "id": "shape-triangle",
+        "kind": "shape",
+        "path": "",
+        "timeline_start_sec": 0,
+        "timeline_end_sec": 1,
+        "source_start_sec": 0,
+        "source_range_duration_sec": 0,
+        "speed": 1,
+        "z": 3,
+        "opacity": 1,
+        "blend_mode": "normal",
+        "shape_type": "triangle",
+        "fill_color": "#5555ff",
+        "stroke_color": "#000000",
+        "stroke_width": 2,
+        "shape_config": {
+          "baseLength": 80,
+          "vertexOffset": 40
+        },
+        "transform": {
+          "x": 200,
+          "y": 60,
+          "scale_x": 0.3,
+          "scale_y": 0.3,
+          "rotation_deg": 0,
+          "anchor_x": 0.5,
+          "anchor_y": 0.5
+        }
+      },
+      {
+        "id": "shape-star",
+        "kind": "shape",
+        "path": "",
+        "timeline_start_sec": 0,
+        "timeline_end_sec": 1,
+        "source_start_sec": 0,
+        "source_range_duration_sec": 0,
+        "speed": 1,
+        "z": 4,
+        "opacity": 1,
+        "blend_mode": "normal",
+        "shape_type": "star",
+        "fill_color": "#ffff55",
+        "stroke_color": "#000000",
+        "stroke_width": 2,
+        "shape_config": {
+          "rays": 5,
+          "innerRadius": 40
+        },
+        "transform": {
+          "x": 280,
+          "y": 60,
+          "scale_x": 0.3,
+          "scale_y": 0.3,
+          "rotation_deg": 0,
+          "anchor_x": 0.5,
+          "anchor_y": 0.5
+        }
+      },
+      {
+        "id": "shape-cloud",
+        "kind": "shape",
+        "path": "",
+        "timeline_start_sec": 0,
+        "timeline_end_sec": 1,
+        "source_start_sec": 0,
+        "source_range_duration_sec": 0,
+        "speed": 1,
+        "z": 5,
+        "opacity": 1,
+        "blend_mode": "normal",
+        "shape_type": "cloud",
+        "fill_color": "#ff55ff",
+        "stroke_color": "#000000",
+        "stroke_width": 2,
+        "shape_config": {
+          "cloudType": 1
+        },
+        "transform": {
+          "x": 40,
+          "y": 180,
+          "scale_x": 0.3,
+          "scale_y": 0.3,
+          "rotation_deg": 0,
+          "anchor_x": 0.5,
+          "anchor_y": 0.5
+        }
+      },
+      {
+        "id": "shape-speech-bubble",
+        "kind": "shape",
+        "path": "",
+        "timeline_start_sec": 0,
+        "timeline_end_sec": 1,
+        "source_start_sec": 0,
+        "source_range_duration_sec": 0,
+        "speed": 1,
+        "z": 6,
+        "opacity": 1,
+        "blend_mode": "normal",
+        "shape_type": "speech_bubble",
+        "fill_color": "#55ffff",
+        "stroke_color": "#000000",
+        "stroke_width": 2,
+        "shape_config": {
+          "width": 70,
+          "height": 50,
+          "cornerRadius": 15,
+          "pointerX": 30,
+          "pointerAngle": 20,
+          "pointerSharpness": 40,
+          "pointerDirection": "left"
+        },
+        "transform": {
+          "x": 120,
+          "y": 180,
+          "scale_x": 0.3,
+          "scale_y": 0.3,
+          "rotation_deg": 0,
+          "anchor_x": 0.5,
+          "anchor_y": 0.5
+        }
+      },
+      {
+        "id": "shape-bang",
+        "kind": "shape",
+        "path": "",
+        "timeline_start_sec": 0,
+        "timeline_end_sec": 1,
+        "source_start_sec": 0,
+        "source_range_duration_sec": 0,
+        "speed": 1,
+        "z": 7,
+        "opacity": 1,
+        "blend_mode": "normal",
+        "shape_type": "bang",
+        "fill_color": "#ffaa55",
+        "stroke_color": "#000000",
+        "stroke_width": 2,
+        "shape_config": {
+          "rays": 12,
+          "innerRadius": 70
+        },
+        "transform": {
+          "x": 200,
+          "y": 180,
+          "scale_x": 0.3,
+          "scale_y": 0.3,
+          "rotation_deg": 0,
+          "anchor_x": 0.5,
+          "anchor_y": 0.5
+        }
+      }
+    ],
+    "video_tracks": [],
+    "audio_layers": [],
+    "audio_tracks": [],
+    "audio_master_gain": 1,
+    "audio_master_muted": false,
+    "preview_fps": 30,
+    "preview_sync_mode": "balanced",
+    "preview_effect_quality": "high",
+    "frame_cache_mode": "auto",
+    "frame_cache_custom_mb": 0,
+    "master_effects": [],
+    "audio_master_effects": []
+  },
+  "sample_times_sec": [0.5],
+  "tolerance": 30
+}

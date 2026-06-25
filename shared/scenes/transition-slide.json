@@ -1,0 +1,93 @@
+{
+  "_comment": [
+    "Cross-engine parity scene: slide transition between two layers.",
+    "Includes both web params and native spec so each engine picks the right representation."
+  ],
+  "scene": {
+    "width": 320,
+    "height": 240,
+    "layers": [
+      {
+        "id": "clip-a",
+        "kind": "image",
+        "path": "image/image.jpg",
+        "timeline_start_sec": 0,
+        "timeline_end_sec": 0.5,
+        "source_start_sec": 0,
+        "source_range_duration_sec": 0,
+        "speed": 1,
+        "z": 0,
+        "opacity": 1,
+        "blend_mode": "normal",
+        "transition_out": {
+          "type": "slide",
+          "duration_sec": 0.3,
+          "mode": "transparent",
+          "curve": "linear",
+          "params": {
+            "direction": "left",
+            "gap": 0.02,
+            "gapColor": "#000000",
+            "motionBlur": 0,
+            "motionBlurMode": "normal",
+            "brightnessMode": "normal",
+            "brightness": 0,
+            "bloomThreshold": 0.7
+          },
+          "spec": {
+            "type": "slide",
+            "direction": "left"
+          }
+        }
+      },
+      {
+        "id": "clip-b",
+        "kind": "background",
+        "path": "",
+        "timeline_start_sec": 0.2,
+        "timeline_end_sec": 1,
+        "source_start_sec": 0,
+        "source_range_duration_sec": 0,
+        "speed": 1,
+        "z": 1,
+        "opacity": 1,
+        "blend_mode": "normal",
+        "background_color": "#ff6600",
+        "transition_in": {
+          "type": "slide",
+          "duration_sec": 0.3,
+          "mode": "transparent",
+          "curve": "linear",
+          "params": {
+            "direction": "left",
+            "gap": 0.02,
+            "gapColor": "#000000",
+            "motionBlur": 0,
+            "motionBlurMode": "normal",
+            "brightnessMode": "normal",
+            "brightness": 0,
+            "bloomThreshold": 0.7
+          },
+          "spec": {
+            "type": "slide",
+            "direction": "left"
+          }
+        }
+      }
+    ],
+    "video_tracks": [],
+    "audio_layers": [],
+    "audio_tracks": [],
+    "audio_master_gain": 1,
+    "audio_master_muted": false,
+    "preview_fps": 30,
+    "preview_sync_mode": "balanced",
+    "preview_effect_quality": "high",
+    "frame_cache_mode": "auto",
+    "frame_cache_custom_mb": 0,
+    "master_effects": [],
+    "audio_master_effects": []
+  },
+  "sample_times_sec": [0.15, 0.5],
+  "tolerance": 25
+}

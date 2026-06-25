@@ -314,6 +314,28 @@
       ]
     },
     {
+      "scene": "effect-chroma-key.json",
+      "engine": "web",
+      "samples": [
+        {
+          "timeSec": 0.5,
+          "hash": "0000000000000000",
+          "tolerance": 20
+        }
+      ]
+    },
+    {
+      "scene": "effect-chroma-key.json",
+      "engine": "native",
+      "samples": [
+        {
+          "timeSec": 0.5,
+          "hash": "0000000000000000",
+          "tolerance": 20
+        }
+      ]
+    },
+    {
       "scene": "transition-dissolve.json",
       "engine": "native",
       "samples": [
@@ -348,6 +370,256 @@
           "timeSec": 0.5,
           "hash": "003c7e3e3e3e0000",
           "tolerance": 32
+        }
+      ]
+    },
+    {
+      "scene": "adjustment-layer.json",
+      "engine": "web",
+      "samples": [
+        {
+          "timeSec": 0.5,
+          "hash": "0000000000000000",
+          "tolerance": 20
+        }
+      ]
+    },
+    {
+      "scene": "adjustment-layer.json",
+      "engine": "native",
+      "samples": [
+        {
+          "timeSec": 0.5,
+          "hash": "0000000000000000",
+          "tolerance": 20
+        }
+      ]
+    },
+    {
+      "scene": "blend-modes.json",
+      "engine": "web",
+      "samples": [
+        {
+          "timeSec": 0.5,
+          "hash": "0000000000000000",
+          "tolerance": 30
+        }
+      ]
+    },
+    {
+      "scene": "blend-modes.json",
+      "engine": "native",
+      "samples": [
+        {
+          "timeSec": 0.5,
+          "hash": "0000000000000000",
+          "tolerance": 30
+        }
+      ]
+    },
+    {
+      "scene": "effects-blur-fill.json",
+      "engine": "web",
+      "samples": [
+        {
+          "timeSec": 0.5,
+          "hash": "0000000000000000",
+          "tolerance": 20
+        }
+      ]
+    },
+    {
+      "scene": "effects-blur-fill.json",
+      "engine": "native",
+      "samples": [
+        {
+          "timeSec": 0.5,
+          "hash": "0000000000000000",
+          "tolerance": 20
+        }
+      ]
+    },
+    {
+      "scene": "effects-extra.json",
+      "engine": "web",
+      "samples": [
+        {
+          "timeSec": 0.5,
+          "hash": "0000000000000000",
+          "tolerance": 40
+        }
+      ]
+    },
+    {
+      "scene": "effects-extra.json",
+      "engine": "native",
+      "samples": [
+        {
+          "timeSec": 0.5,
+          "hash": "0000000000000000",
+          "tolerance": 40
+        }
+      ]
+    },
+    {
+      "scene": "shapes-all.json",
+      "engine": "web",
+      "samples": [
+        {
+          "timeSec": 0.5,
+          "hash": "0000000000000000",
+          "tolerance": 30
+        }
+      ]
+    },
+    {
+      "scene": "shapes-all.json",
+      "engine": "native",
+      "samples": [
+        {
+          "timeSec": 0.5,
+          "hash": "0000000000000000",
+          "tolerance": 30
+        }
+      ]
+    },
+    {
+      "scene": "source-orientation.json",
+      "engine": "web",
+      "samples": [
+        {
+          "timeSec": 0.5,
+          "hash": "0000000000000000",
+          "tolerance": 20
+        }
+      ]
+    },
+    {
+      "scene": "source-orientation.json",
+      "engine": "native",
+      "samples": [
+        {
+          "timeSec": 0.5,
+          "hash": "0000000000000000",
+          "tolerance": 20
+        }
+      ]
+    },
+    {
+      "scene": "transform-flip.json",
+      "engine": "web",
+      "samples": [
+        {
+          "timeSec": 0.5,
+          "hash": "0000000000000000",
+          "tolerance": 20
+        }
+      ]
+    },
+    {
+      "scene": "transform-flip.json",
+      "engine": "native",
+      "samples": [
+        {
+          "timeSec": 0.5,
+          "hash": "0000000000000000",
+          "tolerance": 20
+        }
+      ]
+    },
+    {
+      "scene": "transition-fade-to-black.json",
+      "engine": "web",
+      "samples": [
+        {
+          "timeSec": 0.15,
+          "hash": "0000000000000000",
+          "tolerance": 25
+        },
+        {
+          "timeSec": 0.5,
+          "hash": "0000000000000000",
+          "tolerance": 25
+        }
+      ]
+    },
+    {
+      "scene": "transition-fade-to-black.json",
+      "engine": "native",
+      "samples": [
+        {
+          "timeSec": 0.15,
+          "hash": "0000000000000000",
+          "tolerance": 25
+        },
+        {
+          "timeSec": 0.5,
+          "hash": "0000000000000000",
+          "tolerance": 25
+        }
+      ]
+    },
+    {
+      "scene": "transition-slide.json",
+      "engine": "web",
+      "samples": [
+        {
+          "timeSec": 0.15,
+          "hash": "0000000000000000",
+          "tolerance": 25
+        },
+        {
+          "timeSec": 0.5,
+          "hash": "0000000000000000",
+          "tolerance": 25
+        }
+      ]
+    },
+    {
+      "scene": "transition-slide.json",
+      "engine": "native",
+      "samples": [
+        {
+          "timeSec": 0.15,
+          "hash": "0000000000000000",
+          "tolerance": 25
+        },
+        {
+          "timeSec": 0.5,
+          "hash": "0000000000000000",
+          "tolerance": 25
+        }
+      ]
+    },
+    {
+      "scene": "transition-wipe.json",
+      "engine": "web",
+      "samples": [
+        {
+          "timeSec": 0.15,
+          "hash": "0000000000000000",
+          "tolerance": 25
+        },
+        {
+          "timeSec": 0.5,
+          "hash": "0000000000000000",
+          "tolerance": 25
+        }
+      ]
+    },
+    {
+      "scene": "transition-wipe.json",
+      "engine": "native",
+      "samples": [
+        {
+          "timeSec": 0.15,
+          "hash": "0000000000000000",
+          "tolerance": 25
+        },
+        {
+          "timeSec": 0.5,
+          "hash": "0000000000000000",
+          "tolerance": 25
         }
       ]
     }

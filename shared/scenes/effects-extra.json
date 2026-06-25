@@ -1,0 +1,347 @@
+{
+  "_comment": [
+    "Cross-engine parity scene: a grid of small image tiles, each with a different",
+    "video effect (blur variants, bloom, sharpen, pixelate, vignette, chromatic aberration,",
+    "hue, levels, noise). Used to cover the remaining non-text video effects."
+  ],
+  "scene": {
+    "width": 640,
+    "height": 480,
+    "layers": [
+      {
+        "id": "bg",
+        "kind": "background",
+        "path": "",
+        "timeline_start_sec": 0,
+        "timeline_end_sec": 1,
+        "source_start_sec": 0,
+        "source_range_duration_sec": 0,
+        "speed": 1,
+        "z": 0,
+        "opacity": 1,
+        "blend_mode": "normal",
+        "background_color": "#222222"
+      },
+      {
+        "id": "tile-box-blur",
+        "kind": "image",
+        "path": "image/image.jpg",
+        "timeline_start_sec": 0,
+        "timeline_end_sec": 1,
+        "source_start_sec": 0,
+        "source_range_duration_sec": 1,
+        "speed": 1,
+        "z": 1,
+        "opacity": 1,
+        "blend_mode": "normal",
+        "transform": {
+          "x": 80,
+          "y": 60,
+          "scale_x": 0.25,
+          "scale_y": 0.25,
+          "rotation_deg": 0,
+          "anchor_x": 0.5,
+          "anchor_y": 0.5
+        },
+        "effects": [
+          {
+            "type": "gaussian-blur",
+            "radius": 12,
+            "bleed": false,
+            "blur_type": "box",
+            "mix": 1
+          }
+        ]
+      },
+      {
+        "id": "tile-radial-blur",
+        "kind": "image",
+        "path": "image/image.jpg",
+        "timeline_start_sec": 0,
+        "timeline_end_sec": 1,
+        "source_start_sec": 0,
+        "source_range_duration_sec": 1,
+        "speed": 1,
+        "z": 2,
+        "opacity": 1,
+        "blend_mode": "normal",
+        "transform": {
+          "x": 240,
+          "y": 60,
+          "scale_x": 0.25,
+          "scale_y": 0.25,
+          "rotation_deg": 0,
+          "anchor_x": 0.5,
+          "anchor_y": 0.5
+        },
+        "effects": [
+          {
+            "type": "gaussian-blur",
+            "radius": 12,
+            "bleed": false,
+            "blur_type": "radial",
+            "mix": 1
+          }
+        ]
+      },
+      {
+        "id": "tile-bloom",
+        "kind": "image",
+        "path": "image/image.jpg",
+        "timeline_start_sec": 0,
+        "timeline_end_sec": 1,
+        "source_start_sec": 0,
+        "source_range_duration_sec": 1,
+        "speed": 1,
+        "z": 3,
+        "opacity": 1,
+        "blend_mode": "normal",
+        "transform": {
+          "x": 400,
+          "y": 60,
+          "scale_x": 0.25,
+          "scale_y": 0.25,
+          "rotation_deg": 0,
+          "anchor_x": 0.5,
+          "anchor_y": 0.5
+        },
+        "effects": [
+          {
+            "type": "bloom",
+            "threshold": 0.2,
+            "strength": 0.6,
+            "radius": 20,
+            "knee": 0.1,
+            "mix": 1
+          }
+        ]
+      },
+      {
+        "id": "tile-sharpen",
+        "kind": "image",
+        "path": "image/image.jpg",
+        "timeline_start_sec": 0,
+        "timeline_end_sec": 1,
+        "source_start_sec": 0,
+        "source_range_duration_sec": 1,
+        "speed": 1,
+        "z": 4,
+        "opacity": 1,
+        "blend_mode": "normal",
+        "transform": {
+          "x": 560,
+          "y": 60,
+          "scale_x": 0.25,
+          "scale_y": 0.25,
+          "rotation_deg": 0,
+          "anchor_x": 0.5,
+          "anchor_y": 0.5
+        },
+        "effects": [
+          {
+            "type": "sharpen",
+            "amount": 2,
+            "mix": 1
+          }
+        ]
+      },
+      {
+        "id": "tile-pixelate",
+        "kind": "image",
+        "path": "image/image.jpg",
+        "timeline_start_sec": 0,
+        "timeline_end_sec": 1,
+        "source_start_sec": 0,
+        "source_range_duration_sec": 1,
+        "speed": 1,
+        "z": 5,
+        "opacity": 1,
+        "blend_mode": "normal",
+        "transform": {
+          "x": 80,
+          "y": 180,
+          "scale_x": 0.25,
+          "scale_y": 0.25,
+          "rotation_deg": 0,
+          "anchor_x": 0.5,
+          "anchor_y": 0.5
+        },
+        "effects": [
+          {
+            "type": "pixelate",
+            "size": 12,
+            "mix": 1
+          }
+        ]
+      },
+      {
+        "id": "tile-vignette",
+        "kind": "image",
+        "path": "image/image.jpg",
+        "timeline_start_sec": 0,
+        "timeline_end_sec": 1,
+        "source_start_sec": 0,
+        "source_range_duration_sec": 1,
+        "speed": 1,
+        "z": 6,
+        "opacity": 1,
+        "blend_mode": "normal",
+        "transform": {
+          "x": 240,
+          "y": 180,
+          "scale_x": 0.25,
+          "scale_y": 0.25,
+          "rotation_deg": 0,
+          "anchor_x": 0.5,
+          "anchor_y": 0.5
+        },
+        "effects": [
+          {
+            "type": "vignette",
+            "strength": 0.6,
+            "radius": 0.75,
+            "softness": 0.5,
+            "mix": 1
+          }
+        ]
+      },
+      {
+        "id": "tile-chromatic",
+        "kind": "image",
+        "path": "image/image.jpg",
+        "timeline_start_sec": 0,
+        "timeline_end_sec": 1,
+        "source_start_sec": 0,
+        "source_range_duration_sec": 1,
+        "speed": 1,
+        "z": 7,
+        "opacity": 1,
+        "blend_mode": "normal",
+        "transform": {
+          "x": 400,
+          "y": 180,
+          "scale_x": 0.25,
+          "scale_y": 0.25,
+          "rotation_deg": 0,
+          "anchor_x": 0.5,
+          "anchor_y": 0.5
+        },
+        "effects": [
+          {
+            "type": "chromatic-aberration",
+            "amount": 10,
+            "angle_deg": 0,
+            "mix": 1
+          }
+        ]
+      },
+      {
+        "id": "tile-hue",
+        "kind": "image",
+        "path": "image/image.jpg",
+        "timeline_start_sec": 0,
+        "timeline_end_sec": 1,
+        "source_start_sec": 0,
+        "source_range_duration_sec": 1,
+        "speed": 1,
+        "z": 8,
+        "opacity": 1,
+        "blend_mode": "normal",
+        "transform": {
+          "x": 560,
+          "y": 180,
+          "scale_x": 0.25,
+          "scale_y": 0.25,
+          "rotation_deg": 0,
+          "anchor_x": 0.5,
+          "anchor_y": 0.5
+        },
+        "effects": [
+          {
+            "type": "hue",
+            "degrees": 180
+          }
+        ]
+      },
+      {
+        "id": "tile-levels",
+        "kind": "image",
+        "path": "image/image.jpg",
+        "timeline_start_sec": 0,
+        "timeline_end_sec": 1,
+        "source_start_sec": 0,
+        "source_range_duration_sec": 1,
+        "speed": 1,
+        "z": 9,
+        "opacity": 1,
+        "blend_mode": "normal",
+        "transform": {
+          "x": 80,
+          "y": 300,
+          "scale_x": 0.25,
+          "scale_y": 0.25,
+          "rotation_deg": 0,
+          "anchor_x": 0.5,
+          "anchor_y": 0.5
+        },
+        "effects": [
+          {
+            "type": "levels",
+            "in_black": 0.1,
+            "in_white": 0.8,
+            "gamma": 0.8,
+            "out_black": 0.1,
+            "out_white": 1,
+            "mix": 1
+          }
+        ]
+      },
+      {
+        "id": "tile-noise",
+        "kind": "image",
+        "path": "image/image.jpg",
+        "timeline_start_sec": 0,
+        "timeline_end_sec": 1,
+        "source_start_sec": 0,
+        "source_range_duration_sec": 1,
+        "speed": 1,
+        "z": 10,
+        "opacity": 1,
+        "blend_mode": "normal",
+        "transform": {
+          "x": 240,
+          "y": 300,
+          "scale_x": 0.25,
+          "scale_y": 0.25,
+          "rotation_deg": 0,
+          "anchor_x": 0.5,
+          "anchor_y": 0.5
+        },
+        "effects": [
+          {
+            "type": "noise",
+            "amount": 0.3,
+            "seed": 42,
+            "noise_type": "perlin",
+            "scale": 50,
+            "mix": 1
+          }
+        ]
+      }
+    ],
+    "video_tracks": [],
+    "audio_layers": [],
+    "audio_tracks": [],
+    "audio_master_gain": 1,
+    "audio_master_muted": false,
+    "preview_fps": 30,
+    "preview_sync_mode": "balanced",
+    "preview_effect_quality": "high",
+    "frame_cache_mode": "auto",
+    "frame_cache_custom_mb": 0,
+    "master_effects": [],
+    "audio_master_effects": []
+  },
+  "sample_times_sec": [0.5],
+  "tolerance": 40
+}

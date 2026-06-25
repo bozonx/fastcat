@@ -70,7 +70,9 @@ function buildClipsFromScene(
           ? 'text'
           : kind === 'shape'
             ? 'shape'
-            : 'media';
+            : kind === 'adjustment'
+              ? 'adjustment'
+              : 'media';
 
     const sourcePath = mediaMapping[layer.path as string] ?? '';
     const timelineStartSec = layer.timeline_start_sec as number;
@@ -162,6 +164,7 @@ function buildClipsFromScene(
       sourceDurationUs: layer.source_duration_sec
         ? Math.round((layer.source_duration_sec as number) * 1_000_000)
         : undefined,
+      sourceOrientation: (layer.source_orientation as string) ?? undefined,
       effects: (layer.effects as unknown[]) ?? [],
     } as WorkerVideoPayloadItem;
   });
