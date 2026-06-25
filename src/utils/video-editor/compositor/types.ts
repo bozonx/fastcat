@@ -104,6 +104,8 @@ export interface BaseCompositorClip {
   textDirty?: boolean;
   shapeDirty?: boolean;
   hudDirty?: boolean;
+  /** Cache key for non-video WebGPU effect processing — skips reprocessing when unchanged. */
+  nonVideoEffectCacheKey?: string;
   hudMediaStates?: {
     background?: HudMediaState;
     content?: HudMediaState;

@@ -6,6 +6,7 @@ export function resetCompositorClipsAfterContextRestored(clips: CompositorClip[]
   for (const clip of clips) {
     clip.textDirty = true;
     clip.shapeDirty = true;
+    clip.nonVideoEffectCacheKey = undefined;
 
     if (clip.lastVideoFrame) {
       safeDispose(clip.lastVideoFrame);

@@ -1,6 +1,6 @@
 import { createDevLogger } from '~/utils/dev-logger';
 import type { Application, Sprite } from 'pixi.js';
-import { RenderTexture, Texture } from 'pixi.js';
+import { RenderTexture } from 'pixi.js';
 import { safeDispose } from '../utils';
 import type { LayoutApplier } from './LayoutApplier';
 import type { TransitionManager } from './TransitionManager';
@@ -47,8 +47,15 @@ export class ClipResourceManager {
 
   /**
    * Applies WebGPU compute effects to non-video clips (image, text, shape, solid).
-   * Rasterises the clip source, runs the effect pipeline, and replaces the sprite
+   * Rasterises the clip source, runs the effect pipeline, and updates the sprite
    * texture with the processed result.
+   *
+   * Reuses `clip.imageSource` in-place (like the video path) instead of creating
+   * a new `Texture.from()` every frame — the old approach orphaned a full-frame
+   * GPU texture on every call (~8 MB/frame at 1080p).
+   *
+   * A cache key derived from the clip's effects and content skips reprocessing
+   * when nothing has changed, avoiding per-frame WebGPU compute for static clips.
    */
   public async applyEffectsToNonVideoClip(
     clip: CompositorClip,
@@ -62,9 +69,18 @@ export class ClipResourceManager {
     const effectSpecs = buildEffectSpecs(clip.effects);
     if (!effectSpecs || effectSpecs.length === 0) return;
 
+    // Skip reprocessing when clip content and effects haven't changed.
+    const cacheKey = this.buildNonVideoEffectCacheKey(clip, effectSpecs);
+    if (cacheKey === clip.nonVideoEffectCacheKey && clip.lastVideoFrame) {
+      return;
+    }
+
     const sourceBitmap = await this.getNonVideoClipBitmap(clip);
     if (!sourceBitmap) return;
 
+    // Follow the video-path pattern: save the previous processed frame for
+    // disposal after the new one is committed, preventing GPU texture leaks.
+    let prevProcessed: VideoFrame | ImageBitmap | null = clip.lastVideoFrame;
     try {
       const blurFillIndex = effectSpecs.findIndex((e) => e.type === 'blur-fill');
       let processed: ImageBitmap | null = null;
@@ -103,12 +119,28 @@ export class ClipResourceManager {
       }
 
       if (processed) {
-        const texture = Texture.from(processed);
-        if (clip.sprite) {
-          clip.sprite.texture = texture;
+        // Reuse the existing imageSource like the video path does, instead of
+        // creating a new Texture.from(processed) which orphans the old GPU texture.
+        if (clip.sprite && (clip.sprite as Sprite).texture.source !== clip.imageSource) {
+          (clip.sprite as Sprite).texture.source = clip.imageSource;
         }
-        clip.imageSource = texture.source;
-        this.context.getLayoutApplier().applySpriteLayout(processed.width, processed.height, clip);
+        const processedW = processed.width;
+        const processedH = processed.height;
+        if (clip.imageSource.width !== processedW || clip.imageSource.height !== processedH) {
+          clip.imageSource.resize(processedW, processedH);
+        }
+        (clip.imageSource as { resource?: unknown }).resource = processed;
+        clip.imageSource.update();
+        clip.lastVideoFrame = processed as unknown as VideoFrame;
+        clip.nonVideoEffectCacheKey = cacheKey;
+        this.context.getLayoutApplier().applySpriteLayout(processedW, processedH, clip);
+
+        // The new processed bitmap is now committed as the texture resource,
+        // so the old one is safe to dispose.
+        if (prevProcessed) {
+          safeDispose(prevProcessed);
+          prevProcessed = null;
+        }
       }
     } catch (err) {
       log.warn('[ClipResourceManager] Failed to apply effects to non-video clip:', err);
@@ -117,6 +149,48 @@ export class ClipResourceManager {
         sourceBitmap.close();
       }
     }
+  }
+
+  /**
+   * Builds a cache key that captures all inputs affecting the WebGPU effect
+   * output for a non-video clip: effect specs, project dimensions, and clip
+   * content properties that determine the source bitmap.
+   */
+  private buildNonVideoEffectCacheKey(
+    clip: CompositorClip,
+    effectSpecs: ReturnType<typeof buildEffectSpecs>,
+  ): string {
+    const parts: string[] = [
+      JSON.stringify(effectSpecs),
+      `${this.context.width}x${this.context.height}`,
+    ];
+
+    switch (clip.clipKind) {
+      case 'text':
+        parts.push(clip.text ?? '', JSON.stringify(clip.style ?? {}));
+        break;
+      case 'shape':
+        parts.push(
+          clip.shapeType ?? '',
+          clip.fillColor ?? '',
+          clip.strokeColor ?? '',
+          String(clip.strokeWidth ?? 0),
+          JSON.stringify(clip.shapeConfig ?? {}),
+        );
+        break;
+      case 'solid':
+        parts.push(clip.backgroundColor ?? '');
+        break;
+      case 'image':
+        // Image bitmap is immutable after creation.
+        parts.push('image');
+        break;
+      default:
+        parts.push(clip.clipKind ?? '');
+        break;
+    }
+
+    return parts.join('|');
   }
 
   private async getNonVideoClipBitmap(clip: CompositorClip): Promise<ImageBitmap | null> {
@@ -141,13 +215,22 @@ export class ClipResourceManager {
     if (clip.clipKind === 'shape') {
       const app = this.context.getApp?.();
       if (!app || !clip.sprite) return null;
-      const previousVisible = clip.sprite.visible;
-      clip.sprite.visible = true;
+      // Render to a separate RenderTexture instead of app.canvas to avoid
+      // interfering with the compositor's main canvas during effect processing.
+      const rt = RenderTexture.create({
+        width: this.context.width,
+        height: this.context.height,
+      });
       try {
-        app.renderer.render({ container: clip.sprite, clear: true });
-        return await createImageBitmap(app.canvas);
+        app.renderer.render({ container: clip.sprite, target: rt, clear: true });
+        const canvas = app.renderer.extract.canvas(rt);
+        return await createImageBitmap(canvas as unknown as OffscreenCanvas);
       } finally {
-        clip.sprite.visible = previousVisible;
+        try {
+          rt.destroy();
+        } catch {
+          // ignore
+        }
       }
     }
 
