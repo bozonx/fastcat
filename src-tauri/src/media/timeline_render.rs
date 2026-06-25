@@ -326,7 +326,8 @@ fn webp_quality_percent(fraction: f32) -> f32 {
     }
 }
 
-pub(crate) fn build_export_scene(
+#[cfg_attr(not(feature = "test-support"), allow(dead_code))]
+pub fn build_export_scene(
     scene: &MonitorScene,
     time_sec: f64,
     target_size: (u32, u32),

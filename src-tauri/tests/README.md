@@ -29,6 +29,7 @@ The probe/decode/export suites don't need it, but it's harmless to always pass.
 | `audio_offline.rs` | — (linked libav) | scene → PCM mix: length, 440 Hz energy, master-gain scaling, silence |
 | `audio_engine_realtime.rs` | — (mock backend) | transport state machine (scene/seek/play/pause) without a `cpal` device |
 | `timeline_export.rs` | ffmpeg + GPU | full `export_timeline`: audio-only file, and GPU video export verified with ffprobe |
+| `engine_parity.rs` | ffmpeg + GPU | cross-engine parity: renders shared scenes from `shared/scenes/` through the real GPU compositor, computes perceptual hashes, and compares against golden hashes in `shared/golden/frames.json` |
 
 ## Graceful skips
 

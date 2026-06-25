@@ -305,6 +305,7 @@ The project uses a structured testing approach:
 - **Component Tests** (`test/components/`): Vue component rendering and behavior. Run via `pnpm test:unit`.
 - **Integration Tests** (`test/integration/`): Complex interactions between modules. Run via `pnpm test:unit`.
 - **E2E Tests** (`test/e2e/`): Full application flows in the browser. Run via `pnpm test:e2e`.
+- **Cross-Engine Parity Tests** (`test/e2e/parity/` + `src-tauri/tests/engine_parity.rs`): Verify the web (PixiJS/WebGPU) and native (Vello/wgpu) video engines produce visually identical output for the same scenes. Run via `pnpm test:parity`.
 
 Before running E2E tests for the first time, install the Playwright browser:
 
@@ -315,6 +316,39 @@ pnpm test:e2e:install
 E2E tests use port `3008` by default. Override it with `E2E_PORT=3010 pnpm test:e2e`.
 Set `PLAYWRIGHT_REUSE_SERVER=1` only when you intentionally want to run against an existing local server.
 In CI, Playwright runs against `pnpm build` + `vite preview` over `.output/public`.
+
+### Cross-Engine Parity Tests
+
+Parity tests verify that the web video engine (PixiJS + WebGPU + Web Workers) and the native Tauri engine (Vello + wgpu + FFmpeg) produce visually identical frames for the same scene definitions.
+
+**Shared fixtures:**
+
+- `shared/scenes/` — 5 timeline scenarios in `MonitorScene` JSON format (solid background, video clip, image overlay, text layer, multi-layer blend)
+- `shared/golden/frames.json` — golden perceptual hashes (8x8 average hash) for each scene + sample time, per engine
+
+**Commands:**
+
+```bash
+# Run web parity tests (Playwright + WebGPU + real workers)
+pnpm test:parity:web
+
+# Run native parity tests (cargo + real ffmpeg + GPU compositor)
+pnpm test:parity:native
+
+# Run both
+pnpm test:parity
+
+# Generate/update golden hashes from the web engine
+pnpm test:parity:gen-golden
+```
+
+**Workflow:**
+
+1. Run `pnpm test:parity:gen-golden` to produce web golden hashes
+2. Run `pnpm test:parity:native` — native hashes are printed to stderr; copy them into `shared/golden/frames.json`
+3. Run `pnpm test:parity` to verify both engines match their golden hashes and each other
+
+Tests skip gracefully when WebGPU, ffmpeg, or a wgpu adapter is unavailable.
 
 ## Embedded Editor SDK
 
