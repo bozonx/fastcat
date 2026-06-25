@@ -3,8 +3,11 @@ use std::path::Path;
 use super::super::ffmpeg::hw::FfmpegHwOptions;
 use super::super::ffmpeg::utils::resolve_audio_encoder;
 use super::export_frame_sample_time;
-use super::ffmpeg_args_builder::{build_ffmpeg_args, export_uses_alpha};
+use super::ffmpeg_args_builder::{
+    build_ffmpeg_args, export_uses_alpha, is_gpu_render_error, resolve_export_hw_mode,
+};
 use super::options::NativeExportOptions;
+use crate::media::types::HwAccelMode;
 
 fn base_options() -> NativeExportOptions {
     NativeExportOptions {
@@ -664,4 +667,71 @@ fn test_audio_only_formats_choose_container_safe_defaults() {
         resolve_audio_encoder(Some("vorbis"), "opus"),
         ("libopus", true)
     );
+}
+
+// ------------------------------------------------------------------
+// resolve_export_hw_mode
+// ------------------------------------------------------------------
+
+#[test]
+fn resolve_export_hw_mode_returns_none_when_hw_encoding_disabled() {
+    let options = NativeExportOptions {
+        hw: FfmpegHwOptions {
+            enable_hardware_encoding: Some(false),
+            hardware_acceleration_mode: Some(HwAccelMode::Vaapi),
+            vaapi_device: Some("/dev/dri/renderD128".into()),
+            ..FfmpegHwOptions::default()
+        },
+        ..base_options()
+    };
+    assert_eq!(resolve_export_hw_mode(&options), HwAccelMode::None);
+}
+
+#[test]
+fn resolve_export_hw_mode_returns_none_for_alpha_export() {
+    let options = NativeExportOptions {
+        video_codec: "vp9".to_string(),
+        format: "webm".to_string(),
+        export_alpha: Some(true),
+        hw: FfmpegHwOptions {
+            enable_hardware_encoding: Some(true),
+            hardware_acceleration_mode: Some(HwAccelMode::Vaapi),
+            vaapi_device: Some("/dev/dri/renderD128".into()),
+            ..FfmpegHwOptions::default()
+        },
+        ..base_options()
+    };
+    assert_eq!(resolve_export_hw_mode(&options), HwAccelMode::None);
+}
+
+#[test]
+fn resolve_export_hw_mode_returns_none_when_hw_mode_is_none() {
+    let options = NativeExportOptions {
+        hw: FfmpegHwOptions {
+            enable_hardware_encoding: Some(true),
+            hardware_acceleration_mode: Some(HwAccelMode::None),
+            ..FfmpegHwOptions::default()
+        },
+        ..base_options()
+    };
+    assert_eq!(resolve_export_hw_mode(&options), HwAccelMode::None);
+}
+
+// ------------------------------------------------------------------
+// is_gpu_render_error
+// ------------------------------------------------------------------
+
+#[test]
+fn is_gpu_render_error_matches_known_patterns() {
+    assert!(is_gpu_render_error("no GPU device found"));
+    assert!(is_gpu_render_error("pipelined readback failed"));
+    assert!(is_gpu_render_error("vello render error"));
+    assert!(is_gpu_render_error("no renderer for device 0"));
+}
+
+#[test]
+fn is_gpu_render_error_rejects_encoder_errors() {
+    assert!(!is_gpu_render_error("encoder error: invalid codec"));
+    assert!(!is_gpu_render_error("ffmpeg exited with code 1"));
+    assert!(!is_gpu_render_error(""));
 }

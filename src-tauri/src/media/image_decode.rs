@@ -53,3 +53,50 @@ pub fn is_image_extension(ext: &str) -> bool {
         "png" | "jpg" | "jpeg" | "webp"
     )
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn recognizes_png() {
+        assert!(is_image_extension("png"));
+    }
+
+    #[test]
+    fn recognizes_jpg() {
+        assert!(is_image_extension("jpg"));
+    }
+
+    #[test]
+    fn recognizes_jpeg() {
+        assert!(is_image_extension("jpeg"));
+    }
+
+    #[test]
+    fn recognizes_webp() {
+        assert!(is_image_extension("webp"));
+    }
+
+    #[test]
+    fn rejects_video_extensions() {
+        assert!(!is_image_extension("mp4"));
+        assert!(!is_image_extension("mov"));
+        assert!(!is_image_extension("mkv"));
+        assert!(!is_image_extension("webm"));
+    }
+
+    #[test]
+    fn rejects_empty_string() {
+        assert!(!is_image_extension(""));
+    }
+
+    #[test]
+    fn case_insensitive() {
+        assert!(is_image_extension("PNG"));
+        assert!(is_image_extension("JPG"));
+        assert!(is_image_extension("JPEG"));
+        assert!(is_image_extension("WEBP"));
+        assert!(is_image_extension("PnG"));
+    }
+}

@@ -1,0 +1,18 @@
+{
+  "_comment": [
+    "Golden perceptual hashes for cross-engine video engine parity tests.",
+    "Each entry maps a scene file + sample time to a perceptual hash and tolerance.",
+    "",
+    "Format:",
+    "  scene:    relative path to the scene JSON in shared/scenes/",
+    "  engine:   'web' | 'native' — which engine produced this golden",
+    "  samples:  array of { timeSec, hash, tolerance }",
+    "",
+    "The hash is a 64-bit average hash (aHash) computed from an 8x8 grayscale",
+    "downsample of the rendered RGBA frame. tolerance is the maximum Hamming",
+    "distance allowed between the engine's hash and the golden for a pass.",
+    "",
+    "Regenerate with: pnpm test:parity:gen-golden"
+  ],
+  "entries": []
+}

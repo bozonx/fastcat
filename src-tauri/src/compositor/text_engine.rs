@@ -181,3 +181,133 @@ pub(crate) fn gpu_texture_layer(
         transition: None,
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::compositor::scene::{
+        BlendMode, Layer, LayerKind, TextAlign, TextLayer, TextRenderMode, TextVerticalAlign,
+        Transform,
+    };
+
+    fn base_text_layer() -> TextLayer {
+        TextLayer {
+            text: "Hello".into(),
+            font_family: "Inter".into(),
+            font_size: 32.0,
+            font_weight: 400.0,
+            color: vello::peniko::Color::WHITE,
+            align: TextAlign::Left,
+            vertical_align: TextVerticalAlign::Top,
+            line_height: 1.2,
+            letter_spacing: 0.0,
+            max_width: None,
+            explicit_height: None,
+            background_enabled: false,
+            background_color: vello::peniko::Color::TRANSPARENT,
+            background_radius: 0.0,
+            bg_shadow_enabled: false,
+            bg_shadow_color: vello::peniko::Color::TRANSPARENT,
+            bg_shadow_blur: 0.0,
+            bg_shadow_spread: 0.0,
+            bg_shadow_offset_x: 0.0,
+            bg_shadow_offset_y: 0.0,
+            border_enabled: false,
+            border_color: vello::peniko::Color::TRANSPARENT,
+            border_width: 0.0,
+            text_shadow_enabled: false,
+            text_shadow_color: vello::peniko::Color::TRANSPARENT,
+            text_shadow_blur: 0.0,
+            text_shadow_spread: 0.0,
+            text_shadow_offset_x: 0.0,
+            text_shadow_offset_y: 0.0,
+            padding_top: 0.0,
+            padding_right: 0.0,
+            padding_bottom: 0.0,
+            padding_left: 0.0,
+            shadow_left: 0.0,
+            shadow_top: 0.0,
+            shadow_right: 0.0,
+            shadow_bottom: 0.0,
+            frame_width: 100.0,
+            frame_height: 40.0,
+            text_block_height: 40.0,
+            natural_size: (100, 40),
+            render_mode: TextRenderMode::Full,
+        }
+    }
+
+    fn text_layer(spec: TextLayer) -> Layer {
+        Layer {
+            id: "text".into(),
+            kind: LayerKind::Text(spec),
+            transform: Transform::identity(),
+            opacity: 1.0,
+            blend: BlendMode::Normal,
+            mask: None,
+            effects: Vec::new(),
+            transition: None,
+        }
+    }
+
+    #[test]
+    fn needs_gpu_shadow_false_for_non_text_layer() {
+        use crate::compositor::scene::RasterSource;
+        let layer = Layer {
+            id: "raster".into(),
+            kind: LayerKind::Raster {
+                source: RasterSource::Image(vello::peniko::ImageData {
+                    data: vello::peniko::Blob::new(std::sync::Arc::new(vec![0u8; 4])),
+                    format: vello::peniko::ImageFormat::Rgba8,
+                    alpha_type: vello::peniko::ImageAlphaType::Alpha,
+                    width: 1,
+                    height: 1,
+                }),
+                natural_size: (1, 1),
+                padding: None,
+            },
+            transform: Transform::identity(),
+            opacity: 1.0,
+            blend: BlendMode::Normal,
+            mask: None,
+            effects: Vec::new(),
+            transition: None,
+        };
+        assert!(!text_layer_needs_gpu_shadow(&layer));
+    }
+
+    #[test]
+    fn needs_gpu_shadow_false_when_shadow_disabled() {
+        let mut spec = base_text_layer();
+        spec.text_shadow_enabled = false;
+        assert!(!text_layer_needs_gpu_shadow(&text_layer(spec)));
+    }
+
+    #[test]
+    fn needs_gpu_shadow_false_when_shadow_blur_zero() {
+        let mut spec = base_text_layer();
+        spec.text_shadow_enabled = true;
+        spec.text_shadow_blur = 0.0;
+        spec.text_shadow_color = vello::peniko::Color::BLACK;
+        assert!(!text_layer_needs_gpu_shadow(&text_layer(spec)));
+    }
+
+    #[test]
+    fn needs_gpu_shadow_false_when_shadow_alpha_zero() {
+        let mut spec = base_text_layer();
+        spec.text_shadow_enabled = true;
+        spec.text_shadow_blur = 10.0;
+        // TRANSPARENT has alpha = 0
+        spec.text_shadow_color = vello::peniko::Color::TRANSPARENT;
+        assert!(!text_layer_needs_gpu_shadow(&text_layer(spec)));
+    }
+
+    #[test]
+    fn needs_gpu_shadow_true_when_enabled_blur_and_opaque() {
+        let mut spec = base_text_layer();
+        spec.text_shadow_enabled = true;
+        spec.text_shadow_blur = 8.0;
+        spec.text_shadow_color = vello::peniko::Color::BLACK;
+        assert!(text_layer_needs_gpu_shadow(&text_layer(spec)));
+    }
+}

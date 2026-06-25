@@ -1501,3 +1501,110 @@ impl Default for Compositor {
         Self::new()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::compositor::scene::{BlendMode, Layer, LayerKind, RasterSource, Transform};
+
+    fn raster_layer(natural: (u32, u32), transform: Transform) -> Layer {
+        Layer {
+            id: "test".into(),
+            kind: LayerKind::Raster {
+                source: RasterSource::Image(vello::peniko::ImageData {
+                    data: vello::peniko::Blob::new(std::sync::Arc::new(vec![
+                        0u8;
+                        (natural.0 as usize)
+                            * (natural.1 as usize)
+                            * 4
+                    ])),
+                    format: vello::peniko::ImageFormat::Rgba8,
+                    alpha_type: vello::peniko::ImageAlphaType::Alpha,
+                    width: natural.0,
+                    height: natural.1,
+                }),
+                natural_size: natural,
+                padding: None,
+            },
+            transform,
+            opacity: 1.0,
+            blend: BlendMode::Normal,
+            mask: None,
+            effects: Vec::new(),
+            transition: None,
+        }
+    }
+
+    #[test]
+    fn vector_effect_render_scale_identity_returns_one() {
+        let layer = raster_layer((100, 200), Transform::identity());
+        let (kx, ky) = Compositor::vector_effect_render_scale(&layer);
+        assert!((kx - 1.0).abs() < 1e-9);
+        assert!((ky - 1.0).abs() < 1e-9);
+    }
+
+    #[test]
+    fn vector_effect_render_scale_uses_absolute_scale_clamped_to_max_k() {
+        let mut t = Transform::identity();
+        t.scale_x = 4.0;
+        t.scale_y = 2.0;
+        let layer = raster_layer((100, 100), t);
+        let (kx, ky) = Compositor::vector_effect_render_scale(&layer);
+        assert!((kx - 4.0).abs() < 1e-9);
+        assert!((ky - 2.0).abs() < 1e-9);
+    }
+
+    #[test]
+    fn vector_effect_render_scale_clamps_to_max_k() {
+        let mut t = Transform::identity();
+        t.scale_x = 20.0;
+        t.scale_y = 20.0;
+        let layer = raster_layer((100, 100), t);
+        let (kx, ky) = Compositor::vector_effect_render_scale(&layer);
+        assert!((kx - 8.0).abs() < 1e-9);
+        assert!((ky - 8.0).abs() < 1e-9);
+    }
+
+    #[test]
+    fn vector_effect_render_scale_negative_scale_uses_absolute_value() {
+        let mut t = Transform::identity();
+        t.scale_x = -3.0;
+        t.scale_y = -2.0;
+        let layer = raster_layer((100, 100), t);
+        let (kx, ky) = Compositor::vector_effect_render_scale(&layer);
+        assert!((kx - 3.0).abs() < 1e-9);
+        assert!((ky - 2.0).abs() < 1e-9);
+    }
+
+    #[test]
+    fn vector_effect_render_scale_clamps_to_max_dim_8192() {
+        // natural 4096×4096 with scale 4.0 → 16384 > 8192, so k should be clamped to 8192/4096 = 2.0
+        let mut t = Transform::identity();
+        t.scale_x = 4.0;
+        t.scale_y = 4.0;
+        let layer = raster_layer((4096, 4096), t);
+        let (kx, ky) = Compositor::vector_effect_render_scale(&layer);
+        assert!((kx - 2.0).abs() < 1e-9);
+        assert!((ky - 2.0).abs() < 1e-9);
+    }
+
+    #[test]
+    fn vector_effect_render_scale_subscale_clamped_to_minimum_one() {
+        // scale < 1.0 should be clamped up to 1.0 (no downscaling)
+        let mut t = Transform::identity();
+        t.scale_x = 0.5;
+        t.scale_y = 0.25;
+        let layer = raster_layer((100, 100), t);
+        let (kx, ky) = Compositor::vector_effect_render_scale(&layer);
+        assert!((kx - 1.0).abs() < 1e-9);
+        assert!((ky - 1.0).abs() < 1e-9);
+    }
+
+    #[test]
+    fn vector_effect_render_scale_zero_natural_size_clamped_to_one() {
+        let layer = raster_layer((0, 0), Transform::identity());
+        let (kx, ky) = Compositor::vector_effect_render_scale(&layer);
+        assert!(kx.is_finite() && kx >= 1.0);
+        assert!(ky.is_finite() && ky >= 1.0);
+    }
+}

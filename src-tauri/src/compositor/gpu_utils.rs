@@ -110,3 +110,77 @@ pub fn image_pixels_rgba8(image: &ImageData) -> Result<Vec<u8>> {
         _ => Err(anyhow!("unsupported image format for GPU texture upload")),
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::sync::Arc;
+    use vello::peniko::{Blob, ImageAlphaType};
+
+    #[test]
+    fn aligned_row_bytes_width_1_is_256() {
+        // 1px * 4 bytes = 4, padded to 256.
+        assert_eq!(aligned_row_bytes(1), 256);
+    }
+
+    #[test]
+    fn aligned_row_bytes_width_64_is_256() {
+        // 64px * 4 bytes = 256, already aligned.
+        assert_eq!(aligned_row_bytes(64), 256);
+    }
+
+    #[test]
+    fn aligned_row_bytes_width_65_is_512() {
+        // 65px * 4 bytes = 260, padded to 512.
+        assert_eq!(aligned_row_bytes(65), 512);
+    }
+
+    #[test]
+    fn aligned_row_bytes_width_1920_is_7680() {
+        // 1920px * 4 = 7680, already aligned (7680 / 256 = 30).
+        assert_eq!(aligned_row_bytes(1920), 7680);
+    }
+
+    #[test]
+    fn aligned_row_bytes_width_1921_is_7936() {
+        // 1921px * 4 = 7684, padded to 7936 (31 * 256).
+        assert_eq!(aligned_row_bytes(1921), 7936);
+    }
+
+    #[test]
+    fn aligned_row_bytes_zero_width_is_zero() {
+        // 0px * 4 = 0, (0 + 255) & !255 = 0.
+        assert_eq!(aligned_row_bytes(0), 0);
+    }
+
+    fn make_image(format: ImageFormat, w: u32, h: u32, pixels: Vec<u8>) -> ImageData {
+        ImageData {
+            data: Blob::new(Arc::new(pixels)),
+            format,
+            alpha_type: ImageAlphaType::Alpha,
+            width: w,
+            height: h,
+        }
+    }
+
+    #[test]
+    fn image_pixels_rgba8_passes_through() {
+        let pixels = vec![10, 20, 30, 40, 50, 60, 70, 80];
+        let img = make_image(ImageFormat::Rgba8, 2, 1, pixels.clone());
+        assert_eq!(image_pixels_rgba8(&img).unwrap(), pixels);
+    }
+
+    #[test]
+    fn image_pixels_bgra8_swaps_r_and_b() {
+        let pixels = vec![10, 20, 30, 40, 50, 60, 70, 80];
+        let img = make_image(ImageFormat::Bgra8, 2, 1, pixels);
+        let result = image_pixels_rgba8(&img).unwrap();
+        assert_eq!(result, vec![30, 20, 10, 40, 70, 60, 50, 80]);
+    }
+
+    #[test]
+    fn image_pixels_too_small_returns_error() {
+        let img = make_image(ImageFormat::Rgba8, 2, 2, vec![0u8; 4]);
+        assert!(image_pixels_rgba8(&img).is_err());
+    }
+}

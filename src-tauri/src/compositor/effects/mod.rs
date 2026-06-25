@@ -1362,4 +1362,96 @@ mod tests {
         assert_eq!(passes[0].uniform.mode, 12);
         assert_eq!(passes[0].uniform.p5, 0.4);
     }
+
+    // ------------------------------------------------------------------
+    // calculate_padding / spatial_scale
+    // ------------------------------------------------------------------
+
+    #[test]
+    fn calculate_padding_zero_when_no_bleed_effects() {
+        let effects = [
+            EffectSpec::GaussianBlur {
+                radius: 50.0,
+                bleed: false,
+                blur_type: "gaussian".to_string(),
+                mix: 1.0,
+            },
+            EffectSpec::Brightness { value: 1.5 },
+        ];
+        assert_eq!(passes::calculate_padding(&effects, 1.0), 0);
+    }
+
+    #[test]
+    fn calculate_padding_zero_for_empty_effects() {
+        assert_eq!(passes::calculate_padding(&[], 1.0), 0);
+    }
+
+    #[test]
+    fn calculate_padding_uses_max_bleed_radius_doubled_and_ceiled() {
+        let effects = [EffectSpec::GaussianBlur {
+            radius: 10.0,
+            bleed: true,
+            blur_type: "gaussian".to_string(),
+            mix: 1.0,
+        }];
+        // scale=1.0 → max_r=10.0 → padding = ceil(10.0 * 2.0) = 20
+        assert_eq!(passes::calculate_padding(&effects, 1.0), 20);
+    }
+
+    #[test]
+    fn calculate_padding_scales_radius_by_spatial_scale() {
+        let effects = [EffectSpec::GaussianBlur {
+            radius: 10.0,
+            bleed: true,
+            blur_type: "gaussian".to_string(),
+            mix: 1.0,
+        }];
+        // 540p → spatial_scale = 540/1080 = 0.5 → max_r = 5.0 → padding = ceil(10.0) = 10
+        assert_eq!(passes::calculate_padding(&effects, 0.5), 10);
+    }
+
+    #[test]
+    fn calculate_padding_picks_largest_bleed_radius() {
+        let effects = [
+            EffectSpec::GaussianBlur {
+                radius: 5.0,
+                bleed: true,
+                blur_type: "gaussian".to_string(),
+                mix: 1.0,
+            },
+            EffectSpec::GaussianBlur {
+                radius: 30.0,
+                bleed: true,
+                blur_type: "gaussian".to_string(),
+                mix: 1.0,
+            },
+            EffectSpec::GaussianBlur {
+                radius: 100.0,
+                bleed: false,
+                blur_type: "gaussian".to_string(),
+                mix: 1.0,
+            },
+        ];
+        // scale=2.0 → max_r = 30.0 * 2.0 = 60.0 → padding = ceil(120.0) = 120
+        assert_eq!(passes::calculate_padding(&effects, 2.0), 120);
+    }
+
+    #[test]
+    fn spatial_scale_normalizes_to_1080p() {
+        assert!((passes::spatial_scale(1080) - 1.0).abs() < 1e-6);
+        assert!((passes::spatial_scale(540) - 0.5).abs() < 1e-6);
+        assert!((passes::spatial_scale(2160) - 2.0).abs() < 1e-6);
+    }
+
+    #[test]
+    fn spatial_scale_clamps_to_minimum() {
+        // Very small height would produce a near-zero scale; clamp to 0.1.
+        assert!((passes::spatial_scale(1) - 0.1).abs() < 1e-6);
+    }
+
+    #[test]
+    fn spatial_scale_clamps_to_maximum() {
+        // Very large height would produce a huge scale; clamp to 8.0.
+        assert!((passes::spatial_scale(100_000) - 8.0).abs() < 1e-6);
+    }
 }
