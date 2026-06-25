@@ -62,7 +62,7 @@ async function genWebGolden(): Promise<void> {
   const page = await browser.newPage();
 
   // Start a dev server or navigate to an existing one.
-  const baseUrl = process.env.E2E_BASE_URL ?? 'http://localhost:3008';
+  const baseUrl = process.env.E2E_BASE_URL ?? 'http://localhost:3007';
   await page.goto(baseUrl);
 
   const registry = loadGoldenRegistry();

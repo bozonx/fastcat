@@ -1,6 +1,6 @@
 import { defineConfig, devices } from '@playwright/test';
 
-const e2ePort = Number(process.env.E2E_PORT ?? 3008);
+const e2ePort = Number(process.env.E2E_PORT ?? 3007);
 const baseURL = process.env.E2E_BASE_URL ?? `http://localhost:${e2ePort}`;
 const e2eOutputDir = process.env.E2E_OUTPUT_DIR ?? '.output';
 const webServerCommand = process.env.CI

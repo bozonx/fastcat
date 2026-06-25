@@ -313,7 +313,7 @@ Before running E2E tests for the first time, install the Playwright browser:
 pnpm test:e2e:install
 ```
 
-E2E tests use port `3008` by default. Override it with `E2E_PORT=3010 pnpm test:e2e`.
+E2E tests use port `3007` by default. Override it with `E2E_PORT=3010 pnpm test:e2e`.
 Set `PLAYWRIGHT_REUSE_SERVER=1` only when you intentionally want to run against an existing local server.
 In CI, Playwright runs against `pnpm build` + `vite preview` over `.output/public`.
 
