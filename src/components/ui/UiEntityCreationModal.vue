@@ -101,7 +101,7 @@ function runValidation() {
   if (typeof result === 'string') {
     errorMsg.value = result;
   } else if (result === false) {
-    errorMsg.value = t('common.validation.exists', 'Имя уже существует');
+    errorMsg.value = t('common.validation.exists');
   } else {
     errorMsg.value = null;
   }
