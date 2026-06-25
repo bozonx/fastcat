@@ -183,6 +183,7 @@ describe('buildAudioEffectGraph', () => {
   });
 
   it('disconnects effect node on destroy for disableGlobalWet effects', async () => {
+    vi.mocked(isAudioEffectNodeGraph).mockReturnValue(false);
     const ctx = createMockContext();
     const source = new MockAudioNode();
     const effectNode = new MockAudioNode();
