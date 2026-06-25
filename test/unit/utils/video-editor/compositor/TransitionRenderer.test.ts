@@ -37,7 +37,16 @@ function makeParams(overrides: Record<string, unknown> = {}) {
       renderSingleClipToTexture: vi.fn(),
       renderLowerLayersToTexture: vi.fn(),
       renderTextureToBitmap: vi.fn().mockResolvedValue(null),
-      ensureTransitionSprite: vi.fn().mockReturnValue({ texture: null, scale: { set: vi.fn() }, width: 0, height: 0, alpha: 1, blendMode: 'normal', filters: null, visible: false } as any),
+      ensureTransitionSprite: vi.fn().mockReturnValue({
+        texture: null,
+        scale: { set: vi.fn() },
+        width: 0,
+        height: 0,
+        alpha: 1,
+        blendMode: 'normal',
+        filters: null,
+        visible: false,
+      } as any),
     } as any,
     getTrackById: vi.fn().mockReturnValue(undefined),
     getActiveTransitionState: vi.fn().mockReturnValue(null),
@@ -172,11 +181,21 @@ describe('TransitionRenderer.renderTransitionClipToTexture', () => {
         ensureTransitionSprite: vi.fn(),
       } as any,
     });
-    const result = await (renderer as unknown as {
-      renderTransitionClipToTexture: (clip: CompositorClip, texture: unknown, params: Record<string, unknown>) => Promise<boolean>;
-    }).renderTransitionClipToTexture(clip, {}, params);
+    const result = await (
+      renderer as unknown as {
+        renderTransitionClipToTexture: (
+          clip: CompositorClip,
+          texture: unknown,
+          params: Record<string, unknown>,
+        ) => Promise<boolean>;
+      }
+    ).renderTransitionClipToTexture(clip, {}, params);
     expect(result).toBe(true);
-    expect(params.stageTextureRenderer.renderSingleClipToTexture).toHaveBeenCalledWith(clip, {}, true);
+    expect(params.stageTextureRenderer.renderSingleClipToTexture).toHaveBeenCalledWith(
+      clip,
+      {},
+      true,
+    );
   });
 
   it('renders solid clip directly to texture', async () => {
@@ -187,9 +206,15 @@ describe('TransitionRenderer.renderTransitionClipToTexture', () => {
         renderSingleClipToTexture: vi.fn(),
       } as any,
     });
-    const result = await (renderer as unknown as {
-      renderTransitionClipToTexture: (clip: CompositorClip, texture: unknown, params: Record<string, unknown>) => Promise<boolean>;
-    }).renderTransitionClipToTexture(clip, {}, params);
+    const result = await (
+      renderer as unknown as {
+        renderTransitionClipToTexture: (
+          clip: CompositorClip,
+          texture: unknown,
+          params: Record<string, unknown>,
+        ) => Promise<boolean>;
+      }
+    ).renderTransitionClipToTexture(clip, {}, params);
     expect(result).toBe(true);
   });
 
@@ -197,9 +222,15 @@ describe('TransitionRenderer.renderTransitionClipToTexture', () => {
     const renderer = new TransitionRenderer();
     const clip = makeClip({ clipKind: 'adjustment' });
     const params = makeParams();
-    const result = await (renderer as unknown as {
-      renderTransitionClipToTexture: (clip: CompositorClip, texture: unknown, params: Record<string, unknown>) => Promise<boolean>;
-    }).renderTransitionClipToTexture(clip, {}, params);
+    const result = await (
+      renderer as unknown as {
+        renderTransitionClipToTexture: (
+          clip: CompositorClip,
+          texture: unknown,
+          params: Record<string, unknown>,
+        ) => Promise<boolean>;
+      }
+    ).renderTransitionClipToTexture(clip, {}, params);
     expect(result).toBe(false);
   });
 
@@ -207,9 +238,15 @@ describe('TransitionRenderer.renderTransitionClipToTexture', () => {
     const renderer = new TransitionRenderer();
     const clip = makeClip({ clipKind: 'video', sink: undefined });
     const params = makeParams();
-    const result = await (renderer as unknown as {
-      renderTransitionClipToTexture: (clip: CompositorClip, texture: unknown, params: Record<string, unknown>) => Promise<boolean>;
-    }).renderTransitionClipToTexture(clip, {}, params);
+    const result = await (
+      renderer as unknown as {
+        renderTransitionClipToTexture: (
+          clip: CompositorClip,
+          texture: unknown,
+          params: Record<string, unknown>,
+        ) => Promise<boolean>;
+      }
+    ).renderTransitionClipToTexture(clip, {}, params);
     expect(result).toBe(false);
   });
 
@@ -222,9 +259,15 @@ describe('TransitionRenderer.renderTransitionClipToTexture', () => {
         renderSingleClipToTexture: vi.fn(),
       } as any,
     });
-    const result = await (renderer as unknown as {
-      renderTransitionClipToTexture: (clip: CompositorClip, texture: unknown, params: Record<string, unknown>) => Promise<boolean>;
-    }).renderTransitionClipToTexture(clip, {}, params);
+    const result = await (
+      renderer as unknown as {
+        renderTransitionClipToTexture: (
+          clip: CompositorClip,
+          texture: unknown,
+          params: Record<string, unknown>,
+        ) => Promise<boolean>;
+      }
+    ).renderTransitionClipToTexture(clip, {}, params);
     expect(result).toBe(false);
   });
 });

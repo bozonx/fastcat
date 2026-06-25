@@ -103,9 +103,7 @@ describe('CompositorOperationQueue', () => {
     ).rejects.toThrow('op-failed');
 
     // Next op should still work
-    await expect(
-      queue.run(async () => 'ok', 'after-fail'),
-    ).resolves.toBe('ok');
+    await expect(queue.run(async () => 'ok', 'after-fail')).resolves.toBe('ok');
   });
 
   it('drain resolves after all queued operations complete', async () => {
@@ -124,9 +122,11 @@ describe('CompositorOperationQueue', () => {
   it('drain resolves even if an operation rejected', async () => {
     const queue = new CompositorOperationQueue();
 
-    queue.run(async () => {
-      throw new Error('fail');
-    }, 'failing').catch(() => undefined);
+    queue
+      .run(async () => {
+        throw new Error('fail');
+      }, 'failing')
+      .catch(() => undefined);
 
     // drain should not reject
     await expect(queue.drain()).resolves.toBeUndefined();

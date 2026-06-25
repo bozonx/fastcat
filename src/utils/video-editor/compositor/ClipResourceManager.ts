@@ -170,10 +170,7 @@ export class ClipResourceManager {
     clip: CompositorClip,
     effectSpecs: ReturnType<typeof buildEffectSpecs>,
   ): string {
-    const parts: string[] = [
-      fastHash(effectSpecs),
-      `${this.context.width}x${this.context.height}`,
-    ];
+    const parts: string[] = [fastHash(effectSpecs), `${this.context.width}x${this.context.height}`];
 
     switch (clip.clipKind) {
       case 'text':

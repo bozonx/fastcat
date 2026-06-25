@@ -256,7 +256,8 @@ describe('FrameSampleOrchestrator', () => {
       drawShapeClip: vi.fn(),
       drawTextClip: vi.fn(),
       createAbortController: () => new AbortController(),
-      getVideoSampleForClip: vi.fn()
+      getVideoSampleForClip: vi
+        .fn()
         .mockResolvedValueOnce(goodSample)
         .mockRejectedValueOnce(new Error('network failure')),
       getPrevClipOnLayer: () => null,

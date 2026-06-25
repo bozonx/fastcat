@@ -154,10 +154,7 @@ function onPointerUp(event: PointerEvent) {
         <!-- Tick line -->
         <div
           class="w-px transition-colors duration-75"
-          :class="[
-            tick.isActive ? 'bg-primary-500' : 'bg-ui-border',
-            tick.isEdge ? 'h-3' : 'h-2',
-          ]"
+          :class="[tick.isActive ? 'bg-primary-500' : 'bg-ui-border', tick.isEdge ? 'h-3' : 'h-2']"
         />
         <!-- Tick label -->
         <span

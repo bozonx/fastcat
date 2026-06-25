@@ -123,10 +123,9 @@ describe('CompositorRenderContextBuilder.build', () => {
     const ctx = builder.build(params);
     const track = { id: 't1', layer: 0, container: {} as any } as CompositorTrack;
     ctx.applyTrackState(track);
-    expect(params.effectManager.applyTrackEffects).toHaveBeenCalledWith(
-      track,
-      { previewEffectsEnabled: true },
-    );
+    expect(params.effectManager.applyTrackEffects).toHaveBeenCalledWith(track, {
+      previewEffectsEnabled: true,
+    });
   });
 
   it('delegates sortStage to stageManager', () => {
@@ -204,7 +203,14 @@ describe('CompositorRenderContextBuilder.build', () => {
     const builder = new CompositorRenderContextBuilder();
     const params = makeParams({
       trackRuntimeManager: {
-        all: [{ id: 't1', layer: 0, container: { children: [], alpha: 1, blendMode: 'normal' } as any, effects: [] }] as CompositorTrack[],
+        all: [
+          {
+            id: 't1',
+            layer: 0,
+            container: { children: [], alpha: 1, blendMode: 'normal' } as any,
+            effects: [],
+          },
+        ] as CompositorTrack[],
         getById: vi.fn(),
       } as any,
       clipResourceManager: {

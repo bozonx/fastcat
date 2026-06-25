@@ -30,7 +30,12 @@ describe('planarToInterleaved', () => {
   it('reuses interleavedOut when provided', () => {
     const planar = new Float32Array([1, 2, 10, 20]);
     const out = new Float32Array(4);
-    const result = planarToInterleaved({ planar, frames: 2, numberOfChannels: 2, interleavedOut: out });
+    const result = planarToInterleaved({
+      planar,
+      frames: 2,
+      numberOfChannels: 2,
+      interleavedOut: out,
+    });
     expect(result).toBe(out);
     expect(Array.from(result)).toEqual([1, 10, 2, 20]);
   });
@@ -86,11 +91,15 @@ describe('estimateEffectTailS', () => {
 
   it('clamps reverb decay to [0.1, 10]', () => {
     // decay=100 → clamp(100, 0.1, 10)=10, preDelay default fallback=0.01 → 10.01
-    const tooLong = estimateEffectTailS(makeEffect({ type: 'audio-reverb', decay: 100, preDelay: 0 }));
+    const tooLong = estimateEffectTailS(
+      makeEffect({ type: 'audio-reverb', decay: 100, preDelay: 0 }),
+    );
     expect(tooLong).toBeCloseTo(10, 5);
 
     // decay=0 → clamp(0, 0.1, 10)=0.1, preDelay=0 → 0.1
-    const tooShort = estimateEffectTailS(makeEffect({ type: 'audio-reverb', decay: 0, preDelay: 0 }));
+    const tooShort = estimateEffectTailS(
+      makeEffect({ type: 'audio-reverb', decay: 0, preDelay: 0 }),
+    );
     expect(tooShort).toBeCloseTo(0.1, 5);
   });
 
@@ -297,10 +306,7 @@ describe('PlanarFifo', () => {
 
   it('handles multiple channels independently', () => {
     const fifo = new PlanarFifo(2, 100);
-    fifo.append(
-      [new Float32Array([1, 2, 3]), new Float32Array([10, 20, 30])],
-      3,
-    );
+    fifo.append([new Float32Array([1, 2, 3]), new Float32Array([10, 20, 30])], 3);
     fifo.drop(1);
     const read = fifo.read(2);
     expect(Array.from(read[0])).toEqual([2, 3]);

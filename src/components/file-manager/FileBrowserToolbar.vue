@@ -193,7 +193,9 @@ const toolbarMenuItems = computed(() => {
       <div v-if="!hideViewSwitcher" class="w-px h-4 bg-ui-border mx-2"></div>
 
       <UiTooltip
-        :text="getHotkeyTitle(t('videoEditor.fileManager.actions.createFolder'), 'general.createFolder')"
+        :text="
+          getHotkeyTitle(t('videoEditor.fileManager.actions.createFolder'), 'general.createFolder')
+        "
       >
         <UiActionButton
           icon="i-heroicons-folder-plus"

@@ -185,7 +185,9 @@ describe('TransitionManager.clear', () => {
     const tm = new TransitionManager();
     const destroySpy = vi.fn();
     // Access private map to inject a mock filter
-    (tm as unknown as { transitionFilters: Map<string, { destroy: () => void }> }).transitionFilters.set('clip-1', {
+    (
+      tm as unknown as { transitionFilters: Map<string, { destroy: () => void }> }
+    ).transitionFilters.set('clip-1', {
       destroy: destroySpy,
     });
     tm.clear();

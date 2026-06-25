@@ -430,21 +430,24 @@ export function useMonitorPlayback(options: UseMonitorPlaybackOptions) {
         // decoded and the first source nodes are armed at the kickoff time
         // before we let the render loop start ticking — this keeps audio and
         // video aligned from the very first frame.
-        void audioEngine.play(localCurrentTimeUs, timelineStore.playbackSpeed).then(() => {
-          if (isUnmounted || !isPlaying.value) return;
-          // Native monitor owns the clock: don't run the frontend RAF loop (it would
-          // write `currentTime` each tick and get echoed back as seeks). The timecode
-          // UI is mirrored from `monitor:time` in the currentTime watcher below.
-          if (isNativeMonitor) return;
-          playbackLoopId = requestAnimationFrame((ts) => {
-            playbackLoopState.lastFrameTimeMs = ts;
-            updatePlayback(ts);
+        void audioEngine
+          .play(localCurrentTimeUs, timelineStore.playbackSpeed)
+          .then(() => {
+            if (isUnmounted || !isPlaying.value) return;
+            // Native monitor owns the clock: don't run the frontend RAF loop (it would
+            // write `currentTime` each tick and get echoed back as seeks). The timecode
+            // UI is mirrored from `monitor:time` in the currentTime watcher below.
+            if (isNativeMonitor) return;
+            playbackLoopId = requestAnimationFrame((ts) => {
+              playbackLoopState.lastFrameTimeMs = ts;
+              updatePlayback(ts);
+            });
+          })
+          .catch((error) => {
+            if (!isUnmounted) {
+              log.error('audioEngine.play() failed:', error);
+            }
           });
-        }).catch((error) => {
-          if (!isUnmounted) {
-            log.error('audioEngine.play() failed:', error);
-          }
-        });
       } else {
         audioEngine.stopScrubPreview();
         audioEngine.stop();

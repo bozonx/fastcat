@@ -94,10 +94,7 @@ describe('buildPrevClipByIdIndex', () => {
   }
 
   it('returns null for the first clip on each layer', () => {
-    const clips = [
-      makeClip('a', 0, 0, 100),
-      makeClip('b', 0, 100, 200),
-    ];
+    const clips = [makeClip('a', 0, 0, 100), makeClip('b', 0, 100, 200)];
     const result = buildPrevClipByIdIndex(clips);
     expect(result.get('a')).toBeNull();
   });
@@ -128,11 +125,7 @@ describe('buildPrevClipByIdIndex', () => {
   });
 
   it('sorts by startUs then endUs then itemId', () => {
-    const clips = [
-      makeClip('z', 0, 0, 100),
-      makeClip('a', 0, 0, 50),
-      makeClip('m', 0, 0, 50),
-    ];
+    const clips = [makeClip('z', 0, 0, 100), makeClip('a', 0, 0, 50), makeClip('m', 0, 0, 50)];
     const result = buildPrevClipByIdIndex(clips);
     // Sorted: a (0,50), m (0,50), z (0,100)
     expect(result.get('z')!.itemId).toBe('m');
@@ -147,10 +140,7 @@ describe('buildNextClipByIdIndex', () => {
   }
 
   it('returns null for the last clip on each layer', () => {
-    const clips = [
-      makeClip('a', 0, 0, 100),
-      makeClip('b', 0, 100, 200),
-    ];
+    const clips = [makeClip('a', 0, 0, 100), makeClip('b', 0, 100, 200)];
     const result = buildNextClipByIdIndex(clips);
     expect(result.get('b')).toBeNull();
   });

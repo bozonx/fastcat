@@ -514,7 +514,9 @@ if (typeof globalThis.OffscreenCanvas === 'undefined') {
         drawImage: noop,
         getImageData: vi.fn().mockReturnValue({ data: new Uint8ClampedArray(4) }),
         putImageData: noop,
-        createImageData: vi.fn().mockReturnValue({ data: new Uint8ClampedArray(4), width: 1, height: 1 }),
+        createImageData: vi
+          .fn()
+          .mockReturnValue({ data: new Uint8ClampedArray(4), width: 1, height: 1 }),
         measureText: vi.fn().mockReturnValue({
           width: 10,
           actualBoundingBoxAscent: 10,
@@ -525,37 +527,69 @@ if (typeof globalThis.OffscreenCanvas === 'undefined') {
         fillText: noop,
         strokeText: noop,
         set fillStyle(_v: unknown) {},
-        get fillStyle() { return '#000000'; },
+        get fillStyle() {
+          return '#000000';
+        },
         set strokeStyle(_v: unknown) {},
-        get strokeStyle() { return '#000000'; },
+        get strokeStyle() {
+          return '#000000';
+        },
         set lineWidth(_v: number) {},
-        get lineWidth() { return 1; },
+        get lineWidth() {
+          return 1;
+        },
         set font(_v: string) {},
-        get font() { return '10px sans-serif'; },
+        get font() {
+          return '10px sans-serif';
+        },
         set textAlign(_v: string) {},
-        get textAlign() { return 'left'; },
+        get textAlign() {
+          return 'left';
+        },
         set textBaseline(_v: string) {},
-        get textBaseline() { return 'alphabetic'; },
+        get textBaseline() {
+          return 'alphabetic';
+        },
         set globalAlpha(_v: number) {},
-        get globalAlpha() { return 1; },
+        get globalAlpha() {
+          return 1;
+        },
         set globalCompositeOperation(_v: string) {},
-        get globalCompositeOperation() { return 'source-over'; },
+        get globalCompositeOperation() {
+          return 'source-over';
+        },
         set lineCap(_v: string) {},
-        get lineCap() { return 'butt'; },
+        get lineCap() {
+          return 'butt';
+        },
         set lineJoin(_v: string) {},
-        get lineJoin() { return 'miter'; },
+        get lineJoin() {
+          return 'miter';
+        },
         set shadowBlur(_v: number) {},
-        get shadowBlur() { return 0; },
+        get shadowBlur() {
+          return 0;
+        },
         set shadowColor(_v: string) {},
-        get shadowColor() { return 'rgba(0, 0, 0, 0)'; },
+        get shadowColor() {
+          return 'rgba(0, 0, 0, 0)';
+        },
         set shadowOffsetX(_v: number) {},
-        get shadowOffsetX() { return 0; },
+        get shadowOffsetX() {
+          return 0;
+        },
         set shadowOffsetY(_v: number) {},
-        get shadowOffsetY() { return 0; },
+        get shadowOffsetY() {
+          return 0;
+        },
         set letterSpacing(_v: string) {},
-        get letterSpacing() { return '0px'; },
+        get letterSpacing() {
+          return '0px';
+        },
         set direction(_v: string) {},
-        get direction() { return 'ltr'; },
+        get direction() {
+          return 'ltr';
+        },
         clip: noop,
         createLinearGradient: vi.fn().mockReturnValue({ addColorStop: noop }),
         createRadialGradient: vi.fn().mockReturnValue({ addColorStop: noop }),

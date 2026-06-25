@@ -48,10 +48,7 @@ describe('VideoRenderer.updateClipTextureFromSample', () => {
     // Need to mock Sprite check — VideoRenderer uses instanceof Sprite
     // Since we can't easily mock that, test with a sample that has neither
     // VideoFrame signature nor draw/toCanvasImageSource
-    const result = await renderer.updateClipTextureFromSample(
-      { foo: 'bar' },
-      clip,
-    );
+    const result = await renderer.updateClipTextureFromSample({ foo: 'bar' }, clip);
     expect(result).toBe(false);
   });
 });

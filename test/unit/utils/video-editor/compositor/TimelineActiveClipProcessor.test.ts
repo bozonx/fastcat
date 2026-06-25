@@ -78,13 +78,14 @@ describe('TimelineActiveClipProcessor.process', () => {
       clip,
       sample: { close: vi.fn() },
     });
-    const params = makeParams({ activeClips: [clip], timeUs: 500_000, createPrimaryVideoSampleRequest });
+    const params = makeParams({
+      activeClips: [clip],
+      timeUs: 500_000,
+      createPrimaryVideoSampleRequest,
+    });
     const result = processor.process(params);
     expect(result.sampleRequests).toHaveLength(1);
-    expect(createPrimaryVideoSampleRequest).toHaveBeenCalledWith(
-      clip,
-      expect.any(Number),
-    );
+    expect(createPrimaryVideoSampleRequest).toHaveBeenCalledWith(clip, expect.any(Number));
   });
 
   it('hides video clip when time is outside duration', () => {
@@ -121,13 +122,14 @@ describe('TimelineActiveClipProcessor.process', () => {
       clip,
       sample: { close: vi.fn() },
     });
-    const params = makeParams({ activeClips: [clip], timeUs: 500_000, createPrimaryVideoSampleRequest });
+    const params = makeParams({
+      activeClips: [clip],
+      timeUs: 500_000,
+      createPrimaryVideoSampleRequest,
+    });
     processor.process(params);
     // sampleTimeS should be 200_000 / 1_000_000 = 0.2
-    expect(createPrimaryVideoSampleRequest).toHaveBeenCalledWith(
-      clip,
-      0.2,
-    );
+    expect(createPrimaryVideoSampleRequest).toHaveBeenCalledWith(clip, 0.2);
   });
 
   it('draws shape clip when shapeDirty is true', () => {
@@ -176,7 +178,12 @@ describe('TimelineActiveClipProcessor.process', () => {
     const clip = makeClip({ clipKind: 'image' });
     const syncTransitionFilter = vi.fn();
     const computeTransitionOpacity = vi.fn().mockReturnValue(0.8);
-    const params = makeParams({ activeClips: [clip], timeUs: 100_000, syncTransitionFilter, computeTransitionOpacity });
+    const params = makeParams({
+      activeClips: [clip],
+      timeUs: 100_000,
+      syncTransitionFilter,
+      computeTransitionOpacity,
+    });
     processor.process(params);
     expect(syncTransitionFilter).toHaveBeenCalledWith(clip, 100_000);
     expect(computeTransitionOpacity).toHaveBeenCalledWith(clip, 100_000);
@@ -200,7 +207,11 @@ describe('TimelineActiveClipProcessor.process', () => {
       clip,
       sample: { close: vi.fn(), toVideoFrame: vi.fn() },
     });
-    const params = makeParams({ activeClips: [clip], timeUs: 500_000, createPrimaryVideoSampleRequest });
+    const params = makeParams({
+      activeClips: [clip],
+      timeUs: 500_000,
+      createPrimaryVideoSampleRequest,
+    });
     const result = processor.process(params);
     // One for the clip, one for the mask
     expect(result.sampleRequests).toHaveLength(2);

@@ -90,8 +90,8 @@ describe('ClipTransitions', () => {
     // Check width based on timeUsToPx(1_000_000, 100)
     // Factor for 100 is roughly 141, so 1s = 1410px (actually it's calculated in geometry.ts)
     // We can just check if it's defined and has a reasonable value or use the util.
-    const expectedWidth = Math.floor(10 * Math.pow(2, 50 / 7)); // roughly 1410
-    expect(transitionIn.element.parentElement?.style.width).toContain('px');
+    const widthContainer = transitionIn.element.closest<HTMLElement>('[style*="width"]');
+    expect(widthContainer?.style.width).toContain('px');
   });
 
   it('emits select when transition is clicked', async () => {

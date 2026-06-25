@@ -6,10 +6,14 @@ import type { CompositorClip } from '~/utils/video-editor/compositor/types';
 function makeContext(overrides: Record<string, unknown> = {}) {
   return {
     clipFactory: {
-      createSolidClip: vi.fn().mockReturnValue({ itemId: 'bg1', clipKind: 'solid', sprite: { tint: 0 } } as any),
+      createSolidClip: vi
+        .fn()
+        .mockReturnValue({ itemId: 'bg1', clipKind: 'solid', sprite: { tint: 0 } } as any),
       createTextClip: vi.fn().mockReturnValue({ itemId: 'text1', clipKind: 'text' } as any),
       createShapeClip: vi.fn().mockReturnValue({ itemId: 'shape1', clipKind: 'shape' } as any),
-      createAdjustmentClip: vi.fn().mockReturnValue({ itemId: 'adj1', clipKind: 'adjustment' } as any),
+      createAdjustmentClip: vi
+        .fn()
+        .mockReturnValue({ itemId: 'adj1', clipKind: 'adjustment' } as any),
       createHudClip: vi.fn().mockReturnValue({ itemId: 'hud1', clipKind: 'hud' } as any),
     },
     hudMediaLoader: {
@@ -70,7 +74,12 @@ describe('TimelineClipAssetLoader.build', () => {
     const ctx = makeContext();
     const loader = new TimelineClipAssetLoader(ctx as any);
     const clip = loader.build({
-      clipData: { shapeType: 'circle', fillColor: '#ff0000', strokeColor: '#000000', strokeWidth: 2 },
+      clipData: {
+        shapeType: 'circle',
+        fillColor: '#ff0000',
+        strokeColor: '#000000',
+        strokeWidth: 2,
+      },
       descriptor: {
         clipType: 'shape',
         itemId: 'shape1',
@@ -219,7 +228,9 @@ describe('TimelineClipAssetLoader.initializeMaskState', () => {
     await loader.initializeMaskState({
       clip,
       deps: {
-        getFileHandleByPath: vi.fn().mockResolvedValue({ getFile: vi.fn().mockResolvedValue(mockFile) }),
+        getFileHandleByPath: vi
+          .fn()
+          .mockResolvedValue({ getFile: vi.fn().mockResolvedValue(mockFile) }),
         getFileByPath: vi.fn().mockResolvedValue(mockFile),
       } as any,
       mediabunny: {} as any,

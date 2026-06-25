@@ -126,9 +126,7 @@ describe('buildAudioEffectGraph', () => {
         sourceNode: source,
         effects: [{ id: '1', type: 'audio-simple', enabled: true, target: 'audio', wet }],
       });
-      const gainNodes = vi.mocked(ctx.createGain).mock.results.map(
-        (r) => r.value as MockGainNode,
-      );
+      const gainNodes = vi.mocked(ctx.createGain).mock.results.map((r) => r.value as MockGainNode);
       const dryGain = gainNodes[0];
       const wetGain = gainNodes[1];
       expect(dryGain.gain.value + wetGain.gain.value).toBeCloseTo(1, 10);

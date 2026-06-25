@@ -1,7 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { mountSuspended } from '@nuxt/test-utils/runtime';
-import { reactive } from 'vue';
-import { nextTick } from 'vue';
+import { reactive, nextTick } from 'vue';
 import SettingsGeneral from '~/components/settings/SettingsGeneral.vue';
 import { DEFAULT_USER_SETTINGS } from '~/utils/settings/defaults';
 
@@ -74,9 +73,7 @@ describe('SettingsGeneral', () => {
     expect(mockWorkspaceStore.userSettings.history.maxMemoryMb).toBe(
       DEFAULT_USER_SETTINGS.history.maxMemoryMb,
     );
-    expect(mockWorkspaceStore.userSettings.backup.count).toBe(
-      DEFAULT_USER_SETTINGS.backup.count,
-    );
+    expect(mockWorkspaceStore.userSettings.backup.count).toBe(DEFAULT_USER_SETTINGS.backup.count);
     expect(mockWorkspaceStore.userSettings.autosave.intervalMinutes).toBe(
       DEFAULT_USER_SETTINGS.autosave.intervalMinutes,
     );

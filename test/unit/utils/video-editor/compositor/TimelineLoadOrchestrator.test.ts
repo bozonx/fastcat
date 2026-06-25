@@ -41,10 +41,20 @@ function makeCallbacks(overrides: Record<string, unknown> = {}) {
     applySolidLayout: vi.fn(),
     replaceExistingClip: vi.fn(),
     resolveFixedClipEnd: vi.fn().mockReturnValue({ endUs: 1_000_000, sequentialTimeUs: 1_000_000 }),
-    registerLoadedClip: vi.fn(({ clip, nextClips, nextClipById }: { clip: CompositorClip; nextClips: CompositorClip[]; nextClipById: Map<string, CompositorClip> }) => {
-      nextClips.push(clip);
-      nextClipById.set(clip.itemId, clip);
-    }),
+    registerLoadedClip: vi.fn(
+      ({
+        clip,
+        nextClips,
+        nextClipById,
+      }: {
+        clip: CompositorClip;
+        nextClips: CompositorClip[];
+        nextClipById: Map<string, CompositorClip>;
+      }) => {
+        nextClips.push(clip);
+        nextClipById.set(clip.itemId, clip);
+      },
+    ),
     toVideoEffects: vi.fn().mockReturnValue([]),
     ...overrides,
   };
@@ -131,10 +141,20 @@ describe('TimelineLoadOrchestrator.load', () => {
       checkCancel: vi.fn().mockReturnValueOnce(false).mockReturnValueOnce(true),
       destroyClip: vi.fn(),
       getExistingClipById: vi.fn().mockReturnValue(undefined),
-      registerLoadedClip: vi.fn(({ clip, nextClips, nextClipById }: { clip: CompositorClip; nextClips: CompositorClip[]; nextClipById: Map<string, CompositorClip> }) => {
-        nextClips.push(clip);
-        nextClipById.set(clip.itemId, clip);
-      }),
+      registerLoadedClip: vi.fn(
+        ({
+          clip,
+          nextClips,
+          nextClipById,
+        }: {
+          clip: CompositorClip;
+          nextClips: CompositorClip[];
+          nextClipById: Map<string, CompositorClip>;
+        }) => {
+          nextClips.push(clip);
+          nextClipById.set(clip.itemId, clip);
+        },
+      ),
     });
     await expect(
       orchestrator.load({

@@ -77,6 +77,7 @@ describe('useFileBrowserInteraction', () => {
     handleEntryDoubleClick({ kind: 'directory', name: 'dir', path: 'dir' } as FsEntry);
     expect(filesPageStore.openFolder).toHaveBeenCalledWith(
       expect.objectContaining({ name: 'dir' }),
+      { skipSelection: undefined },
     );
   });
 

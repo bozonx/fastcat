@@ -240,7 +240,8 @@ describe('ClipResourceManager.applyEffectsToNonVideoClip', () => {
     const mockProcessed2 = { width: 10, height: 10, close: vi.fn() } as unknown as ImageBitmap;
     const runner = {
       isReady: () => true,
-      applyEffects: vi.fn()
+      applyEffects: vi
+        .fn()
         .mockResolvedValueOnce(mockProcessed1)
         .mockResolvedValueOnce(mockProcessed2),
     } as unknown as WebGpuComputeRunner;
@@ -275,7 +276,8 @@ describe('ClipResourceManager.applyEffectsToNonVideoClip', () => {
     const mockProcessed2 = { width: 10, height: 10, close: vi.fn() } as unknown as ImageBitmap;
     const runner = {
       isReady: () => true,
-      applyEffects: vi.fn()
+      applyEffects: vi
+        .fn()
         .mockResolvedValueOnce(mockProcessed1)
         .mockResolvedValueOnce(mockProcessed2),
     } as unknown as WebGpuComputeRunner;

@@ -418,7 +418,11 @@ export function normalizeBackupSettings(raw: unknown): FastCatUserSettings['back
   let migratedCount = input['count'];
   if (legacyEnabled === false) {
     migratedCount = 0;
-  } else if (legacyEnabled === undefined && legacyInterval !== undefined && Number(legacyInterval) <= 0) {
+  } else if (
+    legacyEnabled === undefined &&
+    legacyInterval !== undefined &&
+    Number(legacyInterval) <= 0
+  ) {
     migratedCount = 0;
   }
 

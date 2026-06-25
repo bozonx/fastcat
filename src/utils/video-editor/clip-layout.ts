@@ -147,11 +147,12 @@ export function computeCropMaskPolygon(params: {
   } = params;
 
   // Visible inset rect in local space (shared with the native engine).
-  const { xMin: l, yMin: t, xMax: rightEdge, yMax: bottomEdge } = computeCropInsetRect(
-    targetW,
-    targetH,
-    crop,
-  );
+  const {
+    xMin: l,
+    yMin: t,
+    xMax: rightEdge,
+    yMax: bottomEdge,
+  } = computeCropInsetRect(targetW, targetH, crop);
 
   const cosR = Math.cos(rot);
   const sinR = Math.sin(rot);

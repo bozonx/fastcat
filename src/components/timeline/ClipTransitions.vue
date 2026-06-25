@@ -274,7 +274,10 @@ onBeforeUnmount(() => {
         class="absolute left-0 top-0 bottom-0 z-10"
         :style="{ width: `${transitionUsToPx(clip.transitionIn.durationUs)}px` }"
       >
-        <UiTooltip :text="getTransitionButtonTitle('in')" :disabled="!getTransitionButtonTitle('in')">
+        <UiTooltip
+          :text="getTransitionButtonTitle('in')"
+          :disabled="!getTransitionButtonTitle('in')"
+        >
           <button
             type="button"
             :class="[
@@ -294,57 +297,57 @@ onBeforeUnmount(() => {
                 edge: 'in',
               })
             "
-        >
-          <template v-if="isTransitionTransparentMode('in')">
+          >
+            <template v-if="isTransitionTransparentMode('in')">
+              <svg
+                class="w-full h-full block absolute inset-0"
+                preserveAspectRatio="none"
+                viewBox="0 0 100 100"
+              >
+                <rect x="0" y="0" width="100" height="100" fill="transparent" />
+                <rect
+                  v-for="(line, index) in getTransitionFadeLines('in')"
+                  :key="`fade-in-${index}-${line.x}`"
+                  :x="line.x"
+                  y="0"
+                  :width="line.width"
+                  height="100"
+                  :fill="getFadeLineColor(hasTransitionProblem('in'))"
+                />
+              </svg>
+            </template>
             <svg
-              class="w-full h-full block absolute inset-0"
+              v-else
+              :class="getTransitionSvgClass('in')"
               preserveAspectRatio="none"
               viewBox="0 0 100 100"
             >
-              <rect x="0" y="0" width="100" height="100" fill="transparent" />
-              <rect
-                v-for="(line, index) in getTransitionFadeLines('in')"
-                :key="`fade-in-${index}-${line.x}`"
-                :x="line.x"
-                y="0"
-                :width="line.width"
-                height="100"
-                :fill="getFadeLineColor(hasTransitionProblem('in'))"
+              <path
+                :d="getTransitionCurvePath('in')"
+                :fill="getTransitionSvgFill('in', hasTransitionProblem('in'))"
               />
             </svg>
-          </template>
-          <svg
-            v-else
-            :class="getTransitionSvgClass('in')"
-            preserveAspectRatio="none"
-            viewBox="0 0 100 100"
-          >
-            <path
-              :d="getTransitionCurvePath('in')"
-              :fill="getTransitionSvgFill('in', hasTransitionProblem('in'))"
+            <div :class="getTransitionHoverOverlayClass('in')" />
+            <span
+              v-if="hasTransitionProblem('in')"
+              class="absolute top-1 left-1 w-2 h-2 rounded-full bg-red-500 z-50"
+              :aria-label="getTransitionButtonTitle('in')"
             />
-          </svg>
-          <div :class="getTransitionHoverOverlayClass('in')" />
-          <span
-            v-if="hasTransitionProblem('in')"
-            class="absolute top-1 left-1 w-2 h-2 rounded-full bg-red-500 z-50"
-            :aria-label="getTransitionButtonTitle('in')"
-          />
-          <span
-            v-if="isTransitionAdjacentMode('in')"
-            class="i-heroicons-squares-plus w-3 h-3 absolute inset-0 m-auto opacity-70"
-          />
-          <span
-            v-else-if="isTransitionBackgroundMode('in')"
-            class="i-heroicons-square-3-stack-3d w-3 h-3 absolute inset-0 m-auto opacity-70"
-          />
-          <div
-            v-if="!isMobile && canEdit && !clip.locked && !track.locked"
-            class="absolute right-0 top-0 bottom-0 w-2 cursor-ew-resize bg-white/0 group-hover/trans:bg-white/20 hover:bg-white/40! transition-colors z-40 pointer-events-auto"
-            @pointerdown.stop.prevent="
-              emit('resize', $event, { edge: 'in', durationUs: clip.transitionIn!.durationUs })
-            "
-          />
+            <span
+              v-if="isTransitionAdjacentMode('in')"
+              class="i-heroicons-squares-plus w-3 h-3 absolute inset-0 m-auto opacity-70"
+            />
+            <span
+              v-else-if="isTransitionBackgroundMode('in')"
+              class="i-heroicons-square-3-stack-3d w-3 h-3 absolute inset-0 m-auto opacity-70"
+            />
+            <div
+              v-if="!isMobile && canEdit && !clip.locked && !track.locked"
+              class="absolute right-0 top-0 bottom-0 w-2 cursor-ew-resize bg-white/0 group-hover/trans:bg-white/20 hover:bg-white/40! transition-colors z-40 pointer-events-auto"
+              @pointerdown.stop.prevent="
+                emit('resize', $event, { edge: 'in', durationUs: clip.transitionIn!.durationUs })
+              "
+            />
           </button>
         </UiTooltip>
       </div>
@@ -355,7 +358,10 @@ onBeforeUnmount(() => {
         class="absolute right-0 top-0 bottom-0 z-10"
         :style="{ width: `${transitionUsToPx(clip.transitionOut.durationUs)}px` }"
       >
-        <UiTooltip :text="getTransitionButtonTitle('out')" :disabled="!getTransitionButtonTitle('out')">
+        <UiTooltip
+          :text="getTransitionButtonTitle('out')"
+          :disabled="!getTransitionButtonTitle('out')"
+        >
           <button
             type="button"
             :class="[
@@ -375,58 +381,58 @@ onBeforeUnmount(() => {
                 edge: 'out',
               })
             "
-        >
-          <template v-if="isTransitionTransparentMode('out')">
+          >
+            <template v-if="isTransitionTransparentMode('out')">
+              <svg
+                class="w-full h-full block absolute inset-0"
+                preserveAspectRatio="none"
+                viewBox="0 0 100 100"
+              >
+                <rect x="0" y="0" width="100" height="100" fill="transparent" />
+                <rect
+                  v-for="(line, index) in getTransitionFadeLines('out')"
+                  :key="`fade-out-${index}-${line.x}`"
+                  :x="line.x"
+                  y="0"
+                  :width="line.width"
+                  height="100"
+                  :fill="getFadeLineColor(hasTransitionProblem('out'))"
+                />
+              </svg>
+            </template>
             <svg
-              class="w-full h-full block absolute inset-0"
+              v-else
+              :class="getTransitionSvgClass('out')"
               preserveAspectRatio="none"
               viewBox="0 0 100 100"
             >
-              <rect x="0" y="0" width="100" height="100" fill="transparent" />
-              <rect
-                v-for="(line, index) in getTransitionFadeLines('out')"
-                :key="`fade-out-${index}-${line.x}`"
-                :x="line.x"
-                y="0"
-                :width="line.width"
-                height="100"
-                :fill="getFadeLineColor(hasTransitionProblem('out'))"
+              <path
+                :d="getTransitionCurvePath('out')"
+                :fill="getTransitionSvgFill('out', hasTransitionProblem('out'))"
               />
             </svg>
-          </template>
-          <svg
-            v-else
-            :class="getTransitionSvgClass('out')"
-            preserveAspectRatio="none"
-            viewBox="0 0 100 100"
-          >
-            <path
-              :d="getTransitionCurvePath('out')"
-              :fill="getTransitionSvgFill('out', hasTransitionProblem('out'))"
+            <div :class="getTransitionHoverOverlayClass('out')" />
+            <span
+              v-if="hasTransitionProblem('out')"
+              class="absolute top-1 right-1 w-2 h-2 rounded-full bg-red-500 z-50"
+              :aria-label="getTransitionButtonTitle('out')"
             />
-          </svg>
-          <div :class="getTransitionHoverOverlayClass('out')" />
-          <span
-            v-if="hasTransitionProblem('out')"
-            class="absolute top-1 right-1 w-2 h-2 rounded-full bg-red-500 z-50"
-            :aria-label="getTransitionButtonTitle('out')"
-          />
-          <span
-            v-if="isTransitionAdjacentMode('out')"
-            class="i-heroicons-squares-plus w-3 h-3 absolute inset-0 m-auto opacity-70"
-          />
-          <span
-            v-else-if="isTransitionBackgroundMode('out')"
-            class="i-heroicons-square-3-stack-3d w-3 h-3 absolute inset-0 m-auto opacity-70"
-          />
-          <div
-            v-if="!isMobile && canEdit && !clip.locked && !track.locked"
-            class="absolute left-0 top-0 bottom-0 w-2 cursor-ew-resize bg-white/0 group-hover/trans:bg-white/20 hover:bg-white/40! transition-colors z-40 pointer-events-auto"
-            @pointerdown.stop.prevent="
-              emit('resize', $event, { edge: 'out', durationUs: clip.transitionOut!.durationUs })
-            "
-          />
-        </button>
+            <span
+              v-if="isTransitionAdjacentMode('out')"
+              class="i-heroicons-squares-plus w-3 h-3 absolute inset-0 m-auto opacity-70"
+            />
+            <span
+              v-else-if="isTransitionBackgroundMode('out')"
+              class="i-heroicons-square-3-stack-3d w-3 h-3 absolute inset-0 m-auto opacity-70"
+            />
+            <div
+              v-if="!isMobile && canEdit && !clip.locked && !track.locked"
+              class="absolute left-0 top-0 bottom-0 w-2 cursor-ew-resize bg-white/0 group-hover/trans:bg-white/20 hover:bg-white/40! transition-colors z-40 pointer-events-auto"
+              @pointerdown.stop.prevent="
+                emit('resize', $event, { edge: 'out', durationUs: clip.transitionOut!.durationUs })
+              "
+            />
+          </button>
         </UiTooltip>
       </div>
     </div>

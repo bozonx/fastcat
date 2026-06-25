@@ -887,11 +887,7 @@ export class WebGpuComputeRunner {
       const computePass = encoder.beginComputePass({ label: `${label}-pass` });
       computePass.setPipeline(pipeline);
       computePass.setBindGroup(0, bindGroup, [uniformOffset]);
-      computePass.dispatchWorkgroups(
-        Math.ceil(outputWidth / 8),
-        Math.ceil(outputHeight / 8),
-        1,
-      );
+      computePass.dispatchWorkgroups(Math.ceil(outputWidth / 8), Math.ceil(outputHeight / 8), 1);
       computePass.end();
     }
 
@@ -1286,11 +1282,7 @@ export class WebGpuComputeRunner {
   }
 
   private ensureInputTexture(width: number, height: number): void {
-    if (
-      this.inputTexture &&
-      this.inputCachedWidth === width &&
-      this.inputCachedHeight === height
-    ) {
+    if (this.inputTexture && this.inputCachedWidth === width && this.inputCachedHeight === height) {
       return;
     }
 

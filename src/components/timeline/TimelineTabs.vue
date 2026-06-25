@@ -276,7 +276,10 @@ onBeforeUnmount(() => {
               @auxclick="onTabAuxClick($event, path)"
               @click="selectTab(path)"
             >
-              <div v-if="isActive(path)" class="absolute top-0 left-0 right-0 h-0.5 bg-primary-500" />
+              <div
+                v-if="isActive(path)"
+                class="absolute top-0 left-0 right-0 h-0.5 bg-primary-500"
+              />
 
               <UIcon
                 name="i-heroicons-film-20-solid"

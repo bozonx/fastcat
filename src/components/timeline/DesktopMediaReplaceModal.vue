@@ -66,12 +66,15 @@ watch(isOpen, (newVal) => {
     }
 
     // Open project root directory
-    replaceStore.openFolder({
-      kind: 'directory',
-      name: projectStore.currentProjectName || 'Project',
-      path: '',
-      source: 'local',
-    }, { skipSelection: true });
+    replaceStore.openFolder(
+      {
+        kind: 'directory',
+        name: projectStore.currentProjectName || 'Project',
+        path: '',
+        source: 'local',
+      },
+      { skipSelection: true },
+    );
   }
 });
 

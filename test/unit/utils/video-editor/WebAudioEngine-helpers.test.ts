@@ -72,9 +72,7 @@ describe('applyForwardSeamGain', () => {
     });
 
     // Should use setValueCurveAtTime for the fade-in
-    const curveCall = calls.find(
-      (c) => c.method === 'setValueCurveAtTime' && c.args[1] === 10.0,
-    );
+    const curveCall = calls.find((c) => c.method === 'setValueCurveAtTime' && c.args[1] === 10.0);
     expect(curveCall).toBeDefined();
     // Duration = min(leadCtxS, ctxTotalS/2) = min(0.05, 1.0) = 0.05
     expect(curveCall!.args[2]).toBeCloseTo(0.05, 5);
@@ -116,9 +114,7 @@ describe('applyForwardSeamGain', () => {
     });
 
     // Should have a setValueCurveAtTime for the fade-out at t0 + ctxNominalS
-    const fadeOutCall = calls.find(
-      (c) => c.method === 'setValueCurveAtTime' && c.args[1] === 1.9,
-    );
+    const fadeOutCall = calls.find((c) => c.method === 'setValueCurveAtTime' && c.args[1] === 1.9);
     expect(fadeOutCall).toBeDefined();
     expect(fadeOutCall!.args[2]).toBeCloseTo(0.1, 5);
   });
@@ -136,9 +132,7 @@ describe('applyForwardSeamGain', () => {
     });
 
     // Should set value to 1 near the end, then ramp to 0
-    const setOneCall = calls.find(
-      (c) => c.method === 'setValueAtTime' && c.args[0] === 1,
-    );
+    const setOneCall = calls.find((c) => c.method === 'setValueAtTime' && c.args[0] === 1);
     expect(setOneCall).toBeDefined();
     // fadeOut = min(0.005, 1.0/2) = 0.005
     // setValueAtTime(1, t0 + ctxTotalS - fadeOut) = 0 + 1.0 - 0.005 = 0.995
@@ -218,9 +212,7 @@ describe('applyClipGainEnvelope', () => {
     expect(cancelCall!.args[0]).toBe(9);
 
     // Initial setValueAtTime at startAtS
-    const setCall = calls.find(
-      (c) => c.method === 'setValueAtTime' && c.args[1] === 10,
-    );
+    const setCall = calls.find((c) => c.method === 'setValueAtTime' && c.args[1] === 10);
     expect(setCall).toBeDefined();
   });
 
@@ -367,12 +359,8 @@ describe('deepEqualEffects', () => {
   });
 
   it('handles nested objects', () => {
-    expect(
-      deepEqualEffects({ params: { decay: 2 } }, { params: { decay: 2 } }),
-    ).toBe(true);
-    expect(
-      deepEqualEffects({ params: { decay: 2 } }, { params: { decay: 3 } }),
-    ).toBe(false);
+    expect(deepEqualEffects({ params: { decay: 2 } }, { params: { decay: 2 } })).toBe(true);
+    expect(deepEqualEffects({ params: { decay: 2 } }, { params: { decay: 3 } })).toBe(false);
   });
 
   it('handles arrays', () => {
