@@ -5,10 +5,9 @@
  * captures the perceptual hash of each sample frame, and upserts it into
  * shared/golden/frames.json under the "web" engine.
  *
- * For the native engine, run: pnpm test:native:parity -- --nocapture
- * and copy the printed GOLDEN[native] lines, or run:
- *   cargo test --manifest-path src-tauri/Cargo.toml --features test-support \
- *     --test engine_parity -- --nocapture
+ * For the native engine, this script can also invoke pnpm test:parity:import-native
+ * which runs the Rust engine_parity tests and imports the printed GOLDEN[native]
+ * lines automatically.
  *
  * Usage:
  *   pnpm test:parity:gen-golden           # web only (via Playwright)
@@ -201,6 +200,25 @@ async function genWebGolden(): Promise<void> {
   }
 }
 
+function runImportNative(): Promise<void> {
+  return new Promise((resolve, reject) => {
+    console.log('\nImporting native golden hashes...\n');
+    const proc = spawn('pnpm', ['test:parity:import-native'], {
+      cwd: process.cwd(),
+      stdio: 'inherit',
+    });
+
+    proc.on('error', (error) => reject(error));
+    proc.on('close', (code) => {
+      if (code !== 0) {
+        reject(new Error(`pnpm test:parity:import-native exited with code ${code}`));
+        return;
+      }
+      resolve();
+    });
+  });
+}
+
 async function main(): Promise<void> {
   const args = process.argv.slice(2);
   const mode = args[0] ?? '--web';
@@ -212,11 +230,7 @@ async function main(): Promise<void> {
   }
 
   if (mode === '--native' || mode === '--both') {
-    console.log('\nFor native golden hashes, run:');
-    console.log('  cargo test --manifest-path src-tauri/Cargo.toml --features test-support \\');
-    console.log('    --test engine_parity -- --nocapture');
-    console.log('\nThen copy the GOLDEN[native] lines into shared/golden/frames.json');
-    console.log('or use: pnpm test:parity:import-native');
+    await runImportNative();
   }
 }
 

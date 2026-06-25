@@ -2,7 +2,7 @@ services:
   # Playwright e2e test runner.
   # Image version must match the installed @playwright/test version in package.json.
   playwright:
-    image: mcr.microsoft.com/playwright:v1.58.2-jammy
+    image: mcr.microsoft.com/playwright:v1.60.0-jammy
     container_name: fastcat-playwright
     profiles:
       - e2e

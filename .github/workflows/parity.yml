@@ -1,0 +1,50 @@
+name: Cross-Engine Parity Tests
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  web-parity:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run web parity tests in Docker
+        run: docker compose --profile e2e run --rm playwright sh -c 'corepack enable && pnpm install --frozen-lockfile && pnpm test:parity:web'
+
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: parity-web-report
+          path: playwright-report/
+          retention-days: 7
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: parity-web-test-results
+          path: test-results/
+          retention-days: 7
+
+  native-parity:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@1.87.0
+
+      - name: Install native dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg libavdevice-dev libvulkan1 mesa-vulkan-drivers
+
+      - name: Run native parity tests
+        run: cargo test --manifest-path src-tauri/Cargo.toml --features test-support --test engine_parity -- --nocapture

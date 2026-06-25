@@ -340,15 +340,23 @@ pnpm test:parity
 
 # Generate/update golden hashes from the web engine
 pnpm test:parity:gen-golden
+
+# Generate golden hashes for both engines (web + native via cargo)
+pnpm test:parity:gen-golden -- --both
+
+# Import native golden hashes from the last cargo run
+pnpm test:parity:import-native
 ```
 
 **Workflow:**
 
 1. Run `pnpm test:parity:gen-golden` to produce web golden hashes
-2. Run `pnpm test:parity:native` — native hashes are printed to stderr; copy them into `shared/golden/frames.json`
+2. Run `pnpm test:parity:import-native` to run the native parity suite and import the printed `GOLDEN[native]` lines into `shared/golden/frames.json`
 3. Run `pnpm test:parity` to verify both engines match their golden hashes and each other
 
 Tests skip gracefully when WebGPU, ffmpeg, or a wgpu adapter is unavailable.
+
+**CI:** the `.github/workflows/parity.yml` GitHub Actions workflow runs web parity in a Dockerized Playwright container and native parity on an Ubuntu runner with a software Vulkan adapter.
 
 ## Embedded Editor SDK
 

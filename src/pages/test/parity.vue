@@ -42,6 +42,21 @@ async function readFileFromOpfs(path: string): Promise<File | null> {
   }
 }
 
+async function getFileHandleByPathFromOpfs(path: string): Promise<FileSystemFileHandle | null> {
+  if (!path) return null;
+  try {
+    const root = await navigator.storage.getDirectory();
+    const parts = path.split('/').filter(Boolean);
+    let dir = root;
+    for (let i = 0; i < parts.length - 1; i++) {
+      dir = await dir.getDirectoryHandle(parts[i]!);
+    }
+    return await dir.getFileHandle(parts[parts.length - 1]!);
+  } catch {
+    return null;
+  }
+}
+
 function buildClipsFromScene(
   scene: ParitySceneData,
   mediaMapping: Record<string, string>,
@@ -137,7 +152,7 @@ async function renderFrames(req: ParityRenderRequest): Promise<ParityFrameResult
   await compositor.init(width, height, '#000', true);
 
   const deps: MediaSourceLoaderDeps = {
-    getFileHandleByPath: async () => null,
+    getFileHandleByPath: async (path: string) => getFileHandleByPathFromOpfs(path),
     getFileByPath: async (path: string) => readFileFromOpfs(path),
   };
 

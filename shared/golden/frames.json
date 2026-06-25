@@ -32,7 +32,7 @@
       "samples": [
         {
           "timeSec": 0.5,
-          "hash": "0000000000000000",
+          "hash": "1733733333323233",
           "tolerance": 10
         }
       ]
@@ -43,7 +43,7 @@
       "samples": [
         {
           "timeSec": 0.5,
-          "hash": "0000000000000000",
+          "hash": "ff7f3f0f07030000",
           "tolerance": 10
         }
       ]
@@ -65,7 +65,62 @@
       "samples": [
         {
           "timeSec": 0.5,
-          "hash": "0000000000000000",
+          "hash": "ff7f3f0f07030000",
+          "tolerance": 10
+        }
+      ]
+    },
+    {
+      "scene": "solid-background.json",
+      "engine": "native",
+      "samples": [
+        {
+          "timeSec": 0.5,
+          "hash": "ffffffffffffffff",
+          "tolerance": 10
+        }
+      ]
+    },
+    {
+      "scene": "video-clip.json",
+      "engine": "native",
+      "samples": [
+        {
+          "timeSec": 0.5,
+          "hash": "3333737333717333",
+          "tolerance": 10
+        }
+      ]
+    },
+    {
+      "scene": "image-overlay.json",
+      "engine": "native",
+      "samples": [
+        {
+          "timeSec": 0.5,
+          "hash": "ff7f3f0f07030000",
+          "tolerance": 10
+        }
+      ]
+    },
+    {
+      "scene": "text-layer.json",
+      "engine": "native",
+      "samples": [
+        {
+          "timeSec": 0.5,
+          "hash": "0000001818000000",
+          "tolerance": 18
+        }
+      ]
+    },
+    {
+      "scene": "multi-layer-blend.json",
+      "engine": "native",
+      "samples": [
+        {
+          "timeSec": 0.5,
+          "hash": "ff7f3f0f07030000",
           "tolerance": 10
         }
       ]

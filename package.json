@@ -38,6 +38,7 @@
     "test:parity:native": "cargo test --manifest-path src-tauri/Cargo.toml --features test-support --test engine_parity -- --nocapture",
     "test:parity": "pnpm test:parity:web && pnpm test:parity:native",
     "test:parity:gen-golden": "tsx scripts/gen-golden.ts --web",
+    "test:parity:import-native": "tsx scripts/import-native-golden.ts",
     "tauri": "tauri",
     "tauri:dev": "tauri dev",
     "tauri:build": "tauri build",
