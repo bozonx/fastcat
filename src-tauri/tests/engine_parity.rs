@@ -118,7 +118,6 @@ fn default_tolerance() -> usize {
 }
 
 #[derive(Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
 struct SceneFixture {
     scene: serde_json::Value,
     sample_times_sec: Vec<f64>,
