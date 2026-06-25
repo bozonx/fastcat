@@ -49,7 +49,7 @@ describe('scene-loader', () => {
 
   it('loadAllScenes returns all scenes sorted by filename with tolerance', () => {
     const scenes = loadAllScenes();
-    expect(scenes.length).toBeGreaterThanOrEqual(8);
+    expect(scenes.length).toBeGreaterThanOrEqual(13);
 
     // Verify sorted by filename.
     const filenames = scenes.map((s) => s.filename);

@@ -104,6 +104,28 @@ function buildClipsFromScene(
         }
       : undefined;
 
+    // Map scene-layer transitions (snake_case) to worker payload (camelCase).
+    const sceneTransitionIn = layer.transition_in as Record<string, unknown> | undefined;
+    const sceneTransitionOut = layer.transition_out as Record<string, unknown> | undefined;
+    const transitionIn = sceneTransitionIn
+      ? {
+          type: sceneTransitionIn.type as string,
+          durationUs: Math.round((sceneTransitionIn.duration_sec as number) * 1_000_000),
+          mode: (sceneTransitionIn.mode as string) ?? 'transparent',
+          curve: (sceneTransitionIn.curve as string) ?? 'linear',
+          params: (sceneTransitionIn.params as Record<string, unknown>) ?? {},
+        }
+      : undefined;
+    const transitionOut = sceneTransitionOut
+      ? {
+          type: sceneTransitionOut.type as string,
+          durationUs: Math.round((sceneTransitionOut.duration_sec as number) * 1_000_000),
+          mode: (sceneTransitionOut.mode as string) ?? 'transparent',
+          curve: (sceneTransitionOut.curve as string) ?? 'linear',
+          params: (sceneTransitionOut.params as Record<string, unknown>) ?? {},
+        }
+      : undefined;
+
     return {
       kind: 'clip' as const,
       clipType,
@@ -121,6 +143,8 @@ function buildClipsFromScene(
       strokeWidth: layer.stroke_width as number | undefined,
       shapeConfig: layer.shape_config as Record<string, unknown> | undefined,
       transform,
+      transitionIn,
+      transitionOut,
       source: sourcePath ? { path: sourcePath } : undefined,
       timelineRange: {
         startUs: Math.round(timelineStartSec * 1_000_000),

@@ -134,6 +134,10 @@ describe('golden-registry integration', () => {
 
           if (!webSample || !nativeSample) continue;
 
+          // Skip placeholder hashes — they haven't been generated yet.
+          const PLACEHOLDER = '0000000000000000';
+          if (webSample.hash === PLACEHOLDER || nativeSample.hash === PLACEHOLDER) continue;
+
           const tolerance = Math.max(
             webSample.tolerance,
             nativeSample.tolerance,

@@ -124,6 +124,66 @@
       ]
     },
     {
+      "scene": "effect-blur.json",
+      "engine": "web",
+      "samples": [
+        {
+          "timeSec": 0.5,
+          "hash": "ff7f3f0f07030000",
+          "tolerance": 14
+        }
+      ]
+    },
+    {
+      "scene": "effect-color-adjustment.json",
+      "engine": "web",
+      "samples": [
+        {
+          "timeSec": 0.5,
+          "hash": "ff7f3f0f07030000",
+          "tolerance": 14
+        }
+      ]
+    },
+    {
+      "scene": "transition-dissolve.json",
+      "engine": "web",
+      "samples": [
+        {
+          "timeSec": 0.15,
+          "hash": "ff7f3f0f07030000",
+          "tolerance": 15
+        },
+        {
+          "timeSec": 0.5,
+          "hash": "0000000000000000",
+          "tolerance": 15
+        }
+      ]
+    },
+    {
+      "scene": "speed-change.json",
+      "engine": "web",
+      "samples": [
+        {
+          "timeSec": 0.25,
+          "hash": "1733733333323233",
+          "tolerance": 12
+        }
+      ]
+    },
+    {
+      "scene": "crop-clip.json",
+      "engine": "web",
+      "samples": [
+        {
+          "timeSec": 0.5,
+          "hash": "0000000000000003",
+          "tolerance": 12
+        }
+      ]
+    },
+    {
       "scene": "solid-background.json",
       "engine": "native",
       "samples": [
@@ -228,6 +288,66 @@
           "timeSec": 1,
           "hash": "0000000000000000",
           "tolerance": 10
+        }
+      ]
+    },
+    {
+      "scene": "effect-blur.json",
+      "engine": "native",
+      "samples": [
+        {
+          "timeSec": 0.5,
+          "hash": "0000000000000000",
+          "tolerance": 14
+        }
+      ]
+    },
+    {
+      "scene": "effect-color-adjustment.json",
+      "engine": "native",
+      "samples": [
+        {
+          "timeSec": 0.5,
+          "hash": "0000000000000000",
+          "tolerance": 14
+        }
+      ]
+    },
+    {
+      "scene": "transition-dissolve.json",
+      "engine": "native",
+      "samples": [
+        {
+          "timeSec": 0.15,
+          "hash": "0000000000000000",
+          "tolerance": 15
+        },
+        {
+          "timeSec": 0.5,
+          "hash": "0000000000000000",
+          "tolerance": 15
+        }
+      ]
+    },
+    {
+      "scene": "speed-change.json",
+      "engine": "native",
+      "samples": [
+        {
+          "timeSec": 0.25,
+          "hash": "0000000000000000",
+          "tolerance": 12
+        }
+      ]
+    },
+    {
+      "scene": "crop-clip.json",
+      "engine": "native",
+      "samples": [
+        {
+          "timeSec": 0.5,
+          "hash": "0000000000000000",
+          "tolerance": 12
         }
       ]
     }

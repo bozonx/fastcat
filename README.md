@@ -323,7 +323,7 @@ Parity tests verify that the web video engine (PixiJS + WebGPU + Web Workers) an
 
 **Shared fixtures:**
 
-- `shared/scenes/` — 8 timeline scenarios in `MonitorScene` JSON format (solid background, video clip, image overlay, text layer, multi-layer blend, shape layer, transformed image, multi-time video sampling)
+- `shared/scenes/` — 13 timeline scenarios in `MonitorScene` JSON format (solid background, video clip, image overlay, text layer, multi-layer blend, shape layer, transformed image, multi-time video sampling, blur effect, color adjustment effect, dissolve transition, 2x speed change, cropped image)
 - `shared/golden/frames.json` — golden perceptual hashes (8x8 average hash) for each scene + sample time, per engine
 
 **Commands:**

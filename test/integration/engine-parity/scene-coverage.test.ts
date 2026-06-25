@@ -13,8 +13,8 @@ describe('scene coverage integration', () => {
   const scenes = loadAllScenes();
 
   describe('scene discovery', () => {
-    it('discovers at least 8 scene fixtures', () => {
-      expect(scenes.length).toBeGreaterThanOrEqual(8);
+    it('discovers at least 13 scene fixtures', () => {
+      expect(scenes.length).toBeGreaterThanOrEqual(13);
     });
 
     it('all scene files are valid JSON with required fields', () => {
@@ -172,6 +172,132 @@ describe('scene coverage integration', () => {
       const multiTime = scenes.find((s) => s.filename === 'multi-time-samples.json');
       expect(multiTime).toBeDefined();
       expect(multiTime!.fixture.sample_times_sec.length).toBeGreaterThanOrEqual(3);
+    });
+  });
+
+  describe('effects coverage', () => {
+    it('at least one scene has non-empty effects on a non-background layer', () => {
+      let found = false;
+      for (const { fixture } of scenes) {
+        const scene = fixture.scene as { layers: Array<Record<string, unknown>> };
+        for (const layer of scene.layers) {
+          const effects = layer.effects as unknown[] | undefined;
+          if (effects && effects.length > 0 && layer.kind !== 'background') {
+            found = true;
+            break;
+          }
+        }
+        if (found) break;
+      }
+      expect(found, 'no scene with non-background effects found').toBe(true);
+    });
+
+    it('effect-blur scene has a gaussian-blur effect', () => {
+      const scene = scenes.find((s) => s.filename === 'effect-blur.json');
+      expect(scene).toBeDefined();
+      const layers = scene!.fixture.scene.layers as Array<Record<string, unknown>>;
+      const img = layers.find((l) => l.kind === 'image');
+      const effects = img!.effects as Array<Record<string, unknown>>;
+      expect(effects).toHaveLength(1);
+      expect(effects[0].type).toBe('gaussian-blur');
+      expect(effects[0].radius).toBe(12);
+    });
+
+    it('effect-color-adjustment scene has brightness, contrast, and saturation effects', () => {
+      const scene = scenes.find((s) => s.filename === 'effect-color-adjustment.json');
+      expect(scene).toBeDefined();
+      const layers = scene!.fixture.scene.layers as Array<Record<string, unknown>>;
+      const img = layers.find((l) => l.kind === 'image');
+      const effects = img!.effects as Array<Record<string, unknown>>;
+      const types = effects.map((e) => e.type);
+      expect(types).toContain('brightness');
+      expect(types).toContain('contrast');
+      expect(types).toContain('saturation');
+    });
+
+    it('every effect has a type field', () => {
+      for (const { filename, fixture } of scenes) {
+        const scene = fixture.scene as { layers: Array<Record<string, unknown>> };
+        for (const layer of scene.layers) {
+          const effects = layer.effects as Array<Record<string, unknown>> | undefined;
+          if (!effects) continue;
+          for (const effect of effects) {
+            expect(effect.type, `${filename}: effect missing type`).toBeDefined();
+          }
+        }
+      }
+    });
+  });
+
+  describe('transitions coverage', () => {
+    it('transition-dissolve scene has transition_in and transition_out', () => {
+      const scene = scenes.find((s) => s.filename === 'transition-dissolve.json');
+      expect(scene).toBeDefined();
+      const layers = scene!.fixture.scene.layers as Array<Record<string, unknown>>;
+      const clipA = layers.find((l) => l.id === 'clip-a');
+      const clipB = layers.find((l) => l.id === 'clip-b');
+      expect(clipA!.transition_out).toBeDefined();
+      expect(clipB!.transition_in).toBeDefined();
+      expect((clipA!.transition_out as Record<string, unknown>).type).toBe('dissolve');
+      expect((clipB!.transition_in as Record<string, unknown>).type).toBe('dissolve');
+    });
+
+    it('every transition has type and duration_sec', () => {
+      for (const { filename, fixture } of scenes) {
+        const scene = fixture.scene as { layers: Array<Record<string, unknown>> };
+        for (const layer of scene.layers) {
+          const tin = layer.transition_in as Record<string, unknown> | undefined;
+          const tout = layer.transition_out as Record<string, unknown> | undefined;
+          if (tin) {
+            expect(tin.type, `${filename}: transition_in missing type`).toBeDefined();
+            expect(
+              tin.duration_sec,
+              `${filename}: transition_in missing duration_sec`,
+            ).toBeDefined();
+          }
+          if (tout) {
+            expect(tout.type, `${filename}: transition_out missing type`).toBeDefined();
+            expect(
+              tout.duration_sec,
+              `${filename}: transition_out missing duration_sec`,
+            ).toBeDefined();
+          }
+        }
+      }
+    });
+  });
+
+  describe('speed coverage', () => {
+    it('speed-change scene has speed != 1.0', () => {
+      const scene = scenes.find((s) => s.filename === 'speed-change.json');
+      expect(scene).toBeDefined();
+      const layers = scene!.fixture.scene.layers as Array<Record<string, unknown>>;
+      const video = layers.find((l) => l.kind === 'video');
+      expect(video!.speed).toBe(2.0);
+    });
+
+    it('speed-change scene timeline is half the source duration', () => {
+      const scene = scenes.find((s) => s.filename === 'speed-change.json');
+      const layers = scene!.fixture.scene.layers as Array<Record<string, unknown>>;
+      const video = layers.find((l) => l.kind === 'video')!;
+      const timelineDuration =
+        (video.timeline_end_sec as number) - (video.timeline_start_sec as number);
+      const sourceDuration = video.source_range_duration_sec as number;
+      expect(timelineDuration).toBeCloseTo(sourceDuration / 2, 5);
+    });
+  });
+
+  describe('crop coverage', () => {
+    it('crop-clip scene has non-zero crop values', () => {
+      const scene = scenes.find((s) => s.filename === 'crop-clip.json');
+      expect(scene).toBeDefined();
+      const layers = scene!.fixture.scene.layers as Array<Record<string, unknown>>;
+      const img = layers.find((l) => l.kind === 'image');
+      const transform = img!.transform as Record<string, unknown>;
+      expect(transform.crop_top).toBe(20);
+      expect(transform.crop_bottom).toBe(20);
+      expect(transform.crop_left).toBe(20);
+      expect(transform.crop_right).toBe(20);
     });
   });
 

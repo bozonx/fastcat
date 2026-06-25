@@ -1,0 +1,43 @@
+{
+  "_comment": [
+    "Cross-engine parity scene: a video clip played at 2x speed.",
+    "Tests that speed-adjusted decoding (source time mapping) matches between",
+    "web (mediabunny worker) and native (ffmpeg) engines at t=0.25s.",
+    "At 2x speed, timeline t=0.25s maps to source t=0.5s."
+  ],
+  "scene": {
+    "layers": [
+      {
+        "id": "video-2x",
+        "kind": "video",
+        "path": "video/video-h264-aac.mp4",
+        "timeline_start_sec": 0.0,
+        "timeline_end_sec": 0.5,
+        "source_start_sec": 0.0,
+        "source_range_duration_sec": 1.0,
+        "source_duration_sec": 1.0,
+        "speed": 2.0,
+        "z": 0,
+        "opacity": 1.0,
+        "blend_mode": "normal",
+        "effects": []
+      }
+    ],
+    "video_tracks": [],
+    "audio_layers": [],
+    "audio_tracks": [],
+    "audio_master_gain": 1.0,
+    "audio_master_muted": false,
+    "width": 320,
+    "height": 240,
+    "preview_fps": 30.0,
+    "preview_sync_mode": "balanced",
+    "preview_effect_quality": "high",
+    "frame_cache_mode": "auto",
+    "frame_cache_custom_mb": 0,
+    "master_effects": [],
+    "audio_master_effects": []
+  },
+  "tolerance": 12,
+  "sample_times_sec": [0.25]
+}

@@ -1,0 +1,69 @@
+{
+  "_comment": [
+    "Cross-engine parity scene: a solid background with a color-adjusted image.",
+    "Tests brightness, contrast, and saturation effects via the shared WGSL shader.",
+    "Both engines must produce the same perceptual hash at t=0.5s."
+  ],
+  "scene": {
+    "layers": [
+      {
+        "id": "bg-color",
+        "kind": "background",
+        "path": "",
+        "timeline_start_sec": 0.0,
+        "timeline_end_sec": 1.0,
+        "source_start_sec": 0.0,
+        "source_range_duration_sec": 0.0,
+        "speed": 1.0,
+        "z": 0,
+        "opacity": 1.0,
+        "blend_mode": "normal",
+        "background_color": "#000000",
+        "effects": []
+      },
+      {
+        "id": "img-graded",
+        "kind": "image",
+        "path": "image/image.jpg",
+        "timeline_start_sec": 0.0,
+        "timeline_end_sec": 1.0,
+        "source_start_sec": 0.0,
+        "source_range_duration_sec": 0.0,
+        "speed": 1.0,
+        "z": 1,
+        "opacity": 1.0,
+        "blend_mode": "normal",
+        "effects": [
+          {
+            "type": "brightness",
+            "value": 0.3
+          },
+          {
+            "type": "contrast",
+            "value": 1.4
+          },
+          {
+            "type": "saturation",
+            "value": 1.5
+          }
+        ]
+      }
+    ],
+    "video_tracks": [],
+    "audio_layers": [],
+    "audio_tracks": [],
+    "audio_master_gain": 1.0,
+    "audio_master_muted": false,
+    "width": 320,
+    "height": 240,
+    "preview_fps": 30.0,
+    "preview_sync_mode": "balanced",
+    "preview_effect_quality": "high",
+    "frame_cache_mode": "auto",
+    "frame_cache_custom_mb": 0,
+    "master_effects": [],
+    "audio_master_effects": []
+  },
+  "tolerance": 14,
+  "sample_times_sec": [0.5]
+}
