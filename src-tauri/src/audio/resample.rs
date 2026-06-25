@@ -1,4 +1,5 @@
 use anyhow::{anyhow, Result};
+use std::collections::VecDeque;
 
 /// Builds the SincFixedIn resampler used everywhere in the engine. Centralised so
 /// every call site (one-shot, cached streaming, and the eager pre-decode build
@@ -303,7 +304,7 @@ pub(crate) struct VarispeedResampler {
     cached: Option<Box<rubato::SincFixedIn<f32>>>,
     in_remainder: Vec<Vec<f32>>,
     /// Interleaved resampled output produced beyond what `drain` has taken.
-    out_fifo: Vec<f32>,
+    out_fifo: VecDeque<f32>,
 }
 
 impl VarispeedResampler {
@@ -311,7 +312,7 @@ impl VarispeedResampler {
         Self {
             cached: None,
             in_remainder: Vec::new(),
-            out_fifo: Vec::new(),
+            out_fifo: VecDeque::new(),
         }
     }
 
@@ -360,7 +361,7 @@ impl VarispeedResampler {
         }) {
             Ok(out_planar) => {
                 let interleaved = planar_to_interleaved(&out_planar, channels);
-                self.out_fifo.extend_from_slice(&interleaved);
+                self.out_fifo.extend(interleaved.iter().copied());
             }
             Err(e) => log::warn!("[audio] varispeed resample failed: {e:?}"),
         }
@@ -372,7 +373,7 @@ impl VarispeedResampler {
         if self.out_fifo.len() < n_samples {
             return None;
         }
-        Some(self.out_fifo.drain(0..n_samples).collect())
+        Some(self.out_fifo.drain(..n_samples).collect())
     }
 }
 

@@ -175,6 +175,7 @@ export class AudioScheduler {
    * external source.
    */
   syncTime(timeUs: number) {
+    if (!this.isPlaying) return;
     const timeS = timeUs / 1_000_000;
     const ctx = this.getContext();
     const nowS = ctx ? ctx.currentTime : this.wallClockS();

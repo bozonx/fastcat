@@ -341,5 +341,92 @@ describe('WebAudioEngine', () => {
 
       expect((engine as any).masterEffectGeneration).toBe(beforeGen);
     });
+
+    it('does not rebuild when key order differs but values match', async () => {
+      const engine = new WebAudioEngine();
+      await engine.init();
+
+      const effects = [
+        { id: 'fx1', type: 'audio-reverb', enabled: true, target: 'audio', wet: 0.5 },
+      ];
+      engine.setMasterAudioEffects(effects as any);
+      await new Promise((resolve) => setTimeout(resolve, 10));
+
+      // Same values, different key order — deepEqualEffects should handle this
+      const reordered = [
+        { wet: 0.5, target: 'audio', enabled: true, type: 'audio-reverb', id: 'fx1' },
+      ];
+      const beforeGen = (engine as any).masterEffectGeneration;
+      engine.setMasterAudioEffects(reordered as any);
+
+      expect((engine as any).masterEffectGeneration).toBe(beforeGen);
+    });
+
+    it('rebuilds when nested parameter changes', async () => {
+      const engine = new WebAudioEngine();
+      await engine.init();
+
+      const effectsV1 = [
+        {
+          id: 'fx1',
+          type: 'audio-reverb',
+          enabled: true,
+          target: 'audio',
+          wet: 0.5,
+          params: { decay: 2, damping: 0.5 },
+        },
+      ];
+      engine.setMasterAudioEffects(effectsV1 as any);
+      await new Promise((resolve) => setTimeout(resolve, 10));
+
+      const effectsV2 = [
+        {
+          id: 'fx1',
+          type: 'audio-reverb',
+          enabled: true,
+          target: 'audio',
+          wet: 0.5,
+          params: { decay: 3, damping: 0.5 },
+        },
+      ];
+      const beforeGen = (engine as any).masterEffectGeneration;
+      engine.setMasterAudioEffects(effectsV2 as any);
+
+      expect((engine as any).masterEffectGeneration).toBe(beforeGen + 1);
+    });
+  });
+
+  describe('trackClipsCache', () => {
+    it('invalidates cache on updateTimelineLayout', async () => {
+      const engine = new WebAudioEngine();
+      await engine.init();
+
+      const clips = [
+        {
+          id: 'c1',
+          sourcePath: '/a.mp3',
+          fileHandle: null as unknown as FileSystemFileHandle,
+          startUs: 0,
+          durationUs: 1_000_000,
+          sourceStartUs: 0,
+          sourceRangeDurationUs: 1_000_000,
+          sourceDurationUs: 1_000_000,
+          speed: 1,
+          audioGain: 1,
+          audioBalance: 0,
+          audioEffects: [] as import('~/utils/video-editor/audio-engine.types').AudioEffect[],
+          trackId: 'track-1',
+        },
+      ];
+
+      await engine.updateTimelineLayout(clips);
+      // Access the cache to populate it
+      (engine as any).getTrackClipsCache();
+      expect((engine as any).trackClipsCache).not.toBeNull();
+
+      // Update with new clips — cache should be invalidated
+      await engine.updateTimelineLayout([]);
+      expect((engine as any).trackClipsCache).toBeNull();
+    });
   });
 });

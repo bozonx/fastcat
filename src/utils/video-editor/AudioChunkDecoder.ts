@@ -164,7 +164,7 @@ export class AudioChunkDecoder {
       if (!activeSourcePaths.has(key)) {
         this.chunkCache.delete(key);
         for (const chunkKey of this.chunkLruKeys.keys()) {
-          if (chunkKey.startsWith(`${key}:`)) {
+          if (chunkKey.startsWith(`${key}\x00`)) {
             this.chunkLruKeys.delete(chunkKey);
           }
         }
@@ -335,11 +335,13 @@ export class AudioChunkDecoder {
   }
 
   private getChunkKey(sourceKey: string, chunkIndex: number): string {
-    return `${sourceKey}:${chunkIndex}`;
+    // Use null char as separator — it cannot appear in file paths on any
+    // filesystem, unlike ':' which collides with Windows drives and URLs.
+    return `${sourceKey}\x00${chunkIndex}`;
   }
 
   private getSourceKeyFromChunkKey(chunkKey: string): string {
-    return chunkKey.slice(0, chunkKey.lastIndexOf(':'));
+    return chunkKey.slice(0, chunkKey.lastIndexOf('\x00'));
   }
 
   private getPersistentCache(): { vfs: IFileSystemAdapter | null; cacheVfsPath: string | null } {
@@ -385,7 +387,7 @@ export class AudioChunkDecoder {
       if (!oldestKey) break;
       scanned += 1;
 
-      const colonIdx = oldestKey.lastIndexOf(':');
+      const colonIdx = oldestKey.lastIndexOf('\x00');
       if (colonIdx < 0) {
         this.chunkLruKeys.delete(oldestKey);
         continue;

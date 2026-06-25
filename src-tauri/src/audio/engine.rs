@@ -489,17 +489,6 @@ impl NativeAudioEngine {
             if (pts - current).abs() < SEEK_IGNORE_SEC {
                 return;
             }
-            // Diagnostic for "doubled" audio at start: a real BACKWARD seek during
-            // playback makes the producer re-decode and replay an already-heard
-            // region (heard as a repeat). If this logs in the first seconds after
-            // Play, the root of the double is here (an echo seek backward), not in
-            // the producer. Remove the log once the cause is confirmed/fixed.
-            if pts + SEEK_IGNORE_SEC < current {
-                log::warn!(
-                    "[audio] backward seek during playback: {current:.3}s -> {pts:.3}s \
-                     (replays already-played audio; likely a startup echo-seek)"
-                );
-            }
         }
 
         let was_playing = state.playing;
@@ -534,6 +523,7 @@ impl NativeAudioEngine {
     /// buffered output (mixed at the old rate), exactly like a seek, so the new
     /// rate starts cleanly.
     pub fn set_speed(&self, speed: f64, anchor_sec: f64) {
+        debug_assert!(speed.is_finite(), "set_speed received non-finite speed");
         self.restart_finished_producer();
         let speed = if speed.is_finite() && speed != 0.0 {
             speed

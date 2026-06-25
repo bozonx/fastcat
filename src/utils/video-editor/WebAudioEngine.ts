@@ -96,6 +96,95 @@ function applyForwardSeamGain(gain: GainNode, p: ForwardSeamGainParams) {
   }
 }
 
+/**
+ * Structural deep-equality for effect objects. Unlike `JSON.stringify` this
+ * handles undefined values, NaN, and differing key order correctly.
+ */
+function deepEqualEffects(a: unknown, b: unknown): boolean {
+  if (a === b) return true;
+  if (typeof a !== 'object' || a === null || typeof b !== 'object' || b === null) return false;
+  const keysA = Object.keys(a as Record<string, unknown>);
+  const keysB = Object.keys(b as Record<string, unknown>);
+  if (keysA.length !== keysB.length) return false;
+  for (const key of keysA) {
+    if (!keysB.includes(key)) return false;
+    const va = (a as Record<string, unknown>)[key];
+    const vb = (b as Record<string, unknown>)[key];
+    if (typeof va === 'object' && va !== null && typeof vb === 'object' && vb !== null) {
+      if (!deepEqualEffects(va, vb)) return false;
+    } else if (va !== vb) {
+      return false;
+    }
+  }
+  return true;
+}
+
+/**
+ * Shared clip gain envelope setup: creates the gainAtClipTime function and
+ * schedules fadeIn/fadeOut curves on the clipGain node. Used by both
+ * playClipSegment (scrub preview) and streamClipPlayback (streaming).
+ */
+interface ClipGainEnvelopeParams {
+  window: ClipPlaybackWindow;
+  clipGain: GainNode;
+  startAtS: number;
+  ctxCurrentTime: number;
+}
+
+function applyClipGainEnvelope(params: ClipGainEnvelopeParams) {
+  const { window, clipGain, startAtS, ctxCurrentTime } = params;
+
+  const gainAtClipTime = (tClipS: number): number =>
+    getGainAtClipTime({
+      clipDurationS: window.clipDurationS,
+      fadeInS: window.fadeInS,
+      fadeOutS: window.fadeOutS,
+      fadeInCurve: window.fadeInCurve,
+      fadeOutCurve: window.fadeOutCurve,
+      baseGain: window.audioGain,
+      tClipS,
+    });
+
+  const globalSpeed = Math.max(1e-9, window.globalSpeed);
+  const clipLocalToCtxS = (tClipS: number) =>
+    startAtS + (tClipS - window.currentClipLocalS) / globalSpeed;
+
+  const t0 = window.currentClipLocalS;
+  const t1 = window.currentClipLocalS + window.remainingInClipS;
+  const gainParam: AudioParam = clipGain.gain;
+
+  gainParam.cancelScheduledValues?.(ctxCurrentTime);
+  gainParam.setValueAtTime?.(gainAtClipTime(t0), startAtS);
+
+  if (window.fadeInS > 0 && t0 < window.fadeInS && t1 > 0) {
+    const rampEndClipS = Math.min(window.fadeInS, t1);
+    const rampEndAtS = clipLocalToCtxS(rampEndClipS);
+    scheduleGainCurve({
+      gainParam,
+      startClipS: t0,
+      endClipS: rampEndClipS,
+      startAtS,
+      endAtS: rampEndAtS,
+      getGainAtClipTime: gainAtClipTime,
+    });
+  }
+
+  const outStartClipS = window.clipDurationS - window.fadeOutS;
+  if (window.fadeOutS > 0 && t1 > outStartClipS) {
+    const rampStartClipS = Math.max(outStartClipS, t0);
+    const rampStartAtS = clipLocalToCtxS(rampStartClipS);
+    gainParam.setValueAtTime?.(gainAtClipTime(rampStartClipS), rampStartAtS);
+    scheduleGainCurve({
+      gainParam,
+      startClipS: rampStartClipS,
+      endClipS: t1,
+      startAtS: rampStartAtS,
+      endAtS: Math.max(rampStartAtS, startAtS + (t1 - window.currentClipLocalS) / globalSpeed),
+      getGainAtClipTime: gainAtClipTime,
+    });
+  }
+}
+
 export interface WebAudioEngineOptions {
   getVfs?: () => IFileSystemAdapter | null;
   getAudioCacheVfsPath?: () => string | null;
@@ -113,7 +202,7 @@ export class WebAudioEngine implements IAudioEngine {
   // pre-schedule source nodes for a given clip. Bigger = more decoder slack
   // (resilient to slow decodes) but more pinned AudioBuffers in memory.
   // 30s = up to ~6 chunks/clip in flight, ~12 MB stereo float32.
-  private readonly schedulingLookaheadS = 30;
+  private readonly streamingLookaheadS = 30;
   private activeNodes = new Set<AudioBufferSourceNode>();
   private activeCleanups = new Map<AudioBufferSourceNode, () => void>();
   private activeGains = new Map<AudioBufferSourceNode, GainNode>();
@@ -123,6 +212,7 @@ export class WebAudioEngine implements IAudioEngine {
   private masterGain: GainNode | null = null;
   private monitorGain: GainNode | null = null;
   private currentClips: AudioEngineClip[] = [];
+  private trackClipsCache: Map<string, AudioEngineClip[]> | null = null;
   private destroyed = false;
   private readonly activePlaybackCollection: AudioNodeCollection = {
     nodes: this.activeNodes,
@@ -265,6 +355,7 @@ export class WebAudioEngine implements IAudioEngine {
       })),
     );
     this.currentClips = clips;
+    this.trackClipsCache = null;
     this.cleanupCache();
     this.startBackgroundPrefetch(clips, generation);
   }
@@ -273,6 +364,7 @@ export class WebAudioEngine implements IAudioEngine {
     this.layoutGeneration += 1;
     const generation = this.layoutGeneration;
     this.currentClips = clips;
+    this.trackClipsCache = null;
     this.cleanupCache();
     this.startBackgroundPrefetch(clips, generation);
     this.stopScrubPreview();
@@ -281,7 +373,9 @@ export class WebAudioEngine implements IAudioEngine {
       const currentTimeUs = this.getCurrentTimeUs();
       this.stopAllNodes({ fadeOutS: TRANSITION_FADE_OUT_S });
       this.scheduler.resetScheduledClips();
-      void this.play(currentTimeUs, this.scheduler.getGlobalSpeed());
+      void this.play(currentTimeUs, this.scheduler.getGlobalSpeed()).catch((err) => {
+        logger.warn('updateTimelineLayout: replay after layout change failed', err);
+      });
     }
   }
 
@@ -417,61 +511,13 @@ export class WebAudioEngine implements IAudioEngine {
     });
 
     const startAtS = window.startAtS;
-    const playedClipDurationS = safeDurationToPlayS / window.effectiveSpeed;
-    const endAtS = startAtS + playedClipDurationS;
 
-    function gainAtClipTime(tClipS: number): number {
-      return getGainAtClipTime({
-        clipDurationS: window.clipDurationS,
-        fadeInS: window.fadeInS,
-        fadeOutS: window.fadeOutS,
-        fadeInCurve: window.fadeInCurve,
-        fadeOutCurve: window.fadeOutCurve,
-        baseGain: window.audioGain,
-        tClipS,
-      });
-    }
-
-    // Clip-local time advances at globalSpeed per wall-clock second, regardless
-    // of the per-clip speed (that's already folded into playbackRate).
-    const globalSpeed = Math.max(1e-9, window.globalSpeed);
-    const clipLocalToCtxS = (tClipS: number) =>
-      startAtS + (tClipS - window.currentClipLocalS) / globalSpeed;
-
-    const t0 = window.currentClipLocalS;
-    const t1 = window.currentClipLocalS + window.remainingInClipS;
-    const gainParam: AudioParam = clipGain.gain;
-
-    gainParam.cancelScheduledValues?.(this.ctx.currentTime);
-    gainParam.setValueAtTime?.(gainAtClipTime(t0), startAtS);
-
-    if (window.fadeInS > 0 && t0 < window.fadeInS && t1 > 0) {
-      const rampEndClipS = Math.min(window.fadeInS, t1);
-      const rampEndAtS = clipLocalToCtxS(rampEndClipS);
-      scheduleGainCurve({
-        gainParam,
-        startClipS: t0,
-        endClipS: rampEndClipS,
-        startAtS,
-        endAtS: rampEndAtS,
-        getGainAtClipTime: gainAtClipTime,
-      });
-    }
-
-    const outStartClipS = window.clipDurationS - window.fadeOutS;
-    if (window.fadeOutS > 0 && t1 > outStartClipS) {
-      const rampStartClipS = Math.max(outStartClipS, t0);
-      const rampStartAtS = clipLocalToCtxS(rampStartClipS);
-      gainParam.setValueAtTime?.(gainAtClipTime(rampStartClipS), rampStartAtS);
-      scheduleGainCurve({
-        gainParam,
-        startClipS: rampStartClipS,
-        endClipS: t1,
-        startAtS: rampStartAtS,
-        endAtS: Math.max(rampStartAtS, endAtS),
-        getGainAtClipTime: gainAtClipTime,
-      });
-    }
+    applyClipGainEnvelope({
+      window,
+      clipGain,
+      startAtS,
+      ctxCurrentTime: this.ctx.currentTime,
+    });
 
     let scheduledTimeS = startAtS;
     let remainingToPlayS = safeDurationToPlayS;
@@ -732,43 +778,39 @@ export class WebAudioEngine implements IAudioEngine {
     const previewEndS = normalizedToUs / 1_000_000;
     const maxPlaybackDurationS = previewDurationUs / 1_000_000;
 
-    for (const clip of this.currentClips) {
-      if (isReversedClip(clip)) continue; // Reverse audio muted in preview
+    const previewClips = this.currentClips.filter((clip) => {
+      if (isReversedClip(clip)) return false; // Reverse audio muted in preview
 
       const clipStartS = clip.startUs / 1_000_000;
       const clipEndS = clipStartS + clip.durationUs / 1_000_000;
 
-      if (clipEndS <= previewStartS || clipStartS >= previewEndS) {
-        continue;
-      }
+      return clipEndS > previewStartS && clipStartS < previewEndS;
+    });
 
-      const chunks = await this.getDecodedChunks(clip);
-      if (chunks.length === 0) {
-        continue;
-      }
+    await Promise.all(
+      previewClips.map(async (clip) => {
+        const chunks = await this.getDecodedChunks(clip);
+        if (chunks.length === 0) return;
 
-      const window = this.buildClipPlaybackWindow(clip, previewStartS, 1);
-      if (!window) {
-        continue;
-      }
+        const window = this.buildClipPlaybackWindow(clip, previewStartS, 1);
+        if (!window) return;
 
-      const clippedDurationS = Math.min(window.remainingInClipS, maxPlaybackDurationS);
-      if (clippedDurationS <= 0) {
-        continue;
-      }
+        const clippedDurationS = Math.min(window.remainingInClipS, maxPlaybackDurationS);
+        if (clippedDurationS <= 0) return;
 
-      await this.playClipSegment(
-        clip,
-        chunks,
-        { ...window, remainingInClipS: clippedDurationS },
-        {
-          maxPlaybackDurationS,
-          nodeSet: this.activeScrubCollection.nodes,
-          cleanupMap: this.activeScrubCollection.cleanups,
-          gainMap: this.activeScrubCollection.gains,
-        },
-      );
-    }
+        await this.playClipSegment(
+          clip,
+          chunks,
+          { ...window, remainingInClipS: clippedDurationS },
+          {
+            maxPlaybackDurationS,
+            nodeSet: this.activeScrubCollection.nodes,
+            cleanupMap: this.activeScrubCollection.cleanups,
+            gainMap: this.activeScrubCollection.gains,
+          },
+        );
+      }),
+    );
   }
 
   stopScrubPreview() {
@@ -832,10 +874,7 @@ export class WebAudioEngine implements IAudioEngine {
     // silently ignored parameter edits.
     const same =
       effects.length === this.currentMasterAudioEffects.length &&
-      effects.every((e, i) => {
-        const other = this.currentMasterAudioEffects[i];
-        return JSON.stringify(e) === JSON.stringify(other);
-      });
+      effects.every((e, i) => deepEqualEffects(e, this.currentMasterAudioEffects[i]));
     if (same) return;
 
     // Bump the generation so any in-flight async build from a previous call is
@@ -898,13 +937,28 @@ export class WebAudioEngine implements IAudioEngine {
     return Math.round(s * 1_000_000);
   }
 
+  private getTrackClipsCache(): Map<string, AudioEngineClip[]> {
+    if (this.trackClipsCache) return this.trackClipsCache;
+    const cache = new Map<string, AudioEngineClip[]>();
+    for (const clip of this.currentClips) {
+      const trackKey = clip.trackId ?? '__no_track__';
+      const list = cache.get(trackKey);
+      if (list) list.push(clip);
+      else cache.set(trackKey, [clip]);
+    }
+    for (const list of cache.values()) {
+      list.sort((a, b) => a.startUs - b.startUs);
+    }
+    this.trackClipsCache = cache;
+    return cache;
+  }
+
   private getAdjacentClips(clip: AudioEngineClip): {
     previousClip: AudioEngineClip | null;
     nextClip: AudioEngineClip | null;
   } {
-    const sameTrack = this.currentClips
-      .filter((candidate) => candidate.trackId === clip.trackId)
-      .sort((a, b) => a.startUs - b.startUs);
+    const trackKey = clip.trackId ?? '__no_track__';
+    const sameTrack = this.getTrackClipsCache().get(trackKey) ?? [];
     const idx = sameTrack.findIndex((candidate) => candidate.id === clip.id);
     return {
       previousClip: idx > 0 ? (sameTrack[idx - 1] ?? null) : null,
@@ -1036,60 +1090,13 @@ export class WebAudioEngine implements IAudioEngine {
     }
 
     const totalSafeDurationS = window.remainingInClipS * window.clipSpeed;
-    const playedClipDurationS = totalSafeDurationS / window.effectiveSpeed;
-    const endAtS = playStartS + playedClipDurationS;
 
-    // Fade envelope on clipGain — set up once for the whole clip.
-    const gainAtClipTime = (tClipS: number) =>
-      getGainAtClipTime({
-        clipDurationS: window.clipDurationS,
-        fadeInS: window.fadeInS,
-        fadeOutS: window.fadeOutS,
-        fadeInCurve: window.fadeInCurve,
-        fadeOutCurve: window.fadeOutCurve,
-        baseGain: window.audioGain,
-        tClipS,
-      });
-
-    // Clip-local time advances at globalSpeed per wall-clock second.
-    const globalSpeed = Math.max(1e-9, window.globalSpeed);
-    const clipLocalToCtxS = (tClipS: number) =>
-      playStartS + (tClipS - window.currentClipLocalS) / globalSpeed;
-
-    const t0 = window.currentClipLocalS;
-    const t1 = window.currentClipLocalS + window.remainingInClipS;
-    const gainParam: AudioParam = clipGain.gain;
-
-    gainParam.cancelScheduledValues?.(ctx.currentTime);
-    gainParam.setValueAtTime?.(gainAtClipTime(t0), playStartS);
-
-    if (window.fadeInS > 0 && t0 < window.fadeInS && t1 > 0) {
-      const rampEndClipS = Math.min(window.fadeInS, t1);
-      const rampEndAtS = clipLocalToCtxS(rampEndClipS);
-      scheduleGainCurve({
-        gainParam,
-        startClipS: t0,
-        endClipS: rampEndClipS,
-        startAtS: playStartS,
-        endAtS: rampEndAtS,
-        getGainAtClipTime: gainAtClipTime,
-      });
-    }
-
-    const outStartClipS = window.clipDurationS - window.fadeOutS;
-    if (window.fadeOutS > 0 && t1 > outStartClipS) {
-      const rampStartClipS = Math.max(outStartClipS, t0);
-      const rampStartAtS = clipLocalToCtxS(rampStartClipS);
-      gainParam.setValueAtTime?.(gainAtClipTime(rampStartClipS), rampStartAtS);
-      scheduleGainCurve({
-        gainParam,
-        startClipS: rampStartClipS,
-        endClipS: t1,
-        startAtS: rampStartAtS,
-        endAtS: Math.max(rampStartAtS, endAtS),
-        getGainAtClipTime: gainAtClipTime,
-      });
-    }
+    applyClipGainEnvelope({
+      window,
+      clipGain,
+      startAtS: playStartS,
+      ctxCurrentTime: ctx.currentTime,
+    });
 
     // Streaming state shared across chunk schedules.
     const targetNodeSet = this.activePlaybackCollection.nodes;
@@ -1160,6 +1167,12 @@ export class WebAudioEngine implements IAudioEngine {
       if (state.scheduledCtxTimeS >= ctxNow) return;
       const lostCtxS = ctxNow - state.scheduledCtxTimeS;
       const lostSourceS = lostCtxS * window.effectiveSpeed;
+      if (lostCtxS > 0.1) {
+        logger.warn(
+          `[streamClipPlayback] Decoder fell behind by ${lostCtxS.toFixed(2)}s — ` +
+            `dropping ${lostSourceS.toFixed(2)}s of audio to maintain sync`,
+        );
+      }
       // The next chunk no longer abuts the previous one's faded tail, so it
       // must fade in from silence rather than crossfade.
       state.pendingLeadOverlapS = 0;
@@ -1310,7 +1323,7 @@ export class WebAudioEngine implements IAudioEngine {
       if (!this.scheduler.isPlayingActive()) return false;
       if (!this.ctx) return false;
 
-      const slackS = state.scheduledCtxTimeS - this.ctx.currentTime - this.schedulingLookaheadS;
+      const slackS = state.scheduledCtxTimeS - this.ctx.currentTime - this.streamingLookaheadS;
       if (slackS <= 0) return true;
 
       // Sleep until we're close enough to needing the next chunk — but cap so

@@ -69,6 +69,29 @@ describe('AudioGraphBuilder', () => {
     expect(panner.disconnect).toHaveBeenCalled();
   });
 
+  it('disconnects clipGain on destroy as safety net', async () => {
+    const ctx = createMockContext();
+    const builder = new AudioGraphBuilder();
+    const source = new MockGainNode();
+    const clipGain = new MockGainNode();
+    const masterGain = new MockGainNode();
+
+    const result = await builder.buildClipGraph({
+      audioContext: ctx,
+      sourceNode: source,
+      audioBalance: 0,
+      effects: [],
+      clipGain,
+      masterGain,
+      trackId: 'track-safety',
+      analyserNodes: new Map(),
+    });
+
+    await result.destroy();
+
+    expect(clipGain.disconnect).toHaveBeenCalled();
+  });
+
   it('creates and registers track analyser', async () => {
     const ctx = createMockContext();
     const builder = new AudioGraphBuilder();

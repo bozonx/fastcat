@@ -543,7 +543,6 @@ struct SegmentWindow {
     frames_to_write: usize,
     segment_start: f64,
     segment_duration: f64,
-    segment_end: f64,
 }
 
 /// Computes where (and how much of) `layer` lands in the current chunk's mix buffer.
@@ -577,7 +576,6 @@ fn compute_layer_segment(
         frames_to_write,
         segment_start,
         segment_duration,
-        segment_end: segment_start + segment_duration,
     })
 }
 
@@ -586,7 +584,6 @@ struct DecodePrepareParams<'a> {
     source_start: f64,
     segment_duration: f64,
     speed: f64,
-    reversed: bool,
     sample_rate: u32,
     output_channels: usize,
     target: AudioRenderTarget,
@@ -594,7 +591,7 @@ struct DecodePrepareParams<'a> {
     chunk_start_sec: f64,
 }
 
-/// Decodes one layer's chunk, applying optional reversal and per-layer audio effects.
+/// Decodes one layer's chunk, applying per-layer audio effects.
 /// Returns `Ok(None)` when the layer should be silently skipped (no audio track, or a
 /// non-propagated decode error), `Ok(Some(samples))` with the prepared interleaved buffer.
 fn decode_and_prepare_layer(
@@ -606,7 +603,6 @@ fn decode_and_prepare_layer(
         source_start,
         segment_duration,
         speed,
-        reversed,
         sample_rate,
         output_channels,
         target,
@@ -621,7 +617,6 @@ fn decode_and_prepare_layer(
         timeline_duration_sec: segment_duration,
         speed,
         target,
-        reverse: reversed,
         shared,
     })
     .with_context(|| format!("decode audio layer {}", layer.id))
@@ -646,10 +641,6 @@ fn decode_and_prepare_layer(
         }
     };
 
-    if reversed {
-        reverse_frames(&mut decoded, output_channels);
-    }
-
     // Apply audio effects (LV2/CLAP/VST3 or native) before mixing.
     // The PluginHost has its own mutex, so plugin processing does not block
     // transport commands, cache updates, or producer state publication.
@@ -667,7 +658,7 @@ fn decode_and_prepare_layer(
     Ok(Some(decoded))
 }
 
-/// Decodes, optionally reverses, and mixes a single layer into `buffer`.
+/// Decodes and mixes a single layer into `buffer`.
 /// Returns `true` if the layer contributed audio to this chunk.
 fn mix_layer_into(
     params: MixLayerParams<'_>,
@@ -696,25 +687,8 @@ fn mix_layer_into(
         return Ok(false);
     };
 
-    // Reverse audio is NOT supported in this version. A clip with negative `speed`
-    // (a per-layer reversed clip, while the global transport still runs forward)
-    // produces NO sound — neither in the monitor preview NOR in export — so the two
-    // always agree. Global reverse PLAYBACK (negative transport speed) is likewise
-    // silent, gated upstream in the producer (`global_speed > 0.0`), so this only
-    // covers the per-layer case. The forward-decode + frame-reverse plumbing below
-    // is intentionally left in place (and stays compiler-reachable) for a future
-    // version, but is never executed while reverse audio is unsupported.
-    let reversed = layer.speed < 0.0;
-    if reversed {
-        return Ok(false);
-    }
-
     let speed = sanitize_speed(layer.speed.abs());
-    let source_start = if reversed {
-        layer.source_pts_at(segment.segment_end)
-    } else {
-        layer.source_pts_at(segment.segment_start)
-    };
+    let source_start = layer.source_pts_at(segment.segment_start);
 
     let Some(decoded) = decode_and_prepare_layer(
         DecodePrepareParams {
@@ -722,7 +696,6 @@ fn mix_layer_into(
             source_start,
             segment_duration: segment.segment_duration,
             speed,
-            reversed,
             sample_rate,
             output_channels,
             target,
@@ -777,21 +750,6 @@ fn chunk_write_range(
         .clamp(write_start as i64, chunk_frames as i64) as usize;
 
     (write_start, write_end.saturating_sub(write_start))
-}
-
-/// Reverses an interleaved buffer frame-by-frame, preserving channel order
-/// within each frame, for any channel count.
-fn reverse_frames(decoded: &mut [f32], channels: usize) {
-    if channels == 0 {
-        return;
-    }
-    let num_frames = decoded.len() / channels;
-    for i in 0..num_frames / 2 {
-        let j = num_frames - 1 - i;
-        for ch in 0..channels {
-            decoded.swap(i * channels + ch, j * channels + ch);
-        }
-    }
 }
 
 /// Applies a track bus gain and stereo balance, then accumulates into the
@@ -1527,159 +1485,6 @@ mod tests {
         assert_eq!(resolve_track_for_layer("abc", &tracks).unwrap().id, "abc");
         assert_eq!(resolve_track_for_layer("a_take", &tracks).unwrap().id, "a");
         assert!(resolve_track_for_layer("ab", &tracks).is_none());
-    }
-
-    #[test]
-    fn reverse_frames_flips_interleaved_buffer() {
-        let mut buf = vec![1.0f32, 1.1, 2.0, 2.1, 3.0, 3.1, 4.0, 4.1];
-        reverse_frames(&mut buf, 2);
-        assert_eq!(buf, vec![4.0, 4.1, 3.0, 3.1, 2.0, 2.1, 1.0, 1.1]);
-    }
-
-    #[test]
-    fn reverse_frames_mono_works() {
-        let mut buf = vec![1.0f32, 2.0, 3.0, 4.0];
-        reverse_frames(&mut buf, 1);
-        assert_eq!(buf, vec![4.0, 3.0, 2.0, 1.0]);
-    }
-
-    #[test]
-    fn reversed_source_start_computes_from_timeline_end() {
-        let l = SceneAudioLayer {
-            id: "rev".into(),
-            track_id: None,
-            path: "/tmp/x.wav".into(),
-            timeline_start_sec: 0.0,
-            timeline_end_sec: 10.0,
-            source_start_sec: 5.0,
-            source_range_duration_sec: 0.0,
-            speed: -1.0,
-            audio_gain: 1.0,
-            audio_balance: 0.0,
-            audio_fade_in_sec: 0.0,
-            audio_fade_out_sec: 0.0,
-            audio_fade_in_curve: AudioFadeCurve::Linear,
-            audio_fade_out_curve: AudioFadeCurve::Linear,
-            audio_effects: vec![],
-        };
-        let segment_end = 0.05;
-        let source_start = l.source_pts_at(segment_end);
-        assert!(
-            (source_start - 14.949).abs() < 1e-9,
-            "expected 14.949, got {}",
-            source_start
-        );
-    }
-
-    #[test]
-    fn reversed_source_range_duration_respected() {
-        let l = SceneAudioLayer {
-            id: "rev_dur".into(),
-            track_id: None,
-            path: "/tmp/x.wav".into(),
-            timeline_start_sec: 0.0,
-            timeline_end_sec: 10.0,
-            source_start_sec: 5.0,
-            source_range_duration_sec: 8.0,
-            speed: -1.0,
-            audio_gain: 1.0,
-            audio_balance: 0.0,
-            audio_fade_in_sec: 0.0,
-            audio_fade_out_sec: 0.0,
-            audio_fade_in_curve: AudioFadeCurve::Linear,
-            audio_fade_out_curve: AudioFadeCurve::Linear,
-            audio_effects: vec![],
-        };
-        let segment_end = 0.05;
-        let source_start = l.source_pts_at(segment_end);
-        assert!(
-            (source_start - 12.949).abs() < 1e-9,
-            "expected 12.949, got {}",
-            source_start
-        );
-    }
-
-    #[test]
-    fn reversed_layer_is_muted_in_preview() {
-        // Reverse audio is unsupported: a negative-speed clip contributes nothing in
-        // the monitor. Uses a real fixture so a `false` result can only come from the
-        // reverse mute, not from a decode failure on a missing path.
-        let path = "../test/fixtures/media/sample-1s-audio.mp3";
-        let l = SceneAudioLayer {
-            id: "rev".into(),
-            track_id: None,
-            path: path.into(),
-            timeline_start_sec: 0.0,
-            timeline_end_sec: 10.0,
-            source_start_sec: 0.0,
-            source_range_duration_sec: 0.0,
-            speed: -1.0,
-            audio_gain: 1.0,
-            audio_balance: 0.0,
-            audio_fade_in_sec: 0.0,
-            audio_fade_out_sec: 0.0,
-            audio_fade_in_curve: AudioFadeCurve::Linear,
-            audio_fade_out_curve: AudioFadeCurve::Linear,
-            audio_effects: vec![],
-        };
-        let shared = Arc::new((Mutex::new(AudioShared::default()), Condvar::new()));
-        let preview_result = mix_layer_into(
-            MixLayerParams {
-                buffer: &mut vec![0.0f32; 4800],
-                layer: &l,
-                chunk_start_sec: 0.0,
-                chunk_end_sec: 0.05,
-                frames: 2400,
-                sample_rate: 48000,
-                output_channels: 2,
-                target: AudioRenderTarget::monitor(48000, 2),
-                shared: &shared,
-            },
-            DecodeErrorPolicy::WarnAndSkip,
-        )
-        .unwrap();
-        assert!(!preview_result, "reverse audio must be muted in preview");
-    }
-
-    #[test]
-    fn reversed_layer_is_muted_in_export() {
-        // Reverse audio is unsupported in export too, so preview and export agree:
-        // a negative-speed clip is silent everywhere.
-        let path = "../test/fixtures/media/sample-1s-audio.mp3";
-        let l = SceneAudioLayer {
-            id: "rev".into(),
-            track_id: None,
-            path: path.into(),
-            timeline_start_sec: 0.0,
-            timeline_end_sec: 10.0,
-            source_start_sec: 0.0,
-            source_range_duration_sec: 0.0,
-            speed: -1.0,
-            audio_gain: 1.0,
-            audio_balance: 0.0,
-            audio_fade_in_sec: 0.0,
-            audio_fade_out_sec: 0.0,
-            audio_fade_in_curve: AudioFadeCurve::Linear,
-            audio_fade_out_curve: AudioFadeCurve::Linear,
-            audio_effects: vec![],
-        };
-        let shared = Arc::new((Mutex::new(AudioShared::default()), Condvar::new()));
-        let export_result = mix_layer_into(
-            MixLayerParams {
-                buffer: &mut vec![0.0f32; 4800],
-                layer: &l,
-                chunk_start_sec: 0.0,
-                chunk_end_sec: 0.05,
-                frames: 2400,
-                sample_rate: 48000,
-                output_channels: 2,
-                target: AudioRenderTarget::export(48000, 2),
-                shared: &shared,
-            },
-            DecodeErrorPolicy::WarnAndSkip,
-        )
-        .unwrap();
-        assert!(!export_result, "reverse audio must be muted in export");
     }
 
     #[test]

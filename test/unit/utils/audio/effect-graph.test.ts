@@ -100,6 +100,41 @@ describe('buildAudioEffectGraph', () => {
     expect(result.outputNode).toBeInstanceOf(MockGainNode);
   });
 
+  it('uses linear wet/dry mix (no +3dB bump at midpoint)', async () => {
+    const ctx = createMockContext();
+    const source = new MockAudioNode();
+    await buildAudioEffectGraph({
+      audioContext: ctx,
+      sourceNode: source,
+      effects: [{ id: '1', type: 'audio-simple', enabled: true, target: 'audio', wet: 0.5 }],
+    });
+    // 3 gain nodes: dry, wet, output
+    const gainNodes = vi.mocked(ctx.createGain).mock.results.map((r) => r.value as MockGainNode);
+    const dryGain = gainNodes[0];
+    const wetGain = gainNodes[1];
+    // At wet=0.5, linear mix gives dry=0.5, wet=0.5 (sum=1.0, no +3dB bump)
+    expect(dryGain.gain.value).toBe(0.5);
+    expect(wetGain.gain.value).toBe(0.5);
+  });
+
+  it('linear mix sums to 1 at all wet values', async () => {
+    for (const wet of [0, 0.25, 0.5, 0.75, 1]) {
+      const ctx = createMockContext();
+      const source = new MockAudioNode();
+      await buildAudioEffectGraph({
+        audioContext: ctx,
+        sourceNode: source,
+        effects: [{ id: '1', type: 'audio-simple', enabled: true, target: 'audio', wet }],
+      });
+      const gainNodes = vi.mocked(ctx.createGain).mock.results.map(
+        (r) => r.value as MockGainNode,
+      );
+      const dryGain = gainNodes[0];
+      const wetGain = gainNodes[1];
+      expect(dryGain.gain.value + wetGain.gain.value).toBeCloseTo(1, 10);
+    }
+  });
+
   it('bypasses wet/dry for disableGlobalWet effects', async () => {
     const ctx = createMockContext();
     const source = new MockAudioNode();

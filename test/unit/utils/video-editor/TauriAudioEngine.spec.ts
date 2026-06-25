@@ -211,10 +211,20 @@ describe('TauriAudioEngine', () => {
     expect(unlistenMock).toHaveBeenCalledTimes(2);
   });
 
-  it('syncTime event updates scheduler time', async () => {
+  it('syncTime event updates scheduler time when playing', async () => {
+    const engine = await createEngine();
+    await engine.play(0);
+    const handler = listenMock.mock.calls[0]?.[1] as (event: { payload: number }) => void;
+    handler({ payload: 12.34 });
+    // Allow small wall-clock drift since Tauri uses performance.now()
+    expect(engine.getCurrentTimeUs()).toBeCloseTo(12_340_000, -4);
+  });
+
+  it('syncTime event is ignored when not playing', async () => {
     const engine = await createEngine();
     const handler = listenMock.mock.calls[0]?.[1] as (event: { payload: number }) => void;
     handler({ payload: 12.34 });
-    expect(engine.getCurrentTimeUs()).toBe(12_340_000);
+    // Should remain at 0 since syncTime is guarded by isPlaying
+    expect(engine.getCurrentTimeUs()).toBe(0);
   });
 });

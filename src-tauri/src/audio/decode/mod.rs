@@ -383,7 +383,6 @@ pub(crate) struct StreamChunkRequest {
     pub source_start_sec: f64,
     pub timeline_duration_sec: f64,
     pub speed: f64,
-    pub reverse: bool,
     pub target_sample_rate: u32,
     pub output_channels: usize,
 }
@@ -396,7 +395,6 @@ pub(crate) struct StreamChunkParams<'a> {
     pub speed: f64,
     pub target_sample_rate: u32,
     pub output_channels: usize,
-    pub reverse: bool,
     pub shared: &'a Arc<(Mutex<AudioShared>, Condvar)>,
 }
 
@@ -415,7 +413,6 @@ pub(crate) fn stream_layer_chunk(params: StreamChunkParams<'_>) -> Result<Vec<f3
         speed,
         target_sample_rate,
         output_channels,
-        reverse,
         shared,
     } = params;
 
@@ -423,7 +420,6 @@ pub(crate) fn stream_layer_chunk(params: StreamChunkParams<'_>) -> Result<Vec<f3
         source_start_sec,
         timeline_duration_sec,
         speed,
-        reverse,
         target_sample_rate,
         output_channels,
     };
@@ -525,7 +521,7 @@ struct ChunkDecodeCtx {
 impl SymphoniaDecoder {
     /// Decodes one chunk of `timeline_duration_sec` to interleaved f32 at the target
     /// rate/channels, continuing sequentially from the previous chunk where possible
-    /// and reseeking only on a discontinuity (or any reverse chunk).
+    /// and reseeking only on a discontinuity.
     fn decode_chunk(&mut self, req: &StreamChunkRequest) -> Result<Vec<f32>> {
         let target_sample_rate = req.target_sample_rate;
         let output_channels = req.output_channels;
@@ -539,8 +535,8 @@ impl SymphoniaDecoder {
         let source_advance_sec = timeline_duration_sec * speed;
         let current_ratio = target_sample_rate as f64 / (self.source_rate as f64 * speed);
 
-        // Phase 1: reseek on a discontinuity (or any reverse chunk) and re-prime the
-        // resampler. `None` means the seek landed past end-of-stream → emit silence.
+        // Phase 1: reseek on a discontinuity and re-prime the resampler.
+        // `None` means the seek landed past end-of-stream → emit silence.
         let discard_frames_remaining =
             match self.seek_and_reprime(req, current_ratio, source_advance_sec)? {
                 Some(discard) => discard,
@@ -604,7 +600,7 @@ impl SymphoniaDecoder {
     }
 
     /// Phase 1: seeks to `req.source_start_sec` when the request isn't a sequential
-    /// continuation (or is reversed) and re-primes the resampler/remainder state.
+    /// continuation and re-primes the resampler/remainder state.
     /// Returns the number of leading source frames to discard so decoding starts exactly
     /// at the requested position, or `None` if the seek landed past end-of-stream (the
     /// caller emits a silent chunk).
@@ -617,8 +613,7 @@ impl SymphoniaDecoder {
         let source_start_sec = req.source_start_sec;
         let seek_tolerance_sec =
             (source_advance_sec.abs() * SEEK_TOLERANCE_CHUNK_FRACTION).max(SEEK_TOLERANCE_MIN_SEC);
-        let needs_seek = req.reverse
-            || source_start_sec < self.last_decode_end_sec - seek_tolerance_sec
+        let needs_seek = source_start_sec < self.last_decode_end_sec - seek_tolerance_sec
             || source_start_sec > self.last_decode_end_sec + seek_tolerance_sec;
         if !needs_seek {
             return Ok(Some(0));
@@ -973,10 +968,10 @@ impl FfmpegStreamSource {
     /// Decodes one chunk. Forward 1× chunks read on from the LONG-LIVED ffmpeg/swr
     /// child so back-to-back chunks are sample-continuous (no per-chunk reseek → no
     /// boundary clicks); a non-sequential request or a target rate/channel change
-    /// reseeks by killing and respawning ffmpeg. Speed/reverse chunks (rare for an
+    /// reseeks by killing and respawning ffmpeg. Speed chunks (rare for an
     /// ffmpeg-only codec) fall to a per-chunk one-shot `ffmpeg -ss` decode.
     fn decode_chunk(&mut self, req: &StreamChunkRequest) -> Result<Vec<f32>> {
-        if req.reverse || (req.speed - 1.0).abs() > 1e-6 {
+        if (req.speed - 1.0).abs() > 1e-6 {
             return decode_chunk_ffmpeg(DecodeChunkFfmpegParams {
                 path: &self.path,
                 source_start_sec: req.source_start_sec,
@@ -1200,7 +1195,6 @@ pub(crate) struct DecodeAudioChunkParams<'a> {
     pub timeline_duration_sec: f64,
     pub speed: f64,
     pub target: AudioRenderTarget,
-    pub reverse: bool,
     pub shared: &'a Arc<(Mutex<AudioShared>, Condvar)>,
 }
 
@@ -1212,7 +1206,6 @@ pub(crate) fn decode_audio_chunk(params: DecodeAudioChunkParams<'_>) -> Result<V
         timeline_duration_sec,
         speed,
         target,
-        reverse,
         shared,
     } = params;
     let sample_rate = target.sample_rate;
@@ -1227,9 +1220,9 @@ pub(crate) fn decode_audio_chunk(params: DecodeAudioChunkParams<'_>) -> Result<V
     } else {
         0.0
     };
-    // Only forward, 1× clips are served from a window; reverse / speed-shifted
+    // Only forward, 1× clips are served from a window; speed-shifted
     // clips always stream (the window is a contiguous forward buffer).
-    let is_cacheable = (speed - 1.0).abs() <= 1e-6 && !reverse;
+    let is_cacheable = (speed - 1.0).abs() <= 1e-6;
 
     let stream = || {
         stream_layer_chunk(StreamChunkParams {
@@ -1240,7 +1233,6 @@ pub(crate) fn decode_audio_chunk(params: DecodeAudioChunkParams<'_>) -> Result<V
             speed,
             target_sample_rate: sample_rate,
             output_channels,
-            reverse,
             shared,
         })
     };
@@ -1551,7 +1543,6 @@ mod tests {
             timeline_duration_sec: 0.05,
             speed: 1.0,
             target: AudioRenderTarget::monitor(48_000, 2),
-            reverse: false,
             shared: &shared,
         })?;
 
@@ -1612,7 +1603,6 @@ mod tests {
                 timeline_duration_sec: chunk_sec,
                 speed: 1.0,
                 target: AudioRenderTarget::export(rate, 1),
-                reverse: false,
                 shared: &shared,
             })?;
             assert_eq!(chunk.len(), chunk_frames, "each export chunk must be exact");
@@ -1681,7 +1671,6 @@ mod tests {
             speed: 1.0,
             target_sample_rate: 48000,
             output_channels: 2,
-            reverse: false,
             shared: &shared,
         })?;
         let expected = (0.5f64 * 48000.0).round() as usize * 2;
@@ -1703,7 +1692,6 @@ mod tests {
             timeline_duration_sec: 0.05,
             speed: 1.0,
             target,
-            reverse: false,
             shared: &shared,
         })?;
 
@@ -1748,7 +1736,6 @@ mod tests {
             timeline_duration_sec: 0.05,
             speed: 1.0,
             target: AudioRenderTarget::export(48000, 2),
-            reverse: false,
             shared: &shared,
         })?;
 
@@ -1797,7 +1784,6 @@ mod tests {
                     speed: 1.0,
                     target_sample_rate: 48000,
                     output_channels: 2,
-                    reverse: false,
                     shared: &shared,
                 })?;
                 assert_eq!(c.len(), chunk_frames * 2);
@@ -1846,7 +1832,6 @@ mod tests {
             speed: 1.0,
             target_sample_rate: 48000,
             output_channels: 2,
-            reverse: false,
             shared: &shared,
         })?;
         let full = decode_range_symphonia(&path_str, 0.0, 2.0, 48000, 2)?;
@@ -1924,7 +1909,6 @@ mod tests {
                 speed: 1.0,
                 target_sample_rate: rate,
                 output_channels: 1,
-                reverse: false,
                 shared: &shared,
             })?;
             assert_eq!(chunk.len(), chunk_frames, "each export chunk must be exact");
@@ -1968,7 +1952,6 @@ mod tests {
             speed: 1.0,
             target_sample_rate: 44100,
             output_channels: 2,
-            reverse: false,
             shared: &shared,
         })?;
         let frames = chunk.len() / 2;
@@ -1984,48 +1967,6 @@ mod tests {
             !decoder.resample_output_remainder.is_empty(),
             "priming should leave surplus resampled audio for the next chunk"
         );
-        Ok(())
-    }
-
-    #[test]
-    fn decode_chunk_reverse_resampled_stays_full() -> anyhow::Result<()> {
-        let path = concat!(
-            env!("CARGO_MANIFEST_DIR"),
-            "/../test/fixtures/media/sample-1s-audio.mp3"
-        );
-        let shared = Arc::new((Mutex::new(AudioShared::default()), Condvar::new()));
-        let expected_frames = (0.05f64 * 44100.0).round() as usize;
-        for i in 0..3 {
-            let src = 0.5 - i as f64 * 0.05;
-            let chunk = stream_layer_chunk(StreamChunkParams {
-                layer_id: "rev-layer",
-                path,
-                source_start_sec: src,
-                timeline_duration_sec: 0.05,
-                speed: 1.0,
-                target_sample_rate: 44100,
-                output_channels: 2,
-                reverse: true,
-                shared: &shared,
-            })?;
-            assert_eq!(
-                chunk.len() / 2,
-                expected_frames,
-                "reverse chunk exact length"
-            );
-            let state = shared.0.lock();
-            let Some(LayerDecoder::Symphonia(decoder)) = state.decoders.get("rev-layer") else {
-                return Err(anyhow::anyhow!("symphonia decoder cached"));
-            };
-            assert!(
-                decoder.resampler_primed,
-                "reverse resampler should be primed"
-            );
-            assert!(
-                !decoder.resample_output_remainder.is_empty(),
-                "reverse priming should leave surplus resampled audio"
-            );
-        }
         Ok(())
     }
 
@@ -2068,7 +2009,6 @@ mod tests {
                 timeline_duration_sec: chunk_sec,
                 speed: 1.0,
                 target,
-                reverse: false,
                 shared: &shared,
             })?;
             assert_eq!(chunk.len(), chunk_samples, "chunk {k} wrong length");
@@ -2148,7 +2088,6 @@ mod tests {
             speed: 1.0,
             target_sample_rate: 44100,
             output_channels: 2,
-            reverse: false,
             shared: &shared,
         })?;
         let expected_samples = (0.05f64 * 44100.0).round() as usize * 2;
@@ -2184,7 +2123,6 @@ mod tests {
             speed: 1.0,
             target_sample_rate: 44100,
             output_channels: 2,
-            reverse: false,
             shared: &shared,
         })?;
 
@@ -2255,7 +2193,6 @@ mod tests {
             timeline_duration_sec: 0.05,
             speed: 1.0,
             target: AudioRenderTarget::monitor(48000, 2),
-            reverse: false,
             shared: &shared,
         })?;
 
@@ -2309,7 +2246,6 @@ mod tests {
             timeline_duration_sec: 0.05,
             speed: 1.0,
             target: AudioRenderTarget::monitor(48000, 2),
-            reverse: false,
             shared: &shared,
         })?;
 
@@ -2358,7 +2294,6 @@ mod tests {
             timeline_duration_sec: 0.05,
             speed: 1.0,
             target: AudioRenderTarget::monitor(48000, 2),
-            reverse: false,
             shared: &shared,
         })?;
         let _ = end_frame;
@@ -2413,7 +2348,6 @@ mod tests {
             timeline_duration_sec: 0.05,
             speed: 1.0,
             target: AudioRenderTarget::monitor(48000, 2),
-            reverse: false,
             shared: &shared,
         })?;
 
@@ -2480,7 +2414,6 @@ mod tests {
             timeline_duration_sec: 0.05,
             speed: 1.0,
             target: AudioRenderTarget::monitor(48000, 2),
-            reverse: false,
             shared: &shared,
         })?;
 
@@ -2517,7 +2450,6 @@ mod tests {
             timeline_duration_sec: 0.05,
             speed: 1.0,
             target: AudioRenderTarget::monitor(48000, 2),
-            reverse: false,
             shared: &shared,
         })?;
 
@@ -2558,7 +2490,6 @@ mod tests {
             timeline_duration_sec: 0.05,
             speed: 1.0,
             target: AudioRenderTarget::monitor(48000, 2),
-            reverse: false,
             shared: &shared,
         })?;
 
@@ -2618,7 +2549,9 @@ mod tests {
         let path_str = path.to_string_lossy().to_string();
         let shared = Arc::new((Mutex::new(AudioShared::default()), Condvar::new()));
 
-        // Saturate the budget: a fresh fill must NOT claim a slot or spawn.
+        // Saturate the budget: a speculative fill must NOT claim a slot or spawn.
+        // Live fills can exceed the cap by LIVE_RESERVE_SLOTS, so we use Speculative
+        // to test the base concurrency limit.
         shared.0.lock().active_window_fill_count = WINDOW_FILL_MAX_CONCURRENCY;
         spawn_window_fill(
             &shared,
@@ -2627,7 +2560,7 @@ mod tests {
             0,
             48000,
             2,
-            WindowFillPriority::Live,
+            WindowFillPriority::Speculative,
         );
         std::thread::sleep(std::time::Duration::from_millis(30));
         {

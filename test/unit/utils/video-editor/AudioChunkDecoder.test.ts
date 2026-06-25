@@ -50,3 +50,36 @@ describe('AudioChunkDecoder.getForRange', () => {
     decoder.destroy();
   });
 });
+
+describe('AudioChunkDecoder chunk key separator', () => {
+  it('handles source keys with colons (Windows paths, URLs)', () => {
+    const decoder = createDecoder();
+    const sourceKey = 'C:\\Users\\test:audio.mp3';
+    const chunkIndex = 3;
+
+    // Access private methods via cast
+    const getChunkKey = (decoder as any).getChunkKey.bind(decoder);
+    const getSourceKeyFromChunkKey = (decoder as any).getSourceKeyFromChunkKey.bind(decoder);
+
+    const chunkKey = getChunkKey(sourceKey, chunkIndex);
+    const extractedSourceKey = getSourceKeyFromChunkKey(chunkKey);
+
+    expect(extractedSourceKey).toBe(sourceKey);
+    decoder.destroy();
+  });
+
+  it('handles source keys with URL-style colons', () => {
+    const decoder = createDecoder();
+    const sourceKey = 'https://example.com:8080/audio.wav';
+    const chunkIndex = 10;
+
+    const getChunkKey = (decoder as any).getChunkKey.bind(decoder);
+    const getSourceKeyFromChunkKey = (decoder as any).getSourceKeyFromChunkKey.bind(decoder);
+
+    const chunkKey = getChunkKey(sourceKey, chunkIndex);
+    const extractedSourceKey = getSourceKeyFromChunkKey(chunkKey);
+
+    expect(extractedSourceKey).toBe(sourceKey);
+    decoder.destroy();
+  });
+});

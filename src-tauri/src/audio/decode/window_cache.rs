@@ -9,6 +9,9 @@ use crate::audio::shared::{AudioShared, AudioWindow, WINDOW_SEC};
 
 /// Maximum number of concurrent bounded background decodes.
 pub(super) const WINDOW_FILL_MAX_CONCURRENCY: usize = 2;
+/// Extra concurrency slot reserved for Live-priority fills so they are never
+/// blocked by Speculative fills already in flight.
+pub(super) const LIVE_RESERVE_SLOTS: usize = 1;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum WindowFillPriority {
@@ -30,14 +33,15 @@ pub(crate) fn spawn_window_fill(
         if state.window_fill_in_flight.get(layer_id) == Some(&target_start_frame) {
             return;
         }
-        // Speculative fills yield to Live fills when concurrency is at the limit;
-        // Live fills also respect the cap so background decodes don't starve the
-        // producer's own inline streaming reads.
-        if state.active_window_fill_count >= WINDOW_FILL_MAX_CONCURRENCY {
-            if priority == WindowFillPriority::Speculative {
-                return;
-            }
-            // Live fills also respect the concurrency limit to avoid disk thrash.
+        // Speculative fills are capped at MAX_CONCURRENCY. Live fills can exceed
+        // the cap by LIVE_RESERVE_SLOTS so they are never blocked by speculative
+        // fills already in flight.
+        let active = state.active_window_fill_count;
+        let cap = match priority {
+            WindowFillPriority::Live => WINDOW_FILL_MAX_CONCURRENCY + LIVE_RESERVE_SLOTS,
+            WindowFillPriority::Speculative => WINDOW_FILL_MAX_CONCURRENCY,
+        };
+        if active >= cap {
             return;
         }
         state
@@ -117,6 +121,14 @@ fn window_fill(
                 samples: Arc::new(samples),
             };
             let mut state = shared.0.lock();
+            // Discard the result if the layer was removed from a non-empty scene
+            // while the decode was running (seek, scene change, clip delete).
+            // An empty scene (test default / not-yet-set) is allowed through.
+            if !state.scene.is_empty()
+                && !state.scene.iter().any(|l| l.id == layer_id)
+            {
+                return;
+            }
             if state.window_fill_in_flight.get(&layer_id) == Some(&target_start_frame) {
                 state.layer_windows.insert(layer_id, window);
                 shared.1.notify_all();

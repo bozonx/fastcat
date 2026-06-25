@@ -88,6 +88,14 @@ export class AudioGraphBuilder {
             /* no-op */
           }
         }
+        // Disconnect clipGain outputs as a safety net — the caller also
+        // disconnects clipGain, but this ensures no stale connections to
+        // trackAnalyser or masterGain leak if destroy() is called standalone.
+        try {
+          clipGain.disconnect();
+        } catch {
+          /* no-op */
+        }
       },
     };
   }

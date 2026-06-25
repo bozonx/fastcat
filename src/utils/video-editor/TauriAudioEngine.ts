@@ -112,7 +112,7 @@ export class TauriAudioEngine implements IAudioEngine {
   }
 
   async play(timeUs: number, speed = 1) {
-    this.scheduler.play(timeUs, speed);
+    await this.scheduler.play(timeUs, speed);
   }
 
   stop() {

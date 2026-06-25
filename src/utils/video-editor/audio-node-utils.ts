@@ -52,11 +52,13 @@ export function stopNodeCollection(
     cleanup?: () => void | Promise<void>;
   }> = [];
 
+  const gainMap = options.gains;
+
   for (const node of nodes) {
     const cleanup = cleanups.get(node);
 
     if (stopAtS > 0) {
-      const gain = options.gains?.get(node);
+      const gain = gainMap?.get(node);
       if (gain) {
         const gainParam = gain.gain;
         try {
@@ -83,17 +85,22 @@ export function stopNodeCollection(
     stopNode(node, cleanup);
   }
 
-  nodes.clear();
-  cleanups.clear();
-  options.gains?.clear();
-
   if (pendingStops.length === 0 || stopAtS <= 0) {
+    nodes.clear();
+    cleanups.clear();
+    gainMap?.clear();
     return;
   }
 
+  // Defer clearing the collections until after the fadeOut window so that
+  // a concurrent stopAllNodes() call during the fade can still find and
+  // force-stop these nodes instead of leaking audio.
   globalThis.setTimeout(() => {
     for (const pending of pendingStops) {
       cleanupNode(pending.node, pending.cleanup);
+      nodes.delete(pending.node);
+      cleanups.delete(pending.node);
+      gainMap?.delete(pending.node);
     }
   }, fadeOutS * 1000);
 }

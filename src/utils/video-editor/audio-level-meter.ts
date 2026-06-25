@@ -9,7 +9,6 @@
 export class AudioLevelMeter {
   // map keyed by trackId, plus the special 'master' bus
   readonly analyserNodes = new Map<string, AnalyserNode>();
-  private readonly analyserData = new Float32Array(2048);
 
   /**
    * Creates the master-bus analyser, registers it under the `'master'` key and
@@ -38,14 +37,15 @@ export class AudioLevelMeter {
       return { rmsDb: -60, peakDb: -60 };
     }
 
-    analyser.getFloatTimeDomainData(this.analyserData);
+    const analyserData = new Float32Array(analyser.fftSize);
+    analyser.getFloatTimeDomainData(analyserData);
 
     let sumSquares = 0;
     let peak = 0;
     let count = 0;
-    const len = this.analyserData.length;
+    const len = analyserData.length;
     for (let i = 0; i < len; i++) {
-      const val = this.analyserData[i];
+      const val = analyserData[i];
       if (val === undefined || !Number.isFinite(val)) continue;
       const abs = Math.abs(val);
       sumSquares += abs * abs;

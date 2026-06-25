@@ -91,9 +91,10 @@ export async function buildAudioEffectGraph<TContext extends BaseAudioContext>({
     }
 
     const wet = normalizeWet(effect.wet);
-    // Equal-power crossfade
-    const dryGain = Math.cos(wet * 0.5 * Math.PI);
-    const wetGain = Math.cos((1.0 - wet) * 0.5 * Math.PI);
+    // Linear wet/dry mix: dry + wet = 1 at all positions, ensuring constant
+    // amplitude. Equal-power (cos/sin) gave a +3 dB bump at the midpoint.
+    const dryGain = 1 - wet;
+    const wetGain = wet;
 
     const dryGainNode = audioContext.createGain();
     dryGainNode.gain.value = dryGain;
