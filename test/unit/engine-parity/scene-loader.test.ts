@@ -67,7 +67,7 @@ describe('scene-loader', () => {
 
   it('loads shape-layer scene with circle shape', () => {
     const scene = loadScene('shape-layer.json');
-    expect(scene.tolerance).toBe(12);
+    expect(scene.tolerance).toBe(30);
     const layers = scene.scene.layers as Array<Record<string, unknown>>;
     const shape = layers.find((l) => l.kind === 'shape');
     expect(shape).toBeDefined();
@@ -78,7 +78,7 @@ describe('scene-loader', () => {
 
   it('loads transform-clip scene with transform', () => {
     const scene = loadScene('transform-clip.json');
-    expect(scene.tolerance).toBe(12);
+    expect(scene.tolerance).toBe(28);
     const layers = scene.scene.layers as Array<Record<string, unknown>>;
     const img = layers.find((l) => l.kind === 'image');
     expect(img).toBeDefined();

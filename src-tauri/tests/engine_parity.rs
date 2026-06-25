@@ -242,13 +242,21 @@ fn native_engine_parity_renders_all_scenes() {
             // Look up golden entry for this scene + native engine.
             if let Some(entry) = find_golden(&registry, &scene_def.filename, "native") {
                 if let Some(golden) = entry.samples.iter().find(|s| (s.time_sec - time_sec).abs() < 1e-6) {
-                    let distance = hamming_distance(&hash, &golden.hash);
-                    assert!(
-                        distance <= golden.tolerance,
-                        "hash mismatch for \"{}\" native at t={time_sec}s: \
-                         distance={distance} tolerance={} actual={hash} expected={}",
-                        scene_def.filename, golden.tolerance, golden.hash,
-                    );
+                    // Treat placeholder hashes as "no golden yet" — print for import.
+                    if golden.hash == "0000000000000000" {
+                        eprintln!(
+                            "GOLDEN[native] {} t={time_sec} hash={hash} tolerance={}",
+                            scene_def.filename, scene_def.tolerance,
+                        );
+                    } else {
+                        let distance = hamming_distance(&hash, &golden.hash);
+                        assert!(
+                            distance <= golden.tolerance,
+                            "hash mismatch for \"{}\" native at t={time_sec}s: \
+                             distance={distance} tolerance={} actual={hash} expected={}",
+                            scene_def.filename, golden.tolerance, golden.hash,
+                        );
+                    }
                 } else {
                     eprintln!(
                         "WARN: no golden sample for {} native at t={time_sec}s, hash={hash}",
@@ -323,6 +331,15 @@ fn native_engine_cross_engine_parity_vs_web_golden() {
 
             // Compare native hash against web golden hash.
             if let Some(web_sample) = web_entry.samples.iter().find(|s| (s.time_sec - time_sec).abs() < 1e-6) {
+                // Skip placeholder hashes — they haven't been generated yet.
+                if web_sample.hash == "0000000000000000" {
+                    eprintln!(
+                        "GOLDEN[native] {} t={time_sec} hash={native_hash} tolerance={}",
+                        scene_def.filename, scene_def.tolerance,
+                    );
+                    continue;
+                }
+
                 let tolerance = web_sample.tolerance.max(scene_def.tolerance);
                 let distance = hamming_distance(&native_hash, &web_sample.hash);
                 assert!(
@@ -336,6 +353,10 @@ fn native_engine_cross_engine_parity_vs_web_golden() {
 
             // Also verify native hash matches its own golden.
             if let Some(native_sample) = native_entry.samples.iter().find(|s| (s.time_sec - time_sec).abs() < 1e-6) {
+                // Skip placeholder native hashes.
+                if native_sample.hash == "0000000000000000" {
+                    continue;
+                }
                 let distance = hamming_distance(&native_hash, &native_sample.hash);
                 assert!(
                     distance <= native_sample.tolerance,

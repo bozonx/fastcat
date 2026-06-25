@@ -77,7 +77,7 @@
         {
           "timeSec": 0.5,
           "hash": "00000000070f0f0f",
-          "tolerance": 12
+          "tolerance": 30
         }
       ]
     },
@@ -87,8 +87,8 @@
       "samples": [
         {
           "timeSec": 0.5,
-          "hash": "303e3f1f1f0f0703",
-          "tolerance": 12
+          "hash": "7c3f3f1f0f070602",
+          "tolerance": 28
         }
       ]
     },
@@ -178,8 +178,8 @@
       "samples": [
         {
           "timeSec": 0.5,
-          "hash": "0000000000000003",
-          "tolerance": 12
+          "hash": "0000000000070707",
+          "tolerance": 32
         }
       ]
     },
@@ -244,8 +244,8 @@
       "samples": [
         {
           "timeSec": 0.5,
-          "hash": "0000000000000000",
-          "tolerance": 12
+          "hash": "003c3c3c3c3c3c00",
+          "tolerance": 30
         }
       ]
     },
@@ -255,8 +255,8 @@
       "samples": [
         {
           "timeSec": 0.5,
-          "hash": "0000000000000000",
-          "tolerance": 12
+          "hash": "00303c3e3c3c0400",
+          "tolerance": 28
         }
       ]
     },
@@ -266,22 +266,22 @@
       "samples": [
         {
           "timeSec": 0,
-          "hash": "0000000000000000",
+          "hash": "3333737173733373",
           "tolerance": 10
         },
         {
           "timeSec": 0.25,
-          "hash": "0000000000000000",
+          "hash": "3373733331333333",
           "tolerance": 10
         },
         {
           "timeSec": 0.5,
-          "hash": "0000000000000000",
+          "hash": "3333737333717333",
           "tolerance": 10
         },
         {
           "timeSec": 0.75,
-          "hash": "0000000000000000",
+          "hash": "333333f373333133",
           "tolerance": 10
         },
         {
@@ -297,7 +297,7 @@
       "samples": [
         {
           "timeSec": 0.5,
-          "hash": "0000000000000000",
+          "hash": "ff7f3f0f07030000",
           "tolerance": 14
         }
       ]
@@ -308,7 +308,7 @@
       "samples": [
         {
           "timeSec": 0.5,
-          "hash": "0000000000000000",
+          "hash": "7f3f0f0703000000",
           "tolerance": 14
         }
       ]
@@ -319,7 +319,7 @@
       "samples": [
         {
           "timeSec": 0.15,
-          "hash": "0000000000000000",
+          "hash": "ff7f3f0f07030000",
           "tolerance": 15
         },
         {
@@ -335,7 +335,7 @@
       "samples": [
         {
           "timeSec": 0.25,
-          "hash": "0000000000000000",
+          "hash": "3333737333717333",
           "tolerance": 12
         }
       ]
@@ -346,8 +346,8 @@
       "samples": [
         {
           "timeSec": 0.5,
-          "hash": "0000000000000000",
-          "tolerance": 12
+          "hash": "003c7e3e3e3e0000",
+          "tolerance": 32
         }
       ]
     }

@@ -53,18 +53,17 @@ function runNativeParity(): Promise<string> {
 
     proc.on('error', (error) => reject(error));
     proc.on('close', (code) => {
-      // Cargo exits 0 even when tests skip, so we accept 0 only. A non-zero
-      // code means a real test failure, which we surface rather than silently
-      // importing partial golden data.
-      if (code !== 0) {
+      // Cargo may exit non-zero when placeholder golden hashes cause assertion
+      // failures, but the GOLDEN[native] lines are still printed to stderr
+      // before the assertion fires. Capture them regardless of exit code.
+      const output = stderr + stdout;
+      if (code !== 0 && output.length === 0) {
         reject(
-          new Error(
-            `cargo test engine_parity exited with code ${code}\n\nstdout:\n${stdout}\n\nstderr:\n${stderr}`,
-          ),
+          new Error(`cargo test engine_parity exited with code ${code} and produced no output`),
         );
         return;
       }
-      resolve(stderr + stdout);
+      resolve(output);
     });
   });
 }

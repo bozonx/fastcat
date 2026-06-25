@@ -118,6 +118,10 @@ test.describe('Web engine parity @parity', () => {
         const nativeSample = findGoldenSample(nativeEntry, webSample.timeSec);
         if (!nativeSample) continue;
 
+        // Skip placeholder hashes — they haven't been generated yet.
+        const PLACEHOLDER = '0000000000000000';
+        if (webSample.hash === PLACEHOLDER || nativeSample.hash === PLACEHOLDER) continue;
+
         const match = compareHash(
           webSample.hash,
           nativeSample.hash,

@@ -79,6 +79,11 @@ function buildClipsFromScene(
     const sourceRangeDurationSec = layer.source_range_duration_sec as number;
 
     // Map scene-layer transform (snake_case) to worker payload transform (camelCase).
+    // Scene JSON x/y are absolute scene-space pixel coordinates (anchor point position).
+    // ClipTransform.position is an offset from the center-fitted position, so we
+    // convert: offset = absolute - sceneCenter.
+    const sceneWidth = scene.width as number;
+    const sceneHeight = scene.height as number;
     const sceneTransform = layer.transform as Record<string, unknown> | undefined;
     const transform = sceneTransform
       ? {
@@ -88,8 +93,8 @@ function buildClipsFromScene(
           },
           rotationDeg: (sceneTransform.rotation_deg as number) ?? 0,
           position: {
-            x: (sceneTransform.x as number) ?? 0,
-            y: (sceneTransform.y as number) ?? 0,
+            x: ((sceneTransform.x as number) ?? sceneWidth / 2) - sceneWidth / 2,
+            y: ((sceneTransform.y as number) ?? sceneHeight / 2) - sceneHeight / 2,
           },
           anchor: {
             x: (sceneTransform.anchor_x as number) ?? 0.5,
