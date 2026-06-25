@@ -3,6 +3,7 @@ import { describe, it, expect } from 'vitest';
 import {
   loadScene,
   listSceneFiles,
+  loadAllScenes,
   collectSceneMediaPaths,
   resolveMediaPath,
 } from '../../integration/engine-parity/helpers/scene-loader';
@@ -13,6 +14,12 @@ describe('scene-loader', () => {
     expect(scene).toHaveProperty('scene');
     expect(scene).toHaveProperty('sample_times_sec');
     expect(scene.sample_times_sec).toContain(0.5);
+    expect(scene.tolerance).toBe(10);
+  });
+
+  it('loads text-layer scene with wider tolerance', () => {
+    const scene = loadScene('text-layer.json');
+    expect(scene.tolerance).toBe(18);
   });
 
   it('lists all scene fixture files', () => {
@@ -38,5 +45,23 @@ describe('scene-loader', () => {
   it('resolves media paths relative to the project root', () => {
     const path = resolveMediaPath('image/image.jpg');
     expect(path).toMatch(/test\/fixtures\/media\/image\/image\.jpg$/);
+  });
+
+  it('loadAllScenes returns all scenes sorted by filename with tolerance', () => {
+    const scenes = loadAllScenes();
+    expect(scenes.length).toBeGreaterThanOrEqual(5);
+
+    // Verify sorted by filename.
+    const filenames = scenes.map((s) => s.filename);
+    const sorted = [...filenames].sort();
+    expect(filenames).toEqual(sorted);
+
+    // Each scene must have a tolerance.
+    for (const { filename, fixture } of scenes) {
+      expect(fixture.tolerance).toBeGreaterThan(0);
+      expect(fixture.scene).toBeDefined();
+      expect(fixture.sample_times_sec).toBeInstanceOf(Array);
+      expect(filename).toMatch(/\.json$/);
+    }
   });
 });

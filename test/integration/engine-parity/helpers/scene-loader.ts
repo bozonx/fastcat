@@ -1,5 +1,6 @@
 import { readFileSync, readdirSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { DEFAULT_TOLERANCE } from './frame-hash';
 
 /**
  * A scene fixture loaded from `shared/scenes/`.
@@ -9,6 +10,12 @@ import { resolve } from 'node:path';
 export interface SceneFixture {
   scene: Record<string, unknown>;
   sample_times_sec: number[];
+  /**
+   * Maximum Hamming distance allowed between engine hashes and the golden.
+   * Scenes with text rendering use a higher tolerance due to font
+   * rasterization divergence between web and native.
+   */
+  tolerance: number;
 }
 
 const SCENES_DIR = resolve(process.cwd(), 'shared/scenes');
@@ -22,6 +29,22 @@ export function loadScene(filename: string): SceneFixture {
 /** List all scene fixture filenames in `shared/scenes/`. */
 export function listSceneFiles(): string[] {
   return readdirSync(SCENES_DIR).filter((f) => f.endsWith('.json'));
+}
+
+/**
+ * Load all scene fixtures from `shared/scenes/`, sorted by filename.
+ * Each scene's `tolerance` defaults to `DEFAULT_TOLERANCE` if not set in JSON.
+ */
+export function loadAllScenes(): Array<{ filename: string; fixture: SceneFixture }> {
+  return listSceneFiles()
+    .sort()
+    .map((filename) => {
+      const fixture = loadScene(filename);
+      if (fixture.tolerance === undefined) {
+        fixture.tolerance = DEFAULT_TOLERANCE;
+      }
+      return { filename, fixture };
+    });
 }
 
 /**

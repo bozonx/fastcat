@@ -21,34 +21,12 @@ import {
   loadGoldenRegistry,
   saveGoldenRegistry,
 } from '../test/integration/engine-parity/helpers/golden-compare';
-import {
-  DEFAULT_TOLERANCE,
-  TEXT_SCENE_TOLERANCE,
-} from '../test/integration/engine-parity/helpers/frame-hash';
+import { loadAllScenes } from '../test/integration/engine-parity/helpers/scene-loader';
 
 const E2E_PORT = Number(process.env.E2E_PORT ?? 3007);
 const BASE_URL = process.env.E2E_BASE_URL ?? `http://localhost:${E2E_PORT}`;
 
-const SCENES_DIR = resolve(process.cwd(), 'shared/scenes');
 const MEDIA_DIR = resolve(process.cwd(), 'test/fixtures/media');
-
-interface SceneDef {
-  filename: string;
-  tolerance: number;
-}
-
-const SCENES: SceneDef[] = [
-  { filename: 'solid-background.json', tolerance: DEFAULT_TOLERANCE },
-  { filename: 'video-clip.json', tolerance: DEFAULT_TOLERANCE },
-  { filename: 'image-overlay.json', tolerance: DEFAULT_TOLERANCE },
-  { filename: 'text-layer.json', tolerance: TEXT_SCENE_TOLERANCE },
-  { filename: 'multi-layer-blend.json', tolerance: DEFAULT_TOLERANCE },
-];
-
-interface SceneFixture {
-  scene: Record<string, unknown>;
-  sample_times_sec: number[];
-}
 
 /**
  * Poll a URL until it responds or timeout is reached.
@@ -146,10 +124,10 @@ async function genWebGolden(): Promise<void> {
 
     const registry = loadGoldenRegistry();
 
-    for (const { filename, tolerance } of SCENES) {
-      const sceneData = JSON.parse(
-        readFileSync(resolve(SCENES_DIR, filename), 'utf8'),
-      ) as SceneFixture;
+    const scenes = loadAllScenes();
+
+    for (const { filename, fixture: sceneData } of scenes) {
+      const tolerance = sceneData.tolerance;
 
       const scene = sceneData.scene as {
         layers: Array<Record<string, unknown>>;

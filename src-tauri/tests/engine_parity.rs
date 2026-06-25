@@ -52,8 +52,8 @@ fn compute_frame_hash(rgba: &[u8], width: usize, height: usize) -> String {
     let mean: f64 = grid.iter().sum::<f64>() / 64.0;
 
     let mut hash: u128 = 0;
-    for i in 0..64 {
-        if grid[i] > mean {
+    for (i, &val) in grid.iter().enumerate() {
+        if val > mean {
             hash |= 1u128 << (63 - i);
         }
     }
@@ -111,10 +111,19 @@ fn find_golden<'r>(
 
 // ── Scene fixture loader ──
 
+const DEFAULT_TOLERANCE: usize = 10;
+
+fn default_tolerance() -> usize {
+    DEFAULT_TOLERANCE
+}
+
 #[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 struct SceneFixture {
     scene: serde_json::Value,
     sample_times_sec: Vec<f64>,
+    #[serde(default = "default_tolerance")]
+    tolerance: usize,
 }
 
 fn scenes_dir() -> PathBuf {
@@ -129,6 +138,44 @@ fn load_scene(filename: &str) -> SceneFixture {
         .unwrap_or_else(|e| panic!("failed to read scene {filename}: {e}"));
     serde_json::from_str(&raw)
         .unwrap_or_else(|e| panic!("failed to parse scene {filename}: {e}"))
+}
+
+/// A scene discovered at runtime from `shared/scenes/`.
+struct DiscoveredScene {
+    filename: String,
+    tolerance: usize,
+}
+
+/// Scan `shared/scenes/` for all `*.json` files and return them sorted by name.
+/// This replaces the former hardcoded SCENES array so that adding a new scene
+/// is as simple as dropping a JSON file into the directory.
+fn discover_scenes() -> Vec<DiscoveredScene> {
+    let dir = scenes_dir();
+    let mut scenes: Vec<DiscoveredScene> = Vec::new();
+
+    for entry in std::fs::read_dir(&dir)
+        .unwrap_or_else(|e| panic!("failed to read scenes dir {}: {e}", dir.display()))
+    {
+        let entry = entry.expect("dir entry");
+        let path = entry.path();
+        if path.extension().and_then(|e| e.to_str()) != Some("json") {
+            continue;
+        }
+        let filename = path
+            .file_name()
+            .and_then(|n| n.to_str())
+            .expect("valid filename")
+            .to_owned();
+
+        let fixture = load_scene(&filename);
+        scenes.push(DiscoveredScene {
+            filename,
+            tolerance: fixture.tolerance,
+        });
+    }
+
+    scenes.sort_by(|a, b| a.filename.cmp(&b.filename));
+    scenes
 }
 
 /// Resolve relative media paths in a scene to absolute paths under
@@ -149,21 +196,6 @@ fn resolve_scene_media_paths(scene_json: &mut serde_json::Value) {
     }
 }
 
-// ── Test scenes ──
-
-struct ParityScene {
-    filename: &'static str,
-    tolerance: usize,
-}
-
-const SCENES: &[ParityScene] = &[
-    ParityScene { filename: "solid-background.json", tolerance: 10 },
-    ParityScene { filename: "video-clip.json", tolerance: 10 },
-    ParityScene { filename: "image-overlay.json", tolerance: 10 },
-    ParityScene { filename: "text-layer.json", tolerance: 18 },
-    ParityScene { filename: "multi-layer-blend.json", tolerance: 10 },
-];
-
 #[test]
 fn native_engine_parity_renders_all_scenes() {
     skip_unless!(
@@ -175,12 +207,13 @@ fn native_engine_parity_renders_all_scenes() {
         "no wgpu adapter (headless CI without software Vulkan)"
     );
 
+    let scenes = discover_scenes();
     let registry = load_golden_registry();
     let mut compositor = Compositor::new();
     let dev_id = compositor.ensure_offscreen_device().expect("offscreen device");
 
-    for scene_def in SCENES {
-        let mut fixture = load_scene(scene_def.filename);
+    for scene_def in &scenes {
+        let mut fixture = load_scene(&scene_def.filename);
         resolve_scene_media_paths(&mut fixture.scene);
 
         let monitor_scene: MonitorScene =
@@ -208,7 +241,7 @@ fn native_engine_parity_renders_all_scenes() {
             let hash = compute_frame_hash(&pixels, width as usize, height as usize);
 
             // Look up golden entry for this scene + native engine.
-            if let Some(entry) = find_golden(&registry, scene_def.filename, "native") {
+            if let Some(entry) = find_golden(&registry, &scene_def.filename, "native") {
                 if let Some(golden) = entry.samples.iter().find(|s| (s.time_sec - time_sec).abs() < 1e-6) {
                     let distance = hamming_distance(&hash, &golden.hash);
                     assert!(
@@ -249,18 +282,20 @@ fn native_engine_cross_engine_parity_vs_web_golden() {
     let mut compositor = Compositor::new();
     let dev_id = compositor.ensure_offscreen_device().expect("offscreen device");
 
-    for scene_def in SCENES {
+    let scenes = discover_scenes();
+
+    for scene_def in &scenes {
         // Only test scenes that have BOTH web and native golden entries.
-        let web_entry = match find_golden(&registry, scene_def.filename, "web") {
+        let web_entry = match find_golden(&registry, &scene_def.filename, "web") {
             Some(e) => e,
             None => continue,
         };
-        let native_entry = match find_golden(&registry, scene_def.filename, "native") {
+        let native_entry = match find_golden(&registry, &scene_def.filename, "native") {
             Some(e) => e,
             None => continue,
         };
 
-        let mut fixture = load_scene(scene_def.filename);
+        let mut fixture = load_scene(&scene_def.filename);
         resolve_scene_media_paths(&mut fixture.scene);
 
         let monitor_scene: MonitorScene =

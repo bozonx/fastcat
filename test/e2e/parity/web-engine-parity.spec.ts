@@ -13,27 +13,12 @@ import {
   findGoldenSample,
   compareHash,
 } from '../../integration/engine-parity/helpers/golden-compare';
-import {
-  computeFrameHash,
-  DEFAULT_TOLERANCE,
-  TEXT_SCENE_TOLERANCE,
-} from '../../integration/engine-parity/helpers/frame-hash';
+import { loadAllScenes } from '../../integration/engine-parity/helpers/scene-loader';
+import { computeFrameHash } from '../../integration/engine-parity/helpers/frame-hash';
 
-const SCENES_DIR = resolve(process.cwd(), 'shared/scenes');
 const MEDIA_DIR = resolve(process.cwd(), 'test/fixtures/media');
 
-interface SceneTestFile {
-  filename: string;
-  tolerance: number;
-}
-
-const SCENES: SceneTestFile[] = [
-  { filename: 'solid-background.json', tolerance: DEFAULT_TOLERANCE },
-  { filename: 'video-clip.json', tolerance: DEFAULT_TOLERANCE },
-  { filename: 'image-overlay.json', tolerance: DEFAULT_TOLERANCE },
-  { filename: 'text-layer.json', tolerance: TEXT_SCENE_TOLERANCE },
-  { filename: 'multi-layer-blend.json', tolerance: DEFAULT_TOLERANCE },
-];
+const SCENES = loadAllScenes();
 
 test.describe('Web engine parity @parity', () => {
   test.skip(({ browserName }) => browserName !== 'chromium', 'WebGPU parity requires Chromium');
@@ -47,11 +32,10 @@ test.describe('Web engine parity @parity', () => {
     test.skip(!info.available, `WebGPU not available: ${info.reason ?? 'unknown'}`);
   });
 
-  for (const { filename, tolerance } of SCENES) {
+  for (const { filename, fixture } of SCENES) {
+    const tolerance = fixture.tolerance;
     test(`web renders "${filename}" matching golden hash`, async ({ page }) => {
-      const sceneData = JSON.parse(
-        readFileSync(resolve(SCENES_DIR, filename), 'utf8'),
-      ) as WebSceneData;
+      const sceneData = fixture as unknown as WebSceneData;
 
       // Load media fixtures referenced by the scene into OPFS.
       const scene = sceneData.scene as {
@@ -119,7 +103,8 @@ test.describe('Web engine parity @parity', () => {
     // It only runs if both golden sets exist.
     const registry = loadGoldenRegistry();
 
-    for (const { filename, tolerance } of SCENES) {
+    for (const { filename, fixture } of SCENES) {
+      const tolerance = fixture.tolerance;
       const webEntry = findGoldenEntry(registry, filename, 'web');
       const nativeEntry = findGoldenEntry(registry, filename, 'native');
       if (!webEntry || !nativeEntry) continue;
