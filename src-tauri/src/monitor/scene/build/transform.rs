@@ -135,6 +135,8 @@ pub fn text_anchor_offset(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::compositor::scene::LayerKind as CompLayerKind;
+    use crate::monitor::scene::SceneLayerTransform;
 
     /// Cross-engine parity contract — pairs with the web test
     /// `test/unit/utils/video-editor/source-orientation.parity.test.ts`.
@@ -154,6 +156,132 @@ mod tests {
                 (got - want).abs() < 1e-9,
                 "orientation `{orientation:?}`: got {got}, want {want}"
             );
+        }
+    }
+
+    #[test]
+    fn normalized_right_angle_maps_to_0_90_180_270() {
+        assert_eq!(normalized_right_angle(0.0), 0);
+        assert_eq!(normalized_right_angle(90.0), 90);
+        assert_eq!(normalized_right_angle(180.0), 180);
+        assert_eq!(normalized_right_angle(270.0), 270);
+        assert_eq!(normalized_right_angle(360.0), 0);
+        assert_eq!(normalized_right_angle(450.0), 90);
+        assert_eq!(normalized_right_angle(-90.0), 270);
+        assert_eq!(normalized_right_angle(45.0), 0);
+        assert_eq!(normalized_right_angle(89.4), 0);
+        assert_eq!(normalized_right_angle(90.4), 90);
+    }
+
+    #[test]
+    fn local_crop_no_rotation_returns_original() {
+        let transform = test_transform(0.1, 0.2, 0.3, 0.4);
+        let crop = local_crop_from_display_transform(&transform, 0.0, true);
+        assert_eq!(crop.top, 0.1);
+        assert_eq!(crop.bottom, 0.2);
+        assert_eq!(crop.left, 0.3);
+        assert_eq!(crop.right, 0.4);
+    }
+
+    #[test]
+    fn local_crop_non_raster_returns_original() {
+        let transform = test_transform(0.1, 0.2, 0.3, 0.4);
+        let crop = local_crop_from_display_transform(&transform, 90.0, false);
+        assert_eq!(crop.top, 0.1);
+        assert_eq!(crop.bottom, 0.2);
+        assert_eq!(crop.left, 0.3);
+        assert_eq!(crop.right, 0.4);
+    }
+
+    #[test]
+    fn local_crop_90_degrees_rotates_crop() {
+        let transform = test_transform(0.1, 0.2, 0.3, 0.4);
+        let crop = local_crop_from_display_transform(&transform, 90.0, true);
+        // 90°: top=right, right=bottom, bottom=left, left=top
+        assert_eq!(crop.top, 0.4);
+        assert_eq!(crop.right, 0.2);
+        assert_eq!(crop.bottom, 0.3);
+        assert_eq!(crop.left, 0.1);
+    }
+
+    #[test]
+    fn local_crop_180_degrees_rotates_crop() {
+        let transform = test_transform(0.1, 0.2, 0.3, 0.4);
+        let crop = local_crop_from_display_transform(&transform, 180.0, true);
+        // 180°: top=bottom, right=left, bottom=top, left=right
+        assert_eq!(crop.top, 0.2);
+        assert_eq!(crop.right, 0.3);
+        assert_eq!(crop.bottom, 0.1);
+        assert_eq!(crop.left, 0.4);
+    }
+
+    #[test]
+    fn local_crop_270_degrees_rotates_crop() {
+        let transform = test_transform(0.1, 0.2, 0.3, 0.4);
+        let crop = local_crop_from_display_transform(&transform, 270.0, true);
+        // 270°: top=left, right=top, bottom=right, left=bottom
+        assert_eq!(crop.top, 0.3);
+        assert_eq!(crop.right, 0.1);
+        assert_eq!(crop.bottom, 0.4);
+        assert_eq!(crop.left, 0.2);
+    }
+
+    #[test]
+    fn oriented_fit_scale_no_rotation() {
+        // 1920x1080 into 1920x1080 → 1.0
+        let scale = oriented_fit_scale((1920, 1080), (1920, 1080), 0.0);
+        assert!((scale - 1.0).abs() < 1e-9);
+
+        // 1920x1080 into 960x540 → 0.5
+        let scale = oriented_fit_scale((1920, 1080), (960, 540), 0.0);
+        assert!((scale - 0.5).abs() < 1e-9);
+    }
+
+    #[test]
+    fn oriented_fit_scale_quarter_turn_swaps_natural() {
+        // 1920x1080 rotated 90° → natural becomes 1080x1920, fit into 1920x1080
+        let scale = oriented_fit_scale((1920, 1080), (1920, 1080), 90.0);
+        // fit_natural = (1080, 1920), scale = min(1920/1080, 1080/1920) = 1080/1920 = 0.5625
+        assert!((scale - 1080.0 / 1920.0).abs() < 1e-9);
+    }
+
+    #[test]
+    fn oriented_fit_scale_zero_dimensions_clamped_to_one() {
+        let scale = oriented_fit_scale((0, 0), (1920, 1080), 0.0);
+        assert!(scale.is_finite() && scale > 0.0);
+    }
+
+    #[test]
+    fn text_anchor_offset_center_anchor_returns_zero() {
+        let kind = CompLayerKind::Adjustment;
+        let (dx, dy) = text_anchor_offset(&kind, (1920, 1080), 0.5, 0.5);
+        assert!((dx - 0.0).abs() < 1e-9);
+        assert!((dy - 0.0).abs() < 1e-9);
+    }
+
+    #[test]
+    fn text_anchor_offset_non_text_uses_natural_size() {
+        let kind = CompLayerKind::Adjustment;
+        let (dx, dy) = text_anchor_offset(&kind, (1920, 1080), 0.0, 1.0);
+        // dx = (0.0 - 0.5) * 1920 = -960
+        assert!((dx - (-960.0)).abs() < 1e-6);
+        // dy = (1.0 - 0.5) * 1080 = 540
+        assert!((dy - 540.0).abs() < 1e-6);
+    }
+
+    fn test_transform(top: f64, bottom: f64, left: f64, right: f64) -> SceneLayerTransform {
+        SceneLayerTransform {
+            x: 0.0,
+            y: 0.0,
+            scale_x: 1.0,
+            scale_y: 1.0,
+            rotation_deg: 0.0,
+            anchor_x: 0.5,
+            anchor_y: 0.5,
+            crop_top: top,
+            crop_bottom: bottom,
+            crop_left: left,
+            crop_right: right,
         }
     }
 }

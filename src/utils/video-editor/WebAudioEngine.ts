@@ -30,6 +30,7 @@ import type {
 
 const logger = createDevLogger('WebAudioEngine');
 const TRANSITION_FADE_IN_S = 0.02;
+const TRANSITION_FADE_OUT_S = 0.02;
 const CHUNK_EDGE_FADE_S = 0.005;
 
 // Equal-power seam curves, computed once and reused for every chunk boundary.
@@ -186,6 +187,18 @@ export class WebAudioEngine implements IAudioEngine {
     const channelCount = options?.audioChannels === 'mono' ? 1 : 2;
 
     if (this.ctx && this.ctx.sampleRate !== sampleRate) {
+      // Fix #7: Clear all references to nodes from the old context before
+      // closing it, so stale AudioNodes/AnalyserNodes don't leak.
+      this.stopAllNodes();
+      this.stopScrubPreview();
+      this.levelMeter.clear();
+      if (this.masterEffectGraph) {
+        void this.masterEffectGraph.destroy();
+        this.masterEffectGraph = null;
+      }
+      this.masterEffectInput = null;
+      this.masterGain = null;
+      this.monitorGain = null;
       await this.ctx.close();
       this.ctx = null;
     }
@@ -262,10 +275,11 @@ export class WebAudioEngine implements IAudioEngine {
     this.currentClips = clips;
     this.cleanupCache();
     this.startBackgroundPrefetch(clips, generation);
+    this.stopScrubPreview();
     if (this.scheduler.isPlayingActive()) {
-      // Re-evaluate playing nodes
+      // Re-evaluate playing nodes — fade out to avoid a hard cut click.
       const currentTimeUs = this.getCurrentTimeUs();
-      this.stopAllNodes();
+      this.stopAllNodes({ fadeOutS: TRANSITION_FADE_OUT_S });
       this.scheduler.resetScheduledClips();
       void this.play(currentTimeUs, this.scheduler.getGlobalSpeed());
     }
@@ -798,17 +812,29 @@ export class WebAudioEngine implements IAudioEngine {
   setMonitorVolume(volume: number) {
     this.currentMonitorVolume = clampGain(volume);
     if (this.monitorGain) {
-      this.monitorGain.gain.value = this.currentMonitorVolume;
+      const gain = this.monitorGain.gain as AudioParam & {
+        setValueAtTime?: (value: number, startTime: number) => AudioParam;
+        setTargetAtTime?: (target: number, startTime: number, timeConstant: number) => AudioParam;
+      };
+      if (this.ctx && typeof gain.setTargetAtTime === 'function') {
+        gain.setValueAtTime?.(gain.value, this.ctx.currentTime);
+        gain.setTargetAtTime(this.currentMonitorVolume, this.ctx.currentTime, 0.02);
+      } else {
+        gain.value = this.currentMonitorVolume;
+      }
     }
   }
 
   setMasterAudioEffects(effects: import('~/timeline/types').ClipEffect[]) {
     if (!this.ctx || !this.masterEffectInput || !this.masterGain) return;
+    // Deep comparison so parameter changes (wet, frequency, decay, etc.) also
+    // trigger a graph rebuild — the previous shallow id/type/enabled check
+    // silently ignored parameter edits.
     const same =
       effects.length === this.currentMasterAudioEffects.length &&
       effects.every((e, i) => {
         const other = this.currentMasterAudioEffects[i];
-        return e?.id === other?.id && e?.type === other?.type && e?.enabled === other?.enabled;
+        return JSON.stringify(e) === JSON.stringify(other);
       });
     if (same) return;
 

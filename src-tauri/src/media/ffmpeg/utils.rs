@@ -262,4 +262,189 @@ mod tests {
         let v = FfmpegBinaryVerifier::new();
         assert!(v.verify("this_binary_does_not_exist_12345").is_err());
     }
+
+    #[test]
+    fn is_hevc_codec_detects_variants() {
+        assert!(is_hevc_codec("hevc"));
+        assert!(is_hevc_codec("hvc1.1.6.L93.B0"));
+        assert!(is_hevc_codec("hev1.1.6.L93.B0"));
+        assert!(is_hevc_codec("H265"));
+        assert!(is_hevc_codec("h265"));
+        assert!(!is_hevc_codec("h264"));
+        assert!(!is_hevc_codec("av01.0.04M.08"));
+    }
+
+    #[test]
+    fn ffmpeg_video_codec_maps_correctly() {
+        assert_eq!(ffmpeg_video_codec("h264"), "libx264");
+        assert_eq!(ffmpeg_video_codec("av01.0.04M.08"), "libsvtav1");
+        assert_eq!(ffmpeg_video_codec("av1"), "libsvtav1");
+        assert_eq!(ffmpeg_video_codec("vp09.00.10.08"), "libvpx-vp9");
+        assert_eq!(ffmpeg_video_codec("vp9"), "libvpx-vp9");
+        assert_eq!(ffmpeg_video_codec("hevc"), "libx265");
+        assert_eq!(ffmpeg_video_codec("hvc1"), "libx265");
+        assert_eq!(ffmpeg_video_codec("unknown"), "libx264");
+    }
+
+    #[test]
+    fn ffmpeg_video_codec_hw_vaapi() {
+        assert_eq!(
+            ffmpeg_video_codec_hw("h264", HwAccelMode::Vaapi),
+            "h264_vaapi"
+        );
+        assert_eq!(
+            ffmpeg_video_codec_hw("hevc", HwAccelMode::Vaapi),
+            "hevc_vaapi"
+        );
+        assert_eq!(
+            ffmpeg_video_codec_hw("av01", HwAccelMode::Vaapi),
+            "av1_vaapi"
+        );
+        assert_eq!(
+            ffmpeg_video_codec_hw("vp09", HwAccelMode::Vaapi),
+            "vp9_vaapi"
+        );
+    }
+
+    #[test]
+    fn ffmpeg_video_codec_hw_nvenc() {
+        assert_eq!(
+            ffmpeg_video_codec_hw("h264", HwAccelMode::Nvenc),
+            "h264_nvenc"
+        );
+        assert_eq!(
+            ffmpeg_video_codec_hw("hevc", HwAccelMode::Nvdec),
+            "hevc_nvenc"
+        );
+        assert_eq!(
+            ffmpeg_video_codec_hw("av01", HwAccelMode::Nvenc),
+            "av1_nvenc"
+        );
+    }
+
+    #[test]
+    fn ffmpeg_video_codec_hw_none_falls_back_to_software() {
+        assert_eq!(
+            ffmpeg_video_codec_hw("h264", HwAccelMode::None),
+            "libx264"
+        );
+        assert_eq!(
+            ffmpeg_video_codec_hw("h264", HwAccelMode::Auto),
+            "libx264"
+        );
+    }
+
+    #[test]
+    fn even_rounds_up() {
+        assert_eq!(even(3), 4);
+        assert_eq!(even(4), 4);
+        assert_eq!(even(5), 6);
+        assert_eq!(even(0), 2);
+        assert_eq!(even(1), 2);
+        assert_eq!(even(2), 2);
+    }
+
+    #[test]
+    fn format_fps_valid() {
+        assert_eq!(format_fps(30.0), "30.000000");
+        assert_eq!(format_fps(29.97), "29.970000");
+        assert_eq!(format_fps(60.0), "60.000000");
+    }
+
+    #[test]
+    fn format_fps_invalid_defaults_to_30() {
+        assert_eq!(format_fps(0.0), "30.000000");
+        assert_eq!(format_fps(-1.0), "30.000000");
+        assert_eq!(format_fps(f64::NAN), "30.000000");
+        assert_eq!(format_fps(f64::INFINITY), "30.000000");
+    }
+
+    #[test]
+    fn format_time_valid() {
+        assert_eq!(format_time(1.5), "1.500000");
+        assert_eq!(format_time(0.1), "0.100000");
+    }
+
+    #[test]
+    fn format_time_invalid_defaults_to_zero() {
+        assert_eq!(format_time(0.0), "0.000000");
+        assert_eq!(format_time(-1.0), "0.000000");
+        assert_eq!(format_time(f64::NAN), "0.000000");
+    }
+
+    #[test]
+    fn resolve_audio_encoder_opus() {
+        assert_eq!(resolve_audio_encoder(Some("opus"), "mp4"), ("libopus", false));
+        assert_eq!(resolve_audio_encoder(Some("libopus"), "mp4"), ("libopus", false));
+    }
+
+    #[test]
+    fn resolve_audio_encoder_flac_in_mp4() {
+        assert_eq!(resolve_audio_encoder(Some("flac"), "mp4"), ("aac", true));
+        assert_eq!(resolve_audio_encoder(Some("flac"), "webm"), ("libopus", true));
+        assert_eq!(resolve_audio_encoder(Some("flac"), "flac"), ("flac", false));
+    }
+
+    #[test]
+    fn resolve_audio_encoder_pcm_in_webm() {
+        assert_eq!(resolve_audio_encoder(Some("pcm"), "webm"), ("libopus", true));
+        assert_eq!(resolve_audio_encoder(Some("pcm"), "wav"), ("pcm_s16le", false));
+        assert_eq!(resolve_audio_encoder(Some("pcm"), "mp4"), ("aac", true));
+    }
+
+    #[test]
+    fn resolve_audio_encoder_aac_in_webm() {
+        assert_eq!(resolve_audio_encoder(Some("aac"), "webm"), ("libopus", true));
+        assert_eq!(resolve_audio_encoder(Some("aac"), "mp4"), ("aac", false));
+    }
+
+    #[test]
+    fn resolve_audio_encoder_none_default() {
+        assert_eq!(resolve_audio_encoder(None, "mp4"), ("aac", false));
+        assert_eq!(resolve_audio_encoder(None, "webm"), ("libopus", false));
+        assert_eq!(resolve_audio_encoder(None, "wav"), ("pcm_s16le", true));
+        assert_eq!(resolve_audio_encoder(None, "flac"), ("flac", true));
+        assert_eq!(resolve_audio_encoder(None, "mp3"), ("libmp3lame", true));
+    }
+
+    #[test]
+    fn resolve_audio_encoder_vorbis() {
+        assert_eq!(resolve_audio_encoder(Some("vorbis"), "webm"), ("libvorbis", false));
+        assert_eq!(resolve_audio_encoder(Some("vorbis"), "opus"), ("libopus", true));
+    }
+
+    #[test]
+    fn resolve_audio_encoder_mp3() {
+        assert_eq!(resolve_audio_encoder(Some("mp3"), "mp4"), ("libmp3lame", false));
+        assert_eq!(resolve_audio_encoder(Some("mp3"), "webm"), ("libopus", true));
+    }
+
+    #[test]
+    fn resolve_audio_encoder_unknown_falls_back() {
+        assert_eq!(resolve_audio_encoder(Some("unknown"), "mp4"), ("aac", true));
+        assert_eq!(resolve_audio_encoder(Some("unknown"), "webm"), ("libopus", true));
+    }
+
+    #[test]
+    fn parse_rational_valid() {
+        assert!((parse_rational("16/9").unwrap() - 16.0 / 9.0).abs() < 1e-9);
+        assert!((parse_rational("30/1").unwrap() - 30.0).abs() < 1e-9);
+        assert!((parse_rational("30000/1001").unwrap() - 30000.0 / 1001.0).abs() < 1e-9);
+    }
+
+    #[test]
+    fn parse_rational_single_number() {
+        assert!((parse_rational("42").unwrap() - 42.0).abs() < 1e-9);
+    }
+
+    #[test]
+    fn parse_rational_zero_denominator() {
+        assert!(parse_rational("1/0").is_none());
+    }
+
+    #[test]
+    fn parse_rational_invalid() {
+        assert!(parse_rational("abc").is_none());
+        assert!(parse_rational("").is_none());
+    }
 }

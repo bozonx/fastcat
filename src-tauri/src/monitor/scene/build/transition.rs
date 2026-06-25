@@ -136,6 +136,9 @@ pub fn apply_transition_curve(progress: f64, curve: &str) -> f64 {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::compositor::scene::BlendMode;
+    use crate::compositor::transitions::TransitionSpec;
+    use crate::monitor::scene::{LayerKind, SceneTransition};
 
     /// Cross-engine parity contract — pairs with the web test
     /// `test/unit/transitions/transition-curve.parity.test.ts`.
@@ -156,6 +159,179 @@ mod tests {
                 (got - want).abs() < 1e-9,
                 "curve `{curve}`@{progress}: got {got}, want {want}"
             );
+        }
+    }
+
+    #[test]
+    fn apply_transition_curve_linear() {
+        assert!((apply_transition_curve(0.0, "linear") - 0.0).abs() < 1e-9);
+        assert!((apply_transition_curve(0.5, "linear") - 0.5).abs() < 1e-9);
+        assert!((apply_transition_curve(1.0, "linear") - 1.0).abs() < 1e-9);
+    }
+
+    #[test]
+    fn apply_transition_curve_unknown_falls_back_to_linear() {
+        assert!((apply_transition_curve(0.5, "nonexistent") - 0.5).abs() < 1e-9);
+    }
+
+    #[test]
+    fn apply_transition_curve_clamps_input() {
+        assert!((apply_transition_curve(-1.0, "linear") - 0.0).abs() < 1e-9);
+        assert!((apply_transition_curve(2.0, "linear") - 1.0).abs() < 1e-9);
+    }
+
+    #[test]
+    fn compute_transition_opacity_no_transitions_returns_base() {
+        let layer = test_layer(0.0, 10.0, None, None);
+        let opacity = compute_transition_opacity(&layer, 5.0, 0.8);
+        assert!((opacity - 0.8).abs() < 1e-6);
+    }
+
+    #[test]
+    fn compute_transition_opacity_zero_duration_returns_zero() {
+        let layer = test_layer(0.0, 0.0, None, None);
+        let opacity = compute_transition_opacity(&layer, 0.0, 1.0);
+        assert!((opacity - 0.0).abs() < 1e-6);
+    }
+
+    #[test]
+    fn compute_transition_opacity_dissolve_in_fades_from_zero() {
+        let transition = SceneTransition {
+            transition_type: "dissolve".to_string(),
+            duration_sec: 2.0,
+            curve: Some("linear".to_string()),
+            from_layer_id: None,
+            mode: None,
+            spec: None,
+        };
+        let layer = test_layer(0.0, 10.0, Some(transition), None);
+
+        // At t=0 (start of transition): opacity = 0
+        let opacity = compute_transition_opacity(&layer, 0.0, 1.0);
+        assert!((opacity - 0.0).abs() < 1e-6);
+
+        // At t=1 (midpoint): opacity = 0.5
+        let opacity = compute_transition_opacity(&layer, 1.0, 1.0);
+        assert!((opacity - 0.5).abs() < 1e-6);
+
+        // At t=2 (end of transition): opacity = 1.0
+        let opacity = compute_transition_opacity(&layer, 2.0, 1.0);
+        assert!((opacity - 1.0).abs() < 1e-6);
+    }
+
+    #[test]
+    fn compute_transition_opacity_dissolve_out_fades_to_zero() {
+        let transition = SceneTransition {
+            transition_type: "dissolve".to_string(),
+            duration_sec: 2.0,
+            curve: Some("linear".to_string()),
+            from_layer_id: None,
+            mode: None,
+            spec: None,
+        };
+        let layer = test_layer(0.0, 10.0, None, Some(transition));
+
+        // out_start = 10 - 2 = 8
+        // At t=8 (start of out): opacity = 1.0
+        let opacity = compute_transition_opacity(&layer, 8.0, 1.0);
+        assert!((opacity - 1.0).abs() < 1e-6);
+
+        // At t=9 (midpoint): opacity = 0.5
+        let opacity = compute_transition_opacity(&layer, 9.0, 1.0);
+        assert!((opacity - 0.5).abs() < 1e-6);
+
+        // At t=10 (end): opacity = 0.0
+        let opacity = compute_transition_opacity(&layer, 10.0, 1.0);
+        // local_t = 10, out_start = 8, out_dur = 2, progress = (10-8)/2 = 1, opacity = 1*(1-1) = 0
+        // But t=10 is not < timeline_end_sec (10.0), so covers() returns false.
+        // However compute_transition_opacity doesn't check covers, it just checks local_t.
+        assert!((opacity - 0.0).abs() < 1e-6);
+    }
+
+    #[test]
+    fn compute_transition_opacity_shader_rendered_in_does_not_fade() {
+        let transition = SceneTransition {
+            transition_type: "dissolve".to_string(),
+            duration_sec: 2.0,
+            curve: Some("linear".to_string()),
+            from_layer_id: Some("other".to_string()),
+            mode: None,
+            spec: Some(TransitionSpec::Crossfade),
+        };
+        let layer = test_layer(0.0, 10.0, Some(transition), None);
+
+        // Shader-rendered: opacity should remain at base
+        let opacity = compute_transition_opacity(&layer, 0.0, 1.0);
+        assert!((opacity - 1.0).abs() < 1e-6);
+    }
+
+    #[test]
+    fn compute_transition_opacity_dissolve_in_with_base_opacity() {
+        let transition = SceneTransition {
+            transition_type: "dissolve".to_string(),
+            duration_sec: 2.0,
+            curve: Some("linear".to_string()),
+            from_layer_id: None,
+            mode: None,
+            spec: None,
+        };
+        let layer = test_layer(0.0, 10.0, Some(transition), None);
+
+        // base_opacity = 0.5, at t=1 (midpoint): 0.5 * 0.5 = 0.25
+        let opacity = compute_transition_opacity(&layer, 1.0, 0.5);
+        assert!((opacity - 0.25).abs() < 1e-6);
+    }
+
+    #[test]
+    fn compute_transition_opacity_clamps_to_0_1() {
+        let transition = SceneTransition {
+            transition_type: "dissolve".to_string(),
+            duration_sec: 2.0,
+            curve: Some("linear".to_string()),
+            from_layer_id: None,
+            mode: None,
+            spec: None,
+        };
+        let layer = test_layer(0.0, 10.0, Some(transition), None);
+
+        // base_opacity > 1.0 should be clamped
+        let opacity = compute_transition_opacity(&layer, 2.0, 1.5);
+        assert!((opacity - 1.0).abs() < 1e-6);
+    }
+
+    fn test_layer(
+        start: f64,
+        end: f64,
+        transition_in: Option<SceneTransition>,
+        transition_out: Option<SceneTransition>,
+    ) -> SceneLayer {
+        SceneLayer {
+            id: "test".to_string(),
+            kind: LayerKind::Video,
+            path: String::new(),
+            timeline_start_sec: start,
+            timeline_end_sec: end,
+            source_start_sec: 0.0,
+            source_range_duration_sec: 0.0,
+            source_duration_sec: None,
+            speed: 1.0,
+            freeze_frame_source_sec: None,
+            source_orientation: None,
+            z: 0,
+            opacity: 1.0,
+            blend_mode: BlendMode::Normal,
+            background_color: None,
+            text: None,
+            style: None,
+            shape_type: None,
+            fill_color: None,
+            stroke_color: None,
+            stroke_width: None,
+            shape_config: None,
+            transform: None,
+            transition_in,
+            transition_out,
+            effects: vec![],
         }
     }
 }

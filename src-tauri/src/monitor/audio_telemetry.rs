@@ -117,3 +117,136 @@ fn levels_changed(
     }
     false
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn levels_changed_nan_baseline_always_true() {
+        let last_levels = (f64::NAN, f64::NAN);
+        let last_tracks = HashMap::new();
+        let track_levels = HashMap::new();
+        assert!(levels_changed(
+            -20.0,
+            -10.0,
+            &track_levels,
+            &last_levels,
+            &last_tracks
+        ));
+    }
+
+    #[test]
+    fn levels_changed_within_threshold_returns_false() {
+        let last_levels = (-20.0, -10.0);
+        let last_tracks = HashMap::new();
+        let track_levels = HashMap::new();
+        assert!(!levels_changed(
+            -20.05,
+            -10.05,
+            &track_levels,
+            &last_levels,
+            &last_tracks
+        ));
+    }
+
+    #[test]
+    fn levels_changed_master_rms_exceeds_threshold() {
+        let last_levels = (-20.0, -10.0);
+        let last_tracks = HashMap::new();
+        let track_levels = HashMap::new();
+        assert!(levels_changed(
+            -19.8,
+            -10.0,
+            &track_levels,
+            &last_levels,
+            &last_tracks
+        ));
+    }
+
+    #[test]
+    fn levels_changed_master_peak_exceeds_threshold() {
+        let last_levels = (-20.0, -10.0);
+        let last_tracks = HashMap::new();
+        let track_levels = HashMap::new();
+        assert!(levels_changed(
+            -20.0,
+            -9.8,
+            &track_levels,
+            &last_levels,
+            &last_tracks
+        ));
+    }
+
+    #[test]
+    fn levels_changed_track_count_differs() {
+        let last_levels = (-20.0, -10.0);
+        let mut last_tracks = HashMap::new();
+        last_tracks.insert("t1".to_string(), (-20.0, -10.0));
+
+        let mut track_levels = HashMap::new();
+        track_levels.insert("t1".to_string(), (-20.0, -10.0));
+        track_levels.insert("t2".to_string(), (-20.0, -10.0));
+
+        assert!(levels_changed(
+            -20.0,
+            -10.0,
+            &track_levels,
+            &last_levels,
+            &last_tracks
+        ));
+    }
+
+    #[test]
+    fn levels_changed_new_track_appears() {
+        let last_levels = (-20.0, -10.0);
+        let last_tracks = HashMap::new();
+
+        let mut track_levels = HashMap::new();
+        track_levels.insert("new".to_string(), (-20.0, -10.0));
+
+        assert!(levels_changed(
+            -20.0,
+            -10.0,
+            &track_levels,
+            &last_levels,
+            &last_tracks
+        ));
+    }
+
+    #[test]
+    fn levels_changed_track_rms_exceeds_threshold() {
+        let last_levels = (-20.0, -10.0);
+        let mut last_tracks = HashMap::new();
+        last_tracks.insert("t1".to_string(), (-20.0, -10.0));
+
+        let mut track_levels = HashMap::new();
+        track_levels.insert("t1".to_string(), (-19.0, -10.0));
+
+        assert!(levels_changed(
+            -20.0,
+            -10.0,
+            &track_levels,
+            &last_levels,
+            &last_tracks
+        ));
+    }
+
+    #[test]
+    fn levels_changed_track_within_threshold_returns_false() {
+        let last_levels = (-20.0, -10.0);
+        let mut last_tracks = HashMap::new();
+        last_tracks.insert("t1".to_string(), (-20.0, -10.0));
+
+        let mut track_levels = HashMap::new();
+        track_levels.insert("t1".to_string(), (-20.3, -10.3));
+
+        assert!(!levels_changed(
+            -20.0,
+            -10.0,
+            &track_levels,
+            &last_levels,
+            &last_tracks
+        ));
+    }
+}

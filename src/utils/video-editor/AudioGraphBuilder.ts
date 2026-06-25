@@ -49,8 +49,9 @@ export class AudioGraphBuilder {
     }
 
     let sourceOutput: AudioNode = sourceNode;
+    let panner: StereoPannerNode | null = null;
     if (typeof anyContext.createStereoPanner === 'function') {
-      const panner = anyContext.createStereoPanner();
+      panner = anyContext.createStereoPanner();
       panner.pan.value = audioBalance;
       sourceNode.connect(panner);
       sourceOutput = panner;
@@ -80,6 +81,13 @@ export class AudioGraphBuilder {
     return {
       destroy: async () => {
         await destroy();
+        if (panner) {
+          try {
+            panner.disconnect();
+          } catch {
+            /* no-op */
+          }
+        }
       },
     };
   }

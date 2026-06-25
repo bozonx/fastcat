@@ -278,7 +278,7 @@ pub struct ShapeLayer {
 /// and clamped to 0..10) at the IPC boundary — see `crate::monitor::runtime::parse_shape_geometry`.
 /// Previously this held `shape_type: String` + `config: serde_json::Value`, parsed with string
 /// keys on every frame; moving to an enum removed stringly-typing and duplication.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum ShapeGeometry {
     Rectangle {
         width: f64,
@@ -387,14 +387,14 @@ pub enum TextRenderMode {
     TextOnly,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum TextAlign {
     Left,
     Center,
     Right,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum TextVerticalAlign {
     Top,
     Middle,

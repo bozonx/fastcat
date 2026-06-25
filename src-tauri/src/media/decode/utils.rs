@@ -260,3 +260,174 @@ pub(crate) fn parse_rotation_value(value: &serde_json::Value) -> Option<i32> {
         .and_then(|s| s.trim().parse::<f64>().ok())
         .map(|rotation| rotation.round() as i32)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn display_matrix_rotation_identity_returns_none() {
+        // Identity matrix: a=1, b=0 → atan2(0, 1) = 0°, but a==1, b==0 not both 0
+        // Actually: a=1.0, b=0.0 → degrees = 0 → Some(0)
+        let data = make_display_matrix(1, 0, 0, 1, 0, 0, 0, 0, 0);
+        assert_eq!(display_matrix_rotation(&data), Some(0));
+    }
+
+    #[test]
+    fn display_matrix_rotation_90_degrees() {
+        // 90° rotation: a=0, b=1 → atan2(1, 0) = 90°
+        let data = make_display_matrix(0, 1, 0, -1, 0, 0, 0, 0, 0);
+        assert_eq!(display_matrix_rotation(&data), Some(90));
+    }
+
+    #[test]
+    fn display_matrix_rotation_180_degrees() {
+        // 180°: a=-1, b=0 → atan2(0, -1) = 180°
+        let data = make_display_matrix(-1, 0, 0, -1, 0, 0, 0, 0, 0);
+        assert_eq!(display_matrix_rotation(&data), Some(180));
+    }
+
+    #[test]
+    fn display_matrix_rotation_270_degrees() {
+        // 270°: a=0, b=-1 → atan2(-1, 0) = -90 → ((-90 % 360) + 360) % 360 = 270
+        let data = make_display_matrix(0, -1, 0, 1, 0, 0, 0, 0, 0);
+        assert_eq!(display_matrix_rotation(&data), Some(270));
+    }
+
+    #[test]
+    fn display_matrix_rotation_zero_a_b_returns_none() {
+        let data = make_display_matrix(0, 0, 0, 0, 0, 0, 0, 0, 0);
+        assert_eq!(display_matrix_rotation(&data), None);
+    }
+
+    #[test]
+    fn display_matrix_rotation_short_data_returns_none() {
+        let data = [0u8; 8];
+        assert_eq!(display_matrix_rotation(&data), None);
+    }
+
+    fn make_display_matrix(
+        a: i32,
+        b: i32,
+        _c: i32,
+        d: i32,
+        e: i32,
+        _f: i32,
+        _g: i32,
+        _h: i32,
+        _i: i32,
+    ) -> Vec<u8> {
+        let vals = [a, b, 0, d, e, 0, 0, 0, 0x40000000];
+        vals.iter().flat_map(|v| v.to_ne_bytes()).collect()
+    }
+
+    #[test]
+    fn compute_output_dims_no_max_returns_original() {
+        assert_eq!(compute_output_dims(1920, 1080, None), (1920, 1080));
+    }
+
+    #[test]
+    fn compute_output_dims_max_zero_returns_original() {
+        assert_eq!(compute_output_dims(1920, 1080, Some(0)), (1920, 1080));
+    }
+
+    #[test]
+    fn compute_output_dims_smaller_than_max_returns_original() {
+        assert_eq!(compute_output_dims(100, 100, Some(500)), (100, 100));
+    }
+
+    #[test]
+    fn compute_output_dims_downscales_preserving_aspect() {
+        let (w, h) = compute_output_dims(1920, 1080, Some(960));
+        assert_eq!(w, 960);
+        assert_eq!(h, 540);
+    }
+
+    #[test]
+    fn compute_output_dims_produces_even_dimensions() {
+        let (w, h) = compute_output_dims(1921, 1081, Some(960));
+        assert_eq!(w % 2, 0);
+        assert_eq!(h % 2, 0);
+    }
+
+    #[test]
+    fn compute_output_dims_min_2_when_downscaling() {
+        // When downscaling, result is clamped to min 2 and made even
+        let (w, h) = compute_output_dims(100, 100, Some(1));
+        assert!(w >= 2);
+        assert!(h >= 2);
+        assert_eq!(w % 2, 0);
+        assert_eq!(h % 2, 0);
+    }
+
+    #[test]
+    fn coded_output_dimensions_swaps_for_quarter_turn() {
+        assert_eq!(coded_output_dimensions(1920, 1080, 90), (1080, 1920));
+        assert_eq!(coded_output_dimensions(1920, 1080, 270), (1080, 1920));
+        assert_eq!(coded_output_dimensions(1920, 1080, 0), (1920, 1080));
+        assert_eq!(coded_output_dimensions(1920, 1080, 180), (1920, 1080));
+    }
+
+    #[test]
+    fn visual_dimensions_swaps_for_quarter_turn() {
+        assert_eq!(visual_dimensions(1920, 1080, 90), (1080, 1920));
+        assert_eq!(visual_dimensions(1920, 1080, 270), (1080, 1920));
+        assert_eq!(visual_dimensions(1920, 1080, 0), (1920, 1080));
+    }
+
+    #[test]
+    fn probe_rotation_from_tags() {
+        let v = serde_json::json!({"tags": {"rotate": "90"}});
+        assert_eq!(probe_rotation(&v), 90);
+    }
+
+    #[test]
+    fn probe_rotation_from_side_data() {
+        let v = serde_json::json!({"side_data_list": [{"rotation": -90}]});
+        assert_eq!(probe_rotation(&v), 90);
+    }
+
+    #[test]
+    fn probe_rotation_default_zero() {
+        let v = serde_json::json!({});
+        assert_eq!(probe_rotation(&v), 0);
+    }
+
+    #[test]
+    fn parse_rotation_value_integer() {
+        assert_eq!(parse_rotation_value(&serde_json::json!(90)), Some(90));
+        assert_eq!(parse_rotation_value(&serde_json::json!(-90)), Some(-90));
+    }
+
+    #[test]
+    fn parse_rotation_value_string() {
+        assert_eq!(
+            parse_rotation_value(&serde_json::json!("45.4")),
+            Some(45)
+        );
+        assert_eq!(
+            parse_rotation_value(&serde_json::json!("  30.7 ")),
+            Some(31)
+        );
+    }
+
+    #[test]
+    fn parse_rotation_value_invalid_returns_none() {
+        assert_eq!(parse_rotation_value(&serde_json::json!("abc")), None);
+    }
+
+    #[test]
+    fn copy_plane_rows_copies_dense_data() {
+        let src = [1, 2, 3, 4, 5, 6];
+        let out = copy_plane_rows(&src, 3, 3, 2);
+        assert_eq!(out, vec![1, 2, 3, 4, 5, 6]);
+    }
+
+    #[test]
+    fn copy_plane_rows_handles_stride_larger_than_row_bytes() {
+        // stride=4, row_bytes=2, rows=2
+        let src = [10, 20, 0, 0, 30, 40, 0, 0];
+        let out = copy_plane_rows(&src, 4, 2, 2);
+        assert_eq!(out, vec![10, 20, 30, 40]);
+    }
+}

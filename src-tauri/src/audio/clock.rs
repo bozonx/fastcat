@@ -97,3 +97,100 @@ impl RealtimeClock {
         (to_db(rms), to_db(peak))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn default_gain_is_one() {
+        let clock = RealtimeClock::default();
+        assert!((clock.output_gain() - 1.0).abs() < 1e-9);
+    }
+
+    #[test]
+    fn set_output_gain_clamps_finite() {
+        let clock = RealtimeClock::default();
+        clock.set_output_gain(5.0);
+        assert!((clock.output_gain() - 5.0).abs() < 1e-9);
+
+        clock.set_output_gain(20.0);
+        assert!((clock.output_gain() - 10.0).abs() < 1e-9);
+
+        clock.set_output_gain(-3.0);
+        assert!((clock.output_gain() - 0.0).abs() < 1e-9);
+    }
+
+    #[test]
+    fn set_output_gain_nan_falls_back_to_one() {
+        let clock = RealtimeClock::default();
+        clock.set_output_gain(f64::NAN);
+        assert!((clock.output_gain() - 1.0).abs() < 1e-9);
+
+        clock.set_output_gain(f64::INFINITY);
+        assert!((clock.output_gain() - 1.0).abs() < 1e-9);
+    }
+
+    #[test]
+    fn set_output_levels_sanitizes_nan_and_negative() {
+        let clock = RealtimeClock::default();
+        clock.set_output_levels(f64::NAN, f64::INFINITY);
+        let (rms, peak) = clock.output_levels_db();
+        // NaN/Inf → 0.0 linear → -60 dB
+        assert!((rms - (-60.0)).abs() < 1e-9);
+        assert!((peak - (-60.0)).abs() < 1e-9);
+
+        clock.set_output_levels(-0.5, -1.0);
+        let (rms, peak) = clock.output_levels_db();
+        assert!((rms - (-60.0)).abs() < 1e-9);
+        assert!((peak - (-60.0)).abs() < 1e-9);
+    }
+
+    #[test]
+    fn output_levels_db_converts_linear_to_db() {
+        let clock = RealtimeClock::default();
+        // 1.0 linear → 0 dB
+        clock.set_output_levels(1.0, 1.0);
+        let (rms, peak) = clock.output_levels_db();
+        assert!((rms - 0.0).abs() < 1e-9);
+        assert!((peak - 0.0).abs() < 1e-9);
+
+        // 0.5 linear → ~-6.02 dB
+        clock.set_output_levels(0.5, 0.5);
+        let (rms, peak) = clock.output_levels_db();
+        let expected = 20.0 * 0.5_f64.log10();
+        assert!((rms - expected).abs() < 1e-9);
+        assert!((peak - expected).abs() < 1e-9);
+    }
+
+    #[test]
+    fn output_levels_db_floors_below_threshold() {
+        let clock = RealtimeClock::default();
+        // 0.001 linear → -60 dB (exactly at threshold, still uses log10)
+        clock.set_output_levels(0.001, 0.001);
+        let (rms, _) = clock.output_levels_db();
+        assert!((rms - 20.0 * 0.001_f64.log10()).abs() < 1e-9);
+
+        // 0.0009 linear → below threshold → -60 dB floor
+        clock.set_output_levels(0.0009, 0.0009);
+        let (rms, peak) = clock.output_levels_db();
+        assert!((rms - (-60.0)).abs() < 1e-9);
+        assert!((peak - (-60.0)).abs() < 1e-9);
+    }
+
+    #[test]
+    fn reset_frames_zeroes_counters() {
+        let clock = RealtimeClock::default();
+        clock.frames_written.store(42, Ordering::Release);
+        clock.underrun_events.store(3, Ordering::SeqCst);
+        clock.underrun_frames.store(100, Ordering::SeqCst);
+        clock.output_latency_bits.store(0.5f64.to_bits(), Ordering::Release);
+
+        clock.reset_frames();
+
+        assert_eq!(clock.frames(), 0);
+        assert_eq!(clock.underrun_events.load(Ordering::SeqCst), 0);
+        assert_eq!(clock.underrun_frames.load(Ordering::SeqCst), 0);
+        assert!((clock.output_latency_sec() - 0.0).abs() < 1e-9);
+    }
+}

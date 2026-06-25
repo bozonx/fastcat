@@ -1,5 +1,6 @@
 use std::collections::{HashMap, HashSet};
 
+use crate::compositor::scene::BlendMode;
 use crate::monitor::scene::{LayerKind, NativeFrameCacheMode, PreviewSyncMode, SceneLayer};
 
 pub(super) const VIDEO_PREWARM_LOOKAHEAD_SEC: f64 = 2.5;
@@ -190,4 +191,213 @@ pub(super) fn svg_target_long_edge(scene_size: (u32, u32), preview_scale: Option
 
 pub(super) fn approx_eq_opt_scale(a: Option<f32>, b: Option<f32>) -> bool {
     (a.unwrap_or(1.0) - b.unwrap_or(1.0)).abs() < 1e-4
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn sanitize_preview_fps_clamps_and_defaults() {
+        assert!((sanitize_preview_fps(60.0) - 60.0).abs() < 1e-9);
+        assert!((sanitize_preview_fps(0.0) - 30.0).abs() < 1e-9);
+        assert!((sanitize_preview_fps(-5.0) - 30.0).abs() < 1e-9);
+        assert!((sanitize_preview_fps(f64::NAN) - 30.0).abs() < 1e-9);
+        assert!((sanitize_preview_fps(f64::INFINITY) - 30.0).abs() < 1e-9);
+        assert!((sanitize_preview_fps(0.5) - 1.0).abs() < 1e-9);
+        assert!((sanitize_preview_fps(300.0) - 240.0).abs() < 1e-9);
+    }
+
+    #[test]
+    fn video_sync_lag_smooth_returns_none() {
+        assert!(video_sync_lag_sec(PreviewSyncMode::Smooth, 30.0).is_none());
+    }
+
+    #[test]
+    fn video_sync_lag_strict_caps_at_constant() {
+        let lag = video_sync_lag_sec(PreviewSyncMode::Strict, 30.0).unwrap();
+        // 2 frames / 30 fps = 0.0667, capped at 0.08 → 0.0667
+        assert!((lag - 2.0 / 30.0).abs() < 1e-9);
+
+        // Low FPS: 2/10 = 0.2, capped at 0.08
+        let lag = video_sync_lag_sec(PreviewSyncMode::Strict, 10.0).unwrap();
+        assert!((lag - STRICT_VIDEO_SYNC_LAG_SEC).abs() < 1e-9);
+    }
+
+    #[test]
+    fn video_sync_lag_balanced_caps_at_constant() {
+        let lag = video_sync_lag_sec(PreviewSyncMode::Balanced, 30.0).unwrap();
+        // 6/30 = 0.2, capped at 0.22 → 0.2
+        assert!((lag - 6.0 / 30.0).abs() < 1e-9);
+
+        // Low FPS: 6/10 = 0.6, capped at 0.22
+        let lag = video_sync_lag_sec(PreviewSyncMode::Balanced, 10.0).unwrap();
+        assert!((lag - BALANCED_VIDEO_SYNC_LAG_SEC).abs() < 1e-9);
+    }
+
+    #[test]
+    fn video_sync_lag_invalid_fps_defaults_to_30() {
+        let lag = video_sync_lag_sec(PreviewSyncMode::Strict, 0.0).unwrap();
+        assert!((lag - 2.0 / 30.0).abs() < 1e-9);
+    }
+
+    #[test]
+    fn sanitize_transport_speed_clamps_and_defaults() {
+        assert!((sanitize_transport_speed(2.0) - 2.0).abs() < 1e-9);
+        assert!((sanitize_transport_speed(-2.0) - (-2.0)).abs() < 1e-9);
+        assert!((sanitize_transport_speed(0.0) - 1.0).abs() < 1e-9);
+        assert!((sanitize_transport_speed(f64::NAN) - 1.0).abs() < 1e-9);
+        assert!((sanitize_transport_speed(200.0) - 100.0).abs() < 1e-9);
+        assert!((sanitize_transport_speed(-200.0) - (-100.0)).abs() < 1e-9);
+    }
+
+    #[test]
+    fn frame_cache_budget_fixed_modes() {
+        let budget = frame_cache_budget_bytes(NativeFrameCacheMode::Low, 0, (1920, 1080), 30.0, 1);
+        assert_eq!(budget, LOW_CACHE_BUDGET_BYTES);
+
+        let budget =
+            frame_cache_budget_bytes(NativeFrameCacheMode::Balanced, 0, (1920, 1080), 30.0, 1);
+        assert_eq!(budget, BALANCED_CACHE_BUDGET_BYTES);
+
+        let budget = frame_cache_budget_bytes(NativeFrameCacheMode::High, 0, (1920, 1080), 30.0, 1);
+        assert_eq!(budget, HIGH_CACHE_BUDGET_BYTES);
+    }
+
+    #[test]
+    fn frame_cache_budget_custom_uses_mb() {
+        let budget = frame_cache_budget_bytes(NativeFrameCacheMode::Custom, 256, (1920, 1080), 30.0, 1);
+        assert_eq!(budget, 256 * MB);
+    }
+
+    #[test]
+    fn frame_cache_budget_divides_by_concurrent_layers() {
+        let budget = frame_cache_budget_bytes(NativeFrameCacheMode::Balanced, 0, (1920, 1080), 30.0, 2);
+        assert_eq!(budget, BALANCED_CACHE_BUDGET_BYTES / 2);
+    }
+
+    #[test]
+    fn frame_cache_budget_auto_computes_from_frame_size() {
+        let budget = frame_cache_budget_bytes(NativeFrameCacheMode::Auto, 0, (1920, 1080), 30.0, 1);
+        let frame_bytes = 1920 * 1080 * 4;
+        let target_frames = ((30.0_f64 * 0.5).ceil() as usize).max(AUTO_CACHE_MIN_FRAMES);
+        let expected = (frame_bytes * target_frames).clamp(BALANCED_CACHE_BUDGET_BYTES, AUTO_CACHE_MAX_BYTES);
+        assert_eq!(budget, expected);
+    }
+
+    #[test]
+    fn frame_cache_budget_auto_clamps_to_min() {
+        // Tiny frame: should hit the balanced minimum
+        let budget = frame_cache_budget_bytes(NativeFrameCacheMode::Auto, 0, (2, 2), 1.0, 1);
+        assert!(budget >= BALANCED_CACHE_BUDGET_BYTES);
+    }
+
+    #[test]
+    fn frame_cache_budget_auto_clamps_to_max() {
+        // Huge frame: should hit the auto max
+        let budget = frame_cache_budget_bytes(NativeFrameCacheMode::Auto, 0, (7680, 4320), 60.0, 1);
+        assert!(budget <= AUTO_CACHE_MAX_BYTES);
+    }
+
+    #[test]
+    fn max_concurrent_video_layers_counts_overlap() {
+        let scene = vec![
+            test_video_layer("a", 0.0, 10.0),
+            test_video_layer("b", 5.0, 15.0),
+            test_video_layer("c", 8.0, 12.0),
+        ];
+        assert_eq!(max_concurrent_video_layers_within(&scene, 0.0, 20.0), 3);
+    }
+
+    #[test]
+    fn max_concurrent_video_layers_no_overlap() {
+        let scene = vec![
+            test_video_layer("a", 0.0, 5.0),
+            test_video_layer("b", 5.0, 10.0),
+        ];
+        assert_eq!(max_concurrent_video_layers_within(&scene, 0.0, 20.0), 1);
+    }
+
+    #[test]
+    fn max_concurrent_video_layers_filters_non_video() {
+        let scene = vec![
+            test_video_layer("a", 0.0, 10.0),
+            test_layer("b", LayerKind::Text, 0.0, 10.0),
+        ];
+        assert_eq!(max_concurrent_video_layers_within(&scene, 0.0, 20.0), 1);
+    }
+
+    #[test]
+    fn max_concurrent_video_layers_empty_returns_one() {
+        let scene: Vec<SceneLayer> = vec![];
+        assert_eq!(max_concurrent_video_layers_within(&scene, 0.0, 10.0), 1);
+    }
+
+    #[test]
+    fn svg_target_long_edge_defaults() {
+        assert_eq!(svg_target_long_edge((1920, 1080), None), 1920);
+        assert_eq!(svg_target_long_edge((1080, 1920), None), 1920);
+        // Zero dims → 1920 fallback
+        assert_eq!(svg_target_long_edge((0, 0), None), 1920);
+    }
+
+    #[test]
+    fn svg_target_long_edge_applies_scale() {
+        assert_eq!(svg_target_long_edge((1920, 1080), Some(0.5)), 960);
+        assert_eq!(svg_target_long_edge((1920, 1080), Some(2.0)), 3840);
+        // Zero/negative scale → 1.0
+        assert_eq!(svg_target_long_edge((1920, 1080), Some(0.0)), 1920);
+    }
+
+    #[test]
+    fn approx_eq_opt_scale_both_none() {
+        assert!(approx_eq_opt_scale(None, None));
+    }
+
+    #[test]
+    fn approx_eq_opt_scale_one_none() {
+        assert!(!approx_eq_opt_scale(Some(0.5), None));
+        assert!(!approx_eq_opt_scale(None, Some(0.5)));
+    }
+
+    #[test]
+    fn approx_eq_opt_scale_close_values() {
+        assert!(approx_eq_opt_scale(Some(1.0), Some(1.00001)));
+        assert!(!approx_eq_opt_scale(Some(1.0), Some(1.001)));
+    }
+
+    fn test_video_layer(id: &str, start: f64, end: f64) -> SceneLayer {
+        test_layer(id, LayerKind::Video, start, end)
+    }
+
+    fn test_layer(id: &str, kind: LayerKind, start: f64, end: f64) -> SceneLayer {
+        SceneLayer {
+            id: id.to_string(),
+            kind,
+            path: String::new(),
+            timeline_start_sec: start,
+            timeline_end_sec: end,
+            source_start_sec: 0.0,
+            source_range_duration_sec: 0.0,
+            source_duration_sec: None,
+            speed: 1.0,
+            freeze_frame_source_sec: None,
+            source_orientation: None,
+            z: 0,
+            opacity: 1.0,
+            blend_mode: BlendMode::Normal,
+            background_color: None,
+            text: None,
+            style: None,
+            shape_type: None,
+            fill_color: None,
+            stroke_color: None,
+            stroke_width: None,
+            shape_config: None,
+            transform: None,
+            transition_in: None,
+            transition_out: None,
+            effects: vec![],
+        }
+    }
 }

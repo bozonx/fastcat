@@ -53,29 +53,6 @@ export async function buildAudioEffectGraph<TContext extends BaseAudioContext>({
       await manifest.updateNode(effectNode, effect, effectContext);
     }
 
-    cleanups.push(async () => {
-      if (manifest.destroyNode) {
-        try {
-          await manifest.destroyNode(effectNode, effectContext);
-        } catch (err) {
-          log.warn(`[buildAudioEffectGraph] Failed to destroy effect node: ${effect.type}`, err);
-        }
-      }
-
-      if (isAudioEffectNodeGraph(effectNode)) {
-        try {
-          effectNode.input.disconnect();
-        } catch {
-          /* no-op */
-        }
-        try {
-          effectNode.output.disconnect();
-        } catch {
-          /* no-op */
-        }
-      }
-    });
-
     const effectInput = isAudioEffectNodeGraph(effectNode) ? effectNode.input : effectNode;
     const effectOutput = isAudioEffectNodeGraph(effectNode) ? effectNode.output : effectNode;
 
@@ -83,6 +60,33 @@ export async function buildAudioEffectGraph<TContext extends BaseAudioContext>({
     if (manifest.disableGlobalWet) {
       currentNode.connect(effectInput);
       currentNode = effectOutput;
+      cleanups.push(async () => {
+        if (manifest.destroyNode) {
+          try {
+            await manifest.destroyNode(effectNode, effectContext);
+          } catch (err) {
+            log.warn(`[buildAudioEffectGraph] Failed to destroy effect node: ${effect.type}`, err);
+          }
+        }
+        if (isAudioEffectNodeGraph(effectNode)) {
+          try {
+            effectNode.input.disconnect();
+          } catch {
+            /* no-op */
+          }
+          try {
+            effectNode.output.disconnect();
+          } catch {
+            /* no-op */
+          }
+        } else {
+          try {
+            (effectNode as AudioNode).disconnect();
+          } catch {
+            /* no-op */
+          }
+        }
+      });
       continue;
     }
 
@@ -107,6 +111,51 @@ export async function buildAudioEffectGraph<TContext extends BaseAudioContext>({
     wetGainNode.connect(outputGainNode);
 
     currentNode = outputGainNode;
+
+    cleanups.push(async () => {
+      if (manifest.destroyNode) {
+        try {
+          await manifest.destroyNode(effectNode, effectContext);
+        } catch (err) {
+          log.warn(`[buildAudioEffectGraph] Failed to destroy effect node: ${effect.type}`, err);
+        }
+      }
+
+      if (isAudioEffectNodeGraph(effectNode)) {
+        try {
+          effectNode.input.disconnect();
+        } catch {
+          /* no-op */
+        }
+        try {
+          effectNode.output.disconnect();
+        } catch {
+          /* no-op */
+        }
+      } else {
+        try {
+          (effectNode as AudioNode).disconnect();
+        } catch {
+          /* no-op */
+        }
+      }
+
+      try {
+        dryGainNode.disconnect();
+      } catch {
+        /* no-op */
+      }
+      try {
+        wetGainNode.disconnect();
+      } catch {
+        /* no-op */
+      }
+      try {
+        outputGainNode.disconnect();
+      } catch {
+        /* no-op */
+      }
+    });
   }
 
   return {

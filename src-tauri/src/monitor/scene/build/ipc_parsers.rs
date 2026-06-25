@@ -251,3 +251,242 @@ pub fn text_vertical_align(value: &serde_json::Value) -> TextVerticalAlign {
         _ => TextVerticalAlign::Middle,
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    #[test]
+    fn parse_blend_mode_known_modes() {
+        assert_eq!(parse_blend_mode("normal"), BlendMode::Normal);
+        assert_eq!(parse_blend_mode("add"), BlendMode::Add);
+        assert_eq!(parse_blend_mode("plus"), BlendMode::Add);
+        assert_eq!(parse_blend_mode("linear-dodge"), BlendMode::Add);
+        assert_eq!(parse_blend_mode("multiply"), BlendMode::Multiply);
+        assert_eq!(parse_blend_mode("screen"), BlendMode::Screen);
+        assert_eq!(parse_blend_mode("overlay"), BlendMode::Overlay);
+        assert_eq!(parse_blend_mode("darken"), BlendMode::Darken);
+        assert_eq!(parse_blend_mode("lighten"), BlendMode::Lighten);
+        assert_eq!(parse_blend_mode("color-dodge"), BlendMode::ColorDodge);
+        assert_eq!(parse_blend_mode("color-burn"), BlendMode::ColorBurn);
+        assert_eq!(parse_blend_mode("hard-light"), BlendMode::HardLight);
+        assert_eq!(parse_blend_mode("soft-light"), BlendMode::SoftLight);
+        assert_eq!(parse_blend_mode("difference"), BlendMode::Difference);
+        assert_eq!(parse_blend_mode("exclusion"), BlendMode::Exclusion);
+        assert_eq!(parse_blend_mode("hue"), BlendMode::Hue);
+        assert_eq!(parse_blend_mode("saturation"), BlendMode::Saturation);
+        assert_eq!(parse_blend_mode("color"), BlendMode::Color);
+        assert_eq!(parse_blend_mode("luminosity"), BlendMode::Luminosity);
+    }
+
+    #[test]
+    fn parse_blend_mode_unknown_falls_back_to_normal() {
+        assert_eq!(parse_blend_mode("nonexistent"), BlendMode::Normal);
+        assert_eq!(parse_blend_mode(""), BlendMode::Normal);
+    }
+
+    #[test]
+    fn parse_color_empty_and_transparent() {
+        assert_eq!(parse_color("", 1.0), Color::TRANSPARENT);
+        assert_eq!(parse_color("   ", 1.0), Color::TRANSPARENT);
+        assert_eq!(parse_color("transparent", 1.0), Color::TRANSPARENT);
+        assert_eq!(parse_color("TRANSPARENT", 1.0), Color::TRANSPARENT);
+    }
+
+    #[test]
+    fn parse_color_named_colors() {
+        assert_eq!(parse_color("black", 1.0), Color::from_rgba8(0, 0, 0, 255));
+        assert_eq!(parse_color("white", 1.0), Color::from_rgba8(255, 255, 255, 255));
+        assert_eq!(parse_color("red", 1.0), Color::from_rgba8(255, 0, 0, 255));
+        assert_eq!(parse_color("blue", 1.0), Color::from_rgba8(0, 0, 255, 255));
+        assert_eq!(parse_color("gray", 1.0), Color::from_rgba8(128, 128, 128, 255));
+        assert_eq!(parse_color("grey", 1.0), Color::from_rgba8(128, 128, 128, 255));
+        assert_eq!(parse_color("orange", 1.0), Color::from_rgba8(255, 165, 0, 255));
+    }
+
+    #[test]
+    fn parse_color_named_with_alpha() {
+        assert_eq!(parse_color("red", 0.5), Color::from_rgba8(255, 0, 0, 128));
+        assert_eq!(parse_color("red", 0.0), Color::from_rgba8(255, 0, 0, 0));
+    }
+
+    #[test]
+    fn parse_color_hex_3_digit() {
+        assert_eq!(parse_color("#f00", 1.0), Color::from_rgba8(255, 0, 0, 255));
+        assert_eq!(parse_color("#0f0", 1.0), Color::from_rgba8(0, 255, 0, 255));
+        assert_eq!(parse_color("#00f", 1.0), Color::from_rgba8(0, 0, 255, 255));
+    }
+
+    #[test]
+    fn parse_color_hex_4_digit_with_alpha() {
+        let c = parse_color("#f00f", 1.0);
+        assert_eq!(c, Color::from_rgba8(255, 0, 0, 255));
+
+        let c = parse_color("#f008", 1.0);
+        assert_eq!(c, Color::from_rgba8(255, 0, 0, 0x88));
+    }
+
+    #[test]
+    fn parse_color_hex_6_digit() {
+        assert_eq!(parse_color("#ff0000", 1.0), Color::from_rgba8(255, 0, 0, 255));
+        assert_eq!(parse_color("#00ff00", 1.0), Color::from_rgba8(0, 255, 0, 255));
+        assert_eq!(parse_color("#0000ff", 1.0), Color::from_rgba8(0, 0, 255, 255));
+    }
+
+    #[test]
+    fn parse_color_hex_8_digit_with_alpha() {
+        assert_eq!(parse_color("#ff0000ff", 1.0), Color::from_rgba8(255, 0, 0, 255));
+        assert_eq!(parse_color("#ff000080", 1.0), Color::from_rgba8(255, 0, 0, 0x80));
+    }
+
+    #[test]
+    fn parse_color_hex_without_hash() {
+        assert_eq!(parse_color("ff0000", 1.0), Color::from_rgba8(255, 0, 0, 255));
+    }
+
+    #[test]
+    fn parse_color_rgb_function() {
+        assert_eq!(parse_color("rgb(255, 0, 0)", 1.0), Color::from_rgba8(255, 0, 0, 255));
+        assert_eq!(parse_color("rgb(100%, 0%, 0%)", 1.0), Color::from_rgba8(255, 0, 0, 255));
+        assert_eq!(parse_color("RGB(128, 128, 128)", 1.0), Color::from_rgba8(128, 128, 128, 255));
+    }
+
+    #[test]
+    fn parse_color_rgba_function() {
+        assert_eq!(parse_color("rgba(255, 0, 0, 1.0)", 1.0), Color::from_rgba8(255, 0, 0, 255));
+        assert_eq!(parse_color("rgba(255, 0, 0, 0.5)", 1.0), Color::from_rgba8(255, 0, 0, 128));
+    }
+
+    #[test]
+    fn parse_color_invalid_falls_back_to_transparent() {
+        assert_eq!(parse_color("notacolor", 1.0), Color::TRANSPARENT);
+        assert_eq!(parse_color("#zzz", 1.0), Color::TRANSPARENT);
+        assert_eq!(parse_color("#1", 1.0), Color::TRANSPARENT);
+    }
+
+    #[test]
+    fn number_returns_value_or_fallback() {
+        let v = json!({"x": 42.5});
+        assert!((number(&v, "x", 0.0) - 42.5).abs() < 1e-9);
+        assert!((number(&v, "missing", 99.0) - 99.0).abs() < 1e-9);
+    }
+
+    #[test]
+    fn number_opt_filters_non_finite() {
+        let v = json!({"a": 1.0, "b": null, "c": "string"});
+        assert!(number_opt(&v, "a").is_some());
+        assert!(number_opt(&v, "b").is_none());
+        assert!(number_opt(&v, "c").is_none());
+    }
+
+    #[test]
+    fn percent_divides_and_clamps() {
+        let v = json!({"x": 50.0, "y": 200.0, "z": -10.0});
+        assert!((percent(&v, "x", 0.0) - 0.5).abs() < 1e-9);
+        assert!((percent(&v, "y", 0.0) - 2.0).abs() < 1e-9);
+        assert!((percent(&v, "z", 0.0) - 0.0).abs() < 1e-9);
+        assert!((percent(&v, "missing", 100.0) - 1.0).abs() < 1e-9);
+    }
+
+    #[test]
+    fn parse_shape_geometry_rectangle_default() {
+        let cfg = json!({});
+        let geom = parse_shape_geometry("square", &cfg);
+        assert_eq!(geom, ShapeGeometry::Rectangle {
+            width: 1.0,
+            height: 1.0,
+            corner_radius: 0.0,
+        });
+    }
+
+    #[test]
+    fn parse_shape_geometry_circle() {
+        let cfg = json!({"squashX": 50.0, "squashY": 30.0});
+        let geom = parse_shape_geometry("circle", &cfg);
+        assert_eq!(geom, ShapeGeometry::Circle {
+            squash_x: 0.5,
+            squash_y: 0.3,
+        });
+    }
+
+    #[test]
+    fn parse_shape_geometry_star() {
+        let cfg = json!({"rays": 8, "innerRadius": 40.0});
+        let geom = parse_shape_geometry("star", &cfg);
+        assert_eq!(geom, ShapeGeometry::Star {
+            rays: 8,
+            inner_radius: 0.4,
+        });
+    }
+
+    #[test]
+    fn parse_shape_geometry_star_min_rays() {
+        let cfg = json!({"rays": 1});
+        let geom = parse_shape_geometry("star", &cfg);
+        match geom {
+            ShapeGeometry::Star { rays, .. } => assert!(rays >= 2),
+            _ => panic!("expected Star"),
+        }
+    }
+
+    #[test]
+    fn parse_shape_geometry_speech_bubble() {
+        let cfg = json!({"pointerDirection": "right"});
+        let geom = parse_shape_geometry("speech_bubble", &cfg);
+        match geom {
+            ShapeGeometry::SpeechBubble { pointer_right, .. } => assert!(pointer_right),
+            _ => panic!("expected SpeechBubble"),
+        }
+    }
+
+    #[test]
+    fn parse_shape_geometry_unknown_falls_back_to_rectangle() {
+        let cfg = json!({});
+        let geom = parse_shape_geometry("nonexistent", &cfg);
+        assert!(matches!(geom, ShapeGeometry::Rectangle { .. }));
+    }
+
+    #[test]
+    fn string_value_returns_value_or_fallback() {
+        let v = json!({"name": "hello", "empty": ""});
+        assert_eq!(string_value(&v, "name", "default"), "hello");
+        assert_eq!(string_value(&v, "empty", "default"), "default");
+        assert_eq!(string_value(&v, "missing", "default"), "default");
+    }
+
+    #[test]
+    fn bool_value_returns_value_or_fallback() {
+        let v = json!({"a": true, "b": false});
+        assert!(bool_value(&v, "a", false));
+        assert!(!bool_value(&v, "b", true));
+        assert!(bool_value(&v, "missing", true));
+        assert!(!bool_value(&v, "missing", false));
+    }
+
+    #[test]
+    fn font_weight_numeric_and_named() {
+        assert!((font_weight(&json!({"fontWeight": 400})) - 400.0).abs() < 1e-6);
+        assert!((font_weight(&json!({"fontWeight": "normal"})) - 400.0).abs() < 1e-6);
+        assert!((font_weight(&json!({"fontWeight": "bold"})) - 700.0).abs() < 1e-6);
+        assert!((font_weight(&json!({"fontWeight": "300"})) - 300.0).abs() < 1e-6);
+        assert!((font_weight(&json!({})) - 700.0).abs() < 1e-6);
+    }
+
+    #[test]
+    fn text_align_values() {
+        assert_eq!(text_align(&json!({"align": "left"})), TextAlign::Left);
+        assert_eq!(text_align(&json!({"align": "right"})), TextAlign::Right);
+        assert_eq!(text_align(&json!({"align": "center"})), TextAlign::Center);
+        assert_eq!(text_align(&json!({})), TextAlign::Center);
+        assert_eq!(text_align(&json!({"align": "unknown"})), TextAlign::Center);
+    }
+
+    #[test]
+    fn text_vertical_align_values() {
+        assert_eq!(text_vertical_align(&json!({"verticalAlign": "top"})), TextVerticalAlign::Top);
+        assert_eq!(text_vertical_align(&json!({"verticalAlign": "bottom"})), TextVerticalAlign::Bottom);
+        assert_eq!(text_vertical_align(&json!({"verticalAlign": "middle"})), TextVerticalAlign::Middle);
+        assert_eq!(text_vertical_align(&json!({})), TextVerticalAlign::Middle);
+    }
+}
