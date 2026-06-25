@@ -17,6 +17,7 @@ export function resetCompositorClipsAfterContextRestored(clips: CompositorClip[]
     resetBitmapState(clip);
     refreshImageSource(clip);
     resetTransitionState(clip);
+    resetEffectFilters(clip);
     resetAdjustmentState(clip);
   }
 }
@@ -86,16 +87,55 @@ function refreshImageSource(clip: CompositorClip): void {
 }
 
 function resetTransitionState(clip: CompositorClip): void {
-  if (!clip.transitionFilter) {
-    return;
+  if (clip.transitionFilter) {
+    try {
+      clip.transitionFilter.destroy();
+    } catch {
+      // no-op
+    }
+    clip.transitionFilter = null;
+  }
+  clip.transitionFilterType = null;
+
+  if (clip.transitionSprite) {
+    try {
+      clip.transitionSprite.destroy();
+    } catch {
+      // no-op
+    }
+    clip.transitionSprite = null;
   }
 
-  try {
-    clip.transitionFilter.destroy();
-  } catch {
-    // no-op
+  safeDispose(clip.transitionFromTexture);
+  safeDispose(clip.transitionToTexture);
+  safeDispose(clip.transitionOutputTexture);
+  safeDispose(clip.transitionCombinedTexture);
+  clip.transitionFromTexture = null;
+  clip.transitionToTexture = null;
+  clip.transitionOutputTexture = null;
+  clip.transitionCombinedTexture = null;
+}
+
+function resetEffectFilters(clip: CompositorClip): void {
+  if (!clip.effectFilters) return;
+
+  for (const filter of clip.effectFilters.values()) {
+    try {
+      filter.destroy();
+    } catch {
+      // no-op
+    }
   }
-  clip.transitionFilter = null;
+  clip.effectFilters.clear();
+  clip.effectFilters = undefined;
+
+  if (clip.sprite) {
+    try {
+      clip.sprite.filters = null;
+    } catch {
+      // no-op
+    }
+  }
 }
 
 function resetAdjustmentState(clip: CompositorClip): void {

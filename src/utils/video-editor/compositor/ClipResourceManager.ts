@@ -238,64 +238,28 @@ export class ClipResourceManager {
   }
 
   public ensureClipRenderTexture(texture: RenderTexture | null): RenderTexture {
-    const valid =
-      texture &&
-      !(texture as { destroyed?: boolean }).destroyed &&
-      typeof (texture as { uid?: number }).uid === 'number' &&
-      texture.width === this.context.width &&
-      texture.height === this.context.height;
-
-    if (valid) {
-      return texture as RenderTexture;
-    }
-
-    if (texture) {
-      try {
-        safeDispose(texture);
-      } catch {
-        // ignore
-      }
-    }
-
-    return RenderTexture.create({
-      width: this.context.width,
-      height: this.context.height,
-    });
+    return this.ensureRenderTexture(texture, this.context.width, this.context.height);
   }
 
   public ensureTransitionRenderTexture(texture: RenderTexture | null): RenderTexture {
-    const valid =
-      texture &&
-      !(texture as { destroyed?: boolean }).destroyed &&
-      typeof (texture as { uid?: number }).uid === 'number' &&
-      texture.width === this.context.width &&
-      texture.height === this.context.height;
-
-    if (valid) {
-      return texture as RenderTexture;
-    }
-
-    if (texture) {
-      try {
-        safeDispose(texture);
-      } catch {
-        // ignore
-      }
-    }
-
-    return RenderTexture.create({
-      width: this.context.width,
-      height: this.context.height,
-    });
+    return this.ensureRenderTexture(texture, this.context.width, this.context.height);
   }
 
   public ensureCombinedTransitionTexture(texture: RenderTexture | null): RenderTexture {
+    return this.ensureRenderTexture(texture, this.context.width * 2, this.context.height);
+  }
+
+  private ensureRenderTexture(
+    texture: RenderTexture | null,
+    width: number,
+    height: number,
+  ): RenderTexture {
     const valid =
       texture &&
       !(texture as { destroyed?: boolean }).destroyed &&
       typeof (texture as { uid?: number }).uid === 'number' &&
-      texture.width === this.context.width * 2 &&
-      texture.height === this.context.height;
+      texture.width === width &&
+      texture.height === height;
 
     if (valid) {
       return texture as RenderTexture;
@@ -309,10 +273,7 @@ export class ClipResourceManager {
       }
     }
 
-    return RenderTexture.create({
-      width: this.context.width * 2,
-      height: this.context.height,
-    });
+    return RenderTexture.create({ width, height });
   }
 
   public async getVideoSampleForClip(params: {

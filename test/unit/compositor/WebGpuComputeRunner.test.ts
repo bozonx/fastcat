@@ -185,6 +185,7 @@ describe('WebGpuComputeRunner', () => {
       createComputePipeline: vi.fn().mockReturnValue({}),
       createSampler: vi.fn().mockReturnValue({}),
       limits: { minUniformBufferOffsetAlignment: 256 },
+      lost: new Promise(() => {}),
       createBuffer: vi.fn().mockReturnValue({
         destroy: vi.fn(),
         mapAsync: mockMapAsync,

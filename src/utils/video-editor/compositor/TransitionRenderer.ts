@@ -181,6 +181,7 @@ export class TransitionRenderer {
       let fromBitmap: ImageBitmap | null = null;
       let toBitmap: ImageBitmap | null = null;
       let processed: ImageBitmap | null = null;
+      let texture: Texture | null = null;
       try {
         fromBitmap = params.textureToBitmap
           ? await params.textureToBitmap(shaderFromTexture)
@@ -197,7 +198,7 @@ export class TransitionRenderer {
         });
         if (!processed) continue;
 
-        const texture = Texture.from(processed);
+        texture = Texture.from(processed);
         if (!this.blitSprite) {
           this.blitSprite = new Sprite(texture);
         } else {
@@ -211,13 +212,13 @@ export class TransitionRenderer {
           target: clip.transitionOutputTexture,
           clear: true,
         });
-        // The sprite is reused next frame; only the per-frame texture (backed by
-        // the just-consumed ImageBitmap) is released.
-        texture.destroy();
       } catch (error) {
         log.warn('[VideoCompositor] WebGPU transition failed:', error);
         continue;
       } finally {
+        // The sprite is reused next frame; only the per-frame texture (backed by
+        // the just-consumed ImageBitmap) is released.
+        texture?.destroy();
         fromBitmap?.close();
         toBitmap?.close();
         processed?.close();

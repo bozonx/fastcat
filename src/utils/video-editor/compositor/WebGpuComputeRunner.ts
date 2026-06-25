@@ -583,6 +583,13 @@ export class WebGpuComputeRunner {
 
       this.device = await adapter.requestDevice();
 
+      // Handle GPU device loss (driver crash, OOM, etc.) by tearing down all
+      // cached resources so isReady() returns false and callers can re-init.
+      this.device.lost.then((info) => {
+        log.error('WebGPU device lost:', info?.reason, info?.message);
+        this.handleDeviceLost();
+      });
+
       this.bindLayout = this.device.createBindGroupLayout({
         label: 'web-effect-bind-layout',
         entries: [
@@ -1356,6 +1363,42 @@ export class WebGpuComputeRunner {
     context.putImageData(imageData, 0, 0);
     outputBuffer.unmap();
     return await createImageBitmap(canvas);
+  }
+
+  /**
+   * Called when the GPU device is lost (driver crash, OOM, etc.). Releases all
+   * cached resource references — the device itself is already gone, so we must
+   * NOT call .destroy() on GPU objects (that would throw on a lost device).
+   * After this, isReady() returns false and init() can be called again.
+   */
+  private handleDeviceLost(): void {
+    this.pingTexture = null;
+    this.pongTexture = null;
+    this.auxTexture = null;
+    this.pingView = null;
+    this.pongView = null;
+    this.auxView = null;
+    this.sampler = null;
+    this.uniformBuffer = null;
+    this.uniformCapacity = 0;
+    this.transFromTexture = null;
+    this.transToTexture = null;
+    this.transOutputTexture = null;
+    this.transUniformBuffer = null;
+    this.transBindGroup = null;
+    this.transReadbackBuffer = null;
+    this.transReadbackCapacity = 0;
+    this.transCachedWidth = 0;
+    this.transCachedHeight = 0;
+    this.cachedWidth = 0;
+    this.cachedHeight = 0;
+    this.customPipelines.clear();
+    this.transitionPipelines.clear();
+    this.transitionBindLayout = null;
+    this.bindLayout = null;
+    this.pipeline = null;
+    this.shaderModule = null;
+    this.device = null;
   }
 
   /**
