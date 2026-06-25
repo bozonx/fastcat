@@ -14,5 +14,61 @@
     "",
     "Regenerate with: pnpm test:parity:gen-golden"
   ],
-  "entries": []
+  "entries": [
+    {
+      "scene": "solid-background.json",
+      "engine": "web",
+      "samples": [
+        {
+          "timeSec": 0.5,
+          "hash": "ffffffffffffffff",
+          "tolerance": 10
+        }
+      ]
+    },
+    {
+      "scene": "video-clip.json",
+      "engine": "web",
+      "samples": [
+        {
+          "timeSec": 0.5,
+          "hash": "0000000000000000",
+          "tolerance": 10
+        }
+      ]
+    },
+    {
+      "scene": "image-overlay.json",
+      "engine": "web",
+      "samples": [
+        {
+          "timeSec": 0.5,
+          "hash": "0000000000000000",
+          "tolerance": 10
+        }
+      ]
+    },
+    {
+      "scene": "text-layer.json",
+      "engine": "web",
+      "samples": [
+        {
+          "timeSec": 0.5,
+          "hash": "0000007c7c000000",
+          "tolerance": 18
+        }
+      ]
+    },
+    {
+      "scene": "multi-layer-blend.json",
+      "engine": "web",
+      "samples": [
+        {
+          "timeSec": 0.5,
+          "hash": "0000000000000000",
+          "tolerance": 10
+        }
+      ]
+    }
+  ]
 }

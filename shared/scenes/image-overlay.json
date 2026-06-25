@@ -45,7 +45,7 @@
     "height": 240,
     "preview_fps": 30.0,
     "preview_sync_mode": "balanced",
-    "preview_effect_quality": "balanced",
+    "preview_effect_quality": "high",
     "frame_cache_mode": "auto",
     "frame_cache_custom_mb": 0,
     "master_effects": [],
