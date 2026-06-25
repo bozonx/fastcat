@@ -23,6 +23,16 @@ mockComponent(
   }),
 );
 
+mockComponent(
+  'UButton',
+  defineComponent({
+    props: ['icon', 'variant', 'size', 'label', 'class', 'style'],
+    emits: ['click'],
+    template:
+      '<button :data-icon="icon" :data-label="label" @click="$emit(\'click\')">{{ label }}<slot /></button>',
+  }),
+);
+
 // Mock composables to avoid side effects
 vi.mock('~/composables/timeline/useTimelineSectionResize', async () => {
   const { ref } = await import('vue');
@@ -100,16 +110,58 @@ describe('Timeline Component', () => {
     expect(timecode.props('modelValue')).toBe(10_000_000);
   });
 
-  it('shows reset buttons when state is active', async () => {
+  it('shows lock reset button when a track is locked', async () => {
     const component = await mountSuspended(Timeline);
 
-    expect(component.findComponent({ name: 'TimelineToolbar' }).exists()).toBe(true);
+    // Track 'a1' has locked: true in beforeEach, so the lock reset button should be rendered
+    const lockButton = component.find('button[data-icon="i-heroicons-lock-closed"]');
+    expect(lockButton.exists()).toBe(true);
+  });
+
+  it('does not show lock reset button when no tracks are locked', async () => {
+    const timelineStore = useTimelineStore();
+    timelineStore.timelineDoc = {
+      tracks: [
+        {
+          id: 'v1',
+          kind: 'video',
+          locked: false,
+          items: [],
+          name: 'Video 1',
+          opacity: 100,
+          muted: false,
+          hidden: false,
+          blendMode: 'normal',
+        },
+        {
+          id: 'a1',
+          kind: 'audio',
+          locked: false,
+          items: [],
+          name: 'Audio 1',
+          opacity: 100,
+          muted: false,
+          hidden: false,
+          blendMode: 'normal',
+        },
+      ],
+    } as any;
+
+    const component = await mountSuspended(Timeline);
+
+    const lockButton = component.find('button[data-icon="i-heroicons-lock-closed"]');
+    expect(lockButton.exists()).toBe(false);
   });
 
   it('calls unlockAllTracks when reset lock button is clicked', async () => {
     const timelineStore = useTimelineStore();
+    const component = await mountSuspended(Timeline);
 
-    expect(typeof timelineStore.unlockAllTracks).toBe('function');
+    const lockButton = component.find('button[data-icon="i-heroicons-lock-closed"]');
+    expect(lockButton.exists()).toBe(true);
+    await lockButton.trigger('click');
+
+    expect(timelineStore.unlockAllTracks).toHaveBeenCalledTimes(1);
   });
 
   it('updates current time via timecode', async () => {

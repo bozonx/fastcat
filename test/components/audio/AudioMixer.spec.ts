@@ -101,4 +101,25 @@ describe('AudioMixer.vue', () => {
     const track = component.find('.mock-mixer-track');
     expect(track.classes()).toContain('selected');
   });
+
+  it('calls selectTrack and sets panel focus when clicking a track', async () => {
+    const component = await mountWithNuxt(AudioMixer);
+
+    const track = component.find('.mock-mixer-track');
+    await track.trigger('click');
+
+    expect(mockFocusStore.setPanelFocus).toHaveBeenCalledWith('audioMixer');
+    expect(mockTimelineStore.selectTrack).toHaveBeenCalledWith('track-1');
+  });
+
+  it('calls clearSelection and selectTrack(null) when clicking main bus', async () => {
+    const component = await mountWithNuxt(AudioMixer);
+
+    const mainBus = component.find('.mock-mixer-main');
+    await mainBus.trigger('click');
+
+    expect(mockFocusStore.setPanelFocus).toHaveBeenCalledWith('audioMixer');
+    expect(mockTimelineStore.clearSelection).toHaveBeenCalled();
+    expect(mockTimelineStore.selectTrack).toHaveBeenCalledWith(null);
+  });
 });

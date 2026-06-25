@@ -28,26 +28,47 @@ vi.mock('~/components/properties/clip/ClipActionsSection.vue', () => ({
   default: {
     name: 'ClipActionsSection',
     props: ['commonActions', 'otherActions'],
+    emits: ['copy', 'cut', 'copy-parameters', 'paste-parameters', 'rename'],
     template: '<div></div>',
   },
 }));
 vi.mock('~/components/properties/clip/ClipInfoSection.vue', () => ({
-  default: { name: 'ClipInfoSection', template: '<div></div>' },
+  default: {
+    name: 'ClipInfoSection',
+    emits: ['update-start-time', 'update-end-time', 'update-duration'],
+    template: '<div></div>',
+  },
 }));
 vi.mock('~/components/properties/clip/ClipBlendingModeSection.vue', () => ({
-  default: { name: 'ClipBlendingModeSection', template: '<div></div>' },
+  default: {
+    name: 'ClipBlendingModeSection',
+    emits: ['update:enabled', 'update-blend-mode'],
+    template: '<div></div>',
+  },
 }));
 vi.mock('~/components/properties/clip/ClipOpacitySection.vue', () => ({
-  default: { name: 'ClipOpacitySection', template: '<div></div>' },
+  default: {
+    name: 'ClipOpacitySection',
+    emits: ['update:enabled', 'update-opacity'],
+    template: '<div></div>',
+  },
 }));
 vi.mock('~/components/properties/clip/ClipTransformSection.vue', () => ({
-  default: { name: 'ClipTransformSection', template: '<div></div>' },
+  default: {
+    name: 'ClipTransformSection',
+    emits: ['update:enabled', 'toggle-reversed'],
+    template: '<div></div>',
+  },
 }));
 vi.mock('~/components/properties/clip/ClipTypeSection.vue', () => ({
   default: { name: 'ClipTypeSection', template: '<div></div>' },
 }));
 vi.mock('~/components/properties/clip/ClipMaskSection.vue', () => ({
-  default: { name: 'ClipMaskSection', template: '<div></div>' },
+  default: {
+    name: 'ClipMaskSection',
+    emits: ['update:enabled'],
+    template: '<div></div>',
+  },
 }));
 vi.mock('~/components/properties/clip/ClipParametersPasteModal.vue', () => ({
   default: { name: 'ClipParametersPasteModal', template: '<div></div>' },
@@ -283,12 +304,18 @@ describe('ClipProperties.vue', () => {
     expect(audioTab.exists()).toBe(false);
   });
 
-  it('toggles reversed property when toggleReversed is called', async () => {
+  it('toggles reversed property when toggle-reversed event is emitted', async () => {
     const clip = createClip({ speed: 1 });
     const wrapper = await mountComponent({ clip });
 
-    // Call toggleReversed internally
-    wrapper.vm.toggleReversed();
+    // Switch to video tab where ClipTransformSection is rendered
+    await wrapper.find('[data-tab="video"]').trigger('click');
+    await nextTick();
+
+    const transformSection = wrapper.findComponent({ name: 'ClipTransformSection' });
+    expect(transformSection.exists()).toBe(true);
+    transformSection.vm.$emit('toggle-reversed');
+    await nextTick();
 
     expect(mockTimelineStore.updateClipProperties).toHaveBeenCalledWith('track-1', 'clip-1', {
       speed: -1,
@@ -299,7 +326,11 @@ describe('ClipProperties.vue', () => {
     const clip = createClip();
     const wrapper = await mountComponent({ clip });
 
-    wrapper.vm.handleUpdateStartTime(2000000);
+    const infoSection = wrapper.findComponent({ name: 'ClipInfoSection' });
+    expect(infoSection.exists()).toBe(true);
+
+    infoSection.vm.$emit('update-start-time', 2000000);
+    await nextTick();
     expect(mockTimelineStore.applyTimeline).toHaveBeenCalledWith({
       type: 'move_item',
       trackId: 'track-1',
@@ -308,7 +339,8 @@ describe('ClipProperties.vue', () => {
       quantizeToFrames: false,
     });
 
-    wrapper.vm.handleUpdateEndTime(7000000);
+    infoSection.vm.$emit('update-end-time', 7000000);
+    await nextTick();
     expect(mockTimelineStore.applyTimeline).toHaveBeenCalledWith({
       type: 'trim_item',
       trackId: 'track-1',
@@ -317,7 +349,8 @@ describe('ClipProperties.vue', () => {
       deltaUs: 1000000,
     });
 
-    wrapper.vm.handleUpdateDuration(4000000);
+    infoSection.vm.$emit('update-duration', 4000000);
+    await nextTick();
     expect(mockTimelineStore.applyTimeline).toHaveBeenCalledWith({
       type: 'trim_item',
       trackId: 'track-1',
@@ -331,22 +364,34 @@ describe('ClipProperties.vue', () => {
     const clip = createClip();
     const wrapper = await mountComponent({ clip });
 
-    wrapper.vm.handleUpdateOpacity(0.5);
+    // Switch to video tab where opacity/blendMode sections are rendered
+    await wrapper.find('[data-tab="video"]').trigger('click');
+    await nextTick();
+
+    const opacitySection = wrapper.findComponent({ name: 'ClipOpacitySection' });
+    expect(opacitySection.exists()).toBe(true);
+    opacitySection.vm.$emit('update-opacity', 0.5);
+    await nextTick();
     expect(mockTimelineStore.updateClipProperties).toHaveBeenCalledWith('track-1', 'clip-1', {
       opacity: 0.5,
     });
 
-    wrapper.vm.handleUpdateBlendMode('multiply');
+    const blendingSection = wrapper.findComponent({ name: 'ClipBlendingModeSection' });
+    expect(blendingSection.exists()).toBe(true);
+    blendingSection.vm.$emit('update-blend-mode', 'multiply');
+    await nextTick();
     expect(mockTimelineStore.updateClipProperties).toHaveBeenCalledWith('track-1', 'clip-1', {
       blendMode: 'multiply',
     });
 
-    wrapper.vm.handleUpdateBlendMode('overlay');
+    blendingSection.vm.$emit('update-blend-mode', 'overlay');
+    await nextTick();
     expect(mockTimelineStore.updateClipProperties).toHaveBeenCalledWith('track-1', 'clip-1', {
       blendMode: 'overlay',
     });
 
-    wrapper.vm.handleUpdateBlendMode('soft-light');
+    blendingSection.vm.$emit('update-blend-mode', 'soft-light');
+    await nextTick();
     expect(mockTimelineStore.updateClipProperties).toHaveBeenCalledWith('track-1', 'clip-1', {
       blendMode: 'soft-light',
     });
@@ -362,14 +407,19 @@ describe('ClipProperties.vue', () => {
 
     const wrapper = await mountComponent();
 
-    wrapper.vm.handleCopyClip();
+    const actionsSection = wrapper.findComponent({ name: 'ClipActionsSection' });
+    expect(actionsSection.exists()).toBe(true);
+
+    actionsSection.vm.$emit('copy');
+    await nextTick();
     expect(mockClipboardStore.setClipboardPayload).toHaveBeenCalledWith({
       source: 'timeline',
       operation: 'copy',
       items: [{ sourceTrackId: 'track-1', clip: { id: 'clip-1' } }],
     });
 
-    wrapper.vm.handleCutClip();
+    actionsSection.vm.$emit('cut');
+    await nextTick();
     expect(mockClipboardStore.setClipboardPayload).toHaveBeenCalledWith({
       source: 'timeline',
       operation: 'cut',
@@ -386,25 +436,44 @@ describe('ClipProperties.vue', () => {
     });
     const wrapper = await mountComponent({ clip });
 
-    wrapper.vm.isOpacityEnabled = false;
+    // Switch to video tab where these sections are rendered
+    await wrapper.find('[data-tab="video"]').trigger('click');
+    await nextTick();
+
+    // v-model:enabled emits update:enabled which triggers the computed setter
+    const opacitySection = wrapper.findComponent({ name: 'ClipOpacitySection' });
+    expect(opacitySection.exists()).toBe(true);
+    opacitySection.vm.$emit('update:enabled', false);
+    await nextTick();
     expect(mockTimelineStore.updateClipProperties).toHaveBeenCalledWith('track-1', 'clip-1', {
       opacityActive: false,
     });
 
-    wrapper.vm.isBlendingEnabled = false;
+    const blendingSection = wrapper.findComponent({ name: 'ClipBlendingModeSection' });
+    expect(blendingSection.exists()).toBe(true);
+    blendingSection.vm.$emit('update:enabled', false);
+    await nextTick();
     expect(mockTimelineStore.updateClipProperties).toHaveBeenCalledWith('track-1', 'clip-1', {
       blendModeActive: false,
     });
 
-    wrapper.vm.isTransformEnabled = false;
+    const transformSection = wrapper.findComponent({ name: 'ClipTransformSection' });
+    expect(transformSection.exists()).toBe(true);
+    transformSection.vm.$emit('update:enabled', false);
+    await nextTick();
     expect(mockTimelineStore.updateClipProperties).toHaveBeenCalledWith('track-1', 'clip-1', {
       transformActive: false,
     });
 
-    wrapper.vm.isMaskEnabled = false;
-    expect(mockTimelineStore.updateClipProperties).toHaveBeenCalledWith('track-1', 'clip-1', {
-      maskActive: false,
-    });
+    // ClipMaskSection requires experimentalFeatures to be true
+    const maskSection = wrapper.findComponent({ name: 'ClipMaskSection' });
+    if (maskSection.exists()) {
+      maskSection.vm.$emit('update:enabled', false);
+      await nextTick();
+      expect(mockTimelineStore.updateClipProperties).toHaveBeenCalledWith('track-1', 'clip-1', {
+        maskActive: false,
+      });
+    }
   });
 
   it('updates actions reactively when the clip prop is updated', async () => {

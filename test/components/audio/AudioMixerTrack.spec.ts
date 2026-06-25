@@ -77,15 +77,79 @@ describe('AudioMixerTrack', () => {
       props: { track: baseTrack },
     });
 
-    const buttons = component.findAll('button');
-    const muteBtn = buttons.find((b) => b.text().trim() === 'M');
-    const soloBtn = buttons.find((b) => b.attributes('title') === 'Solo');
+    // Mute and solo buttons are inside the controls div
+    const controlsDiv = component.find('.flex.gap-1.mb-2');
+    expect(controlsDiv.exists()).toBe(true);
+    const buttons = controlsDiv.findAll('button');
+    expect(buttons).toHaveLength(2);
 
-    await muteBtn?.trigger('click');
+    // First button is mute (label="M"), second is solo (icon only)
+    const muteBtn = buttons[0]!;
+    const soloBtn = buttons[1]!;
+
+    expect(muteBtn.text().trim()).toBe('M');
+
+    await muteBtn.trigger('click');
     expect(mockTimelineStore.toggleTrackAudioMuted).toHaveBeenCalledWith('track-1');
 
-    await soloBtn?.trigger('click');
+    await soloBtn.trigger('click');
     expect(mockTimelineStore.toggleTrackAudioSolo).toHaveBeenCalledWith('track-1');
+  });
+
+  it('updates track volume via DbSlider', async () => {
+    const component = await mountSuspended(AudioMixerTrack, {
+      props: { track: baseTrack },
+    });
+
+    const dbSlider = component.findComponent({ name: 'DbSlider' });
+    expect(dbSlider.exists()).toBe(true);
+
+    // DbSlider uses v-model, emitting update:modelValue with new dB value
+    await dbSlider.vm.$emit('update:modelValue', -6);
+
+    // -6 dB → linear gain ≈ 0.501
+    const calls = mockTimelineStore.updateTrackProperties.mock.calls;
+    expect(calls).toHaveLength(1);
+    expect(calls[0]![0]).toBe('track-1');
+    expect(calls[0]![1].audioGain).toBeCloseTo(dbToLinear(-6), 2);
+  });
+
+  it('updates track pan via UiWheelSlider', async () => {
+    const component = await mountSuspended(AudioMixerTrack, {
+      props: { track: baseTrack },
+    });
+
+    const panSlider = component.findComponent({ name: 'UiWheelSlider' });
+    expect(panSlider.exists()).toBe(true);
+
+    await panSlider.vm.$emit('update:modelValue', 0.5);
+
+    expect(mockTimelineStore.updateTrackProperties).toHaveBeenCalledWith('track-1', {
+      audioBalance: 0.5,
+    });
+  });
+
+  it('resets volume to 0 dB when clicking the db value display', async () => {
+    const trackWithLowVolume = {
+      ...baseTrack,
+      audioGain: dbToLinear(-20),
+    };
+
+    const component = await mountSuspended(AudioMixerTrack, {
+      props: { track: trackWithLowVolume },
+    });
+
+    // The db value display is inside a UiTooltip, click resets to 0 dB
+    const dbDisplay = component.find('.text-xs.font-mono');
+    expect(dbDisplay.exists()).toBe(true);
+    expect(dbDisplay.text()).toContain('-20.0 dB');
+
+    await dbDisplay.trigger('click');
+
+    // 0 dB → linear gain 1.0
+    expect(mockTimelineStore.updateTrackProperties).toHaveBeenCalledWith('track-1', {
+      audioGain: 1,
+    });
   });
 
   it('allows renaming the track via modal', async () => {
