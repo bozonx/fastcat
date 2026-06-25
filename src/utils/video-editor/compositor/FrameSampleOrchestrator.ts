@@ -99,7 +99,13 @@ export class FrameSampleOrchestrator {
     this.hideCompositePrevClips(params.activeClips, params.timeUs, params.getPrevClipOnLayer);
 
     if (sampleRequests.length > 0) {
-      const samples = await Promise.all(sampleRequests);
+      const settled = await Promise.allSettled(sampleRequests);
+      const samples = settled
+        .filter(
+          (r): r is PromiseFulfilledResult<{ clip: CompositorClip; sample: unknown | null }> =>
+            r.status === 'fulfilled',
+        )
+        .map((r) => r.value);
       await this.applySampleResults({
         samples,
         updatedClips,

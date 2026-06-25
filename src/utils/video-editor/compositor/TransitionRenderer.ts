@@ -1,5 +1,5 @@
 import { createDevLogger } from '~/utils/dev-logger';
-import { Sprite, Texture, type Application, type RenderTexture } from 'pixi.js';
+import { ImageSource, Sprite, Texture, type Application, type RenderTexture } from 'pixi.js';
 import {
   applyTransitionCurve,
   DEFAULT_TRANSITION_MODE,
@@ -55,14 +55,19 @@ export interface TransitionRendererParams {
 }
 
 export class TransitionRenderer {
-  // Reusable sprite for blitting the transition result into the clip's output
-  // texture. Kept on the instance so we don't allocate a Sprite every frame of
-  // every transition (the Texture still wraps a fresh ImageBitmap each frame).
+  // Reusable sprite + ImageSource + Texture for blitting the transition result
+  // into the clip's output texture. All three are kept on the instance so we
+  // don't allocate GPU-backed objects every frame of every transition.
   private blitSprite: Sprite | null = null;
+  private blitSource: ImageSource | null = null;
+  private blitTexture: Texture | null = null;
 
   public destroy() {
     this.blitSprite?.destroy();
     this.blitSprite = null;
+    this.blitTexture?.destroy(true);
+    this.blitTexture = null;
+    this.blitSource = null;
   }
 
   public async applyShaderTransitions(
@@ -181,7 +186,6 @@ export class TransitionRenderer {
       let fromBitmap: ImageBitmap | null = null;
       let toBitmap: ImageBitmap | null = null;
       let processed: ImageBitmap | null = null;
-      let texture: Texture | null = null;
       try {
         fromBitmap = params.textureToBitmap
           ? await params.textureToBitmap(shaderFromTexture)
@@ -198,13 +202,23 @@ export class TransitionRenderer {
         });
         if (!processed) continue;
 
-        texture = Texture.from(processed);
-        if (!this.blitSprite) {
-          this.blitSprite = new Sprite(texture);
+        // Reuse cached ImageSource + Texture + Sprite to avoid per-frame GPU allocations.
+        if (!this.blitSource) {
+          this.blitSource = new ImageSource({
+            resource: processed as unknown as OffscreenCanvas,
+          });
+          this.blitTexture = new Texture({ source: this.blitSource });
+          this.blitSprite = new Sprite(this.blitTexture);
         } else {
-          this.blitSprite.texture = texture;
+          const w = processed.width;
+          const h = processed.height;
+          if (this.blitSource.width !== w || this.blitSource.height !== h) {
+            this.blitSource.resize(w, h);
+          }
+          (this.blitSource as { resource?: unknown }).resource = processed;
+          this.blitSource.update();
         }
-        const outputSprite = this.blitSprite;
+        const outputSprite = this.blitSprite!;
         outputSprite.width = params.width;
         outputSprite.height = params.height;
         params.app.renderer.render({
@@ -216,9 +230,8 @@ export class TransitionRenderer {
         log.warn('[VideoCompositor] WebGPU transition failed:', error);
         continue;
       } finally {
-        // The sprite is reused next frame; only the per-frame texture (backed by
-        // the just-consumed ImageBitmap) is released.
-        texture?.destroy();
+        // The sprite, texture, and image source are reused next frame.
+        // Only the per-frame bitmaps are released.
         fromBitmap?.close();
         toBitmap?.close();
         processed?.close();
@@ -357,6 +370,12 @@ export class TransitionRenderer {
 
     if (!sample) {
       if (clip.lastVideoFrame) {
+        // Check if the cached frame is still usable (not closed).
+        const closed = !!(clip.lastVideoFrame as { closed?: boolean }).closed;
+        if (closed) {
+          clip.lastVideoFrame = null;
+          return false;
+        }
         try {
           await params.updateClipTextureFromSample(
             { frame: clip.lastVideoFrame, close: () => {} } as unknown,

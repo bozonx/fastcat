@@ -34,7 +34,7 @@ export interface HudMediaState {
   sourceKind: 'videoFrame' | 'canvas' | 'bitmap';
   imageSource: ImageSource;
   sprite: Sprite | Graphics | null;
-  lastVideoFrame: VideoFrame | null;
+  lastVideoFrame: VideoFrame | ImageBitmap | null;
   bitmap: ImageBitmap | null;
 }
 
@@ -61,7 +61,7 @@ export interface BaseCompositorClip {
   freezeFrameSourceUs?: number;
   sprite: Sprite | Graphics | null;
   imageSource: ImageSource;
-  lastVideoFrame: VideoFrame | null;
+  lastVideoFrame: VideoFrame | ImageBitmap | null;
   canvas: OffscreenCanvas | null;
   ctx: OffscreenCanvasRenderingContext2D | null;
   bitmap: ImageBitmap | null;

@@ -440,6 +440,10 @@ export function useMonitorPlayback(options: UseMonitorPlaybackOptions) {
             playbackLoopState.lastFrameTimeMs = ts;
             updatePlayback(ts);
           });
+        }).catch((error) => {
+          if (!isUnmounted) {
+            log.error('audioEngine.play() failed:', error);
+          }
         });
       } else {
         audioEngine.stopScrubPreview();

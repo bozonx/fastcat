@@ -915,8 +915,11 @@ pub async fn native_get_ffmpeg_diagnostics(
 pub async fn native_media_extract_peaks(
     path: String,
     max_length: usize,
-    _precision: usize,
+    // Currently unused; the frontend sends it for API compatibility.
+    // Future peak extraction modes may use it for resolution control.
+    precision: usize,
 ) -> Result<Vec<u8>, String> {
+    let _ = precision;
     let path = PathBuf::from(path);
     run_blocking(move || {
         crate::audio::peaks::extract_peaks(&path, max_length)

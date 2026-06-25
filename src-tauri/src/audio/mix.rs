@@ -419,7 +419,11 @@ fn mix_chunk_ramped_result(
     clamp_peaks(&mut mixed);
     {
         let mut state = shared.0.lock();
-        state.track_levels = track_levels;
+        // Reuse the existing HashMap in-place instead of replacing it with a
+        // fresh allocation every 50ms chunk. Clear and re-insert to keep the
+        // capacity and avoid per-chunk allocation churn.
+        state.track_levels.clear();
+        state.track_levels.extend(track_levels);
     }
     Ok(mixed)
 }

@@ -139,10 +139,14 @@ export class VideoFrameCache {
       this.videoFrameCache.delete(oldestKey);
       if (!oldest) continue;
       this.videoFrameCacheSizeBytes -= oldest.sizeBytes;
-      try {
-        oldest.frame.close();
-      } catch {
-        // ignore
+      // Skip close() for already-closed frames (they don't hold GPU memory).
+      const closed = !!(oldest.frame as { closed?: boolean }).closed;
+      if (!closed) {
+        try {
+          oldest.frame.close();
+        } catch {
+          // ignore
+        }
       }
     }
 

@@ -40,6 +40,7 @@ pub mod plugins;
 
 mod clock;
 mod decode;
+pub(crate) use decode::evict_stale_silent_paths;
 pub mod mix;
 mod output;
 mod producer;

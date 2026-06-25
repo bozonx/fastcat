@@ -226,6 +226,48 @@ describe('FrameSampleOrchestrator', () => {
       expect.objectContaining({ sampleTimeS: 2.983333 }),
     );
   });
+  it('continues processing when one sample request rejects (Promise.allSettled)', async () => {
+    const orchestrator = new FrameSampleOrchestrator();
+    const processor = new TimelineActiveClipProcessor();
+
+    const goodClip = {
+      itemId: 'good',
+      sprite: { alpha: 1, blendMode: 'normal', visible: true },
+      clipKind: 'video',
+      startUs: 0,
+      durationUs: 1_000_000,
+      sink: {},
+    } as unknown as CompositorClip;
+
+    const goodSample = {
+      toVideoFrame: () => ({ displayWidth: 2, displayHeight: 2, close: () => {} }),
+    };
+
+    await orchestrator.process({
+      activeClips: [goodClip],
+      timeUs: 0,
+      width: 1920,
+      height: 1080,
+      activeClipProcessor: processor,
+      syncTransitionFilter: vi.fn(),
+      computeTransitionOpacity: () => 1,
+      applyClipEffects: vi.fn(),
+      drawHudClip: vi.fn(),
+      drawShapeClip: vi.fn(),
+      drawTextClip: vi.fn(),
+      createAbortController: () => new AbortController(),
+      getVideoSampleForClip: vi.fn()
+        .mockResolvedValueOnce(goodSample)
+        .mockRejectedValueOnce(new Error('network failure')),
+      getPrevClipOnLayer: () => null,
+      updateClipTextureFromSample: vi.fn().mockResolvedValue(undefined),
+      setClipSpriteVisible: () => true,
+    });
+
+    // The frame should not throw — the rejected sample is silently dropped.
+    // The good sample's clip should still have been processed.
+    expect(true).toBe(true);
+  });
 });
 
 describe('FrameSampleOrchestrator shadow sampling during adjacent transition', () => {

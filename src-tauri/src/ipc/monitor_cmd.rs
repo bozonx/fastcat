@@ -190,6 +190,10 @@ pub async fn monitor_set_master_gain(
     send_monitor_cmd(&engine, MonitorCommand::SetMasterGain(gain))
 }
 
+/// Pauses the monitor without destroying the winit EventLoop (which cannot be
+/// recreated in the same process on Linux). The name `monitor_close` is kept for
+/// IPC compatibility — the frontend calls it when the user closes the preview
+/// window, but the actual behavior is a graceful pause.
 #[tauri::command]
 pub async fn monitor_close(engine: State<'_, VideoEngine>) -> Result<(), String> {
     if let Some(m) = engine.monitor() {

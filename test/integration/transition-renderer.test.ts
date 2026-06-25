@@ -28,9 +28,29 @@ vi.mock('pixi.js', async () => {
 
   return {
     Sprite: MockSprite,
-    Texture: {
-      EMPTY: { id: 'empty-texture' },
-      from: vi.fn(() => ({ destroy: vi.fn() })),
+    Texture: class MockTexture {
+      static EMPTY = { id: 'empty-texture' };
+      static from = vi.fn(() => ({ destroy: vi.fn() }));
+      source: any;
+      constructor(opts: any) {
+        this.source = opts?.source;
+      }
+      destroy = vi.fn();
+    },
+    ImageSource: class MockImageSource {
+      width = 0;
+      height = 0;
+      resource: any;
+      constructor(opts: any) {
+        this.resource = opts?.resource;
+        this.width = opts?.resource?.width ?? 0;
+        this.height = opts?.resource?.height ?? 0;
+      }
+      resize = vi.fn((w: number, h: number) => {
+        this.width = w;
+        this.height = h;
+      });
+      update = vi.fn();
     },
   };
 });

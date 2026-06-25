@@ -1,6 +1,6 @@
 import { createDevLogger } from '~/utils/dev-logger';
 import { TimelineActiveTracker } from './TimelineActiveTracker';
-import { Sprite, Texture } from 'pixi.js';
+import { Sprite, Texture, ImageSource } from 'pixi.js';
 import type { Application, Filter, RenderTexture } from 'pixi.js';
 import type { WorkerVideoPayloadItem } from '../../composables/timeline/export/types';
 import type { PreviewRenderOptions } from './worker-rpc';
@@ -99,6 +99,10 @@ export class VideoCompositor {
   private disposed = false;
   private timelineLoadAbortController: AbortController | null = null;
   private clipPreferBitmapFallback = new Map<string, boolean>();
+  // Cached blit resources for the adjustment-clip path. Reused across frames to
+  // avoid creating/destroying a Texture + Sprite per adjustment clip per frame.
+  private adjustmentBlitSource: ImageSource | null = null;
+  private adjustmentBlitSprite: Sprite | null = null;
   private videoFrameCache = new VideoFrameCache(
     Math.max(0, Number(VIDEO_CORE_LIMITS.MAX_VIDEO_FRAME_CACHE_MB) || 0) * 1024 * 1024,
   );
@@ -304,8 +308,23 @@ export class VideoCompositor {
         });
 
         const output = processedBitmap ?? sourceBitmap;
-        const texture = Texture.from(output);
-        const sprite = new Sprite(texture);
+        // Reuse cached ImageSource + Sprite to avoid per-frame GPU allocations.
+        if (!this.adjustmentBlitSource) {
+          this.adjustmentBlitSource = new ImageSource({
+            resource: output as unknown as OffscreenCanvas,
+          });
+          const blitTexture = new Texture({ source: this.adjustmentBlitSource });
+          this.adjustmentBlitSprite = new Sprite(blitTexture);
+        } else {
+          const w = output.width;
+          const h = output.height;
+          if (this.adjustmentBlitSource.width !== w || this.adjustmentBlitSource.height !== h) {
+            this.adjustmentBlitSource.resize(w, h);
+          }
+          (this.adjustmentBlitSource as { resource?: unknown }).resource = output;
+          this.adjustmentBlitSource.update();
+        }
+        const sprite = this.adjustmentBlitSprite!;
         sprite.anchor.set(0, 0);
         sprite.x = 0;
         sprite.y = 0;
@@ -314,16 +333,11 @@ export class VideoCompositor {
         clip.adjustmentSourceTexture = this.ensureClipRenderTexture(
           clip.adjustmentSourceTexture ?? null,
         );
-        try {
-          this.app.renderer.render({
-            container: sprite,
-            target: clip.adjustmentSourceTexture,
-            clear: true,
-          });
-        } finally {
-          sprite.destroy();
-          texture.destroy(true);
-        }
+        this.app.renderer.render({
+          container: sprite,
+          target: clip.adjustmentSourceTexture,
+          clear: true,
+        });
       } catch (err) {
         log.warn('[VideoCompositor] Adjustment rendering failed:', err);
       } finally {
@@ -372,22 +386,7 @@ export class VideoCompositor {
   public async applyShaderTransitions(activeClips: CompositorClip[], currentTimeUs: number) {
     if (!this.app) return;
 
-    const self = this as unknown as {
-      renderSingleClipToTexture?: (
-        clip: CompositorClip,
-        texture: RenderTexture,
-        clear?: boolean,
-      ) => void;
-      renderLowerLayersToTexture?: (layer: number, texture: RenderTexture) => void;
-      ensureTransitionSprite?: (clip: CompositorClip) => void;
-    };
-    const stageTextureRenderer = this.stageTextureRenderer ?? {
-      renderSingleClipToTexture: (clip: CompositorClip, texture: RenderTexture, clear?: boolean) =>
-        self.renderSingleClipToTexture?.(clip, texture, clear),
-      renderLowerLayersToTexture: (layer: number, texture: RenderTexture) =>
-        self.renderLowerLayersToTexture?.(layer, texture),
-      ensureTransitionSprite: (clip: CompositorClip) => self.ensureTransitionSprite?.(clip),
-    };
+    const stageTextureRenderer = this.ensureStageTextureRenderer(this.app);
 
     await this.transitionRenderer.applyShaderTransitions(activeClips, currentTimeUs, {
       app: this.app,
@@ -397,8 +396,7 @@ export class VideoCompositor {
       previewEffectQuality: this.previewEffectQuality,
       computeRunner: this.computeRunner,
       transitionManager: this.transitionManager,
-      stageTextureRenderer:
-        stageTextureRenderer as import('./compositor/StageTextureRenderer').StageTextureRenderer,
+      stageTextureRenderer,
       getTrackById: (trackId) => this.trackRuntimeManager.getById(trackId),
       getActiveTransitionState: (clip, timeUs) =>
         this.getActiveTransitionState(clip, timeUs) as {
@@ -962,6 +960,7 @@ export class VideoCompositor {
     this.prevClipById.clear();
     this.nextClipById.clear();
     this.replacedClipIds.clear();
+    this.clipPreferBitmapFallback.clear();
     this.lastRenderedTimeUs = 0;
     this.activeTracker.reset();
     this.stageSortDirty = true;
@@ -982,6 +981,14 @@ export class VideoCompositor {
     this.clearClipsLocked();
     this.videoFrameCache.clear();
     this.transitionRenderer.destroy();
+    // Clean up cached adjustment blit resources.
+    if (this.adjustmentBlitSprite) {
+      const tex = this.adjustmentBlitSprite.texture;
+      this.adjustmentBlitSprite.destroy();
+      tex?.destroy(true);
+      this.adjustmentBlitSprite = null;
+    }
+    this.adjustmentBlitSource = null;
     if (this.stageTextureRenderer) {
       this.stageTextureRenderer.destroy();
       this.stageTextureRenderer = null;

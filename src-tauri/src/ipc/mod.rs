@@ -1,9 +1,8 @@
 //! Tauri commands exported to the frontend.
 //!
-//! Currently the only group is `monitor_cmd` (native monitor control).
-//! Off-screen rendering (for the export/thumbnail worker) will be added on top of
-//! the existing timeline model (`MonitorScene`) as a separate command
-//! `monitor_render_at(timeline_sec, w, h)`, not via a parallel per-frame DTO.
+//! Command groups: `monitor_cmd` (native monitor control), `media_cmd` (media
+//! processing, probing, export), `fonts_cmd` (system font enumeration),
+//! `fs_scope_cmd` (filesystem scope management).
 
 pub mod fonts_cmd;
 pub mod fs_scope_cmd;

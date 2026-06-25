@@ -18,6 +18,16 @@ import type { WebGpuComputeRunner } from './WebGpuComputeRunner';
 import { buildEffectSpecs } from '~/effects';
 const log = createDevLogger('ClipResourceManager');
 
+function fastHash(input: unknown): string {
+  const str = typeof input === 'string' ? input : JSON.stringify(input);
+  let hash = 0x811c9dc5;
+  for (let i = 0; i < str.length; i++) {
+    hash ^= str.charCodeAt(i);
+    hash = Math.imul(hash, 0x01000193);
+  }
+  return (hash >>> 0).toString(16);
+}
+
 export type WebMonitorSyncMode = 'smooth' | 'balanced' | 'strict';
 
 export interface ClipResourceManagerContext {
@@ -100,19 +110,19 @@ export class ClipResourceManager {
             source = p;
           }
         }
-        processed = await runner.applyBlurFill(
+        processed = await runner.applyBlurFill({
           source,
-          this.context.width,
-          this.context.height,
-          blurFill.fg_scale,
-          blurFill.bg_scale,
-          blurFill.blur,
-          blurFill.bg_dim,
-          blurFill.bg_saturation,
-          blurFill.tint_color,
-          blurFill.tint_strength,
-          blurFill.fg_offset_y,
-        );
+          frameW: this.context.width,
+          frameH: this.context.height,
+          fgScale: blurFill.fg_scale,
+          bgScale: blurFill.bg_scale,
+          blur: blurFill.blur,
+          bgDim: blurFill.bg_dim,
+          bgSaturation: blurFill.bg_saturation,
+          tintColor: blurFill.tint_color,
+          tintStrength: blurFill.tint_strength,
+          fgOffsetY: blurFill.fg_offset_y,
+        });
         if (source !== sourceBitmap) source.close();
       } else {
         processed = await runner.applyEffects(sourceBitmap, effectSpecs);
@@ -131,7 +141,7 @@ export class ClipResourceManager {
         }
         (clip.imageSource as { resource?: unknown }).resource = processed;
         clip.imageSource.update();
-        clip.lastVideoFrame = processed as unknown as VideoFrame;
+        clip.lastVideoFrame = processed;
         clip.nonVideoEffectCacheKey = cacheKey;
         this.context.getLayoutApplier().applySpriteLayout(processedW, processedH, clip);
 
@@ -161,13 +171,13 @@ export class ClipResourceManager {
     effectSpecs: ReturnType<typeof buildEffectSpecs>,
   ): string {
     const parts: string[] = [
-      JSON.stringify(effectSpecs),
+      fastHash(effectSpecs),
       `${this.context.width}x${this.context.height}`,
     ];
 
     switch (clip.clipKind) {
       case 'text':
-        parts.push(clip.text ?? '', JSON.stringify(clip.style ?? {}));
+        parts.push(clip.text ?? '', fastHash(clip.style ?? {}));
         break;
       case 'shape':
         parts.push(
@@ -175,7 +185,7 @@ export class ClipResourceManager {
           clip.fillColor ?? '',
           clip.strokeColor ?? '',
           String(clip.strokeWidth ?? 0),
-          JSON.stringify(clip.shapeConfig ?? {}),
+          fastHash(clip.shapeConfig ?? {}),
         );
         break;
       case 'solid':
@@ -436,7 +446,7 @@ export class ClipResourceManager {
     // read a closed VideoFrame ("video frame that doesn't have back resource" → the
     // GPU texture is destroyed yet still used in submit). Defer disposal to `finally`,
     // after every success/return path has swapped in the new resource.
-    let prevFrame: VideoFrame | null = null;
+    let prevFrame: VideoFrame | ImageBitmap | null = null;
     try {
       const sampleObj = sample as { toVideoFrame?: () => VideoFrame };
       if (typeof sampleObj?.toVideoFrame === 'function') {
@@ -510,19 +520,19 @@ export class ClipResourceManager {
                   const source: VideoFrame | ImageBitmap = intermediate ?? frame;
                   const projectW = this.context.width;
                   const projectH = this.context.height;
-                  const processed = await runner.applyBlurFill(
+                  const processed = await runner.applyBlurFill({
                     source,
-                    projectW,
-                    projectH,
-                    blurFill.fg_scale,
-                    blurFill.bg_scale,
-                    blurFill.blur,
-                    blurFill.bg_dim,
-                    blurFill.bg_saturation,
-                    blurFill.tint_color,
-                    blurFill.tint_strength,
-                    blurFill.fg_offset_y,
-                  );
+                    frameW: projectW,
+                    frameH: projectH,
+                    fgScale: blurFill.fg_scale,
+                    bgScale: blurFill.bg_scale,
+                    blur: blurFill.blur,
+                    bgDim: blurFill.bg_dim,
+                    bgSaturation: blurFill.bg_saturation,
+                    tintColor: blurFill.tint_color,
+                    tintStrength: blurFill.tint_strength,
+                    fgOffsetY: blurFill.fg_offset_y,
+                  });
                   if (processed) {
                     // Success: both the raw frame and the intermediate are consumed.
                     safeDispose(frame);
@@ -535,7 +545,7 @@ export class ClipResourceManager {
                     }
                     (clip.imageSource as { resource?: unknown }).resource = processed;
                     clip.imageSource.update();
-                    clip.lastVideoFrame = processed as unknown as VideoFrame;
+                    clip.lastVideoFrame = processed;
                     this.context.getLayoutApplier().applySpriteLayout(projectW, projectH, clip);
                     return;
                   }
@@ -554,7 +564,7 @@ export class ClipResourceManager {
                     }
                     (clip.imageSource as { resource?: unknown }).resource = intermediate as unknown;
                     clip.imageSource.update();
-                    clip.lastVideoFrame = intermediate as unknown as VideoFrame;
+                    clip.lastVideoFrame = intermediate;
                     this.context.getLayoutApplier().applySpriteLayout(frameW, frameH, clip);
                     return;
                   }
@@ -582,7 +592,7 @@ export class ClipResourceManager {
                     }
                     (clip.imageSource as { resource?: unknown }).resource = processed;
                     clip.imageSource.update();
-                    clip.lastVideoFrame = processed as unknown as VideoFrame;
+                    clip.lastVideoFrame = processed;
                     this.context.getLayoutApplier().applySpriteLayout(frameW, frameH, clip);
                     return;
                   }

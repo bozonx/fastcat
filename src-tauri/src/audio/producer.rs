@@ -160,14 +160,14 @@ pub(crate) fn producer_loop(
             } else {
                 last_consumed = None;
             }
-            let events = clock.underrun_events.load(Ordering::SeqCst);
+            let events = clock.underrun_events.load(Ordering::Relaxed);
             // A seek/play calls `reset_frames`, zeroing the counters; rebase so we
             // don't go silent until the count climbs back past the old baseline.
             if events < last_underrun_events {
                 last_underrun_events = 0;
             }
             if events > last_underrun_events {
-                let frames = clock.underrun_frames.load(Ordering::SeqCst);
+                let frames = clock.underrun_frames.load(Ordering::Relaxed);
                 let new_events = events - last_underrun_events;
                 log::warn!(
                     "[audio] ring underrun: {new_events} dropout(s) in the last ~1s \

@@ -294,19 +294,19 @@ describe('WebGpuComputeRunner', () => {
   it('returns null from applyBlurFill when not initialized', async () => {
     const runner = new WebGpuComputeRunner();
     const bitmap = { width: 4, height: 4 } as unknown as ImageBitmap;
-    const result = await runner.applyBlurFill(
-      bitmap,
-      1920,
-      1080,
-      1,
-      1,
-      0,
-      1,
-      1,
-      [0, 0, 0, 0],
-      0,
-      0,
-    );
+    const result = await runner.applyBlurFill({
+      source: bitmap,
+      frameW: 1920,
+      frameH: 1080,
+      fgScale: 1,
+      bgScale: 1,
+      blur: 0,
+      bgDim: 1,
+      bgSaturation: 1,
+      tintColor: [0, 0, 0, 0],
+      tintStrength: 0,
+      fgOffsetY: 0,
+    });
     expect(result).toBeNull();
   });
 });

@@ -7,6 +7,7 @@ use anyhow::{Context, Result};
 use parking_lot::{Condvar, Mutex};
 
 use crate::audio::clock::RealtimeClock;
+use crate::audio::evict_stale_silent_paths;
 use crate::audio::mix::sanitize_master_gain;
 use crate::audio::output::{AudioBackend, AudioStream, CpalAudioBackend};
 use crate::audio::producer::{audible_pts_sec, spawn_producer_thread};
@@ -196,6 +197,13 @@ impl NativeAudioEngine {
         state.tracks = tracks.to_vec();
         state.audio_master_effects = audio_master_effects.to_vec();
         state.master_gain = sanitize_master_gain(master_gain);
+
+        // Evict silent-path cache entries for paths no longer in the scene so an
+        // in-place file replace (same path, now with audio) is re-probed.
+        let active_paths: std::collections::HashSet<&str> =
+            layers.iter().map(|l| l.path.as_str()).collect();
+        evict_stale_silent_paths(&active_paths);
+
         // Bump scene_serial so the producer re-reads the scene (refreshes its
         // cached snapshot and applies new mix params). This does NOT discard the
         // in-flight chunk — only a seek (flush) does — so frequent param edits
@@ -530,6 +538,11 @@ impl NativeAudioEngine {
         let speed = if speed.is_finite() && speed != 0.0 {
             speed
         } else {
+            if speed == 0.0 {
+                log::warn!("[audio] set_speed received 0.0; normalizing to 1.0 (use pause for stop)");
+            } else if !speed.is_finite() {
+                log::warn!("[audio] set_speed received non-finite speed {speed}; normalizing to 1.0");
+            }
             1.0
         };
         let mut state = self.shared.0.lock();
@@ -1293,5 +1306,57 @@ mod tests {
             engine.shared.0.lock().scrub_request.is_some(),
             "scrub_preview must be accepted after a paused seek"
         );
+    }
+
+    #[test]
+    fn set_scene_evicts_silent_paths_no_longer_in_scene() {
+        use crate::audio::decode::{
+            cached_silent_paths, path_known_silent, remember_silent_path,
+            reset_silent_paths_for_test,
+        };
+
+        reset_silent_paths_for_test();
+
+        // Simulate a video-only file at /tmp/silent.mp4 being cached as silent.
+        remember_silent_path("/tmp/silent.mp4");
+        remember_silent_path("/tmp/other-silent.mp4");
+        assert!(path_known_silent("/tmp/silent.mp4"));
+        assert!(path_known_silent("/tmp/other-silent.mp4"));
+
+        // Scene update with only /tmp/silent.mp4 present → other-silent is evicted.
+        let engine = mock_engine();
+        let l = layer("l1", "/tmp/silent.mp4", 0.0, 10.0, 1.0);
+        engine.set_scene(std::slice::from_ref(&l), &[], 1.0, &[]);
+        let remaining = cached_silent_paths();
+        assert!(
+            remaining.contains(&"/tmp/silent.mp4".to_string()),
+            "active path must stay cached"
+        );
+        assert!(
+            !remaining.contains(&"/tmp/other-silent.mp4".to_string()),
+            "evicted path must be removed from silent cache"
+        );
+
+        reset_silent_paths_for_test();
+    }
+
+    #[test]
+    fn set_scene_with_empty_scene_clears_all_silent_paths() {
+        use crate::audio::decode::{
+            cached_silent_paths, remember_silent_path, reset_silent_paths_for_test,
+        };
+
+        reset_silent_paths_for_test();
+        remember_silent_path("/tmp/a.mp4");
+        remember_silent_path("/tmp/b.mp4");
+
+        let engine = mock_engine();
+        engine.set_scene(&[], &[], 1.0, &[]);
+        assert!(
+            cached_silent_paths().is_empty(),
+            "empty scene must evict all silent paths"
+        );
+
+        reset_silent_paths_for_test();
     }
 }

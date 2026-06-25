@@ -344,7 +344,10 @@ pub(crate) fn write_output<T: OutputSample>(
         return;
     }
 
-    const AUDIO_CALLBACK_TEMP_CAPACITY: usize = 131072;
+    // 262144 samples = ~2.7s at 48kHz stereo. Large enough for any reasonable
+    // device buffer size (even 8192-frame periods × 32 channels = 262144).
+    // If a device requests more, the resize below handles it with a warning.
+    const AUDIO_CALLBACK_TEMP_CAPACITY: usize = 262144;
 
     thread_local! {
         static TEMP_BUF: std::cell::RefCell<Vec<f32>> = {
@@ -373,12 +376,15 @@ pub(crate) fn write_output<T: OutputSample>(
         // callback lock-free; the producer thread reads these to log throttled.
         if read < temp_slice.len() {
             let silent_frames = ((temp_slice.len() - read) / channels) as u64;
+            // Relaxed ordering suffices: these are monotonic counters only read
+            // by the producer thread for throttled logging. SeqCst adds an
+            // unnecessary full memory barrier on every audio callback.
             clock
                 .underrun_events
-                .fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+                .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
             clock
                 .underrun_frames
-                .fetch_add(silent_frames, std::sync::atomic::Ordering::SeqCst);
+                .fetch_add(silent_frames, std::sync::atomic::Ordering::Relaxed);
         }
         let output_gain = clock.output_gain() as f32;
         let mut sum_squares = 0.0f64;

@@ -544,13 +544,30 @@ export class WebGpuComputeRunner {
   private pingView: GPUTextureView | null = null;
   private pongView: GPUTextureView | null = null;
   private auxView: GPUTextureView | null = null;
+  private ownedTexture: GPUTexture | null = null;
+  private ownedView: GPUTextureView | null = null;
   private sampler: GPUSampler | null = null;
   private cachedWidth = 0;
   private cachedHeight = 0;
 
+  // Cached input texture — reused across frames when the input size matches.
+  // Previously allocated and destroyed on every runComputeChain call.
+  private inputTexture: GPUTexture | null = null;
+  private inputView: GPUTextureView | null = null;
+  private inputCachedWidth = 0;
+  private inputCachedHeight = 0;
+
+  // Pooled MAP_READ staging buffer for the effect path (mirrors transReadbackBuffer).
+  private effectReadbackBuffer: GPUBuffer | null = null;
+  private effectReadbackCapacity = 0;
+
+  // Reusable OffscreenCanvas for GPU→CPU readback in both effect and transition paths.
+  private readbackCanvas: OffscreenCanvas | null = null;
+
   private customPipelines = new Map<string, GPUComputePipeline>();
   private transitionBindLayout: GPUBindGroupLayout | null = null;
   private transitionPipelines = new Map<string, GPUComputePipeline>();
+  private static readonly MAX_CACHED_PIPELINES = 16;
 
   // Persistent transition resources, reused across frames. Allocating the
   // from/to/output textures + uniform buffer per call (the previous behaviour)
@@ -776,181 +793,187 @@ export class WebGpuComputeRunner {
     } = params;
 
     this.ensureTextures(outputWidth, outputHeight);
+    this.ensureInputTexture(inputWidth, inputHeight);
 
-    const inputTexture = this.device.createTexture({
-      label: `${label}-input`,
-      size: { width: inputWidth, height: inputHeight, depthOrArrayLayers: 1 },
-      format: 'rgba8unorm',
-      usage:
-        GPUTextureUsage.TEXTURE_BINDING |
-        GPUTextureUsage.COPY_DST |
-        GPUTextureUsage.RENDER_ATTACHMENT,
-    });
+    const inputTexture = this.inputTexture!;
+    const inputView = this.inputView!;
+    const ownedTexture = this.ownedTexture!;
+    const ownedView = this.ownedView!;
 
-    try {
-      this.device.queue.copyExternalImageToTexture(
-        { source: uploadSource, flipY: false },
-        { texture: inputTexture, origin: { x: copyOriginX, y: copyOriginY, z: 0 } },
-        { width: copyWidth, height: copyHeight, depthOrArrayLayers: 1 },
-      );
+    this.device.queue.copyExternalImageToTexture(
+      { source: uploadSource, flipY: false },
+      { texture: inputTexture, origin: { x: copyOriginX, y: copyOriginY, z: 0 } },
+      { width: copyWidth, height: copyHeight, depthOrArrayLayers: 1 },
+    );
 
-      // Release the intermediate ImageBitmap immediately after upload to avoid
-      // leaking GPU-backed bitmap memory.
-      if (uploadSource !== source && 'close' in uploadSource) {
-        (uploadSource as ImageBitmap).close();
-      }
-
-      const inputView = inputTexture.createView();
-      const owned = this.createOutputTexture(outputWidth, outputHeight);
-
-      try {
-        this.ensureUniformBuffer(passes.length);
-
-        const staging = new ArrayBuffer(this.uniformStride * passes.length);
-        const u32 = new Uint32Array(staging);
-        const f32 = new Float32Array(staging);
-
-        for (let i = 0; i < passes.length; i++) {
-          const base = (i * this.uniformStride) / 4;
-          const u = passes[i]!.uniform;
-          u32[base + 0] = u.mode;
-          u32[base + 1] = u.width;
-          u32[base + 2] = u.height;
-          u32[base + 3] = u.seed;
-          f32[base + 4] = u.p0;
-          f32[base + 5] = u.p1;
-          f32[base + 6] = u.p2;
-          f32[base + 7] = u.p3;
-          f32[base + 8] = u.p4;
-          f32[base + 9] = u.p5;
-          f32[base + 10] = u.p6;
-          f32[base + 11] = u.p7;
-        }
-
-        this.device.queue.writeBuffer(this.uniformBuffer!, 0, staging);
-
-        const encoder = this.device.createCommandEncoder({ label: `${label}-encoder` });
-
-        // Map a logical buffer slot to its concrete view (mirror of the Rust
-        // `view_of` routing). The final pass is routed to `owned` by the builder.
-        const viewOf = (buf: Buf): GPUTextureView => {
-          switch (buf) {
-            case 'input':
-              return inputView;
-            case 'ping':
-              return this.pingView!;
-            case 'pong':
-              return this.pongView!;
-            case 'aux':
-              return this.auxView!;
-            case 'owned':
-              return owned.view;
-          }
-        };
-
-        for (let index = 0; index < passes.length; index++) {
-          const pass = passes[index]!;
-          const uniformOffset = index * this.uniformStride;
-
-          const bindSrc = viewOf(pass.src);
-          const bindSecondary = viewOf(pass.secondary);
-          const targetView = viewOf(pass.dst);
-
-          let pipeline = this.pipeline;
-          if (pass.customSource) {
-            pipeline = this.getOrCreateCustomPipeline(pass.customSource);
-          }
-
-          const bindGroup = this.device.createBindGroup({
-            label: `${label}-bind-group`,
-            layout: this.bindLayout,
-            entries: [
-              { binding: 0, resource: bindSrc },
-              { binding: 1, resource: targetView },
-              {
-                binding: 2,
-                resource: { buffer: this.uniformBuffer!, offset: 0, size: UNIFORM_SIZE },
-              },
-              { binding: 3, resource: bindSecondary },
-              { binding: 4, resource: this.sampler! },
-            ],
-          });
-
-          const computePass = encoder.beginComputePass({ label: `${label}-pass` });
-          computePass.setPipeline(pipeline);
-          computePass.setBindGroup(0, bindGroup, [uniformOffset]);
-          computePass.dispatchWorkgroups(
-            Math.ceil(outputWidth / 8),
-            Math.ceil(outputHeight / 8),
-            1,
-          );
-          computePass.end();
-        }
-
-        this.device.queue.submit([encoder.finish()]);
-
-        // Read output back to CPU and create ImageBitmap
-        const bytesPerRow = Math.ceil((outputWidth * 4) / 256) * 256;
-        const outputBuffer = this.device.createBuffer({
-          size: bytesPerRow * outputHeight,
-          usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ,
-        });
-
-        try {
-          const readEncoder = this.device.createCommandEncoder();
-          readEncoder.copyTextureToBuffer(
-            { texture: owned.texture },
-            { buffer: outputBuffer, bytesPerRow, rowsPerImage: outputHeight },
-            { width: outputWidth, height: outputHeight, depthOrArrayLayers: 1 },
-          );
-          this.device.queue.submit([readEncoder.finish()]);
-
-          await outputBuffer.mapAsync(GPUMapMode.READ);
-          const mappedRange = outputBuffer.getMappedRange();
-          const canvas = new OffscreenCanvas(outputWidth, outputHeight);
-          const ctx = canvas.getContext('2d')!;
-          const imageData = ctx.createImageData(outputWidth, outputHeight);
-          const data = imageData.data;
-
-          const rowSize = outputWidth * 4;
-          if (bytesPerRow === rowSize) {
-            data.set(new Uint8ClampedArray(mappedRange, 0, rowSize * outputHeight));
-          } else {
-            for (let y = 0; y < outputHeight; y++) {
-              const srcOffset = y * bytesPerRow;
-              const dstOffset = y * rowSize;
-              data.set(new Uint8ClampedArray(mappedRange, srcOffset, rowSize), dstOffset);
-            }
-          }
-
-          ctx.putImageData(imageData, 0, 0);
-          outputBuffer.unmap();
-
-          return await createImageBitmap(canvas);
-        } finally {
-          outputBuffer.destroy();
-        }
-      } finally {
-        owned.texture.destroy();
-      }
-    } finally {
-      inputTexture.destroy();
+    // Release the intermediate ImageBitmap immediately after upload to avoid
+    // leaking GPU-backed bitmap memory.
+    if (uploadSource !== source && 'close' in uploadSource) {
+      (uploadSource as ImageBitmap).close();
     }
+
+    this.ensureUniformBuffer(passes.length);
+
+    const staging = new ArrayBuffer(this.uniformStride * passes.length);
+    const u32 = new Uint32Array(staging);
+    const f32 = new Float32Array(staging);
+
+    for (let i = 0; i < passes.length; i++) {
+      const base = (i * this.uniformStride) / 4;
+      const u = passes[i]!.uniform;
+      u32[base + 0] = u.mode;
+      u32[base + 1] = u.width;
+      u32[base + 2] = u.height;
+      u32[base + 3] = u.seed;
+      f32[base + 4] = u.p0;
+      f32[base + 5] = u.p1;
+      f32[base + 6] = u.p2;
+      f32[base + 7] = u.p3;
+      f32[base + 8] = u.p4;
+      f32[base + 9] = u.p5;
+      f32[base + 10] = u.p6;
+      f32[base + 11] = u.p7;
+    }
+
+    this.device.queue.writeBuffer(this.uniformBuffer!, 0, staging);
+
+    const encoder = this.device.createCommandEncoder({ label: `${label}-encoder` });
+
+    // Map a logical buffer slot to its concrete view (mirror of the Rust
+    // `view_of` routing). The final pass is routed to `owned` by the builder.
+    const viewOf = (buf: Buf): GPUTextureView => {
+      switch (buf) {
+        case 'input':
+          return inputView;
+        case 'ping':
+          return this.pingView!;
+        case 'pong':
+          return this.pongView!;
+        case 'aux':
+          return this.auxView!;
+        case 'owned':
+          return ownedView;
+      }
+    };
+
+    for (let index = 0; index < passes.length; index++) {
+      const pass = passes[index]!;
+      const uniformOffset = index * this.uniformStride;
+
+      const bindSrc = viewOf(pass.src);
+      const bindSecondary = viewOf(pass.secondary);
+      const targetView = viewOf(pass.dst);
+
+      let pipeline = this.pipeline;
+      if (pass.customSource) {
+        pipeline = this.getOrCreateCustomPipeline(pass.customSource);
+      }
+
+      const bindGroup = this.device.createBindGroup({
+        label: `${label}-bind-group`,
+        layout: this.bindLayout,
+        entries: [
+          { binding: 0, resource: bindSrc },
+          { binding: 1, resource: targetView },
+          {
+            binding: 2,
+            resource: { buffer: this.uniformBuffer!, offset: 0, size: UNIFORM_SIZE },
+          },
+          { binding: 3, resource: bindSecondary },
+          { binding: 4, resource: this.sampler! },
+        ],
+      });
+
+      const computePass = encoder.beginComputePass({ label: `${label}-pass` });
+      computePass.setPipeline(pipeline);
+      computePass.setBindGroup(0, bindGroup, [uniformOffset]);
+      computePass.dispatchWorkgroups(
+        Math.ceil(outputWidth / 8),
+        Math.ceil(outputHeight / 8),
+        1,
+      );
+      computePass.end();
+    }
+
+    this.device.queue.submit([encoder.finish()]);
+
+    // Read output back to CPU and create ImageBitmap
+    const bytesPerRow = Math.ceil((outputWidth * 4) / 256) * 256;
+    const needed = bytesPerRow * outputHeight;
+    if (!this.effectReadbackBuffer || this.effectReadbackCapacity < needed) {
+      this.effectReadbackBuffer?.destroy();
+      this.effectReadbackBuffer = this.device.createBuffer({
+        label: 'web-effect-readback',
+        size: needed,
+        usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ,
+      });
+      this.effectReadbackCapacity = needed;
+    }
+    const outputBuffer = this.effectReadbackBuffer;
+
+    const readEncoder = this.device.createCommandEncoder();
+    readEncoder.copyTextureToBuffer(
+      { texture: ownedTexture },
+      { buffer: outputBuffer, bytesPerRow, rowsPerImage: outputHeight },
+      { width: outputWidth, height: outputHeight, depthOrArrayLayers: 1 },
+    );
+    this.device.queue.submit([readEncoder.finish()]);
+
+    await outputBuffer.mapAsync(GPUMapMode.READ, 0, needed);
+    const mappedRange = outputBuffer.getMappedRange(0, needed);
+    if (!this.readbackCanvas) {
+      this.readbackCanvas = new OffscreenCanvas(outputWidth, outputHeight);
+    } else {
+      this.readbackCanvas.width = outputWidth;
+      this.readbackCanvas.height = outputHeight;
+    }
+    const ctx = this.readbackCanvas.getContext('2d')!;
+    const imageData = ctx.createImageData(outputWidth, outputHeight);
+    const data = imageData.data;
+
+    const rowSize = outputWidth * 4;
+    if (bytesPerRow === rowSize) {
+      data.set(new Uint8ClampedArray(mappedRange, 0, rowSize * outputHeight));
+    } else {
+      for (let y = 0; y < outputHeight; y++) {
+        const srcOffset = y * bytesPerRow;
+        const dstOffset = y * rowSize;
+        data.set(new Uint8ClampedArray(mappedRange, srcOffset, rowSize), dstOffset);
+      }
+    }
+
+    ctx.putImageData(imageData, 0, 0);
+    outputBuffer.unmap();
+
+    return await createImageBitmap(this.readbackCanvas);
   }
 
-  public async applyBlurFill(
-    source: VideoFrame | ImageBitmap,
-    frameW: number,
-    frameH: number,
-    fgScale: number,
-    bgScale: number,
-    blur: number,
-    bgDim: number,
-    bgSaturation: number,
-    tintColor: [number, number, number, number],
-    tintStrength: number,
-    fgOffsetY: number,
-  ): Promise<ImageBitmap | null> {
+  public async applyBlurFill(params: {
+    source: VideoFrame | ImageBitmap;
+    frameW: number;
+    frameH: number;
+    fgScale: number;
+    bgScale: number;
+    blur: number;
+    bgDim: number;
+    bgSaturation: number;
+    tintColor: [number, number, number, number];
+    tintStrength: number;
+    fgOffsetY: number;
+  }): Promise<ImageBitmap | null> {
+    const {
+      source,
+      frameW,
+      frameH,
+      fgScale,
+      bgScale,
+      blur,
+      bgDim,
+      bgSaturation,
+      tintColor,
+      tintStrength,
+      fgOffsetY,
+    } = params;
     if (!this.device || !this.pipeline || !this.bindLayout || !this.shaderModule) {
       return null;
     }
@@ -1245,24 +1268,48 @@ export class WebGpuComputeRunner {
     });
     this.auxView = this.auxTexture.createView();
 
-    this.cachedWidth = w;
-    this.cachedHeight = h;
-  }
-
-  private createOutputTexture(
-    width: number,
-    height: number,
-  ): { texture: GPUTexture; view: GPUTextureView } {
-    const texture = this.device!.createTexture({
-      label: 'web-effect-output',
-      size: { width, height, depthOrArrayLayers: 1 },
+    // Owned output texture — same size as ping/pong/aux but without COPY_DST.
+    this.ownedTexture?.destroy();
+    this.ownedTexture = this.device!.createTexture({
+      label: 'web-effect-owned',
+      size: { width: w, height: h, depthOrArrayLayers: 1 },
       format: 'rgba8unorm',
       usage:
         GPUTextureUsage.TEXTURE_BINDING |
         GPUTextureUsage.STORAGE_BINDING |
         GPUTextureUsage.COPY_SRC,
     });
-    return { texture, view: texture.createView() };
+    this.ownedView = this.ownedTexture.createView();
+
+    this.cachedWidth = w;
+    this.cachedHeight = h;
+  }
+
+  private ensureInputTexture(width: number, height: number): void {
+    if (
+      this.inputTexture &&
+      this.inputCachedWidth === width &&
+      this.inputCachedHeight === height
+    ) {
+      return;
+    }
+
+    this.inputTexture?.destroy();
+
+    const w = Math.max(1, width);
+    const h = Math.max(1, height);
+    this.inputTexture = this.device!.createTexture({
+      label: 'web-effect-input',
+      size: { width: w, height: h, depthOrArrayLayers: 1 },
+      format: 'rgba8unorm',
+      usage:
+        GPUTextureUsage.TEXTURE_BINDING |
+        GPUTextureUsage.COPY_DST |
+        GPUTextureUsage.RENDER_ATTACHMENT,
+    });
+    this.inputView = this.inputTexture.createView();
+    this.inputCachedWidth = w;
+    this.inputCachedHeight = h;
   }
 
   private ensureUniformBuffer(passCount: number): void {
@@ -1281,8 +1328,20 @@ export class WebGpuComputeRunner {
   }
 
   private getOrCreateCustomPipeline(source: string): GPUComputePipeline {
-    if (this.customPipelines.has(source)) {
-      return this.customPipelines.get(source)!;
+    const cached = this.customPipelines.get(source);
+    if (cached) {
+      // LRU touch: delete and re-insert to move to end (most recently used).
+      this.customPipelines.delete(source);
+      this.customPipelines.set(source, cached);
+      return cached;
+    }
+
+    // Evict oldest pipeline when at capacity.
+    if (this.customPipelines.size >= WebGpuComputeRunner.MAX_CACHED_PIPELINES) {
+      const oldestKey = this.customPipelines.keys().next().value;
+      if (typeof oldestKey === 'string') {
+        this.customPipelines.delete(oldestKey);
+      }
     }
 
     const customShader = this.device!.createShaderModule({
@@ -1303,7 +1362,20 @@ export class WebGpuComputeRunner {
 
   private getOrCreateTransitionPipeline(source: string): GPUComputePipeline {
     const cached = this.transitionPipelines.get(source);
-    if (cached) return cached;
+    if (cached) {
+      // LRU touch: delete and re-insert to move to end (most recently used).
+      this.transitionPipelines.delete(source);
+      this.transitionPipelines.set(source, cached);
+      return cached;
+    }
+
+    // Evict oldest pipeline when at capacity.
+    if (this.transitionPipelines.size >= WebGpuComputeRunner.MAX_CACHED_PIPELINES) {
+      const oldestKey = this.transitionPipelines.keys().next().value;
+      if (typeof oldestKey === 'string') {
+        this.transitionPipelines.delete(oldestKey);
+      }
+    }
 
     const pipeline = this.device!.createComputePipeline({
       label: 'web-transition-pipeline',
@@ -1353,8 +1425,13 @@ export class WebGpuComputeRunner {
     await outputBuffer.mapAsync(GPUMapMode.READ, 0, needed);
 
     const mappedRange = outputBuffer.getMappedRange(0, needed);
-    const canvas = new OffscreenCanvas(width, height);
-    const context = canvas.getContext('2d')!;
+    if (!this.readbackCanvas) {
+      this.readbackCanvas = new OffscreenCanvas(width, height);
+    } else {
+      this.readbackCanvas.width = width;
+      this.readbackCanvas.height = height;
+    }
+    const context = this.readbackCanvas.getContext('2d')!;
     const imageData = context.createImageData(width, height);
     const rowSize = width * 4;
     for (let y = 0; y < height; y += 1) {
@@ -1362,7 +1439,7 @@ export class WebGpuComputeRunner {
     }
     context.putImageData(imageData, 0, 0);
     outputBuffer.unmap();
-    return await createImageBitmap(canvas);
+    return await createImageBitmap(this.readbackCanvas);
   }
 
   /**
@@ -1378,6 +1455,15 @@ export class WebGpuComputeRunner {
     this.pingView = null;
     this.pongView = null;
     this.auxView = null;
+    this.ownedTexture = null;
+    this.ownedView = null;
+    this.inputTexture = null;
+    this.inputView = null;
+    this.inputCachedWidth = 0;
+    this.inputCachedHeight = 0;
+    this.effectReadbackBuffer = null;
+    this.effectReadbackCapacity = 0;
+    this.readbackCanvas = null;
     this.sampler = null;
     this.uniformBuffer = null;
     this.uniformCapacity = 0;
@@ -1409,7 +1495,10 @@ export class WebGpuComputeRunner {
     this.pingTexture?.destroy();
     this.pongTexture?.destroy();
     this.auxTexture?.destroy();
+    this.ownedTexture?.destroy();
+    this.inputTexture?.destroy();
     this.uniformBuffer?.destroy();
+    this.effectReadbackBuffer?.destroy();
     this.transFromTexture?.destroy();
     this.transToTexture?.destroy();
     this.transOutputTexture?.destroy();
@@ -1425,6 +1514,15 @@ export class WebGpuComputeRunner {
     this.pingView = null;
     this.pongView = null;
     this.auxView = null;
+    this.ownedTexture = null;
+    this.ownedView = null;
+    this.inputTexture = null;
+    this.inputView = null;
+    this.inputCachedWidth = 0;
+    this.inputCachedHeight = 0;
+    this.effectReadbackBuffer = null;
+    this.effectReadbackCapacity = 0;
+    this.readbackCanvas = null;
     this.sampler = null;
     this.uniformBuffer = null;
     this.uniformCapacity = 0;

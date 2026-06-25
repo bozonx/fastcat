@@ -66,20 +66,13 @@ impl GpuAdapterProbe for WgpuAdapterProbe {
             max_buffer_size: limits.max_buffer_size,
         });
 
-        match adapter
-            .request_device(&wgpu::DeviceDescriptor::default())
-            .await
-        {
-            Ok((_device, _queue)) => WebGpuRenderEngineStatus {
-                available: true,
-                adapter: adapter_status,
-                error: None,
-            },
-            Err(error) => WebGpuRenderEngineStatus {
-                available: false,
-                adapter: adapter_status,
-                error: Some(error.to_string()),
-            },
+        // Report availability based on adapter presence alone. Creating a device
+        // just to immediately drop it wastes GPU resources; the frontend creates
+        // its own device when it actually needs one and handles failure there.
+        WebGpuRenderEngineStatus {
+            available: true,
+            adapter: adapter_status,
+            error: None,
         }
     }
 }

@@ -30,12 +30,14 @@ pub(crate) fn spawn_window_fill(
         if state.window_fill_in_flight.get(layer_id) == Some(&target_start_frame) {
             return;
         }
-        if priority == WindowFillPriority::Speculative
-            && state.active_window_fill_count >= WINDOW_FILL_MAX_CONCURRENCY
-        {
-            return;
-        }
+        // Speculative fills yield to Live fills when concurrency is at the limit;
+        // Live fills also respect the cap so background decodes don't starve the
+        // producer's own inline streaming reads.
         if state.active_window_fill_count >= WINDOW_FILL_MAX_CONCURRENCY {
+            if priority == WindowFillPriority::Speculative {
+                return;
+            }
+            // Live fills also respect the concurrency limit to avoid disk thrash.
             return;
         }
         state
