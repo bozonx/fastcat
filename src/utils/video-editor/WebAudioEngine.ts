@@ -37,7 +37,7 @@ const CHUNK_EDGE_FADE_S = 0.005;
 const EQUAL_POWER_FADE_IN_CURVE = equalPowerCurve('in');
 const EQUAL_POWER_FADE_OUT_CURVE = equalPowerCurve('out');
 
-interface ForwardSeamGainParams {
+export interface ForwardSeamGainParams {
   t0: number;
   ctxTotalS: number; // total played span (nominal + tail)
   ctxNominalS: number; // cursor-advancing span; tail crossfade-out starts here
@@ -54,7 +54,7 @@ interface ForwardSeamGainParams {
  * that rejects the automation falls back to flat unity gain so playback can't
  * break.
  */
-function applyForwardSeamGain(gain: GainNode, p: ForwardSeamGainParams) {
+export function applyForwardSeamGain(gain: GainNode, p: ForwardSeamGainParams) {
   const { t0, ctxTotalS, ctxNominalS, ctxTailS, leadCtxS, startsAtKickoff } = p;
   try {
     if (startsAtKickoff) {
@@ -100,7 +100,7 @@ function applyForwardSeamGain(gain: GainNode, p: ForwardSeamGainParams) {
  * Structural deep-equality for effect objects. Unlike `JSON.stringify` this
  * handles undefined values, NaN, and differing key order correctly.
  */
-function deepEqualEffects(a: unknown, b: unknown): boolean {
+export function deepEqualEffects(a: unknown, b: unknown): boolean {
   if (a === b) return true;
   if (typeof a !== 'object' || a === null || typeof b !== 'object' || b === null) return false;
   const keysA = Object.keys(a as Record<string, unknown>);
@@ -124,14 +124,14 @@ function deepEqualEffects(a: unknown, b: unknown): boolean {
  * schedules fadeIn/fadeOut curves on the clipGain node. Used by both
  * playClipSegment (scrub preview) and streamClipPlayback (streaming).
  */
-interface ClipGainEnvelopeParams {
+export interface ClipGainEnvelopeParams {
   window: ClipPlaybackWindow;
   clipGain: GainNode;
   startAtS: number;
   ctxCurrentTime: number;
 }
 
-function applyClipGainEnvelope(params: ClipGainEnvelopeParams) {
+export function applyClipGainEnvelope(params: ClipGainEnvelopeParams) {
   const { window, clipGain, startAtS, ctxCurrentTime } = params;
 
   const gainAtClipTime = (tClipS: number): number =>
