@@ -83,19 +83,27 @@ describe('resolveAudioExportSampleRate', () => {
   });
 
   it('returns requested sample rate for non-opus formats', () => {
-    expect(resolveAudioExportSampleRate({ format: 'mp4', audioCodec: 'aac', sampleRate: 44100 })).toBe(44100);
+    expect(
+      resolveAudioExportSampleRate({ format: 'mp4', audioCodec: 'aac', sampleRate: 44100 }),
+    ).toBe(44100);
   });
 
   it('clamps to min 8000', () => {
-    expect(resolveAudioExportSampleRate({ format: 'mp4', audioCodec: 'aac', sampleRate: 100 })).toBe(8000);
+    expect(
+      resolveAudioExportSampleRate({ format: 'mp4', audioCodec: 'aac', sampleRate: 100 }),
+    ).toBe(8000);
   });
 
   it('clamps to max 192000', () => {
-    expect(resolveAudioExportSampleRate({ format: 'mp4', audioCodec: 'aac', sampleRate: 999999 })).toBe(192000);
+    expect(
+      resolveAudioExportSampleRate({ format: 'mp4', audioCodec: 'aac', sampleRate: 999999 }),
+    ).toBe(192000);
   });
 
   it('returns 48000 when sampleRate is not finite', () => {
-    expect(resolveAudioExportSampleRate({ format: 'mp4', audioCodec: 'aac', sampleRate: NaN })).toBe(48000);
+    expect(
+      resolveAudioExportSampleRate({ format: 'mp4', audioCodec: 'aac', sampleRate: NaN }),
+    ).toBe(48000);
   });
 
   it('returns 48000 when sampleRate is undefined', () => {

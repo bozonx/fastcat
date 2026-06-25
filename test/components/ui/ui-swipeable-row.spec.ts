@@ -7,7 +7,8 @@ describe('UiSwipeableRow', () => {
     const component = await mountSuspended(UiSwipeableRow, {
       slots: {
         default: '<div class="row-content">Row content</div>',
-        actions: '<template #actions="{ close }"><button class="action-btn" @click="close">Delete</button></template>',
+        actions:
+          '<template #actions="{ close }"><button class="action-btn" @click="close">Delete</button></template>',
       },
     });
 

@@ -82,7 +82,9 @@ describe('SettingsHotkeysGroup', () => {
     });
 
     const resetButtons = component.findAll('button');
-    const resetButton = resetButtons.find((b) => b.attributes('icon')?.includes('arrow-uturn-left'));
+    const resetButton = resetButtons.find((b) =>
+      b.attributes('icon')?.includes('arrow-uturn-left'),
+    );
     if (resetButton) {
       await resetButton.trigger('click');
       expect(component.emitted('reset')).toBeTruthy();

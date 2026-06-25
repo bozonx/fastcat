@@ -47,15 +47,17 @@ class MockWorker {
   }
 }
 
-function createHostApi(overrides?: Partial<{
-  getCurrentProjectId: ReturnType<typeof vi.fn>;
-  getFileHandleByPath: ReturnType<typeof vi.fn>;
-  getFileByPath: ReturnType<typeof vi.fn>;
-  ensureVectorImageRaster: ReturnType<typeof vi.fn>;
-  onExportProgress: ReturnType<typeof vi.fn>;
-  onExportPhase: ReturnType<typeof vi.fn>;
-  onExportWarning: ReturnType<typeof vi.fn>;
-}>) {
+function createHostApi(
+  overrides?: Partial<{
+    getCurrentProjectId: ReturnType<typeof vi.fn>;
+    getFileHandleByPath: ReturnType<typeof vi.fn>;
+    getFileByPath: ReturnType<typeof vi.fn>;
+    ensureVectorImageRaster: ReturnType<typeof vi.fn>;
+    onExportProgress: ReturnType<typeof vi.fn>;
+    onExportPhase: ReturnType<typeof vi.fn>;
+    onExportWarning: ReturnType<typeof vi.fn>;
+  }>,
+) {
   return {
     getCurrentProjectId: overrides?.getCurrentProjectId ?? vi.fn().mockResolvedValue('proj-1'),
     getFileHandleByPath: overrides?.getFileHandleByPath ?? vi.fn().mockResolvedValue(null),
@@ -143,7 +145,9 @@ describe('worker client', () => {
     // setPixiRendererPreference has a 10s timeout
     vi.advanceTimersByTime(10_001);
 
-    await expect(promise).rejects.toThrow('Worker RPC timeout for method: setPixiRendererPreference');
+    await expect(promise).rejects.toThrow(
+      'Worker RPC timeout for method: setPixiRendererPreference',
+    );
   });
 
   it('does not timeout for methods with null timeout', async () => {
@@ -181,9 +185,8 @@ describe('worker client', () => {
   });
 
   it('dispatches host RPC calls from worker and posts response', async () => {
-    const { setPreviewHostApi, getPreviewWorkerClient } = await import(
-      '~/utils/video-editor/worker-client'
-    );
+    const { setPreviewHostApi, getPreviewWorkerClient } =
+      await import('~/utils/video-editor/worker-client');
     const hostApi = createHostApi();
     setPreviewHostApi(hostApi);
     const { client } = getPreviewWorkerClient();
@@ -216,9 +219,8 @@ describe('worker client', () => {
   });
 
   it('routes onExportProgress to task-specific host API', async () => {
-    const { setExportHostApi, registerExportTaskHostApi, getExportWorkerClient } = await import(
-      '~/utils/video-editor/worker-client'
-    );
+    const { setExportHostApi, registerExportTaskHostApi, getExportWorkerClient } =
+      await import('~/utils/video-editor/worker-client');
     const baseProgress = vi.fn();
     const taskProgress = vi.fn();
     const hostApi = createHostApi({ onExportProgress: baseProgress });
@@ -244,9 +246,8 @@ describe('worker client', () => {
   });
 
   it('falls back to base host API when task API is not registered', async () => {
-    const { setExportHostApi, getExportWorkerClient } = await import(
-      '~/utils/video-editor/worker-client'
-    );
+    const { setExportHostApi, getExportWorkerClient } =
+      await import('~/utils/video-editor/worker-client');
     const baseProgress = vi.fn();
     const hostApi = createHostApi({ onExportProgress: baseProgress });
     setExportHostApi(hostApi);
@@ -282,7 +283,9 @@ describe('worker client', () => {
     await vi.advanceTimersByTimeAsync(10);
 
     const response = mockWorker.posted.find(
-      (m) => (m as { type: string; id: number }).type === 'rpc-response' && (m as { id: number }).id === 1,
+      (m) =>
+        (m as { type: string; id: number }).type === 'rpc-response' &&
+        (m as { id: number }).id === 1,
     ) as { error?: { message: string } } | undefined;
     expect(response).toBeDefined();
     expect(response!.error?.message).toContain('Host API not set');
@@ -315,9 +318,8 @@ describe('worker client', () => {
   });
 
   it('terminatePreviewWorker rejects all pending calls', async () => {
-    const { getPreviewWorkerClient, terminatePreviewWorker } = await import(
-      '~/utils/video-editor/worker-client'
-    );
+    const { getPreviewWorkerClient, terminatePreviewWorker } =
+      await import('~/utils/video-editor/worker-client');
     const { client } = getPreviewWorkerClient();
 
     const promise = client.setPixiRendererPreference('webgl');
@@ -330,9 +332,8 @@ describe('worker client', () => {
   });
 
   it('restartPreviewWorker creates a new worker', async () => {
-    const { getPreviewWorkerClient, restartPreviewWorker } = await import(
-      '~/utils/video-editor/worker-client'
-    );
+    const { getPreviewWorkerClient, restartPreviewWorker } =
+      await import('~/utils/video-editor/worker-client');
     const { client: _client1, worker: worker1 } = getPreviewWorkerClient();
 
     const newMockWorker = new MockWorker();
@@ -404,8 +405,7 @@ describe('worker client', () => {
 
     // Each channel should have received a setPixiRendererPreference call
     const setPrefCalls = mockWorker.posted.filter(
-      (m) =>
-        (m as { method?: string }).method === 'setPixiRendererPreference',
+      (m) => (m as { method?: string }).method === 'setPixiRendererPreference',
     );
     expect(setPrefCalls.length).toBe(4);
 
@@ -425,9 +425,8 @@ describe('worker client', () => {
   });
 
   it('getFileByPath returns null when not implemented', async () => {
-    const { setPreviewHostApi, getPreviewWorkerClient } = await import(
-      '~/utils/video-editor/worker-client'
-    );
+    const { setPreviewHostApi, getPreviewWorkerClient } =
+      await import('~/utils/video-editor/worker-client');
     const hostApi = createHostApi({ getFileByPath: undefined as any });
     setPreviewHostApi(hostApi);
     const { client } = getPreviewWorkerClient();
@@ -443,16 +442,17 @@ describe('worker client', () => {
     await vi.advanceTimersByTimeAsync(0);
 
     const response = mockWorker.posted.find(
-      (m) => (m as { type: string; id: number }).type === 'rpc-response' && (m as { id: number }).id === 1,
+      (m) =>
+        (m as { type: string; id: number }).type === 'rpc-response' &&
+        (m as { id: number }).id === 1,
     ) as { result?: unknown } | undefined;
     expect(response).toBeDefined();
     expect(response!.result).toBeNull();
   });
 
   it('throws for unknown host method', async () => {
-    const { setPreviewHostApi, getPreviewWorkerClient } = await import(
-      '~/utils/video-editor/worker-client'
-    );
+    const { setPreviewHostApi, getPreviewWorkerClient } =
+      await import('~/utils/video-editor/worker-client');
     const hostApi = createHostApi();
     setPreviewHostApi(hostApi);
     const { client } = getPreviewWorkerClient();
@@ -468,7 +468,9 @@ describe('worker client', () => {
     await vi.advanceTimersByTimeAsync(0);
 
     const response = mockWorker.posted.find(
-      (m) => (m as { type: string; id: number }).type === 'rpc-response' && (m as { id: number }).id === 1,
+      (m) =>
+        (m as { type: string; id: number }).type === 'rpc-response' &&
+        (m as { id: number }).id === 1,
     ) as { error?: { message: string } } | undefined;
     expect(response).toBeDefined();
     expect(response!.error?.message).toContain('nonExistentMethod');
@@ -496,12 +498,8 @@ describe('worker client', () => {
   });
 
   it('backward-compatible aliases delegate to preview channel', async () => {
-    const {
-      setHostApi,
-      getWorkerClient,
-      terminateWorker,
-      restartWorker,
-    } = await import('~/utils/video-editor/worker-client');
+    const { setHostApi, getWorkerClient, terminateWorker, restartWorker } =
+      await import('~/utils/video-editor/worker-client');
 
     const hostApi = createHostApi();
     setHostApi(hostApi);

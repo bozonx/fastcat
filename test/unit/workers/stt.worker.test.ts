@@ -44,11 +44,13 @@ describe('stt.worker', () => {
     (globalThis as any).onmessage = null;
 
     // Capture addEventListener for 'message'
-    (globalThis as any).addEventListener = vi.fn((event: string, handler: (ev: unknown) => void) => {
-      if (event === 'message') {
-        messageHandlers.push(handler as (event: { data: unknown }) => void);
-      }
-    });
+    (globalThis as any).addEventListener = vi.fn(
+      (event: string, handler: (ev: unknown) => void) => {
+        if (event === 'message') {
+          messageHandlers.push(handler as (event: { data: unknown }) => void);
+        }
+      },
+    );
 
     // Mock navigator.gpu — navigator may be read-only in some environments
     Object.defineProperty(globalThis, 'navigator', {

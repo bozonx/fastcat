@@ -69,10 +69,7 @@ describe('TimelineUpdateLifecycle', () => {
   });
 
   it('clamps maxDurationUs to 0 when all endUs are negative', () => {
-    const clips = [
-      makeClip({ itemId: 'a', endUs: -100 }),
-      makeClip({ itemId: 'b', endUs: -200 }),
-    ];
+    const clips = [makeClip({ itemId: 'a', endUs: -100 }), makeClip({ itemId: 'b', endUs: -200 })];
 
     const result = lifecycle.apply(clips);
 

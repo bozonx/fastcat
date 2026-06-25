@@ -11,7 +11,8 @@ import {
 import type { DirectoryHandleLike } from '~/repositories/app-fs.repository';
 
 function makeHandle(getDirectoryHandle?: ReturnType<typeof vi.fn>): DirectoryHandleLike {
-  const fn = getDirectoryHandle ?? vi.fn(async (name: string): Promise<DirectoryHandleLike> => makeHandle());
+  const fn =
+    getDirectoryHandle ?? vi.fn(async (name: string): Promise<DirectoryHandleLike> => makeHandle());
   return {
     name: 'root',
     kind: 'directory',

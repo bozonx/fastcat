@@ -126,9 +126,7 @@ describe('TimelineApplyLifecycle', () => {
   });
 
   it('uses max clip end when it exceeds sequentialTimeUs', () => {
-    const clips = [
-      makeClip({ itemId: 'a', endUs: 10_000_000 }),
-    ];
+    const clips = [makeClip({ itemId: 'a', endUs: 10_000_000 })];
 
     const result = lifecycle.apply({
       previousClipById: new Map(),

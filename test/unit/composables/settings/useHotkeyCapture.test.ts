@@ -67,7 +67,13 @@ describe('useHotkeyCapture', () => {
   });
 
   it('finishCapture resets state and removes listener', () => {
-    const { isCapturingHotkey, captureTargetCommandId, capturedCombo, startCapture, finishCapture } = useHotkeyCapture({
+    const {
+      isCapturingHotkey,
+      captureTargetCommandId,
+      capturedCombo,
+      startCapture,
+      finishCapture,
+    } = useHotkeyCapture({
       onCaptured: vi.fn(),
       onDuplicate: vi.fn(),
       findDuplicateOwner: vi.fn(),

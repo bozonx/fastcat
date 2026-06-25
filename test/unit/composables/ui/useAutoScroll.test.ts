@@ -67,7 +67,17 @@ describe('useAutoScroll', () => {
 
   it('onDragOver with element schedules auto scroll', () => {
     const mockEl = {
-      getBoundingClientRect: () => ({ top: 0, bottom: 200, left: 0, right: 200, width: 200, height: 200, x: 0, y: 0, toJSON: () => {} }),
+      getBoundingClientRect: () => ({
+        top: 0,
+        bottom: 200,
+        left: 0,
+        right: 200,
+        width: 200,
+        height: 200,
+        x: 0,
+        y: 0,
+        toJSON: () => {},
+      }),
       scrollTop: 0,
     } as unknown as HTMLElement;
     const el = ref<HTMLElement | null>(mockEl);
@@ -80,20 +90,46 @@ describe('useAutoScroll', () => {
 
   it('onDragOver attaches wheel and dragend listeners', () => {
     const mockEl = {
-      getBoundingClientRect: () => ({ top: 0, bottom: 200, left: 0, right: 200, width: 200, height: 200, x: 0, y: 0, toJSON: () => {} }),
+      getBoundingClientRect: () => ({
+        top: 0,
+        bottom: 200,
+        left: 0,
+        right: 200,
+        width: 200,
+        height: 200,
+        x: 0,
+        y: 0,
+        toJSON: () => {},
+      }),
       scrollTop: 0,
     } as unknown as HTMLElement;
     const el = ref<HTMLElement | null>(mockEl);
     const { onDragOver } = useAutoScroll(el);
     onDragOver({ clientY: 100 } as DragEvent);
-    expect(window.addEventListener).toHaveBeenCalledWith('wheel', expect.any(Function), { passive: false });
-    expect(window.addEventListener).toHaveBeenCalledWith('dragend', expect.any(Function), { capture: true });
-    expect(window.addEventListener).toHaveBeenCalledWith('drop', expect.any(Function), { capture: true });
+    expect(window.addEventListener).toHaveBeenCalledWith('wheel', expect.any(Function), {
+      passive: false,
+    });
+    expect(window.addEventListener).toHaveBeenCalledWith('dragend', expect.any(Function), {
+      capture: true,
+    });
+    expect(window.addEventListener).toHaveBeenCalledWith('drop', expect.any(Function), {
+      capture: true,
+    });
   });
 
   it('stopAutoScroll removes listeners after onDragOver', () => {
     const mockEl = {
-      getBoundingClientRect: () => ({ top: 0, bottom: 200, left: 0, right: 200, width: 200, height: 200, x: 0, y: 0, toJSON: () => {} }),
+      getBoundingClientRect: () => ({
+        top: 0,
+        bottom: 200,
+        left: 0,
+        right: 200,
+        width: 200,
+        height: 200,
+        x: 0,
+        y: 0,
+        toJSON: () => {},
+      }),
       scrollTop: 0,
     } as unknown as HTMLElement;
     const el = ref<HTMLElement | null>(mockEl);

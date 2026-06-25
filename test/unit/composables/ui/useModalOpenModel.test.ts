@@ -21,7 +21,11 @@ describe('useModalOpenModel', () => {
 
   it('reflects changes in props.open', () => {
     const open = ref(false);
-    const props = { get open() { return open.value; } };
+    const props = {
+      get open() {
+        return open.value;
+      },
+    };
     const emit = vi.fn();
     const model = useModalOpenModel(props, emit);
     expect(model.value).toBe(false);

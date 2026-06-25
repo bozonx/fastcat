@@ -7,7 +7,8 @@ vi.mock('~/components/ui/UiSliderInput.vue', () => ({
   default: {
     props: ['modelValue', 'min', 'max', 'step', 'unit', 'label', 'defaultValue'],
     emits: ['update:modelValue'],
-    template: '<input type="range" class="slider-mock" :value="modelValue" @input="$emit(\'update:modelValue\', Number($event.target.value))" />',
+    template:
+      '<input type="range" class="slider-mock" :value="modelValue" @input="$emit(\'update:modelValue\', Number($event.target.value))" />',
   },
 }));
 
@@ -42,7 +43,8 @@ const stubs = {
   UCheckbox: {
     props: ['modelValue', 'label'],
     emits: ['update:modelValue'],
-    template: '<input type="checkbox" class="checkbox-mock" :checked="modelValue" @change="$emit(\'update:modelValue\', $event.target.checked)" />',
+    template:
+      '<input type="checkbox" class="checkbox-mock" :checked="modelValue" @change="$emit(\'update:modelValue\', $event.target.checked)" />',
   },
 };
 

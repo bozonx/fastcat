@@ -10,11 +10,13 @@ const stubs = {
   UiTextInput: {
     props: ['modelValue', 'placeholder', 'disabled', 'fullWidth', 'size', 'mono', 'ui'],
     emits: ['update:modelValue', 'focus', 'keydown', 'blur'],
-    template: '<input :value="modelValue" :placeholder="placeholder" :disabled="disabled" @input="$emit(\'update:modelValue\', $event.target.value)" @focus="$emit(\'focus\')" @keydown="$emit(\'keydown\', $event)" @blur="$emit(\'blur\')" />',
+    template:
+      '<input :value="modelValue" :placeholder="placeholder" :disabled="disabled" @input="$emit(\'update:modelValue\', $event.target.value)" @focus="$emit(\'focus\')" @keydown="$emit(\'keydown\', $event)" @blur="$emit(\'blur\')" />',
   },
   UiFormField: {
     props: ['label', 'error'],
-    template: '<div><label v-if="label">{{ label }}</label><slot /><span v-if="error" class="error-msg">{{ error }}</span></div>',
+    template:
+      '<div><label v-if="label">{{ label }}</label><slot /><span v-if="error" class="error-msg">{{ error }}</span></div>',
   },
 };
 

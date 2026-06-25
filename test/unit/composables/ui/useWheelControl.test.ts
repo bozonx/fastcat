@@ -20,10 +20,7 @@ vi.mock('~/utils/hotkeys/layerUtils', () => ({
 describe('useWheelControl', () => {
   it('returns wrapperRef', () => {
     const onWheelStep = vi.fn();
-    const { wrapperRef } = useWheelControl(
-      { step: () => 1 },
-      onWheelStep,
-    );
+    const { wrapperRef } = useWheelControl({ step: () => 1 }, onWheelStep);
     expect(wrapperRef).toBeDefined();
     expect(wrapperRef.value).toBeNull();
   });

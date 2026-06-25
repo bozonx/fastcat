@@ -18,7 +18,7 @@ describe('createWorkspaceSettingsModule', () => {
     const settingsRepo = ref(null);
     const mod = createWorkspaceSettingsModule({ settingsRepo });
     const originalUser = mod.userSettings.value;
-    mod.userSettings.value = { ...mod.userSettings.value, hotkeys: { 'test': ['A'] } } as any;
+    mod.userSettings.value = { ...mod.userSettings.value, hotkeys: { test: ['A'] } } as any;
     mod.resetSettingsState();
     expect(mod.userSettings.value).toEqual(originalUser);
   });
@@ -77,9 +77,9 @@ describe('createWorkspaceSettingsModule', () => {
     const settingsRepo = ref(null);
     const mod = createWorkspaceSettingsModule({ settingsRepo });
     await mod.batchUpdateUserSettings((draft) => {
-      draft.hotkeys = { 'test': ['B'] } as any;
+      draft.hotkeys = { test: ['B'] } as any;
     });
-    expect(mod.userSettings.value.hotkeys).toEqual({ 'test': ['B'] });
+    expect(mod.userSettings.value.hotkeys).toEqual({ test: ['B'] });
   });
 
   it('batchUpdateAppSettings updates via updater', async () => {

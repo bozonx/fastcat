@@ -4,7 +4,17 @@ import UiTextInput from '~/components/ui/UiTextInput.vue';
 
 const stubs = {
   UInput: {
-    props: ['modelValue', 'type', 'placeholder', 'disabled', 'size', 'autofocus', 'variant', 'autocomplete', 'ui'],
+    props: [
+      'modelValue',
+      'type',
+      'placeholder',
+      'disabled',
+      'size',
+      'autofocus',
+      'variant',
+      'autocomplete',
+      'ui',
+    ],
     emits: ['update:modelValue', 'keyup', 'keydown', 'focus', 'blur'],
     template: `
       <div class="u-input-mock">

@@ -6,7 +6,8 @@ vi.mock('~/components/ui/UiSelect.vue', () => ({
   default: {
     props: ['modelValue', 'items', 'valueKey', 'labelKey', 'size', 'disabled'],
     emits: ['update:modelValue'],
-    template: '<select class="select-mock" :value="modelValue" :disabled="disabled" @change="$emit(\'update:modelValue\', $event.target.value)"><option v-for="item in items" :key="item.value" :value="item.value">{{ item.label }}</option></select>',
+    template:
+      '<select class="select-mock" :value="modelValue" :disabled="disabled" @change="$emit(\'update:modelValue\', $event.target.value)"><option v-for="item in items" :key="item.value" :value="item.value">{{ item.label }}</option></select>',
   },
 }));
 
@@ -14,7 +15,8 @@ vi.mock('~/components/properties/PropertySection.vue', () => ({
   default: {
     props: ['title', 'hasToggle'],
     emits: ['update:enabled'],
-    template: '<div class="section-mock"><h3>{{ title }}</h3><slot name="header-actions" /><slot /></div>',
+    template:
+      '<div class="section-mock"><h3>{{ title }}</h3><slot name="header-actions" /><slot /></div>',
   },
 }));
 

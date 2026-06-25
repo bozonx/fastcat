@@ -32,7 +32,10 @@ function makeClip(overrides: Partial<TimelineClipItem> = {}): TimelineClipItem {
   } as TimelineClipItem;
 }
 
-function makeTrack(items: TimelineClipItem[], overrides: Partial<TimelineTrack> = {}): TimelineTrack {
+function makeTrack(
+  items: TimelineClipItem[],
+  overrides: Partial<TimelineTrack> = {},
+): TimelineTrack {
   return {
     id: 'v1',
     kind: 'video',
@@ -45,7 +48,11 @@ function makeTrack(items: TimelineClipItem[], overrides: Partial<TimelineTrack> 
 describe('useTimelineSpeedModal', () => {
   let result: {
     speedModal: { value: { open: boolean; trackId: string; itemId: string; speed: number } | null };
-    openSpeedModal: (trackId: string, itemId: string, currentSpeed: number | null | undefined) => void;
+    openSpeedModal: (
+      trackId: string,
+      itemId: string,
+      currentSpeed: number | null | undefined,
+    ) => void;
     saveSpeedModal: () => Promise<void>;
     speedModalTargetHasAudio: { value: boolean };
   };

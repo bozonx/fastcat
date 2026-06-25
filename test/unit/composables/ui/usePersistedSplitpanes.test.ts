@@ -42,10 +42,7 @@ describe('usePersistedSplitpanes', () => {
     const projectId = ref<string | null>('proj-1');
     const { onResized } = usePersistedSplitpanes('files', projectId, [50, 50], storage);
     onResized({ panes: [{ size: 60 }, { size: 40 }] });
-    expect(storage.set).toHaveBeenCalledWith(
-      expect.stringContaining('files'),
-      [60, 40],
-    );
+    expect(storage.set).toHaveBeenCalledWith(expect.stringContaining('files'), [60, 40]);
   });
 
   it('onResized ignores invalid event', () => {
@@ -69,10 +66,7 @@ describe('usePersistedSplitpanes', () => {
     expect(sizes.value).toEqual([30, 70]);
     reset();
     expect(sizes.value).toEqual([50, 50]);
-    expect(storage.set).toHaveBeenCalledWith(
-      expect.stringContaining('files'),
-      [50, 50],
-    );
+    expect(storage.set).toHaveBeenCalledWith(expect.stringContaining('files'), [50, 50]);
   });
 
   it('accepts Ref for pageKey', () => {

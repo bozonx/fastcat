@@ -45,13 +45,8 @@ export function findGoldenEntry(
 }
 
 /** Find the golden sample for a specific time within an entry. */
-export function findGoldenSample(
-  entry: GoldenEntry,
-  timeSec: number,
-): GoldenSample | undefined {
-  return entry.samples.find(
-    (s) => Math.abs(s.timeSec - timeSec) < 1e-6,
-  );
+export function findGoldenSample(entry: GoldenEntry, timeSec: number): GoldenSample | undefined {
+  return entry.samples.find((s) => Math.abs(s.timeSec - timeSec) < 1e-6);
 }
 
 export interface GoldenMatchResult {

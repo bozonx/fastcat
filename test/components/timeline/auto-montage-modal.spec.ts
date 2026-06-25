@@ -4,16 +4,26 @@ import AutoMontageModal from '~/components/timeline/AutoMontageModal.vue';
 
 vi.mock('~/components/ui/UiModal.vue', () => ({
   default: {
-    props: { open: { type: Boolean, default: false }, title: String, description: String, ui: Object },
+    props: {
+      open: { type: Boolean, default: false },
+      title: String,
+      description: String,
+      ui: Object,
+    },
     emits: ['update:open', 'after:enter'],
-    template: '<div v-if="open" class="modal-mock"><h2>{{ title }}</h2><slot /><slot name="footer" /></div>',
+    template:
+      '<div v-if="open" class="modal-mock"><h2>{{ title }}</h2><slot /><slot name="footer" /></div>',
   },
 }));
 
 vi.mock('~/composables/ui/useModalOpenModel', () => ({
   useModalOpenModel: (props: any, emit: any) => ({
-    get value() { return props.open; },
-    set value(v: boolean) { emit('update:open', v); },
+    get value() {
+      return props.open;
+    },
+    set value(v: boolean) {
+      emit('update:open', v);
+    },
   }),
 }));
 
@@ -21,7 +31,8 @@ const stubs = {
   UCheckbox: {
     props: ['modelValue', 'label', 'ui'],
     emits: ['update:modelValue'],
-    template: '<label><input type="checkbox" :checked="modelValue" @change="$emit(\'update:modelValue\', $event.target.checked)" /> {{ label }}</label>',
+    template:
+      '<label><input type="checkbox" :checked="modelValue" @change="$emit(\'update:modelValue\', $event.target.checked)" /> {{ label }}</label>',
   },
   UAlert: {
     props: ['color', 'variant', 'icon', 'title'],
@@ -65,7 +76,9 @@ describe('AutoMontageModal', () => {
     });
 
     const buttons = component.findAll('button');
-    const applyButton = buttons.find((b) => b.text().includes('fastcat.timeline.autoMontage.apply'));
+    const applyButton = buttons.find((b) =>
+      b.text().includes('fastcat.timeline.autoMontage.apply'),
+    );
     if (applyButton) {
       await applyButton.trigger('click');
       expect(component.emitted('apply')).toBeTruthy();
@@ -82,7 +95,9 @@ describe('AutoMontageModal', () => {
     });
 
     const buttons = component.findAll('button');
-    const applyButton = buttons.find((b) => b.text().includes('fastcat.timeline.autoMontage.apply'));
+    const applyButton = buttons.find((b) =>
+      b.text().includes('fastcat.timeline.autoMontage.apply'),
+    );
     if (applyButton) {
       await applyButton.trigger('click');
       expect(component.emitted('update:open')).toBeTruthy();

@@ -6,7 +6,9 @@ import type { UseClipContextMenuOptions } from '~/composables/timeline/clip-cont
 function makeOptions(overrides?: Partial<UseClipContextMenuOptions>): UseClipContextMenuOptions {
   return {
     track: { value: { id: 't1', kind: 'video', items: [], locked: false } } as any,
-    item: { value: { id: 'gap1', kind: 'gap', timelineRange: { startUs: 0, durationUs: 1000 } } } as any,
+    item: {
+      value: { id: 'gap1', kind: 'gap', timelineRange: { startUs: 0, durationUs: 1000 } },
+    } as any,
     t: vi.fn((key: string) => key),
     hasTimelineClipboard: true,
     getHotkeyKbds: vi.fn(() => ['Ctrl+V']),

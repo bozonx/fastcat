@@ -5,7 +5,8 @@ import MediaMetadataList from '~/components/properties/MediaMetadataList.vue';
 vi.mock('~/components/properties/PropertyRow.vue', () => ({
   default: {
     props: ['label', 'value'],
-    template: '<div class="row-mock"><span class="label">{{ label }}</span><span class="value"><slot>{{ value }}</slot></span></div>',
+    template:
+      '<div class="row-mock"><span class="label">{{ label }}</span><span class="value"><slot>{{ value }}</slot></span></div>',
   },
 }));
 

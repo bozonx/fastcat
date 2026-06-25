@@ -220,7 +220,13 @@ describe('drawRotatedThumbnailFrame', () => {
   it('applies translate and rotate for 180 degrees', () => {
     const { ctx, calls } = createMockCtx();
     const image = {} as CanvasImageSource;
-    drawRotatedThumbnailFrame({ ctx, imageSource: image, rotation: 180, targetW: 100, targetH: 50 });
+    drawRotatedThumbnailFrame({
+      ctx,
+      imageSource: image,
+      rotation: 180,
+      targetW: 100,
+      targetH: 50,
+    });
 
     expect(calls.some((c) => c === 'translate:100,50')).toBe(true);
     expect(calls.some((c) => c === `rotate:${Math.PI}`)).toBe(true);
@@ -229,7 +235,13 @@ describe('drawRotatedThumbnailFrame', () => {
   it('applies translate and rotate for 270 degrees', () => {
     const { ctx, calls } = createMockCtx();
     const image = {} as CanvasImageSource;
-    drawRotatedThumbnailFrame({ ctx, imageSource: image, rotation: 270, targetW: 100, targetH: 50 });
+    drawRotatedThumbnailFrame({
+      ctx,
+      imageSource: image,
+      rotation: 270,
+      targetW: 100,
+      targetH: 50,
+    });
 
     expect(calls.some((c) => c === 'translate:0,50')).toBe(true);
     expect(calls.some((c) => c === `rotate:${-Math.PI / 2}`)).toBe(true);

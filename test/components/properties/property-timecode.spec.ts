@@ -13,7 +13,8 @@ vi.mock('~/components/ui/editor/UiTimecode.vue', () => ({
   default: {
     props: ['modelValue'],
     emits: ['update:modelValue'],
-    template: '<input type="number" class="timecode-mock" :value="modelValue" @input="$emit(\'update:modelValue\', Number($event.target.value))" />',
+    template:
+      '<input type="number" class="timecode-mock" :value="modelValue" @input="$emit(\'update:modelValue\', Number($event.target.value))" />',
   },
 }));
 

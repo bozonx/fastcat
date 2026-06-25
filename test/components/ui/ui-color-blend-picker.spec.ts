@@ -6,22 +6,26 @@ const stubs = {
   UColorPicker: {
     props: ['modelValue', 'format', 'size'],
     emits: ['update:modelValue'],
-    template: '<div class="color-picker-mock" @click="$emit(\'update:modelValue\', \'#ff0000\')" />',
+    template:
+      '<div class="color-picker-mock" @click="$emit(\'update:modelValue\', \'#ff0000\')" />',
   },
   UiSelect: {
     props: ['modelValue', 'items', 'valueKey', 'labelKey', 'size', 'fullWidth'],
     emits: ['update:modelValue'],
-    template: '<select @change="$emit(\'update:modelValue\', $event.target.value)"><option value="normal">Normal</option></select>',
+    template:
+      '<select @change="$emit(\'update:modelValue\', $event.target.value)"><option value="normal">Normal</option></select>',
   },
   UiSliderInput: {
     props: ['modelValue', 'label', 'min', 'max', 'step', 'unit', 'decimals'],
     emits: ['update:modelValue'],
-    template: '<input type="range" :value="modelValue" @input="$emit(\'update:modelValue\', Number($event.target.value))" />',
+    template:
+      '<input type="range" :value="modelValue" @input="$emit(\'update:modelValue\', Number($event.target.value))" />',
   },
   UiTextInput: {
     props: ['modelValue', 'placeholder', 'size', 'fullWidth', 'mono'],
     emits: ['update:modelValue', 'blur', 'keydown'],
-    template: '<input :value="modelValue" @input="$emit(\'update:modelValue\', $event.target.value)" @blur="$emit(\'blur\')" @keydown.enter="$emit(\'keydown\', $event)" />',
+    template:
+      '<input :value="modelValue" @input="$emit(\'update:modelValue\', $event.target.value)" @blur="$emit(\'blur\')" @keydown.enter="$emit(\'keydown\', $event)" />',
   },
 };
 

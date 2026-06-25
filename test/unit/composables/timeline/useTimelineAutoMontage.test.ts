@@ -50,7 +50,12 @@ function makeClip(id: string): any {
 describe('useTimelineAutoMontage', () => {
   let result: {
     autoMontageModal: { value: { open: boolean; itemIds: string[] } | null };
-    applyAutoMontage: (settings: { trimStart: boolean; trimEnd: boolean; trimMiddle: boolean; mode: 'cut' | 'mark' }) => Promise<void>;
+    applyAutoMontage: (settings: {
+      trimStart: boolean;
+      trimEnd: boolean;
+      trimMiddle: boolean;
+      mode: 'cut' | 'mark';
+    }) => Promise<void>;
     openAutoMontage: (payload: TimelineClipActionPayload) => void;
   };
 
@@ -59,7 +64,8 @@ describe('useTimelineAutoMontage', () => {
     mockUiStore.openAutoMontageTrigger = null;
     mockSelectionStore.selectedEntity = null;
 
-    const { useTimelineAutoMontage } = await import('~/composables/timeline/useTimelineAutoMontage');
+    const { useTimelineAutoMontage } =
+      await import('~/composables/timeline/useTimelineAutoMontage');
     result = useTimelineAutoMontage(() => [makeTrack([makeClip('c1'), makeClip('c2')])]);
   });
 

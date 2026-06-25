@@ -5,8 +5,8 @@ import { useHotkeyLabel } from '~/composables/useHotkeyLabel';
 vi.mock('~/utils/hotkeys/effectiveHotkeys', () => ({
   getEffectiveHotkeyBindings: vi.fn(() => ({
     'play-pause': ['Space'],
-    'undo': ['Ctrl+Z'],
-    'redo': ['Ctrl+Shift+Z'],
+    undo: ['Ctrl+Z'],
+    redo: ['Ctrl+Shift+Z'],
   })),
 }));
 

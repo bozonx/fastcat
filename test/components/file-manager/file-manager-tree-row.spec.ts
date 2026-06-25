@@ -14,7 +14,8 @@ vi.mock('~/components/file-manager/InlineNameEditor.vue', () => ({
   default: {
     props: ['initialName', 'existingNames'],
     emits: ['commit', 'cancel'],
-    template: '<input class="inline-editor" :value="initialName" @input="$emit(\'commit\', $event.target.value)" />',
+    template:
+      '<input class="inline-editor" :value="initialName" @input="$emit(\'commit\', $event.target.value)" />',
   },
 }));
 

@@ -3,14 +3,21 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { probeWebGpu } from '../../utils/e2e/webgpu';
 import { writeFileToOpfs } from '../../utils/e2e/virtual-fs';
-import { renderWebFrames, type WebSceneData } from '../../integration/engine-parity/helpers/web-render';
+import {
+  renderWebFrames,
+  type WebSceneData,
+} from '../../integration/engine-parity/helpers/web-render';
 import {
   loadGoldenRegistry,
   findGoldenEntry,
   findGoldenSample,
   compareHash,
 } from '../../integration/engine-parity/helpers/golden-compare';
-import { computeFrameHash, DEFAULT_TOLERANCE, TEXT_SCENE_TOLERANCE } from '../../integration/engine-parity/helpers/frame-hash';
+import {
+  computeFrameHash,
+  DEFAULT_TOLERANCE,
+  TEXT_SCENE_TOLERANCE,
+} from '../../integration/engine-parity/helpers/frame-hash';
 
 const SCENES_DIR = resolve(process.cwd(), 'shared/scenes');
 const MEDIA_DIR = resolve(process.cwd(), 'test/fixtures/media');
@@ -80,10 +87,7 @@ test.describe('Web engine parity @parity', () => {
         const result = results[i]!;
         const timeSec = sceneData.sample_times_sec[i]!;
 
-        expect(
-          result.error,
-          `render error at t=${timeSec}s: ${result.error}`,
-        ).toBeUndefined();
+        expect(result.error, `render error at t=${timeSec}s: ${result.error}`).toBeUndefined();
 
         if (!goldenEntry) {
           // No golden yet — just verify the hash is a valid 16-char hex string.

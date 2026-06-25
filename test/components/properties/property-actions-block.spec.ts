@@ -5,7 +5,8 @@ import PropertyActionsBlock from '~/components/properties/PropertyActionsBlock.v
 vi.mock('~/components/properties/PropertyActionList.vue', () => ({
   default: {
     props: ['actions', 'vertical', 'variant', 'size', 'justify'],
-    template: '<div class="action-list-mock" :data-count="actions?.length" :data-vertical="vertical" :data-variant="variant" :data-justify="justify" />',
+    template:
+      '<div class="action-list-mock" :data-count="actions?.length" :data-vertical="vertical" :data-variant="variant" :data-justify="justify" />',
   },
 }));
 
@@ -35,9 +36,7 @@ describe('PropertyActionsBlock', () => {
   it('renders additional actions list when provided', async () => {
     const component = await mountSuspended(PropertyActionsBlock, {
       props: {
-        additionalActions: [
-          { id: 'delete', icon: 'i-heroicons-trash', onClick: vi.fn() },
-        ],
+        additionalActions: [{ id: 'delete', icon: 'i-heroicons-trash', onClick: vi.fn() }],
       },
     });
 

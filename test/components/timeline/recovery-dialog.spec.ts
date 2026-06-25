@@ -5,7 +5,13 @@ import RecoveryDialog from '~/components/timeline/RecoveryDialog.vue';
 
 vi.mock('~/components/ui/UiModal.vue', () => ({
   default: {
-    props: { open: { type: Boolean, default: false }, title: String, preventClose: Boolean, closeButton: Boolean, ui: Object },
+    props: {
+      open: { type: Boolean, default: false },
+      title: String,
+      preventClose: Boolean,
+      closeButton: Boolean,
+      ui: Object,
+    },
     emits: ['update:open'],
     template: '<div v-if="open" class="modal-mock"><h2>{{ title }}</h2><slot /></div>',
   },
@@ -96,7 +102,9 @@ describe('RecoveryDialog', () => {
 
     const component = await mountSuspended(RecoveryDialog);
 
-    const learnMoreButton = component.findAll('button').find((b) => b.text().includes('recoveryLearnMore'));
+    const learnMoreButton = component
+      .findAll('button')
+      .find((b) => b.text().includes('recoveryLearnMore'));
     if (learnMoreButton) {
       await learnMoreButton.trigger('click');
       expect(component.text()).toContain('recoveryLearnMoreRestore');

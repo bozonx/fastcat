@@ -14,7 +14,8 @@ vi.mock('~/components/ui/UiSelect.vue', () => ({
   default: {
     props: ['modelValue', 'items', 'valueKey', 'labelKey', 'fullWidth'],
     emits: ['update:modelValue'],
-    template: '<select class="select-mock" :value="modelValue" @change="$emit(\'update:modelValue\', $event.target.value)"><option v-for="item in items" :key="item.value" :value="item.value">{{ item.label }}</option></select>',
+    template:
+      '<select class="select-mock" :value="modelValue" @change="$emit(\'update:modelValue\', $event.target.value)"><option v-for="item in items" :key="item.value" :value="item.value">{{ item.label }}</option></select>',
   },
 }));
 

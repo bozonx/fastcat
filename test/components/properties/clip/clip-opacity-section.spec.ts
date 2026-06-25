@@ -4,9 +4,19 @@ import ClipOpacitySection from '~/components/properties/clip/ClipOpacitySection.
 
 vi.mock('~/components/ui/UiSliderInput.vue', () => ({
   default: {
-    props: ['modelValue', 'min', 'max', 'step', 'unit', 'defaultValue', 'wheelStepMultiplier', 'disabled'],
+    props: [
+      'modelValue',
+      'min',
+      'max',
+      'step',
+      'unit',
+      'defaultValue',
+      'wheelStepMultiplier',
+      'disabled',
+    ],
     emits: ['update:modelValue'],
-    template: '<input type="range" class="slider-mock" :value="modelValue" :min="min" :max="max" :step="step" :disabled="disabled" @input="$emit(\'update:modelValue\', Number($event.target.value))" />',
+    template:
+      '<input type="range" class="slider-mock" :value="modelValue" :min="min" :max="max" :step="step" :disabled="disabled" @input="$emit(\'update:modelValue\', Number($event.target.value))" />',
   },
 }));
 
@@ -14,7 +24,8 @@ vi.mock('~/components/properties/PropertySection.vue', () => ({
   default: {
     props: ['title', 'hasToggle', 'showReset', 'onReset'],
     emits: ['update:enabled'],
-    template: '<div class="section-mock"><h3>{{ title }}</h3><slot name="header-actions" /><slot /></div>',
+    template:
+      '<div class="section-mock"><h3>{{ title }}</h3><slot name="header-actions" /><slot /></div>',
   },
 }));
 

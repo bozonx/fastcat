@@ -62,7 +62,9 @@ function makeTrack(items: any[], overrides: Partial<TimelineTrack> = {}): Timeli
   } as TimelineTrack;
 }
 
-function makeRecord(words: Array<{ start: number; end: number; text: string }>): TranscriptionRecord {
+function makeRecord(
+  words: Array<{ start: number; end: number; text: string }>,
+): TranscriptionRecord {
   return {
     createdAt: '2024-01-01',
     sourcePath: '/video.mp4',
@@ -158,7 +160,10 @@ describe('useSilenceTrimming', () => {
 
     expect(mockTimelineStore.applyTimeline).toHaveBeenCalledTimes(1);
     const call = vi.mocked(mockTimelineStore.applyTimeline).mock.calls[0]!;
-    const command = call[0] as { type: string; clips: Array<{ pauses: Array<{ startUs: number; endUs: number }> }> };
+    const command = call[0] as {
+      type: string;
+      clips: Array<{ pauses: Array<{ startUs: number; endUs: number }> }>;
+    };
     expect(command.type).toBe('auto_trim_pauses');
     // Start pause: firstWordStartUs = 2000 * 1000 = 2_000_000us, sourceRange.startUs = 0
     // endUs = 0 + (2_000_000 - 0) / 1 = 2_000_000
@@ -188,7 +193,10 @@ describe('useSilenceTrimming', () => {
     });
 
     const call = vi.mocked(mockTimelineStore.applyTimeline).mock.calls[0]!;
-    const command = call[0] as { type: string; clips: Array<{ pauses: Array<{ startUs: number; endUs: number }> }> };
+    const command = call[0] as {
+      type: string;
+      clips: Array<{ pauses: Array<{ startUs: number; endUs: number }> }>;
+    };
     // End pause: lastWordEndUs = 3000 * 1000 = 3_000_000us
     // startUs = 0 + (3_000_000 - 0) / 1 = 3_000_000, endUs = 0 + 10_000_000 = 10_000_000
     expect(command.clips[0]!.pauses).toEqual([{ startUs: 3_000_000, endUs: 10_000_000 }]);
@@ -221,7 +229,10 @@ describe('useSilenceTrimming', () => {
     });
 
     const call = vi.mocked(mockTimelineStore.applyTimeline).mock.calls[0]!;
-    const command = call[0] as { type: string; clips: Array<{ pauses: Array<{ startUs: number; endUs: number }> }> };
+    const command = call[0] as {
+      type: string;
+      clips: Array<{ pauses: Array<{ startUs: number; endUs: number }> }>;
+    };
     // Gap: 2000ms to 3000ms => gapStartUs = 2_000_000, gapEndUs = 3_000_000 (1s gap > 500ms threshold)
     expect(command.clips[0]!.pauses).toEqual([{ startUs: 2_000_000, endUs: 3_000_000 }]);
   });
@@ -280,7 +291,10 @@ describe('useSilenceTrimming', () => {
     });
 
     const call = vi.mocked(mockTimelineStore.applyTimeline).mock.calls[0]!;
-    const command = call[0] as { type: string; clips: Array<{ pauses: Array<{ startUs: number; endUs: number }> }> };
+    const command = call[0] as {
+      type: string;
+      clips: Array<{ pauses: Array<{ startUs: number; endUs: number }> }>;
+    };
     // firstWordStartUs = 4000 * 1000 = 4_000_000us, sourceRange.startUs = 0
     // endUs = 0 + (4_000_000 - 0) / 2 = 2_000_000
     expect(command.clips[0]!.pauses).toEqual([{ startUs: 0, endUs: 2_000_000 }]);

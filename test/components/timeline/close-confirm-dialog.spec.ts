@@ -5,9 +5,20 @@ import CloseConfirmDialog from '~/components/timeline/CloseConfirmDialog.vue';
 
 vi.mock('~/components/ui/UiConfirmModal.vue', () => ({
   default: {
-    props: ['open', 'title', 'description', 'confirmText', 'secondaryText', 'cancelText', 'color', 'secondaryColor', 'icon'],
+    props: [
+      'open',
+      'title',
+      'description',
+      'confirmText',
+      'secondaryText',
+      'cancelText',
+      'color',
+      'secondaryColor',
+      'icon',
+    ],
     emits: ['update:open', 'confirm', 'secondary'],
-    template: '<div v-if="open" class="confirm-mock"><h2>{{ title }}</h2><p>{{ description }}</p><button class="btn-confirm" @click="$emit(\'confirm\')">{{ confirmText }}</button><button class="btn-secondary" @click="$emit(\'secondary\')">{{ secondaryText }}</button></div>',
+    template:
+      '<div v-if="open" class="confirm-mock"><h2>{{ title }}</h2><p>{{ description }}</p><button class="btn-confirm" @click="$emit(\'confirm\')">{{ confirmText }}</button><button class="btn-secondary" @click="$emit(\'secondary\')">{{ secondaryText }}</button></div>',
   },
 }));
 

@@ -11,8 +11,10 @@ vi.mock('~/utils/webcodecs', () => ({
     { value: 'avc1.640032', label: 'H.264' },
     { value: 'vp09.00.10.08', label: 'VP9' },
   ],
-  checkVideoCodecSupport: vi.fn(() => Promise.resolve({ 'avc1.640032': true, 'vp09.00.10.08': false })),
-  checkAudioCodecSupport: vi.fn(() => Promise.resolve({ 'mp4a.40.2': true, 'opus': true })),
+  checkVideoCodecSupport: vi.fn(() =>
+    Promise.resolve({ 'avc1.640032': true, 'vp09.00.10.08': false }),
+  ),
+  checkAudioCodecSupport: vi.fn(() => Promise.resolve({ 'mp4a.40.2': true, opus: true })),
 }));
 
 describe('useExportCodecs', () => {

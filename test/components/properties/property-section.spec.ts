@@ -13,7 +13,8 @@ const stubs = {
   USwitch: {
     props: ['modelValue', 'size', 'color'],
     emits: ['update:modelValue'],
-    template: '<input type="checkbox" :checked="modelValue" @change="$emit(\'update:modelValue\', $event.target.checked)" class="switch-mock" />',
+    template:
+      '<input type="checkbox" :checked="modelValue" @change="$emit(\'update:modelValue\', $event.target.checked)" class="switch-mock" />',
   },
 };
 

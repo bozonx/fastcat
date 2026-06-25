@@ -4,11 +4,26 @@ import UiCompactSelect from '~/components/ui/UiCompactSelect.vue';
 
 const stubs = {
   USelectMenu: {
-    props: ['modelValue', 'items', 'placeholder', 'disabled', 'size', 'valueKey', 'labelKey', 'multiple', 'searchInput', 'ui'],
+    props: [
+      'modelValue',
+      'items',
+      'placeholder',
+      'disabled',
+      'size',
+      'valueKey',
+      'labelKey',
+      'multiple',
+      'searchInput',
+      'ui',
+    ],
     emits: ['update:modelValue'],
     computed: {
-      vk() { return (this as any).valueKey || 'value'; },
-      lk() { return (this as any).labelKey || 'label'; },
+      vk() {
+        return (this as any).valueKey || 'value';
+      },
+      lk() {
+        return (this as any).labelKey || 'label';
+      },
     },
     template: `
       <div class="u-compact-select-mock">

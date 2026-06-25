@@ -4,7 +4,19 @@ import UiTextarea from '~/components/ui/UiTextarea.vue';
 
 const stubs = {
   UTextarea: {
-    props: ['modelValue', 'placeholder', 'disabled', 'size', 'variant', 'rows', 'maxrows', 'autoresize', 'readonly', 'spellcheck', 'ui'],
+    props: [
+      'modelValue',
+      'placeholder',
+      'disabled',
+      'size',
+      'variant',
+      'rows',
+      'maxrows',
+      'autoresize',
+      'readonly',
+      'spellcheck',
+      'ui',
+    ],
     emits: ['update:modelValue', 'focus', 'blur'],
     template: `
       <div class="u-textarea-mock">

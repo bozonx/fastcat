@@ -47,7 +47,9 @@ describe('PreviewRenderOptionsSchema', () => {
   });
 
   it('rejects invalid previewEffectQuality', () => {
-    expect(() => PreviewRenderOptionsSchema.parse({ previewEffectQuality: 'ultra-fast' })).toThrow();
+    expect(() =>
+      PreviewRenderOptionsSchema.parse({ previewEffectQuality: 'ultra-fast' }),
+    ).toThrow();
   });
 
   it('accepts valid previewEffectQuality values', () => {

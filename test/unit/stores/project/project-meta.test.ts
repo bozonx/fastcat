@@ -21,7 +21,7 @@ describe('createProjectMetaModule', () => {
     const mod = createProjectMetaModule({
       currentProjectName,
       currentProjectId,
-      getVfs: () => ({} as any),
+      getVfs: () => ({}) as any,
     });
     expect(mod.projectMeta.value).toBeNull();
   });
@@ -32,7 +32,7 @@ describe('createProjectMetaModule', () => {
     const mod = createProjectMetaModule({
       currentProjectName,
       currentProjectId,
-      getVfs: () => ({} as any),
+      getVfs: () => ({}) as any,
     });
     await mod.loadProjectMeta();
     expect(mod.projectMeta.value).toBeNull();
@@ -44,7 +44,7 @@ describe('createProjectMetaModule', () => {
     const mod = createProjectMetaModule({
       currentProjectName,
       currentProjectId,
-      getVfs: () => ({} as any),
+      getVfs: () => ({}) as any,
     });
     await mod.loadProjectMeta();
     expect(mod.projectMeta.value).not.toBeNull();
@@ -59,7 +59,7 @@ describe('createProjectMetaModule', () => {
     const mod = createProjectMetaModule({
       currentProjectName,
       currentProjectId,
-      getVfs: () => ({} as any),
+      getVfs: () => ({}) as any,
     });
     await mod.loadProjectMeta();
     expect(mod.projectMeta.value).not.toBeNull();
@@ -73,7 +73,7 @@ describe('createProjectMetaModule', () => {
     const mod = createProjectMetaModule({
       currentProjectName,
       currentProjectId,
-      getVfs: () => ({} as any),
+      getVfs: () => ({}) as any,
     });
     await mod.saveProjectMeta({ title: 'updated' });
     expect(mod.projectMeta.value).toBeNull();
@@ -85,7 +85,7 @@ describe('createProjectMetaModule', () => {
     const mod = createProjectMetaModule({
       currentProjectName,
       currentProjectId,
-      getVfs: () => ({} as any),
+      getVfs: () => ({}) as any,
     });
     await mod.loadProjectMeta();
     await mod.saveProjectMeta({ title: 'updated-title', author: 'test-author' });

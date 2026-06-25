@@ -1,9 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type {
-  TimelineDocument,
-  TimelineTrack,
-  TimelineMarker,
-} from '~/timeline/types';
+import type { TimelineDocument, TimelineTrack, TimelineMarker } from '~/timeline/types';
 import {
   computeSnapTargetsUs,
   getSelectedMovableItemIds,
@@ -100,10 +96,7 @@ describe('computeSnapTargetsUs', () => {
       includeTimelineEndUs: null,
       includePlayheadUs: null,
       includeMarkers: true,
-      markers: [
-        marker({ id: 'm1', timeUs: 1_000_000 }),
-        marker({ id: 'm2', timeUs: 3_000_000 }),
-      ],
+      markers: [marker({ id: 'm1', timeUs: 1_000_000 }), marker({ id: 'm2', timeUs: 3_000_000 })],
       excludeMarkerId: 'm1',
       includeClips: false,
     });
@@ -117,10 +110,7 @@ describe('computeSnapTargetsUs', () => {
       includeTimelineEndUs: null,
       includePlayheadUs: null,
       includeMarkers: true,
-      markers: [
-        marker({ id: 'm1', timeUs: Number.NaN }),
-        marker({ id: 'm2', timeUs: 2_000_000 }),
-      ],
+      markers: [marker({ id: 'm1', timeUs: Number.NaN }), marker({ id: 'm2', timeUs: 2_000_000 })],
       includeClips: false,
     });
     expect(result).toEqual([2_000_000]);
@@ -197,11 +187,7 @@ describe('computeSnapTargetsUs', () => {
 
   it('deduplicates and sorts targets', () => {
     const result = computeSnapTargetsUs({
-      tracks: [
-        track([
-          clip({ id: 'c1', timelineRange: { startUs: 0, durationUs: 5_000_000 } }),
-        ]),
-      ],
+      tracks: [track([clip({ id: 'c1', timelineRange: { startUs: 0, durationUs: 5_000_000 } })])],
       includeTimelineStart: true,
       includeTimelineEndUs: 5_000_000,
       includePlayheadUs: 0,
@@ -215,9 +201,7 @@ describe('computeSnapTargetsUs', () => {
   it('combines all sources', () => {
     const result = computeSnapTargetsUs({
       tracks: [
-        track([
-          clip({ id: 'c1', timelineRange: { startUs: 2_000_000, durationUs: 1_000_000 } }),
-        ]),
+        track([clip({ id: 'c1', timelineRange: { startUs: 2_000_000, durationUs: 1_000_000 } })]),
       ],
       includeTimelineStart: true,
       includeTimelineEndUs: 10_000_000,
@@ -234,10 +218,7 @@ describe('computeSnapTargetsUs', () => {
 describe('getSelectedMovableItemIds', () => {
   it('returns only clip ids on unlocked tracks', () => {
     const tracks: TimelineTrack[] = [
-      track([
-        clip({ id: 'c1', locked: false }),
-        clip({ id: 'c2', locked: true }),
-      ]),
+      track([clip({ id: 'c1', locked: false }), clip({ id: 'c2', locked: true })]),
     ];
     const result = getSelectedMovableItemIds({
       selectedItemIds: ['c1', 'c2'],
@@ -247,12 +228,7 @@ describe('getSelectedMovableItemIds', () => {
   });
 
   it('excludes items on locked tracks', () => {
-    const tracks: TimelineTrack[] = [
-      track(
-        [clip({ id: 'c1', locked: false })],
-        { locked: true },
-      ),
-    ];
+    const tracks: TimelineTrack[] = [track([clip({ id: 'c1', locked: false })], { locked: true })];
     const result = getSelectedMovableItemIds({
       selectedItemIds: ['c1'],
       tracks,
@@ -262,9 +238,7 @@ describe('getSelectedMovableItemIds', () => {
 
   it('excludes non-clip items', () => {
     const tracks: TimelineTrack[] = [
-      track([
-        { id: 'gap1', kind: 'gap', timelineRange: { startUs: 0, durationUs: 1 } } as any,
-      ]),
+      track([{ id: 'gap1', kind: 'gap', timelineRange: { startUs: 0, durationUs: 1 } } as any]),
     ];
     const result = getSelectedMovableItemIds({
       selectedItemIds: ['gap1'],
@@ -345,12 +319,14 @@ describe('buildMultiItemMoves', () => {
   });
 
   it('moves items to a different track with same kind', () => {
-    const t1 = track([
-      clip({ id: 'c1', timelineRange: { startUs: 1_000_000, durationUs: 2_000_000 } }),
-    ], { id: 'v1' });
-    const t2 = track([
-      clip({ id: 'c2', timelineRange: { startUs: 3_000_000, durationUs: 2_000_000 } }),
-    ], { id: 'v2' });
+    const t1 = track(
+      [clip({ id: 'c1', timelineRange: { startUs: 1_000_000, durationUs: 2_000_000 } })],
+      { id: 'v1' },
+    );
+    const t2 = track(
+      [clip({ id: 'c2', timelineRange: { startUs: 3_000_000, durationUs: 2_000_000 } })],
+      { id: 'v2' },
+    );
     const snapshot = makeDoc([t1, t2]);
 
     const moves = buildMultiItemMoves({
@@ -368,12 +344,14 @@ describe('buildMultiItemMoves', () => {
   });
 
   it('does not move to track of different kind', () => {
-    const t1 = track([
-      clip({ id: 'c1', timelineRange: { startUs: 1_000_000, durationUs: 2_000_000 } }),
-    ], { id: 'v1', kind: 'video' });
-    const t2 = track([
-      clip({ id: 'c2', timelineRange: { startUs: 3_000_000, durationUs: 2_000_000 } }),
-    ], { id: 'a1', kind: 'audio' });
+    const t1 = track(
+      [clip({ id: 'c1', timelineRange: { startUs: 1_000_000, durationUs: 2_000_000 } })],
+      { id: 'v1', kind: 'video' },
+    );
+    const t2 = track(
+      [clip({ id: 'c2', timelineRange: { startUs: 3_000_000, durationUs: 2_000_000 } })],
+      { id: 'a1', kind: 'audio' },
+    );
     const snapshot = makeDoc([t1, t2]);
 
     const moves = buildMultiItemMoves({

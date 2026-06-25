@@ -4,9 +4,15 @@ import TimelineSpeedModal from '~/components/timeline/TimelineSpeedModal.vue';
 
 vi.mock('~/components/ui/UiModal.vue', () => ({
   default: {
-    props: { open: { type: Boolean, default: false }, title: String, description: String, ui: Object },
+    props: {
+      open: { type: Boolean, default: false },
+      title: String,
+      description: String,
+      ui: Object,
+    },
     emits: ['update:open', 'after:enter'],
-    template: '<div v-if="open" class="modal-mock"><h2>{{ title }}</h2><p v-if="description">{{ description }}</p><slot /><slot name="footer" /></div>',
+    template:
+      '<div v-if="open" class="modal-mock"><h2>{{ title }}</h2><p v-if="description">{{ description }}</p><slot /><slot name="footer" /></div>',
   },
 }));
 
@@ -14,14 +20,19 @@ vi.mock('~/components/ui/UiSliderInput.vue', () => ({
   default: {
     props: ['modelValue', 'label', 'min', 'max', 'step', 'unit', 'showInput', 'defaultValue'],
     emits: ['update:modelValue'],
-    template: '<input type="range" :value="modelValue" :min="min" :max="max" :step="step" @input="$emit(\'update:modelValue\', Number($event.target.value))" />',
+    template:
+      '<input type="range" :value="modelValue" :min="min" :max="max" :step="step" @input="$emit(\'update:modelValue\', Number($event.target.value))" />',
   },
 }));
 
 vi.mock('~/composables/ui/useModalOpenModel', () => ({
   useModalOpenModel: (props: any, emit: any) => ({
-    get value() { return props.open; },
-    set value(v: boolean) { emit('update:open', v); },
+    get value() {
+      return props.open;
+    },
+    set value(v: boolean) {
+      emit('update:open', v);
+    },
   }),
 }));
 

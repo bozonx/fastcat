@@ -14,12 +14,14 @@ function makeDefaultSettings(): FastCatProjectSettings {
 }
 
 describe('createProjectTimelinesModule', () => {
-  function setup(overrides?: Partial<{
-    currentProjectName: string | null;
-    currentTimelinePath: string | null;
-    openPaths: string[];
-    onActiveTimelineChanged: () => Promise<void> | void;
-  }>) {
+  function setup(
+    overrides?: Partial<{
+      currentProjectName: string | null;
+      currentTimelinePath: string | null;
+      openPaths: string[];
+      onActiveTimelineChanged: () => Promise<void> | void;
+    }>,
+  ) {
     const currentProjectName = ref(
       overrides && 'currentProjectName' in overrides
         ? overrides.currentProjectName!
@@ -33,9 +35,7 @@ describe('createProjectTimelinesModule', () => {
     }
     const saveProjectMeta = vi.fn().mockResolvedValue(undefined);
     const setWorkspaceError = vi.fn();
-    const onActiveTimelineChanged = vi.fn(
-      overrides?.onActiveTimelineChanged ?? (() => {}),
-    );
+    const onActiveTimelineChanged = vi.fn(overrides?.onActiveTimelineChanged ?? (() => {}));
     const toProjectRelativePath = vi.fn((path: string) => path);
 
     const mod = createProjectTimelinesModule({
@@ -147,10 +147,11 @@ describe('createProjectTimelinesModule', () => {
   });
 
   it('closeAllTimelineFiles clears all paths', async () => {
-    const { mod, projectSettings, currentTimelinePath, currentFileName, onActiveTimelineChanged } = setup({
-      openPaths: ['timelines/a.otio', 'timelines/b.otio'],
-      currentTimelinePath: 'timelines/a.otio',
-    });
+    const { mod, projectSettings, currentTimelinePath, currentFileName, onActiveTimelineChanged } =
+      setup({
+        openPaths: ['timelines/a.otio', 'timelines/b.otio'],
+        currentTimelinePath: 'timelines/a.otio',
+      });
     await mod.closeAllTimelineFiles();
     expect(projectSettings.value.timelines.openPaths).toEqual([]);
     expect(currentTimelinePath.value).toBeNull();
@@ -163,6 +164,9 @@ describe('createProjectTimelinesModule', () => {
       openPaths: ['timelines/a.otio', 'timelines/b.otio'],
     });
     mod.reorderTimelines(['timelines/b.otio', 'timelines/a.otio']);
-    expect(projectSettings.value.timelines.openPaths).toEqual(['timelines/b.otio', 'timelines/a.otio']);
+    expect(projectSettings.value.timelines.openPaths).toEqual([
+      'timelines/b.otio',
+      'timelines/a.otio',
+    ]);
   });
 });

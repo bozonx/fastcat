@@ -4,8 +4,12 @@ import RemoteTransferProgressModal from '~/components/file-manager/RemoteTransfe
 
 vi.mock('~/composables/ui/useModalOpenModel', () => ({
   useModalOpenModel: (props: any, emit: any) => ({
-    get value() { return props.open; },
-    set value(v: boolean) { emit('update:open', v); },
+    get value() {
+      return props.open;
+    },
+    set value(v: boolean) {
+      emit('update:open', v);
+    },
   }),
 }));
 

@@ -42,7 +42,9 @@ describe('history-labels', () => {
         'auto_trim_pauses',
       ];
       for (const type of commandTypes) {
-        expect(TIMELINE_COMMAND_LABEL_KEYS[type as keyof typeof TIMELINE_COMMAND_LABEL_KEYS]).toBeDefined();
+        expect(
+          TIMELINE_COMMAND_LABEL_KEYS[type as keyof typeof TIMELINE_COMMAND_LABEL_KEYS],
+        ).toBeDefined();
       }
     });
   });

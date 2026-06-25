@@ -4,11 +4,26 @@ import UiSelect from '~/components/ui/UiSelect.vue';
 
 const stubs = {
   USelectMenu: {
-    props: ['modelValue', 'items', 'placeholder', 'disabled', 'size', 'valueKey', 'labelKey', 'multiple', 'searchInput', 'ui'],
+    props: [
+      'modelValue',
+      'items',
+      'placeholder',
+      'disabled',
+      'size',
+      'valueKey',
+      'labelKey',
+      'multiple',
+      'searchInput',
+      'ui',
+    ],
     emits: ['update:modelValue'],
     computed: {
-      vk() { return this.valueKey || 'value'; },
-      lk() { return this.labelKey || 'label'; },
+      vk() {
+        return this.valueKey || 'value';
+      },
+      lk() {
+        return this.labelKey || 'label';
+      },
     },
     template: `
       <div class="u-select-mock">

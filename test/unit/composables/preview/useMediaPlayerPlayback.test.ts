@@ -31,7 +31,13 @@ describe('useMediaPlayerPlayback', () => {
     const isMuted = ref(false);
     const focusStore = { canUsePreviewHotkeys: false, effectiveFocus: null };
 
-    const result = useMediaPlayerPlayback(mediaEl, { src: 'test.mp4' }, volume, isMuted, focusStore);
+    const result = useMediaPlayerPlayback(
+      mediaEl,
+      { src: 'test.mp4' },
+      volume,
+      isMuted,
+      focusStore,
+    );
 
     expect(result.isPlaying.value).toBe(false);
     expect(result.currentTime.value).toBe(0);
@@ -47,7 +53,13 @@ describe('useMediaPlayerPlayback', () => {
     const isMuted = ref(false);
     const focusStore = { canUsePreviewHotkeys: false, effectiveFocus: null };
 
-    const { togglePlay, isPlaying } = useMediaPlayerPlayback(mediaEl, { src: '' }, volume, isMuted, focusStore);
+    const { togglePlay, isPlaying } = useMediaPlayerPlayback(
+      mediaEl,
+      { src: '' },
+      volume,
+      isMuted,
+      focusStore,
+    );
     togglePlay();
     expect(isPlaying.value).toBe(false);
   });
@@ -59,7 +71,13 @@ describe('useMediaPlayerPlayback', () => {
     const isMuted = ref(false);
     const focusStore = { canUsePreviewHotkeys: false, effectiveFocus: null };
 
-    const { togglePlay } = useMediaPlayerPlayback(mediaEl, { src: '' }, volume, isMuted, focusStore);
+    const { togglePlay } = useMediaPlayerPlayback(
+      mediaEl,
+      { src: '' },
+      volume,
+      isMuted,
+      focusStore,
+    );
     togglePlay();
     expect(el.play).toHaveBeenCalled();
   });
@@ -71,7 +89,13 @@ describe('useMediaPlayerPlayback', () => {
     const isMuted = ref(false);
     const focusStore = { canUsePreviewHotkeys: false, effectiveFocus: null };
 
-    const { togglePlay, onPlay, isPlaying } = useMediaPlayerPlayback(mediaEl, { src: '' }, volume, isMuted, focusStore);
+    const { togglePlay, onPlay, isPlaying } = useMediaPlayerPlayback(
+      mediaEl,
+      { src: '' },
+      volume,
+      isMuted,
+      focusStore,
+    );
     onPlay();
     expect(isPlaying.value).toBe(true);
     togglePlay();
@@ -84,7 +108,13 @@ describe('useMediaPlayerPlayback', () => {
     const isMuted = ref(false);
     const focusStore = { canUsePreviewHotkeys: false, effectiveFocus: null };
 
-    const { onPlay, isPlaying } = useMediaPlayerPlayback(mediaEl, { src: '' }, volume, isMuted, focusStore);
+    const { onPlay, isPlaying } = useMediaPlayerPlayback(
+      mediaEl,
+      { src: '' },
+      volume,
+      isMuted,
+      focusStore,
+    );
     onPlay();
     expect(isPlaying.value).toBe(true);
   });
@@ -95,7 +125,13 @@ describe('useMediaPlayerPlayback', () => {
     const isMuted = ref(false);
     const focusStore = { canUsePreviewHotkeys: false, effectiveFocus: null };
 
-    const { onPlay, onPause, isPlaying } = useMediaPlayerPlayback(mediaEl, { src: '' }, volume, isMuted, focusStore);
+    const { onPlay, onPause, isPlaying } = useMediaPlayerPlayback(
+      mediaEl,
+      { src: '' },
+      volume,
+      isMuted,
+      focusStore,
+    );
     onPlay();
     onPause();
     expect(isPlaying.value).toBe(false);
@@ -107,7 +143,13 @@ describe('useMediaPlayerPlayback', () => {
     const isMuted = ref(false);
     const focusStore = { canUsePreviewHotkeys: false, effectiveFocus: null };
 
-    const { onPlay, pauseAndClearPlayback, onPause, isPlaying } = useMediaPlayerPlayback(mediaEl, { src: '' }, volume, isMuted, focusStore);
+    const { onPlay, pauseAndClearPlayback, onPause, isPlaying } = useMediaPlayerPlayback(
+      mediaEl,
+      { src: '' },
+      volume,
+      isMuted,
+      focusStore,
+    );
     onPlay();
     pauseAndClearPlayback();
     onPause();
@@ -121,7 +163,13 @@ describe('useMediaPlayerPlayback', () => {
     const isMuted = ref(true);
     const focusStore = { canUsePreviewHotkeys: false, effectiveFocus: null };
 
-    const { onLoadedMetadata, duration } = useMediaPlayerPlayback(mediaEl, { src: '' }, volume, isMuted, focusStore);
+    const { onLoadedMetadata, duration } = useMediaPlayerPlayback(
+      mediaEl,
+      { src: '' },
+      volume,
+      isMuted,
+      focusStore,
+    );
     onLoadedMetadata();
     expect(duration.value).toBe(200);
     expect(el.volume).toBe(0.5);
@@ -135,7 +183,13 @@ describe('useMediaPlayerPlayback', () => {
     const isMuted = ref(false);
     const focusStore = { canUsePreviewHotkeys: false, effectiveFocus: null };
 
-    const { onTimeUpdate, currentTime, progress, duration } = useMediaPlayerPlayback(mediaEl, { src: '' }, volume, isMuted, focusStore);
+    const { onTimeUpdate, currentTime, progress, duration } = useMediaPlayerPlayback(
+      mediaEl,
+      { src: '' },
+      volume,
+      isMuted,
+      focusStore,
+    );
     duration.value = 100;
     const isDragging = ref(false);
     onTimeUpdate(isDragging);
@@ -150,7 +204,13 @@ describe('useMediaPlayerPlayback', () => {
     const isMuted = ref(false);
     const focusStore = { canUsePreviewHotkeys: false, effectiveFocus: null };
 
-    const { onTimeUpdate, currentTime } = useMediaPlayerPlayback(mediaEl, { src: '' }, volume, isMuted, focusStore);
+    const { onTimeUpdate, currentTime } = useMediaPlayerPlayback(
+      mediaEl,
+      { src: '' },
+      volume,
+      isMuted,
+      focusStore,
+    );
     const isDragging = ref(true);
     onTimeUpdate(isDragging);
     expect(currentTime.value).toBe(0);
@@ -162,8 +222,16 @@ describe('useMediaPlayerPlayback', () => {
     const isMuted = ref(false);
     const focusStore = { canUsePreviewHotkeys: false, effectiveFocus: null };
 
-    const { onPlay, resetState, isPlaying, currentTime, duration, progress, playbackSpeed, playbackError } =
-      useMediaPlayerPlayback(mediaEl, { src: '' }, volume, isMuted, focusStore);
+    const {
+      onPlay,
+      resetState,
+      isPlaying,
+      currentTime,
+      duration,
+      progress,
+      playbackSpeed,
+      playbackError,
+    } = useMediaPlayerPlayback(mediaEl, { src: '' }, volume, isMuted, focusStore);
     onPlay();
     resetState();
     expect(isPlaying.value).toBe(false);
@@ -180,7 +248,13 @@ describe('useMediaPlayerPlayback', () => {
     const isMuted = ref(false);
     const focusStore = { canUsePreviewHotkeys: false, effectiveFocus: null };
 
-    const { onPlaybackError, playbackError } = useMediaPlayerPlayback(mediaEl, { src: '' }, volume, isMuted, focusStore);
+    const { onPlaybackError, playbackError } = useMediaPlayerPlayback(
+      mediaEl,
+      { src: '' },
+      volume,
+      isMuted,
+      focusStore,
+    );
     const fakeEvent = {
       target: { error: { code: 3, message: 'DECODER_ERROR' } },
     } as unknown as Event;
@@ -194,7 +268,13 @@ describe('useMediaPlayerPlayback', () => {
     const isMuted = ref(false);
     const focusStore = { canUsePreviewHotkeys: false, effectiveFocus: null };
 
-    const { onPlaybackError, playbackError } = useMediaPlayerPlayback(mediaEl, { src: '' }, volume, isMuted, focusStore);
+    const { onPlaybackError, playbackError } = useMediaPlayerPlayback(
+      mediaEl,
+      { src: '' },
+      volume,
+      isMuted,
+      focusStore,
+    );
     const fakeEvent = { target: { error: null } } as unknown as Event;
     onPlaybackError(fakeEvent);
     expect(playbackError.value).toBeNull();
@@ -207,7 +287,13 @@ describe('useMediaPlayerPlayback', () => {
     const isMuted = ref(false);
     const focusStore = { canUsePreviewHotkeys: false, effectiveFocus: null };
 
-    const { setForwardPlaybackSpeed, playbackSpeed } = useMediaPlayerPlayback(mediaEl, { src: '' }, volume, isMuted, focusStore);
+    const { setForwardPlaybackSpeed, playbackSpeed } = useMediaPlayerPlayback(
+      mediaEl,
+      { src: '' },
+      volume,
+      isMuted,
+      focusStore,
+    );
     setForwardPlaybackSpeed(2);
     expect(playbackSpeed.value).toBe(2);
     expect(el.playbackRate).toBe(2);
@@ -221,7 +307,13 @@ describe('useMediaPlayerPlayback', () => {
     const isMuted = ref(false);
     const focusStore = { canUsePreviewHotkeys: false, effectiveFocus: null };
 
-    const { setForwardPlaybackSpeed, playbackSpeed } = useMediaPlayerPlayback(mediaEl, { src: '' }, volume, isMuted, focusStore);
+    const { setForwardPlaybackSpeed, playbackSpeed } = useMediaPlayerPlayback(
+      mediaEl,
+      { src: '' },
+      volume,
+      isMuted,
+      focusStore,
+    );
     setForwardPlaybackSpeed(2);
     expect(playbackSpeed.value).toBe(1);
   });
@@ -233,7 +325,13 @@ describe('useMediaPlayerPlayback', () => {
     const isMuted = ref(false);
     const focusStore = { canUsePreviewHotkeys: false, effectiveFocus: null };
 
-    const { pauseAndClearPlayback } = useMediaPlayerPlayback(mediaEl, { src: '' }, volume, isMuted, focusStore);
+    const { pauseAndClearPlayback } = useMediaPlayerPlayback(
+      mediaEl,
+      { src: '' },
+      volume,
+      isMuted,
+      focusStore,
+    );
     pauseAndClearPlayback();
     expect(el.pause).toHaveBeenCalled();
   });

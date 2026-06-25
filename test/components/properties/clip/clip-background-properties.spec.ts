@@ -13,7 +13,8 @@ const stubs = {
   UColorPicker: {
     props: ['modelValue', 'format', 'size'],
     emits: ['update:modelValue'],
-    template: '<input type="color" class="color-picker-mock" :value="modelValue" @input="$emit(\'update:modelValue\', $event.target.value)" />',
+    template:
+      '<input type="color" class="color-picker-mock" :value="modelValue" @input="$emit(\'update:modelValue\', $event.target.value)" />',
   },
 };
 

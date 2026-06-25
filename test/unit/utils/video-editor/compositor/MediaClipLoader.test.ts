@@ -1,6 +1,9 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { MediaClipLoader } from '~/utils/video-editor/compositor/MediaClipLoader';
-import type { MediaClipLoaderMediabunny, MediabunnyTrack } from '~/utils/video-editor/compositor/MediaClipLoader';
+import type {
+  MediaClipLoaderMediabunny,
+  MediabunnyTrack,
+} from '~/utils/video-editor/compositor/MediaClipLoader';
 
 function makeTrack(overrides: Partial<MediabunnyTrack> = {}): MediabunnyTrack {
   return {
