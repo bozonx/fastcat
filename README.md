@@ -305,7 +305,7 @@ The project uses a structured testing approach:
 - **Component Tests** (`test/components/`): Vue component rendering and behavior. Run via `pnpm test:unit`.
 - **Integration Tests** (`test/integration/`): Complex interactions between modules. Run via `pnpm test:unit`.
 - **E2E Tests** (`test/e2e/`): Full application flows in the browser. Run via `pnpm test:e2e`.
-- **Cross-Engine Parity Tests** (`test/e2e/parity/` + `src-tauri/tests/engine_parity.rs`): Verify the web (PixiJS/WebGPU) and native (Vello/wgpu) video engines produce visually identical output for the same scenes. Run via `pnpm test:parity`.
+- **Cross-Engine Parity Tests** (`test/e2e/parity/` + `test/integration/engine-parity/` + `src-tauri/tests/engine_parity.rs`): Verify the web (PixiJS/WebGPU) and native (Vello/wgpu) video engines produce visually identical output for the same scenes. Integration tests validate golden registry integrity, scene coverage, and cross-engine hash parity. Run via `pnpm test:parity`.
 
 Before running E2E tests for the first time, install the Playwright browser:
 
@@ -323,7 +323,7 @@ Parity tests verify that the web video engine (PixiJS + WebGPU + Web Workers) an
 
 **Shared fixtures:**
 
-- `shared/scenes/` — 5 timeline scenarios in `MonitorScene` JSON format (solid background, video clip, image overlay, text layer, multi-layer blend)
+- `shared/scenes/` — 8 timeline scenarios in `MonitorScene` JSON format (solid background, video clip, image overlay, text layer, multi-layer blend, shape layer, transformed image, multi-time video sampling)
 - `shared/golden/frames.json` — golden perceptual hashes (8x8 average hash) for each scene + sample time, per engine
 
 **Commands:**

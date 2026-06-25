@@ -1,0 +1,69 @@
+{
+  "_comment": [
+    "Cross-engine parity scene: a solid background with a transformed image layer.",
+    "The image is scaled to 50% and rotated 15 degrees, testing that transform",
+    "math (scale + rotation + anchor) matches between web and native engines."
+  ],
+  "scene": {
+    "layers": [
+      {
+        "id": "bg-transform",
+        "kind": "background",
+        "path": "",
+        "timeline_start_sec": 0.0,
+        "timeline_end_sec": 1.0,
+        "source_start_sec": 0.0,
+        "source_range_duration_sec": 0.0,
+        "speed": 1.0,
+        "z": 0,
+        "opacity": 1.0,
+        "blend_mode": "normal",
+        "background_color": "#000000",
+        "effects": []
+      },
+      {
+        "id": "img-transformed",
+        "kind": "image",
+        "path": "image/image.jpg",
+        "timeline_start_sec": 0.0,
+        "timeline_end_sec": 1.0,
+        "source_start_sec": 0.0,
+        "source_range_duration_sec": 0.0,
+        "speed": 1.0,
+        "z": 1,
+        "opacity": 1.0,
+        "blend_mode": "normal",
+        "transform": {
+          "x": 160,
+          "y": 120,
+          "scale_x": 0.5,
+          "scale_y": 0.5,
+          "rotation_deg": 15,
+          "anchor_x": 0.5,
+          "anchor_y": 0.5,
+          "crop_top": 0,
+          "crop_bottom": 0,
+          "crop_left": 0,
+          "crop_right": 0
+        },
+        "effects": []
+      }
+    ],
+    "video_tracks": [],
+    "audio_layers": [],
+    "audio_tracks": [],
+    "audio_master_gain": 1.0,
+    "audio_master_muted": false,
+    "width": 320,
+    "height": 240,
+    "preview_fps": 30.0,
+    "preview_sync_mode": "balanced",
+    "preview_effect_quality": "high",
+    "frame_cache_mode": "auto",
+    "frame_cache_custom_mb": 0,
+    "master_effects": [],
+    "audio_master_effects": []
+  },
+  "tolerance": 12,
+  "sample_times_sec": [0.5]
+}

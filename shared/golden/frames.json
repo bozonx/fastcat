@@ -71,6 +71,59 @@
       ]
     },
     {
+      "scene": "shape-layer.json",
+      "engine": "web",
+      "samples": [
+        {
+          "timeSec": 0.5,
+          "hash": "00000000070f0f0f",
+          "tolerance": 12
+        }
+      ]
+    },
+    {
+      "scene": "transform-clip.json",
+      "engine": "web",
+      "samples": [
+        {
+          "timeSec": 0.5,
+          "hash": "303e3f1f1f0f0703",
+          "tolerance": 12
+        }
+      ]
+    },
+    {
+      "scene": "multi-time-samples.json",
+      "engine": "web",
+      "samples": [
+        {
+          "timeSec": 0,
+          "hash": "1333333232373333",
+          "tolerance": 10
+        },
+        {
+          "timeSec": 0.25,
+          "hash": "1773333332323333",
+          "tolerance": 10
+        },
+        {
+          "timeSec": 0.5,
+          "hash": "1733733333323233",
+          "tolerance": 10
+        },
+        {
+          "timeSec": 0.75,
+          "hash": "1733337333333233",
+          "tolerance": 10
+        },
+        {
+          "timeSec": 1,
+          "hash": "0000000000000000",
+          "tolerance": 10
+        }
+      ]
+    },
+    {
       "scene": "solid-background.json",
       "engine": "native",
       "samples": [
@@ -121,6 +174,59 @@
         {
           "timeSec": 0.5,
           "hash": "ff7f3f0f07030000",
+          "tolerance": 10
+        }
+      ]
+    },
+    {
+      "scene": "shape-layer.json",
+      "engine": "native",
+      "samples": [
+        {
+          "timeSec": 0.5,
+          "hash": "0000000000000000",
+          "tolerance": 12
+        }
+      ]
+    },
+    {
+      "scene": "transform-clip.json",
+      "engine": "native",
+      "samples": [
+        {
+          "timeSec": 0.5,
+          "hash": "0000000000000000",
+          "tolerance": 12
+        }
+      ]
+    },
+    {
+      "scene": "multi-time-samples.json",
+      "engine": "native",
+      "samples": [
+        {
+          "timeSec": 0,
+          "hash": "0000000000000000",
+          "tolerance": 10
+        },
+        {
+          "timeSec": 0.25,
+          "hash": "0000000000000000",
+          "tolerance": 10
+        },
+        {
+          "timeSec": 0.5,
+          "hash": "0000000000000000",
+          "tolerance": 10
+        },
+        {
+          "timeSec": 0.75,
+          "hash": "0000000000000000",
+          "tolerance": 10
+        },
+        {
+          "timeSec": 1,
+          "hash": "0000000000000000",
           "tolerance": 10
         }
       ]

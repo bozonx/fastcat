@@ -1,0 +1,64 @@
+{
+  "_comment": [
+    "Cross-engine parity scene: a solid background with a circle shape on top.",
+    "Tests that vector shape rendering (geometry + fill + stroke) matches between",
+    "web (PixiJS Graphics) and native (vello path rendering)."
+  ],
+  "scene": {
+    "layers": [
+      {
+        "id": "bg-shape",
+        "kind": "background",
+        "path": "",
+        "timeline_start_sec": 0.0,
+        "timeline_end_sec": 1.0,
+        "source_start_sec": 0.0,
+        "source_range_duration_sec": 0.0,
+        "speed": 1.0,
+        "z": 0,
+        "opacity": 1.0,
+        "blend_mode": "normal",
+        "background_color": "#1a1a2e",
+        "effects": []
+      },
+      {
+        "id": "shape-circle",
+        "kind": "shape",
+        "path": "",
+        "timeline_start_sec": 0.0,
+        "timeline_end_sec": 1.0,
+        "source_start_sec": 0.0,
+        "source_range_duration_sec": 0.0,
+        "speed": 1.0,
+        "z": 1,
+        "opacity": 1.0,
+        "blend_mode": "normal",
+        "shape_type": "circle",
+        "fill_color": "#ff6600",
+        "stroke_color": "#ffffff",
+        "stroke_width": 2,
+        "shape_config": {
+          "squashX": 0,
+          "squashY": 0
+        },
+        "effects": []
+      }
+    ],
+    "video_tracks": [],
+    "audio_layers": [],
+    "audio_tracks": [],
+    "audio_master_gain": 1.0,
+    "audio_master_muted": false,
+    "width": 320,
+    "height": 240,
+    "preview_fps": 30.0,
+    "preview_sync_mode": "balanced",
+    "preview_effect_quality": "high",
+    "frame_cache_mode": "auto",
+    "frame_cache_custom_mb": 0,
+    "master_effects": [],
+    "audio_master_effects": []
+  },
+  "tolerance": 12,
+  "sample_times_sec": [0.5]
+}

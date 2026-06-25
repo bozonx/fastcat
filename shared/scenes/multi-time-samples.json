@@ -1,0 +1,42 @@
+{
+  "_comment": [
+    "Cross-engine parity scene: a video clip sampled at multiple timestamps.",
+    "Tests that frame-accurate decoding (seeking to different PTS values) produces",
+    "matching perceptual hashes across both engines at t=0.0, 0.25, 0.5, 0.75, and 1.0s."
+  ],
+  "scene": {
+    "layers": [
+      {
+        "id": "video-multi",
+        "kind": "video",
+        "path": "video/video-h264-aac.mp4",
+        "timeline_start_sec": 0.0,
+        "timeline_end_sec": 1.0,
+        "source_start_sec": 0.0,
+        "source_range_duration_sec": 1.0,
+        "source_duration_sec": 1.0,
+        "speed": 1.0,
+        "z": 0,
+        "opacity": 1.0,
+        "blend_mode": "normal",
+        "effects": []
+      }
+    ],
+    "video_tracks": [],
+    "audio_layers": [],
+    "audio_tracks": [],
+    "audio_master_gain": 1.0,
+    "audio_master_muted": false,
+    "width": 320,
+    "height": 240,
+    "preview_fps": 30.0,
+    "preview_sync_mode": "balanced",
+    "preview_effect_quality": "high",
+    "frame_cache_mode": "auto",
+    "frame_cache_custom_mb": 0,
+    "master_effects": [],
+    "audio_master_effects": []
+  },
+  "tolerance": 10,
+  "sample_times_sec": [0.0, 0.25, 0.5, 0.75, 1.0]
+}

@@ -78,6 +78,32 @@ function buildClipsFromScene(
     const sourceStartSec = layer.source_start_sec as number;
     const sourceRangeDurationSec = layer.source_range_duration_sec as number;
 
+    // Map scene-layer transform (snake_case) to worker payload transform (camelCase).
+    const sceneTransform = layer.transform as Record<string, unknown> | undefined;
+    const transform = sceneTransform
+      ? {
+          scale: {
+            x: (sceneTransform.scale_x as number) ?? 1,
+            y: (sceneTransform.scale_y as number) ?? 1,
+          },
+          rotationDeg: (sceneTransform.rotation_deg as number) ?? 0,
+          position: {
+            x: (sceneTransform.x as number) ?? 0,
+            y: (sceneTransform.y as number) ?? 0,
+          },
+          anchor: {
+            x: (sceneTransform.anchor_x as number) ?? 0.5,
+            y: (sceneTransform.anchor_y as number) ?? 0.5,
+          },
+          crop: {
+            top: (sceneTransform.crop_top as number) ?? 0,
+            bottom: (sceneTransform.crop_bottom as number) ?? 0,
+            left: (sceneTransform.crop_left as number) ?? 0,
+            right: (sceneTransform.crop_right as number) ?? 0,
+          },
+        }
+      : undefined;
+
     return {
       kind: 'clip' as const,
       clipType,
@@ -89,6 +115,12 @@ function buildClipsFromScene(
       backgroundColor: layer.background_color as string | undefined,
       text: layer.text as string | undefined,
       style: layer.style as Record<string, unknown> | undefined,
+      shapeType: layer.shape_type as string | undefined,
+      fillColor: layer.fill_color as string | undefined,
+      strokeColor: layer.stroke_color as string | undefined,
+      strokeWidth: layer.stroke_width as number | undefined,
+      shapeConfig: layer.shape_config as Record<string, unknown> | undefined,
+      transform,
       source: sourcePath ? { path: sourcePath } : undefined,
       timelineRange: {
         startUs: Math.round(timelineStartSec * 1_000_000),
