@@ -137,11 +137,23 @@ describe('WebAudioEngine', () => {
       expect(masterGain.gain.setTargetAtTime).toHaveBeenCalledWith(5, 0, 0.02);
     });
 
-    it('setMonitorVolume updates monitor gain value', async () => {
+    it('setMonitorVolume uses setTargetAtTime for smooth transition', async () => {
       const engine = new WebAudioEngine();
       await engine.init();
-      engine.setMonitorVolume(3);
-      expect((engine as any).monitorGain.gain.value).toBe(3);
+      engine.setMonitorVolume(0.5);
+      const monitorGain = (engine as any).monitorGain;
+      expect(monitorGain.gain.setTargetAtTime).toHaveBeenCalledWith(0.5, 0, 0.02);
+    });
+
+    it('setMonitorVolume clamps out-of-range values', async () => {
+      const engine = new WebAudioEngine();
+      await engine.init();
+      engine.setMonitorVolume(999);
+      const monitorGain = (engine as any).monitorGain;
+      // clampGain limits to [0, 10]
+      const calledValue = monitorGain.gain.setTargetAtTime.mock.calls[0][0];
+      expect(calledValue).toBeLessThanOrEqual(10);
+      expect(calledValue).toBeLessThan(999);
     });
   });
 
@@ -280,6 +292,54 @@ describe('WebAudioEngine', () => {
           concurrency: 1,
         }),
       );
+    });
+
+    it('stops scrub preview on layout update', async () => {
+      const engine = new WebAudioEngine();
+      await engine.init();
+      const stopScrubSpy = vi.spyOn(engine, 'stopScrubPreview');
+      await engine.updateTimelineLayout([]);
+      expect(stopScrubSpy).toHaveBeenCalled();
+    });
+  });
+
+  describe('setMasterAudioEffects', () => {
+    it('triggers rebuild when effect parameters change (deep comparison)', async () => {
+      const engine = new WebAudioEngine();
+      await engine.init();
+
+      const effectsV1 = [
+        { id: 'fx1', type: 'audio-reverb', enabled: true, target: 'audio', wet: 0.5 },
+      ];
+      engine.setMasterAudioEffects(effectsV1 as any);
+
+      // Wait for async graph build
+      await new Promise((resolve) => setTimeout(resolve, 10));
+
+      const effectsV2 = [
+        { id: 'fx1', type: 'audio-reverb', enabled: true, target: 'audio', wet: 0.8 },
+      ];
+      const beforeGen = (engine as any).masterEffectGeneration;
+      engine.setMasterAudioEffects(effectsV2 as any);
+
+      // Generation should bump — parameter changed even though id/type/enabled are the same
+      expect((engine as any).masterEffectGeneration).toBe(beforeGen + 1);
+    });
+
+    it('does not rebuild when effects are deeply equal', async () => {
+      const engine = new WebAudioEngine();
+      await engine.init();
+
+      const effects = [
+        { id: 'fx1', type: 'audio-reverb', enabled: true, target: 'audio', wet: 0.5 },
+      ];
+      engine.setMasterAudioEffects(effects as any);
+      await new Promise((resolve) => setTimeout(resolve, 10));
+
+      const beforeGen = (engine as any).masterEffectGeneration;
+      engine.setMasterAudioEffects([...effects] as any);
+
+      expect((engine as any).masterEffectGeneration).toBe(beforeGen);
     });
   });
 });

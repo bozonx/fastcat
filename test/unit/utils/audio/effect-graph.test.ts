@@ -144,4 +144,61 @@ describe('buildAudioEffectGraph', () => {
     expect(inputNode.disconnect).toHaveBeenCalled();
     expect(outputNode.disconnect).toHaveBeenCalled();
   });
+
+  it('disconnects dry/wet/output gain nodes on destroy', async () => {
+    vi.mocked(isAudioEffectNodeGraph).mockReturnValue(false);
+    const ctx = createMockContext();
+    const source = new MockAudioNode();
+    const result = await buildAudioEffectGraph({
+      audioContext: ctx,
+      sourceNode: source,
+      effects: [{ id: '1', type: 'audio-simple', enabled: true, target: 'audio', wet: 0.5 }],
+    });
+    await result.destroy();
+    // 3 gain nodes created (dry, wet, output) — all should be disconnected
+    const allGainNodes = vi.mocked(ctx.createGain).mock.results.map((r) => r.value as MockGainNode);
+    expect(allGainNodes).toHaveLength(3);
+    for (const node of allGainNodes) {
+      expect(node.disconnect).toHaveBeenCalled();
+    }
+  });
+
+  it('disconnects effect node on destroy for non-NodeGraph types', async () => {
+    const ctx = createMockContext();
+    const source = new MockAudioNode();
+    const effectNode = new MockAudioNode();
+    vi.mocked(getAudioEffectManifest).mockImplementationOnce(() => ({
+      createNode: () => effectNode,
+      updateNode: vi.fn(),
+    }));
+    vi.mocked(isAudioEffectNodeGraph).mockReturnValue(false);
+
+    const result = await buildAudioEffectGraph({
+      audioContext: ctx,
+      sourceNode: source,
+      effects: [{ id: '1', type: 'audio-simple', enabled: true, target: 'audio', wet: 0.5 }],
+    });
+    await result.destroy();
+    expect(effectNode.disconnect).toHaveBeenCalled();
+  });
+
+  it('disconnects effect node on destroy for disableGlobalWet effects', async () => {
+    const ctx = createMockContext();
+    const source = new MockAudioNode();
+    const effectNode = new MockAudioNode();
+    vi.mocked(getAudioEffectManifest).mockImplementationOnce(() => ({
+      disableGlobalWet: true,
+      createNode: () => effectNode,
+      updateNode: vi.fn(),
+    }));
+    vi.mocked(isAudioEffectNodeGraph).mockReturnValue(false);
+
+    const result = await buildAudioEffectGraph({
+      audioContext: ctx,
+      sourceNode: source,
+      effects: [{ id: '1', type: 'audio-disable-wet', enabled: true, target: 'audio' }],
+    });
+    await result.destroy();
+    expect(effectNode.disconnect).toHaveBeenCalled();
+  });
 });
