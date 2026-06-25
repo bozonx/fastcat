@@ -53,16 +53,25 @@ interface SceneFixture {
 
 /**
  * Poll a URL until it responds or timeout is reached.
- * Used to wait for the dev server to be ready.
+ * Uses AbortController to avoid hanging on slow SSR compilation.
+ * Tries both localhost and 127.0.0.1 in case of IPv6/IPv4 mismatch.
  */
 async function waitForServer(url: string, timeoutMs = 120_000): Promise<void> {
+  // Also try 127.0.0.1 in case localhost resolves to IPv6 only.
+  const altUrl = url.replace('localhost', '127.0.0.1');
+  const urls = [url, altUrl];
   const start = Date.now();
   while (Date.now() - start < timeoutMs) {
-    try {
-      const res = await fetch(url);
-      if (res.ok || res.status > 0) return;
-    } catch {
-      // server not ready yet
+    for (const u of urls) {
+      try {
+        const ctrl = new AbortController();
+        const timer = setTimeout(() => ctrl.abort(), 5000);
+        const res = await fetch(u, { signal: ctrl.signal });
+        clearTimeout(timer);
+        if (res.ok || res.status > 0) return;
+      } catch {
+        // server not ready yet or fetch failed
+      }
     }
     await new Promise((r) => setTimeout(r, 1000));
   }
@@ -76,7 +85,10 @@ async function waitForServer(url: string, timeoutMs = 120_000): Promise<void> {
 async function ensureDevServer(): Promise<ChildProcess | null> {
   // Check if a server is already running.
   try {
-    const res = await fetch(BASE_URL);
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 5000);
+    const res = await fetch(BASE_URL, { signal: ctrl.signal });
+    clearTimeout(timer);
     if (res.ok || res.status > 0) {
       console.log(`  Using existing server at ${BASE_URL}`);
       return null;

@@ -71,6 +71,7 @@ fn hamming_distance(a: &str, b: &str) -> usize {
 // ── Golden registry ──
 
 #[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 struct GoldenSample {
     time_sec: f64,
     hash: String,

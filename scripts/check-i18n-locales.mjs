@@ -52,6 +52,10 @@ async function check() {
     'videoEditor.timeline.backups.size',
     'fastcat.selectionRange.rippleTrim',
     'fastcat.selectionRange.toZoneMarker',
+    'custom.label',
+    'effects.blur.description',
+    'effects.blur.name',
+    'videoEditor.fileManager.history.entries.unknown_command',
   ]);
 
   const srcFiles = (await getFiles('src')).filter((f) =>

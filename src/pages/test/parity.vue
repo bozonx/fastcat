@@ -154,15 +154,19 @@ async function renderFrames(req: ParityRenderRequest): Promise<ParityFrameResult
       continue;
     }
 
-    const ctx = (
-      canvas as OffscreenCanvas | HTMLCanvasElement
-    ).getContext('2d') as CanvasRenderingContext2D | null;
-    if (!ctx) {
-      results.push({ hash: '', width, height, error: 'no 2d context' });
+    // The compositor canvas has a WebGL/WebGPU context (PixiJS), not 2d.
+    // Draw it onto a temporary 2d canvas to extract RGBA pixels.
+    const tmp = document.createElement('canvas');
+    tmp.width = width;
+    tmp.height = height;
+    const tmpCtx = tmp.getContext('2d');
+    if (!tmpCtx) {
+      results.push({ hash: '', width, height, error: 'no 2d context on tmp canvas' });
       continue;
     }
 
-    const imageData = ctx.getImageData(0, 0, width, height);
+    tmpCtx.drawImage(canvas as OffscreenCanvas | HTMLCanvasElement, 0, 0);
+    const imageData = tmpCtx.getImageData(0, 0, width, height);
     const hash = computePerceptualHash(imageData.data, width, height);
 
     results.push({ hash, width, height });
@@ -173,9 +177,10 @@ async function renderFrames(req: ParityRenderRequest): Promise<ParityFrameResult
 }
 
 onMounted(() => {
-  (window as unknown as { __parityEngine: { renderFrames: typeof renderFrames } }).__parityEngine = {
-    renderFrames,
-  };
+  (window as unknown as { __parityEngine: { renderFrames: typeof renderFrames } }).__parityEngine =
+    {
+      renderFrames,
+    };
 });
 </script>
 
