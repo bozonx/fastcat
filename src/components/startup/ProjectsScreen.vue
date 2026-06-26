@@ -32,6 +32,7 @@ const {
   forgetTargetProject,
   isDuplicateModalOpen,
   duplicateValue,
+  duplicateLocation,
   createError,
   isCreateNameValid,
   renameError,
@@ -49,10 +50,12 @@ const {
   startForget,
   confirmForget,
   closeForgetModal,
+  isExternalProject,
   startDuplicate,
   confirmDuplicate,
   closeDuplicateModal,
   selectProjectLocation,
+  selectDuplicateLocation,
   openProjectFromDisk,
 } = useProjectManagement();
 
@@ -71,11 +74,21 @@ const getProjectMenuItems = (project: ProjectActionTarget) => {
   ];
 
   if (workspaceStore.workspaceProviderId === 'tauri') {
-    items.push({
-      label: t('fastcat.projects.removeFromList'),
-      icon: 'i-heroicons-minus-circle',
-      onSelect: () => startForget(project),
-    });
+    if (isExternalProject(project.projectPath)) {
+      // External projects: only remove from the recent list.
+      items.push({
+        label: t('fastcat.projects.removeFromList'),
+        icon: 'i-heroicons-minus-circle',
+        onSelect: () => startForget(project),
+      });
+    } else {
+      // Standard-folder projects: physically delete from disk.
+      items.push({
+        label: t('common.delete'),
+        icon: 'i-heroicons-trash',
+        onSelect: () => startDelete(project),
+      });
+    }
   } else {
     items.push({
       label: t('common.delete'),
@@ -547,17 +560,40 @@ const sortedProjects = computed(() => {
     :title="t('common.duplicate')"
     :ui="{ content: 'sm:max-w-lg' }"
   >
-    <UiFormField
-      :label="t('fastcat.projects.projectNamePlaceholder')"
-      :error="duplicateError ? t(duplicateError) : undefined"
-    >
-      <UiTextInput
-        v-model="duplicateValue"
-        :placeholder="t('fastcat.projects.projectNamePlaceholder')"
-        autofocus
-        @keyup.enter="confirmDuplicate"
-      />
-    </UiFormField>
+    <div class="space-y-6">
+      <UiFormField
+        :label="t('fastcat.projects.projectNamePlaceholder')"
+        :error="duplicateError ? t(duplicateError) : undefined"
+      >
+        <UiTextInput
+          v-model="duplicateValue"
+          :placeholder="t('fastcat.projects.projectNamePlaceholder')"
+          full-width
+          autofocus
+          @keyup.enter="confirmDuplicate"
+        />
+      </UiFormField>
+
+      <UiFormField
+        v-if="workspaceStore.workspaceProviderId === 'tauri'"
+        :label="t('fastcat.projects.projectLocation')"
+      >
+        <div class="flex gap-2 w-full">
+          <UiTextInput
+            v-model="duplicateLocation"
+            readonly
+            full-width
+            class="flex-1"
+          />
+          <UButton
+            color="neutral"
+            variant="subtle"
+            icon="i-heroicons-folder-open"
+            @click="selectDuplicateLocation"
+          />
+        </div>
+      </UiFormField>
+    </div>
 
     <template #footer>
       <div class="flex justify-end gap-3 w-full">

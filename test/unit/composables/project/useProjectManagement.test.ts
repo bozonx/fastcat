@@ -286,7 +286,68 @@ describe('useProjectManagement', () => {
         targetName: 'Copy',
         sourceProjectId: 'src-1',
         sourceProjectPath: '/src',
+        targetParentPath: undefined,
       });
+    });
+
+    it('passes targetParentPath in Tauri mode', async () => {
+      workspaceMock.workspaceProviderId = 'tauri';
+      const { startDuplicate, duplicateValue, duplicateLocation, confirmDuplicate } =
+        useProjectManagement();
+      startDuplicate({ projectName: 'Source', projectId: 'src-1', projectPath: '/projects/Source' });
+      duplicateValue.value = 'Copy';
+      duplicateLocation.value = '/custom/target';
+
+      await confirmDuplicate();
+
+      expect(workspaceMock.duplicateProject).toHaveBeenCalledWith({
+        sourceName: 'Source',
+        targetName: 'Copy',
+        sourceProjectId: 'src-1',
+        sourceProjectPath: '/projects/Source',
+        targetParentPath: '/custom/target',
+      });
+    });
+  });
+
+  describe('startDuplicate', () => {
+    it('sets duplicateLocation to source project parent directory', () => {
+      const { startDuplicate, duplicateLocation } = useProjectManagement();
+      startDuplicate({ projectName: 'Source', projectPath: '/projects/Source' });
+      expect(duplicateLocation.value).toBe('/projects');
+    });
+
+    it('falls back to projectsRoot when projectPath is missing', () => {
+      const { startDuplicate, duplicateLocation } = useProjectManagement();
+      startDuplicate({ projectName: 'Source' });
+      expect(duplicateLocation.value).toBe('/mock-projects');
+    });
+  });
+
+  describe('closeDuplicateModal', () => {
+    it('clears duplicateLocation', () => {
+      const { startDuplicate, closeDuplicateModal, duplicateLocation } = useProjectManagement();
+      startDuplicate({ projectName: 'Source', projectPath: '/projects/Source' });
+      expect(duplicateLocation.value).toBe('/projects');
+      closeDuplicateModal();
+      expect(duplicateLocation.value).toBe('');
+    });
+  });
+
+  describe('isExternalProject', () => {
+    it('returns false for projects inside projectsRoot', () => {
+      const { isExternalProject } = useProjectManagement();
+      expect(isExternalProject('/mock-projects/MyProject')).toBe(false);
+    });
+
+    it('returns true for projects outside projectsRoot', () => {
+      const { isExternalProject } = useProjectManagement();
+      expect(isExternalProject('/other/path/Project')).toBe(true);
+    });
+
+    it('returns false for undefined projectPath', () => {
+      const { isExternalProject } = useProjectManagement();
+      expect(isExternalProject(undefined)).toBe(false);
     });
   });
 });

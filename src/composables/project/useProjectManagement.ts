@@ -69,6 +69,7 @@ export function useProjectManagement(options: { isMobile?: boolean } = {}) {
   const isDuplicateModalOpen = ref(false);
   const duplicateValue = ref('');
   const duplicateTargetProject = ref<ProjectActionTarget | null>(null);
+  const duplicateLocation = ref('');
 
   const filteredProjects = computed(() => {
     if (!searchQuery.value.trim()) {
@@ -284,6 +285,11 @@ export function useProjectManagement(options: { isMobile?: boolean } = {}) {
     duplicateTargetProject.value =
       typeof project === 'string' ? { projectName: project } : { ...project };
     duplicateValue.value = duplicateTargetProject.value.projectName;
+    // Default duplicate location to the source project's parent directory.
+    duplicateLocation.value =
+      duplicateTargetProject.value.projectPath
+        ? duplicateTargetProject.value.projectPath.replace(/[\\/][^\\/]+$/, '')
+        : workspaceStore.resolvedStorageTopology.projectsRoot;
     isDuplicateModalOpen.value = true;
   }
 
@@ -298,6 +304,10 @@ export function useProjectManagement(options: { isMobile?: boolean } = {}) {
         targetName: duplicateValue.value.trim(),
         sourceProjectId: target.projectId,
         sourceProjectPath: target.projectPath,
+        targetParentPath:
+          workspaceStore.workspaceProviderId === 'tauri'
+            ? duplicateLocation.value || undefined
+            : undefined,
       });
       closeDuplicateModal();
     } catch (e) {
@@ -309,6 +319,7 @@ export function useProjectManagement(options: { isMobile?: boolean } = {}) {
     isDuplicateModalOpen.value = false;
     duplicateTargetProject.value = null;
     duplicateValue.value = '';
+    duplicateLocation.value = '';
   }
 
   async function selectProjectLocation() {
@@ -322,6 +333,20 @@ export function useProjectManagement(options: { isMobile?: boolean } = {}) {
       const { invoke } = await import('@tauri-apps/api/core');
       await invoke('allow_path_scope', { path: selected }).catch(() => {});
       projectCreationSettings.value.location = selected;
+    }
+  }
+
+  async function selectDuplicateLocation() {
+    const { open } = await import('@tauri-apps/plugin-dialog');
+    const selected = await open({
+      directory: true,
+      multiple: false,
+      defaultPath: duplicateLocation.value || undefined,
+    });
+    if (selected && typeof selected === 'string') {
+      const { invoke } = await import('@tauri-apps/api/core');
+      await invoke('allow_path_scope', { path: selected }).catch(() => {});
+      duplicateLocation.value = selected;
     }
   }
 
@@ -351,6 +376,7 @@ export function useProjectManagement(options: { isMobile?: boolean } = {}) {
     isDuplicateModalOpen,
     duplicateValue,
     duplicateTargetProject,
+    duplicateLocation,
     createError,
     isCreateNameValid,
     renameError,
@@ -374,6 +400,7 @@ export function useProjectManagement(options: { isMobile?: boolean } = {}) {
     confirmDuplicate,
     closeDuplicateModal,
     selectProjectLocation,
+    selectDuplicateLocation,
     openProjectFromDisk,
   };
 }

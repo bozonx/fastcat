@@ -64,7 +64,15 @@ const {
   confirmDuplicate,
   closeDuplicateModal,
   selectProjectLocation,
+  selectDuplicateLocation,
   openProjectFromDisk,
+  isExternalProject,
+  duplicateLocation,
+  startForget,
+  confirmForget,
+  closeForgetModal,
+  forgetTargetProject,
+  isForgetModalOpen,
 } = useProjectManagement({ isMobile: true });
 
 const newProjectFileInput = ref<HTMLInputElement | null>(null);
@@ -431,11 +439,17 @@ const sortedProjects = computed(() => {
                                     icon: 'i-heroicons-document-duplicate',
                                     onSelect: () => startDuplicate(project),
                                   },
-                                  {
-                                    label: t('common.delete'),
-                                    icon: 'i-heroicons-trash',
-                                    onSelect: () => startDelete(project),
-                                  },
+                                  workspaceStore.workspaceProviderId === 'tauri' && isExternalProject(project.projectPath)
+                                    ? {
+                                        label: t('fastcat.projects.removeFromList'),
+                                        icon: 'i-heroicons-minus-circle',
+                                        onSelect: () => startForget(project),
+                                      }
+                                    : {
+                                        label: t('common.delete'),
+                                        icon: 'i-heroicons-trash',
+                                        onSelect: () => startDelete(project),
+                                      },
                                 ],
                               ]"
                               @update:open="blurOnDropdownMenuClose"
@@ -674,6 +688,29 @@ const sortedProjects = computed(() => {
               @keyup.enter="confirmDuplicate"
             />
           </UiFormField>
+
+          <UiFormField
+            v-if="workspaceStore.workspaceProviderId === 'tauri'"
+            :label="t('fastcat.projects.projectLocation')"
+          >
+            <div class="flex gap-2 w-full">
+              <UiTextInput
+                v-model="duplicateLocation"
+                readonly
+                class="flex-1"
+                :ui="{
+                  base: 'h-16 text-sm px-6 bg-ui-bg-elevated/50 border border-white/5 rounded-3xl truncate text-ui-text-muted',
+                }"
+              />
+              <UButton
+                color="neutral"
+                variant="subtle"
+                icon="i-heroicons-folder-open"
+                class="h-16 w-16 rounded-3xl"
+                @click="selectDuplicateLocation"
+              />
+            </div>
+          </UiFormField>
         </div>
 
         <template #footer>
@@ -688,6 +725,34 @@ const sortedProjects = computed(() => {
               @click="confirmDuplicate"
             >
               {{ t('common.duplicate') }}
+            </UButton>
+          </div>
+        </template>
+      </UiMobileDrawer>
+
+      <!-- Forget Project Confirmation Drawer -->
+      <UiMobileDrawer
+        v-model:open="isForgetModalOpen"
+        :title="t('fastcat.projects.forgetProjectTitle')"
+      >
+        <div class="space-y-4 px-6 pt-2 pb-6">
+          <p class="text-sm text-ui-text-muted">
+            {{ t('fastcat.projects.forgetProjectConfirm', { name: forgetTargetProject?.projectName }) }}
+          </p>
+        </div>
+
+        <template #footer>
+          <div class="flex justify-end gap-3 w-full pb-safe">
+            <UButton variant="ghost" color="neutral" @click="closeForgetModal">
+              {{ t('common.cancel') }}
+            </UButton>
+            <UButton
+              color="error"
+              :loading="workspaceStore.isLoading"
+              data-primary-focus="true"
+              @click="confirmForget"
+            >
+              {{ t('fastcat.projects.removeFromList') }}
             </UButton>
           </div>
         </template>

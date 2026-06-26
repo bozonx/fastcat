@@ -41,6 +41,7 @@ export interface DuplicateProjectInput {
   targetName: string;
   sourceProjectId?: string;
   sourceProjectPath?: string;
+  targetParentPath?: string;
 }
 
 export function createWorkspaceProjectsModule(params: {
@@ -315,13 +316,75 @@ export function createWorkspaceProjectsModule(params: {
     }
   }
 
+  function isProjectInStandardFolder(projectPath: string | undefined): boolean {
+    if (!projectPath) return true;
+    const root = params.resolvedStorageTopology.value.projectsRoot;
+    if (!root) return true;
+    const normPath = projectPath.replace(/\\/g, '/').replace(/\/$/, '');
+    const normRoot = root.replace(/\\/g, '/').replace(/\/$/, '');
+    return normPath === normRoot || normPath.startsWith(normRoot + '/');
+  }
+
   async function deleteProject(input: DeleteProjectInput | string, projectId?: string) {
     const deleteInput = normalizeDeleteInput(input, projectId);
     const { isTauriRuntime } = await import('~/utils/runtime');
     if (isTauriRuntime()) {
-      // In Tauri mode, we do not physically delete project files from disk.
-      // We only remove the project from the recent projects list.
-      await forgetProject(deleteInput);
+      // External projects (opened from arbitrary disk locations) cannot be
+      // physically deleted — only removed from the recent list.
+      if (!isProjectInStandardFolder(deleteInput.projectPath)) {
+        await forgetProject(deleteInput);
+        return;
+      }
+
+      // Standard-folder projects: physically remove from disk.
+      try {
+        const { join } = await import('@tauri-apps/api/path');
+        const { remove, exists } = await import('@tauri-apps/plugin-fs');
+
+        const project = findRecentProject({
+          name: deleteInput.name,
+          projectId: deleteInput.projectId,
+          projectPath: deleteInput.projectPath,
+        });
+        let projectPath = deleteInput.projectPath ?? project?.projectPath;
+        if (!projectPath) {
+          const fallbackPath = await join(
+            params.resolvedStorageTopology.value.projectsRoot,
+            deleteInput.name,
+          );
+          if (await exists(fallbackPath)) {
+            projectPath = fallbackPath;
+          } else {
+            // Folder not found — just forget.
+            await forgetProject(deleteInput);
+            return;
+          }
+        }
+
+        if (deleteInput.projectId) {
+          await clearProjectVardata(deleteInput.projectId);
+        }
+
+        if (await exists(projectPath)) {
+          await remove(projectPath, { recursive: true });
+        }
+
+        if (params.lastProjectName.value === deleteInput.name) {
+          params.lastProjectName.value = null;
+        }
+
+        params.recentProjects.value = params.recentProjects.value.filter((recent) => {
+          if (deleteInput.projectId) return recent.projectId !== deleteInput.projectId;
+          if (deleteInput.projectPath) return recent.projectPath !== deleteInput.projectPath;
+          return recent.projectName !== deleteInput.name;
+        });
+
+        await loadProjects();
+      } catch (e: unknown) {
+        log.warn('Failed to delete Tauri project', deleteInput.name, e);
+        params.error.value = getErrorMessage(e, 'Failed to delete project');
+        throw e;
+      }
       return;
     }
 
@@ -525,7 +588,7 @@ export function createWorkspaceProjectsModule(params: {
           return;
         }
       }
-      const parentDir = await dirname(sourcePath);
+      const parentDir = input.targetParentPath ?? (await dirname(sourcePath));
       const targetPath = await join(parentDir, targetName);
 
       if (await exists(targetPath)) {
