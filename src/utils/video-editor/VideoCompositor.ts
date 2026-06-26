@@ -365,17 +365,17 @@ export class VideoCompositor {
     return value.filter((effect): effect is VideoClipEffect => {
       if (!effect || typeof effect !== 'object') return false;
       if (
-        typeof (effect as { id?: string }).id !== 'string' ||
-        !(effect as { id?: string }).id?.length
-      )
-        return false;
-      if (
         typeof (effect as { type?: string }).type !== 'string' ||
         !(effect as { type?: string }).type?.length
       )
         return false;
 
-      return (effect as { target?: string }).target !== 'audio';
+      if ((effect as { target?: string }).target === 'audio') return false;
+
+      // UI ClipEffects always carry an id. Parity fixtures and some callers pass
+      // already-formed VideoEffectSpec objects (e.g. { type: "brightness", value: 1.5 })
+      // without an id; accept them as video effects so they can reach the GPU runner.
+      return true;
     });
   }
 

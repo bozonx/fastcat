@@ -160,18 +160,7 @@ function sanitizeVideoSpeed(value: unknown): number {
 }
 
 export function mapTimelineBlendModeToNative(mode: TimelineBlendMode | undefined): BlendMode {
-  switch (mode) {
-    case 'color-dodge':
-      return 'color_dodge';
-    case 'color-burn':
-      return 'color_burn';
-    case 'hard-light':
-      return 'hard_light';
-    case 'soft-light':
-      return 'soft_light';
-    default:
-      return mode ?? 'normal';
-  }
+  return mode ?? 'normal';
 }
 
 function findPreviousAdjacentClip(

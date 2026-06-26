@@ -140,7 +140,7 @@
       "samples": [
         {
           "timeSec": 0.5,
-          "hash": "ff7f3f0f07030000",
+          "hash": "7f3f0f0703000000",
           "tolerance": 14
         }
       ]
@@ -379,7 +379,7 @@
       "samples": [
         {
           "timeSec": 0.5,
-          "hash": "ff7f3f0f07030000",
+          "hash": "ffff3f1f0f030100",
           "tolerance": 20
         }
       ]
@@ -445,7 +445,7 @@
       "samples": [
         {
           "timeSec": 0.5,
-          "hash": "ffff3f1f0f030000",
+          "hash": "feff3f1f0f030200",
           "tolerance": 40
         }
       ]

@@ -4,8 +4,7 @@
     "  - web:    resolveBlendMode() in src/utils/video-editor/compositor/types.ts",
     "  - native: BlendMode enum / BlendMode::ALL in src-tauri/src/compositor/scene.rs",
     "Catches the 'added a blend mode to one engine but not the other' drift class.",
-    "Names are the canonical timeline (kebab-case) form; the native enum uses the same",
-    "set in snake_case (kebab '-' -> '_')."
+    "Names are the canonical timeline (kebab-case) form used by both engines and the IPC DTO."
   ],
   "modes": [
     "normal",

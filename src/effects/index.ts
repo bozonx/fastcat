@@ -60,6 +60,18 @@ export function buildEffectSpecs(effects?: ClipEffect[]): VideoEffectSpec[] | un
 
   const specs: VideoEffectSpec[] = [];
   for (const effect of effects) {
+    // Parity and some callers pass already-formed VideoEffectSpec objects
+    // (e.g. { type: "brightness", value: 1.5 }) instead of ClipEffect UI
+    // objects. Detect them by the absence of the UI-only `enabled` field and
+    // pass them through unchanged.
+    const isRawSpec = effect && typeof effect.enabled !== 'boolean';
+    if (isRawSpec) {
+      if ((effect.target ?? 'video') !== 'audio') {
+        specs.push(effect as unknown as VideoEffectSpec);
+      }
+      continue;
+    }
+
     if (!effect?.enabled || effect.target === 'audio') {
       continue;
     }

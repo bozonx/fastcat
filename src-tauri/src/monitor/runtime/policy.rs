@@ -1,5 +1,7 @@
 use std::collections::{HashMap, HashSet};
 
+#[cfg(test)]
+use crate::compositor::scene::BlendMode;
 use crate::monitor::scene::{LayerKind, NativeFrameCacheMode, PreviewSyncMode, SceneLayer};
 
 pub(super) const VIDEO_PREWARM_LOOKAHEAD_SEC: f64 = 2.5;

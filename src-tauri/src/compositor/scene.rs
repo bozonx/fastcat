@@ -542,11 +542,11 @@ impl Default for Transform {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, ts_rs::TS)]
-#[serde(rename_all = "snake_case")]
+#[serde(rename_all = "kebab-case")]
 #[ts(
     export,
     export_to = "../../src/types/generated/native-monitor/",
-    rename_all = "snake_case"
+    rename_all = "kebab-case"
 )]
 pub enum BlendMode {
     Normal,
@@ -1498,18 +1498,17 @@ mod tests {
         // Same count.
         assert_eq!(modes.len(), BlendMode::ALL.len(), "blend-mode count mismatch");
 
-        // Every fixture mode (kebab → snake) deserializes into a native variant.
+        // Every fixture mode (canonical kebab-case) deserializes into a native variant.
         for kebab in &modes {
-            let snake = kebab.replace('-', "_");
-            let value = serde_json::Value::String(snake.clone());
+            let value = serde_json::Value::String(kebab.clone());
             serde_json::from_value::<BlendMode>(value)
                 .unwrap_or_else(|_| panic!("native missing blend mode `{kebab}`"));
         }
 
         // Every native variant is present in the fixture (no native-only mode).
         for mode in BlendMode::ALL {
-            let snake = serde_json::to_value(mode).unwrap();
-            let kebab = snake.as_str().unwrap().replace('_', "-");
+            let kebab = serde_json::to_value(mode).unwrap();
+            let kebab = kebab.as_str().unwrap().to_string();
             assert!(modes.contains(&kebab), "fixture missing native blend mode `{kebab}`");
         }
     }
