@@ -589,8 +589,13 @@ export function useClipPropertiesActions(options: UseClipPropertiesActionsOption
       });
     }
 
-    // Скрыть/показать миниатюры
-    if (options.trackKind.value === 'video') {
+    // Скрыть/показать миниатюры (only for media/timeline video clips)
+    if (
+      options.trackKind.value === 'video' &&
+      clip.clipType !== 'adjustment' &&
+      clip.clipType !== 'text' &&
+      clip.clipType !== 'background'
+    ) {
       list.push({
         id: 'toggleShowThumbnails',
         label:

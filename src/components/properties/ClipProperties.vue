@@ -436,10 +436,67 @@ defineExpose({
       @update-background-color="handleUpdateBackgroundColor"
     />
 
-    <UTabs v-model="activeTab" :items="tabs" variant="link" :content="false" class="mb-2" />
+    <UTabs
+      v-if="clip.clipType !== 'adjustment'"
+      v-model="activeTab"
+      :items="tabs"
+      variant="link"
+      :content="false"
+      class="mb-2"
+    />
+
+    <!-- Adjustment clip: flat layout without tabs -->
+    <template v-if="clip.clipType === 'adjustment'">
+      <div ref="effectsSectionRef">
+        <ClipEffectsEditor
+          v-model:enabled="isVideoEffectsEnabled"
+          target="video"
+          :effects="clipVideoEffects"
+          :title="t('fastcat.effects.videoTitle')"
+          :add-label="t('fastcat.effects.add')"
+          :empty-label="t('fastcat.effects.empty')"
+          :has-toggle="true"
+          :disabled="!isVideoEffectsEnabled"
+          @update:effects="handleUpdateClipEffects"
+        />
+      </div>
+
+      <ClipTransitionsSection
+        v-if="!isMobile"
+        v-model:enabled="isTransitionsEnabled"
+        :is-video-track="isVideoTrack"
+        :transition-in="clip.transitionIn ?? null"
+        :transition-out="clip.transitionOut ?? null"
+        :clip-duration-us="clip.timelineRange.durationUs"
+        @select-edge="selectTransitionEdge"
+        @toggle="toggleTransition"
+        @update-duration="({ edge, durationSec }) => updateTransitionDuration(edge, durationSec)"
+        @update-type="({ edge, type }) => updateTransitionType(edge, type)"
+      />
+
+      <ClipActionsSection
+        v-if="!hideActions"
+        :common-actions="isMobile ? [] : commonActionsList"
+        :other-actions="otherActionsList"
+        @rename="isUiRenameModalOpen = true"
+        @copy="handleCopyClip"
+        @cut="handleCutClip"
+        @copy-parameters="copyClipParameters"
+        @paste-parameters="openPasteClipParameters"
+      />
+
+      <ClipInfoSection
+        :clip="clip"
+        :media-meta="mediaMeta"
+        :show-source="false"
+        @update-start-time="handleUpdateStartTime"
+        @update-end-time="handleUpdateEndTime"
+        @update-duration="handleUpdateDuration"
+      />
+    </template>
 
     <!-- Tab: Clip -->
-    <div v-if="activeTab === 'clip'" class="flex flex-col gap-2">
+    <div v-else-if="activeTab === 'clip'" class="flex flex-col gap-2">
       <ClipActionsSection
         v-if="!hideActions"
         :common-actions="isMobile ? [] : commonActionsList"

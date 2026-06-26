@@ -333,6 +333,24 @@ describe('useClipPropertiesActions', () => {
       expect(renameIndex).toBeGreaterThan(-1);
       expect(renameIndex).toBeGreaterThan(pasteParametersIndex);
     });
+
+    it('includes toggleShowThumbnails for media video clips', () => {
+      const { actions } = build({ trackKind: 'video' });
+      expect(
+        actions.otherActionsList.value.some((a) => a.id === 'toggleShowThumbnails'),
+      ).toBe(true);
+    });
+
+    it.each(['adjustment', 'text', 'background'] as const)(
+      'hides toggleShowThumbnails for %s clips',
+      (clipType) => {
+        const clip = makeClip({ clipType });
+        const { actions } = build({ clip, trackKind: 'video' });
+        expect(
+          actions.otherActionsList.value.some((a) => a.id === 'toggleShowThumbnails'),
+        ).toBe(false);
+      },
+    );
   });
 
   describe('commonActionsList', () => {

@@ -498,4 +498,28 @@ describe('ClipProperties.vue', () => {
     toggleDisabledAction = commonActions.find((a: any) => a.id === 'toggle-disabled');
     expect(toggleDisabledAction.label).toBe('Enable');
   });
+
+  it('renders flat layout without tabs for adjustment clips', async () => {
+    const clip = createClip({ clipType: 'adjustment' });
+    const wrapper = await mountComponent({ clip });
+
+    // Tabs should not be rendered for adjustment clips
+    expect(wrapper.find('.tabs-stub').exists()).toBe(false);
+
+    // Effects editor should be rendered
+    const effectsEditor = wrapper.findComponent({ name: 'ClipEffectsEditor' });
+    expect(effectsEditor.exists()).toBe(true);
+
+    // Transitions section should be rendered (non-mobile)
+    const transitionsSection = wrapper.findComponent({ name: 'ClipTransitionsSection' });
+    expect(transitionsSection.exists()).toBe(true);
+
+    // Actions section should be rendered
+    const actionsSection = wrapper.findComponent({ name: 'ClipActionsSection' });
+    expect(actionsSection.exists()).toBe(true);
+
+    // Info section (duration) should be rendered
+    const infoSection = wrapper.findComponent({ name: 'ClipInfoSection' });
+    expect(infoSection.exists()).toBe(true);
+  });
 });
