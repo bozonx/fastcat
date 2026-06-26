@@ -5,6 +5,7 @@ import { useMediaPlayerVolume } from '~/composables/preview/useMediaPlayerVolume
 import { useMediaPlayerPlayback } from '~/composables/preview/useMediaPlayerPlayback';
 import { formatTime } from '~/utils/time';
 import UiVolumeControl from '~/components/ui/editor/UiVolumeControl.vue';
+import UiTooltip from '~/components/ui/UiTooltip.vue';
 import { useUiStore } from '~/stores/ui.store';
 import { useFocusStore, type PanelFocusId } from '~/stores/focus.store';
 import { useHotkeyLabel } from '~/composables/useHotkeyLabel';
@@ -438,7 +439,7 @@ onUnmounted(() => {
 
       <div class="flex items-center justify-between gap-3">
         <div class="flex items-center gap-3">
-          <UTooltip :text="getHotkeyTitle(t('fastcat.preview.play'), 'playback.toggle')">
+          <UiTooltip :text="getHotkeyTitle(t('fastcat.preview.play'), 'playback.toggle')">
             <UButton
               size="sm"
               variant="solid"
@@ -446,7 +447,7 @@ onUnmounted(() => {
               :icon="isPlaying ? 'i-heroicons-pause' : 'i-heroicons-play'"
               @click="togglePlay"
             />
-          </UTooltip>
+          </UiTooltip>
           <span class="text-xs text-ui-text-muted font-mono">
             {{ formatTime(currentTime) }} / {{ formatTime(duration) }}
           </span>
@@ -466,7 +467,7 @@ onUnmounted(() => {
             orientation="horizontal"
             :max="1"
           />
-          <UTooltip :text="getHotkeyTitle(t('fastcat.preview.fullscreen'), 'general.fullscreen')">
+          <UiTooltip :text="getHotkeyTitle(t('fastcat.preview.fullscreen'), 'general.fullscreen')">
             <UiActionButton
               v-if="type === 'video'"
               size="sm"
@@ -475,7 +476,7 @@ onUnmounted(() => {
               :icon="isModal ? 'i-heroicons-arrows-pointing-in' : 'i-heroicons-arrows-pointing-out'"
               @click="isModal ? emit('close-modal') : emit('open-modal')"
             />
-          </UTooltip>
+          </UiTooltip>
         </div>
       </div>
     </div>

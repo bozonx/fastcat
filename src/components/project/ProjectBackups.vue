@@ -3,6 +3,7 @@ import { ref, computed, onMounted, watch } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useProjectStore } from '~/stores/project.store';
 import UiEmptyState from '~/components/ui/UiEmptyState.vue';
+import UiTooltip from '~/components/ui/UiTooltip.vue';
 import UiConfirmModal from '~/components/ui/UiConfirmModal.vue';
 import FriendlyTime from '~/components/ui/FriendlyTime.vue';
 
@@ -196,7 +197,7 @@ const versions = computed(() => timelineStore.backupVersions);
             <td class="px-3 py-2 align-middle text-right">
               <div class="flex items-center justify-end gap-1.5">
                 <!-- Preview / Open -->
-                <UTooltip
+                <UiTooltip
                   v-if="version.type !== 'main'"
                   :text="t('videoEditor.timeline.backups.actionsLabel.openReadOnly')"
                 >
@@ -208,10 +209,10 @@ const versions = computed(() => timelineStore.backupVersions);
                     class="cursor-pointer"
                     @click="timelineStore.openVersionForPreview(version)"
                   />
-                </UTooltip>
+                </UiTooltip>
 
                 <!-- Create Version -->
-                <UTooltip :text="t('fastcat.timeline.createVersion')">
+                <UiTooltip :text="t('fastcat.timeline.createVersion')">
                   <UButton
                     size="xs"
                     color="primary"
@@ -221,10 +222,10 @@ const versions = computed(() => timelineStore.backupVersions);
                     :disabled="isReadOnly"
                     @click="handleCreateVersionClick(version)"
                   />
-                </UTooltip>
+                </UiTooltip>
 
                 <!-- Delete (only for non-main) -->
-                <UTooltip
+                <UiTooltip
                   v-if="version.type !== 'main'"
                   :text="t('videoEditor.timeline.backups.actionsLabel.delete')"
                 >
@@ -237,7 +238,7 @@ const versions = computed(() => timelineStore.backupVersions);
                     :disabled="isReadOnly"
                     @click="timelineStore.deleteBackupVersion(version)"
                   />
-                </UTooltip>
+                </UiTooltip>
               </div>
             </td>
           </tr>

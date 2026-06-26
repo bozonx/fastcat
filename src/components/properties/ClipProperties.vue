@@ -25,6 +25,7 @@ import type {
   VideoClipEffect,
 } from '~/timeline/types';
 import UiRenameModal from '~/components/ui/UiRenameModal.vue';
+import UiTabs from '~/components/ui/UiTabs.vue';
 import ClipAudioSection from '~/components/properties/clip/ClipAudioSection.vue';
 import ClipTransitionsSection from '~/components/properties/clip/ClipTransitionsSection.vue';
 import ClipActionsSection from '~/components/properties/clip/ClipActionsSection.vue';
@@ -436,12 +437,10 @@ defineExpose({
       @update-background-color="handleUpdateBackgroundColor"
     />
 
-    <UTabs
+    <UiTabs
       v-if="clip.clipType !== 'adjustment'"
       v-model="activeTab"
-      :items="tabs"
-      variant="link"
-      :content="false"
+      :options="tabs"
       class="mb-2"
     />
 

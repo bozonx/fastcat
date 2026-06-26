@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import UiModal from '~/components/ui/UiModal.vue';
+import UiAlert from '~/components/ui/UiAlert.vue';
 import { useModalOpenModel } from '~/composables/ui/useModalOpenModel';
 
 /**
@@ -53,13 +54,13 @@ function handleApply() {
     :ui="{ content: 'sm:max-w-md' }"
   >
     <div class="flex flex-col gap-4 py-2">
-      <UAlert
+      <UiAlert
         v-if="hasMissingTranscription"
-        color="warning"
-        variant="subtle"
+        variant="warning"
         icon="i-heroicons-exclamation-triangle"
-        :title="t('fastcat.timeline.autoMontage.noTranscription')"
-      />
+      >
+        {{ t('fastcat.timeline.autoMontage.noTranscription') }}
+      </UiAlert>
 
       <div class="flex flex-col gap-2">
         <UCheckbox

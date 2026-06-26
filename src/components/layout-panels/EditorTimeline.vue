@@ -28,6 +28,7 @@ import TimelineTrackSection from '~/components/timeline/TimelineTrackSection.vue
 import TimelineToolbar from '~/components/timeline/TimelineToolbar.vue';
 import TimelineRuler from '~/components/timeline/TimelineRuler.vue';
 import UiContextMenuPortal from '~/components/ui/UiContextMenuPortal.vue';
+import UiTooltip from '~/components/ui/UiTooltip.vue';
 import UiTimecode from '~/components/ui/editor/UiTimecode.vue';
 import TimelineSpeedModal from '~/components/timeline/TimelineSpeedModal.vue';
 
@@ -733,7 +734,7 @@ async function handleConfirmCreateVersion(newName: string) {
           />
 
           <div class="flex items-center gap-1">
-            <UTooltip
+            <UiTooltip
               v-for="button in trackResetButtons"
               :key="button.icon"
               :text="button.tooltip"
@@ -747,7 +748,7 @@ async function handleConfirmCreateVersion(newName: string) {
                 :style="{ backgroundColor: button.color, color: button.textColor }"
                 @click="button.onClick"
               />
-            </UTooltip>
+            </UiTooltip>
           </div>
         </div>
       </UContextMenu>

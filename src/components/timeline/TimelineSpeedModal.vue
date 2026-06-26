@@ -3,6 +3,7 @@ import { computed, ref, watch, nextTick } from 'vue';
 
 import UiModal from '~/components/ui/UiModal.vue';
 import UiSliderInput from '~/components/ui/UiSliderInput.vue';
+import UiAlert from '~/components/ui/UiAlert.vue';
 import { useModalOpenModel } from '~/composables/ui/useModalOpenModel';
 
 const { t } = useI18n();
@@ -79,21 +80,21 @@ watch(
         show-input
       />
 
-      <UAlert
+      <UiAlert
         v-if="showNegativeSpeedAudioWarning"
-        color="warning"
-        variant="subtle"
-        :title="t('fastcat.timeline.negativeSpeedAudioUnsupportedTitle')"
-        :description="t('fastcat.timeline.negativeSpeedAudioUnsupportedDescription')"
-      />
+        variant="warning"
+        icon="i-heroicons-exclamation-triangle"
+      >
+        <p class="font-medium text-ui-text">
+          {{ t('fastcat.timeline.negativeSpeedAudioUnsupportedTitle') }}
+        </p>
+        <p>{{ t('fastcat.timeline.negativeSpeedAudioUnsupportedDescription') }}</p>
+      </UiAlert>
 
-      <UAlert
-        v-if="showLowSpeedWarning"
-        color="warning"
-        variant="subtle"
-        :title="t('fastcat.timeline.speedTooLowTitle')"
-        :description="t('fastcat.timeline.speedTooLowDescription')"
-      />
+      <UiAlert v-if="showLowSpeedWarning" variant="warning" icon="i-heroicons-exclamation-triangle">
+        <p class="font-medium text-ui-text">{{ t('fastcat.timeline.speedTooLowTitle') }}</p>
+        <p>{{ t('fastcat.timeline.speedTooLowDescription') }}</p>
+      </UiAlert>
     </div>
 
     <template #footer>

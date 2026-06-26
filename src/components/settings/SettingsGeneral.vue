@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import UiFormField from '~/components/ui/UiFormField.vue';
+import UiAlert from '~/components/ui/UiAlert.vue';
 
 import { DEFAULT_USER_SETTINGS } from '~/utils/settings/defaults';
 import UiScaleSlider from '~/components/ui/UiScaleSlider.vue';
@@ -223,13 +224,13 @@ function resetGeneralDefaults() {
           </span>
         </label>
 
-        <UAlert
+        <UiAlert
           v-if="workspaceStore.userSettings.experimentalFeatures"
-          color="warning"
-          variant="soft"
+          variant="warning"
           icon="i-heroicons-exclamation-triangle"
-          :description="t('videoEditor.settings.experimentalFeaturesWarning')"
-        />
+        >
+          {{ t('videoEditor.settings.experimentalFeaturesWarning') }}
+        </UiAlert>
       </div>
     </UiAccordion>
   </div>

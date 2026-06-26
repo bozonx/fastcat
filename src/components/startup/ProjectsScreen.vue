@@ -5,6 +5,7 @@ import {
   type ProjectActionTarget,
 } from '~/composables/project/useProjectManagement';
 import UiSearchInput from '~/components/ui/UiSearchInput.vue';
+import UiTooltip from '~/components/ui/UiTooltip.vue';
 import UiModal from '~/components/ui/UiModal.vue';
 import UiTextInput from '~/components/ui/UiTextInput.vue';
 import UiFormField from '~/components/ui/UiFormField.vue';
@@ -286,7 +287,7 @@ const sortedProjects = computed(() => {
               </h2>
 
               <div class="flex items-center gap-1">
-                <UTooltip :text="t('fastcat.projects.sortByDate')">
+                <UiTooltip :text="t('fastcat.projects.sortByDate')">
                   <UButton
                     variant="ghost"
                     size="xs"
@@ -295,8 +296,8 @@ const sortedProjects = computed(() => {
                     icon="i-heroicons-calendar"
                     @click="sortBy = 'date'"
                   />
-                </UTooltip>
-                <UTooltip :text="t('fastcat.projects.sortByName')">
+                </UiTooltip>
+                <UiTooltip :text="t('fastcat.projects.sortByName')">
                   <UButton
                     variant="ghost"
                     size="xs"
@@ -305,9 +306,9 @@ const sortedProjects = computed(() => {
                     icon="i-heroicons-bars-3-bottom-left"
                     @click="sortBy = 'name'"
                   />
-                </UTooltip>
+                </UiTooltip>
                 <div class="w-px h-4 bg-ui-border mx-1" />
-                <UTooltip
+                <UiTooltip
                   :text="
                     sortOrder === 'asc' ? t('common.sortOrder.asc') : t('common.sortOrder.desc')
                   "
@@ -319,7 +320,7 @@ const sortedProjects = computed(() => {
                     :icon="sortOrder === 'asc' ? 'i-heroicons-arrow-up' : 'i-heroicons-arrow-down'"
                     @click="sortOrder = sortOrder === 'asc' ? 'desc' : 'asc'"
                   />
-                </UTooltip>
+                </UiTooltip>
               </div>
             </div>
 

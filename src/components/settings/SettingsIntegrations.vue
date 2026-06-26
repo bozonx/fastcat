@@ -5,6 +5,7 @@ import { ref, watch } from 'vue';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { DEFAULT_USER_SETTINGS } from '~/utils/settings';
 import UiConfirmModal from '~/components/ui/UiConfirmModal.vue';
+import UiAlert from '~/components/ui/UiAlert.vue';
 
 import FastcatAccountSection from './integrations/FastcatAccountSection.vue';
 import BloggerDogSection from './integrations/BloggerDogSection.vue';
@@ -91,15 +92,15 @@ watch(
 
 <template>
   <div class="flex flex-col gap-6">
-    <UAlert
+    <UiAlert
       v-if="showSuccessMessage"
-      color="success"
-      variant="soft"
+      variant="success"
       icon="i-heroicons-check-circle"
-      :title="t('videoEditor.settings.integrationSuccessTitle')"
-      :description="t('videoEditor.settings.integrationSuccessDesc')"
       class="mb-2"
-    />
+    >
+      <p class="font-medium text-ui-text">{{ t('videoEditor.settings.integrationSuccessTitle') }}</p>
+      <p>{{ t('videoEditor.settings.integrationSuccessDesc') }}</p>
+    </UiAlert>
 
     <UiConfirmModal
       v-model:open="isResetConfirmOpen"
