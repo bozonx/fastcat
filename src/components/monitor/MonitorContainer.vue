@@ -204,6 +204,7 @@ const {
   handleBoundaryWheel,
   handleEndBoundaryWheel,
   handleSpeedWheel,
+  resetView,
   resetZoom,
   rewindToEnd,
   rewindToStart,
@@ -644,6 +645,7 @@ watch(viewportRef, (vp) => {
                 hover-class=""
                 :label="monitorZoomLabel"
                 @click="resetZoom"
+                @dblclick="resetView"
               />
             </UiTooltip>
 

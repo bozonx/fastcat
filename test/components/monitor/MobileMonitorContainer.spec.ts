@@ -57,6 +57,7 @@ vi.mock('~/composables/monitor/useMonitorContainerControls', () => ({
     contextMenuItems: [],
     toggleProxyUsage: vi.fn(),
     togglePreviewEffects: vi.fn(),
+    resetView: vi.fn(),
     resetZoom: vi.fn(),
     onPlaybackSpeedChange: vi.fn(),
     selectedPlaybackSpeedOption: ref({ label: '1x', value: 1 }),

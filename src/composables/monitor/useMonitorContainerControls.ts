@@ -497,6 +497,7 @@ export function useMonitorContainerControls(options: UseMonitorContainerControls
     onPlaybackSpeedChange,
     playbackSpeedOptions,
     previewResolutions,
+    resetView,
     resetZoom,
     rewindToEnd,
     rewindToStart,

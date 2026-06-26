@@ -88,6 +88,7 @@ const { showGrid, toggleGrid, getGridLines } = useMonitorGrid({ projectStore });
 
 const {
   contextMenuItems,
+  resetView,
   resetZoom,
   onPlaybackSpeedChange,
   selectedPlaybackSpeedOption,
@@ -561,6 +562,7 @@ const containerHeightClass = computed(() => {
               class="font-mono tabular-nums text-[10px] min-w-10 justify-center h-6 px-1 text-ui-text-muted hover:text-ui-text"
               :label="monitorZoomLabel"
               @click="resetZoom"
+              @dblclick="resetView"
             />
           </div>
 
