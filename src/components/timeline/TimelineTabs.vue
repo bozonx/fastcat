@@ -241,14 +241,7 @@ onBeforeUnmount(() => {
       ref="scrollContainer"
       class="flex h-full w-full overflow-x-auto no-scrollbar items-center min-w-0"
     >
-      <div
-        v-if="openPaths.length === 0"
-        class="flex items-center h-full px-4 text-xs font-semibold uppercase tracking-wider text-ui-text-muted"
-      >
-        No timelines open
-      </div>
-
-      <UContextMenu v-else :items="timelineTabContextMenuItems" class="flex h-full min-w-max">
+      <UContextMenu :items="timelineTabContextMenuItems" class="flex h-full min-w-max">
         <VueDraggable
           v-model="openPaths"
           class="flex h-full items-center"
