@@ -467,7 +467,7 @@ onUnmounted(() => {
             :max="1"
           />
           <UTooltip :text="getHotkeyTitle(t('fastcat.preview.fullscreen'), 'general.fullscreen')">
-            <UButton
+            <UiActionButton
               v-if="type === 'video'"
               size="sm"
               variant="ghost"

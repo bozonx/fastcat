@@ -470,7 +470,7 @@ useFileManagerPanelBootstrap({
             )
           "
         >
-          <UButton
+          <UiActionButton
             icon="i-heroicons-document-plus"
             variant="ghost"
             color="neutral"
@@ -481,7 +481,7 @@ useFileManagerPanelBootstrap({
         <UiTooltip
           :text="`${t('videoEditor.fileManager.actions.createMarkdown')} (In _documents folder)`"
         >
-          <UButton
+          <UiActionButton
             icon="i-heroicons-document-text"
             variant="ghost"
             color="neutral"
@@ -490,7 +490,7 @@ useFileManagerPanelBootstrap({
           />
         </UiTooltip>
         <UiTooltip :text="t('videoEditor.fileManager.actions.uploadFiles')">
-          <UButton
+          <UiActionButton
             icon="i-heroicons-arrow-up-tray"
             variant="ghost"
             color="neutral"

@@ -198,7 +198,7 @@ describe('MonitorContainer', () => {
     expect(mockEnterFullscreen).toHaveBeenCalled();
   });
 
-  it('portals monitor menus to body in web fullscreen mode', async () => {
+  it('renders monitor menus inside the fullscreen panel', async () => {
     const contextMenuStub = {
       name: 'UContextMenu',
       props: ['items', 'portal'],
@@ -243,10 +243,10 @@ describe('MonitorContainer', () => {
     await wrapper.vm.$nextTick();
     await wrapper.vm.$nextTick();
 
-    // In web mode (non-Tauri), portal should be true (body) so Reka UI's
-    // outside-click detection works correctly in fullscreen
-    expect(wrapper.findComponent(contextMenuStub).props('portal')).toBe(true);
-    expect(wrapper.findComponent(dropdownMenuStub).props('portal')).toBe(true);
+    const panel = document.body.querySelector('.panel-focus-frame');
+
+    expect(wrapper.findComponent(contextMenuStub).props('portal')).toBe(panel);
+    expect(wrapper.findComponent(dropdownMenuStub).props('portal')).toBe(panel);
   });
 
   it('renders the more menu button with a vertical ellipsis icon', async () => {

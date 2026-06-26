@@ -26,7 +26,7 @@ const { getHotkeyTitle } = useHotkeyLabel();
     <UiTooltip
       :text="getHotkeyTitle(t('videoEditor.hotkeys.general.navigateBack'), 'general.navigateBack')"
     >
-      <UButton
+      <UiActionButton
         variant="ghost"
         color="neutral"
         size="xs"
@@ -40,7 +40,7 @@ const { getHotkeyTitle } = useHotkeyLabel();
         getHotkeyTitle(t('videoEditor.hotkeys.general.navigateForward'), 'general.navigateForward')
       "
     >
-      <UButton
+      <UiActionButton
         variant="ghost"
         color="neutral"
         size="xs"
@@ -52,7 +52,7 @@ const { getHotkeyTitle } = useHotkeyLabel();
     <UiTooltip
       :text="getHotkeyTitle(t('videoEditor.fileManager.actions.navigateUp'), 'general.navigateUp')"
     >
-      <UButton
+      <UiActionButton
         variant="ghost"
         color="neutral"
         size="xs"

@@ -262,7 +262,7 @@ function resolveEffectName(manifest: EffectItem['manifest'], type: string) {
                 :disabled="props.disabled"
                 @click="openSaveModal(String(effect.id))"
               />
-              <UButton
+              <UiActionButton
                 size="xs"
                 variant="ghost"
                 color="neutral"

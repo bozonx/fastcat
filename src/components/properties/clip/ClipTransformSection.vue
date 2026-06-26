@@ -210,7 +210,7 @@ function handleResetAll() {
           <span class="text-xs text-ui-text-muted mr-1">{{
             t('fastcat.clip.transform.reflect')
           }}</span>
-          <UButton
+          <UiActionButton
             icon="i-heroicons-arrows-right-left"
             size="xs"
             color="neutral"
@@ -220,7 +220,7 @@ function handleResetAll() {
             :disabled="!isEnabled"
             @click="toggleFlipHorizontal"
           />
-          <UButton
+          <UiActionButton
             icon="i-heroicons-arrows-up-down"
             size="xs"
             color="neutral"
@@ -259,7 +259,7 @@ function handleResetAll() {
             />
 
             <div class="flex items-center justify-center">
-              <UButton
+              <UiActionButton
                 :icon="transformScaleLinked ? 'i-heroicons-link' : 'i-heroicons-link-slash'"
                 size="2xs"
                 color="neutral"

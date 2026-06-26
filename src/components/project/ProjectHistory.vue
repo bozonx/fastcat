@@ -100,7 +100,7 @@ function jumpToState(entryId: string, isFuture: boolean) {
 <template>
   <div v-if="!mobile" class="h-full flex flex-col w-full bg-ui-bg-elevated">
     <div class="flex items-center gap-1.5 px-3 h-9 border-b border-ui-border bg-ui-bg/30 shrink-0">
-      <UButton
+      <UiActionButton
         icon="i-heroicons-arrow-uturn-left"
         size="xs"
         variant="ghost"
@@ -110,7 +110,7 @@ function jumpToState(entryId: string, isFuture: boolean) {
         class="cursor-pointer"
         @click="handleUndo"
       />
-      <UButton
+      <UiActionButton
         icon="i-heroicons-arrow-uturn-right"
         size="xs"
         variant="ghost"

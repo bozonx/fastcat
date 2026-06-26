@@ -39,7 +39,7 @@ const menuItems = computed(() => {
     class="flex items-center justify-between px-4 h-10 bg-ui-bg-elevated border-b border-ui-border"
   >
     <div class="flex items-center gap-2 h-full flex-1 min-w-0">
-      <UButton
+      <UiActionButton
         size="sm"
         variant="ghost"
         color="neutral"

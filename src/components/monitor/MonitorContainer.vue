@@ -144,11 +144,8 @@ function onPanelDragStart(e: DragEvent) {
 
 const effectiveFullscreen = computed(() => props.isFullscreen || isBrowserFullscreen.value);
 const shouldTeleport = computed(() => isTauriRuntime() && effectiveFullscreen.value);
-// In Tauri fullscreen the panel is teleported to body, so menu content must be
-// portaled to the panel element to stay in the same window. In web mode, portal
-// to body (true) so Reka UI's outside-click detection works correctly.
 const monitorMenuPortal = computed(() =>
-  effectiveFullscreen.value && isTauriRuntime() ? (panelRef.value ?? false) : true,
+  effectiveFullscreen.value ? (panelRef.value ?? false) : true,
 );
 
 const { capturePanelViewport, restorePanelViewport } = useMonitorFullscreenViewport(projectStore);
@@ -555,9 +552,8 @@ watch(viewportRef, (vp) => {
             <div
               v-if="safeDurationUs > 0"
               class="absolute left-0 right-0 z-30 transition-all duration-300 pointer-events-auto select-none"
-              :inert="effectiveFullscreen && isIdle"
               :class="[
-                effectiveFullscreen && isIdle ? 'opacity-0' : 'opacity-100',
+                effectiveFullscreen && isIdle ? 'opacity-0 pointer-events-none' : 'opacity-100',
                 effectiveFullscreen
                   ? [
                       'px-8 pb-3',
@@ -606,7 +602,6 @@ watch(viewportRef, (vp) => {
           <div
             data-panel-drag-handle
             class="flex flex-wrap items-center justify-center gap-3 border-ui-border shrink-0 transition-all duration-300 select-none"
-            :inert="effectiveFullscreen && isIdle"
             :class="[
               effectiveFullscreen
                 ? [
@@ -624,7 +619,7 @@ watch(viewportRef, (vp) => {
                     'bg-ui-bg-elevated',
                     props.experimentalFeatures ? props.panelDragCursorClass : '',
                   ],
-              effectiveFullscreen && isIdle ? 'opacity-0' : 'opacity-100',
+              effectiveFullscreen && isIdle ? 'opacity-0 pointer-events-none' : 'opacity-100',
               !effectiveFullscreen && toolbarPosition === 'bottom' ? 'border-t' : '',
               !effectiveFullscreen && toolbarPosition === 'top' ? 'border-b' : '',
               !effectiveFullscreen && toolbarPosition === 'right' ? 'border-l' : '',
@@ -703,7 +698,7 @@ watch(viewportRef, (vp) => {
                 :ui="{ content: 'min-w-44 z-[60]' }"
                 @update:open="setMonitorSyncMenuOpen"
               >
-                <UButton
+                <UiActionButton
                   v-if="projectStore.activeMonitor"
                   size="xs"
                   color="neutral"
@@ -713,7 +708,7 @@ watch(viewportRef, (vp) => {
                   class="px-1.5"
                 >
                   <UIcon name="i-lucide-chevron-down" class="size-3 text-ui-text-muted" />
-                </UButton>
+                </UiActionButton>
               </UDropdownMenu>
             </UiTooltip>
 
@@ -741,7 +736,7 @@ watch(viewportRef, (vp) => {
 
             <!-- Playback buttons — wheel on play button changes speed -->
             <UiTooltip :text="getHotkeyTitle(t('fastcat.monitor.rewind'), 'playback.toStart')">
-              <UButton
+              <UiActionButton
                 size="md"
                 variant="ghost"
                 color="neutral"
@@ -798,7 +793,7 @@ watch(viewportRef, (vp) => {
             </UiTooltip>
 
             <UiTooltip :text="getHotkeyTitle(t('fastcat.monitor.end'), 'playback.toEnd')">
-              <UButton
+              <UiActionButton
                 size="md"
                 variant="ghost"
                 color="neutral"
@@ -827,7 +822,7 @@ watch(viewportRef, (vp) => {
               :ui="{ content: 'z-[60]' }"
               @update:open="setMonitorMoreMenuOpen"
             >
-              <UButton
+              <UiActionButton
                 size="xs"
                 color="neutral"
                 variant="ghost"

@@ -1,6 +1,19 @@
 <script setup lang="ts">
-type ButtonColor = 'primary' | 'secondary' | 'neutral' | 'error' | 'warning' | 'success' | 'info';
-type ButtonSize = 'xs' | 'sm' | 'md' | 'lg' | 'xl';
+type ButtonColor =
+  | 'primary'
+  | 'secondary'
+  | 'neutral'
+  | 'error'
+  | 'warning'
+  | 'success'
+  | 'info'
+  // Custom color aliases registered in app.config.ts
+  | 'red'
+  | 'green'
+  | 'amber'
+  | 'blue'
+  | 'yellow';
+type ButtonSize = '2xs' | 'xs' | 'sm' | 'md' | 'lg' | 'xl';
 type ButtonVariant = 'solid' | 'outline' | 'soft' | 'ghost' | 'subtle' | 'link';
 
 const props = withDefaults(
@@ -26,7 +39,7 @@ const props = withDefaults(
     disabled: false,
     block: false,
     square: false,
-    hoverClass: '!hover:bg-ui-bg-hover hover:text-ui-text transition-colors',
+    hoverClass: 'hover:bg-ui-bg-hover/60 hover:text-ui-text transition-colors',
   },
 );
 

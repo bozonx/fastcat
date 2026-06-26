@@ -78,7 +78,7 @@ function onAuxClick(event: MouseEvent) {
           {{ title }}
         </h3>
       </div>
-      <UButton
+      <UiActionButton
         class="shrink-0"
         size="xs"
         variant="ghost"

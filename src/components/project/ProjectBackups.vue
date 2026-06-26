@@ -119,7 +119,7 @@ const versions = computed(() => timelineStore.backupVersions);
       class="flex items-center justify-between px-3 h-9 border-b border-ui-border bg-ui-bg/30 shrink-0 select-none"
     >
       <!-- Clear Backups Button -->
-      <UButton
+      <UiActionButton
         v-if="hasBackups"
         size="xs"
         variant="ghost"
@@ -129,11 +129,11 @@ const versions = computed(() => timelineStore.backupVersions);
         @click="isClearBackupsConfirmOpen = true"
       >
         {{ t('videoEditor.timeline.backups.clearAllButton') }}
-      </UButton>
+      </UiActionButton>
       <div v-else />
 
       <!-- Refresh Button -->
-      <UButton
+      <UiActionButton
         icon="i-heroicons-arrow-path"
         size="xs"
         variant="ghost"
@@ -200,7 +200,7 @@ const versions = computed(() => timelineStore.backupVersions);
                   v-if="version.type !== 'main'"
                   :text="t('videoEditor.timeline.backups.actionsLabel.openReadOnly')"
                 >
-                  <UButton
+                  <UiActionButton
                     size="xs"
                     color="neutral"
                     variant="ghost"
@@ -228,7 +228,7 @@ const versions = computed(() => timelineStore.backupVersions);
                   v-if="version.type !== 'main'"
                   :text="t('videoEditor.timeline.backups.actionsLabel.delete')"
                 >
-                  <UButton
+                  <UiActionButton
                     size="xs"
                     color="neutral"
                     variant="ghost"

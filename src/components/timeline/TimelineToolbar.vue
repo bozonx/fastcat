@@ -348,12 +348,11 @@ function onToolbarContextMenu(e: MouseEvent) {
               )
             "
           >
-            <UButton
+            <UiActionButton
               size="xs"
               :variant="settingsStore.toolbarSnapMode === 'snap' ? 'solid' : 'ghost'"
               :color="settingsStore.toolbarSnapMode === 'snap' ? 'primary' : 'neutral'"
               icon="i-heroicons-link"
-              class="hover:bg-ui-bg-hover/60"
               @click="selectToolbarSnapMode('snap')"
             />
           </UiTooltip>
@@ -365,12 +364,11 @@ function onToolbarContextMenu(e: MouseEvent) {
               )
             "
           >
-            <UButton
+            <UiActionButton
               size="xs"
               :variant="settingsStore.toolbarSnapMode === 'no_snap' ? 'solid' : 'ghost'"
               :color="settingsStore.toolbarSnapMode === 'no_snap' ? 'primary' : 'neutral'"
               icon="i-heroicons-link-slash"
-              class="hover:bg-ui-bg-hover/60"
               @click="selectToolbarSnapMode('no_snap')"
             />
           </UiTooltip>
@@ -382,24 +380,22 @@ function onToolbarContextMenu(e: MouseEvent) {
               )
             "
           >
-            <UButton
+            <UiActionButton
               size="xs"
               :variant="settingsStore.toolbarSnapMode === 'free_mode' ? 'solid' : 'ghost'"
               :color="settingsStore.toolbarSnapMode === 'free_mode' ? 'primary' : 'neutral'"
               icon="i-heroicons-arrows-pointing-out"
-              class="hover:bg-ui-bg-hover/60"
               @click="selectToolbarSnapMode('free_mode')"
             />
           </UiTooltip>
         </UFieldGroup>
 
         <UiTooltip :text="t('videoEditor.settings.snappingTitle')">
-          <UButton
+          <UiActionButton
             size="xs"
             variant="ghost"
             color="neutral"
             icon="i-heroicons-cog-6-tooth"
-            class="hover:bg-ui-bg-hover/60"
             :disabled="isSnapSettingsDisabled"
             @click="isSnapSettingsModalOpen = true"
           />
@@ -413,12 +409,11 @@ function onToolbarContextMenu(e: MouseEvent) {
             :key="opt.value"
             :text="opt.commandId ? getHotkeyTitle(opt.tooltip, opt.commandId) : opt.tooltip"
           >
-            <UButton
+            <UiActionButton
               size="xs"
               :variant="currentMoveMode === opt.value ? 'solid' : 'ghost'"
               :color="currentMoveMode === opt.value ? 'primary' : 'neutral'"
               :icon="opt.icon"
-              class="hover:bg-ui-bg-hover/60"
               @click="currentMoveMode = opt.value"
             />
           </UiTooltip>
@@ -446,7 +441,7 @@ function onToolbarContextMenu(e: MouseEvent) {
 
         <div v-if="timelineStore.isAnyTrackSoloed" class="ml-2 flex items-center">
           <UiTooltip :text="t('fastcat.timeline.clearSolos')">
-            <UButton
+            <UiActionButton
               size="xs"
               color="amber"
               variant="solid"
@@ -461,21 +456,25 @@ function onToolbarContextMenu(e: MouseEvent) {
               "
             >
               {{ t('fastcat.timeline.soloActive') }}
-            </UButton>
+            </UiActionButton>
           </UiTooltip>
         </div>
         <div class="w-px h-4 bg-ui-border mx-1 opacity-50" />
 
         <UiTooltip
-          :text="getHotkeyTitle(`${t('fastcat.timeline.addAdjustment')} (${t('fastcat.timeline.dragToTimeline')})`, 'timeline.addAdjustmentClipAtPlayhead')"
+          :text="
+            getHotkeyTitle(
+              `${t('fastcat.timeline.addAdjustment')} (${t('fastcat.timeline.dragToTimeline')})`,
+              'timeline.addAdjustmentClipAtPlayhead',
+            )
+          "
         >
           <div draggable="true" @dragstart="onDragStart($event, 'adjustment')" @dragend="onDragEnd">
-            <UButton
+            <UiActionButton
               size="xs"
               variant="ghost"
               color="neutral"
               icon="i-heroicons-adjustments-horizontal"
-              class="hover:bg-ui-bg-hover/60"
               :disabled="timelineStore.previewMode"
               @click="
                 (e) => {
@@ -488,15 +487,19 @@ function onToolbarContextMenu(e: MouseEvent) {
         </UiTooltip>
 
         <UiTooltip
-          :text="getHotkeyTitle(`${t('fastcat.timeline.addBackground')} (${t('fastcat.timeline.dragToTimeline')})`, 'timeline.addBackgroundClipAtPlayhead')"
+          :text="
+            getHotkeyTitle(
+              `${t('fastcat.timeline.addBackground')} (${t('fastcat.timeline.dragToTimeline')})`,
+              'timeline.addBackgroundClipAtPlayhead',
+            )
+          "
         >
           <div draggable="true" @dragstart="onDragStart($event, 'background')" @dragend="onDragEnd">
-            <UButton
+            <UiActionButton
               size="xs"
               variant="ghost"
               color="neutral"
               icon="i-heroicons-swatch"
-              class="hover:bg-ui-bg-hover/60"
               :disabled="timelineStore.previewMode"
               @click="
                 (e) => {
@@ -509,16 +512,20 @@ function onToolbarContextMenu(e: MouseEvent) {
         </UiTooltip>
 
         <UiTooltip
-          :text="getHotkeyTitle(`${t('fastcat.timeline.addText')} (${t('fastcat.timeline.dragToTimeline')}). ${t('fastcat.timeline.shiftForPresets').replace('{key}', layer1Label)}`, 'timeline.addTextClipAtPlayhead')"
+          :text="
+            getHotkeyTitle(
+              `${t('fastcat.timeline.addText')} (${t('fastcat.timeline.dragToTimeline')}). ${t('fastcat.timeline.shiftForPresets').replace('{key}', layer1Label)}`,
+              'timeline.addTextClipAtPlayhead',
+            )
+          "
         >
           <UContextMenu :items="textContextMenuItems">
             <div draggable="true" @dragstart="onDragStart($event, 'text')" @dragend="onDragEnd">
-              <UButton
+              <UiActionButton
                 size="xs"
                 variant="ghost"
                 color="neutral"
                 icon="i-heroicons-chat-bubble-bottom-center-text"
-                class="hover:bg-ui-bg-hover/60"
                 :disabled="timelineStore.previewMode"
                 @click="
                   (e) => {
@@ -539,35 +546,32 @@ function onToolbarContextMenu(e: MouseEvent) {
           <UiTooltip
             :text="getHotkeyTitle(t('fastcat.timeline.previousMarker'), 'general.prevMarker')"
           >
-            <UButton
+            <UiActionButton
               size="xs"
               variant="ghost"
               color="neutral"
               icon="i-heroicons-chevron-left"
-              class="hover:bg-ui-bg-hover/60"
               @click="timelineStore.goToPreviousMarker()"
             />
           </UiTooltip>
 
           <UiTooltip :text="getHotkeyTitle(t('fastcat.timeline.addMarker'), 'general.addMarker')">
-            <UButton
+            <UiActionButton
               size="xs"
               variant="ghost"
               color="neutral"
               icon="i-heroicons-bookmark"
-              class="hover:bg-ui-bg-hover/60"
               :disabled="timelineStore.previewMode"
               @click="timelineStore.addMarkerAtPlayhead()"
             />
           </UiTooltip>
 
           <UiTooltip :text="getHotkeyTitle(t('fastcat.timeline.nextMarker'), 'general.nextMarker')">
-            <UButton
+            <UiActionButton
               size="xs"
               variant="ghost"
               color="neutral"
               icon="i-heroicons-chevron-right"
-              class="hover:bg-ui-bg-hover/60"
               @click="timelineStore.goToNextMarker()"
             />
           </UiTooltip>
@@ -580,12 +584,11 @@ function onToolbarContextMenu(e: MouseEvent) {
         @click.self="timelineStore.selectTimelineProperties()"
       >
         <UiTooltip :text="getHotkeyTitle(t('fastcat.timeline.zoomToFit'), 'general.zoomFit')">
-          <UButton
+          <UiActionButton
             size="xs"
             color="neutral"
             variant="ghost"
             icon="i-heroicons-arrows-pointing-out"
-            class="hover:bg-ui-bg-hover/60"
             @click="timelineStore.fitTimelineZoom()"
           />
         </UiTooltip>
@@ -613,12 +616,11 @@ function onToolbarContextMenu(e: MouseEvent) {
         <div class="w-px h-4 bg-ui-border mx-1 opacity-50" />
 
         <UiTooltip :text="t('fastcat.timeline.properties.title')">
-          <UButton
+          <UiActionButton
             size="xs"
             variant="ghost"
             color="neutral"
             icon="i-heroicons-cog-6-tooth"
-            class="hover:bg-ui-bg-hover/60"
             @click="timelineStore.selectTimelineProperties()"
           />
         </UiTooltip>
