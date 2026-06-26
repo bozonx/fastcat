@@ -580,12 +580,7 @@ const sortedProjects = computed(() => {
         :label="t('fastcat.projects.projectLocation')"
       >
         <div class="flex gap-2 w-full">
-          <UiTextInput
-            v-model="duplicateLocation"
-            readonly
-            full-width
-            class="flex-1"
-          />
+          <UiTextInput v-model="duplicateLocation" readonly full-width class="flex-1" />
           <UButton
             color="neutral"
             variant="subtle"

@@ -98,7 +98,9 @@ watch(
       icon="i-heroicons-check-circle"
       class="mb-2"
     >
-      <p class="font-medium text-ui-text">{{ t('videoEditor.settings.integrationSuccessTitle') }}</p>
+      <p class="font-medium text-ui-text">
+        {{ t('videoEditor.settings.integrationSuccessTitle') }}
+      </p>
       <p>{{ t('videoEditor.settings.integrationSuccessDesc') }}</p>
     </UiAlert>
 
