@@ -27,6 +27,7 @@ import TimelineSnapSettingsModal from './TimelineSnapSettingsModal.vue';
 import { useHotkeyLabel } from '~/composables/useHotkeyLabel';
 
 import { useTimelineEmptyAreaContextMenu } from '~/composables/timeline/useTimelineEmptyAreaContextMenu';
+import type { HotkeyCommandId } from '~/utils/hotkeys/defaultHotkeys';
 
 const { t } = useI18n();
 const { getHotkeyTitle, getHotkeyLabel } = useHotkeyLabel();
@@ -126,7 +127,12 @@ const trimMenuItems = computed(() => {
 });
 
 const moveModeOptions = computed<
-  { value: 'none' | ToolbarDragMode; icon: string; tooltip: string }[]
+  {
+    value: 'none' | ToolbarDragMode;
+    icon: string;
+    tooltip: string;
+    commandId?: HotkeyCommandId;
+  }[]
 >(() => [
   {
     value: 'none',
@@ -137,11 +143,13 @@ const moveModeOptions = computed<
     value: 'pseudo_overlap',
     icon: 'i-heroicons-rectangle-stack',
     tooltip: t('fastcat.timeline.moveModePseudoDescription'),
+    commandId: 'timeline.selectDragModePseudoOverlap',
   },
   {
     value: 'slip',
     icon: 'i-heroicons-arrows-right-left',
     tooltip: t('fastcat.timeline.moveModeSlipDescription'),
+    commandId: 'timeline.selectDragModeSlip',
   },
 ]);
 
@@ -400,7 +408,11 @@ function onToolbarContextMenu(e: MouseEvent) {
         <div class="w-px h-4 bg-ui-border mx-1 opacity-50" />
 
         <UFieldGroup class="inline-flex">
-          <UiTooltip v-for="opt in moveModeOptions" :key="opt.value" :text="opt.tooltip">
+          <UiTooltip
+            v-for="opt in moveModeOptions"
+            :key="opt.value"
+            :text="opt.commandId ? getHotkeyTitle(opt.tooltip, opt.commandId) : opt.tooltip"
+          >
             <UButton
               size="xs"
               :variant="currentMoveMode === opt.value ? 'solid' : 'ghost'"
@@ -455,7 +467,7 @@ function onToolbarContextMenu(e: MouseEvent) {
         <div class="w-px h-4 bg-ui-border mx-1 opacity-50" />
 
         <UiTooltip
-          :text="`${t('fastcat.timeline.addAdjustment')} (${t('fastcat.timeline.dragToTimeline')})`"
+          :text="getHotkeyTitle(`${t('fastcat.timeline.addAdjustment')} (${t('fastcat.timeline.dragToTimeline')})`, 'timeline.addAdjustmentClipAtPlayhead')"
         >
           <div draggable="true" @dragstart="onDragStart($event, 'adjustment')" @dragend="onDragEnd">
             <UButton
@@ -476,7 +488,7 @@ function onToolbarContextMenu(e: MouseEvent) {
         </UiTooltip>
 
         <UiTooltip
-          :text="`${t('fastcat.timeline.addBackground')} (${t('fastcat.timeline.dragToTimeline')})`"
+          :text="getHotkeyTitle(`${t('fastcat.timeline.addBackground')} (${t('fastcat.timeline.dragToTimeline')})`, 'timeline.addBackgroundClipAtPlayhead')"
         >
           <div draggable="true" @dragstart="onDragStart($event, 'background')" @dragend="onDragEnd">
             <UButton
@@ -497,7 +509,7 @@ function onToolbarContextMenu(e: MouseEvent) {
         </UiTooltip>
 
         <UiTooltip
-          :text="`${t('fastcat.timeline.addText')} (${t('fastcat.timeline.dragToTimeline')}). ${t('fastcat.timeline.shiftForPresets').replace('{key}', layer1Label)}`"
+          :text="getHotkeyTitle(`${t('fastcat.timeline.addText')} (${t('fastcat.timeline.dragToTimeline')}). ${t('fastcat.timeline.shiftForPresets').replace('{key}', layer1Label)}`, 'timeline.addTextClipAtPlayhead')"
         >
           <UContextMenu :items="textContextMenuItems">
             <div draggable="true" @dragstart="onDragStart($event, 'text')" @dragend="onDragEnd">
