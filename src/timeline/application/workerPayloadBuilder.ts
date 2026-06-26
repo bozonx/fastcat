@@ -113,6 +113,7 @@ interface BuildVideoTrackTreeParams {
   fallbackFormat?: TimelineFormatInput;
   onWarning?: (message: string) => void;
   nestedDocCache?: Map<string, TimelineDocument>;
+  docSpanMemo?: Map<string, number>;
 }
 
 // Cross-request cache of parsed nested timeline docs, bounded with simple LRU
@@ -180,6 +181,127 @@ async function readNestedTimelineDoc(params: {
   return doc;
 }
 
+/**
+ * Number of compositor layers a doc occupies once its nested timelines are
+ * flattened — the sum of its visible video tracks' spans. Memoized per resolved
+ * path: a doc's intrinsic span does not depend on the route taken to reach it,
+ * and a self-referential cycle only ever *truncates* the span (the inner copy
+ * is skipped), so the memoized full value is always >= the truncated one and
+ * therefore never under-reserves.
+ */
+async function computeDocLayerSpan(params: {
+  path: string;
+  projectStore: WorkerPayloadProjectContext;
+  visitedPaths: Set<string>;
+  nestedDepth: number;
+  fallbackFormat?: TimelineFormatInput;
+  nestedDocCache: Map<string, TimelineDocument>;
+  docSpanMemo: Map<string, number>;
+}): Promise<number> {
+  const memo = params.docSpanMemo.get(params.path);
+  if (memo !== undefined) return memo;
+
+  let total = 0;
+  try {
+    const doc = await readNestedTimelineDoc({
+      path: params.path,
+      projectStore: params.projectStore,
+      fallbackFormat: params.fallbackFormat,
+      cache: params.nestedDocCache,
+    });
+    if (!doc) {
+      params.docSpanMemo.set(params.path, 1);
+      return 1;
+    }
+    const videoTracks = doc.tracks.filter((t) => t.kind === 'video' && !t.videoHidden);
+    for (const track of videoTracks) {
+      total += await computeTrackLayerSpan({
+        track,
+        projectStore: params.projectStore,
+        visitedPaths: params.visitedPaths,
+        nestedDepth: params.nestedDepth,
+        nestedTimelinePath: params.path,
+        fallbackFormat: { fps: doc.timebase.fps },
+        nestedDocCache: params.nestedDocCache,
+        docSpanMemo: params.docSpanMemo,
+      });
+    }
+  } catch {
+    total = 1;
+  }
+  const span = Math.max(1, total);
+  params.docSpanMemo.set(params.path, span);
+  return span;
+}
+
+/**
+ * Number of compositor layers a single track occupies once nested timelines are
+ * flattened. A track with no nested-timeline clip is one layer; a track holding
+ * a nested-timeline clip needs as many layers as the widest nested document it
+ * contains expands to (recursively). Reserving this many layers lets sibling
+ * tracks be assigned a non-overlapping layer band — without it a multi-video-
+ * track nested timeline fans its inner tracks *upward* into the layer values of
+ * the tracks above, so z-ordering and adjustment clips above the nested clip
+ * become unreliable.
+ */
+async function computeTrackLayerSpan(params: {
+  track: TimelineTrack;
+  projectStore: WorkerPayloadProjectContext;
+  visitedPaths: Set<string>;
+  nestedDepth: number;
+  nestedTimelinePath?: string;
+  fallbackFormat?: TimelineFormatInput;
+  nestedDocCache: Map<string, TimelineDocument>;
+  docSpanMemo: Map<string, number>;
+}): Promise<number> {
+  let span = 1;
+  for (const item of params.track.items) {
+    if (!isClipItem(item) || item.disabled) continue;
+    if (item.clipType !== 'timeline') continue;
+    const rawPath = item.source?.path;
+    if (!rawPath) continue;
+    const path = params.nestedTimelinePath
+      ? resolveNestedMediaPath({
+          nestedTimelinePath: params.nestedTimelinePath,
+          mediaPath: rawPath,
+        })
+      : normalizeProjectPath(rawPath);
+    // A circular or too-deep reference expands to nothing, so it needs no extra
+    // layers beyond the track's own one.
+    if (params.visitedPaths.has(path)) continue;
+    if (params.nestedDepth >= MAX_NESTED_TIMELINE_DEPTH) continue;
+
+    const docSpan = await computeDocLayerSpan({
+      path,
+      projectStore: params.projectStore,
+      visitedPaths: new Set(params.visitedPaths).add(path),
+      nestedDepth: params.nestedDepth + 1,
+      fallbackFormat: params.fallbackFormat,
+      nestedDocCache: params.nestedDocCache,
+      docSpanMemo: params.docSpanMemo,
+    });
+    span = Math.max(span, docSpan);
+  }
+  return span;
+}
+
+/**
+ * Assigns each track in document order (index 0 = topmost) a base layer such
+ * that the tracks form contiguous, non-overlapping layer bands stacked
+ * bottom-to-top. Each band is as wide as the track's flattened layer span so a
+ * nested timeline can fan its inner tracks out inside its own band without
+ * colliding with sibling tracks above it.
+ */
+export function assignLayerBands(spans: number[], baseLayerOffset: number): number[] {
+  const bases = new Array<number>(spans.length);
+  let cursor = baseLayerOffset;
+  for (let index = spans.length - 1; index >= 0; index--) {
+    bases[index] = cursor;
+    cursor += spans[index] ?? 1;
+  }
+  return bases;
+}
+
 async function buildVideoTrackTree(
   params: BuildVideoTrackTreeParams,
 ): Promise<{ clips: WorkerTimelineClip[]; tracks: WorkerTrackPayloadSource[] }> {
@@ -197,12 +319,32 @@ async function buildVideoTrackTree(
   const visitedPaths = params.visitedPaths ?? new Set<string>();
   const nestedPathStack = params.nestedPathStack ?? [];
   const nestedDocCache = params.nestedDocCache ?? new Map<string, TimelineDocument>();
+  const docSpanMemo = params.docSpanMemo ?? new Map<string, number>();
+
+  // Reserve a layer band per track wide enough for the nested timelines it
+  // contains, so a multi-video-track nested clip never fans its inner tracks
+  // into the layer values of the sibling tracks above it.
+  const trackSpans = await Promise.all(
+    visibleTracks.map((track) =>
+      computeTrackLayerSpan({
+        track,
+        projectStore: params.projectStore,
+        visitedPaths,
+        nestedDepth: nestedPathStack.length,
+        nestedTimelinePath: params.nestedTimelinePath,
+        fallbackFormat: params.fallbackFormat,
+        nestedDocCache,
+        docSpanMemo,
+      }),
+    ),
+  );
+  const trackLayerBases = assignLayerBands(trackSpans, baseLayerOffset);
 
   for (let index = 0; index < visibleTracks.length; index++) {
     const track = visibleTracks[index];
     if (!track) continue;
 
-    const layer = baseLayerOffset + (visibleTracks.length - 1 - index);
+    const layer = trackLayerBases[index] ?? baseLayerOffset;
     const runtimeTrackId = params.trackIdPrefix ? `${params.trackIdPrefix}::${track.id}` : track.id;
     const trackOpacity = inheritedTrackOpacity * (track.opacity ?? 1);
     const trackBlendMode = track.blendMode ?? params.inheritedTrackBlendMode;
@@ -239,6 +381,7 @@ async function buildVideoTrackTree(
         onWarning: params.onWarning,
         nestedTimelinePath: params.nestedTimelinePath,
         nestedDocCache,
+        docSpanMemo,
         trackIdPrefix: params.trackIdPrefix ? `${params.trackIdPrefix}::` : undefined,
         onTrackBuilt: (builtTrack) => {
           result.tracks.push(builtTrack);
@@ -421,6 +564,7 @@ type ToWorkerTimelineClipsOptions = {
   onWarning?: (message: string) => void;
   nestedTimelinePath?: string;
   nestedDocCache?: Map<string, TimelineDocument>;
+  docSpanMemo?: Map<string, number>;
   trackIdPrefix?: string;
   onTrackBuilt?: (track: WorkerTrackPayloadSource) => void;
 };
@@ -713,12 +857,34 @@ async function expandNestedTimeline(params: {
   const nextVisited = new Set(visitedPaths).add(path);
   const nextNestedPathStack = [...nestedPathStack, path];
 
+  const docSpanMemo = options?.docSpanMemo ?? new Map<string, number>();
+
   if (trackKind === 'video') {
     const nestedVideoTracks = nestedDoc.tracks.filter((t) => t.kind === 'video' && !t.videoHidden);
+    // Lay the inner tracks out as contiguous layer bands inside the band this
+    // nested clip was reserved on (base = options.layer), each band wide enough
+    // for its own deeper nesting. The band sum equals this clip's reserved span,
+    // so the inner layers never spill onto the sibling tracks above.
+    const nestedSpans = await Promise.all(
+      nestedVideoTracks.map((track) =>
+        computeTrackLayerSpan({
+          track,
+          projectStore,
+          visitedPaths: nextVisited,
+          nestedDepth: nextNestedPathStack.length,
+          nestedTimelinePath: path,
+          fallbackFormat: { fps: nestedDoc.timebase.fps },
+          nestedDocCache,
+          docSpanMemo,
+        }),
+      ),
+    );
+    const nestedLayerBases = assignLayerBands(nestedSpans, options?.layer ?? 0);
+
     for (let i = 0; i < nestedVideoTracks.length; i++) {
       const track = nestedVideoTracks[i];
       if (!track) continue;
-      const nestedLayer = (options?.layer ?? 0) + (nestedVideoTracks.length - 1 - i);
+      const nestedLayer = nestedLayerBases[i] ?? options?.layer ?? 0;
 
       const trackEffects = cloneEffectList(track.effects);
       const inheritedNestedEffects = options?.nestedParentEffects ?? [];
@@ -763,6 +929,7 @@ async function expandNestedTimeline(params: {
           onWarning: options?.onWarning,
           nestedTimelinePath: path,
           nestedDocCache,
+          docSpanMemo,
           trackIdPrefix: nextTrackIdPrefix,
           onTrackBuilt: options?.onTrackBuilt,
         },
@@ -801,6 +968,7 @@ async function expandNestedTimeline(params: {
         onWarning: options?.onWarning,
         nestedTimelinePath: path,
         nestedDocCache,
+        docSpanMemo,
       },
     );
 

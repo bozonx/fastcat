@@ -1346,7 +1346,7 @@ impl WindowState {
                                 }
                             }
                             // The GPU hasn't caught up yet (the first frame after start) — skip,
-                            // на экране держится последний синхронный стоп-кадр.
+                            // the last synchronous freeze-frame stays on screen.
                             Ok(None) => {}
                             Err(e) => {
                                 log::error!("[monitor] pipelined offscreen render: {e:?}");

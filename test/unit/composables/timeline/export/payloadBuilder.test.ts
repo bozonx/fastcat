@@ -1,12 +1,16 @@
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 import {
+  assignLayerBands,
   buildVideoWorkerPayloadFromTracks,
   buildWorkerVideoTracks,
+  clearNestedDocCacheForTests,
   getNestedClipWindow,
   mergeNestedClipSpeed,
   trimNestedClipToParentWindow,
   trimWorkerClipToRange,
 } from '~/composables/timeline/export/payloadBuilder';
+import { serializeTimelineToOtio } from '~/timeline/otio-serializer';
+import type { TimelineDocument, TimelineTrack } from '~/timeline/types';
 
 function track(overrides: Record<string, unknown> = {}): any {
   return {
@@ -370,5 +374,211 @@ describe('trimNestedClipToParentWindow', () => {
         parentItem: parentTimelineItem({ sourceRange: { startUs: 0, durationUs: 100 } }),
       }),
     ).toBeNull();
+  });
+});
+
+describe('assignLayerBands', () => {
+  it('matches the dense layout when every track is a single layer', () => {
+    // 3 single-layer tracks -> bottom=0, middle=1, top=2 (top = index 0).
+    expect(assignLayerBands([1, 1, 1], 0)).toEqual([2, 1, 0]);
+  });
+
+  it('reserves a wide band for a track that flattens to many layers', () => {
+    // Track index 1 (bottom in a 2-track stack) needs 3 layers, so it occupies
+    // [0,3) and the track above it starts at 3 — never inside that band.
+    expect(assignLayerBands([1, 3], 0)).toEqual([3, 0]);
+  });
+
+  it('stacks several multi-layer bands without overlap', () => {
+    // bottom span 2 -> [0,2); next span 3 -> [2,5); top span 1 -> [5,6).
+    expect(assignLayerBands([1, 3, 2], 0)).toEqual([5, 2, 0]);
+  });
+
+  it('honours a non-zero base offset', () => {
+    expect(assignLayerBands([1, 2], 10)).toEqual([12, 10]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Nested-timeline layer reservation (regression for the z-collision that let
+// adjustment clips / track ordering above a multi-video-track nested timeline
+// leak under its inner tracks).
+// ---------------------------------------------------------------------------
+
+const PROJECT_STORE_BASE = {
+  projectSettings: {
+    project: { width: 1920, height: 1080, fps: 30, audioDeclickDurationUs: 0 },
+  },
+};
+
+const WORKSPACE_STORE = {
+  userSettings: { projectDefaults: { defaultAudioFadeCurve: 'linear' } },
+} as never;
+
+function nestedVideoTrack(id: string, overrides: Record<string, unknown> = {}): TimelineTrack {
+  return {
+    id,
+    kind: 'video',
+    name: id,
+    videoHidden: false,
+    items: [
+      {
+        id: `${id}-clip`,
+        kind: 'clip',
+        clipType: 'media',
+        trackId: id,
+        source: { path: `_video/${id}.mp4` },
+        timelineRange: { startUs: 0, durationUs: 1_000_000 },
+        sourceRange: { startUs: 0, durationUs: 1_000_000 },
+      },
+    ],
+    ...overrides,
+  } as TimelineTrack;
+}
+
+function nestedDoc(videoTracks: TimelineTrack[]): TimelineDocument {
+  return {
+    OTIO_SCHEMA: 'Timeline.1',
+    id: 'nested-doc',
+    name: 'nested',
+    timebase: { fps: 30 },
+    tracks: videoTracks,
+    metadata: { fastcat: { version: 1, docId: 'nested-doc', timebase: { fps: 30 } } },
+  };
+}
+
+/** A projectStore whose getFileByPath serves one OTIO doc for any `.otio` path. */
+function projectStoreServing(doc: TimelineDocument): never {
+  const otio = serializeTimelineToOtio(doc);
+  return {
+    ...PROJECT_STORE_BASE,
+    getFileByPath: async (path: string) =>
+      path.endsWith('.otio') ? new File([otio], 'nested.otio') : null,
+  } as never;
+}
+
+function parentTracksWithAdjustmentAboveNested(): TimelineTrack[] {
+  return [
+    // index 0 = topmost track: an adjustment clip that must sit above the whole
+    // nested block below it.
+    {
+      id: 'adjust-track',
+      kind: 'video',
+      name: 'adjust',
+      videoHidden: false,
+      items: [
+        {
+          id: 'adjustment-1',
+          kind: 'clip',
+          clipType: 'adjustment',
+          trackId: 'adjust-track',
+          effects: [{ type: 'blur' }],
+          timelineRange: { startUs: 0, durationUs: 1_000_000 },
+          sourceRange: { startUs: 0, durationUs: 1_000_000 },
+        },
+      ],
+    } as TimelineTrack,
+    // index 1 = bottom track: the nested-timeline clip.
+    {
+      id: 'nest-track',
+      kind: 'video',
+      name: 'nest',
+      videoHidden: false,
+      items: [
+        {
+          id: 'nested-1',
+          kind: 'clip',
+          clipType: 'timeline',
+          trackId: 'nest-track',
+          source: { path: '_timelines/nested.otio' },
+          timelineRange: { startUs: 0, durationUs: 1_000_000 },
+          sourceRange: { startUs: 0, durationUs: 1_000_000 },
+        },
+      ],
+    } as TimelineTrack,
+  ];
+}
+
+describe('nested-timeline layer reservation', () => {
+  beforeEach(() => clearNestedDocCacheForTests());
+
+  it('keeps an adjustment track strictly above every layer of a multi-track nested timeline', async () => {
+    const doc = nestedDoc([nestedVideoTrack('v3'), nestedVideoTrack('v2'), nestedVideoTrack('v1')]);
+
+    const result = await buildVideoWorkerPayloadFromTracks({
+      tracks: parentTracksWithAdjustmentAboveNested(),
+      projectStore: projectStoreServing(doc),
+      workspaceStore: WORKSPACE_STORE,
+    });
+
+    const adjustClip = result.clips.find((c) => c.id === 'adjustment-1')!;
+    const nestedClips = result.clips.filter((c) => c.id.startsWith('nested-1_nested_'));
+
+    // The nested timeline produced one inner clip per inner video track.
+    expect(nestedClips).toHaveLength(3);
+    // Every flattened nested layer is strictly below the adjustment clip, so the
+    // adjustment (which composites everything under its layer) covers them all.
+    for (const nested of nestedClips) {
+      expect(nested.layer).toBeLessThan(adjustClip.layer);
+    }
+    // The inner layers form a contiguous band that never reaches the adjustment.
+    const nestedLayers = nestedClips.map((c) => c.layer).sort((a, b) => a - b);
+    expect(nestedLayers).toEqual([0, 1, 2]);
+    expect(adjustClip.layer).toBe(3);
+  });
+
+  it('preserves inner track stacking order inside the reserved band', async () => {
+    const doc = nestedDoc([
+      nestedVideoTrack('top'),
+      nestedVideoTrack('mid'),
+      nestedVideoTrack('bottom'),
+    ]);
+
+    const result = await buildVideoWorkerPayloadFromTracks({
+      tracks: parentTracksWithAdjustmentAboveNested(),
+      projectStore: projectStoreServing(doc),
+      workspaceStore: WORKSPACE_STORE,
+    });
+
+    const layerOf = (innerTrack: string) =>
+      result.clips.find((c) => c.id === `nested-1_nested_${innerTrack}-clip`)!.layer;
+
+    // Document order is top-to-bottom, so the first inner track renders highest.
+    expect(layerOf('top')).toBeGreaterThan(layerOf('mid'));
+    expect(layerOf('mid')).toBeGreaterThan(layerOf('bottom'));
+  });
+
+  it('still places the adjustment above a single-track nested timeline', async () => {
+    const doc = nestedDoc([nestedVideoTrack('only')]);
+
+    const result = await buildVideoWorkerPayloadFromTracks({
+      tracks: parentTracksWithAdjustmentAboveNested(),
+      projectStore: projectStoreServing(doc),
+      workspaceStore: WORKSPACE_STORE,
+    });
+
+    const adjustClip = result.clips.find((c) => c.id === 'adjustment-1')!;
+    const nested = result.clips.find((c) => c.id === 'nested-1_nested_only-clip')!;
+    expect(nested.layer).toBeLessThan(adjustClip.layer);
+  });
+
+  it('propagates the outer track effect into the nested sub-track containers', async () => {
+    const doc = nestedDoc([nestedVideoTrack('inner')]);
+    const tracks = parentTracksWithAdjustmentAboveNested();
+    // Give the nested clip's own track an effect; it must reach the flattened
+    // sub-track so the compositor applies it to the nested content.
+    (tracks[1] as TimelineTrack).effects = [{ type: 'sharpen' } as never];
+
+    const result = await buildVideoWorkerPayloadFromTracks({
+      tracks,
+      projectStore: projectStoreServing(doc),
+      workspaceStore: WORKSPACE_STORE,
+    });
+
+    const nestedSubTrack = result.tracks.find((t) => t.id.includes('::nested-1::'));
+    expect(nestedSubTrack).toBeDefined();
+    expect(nestedSubTrack!.effects).toEqual(
+      expect.arrayContaining([expect.objectContaining({ type: 'sharpen' })]),
+    );
   });
 });

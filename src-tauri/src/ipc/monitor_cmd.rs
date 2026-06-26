@@ -96,17 +96,16 @@ pub async fn monitor_set_viewport(
     visible: bool,
     engine: State<'_, VideoEngine>,
 ) -> Result<(), String> {
-    engine
-        .ensure_monitor()
-        .map_err(|e| e.to_string())?
-        .send(MonitorCommand::SetViewport {
+    send_monitor_cmd(
+        &engine,
+        MonitorCommand::SetViewport {
             x,
             y,
             width,
             height,
             visible,
-        })
-        .map_err(|e| e.to_string())
+        },
+    )
 }
 
 /// Opens the native monitor as a standalone platform window.

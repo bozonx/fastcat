@@ -227,7 +227,7 @@ impl Drop for DecodePump {
         // - handle.join() waits for the thread forever;
         // - self.rx is auto-dropped only after fn drop returns → deadlock.
         // We swap self.rx for a dummy receiver — the original rx is dropped instantly,
-        // frame_tx.send() в decoder возвращает Err, поток выходит, join завершается.
+        // frame_tx.send() in the decoder returns Err, the thread exits, join completes.
         let (_dummy_tx, dummy_rx) = mpsc::sync_channel::<DecodedFrameMsg>(0);
         let _ = std::mem::replace(&mut self.rx, dummy_rx);
         let _ = self.cmd_tx.send(DecoderCmd::Stop);

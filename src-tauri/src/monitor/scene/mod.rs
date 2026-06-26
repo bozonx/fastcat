@@ -324,7 +324,7 @@ pub struct MonitorScene {
     pub audio_master_gain: f64,
     #[serde(default)]
     pub audio_master_muted: bool,
-    /// Размер композитного кадра. Если 0/отсутствует — берём bounding box из рантаймов.
+    /// Composite frame size. If 0/absent — take the bounding box from the runtimes.
     #[serde(default)]
     pub width: u32,
     #[serde(default)]
@@ -339,7 +339,7 @@ pub struct MonitorScene {
     /// is enough; for 60fps sources specify 60.
     #[serde(default = "default_fps")]
     pub preview_fps: f64,
-    /// Политика синхронизации видео с аудио для preview.
+    /// Video-to-audio synchronization policy for the preview.
     #[serde(default)]
     pub preview_sync_mode: PreviewSyncMode,
     /// Sampling budget for blur-heavy preview effects.
