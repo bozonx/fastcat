@@ -6,7 +6,6 @@ import UiFormField from '~/components/ui/UiFormField.vue';
 
 import UiConfirmModal from '~/components/ui/UiConfirmModal.vue';
 import UiTextInput from '~/components/ui/UiTextInput.vue';
-import { DEFAULT_APP_SETTINGS } from '~/utils/settings/defaults';
 const { t } = useI18n();
 const workspaceStore = useWorkspaceStore();
 
@@ -88,26 +87,12 @@ async function confirmClearWorkspaceVardata() {
   await workspaceStore.clearVardata();
 }
 
-function resetPathDefaults() {
-  workspaceStore.appSettings.paths.placementMode = DEFAULT_APP_SETTINGS.paths.placementMode;
-  workspaceStore.appSettings.paths.contentRootPath = DEFAULT_APP_SETTINGS.paths.contentRootPath;
-  workspaceStore.appSettings.paths.dataRootPath = DEFAULT_APP_SETTINGS.paths.dataRootPath;
-  workspaceStore.appSettings.paths.tempRootPath = DEFAULT_APP_SETTINGS.paths.tempRootPath;
-  workspaceStore.appSettings.paths.proxiesRootPath = DEFAULT_APP_SETTINGS.paths.proxiesRootPath;
-  workspaceStore.appSettings.paths.ephemeralTmpRootPath =
-    DEFAULT_APP_SETTINGS.paths.ephemeralTmpRootPath;
-}
 </script>
 
 <template>
   <div class="flex flex-col gap-6">
-    <div class="flex items-center justify-between gap-3">
-      <div class="text-sm font-medium text-ui-text">
-        {{ t('videoEditor.settings.workspaceStorage') }}
-      </div>
-      <UButton size="xs" color="neutral" variant="ghost" @click="resetPathDefaults">
-        {{ t('videoEditor.settings.resetDefaults') }}
-      </UButton>
+    <div class="text-sm font-medium text-ui-text">
+      {{ t('videoEditor.settings.workspaceStorage') }}
     </div>
 
     <div v-if="isDesktopTauri" class="flex flex-col gap-6">
