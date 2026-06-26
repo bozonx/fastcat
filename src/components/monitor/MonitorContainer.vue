@@ -144,8 +144,11 @@ function onPanelDragStart(e: DragEvent) {
 
 const effectiveFullscreen = computed(() => props.isFullscreen || isBrowserFullscreen.value);
 const shouldTeleport = computed(() => isTauriRuntime() && effectiveFullscreen.value);
+// In Tauri fullscreen the panel is teleported to body, so menu content must be
+// portaled to the panel element to stay in the same window. In web mode, portal
+// to body (true) so Reka UI's outside-click detection works correctly.
 const monitorMenuPortal = computed(() =>
-  effectiveFullscreen.value ? (panelRef.value ?? false) : true,
+  effectiveFullscreen.value && isTauriRuntime() ? (panelRef.value ?? false) : true,
 );
 
 const { capturePanelViewport, restorePanelViewport } = useMonitorFullscreenViewport(projectStore);
@@ -360,6 +363,13 @@ function clearIdleTimeout() {
   }
 }
 
+function blurActiveElementInControls() {
+  const controlsBar = panelRef.value?.querySelector('[data-panel-drag-handle]');
+  if (controlsBar && controlsBar.contains(document.activeElement)) {
+    (document.activeElement as HTMLElement).blur();
+  }
+}
+
 function showControlsTemporary() {
   isIdle.value = false;
   clearIdleTimeout();
@@ -372,6 +382,7 @@ function showControlsTemporary() {
       ) {
         showControlsTemporary();
       } else {
+        blurActiveElementInControls();
         isIdle.value = true;
       }
     }, 3000);
@@ -379,7 +390,13 @@ function showControlsTemporary() {
 }
 
 function hideControlsImmediate() {
+  blurActiveElementInControls();
   isIdle.value = true;
+  clearIdleTimeout();
+}
+
+function keepControlsVisible() {
+  isIdle.value = false;
   clearIdleTimeout();
 }
 
@@ -406,7 +423,17 @@ function handleContainerClick(event: MouseEvent) {
   // Check if click is inside the controls bar (panel)
   const controlsBar = panelRef.value?.querySelector('[data-panel-drag-handle]');
   if (controlsBar && controlsBar.contains(target)) {
-    resetIdleTimeout();
+    // Play button: start delayed hide with animation when playing,
+    // keep visible when paused
+    if (target.closest('[data-monitor-play]')) {
+      if (timelineStore.isPlaying) {
+        showControlsTemporary();
+      } else {
+        keepControlsVisible();
+      }
+    } else {
+      keepControlsVisible();
+    }
     return;
   }
 
@@ -461,6 +488,7 @@ watch(viewportRef, (vp) => {
         :open="isMonitorContextMenuOpen"
         :items="contextMenuItems"
         :portal="monitorMenuPortal"
+        :ui="{ content: 'z-[60]' }"
         @update:open="setMonitorContextMenuOpen"
       >
         <div
@@ -527,8 +555,9 @@ watch(viewportRef, (vp) => {
             <div
               v-if="safeDurationUs > 0"
               class="absolute left-0 right-0 z-30 transition-all duration-300 pointer-events-auto select-none"
+              :inert="effectiveFullscreen && isIdle"
               :class="[
-                effectiveFullscreen && isIdle ? 'opacity-0 pointer-events-none' : 'opacity-100',
+                effectiveFullscreen && isIdle ? 'opacity-0' : 'opacity-100',
                 effectiveFullscreen
                   ? [
                       'px-8 pb-3',
@@ -577,6 +606,7 @@ watch(viewportRef, (vp) => {
           <div
             data-panel-drag-handle
             class="flex flex-wrap items-center justify-center gap-3 border-ui-border shrink-0 transition-all duration-300 select-none"
+            :inert="effectiveFullscreen && isIdle"
             :class="[
               effectiveFullscreen
                 ? [
@@ -594,7 +624,7 @@ watch(viewportRef, (vp) => {
                     'bg-ui-bg-elevated',
                     props.experimentalFeatures ? props.panelDragCursorClass : '',
                   ],
-              effectiveFullscreen && isIdle ? 'opacity-0 pointer-events-none' : 'opacity-100',
+              effectiveFullscreen && isIdle ? 'opacity-0' : 'opacity-100',
               !effectiveFullscreen && toolbarPosition === 'bottom' ? 'border-t' : '',
               !effectiveFullscreen && toolbarPosition === 'top' ? 'border-b' : '',
               !effectiveFullscreen && toolbarPosition === 'right' ? 'border-l' : '',
@@ -603,8 +633,8 @@ watch(viewportRef, (vp) => {
             ]"
             :draggable="!effectiveFullscreen && props.experimentalFeatures"
             @dragstart="props.experimentalFeatures ? onPanelDragStart : undefined"
-            @mouseenter="resetIdleTimeout"
-            @mousemove="resetIdleTimeout"
+            @mouseenter="keepControlsVisible"
+            @mousemove="keepControlsVisible"
           >
             <!-- Left cluster: utility buttons -->
             <template v-if="effectiveFullscreen">
@@ -614,7 +644,7 @@ watch(viewportRef, (vp) => {
                 <UiActionButton
                   size="sm"
                   color="neutral"
-                  variant="solid"
+                  variant="ghost"
                   icon="lucide:minimize"
                   :aria-label="t('fastcat.monitor.exitFullscreen')"
                   @click="exitBrowserFullscreen()"
@@ -670,7 +700,7 @@ watch(viewportRef, (vp) => {
                 :open="isMonitorSyncMenuOpen"
                 :items="monitorSyncMenuItems"
                 :portal="monitorMenuPortal"
-                :ui="{ content: 'min-w-44' }"
+                :ui="{ content: 'min-w-44 z-[60]' }"
                 @update:open="setMonitorSyncMenuOpen"
               >
                 <UButton
@@ -733,6 +763,7 @@ watch(viewportRef, (vp) => {
                 size="md"
                 variant="solid"
                 color="neutral"
+                data-monitor-play
                 class="relative overflow-hidden min-w-8 px-1.5"
                 :aria-label="t('fastcat.monitor.play')"
                 :disabled="!canInteractPlayback"
@@ -793,6 +824,7 @@ watch(viewportRef, (vp) => {
               :open="isMonitorMoreMenuOpen"
               :items="contextMenuItems"
               :portal="monitorMenuPortal"
+              :ui="{ content: 'z-[60]' }"
               @update:open="setMonitorMoreMenuOpen"
             >
               <UButton

@@ -7,6 +7,7 @@ import { DEFAULT_USER_SETTINGS } from '~/utils/settings/defaults';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 
 import { useProjectStore } from '~/stores/project.store';
+import { useTimelineStore } from '~/stores/timeline.store';
 
 // Mock all the monitor-related composables used in MonitorContainer
 vi.mock('~/composables/monitor/useMonitorRuntime', () => ({
@@ -197,7 +198,7 @@ describe('MonitorContainer', () => {
     expect(mockEnterFullscreen).toHaveBeenCalled();
   });
 
-  it('renders monitor menus inside the fullscreen panel', async () => {
+  it('portals monitor menus to body in web fullscreen mode', async () => {
     const contextMenuStub = {
       name: 'UContextMenu',
       props: ['items', 'portal'],
@@ -242,10 +243,10 @@ describe('MonitorContainer', () => {
     await wrapper.vm.$nextTick();
     await wrapper.vm.$nextTick();
 
-    const panel = document.body.querySelector('.panel-focus-frame');
-
-    expect(wrapper.findComponent(contextMenuStub).props('portal')).toBe(panel);
-    expect(wrapper.findComponent(dropdownMenuStub).props('portal')).toBe(panel);
+    // In web mode (non-Tauri), portal should be true (body) so Reka UI's
+    // outside-click detection works correctly in fullscreen
+    expect(wrapper.findComponent(contextMenuStub).props('portal')).toBe(true);
+    expect(wrapper.findComponent(dropdownMenuStub).props('portal')).toBe(true);
   });
 
   it('renders the more menu button with a vertical ellipsis icon', async () => {
@@ -461,13 +462,102 @@ describe('MonitorContainer', () => {
     await viewport.trigger('click');
     expect(controlsBar.classes()).not.toContain('opacity-0');
 
+    // Hovering/moving mouse over controls keeps them visible (no auto-hide timer)
     await controlsBar.trigger('mousemove');
-    vi.advanceTimersByTime(2000);
+    vi.advanceTimersByTime(5000);
     expect(controlsBar.classes()).not.toContain('opacity-0');
 
-    vi.advanceTimersByTime(2000);
+    vi.useRealTimers();
+  });
+
+  it('play click starts delayed hide, other button clicks keep controls visible', async () => {
+    vi.useFakeTimers();
+
+    const timelineStore = useTimelineStore(pinia);
+
+    wrapper = mount(MonitorContainer, {
+      attachTo: document.body,
+      props: {
+        isFullscreen: true,
+      },
+      global: {
+        plugins: [pinia],
+        stubs: {
+          MonitorViewport: {
+            template:
+              '<div class="viewport-stub" v-bind="$attrs"><slot name="canvas" /><slot name="svg-overlay" /><slot /></div>',
+          },
+          MonitorAudioControl: true,
+          UiTooltip: { template: '<div><slot /></div>' },
+          UButton: {
+            template:
+              '<button class="test-btn" @click="$emit(\'click\', $event)"><slot /></button>',
+          },
+          UiActionButton: true,
+          UiToggleButton: true,
+          UDropdownMenu: {
+            props: ['open'],
+            template: '<div class="dropdown-stub"><slot /></div>',
+          },
+          UContextMenu: {
+            props: ['open'],
+            template: '<div class="context-menu-stub"><slot /></div>',
+          },
+          UiContextMenuPortal: true,
+          UIcon: true,
+        },
+      },
+    });
+
+    await wrapper.vm.$nextTick();
+
+    const getFromBody = (selector: string) => {
+      const el = document.body.querySelector(selector);
+      if (!el) throw new Error(`Element ${selector} not found in body`);
+      return new DOMWrapper(el);
+    };
+
+    const controlsBar = getFromBody('[data-panel-drag-handle]');
+
+    // Wait for initial auto-hide
+    vi.advanceTimersByTime(3000);
     await wrapper.vm.$nextTick();
     expect(controlsBar.classes()).toContain('opacity-0');
+
+    // Click viewport to show controls
+    const viewport = getFromBody('.viewport-stub');
+    await viewport.trigger('click');
+    expect(controlsBar.classes()).not.toContain('opacity-0');
+
+    // Click a non-play button (rewind) — controls should stay visible
+    const buttons = controlsBar.findAll('button');
+    const rewindBtn = buttons.find((b) => b.attributes('aria-label') === 'fastcat.monitor.rewind');
+    if (rewindBtn) {
+      await rewindBtn.trigger('click');
+      vi.advanceTimersByTime(5000);
+      expect(controlsBar.classes()).not.toContain('opacity-0');
+    }
+
+    // Click play button — should start delayed hide
+    timelineStore.isPlaying = true;
+    const playBtn = controlsBar.find('[data-monitor-play]');
+    if (playBtn.exists()) {
+      // Controls are still visible from rewind test (keepControlsVisible),
+      // click viewport to hide, then click again to show
+      await viewport.trigger('click');
+      expect(controlsBar.classes()).toContain('opacity-0');
+      await viewport.trigger('click');
+      expect(controlsBar.classes()).not.toContain('opacity-0');
+
+      await playBtn.trigger('click');
+      // Controls still visible immediately after click (animation delay)
+      expect(controlsBar.classes()).not.toContain('opacity-0');
+
+      // After 3s delay, controls hide
+      vi.advanceTimersByTime(3000);
+      await wrapper.vm.$nextTick();
+      expect(controlsBar.classes()).toContain('opacity-0');
+    }
 
     vi.useRealTimers();
   });
