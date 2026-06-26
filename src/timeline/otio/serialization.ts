@@ -145,7 +145,7 @@ export function parseTimeEffects(raw: unknown[]): {
   freezeFrameSourceUs?: number;
 } {
   let speed: number | undefined;
-  let speedActive = false;
+  let speedActive: boolean | undefined;
   let freezeFrameSourceUs: number | undefined;
 
   for (const item of raw) {

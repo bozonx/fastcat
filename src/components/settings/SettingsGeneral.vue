@@ -8,7 +8,6 @@ import UiWheelNumberInput from '~/components/ui/UiWheelNumberInput.vue';
 import UiConfirmModal from '~/components/ui/UiConfirmModal.vue';
 import UiSelect from '~/components/ui/UiSelect.vue';
 import UiAccordion from '~/components/ui/UiAccordion.vue';
-import { clearUiCache } from '~/stores/ui/uiLocalStorage';
 
 const { t } = useI18n();
 const workspaceStore = useWorkspaceStore();
@@ -39,11 +38,6 @@ function resetGeneralDefaults() {
   workspaceStore.userSettings.experimentalFeatures = DEFAULT_USER_SETTINGS.experimentalFeatures;
 
   isResetConfirmOpen.value = false;
-}
-
-function clearCache() {
-  clearUiCache();
-  window.location.reload();
 }
 </script>
 
@@ -221,20 +215,6 @@ function clearCache() {
             />
           </div>
         </UiFormField>
-
-        <div class="flex items-center justify-between gap-3 pt-2">
-          <div class="flex flex-col gap-0.5">
-            <div class="font-medium text-ui-text">
-              {{ t('videoEditor.settings.clearUiCache') }}
-            </div>
-            <div class="text-xs text-ui-text-muted">
-              {{ t('videoEditor.settings.clearUiCacheDesc') }}
-            </div>
-          </div>
-          <UButton size="xs" color="error" variant="soft" @click="clearCache">
-            {{ t('videoEditor.settings.clearCacheAction') }}
-          </UButton>
-        </div>
 
         <label class="flex items-center gap-3 cursor-pointer px-1">
           <UCheckbox v-model="workspaceStore.userSettings.experimentalFeatures" />

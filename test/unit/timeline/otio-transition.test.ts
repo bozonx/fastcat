@@ -1082,7 +1082,12 @@ describe('timeline/otio-serializer: transitions', () => {
     );
     expect(clipNode.metadata.fastcat.audio.gain).toBe(1.1);
     expect(clipNode.metadata.fastcat.visual.opacity).toBe(0.4);
-    expect(clipNode.metadata.fastcat.flags.transformActive).toBeUndefined();
+    expect(clipNode.metadata.fastcat.flags.transformActive).toBe(true);
+    expect(clipNode.metadata.fastcat.flags.speedActive).toBe(true);
+    expect(clipNode.metadata.fastcat.flags.audioFadesActive).toBe(true);
+    expect(clipNode.metadata.fastcat.flags.opacityActive).toBe(true);
+    expect(clipNode.metadata.fastcat.flags.blendModeActive).toBe(true);
+    expect(clipNode.metadata.fastcat.flags.maskActive).toBe(true);
     expect(clipNode.metadata.fastcat.transform.crop).toEqual({
       top: 10,
       bottom: 20,
@@ -1120,15 +1125,14 @@ describe('timeline/otio-serializer: transitions', () => {
     expect(parsedTrack.audioBalance).toBe(-0.25);
     expect(parsedTrack.color).toBe('#123456');
     expect(parsedTrack.locked).toBe(true);
-    // UI-state is no longer written to the portable OTIO document,
-    // but speedActive is restored from the canonical LinearTimeWarp effect.
+    // speedActive is restored from the canonical LinearTimeWarp effect.
     expect(parsedClip.speedActive).toBe(true);
-    expect(parsedClip.audioFadesActive).toBeUndefined();
+    expect(parsedClip.audioFadesActive).toBe(true);
     expect(parsedClip.showThumbnails).toBeUndefined();
-    expect(parsedClip.opacityActive).toBeUndefined();
-    expect(parsedClip.blendModeActive).toBeUndefined();
-    expect(parsedClip.transformActive).toBeUndefined();
-    expect(parsedClip.maskActive).toBeUndefined();
+    expect(parsedClip.opacityActive).toBe(true);
+    expect(parsedClip.blendModeActive).toBe(true);
+    expect(parsedClip.transformActive).toBe(true);
+    expect(parsedClip.maskActive).toBe(true);
     // disabled/ignored unified: ignored was removed, disabled is used instead
     expect(parsedClip.disabled).toBe(true);
     expect(parsedClip.ignored).toBeUndefined();

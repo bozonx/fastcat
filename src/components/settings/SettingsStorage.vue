@@ -6,6 +6,7 @@ import UiFormField from '~/components/ui/UiFormField.vue';
 
 import UiConfirmModal from '~/components/ui/UiConfirmModal.vue';
 import UiTextInput from '~/components/ui/UiTextInput.vue';
+import { clearUiCache } from '~/stores/ui/uiLocalStorage';
 const { t } = useI18n();
 const workspaceStore = useWorkspaceStore();
 
@@ -85,6 +86,11 @@ async function pickDesktopPath(target: 'content' | 'data' | 'temp' | 'proxies' |
 async function confirmClearWorkspaceVardata() {
   isClearWorkspaceVardataConfirmOpen.value = false;
   await workspaceStore.clearVardata();
+}
+
+function clearCache() {
+  clearUiCache();
+  window.location.reload();
 }
 
 </script>
@@ -236,6 +242,27 @@ async function confirmClearWorkspaceVardata() {
         icon="i-heroicons-trash"
         :label="t('videoEditor.settings.clearTempWorkspaceAction')"
         @click="isClearWorkspaceVardataConfirmOpen = true"
+      />
+    </div>
+
+    <div
+      class="flex items-center justify-between gap-3 p-3 rounded border border-ui-border"
+    >
+      <div class="flex flex-col gap-1 min-w-0">
+        <div class="text-sm font-medium text-ui-text">
+          {{ t('videoEditor.settings.clearUiCache') }}
+        </div>
+        <div class="text-xs text-ui-text-muted">
+          {{ t('videoEditor.settings.clearUiCacheDesc') }}
+        </div>
+      </div>
+
+      <UButton
+        color="error"
+        variant="soft"
+        icon="i-heroicons-trash"
+        :label="t('videoEditor.settings.clearCacheAction')"
+        @click="clearCache"
       />
     </div>
   </div>

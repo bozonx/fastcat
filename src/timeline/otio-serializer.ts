@@ -302,6 +302,12 @@ function serializeTrackItems(
           },
           flags: {
             locked: item.locked ? true : undefined,
+            speedActive: item.speedActive ? true : undefined,
+            transformActive: item.transformActive ? true : undefined,
+            audioFadesActive: item.audioFadesActive ? true : undefined,
+            opacityActive: item.opacityActive ? true : undefined,
+            blendModeActive: item.blendModeActive ? true : undefined,
+            maskActive: item.maskActive ? true : undefined,
           },
           links: {
             linkedGroupId: item.linkedGroupId,
