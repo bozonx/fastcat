@@ -7,7 +7,7 @@ import {
   compareHash,
   upsertGoldenSample,
   type GoldenRegistry,
-} from '../../integration/engine-parity/helpers/golden-compare';
+} from './golden-compare';
 
 describe('golden-compare', () => {
   it('loads the shared golden registry', () => {

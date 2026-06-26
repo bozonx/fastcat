@@ -1,9 +1,6 @@
 /** @vitest-environment node */
 import { describe, it, expect, vi, type Mock } from 'vitest';
-import {
-  renderWebFrames,
-  type WebFrameResult,
-} from '../../integration/engine-parity/helpers/web-render';
+import { renderWebFrames, type WebFrameResult } from './web-render';
 import type { Page } from '@playwright/test';
 
 interface MockPage {

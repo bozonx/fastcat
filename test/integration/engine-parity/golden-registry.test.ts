@@ -6,12 +6,9 @@ import {
   loadGoldenRegistry,
   findGoldenEntry,
   findGoldenSample,
-} from '../../integration/engine-parity/helpers/golden-compare';
-import {
-  loadAllScenes,
-  collectSceneMediaPaths,
-} from '../../integration/engine-parity/helpers/scene-loader';
-import { hammingDistance } from '../../integration/engine-parity/helpers/frame-hash';
+} from '../../parity-helpers/golden-compare';
+import { loadAllScenes, collectSceneMediaPaths } from '../../parity-helpers/scene-loader';
+import { hammingDistance } from '../../parity-helpers/frame-hash';
 
 const MEDIA_DIR = resolve(process.cwd(), 'test/fixtures/media');
 

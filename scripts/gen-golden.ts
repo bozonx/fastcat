@@ -20,8 +20,8 @@ import {
   upsertGoldenSample,
   loadGoldenRegistry,
   saveGoldenRegistry,
-} from '../test/integration/engine-parity/helpers/golden-compare';
-import { loadAllScenes } from '../test/integration/engine-parity/helpers/scene-loader';
+} from '../test/parity-helpers/golden-compare';
+import { loadAllScenes } from '../test/parity-helpers/scene-loader';
 
 const E2E_PORT = Number(process.env.E2E_PORT ?? 3007);
 const BASE_URL = process.env.E2E_BASE_URL ?? `http://localhost:${E2E_PORT}`;
@@ -101,8 +101,8 @@ async function ensureDevServer(): Promise<ChildProcess | null> {
 
 async function genWebGolden(): Promise<void> {
   const { chromium } = await import('@playwright/test');
-  const { renderWebFrames } = await import('../test/integration/engine-parity/helpers/web-render');
-  type WebSceneData = import('../test/integration/engine-parity/helpers/web-render').WebSceneData;
+  const { renderWebFrames } = await import('../test/parity-helpers/web-render');
+  type WebSceneData = import('../test/parity-helpers/web-render').WebSceneData;
   const { writeFileToOpfs } = await import('../test/utils/e2e/virtual-fs');
 
   const serverProc = await ensureDevServer();

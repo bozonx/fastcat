@@ -6,7 +6,7 @@ import {
   loadAllScenes,
   collectSceneMediaPaths,
   resolveMediaPath,
-} from '../../integration/engine-parity/helpers/scene-loader';
+} from './scene-loader';
 
 describe('scene-loader', () => {
   it('loads a shared scene fixture', () => {

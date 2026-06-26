@@ -5,7 +5,7 @@ import {
   hammingDistance,
   DEFAULT_TOLERANCE,
   TEXT_SCENE_TOLERANCE,
-} from '../../integration/engine-parity/helpers/frame-hash';
+} from './frame-hash';
 
 function makeRgba(
   width: number,

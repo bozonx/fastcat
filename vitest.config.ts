@@ -18,6 +18,7 @@ export default defineVitestConfig({
       'test/unit/**/*.{test,spec}.ts',
       'test/components/**/*.{test,spec}.{ts,vue}',
       'test/integration/**/*.{test,spec}.ts',
+      'test/parity-helpers/**/*.{test,spec}.ts',
     ],
     setupFiles: ['test/vitest.setup.ts'],
     coverage: {

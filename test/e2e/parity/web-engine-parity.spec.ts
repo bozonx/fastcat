@@ -3,18 +3,15 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { probeWebGpu } from '../../utils/e2e/webgpu';
 import { writeFileToOpfs } from '../../utils/e2e/virtual-fs';
-import {
-  renderWebFrames,
-  type WebSceneData,
-} from '../../integration/engine-parity/helpers/web-render';
+import { renderWebFrames, type WebSceneData } from '../../parity-helpers/web-render';
 import {
   loadGoldenRegistry,
   findGoldenEntry,
   findGoldenSample,
   compareHash,
-} from '../../integration/engine-parity/helpers/golden-compare';
-import { loadAllScenes } from '../../integration/engine-parity/helpers/scene-loader';
-import { computeFrameHash } from '../../integration/engine-parity/helpers/frame-hash';
+} from '../../parity-helpers/golden-compare';
+import { loadAllScenes } from '../../parity-helpers/scene-loader';
+import { computeFrameHash } from '../../parity-helpers/frame-hash';
 
 const MEDIA_DIR = resolve(process.cwd(), 'test/fixtures/media');
 

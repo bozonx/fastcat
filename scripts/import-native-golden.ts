@@ -16,7 +16,7 @@ import {
   loadGoldenRegistry,
   saveGoldenRegistry,
   upsertGoldenSample,
-} from '../test/integration/engine-parity/helpers/golden-compare';
+} from '../test/parity-helpers/golden-compare';
 
 const GOLDEN_RE = /^GOLDEN\[native\]\s+(\S+)\s+t=([\d.]+)\s+hash=([0-9a-f]{16})\s+tolerance=(\d+)/i;
 
