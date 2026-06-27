@@ -601,7 +601,8 @@
       "projectLocation": "Project Location",
       "openProjectDisk": "Open Project from Disk",
       "welcomeTitle": "Create Your First Masterpiece",
-      "welcomeSubtitle": "Your dashboard is empty. Create a new project to start.",
+      "welcomeSubtitleMobile": "Select videos and photos to create a project and start editing.",
+      "selectMediaHint": "You will be prompted to select videos and photos from your gallery",
       "removeFromList": "Remove from list",
       "forgetProjectTitle": "Remove project from list",
       "forgetProjectConfirm": "Are you sure you want to remove the project \"{name}\" from the recent list? The project files will remain on disk.",
@@ -1893,7 +1894,6 @@
       "userIntegrations": "Integrations",
       "userMouse": "Mouse",
       "userProxy": "Proxy",
-      "userSection": "User settings",
       "userUi": "Appearance",
       "userVideo": "Video",
       "audio": {

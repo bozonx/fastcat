@@ -195,7 +195,7 @@ const versions = computed(() => timelineStore.backupVersions);
 
             <!-- Actions -->
             <td class="px-3 py-2 align-middle text-right">
-              <div class="flex items-center justify-end gap-1.5">
+              <div class="flex items-center justify-end gap-[6px]">
                 <!-- Preview / Open -->
                 <UiTooltip
                   v-if="version.type !== 'main'"
@@ -213,7 +213,7 @@ const versions = computed(() => timelineStore.backupVersions);
 
                 <!-- Create Version -->
                 <UiTooltip :text="t('fastcat.timeline.createVersion')">
-                  <UButton
+                  <UiActionButton
                     size="xs"
                     color="primary"
                     variant="ghost"

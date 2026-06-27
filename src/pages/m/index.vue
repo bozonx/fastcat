@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { tryDetectMediaDimensions } from '~/utils/projectMediaDetection';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useProjectActions } from '~/composables/editor/useProjectActions';
 import {
@@ -95,13 +96,16 @@ async function onNewProjectFilesSelected(e: Event) {
 
   pendingFilesForNewProject.value = files;
 
+  // Автоопределение параметров на основе первого видео или изображения
+  const detected = await tryDetectMediaDimensions(files);
+
   const options = {
-    width: 1920,
-    height: 1080,
+    width: detected?.width ?? 1920,
+    height: detected?.height ?? 1080,
     fps: 30,
-    resolutionFormat: '1080p',
-    orientation: 'landscape' as const,
-    aspectRatio: '16:9',
+    resolutionFormat: detected?.resolutionFormat ?? '1080p',
+    orientation: detected?.orientation ?? ('landscape' as const),
+    aspectRatio: detected?.aspectRatio ?? '16:9',
     isCustomResolution: false,
     sampleRate: 48000,
     parentPath:
@@ -307,7 +311,7 @@ const sortedProjects = computed(() => {
                   {{ t('fastcat.projects.welcomeTitle') }}
                 </h2>
                 <p class="text-sm text-ui-text-muted">
-                  {{ t('fastcat.projects.welcomeSubtitle') }}
+                  {{ t('fastcat.projects.welcomeSubtitleMobile') }}
                 </p>
               </div>
               <UButton
@@ -347,6 +351,9 @@ const sortedProjects = computed(() => {
                   >
                     {{ t('fastcat.projects.newProject') }}
                   </UButton>
+                  <span class="text-[11px] text-ui-text-muted/80 text-center block -mt-1 mb-1 font-medium">
+                    {{ t('fastcat.projects.selectMediaHint') }}
+                  </span>
                   <UButton
                     v-if="workspaceStore.workspaceProviderId === 'tauri'"
                     block
