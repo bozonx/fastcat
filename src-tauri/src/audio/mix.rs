@@ -1036,6 +1036,90 @@ mod tests {
     use super::*;
     use crate::monitor::scene::{AudioFadeCurve, SceneAudioLayer, SceneAudioTrack};
 
+    // ------------------------------------------------------------------
+    // Cross-engine parity fixtures (shared with the web audio tract)
+    // ------------------------------------------------------------------
+
+    /// Cross-engine parity contract. This test and the web test
+    /// `test/unit/utils/video-editor/stereo-pan-matrix.parity.test.ts` read the
+    /// SAME fixture, so `stereo_pan_matrix` and the web `getStereoPanMatrix`
+    /// (src/workers/core/audio-dsp.ts) can never drift apart on the equal-power
+    /// pan/balance law. Non-finite balance is intentionally excluded: the web
+    /// engine sanitizes it to centre, native assumes the scene DTO already did.
+    #[test]
+    fn stereo_pan_matrix_matches_shared_parity_fixture() {
+        const FIXTURE: &str = include_str!("../../../shared/parity/stereo-pan-matrix.cases.json");
+        let parsed: serde_json::Value =
+            serde_json::from_str(FIXTURE).expect("valid parity fixture json");
+        let cases = parsed["cases"].as_array().expect("cases array");
+        assert!(!cases.is_empty(), "fixture has cases");
+        for c in cases {
+            let name = c["name"].as_str().unwrap_or("?");
+            let balance = c["balance"].as_f64().unwrap();
+            let (ll, lr, rl, rr) = stereo_pan_matrix(balance);
+            assert!((ll - c["ll"].as_f64().unwrap()).abs() < 1e-9, "case `{name}` ll");
+            assert!((lr - c["lr"].as_f64().unwrap()).abs() < 1e-9, "case `{name}` lr");
+            assert!((rl - c["rl"].as_f64().unwrap()).abs() < 1e-9, "case `{name}` rl");
+            assert!((rr - c["rr"].as_f64().unwrap()).abs() < 1e-9, "case `{name}` rr");
+        }
+    }
+
+    /// Cross-engine parity contract — pairs with the web test
+    /// `test/unit/utils/video-editor/audio-fade-curve.parity.test.ts` (the web
+    /// curve is exercised there through `getGainAtClipTime`). `fade_curve` and the
+    /// web `applyFadeCurve` map [0,1]-clamped progress to the same gain.
+    #[test]
+    fn fade_curve_matches_shared_parity_fixture() {
+        const FIXTURE: &str = include_str!("../../../shared/parity/audio-fade-curve.cases.json");
+        let parsed: serde_json::Value =
+            serde_json::from_str(FIXTURE).expect("valid parity fixture json");
+        let cases = parsed["cases"].as_array().expect("cases array");
+        assert!(!cases.is_empty(), "fixture has cases");
+        for c in cases {
+            let name = c["name"].as_str().unwrap_or("?");
+            let curve = match c["curve"].as_str().unwrap() {
+                "logarithmic" => AudioFadeCurve::Logarithmic,
+                _ => AudioFadeCurve::Linear,
+            };
+            let progress = c["progress"].as_f64().unwrap();
+            let gain = fade_curve(progress, curve);
+            assert!(
+                (gain - c["gain"].as_f64().unwrap()).abs() < 1e-9,
+                "case `{name}` gain"
+            );
+        }
+    }
+
+    /// Cross-engine parity contract — pairs with the web test
+    /// `test/unit/utils/video-editor/audio-effective-fades.parity.test.ts`.
+    /// `effective_fades` and the web `computeFadeDurationsSeconds` clamp-then-
+    /// proportionally-scale overlapping fades identically.
+    #[test]
+    fn effective_fades_matches_shared_parity_fixture() {
+        const FIXTURE: &str =
+            include_str!("../../../shared/parity/audio-effective-fades.cases.json");
+        let parsed: serde_json::Value =
+            serde_json::from_str(FIXTURE).expect("valid parity fixture json");
+        let cases = parsed["cases"].as_array().expect("cases array");
+        assert!(!cases.is_empty(), "fixture has cases");
+        for c in cases {
+            let name = c["name"].as_str().unwrap_or("?");
+            let duration = c["durationS"].as_f64().unwrap();
+            let mut l = layer();
+            l.audio_fade_in_sec = c["fadeInS"].as_f64().unwrap();
+            l.audio_fade_out_sec = c["fadeOutS"].as_f64().unwrap();
+            let (fade_in, fade_out) = effective_fades(&l, duration);
+            assert!(
+                (fade_in - c["expectedFadeInS"].as_f64().unwrap()).abs() < 1e-9,
+                "case `{name}` fadeIn"
+            );
+            assert!(
+                (fade_out - c["expectedFadeOutS"].as_f64().unwrap()).abs() < 1e-9,
+                "case `{name}` fadeOut"
+            );
+        }
+    }
+
     fn layer() -> SceneAudioLayer {
         SceneAudioLayer {
             id: "a1".into(),

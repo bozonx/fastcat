@@ -1,0 +1,20 @@
+{
+  "_comment": "Cross-engine parity fixture for the per-sample audio fade-curve gain multiplier. Read by web test test/unit/utils/video-editor/audio-fade-curve.parity.test.ts (applyFadeCurve via getGainAtClipTime, src/utils/audio/envelope.ts) AND Rust test audio::mix::tests::fade_curve_matches_shared_parity_fixture (fade_curve, src-tauri/src/audio/mix.rs). progress is clamped to [0,1] on both sides; 'linear' returns the clamped progress, 'logarithmic' returns sin(progress * PI/2). Both engines map any unknown/missing curve string to 'linear'.",
+  "epsilon": 1e-9,
+  "cases": [
+    { "name": "linear-start", "curve": "linear", "progress": 0, "gain": 0 },
+    { "name": "linear-quarter", "curve": "linear", "progress": 0.25, "gain": 0.25 },
+    { "name": "linear-half", "curve": "linear", "progress": 0.5, "gain": 0.5 },
+    { "name": "linear-three-quarter", "curve": "linear", "progress": 0.75, "gain": 0.75 },
+    { "name": "linear-end", "curve": "linear", "progress": 1, "gain": 1 },
+    { "name": "linear-clamps-below-zero", "curve": "linear", "progress": -0.5, "gain": 0 },
+    { "name": "linear-clamps-above-one", "curve": "linear", "progress": 1.5, "gain": 1 },
+    { "name": "log-start", "curve": "logarithmic", "progress": 0, "gain": 0 },
+    { "name": "log-quarter", "curve": "logarithmic", "progress": 0.25, "gain": 0.3826834323650898 },
+    { "name": "log-half", "curve": "logarithmic", "progress": 0.5, "gain": 0.7071067811865475 },
+    { "name": "log-three-quarter", "curve": "logarithmic", "progress": 0.75, "gain": 0.9238795325112867 },
+    { "name": "log-end", "curve": "logarithmic", "progress": 1, "gain": 1 },
+    { "name": "log-clamps-below-zero", "curve": "logarithmic", "progress": -0.5, "gain": 0 },
+    { "name": "log-clamps-above-one", "curve": "logarithmic", "progress": 1.5, "gain": 1 }
+  ]
+}

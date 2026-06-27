@@ -1,0 +1,13 @@
+{
+  "_comment": "Cross-engine parity fixture for resolving effective fade-in/out durations. Each fade is first clamped to [0, clipDuration]; if the two together still exceed the clip duration they are scaled down proportionally (by clipDuration / sum) so they meet at a point instead of overlapping and multiplying. Read by web test test/unit/utils/video-editor/audio-effective-fades.parity.test.ts (computeFadeDurationsSeconds, src/utils/audio/envelope.ts) AND Rust test audio::mix::tests::effective_fades_matches_shared_parity_fixture (effective_fades, src-tauri/src/audio/mix.rs). All durations in seconds. A zero/negative clip duration yields (0,0) on both sides.",
+  "epsilon": 1e-9,
+  "cases": [
+    { "name": "fades-fit", "durationS": 10, "fadeInS": 2, "fadeOutS": 2, "expectedFadeInS": 2, "expectedFadeOutS": 2 },
+    { "name": "no-fades", "durationS": 10, "fadeInS": 0, "fadeOutS": 0, "expectedFadeInS": 0, "expectedFadeOutS": 0 },
+    { "name": "asymmetric-overlap-scales-proportionally", "durationS": 10, "fadeInS": 6, "fadeOutS": 9, "expectedFadeInS": 4, "expectedFadeOutS": 6 },
+    { "name": "symmetric-overlap-meets-at-center", "durationS": 10, "fadeInS": 12, "fadeOutS": 12, "expectedFadeInS": 5, "expectedFadeOutS": 5 },
+    { "name": "single-fade-clamped-to-duration", "durationS": 5, "fadeInS": 10, "fadeOutS": 0, "expectedFadeInS": 5, "expectedFadeOutS": 0 },
+    { "name": "exactly-fills-no-scaling", "durationS": 8, "fadeInS": 5, "fadeOutS": 3, "expectedFadeInS": 5, "expectedFadeOutS": 3 },
+    { "name": "zero-duration-yields-zero", "durationS": 0, "fadeInS": 5, "fadeOutS": 5, "expectedFadeInS": 0, "expectedFadeOutS": 0 }
+  ]
+}
