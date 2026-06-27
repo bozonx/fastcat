@@ -38,7 +38,15 @@ const tabOptions = computed(() => {
           {{ projectStore.currentProjectName || t('navigation.settings') }}
         </h2>
       </div>
-      <UTabs v-model="activeTab" :items="tabOptions" variant="link" :content="false" />
+      <div class="overflow-x-auto [scrollbar-width:none] -mx-4 px-4">
+        <UTabs
+          v-model="activeTab"
+          :items="tabOptions"
+          variant="link"
+          :content="false"
+          class="min-w-max"
+        />
+      </div>
     </div>
 
     <!-- Project Settings -->

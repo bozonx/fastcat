@@ -219,6 +219,14 @@ const mediaMeta = computed(() => {
   return mediaStore.getCachedMetadata(props.clip.source.path) || null;
 });
 
+const MOBILE_HIDDEN_ACTION_IDS = new Set(['showInFileManager', 'replaceMedia']);
+
+const visibleOtherActionsList = computed(() =>
+  isMobile.value
+    ? otherActionsList.value.filter((a) => !MOBILE_HIDDEN_ACTION_IDS.has(a.id))
+    : otherActionsList.value,
+);
+
 function handleUpdateStartTime(val: number) {
   const newStartUs = Math.max(0, Math.round(val));
   if (newStartUs === props.clip.timelineRange.startUs) return;
@@ -476,7 +484,7 @@ defineExpose({
       <ClipActionsSection
         v-if="!hideActions"
         :common-actions="isMobile ? [] : commonActionsList"
-        :other-actions="otherActionsList"
+        :other-actions="visibleOtherActionsList"
         @rename="isUiRenameModalOpen = true"
         @copy="handleCopyClip"
         @cut="handleCutClip"
@@ -499,7 +507,7 @@ defineExpose({
       <ClipActionsSection
         v-if="!hideActions"
         :common-actions="isMobile ? [] : commonActionsList"
-        :other-actions="otherActionsList"
+        :other-actions="visibleOtherActionsList"
         @rename="isUiRenameModalOpen = true"
         @copy="handleCopyClip"
         @cut="handleCutClip"

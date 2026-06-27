@@ -89,7 +89,6 @@ async function handleItemClick(itemId: NavItem['id']) {
         @click="handleItemClick(item.id)"
       >
         <Icon :name="item.icon" class="w-6 h-6 shrink-0" />
-        <span class="text-[10px] font-medium truncate w-full px-0.5">{{ item.label }}</span>
       </button>
     </div>
   </nav>

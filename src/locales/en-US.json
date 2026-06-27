@@ -1169,8 +1169,8 @@
       "audioBitrateHelp": "Target audio bitrate.",
       "audioCodec": "Audio codec",
       "bitrateMode": "Bitrate Mode",
-      "bitrateModeCbr": "CBR",
-      "bitrateModeVbr": "VBR",
+      "bitrateModeCbr": "CBR (Constant)",
+      "bitrateModeVbr": "VBR (Variable)",
       "codec": {
         "aac": "AAC",
         "opus": "Opus"
@@ -1858,7 +1858,7 @@
       "snapThresholdDefault": "Snap threshold (px)",
       "snapToClips": "Clips",
       "snapToMarkers": "Markers",
-      "snapToPlayhead": "Playhead",
+      "snapToPlayhead": "Clip to playhead",
       "snapPlayheadOnClick": "Snap playhead on click",
       "snapToSelection": "Selection",
       "snapToTargets": "Snap to",

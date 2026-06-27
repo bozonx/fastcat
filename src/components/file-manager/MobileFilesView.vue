@@ -31,7 +31,9 @@ watch(experimentalFeatures, (enabled) => {
 <template>
   <div class="flex h-full w-full flex-col landscape:flex-row">
     <!-- Tab switcher: horizontal on top (portrait), vertical on the left (landscape) -->
+    <!-- Hidden when only one tab remains (e.g. experimental features off = Assets only) -->
     <div
+      v-if="tabs.length > 1"
       class="shrink-0 border-b border-ui-border bg-ui-bg/95 backdrop-blur landscape:border-b-0 landscape:border-r landscape:h-full landscape:w-24"
     >
       <div

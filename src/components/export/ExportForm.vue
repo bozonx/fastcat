@@ -287,10 +287,13 @@ const filenamePlaceholder = computed(() =>
             {{ resolutionSummary }}
           </div>
 
-          <div class="flex items-center gap-3">
-            <UCheckbox v-model="matchTimeline" :disabled="isExporting" />
-            <span class="text-ui-text text-sm">{{ t('videoEditor.export.matchTimeline') }}</span>
-          </div>
+          <UCheckbox
+            v-model="matchTimeline"
+            :disabled="isExporting"
+            :label="t('videoEditor.export.matchTimeline')"
+            :ui="{ label: 'text-sm text-ui-text' }"
+            class="cursor-pointer"
+          />
 
           <MediaResolutionSettings
             v-show="!matchTimeline"
@@ -360,10 +363,13 @@ const filenamePlaceholder = computed(() =>
         <div class="space-y-4">
           <UiFormSectionHeader :title="t('videoEditor.export.metadata')" />
 
-          <div class="flex items-center gap-3">
-            <UCheckbox v-model="includeMetadata" :disabled="isExporting" />
-            <span class="text-ui-text text-sm">{{ t('videoEditor.export.includeMetadata') }}</span>
-          </div>
+          <UCheckbox
+            v-model="includeMetadata"
+            :disabled="isExporting"
+            :label="t('videoEditor.export.includeMetadata')"
+            :ui="{ label: 'text-sm text-ui-text' }"
+            class="cursor-pointer"
+          />
 
           <div v-if="includeMetadata" class="space-y-4 pt-2">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">

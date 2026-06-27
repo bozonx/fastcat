@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import UiWheelNumberInput from '~/components/ui/UiWheelNumberInput.vue';
-import UiSelect from '~/components/ui/UiSelect.vue';
 
 const props = defineProps<{
   modelValue: number;
@@ -25,9 +24,12 @@ const fpsPresets = [
 
 const displayValue = computed(() => parseFloat(props.modelValue.toFixed(3)));
 
-function selectPreset(value: number) {
-  emit('update:modelValue', value);
-}
+const dropdownItems = computed(() =>
+  fpsPresets.map((p) => ({
+    label: p.label,
+    onSelect: () => emit('update:modelValue', p.value),
+  })),
+);
 </script>
 
 <template>
@@ -42,16 +44,19 @@ function selectPreset(value: number) {
       full-width
       @update:model-value="(v) => emit('update:modelValue', v)"
     />
-    <UiSelect
-      :model-value="displayValue"
-      :items="fpsPresets"
+    <UDropdownMenu
+      :items="dropdownItems"
       :disabled="disabled"
-      size="sm"
-      value-key="value"
-      label-key="label"
-      :search-input="false"
-      class="w-24"
-      @update:model-value="(v) => selectPreset(v as number)"
-    />
+      :ui="{ content: 'min-w-20' }"
+    >
+      <UButton
+        size="sm"
+        variant="ghost"
+        color="neutral"
+        icon="i-heroicons-chevron-down"
+        :disabled="disabled"
+        class="h-8 w-8 shrink-0"
+      />
+    </UDropdownMenu>
   </div>
 </template>

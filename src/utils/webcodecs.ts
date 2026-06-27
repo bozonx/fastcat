@@ -13,9 +13,9 @@ export type AudioCodecOption = CodecOption;
 export type AudioCodecOptionResolved = VideoCodecOptionResolved;
 
 export const BASE_VIDEO_CODEC_OPTIONS: readonly VideoCodecOption[] = [
-  { value: 'avc1.640032', label: 'H.264 (High)' },
-  { value: 'vp09.00.10.08', label: 'VP9' },
   { value: 'av01.0.05M.08', label: 'AV1' },
+  { value: 'vp09.00.10.08', label: 'VP9' },
+  { value: 'avc1.640032', label: 'H.264 (High)' },
 ];
 
 export const VIDEO_FORMAT_OPTIONS = [

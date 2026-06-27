@@ -51,7 +51,7 @@ watch(() => [props.projectId, props.projectRelativePath], load);
 <template>
   <div
     class="relative w-full h-full bg-zinc-900 flex items-center justify-center overflow-hidden group"
-    :class="[variant === 'desktop' ? 'aspect-video' : 'aspect-3/4']"
+    :class="[variant === 'desktop' ? 'aspect-video' : '']"
   >
     <img
       v-if="url"

@@ -1169,8 +1169,8 @@
       "audioBitrateHelp": "Целевой битрейт аудио.",
       "audioCodec": "Аудио кодек",
       "bitrateMode": "Режим битрейта",
-      "bitrateModeCbr": "Постоянный (CBR)",
-      "bitrateModeVbr": "Переменный (VBR)",
+      "bitrateModeCbr": "CBR (Постоянный)",
+      "bitrateModeVbr": "VBR (Переменный)",
       "codec": {
         "aac": "AAC",
         "opus": "Opus"
@@ -1858,7 +1858,7 @@
       "snapThresholdDefault": "Порог привязки (px)",
       "snapToClips": "Клипам",
       "snapToMarkers": "Маркерам",
-      "snapToPlayhead": "Плейхеду",
+      "snapToPlayhead": "Клип к плейхеду",
       "snapPlayheadOnClick": "Привязывать плейхед при клике",
       "snapToSelection": "Выделению",
       "snapToTargets": "Привязываться к",
