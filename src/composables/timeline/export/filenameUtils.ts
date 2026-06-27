@@ -46,14 +46,20 @@ export function resolveNextAvailableFilename(
   base: string,
   ext: string,
 ): string {
-  const normalizedBase = sanitizeBaseName(base);
+  const sanitized = sanitizeBaseName(base);
   const normalizedExt = String(ext).replace(/^\.+/, '').toLowerCase();
 
-  const direct = `${normalizedBase}.${normalizedExt}`;
-  if (normalizedBase && normalizedExt && !existingNames.has(direct)) return direct;
+  // Peel off an existing trailing `_NNN` counter so we increment it instead of
+  // appending a second one (e.g. `clip_001` -> `clip_002`, not `clip_001_001`).
+  const counterMatch = sanitized.match(/^(.*)_(\d{3,})$/);
+  const normalizedBase = counterMatch ? counterMatch[1] : sanitized;
+  const startIndex = counterMatch ? Number(counterMatch[2]) + 1 : 1;
 
-  let index = 1;
-  while (index < 1000) {
+  const direct = `${sanitized}.${normalizedExt}`;
+  if (sanitized && normalizedExt && !existingNames.has(direct)) return direct;
+
+  let index = startIndex;
+  while (index < startIndex + 1000) {
     const candidate = `${normalizedBase}_${String(index).padStart(3, '0')}.${normalizedExt}`;
     if (!existingNames.has(candidate)) return candidate;
     index++;
