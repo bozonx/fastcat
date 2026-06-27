@@ -2,3 +2,9 @@
 # will have compiled files and executables
 /target/
 /gen/schemas
+
+# Environment variables
+.env
+.env.*
+!.env.example
+!.env.*.example
