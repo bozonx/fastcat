@@ -36,7 +36,12 @@
         "effects": [
           {
             "type": "chroma-key",
-            "key_rgba": [0, 0, 0, 255],
+            "key_rgba": [
+              0,
+              0,
+              0,
+              255
+            ],
             "threshold": 0.2,
             "smoothness": 0.1
           }
@@ -56,6 +61,8 @@
     "master_effects": [],
     "audio_master_effects": []
   },
-  "sample_times_sec": [0.5],
-  "tolerance": 20
+  "sample_times_sec": [
+    0.5
+  ],
+  "tolerance": 12
 }

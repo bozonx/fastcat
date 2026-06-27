@@ -151,6 +151,12 @@ struct GoldenRegistry {
     entries: Vec<GoldenEntry>,
 }
 
+/// Explicit sentinel for a not-yet-generated golden hash. Distinct from a real
+/// all-zero aHash (`0000000000000000`), which is the legitimate hash of a
+/// *uniform* frame (e.g. a transition resolved to a solid background) and is
+/// validated normally via its colour signature.
+const PENDING_HASH: &str = "pending";
+
 fn load_golden_registry() -> GoldenRegistry {
     let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("../shared/golden/frames.json");
@@ -178,12 +184,22 @@ fn default_tolerance() -> usize {
     DEFAULT_TOLERANCE
 }
 
+fn default_color_tolerance() -> usize {
+    DEFAULT_COLOR_TOLERANCE
+}
+
 #[derive(Debug, Deserialize)]
 struct SceneFixture {
     scene: serde_json::Value,
     sample_times_sec: Vec<f64>,
     #[serde(default = "default_tolerance")]
     tolerance: usize,
+    /// Per-scene cross-engine colour-signature tolerance. A handful of scenes
+    /// (vector shapes, adjustment layers, heavy transforms) render with
+    /// genuinely different mean colour between web (pixi) and native (vello) and
+    /// raise this to document that divergence. Defaults to the global ceiling.
+    #[serde(default = "default_color_tolerance")]
+    color_tolerance: usize,
 }
 
 fn scenes_dir() -> PathBuf {
@@ -393,8 +409,8 @@ fn native_engine_parity_renders_all_scenes() {
             // Look up golden entry for this scene + native engine.
             if let Some(entry) = find_golden(&registry, &scene_def.filename, "native") {
                 if let Some(golden) = entry.samples.iter().find(|s| (s.time_sec - time_sec).abs() < 1e-6) {
-                    // Treat placeholder hashes as "no golden yet" — print for import.
-                    if golden.hash == "0000000000000000" {
+                    // Treat pending hashes as "no golden yet" — print for import.
+                    if golden.hash == PENDING_HASH {
                         eprintln!(
                             "GOLDEN[native] {} t={time_sec} hash={hash} colorSig={color_sig} tolerance={}",
                             scene_def.filename, scene_def.tolerance,
@@ -495,8 +511,8 @@ fn native_engine_cross_engine_parity_vs_web_golden() {
 
             // Compare native hash against web golden hash.
             if let Some(web_sample) = web_entry.samples.iter().find(|s| (s.time_sec - time_sec).abs() < 1e-6) {
-                // Skip placeholder hashes — they haven't been generated yet.
-                if web_sample.hash == "0000000000000000" {
+                // Skip pending hashes — they haven't been generated yet.
+                if web_sample.hash == PENDING_HASH {
                     eprintln!(
                         "GOLDEN[native] {} t={time_sec} hash={native_hash} colorSig={native_sig} tolerance={}",
                         scene_def.filename, scene_def.tolerance,
@@ -516,11 +532,12 @@ fn native_engine_cross_engine_parity_vs_web_golden() {
 
                 // Cross-engine colour parity (catches hue divergence between engines).
                 if let Some(web_sig) = &web_sample.color_sig {
+                    let color_tol = fixture.color_tolerance;
                     let color_dist = color_signature_distance(&native_sig, web_sig);
                     assert!(
-                        color_dist <= DEFAULT_COLOR_TOLERANCE,
+                        color_dist <= color_tol,
                         "cross-engine color mismatch for \"{}\" at t={time_sec}s: \
-                         distance={color_dist} tolerance={DEFAULT_COLOR_TOLERANCE} \
+                         distance={color_dist} tolerance={color_tol} \
                          native={native_sig} web={web_sig}",
                         scene_def.filename,
                     );
@@ -529,8 +546,8 @@ fn native_engine_cross_engine_parity_vs_web_golden() {
 
             // Also verify native hash matches its own golden.
             if let Some(native_sample) = native_entry.samples.iter().find(|s| (s.time_sec - time_sec).abs() < 1e-6) {
-                // Skip placeholder native hashes.
-                if native_sample.hash == "0000000000000000" {
+                // Skip pending native hashes.
+                if native_sample.hash == PENDING_HASH {
                     continue;
                 }
                 let distance = hamming_distance(&native_hash, &native_sample.hash);

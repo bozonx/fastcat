@@ -1,13 +1,15 @@
 {
   "_comment": [
-    "Cross-engine parity scene: a solid background with a circle shape on top.",
-    "Tests that vector shape rendering (geometry + fill + stroke) matches between",
-    "web (PixiJS Graphics) and native (vello path rendering)."
+    "Cross-engine parity scene: a full-frame image with a single hue effect.",
+    "Split out from effects-extra so a regression in this one effect moves the",
+    "perceptual hash past a tight tolerance instead of hiding in a 10-tile grid."
   ],
   "scene": {
+    "width": 320,
+    "height": 240,
     "layers": [
       {
-        "id": "bg-shape",
+        "id": "bg",
         "kind": "background",
         "path": "",
         "timeline_start_sec": 0.0,
@@ -18,13 +20,13 @@
         "z": 0,
         "opacity": 1.0,
         "blend_mode": "normal",
-        "background_color": "#1a1a2e",
+        "background_color": "#000000",
         "effects": []
       },
       {
-        "id": "shape-circle",
-        "kind": "shape",
-        "path": "",
+        "id": "img-fx",
+        "kind": "image",
+        "path": "image/image.jpg",
         "timeline_start_sec": 0.0,
         "timeline_end_sec": 1.0,
         "source_start_sec": 0.0,
@@ -33,15 +35,12 @@
         "z": 1,
         "opacity": 1.0,
         "blend_mode": "normal",
-        "shape_type": "circle",
-        "fill_color": "#ff6600",
-        "stroke_color": "#ffffff",
-        "stroke_width": 2,
-        "shape_config": {
-          "squashX": 0,
-          "squashY": 0
-        },
-        "effects": []
+        "effects": [
+          {
+            "type": "hue",
+            "degrees": 180
+          }
+        ]
       }
     ],
     "video_tracks": [],
@@ -49,8 +48,6 @@
     "audio_tracks": [],
     "audio_master_gain": 1.0,
     "audio_master_muted": false,
-    "width": 320,
-    "height": 240,
     "preview_fps": 30.0,
     "preview_sync_mode": "balanced",
     "preview_effect_quality": "high",
@@ -59,9 +56,8 @@
     "master_effects": [],
     "audio_master_effects": []
   },
-  "tolerance": 32,
+  "tolerance": 12,
   "sample_times_sec": [
     0.5
-  ],
-  "color_tolerance": 700
+  ]
 }

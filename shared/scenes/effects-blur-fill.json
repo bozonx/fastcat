@@ -41,7 +41,12 @@
             "blur": 40,
             "bg_dim": 0.7,
             "bg_saturation": 0.5,
-            "tint_color": [255, 0, 0, 255],
+            "tint_color": [
+              255,
+              0,
+              0,
+              255
+            ],
             "tint_strength": 0.2,
             "fg_offset_y": 0
           }
@@ -61,6 +66,8 @@
     "master_effects": [],
     "audio_master_effects": []
   },
-  "sample_times_sec": [0.5],
-  "tolerance": 20
+  "sample_times_sec": [
+    0.5
+  ],
+  "tolerance": 12
 }

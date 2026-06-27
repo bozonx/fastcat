@@ -16,6 +16,14 @@ export interface SceneFixture {
    * rasterization divergence between web and native.
    */
   tolerance: number;
+  /**
+   * Maximum L1 distance allowed between engine *colour signatures* in the
+   * cross-engine comparison. Optional; defaults to `DEFAULT_COLOR_TOLERANCE`.
+   * A few scenes (vector shapes, adjustment layers, heavy transforms) render
+   * with genuinely different mean colour between the pixi and vello engines and
+   * set a higher value to document that known divergence.
+   */
+  color_tolerance?: number;
 }
 
 const SCENES_DIR = resolve(process.cwd(), 'shared/scenes');

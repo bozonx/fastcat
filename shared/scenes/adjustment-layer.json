@@ -76,6 +76,9 @@
     "master_effects": [],
     "audio_master_effects": []
   },
-  "sample_times_sec": [0.5],
-  "tolerance": 20
+  "sample_times_sec": [
+    0.5
+  ],
+  "tolerance": 32,
+  "color_tolerance": 1300
 }

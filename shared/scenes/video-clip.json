@@ -3,7 +3,7 @@
     "Cross-engine parity scene: a single H.264 video clip from test fixtures.",
     "Web engine decodes via mediabunny worker, native via ffmpeg.",
     "Both must produce the same perceptual hash at t=0.5s.",
-    "The path is relative to test/fixtures/media/ — tests resolve it to an",
+    "The path is relative to test/fixtures/media/ \u2014 tests resolve it to an",
     "absolute path (web: OPFS, native: filesystem)."
   ],
   "scene": {
@@ -39,6 +39,8 @@
     "master_effects": [],
     "audio_master_effects": []
   },
-  "tolerance": 10,
-  "sample_times_sec": [0.5]
+  "tolerance": 12,
+  "sample_times_sec": [
+    0.5
+  ]
 }

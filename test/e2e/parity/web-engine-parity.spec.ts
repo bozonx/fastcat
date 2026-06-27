@@ -10,11 +10,10 @@ import {
   findGoldenSample,
   compareHash,
   compareColorSig,
+  isPendingHash,
 } from '../../parity-helpers/golden-compare';
 import { loadAllScenes } from '../../parity-helpers/scene-loader';
 import { computeFrameHash } from '../../parity-helpers/frame-hash';
-
-const PLACEHOLDER = '0000000000000000';
 
 const MEDIA_DIR = resolve(process.cwd(), 'test/fixtures/media');
 
@@ -112,7 +111,7 @@ test.describe('Web engine parity @parity', () => {
         // stored native golden. This is the real web-side parity assertion — the
         // separate cross-engine test below only compares two stored numbers.
         const nativeGolden = nativeEntry ? findGoldenSample(nativeEntry, timeSec) : undefined;
-        if (nativeGolden && nativeGolden.hash !== PLACEHOLDER) {
+        if (nativeGolden && !isPendingHash(nativeGolden.hash)) {
           const crossTol = Math.max(nativeGolden.tolerance, golden!.tolerance, tolerance);
           const crossMatch = compareHash(result.hash, nativeGolden.hash, crossTol);
           expect(
@@ -123,7 +122,11 @@ test.describe('Web engine parity @parity', () => {
           ).toBe(true);
 
           if (nativeGolden.colorSig) {
-            const crossColor = compareColorSig(result.colorSig, nativeGolden.colorSig);
+            const crossColor = compareColorSig(
+              result.colorSig,
+              nativeGolden.colorSig,
+              fixture.color_tolerance,
+            );
             expect(
               crossColor.pass,
               `live web vs native color mismatch for "${filename}" at t=${timeSec}s: ` +
@@ -156,8 +159,8 @@ test.describe('Web engine parity @parity', () => {
         const nativeSample = findGoldenSample(nativeEntry, webSample.timeSec);
         if (!nativeSample) continue;
 
-        // Skip placeholder hashes — they haven't been generated yet.
-        if (webSample.hash === PLACEHOLDER || nativeSample.hash === PLACEHOLDER) continue;
+        // Skip pending hashes — they haven't been generated yet.
+        if (isPendingHash(webSample.hash) || isPendingHash(nativeSample.hash)) continue;
 
         const match = compareHash(
           webSample.hash,
@@ -173,7 +176,11 @@ test.describe('Web engine parity @parity', () => {
         ).toBe(true);
 
         if (webSample.colorSig && nativeSample.colorSig) {
-          const colorMatch = compareColorSig(webSample.colorSig, nativeSample.colorSig);
+          const colorMatch = compareColorSig(
+            webSample.colorSig,
+            nativeSample.colorSig,
+            fixture.color_tolerance,
+          );
           expect(
             colorMatch.pass,
             `cross-engine color mismatch for "${filename}" at t=${webSample.timeSec}s: ` +

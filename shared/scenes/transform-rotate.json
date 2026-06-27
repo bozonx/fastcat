@@ -1,13 +1,14 @@
 {
   "_comment": [
-    "Cross-engine parity scene: a solid background with a circle shape on top.",
-    "Tests that vector shape rendering (geometry + fill + stroke) matches between",
-    "web (PixiJS Graphics) and native (vello path rendering)."
+    "Cross-engine parity scene: an image rotated 30 degrees (no scale/crop).",
+    "Isolates rotation rasterization, a classic web(pixi) vs native(vello) divergence point."
   ],
   "scene": {
+    "width": 320,
+    "height": 240,
     "layers": [
       {
-        "id": "bg-shape",
+        "id": "bg",
         "kind": "background",
         "path": "",
         "timeline_start_sec": 0.0,
@@ -18,13 +19,13 @@
         "z": 0,
         "opacity": 1.0,
         "blend_mode": "normal",
-        "background_color": "#1a1a2e",
+        "background_color": "#101820",
         "effects": []
       },
       {
-        "id": "shape-circle",
-        "kind": "shape",
-        "path": "",
+        "id": "img-rot",
+        "kind": "image",
+        "path": "image/image.jpg",
         "timeline_start_sec": 0.0,
         "timeline_end_sec": 1.0,
         "source_start_sec": 0.0,
@@ -33,13 +34,18 @@
         "z": 1,
         "opacity": 1.0,
         "blend_mode": "normal",
-        "shape_type": "circle",
-        "fill_color": "#ff6600",
-        "stroke_color": "#ffffff",
-        "stroke_width": 2,
-        "shape_config": {
-          "squashX": 0,
-          "squashY": 0
+        "transform": {
+          "x": 160,
+          "y": 120,
+          "scale_x": 1.0,
+          "scale_y": 1.0,
+          "rotation_deg": 30,
+          "anchor_x": 0.5,
+          "anchor_y": 0.5,
+          "crop_top": 0,
+          "crop_bottom": 0,
+          "crop_left": 0,
+          "crop_right": 0
         },
         "effects": []
       }
@@ -49,8 +55,6 @@
     "audio_tracks": [],
     "audio_master_gain": 1.0,
     "audio_master_muted": false,
-    "width": 320,
-    "height": 240,
     "preview_fps": 30.0,
     "preview_sync_mode": "balanced",
     "preview_effect_quality": "high",
@@ -59,9 +63,8 @@
     "master_effects": [],
     "audio_master_effects": []
   },
-  "tolerance": 32,
+  "tolerance": 12,
   "sample_times_sec": [
     0.5
-  ],
-  "color_tolerance": 700
+  ]
 }

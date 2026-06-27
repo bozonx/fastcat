@@ -6,6 +6,8 @@ import {
   loadGoldenRegistry,
   findGoldenEntry,
   findGoldenSample,
+  PENDING_HASH,
+  isPendingHash,
 } from '../../parity-helpers/golden-compare';
 import { loadAllScenes, collectSceneMediaPaths } from '../../parity-helpers/scene-loader';
 import {
@@ -16,27 +18,39 @@ import {
 
 const MEDIA_DIR = resolve(process.cwd(), 'test/fixtures/media');
 
-const PLACEHOLDER = '0000000000000000';
+/**
+ * Hard ceiling on a sample's Hamming tolerance. The aHash is 64 bits, so a
+ * tolerance approaching 32 (half the bits) lets almost any frame pass and makes
+ * the golden worthless. Anything above this is almost always a flake being
+ * silenced rather than a legitimately fuzzy comparison — fail loudly instead.
+ */
+const MAX_HASH_TOLERANCE = 32;
 
 /**
- * Goldens that are known-pending generation (placeholder hashes). Each key is
- * `scene:engine:timeSec`. A placeholder OUTSIDE this allowlist means a scene
+ * Scenes allowed to exceed `MAX_HASH_TOLERANCE`, with a justification. These are
+ * cases where the two engines genuinely render the frame so differently that no
+ * meaningful cross-engine aHash tolerance exists — vector-shape rasterization
+ * (pixi tessellation vs vello) being the canonical example. They are kept for
+ * per-engine golden *regression* coverage; their cross-engine hash agreement is
+ * intentionally loose. An entry here is an explicit, reviewed exception — not a
+ * silent flake suppression.
+ */
+const CEILING_EXEMPT = new Map<string, string>([
+  ['shapes-all.json', 'pixi vs vello vector-shape rasterization diverges by >half the aHash bits'],
+]);
+
+/**
+ * Goldens that are known-pending generation (`hash: "pending"`). Each key is
+ * `scene:engine:timeSec`. A pending hash OUTSIDE this allowlist means a scene
  * was added without generating its golden — that now fails the suite instead of
  * silently rotting. To intentionally add a pending golden, add its key here;
  * to clear one, run the generator and remove the key.
+ *
+ * NOTE: an all-zero hash (`0000000000000000`) is NOT pending — it is the real
+ * aHash of a uniform frame (e.g. a transition resolved to a solid colour) and
+ * is validated normally via its colour signature.
  */
-const KNOWN_PENDING_GOLDENS = new Set<string>([
-  'multi-time-samples.json:native:1',
-  'multi-time-samples.json:web:1',
-  'transition-dissolve.json:native:0.5',
-  'transition-dissolve.json:web:0.5',
-  'transition-fade-to-black.json:native:0.5',
-  'transition-fade-to-black.json:web:0.5',
-  'transition-slide.json:native:0.5',
-  'transition-slide.json:web:0.5',
-  'transition-wipe.json:native:0.5',
-  'transition-wipe.json:web:0.5',
-]);
+const KNOWN_PENDING_GOLDENS = new Set<string>([]);
 
 const pendingKey = (scene: string, engine: string, timeSec: number): string =>
   `${scene}:${engine}:${timeSec}`;
@@ -60,14 +74,37 @@ describe('golden-registry integration', () => {
       }
     });
 
-    it('every sample has a valid 16-char hex hash and positive tolerance', () => {
+    it('every sample has a valid 16-char hex hash (or pending) and positive tolerance', () => {
       for (const entry of registry.entries) {
         for (const sample of entry.samples) {
-          expect(sample.hash).toMatch(/^[0-9a-f]{16}$/);
+          expect(
+            sample.hash === PENDING_HASH || /^[0-9a-f]{16}$/.test(sample.hash),
+            `${entry.scene} ${entry.engine} t=${sample.timeSec}s has malformed hash "${sample.hash}"`,
+          ).toBe(true);
           expect(sample.tolerance).toBeGreaterThan(0);
           expect(sample.timeSec).toBeGreaterThanOrEqual(0);
         }
       }
+    });
+
+    it('no sample tolerance exceeds the ceiling (catches flakes being silenced)', () => {
+      const offenders: string[] = [];
+      for (const entry of registry.entries) {
+        if (CEILING_EXEMPT.has(entry.scene)) continue;
+        for (const sample of entry.samples) {
+          if (sample.tolerance > MAX_HASH_TOLERANCE) {
+            offenders.push(
+              `${entry.scene}:${entry.engine}:${sample.timeSec} tolerance=${sample.tolerance}`,
+            );
+          }
+        }
+      }
+      expect(
+        offenders,
+        `Sample tolerance(s) exceed the ${MAX_HASH_TOLERANCE}-bit ceiling. A tolerance this ` +
+          `high makes the golden meaningless; tighten the scene or split it instead:\n` +
+          offenders.map((o) => `    - ${o}`).join('\n'),
+      ).toEqual([]);
     });
 
     it('every present color signature is a valid 24-char hex string', () => {
@@ -81,6 +118,14 @@ describe('golden-registry integration', () => {
         }
       }
     });
+
+    // NOTE: we intentionally do NOT assert cross-scene hash/colorSig uniqueness.
+    // A downsampled perceptual hash legitimately cannot distinguish frames that
+    // differ only in high-frequency content (blur, sharpen, chromatic aberration,
+    // noise all preserve the low-frequency mean), so distinct scenes sharing a
+    // hash is a property of the metric, not a golden defect. Cross-engine
+    // agreement, per-engine golden regression, and the colour signature provide
+    // the real protection.
 
     it('does not contain duplicate entries for the same scene + engine', () => {
       const seen = new Set<string>();
@@ -172,8 +217,8 @@ describe('golden-registry integration', () => {
 
           if (!webSample || !nativeSample) continue;
 
-          // Skip placeholder hashes — they haven't been generated yet.
-          if (webSample.hash === PLACEHOLDER || nativeSample.hash === PLACEHOLDER) continue;
+          // Skip pending hashes — they haven't been generated yet.
+          if (isPendingHash(webSample.hash) || isPendingHash(nativeSample.hash)) continue;
 
           const tolerance = Math.max(
             webSample.tolerance,
@@ -192,11 +237,12 @@ describe('golden-registry integration', () => {
           // Color signatures (when both engines captured one) must also agree —
           // catches hue divergence the luminance aHash is blind to.
           if (webSample.colorSig && nativeSample.colorSig) {
+            const colorTolerance = fixture.color_tolerance ?? DEFAULT_COLOR_TOLERANCE;
             const colorDist = colorSignatureDistance(webSample.colorSig, nativeSample.colorSig);
             expect(
-              colorDist <= DEFAULT_COLOR_TOLERANCE,
+              colorDist <= colorTolerance,
               `cross-engine color mismatch for "${filename}" at t=${timeSec}s: ` +
-                `distance=${colorDist} tolerance=${DEFAULT_COLOR_TOLERANCE} ` +
+                `distance=${colorDist} tolerance=${colorTolerance} ` +
                 `web=${webSample.colorSig} native=${nativeSample.colorSig}`,
             ).toBe(true);
           }
@@ -204,13 +250,13 @@ describe('golden-registry integration', () => {
       }
     });
 
-    it('no placeholder hashes exist outside the known-pending allowlist', () => {
+    it('no pending hashes exist outside the known-pending allowlist', () => {
       const unexpected: string[] = [];
       const stalePending = new Set(KNOWN_PENDING_GOLDENS);
 
       for (const entry of registry.entries) {
         for (const sample of entry.samples) {
-          if (sample.hash !== PLACEHOLDER) continue;
+          if (!isPendingHash(sample.hash)) continue;
           const key = pendingKey(entry.scene, entry.engine, sample.timeSec);
           if (KNOWN_PENDING_GOLDENS.has(key)) {
             stalePending.delete(key);

@@ -1,378 +1,5 @@
 {
-  "_comment": [
-    "Golden perceptual hashes for cross-engine video engine parity tests.",
-    "Each entry maps a scene file + sample time to a perceptual hash and tolerance.",
-    "",
-    "Format:",
-    "  scene:    relative path to the scene JSON in shared/scenes/",
-    "  engine:   'web' | 'native' — which engine produced this golden",
-    "  samples:  array of { timeSec, hash, tolerance }",
-    "",
-    "The hash is a 64-bit average hash (aHash) computed from an 8x8 grayscale",
-    "downsample of the rendered RGBA frame. tolerance is the maximum Hamming",
-    "distance allowed between the engine's hash and the golden for a pass.",
-    "",
-    "Regenerate with: pnpm test:parity:gen-golden"
-  ],
   "entries": [
-    {
-      "scene": "solid-background.json",
-      "engine": "web",
-      "samples": [
-        {
-          "timeSec": 0.5,
-          "hash": "ffffffffffffffff",
-          "tolerance": 10
-        }
-      ]
-    },
-    {
-      "scene": "video-clip.json",
-      "engine": "web",
-      "samples": [
-        {
-          "timeSec": 0.5,
-          "hash": "1733733333323233",
-          "tolerance": 10
-        }
-      ]
-    },
-    {
-      "scene": "image-overlay.json",
-      "engine": "web",
-      "samples": [
-        {
-          "timeSec": 0.5,
-          "hash": "ff7f3f0f07030000",
-          "tolerance": 10
-        }
-      ]
-    },
-    {
-      "scene": "text-layer.json",
-      "engine": "web",
-      "samples": [
-        {
-          "timeSec": 0.5,
-          "hash": "0000007c7c000000",
-          "tolerance": 18
-        }
-      ]
-    },
-    {
-      "scene": "multi-layer-blend.json",
-      "engine": "web",
-      "samples": [
-        {
-          "timeSec": 0.5,
-          "hash": "ff7f3f0f07030000",
-          "tolerance": 10
-        }
-      ]
-    },
-    {
-      "scene": "shape-layer.json",
-      "engine": "web",
-      "samples": [
-        {
-          "timeSec": 0.5,
-          "hash": "00000000070f0f0f",
-          "tolerance": 30
-        }
-      ]
-    },
-    {
-      "scene": "transform-clip.json",
-      "engine": "web",
-      "samples": [
-        {
-          "timeSec": 0.5,
-          "hash": "7c3f3f1f0f070602",
-          "tolerance": 28
-        }
-      ]
-    },
-    {
-      "scene": "multi-time-samples.json",
-      "engine": "web",
-      "samples": [
-        {
-          "timeSec": 0,
-          "hash": "1333333232373333",
-          "tolerance": 10
-        },
-        {
-          "timeSec": 0.25,
-          "hash": "1773333332323333",
-          "tolerance": 10
-        },
-        {
-          "timeSec": 0.5,
-          "hash": "1733733333323233",
-          "tolerance": 10
-        },
-        {
-          "timeSec": 0.75,
-          "hash": "1733337333333233",
-          "tolerance": 10
-        },
-        {
-          "timeSec": 1,
-          "hash": "0000000000000000",
-          "tolerance": 10
-        }
-      ]
-    },
-    {
-      "scene": "effect-blur.json",
-      "engine": "web",
-      "samples": [
-        {
-          "timeSec": 0.5,
-          "hash": "ff7f3f0f07030000",
-          "tolerance": 14
-        }
-      ]
-    },
-    {
-      "scene": "effect-color-adjustment.json",
-      "engine": "web",
-      "samples": [
-        {
-          "timeSec": 0.5,
-          "hash": "7f3f0f0703000000",
-          "tolerance": 14
-        }
-      ]
-    },
-    {
-      "scene": "transition-dissolve.json",
-      "engine": "web",
-      "samples": [
-        {
-          "timeSec": 0.15,
-          "hash": "ff7f3f0f07030000",
-          "tolerance": 15
-        },
-        {
-          "timeSec": 0.5,
-          "hash": "0000000000000000",
-          "tolerance": 15
-        }
-      ]
-    },
-    {
-      "scene": "speed-change.json",
-      "engine": "web",
-      "samples": [
-        {
-          "timeSec": 0.25,
-          "hash": "1733733333323233",
-          "tolerance": 12
-        }
-      ]
-    },
-    {
-      "scene": "crop-clip.json",
-      "engine": "web",
-      "samples": [
-        {
-          "timeSec": 0.5,
-          "hash": "0000000000070707",
-          "tolerance": 32
-        }
-      ]
-    },
-    {
-      "scene": "solid-background.json",
-      "engine": "native",
-      "samples": [
-        {
-          "timeSec": 0.5,
-          "hash": "ffffffffffffffff",
-          "tolerance": 10
-        }
-      ]
-    },
-    {
-      "scene": "video-clip.json",
-      "engine": "native",
-      "samples": [
-        {
-          "timeSec": 0.5,
-          "hash": "3333737333717333",
-          "tolerance": 10
-        }
-      ]
-    },
-    {
-      "scene": "image-overlay.json",
-      "engine": "native",
-      "samples": [
-        {
-          "timeSec": 0.5,
-          "hash": "ff7f3f0f07030000",
-          "tolerance": 10
-        }
-      ]
-    },
-    {
-      "scene": "text-layer.json",
-      "engine": "native",
-      "samples": [
-        {
-          "timeSec": 0.5,
-          "hash": "0000001818000000",
-          "tolerance": 18
-        }
-      ]
-    },
-    {
-      "scene": "multi-layer-blend.json",
-      "engine": "native",
-      "samples": [
-        {
-          "timeSec": 0.5,
-          "hash": "ff7f3f0f07030000",
-          "tolerance": 10
-        }
-      ]
-    },
-    {
-      "scene": "shape-layer.json",
-      "engine": "native",
-      "samples": [
-        {
-          "timeSec": 0.5,
-          "hash": "003c3c3c3c3c3c00",
-          "tolerance": 30
-        }
-      ]
-    },
-    {
-      "scene": "transform-clip.json",
-      "engine": "native",
-      "samples": [
-        {
-          "timeSec": 0.5,
-          "hash": "00303c3e3c3c0400",
-          "tolerance": 28
-        }
-      ]
-    },
-    {
-      "scene": "multi-time-samples.json",
-      "engine": "native",
-      "samples": [
-        {
-          "timeSec": 0,
-          "hash": "3333737173733373",
-          "tolerance": 10
-        },
-        {
-          "timeSec": 0.25,
-          "hash": "3373733331333333",
-          "tolerance": 10
-        },
-        {
-          "timeSec": 0.5,
-          "hash": "3333737333717333",
-          "tolerance": 10
-        },
-        {
-          "timeSec": 0.75,
-          "hash": "333333f373333133",
-          "tolerance": 10
-        },
-        {
-          "timeSec": 1,
-          "hash": "0000000000000000",
-          "tolerance": 10
-        }
-      ]
-    },
-    {
-      "scene": "effect-blur.json",
-      "engine": "native",
-      "samples": [
-        {
-          "timeSec": 0.5,
-          "hash": "ff7f3f0f07030000",
-          "tolerance": 14
-        }
-      ]
-    },
-    {
-      "scene": "effect-color-adjustment.json",
-      "engine": "native",
-      "samples": [
-        {
-          "timeSec": 0.5,
-          "hash": "7f3f0f0703000000",
-          "tolerance": 14
-        }
-      ]
-    },
-    {
-      "scene": "effect-chroma-key.json",
-      "engine": "web",
-      "samples": [
-        {
-          "timeSec": 0.5,
-          "hash": "ff7f3f0f07030000",
-          "tolerance": 20
-        }
-      ]
-    },
-    {
-      "scene": "effect-chroma-key.json",
-      "engine": "native",
-      "samples": [
-        {
-          "timeSec": 0.5,
-          "hash": "ff7f3f0f07030000",
-          "tolerance": 20
-        }
-      ]
-    },
-    {
-      "scene": "transition-dissolve.json",
-      "engine": "native",
-      "samples": [
-        {
-          "timeSec": 0.15,
-          "hash": "ff7f3f0f07030000",
-          "tolerance": 15
-        },
-        {
-          "timeSec": 0.5,
-          "hash": "0000000000000000",
-          "tolerance": 15
-        }
-      ]
-    },
-    {
-      "scene": "speed-change.json",
-      "engine": "native",
-      "samples": [
-        {
-          "timeSec": 0.25,
-          "hash": "3333737333717333",
-          "tolerance": 12
-        }
-      ]
-    },
-    {
-      "scene": "crop-clip.json",
-      "engine": "native",
-      "samples": [
-        {
-          "timeSec": 0.5,
-          "hash": "003c7e3e3e3e0000",
-          "tolerance": 32
-        }
-      ]
-    },
     {
       "scene": "adjustment-layer.json",
       "engine": "web",
@@ -380,18 +7,8 @@
         {
           "timeSec": 0.5,
           "hash": "ffff3f1f0f030100",
-          "tolerance": 20
-        }
-      ]
-    },
-    {
-      "scene": "adjustment-layer.json",
-      "engine": "native",
-      "samples": [
-        {
-          "timeSec": 0.5,
-          "hash": "00003c3c3c0c0000",
-          "tolerance": 20
+          "tolerance": 32,
+          "colorSig": "ffb600fffc00ff1000ff8600"
         }
       ]
     },
@@ -402,18 +19,152 @@
         {
           "timeSec": 0.5,
           "hash": "ffff3f1f07030100",
-          "tolerance": 30
+          "tolerance": 26,
+          "colorSig": "fe8e00feed00fe0e00fe6600"
         }
       ]
     },
     {
-      "scene": "blend-modes.json",
-      "engine": "native",
+      "scene": "crop-clip.json",
+      "engine": "web",
       "samples": [
         {
           "timeSec": 0.5,
-          "hash": "cccc3c3ccf470301",
-          "tolerance": 30
+          "hash": "0000000000070707",
+          "tolerance": 32,
+          "colorSig": "0000000000000000005c1d00"
+        }
+      ]
+    },
+    {
+      "scene": "effect-bloom.json",
+      "engine": "web",
+      "samples": [
+        {
+          "timeSec": 0.5,
+          "hash": "ffff3f1f0f030100",
+          "tolerance": 12,
+          "colorSig": "ffad00fffb00ff0d00ff7a00"
+        }
+      ]
+    },
+    {
+      "scene": "effect-blur.json",
+      "engine": "web",
+      "samples": [
+        {
+          "timeSec": 0.5,
+          "hash": "ff7f3f0f07030000",
+          "tolerance": 12,
+          "colorSig": "fe8400fee800fe0a00fe5b00"
+        }
+      ]
+    },
+    {
+      "scene": "effect-chroma-key.json",
+      "engine": "web",
+      "samples": [
+        {
+          "timeSec": 0.5,
+          "hash": "ff7f3f0f07030000",
+          "tolerance": 12,
+          "colorSig": "fe8400fee800fe0a00fe5b00"
+        }
+      ]
+    },
+    {
+      "scene": "effect-chromatic.json",
+      "engine": "web",
+      "samples": [
+        {
+          "timeSec": 0.5,
+          "hash": "ff7f3f0f07030000",
+          "tolerance": 12,
+          "colorSig": "fe8400fee800fe0a00fe5b00"
+        }
+      ]
+    },
+    {
+      "scene": "effect-color-adjustment.json",
+      "engine": "web",
+      "samples": [
+        {
+          "timeSec": 0.5,
+          "hash": "7f3f0f0703000000",
+          "tolerance": 12,
+          "colorSig": "480c003c2e004d00004b0400"
+        }
+      ]
+    },
+    {
+      "scene": "effect-hue.json",
+      "engine": "web",
+      "samples": [
+        {
+          "timeSec": 0.5,
+          "hash": "000080c0f0f8fcff",
+          "tolerance": 12,
+          "colorSig": "127eef465cff00a6b0078bdf"
+        }
+      ]
+    },
+    {
+      "scene": "effect-levels.json",
+      "engine": "web",
+      "samples": [
+        {
+          "timeSec": 0.5,
+          "hash": "ff7f3f0f07030000",
+          "tolerance": 12,
+          "colorSig": "ff931afff51aff1e1aff661a"
+        }
+      ]
+    },
+    {
+      "scene": "effect-noise.json",
+      "engine": "web",
+      "samples": [
+        {
+          "timeSec": 0.5,
+          "hash": "ff7f3f1f07030000",
+          "tolerance": 14,
+          "colorSig": "fc8302fbe703fd0c02fb5a03"
+        }
+      ]
+    },
+    {
+      "scene": "effect-pixelate.json",
+      "engine": "web",
+      "samples": [
+        {
+          "timeSec": 0.5,
+          "hash": "ff7f3f1f07030000",
+          "tolerance": 12,
+          "colorSig": "fe8500fee800fe0b00fe5c00"
+        }
+      ]
+    },
+    {
+      "scene": "effect-sharpen.json",
+      "engine": "web",
+      "samples": [
+        {
+          "timeSec": 0.5,
+          "hash": "ff7f3f0f07030000",
+          "tolerance": 12,
+          "colorSig": "fd8400fde800fe0a00fd5b00"
+        }
+      ]
+    },
+    {
+      "scene": "effect-vignette.json",
+      "engine": "web",
+      "samples": [
+        {
+          "timeSec": 0.5,
+          "hash": "ff7f3f1f07030000",
+          "tolerance": 12,
+          "colorSig": "fc8200fce500fc0a00fc5a00"
         }
       ]
     },
@@ -424,18 +175,8 @@
         {
           "timeSec": 0.5,
           "hash": "ff7f3f0f07030000",
-          "tolerance": 20
-        }
-      ]
-    },
-    {
-      "scene": "effects-blur-fill.json",
-      "engine": "native",
-      "samples": [
-        {
-          "timeSec": 0.5,
-          "hash": "ff7f3f0f07030000",
-          "tolerance": 20
+          "tolerance": 12,
+          "colorSig": "fe8400fee800fe0a00fe5b00"
         }
       ]
     },
@@ -446,18 +187,80 @@
         {
           "timeSec": 0.5,
           "hash": "feff3f1f0f030200",
-          "tolerance": 40
+          "tolerance": 28,
+          "colorSig": "e99317dad232fd1703e77215"
         }
       ]
     },
     {
-      "scene": "effects-extra.json",
-      "engine": "native",
+      "scene": "image-overlay.json",
+      "engine": "web",
       "samples": [
         {
           "timeSec": 0.5,
-          "hash": "ff55ff57f0500000",
-          "tolerance": 40
+          "hash": "ff7f3f0f07030000",
+          "tolerance": 10,
+          "colorSig": "cb6900cbb900cb0800cb4900"
+        }
+      ]
+    },
+    {
+      "scene": "multi-layer-blend.json",
+      "engine": "web",
+      "samples": [
+        {
+          "timeSec": 0.5,
+          "hash": "ff7f3f0f07030000",
+          "tolerance": 10,
+          "colorSig": "bc5022bc7a22bc1c22bc3e22"
+        }
+      ]
+    },
+    {
+      "scene": "multi-time-samples.json",
+      "engine": "web",
+      "samples": [
+        {
+          "timeSec": 0,
+          "hash": "1333333232373333",
+          "tolerance": 12,
+          "colorSig": "8987075158ea9e93024c5be4"
+        },
+        {
+          "timeSec": 0.25,
+          "hash": "1773333332323333",
+          "tolerance": 12,
+          "colorSig": "8b8b084d5deba290065156e1"
+        },
+        {
+          "timeSec": 0.5,
+          "hash": "1733733333323233",
+          "tolerance": 12,
+          "colorSig": "8a8d094f5be99b900d5058e0"
+        },
+        {
+          "timeSec": 0.75,
+          "hash": "1733337333333233",
+          "tolerance": 12,
+          "colorSig": "938e034f5ae9978f105158de"
+        },
+        {
+          "timeSec": 1,
+          "hash": "0000000000000000",
+          "tolerance": 12,
+          "colorSig": "000000000000000000000000"
+        }
+      ]
+    },
+    {
+      "scene": "shape-layer.json",
+      "engine": "web",
+      "samples": [
+        {
+          "timeSec": 0.5,
+          "hash": "00000000070f0f0f",
+          "tolerance": 32,
+          "colorSig": "1a1a2e1a1a2e1a1a2ee05c07"
         }
       ]
     },
@@ -468,18 +271,20 @@
         {
           "timeSec": 0.5,
           "hash": "0000000f0f0f1f1f",
-          "tolerance": 30
+          "tolerance": 42,
+          "colorSig": "2a2b3a2f403e353441b7ca7e"
         }
       ]
     },
     {
-      "scene": "shapes-all.json",
-      "engine": "native",
+      "scene": "solid-background.json",
+      "engine": "web",
       "samples": [
         {
           "timeSec": 0.5,
-          "hash": "00f3ff0000fcfc00",
-          "tolerance": 30
+          "hash": "ffffffffffffffff",
+          "tolerance": 10,
+          "colorSig": "3366ff3366ff3366ff3366ff"
         }
       ]
     },
@@ -490,7 +295,452 @@
         {
           "timeSec": 0.5,
           "hash": "0c0c1c1c3c3c3c3c",
-          "tolerance": 20
+          "tolerance": 18,
+          "colorSig": "8f06008f4a008f33008f8200"
+        }
+      ]
+    },
+    {
+      "scene": "speed-change.json",
+      "engine": "web",
+      "samples": [
+        {
+          "timeSec": 0.25,
+          "hash": "1733733333323233",
+          "tolerance": 12,
+          "colorSig": "8a8d094f5be99b900d5058e0"
+        }
+      ]
+    },
+    {
+      "scene": "speed-reverse.json",
+      "engine": "web",
+      "samples": [
+        {
+          "timeSec": 0.25,
+          "hash": "1733337333333233",
+          "tolerance": 12,
+          "colorSig": "938e034f5ae9978f105158de"
+        }
+      ]
+    },
+    {
+      "scene": "text-layer.json",
+      "engine": "web",
+      "samples": [
+        {
+          "timeSec": 0.5,
+          "hash": "0000007c7c000000",
+          "tolerance": 18,
+          "colorSig": "2525382323361f1f331e1e32"
+        }
+      ]
+    },
+    {
+      "scene": "transform-clip.json",
+      "engine": "web",
+      "samples": [
+        {
+          "timeSec": 0.5,
+          "hash": "7c3f3f1f0f070602",
+          "tolerance": 28,
+          "colorSig": "ed5900d9c600d90900ed7700"
+        }
+      ]
+    },
+    {
+      "scene": "transform-flip.json",
+      "engine": "web",
+      "samples": [
+        {
+          "timeSec": 0.5,
+          "hash": "fffefcf0e0c00000",
+          "tolerance": 12,
+          "colorSig": "fee800fe8400fe5b00fe0a00"
+        }
+      ]
+    },
+    {
+      "scene": "transform-rotate.json",
+      "engine": "web",
+      "samples": [
+        {
+          "timeSec": 0.5,
+          "hash": "383e1f1f0f0f0706",
+          "tolerance": 12,
+          "colorSig": "e93d03c4b008c41008e99603"
+        }
+      ]
+    },
+    {
+      "scene": "transition-dissolve.json",
+      "engine": "web",
+      "samples": [
+        {
+          "timeSec": 0.1,
+          "hash": "ff7f3f0f07030000",
+          "tolerance": 12,
+          "colorSig": "fe8400fee800fe0a00fe5b00"
+        },
+        {
+          "timeSec": 0.5,
+          "hash": "0000000000000000",
+          "tolerance": 12,
+          "colorSig": "ff6600ff6600ff6600ff6600"
+        }
+      ]
+    },
+    {
+      "scene": "transition-fade-to-black.json",
+      "engine": "web",
+      "samples": [
+        {
+          "timeSec": 0.1,
+          "hash": "ff7f3f0f07030000",
+          "tolerance": 12,
+          "colorSig": "fe8400fee800fe0a00fe5b00"
+        },
+        {
+          "timeSec": 0.5,
+          "hash": "0000000000000000",
+          "tolerance": 12,
+          "colorSig": "ff6600ff6600ff6600ff6600"
+        }
+      ]
+    },
+    {
+      "scene": "transition-slide.json",
+      "engine": "web",
+      "samples": [
+        {
+          "timeSec": 0.1,
+          "hash": "ff7f3f0f07030000",
+          "tolerance": 12,
+          "colorSig": "fe8400fee800fe0a00fe5b00"
+        },
+        {
+          "timeSec": 0.5,
+          "hash": "0000000000000000",
+          "tolerance": 12,
+          "colorSig": "ff6600ff6600ff6600ff6600"
+        }
+      ]
+    },
+    {
+      "scene": "transition-wipe.json",
+      "engine": "web",
+      "samples": [
+        {
+          "timeSec": 0.1,
+          "hash": "ff7f3f0f07030000",
+          "tolerance": 12,
+          "colorSig": "fe8400fee800fe0a00fe5b00"
+        },
+        {
+          "timeSec": 0.5,
+          "hash": "0000000000000000",
+          "tolerance": 12,
+          "colorSig": "ff6600ff6600ff6600ff6600"
+        }
+      ]
+    },
+    {
+      "scene": "video-clip.json",
+      "engine": "web",
+      "samples": [
+        {
+          "timeSec": 0.5,
+          "hash": "1733733333323233",
+          "tolerance": 12,
+          "colorSig": "8a8d094f5be99b900d5058e0"
+        }
+      ]
+    },
+    {
+      "scene": "adjustment-layer.json",
+      "engine": "native",
+      "samples": [
+        {
+          "timeSec": 0.5,
+          "hash": "00003c3c3c0c0000",
+          "tolerance": 32,
+          "colorSig": "665426666526662a26664726"
+        }
+      ]
+    },
+    {
+      "scene": "blend-modes.json",
+      "engine": "native",
+      "samples": [
+        {
+          "timeSec": 0.5,
+          "hash": "cccc3c3ccf470301",
+          "tolerance": 26,
+          "colorSig": "995722a5522272374fa4614a"
+        }
+      ]
+    },
+    {
+      "scene": "crop-clip.json",
+      "engine": "native",
+      "samples": [
+        {
+          "timeSec": 0.5,
+          "hash": "003c7e3e3e3e0000",
+          "tolerance": 32,
+          "colorSig": "5c2c005b48005b0a005c2300"
+        }
+      ]
+    },
+    {
+      "scene": "effect-bloom.json",
+      "engine": "native",
+      "samples": [
+        {
+          "timeSec": 0.5,
+          "hash": "ffff3f1f0f030100",
+          "tolerance": 12,
+          "colorSig": "ffad00fffb00ff0d00ff7a00"
+        }
+      ]
+    },
+    {
+      "scene": "effect-blur.json",
+      "engine": "native",
+      "samples": [
+        {
+          "timeSec": 0.5,
+          "hash": "ff7f3f0f07030000",
+          "tolerance": 12,
+          "colorSig": "fe8400fee800fe0a00fe5b00"
+        }
+      ]
+    },
+    {
+      "scene": "effect-chroma-key.json",
+      "engine": "native",
+      "samples": [
+        {
+          "timeSec": 0.5,
+          "hash": "ff7f3f0f07030000",
+          "tolerance": 12,
+          "colorSig": "fe8400fee800fe0a00fe5b00"
+        }
+      ]
+    },
+    {
+      "scene": "effect-chromatic.json",
+      "engine": "native",
+      "samples": [
+        {
+          "timeSec": 0.5,
+          "hash": "ff7f3f0f07030000",
+          "tolerance": 12,
+          "colorSig": "fe8400fee800fe0a00fe5b00"
+        }
+      ]
+    },
+    {
+      "scene": "effect-color-adjustment.json",
+      "engine": "native",
+      "samples": [
+        {
+          "timeSec": 0.5,
+          "hash": "7f3f0f0703000000",
+          "tolerance": 12,
+          "colorSig": "490c003c2f004d00004c0400"
+        }
+      ]
+    },
+    {
+      "scene": "effect-hue.json",
+      "engine": "native",
+      "samples": [
+        {
+          "timeSec": 0.5,
+          "hash": "000080c0f0f8fcff",
+          "tolerance": 12,
+          "colorSig": "127eef465cff00a6b0078bdf"
+        }
+      ]
+    },
+    {
+      "scene": "effect-levels.json",
+      "engine": "native",
+      "samples": [
+        {
+          "timeSec": 0.5,
+          "hash": "ff7f3f0f07030000",
+          "tolerance": 12,
+          "colorSig": "ff931afff51aff1e1aff661a"
+        }
+      ]
+    },
+    {
+      "scene": "effect-noise.json",
+      "engine": "native",
+      "samples": [
+        {
+          "timeSec": 0.5,
+          "hash": "ff7f3f1f07030000",
+          "tolerance": 14,
+          "colorSig": "fc8302fbe703fd0c02fb5a03"
+        }
+      ]
+    },
+    {
+      "scene": "effect-pixelate.json",
+      "engine": "native",
+      "samples": [
+        {
+          "timeSec": 0.5,
+          "hash": "ff7f3f1f07030000",
+          "tolerance": 12,
+          "colorSig": "fe8500fee800fe0b00fe5c00"
+        }
+      ]
+    },
+    {
+      "scene": "effect-sharpen.json",
+      "engine": "native",
+      "samples": [
+        {
+          "timeSec": 0.5,
+          "hash": "ff7f3f0f07030000",
+          "tolerance": 12,
+          "colorSig": "fd8400fde800fe0a00fd5b00"
+        }
+      ]
+    },
+    {
+      "scene": "effect-vignette.json",
+      "engine": "native",
+      "samples": [
+        {
+          "timeSec": 0.5,
+          "hash": "ff7f3f1f07030000",
+          "tolerance": 12,
+          "colorSig": "fc8200fce500fc0a00fc5a00"
+        }
+      ]
+    },
+    {
+      "scene": "effects-blur-fill.json",
+      "engine": "native",
+      "samples": [
+        {
+          "timeSec": 0.5,
+          "hash": "ff7f3f0f07030000",
+          "tolerance": 12,
+          "colorSig": "fe8400fee800fe0a00fe5b00"
+        }
+      ]
+    },
+    {
+      "scene": "effects-extra.json",
+      "engine": "native",
+      "samples": [
+        {
+          "timeSec": 0.5,
+          "hash": "ff55ff57f0500000",
+          "tolerance": 28,
+          "colorSig": "fe7400c47e38904f18222222"
+        }
+      ]
+    },
+    {
+      "scene": "image-overlay.json",
+      "engine": "native",
+      "samples": [
+        {
+          "timeSec": 0.5,
+          "hash": "ff7f3f0f07030000",
+          "tolerance": 10,
+          "colorSig": "cb6900cbb900cb0800cb4900"
+        }
+      ]
+    },
+    {
+      "scene": "multi-layer-blend.json",
+      "engine": "native",
+      "samples": [
+        {
+          "timeSec": 0.5,
+          "hash": "ff7f3f0f07030000",
+          "tolerance": 10,
+          "colorSig": "bc5022bc7a22bc1c22bc3e22"
+        }
+      ]
+    },
+    {
+      "scene": "multi-time-samples.json",
+      "engine": "native",
+      "samples": [
+        {
+          "timeSec": 0,
+          "hash": "3333737173733373",
+          "tolerance": 12,
+          "colorSig": "929a075654fba9a7015158f4"
+        },
+        {
+          "timeSec": 0.25,
+          "hash": "3373733331333333",
+          "tolerance": 12,
+          "colorSig": "949f09545bfbaca3075452f1"
+        },
+        {
+          "timeSec": 0.5,
+          "hash": "3333737333717333",
+          "tolerance": 12,
+          "colorSig": "93a0095558faa6a20d5555f0"
+        },
+        {
+          "timeSec": 0.75,
+          "hash": "333333f373333133",
+          "tolerance": 12,
+          "colorSig": "9ca1035557faa2a2115655ee"
+        },
+        {
+          "timeSec": 1,
+          "hash": "0000000000000000",
+          "tolerance": 12,
+          "colorSig": "000000000000000000000000"
+        }
+      ]
+    },
+    {
+      "scene": "shape-layer.json",
+      "engine": "native",
+      "samples": [
+        {
+          "timeSec": 0.5,
+          "hash": "003c3c3c3c3c3c00",
+          "tolerance": 32,
+          "colorSig": "71371d71371d71371d71371d"
+        }
+      ]
+    },
+    {
+      "scene": "shapes-all.json",
+      "engine": "native",
+      "samples": [
+        {
+          "timeSec": 0.5,
+          "hash": "00f3ff0000fcfc00",
+          "tolerance": 42,
+          "colorSig": "4b47413838493e3b563e363c"
+        }
+      ]
+    },
+    {
+      "scene": "solid-background.json",
+      "engine": "native",
+      "samples": [
+        {
+          "timeSec": 0.5,
+          "hash": "ffffffffffffffff",
+          "tolerance": 10,
+          "colorSig": "3366ff3366ff3366ff3366ff"
         }
       ]
     },
@@ -501,45 +751,98 @@
         {
           "timeSec": 0.5,
           "hash": "00001c1c1c1c0000",
-          "tolerance": 20
+          "tolerance": 18,
+          "colorSig": "240100241300240d00242100"
+        }
+      ]
+    },
+    {
+      "scene": "speed-change.json",
+      "engine": "native",
+      "samples": [
+        {
+          "timeSec": 0.25,
+          "hash": "3333737333717333",
+          "tolerance": 12,
+          "colorSig": "93a0095558faa6a20d5555f0"
+        }
+      ]
+    },
+    {
+      "scene": "speed-reverse.json",
+      "engine": "native",
+      "samples": [
+        {
+          "timeSec": 0.25,
+          "hash": "333333f373333133",
+          "tolerance": 12,
+          "colorSig": "9ca1035557faa2a2115655ee"
+        }
+      ]
+    },
+    {
+      "scene": "text-layer.json",
+      "engine": "native",
+      "samples": [
+        {
+          "timeSec": 0.5,
+          "hash": "0000001818000000",
+          "tolerance": 18,
+          "colorSig": "1a1a2e1a1a2e1a1a2e1a1a2e"
+        }
+      ]
+    },
+    {
+      "scene": "transform-clip.json",
+      "engine": "native",
+      "samples": [
+        {
+          "timeSec": 0.5,
+          "hash": "00303c3e3c3c0400",
+          "tolerance": 28,
+          "colorSig": "451c003b36003b0200452000"
         }
       ]
     },
     {
       "scene": "transform-flip.json",
-      "engine": "web",
-      "samples": [
-        {
-          "timeSec": 0.5,
-          "hash": "fffefcf0e0c00000",
-          "tolerance": 20
-        }
-      ]
-    },
-    {
-      "scene": "transform-flip.json",
       "engine": "native",
       "samples": [
         {
           "timeSec": 0.5,
           "hash": "fffefcf0e0c00000",
-          "tolerance": 20
+          "tolerance": 12,
+          "colorSig": "fee800fe8400fe5b00fe0a00"
         }
       ]
     },
     {
-      "scene": "transition-fade-to-black.json",
-      "engine": "web",
+      "scene": "transform-rotate.json",
+      "engine": "native",
       "samples": [
         {
-          "timeSec": 0.15,
+          "timeSec": 0.5,
+          "hash": "383e1f1f0f0f0706",
+          "tolerance": 12,
+          "colorSig": "e93d03c4b008c41008e99603"
+        }
+      ]
+    },
+    {
+      "scene": "transition-dissolve.json",
+      "engine": "native",
+      "samples": [
+        {
+          "timeSec": 0.1,
           "hash": "ff7f3f0f07030000",
-          "tolerance": 25
+          "tolerance": 12,
+          "colorSig": "fe8400fee800fe0a00fe5b00"
         },
         {
           "timeSec": 0.5,
           "hash": "0000000000000000",
-          "tolerance": 25
+          "tolerance": 12,
+          "colorSig": "ff6600ff6600ff6600ff6600"
         }
       ]
     },
@@ -548,30 +851,16 @@
       "engine": "native",
       "samples": [
         {
-          "timeSec": 0.15,
+          "timeSec": 0.1,
           "hash": "ff7f3f0f07030000",
-          "tolerance": 25
+          "tolerance": 12,
+          "colorSig": "fe8400fee800fe0a00fe5b00"
         },
         {
           "timeSec": 0.5,
           "hash": "0000000000000000",
-          "tolerance": 25
-        }
-      ]
-    },
-    {
-      "scene": "transition-slide.json",
-      "engine": "web",
-      "samples": [
-        {
-          "timeSec": 0.15,
-          "hash": "ff7f3f0f07030000",
-          "tolerance": 25
-        },
-        {
-          "timeSec": 0.5,
-          "hash": "0000000000000000",
-          "tolerance": 25
+          "tolerance": 12,
+          "colorSig": "ff6600ff6600ff6600ff6600"
         }
       ]
     },
@@ -580,30 +869,16 @@
       "engine": "native",
       "samples": [
         {
-          "timeSec": 0.15,
+          "timeSec": 0.1,
           "hash": "ff7f3f0f07030000",
-          "tolerance": 25
+          "tolerance": 12,
+          "colorSig": "fe8400fee800fe0a00fe5b00"
         },
         {
           "timeSec": 0.5,
           "hash": "0000000000000000",
-          "tolerance": 25
-        }
-      ]
-    },
-    {
-      "scene": "transition-wipe.json",
-      "engine": "web",
-      "samples": [
-        {
-          "timeSec": 0.15,
-          "hash": "ff7f3f0f07030000",
-          "tolerance": 25
-        },
-        {
-          "timeSec": 0.5,
-          "hash": "0000000000000000",
-          "tolerance": 25
+          "tolerance": 12,
+          "colorSig": "ff6600ff6600ff6600ff6600"
         }
       ]
     },
@@ -612,14 +887,28 @@
       "engine": "native",
       "samples": [
         {
-          "timeSec": 0.15,
+          "timeSec": 0.1,
           "hash": "ff7f3f0f07030000",
-          "tolerance": 25
+          "tolerance": 12,
+          "colorSig": "fe8400fee800fe0a00fe5b00"
         },
         {
           "timeSec": 0.5,
           "hash": "0000000000000000",
-          "tolerance": 25
+          "tolerance": 12,
+          "colorSig": "ff6600ff6600ff6600ff6600"
+        }
+      ]
+    },
+    {
+      "scene": "video-clip.json",
+      "engine": "native",
+      "samples": [
+        {
+          "timeSec": 0.5,
+          "hash": "3333737333717333",
+          "tolerance": 12,
+          "colorSig": "93a0095558faa6a20d5555f0"
         }
       ]
     }

@@ -28,6 +28,19 @@ export interface GoldenRegistry {
   entries: GoldenEntry[];
 }
 
+/**
+ * Explicit sentinel for a not-yet-generated golden hash. Distinct from a real
+ * all-zero aHash (`0000000000000000`), which is the legitimate hash of a
+ * *uniform* frame (e.g. a transition fully resolved to a solid background).
+ * Conflating the two used to make uniform frames un-validatable.
+ */
+export const PENDING_HASH = 'pending';
+
+/** True when a sample hash is the pending sentinel (not yet generated). */
+export function isPendingHash(hash: string): boolean {
+  return hash === PENDING_HASH;
+}
+
 const GOLDEN_PATH = resolve(process.cwd(), 'shared/golden/frames.json');
 
 /** Load the golden hash registry. */

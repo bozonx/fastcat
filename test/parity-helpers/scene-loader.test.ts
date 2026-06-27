@@ -67,7 +67,7 @@ describe('scene-loader', () => {
 
   it('loads shape-layer scene with circle shape', () => {
     const scene = loadScene('shape-layer.json');
-    expect(scene.tolerance).toBe(30);
+    expect(scene.tolerance).toBe(32);
     const layers = scene.scene.layers as Array<Record<string, unknown>>;
     const shape = layers.find((l) => l.kind === 'shape');
     expect(shape).toBeDefined();
@@ -90,7 +90,7 @@ describe('scene-loader', () => {
 
   it('loads multi-time-samples scene with 5 sample times', () => {
     const scene = loadScene('multi-time-samples.json');
-    expect(scene.tolerance).toBe(10);
+    expect(scene.tolerance).toBe(12);
     expect(scene.sample_times_sec).toEqual([0.0, 0.25, 0.5, 0.75, 1.0]);
   });
 

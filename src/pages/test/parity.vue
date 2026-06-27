@@ -3,6 +3,10 @@ import { VideoCompositor } from '~/utils/video-editor/VideoCompositor';
 import type { WorkerVideoPayloadItem } from '~/types/worker-payload';
 import type { MediaSourceLoaderDeps } from '~/utils/video-editor/compositor/RasterImageLoader';
 import { computeFrameHash, computeColorSignature } from '~/utils/video-editor/perceptual-hash';
+import {
+  DEFAULT_TRANSITION_MODE,
+  DEFAULT_TRANSITION_CURVE,
+} from '~/transitions/core/registry';
 
 definePageMeta({
   layout: 'embedded',
@@ -120,8 +124,8 @@ function buildClipsFromScene(
       ? {
           type: sceneTransitionIn.type as string,
           durationUs: Math.round((sceneTransitionIn.duration_sec as number) * 1_000_000),
-          mode: (sceneTransitionIn.mode as string) ?? 'transparent',
-          curve: (sceneTransitionIn.curve as string) ?? 'linear',
+          mode: (sceneTransitionIn.mode as string) ?? DEFAULT_TRANSITION_MODE,
+          curve: (sceneTransitionIn.curve as string) ?? DEFAULT_TRANSITION_CURVE,
           params: (sceneTransitionIn.params as Record<string, unknown>) ?? {},
         }
       : undefined;
@@ -129,8 +133,8 @@ function buildClipsFromScene(
       ? {
           type: sceneTransitionOut.type as string,
           durationUs: Math.round((sceneTransitionOut.duration_sec as number) * 1_000_000),
-          mode: (sceneTransitionOut.mode as string) ?? 'transparent',
-          curve: (sceneTransitionOut.curve as string) ?? 'linear',
+          mode: (sceneTransitionOut.mode as string) ?? DEFAULT_TRANSITION_MODE,
+          curve: (sceneTransitionOut.curve as string) ?? DEFAULT_TRANSITION_CURVE,
           params: (sceneTransitionOut.params as Record<string, unknown>) ?? {},
         }
       : undefined;

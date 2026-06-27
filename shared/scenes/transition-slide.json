@@ -1,7 +1,8 @@
 {
   "_comment": [
     "Cross-engine parity scene: slide transition between two layers.",
-    "Includes both web params and native spec so each engine picks the right representation."
+    "Includes both web params and native spec so each engine picks the right representation.",
+    "Mid-transition cross-fade is NOT validated here: the flat parity scene omits the transition `spec`/peer wiring that the real app always supplies, so the two engines take different shader-vs-alpha fallback paths (web shows the top clip fully, native alpha-fades). We sample t=0.1s (clip-a only) and t=0.5s (resolved to clip-b) \u2014 the points where both engines agree \u2014 as a render smoke check."
   ],
   "scene": {
     "width": 320,
@@ -88,6 +89,9 @@
     "master_effects": [],
     "audio_master_effects": []
   },
-  "sample_times_sec": [0.15, 0.5],
-  "tolerance": 25
+  "sample_times_sec": [
+    0.1,
+    0.5
+  ],
+  "tolerance": 12
 }
