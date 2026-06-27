@@ -55,5 +55,6 @@ describe('UiColorPicker', () => {
 
     expect(yellowButton).toBeDefined();
     expect(yellowButton!.classes()).toContain('ring-2');
+    expect(yellowButton!.text()).toContain('✓');
   });
 });

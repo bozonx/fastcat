@@ -37,6 +37,15 @@ const COLORS = computed(() => {
 
 const activeColor = computed(() => marker.value?.color ?? '#eab308');
 
+function isLightColor(hex: string): boolean {
+  const sanitized = hex.replace('#', '');
+  const r = parseInt(sanitized.substring(0, 2), 16);
+  const g = parseInt(sanitized.substring(2, 4), 16);
+  const b = parseInt(sanitized.substring(4, 6), 16);
+  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  return luminance > 0.6;
+}
+
 function handleUpdateColor(val: string) {
   if (!marker.value) return;
   timelineStore.updateMarker(marker.value.id, {
@@ -81,7 +90,7 @@ function confirmDelete() {
             v-for="colorValue in COLORS"
             :key="colorValue"
             type="button"
-            class="w-6 h-6 rounded-full border border-ui-border transition-all flex items-center justify-center shrink-0 cursor-pointer"
+            class="w-6 h-6 rounded-full border border-ui-border transition-all flex items-center justify-center shrink-0 cursor-pointer relative focus:outline-none focus-visible:outline-none outline-none"
             :class="{
               'ring-2 ring-ui-primary ring-offset-2 ring-offset-ui-bg-elevated z-10 scale-110':
                 activeColor === colorValue,
@@ -90,7 +99,15 @@ function confirmDelete() {
               backgroundColor: colorValue,
             }"
             @click.prevent="handleUpdateColor(colorValue)"
-          />
+          >
+            <span
+              v-if="activeColor === colorValue"
+              class="absolute inset-0 flex items-center justify-center text-xs font-bold leading-none select-none"
+              :class="isLightColor(colorValue) ? 'text-black' : 'text-white'"
+            >
+              ✓
+            </span>
+          </button>
         </div>
       </div>
     </template>

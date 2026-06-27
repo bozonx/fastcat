@@ -96,5 +96,6 @@ describe('MobileMarkerPropertiesDrawer', () => {
 
     expect(activeSwatch).toBeDefined();
     expect(activeSwatch!.classes()).toContain('ring-2');
+    expect(activeSwatch!.text()).toContain('✓');
   });
 });
