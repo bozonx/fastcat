@@ -12,6 +12,8 @@ import type { Page } from '@playwright/test';
 /** Result of a single frame render + hash computation. */
 export interface WebFrameResult {
   hash: string;
+  /** 2x2 mean-color signature (24 hex chars). Empty string on render error. */
+  colorSig: string;
   width: number;
   height: number;
   error?: string;

@@ -18,7 +18,8 @@ import {
   upsertGoldenSample,
 } from '../test/parity-helpers/golden-compare';
 
-const GOLDEN_RE = /^GOLDEN\[native\]\s+(\S+)\s+t=([\d.]+)\s+hash=([0-9a-f]{16})\s+tolerance=(\d+)/i;
+const GOLDEN_RE =
+  /^GOLDEN\[native\]\s+(\S+)\s+t=([\d.]+)\s+hash=([0-9a-f]{16})(?:\s+colorSig=([0-9a-f]{24}))?\s+tolerance=(\d+)/i;
 
 function runNativeParity(): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -80,7 +81,7 @@ async function main(): Promise<void> {
     const match = GOLDEN_RE.exec(line.trim());
     if (!match) continue;
 
-    const [, filename, timeStr, hash, toleranceStr] = match;
+    const [, filename, timeStr, hash, colorSig, toleranceStr] = match;
     const timeSec = Number(timeStr);
     const tolerance = Number(toleranceStr);
 
@@ -89,8 +90,10 @@ async function main(): Promise<void> {
       continue;
     }
 
-    upsertGoldenSample(registry, filename, 'native', timeSec, hash, tolerance);
-    console.log(`  native  ${filename} t=${timeSec}s hash=${hash} tolerance=${tolerance}`);
+    upsertGoldenSample(registry, filename, 'native', timeSec, hash, tolerance, colorSig);
+    console.log(
+      `  native  ${filename} t=${timeSec}s hash=${hash} colorSig=${colorSig ?? '—'} tolerance=${tolerance}`,
+    );
     imported++;
   }
 

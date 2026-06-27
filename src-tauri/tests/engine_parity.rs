@@ -68,6 +68,65 @@ fn hamming_distance(a: &str, b: &str) -> usize {
     diff.count_ones() as usize
 }
 
+// ── Color signature (must match computeColorSignature in perceptual-hash.ts) ──
+//
+// The luma aHash above is colour-blind: a red layer rendered green hashes the
+// same. The 2x2 mean-colour signature (12 bytes → 24 hex chars) catches hue
+// errors the aHash misses, and is compared via L1 distance.
+
+const COLOR_CELLS: usize = 2;
+
+/// Default colour-signature tolerance (matches `DEFAULT_COLOR_TOLERANCE` in TS):
+/// total L1 distance across the 12 signature bytes.
+const DEFAULT_COLOR_TOLERANCE: usize = 240;
+
+fn compute_color_signature(rgba: &[u8], width: usize, height: usize) -> String {
+    let cells = COLOR_CELLS * COLOR_CELLS;
+    let mut sum_r = vec![0.0f64; cells];
+    let mut sum_g = vec![0.0f64; cells];
+    let mut sum_b = vec![0.0f64; cells];
+    let mut counts = vec![0.0f64; cells];
+
+    let x_step = width as f64 / COLOR_CELLS as f64;
+    let y_step = height as f64 / COLOR_CELLS as f64;
+
+    for y in 0..height {
+        let gy = ((y as f64 / y_step).floor() as usize).min(COLOR_CELLS - 1);
+        for x in 0..width {
+            let gx = ((x as f64 / x_step).floor() as usize).min(COLOR_CELLS - 1);
+            let i = (y * width + x) * 4;
+            let idx = gy * COLOR_CELLS + gx;
+            sum_r[idx] += rgba[i] as f64;
+            sum_g[idx] += rgba[i + 1] as f64;
+            sum_b[idx] += rgba[i + 2] as f64;
+            counts[idx] += 1.0;
+        }
+    }
+
+    let mut out = String::with_capacity(cells * 6);
+    for idx in 0..cells {
+        let n = if counts[idx] > 0.0 { counts[idx] } else { 1.0 };
+        let r = (sum_r[idx] / n).round().clamp(0.0, 255.0) as u8;
+        let g = (sum_g[idx] / n).round().clamp(0.0, 255.0) as u8;
+        let b = (sum_b[idx] / n).round().clamp(0.0, 255.0) as u8;
+        out.push_str(&format!("{:02x}{:02x}{:02x}", r, g, b));
+    }
+    out
+}
+
+fn color_signature_distance(a: &str, b: &str) -> usize {
+    assert_eq!(a.len(), b.len(), "color signature length mismatch");
+    let mut total = 0usize;
+    let mut i = 0;
+    while i < a.len() {
+        let av = u8::from_str_radix(&a[i..i + 2], 16).unwrap_or(0) as i32;
+        let bv = u8::from_str_radix(&b[i..i + 2], 16).unwrap_or(0) as i32;
+        total += (av - bv).unsigned_abs() as usize;
+        i += 2;
+    }
+    total
+}
+
 // ── Golden registry ──
 
 #[derive(Debug, Deserialize)]
@@ -76,6 +135,8 @@ struct GoldenSample {
     time_sec: f64,
     hash: String,
     tolerance: usize,
+    #[serde(default)]
+    color_sig: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -195,6 +256,95 @@ fn resolve_scene_media_paths(scene_json: &mut serde_json::Value) {
     }
 }
 
+// ── Frame-hash shared fixture (locks the hash impl against perceptual-hash.ts) ──
+
+#[derive(Debug, Deserialize)]
+struct FrameHashFixture {
+    cases: Vec<FrameHashCase>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct FrameHashCase {
+    name: String,
+    width: usize,
+    height: usize,
+    background: [u8; 4],
+    rects: Vec<FrameHashRect>,
+    expected_hash: String,
+    expected_color_sig: String,
+}
+
+#[derive(Debug, Deserialize)]
+struct FrameHashRect {
+    x: usize,
+    y: usize,
+    w: usize,
+    h: usize,
+    color: [u8; 4],
+}
+
+/// Rebuild an RGBA frame from its procedural description (mirrored in the TS
+/// test `frame-hash.parity.test.ts`).
+fn build_parity_frame(
+    width: usize,
+    height: usize,
+    background: [u8; 4],
+    rects: &[FrameHashRect],
+) -> Vec<u8> {
+    let mut buf = vec![0u8; width * height * 4];
+    for p in 0..(width * height) {
+        buf[p * 4] = background[0];
+        buf[p * 4 + 1] = background[1];
+        buf[p * 4 + 2] = background[2];
+        buf[p * 4 + 3] = background[3];
+    }
+    for r in rects {
+        for y in r.y..(r.y + r.h) {
+            for x in r.x..(r.x + r.w) {
+                let i = (y * width + x) * 4;
+                buf[i] = r.color[0];
+                buf[i + 1] = r.color[1];
+                buf[i + 2] = r.color[2];
+                buf[i + 3] = r.color[3];
+            }
+        }
+    }
+    buf
+}
+
+/// The native hash implementation must reproduce the golden values computed by
+/// the canonical TS implementation, byte-for-byte. This is the lock that keeps
+/// the two independent hash copies from silently diverging and invalidating
+/// every golden-frame parity comparison. Needs no GPU or ffmpeg.
+#[test]
+fn frame_hash_matches_shared_parity_fixture() {
+    let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../shared/parity/frame-hash.cases.json");
+    let raw = std::fs::read_to_string(&path).expect("frame-hash.cases.json must exist");
+    let fixture: FrameHashFixture =
+        serde_json::from_str(&raw).expect("frame-hash.cases.json must be valid");
+
+    assert!(!fixture.cases.is_empty(), "fixture must have cases");
+
+    for c in &fixture.cases {
+        let frame = build_parity_frame(c.width, c.height, c.background, &c.rects);
+        let hash = compute_frame_hash(&frame, c.width, c.height);
+        let color_sig = compute_color_signature(&frame, c.width, c.height);
+
+        assert_eq!(
+            hash, c.expected_hash,
+            "aHash mismatch for \"{}\": native={hash} expected={}",
+            c.name, c.expected_hash,
+        );
+        assert_eq!(
+            color_sig, c.expected_color_sig,
+            "color signature mismatch for \"{}\": native={color_sig} expected={}",
+            c.name, c.expected_color_sig,
+        );
+    }
+}
+
 #[test]
 fn native_engine_parity_renders_all_scenes() {
     skip_unless!(
@@ -238,6 +388,7 @@ fn native_engine_parity_renders_all_scenes() {
                 .unwrap_or_else(|e| panic!("render_scene_to_pixels failed for {} at t={time_sec}: {e}", scene_def.filename));
 
             let hash = compute_frame_hash(&pixels, width as usize, height as usize);
+            let color_sig = compute_color_signature(&pixels, width as usize, height as usize);
 
             // Look up golden entry for this scene + native engine.
             if let Some(entry) = find_golden(&registry, &scene_def.filename, "native") {
@@ -245,7 +396,7 @@ fn native_engine_parity_renders_all_scenes() {
                     // Treat placeholder hashes as "no golden yet" — print for import.
                     if golden.hash == "0000000000000000" {
                         eprintln!(
-                            "GOLDEN[native] {} t={time_sec} hash={hash} tolerance={}",
+                            "GOLDEN[native] {} t={time_sec} hash={hash} colorSig={color_sig} tolerance={}",
                             scene_def.filename, scene_def.tolerance,
                         );
                     } else {
@@ -256,6 +407,18 @@ fn native_engine_parity_renders_all_scenes() {
                              distance={distance} tolerance={} actual={hash} expected={}",
                             scene_def.filename, golden.tolerance, golden.hash,
                         );
+
+                        // Colour signature catches hue errors the luma aHash misses.
+                        if let Some(expected_sig) = &golden.color_sig {
+                            let color_dist = color_signature_distance(&color_sig, expected_sig);
+                            assert!(
+                                color_dist <= DEFAULT_COLOR_TOLERANCE,
+                                "color mismatch for \"{}\" native at t={time_sec}s: \
+                                 distance={color_dist} tolerance={DEFAULT_COLOR_TOLERANCE} \
+                                 actual={color_sig} expected={expected_sig}",
+                                scene_def.filename,
+                            );
+                        }
                     }
                 } else {
                     eprintln!(
@@ -266,7 +429,7 @@ fn native_engine_parity_renders_all_scenes() {
             } else {
                 // No golden yet — print the hash so the generator can capture it.
                 eprintln!(
-                    "GOLDEN[native] {} t={time_sec} hash={hash} tolerance={}",
+                    "GOLDEN[native] {} t={time_sec} hash={hash} colorSig={color_sig} tolerance={}",
                     scene_def.filename, scene_def.tolerance,
                 );
             }
@@ -328,13 +491,14 @@ fn native_engine_cross_engine_parity_vs_web_golden() {
                 .expect("render_scene_to_pixels");
 
             let native_hash = compute_frame_hash(&pixels, width as usize, height as usize);
+            let native_sig = compute_color_signature(&pixels, width as usize, height as usize);
 
             // Compare native hash against web golden hash.
             if let Some(web_sample) = web_entry.samples.iter().find(|s| (s.time_sec - time_sec).abs() < 1e-6) {
                 // Skip placeholder hashes — they haven't been generated yet.
                 if web_sample.hash == "0000000000000000" {
                     eprintln!(
-                        "GOLDEN[native] {} t={time_sec} hash={native_hash} tolerance={}",
+                        "GOLDEN[native] {} t={time_sec} hash={native_hash} colorSig={native_sig} tolerance={}",
                         scene_def.filename, scene_def.tolerance,
                     );
                     continue;
@@ -349,6 +513,18 @@ fn native_engine_cross_engine_parity_vs_web_golden() {
                      native={native_hash} web={}",
                     scene_def.filename, web_sample.hash,
                 );
+
+                // Cross-engine colour parity (catches hue divergence between engines).
+                if let Some(web_sig) = &web_sample.color_sig {
+                    let color_dist = color_signature_distance(&native_sig, web_sig);
+                    assert!(
+                        color_dist <= DEFAULT_COLOR_TOLERANCE,
+                        "cross-engine color mismatch for \"{}\" at t={time_sec}s: \
+                         distance={color_dist} tolerance={DEFAULT_COLOR_TOLERANCE} \
+                         native={native_sig} web={web_sig}",
+                        scene_def.filename,
+                    );
+                }
             }
 
             // Also verify native hash matches its own golden.

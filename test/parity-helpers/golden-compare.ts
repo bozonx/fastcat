@@ -1,6 +1,6 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { hammingDistance } from './frame-hash';
+import { hammingDistance, colorSignatureDistance, DEFAULT_COLOR_TOLERANCE } from './frame-hash';
 
 /**
  * Golden hash registry — maps scene + sample time to an expected perceptual
@@ -10,6 +10,12 @@ export interface GoldenSample {
   timeSec: number;
   hash: string;
   tolerance: number;
+  /**
+   * 2x2 mean-color signature (24 hex chars). Optional for backwards
+   * compatibility with goldens captured before color signatures existed;
+   * comparisons that involve a sample without `colorSig` skip the color check.
+   */
+  colorSig?: string;
 }
 
 export interface GoldenEntry {
@@ -76,6 +82,27 @@ export function compareHash(
   };
 }
 
+export interface ColorMatchResult {
+  pass: boolean;
+  actualSig: string;
+  expectedSig: string;
+  distance: number;
+  tolerance: number;
+}
+
+/**
+ * Compare an actual color signature against the golden expectation using L1
+ * distance. Catches hue errors the luminance-only aHash is blind to.
+ */
+export function compareColorSig(
+  actualSig: string,
+  expectedSig: string,
+  tolerance: number = DEFAULT_COLOR_TOLERANCE,
+): ColorMatchResult {
+  const distance = colorSignatureDistance(actualSig, expectedSig);
+  return { pass: distance <= tolerance, actualSig, expectedSig, distance, tolerance };
+}
+
 /**
  * Upsert a golden sample into the registry (in-memory).
  * Call `saveGoldenRegistry` to persist.
@@ -87,6 +114,7 @@ export function upsertGoldenSample(
   timeSec: number,
   hash: string,
   tolerance: number = 10,
+  colorSig?: string,
 ): void {
   let entry = findGoldenEntry(registry, scene, engine);
   if (!entry) {
@@ -98,7 +126,8 @@ export function upsertGoldenSample(
   if (existing) {
     existing.hash = hash;
     existing.tolerance = tolerance;
+    if (colorSig) existing.colorSig = colorSig;
   } else {
-    entry.samples.push({ timeSec, hash, tolerance });
+    entry.samples.push({ timeSec, hash, tolerance, ...(colorSig ? { colorSig } : {}) });
   }
 }

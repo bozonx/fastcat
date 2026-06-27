@@ -8,9 +8,38 @@ import {
   findGoldenSample,
 } from '../../parity-helpers/golden-compare';
 import { loadAllScenes, collectSceneMediaPaths } from '../../parity-helpers/scene-loader';
-import { hammingDistance } from '../../parity-helpers/frame-hash';
+import {
+  hammingDistance,
+  colorSignatureDistance,
+  DEFAULT_COLOR_TOLERANCE,
+} from '../../parity-helpers/frame-hash';
 
 const MEDIA_DIR = resolve(process.cwd(), 'test/fixtures/media');
+
+const PLACEHOLDER = '0000000000000000';
+
+/**
+ * Goldens that are known-pending generation (placeholder hashes). Each key is
+ * `scene:engine:timeSec`. A placeholder OUTSIDE this allowlist means a scene
+ * was added without generating its golden — that now fails the suite instead of
+ * silently rotting. To intentionally add a pending golden, add its key here;
+ * to clear one, run the generator and remove the key.
+ */
+const KNOWN_PENDING_GOLDENS = new Set<string>([
+  'multi-time-samples.json:native:1',
+  'multi-time-samples.json:web:1',
+  'transition-dissolve.json:native:0.5',
+  'transition-dissolve.json:web:0.5',
+  'transition-fade-to-black.json:native:0.5',
+  'transition-fade-to-black.json:web:0.5',
+  'transition-slide.json:native:0.5',
+  'transition-slide.json:web:0.5',
+  'transition-wipe.json:native:0.5',
+  'transition-wipe.json:web:0.5',
+]);
+
+const pendingKey = (scene: string, engine: string, timeSec: number): string =>
+  `${scene}:${engine}:${timeSec}`;
 
 describe('golden-registry integration', () => {
   const registry = loadGoldenRegistry();
@@ -37,6 +66,18 @@ describe('golden-registry integration', () => {
           expect(sample.hash).toMatch(/^[0-9a-f]{16}$/);
           expect(sample.tolerance).toBeGreaterThan(0);
           expect(sample.timeSec).toBeGreaterThanOrEqual(0);
+        }
+      }
+    });
+
+    it('every present color signature is a valid 24-char hex string', () => {
+      for (const entry of registry.entries) {
+        for (const sample of entry.samples) {
+          if (sample.colorSig === undefined) continue;
+          expect(
+            sample.colorSig,
+            `${entry.scene} ${entry.engine} t=${sample.timeSec}s has malformed colorSig`,
+          ).toMatch(/^[0-9a-f]{24}$/);
         }
       }
     });
@@ -132,7 +173,6 @@ describe('golden-registry integration', () => {
           if (!webSample || !nativeSample) continue;
 
           // Skip placeholder hashes — they haven't been generated yet.
-          const PLACEHOLDER = '0000000000000000';
           if (webSample.hash === PLACEHOLDER || nativeSample.hash === PLACEHOLDER) continue;
 
           const tolerance = Math.max(
@@ -148,31 +188,54 @@ describe('golden-registry integration', () => {
               `distance=${distance} tolerance=${tolerance} ` +
               `web=${webSample.hash} native=${nativeSample.hash}`,
           ).toBe(true);
+
+          // Color signatures (when both engines captured one) must also agree —
+          // catches hue divergence the luminance aHash is blind to.
+          if (webSample.colorSig && nativeSample.colorSig) {
+            const colorDist = colorSignatureDistance(webSample.colorSig, nativeSample.colorSig);
+            expect(
+              colorDist <= DEFAULT_COLOR_TOLERANCE,
+              `cross-engine color mismatch for "${filename}" at t=${timeSec}s: ` +
+                `distance=${colorDist} tolerance=${DEFAULT_COLOR_TOLERANCE} ` +
+                `web=${webSample.colorSig} native=${nativeSample.colorSig}`,
+            ).toBe(true);
+          }
         }
       }
     });
 
-    it('placeholder hashes (all-zero) are flagged for regeneration', () => {
-      const placeholders: string[] = [];
+    it('no placeholder hashes exist outside the known-pending allowlist', () => {
+      const unexpected: string[] = [];
+      const stalePending = new Set(KNOWN_PENDING_GOLDENS);
 
       for (const entry of registry.entries) {
         for (const sample of entry.samples) {
-          if (sample.hash === '0000000000000000') {
-            placeholders.push(`${entry.scene} ${entry.engine} t=${sample.timeSec}s`);
+          if (sample.hash !== PLACEHOLDER) continue;
+          const key = pendingKey(entry.scene, entry.engine, sample.timeSec);
+          if (KNOWN_PENDING_GOLDENS.has(key)) {
+            stalePending.delete(key);
+          } else {
+            unexpected.push(key);
           }
         }
       }
 
-      if (placeholders.length > 0) {
-        // Warn but don't fail — placeholders are expected for new scenes
-        // until `pnpm test:parity:gen-golden` is run.
-        console.warn(
-          `\n  [golden-registry] ${placeholders.length} placeholder hash(es) found — ` +
-            `run \`pnpm test:parity:gen-golden\` to regenerate:\n` +
-            placeholders.map((p) => `    - ${p}`).join('\n') +
-            '\n',
-        );
-      }
+      // A placeholder for a scene that isn't on the allowlist = a golden was
+      // never generated. Fail loudly instead of silently skipping it forever.
+      expect(
+        unexpected,
+        `Un-generated golden hash(es) found. Run \`pnpm test:parity:gen-golden\` ` +
+          `to generate them, or add to KNOWN_PENDING_GOLDENS if intentionally pending:\n` +
+          unexpected.map((p) => `    - ${p}`).join('\n'),
+      ).toEqual([]);
+
+      // Allowlist entries that are no longer placeholders should be removed so
+      // the list can't accumulate stale exemptions that mask real regressions.
+      expect(
+        [...stalePending],
+        `KNOWN_PENDING_GOLDENS contains entries that are no longer placeholders ` +
+          `(remove them):`,
+      ).toEqual([]);
     });
   });
 

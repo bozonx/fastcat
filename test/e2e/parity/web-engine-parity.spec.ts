@@ -9,9 +9,12 @@ import {
   findGoldenEntry,
   findGoldenSample,
   compareHash,
+  compareColorSig,
 } from '../../parity-helpers/golden-compare';
 import { loadAllScenes } from '../../parity-helpers/scene-loader';
 import { computeFrameHash } from '../../parity-helpers/frame-hash';
+
+const PLACEHOLDER = '0000000000000000';
 
 const MEDIA_DIR = resolve(process.cwd(), 'test/fixtures/media');
 
@@ -64,6 +67,7 @@ test.describe('Web engine parity @parity', () => {
 
       const registry = loadGoldenRegistry();
       const goldenEntry = findGoldenEntry(registry, filename, 'web');
+      const nativeEntry = findGoldenEntry(registry, filename, 'native');
 
       for (let i = 0; i < results.length; i++) {
         const result = results[i]!;
@@ -72,11 +76,12 @@ test.describe('Web engine parity @parity', () => {
         expect(result.error, `render error at t=${timeSec}s: ${result.error}`).toBeUndefined();
 
         if (!goldenEntry) {
-          // No golden yet — just verify the hash is a valid 16-char hex string.
+          // No golden yet — just verify the hashes are well-formed.
           expect(result.hash).toMatch(/^[0-9a-f]{16}$/);
+          expect(result.colorSig).toMatch(/^[0-9a-f]{24}$/);
           test.info().annotations.push({
             type: 'golden-missing',
-            description: `${filename} web t=${timeSec} hash=${result.hash}`,
+            description: `${filename} web t=${timeSec} hash=${result.hash} colorSig=${result.colorSig}`,
           });
           continue;
         }
@@ -91,6 +96,42 @@ test.describe('Web engine parity @parity', () => {
             `distance=${match.distance} tolerance=${match.tolerance} ` +
             `actual=${match.actualHash} expected=${match.expectedHash}`,
         ).toBe(true);
+
+        // Color signature vs web golden (catches hue regressions in the web engine).
+        if (golden!.colorSig) {
+          const colorMatch = compareColorSig(result.colorSig, golden!.colorSig);
+          expect(
+            colorMatch.pass,
+            `web color mismatch for "${filename}" at t=${timeSec}s: ` +
+              `distance=${colorMatch.distance} tolerance=${colorMatch.tolerance} ` +
+              `actual=${colorMatch.actualSig} expected=${colorMatch.expectedSig}`,
+          ).toBe(true);
+        }
+
+        // Live cross-engine check: the freshly-rendered web frame must match the
+        // stored native golden. This is the real web-side parity assertion — the
+        // separate cross-engine test below only compares two stored numbers.
+        const nativeGolden = nativeEntry ? findGoldenSample(nativeEntry, timeSec) : undefined;
+        if (nativeGolden && nativeGolden.hash !== PLACEHOLDER) {
+          const crossTol = Math.max(nativeGolden.tolerance, golden!.tolerance, tolerance);
+          const crossMatch = compareHash(result.hash, nativeGolden.hash, crossTol);
+          expect(
+            crossMatch.pass,
+            `live web vs native golden mismatch for "${filename}" at t=${timeSec}s: ` +
+              `distance=${crossMatch.distance} tolerance=${crossMatch.tolerance} ` +
+              `web=${crossMatch.actualHash} native=${crossMatch.expectedHash}`,
+          ).toBe(true);
+
+          if (nativeGolden.colorSig) {
+            const crossColor = compareColorSig(result.colorSig, nativeGolden.colorSig);
+            expect(
+              crossColor.pass,
+              `live web vs native color mismatch for "${filename}" at t=${timeSec}s: ` +
+                `distance=${crossColor.distance} tolerance=${crossColor.tolerance} ` +
+                `web=${crossColor.actualSig} native=${crossColor.expectedSig}`,
+            ).toBe(true);
+          }
+        }
       }
     });
   }
@@ -116,7 +157,6 @@ test.describe('Web engine parity @parity', () => {
         if (!nativeSample) continue;
 
         // Skip placeholder hashes — they haven't been generated yet.
-        const PLACEHOLDER = '0000000000000000';
         if (webSample.hash === PLACEHOLDER || nativeSample.hash === PLACEHOLDER) continue;
 
         const match = compareHash(
@@ -131,6 +171,16 @@ test.describe('Web engine parity @parity', () => {
             `distance=${match.distance} tolerance=${match.tolerance} ` +
             `web=${match.actualHash} native=${match.expectedHash}`,
         ).toBe(true);
+
+        if (webSample.colorSig && nativeSample.colorSig) {
+          const colorMatch = compareColorSig(webSample.colorSig, nativeSample.colorSig);
+          expect(
+            colorMatch.pass,
+            `cross-engine color mismatch for "${filename}" at t=${webSample.timeSec}s: ` +
+              `distance=${colorMatch.distance} tolerance=${colorMatch.tolerance} ` +
+              `web=${colorMatch.actualSig} native=${colorMatch.expectedSig}`,
+          ).toBe(true);
+        }
       }
     }
   });

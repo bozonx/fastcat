@@ -330,7 +330,7 @@
       "samples": [
         {
           "timeSec": 0.5,
-          "hash": "0000000000000000",
+          "hash": "ff7f3f0f07030000",
           "tolerance": 20
         }
       ]
@@ -412,7 +412,7 @@
       "samples": [
         {
           "timeSec": 0.5,
-          "hash": "0000000000000000",
+          "hash": "cccc3c3ccf470301",
           "tolerance": 30
         }
       ]
@@ -434,7 +434,7 @@
       "samples": [
         {
           "timeSec": 0.5,
-          "hash": "0000000000000000",
+          "hash": "ff7f3f0f07030000",
           "tolerance": 20
         }
       ]
@@ -456,7 +456,7 @@
       "samples": [
         {
           "timeSec": 0.5,
-          "hash": "0000000000000000",
+          "hash": "ff55ff57f0500000",
           "tolerance": 40
         }
       ]
@@ -478,7 +478,7 @@
       "samples": [
         {
           "timeSec": 0.5,
-          "hash": "0000000000000000",
+          "hash": "00f3ff0000fcfc00",
           "tolerance": 30
         }
       ]
@@ -500,7 +500,7 @@
       "samples": [
         {
           "timeSec": 0.5,
-          "hash": "0000000000000000",
+          "hash": "00001c1c1c1c0000",
           "tolerance": 20
         }
       ]
@@ -522,7 +522,7 @@
       "samples": [
         {
           "timeSec": 0.5,
-          "hash": "0000000000000000",
+          "hash": "fffefcf0e0c00000",
           "tolerance": 20
         }
       ]
@@ -549,7 +549,7 @@
       "samples": [
         {
           "timeSec": 0.15,
-          "hash": "0000000000000000",
+          "hash": "ff7f3f0f07030000",
           "tolerance": 25
         },
         {
@@ -581,7 +581,7 @@
       "samples": [
         {
           "timeSec": 0.15,
-          "hash": "0000000000000000",
+          "hash": "ff7f3f0f07030000",
           "tolerance": 25
         },
         {
@@ -613,7 +613,7 @@
       "samples": [
         {
           "timeSec": 0.15,
-          "hash": "0000000000000000",
+          "hash": "ff7f3f0f07030000",
           "tolerance": 25
         },
         {

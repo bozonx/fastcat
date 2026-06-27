@@ -162,8 +162,18 @@ async function genWebGolden(): Promise<void> {
           continue;
         }
 
-        console.log(`  WEB  ${filename} t=${timeSec}s hash=${result.hash}`);
-        upsertGoldenSample(registry, filename, 'web', timeSec, result.hash, tolerance);
+        console.log(
+          `  WEB  ${filename} t=${timeSec}s hash=${result.hash} colorSig=${result.colorSig}`,
+        );
+        upsertGoldenSample(
+          registry,
+          filename,
+          'web',
+          timeSec,
+          result.hash,
+          tolerance,
+          result.colorSig,
+        );
       }
     }
 

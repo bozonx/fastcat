@@ -2,6 +2,7 @@
 import { VideoCompositor } from '~/utils/video-editor/VideoCompositor';
 import type { WorkerVideoPayloadItem } from '~/types/worker-payload';
 import type { MediaSourceLoaderDeps } from '~/utils/video-editor/compositor/RasterImageLoader';
+import { computeFrameHash, computeColorSignature } from '~/utils/video-editor/perceptual-hash';
 
 definePageMeta({
   layout: 'embedded',
@@ -21,6 +22,7 @@ interface ParityRenderRequest {
 
 interface ParityFrameResult {
   hash: string;
+  colorSig: string;
   width: number;
   height: number;
   error?: string;
@@ -170,42 +172,6 @@ function buildClipsFromScene(
   });
 }
 
-function computePerceptualHash(rgba: Uint8ClampedArray, width: number, height: number): string {
-  const grid = new Float64Array(64);
-  const counts = new Float64Array(64);
-  const xStep = width / 8;
-  const yStep = height / 8;
-
-  for (let y = 0; y < height; y++) {
-    const gy = Math.min(7, Math.floor(y / yStep));
-    for (let x = 0; x < width; x++) {
-      const gx = Math.min(7, Math.floor(x / xStep));
-      const i = (y * width + x) * 4;
-      const luma = 0.299 * rgba[i]! + 0.587 * rgba[i + 1]! + 0.114 * rgba[i + 2]!;
-      const idx = gy * 8 + gx;
-      grid[idx]! += luma;
-      counts[idx]! += 1;
-    }
-  }
-
-  for (let i = 0; i < 64; i++) {
-    grid[i] = counts[i]! > 0 ? grid[i]! / counts[i]! : 0;
-  }
-
-  let sum = 0;
-  for (let i = 0; i < 64; i++) sum += grid[i]!;
-  const mean = sum / 64;
-
-  let hash = 0n;
-  for (let i = 0; i < 64; i++) {
-    if (grid[i]! > mean) {
-      hash |= 1n << BigInt(63 - i);
-    }
-  }
-
-  return hash.toString(16).padStart(16, '0');
-}
-
 async function renderFrames(req: ParityRenderRequest): Promise<ParityFrameResult[]> {
   const width = req.scene.width ?? 320;
   const height = req.scene.height ?? 240;
@@ -229,7 +195,7 @@ async function renderFrames(req: ParityRenderRequest): Promise<ParityFrameResult
     const canvas = await compositor.renderFrame(timeUs);
 
     if (!canvas) {
-      results.push({ hash: '', width, height, error: 'renderFrame returned null' });
+      results.push({ hash: '', colorSig: '', width, height, error: 'renderFrame returned null' });
       continue;
     }
 
@@ -240,15 +206,16 @@ async function renderFrames(req: ParityRenderRequest): Promise<ParityFrameResult
     tmp.height = height;
     const tmpCtx = tmp.getContext('2d');
     if (!tmpCtx) {
-      results.push({ hash: '', width, height, error: 'no 2d context on tmp canvas' });
+      results.push({ hash: '', colorSig: '', width, height, error: 'no 2d context on tmp canvas' });
       continue;
     }
 
     tmpCtx.drawImage(canvas as OffscreenCanvas | HTMLCanvasElement, 0, 0);
     const imageData = tmpCtx.getImageData(0, 0, width, height);
-    const hash = computePerceptualHash(imageData.data, width, height);
+    const hash = computeFrameHash(imageData.data, width, height);
+    const colorSig = computeColorSignature(imageData.data, width, height);
 
-    results.push({ hash, width, height });
+    results.push({ hash, colorSig, width, height });
   }
 
   await compositor.destroy();
