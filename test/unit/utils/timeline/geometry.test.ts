@@ -277,6 +277,33 @@ describe('computeSnappedStartUs', () => {
     });
     expect(result).toBe(1_000_000);
   });
+
+  // Regression: a clip whose start sits off the frame grid (e.g. placed flush
+  // after a clip with a non-frame-aligned duration) must still resolve to an
+  // absolute-grid position with frameOffsetUs:0 — so the live move preview lands
+  // exactly where the move command commits it, with no 1-frame jump on release.
+  it('frame-snaps off-grid starts to the absolute grid (preview == commit)', () => {
+    const fps = 30;
+    const frameUs = 1e6 / fps;
+    // ~half a frame off the grid — the worst case for a phase-preserving snap.
+    const rawStartUs = quantizeStartUsToFrames(2_000_000, fps) + Math.round(frameUs / 2) + 137;
+
+    const previewStartUs = computeSnappedStartUs({
+      rawStartUs,
+      draggingItemDurationUs: 500_000,
+      fps,
+      zoom: 50,
+      snapThresholdPx: 0,
+      snapTargetsUs: [],
+      enableFrameSnap: true,
+      enableClipSnap: false,
+      frameOffsetUs: 0,
+    });
+
+    // The commit re-quantizes to the absolute grid; with frameOffsetUs:0 the
+    // preview is already grid-aligned, so that re-quantization is a no-op.
+    expect(previewStartUs).toBe(quantizeStartUsToFrames(previewStartUs, fps));
+  });
 });
 
 describe('calculatePointerTimeUs', () => {

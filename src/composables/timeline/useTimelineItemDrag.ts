@@ -97,7 +97,6 @@ export function useTimelineItemDrag(
   const dragAnchorDurationUs = ref(0);
   const dragAnchorSourceStartUs = ref(0);
   const dragAnchorSourceDurationUs = ref(0);
-  const dragFrameOffsetUs = ref(0);
   const dragLastAppliedQuantizedDeltaUs = ref(0);
   const dragSnapTargetsUs = ref<number[]>([]);
   const dragAnchorItemDurationUs = ref(0);
@@ -283,9 +282,6 @@ export function useTimelineItemDrag(
     dragAnchorSourceStartUs.value = item?.kind === 'clip' ? item.sourceRange.startUs : 0;
     dragAnchorSourceDurationUs.value = item?.kind === 'clip' ? item.sourceRange.durationUs : 0;
     dragAnchorItemDurationUs.value = dragAnchorDurationUs.value;
-    const fps = sanitizeFps(timelineStore.timelineDoc?.timebase?.fps);
-    const q = quantizeStartUsToFrames(startUs, fps);
-    dragFrameOffsetUs.value = Math.round(startUs - q);
     dragLastAppliedQuantizedDeltaUs.value = 0;
 
     const timelineEndUs = Number.isFinite(timelineStore.duration)
@@ -535,7 +531,11 @@ export function useTimelineItemDrag(
       snapTargetsUs: dragSnapTargetsUs.value,
       enableFrameSnap,
       enableClipSnap,
-      frameOffsetUs: dragFrameOffsetUs.value,
+      // Frame-snap to the absolute frame grid (no sub-frame phase). This is the
+      // same convention the move commit (`move_items`) and the file-manager drop
+      // preview use, so the live preview lands exactly where the clip is
+      // committed — no 1-frame jump on release for off-grid clip starts.
+      frameOffsetUs: 0,
     });
 
     const targetTrackId = resolveMoveTargetTrackId({
