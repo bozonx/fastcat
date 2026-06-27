@@ -22,7 +22,7 @@ const emit = defineEmits<{
   (e: 'request-rename'): void;
   (e: 'rename', name: string): void;
   (e: 'cancelRename'): void;
-  (e: 'resizeStart', event: MouseEvent): void;
+  (e: 'resizeStart', event: PointerEvent): void;
   (e: 'contextMenu'): void;
   (e: 'middleClick', event: MouseEvent): void;
 }>();
@@ -379,8 +379,8 @@ onBeforeUnmount(() => {
 
     <!-- Bottom Resize Handle -->
     <div
-      class="absolute bottom-0 left-0 right-0 h-1 cursor-ns-resize z-20 hover:bg-primary-500/50 transition-colors"
-      @mousedown.stop.prevent="emit('resizeStart', $event)"
+      class="absolute bottom-0 left-0 right-0 h-1 cursor-ns-resize z-20 hover:bg-primary-500/50 transition-colors touch-none"
+      @pointerdown.stop.prevent="emit('resizeStart', $event)"
     />
   </div>
 </template>

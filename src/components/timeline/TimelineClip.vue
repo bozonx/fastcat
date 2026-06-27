@@ -290,13 +290,30 @@ const {
       );
     });
   },
-  onLongPress: () => {
+  onLongPress: (e) => {
     if (props.isMobile) {
       emit('clipAction', {
         action: 'longPress',
         trackId: props.track.id,
         itemId: props.item.id,
       });
+      return;
+    }
+    // Desktop touch/stylus: a finger or stylus has no right-click, so a
+    // long press opens the same context menu as a mouse right-click. Reuse the
+    // synthetic-contextmenu path (see onShortRightClick) — UContextMenu listens
+    // for the (untrusted) contextmenu event and onContextMenu only blocks
+    // trusted ones.
+    if (e.pointerType === 'touch' || e.pointerType === 'pen') {
+      const target = e.target as HTMLElement | null;
+      target?.dispatchEvent(
+        new MouseEvent('contextmenu', {
+          bubbles: true,
+          cancelable: true,
+          clientX: e.clientX,
+          clientY: e.clientY,
+        }),
+      );
     }
   },
 });
@@ -757,7 +774,7 @@ function handleTransitionCreate(
             : isDraggingOver
               ? 'var(--z-clip-dragging-over)'
               : 'var(--z-clip-normal)',
-        WebkitTouchCallout: isMobile ? 'none' : undefined,
+        WebkitTouchCallout: 'none',
       }"
       :class="[
         getClipClass(item, track),
@@ -772,7 +789,7 @@ function handleTransitionCreate(
         isMediaMissing ? 'bg-red-600! border-red-800! text-white!' : '',
         !isMediaMissing && isUnsupported ? 'bg-amber-600/50! border-amber-700!' : '',
         (clipItem && Boolean(clipItem.locked)) || track.locked ? 'cursor-not-allowed' : '',
-        isMobile && isSelected ? 'touch-none' : '',
+        isSelected ? 'touch-none' : '',
         isMovePreviewCollision ? 'bg-red-600/80! border-red-500! border-2! text-white! z-50!' : '',
       ]"
       @pointerdown="onClipPointerdown"

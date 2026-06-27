@@ -343,7 +343,7 @@ onBeforeUnmount(() => {
             />
             <div
               v-if="!isMobile && canEdit && !clip.locked && !track.locked"
-              class="absolute right-0 top-0 bottom-0 w-2 cursor-ew-resize bg-white/0 group-hover/trans:bg-white/20 hover:bg-white/40! transition-colors z-40 pointer-events-auto"
+              class="absolute right-0 top-0 bottom-0 w-2 cursor-ew-resize bg-white/0 group-hover/trans:bg-white/20 hover:bg-white/40! transition-colors z-40 pointer-events-auto touch-none"
               @pointerdown.stop.prevent="
                 emit('resize', $event, { edge: 'in', durationUs: clip.transitionIn!.durationUs })
               "
@@ -427,7 +427,7 @@ onBeforeUnmount(() => {
             />
             <div
               v-if="!isMobile && canEdit && !clip.locked && !track.locked"
-              class="absolute left-0 top-0 bottom-0 w-2 cursor-ew-resize bg-white/0 group-hover/trans:bg-white/20 hover:bg-white/40! transition-colors z-40 pointer-events-auto"
+              class="absolute left-0 top-0 bottom-0 w-2 cursor-ew-resize bg-white/0 group-hover/trans:bg-white/20 hover:bg-white/40! transition-colors z-40 pointer-events-auto touch-none"
               @pointerdown.stop.prevent="
                 emit('resize', $event, { edge: 'out', durationUs: clip.transitionOut!.durationUs })
               "

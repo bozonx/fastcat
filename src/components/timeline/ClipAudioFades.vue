@@ -237,7 +237,7 @@ const volumeIndicatorPosition = computed(() => {
     <!-- Fade Handles -->
     <template v-if="canEdit && !clip.locked && !track.locked && !isMobile">
       <div
-        class="absolute top-0 w-4 h-4 -translate-x-1/2 -translate-y-1/2 transition-opacity flex items-center justify-center shadow-sm pointer-events-auto"
+        class="absolute top-0 w-4 h-4 -translate-x-1/2 -translate-y-1/2 transition-opacity flex items-center justify-center shadow-sm pointer-events-auto touch-none coarse-reveal"
         :class="[
           clipWidthPx >= 30 ? 'cursor-ew-resize' : 'hidden pointer-events-none',
           'opacity-0 group-hover/clip:opacity-100',
@@ -257,7 +257,7 @@ const volumeIndicatorPosition = computed(() => {
       </div>
 
       <div
-        class="absolute top-0 w-4 h-4 -translate-x-1/2 -translate-y-1/2 transition-opacity flex items-center justify-center shadow-sm pointer-events-auto"
+        class="absolute top-0 w-4 h-4 -translate-x-1/2 -translate-y-1/2 transition-opacity flex items-center justify-center shadow-sm pointer-events-auto touch-none coarse-reveal"
         :class="[
           clipWidthPx >= 30 ? 'cursor-ew-resize' : 'hidden pointer-events-none',
           'opacity-0 group-hover/clip:opacity-100',
@@ -280,7 +280,7 @@ const volumeIndicatorPosition = computed(() => {
     <!-- Volume Control Line -->
     <div
       data-testid="clip-volume-control"
-      class="absolute left-0 right-0 z-45 h-3 -mt-1.5 flex flex-col justify-center transition-opacity"
+      class="absolute left-0 right-0 z-45 h-3 -mt-1.5 flex flex-col justify-center transition-opacity touch-none"
       :class="[
         canEdit && !clip.locked && !track.locked && !isMobile
           ? 'cursor-ns-resize pointer-events-auto'

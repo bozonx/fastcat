@@ -39,7 +39,10 @@ export function useTimelineSectionResize({ projectId, storage }: UseTimelineSect
   const resizeSectionStartY = ref(0);
   const resizeSectionStartPercent = ref(0);
 
-  function onSectionResizeMove(e: MouseEvent) {
+  // Pointer events (not mouse) so the section divider can also be dragged with a
+  // finger or stylus. PointerEvent extends MouseEvent and fires identically for
+  // a mouse, so the existing desktop behaviour is unchanged.
+  function onSectionResizeMove(e: PointerEvent) {
     if (!isResizingSections.value || !sectionContainerRef.value) return;
     const containerHeight = sectionContainerRef.value.offsetHeight;
     if (containerHeight <= 0) return;
@@ -53,17 +56,19 @@ export function useTimelineSectionResize({ projectId, storage }: UseTimelineSect
 
   function onSectionResizeEnd() {
     isResizingSections.value = false;
-    window.removeEventListener('mousemove', onSectionResizeMove);
-    window.removeEventListener('mouseup', onSectionResizeEnd);
+    window.removeEventListener('pointermove', onSectionResizeMove);
+    window.removeEventListener('pointerup', onSectionResizeEnd);
+    window.removeEventListener('pointercancel', onSectionResizeEnd);
   }
 
-  function onSectionResizeStart(e: MouseEvent) {
+  function onSectionResizeStart(e: PointerEvent) {
     e.preventDefault();
     isResizingSections.value = true;
     resizeSectionStartY.value = e.clientY;
     resizeSectionStartPercent.value = videoSectionPercent.value;
-    window.addEventListener('mousemove', onSectionResizeMove);
-    window.addEventListener('mouseup', onSectionResizeEnd);
+    window.addEventListener('pointermove', onSectionResizeMove);
+    window.addEventListener('pointerup', onSectionResizeEnd);
+    window.addEventListener('pointercancel', onSectionResizeEnd);
   }
 
   function resetSectionPercent() {
@@ -71,8 +76,9 @@ export function useTimelineSectionResize({ projectId, storage }: UseTimelineSect
   }
 
   onBeforeUnmount(() => {
-    window.removeEventListener('mousemove', onSectionResizeMove);
-    window.removeEventListener('mouseup', onSectionResizeEnd);
+    window.removeEventListener('pointermove', onSectionResizeMove);
+    window.removeEventListener('pointerup', onSectionResizeEnd);
+    window.removeEventListener('pointercancel', onSectionResizeEnd);
   });
 
   return {

@@ -395,6 +395,7 @@ function onMobilePointerUp() {
     <div
       ref="containerRef"
       class="relative w-full h-full overflow-hidden cursor-pointer"
+      :class="isMobile ? '' : 'touch-none'"
       @contextmenu="onRulerContextMenu"
       @click="onRulerClick"
       @dblclick="onRulerDblClick"

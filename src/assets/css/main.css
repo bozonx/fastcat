@@ -158,6 +158,13 @@
   touch-action: pan-y;
 }
 
+/* Touch / stylus (coarse pointer) on the desktop layout: surface controls that
+   are otherwise revealed on hover, since a finger or stylus has no hover state
+   to trigger them (see plugins/pointer-mode.client.ts). */
+html.coarse-pointer .coarse-reveal {
+  opacity: 0.75;
+}
+
 html.fastcat-file-manager-dragging,
 body.fastcat-file-manager-dragging,
 html.fastcat-file-manager-dragging *,

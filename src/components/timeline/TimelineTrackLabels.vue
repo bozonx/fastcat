@@ -46,30 +46,36 @@ const DEFAULT_TRACK_HEIGHT = 40;
 const MIN_TRACK_HEIGHT = 32;
 const MAX_TRACK_HEIGHT = 300;
 
-function onResizeStart(trackId: string, e: MouseEvent) {
+// Pointer events (not mouse) so track height can also be resized with a finger
+// or stylus. PointerEvent extends MouseEvent and fires identically for a mouse,
+// so existing desktop behaviour is unchanged.
+function onResizeStart(trackId: string, e: PointerEvent) {
   resizingTrackId.value = trackId;
   startY.value = e.clientY;
   startHeight.value = props.trackHeights[trackId] ?? DEFAULT_TRACK_HEIGHT;
-  window.addEventListener('mousemove', onGlobalMouseMove);
-  window.addEventListener('mouseup', onGlobalMouseUp);
+  window.addEventListener('pointermove', onGlobalPointerMove);
+  window.addEventListener('pointerup', onGlobalPointerUp);
+  window.addEventListener('pointercancel', onGlobalPointerUp);
 }
 
-function onGlobalMouseMove(e: MouseEvent) {
+function onGlobalPointerMove(e: PointerEvent) {
   if (!resizingTrackId.value) return;
   const dy = e.clientY - startY.value;
   const nextHeight = Math.max(MIN_TRACK_HEIGHT, Math.min(MAX_TRACK_HEIGHT, startHeight.value + dy));
   emit('update:trackHeight', resizingTrackId.value, nextHeight);
 }
 
-function onGlobalMouseUp() {
+function onGlobalPointerUp() {
   resizingTrackId.value = null;
-  window.removeEventListener('mousemove', onGlobalMouseMove);
-  window.removeEventListener('mouseup', onGlobalMouseUp);
+  window.removeEventListener('pointermove', onGlobalPointerMove);
+  window.removeEventListener('pointerup', onGlobalPointerUp);
+  window.removeEventListener('pointercancel', onGlobalPointerUp);
 }
 
 onBeforeUnmount(() => {
-  window.removeEventListener('mousemove', onGlobalMouseMove);
-  window.removeEventListener('mouseup', onGlobalMouseUp);
+  window.removeEventListener('pointermove', onGlobalPointerMove);
+  window.removeEventListener('pointerup', onGlobalPointerUp);
+  window.removeEventListener('pointercancel', onGlobalPointerUp);
 });
 
 const isConfirmDeleteOpen = ref(false);
@@ -227,7 +233,7 @@ const { emptyAreaContextMenuItems: propertiesContextMenuItems } = useTimelineEmp
             @request-rename="renamingTrackId = track.id"
             @rename="(name) => handleRenameTrack(track.id, name)"
             @cancel-rename="renamingTrackId = null"
-            @resize-start="(e: MouseEvent) => onResizeStart(track.id, e)"
+            @resize-start="(e: PointerEvent) => onResizeStart(track.id, e)"
             @mouseenter="timelineStore.hoveredTrackId = track.id"
             @mouseleave="timelineStore.hoveredTrackId = null"
             @contextmenu.prevent.stop="onTrackContextMenu($event, track)"

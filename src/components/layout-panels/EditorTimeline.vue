@@ -820,8 +820,8 @@ async function handleConfirmCreateVersion(newName: string) {
 
       <!-- Section resize handle -->
       <div
-        class="timeline-section-resize-handle h-1.5 cursor-ns-resize bg-ui-bg hover:bg-primary-500/30 transition-colors z-20 shrink-0 flex items-center justify-center group"
-        @mousedown="onSectionResizeStart"
+        class="timeline-section-resize-handle h-1.5 cursor-ns-resize bg-ui-bg hover:bg-primary-500/30 transition-colors z-20 shrink-0 flex items-center justify-center group touch-none"
+        @pointerdown="onSectionResizeStart"
       >
         <div
           class="w-8 h-0.5 rounded bg-ui-border group-hover:bg-primary-500/60 transition-colors"
