@@ -125,6 +125,7 @@ function stopSnapLongPress() {
           size="sm"
           :title="t('common.undo')"
           :disabled="!timelineStore.historyStore.canUndo('timeline')"
+          disable-mobile-tooltip
           @click="handleUndo"
           @pointerdown="startLongPress"
           @pointerup="stopLongPress"
@@ -136,6 +137,7 @@ function stopSnapLongPress() {
           size="sm"
           :title="t('common.redo')"
           :disabled="!timelineStore.historyStore.canRedo('timeline')"
+          disable-mobile-tooltip
           @click="handleRedo"
           @pointerdown="startLongPress"
           @pointerup="stopLongPress"
@@ -160,6 +162,7 @@ function stopSnapLongPress() {
           :variant="settingsStore.toolbarSnapMode === 'no_snap' ? 'ghost' : 'soft'"
           size="sm"
           :title="currentSnapOption.label"
+          disable-mobile-tooltip
           @click="handleSnapToggle"
           @pointerdown="startSnapLongPress"
           @pointerup="stopSnapLongPress"

@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { useLongPressTooltip } from '~/composables/ui/useLongPressTooltip';
+
 type ButtonColor =
   | 'primary'
   | 'secondary'
@@ -28,6 +30,8 @@ const props = withDefaults(
     block?: boolean;
     square?: boolean;
     hoverClass?: string;
+    title?: string;
+    disableMobileTooltip?: boolean;
   }>(),
   {
     size: 'sm',
@@ -40,12 +44,37 @@ const props = withDefaults(
     block: false,
     square: false,
     hoverClass: 'hover:bg-ui-bg-hover/60 hover:text-ui-text transition-colors',
+    title: undefined,
+    disableMobileTooltip: false,
   },
 );
 
 const emit = defineEmits<{
   click: [event: MouseEvent];
 }>();
+
+const { tooltipText, tooltipVisible, tooltipX, tooltipY, startPress, movePress, hide } =
+  useLongPressTooltip();
+
+function onPointerDown(e: PointerEvent) {
+  if (!props.disableMobileTooltip && e.pointerType === 'touch' && props.title) {
+    startPress(e, props.title);
+  }
+}
+
+function onPointerUp() {
+  hide();
+}
+
+function onPointerMove(e: PointerEvent) {
+  if (!props.disableMobileTooltip && e.pointerType === 'touch') {
+    movePress(e);
+  }
+}
+
+function onPointerLeave() {
+  hide();
+}
 
 function onClick(event: MouseEvent) {
   if (props.disabled || props.loading) return;
@@ -64,9 +93,24 @@ function onClick(event: MouseEvent) {
     :label="label"
     :loading="loading"
     :disabled="disabled"
+    :title="title"
     :class="[hoverClass, block ? 'w-full' : '', square ? 'aspect-square p-0' : '']"
     @click="onClick"
+    @pointerdown="onPointerDown"
+    @pointerup="onPointerUp"
+    @pointermove="onPointerMove"
+    @pointerleave="onPointerLeave"
   >
     <slot />
   </UButton>
+
+  <Teleport to="body">
+    <div
+      v-if="tooltipVisible"
+      class="fixed z-[9999] px-2.5 py-1.5 rounded-lg bg-black/90 text-white text-xs font-medium whitespace-nowrap pointer-events-none shadow-lg"
+      :style="{ left: `${tooltipX}px`, top: `${tooltipY - 48}px`, transform: 'translateX(-50%)' }"
+    >
+      {{ tooltipText }}
+    </div>
+  </Teleport>
 </template>
