@@ -27,8 +27,8 @@ describe('webcodecs', () => {
 
   it('resolves video codec options with disabled flag', () => {
     const resolved = resolveVideoCodecOptions(BASE_VIDEO_CODEC_OPTIONS, { 'avc1.640032': false });
-    expect(resolved[0]!.disabled).toBe(true);
-    expect(resolved[1]!.disabled).toBe(false);
+    expect(resolved.find((o) => o.value === 'avc1.640032')!.disabled).toBe(true);
+    expect(resolved.find((o) => o.value !== 'avc1.640032')!.disabled).toBe(false);
   });
 
   it('resolves audio codec options with disabled flag', () => {
