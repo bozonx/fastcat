@@ -35,6 +35,21 @@ describe('worker core utils', () => {
     expect(getBunnyVideoCodec('unknown')).toBe('avc');
   });
 
+  it('maps advertised web video export codecs for mp4 and mkv', () => {
+    const cases = [
+      ['mp4', 'avc1.640032', 'avc'],
+      ['mp4', 'vp09.00.10.08', 'vp9'],
+      ['mp4', 'av01.0.05M.08', 'av1'],
+      ['mkv', 'avc1.640032', 'avc'],
+      ['mkv', 'vp09.00.10.08', 'vp9'],
+      ['mkv', 'av01.0.05M.08', 'av1'],
+    ] as const;
+
+    for (const [_format, codec, expected] of cases) {
+      expect(getBunnyVideoCodec(codec)).toBe(expected);
+    }
+  });
+
   it('parses video codec strings into human-readable names', () => {
     expect(parseVideoCodec('avc1.4d401e')).toBe('H.264 (AVC)');
     expect(parseVideoCodec('hev1.1.6.L93.B0')).toBe('H.265 (HEVC)');
@@ -56,6 +71,18 @@ describe('worker core utils', () => {
     expect(getBunnyAudioCodec('opus')).toBe('opus');
     expect(getBunnyAudioCodec(undefined)).toBe('aac');
     expect(getBunnyAudioCodec('pcm-s16')).toBe('pcm-s16');
+  });
+
+  it('maps advertised web audio export codecs', () => {
+    const cases = [
+      ['aac', 'aac'],
+      ['opus', 'opus'],
+      ['pcm', 'pcm-s16'],
+    ] as const;
+
+    for (const [codec, expected] of cases) {
+      expect(getBunnyAudioCodec(codec)).toBe(expected);
+    }
   });
 
   it('clamps float32 values between -1 and 1', () => {

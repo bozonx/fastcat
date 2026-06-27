@@ -87,6 +87,84 @@ fn test_build_ffmpeg_args_webm_forces_opus() {
 }
 
 #[test]
+fn test_build_ffmpeg_args_video_export_matrix() {
+    let cases = [
+        ("mp4", "avc1.64001f", "libx264"),
+        ("mp4", "vp9", "libvpx-vp9"),
+        ("mp4", "av1", "libsvtav1"),
+        ("mkv", "avc1.64001f", "libx264"),
+        ("mkv", "vp9", "libvpx-vp9"),
+        ("mkv", "av1", "libsvtav1"),
+    ];
+
+    for (format, video_codec, expected_encoder) in cases {
+        let options = NativeExportOptions {
+            format: format.to_string(),
+            video_codec: video_codec.to_string(),
+            ..base_options()
+        };
+        let args = build_ffmpeg_args(
+            &options,
+            None,
+            1920,
+            1080,
+            30.0,
+            1.0,
+            Path::new(&format!("output.{format}")),
+        );
+
+        assert!(
+            args.windows(2)
+                .any(|pair| pair == ["-c:v", expected_encoder]),
+            "{format}/{video_codec} should encode with {expected_encoder}, got {args:?}"
+        );
+    }
+}
+
+#[test]
+fn test_build_ffmpeg_args_audio_export_matrix() {
+    let cases = [
+        ("aac", "aac", "aac", true),
+        ("opus", "opus", "libopus", true),
+        ("wav", "pcm", "pcm_s16le", false),
+        ("flac", "flac", "flac", false),
+        ("mp3", "mp3", "libmp3lame", true),
+    ];
+
+    for (format, audio_codec, expected_encoder, should_emit_bitrate) in cases {
+        let options = NativeExportOptions {
+            format: format.to_string(),
+            video_enabled: Some(false),
+            audio_enabled: true,
+            audio_codec: Some(audio_codec.to_string()),
+            audio_bitrate_bps: Some(128_000),
+            audio_sample_rate: Some(48_000),
+            ..base_options()
+        };
+        let args = build_ffmpeg_args(
+            &options,
+            Some(Path::new("dummy.wav")),
+            2,
+            2,
+            30.0,
+            1.0,
+            Path::new(&format!("output.{format}")),
+        );
+
+        assert!(
+            args.windows(2)
+                .any(|pair| pair == ["-c:a", expected_encoder]),
+            "{format}/{audio_codec} should encode with {expected_encoder}, got {args:?}"
+        );
+        assert_eq!(
+            args.contains(&"-b:a".to_string()),
+            should_emit_bitrate,
+            "{format}/{audio_codec} bitrate arg mismatch: {args:?}"
+        );
+    }
+}
+
+#[test]
 fn export_frame_sample_time_clamps_last_partial_frame_inside_range() {
     let start = 0.0;
     let end = 1.01;
@@ -530,14 +608,16 @@ fn plan_direct_rejects_non_trivial_scenes() {
 
     // Track compositing is applied after all clips in the track are combined.
     let mut scene = one_clip_scene(video_layer());
-    scene.video_tracks.push(crate::monitor::scene::SceneVideoTrack {
-        id: "track-1".into(),
-        z: 0,
-        layer_ids: vec!["clip".into()],
-        opacity: 0.5,
-        blend_mode: crate::compositor::scene::BlendMode::Normal,
-        effects: Vec::new(),
-    });
+    scene
+        .video_tracks
+        .push(crate::monitor::scene::SceneVideoTrack {
+            id: "track-1".into(),
+            z: 0,
+            layer_ids: vec!["clip".into()],
+            opacity: 0.5,
+            blend_mode: crate::compositor::scene::BlendMode::Normal,
+            effects: Vec::new(),
+        });
     assert!(!call(&scene));
 
     // Two layers must be composited.

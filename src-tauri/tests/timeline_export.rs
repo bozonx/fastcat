@@ -213,6 +213,237 @@ fn bg_layer(color: &str, start: f64, end: f64, z: i32) -> serde_json::Value {
     })
 }
 
+struct AudioExportCase {
+    format: &'static str,
+    audio_codec: &'static str,
+    expected_codec: &'static str,
+    required_encoder: &'static str,
+}
+
+struct VideoExportCase {
+    format: &'static str,
+    video_codec: &'static str,
+    expected_codec: &'static str,
+    required_encoder: &'static str,
+}
+
+/// Audio export format matrix for the native/Tauri pipeline.
+#[test]
+fn native_audio_export_matrix_produces_expected_formats() {
+    skip_unless!(
+        common::has_ffmpeg() && common::has_ffprobe(),
+        "ffmpeg/ffprobe not installed"
+    );
+
+    let cases = [
+        AudioExportCase {
+            format: "aac",
+            audio_codec: "aac",
+            expected_codec: "aac",
+            required_encoder: " aac ",
+        },
+        AudioExportCase {
+            format: "opus",
+            audio_codec: "opus",
+            expected_codec: "opus",
+            required_encoder: "libopus",
+        },
+        AudioExportCase {
+            format: "wav",
+            audio_codec: "pcm",
+            expected_codec: "pcm_s16le",
+            required_encoder: "pcm_s16le",
+        },
+        AudioExportCase {
+            format: "flac",
+            audio_codec: "flac",
+            expected_codec: "flac",
+            required_encoder: " flac ",
+        },
+        AudioExportCase {
+            format: "mp3",
+            audio_codec: "mp3",
+            expected_codec: "mp3",
+            required_encoder: "libmp3lame",
+        },
+    ];
+
+    for case in cases {
+        if !common::has_ffmpeg_encoder(case.required_encoder) {
+            eprintln!(
+                "SKIP native audio export case {}: ffmpeg encoder {} not installed",
+                case.format, case.required_encoder
+            );
+            continue;
+        }
+
+        let scene: MonitorScene = serde_json::from_value(json!({
+            "layers": [],
+            "audio_layers": [audio_layer("audio/audio-sine.wav")],
+        }))
+        .unwrap();
+        let options = export_options(
+            case.format,
+            "none",
+            0,
+            true,
+            Some(case.audio_codec),
+            Some(128_000),
+            320,
+            240,
+            30.0,
+            0.0,
+            0.5,
+        );
+
+        let tmp = tempfile::tempdir().unwrap();
+        let target = tmp.path().join(format!("out.{}", case.format));
+        let tasks = NativeMediaTasks::default();
+
+        export_timeline(
+            &tasks,
+            &format!("export-audio-{}", case.format),
+            scene,
+            options,
+            &target,
+            &noop_progress,
+            &noop_warning,
+        )
+        .unwrap_or_else(|error| panic!("{} audio export should succeed: {error}", case.format));
+
+        assert!(target.exists(), "{} export must write a file", case.format);
+        let codec = common::ffprobe_entry(Path::new(&target), "stream=codec_name", Some("a:0"));
+        assert!(
+            codec.contains(case.expected_codec),
+            "{} expected audio codec {}, got '{}'",
+            case.format,
+            case.expected_codec,
+            codec
+        );
+    }
+}
+
+/// Video export format/codec matrix for the native/Tauri pipeline.
+#[test]
+fn native_video_export_matrix_produces_expected_codecs() {
+    skip_unless!(
+        common::has_ffmpeg() && common::has_ffprobe(),
+        "ffmpeg/ffprobe not installed"
+    );
+    skip_unless!(
+        Compositor::is_gpu_available(),
+        "no wgpu adapter (headless CI without software Vulkan)"
+    );
+
+    let cases = [
+        VideoExportCase {
+            format: "mp4",
+            video_codec: "avc1.64001f",
+            expected_codec: "h264",
+            required_encoder: "libx264",
+        },
+        VideoExportCase {
+            format: "mp4",
+            video_codec: "vp9",
+            expected_codec: "vp9",
+            required_encoder: "libvpx-vp9",
+        },
+        VideoExportCase {
+            format: "mp4",
+            video_codec: "av1",
+            expected_codec: "av1",
+            required_encoder: "libsvtav1",
+        },
+        VideoExportCase {
+            format: "mkv",
+            video_codec: "avc1.64001f",
+            expected_codec: "h264",
+            required_encoder: "libx264",
+        },
+        VideoExportCase {
+            format: "mkv",
+            video_codec: "vp9",
+            expected_codec: "vp9",
+            required_encoder: "libvpx-vp9",
+        },
+        VideoExportCase {
+            format: "mkv",
+            video_codec: "av1",
+            expected_codec: "av1",
+            required_encoder: "libsvtav1",
+        },
+    ];
+
+    for case in cases {
+        if !common::has_ffmpeg_encoder(case.required_encoder) {
+            eprintln!(
+                "SKIP native video export case {}/{}: ffmpeg encoder {} not installed",
+                case.format, case.video_codec, case.required_encoder
+            );
+            continue;
+        }
+
+        let scene: MonitorScene = serde_json::from_value(json!({
+            "width": 160,
+            "height": 90,
+            "layers": [bg_layer("#3366ff", 0.0, 0.4, 0)],
+        }))
+        .unwrap();
+        let options = export_options(
+            case.format,
+            case.video_codec,
+            500_000,
+            false,
+            None,
+            None,
+            160,
+            90,
+            5.0,
+            0.0,
+            0.4,
+        );
+
+        let tmp = tempfile::tempdir().unwrap();
+        let target = tmp.path().join(format!(
+            "out_{}_{}.{}",
+            case.format, case.expected_codec, case.format
+        ));
+        let tasks = NativeMediaTasks::default();
+
+        export_timeline(
+            &tasks,
+            &format!("export-video-{}-{}", case.format, case.expected_codec),
+            scene,
+            options,
+            &target,
+            &noop_progress,
+            &noop_warning,
+        )
+        .unwrap_or_else(|error| {
+            panic!(
+                "{}/{} video export should succeed: {error}",
+                case.format, case.video_codec
+            )
+        });
+
+        assert!(
+            target.exists(),
+            "{}/{} export must write a file",
+            case.format,
+            case.video_codec
+        );
+        let codec = common::ffprobe_entry(Path::new(&target), "stream=codec_name", Some("v:0"));
+        assert!(
+            codec.contains(case.expected_codec),
+            "{}/{} expected video codec {}, got '{}'",
+            case.format,
+            case.video_codec,
+            case.expected_codec,
+            codec
+        );
+    }
+}
+
 /// Export a scene with a real image layer overlaid on a background.
 /// Verifies the compositor correctly decodes and renders an image fixture.
 #[test]
@@ -237,8 +468,17 @@ fn video_export_with_image_layer_is_encoded() {
     .unwrap();
 
     let options = export_options(
-        "mp4", "avc1.64001f", 1_000_000, false, None, None,
-        320, 240, 15.0, 0.0, 1.0,
+        "mp4",
+        "avc1.64001f",
+        1_000_000,
+        false,
+        None,
+        None,
+        320,
+        240,
+        15.0,
+        0.0,
+        1.0,
     );
 
     let tmp = tempfile::tempdir().unwrap();
@@ -246,8 +486,13 @@ fn video_export_with_image_layer_is_encoded() {
     let tasks = NativeMediaTasks::default();
 
     export_timeline(
-        &tasks, "export-image", scene, options,
-        &target, &noop_progress, &noop_warning,
+        &tasks,
+        "export-image",
+        scene,
+        options,
+        &target,
+        &noop_progress,
+        &noop_warning,
     )
     .expect("image-layer export should succeed");
 
@@ -255,9 +500,11 @@ fn video_export_with_image_layer_is_encoded() {
     let codec = common::ffprobe_entry(Path::new(&target), "stream=codec_name", Some("v:0"));
     assert!(codec.contains("h264"), "expected h264, got '{codec}'");
     let w: u32 = common::ffprobe_entry(Path::new(&target), "stream=width", Some("v:0"))
-        .parse().unwrap_or(0);
+        .parse()
+        .unwrap_or(0);
     let h: u32 = common::ffprobe_entry(Path::new(&target), "stream=height", Some("v:0"))
-        .parse().unwrap_or(0);
+        .parse()
+        .unwrap_or(0);
     assert_eq!((w, h), (320, 240));
 }
 
@@ -285,8 +532,17 @@ fn video_export_with_video_layer_is_encoded() {
     .unwrap();
 
     let options = export_options(
-        "mp4", "avc1.64001f", 1_000_000, false, None, None,
-        320, 240, 15.0, 0.0, 1.0,
+        "mp4",
+        "avc1.64001f",
+        1_000_000,
+        false,
+        None,
+        None,
+        320,
+        240,
+        15.0,
+        0.0,
+        1.0,
     );
 
     let tmp = tempfile::tempdir().unwrap();
@@ -294,8 +550,13 @@ fn video_export_with_video_layer_is_encoded() {
     let tasks = NativeMediaTasks::default();
 
     export_timeline(
-        &tasks, "export-video-layer", scene, options,
-        &target, &noop_progress, &noop_warning,
+        &tasks,
+        "export-video-layer",
+        scene,
+        options,
+        &target,
+        &noop_progress,
+        &noop_warning,
     )
     .expect("video-layer export should succeed");
 
@@ -303,7 +564,8 @@ fn video_export_with_video_layer_is_encoded() {
     let codec = common::ffprobe_entry(Path::new(&target), "stream=codec_name", Some("v:0"));
     assert!(codec.contains("h264"), "expected h264, got '{codec}'");
     let dur: f64 = common::ffprobe_entry(Path::new(&target), "format=duration", None)
-        .parse().unwrap_or(0.0);
+        .parse()
+        .unwrap_or(0.0);
     assert!(dur > 0.5 && dur < 2.0, "duration ~1s, got {dur}");
 }
 
@@ -344,8 +606,17 @@ fn video_export_with_dissolve_transition_is_encoded() {
     .unwrap();
 
     let options = export_options(
-        "mp4", "avc1.64001f", 1_000_000, false, None, None,
-        320, 240, 15.0, 0.0, 2.0,
+        "mp4",
+        "avc1.64001f",
+        1_000_000,
+        false,
+        None,
+        None,
+        320,
+        240,
+        15.0,
+        0.0,
+        2.0,
     );
 
     let tmp = tempfile::tempdir().unwrap();
@@ -353,8 +624,13 @@ fn video_export_with_dissolve_transition_is_encoded() {
     let tasks = NativeMediaTasks::default();
 
     export_timeline(
-        &tasks, "export-transition", scene, options,
-        &target, &noop_progress, &noop_warning,
+        &tasks,
+        "export-transition",
+        scene,
+        options,
+        &target,
+        &noop_progress,
+        &noop_warning,
     )
     .expect("transition export should succeed");
 
@@ -362,7 +638,8 @@ fn video_export_with_dissolve_transition_is_encoded() {
     let codec = common::ffprobe_entry(Path::new(&target), "stream=codec_name", Some("v:0"));
     assert!(codec.contains("h264"), "expected h264, got '{codec}'");
     let dur: f64 = common::ffprobe_entry(Path::new(&target), "format=duration", None)
-        .parse().unwrap_or(0.0);
+        .parse()
+        .unwrap_or(0.0);
     assert!(dur > 1.5, "duration ~2s, got {dur}");
 }
 
@@ -394,8 +671,17 @@ fn video_export_with_brightness_effect_is_encoded() {
     .unwrap();
 
     let options = export_options(
-        "mp4", "avc1.64001f", 1_000_000, false, None, None,
-        320, 240, 15.0, 0.0, 1.0,
+        "mp4",
+        "avc1.64001f",
+        1_000_000,
+        false,
+        None,
+        None,
+        320,
+        240,
+        15.0,
+        0.0,
+        1.0,
     );
 
     let tmp = tempfile::tempdir().unwrap();
@@ -403,8 +689,13 @@ fn video_export_with_brightness_effect_is_encoded() {
     let tasks = NativeMediaTasks::default();
 
     export_timeline(
-        &tasks, "export-effect", scene, options,
-        &target, &noop_progress, &noop_warning,
+        &tasks,
+        "export-effect",
+        scene,
+        options,
+        &target,
+        &noop_progress,
+        &noop_warning,
     )
     .expect("effect export should succeed");
 
@@ -450,8 +741,17 @@ fn video_export_with_speed_change_is_encoded() {
     .unwrap();
 
     let options = export_options(
-        "mp4", "avc1.64001f", 1_000_000, false, None, None,
-        320, 240, 15.0, 0.0, 0.5,
+        "mp4",
+        "avc1.64001f",
+        1_000_000,
+        false,
+        None,
+        None,
+        320,
+        240,
+        15.0,
+        0.0,
+        0.5,
     );
 
     let tmp = tempfile::tempdir().unwrap();
@@ -459,8 +759,13 @@ fn video_export_with_speed_change_is_encoded() {
     let tasks = NativeMediaTasks::default();
 
     export_timeline(
-        &tasks, "export-speed", scene, options,
-        &target, &noop_progress, &noop_warning,
+        &tasks,
+        "export-speed",
+        scene,
+        options,
+        &target,
+        &noop_progress,
+        &noop_warning,
     )
     .expect("speed-change export should succeed");
 
@@ -495,8 +800,17 @@ fn multi_track_audio_export_produces_audio_file() {
     .unwrap();
 
     let options = export_options(
-        "m4a", "none", 0, true, Some("aac"), Some(128_000),
-        320, 240, 30.0, 0.0, 1.0,
+        "m4a",
+        "none",
+        0,
+        true,
+        Some("aac"),
+        Some(128_000),
+        320,
+        240,
+        30.0,
+        0.0,
+        1.0,
     );
 
     let tmp = tempfile::tempdir().unwrap();
@@ -504,8 +818,13 @@ fn multi_track_audio_export_produces_audio_file() {
     let tasks = NativeMediaTasks::default();
 
     export_timeline(
-        &tasks, "export-multi-audio", scene, options,
-        &target, &noop_progress, &noop_warning,
+        &tasks,
+        "export-multi-audio",
+        scene,
+        options,
+        &target,
+        &noop_progress,
+        &noop_warning,
     )
     .expect("multi-track audio export should succeed");
 
@@ -513,7 +832,8 @@ fn multi_track_audio_export_produces_audio_file() {
     let codec = common::ffprobe_entry(Path::new(&target), "stream=codec_type", Some("a:0"));
     assert_eq!(codec, "audio");
     let dur: f64 = common::ffprobe_entry(Path::new(&target), "format=duration", None)
-        .parse().unwrap_or(0.0);
+        .parse()
+        .unwrap_or(0.0);
     assert!((dur - 1.0).abs() < 0.3, "duration ~1s, got {dur}");
 }
 
@@ -546,8 +866,7 @@ fn webm_vp9_export_is_encoded() {
     .unwrap();
 
     let options = export_options(
-        "webm", "vp9", 1_000_000, false, None, None,
-        320, 240, 15.0, 0.0, 1.0,
+        "webm", "vp9", 1_000_000, false, None, None, 320, 240, 15.0, 0.0, 1.0,
     );
 
     let tmp = tempfile::tempdir().unwrap();
@@ -555,8 +874,13 @@ fn webm_vp9_export_is_encoded() {
     let tasks = NativeMediaTasks::default();
 
     export_timeline(
-        &tasks, "export-webm", scene, options,
-        &target, &noop_progress, &noop_warning,
+        &tasks,
+        "export-webm",
+        scene,
+        options,
+        &target,
+        &noop_progress,
+        &noop_warning,
     )
     .expect("WebM export should succeed");
 
@@ -564,7 +888,10 @@ fn webm_vp9_export_is_encoded() {
     let codec = common::ffprobe_entry(Path::new(&target), "stream=codec_name", Some("v:0"));
     assert!(codec.contains("vp9"), "expected vp9, got '{codec}'");
     let format = common::ffprobe_entry(Path::new(&target), "format=format_name", None);
-    assert!(format.contains("webm"), "expected webm container, got '{format}'");
+    assert!(
+        format.contains("webm"),
+        "expected webm container, got '{format}'"
+    );
 }
 
 /// Alpha export: VP9 in WebM with yuva420p.
@@ -614,8 +941,13 @@ fn alpha_webm_export_preserves_alpha() {
     let tasks = NativeMediaTasks::default();
 
     export_timeline(
-        &tasks, "export-alpha", scene, options,
-        &target, &noop_progress, &noop_warning,
+        &tasks,
+        "export-alpha",
+        scene,
+        options,
+        &target,
+        &noop_progress,
+        &noop_warning,
     )
     .expect("alpha WebM export should succeed");
 
@@ -651,8 +983,17 @@ fn video_with_audio_export_is_encoded() {
     .unwrap();
 
     let options = export_options(
-        "mp4", "avc1.64001f", 1_000_000, true, Some("aac"), Some(128_000),
-        320, 240, 15.0, 0.0, 1.0,
+        "mp4",
+        "avc1.64001f",
+        1_000_000,
+        true,
+        Some("aac"),
+        Some(128_000),
+        320,
+        240,
+        15.0,
+        0.0,
+        1.0,
     );
 
     let tmp = tempfile::tempdir().unwrap();
@@ -660,8 +1001,13 @@ fn video_with_audio_export_is_encoded() {
     let tasks = NativeMediaTasks::default();
 
     export_timeline(
-        &tasks, "export-av", scene, options,
-        &target, &noop_progress, &noop_warning,
+        &tasks,
+        "export-av",
+        scene,
+        options,
+        &target,
+        &noop_progress,
+        &noop_warning,
     )
     .expect("video+audio export should succeed");
 
@@ -693,8 +1039,17 @@ fn export_cancellation_stops_encoding() {
     .unwrap();
 
     let options = export_options(
-        "mp4", "avc1.64001f", 500_000, false, None, None,
-        320, 240, 30.0, 0.0, 5.0,
+        "mp4",
+        "avc1.64001f",
+        500_000,
+        false,
+        None,
+        None,
+        320,
+        240,
+        30.0,
+        0.0,
+        5.0,
     );
 
     let tmp = tempfile::tempdir().unwrap();
@@ -705,8 +1060,13 @@ fn export_cancellation_stops_encoding() {
     tasks.cancel("export-cancel");
 
     let result = export_timeline(
-        &tasks, "export-cancel", scene, options,
-        &target, &noop_progress, &noop_warning,
+        &tasks,
+        "export-cancel",
+        scene,
+        options,
+        &target,
+        &noop_progress,
+        &noop_warning,
     );
 
     // The export should either return an error (cancelled) or succeed
@@ -730,8 +1090,17 @@ fn export_zero_duration_range_fails() {
     .unwrap();
 
     let options = export_options(
-        "mp4", "avc1.64001f", 1_000_000, false, None, None,
-        320, 240, 30.0, 0.0, 0.0,
+        "mp4",
+        "avc1.64001f",
+        1_000_000,
+        false,
+        None,
+        None,
+        320,
+        240,
+        30.0,
+        0.0,
+        0.0,
     );
 
     let tmp = tempfile::tempdir().unwrap();
@@ -739,8 +1108,13 @@ fn export_zero_duration_range_fails() {
     let tasks = NativeMediaTasks::default();
 
     let result = export_timeline(
-        &tasks, "export-zero", scene, options,
-        &target, &noop_progress, &noop_warning,
+        &tasks,
+        "export-zero",
+        scene,
+        options,
+        &target,
+        &noop_progress,
+        &noop_warning,
     );
 
     assert!(result.is_err(), "zero-duration export should fail");
@@ -761,8 +1135,17 @@ fn export_inverted_range_fails() {
     .unwrap();
 
     let options = export_options(
-        "mp4", "avc1.64001f", 1_000_000, false, None, None,
-        320, 240, 30.0, 2.0, 1.0,
+        "mp4",
+        "avc1.64001f",
+        1_000_000,
+        false,
+        None,
+        None,
+        320,
+        240,
+        30.0,
+        2.0,
+        1.0,
     );
 
     let tmp = tempfile::tempdir().unwrap();
@@ -770,8 +1153,13 @@ fn export_inverted_range_fails() {
     let tasks = NativeMediaTasks::default();
 
     let result = export_timeline(
-        &tasks, "export-inverted", scene, options,
-        &target, &noop_progress, &noop_warning,
+        &tasks,
+        "export-inverted",
+        scene,
+        options,
+        &target,
+        &noop_progress,
+        &noop_warning,
     );
 
     assert!(result.is_err(), "inverted range export should fail");

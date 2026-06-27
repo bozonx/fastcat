@@ -1,7 +1,10 @@
 /** @vitest-environment node */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ref, nextTick } from 'vue';
-import { useExportProcess } from '~/composables/timeline/export/core/useExportProcess';
+import {
+  buildNativeExportOptions,
+  useExportProcess,
+} from '~/composables/timeline/export/core/useExportProcess';
 import { isTauriRuntime } from '~/utils/io/io-governor';
 
 const stopPlaybackMock = vi.fn();
@@ -216,6 +219,81 @@ describe('useExportProcess - playback guard', () => {
 });
 
 describe('useExportProcess - format resolution', () => {
+  it('builds native options for the advertised video export matrix', () => {
+    const cases = [
+      ['mp4', 'avc1.640032'],
+      ['mp4', 'vp09.00.10.08'],
+      ['mp4', 'av01.0.05M.08'],
+      ['mkv', 'avc1.640032'],
+      ['mkv', 'vp09.00.10.08'],
+      ['mkv', 'av01.0.05M.08'],
+    ] as const;
+
+    for (const [format, videoCodec] of cases) {
+      const options = buildNativeExportOptions({
+        options: {
+          format,
+          videoCodec,
+          audio: false,
+          audioCodec: 'aac',
+          audioSampleRate: 48000,
+          audioBitrate: 128000,
+          audioChannels: 'stereo',
+          width: 1920,
+          height: 1080,
+          fps: 30,
+          bitrate: 5_000_000,
+        },
+        rangeStartUs: 0,
+        rangeEndUs: 1_000_000,
+      });
+
+      expect(options).toMatchObject({
+        format,
+        videoCodec,
+        videoEnabled: true,
+        audioEnabled: false,
+      });
+    }
+  });
+
+  it('builds native audio-only options for every Tauri audio export format', () => {
+    const cases = [
+      ['aac', 'aac'],
+      ['opus', 'opus'],
+      ['wav', 'pcm'],
+      ['flac', 'flac'],
+      ['mp3', 'mp3'],
+    ] as const;
+
+    for (const [format, audioCodec] of cases) {
+      const options = buildNativeExportOptions({
+        options: {
+          format,
+          videoCodec: 'none',
+          audio: true,
+          audioCodec,
+          audioSampleRate: 48000,
+          audioBitrate: 128000,
+          audioChannels: 'stereo',
+          width: 1920,
+          height: 1080,
+          fps: 30,
+          bitrate: 5_000_000,
+        },
+        rangeStartUs: 0,
+        rangeEndUs: 1_000_000,
+      });
+
+      expect(options).toMatchObject({
+        format,
+        audioCodec,
+        videoEnabled: false,
+        audioEnabled: true,
+      });
+    }
+  });
+
   it('calls exportTimeline with format aac when aac option is provided', async () => {
     const state = {
       activeExportTaskId: ref<string | null>(null),

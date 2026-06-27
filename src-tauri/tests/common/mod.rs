@@ -42,6 +42,15 @@ pub fn has_ffmpeg() -> bool {
     tool_available("ffmpeg")
 }
 
+/// Whether the local ffmpeg binary advertises a specific encoder.
+pub fn has_ffmpeg_encoder(encoder: &str) -> bool {
+    Command::new("ffmpeg")
+        .args(["-hide_banner", "-encoders"])
+        .output()
+        .map(|o| o.status.success() && String::from_utf8_lossy(&o.stdout).contains(encoder))
+        .unwrap_or(false)
+}
+
 /// Run ffprobe and return the value of a single stream/format entry, e.g.
 /// `ffprobe_entry(path, "stream=codec_name", Some("a:0"))`.
 pub fn ffprobe_entry(path: &Path, entry: &str, select: Option<&str>) -> String {
