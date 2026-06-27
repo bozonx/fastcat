@@ -138,4 +138,63 @@ describe('AudioGraphBuilder', () => {
     // Should not create a new analyser since one already exists
     expect(ctx.createAnalyser).not.toHaveBeenCalled();
   });
+
+  it('forces sourceNode to stereo (channelCount=2, explicit, speakers)', async () => {
+    const ctx = createMockContext();
+    const builder = new AudioGraphBuilder();
+    const source = new MockGainNode();
+    // Start with non-stereo defaults to verify they get overridden
+    source.channelCount = 1;
+    source.channelCountMode = 'max';
+    source.channelInterpretation = 'discrete';
+
+    await builder.buildClipGraph({
+      audioContext: ctx,
+      sourceNode: source,
+      audioBalance: 0,
+      effects: [],
+      clipGain: new MockGainNode(),
+      masterGain: new MockGainNode(),
+      trackId: 'track-stereo',
+      analyserNodes: new Map(),
+    });
+
+    expect(source.channelCount).toBe(2);
+    expect(source.channelCountMode).toBe('explicit');
+    expect(source.channelInterpretation).toBe('speakers');
+  });
+
+  it('survives read-only channelCount properties without throwing', async () => {
+    const ctx = createMockContext();
+    const builder = new AudioGraphBuilder();
+    const source = new MockGainNode();
+    // Simulate read-only properties (some environments do this)
+    Object.defineProperty(source, 'channelCount', {
+      get: () => 1,
+      set: () => {
+        throw new TypeError('read-only');
+      },
+      configurable: true,
+    });
+    Object.defineProperty(source, 'channelCountMode', {
+      get: () => 'max',
+      set: () => {
+        throw new TypeError('read-only');
+      },
+      configurable: true,
+    });
+
+    await expect(
+      builder.buildClipGraph({
+        audioContext: ctx,
+        sourceNode: source,
+        audioBalance: 0,
+        effects: [],
+        clipGain: new MockGainNode(),
+        masterGain: new MockGainNode(),
+        trackId: 'track-readonly',
+        analyserNodes: new Map(),
+      }),
+    ).resolves.toBeDefined();
+  });
 });

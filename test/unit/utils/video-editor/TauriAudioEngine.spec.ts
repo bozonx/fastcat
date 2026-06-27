@@ -227,4 +227,69 @@ describe('TauriAudioEngine', () => {
     // Should remain at 0 since syncTime is guarded by isPlaying
     expect(engine.getCurrentTimeUs()).toBe(0);
   });
+
+  // ── Engine-specific: IPC delegation & lifecycle ───────────────────────
+
+  it('play delegates to scheduler with correct time and speed', async () => {
+    const engine = await createEngine();
+    await engine.play(5_000_000, 2);
+    expect((engine as any).scheduler.isPlayingActive()).toBe(true);
+    expect((engine as any).scheduler.getBaseTimeS()).toBe(5);
+    expect((engine as any).scheduler.getGlobalSpeed()).toBe(2);
+  });
+
+  it('stop delegates to scheduler', async () => {
+    const engine = await createEngine();
+    await engine.play(0);
+    engine.stop();
+    expect((engine as any).scheduler.isPlayingActive()).toBe(false);
+  });
+
+  it('seek delegates to scheduler', async () => {
+    const engine = await createEngine();
+    await engine.play(0);
+    engine.seek(10_000_000);
+    expect((engine as any).scheduler.getBaseTimeS()).toBe(10);
+  });
+
+  it('setMasterVolume IPC error is caught and does not throw', async () => {
+    setMasterGainMock.mockRejectedValueOnce(new Error('IPC failed'));
+    const engine = await createEngine();
+    expect(() => engine.setMasterVolume(1)).not.toThrow();
+  });
+
+  it('setMonitorVolume IPC error is caught and does not throw', async () => {
+    setOutputGainMock.mockRejectedValueOnce(new Error('IPC failed'));
+    const engine = await createEngine();
+    expect(() => engine.setMonitorVolume(1)).not.toThrow();
+  });
+
+  it('setMasterAudioEffects is a no-op', async () => {
+    const engine = await createEngine();
+    expect(() => engine.setMasterAudioEffects([])).not.toThrow();
+  });
+
+  it('resumeContext is a no-op', async () => {
+    const engine = await createEngine();
+    await expect(engine.resumeContext()).resolves.toBeUndefined();
+  });
+
+  it('extractPeaks returns null (native-only feature)', async () => {
+    const engine = await createEngine();
+    const result = await engine.extractPeaks(null as any, 'key');
+    expect(result).toBeNull();
+  });
+
+  it('getCurrentTimeUs delegates to scheduler', async () => {
+    const engine = await createEngine();
+    await engine.play(3_000_000);
+    expect(engine.getCurrentTimeUs()).toBeCloseTo(3_000_000, -5);
+  });
+
+  it('setGlobalSpeed delegates to scheduler', async () => {
+    const engine = await createEngine();
+    await engine.play(0);
+    engine.setGlobalSpeed(1.5);
+    expect((engine as any).scheduler.getGlobalSpeed()).toBe(1.5);
+  });
 });

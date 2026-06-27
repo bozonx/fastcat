@@ -67,3 +67,50 @@ describe('SEAM_CROSSFADE_S', () => {
     expect(SEAM_CROSSFADE_S).toBeLessThanOrEqual(0.02);
   });
 });
+
+// ── Regression: seam-crossfade power preservation ─────────────────────
+//
+// Guards against the known bug where a linear crossfade at the seam midpoint
+// dips the summed power to 0.5 (−3 dB), causing an audible level drop. The
+// equal-power law must keep out² + in² === 1 at every sample, including at
+// sub-sample positions that occur during real chunk-boundary stitching.
+
+describe('seam-crossfade power preservation (regression)', () => {
+  it('maintains unity power at fine-grained sub-sample positions', () => {
+    // Simulate the per-sample positions a seam crossfade actually visits.
+    // At 48kHz over a 10ms seam, that's 480 samples → step = 1/480.
+    const samples = 480;
+    for (let i = 0; i <= samples; i += 1) {
+      const p = i / samples;
+      const { out, in: inc } = equalPowerGains(p);
+      const power = out * out + inc * inc;
+      expect(power).toBeCloseTo(1, 10);
+    }
+  });
+
+  it('equalPowerCurve in/out pair sums to unity power at every point', () => {
+    const points = 64;
+    const fadeIn = equalPowerCurve('in', points);
+    const fadeOut = equalPowerCurve('out', points);
+    // Regression: the old linear crossfade would have fade-in + fade-out = 1
+    // but fade-in² + fade-out² = 0.5 at the midpoint. Equal-power must keep
+    // the sum of squares at 1.
+    for (let i = 0; i < points; i += 1) {
+      const power = fadeIn[i]! * fadeIn[i]! + fadeOut[i]! * fadeOut[i]!;
+      expect(power).toBeCloseTo(1, 5);
+    }
+  });
+
+  it('does not produce silence at the midpoint (the linear-crossfade -3dB dip)', () => {
+    // A linear crossfade at p=0.5 gives both gains = 0.5, so the summed
+    // amplitude of two identical signals is 1.0 but the power is only 0.5.
+    // Equal-power gives both gains = 1/√2 ≈ 0.707, so the summed amplitude
+    // of two identical signals is √2 ≈ 1.414 and the power is 1.0.
+    const mid = equalPowerGains(0.5);
+    expect(mid.out).toBeCloseTo(Math.SQRT1_2, 10);
+    expect(mid.in).toBeCloseTo(Math.SQRT1_2, 10);
+    // Summed amplitude of two identical signals at the midpoint:
+    const summedAmplitude = mid.out + mid.in;
+    expect(summedAmplitude).toBeCloseTo(Math.SQRT2, 10);
+  });
+});

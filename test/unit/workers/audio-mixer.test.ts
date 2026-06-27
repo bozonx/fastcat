@@ -40,7 +40,8 @@ describe('normalizeSampleChannels', () => {
     expect(result[0]).toBe(planes[0]);
   });
 
-  it('duplicates mono to stereo', () => {
+  it('duplicates mono to stereo with 1/sqrt(2) scaling', () => {
+    const g = Math.SQRT1_2;
     const planes = [new Float32Array([1, 2])];
     const result = normalizeSampleChannels({
       planes,
@@ -49,8 +50,8 @@ describe('normalizeSampleChannels', () => {
       frames: 2,
     });
     expect(result).toHaveLength(2);
-    expect(result[0]).toEqual(new Float32Array([1, 2]));
-    expect(result[1]).toEqual(new Float32Array([1, 2]));
+    expect(result[0]).toEqual(new Float32Array([g, 2 * g]));
+    expect(result[1]).toEqual(new Float32Array([g, 2 * g]));
   });
 
   it('mixes stereo to mono', () => {

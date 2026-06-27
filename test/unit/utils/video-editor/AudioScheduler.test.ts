@@ -289,6 +289,61 @@ describe('AudioScheduler', () => {
     });
   });
 
+  describe('setGlobalSpeed transport continuity', () => {
+    it('preserves getCurrentTimeS across speed change when ctx has not advanced', async () => {
+      const ctx = createMockCtx(100);
+      const { scheduler } = createScheduler({ ctx, kickoffLatencyS: 0.05 });
+
+      await scheduler.play(0, 1);
+      // Advance ctx time by 5 seconds (at 1x speed → currentTimeS ≈ 5)
+      ctx.currentTime = 105;
+      expect(scheduler.getCurrentTimeS()).toBeCloseTo(5, 1);
+
+      // Change speed — transport position must not jump
+      scheduler.setGlobalSpeed(3);
+      expect(scheduler.getCurrentTimeS()).toBeCloseTo(5, 1);
+
+      // Advance ctx well past the kickoff latency so elapsed is clean.
+      // After setGlobalSpeed, playbackContextTimeS = 105 + 0.05 = 105.05.
+      // At ctx=110: elapsed = 110 - 105.05 = 4.95, × 3 = 14.85 → 5 + 14.85 = 19.85
+      ctx.currentTime = 110;
+      const expected = 5 + (110 - 105.05) * 3;
+      expect(scheduler.getCurrentTimeS()).toBeCloseTo(expected, 1);
+    });
+
+    it('preserves getCurrentTimeS when speed changes to fractional value', async () => {
+      const ctx = createMockCtx(50);
+      const { scheduler } = createScheduler({ ctx, kickoffLatencyS: 0.05 });
+
+      await scheduler.play(10_000_000, 1);
+      // Advance 2 seconds at 1x → timeline at 12s
+      ctx.currentTime = 52;
+      expect(scheduler.getCurrentTimeS()).toBeCloseTo(12, 1);
+
+      scheduler.setGlobalSpeed(0.5);
+      expect(scheduler.getCurrentTimeS()).toBeCloseTo(12, 1);
+
+      // After setGlobalSpeed, playbackContextTimeS = 52 + 0.05 = 52.05.
+      // Advance to 54: elapsed = 54 - 52.05 = 1.95, × 0.5 = 0.975 → 12 + 0.975 = 12.975
+      ctx.currentTime = 54;
+      const expected = 12 + (54 - 52.05) * 0.5;
+      expect(scheduler.getCurrentTimeS()).toBeCloseTo(expected, 1);
+    });
+
+    it('negative speed is stored as-is (sanitized on native side)', async () => {
+      const ctx = createMockCtx(0);
+      const { scheduler } = createScheduler({ ctx });
+
+      await scheduler.play(0, 1);
+      scheduler.setGlobalSpeed(-2);
+
+      // The scheduler stores the value; native Rust sanitize_speed clamps it.
+      // getCurrentTimeS with negative speed returns baseTimeS (no advancement).
+      expect(scheduler.getGlobalSpeed()).toBe(-2);
+      expect(scheduler.getCurrentTimeS()).toBe(0);
+    });
+  });
+
   describe('syncTime', () => {
     it('reanchors baseTimeS when playing', async () => {
       const ctx = createMockCtx(50);

@@ -2690,4 +2690,177 @@ mod tests {
             "linear resampler must produce meaningful output, peak={linear_peak}"
         );
     }
+
+    // ── window_cache.rs unit tests ───────────────────────────────────────
+    //
+    // `window_cache` is a private module, so these tests exercise it through
+    // the public `spawn_window_fill` API and inspect `AudioShared` state.
+
+    #[test]
+    fn window_fill_dedup_skips_same_layer_and_start() -> anyhow::Result<()> {
+        let path = write_temp_f32_wav(48000, 2, 48000 * 2)?;
+        let path_str = path.to_string_lossy().to_string();
+        let shared = Arc::new((Mutex::new(AudioShared::default()), Condvar::new()));
+
+        // First spawn claims the in_flight slot.
+        spawn_window_fill(
+            &shared,
+            "dedup",
+            &path_str,
+            0,
+            48000,
+            2,
+            WindowFillPriority::Live,
+        );
+        assert_eq!(shared.0.lock().active_window_fill_count, 1);
+        assert!(shared
+            .0
+            .lock()
+            .window_fill_in_flight
+            .contains_key("dedup"));
+
+        // Second spawn for the same layer + start must be a no-op.
+        spawn_window_fill(
+            &shared,
+            "dedup",
+            &path_str,
+            0,
+            48000,
+            2,
+            WindowFillPriority::Live,
+        );
+        assert_eq!(shared.0.lock().active_window_fill_count, 1);
+
+        // Wait for the first fill to complete.
+        assert!(wait_for_window(&shared, "dedup", 0));
+        let _ = std::fs::remove_file(path);
+        Ok(())
+    }
+
+    #[test]
+    fn window_fill_live_priority_exceeds_speculative_cap() -> anyhow::Result<()> {
+        let path = write_temp_f32_wav(48000, 2, 48000 * 2)?;
+        let path_str = path.to_string_lossy().to_string();
+        let shared = Arc::new((Mutex::new(AudioShared::default()), Condvar::new()));
+
+        // Saturate the base concurrency cap with Speculative fills.
+        shared.0.lock().active_window_fill_count = WINDOW_FILL_MAX_CONCURRENCY;
+
+        // A Speculative fill must NOT exceed the cap.
+        spawn_window_fill(
+            &shared,
+            "spec",
+            &path_str,
+            0,
+            48000,
+            2,
+            WindowFillPriority::Speculative,
+        );
+        assert!(!shared
+            .0
+            .lock()
+            .window_fill_in_flight
+            .contains_key("spec"));
+
+        // A Live fill MUST be allowed through, exceeding the base cap by
+        // LIVE_RESERVE_SLOTS.
+        spawn_window_fill(
+            &shared,
+            "live",
+            &path_str,
+            0,
+            48000,
+            2,
+            WindowFillPriority::Live,
+        );
+        assert!(shared.0.lock().window_fill_in_flight.contains_key("live"));
+
+        // Wait for the Live fill to finish and verify the count returns to the
+        // original saturated value (the guard decrements on drop).
+        assert!(wait_for_window(&shared, "live", 0));
+        assert_eq!(
+            shared.0.lock().active_window_fill_count,
+            WINDOW_FILL_MAX_CONCURRENCY
+        );
+
+        let _ = std::fs::remove_file(path);
+        Ok(())
+    }
+
+    #[test]
+    fn window_fill_discards_result_when_layer_removed_from_scene() -> anyhow::Result<()> {
+        let path = write_temp_f32_wav(48000, 2, 48000 * 2)?;
+        let path_str = path.to_string_lossy().to_string();
+        let shared = Arc::new((Mutex::new(AudioShared::default()), Condvar::new()));
+
+        // Set a non-empty scene that does NOT contain the layer being filled.
+        let other_layer = crate::monitor::scene::SceneAudioLayer {
+            id: "other".into(),
+            track_id: None,
+            path: "/tmp/other.wav".into(),
+            timeline_start_sec: 0.0,
+            timeline_end_sec: 1.0,
+            source_start_sec: 0.0,
+            source_range_duration_sec: 0.0,
+            speed: 1.0,
+            audio_gain: 1.0,
+            audio_balance: 0.0,
+            audio_fade_in_sec: 0.0,
+            audio_fade_out_sec: 0.0,
+            audio_fade_in_curve: crate::monitor::scene::AudioFadeCurve::Linear,
+            audio_fade_out_curve: crate::monitor::scene::AudioFadeCurve::Linear,
+            audio_effects: vec![],
+        };
+        shared.0.lock().scene = vec![other_layer];
+
+        spawn_window_fill(
+            &shared,
+            "ghost",
+            &path_str,
+            0,
+            48000,
+            2,
+            WindowFillPriority::Live,
+        );
+
+        // The fill runs but the result must be discarded: no window installed.
+        // Wait long enough for the decode to finish.
+        std::thread::sleep(std::time::Duration::from_millis(200));
+        assert!(
+            !shared.0.lock().layer_windows.contains_key("ghost"),
+            "window for a layer removed from the scene must not be installed"
+        );
+        // The guard must still have cleaned up the in_flight entry and count.
+        assert_eq!(shared.0.lock().active_window_fill_count, 0);
+
+        let _ = std::fs::remove_file(path);
+        Ok(())
+    }
+
+    #[test]
+    fn window_fill_guard_cleans_up_on_drop() -> anyhow::Result<()> {
+        let path = write_temp_f32_wav(48000, 2, 48000 * 2)?;
+        let path_str = path.to_string_lossy().to_string();
+        let shared = Arc::new((Mutex::new(AudioShared::default()), Condvar::new()));
+
+        // Spawn a fill and wait for it to complete.
+        spawn_window_fill(
+            &shared,
+            "guard",
+            &path_str,
+            0,
+            48000,
+            2,
+            WindowFillPriority::Live,
+        );
+        assert!(wait_for_window(&shared, "guard", 0));
+
+        // After completion, the guard's Drop must have cleaned up.
+        let state = shared.0.lock();
+        assert!(!state.window_fill_in_flight.contains_key("guard"));
+        assert_eq!(state.active_window_fill_count, 0);
+
+        let _ = std::fs::remove_file(path);
+        Ok(())
+    }
 }

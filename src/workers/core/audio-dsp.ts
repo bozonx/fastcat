@@ -66,6 +66,84 @@ export function interleaveFromPlanes(
   return out;
 }
 
+const FRAC_1_SQRT_2 = Math.SQRT1_2;
+
+/**
+ * Per-source-channel `(left, right)` gains for downmixing a multichannel layout
+ * to stereo, following ITU-R BS.775 (centre and surrounds folded in at −3 dB,
+ * LFE dropped). The source order is the canonical FFmpeg/symphonia order
+ * (FL, FR, FC, LFE, BL/SL, BR/SR, …). Unknown layouts fall back to L/R for the
+ * front pair and a centred fold for any further channels.
+ *
+ * Mirrors `stereo_downmix_coeffs` in `src-tauri/src/audio/resample.rs` so web
+ * export and native render sound identical for 5.1 sources.
+ */
+function stereoDownmixCoeffs(srcChannels: number): Array<[number, number]> {
+  const c = FRAC_1_SQRT_2;
+  switch (srcChannels) {
+    case 3:
+      return [
+        [1, 0],
+        [0, 1],
+        [c, c],
+      ];
+    case 4:
+      return [
+        [1, 0],
+        [0, 1],
+        [c, 0],
+        [0, c],
+      ];
+    case 5:
+      return [
+        [1, 0],
+        [0, 1],
+        [c, c],
+        [c, 0],
+        [0, c],
+      ];
+    case 6:
+      return [
+        [1, 0],
+        [0, 1],
+        [c, c],
+        [0, 0],
+        [c, 0],
+        [0, c],
+      ];
+    case 7:
+      return [
+        [1, 0],
+        [0, 1],
+        [c, c],
+        [0, 0],
+        [c, c],
+        [c, 0],
+        [0, c],
+      ];
+    case 8:
+      return [
+        [1, 0],
+        [0, 1],
+        [c, c],
+        [0, 0],
+        [c, 0],
+        [0, c],
+        [c, 0],
+        [0, c],
+      ];
+    default: {
+      const coeffs: Array<[number, number]> = [];
+      for (let ch = 0; ch < srcChannels; ch += 1) {
+        if (ch === 0) coeffs.push([1, 0]);
+        else if (ch === 1) coeffs.push([0, 1]);
+        else coeffs.push([c, c]);
+      }
+      return coeffs;
+    }
+  }
+}
+
 export function normalizeSampleChannels(params: {
   planes: Float32Array[];
   sourceChannels: number;
@@ -93,11 +171,15 @@ export function normalizeSampleChannels(params: {
   }
 
   if (sourceChannels <= 1 && targetChannels === 2) {
+    // Mono → stereo: duplicate with 1/√2 scaling so the summed acoustic power
+    // of the two correlated copies matches the original mono level. Mirrors
+    // `planar_to_interleaved` in `resample.rs`.
     const mono = planes[0] ?? new Float32Array(frames);
+    const scale = FRAC_1_SQRT_2;
     const left = new Float32Array(frames);
     const right = new Float32Array(frames);
     for (let i = 0; i < frames; i += 1) {
-      const value = mono[i] ?? 0;
+      const value = (mono[i] ?? 0) * scale;
       left[i] = value;
       right[i] = value;
     }
@@ -105,13 +187,40 @@ export function normalizeSampleChannels(params: {
   }
 
   if (sourceChannels >= 2 && targetChannels === 1) {
-    const left = planes[0] ?? new Float32Array(frames);
-    const right = planes[1] ?? left;
+    // Multichannel → mono: average ALL source channels, not just L+R.
+    // Mirrors `planar_to_interleaved` in `resample.rs`.
     const mono = new Float32Array(frames);
+    const inv = 1 / sourceChannels;
     for (let i = 0; i < frames; i += 1) {
-      mono[i] = ((left[i] ?? 0) + (right[i] ?? 0)) * 0.5;
+      let sum = 0;
+      for (let ch = 0; ch < sourceChannels; ch += 1) {
+        sum += planes[ch]?.[i] ?? 0;
+      }
+      mono[i] = sum * inv;
     }
     return [mono];
+  }
+
+  if (sourceChannels >= 3 && targetChannels === 2) {
+    // Multichannel → stereo: ITU-R BS.775 downmix (centre/surrounds folded
+    // into L/R, LFE dropped). Mirrors `stereo_downmix_coeffs` + `planar_to_interleaved`
+    // in `resample.rs` so web export matches native render for 5.1 sources.
+    const coeffs = stereoDownmixCoeffs(sourceChannels);
+    const left = new Float32Array(frames);
+    const right = new Float32Array(frames);
+    for (let i = 0; i < frames; i += 1) {
+      let l = 0;
+      let r = 0;
+      for (let ch = 0; ch < sourceChannels; ch += 1) {
+        const s = planes[ch]?.[i] ?? 0;
+        const [cl, cr] = coeffs[ch]!;
+        l += s * cl;
+        r += s * cr;
+      }
+      left[i] = l;
+      right[i] = r;
+    }
+    return [left, right];
   }
 
   return Array.from({ length: targetChannels }, (_, index) => {

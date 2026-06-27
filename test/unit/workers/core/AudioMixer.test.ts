@@ -66,15 +66,19 @@ describe('AudioMixer interleavedToPlanar', () => {
 });
 
 describe('AudioMixer channel normalization', () => {
-  it('duplicates mono channel into stereo', () => {
+  it('duplicates mono channel into stereo with 1/sqrt(2) scaling', () => {
+    const g = Math.SQRT1_2;
     const [left, right] = normalizeSampleChannels({
       planes: [new Float32Array([0.25, 0.5, 0.75])],
       sourceChannels: 1,
       targetChannels: 2,
       frames: 3,
     });
-    expect(Array.from(left ?? [])).toEqual([0.25, 0.5, 0.75]);
-    expect(Array.from(right ?? [])).toEqual([0.25, 0.5, 0.75]);
+    const expected = [0.25 * g, 0.5 * g, 0.75 * g];
+    for (let i = 0; i < 3; i += 1) {
+      expect(left![i]).toBeCloseTo(expected[i], 6);
+      expect(right![i]).toBeCloseTo(expected[i], 6);
+    }
   });
 
   it('downmixes stereo channels into mono', () => {
@@ -96,6 +100,114 @@ describe('AudioMixer channel normalization', () => {
       frames: 2,
     });
     expect(result).toEqual(planes);
+  });
+});
+
+// ── Cross-engine parity: BS.775 downmix ──────────────────────────────
+//
+// These tests mirror the Rust `planar_to_interleaved` / `stereo_downmix_coeffs`
+// tests in `src-tauri/src/audio/resample.rs`. The web `normalizeSampleChannels`
+// and the native `planar_to_interleaved` must produce identical per-channel
+// coefficients for multichannel sources so 5.1 exports sound the same on both
+// engines.
+
+describe('normalizeSampleChannels BS.775 parity with native', () => {
+  const c = Math.SQRT1_2;
+
+  it('downmixes 5.1 to stereo keeping centre and dropping LFE', () => {
+    // 5.1 order: FL FR FC LFE BL BR. One frame.
+    const planes = [
+      new Float32Array([1.0]), // FL
+      new Float32Array([2.0]), // FR
+      new Float32Array([3.0]), // FC
+      new Float32Array([9.0]), // LFE (dropped)
+      new Float32Array([4.0]), // BL
+      new Float32Array([5.0]), // BR
+    ];
+    const [left, right] = normalizeSampleChannels({
+      planes,
+      sourceChannels: 6,
+      targetChannels: 2,
+      frames: 1,
+    });
+    const expectL = 1.0 + c * 3.0 + c * 4.0;
+    const expectR = 2.0 + c * 3.0 + c * 5.0;
+    expect(left![0]).toBeCloseTo(expectL, 6);
+    expect(right![0]).toBeCloseTo(expectR, 6);
+    // Centre channel must reach BOTH outputs (dialogue not lost).
+    expect(left![0]).toBeGreaterThan(1.0);
+    expect(right![0]).toBeGreaterThan(2.0);
+  });
+
+  it('downmixes 5.1 to mono averaging ALL channels including LFE', () => {
+    const planes = [
+      new Float32Array([1.0]), // FL
+      new Float32Array([2.0]), // FR
+      new Float32Array([3.0]), // FC
+      new Float32Array([9.0]), // LFE
+      new Float32Array([4.0]), // BL
+      new Float32Array([5.0]), // BR
+    ];
+    const [mono] = normalizeSampleChannels({
+      planes,
+      sourceChannels: 6,
+      targetChannels: 1,
+      frames: 1,
+    });
+    // Native averages ALL 6 channels: (1+2+3+9+4+5)/6 = 24/6 = 4.0
+    expect(mono![0]).toBeCloseTo(4.0, 6);
+  });
+
+  it('downmixes 3.0 to stereo folding centre into both', () => {
+    const planes = [
+      new Float32Array([1.0]), // FL
+      new Float32Array([2.0]), // FR
+      new Float32Array([3.0]), // FC
+    ];
+    const [left, right] = normalizeSampleChannels({
+      planes,
+      sourceChannels: 3,
+      targetChannels: 2,
+      frames: 1,
+    });
+    expect(left![0]).toBeCloseTo(1.0 + c * 3.0, 6);
+    expect(right![0]).toBeCloseTo(2.0 + c * 3.0, 6);
+  });
+
+  it('downmixes quad (4.0) to stereo folding surrounds into L/R', () => {
+    const planes = [
+      new Float32Array([1.0]), // FL
+      new Float32Array([2.0]), // FR
+      new Float32Array([4.0]), // BL
+      new Float32Array([5.0]), // BR
+    ];
+    const [left, right] = normalizeSampleChannels({
+      planes,
+      sourceChannels: 4,
+      targetChannels: 2,
+      frames: 1,
+    });
+    expect(left![0]).toBeCloseTo(1.0 + c * 4.0, 6);
+    expect(right![0]).toBeCloseTo(2.0 + c * 5.0, 6);
+  });
+
+  it('downmixes multichannel to mono averaging all channels (not just L+R)', () => {
+    const planes = [
+      new Float32Array([6.0]), // FL
+      new Float32Array([0.0]), // FR
+      new Float32Array([0.0]), // FC
+      new Float32Array([0.0]), // LFE
+      new Float32Array([0.0]), // BL
+      new Float32Array([0.0]), // BR
+    ];
+    const [mono] = normalizeSampleChannels({
+      planes,
+      sourceChannels: 6,
+      targetChannels: 1,
+      frames: 1,
+    });
+    // (6+0+0+0+0+0)/6 = 1.0 — old web code would have returned (6+0)*0.5 = 3.0
+    expect(mono![0]).toBeCloseTo(1.0, 6);
   });
 });
 
@@ -453,9 +565,9 @@ describe('AudioMixer.writeMixedToSource', () => {
 
     const resultInstance = audioSource.add.mock.calls[0][0];
     const mixedData = resultInstance.data.data;
-    // Mono source promoted to stereo carries the same 0.5 in both planes.
-    // Full-left pan (W3C matrix): L_out = L + R = 1.0, R_out = 0.
-    expect(mixedData[0]).toBeCloseTo(1.0);
+    // Mono source promoted to stereo carries 0.5*1/√2 in each plane.
+    // Full-left pan (W3C matrix): L_out = L + R = 0.5*√2, R_out = 0.
+    expect(mixedData[0]).toBeCloseTo(0.5 * Math.SQRT2);
     expect(mixedData[48000]).toBeCloseTo(0);
   });
 
