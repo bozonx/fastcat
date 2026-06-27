@@ -30,6 +30,21 @@ export function useMobileTimelineDrawers() {
   const isLongPress = ref(false);
   const suppressDrawerSelectionClear = ref(false);
 
+  // Explicit multi-selection mode. Entered ONLY by a long-press on a clip; a plain
+  // tap never enters it (even though a tap may select a linked clip group of >1
+  // items). While off, taps switch the single selection; while on, taps toggle
+  // clips in/out of the multi-selection.
+  const isMultiSelectionMode = ref(false);
+
+  // Multi-selection mode is meaningless without selected clips: drop it whenever
+  // the selection empties (e.g. tapping a track/gap or toggling the last clip off).
+  watch(
+    () => timelineStore.selectedItemIds.length,
+    (len) => {
+      if (len === 0) isMultiSelectionMode.value = false;
+    },
+  );
+
   // Single source of truth for "which drawers exist". `closeAllDrawers` and
   // `isAnyDrawerOpen` both derive from this list so they can never drift apart.
   const allDrawerOpenRefs: Ref<boolean>[] = [
@@ -132,7 +147,7 @@ export function useMobileTimelineDrawers() {
       }
 
       if (itemIds.length > 0 && !gap) {
-        if (itemIds.length > 1) {
+        if (isMultiSelectionMode.value) {
           if (!isMultiSelectionDrawerOpen.value) {
             closeAllDrawers();
             isMultiSelectionDrawerOpen.value = true;
@@ -240,6 +255,7 @@ export function useMobileTimelineDrawers() {
   function onMultiSelectionDrawerClose() {
     isMultiSelectionDrawerOpen.value = false;
     isLongPress.value = false;
+    isMultiSelectionMode.value = false;
 
     if (suppressDrawerSelectionClear.value) {
       return;

@@ -834,6 +834,8 @@
         "zoom": "Масштаб"
       },
       "quantize": "Привязать к кадрам",
+      "freePositionHint": "Клип не выровнен по сетке кадров (нажмите «Привязать к кадрам» в контекстном меню)",
+      "freezeFrameTitle": "Стоп-кадр",
       "removeFromGroup": "Удалить из группы",
       "removeTransitionIn": "Убрать переход в начале",
       "removeTransitionOut": "Убрать переход в конце",

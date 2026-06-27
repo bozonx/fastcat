@@ -765,10 +765,9 @@ function handleTransitionCreate(
           ? isMultiSelected
             ? 'outline-orange-400 outline-2 z-10 shadow-lg'
             : 'outline-(--color-primary) outline-2 z-10 shadow-lg'
-          : 'outline-transparent',
-        clipItem && typeof clipItem.freezeFrameSourceUs === 'number'
-          ? 'outline-(--color-warning) outline-2'
-          : '',
+          : clipItem && typeof clipItem.freezeFrameSourceUs === 'number'
+            ? 'outline-(--color-warning) outline-2 z-10'
+            : 'outline-transparent',
         isDisabled ? 'opacity-40' : '',
         isMediaMissing ? 'bg-red-600! border-red-800! text-white!' : '',
         !isMediaMissing && isUnsupported ? 'bg-amber-600/50! border-amber-700!' : '',
@@ -798,11 +797,7 @@ function handleTransitionCreate(
           :style="{ zIndex: 'var(--z-clip-speed)' }"
           :class="clipItem.speed < 0 ? 'border-fuchsia-500' : 'border-violet-400'"
         />
-        <div
-          v-if="isFreePosition"
-          class="absolute inset-0 rounded border-2 border-yellow-400 pointer-events-none"
-          :style="{ zIndex: 'var(--z-clip-free-pos)' }"
-        />
+
         <div
           v-if="track.locked || (clipItem && clipItem.locked)"
           class="absolute inset-0 rounded hatching-diagonal pointer-events-none"

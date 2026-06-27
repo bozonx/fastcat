@@ -834,6 +834,8 @@
         "zoom": "Zoom"
       },
       "quantize": "Quantize to frames",
+      "freePositionHint": "Clip is not frame-aligned (click 'Quantize to frames' in the context menu)",
+      "freezeFrameTitle": "Freeze Frame",
       "removeFromGroup": "Remove from group",
       "removeTransitionIn": "Remove transition in",
       "removeTransitionOut": "Remove transition out",
