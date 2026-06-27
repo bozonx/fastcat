@@ -208,12 +208,12 @@ export async function extractMetadata(
   }
 }
 
-function isOpusCodec(codec: string | undefined): boolean {
+export function isOpusCodec(codec: string | undefined): boolean {
   const value = String(codec ?? '').toLowerCase();
   return value.startsWith('opus');
 }
 
-function buildMetadataTags(
+export function buildMetadataTags(
   metadata: NonNullable<ExportOptions['metadata']>,
 ): Record<string, unknown> | null {
   const tags: Record<string, unknown> = {};
@@ -376,7 +376,7 @@ async function buildPassthroughAudioTrack(params: {
   }
 }
 
-interface OutputFormatConstructors {
+export interface OutputFormatConstructors {
   Mp4OutputFormat: new () => unknown;
   WebMOutputFormat: new () => unknown;
   MkvOutputFormat: new () => unknown;
@@ -391,7 +391,7 @@ interface OutputFormatConstructors {
  * the format constructors are passed in (they come from a dynamic import in the
  * caller) so this stays trivially testable and free of side effects.
  */
-function selectOutputFormat(format: ExportOptions['format'], ctors: OutputFormatConstructors) {
+export function selectOutputFormat(format: ExportOptions['format'], ctors: OutputFormatConstructors) {
   switch (format) {
     case 'webm':
       return new ctors.WebMOutputFormat();

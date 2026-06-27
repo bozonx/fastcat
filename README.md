@@ -357,6 +357,40 @@ pnpm test:parity:import-native
 
 Tests skip gracefully when WebGPU, ffmpeg, or a wgpu adapter is unavailable.
 
+### Export Testing
+
+Export functionality is covered across three testing layers:
+
+**Unit Tests (TS):**
+
+- `test/unit/workers/core/export.test.ts` — `extractMetadata` (image, video, audio, error handling), `isPassthroughCompatibleClip` (gain, balance, fades, transitions, effects, speed)
+- `test/unit/workers/core/export-pure.test.ts` — `selectOutputFormat` (all format mappings, MP3 rejection), `buildMetadataTags` (title/description/author/tags mapping, trimming, empty filtering), `isOpusCodec` (prefix matching, case insensitivity), extended `isPassthroughCompatibleClip` edge cases
+- `test/unit/workers/core/export-helpers.test.ts` — frame timing (including 29.97fps drift), clip ranges, audio duration computation
+- `test/unit/composables/timeline/export/useExportProcess.test.ts` — playback guard, format resolution, platform routing (browser vs Tauri)
+- `test/unit/composables/timeline/export/export-options-parity.test.ts` — `buildNativeExportOptions` web→native options mapping (range conversion, audio channels, video-enabled detection, metadata null handling, alpha/fastStart passthrough)
+- `test/unit/composables/timeline/export/payloadBuilder.test.ts` — worker payload building, track filtering, clip trimming
+
+**Rust Integration Tests:**
+
+- `src-tauri/tests/timeline_export.rs` — end-to-end export via real ffmpeg + GPU compositor, verified with ffprobe:
+  - Audio-only export (m4a) and video export (mp4, h264, solid background)
+  - Image layer overlay, video layer decode→composite→encode
+  - Dissolve transition between two image clips
+  - Brightness effect on an image layer
+  - Speed change (2x) on a video layer
+  - Multi-track audio mixing (WAV + MP3)
+  - WebM/VP9 export with container verification
+  - Alpha export (VP9 yuva420p in WebM)
+  - Video + audio combined export
+  - Cancellation handling
+  - Zero-duration and inverted range error handling
+- `src-tauri/src/media/timeline_export/tests.rs` — FFmpeg args builder unit tests (WebM Opus forcing, VP9 alpha, MP4 metadata, CBR, CFR, audio-only, FLAC, hardware VAAPI, direct transcode path)
+
+**Parity / Golden:**
+
+- Cross-engine frame hash parity is covered by the parity test suite (see above)
+- `buildNativeExportOptions` parity test ensures web export options map correctly to native `NativeExportOptions`
+
 **CI:** the `.github/workflows/parity.yml` GitHub Actions workflow runs web parity in a Dockerized Playwright container and native parity on an Ubuntu runner with a software Vulkan adapter.
 
 ## Embedded Editor SDK

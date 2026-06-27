@@ -34,7 +34,6 @@ const log = createDevLogger('useExportProcess');
 
 let timelineExportInFlight = false;
 const CANCEL_FORCE_TERMINATE_TIMEOUT_MS = 15_000;
-const AUDIO_ONLY_EXPORT_FORMATS = new Set(['aac', 'opus', 'ogg', 'flac', 'wav', 'pcm', 'mp3']);
 
 function validateNativeExportDimensions(options: Pick<ExportOptions, 'width' | 'height'>) {
   const values = [
@@ -47,6 +46,44 @@ function validateNativeExportDimensions(options: Pick<ExportOptions, 'width' | '
       throw new Error(`Invalid export ${name}: expected an even integer between 2 and 16384`);
     }
   }
+}
+
+const AUDIO_ONLY_EXPORT_FORMATS = new Set(['aac', 'opus', 'ogg', 'flac', 'wav', 'pcm', 'mp3']);
+
+export interface WebToNativeExportParams {
+  options: ExportOptions & { audioSampleRate: number };
+  rangeStartUs: number;
+  rangeEndUs: number;
+}
+
+export function buildNativeExportOptions(
+  params: WebToNativeExportParams,
+): import('~/utils/tauri-media-processing').NativeTimelineExportOptions {
+  const { options, rangeStartUs, rangeEndUs } = params;
+  return {
+    width: options.width,
+    height: options.height,
+    fps: options.fps,
+    startSec: rangeStartUs / 1_000_000,
+    endSec: rangeEndUs / 1_000_000,
+    videoCodec: options.videoCodec,
+    videoBitrateBps: options.bitrate,
+    format: options.format,
+    audioEnabled: options.audio,
+    audioCodec: options.audioCodec || null,
+    audioBitrateBps: options.audioBitrate,
+    audioChannels: options.audioChannels === 'mono' ? 1 : 2,
+    audioSampleRate: options.audioSampleRate,
+    videoEnabled: !AUDIO_ONLY_EXPORT_FORMATS.has(options.format),
+    bitrateMode: options.bitrateMode ?? 'variable',
+    keyframeIntervalSec: options.keyframeIntervalSec,
+    metadataTitle: options.metadata?.title || null,
+    metadataDescription: options.metadata?.description || null,
+    metadataAuthor: options.metadata?.author || null,
+    metadataTags: options.metadata?.tags || null,
+    exportAlpha: options.exportAlpha,
+    fastStart: options.fastStart,
+  };
 }
 
 export function useExportProcess(
@@ -201,30 +238,11 @@ export function useExportProcess(
           taskId: exportTaskId,
           scene,
           targetPath: nativeTargetPath,
-          options: {
-            width: options.width,
-            height: options.height,
-            fps: options.fps,
-            startSec: rangeStartUs / 1_000_000,
-            endSec: rangeEndUs / 1_000_000,
-            videoCodec: options.videoCodec,
-            videoBitrateBps: options.bitrate,
-            format: options.format,
-            audioEnabled: options.audio,
-            audioCodec: options.audioCodec || null,
-            audioBitrateBps: options.audioBitrate,
-            audioChannels: options.audioChannels === 'mono' ? 1 : 2,
-            audioSampleRate: options.audioSampleRate,
-            videoEnabled: !AUDIO_ONLY_EXPORT_FORMATS.has(options.format),
-            bitrateMode: options.bitrateMode ?? 'variable',
-            keyframeIntervalSec: options.keyframeIntervalSec,
-            metadataTitle: options.metadata?.title || null,
-            metadataDescription: options.metadata?.description || null,
-            metadataAuthor: options.metadata?.author || null,
-            metadataTags: options.metadata?.tags || null,
-            exportAlpha: options.exportAlpha,
-            fastStart: options.fastStart,
-          },
+          options: buildNativeExportOptions({
+            options,
+            rangeStartUs,
+            rangeEndUs,
+          }),
           onProgress: onNativeProgress,
           onWarning: reportWarning,
         });
