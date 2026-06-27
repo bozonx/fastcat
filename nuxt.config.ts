@@ -1,8 +1,19 @@
 import { defineNuxtConfig } from 'nuxt/config';
 import { resolve } from 'node:path';
 import { mkdirSync } from 'node:fs';
+import type { PreviewServer, ViteDevServer } from 'vite';
 
 const fastcatDevDir = resolve(import.meta.dirname, process.env.FASTCAT_DEV_DIR || './.dev-files');
+
+function installE2eIsolationHeaders(server: ViteDevServer | PreviewServer): void {
+  if (process.env.E2E_TEST !== '1') return;
+
+  server.middlewares.use((_req, res, next) => {
+    res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
+    res.setHeader('Cross-Origin-Embedder-Policy', 'require-corp');
+    next();
+  });
+}
 
 // Ensure dev-mode OS-like directory tree exists before Tauri starts.
 // This avoids I/O errors when Tauri plugin-fs mkdir hits missing parents.
@@ -142,13 +153,10 @@ export default defineNuxtConfig({
       {
         name: 'fastcat:e2e-headers',
         configureServer(server) {
-          if (process.env.E2E_TEST !== '1') return;
-
-          server.middlewares.use((_req, res, next) => {
-            res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
-            res.setHeader('Cross-Origin-Embedder-Policy', 'require-corp');
-            next();
-          });
+          installE2eIsolationHeaders(server);
+        },
+        configurePreviewServer(server) {
+          installE2eIsolationHeaders(server);
         },
       },
     ],
