@@ -616,9 +616,15 @@ fn parse_hex_color(hex: &str) -> [f32; 3] {
 fn get_shader_source(spec: &TransitionSpec) -> String {
     match spec {
         TransitionSpec::CustomWgsl { source, .. } => source.clone(),
-        TransitionSpec::Crossfade => include_str!("../../../../shared/transitions/crossfade.wgsl").to_string(),
-        TransitionSpec::Wipe { .. } => include_str!("../../../../shared/transitions/wipe.wgsl").to_string(),
-        TransitionSpec::Slide { .. } => include_str!("../../../../shared/transitions/slide.wgsl").to_string(),
+        TransitionSpec::Crossfade => {
+            include_str!("../../../../shared/transitions/crossfade.wgsl").to_string()
+        }
+        TransitionSpec::Wipe { .. } => {
+            include_str!("../../../../shared/transitions/wipe.wgsl").to_string()
+        }
+        TransitionSpec::Slide { .. } => {
+            include_str!("../../../../shared/transitions/slide.wgsl").to_string()
+        }
         TransitionSpec::FadeThroughColor { .. } => {
             include_str!("../../../../shared/transitions/fade_through_color.wgsl").to_string()
         }
@@ -688,10 +694,8 @@ mod tests {
     /// `test/unit/utils/color.parity.test.ts`.
     #[test]
     fn parse_hex_color_matches_shared_parity_fixture() {
-        const FIXTURE: &str =
-            include_str!("../../../../shared/parity/hex-color-rgb01.cases.json");
-        let parsed: serde_json::Value =
-            serde_json::from_str(FIXTURE).expect("valid fixture json");
+        const FIXTURE: &str = include_str!("../../../../shared/parity/hex-color-rgb01.cases.json");
+        let parsed: serde_json::Value = serde_json::from_str(FIXTURE).expect("valid fixture json");
         let cases = parsed["cases"].as_array().expect("cases array");
         assert!(!cases.is_empty());
         for c in cases {

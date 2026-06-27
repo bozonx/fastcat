@@ -173,12 +173,10 @@ pub async fn native_media_metadata(
         let settings = hw_settings.read();
         (settings.ffprobe_path.clone(), settings.ffmpeg_path.clone())
     };
-    tokio::task::spawn_blocking(move || {
-        probe_media_validated(&path, &ffprobe_path, &ffmpeg_path)
-    })
-    .await
-    .map_err(|e| e.to_string())?
-    .map_err(|e| format!("{e:#}"))
+    tokio::task::spawn_blocking(move || probe_media_validated(&path, &ffprobe_path, &ffmpeg_path))
+        .await
+        .map_err(|e| e.to_string())?
+        .map_err(|e| format!("{e:#}"))
 }
 
 #[tauri::command]

@@ -76,10 +76,7 @@ fn canonicalize_scope_path(path: &str) -> Result<PathBuf, String> {
 /// Extends the fs scope to allow reading a file dropped from the OS.
 /// Required for drag-and-drop imports from arbitrary filesystem locations.
 #[tauri::command]
-pub(crate) fn allow_dropped_file_scope(
-    app: tauri::AppHandle,
-    path: String,
-) -> Result<(), String> {
+pub(crate) fn allow_dropped_file_scope(app: tauri::AppHandle, path: String) -> Result<(), String> {
     let path = canonicalize_scope_path(&path)?;
     reject_dangerous_scope_path(&path)?;
 
@@ -118,10 +115,7 @@ pub(crate) fn allow_path_scope(app: tauri::AppHandle, path: String) -> Result<()
 }
 
 #[tauri::command]
-pub(crate) fn allow_dev_directory_scope(
-    app: tauri::AppHandle,
-    path: String,
-) -> Result<(), String> {
+pub(crate) fn allow_dev_directory_scope(app: tauri::AppHandle, path: String) -> Result<(), String> {
     if !cfg!(debug_assertions) {
         return Err("dev directory scope can only be extended in debug builds".to_string());
     }

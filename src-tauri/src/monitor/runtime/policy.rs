@@ -267,13 +267,15 @@ mod tests {
 
     #[test]
     fn frame_cache_budget_custom_uses_mb() {
-        let budget = frame_cache_budget_bytes(NativeFrameCacheMode::Custom, 256, (1920, 1080), 30.0, 1);
+        let budget =
+            frame_cache_budget_bytes(NativeFrameCacheMode::Custom, 256, (1920, 1080), 30.0, 1);
         assert_eq!(budget, 256 * MB);
     }
 
     #[test]
     fn frame_cache_budget_divides_by_concurrent_layers() {
-        let budget = frame_cache_budget_bytes(NativeFrameCacheMode::Balanced, 0, (1920, 1080), 30.0, 2);
+        let budget =
+            frame_cache_budget_bytes(NativeFrameCacheMode::Balanced, 0, (1920, 1080), 30.0, 2);
         assert_eq!(budget, BALANCED_CACHE_BUDGET_BYTES / 2);
     }
 
@@ -282,7 +284,8 @@ mod tests {
         let budget = frame_cache_budget_bytes(NativeFrameCacheMode::Auto, 0, (1920, 1080), 30.0, 1);
         let frame_bytes = 1920 * 1080 * 4;
         let target_frames = ((30.0_f64 * 0.5).ceil() as usize).max(AUTO_CACHE_MIN_FRAMES);
-        let expected = (frame_bytes * target_frames).clamp(BALANCED_CACHE_BUDGET_BYTES, AUTO_CACHE_MAX_BYTES);
+        let expected =
+            (frame_bytes * target_frames).clamp(BALANCED_CACHE_BUDGET_BYTES, AUTO_CACHE_MAX_BYTES);
         assert_eq!(budget, expected);
     }
 

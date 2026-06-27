@@ -87,12 +87,18 @@ mod tests {
 
     #[test]
     fn decode_mode_nvenc_maps_to_nvdec() {
-        assert_eq!(HwAccelMode::Nvenc.decode_mode("/dev/dri/renderD128"), HwAccelMode::Nvdec);
+        assert_eq!(
+            HwAccelMode::Nvenc.decode_mode("/dev/dri/renderD128"),
+            HwAccelMode::Nvdec
+        );
     }
 
     #[test]
     fn decode_mode_none_passes_through() {
-        assert_eq!(HwAccelMode::None.decode_mode("/dev/dri/renderD128"), HwAccelMode::None);
+        assert_eq!(
+            HwAccelMode::None.decode_mode("/dev/dri/renderD128"),
+            HwAccelMode::None
+        );
     }
 
     #[test]

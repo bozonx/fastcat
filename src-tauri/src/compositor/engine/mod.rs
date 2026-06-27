@@ -1515,7 +1515,8 @@ mod tests {
                     data: vello::peniko::Blob::new(std::sync::Arc::new(vec![
                         0u8;
                         (natural.0 as usize)
-                            * (natural.1 as usize)
+                            * (natural.1
+                                as usize)
                             * 4
                     ])),
                     format: vello::peniko::ImageFormat::Rgba8,

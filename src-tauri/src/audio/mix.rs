@@ -1071,10 +1071,22 @@ mod tests {
             let name = c["name"].as_str().unwrap_or("?");
             let balance = c["balance"].as_f64().unwrap();
             let (ll, lr, rl, rr) = stereo_pan_matrix(balance);
-            assert!((ll - c["ll"].as_f64().unwrap()).abs() < 1e-9, "case `{name}` ll");
-            assert!((lr - c["lr"].as_f64().unwrap()).abs() < 1e-9, "case `{name}` lr");
-            assert!((rl - c["rl"].as_f64().unwrap()).abs() < 1e-9, "case `{name}` rl");
-            assert!((rr - c["rr"].as_f64().unwrap()).abs() < 1e-9, "case `{name}` rr");
+            assert!(
+                (ll - c["ll"].as_f64().unwrap()).abs() < 1e-9,
+                "case `{name}` ll"
+            );
+            assert!(
+                (lr - c["lr"].as_f64().unwrap()).abs() < 1e-9,
+                "case `{name}` lr"
+            );
+            assert!(
+                (rl - c["rl"].as_f64().unwrap()).abs() < 1e-9,
+                "case `{name}` rl"
+            );
+            assert!(
+                (rr - c["rr"].as_f64().unwrap()).abs() < 1e-9,
+                "case `{name}` rr"
+            );
         }
     }
 

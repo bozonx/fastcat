@@ -80,7 +80,11 @@ fn probe_alpha_vp9_webm_reports_video() {
     let meta = probe_media(&common::fixture("video/video-alpha-vp9.webm"), "ffprobe")
         .expect("alpha-vp9 should probe");
     let video = meta.video.expect("alpha-vp9 should have a video stream");
-    assert_eq!((video.width, video.height), (200, 200), "alpha-vp9 dimensions");
+    assert_eq!(
+        (video.width, video.height),
+        (200, 200),
+        "alpha-vp9 dimensions"
+    );
     assert!(meta.duration > 0.5, "alpha-vp9 duration {}", meta.duration);
 }
 

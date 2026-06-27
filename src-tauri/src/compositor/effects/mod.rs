@@ -536,8 +536,7 @@ impl EffectPipeline {
                 create_rgba8_texture(device, "native-effect-cached-pong", new_w, new_h, usage);
             let pong_view = pong.create_view(&wgpu::TextureViewDescriptor::default());
 
-            let aux =
-                create_rgba8_texture(device, "native-effect-cached-aux", new_w, new_h, usage);
+            let aux = create_rgba8_texture(device, "native-effect-cached-aux", new_w, new_h, usage);
             let aux_view = aux.create_view(&wgpu::TextureViewDescriptor::default());
 
             self.resources = Some(CachedResources {

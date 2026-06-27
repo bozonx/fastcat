@@ -184,7 +184,9 @@ mod tests {
         clock.frames_written.store(42, Ordering::Release);
         clock.underrun_events.store(3, Ordering::SeqCst);
         clock.underrun_frames.store(100, Ordering::SeqCst);
-        clock.output_latency_bits.store(0.5f64.to_bits(), Ordering::Release);
+        clock
+            .output_latency_bits
+            .store(0.5f64.to_bits(), Ordering::Release);
 
         clock.reset_frames();
 

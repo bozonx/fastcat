@@ -221,7 +221,11 @@ pub fn build_text_layer(sl: &SceneLayer, scene_size: (u32, u32)) -> TextLayer {
             return 0.0;
         }
         let raw = number(&style, key, 0.0);
-        let raw = if clamp_non_negative { raw.max(0.0) } else { raw };
+        let raw = if clamp_non_negative {
+            raw.max(0.0)
+        } else {
+            raw
+        };
         (raw * render_scale) as f32
     };
 

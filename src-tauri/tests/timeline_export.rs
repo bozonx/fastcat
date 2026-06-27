@@ -1,10 +1,11 @@
 //! End-to-end export integration tests. These drive the real `export_timeline`
 //! pipeline: offline audio mix → ffmpeg encode → file on disk, verified with
-//! ffprobe. The video case also drives the GPU compositor and is skipped when
-//! no wgpu adapter is available (headless CI without software Vulkan).
+//! ffprobe/PCM inspection. The video case also drives the GPU compositor and is
+//! skipped when no wgpu adapter is available (headless CI without software Vulkan).
 
 mod common;
 
+use std::fs;
 use std::path::Path;
 
 use app_lib::compositor::Compositor;
@@ -25,6 +26,41 @@ fn audio_layer(rel: &str) -> serde_json::Value {
         "timeline_end_sec": 1.0,
         "source_start_sec": 0.0,
     })
+}
+
+fn rms(samples: &[f32]) -> f32 {
+    if samples.is_empty() {
+        return 0.0;
+    }
+    let sum: f64 = samples.iter().map(|s| (*s as f64) * (*s as f64)).sum();
+    (sum / samples.len() as f64).sqrt() as f32
+}
+
+fn read_wav_pcm_s16le_mono(path: &Path) -> Vec<f32> {
+    let bytes = fs::read(path).expect("wav file should be readable");
+    assert!(bytes.starts_with(b"RIFF"), "expected RIFF WAV");
+    assert_eq!(&bytes[8..12], b"WAVE", "expected WAVE file");
+
+    let mut offset = 12;
+    while offset + 8 <= bytes.len() {
+        let id = &bytes[offset..offset + 4];
+        let size = u32::from_le_bytes(bytes[offset + 4..offset + 8].try_into().unwrap()) as usize;
+        let data_start = offset + 8;
+        let data_end = data_start + size;
+        assert!(data_end <= bytes.len(), "invalid wav chunk size");
+        if id == b"data" {
+            return bytes[data_start..data_end]
+                .chunks_exact(2)
+                .map(|chunk| {
+                    let sample = i16::from_le_bytes(chunk.try_into().unwrap());
+                    sample as f32 / i16::MAX as f32
+                })
+                .collect();
+        }
+        offset = data_end + (size % 2);
+    }
+
+    panic!("WAV data chunk not found");
 }
 
 #[test]
@@ -73,6 +109,95 @@ fn audio_only_export_produces_audio_file() {
         .parse()
         .unwrap_or(0.0);
     assert!((dur - 1.0).abs() < 0.3, "duration ~1s, got {dur}");
+}
+
+#[test]
+fn audio_only_export_writes_crossfaded_output_file() {
+    skip_unless!(
+        common::has_ffmpeg() && common::has_ffprobe(),
+        "ffmpeg/ffprobe not installed"
+    );
+    skip_unless!(
+        common::has_ffmpeg_encoder("pcm_s16le"),
+        "ffmpeg pcm_s16le encoder not installed"
+    );
+
+    let fixture = common::fixture("audio/audio-sine.wav");
+    let fixture_path = fixture.to_string_lossy();
+    let scene: MonitorScene = serde_json::from_value(json!({
+        "layers": [],
+        "audio_layers": [
+            {
+                "id": "outgoing",
+                "path": fixture_path,
+                "timeline_start_sec": 0.0,
+                "timeline_end_sec": 1.0,
+                "source_start_sec": 0.0,
+                "audio_fade_out_sec": 0.5,
+                "audio_fade_out_curve": "linear"
+            },
+            {
+                "id": "incoming",
+                "path": fixture_path,
+                "timeline_start_sec": 0.5,
+                "timeline_end_sec": 1.5,
+                "source_start_sec": 0.0,
+                "audio_fade_in_sec": 0.5,
+                "audio_fade_in_curve": "linear"
+            }
+        ],
+    }))
+    .unwrap();
+
+    let options: NativeExportOptions = serde_json::from_value(json!({
+        "width": 320, "height": 240, "fps": 30.0,
+        "startSec": 0.0, "endSec": 1.5,
+        "videoCodec": "", "videoBitrateBps": 0, "format": "wav",
+        "audioEnabled": true, "audioCodec": "pcm", "audioBitrateBps": null,
+        "audioChannels": 1, "audioSampleRate": 48_000,
+        "videoEnabled": false,
+        "ffmpegPath": "ffmpeg", "ffprobePath": "ffprobe",
+    }))
+    .unwrap();
+
+    let tmp = tempfile::tempdir().unwrap();
+    let target = tmp.path().join("out_crossfade.wav");
+    let tasks = NativeMediaTasks::default();
+
+    export_timeline(
+        &tasks,
+        "export-audio-crossfade",
+        scene,
+        options,
+        &target,
+        &noop_progress,
+        &noop_warning,
+    )
+    .expect("crossfaded audio export should succeed");
+
+    assert!(target.exists(), "export must write a file");
+    let codec = common::ffprobe_entry(Path::new(&target), "stream=codec_name", Some("a:0"));
+    assert_eq!(codec, "pcm_s16le");
+    let dur: f64 = common::ffprobe_entry(Path::new(&target), "format=duration", None)
+        .parse()
+        .unwrap_or(0.0);
+    assert!((dur - 1.5).abs() < 0.05, "duration ~1.5s, got {dur}");
+
+    let pcm = read_wav_pcm_s16le_mono(&target);
+    let sample_rate = 48_000usize;
+    let window = sample_rate / 10;
+    let full_rms = rms(&pcm[sample_rate / 5..sample_rate / 5 + window]);
+    let overlap_rms = rms(&pcm[sample_rate * 7 / 10..sample_rate * 7 / 10 + window]);
+    let tail_rms = rms(&pcm[sample_rate * 5 / 4..sample_rate * 5 / 4 + window]);
+
+    assert!(
+        (overlap_rms / full_rms - 1.0).abs() < 0.2,
+        "exported crossfade overlap should stay near one clip, overlap={overlap_rms:.6}, full={full_rms:.6}"
+    );
+    assert!(
+        (tail_rms / full_rms - 1.0).abs() < 0.2,
+        "incoming clip should return to full level after export crossfade, tail={tail_rms:.6}, full={full_rms:.6}"
+    );
 }
 
 #[test]

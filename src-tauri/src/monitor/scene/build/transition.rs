@@ -146,8 +146,7 @@ mod tests {
     fn curve_matches_shared_parity_fixture() {
         const FIXTURE: &str =
             include_str!("../../../../../shared/parity/transition-curve.cases.json");
-        let parsed: serde_json::Value =
-            serde_json::from_str(FIXTURE).expect("valid fixture json");
+        let parsed: serde_json::Value = serde_json::from_str(FIXTURE).expect("valid fixture json");
         let cases = parsed["cases"].as_array().expect("cases array");
         assert!(!cases.is_empty());
         for c in cases {

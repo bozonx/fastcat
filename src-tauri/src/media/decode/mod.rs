@@ -12,12 +12,12 @@ pub mod thread;
 mod types;
 mod utils;
 
+pub use ffmpeg_next::{FfmpegNextDecoder, FfmpegNextDecoderFactory};
+pub(crate) use types::MAX_TEXTURES_PER_SIZE;
 pub use types::{
     MediaInfo, SharedTexture, TextureSource, VideoFrame, YuvColor, YuvColorMatrix, YuvColorRange,
     YuvFrame,
 };
-pub use ffmpeg_next::{FfmpegNextDecoder, FfmpegNextDecoderFactory};
-pub(crate) use types::MAX_TEXTURES_PER_SIZE;
 pub(crate) use utils::probe_rotation;
 
 use anyhow::Result;

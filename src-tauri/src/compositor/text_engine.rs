@@ -9,7 +9,7 @@ use std::sync::Arc;
 use anyhow::{anyhow, Result};
 use vello::peniko::Color;
 
-use super::effects::{EffectSpec, EffectSource};
+use super::effects::{EffectSource, EffectSpec};
 use super::scene::{
     BlendMode, Layer, LayerKind, RasterSource, Scene, TextLayer, TextRenderMode, Transform,
 };
@@ -101,7 +101,9 @@ pub(crate) fn render_text_layer_with_gpu_shadow(
         layers: vec![
             gpu_texture_layer(
                 format!("{}:gpu-text-bg", layer.id),
-                Arc::new(crate::media::SharedTexture::new_shared(Arc::new(background))),
+                Arc::new(crate::media::SharedTexture::new_shared(Arc::new(
+                    background,
+                ))),
                 (width, height),
             ),
             gpu_texture_layer(

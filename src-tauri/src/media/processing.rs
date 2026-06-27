@@ -4,8 +4,8 @@ use serde_json::Value;
 use std::path::Path;
 use std::process::{Command, Stdio};
 
-use crate::media::decode::probe_rotation;
 use crate::media::decode::gate::decoder_load_gate;
+use crate::media::decode::probe_rotation;
 use crate::media::ffmpeg::args::*;
 use crate::media::ffmpeg::hw::FfmpegHwOptions;
 use crate::media::ffmpeg::runner::{emit_media_warning, run_ffmpeg_task};
@@ -282,10 +282,18 @@ pub fn probe_media_validated(
     }
 
     if let Some(video) = metadata.video.as_mut() {
-        video.can_decode = Some(validate_stream_decodes(path, ffmpeg_path, StreamKind::Video));
+        video.can_decode = Some(validate_stream_decodes(
+            path,
+            ffmpeg_path,
+            StreamKind::Video,
+        ));
     }
     if let Some(audio) = metadata.audio.as_mut() {
-        audio.can_decode = Some(validate_stream_decodes(path, ffmpeg_path, StreamKind::Audio));
+        audio.can_decode = Some(validate_stream_decodes(
+            path,
+            ffmpeg_path,
+            StreamKind::Audio,
+        ));
     }
 
     Ok(metadata)
@@ -658,9 +666,10 @@ pub fn extract_video_frame_webp(params: ExtractWebpParams<'_>) -> Result<Vec<u8>
     // Throttle concurrent decoder/ffmpeg spawns the same way the monitor does, so a
     // media panel full of clips can't flood the machine with parallel ffmpeg starts.
     let _permit = decoder_load_gate()
-        .acquire_with_priority(crate::media::decode::gate::LoadPriority::Background, &|| {
-            false
-        })
+        .acquire_with_priority(
+            crate::media::decode::gate::LoadPriority::Background,
+            &|| false,
+        )
         .expect("Background without cancel always succeeds");
     let metadata = probe_media(params.source_path, &params.hw_settings.ffprobe_path)?;
     let video = metadata
@@ -767,9 +776,10 @@ pub fn extract_video_frame_webps(
     );
     let mut decoder = {
         let _permit = decoder_load_gate()
-            .acquire_with_priority(crate::media::decode::gate::LoadPriority::Background, &|| {
-                false
-            })
+            .acquire_with_priority(
+                crate::media::decode::gate::LoadPriority::Background,
+                &|| false,
+            )
             .expect("Background without cancel always succeeds");
         crate::media::decode::open(
             source_path,
@@ -1331,7 +1341,7 @@ mod tests {
                 audio_channels: Some(2),
                 audio_sample_rate: Some(48_000),
                 audio_reverse: Some(true),
-            hw: FfmpegHwOptions::default(),
+                hw: FfmpegHwOptions::default(),
             };
 
             let result = convert_media(

@@ -1048,6 +1048,94 @@ describe('AudioMixer.writeMixedToSource', () => {
     expect(timeline[15_000]).toBeCloseTo(0.5);
     expect(timeline[24_999]).toBeCloseTo(0.5);
   });
+
+  it('applies adjacent audio crossfades to the exported mix samples', async () => {
+    const sampleRate = 1000;
+    const numberOfChannels = 1;
+    const durationS = 2;
+    const audioSource = { add: vi.fn().mockResolvedValue(undefined) };
+
+    function constantSink(value: number) {
+      const sink = new mockMediabunny.AudioSampleSink();
+      sink.samples = vi.fn((startS: number, endS: number) => ({
+        [Symbol.asyncIterator]: async function* () {
+          const frames = Math.round((endS - startS) * sampleRate);
+          yield {
+            numberOfFrames: frames,
+            sampleRate,
+            numberOfChannels,
+            timestamp: startS,
+            allocationSize: () => frames * 4,
+            copyTo: (dst: Float32Array) => dst.fill(value),
+          };
+        },
+      }));
+      return sink;
+    }
+
+    const prepared: PreparedClip[] = [
+      {
+        clipStartS: 0,
+        offsetS: 0,
+        playDurationS: 1.5,
+        input: new mockMediabunny.Input() as any,
+        sink: constantSink(0.5) as any,
+        sourcePath: 'outgoing.wav',
+        speed: 1,
+        audioGain: 1,
+        audioBalance: 0,
+        audioFadeInS: 0,
+        audioFadeOutS: 0.5,
+        audioFadeInCurve: 'linear',
+        audioFadeOutCurve: 'linear',
+        audioEffects: [],
+      },
+      {
+        clipStartS: 1,
+        offsetS: 0,
+        playDurationS: 1,
+        input: new mockMediabunny.Input() as any,
+        sink: constantSink(0.5) as any,
+        sourcePath: 'incoming.wav',
+        speed: 1,
+        audioGain: 1,
+        audioBalance: 0,
+        audioFadeInS: 0.5,
+        audioFadeOutS: 0,
+        audioFadeInCurve: 'linear',
+        audioFadeOutCurve: 'linear',
+        audioEffects: [],
+      },
+    ];
+
+    await AudioMixer.writeMixedToSource({
+      prepared,
+      durationS,
+      audioSource,
+      chunkDurationS: 0.25,
+      sampleRate,
+      numberOfChannels,
+      reportExportWarning: vi.fn(),
+      AudioSample: mockMediabunny.AudioSample as any,
+    });
+
+    const timeline = new Float32Array(durationS * sampleRate);
+    for (const call of audioSource.add.mock.calls) {
+      const params = call[0].data as { data: Float32Array; timestamp: number };
+      const startFrame = Math.round(params.timestamp * sampleRate);
+      timeline.set(
+        params.data.subarray(0, Math.min(params.data.length, timeline.length - startFrame)),
+        startFrame,
+      );
+    }
+
+    expect(timeline[500]).toBeCloseTo(0.5, 4);
+    expect(timeline[1000]).toBeCloseTo(0.5, 4);
+    expect(timeline[1250]).toBeCloseTo(0.5, 4);
+    expect(timeline[1499]).toBeCloseTo(0.5, 3);
+    expect(timeline[1750]).toBeCloseTo(0.5, 4);
+    expect(Math.max(...Array.from(timeline.subarray(1000, 1500)))).toBeLessThan(0.51);
+  });
 });
 
 describe('AudioMixer time-stretch via speed', () => {

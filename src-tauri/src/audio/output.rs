@@ -599,7 +599,10 @@ mod tests {
             assert!(d > -1.0 && d < 1.0, "dither out of range: {d}");
         }
         // Over many samples it should actually exercise most of the range.
-        assert!(min < -0.5 && max > 0.5, "dither range too narrow: [{min}, {max}]");
+        assert!(
+            min < -0.5 && max > 0.5,
+            "dither range too narrow: [{min}, {max}]"
+        );
     }
 
     #[test]

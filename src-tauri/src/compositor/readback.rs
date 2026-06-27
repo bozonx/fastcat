@@ -192,7 +192,10 @@ mod tests {
     fn take_ready_frame_inflight_with_pending_result_returns_frame() {
         let (tx, rx) = std::sync::mpsc::channel();
         tx.send(Ok(())).unwrap();
-        let mut state = SlotState::InFlight { frame: 42, map_rx: rx };
+        let mut state = SlotState::InFlight {
+            frame: 42,
+            map_rx: rx,
+        };
         assert_eq!(take_ready_frame(&mut state).unwrap(), Some(42));
         assert!(matches!(state, SlotState::Idle));
     }
@@ -200,7 +203,10 @@ mod tests {
     #[test]
     fn take_ready_frame_inflight_with_empty_channel_stays_inflight() {
         let (_tx, rx) = std::sync::mpsc::channel();
-        let mut state = SlotState::InFlight { frame: 7, map_rx: rx };
+        let mut state = SlotState::InFlight {
+            frame: 7,
+            map_rx: rx,
+        };
         assert!(take_ready_frame(&mut state).unwrap().is_none());
         assert!(matches!(state, SlotState::InFlight { frame: 7, .. }));
     }
@@ -209,7 +215,10 @@ mod tests {
     fn take_ready_frame_inflight_with_buffer_error_returns_error() {
         let (tx, rx) = std::sync::mpsc::channel();
         tx.send(Err(wgpu::BufferAsyncError)).unwrap();
-        let mut state = SlotState::InFlight { frame: 1, map_rx: rx };
+        let mut state = SlotState::InFlight {
+            frame: 1,
+            map_rx: rx,
+        };
         assert!(take_ready_frame(&mut state).is_err());
     }
 
@@ -217,7 +226,10 @@ mod tests {
     fn take_ready_frame_inflight_with_disconnected_channel_returns_error() {
         let (_tx, rx) = std::sync::mpsc::channel();
         drop(_tx);
-        let mut state = SlotState::InFlight { frame: 99, map_rx: rx };
+        let mut state = SlotState::InFlight {
+            frame: 99,
+            map_rx: rx,
+        };
         assert!(take_ready_frame(&mut state).is_err());
     }
 }

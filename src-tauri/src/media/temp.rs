@@ -39,7 +39,10 @@ pub fn fastcat_temp_dir() -> PathBuf {
 pub fn set_dev_temp_root(dev_root: &Path) {
     let dir = dev_root.join("tmp").join("fastcat");
     if let Err(e) = std::fs::create_dir_all(&dir) {
-        log::warn!("[temp] failed to create dev temp dir {}: {e}", dir.display());
+        log::warn!(
+            "[temp] failed to create dev temp dir {}: {e}",
+            dir.display()
+        );
         return;
     }
     *base_override().write() = Some(dir);

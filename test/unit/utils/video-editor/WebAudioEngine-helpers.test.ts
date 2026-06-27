@@ -231,6 +231,31 @@ describe('applyClipGainEnvelope', () => {
     expect(curveCalls.length).toBeGreaterThanOrEqual(1);
   });
 
+  it('uses the requested logarithmic curve for monitor clip crossfade automation', () => {
+    const { node, calls } = createMockGainNode();
+
+    applyClipGainEnvelope({
+      window: makeWindow({
+        currentClipLocalS: 0,
+        fadeInS: 0.5,
+        fadeOutS: 0,
+        fadeInCurve: 'logarithmic' as any,
+        remainingInClipS: 2,
+      }),
+      clipGain: node,
+      startAtS: 10,
+      ctxCurrentTime: 9,
+    });
+
+    const fadeInCurveCall = calls.find((c) => c.method === 'setValueCurveAtTime');
+    expect(fadeInCurveCall).toBeDefined();
+    const curve = fadeInCurveCall!.args[0] as number[];
+    expect(curve[0]).toBeCloseTo(0);
+    expect(curve[curve.length - 1]).toBeCloseTo(1);
+    expect(curve[Math.floor(curve.length / 2)]).toBeGreaterThan(0.6);
+    expect(fadeInCurveCall!.args[2]).toBeCloseTo(0.5, 5);
+  });
+
   it('does not schedule fade-in when already past fadeIn region', () => {
     const { node, calls } = createMockGainNode();
 

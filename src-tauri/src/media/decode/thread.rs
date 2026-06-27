@@ -790,8 +790,12 @@ mod tests {
         // Tiny budget, as for a 4K source; keep_preseek=true as request_prebuffer uses.
         pump.prebuffer(2, true).expect("prebuffer");
 
-        let seen =
-            drain_generation_until_pts_ge(&pump, generation, target - 0.5 / fps, Duration::from_secs(3));
+        let seen = drain_generation_until_pts_ge(
+            &pump,
+            generation,
+            target - 0.5 / fps,
+            Duration::from_secs(3),
+        );
         let max_pts = seen.iter().cloned().fold(f64::MIN, f64::max);
         assert!(
             max_pts >= target - 0.5 / fps,
@@ -814,8 +818,12 @@ mod tests {
         let target = 3.0;
         let generation = pump.seek(target).expect("seek");
 
-        let seen =
-            drain_generation_until_pts_ge(&pump, generation, target - 0.5 / fps, Duration::from_secs(3));
+        let seen = drain_generation_until_pts_ge(
+            &pump,
+            generation,
+            target - 0.5 / fps,
+            Duration::from_secs(3),
+        );
         assert_eq!(
             seen.len(),
             1,

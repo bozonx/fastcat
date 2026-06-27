@@ -1415,8 +1415,7 @@ mod tests {
     /// can never drift apart for non-overlapping crops.
     #[test]
     fn crop_inset_rect_matches_shared_parity_fixture() {
-        const FIXTURE: &str =
-            include_str!("../../../shared/parity/crop-inset-rect.cases.json");
+        const FIXTURE: &str = include_str!("../../../shared/parity/crop-inset-rect.cases.json");
         let parsed: serde_json::Value =
             serde_json::from_str(FIXTURE).expect("valid parity fixture json");
         let cases = parsed["cases"].as_array().expect("cases array");
@@ -1433,10 +1432,22 @@ mod tests {
             t.crop_right = crop["right"].as_f64().unwrap_or(0.0);
             let rect = t.crop_inset_rect((width as u32, height as u32));
             let exp = &c["expected"];
-            assert!(approx(rect.x0, exp["xMin"].as_f64().unwrap()), "case `{name}` xMin");
-            assert!(approx(rect.y0, exp["yMin"].as_f64().unwrap()), "case `{name}` yMin");
-            assert!(approx(rect.x1, exp["xMax"].as_f64().unwrap()), "case `{name}` xMax");
-            assert!(approx(rect.y1, exp["yMax"].as_f64().unwrap()), "case `{name}` yMax");
+            assert!(
+                approx(rect.x0, exp["xMin"].as_f64().unwrap()),
+                "case `{name}` xMin"
+            );
+            assert!(
+                approx(rect.y0, exp["yMin"].as_f64().unwrap()),
+                "case `{name}` yMin"
+            );
+            assert!(
+                approx(rect.x1, exp["xMax"].as_f64().unwrap()),
+                "case `{name}` xMax"
+            );
+            assert!(
+                approx(rect.y1, exp["yMax"].as_f64().unwrap()),
+                "case `{name}` yMax"
+            );
         }
     }
 
@@ -1459,25 +1470,39 @@ mod tests {
     #[test]
     fn fit_into_matches_shared_parity_fixture() {
         const FIXTURE: &str = include_str!("../../../shared/parity/contain-fit.cases.json");
-        let parsed: serde_json::Value =
-            serde_json::from_str(FIXTURE).expect("valid fixture json");
+        let parsed: serde_json::Value = serde_json::from_str(FIXTURE).expect("valid fixture json");
         let cases = parsed["cases"].as_array().expect("cases array");
         assert!(!cases.is_empty());
         for c in cases {
             let name = c["name"].as_str().unwrap_or("?");
             let nat = &c["natural"];
             let vp = &c["viewport"];
-            let natural = (nat[0].as_u64().unwrap() as u32, nat[1].as_u64().unwrap() as u32);
-            let into = (vp[0].as_u64().unwrap() as u32, vp[1].as_u64().unwrap() as u32);
+            let natural = (
+                nat[0].as_u64().unwrap() as u32,
+                nat[1].as_u64().unwrap() as u32,
+            );
+            let into = (
+                vp[0].as_u64().unwrap() as u32,
+                vp[1].as_u64().unwrap() as u32,
+            );
             let a = fit_into(natural, into);
             // Apply to natural-space origin and (w,h) to recover scale + offset.
             let (ox, oy) = affine_apply(a, (0.0, 0.0));
             let (fx, _fy) = affine_apply(a, (natural.0 as f64, 0.0));
             let scale = (fx - ox) / natural.0 as f64;
             let exp = &c["expected"];
-            assert!(approx(scale, exp["scale"].as_f64().unwrap()), "case `{name}` scale");
-            assert!(approx(ox, exp["offsetX"].as_f64().unwrap()), "case `{name}` offsetX");
-            assert!(approx(oy, exp["offsetY"].as_f64().unwrap()), "case `{name}` offsetY");
+            assert!(
+                approx(scale, exp["scale"].as_f64().unwrap()),
+                "case `{name}` scale"
+            );
+            assert!(
+                approx(ox, exp["offsetX"].as_f64().unwrap()),
+                "case `{name}` offsetX"
+            );
+            assert!(
+                approx(oy, exp["offsetY"].as_f64().unwrap()),
+                "case `{name}` offsetY"
+            );
         }
     }
 
@@ -1486,8 +1511,7 @@ mod tests {
     #[test]
     fn blend_modes_match_shared_parity_fixture() {
         const FIXTURE: &str = include_str!("../../../shared/parity/blend-modes.json");
-        let parsed: serde_json::Value =
-            serde_json::from_str(FIXTURE).expect("valid fixture json");
+        let parsed: serde_json::Value = serde_json::from_str(FIXTURE).expect("valid fixture json");
         let modes: Vec<String> = parsed["modes"]
             .as_array()
             .expect("modes array")
@@ -1496,7 +1520,11 @@ mod tests {
             .collect();
 
         // Same count.
-        assert_eq!(modes.len(), BlendMode::ALL.len(), "blend-mode count mismatch");
+        assert_eq!(
+            modes.len(),
+            BlendMode::ALL.len(),
+            "blend-mode count mismatch"
+        );
 
         // Every fixture mode (canonical kebab-case) deserializes into a native variant.
         for kebab in &modes {
@@ -1509,7 +1537,10 @@ mod tests {
         for mode in BlendMode::ALL {
             let kebab = serde_json::to_value(mode).unwrap();
             let kebab = kebab.as_str().unwrap().to_string();
-            assert!(modes.contains(&kebab), "fixture missing native blend mode `{kebab}`");
+            assert!(
+                modes.contains(&kebab),
+                "fixture missing native blend mode `{kebab}`"
+            );
         }
     }
 
@@ -1568,7 +1599,8 @@ mod tests {
         };
         let no_crop_encoding = no_crop_scene.to_vello(100, 100, |_| None);
         assert_eq!(
-            no_crop_encoding.encoding().n_clips, 0,
+            no_crop_encoding.encoding().n_clips,
+            0,
             "no-crop layer must not push any clip layers"
         );
     }
@@ -1619,7 +1651,10 @@ mod tests {
                 image.clone()
             },
         );
-        assert_eq!(calls, 0, "zero-opacity layer must not invoke image processor");
+        assert_eq!(
+            calls, 0,
+            "zero-opacity layer must not invoke image processor"
+        );
         // With no visible layers the encoding should be empty.
         assert!(
             vello_scene.encoding().is_empty(),

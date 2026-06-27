@@ -106,7 +106,11 @@ pub(crate) fn coded_output_dimensions(visual_w: u32, visual_h: u32, rotation: i3
 }
 
 /// Computes decode target dimensions while preserving aspect ratio and NEVER upscaling.
-pub(crate) fn compute_output_dims(src_w: u32, src_h: u32, max_long_edge: Option<u32>) -> (u32, u32) {
+pub(crate) fn compute_output_dims(
+    src_w: u32,
+    src_h: u32,
+    max_long_edge: Option<u32>,
+) -> (u32, u32) {
     let Some(max) = max_long_edge else {
         return (src_w, src_h);
     };
@@ -170,10 +174,7 @@ pub(crate) fn yuv_color(frame: &ffmpeg::util::frame::Video) -> YuvColor {
     YuvColor { matrix, range }
 }
 
-pub(crate) fn copy_nv12_frame(
-    frame: &ffmpeg::util::frame::Video,
-    color: YuvColor,
-) -> YuvFrame {
+pub(crate) fn copy_nv12_frame(frame: &ffmpeg::util::frame::Video, color: YuvColor) -> YuvFrame {
     let width = frame.width() as usize;
     let height = frame.height() as usize;
     let uv_width = width.div_ceil(2);
@@ -401,10 +402,7 @@ mod tests {
 
     #[test]
     fn parse_rotation_value_string() {
-        assert_eq!(
-            parse_rotation_value(&serde_json::json!("45.4")),
-            Some(45)
-        );
+        assert_eq!(parse_rotation_value(&serde_json::json!("45.4")), Some(45));
         assert_eq!(
             parse_rotation_value(&serde_json::json!("  30.7 ")),
             Some(31)

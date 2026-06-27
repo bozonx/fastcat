@@ -10,8 +10,8 @@ use std::time::Instant;
 use tauri::{AppHandle, Emitter};
 use vello::peniko::{Blob, ImageAlphaType, ImageData, ImageFormat};
 
-use crate::media::decode::VideoFrame;
 use crate::media::decode::thread::DecodePump;
+use crate::media::decode::VideoFrame;
 
 use super::frame_cache::{DecodedVideoFrame, VideoFrameCache};
 

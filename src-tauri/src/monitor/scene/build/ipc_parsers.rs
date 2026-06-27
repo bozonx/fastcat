@@ -297,12 +297,24 @@ mod tests {
     #[test]
     fn parse_color_named_colors() {
         assert_eq!(parse_color("black", 1.0), Color::from_rgba8(0, 0, 0, 255));
-        assert_eq!(parse_color("white", 1.0), Color::from_rgba8(255, 255, 255, 255));
+        assert_eq!(
+            parse_color("white", 1.0),
+            Color::from_rgba8(255, 255, 255, 255)
+        );
         assert_eq!(parse_color("red", 1.0), Color::from_rgba8(255, 0, 0, 255));
         assert_eq!(parse_color("blue", 1.0), Color::from_rgba8(0, 0, 255, 255));
-        assert_eq!(parse_color("gray", 1.0), Color::from_rgba8(128, 128, 128, 255));
-        assert_eq!(parse_color("grey", 1.0), Color::from_rgba8(128, 128, 128, 255));
-        assert_eq!(parse_color("orange", 1.0), Color::from_rgba8(255, 165, 0, 255));
+        assert_eq!(
+            parse_color("gray", 1.0),
+            Color::from_rgba8(128, 128, 128, 255)
+        );
+        assert_eq!(
+            parse_color("grey", 1.0),
+            Color::from_rgba8(128, 128, 128, 255)
+        );
+        assert_eq!(
+            parse_color("orange", 1.0),
+            Color::from_rgba8(255, 165, 0, 255)
+        );
     }
 
     #[test]
@@ -329,33 +341,66 @@ mod tests {
 
     #[test]
     fn parse_color_hex_6_digit() {
-        assert_eq!(parse_color("#ff0000", 1.0), Color::from_rgba8(255, 0, 0, 255));
-        assert_eq!(parse_color("#00ff00", 1.0), Color::from_rgba8(0, 255, 0, 255));
-        assert_eq!(parse_color("#0000ff", 1.0), Color::from_rgba8(0, 0, 255, 255));
+        assert_eq!(
+            parse_color("#ff0000", 1.0),
+            Color::from_rgba8(255, 0, 0, 255)
+        );
+        assert_eq!(
+            parse_color("#00ff00", 1.0),
+            Color::from_rgba8(0, 255, 0, 255)
+        );
+        assert_eq!(
+            parse_color("#0000ff", 1.0),
+            Color::from_rgba8(0, 0, 255, 255)
+        );
     }
 
     #[test]
     fn parse_color_hex_8_digit_with_alpha() {
-        assert_eq!(parse_color("#ff0000ff", 1.0), Color::from_rgba8(255, 0, 0, 255));
-        assert_eq!(parse_color("#ff000080", 1.0), Color::from_rgba8(255, 0, 0, 0x80));
+        assert_eq!(
+            parse_color("#ff0000ff", 1.0),
+            Color::from_rgba8(255, 0, 0, 255)
+        );
+        assert_eq!(
+            parse_color("#ff000080", 1.0),
+            Color::from_rgba8(255, 0, 0, 0x80)
+        );
     }
 
     #[test]
     fn parse_color_hex_without_hash() {
-        assert_eq!(parse_color("ff0000", 1.0), Color::from_rgba8(255, 0, 0, 255));
+        assert_eq!(
+            parse_color("ff0000", 1.0),
+            Color::from_rgba8(255, 0, 0, 255)
+        );
     }
 
     #[test]
     fn parse_color_rgb_function() {
-        assert_eq!(parse_color("rgb(255, 0, 0)", 1.0), Color::from_rgba8(255, 0, 0, 255));
-        assert_eq!(parse_color("rgb(100%, 0%, 0%)", 1.0), Color::from_rgba8(255, 0, 0, 255));
-        assert_eq!(parse_color("RGB(128, 128, 128)", 1.0), Color::from_rgba8(128, 128, 128, 255));
+        assert_eq!(
+            parse_color("rgb(255, 0, 0)", 1.0),
+            Color::from_rgba8(255, 0, 0, 255)
+        );
+        assert_eq!(
+            parse_color("rgb(100%, 0%, 0%)", 1.0),
+            Color::from_rgba8(255, 0, 0, 255)
+        );
+        assert_eq!(
+            parse_color("RGB(128, 128, 128)", 1.0),
+            Color::from_rgba8(128, 128, 128, 255)
+        );
     }
 
     #[test]
     fn parse_color_rgba_function() {
-        assert_eq!(parse_color("rgba(255, 0, 0, 1.0)", 1.0), Color::from_rgba8(255, 0, 0, 255));
-        assert_eq!(parse_color("rgba(255, 0, 0, 0.5)", 1.0), Color::from_rgba8(255, 0, 0, 128));
+        assert_eq!(
+            parse_color("rgba(255, 0, 0, 1.0)", 1.0),
+            Color::from_rgba8(255, 0, 0, 255)
+        );
+        assert_eq!(
+            parse_color("rgba(255, 0, 0, 0.5)", 1.0),
+            Color::from_rgba8(255, 0, 0, 128)
+        );
     }
 
     #[test]
@@ -393,31 +438,40 @@ mod tests {
     fn parse_shape_geometry_rectangle_default() {
         let cfg = json!({});
         let geom = parse_shape_geometry("square", &cfg);
-        assert_eq!(geom, ShapeGeometry::Rectangle {
-            width: 1.0,
-            height: 1.0,
-            corner_radius: 0.0,
-        });
+        assert_eq!(
+            geom,
+            ShapeGeometry::Rectangle {
+                width: 1.0,
+                height: 1.0,
+                corner_radius: 0.0,
+            }
+        );
     }
 
     #[test]
     fn parse_shape_geometry_circle() {
         let cfg = json!({"squashX": 50.0, "squashY": 30.0});
         let geom = parse_shape_geometry("circle", &cfg);
-        assert_eq!(geom, ShapeGeometry::Circle {
-            squash_x: 0.5,
-            squash_y: 0.3,
-        });
+        assert_eq!(
+            geom,
+            ShapeGeometry::Circle {
+                squash_x: 0.5,
+                squash_y: 0.3,
+            }
+        );
     }
 
     #[test]
     fn parse_shape_geometry_star() {
         let cfg = json!({"rays": 8, "innerRadius": 40.0});
         let geom = parse_shape_geometry("star", &cfg);
-        assert_eq!(geom, ShapeGeometry::Star {
-            rays: 8,
-            inner_radius: 0.4,
-        });
+        assert_eq!(
+            geom,
+            ShapeGeometry::Star {
+                rays: 8,
+                inner_radius: 0.4,
+            }
+        );
     }
 
     #[test]
@@ -484,9 +538,18 @@ mod tests {
 
     #[test]
     fn text_vertical_align_values() {
-        assert_eq!(text_vertical_align(&json!({"verticalAlign": "top"})), TextVerticalAlign::Top);
-        assert_eq!(text_vertical_align(&json!({"verticalAlign": "bottom"})), TextVerticalAlign::Bottom);
-        assert_eq!(text_vertical_align(&json!({"verticalAlign": "middle"})), TextVerticalAlign::Middle);
+        assert_eq!(
+            text_vertical_align(&json!({"verticalAlign": "top"})),
+            TextVerticalAlign::Top
+        );
+        assert_eq!(
+            text_vertical_align(&json!({"verticalAlign": "bottom"})),
+            TextVerticalAlign::Bottom
+        );
+        assert_eq!(
+            text_vertical_align(&json!({"verticalAlign": "middle"})),
+            TextVerticalAlign::Middle
+        );
         assert_eq!(text_vertical_align(&json!({})), TextVerticalAlign::Middle);
     }
 }

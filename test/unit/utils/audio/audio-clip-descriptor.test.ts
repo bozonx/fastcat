@@ -276,6 +276,82 @@ describe('audio clip descriptor adapters', () => {
       (webWindow?.effectiveSourceEndS ?? 0) - (webWindow?.effectiveSourceStartS ?? 0),
     );
   });
+
+  it('keeps adjacent crossfade settings identical for web monitor and native monitor/export', () => {
+    const outgoing = buildCanonicalAudioClipDescriptor({
+      clip: createClip({
+        id: 'outgoing',
+        timelineRange: { startUs: 0, durationUs: 1_000_000 },
+        sourceRange: { startUs: 0, durationUs: 1_000_000 },
+        sourceDurationUs: 3_000_000,
+        speed: 1,
+        audioFadeInUs: undefined,
+        audioFadeOutUs: undefined,
+        audioFadeOutCurve: 'logarithmic',
+        audioDeclickDurationUs: undefined,
+        transitionIn: undefined,
+        transitionOut: { type: 'dissolve', durationUs: 500_000, mode: 'adjacent' },
+      }),
+      sourcePath: '/project/audio/outgoing.wav',
+    });
+    const incoming = buildCanonicalAudioClipDescriptor({
+      clip: createClip({
+        id: 'incoming',
+        timelineRange: { startUs: 1_000_000, durationUs: 1_000_000 },
+        sourceRange: { startUs: 500_000, durationUs: 1_000_000 },
+        sourceDurationUs: 3_000_000,
+        speed: 1,
+        audioFadeInUs: undefined,
+        audioFadeOutUs: undefined,
+        audioDeclickDurationUs: undefined,
+        transitionIn: undefined,
+        transitionOut: undefined,
+      }),
+      sourcePath: '/project/audio/incoming.wav',
+    });
+
+    const outgoingNative = toNativeSceneAudioLayer({ descriptor: outgoing, next: incoming });
+    const incomingNative = toNativeSceneAudioLayer({ descriptor: incoming, previous: outgoing });
+    const outgoingWeb = toAudioEngineClip({
+      descriptor: outgoing,
+      fileHandle: {} as FileSystemFileHandle,
+    });
+    const incomingWeb = toAudioEngineClip({
+      descriptor: incoming,
+      fileHandle: {} as FileSystemFileHandle,
+    });
+
+    const outgoingWindow = buildClipPlaybackWindow({
+      clip: outgoingWeb,
+      currentTimeS: 0,
+      speed: 1,
+      startAtS: 0,
+      adjacentClips: { previousClip: null, nextClip: incomingWeb },
+    });
+    const incomingWindow = buildClipPlaybackWindow({
+      clip: incomingWeb,
+      currentTimeS: 0.5,
+      speed: 1,
+      startAtS: 0,
+      adjacentClips: { previousClip: outgoingWeb, nextClip: null },
+    });
+
+    expect(outgoingNative.timeline_start_sec).toBeCloseTo(outgoingWindow?.effectiveStartS ?? -1);
+    expect(outgoingNative.timeline_end_sec).toBeCloseTo(1.5);
+    expect(outgoingNative.audio_fade_out_sec).toBeCloseTo(outgoingWindow?.fadeOutS ?? -1);
+    expect(outgoingNative.audio_fade_out_curve).toBe(outgoingWindow?.fadeOutCurve);
+
+    expect(incomingNative.timeline_start_sec).toBeCloseTo(incomingWindow?.effectiveStartS ?? -1);
+    expect(incomingNative.timeline_end_sec).toBeCloseTo(2);
+    expect(incomingNative.source_start_sec).toBeCloseTo(
+      incomingWindow?.effectiveSourceStartS ?? -1,
+    );
+    expect(incomingNative.audio_fade_in_sec).toBeCloseTo(incomingWindow?.fadeInS ?? -1);
+    expect(incomingNative.audio_fade_in_curve).toBe(incomingWindow?.fadeInCurve);
+
+    expect(outgoingNative.timeline_end_sec).toBeGreaterThan(incomingNative.timeline_start_sec);
+    expect(outgoingNative.timeline_end_sec - incomingNative.timeline_start_sec).toBeCloseTo(0.5);
+  });
 });
 
 describe('sanitizeNativeAudioSpeed', () => {

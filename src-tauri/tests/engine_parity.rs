@@ -158,10 +158,9 @@ struct GoldenRegistry {
 const PENDING_HASH: &str = "pending";
 
 fn load_golden_registry() -> GoldenRegistry {
-    let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("../shared/golden/frames.json");
-    let raw = std::fs::read_to_string(&path)
-        .unwrap_or_else(|_| String::from(r#"{"entries":[]}"#));
+    let path =
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../shared/golden/frames.json");
+    let raw = std::fs::read_to_string(&path).unwrap_or_else(|_| String::from(r#"{"entries":[]}"#));
     serde_json::from_str(&raw).expect("golden frames.json must be valid")
 }
 
@@ -212,8 +211,7 @@ fn scenes_dir() -> PathBuf {
 fn load_scene(filename: &str) -> SceneFixture {
     let raw = std::fs::read_to_string(scenes_dir().join(filename))
         .unwrap_or_else(|e| panic!("failed to read scene {filename}: {e}"));
-    serde_json::from_str(&raw)
-        .unwrap_or_else(|e| panic!("failed to parse scene {filename}: {e}"))
+    serde_json::from_str(&raw).unwrap_or_else(|e| panic!("failed to parse scene {filename}: {e}"))
 }
 
 /// A scene discovered at runtime from `shared/scenes/`.
@@ -263,9 +261,7 @@ fn resolve_scene_media_paths(scene_json: &mut serde_json::Value) {
             if let Some(path) = layer.get("path").and_then(|p| p.as_str()) {
                 if !path.is_empty() {
                     let abs = fixtures.join(path);
-                    layer["path"] = serde_json::Value::String(
-                        abs.to_string_lossy().into_owned(),
-                    );
+                    layer["path"] = serde_json::Value::String(abs.to_string_lossy().into_owned());
                 }
             }
         }
@@ -375,40 +371,55 @@ fn native_engine_parity_renders_all_scenes() {
     let scenes = discover_scenes();
     let registry = load_golden_registry();
     let mut compositor = Compositor::new();
-    let dev_id = compositor.ensure_offscreen_device().expect("offscreen device");
+    let dev_id = compositor
+        .ensure_offscreen_device()
+        .expect("offscreen device");
 
     for scene_def in &scenes {
         let mut fixture = load_scene(&scene_def.filename);
         resolve_scene_media_paths(&mut fixture.scene);
 
-        let monitor_scene: MonitorScene =
-            serde_json::from_value(fixture.scene.clone())
-                .unwrap_or_else(|e| panic!("failed to parse MonitorScene from {}: {e}", scene_def.filename));
+        let monitor_scene: MonitorScene = serde_json::from_value(fixture.scene.clone())
+            .unwrap_or_else(|e| {
+                panic!(
+                    "failed to parse MonitorScene from {}: {e}",
+                    scene_def.filename
+                )
+            });
 
         let width = monitor_scene.width.max(1);
         let height = monitor_scene.height.max(1);
 
         for &time_sec in &fixture.sample_times_sec {
             let mut cache = VideoDecoderCache::new();
-            let compositor_scene = build_export_scene(
-                &monitor_scene,
-                time_sec,
-                (width, height),
-                &mut cache,
-                None,
-            )
-            .unwrap_or_else(|e| panic!("build_export_scene failed for {} at t={time_sec}: {e}", scene_def.filename));
+            let compositor_scene =
+                build_export_scene(&monitor_scene, time_sec, (width, height), &mut cache, None)
+                    .unwrap_or_else(|e| {
+                        panic!(
+                            "build_export_scene failed for {} at t={time_sec}: {e}",
+                            scene_def.filename
+                        )
+                    });
 
             let pixels = compositor
                 .render_scene_to_pixels(dev_id, &compositor_scene, width, height)
-                .unwrap_or_else(|e| panic!("render_scene_to_pixels failed for {} at t={time_sec}: {e}", scene_def.filename));
+                .unwrap_or_else(|e| {
+                    panic!(
+                        "render_scene_to_pixels failed for {} at t={time_sec}: {e}",
+                        scene_def.filename
+                    )
+                });
 
             let hash = compute_frame_hash(&pixels, width as usize, height as usize);
             let color_sig = compute_color_signature(&pixels, width as usize, height as usize);
 
             // Look up golden entry for this scene + native engine.
             if let Some(entry) = find_golden(&registry, &scene_def.filename, "native") {
-                if let Some(golden) = entry.samples.iter().find(|s| (s.time_sec - time_sec).abs() < 1e-6) {
+                if let Some(golden) = entry
+                    .samples
+                    .iter()
+                    .find(|s| (s.time_sec - time_sec).abs() < 1e-6)
+                {
                     // Treat pending hashes as "no golden yet" — print for import.
                     if golden.hash == PENDING_HASH {
                         eprintln!(
@@ -421,7 +432,9 @@ fn native_engine_parity_renders_all_scenes() {
                             distance <= golden.tolerance,
                             "hash mismatch for \"{}\" native at t={time_sec}s: \
                              distance={distance} tolerance={} actual={hash} expected={}",
-                            scene_def.filename, golden.tolerance, golden.hash,
+                            scene_def.filename,
+                            golden.tolerance,
+                            golden.hash,
                         );
 
                         // Colour signature catches hue errors the luma aHash misses.
@@ -466,7 +479,9 @@ fn native_engine_cross_engine_parity_vs_web_golden() {
 
     let registry = load_golden_registry();
     let mut compositor = Compositor::new();
-    let dev_id = compositor.ensure_offscreen_device().expect("offscreen device");
+    let dev_id = compositor
+        .ensure_offscreen_device()
+        .expect("offscreen device");
 
     let scenes = discover_scenes();
 
@@ -484,23 +499,22 @@ fn native_engine_cross_engine_parity_vs_web_golden() {
         let mut fixture = load_scene(&scene_def.filename);
         resolve_scene_media_paths(&mut fixture.scene);
 
-        let monitor_scene: MonitorScene =
-            serde_json::from_value(fixture.scene.clone())
-                .unwrap_or_else(|e| panic!("failed to parse MonitorScene from {}: {e}", scene_def.filename));
+        let monitor_scene: MonitorScene = serde_json::from_value(fixture.scene.clone())
+            .unwrap_or_else(|e| {
+                panic!(
+                    "failed to parse MonitorScene from {}: {e}",
+                    scene_def.filename
+                )
+            });
 
         let width = monitor_scene.width.max(1);
         let height = monitor_scene.height.max(1);
 
         for &time_sec in &fixture.sample_times_sec {
             let mut cache = VideoDecoderCache::new();
-            let compositor_scene = build_export_scene(
-                &monitor_scene,
-                time_sec,
-                (width, height),
-                &mut cache,
-                None,
-            )
-            .expect("build_export_scene");
+            let compositor_scene =
+                build_export_scene(&monitor_scene, time_sec, (width, height), &mut cache, None)
+                    .expect("build_export_scene");
 
             let pixels = compositor
                 .render_scene_to_pixels(dev_id, &compositor_scene, width, height)
@@ -510,7 +524,11 @@ fn native_engine_cross_engine_parity_vs_web_golden() {
             let native_sig = compute_color_signature(&pixels, width as usize, height as usize);
 
             // Compare native hash against web golden hash.
-            if let Some(web_sample) = web_entry.samples.iter().find(|s| (s.time_sec - time_sec).abs() < 1e-6) {
+            if let Some(web_sample) = web_entry
+                .samples
+                .iter()
+                .find(|s| (s.time_sec - time_sec).abs() < 1e-6)
+            {
                 // Skip pending hashes — they haven't been generated yet.
                 if web_sample.hash == PENDING_HASH {
                     eprintln!(
@@ -527,7 +545,8 @@ fn native_engine_cross_engine_parity_vs_web_golden() {
                     "cross-engine mismatch for \"{}\" at t={time_sec}s: \
                      distance={distance} tolerance={tolerance} \
                      native={native_hash} web={}",
-                    scene_def.filename, web_sample.hash,
+                    scene_def.filename,
+                    web_sample.hash,
                 );
 
                 // Cross-engine colour parity (catches hue divergence between engines).
@@ -545,7 +564,11 @@ fn native_engine_cross_engine_parity_vs_web_golden() {
             }
 
             // Also verify native hash matches its own golden.
-            if let Some(native_sample) = native_entry.samples.iter().find(|s| (s.time_sec - time_sec).abs() < 1e-6) {
+            if let Some(native_sample) = native_entry
+                .samples
+                .iter()
+                .find(|s| (s.time_sec - time_sec).abs() < 1e-6)
+            {
                 // Skip pending native hashes.
                 if native_sample.hash == PENDING_HASH {
                     continue;
@@ -555,7 +578,9 @@ fn native_engine_cross_engine_parity_vs_web_golden() {
                     distance <= native_sample.tolerance,
                     "native self-parity mismatch for \"{}\" at t={time_sec}s: \
                      distance={distance} tolerance={} actual={native_hash} expected={}",
-                    scene_def.filename, native_sample.tolerance, native_sample.hash,
+                    scene_def.filename,
+                    native_sample.tolerance,
+                    native_sample.hash,
                 );
             }
         }

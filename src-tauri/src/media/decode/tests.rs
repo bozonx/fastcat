@@ -3,13 +3,13 @@ use std::path::Path;
 use ffmpeg_next as ffmpeg;
 
 use crate::media::decode::{
-    VideoDecoder, VideoDecoderFactory,
     ffmpeg_next::{init_ffmpeg, FfmpegNextDecoder, FfmpegNextDecoderFactory},
     types::{SharedTexture, YuvColor, YuvColorMatrix, YuvColorRange},
     utils::{
         coded_output_dimensions, compute_output_dims, copy_plane_rows, display_matrix_rotation,
         probe_rotation, visual_dimensions, yuv_color,
     },
+    VideoDecoder, VideoDecoderFactory,
 };
 use crate::media::ffmpeg::utils::{format_fps, parse_rational};
 use crate::media::types::HwAccelMode;
@@ -251,8 +251,7 @@ fn ffmpeg_next_decoder_hwaccel_graceful_fallback() {
         .join("test/fixtures/media/sample-1s-720p.mp4");
     // Requesting VAAPI on a build without a driver should still open and
     // decode frames because we fall back to software decode.
-    let mut decoder =
-        FfmpegNextDecoder::open(&fixture, None, HwAccelMode::Vaapi, None).unwrap();
+    let mut decoder = FfmpegNextDecoder::open(&fixture, None, HwAccelMode::Vaapi, None).unwrap();
     let frame = decoder.next_frame().unwrap().unwrap();
     assert_eq!(frame.width, 1280);
     assert_eq!(frame.height, 720);
@@ -347,12 +346,12 @@ fn ffmpeg_next_decoder_factory_opens_fixture_via_trait() {
 #[test]
 fn test_shared_texture_drop_recycles_to_pool() {
     let instance = wgpu::Instance::default();
-    let adapter = match pollster::block_on(
-        instance.request_adapter(&wgpu::RequestAdapterOptions::default()),
-    ) {
-        Ok(adapter) => adapter,
-        Err(_) => return,
-    };
+    let adapter =
+        match pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions::default()))
+        {
+            Ok(adapter) => adapter,
+            Err(_) => return,
+        };
     let (device, _queue) =
         match pollster::block_on(adapter.request_device(&wgpu::DeviceDescriptor::default())) {
             Ok(res) => res,

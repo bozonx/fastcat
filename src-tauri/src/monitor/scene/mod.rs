@@ -57,7 +57,6 @@ pub enum NativeFrameCacheMode {
     Custom,
 }
 
-
 /// 2D layer transform in scene coordinates (scene-space pixels).
 ///
 /// `anchor` semantics: an anchor point inside the layer's natural bbox in fractions
@@ -621,11 +620,13 @@ mod tests {
     /// can never drift apart on the shared algorithm.
     #[test]
     fn clip_source_pts_matches_shared_parity_fixture() {
-        const FIXTURE: &str =
-            include_str!("../../../../shared/parity/clip-source-pts.cases.json");
+        const FIXTURE: &str = include_str!("../../../../shared/parity/clip-source-pts.cases.json");
         let parsed: Value = serde_json::from_str(FIXTURE).expect("valid parity fixture json");
         let guard = parsed["guardSec"].as_f64().expect("guardSec");
-        assert!((guard - SOURCE_END_GUARD_SEC).abs() < 1e-12, "fixture guard must equal SOURCE_END_GUARD_SEC");
+        assert!(
+            (guard - SOURCE_END_GUARD_SEC).abs() < 1e-12,
+            "fixture guard must equal SOURCE_END_GUARD_SEC"
+        );
         let cases = parsed["cases"].as_array().expect("cases array");
         assert!(!cases.is_empty(), "fixture has cases");
         for c in cases {

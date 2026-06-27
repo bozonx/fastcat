@@ -2713,11 +2713,7 @@ mod tests {
             WindowFillPriority::Live,
         );
         assert_eq!(shared.0.lock().active_window_fill_count, 1);
-        assert!(shared
-            .0
-            .lock()
-            .window_fill_in_flight
-            .contains_key("dedup"));
+        assert!(shared.0.lock().window_fill_in_flight.contains_key("dedup"));
 
         // Second spawn for the same layer + start must be a no-op.
         spawn_window_fill(
@@ -2756,11 +2752,7 @@ mod tests {
             2,
             WindowFillPriority::Speculative,
         );
-        assert!(!shared
-            .0
-            .lock()
-            .window_fill_in_flight
-            .contains_key("spec"));
+        assert!(!shared.0.lock().window_fill_in_flight.contains_key("spec"));
 
         // A Live fill MUST be allowed through, exceeding the base cap by
         // LIVE_RESERVE_SLOTS.

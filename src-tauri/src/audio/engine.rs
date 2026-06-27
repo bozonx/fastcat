@@ -529,9 +529,13 @@ impl NativeAudioEngine {
             speed
         } else {
             if speed == 0.0 {
-                log::warn!("[audio] set_speed received 0.0; normalizing to 1.0 (use pause for stop)");
+                log::warn!(
+                    "[audio] set_speed received 0.0; normalizing to 1.0 (use pause for stop)"
+                );
             } else if !speed.is_finite() {
-                log::warn!("[audio] set_speed received non-finite speed {speed}; normalizing to 1.0");
+                log::warn!(
+                    "[audio] set_speed received non-finite speed {speed}; normalizing to 1.0"
+                );
             }
             1.0
         };

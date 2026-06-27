@@ -2,8 +2,8 @@
 #[allow(clippy::module_inception)]
 mod tests {
     use crate::compositor::scene::{BlendMode, ShapeGeometry, ShapeLayer, Transform};
-    use crate::monitor::scene::{LayerKind, SceneLayer, SceneLayerTransform};
     use crate::monitor::scene::build::*;
+    use crate::monitor::scene::{LayerKind, SceneLayer, SceneLayerTransform};
     use serde_json::json;
     use vello::peniko::Color;
 

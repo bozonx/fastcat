@@ -124,9 +124,7 @@ fn window_fill(
             // Discard the result if the layer was removed from a non-empty scene
             // while the decode was running (seek, scene change, clip delete).
             // An empty scene (test default / not-yet-set) is allowed through.
-            if !state.scene.is_empty()
-                && !state.scene.iter().any(|l| l.id == layer_id)
-            {
+            if !state.scene.is_empty() && !state.scene.iter().any(|l| l.id == layer_id) {
                 return;
             }
             if state.window_fill_in_flight.get(&layer_id) == Some(&target_start_frame) {

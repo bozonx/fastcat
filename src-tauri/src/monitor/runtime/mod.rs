@@ -563,13 +563,7 @@ impl LayerRuntimeManager {
     }
 
     /// Spawn the background loader for an SVG layer (rasterized at preview size).
-    fn spawn_svg_loader(
-        &mut self,
-        id: String,
-        path: PathBuf,
-        cancel: Arc<AtomicBool>,
-        epoch: u64,
-    ) {
+    fn spawn_svg_loader(&mut self, id: String, path: PathBuf, cancel: Arc<AtomicBool>, epoch: u64) {
         // Target rasterization resolution = the resolution the layer is shown at on
         // the monitor (scene long edge × preview_scale). This keeps the SVG sharp
         // when zoomed in without burning memory at a small preview size.

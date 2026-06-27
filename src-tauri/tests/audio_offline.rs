@@ -341,6 +341,51 @@ fn linear_fades_reduce_edge_energy_and_preserve_middle() {
 }
 
 #[test]
+fn adjacent_crossfade_keeps_overlap_energy_near_single_clip_level() {
+    let mut outgoing = sine_layer("audio/audio-sine.wav");
+    outgoing.timeline_start_sec = 0.0;
+    outgoing.timeline_end_sec = 1.0;
+    outgoing.audio_fade_out_sec = 0.5;
+    outgoing.audio_fade_out_curve = AudioFadeCurve::Linear;
+
+    let mut incoming = sine_layer("audio/audio-sine.wav");
+    incoming.id = "layer-2".to_string();
+    incoming.timeline_start_sec = 0.5;
+    incoming.timeline_end_sec = 1.5;
+    incoming.audio_fade_in_sec = 0.5;
+    incoming.audio_fade_in_curve = AudioFadeCurve::Linear;
+
+    let crossfaded =
+        render_scene_to_samples(&[outgoing, incoming], &[], 1.0, 0.0, 1.5, SR, 1).unwrap();
+    let single = render_scene_to_samples(
+        &[sine_layer("audio/audio-sine.wav")],
+        &[],
+        1.0,
+        0.0,
+        1.0,
+        SR,
+        1,
+    )
+    .unwrap();
+
+    let window = (0.1 * SR as f64) as usize;
+    let single_rms = rms(&single[(0.2 * SR as f64) as usize..(0.2 * SR as f64) as usize + window]);
+    let overlap_start = (0.7 * SR as f64) as usize;
+    let overlap_rms = rms(&crossfaded[overlap_start..overlap_start + window]);
+    let tail_start = (1.25 * SR as f64) as usize;
+    let tail_rms = rms(&crossfaded[tail_start..tail_start + window]);
+
+    assert!(
+        (overlap_rms / single_rms - 1.0).abs() < 0.15,
+        "linear crossfade overlap should stay near one clip, overlap={overlap_rms:.6}, single={single_rms:.6}"
+    );
+    assert!(
+        (tail_rms / single_rms - 1.0).abs() < 0.15,
+        "incoming clip should return to full level after crossfade, tail={tail_rms:.6}, single={single_rms:.6}"
+    );
+}
+
+#[test]
 fn hard_left_balance_folds_stereo_energy_into_left_channel() {
     let mut layer = sine_layer("audio/audio-sine.wav");
     layer.audio_balance = -1.0;

@@ -10,10 +10,10 @@ use crate::compositor::Compositor;
 use crate::media::decode::{open as open_decoder, VideoDecoder};
 use crate::media::image_decode::decode_image;
 use crate::media::types::HwAccelMode;
-use crate::monitor::scene::{LayerKind, MonitorScene, SceneLayer};
 use crate::monitor::scene::build::{
     build_virtual_kind, finalize_layer, layer_with_auto_source_rotation, rasterize_svg,
 };
+use crate::monitor::scene::{LayerKind, MonitorScene, SceneLayer};
 
 struct RasterBuild {
     kind: CompLayerKind,

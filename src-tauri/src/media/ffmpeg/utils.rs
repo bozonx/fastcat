@@ -324,14 +324,8 @@ mod tests {
 
     #[test]
     fn ffmpeg_video_codec_hw_none_falls_back_to_software() {
-        assert_eq!(
-            ffmpeg_video_codec_hw("h264", HwAccelMode::None),
-            "libx264"
-        );
-        assert_eq!(
-            ffmpeg_video_codec_hw("h264", HwAccelMode::Auto),
-            "libx264"
-        );
+        assert_eq!(ffmpeg_video_codec_hw("h264", HwAccelMode::None), "libx264");
+        assert_eq!(ffmpeg_video_codec_hw("h264", HwAccelMode::Auto), "libx264");
     }
 
     #[test]
@@ -374,27 +368,45 @@ mod tests {
 
     #[test]
     fn resolve_audio_encoder_opus() {
-        assert_eq!(resolve_audio_encoder(Some("opus"), "mp4"), ("libopus", false));
-        assert_eq!(resolve_audio_encoder(Some("libopus"), "mp4"), ("libopus", false));
+        assert_eq!(
+            resolve_audio_encoder(Some("opus"), "mp4"),
+            ("libopus", false)
+        );
+        assert_eq!(
+            resolve_audio_encoder(Some("libopus"), "mp4"),
+            ("libopus", false)
+        );
     }
 
     #[test]
     fn resolve_audio_encoder_flac_in_mp4() {
         assert_eq!(resolve_audio_encoder(Some("flac"), "mp4"), ("aac", true));
-        assert_eq!(resolve_audio_encoder(Some("flac"), "webm"), ("libopus", true));
+        assert_eq!(
+            resolve_audio_encoder(Some("flac"), "webm"),
+            ("libopus", true)
+        );
         assert_eq!(resolve_audio_encoder(Some("flac"), "flac"), ("flac", false));
     }
 
     #[test]
     fn resolve_audio_encoder_pcm_in_webm() {
-        assert_eq!(resolve_audio_encoder(Some("pcm"), "webm"), ("libopus", true));
-        assert_eq!(resolve_audio_encoder(Some("pcm"), "wav"), ("pcm_s16le", false));
+        assert_eq!(
+            resolve_audio_encoder(Some("pcm"), "webm"),
+            ("libopus", true)
+        );
+        assert_eq!(
+            resolve_audio_encoder(Some("pcm"), "wav"),
+            ("pcm_s16le", false)
+        );
         assert_eq!(resolve_audio_encoder(Some("pcm"), "mp4"), ("aac", true));
     }
 
     #[test]
     fn resolve_audio_encoder_aac_in_webm() {
-        assert_eq!(resolve_audio_encoder(Some("aac"), "webm"), ("libopus", true));
+        assert_eq!(
+            resolve_audio_encoder(Some("aac"), "webm"),
+            ("libopus", true)
+        );
         assert_eq!(resolve_audio_encoder(Some("aac"), "mp4"), ("aac", false));
     }
 
@@ -409,20 +421,35 @@ mod tests {
 
     #[test]
     fn resolve_audio_encoder_vorbis() {
-        assert_eq!(resolve_audio_encoder(Some("vorbis"), "webm"), ("libvorbis", false));
-        assert_eq!(resolve_audio_encoder(Some("vorbis"), "opus"), ("libopus", true));
+        assert_eq!(
+            resolve_audio_encoder(Some("vorbis"), "webm"),
+            ("libvorbis", false)
+        );
+        assert_eq!(
+            resolve_audio_encoder(Some("vorbis"), "opus"),
+            ("libopus", true)
+        );
     }
 
     #[test]
     fn resolve_audio_encoder_mp3() {
-        assert_eq!(resolve_audio_encoder(Some("mp3"), "mp4"), ("libmp3lame", false));
-        assert_eq!(resolve_audio_encoder(Some("mp3"), "webm"), ("libopus", true));
+        assert_eq!(
+            resolve_audio_encoder(Some("mp3"), "mp4"),
+            ("libmp3lame", false)
+        );
+        assert_eq!(
+            resolve_audio_encoder(Some("mp3"), "webm"),
+            ("libopus", true)
+        );
     }
 
     #[test]
     fn resolve_audio_encoder_unknown_falls_back() {
         assert_eq!(resolve_audio_encoder(Some("unknown"), "mp4"), ("aac", true));
-        assert_eq!(resolve_audio_encoder(Some("unknown"), "webm"), ("libopus", true));
+        assert_eq!(
+            resolve_audio_encoder(Some("unknown"), "webm"),
+            ("libopus", true)
+        );
     }
 
     #[test]
