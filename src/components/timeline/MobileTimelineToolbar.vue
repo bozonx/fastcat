@@ -36,18 +36,6 @@ const emit = defineEmits<{
 
 const { currentSnapOption } = useSnapSettings();
 
-const isPseudoOverlapMode = computed(
-  () => settingsStore.toolbarDragModeEnabled && settingsStore.toolbarDragMode === 'pseudo_overlap',
-);
-
-function togglePseudoOverlapMode() {
-  if (isPseudoOverlapMode.value) {
-    settingsStore.toolbarDragModeEnabled = false;
-  } else {
-    settingsStore.selectToolbarDragMode('pseudo_overlap');
-  }
-}
-
 function startLongPress() {
   wasLastPressLong.value = false;
   if (!workspaceStore.userSettings.experimentalFeatures) return;
@@ -167,17 +155,6 @@ function stopSnapLongPress() {
           @pointerdown="startSnapLongPress"
           @pointerup="stopSnapLongPress"
           @pointerleave="stopSnapLongPress"
-        />
-      </div>
-
-      <div class="flex items-center gap-1 rounded-xl bg-ui-bg px-1 py-1 shrink-0">
-        <UiActionButton
-          icon="i-heroicons-rectangle-stack"
-          :variant="isPseudoOverlapMode ? 'solid' : 'ghost'"
-          :color="isPseudoOverlapMode ? 'primary' : 'neutral'"
-          size="sm"
-          :title="t('fastcat.timeline.moveModePseudoDescription')"
-          @click="togglePseudoOverlapMode"
         />
       </div>
 

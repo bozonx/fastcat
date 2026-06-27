@@ -29,7 +29,9 @@ const marker = computed(() => {
 });
 
 const COLORS = computed(() => {
-  const commonColors = TRACK_COLOR_PRESETS.slice(1);
+  const commonColors = TRACK_COLOR_PRESETS.slice(1).map((c) =>
+    c === '#f8e71c' ? '#eab308' : c,
+  );
   return ['#ffffff', ...commonColors];
 });
 
@@ -81,7 +83,7 @@ function confirmDelete() {
             type="button"
             class="w-6 h-6 rounded-full border border-ui-border transition-all flex items-center justify-center shrink-0 cursor-pointer"
             :class="{
-              'ring-2 ring-primary-500 ring-offset-2 ring-offset-ui-bg-elevated z-10 scale-110':
+              'ring-2 ring-ui-primary ring-offset-2 ring-offset-ui-bg-elevated z-10 scale-110':
                 activeColor === colorValue,
             }"
             :style="{

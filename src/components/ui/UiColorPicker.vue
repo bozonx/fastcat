@@ -19,8 +19,9 @@ const COLORS = computed(() => {
   if (props.mode === 'track') {
     return [TRACK_COLOR_PRESETS[0]!, ...commonColors];
   } else {
-    // For markers, we might want a different default, but let's keep it consistent
-    return ['#ffffff', ...commonColors];
+    // For markers, we want to use the default marker color #eab308 instead of #f8e71c to stay consistent.
+    const markerColors = commonColors.map((c) => (c === '#f8e71c' ? '#eab308' : c));
+    return ['#ffffff', ...markerColors];
   }
 });
 

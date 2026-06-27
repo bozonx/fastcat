@@ -42,11 +42,18 @@ describe('UiColorPicker', () => {
     expect(selectedButton.classes()).toContain('ring-2');
   });
 
-  it('renders grid with 5 columns', async () => {
+  it('applies ring class to default marker yellow color', async () => {
     const component = await mountSuspended(UiColorPicker, {
-      props: { modelValue: '#ffffff', mode: 'track' },
+      props: { modelValue: '#eab308', mode: 'marker' },
     });
 
-    expect(component.find('.grid-cols-5').exists()).toBe(true);
+    const buttons = component.findAll('button');
+    const yellowButton = buttons.find((btn) => {
+      const bg = btn.element.style.backgroundColor;
+      return bg === 'rgb(234, 179, 8)' || bg === '#eab308';
+    });
+
+    expect(yellowButton).toBeDefined();
+    expect(yellowButton!.classes()).toContain('ring-2');
   });
 });

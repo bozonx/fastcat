@@ -81,4 +81,20 @@ describe('MobileMarkerPropertiesDrawer', () => {
     await swatches[1]!.trigger('click');
     expect(updateMarkerMock).toHaveBeenCalledWith('marker-1', { color: expect.any(String) });
   });
+
+  it('shows selection ring on the swatch corresponding to the marker\'s active color', async () => {
+    const wrapper = await mountSuspended(MobileMarkerPropertiesDrawer, {
+      props: { isOpen: true, markerId: 'marker-1' },
+      global: globalOptions,
+    });
+
+    const swatches = wrapper.findAll('.w-6');
+    const activeSwatch = swatches.find((swatch) => {
+      const bg = swatch.element.style.backgroundColor;
+      return bg === 'rgb(234, 179, 8)' || bg === '#eab308';
+    });
+
+    expect(activeSwatch).toBeDefined();
+    expect(activeSwatch!.classes()).toContain('ring-2');
+  });
 });
