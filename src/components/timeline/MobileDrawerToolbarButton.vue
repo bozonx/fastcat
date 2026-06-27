@@ -58,6 +58,8 @@ function onPointerLeave() {
     @pointerup="onPointerUp"
     @pointermove="onPointerMove"
     @pointerleave="onPointerLeave"
+    @pointercancel="onPointerUp"
+    @contextmenu.prevent
   >
     <UIcon :name="icon" class="w-5 h-5 shrink-0" />
   </button>

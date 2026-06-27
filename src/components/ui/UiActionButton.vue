@@ -56,24 +56,46 @@ const emit = defineEmits<{
 const { tooltipText, tooltipVisible, tooltipX, tooltipY, startPress, movePress, hide } =
   useLongPressTooltip();
 
+let isTouchActive = false;
+
 function onPointerDown(e: PointerEvent) {
-  if (!props.disableMobileTooltip && e.pointerType === 'touch' && props.title) {
-    startPress(e, props.title);
+  if (e.pointerType === 'touch') {
+    isTouchActive = true;
+    if (!props.disableMobileTooltip && props.title) {
+      startPress(e, props.title);
+    }
+  } else {
+    isTouchActive = false;
   }
 }
 
 function onPointerUp() {
+  isTouchActive = false;
   hide();
 }
 
 function onPointerMove(e: PointerEvent) {
-  if (!props.disableMobileTooltip && e.pointerType === 'touch') {
-    movePress(e);
+  if (e.pointerType === 'touch') {
+    if (!props.disableMobileTooltip) {
+      movePress(e);
+    }
   }
 }
 
 function onPointerLeave() {
+  isTouchActive = false;
   hide();
+}
+
+function onPointerCancel() {
+  isTouchActive = false;
+  hide();
+}
+
+function onContextMenu(e: Event) {
+  if (isTouchActive) {
+    e.preventDefault();
+  }
 }
 
 function onClick(event: MouseEvent) {
@@ -100,6 +122,8 @@ function onClick(event: MouseEvent) {
     @pointerup="onPointerUp"
     @pointermove="onPointerMove"
     @pointerleave="onPointerLeave"
+    @pointercancel="onPointerCancel"
+    @contextmenu="onContextMenu"
   >
     <slot />
   </UButton>
