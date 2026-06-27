@@ -14,7 +14,8 @@ interface Props {
 const props = defineProps<Props>();
 defineEmits<{ click: [] }>();
 
-const { tooltipText, tooltipVisible, startPress, movePress, hide } = useLongPressTooltip();
+const { tooltipText, tooltipVisible, tooltipX, tooltipY, startPress, movePress, hide } =
+  useLongPressTooltip();
 
 function onPointerDown(e: PointerEvent) {
   startPress(e, props.label ?? '');

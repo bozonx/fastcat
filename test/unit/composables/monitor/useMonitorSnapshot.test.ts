@@ -4,6 +4,14 @@ import { ref } from 'vue';
 import { mockNuxtImport } from '@nuxt/test-utils/runtime';
 import { useMonitorSnapshot } from '~/composables/monitor/useMonitorSnapshot';
 
+const renderStopFrameWebpMock = vi.hoisted(() =>
+  vi.fn().mockResolvedValue(new Blob(['test'], { type: 'image/webp' })),
+);
+
+const renderTimelineThumbnailMock = vi.hoisted(() =>
+  vi.fn().mockResolvedValue(new Blob(['test'], { type: 'image/webp' })),
+);
+
 // Separate mock objects to keep them stable
 const mockToast = {
   add: vi.fn(),
@@ -22,8 +30,8 @@ vi.mock('~/stores/ui.store', () => ({
 }));
 
 vi.mock('~/timeline/timeline-thumbnail', () => ({
-  renderStopFrameWebp: vi.fn().mockResolvedValue(new Blob(['test'], { type: 'image/webp' })),
-  renderTimelineThumbnail: vi.fn().mockResolvedValue(new Blob(['test'], { type: 'image/webp' })),
+  renderStopFrameWebp: renderStopFrameWebpMock,
+  renderTimelineThumbnail: renderTimelineThumbnailMock,
 }));
 
 describe('useMonitorSnapshot', () => {
@@ -49,6 +57,7 @@ describe('useMonitorSnapshot', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    renderStopFrameWebpMock.mockResolvedValue(new Blob(['test'], { type: 'image/webp' }));
   });
 
   it('creates a stop frame snapshot successfully', async () => {
@@ -56,19 +65,22 @@ describe('useMonitorSnapshot', () => {
     const loadError = ref(null);
     const uiCurrentTimeUs = ref(1000000);
 
+    const timelineDoc = { id: 'test', name: 'test', tracks: [] };
     const { createStopFrameSnapshot } = useMonitorSnapshot({
       projectStore: mockProjectStore as any,
-      timelineStore: { timelineDoc: { id: 'test', name: 'test', tracks: [] } } as any,
+      timelineStore: { timelineDoc } as any,
       workspaceStore: mockWorkspaceStore as any,
       isLoading,
       loadError,
       uiCurrentTimeUs,
     });
 
+    const write = vi.fn().mockResolvedValue(undefined);
+    const close = vi.fn().mockResolvedValue(undefined);
     const mockFileHandle = {
       createWritable: vi.fn().mockResolvedValue({
-        write: vi.fn().mockResolvedValue(undefined),
-        close: vi.fn().mockResolvedValue(undefined),
+        write,
+        close,
       }),
     };
 
@@ -78,6 +90,13 @@ describe('useMonitorSnapshot', () => {
 
     await createStopFrameSnapshot();
 
+    expect(renderStopFrameWebpMock).toHaveBeenCalledWith({
+      timelineDoc,
+      timeUs: 1000000,
+      quality: 0.9,
+    });
+    expect(write).toHaveBeenCalledWith(expect.any(Blob));
+    expect(close).toHaveBeenCalled();
     expect(mockProjectStore.getProjectFileHandleByRelativePath).toHaveBeenCalled();
     expect(mockToast.add).toHaveBeenCalledWith(
       expect.objectContaining({

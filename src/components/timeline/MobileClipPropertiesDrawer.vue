@@ -19,6 +19,8 @@ import { useFileManager } from '~/composables/file-manager/useFileManager';
 import { useProjectTabsStore } from '~/stores/project-tabs.store';
 import { useProjectStore } from '~/stores/project.store';
 
+const { t } = useI18n();
+
 const props = defineProps<{
   isOpen: boolean;
 }>();
