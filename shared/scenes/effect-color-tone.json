@@ -1,0 +1,67 @@
+{
+  "_comment": [
+    "Cross-engine parity scene: a full-frame image with a single color-tone effect.",
+    "Split out from effects-extra so a regression in this one effect moves the",
+    "perceptual hash past a tight tolerance instead of hiding in a grid."
+  ],
+  "scene": {
+    "width": 320,
+    "height": 240,
+    "layers": [
+      {
+        "id": "bg",
+        "kind": "background",
+        "path": "",
+        "timeline_start_sec": 0.0,
+        "timeline_end_sec": 1.0,
+        "source_start_sec": 0.0,
+        "source_range_duration_sec": 0.0,
+        "speed": 1.0,
+        "z": 0,
+        "opacity": 1.0,
+        "blend_mode": "normal",
+        "background_color": "#000000",
+        "effects": []
+      },
+      {
+        "id": "img-fx",
+        "kind": "image",
+        "path": "image/image.jpg",
+        "timeline_start_sec": 0.0,
+        "timeline_end_sec": 1.0,
+        "source_start_sec": 0.0,
+        "source_range_duration_sec": 0.0,
+        "speed": 1.0,
+        "z": 1,
+        "opacity": 1.0,
+        "blend_mode": "normal",
+        "effects": [
+          {
+            "type": "color-tone",
+            "color_rgba": [47, 128, 255, 255],
+            "amount": 0.5,
+            "blend_mode": "soft-light",
+            "preserve_luminance": true,
+            "range": "all"
+          }
+        ]
+      }
+    ],
+    "video_tracks": [],
+    "audio_layers": [],
+    "audio_tracks": [],
+    "audio_master_gain": 1.0,
+    "audio_master_muted": false,
+    "preview_fps": 30.0,
+    "preview_sync_mode": "balanced",
+    "preview_effect_quality": "high",
+    "frame_cache_mode": "auto",
+    "frame_cache_custom_mb": 0,
+    "master_effects": [],
+    "audio_master_effects": []
+  },
+  "tolerance": 12,
+  "sample_times_sec": [
+    0.5
+  ]
+}

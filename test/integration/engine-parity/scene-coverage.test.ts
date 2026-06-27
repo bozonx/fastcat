@@ -238,6 +238,21 @@ describe('scene coverage integration', () => {
       expect(effects[0].type).toBe('chroma-key');
       expect(effects[0].threshold).toBe(0.2);
     });
+
+    it('effect-color-tone scene has a color-tone effect with all parameters', () => {
+      const scene = scenes.find((s) => s.filename === 'effect-color-tone.json');
+      expect(scene).toBeDefined();
+      const layers = scene!.fixture.scene.layers as Array<Record<string, unknown>>;
+      const img = layers.find((l) => l.kind === 'image');
+      const effects = img!.effects as Array<Record<string, unknown>>;
+      expect(effects).toHaveLength(1);
+      expect(effects[0].type).toBe('color-tone');
+      expect(effects[0].color_rgba).toEqual([47, 128, 255, 255]);
+      expect(effects[0].amount).toBe(0.5);
+      expect(effects[0].blend_mode).toBe('soft-light');
+      expect(effects[0].preserve_luminance).toBe(true);
+      expect(effects[0].range).toBe('all');
+    });
   });
 
   describe('transitions coverage', () => {
@@ -410,6 +425,7 @@ describe('scene coverage integration', () => {
         'hue',
         'levels',
         'noise',
+        'color-tone',
       ];
       for (const t of expected) {
         expect(types.has(t), `missing effect type "${t}"`).toBe(true);

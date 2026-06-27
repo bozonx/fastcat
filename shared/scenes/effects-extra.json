@@ -2,7 +2,7 @@
   "_comment": [
     "Cross-engine parity scene: a grid of small image tiles, each with a different",
     "video effect (blur variants, bloom, sharpen, pixelate, vignette, chromatic aberration,",
-    "hue, levels, noise). Used to cover the remaining non-text video effects."
+    "hue, levels, noise, color-tone). Used to cover the remaining non-text video effects."
   ],
   "scene": {
     "width": 640,
@@ -325,6 +325,38 @@
             "noise_type": "perlin",
             "scale": 50,
             "mix": 1
+          }
+        ]
+      },
+      {
+        "id": "tile-color-tone",
+        "kind": "image",
+        "path": "image/image.jpg",
+        "timeline_start_sec": 0,
+        "timeline_end_sec": 1,
+        "source_start_sec": 0,
+        "source_range_duration_sec": 1,
+        "speed": 1,
+        "z": 11,
+        "opacity": 1,
+        "blend_mode": "normal",
+        "transform": {
+          "x": 400,
+          "y": 300,
+          "scale_x": 0.25,
+          "scale_y": 0.25,
+          "rotation_deg": 0,
+          "anchor_x": 0.5,
+          "anchor_y": 0.5
+        },
+        "effects": [
+          {
+            "type": "color-tone",
+            "color_rgba": [255, 136, 0, 255],
+            "amount": 0.5,
+            "blend_mode": "overlay",
+            "preserve_luminance": true,
+            "range": "all"
           }
         ]
       }

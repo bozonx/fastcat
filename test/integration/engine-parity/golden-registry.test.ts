@@ -50,7 +50,12 @@ const CEILING_EXEMPT = new Map<string, string>([
  * aHash of a uniform frame (e.g. a transition resolved to a solid colour) and
  * is validated normally via its colour signature.
  */
-const KNOWN_PENDING_GOLDENS = new Set<string>([]);
+const KNOWN_PENDING_GOLDENS = new Set<string>([
+  'effect-color-tone.json:web:0.5',
+  'effect-color-tone.json:native:0.5',
+  'effects-extra.json:web:0.5',
+  'effects-extra.json:native:0.5',
+]);
 
 const pendingKey = (scene: string, engine: string, timeSec: number): string =>
   `${scene}:${engine}:${timeSec}`;

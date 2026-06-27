@@ -66,6 +66,13 @@ fn default_tint_color() -> [u8; 4] {
     [0, 0, 0, 255]
 }
 
+/// Default for `ColorTone::preserve_luminance` — matches the frontend manifest
+/// default (`preserveLuminance: true`) so deserializing a spec without the
+/// field preserves luminance instead of silently disabling it.
+fn default_preserve_luminance() -> bool {
+    true
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, ts_rs::TS)]
 #[serde(tag = "type", rename_all = "kebab-case")]
 #[ts(
@@ -170,7 +177,7 @@ pub enum EffectSpec {
         amount: f32,
         #[serde(default)]
         blend_mode: String,
-        #[serde(default)]
+        #[serde(default = "default_preserve_luminance")]
         preserve_luminance: bool,
         #[serde(default)]
         range: String,
