@@ -1,0 +1,19 @@
+{
+  "_comment": "Cross-engine parity fixture for the level-meter linear-amplitude → dBFS conversion that feeds IAudioEngine.getLevels on both engines. Read by web test test/unit/utils/video-editor/audio-level-db.parity.test.ts (linearToLevelDb, src/utils/audio/level-db.ts) AND Rust test audio::mix::tests::level_to_db_matches_shared_parity_fixture (linear_to_level_db, src-tauri/src/audio/mix.rs). A value STRICTLY above the 0.001 silence threshold maps to 20*log10(value); at or below it collapses to the -60 dBFS floor, so idle/near-silent meters read identically across engines. Inputs are non-negative amplitudes (rms/peak of abs samples).",
+  "epsilon": 1e-9,
+  "floorDb": -60,
+  "silenceThreshold": 0.001,
+  "cases": [
+    { "name": "unity", "value": 1, "db": 0 },
+    { "name": "plus-6db", "value": 2, "db": 6.020599913279624 },
+    { "name": "minus-3db", "value": 0.7071067811865476, "db": -3.0102999566398116 },
+    { "name": "minus-6db", "value": 0.5, "db": -6.020599913279624 },
+    { "name": "minus-12db", "value": 0.25, "db": -12.041199826559248 },
+    { "name": "minus-20db", "value": 0.1, "db": -20 },
+    { "name": "just-above-threshold", "value": 0.0011, "db": -59.1721462968355 },
+    { "name": "exactly-at-threshold-is-floor", "value": 0.001, "db": -60 },
+    { "name": "below-threshold-is-floor", "value": 0.0009, "db": -60 },
+    { "name": "silence-is-floor", "value": 0, "db": -60 },
+    { "name": "tiny-is-floor", "value": 1e-9, "db": -60 }
+  ]
+}

@@ -360,14 +360,10 @@ fn mix_chunk_ramped_result(
             }
         }
 
-        let to_db = |val: f64| {
-            if val > 0.001 {
-                20.0 * val.log10()
-            } else {
-                -60.0
-            }
-        };
-        track_levels.insert(track.id.clone(), (to_db(rms), to_db(peak)));
+        track_levels.insert(
+            track.id.clone(),
+            (linear_to_level_db(rms), linear_to_level_db(peak)),
+        );
     }
 
     // 4. Mix orphan layers (no owning track) directly into the master bus.
@@ -1031,6 +1027,24 @@ pub(crate) fn sanitize_master_gain(gain: f64) -> f64 {
     }
 }
 
+/// dBFS value reported for silence / sub-threshold levels (meter bottom).
+const LEVEL_DB_FLOOR: f64 = -60.0;
+/// Amplitudes at or below this collapse to [`LEVEL_DB_FLOOR`] instead of diving
+/// toward -∞ dB, keeping an idle meter pinned at the floor.
+const LEVEL_DB_SILENCE_THRESHOLD: f64 = 0.001;
+
+/// Converts a non-negative linear amplitude (an RMS or peak of |samples|) to
+/// dBFS for level metering. Kept in lockstep with the web `linearToLevelDb`
+/// (src/utils/audio/level-db.ts) via `shared/parity/audio-level-db.cases.json`,
+/// so the monitor's web and native meters read identically for the same signal.
+pub(crate) fn linear_to_level_db(value: f64) -> f64 {
+    if value > LEVEL_DB_SILENCE_THRESHOLD {
+        20.0 * value.log10()
+    } else {
+        LEVEL_DB_FLOOR
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1116,6 +1130,29 @@ mod tests {
             assert!(
                 (fade_out - c["expectedFadeOutS"].as_f64().unwrap()).abs() < 1e-9,
                 "case `{name}` fadeOut"
+            );
+        }
+    }
+
+    /// Cross-engine parity contract — pairs with the web test
+    /// `test/unit/utils/video-editor/audio-level-db.parity.test.ts`.
+    /// `linear_to_level_db` and the web `linearToLevelDb` map a linear amplitude
+    /// to the same dBFS value (incl. the 0.001 threshold and -60 floor), so the
+    /// monitor's web and native level meters never disagree.
+    #[test]
+    fn level_to_db_matches_shared_parity_fixture() {
+        const FIXTURE: &str = include_str!("../../../shared/parity/audio-level-db.cases.json");
+        let parsed: serde_json::Value =
+            serde_json::from_str(FIXTURE).expect("valid parity fixture json");
+        let cases = parsed["cases"].as_array().expect("cases array");
+        assert!(!cases.is_empty(), "fixture has cases");
+        for c in cases {
+            let name = c["name"].as_str().unwrap_or("?");
+            let value = c["value"].as_f64().unwrap();
+            let db = linear_to_level_db(value);
+            assert!(
+                (db - c["db"].as_f64().unwrap()).abs() < 1e-9,
+                "case `{name}` db"
             );
         }
     }

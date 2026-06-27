@@ -1,3 +1,5 @@
+import { LEVEL_DB_FLOOR, linearToLevelDb } from '~/utils/audio/level-db';
+
 /**
  * Owns the per-track + master `AnalyserNode`s used for RMS/peak level metering
  * in {@link WebAudioEngine}. Extracted so the engine doesn't also have to carry
@@ -29,12 +31,12 @@ export class AudioLevelMeter {
    * context and the scheduler is playing).
    */
   getLevels(trackId: string | undefined, active: boolean): { rmsDb: number; peakDb: number } {
-    if (!active) return { rmsDb: -60, peakDb: -60 };
+    if (!active) return { rmsDb: LEVEL_DB_FLOOR, peakDb: LEVEL_DB_FLOOR };
 
     const id = trackId || 'master';
     const analyser = this.analyserNodes.get(id);
     if (!analyser) {
-      return { rmsDb: -60, peakDb: -60 };
+      return { rmsDb: LEVEL_DB_FLOOR, peakDb: LEVEL_DB_FLOOR };
     }
 
     const analyserData = new Float32Array(analyser.fftSize);
@@ -56,8 +58,8 @@ export class AudioLevelMeter {
     const rms = count > 0 ? Math.sqrt(sumSquares / count) : 0;
 
     return {
-      rmsDb: rms > 0.001 ? 20 * Math.log10(rms) : -60,
-      peakDb: peak > 0.001 ? 20 * Math.log10(peak) : -60,
+      rmsDb: linearToLevelDb(rms),
+      peakDb: linearToLevelDb(peak),
     };
   }
 
