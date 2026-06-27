@@ -4,6 +4,8 @@ import {
   interleavedToPlanar,
   normalizeSampleChannels,
   AudioMixer,
+  buildGainEnvelope,
+  mixProcessedChunk,
   resampleChannelsOfflineAudioContext,
   resampleAndStretchOffline,
   getStereoPanMatrix,
@@ -242,6 +244,103 @@ describe('AudioMixer pan matrix', () => {
     expect(halfRight.lr).toBe(0);
     expect(halfRight.rl).toBeCloseTo(Math.SQRT1_2);
     expect(halfRight.rr).toBe(1);
+  });
+});
+
+describe('AudioMixer clip mix parity primitives', () => {
+  function preparedClip(overrides: Partial<PreparedClip> = {}): PreparedClip {
+    return {
+      clipStartS: 0,
+      offsetS: 0,
+      playDurationS: 1,
+      input: new mockMediabunny.Input() as any,
+      sink: new mockMediabunny.AudioSampleSink() as any,
+      sourcePath: 'primitive.mp3',
+      speed: 1,
+      audioGain: 1,
+      audioBalance: 0,
+      audioFadeInS: 0,
+      audioFadeOutS: 0,
+      audioFadeInCurve: 'linear',
+      audioFadeOutCurve: 'linear',
+      audioEffects: [],
+      ...overrides,
+    };
+  }
+
+  it('builds a linear fade envelope matching the native gain shape', () => {
+    const envelope = buildGainEnvelope({
+      frames: 1000,
+      startFrame: 0,
+      targetSampleRate: 1000,
+      clip: preparedClip({
+        audioFadeInS: 0.25,
+        audioFadeOutS: 0.25,
+      }),
+    });
+
+    expect(envelope[0]).toBeCloseTo(0);
+    expect(envelope[125]).toBeCloseTo(0.5);
+    expect(envelope[500]).toBeCloseTo(1);
+    expect(envelope[875]).toBeCloseTo(0.5);
+    expect(envelope[999]).toBeLessThan(0.01);
+  });
+
+  it('scales the whole envelope by clip gain', () => {
+    const envelope = buildGainEnvelope({
+      frames: 1000,
+      startFrame: 0,
+      targetSampleRate: 1000,
+      clip: preparedClip({
+        audioGain: 0.5,
+        audioFadeInS: 0.25,
+      }),
+    });
+
+    expect(envelope[125]).toBeCloseTo(0.25);
+    expect(envelope[500]).toBeCloseTo(0.5);
+  });
+
+  it('mixes hard-left stereo balance by folding right into left', () => {
+    const mixed = new Float32Array(8);
+    const next = mixProcessedChunk({
+      processed: {
+        startFrame: 0,
+        frames: 4,
+        planes: [new Float32Array([1, 1, 1, 1]), new Float32Array([0.5, 0.5, 0.5, 0.5])],
+        gainEnvelope: new Float32Array([1, 1, 1, 1]),
+        audioBalance: -1,
+      },
+      sourceStartFrame: 0,
+      sourceEndFrame: 4,
+      writeStartFrame: 0,
+      mixedInterleaved: mixed,
+      numberOfChannels: 2,
+    });
+
+    expect(next).toBe(4);
+    expect(Array.from(mixed)).toEqual([1.5, 0, 1.5, 0, 1.5, 0, 1.5, 0]);
+  });
+
+  it('mixes only the requested processed segment at the requested output offset', () => {
+    const mixed = new Float32Array(6);
+    const next = mixProcessedChunk({
+      processed: {
+        startFrame: 10,
+        frames: 4,
+        planes: [new Float32Array([1, 2, 3, 4])],
+        gainEnvelope: new Float32Array([1, 0.5, 0.25, 0]),
+        audioBalance: 0,
+      },
+      sourceStartFrame: 11,
+      sourceEndFrame: 13,
+      writeStartFrame: 1,
+      mixedInterleaved: mixed,
+      numberOfChannels: 1,
+    });
+
+    expect(next).toBe(13);
+    expect(Array.from(mixed)).toEqual([0, 1, 0.75, 0, 0, 0]);
   });
 });
 
