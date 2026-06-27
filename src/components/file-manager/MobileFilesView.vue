@@ -9,7 +9,7 @@ type FilesTab = 'assets' | 'files';
 const { t } = useI18n();
 const workspaceStore = useWorkspaceStore();
 
-const experimentalFeatures = computed(() => workspaceStore.userSettings.experimentalFeatures);
+const experimentalFeatures = computed(() => workspaceStore.inDevelopmentFeaturesEnabled);
 
 const activeTab = ref<FilesTab>('assets');
 

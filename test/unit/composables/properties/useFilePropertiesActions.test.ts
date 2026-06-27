@@ -57,6 +57,8 @@ function createOptions() {
     isPersonalLibrary: ref(false),
     instanceId: computed(() => undefined),
     isExternal: ref(false),
+    experimentalFeatures: ref(false),
+    premiumFeatures: ref(false),
   };
 }
 
@@ -119,5 +121,22 @@ describe('useFilePropertiesActions', () => {
     expect(directoryPrimaryActions.value.find((action) => action.id === 'paste')?.hidden).toBe(
       true,
     );
+  });
+
+  it('shows conversion only when development and premium flags are enabled', () => {
+    const options = createOptions();
+    options.canConvertFile.value = true;
+
+    const { fileSecondaryActions } = useFilePropertiesActions(options);
+    const convertAction = () =>
+      fileSecondaryActions.value.find((action) => action.id === 'convertFile');
+
+    expect(convertAction()?.hidden).toBe(true);
+
+    options.experimentalFeatures.value = true;
+    expect(convertAction()?.hidden).toBe(true);
+
+    options.premiumFeatures.value = true;
+    expect(convertAction()?.hidden).toBe(false);
   });
 });

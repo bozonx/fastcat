@@ -132,7 +132,7 @@ async function syncFfmpegSettings() {
   if (!isTauri.value) return;
   try {
     const { nativeUpdateFfmpegSettings } = await import('~/utils/tauri-media-processing');
-    const hasExp = workspaceStore.userSettings.experimentalFeatures;
+    const hasExp = workspaceStore.inDevelopmentFeaturesEnabled;
     await nativeUpdateFfmpegSettings({
       ffmpegPath: workspaceStore.userSettings.optimization.ffmpegPath,
       ffprobePath: workspaceStore.userSettings.optimization.ffprobePath,
@@ -201,7 +201,7 @@ watch(
 
 watch(
   () => [
-    workspaceStore.userSettings.experimentalFeatures,
+    workspaceStore.inDevelopmentFeaturesEnabled,
     workspaceStore.userSettings.optimization.ffmpegPath,
     workspaceStore.userSettings.optimization.ffprobePath,
     workspaceStore.userSettings.optimization.hardwareAccelerationMode,
@@ -298,7 +298,7 @@ const tauriVideoCodecs = computed(() => {
           </div>
 
           <UiFormField
-            v-if="workspaceStore.userSettings.experimentalFeatures"
+            v-if="workspaceStore.inDevelopmentFeaturesEnabled"
             :label="t('videoEditor.settings.video.hwaccelMode')"
             :help="t('videoEditor.settings.video.hwaccelModeHelp')"
           >
@@ -350,7 +350,7 @@ const tauriVideoCodecs = computed(() => {
 
           <UiFormField
             v-if="
-              workspaceStore.userSettings.experimentalFeatures &&
+              workspaceStore.inDevelopmentFeaturesEnabled &&
               (workspaceStore.userSettings.optimization.hardwareAccelerationMode === 'vaapi' ||
                 workspaceStore.userSettings.optimization.hardwareAccelerationMode === 'auto')
             "
@@ -364,7 +364,7 @@ const tauriVideoCodecs = computed(() => {
           </UiFormField>
 
           <label
-            v-if="workspaceStore.userSettings.experimentalFeatures"
+            v-if="workspaceStore.inDevelopmentFeaturesEnabled"
             class="flex items-start gap-3 cursor-pointer px-1"
           >
             <UCheckbox v-model="workspaceStore.userSettings.optimization.enableHardwareEncoding" />

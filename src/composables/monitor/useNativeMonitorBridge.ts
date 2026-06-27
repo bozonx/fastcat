@@ -292,7 +292,7 @@ export function useNativeMonitorBridge(): void {
 
   watch(
     () => ({
-      experimentalFeatures: workspaceStore.userSettings.experimentalFeatures,
+      experimentalFeatures: workspaceStore.inDevelopmentFeaturesEnabled,
       bufferSize: workspaceStore.userSettings.audioEngine.bufferSize,
       backend: workspaceStore.userSettings.audioEngine.backend,
     }),

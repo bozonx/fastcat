@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, watch } from 'vue';
 import { VueDraggable } from 'vue-draggable-plus';
 import { useSelectionStore } from '~/stores/selection.store';
 import { usePresetsStore } from '~/stores/presets.store';
+import { useWorkspaceStore } from '~/stores/workspace.store';
 import type { ShapeType, HudType } from '~/timeline/types';
 import { getCustomPresetsByCategory } from '~/utils/presets';
 import CollapsibleEffectGroup from '~/components/effects/CollapsibleEffectGroup.vue';
@@ -14,12 +15,22 @@ defineProps<{
 const { t } = useI18n();
 const selectionStore = useSelectionStore();
 const presetsStore = usePresetsStore();
+const workspaceStore = useWorkspaceStore();
+const isHudFeatureEnabled = computed(() => workspaceStore.isFeatureEnabled('hud'));
 
 const uiStore = useUiStore();
 const activeTab = computed({
   get: () => uiStore.activeLibraryTab,
   set: (val) => (uiStore.activeLibraryTab = val),
 });
+
+watch(
+  isHudFeatureEnabled,
+  (enabled) => {
+    if (!enabled && activeTab.value === 'hud') activeTab.value = 'texts';
+  },
+  { immediate: true },
+);
 
 const standardTexts = [
   {
@@ -167,6 +178,7 @@ function isSelected(kind: 'text' | 'shape' | 'hud', id: string) {
         {{ t('fastcat.library.tabs.shapes') }}
       </button>
       <button
+        v-if="isHudFeatureEnabled"
         class="group relative flex items-center gap-1.5 px-2 py-1 rounded cursor-pointer transition-colors duration-150 shrink-0 text-2xs font-semibold tracking-wide uppercase"
         :class="
           activeTab === 'hud'
@@ -397,7 +409,7 @@ function isSelected(kind: 'text' | 'shape' | 'hud', id: string) {
       </div>
 
       <!-- HUDs -->
-      <div v-show="activeTab === 'hud'" class="flex flex-col gap-4 pb-4">
+      <div v-if="isHudFeatureEnabled" v-show="activeTab === 'hud'" class="flex flex-col gap-4 pb-4">
         <!-- Standard HUDs -->
         <CollapsibleEffectGroup
           v-model:is-collapsed="presetsStore.hudsStandardCollapsed"

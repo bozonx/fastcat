@@ -537,7 +537,7 @@ const { canUseFile, isDirectoryGeneratingProxy, getContextMenuItems, emptySpaceC
     isFilesPage: props.isFilesPage,
     instanceId,
     isExternal: isExternal.value,
-    experimentalFeatures: workspaceStore.userSettings.experimentalFeatures,
+    experimentalFeatures: workspaceStore.inDevelopmentFeaturesEnabled,
   });
 
 // --- Marquee selection ---

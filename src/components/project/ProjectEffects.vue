@@ -29,12 +29,12 @@ const activeTab = ref<'video' | 'transitions' | 'audio'>('video');
 
 const videoEffects = computed(() =>
   getAllVideoEffectManifests().filter(
-    (m) => !m.experimental || workspaceStore.userSettings.experimentalFeatures,
+    (m) => !m.experimental || workspaceStore.inDevelopmentFeaturesEnabled,
   ),
 );
 const audioEffects = computed(() =>
   getAllAudioEffectManifests().filter(
-    (m) => !m.experimental || workspaceStore.userSettings.experimentalFeatures,
+    (m) => !m.experimental || workspaceStore.inDevelopmentFeaturesEnabled,
   ),
 );
 const standardAudioEffects = computed(() => audioEffects.value.filter((e) => !e.isCustom));

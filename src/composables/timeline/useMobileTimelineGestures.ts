@@ -20,7 +20,7 @@ export interface UseMobileTimelineGesturesOptions {
   isLongPress: Ref<boolean>;
   isToolbarTrimActive: Ref<boolean>;
   drawerActiveSnapPoint: Ref<string | number | null>;
-  isMultiSelectionMode: ComputedRef<boolean>;
+  isMultiSelectionMode: Ref<boolean>;
   trackHeights: ComputedRef<Record<string, number>>;
   suppressDrawerSelectionClearTemporarily: (callback?: () => void) => Promise<void>;
   toggleMobileClipSelection: (itemId: string) => void;

@@ -60,6 +60,7 @@ const selectionStore = useSelectionStore();
 const fileManager = useFileManager();
 const uiStore = useUiStore();
 const workspaceStore = useWorkspaceStore();
+const isHudFeatureEnabled = computed(() => workspaceStore.isFeatureEnabled('hud'));
 const focusStore = useFocusStore();
 const fileManagerStore = inject('fileManagerStore', useFileManagerStore()) as ReturnType<
   typeof useFileManagerStore
@@ -211,7 +212,7 @@ const { handleDeleteClip, otherActionsList, commonActionsList } = useClipPropert
   focusStore,
   fileManager,
   setActiveTab,
-  experimentalFeatures: computed(() => workspaceStore.userSettings.experimentalFeatures),
+  experimentalFeatures: computed(() => workspaceStore.inDevelopmentFeaturesEnabled),
 });
 
 const mediaMeta = computed(() => {
@@ -528,6 +529,7 @@ defineExpose({
         :clip="clip"
         :hud-manifest="hudManifest"
         :hud-control-values="hudControlValues"
+        :hud-feature-enabled="isHudFeatureEnabled"
         :hide-text-properties="true"
         @update-background-color="handleUpdateBackgroundColor"
         @update-text="handleUpdateText"
@@ -549,6 +551,7 @@ defineExpose({
         :clip="clip"
         :hud-manifest="hudManifest"
         :hud-control-values="hudControlValues"
+        :hud-feature-enabled="isHudFeatureEnabled"
         @update-background-color="handleUpdateBackgroundColor"
         @update-text="handleUpdateText"
         @update-text-style="handleUpdateTextStyle"
@@ -598,7 +601,7 @@ defineExpose({
       />
 
       <ClipMaskSection
-        v-if="isVideoTrack && workspaceStore.userSettings.experimentalFeatures"
+        v-if="isVideoTrack && workspaceStore.inDevelopmentFeaturesEnabled"
         v-model:enabled="isMaskEnabled"
         :clip="clip"
         @update-mask="handleUpdateMask"

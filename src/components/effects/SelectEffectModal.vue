@@ -37,9 +37,7 @@ const isOpen = useModalOpenModel(props, emit);
 const allManifests = computed(() => {
   const manifests =
     props.target === 'video' ? getAllVideoEffectManifests() : getAllAudioEffectManifests();
-  return manifests.filter(
-    (m) => !m.experimental || workspaceStore.userSettings.experimentalFeatures,
-  );
+  return manifests.filter((m) => !m.experimental || workspaceStore.inDevelopmentFeaturesEnabled);
 });
 
 const groupedEffects = computed<{

@@ -127,7 +127,7 @@ watch(
 // Forward native audio engine settings to the Rust backend.
 watch(
   () => ({
-    experimentalFeatures: workspaceStore.userSettings.experimentalFeatures,
+    experimentalFeatures: workspaceStore.inDevelopmentFeaturesEnabled,
     bufferSize: workspaceStore.userSettings.audioEngine.bufferSize,
     backend: workspaceStore.userSettings.audioEngine.backend,
   }),
@@ -226,7 +226,7 @@ const webAudioCodecs = computed(() => {
     </UiFormField>
 
     <!-- Native audio engine settings (Tauri only) -->
-    <template v-if="isTauri && workspaceStore.userSettings.experimentalFeatures">
+    <template v-if="isTauri && workspaceStore.inDevelopmentFeaturesEnabled">
       <div class="flex flex-col gap-4 pt-4 border-t border-ui-border-muted/50">
         <div class="text-sm font-medium text-ui-text">
           {{ t('videoEditor.settings.audio.nativeEngineTitle') }}

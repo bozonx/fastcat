@@ -9,7 +9,7 @@ export function useMobileTimelineSelection(
   tracks: Ref<TimelineTrack[]>,
   isClipPropertiesDrawerOpen: Ref<boolean>,
   isMultiSelectionDrawerOpen: Ref<boolean>,
-  isLongPress: Ref<boolean>,
+  isMultiSelectionMode: Ref<boolean>,
   closeAllDrawers: () => void,
 ) {
   const timelineStore = useTimelineStore();
@@ -61,11 +61,6 @@ export function useMobileTimelineSelection(
     return items.length > 0 ? items : null;
   });
 
-  const isMultiSelectionMode = computed(() => {
-    const count = timelineStore.selectedItemIds.length;
-    return count > 1 || isMultiSelectionDrawerOpen.value || isLongPress.value;
-  });
-
   function syncSelectionStoreFromItemIds() {
     const map = itemToTrackMap.value;
     const items: { trackId: string; itemId: string; kind: 'clip' | 'gap' }[] = [];
@@ -96,7 +91,7 @@ export function useMobileTimelineSelection(
       return;
     }
 
-    if (isMultiSelectionDrawerOpen.value || isLongPress.value || count > 1) {
+    if (isMultiSelectionMode.value || count > 1) {
       isClipPropertiesDrawerOpen.value = false;
       isMultiSelectionDrawerOpen.value = true;
     } else {
@@ -106,6 +101,7 @@ export function useMobileTimelineSelection(
   }
 
   function enterMobileMultiSelection(itemId: string) {
+    isMultiSelectionMode.value = true;
     timelineStore.selectTrack(null);
     timelineStore.selectTransition(null);
 
@@ -126,7 +122,6 @@ export function useMobileTimelineSelection(
     selectedGap,
     selectedClipContext,
     selectedClips,
-    isMultiSelectionMode,
     toggleMobileClipSelection,
     enterMobileMultiSelection,
   };

@@ -12,7 +12,7 @@ const globalOptions = {
 
 function setExperimentalFeatures(enabled: boolean) {
   const workspaceStore = useWorkspaceStore();
-  workspaceStore.userSettings.experimentalFeatures = enabled;
+  workspaceStore.inDevelopmentFeaturesEnabled = enabled;
 }
 
 describe('MobileFilesView', () => {
@@ -30,8 +30,8 @@ describe('MobileFilesView', () => {
   it('renders only the assets tab when experimental features are disabled', async () => {
     const wrapper = await mountSuspended(MobileFilesView, { global: globalOptions });
 
-    expect(wrapper.findAll('button')).toHaveLength(1);
-    expect(wrapper.find('button')!.attributes('aria-pressed')).toBe('true');
+    expect(wrapper.findAll('button')).toHaveLength(0);
+    expect(wrapper.find('.asset-browser').exists()).toBe(true);
   });
 
   it('renders both tab switchers when experimental features are enabled', async () => {
@@ -81,7 +81,7 @@ describe('MobileFilesView', () => {
     setExperimentalFeatures(false);
     await wrapper.vm.$nextTick();
 
-    expect(wrapper.findAll('button')).toHaveLength(1);
+    expect(wrapper.findAll('button')).toHaveLength(0);
     expect(wrapper.find('.asset-browser').exists()).toBe(true);
     expect(wrapper.find('.file-browser').exists()).toBe(false);
   });

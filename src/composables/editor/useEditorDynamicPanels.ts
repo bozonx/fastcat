@@ -182,7 +182,7 @@ export function useEditorDynamicPanels(options: UseEditorDynamicPanelsOptions) {
   }
 
   function onDragStart(event: DragEvent, panelId: string) {
-    if (!workspaceStore.userSettings.experimentalFeatures) return;
+    if (!workspaceStore.inDevelopmentFeaturesEnabled) return;
     if (event.dataTransfer) {
       event.dataTransfer.effectAllowed = 'move';
       event.dataTransfer.setData('text/plain', panelId);
@@ -204,7 +204,7 @@ export function useEditorDynamicPanels(options: UseEditorDynamicPanelsOptions) {
   }
 
   function onDragOver(event: DragEvent, panelId: string) {
-    if (!workspaceStore.userSettings.experimentalFeatures) return;
+    if (!workspaceStore.inDevelopmentFeaturesEnabled) return;
     event.preventDefault();
 
     const isDraggingFile =
@@ -297,7 +297,7 @@ export function useEditorDynamicPanels(options: UseEditorDynamicPanelsOptions) {
   }
 
   function onDrop(input: PanelDropInput) {
-    if (!workspaceStore.userSettings.experimentalFeatures) return;
+    if (!workspaceStore.inDevelopmentFeaturesEnabled) return;
     const { event, targetPanelId, view = 'cut' } = input;
     event.preventDefault();
     const targetPanel = getPanelById(targetPanelId);
@@ -513,7 +513,7 @@ export function useEditorDynamicPanels(options: UseEditorDynamicPanelsOptions) {
   });
 
   function onPanelPointerDown(event: PointerEvent, panelId: string) {
-    if (!workspaceStore.userSettings.experimentalFeatures) return;
+    if (!workspaceStore.inDevelopmentFeaturesEnabled) return;
     startTauriPanelDrag(event, panelId);
   }
 

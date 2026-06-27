@@ -11,6 +11,7 @@ const mockPresetsStore = reactive({
 });
 
 const mockWorkspaceStore = reactive({
+  inDevelopmentFeaturesEnabled: false,
   userSettings: {
     experimentalFeatures: false,
   },
@@ -120,7 +121,7 @@ describe('SelectEffectModal', () => {
   });
 
   it('hides experimental effects when feature flag is disabled', async () => {
-    mockWorkspaceStore.userSettings.experimentalFeatures = false;
+    mockWorkspaceStore.inDevelopmentFeaturesEnabled = false;
     mockGetAllVideoEffectManifests.mockReturnValue([
       { type: 'brightness', category: 'basic', isCustom: false },
       { type: 'chroma-key', category: 'basic', isCustom: false, experimental: true },
@@ -139,7 +140,7 @@ describe('SelectEffectModal', () => {
   });
 
   it('shows experimental effects when feature flag is enabled', async () => {
-    mockWorkspaceStore.userSettings.experimentalFeatures = true;
+    mockWorkspaceStore.inDevelopmentFeaturesEnabled = true;
     mockGetAllVideoEffectManifests.mockReturnValue([
       { type: 'brightness', category: 'basic', isCustom: false },
       { type: 'chroma-key', category: 'basic', isCustom: false, experimental: true },

@@ -238,7 +238,7 @@ const isReadonly = computed(
 );
 
 const isInteractiveEditEnabled = computed(
-  () => workspaceStore.userSettings.experimentalFeatures === true,
+  () => workspaceStore.inDevelopmentFeaturesEnabled === true,
 );
 
 const monitorZoomLabel = computed(() => {

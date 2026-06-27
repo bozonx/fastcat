@@ -5,6 +5,13 @@ import type { PreviewServer, ViteDevServer } from 'vite';
 
 const fastcatDevDir = resolve(import.meta.dirname, process.env.FASTCAT_DEV_DIR || './.dev-files');
 
+function readBooleanEnv(value: unknown): boolean {
+  if (value === true) return true;
+  if (value === false || value == null) return false;
+  const normalized = String(value).trim().toLowerCase();
+  return normalized === '1' || normalized === 'true' || normalized === 'yes' || normalized === 'on';
+}
+
 function installE2eIsolationHeaders(server: ViteDevServer | PreviewServer): void {
   if (process.env.E2E_TEST !== '1') return;
 
@@ -127,6 +134,10 @@ export default defineNuxtConfig({
       fastcatAccountUiUrl: '',
       blockContextMenu: true,
       fastcatDevDir,
+      inDevelopmentFeaturesEnabled: readBooleanEnv(
+        process.env.FASTCAT_ENABLE_IN_DEVELOPMENT_FEATURES,
+      ),
+      premiumFeaturesEnabled: readBooleanEnv(process.env.FASTCAT_ENABLE_PREMIUM_FEATURES),
     },
   },
 

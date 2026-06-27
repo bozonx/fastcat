@@ -25,6 +25,12 @@ import { useProxyStore } from './proxy.store';
 
 import { getErrorMessage } from '~/utils/errors';
 import { useRuntimeConfig } from 'nuxt/app';
+import {
+  isFastCatFeatureEnabled,
+  isInDevelopmentFeaturesEnabled,
+  isPremiumFeaturesEnabled,
+  type FastCatFeatureId,
+} from '~/utils/features';
 const log = createDevLogger('workspace.store');
 
 export interface RecentProject {
@@ -287,13 +293,21 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   // repeated `!workspaceHandle && !isTauriRuntime()` guard scattered across the
   // thumbnail/proxy/media pipelines.
   const hasPersistentStorage = computed(() => isTauriRuntime() || workspaceHandle.value !== null);
+  const inDevelopmentFeaturesEnabled = computed(() =>
+    isInDevelopmentFeaturesEnabled(runtimeConfig),
+  );
+  const premiumFeaturesEnabled = computed(() => isPremiumFeaturesEnabled(runtimeConfig));
+
+  function isFeatureEnabled(featureId: FastCatFeatureId): boolean {
+    return isFastCatFeatureEnabled(featureId, runtimeConfig);
+  }
 
   async function syncFfmpegSettingsToNative() {
     if (!isTauriRuntime()) return;
     try {
       const { nativeUpdateFfmpegSettings } = await import('~/utils/tauri-media-processing');
       const opt = userSettings.value.optimization;
-      const hasExp = userSettings.value.experimentalFeatures;
+      const hasExp = inDevelopmentFeaturesEnabled.value;
       await nativeUpdateFfmpegSettings({
         ffmpegPath: opt.ffmpegPath,
         ffprobePath: opt.ffprobePath,
@@ -470,6 +484,9 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     isApiSupported,
     workspaceProviderId,
     hasPersistentStorage,
+    inDevelopmentFeaturesEnabled,
+    premiumFeaturesEnabled,
+    isFeatureEnabled,
     tauriAppPaths: skipHydrate(tauriAppPaths),
     lastProjectName: skipHydrate(lastProjectName),
     lastProjectPath: skipHydrate(lastProjectPath),

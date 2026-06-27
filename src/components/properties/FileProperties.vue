@@ -461,7 +461,8 @@ const {
   instanceId: computed(() => props.instanceId),
   isExternal: isExternalContext,
   isMediaFullyUnsupported,
-  experimentalFeatures: computed(() => workspaceStore.userSettings.experimentalFeatures),
+  experimentalFeatures: computed(() => workspaceStore.inDevelopmentFeaturesEnabled),
+  premiumFeatures: computed(() => workspaceStore.premiumFeaturesEnabled),
 });
 
 const { isMobile: isMobileDevice } = useDevice();

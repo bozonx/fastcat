@@ -107,6 +107,9 @@ const mockWorkspaceStore = vi.hoisted(() => {
     isEphemeral: false,
     workspaceHandle: null,
     isSttModelDownloaded: false,
+    inDevelopmentFeaturesEnabled: false,
+    premiumFeaturesEnabled: false,
+    isFeatureEnabled: vi.fn(() => false),
     userSettings: {
       timeline: {
         defaultStaticClipDurationUs: 5_000_000,

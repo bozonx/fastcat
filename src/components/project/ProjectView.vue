@@ -53,7 +53,7 @@ onMounted(() => {
     component: markRaw(ProjectFilesTab),
   });
 
-  if (workspaceStore.userSettings.experimentalFeatures) {
+  if (workspaceStore.inDevelopmentFeaturesEnabled) {
     registerProjectTab({
       id: 'history',
       label: t('videoEditor.fileManager.tabs.history'),
@@ -69,7 +69,7 @@ onMounted(() => {
     component: markRaw(ProjectEffects),
   });
 
-  if (workspaceStore.userSettings.experimentalFeatures) {
+  if (workspaceStore.inDevelopmentFeaturesEnabled) {
     registerProjectTab({
       id: 'library',
       label: t('videoEditor.fileManager.tabs.library'),

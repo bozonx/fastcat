@@ -1,8 +1,6 @@
 <script setup lang="ts">
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import UiFormField from '~/components/ui/UiFormField.vue';
-import UiAlert from '~/components/ui/UiAlert.vue';
-
 import { DEFAULT_USER_SETTINGS } from '~/utils/settings/defaults';
 import UiScaleSlider from '~/components/ui/UiScaleSlider.vue';
 import UiWheelNumberInput from '~/components/ui/UiWheelNumberInput.vue';
@@ -36,7 +34,6 @@ function resetGeneralDefaults() {
   workspaceStore.userSettings.history.maxMemoryMb = DEFAULT_USER_SETTINGS.history.maxMemoryMb;
   workspaceStore.userSettings.backup = { ...DEFAULT_USER_SETTINGS.backup };
   workspaceStore.userSettings.autosave = { ...DEFAULT_USER_SETTINGS.autosave };
-  workspaceStore.userSettings.experimentalFeatures = DEFAULT_USER_SETTINGS.experimentalFeatures;
 
   isResetConfirmOpen.value = false;
 }
@@ -84,7 +81,7 @@ function resetGeneralDefaults() {
     </UiFormField>
 
     <UiFormField
-      v-if="workspaceStore.userSettings.experimentalFeatures"
+      v-if="workspaceStore.inDevelopmentFeaturesEnabled"
       :label="t('videoEditor.settings.uiInterfaceScale')"
     >
       <UiScaleSlider v-model="workspaceStore.userSettings.ui.interfaceScale" :min="10" :max="20" />
@@ -216,21 +213,6 @@ function resetGeneralDefaults() {
             />
           </div>
         </UiFormField>
-
-        <label class="flex items-center gap-3 cursor-pointer px-1">
-          <UCheckbox v-model="workspaceStore.userSettings.experimentalFeatures" />
-          <span class="text-ui-text">
-            {{ t('videoEditor.settings.experimentalFeatures') }}
-          </span>
-        </label>
-
-        <UiAlert
-          v-if="workspaceStore.userSettings.experimentalFeatures"
-          variant="warning"
-          icon="i-heroicons-exclamation-triangle"
-        >
-          {{ t('videoEditor.settings.experimentalFeaturesWarning') }}
-        </UiAlert>
       </div>
     </UiAccordion>
   </div>

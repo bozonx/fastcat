@@ -14,6 +14,7 @@ const props = defineProps<{
   clip: TimelineClipItem;
   hudManifest: { controls: ParamControl[] } | null | undefined;
   hudControlValues: Record<string, unknown>;
+  hudFeatureEnabled?: boolean;
   hideTextProperties?: boolean;
 }>();
 
@@ -152,7 +153,7 @@ function confirmSavePreset() {
   />
 
   <ClipHudProperties
-    v-else-if="props.clip.clipType === 'hud'"
+    v-else-if="props.clip.clipType === 'hud' && props.hudFeatureEnabled"
     :clip="props.clip"
     :hud-manifest="props.hudManifest"
     :hud-control-values="props.hudControlValues"

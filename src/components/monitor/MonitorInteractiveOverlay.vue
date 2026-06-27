@@ -103,7 +103,7 @@ interface BboxItem {
 }
 
 const bboxItems = computed(() => {
-  if (!workspaceStore.userSettings.experimentalFeatures) return [];
+  if (!workspaceStore.inDevelopmentFeaturesEnabled) return [];
 
   const items: BboxItem[] = [];
 
@@ -175,7 +175,7 @@ function selectClip(clip: WorkerTimelineClip) {
   selectionStore.selectTimelineItem(clip.trackId ?? '', clip.id, 'clip');
 }
 
-const isEnabled = computed(() => workspaceStore.userSettings.experimentalFeatures === true);
+const isEnabled = computed(() => workspaceStore.inDevelopmentFeaturesEnabled === true);
 </script>
 
 <template>

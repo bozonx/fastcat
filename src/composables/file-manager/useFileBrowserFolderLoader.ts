@@ -48,7 +48,7 @@ export function useFileBrowserFolderLoader(options: UseFileBrowserFolderLoaderOp
       // A newer load started while awaiting — discard this stale result.
       if (token !== loadToken) return;
 
-      if (!path && workspaceStore.userSettings.experimentalFeatures) {
+      if (!path && workspaceStore.inDevelopmentFeaturesEnabled) {
         const commonMetadata = await options.vfs.getMetadata(WORKSPACE_COMMON_PATH_PREFIX);
         if (commonMetadata?.kind === 'directory') {
           const commonEntry: FsEntry = {

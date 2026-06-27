@@ -111,7 +111,7 @@ const menuItems = computed(() => {
         class="flex items-stretch bg-ui-bg rounded-md border border-ui-border divide-x divide-ui-border overflow-hidden mr-2 h-8"
       >
         <UiTooltip
-          v-if="workspaceStore.userSettings.experimentalFeatures"
+          v-if="workspaceStore.inDevelopmentFeaturesEnabled"
           :text="getHotkeyTitle(t('videoEditor.fileManager.tabs.files'), 'general.switchViewFiles')"
         >
           <button
@@ -142,7 +142,7 @@ const menuItems = computed(() => {
           </button>
         </UiTooltip>
         <UiTooltip
-          v-if="workspaceStore.userSettings.experimentalFeatures"
+          v-if="workspaceStore.inDevelopmentFeaturesEnabled"
           :text="getHotkeyTitle(t('videoEditor.timeline.tabs.sound'), 'general.switchViewSound')"
         >
           <button
@@ -174,7 +174,7 @@ const menuItems = computed(() => {
         </UiTooltip>
       </div>
 
-      <BackgroundTasksButton v-if="workspaceStore.userSettings.experimentalFeatures" size="sm" />
+      <BackgroundTasksButton v-if="workspaceStore.inDevelopmentFeaturesEnabled" size="sm" />
 
       <UDropdownMenu
         :items="menuItems"

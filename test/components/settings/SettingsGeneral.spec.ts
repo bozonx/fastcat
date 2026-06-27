@@ -52,9 +52,6 @@ describe('SettingsGeneral', () => {
     expect(mockWorkspaceStore.userSettings.deleteWithoutConfirmation).toBe(
       DEFAULT_USER_SETTINGS.deleteWithoutConfirmation,
     );
-    expect(mockWorkspaceStore.userSettings.experimentalFeatures).toBe(
-      DEFAULT_USER_SETTINGS.experimentalFeatures,
-    );
     expect(mockWorkspaceStore.userSettings.stopFrames.qualityPercent).toBe(
       DEFAULT_USER_SETTINGS.stopFrames.qualityPercent,
     );

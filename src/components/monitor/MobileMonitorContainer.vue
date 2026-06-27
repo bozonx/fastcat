@@ -87,30 +87,26 @@ const statusText = computed(() => {
 
 const { showGrid, toggleGrid, getGridLines } = useMonitorGrid({ projectStore });
 
-const {
-  contextMenuItems,
-  onPlaybackSpeedChange,
-  selectedPlaybackSpeedOption,
-  speedButtonLabel,
-} = useMonitorContainerControls({
-  t,
-  projectStore,
-  timelineStore,
-  selectionStore,
-  viewportRef,
-  videoItems,
-  isLoading,
-  loadError,
-  safeDurationUs,
-  previewEffectsEnabled,
-  useProxyInMonitor,
-  showGrid,
-  isSavingStopFrame,
-  createStopFrameSnapshot,
-  scheduleBuild,
-  toggleGrid,
-  isMobile: true,
-});
+const { contextMenuItems, onPlaybackSpeedChange, selectedPlaybackSpeedOption, speedButtonLabel } =
+  useMonitorContainerControls({
+    t,
+    projectStore,
+    timelineStore,
+    selectionStore,
+    viewportRef,
+    videoItems,
+    isLoading,
+    loadError,
+    safeDurationUs,
+    previewEffectsEnabled,
+    useProxyInMonitor,
+    showGrid,
+    isSavingStopFrame,
+    createStopFrameSnapshot,
+    scheduleBuild,
+    toggleGrid,
+    isMobile: true,
+  });
 
 const MOBILE_SPEED_VALUES = [0.5, 1, 1.5, 2];
 
@@ -366,7 +362,7 @@ const isReadonly = computed(
 
 const workspaceStore = useWorkspaceStore();
 const isInteractiveEditEnabled = computed(
-  () => workspaceStore.userSettings.experimentalFeatures === true,
+  () => workspaceStore.inDevelopmentFeaturesEnabled === true,
 );
 
 onMounted(() => {
@@ -575,8 +571,6 @@ function onMonitorButtonPointerUp() {
               @pointerup="stopMarkerLongPress"
               @pointerleave="stopMarkerLongPress"
             />
-
-
           </div>
 
           <div class="flex items-center gap-4" :class="[showSideControls ? 'flex-col' : 'h-full']">
@@ -630,7 +624,9 @@ function onMonitorButtonPointerUp() {
                 class="font-mono tabular-nums text-[10px] min-w-10 justify-center h-6 px-1 text-ui-text-muted hover:text-ui-text"
                 :label="speedButtonLabel"
                 :aria-label="t('fastcat.monitor.playbackSpeed')"
-                @pointerdown="onMonitorButtonPointerDown($event, t('fastcat.monitor.playbackSpeed'))"
+                @pointerdown="
+                  onMonitorButtonPointerDown($event, t('fastcat.monitor.playbackSpeed'))
+                "
                 @pointermove="onMonitorButtonPointerMove"
                 @pointerup="onMonitorButtonPointerUp"
                 @pointerleave="onMonitorButtonPointerUp"
@@ -679,7 +675,11 @@ function onMonitorButtonPointerUp() {
     <div
       v-if="monitorTooltip.tooltipVisible.value"
       class="fixed z-[9999] px-2.5 py-1.5 rounded-lg bg-black/90 text-white text-xs font-medium whitespace-nowrap pointer-events-none shadow-lg"
-      :style="{ left: `${monitorTooltip.tooltipX.value}px`, top: `${monitorTooltip.tooltipY.value - 48}px`, transform: 'translateX(-50%)' }"
+      :style="{
+        left: `${monitorTooltip.tooltipX.value}px`,
+        top: `${monitorTooltip.tooltipY.value - 48}px`,
+        transform: 'translateX(-50%)',
+      }"
     >
       {{ monitorTooltip.tooltipText.value }}
     </div>

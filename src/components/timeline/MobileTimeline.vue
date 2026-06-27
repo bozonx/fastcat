@@ -101,6 +101,7 @@ const {
   virtualClipPresetType,
   drawerActiveSnapPoint,
   isLongPress,
+  isMultiSelectionMode,
   isAnyDrawerOpen,
   suppressDrawerSelectionClearTemporarily,
   closeAllDrawers,
@@ -138,14 +139,13 @@ const {
   selectedGap,
   selectedClipContext,
   selectedClips,
-  isMultiSelectionMode,
   toggleMobileClipSelection,
   enterMobileMultiSelection,
 } = useMobileTimelineSelection(
   tracks,
   isClipPropertiesDrawerOpen,
   isMultiSelectionDrawerOpen,
-  isLongPress,
+  isMultiSelectionMode,
   closeAllDrawers,
 );
 
@@ -413,7 +413,9 @@ const {
           />
           <MobileDrawerToolbarButton
             :icon="allDisabled ? 'i-heroicons-eye' : 'i-heroicons-eye-slash'"
-            :label="allDisabled ? t('fastcat.timeline.enableClip') : t('fastcat.timeline.disableClip')"
+            :label="
+              allDisabled ? t('fastcat.timeline.enableClip') : t('fastcat.timeline.disableClip')
+            "
             @click="toggleDisabled"
           />
           <MobileDrawerToolbarButton
@@ -602,11 +604,7 @@ const {
       <div
         v-if="!isAnyDrawerOpen && uiStore.activeModalsCount === 0"
         class="fixed z-40 transition-all duration-300"
-        :class="
-          drawerToolbarOrientation === 'vertical'
-            ? 'bottom-6 right-6'
-            : 'bottom-20 right-6'
-        "
+        :class="drawerToolbarOrientation === 'vertical' ? 'bottom-6 right-6' : 'bottom-20 right-6'"
       >
         <UButton
           icon="lucide:plus"

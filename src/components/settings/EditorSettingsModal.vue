@@ -92,137 +92,137 @@ watch(
     <div class="flex flex-1 min-h-0 w-full h-full">
       <div class="w-56 shrink-0 px-4 py-4 bg-ui-bg border-r border-ui-border overflow-y-auto">
         <div class="flex flex-col gap-2">
-            <UiToggleButton
-              :model-value="activeSection === 'user.general'"
-              :label="t('videoEditor.settings.userGeneral')"
-              inactive-color="neutral"
-              active-color="neutral"
-              :active-bg="'color-mix(in srgb, var(--selection-accent-500) 15%, transparent)'"
-              :active-text="'var(--selection-accent-400)'"
-              inactive-variant="ghost"
-              active-variant="soft"
-              no-toggle
-              class="justify-start"
-              @click="activeSection = 'user.general'"
-            />
-            <UiToggleButton
-              :model-value="activeSection === 'user.hotkeys'"
-              :label="t('videoEditor.settings.userHotkeys')"
-              inactive-color="neutral"
-              active-color="neutral"
-              :active-bg="'color-mix(in srgb, var(--selection-accent-500) 15%, transparent)'"
-              :active-text="'var(--selection-accent-400)'"
-              inactive-variant="ghost"
-              active-variant="soft"
-              no-toggle
-              class="justify-start"
-              @click="activeSection = 'user.hotkeys'"
-            />
-            <UiToggleButton
-              :model-value="activeSection === 'user.mouse'"
-              :label="t('videoEditor.settings.userMouse')"
-              inactive-color="neutral"
-              active-color="neutral"
-              :active-bg="'color-mix(in srgb, var(--selection-accent-500) 15%, transparent)'"
-              :active-text="'var(--selection-accent-400)'"
-              inactive-variant="ghost"
-              active-variant="soft"
-              no-toggle
-              class="justify-start"
-              @click="activeSection = 'user.mouse'"
-            />
-            <UiToggleButton
-              :model-value="activeSection === 'user.export'"
-              :label="t('videoEditor.settings.userExport')"
-              inactive-color="neutral"
-              active-color="neutral"
-              :active-bg="'color-mix(in srgb, var(--selection-accent-500) 15%, transparent)'"
-              :active-text="'var(--selection-accent-400)'"
-              inactive-variant="ghost"
-              active-variant="soft"
-              no-toggle
-              class="justify-start"
-              @click="activeSection = 'user.export'"
-            />
-            <UiToggleButton
-              :model-value="activeSection === 'user.proxy'"
-              :label="t('videoEditor.settings.userProxy')"
-              inactive-color="neutral"
-              active-color="neutral"
-              :active-bg="'color-mix(in srgb, var(--selection-accent-500) 15%, transparent)'"
-              :active-text="'var(--selection-accent-400)'"
-              inactive-variant="ghost"
-              active-variant="soft"
-              no-toggle
-              class="justify-start"
-              @click="activeSection = 'user.proxy'"
-            />
-            <UiToggleButton
-              :model-value="activeSection === 'user.video'"
-              :label="t('videoEditor.settings.userVideo')"
-              inactive-color="neutral"
-              active-color="neutral"
-              :active-bg="'color-mix(in srgb, var(--selection-accent-500) 15%, transparent)'"
-              :active-text="'var(--selection-accent-400)'"
-              inactive-variant="ghost"
-              active-variant="soft"
-              no-toggle
-              class="justify-start"
-              @click="activeSection = 'user.video'"
-            />
-            <UiToggleButton
-              :model-value="activeSection === 'user.audio'"
-              :label="t('videoEditor.settings.userAudio')"
-              inactive-color="neutral"
-              active-color="neutral"
-              :active-bg="'color-mix(in srgb, var(--selection-accent-500) 15%, transparent)'"
-              :active-text="'var(--selection-accent-400)'"
-              inactive-variant="ghost"
-              active-variant="soft"
-              no-toggle
-              class="justify-start"
-              @click="activeSection = 'user.audio'"
-            />
-            <UiToggleButton
-              v-if="workspaceStore.userSettings.experimentalFeatures"
-              :model-value="activeSection === 'user.integrations'"
-              :label="t('videoEditor.settings.userIntegrations')"
-              inactive-color="neutral"
-              active-color="neutral"
-              :active-bg="'color-mix(in srgb, var(--selection-accent-500) 15%, transparent)'"
-              :active-text="'var(--selection-accent-400)'"
-              inactive-variant="ghost"
-              active-variant="soft"
-              no-toggle
-              class="justify-start"
-              @click="activeSection = 'user.integrations'"
-            />
-            <UiToggleButton
-              :model-value="activeSection === 'user.ui'"
-              :label="t('videoEditor.settings.userUi')"
-              inactive-color="neutral"
-              active-color="neutral"
-              :active-bg="'color-mix(in srgb, var(--selection-accent-500) 15%, transparent)'"
-              :active-text="'var(--selection-accent-400)'"
-              inactive-variant="ghost"
-              active-variant="soft"
-              no-toggle
-              class="justify-start"
-              @click="activeSection = 'user.ui'"
-            />
-            <UiToggleButton
-              :model-value="activeSection === 'workspace.storage'"
-              :label="t('videoEditor.settings.workspaceStorage')"
-              inactive-color="neutral"
-              active-color="neutral"
-              :active-bg="'color-mix(in srgb, var(--selection-accent-500) 15%, transparent)'"
-              :active-text="'var(--selection-accent-400)'"
-              inactive-variant="ghost"
-              active-variant="soft"
-              no-toggle
-              class="justify-start"
-              @click="activeSection = 'workspace.storage'"
-            />
+          <UiToggleButton
+            :model-value="activeSection === 'user.general'"
+            :label="t('videoEditor.settings.userGeneral')"
+            inactive-color="neutral"
+            active-color="neutral"
+            :active-bg="'color-mix(in srgb, var(--selection-accent-500) 15%, transparent)'"
+            :active-text="'var(--selection-accent-400)'"
+            inactive-variant="ghost"
+            active-variant="soft"
+            no-toggle
+            class="justify-start"
+            @click="activeSection = 'user.general'"
+          />
+          <UiToggleButton
+            :model-value="activeSection === 'user.hotkeys'"
+            :label="t('videoEditor.settings.userHotkeys')"
+            inactive-color="neutral"
+            active-color="neutral"
+            :active-bg="'color-mix(in srgb, var(--selection-accent-500) 15%, transparent)'"
+            :active-text="'var(--selection-accent-400)'"
+            inactive-variant="ghost"
+            active-variant="soft"
+            no-toggle
+            class="justify-start"
+            @click="activeSection = 'user.hotkeys'"
+          />
+          <UiToggleButton
+            :model-value="activeSection === 'user.mouse'"
+            :label="t('videoEditor.settings.userMouse')"
+            inactive-color="neutral"
+            active-color="neutral"
+            :active-bg="'color-mix(in srgb, var(--selection-accent-500) 15%, transparent)'"
+            :active-text="'var(--selection-accent-400)'"
+            inactive-variant="ghost"
+            active-variant="soft"
+            no-toggle
+            class="justify-start"
+            @click="activeSection = 'user.mouse'"
+          />
+          <UiToggleButton
+            :model-value="activeSection === 'user.export'"
+            :label="t('videoEditor.settings.userExport')"
+            inactive-color="neutral"
+            active-color="neutral"
+            :active-bg="'color-mix(in srgb, var(--selection-accent-500) 15%, transparent)'"
+            :active-text="'var(--selection-accent-400)'"
+            inactive-variant="ghost"
+            active-variant="soft"
+            no-toggle
+            class="justify-start"
+            @click="activeSection = 'user.export'"
+          />
+          <UiToggleButton
+            :model-value="activeSection === 'user.proxy'"
+            :label="t('videoEditor.settings.userProxy')"
+            inactive-color="neutral"
+            active-color="neutral"
+            :active-bg="'color-mix(in srgb, var(--selection-accent-500) 15%, transparent)'"
+            :active-text="'var(--selection-accent-400)'"
+            inactive-variant="ghost"
+            active-variant="soft"
+            no-toggle
+            class="justify-start"
+            @click="activeSection = 'user.proxy'"
+          />
+          <UiToggleButton
+            :model-value="activeSection === 'user.video'"
+            :label="t('videoEditor.settings.userVideo')"
+            inactive-color="neutral"
+            active-color="neutral"
+            :active-bg="'color-mix(in srgb, var(--selection-accent-500) 15%, transparent)'"
+            :active-text="'var(--selection-accent-400)'"
+            inactive-variant="ghost"
+            active-variant="soft"
+            no-toggle
+            class="justify-start"
+            @click="activeSection = 'user.video'"
+          />
+          <UiToggleButton
+            :model-value="activeSection === 'user.audio'"
+            :label="t('videoEditor.settings.userAudio')"
+            inactive-color="neutral"
+            active-color="neutral"
+            :active-bg="'color-mix(in srgb, var(--selection-accent-500) 15%, transparent)'"
+            :active-text="'var(--selection-accent-400)'"
+            inactive-variant="ghost"
+            active-variant="soft"
+            no-toggle
+            class="justify-start"
+            @click="activeSection = 'user.audio'"
+          />
+          <UiToggleButton
+            v-if="workspaceStore.inDevelopmentFeaturesEnabled"
+            :model-value="activeSection === 'user.integrations'"
+            :label="t('videoEditor.settings.userIntegrations')"
+            inactive-color="neutral"
+            active-color="neutral"
+            :active-bg="'color-mix(in srgb, var(--selection-accent-500) 15%, transparent)'"
+            :active-text="'var(--selection-accent-400)'"
+            inactive-variant="ghost"
+            active-variant="soft"
+            no-toggle
+            class="justify-start"
+            @click="activeSection = 'user.integrations'"
+          />
+          <UiToggleButton
+            :model-value="activeSection === 'user.ui'"
+            :label="t('videoEditor.settings.userUi')"
+            inactive-color="neutral"
+            active-color="neutral"
+            :active-bg="'color-mix(in srgb, var(--selection-accent-500) 15%, transparent)'"
+            :active-text="'var(--selection-accent-400)'"
+            inactive-variant="ghost"
+            active-variant="soft"
+            no-toggle
+            class="justify-start"
+            @click="activeSection = 'user.ui'"
+          />
+          <UiToggleButton
+            :model-value="activeSection === 'workspace.storage'"
+            :label="t('videoEditor.settings.workspaceStorage')"
+            inactive-color="neutral"
+            active-color="neutral"
+            :active-bg="'color-mix(in srgb, var(--selection-accent-500) 15%, transparent)'"
+            :active-text="'var(--selection-accent-400)'"
+            inactive-variant="ghost"
+            active-variant="soft"
+            no-toggle
+            class="justify-start"
+            @click="activeSection = 'workspace.storage'"
+          />
         </div>
       </div>
 

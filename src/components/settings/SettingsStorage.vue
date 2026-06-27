@@ -92,7 +92,6 @@ function clearCache() {
   clearUiCache();
   window.location.reload();
 }
-
 </script>
 
 <template>
@@ -104,7 +103,7 @@ function clearCache() {
     <div v-if="isDesktopTauri" class="flex flex-col gap-6">
       <!-- 1. Папка общих файлов (common) -->
       <UiFormField
-        v-if="workspaceStore.userSettings.experimentalFeatures"
+        v-if="workspaceStore.inDevelopmentFeaturesEnabled"
         :label="t('videoEditor.settings.commonFilesFolder')"
         :help="t('videoEditor.settings.commonFilesFolderHelp')"
       >
@@ -245,9 +244,7 @@ function clearCache() {
       />
     </div>
 
-    <div
-      class="flex items-center justify-between gap-3 p-3 rounded border border-ui-border"
-    >
+    <div class="flex items-center justify-between gap-3 p-3 rounded border border-ui-border">
       <div class="flex flex-col gap-1 min-w-0">
         <div class="text-sm font-medium text-ui-text">
           {{ t('videoEditor.settings.clearUiCache') }}

@@ -38,7 +38,7 @@ const { currentSnapOption } = useSnapSettings();
 
 function startLongPress() {
   wasLastPressLong.value = false;
-  if (!workspaceStore.userSettings.experimentalFeatures) return;
+  if (!workspaceStore.inDevelopmentFeaturesEnabled) return;
   if (longPressTimer.value) clearTimeout(longPressTimer.value);
   longPressTimer.value = setTimeout(() => {
     emit('open-history');
@@ -159,7 +159,7 @@ function stopSnapLongPress() {
       </div>
 
       <div
-        v-if="workspaceStore.userSettings.experimentalFeatures"
+        v-if="workspaceStore.inDevelopmentFeaturesEnabled"
         class="flex items-center gap-1 rounded-xl bg-ui-bg px-1 py-1 shrink-0"
       >
         <UiActionButton

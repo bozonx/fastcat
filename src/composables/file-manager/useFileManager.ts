@@ -365,6 +365,6 @@ export function useFileManager(options?: {
     notifyFileManagerUpdate: () => uiStore.notifyFileManagerUpdate(),
     timelineMediaUsageStore,
     shouldRecordFileManagerHistory: options?.shouldRecordFileManagerHistory ?? (() => true),
-    hideCommonRoot: !workspaceStore.userSettings.experimentalFeatures,
+    hideCommonRoot: !workspaceStore.inDevelopmentFeaturesEnabled,
   });
 }

@@ -319,6 +319,7 @@ export function useMobileTimelineDrawers() {
     virtualClipPresetType,
     drawerActiveSnapPoint,
     isLongPress,
+    isMultiSelectionMode,
     isAnyDrawerOpen,
     suppressDrawerSelectionClear,
     suppressDrawerSelectionClearTemporarily,

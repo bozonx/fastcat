@@ -16,7 +16,7 @@ import type { PanelFocusId } from '~/stores/focus.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 
 const workspaceStore = useWorkspaceStore();
-const experimentalFeatures = computed(() => workspaceStore.userSettings.experimentalFeatures);
+const experimentalFeatures = computed(() => workspaceStore.inDevelopmentFeaturesEnabled);
 
 interface Props {
   panel: DynamicPanel;

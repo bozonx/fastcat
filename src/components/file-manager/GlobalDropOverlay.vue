@@ -37,7 +37,7 @@ const folderTree = computed(() => collectFolders(props.rootEntries));
 
 // Common folder virtual entry
 const commonFolder = computed<FsEntry | null>(() => {
-  if (!workspaceStore.userSettings.experimentalFeatures) return null;
+  if (!workspaceStore.inDevelopmentFeaturesEnabled) return null;
   const found = props.rootEntries.find((e) => e.path === WORKSPACE_COMMON_PATH_PREFIX);
   return found ?? null;
 });

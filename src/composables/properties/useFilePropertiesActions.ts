@@ -73,6 +73,7 @@ interface UseFilePropertiesActionsOptions {
   isExternal?: Ref<boolean | undefined>;
   isMediaFullyUnsupported?: Ref<boolean>;
   experimentalFeatures?: Ref<boolean>;
+  premiumFeatures?: Ref<boolean>;
 }
 
 export function useFilePropertiesActions(options: UseFilePropertiesActionsOptions) {
@@ -263,7 +264,10 @@ export function useFilePropertiesActions(options: UseFilePropertiesActionsOption
         ? options.t('videoEditor.fileManager.actions.convertAudioFile')
         : options.t('videoEditor.export.convert'),
       icon: 'i-heroicons-arrow-path',
-      hidden: !options.canConvertFile.value || !options.experimentalFeatures?.value,
+      hidden:
+        !options.canConvertFile.value ||
+        !options.experimentalFeatures?.value ||
+        !options.premiumFeatures?.value,
       onClick: options.onConvert,
     },
     {
