@@ -72,6 +72,58 @@ fn probe_covers_the_video_container_matrix() {
 }
 
 #[test]
+fn probe_alpha_vp9_webm_reports_video() {
+    skip_unless!(common::has_ffprobe(), "ffprobe not installed");
+
+    // The alpha compositing fixture is 200x200 (see generate-test-fixtures.sh)
+    // and carries a real alpha plane used by the compositor parity path.
+    let meta = probe_media(&common::fixture("video/video-alpha-vp9.webm"), "ffprobe")
+        .expect("alpha-vp9 should probe");
+    let video = meta.video.expect("alpha-vp9 should have a video stream");
+    assert_eq!((video.width, video.height), (200, 200), "alpha-vp9 dimensions");
+    assert!(meta.duration > 0.5, "alpha-vp9 duration {}", meta.duration);
+}
+
+#[test]
+fn probe_covers_the_audio_format_matrix() {
+    skip_unless!(common::has_ffprobe(), "ffprobe not installed");
+
+    // Every audio container/codec FastCat advertises (AUDIO_EXTENSIONS in
+    // src/utils/media-types.ts). Each is a 440 Hz mono sine — see
+    // scripts/generate-test-fixtures.sh. The substring is the ffprobe codec
+    // name we expect inside that container.
+    for (rel, codec_substr) in [
+        ("audio/audio-sine.mp3", "mp3"),
+        ("audio/audio-sine.wav", "pcm"),
+        ("audio/audio-sine.aac", "aac"),
+        ("audio/audio-sine.flac", "flac"),
+        ("audio/audio-sine.ogg", "vorbis"),
+        ("audio/audio-sine.opus", "opus"),
+        ("audio/audio-sine.m4a", "aac"),
+        ("audio/audio-sine.weba", "opus"),
+    ] {
+        let meta = probe_media(&common::fixture(rel), "ffprobe")
+            .unwrap_or_else(|e| panic!("probe {rel} failed: {e}"));
+
+        assert!(meta.video.is_none(), "{rel} must not report a video stream");
+        let audio = meta
+            .audio
+            .unwrap_or_else(|| panic!("{rel} should have an audio stream"));
+        assert!(
+            audio.codec.contains(codec_substr),
+            "{rel} codec={} (expected to contain {codec_substr})",
+            audio.codec,
+        );
+        assert!(
+            audio.sample_rate.unwrap_or(0) > 0,
+            "{rel} should report a positive sample rate",
+        );
+        assert_eq!(audio.channels, Some(1), "{rel} channels");
+        assert!(meta.duration > 0.5, "{rel} duration {}", meta.duration);
+    }
+}
+
+#[test]
 fn decode_image_matrix_reports_dimensions() {
     // The native decoder is built with the `image` crate's png/jpeg/webp
     // features only (see src-tauri/Cargo.toml); bmp/tiff/avif are handled
