@@ -40,6 +40,8 @@
 //   22 blur-fill background adjust (input_tex=blurred bg; p0=bg_dim (0..1),
 //      p1=bg_saturation (0..2), p2..p4=tint rgb, p5=tint_strength (0..1)) —
 //      desaturates, dims and tints the background plate before compose
+//   23 color tone (p0..p2=tint rgb, p3=amount, p4=blend mode,
+//      p5=preserve luminance, p6=range)
 // =============================================================================
 
 struct EffectUniform {
@@ -128,6 +130,62 @@ fn rotate_hue(color: vec3<f32>, degrees: f32) -> vec3<f32> {
     let c = cos(angle);
     let k = vec3<f32>(0.57735026919);
     return color * c + cross(k, color) * s + k * dot(k, color) * (1.0 - c);
+}
+
+fn color_tone_overlay(base: vec3<f32>, tone: vec3<f32>) -> vec3<f32> {
+    let low = 2.0 * base * tone;
+    let high = 1.0 - 2.0 * (1.0 - base) * (1.0 - tone);
+    return select(low, high, base >= vec3<f32>(0.5));
+}
+
+fn color_tone_soft_light_channel(base: f32, tone: f32) -> f32 {
+    let d = select(
+        ((16.0 * base - 12.0) * base + 4.0) * base,
+        sqrt(max(base, 0.0)),
+        base > 0.25
+    );
+    return select(
+        base - (1.0 - 2.0 * tone) * base * (1.0 - base),
+        base + (2.0 * tone - 1.0) * (d - base),
+        tone > 0.5
+    );
+}
+
+fn color_tone_soft_light(base: vec3<f32>, tone: vec3<f32>) -> vec3<f32> {
+    return vec3<f32>(
+        color_tone_soft_light_channel(base.r, tone.r),
+        color_tone_soft_light_channel(base.g, tone.g),
+        color_tone_soft_light_channel(base.b, tone.b)
+    );
+}
+
+fn color_tone_blend(base: vec3<f32>, tone: vec3<f32>, mode: f32) -> vec3<f32> {
+    if (mode >= 3.5) {
+        return color_tone_soft_light(base, tone);
+    }
+    if (mode >= 2.5) {
+        return color_tone_overlay(base, tone);
+    }
+    if (mode >= 1.5) {
+        return 1.0 - (1.0 - base) * (1.0 - tone);
+    }
+    if (mode >= 0.5) {
+        return base * tone;
+    }
+    return tone;
+}
+
+fn color_tone_range_mask(lum: f32, range: f32) -> f32 {
+    if (range >= 2.5) {
+        return smoothstep(0.45, 0.85, lum);
+    }
+    if (range >= 1.5) {
+        return 1.0 - smoothstep(0.0, 0.55, abs(lum - 0.5));
+    }
+    if (range >= 0.5) {
+        return 1.0 - smoothstep(0.15, 0.55, lum);
+    }
+    return 1.0;
 }
 
 // 2D Perlin (Gradient) Noise mapped to [0, 1]
@@ -457,6 +515,16 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
             c = c * effect.p0;
             c = mix(c, vec3<f32>(effect.p2, effect.p3, effect.p4), clamp(effect.p5, 0.0, 1.0));
             color = vec4<f32>(c, color.a);
+        }
+        case 23u: {
+            let base = color.rgb;
+            let tone = vec3<f32>(effect.p0, effect.p1, effect.p2);
+            var blended = color_tone_blend(base, tone, effect.p4);
+            if (effect.p5 >= 0.5) {
+                blended = blended * (luma(base) / max(luma(blended), 0.0001));
+            }
+            let mask = color_tone_range_mask(luma(base), effect.p6);
+            color = vec4<f32>(mix(base, blended, clamp(effect.p3, 0.0, 1.0) * mask), color.a);
         }
         default: {}
     }

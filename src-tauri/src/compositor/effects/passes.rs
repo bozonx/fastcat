@@ -651,6 +651,39 @@ pub(super) fn effect_uniform(
             0.0,
             0,
         ),
+        EffectSpec::ColorTone {
+            color_rgba,
+            amount,
+            blend_mode,
+            preserve_luminance,
+            range,
+        } => {
+            let blend_val = match blend_mode.as_str() {
+                "multiply" => 1.0,
+                "screen" => 2.0,
+                "overlay" => 3.0,
+                "soft-light" => 4.0,
+                _ => 0.0,
+            };
+            let range_val = match range.as_str() {
+                "shadows" => 1.0,
+                "midtones" => 2.0,
+                "highlights" => 3.0,
+                _ => 0.0,
+            };
+            let mut uniform = base(
+                23,
+                color_rgba[0] as f32 / 255.0,
+                color_rgba[1] as f32 / 255.0,
+                color_rgba[2] as f32 / 255.0,
+                amount.clamp(0.0, 1.0),
+                blend_val,
+                if *preserve_luminance { 1.0 } else { 0.0 },
+                0,
+            );
+            uniform.p6 = range_val;
+            uniform
+        }
         EffectSpec::Hue { degrees } => base(11, *degrees, 0.0, 0.0, 0.0, 0.0, 0.0, 0),
         EffectSpec::Levels {
             in_black,

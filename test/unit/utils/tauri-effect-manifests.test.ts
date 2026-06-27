@@ -31,6 +31,7 @@ describe('unified video effect manifests', () => {
       'blur',
       'blur-fill',
       'bloom',
+      'color-tone',
       'sharpen',
       'pixelate',
       'vignette',
@@ -209,6 +210,58 @@ describe('unified video effect manifests', () => {
       animationMax: 512,
       renderMax: 512,
     });
+  });
+
+  it('serializes color-tone with color, blend mode, luminance, and tonal range', () => {
+    expect(
+      buildEffectSpecs([
+        {
+          id: 'tone-1',
+          type: 'color-tone',
+          enabled: true,
+          target: 'video',
+          color: '#f80',
+          amount: 0.6,
+          blendMode: 'overlay',
+          preserveLuminance: false,
+          range: 'highlights',
+        },
+      ]),
+    ).toEqual([
+      {
+        type: 'color-tone',
+        color_rgba: [255, 136, 0, 255],
+        amount: 0.6,
+        blend_mode: 'overlay',
+        preserve_luminance: false,
+        range: 'highlights',
+      },
+    ]);
+
+    expect(
+      buildEffectSpecs([
+        {
+          id: 'tone-2',
+          type: 'color-tone',
+          enabled: true,
+          target: 'video',
+          color: 'not-a-color',
+          amount: 2,
+          blendMode: 'unknown',
+          preserveLuminance: true,
+          range: 'unknown',
+        },
+      ]),
+    ).toEqual([
+      {
+        type: 'color-tone',
+        color_rgba: [47, 128, 255, 255],
+        amount: 1,
+        blend_mode: 'soft-light',
+        preserve_luminance: true,
+        range: 'all',
+      },
+    ]);
   });
 
   it('serializes animation-scale values up to renderer hard caps', () => {

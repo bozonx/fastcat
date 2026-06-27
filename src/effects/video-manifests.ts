@@ -1,5 +1,6 @@
 import type { EffectParamRange, VideoEffectManifest } from './core/registry';
 import type { VideoEffectSpec } from '~/types/generated/native-monitor/VideoEffectSpec';
+import { normalizeHexColor } from '~/utils/color';
 import { clamp, clampFinite } from '~/utils/math';
 
 interface SliderFormat {
@@ -158,6 +159,9 @@ const pixels: SliderFormat = (value) => `${value}px`;
 const degrees: SliderFormat = (value) => `${value}deg`;
 const decimal: SliderFormat = (value) => value.toFixed(2);
 
+const COLOR_TONE_BLEND_MODES = ['normal', 'multiply', 'screen', 'overlay', 'soft-light'] as const;
+const COLOR_TONE_RANGES = ['all', 'shadows', 'midtones', 'highlights'] as const;
+
 function clampRange(value: number, range: Pick<EffectParamRange, 'renderMin' | 'renderMax'>) {
   return clamp(value, range.renderMin, range.renderMax);
 }
@@ -175,6 +179,24 @@ function finiteNumberFromKeys(
   }
 
   return fallback;
+}
+
+function rgbaFromHex(value: unknown, fallback = '#000000'): [number, number, number, number] {
+  const hex = normalizeHexColor(value, fallback).slice(1);
+  return [
+    Number.parseInt(hex.substring(0, 2), 16),
+    Number.parseInt(hex.substring(2, 4), 16),
+    Number.parseInt(hex.substring(4, 6), 16),
+    255,
+  ];
+}
+
+function stringOption<T extends readonly string[]>(
+  value: unknown,
+  options: T,
+  fallback: T[number],
+) {
+  return typeof value === 'string' && options.includes(value) ? value : fallback;
 }
 
 // The catalog is intentionally loose about the per-variant shape: each manifest
@@ -600,6 +622,80 @@ export const videoEffectManifests: VideoEffectManifest[] = [
           clampFinite(values.mix ?? values.intensity, 1),
           VIDEO_EFFECT_PARAM_RANGES.intensity,
         ),
+      }),
+    ],
+  },
+  {
+    type: 'color-tone',
+    name: 'Color Tone',
+    nameKey: 'fastcat.effects.video.colorTone.name',
+    description: 'Tint the image with a selected color',
+    descriptionKey: 'fastcat.effects.video.colorTone.description',
+    icon: 'i-heroicons-eye-dropper',
+    target: 'video',
+    renderer: 'wgsl-compute',
+    defaultValues: {
+      color: '#2f80ff',
+      amount: 0.35,
+      blendMode: 'soft-light',
+      preserveLuminance: true,
+      range: 'all',
+    },
+    paramRanges: {
+      amount: VIDEO_EFFECT_PARAM_RANGES.unit,
+    },
+    controls: [
+      {
+        kind: 'color',
+        key: 'color',
+        labelKey: 'fastcat.effects.video.colorTone.params.color',
+      },
+      {
+        kind: 'slider',
+        key: 'amount',
+        labelKey: 'fastcat.effects.video.colorTone.params.amount',
+        min: VIDEO_EFFECT_PARAM_RANGES.unit.uiMin,
+        max: VIDEO_EFFECT_PARAM_RANGES.unit.uiMax,
+        step: 0.01,
+        defaultValue: 0.35,
+        format: percent,
+      },
+      {
+        kind: 'select',
+        key: 'blendMode',
+        labelKey: 'fastcat.effects.video.colorTone.params.blendMode',
+        options: [
+          { value: 'normal', labelKey: 'fastcat.effects.video.colorTone.options.normal' },
+          { value: 'multiply', labelKey: 'fastcat.effects.video.colorTone.options.multiply' },
+          { value: 'screen', labelKey: 'fastcat.effects.video.colorTone.options.screen' },
+          { value: 'overlay', labelKey: 'fastcat.effects.video.colorTone.options.overlay' },
+          { value: 'soft-light', labelKey: 'fastcat.effects.video.colorTone.options.softLight' },
+        ],
+      },
+      {
+        kind: 'toggle',
+        key: 'preserveLuminance',
+        labelKey: 'fastcat.effects.video.colorTone.params.preserveLuminance',
+      },
+      {
+        kind: 'select',
+        key: 'range',
+        labelKey: 'fastcat.effects.video.colorTone.params.range',
+        options: [
+          { value: 'all', labelKey: 'fastcat.effects.video.colorTone.options.all' },
+          { value: 'shadows', labelKey: 'fastcat.effects.video.colorTone.options.shadows' },
+          { value: 'midtones', labelKey: 'fastcat.effects.video.colorTone.options.midtones' },
+          { value: 'highlights', labelKey: 'fastcat.effects.video.colorTone.options.highlights' },
+        ],
+      },
+    ],
+    toEffectSpecs: (values) => [
+      spec('color-tone', {
+        color_rgba: rgbaFromHex(values.color, '#2f80ff'),
+        amount: clampRange(clampFinite(values.amount, 0.35), VIDEO_EFFECT_PARAM_RANGES.unit),
+        blend_mode: stringOption(values.blendMode, COLOR_TONE_BLEND_MODES, 'soft-light'),
+        preserve_luminance: values.preserveLuminance !== false,
+        range: stringOption(values.range, COLOR_TONE_RANGES, 'all'),
       }),
     ],
   },

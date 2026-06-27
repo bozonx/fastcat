@@ -165,6 +165,16 @@ pub enum EffectSpec {
         #[serde(default = "default_mix")]
         mix: f32,
     },
+    ColorTone {
+        color_rgba: [u8; 4],
+        amount: f32,
+        #[serde(default)]
+        blend_mode: String,
+        #[serde(default)]
+        preserve_luminance: bool,
+        #[serde(default)]
+        range: String,
+    },
     /// Blur-fill / blurred-background reframe (industry "blur fill"): show a
     /// vertical video in a landscape frame (or vice versa) by filling the frame
     /// with a cover-scaled, blurred copy of the source and compositing a

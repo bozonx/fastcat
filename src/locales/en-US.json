@@ -374,6 +374,28 @@
             "hue": "Hue"
           }
         },
+        "colorTone": {
+          "description": "Tint the image with a selected color",
+          "name": "Color Tone",
+          "params": {
+            "color": "Color",
+            "amount": "Amount",
+            "blendMode": "Blend Mode",
+            "preserveLuminance": "Preserve Luminance",
+            "range": "Range"
+          },
+          "options": {
+            "all": "All",
+            "shadows": "Shadows",
+            "midtones": "Midtones",
+            "highlights": "Highlights",
+            "normal": "Normal",
+            "multiply": "Multiply",
+            "screen": "Screen",
+            "overlay": "Overlay",
+            "softLight": "Soft Light"
+          }
+        },
         "tauri": {
           "chromaticAberration": {
             "description": "Offset color channels",

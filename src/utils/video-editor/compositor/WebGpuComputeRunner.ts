@@ -457,6 +457,38 @@ function effectUniform(
         0,
         0,
       );
+    case 'color-tone': {
+      const blendMode =
+        effect.blend_mode === 'multiply'
+          ? 1
+          : effect.blend_mode === 'screen'
+            ? 2
+            : effect.blend_mode === 'overlay'
+              ? 3
+              : effect.blend_mode === 'soft-light'
+                ? 4
+                : 0;
+      const range =
+        effect.range === 'shadows'
+          ? 1
+          : effect.range === 'midtones'
+            ? 2
+            : effect.range === 'highlights'
+              ? 3
+              : 0;
+      const built = base(
+        23,
+        effect.color_rgba[0] / 255.0,
+        effect.color_rgba[1] / 255.0,
+        effect.color_rgba[2] / 255.0,
+        Math.max(0, Math.min(1.0, effect.amount)),
+        blendMode,
+        effect.preserve_luminance ? 1 : 0,
+        0,
+      );
+      built.uniform.p6 = range;
+      return built;
+    }
     case 'hue':
       return base(11, effect.degrees, 0, 0, 0, 0, 0, 0);
     case 'levels':

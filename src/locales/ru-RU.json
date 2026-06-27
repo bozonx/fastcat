@@ -374,6 +374,28 @@
             "hue": "Цветовой тон"
           }
         },
+        "colorTone": {
+          "description": "Тонирование изображения выбранным цветом",
+          "name": "Цветовой тон",
+          "params": {
+            "color": "Цвет",
+            "amount": "Сила",
+            "blendMode": "Режим наложения",
+            "preserveLuminance": "Сохранять яркость",
+            "range": "Диапазон"
+          },
+          "options": {
+            "all": "Всё изображение",
+            "shadows": "Тени",
+            "midtones": "Средние тона",
+            "highlights": "Света",
+            "normal": "Обычный",
+            "multiply": "Умножение",
+            "screen": "Экран",
+            "overlay": "Перекрытие",
+            "softLight": "Мягкий свет"
+          }
+        },
         "tauri": {
           "chromaticAberration": {
             "description": "Смещение цветовых каналов",
