@@ -35,13 +35,12 @@ const items = computed(() =>
       }"
     >
       <template #default="{ item }">
-        <div v-if="item" class="flex items-center gap-2">
-          <UIcon v-if="item.icon" :name="item.icon" class="w-4 h-4" />
+        <span v-if="item" class="flex items-center gap-2">
           <span>{{ item.label }}</span>
           <span v-if="item.count !== undefined" class="ml-1 opacity-50 font-mono text-2xs">
             ({{ item.count }})
           </span>
-        </div>
+        </span>
       </template>
     </UTabs>
   </div>

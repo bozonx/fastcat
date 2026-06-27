@@ -37,6 +37,21 @@ describe('UiTabs', () => {
     expect(wrapper.exists()).toBe(true);
   });
 
+  it('renders only one icon per tab when icon is provided', async () => {
+    const component = await mountSuspended(UiTabs, {
+      props: {
+        modelValue: 'tab1',
+        options: [
+          { label: 'Tab 1', value: 'tab1' },
+          { label: 'Tab 2', value: 'tab2', icon: 'i-heroicons-cog' },
+        ],
+      },
+    });
+
+    const icons = component.findAll('.icon-mock');
+    expect(icons.length).toBe(1);
+  });
+
   it('emits update:modelValue when selectedIndex changes', async () => {
     const component = await mountSuspended(UiTabs, {
       props: {
