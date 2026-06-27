@@ -243,7 +243,7 @@ const containerClasses = computed(() => {
 
 const toolbarWrapperClass = computed(() => {
   if (isSideToolbar.value) {
-    return `shrink-0 h-full overflow-hidden ${props.ui.toolbar || ''}`;
+    return `shrink-0 w-[54px] h-full overflow-hidden ${props.ui.toolbar || ''}`;
   }
   const snapClass = !isExpanded.value ? 'toolbar-snap-pb' : '';
   return `shrink-0 ${snapClass} ${props.ui.toolbar || ''}`;

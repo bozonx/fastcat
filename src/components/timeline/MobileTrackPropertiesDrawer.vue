@@ -6,6 +6,7 @@ import type { TimelineTrack } from '~/timeline/types';
 import TrackProperties from '~/components/properties/TrackProperties.vue';
 import MobilePropertiesDrawer from './MobilePropertiesDrawer.vue';
 import MobileDrawerToolbarButton from './MobileDrawerToolbarButton.vue';
+import { useDrawerToolbarOrientation } from '~/composables/timeline/useDrawerToolbarOrientation';
 
 const props = defineProps<{
   isOpen: boolean;
@@ -27,6 +28,7 @@ const trackHeightIcon = computed(() =>
 );
 
 const { t } = useI18n();
+const { toolbarOrientation } = useDrawerToolbarOrientation();
 const timelineStore = useTimelineStore();
 const workspaceStore = useWorkspaceStore();
 
@@ -120,7 +122,14 @@ function deleteGap() {
       />
 
       <!-- Разделитель после действия гэпа -->
-      <div v-if="isGapMode" class="w-px h-6 bg-ui-border mx-1 shrink-0" />
+      <div
+        v-if="isGapMode"
+        :class="
+          toolbarOrientation === 'vertical'
+            ? 'h-px w-6 bg-ui-border my-1.5 self-center shrink-0'
+            : 'w-px h-6 bg-ui-border mx-1 self-center shrink-0'
+        "
+      />
 
       <!-- Add content -->
       <MobileDrawerToolbarButton
@@ -144,7 +153,14 @@ function deleteGap() {
         @click="selectedTrack && emit('toggle-track-height', selectedTrack.id)"
       />
 
-      <div v-if="selectedTrack" class="w-px h-6 bg-ui-border mx-1 shrink-0" />
+      <div
+        v-if="selectedTrack"
+        :class="
+          toolbarOrientation === 'vertical'
+            ? 'h-px w-6 bg-ui-border my-1.5 self-center shrink-0'
+            : 'w-px h-6 bg-ui-border mx-1 self-center shrink-0'
+        "
+      />
 
       <!-- 2. Active/disabled (дорожку) -->
       <MobileDrawerToolbarButton

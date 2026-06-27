@@ -56,7 +56,8 @@ watch(() => [props.projectId, props.projectRelativePath], load);
     <img
       v-if="url"
       :src="url"
-      class="w-full h-full object-contain transition-transform duration-700 group-hover:scale-105"
+      class="w-full h-full transition-transform duration-700 group-hover:scale-105"
+      :class="[variant === 'mobile' ? 'object-cover' : 'object-contain']"
       :alt="t('fastcat.startup.projectThumbnail')"
     />
     <div

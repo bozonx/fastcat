@@ -427,7 +427,13 @@ const {
             :label="allLocked ? t('fastcat.timeline.unlockClip') : t('fastcat.timeline.lockClip')"
             @click="toggleLocked"
           />
-          <div class="w-px h-6 bg-ui-border mx-1 shrink-0" />
+          <div
+            :class="
+              drawerToolbarOrientation === 'vertical'
+                ? 'h-px w-6 bg-ui-border my-1.5 self-center shrink-0'
+                : 'w-px h-6 bg-ui-border mx-1 self-center shrink-0'
+            "
+          />
           <MobileDrawerToolbarButton
             icon="i-heroicons-x-mark"
             :label="t('common.close')"

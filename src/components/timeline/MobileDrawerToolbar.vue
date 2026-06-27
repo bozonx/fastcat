@@ -68,7 +68,7 @@ onUnmounted(() => {
     class="mobile-drawer-toolbar relative overflow-hidden"
     :class="
       isVertical
-        ? 'h-full min-h-0 mobile-drawer-toolbar--vertical'
+        ? 'h-full min-h-0 w-full mobile-drawer-toolbar--vertical'
         : 'flex-1 min-w-0 mobile-drawer-toolbar--horizontal'
     "
   >
@@ -86,13 +86,13 @@ onUnmounted(() => {
     <div
       ref="scrollContainer"
       class="scroll-smooth"
-      :class="isVertical ? 'h-full overflow-y-auto no-scrollbar' : 'overflow-x-auto no-scrollbar'"
+      :class="isVertical ? 'h-full w-full overflow-y-auto no-scrollbar' : 'overflow-x-auto no-scrollbar'"
       @scroll="updateScrollState"
     >
       <div
         class="flex"
         :class="[
-          isVertical ? 'flex-col items-center h-max min-h-full' : 'items-center w-max min-w-full',
+          isVertical ? 'flex-col items-stretch w-full h-max min-h-full' : 'items-center w-max min-w-full',
           props.contentClass,
         ]"
       >
