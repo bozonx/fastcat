@@ -391,29 +391,46 @@ const {
               : 'border-b border-ui-border'
           "
         >
-          <MobileDrawerToolbarButton icon="i-heroicons-trash" @click="handleDelete" />
+          <MobileDrawerToolbarButton
+            icon="i-heroicons-trash"
+            :label="t('common.delete')"
+            @click="handleDelete"
+          />
           <MobileDrawerToolbarButton
             icon="i-heroicons-document-duplicate"
+            :label="t('common.copy')"
             @click="handleCopyClips"
           />
-          <MobileDrawerToolbarButton icon="i-heroicons-scissors" @click="handleCutClips" />
-          <MobileDrawerToolbarButton icon="i-lucide-lab-razor-blade" @click="handleBladeClips" />
+          <MobileDrawerToolbarButton
+            icon="i-heroicons-scissors"
+            :label="t('common.cut')"
+            @click="handleCutClips"
+          />
+          <MobileDrawerToolbarButton
+            icon="i-lucide-lab-razor-blade"
+            :label="t('fastcat.timeline.split')"
+            @click="handleBladeClips"
+          />
           <MobileDrawerToolbarButton
             :icon="allDisabled ? 'i-heroicons-eye' : 'i-heroicons-eye-slash'"
+            :label="allDisabled ? t('fastcat.timeline.enableClip') : t('fastcat.timeline.disableClip')"
             @click="toggleDisabled"
           />
           <MobileDrawerToolbarButton
             v-if="hasAudioOrVideoWithAudio"
             :icon="allMuted ? 'i-heroicons-speaker-wave' : 'i-heroicons-speaker-x-mark'"
+            :label="allMuted ? t('fastcat.timeline.unmuteClip') : t('fastcat.timeline.muteClip')"
             @click="toggleMuted"
           />
           <MobileDrawerToolbarButton
             :icon="allLocked ? 'i-heroicons-lock-closed' : 'i-heroicons-lock-open'"
+            :label="allLocked ? t('fastcat.timeline.unlockClip') : t('fastcat.timeline.lockClip')"
             @click="toggleLocked"
           />
           <div class="w-px h-6 bg-ui-border mx-1 shrink-0" />
           <MobileDrawerToolbarButton
             icon="i-heroicons-x-mark"
+            :label="t('common.close')"
             @click="onMultiSelectionDrawerClose"
           />
         </MobileDrawerToolbar>
@@ -576,7 +593,15 @@ const {
 
     <!-- FAB: add content -->
     <Teleport :to="teleportTarget">
-      <div v-if="!isAnyDrawerOpen" class="fixed bottom-20 right-6 z-40 transition-all duration-300">
+      <div
+        v-if="!isAnyDrawerOpen && uiStore.activeModalsCount === 0"
+        class="fixed z-40 transition-all duration-300"
+        :class="
+          drawerToolbarOrientation === 'vertical'
+            ? 'bottom-6 right-6'
+            : 'bottom-20 right-6'
+        "
+      >
         <UButton
           icon="lucide:plus"
           size="xl"

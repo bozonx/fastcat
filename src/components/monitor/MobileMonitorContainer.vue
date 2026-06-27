@@ -11,6 +11,7 @@ import MonitorOverlayContent from './MonitorOverlayContent.vue';
 import MobileMonitorAudioControl from './MobileMonitorAudioControl.vue';
 import { useMonitorContainerControls } from '~/composables/monitor/useMonitorContainerControls';
 import { useMonitorFullscreenViewport } from '~/composables/monitor/useMonitorFullscreenViewport';
+import { useLongPressTooltip } from '~/composables/ui/useLongPressTooltip';
 import ProjectMarkers from '~/components/project/ProjectMarkers.vue';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import {
@@ -422,6 +423,20 @@ const containerHeightClass = computed(() => {
     ? 'h-[30vh] min-h-[220px] max-h-[340px]'
     : 'h-[34vh] min-h-[240px] max-h-[420px]';
 });
+
+const monitorTooltip = useLongPressTooltip();
+
+function onMonitorButtonPointerDown(e: PointerEvent, text: string) {
+  monitorTooltip.startPress(e, text);
+}
+
+function onMonitorButtonPointerMove(e: PointerEvent) {
+  monitorTooltip.movePress(e);
+}
+
+function onMonitorButtonPointerUp() {
+  monitorTooltip.hide();
+}
 </script>
 
 <template>
@@ -540,6 +555,10 @@ const containerHeightClass = computed(() => {
               class="p-1.5"
               :aria-label="t('fastcat.monitor.fullscreen')"
               @click="toggleFullscreen"
+              @pointerdown="onMonitorButtonPointerDown($event, t('fastcat.monitor.fullscreen'))"
+              @pointermove="onMonitorButtonPointerMove"
+              @pointerup="onMonitorButtonPointerUp"
+              @pointerleave="onMonitorButtonPointerUp"
             />
 
             <UButton
@@ -563,6 +582,10 @@ const containerHeightClass = computed(() => {
               :label="monitorZoomLabel"
               @click="resetZoom"
               @dblclick="resetView"
+              @pointerdown="onMonitorButtonPointerDown($event, t('fastcat.monitor.resetZoom'))"
+              @pointermove="onMonitorButtonPointerMove"
+              @pointerup="onMonitorButtonPointerUp"
+              @pointerleave="onMonitorButtonPointerUp"
             />
           </div>
 
@@ -578,6 +601,10 @@ const containerHeightClass = computed(() => {
               :aria-label="t('fastcat.monitor.rewind')"
               :disabled="!canInteractPlayback"
               @click="rewindToStart"
+              @pointerdown="onMonitorButtonPointerDown($event, t('fastcat.monitor.rewind'))"
+              @pointermove="onMonitorButtonPointerMove"
+              @pointerup="onMonitorButtonPointerUp"
+              @pointerleave="onMonitorButtonPointerUp"
             />
 
             <UButton
@@ -594,6 +621,10 @@ const containerHeightClass = computed(() => {
               :aria-label="t('fastcat.monitor.play')"
               :disabled="!canInteractPlayback"
               @click="togglePlayback"
+              @pointerdown="onMonitorButtonPointerDown($event, t('fastcat.monitor.play'))"
+              @pointermove="onMonitorButtonPointerMove"
+              @pointerup="onMonitorButtonPointerUp"
+              @pointerleave="onMonitorButtonPointerUp"
             />
 
             <UDropdownMenu
@@ -609,6 +640,10 @@ const containerHeightClass = computed(() => {
                 class="font-mono tabular-nums text-[10px] min-w-10 justify-center h-6 px-1 text-ui-text-muted hover:text-ui-text"
                 :label="speedButtonLabel"
                 :aria-label="t('fastcat.monitor.playbackSpeed')"
+                @pointerdown="onMonitorButtonPointerDown($event, t('fastcat.monitor.playbackSpeed'))"
+                @pointermove="onMonitorButtonPointerMove"
+                @pointerup="onMonitorButtonPointerUp"
+                @pointerleave="onMonitorButtonPointerUp"
               />
             </UDropdownMenu>
 
@@ -624,6 +659,10 @@ const containerHeightClass = computed(() => {
                 icon="lucide:ellipsis"
                 class="p-1.5"
                 :aria-label="t('common.more')"
+                @pointerdown="onMonitorButtonPointerDown($event, t('common.more'))"
+                @pointermove="onMonitorButtonPointerMove"
+                @pointerup="onMonitorButtonPointerUp"
+                @pointerleave="onMonitorButtonPointerUp"
               />
             </UDropdownMenu>
           </div>
@@ -643,6 +682,16 @@ const containerHeightClass = computed(() => {
           />
         </div>
       </UiMobileDrawer>
+    </div>
+  </Teleport>
+
+  <Teleport to="body">
+    <div
+      v-if="monitorTooltip.tooltipVisible.value"
+      class="fixed z-[9999] px-2.5 py-1.5 rounded-lg bg-black/90 text-white text-xs font-medium whitespace-nowrap pointer-events-none shadow-lg"
+      :style="{ left: `${monitorTooltip.tooltipX.value}px`, top: `${monitorTooltip.tooltipY.value - 48}px`, transform: 'translateX(-50%)' }"
+    >
+      {{ monitorTooltip.tooltipText.value }}
     </div>
   </Teleport>
 </template>

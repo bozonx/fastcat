@@ -35,8 +35,8 @@ const { toolbarOrientation } = useDrawerToolbarOrientation();
 /** Toolbar host: a top row in portrait, a full-height rail in landscape. */
 const toolbarWrapperClass = computed(() =>
   toolbarOrientation.value === 'vertical'
-    ? 'relative border-r border-ui-border bg-ui-bg-elevated flex flex-col h-full'
-    : 'relative border-b border-ui-border bg-ui-bg-elevated flex flex-col w-full',
+    ? 'relative border-r border-ui-border bg-ui-bg-elevated flex flex-col h-full w-full shrink-0'
+    : 'relative border-b border-ui-border bg-ui-bg-elevated flex flex-col w-full shrink-0',
 );
 
 const timelineStore = useTimelineStore();
@@ -136,16 +136,22 @@ const hasAudio = computed(() => {
         >
           <MobileDrawerToolbarButton
             icon="i-heroicons-trash"
+            :label="t('common.delete')"
             :disabled="isLocked"
             @click="handleOpenDeleteDrawer"
           />
 
           <!-- 2. Copy -->
-          <MobileDrawerToolbarButton icon="i-heroicons-document-duplicate" @click="handleCopy" />
+          <MobileDrawerToolbarButton
+            icon="i-heroicons-document-duplicate"
+            :label="t('common.copy')"
+            @click="handleCopy"
+          />
 
           <!-- 3. Cut -->
           <MobileDrawerToolbarButton
             icon="i-heroicons-scissors"
+            :label="t('common.cut')"
             :disabled="isLocked"
             @click="handleCut"
           />
@@ -153,6 +159,7 @@ const hasAudio = computed(() => {
           <!-- 4. Open Trim Panel -->
           <MobileDrawerToolbarButton
             icon="i-heroicons-arrows-right-left"
+            :label="t('fastcat.timeline.trim')"
             :disabled="isLocked"
             @click="handleOpenTrimPanel"
           />
@@ -160,6 +167,7 @@ const hasAudio = computed(() => {
           <!-- 5. Split -->
           <MobileDrawerToolbarButton
             icon="i-lucide-lab-razor-blade"
+            :label="t('fastcat.timeline.split')"
             :disabled="isLocked"
             @click="handleSplit"
           />
@@ -168,6 +176,7 @@ const hasAudio = computed(() => {
           <MobileDrawerToolbarButton
             v-if="clipTrackKind === 'video'"
             icon="i-lucide-blend"
+            :label="t('fastcat.timeline.transitions')"
             :disabled="isLocked"
             @click="handleOpenTransitionsPanel"
           />
@@ -175,6 +184,7 @@ const hasAudio = computed(() => {
           <!-- 6. Active/disabled -->
           <MobileDrawerToolbarButton
             :icon="clip?.disabled ? 'i-heroicons-eye' : 'i-heroicons-eye-slash'"
+            :label="clip?.disabled ? t('fastcat.timeline.enableClip') : t('fastcat.timeline.disableClip')"
             :active="clip?.disabled"
             @click="handleToggleDisabled"
           />
@@ -183,6 +193,7 @@ const hasAudio = computed(() => {
           <template v-if="hasAudio">
             <MobileDrawerToolbarButton
               :icon="clip?.audioMuted ? 'i-heroicons-speaker-wave' : 'i-heroicons-speaker-x-mark'"
+              :label="clip?.audioMuted ? t('fastcat.timeline.unmuteClip') : t('fastcat.timeline.muteClip')"
               :active="clip?.audioMuted"
               @click="handleToggleMuted"
             />
@@ -191,6 +202,7 @@ const hasAudio = computed(() => {
           <!-- 8. Locked -->
           <MobileDrawerToolbarButton
             :icon="clip?.locked ? 'i-heroicons-lock-open' : 'i-heroicons-lock-closed'"
+            :label="clip?.locked ? t('fastcat.timeline.unlockClip') : t('fastcat.timeline.lockClip')"
             :active="clip?.locked"
             @click="handleToggleLocked"
           />

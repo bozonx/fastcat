@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { useLongPressTooltip } from '~/composables/ui/useLongPressTooltip';
+
 interface Props {
   icon: string;
   label?: string;
@@ -9,8 +11,26 @@ interface Props {
   primary?: boolean;
 }
 
-defineProps<Props>();
+const props = defineProps<Props>();
 defineEmits<{ click: [] }>();
+
+const { tooltipText, tooltipVisible, startPress, movePress, hide } = useLongPressTooltip();
+
+function onPointerDown(e: PointerEvent) {
+  startPress(e, props.label ?? '');
+}
+
+function onPointerUp() {
+  hide();
+}
+
+function onPointerMove(e: PointerEvent) {
+  movePress(e);
+}
+
+function onPointerLeave() {
+  hide();
+}
 </script>
 
 <template>
@@ -33,7 +53,21 @@ defineEmits<{ click: [] }>();
     :title="label"
     :aria-label="label"
     @click="$emit('click')"
+    @pointerdown="onPointerDown"
+    @pointerup="onPointerUp"
+    @pointermove="onPointerMove"
+    @pointerleave="onPointerLeave"
   >
     <UIcon :name="icon" class="w-5 h-5 shrink-0" />
   </button>
+
+  <Teleport to="body">
+    <div
+      v-if="tooltipVisible"
+      class="fixed z-[9999] px-2.5 py-1.5 rounded-lg bg-black/90 text-white text-xs font-medium whitespace-nowrap pointer-events-none shadow-lg"
+      :style="{ left: `${tooltipX}px`, top: `${tooltipY - 48}px`, transform: 'translateX(-50%)' }"
+    >
+      {{ tooltipText }}
+    </div>
+  </Teleport>
 </template>
