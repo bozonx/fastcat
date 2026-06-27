@@ -300,33 +300,41 @@ export function useMonitorContainerControls(options: UseMonitorContainerControls
   }
 
   const contextMenuItems = computed(() => [
+    ...(options.isMobile
+      ? []
+      : [
+          [
+            {
+              label: options.t('fastcat.monitor.playbackSpeed'),
+              icon: 'i-heroicons-forward',
+              children: [
+                ...negativeSpeedOptions.map((opt) => ({
+                  label: opt.label,
+                  type: 'checkbox' as const,
+                  checked: options.timelineStore.playbackSpeed === opt.value,
+                  onSelect: () => options.timelineStore.setPlaybackSpeed(opt.value),
+                })),
+                { label: '', type: 'separator' as const },
+                ...playbackSpeedOptions.map((opt) => ({
+                  label: opt.label,
+                  type: 'checkbox' as const,
+                  checked: options.timelineStore.playbackSpeed === opt.value,
+                  onSelect: () => options.timelineStore.setPlaybackSpeed(opt.value),
+                })),
+              ],
+            },
+          ],
+        ]),
     [
-      {
-        label: options.t('fastcat.monitor.playbackSpeed'),
-        icon: 'i-heroicons-forward',
-        children: [
-          ...negativeSpeedOptions.map((opt) => ({
-            label: opt.label,
-            type: 'checkbox' as const,
-            checked: options.timelineStore.playbackSpeed === opt.value,
-            onSelect: () => options.timelineStore.setPlaybackSpeed(opt.value),
-          })),
-          { label: '', type: 'separator' as const },
-          ...playbackSpeedOptions.map((opt) => ({
-            label: opt.label,
-            type: 'checkbox' as const,
-            checked: options.timelineStore.playbackSpeed === opt.value,
-            onSelect: () => options.timelineStore.setPlaybackSpeed(opt.value),
-          })),
-        ],
-      },
-    ],
-    [
-      {
-        label: options.t('fastcat.timeline.addMarkerAtPlayhead'),
-        icon: 'i-heroicons-tag',
-        onSelect: createMarkerAtPlayhead,
-      },
+      ...(options.isMobile
+        ? []
+        : [
+            {
+              label: options.t('fastcat.timeline.addMarkerAtPlayhead'),
+              icon: 'i-heroicons-tag',
+              onSelect: createMarkerAtPlayhead,
+            },
+          ]),
       {
         label: options.t('fastcat.monitor.snapshot'),
         icon: 'i-heroicons-camera',

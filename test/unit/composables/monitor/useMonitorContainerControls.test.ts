@@ -29,7 +29,7 @@ vi.mock('~/composables/monitor/useMonitorSettings', () => ({
   }),
 }));
 
-function createControls() {
+function createControls(options: { isMobile?: boolean } = {}) {
   return useMonitorContainerControls({
     t: (key: string) => key,
     projectStore: {
@@ -64,11 +64,12 @@ function createControls() {
     createStopFrameSnapshot: vi.fn(async () => undefined),
     scheduleBuild: vi.fn(),
     toggleGrid: vi.fn(),
+    isMobile: options.isMobile,
   });
 }
 
-function flattenMenuItems(groups: unknown[][]): Array<{ label?: string; onSelect?: () => void }> {
-  return groups.flatMap((group) => group as Array<{ label?: string; onSelect?: () => void }>);
+function flattenMenuItems(groups: unknown[][]): Array<{ label?: string; type?: string; onSelect?: () => void }> {
+  return groups.flatMap((group) => group as Array<{ label?: string; type?: string; onSelect?: () => void }>);
 }
 
 describe('useMonitorContainerControls', () => {
@@ -126,5 +127,29 @@ describe('useMonitorContainerControls', () => {
 
     expect(mockActiveMonitor.previewBlurQuality).toBe('high');
     expect(items.some((entry) => entry.label === 'fastcat.monitor.previewBlurQuality:')).toBe(true);
+  });
+
+  it('hides addMarkerAtPlayhead option in context menu if isMobile is true', () => {
+    const controls = createControls({ isMobile: true });
+    const items = flattenMenuItems(controls.contextMenuItems.value);
+    expect(items.some((entry) => entry.label === 'fastcat.timeline.addMarkerAtPlayhead')).toBe(false);
+  });
+
+  it('shows addMarkerAtPlayhead option in context menu if isMobile is false or undefined', () => {
+    const controls = createControls({ isMobile: false });
+    const items = flattenMenuItems(controls.contextMenuItems.value);
+    expect(items.some((entry) => entry.label === 'fastcat.timeline.addMarkerAtPlayhead')).toBe(true);
+  });
+
+  it('hides playbackSpeed selection option in context menu if isMobile is true', () => {
+    const controls = createControls({ isMobile: true });
+    const items = flattenMenuItems(controls.contextMenuItems.value);
+    expect(items.some((entry) => entry.label === 'fastcat.monitor.playbackSpeed')).toBe(false);
+  });
+
+  it('shows playbackSpeed selection option in context menu if isMobile is false or undefined', () => {
+    const controls = createControls({ isMobile: false });
+    const items = flattenMenuItems(controls.contextMenuItems.value);
+    expect(items.some((entry) => entry.label === 'fastcat.monitor.playbackSpeed')).toBe(true);
   });
 });

@@ -230,6 +230,39 @@ describe('MobileMonitorContainer', () => {
     expect(speedDropdown!.props('open')).toBe(false);
   });
 
+  it('opens mobile monitor context menu on viewport long press', async () => {
+    vi.useFakeTimers();
+
+    wrapper = mount(MobileMonitorContainer, {
+      global: {
+        plugins: [pinia],
+        stubs,
+      },
+    });
+
+    await wrapper.vm.$nextTick();
+
+    const moreDropdown = wrapper.findAllComponents(stubs.UDropdownMenu).find((component) => {
+      return component.props('items') === wrapper.vm.contextMenuItems;
+    });
+
+    expect(moreDropdown).toBeTruthy();
+    expect(moreDropdown!.props('open')).toBe(false);
+
+    const viewport = wrapper.find('.viewport-stub');
+    await viewport.trigger('pointerdown', { clientX: 100, clientY: 100 });
+
+    vi.advanceTimersByTime(200);
+    await wrapper.vm.$nextTick();
+    expect(moreDropdown!.props('open')).toBe(false);
+
+    vi.advanceTimersByTime(350);
+    await wrapper.vm.$nextTick();
+    expect(moreDropdown!.props('open')).toBe(true);
+
+    vi.useRealTimers();
+  });
+
   it('shows status text when no media is present', async () => {
     mockVideoItems.value = []; // NO MEDIA
 

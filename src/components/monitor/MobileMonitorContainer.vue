@@ -89,8 +89,6 @@ const { showGrid, toggleGrid, getGridLines } = useMonitorGrid({ projectStore });
 
 const {
   contextMenuItems,
-  resetView,
-  resetZoom,
   onPlaybackSpeedChange,
   selectedPlaybackSpeedOption,
   speedButtonLabel,
@@ -124,11 +122,6 @@ const mobileSpeedMenuItems = computed(() => [
     onSelect: () => onPlaybackSpeedChange(v),
   })),
 ]);
-
-const monitorZoomLabel = computed(() => {
-  const zoom = projectStore.activeMonitor?.zoom ?? 1;
-  return `x${zoom.toFixed(2)}`;
-});
 
 const isMobileSpeedMenuOpen = ref(false);
 const isMobileMoreMenuOpen = ref(false);
@@ -249,19 +242,28 @@ onBeforeUnmount(() => {
   }
 });
 
-function onLongPressPointerDown(e: PointerEvent) {
-  // Long press contextual menu is disabled on mobile
+function startViewportLongPress(e: PointerEvent) {
+  clearLongPressTimer();
   longPressStartX = e.clientX;
   longPressStartY = e.clientY;
+
+  longPressTimer = setTimeout(() => {
+    isMobileMoreMenuOpen.value = true;
+    longPressTimer = null;
+    if (typeof navigator !== 'undefined' && navigator.vibrate) {
+      navigator.vibrate(50);
+    }
+  }, MOBILE_MARKER_LONG_PRESS_MS);
 }
 
 function onViewportPointerDown(e: PointerEvent) {
   closeMobileDropdownMenus();
-  onLongPressPointerDown(e);
+  startViewportLongPress(e);
 }
 
 function onToolbarPointerDown(e: PointerEvent) {
-  onLongPressPointerDown(e);
+  longPressStartX = e.clientX;
+  longPressStartY = e.clientY;
   showControlsTemporary();
 }
 
@@ -574,19 +576,7 @@ function onMonitorButtonPointerUp() {
               @pointerleave="stopMarkerLongPress"
             />
 
-            <UButton
-              size="xs"
-              variant="ghost"
-              color="neutral"
-              class="font-mono tabular-nums text-[10px] min-w-10 justify-center h-6 px-1 text-ui-text-muted hover:text-ui-text"
-              :label="monitorZoomLabel"
-              @click="resetZoom"
-              @dblclick="resetView"
-              @pointerdown="onMonitorButtonPointerDown($event, t('fastcat.monitor.resetZoom'))"
-              @pointermove="onMonitorButtonPointerMove"
-              @pointerup="onMonitorButtonPointerUp"
-              @pointerleave="onMonitorButtonPointerUp"
-            />
+
           </div>
 
           <div class="flex items-center gap-4" :class="[showSideControls ? 'flex-col' : 'h-full']">
