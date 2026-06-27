@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use std::io::{Seek, Write};
+use std::io::{BufWriter, Seek, Write};
 use std::path::Path;
 use std::sync::Arc;
 
@@ -7,8 +7,15 @@ use anyhow::Context;
 use parking_lot::{Condvar, Mutex};
 
 use crate::audio::decode::{decode_audio_chunk, spawn_window_fill, WindowFillPriority};
-use crate::audio::shared::{AudioRenderTarget, AudioShared, CHUNK_DURATION_SEC, REFILL_MARGIN_SEC};
+use crate::audio::shared::{AudioRenderTarget, AudioShared, REFILL_MARGIN_SEC};
 use crate::monitor::scene::{AudioFadeCurve, SceneAudioLayer, SceneAudioTrack};
+
+/// Chunk size for the offline export mix. Much larger than the realtime
+/// [`crate::audio::shared::CHUNK_DURATION_SEC`] (50 ms): an offline render has no
+/// latency deadline, so coarser chunks slash the per-chunk overhead (allocations,
+/// track grouping, `shared` lock pairs) without changing the output — fades and gain
+/// are driven by absolute timeline position, not chunk boundaries.
+const EXPORT_CHUNK_DURATION_SEC: f64 = 1.0;
 
 pub struct WavRenderParams<'a> {
     pub scene: &'a [SceneAudioLayer],
@@ -49,14 +56,23 @@ pub fn render_scene_to_wav(params: WavRenderParams<'_>) -> anyhow::Result<()> {
         start
     };
     let estimated_frames = ((end - start) * target.sample_rate as f64).round().max(1.0) as u64;
-    let mut file = std::fs::File::create(params.target_path)
+    let raw_file = std::fs::File::create(params.target_path)
         .with_context(|| format!("create audio mix {}", params.target_path.display()))?;
 
     // Write placeholder header (will be patched after we know actual size). The temp mix
     // is a Sony Wave64 (.w64) container: identical f32 PCM payload to a plain WAV but with
     // 64-bit size fields, so a long export (a RIFF/WAV's 32-bit size caps at 4 GB ≈ 3 h of
     // 48 kHz stereo f32) no longer overflows. ffmpeg reads it natively (format_name=w64).
-    write_wave64_f32_header_placeholder(&mut file, target.sample_rate, target.channels as u16)?;
+    let mut raw_file = raw_file;
+    write_wave64_f32_header_placeholder(&mut raw_file, target.sample_rate, target.channels as u16)?;
+
+    // Buffer the PCM writes. The payload is f32 LE: writing each 4-byte sample straight
+    // to the unbuffered `File` was one `write()` syscall per sample (~155M for a 27-min
+    // stereo 48 kHz export — minutes of pure syscall overhead). BufWriter coalesces them,
+    // and we also stage each chunk into one byte buffer so it lands in a single `write_all`.
+    // BufWriter implements Seek (flushing first), so the trailing header patch still works.
+    let mut file = BufWriter::new(raw_file);
+    let mut chunk_bytes: Vec<u8> = Vec::new();
 
     let shared = Arc::new((Mutex::new(AudioShared::default()), Condvar::new()));
 
@@ -68,7 +84,12 @@ pub fn render_scene_to_wav(params: WavRenderParams<'_>) -> anyhow::Result<()> {
         {
             return Err(anyhow::anyhow!("cancelled"));
         }
-        let chunk_frames = ((CHUNK_DURATION_SEC * target.sample_rate as f64).round() as u64)
+        // Offline export has no realtime-latency constraint, so mix in much larger
+        // chunks than the 50 ms realtime granularity: ~32× fewer loop iterations means
+        // ~32× fewer per-chunk allocations, HashMap rebuilds and `shared` lock pairs over
+        // a long render. Per-chunk fades / master gain are position-driven, so a bigger
+        // chunk is bit-identical to many small ones.
+        let chunk_frames = ((EXPORT_CHUNK_DURATION_SEC * target.sample_rate as f64).round() as u64)
             .min(estimated_frames - written_frames)
             .max(1);
         let chunk_duration = chunk_frames as f64 / target.sample_rate as f64;
@@ -85,9 +106,12 @@ pub fn render_scene_to_wav(params: WavRenderParams<'_>) -> anyhow::Result<()> {
             shared: &shared,
         })?;
         let samples_to_write = chunk_frames as usize * target.channels;
+        chunk_bytes.clear();
+        chunk_bytes.reserve(samples_to_write * 4);
         for sample in chunk.into_iter().take(samples_to_write) {
-            file.write_all(&sample.to_le_bytes())?;
+            chunk_bytes.extend_from_slice(&sample.to_le_bytes());
         }
+        file.write_all(&chunk_bytes)?;
         written_frames = written_frames.saturating_add(chunk_frames);
         if let Some(report) = params.on_progress {
             report((written_frames as f64 / estimated_frames as f64).clamp(0.0, 1.0));
@@ -113,6 +137,9 @@ pub fn render_scene_to_wav(params: WavRenderParams<'_>) -> anyhow::Result<()> {
     // data size field: 16 (riff) + 8 + 16 (wave) + 40 (fmt chunk) + 16 (data GUID) = 96.
     file.seek(std::io::SeekFrom::Start(96))?;
     file.write_all(&data_chunk_size.to_le_bytes())?;
+    // Flush the BufWriter explicitly: its Drop impl would flush too, but swallows any
+    // error, and a truncated mix must surface as an export failure.
+    file.flush()?;
     Ok(())
 }
 
