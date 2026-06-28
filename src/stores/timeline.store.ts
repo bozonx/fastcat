@@ -200,6 +200,10 @@ export const useTimelineStore = defineStore('timeline', () => {
     pushTimelineHistory: (preState, commandType, labelKey) =>
       dispatcher.pushTimelineHistory(preState, commandType, labelKey),
     requestTimelineSave,
+    getSelectionRange: () => selectionRange.value,
+    updateSelectionRange: (range) => {
+      selectionRange.value = range;
+    },
   });
 
   const playback = createTimelinePlaybackModule({

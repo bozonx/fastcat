@@ -58,6 +58,7 @@ function createHarness(doc: TimelineDocument) {
     doc,
     target: null as { trackId: string; itemId: string } | null,
     selectedIds: [] as string[],
+    selectionRange: null as { startUs: number; endUs: number } | null,
     currentTime: 0,
   };
 
@@ -85,6 +86,10 @@ function createHarness(doc: TimelineDocument) {
     batchApplyTimeline: (cmds) => runBatch(cmds),
     pushTimelineHistory: () => {},
     requestTimelineSave: () => Promise.resolve(),
+    getSelectionRange: () => state.selectionRange,
+    updateSelectionRange: (range) => {
+      state.selectionRange = range;
+    },
   });
 
   return { state, service };
@@ -96,6 +101,21 @@ function clips(doc: TimelineDocument): TimelineClipItem[] {
 
 function gaps(doc: TimelineDocument): TimelineTrackItem[] {
   return doc.tracks[0]!.items.filter((it) => it.kind === 'gap');
+}
+
+function markerTimes(
+  doc: TimelineDocument,
+): Record<string, { timeUs: number; durationUs?: number }> {
+  const markers = doc.metadata?.fastcat?.markers ?? [];
+  return Object.fromEntries(
+    markers.map((marker) => [
+      marker.id,
+      {
+        timeUs: marker.timeUs,
+        ...(marker.durationUs === undefined ? {} : { durationUs: marker.durationUs }),
+      },
+    ]),
+  );
 }
 
 describe('ripple trims / deletes — real pipeline geometry', () => {
@@ -185,5 +205,34 @@ describe('ripple trims / deletes — real pipeline geometry', () => {
     // Left half of c1 stays put; right half of c2 collapses to the cut point.
     expect(result[0]!.timelineRange).toEqual({ startUs: 0, durationUs: 5 * S });
     expect(result[1]!.timelineRange).toEqual({ startUs: 5 * S, durationUs: 5 * S });
+  });
+
+  it('rippleDeleteRange shifts clips, markers, and the selection range together', () => {
+    h.state.doc = {
+      ...h.state.doc,
+      metadata: {
+        fastcat: {
+          markers: [
+            { id: 'inside', timeUs: 6 * S, durationUs: 2 * S, text: '' },
+            { id: 'after', timeUs: 16 * S, durationUs: 2 * S, text: '' },
+          ],
+        },
+      },
+    };
+    h.state.selectionRange = { startUs: 16 * S, endUs: 18 * S };
+
+    h.service.rippleDeleteRange({ trackIds: ['v1'], startUs: 5 * S, endUs: 15 * S });
+
+    const result = clips(h.state.doc).sort(
+      (a, b) => a.timelineRange.startUs - b.timelineRange.startUs,
+    );
+    expect(result.map((clip) => clip.timelineRange)).toEqual([
+      { startUs: 0, durationUs: 5 * S },
+      { startUs: 5 * S, durationUs: 5 * S },
+    ]);
+    expect(markerTimes(h.state.doc)).toEqual({
+      after: { timeUs: 6 * S, durationUs: 2 * S },
+    });
+    expect(h.state.selectionRange).toEqual({ startUs: 6 * S, endUs: 8 * S });
   });
 });

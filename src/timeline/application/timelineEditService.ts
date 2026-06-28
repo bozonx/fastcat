@@ -1,4 +1,9 @@
-import type { TimelineDocument, TimelineClipItem, TimelineTrack } from '~/timeline/types';
+import type {
+  TimelineDocument,
+  TimelineClipItem,
+  TimelineSelectionRange,
+  TimelineTrack,
+} from '~/timeline/types';
 import type { TimelineCommand } from '~/timeline/commands';
 import type { TimelineApplyOptions } from '~/timeline/apply-options';
 
@@ -24,6 +29,8 @@ export interface TimelineEditServiceDeps {
   batchApplyTimeline: (cmds: TimelineCommand[], options?: TimelineApplyOptions) => void;
   pushTimelineHistory: (preState: TimelineDocument, commandType: string, labelKey: string) => void;
   requestTimelineSave: (options?: { immediate?: boolean }) => Promise<void>;
+  getSelectionRange?: () => TimelineSelectionRange | null;
+  updateSelectionRange?: (range: TimelineSelectionRange | null) => void;
 }
 
 interface RippleDeleteRangeParams {
@@ -33,6 +40,55 @@ interface RippleDeleteRangeParams {
 }
 
 export function createTimelineEditService(deps: TimelineEditServiceDeps) {
+  function rippleSelectionRange(
+    selectionRange: TimelineSelectionRange,
+    rangeStartUs: number,
+    rangeEndUs: number,
+  ): TimelineSelectionRange | null {
+    if (!(rangeEndUs > rangeStartUs)) return selectionRange;
+
+    const deltaUs = rangeEndUs - rangeStartUs;
+    const selectionStartUs = selectionRange.startUs;
+    const selectionEndUs = selectionRange.endUs;
+
+    if (selectionEndUs <= rangeStartUs) return selectionRange;
+    if (selectionStartUs >= rangeEndUs) {
+      return {
+        startUs: Math.max(0, selectionStartUs - deltaUs),
+        endUs: Math.max(0, selectionEndUs - deltaUs),
+      };
+    }
+    if (selectionStartUs >= rangeStartUs && selectionEndUs <= rangeEndUs) return null;
+    if (selectionStartUs < rangeStartUs && selectionEndUs > rangeEndUs) {
+      return {
+        startUs: selectionStartUs,
+        endUs: Math.max(selectionStartUs, selectionEndUs - deltaUs),
+      };
+    }
+    if (selectionStartUs < rangeStartUs) {
+      return {
+        startUs: selectionStartUs,
+        endUs: Math.max(selectionStartUs, rangeStartUs),
+      };
+    }
+
+    const nextStartUs = Math.max(0, rangeStartUs);
+    const nextEndUs = Math.max(nextStartUs, selectionEndUs - deltaUs);
+    return {
+      startUs: nextStartUs,
+      endUs: nextEndUs,
+    };
+  }
+
+  function applyRippleSelectionRange(rangeStartUs: number, rangeEndUs: number) {
+    if (!deps.getSelectionRange || !deps.updateSelectionRange) return;
+
+    const selectionRange = deps.getSelectionRange();
+    if (!selectionRange) return;
+
+    deps.updateSelectionRange(rippleSelectionRange(selectionRange, rangeStartUs, rangeEndUs));
+  }
+
   function getTrackById(doc: TimelineDocument, trackId: string): TimelineTrack | null {
     return doc.tracks.find((t) => t.id === trackId) ?? null;
   }
@@ -222,6 +278,7 @@ export function createTimelineEditService(deps: TimelineEditServiceDeps) {
         deps.batchApplyTimeline(markerCmds, internalBatchOptions);
       }
     }
+    applyRippleSelectionRange(startUs, endUs);
 
     const finalDoc = deps.getDoc();
     if (finalDoc && finalDoc !== preState && !options?.skipHistory) {
@@ -288,6 +345,7 @@ export function createTimelineEditService(deps: TimelineEditServiceDeps) {
       saveMode: 'none',
       labelKey: 'videoEditor.fileManager.history.entries.trimClip',
     });
+    applyRippleSelectionRange(cutUs, cutUs + deltaUs);
 
     await deps.requestTimelineSave({ immediate: true });
     return cutUs;
@@ -357,6 +415,7 @@ export function createTimelineEditService(deps: TimelineEditServiceDeps) {
       saveMode: 'none',
       labelKey: 'videoEditor.fileManager.history.entries.trimClip',
     });
+    applyRippleSelectionRange(startUs, startUs + deltaUs);
 
     await deps.requestTimelineSave({ immediate: true });
     return startUs;
