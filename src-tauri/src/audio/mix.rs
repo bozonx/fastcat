@@ -17,6 +17,12 @@ use crate::monitor::scene::{AudioFadeCurve, SceneAudioLayer, SceneAudioTrack};
 /// are driven by absolute timeline position, not chunk boundaries.
 const EXPORT_CHUNK_DURATION_SEC: f64 = 1.0;
 
+/// How far behind the current export chunk a finished layer's streaming state is
+/// kept before being released. A small slack absorbs resampler group-delay tails and
+/// microsecond-grid clip boundaries so a layer is never pruned a hair before its last
+/// sample is mixed; the mix only moves forward, so anything past this is dead weight.
+const PRUNE_BEHIND_SEC: f64 = 2.0;
+
 pub struct WavRenderParams<'a> {
     pub scene: &'a [SceneAudioLayer],
     pub tracks: &'a [SceneAudioTrack],
@@ -116,6 +122,39 @@ pub fn render_scene_to_wav(params: WavRenderParams<'_>) -> anyhow::Result<()> {
         if let Some(report) = params.on_progress {
             report((written_frames as f64 / estimated_frames as f64).clamp(0.0, 1.0));
         }
+
+        // Drop the streaming state of layers the mix has already moved past. The
+        // export's `shared` is private to this render and — unlike the realtime
+        // engine — is never pruned by `set_scene`/`prune_distant_layers`, so without
+        // this every layer that has ever played leaves a live `LayerDecoder` (an open
+        // symphonia decoder + rubato resampler, or a long-lived ffmpeg child process)
+        // plus any look-ahead window resident for the whole render. On a long timeline
+        // with many clips that grows without bound and OOMs mid-export. The mix runs
+        // strictly forward, so a layer whose `timeline_end_sec` is behind the next
+        // chunk start is never touched again and can be released; clearing its
+        // in-flight marker makes any late background window-fill landing a no-op.
+        let next_chunk_start = start + written_frames as f64 / target.sample_rate as f64;
+        let prune_cutoff = next_chunk_start - PRUNE_BEHIND_SEC;
+        let keep: std::collections::HashSet<&str> = params
+            .scene
+            .iter()
+            .filter(|l| l.timeline_end_sec > prune_cutoff)
+            .map(|l| l.id.as_str())
+            .collect();
+        let mut state = shared.0.lock();
+        if state.decoders.len() > keep.len()
+            || state.layer_windows.len() > keep.len()
+            || !state.window_fill_in_flight.is_empty()
+        {
+            state.decoders.retain(|id, _| keep.contains(id.as_str()));
+            state
+                .layer_windows
+                .retain(|id, _| keep.contains(id.as_str()));
+            state
+                .window_fill_in_flight
+                .retain(|id, _| keep.contains(id.as_str()));
+        }
+        drop(state);
     }
 
     // Patch the 64-bit size fields now that the frame count is known. Wave64 chunk sizes
