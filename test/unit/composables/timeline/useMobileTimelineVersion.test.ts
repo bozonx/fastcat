@@ -75,7 +75,7 @@ describe('useMobileTimelineVersion', () => {
     await handleCreateVersionFromPreview();
 
     expect(validateVersionName('new')).toBe(true);
-    expect(validateVersionName('existing')).toBe('Имя уже существует');
+    expect(validateVersionName('existing')).toBe('common.validation.exists');
   });
 
   it('creates version from backup and closes the modal', async () => {

@@ -131,15 +131,18 @@ function stopSnapLongPress() {
           @pointerup="stopLongPress"
           @pointerleave="stopLongPress"
         />
-        <UiActionButton
-          v-if="hasClipboard"
-          icon="i-heroicons-clipboard-document-check"
-          color="primary"
-          variant="soft"
-          size="sm"
-          :title="t('common.paste')"
-          @click="handlePaste"
-        />
+        <Transition name="paste-bounce">
+          <UiActionButton
+            v-if="hasClipboard"
+            icon="i-heroicons-clipboard-document-check"
+            color="primary"
+            variant="solid"
+            size="sm"
+            class="paste-btn-animate"
+            :title="t('common.paste')"
+            @click="handlePaste"
+          />
+        </Transition>
       </div>
 
       <!-- Snap mode -->
@@ -213,3 +216,40 @@ function stopSnapLongPress() {
     </div>
   </UiMobileDrawer>
 </template>
+
+<style scoped>
+.paste-bounce-enter-active {
+  animation: paste-scale-in 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.paste-bounce-leave-active {
+  animation: paste-scale-in 0.3s reverse ease-in;
+}
+
+@keyframes paste-scale-in {
+  0% {
+    transform: scale(0.3);
+    opacity: 0;
+  }
+  70% {
+    transform: scale(1.2);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.paste-btn-animate {
+  animation: paste-gentle-pulse 2s infinite ease-in-out;
+}
+
+@keyframes paste-gentle-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7);
+  }
+  50% {
+    box-shadow: 0 0 0 8px rgba(59, 130, 246, 0);
+  }
+}
+</style>

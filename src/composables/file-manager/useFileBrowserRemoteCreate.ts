@@ -185,7 +185,7 @@ export function useFileBrowserRemoteCreate(params: UseFileBrowserRemoteCreatePar
     const trimmed = newName.trim();
     if (!trimmed) return false;
     if (existingNames.value.includes(trimmed)) {
-      return t('common.validation.exists', 'Имя уже существует');
+      return t('common.validation.exists');
     }
     return true;
   }
@@ -195,7 +195,7 @@ export function useFileBrowserRemoteCreate(params: UseFileBrowserRemoteCreatePar
     if (!trimmed) return false;
     const finalName = trimmed.includes('.') ? trimmed : `${trimmed}.txt`;
     if (existingNames.value.includes(finalName)) {
-      return t('common.validation.exists', 'Имя уже существует');
+      return t('common.validation.exists');
     }
     return true;
   }

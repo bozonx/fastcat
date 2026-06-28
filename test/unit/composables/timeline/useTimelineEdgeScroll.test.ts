@@ -150,6 +150,45 @@ describe('useTimelineEdgeScroll (mobile axes)', () => {
     wrapper.unmount();
   });
 
+  it('stops scrolling when the scroll step callback returns false', () => {
+    const { el, getScrollLeft } = createScrollEl();
+    const getCachedScrollRect = (e: HTMLElement) => e.getBoundingClientRect();
+    const draggingMode = ref<'move' | null>('move');
+    let reapplyCount = 0;
+
+    const wrapper = mount(
+      defineComponent({
+        setup() {
+          const { updateEdgeScroll } = useTimelineEdgeScroll({
+            scrollEl: ref(el),
+            isActive: computed(() => draggingMode.value !== null),
+            onScrollStep: () => {
+              reapplyCount++;
+            },
+            shouldContinue: () => false,
+            getRect: getCachedScrollRect,
+            zonePx: MOBILE_EDGE_SCROLL_ZONE_PX,
+            maxSpeedPx: MOBILE_EDGE_SCROLL_MAX_SPEED_PX,
+            axes: { horizontal: true, vertical: true },
+          });
+          return { updateEdgeScroll };
+        },
+        render: () => null,
+      }),
+    );
+
+    const vm = wrapper.vm as unknown as { updateEdgeScroll: (e: PointerEvent) => void };
+    vm.updateEdgeScroll(new PointerEvent('pointermove', { clientX: 10, clientY: 150 }));
+
+    vi.advanceTimersByTime(16);
+    const scrollAfterStop = getScrollLeft();
+    vi.advanceTimersByTime(100);
+
+    expect(reapplyCount).toBe(1);
+    expect(getScrollLeft()).toBe(scrollAfterStop);
+    wrapper.unmount();
+  });
+
   it('cancels RAF on unmount', () => {
     const { el } = createScrollEl();
     const getCachedScrollRect = (e: HTMLElement) => e.getBoundingClientRect();

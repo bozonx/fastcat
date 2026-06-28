@@ -409,12 +409,7 @@ export function useFileBrowserRemote({
           item.path.length === 0,
       )
     ) {
-      throw new Error(
-        t(
-          'fastcat.bloggerDog.dragDrop.onlyFilesToItem',
-          'В элемент контента BloggerDog можно переносить только файлы.',
-        ),
-      );
+      throw new Error(t('fastcat.bloggerDog.dragDrop.onlyFilesToItem'));
     }
 
     const sourceVfs =

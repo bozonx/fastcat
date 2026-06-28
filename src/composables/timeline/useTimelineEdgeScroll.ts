@@ -8,6 +8,7 @@ export interface UseTimelineEdgeScrollOptions {
   scrollEl: Ref<HTMLElement | null>;
   isActive: Ref<boolean>;
   onScrollStep: () => void;
+  shouldContinue?: () => boolean;
   /** Optional rect provider. Defaults to el.getBoundingClientRect(). */
   getRect?: (el: HTMLElement) => DOMRect | undefined;
   /** Distance from viewport edge (px) that starts auto-scroll. */
@@ -27,6 +28,7 @@ export function useTimelineEdgeScroll(options: UseTimelineEdgeScrollOptions) {
     zonePx = DEFAULT_EDGE_SCROLL_ZONE_PX,
     maxSpeedPx = DEFAULT_EDGE_SCROLL_MAX_SPEED_PX,
     axes = { horizontal: true, vertical: false },
+    shouldContinue = () => true,
   } = options;
 
   let edgeScrollRafId = 0;
@@ -55,6 +57,10 @@ export function useTimelineEdgeScroll(options: UseTimelineEdgeScrollOptions) {
       el.scrollTop += edgeScrollDy;
     }
     onScrollStep();
+    if (!shouldContinue()) {
+      stopEdgeScroll();
+      return;
+    }
     edgeScrollRafId = requestAnimationFrame(edgeScrollStep);
   }
 

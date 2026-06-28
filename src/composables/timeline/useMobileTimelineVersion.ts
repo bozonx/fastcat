@@ -35,7 +35,7 @@ export function useMobileTimelineVersion(options: UseMobileTimelineVersionOption
     if (!trimmed) return false;
     const finalName = trimmed.toLowerCase().endsWith('.otio') ? trimmed : `${trimmed}.otio`;
     if (existingNamesInFolder.value.includes(finalName)) {
-      return t('common.validation.exists', 'Имя уже существует');
+      return t('common.validation.exists');
     }
     return true;
   }

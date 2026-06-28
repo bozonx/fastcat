@@ -566,6 +566,53 @@ describe('useTimelineItemDrag', () => {
       expect(getScrollLeft()).toBeGreaterThan(100);
     });
 
+    it('stops edge scrolling when trim end is blocked by the next clip', () => {
+      const { el, getScrollLeft } = createScrollEl();
+      const tracks = computed(() => timelineStoreMock.timelineDoc.tracks);
+      const { startTrimItem } = useTimelineItemDrag(ref(el), tracks);
+
+      const pointerTarget = {
+        setPointerCapture: vi.fn(),
+        releasePointerCapture: vi.fn(),
+      };
+
+      startTrimItem(
+        {
+          button: 0,
+          buttons: 1,
+          clientX: 100,
+          clientY: 20,
+          pointerId: 4,
+          pointerType: 'touch',
+          currentTarget: pointerTarget,
+          preventDefault: vi.fn(),
+          stopPropagation: vi.fn(),
+        } as unknown as PointerEvent,
+        {
+          trackId: 'track-1',
+          itemId: 'clip-1',
+          edge: 'end',
+          startUs: 1_000_000,
+        },
+      );
+
+      const handlers = bindSessionMock.mock.calls[0]?.[0];
+
+      handlers.onPointerMove({
+        buttons: 1,
+        button: 0,
+        clientX: 490,
+        clientY: 20,
+      } as PointerEvent);
+
+      vi.advanceTimersByTime(16);
+      const scrollAfterBlockedFrame = getScrollLeft();
+      vi.advanceTimersByTime(100);
+
+      expect(scrollAfterBlockedFrame).toBeGreaterThan(100);
+      expect(getScrollLeft()).toBe(scrollAfterBlockedFrame);
+    });
+
     it('stops scrolling when pointer moves to the center', () => {
       const { el, getScrollLeft } = createScrollEl();
       const tracks = computed(() => timelineStoreMock.timelineDoc.tracks);

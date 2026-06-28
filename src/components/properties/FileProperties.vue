@@ -700,12 +700,7 @@ const hasVisibleSecondaryActions = (actions: unknown) => {
         :title="t('fastcat.bloggerDog.allContent')"
       >
         <div class="text-xs text-ui-text-muted italic px-2 py-1 mb-2">
-          {{
-            t(
-              'fastcat.bloggerDog.virtualAllDesc',
-              'Виртуальный плосский список всех элементов контента',
-            )
-          }}
+          {{ t('fastcat.bloggerDog.virtualAllDesc') }}
         </div>
         <PropertyRow v-if="bloggerDogDeepLink" :label="t('common.path')">
           <a

@@ -134,7 +134,7 @@ const {
       (e) => e.name.toLowerCase() === trimmed.toLowerCase() && e.path !== entryToRename.value?.path,
     );
     if (exists) {
-      return t('common.validation.exists', 'Имя уже существует');
+      return t('common.validation.exists');
     }
     return true;
   },
@@ -206,7 +206,7 @@ function validateNewFolderName(newName: string): string | boolean | null {
   if (!trimmed) return false;
   const exists = folderEntries.value.some((e) => e.name.toLowerCase() === trimmed.toLowerCase());
   if (exists) {
-    return t('common.validation.exists', 'Имя уже существует');
+    return t('common.validation.exists');
   }
   return true;
 }

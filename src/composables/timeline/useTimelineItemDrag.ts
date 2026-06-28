@@ -139,6 +139,7 @@ export function useTimelineItemDrag(
   const dragToggleSnapOverride = ref(false);
   const dragPointerButton = ref<0 | 2>(0);
   const dragIsMobileTouch = ref(false);
+  const isTrimEdgeBlocked = ref(false);
 
   function getToolbarSnapAction(): 'snap' | 'no_snap' | 'free_mode' {
     return settingsStore.toolbarSnapMode;
@@ -212,16 +213,24 @@ export function useTimelineItemDrag(
 
   function scheduleDragReapplyFromLastPointerPosition() {
     if (!draggingMode.value) return;
+    if (
+      (draggingMode.value === 'trim_start' || draggingMode.value === 'trim_end') &&
+      isTrimEdgeBlocked.value
+    ) {
+      return false;
+    }
 
     pendingDragClientX.value = lastDragClientX.value;
     pendingDragClientY.value = lastDragClientY.value;
     scheduleDragApply();
+    return true;
   }
 
   const { updateEdgeScroll, stopEdgeScroll } = useTimelineEdgeScroll({
     scrollEl,
     isActive: computed(() => draggingMode.value !== null),
     onScrollStep: scheduleDragReapplyFromLastPointerPosition,
+    shouldContinue: () => !isTrimEdgeBlocked.value,
   });
 
   function bindDragSession() {
@@ -276,6 +285,7 @@ export function useTimelineItemDrag(
 
     dragAnchorStartUs.value = startUs;
     dragIsMobileTouch.value = e.pointerType === 'touch';
+    isTrimEdgeBlocked.value = false;
     dragAnchorDurationUs.value =
       tracks.value.find((t) => t.id === trackId)?.items.find((it) => it.id === itemId)
         ?.timelineRange.durationUs ?? 0;
@@ -309,6 +319,7 @@ export function useTimelineItemDrag(
     dragStartSnapshot.value = toRaw(timelineStore.timelineDoc) as TimelineDocument | null;
     lastDragAppliedCmd.value = null;
     dragCancelRequested.value = false;
+    isTrimEdgeBlocked.value = false;
 
     movePreview.value = [{ itemId, trackId, startUs }];
     pendingMoveCommit.value = null;
@@ -379,6 +390,7 @@ export function useTimelineItemDrag(
     dragStartSnapshot.value = toRaw(timelineStore.timelineDoc) as TimelineDocument | null;
     lastDragAppliedCmd.value = null;
     dragCancelRequested.value = false;
+    isTrimEdgeBlocked.value = false;
     movePreview.value = [];
     pendingMoveCommit.value = null;
     slipPreview.value = null;
@@ -743,8 +755,10 @@ export function useTimelineItemDrag(
       }
     }
 
-    let rawEdgeUs = mode === 'trim_start' ? anchorStartUs + rawDeltaUs : anchorEndUs + rawDeltaUs;
-    rawEdgeUs = Math.max(minEdgeUs, Math.min(maxEdgeUs, rawEdgeUs));
+    const unclampedRawEdgeUs =
+      mode === 'trim_start' ? anchorStartUs + rawDeltaUs : anchorEndUs + rawDeltaUs;
+    const rawEdgeUs = Math.max(minEdgeUs, Math.min(maxEdgeUs, unclampedRawEdgeUs));
+    isTrimEdgeBlocked.value = unclampedRawEdgeUs !== rawEdgeUs;
 
     let snappedEdgeUs = Math.round(rawEdgeUs);
     let bestDist = thresholdUs;
@@ -1141,6 +1155,7 @@ export function useTimelineItemDrag(
     dragIsCopyOverride.value = false;
     dragToggleSnapOverride.value = false;
     dragIsMobileTouch.value = false;
+    isTrimEdgeBlocked.value = false;
 
     if (shouldPersistTimeline) {
       void timelineStore.requestTimelineSave({ immediate: true });

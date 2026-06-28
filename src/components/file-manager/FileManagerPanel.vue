@@ -345,7 +345,7 @@ function validateSubgroupName(newName: string): string | boolean | null {
   const trimmed = newName.trim();
   if (!trimmed) return false;
   if (existingBloggerDogNames.value.includes(trimmed)) {
-    return t('common.validation.exists', 'Имя уже существует');
+    return t('common.validation.exists');
   }
   return true;
 }
@@ -355,7 +355,7 @@ function validateItemName(newName: string): string | boolean | null {
   if (!trimmed) return false;
   const finalName = trimmed.includes('.') ? trimmed : `${trimmed}.txt`;
   if (existingBloggerDogNames.value.includes(finalName)) {
-    return t('common.validation.exists', 'Имя уже существует');
+    return t('common.validation.exists');
   }
   return true;
 }
