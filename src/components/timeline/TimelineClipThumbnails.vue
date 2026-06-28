@@ -39,6 +39,7 @@ const thumbnailsStripWidthPx = computed(() => props.width + trimOffsetPx.value);
   <div
     ref="container"
     class="absolute inset-0 overflow-hidden pointer-events-none rounded opacity-90 select-none z-0"
+    style="contain: layout paint style"
   >
     <!-- Video clips: virtual img tiles -->
     <div
@@ -55,6 +56,8 @@ const thumbnailsStripWidthPx = computed(() => props.width + trimOffsetPx.value);
         v-memo="[tile.key, tile.url, tile.leftPx, tile.widthPx]"
         :src="tile.url"
         :alt="t('fastcat.timeline.clipThumbnail')"
+        decoding="async"
+        draggable="false"
         class="absolute top-0 h-full object-contain object-center"
         :style="{
           left: `${tile.leftPx}px`,

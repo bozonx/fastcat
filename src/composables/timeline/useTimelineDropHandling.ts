@@ -229,7 +229,7 @@ export function useTimelineDropHandling(options: UseTimelineDropHandlingOptions)
     return resolveNonOverlappingStartUs(track, params.startUs, params.durationUs, fps);
   }
 
-  function resolvePreviewStartUs(params: {
+  function resolveDropStartUs(params: {
     trackId: string;
     startUs: number;
     durationUs: number;
@@ -340,7 +340,7 @@ export function useTimelineDropHandling(options: UseTimelineDropHandlingOptions)
       return { nextStartUs: context.currentStartUs, added: false };
     }
     const durationUs = workspaceStore.userSettings.timeline.defaultStaticClipDurationUs;
-    const nextStartUs = resolveInsertStartUs({
+    const nextStartUs = resolveDropStartUs({
       trackId: targetTrackId,
       startUs: context.currentStartUs,
       durationUs,
@@ -436,7 +436,7 @@ export function useTimelineDropHandling(options: UseTimelineDropHandlingOptions)
       return { nextStartUs: context.currentStartUs, added: false };
     }
     const durationUs = await getPreviewDurationUsAsync({ kind: 'timeline', path: item.path });
-    const nextStartUs = resolveInsertStartUs({
+    const nextStartUs = resolveDropStartUs({
       trackId: targetTrackId,
       startUs: context.currentStartUs,
       durationUs,
@@ -488,7 +488,7 @@ export function useTimelineDropHandling(options: UseTimelineDropHandlingOptions)
 
     const durationUs = workspaceStore.userSettings.timeline.defaultStaticClipDurationUs;
     const text = await withFileIoSlot(() => file.text());
-    const nextStartUs = resolveInsertStartUs({
+    const nextStartUs = resolveDropStartUs({
       trackId: targetTrackId,
       startUs: context.currentStartUs,
       durationUs,
@@ -534,7 +534,7 @@ export function useTimelineDropHandling(options: UseTimelineDropHandlingOptions)
       return { nextStartUs: context.currentStartUs, added: false };
     }
     const durationUs = await getPreviewDurationUsAsync({ kind: 'file', path: item.path });
-    const nextStartUs = resolveInsertStartUs({
+    const nextStartUs = resolveDropStartUs({
       trackId: targetTrackId,
       startUs: context.currentStartUs,
       durationUs,
@@ -640,7 +640,7 @@ export function useTimelineDropHandling(options: UseTimelineDropHandlingOptions)
     const pseudo =
       isLayer1Pressed(e, workspaceStore.userSettings) ||
       timelineSettingsStore.isPseudoOverlapEnabled;
-    const startUs = resolvePreviewStartUs({
+    const startUs = resolveDropStartUs({
       trackId: targetTrackId,
       startUs: dropPositionUs,
       durationUs,
@@ -766,7 +766,7 @@ export function useTimelineDropHandling(options: UseTimelineDropHandlingOptions)
           const durationUs = workspaceStore.userSettings.timeline.defaultStaticClipDurationUs;
           dragPreview.value = {
             trackId,
-            startUs: resolvePreviewStartUs({
+            startUs: resolveDropStartUs({
               trackId,
               startUs: dropPositionUs,
               durationUs,
@@ -807,7 +807,7 @@ export function useTimelineDropHandling(options: UseTimelineDropHandlingOptions)
           const durationUs = workspaceStore.userSettings.timeline.defaultStaticClipDurationUs;
           dragPreview.value = {
             trackId,
-            startUs: resolvePreviewStartUs({
+            startUs: resolveDropStartUs({
               trackId,
               startUs: dropPositionUs,
               durationUs,

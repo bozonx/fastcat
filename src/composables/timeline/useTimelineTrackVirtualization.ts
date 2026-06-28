@@ -9,9 +9,21 @@ import {
   type ItemGeometry,
   type TrackVisibilityIndexEntry,
 } from '~/utils/timeline/track-virtualization';
+import { createDevLogger } from '~/utils/dev-logger';
 
 const OVERSCAN_PX = 480;
 const DEFAULT_TRACK_HEIGHT = 40;
+
+const perfLog = createDevLogger('timeline-virt-perf');
+
+/** Toggle with `localStorage.fastcatPerfZoom = '1'` (shared with the zoom profiler). */
+function isVirtPerfEnabled(): boolean {
+  try {
+    return typeof localStorage !== 'undefined' && localStorage.getItem('fastcatPerfZoom') === '1';
+  } catch {
+    return false;
+  }
+}
 
 export interface TrackVirtualizationDeps {
   tracks: () => TimelineTrack[];
@@ -87,12 +99,13 @@ export function useTimelineTrackVirtualization(deps: TrackVirtualizationDeps) {
   });
 
   const trackViewModels = computed(() => {
+    const perf = isVirtPerfEnabled() ? performance.now() : 0;
     const hoveredTrackId = deps.hoveredTrackId();
     const visibleItemsMap = visibleItemsByTrack.value;
     const trackHeights = deps.trackHeights();
     const mediaMetadata = deps.mediaMetadata();
 
-    return deps.tracks().map((track) => {
+    const models = deps.tracks().map((track) => {
       const isDirectlySelected = deps.isTrackDirectlySelected(track.id);
       const isVisuallySelected = deps.isTrackVisuallySelected(track.id);
       const isHovered = hoveredTrackId === track.id;
@@ -120,6 +133,17 @@ export function useTimelineTrackVirtualization(deps: TrackVirtualizationDeps) {
               : undefined,
       };
     });
+
+    if (perf) {
+      const visibleCount = models.reduce((sum, m) => sum + m.visibleItems.length, 0);
+      perfLog.debug(
+        `trackViewModels rebuild: ${models.length} tracks, ${visibleCount} visible clips in ${(
+          performance.now() - perf
+        ).toFixed(1)}ms`,
+      );
+    }
+
+    return models;
   });
 
   return {

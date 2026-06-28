@@ -6,6 +6,41 @@ import {
   pxPerSecondToZoom,
 } from '~/utils/timeline/geometry';
 import { DEFAULT_TIMELINE_ZOOM_POSITION } from '~/utils/zoom';
+import { createDevLogger } from '~/utils/dev-logger';
+
+const log = createDevLogger('timeline-zoom-perf');
+
+/**
+ * Dev-only zoom-commit profiler. Toggle in the console with
+ * `localStorage.fastcatPerfZoom = '1'` (and reload). Logs, per committed zoom
+ * step: the synchronous commit cost, the time until Vue finished patching the
+ * DOM (`nextTick`), and the time until the browser painted the next frame. Use
+ * it to see whether the 1–2s stall lives in JS (commit/patch) or in
+ * layout/paint (paint delta dominates).
+ */
+function isZoomPerfEnabled(): boolean {
+  try {
+    return typeof localStorage !== 'undefined' && localStorage.getItem('fastcatPerfZoom') === '1';
+  } catch {
+    return false;
+  }
+}
+
+function profileZoomCommit(prevZoom: number, nextZoom: number, commitMs: number) {
+  if (!isZoomPerfEnabled()) return;
+  const start = performance.now();
+  void nextTick().then(() => {
+    const patchedMs = performance.now() - start;
+    requestAnimationFrame(() => {
+      const paintedMs = performance.now() - start;
+      log.debug(
+        `zoom ${prevZoom.toFixed(1)}→${nextZoom.toFixed(1)} | commit ${commitMs.toFixed(
+          1,
+        )}ms | patch ${patchedMs.toFixed(1)}ms | paint ${paintedMs.toFixed(1)}ms`,
+      );
+    });
+  });
+}
 
 export interface UseTimelineZoomOptions {
   scrollEl: Ref<HTMLElement | null>;
@@ -20,15 +55,38 @@ export function useTimelineZoom({ scrollEl }: UseTimelineZoomOptions) {
   let isInternalZoomUpdate = false;
   let scrollApplyTicket = 0;
 
-  async function applyScrollLeftAfterRender(nextScrollLeft: number) {
+  /**
+   * Commit an anchored zoom scroll offset in a *single* render pass.
+   *
+   * The store's `timelineScrollLeftPx` is the real driver of the content
+   * transform + clip windowing; the native `scrollEl.scrollLeft` only positions
+   * the scrollbar thumb. Previously we set the zoom now and the scroll offset
+   * after `nextTick()`, which forced two full re-renders of every visible clip
+   * per zoom step. Writing the store offset synchronously lets Vue batch it with
+   * the zoom change into one pass. We only touch the native scrollbar (and read
+   * back its clamped value) after the width spacer has resized.
+   */
+  function commitAnchoredScrollLeft(nextScrollLeft: number) {
+    // Synchronous store write — batched with the zoom change into one render.
+    timelineStore.timelineScrollLeftPx = nextScrollLeft;
+    void syncNativeScrollAfterRender(nextScrollLeft);
+  }
+
+  async function syncNativeScrollAfterRender(target: number) {
     const ticket = ++scrollApplyTicket;
 
     await nextTick();
 
     if (ticket !== scrollApplyTicket || !scrollEl.value) return;
 
-    scrollEl.value.scrollLeft = nextScrollLeft;
-    timelineStore.timelineScrollLeftPx = scrollEl.value.scrollLeft;
+    scrollEl.value.scrollLeft = target;
+    // The browser clamps scrollLeft to the (now resized) scroll width. Only
+    // re-write the store — and trigger a second render — when it actually
+    // clamped to a different value (e.g. zooming out at the far-right edge).
+    const actual = scrollEl.value.scrollLeft;
+    if (actual !== timelineStore.timelineScrollLeftPx) {
+      timelineStore.timelineScrollLeftPx = actual;
+    }
   }
 
   watch(
@@ -40,6 +98,7 @@ export function useTimelineZoom({ scrollEl }: UseTimelineZoomOptions) {
       }
       if (!scrollEl.value || nextZoom === prevZoom) return;
 
+      const t0 = performance.now();
       const rect = scrollEl.value.getBoundingClientRect();
       const anchorViewportX = rect.width / 2;
       const anchorTimeUs = pxToTimeUs(scrollEl.value.scrollLeft + anchorViewportX, prevZoom);
@@ -54,7 +113,10 @@ export function useTimelineZoom({ scrollEl }: UseTimelineZoomOptions) {
           anchorViewportX,
         },
       });
-      void applyScrollLeftAfterRender(nextScrollLeft);
+      // Zoom already changed reactively (external caller); commit the matching
+      // scroll offset synchronously so both land in the same render pass.
+      commitAnchoredScrollLeft(nextScrollLeft);
+      profileZoomCommit(prevZoom, nextZoom, performance.now() - t0);
     },
   );
 
@@ -86,6 +148,7 @@ export function useTimelineZoom({ scrollEl }: UseTimelineZoomOptions) {
       return;
     }
 
+    const t0 = performance.now();
     const rect = scrollEl.value.getBoundingClientRect();
 
     // Default to viewport center if no other anchor is provided
@@ -96,9 +159,6 @@ export function useTimelineZoom({ scrollEl }: UseTimelineZoomOptions) {
       anchorTimeUs = pendingAnchor.anchorTimeUs;
       anchorViewportX = pendingAnchor.anchorViewportX;
     }
-
-    isInternalZoomUpdate = true;
-    timelineStore.setTimelineZoomExact(nextZoom);
 
     const nextScrollLeft = computeAnchoredScrollLeft({
       prevZoom,
@@ -111,7 +171,15 @@ export function useTimelineZoom({ scrollEl }: UseTimelineZoomOptions) {
       },
     });
 
-    void applyScrollLeftAfterRender(nextScrollLeft);
+    // Commit zoom + scroll synchronously so the (expensive) clip re-render runs
+    // exactly once for this step. `isInternalZoomUpdate` keeps the zoom watcher
+    // from re-deriving a second scroll offset off the same change.
+    isInternalZoomUpdate = true;
+    timelineStore.setTimelineZoomExact(nextZoom);
+    commitAnchoredScrollLeft(nextScrollLeft);
+
+    profileZoomCommit(prevZoom, nextZoom, performance.now() - t0);
+
     timelineZoomFrameId = 0;
     pendingAnchor = null;
   }
@@ -135,7 +203,7 @@ export function useTimelineZoom({ scrollEl }: UseTimelineZoomOptions) {
     const durationUs = timelineStore.duration;
     if (durationUs <= 0) {
       timelineStore.resetTimelineZoom();
-      void applyScrollLeftAfterRender(0);
+      commitAnchoredScrollLeft(0);
       return;
     }
 
@@ -150,7 +218,7 @@ export function useTimelineZoom({ scrollEl }: UseTimelineZoomOptions) {
 
     isInternalZoomUpdate = true;
     timelineStore.setTimelineZoomExact(nextZoom);
-    void applyScrollLeftAfterRender(0);
+    commitAnchoredScrollLeft(0);
   }
 
   onBeforeUnmount(() => {

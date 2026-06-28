@@ -767,6 +767,11 @@ function handleTransitionCreate(
       :style="{
         left: `${clipLeftPx}px`,
         width: `${clipWidthPx}px`,
+        // Isolate each clip's internal layout/style recalc so a zoom-driven
+        // width change on every clip doesn't fan out into shared layout work.
+        // `paint` is intentionally omitted — edge trim/transition handles draw
+        // slightly outside the clip box and must not be clipped.
+        contain: 'layout style',
         zIndex: isHovered
           ? 'var(--z-clip-handles)'
           : isSelected

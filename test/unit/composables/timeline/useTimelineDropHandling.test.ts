@@ -141,7 +141,18 @@ describe('useTimelineDropHandling', () => {
           id: 'a1',
           kind: 'audio',
           name: 'Audio 1',
-          items: [],
+          items: [
+            {
+              kind: 'clip',
+              id: 'audio-clip-1',
+              name: 'Existing audio',
+              clipType: 'media',
+              source: { path: '_audio/existing.mp3' },
+              sourceRange: { startUs: 0, durationUs: 2_000_000 },
+              sourceDurationUs: 2_000_000,
+              timelineRange: { startUs: 0, durationUs: 2_000_000 },
+            },
+          ],
         },
       ],
     } as any;
@@ -158,6 +169,16 @@ describe('useTimelineDropHandling', () => {
           codec: 'h264',
           parsedCodec: 'h264',
           fps: 30,
+        },
+      },
+      '_audio/new.mp3': {
+        source: { size: 1, lastModified: 1 },
+        duration: 1.5,
+        audio: {
+          codec: 'mp3',
+          parsedCodec: 'mp3',
+          sampleRate: 48_000,
+          channels: 2,
         },
       },
     } as any;
@@ -443,5 +464,36 @@ describe('useTimelineDropHandling', () => {
     );
     expect(api.dragPreview.value?.durationUs).toBe(4_000_000);
     expect(api.dragPreview.value?.startUs).toBe(2_000_000);
+  });
+
+  it('applies the same snap target when committing a raw audio file drop', async () => {
+    const scrollEl = ref({
+      scrollLeft: 0,
+      getBoundingClientRect: () => ({ left: 0 }),
+    } as unknown as HTMLElement);
+    const timelineStore = useTimelineStore() as any;
+    timelineStore.addClipToTimelineFromPath = vi.fn().mockResolvedValue({
+      durationUs: 1_500_000,
+      itemId: 'audio-clip-2',
+    });
+    const api = useTimelineDropHandling({ scrollEl });
+
+    await api.handleLibraryDrop(
+      JSON.stringify({
+        name: 'new.mp3',
+        kind: 'file',
+        path: '_audio/new.mp3',
+      }),
+      'a1',
+      2_120_000,
+    );
+
+    expect(timelineStore.addClipToTimelineFromPath).toHaveBeenCalledWith(
+      expect.objectContaining({
+        trackId: 'a1',
+        path: '_audio/new.mp3',
+        startUs: 2_000_000,
+      }),
+    );
   });
 });
