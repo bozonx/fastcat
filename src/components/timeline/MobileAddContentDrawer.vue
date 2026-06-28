@@ -11,6 +11,7 @@ import { secondsToUs } from '~/utils/time';
 import { useAppClipboard } from '~/composables/useAppClipboard';
 import { useMediaTrackRedirectToast } from '~/composables/timeline/useMediaTrackRedirectToast';
 import { useCloseModel } from '~/composables/ui/useCloseModel';
+import { isInDevelopmentFeaturesEnabled } from '~/utils/features';
 
 const props = defineProps<{
   isOpen: boolean;
@@ -37,6 +38,9 @@ const isOpenLocal = useCloseModel(
 
 const isMediaPickerOpen = ref(false);
 const fileInputRef = ref<HTMLInputElement | null>(null);
+
+const runtimeConfig = useRuntimeConfig();
+const isDev = isInDevelopmentFeaturesEnabled(runtimeConfig);
 
 const hasClipboard = computed(() => clipboardStore.hasTimelinePayload);
 
@@ -316,6 +320,7 @@ function openMediaPicker() {
         </button>
 
         <button
+          v-if="isDev"
           class="flex flex-col items-center gap-2 rounded-2xl bg-ui-bg border border-ui-border px-3 py-4 text-center transition-all active:scale-95"
           @click="openVirtualClipPreset('shape')"
         >
@@ -326,6 +331,7 @@ function openMediaPicker() {
         </button>
 
         <button
+          v-if="isDev"
           class="flex flex-col items-center gap-2 rounded-2xl bg-ui-bg border border-ui-border px-3 py-4 text-center transition-all active:scale-95"
           @click="openVirtualClipPreset('hud')"
         >

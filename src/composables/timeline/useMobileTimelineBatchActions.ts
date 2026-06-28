@@ -8,6 +8,30 @@ export interface UseMobileTimelineBatchActionsOptions {
 
 export function useMobileTimelineBatchActions(options: UseMobileTimelineBatchActionsOptions) {
   const { clipboardStore, timelineStore } = options;
+  const { t } = useI18n();
+  const toast = useToast();
+
+  function showPasteToast(operation: 'copy' | 'cut') {
+    toast.add({
+      title: operation === 'cut' ? t('common.cutToClipboard') : t('common.copiedToClipboard'),
+      color: 'success',
+      icon: 'i-heroicons-clipboard-document-check',
+      actions: [
+        {
+          label: t('common.paste'),
+          onClick: () => {
+            const payload = clipboardStore.clipboardPayload;
+            if (!payload || payload.source !== 'timeline' || payload.items.length === 0) return;
+            const playheadUs = timelineStore.currentTime;
+            void timelineStore.pasteClips(payload.items, { insertStartUs: playheadUs });
+            if (payload.operation === 'cut') {
+              clipboardStore.setClipboardPayload(null);
+            }
+          },
+        },
+      ],
+    });
+  }
 
   function handleCopyClips() {
     clipboardStore.setClipboardPayload({
@@ -18,6 +42,7 @@ export function useMobileTimelineBatchActions(options: UseMobileTimelineBatchAct
         clip: item.clip,
       })),
     });
+    showPasteToast('copy');
   }
 
   function handleCutClips() {
@@ -29,6 +54,7 @@ export function useMobileTimelineBatchActions(options: UseMobileTimelineBatchAct
         clip: item.clip,
       })),
     });
+    showPasteToast('cut');
   }
 
   function handleBladeClips() {
