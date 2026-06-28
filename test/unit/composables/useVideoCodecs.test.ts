@@ -7,6 +7,7 @@ import {
   resolveVideoCodecOptions,
   BASE_VIDEO_CODEC_OPTIONS,
 } from '~/utils/webcodecs';
+import { isTauriRuntime } from '~/utils/runtime';
 
 vi.mock('~/utils/webcodecs', () => ({
   BASE_VIDEO_CODEC_OPTIONS: [{ label: 'Codec 1', value: 'codec1' }],
@@ -14,9 +15,14 @@ vi.mock('~/utils/webcodecs', () => ({
   resolveVideoCodecOptions: vi.fn(),
 }));
 
+vi.mock('~/utils/runtime', () => ({
+  isTauriRuntime: vi.fn(() => false),
+}));
+
 describe('useVideoCodecs', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(isTauriRuntime).mockReturnValue(false);
   });
 
   it('initializes with default values and starts loading on mount', () => {
@@ -116,5 +122,34 @@ describe('useVideoCodecs', () => {
     });
 
     expect(wrapper.vm.videoCodecSupport).toEqual({});
+  });
+
+  it('marks all base video codecs as supported in Tauri runtime', async () => {
+    vi.mocked(isTauriRuntime).mockReturnValue(true);
+    vi.mocked(resolveVideoCodecOptions).mockReturnValue([
+      { label: 'Codec 1', value: 'codec1', disabled: false } as any,
+    ]);
+
+    const TestComponent = {
+      template: '<div></div>',
+      setup() {
+        return useVideoCodecs();
+      },
+    };
+
+    const wrapper = mount(TestComponent);
+
+    await vi.waitFor(() => {
+      expect(wrapper.vm.isLoadingCodecSupport).toBe(false);
+    });
+
+    expect(checkVideoCodecSupport).not.toHaveBeenCalled();
+    expect(wrapper.vm.videoCodecSupport).toEqual({ codec1: true });
+    expect(wrapper.vm.videoCodecOptions).toEqual([
+      { label: 'Codec 1', value: 'codec1', disabled: false },
+    ]);
+    expect(resolveVideoCodecOptions).toHaveBeenCalledWith(BASE_VIDEO_CODEC_OPTIONS, {
+      codec1: true,
+    });
   });
 });
