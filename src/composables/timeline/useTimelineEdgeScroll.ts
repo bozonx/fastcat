@@ -4,10 +4,12 @@ import type { Ref } from 'vue';
 const DEFAULT_EDGE_SCROLL_ZONE_PX = 50;
 const DEFAULT_EDGE_SCROLL_MAX_SPEED_PX = 20;
 
+type TimelineEdgeScrollStepResult = boolean | undefined;
+
 export interface UseTimelineEdgeScrollOptions {
   scrollEl: Ref<HTMLElement | null>;
   isActive: Ref<boolean>;
-  onScrollStep: () => void;
+  onScrollStep: () => TimelineEdgeScrollStepResult;
   shouldContinue?: () => boolean;
   /** Optional rect provider. Defaults to el.getBoundingClientRect(). */
   getRect?: (el: HTMLElement) => DOMRect | undefined;
@@ -56,8 +58,8 @@ export function useTimelineEdgeScroll(options: UseTimelineEdgeScrollOptions) {
     if (axes.vertical) {
       el.scrollTop += edgeScrollDy;
     }
-    onScrollStep();
-    if (!shouldContinue()) {
+    const stepResult = onScrollStep();
+    if (stepResult === false || !shouldContinue()) {
       stopEdgeScroll();
       return;
     }
