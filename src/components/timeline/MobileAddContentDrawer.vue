@@ -238,17 +238,7 @@ function openMediaPicker() {
   });
 }
 
-function addVideoTrack() {
-  const count = timelineStore.timelineDoc?.tracks.filter((t) => t.kind === 'video').length || 0;
-  timelineStore.addTrack('video', `Video ${count + 1}`);
-  emit('close');
-}
 
-function addAudioTrack() {
-  const count = timelineStore.timelineDoc?.tracks.filter((t) => t.kind === 'audio').length || 0;
-  timelineStore.addTrack('audio', `Audio ${count + 1}`);
-  emit('close');
-}
 </script>
 
 <template>
@@ -388,35 +378,6 @@ function addAudioTrack() {
         </div>
         <UIcon name="lucide:chevron-right" class="w-4 h-4 text-ui-text-muted ml-auto shrink-0" />
       </button>
-
-      <div class="h-px bg-ui-border my-1" />
-
-      <!-- Tracks -->
-      <p class="text-xs font-semibold uppercase tracking-widest text-ui-text-muted px-1">
-        {{ t('common.tracks') }}
-      </p>
-
-      <div class="grid grid-cols-2 gap-2">
-        <button
-          class="flex flex-col items-center gap-2 rounded-2xl bg-ui-bg border border-ui-border px-3 py-4 text-center transition-all active:scale-95"
-          @click="addVideoTrack"
-        >
-          <UIcon name="lucide:video" class="w-6 h-6 text-rose-400" />
-          <span class="text-xs font-medium leading-tight text-ui-text">
-            {{ t('fastcat.timeline.addVideoTrack') }}
-          </span>
-        </button>
-
-        <button
-          class="flex flex-col items-center gap-2 rounded-2xl bg-ui-bg border border-ui-border px-3 py-4 text-center transition-all active:scale-95"
-          @click="addAudioTrack"
-        >
-          <UIcon name="lucide:music" class="w-6 h-6 text-indigo-400" />
-          <span class="text-xs font-medium leading-tight text-ui-text">
-            {{ t('fastcat.timeline.addAudioTrack') }}
-          </span>
-        </button>
-      </div>
     </div>
   </UiMobileDrawer>
 

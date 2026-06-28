@@ -116,7 +116,7 @@ export function useTimelineTrackVirtualization(deps: TrackVirtualizationDeps) {
               ? `${track.color}40`
               : `${track.color}1a`
             : isDirectlySelected
-              ? 'color-mix(in srgb, var(--color-primary-500) 8%, transparent)'
+              ? 'color-mix(in srgb, var(--color-selection-accent-500) 8%, transparent)'
               : undefined,
       };
     });

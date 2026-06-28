@@ -627,7 +627,7 @@ watch(
 }
 /* Яркая подсветка когда выбран сам трек */
 .track--directly-selected::before {
-  background-color: color-mix(in srgb, var(--color-primary-500) 8%, transparent);
+  background-color: color-mix(in srgb, var(--color-selection-accent-500) 8%, transparent);
 }
 
 .track--directly-selected::after {
@@ -635,7 +635,7 @@ watch(
   border-bottom-width: 2px;
   border-color: var(
     --track-selection-color,
-    color-mix(in srgb, var(--color-primary-500) 70%, transparent)
+    color-mix(in srgb, var(--color-selection-accent-500) 70%, transparent)
   );
 }
 
@@ -645,7 +645,7 @@ watch(
   border-bottom-width: 1px;
   border-color: var(
     --track-selection-color,
-    color-mix(in srgb, var(--color-primary-500) 30%, transparent)
+    color-mix(in srgb, var(--color-selection-accent-500) 30%, transparent)
   );
 }
 </style>
