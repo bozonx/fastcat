@@ -12,13 +12,11 @@ export function useAddMediaToTimeline() {
   const mediaStore = useMediaStore();
   const workspaceStore = useWorkspaceStore();
   const { vfs } = useFileManager();
+  const { t } = useI18n();
+  const toast = useToast();
 
   function resolveInsertStartUs(params: { trackId: string; startUs: number; durationUs: number }) {
-    const track = timelineStore.timelineDoc?.tracks.find((item) => item.id === params.trackId);
-    if (!track) return params.startUs;
-
-    const fps = sanitizeFps(timelineStore.timelineDoc?.timebase.fps);
-    return resolveNonOverlappingStartUs(track, params.startUs, params.durationUs, fps);
+    return params.startUs;
   }
 
   /**
@@ -59,26 +57,72 @@ export function useAddMediaToTimeline() {
       if (mediaType === 'text') {
         const file = await vfs.getFile(entry.path);
         if (file) {
-          const text = await withFileIoSlot(() => file.text());
-          await timelineStore.addVirtualClipToTrack({
-            trackId,
-            startUs,
-            clipType: 'text',
-            name: entry.name,
-            text,
-          });
-          anyAdded = true;
-          currentStartUs = startUs + durationUs;
+          try {
+            const text = await withFileIoSlot(() => file.text());
+            await timelineStore.addVirtualClipToTrack({
+              trackId,
+              startUs,
+              clipType: 'text',
+              name: entry.name,
+              text,
+            });
+            if (timelineStore.lastClipTrimmed) {
+              toast.add({
+                title: t('fastcat.timeline.clipTrimmedToFitGap'),
+                color: 'warning',
+                icon: 'i-heroicons-exclamation-triangle',
+              });
+            }
+            anyAdded = true;
+            currentStartUs = startUs + durationUs;
+          } catch (err: any) {
+            if (err.message === 'cannot_insert_on_clip') {
+              toast.add({
+                title: t('fastcat.timeline.cannotInsertPlayheadOnClip'),
+                color: 'error',
+                icon: 'i-heroicons-x-circle',
+              });
+            } else {
+              toast.add({
+                title: t('common.error'),
+                description: err.message,
+                color: 'error',
+              });
+            }
+          }
         }
       } else {
-        const result = await timelineStore.addClipToTimelineFromPath({
-          trackId,
-          name: entry.name,
-          path: entry.path,
-          startUs,
-        });
-        anyAdded = true;
-        currentStartUs = startUs + (result.durationUs || durationUs);
+        try {
+          const result = await timelineStore.addClipToTimelineFromPath({
+            trackId,
+            name: entry.name,
+            path: entry.path,
+            startUs,
+          });
+          if (result.warnings?.some((w) => w.type === 'clipTrimmed')) {
+            toast.add({
+              title: t('fastcat.timeline.clipTrimmedToFitGap'),
+              color: 'warning',
+              icon: 'i-heroicons-exclamation-triangle',
+            });
+          }
+          anyAdded = true;
+          currentStartUs = startUs + (result.durationUs || durationUs);
+        } catch (err: any) {
+          if (err.message === 'cannot_insert_on_clip') {
+            toast.add({
+              title: t('fastcat.timeline.cannotInsertPlayheadOnClip'),
+              color: 'error',
+              icon: 'i-heroicons-x-circle',
+            });
+          } else {
+            toast.add({
+              title: t('common.error'),
+              description: err.message,
+              color: 'error',
+            });
+          }
+        }
       }
     }
 

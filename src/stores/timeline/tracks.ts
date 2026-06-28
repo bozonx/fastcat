@@ -135,32 +135,26 @@ export function createTimelineTracksModule(deps: TimelineTracksDeps): TimelineTr
     const doc = deps.timelineDoc.value;
     if (!doc) return kind === 'video' ? 'v1' : 'a1';
 
-    const durationUs = options?.durationUs;
-
-    // 1. If a clip or gap is selected, use its track only when the insertion range fits.
+    // 1. If a clip or gap is selected, use its track.
     if (deps.selectedItemIds.value.length > 0) {
       const selectedId = deps.selectedItemIds.value[0]!;
       const track = doc.tracks.find((t) => t.items.some((it) => it.id === selectedId));
       if (track?.kind === kind) {
-        return trackHasSpaceAtPlayhead(track, durationUs)
-          ? track.id
-          : createMobileTargetTrack(kind);
+        return track.id;
       }
     }
 
-    // 2. If a track is selected and its type matches, use it only when the insertion range fits.
+    // 2. If a track is selected and its type matches, use it.
     if (deps.selectedTrackId.value) {
       const selectedTrack = doc.tracks.find((t) => t.id === deps.selectedTrackId.value);
       if (selectedTrack?.kind === kind) {
-        return trackHasSpaceAtPlayhead(selectedTrack, durationUs)
-          ? selectedTrack.id
-          : createMobileTargetTrack(kind);
+        return selectedTrack.id;
       }
     }
 
     // 3. With no selected track, try the top track of the requested kind.
     const topTrack = doc.tracks.find((t) => t.kind === kind);
-    if (topTrack && trackHasSpaceAtPlayhead(topTrack, durationUs)) return topTrack.id;
+    if (topTrack) return topTrack.id;
 
     // 4. Otherwise create a new track.
     return createMobileTargetTrack(kind);

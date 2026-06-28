@@ -28,6 +28,7 @@ const workspaceStore = useWorkspaceStore();
 const { handleFiles } = useFileManager();
 const clipboardStore = useAppClipboard();
 const { captureSelectionKind, notifyRedirect } = useMediaTrackRedirectToast();
+const toast = useToast();
 
 const isOpenLocal = useCloseModel(
   () => props.isOpen,
@@ -70,23 +71,69 @@ async function handlePaste() {
 }
 
 function addAdjustment() {
-  const trackId =
-    props.targetTrackId ??
-    timelineStore.resolveMobileTargetTrackId('video', {
-      durationUs: workspaceStore.userSettings.timeline.defaultStaticClipDurationUs,
-    });
-  timelineStore.addAdjustmentClipAtPlayhead({ pseudo: true, trackId });
-  emit('close');
+  try {
+    const trackId =
+      props.targetTrackId ??
+      timelineStore.resolveMobileTargetTrackId('video', {
+        durationUs: workspaceStore.userSettings.timeline.defaultStaticClipDurationUs,
+      });
+    timelineStore.addAdjustmentClipAtPlayhead({ pseudo: true, trackId });
+    if (timelineStore.lastClipTrimmed) {
+      toast.add({
+        title: t('fastcat.timeline.clipTrimmedToFitGap'),
+        color: 'warning',
+        icon: 'i-heroicons-exclamation-triangle',
+      });
+    }
+    emit('close');
+  } catch (err: any) {
+    if (err.message === 'cannot_insert_on_clip') {
+      toast.add({
+        title: t('fastcat.timeline.cannotInsertPlayheadOnClip'),
+        color: 'error',
+        icon: 'i-heroicons-x-circle',
+      });
+    } else {
+      toast.add({
+        title: t('common.error'),
+        description: err.message,
+        color: 'error',
+      });
+    }
+  }
 }
 
 function addBackground() {
-  const trackId =
-    props.targetTrackId ??
-    timelineStore.resolveMobileTargetTrackId('video', {
-      durationUs: workspaceStore.userSettings.timeline.defaultStaticClipDurationUs,
-    });
-  timelineStore.addBackgroundClipAtPlayhead({ pseudo: true, trackId });
-  emit('close');
+  try {
+    const trackId =
+      props.targetTrackId ??
+      timelineStore.resolveMobileTargetTrackId('video', {
+        durationUs: workspaceStore.userSettings.timeline.defaultStaticClipDurationUs,
+      });
+    timelineStore.addBackgroundClipAtPlayhead({ pseudo: true, trackId });
+    if (timelineStore.lastClipTrimmed) {
+      toast.add({
+        title: t('fastcat.timeline.clipTrimmedToFitGap'),
+        color: 'warning',
+        icon: 'i-heroicons-exclamation-triangle',
+      });
+    }
+    emit('close');
+  } catch (err: any) {
+    if (err.message === 'cannot_insert_on_clip') {
+      toast.add({
+        title: t('fastcat.timeline.cannotInsertPlayheadOnClip'),
+        color: 'error',
+        icon: 'i-heroicons-x-circle',
+      });
+    } else {
+      toast.add({
+        title: t('common.error'),
+        description: err.message,
+        color: 'error',
+      });
+    }
+  }
 }
 
 function openVirtualClipPreset(type: 'text' | 'shape' | 'hud') {
@@ -111,35 +158,76 @@ async function onFilesSelected(e: Event) {
     for (const r of results) {
       const mediaType = getMediaTypeFromFilename(r.fileName);
       if (mediaType === 'timeline') {
-        const durationUs = await resolveInsertDurationUs(r.targetPath, mediaType);
-        await timelineStore.addTimelineClipToTimelineFromPath({
-          trackId: timelineStore.resolveMobileTargetTrackId('video', { durationUs }),
-          name: r.fileName,
-          path: r.targetPath,
-          startUs: timelineStore.currentTime,
-          pseudo: true,
-        });
+        try {
+          const durationUs = await resolveInsertDurationUs(r.targetPath, mediaType);
+          await timelineStore.addTimelineClipToTimelineFromPath({
+            trackId: timelineStore.resolveMobileTargetTrackId('video', { durationUs }),
+            name: r.fileName,
+            path: r.targetPath,
+            startUs: timelineStore.currentTime,
+            pseudo: true,
+          });
+        } catch (err: any) {
+          if (err.message === 'cannot_insert_on_clip') {
+            toast.add({
+              title: t('fastcat.timeline.cannotInsertPlayheadOnClip'),
+              color: 'error',
+              icon: 'i-heroicons-x-circle',
+            });
+          } else {
+            toast.add({
+              title: t('common.error'),
+              description: err.message,
+              color: 'error',
+            });
+          }
+        }
       } else if (['video', 'audio', 'image'].includes(mediaType)) {
         const kind = mediaType === 'audio' ? 'audio' : 'video';
         const durationUs = await resolveInsertDurationUs(r.targetPath, mediaType);
         const trackId =
           props.targetTrackId ?? timelineStore.resolveMobileTargetTrackId(kind, { durationUs });
 
-        await timelineStore.addClipToTimelineFromPath({
-          trackId,
-          name: r.fileName,
-          path: r.targetPath,
-          startUs: timelineStore.currentTime,
-          pseudo: true,
-        });
-        // Use the resolved track's actual kind: props.targetTrackId can override the
-        // media-derived kind, so the clip may not land on a track of `kind`.
-        const placedKind =
-          timelineStore.timelineDoc?.tracks.find((t) => t.id === trackId)?.kind ?? kind;
-        addedKinds.push(placedKind);
+        try {
+          const result = await timelineStore.addClipToTimelineFromPath({
+            trackId,
+            name: r.fileName,
+            path: r.targetPath,
+            startUs: timelineStore.currentTime,
+            pseudo: true,
+          });
+          if (result.warnings?.some((w) => w.type === 'clipTrimmed')) {
+            toast.add({
+              title: t('fastcat.timeline.clipTrimmedToFitGap'),
+              color: 'warning',
+              icon: 'i-heroicons-exclamation-triangle',
+            });
+          }
+          // Use the resolved track's actual kind: props.targetTrackId can override the
+          // media-derived kind, so the clip may not land on a track of `kind`.
+          const placedKind =
+            timelineStore.timelineDoc?.tracks.find((t) => t.id === trackId)?.kind ?? kind;
+          addedKinds.push(placedKind);
+        } catch (err: any) {
+          if (err.message === 'cannot_insert_on_clip') {
+            toast.add({
+              title: t('fastcat.timeline.cannotInsertPlayheadOnClip'),
+              color: 'error',
+              icon: 'i-heroicons-x-circle',
+            });
+          } else {
+            toast.add({
+              title: t('common.error'),
+              description: err.message,
+              color: 'error',
+            });
+          }
+        }
       }
     }
-    notifyRedirect(selectionKind, addedKinds);
+    if (addedKinds.length > 0) {
+      notifyRedirect(selectionKind, addedKinds);
+    }
   }
 }
 

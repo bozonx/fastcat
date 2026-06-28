@@ -3,10 +3,7 @@ import { VideoCompositor } from '~/utils/video-editor/VideoCompositor';
 import type { WorkerVideoPayloadItem } from '~/types/worker-payload';
 import type { MediaSourceLoaderDeps } from '~/utils/video-editor/compositor/RasterImageLoader';
 import { computeFrameHash, computeColorSignature } from '~/utils/video-editor/perceptual-hash';
-import {
-  DEFAULT_TRANSITION_MODE,
-  DEFAULT_TRANSITION_CURVE,
-} from '~/transitions/core/registry';
+import { DEFAULT_TRANSITION_MODE, DEFAULT_TRANSITION_CURVE } from '~/transitions/core/registry';
 
 definePageMeta({
   layout: 'embedded',

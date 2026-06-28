@@ -121,6 +121,7 @@ export const useTimelineStore = defineStore('timeline', () => {
   const trackHeights = ref<Record<string, number>>({});
   const mobileTrackHeightsEnlarged = ref<Record<string, boolean>>({});
   const selectionRange = ref<TimelineSelectionRange | null>(null);
+  const lastClipTrimmed = ref(false);
 
   const fps = computed(() => {
     if (timelineDoc.value) return getDocFps(timelineDoc.value);
@@ -290,6 +291,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     get defaultAudioFadeCurve() {
       return workspaceStore.userSettings.projectDefaults.defaultAudioFadeCurve;
     },
+    lastClipTrimmed,
   });
 
   const markerService = createTimelineMarkerService({
@@ -989,6 +991,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     skipRecoveryDialog,
     markers: computed(() => markerService.getMarkers()),
     selectionRange: computed(() => selectionRangeModule.getSelectionRange()),
+    lastClipTrimmed: computed(() => lastClipTrimmed.value),
     getMarkers: markerService.getMarkers,
     getSelectionRange: selectionRangeModule.getSelectionRange,
     setPreviewSelectionRange: selectionRangeModule.setPreviewSelectionRange,

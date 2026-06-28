@@ -914,6 +914,8 @@
       "toggleTrackMute": "Вкл/выкл звук дорожки",
       "toggleTrackSolo": "Соло дорожки",
       "toggleTrackVisibility": "Показать/скрыть дорожку",
+      "clipTrimmedToFitGap": "Клип автоматически подрезан под размер свободного места.",
+      "cannotInsertPlayheadOnClip": "Невозможно вставить клип: переместите плейхед на свободное место дорожки.",
       "trackProperties": "Свойства дорожки",
       "transition": {
         "actionFall": "Падение",

@@ -5,7 +5,11 @@ import ClipMetadata from '~/components/timeline/ClipMetadata.vue';
 
 describe('ClipMetadata', () => {
   const track = { kind: 'video' } as any;
-  const item = { kind: 'clip', id: 'c1', timelineRange: { startUs: 0, durationUs: 1000000 } } as any;
+  const item = {
+    kind: 'clip',
+    id: 'c1',
+    timelineRange: { startUs: 0, durationUs: 1000000 },
+  } as any;
 
   const timelineContextMock = {
     timelineDoc: ref({ tracks: [] }),
@@ -26,7 +30,12 @@ describe('ClipMetadata', () => {
   });
 
   it('renders muted icon', async () => {
-    const mutedItem = { kind: 'clip', id: 'c1', audioMuted: true, timelineRange: { startUs: 0, durationUs: 1000000 } } as any;
+    const mutedItem = {
+      kind: 'clip',
+      id: 'c1',
+      audioMuted: true,
+      timelineRange: { startUs: 0, durationUs: 1000000 },
+    } as any;
     const component = await mountSuspended(ClipMetadata, {
       props: { item: mutedItem, track, clipWidthPx: 100 },
       global: {
@@ -40,7 +49,12 @@ describe('ClipMetadata', () => {
   });
 
   it('hides muted icon if track itself is muted', async () => {
-    const mutedItem = { kind: 'clip', id: 'c1', audioMuted: true, timelineRange: { startUs: 0, durationUs: 1000000 } } as any;
+    const mutedItem = {
+      kind: 'clip',
+      id: 'c1',
+      audioMuted: true,
+      timelineRange: { startUs: 0, durationUs: 1000000 },
+    } as any;
     const mutedTrack = { kind: 'video', audioMuted: true } as any;
     const component = await mountSuspended(ClipMetadata, {
       props: { item: mutedItem, track: mutedTrack, clipWidthPx: 100 },
@@ -55,7 +69,12 @@ describe('ClipMetadata', () => {
   });
 
   it('renders disabled icon', async () => {
-    const disabledItem = { kind: 'clip', id: 'c1', disabled: true, timelineRange: { startUs: 0, durationUs: 1000000 } } as any;
+    const disabledItem = {
+      kind: 'clip',
+      id: 'c1',
+      disabled: true,
+      timelineRange: { startUs: 0, durationUs: 1000000 },
+    } as any;
     const component = await mountSuspended(ClipMetadata, {
       props: { item: disabledItem, track, clipWidthPx: 100 },
       global: {

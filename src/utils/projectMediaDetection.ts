@@ -153,7 +153,9 @@ export function detectProjectFormat(width: number, height: number): ProjectForma
   };
 }
 
-export async function tryDetectMediaDimensions(files: File[]): Promise<ProjectFormatOptions | null> {
+export async function tryDetectMediaDimensions(
+  files: File[],
+): Promise<ProjectFormatOptions | null> {
   const mediaFile = files.find((f) => f.type.startsWith('video/') || f.type.startsWith('image/'));
   if (!mediaFile) return null;
 

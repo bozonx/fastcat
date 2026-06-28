@@ -99,7 +99,7 @@ export interface TimelineCommandServiceDeps {
 }
 
 export interface AddClipWarning {
-  type: 'autoSettingsApplied' | 'fpsMismatch';
+  type: 'autoSettingsApplied' | 'fpsMismatch' | 'clipTrimmed';
   width?: number;
   height?: number;
   fps?: number;
@@ -376,6 +376,39 @@ export function createTimelineCommandService(deps: TimelineCommandServiceDeps) {
       throw new Error('Failed to resolve media duration');
     }
 
+    const startUs = input.startUs ?? 0;
+
+    // Check if startUs falls inside any existing clip on this track
+    const overlappingClip = targetTrack.items.find((it) => {
+      if (it.kind !== 'clip') return false;
+      const clipStart = it.timelineRange.startUs;
+      const clipEnd = clipStart + it.timelineRange.durationUs;
+      return startUs >= clipStart && startUs < clipEnd - 1; // 1 Us epsilon
+    });
+
+    if (overlappingClip) {
+      throw new Error('cannot_insert_on_clip');
+    }
+
+    // Find the next clip that starts after startUs on this track
+    const nextClip = targetTrack.items
+      .filter((it) => it.kind === 'clip' && it.timelineRange.startUs > startUs)
+      .sort((a, b) => a.timelineRange.startUs - b.timelineRange.startUs)[0];
+
+    let finalDurationUs = durationUs;
+    const warnings: AddClipWarning[] = [];
+
+    if (nextClip) {
+      const maxAvailableDurationUs = nextClip.timelineRange.startUs - startUs;
+      if (maxAvailableDurationUs <= 0) {
+        throw new Error('cannot_insert_on_clip');
+      }
+      if (durationUs > maxAvailableDurationUs) {
+        finalDurationUs = maxAvailableDurationUs;
+        warnings.push({ type: 'clipTrimmed' });
+      }
+    }
+
     const shouldAutoCreateProxy =
       deps.getUserSettings().optimization.autoCreateProxies &&
       hasVideo &&
@@ -393,8 +426,6 @@ export function createTimelineCommandService(deps: TimelineCommandServiceDeps) {
         log.warn('[timeline] Auto proxy creation failed', err);
       });
     }
-
-    const warnings: AddClipWarning[] = [];
 
     if (metadata && (metadata.video || metadata.audio)) {
       const doc = deps.getTimelineDoc();
@@ -479,10 +510,10 @@ export function createTimelineCommandService(deps: TimelineCommandServiceDeps) {
         trackId: input.trackId,
         name: input.name,
         path: input.path,
-        durationUs,
+        durationUs: finalDurationUs,
         sourceDurationUs,
         isImage: isImageLike,
-        startUs: input.startUs ?? 0,
+        startUs,
         pseudo: input.pseudo,
         audioFadeInCurve: userSettings.projectDefaults.defaultAudioFadeCurve,
         audioFadeOutCurve: userSettings.projectDefaults.defaultAudioFadeCurve,
@@ -492,7 +523,11 @@ export function createTimelineCommandService(deps: TimelineCommandServiceDeps) {
       options,
     );
 
-    return { durationUs, itemId: res[0], warnings: warnings.length > 0 ? warnings : undefined };
+    return {
+      durationUs: finalDurationUs,
+      itemId: res[0],
+      warnings: warnings.length > 0 ? warnings : undefined,
+    };
   }
 
   async function moveItemToTrack(input: MoveItemToTrackInput) {

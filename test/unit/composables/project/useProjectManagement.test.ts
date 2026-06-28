@@ -317,7 +317,11 @@ describe('useProjectManagement', () => {
       workspaceMock.workspaceProviderId = 'tauri';
       const { startDuplicate, duplicateValue, duplicateLocation, confirmDuplicate } =
         useProjectManagement();
-      startDuplicate({ projectName: 'Source', projectId: 'src-1', projectPath: '/projects/Source' });
+      startDuplicate({
+        projectName: 'Source',
+        projectId: 'src-1',
+        projectPath: '/projects/Source',
+      });
       duplicateValue.value = 'Copy';
       duplicateLocation.value = '/custom/target';
 

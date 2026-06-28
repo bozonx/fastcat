@@ -14,6 +14,7 @@ const props = defineProps<{
 const emit = defineEmits<{ (e: 'close'): void }>();
 
 const { t } = useI18n();
+const toast = useToast();
 const timelineStore = useTimelineStore();
 const presetsStore = usePresetsStore();
 const workspaceStore = useWorkspaceStore();
@@ -270,8 +271,31 @@ const customItems = computed<PresetItem[]>(() =>
 );
 
 function selectPreset(item: PresetItem) {
-  item.apply();
-  emit('close');
+  try {
+    item.apply();
+    if (timelineStore.lastClipTrimmed) {
+      toast.add({
+        title: t('fastcat.timeline.clipTrimmedToFitGap'),
+        color: 'warning',
+        icon: 'i-heroicons-exclamation-triangle',
+      });
+    }
+    emit('close');
+  } catch (err: any) {
+    if (err.message === 'cannot_insert_on_clip') {
+      toast.add({
+        title: t('fastcat.timeline.cannotInsertPlayheadOnClip'),
+        color: 'error',
+        icon: 'i-heroicons-x-circle',
+      });
+    } else {
+      toast.add({
+        title: t('common.error'),
+        description: err.message,
+        color: 'error',
+      });
+    }
+  }
 }
 </script>
 

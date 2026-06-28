@@ -11,10 +11,7 @@
  */
 import { writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import {
-  computeFrameHash,
-  computeColorSignature,
-} from '../src/utils/video-editor/perceptual-hash';
+import { computeFrameHash, computeColorSignature } from '../src/utils/video-editor/perceptual-hash';
 
 type RGBA = [number, number, number, number];
 interface Rect {

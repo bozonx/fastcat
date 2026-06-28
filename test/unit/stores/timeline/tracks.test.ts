@@ -112,20 +112,16 @@ describe('TimelineTracksModule', () => {
     );
   });
 
-  it('resolveMobileTargetTrackId creates a track when selected track has no room', () => {
+  it('resolveMobileTargetTrackId uses selected track even when it has no room', () => {
     const deps = createMockDeps();
     deps.currentTime.value = 500_000;
     deps.selectedTrackId.value = 'v1';
     const mod = createTimelineTracksModule(deps);
 
-    expect(mod.resolveMobileTargetTrackId('video', { durationUs: 500_000 })).toBe('v3');
-    expect(deps.applyTimeline).toHaveBeenCalledWith({
-      type: 'add_track',
-      kind: 'video',
-      name: 'Video 3',
-      insertBeforeId: undefined,
-      insertAfterId: undefined,
-    });
+    expect(mod.resolveMobileTargetTrackId('video', { durationUs: 500_000 })).toBe('v1');
+    expect(deps.applyTimeline).not.toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'add_track' }),
+    );
   });
 
   it('resolveMobileTargetTrackId uses top track when no track is selected and it has room', () => {
@@ -136,19 +132,15 @@ describe('TimelineTracksModule', () => {
     expect(mod.resolveMobileTargetTrackId('video', { durationUs: 500_000 })).toBe('v1');
   });
 
-  it('resolveMobileTargetTrackId creates a track when no track is selected and top track has no room', () => {
+  it('resolveMobileTargetTrackId uses top track even when no track is selected and top track has no room', () => {
     const deps = createMockDeps();
     deps.currentTime.value = 500_000;
     const mod = createTimelineTracksModule(deps);
 
-    expect(mod.resolveMobileTargetTrackId('video', { durationUs: 500_000 })).toBe('v3');
-    expect(deps.applyTimeline).toHaveBeenCalledWith({
-      type: 'add_track',
-      kind: 'video',
-      name: 'Video 3',
-      insertBeforeId: undefined,
-      insertAfterId: undefined,
-    });
+    expect(mod.resolveMobileTargetTrackId('video', { durationUs: 500_000 })).toBe('v1');
+    expect(deps.applyTimeline).not.toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'add_track' }),
+    );
   });
 
   it('renameTrack delegates to applyTimeline', () => {

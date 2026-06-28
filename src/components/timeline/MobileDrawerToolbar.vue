@@ -86,13 +86,17 @@ onUnmounted(() => {
     <div
       ref="scrollContainer"
       class="scroll-smooth"
-      :class="isVertical ? 'h-full w-full overflow-y-auto no-scrollbar' : 'overflow-x-auto no-scrollbar'"
+      :class="
+        isVertical ? 'h-full w-full overflow-y-auto no-scrollbar' : 'overflow-x-auto no-scrollbar'
+      "
       @scroll="updateScrollState"
     >
       <div
         class="flex"
         :class="[
-          isVertical ? 'flex-col items-stretch w-full h-max min-h-full' : 'items-center w-max min-w-full',
+          isVertical
+            ? 'flex-col items-stretch w-full h-max min-h-full'
+            : 'items-center w-max min-w-full',
           props.contentClass,
         ]"
       >

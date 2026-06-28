@@ -82,7 +82,7 @@ describe('MobileMarkerPropertiesDrawer', () => {
     expect(updateMarkerMock).toHaveBeenCalledWith('marker-1', { color: expect.any(String) });
   });
 
-  it('shows selection ring on the swatch corresponding to the marker\'s active color', async () => {
+  it("shows selection ring on the swatch corresponding to the marker's active color", async () => {
     const wrapper = await mountSuspended(MobileMarkerPropertiesDrawer, {
       props: { isOpen: true, markerId: 'marker-1' },
       global: globalOptions,

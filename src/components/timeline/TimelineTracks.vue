@@ -625,16 +625,18 @@ watch(
   border-width: 0;
   border-color: transparent;
 }
-
-/* Яркая подсветка когда выбран сам хедер трека */
+/* Яркая подсветка когда выбран сам трек */
 .track--directly-selected::before {
+  background-color: color-mix(in srgb, var(--color-primary-500) 8%, transparent);
+}
+
+.track--directly-selected::after {
   border-top-width: 2px;
   border-bottom-width: 2px;
   border-color: var(
     --track-selection-color,
     color-mix(in srgb, var(--color-primary-500) 70%, transparent)
   );
-  background-color: color-mix(in srgb, var(--color-primary-500) 8%, transparent);
 }
 
 /* Мягкая подсветка когда выбран клип на треке */

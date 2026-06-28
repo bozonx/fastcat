@@ -204,15 +204,38 @@ async function addToTimeline() {
           continue;
         }
 
-        await timelineStore.addClipToTimelineFromPath({
-          trackId: targetTrackId,
-          name: entry.name,
-          path: entry.path,
-          startUs: cursorUs,
-          pseudo: true,
-        });
-        cursorUs += durationUs ?? 0;
-        addedKinds.push(kind);
+        try {
+          const result = await timelineStore.addClipToTimelineFromPath({
+            trackId: targetTrackId,
+            name: entry.name,
+            path: entry.path,
+            startUs: cursorUs,
+            pseudo: true,
+          });
+          if (result.warnings?.some((w) => w.type === 'clipTrimmed')) {
+            toast.add({
+              title: t('fastcat.timeline.clipTrimmedToFitGap'),
+              color: 'warning',
+              icon: 'i-heroicons-exclamation-triangle',
+            });
+          }
+          cursorUs += result.durationUs ?? durationUs ?? 0;
+          addedKinds.push(kind);
+        } catch (err: any) {
+          if (err.message === 'cannot_insert_on_clip') {
+            toast.add({
+              title: t('fastcat.timeline.cannotInsertPlayheadOnClip'),
+              color: 'error',
+              icon: 'i-heroicons-x-circle',
+            });
+          } else {
+            toast.add({
+              title: t('common.error'),
+              description: err.message,
+              color: 'error',
+            });
+          }
+        }
       }
 
       notifyRedirect(selectionKind, addedKinds);

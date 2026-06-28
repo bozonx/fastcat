@@ -64,6 +64,7 @@ export interface TimelineClipsDeps {
   ensureNoNestedTimelineCycle?: (path: string) => Promise<void>;
   defaultStaticClipDurationUs: number;
   defaultAudioFadeCurve: import('~/timeline/types').AudioFadeCurve;
+  lastClipTrimmed: Ref<boolean>;
 }
 
 export interface TimelineClipsModule {
@@ -876,6 +877,44 @@ export function createTimelineClipsModule(deps: TimelineClipsDeps): TimelineClip
       deps.timelineDoc.value = deps.createFallbackTimelineDoc();
     }
 
+    deps.lastClipTrimmed.value = false;
+
+    const track = deps.timelineDoc.value?.tracks.find((t) => t.id === input.trackId);
+    if (!track) throw new Error('Track not found');
+
+    const startUs = input.startUs;
+    const durationUs = input.durationUs ?? deps.defaultStaticClipDurationUs;
+
+    // Check if startUs falls inside any existing clip on this track
+    const overlappingClip = track.items.find((it) => {
+      if (it.kind !== 'clip') return false;
+      const clipStart = it.timelineRange.startUs;
+      const clipEnd = clipStart + it.timelineRange.durationUs;
+      return startUs >= clipStart && startUs < clipEnd - 1; // 1 Us epsilon
+    });
+
+    if (overlappingClip) {
+      throw new Error('cannot_insert_on_clip');
+    }
+
+    // Find the next clip that starts after startUs on this track
+    const nextClip = track.items
+      .filter((it) => it.kind === 'clip' && it.timelineRange.startUs > startUs)
+      .sort((a, b) => a.timelineRange.startUs - b.timelineRange.startUs)[0];
+
+    let finalDurationUs = durationUs;
+
+    if (nextClip) {
+      const maxAvailableDurationUs = nextClip.timelineRange.startUs - startUs;
+      if (maxAvailableDurationUs <= 0) {
+        throw new Error('cannot_insert_on_clip');
+      }
+      if (durationUs > maxAvailableDurationUs) {
+        finalDurationUs = maxAvailableDurationUs;
+        deps.lastClipTrimmed.value = true;
+      }
+    }
+
     return deps.applyTimeline(
       {
         type: 'add_virtual_clip_to_track',
@@ -883,7 +922,7 @@ export function createTimelineClipsModule(deps: TimelineClipsDeps): TimelineClip
         startUs: input.startUs,
         clipType: input.clipType,
         name: input.name,
-        durationUs: input.durationUs ?? deps.defaultStaticClipDurationUs,
+        durationUs: finalDurationUs,
         backgroundColor: input.backgroundColor,
         text: input.text,
         style: input.style,

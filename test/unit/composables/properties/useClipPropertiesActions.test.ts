@@ -336,9 +336,9 @@ describe('useClipPropertiesActions', () => {
 
     it('includes toggleShowThumbnails for media video clips', () => {
       const { actions } = build({ trackKind: 'video' });
-      expect(
-        actions.otherActionsList.value.some((a) => a.id === 'toggleShowThumbnails'),
-      ).toBe(true);
+      expect(actions.otherActionsList.value.some((a) => a.id === 'toggleShowThumbnails')).toBe(
+        true,
+      );
     });
 
     it.each(['adjustment', 'text', 'background'] as const)(
@@ -346,9 +346,9 @@ describe('useClipPropertiesActions', () => {
       (clipType) => {
         const clip = makeClip({ clipType });
         const { actions } = build({ clip, trackKind: 'video' });
-        expect(
-          actions.otherActionsList.value.some((a) => a.id === 'toggleShowThumbnails'),
-        ).toBe(false);
+        expect(actions.otherActionsList.value.some((a) => a.id === 'toggleShowThumbnails')).toBe(
+          false,
+        );
       },
     );
   });

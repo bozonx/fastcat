@@ -598,24 +598,6 @@ const {
         </div>
       </div>
     </div>
-
-    <!-- FAB: add content -->
-    <Teleport :to="teleportTarget">
-      <div
-        v-if="!isAnyDrawerOpen && uiStore.activeModalsCount === 0"
-        class="fixed z-40 transition-all duration-300"
-        :class="drawerToolbarOrientation === 'vertical' ? 'bottom-6 right-6' : 'bottom-20 right-6'"
-      >
-        <UButton
-          icon="lucide:plus"
-          size="xl"
-          class="rounded-full shadow-2xl w-14 h-14 flex items-center justify-center bg-ui-action hover:bg-ui-action-hover text-white border-none shadow-ui-action/20"
-          :ui="{ icon: 'w-7 h-7' }"
-          :aria-label="t('fastcat.timeline.addContent')"
-          @click="isAddContentDrawerOpen = true"
-        />
-      </div>
-    </Teleport>
   </div>
 </template>
 

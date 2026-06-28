@@ -88,9 +88,9 @@ describe('frame-hash parity (shared fixture)', () => {
 
     expect(rgbw!.expectedHash).toBe(bgrw!.expectedHash);
     expect(rgbw!.expectedColorSig).not.toBe(bgrw!.expectedColorSig);
-    expect(
-      colorSignatureDistance(rgbw!.expectedColorSig, bgrw!.expectedColorSig),
-    ).toBeGreaterThan(0);
+    expect(colorSignatureDistance(rgbw!.expectedColorSig, bgrw!.expectedColorSig)).toBeGreaterThan(
+      0,
+    );
   });
 
   it('color signature distance is symmetric and zero for identical frames', () => {

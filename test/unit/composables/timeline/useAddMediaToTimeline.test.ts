@@ -109,7 +109,7 @@ describe('useAddMediaToTimeline', () => {
     expect(timelineStoreMock.requestTimelineSave).toHaveBeenCalledWith({ immediate: true });
   });
 
-  it('moves insertion past an existing clip on the target track', async () => {
+  it('does not shift insertion past an existing clip but inserts at current playhead', async () => {
     timelineStoreMock.currentTime = 500_000;
     timelineStoreMock.timelineDoc.tracks[0] = {
       id: 'v1',
@@ -130,7 +130,7 @@ describe('useAddMediaToTimeline', () => {
     await addMediaToTimeline([{ name: 'new.mp4', path: '_video/new.mp4' }]);
 
     expect(timelineStoreMock.addClipToTimelineFromPath).toHaveBeenCalledWith(
-      expect.objectContaining({ startUs: 2_000_000 }),
+      expect.objectContaining({ startUs: 500_000 }),
     );
   });
 });

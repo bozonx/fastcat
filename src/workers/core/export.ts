@@ -391,7 +391,10 @@ export interface OutputFormatConstructors {
  * the format constructors are passed in (they come from a dynamic import in the
  * caller) so this stays trivially testable and free of side effects.
  */
-export function selectOutputFormat(format: ExportOptions['format'], ctors: OutputFormatConstructors) {
+export function selectOutputFormat(
+  format: ExportOptions['format'],
+  ctors: OutputFormatConstructors,
+) {
   switch (format) {
     case 'webm':
       return new ctors.WebMOutputFormat();

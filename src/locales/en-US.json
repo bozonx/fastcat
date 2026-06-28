@@ -914,6 +914,8 @@
       "toggleTrackMute": "Toggle track mute",
       "toggleTrackSolo": "Toggle track solo",
       "toggleTrackVisibility": "Toggle track visibility",
+      "clipTrimmedToFitGap": "Clip was automatically trimmed to fit the available space.",
+      "cannotInsertPlayheadOnClip": "To add a clip, move the playhead to an empty space on the track.",
       "trackProperties": "Track Properties",
       "transition": {
         "actionFall": "Falls",

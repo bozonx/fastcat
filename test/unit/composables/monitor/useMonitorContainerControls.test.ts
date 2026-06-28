@@ -68,8 +68,12 @@ function createControls(options: { isMobile?: boolean } = {}) {
   });
 }
 
-function flattenMenuItems(groups: unknown[][]): Array<{ label?: string; type?: string; onSelect?: () => void }> {
-  return groups.flatMap((group) => group as Array<{ label?: string; type?: string; onSelect?: () => void }>);
+function flattenMenuItems(
+  groups: unknown[][],
+): Array<{ label?: string; type?: string; onSelect?: () => void }> {
+  return groups.flatMap(
+    (group) => group as Array<{ label?: string; type?: string; onSelect?: () => void }>,
+  );
 }
 
 describe('useMonitorContainerControls', () => {
@@ -132,13 +136,17 @@ describe('useMonitorContainerControls', () => {
   it('hides addMarkerAtPlayhead option in context menu if isMobile is true', () => {
     const controls = createControls({ isMobile: true });
     const items = flattenMenuItems(controls.contextMenuItems.value);
-    expect(items.some((entry) => entry.label === 'fastcat.timeline.addMarkerAtPlayhead')).toBe(false);
+    expect(items.some((entry) => entry.label === 'fastcat.timeline.addMarkerAtPlayhead')).toBe(
+      false,
+    );
   });
 
   it('shows addMarkerAtPlayhead option in context menu if isMobile is false or undefined', () => {
     const controls = createControls({ isMobile: false });
     const items = flattenMenuItems(controls.contextMenuItems.value);
-    expect(items.some((entry) => entry.label === 'fastcat.timeline.addMarkerAtPlayhead')).toBe(true);
+    expect(items.some((entry) => entry.label === 'fastcat.timeline.addMarkerAtPlayhead')).toBe(
+      true,
+    );
   });
 
   it('hides playbackSpeed selection option in context menu if isMobile is true', () => {

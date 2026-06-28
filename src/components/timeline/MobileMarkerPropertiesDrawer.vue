@@ -29,9 +29,7 @@ const marker = computed(() => {
 });
 
 const COLORS = computed(() => {
-  const commonColors = TRACK_COLOR_PRESETS.slice(1).map((c) =>
-    c === '#f8e71c' ? '#eab308' : c,
-  );
+  const commonColors = TRACK_COLOR_PRESETS.slice(1).map((c) => (c === '#f8e71c' ? '#eab308' : c));
   return ['#ffffff', ...commonColors];
 });
 

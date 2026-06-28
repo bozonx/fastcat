@@ -289,10 +289,9 @@ export function useProjectManagement(options: { isMobile?: boolean } = {}) {
       typeof project === 'string' ? { projectName: project } : { ...project };
     duplicateValue.value = duplicateTargetProject.value.projectName;
     // Default duplicate location to the source project's parent directory.
-    duplicateLocation.value =
-      duplicateTargetProject.value.projectPath
-        ? duplicateTargetProject.value.projectPath.replace(/[\\/][^\\/]+$/, '')
-        : workspaceStore.resolvedStorageTopology.projectsRoot;
+    duplicateLocation.value = duplicateTargetProject.value.projectPath
+      ? duplicateTargetProject.value.projectPath.replace(/[\\/][^\\/]+$/, '')
+      : workspaceStore.resolvedStorageTopology.projectsRoot;
     isDuplicateModalOpen.value = true;
   }
 
