@@ -15,6 +15,7 @@ import { until, useMediaQuery } from '@vueuse/core';
 import { usePendingNewProjectFiles } from '~/composables/project/useProjectManagement';
 import { useFileManager } from '~/composables/file-manager/useFileManager';
 import { useAddMediaToTimeline } from '~/composables/timeline/useAddMediaToTimeline';
+import { readLocalStorageString, writeLocalStorageString } from '~/stores/ui/uiLocalStorage';
 
 definePageMeta({
   layout: 'mobile',
@@ -70,13 +71,26 @@ onMounted(async () => {
       throw new Error('Project failed to open');
     }
 
-    // Enforce Edit tab by default on mobile
-    projectStore.setView('cut');
-
-    // Handle view query parameter
+    // Handle view query parameter or restore last active tab from localStorage
     const viewParam = route.query.view as string;
+    let targetTab: TabId = 'edit';
     if (viewParam && ['files', 'edit', 'export', 'settings'].includes(viewParam)) {
-      activeTab.value = viewParam as TabId;
+      targetTab = viewParam as TabId;
+    } else {
+      const lastTab = readLocalStorageString('fastcat:mobile:last-tab', 'edit') as TabId;
+      targetTab = lastTab && ['files', 'edit'].includes(lastTab) ? lastTab : 'edit';
+    }
+
+    projectStore.setView(tabToViewMap[targetTab]);
+
+    if (route.query.view !== targetTab) {
+      router.replace({
+        query: { ...route.query, view: targetTab },
+      });
+    }
+
+    if (targetTab === 'edit' || targetTab === 'files') {
+      writeLocalStorageString('fastcat:mobile:last-tab', targetTab);
     }
 
     // Auto-import pending files for new project
@@ -115,6 +129,12 @@ const activeTab = computed<TabId>({
   get: () => (viewToTabMap[projectStore.currentView as string] ?? 'edit') as TabId,
   set: (tab: TabId) => {
     projectStore.setView(tabToViewMap[tab]);
+    router.replace({
+      query: { ...route.query, view: tab },
+    });
+    if (tab === 'edit' || tab === 'files') {
+      writeLocalStorageString('fastcat:mobile:last-tab', tab);
+    }
   },
 });
 

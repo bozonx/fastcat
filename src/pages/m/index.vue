@@ -121,7 +121,7 @@ async function onNewProjectFilesSelected(e: Event) {
       return;
     }
 
-    const url = `/m/editor/${encodeURIComponent(projectName)}`;
+    const url = `/m/editor/${encodeURIComponent(projectName)}?view=edit`;
     router.push(url);
   } catch (error) {
     pendingFilesForNewProject.value = [];

@@ -3,6 +3,7 @@ import { ref, computed } from 'vue';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useProjectStore } from '~/stores/project.store';
 import { isValidFsEntryName } from '~/file-manager/core/rules';
+import { readLocalStorageString } from '~/stores/ui/uiLocalStorage';
 const log = createDevLogger('useProjectManagement');
 
 const I18N_KEYS = {
@@ -175,12 +176,14 @@ export function useProjectManagement(options: { isMobile?: boolean } = {}) {
   }
 
   function handleOpenProject(project: string) {
-    projectStore.goToCut();
-    const basePath = options.isMobile ? '/m/editor' : '/editor';
-    const url = `${basePath}/${encodeURIComponent(project)}`;
     if (options.isMobile) {
+      const lastTab = readLocalStorageString('fastcat:mobile:last-tab', 'edit');
+      const view = lastTab && ['files', 'edit'].includes(lastTab) ? lastTab : 'edit';
+      const url = `/m/editor/${encodeURIComponent(project)}?view=${view}`;
       router.push(url);
     } else {
+      projectStore.goToCut();
+      const url = `/editor/${encodeURIComponent(project)}`;
       navigateTo(url);
     }
   }

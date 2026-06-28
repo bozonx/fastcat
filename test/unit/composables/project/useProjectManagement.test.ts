@@ -3,6 +3,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { setActivePinia, createPinia } from 'pinia';
 import { reactive, ref, nextTick } from 'vue';
 import { useProjectManagement } from '~/composables/project/useProjectManagement';
+import { navigateTo, useRouter } from '#app/composables/router';
 
 const mockCreateProject = vi.fn().mockResolvedValue(undefined);
 const mockGoToCut = vi.fn();
@@ -45,7 +46,19 @@ vi.mock('~/stores/project.store', () => ({
   useProjectStore: vi.fn(() => projectMock),
 }));
 
+const { mockReadLocalStorageString, mockWriteLocalStorageString } = vi.hoisted(() => ({
+  mockReadLocalStorageString: vi.fn().mockImplementation((key, fallback) => fallback),
+  mockWriteLocalStorageString: vi.fn(),
+}));
+
+vi.mock('~/stores/ui/uiLocalStorage', () => ({
+  readLocalStorageString: mockReadLocalStorageString,
+  writeLocalStorageString: mockWriteLocalStorageString,
+}));
+
 describe('useProjectManagement', () => {
+  const mockPush = vi.fn();
+
   beforeEach(() => {
     setActivePinia(createPinia());
     vi.clearAllMocks();
@@ -55,6 +68,16 @@ describe('useProjectManagement', () => {
     workspaceMock.isLoading = false;
     workspaceMock.workspaceProviderId = 'web';
     workspaceMock.userSettings.openLastProjectOnStart = false;
+
+    vi.mocked(useRouter).mockReturnValue({
+      push: mockPush,
+      replace: vi.fn(),
+      go: vi.fn(),
+      back: vi.fn(),
+      afterEach: vi.fn(),
+      beforeEach: vi.fn(),
+      beforeResolve: vi.fn(),
+    } as any);
   });
 
   it('initializes with closed modals and empty form values', () => {
@@ -348,6 +371,41 @@ describe('useProjectManagement', () => {
     it('returns false for undefined projectPath', () => {
       const { isExternalProject } = useProjectManagement();
       expect(isExternalProject(undefined)).toBe(false);
+    });
+  });
+
+  describe('handleOpenProject', () => {
+    it('redirects to desktop editor path and resets view in desktop mode', () => {
+      const { handleOpenProject } = useProjectManagement({ isMobile: false });
+      handleOpenProject('MyProject');
+
+      expect(mockGoToCut).toHaveBeenCalledTimes(1);
+      expect(navigateTo).toHaveBeenCalledWith('/editor/MyProject');
+    });
+
+    it('redirects to mobile editor path with default view edit when localStorage is empty', () => {
+      mockReadLocalStorageString.mockReturnValueOnce(null);
+      const { handleOpenProject } = useProjectManagement({ isMobile: true });
+      handleOpenProject('MyProject');
+
+      expect(mockGoToCut).not.toHaveBeenCalled();
+      expect(mockPush).toHaveBeenCalledWith('/m/editor/MyProject?view=edit');
+    });
+
+    it('redirects to mobile editor path with the view read from localStorage', () => {
+      mockReadLocalStorageString.mockReturnValueOnce('files');
+      const { handleOpenProject } = useProjectManagement({ isMobile: true });
+      handleOpenProject('MyProject');
+
+      expect(mockPush).toHaveBeenCalledWith('/m/editor/MyProject?view=files');
+    });
+
+    it('redirects to mobile editor path with view edit when localStorage value is invalid', () => {
+      mockReadLocalStorageString.mockReturnValueOnce('export');
+      const { handleOpenProject } = useProjectManagement({ isMobile: true });
+      handleOpenProject('MyProject');
+
+      expect(mockPush).toHaveBeenCalledWith('/m/editor/MyProject?view=edit');
     });
   });
 });
