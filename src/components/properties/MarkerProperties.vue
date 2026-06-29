@@ -31,10 +31,10 @@ function handleUpdateText(val: string | undefined) {
   });
 }
 
-function handleUpdateColor(val: string) {
+function handleUpdateColor(val: string | string[]) {
   if (!marker.value) return;
   timelineStore.updateMarker(marker.value.id, {
-    color: val,
+    color: Array.isArray(val) ? (val[0] ?? marker.value.color ?? '#eab308') : val,
   });
 }
 
@@ -91,11 +91,6 @@ function handleConvertToSelectionRange() {
   timelineStore.convertMarkerToSelectionRange(marker.value.id);
 }
 
-function handleCreateSelectionRange() {
-  if (!marker.value || !isZone.value) return;
-  timelineStore.createSelectionRangeFromMarker(marker.value.id);
-}
-
 const commonActions = computed(() => [
   {
     id: 'delete',
@@ -126,13 +121,6 @@ const mainActions = computed<
         label: t('fastcat.timeline.convertZoneToSelection'),
         icon: 'i-heroicons-rectangle-group',
         onClick: handleConvertToSelectionRange,
-      },
-      {
-        id: 'create-selection',
-        label: t('fastcat.timeline.createSelectionFromZone'),
-        icon: 'i-heroicons-sparkles',
-        color: 'secondary' as const,
-        onClick: handleCreateSelectionRange,
       },
     );
   }

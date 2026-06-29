@@ -94,4 +94,21 @@ describe('timeline-selection-range', () => {
     expect(markerService.updateMarker).not.toHaveBeenCalled();
     expect(selectionRange.getSelectionRange()).toBeNull();
   });
+
+  it('converts a zone marker to a selection range, removing the marker itself', () => {
+    markerService.getMarkers.mockReturnValue([
+      { id: 'zone-marker', timeUs: 1000000, durationUs: 3000000, text: 'Zone' },
+    ]);
+
+    selectionRange.convertMarkerToSelectionRange('zone-marker');
+
+    // Should create the selection range matching the zone marker's duration and position
+    expect(selectionRange.getSelectionRange()).toEqual({ startUs: 1000000, endUs: 4000000 });
+
+    // Should not call updateMarker
+    expect(markerService.updateMarker).not.toHaveBeenCalled();
+
+    // Should remove the marker
+    expect(markerService.removeMarker).toHaveBeenCalledWith('zone-marker');
+  });
 });

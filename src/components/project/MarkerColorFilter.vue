@@ -8,24 +8,12 @@ const props = defineProps<{
 
 const selectedColors = defineModel<Set<string>>({ required: true });
 
-function isLightColor(hex: string): boolean {
-  const sanitized = hex.replace('#', '');
-  const r = parseInt(sanitized.substring(0, 2), 16);
-  const g = parseInt(sanitized.substring(2, 4), 16);
-  const b = parseInt(sanitized.substring(4, 6), 16);
-  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
-  return luminance > 0.6;
-}
-
-function toggleColor(color: string) {
-  const next = new Set(selectedColors.value);
-  if (next.has(color)) {
-    next.delete(color);
-  } else {
-    next.add(color);
-  }
-  selectedColors.value = next;
-}
+const selectedColorList = computed({
+  get: () => Array.from(selectedColors.value),
+  set: (value: string | string[]) => {
+    selectedColors.value = new Set(Array.isArray(value) ? value : [value]);
+  },
+});
 
 const isAllSelected = computed(() => {
   return (
@@ -48,31 +36,15 @@ function toggleAll() {
     class="flex gap-2"
     :class="props.orientation === 'vertical' ? 'flex-col items-center' : 'items-center'"
   >
-    <div
-      class="marker-color-filter flex gap-1.5"
-      :class="props.orientation === 'vertical' ? 'flex-col items-center' : 'items-center'"
-    >
-      <button
-        v-for="color in availableColors"
-        :key="color"
-        type="button"
-        class="w-4 h-4 rounded-full border border-ui-border transition-all hover:scale-110 relative cursor-pointer focus:outline-none focus:ring-0 focus-visible:outline-none"
-        :class="{
-          'opacity-100 scale-110 z-10': selectedColors.has(color),
-          'opacity-40 hover:opacity-75': !selectedColors.has(color),
-        }"
-        :style="{ backgroundColor: color }"
-        @click="toggleColor(color)"
-      >
-        <span
-          v-if="selectedColors.has(color)"
-          class="absolute inset-0 flex items-center justify-center text-[9px] font-bold leading-none select-none"
-          :class="isLightColor(color) ? 'text-black' : 'text-white'"
-        >
-          ✓
-        </span>
-      </button>
-    </div>
+    <UiColorPicker
+      v-model="selectedColorList"
+      class="marker-color-filter"
+      mode="custom"
+      :colors="availableColors"
+      multiple
+      size="xs"
+      :orientation="props.orientation === 'vertical' ? 'vertical' : 'horizontal'"
+    />
     <UButton
       v-if="availableColors.length > 0"
       size="xs"

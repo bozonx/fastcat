@@ -246,7 +246,7 @@ const clipCount = computed(
       <UiColorPicker
         :model-value="trackColor"
         mode="track"
-        @update:model-value="(v) => (trackColor = v)"
+        @update:model-value="(v) => (trackColor = Array.isArray(v) ? (v[0] ?? trackColor) : v)"
       />
     </PropertySection>
 

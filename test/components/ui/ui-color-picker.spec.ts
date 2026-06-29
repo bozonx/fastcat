@@ -42,6 +42,22 @@ describe('UiColorPicker', () => {
     expect(selectedButton.classes()).toContain('ring-2');
   });
 
+  it('keeps selected outline after model value changes', async () => {
+    const component = await mountSuspended(UiColorPicker, {
+      props: { modelValue: '#ffffff', mode: 'marker' },
+    });
+
+    await component.setProps({ modelValue: '#eab308' });
+
+    const selectedButtons = component
+      .findAll('button')
+      .filter((button) => button.attributes('data-selected') === 'true');
+
+    expect(selectedButtons).toHaveLength(1);
+    expect(selectedButtons[0]!.classes()).toContain('ring-2');
+    expect(selectedButtons[0]!.text()).toContain('✓');
+  });
+
   it('applies ring class to default marker yellow color', async () => {
     const component = await mountSuspended(UiColorPicker, {
       props: { modelValue: '#eab308', mode: 'marker' },

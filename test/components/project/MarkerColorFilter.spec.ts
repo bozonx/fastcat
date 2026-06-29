@@ -47,7 +47,7 @@ describe('MarkerColorFilter.vue', () => {
       .find((btn) => btn.attributes('style')?.includes('#4a90e2'));
 
     expect(redButton!.classes()).toContain('opacity-100');
-    expect(redButton!.classes()).not.toContain('ring-2');
+    expect(redButton!.classes()).toContain('ring-2');
     expect(redButton!.text()).toContain('✓');
 
     expect(blueButton!.classes()).toContain('opacity-40');

@@ -35,19 +35,10 @@ const COLORS = computed(() => {
 
 const activeColor = computed(() => marker.value?.color ?? '#eab308');
 
-function isLightColor(hex: string): boolean {
-  const sanitized = hex.replace('#', '');
-  const r = parseInt(sanitized.substring(0, 2), 16);
-  const g = parseInt(sanitized.substring(2, 4), 16);
-  const b = parseInt(sanitized.substring(4, 6), 16);
-  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
-  return luminance > 0.6;
-}
-
-function handleUpdateColor(val: string) {
+function handleUpdateColor(val: string | string[]) {
   if (!marker.value) return;
   timelineStore.updateMarker(marker.value.id, {
-    color: val,
+    color: Array.isArray(val) ? (val[0] ?? activeColor.value) : val,
   });
 }
 
@@ -76,37 +67,19 @@ function confirmDelete() {
           :class="toolbarOrientation === 'vertical' ? 'h-px w-6 my-1' : 'w-px h-6 mx-1'"
         />
 
-        <div
-          class="flex items-center gap-1.5 no-scrollbar"
+        <UiColorPicker
+          class="no-scrollbar"
           :class="
             toolbarOrientation === 'vertical'
-              ? 'flex-col overflow-y-auto px-0.5 min-h-0'
+              ? 'overflow-y-auto px-0.5 min-h-0'
               : 'overflow-x-auto py-0.5 min-w-0'
           "
-        >
-          <button
-            v-for="colorValue in COLORS"
-            :key="colorValue"
-            type="button"
-            class="w-6 h-6 rounded-full border border-ui-border transition-all flex items-center justify-center shrink-0 cursor-pointer relative focus:outline-none focus-visible:outline-none outline-none"
-            :class="{
-              'ring-2 ring-ui-primary ring-offset-2 ring-offset-ui-bg-elevated z-10 scale-110':
-                activeColor === colorValue,
-            }"
-            :style="{
-              backgroundColor: colorValue,
-            }"
-            @click.prevent="handleUpdateColor(colorValue)"
-          >
-            <span
-              v-if="activeColor === colorValue"
-              class="absolute inset-0 flex items-center justify-center text-xs font-bold leading-none select-none"
-              :class="isLightColor(colorValue) ? 'text-black' : 'text-white'"
-            >
-              ✓
-            </span>
-          </button>
-        </div>
+          :model-value="activeColor"
+          mode="marker"
+          :colors="COLORS"
+          :orientation="toolbarOrientation === 'vertical' ? 'vertical' : 'horizontal'"
+          @update:model-value="handleUpdateColor"
+        />
       </div>
     </template>
 
