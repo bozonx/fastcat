@@ -558,8 +558,9 @@
       "samples": [
         {
           "timeSec": 0.5,
-          "hash": "pending",
-          "tolerance": 12
+          "hash": "ff7f3f0f07030000",
+          "tolerance": 12,
+          "colorSig": "fe8400fee800fe0a00fe5b00"
         }
       ]
     },
@@ -665,8 +666,9 @@
       "samples": [
         {
           "timeSec": 0.5,
-          "hash": "pending",
-          "tolerance": 28
+          "hash": "ff55fc57fc540000",
+          "tolerance": 28,
+          "colorSig": "fe7400c47e38904f1859371a"
         }
       ]
     },

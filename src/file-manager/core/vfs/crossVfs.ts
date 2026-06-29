@@ -15,8 +15,6 @@ export interface CrossVfsCopyOptions {
   progressReporter?: VfsProgressReporter;
 }
 
-const MAX_UNIQUE_NAME_ATTEMPTS = 10_000;
-
 /**
  * Replaces characters that are illegal on local filesystems (Windows is the
  * strictest of the platforms we target). Spaces, dashes and other printable

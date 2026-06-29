@@ -90,9 +90,10 @@ export async function generateUniqueFsEntryName(params: {
 
   let names = params.existingNames;
   if (!names) {
-    names = typeof params.vfs.listEntryNames === 'function'
-      ? await params.vfs.listEntryNames(params.dirPath)
-      : [];
+    names =
+      typeof params.vfs.listEntryNames === 'function'
+        ? await params.vfs.listEntryNames(params.dirPath)
+        : [];
   }
 
   // Determine actual style and clean base name based on the baseName suffix

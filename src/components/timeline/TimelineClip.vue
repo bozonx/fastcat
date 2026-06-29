@@ -39,7 +39,6 @@ import {
 } from '~/utils/timeline/clip';
 import { useClipDrop } from '~/composables/timeline/useClipDrop';
 import { useClipInteractions } from '~/composables/timeline/useClipInteractions';
-import { isClipFreePosition } from '~/utils/timeline/clip-checks';
 import { useClickOrDrag } from '~/composables/timeline/useClickOrDrag';
 import { DEFAULT_TRANSITION_MODE } from '~/transitions';
 import { computeTrimGeometry } from '~/timeline/commands/item/trimGeometry';
@@ -591,14 +590,6 @@ const EMPTY_MENU_ITEMS: typeof contextMenuItems.value = [];
 const isContextMenuOpen = ref(false);
 const lazyContextMenuItems = computed(() =>
   isContextMenuOpen.value ? contextMenuItems.value : EMPTY_MENU_ITEMS,
-);
-
-const isFreePosition = computed(() =>
-  isClipFreePosition(
-    clipItem.value,
-    timelineContext.timelineDoc.value,
-    timelineContext.fps.value || 30,
-  ),
 );
 
 const transitionInOverlayGuideStyle = computed<Record<string, string> | null>(() => {

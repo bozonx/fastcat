@@ -1,9 +1,6 @@
 /** @vitest-environment node */
 import { describe, it, expect } from 'vitest';
-import {
-  computeExportTotalFrames,
-  getExportFrameTiming,
-} from '~/workers/core/export-helpers';
+import { computeExportTotalFrames, getExportFrameTiming } from '~/workers/core/export-helpers';
 import {
   computeFrameIndex,
   buildVideoFrameCacheKey,

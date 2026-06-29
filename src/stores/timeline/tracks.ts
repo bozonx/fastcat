@@ -96,22 +96,6 @@ export function createTimelineTracksModule(deps: TimelineTracksDeps): TimelineTr
     return topVideo.id;
   }
 
-  function trackHasSpaceAtPlayhead(track: TimelineTrack, durationUs?: number): boolean {
-    const startUs = Math.max(0, deps.currentTime.value);
-    const safeDurationUs =
-      typeof durationUs === 'number' && Number.isFinite(durationUs) && durationUs > 0
-        ? durationUs
-        : 1;
-    const endUs = startUs + safeDurationUs;
-
-    return !track.items.some((it) => {
-      if (it.kind !== 'clip') return false;
-      const itemStartUs = it.timelineRange.startUs;
-      const itemEndUs = itemStartUs + it.timelineRange.durationUs;
-      return startUs < itemEndUs && endUs > itemStartUs;
-    });
-  }
-
   function createMobileTargetTrack(kind: 'video' | 'audio'): string {
     const doc = deps.timelineDoc.value;
     const sameKindTracks = doc?.tracks.filter((t) => t.kind === kind) ?? [];
@@ -130,7 +114,7 @@ export function createTimelineTracksModule(deps: TimelineTracksDeps): TimelineTr
 
   function resolveMobileTargetTrackId(
     kind: 'video' | 'audio',
-    options?: { durationUs?: number },
+    _options?: { durationUs?: number },
   ): string {
     const doc = deps.timelineDoc.value;
     if (!doc) return kind === 'video' ? 'v1' : 'a1';

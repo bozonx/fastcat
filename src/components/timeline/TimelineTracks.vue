@@ -499,8 +499,6 @@ watch(
         @drop.prevent="emit('drop', $event, trackViewModel.track.id)"
         @contextmenu="handleTrackContextMenu($event, trackViewModel.track)"
       >
-
-
         <!-- Drop Previews inside track -->
         <div
           v-if="dragPreview && dragPreview.trackId === trackViewModel.track.id"

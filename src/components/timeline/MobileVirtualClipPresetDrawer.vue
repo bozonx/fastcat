@@ -281,8 +281,9 @@ function selectPreset(item: PresetItem) {
       });
     }
     emit('close');
-  } catch (err: any) {
-    if (err.message === 'cannot_insert_on_clip') {
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    if (message === 'cannot_insert_on_clip') {
       toast.add({
         title: t('fastcat.timeline.cannotInsertPlayheadOnClip'),
         color: 'error',
@@ -291,7 +292,7 @@ function selectPreset(item: PresetItem) {
     } else {
       toast.add({
         title: t('common.error'),
-        description: err.message,
+        description: message,
         color: 'error',
       });
     }

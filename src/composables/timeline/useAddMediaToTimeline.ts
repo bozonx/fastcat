@@ -3,7 +3,6 @@ import { useFileManager } from '~/composables/file-manager/useFileManager';
 import { getMediaTypeFromFilename } from '~/utils/media-types';
 import { useMediaStore } from '~/stores/media.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
-import { resolveNonOverlappingStartUs, sanitizeFps } from '~/timeline/commands/utils';
 import { secondsToUs } from '~/utils/time';
 import { withFileIoSlot } from '~/utils/io/io-governor';
 
@@ -75,8 +74,9 @@ export function useAddMediaToTimeline() {
             }
             anyAdded = true;
             currentStartUs = startUs + durationUs;
-          } catch (err: any) {
-            if (err.message === 'cannot_insert_on_clip') {
+          } catch (err: unknown) {
+            const message = err instanceof Error ? err.message : String(err);
+            if (message === 'cannot_insert_on_clip') {
               toast.add({
                 title: t('fastcat.timeline.cannotInsertPlayheadOnClip'),
                 color: 'error',
@@ -85,7 +85,7 @@ export function useAddMediaToTimeline() {
             } else {
               toast.add({
                 title: t('common.error'),
-                description: err.message,
+                description: message,
                 color: 'error',
               });
             }
@@ -108,8 +108,9 @@ export function useAddMediaToTimeline() {
           }
           anyAdded = true;
           currentStartUs = startUs + (result.durationUs || durationUs);
-        } catch (err: any) {
-          if (err.message === 'cannot_insert_on_clip') {
+        } catch (err: unknown) {
+          const message = err instanceof Error ? err.message : String(err);
+          if (message === 'cannot_insert_on_clip') {
             toast.add({
               title: t('fastcat.timeline.cannotInsertPlayheadOnClip'),
               color: 'error',
@@ -118,7 +119,7 @@ export function useAddMediaToTimeline() {
           } else {
             toast.add({
               title: t('common.error'),
-              description: err.message,
+              description: message,
               color: 'error',
             });
           }

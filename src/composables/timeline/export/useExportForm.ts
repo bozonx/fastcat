@@ -482,7 +482,10 @@ export function useExportForm() {
             height: isAudio ? 2 : normalizedExportHeight.value,
             fps: isAudio ? 30 : normalizedExportFps.value,
             bitrateMode: enableAdvancedSettings.value ? bitrateMode.value : 'variable',
-            maxBitrateBps: (enableAdvancedSettings.value && maxBitrateMbps.value) ? Math.round(maxBitrateMbps.value * 1_000_000) : null,
+            maxBitrateBps:
+              enableAdvancedSettings.value && maxBitrateMbps.value
+                ? Math.round(maxBitrateMbps.value * 1_000_000)
+                : null,
             keyframeIntervalSec: enableAdvancedSettings.value ? keyframeIntervalSec.value : 2,
             exportAlpha: effectiveExportAlpha,
             fastStart: enableAdvancedSettings.value ? fastStart.value : false,

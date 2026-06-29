@@ -90,18 +90,9 @@ export function parseFilename(fileName: string): {
  * for filenames matching the same base pattern and extension.
  */
 export function getNextIncrementName(params: GetNextIncrementNameParams): string {
-  const {
-    fileName,
-    existingNames,
-    style,
-    padWidth,
-    startIndex = 1,
-    forceIndex = false,
-  } = params;
+  const { fileName, existingNames, style, padWidth, startIndex = 1, forceIndex = false } = params;
 
-  const existingSet = existingNames instanceof Set
-    ? existingNames
-    : new Set(existingNames);
+  const existingSet = existingNames instanceof Set ? existingNames : new Set(existingNames);
 
   // If the file is not in the set and we are not forcing the index, we can use it directly
   if (!forceIndex && !existingSet.has(fileName)) {

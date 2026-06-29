@@ -24,29 +24,15 @@ import type { TimelineFormatInput } from '~/timeline/format';
 
 export const LARGE_UPLOAD_BACKGROUND_THRESHOLD_BYTES = 100 * 1024 * 1024;
 
-function splitFileName(name: string): { baseName: string; extension: string } {
-  const lastDotIndex = name.lastIndexOf('.');
-  if (lastDotIndex <= 0 || lastDotIndex === name.length - 1) {
-    return {
-      baseName: name,
-      extension: '',
-    };
-  }
-
-  return {
-    baseName: name.slice(0, lastDotIndex),
-    extension: name.slice(lastDotIndex),
-  };
-}
-
 async function generateUniqueEntryNameWithSuffix(params: {
   vfs: IFileSystemAdapter;
   dirPath: string;
   name: string;
 }): Promise<string> {
-  const existingNames = typeof params.vfs.listEntryNames === 'function'
-    ? await params.vfs.listEntryNames(params.dirPath)
-    : [];
+  const existingNames =
+    typeof params.vfs.listEntryNames === 'function'
+      ? await params.vfs.listEntryNames(params.dirPath)
+      : [];
   const proposedName = getNextIncrementName({
     fileName: params.name,
     existingNames,

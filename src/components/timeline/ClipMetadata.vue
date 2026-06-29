@@ -28,8 +28,6 @@ const isFreePosition = computed(() => {
     timelineContext.fps.value || 30,
   );
 });
-
-
 </script>
 
 <template>
@@ -117,7 +115,5 @@ const isFreePosition = computed(() => {
         <UIcon name="i-heroicons-speaker-x-mark" class="w-6 h-6 text-white/90" />
       </div>
     </div>
-
-
   </div>
 </template>

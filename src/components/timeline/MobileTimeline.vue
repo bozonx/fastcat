@@ -35,7 +35,6 @@ import MobileTrackMixerDrawer from './MobileTrackMixerDrawer.vue';
 import MobileTrackManagerDrawer from './MobileTrackManagerDrawer.vue';
 import MobileHistoryDrawer from './MobileHistoryDrawer.vue';
 import MobileMarkersDrawer from './MobileMarkersDrawer.vue';
-import { useTeleportTarget } from '~/composables/ui/useTeleportTarget';
 
 // Composables
 import { useMobileTimelineDrawers } from '~/composables/timeline/useMobileTimelineDrawers';
@@ -54,8 +53,6 @@ import { useMobileTimelineBatchActions } from '~/composables/timeline/useMobileT
 import { useMobileTimelineVersion } from '~/composables/timeline/useMobileTimelineVersion';
 import { useMobileTimelineTrim } from '~/composables/timeline/useMobileTimelineTrim';
 import { useMobileTimelineGestures } from '~/composables/timeline/useMobileTimelineGestures';
-
-const { target: teleportTarget } = useTeleportTarget();
 
 const { width: windowWidth, height: windowHeight } = useWindowSize();
 /** Landscape drawers dock to the side, so their toolbars render as a vertical rail. */

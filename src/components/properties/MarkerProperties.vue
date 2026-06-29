@@ -115,14 +115,12 @@ const mainActions = computed<
   ];
 
   if (isZone.value) {
-    list.push(
-      {
-        id: 'convert-to-selection',
-        label: t('fastcat.timeline.convertZoneToSelection'),
-        icon: 'i-heroicons-rectangle-group',
-        onClick: handleConvertToSelectionRange,
-      },
-    );
+    list.push({
+      id: 'convert-to-selection',
+      label: t('fastcat.timeline.convertZoneToSelection'),
+      icon: 'i-heroicons-rectangle-group',
+      onClick: handleConvertToSelectionRange,
+    });
   }
   return list;
 });

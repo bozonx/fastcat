@@ -90,8 +90,9 @@ function addAdjustment() {
       });
     }
     emit('close');
-  } catch (err: any) {
-    if (err.message === 'cannot_insert_on_clip') {
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    if (message === 'cannot_insert_on_clip') {
       toast.add({
         title: t('fastcat.timeline.cannotInsertPlayheadOnClip'),
         color: 'error',
@@ -100,7 +101,7 @@ function addAdjustment() {
     } else {
       toast.add({
         title: t('common.error'),
-        description: err.message,
+        description: message,
         color: 'error',
       });
     }
@@ -123,8 +124,9 @@ function addBackground() {
       });
     }
     emit('close');
-  } catch (err: any) {
-    if (err.message === 'cannot_insert_on_clip') {
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    if (message === 'cannot_insert_on_clip') {
       toast.add({
         title: t('fastcat.timeline.cannotInsertPlayheadOnClip'),
         color: 'error',
@@ -133,7 +135,7 @@ function addBackground() {
     } else {
       toast.add({
         title: t('common.error'),
-        description: err.message,
+        description: message,
         color: 'error',
       });
     }
@@ -171,8 +173,9 @@ async function onFilesSelected(e: Event) {
             startUs: timelineStore.currentTime,
             pseudo: true,
           });
-        } catch (err: any) {
-          if (err.message === 'cannot_insert_on_clip') {
+        } catch (err: unknown) {
+          const message = err instanceof Error ? err.message : String(err);
+          if (message === 'cannot_insert_on_clip') {
             toast.add({
               title: t('fastcat.timeline.cannotInsertPlayheadOnClip'),
               color: 'error',
@@ -181,7 +184,7 @@ async function onFilesSelected(e: Event) {
           } else {
             toast.add({
               title: t('common.error'),
-              description: err.message,
+              description: message,
               color: 'error',
             });
           }
@@ -212,8 +215,9 @@ async function onFilesSelected(e: Event) {
           const placedKind =
             timelineStore.timelineDoc?.tracks.find((t) => t.id === trackId)?.kind ?? kind;
           addedKinds.push(placedKind);
-        } catch (err: any) {
-          if (err.message === 'cannot_insert_on_clip') {
+        } catch (err: unknown) {
+          const message = err instanceof Error ? err.message : String(err);
+          if (message === 'cannot_insert_on_clip') {
             toast.add({
               title: t('fastcat.timeline.cannotInsertPlayheadOnClip'),
               color: 'error',
@@ -222,7 +226,7 @@ async function onFilesSelected(e: Event) {
           } else {
             toast.add({
               title: t('common.error'),
-              description: err.message,
+              description: message,
               color: 'error',
             });
           }
@@ -241,8 +245,6 @@ function openMediaPicker() {
     isMediaPickerOpen.value = true;
   });
 }
-
-
 </script>
 
 <template>

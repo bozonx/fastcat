@@ -177,10 +177,13 @@ const { audioCodecOptions } = useAudioCodecOptions({
 });
 
 const maxBitrate = computed({
-  get: () => maxBitrateMbps.value !== null ? maxBitrateMbps.value : Math.round(bitrateMbps.value * 1.5 * 10) / 10,
+  get: () =>
+    maxBitrateMbps.value !== null
+      ? maxBitrateMbps.value
+      : Math.round(bitrateMbps.value * 1.5 * 10) / 10,
   set: (val) => {
     maxBitrateMbps.value = val;
-  }
+  },
 });
 
 watch(bitrateMbps, (newVal) => {
