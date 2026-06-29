@@ -165,6 +165,41 @@ describe('timeline/commands trim_item — source material bounds', () => {
     expect(img1.timelineRange.durationUs).toBe(8_000_000);
   });
 
+  it('allows an image clip to shrink without moving source start below zero', () => {
+    const doc = makeDoc({
+      id: 'v1',
+      kind: 'video',
+      name: 'V1',
+      items: [
+        {
+          kind: 'clip',
+          clipType: 'media',
+          id: 'img1',
+          trackId: 'v1',
+          name: 'Image',
+          source: { path: 'a.png' },
+          isImage: true,
+          sourceDurationUs: 3_000_000,
+          sourceRange: { startUs: 0, durationUs: 3_000_000 },
+          timelineRange: { startUs: 0, durationUs: 3_000_000 },
+          speed: 1,
+        },
+      ],
+    });
+
+    const { next } = applyTimelineCommand(doc, {
+      type: 'trim_item',
+      trackId: 'v1',
+      itemId: 'img1',
+      edge: 'end',
+      deltaUs: -1_000_000,
+    });
+
+    const img1 = findClip(next, 'img1');
+    expect(img1.timelineRange.durationUs).toBe(2_000_000);
+    expect(img1.sourceRange).toEqual({ startUs: 0, durationUs: 2_000_000 });
+  });
+
   it('limits start trim to the available head material', () => {
     const doc = makeDoc({
       id: 'v1',

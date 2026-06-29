@@ -176,4 +176,22 @@ describe('computeTrimGeometry', () => {
 
     expect(result.valid).toBe(false);
   });
+
+  it('keeps static clip source start non-negative when extending the start left', () => {
+    const result = computeTrimGeometry({
+      edge: 'start',
+      deltaUs: -200000,
+      speed: 1.0,
+      fps,
+      quantizeToFrames: false,
+      timelineRange: { startUs: 500000, durationUs: 400000 },
+      sourceRange: { startUs: 0, durationUs: 400000 },
+      sourceDurationUs: 400000,
+      hasFixedSourceDuration: false,
+    });
+
+    expect(result.valid).toBe(true);
+    expect(result.timelineRange).toEqual({ startUs: 300000, durationUs: 600000 });
+    expect(result.sourceRange).toEqual({ startUs: 0, durationUs: 600000 });
+  });
 });

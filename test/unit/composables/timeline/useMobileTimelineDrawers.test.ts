@@ -86,14 +86,14 @@ describe('useMobileTimelineDrawers', () => {
     unmount();
   });
 
-  it('opens the multi-selection drawer when multiple clips are selected', async () => {
+  it('keeps the clip drawer for linked clip selection until multi-selection mode is active', async () => {
     mockTimelineStore.selectedItemIds = ['clip-1', 'clip-2'];
     mockSelectionStore.selectedEntity = { source: 'timeline', kind: 'clips' };
     const { api, unmount } = mountDrawers();
     await nextTick();
 
-    expect(api.isMultiSelectionDrawerOpen.value).toBe(true);
-    expect(api.isClipPropertiesDrawerOpen.value).toBe(false);
+    expect(api.isMultiSelectionDrawerOpen.value).toBe(false);
+    expect(api.isClipPropertiesDrawerOpen.value).toBe(true);
     unmount();
   });
 
@@ -185,6 +185,23 @@ describe('useMobileTimelineDrawers', () => {
     api.openClipTransitionsPanel();
     expect(api.isTransitionsPanelOpen.value).toBe(true);
     expect(api.isClipPropertiesDrawerOpen.value).toBe(false);
+    unmount();
+  });
+
+  it('does not clear clip selection when the clip drawer closes during trim drawer opening', async () => {
+    mockSelectionStore.selectedEntity = { source: 'timeline', kind: 'clip', itemId: 'clip-1' };
+    const { api, unmount } = mountDrawers();
+
+    api.isClipPropertiesDrawerOpen.value = true;
+    api.openClipTrimDrawer();
+    api.onClipPropertiesDrawerClose();
+
+    expect(api.isTrimDrawerOpen.value).toBe(true);
+    expect(mockTimelineStore.clearSelection).not.toHaveBeenCalled();
+    expect(mockSelectionStore.clearSelection).not.toHaveBeenCalled();
+
+    await nextTick();
+    expect(api.suppressDrawerSelectionClear.value).toBe(false);
     unmount();
   });
 

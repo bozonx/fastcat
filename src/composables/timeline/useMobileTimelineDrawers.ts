@@ -195,6 +195,13 @@ export function useMobileTimelineDrawers() {
     }
   }
 
+  function suppressDrawerSelectionClearForNextTick() {
+    suppressDrawerSelectionClear.value = true;
+    void nextTick(() => {
+      suppressDrawerSelectionClear.value = false;
+    });
+  }
+
   function onUpdateDrawerOpen(val: boolean) {
     if (!val) {
       if (timelineStore.selectedTrackId) {
@@ -215,16 +222,19 @@ export function useMobileTimelineDrawers() {
   // ─── Clip sub-drawer transitions (delete / trim / transitions panel) ───
   // Opening a sub-drawer hides the clip-properties drawer; "back" reverses it.
   function openClipDeleteDrawer() {
+    suppressDrawerSelectionClearForNextTick();
     isDeleteDrawerOpen.value = true;
     isClipPropertiesDrawerOpen.value = false;
   }
 
   function openClipTrimDrawer() {
+    suppressDrawerSelectionClearForNextTick();
     isTrimDrawerOpen.value = true;
     isClipPropertiesDrawerOpen.value = false;
   }
 
   function openClipTransitionsPanel() {
+    suppressDrawerSelectionClearForNextTick();
     isTransitionsPanelOpen.value = true;
     isClipPropertiesDrawerOpen.value = false;
   }

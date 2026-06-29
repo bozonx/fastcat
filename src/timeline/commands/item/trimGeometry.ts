@@ -56,6 +56,38 @@ export function computeTrimGeometry(input: TrimGeometryInput): TrimGeometryResul
   const prevSourceDurationUs = Math.max(0, Math.round(input.sourceRange.durationUs));
   const prevSourceEndUs = prevSourceStartUs + prevSourceDurationUs;
 
+  if (!hasFixedSourceDuration) {
+    const prevTimelineEndUs = prevTimelineStartUs + prevTimelineDurationUs;
+    let nextTimelineStartUs = prevTimelineStartUs;
+    let nextTimelineDurationUs = prevTimelineDurationUs;
+
+    if (edge === 'start') {
+      nextTimelineStartUs = Math.max(0, Math.min(prevTimelineEndUs, prevTimelineStartUs + deltaUs));
+      nextTimelineDurationUs = Math.max(0, prevTimelineEndUs - nextTimelineStartUs);
+    } else {
+      nextTimelineDurationUs = Math.max(0, prevTimelineDurationUs + deltaUs);
+    }
+
+    if (quantizeToFrames) {
+      const qTimeline = quantizeRangeToFrames(
+        { startUs: nextTimelineStartUs, durationUs: nextTimelineDurationUs },
+        fps,
+      );
+      nextTimelineStartUs = qTimeline.startUs;
+      nextTimelineDurationUs = qTimeline.durationUs;
+    }
+
+    const minFrameDurationUs = frameToUs(1, fps);
+    const valid = nextTimelineDurationUs >= minFrameDurationUs;
+    const nextSourceDurationUs = Math.max(0, Math.round(nextTimelineDurationUs * absSpeed));
+
+    return {
+      timelineRange: { startUs: nextTimelineStartUs, durationUs: nextTimelineDurationUs },
+      sourceRange: { startUs: 0, durationUs: nextSourceDurationUs },
+      valid,
+    };
+  }
+
   // Furthest source position the clip may consume. For material-backed clips with
   // an unknown duration we refuse to extend past what is already consumed.
   const rawSourceDurationUs = Number(input.sourceDurationUs);
