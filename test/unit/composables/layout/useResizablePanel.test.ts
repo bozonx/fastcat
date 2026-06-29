@@ -5,6 +5,8 @@ import { useResizablePanel } from '~/composables/layout/useResizablePanel';
 
 interface MockHandle {
   setPointerCapture: ReturnType<typeof vi.fn>;
+  hasPointerCapture: ReturnType<typeof vi.fn>;
+  releasePointerCapture: ReturnType<typeof vi.fn>;
   addEventListener: ReturnType<typeof vi.fn>;
   removeEventListener: ReturnType<typeof vi.fn>;
 }
@@ -12,6 +14,8 @@ interface MockHandle {
 function createMockHandle(): MockHandle {
   return {
     setPointerCapture: vi.fn(),
+    hasPointerCapture: vi.fn(() => true),
+    releasePointerCapture: vi.fn(),
     addEventListener: vi.fn(),
     removeEventListener: vi.fn(),
   };
@@ -36,10 +40,14 @@ describe('useResizablePanel', () => {
   const containerRef = ref<HTMLElement | null>(null);
   const value = ref(40);
   const handle = createMockHandle();
+  let addWindowListenerSpy: ReturnType<typeof vi.spyOn>;
+  let removeWindowListenerSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
     containerRef.value = createMockContainer();
     value.value = 40;
+    addWindowListenerSpy = vi.spyOn(window, 'addEventListener');
+    removeWindowListenerSpy = vi.spyOn(window, 'removeEventListener');
     vi.clearAllMocks();
   });
 
@@ -47,7 +55,10 @@ describe('useResizablePanel', () => {
     name: 'pointermove' | 'pointerup' | 'pointercancel' | 'lostpointercapture',
     event: PointerEvent,
   ) {
-    const calls = handle.addEventListener.mock.calls as Array<[string, (e: PointerEvent) => void]>;
+    const calls =
+      name === 'lostpointercapture'
+        ? (handle.addEventListener.mock.calls as Array<[string, (e: PointerEvent) => void]>)
+        : (addWindowListenerSpy.mock.calls as Array<[string, (e: PointerEvent) => void]>);
     const call = calls.find(([n]) => n === name);
     if (call) call[1](event);
   }
@@ -144,6 +155,40 @@ describe('useResizablePanel', () => {
     expect(value.value).toBe(65);
   });
 
+  it('uses the latest container rect while dragging', () => {
+    let width = 1000;
+    containerRef.value = {
+      getBoundingClientRect: () =>
+        ({
+          top: 0,
+          left: 0,
+          width,
+          height: 800,
+          bottom: 800,
+          right: width,
+        }) as DOMRect,
+    } as HTMLElement;
+
+    const { onDividerPointerDown } = useResizablePanel({
+      containerRef,
+      orientation: ref('horizontal'),
+      minPercent: 20,
+      maxPercent: 90,
+      getValue: () => value.value,
+      setValue: (v: number) => {
+        value.value = v;
+      },
+    });
+
+    const downEvent = new PointerEvent('pointerdown', { button: 0, pointerId: 7 });
+    Object.defineProperty(downEvent, 'currentTarget', { value: handle });
+    onDividerPointerDown(downEvent);
+
+    width = 500;
+    triggerListener('pointermove', new PointerEvent('pointermove', { clientX: 250 }));
+    expect(value.value).toBe(50);
+  });
+
   it('removes event listeners on pointerup', () => {
     const { onDividerPointerDown } = useResizablePanel({
       containerRef,
@@ -161,13 +206,14 @@ describe('useResizablePanel', () => {
     onDividerPointerDown(downEvent);
 
     triggerListener('pointerup', new PointerEvent('pointerup'));
-    expect(handle.removeEventListener).toHaveBeenCalledWith('pointermove', expect.any(Function));
-    expect(handle.removeEventListener).toHaveBeenCalledWith('pointerup', expect.any(Function));
-    expect(handle.removeEventListener).toHaveBeenCalledWith('pointercancel', expect.any(Function));
+    expect(removeWindowListenerSpy).toHaveBeenCalledWith('pointermove', expect.any(Function));
+    expect(removeWindowListenerSpy).toHaveBeenCalledWith('pointerup', expect.any(Function));
+    expect(removeWindowListenerSpy).toHaveBeenCalledWith('pointercancel', expect.any(Function));
     expect(handle.removeEventListener).toHaveBeenCalledWith(
       'lostpointercapture',
       expect.any(Function),
     );
+    expect(handle.releasePointerCapture).toHaveBeenCalledWith(5);
   });
 
   it('does nothing when container is missing', () => {

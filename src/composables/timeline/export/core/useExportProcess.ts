@@ -19,6 +19,7 @@ import {
 } from '~/utils/video-editor/worker-client';
 import { createProjectHostApi } from '~/utils/video-editor/createVideoCoreHostApi';
 import { buildEffectiveAudioClipItems } from '~/utils/audio/track-bus';
+import { sanitizeMasterGain } from '~/utils/audio/clamp';
 import type { TimelineDocument } from '~/timeline/types';
 import { buildNativeMonitorScene } from '~/utils/native-monitor-scene';
 import { createGroupedWarningReporter } from '~/utils/grouped-warnings';
@@ -175,7 +176,12 @@ export function useExportProcess(
           effectiveAudioResult.masterAudioEffects as import('~/timeline/types').AudioClipEffect[];
 
         ensureNotCancelled();
-        const masterGain = timelineStore.audioMuted ? 0 : timelineStore.masterGain;
+        // Master gain is baked into each clip's gain here. Clamp it to the shared
+        // master bound so the web (WebCodecs) export matches the native export,
+        // which applies the same cap via `sanitize_master_gain`.
+        const masterGain = timelineStore.audioMuted
+          ? 0
+          : sanitizeMasterGain(timelineStore.masterGain);
         const audioClips = (
           await toWorkerTimelineClips(effectiveAudioResult.items, projectStore, workspaceStore, {
             trackKind: 'audio',

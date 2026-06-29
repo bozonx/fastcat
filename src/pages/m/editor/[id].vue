@@ -12,7 +12,7 @@ import MobileTimeline from '~/components/timeline/MobileTimeline.vue';
 import MobileSettingsView from '~/components/settings/MobileSettingsView.vue';
 
 import MobileBottomNav from '~/components/layout/MobileBottomNav.vue';
-import { until, useMediaQuery } from '@vueuse/core';
+import { until, useWindowSize } from '@vueuse/core';
 import { usePendingNewProjectFiles } from '~/composables/project/useProjectManagement';
 import { useFileManager } from '~/composables/file-manager/useFileManager';
 import { useAddMediaToTimeline } from '~/composables/timeline/useAddMediaToTimeline';
@@ -146,7 +146,9 @@ async function handleBack() {
   await leaveProject('/m');
 }
 
-const isLandscapeMode = useMediaQuery('(orientation: landscape)');
+const { width: windowWidth, height: windowHeight } = useWindowSize();
+const isLandscapeMode = computed(() => windowWidth.value > windowHeight.value);
+const mobilePanelMaxPercent = computed(() => (isLandscapeMode.value ? 84 : 82));
 
 // Persisted panel sizes (percent of container)
 const portraitMonitorHeight = computed({
@@ -180,7 +182,7 @@ const { onDividerPointerDown } = useResizablePanel({
   containerRef,
   orientation: panelOrientation,
   minPercent: 20,
-  maxPercent: computed(() => (isLandscapeMode.value ? 70 : 65)),
+  maxPercent: mobilePanelMaxPercent,
   getValue: () =>
     isLandscapeMode.value ? landscapeMonitorWidth.value : portraitMonitorHeight.value,
   setValue: (value: number) => {

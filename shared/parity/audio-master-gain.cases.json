@@ -1,0 +1,17 @@
+{
+  "_comment": "Cross-engine parity fixture for the master-gain sanitizer that bounds the gain baked into the rendered/exported mix on both engines. Read by web test test/unit/utils/audio/audio-master-gain.parity.test.ts (sanitizeMasterGain, src/utils/audio/clamp.ts) AND Rust test audio::mix::tests::sanitize_master_gain_matches_shared_parity_fixture (sanitize_master_gain, src-tauri/src/audio/mix.rs). A finite gain is clamped to [0, maxMasterGain]; any non-finite value (encoded here as the strings 'nan'/'inf'/'-inf') falls back to unity. The master-gain UI slider tops out at +12 dB (the 'ui-max-passes-through' case, 10^(12/20)), so the upper cap only ever engages for an out-of-range payload value — but it must engage identically across engines.",
+  "maxMasterGain": 8,
+  "nonFiniteFallback": 1,
+  "cases": [
+    { "name": "unity", "gain": 1, "out": 1 },
+    { "name": "silence", "gain": 0, "out": 0 },
+    { "name": "ui-max-passes-through", "gain": 3.9810717055349722, "out": 3.9810717055349722 },
+    { "name": "at-cap", "gain": 8, "out": 8 },
+    { "name": "above-cap-clamps", "gain": 9, "out": 8 },
+    { "name": "well-above-cap-clamps", "gain": 100, "out": 8 },
+    { "name": "negative-clamps-to-zero", "gain": -2, "out": 0 },
+    { "name": "nan-falls-back-to-unity", "gain": "nan", "out": 1 },
+    { "name": "infinity-falls-back-to-unity", "gain": "inf", "out": 1 },
+    { "name": "neg-infinity-falls-back-to-unity", "gain": "-inf", "out": 1 }
+  ]
+}

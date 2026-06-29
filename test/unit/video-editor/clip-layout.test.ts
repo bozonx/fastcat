@@ -18,7 +18,10 @@ describe('clip-layout', () => {
     // Half-resolution scene: each axis scales independently.
     expect(scaleDesignPositionToScene({ x: 200, y: -100 }, 960, 540)).toEqual({ x: 100, y: -50 });
     // Non-16:9 output: x and y use different factors (the bug the shared helper guards).
-    expect(scaleDesignPositionToScene({ x: 1920, y: 1080 }, 1920, 540)).toEqual({ x: 1920, y: 540 });
+    expect(scaleDesignPositionToScene({ x: 1920, y: 1080 }, 1920, 540)).toEqual({
+      x: 1920,
+      y: 540,
+    });
     // Non-finite / missing components fall back to 0.
     expect(scaleDesignPositionToScene({ x: Number.NaN }, 1920, 1080)).toEqual({ x: 0, y: 0 });
     expect(scaleDesignPositionToScene(undefined, 1920, 1080)).toEqual({ x: 0, y: 0 });

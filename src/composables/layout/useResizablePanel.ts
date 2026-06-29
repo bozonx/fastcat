@@ -32,11 +32,10 @@ export function useResizablePanel(options: UseResizablePanelOptions) {
     if (!el || !handle) return;
 
     e.preventDefault();
-    handle.setPointerCapture(e.pointerId);
-
-    const rect = el.getBoundingClientRect();
+    handle.setPointerCapture?.(e.pointerId);
 
     const onMove = (ev: PointerEvent) => {
+      const rect = el.getBoundingClientRect();
       const isHorizontal = orientation.value === 'horizontal';
       if (isHorizontal) {
         if (!rect.width) return;
@@ -52,15 +51,18 @@ export function useResizablePanel(options: UseResizablePanelOptions) {
     };
 
     const cleanup = () => {
-      handle.removeEventListener('pointermove', onMove);
-      handle.removeEventListener('pointerup', cleanup);
-      handle.removeEventListener('pointercancel', cleanup);
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', cleanup);
+      window.removeEventListener('pointercancel', cleanup);
       handle.removeEventListener('lostpointercapture', cleanup);
+      if (handle.hasPointerCapture?.(e.pointerId)) {
+        handle.releasePointerCapture?.(e.pointerId);
+      }
     };
 
-    handle.addEventListener('pointermove', onMove);
-    handle.addEventListener('pointerup', cleanup);
-    handle.addEventListener('pointercancel', cleanup);
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', cleanup);
+    window.addEventListener('pointercancel', cleanup);
     handle.addEventListener('lostpointercapture', cleanup);
   }
 

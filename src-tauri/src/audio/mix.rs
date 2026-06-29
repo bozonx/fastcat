@@ -1271,6 +1271,44 @@ mod tests {
         }
     }
 
+    /// Cross-engine parity contract — pairs with the web test
+    /// `test/unit/utils/audio/audio-master-gain.parity.test.ts`.
+    /// `sanitize_master_gain` and the web `sanitizeMasterGain` clamp the master
+    /// gain baked into the rendered/exported mix to the same `[0, MAX_MASTER_GAIN]`
+    /// range and map non-finite values to unity, so the web (WebCodecs) and native
+    /// exports never disagree on an out-of-range master gain.
+    #[test]
+    fn sanitize_master_gain_matches_shared_parity_fixture() {
+        const FIXTURE: &str = include_str!("../../../shared/parity/audio-master-gain.cases.json");
+        let parsed: serde_json::Value =
+            serde_json::from_str(FIXTURE).expect("valid parity fixture json");
+        assert_eq!(
+            parsed["maxMasterGain"].as_f64().unwrap(),
+            MAX_MASTER_GAIN,
+            "fixture cap matches MAX_MASTER_GAIN"
+        );
+        let cases = parsed["cases"].as_array().expect("cases array");
+        assert!(!cases.is_empty(), "fixture has cases");
+        for c in cases {
+            let name = c["name"].as_str().unwrap_or("?");
+            let gain = match &c["gain"] {
+                serde_json::Value::Number(n) => n.as_f64().unwrap(),
+                serde_json::Value::String(s) => match s.as_str() {
+                    "nan" => f64::NAN,
+                    "inf" => f64::INFINITY,
+                    "-inf" => f64::NEG_INFINITY,
+                    other => panic!("unexpected gain sentinel: {other}"),
+                },
+                other => panic!("unexpected gain json: {other:?}"),
+            };
+            let out = sanitize_master_gain(gain);
+            assert!(
+                (out - c["out"].as_f64().unwrap()).abs() < 1e-9,
+                "case `{name}` out"
+            );
+        }
+    }
+
     fn layer() -> SceneAudioLayer {
         SceneAudioLayer {
             id: "a1".into(),
