@@ -282,7 +282,7 @@ const volumeIndicatorPosition = computed(() => {
       data-testid="clip-volume-control"
       class="absolute left-0 right-0 z-45 h-3 -mt-1.5 flex flex-col justify-center transition-opacity touch-none"
       :class="[
-        canEdit && !clip.locked && !track.locked && !isMobile
+        canEdit && !clip.locked && !track.locked && !isMobile && isSelected
           ? 'cursor-ns-resize pointer-events-auto'
           : 'pointer-events-none',
         clip.audioMuted || ((clip.audioGain ?? 1) === 1 && !isResizingVolume && !isSelected)

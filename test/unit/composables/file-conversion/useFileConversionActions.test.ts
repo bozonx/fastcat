@@ -25,6 +25,7 @@ const mockFileManager = {
     writeFile: vi.fn(),
     deleteEntry: vi.fn(),
     exists: vi.fn().mockResolvedValue(false),
+    listEntryNames: vi.fn().mockResolvedValue([]),
   },
   reloadDirectory: vi.fn(),
 };
@@ -316,7 +317,7 @@ describe('useFileConversionActions', () => {
     mockFileManager.vfs.getFile.mockResolvedValue(
       new File(['x'], 'test.png', { type: 'image/png' }),
     );
-    mockFileManager.vfs.exists.mockResolvedValueOnce(true).mockResolvedValueOnce(false);
+    mockFileManager.vfs.listEntryNames.mockResolvedValue(['test_converted.webp']);
 
     await startConversion();
 

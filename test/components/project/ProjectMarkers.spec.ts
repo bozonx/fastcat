@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { mountWithNuxt } from '../../utils/mount';
 import ProjectMarkers from '~/components/project/ProjectMarkers.vue';
+import MarkerExportModal from '~/components/project/MarkerExportModal.vue';
 import { reactive } from 'vue';
 
 const mockTimelineStore = reactive({
@@ -165,5 +166,29 @@ describe('ProjectMarkers.vue', () => {
     const pointRow = rows.find((row) => row.text().includes('Point Marker'))!;
     expect(pointRow.text()).toContain('00:00:10:00');
     expect(pointRow.text()).not.toContain('↳');
+  });
+
+  it('passes selectedColors to MarkerExportModal', async () => {
+    mockTimelineStore.markers = [
+      { id: '1', timeUs: 1_000_000, text: 'Red', color: '#d0021b' },
+      { id: '2', timeUs: 2_000_000, text: 'Blue', color: '#4a90e2' },
+    ];
+
+    const component = await mountWithNuxt(ProjectMarkers);
+
+    // De-select Red by clicking its button
+    const redButton = component.findAll('button').find((btn) => {
+      const style = btn.attributes('style') || '';
+      return style.includes('#d0021b');
+    });
+    expect(redButton).toBeDefined();
+    await redButton!.trigger('click');
+
+    const modal = component.findComponent(MarkerExportModal);
+    expect(modal.exists()).toBe(true);
+
+    const filterColorsProp = modal.props('filterColors') as Set<string>;
+    expect(filterColorsProp.has('#d0021b')).toBe(false);
+    expect(filterColorsProp.has('#4a90e2')).toBe(true);
   });
 });

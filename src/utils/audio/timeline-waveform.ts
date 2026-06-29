@@ -1,6 +1,6 @@
 import type { TimelineClipItem, TimelineDocument } from '~/timeline/types';
 import { buildEffectiveAudioClipItems } from '~/utils/audio/track-bus';
-import { computeWaveformPeakLength, resolveWaveformSourceUs } from '~/utils/audio/waveform';
+import { computeWaveformPeakLength, normalizeWaveformSpeed } from '~/utils/audio/waveform';
 import { resolveNestedMediaPath } from '~/utils/video-editor/worker-clip-utils';
 
 export interface BuildTimelinePeaksParams {
@@ -192,6 +192,9 @@ export async function buildTimelinePeaks(
     const itemSourceStartUs = Math.max(0, Math.round(clip.sourceRange.startUs));
     const itemSourceDurationUs = Math.max(1, Math.round(clip.sourceRange.durationUs));
     const gain = Math.max(0, Math.min(10, Number(clip.audioGain ?? 1)));
+    const speed = normalizeWaveformSpeed(clip.speed);
+    const signedSpeed =
+      typeof clip.speed === 'number' && Number.isFinite(clip.speed) ? clip.speed : 1;
 
     const startIndex = Math.max(0, Math.floor((itemStartUs / durationUs) * maxLength));
     const endIndex = Math.min(
@@ -207,15 +210,14 @@ export async function buildTimelinePeaks(
 
       const parentRatio = sampleIndex / maxLength;
       const absoluteUs = parentRatio * durationUs;
-      const sourceUs = resolveWaveformSourceUs({
-        absoluteUs,
-        clipStartUs: itemStartUs,
-        clipDurationUs: itemDurationUs,
-        sourceStartUs: itemSourceStartUs,
-        sourceRangeDurationUs: itemSourceDurationUs,
-        speed: clip.speed,
-      });
-      if (sourceUs === null) continue;
+      const localUs = Math.round(absoluteUs) - itemStartUs;
+      if (localUs < 0 || localUs > itemDurationUs) continue;
+      const sourceOffsetUs =
+        signedSpeed < 0
+          ? itemSourceDurationUs + Math.round(localUs * signedSpeed)
+          : Math.round(localUs * speed);
+      const sourceUs =
+        itemSourceStartUs + Math.min(itemSourceDurationUs, Math.max(0, sourceOffsetUs));
 
       for (let channelIndex = 0; channelIndex < mixedPeaks.length; channelIndex++) {
         const sourceChannel = sourcePeaks[channelIndex] ?? sourcePeaks[0];

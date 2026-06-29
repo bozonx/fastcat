@@ -262,7 +262,11 @@ describe('MonitorContainer', () => {
             template:
               '<button class="u-button-stub" :title="title" :aria-label="ariaLabel" :data-icon="icon"><slot /></button>',
           },
-          UiActionButton: true,
+          UiActionButton: {
+            props: ['icon', 'title', 'ariaLabel'],
+            template:
+              '<button class="ui-action-button-stub" :title="title" :aria-label="ariaLabel" :data-icon="icon"><slot /></button>',
+          },
           UiToggleButton: true,
           UDropdownMenu: { template: '<div data-dropdown-menu><slot /></div>' },
           UContextMenu: { template: '<div><slot /></div>' },
@@ -638,6 +642,7 @@ describe('MonitorContainer', () => {
     const { useTimelineStore } = await import('~/stores/timeline.store');
     const timelineStore = useTimelineStore(pinia);
     timelineStore.setCurrentTimeUs = vi.fn();
+    timelineStore.requestScrollToPlayhead = vi.fn();
 
     wrapper = mount(MonitorContainer, {
       global: {
@@ -683,5 +688,13 @@ describe('MonitorContainer', () => {
 
     // 50% of 1,000,000 Us is 500,000 Us
     expect(timelineStore.setCurrentTimeUs).toHaveBeenCalledWith(500000);
+    expect(timelineStore.requestScrollToPlayhead).toHaveBeenCalled();
+
+    // Reset calls and test pointerup triggers requestScrollToPlayhead
+    timelineStore.requestScrollToPlayhead.mockClear();
+    await seekbar.trigger('pointerup', {
+      clientX: 60,
+    });
+    expect(timelineStore.requestScrollToPlayhead).toHaveBeenCalled();
   });
 });

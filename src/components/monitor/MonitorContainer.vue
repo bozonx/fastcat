@@ -10,6 +10,7 @@ import { useMonitorContainerControls } from '~/composables/monitor/useMonitorCon
 import { useMonitorGrid } from '~/composables/monitor/useMonitorGrid';
 import { useMonitorRuntime } from '~/composables/monitor/useMonitorRuntime';
 import { useMonitorFullscreenViewport } from '~/composables/monitor/useMonitorFullscreenViewport';
+import { useThrottleFn } from '@vueuse/core';
 import type { MonitorSyncMode } from '~/composables/monitor/useMonitorPlayback';
 import MonitorAudioControl from './MonitorAudioControl.vue';
 import MonitorViewport from './MonitorViewport.vue';
@@ -75,6 +76,10 @@ const {
 const seekbarRef = ref<HTMLElement | null>(null);
 const isDraggingSeekbar = ref(false);
 
+const throttledScrollToPlayhead = useThrottleFn(() => {
+  timelineStore.requestScrollToPlayhead?.();
+}, 100);
+
 const progressPercent = computed(() => {
   if (safeDurationUs.value <= 0) return 0;
   return (uiCurrentTimeUs.value / safeDurationUs.value) * 100;
@@ -88,6 +93,7 @@ function handleSeekEvent(event: PointerEvent) {
   const pct = Math.max(0, Math.min(1, x / width));
   const targetTimeUs = Math.round(pct * safeDurationUs.value);
   timelineStore.setCurrentTimeUs(targetTimeUs);
+  throttledScrollToPlayhead();
 }
 
 function onSeekbarPointerDown(event: PointerEvent) {
@@ -112,6 +118,7 @@ function onSeekbarPointerUp(event: PointerEvent) {
   seekbarRef.value?.releasePointerCapture(event.pointerId);
   event.stopPropagation();
   resetIdleTimeout();
+  timelineStore.requestScrollToPlayhead?.();
 }
 
 registerMonitorActions({

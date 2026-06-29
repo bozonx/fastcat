@@ -1,3 +1,5 @@
+import { getNextIncrementName } from '~/utils/filename-increment';
+
 export function getBackupNumber(fileName: string): number | null {
   const match = fileName.match(/__bak(\d{3,})\.otio$/);
   if (!match) return null;
@@ -5,16 +7,15 @@ export function getBackupNumber(fileName: string): number | null {
 }
 
 export function getNextBackupName(baseName: string, existingNames: string[]): string {
-  let maxNum = 0;
-  for (const name of existingNames) {
-    const num = getBackupNumber(name);
-    if (num !== null && num > maxNum) {
-      maxNum = num;
-    }
-  }
-  const nextNum = maxNum + 1;
-  const digits = Math.max(3, String(nextNum).length);
-  return `${baseName}__bak${nextNum.toString().padStart(digits, '0')}.otio`;
+  const dummyName = `${baseName}__bak001.otio`;
+  return getNextIncrementName({
+    fileName: dummyName,
+    existingNames,
+    style: 'none',
+    padWidth: 3,
+    startIndex: 1,
+    forceIndex: true,
+  });
 }
 
 export function getBackupsToDelete(existingNames: string[], maxCount: number): string[] {

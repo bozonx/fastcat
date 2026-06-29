@@ -121,24 +121,38 @@ describe('removeCreatedFile', () => {
 
 describe('resolveUniqueFileName', () => {
   it('returns original name when file does not exist', async () => {
-    const exists = vi.fn().mockResolvedValue(false);
-    const result = await resolveUniqueFileName(exists, '/dir/test.mp4', 'test.mp4');
+    const result = await resolveUniqueFileName({
+      existingNames: ['other.mp4'],
+      filePath: '/dir/test.mp4',
+      fileName: 'test.mp4',
+    });
     expect(result).toEqual({ filePath: '/dir/test.mp4', fileName: 'test.mp4' });
   });
 
   it('increments name when file exists', async () => {
-    const exists = vi
-      .fn()
-      .mockResolvedValueOnce(true)
-      .mockResolvedValueOnce(true)
-      .mockResolvedValueOnce(false);
-    const result = await resolveUniqueFileName(exists, '/dir/test.mp4', 'test.mp4');
-    expect(result).toEqual({ filePath: '/dir/test_2.mp4', fileName: 'test_2.mp4' });
+    const result = await resolveUniqueFileName({
+      existingNames: ['test.mp4', 'test_2.mp4'],
+      filePath: '/dir/test.mp4',
+      fileName: 'test.mp4',
+    });
+    expect(result).toEqual({ filePath: '/dir/test_3.mp4', fileName: 'test_3.mp4' });
   });
 
   it('handles files without extension', async () => {
-    const exists = vi.fn().mockResolvedValueOnce(true).mockResolvedValueOnce(false);
-    const result = await resolveUniqueFileName(exists, '/dir/test', 'test');
+    const result = await resolveUniqueFileName({
+      existingNames: ['test'],
+      filePath: '/dir/test',
+      fileName: 'test',
+    });
     expect(result).toEqual({ filePath: '/dir/test_1', fileName: 'test_1' });
+  });
+
+  it('does not fill gaps', async () => {
+    const result = await resolveUniqueFileName({
+      existingNames: ['test.mp4', 'test_3.mp4'],
+      filePath: '/dir/test.mp4',
+      fileName: 'test.mp4',
+    });
+    expect(result).toEqual({ filePath: '/dir/test_4.mp4', fileName: 'test_4.mp4' });
   });
 });

@@ -28,6 +28,7 @@ describe('ClipAudioFades', () => {
     clipWidthPx: 1000,
     canEdit: true,
     trackHeight: 100,
+    isSelected: true,
   };
 
   beforeEach(() => {
@@ -79,6 +80,34 @@ describe('ClipAudioFades', () => {
     await volumeLine.trigger('dblclick');
 
     expect(component.emitted('resetVolume')).toBeTruthy();
+  });
+
+  it('disables volume dragging when clip is not selected', async () => {
+    const component = await mountSuspended(ClipAudioFades, {
+      props: {
+        ...defaultProps,
+        isSelected: false,
+      },
+    });
+
+    const volumeLine = component.get('[data-testid="clip-volume-control"]');
+    expect(volumeLine.classes()).toContain('pointer-events-none');
+    expect(volumeLine.classes()).not.toContain('cursor-ns-resize');
+    expect(volumeLine.classes()).not.toContain('pointer-events-auto');
+  });
+
+  it('enables volume dragging when clip is selected', async () => {
+    const component = await mountSuspended(ClipAudioFades, {
+      props: {
+        ...defaultProps,
+        isSelected: true,
+      },
+    });
+
+    const volumeLine = component.get('[data-testid="clip-volume-control"]');
+    expect(volumeLine.classes()).toContain('cursor-ns-resize');
+    expect(volumeLine.classes()).toContain('pointer-events-auto');
+    expect(volumeLine.classes()).not.toContain('pointer-events-none');
   });
 
   it('emits startResizeFade when fade handle is dragged', async () => {

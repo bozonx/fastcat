@@ -16,6 +16,7 @@ type ExportFormat =
 export interface MarkerExportModalProps {
   markers: TimelineMarker[];
   fps: number;
+  filterColors?: Set<string>;
 }
 
 const props = defineProps<MarkerExportModalProps>();
@@ -42,7 +43,9 @@ watch(
   isOpen,
   (open) => {
     if (open) {
-      selectedColors.value = new Set(availableColors.value);
+      selectedColors.value = props.filterColors
+        ? new Set(props.filterColors)
+        : new Set(availableColors.value);
       copied.value = false;
       exportFormat.value = 'timecode-bracket-left';
     }

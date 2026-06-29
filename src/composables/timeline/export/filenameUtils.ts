@@ -1,3 +1,5 @@
+import { getNextIncrementName, parseFilename } from '~/utils/filename-increment';
+
 export function getExt(
   fmt: 'mp4' | 'webm' | 'mkv' | 'aac' | 'opus' | 'ogg' | 'flac' | 'wav' | 'pcm' | 'mp3',
 ): 'mp4' | 'webm' | 'mkv' | 'aac' | 'opus' | 'ogg' | 'flac' | 'wav' | 'pcm' | 'mp3' {
@@ -47,23 +49,24 @@ export function resolveNextAvailableFilename(
   ext: string,
 ): string {
   const sanitized = sanitizeBaseName(base);
-  const normalizedExt = String(ext).replace(/^\.+/, '').toLowerCase();
+  const normalizedExt = ext ? String(ext).replace(/^\.+/, '').toLowerCase() : '';
+  const dotExt = normalizedExt ? `.${normalizedExt}` : '';
 
-  // Peel off an existing trailing `_NNN` counter so we increment it instead of
-  // appending a second one (e.g. `clip_001` -> `clip_002`, not `clip_001_001`).
-  const counterMatch = sanitized.match(/^(.*)_(\d{3,})$/);
-  const normalizedBase = counterMatch ? counterMatch[1] : sanitized;
-  const startIndex = counterMatch ? Number(counterMatch[2]) + 1 : 1;
+  const fullFileName = `${sanitized}${dotExt}`;
 
-  const direct = `${sanitized}.${normalizedExt}`;
-  if (sanitized && normalizedExt && !existingNames.has(direct)) return direct;
+  const proposed = getNextIncrementName({
+    fileName: fullFileName,
+    existingNames,
+    style: 'underscore',
+    padWidth: 3,
+    startIndex: 1,
+    forceIndex: false,
+  });
 
-  let index = startIndex;
-  while (index < startIndex + 1000) {
-    const candidate = `${normalizedBase}_${String(index).padStart(3, '0')}.${normalizedExt}`;
-    if (!existingNames.has(candidate)) return candidate;
-    index++;
+  const parsed = parseFilename(proposed);
+  if (parsed.counter !== null && parsed.counter > 1000) {
+    throw new Error('Failed to generate a unique filename');
   }
 
-  throw new Error('Failed to generate a unique filename');
+  return proposed;
 }

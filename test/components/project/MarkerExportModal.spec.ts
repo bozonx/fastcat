@@ -26,6 +26,25 @@ describe('MarkerExportModal.vue', () => {
     expect(text).toContain('[00:00:05:00] Main');
   });
 
+  it('initializes selected colors from filterColors prop when provided', async () => {
+    const component = await mountWithNuxt(MarkerExportModal, {
+      props: {
+        markers: [
+          { id: '1', timeUs: 1_000_000, text: 'Red', color: '#d0021b' },
+          { id: '2', timeUs: 2_000_000, text: 'Blue', color: '#4a90e2' },
+        ],
+        fps: 30,
+        open: true,
+        filterColors: new Set(['#4a90e2']),
+      },
+    });
+
+    const textarea = component.find('textarea');
+    const text = textarea.element.value;
+    expect(text).not.toContain('Red');
+    expect(text).toContain('Blue');
+  });
+
   it('filters markers by color when color button is clicked', async () => {
     const component = await mountWithNuxt(MarkerExportModal, {
       props: {

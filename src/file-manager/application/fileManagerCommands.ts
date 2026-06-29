@@ -15,6 +15,7 @@ import {
 } from '~/file-manager/core/rules';
 import PQueue from 'p-queue';
 import { generateUniqueFsEntryName } from '~/utils/fs';
+import { getNextIncrementName } from '~/utils/filename-increment';
 import { VfsConflictError } from '~/file-manager/core/vfs/errors';
 import { getMediaTypeFromFilename } from '~/utils/media-types';
 import { createDevLogger } from '~/utils/dev-logger';
@@ -43,34 +44,41 @@ async function generateUniqueEntryNameWithSuffix(params: {
   dirPath: string;
   name: string;
 }): Promise<string> {
-  const { baseName, extension } = splitFileName(params.name);
-  const existingNames =
-    typeof params.vfs.listEntryNames === 'function'
-      ? new Set(await params.vfs.listEntryNames(params.dirPath))
-      : null;
+  const existingNames = typeof params.vfs.listEntryNames === 'function'
+    ? await params.vfs.listEntryNames(params.dirPath)
+    : [];
+  const proposedName = getNextIncrementName({
+    fileName: params.name,
+    existingNames,
+    style: 'parentheses',
+    padWidth: 1,
+    startIndex: 1,
+    forceIndex: false,
+  });
 
-  async function isAvailable(candidateName: string): Promise<boolean> {
-    if (existingNames) {
-      return !existingNames.has(candidateName);
+  // Verify against the filesystem as a safety net in case existingNames was stale.
+  let verifyPath = params.dirPath ? `${params.dirPath}/${proposedName}` : proposedName;
+  let attempts = 0;
+  const currentNames = [...existingNames];
+  let currentProposed = proposedName;
+  while (await params.vfs.exists(verifyPath)) {
+    attempts++;
+    if (attempts > 1000) {
+      throw new Error('Unable to generate unique entry name: too many conflicts');
     }
-    const candidatePath = params.dirPath ? `${params.dirPath}/${candidateName}` : candidateName;
-    return !(await params.vfs.exists(candidatePath));
+    currentNames.push(currentProposed);
+    currentProposed = getNextIncrementName({
+      fileName: params.name,
+      existingNames: currentNames,
+      style: 'parentheses',
+      padWidth: 1,
+      startIndex: 1,
+      forceIndex: false,
+    });
+    verifyPath = params.dirPath ? `${params.dirPath}/${currentProposed}` : currentProposed;
   }
 
-  let candidateName = params.name;
-  if (await isAvailable(candidateName)) {
-    return candidateName;
-  }
-
-  let counter = 1;
-  while (counter < 10000) {
-    candidateName = `${baseName} (${counter})${extension}`;
-    if (await isAvailable(candidateName)) {
-      return candidateName;
-    }
-    counter++;
-  }
-  throw new Error('Unable to generate unique entry name: too many conflicts');
+  return currentProposed;
 }
 
 export interface UploadResult {

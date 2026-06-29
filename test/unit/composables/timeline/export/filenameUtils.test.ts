@@ -135,9 +135,9 @@ describe('resolveNextAvailableFilename', () => {
     expect(resolveNextAvailableFilename(existing, 'video', 'mp4')).toBe('video_001.mp4');
   });
 
-  it('increments index until available', () => {
-    const existing = new Set<string>(['video.mp4', 'video_001.mp4', 'video_002.mp4']);
-    expect(resolveNextAvailableFilename(existing, 'video', 'mp4')).toBe('video_003.mp4');
+  it('increments index until available without filling gaps', () => {
+    const existing = new Set<string>(['video.mp4', 'video_001.mp4', 'video_003.mp4']);
+    expect(resolveNextAvailableFilename(existing, 'video', 'mp4')).toBe('video_004.mp4');
   });
 
   it('strips leading dot from extension', () => {
@@ -157,12 +157,9 @@ describe('resolveNextAvailableFilename', () => {
 
   it('throws after 1000 attempts', () => {
     const existing = new Set<string>();
-    for (let i = 0; i < 1000; i++) {
-      if (i === 0) {
-        existing.add('video.mp4');
-      } else {
-        existing.add(`video_${String(i).padStart(3, '0')}.mp4`);
-      }
+    existing.add('video.mp4');
+    for (let i = 1; i <= 1000; i++) {
+      existing.add(`video_${String(i).padStart(3, '0')}.mp4`);
     }
     expect(() => resolveNextAvailableFilename(existing, 'video', 'mp4')).toThrow();
   });

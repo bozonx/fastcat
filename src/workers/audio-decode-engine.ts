@@ -467,7 +467,8 @@ export class AudioDecodeEngine<
             }
 
             const channelsToCopy = Math.min(resolvedChannels, numberOfChannels);
-            const timePerFrame = 1 / sampleRate;
+            const frameRateRatio = trackSampleRate / sampleRate;
+            const bucketScale = maxLength / totalFramesEstimate;
 
             for (let ch = 0; ch < channelsToCopy; ch += 1) {
               const bytesNeeded = sample.allocationSize!({ format: 'f32-planar', planeIndex: ch });
@@ -476,12 +477,12 @@ export class AudioDecodeEngine<
 
               const peakChannel = peaks[ch];
               if (!peakChannel) continue;
-              for (let i = 0; i < frames && i < channel.length; i += 1) {
-                const frameTime = timestampS + i * timePerFrame;
-                const globalFrame = Math.max(0, Math.floor(frameTime * trackSampleRate));
+              const sampleLimit = Math.min(frames, channel.length);
+              for (let i = 0; i < sampleLimit; i += 1) {
+                const globalFrame = Math.max(0, startFrameTrack + Math.floor(i * frameRateRatio));
                 const bucket = Math.min(
                   maxLength - 1,
-                  Math.max(0, Math.floor((globalFrame / totalFramesEstimate) * maxLength)),
+                  Math.max(0, Math.floor(globalFrame * bucketScale)),
                 );
                 const value = Math.abs(channel[i] ?? 0);
                 if (value > peakChannel[bucket]!) {

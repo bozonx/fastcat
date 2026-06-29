@@ -47,5 +47,19 @@ describe('fs utils', () => {
       });
       expect(name).toBe('File_002.txt');
     });
+
+    it('does not fill gaps when checking vfs', async () => {
+      await vfs.createDirectory('projects');
+      await vfs.writeFile('projects/File_001.txt', '');
+      await vfs.writeFile('projects/File_003.txt', '');
+
+      const name = await generateUniqueFsEntryName({
+        vfs,
+        dirPath: 'projects',
+        baseName: 'File_',
+        extension: '.txt',
+      });
+      expect(name).toBe('File_004.txt');
+    });
   });
 });

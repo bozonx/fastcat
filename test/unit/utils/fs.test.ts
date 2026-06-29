@@ -55,7 +55,7 @@ describe('generateUniqueFsEntryName', () => {
     expect(result).toBe('file07.txt');
   });
 
-  it('finds first gap in existingNames', async () => {
+  it('does not fill gaps in existingNames', async () => {
     const result = await generateUniqueFsEntryName({
       vfs: createMockVfs() as any,
       dirPath: '',
@@ -63,7 +63,7 @@ describe('generateUniqueFsEntryName', () => {
       extension: '.json',
       existingNames: ['item001.json', 'item003.json'],
     });
-    expect(result).toBe('item002.json');
+    expect(result).toBe('item004.json');
   });
 });
 

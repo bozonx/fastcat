@@ -200,11 +200,14 @@ export function useBatchConversion() {
     const target = getSiblingTarget(entry.path!, request.newFileName);
     const dirPath = request.dirPath;
 
-    const unique = await resolveUniqueFileName(
-      (p) => fileManager.vfs.exists(p),
-      target.filePath,
-      request.newFileName,
-    );
+    const existingNames = typeof fileManager.vfs.listEntryNames === 'function'
+      ? await fileManager.vfs.listEntryNames(dirPath)
+      : [];
+    const unique = await resolveUniqueFileName({
+      existingNames,
+      filePath: target.filePath,
+      fileName: request.newFileName,
+    });
     request.newFileName = unique.fileName;
     target.filePath = unique.filePath;
 

@@ -489,11 +489,14 @@ export function useFileConversionActions(props: UseFileConversionActionsProps) {
       createdFilePath = target.filePath;
 
       const vfs = props.targetVfs.value ?? props.fileManager.vfs;
-      const unique = await resolveUniqueFileName(
-        (p) => vfs.exists(p),
-        createdFilePath,
-        createdFileName,
-      );
+      const existingNames = typeof vfs.listEntryNames === 'function'
+        ? await vfs.listEntryNames(dirPath)
+        : [];
+      const unique = await resolveUniqueFileName({
+        existingNames,
+        filePath: createdFilePath,
+        fileName: createdFileName,
+      });
       createdFilePath = unique.filePath;
       createdFileName = unique.fileName;
       request.newFileName = unique.fileName;

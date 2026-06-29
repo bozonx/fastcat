@@ -16,7 +16,6 @@ import { isToolingUnavailableError, isTransientIoError } from '~/utils/io/transi
 import { getMediaTypeFromFilename, BROWSER_NATIVE_IMAGE_EXTENSIONS } from '~/utils/media-types';
 import {
   serializeWaveformPeaks,
-  deserializeWaveformPeaks,
   serializeWaveformCacheEntry,
   readWaveformCacheEntry,
   isWaveformCacheEntry,
@@ -626,14 +625,7 @@ export const useMediaStore = defineStore('media', () => {
       });
       if (!arrayBuffer) return false;
 
-      const uint8 = new Uint8Array(arrayBuffer);
-      if (uint8[0] === 0x5b /* '[' character in UTF-8 */) {
-        // Legacy JSON format (no fingerprint): trusted optimistically.
-        const decoder = new TextDecoder();
-        const text = decoder.decode(uint8);
-        const peaksData = JSON.parse(text) as number[][];
-        params.metadata.audioPeaks = peaksData.map((channel) => new Float32Array(channel));
-      } else if (isWaveformCacheEntry(arrayBuffer)) {
+      if (isWaveformCacheEntry(arrayBuffer)) {
         // Fingerprinted envelope: only reuse when it matches the current source.
         const entry = readWaveformCacheEntry(arrayBuffer);
         if (
@@ -656,14 +648,15 @@ export const useMediaStore = defineStore('media', () => {
           return false;
         }
       } else {
-        // Legacy bare-binary format (no fingerprint): trusted optimistically.
-        const deserialized = deserializeWaveformPeaks(arrayBuffer);
-        if (deserialized) {
-          params.metadata.audioPeaks = deserialized;
-        } else {
-          log.warn('Rejected unreadable legacy waveform cache for', params.cacheKey);
-          return false;
+        log.warn('Rejected legacy waveform cache without source fingerprint for', params.cacheKey);
+        try {
+          await runCacheFileAccess('waveform', params.cacheFileName, async () => {
+            await getVfs().deleteEntry(waveformsPath);
+          });
+        } catch (e) {
+          log.warn('Failed to delete legacy waveform cache for', params.cacheKey, e);
         }
+        return false;
       }
     } catch (e) {
       log.warn('Failed to load waveform cache for', params.cacheKey, e);

@@ -3,6 +3,7 @@ import { useWorkspaceStore } from '~/stores/workspace.store';
 import type { FsEntry } from '~/types/fs';
 import { withFileIoSlot } from '~/utils/io/io-governor';
 import { VIDEO_EXTENSIONS } from '~/utils/media-types';
+import { getNextIncrementName } from '~/utils/filename-increment';
 
 export type FsDirectoryHandleWithIteration = FileSystemDirectoryHandle;
 
@@ -83,38 +84,55 @@ export async function generateUniqueFsEntryName(params: {
   startIndex?: number;
   padWidth?: number;
 }): Promise<string> {
-  let index = params.startIndex ?? 1;
+  const startIndex = params.startIndex ?? 1;
   const padWidth = params.padWidth ?? 3;
-  let fileName = '';
+  const extension = params.extension;
 
-  if (params.existingNames) {
-    const existing = new Set(params.existingNames);
-    do {
-      fileName = `${params.baseName}${String(index).padStart(padWidth, '0')}${params.extension}`;
-      index++;
-    } while (existing.has(fileName));
-  } else {
-    let exists = true;
-    while (exists) {
-      fileName = `${params.baseName}${String(index).padStart(padWidth, '0')}${params.extension}`;
-      const nextPath = params.dirPath ? `${params.dirPath}/${fileName}` : fileName;
-      if (await params.vfs.exists(nextPath)) {
-        index += 1;
-      } else {
-        exists = false;
-      }
-    }
+  let names = params.existingNames;
+  if (!names) {
+    names = typeof params.vfs.listEntryNames === 'function'
+      ? await params.vfs.listEntryNames(params.dirPath)
+      : [];
   }
+
+  // Determine actual style and clean base name based on the baseName suffix
+  let style: 'underscore' | 'parentheses' | 'space' | 'none' = 'none';
+  let cleanBaseName = params.baseName;
+  if (cleanBaseName.endsWith('_')) {
+    style = 'underscore';
+    cleanBaseName = cleanBaseName.slice(0, -1);
+  } else if (cleanBaseName.endsWith(' ')) {
+    style = 'space';
+    cleanBaseName = cleanBaseName.slice(0, -1);
+  }
+
+  const dummyFileName = `${cleanBaseName}${extension}`;
+  let proposedName = getNextIncrementName({
+    fileName: dummyFileName,
+    existingNames: names,
+    style,
+    padWidth,
+    startIndex,
+    forceIndex: true,
+  });
 
   // Verify against the filesystem as a safety net in case existingNames was stale.
-  let verifyPath = params.dirPath ? `${params.dirPath}/${fileName}` : fileName;
+  let verifyPath = params.dirPath ? `${params.dirPath}/${proposedName}` : proposedName;
+  const currentNames = [...names];
   while (await params.vfs.exists(verifyPath)) {
-    fileName = `${params.baseName}${String(index).padStart(padWidth, '0')}${params.extension}`;
-    index++;
-    verifyPath = params.dirPath ? `${params.dirPath}/${fileName}` : fileName;
+    currentNames.push(proposedName);
+    proposedName = getNextIncrementName({
+      fileName: dummyFileName,
+      existingNames: currentNames,
+      style,
+      padWidth,
+      startIndex,
+      forceIndex: true,
+    });
+    verifyPath = params.dirPath ? `${params.dirPath}/${proposedName}` : proposedName;
   }
 
-  return fileName;
+  return proposedName;
 }
 
 export interface DirectoryStats {

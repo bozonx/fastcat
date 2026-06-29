@@ -357,7 +357,7 @@ describe('MediaStore', () => {
     expect(Array.from(peaks![0])).toEqual([0.5, -0.25]);
   });
 
-  it('loads cached audio peaks even when metadata is extracted from worker', async () => {
+  it('rejects legacy JSON waveform cache even when metadata is extracted from worker', async () => {
     const store = useMediaStore();
     const cacheFileName = 'some%2Fpath.mp4.json';
     // No meta cache, but waveform cache exists (e.g. from a prior session)
@@ -369,12 +369,11 @@ describe('MediaStore', () => {
     );
 
     expect(extractMetadataMock).toHaveBeenCalled();
-    expect(result?.audioPeaks?.[0]).toBeInstanceOf(Float32Array);
-    expect(Array.from(result?.audioPeaks?.[0] ?? [])).toEqual([0.5, -0.25]);
-    expect(Array.from(result?.audioPeaks?.[1] ?? [])).toEqual([1]);
+    expect(result?.audioPeaks).toBeUndefined();
+    expect(mediaFsMock.waveformFiles.get(cacheFileName)).toBeUndefined();
   });
 
-  it('logs corrupt waveform cache instead of failing silently', async () => {
+  it('logs and deletes legacy waveform cache instead of trusting it', async () => {
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
     const store = useMediaStore();
     const cacheFileName = 'some%2Fpath.mp4.json';
@@ -388,10 +387,10 @@ describe('MediaStore', () => {
     expect(result?.audioPeaks).toBeUndefined();
     expect(warnSpy).toHaveBeenCalledWith(
       '[media.store]',
-      'Failed to load waveform cache for',
+      'Rejected legacy waveform cache without source fingerprint for',
       'some/path.mp4',
-      expect.any(SyntaxError),
     );
+    expect(mediaFsMock.waveformFiles.get(cacheFileName)).toBeUndefined();
     warnSpy.mockRestore();
   });
 
@@ -435,7 +434,7 @@ describe('MediaStore', () => {
     expect(Array.from(result?.audioPeaks?.[1] ?? [])).toEqual([1, -1]);
   });
 
-  it('loads cached audio peaks from JSON as Float32Array channels', async () => {
+  it('rejects cached audio peaks from legacy JSON', async () => {
     const store = useMediaStore();
     const cacheFileName = 'some%2Fpath.mp4.json';
     mediaFsMock.metaFiles.set(
@@ -452,12 +451,11 @@ describe('MediaStore', () => {
       'some/path.mp4',
     );
 
-    expect(result?.audioPeaks?.[0]).toBeInstanceOf(Float32Array);
-    expect(Array.from(result?.audioPeaks?.[0] ?? [])).toEqual([0.5, -0.25]);
-    expect(Array.from(result?.audioPeaks?.[1] ?? [])).toEqual([1]);
+    expect(result?.audioPeaks).toBeUndefined();
+    expect(mediaFsMock.waveformFiles.get(cacheFileName)).toBeUndefined();
   });
 
-  it('loads cached audio peaks for already in-memory metadata without refetching metadata', async () => {
+  it('rejects legacy cached audio peaks for already in-memory metadata without refetching metadata', async () => {
     const store = useMediaStore();
     const cacheFileName = 'some%2Fpath.mp4.json';
     store.mediaMetadata = {
@@ -474,9 +472,9 @@ describe('MediaStore', () => {
     );
 
     expect(extractMetadataMock).not.toHaveBeenCalled();
-    expect(result?.audioPeaks?.[0]).toBeInstanceOf(Float32Array);
-    expect(Array.from(result?.audioPeaks?.[0] ?? [])).toEqual([0.5, -0.25]);
-    expect(Array.from(store.mediaMetadata['some/path.mp4'].audioPeaks?.[1] ?? [])).toEqual([1]);
+    expect(result?.audioPeaks).toBeUndefined();
+    expect(store.mediaMetadata['some/path.mp4'].audioPeaks).toBeUndefined();
+    expect(mediaFsMock.waveformFiles.get(cacheFileName)).toBeUndefined();
   });
 
   it('returns null when file is missing', async () => {

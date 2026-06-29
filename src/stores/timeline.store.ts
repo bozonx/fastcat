@@ -1,6 +1,7 @@
 import { createDevLogger } from '~/utils/dev-logger';
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
+import { getNextIncrementName } from '~/utils/filename-increment';
 
 import type { TimelineDocument, TimelineSelectionRange } from '~/timeline/types';
 import type { TimelineCommand } from '~/timeline/commands';
@@ -744,28 +745,17 @@ export const useTimelineStore = defineStore('timeline', () => {
     const prefix = match ? match[1]! : baseName;
 
     const parentPath = parts.join('/');
-
     const existingNames = await projectStore.listEntryNames(parentPath);
-    const existingVersions: number[] = [];
-    for (const name of existingNames) {
-      if (name.startsWith(prefix) && name.endsWith('.otio')) {
-        const vMatch = name.slice(0, -'.otio'.length).match(/_(\d{3})$/);
-        if (vMatch) {
-          existingVersions.push(parseInt(vMatch[1]!, 10));
-        } else if (name === prefix + '.otio') {
-          existingVersions.push(0);
-        }
-      }
-    }
 
-    existingVersions.sort((a, b) => a - b);
-    let nextNum =
-      existingVersions.length > 0 ? existingVersions[existingVersions.length - 1]! + 1 : 1;
-    let nextName = `${prefix}_${nextNum.toString().padStart(3, '0')}.otio`;
-    while (existingNames.includes(nextName)) {
-      nextNum++;
-      nextName = `${prefix}_${nextNum.toString().padStart(3, '0')}.otio`;
-    }
+    const baseOtio = `${prefix}.otio`;
+    const nextName = getNextIncrementName({
+      fileName: baseOtio,
+      existingNames,
+      style: 'underscore',
+      padWidth: 3,
+      startIndex: 1,
+      forceIndex: true,
+    });
 
     try {
       const newPath = parentPath ? `${parentPath}/${nextName}` : nextName;
@@ -806,26 +796,17 @@ export const useTimelineStore = defineStore('timeline', () => {
 
     const parentPath = parts.join('/');
     const existingNames = await projectStore.listEntryNames(parentPath);
-    const existingVersions: number[] = [];
-    for (const name of existingNames) {
-      if (name.startsWith(prefix) && name.endsWith('.otio')) {
-        const vMatch = name.slice(0, -'.otio'.length).match(/_(\d{3})$/);
-        if (vMatch) {
-          existingVersions.push(parseInt(vMatch[1]!, 10));
-        } else if (name === prefix + '.otio') {
-          existingVersions.push(0);
-        }
-      }
-    }
 
-    existingVersions.sort((a, b) => a - b);
-    let nextNum =
-      existingVersions.length > 0 ? existingVersions[existingVersions.length - 1]! + 1 : 1;
-    let nextName = `${prefix}_${nextNum.toString().padStart(3, '0')}.otio`;
-    while (existingNames.includes(nextName)) {
-      nextNum++;
-      nextName = `${prefix}_${nextNum.toString().padStart(3, '0')}.otio`;
-    }
+    const baseOtio = `${prefix}.otio`;
+    const nextName = getNextIncrementName({
+      fileName: baseOtio,
+      existingNames,
+      style: 'underscore',
+      padWidth: 3,
+      startIndex: 1,
+      forceIndex: true,
+    });
+
     return nextName;
   }
 

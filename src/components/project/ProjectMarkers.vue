@@ -187,7 +187,12 @@ function isMarkerSelected(markerId: string): boolean {
       />
     </div>
 
-    <MarkerExportModal v-model:open="isExportModalOpen" :markers="markers" :fps="fps" />
+    <MarkerExportModal
+      v-model:open="isExportModalOpen"
+      :markers="markers"
+      :fps="fps"
+      :filter-colors="selectedColors"
+    />
   </div>
 </template>
 

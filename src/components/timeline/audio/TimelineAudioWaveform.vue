@@ -55,6 +55,8 @@ let resizeObserver: ResizeObserver | null = null;
 let nextWaveformPeakId = 1;
 let lastDrawSignature = '';
 let zoomSettleTimer = 0;
+let waveformObjectUrl = '';
+let presentationId = 0;
 
 // A stable per-instance key so the shared scheduler can coalesce/cancel this
 // clip's redraws independently of every other clip.
@@ -565,6 +567,54 @@ function effectiveDevicePixelRatio(): number {
   return typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1;
 }
 
+function revokeWaveformObjectUrl() {
+  if (!waveformObjectUrl) return;
+  if (typeof URL.revokeObjectURL === 'function') {
+    URL.revokeObjectURL(waveformObjectUrl);
+  }
+  waveformObjectUrl = '';
+}
+
+function presentCanvas(canvas: HTMLCanvasElement, signature: string) {
+  const currentPresentationId = ++presentationId;
+
+  const presentDataUrl = () => {
+    revokeWaveformObjectUrl();
+    waveformImageUrl.value = canvas.toDataURL();
+    lastDrawSignature = signature;
+  };
+
+  if (
+    typeof canvas.toBlob !== 'function' ||
+    typeof URL.createObjectURL !== 'function' ||
+    typeof URL.revokeObjectURL !== 'function'
+  ) {
+    presentDataUrl();
+    return;
+  }
+
+  try {
+    canvas.toBlob((blob) => {
+      if (!blob) {
+        if (currentPresentationId === presentationId && !isUnmounted) presentDataUrl();
+        return;
+      }
+      if (currentPresentationId !== presentationId || isUnmounted) {
+        return;
+      }
+
+      const nextUrl = URL.createObjectURL(blob);
+      const previousUrl = waveformObjectUrl;
+      waveformObjectUrl = nextUrl;
+      waveformImageUrl.value = nextUrl;
+      lastDrawSignature = signature;
+      if (previousUrl) URL.revokeObjectURL(previousUrl);
+    }, 'image/png');
+  } catch {
+    presentDataUrl();
+  }
+}
+
 function draw() {
   const root = rootEl.value;
   if (!root) return;
@@ -679,11 +729,10 @@ function draw() {
 
   ctx.closePath();
   ctx.fill();
-  // Present the freshly painted bitmap as an <img> (see `waveformImageUrl`). The
-  // dedup guard above (`drawSignature === lastDrawSignature`) keeps this PNG
-  // encode off the hot path — it only runs when the visible window/peaks change.
-  waveformImageUrl.value = canvas.toDataURL();
-  lastDrawSignature = drawSignature;
+  // Present the freshly painted bitmap as an <img> (see `waveformImageUrl`).
+  // `toBlob` keeps PNG encoding off the synchronous redraw path; the fallback is
+  // only for test/legacy DOM implementations that do not expose `toBlob`.
+  presentCanvas(canvas, drawSignature);
   // Anchor the canvas CSS box to the source-fraction we just painted, so it only
   // moves when the bitmap is repainted (see `renderedFrac`).
   renderedFrac.value = { start: win.leftPx / totalW, width: win.widthPx / totalW };
@@ -761,6 +810,8 @@ onBeforeUnmount(() => {
     zoomSettleTimer = 0;
   }
   cancelWaveformRedraw(schedulerKey);
+  presentationId += 1;
+  revokeWaveformObjectUrl();
   resizeObserver?.disconnect();
   resizeObserver = null;
 });

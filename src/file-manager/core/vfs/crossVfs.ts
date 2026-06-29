@@ -2,6 +2,7 @@ import type { IFileSystemAdapter, VfsProgressReporter } from './types';
 import { MAX_COPY_DEPTH } from '~/file-manager/core/rules';
 import { LARGE_FILE_PROGRESS_THRESHOLD_BYTES } from './constants';
 import { VfsDepthExceededError, throwIfAborted } from './errors';
+import { getNextIncrementName } from '~/utils/filename-increment';
 
 export interface CrossVfsCopyOptions {
   sourceVfs: IFileSystemAdapter;
@@ -42,17 +43,20 @@ function normalizeTargetEntryName(name: string, targetVfs: IFileSystemAdapter): 
 }
 
 function pickUniqueName(name: string, taken: Set<string>): string {
-  if (!taken.has(name)) return name;
+  const proposed = getNextIncrementName({
+    fileName: name,
+    existingNames: taken,
+    style: 'parentheses',
+    padWidth: 1,
+    startIndex: 1,
+    forceIndex: false,
+  });
 
-  const lastDotIndex = name.lastIndexOf('.');
-  const baseName = lastDotIndex > 0 ? name.slice(0, lastDotIndex) : name;
-  const extension = lastDotIndex > 0 ? name.slice(lastDotIndex) : '';
-
-  for (let counter = 1; counter < MAX_UNIQUE_NAME_ATTEMPTS; counter++) {
-    const candidate = `${baseName} (${counter})${extension}`;
-    if (!taken.has(candidate)) return candidate;
+  if (taken.has(proposed)) {
+    throw new Error(`Unable to generate unique entry name for "${name}": too many conflicts`);
   }
-  throw new Error(`Unable to generate unique entry name for "${name}": too many conflicts`);
+
+  return proposed;
 }
 
 async function generateUniqueTargetName(
