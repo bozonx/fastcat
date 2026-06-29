@@ -1,6 +1,6 @@
 import { createDevLogger } from '~/utils/dev-logger';
 import { defineStore } from 'pinia';
-import { computed, ref, toRaw } from 'vue';
+import { computed, shallowRef, toRaw, triggerRef } from 'vue';
 
 import { useWorkspaceStore } from './workspace.store';
 import { genUuid } from '~/utils/ids';
@@ -73,10 +73,20 @@ export const useHistoryStore = defineStore('history', () => {
     () => Math.max(0, workspaceStore.userSettings.history.maxMemoryMb) * 1024 * 1024,
   );
 
+  // `shallowRef`, not `ref`: history entries hold a deep-cloned whole-document
+  // snapshot (the `timeline` scope clones the entire TimelineDocument). With a
+  // deep `ref`, every retained snapshot would be wrapped in a reactive proxy
+  // tree — pure memory/GC overhead that grows with the history depth, since the
+  // snapshots are immutable here and never read reactively field-by-field. The
+  // arrays are mutated in place (push/splice/...), so each mutation is followed
+  // by an explicit `triggerRef` (centralised in `enforceLimits`, which every
+  // push/undo/redo calls; `injectScope` triggers directly). On restore the
+  // dispatcher assigns the plain snapshot into the deep `timelineDoc` ref, which
+  // reactivises it then — so the live document stays fully reactive.
   /** Past states: index 0 is the oldest, last is the most recent undo target */
-  const past = ref<HistoryEntry<unknown>[]>([]);
+  const past = shallowRef<HistoryEntry<unknown>[]>([]);
   /** Future states available for redo, index 0 is the next redo */
-  const future = ref<HistoryEntry<unknown>[]>([]);
+  const future = shallowRef<HistoryEntry<unknown>[]>([]);
 
   /** Scopes that use command-based history (store undo/redo commands instead of snapshots) */
   const commandScopes = new Set<string>(['fileManager']);
@@ -135,7 +145,7 @@ export const useHistoryStore = defineStore('history', () => {
     // Global history: clear ALL future for any new action to stay consistent
     future.value = [];
 
-    enforceLimits();
+    enforceLimitsAndNotify();
   }
 
   /** Sum of estimated snapshot bytes retained across past + future. */
@@ -174,6 +184,15 @@ export const useHistoryStore = defineStore('history', () => {
     }
   }
 
+  /** Notify `shallowRef` subscribers after in-place array mutation. Every
+   *  push/undo/redo funnels through `enforceLimits`, so triggering both refs
+   *  here covers all the in-place splices/pushes those paths perform. */
+  function enforceLimitsAndNotify() {
+    enforceLimits();
+    triggerRef(past);
+    triggerRef(future);
+  }
+
   /**
    * Moves the top past entry for a scope into the future stack and returns the snapshot
    * that should be restored as the current document.
@@ -201,7 +220,7 @@ export const useHistoryStore = defineStore('history', () => {
       });
     }
 
-    enforceLimits();
+    enforceLimitsAndNotify();
     return entry.snapshot as T;
   }
 
@@ -232,7 +251,7 @@ export const useHistoryStore = defineStore('history', () => {
       });
     }
 
-    enforceLimits();
+    enforceLimitsAndNotify();
     return entry.snapshot as T;
   }
 
@@ -325,8 +344,14 @@ export const useHistoryStore = defineStore('history', () => {
   ) {
     clear(scope);
     if (!state) return;
-    if (state.past.length) past.value.push(...state.past);
-    if (state.future.length) future.value.push(...state.future);
+    if (state.past.length) {
+      past.value.push(...state.past);
+      triggerRef(past);
+    }
+    if (state.future.length) {
+      future.value.push(...state.future);
+      triggerRef(future);
+    }
   }
 
   /** Clears all history */

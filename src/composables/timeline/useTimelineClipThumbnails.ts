@@ -1,5 +1,5 @@
 import { createDevLogger } from '~/utils/dev-logger';
-import { computed, onBeforeUnmount, onMounted, ref, watch, type Ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch, type Ref } from 'vue';
 import { useSafeObjectUrl } from '~/composables/useSafeObjectUrl';
 import type { TimelineClipItem } from '~/timeline/types';
 import { useMediaStore } from '~/stores/media.store';
@@ -89,7 +89,12 @@ export function useTimelineClipThumbnails(options: UseTimelineClipThumbnailsOpti
   const intervalUs = intervalSeconds * 1_000_000;
 
   const isGenerating = ref(false);
-  const thumbnailsBySecond = ref(new Map<number, string>());
+  // `shallowRef`, not `ref`: every write reassigns the whole Map (see below),
+  // never mutates it in place, so shallow reactivity already drives the
+  // `sortedKeys`/`thumbnailTiles` computeds. A deep `ref` would additionally
+  // proxy the Map and reactive-track every `.get`/iteration on each clip's
+  // strip — pure overhead that scales with the per-clip thumbnail count.
+  const thumbnailsBySecond = shallowRef(new Map<number, string>());
 
   const clipThumbnailMode = computed(() => workspaceStore.userSettings.ui.clipThumbnailMode);
 
