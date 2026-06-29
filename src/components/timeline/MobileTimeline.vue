@@ -269,6 +269,18 @@ const { handleCopyClips, handleCutClips, handleBladeClips, handlePasteClips } =
     timelineStore,
   });
 
+// Copy/cut from the multi-selection drawer: close the drawer afterwards so the
+// bottom paste bar is not hidden behind it (and the stale selection is cleared).
+function handleCopyClipsAndClose() {
+  handleCopyClips();
+  onMultiSelectionDrawerClose();
+}
+
+function handleCutClipsAndClose() {
+  handleCutClips();
+  onMultiSelectionDrawerClose();
+}
+
 const {
   isCreateVersionModalOpen,
   proposedVersionName,
@@ -398,12 +410,12 @@ const {
           <MobileDrawerToolbarButton
             icon="i-heroicons-document-duplicate"
             :label="t('common.copy')"
-            @click="handleCopyClips"
+            @click="handleCopyClipsAndClose"
           />
           <MobileDrawerToolbarButton
             icon="i-heroicons-scissors"
             :label="t('common.cut')"
-            @click="handleCutClips"
+            @click="handleCutClipsAndClose"
           />
           <MobileDrawerToolbarButton
             icon="i-lucide-lab-razor-blade"

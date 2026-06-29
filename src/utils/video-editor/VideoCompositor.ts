@@ -354,6 +354,8 @@ export class VideoCompositor {
   private async getVideoSampleForClip(params: {
     clip: CompositorClip;
     sampleTimeS: number;
+    timelineTimeUs?: number;
+    monitorSyncMode?: 'smooth' | 'balanced' | 'strict';
     abortSignal?: AbortSignal;
   }): Promise<unknown | null> {
     return this.clipResourceManager.getVideoSampleForClip(params);

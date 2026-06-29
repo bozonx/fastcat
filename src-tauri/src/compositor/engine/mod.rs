@@ -1412,13 +1412,7 @@ impl Compositor {
         // Collect everything that is already mapped.
         collect_ready_slots(session)?;
 
-        // Return the oldest ready frame.
-        if let Some((_, pixels)) = session.pending.pop_first() {
-            session.emitted += 1;
-            Ok(Some(pixels))
-        } else {
-            Ok(None)
-        }
+        Ok(session.pop_next_ready())
     }
 
     /// High-level pipelined equivalent of `render_scene_to_pixels`.

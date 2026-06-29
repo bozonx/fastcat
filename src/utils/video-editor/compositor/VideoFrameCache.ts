@@ -166,22 +166,42 @@ export class VideoFrameCache {
   }
 
   private findEvictionCandidate(): { key: string; entry: CachedVideoFrameEntry } | null {
-    let best: { key: string; entry: CachedVideoFrameEntry; distanceUs: number } | null = null;
-
+    const victimTimeUs = chooseEvictionVictimTime(
+      Array.from(this.videoFrameCache.values(), (entry) => entry.timelineTimeUs),
+      this.priorityTimeUs,
+    );
+    if (victimTimeUs === null) {
+      return null;
+    }
+    // Pick the first entry that sits at the victim time (matches the previous
+    // strict-`>` tie-break, which kept the earliest-inserted entry among equals).
     for (const [key, entry] of this.videoFrameCache.entries()) {
       const entryTimeUs = Math.max(0, Math.round(Number(entry.timelineTimeUs) || 0));
-      const distanceUs = Math.abs(entryTimeUs - this.priorityTimeUs);
-      if (
-        !best ||
-        distanceUs > best.distanceUs ||
-        (distanceUs === best.distanceUs && entryTimeUs > best.entry.timelineTimeUs)
-      ) {
-        best = { key, entry, distanceUs };
+      if (entryTimeUs === victimTimeUs) {
+        return { key, entry };
       }
     }
-
-    return best ? { key: best.key, entry: best.entry } : null;
+    return null;
   }
+}
+
+// Scrub-locality eviction pick: among cached frame times (us), the victim is the
+// one FARTHEST from the priority/playhead time; ties resolve toward the LARGER
+// time. This is the web twin of the native `choose_eviction_victim`
+// (src-tauri/src/monitor/frame_cache.rs) and is pinned to it by the shared
+// `shared/parity/frame-cache-eviction.cases.json` parity fixture. Returns the
+// winning (normalized) time, or null for an empty input.
+export function chooseEvictionVictimTime(times: number[], priorityTime: number): number | null {
+  const priority = Math.max(0, Math.round(Number(priorityTime) || 0));
+  let best: { time: number; distance: number } | null = null;
+  for (const raw of times) {
+    const time = Math.max(0, Math.round(Number(raw) || 0));
+    const distance = Math.abs(time - priority);
+    if (!best || distance > best.distance || (distance === best.distance && time > best.time)) {
+      best = { time, distance };
+    }
+  }
+  return best ? best.time : null;
 }
 
 export function resolveClipFrameRate(clip: VideoFrameCacheClipLike): number | null {

@@ -314,6 +314,7 @@ export class ClipResourceManager {
     const promise = this.fetchVideoSampleForClip(
       clip,
       sampleTimeS,
+      params.timelineTimeUs,
       params.monitorSyncMode,
       frameIndex,
       cacheKey,
@@ -331,6 +332,7 @@ export class ClipResourceManager {
   private async fetchVideoSampleForClip(
     clip: CompositorClip,
     sampleTimeS: number,
+    timelineTimeUs: number | undefined,
     monitorSyncMode: WebMonitorSyncMode | undefined,
     frameIndex: number,
     cacheKey: string,
@@ -409,7 +411,7 @@ export class ClipResourceManager {
         frameIndex,
         timelineTimeUs: Math.max(
           0,
-          Math.round(Number(params.timelineTimeUs) || Number(clip.startUs) || 0),
+          Math.round(Number(timelineTimeUs) || Number(clip.startUs) || 0),
         ),
         frame,
         sizeBytes,

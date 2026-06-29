@@ -71,30 +71,6 @@ const { handleToggleDisabled, handleToggleLocked, handleToggleMuted } = useClipP
   setActiveTab,
 });
 
-const toast = useToast();
-
-function showPasteToast(operation: 'copy' | 'cut') {
-  toast.add({
-    title: operation === 'cut' ? t('common.cutToClipboard') : t('common.copiedToClipboard'),
-    color: 'success',
-    icon: 'i-heroicons-clipboard-document-check',
-    actions: [
-      {
-        label: t('common.paste'),
-        onClick: () => {
-          const payload = clipboardStore.clipboardPayload;
-          if (!payload || payload.source !== 'timeline' || payload.items.length === 0) return;
-          const playheadUs = timelineStore.currentTime;
-          void timelineStore.pasteClips(payload.items, { insertStartUs: playheadUs });
-          if (payload.operation === 'cut') {
-            clipboardStore.setClipboardPayload(null);
-          }
-        },
-      },
-    ],
-  });
-}
-
 function handleCopy() {
   if (!clip.value) return;
   clipboardStore.setClipboardPayload({
@@ -105,7 +81,8 @@ function handleCopy() {
       clip: i.clip,
     })),
   });
-  showPasteToast('copy');
+  // Close the clip drawer so the bottom paste bar is not hidden behind it.
+  emit('close');
 }
 
 function handleCut() {
@@ -118,7 +95,6 @@ function handleCut() {
       clip: i.clip,
     })),
   });
-  showPasteToast('cut');
   emit('close');
 }
 

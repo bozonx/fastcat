@@ -86,11 +86,15 @@ impl PipelinedReadback {
 
     /// Insert a ready frame, keeping `pending` sorted by `frame_seq`.
     ///
-    /// Slots may become ready out of order (especially when depth > 2), but
-    /// output goes through `pop_front`, so sorted insertion guarantees frames
-    /// leave to the encoder in strict render order.
+    /// Slots may become ready out of order (especially when depth > 2). Output must
+    /// still wait for `emitted`, otherwise a later frame that mapped first could be
+    /// sent to the encoder ahead of an older frame.
     pub(crate) fn push_pending(&mut self, frame: u64, pixels: Vec<u8>) {
         self.pending.insert(frame, pixels);
+    }
+
+    pub(crate) fn pop_next_ready(&mut self) -> Option<Vec<u8>> {
+        pop_next_ordered(&mut self.pending, &mut self.emitted)
     }
 
     /// Block and collect all remaining in-flight frames.
@@ -101,12 +105,17 @@ impl PipelinedReadback {
                 compositor.drain_slot(self, i)?;
             }
         }
-        while let Some((_, pixels)) = self.pending.pop_first() {
+        while let Some(pixels) = self.pop_next_ready() {
             out.push(pixels);
-            self.emitted += 1;
         }
         Ok(out)
     }
+}
+
+fn pop_next_ordered(pending: &mut BTreeMap<u64, Vec<u8>>, emitted: &mut u64) -> Option<Vec<u8>> {
+    let pixels = pending.remove(emitted)?;
+    *emitted += 1;
+    Some(pixels)
 }
 
 /// RAII guard that ensures `buffer.unmap()` is called on drop unless disarmed.
@@ -231,5 +240,31 @@ mod tests {
             map_rx: rx,
         };
         assert!(take_ready_frame(&mut state).is_err());
+    }
+
+    #[test]
+    fn pop_next_ordered_waits_for_missing_older_frame() {
+        let mut pending = BTreeMap::new();
+        let mut emitted = 0;
+        pending.insert(1, vec![1]);
+
+        assert_eq!(pop_next_ordered(&mut pending, &mut emitted), None);
+        assert_eq!(emitted, 0);
+        assert!(pending.contains_key(&1));
+    }
+
+    #[test]
+    fn pop_next_ordered_emits_contiguous_frames_only() {
+        let mut pending = BTreeMap::new();
+        let mut emitted = 0;
+        pending.insert(2, vec![2]);
+        pending.insert(0, vec![0]);
+        pending.insert(1, vec![1]);
+
+        assert_eq!(pop_next_ordered(&mut pending, &mut emitted), Some(vec![0]));
+        assert_eq!(pop_next_ordered(&mut pending, &mut emitted), Some(vec![1]));
+        assert_eq!(pop_next_ordered(&mut pending, &mut emitted), Some(vec![2]));
+        assert_eq!(pop_next_ordered(&mut pending, &mut emitted), None);
+        assert_eq!(emitted, 3);
     }
 }

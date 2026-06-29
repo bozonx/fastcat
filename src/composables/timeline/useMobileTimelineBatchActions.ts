@@ -8,8 +8,6 @@ export interface UseMobileTimelineBatchActionsOptions {
 
 export function useMobileTimelineBatchActions(options: UseMobileTimelineBatchActionsOptions) {
   const { clipboardStore, timelineStore } = options;
-  const { t } = useI18n();
-  const toast = useToast();
 
   // Paste the clipboard contents at the playhead, select the freshly pasted
   // clips and scroll the timeline so they are visible (the scroll is a no-op
@@ -28,22 +26,6 @@ export function useMobileTimelineBatchActions(options: UseMobileTimelineBatchAct
     }
   }
 
-  function showPasteToast(operation: 'copy' | 'cut') {
-    toast.add({
-      title: operation === 'cut' ? t('common.cutToClipboard') : t('common.copiedToClipboard'),
-      color: 'success',
-      icon: 'i-heroicons-clipboard-document-check',
-      actions: [
-        {
-          label: t('common.paste'),
-          onClick: () => {
-            void handlePasteClips();
-          },
-        },
-      ],
-    });
-  }
-
   function handleCopyClips() {
     clipboardStore.setClipboardPayload({
       source: 'timeline',
@@ -53,7 +35,6 @@ export function useMobileTimelineBatchActions(options: UseMobileTimelineBatchAct
         clip: item.clip,
       })),
     });
-    showPasteToast('copy');
   }
 
   function handleCutClips() {
@@ -65,7 +46,6 @@ export function useMobileTimelineBatchActions(options: UseMobileTimelineBatchAct
         clip: item.clip,
       })),
     });
-    showPasteToast('cut');
   }
 
   function handleBladeClips() {

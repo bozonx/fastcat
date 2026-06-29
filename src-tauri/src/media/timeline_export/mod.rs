@@ -17,7 +17,7 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use anyhow::{anyhow, Context, Result};
 
@@ -53,6 +53,61 @@ const EXPORT_STALL_TIMEOUT: Duration = Duration::from_secs(300);
 const DEFAULT_FALLBACK_FPS: f64 = 30.0;
 const DEFAULT_AUDIO_SAMPLE_RATE: u32 = 48_000;
 const FRAME_SAMPLE_END_EPS_SEC: f64 = 1e-9;
+const EXPORT_TRACE_INTERVAL_FRAMES: u64 = 120;
+
+fn export_trace_enabled() -> bool {
+    static FLAG: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+    *FLAG.get_or_init(|| {
+        std::env::var("FASTCAT_EXPORT_TRACE")
+            .map(|v| v == "1" || v.eq_ignore_ascii_case("true"))
+            .unwrap_or(false)
+    })
+}
+
+struct ExportStageTrace {
+    stage: &'static str,
+    count: u64,
+    total_main_ms: f64,
+    total_wait_ms: f64,
+    started: Instant,
+}
+
+impl ExportStageTrace {
+    fn new(stage: &'static str) -> Self {
+        Self {
+            stage,
+            count: 0,
+            total_main_ms: 0.0,
+            total_wait_ms: 0.0,
+            started: Instant::now(),
+        }
+    }
+
+    fn record(&mut self, main_ms: f64, wait_ms: f64) {
+        self.count += 1;
+        self.total_main_ms += main_ms;
+        self.total_wait_ms += wait_ms;
+        if self.count % EXPORT_TRACE_INTERVAL_FRAMES != 0 {
+            return;
+        }
+
+        let elapsed = self.started.elapsed().as_secs_f64().max(0.001);
+        log::info!(
+            "[native-export-trace] stage={} frames={} throughput_fps={:.2} avg_main_ms={:.2} avg_wait_ms={:.2}",
+            self.stage,
+            self.count,
+            self.count as f64 / elapsed,
+            self.total_main_ms / self.count as f64,
+            self.total_wait_ms / self.count as f64,
+        );
+    }
+}
+
+fn trace_elapsed_ms(started: Option<Instant>) -> f64 {
+    started
+        .map(|instant| instant.elapsed().as_secs_f64() * 1000.0)
+        .unwrap_or(0.0)
+}
 
 pub(crate) fn export_frame_sample_time(
     start_sec: f64,
@@ -417,6 +472,8 @@ pub fn export_timeline(
                 std::thread::scope(|s| -> Result<()> {
                     // Stage 1: decode each source frame and build its export scene.
                     let decode_handle = s.spawn(move || -> Result<()> {
+                        let mut trace = export_trace_enabled()
+                            .then(|| ExportStageTrace::new("decode-build-scene"));
                         let mut cache =
                             super::timeline_render::VideoDecoderCache::new_with_hw_decode(
                                 effective_decode_hw,
@@ -438,6 +495,7 @@ pub fn export_timeline(
                             // side of any frame-quantised boundary — matching the paused
                             // monitor, which samples the quantised playhead exactly on the cut.
                             let time = export_frame_sample_time(start, end, fps, i);
+                            let build_started = trace.as_ref().map(|_| Instant::now());
                             let mut frame_scene = super::timeline_render::build_export_scene(
                                 scene_ref,
                                 time,
@@ -446,9 +504,15 @@ pub fn export_timeline(
                                 Some(on_warning),
                             )?;
                             frame_scene.background = frame_background;
+                            let build_ms = trace_elapsed_ms(build_started);
                             // Downstream (GPU) gone: stop and let it report the real error.
+                            let send_started = trace.as_ref().map(|_| Instant::now());
                             if scene_tx.send(frame_scene).is_err() {
                                 return Ok(());
+                            }
+                            let send_wait_ms = trace_elapsed_ms(send_started);
+                            if let Some(trace) = trace.as_mut() {
+                                trace.record(build_ms, send_wait_ms);
                             }
                         }
                         Ok(())
@@ -456,15 +520,22 @@ pub fn export_timeline(
 
                     // Stage 3: stream finished RGBA frames into ffmpeg's stdin.
                     let write_handle = s.spawn(move || -> Result<()> {
+                        let mut trace =
+                            export_trace_enabled().then(|| ExportStageTrace::new("writer"));
                         let mut stdin = stdin;
                         let mut written: u64 = 0;
                         for pixels in rgba_rx.iter() {
+                            let write_started = trace.as_ref().map(|_| Instant::now());
                             if let Err(e) = stdin.write_all(&pixels) {
                                 return Err(anyhow!("ffmpeg stdin closed prematurely: {e}"));
                             }
+                            let write_ms = trace_elapsed_ms(write_started);
                             written += 1;
                             activity.store(now_millis(), Ordering::Release);
                             report(written as f64 / frame_count as f64);
+                            if let Some(trace) = trace.as_mut() {
+                                trace.record(write_ms, 0.0);
+                            }
                         }
                         // Close stdin so ffmpeg finalizes the container.
                         drop(stdin);
@@ -489,14 +560,24 @@ pub fn export_timeline(
                         let mut pipeline = compositor
                             .begin_pipelined_readback(dev_id, width, height, readback_depth)
                             .context("export: failed to create pipelined readback")?;
+                        let mut trace =
+                            export_trace_enabled().then(|| ExportStageTrace::new("gpu-readback"));
                         for frame_scene in scene_rx.iter() {
-                            if let Some(pixels) = compositor
-                                .render_scene_to_pixels_pipelined(&mut pipeline, &frame_scene)?
-                            {
+                            let render_started = trace.as_ref().map(|_| Instant::now());
+                            let pixels = compositor
+                                .render_scene_to_pixels_pipelined(&mut pipeline, &frame_scene)?;
+                            let render_ms = trace_elapsed_ms(render_started);
+                            let mut send_wait_ms = 0.0;
+                            if let Some(pixels) = pixels {
                                 // Downstream (writer) gone: stop and let it report.
+                                let send_started = trace.as_ref().map(|_| Instant::now());
                                 if rgba_tx.send(pixels).is_err() {
                                     return Ok(());
                                 }
+                                send_wait_ms = trace_elapsed_ms(send_started);
+                            }
+                            if let Some(trace) = trace.as_mut() {
+                                trace.record(render_ms, send_wait_ms);
                             }
                         }
                         // Flush the tail frames still held in the readback pipeline.

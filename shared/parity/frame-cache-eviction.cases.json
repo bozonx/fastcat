@@ -1,0 +1,53 @@
+{
+  "description": "Cross-engine parity for the playback frame-cache eviction victim selection. The native cache (src-tauri/src/monitor/frame_cache.rs `VideoFrameCache::evict`) and the web cache (src/utils/video-editor/compositor/VideoFrameCache.ts `findEvictionCandidate`) both evict the cached frame FARTHEST from the current playhead/priority point — the scrub-locality heuristic. The two engines key frames in different units (native = PTS rounded to ms; web = timeline time in us), but the victim-pick logic is unit-neutral: argmax of |tick - request|, ties broken toward the LARGER tick. These cases are therefore expressed in abstract integer ticks and fed to `choose_eviction_victim` (native) / `chooseEvictionVictimTime` (web) verbatim.",
+  "cases": [
+    {
+      "name": "single frame is always the victim",
+      "frameTicks": [4200],
+      "requestTick": 0,
+      "expectedVictimTick": 4200
+    },
+    {
+      "name": "playhead at the end evicts the oldest (farthest behind)",
+      "frameTicks": [0, 1000, 2000, 3000],
+      "requestTick": 3000,
+      "expectedVictimTick": 0
+    },
+    {
+      "name": "playhead at the start evicts the newest (farthest ahead)",
+      "frameTicks": [0, 1000, 2000, 3000],
+      "requestTick": 0,
+      "expectedVictimTick": 3000
+    },
+    {
+      "name": "asymmetric: a distant future frame beats nearer past frames",
+      "frameTicks": [0, 1000, 5000],
+      "requestTick": 1500,
+      "expectedVictimTick": 5000
+    },
+    {
+      "name": "playhead beyond all frames evicts the farthest behind",
+      "frameTicks": [1000, 2000, 3000],
+      "requestTick": 10000,
+      "expectedVictimTick": 1000
+    },
+    {
+      "name": "equidistant tie resolves to the larger tick",
+      "frameTicks": [0, 2000],
+      "requestTick": 1000,
+      "expectedVictimTick": 2000
+    },
+    {
+      "name": "centered playhead with a lopsided range evicts the farthest end",
+      "frameTicks": [1000, 2000, 3000, 4000],
+      "requestTick": 2000,
+      "expectedVictimTick": 4000
+    },
+    {
+      "name": "symmetric tie around the playhead resolves to the larger tick",
+      "frameTicks": [0, 1000, 2000],
+      "requestTick": 1000,
+      "expectedVictimTick": 2000
+    }
+  ]
+}

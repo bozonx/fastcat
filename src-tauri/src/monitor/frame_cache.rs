@@ -259,11 +259,7 @@ impl VideoFrameCache {
         while self.frames.len() > self.capacity {
             // Evict the frame farthest by index from the last request: during
             // scrubbing/playback, access locality is around the current position.
-            let victim = self
-                .frames
-                .keys()
-                .copied()
-                .max_by_key(|k| (*k - self.last_request).abs());
+            let victim = choose_eviction_victim(self.frames.keys().copied(), self.last_request);
             match victim {
                 // The evicted frame's GPU texture is released by dropping its Arc.
                 Some(k) => {
@@ -273,6 +269,29 @@ impl VideoFrameCache {
             }
         }
     }
+}
+
+/// Scrub-locality eviction pick: among cached frame keys (ms), the victim is the
+/// one FARTHEST from `request` (the last requested position); ties resolve toward
+/// the LARGER key. Order-independent, so it agrees with the previous
+/// `max_by_key`-over-an-ascending-`BTreeMap` behaviour. This is the native twin of
+/// the web `chooseEvictionVictimTime`
+/// (src/utils/video-editor/compositor/VideoFrameCache.ts) and is pinned to it by
+/// the shared `shared/parity/frame-cache-eviction.cases.json` parity fixture.
+/// Returns `None` for an empty input.
+pub fn choose_eviction_victim(keys: impl IntoIterator<Item = i64>, request: i64) -> Option<i64> {
+    keys.into_iter().fold(None, |best, key| match best {
+        None => Some(key),
+        Some(b) => {
+            let dk = (key - request).abs();
+            let db = (b - request).abs();
+            if dk > db || (dk == db && key > b) {
+                Some(key)
+            } else {
+                Some(b)
+            }
+        }
+    })
 }
 
 #[cfg(test)]
@@ -418,6 +437,36 @@ mod tests {
         assert!(c.has_frame_le(10.0));
         // Target dropped below the earliest frame — no frame ≤ target → reseek needed.
         assert!(!c.has_frame_le(1.9));
+    }
+
+    /// Cross-engine parity contract. This test and the web test
+    /// `test/unit/utils/video-editor/frame-cache-eviction.parity.test.ts` read the
+    /// SAME fixture, so the native `choose_eviction_victim` and the web
+    /// `chooseEvictionVictimTime` can never drift apart on the scrub-locality
+    /// eviction heuristic.
+    #[test]
+    fn eviction_victim_matches_shared_parity_fixture() {
+        const FIXTURE: &str =
+            include_str!("../../../shared/parity/frame-cache-eviction.cases.json");
+        let parsed: serde_json::Value =
+            serde_json::from_str(FIXTURE).expect("valid parity fixture json");
+        let cases = parsed["cases"].as_array().expect("cases array");
+        assert!(!cases.is_empty(), "fixture has cases");
+        for c in cases {
+            let name = c["name"].as_str().unwrap_or("?");
+            let ticks: Vec<i64> = c["frameTicks"]
+                .as_array()
+                .expect("frameTicks array")
+                .iter()
+                .map(|v| v.as_i64().expect("integer tick"))
+                .collect();
+            let request = c["requestTick"].as_i64().expect("requestTick");
+            let want = c["expectedVictimTick"]
+                .as_i64()
+                .expect("expectedVictimTick");
+            let got = choose_eviction_victim(ticks.iter().copied(), request);
+            assert_eq!(got, Some(want), "case `{name}`");
+        }
     }
 
     #[test]
