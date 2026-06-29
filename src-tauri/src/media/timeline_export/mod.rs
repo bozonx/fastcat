@@ -293,11 +293,15 @@ pub fn export_timeline(
         // unblocks both paths with an error.
         let watchdog_done = Arc::new(AtomicBool::new(false));
         let watchdog_stalled = Arc::new(AtomicBool::new(false));
+        // Disarms the stall guard once ffmpeg enters finalization (see the finalization
+        // phase below); the watchdog keeps honouring cancellation while it is set.
+        let watchdog_finalizing = Arc::new(AtomicBool::new(false));
         let watchdog = {
             let child = child.clone();
             let activity = last_activity.clone();
             let done = watchdog_done.clone();
             let stalled = watchdog_stalled.clone();
+            let finalizing = watchdog_finalizing.clone();
             // Poll cancellation here too (the registry is `Clone`/Arc-backed) so a cancel
             // is honoured within one tick on *both* export paths. The direct path otherwise
             // only notices a cancel when ffmpeg emits its next `-progress` line, which can
@@ -312,6 +316,17 @@ pub fn export_timeline(
                         let _ = guard.kill();
                         let _ = guard.wait();
                         break;
+                    }
+                    // After stdin is closed ffmpeg is finalizing the container (encoder
+                    // flush + the in-place `+faststart` moov relocation). That pass
+                    // rewrites the file in place — constant size, silent on stdout/stderr —
+                    // so it has no heartbeat to feed the guard and on a large export runs
+                    // for minutes; meanwhile the blocked-stdin-write failure this guard
+                    // exists for can no longer happen. Skip the stall-kill here so a healthy
+                    // finalization is never reaped at the finish line (cancellation above
+                    // still tears the process down).
+                    if finalizing.load(Ordering::Relaxed) {
+                        continue;
                     }
                     let idle_ms = now_millis().saturating_sub(activity.load(Ordering::Acquire));
                     if idle_ms > EXPORT_STALL_TIMEOUT.as_millis() as u64 {
@@ -536,21 +551,16 @@ pub fn export_timeline(
             }
 
             // Finalization phase: stdin is closed and (for mp4/mov) ffmpeg now flushes the
-            // encoder and writes the container trailer — a span that emits nothing on
-            // stdin/stdout/stderr and so looks like a stall to the watchdog. A long but
-            // healthy encode could be killed at "100%". Feed the watchdog from real output
-            // progress instead: reset the clock now, then bump it whenever the output file
-            // grows. (The faststart moov-relocation pass rewrites via a sibling temp and is
-            // bounded by file size / disk speed, well under the stall window.)
-            last_activity.store(now_millis(), Ordering::Release);
-            let mut last_output_len = std::fs::metadata(target_path).map(|m| m.len()).unwrap_or(0);
+            // encoder and writes the container trailer, including the in-place `+faststart`
+            // moov relocation. That relocation rewrites the whole file in place — constant
+            // size, nothing emitted on stdin/stdout/stderr — so it has no heartbeat the
+            // stall watchdog can observe and on a large export legitimately runs for
+            // minutes. Disarm the stall guard now that every frame has been delivered: the
+            // blocked-stdin-write hang it exists for is no longer possible. The watchdog
+            // keeps polling cancellation, so a cancel (or a truly hung mux the user aborts)
+            // still tears the process down.
+            watchdog_finalizing.store(true, Ordering::Relaxed);
             loop {
-                if let Ok(len) = std::fs::metadata(target_path).map(|m| m.len()) {
-                    if len != last_output_len {
-                        last_output_len = len;
-                        last_activity.store(now_millis(), Ordering::Release);
-                    }
-                }
                 let mut guard = child.lock();
                 if let Some(status) = guard.try_wait().context("failed to poll ffmpeg export")? {
                     let stderr_text = match stderr_handle {
