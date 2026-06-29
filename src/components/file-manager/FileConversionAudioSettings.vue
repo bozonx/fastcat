@@ -189,14 +189,14 @@ function resetSampleRate() {
     </div>
 
     <!-- Audio Reverse -->
-    <div v-if="props.showReverse" class="flex items-center justify-between">
-      <label
-        class="text-xs text-ui-text-muted font-medium cursor-pointer"
-        @click="!props.disabled && (audioReverse = !audioReverse)"
-      >
-        {{ t('videoEditor.audio.reverse') }}
-      </label>
-      <USwitch v-model="audioReverse" :disabled="props.disabled" />
+    <div v-if="props.showReverse" class="flex items-center">
+      <UCheckbox
+        v-model="audioReverse"
+        :label="t('videoEditor.audio.reverse')"
+        :disabled="props.disabled"
+        :ui="{ label: 'text-xs text-ui-text-muted font-medium' }"
+        class="cursor-pointer"
+      />
     </div>
   </div>
 </template>
