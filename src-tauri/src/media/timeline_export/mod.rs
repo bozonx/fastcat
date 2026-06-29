@@ -23,7 +23,7 @@ use anyhow::{anyhow, Context, Result};
 
 use crate::audio::engine::render_scene_to_wav;
 use crate::compositor::Compositor;
-use crate::monitor::scene::MonitorScene;
+use crate::monitor::scene::{LayerKind, MonitorScene};
 
 use super::ffmpeg::utils::*;
 use super::processing::{now_millis, spawn_stderr_drain, NativeMediaTasks, StderrDrain};
@@ -109,6 +109,8 @@ fn trace_elapsed_ms(started: Option<Instant>) -> f64 {
         .unwrap_or(0.0)
 }
 
+const EXPORT_SCENE_QUEUE_MEMORY_BUDGET_BYTES: u64 = 192 * 1024 * 1024;
+
 /// Bounded depth of the decode→GPU `Scene` channel.
 ///
 /// Decode is bursty: a clip boundary triggers a seek + decode-from-keyframe (a
@@ -118,20 +120,89 @@ fn trace_elapsed_ms(started: Option<Instant>) -> f64 {
 /// (sequential pull-forward) stretches and bank frames to cover the next cut,
 /// smoothing GPU utilisation.
 ///
-/// Cost: a queued `Scene` still holds its decoded frame pixels (an `Arc<Vec<u8>>`
-/// per video layer, ~`width*height*4` bytes), so the queue is bounded by memory,
-/// not just count. At 1080p a frame is ~8 MB, so depth 8 is ~64 MB — cheap; at 4K
-/// a frame is ~33 MB, so keep the shallower depth there to stay within a sane
-/// memory budget. The rgba channel is left at `PIPELINE_DEPTH` because each slot is
-/// a full readback buffer and its useful depth is already capped by the GPU
-/// readback pipeline downstream.
-pub(crate) fn scene_pipeline_depth(width: u32, height: u32) -> usize {
+/// Cost: a queued `Scene` still holds decoded frame pixels (an `Arc<Vec<u8>>` per
+/// active video layer, ~`width*height*4` bytes), so the queue is bounded by
+/// estimated memory, not just count. Single-layer 1080p exports keep the deeper
+/// buffer that hides decode bursts; dense multi-layer timelines are clamped to a
+/// shallow queue before they can retain hundreds of MB of decoded frames.
+pub(crate) fn scene_pipeline_depth(
+    width: u32,
+    height: u32,
+    max_active_video_layers: usize,
+) -> usize {
     let is_4k = width as u64 * height as u64 >= 3840 * 2160;
-    if is_4k {
-        4
-    } else {
-        8
+    let base_depth = if is_4k { 4 } else { 8 };
+    let active_layers = max_active_video_layers.max(1) as u64;
+    let bytes_per_layer_frame = width as u64 * height as u64 * 4;
+    let estimated_scene_bytes = bytes_per_layer_frame.saturating_mul(active_layers).max(1);
+    let budget_depth = (EXPORT_SCENE_QUEUE_MEMORY_BUDGET_BYTES / estimated_scene_bytes)
+        .clamp(1, base_depth as u64);
+    budget_depth as usize
+}
+
+fn max_active_video_layers(scene: &MonitorScene, start_sec: f64, end_sec: f64) -> usize {
+    let mut events = Vec::new();
+    for layer in &scene.layers {
+        if layer.kind != LayerKind::Video || layer.opacity.clamp(0.0, 1.0) <= 0.0 {
+            continue;
+        }
+
+        let layer_start = layer.timeline_start_sec.max(start_sec);
+        let layer_end = layer.timeline_end_sec.min(end_sec);
+        if layer_start.is_finite() && layer_end.is_finite() && layer_end > layer_start {
+            events.push((layer_start, 1i32));
+            events.push((layer_end, -1i32));
+        }
+
+        if let Some(transition) = &layer.transition_in {
+            let transition_start = layer.timeline_start_sec;
+            let transition_end = (layer.timeline_start_sec + transition.duration_sec)
+                .min(layer.timeline_end_sec)
+                .min(end_sec);
+            let transition_start = transition_start.max(start_sec);
+            if transition_start.is_finite()
+                && transition_end.is_finite()
+                && transition_end > transition_start
+            {
+                events.push((transition_start, 1));
+                events.push((transition_end, -1));
+            }
+        }
+
+        if let Some(transition) = &layer.transition_out {
+            let duration = layer.timeline_end_sec - layer.timeline_start_sec;
+            let transition_start = (layer.timeline_end_sec - transition.duration_sec.min(duration))
+                .max(layer.timeline_start_sec)
+                .max(start_sec);
+            let transition_end = layer.timeline_end_sec.min(end_sec);
+            if transition_start.is_finite()
+                && transition_end.is_finite()
+                && transition_end > transition_start
+            {
+                events.push((transition_start, 1));
+                events.push((transition_end, -1));
+            }
+        }
     }
+
+    if events.is_empty() {
+        return 1;
+    }
+
+    events.sort_by(|a, b| {
+        a.0.total_cmp(&b.0)
+            // End events first: layer coverage is half-open `[start, end)`, so adjacent
+            // cuts at the same timestamp do not overlap.
+            .then_with(|| a.1.cmp(&b.1))
+    });
+
+    let mut active = 0i32;
+    let mut max_active = 0i32;
+    for (_, delta) in events {
+        active = (active + delta).max(0);
+        max_active = max_active.max(active);
+    }
+    max_active.max(1) as usize
 }
 
 pub(crate) fn export_frame_sample_time(
@@ -489,14 +560,20 @@ pub fn export_timeline(
                 // further ahead on the cheap (sequential pull-forward) stretches and bank
                 // frames to cover the next cut, smoothing GPU utilisation.
                 //
-                // Cost: a queued `Scene` still holds its decoded frame pixels (an
-                // `Arc<Vec<u8>>` per video layer, ~width*height*4 bytes), so the queue is
-                // bounded by memory, not just count. At 1080p a frame is ~8 MB, so depth 8
-                // is ~64 MB — cheap; at 4K a frame is ~33 MB, so keep the shallower depth
-                // there to stay within a sane memory budget. The rgba channel is left at
-                // PIPELINE_DEPTH because each slot is a full readback buffer and its useful
-                // depth is already capped by the GPU readback pipeline downstream.
-                let scene_depth = scene_pipeline_depth(width, height);
+                // Cost: a queued `Scene` still holds decoded frame pixels for every
+                // active video layer. Dense timelines clamp the scene queue by an
+                // estimated memory budget; the rgba channel stays at PIPELINE_DEPTH
+                // because each slot is one full readback buffer and is already capped by
+                // the GPU readback pipeline downstream.
+                let active_video_layers = max_active_video_layers(&scene, start, end);
+                let scene_depth = scene_pipeline_depth(width, height, active_video_layers);
+                log::info!(
+                    "[native-export] scene queue depth={} active_video_layers={} resolution={}x{}",
+                    scene_depth,
+                    active_video_layers,
+                    width,
+                    height
+                );
                 let (scene_tx, scene_rx) =
                     std::sync::mpsc::sync_channel::<crate::compositor::scene::Scene>(scene_depth);
                 let (rgba_tx, rgba_rx) = std::sync::mpsc::sync_channel::<Vec<u8>>(PIPELINE_DEPTH);

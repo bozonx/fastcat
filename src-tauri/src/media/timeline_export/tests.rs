@@ -2,11 +2,11 @@ use std::path::Path;
 
 use super::super::ffmpeg::hw::FfmpegHwOptions;
 use super::super::ffmpeg::utils::resolve_audio_encoder;
-use super::{export_frame_sample_time, scene_pipeline_depth};
 use super::ffmpeg_args_builder::{
     build_ffmpeg_args, export_uses_alpha, is_gpu_render_error, resolve_export_hw_mode,
 };
 use super::options::NativeExportOptions;
+use super::{export_frame_sample_time, scene_pipeline_depth};
 use crate::media::types::HwAccelMode;
 
 fn base_options() -> NativeExportOptions {
@@ -182,18 +182,30 @@ fn export_frame_sample_time_clamps_last_partial_frame_inside_range() {
 #[test]
 fn scene_pipeline_depth_is_deeper_below_4k_and_capped_at_4k() {
     // Sub-4K resolutions get the deep buffer (smooths the decode burst at clip cuts).
-    assert_eq!(scene_pipeline_depth(1280, 720), 8);
-    assert_eq!(scene_pipeline_depth(1920, 1080), 8);
-    // Just under the 4K pixel threshold still counts as sub-4K.
-    assert_eq!(scene_pipeline_depth(3840, 2159), 8);
-    // 4K and above keep the shallow buffer to bound queued-frame memory (~33 MB each).
-    assert_eq!(scene_pipeline_depth(3840, 2160), 4);
-    assert_eq!(scene_pipeline_depth(4096, 2160), 4);
-    assert_eq!(scene_pipeline_depth(7680, 4320), 4);
+    assert_eq!(scene_pipeline_depth(1280, 720, 1), 8);
+    assert_eq!(scene_pipeline_depth(1920, 1080, 1), 8);
+    // Just under the 4K pixel threshold is still budget-clamped when a deep queue
+    // would retain more than the export scene memory budget.
+    assert_eq!(scene_pipeline_depth(3840, 2159, 1), 6);
+    // 4K keeps the shallow buffer; 8K is clamped further because each frame is ~126 MB.
+    assert_eq!(scene_pipeline_depth(3840, 2160, 1), 4);
+    assert_eq!(scene_pipeline_depth(4096, 2160, 1), 4);
+    assert_eq!(scene_pipeline_depth(7680, 4320, 1), 1);
     // Portrait 4K (same pixel count, swapped axes) is treated identically.
-    assert_eq!(scene_pipeline_depth(2160, 3840), 4);
+    assert_eq!(scene_pipeline_depth(2160, 3840, 1), 4);
     // Depth must always leave room for at least the readback pipeline to stay busy.
-    assert!(scene_pipeline_depth(1920, 1080) >= 4);
+    assert!(scene_pipeline_depth(1920, 1080, 1) >= 4);
+}
+
+#[test]
+fn scene_pipeline_depth_clamps_dense_layer_scenes_by_memory_budget() {
+    assert_eq!(scene_pipeline_depth(1920, 1080, 2), 8);
+    assert_eq!(scene_pipeline_depth(1920, 1080, 4), 6);
+    assert_eq!(scene_pipeline_depth(1920, 1080, 8), 3);
+    assert_eq!(scene_pipeline_depth(1920, 1080, 32), 1);
+    assert_eq!(scene_pipeline_depth(3840, 2160, 2), 3);
+    assert_eq!(scene_pipeline_depth(3840, 2160, 8), 1);
+    assert_eq!(scene_pipeline_depth(1920, 1080, 0), 8);
 }
 
 #[test]
