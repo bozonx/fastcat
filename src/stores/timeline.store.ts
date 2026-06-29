@@ -530,6 +530,42 @@ export const useTimelineStore = defineStore('timeline', () => {
     getProjectSettings: () => projectStore.projectSettings,
   });
 
+  // `pruneSelectionForDoc` only validates clip/track/transition selection. Marker
+  // and gap selection live exclusively in the global selection store, so a
+  // document restore (undo, redo, version/backup restore) can otherwise leave the
+  // properties panel pointing at a marker/gap that no longer exists — showing a
+  // stale, blank panel. Clear or repair those here. (Selection-range staleness is
+  // handled separately via `clearSelectionRange`.)
+  function pruneNonItemSelectionForDoc(doc: TimelineDocument) {
+    const entity = selectionStore.selectedEntity;
+    if (!entity || entity.source !== 'timeline') return;
+
+    if (entity.kind === 'marker' || entity.kind === 'markers') {
+      const rawMarkers = doc.metadata?.fastcat?.markers;
+      const markerIds = new Set(
+        (Array.isArray(rawMarkers) ? rawMarkers : []).map((marker) => marker.id),
+      );
+      if (entity.kind === 'marker') {
+        if (!markerIds.has(entity.markerId)) selectionStore.clearSelection();
+      } else {
+        const remaining = entity.markerIds.filter((id) => markerIds.has(id));
+        if (remaining.length !== entity.markerIds.length) {
+          selectionStore.selectTimelineMarkers(remaining);
+        }
+      }
+      return;
+    }
+
+    if (entity.kind === 'gap') {
+      const exists = doc.tracks.some(
+        (track) =>
+          track.id === entity.trackId &&
+          track.items.some((item) => item.id === entity.itemId && item.kind === 'gap'),
+      );
+      if (!exists) selectionStore.clearSelection();
+    }
+  }
+
   const dispatcher = createTimelineDispatcherModule({
     timelineDoc,
     duration,
@@ -554,7 +590,11 @@ export const useTimelineStore = defineStore('timeline', () => {
 
       selectionStore.selectTimelineItems(items);
     },
-    pruneSelection: selection.pruneSelectionForDoc,
+    pruneSelection: (doc) => {
+      selection.pruneSelectionForDoc(doc);
+      pruneNonItemSelectionForDoc(doc);
+    },
+    clearSelectionRange: () => selectionRangeModule.removeSelectionRange(),
     notifyWarning: (messageKey: string) => {
       toast.add({
         title: t(messageKey),
@@ -632,6 +672,7 @@ export const useTimelineStore = defineStore('timeline', () => {
       selectionStore.selectedEntity?.source === 'timeline' &&
       selectionStore.selectedEntity.kind === 'selection-range',
     selectTimelineSelectionRange: () => selectionStore.selectTimelineSelectionRange(),
+    selectTimelineMarker: (markerId: string) => selectionStore.selectTimelineMarker(markerId),
     clearSelection: () => selectionStore.clearSelection(),
     markerService,
     trimming,
@@ -1074,7 +1115,20 @@ export const useTimelineStore = defineStore('timeline', () => {
     createSelectionRangeAtPlayhead: selectionRangeModule.createSelectionRangeAtPlayhead,
     createSelectionRange: selectionRangeModule.createSelectionRange,
     updateMarker: markerService.updateMarker,
-    removeMarker: markerService.removeMarker,
+    removeMarker: (markerId: string, options?: Record<string, unknown>) => {
+      markerService.removeMarker(markerId, options);
+      // Keep the properties panel in sync across every delete entry point (panel
+      // trash button, ruler context menu, mobile drawer): a removed marker must
+      // not stay selected, otherwise the panel keeps showing its stale view.
+      const entity = selectionStore.selectedEntity;
+      if (entity?.source === 'timeline') {
+        if (entity.kind === 'marker' && entity.markerId === markerId) {
+          selectionStore.clearSelection();
+        } else if (entity.kind === 'markers' && entity.markerIds.includes(markerId)) {
+          selectionStore.selectTimelineMarkers(entity.markerIds.filter((id) => id !== markerId));
+        }
+      }
+    },
     updateSelectionRange: selectionRangeModule.updateSelectionRange,
     removeSelectionRange: selectionRangeModule.removeSelectionRange,
     convertMarkerToZone: markerService.convertMarkerToZone,

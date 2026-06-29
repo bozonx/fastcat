@@ -40,6 +40,7 @@ export interface TimelineDispatcherDeps {
   selectTimelineItems: (itemIds: string[]) => void;
   selectGlobalTimelineItems: (itemIds: string[], doc: TimelineDocument) => void;
   pruneSelection?: (doc: TimelineDocument) => void;
+  clearSelectionRange?: () => void;
   notifyWarning?: (messageKey: string) => void;
   isReadOnly?: Ref<boolean>;
 }
@@ -157,10 +158,16 @@ export function createTimelineDispatcherModule(
     let batchFailed = false;
 
     for (const cmd of cmds) {
+      // Per-command targeted hydration patches the clip this command operates on
+      // (sourceDurationUs/isImage) before applying. The broad `hydrateAllClips`
+      // pass is hoisted out of the loop below — running it per command made a
+      // batch O(commands × clips); positional move/trim/split/delete commands
+      // don't depend on *other* clips' hydration state, so one pass at the end
+      // yields the same final document.
       const hydrated = deps.hydration.hydrateClipSourceDuration(current, cmd);
       try {
         const { next, createdItemIds } = applyTimelineCommand(hydrated, cmd);
-        current = deps.hydration.hydrateAllClips(next);
+        current = next;
         if (createdItemIds) {
           allCreatedItemIds.push(...createdItemIds);
         }
@@ -186,7 +193,12 @@ export function createTimelineDispatcherModule(
       }
     }
 
-    if (batchFailed || current === prev) return [];
+    if (batchFailed) return [];
+
+    // Single broad hydration pass for the whole batch (was per-command above).
+    current = deps.hydration.hydrateAllClips(current);
+
+    if (current === prev) return [];
 
     const tApplied = perfOn ? performance.now() : 0;
 
@@ -252,6 +264,7 @@ export function createTimelineDispatcherModule(
     }
     deps.markTimelineAsDirty();
     deps.pruneSelection?.(snapshot);
+    deps.clearSelectionRange?.();
     void deps.requestTimelineSave();
   }
 

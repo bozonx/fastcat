@@ -11,6 +11,7 @@ export interface TimelineSelectionRangeDeps {
   selectionRange: Ref<TimelineSelectionRange | null>;
   isSelectionRangeSelected: () => boolean;
   selectTimelineSelectionRange: () => void;
+  selectTimelineMarker?: (markerId: string) => void;
   clearSelection: () => void;
   markerService: ReturnType<typeof createTimelineMarkerService>;
   trimming: ReturnType<typeof createTimelineTrimmingModule>;
@@ -148,12 +149,20 @@ export function createTimelineSelectionRangeModule(
     const range = getSelectionRange();
     if (!range) return;
 
-    markerService.addMarker({
+    const markerId = markerService.addMarker({
       timeUs: range.startUs,
       durationUs: range.endUs - range.startUs,
     });
 
     removeSelectionRange();
+
+    // Hand the selection (and the properties panel) over to the freshly created
+    // zone marker so the panel doesn't go blank once the range disappears.
+    // Guard against a rejected add (e.g. a marker already exists at this time):
+    // only select a marker that actually made it into the document.
+    if (markerId && markerService.getMarkers().some((marker) => marker.id === markerId)) {
+      params.selectTimelineMarker?.(markerId);
+    }
   }
 
   function rippleTrimSelectionRange() {

@@ -22,7 +22,29 @@ export function useTimelineMarquee(
   let activePointerMove: ((event: PointerEvent) => void) | null = null;
   let activePointerUp: ((event: PointerEvent) => void) | null = null;
 
+  // Pointermove fires several times per frame; the live hit-test is O(all clips).
+  // Coalesce to at most one selection pass per animation frame, and skip the
+  // store writes entirely when the resulting clip set is unchanged (dragging
+  // within the same clips) so we don't churn reactivity / re-render every frame.
+  let marqueeRafId: number | null = null;
+  let lastSelectionKey = '';
+
   const DEFAULT_TRACK_HEIGHT = 40;
+
+  function cancelMarqueeRaf() {
+    if (marqueeRafId !== null) {
+      cancelAnimationFrame(marqueeRafId);
+      marqueeRafId = null;
+    }
+  }
+
+  function scheduleMarqueeUpdate() {
+    if (marqueeRafId !== null) return;
+    marqueeRafId = requestAnimationFrame(() => {
+      marqueeRafId = null;
+      updateLiveMarqueeSelection();
+    });
+  }
 
   function clearMarqueePointerListeners() {
     if (activePointerMove) {
@@ -95,6 +117,17 @@ export function useTimelineMarquee(
       currentY += trackHeight;
     }
 
+    // Dedup: the hit-test above is unavoidable per frame, but the store writes
+    // (and the reactivity/re-render they trigger) only need to run when the
+    // selected set actually changed. `selectedItems` is built in a deterministic
+    // track/item order, so a plain join is a stable identity key.
+    const selectionKey = selectedItems.map((i) => `${i.trackId}:${i.itemId}`).join('|');
+    if (selectionKey === lastSelectionKey) {
+      if (perfStart) sampleTimeline('marquee.updateLiveSelection', performance.now() - perfStart);
+      return;
+    }
+    lastSelectionKey = selectionKey;
+
     if (selectedItems.length > 0) {
       timelineStore.selectTimelineItems(selectedItems.map((i) => i.itemId));
       const canOpen = projectStore.currentView === 'cut' || projectStore.currentView === 'sound';
@@ -130,19 +163,23 @@ export function useTimelineMarquee(
       ) {
         didMove = true;
         isMarqueeSelecting.value = true;
+        lastSelectionKey = '';
         timelineStore.clearSelection();
         selectionStore.clearSelection();
       }
       if (didMove) {
         marqueeCurrent.value = cur;
-        updateLiveMarqueeSelection();
+        scheduleMarqueeUpdate();
       }
     };
 
     const onUp = (ev: PointerEvent) => {
+      cancelMarqueeRaf();
       if (didMove) {
-        isMarqueeSelecting.value = false;
+        // Final synchronous pass for the released rectangle (a coalesced RAF may
+        // still be pending), then end the marquee.
         updateLiveMarqueeSelection();
+        isMarqueeSelecting.value = false;
         flushTimelineSamples('marquee.updateLiveSelection');
       } else if (onClick) {
         onClick();
@@ -163,6 +200,7 @@ export function useTimelineMarquee(
   }
 
   onBeforeUnmount(() => {
+    cancelMarqueeRaf();
     clearMarqueePointerListeners();
     isMarqueeSelecting.value = false;
   });

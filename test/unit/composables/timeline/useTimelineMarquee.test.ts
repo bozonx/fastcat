@@ -1,5 +1,5 @@
 /** @vitest-environment happy-dom */
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { defineComponent, h, nextTick, ref, type Ref } from 'vue';
 import { mount } from '@vue/test-utils';
 import { useTimelineMarquee } from '~/composables/timeline/useTimelineMarquee';
@@ -29,6 +29,17 @@ describe('useTimelineMarquee', () => {
     vi.clearAllMocks();
     mockTimelineStore.timelineZoom = 50;
     mockProjectStore.currentView = 'cut';
+    // The live marquee selection is coalesced through requestAnimationFrame; run
+    // it synchronously so the existing assertions observe the result immediately.
+    vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) => {
+      cb(0);
+      return 1;
+    });
+    vi.stubGlobal('cancelAnimationFrame', () => {});
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
   });
 
   it('selects clips under the visible marquee when timeline content is horizontally translated', async () => {

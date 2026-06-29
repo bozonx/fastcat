@@ -41,6 +41,7 @@ function createMockDeps() {
     markTimelineAsDirty: vi.fn(),
     selectTimelineItems: vi.fn(),
     selectGlobalTimelineItems: vi.fn(),
+    clearSelectionRange: vi.fn(),
     isReadOnly: ref(false),
   };
 }
@@ -105,6 +106,14 @@ describe('TimelineDispatcherModule', () => {
     mod.applyRestoredSnapshot(snap as any);
     expect(deps.timelineDoc.value).toEqual(snap);
     expect(deps.markTimelineAsDirty).toHaveBeenCalled();
+  });
+
+  it('applyRestoredSnapshot clears selection range', () => {
+    const deps = createMockDeps();
+    const mod = createTimelineDispatcherModule(deps);
+    const snap = { id: 'snap', tracks: [] };
+    mod.applyRestoredSnapshot(snap as any);
+    expect(deps.clearSelectionRange).toHaveBeenCalled();
   });
 
   it('applyTimeline is blocked when isReadOnly is true', () => {
