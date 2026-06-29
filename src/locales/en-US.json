@@ -1199,6 +1199,7 @@
       "advancedSettings": "Advanced Settings",
       "maxBitrate": "Maximum Bitrate (Mbps)",
       "maxBitrateHelp": "Set the maximum peak bitrate for VBR. Fill this field only if you know what you are doing.",
+      "specifyMaxBitrate": "Specify maximum bitrate",
       "bitrateMode": "Bitrate Mode",
       "bitrateModeCbr": "CBR (Constant)",
       "bitrateModeVbr": "VBR (Variable)",

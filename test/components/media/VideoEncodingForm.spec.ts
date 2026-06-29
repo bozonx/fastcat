@@ -173,4 +173,73 @@ describe('VideoEncodingForm.vue', () => {
     // Verify preset changes to custom
     expect(component.vm.preset).toBe('custom');
   });
+
+  it('handles specifyMaxBitrate checkbox toggle correctly', async () => {
+    const component = await mountWithNuxt(TestHostWithAdvanced);
+    await nextTick();
+
+    // Find the checkbox for specifying max bitrate
+    const checkboxes = component.findAllComponents({ name: 'UCheckbox' });
+    const specifyCheckbox = checkboxes.find(
+      (c) => c.props('label') === 'videoEditor.export.specifyMaxBitrate',
+    );
+    expect(specifyCheckbox).toBeDefined();
+    expect(specifyCheckbox!.props('modelValue')).toBe(false);
+
+    // Turn specifyMaxBitrate ON
+    await specifyCheckbox!.setValue(true);
+    await nextTick();
+
+    // Verify it calculates the default value (1.5 * bitrateMbps = 1.5 * 8 = 12)
+    expect(component.vm.maxBitrateMbps).toBe(12);
+
+    // Turn specifyMaxBitrate OFF
+    await specifyCheckbox!.setValue(false);
+    await nextTick();
+
+    // Verify it resets to null
+    expect(component.vm.maxBitrateMbps).toBeNull();
+  });
 });
+
+// Test host component to emulate parent v-models with advanced settings
+const TestHostWithAdvanced = {
+  components: { VideoEncodingForm },
+  template: `
+    <VideoEncodingForm
+      v-model:output-format="outputFormat"
+      v-model:video-codec="videoCodec"
+      v-model:bitrate-mbps="bitrateMbps"
+      v-model:exclude-audio="excludeAudio"
+      v-model:audio-codec="audioCodec"
+      v-model:audio-bitrate-kbps="audioBitrateKbps"
+      v-model:preset="preset"
+      v-model:enable-advanced-settings="enableAdvancedSettings"
+      v-model:max-bitrate-mbps="maxBitrateMbps"
+      :show-presets="true"
+    />
+  `,
+  setup() {
+    const outputFormat = ref('mp4');
+    const videoCodec = ref('avc1');
+    const bitrateMbps = ref(8);
+    const excludeAudio = ref(false);
+    const audioCodec = ref('aac');
+    const audioBitrateKbps = ref(192);
+    const preset = ref('custom');
+    const enableAdvancedSettings = ref(true);
+    const maxBitrateMbps = ref<number | null>(null);
+
+    return {
+      outputFormat,
+      videoCodec,
+      bitrateMbps,
+      excludeAudio,
+      audioCodec,
+      audioBitrateKbps,
+      preset,
+      enableAdvancedSettings,
+      maxBitrateMbps,
+    };
+  },
+};

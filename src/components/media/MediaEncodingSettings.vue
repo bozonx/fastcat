@@ -186,6 +186,17 @@ const maxBitrate = computed({
   },
 });
 
+const specifyMaxBitrate = computed({
+  get: () => maxBitrateMbps.value !== null,
+  set: (val) => {
+    if (val) {
+      maxBitrateMbps.value = Math.round(bitrateMbps.value * 1.5 * 10) / 10;
+    } else {
+      maxBitrateMbps.value = null;
+    }
+  },
+});
+
 watch(bitrateMbps, (newVal) => {
   if (maxBitrateMbps.value !== null && maxBitrateMbps.value < newVal) {
     maxBitrateMbps.value = newVal;
@@ -306,27 +317,36 @@ watch(
         </UiFormField>
 
         <!-- Max Bitrate field, visible only for VBR -->
-        <UiFormField v-if="bitrateMode === 'variable'">
-          <template #label>
-            <div class="flex items-center gap-1">
-              {{ t('videoEditor.export.maxBitrate') }}
-              <UiTooltip :text="t('videoEditor.export.maxBitrateHelp')">
-                <UIcon name="i-heroicons-information-circle" class="h-4 w-4 text-ui-text-muted" />
-              </UiTooltip>
-            </div>
-          </template>
-          <UiSliderInput
-            v-model="maxBitrate"
-            :min="bitrateMbps"
-            :max="bitrateMbps * 4"
-            :step="0.1"
-            :decimals="1"
-            unit=" Mbps"
-            :show-input="true"
+        <template v-if="bitrateMode === 'variable'">
+          <UCheckbox
+            v-model="specifyMaxBitrate"
+            :label="t('videoEditor.export.specifyMaxBitrate')"
             :disabled="props.disabled"
-            input-class="w-20!"
+            :ui="{ label: 'text-sm text-ui-text-muted' }"
+            class="cursor-pointer"
           />
-        </UiFormField>
+          <UiFormField v-if="specifyMaxBitrate">
+            <template #label>
+              <div class="flex items-center gap-1">
+                {{ t('videoEditor.export.maxBitrate') }}
+                <UiTooltip :text="t('videoEditor.export.maxBitrateHelp')">
+                  <UIcon name="i-heroicons-information-circle" class="h-4 w-4 text-ui-text-muted" />
+                </UiTooltip>
+              </div>
+            </template>
+            <UiSliderInput
+              v-model="maxBitrate"
+              :min="bitrateMbps"
+              :max="bitrateMbps * 4"
+              :step="0.1"
+              :decimals="1"
+              unit=" Mbps"
+              :show-input="true"
+              :disabled="props.disabled"
+              input-class="w-20!"
+            />
+          </UiFormField>
+        </template>
 
         <UiFormField :label="t('videoEditor.export.keyframeInterval')">
           <UiWheelNumberInput
