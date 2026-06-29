@@ -84,6 +84,16 @@ export const VIDEO_CORE_LIMITS = {
   OP_QUEUE_WATCHDOG_MS: 15_000,
   MAX_VIDEO_FRAME_CACHE_MB: 256,
   /**
+   * How many encoded-frame submissions the export loop keeps in flight before it
+   * stalls to wait for the encoder to drain (`waitForVideoBackpressure`). It is
+   * the buffer that lets the decode/composite loop run ahead and keep a fast HW
+   * encoder fed across bursty decode (some frames are cache hits, some pay a
+   * seek). Too shallow starves the encoder between slow decodes; too deep just
+   * pins that many full VideoFrames in the encoder queue. 8 keeps the encoder
+   * busy while bounding 4K frame backlog to ~100 MB.
+   */
+  EXPORT_ENCODER_QUEUE_DEPTH: 8,
+  /**
    * Max number of upcoming clips a single prewarm tick warms ahead of the
    * playhead. The prewarm op is exclusive against `renderFrame` (shared op
    * queue), so this is deliberately bounded — a larger batch would hold the

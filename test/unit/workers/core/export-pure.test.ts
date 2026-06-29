@@ -330,7 +330,7 @@ describe('waitForVideoBackpressure', () => {
   it('waits with short adaptive delays while the encode queue is full', async () => {
     vi.useFakeTimers();
     const videoSource = { encodeQueueSize: 4 };
-    const waitPromise = waitForVideoBackpressure(videoSource);
+    const waitPromise = waitForVideoBackpressure(videoSource, 4);
 
     await vi.advanceTimersByTimeAsync(1);
     expect(videoSource.encodeQueueSize).toBe(4);
@@ -338,6 +338,11 @@ describe('waitForVideoBackpressure', () => {
     videoSource.encodeQueueSize = 3;
     await vi.advanceTimersByTimeAsync(2);
     await expect(waitPromise).resolves.toBeUndefined();
+  });
+
+  it('does not stall while the queue is below the (deeper) default threshold', async () => {
+    // Default depth is EXPORT_ENCODER_QUEUE_DEPTH (8); a queue of 7 must not wait.
+    await expect(waitForVideoBackpressure({ encodeQueueSize: 7 })).resolves.toBeUndefined();
   });
 });
 

@@ -13,6 +13,8 @@ import {
   getExportFrameTiming,
 } from './export-helpers';
 import { usToS } from './time';
+import { yieldToEventLoop } from './yield-scheduler';
+import { VIDEO_CORE_LIMITS } from '~/utils/constants';
 import { initEffects } from '../../effects';
 import { initTransitions } from '../../transitions';
 import {
@@ -236,8 +238,10 @@ export function buildMetadataTags(
   return Object.keys(tags).length > 0 ? tags : null;
 }
 
-export async function waitForVideoBackpressure(videoSource: { encodeQueueSize?: number }) {
-  const maxQueueSize = 4;
+export async function waitForVideoBackpressure(
+  videoSource: { encodeQueueSize?: number },
+  maxQueueSize: number = VIDEO_CORE_LIMITS.EXPORT_ENCODER_QUEUE_DEPTH,
+) {
   let delayMs = 1;
 
   while (Number(videoSource?.encodeQueueSize ?? 0) >= maxQueueSize) {
@@ -676,13 +680,24 @@ export async function runExport(
     const fps = Math.max(1, Number(params.fps) || 30);
     const totalFrames = computeExportTotalFrames({ durationUs: params.durationUs, fps });
 
-    let lastYieldAtMs = typeof performance !== 'undefined' ? performance.now() : Date.now();
+    const nowMsFn = () => (typeof performance !== 'undefined' ? performance.now() : Date.now());
+    let lastYieldAtMs = nowMsFn();
     let lastProgressAtMs = lastYieldAtMs;
     const yieldIntervalMs = 16;
     const progressIntervalMs = 250;
 
     let emptyFrameCount = 0;
     let firstEmptyFrameTimestampS: number | null = null;
+
+    // Per-phase timing accumulators. Used only to emit a dev-only summary so the
+    // decode/composite vs encoder-backpressure split can be measured without a
+    // profiler — this is what tells us whether an export is decode-bound or
+    // encoder-bound before reaching for bigger pipeline changes. log.info is a
+    // no-op outside dev, so this never prints in production.
+    let renderMsTotal = 0;
+    let backpressureMsTotal = 0;
+    let encodeSubmitMsTotal = 0;
+    const wallStartMs = nowMsFn();
 
     for (let frameNum = 0; frameNum < totalFrames; frameNum++) {
       ensureNotCancelled();
@@ -693,7 +708,9 @@ export async function runExport(
         durationUs: params.durationUs,
         fps,
       });
+      const renderStartMs = nowMsFn();
       const generatedCanvas = await params.compositor.renderFrame(frame.timeUs);
+      renderMsTotal += nowMsFn() - renderStartMs;
       if (!generatedCanvas) {
         fillCanvasBlack(params.compositor.canvas);
         if (emptyFrameCount === 0) {
@@ -701,12 +718,16 @@ export async function runExport(
         }
         emptyFrameCount++;
       }
+      const backpressureStartMs = nowMsFn();
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       await waitForVideoBackpressure(params.videoSource as any);
+      const encodeSubmitStartMs = nowMsFn();
+      backpressureMsTotal += encodeSubmitStartMs - backpressureStartMs;
       await params.videoSource.add(frame.timestampS, frame.durationS);
+      encodeSubmitMsTotal += nowMsFn() - encodeSubmitStartMs;
 
       const progress = Math.min(99, Math.round(((frameNum + 1) / totalFrames) * 99));
-      const nowProgressMs = typeof performance !== 'undefined' ? performance.now() : Date.now();
+      const nowProgressMs = nowMsFn();
       const shouldReport =
         frameNum + 1 === totalFrames || nowProgressMs - lastProgressAtMs >= progressIntervalMs;
       if (shouldReport) {
@@ -714,11 +735,26 @@ export async function runExport(
         params.progressReporter.report(progress, params.taskId);
       }
 
-      const nowMs = typeof performance !== 'undefined' ? performance.now() : Date.now();
+      const nowMs = nowMsFn();
       if (nowMs - lastYieldAtMs >= yieldIntervalMs) {
         lastYieldAtMs = nowMs;
-        await new Promise<void>((resolve) => setTimeout(resolve, 0));
+        // A MessageChannel macrotask still flushes progress posts and lets cancel
+        // messages land, but skips the ~4 ms minimum-delay clamp a nested worker
+        // setTimeout(0) would pay on every yield (pure idle on fast/cached
+        // frames). See yield-scheduler.ts.
+        await yieldToEventLoop();
       }
+    }
+
+    if (totalFrames > 0) {
+      const wallMs = nowMsFn() - wallStartMs;
+      log.info(
+        `[Worker Export] encode timing: ${totalFrames} frames in ${wallMs.toFixed(0)}ms ` +
+          `(${(wallMs / totalFrames).toFixed(1)}ms/frame) — ` +
+          `render/decode ${renderMsTotal.toFixed(0)}ms, ` +
+          `encoder-backpressure ${backpressureMsTotal.toFixed(0)}ms, ` +
+          `encode-submit ${encodeSubmitMsTotal.toFixed(0)}ms`,
+      );
     }
 
     if (emptyFrameCount > 0) {
