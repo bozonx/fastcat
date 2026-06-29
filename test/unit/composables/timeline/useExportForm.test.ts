@@ -2,7 +2,16 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { nextTick, ref, computed } from 'vue';
 import { useToast } from '#ui/composables/useToast';
+import { copyFile } from '@tauri-apps/plugin-fs';
 import { useExportForm } from '~/composables/timeline/export/useExportForm';
+
+const { copyFileMock } = vi.hoisted(() => ({
+  copyFileMock: vi.fn().mockResolvedValue(undefined),
+}));
+
+vi.mock('@tauri-apps/plugin-fs', () => ({
+  copyFile: copyFileMock,
+}));
 
 const selectionRangeMock = ref<{ startUs: number; endUs: number } | null>(null);
 const markersMock = ref<
@@ -261,6 +270,7 @@ describe('useExportForm', () => {
     mockAudioCodec.value = 'aac';
     mockOutputFormat.value = 'mp4';
     mockAudioSampleRate.value = 48000;
+    vi.mocked(copyFile).mockClear();
     projectStoreMock.projectSettings.exportSettings = undefined as any;
     ensureExportDirMock.mockReset();
     ensureExportDirMock.mockImplementation(async () => ({
@@ -288,6 +298,7 @@ describe('useExportForm', () => {
       removeEntry: vi.fn(async () => undefined),
     }));
     existingFilesMock.clear();
+    delete (globalThis as { __TAURI_INTERNALS__?: unknown }).__TAURI_INTERNALS__;
   });
 
   it('выбирает активный маркер-зону по умолчанию', async () => {
@@ -485,6 +496,57 @@ describe('useExportForm', () => {
     expect(form.lastExportStatus.value).toBe('success');
     expect(form.exportDurationMs.value).not.toBeNull();
     expect(form.exportDurationMs.value).toBeGreaterThanOrEqual(0);
+  });
+
+  it('в Tauri финализирует экспорт native copy без загрузки файла в JS', async () => {
+    (globalThis as { __TAURI_INTERNALS__?: unknown }).__TAURI_INTERNALS__ = {};
+    const tempGetFileMock = vi.fn(async () => {
+      throw new Error('temp getFile should not be called');
+    });
+    const finalGetFileMock = vi.fn(async () => {
+      throw new Error('final getFile should not be called');
+    });
+    const finalCreateWritableMock = vi.fn(async () => {
+      throw new Error('createWritable should not be called');
+    });
+    const getFileHandleMock = vi.fn(async (name: string, options?: { create?: boolean }) => {
+      if (!options?.create) {
+        const error = new Error('Not found');
+        (error as Error & { name: string }).name = 'NotFoundError';
+        throw error;
+      }
+      if (name.includes('.tmp-')) {
+        return {
+          path: `/project/_export/${name}`,
+          getFile: tempGetFileMock,
+        };
+      }
+      return {
+        path: `/project/_export/${name}`,
+        getFile: finalGetFileMock,
+        createWritable: finalCreateWritableMock,
+      };
+    });
+    ensureExportDirMock.mockResolvedValue({
+      getFileHandle: getFileHandleMock,
+      removeEntry: vi.fn(async () => undefined),
+    } as any);
+    vi.mocked(copyFile).mockResolvedValue(undefined);
+    const onSuccess = vi.fn();
+
+    const form = useExportForm();
+    await form.initializeExportForm();
+    await form.handleStartExport(onSuccess);
+
+    expect(copyFile).toHaveBeenCalledTimes(1);
+    const [fromPath, toPath] = vi.mocked(copyFile).mock.calls[0]!;
+    expect(String(fromPath)).toContain('.tmp-');
+    expect(toPath).toBe('/project/_export/timeline.mp4');
+    expect(tempGetFileMock).not.toHaveBeenCalled();
+    expect(finalGetFileMock).not.toHaveBeenCalled();
+    expect(finalCreateWritableMock).not.toHaveBeenCalled();
+    expect(onSuccess).toHaveBeenCalledWith(expect.any(File));
+    expect(onSuccess.mock.calls[0]?.[0].size).toBe(0);
   });
 
   it('показывает тост успеха с длительностью экспорта', async () => {

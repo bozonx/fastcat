@@ -515,17 +515,26 @@ export function useExportForm() {
         }
 
         const fileHandle = await exportDir.getFileHandle(finalFilename, { create: true });
-        await withFileIoSlot(async () => {
-          const tempFile = await tempFileHandle.getFile();
-          const writable = await fileHandle.createWritable({ keepExistingData: false });
-          try {
-            await writable.write(tempFile);
-            await writable.close();
-          } catch (e) {
-            await writable.abort();
-            throw e;
+        const tempNativePath = getNativeFileHandlePath(tempFileHandle);
+        const finalNativePath = getNativeFileHandlePath(fileHandle);
+        if (isTauri) {
+          if (!tempNativePath || !finalNativePath) {
+            throw new Error('Native export file path is not available for finalizing');
           }
-        });
+          await copyFile(tempNativePath, finalNativePath);
+        } else {
+          await withFileIoSlot(async () => {
+            const tempFile = await tempFileHandle.getFile();
+            const writable = await fileHandle.createWritable({ keepExistingData: false });
+            try {
+              await writable.write(tempFile);
+              await writable.close();
+            } catch (e) {
+              await writable.abort();
+              throw e;
+            }
+          });
+        }
 
         if (isTauri && customExportPath.value) {
           const tauriFilePath = getNativeFileHandlePath(fileHandle);
@@ -569,7 +578,9 @@ export function useExportForm() {
         });
 
         if (onSuccess) {
-          const file = await withFileIoSlot(() => fileHandle.getFile());
+          const file = isTauri
+            ? new File([], outputFilename.value)
+            : await withFileIoSlot(() => fileHandle.getFile());
           await onSuccess(file);
         }
       } finally {

@@ -54,6 +54,10 @@ const DEFAULT_FALLBACK_FPS: f64 = 30.0;
 const DEFAULT_AUDIO_SAMPLE_RATE: u32 = 48_000;
 const FRAME_SAMPLE_END_EPS_SEC: f64 = 1e-9;
 const EXPORT_TRACE_INTERVAL_FRAMES: u64 = 120;
+const EXPORT_MEMORY_SAMPLE_INTERVAL_FRAMES: u64 = 30;
+const EXPORT_MEMORY_TRACE_INTERVAL_FRAMES: u64 = 900;
+const EXPORT_MEMORY_TRACE_RSS_STEP_MB: u64 = 256;
+const EXPORT_MEMORY_LOW_AVAILABLE_MB: u64 = 1024;
 
 fn export_trace_enabled() -> bool {
     static FLAG: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
@@ -62,6 +66,143 @@ fn export_trace_enabled() -> bool {
             .map(|v| v == "1" || v.eq_ignore_ascii_case("true"))
             .unwrap_or(false)
     })
+}
+
+fn export_memory_trace_enabled() -> bool {
+    static FLAG: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+    *FLAG.get_or_init(|| {
+        std::env::var("FASTCAT_EXPORT_MEMORY_TRACE")
+            .map(|v| v == "1" || v.eq_ignore_ascii_case("true"))
+            .unwrap_or(false)
+    })
+}
+
+#[derive(Debug, Clone, Copy)]
+struct ProcessMemorySnapshot {
+    rss_mb: u64,
+    peak_rss_mb: u64,
+    available_mb: Option<u64>,
+}
+
+#[cfg(target_os = "linux")]
+fn parse_proc_kb_field(contents: &str, key: &str) -> Option<u64> {
+    contents.lines().find_map(|line| {
+        let rest = line.strip_prefix(key)?;
+        let kb = rest
+            .split_whitespace()
+            .next()
+            .and_then(|value| value.parse::<u64>().ok())?;
+        Some(kb / 1024)
+    })
+}
+
+#[cfg(target_os = "linux")]
+fn process_memory_snapshot() -> Option<ProcessMemorySnapshot> {
+    let status = std::fs::read_to_string("/proc/self/status").ok()?;
+    let rss_mb = parse_proc_kb_field(&status, "VmRSS:")?;
+    let peak_rss_mb = parse_proc_kb_field(&status, "VmHWM:").unwrap_or(rss_mb);
+    let available_mb = std::fs::read_to_string("/proc/meminfo")
+        .ok()
+        .and_then(|meminfo| parse_proc_kb_field(&meminfo, "MemAvailable:"));
+    Some(ProcessMemorySnapshot {
+        rss_mb,
+        peak_rss_mb,
+        available_mb,
+    })
+}
+
+#[cfg(not(target_os = "linux"))]
+fn process_memory_snapshot() -> Option<ProcessMemorySnapshot> {
+    None
+}
+
+fn log_export_memory_checkpoint(stage: &str) {
+    if !export_memory_trace_enabled() {
+        return;
+    }
+    match process_memory_snapshot() {
+        Some(snapshot) => log_export_memory_snapshot(stage, None, None, snapshot),
+        None => log::info!("[native-export-memory] stage={stage} rss=unavailable"),
+    }
+}
+
+fn log_export_memory_snapshot(
+    stage: &str,
+    frame: Option<u64>,
+    frame_count: Option<u64>,
+    snapshot: ProcessMemorySnapshot,
+) {
+    let progress = match (frame, frame_count) {
+        (Some(frame), Some(total)) => format!(" frame={frame}/{total}"),
+        _ => String::new(),
+    };
+    let available = snapshot
+        .available_mb
+        .map(|mb| format!(" available_mb={mb}"))
+        .unwrap_or_default();
+    log::info!(
+        "[native-export-memory] stage={stage}{progress} rss_mb={} peak_rss_mb={}{}",
+        snapshot.rss_mb,
+        snapshot.peak_rss_mb,
+        available
+    );
+}
+
+struct ExportMemoryTrace {
+    next_interval_frame: u64,
+    last_rss_bucket_mb: Option<u64>,
+    warned_low_available: bool,
+}
+
+impl ExportMemoryTrace {
+    fn new() -> Self {
+        Self {
+            next_interval_frame: EXPORT_MEMORY_TRACE_INTERVAL_FRAMES,
+            last_rss_bucket_mb: None,
+            warned_low_available: false,
+        }
+    }
+
+    fn record_frame(&mut self, stage: &str, frame: u64, frame_count: u64) {
+        if !export_memory_trace_enabled() {
+            return;
+        }
+        if frame != 1 && frame != frame_count && frame % EXPORT_MEMORY_SAMPLE_INTERVAL_FRAMES != 0 {
+            return;
+        }
+        let Some(snapshot) = process_memory_snapshot() else {
+            if frame == 1 {
+                log::info!("[native-export-memory] stage={stage} rss=unavailable");
+            }
+            return;
+        };
+
+        let rss_bucket = snapshot.rss_mb / EXPORT_MEMORY_TRACE_RSS_STEP_MB;
+        let rss_crossed = self
+            .last_rss_bucket_mb
+            .is_some_and(|last| rss_bucket > last);
+        self.last_rss_bucket_mb = Some(rss_bucket);
+
+        let low_available = snapshot
+            .available_mb
+            .is_some_and(|mb| mb < EXPORT_MEMORY_LOW_AVAILABLE_MB);
+        let should_warn_low_available = low_available && !self.warned_low_available;
+        if should_warn_low_available {
+            self.warned_low_available = true;
+        }
+
+        if frame == 1
+            || frame == frame_count
+            || frame >= self.next_interval_frame
+            || rss_crossed
+            || should_warn_low_available
+        {
+            while frame >= self.next_interval_frame {
+                self.next_interval_frame += EXPORT_MEMORY_TRACE_INTERVAL_FRAMES;
+            }
+            log_export_memory_snapshot(stage, Some(frame), Some(frame_count), snapshot);
+        }
+    }
 }
 
 struct ExportStageTrace {
@@ -341,6 +482,7 @@ pub fn export_timeline(
             }),
         })
         .context("failed to render native audio mix")?;
+        log_export_memory_checkpoint("audio-prerender-done");
         Some(path)
     } else {
         None
@@ -407,6 +549,7 @@ pub fn export_timeline(
         };
         let ffmpeg_cmd = opts.hw.ffmpeg_cmd();
         verify_ffmpeg_binary(ffmpeg_cmd).context("ffmpeg binary check failed")?;
+        log_export_memory_checkpoint("ffmpeg-spawn");
         let mut child = Command::new(ffmpeg_cmd)
             .args(&args)
             // Direct path reads the source file itself (no rawvideo stdin) and reports
@@ -574,6 +717,7 @@ pub fn export_timeline(
                     width,
                     height
                 );
+                log_export_memory_checkpoint("compositor-pipeline-start");
                 let (scene_tx, scene_rx) =
                     std::sync::mpsc::sync_channel::<crate::compositor::scene::Scene>(scene_depth);
                 let (rgba_tx, rgba_rx) = std::sync::mpsc::sync_channel::<Vec<u8>>(PIPELINE_DEPTH);
@@ -638,6 +782,7 @@ pub fn export_timeline(
                     let write_handle = s.spawn(move || -> Result<()> {
                         let mut trace =
                             export_trace_enabled().then(|| ExportStageTrace::new("writer"));
+                        let mut memory_trace = ExportMemoryTrace::new();
                         let mut stdin = stdin;
                         let mut written: u64 = 0;
                         for pixels in rgba_rx.iter() {
@@ -649,6 +794,7 @@ pub fn export_timeline(
                             written += 1;
                             activity.store(now_millis(), Ordering::Release);
                             report(written as f64 / frame_count as f64);
+                            memory_trace.record_frame("writer", written, frame_count);
                             if let Some(trace) = trace.as_mut() {
                                 trace.record(write_ms, 0.0);
                             }
@@ -757,6 +903,7 @@ pub fn export_timeline(
             // keeps polling cancellation, so a cancel (or a truly hung mux the user aborts)
             // still tears the process down.
             watchdog_finalizing.store(true, Ordering::Relaxed);
+            log_export_memory_checkpoint("ffmpeg-finalize-start");
             loop {
                 let mut guard = child.lock();
                 if let Some(status) = guard.try_wait().context("failed to poll ffmpeg export")? {
@@ -776,6 +923,7 @@ pub fn export_timeline(
                                 target_path.display()
                             ));
                         }
+                        log_export_memory_checkpoint("export-done");
                         return Ok(());
                     }
                     if cancelled {
