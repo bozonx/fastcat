@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, nextTick, watch, onBeforeUnmount, onMounted } from 'vue';
-import { blurOnDropdownMenuClose } from '~/composables/useDropdownMenuBlur';
+import { dropdownNoReturnFocus } from '~/composables/useDropdownMenuFocus';
 import { useMediaQuery } from '@vueuse/core';
 import { useAppFullscreen } from '~/composables/useAppFullscreen';
 import { isTauriRuntime } from '~/utils/runtime';
@@ -124,19 +124,16 @@ const isMobileMoreMenuOpen = ref(false);
 
 function setMobileSpeedMenuOpen(isOpen: boolean) {
   isMobileSpeedMenuOpen.value = isOpen;
-  blurOnDropdownMenuClose(isOpen);
 }
 
 function setMobileMoreMenuOpen(isOpen: boolean) {
   isMobileMoreMenuOpen.value = isOpen;
-  blurOnDropdownMenuClose(isOpen);
 }
 
 function closeMobileDropdownMenus() {
   if (!isMobileSpeedMenuOpen.value && !isMobileMoreMenuOpen.value) return;
   isMobileSpeedMenuOpen.value = false;
   isMobileMoreMenuOpen.value = false;
-  blurOnDropdownMenuClose(false);
 }
 
 function onMobileMonitorKeyDown(event: KeyboardEvent) {
@@ -615,6 +612,7 @@ function onMonitorButtonPointerUp() {
               :open="isMobileSpeedMenuOpen"
               :items="mobileSpeedMenuItems"
               :ui="{ content: 'min-w-20' }"
+              :content="dropdownNoReturnFocus"
               @update:open="setMobileSpeedMenuOpen"
             >
               <UButton
@@ -636,6 +634,7 @@ function onMonitorButtonPointerUp() {
             <UDropdownMenu
               :open="isMobileMoreMenuOpen"
               :items="contextMenuItems"
+              :content="dropdownNoReturnFocus"
               @update:open="setMobileMoreMenuOpen"
             >
               <UButton

@@ -7,10 +7,6 @@ vi.mock('~/utils/format', () => ({
   formatBytes: (bytes: number) => `${bytes} B`,
 }));
 
-vi.mock('~/composables/useDropdownMenuBlur', () => ({
-  blurOnDropdownMenuClose: vi.fn(),
-}));
-
 const mockProjectStore = reactive({});
 
 vi.mock('~/stores/project.store', () => ({

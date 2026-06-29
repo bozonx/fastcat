@@ -19,7 +19,7 @@ import { registerMonitorActions } from '~/composables/editor/hotkeys/monitorActi
 import { useFileManager } from '~/composables/file-manager/useFileManager';
 import { useProjectActions } from '~/composables/editor/useProjectActions';
 import { useHotkeyLabel } from '~/composables/useHotkeyLabel';
-import { blurOnDropdownMenuClose } from '~/composables/useDropdownMenuBlur';
+import { dropdownNoReturnFocus } from '~/composables/useDropdownMenuFocus';
 import { isTauriRuntime } from '~/utils/runtime';
 
 const { t } = useI18n();
@@ -312,17 +312,14 @@ const isMonitorContextMenuOpen = ref(false);
 
 function setMonitorContextMenuOpen(isOpen: boolean) {
   isMonitorContextMenuOpen.value = isOpen;
-  blurOnDropdownMenuClose(isOpen);
 }
 
 function setMonitorSyncMenuOpen(isOpen: boolean) {
   isMonitorSyncMenuOpen.value = isOpen;
-  blurOnDropdownMenuClose(isOpen);
 }
 
 function setMonitorMoreMenuOpen(isOpen: boolean) {
   isMonitorMoreMenuOpen.value = isOpen;
-  blurOnDropdownMenuClose(isOpen);
 }
 
 function closeMonitorMenus() {
@@ -336,7 +333,6 @@ function closeMonitorMenus() {
   isMonitorContextMenuOpen.value = false;
   isMonitorSyncMenuOpen.value = false;
   isMonitorMoreMenuOpen.value = false;
-  blurOnDropdownMenuClose(false);
 }
 
 function onMonitorKeyDown(event: KeyboardEvent) {
@@ -493,6 +489,7 @@ watch(viewportRef, (vp) => {
         :items="contextMenuItems"
         :portal="monitorMenuPortal"
         :ui="{ content: 'z-[60]' }"
+        :content="dropdownNoReturnFocus"
         @update:open="setMonitorContextMenuOpen"
       >
         <div
@@ -703,6 +700,7 @@ watch(viewportRef, (vp) => {
                 :items="monitorSyncMenuItems"
                 :portal="monitorMenuPortal"
                 :ui="{ content: 'min-w-44 z-[60]' }"
+                :content="dropdownNoReturnFocus"
                 @update:open="setMonitorSyncMenuOpen"
               >
                 <UiActionButton
@@ -827,6 +825,7 @@ watch(viewportRef, (vp) => {
               :items="contextMenuItems"
               :portal="monitorMenuPortal"
               :ui="{ content: 'z-[60]' }"
+              :content="dropdownNoReturnFocus"
               @update:open="setMonitorMoreMenuOpen"
             >
               <UiActionButton

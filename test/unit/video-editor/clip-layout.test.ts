@@ -4,6 +4,7 @@ import {
   computeClipBoxLayout,
   computeCropMaskPolygon,
   resolveNormalizedAnchor,
+  scaleDesignPositionToScene,
 } from '~/utils/video-editor/clip-layout';
 
 describe('clip-layout', () => {
@@ -11,6 +12,29 @@ describe('clip-layout', () => {
     expect(resolveNormalizedAnchor({ preset: 'center' })).toEqual({ x: 0.5, y: 0.5 });
     expect(resolveNormalizedAnchor({ preset: 'topLeft' })).toEqual({ x: 0, y: 0 });
     expect(resolveNormalizedAnchor({ preset: 'bottomRight' })).toEqual({ x: 1, y: 1 });
+  });
+
+  it('scales a design-space position per-axis to the scene resolution', () => {
+    // Half-resolution scene: each axis scales independently.
+    expect(scaleDesignPositionToScene({ x: 200, y: -100 }, 960, 540)).toEqual({ x: 100, y: -50 });
+    // Non-16:9 output: x and y use different factors (the bug the shared helper guards).
+    expect(scaleDesignPositionToScene({ x: 1920, y: 1080 }, 1920, 540)).toEqual({ x: 1920, y: 540 });
+    // Non-finite / missing components fall back to 0.
+    expect(scaleDesignPositionToScene({ x: Number.NaN }, 1920, 1080)).toEqual({ x: 0, y: 0 });
+    expect(scaleDesignPositionToScene(undefined, 1920, 1080)).toEqual({ x: 0, y: 0 });
+  });
+
+  it('computeClipBoxLayout stage position matches the shared scale helper', () => {
+    const layout = computeClipBoxLayout({
+      frameWidth: 1920,
+      frameHeight: 1080,
+      canvasWidth: 1280,
+      canvasHeight: 720,
+      transform: { position: { x: 300, y: 150 } },
+    });
+    const expected = scaleDesignPositionToScene({ x: 300, y: 150 }, 1280, 720);
+    expect(layout.stagePositionX).toBe(expected.x);
+    expect(layout.stagePositionY).toBe(expected.y);
   });
 
   it('converts transform position from design space into render space', () => {

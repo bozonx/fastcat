@@ -6,7 +6,7 @@ import UiToggleButton from '~/components/ui/UiToggleButton.vue';
 import UiActionButton from '~/components/ui/UiActionButton.vue';
 import UiTooltip from '~/components/ui/UiTooltip.vue';
 import { useHotkeyLabel } from '~/composables/useHotkeyLabel';
-import { blurOnDropdownMenuClose } from '~/composables/useDropdownMenuBlur';
+import { dropdownNoReturnFocus } from '~/composables/useDropdownMenuFocus';
 
 const props = defineProps<{
   gridSizes: number[];
@@ -235,7 +235,7 @@ const toolbarMenuItems = computed(() => {
         v-if="toolbarMenuItems.length > 0"
         :items="toolbarMenuItems"
         :ui="{ content: 'w-56' }"
-        @update:open="blurOnDropdownMenuClose"
+        :content="dropdownNoReturnFocus"
       >
         <UiActionButton
           icon="i-heroicons-ellipsis-vertical-16-solid"

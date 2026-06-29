@@ -3,6 +3,7 @@ import {
   computeCropMaskPolygon,
   TRANSFORM_DESIGN_BASE,
   resolveNormalizedAnchor,
+  scaleDesignPositionToScene,
 } from '../clip-layout';
 import { computeTextLayoutMetrics } from '../text-layout';
 import type { CompositorClip } from './types';
@@ -168,13 +169,12 @@ export class LayoutApplier {
     const scaleX = typeof transform?.scale?.x === 'number' ? transform.scale.x : 1;
     const scaleY = typeof transform?.scale?.y === 'number' ? transform.scale.y : 1;
     const rotationDeg = typeof transform?.rotationDeg === 'number' ? transform.rotationDeg : 0;
-    const positionX = typeof transform?.position?.x === 'number' ? transform.position.x : 0;
-    const positionY = typeof transform?.position?.y === 'number' ? transform.position.y : 0;
 
-    const stageScaleX = this.context.width / TRANSFORM_DESIGN_BASE.width;
-    const stageScaleY = this.context.height / TRANSFORM_DESIGN_BASE.height;
-    const stagePosX = positionX * stageScaleX;
-    const stagePosY = positionY * stageScaleY;
+    const { x: stagePosX, y: stagePosY } = scaleDesignPositionToScene(
+      transform?.position,
+      this.context.width,
+      this.context.height,
+    );
 
     const normalizedAnchor = resolveNormalizedAnchor(transform?.anchor);
     const anchorOffsetX = normalizedAnchor.x * targetW;

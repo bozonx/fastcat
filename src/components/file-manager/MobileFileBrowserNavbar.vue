@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { formatBytes } from '~/utils/format';
-import { blurOnDropdownMenuClose } from '~/composables/useDropdownMenuBlur';
+import { dropdownNoReturnFocus } from '~/composables/useDropdownMenuFocus';
 import { useProjectStore } from '~/stores/project.store';
 import type { ContextMenuItem } from '~/composables/file-manager/useFileContextMenu';
 
@@ -84,7 +84,7 @@ const projectStore = useProjectStore();
         v-if="!isSelectionMode"
         :items="menuItems"
         :ui="{ content: 'w-56 min-w-max' }"
-        @update:open="blurOnDropdownMenuClose"
+        :content="dropdownNoReturnFocus"
       >
         <UButton icon="lucide:more-vertical" variant="ghost" color="neutral" size="sm" />
       </UDropdownMenu>

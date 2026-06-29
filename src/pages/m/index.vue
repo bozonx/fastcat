@@ -10,7 +10,7 @@ import { useProjectStore } from '~/stores/project.store';
 import { onMounted, ref } from 'vue';
 import { writeLocalStorageString, STORAGE_KEYS } from '~/stores/ui/uiLocalStorage';
 import WelcomeScreen from '~/components/startup/WelcomeScreen.vue';
-import { blurOnDropdownMenuClose } from '~/composables/useDropdownMenuBlur';
+import { dropdownNoReturnFocus } from '~/composables/useDropdownMenuFocus';
 import UiSearchInput from '~/components/ui/UiSearchInput.vue';
 import MediaResolutionSettings from '~/components/media/MediaResolutionSettings.vue';
 import ProjectThumbnail from '~/components/startup/ProjectThumbnail.vue';
@@ -422,7 +422,7 @@ const sortedProjects = computed(() => {
                                   },
                                 ],
                               ]"
-                              @update:open="blurOnDropdownMenuClose"
+                              :content="dropdownNoReturnFocus"
                             >
                               <UButton
                                 size="sm"

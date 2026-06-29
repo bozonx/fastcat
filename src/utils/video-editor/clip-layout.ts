@@ -64,6 +64,25 @@ export function resolveNormalizedAnchor(anchor?: ClipAnchor): { x: number; y: nu
   }
 }
 
+/**
+ * Scale a design-space (1920x1080 base) position offset to the render/scene
+ * resolution, per-axis. This is the single source for the design→scene position
+ * mapping shared by the web compositor (`computeClipBoxLayout` /
+ * `LayoutApplier.applyScreenSpaceLayout`) and the native monitor scene builder
+ * (`buildNative*Transform`). Keeping it in one place stops the two engines from
+ * drifting on non-16:9 outputs. Non-finite components fall back to 0.
+ */
+export function scaleDesignPositionToScene(
+  position: { x?: number; y?: number } | undefined,
+  sceneWidth: number,
+  sceneHeight: number,
+): { x: number; y: number } {
+  return {
+    x: clampFinite(position?.x, 0) * (sceneWidth / TRANSFORM_DESIGN_BASE.width),
+    y: clampFinite(position?.y, 0) * (sceneHeight / TRANSFORM_DESIGN_BASE.height),
+  };
+}
+
 export interface CropInsetRect {
   xMin: number;
   yMin: number;
@@ -260,10 +279,11 @@ export function computeClipBoxLayout(input: ClipBoxLayoutInput): ClipBoxLayout {
   const normalizedAnchor = resolveNormalizedAnchor(transform?.anchor);
   const anchorOffsetX = normalizedAnchor.x * targetWidth;
   const anchorOffsetY = normalizedAnchor.y * targetHeight;
-  const stageScaleX = safeCanvasWidth / TRANSFORM_DESIGN_BASE.width;
-  const stageScaleY = safeCanvasHeight / TRANSFORM_DESIGN_BASE.height;
-  const stagePositionX = positionX * stageScaleX;
-  const stagePositionY = positionY * stageScaleY;
+  const { x: stagePositionX, y: stagePositionY } = scaleDesignPositionToScene(
+    { x: positionX, y: positionY },
+    safeCanvasWidth,
+    safeCanvasHeight,
+  );
 
   return {
     baseX,

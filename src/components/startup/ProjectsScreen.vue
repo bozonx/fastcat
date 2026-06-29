@@ -14,7 +14,7 @@ import FriendlyTime from '~/components/ui/FriendlyTime.vue';
 import MediaResolutionSettings from '~/components/media/MediaResolutionSettings.vue';
 import ProjectThumbnail from '~/components/startup/ProjectThumbnail.vue';
 import EditorSettingsModal from '~/components/settings/EditorSettingsModal.vue';
-import { blurOnDropdownMenuClose } from '~/composables/useDropdownMenuBlur';
+import { dropdownNoReturnFocus } from '~/composables/useDropdownMenuFocus';
 
 const { t, locale: _locale } = useI18n();
 const workspaceStore = useWorkspaceStore();
@@ -356,7 +356,7 @@ const sortedProjects = computed(() => {
                     </span>
                     <UDropdownMenu
                       :items="getProjectMenuItems(project)"
-                      @update:open="blurOnDropdownMenuClose"
+                      :content="dropdownNoReturnFocus"
                     >
                       <UButton
                         size="xs"

@@ -22,7 +22,11 @@ import {
   toNativeSceneAudioLayer,
   type CanonicalAudioClipDescriptor,
 } from '~/utils/audio/audio-clip-descriptor';
-import { resolveNormalizedAnchor, TRANSFORM_DESIGN_BASE } from '~/utils/video-editor/clip-layout';
+import {
+  resolveNormalizedAnchor,
+  scaleDesignPositionToScene,
+  TRANSFORM_DESIGN_BASE,
+} from '~/utils/video-editor/clip-layout';
 import { normalizeClipSpeed } from '~/utils/video-editor/source-time';
 import { buildEffectSpecs } from '~/effects';
 import { normalizeMediaCachePath } from '~/utils/path';
@@ -243,14 +247,11 @@ function buildNativeTransform(
 ) {
   if (!transform) return undefined;
   const anchor = resolveNormalizedAnchor(transform.anchor);
+  const pos = scaleDesignPositionToScene(transform.position, sceneWidth, sceneHeight);
 
   return {
-    x:
-      sceneWidth / 2 +
-      clampFinite(transform.position?.x, 0) * (sceneWidth / TRANSFORM_DESIGN_BASE.width),
-    y:
-      sceneHeight / 2 +
-      clampFinite(transform.position?.y, 0) * (sceneHeight / TRANSFORM_DESIGN_BASE.height),
+    x: sceneWidth / 2 + pos.x,
+    y: sceneHeight / 2 + pos.y,
     scale_x: clampFinite(transform.scale?.x, 1),
     scale_y: clampFinite(transform.scale?.y, 1),
     rotation_deg: clampFinite(transform.rotationDeg, 0),
@@ -275,15 +276,14 @@ function buildNativeTextTransform(params: {
   // scene resolution — identical to media (`buildNativeTransform`) and the web
   // compositor (`LayoutApplier.applyScreenSpaceLayout`). Using a uniform min()
   // here desynced text/shape placement from media on non-16:9 outputs.
-  const posX = clampFinite(transform.position?.x, 0) * (sceneWidth / TRANSFORM_DESIGN_BASE.width);
-  const posY = clampFinite(transform.position?.y, 0) * (sceneHeight / TRANSFORM_DESIGN_BASE.height);
+  const pos = scaleDesignPositionToScene(transform.position, sceneWidth, sceneHeight);
   const anchor = resolveNormalizedAnchor(transform.anchor);
 
   return {
     // Text anchor offset is baked in Rust using the parley-measured natural
     // size. The front-end sends center-of-scene + design-position only.
-    x: sceneWidth / 2 + posX,
-    y: sceneHeight / 2 + posY,
+    x: sceneWidth / 2 + pos.x,
+    y: sceneHeight / 2 + pos.y,
     scale_x: clampFinite(transform.scale?.x, 1),
     scale_y: clampFinite(transform.scale?.y, 1),
     rotation_deg: clampFinite(transform.rotationDeg, 0),
@@ -317,17 +317,12 @@ function buildNativeShapeTransform(params: {
   const sW = (strokeWidth ?? 0) * renderScale;
   const targetW = Math.max(1, Math.ceil(size + sW * 2));
   const targetH = Math.max(1, Math.ceil(size + sW * 2));
+  const pos = scaleDesignPositionToScene(transform.position, sceneWidth, sceneHeight);
 
   return {
     // Position scales per-axis (design-space), matching media and the web compositor.
-    x:
-      sceneWidth / 2 +
-      clampFinite(transform.position?.x, 0) * (sceneWidth / TRANSFORM_DESIGN_BASE.width) +
-      (anchor.x - 0.5) * targetW,
-    y:
-      sceneHeight / 2 +
-      clampFinite(transform.position?.y, 0) * (sceneHeight / TRANSFORM_DESIGN_BASE.height) +
-      (anchor.y - 0.5) * targetH,
+    x: sceneWidth / 2 + pos.x + (anchor.x - 0.5) * targetW,
+    y: sceneHeight / 2 + pos.y + (anchor.y - 0.5) * targetH,
     scale_x: clampFinite(transform.scale?.x, 1),
     scale_y: clampFinite(transform.scale?.y, 1),
     rotation_deg: clampFinite(transform.rotationDeg, 0),

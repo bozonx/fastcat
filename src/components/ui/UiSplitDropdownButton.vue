@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { blurOnDropdownMenuClose } from '~/composables/useDropdownMenuBlur';
+import { dropdownNoReturnFocus } from '~/composables/useDropdownMenuFocus';
 
 interface DropdownActionItem {
   label: string;
@@ -72,7 +72,7 @@ function onMainButtonClick(event: MouseEvent) {
       :items="items"
       :disabled="disabled"
       :ui="{ content: 'bottom-end' }"
-      @update:open="blurOnDropdownMenuClose"
+      :content="dropdownNoReturnFocus"
     >
       <UButton
         :size="size"

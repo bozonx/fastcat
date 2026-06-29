@@ -3,7 +3,7 @@ import { useProjectStore } from '~/stores/project.store';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useHotkeyLabel } from '~/composables/useHotkeyLabel';
-import { blurOnDropdownMenuClose } from '~/composables/useDropdownMenuBlur';
+import { dropdownNoReturnFocus } from '~/composables/useDropdownMenuFocus';
 import TimelineTabs from '~/components/timeline/TimelineTabs.vue';
 import BackgroundTasksButton from '~/components/file-manager/BackgroundTasksButton.vue';
 import UiTooltip from '~/components/ui/UiTooltip.vue';
@@ -180,7 +180,7 @@ const menuItems = computed(() => {
         :items="menuItems"
         mode="hover"
         :ui="{ content: 'w-56' }"
-        @update:open="blurOnDropdownMenuClose"
+        :content="dropdownNoReturnFocus"
       >
         <UiActionButton
           size="sm"

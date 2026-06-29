@@ -1,5 +1,4 @@
 import { onUnmounted } from 'vue';
-import { blurOnDropdownMenuClose } from '~/composables/useDropdownMenuBlur';
 
 const REKA_MENU_CONTENT_SELECTOR = '[data-reka-menu-content]';
 
@@ -24,7 +23,6 @@ export function hasOpenRekaMenu() {
 
 export function dismissOpenRekaMenus() {
   document.body.dispatchEvent(createOutsidePointerEvent());
-  blurOnDropdownMenuClose(false);
 }
 
 export function dismissOpenRekaMenusOnEscape(event: KeyboardEvent) {
