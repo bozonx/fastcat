@@ -74,6 +74,22 @@ struct CachedRaster {
     natural_size: (u32, u32),
 }
 
+/// LRU key for the decoded image / SVG raster cache. Images key on path; SVGs
+/// also key on the rasterised long edge (the same SVG can be cached at several
+/// target sizes).
+#[derive(Clone, PartialEq, Eq)]
+enum RasterKey {
+    Image(PathBuf),
+    Svg(PathBuf, u32),
+}
+
+/// Approximate retained bytes of a cached raster (RGBA8 at natural size). The
+/// pixel buffer is `Arc`-backed, so this is the cost of the single shared copy.
+fn raster_estimated_bytes(raster: &CachedRaster) -> u64 {
+    let (w, h) = raster.natural_size;
+    (w as u64).saturating_mul(h as u64).saturating_mul(4)
+}
+
 impl CachedDecoder {
     /// Forward gap (seconds) beyond which seeking to a nearer keyframe beats
     /// decoding every intermediate frame.
@@ -185,12 +201,22 @@ impl CachedDecoder {
     }
 }
 
+/// Memory budget for the decoded image / SVG raster cache. A long export over a
+/// timeline with many distinct stills (e.g. a slideshow of high-res photos) would
+/// otherwise retain one full decoded raster per source path for the whole render
+/// and OOM; the rasters are evicted LRU once their combined size exceeds this.
+const RASTER_CACHE_BUDGET_BYTES: u64 = 256 * 1024 * 1024;
+
 pub struct VideoDecoderCache {
     decoders: HashMap<PathBuf, CachedDecoder>,
     images: HashMap<PathBuf, CachedRaster>,
     svgs: HashMap<(PathBuf, u32), CachedRaster>,
     lru: VecDeque<PathBuf>,
     capacity: usize,
+    /// LRU + retained-byte accounting for `images`/`svgs`, bounded by
+    /// `RASTER_CACHE_BUDGET_BYTES`.
+    raster_lru: VecDeque<RasterKey>,
+    raster_bytes: u64,
     hw_mode: HwAccelMode,
     vaapi_device: Option<String>,
 }
@@ -209,6 +235,8 @@ impl VideoDecoderCache {
             svgs: HashMap::new(),
             lru: VecDeque::new(),
             capacity: 8,
+            raster_lru: VecDeque::new(),
+            raster_bytes: 0,
             hw_mode: HwAccelMode::None,
             vaapi_device: None,
         }
@@ -275,8 +303,9 @@ impl VideoDecoderCache {
 
     fn image_raster(&mut self, path: &Path) -> Result<CachedRaster> {
         let path_buf = path.to_path_buf();
-        if let Some(cached) = self.images.get(&path_buf) {
-            return Ok(cached.clone());
+        if self.images.contains_key(&path_buf) {
+            self.mark_raster_recent(&RasterKey::Image(path_buf.clone()));
+            return Ok(self.images[&path_buf].clone());
         }
 
         let decoded = decode_image(path)?;
@@ -284,15 +313,17 @@ impl VideoDecoderCache {
             image: decoded.image,
             natural_size: (decoded.width, decoded.height),
         };
-        self.images.insert(path_buf, raster.clone());
+        self.images.insert(path_buf.clone(), raster.clone());
+        self.track_raster_insert(RasterKey::Image(path_buf), raster_estimated_bytes(&raster));
         Ok(raster)
     }
 
     fn svg_raster(&mut self, path: &Path, target_long_edge: u32) -> Result<CachedRaster> {
         let path_buf = path.to_path_buf();
         let key = (path_buf, target_long_edge);
-        if let Some(cached) = self.svgs.get(&key) {
-            return Ok(cached.clone());
+        if self.svgs.contains_key(&key) {
+            self.mark_raster_recent(&RasterKey::Svg(key.0.clone(), key.1));
+            return Ok(self.svgs[&key].clone());
         }
 
         let (image, natural_size) = rasterize_svg(path, target_long_edge)?;
@@ -300,8 +331,43 @@ impl VideoDecoderCache {
             image,
             natural_size,
         };
-        self.svgs.insert(key, raster.clone());
+        self.svgs.insert(key.clone(), raster.clone());
+        self.track_raster_insert(RasterKey::Svg(key.0, key.1), raster_estimated_bytes(&raster));
         Ok(raster)
+    }
+
+    /// Move an already-cached raster to the most-recently-used end without
+    /// changing the retained-byte total.
+    fn mark_raster_recent(&mut self, key: &RasterKey) {
+        if let Some(pos) = self.raster_lru.iter().position(|k| k == key) {
+            if let Some(k) = self.raster_lru.remove(pos) {
+                self.raster_lru.push_back(k);
+            }
+        }
+    }
+
+    /// Record a freshly-inserted raster and evict the least-recently-used entries
+    /// until the cache fits `RASTER_CACHE_BUDGET_BYTES`. The just-inserted entry
+    /// sits at the MRU end, so it is only dropped when it is the sole entry and is
+    /// itself larger than the budget.
+    fn track_raster_insert(&mut self, key: RasterKey, bytes: u64) {
+        self.raster_lru.retain(|k| k != &key);
+        self.raster_lru.push_back(key);
+        self.raster_bytes = self.raster_bytes.saturating_add(bytes);
+        while self.raster_bytes > RASTER_CACHE_BUDGET_BYTES && self.raster_lru.len() > 1 {
+            let Some(oldest) = self.raster_lru.pop_front() else {
+                break;
+            };
+            let removed = match &oldest {
+                RasterKey::Image(p) => self.images.remove(p),
+                RasterKey::Svg(p, edge) => self.svgs.remove(&(p.clone(), *edge)),
+            };
+            if let Some(raster) = removed {
+                self.raster_bytes = self
+                    .raster_bytes
+                    .saturating_sub(raster_estimated_bytes(&raster));
+            }
+        }
     }
 }
 
@@ -926,8 +992,45 @@ mod tests {
         let second = cache.image_raster(&fixture).unwrap();
 
         assert_eq!(cache.images.len(), 1);
+        // The repeat hit must not double-count bytes or duplicate the LRU entry.
+        assert_eq!(cache.raster_lru.len(), 1);
+        assert_eq!(cache.raster_bytes, 1280 * 720 * 4);
         assert_eq!(first.natural_size, (1280, 720));
         assert_eq!(second.natural_size, first.natural_size);
+    }
+
+    #[test]
+    fn raster_cache_evicts_lru_over_budget() {
+        let mut cache = VideoDecoderCache::new();
+        // One entry that alone fills the whole budget so any further insert evicts it.
+        let big = (RASTER_CACHE_BUDGET_BYTES / 4) as u32;
+        let make = |bytes: u64| CachedRaster {
+            image: ImageData {
+                data: Blob::new(std::sync::Arc::new(vec![0u8; 4])),
+                format: VelloImageFormat::Rgba8,
+                alpha_type: ImageAlphaType::Alpha,
+                width: 1,
+                height: 1,
+            },
+            natural_size: ((bytes / 4) as u32, 1),
+        };
+
+        let old_path = PathBuf::from("/old.png");
+        let old = make(big as u64 * 4);
+        cache.images.insert(old_path.clone(), old.clone());
+        cache.track_raster_insert(RasterKey::Image(old_path.clone()), raster_estimated_bytes(&old));
+        assert_eq!(cache.images.len(), 1);
+
+        let new_path = PathBuf::from("/new.png");
+        let new = make(big as u64 * 4);
+        cache.images.insert(new_path.clone(), new.clone());
+        cache.track_raster_insert(RasterKey::Image(new_path.clone()), raster_estimated_bytes(&new));
+
+        // The older, less-recently-used entry is dropped; the new one survives.
+        assert!(!cache.images.contains_key(&old_path));
+        assert!(cache.images.contains_key(&new_path));
+        assert_eq!(cache.raster_lru.len(), 1);
+        assert!(cache.raster_bytes <= RASTER_CACHE_BUDGET_BYTES);
     }
 
     #[test]
