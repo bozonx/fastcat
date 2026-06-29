@@ -6,9 +6,12 @@ import { useMobileDrawerOpen } from '~/composables/ui/useMobileDrawerOpen';
 
 interface Props {
   isOpen: boolean;
+  showClose?: boolean;
 }
 
-const props = defineProps<Props>();
+const props = withDefaults(defineProps<Props>(), {
+  showClose: true,
+});
 
 /** Landscape uses a side drawer, so the toolbar becomes a vertical rail. */
 const { toolbarOrientation } = useDrawerToolbarOrientation();
@@ -36,6 +39,8 @@ const isOpenLocal = useMobileDrawerOpen(props, emit);
             ? 'border-r border-ui-border'
             : 'border-b border-ui-border'
         "
+        :show-close="props.showClose"
+        @close="emit('close')"
       >
         <slot name="toolbar" />
       </MobileDrawerToolbar>

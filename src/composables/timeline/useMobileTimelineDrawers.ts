@@ -1,11 +1,13 @@
 import { ref, watch, computed, nextTick, type Ref } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useSelectionStore } from '~/stores/selection.store';
+import { useUiStore } from '~/stores/ui.store';
 import { useTimelineSelectionEntities } from './useTimelineSelectionEntities';
 
 export function useMobileTimelineDrawers() {
   const timelineStore = useTimelineStore();
   const selectionStore = useSelectionStore();
+  const uiStore = useUiStore();
 
   const { selectedMarkerId, selectedGap } = useTimelineSelectionEntities();
 
@@ -66,6 +68,14 @@ export function useMobileTimelineDrawers() {
   ];
 
   const isAnyDrawerOpen = computed(() => allDrawerOpenRefs.some((r) => r.value));
+
+  watch(
+    isAnyDrawerOpen,
+    (val) => {
+      uiStore.isMobileTimelineDrawerOpen = val;
+    },
+    { immediate: true },
+  );
 
   function closeAllDrawers() {
     for (const drawerOpen of allDrawerOpenRefs) {

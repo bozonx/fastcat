@@ -8,6 +8,14 @@ import { readDir, exists, readTextFile } from '@tauri-apps/plugin-fs';
 
 vi.unmock('~/stores/workspace.store');
 
+// Mock features module to control inDevelopmentFeaturesEnabled
+const mockInDevelopmentFeaturesEnabled = vi.fn(() => false);
+vi.mock('~/utils/features', () => ({
+  isInDevelopmentFeaturesEnabled: () => mockInDevelopmentFeaturesEnabled(),
+  isPremiumFeaturesEnabled: vi.fn(() => false),
+  isFastCatFeatureEnabled: vi.fn(() => false),
+}));
+
 // Project list/delete/rename go through the application VFS (`@project/<name>`).
 let mockVfs: InMemoryFileSystemAdapter;
 vi.mock('~/composables/useVfs', () => ({
@@ -46,6 +54,7 @@ describe('WorkspaceStore', () => {
   beforeEach(() => {
     setActivePinia(createPinia());
     vi.clearAllMocks();
+    mockInDevelopmentFeaturesEnabled.mockReturnValue(false);
     localStorage.clear();
     mockVfs = new InMemoryFileSystemAdapter();
   });
@@ -565,6 +574,7 @@ describe('WorkspaceStore', () => {
     });
 
     it('sends hardwareAccelerationMode as custom mode when experimentalFeatures is true', async () => {
+      mockInDevelopmentFeaturesEnabled.mockReturnValue(true);
       const store = useWorkspaceStore();
 
       await mockVfs.writeFile(

@@ -42,6 +42,7 @@ const mockWorkspaceStore = {
   userSettings: {
     experimentalFeatures: true,
   },
+  inDevelopmentFeaturesEnabled: true,
 };
 
 vi.mock('~/stores/project.store', () => ({
@@ -242,6 +243,7 @@ describe('useEditorDynamicPanels', () => {
 
     it('ignores drag start when experimentalFeatures is off', () => {
       mockWorkspaceStore.userSettings.experimentalFeatures = false;
+      mockWorkspaceStore.inDevelopmentFeaturesEnabled = false;
       const projectId = ref('test-proj');
       const { onDragStart, draggingPanelId } = useEditorDynamicPanels({
         currentProjectId: projectId,
@@ -256,6 +258,7 @@ describe('useEditorDynamicPanels', () => {
 
     it('ignores drag over when experimentalFeatures is off', () => {
       mockWorkspaceStore.userSettings.experimentalFeatures = false;
+      mockWorkspaceStore.inDevelopmentFeaturesEnabled = false;
       const projectId = ref('test-proj');
       const { onDragOver, dragOverPanelId, dropPosition } = useEditorDynamicPanels({
         currentProjectId: projectId,
@@ -271,6 +274,7 @@ describe('useEditorDynamicPanels', () => {
 
     it('ignores drop when experimentalFeatures is off', () => {
       mockWorkspaceStore.userSettings.experimentalFeatures = false;
+      mockWorkspaceStore.inDevelopmentFeaturesEnabled = false;
       const projectId = ref('test-proj');
       const { onDrop } = useEditorDynamicPanels({ currentProjectId: projectId });
 
@@ -285,6 +289,7 @@ describe('useEditorDynamicPanels', () => {
 
   afterEach(() => {
     mockWorkspaceStore.userSettings.experimentalFeatures = true;
+    mockWorkspaceStore.inDevelopmentFeaturesEnabled = true;
   });
 
   describe('Vertical Split Resizing', () => {

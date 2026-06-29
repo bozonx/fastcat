@@ -65,7 +65,7 @@ vi.mock('~/stores/timeline.store', () => ({
 
 vi.mock('~/stores/workspace.store', () => ({
   useWorkspaceStore: vi.fn(() => ({
-    userSettings: { experimentalFeatures: true },
+    inDevelopmentFeaturesEnabled: true,
   })),
 }));
 
@@ -79,7 +79,7 @@ vi.mock('~/stores/selection.store', () => ({
 describe('MonitorInteractiveOverlay', () => {
   beforeEach(() => {
     vi.mocked(useWorkspaceStore).mockReturnValue({
-      userSettings: { experimentalFeatures: true },
+      inDevelopmentFeaturesEnabled: true,
     } as any);
 
     vi.mocked(useSelectionStore).mockReturnValue({
@@ -124,7 +124,7 @@ describe('MonitorInteractiveOverlay', () => {
 
   it('does not render when experimentalFeatures is disabled', () => {
     vi.mocked(useWorkspaceStore).mockReturnValue({
-      userSettings: { experimentalFeatures: false },
+      inDevelopmentFeaturesEnabled: false,
     } as any);
 
     const wrapper = mount(MonitorInteractiveOverlay, {

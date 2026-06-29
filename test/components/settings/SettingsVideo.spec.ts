@@ -146,6 +146,7 @@ const mockWorkspaceStore = {
       backend: 'default',
     },
   }),
+  inDevelopmentFeaturesEnabled: false,
 };
 
 vi.mock('~/stores/workspace.store', () => ({
@@ -197,6 +198,7 @@ describe('SettingsVideo', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockWorkspaceStore.userSettings.experimentalFeatures = false;
+    mockWorkspaceStore.inDevelopmentFeaturesEnabled = false;
     mockWorkspaceStore.userSettings.optimization.hardwareAccelerationMode = 'nvdec';
     mockWorkspaceStore.userSettings.optimization.vaapiDevice = '/dev/dri/renderD128';
     mockWorkspaceStore.userSettings.optimization.enableHardwareEncoding = false;
@@ -225,6 +227,7 @@ describe('SettingsVideo', () => {
   it('renders Tauri settings and loads FFmpeg diagnostics when isTauriRuntime is true and experimentalFeatures is true', async () => {
     mockIsTauriRuntime.mockReturnValue(true);
     mockWorkspaceStore.userSettings.experimentalFeatures = true;
+    mockWorkspaceStore.inDevelopmentFeaturesEnabled = true;
     vi.mocked(invoke).mockImplementation((cmd) => {
       if (cmd === 'native_get_ffmpeg_diagnostics') {
         return Promise.resolve({
@@ -275,6 +278,7 @@ describe('SettingsVideo', () => {
   it('hides hardwareAccelerationMode and sends auto when experimentalFeatures is false', async () => {
     mockIsTauriRuntime.mockReturnValue(true);
     mockWorkspaceStore.userSettings.experimentalFeatures = false;
+    mockWorkspaceStore.inDevelopmentFeaturesEnabled = false;
     mockWorkspaceStore.userSettings.optimization.enableHardwareEncoding = true;
 
     const wrapper = await mountSuspended(SettingsVideo);
@@ -301,6 +305,7 @@ describe('SettingsVideo', () => {
   it('shows hardwareAccelerationMode and sends custom value when experimentalFeatures is true', async () => {
     mockIsTauriRuntime.mockReturnValue(true);
     mockWorkspaceStore.userSettings.experimentalFeatures = true;
+    mockWorkspaceStore.inDevelopmentFeaturesEnabled = true;
     mockWorkspaceStore.userSettings.optimization.enableHardwareEncoding = true;
 
     const wrapper = await mountSuspended(SettingsVideo);
@@ -324,6 +329,7 @@ describe('SettingsVideo', () => {
 
     // Toggle experimentalFeatures off
     mockWorkspaceStore.userSettings.experimentalFeatures = false;
+    mockWorkspaceStore.inDevelopmentFeaturesEnabled = false;
     await new Promise((resolve) => setTimeout(resolve, 10));
 
     // Should revert to auto and false

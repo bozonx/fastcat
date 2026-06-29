@@ -146,6 +146,7 @@ const mockWorkspaceStore = {
       backend: 'default',
     },
   }),
+  inDevelopmentFeaturesEnabled: false,
 };
 
 vi.mock('~/stores/workspace.store', () => ({
@@ -194,6 +195,7 @@ describe('SettingsAudio', () => {
     mockWorkspaceStore.userSettings.locale = 'en-US';
     mockWorkspaceStore.userSettings.openLastProjectOnStart = false;
     mockWorkspaceStore.userSettings.experimentalFeatures = false;
+    mockWorkspaceStore.inDevelopmentFeaturesEnabled = false;
     mockWorkspaceStore.userSettings.audioEngine.bufferSize = 'default';
     mockWorkspaceStore.userSettings.audioEngine.backend = 'default';
   });
@@ -276,6 +278,7 @@ describe('SettingsAudio', () => {
   it('hides native settings and sends default values when experimentalFeatures is false', async () => {
     mockIsTauriRuntime.mockReturnValue(true);
     mockWorkspaceStore.userSettings.experimentalFeatures = false;
+    mockWorkspaceStore.inDevelopmentFeaturesEnabled = false;
     mockWorkspaceStore.userSettings.audioEngine.bufferSize = 'default';
     mockWorkspaceStore.userSettings.audioEngine.backend = 'default';
 
@@ -299,6 +302,7 @@ describe('SettingsAudio', () => {
   it('shows native settings and sends custom values when experimentalFeatures is true', async () => {
     mockIsTauriRuntime.mockReturnValue(true);
     mockWorkspaceStore.userSettings.experimentalFeatures = true;
+    mockWorkspaceStore.inDevelopmentFeaturesEnabled = true;
     mockWorkspaceStore.userSettings.audioEngine.bufferSize = 'default';
     mockWorkspaceStore.userSettings.audioEngine.backend = 'default';
 
@@ -321,6 +325,7 @@ describe('SettingsAudio', () => {
 
     // If we toggle experimentalFeatures to false, it should send default values
     mockWorkspaceStore.userSettings.experimentalFeatures = false;
+    mockWorkspaceStore.inDevelopmentFeaturesEnabled = false;
     await new Promise((resolve) => setTimeout(resolve, 10));
     expect(mockSetAudioSettings).toHaveBeenLastCalledWith({
       bufferSize: 'default',

@@ -83,11 +83,11 @@ describe('mapTimelineBlendModeToNative', () => {
     expect(mapTimelineBlendModeToNative('screen')).toBe('screen');
   });
 
-  it('maps timeline kebab-case blend modes to native snake_case values', () => {
-    expect(mapTimelineBlendModeToNative('color-dodge')).toBe('color_dodge');
-    expect(mapTimelineBlendModeToNative('color-burn')).toBe('color_burn');
-    expect(mapTimelineBlendModeToNative('hard-light')).toBe('hard_light');
-    expect(mapTimelineBlendModeToNative('soft-light')).toBe('soft_light');
+  it('passes timeline kebab-case blend modes through as-is (native uses kebab-case)', () => {
+    expect(mapTimelineBlendModeToNative('color-dodge')).toBe('color-dodge');
+    expect(mapTimelineBlendModeToNative('color-burn')).toBe('color-burn');
+    expect(mapTimelineBlendModeToNative('hard-light')).toBe('hard-light');
+    expect(mapTimelineBlendModeToNative('soft-light')).toBe('soft-light');
   });
 });
 
@@ -277,7 +277,7 @@ describe('buildNativeMonitorScene', () => {
       workspaceStore: workspaceStore as never,
     });
 
-    expect(scene.layers[0]?.blend_mode).toBe('soft_light');
+    expect(scene.layers[0]?.blend_mode).toBe('soft-light');
     expect(scene.layers[0]?.opacity).toBe(1);
     expect(scene.layers[0]?.transform).toMatchObject({
       crop_top: 10,

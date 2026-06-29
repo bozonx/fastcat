@@ -9,12 +9,19 @@ interface Props {
    * to right); `vertical` is the landscape side-drawer rail (scrolls top to bottom).
    */
   orientation?: 'horizontal' | 'vertical';
+  /** Whether to show a fixed close button at the end of the toolbar (portrait mode only) */
+  showClose?: boolean;
 }
 
 const props = withDefaults(defineProps<Props>(), {
   contentClass: 'gap-1 px-2 py-1.5',
   orientation: 'horizontal',
+  showClose: false,
 });
+
+const emit = defineEmits<{
+  (e: 'close'): void;
+}>();
 
 const isVertical = computed(() => props.orientation === 'vertical');
 
@@ -65,55 +72,69 @@ onUnmounted(() => {
 
 <template>
   <div
-    class="mobile-drawer-toolbar relative overflow-hidden"
+    class="mobile-drawer-toolbar relative overflow-hidden flex"
     :class="
       isVertical
-        ? 'h-full min-h-0 w-full mobile-drawer-toolbar--vertical'
-        : 'flex-1 min-w-0 mobile-drawer-toolbar--horizontal'
+        ? 'h-full min-h-0 w-full mobile-drawer-toolbar--vertical flex-col'
+        : 'flex-row items-center w-full h-14'
     "
   >
-    <!-- Start (left / top) fade shadow -->
-    <div
-      class="absolute z-10 pointer-events-none transition-opacity duration-300"
-      :class="[
-        showStartShadow ? 'opacity-100' : 'opacity-0',
-        isVertical
-          ? 'top-0 left-0 right-0 h-12 bg-linear-to-b from-ui-bg-elevated to-transparent'
-          : 'left-0 top-0 bottom-0 w-12 bg-linear-to-r from-ui-bg-elevated to-transparent',
-      ]"
-    />
-
-    <div
-      ref="scrollContainer"
-      class="scroll-smooth"
-      :class="
-        isVertical ? 'h-full w-full overflow-y-auto no-scrollbar' : 'overflow-x-auto no-scrollbar'
-      "
-      @scroll="updateScrollState"
-    >
+    <!-- Scrollable content container -->
+    <div class="relative h-full" :class="isVertical ? 'w-full flex-1 min-h-0' : 'flex-1 min-w-0'">
+      <!-- Start (left / top) fade shadow -->
       <div
-        class="flex"
+        class="absolute z-10 pointer-events-none transition-opacity duration-300"
         :class="[
+          showStartShadow ? 'opacity-100' : 'opacity-0',
           isVertical
-            ? 'flex-col items-stretch w-full h-max min-h-full'
-            : 'items-center w-max min-w-full',
-          props.contentClass,
+            ? 'top-0 left-0 right-0 h-12 bg-linear-to-b from-ui-bg-elevated to-transparent'
+            : 'left-0 top-0 bottom-0 w-12 bg-linear-to-r from-ui-bg-elevated to-transparent',
         ]"
+      />
+
+      <div
+        ref="scrollContainer"
+        class="scroll-smooth h-full"
+        :class="isVertical ? 'w-full overflow-y-auto no-scrollbar' : 'overflow-x-auto no-scrollbar'"
+        @scroll="updateScrollState"
       >
-        <slot />
+        <div
+          class="flex h-full"
+          :class="[
+            isVertical
+              ? 'flex-col items-stretch w-full h-max min-h-full'
+              : 'items-center w-max min-w-full',
+            props.contentClass,
+          ]"
+        >
+          <slot />
+        </div>
       </div>
+
+      <!-- End (right / bottom) fade shadow -->
+      <div
+        class="absolute z-10 pointer-events-none transition-opacity duration-300"
+        :class="[
+          showEndShadow ? 'opacity-100' : 'opacity-0',
+          isVertical
+            ? 'bottom-0 left-0 right-0 h-12 bg-linear-to-t from-ui-bg-elevated to-transparent'
+            : 'right-0 top-0 bottom-0 w-12 bg-linear-to-l from-ui-bg-elevated to-transparent',
+        ]"
+      />
     </div>
 
-    <!-- End (right / bottom) fade shadow -->
+    <!-- Fixed Close Button (Portrait only) -->
     <div
-      class="absolute z-10 pointer-events-none transition-opacity duration-300"
-      :class="[
-        showEndShadow ? 'opacity-100' : 'opacity-0',
-        isVertical
-          ? 'bottom-0 left-0 right-0 h-12 bg-linear-to-t from-ui-bg-elevated to-transparent'
-          : 'right-0 top-0 bottom-0 w-12 bg-linear-to-l from-ui-bg-elevated to-transparent',
-      ]"
-    />
+      v-if="props.showClose && !isVertical"
+      class="shrink-0 flex items-center h-full px-2 border-l border-white/5 bg-ui-bg-elevated/95 backdrop-blur-xs z-20"
+    >
+      <button
+        class="flex items-center justify-center rounded-xl w-11 h-11 text-ui-text-muted hover:text-ui-text active:scale-95 transition-all bg-ui-bg-muted/50"
+        @click="emit('close')"
+      >
+        <UIcon name="i-heroicons-x-mark" class="w-5 h-5 shrink-0" />
+      </button>
+    </div>
   </div>
 </template>
 

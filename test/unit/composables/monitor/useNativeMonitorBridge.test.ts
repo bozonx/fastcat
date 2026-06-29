@@ -26,6 +26,7 @@ const mockWorkspaceStore = reactive({
       nativeFrameCacheCustomMb: 512,
     },
   },
+  inDevelopmentFeaturesEnabled: false,
 });
 
 const mockTimelineStore = reactive({
@@ -293,6 +294,7 @@ describe('useNativeMonitorBridge settings sync', () => {
 
   it('sends default audio settings when experimentalFeatures is false, and custom settings when true', async () => {
     mockWorkspaceStore.userSettings.experimentalFeatures = false;
+    mockWorkspaceStore.inDevelopmentFeaturesEnabled = false;
     mockWorkspaceStore.userSettings.audioEngine.bufferSize = 512;
     mockWorkspaceStore.userSettings.audioEngine.backend = 'alsa';
 
@@ -312,6 +314,7 @@ describe('useNativeMonitorBridge settings sync', () => {
 
     // Turn on experimentalFeatures
     mockWorkspaceStore.userSettings.experimentalFeatures = true;
+    mockWorkspaceStore.inDevelopmentFeaturesEnabled = true;
     await new Promise((resolve) => setTimeout(resolve, 10));
 
     // Should have sent the custom settings
@@ -322,6 +325,7 @@ describe('useNativeMonitorBridge settings sync', () => {
 
     // Turn off experimentalFeatures again
     mockWorkspaceStore.userSettings.experimentalFeatures = false;
+    mockWorkspaceStore.inDevelopmentFeaturesEnabled = false;
     await new Promise((resolve) => setTimeout(resolve, 10));
 
     // Should have reverted to default settings

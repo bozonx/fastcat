@@ -64,4 +64,11 @@ describe('ui.store file tree expanded paths', () => {
       timestamp: expect.any(Number),
     });
   });
+
+  it('has isMobileTimelineDrawerOpen defaulting to false and allows changing it', () => {
+    const ui = useUiStore();
+    expect(ui.isMobileTimelineDrawerOpen).toBe(false);
+    ui.isMobileTimelineDrawerOpen = true;
+    expect(ui.isMobileTimelineDrawerOpen).toBe(true);
+  });
 });

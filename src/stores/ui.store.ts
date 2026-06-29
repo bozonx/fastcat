@@ -94,6 +94,7 @@ export const useUiStore = defineStore('ui', () => {
   const extractingAudioError = ref<string | null>(null);
   const editorSettingsActiveSection = ref<string>('user.general');
   const activeModalsCount = ref(0);
+  const isMobileTimelineDrawerOpen = ref(false);
 
   const DEFAULT_LIBRARY_TAB = 'texts';
   const activeLibraryTab = ref<'texts' | 'shapes' | 'hud'>(DEFAULT_LIBRARY_TAB);
@@ -335,6 +336,7 @@ export const useUiStore = defineStore('ui', () => {
     isExtractingAudio,
     extractingAudioError,
     activeModalsCount,
+    isMobileTimelineDrawerOpen,
     activeLibraryTab,
     isTextPresetModalOpen,
     pendingTextPresetClipInfo,

@@ -792,7 +792,7 @@ mod tests {
     }
 
     #[test]
-    fn deserializes_native_snake_case_blend_modes() {
+    fn deserializes_native_kebab_case_blend_modes() {
         let json = r##"{
             "id": "video-1",
             "kind": "video",
@@ -804,7 +804,7 @@ mod tests {
             "speed": 1.0,
             "z": 10,
             "opacity": 1.0,
-            "blend_mode": "soft_light"
+            "blend_mode": "soft-light"
         }"##;
         let layer: SceneLayer = serde_json::from_str(json).unwrap();
         assert_eq!(layer.blend_mode, BlendMode::SoftLight);

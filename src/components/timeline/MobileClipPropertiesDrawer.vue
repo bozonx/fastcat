@@ -161,6 +161,8 @@ const hasAudio = computed(() => {
         <MobileDrawerToolbar
           :orientation="toolbarOrientation"
           content-class="gap-1.5 px-2 pt-0 pb-1.5"
+          show-close
+          @close="emit('close')"
         >
           <MobileDrawerToolbarButton
             icon="i-heroicons-trash"
