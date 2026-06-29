@@ -8,7 +8,7 @@ use parking_lot::{Condvar, Mutex};
 
 use crate::audio::clock::RealtimeClock;
 use crate::audio::evict_stale_silent_paths;
-use crate::audio::mix::sanitize_master_gain;
+use crate::audio::mix::{prewarm_audio_layers_around, sanitize_master_gain};
 use crate::audio::output::{AudioBackend, AudioStream, CpalAudioBackend};
 use crate::audio::producer::{audible_pts_sec, spawn_producer_thread};
 use crate::audio::ring::SpscRingBuffer;
@@ -45,6 +45,25 @@ pub struct NativeAudioEngine {
     /// Last `(frames_consumed, sampled_at)` observed by the output-stall watchdog.
     /// `None` until the first armed observation; reset whenever the clock disarms.
     output_watchdog: Mutex<Option<(u64, std::time::Instant)>>,
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct NativeAudioDiagnosticsSnapshot {
+    pub skipped_layers_total: u64,
+    pub decode_errors_total: u64,
+    pub prewarm_requests_total: u64,
+    pub catchup_events_total: u64,
+    pub catchup_dropped_sec_total: f64,
+    pub over_budget_chunks_total: u64,
+    pub worst_chunk_ms: f64,
+    pub last_ring_fill_samples: usize,
+    pub last_ring_fill_ratio: f64,
+    pub last_audio_pts_sec: Option<f64>,
+    pub last_producer_pts_sec: f64,
+    pub underrun_events: u64,
+    pub underrun_frames: u64,
+    pub last_skipped_layer_id: Option<String>,
+    pub last_skip_timeline_sec: Option<f64>,
 }
 
 /// How long the output clock may stay frozen while armed and the ring still holds
@@ -366,8 +385,16 @@ impl NativeAudioEngine {
         state.pending_ring_clear = true;
         state.seek_serial = state.seek_serial.wrapping_add(1);
         let plugin_host = state.plugin_host.clone();
+        let scene = state.scene.clone();
         drop(state);
         plugin_host.lock().reset_all();
+        prewarm_audio_layers_around(
+            &scene,
+            pts,
+            self.sample_rate,
+            self.device_channels as usize,
+            &self.shared,
+        );
         self.shared.1.notify_all();
     }
 
@@ -664,6 +691,34 @@ impl NativeAudioEngine {
     pub fn is_empty(&self) -> bool {
         self.restart_finished_producer();
         self.shared.0.lock().scene.is_empty()
+    }
+
+    pub fn active_layer_count(&self) -> usize {
+        self.restart_finished_producer();
+        self.shared.0.lock().scene.len()
+    }
+
+    pub fn diagnostics_snapshot(&self) -> NativeAudioDiagnosticsSnapshot {
+        self.restart_finished_producer();
+        let state = self.shared.0.lock();
+        let d = &state.diagnostics;
+        NativeAudioDiagnosticsSnapshot {
+            skipped_layers_total: d.skipped_layers_total,
+            decode_errors_total: d.decode_errors_total,
+            prewarm_requests_total: d.prewarm_requests_total,
+            catchup_events_total: d.catchup_events_total,
+            catchup_dropped_sec_total: d.catchup_dropped_sec_total,
+            over_budget_chunks_total: d.over_budget_chunks_total,
+            worst_chunk_ms: d.worst_chunk_ms,
+            last_ring_fill_samples: d.last_ring_fill_samples,
+            last_ring_fill_ratio: d.last_ring_fill_ratio,
+            last_audio_pts_sec: d.last_audio_pts_sec,
+            last_producer_pts_sec: d.last_producer_pts_sec,
+            underrun_events: self.clock.underrun_events.load(Ordering::Relaxed),
+            underrun_frames: self.clock.underrun_frames.load(Ordering::Relaxed),
+            last_skipped_layer_id: d.last_skipped_layer_id.clone(),
+            last_skip_timeline_sec: d.last_skip_timeline_sec,
+        }
     }
 
     pub fn scene_end(&self) -> f64 {

@@ -562,6 +562,33 @@ fn prewarm_audio_layer_window(
         output_channels,
         WindowFillPriority::Speculative,
     );
+    shared.0.lock().diagnostics.prewarm_requests_total += 1;
+}
+
+pub(crate) fn prewarm_audio_layers_around(
+    scene: &[SceneAudioLayer],
+    timeline_sec: f64,
+    sample_rate: u32,
+    output_channels: usize,
+    shared: &Arc<(Mutex<AudioShared>, Condvar)>,
+) {
+    let start = timeline_sec.max(0.0);
+    let end = start + REFILL_MARGIN_SEC;
+    let mut candidates: Vec<&SceneAudioLayer> = scene
+        .iter()
+        .filter(|layer| layer.timeline_end_sec > start && layer.timeline_start_sec <= end)
+        .collect();
+    candidates.sort_by(|a, b| {
+        let a_active = a.timeline_start_sec <= start && a.timeline_end_sec > start;
+        let b_active = b.timeline_start_sec <= start && b.timeline_end_sec > start;
+        b_active
+            .cmp(&a_active)
+            .then_with(|| a.timeline_start_sec.total_cmp(&b.timeline_start_sec))
+    });
+
+    for layer in candidates {
+        prewarm_audio_layer_window(layer, sample_rate, output_channels, shared);
+    }
 }
 
 /// Resolves the bus track that owns a layer. An empty `tid` is never matched
@@ -694,6 +721,15 @@ fn decode_and_prepare_layer(
             }
             if decode_error_policy == DecodeErrorPolicy::Propagate {
                 return Err(error);
+            }
+            {
+                let mut state = shared.0.lock();
+                state.diagnostics.skipped_layers_total =
+                    state.diagnostics.skipped_layers_total.saturating_add(1);
+                state.diagnostics.decode_errors_total =
+                    state.diagnostics.decode_errors_total.saturating_add(1);
+                state.diagnostics.last_skipped_layer_id = Some(layer.id.clone());
+                state.diagnostics.last_skip_timeline_sec = Some(chunk_start_sec);
             }
             log::warn!(
                 "[audio] skipping layer {} at {chunk_start_sec:.3}s: {error:?}",
@@ -1355,6 +1391,39 @@ mod tests {
         assert!(
             wait_for_window(&shared, "future", 0),
             "monitor mix should prewarm a future layer inside the refill lookahead"
+        );
+        assert!(shared.0.lock().diagnostics.prewarm_requests_total > 0);
+    }
+
+    #[test]
+    fn realtime_mix_records_skipped_layer_diagnostics() {
+        let shared = Arc::new((Mutex::new(AudioShared::default()), Condvar::new()));
+        let mut l = layer();
+        l.id = "missing".into();
+        l.track_id = None;
+        l.path = "/definitely/missing/audio.wav".into();
+        l.timeline_start_sec = 0.0;
+        l.timeline_end_sec = 1.0;
+
+        let chunk = mix_chunk(MixChunkParams {
+            scene: &[l],
+            tracks: &[],
+            master_gain: 1.0,
+            audio_master_effects: &[],
+            prev_master_gain: None,
+            chunk_start_sec: 0.0,
+            chunk_duration_sec: 0.05,
+            target: AudioRenderTarget::monitor(48000, 2),
+            shared: &shared,
+        });
+
+        assert!(chunk.iter().all(|sample| *sample == 0.0));
+        let diagnostics = &shared.0.lock().diagnostics;
+        assert_eq!(diagnostics.skipped_layers_total, 1);
+        assert_eq!(diagnostics.decode_errors_total, 1);
+        assert_eq!(
+            diagnostics.last_skipped_layer_id.as_deref(),
+            Some("missing")
         );
     }
 

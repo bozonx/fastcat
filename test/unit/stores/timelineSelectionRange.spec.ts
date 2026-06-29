@@ -9,6 +9,7 @@ describe('timeline-selection-range', () => {
   let currentTime: any;
   let isSelectionRangeSelected: ReturnType<typeof vi.fn>;
   let selectTimelineSelectionRange: ReturnType<typeof vi.fn>;
+  let selectTimelineMarker: ReturnType<typeof vi.fn>;
   let clearSelection: ReturnType<typeof vi.fn>;
   let markerService: any;
   let trimming: any;
@@ -22,6 +23,7 @@ describe('timeline-selection-range', () => {
     currentTime = ref(0);
     isSelectionRangeSelected = vi.fn().mockReturnValue(false);
     selectTimelineSelectionRange = vi.fn();
+    selectTimelineMarker = vi.fn();
     clearSelection = vi.fn();
     markerService = {
       getMarkers: vi.fn().mockReturnValue([]),
@@ -42,6 +44,7 @@ describe('timeline-selection-range', () => {
       selectionRange: selectionRangeRef,
       isSelectionRangeSelected,
       selectTimelineSelectionRange,
+      selectTimelineMarker,
       clearSelection,
       markerService,
       trimming,
@@ -93,6 +96,30 @@ describe('timeline-selection-range', () => {
     expect(markerService.addMarkerAtPlayhead).not.toHaveBeenCalled();
     expect(markerService.updateMarker).not.toHaveBeenCalled();
     expect(selectionRange.getSelectionRange()).toBeNull();
+  });
+
+  it('selects the freshly created marker so the properties panel follows the conversion', () => {
+    markerService.addMarker.mockReturnValue('created-marker');
+    // After the add, the new marker exists in the document.
+    markerService.getMarkers.mockReturnValue([
+      { id: 'created-marker', timeUs: 4000000, durationUs: 4000000, text: '' },
+    ]);
+    selectionRange.updateSelectionRange({ startUs: 4000000, endUs: 8000000 });
+
+    selectionRange.convertSelectionRangeToMarker();
+
+    expect(selectTimelineMarker).toHaveBeenCalledWith('created-marker');
+  });
+
+  it('does not select a marker when the add was rejected (e.g. one already exists at that time)', () => {
+    markerService.addMarker.mockReturnValue('rejected-marker');
+    // The add was rejected, so the document does not contain the new marker id.
+    markerService.getMarkers.mockReturnValue([]);
+    selectionRange.updateSelectionRange({ startUs: 4000000, endUs: 8000000 });
+
+    selectionRange.convertSelectionRangeToMarker();
+
+    expect(selectTimelineMarker).not.toHaveBeenCalled();
   });
 
   it('converts a zone marker to a selection range, removing the marker itself', () => {

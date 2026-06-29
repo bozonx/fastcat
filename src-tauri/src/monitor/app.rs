@@ -41,6 +41,7 @@ const EVT_ENDED: &str = "monitor:ended";
 /// dynamically in `active_videos_ready` via `expected_preroll_duration()`, accounting
 /// for the per-layer frame memory limit.
 const PREBUFFER_TIMEOUT: Duration = Duration::from_millis(3000);
+const MULTI_AUDIO_PREBUFFER_TIMEOUT: Duration = Duration::from_millis(5000);
 /// Polling cadence while warming up before playback. Video readiness is normally
 /// driven by `VideoFrameReady`/`BgReady` events, but audio-only scenes (or audio
 /// finishing its prime after video) emit no such event, so we also wake on this
@@ -56,6 +57,14 @@ const PREBUFFER_POLL_INTERVAL: Duration = Duration::from_millis(10);
 /// position exactly (diff ≈ 0), so a small tolerance catches them while leaving
 /// genuine scrubs to re-target the prime.
 const SEEK_PRIME_REDUNDANT_SEC: f64 = 0.05;
+
+fn prebuffer_timeout_for_audio_layers(audio_layers: usize) -> Duration {
+    if audio_layers > 1 {
+        MULTI_AUDIO_PREBUFFER_TIMEOUT
+    } else {
+        PREBUFFER_TIMEOUT
+    }
+}
 
 /// Requested position/size of the offscreen/native monitor window in physical pixels.
 #[derive(Debug, Clone, Copy)]
@@ -689,6 +698,7 @@ struct WindowState {
     /// Throttle for `audio.prune_distant_layers`: pruning locks the shared audio
     /// state (contends with the producer), so we run it at most ~1×/sec, not per frame.
     last_audio_prune: Instant,
+    last_audio_diag_log: Instant,
     last_viewport: ViewportSpec,
     mode: MonitorMode,
     /// Channel for streaming RGBA frames to the frontend (Canvas mode only).
@@ -931,6 +941,11 @@ impl WindowState {
             return;
         }
         let has_audio = self.audio.as_ref().is_some_and(|a| !a.is_empty());
+        let audio_layers = self
+            .audio
+            .as_ref()
+            .map(NativeAudioEngine::active_layer_count)
+            .unwrap_or(0);
         if self.layers.is_empty() && !has_audio {
             return;
         }
@@ -962,7 +977,8 @@ impl WindowState {
             self.begin_playback();
             return;
         }
-        self.pending_play_deadline = Some(Instant::now() + PREBUFFER_TIMEOUT);
+        self.pending_play_deadline =
+            Some(Instant::now() + prebuffer_timeout_for_audio_layers(audio_layers));
     }
 
     /// The actual playback start: starts the master clock and audio from the current
@@ -1007,10 +1023,15 @@ impl WindowState {
         );
         if ready || Instant::now() >= deadline {
             if !ready {
+                let audio_layers = self
+                    .audio
+                    .as_ref()
+                    .map(NativeAudioEngine::active_layer_count)
+                    .unwrap_or(0);
                 log::warn!(
                     "[monitor] prebuffer timed out after {:.1}s — starting playback with \
                      video_ready={video_ready} audio_ready={audio_ready}",
-                    PREBUFFER_TIMEOUT.as_secs_f64()
+                    prebuffer_timeout_for_audio_layers(audio_layers).as_secs_f64()
                 );
             } else {
                 log::info!(
@@ -1165,7 +1186,9 @@ impl WindowState {
                     // The clock is frozen during the micro-prime — VideoFrameReady drives
                     // warm-up again (begin_playback disables it at the actual start).
                     self.layers.set_frame_events_enabled(true);
-                    self.pending_play_deadline = Some(Instant::now() + PREBUFFER_TIMEOUT);
+                    let audio_layers = audio.active_layer_count();
+                    self.pending_play_deadline =
+                        Some(Instant::now() + prebuffer_timeout_for_audio_layers(audio_layers));
                 }
             }
         }
@@ -1229,6 +1252,7 @@ impl WindowState {
         self.render(t);
         self.emit_time(t);
         self.emit_audio_levels();
+        self.log_audio_diagnostics();
 
         // Bound long-playback memory: drop audio decoders/windows for clips the
         // playhead has left behind. Throttled (~1×/sec) to limit lock contention
@@ -1260,6 +1284,44 @@ impl WindowState {
             &mut self.last_emit_levels,
             &mut self.last_emit_tracks,
         );
+    }
+
+    fn log_audio_diagnostics(&mut self) {
+        if self.last_audio_diag_log.elapsed() < Duration::from_secs(1) {
+            return;
+        }
+        let Some(audio) = self.audio.as_ref() else {
+            return;
+        };
+        let snapshot = audio.diagnostics_snapshot();
+        let has_issue = snapshot.underrun_events > 0
+            || snapshot.catchup_events_total > 0
+            || snapshot.skipped_layers_total > 0
+            || snapshot.over_budget_chunks_total > 0;
+        if !has_issue {
+            self.last_audio_diag_log = Instant::now();
+            return;
+        }
+        log::warn!(
+            "[audio-diagnostics] ring={}/{}% producer_pts={:.3}s audio_pts={:?} \
+             underruns={} skipped_layers={} decode_errors={} prewarm={} catchups={} \
+             dropped={:.3}s over_budget={} worst={:.1}ms last_skip={:?}@{:?}",
+            snapshot.last_ring_fill_samples,
+            (snapshot.last_ring_fill_ratio * 100.0).round(),
+            snapshot.last_producer_pts_sec,
+            snapshot.last_audio_pts_sec,
+            snapshot.underrun_events,
+            snapshot.skipped_layers_total,
+            snapshot.decode_errors_total,
+            snapshot.prewarm_requests_total,
+            snapshot.catchup_events_total,
+            snapshot.catchup_dropped_sec_total,
+            snapshot.over_budget_chunks_total,
+            snapshot.worst_chunk_ms,
+            snapshot.last_skipped_layer_id,
+            snapshot.last_skip_timeline_sec,
+        );
+        self.last_audio_diag_log = Instant::now();
     }
 
     // -----------------------------------------------------------------------
@@ -1424,6 +1486,7 @@ fn init_state(
         last_emit_levels: (f64::NAN, f64::NAN),
         last_emit_tracks: std::collections::HashMap::new(),
         last_audio_prune: Instant::now(),
+        last_audio_diag_log: Instant::now(),
         last_viewport: viewport,
         mode: MonitorMode::Canvas,
         frame_channel: None,
@@ -1449,7 +1512,7 @@ fn default_native_window_viewport() -> ViewportSpec {
 mod tests {
     use std::time::{Duration, Instant};
 
-    use super::next_redraw_deadline;
+    use super::{next_redraw_deadline, prebuffer_timeout_for_audio_layers};
 
     #[test]
     fn next_redraw_deadline_starts_one_frame_after_now() {
@@ -1482,6 +1545,22 @@ mod tests {
         assert_eq!(
             next_redraw_deadline(Some(previous), stalled_now, frame),
             start + frame * 4
+        );
+    }
+
+    #[test]
+    fn prebuffer_timeout_is_longer_for_multi_audio_scenes() {
+        assert_eq!(
+            prebuffer_timeout_for_audio_layers(0),
+            Duration::from_millis(3000)
+        );
+        assert_eq!(
+            prebuffer_timeout_for_audio_layers(1),
+            Duration::from_millis(3000)
+        );
+        assert_eq!(
+            prebuffer_timeout_for_audio_layers(2),
+            Duration::from_millis(5000)
         );
     }
 }

@@ -305,6 +305,24 @@ pub(crate) struct AudioShared {
     /// Set by the UI thread to stop an in-progress scrub preview (drag ended).
     pub(crate) scrub_cancel: bool,
     pub(crate) track_levels: HashMap<String, (f64, f64)>,
+    pub(crate) diagnostics: AudioDiagnostics,
+}
+
+#[derive(Debug, Clone, Default)]
+pub(crate) struct AudioDiagnostics {
+    pub(crate) skipped_layers_total: u64,
+    pub(crate) decode_errors_total: u64,
+    pub(crate) prewarm_requests_total: u64,
+    pub(crate) catchup_events_total: u64,
+    pub(crate) catchup_dropped_sec_total: f64,
+    pub(crate) over_budget_chunks_total: u64,
+    pub(crate) worst_chunk_ms: f64,
+    pub(crate) last_ring_fill_samples: usize,
+    pub(crate) last_ring_fill_ratio: f64,
+    pub(crate) last_audio_pts_sec: Option<f64>,
+    pub(crate) last_producer_pts_sec: f64,
+    pub(crate) last_skipped_layer_id: Option<String>,
+    pub(crate) last_skip_timeline_sec: Option<f64>,
 }
 
 impl Default for AudioShared {
@@ -333,6 +351,7 @@ impl Default for AudioShared {
             scrub_request: None,
             scrub_cancel: false,
             track_levels: HashMap::new(),
+            diagnostics: AudioDiagnostics::default(),
         }
     }
 }

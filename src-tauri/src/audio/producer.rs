@@ -85,6 +85,7 @@ pub(crate) fn producer_loop(
     // crackle/dropouts become visible without spamming or touching the RT path.
     let mut last_underrun_events = 0u64;
     let mut last_underrun_log = std::time::Instant::now();
+    let mut last_catchup_underrun_events = 0u64;
 
     // Decode-budget instrumentation. If producing one chunk takes longer than the
     // chunk's own playback duration, the producer is slower than real time and the
@@ -200,6 +201,46 @@ pub(crate) fn producer_loop(
                     && !state.scene.is_empty()
                     && ring.len() < limit_samples
                 {
+                    let ring_len = ring.len();
+                    if clock.playing.load(Ordering::Acquire) {
+                        let underrun_events = clock.underrun_events.load(Ordering::Relaxed);
+                        if underrun_events > last_catchup_underrun_events
+                            && ring_len <= start_prebuffer_samples
+                        {
+                            let audible = audible_pts_sec(&state, &clock, sample_rate);
+                            let queued_timeline_sec = ring_len as f64
+                                / output_channels.max(1) as f64
+                                / sample_rate as f64
+                                * state.global_speed.max(0.0);
+                            let target_producer_pts = audible + queued_timeline_sec;
+                            if state.producer_pts_sec + chunk_duration_sec < target_producer_pts {
+                                let dropped = target_producer_pts - state.producer_pts_sec;
+                                log::warn!(
+                                    "[audio] producer catch-up after underrun: dropping \
+                                     {dropped:.3}s of late timeline audio \
+                                     ({:.3}s -> {:.3}s)",
+                                    state.producer_pts_sec,
+                                    target_producer_pts
+                                );
+                                state.producer_pts_sec = target_producer_pts;
+                                state.diagnostics.catchup_events_total =
+                                    state.diagnostics.catchup_events_total.saturating_add(1);
+                                state.diagnostics.catchup_dropped_sec_total += dropped;
+                            }
+                            last_catchup_underrun_events = underrun_events;
+                        }
+                    }
+
+                    let ring_capacity = limit_samples.saturating_mul(2).max(1);
+                    let audible = clock
+                        .playing
+                        .load(Ordering::Acquire)
+                        .then(|| audible_pts_sec(&state, &clock, sample_rate));
+                    state.diagnostics.last_ring_fill_samples = ring_len;
+                    state.diagnostics.last_ring_fill_ratio = ring_len as f64 / ring_capacity as f64;
+                    state.diagnostics.last_audio_pts_sec = audible;
+                    state.diagnostics.last_producer_pts_sec = state.producer_pts_sec;
+
                     // Refresh the cached scene clone only on a real change.
                     if cached.as_ref().map(|c| c.scene_serial) != Some(state.scene_serial) {
                         cached = Some(CachedSceneAudio {
@@ -322,6 +363,10 @@ pub(crate) fn producer_loop(
         if mix_ms > chunk_duration_sec * 1000.0 {
             over_budget_chunks += 1;
             worst_chunk_ms = worst_chunk_ms.max(mix_ms);
+            let mut state = shared.0.lock();
+            state.diagnostics.over_budget_chunks_total =
+                state.diagnostics.over_budget_chunks_total.saturating_add(1);
+            state.diagnostics.worst_chunk_ms = state.diagnostics.worst_chunk_ms.max(mix_ms);
         }
         if last_budget_log.elapsed() >= Duration::from_secs(1) {
             if over_budget_chunks > 0 {
