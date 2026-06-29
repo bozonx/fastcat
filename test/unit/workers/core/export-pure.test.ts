@@ -1,10 +1,13 @@
 /** @vitest-environment node */
-import { describe, it, expect } from 'vitest';
+import { afterEach, describe, it, expect, vi } from 'vitest';
 import {
   isOpusCodec,
   buildMetadataTags,
   selectOutputFormat,
   isPassthroughCompatibleClip,
+  createCoalescedExportProgressReporter,
+  isVideoEncoderConfigSupported,
+  waitForVideoBackpressure,
 } from '~/workers/core/export';
 import type { OutputFormatConstructors } from '~/workers/core/export';
 
@@ -19,6 +22,22 @@ function makeCtors(): OutputFormatConstructors {
     WavOutputFormat: class MockWav {},
   };
 }
+
+function createDeferred<T = void>() {
+  let resolve!: (value: T | PromiseLike<T>) => void;
+  let reject!: (reason?: unknown) => void;
+  const promise = new Promise<T>((res, rej) => {
+    resolve = res;
+    reject = rej;
+  });
+  return { promise, resolve, reject };
+}
+
+afterEach(() => {
+  vi.useRealTimers();
+  vi.restoreAllMocks();
+  delete (globalThis as unknown as { VideoEncoder?: unknown }).VideoEncoder;
+});
 
 describe('isOpusCodec', () => {
   it('returns true for "opus" codec string', () => {
@@ -304,5 +323,116 @@ describe('isPassthroughCompatibleClip - extended edge cases', () => {
     const clip = {};
     const result = isPassthroughCompatibleClip(clip, baseOpts);
     expect(result.ok).toBe(true);
+  });
+});
+
+describe('waitForVideoBackpressure', () => {
+  it('waits with short adaptive delays while the encode queue is full', async () => {
+    vi.useFakeTimers();
+    const videoSource = { encodeQueueSize: 4 };
+    const waitPromise = waitForVideoBackpressure(videoSource);
+
+    await vi.advanceTimersByTimeAsync(1);
+    expect(videoSource.encodeQueueSize).toBe(4);
+
+    videoSource.encodeQueueSize = 3;
+    await vi.advanceTimersByTimeAsync(2);
+    await expect(waitPromise).resolves.toBeUndefined();
+  });
+});
+
+describe('createCoalescedExportProgressReporter', () => {
+  it('does not block callers and coalesces progress while a host call is in flight', async () => {
+    const first = createDeferred();
+    const onExportProgress = vi
+      .fn()
+      .mockReturnValueOnce(first.promise)
+      .mockResolvedValue(undefined);
+    const reporter = createCoalescedExportProgressReporter({ onExportProgress });
+
+    reporter.report(10, 'task-1');
+    reporter.report(20, 'task-1');
+    reporter.report(30, 'task-1');
+
+    expect(onExportProgress).toHaveBeenCalledTimes(1);
+    expect(onExportProgress).toHaveBeenCalledWith(10, 'task-1');
+
+    first.resolve();
+    await reporter.flush();
+
+    expect(onExportProgress).toHaveBeenCalledTimes(2);
+    expect(onExportProgress).toHaveBeenLastCalledWith(30, 'task-1');
+  });
+
+  it('ignores host progress errors and continues flushing pending progress', async () => {
+    const onExportProgress = vi
+      .fn()
+      .mockRejectedValueOnce(new Error('main thread busy'))
+      .mockResolvedValue(undefined);
+    const reporter = createCoalescedExportProgressReporter({ onExportProgress });
+
+    reporter.report(40, 'task-2');
+    reporter.report(50, 'task-2');
+    await reporter.flush();
+
+    expect(onExportProgress).toHaveBeenCalledTimes(2);
+    expect(onExportProgress).toHaveBeenLastCalledWith(50, 'task-2');
+  });
+});
+
+describe('isVideoEncoderConfigSupported', () => {
+  it('returns null when VideoEncoder support probing is unavailable', async () => {
+    await expect(
+      isVideoEncoderConfigSupported({
+        codec: 'avc1.640032',
+        width: 1920,
+        height: 1080,
+        fps: 30,
+        bitrate: 8_000_000,
+        hardwareAcceleration: 'prefer-hardware',
+      }),
+    ).resolves.toBeNull();
+  });
+
+  it('probes the exact WebCodecs encoder config', async () => {
+    const isConfigSupported = vi.fn().mockResolvedValue({ supported: true });
+    (globalThis as unknown as { VideoEncoder: unknown }).VideoEncoder = { isConfigSupported };
+
+    await expect(
+      isVideoEncoderConfigSupported({
+        codec: 'avc1.640032',
+        width: 1920,
+        height: 1080,
+        fps: 60,
+        bitrate: 12_000_000,
+        hardwareAcceleration: 'prefer-hardware',
+      }),
+    ).resolves.toBe(true);
+
+    expect(isConfigSupported).toHaveBeenCalledWith({
+      codec: 'avc1.640032',
+      width: 1920,
+      height: 1080,
+      framerate: 60,
+      bitrate: 12_000_000,
+      hardwareAcceleration: 'prefer-hardware',
+    });
+  });
+
+  it('returns false when WebCodecs rejects the config', async () => {
+    (globalThis as unknown as { VideoEncoder: unknown }).VideoEncoder = {
+      isConfigSupported: vi.fn().mockRejectedValue(new Error('unsupported')),
+    };
+
+    await expect(
+      isVideoEncoderConfigSupported({
+        codec: 'av01.0.05M.08',
+        width: 3840,
+        height: 2160,
+        fps: 60,
+        bitrate: 25_000_000,
+        hardwareAcceleration: 'prefer-hardware',
+      }),
+    ).resolves.toBe(false);
   });
 });

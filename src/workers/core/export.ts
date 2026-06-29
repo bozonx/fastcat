@@ -236,13 +236,106 @@ export function buildMetadataTags(
   return Object.keys(tags).length > 0 ? tags : null;
 }
 
-async function waitForVideoBackpressure(videoSource: { encodeQueueSize?: number }) {
+export async function waitForVideoBackpressure(videoSource: { encodeQueueSize?: number }) {
   const maxQueueSize = 4;
+  let delayMs = 1;
 
   while (Number(videoSource?.encodeQueueSize ?? 0) >= maxQueueSize) {
-    // Use 16ms (one frame budget) instead of 0 to avoid busy-waiting on the CPU.
-    await new Promise<void>((resolve) => setTimeout(resolve, 16));
+    await new Promise<void>((resolve) => setTimeout(resolve, delayMs));
+    delayMs = Math.min(8, delayMs * 2);
   }
+}
+
+export interface ExportProgressHost {
+  onExportProgress?: (progress: number, taskId?: string) => Promise<void> | void;
+}
+
+export interface ExportProgressReporter {
+  report: (progress: number, taskId?: string) => void;
+  flush: () => Promise<void>;
+}
+
+export function createCoalescedExportProgressReporter(
+  hostClient: ExportProgressHost | null,
+): ExportProgressReporter {
+  let inFlight: Promise<void> | null = null;
+  let pending: { progress: number; taskId?: string } | null = null;
+
+  const launch = (progress: number, taskId?: string) => {
+    inFlight = Promise.resolve(hostClient?.onExportProgress?.(progress, taskId))
+      .catch(() => undefined)
+      .then(() => {
+        inFlight = null;
+        const next = pending;
+        pending = null;
+        if (next) {
+          launch(next.progress, next.taskId);
+        }
+      });
+  };
+
+  return {
+    report(progress, taskId) {
+      if (!hostClient?.onExportProgress) return;
+      if (inFlight) {
+        pending = { progress, taskId };
+        return;
+      }
+      launch(progress, taskId);
+    },
+    async flush() {
+      while (inFlight) {
+        await inFlight;
+      }
+    },
+  };
+}
+
+export async function isVideoEncoderConfigSupported(params: {
+  codec: string | undefined;
+  width: number;
+  height: number;
+  fps: number;
+  bitrate: number;
+  hardwareAcceleration: 'prefer-hardware' | 'prefer-software';
+}): Promise<boolean | null> {
+  const codec = params.codec?.trim();
+  const encoder = (globalThis as unknown as { VideoEncoder?: typeof VideoEncoder }).VideoEncoder;
+  if (!codec || !encoder?.isConfigSupported) return null;
+
+  try {
+    const result = await encoder.isConfigSupported({
+      codec,
+      width: params.width,
+      height: params.height,
+      framerate: params.fps,
+      bitrate: params.bitrate,
+      hardwareAcceleration: params.hardwareAcceleration,
+    });
+    return !!result?.supported;
+  } catch {
+    return false;
+  }
+}
+
+export async function runConcurrentExportWriters(params: {
+  audioWriter?: (() => Promise<void>) | null;
+  videoWriter?: (() => Promise<void>) | null;
+  progressReporter: ExportProgressReporter;
+  taskId?: string;
+}): Promise<void> {
+  const writers: Promise<void>[] = [];
+
+  if (params.audioWriter) {
+    writers.push(params.audioWriter());
+  }
+  if (params.videoWriter) {
+    writers.push(params.videoWriter());
+  }
+
+  await Promise.all(writers);
+  params.progressReporter.report(99, params.taskId);
+  await params.progressReporter.flush();
 }
 
 function fillCanvasBlack(canvas: OffscreenCanvas | HTMLCanvasElement | undefined | null) {
@@ -577,6 +670,7 @@ export async function runExport(
     fps: number;
     videoSource: { add: (timestampS: number, durationS: number) => Promise<void> };
     compositor: VideoCompositor;
+    progressReporter: ExportProgressReporter;
     taskId?: string;
   }) {
     const fps = Math.max(1, Number(params.fps) || 30);
@@ -615,9 +709,9 @@ export async function runExport(
       const nowProgressMs = typeof performance !== 'undefined' ? performance.now() : Date.now();
       const shouldReport =
         frameNum + 1 === totalFrames || nowProgressMs - lastProgressAtMs >= progressIntervalMs;
-      if (hostClient && shouldReport) {
+      if (shouldReport) {
         lastProgressAtMs = nowProgressMs;
-        await hostClient.onExportProgress(progress, params.taskId);
+        params.progressReporter.report(progress, params.taskId);
       }
 
       const nowMs = typeof performance !== 'undefined' ? performance.now() : Date.now();
@@ -795,6 +889,7 @@ export async function runExport(
         intervalSec: options.keyframeIntervalSec,
         fps,
       });
+      const progressReporter = createCoalescedExportProgressReporter(hostClient);
 
       const formatSupportsAlpha =
         options.format === 'webm' ||
@@ -831,33 +926,40 @@ export async function runExport(
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         await (output as any).start();
 
-        await writeOpusPassthroughIfNeeded({ audioPacketState });
+        let audioWriter: (() => Promise<void>) | null = null;
 
         if (audioSource && writeMixedAudioToSource) {
-          await writeMixedAudioToSource();
+          audioWriter = writeMixedAudioToSource;
+        } else if (audioPacketState) {
+          audioWriter = () => writeOpusPassthroughIfNeeded({ audioPacketState });
         }
 
-        if (videoSource && localCompositor) {
-          await encodeFrames({
-            durationUs: maxDurationUs,
-            fps: options.fps,
-            videoSource,
-            compositor: localCompositor,
-            taskId,
-          });
-        } else {
-          if (hostClient) {
-            await hostClient.onExportProgress(99, taskId);
-          }
-        }
+        const videoWriter =
+          videoSource && localCompositor
+            ? () =>
+                encodeFrames({
+                  durationUs: maxDurationUs,
+                  fps: options.fps,
+                  videoSource,
+                  compositor: localCompositor,
+                  progressReporter,
+                  taskId,
+                })
+            : null;
+
+        await runConcurrentExportWriters({
+          audioWriter,
+          videoWriter,
+          progressReporter,
+          taskId,
+        });
 
         await notifyPhase('finalizing', taskId);
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         await (output as any).finalize();
-        if (hostClient) {
-          await hostClient.onExportProgress(100, taskId);
-        }
+        progressReporter.report(100, taskId);
+        await progressReporter.flush();
         finalized = true;
       } finally {
         if (!finalized) {
@@ -869,11 +971,11 @@ export async function runExport(
       }
     }
 
-    try {
-      await runExportWithHardwareAcceleration('prefer-hardware', true);
-    } catch (e) {
-      if (e instanceof Error && e.name === 'AbortError') throw e;
-      log.warn('[Worker Export] Hardware acceleration export with exact profile failed:', e);
+    async function runDefaultHardwareAfterExactFailure(error?: unknown) {
+      if (error) {
+        if (error instanceof Error && error.name === 'AbortError') throw error;
+        log.warn('[Worker Export] Hardware acceleration export with exact profile failed:', error);
+      }
       await reportExportWarning(
         '[Worker Export] Hardware acceleration export with exact profile failed, retrying with default HW profile.',
       );
@@ -889,6 +991,28 @@ export async function runExport(
           '[Worker Export] Hardware acceleration export failed completely, retrying with software.',
         );
         await runExportWithHardwareAcceleration('prefer-software', false);
+      }
+    }
+
+    const exactHardwareSupport =
+      options.videoCodec !== 'none'
+        ? await isVideoEncoderConfigSupported({
+            codec: options.videoCodec,
+            width: options.width,
+            height: options.height,
+            fps: options.fps,
+            bitrate: options.bitrate,
+            hardwareAcceleration: 'prefer-hardware',
+          })
+        : null;
+
+    if (exactHardwareSupport === false) {
+      await runDefaultHardwareAfterExactFailure();
+    } else {
+      try {
+        await runExportWithHardwareAcceleration('prefer-hardware', true);
+      } catch (e) {
+        await runDefaultHardwareAfterExactFailure(e);
       }
     }
   } finally {
