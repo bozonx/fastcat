@@ -94,10 +94,12 @@ const ProjectUiExportSettingsSchema = z
     excludeAudio: z.coerce.boolean().catch(false),
     audioCodec: z.enum(['aac', 'opus', 'flac', 'pcm', 'mp3']).catch('aac'),
     audioBitrateKbps: z.coerce.number().catch(128),
+    audioChannels: z.coerce.number().catch(2),
     audioSampleRate: z.coerce.number().catch(48000),
     bitrateMode: z.enum(['constant', 'variable']).catch('variable'),
     keyframeIntervalSec: z.coerce.number().catch(2),
     exportAlpha: z.coerce.boolean().catch(false),
+    fastStart: z.coerce.boolean().catch(true),
     matchTimeline: z.coerce.boolean().catch(true),
     customWidth: z.coerce.number().catch(1920),
     customHeight: z.coerce.number().catch(1080),
@@ -108,6 +110,7 @@ const ProjectUiExportSettingsSchema = z
     metadataDescription: z.string().catch(''),
     metadataAuthor: z.string().catch(''),
     metadataTags: z.string().catch(''),
+    customExportPath: z.string().nullable().catch(null).optional(),
   })
   .optional();
 

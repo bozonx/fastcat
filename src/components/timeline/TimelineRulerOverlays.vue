@@ -59,8 +59,8 @@ const emit = defineEmits<{
 function getMarkerButtonClass(marker: MarkerPoint) {
   if (props.isMarkerSelected(marker.id)) {
     return marker.color
-      ? 'outline-2 -outline-offset-2 outline-white focus:outline-2 focus:-outline-offset-2 focus:outline-white'
-      : 'bg-primary-400 outline-2 -outline-offset-2 outline-white focus:outline-2 focus:-outline-offset-2 focus:outline-white';
+      ? 'ring-2 ring-white/80'
+      : 'bg-primary-400 ring-2 ring-white/80';
   }
 
   return marker.color ? '' : 'bg-primary-500';

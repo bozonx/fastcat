@@ -465,17 +465,7 @@ watch(
         @drop.prevent="emit('drop', $event, trackViewModel.track.id)"
         @contextmenu="handleTrackContextMenu($event, trackViewModel.track)"
       >
-        <!-- Mute sticky overlay icon (always visible on screen horizontally) -->
-        <div
-          v-if="trackViewModel.track.audioMuted"
-          class="sticky left-3 z-30 pointer-events-none shrink-0"
-        >
-          <div
-            class="bg-black/60 rounded-full p-1.5 text-white/50 backdrop-blur-xs flex items-center justify-center"
-          >
-            <UIcon name="i-heroicons-speaker-x-mark" class="w-4 h-4" />
-          </div>
-        </div>
+
 
         <!-- Drop Previews inside track -->
         <div

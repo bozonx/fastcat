@@ -195,6 +195,7 @@ export function useExportForm() {
       excludeAudio.value !== encDefaults.excludeAudio ||
       audioCodec.value !== encDefaults.audioCodec ||
       audioBitrateKbps.value !== encDefaults.audioBitrateKbps ||
+      audioChannels.value !== 2 ||
       bitrateMode.value !== encDefaults.bitrateMode ||
       keyframeIntervalSec.value !== encDefaults.keyframeIntervalSec ||
       exportAlpha.value !== encDefaults.exportAlpha ||
@@ -307,6 +308,7 @@ export function useExportForm() {
         excludeAudio.value = saved.excludeAudio ?? false;
         audioCodec.value = saved.audioCodec ?? 'aac';
         audioBitrateKbps.value = saved.audioBitrateKbps ?? 128;
+        audioChannels.value = saved.audioChannels ?? 2;
         audioSampleRate.value = saved.audioSampleRate ?? 48000;
         bitrateMode.value = saved.bitrateMode ?? 'variable';
         keyframeIntervalSec.value = saved.keyframeIntervalSec ?? 2;
@@ -664,6 +666,9 @@ export function useExportForm() {
       case 'audioBitrateKbps':
         if (encDefaults) audioBitrateKbps.value = encDefaults.audioBitrateKbps;
         break;
+      case 'audioChannels':
+        audioChannels.value = 2;
+        break;
       case 'bitrateMode':
         if (encDefaults) bitrateMode.value = encDefaults.bitrateMode;
         break;
@@ -732,6 +737,8 @@ export function useExportForm() {
         return audioCodec.value !== encDefaults?.audioCodec;
       case 'audioBitrateKbps':
         return audioBitrateKbps.value !== encDefaults?.audioBitrateKbps;
+      case 'audioChannels':
+        return audioChannels.value !== 2;
       case 'bitrateMode':
         return bitrateMode.value !== encDefaults?.bitrateMode;
       case 'keyframeIntervalSec':
@@ -774,6 +781,7 @@ export function useExportForm() {
       excludeAudio,
       audioCodec,
       audioBitrateKbps,
+      audioChannels,
       audioSampleRate,
       bitrateMode,
       keyframeIntervalSec,
@@ -803,6 +811,7 @@ export function useExportForm() {
         excludeAudio: excludeAudio.value,
         audioCodec: audioCodec.value,
         audioBitrateKbps: audioBitrateKbps.value,
+        audioChannels: audioChannels.value,
         audioSampleRate: Number(audioSampleRate.value) || 48000,
         bitrateMode: bitrateMode.value,
         keyframeIntervalSec: keyframeIntervalSec.value,

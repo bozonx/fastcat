@@ -123,6 +123,7 @@ export interface FastCatProjectSettings {
     excludeAudio: boolean;
     audioCodec: 'aac' | 'opus' | 'flac' | 'pcm' | 'mp3';
     audioBitrateKbps: number;
+    audioChannels: number;
     audioSampleRate: number;
     bitrateMode: 'constant' | 'variable';
     keyframeIntervalSec: number;

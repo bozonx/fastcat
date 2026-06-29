@@ -127,6 +127,7 @@ describe('ClipMetadata', () => {
 
     // Contains the warning triangle icon wrapper with correct title
     expect(component.find('[title="fastcat.timeline.freePositionHint"]').exists()).toBe(true);
+    expect(component.find('[style*="--z-clip-free-pos"]').exists()).toBe(true);
   });
 
   it('renders freeze frame indicator badge when freezeFrameSourceUs is present', async () => {

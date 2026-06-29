@@ -638,4 +638,25 @@ describe('useExportForm', () => {
       },
     });
   });
+
+  it('сохраняет и загружает параметр audioChannels', async () => {
+    const form = useExportForm();
+    await form.initializeExportForm();
+
+    // Изменяем каналы на 1 (mono)
+    form.audioChannels.value = 1;
+    await nextTick();
+
+    // Настройки должны были сохраниться в стор
+    expect(projectStoreMock.projectSettings.exportSettings?.audioChannels).toBe(1);
+
+    // Сбросим состояние формы
+    form.audioChannels.value = 2;
+
+    // Снова инициализируем форму
+    await form.initializeExportForm();
+
+    // Каналы должны восстановиться из сохраненных настроек
+    expect(form.audioChannels.value).toBe(1);
+  });
 });

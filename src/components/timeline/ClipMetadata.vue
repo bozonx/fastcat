@@ -10,6 +10,8 @@ const props = defineProps<{
   isMediaMissing?: boolean;
   isUnsupported?: boolean;
   clipWidthPx: number;
+  clipLeftPx?: number;
+  scrollLeft?: number;
 }>();
 
 const { t } = useI18n();
@@ -28,12 +30,35 @@ const isFreePosition = computed(() => {
     timelineContext.fps.value || 30,
   );
 });
+
+const muteIconStyle = computed(() => {
+  const clipLeft = props.clipLeftPx ?? 0;
+  const scrollLeft = props.scrollLeft ?? 0;
+  const clipWidth = props.clipWidthPx;
+
+  const iconWidth = 28; // w-7 is 28px
+  const padding = 8;    // left/right padding
+
+  // How many pixels the left edge of the screen has advanced inside the clip
+  const offsetInsideClip = scrollLeft - clipLeft + padding;
+
+  // Constrain the icon positioning within the clip boundaries
+  const maxOffset = clipWidth - iconWidth - padding;
+  const targetLeft = Math.max(padding, Math.min(maxOffset, offsetInsideClip));
+
+  return {
+    left: `${targetLeft}px`,
+  };
+});
 </script>
 
 <template>
   <div class="absolute inset-x-0 top-0 h-full pointer-events-none rounded overflow-hidden">
     <!-- Top Right Status Indicators -->
-    <div class="absolute top-1 right-1 z-20 flex items-center gap-1 pointer-events-none">
+    <div
+      class="absolute top-1 right-1 flex items-center gap-1 pointer-events-none"
+      :style="{ zIndex: 'var(--z-clip-free-pos)' }"
+    >
       <!-- Freeze Frame Indicator -->
       <div
         v-if="clipItem && typeof clipItem.freezeFrameSourceUs === 'number'"
@@ -110,6 +135,19 @@ const isFreePosition = computed(() => {
         class="bg-black/30 rounded-full p-1.5"
       >
         <UIcon name="i-heroicons-speaker-x-mark" class="w-6 h-6 text-white/90" />
+      </div>
+    </div>
+
+    <!-- Sticky Mute Overlay Icon for Muted Tracks -->
+    <div
+      v-if="track.audioMuted && !clipItem?.disabled && !isMediaMissing && !isUnsupported && clipWidthPx > 32"
+      class="absolute top-1/2 -translate-y-1/2 z-30 pointer-events-none"
+      :style="muteIconStyle"
+    >
+      <div
+        class="bg-black/60 rounded-full p-1.5 text-white/50 backdrop-blur-xs flex items-center justify-center w-7 h-7"
+      >
+        <UIcon name="i-heroicons-speaker-x-mark" class="w-4 h-4" />
       </div>
     </div>
   </div>

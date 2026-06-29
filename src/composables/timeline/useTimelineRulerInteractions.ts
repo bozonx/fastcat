@@ -93,7 +93,8 @@ export function useTimelineRulerInteractions(options: UseTimelineRulerInteractio
     }
 
     if (action === 'add_marker') {
-      const timeUs = getTimeUsFromMouseEvent(event as MouseEvent);
+      const rawTimeUs = getTimeUsFromMouseEvent(event as MouseEvent);
+      const timeUs = options.resolvePlayheadClickTimeUs?.(rawTimeUs) ?? rawTimeUs;
       const markerId = createMarkerId();
 
       options.timelineStore.applyTimeline({
