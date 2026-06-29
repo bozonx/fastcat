@@ -661,4 +661,46 @@ describe('useExportForm', () => {
     // Каналы должны восстановиться из сохраненных настроек
     expect(form.audioChannels.value).toBe(1);
   });
+
+  it('использует дефолтные параметры кодирования при выключенных дополнительных настройках', async () => {
+    const form = useExportForm();
+    await form.initializeExportForm();
+
+    form.enableAdvancedSettings.value = false;
+    form.bitrateMode.value = 'constant';
+    form.keyframeIntervalSec.value = 5;
+    form.fastStart.value = true;
+    form.maxBitrateMbps.value = 12;
+
+    exportTimelineToFileMock.mockClear();
+    await form.handleStartExport();
+
+    expect(exportTimelineToFileMock.mock.calls[0]?.[0]).toMatchObject({
+      bitrateMode: 'variable',
+      maxBitrateBps: null,
+      keyframeIntervalSec: 2,
+      fastStart: false,
+    });
+  });
+
+  it('передает продвинутые параметры кодирования при включенных дополнительных настройках', async () => {
+    const form = useExportForm();
+    await form.initializeExportForm();
+
+    form.enableAdvancedSettings.value = true;
+    form.bitrateMode.value = 'variable';
+    form.maxBitrateMbps.value = 12;
+    form.keyframeIntervalSec.value = 5;
+    form.fastStart.value = true;
+
+    exportTimelineToFileMock.mockClear();
+    await form.handleStartExport();
+
+    expect(exportTimelineToFileMock.mock.calls[0]?.[0]).toMatchObject({
+      bitrateMode: 'variable',
+      maxBitrateBps: 12_000_000,
+      keyframeIntervalSec: 5,
+      fastStart: true,
+    });
+  });
 });
