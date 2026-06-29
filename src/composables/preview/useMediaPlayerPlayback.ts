@@ -205,10 +205,21 @@ export function useMediaPlayerPlayback(
         mediaElement.value.currentTime = end;
         currentTime.value = end;
       } else if (detail.action === 'set') {
+        const targetSpeed = detail.speed ?? 1;
+        const currentSpeed = playbackSpeed.value;
+
         if (detail.direction === 'forward') {
-          setForwardPlaybackSpeed(detail.speed ?? 1);
+          if (isPlaying.value && currentSpeed === targetSpeed) {
+            setForwardPlaybackSpeed(1);
+          } else {
+            setForwardPlaybackSpeed(targetSpeed);
+          }
         } else {
-          setBackwardPlaybackSpeed(detail.speed ?? 1);
+          if (isPlaying.value && currentSpeed === -targetSpeed) {
+            setBackwardPlaybackSpeed(1);
+          } else {
+            setBackwardPlaybackSpeed(targetSpeed);
+          }
         }
       }
     },

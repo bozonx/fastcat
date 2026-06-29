@@ -1,11 +1,22 @@
 /** @vitest-environment node */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { ref } from 'vue';
+import { ref, reactive } from 'vue';
 import { useMediaPlayerPlayback } from '~/composables/preview/useMediaPlayerPlayback';
+
+let mockState: any = null;
+
+if (typeof global.requestAnimationFrame === 'undefined') {
+  global.requestAnimationFrame = (callback: any) => setTimeout(callback, 0) as any;
+}
+if (typeof global.cancelAnimationFrame === 'undefined') {
+  global.cancelAnimationFrame = (id: any) => clearTimeout(id);
+}
 
 vi.mock('~/stores/ui.store', () => ({
   useUiStore: () => ({
-    previewPlaybackTrigger: null,
+    get previewPlaybackTrigger() {
+      return mockState?.trigger;
+    },
   }),
 }));
 
@@ -25,6 +36,12 @@ function makeMediaElement(overrides?: Partial<HTMLVideoElement>): HTMLVideoEleme
 }
 
 describe('useMediaPlayerPlayback', () => {
+  beforeEach(() => {
+    mockState = reactive({
+      trigger: null,
+    });
+  });
+
   it('initializes with default state', () => {
     const mediaEl = ref<HTMLVideoElement | null>(null);
     const volume = ref(1);
@@ -359,5 +376,53 @@ describe('useMediaPlayerPlayback', () => {
     expect(typeof result.onPlaybackError).toBe('function');
     expect(typeof result.resetState).toBe('function');
     expect(typeof result.pauseAndClearPlayback).toBe('function');
+  });
+
+  it('resets speed to 1x when setting speed to the same speed we are already playing at', async () => {
+    const el = makeMediaElement();
+    const mediaEl = ref(el);
+    const volume = ref(1);
+    const isMuted = ref(false);
+    const focusStore = { canUsePreviewHotkeys: true, effectiveFocus: null };
+
+    const { playbackSpeed, isPlaying, onPlay } = useMediaPlayerPlayback(
+      mediaEl,
+      { src: '' },
+      volume,
+      isMuted,
+      focusStore,
+    );
+
+    // Set playing to true, and initial speed to 2
+    onPlay();
+    playbackSpeed.value = 2;
+
+    // Trigger set to speed 2 (same speed)
+    mockState.trigger = {
+      action: 'set',
+      speed: 2,
+      direction: 'forward',
+      timestamp: Date.now(),
+    };
+
+    // Since watch is asynchronous, we wait for next tick or use a short delay
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    // It should have reset playbackSpeed to 1
+    expect(playbackSpeed.value).toBe(1);
+    expect(el.playbackRate).toBe(1);
+
+    // Now test backward speed reset
+    playbackSpeed.value = -2;
+    mockState.trigger = {
+      action: 'set',
+      speed: 2,
+      direction: 'backward',
+      timestamp: Date.now(),
+    };
+
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(playbackSpeed.value).toBe(-1);
   });
 });

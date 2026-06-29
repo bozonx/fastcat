@@ -186,7 +186,7 @@ export function usePlaybackHotkeys(
     const finalSpeed = params.direction === 'backward' ? -params.speed : params.speed;
 
     if (timelineStore.isPlaying && timelineStore.playbackSpeed === finalSpeed) {
-      timelineStore.togglePlayback();
+      timelineStore.setPlaybackSpeed(params.direction === 'backward' ? -1 : 1);
       return;
     }
 
