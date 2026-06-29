@@ -25,11 +25,14 @@ pub(crate) fn now_millis() -> u64 {
 
 /// Background drain of an ffmpeg child's stderr.
 pub(crate) struct StderrDrain {
-    /// Join handle yielding the full captured stderr bytes once the pipe closes.
-    pub handle: Option<JoinHandle<Vec<u8>>>,
+    /// Join handle for the drain thread. It yields `()` — the captured bytes live
+    /// in `shared_buf` (the single backing buffer), so they are not held twice.
+    /// Join it, then read `shared_buf`, via [`finish_stderr_drain`].
+    pub handle: Option<JoinHandle<()>>,
     /// Millis of the last stderr activity, used by the stall guard.
     pub last_activity: Arc<AtomicU64>,
-    /// Live partial stderr buffer, readable while the process is still running.
+    /// The captured stderr: readable live while the process runs, and drained in
+    /// full once the thread is joined.
     pub shared_buf: Arc<Mutex<Vec<u8>>>,
 }
 
@@ -40,20 +43,17 @@ pub(crate) fn spawn_stderr_drain(child: &mut Child) -> StderrDrain {
     let shared = shared_buf.clone();
     let handle = child.stderr.take().map(|mut stderr| {
         std::thread::spawn(move || {
-            let mut buf = Vec::new();
             let mut chunk = [0u8; 4096];
             loop {
                 match Read::read(&mut stderr, &mut chunk) {
                     Ok(0) => break,
                     Ok(n) => {
                         activity.store(now_millis(), Ordering::Release);
-                        buf.extend_from_slice(&chunk[..n]);
                         shared.lock().extend_from_slice(&chunk[..n]);
                     }
                     Err(_) => break,
                 }
             }
-            buf
         })
     });
     StderrDrain {
@@ -61,6 +61,19 @@ pub(crate) fn spawn_stderr_drain(child: &mut Child) -> StderrDrain {
         last_activity,
         shared_buf,
     }
+}
+
+/// Join the drain thread (if one was spawned) and take all captured stderr bytes.
+/// Call once the ffmpeg process has exited so no further writes can race: this
+/// hands `shared_buf`'s contents to the caller by move, without an extra copy.
+pub(crate) fn finish_stderr_drain(
+    handle: Option<JoinHandle<()>>,
+    shared_buf: &Arc<Mutex<Vec<u8>>>,
+) -> Vec<u8> {
+    if let Some(handle) = handle {
+        let _ = handle.join();
+    }
+    std::mem::take(&mut *shared_buf.lock())
 }
 
 fn parse_ffmpeg_time(stderr_text: &str) -> Option<f64> {
@@ -111,12 +124,8 @@ pub(crate) fn run_ffmpeg_task(
     loop {
         let mut guard = child.lock();
         if let Some(status) = guard.try_wait().context("failed to poll ffmpeg")? {
-            let stderr_text = match stderr_handle {
-                Some(handle) => {
-                    String::from_utf8_lossy(&handle.join().unwrap_or_default()).to_string()
-                }
-                None => String::new(),
-            };
+            let stderr_bytes = finish_stderr_drain(stderr_handle, &shared_buf);
+            let stderr_text = String::from_utf8_lossy(&stderr_bytes).to_string();
             drop(guard);
             let cancelled = tasks.was_cancelled(task_id);
             tasks.remove(task_id);

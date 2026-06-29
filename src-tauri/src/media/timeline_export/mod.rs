@@ -26,7 +26,9 @@ use crate::compositor::Compositor;
 use crate::monitor::scene::{LayerKind, MonitorScene};
 
 use super::ffmpeg::utils::*;
-use super::processing::{now_millis, spawn_stderr_drain, NativeMediaTasks, StderrDrain};
+use super::processing::{
+    finish_stderr_drain, now_millis, spawn_stderr_drain, NativeMediaTasks, StderrDrain,
+};
 use super::types::HwAccelMode;
 
 pub(crate) mod audio;
@@ -574,7 +576,7 @@ pub fn export_timeline(
         let StderrDrain {
             handle: stderr_handle,
             last_activity,
-            ..
+            shared_buf: stderr_shared_buf,
         } = spawn_stderr_drain(&mut child);
 
         // Register the process so `native_media_cancel(task_id)` can stop it.
@@ -883,9 +885,8 @@ pub fn export_timeline(
                 if cancelled {
                     return Err(anyhow!("cancelled"));
                 }
-                let stderr_text = stderr_handle
-                    .map(|h| String::from_utf8_lossy(&h.join().unwrap_or_default()).to_string())
-                    .unwrap_or_default();
+                let stderr_bytes = finish_stderr_drain(stderr_handle, &stderr_shared_buf);
+                let stderr_text = String::from_utf8_lossy(&stderr_bytes);
                 let stderr_text = stderr_text.trim();
                 if stderr_text.is_empty() {
                     return Err(error);
@@ -907,12 +908,9 @@ pub fn export_timeline(
             loop {
                 let mut guard = child.lock();
                 if let Some(status) = guard.try_wait().context("failed to poll ffmpeg export")? {
-                    let stderr_text = match stderr_handle {
-                        Some(handle) => {
-                            String::from_utf8_lossy(&handle.join().unwrap_or_default()).to_string()
-                        }
-                        None => String::new(),
-                    };
+                    let stderr_text =
+                        String::from_utf8_lossy(&finish_stderr_drain(stderr_handle, &stderr_shared_buf))
+                            .to_string();
                     drop(guard);
                     let cancelled = tasks.was_cancelled(task_id);
                     tasks.remove(task_id);

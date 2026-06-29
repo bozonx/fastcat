@@ -9,7 +9,9 @@ use crate::media::decode::probe_rotation;
 use crate::media::ffmpeg::args::*;
 use crate::media::ffmpeg::hw::FfmpegHwOptions;
 use crate::media::ffmpeg::runner::{emit_media_warning, run_ffmpeg_task};
-pub(crate) use crate::media::ffmpeg::runner::{now_millis, spawn_stderr_drain, StderrDrain};
+pub(crate) use crate::media::ffmpeg::runner::{
+    finish_stderr_drain, now_millis, spawn_stderr_drain, StderrDrain,
+};
 use crate::media::ffmpeg::utils::*;
 pub use crate::media::tasks::NativeMediaTasks;
 use crate::media::timeline_render::encode_rgba_as_webp;
