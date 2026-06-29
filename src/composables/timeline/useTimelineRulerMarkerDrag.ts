@@ -21,7 +21,7 @@ interface UseTimelineRulerMarkerDragOptions {
   markers: Ref<MarkerLike[]>;
   zoom: Ref<number>;
   fps: Ref<number>;
-  selectMarker: (markerId: string, e?: MouseEvent, part?: 'left' | 'right') => void;
+  selectMarker: (markerId: string, e?: MouseEvent) => void;
   updateMarker: (markerId: string, patch: { timeUs?: number; durationUs?: number }) => void;
   getSelectedMarkerIds: () => string[];
   computeSnapTargets?: (excludeMarkerId?: string) => number[];
@@ -34,7 +34,7 @@ interface UseTimelineRulerMarkerDragOptions {
 export function useTimelineRulerMarkerDrag(options: UseTimelineRulerMarkerDragOptions) {
   const draggedMarkerId = ref<string | null>(null);
   const draggedMarkerIds = ref<string[]>([]);
-  const draggedMarkerPart = ref<'left' | 'right'>('left');
+  const draggedMarkerPart = ref<'left' | 'right' | 'move'>('left');
   const hasDragged = ref(false);
   const markerDragStartX = ref(0);
   const markerDragStartY = ref(0);
@@ -120,9 +120,11 @@ export function useTimelineRulerMarkerDrag(options: UseTimelineRulerMarkerDragOp
       const startState = markerDragStartStates.value[markerId];
       if (!startState) continue;
 
-      // Only the lead marker respects part='right' for resizing; all others move as a whole
+      // Only the lead marker respects its resize part ('left'/'right'); all others move as a whole.
       const isLead = markerId === leadId;
-      const isResizing = isLead && draggedMarkerPart.value === 'right';
+      const part = isLead ? draggedMarkerPart.value : 'move';
+      const isResizing = part === 'right';
+      const isMovingWhole = part === 'move';
 
       if (isResizing && leadState && leadState.durationUs !== undefined) {
         let newDurationUs = Math.max(1, quantize(leadState.durationUs + deltaUs));
@@ -159,7 +161,14 @@ export function useTimelineRulerMarkerDrag(options: UseTimelineRulerMarkerDragOp
           }
         }
 
-        if (startState.durationUs !== undefined) {
+        if (startState.durationUs !== undefined && isMovingWhole) {
+          // Move the whole zone, preserving its duration.
+          patches[markerId] = {
+            timeUs: newUs,
+            durationUs: startState.durationUs,
+          };
+        } else if (startState.durationUs !== undefined) {
+          // Left-edge resize: move the start while keeping the end fixed.
           const endUs = startState.timeUs + startState.durationUs;
           if (newUs < endUs) {
             patches[markerId] = {
@@ -234,12 +243,12 @@ export function useTimelineRulerMarkerDrag(options: UseTimelineRulerMarkerDragOp
   function onMarkerPointerDown(
     event: PointerEvent,
     markerId: string,
-    part: 'left' | 'right' = 'left',
+    part: 'left' | 'right' | 'move' = 'left',
   ) {
     if (event.button !== 0) return;
 
     event.stopPropagation();
-    options.selectMarker(markerId, event, part);
+    options.selectMarker(markerId, event);
 
     let selectedIds = options.getSelectedMarkerIds();
     if (!selectedIds.includes(markerId)) {

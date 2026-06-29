@@ -145,4 +145,54 @@ describe('useSelectionStore', () => {
     store.clearSelection();
     expect(store.selectedEntity).toBeNull();
   });
+
+  describe('markers', () => {
+    it('selects a single marker', () => {
+      const store = useSelectionStore();
+      store.selectTimelineMarker('m1');
+      expect(store.selectedEntity).toEqual({
+        source: 'timeline',
+        kind: 'marker',
+        markerId: 'm1',
+      });
+      expect(store.isMarkerSelected('m1')).toBe(true);
+      expect(store.isMarkerSelected('m2')).toBe(false);
+    });
+
+    it('selects multiple markers', () => {
+      const store = useSelectionStore();
+      store.selectTimelineMarkers(['m1', 'm2', 'm3']);
+      expect(store.selectedEntity).toEqual({
+        source: 'timeline',
+        kind: 'markers',
+        markerIds: ['m1', 'm2', 'm3'],
+      });
+      expect(store.isMarkerSelected('m1')).toBe(true);
+      expect(store.isMarkerSelected('m2')).toBe(true);
+      expect(store.isMarkerSelected('m4')).toBe(false);
+    });
+
+    it('collapses a single-id multi-selection to a single marker entity', () => {
+      const store = useSelectionStore();
+      store.selectTimelineMarkers(['only']);
+      expect(store.selectedEntity).toEqual({
+        source: 'timeline',
+        kind: 'marker',
+        markerId: 'only',
+      });
+    });
+
+    it('clears selection when selecting an empty marker set', () => {
+      const store = useSelectionStore();
+      store.selectTimelineMarker('m1');
+      store.selectTimelineMarkers([]);
+      expect(store.selectedEntity).toBeNull();
+    });
+
+    it('isMarkerSelected is false for non-timeline selections', () => {
+      const store = useSelectionStore();
+      store.selectTimelineTrack('track-1');
+      expect(store.isMarkerSelected('m1')).toBe(false);
+    });
+  });
 });

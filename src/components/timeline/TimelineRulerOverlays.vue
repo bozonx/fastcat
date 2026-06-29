@@ -45,22 +45,21 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
+  (e: 'seek-to-marker', markerId: string, event?: MouseEvent, part?: 'left' | 'right'): void;
   (
-    e: 'select-marker' | 'seek-to-marker',
+    e: 'marker-pointerdown',
+    event: PointerEvent,
     markerId: string,
-    event?: MouseEvent,
-    part?: 'left' | 'right',
+    part?: 'left' | 'right' | 'move',
   ): void;
-  (e: 'marker-pointerdown', event: PointerEvent, markerId: string, part?: 'left' | 'right'): void;
+  (e: 'zone-body-pointerdown', event: PointerEvent, markerId: string): void;
   (e: 'select-selection-range', event?: MouseEvent): void;
   (e: 'selection-range-pointerdown', event: PointerEvent, part: 'move' | 'left' | 'right'): void;
 }>();
 
 function getMarkerButtonClass(marker: MarkerPoint) {
   if (props.isMarkerSelected(marker.id)) {
-    return marker.color
-      ? 'ring-2 ring-white/80'
-      : 'bg-primary-400 ring-2 ring-white/80';
+    return marker.color ? 'ring-2 ring-white/80' : 'bg-primary-400 ring-2 ring-white/80';
   }
 
   return marker.color ? '' : 'bg-primary-500';
@@ -78,6 +77,7 @@ function getMarkerButtonClass(marker: MarkerPoint) {
       :style="{ left: `${point.x}px`, width: `${point.width}px` }"
       @mouseenter="hoveredMarkerId = point.id"
       @mouseleave="hoveredMarkerId = null"
+      @pointerdown="emit('zone-body-pointerdown', $event, point.id)"
     >
       <div
         class="absolute inset-y-0 left-0 w-full bg-primary-500/20 border-l border-r border-primary-500/50 pointer-events-none"
@@ -147,7 +147,6 @@ function getMarkerButtonClass(marker: MarkerPoint) {
               :aria-label="point.isZone ? zoneMarkerStartLabel : markerLabel"
               @mouseenter="hoveredMarkerId = point.id"
               @mouseleave="hoveredMarkerId = null"
-              @dblclick.stop.prevent="emit('select-marker', point.id, undefined, 'left')"
               @pointerdown.stop="emit('marker-pointerdown', $event, point.id)"
               @contextmenu.stop
               @click="emit('seek-to-marker', point.id, $event, 'left')"
@@ -161,7 +160,14 @@ function getMarkerButtonClass(marker: MarkerPoint) {
                 fill="none"
                 xmlns="http://www.w3.org/2000/svg"
               >
-                <path d="M0 0H11V6L5.5 10L0 6V0Z" :fill="point.color ?? '#3b82f6'" />
+                <path
+                  d="M0 0H11V6L5.5 10L0 6V0Z"
+                  :fill="point.color ?? '#3b82f6'"
+                  :stroke="isMarkerSelected(point.id) ? '#ffffff' : 'transparent'"
+                  stroke-width="2.5"
+                  stroke-linejoin="round"
+                  vector-effect="non-scaling-stroke"
+                />
               </svg>
             </button>
           </UiTooltip>
@@ -179,7 +185,6 @@ function getMarkerButtonClass(marker: MarkerPoint) {
               :aria-label="zoneMarkerEndLabel"
               @mouseenter="hoveredMarkerId = point.id"
               @mouseleave="hoveredMarkerId = null"
-              @dblclick.stop.prevent="emit('select-marker', point.id, undefined, 'right')"
               @pointerdown.stop="emit('marker-pointerdown', $event, point.id, 'right')"
               @contextmenu.stop
               @click="emit('seek-to-marker', point.id, $event, 'right')"
@@ -192,7 +197,14 @@ function getMarkerButtonClass(marker: MarkerPoint) {
                 fill="none"
                 xmlns="http://www.w3.org/2000/svg"
               >
-                <path d="M0 0H11V6L5.5 10L0 6V0Z" :fill="point.color ?? '#3b82f6'" />
+                <path
+                  d="M0 0H11V6L5.5 10L0 6V0Z"
+                  :fill="point.color ?? '#3b82f6'"
+                  :stroke="isMarkerSelected(point.id) ? '#ffffff' : 'transparent'"
+                  stroke-width="2.5"
+                  stroke-linejoin="round"
+                  vector-effect="non-scaling-stroke"
+                />
               </svg>
             </button>
           </UiTooltip>

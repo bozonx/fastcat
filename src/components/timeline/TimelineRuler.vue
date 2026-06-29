@@ -2,7 +2,7 @@
 import { watch, computed, ref } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
-import { isLayer1Active } from '~/utils/hotkeys/layerUtils';
+import { isLayer1Active, isLayer2Active } from '~/utils/hotkeys/layerUtils';
 import { useSelectionStore } from '~/stores/selection.store';
 import {
   truncateRulerTooltip,
@@ -179,6 +179,12 @@ function seekToMarker(markerId: string, e?: MouseEvent, part?: 'left' | 'right')
     return;
   }
 
+  // Layer-2 (default Ctrl) click selects the marker without moving the playhead.
+  // Selection itself already happened on pointerdown, so there is nothing else to do.
+  if (e && isLayer2Active(e, workspaceStore.userSettings)) {
+    return;
+  }
+
   const marker = markers.value.find((m) => m.id === markerId);
   if (!marker) return;
 
@@ -193,6 +199,18 @@ function seekToMarker(markerId: string, e?: MouseEvent, part?: 'left' | 'right')
   if (!e?.shiftKey) {
     selectionStore.selectTimelineMarker(markerId);
   }
+}
+
+// Layer-2 (default Ctrl) + drag on a zone marker's body moves the whole zone.
+// Without the modifier the event bubbles to the ruler (e.g. move playhead).
+function onZoneBodyPointerDown(event: PointerEvent, markerId: string) {
+  if (event.button !== 0) return;
+  if (!isLayer2Active(event, workspaceStore.userSettings)) return;
+
+  event.stopPropagation();
+  // Prevent the trailing ruler click (after a Ctrl+click without a drag) from seeking.
+  suppressNextRulerClickMarker.value = true;
+  onMarkerPointerDown(event, markerId, 'move');
 }
 
 function selectSelectionRange(e?: MouseEvent) {
@@ -449,9 +467,9 @@ function onMobilePointerUp() {
         :zone-marker-start-label="t('fastcat.timeline.zoneMarkerStart')"
         :zone-marker-end-label="t('fastcat.timeline.zoneMarkerEnd')"
         :is-mobile="isMobile"
-        @select-marker="selectMarker"
         @seek-to-marker="seekToMarker"
         @marker-pointerdown="onMarkerPointerDown"
+        @zone-body-pointerdown="onZoneBodyPointerDown"
         @select-selection-range="selectSelectionRange"
         @selection-range-pointerdown="startSelectionRangeDrag"
       />

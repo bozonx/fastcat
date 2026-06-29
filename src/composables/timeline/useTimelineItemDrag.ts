@@ -854,8 +854,11 @@ export function useTimelineItemDrag(
       settingsStore.frameSnapMode === 'frames' &&
       !dragIsFreeOverride.value &&
       !dragDisableFrameSnapOverride.value;
-    const enableClipSnapBase = settingsStore.toolbarSnapMode === 'snap';
-    const enableClipSnap = dragToggleSnapOverride.value ? !enableClipSnapBase : enableClipSnapBase;
+    const enableClipSnapBase =
+      !dragIsFreeOverride.value && settingsStore.toolbarSnapMode === 'snap';
+    const enableClipSnap =
+      !dragIsFreeOverride.value &&
+      (dragToggleSnapOverride.value ? !enableClipSnapBase : enableClipSnapBase);
     const snapThresholdPx = settingsStore.snapThresholdPx;
     const overlapMode = dragUsePseudoOverlapOverride.value ? 'pseudo' : 'none';
 

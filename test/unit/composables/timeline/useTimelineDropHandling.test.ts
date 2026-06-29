@@ -295,6 +295,42 @@ describe('useTimelineDropHandling', () => {
     expect(api.dragPreview.value?.startUs).toBe(2_000_000);
   });
 
+  it('uses transformed track coordinates for DnD preview without double-counting scrollLeft', async () => {
+    const trackEl = document.createElement('div');
+    trackEl.dataset.trackId = 'v1';
+    trackEl.getBoundingClientRect = () => ({ left: -120 }) as DOMRect;
+
+    const scrollEl = ref({
+      scrollLeft: 120,
+      getBoundingClientRect: () => ({ left: 0 }),
+    } as unknown as HTMLElement);
+    const { setDraggedFile } = useDraggedFile();
+    const api = useTimelineDropHandling({ scrollEl });
+
+    setDraggedFile({
+      name: 'new.mp4',
+      kind: 'file',
+      path: '_video/new.mp4',
+    });
+
+    await api.onTrackDragOver(
+      {
+        clientX: -96,
+        currentTarget: trackEl,
+        shiftKey: false,
+        ctrlKey: false,
+        altKey: false,
+        metaKey: false,
+        dataTransfer: {
+          types: ['application/json'],
+        },
+      } as unknown as DragEvent,
+      'v1',
+    );
+
+    expect(api.dragPreview.value?.startUs).toBe(2_000_000);
+  });
+
   it('imports external workspace file to project before creating clip on timeline', async () => {
     const scrollEl = ref({
       scrollLeft: 0,

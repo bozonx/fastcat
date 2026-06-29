@@ -42,7 +42,7 @@ describe('TimelineRulerOverlays', () => {
     isMobile: false,
   };
 
-  it('applies the correct outline classes for selected colored markers', async () => {
+  it('applies a visible SVG stroke for selected colored markers', async () => {
     const wrapper = await mountSuspended(TimelineRulerOverlays, {
       props: defaultProps,
       global: {
@@ -61,14 +61,9 @@ describe('TimelineRulerOverlays', () => {
     const marker1Btn = wrapper.find('button[aria-label="marker"]');
     expect(marker1Btn.exists()).toBe(true);
 
-    // It should have the correct outline classes
-    const classes = marker1Btn.classes();
-    expect(classes).toContain('outline-2');
-    expect(classes).toContain('-outline-offset-2');
-    expect(classes).toContain('outline-white');
-    expect(classes).toContain('focus:outline-2');
-    expect(classes).toContain('focus:-outline-offset-2');
-    expect(classes).toContain('focus:outline-white');
+    const pinShape = marker1Btn.find('path');
+    expect(pinShape.attributes('stroke')).toBe('#ffffff');
+    expect(pinShape.attributes('stroke-width')).toBe('2.5');
   });
 
   it('applies the default classes for unselected markers', async () => {
@@ -92,10 +87,8 @@ describe('TimelineRulerOverlays', () => {
     const zoneStartBtn = wrapper.find('button[aria-label="zone-start"]');
     expect(zoneStartBtn.exists()).toBe(true);
 
-    // It should have bg-primary-500 class and no outline classes
     const startClasses = zoneStartBtn.classes();
     expect(startClasses).toContain('bg-primary-500');
-    expect(startClasses).not.toContain('outline-2');
-    expect(startClasses).not.toContain('-outline-offset-2');
+    expect(zoneStartBtn.find('path').attributes('stroke')).toBe('transparent');
   });
 });

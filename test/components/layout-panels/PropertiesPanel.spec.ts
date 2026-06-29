@@ -21,9 +21,18 @@ vi.mock('~/components/properties/ClipProperties.vue', () => ({
   },
 }));
 
+vi.mock('~/components/properties/MultiMarkerProperties.vue', () => ({
+  default: {
+    name: 'MultiMarkerProperties',
+    props: ['markerIds'],
+    template: '<div data-testid="multi-marker-properties">{{ markerIds.join(",") }}</div>',
+  },
+}));
+
 const timelineStore = reactive({
   timelineDoc: null,
   timelineFormat: { fps: 30 },
+  markers: [],
   clearSelection: vi.fn(),
   selectTrack: vi.fn(),
 });
@@ -124,6 +133,7 @@ describe('PropertiesPanel', () => {
           FileProperties: true,
           MultiFileProperties: true,
           MarkerProperties: true,
+          MultiMarkerProperties: true,
           SelectionRangeProperties: true,
           TimelineProperties: true,
           ProjectEffectProperties: true,
@@ -158,6 +168,7 @@ describe('PropertiesPanel', () => {
           FileProperties: true,
           MultiFileProperties: true,
           MarkerProperties: true,
+          MultiMarkerProperties: true,
           SelectionRangeProperties: true,
           TimelineProperties: true,
           ProjectEffectProperties: true,
@@ -227,6 +238,29 @@ describe('PropertiesPanel', () => {
 
     const headerTitle = wrapper.find('.ml-2.text-xs');
     expect(headerTitle.text()).toBe('fastcat.timeline.groupSelectedClipsCount');
+  });
+
+  it('shows multi-marker properties for marker multi-selection', async () => {
+    selectionStore.selectedEntity = {
+      source: 'timeline',
+      kind: 'markers',
+      markerIds: ['m1', 'm2'],
+    };
+
+    const wrapper = await mountSuspended(PropertiesPanel, {
+      global: {
+        stubs: {
+          UiButtonGroup: true,
+          FileDeleteConfirmModal: true,
+          UIcon: true,
+        },
+      },
+    });
+
+    await nextTick();
+
+    expect(wrapper.find('[data-testid="multi-marker-properties"]').text()).toBe('m1,m2');
+    expect(wrapper.find('.ml-2.text-xs').text()).toBe('fastcat.timeline.selectedMarkersCount');
   });
 
   it('updates clip prop reactively when timelineDoc clip properties change', async () => {

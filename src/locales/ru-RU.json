@@ -875,6 +875,7 @@
       "rippleTrimRight": "Обрезать справа со сдвигом",
       "rippleTrimSelection": "Удалить выделение со сдвигом",
       "selectedClipsCount": "Выделено {count} клипов",
+      "selectedMarkersCount": "Выделено {count} маркеров",
       "groupSelectedClipsCount": "Группа ({count} клипов)",
       "selectionEndHandle": "Конец области выделения",
       "selectionRange": "Область выделения",

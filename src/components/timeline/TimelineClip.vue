@@ -833,8 +833,6 @@ function handleTransitionCreate(
           :is-media-missing="isMediaMissing"
           :is-unsupported="isUnsupported"
           :clip-width-px="clipWidthPx"
-          :clip-left-px="clipLeftPx"
-          :scroll-left="scrollLeft"
         />
 
         <!-- Dotted pattern overlay for muted clips -->

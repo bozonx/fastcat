@@ -21,6 +21,7 @@ import FileProperties from '~/components/properties/FileProperties.vue';
 import MultiFileProperties from '~/components/properties/MultiFileProperties.vue';
 import MultiClipProperties from '~/components/properties/MultiClipProperties.vue';
 import MarkerProperties from '~/components/properties/MarkerProperties.vue';
+import MultiMarkerProperties from '~/components/properties/MultiMarkerProperties.vue';
 import SelectionRangeProperties from '~/components/properties/SelectionRangeProperties.vue';
 import TimelineProperties from '~/components/properties/TimelineProperties.vue';
 import ProjectEffectProperties from '~/components/properties/ProjectEffectProperties.vue';
@@ -139,6 +140,12 @@ const selectedMarkerId = computed<string | null>(() => {
   return null;
 });
 
+const selectedMarkerIds = computed<string[] | null>(() => {
+  const entity = props.entity !== undefined ? props.entity : selectionStore.selectedEntity;
+  if (entity?.source === 'timeline' && entity.kind === 'markers') return entity.markerIds;
+  return null;
+});
+
 const activeEntity = computed(() => {
   return props.entity !== undefined ? props.entity : selectionStore.selectedEntity;
 });
@@ -192,6 +199,7 @@ const displayMode = computed<
   | 'file'
   | 'files'
   | 'marker'
+  | 'markers'
   | 'selection-range'
   | 'timeline'
   | 'project-effect'
@@ -211,6 +219,7 @@ const displayMode = computed<
   if (entity?.source === 'project' && entity.kind === 'transition') return 'project-transition';
   if (entity?.source === 'project' && entity.kind === 'library-item') return 'project-library-item';
   if (entity?.source === 'timeline' && entity.kind === 'marker') return 'marker';
+  if (entity?.source === 'timeline' && entity.kind === 'markers') return 'markers';
   if (entity?.source === 'fileManager' && (entity.kind === 'file' || entity.kind === 'directory'))
     return 'file';
   if (entity?.source === 'fileManager' && entity.kind === 'multiple') return 'files';
@@ -359,6 +368,9 @@ const headerTitle = computed(() => {
   if (displayMode.value === 'marker') {
     return isSelectedMarkerZone.value ? t('fastcat.marker.zoneMarker') : t('fastcat.marker.title');
   }
+  if (displayMode.value === 'markers' && selectedMarkerIds.value) {
+    return t('fastcat.timeline.selectedMarkersCount', { count: selectedMarkerIds.value.length });
+  }
   if (displayMode.value === 'selection-range') return t('fastcat.timeline.selectionRange');
   if (displayMode.value === 'clips') {
     if (selectedClipsAreSingleGroup.value && selectedClips.value) {
@@ -486,6 +498,10 @@ const headerTitle = computed(() => {
       <MarkerProperties
         v-else-if="displayMode === 'marker' && selectedMarkerId"
         v-model:marker-id="selectedMarkerId"
+      />
+      <MultiMarkerProperties
+        v-else-if="displayMode === 'markers' && selectedMarkerIds"
+        :marker-ids="selectedMarkerIds"
       />
       <SelectionRangeProperties v-else-if="displayMode === 'selection-range'" />
       <TimelineProperties v-else-if="displayMode === 'timeline'" :fs-entry="selectedFsEntry" />

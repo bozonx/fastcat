@@ -875,6 +875,7 @@
       "rippleTrimRight": "Ripple trim right",
       "rippleTrimSelection": "Ripple trim selection",
       "selectedClipsCount": "Selected {count} clips",
+      "selectedMarkersCount": "Selected {count} markers",
       "groupSelectedClipsCount": "Group ({count} clips)",
       "selectionEndHandle": "Selection end handle",
       "selectionRange": "Selection Range",

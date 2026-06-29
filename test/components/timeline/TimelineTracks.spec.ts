@@ -753,4 +753,39 @@ describe('TimelineTracks', () => {
     expect(component.vm.autoMontageModal).not.toBeNull();
     expect(component.vm.autoMontageModal?.open).toBe(true);
   });
+
+  it('renders track-level mute icon overlay when a track is muted', async () => {
+    const component = await mountSuspended(TimelineTracks, {
+      props: {
+        ...defaultProps,
+        tracks: [
+          {
+            id: 'track-1',
+            kind: 'video',
+            audioMuted: true,
+            items: [],
+          },
+          {
+            id: 'track-2',
+            kind: 'audio',
+            audioMuted: false,
+            items: [],
+          },
+        ],
+      },
+    });
+
+    const muteOverlay1 = component.find('[data-mute-overlay-id="track-1"]');
+    const muteOverlay2 = component.find('[data-mute-overlay-id="track-2"]');
+
+    expect(muteOverlay1.exists()).toBe(true);
+    expect(muteOverlay2.exists()).toBe(true);
+
+    const icon1 = muteOverlay1.findComponent('.icon-mock');
+    const icon2 = muteOverlay2.findComponent('.icon-mock');
+
+    expect(icon1.exists()).toBe(true);
+    expect(icon1.props('name')).toBe('i-heroicons-speaker-x-mark');
+    expect(icon2.exists()).toBe(false);
+  });
 });

@@ -345,6 +345,40 @@ const {
   applyClipParameters,
 } = useTimelinePasteParameters(() => props.tracks);
 
+const trackTops = computed(() => {
+  const tops: Record<string, number> = {};
+  let currentTop = 0;
+  for (const track of props.tracks) {
+    tops[track.id] = currentTop;
+    currentTop += props.trackHeights[track.id] ?? 40;
+  }
+  return tops;
+});
+
+function getTrackMuteOverlayStyle(track: TimelineTrack) {
+  const top = trackTops.value[track.id] ?? 0;
+  const height = props.trackHeights[track.id] ?? 40;
+  return {
+    top: `${top}px`,
+    height: `${height}px`,
+  };
+}
+
+function getMuteIconPositionStyle() {
+  const scrollLeft = props.scrollLeft ?? 0;
+  const padding = 8;
+  if (props.isMobile) {
+    return {
+      position: 'sticky' as const,
+      left: `${padding}px`,
+    };
+  }
+  return {
+    position: 'absolute' as const,
+    left: `${scrollLeft + padding}px`,
+  };
+}
+
 defineOptions({
   inheritAttrs: false,
 });
@@ -563,6 +597,30 @@ watch(
           />
         </template>
       </div>
+
+      <!-- Mute Overlays for Muted Tracks -->
+      <div class="absolute inset-y-0 left-0 right-0 pointer-events-none z-30 overflow-hidden">
+        <div
+          v-for="track in tracks"
+          :key="'mute-overlay-' + track.id"
+          :data-mute-overlay-id="track.id"
+          class="absolute left-0 right-0 pointer-events-none"
+          :style="getTrackMuteOverlayStyle(track)"
+        >
+          <div
+            v-if="track.audioMuted"
+            class="absolute top-1/2 -translate-y-1/2 pointer-events-none"
+            :style="getMuteIconPositionStyle()"
+          >
+            <div
+              class="bg-black/60 rounded-full p-1.5 text-white/50 backdrop-blur-xs flex items-center justify-center w-7 h-7"
+            >
+              <UIcon name="i-heroicons-speaker-x-mark" class="w-4 h-4" />
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div class="w-full flex-1 min-h-7" @click="timelineStore.selectTrack(null)" />
       <div class="h-16 shrink-0" />
     </div>
