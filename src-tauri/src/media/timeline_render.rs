@@ -20,6 +20,20 @@ struct RasterBuild {
     source_rotation: i32,
 }
 
+/// Per-frame decode trace for diagnosing export stutter at clip boundaries. Gated
+/// behind `FASTCAT_EXPORT_DECODE_TRACE=1` so it costs nothing on normal exports.
+/// When a returned PTS stays constant while the requested time advances, the export
+/// is holding a single source frame (visible as an fps drop) — usually a content gap
+/// after seeking into a different source.
+fn export_decode_trace_enabled() -> bool {
+    static FLAG: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+    *FLAG.get_or_init(|| {
+        std::env::var("FASTCAT_EXPORT_DECODE_TRACE")
+            .map(|v| v == "1" || v.eq_ignore_ascii_case("true"))
+            .unwrap_or(false)
+    })
+}
+
 /// A decoded RGBA frame produced for export. Cheap to clone: the pixel buffer is
 /// shared via `Arc`, so holding/reusing the last frame costs a refcount bump.
 #[derive(Clone)]
@@ -41,8 +55,17 @@ struct CachedDecoder {
     decoder: Box<dyn VideoDecoder>,
     rotation: i32,
     fps: f64,
+    /// Source frame currently "active" at the last requested time (latest PTS that
+    /// is <= the target). Held and re-emitted until the target crosses into the
+    /// next source frame.
     last: Option<ExportFrame>,
+    /// One frame decoded past `last` whose PTS is still in the future relative to
+    /// the last target. Kept so we only pull a new frame once the target actually
+    /// reaches it — the core of the sample-and-hold cadence.
+    pending: Option<ExportFrame>,
     max_output_long_edge: Option<u32>,
+    /// Source path, kept only so the decode trace can name the file.
+    trace_path: PathBuf,
 }
 
 #[derive(Clone)]
@@ -56,35 +79,67 @@ impl CachedDecoder {
     /// decoding every intermediate frame.
     const MAX_SEQUENTIAL_GAP_SEC: f64 = 2.0;
 
+    /// Returns the source frame that is *displayed* at `time_sec`: the latest frame
+    /// whose PTS is at or before the target (classic sample-and-hold), advancing the
+    /// decoder by exactly the frames the target has crossed since the last call.
+    ///
+    /// Export samples the CENTRE of each output interval (`(i+0.5)/fps`), so the
+    /// target sits ~half a source frame away from any source-frame boundary. Matching
+    /// on `pts <= target` therefore never lands on the equality knife-edge that the
+    /// previous `pts >= target - half_frame` test did — that test made a 25→25 fps
+    /// export flip between dropping and duplicating frames depending only on where a
+    /// cut's seek happened to land (a phase-dependent, multi-second fps dip after
+    /// some clip boundaries). Genuine rate changes still drop/duplicate, but evenly.
     fn frame_at(&mut self, time_sec: f64) -> Result<ExportFrame> {
         let fps = if self.fps.is_finite() && self.fps > 0.0 {
             self.fps
         } else {
             30.0
         };
-        let tol = 0.5 / fps;
+        // A frame whose PTS is within this slack of the target counts as already on
+        // screen, absorbing float error so a frame landing on the exact sample
+        // instant isn't deferred a frame (which would desync the cadence). Far below
+        // half a frame, so it can never pull in the *next* source frame early.
+        let match_eps = 0.01 / fps;
+        // Ignore sub-frame backward jitter before paying for a re-seek.
+        let back_tol = 0.5 / fps;
 
+        let trace = export_decode_trace_enabled();
         let need_seek = match &self.last {
-            None => true,
+            None => self.pending.is_none(),
             Some(last) => {
-                time_sec < last.pts_sec - tol
+                time_sec < last.pts_sec - back_tol
                     || time_sec - last.pts_sec > Self::MAX_SEQUENTIAL_GAP_SEC
             }
         };
         if need_seek {
+            if trace {
+                log::info!(
+                    "[export-decode-trace] SEEK    {} want={:.4} last={:?}",
+                    self.trace_path.display(),
+                    time_sec,
+                    self.last.as_ref().map(|l| (l.pts_sec * 1e4).round() / 1e4),
+                );
+            }
             self.decoder.seek(time_sec)?;
             self.last = None;
-        } else if let Some(last) = &self.last {
-            // Target hasn't advanced past the frame we already hold — reuse it
-            // (e.g. export fps higher than source fps, or a freeze frame).
-            if last.pts_sec >= time_sec - tol {
-                return Ok(last.clone());
-            }
+            self.pending = None;
         }
 
+        let mut decoded_count: u32 = 0;
         loop {
+            // Promote an already-decoded look-ahead frame once the target reaches it.
+            if let Some(pending) = &self.pending {
+                if pending.pts_sec <= time_sec + match_eps {
+                    self.last = self.pending.take();
+                    continue;
+                }
+                // Look-ahead frame is still in the future: hold the current frame.
+                break;
+            }
             match self.decoder.next_frame()? {
                 Some(mut frame) => {
+                    decoded_count += 1;
                     // VideoFrame implements Drop (texture pooling), so move pixels out
                     // via take rather than a field move.
                     let ef = ExportFrame {
@@ -93,21 +148,39 @@ impl CachedDecoder {
                         pts_sec: frame.pts_sec,
                         pixels: Arc::new(std::mem::take(&mut frame.pixels)),
                     };
-                    let reached = ef.pts_sec >= time_sec - tol;
-                    self.last = Some(ef.clone());
-                    if reached {
-                        return Ok(ef);
+                    if ef.pts_sec <= time_sec + match_eps {
+                        // Still at or before the target: this becomes the active frame.
+                        self.last = Some(ef);
+                    } else {
+                        // Overshot the target: stash for a later call and stop.
+                        self.pending = Some(ef);
+                        break;
                     }
                 }
-                None => {
-                    // EOF (e.g. target rounded just past the source end): hold the
-                    // last decoded frame rather than aborting the whole export.
-                    if let Some(last) = &self.last {
-                        return Ok(last.clone());
-                    }
-                    return Err(anyhow!("video decoder returned no frame"));
-                }
+                None => break, // EOF: hold the last frame we decoded.
             }
+        }
+
+        // Before the first decodable frame (target precedes the stream), fall back to
+        // the earliest frame we have so a clip never renders empty.
+        if self.last.is_none() {
+            self.last = self.pending.take();
+        }
+        match &self.last {
+            Some(ef) => {
+                if trace {
+                    log::info!(
+                        "[export-decode-trace] FRAME   {} want={:.4} got={:.4} ahead={:.4} decoded={}",
+                        self.trace_path.display(),
+                        time_sec,
+                        ef.pts_sec,
+                        ef.pts_sec - time_sec,
+                        decoded_count,
+                    );
+                }
+                Ok(ef.clone())
+            }
+            None => Err(anyhow!("video decoder returned no frame")),
         }
     }
 }
@@ -187,7 +260,9 @@ impl VideoDecoderCache {
                     rotation,
                     fps,
                     last: None,
+                    pending: None,
                     max_output_long_edge,
+                    trace_path: path_buf.clone(),
                 },
             );
         }
@@ -569,6 +644,138 @@ pub fn encode_rgba_as_webp(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::media::decode::{MediaInfo, VideoFrame};
+
+    /// Emits frames on a fixed fps grid (`phase + k/fps`). `seek` mimics ffmpeg-next's
+    /// frame-accurate seek: it positions so the next frame is the first one within
+    /// half a frame of the target.
+    struct GridDecoder {
+        info: MediaInfo,
+        times: Vec<f64>,
+        cursor: usize,
+    }
+
+    impl GridDecoder {
+        fn new(fps: f64, phase: f64, count: usize) -> Self {
+            let times = (0..count).map(|k| phase + k as f64 / fps).collect();
+            Self {
+                info: MediaInfo {
+                    duration_sec: count as f64 / fps,
+                    width: 2,
+                    height: 2,
+                    rotation: 0,
+                    fps,
+                    codec: "h264".into(),
+                    has_audio: false,
+                    start_time_sec: 0.0,
+                    is_hdr: false,
+                },
+                times,
+                cursor: 0,
+            }
+        }
+    }
+
+    impl VideoDecoder for GridDecoder {
+        fn info(&self) -> &MediaInfo {
+            &self.info
+        }
+        fn seek(&mut self, time_sec: f64) -> Result<()> {
+            let tol = 0.5 / self.info.fps;
+            self.cursor = self
+                .times
+                .iter()
+                .position(|&p| p >= time_sec - tol)
+                .unwrap_or(self.times.len());
+            Ok(())
+        }
+        fn next_frame(&mut self) -> Result<Option<VideoFrame>> {
+            if self.cursor >= self.times.len() {
+                return Ok(None);
+            }
+            let pts_sec = self.times[self.cursor];
+            self.cursor += 1;
+            Ok(Some(VideoFrame {
+                width: 2,
+                height: 2,
+                pixels: vec![0u8; 16],
+                yuv: None,
+                pts_sec,
+                texture: None,
+            }))
+        }
+    }
+
+    fn cached(decoder: GridDecoder) -> CachedDecoder {
+        let fps = decoder.info.fps;
+        CachedDecoder {
+            decoder: Box::new(decoder),
+            rotation: 0,
+            fps,
+            last: None,
+            pending: None,
+            max_output_long_edge: None,
+            trace_path: PathBuf::from("test"),
+        }
+    }
+
+    /// Drives `frame_at` over an export at `export_fps` and returns the source PTS
+    /// of each emitted frame (centre sampling, `start + (i+0.5)/export_fps`).
+    fn emit_pts(mut cd: CachedDecoder, export_fps: f64, start: f64, frames: usize) -> Vec<f64> {
+        (0..frames)
+            .map(|i| {
+                let t = start + (i as f64 + 0.5) / export_fps;
+                cd.frame_at(t).unwrap().pts_sec
+            })
+            .collect()
+    }
+
+    #[test]
+    fn matched_fps_export_is_one_to_one_for_every_phase() {
+        // 25fps source exported at 25fps must advance exactly one source frame per
+        // output frame — no duplicates, no drops — regardless of how the source grid
+        // is phased against the sample grid. The pathological phase (source frames on
+        // 0.00/0.04/... while the sample grid lands on the boundaries) is exactly the
+        // "bad" clip-boundary case the old half-frame-tolerance match juddered on.
+        for &phase in &[0.0, 0.01, 0.02, 0.019, 0.021, 0.0333] {
+            let pts = emit_pts(cached(GridDecoder::new(25.0, phase, 400)), 25.0, 0.0, 200);
+            // Skip the first frame (seek landing is allowed a half-frame of slack).
+            for w in pts[1..].windows(2) {
+                let delta = w[1] - w[0];
+                assert!(
+                    (delta - 1.0 / 25.0).abs() < 1e-6,
+                    "phase {phase}: expected 1:1 cadence, got delta {delta} between {} and {}",
+                    w[0],
+                    w[1],
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn upsampling_duplicates_evenly_and_downsampling_drops_evenly() {
+        // 25fps source at 50fps export: each source frame shows for exactly two output
+        // frames (delta alternates 0 / one source frame), never three.
+        let up = emit_pts(cached(GridDecoder::new(25.0, 0.0, 200)), 50.0, 0.0, 100);
+        for w in up[1..].windows(2) {
+            let delta = w[1] - w[0];
+            assert!(
+                delta < 1.0 / 25.0 + 1e-6,
+                "upsample should never advance more than one source frame, got {delta}"
+            );
+        }
+        assert!(up.windows(2).any(|w| (w[1] - w[0]).abs() < 1e-9), "expected some holds");
+
+        // 50fps source at 25fps export: every other source frame is dropped, evenly.
+        let down = emit_pts(cached(GridDecoder::new(50.0, 0.0, 400)), 25.0, 0.0, 100);
+        for w in down[1..].windows(2) {
+            let delta = w[1] - w[0];
+            assert!(
+                (delta - 1.0 / 25.0).abs() < 1e-6,
+                "downsample to 25fps should advance one output-frame interval, got {delta}"
+            );
+        }
+    }
 
     #[test]
     fn test_decoder_cache_new_has_default_capacity() {
