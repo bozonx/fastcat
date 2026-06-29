@@ -5,6 +5,7 @@ import { useTimelineStore } from '~/stores/timeline.store';
 import { useSelectionStore } from '~/stores/selection.store';
 import { useProjectStore } from '~/stores/project.store';
 import { timeUsToPx } from '~/utils/timeline/geometry';
+import { isTimelinePerfEnabled, sampleTimeline, flushTimelineSamples } from '~/utils/timeline/perf';
 
 export function useTimelineMarquee(
   containerRef: Ref<HTMLElement | null>,
@@ -61,6 +62,8 @@ export function useTimelineMarquee(
   function updateLiveMarqueeSelection() {
     if (!isMarqueeSelecting.value) return;
 
+    const perfStart = isTimelinePerfEnabled() ? performance.now() : 0;
+
     const left = Math.min(marqueeStart.value.x, marqueeCurrent.value.x);
     const right = Math.max(marqueeStart.value.x, marqueeCurrent.value.x);
     const top = Math.min(marqueeStart.value.y, marqueeCurrent.value.y);
@@ -101,6 +104,8 @@ export function useTimelineMarquee(
       timelineStore.clearSelection();
       selectionStore.clearSelection();
     }
+
+    if (perfStart) sampleTimeline('marquee.updateLiveSelection', performance.now() - perfStart);
   }
 
   function startMarquee(e: PointerEvent, onClick?: () => void) {
@@ -138,6 +143,7 @@ export function useTimelineMarquee(
       if (didMove) {
         isMarqueeSelecting.value = false;
         updateLiveMarqueeSelection();
+        flushTimelineSamples('marquee.updateLiveSelection');
       } else if (onClick) {
         onClick();
       }

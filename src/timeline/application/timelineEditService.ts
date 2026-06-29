@@ -238,7 +238,13 @@ export function createTimelineEditService(deps: TimelineEditServiceDeps) {
     const afterDelete = deps.getDoc();
     if (!afterDelete) return null;
 
-    const moveCmds: TimelineCommand[] = [];
+    // Collapse every downstream shift into a SINGLE `move_items` command. Emitting
+    // one `move_item` per clip made the ripple O(clips²) — each command rebuilt the
+    // whole document, so a cut with N trailing clips paid N full-doc rebuilds (the
+    // measured ~291ms/187-command batch). `move_items` applies all shifts in one
+    // rebuild. `ignoreLinks` mirrors the established `rippleTrimRight` path: every
+    // affected clip is enumerated explicitly, so link-following is unnecessary.
+    const moves: Extract<TimelineCommand, { type: 'move_items' }>['moves'] = [];
     for (const track of afterDelete.tracks) {
       if (!trackIdSet.has(track.id)) continue;
       if (track.locked) continue;
@@ -255,19 +261,20 @@ export function createTimelineEditService(deps: TimelineEditServiceDeps) {
           // Clamp to startUs so a clip that straddles the right edge by a few µs
           // (sub-frame split residue) does not overlap the pre-cut region.
           const nextStart = Math.max(startUs, clipStart - deltaUs);
-          moveCmds.push({
-            type: 'move_item',
-            trackId: track.id,
+          moves.push({
+            fromTrackId: track.id,
+            toTrackId: track.id,
             itemId: clip.id,
             startUs: nextStart,
-            // Quantize so the ripple keeps clips on frame boundaries.
-            quantizeToFrames: true,
           });
         }
       }
     }
-    if (moveCmds.length > 0) {
-      deps.batchApplyTimeline(moveCmds, internalBatchOptions);
+    if (moves.length > 0) {
+      deps.batchApplyTimeline(
+        [{ type: 'move_items', moves, quantizeToFrames: true, ignoreLinks: true }],
+        internalBatchOptions,
+      );
     }
 
     // Phase 4: update markers in the same way the clips were moved.

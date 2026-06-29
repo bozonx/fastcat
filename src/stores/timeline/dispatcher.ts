@@ -10,10 +10,18 @@ import type {
   TimelineApplyWithHistoryOptions,
 } from '~/timeline/apply-options';
 import { TIMELINE_MULTIPLE_ACTIONS_LABEL_KEY } from './history-labels';
+import { isTimelinePerfEnabled, markTimeline } from '~/utils/timeline/perf';
 
 import type { TimelineHydrationModule } from './hydration';
 import type { TimelineHistoryDebounceModule } from './history-debounce';
 const log = createDevLogger('dispatcher');
+
+function countClips(doc: TimelineDocument | null): number {
+  if (!doc) return 0;
+  let n = 0;
+  for (const track of doc.tracks) n += track.items.length;
+  return n;
+}
 
 export interface TimelineDispatcherDeps {
   timelineDoc: Ref<TimelineDocument | null>;
@@ -61,6 +69,9 @@ export function createTimelineDispatcherModule(
       deps.timelineDoc.value = deps.createFallbackTimelineDoc();
     }
 
+    const perfOn = isTimelinePerfEnabled();
+    const tStart = perfOn ? performance.now() : 0;
+
     const prev = deps.timelineDoc.value;
     const hydrated = deps.hydration.hydrateClipSourceDuration(deps.timelineDoc.value, cmd);
     let next: TimelineDocument;
@@ -87,9 +98,12 @@ export function createTimelineDispatcherModule(
 
     if (next === prev) return [];
 
+    const tApplied = perfOn ? performance.now() : 0;
+
     if (!options?.skipHistory) {
       deps.historyDebounce.pushHistory(cmd, prev, options);
     }
+    const tHistory = perfOn ? performance.now() : 0;
 
     deps.timelineDoc.value = next;
     const nextDuration = selectTimelineDurationUs(next);
@@ -110,6 +124,16 @@ export function createTimelineDispatcherModule(
       void deps.requestTimelineSave();
     }
 
+    if (perfOn) {
+      const tEnd = performance.now();
+      markTimeline(
+        `applyTimeline[${cmd.type}]`,
+        tEnd - tStart,
+        `clips=${countClips(next)}, apply=${(tApplied - tStart).toFixed(1)}ms, ` +
+          `history=${(tHistory - tApplied).toFixed(1)}ms, commit=${(tEnd - tHistory).toFixed(1)}ms`,
+      );
+    }
+
     return createdItemIds ?? [];
   }
 
@@ -123,6 +147,9 @@ export function createTimelineDispatcherModule(
     if (!deps.timelineDoc.value) {
       deps.timelineDoc.value = deps.createFallbackTimelineDoc();
     }
+
+    const perfOn = isTimelinePerfEnabled();
+    const tStart = perfOn ? performance.now() : 0;
 
     const prev = deps.timelineDoc.value;
     let current = prev;
@@ -161,6 +188,8 @@ export function createTimelineDispatcherModule(
 
     if (batchFailed || current === prev) return [];
 
+    const tApplied = perfOn ? performance.now() : 0;
+
     if (!options?.skipHistory) {
       deps.historyDebounce.pushHistory(cmds[0]!, prev, {
         ...options,
@@ -169,6 +198,7 @@ export function createTimelineDispatcherModule(
           options?.labelKey ?? (cmds.length > 1 ? TIMELINE_MULTIPLE_ACTIONS_LABEL_KEY : undefined),
       });
     }
+    const tHistory = perfOn ? performance.now() : 0;
 
     deps.timelineDoc.value = current;
     const nextDuration = selectTimelineDurationUs(current);
@@ -187,6 +217,16 @@ export function createTimelineDispatcherModule(
       void deps.requestTimelineSave({ immediate: true });
     } else if (saveMode === 'debounced') {
       void deps.requestTimelineSave();
+    }
+
+    if (perfOn) {
+      const tEnd = performance.now();
+      markTimeline(
+        `batchApplyTimeline[${cmds.length}]`,
+        tEnd - tStart,
+        `clips=${countClips(current)}, apply=${(tApplied - tStart).toFixed(1)}ms, ` +
+          `history=${(tHistory - tApplied).toFixed(1)}ms, commit=${(tEnd - tHistory).toFixed(1)}ms`,
+      );
     }
 
     return allCreatedItemIds;

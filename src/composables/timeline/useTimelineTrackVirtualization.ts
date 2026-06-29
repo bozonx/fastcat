@@ -10,6 +10,7 @@ import {
   type TrackVisibilityIndexEntry,
 } from '~/utils/timeline/track-virtualization';
 import { createDevLogger } from '~/utils/dev-logger';
+import { measureTimeline, isTimelinePerfEnabled } from '~/utils/timeline/perf';
 
 const OVERSCAN_PX = 480;
 const DEFAULT_TRACK_HEIGHT = 40;
@@ -47,30 +48,47 @@ export interface TrackVirtualizationDeps {
  */
 export function useTimelineTrackVirtualization(deps: TrackVirtualizationDeps) {
   /** Pre-calculate pixel geometries for items to avoid recomputing per scroll/render frame. */
-  const itemGeometries = computed(() => {
-    const zoom = deps.zoom();
-    const map = new Map<string, ItemGeometry>();
-    for (const track of deps.tracks()) {
-      for (const item of track.items) {
-        const geometry = timelineRangeToRoundedPx(item.timelineRange, zoom, 2);
-        map.set(item.id, {
-          startPx: geometry.leftPx,
-          widthPx: geometry.widthPx,
-          endPx: geometry.endPx,
-        });
-      }
-    }
-    return map;
-  });
+  const itemGeometries = computed(() =>
+    measureTimeline(
+      'virt.itemGeometries',
+      () => {
+        const zoom = deps.zoom();
+        const map = new Map<string, ItemGeometry>();
+        for (const track of deps.tracks()) {
+          for (const item of track.items) {
+            const geometry = timelineRangeToRoundedPx(item.timelineRange, zoom, 2);
+            map.set(item.id, {
+              startPx: geometry.leftPx,
+              widthPx: geometry.widthPx,
+              endPx: geometry.endPx,
+            });
+          }
+        }
+        return map;
+      },
+      { minMs: 1, extra: () => `items=${itemGeometriesSize}` },
+    ),
+  );
 
-  const trackVisibilityIndexByTrack = computed<Record<string, TrackVisibilityIndexEntry>>(() => {
-    const result: Record<string, TrackVisibilityIndexEntry> = {};
-    const geos = itemGeometries.value;
-    for (const track of deps.tracks()) {
-      result[track.id] = buildTrackVisibilityIndex(track.items, geos);
-    }
-    return result;
-  });
+  // Tracked outside the closure purely so the `extra` log can report the size
+  // without re-walking the map.
+  let itemGeometriesSize = 0;
+
+  const trackVisibilityIndexByTrack = computed<Record<string, TrackVisibilityIndexEntry>>(() =>
+    measureTimeline(
+      'virt.visibilityIndex',
+      () => {
+        const result: Record<string, TrackVisibilityIndexEntry> = {};
+        const geos = itemGeometries.value;
+        itemGeometriesSize = geos.size;
+        for (const track of deps.tracks()) {
+          result[track.id] = buildTrackVisibilityIndex(track.items, geos);
+        }
+        return result;
+      },
+      { minMs: 1 },
+    ),
+  );
 
   const visibleStartPx = computed(() => Math.max(0, deps.scrollLeft() - OVERSCAN_PX));
   const visibleEndPx = computed(() => {
@@ -79,27 +97,33 @@ export function useTimelineTrackVirtualization(deps: TrackVirtualizationDeps) {
     return deps.scrollLeft() + vw + OVERSCAN_PX;
   });
 
-  const visibleItemsByTrack = computed(() => {
-    const result: Record<string, TimelineTrackItem[]> = {};
-    const vStart = visibleStartPx.value;
-    const vEnd = visibleEndPx.value;
-    const geos = itemGeometries.value;
-    const visibilityIndexByTrack = trackVisibilityIndexByTrack.value;
+  const visibleItemsByTrack = computed(() =>
+    measureTimeline(
+      'virt.visibleItems',
+      () => {
+        const result: Record<string, TimelineTrackItem[]> = {};
+        const vStart = visibleStartPx.value;
+        const vEnd = visibleEndPx.value;
+        const geos = itemGeometries.value;
+        const visibilityIndexByTrack = trackVisibilityIndexByTrack.value;
 
-    for (const track of deps.tracks()) {
-      result[track.id] = selectVisibleItems({
-        items: track.items,
-        geometries: geos,
-        index: visibilityIndexByTrack[track.id],
-        visibleStartPx: vStart,
-        visibleEndPx: vEnd,
-      });
-    }
-    return result;
-  });
+        for (const track of deps.tracks()) {
+          result[track.id] = selectVisibleItems({
+            items: track.items,
+            geometries: geos,
+            index: visibilityIndexByTrack[track.id],
+            visibleStartPx: vStart,
+            visibleEndPx: vEnd,
+          });
+        }
+        return result;
+      },
+      { minMs: 1 },
+    ),
+  );
 
   const trackViewModels = computed(() => {
-    const perf = isVirtPerfEnabled() ? performance.now() : 0;
+    const perf = isVirtPerfEnabled() || isTimelinePerfEnabled() ? performance.now() : 0;
     const hoveredTrackId = deps.hoveredTrackId();
     const visibleItemsMap = visibleItemsByTrack.value;
     const trackHeights = deps.trackHeights();

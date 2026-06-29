@@ -116,11 +116,17 @@ describe('TimelineEditService', () => {
       );
       expect(deleteCalls.length).toBeGreaterThanOrEqual(1);
 
-      // Phase 3: Move
+      // Phase 3: Move. Downstream clips are shifted with a single `move_items`
+      // command (one doc rebuild) rather than one `move_item` per clip — see the
+      // O(clips²) ripple fix in timelineEditService.
       const moveCalls = deps.batchApplyTimeline.mock.calls.filter((c) =>
-        c[0].some((cmd: TimelineCommand) => cmd.type === 'move_item'),
+        c[0].some((cmd: TimelineCommand) => cmd.type === 'move_items'),
       );
       expect(moveCalls.length).toBeGreaterThanOrEqual(1);
+      const moveItemsCmd = moveCalls
+        .flatMap((c) => c[0])
+        .find((cmd: TimelineCommand) => cmd.type === 'move_items');
+      expect(moveItemsCmd?.moves.length).toBeGreaterThanOrEqual(1);
     });
 
     it('writes a single history entry for all internal phases', () => {

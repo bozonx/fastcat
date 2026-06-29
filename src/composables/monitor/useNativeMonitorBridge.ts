@@ -15,6 +15,7 @@ import { useProxyStore } from '~/stores/proxy.store';
 import type { TimelineDocument, TimelineTrack } from '~/timeline/types';
 import { createDevLogger } from '~/utils/dev-logger';
 import { isTauriRuntime } from '~/utils/runtime';
+import { isTimelinePerfEnabled, markTimeline } from '~/utils/timeline/perf';
 import { buildNativeMonitorScene, type NativeMonitorScene } from '~/utils/native-monitor-scene';
 import {
   isNativeMonitorDisabled,
@@ -434,6 +435,7 @@ export function useNativeMonitorBridge(): void {
   // Manual seek (когда не подавлено апдейтом от натива).
   let seekThrottleId: ReturnType<typeof setTimeout> | null = null;
   let pendingSeekTimeSec = 0;
+  let lastSeekTimeSec = 0;
 
   watch(
     () => timelineStore.currentTime,
@@ -481,9 +483,25 @@ export function useNativeMonitorBridge(): void {
       }
       seekThrottleId = setTimeout(() => {
         seekThrottleId = null;
-        void nativeMonitorIpc.seek(pendingSeekTimeSec).catch((err) => {
-          warnMonitorFailure('monitor_seek failed', err);
-        });
+        const perfOn = isTimelinePerfEnabled();
+        const seekTarget = pendingSeekTimeSec;
+        const direction = seekTarget < lastSeekTimeSec ? 'backward' : 'forward';
+        lastSeekTimeSec = seekTarget;
+        const t0 = perfOn ? performance.now() : 0;
+        void nativeMonitorIpc
+          .seek(seekTarget)
+          .then(() => {
+            if (perfOn) {
+              markTimeline(
+                `monitor.seek[${direction}]`,
+                performance.now() - t0,
+                `to=${seekTarget.toFixed(3)}s`,
+              );
+            }
+          })
+          .catch((err) => {
+            warnMonitorFailure('monitor_seek failed', err);
+          });
       }, 16);
     },
     { flush: 'sync' },
