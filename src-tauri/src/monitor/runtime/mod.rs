@@ -1036,7 +1036,7 @@ impl LayerRuntimeManager {
                 } else {
                     Some(1.0 / rt.pump.info.fps.max(1.0))
                 };
-                rt.update_display(
+                let shown = rt.update_display(
                     clip_local,
                     if playing {
                         video_sync_lag_sec(self.preview_sync_mode, rt.pump.info.fps)
@@ -1045,6 +1045,13 @@ impl LayerRuntimeManager {
                     },
                     lead,
                 );
+                // Paused scrub miss (no frame ≤ target in cache — typically a backward
+                // scrub past the current GOP): jump to the nearest cached frame as a
+                // stopgap so the picture doesn't hold the far-away previous frame until
+                // the repositioned decoder lands the correct one via refresh_display.
+                if !playing && !shown {
+                    rt.show_nearest_cached(clip_local);
+                }
             }
         }
     }

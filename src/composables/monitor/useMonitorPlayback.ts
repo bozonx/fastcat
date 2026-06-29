@@ -474,6 +474,12 @@ export function useMonitorPlayback(options: UseMonitorPlaybackOptions) {
         return;
       }
 
+      // Consume the one-shot programmatic-seek marker regardless of branch below, so
+      // it can never leak into a later user scrub. A programmatic playhead move
+      // (project open, tab switch, marker nav) must not trigger the audible audio
+      // scrub-preview, which is meant only for a user dragging the playhead.
+      const isProgrammaticSeek = timelineStore.consumeProgrammaticSeek();
+
       const normalizedTimeUs = clampToTimeline(val);
       if (normalizedTimeUs !== val) {
         internalUpdateStoreTime(normalizedTimeUs);
@@ -485,7 +491,7 @@ export function useMonitorPlayback(options: UseMonitorPlaybackOptions) {
         uiCurrentTimeUs.value = normalizedTimeUs;
         updateTimecodeUi(normalizedTimeUs);
 
-        if (normalizedTimeUs > previousTimeUs) {
+        if (normalizedTimeUs > previousTimeUs && !isProgrammaticSeek) {
           if (
             workspaceStore.userSettings.projectDefaults.audioScrubbingEnabled &&
             canPlayScrubPreview(previousTimeUs, normalizedTimeUs)

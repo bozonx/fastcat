@@ -76,6 +76,7 @@ function createMockDeps(
   const deps = {
     timelineDoc: ref<any>(null),
     currentTime: ref(0),
+    markProgrammaticSeek: vi.fn(),
     duration: ref(0),
     masterGain: ref(1),
     timelineZoom: ref(50),

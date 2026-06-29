@@ -165,6 +165,15 @@ impl VideoFrameCache {
         best <= tolerance_ms
     }
 
+    /// Re-centers the eviction locality (the point eviction measures "farthest from")
+    /// on `pts_sec`. Normally `last_request` tracks reads, but a seek changes where the
+    /// decoder will produce frames BEFORE the first post-seek display read happens — so
+    /// warm-up/prebuffer inserts in that gap would otherwise evict toward the stale OLD
+    /// position, throwing away the frames just decoded around the new target.
+    pub fn set_last_request(&mut self, pts_sec: f64) {
+        self.last_request = self.index_of(pts_sec);
+    }
+
     /// PTS (seconds) of the newest decoded frame in the cache. `None` — cache empty.
     /// Used by the decoder forward-progress detector (decode-bound 4K).
     pub fn newest_pts(&self) -> Option<f64> {
@@ -430,6 +439,20 @@ mod tests {
         let _ = c.frame_le(19.0);
         c.insert(frame(20.0));
         assert!(c.frames.len() <= MIN_FRAMES + 1);
+        assert!(c.frame_le(0.5).map(|f| f.pts_sec) != Some(0.0));
+    }
+
+    #[test]
+    fn set_last_request_recenters_eviction_before_any_read() {
+        // capacity = MIN_FRAMES (6). A seek re-centers locality at 19s BEFORE any read,
+        // so warm-up inserts around there keep those frames and evict the far-away ones.
+        let mut c = VideoFrameCache::new(30.0, usize::MAX, usize::MAX);
+        c.set_last_request(19.0);
+        for i in 0..20 {
+            c.insert(frame(i as f64));
+        }
+        // The frame at the new target is retained; the near-zero frames are gone.
+        assert_eq!(c.frame_le(19.0).map(|f| f.pts_sec), Some(19.0));
         assert!(c.frame_le(0.5).map(|f| f.pts_sec) != Some(0.0));
     }
 

@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { mountSuspended, mockComponent } from '@nuxt/test-utils/runtime';
-import { reactive, nextTick, toRef, ref } from 'vue';
+import { reactive, nextTick, toRef, ref, inject, computed } from 'vue';
 import { defineStore } from 'pinia';
 import TimelineTracks from '~/components/timeline/TimelineTracks.vue';
 import { useUiStore } from '~/stores/ui.store';
@@ -24,8 +24,14 @@ vi.mock('~/components/timeline/TimelineClip.vue', () => ({
   default: {
     name: 'TimelineClip',
     template:
-      '<div class="mock-timeline-clip" :data-clip-id="item.id" :data-item-id="item.id" :data-start-us="item.timelineRange.startUs" :data-duration-us="item.timelineRange.durationUs" :data-locked="item.locked" :data-disabled="item.disabled" :data-audio-muted="item.audioMuted" :data-show-waveform="item.showWaveform" :data-show-thumbnails="item.showThumbnails" :data-waveform-mode="item.audioWaveformMode" :data-is-move-preview="isMovePreviewCurrentItem" :data-has-slip-preview="Boolean(slipPreview)" :data-is-multi-select-mode="isMultiSelectMode"><slot /></div>',
+      '<div class="mock-timeline-clip" :data-clip-id="item.id" :data-item-id="item.id" :data-start-us="item.timelineRange.startUs" :data-duration-us="item.timelineRange.durationUs" :data-locked="item.locked" :data-disabled="item.disabled" :data-audio-muted="item.audioMuted" :data-show-waveform="item.showWaveform" :data-show-thumbnails="item.showThumbnails" :data-waveform-mode="item.audioWaveformMode" :data-is-move-preview="isMovePreviewCurrentItem" :data-has-slip-preview="Boolean(slipPreview)" :data-is-multi-select-mode="isMultiSelectMode" :data-is-selected="isSelected"><slot /></div>',
     props: ['item', 'track', 'isMovePreviewCurrentItem', 'slipPreview', 'isMultiSelectMode'],
+    setup(props: any) {
+      const timelineContext = inject<any>('timelineContext');
+      return {
+        isSelected: computed(() => timelineContext.selectedItemIdSet.value.has(props.item.id)),
+      };
+    },
   },
 }));
 vi.mock('~/components/timeline/TimelineGap.vue', () => ({
@@ -56,6 +62,7 @@ const useMockTimelineStore = defineStore('timeline-mock', {
     timelineZoom: 1,
     duration: 10000000,
     currentTime: 0,
+    selectedItemIds: [] as string[],
     selectedTrackId: null as string | null,
     hoveredTrackId: null as string | null,
     selectedTransition: null as any,
@@ -129,6 +136,7 @@ describe('TimelineTracks', () => {
     vi.clearAllMocks();
     const timelineStore = useMockTimelineStore();
     timelineStore.timelineZoom = 50;
+    timelineStore.selectedItemIds = [];
     const uiStore = useUiStore();
     uiStore.clipPasteParametersTrigger = null;
   });
@@ -197,6 +205,22 @@ describe('TimelineTracks', () => {
     await nextTick();
 
     expect(clip.attributes('data-is-multi-select-mode')).toBe('true');
+  });
+
+  it('re-renders visible clips when timeline selection changes under track memoization', async () => {
+    const timelineStore = useMockTimelineStore();
+
+    const component = await mountSuspended(TimelineTracks, {
+      props: defaultProps,
+    });
+
+    const clip = component.find('[data-clip-id="clip-1"]');
+    expect(clip.attributes('data-is-selected')).toBe('false');
+
+    timelineStore.selectedItemIds = ['clip-1'];
+    await nextTick();
+
+    expect(component.find('[data-clip-id="clip-1"]').attributes('data-is-selected')).toBe('true');
   });
 
   it('handles track click selection', async () => {

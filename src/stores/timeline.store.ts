@@ -107,6 +107,22 @@ export const useTimelineStore = defineStore('timeline', () => {
   const playbackSpeed = ref(TIMELINE_DEFAULTS.PLAYBACK_SPEED);
   const currentTime = ref(0);
   const duration = ref(0);
+
+  // One-shot marker: the next `currentTime` change is a programmatic playhead move
+  // (project open, marker navigation, …) — NOT a user scrub. The monitor's audio
+  // scrub-preview watches `currentTime` and cannot otherwise tell the two apart, so
+  // a programmatic forward jump within the scrub window would audibly "play" while
+  // the transport is paused (most noticeable when landing on a transition, which
+  // mixes both clips). Consumed once by that watcher. See useMonitorPlayback.
+  const programmaticSeekPending = ref(false);
+  function markProgrammaticSeek() {
+    programmaticSeekPending.value = true;
+  }
+  function consumeProgrammaticSeek(): boolean {
+    if (!programmaticSeekPending.value) return false;
+    programmaticSeekPending.value = false;
+    return true;
+  }
   const masterGain = ref<number>(TIMELINE_DEFAULTS.MASTER_GAIN);
   const audioMuted = ref(false);
   const audioLevels = ref<Record<string, { rmsDb: number; peakDb: number }>>({});
@@ -391,6 +407,7 @@ export const useTimelineStore = defineStore('timeline', () => {
   const persistence = createTimelinePersistenceModule({
     timelineDoc,
     currentTime,
+    markProgrammaticSeek,
     duration,
     masterGain,
     timelineZoom,
@@ -1033,6 +1050,8 @@ export const useTimelineStore = defineStore('timeline', () => {
     isPlaying,
     currentTime,
     setCurrentTimeUs: lifecycle.setCurrentTimeUs,
+    markProgrammaticSeek,
+    consumeProgrammaticSeek,
     duration,
     masterGain,
     audioVolume: masterGain,
@@ -1081,6 +1100,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     goToNextMarker: () => {
       const next = findNextMarkerTime(markerService.getMarkers(), currentTime.value, fps.value);
       if (next !== undefined) {
+        markProgrammaticSeek();
         lifecycle.setCurrentTimeUs(next);
         scrollToPlayheadRequest.value++;
       }
@@ -1088,6 +1108,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     goToPreviousMarker: () => {
       const prev = findPreviousMarkerTime(markerService.getMarkers(), currentTime.value, fps.value);
       if (prev !== undefined) {
+        markProgrammaticSeek();
         lifecycle.setCurrentTimeUs(prev);
         scrollToPlayheadRequest.value++;
       }

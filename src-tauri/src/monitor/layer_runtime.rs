@@ -274,6 +274,14 @@ impl VideoLayerRt {
         // Clearing it makes the next `decoder_advancing` re-establish the baseline against
         // the new generation's first decoded frame.
         self.last_newest_pts = None;
+        // Re-center cache eviction locality on the new seek target (recorded by every
+        // seek site into `last_pump_seek_pts` just before this call). Otherwise the
+        // locality stays at the previous read position until the first post-seek display
+        // read, and warm-up/prebuffer inserts in that window evict the frames freshly
+        // decoded around the new target as if they were the farthest-away ones.
+        if let Some(target) = self.last_pump_seek_pts {
+            self.cache.set_last_request(target);
+        }
         if self.cache.is_disabled() {
             self.uncached_latest = None;
             self.current = None;
@@ -528,6 +536,21 @@ impl VideoLayerRt {
 
     pub fn clear_display(&mut self) {
         self.current = None;
+    }
+
+    /// Shows the nearest cached frame to `target` in either direction, if any. Used as
+    /// a stopgap on a paused scrub cache-miss (especially backward scrubbing across a
+    /// GOP boundary): without it `current` holds the far-away frame from the previous
+    /// position and the picture appears frozen until the decoder repositions and the
+    /// next refresh lands the correct floor frame. Returns whether a frame was shown.
+    pub fn show_nearest_cached(&mut self, target_clip_local: f64) -> bool {
+        match self.cache.frame_nearest(target_clip_local) {
+            Some(frame) => {
+                self.current = Some(frame);
+                true
+            }
+            None => false,
+        }
     }
 
     pub fn has_cached_near(&mut self, target_clip_local: f64, tolerance_frames: i64) -> bool {

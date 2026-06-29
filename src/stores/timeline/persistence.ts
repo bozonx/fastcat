@@ -13,6 +13,9 @@ const log = createDevLogger('persistence');
 export interface TimelinePersistenceDeps {
   timelineDoc: Ref<TimelineDocument | null>;
   currentTime: Ref<number>;
+  /** Flag the upcoming playhead restore as a programmatic move (not a user scrub),
+   *  so the monitor's audio scrub-preview stays silent on project open. */
+  markProgrammaticSeek: () => void;
   duration: Ref<number>;
   masterGain: Ref<number>;
   timelineZoom: Ref<number>;
@@ -329,6 +332,7 @@ export function createTimelinePersistenceModule(
     deps.timelineDoc.value = state.doc;
     currentRevision = state.currentRevision;
     mainSavedRevision = state.mainSavedRevision;
+    deps.markProgrammaticSeek();
     deps.currentTime.value = state.currentTime;
     deps.duration.value = state.duration;
     deps.masterGain.value = state.masterGain;
@@ -681,6 +685,7 @@ export function createTimelinePersistenceModule(
         unknown
       > | null;
 
+      deps.markProgrammaticSeek();
       deps.currentTime.value = Number(session?.playheadUs ?? 0);
       deps.masterGain.value = Number(session?.masterGain ?? 1);
       if (deps.audioMuted) deps.audioMuted.value = Boolean(session?.masterMuted ?? false);

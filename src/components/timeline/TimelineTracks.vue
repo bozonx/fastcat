@@ -204,6 +204,25 @@ const trimPreviewMemoByTrack = computed(() => {
   return map;
 });
 
+const selectionRenderMemoByTrack = computed(() => {
+  const selectedItemIds = timelineStore.selectedItemIds;
+  const selectedSet = new Set(selectedItemIds);
+  const map: Record<string, string> = {};
+
+  for (const trackViewModel of trackViewModels.value) {
+    const selectedVisibleIds = trackViewModel.visibleItems
+      .filter((item) => selectedSet.has(item.id))
+      .map((item) => item.id)
+      .join(',');
+
+    map[trackViewModel.track.id] = selectedVisibleIds
+      ? `${selectedVisibleIds}:${selectedItemIds.length}`
+      : '';
+  }
+
+  return map;
+});
+
 // Track that currently holds the grabbed (single) dragged item.
 const draggingItemTrackId = computed(() => {
   const id = props.draggingItemId;
@@ -318,7 +337,6 @@ function onTrackPointerDown(e: PointerEvent, trackId: string) {
       );
       if (!fromClipOrGap) {
         selectTrackById(trackId);
-        timelineStore.clearSelection();
       }
     }
   }
@@ -335,7 +353,6 @@ function onTrackClick(e: MouseEvent, trackId: string) {
   const target = e.target as HTMLElement | null;
   if (target?.closest('[data-clip-id]') || target?.closest('[data-gap-id]')) return;
   selectTrackById(trackId);
-  timelineStore.clearSelection();
 }
 
 const {
@@ -469,6 +486,7 @@ watch(
             : null,
           slipPreviewTrackId === trackViewModel.track.id ? (slipPreview?.deltaUs ?? null) : null,
           trimPreviewMemoByTrack[trackViewModel.track.id] ?? null,
+          selectionRenderMemoByTrack[trackViewModel.track.id] ?? null,
           selectedTransition?.trackId === trackViewModel.track.id
             ? `${selectedTransition.itemId}-${selectedTransition.edge}`
             : null,
