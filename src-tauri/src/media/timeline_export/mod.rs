@@ -109,6 +109,31 @@ fn trace_elapsed_ms(started: Option<Instant>) -> f64 {
         .unwrap_or(0.0)
 }
 
+/// Bounded depth of the decode→GPU `Scene` channel.
+///
+/// Decode is bursty: a clip boundary triggers a seek + decode-from-keyframe (a
+/// long-GOP source re-decodes a whole GOP for one output frame), so a shallow
+/// scene buffer drains during that burst and the GPU stalls until decode catches
+/// up. A deeper queue lets the decode thread run further ahead on the cheap
+/// (sequential pull-forward) stretches and bank frames to cover the next cut,
+/// smoothing GPU utilisation.
+///
+/// Cost: a queued `Scene` still holds its decoded frame pixels (an `Arc<Vec<u8>>`
+/// per video layer, ~`width*height*4` bytes), so the queue is bounded by memory,
+/// not just count. At 1080p a frame is ~8 MB, so depth 8 is ~64 MB — cheap; at 4K
+/// a frame is ~33 MB, so keep the shallower depth there to stay within a sane
+/// memory budget. The rgba channel is left at `PIPELINE_DEPTH` because each slot is
+/// a full readback buffer and its useful depth is already capped by the GPU
+/// readback pipeline downstream.
+pub(crate) fn scene_pipeline_depth(width: u32, height: u32) -> usize {
+    let is_4k = width as u64 * height as u64 >= 3840 * 2160;
+    if is_4k {
+        4
+    } else {
+        8
+    }
+}
+
 pub(crate) fn export_frame_sample_time(
     start_sec: f64,
     end_sec: f64,
@@ -457,9 +482,23 @@ pub fn export_timeline(
                 // (per frame) and, faster, by the watchdog tearing ffmpeg down — which makes
                 // the writer's `write_all` fail and unwinds the pipeline the same way.
                 const PIPELINE_DEPTH: usize = 4;
-                let (scene_tx, scene_rx) = std::sync::mpsc::sync_channel::<
-                    crate::compositor::scene::Scene,
-                >(PIPELINE_DEPTH);
+                // Decode is bursty: a clip boundary triggers a seek + decode-from-keyframe
+                // (a long-GOP source re-decodes a whole GOP for one output frame), so a
+                // 4-deep scene buffer drains during that burst and the GPU stalls until
+                // decode catches up. A deeper scene queue lets the decode thread run
+                // further ahead on the cheap (sequential pull-forward) stretches and bank
+                // frames to cover the next cut, smoothing GPU utilisation.
+                //
+                // Cost: a queued `Scene` still holds its decoded frame pixels (an
+                // `Arc<Vec<u8>>` per video layer, ~width*height*4 bytes), so the queue is
+                // bounded by memory, not just count. At 1080p a frame is ~8 MB, so depth 8
+                // is ~64 MB — cheap; at 4K a frame is ~33 MB, so keep the shallower depth
+                // there to stay within a sane memory budget. The rgba channel is left at
+                // PIPELINE_DEPTH because each slot is a full readback buffer and its useful
+                // depth is already capped by the GPU readback pipeline downstream.
+                let scene_depth = scene_pipeline_depth(width, height);
+                let (scene_tx, scene_rx) =
+                    std::sync::mpsc::sync_channel::<crate::compositor::scene::Scene>(scene_depth);
                 let (rgba_tx, rgba_rx) = std::sync::mpsc::sync_channel::<Vec<u8>>(PIPELINE_DEPTH);
 
                 // Owned clone: `run_attempt` may run twice (HW→SW fallback), so we must not
