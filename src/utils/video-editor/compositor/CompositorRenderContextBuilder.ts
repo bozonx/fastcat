@@ -52,6 +52,7 @@ export interface CompositorRenderContextBuilderParams {
   getVideoSampleForClip: (params: {
     clip: CompositorClip;
     sampleTimeS: number;
+    timelineTimeUs?: number;
     monitorSyncMode?: 'smooth' | 'balanced' | 'strict';
     abortSignal?: AbortSignal;
   }) => Promise<unknown | null>;

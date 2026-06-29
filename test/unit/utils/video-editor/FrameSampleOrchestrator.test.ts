@@ -134,6 +134,114 @@ describe('FrameSampleOrchestrator', () => {
     expect(lastCall?.[0]).toBe(clip);
   });
 
+  it('tags primary sample requests with the render timeline time for cache priority', async () => {
+    const orchestrator = new FrameSampleOrchestrator();
+    const processor = new TimelineActiveClipProcessor();
+    const getVideoSampleForClip = vi.fn().mockResolvedValue({
+      toVideoFrame: () => ({
+        displayWidth: 2,
+        displayHeight: 2,
+        close: () => {},
+      }),
+    });
+    const clip = {
+      itemId: 'primary',
+      sprite: { alpha: 1, blendMode: 'normal', visible: true },
+      clipKind: 'video',
+      startUs: 1_000_000,
+      durationUs: 2_000_000,
+      sourceStartUs: 0,
+      sourceRangeDurationUs: 2_000_000,
+      speed: 1,
+      sink: {},
+    } as unknown as CompositorClip;
+
+    await orchestrator.process({
+      activeClips: [clip],
+      timeUs: 1_500_000,
+      width: 1920,
+      height: 1080,
+      activeClipProcessor: processor,
+      syncTransitionFilter: vi.fn(),
+      computeTransitionOpacity: () => 1,
+      applyClipEffects: vi.fn(),
+      drawHudClip: vi.fn(),
+      drawShapeClip: vi.fn(),
+      drawTextClip: vi.fn(),
+      createAbortController: () => new AbortController(),
+      getVideoSampleForClip,
+      getPrevClipOnLayer: () => null,
+      updateClipTextureFromSample: vi.fn().mockResolvedValue(undefined),
+      setClipSpriteVisible: () => true,
+    });
+
+    expect(getVideoSampleForClip).toHaveBeenCalledWith(
+      expect.objectContaining({ timelineTimeUs: 1_500_000 }),
+    );
+  });
+
+  it('tags blend-shadow sample requests with the render timeline time for cache priority', async () => {
+    const calls: Array<{ timelineTimeUs?: number }> = [];
+    const orchestrator = new FrameSampleOrchestrator();
+    const processor = new TimelineActiveClipProcessor();
+    const getVideoSampleForClip = vi.fn(async (req: { timelineTimeUs?: number }) => {
+      calls.push(req);
+      return null;
+    });
+    const prevClip = {
+      itemId: 'prev',
+      sprite: { alpha: 1, blendMode: 'normal', visible: true },
+      clipKind: 'video',
+      startUs: 0,
+      durationUs: 1_000_000,
+      sourceStartUs: 0,
+      sourceRangeDurationUs: 1_000_000,
+      sourceDurationUs: 5_000_000,
+      speed: 1,
+      sink: {},
+    } as unknown as CompositorClip;
+    const nextClip = {
+      itemId: 'next',
+      sprite: { alpha: 1, blendMode: 'normal', visible: true },
+      clipKind: 'video',
+      startUs: 1_000_000,
+      durationUs: 1_000_000,
+      sourceStartUs: 0,
+      sourceRangeDurationUs: 1_000_000,
+      sourceDurationUs: 5_000_000,
+      speed: 1,
+      transitionIn: {
+        durationUs: 500_000,
+        mode: 'adjacent',
+        type: 'fade',
+      },
+      sink: {},
+    } as unknown as CompositorClip;
+
+    await orchestrator.process({
+      activeClips: [nextClip],
+      timeUs: 1_100_000,
+      width: 1920,
+      height: 1080,
+      activeClipProcessor: processor,
+      syncTransitionFilter: vi.fn(),
+      computeTransitionOpacity: () => 1,
+      applyClipEffects: vi.fn(),
+      drawHudClip: vi.fn(),
+      drawShapeClip: vi.fn(),
+      drawTextClip: vi.fn(),
+      createAbortController: () => new AbortController(),
+      getVideoSampleForClip,
+      getPrevClipOnLayer: () => prevClip,
+      updateClipTextureFromSample: vi.fn().mockResolvedValue(undefined),
+      setClipSpriteVisible: () => true,
+    });
+
+    expect(calls).toEqual(
+      expect.arrayContaining([expect.objectContaining({ timelineTimeUs: 1_100_000 })]),
+    );
+  });
+
   it('samples reversed clips inside the readable source range', async () => {
     const orchestrator = new FrameSampleOrchestrator();
     const processor = new TimelineActiveClipProcessor();

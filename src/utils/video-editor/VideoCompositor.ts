@@ -735,6 +735,7 @@ export class VideoCompositor {
 
   private async prewarmVideoFramesLocked(timeUs: number, lookaheadUs: number): Promise<void> {
     const startUs = Math.max(0, Math.round(timeUs));
+    this.videoFrameCache.setPriorityTimeUs(startUs);
     const endUs = startUs + Math.max(0, Math.round(lookaheadUs));
     const upcoming = this.clips
       .filter(
@@ -763,6 +764,7 @@ export class VideoCompositor {
         await this.getVideoSampleForClip({
           clip,
           sampleTimeS: sampleTimeUs / 1_000_000,
+          timelineTimeUs: clip.startUs,
         });
       }),
     );
@@ -835,6 +837,7 @@ export class VideoCompositor {
     // VideoFrame or sink mid-render — it waits for the in-flight render to settle
     // first (and vice versa).
     return this.runExclusive((signal) => {
+      this.videoFrameCache.setPriorityTimeUs(timeUs);
       // If the queue watchdog trips, abort in-flight sample reads so a stalled
       // render unwinds and stops blocking queued edits.
       if (signal.aborted) this.resourceManager.abortInFlight();

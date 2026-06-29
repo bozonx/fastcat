@@ -303,7 +303,6 @@ function selectTransition(
 
 function selectTrackById(trackId: string) {
   timelineStore.selectTrack(trackId);
-  selectionStore.selectTimelineTrack(trackId);
 }
 
 let trackPointerStartX = 0;

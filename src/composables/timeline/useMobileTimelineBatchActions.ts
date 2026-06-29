@@ -11,6 +11,23 @@ export function useMobileTimelineBatchActions(options: UseMobileTimelineBatchAct
   const { t } = useI18n();
   const toast = useToast();
 
+  // Paste the clipboard contents at the playhead, select the freshly pasted
+  // clips and scroll the timeline so they are visible (the scroll is a no-op
+  // when the playhead is already on screen).
+  async function handlePasteClips() {
+    const payload = clipboardStore.clipboardPayload;
+    if (!payload || payload.source !== 'timeline' || payload.items.length === 0) return;
+    const playheadUs = timelineStore.currentTime;
+    const pasted = await timelineStore.pasteClips(payload.items, { insertStartUs: playheadUs });
+    if (payload.operation === 'cut') {
+      clipboardStore.setClipboardPayload(null);
+    }
+    if (pasted.length > 0) {
+      timelineStore.selectTimelineItems(pasted);
+      timelineStore.requestScrollToPlayhead();
+    }
+  }
+
   function showPasteToast(operation: 'copy' | 'cut') {
     toast.add({
       title: operation === 'cut' ? t('common.cutToClipboard') : t('common.copiedToClipboard'),
@@ -20,13 +37,7 @@ export function useMobileTimelineBatchActions(options: UseMobileTimelineBatchAct
         {
           label: t('common.paste'),
           onClick: () => {
-            const payload = clipboardStore.clipboardPayload;
-            if (!payload || payload.source !== 'timeline' || payload.items.length === 0) return;
-            const playheadUs = timelineStore.currentTime;
-            void timelineStore.pasteClips(payload.items, { insertStartUs: playheadUs });
-            if (payload.operation === 'cut') {
-              clipboardStore.setClipboardPayload(null);
-            }
+            void handlePasteClips();
           },
         },
       ],
@@ -65,5 +76,6 @@ export function useMobileTimelineBatchActions(options: UseMobileTimelineBatchAct
     handleCopyClips,
     handleCutClips,
     handleBladeClips,
+    handlePasteClips,
   };
 }

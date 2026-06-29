@@ -30,6 +30,7 @@ import MobileDrawerToolbarButton from './MobileDrawerToolbarButton.vue';
 import MobileTrimToolbar from './MobileTrimToolbar.vue';
 import MobileTransitionToolbar from './MobileTransitionToolbar.vue';
 import MobileClipDeleteDrawer from './MobileClipDeleteDrawer.vue';
+import MobileClipboardPasteToolbar from './MobileClipboardPasteToolbar.vue';
 import MobileTimelineSettingsDrawer from './MobileTimelineSettingsDrawer.vue';
 import MobileTrackMixerDrawer from './MobileTrackMixerDrawer.vue';
 import MobileTrackManagerDrawer from './MobileTrackManagerDrawer.vue';
@@ -262,10 +263,11 @@ const {
   applyClipAction,
 });
 
-const { handleCopyClips, handleCutClips, handleBladeClips } = useMobileTimelineBatchActions({
-  clipboardStore,
-  timelineStore,
-});
+const { handleCopyClips, handleCutClips, handleBladeClips, handlePasteClips } =
+  useMobileTimelineBatchActions({
+    clipboardStore,
+    timelineStore,
+  });
 
 const {
   isCreateVersionModalOpen,
@@ -595,6 +597,13 @@ const {
         </div>
       </div>
     </div>
+
+    <!-- Clipboard paste bar: contextual surface shown while clips are in the buffer -->
+    <MobileClipboardPasteToolbar
+      v-if="clipboardStore.hasTimelinePayload && !isAnyDrawerOpen"
+      @paste="handlePasteClips"
+      @cancel="clipboardStore.clearClipboardPayload()"
+    />
   </div>
 </template>
 

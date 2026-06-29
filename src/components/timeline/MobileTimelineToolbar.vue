@@ -1,9 +1,8 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { ref } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useTimelineSettingsStore } from '~/stores/timeline-settings.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
-import { useAppClipboard } from '~/composables/useAppClipboard';
 import MobileDrawerToolbar from './MobileDrawerToolbar.vue';
 import SnapSettingsPanel from '~/components/settings/SnapSettingsPanel.vue';
 import { useSnapSettings } from '~/composables/timeline/useSnapSettings';
@@ -13,11 +12,8 @@ import { MOBILE_LONG_PRESS_MS } from '~/utils/mobile/timeline';
 const timelineStore = useTimelineStore();
 const settingsStore = useTimelineSettingsStore();
 const workspaceStore = useWorkspaceStore();
-const clipboardStore = useAppClipboard();
 
 const { t } = useI18n();
-
-const hasClipboard = computed(() => clipboardStore.hasTimelinePayload);
 
 const isSnapDrawerOpen = ref(false);
 
@@ -63,14 +59,6 @@ function handleUndo() {
 function handleRedo() {
   if (wasLastPressLong.value) return;
   timelineStore.redoTimeline();
-}
-
-function handlePaste() {
-  const payload = clipboardStore.clipboardPayload;
-  if (!payload || payload.source !== 'timeline' || payload.items.length === 0) return;
-  const playheadUs = timelineStore.currentTime;
-  void timelineStore.pasteClips(payload.items, { insertStartUs: playheadUs });
-  if (payload.operation === 'cut') clipboardStore.setClipboardPayload(null);
 }
 
 function handleSnapToggle() {
@@ -131,18 +119,6 @@ function stopSnapLongPress() {
           @pointerup="stopLongPress"
           @pointerleave="stopLongPress"
         />
-        <Transition name="paste-bounce">
-          <UiActionButton
-            v-if="hasClipboard"
-            icon="i-heroicons-clipboard-document-check"
-            color="primary"
-            variant="solid"
-            size="sm"
-            class="paste-btn-animate"
-            :title="t('common.paste')"
-            @click="handlePaste"
-          />
-        </Transition>
       </div>
 
       <!-- Snap mode -->
@@ -216,40 +192,3 @@ function stopSnapLongPress() {
     </div>
   </UiMobileDrawer>
 </template>
-
-<style scoped>
-.paste-bounce-enter-active {
-  animation: paste-scale-in 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-.paste-bounce-leave-active {
-  animation: paste-scale-in 0.3s reverse ease-in;
-}
-
-@keyframes paste-scale-in {
-  0% {
-    transform: scale(0.3);
-    opacity: 0;
-  }
-  70% {
-    transform: scale(1.2);
-  }
-  100% {
-    transform: scale(1);
-    opacity: 1;
-  }
-}
-
-.paste-btn-animate {
-  animation: paste-gentle-pulse 2s infinite ease-in-out;
-}
-
-@keyframes paste-gentle-pulse {
-  0%,
-  100% {
-    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7);
-  }
-  50% {
-    box-shadow: 0 0 0 8px rgba(59, 130, 246, 0);
-  }
-}
-</style>

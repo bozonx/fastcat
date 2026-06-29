@@ -286,6 +286,7 @@ export class ClipResourceManager {
   public async getVideoSampleForClip(params: {
     clip: CompositorClip;
     sampleTimeS: number;
+    timelineTimeUs?: number;
     monitorSyncMode?: WebMonitorSyncMode;
     abortSignal?: AbortSignal;
   }): Promise<unknown | null> {
@@ -406,6 +407,10 @@ export class ClipResourceManager {
         key: cacheKey,
         clipId: clip.itemId,
         frameIndex,
+        timelineTimeUs: Math.max(
+          0,
+          Math.round(Number(params.timelineTimeUs) || Number(clip.startUs) || 0),
+        ),
         frame,
         sizeBytes,
         width,

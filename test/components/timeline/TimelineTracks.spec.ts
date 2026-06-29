@@ -69,7 +69,15 @@ const useMockTimelineStore = defineStore('timeline-mock', {
   }),
   actions: {
     getSelectionRange: () => null,
-    selectTrack: selectTrackSpy,
+    selectTrack(trackId: string | null) {
+      selectTrackSpy(trackId);
+      this.selectedTrackId = trackId;
+      if (trackId) {
+        this.selectedTransition = null;
+        this.selectedItemIds = [];
+        useMockSelectionStore().selectTimelineTrack(trackId);
+      }
+    },
     clearSelection: clearSelectionSpy,
     selectTimelineProperties: selectTimelinePropertiesSpy,
   },
@@ -80,9 +88,21 @@ const useMockSelectionStore = defineStore('selection-mock', {
     selectedEntity: null as any,
   }),
   actions: {
-    isTrackVisuallySelected: (id: string) => id === 'selected-track',
-    clearSelection: clearSelectionSpy,
-    selectTimelineTrack: selectTimelineTrackSpy,
+    isTrackVisuallySelected(id: string) {
+      const entity = this.selectedEntity;
+      return (
+        id === 'selected-track' ||
+        (entity?.source === 'timeline' && entity.kind === 'track' && entity.trackId === id)
+      );
+    },
+    clearSelection() {
+      clearSelectionSpy();
+      this.selectedEntity = null;
+    },
+    selectTimelineTrack(trackId: string) {
+      selectTimelineTrackSpy(trackId);
+      this.selectedEntity = { source: 'timeline', kind: 'track', trackId };
+    },
     selectTimelineProperties: selectTimelinePropertiesSpy,
   },
 });
@@ -137,6 +157,8 @@ describe('TimelineTracks', () => {
     const timelineStore = useMockTimelineStore();
     timelineStore.timelineZoom = 50;
     timelineStore.selectedItemIds = [];
+    const selectionStore = useMockSelectionStore();
+    selectionStore.selectedEntity = null;
     const uiStore = useUiStore();
     uiStore.clipPasteParametersTrigger = null;
   });
@@ -228,7 +250,6 @@ describe('TimelineTracks', () => {
       props: defaultProps,
     });
 
-    const track1 = component.find('[data-track-id="track-1"]');
     // Start marquee triggers selection in this component when clicking the background
     // Let's test the click on the bottom spacer
     const bottomSpacer = component.find('.flex-1.min-h-7');
@@ -262,7 +283,10 @@ describe('TimelineTracks', () => {
 
     expect(selectTrackSpy).toHaveBeenCalledWith('track-1');
     expect(selectTimelineTrackSpy).toHaveBeenCalledWith('track-1');
-    expect(clearSelectionSpy).toHaveBeenCalled();
+    expect(clearSelectionSpy).not.toHaveBeenCalled();
+    expect(component.find('[data-track-id="track-1"]').classes()).toContain(
+      'track--directly-selected',
+    );
   });
 
   it('does not emit mobile track long press event', async () => {

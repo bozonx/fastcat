@@ -23,11 +23,13 @@ function makeEntry(
   clipId: string,
   frame: VideoFrame,
   sizeBytes: number,
+  timelineTimeUs = 0,
 ): import('~/utils/video-editor/compositor/VideoFrameCache').CachedVideoFrameEntry {
   return {
     key,
     clipId,
     frameIndex: 0,
+    timelineTimeUs,
     frame,
     sizeBytes,
     width: 1920,
@@ -111,6 +113,46 @@ describe('VideoFrameCache', () => {
       expect(frame1.close).not.toHaveBeenCalled();
       expect(cache.get('clip:0')).not.toBeNull();
       expect(cache.get('clip:1')).not.toBeNull();
+    });
+
+    it('evicts frames farthest from the current priority time first', () => {
+      const cache = new VideoFrameCache(2 * 1024 * 1024);
+      const before = makeFrame();
+      const current = makeFrame();
+      const after = makeFrame();
+
+      cache.setPriorityTimeUs(10_000_000);
+      cache.set(makeEntry('clip:before', 'clip', before, 1024 * 1024, 1_000_000));
+      cache.set(makeEntry('clip:current', 'clip', current, 1024 * 1024, 10_000_000));
+      cache.set(makeEntry('clip:after', 'clip', after, 1024 * 1024, 12_000_000));
+
+      expect(before.close).toHaveBeenCalled();
+      expect(current.close).not.toHaveBeenCalled();
+      expect(after.close).not.toHaveBeenCalled();
+      expect(cache.get('clip:before')).toBeNull();
+      expect(cache.get('clip:current')).not.toBeNull();
+      expect(cache.get('clip:after')).not.toBeNull();
+    });
+
+    it('re-evicts far frames when the priority moves backwards', () => {
+      const cache = new VideoFrameCache(2 * 1024 * 1024);
+      const nearBack = makeFrame();
+      const mid = makeFrame();
+      const farForward = makeFrame();
+
+      cache.setPriorityTimeUs(20_000_000);
+      cache.set(makeEntry('clip:near-back', 'clip', nearBack, 1024 * 1024, 9_500_000));
+      cache.set(makeEntry('clip:mid', 'clip', mid, 1024 * 1024, 10_000_000));
+      cache.set(makeEntry('clip:far-forward', 'clip', farForward, 1024 * 1024, 20_000_000));
+      expect(nearBack.close).toHaveBeenCalled();
+
+      cache.setPriorityTimeUs(9_500_000);
+      cache.set(makeEntry('clip:near-back-2', 'clip', makeFrame(), 1024 * 1024, 9_500_000));
+
+      expect(farForward.close).toHaveBeenCalled();
+      expect(cache.get('clip:far-forward')).toBeNull();
+      expect(cache.get('clip:mid')).not.toBeNull();
+      expect(cache.get('clip:near-back-2')).not.toBeNull();
     });
   });
 

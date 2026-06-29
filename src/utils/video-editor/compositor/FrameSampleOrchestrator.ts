@@ -31,6 +31,7 @@ export interface FrameSampleOrchestratorParams {
   getVideoSampleForClip: (params: {
     clip: CompositorClip;
     sampleTimeS: number;
+    timelineTimeUs?: number;
     monitorSyncMode?: 'smooth' | 'balanced' | 'strict';
     abortSignal?: AbortSignal;
   }) => Promise<unknown | null>;
@@ -65,6 +66,7 @@ export class FrameSampleOrchestrator {
           .getVideoSampleForClip({
             clip,
             sampleTimeS,
+            timelineTimeUs: params.timeUs,
             monitorSyncMode: params.monitorSyncMode,
             abortSignal: abortController.signal,
           })
@@ -228,6 +230,7 @@ export class FrameSampleOrchestrator {
             clip: prevClip,
             key: prevClip.itemId + '_shadow_end',
             sampleTimeS: lastUs / 1_000_000,
+            timelineTimeUs: params.timeUs,
             monitorSyncMode: params.monitorSyncMode,
             createAbortController: params.createAbortController,
             removeAbortController: params.removeAbortController,
@@ -247,6 +250,7 @@ export class FrameSampleOrchestrator {
           clip: prevClip,
           key: prevClip.itemId + '_shadow_overrun',
           sampleTimeS: Math.max(0, sampleUs / 1_000_000),
+          timelineTimeUs: params.timeUs,
           monitorSyncMode: params.monitorSyncMode,
           createAbortController: params.createAbortController,
           removeAbortController: params.removeAbortController,
@@ -262,12 +266,14 @@ export class FrameSampleOrchestrator {
     clip: CompositorClip;
     key: string;
     sampleTimeS: number;
+    timelineTimeUs: number;
     monitorSyncMode?: 'smooth' | 'balanced' | 'strict';
     createAbortController: (key: string) => AbortController;
     removeAbortController?: (key: string) => void;
     getVideoSampleForClip: (params: {
       clip: CompositorClip;
       sampleTimeS: number;
+      timelineTimeUs?: number;
       monitorSyncMode?: 'smooth' | 'balanced' | 'strict';
       abortSignal?: AbortSignal;
     }) => Promise<unknown | null>;
@@ -278,6 +284,7 @@ export class FrameSampleOrchestrator {
       .getVideoSampleForClip({
         clip: params.clip,
         sampleTimeS: params.sampleTimeS,
+        timelineTimeUs: params.timelineTimeUs,
         monitorSyncMode: params.monitorSyncMode,
         abortSignal: abortController.signal,
       })

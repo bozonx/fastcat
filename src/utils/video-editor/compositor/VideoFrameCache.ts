@@ -2,6 +2,7 @@ export interface CachedVideoFrameEntry {
   key: string;
   clipId: string;
   frameIndex: number;
+  timelineTimeUs: number;
   frame: VideoFrame;
   sizeBytes: number;
   width: number;
@@ -18,6 +19,7 @@ export class VideoFrameCache {
   private maxVideoFrameCacheBytes: number;
   private videoFrameCache = new Map<string, CachedVideoFrameEntry>();
   private videoFrameCacheSizeBytes = 0;
+  private priorityTimeUs = 0;
 
   constructor(maxVideoFrameCacheBytes: number) {
     this.maxVideoFrameCacheBytes = Math.max(0, Math.round(maxVideoFrameCacheBytes));
@@ -55,6 +57,16 @@ export class VideoFrameCache {
     this.videoFrameCache.delete(key);
     this.videoFrameCache.set(key, entry);
     return entry;
+  }
+
+  public setPriorityTimeUs(timeUs: number) {
+    const next = Math.max(0, Math.round(Number(timeUs) || 0));
+    if (next === this.priorityTimeUs) {
+      return;
+    }
+
+    this.priorityTimeUs = next;
+    this.evictIfNeeded();
   }
 
   public delete(key: string): boolean {
@@ -133,17 +145,15 @@ export class VideoFrameCache {
       this.videoFrameCacheSizeBytes > this.maxVideoFrameCacheBytes &&
       this.videoFrameCache.size > 0
     ) {
-      const oldestKey = this.videoFrameCache.keys().next().value;
-      if (typeof oldestKey !== 'string') break;
-      const oldest = this.videoFrameCache.get(oldestKey);
-      this.videoFrameCache.delete(oldestKey);
-      if (!oldest) continue;
-      this.videoFrameCacheSizeBytes -= oldest.sizeBytes;
+      const eviction = this.findEvictionCandidate();
+      if (!eviction) break;
+      this.videoFrameCache.delete(eviction.key);
+      this.videoFrameCacheSizeBytes -= eviction.entry.sizeBytes;
       // Skip close() for already-closed frames (they don't hold GPU memory).
-      const closed = !!(oldest.frame as { closed?: boolean }).closed;
+      const closed = !!(eviction.entry.frame as { closed?: boolean }).closed;
       if (!closed) {
         try {
-          oldest.frame.close();
+          eviction.entry.frame.close();
         } catch {
           // ignore
         }
@@ -153,6 +163,24 @@ export class VideoFrameCache {
     if (this.videoFrameCacheSizeBytes < 0) {
       this.videoFrameCacheSizeBytes = 0;
     }
+  }
+
+  private findEvictionCandidate(): { key: string; entry: CachedVideoFrameEntry } | null {
+    let best: { key: string; entry: CachedVideoFrameEntry; distanceUs: number } | null = null;
+
+    for (const [key, entry] of this.videoFrameCache.entries()) {
+      const entryTimeUs = Math.max(0, Math.round(Number(entry.timelineTimeUs) || 0));
+      const distanceUs = Math.abs(entryTimeUs - this.priorityTimeUs);
+      if (
+        !best ||
+        distanceUs > best.distanceUs ||
+        (distanceUs === best.distanceUs && entryTimeUs > best.entry.timelineTimeUs)
+      ) {
+        best = { key, entry, distanceUs };
+      }
+    }
+
+    return best ? { key: best.key, entry: best.entry } : null;
   }
 }
 

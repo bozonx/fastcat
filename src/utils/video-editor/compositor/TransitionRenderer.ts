@@ -49,6 +49,7 @@ export interface TransitionRendererParams {
   getVideoSampleForClip: (params: {
     clip: CompositorClip;
     sampleTimeS: number;
+    timelineTimeUs?: number;
     abortSignal?: AbortSignal;
   }) => Promise<unknown | null>;
   updateClipTextureFromSample: (sample: unknown, clip: CompositorClip) => Promise<void>;
@@ -144,6 +145,7 @@ export class TransitionRenderer {
           const rendered = await this.renderTransitionClipToTexture(prevClip, fromTexture, {
             transitionOffsetUs,
             isNextClip: state.edge === 'out',
+            timelineTimeUs: timeUs,
             stageTextureRenderer: params.stageTextureRenderer,
             createAbortController: params.createAbortController,
             removeAbortController: params.removeAbortController,
@@ -279,12 +281,14 @@ export class TransitionRenderer {
     params: {
       transitionOffsetUs?: number;
       isNextClip?: boolean;
+      timelineTimeUs: number;
       stageTextureRenderer: StageTextureRenderer;
       createAbortController: (key: string) => AbortController;
       removeAbortController?: (key: string) => void;
       getVideoSampleForClip: (params: {
         clip: CompositorClip;
         sampleTimeS: number;
+        timelineTimeUs?: number;
         abortSignal?: AbortSignal;
       }) => Promise<unknown | null>;
       updateClipTextureFromSample: (sample: unknown, clip: CompositorClip) => Promise<void>;
@@ -362,6 +366,7 @@ export class TransitionRenderer {
       sample = await params.getVideoSampleForClip({
         clip,
         sampleTimeS: sampleUs / 1_000_000,
+        timelineTimeUs: params.timelineTimeUs,
         abortSignal: abortController.signal,
       });
     } finally {
