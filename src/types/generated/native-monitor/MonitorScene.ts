@@ -14,7 +14,7 @@ export type MonitorScene = { layers: Array<SceneLayer>, video_tracks: Array<Scen
  */
 audio_master_gain: number, audio_master_muted: boolean, 
 /**
- * Размер композитного кадра. Если 0/отсутствует — берём bounding box из рантаймов.
+ * Composite frame size. If 0/absent — take the bounding box from the runtimes.
  */
 width: number, height: number, 
 /**
@@ -29,7 +29,7 @@ preview_scale?: number,
  */
 preview_fps: number, 
 /**
- * Политика синхронизации видео с аудио для preview.
+ * Video-to-audio synchronization policy for the preview.
  */
 preview_sync_mode: PreviewSyncMode, 
 /**

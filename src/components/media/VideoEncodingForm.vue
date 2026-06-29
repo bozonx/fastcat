@@ -50,6 +50,8 @@ const preset = defineModel<'custom' | 'high' | 'optimal' | 'social' | 'lossless'
   default: 'custom',
 });
 const bitrateMode = defineModel<'constant' | 'variable'>('bitrateMode', { default: 'variable' });
+const enableAdvancedSettings = defineModel<boolean>('enableAdvancedSettings', { default: false });
+const maxBitrateMbps = defineModel<number | null>('maxBitrateMbps', { default: null });
 const keyframeIntervalSec = defineModel<number>('keyframeIntervalSec', { default: 2 });
 const exportAlpha = defineModel<boolean>('exportAlpha', { default: false });
 const fastStart = defineModel<boolean>('fastStart', { default: true });
@@ -91,6 +93,8 @@ async function applyPreset(presetId: string) {
   audioCodec.value = found.audioCodec as typeof audioCodec.value;
   audioBitrateKbps.value = found.audioBitrateKbps;
   bitrateMode.value = found.bitrateMode;
+  enableAdvancedSettings.value = false;
+  maxBitrateMbps.value = null;
   keyframeIntervalSec.value = found.keyframeIntervalSec;
   exportAlpha.value = found.exportAlpha;
   fastStart.value = found.fastStart;
@@ -130,6 +134,8 @@ async function applyPreset(presetId: string) {
       v-model:audio-sample-rate="audioSampleRate"
       v-model:preset="preset"
       v-model:bitrate-mode="bitrateMode"
+      v-model:enable-advanced-settings="enableAdvancedSettings"
+      v-model:max-bitrate-mbps="maxBitrateMbps"
       v-model:keyframe-interval-sec="keyframeIntervalSec"
       v-model:export-alpha="exportAlpha"
       v-model:fast-start="fastStart"

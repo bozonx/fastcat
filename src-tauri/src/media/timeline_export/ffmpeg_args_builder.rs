@@ -156,6 +156,16 @@ fn push_video_codec_rate_args(
             "-bufsize".to_string(),
             bitrate,
         ]);
+    } else if let Some(max_bitrate) = options.video_max_bitrate_bps {
+        if max_bitrate > 0 {
+            let max_bitrate_str = max_bitrate.to_string();
+            args.extend([
+                "-maxrate".to_string(),
+                max_bitrate_str.clone(),
+                "-bufsize".to_string(),
+                max_bitrate_str,
+            ]);
+        }
     }
 
     // Keyframe interval

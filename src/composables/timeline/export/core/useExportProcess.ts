@@ -83,6 +83,7 @@ export function buildNativeExportOptions(
     metadataTags: options.metadata?.tags || null,
     exportAlpha: options.exportAlpha,
     fastStart: options.fastStart,
+    videoMaxBitrateBps: options.maxBitrateBps || null,
   };
 }
 

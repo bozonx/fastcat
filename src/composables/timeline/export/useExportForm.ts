@@ -69,6 +69,8 @@ export function useExportForm() {
     aspectRatio,
     isCustomResolution,
     bitrateMode,
+    enableAdvancedSettings,
+    maxBitrateMbps,
     keyframeIntervalSec,
     exportAlpha,
     fastStart,
@@ -168,6 +170,8 @@ export function useExportForm() {
       audioBitrateKbps: audioBitrateKbps.value,
       audioChannels: audioChannels.value,
       bitrateMode: bitrateMode.value,
+      enableAdvancedSettings: enableAdvancedSettings.value,
+      maxBitrateMbps: maxBitrateMbps.value,
       keyframeIntervalSec: keyframeIntervalSec.value,
       exportAlpha: exportAlpha.value,
       fastStart: fastStart.value,
@@ -196,6 +200,8 @@ export function useExportForm() {
       audioCodec.value !== encDefaults.audioCodec ||
       audioBitrateKbps.value !== encDefaults.audioBitrateKbps ||
       audioChannels.value !== 2 ||
+      enableAdvancedSettings.value !== false ||
+      maxBitrateMbps.value !== null ||
       bitrateMode.value !== encDefaults.bitrateMode ||
       keyframeIntervalSec.value !== encDefaults.keyframeIntervalSec ||
       exportAlpha.value !== encDefaults.exportAlpha ||
@@ -311,6 +317,8 @@ export function useExportForm() {
         audioChannels.value = saved.audioChannels ?? 2;
         audioSampleRate.value = saved.audioSampleRate ?? 48000;
         bitrateMode.value = saved.bitrateMode ?? 'variable';
+        enableAdvancedSettings.value = saved.enableAdvancedSettings ?? false;
+        maxBitrateMbps.value = saved.maxBitrateMbps ?? null;
         keyframeIntervalSec.value = saved.keyframeIntervalSec ?? 2;
         exportAlpha.value = saved.exportAlpha ?? false;
         fastStart.value = saved.fastStart ?? true;
@@ -337,6 +345,8 @@ export function useExportForm() {
         audioChannels.value = 2;
         audioSampleRate.value = format.sampleRate;
         bitrateMode.value = encDefaults.bitrateMode;
+        enableAdvancedSettings.value = false;
+        maxBitrateMbps.value = null;
         keyframeIntervalSec.value = encDefaults.keyframeIntervalSec;
         exportAlpha.value = encDefaults.exportAlpha;
         fastStart.value = encDefaults.fastStart;
@@ -471,10 +481,11 @@ export function useExportForm() {
             width: isAudio ? 2 : normalizedExportWidth.value,
             height: isAudio ? 2 : normalizedExportHeight.value,
             fps: isAudio ? 30 : normalizedExportFps.value,
-            bitrateMode: bitrateMode.value,
-            keyframeIntervalSec: keyframeIntervalSec.value,
+            bitrateMode: enableAdvancedSettings.value ? bitrateMode.value : 'variable',
+            maxBitrateBps: (enableAdvancedSettings.value && maxBitrateMbps.value) ? Math.round(maxBitrateMbps.value * 1_000_000) : null,
+            keyframeIntervalSec: enableAdvancedSettings.value ? keyframeIntervalSec.value : 2,
             exportAlpha: effectiveExportAlpha,
-            fastStart: fastStart.value,
+            fastStart: enableAdvancedSettings.value ? fastStart.value : false,
             metadata: includeMetadata.value
               ? {
                   title: metadataTitle.value,
@@ -672,6 +683,12 @@ export function useExportForm() {
       case 'bitrateMode':
         if (encDefaults) bitrateMode.value = encDefaults.bitrateMode;
         break;
+      case 'enableAdvancedSettings':
+        enableAdvancedSettings.value = false;
+        break;
+      case 'maxBitrateMbps':
+        maxBitrateMbps.value = null;
+        break;
       case 'keyframeIntervalSec':
         if (encDefaults) keyframeIntervalSec.value = encDefaults.keyframeIntervalSec;
         break;
@@ -741,6 +758,10 @@ export function useExportForm() {
         return audioChannels.value !== 2;
       case 'bitrateMode':
         return bitrateMode.value !== encDefaults?.bitrateMode;
+      case 'enableAdvancedSettings':
+        return enableAdvancedSettings.value !== false;
+      case 'maxBitrateMbps':
+        return maxBitrateMbps.value !== null;
       case 'keyframeIntervalSec':
         return keyframeIntervalSec.value !== encDefaults?.keyframeIntervalSec;
       case 'exportAlpha':
@@ -784,6 +805,8 @@ export function useExportForm() {
       audioChannels,
       audioSampleRate,
       bitrateMode,
+      enableAdvancedSettings,
+      maxBitrateMbps,
       keyframeIntervalSec,
       exportAlpha,
       fastStart,
@@ -814,6 +837,8 @@ export function useExportForm() {
         audioChannels: audioChannels.value,
         audioSampleRate: Number(audioSampleRate.value) || 48000,
         bitrateMode: bitrateMode.value,
+        enableAdvancedSettings: enableAdvancedSettings.value,
+        maxBitrateMbps: maxBitrateMbps.value,
         keyframeIntervalSec: keyframeIntervalSec.value,
         exportAlpha: exportAlpha.value,
         fastStart: fastStart.value,
@@ -860,6 +885,8 @@ export function useExportForm() {
     aspectRatio,
     isCustomResolution,
     bitrateMode,
+    enableAdvancedSettings,
+    maxBitrateMbps,
     keyframeIntervalSec,
     exportAlpha,
     fastStart,

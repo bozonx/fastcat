@@ -214,6 +214,7 @@ export interface NativeTimelineExportOptions {
   metadataTags?: string | null;
   exportAlpha?: boolean;
   fastStart?: boolean;
+  videoMaxBitrateBps?: number | null;
 }
 
 export async function nativeExportTimeline(params: {

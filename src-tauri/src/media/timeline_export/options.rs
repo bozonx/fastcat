@@ -28,6 +28,8 @@ pub struct NativeExportOptions {
     #[serde(default)]
     pub bitrate_mode: Option<String>,
     #[serde(default)]
+    pub video_max_bitrate_bps: Option<u32>,
+    #[serde(default)]
     pub keyframe_interval_sec: Option<f64>,
     #[serde(default)]
     pub metadata_title: Option<String>,

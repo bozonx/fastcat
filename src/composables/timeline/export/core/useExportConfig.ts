@@ -26,6 +26,8 @@ export function useExportConfig() {
   const isCustomResolution = ref<boolean>(false);
 
   const bitrateMode = ref<'constant' | 'variable'>('variable');
+  const enableAdvancedSettings = ref<boolean>(false);
+  const maxBitrateMbps = ref<number | null>(null);
   const keyframeIntervalSec = ref<number>(2);
   const exportAlpha = ref<boolean>(false);
   const fastStart = ref<boolean>(true);
@@ -148,6 +150,8 @@ export function useExportConfig() {
     aspectRatio,
     isCustomResolution,
     bitrateMode,
+    enableAdvancedSettings,
+    maxBitrateMbps,
     keyframeIntervalSec,
     exportAlpha,
     fastStart,

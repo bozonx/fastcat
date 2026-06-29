@@ -126,6 +126,8 @@ export interface FastCatProjectSettings {
     audioChannels: number;
     audioSampleRate: number;
     bitrateMode: 'constant' | 'variable';
+    enableAdvancedSettings: boolean;
+    maxBitrateMbps: number | null;
     keyframeIntervalSec: number;
     exportAlpha: boolean;
     fastStart: boolean;

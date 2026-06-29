@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import UiWheelNumberInput from '~/components/ui/UiWheelNumberInput.vue';
+import UiSliderInput from '~/components/ui/UiSliderInput.vue';
 import UiSelect from '~/components/ui/UiSelect.vue';
 import UiButtonGroup from '~/components/ui/UiButtonGroup.vue';
 import { useAudioCodecOptions } from '~/composables/timeline/export/core/useAudioCodecOptions';
@@ -151,12 +151,16 @@ function resetSampleRate() {
         <label class="text-xs text-ui-text-muted font-medium">
           {{ t('videoEditor.export.audioBitrate') }}
         </label>
-        <UiWheelNumberInput
+        <UiSliderInput
           v-model="audioBitrateKbps"
-          :min="0"
+          :min="32"
+          :max="512"
           :step="16"
+          :decimals="0"
+          unit=" Kbps"
+          :show-input="true"
           :disabled="props.disabled"
-          :class="{ 'ring-2 ring-error ring-inset': audioBitrateKbps <= 0 }"
+          input-class="w-20!"
         />
       </div>
 

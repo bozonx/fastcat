@@ -2,6 +2,7 @@
 import { computed, watch, ref } from 'vue';
 import { useAudioCodecOptions } from '~/composables/timeline/export/core/useAudioCodecOptions';
 import UiWheelNumberInput from '~/components/ui/UiWheelNumberInput.vue';
+import UiSliderInput from '~/components/ui/UiSliderInput.vue';
 import UiSelect from '~/components/ui/UiSelect.vue';
 import UiTextarea from '~/components/ui/UiTextarea.vue';
 import UiFormField from '~/components/ui/UiFormField.vue';
@@ -67,6 +68,8 @@ const preset = defineModel<'optimal' | 'social' | 'high' | 'lossless' | 'custom'
   default: 'custom',
 });
 const bitrateMode = defineModel<'constant' | 'variable'>('bitrateMode', { default: 'variable' });
+const enableAdvancedSettings = defineModel<boolean>('enableAdvancedSettings', { default: false });
+const maxBitrateMbps = defineModel<number | null>('maxBitrateMbps', { default: null });
 const keyframeIntervalSec = defineModel<number>('keyframeIntervalSec', { default: 2 });
 const exportAlpha = defineModel<boolean>('exportAlpha', { default: false });
 const fastStart = defineModel<boolean>('fastStart', { default: true });
@@ -173,6 +176,19 @@ const { audioCodecOptions } = useAudioCodecOptions({
   relabel: true,
 });
 
+const maxBitrate = computed({
+  get: () => maxBitrateMbps.value !== null ? maxBitrateMbps.value : Math.round(bitrateMbps.value * 1.5 * 10) / 10,
+  set: (val) => {
+    maxBitrateMbps.value = val;
+  }
+});
+
+watch(bitrateMbps, (newVal) => {
+  if (maxBitrateMbps.value !== null && maxBitrateMbps.value < newVal) {
+    maxBitrateMbps.value = newVal;
+  }
+});
+
 const bitrateModeOptions = [
   { value: 'variable', label: t('videoEditor.export.bitrateModeVbr') },
   { value: 'constant', label: t('videoEditor.export.bitrateModeCbr') },
@@ -187,6 +203,8 @@ watch(
     audioCodec,
     audioBitrateKbps,
     bitrateMode,
+    enableAdvancedSettings,
+    maxBitrateMbps,
     keyframeIntervalSec,
     exportAlpha,
     fastStart,
@@ -238,38 +256,19 @@ watch(
             </UiTooltip>
           </div>
         </template>
-        <UiWheelNumberInput
+        <UiSliderInput
           v-model="bitrateMbps"
-          :min="0"
+          :min="0.2"
+          :max="100"
           :step="0.1"
-          :wheel-step-multiplier="10"
-          :class="{ 'ring-2 ring-error ring-inset': bitrateMbps <= 0 }"
-        />
-      </UiFormField>
-
-      <UiFormField :label="t('videoEditor.export.keyframeInterval')" class="flex-1">
-        <UiWheelNumberInput
-          v-model="keyframeIntervalSec"
-          :min="1"
-          :max="1000"
-          :step="1"
-          :wheel-step-multiplier="10"
+          :decimals="1"
+          unit=" Mbps"
+          :show-input="true"
+          :disabled="props.disabled"
+          input-class="w-20!"
         />
       </UiFormField>
     </div>
-
-    <UiFormField :label="t('videoEditor.export.bitrateMode')">
-      <UiButtonGroup
-        v-model="bitrateMode"
-        :options="bitrateModeOptions"
-        :disabled="props.disabled"
-        @change="
-          () => {
-            isBitrateModeTouched = true;
-          }
-        "
-      />
-    </UiFormField>
 
     <UCheckbox
       v-if="canExportAlpha"
@@ -281,13 +280,72 @@ watch(
     />
 
     <UCheckbox
-      v-if="outputFormat === 'mp4'"
-      v-model="fastStart"
-      :label="t('videoEditor.export.fastStart')"
+      v-model="enableAdvancedSettings"
+      :label="t('videoEditor.export.advancedSettings')"
       :disabled="props.disabled"
-      :ui="{ label: 'text-sm text-ui-text-muted' }"
-      class="cursor-pointer"
+      :ui="{ label: 'text-sm text-ui-text' }"
+      class="cursor-pointer my-1"
     />
+
+    <template v-if="enableAdvancedSettings">
+      <div class="flex flex-col gap-4 pl-4 border-l border-ui-border">
+        <UiFormField :label="t('videoEditor.export.bitrateMode')">
+          <UiButtonGroup
+            v-model="bitrateMode"
+            :options="bitrateModeOptions"
+            :disabled="props.disabled"
+            @change="
+              () => {
+                isBitrateModeTouched = true;
+              }
+            "
+          />
+        </UiFormField>
+
+        <!-- Max Bitrate field, visible only for VBR -->
+        <UiFormField v-if="bitrateMode === 'variable'">
+          <template #label>
+            <div class="flex items-center gap-1">
+              {{ t('videoEditor.export.maxBitrate') }}
+              <UiTooltip :text="t('videoEditor.export.maxBitrateHelp')">
+                <UIcon name="i-heroicons-information-circle" class="h-4 w-4 text-ui-text-muted" />
+              </UiTooltip>
+            </div>
+          </template>
+          <UiSliderInput
+            v-model="maxBitrate"
+            :min="bitrateMbps"
+            :max="bitrateMbps * 4"
+            :step="0.1"
+            :decimals="1"
+            unit=" Mbps"
+            :show-input="true"
+            :disabled="props.disabled"
+            input-class="w-20!"
+          />
+        </UiFormField>
+
+        <UiFormField :label="t('videoEditor.export.keyframeInterval')">
+          <UiWheelNumberInput
+            v-model="keyframeIntervalSec"
+            :min="1"
+            :max="1000"
+            :step="1"
+            :wheel-step-multiplier="10"
+            :disabled="props.disabled"
+          />
+        </UiFormField>
+
+        <UCheckbox
+          v-if="outputFormat === 'mp4'"
+          v-model="fastStart"
+          :label="t('videoEditor.export.fastStart')"
+          :disabled="props.disabled"
+          :ui="{ label: 'text-sm text-ui-text-muted' }"
+          class="cursor-pointer"
+        />
+      </div>
+    </template>
 
     <div class="h-px bg-ui-border my-2"></div>
 
@@ -326,11 +384,16 @@ watch(
         :label="t('videoEditor.export.audioBitrate')"
         :help="t('videoEditor.export.audioBitrateHelp')"
       >
-        <UiWheelNumberInput
+        <UiSliderInput
           v-model="audioBitrateKbps"
-          :min="0"
+          :min="32"
+          :max="512"
           :step="16"
-          :class="{ 'ring-2 ring-error ring-inset': audioBitrateKbps <= 0 }"
+          :decimals="0"
+          unit=" Kbps"
+          :show-input="true"
+          :disabled="props.disabled"
+          input-class="w-20!"
         />
       </UiFormField>
     </div>
