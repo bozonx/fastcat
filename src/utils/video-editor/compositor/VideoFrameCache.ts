@@ -165,9 +165,16 @@ export function resolveClipFrameRate(clip: VideoFrameCacheClipLike): number | nu
 }
 
 // Without a known frame rate, key the cache by exact sampleTime in microseconds:
-// distinct sampleTimeS values never collide. With a known frame rate we round
-// to the nearest source frame so one decoded frame serves all timeline frames
-// that resolve to it.
+// distinct sampleTimeS values never collide. With a known frame rate we map the
+// time to the SOURCE FRAME displayed at it — `floor(t * fps)` — so the key matches
+// the sample-and-hold frame the sink actually returns for that time. (Rounding to
+// the *nearest* frame instead put the bucket boundary at the half-frame mark, where
+// float noise flips it: two adjacent output times could collide on one key and the
+// later one would get a cache hit returning the earlier frame — a duplicate — while
+// the skipped frame never showed. That surfaced as a periodic fps dip on export at
+// non-frame-aligned phases, the web twin of the native `frame_at` boundary bug.)
+// The small epsilon keeps a time landing exactly on a frame boundary from floating
+// just under it and bucketing into the previous frame.
 export function computeFrameIndex(clip: VideoFrameCacheClipLike, sampleTimeS: number): number {
   const safeTimeS = Number.isFinite(sampleTimeS) ? Math.max(0, sampleTimeS) : 0;
   const originS =
@@ -179,7 +186,7 @@ export function computeFrameIndex(clip: VideoFrameCacheClipLike, sampleTimeS: nu
     return Math.max(0, Math.round(safeTimeS * 1_000_000));
   }
   const relativeTimeS = Math.max(0, safeTimeS - originS);
-  return Math.max(0, Math.round(relativeTimeS * frameRate));
+  return Math.max(0, Math.floor(relativeTimeS * frameRate + 1e-6));
 }
 
 export function buildVideoFrameCacheKey(

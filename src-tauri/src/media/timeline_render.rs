@@ -730,21 +730,135 @@ mod tests {
             .collect()
     }
 
+    /// Asserts every consecutive pair of emitted source PTS advances by exactly one
+    /// source-frame interval — i.e. strict 1:1, no duplicates (delta 0) and no drops
+    /// (delta 2x). `skip` ignores leading frames whose seek landing is allowed slack.
+    fn assert_one_to_one(pts: &[f64], source_fps: f64, skip: usize, ctx: &str) {
+        let step = 1.0 / source_fps;
+        for w in pts[skip..].windows(2) {
+            let delta = w[1] - w[0];
+            assert!(
+                (delta - step).abs() < 1e-6,
+                "{ctx}: expected 1:1 cadence (delta {step}), got {delta} between {} and {}",
+                w[0],
+                w[1],
+            );
+        }
+    }
+
     #[test]
     fn matched_fps_export_is_one_to_one_for_every_phase() {
         // 25fps source exported at 25fps must advance exactly one source frame per
         // output frame — no duplicates, no drops — regardless of how the source grid
-        // is phased against the sample grid. The pathological phase (source frames on
-        // 0.00/0.04/... while the sample grid lands on the boundaries) is exactly the
-        // "bad" clip-boundary case the old half-frame-tolerance match juddered on.
+        // is phased against the sample grid AND of where the export range starts (a
+        // clip's source-in point sets that phase at each cut). The pathological phase
+        // (source frames on 0.00/0.04/... while the sample grid lands on the
+        // boundaries) is exactly the "bad" clip-boundary case the old half-frame
+        // tolerance match juddered on with periodic dup+drop pairs.
         for &phase in &[0.0, 0.01, 0.02, 0.019, 0.021, 0.0333] {
-            let pts = emit_pts(cached(GridDecoder::new(25.0, phase, 400)), 25.0, 0.0, 200);
-            // Skip the first frame (seek landing is allowed a half-frame of slack).
+            // start offsets include grid-aligned multiples of the frame interval,
+            // which put `target - half_frame` exactly on source boundaries.
+            for &start in &[0.0, 0.02, 1.0 / 25.0, 2.0 / 25.0, 0.013] {
+                let pts = emit_pts(cached(GridDecoder::new(25.0, phase, 600)), 25.0, start, 200);
+                assert_one_to_one(&pts, 25.0, 1, &format!("phase {phase} start {start}"));
+            }
+        }
+    }
+
+    #[test]
+    fn cut_forward_to_new_phase_resumes_one_to_one() {
+        // The reported bug: a cut to a *different file* re-seeks the decoder, landing
+        // at an arbitrary phase. Model the jump with a forward gap past the
+        // sequential-decode threshold so `frame_at` re-seeks, then assert the new
+        // segment is still clean 1:1 (no judder cluster after the cut).
+        let mut cd = cached(GridDecoder::new(25.0, 0.0, 2000));
+        // First segment, then jump ~30s ahead (a "different clip" further in the file).
+        let mut pts: Vec<f64> = (0..40)
+            .map(|i| cd.frame_at(0.5 + (i as f64 + 0.5) / 25.0).unwrap().pts_sec)
+            .collect();
+        let after_cut: Vec<f64> = (0..40)
+            .map(|i| cd.frame_at(30.0 + (i as f64 + 0.5) / 25.0).unwrap().pts_sec)
+            .collect();
+        // Each segment must be internally 1:1 (skip the segment's seek-landing frame).
+        assert_one_to_one(&pts, 25.0, 1, "pre-cut");
+        assert_one_to_one(&after_cut, 25.0, 1, "post-cut");
+        pts.extend(after_cut);
+        assert!(pts.windows(2).all(|w| w[1] >= w[0] - 1e-9), "PTS must not regress");
+    }
+
+    #[test]
+    fn backward_seek_then_forward_stays_one_to_one() {
+        // A backward cut (target before the held frame by > half a frame) must
+        // re-seek and resume cleanly, not freeze on the old frame.
+        let mut cd = cached(GridDecoder::new(25.0, 0.0, 2000));
+        let _forward: Vec<f64> = (0..30)
+            .map(|i| cd.frame_at(20.0 + (i as f64 + 0.5) / 25.0).unwrap().pts_sec)
+            .collect();
+        let rewound: Vec<f64> = (0..30)
+            .map(|i| cd.frame_at(2.0 + (i as f64 + 0.5) / 25.0).unwrap().pts_sec)
+            .collect();
+        assert!(rewound[0] < 3.0, "backward seek should land near 2s, got {}", rewound[0]);
+        assert_one_to_one(&rewound, 25.0, 1, "after rewind");
+    }
+
+    #[test]
+    fn holds_last_frame_at_end_of_stream() {
+        // Sampling at/just past the final source frame holds it (duplicates), rather
+        // than erroring or advancing past EOF.
+        let count = 25; // frames at 0.00..0.96
+        let mut cd = cached(GridDecoder::new(25.0, 0.0, count));
+        // Walk to the end, then request a few frames beyond the last source frame.
+        let pts: Vec<f64> = (0..count + 5)
+            .map(|i| cd.frame_at((i as f64 + 0.5) / 25.0).unwrap().pts_sec)
+            .collect();
+        let last_real = (count as f64 - 1.0) / 25.0;
+        assert!(
+            (pts[pts.len() - 1] - last_real).abs() < 1e-6,
+            "tail should hold the last source frame {last_real}, got {}",
+            pts[pts.len() - 1]
+        );
+        // The held tail repeats the same frame (deltas of 0), never advances past EOF.
+        assert!(pts.iter().all(|&p| p <= last_real + 1e-6));
+    }
+
+    #[test]
+    fn matched_fractional_fps_is_one_to_one() {
+        // 30000/1001 (29.97) source exported at the same rate stays 1:1; the float
+        // grid is irregular but sample-and-hold tracks it without dup/drop.
+        let fps = 30000.0 / 1001.0;
+        let pts = emit_pts(cached(GridDecoder::new(fps, 0.0, 600)), fps, 0.0, 200);
+        assert_one_to_one(&pts, fps, 1, "29.97 matched");
+    }
+
+    #[test]
+    fn matched_fps_real_decode_is_one_to_one() {
+        // Integration: drive the real ffmpeg decoder + cache + seek path over a real
+        // 25fps fixture exported at 25fps across several start phases (incl. grid
+        // aligned). Exercises exactly the code the bug lived in, end to end.
+        let fixture = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .parent()
+            .unwrap()
+            .join("test/fixtures/media/sample-1s-720p.mp4");
+        let fps = 25.0;
+        for &start in &[0.0, 0.5 / fps, 0.25 / fps, 1.0 / fps] {
+            let mut cache = VideoDecoderCache::new();
+            // 1s fixture; keep within range after the start offset.
+            let frames = 18;
+            let pts: Vec<f64> = (0..frames)
+                .map(|i| {
+                    let t = start + (i as f64 + 0.5) / fps;
+                    decode_video_frame_cached(&fixture, t, None, &mut cache)
+                        .unwrap()
+                        .0
+                        .pts_sec
+                })
+                .collect();
+            // Real PTS carry timebase rounding, so allow a looser (still sub-frame) tol.
             for w in pts[1..].windows(2) {
                 let delta = w[1] - w[0];
                 assert!(
-                    (delta - 1.0 / 25.0).abs() < 1e-6,
-                    "phase {phase}: expected 1:1 cadence, got delta {delta} between {} and {}",
+                    (delta - 1.0 / fps).abs() < 1.0 / fps * 0.25,
+                    "real decode start {start}: expected ~1:1, got delta {delta} ({} -> {})",
                     w[0],
                     w[1],
                 );
