@@ -172,7 +172,7 @@ function resetSampleRate() {
           />
           <UiWheelNumberInput
             v-model="audioBitrateKbps"
-            :min="96"
+            :min="32"
             :max="512"
             :step="16"
             :wheel-step-multiplier="2"

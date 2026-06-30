@@ -212,7 +212,7 @@ function resetToDefault() {
         <div
           v-for="tick in ticks"
           :key="tick.key"
-          class="absolute flex flex-col items-center gap-0.5 -translate-x-1/2"
+          class="absolute flex flex-col items-center -translate-x-1/2 top-1/2 h-6"
           :style="{ left: `${tick.percent}%` }"
         >
           <!-- Tick line -->
@@ -222,7 +222,7 @@ function resetToDefault() {
           />
           <!-- Tick label -->
           <span
-            class="text-[9px] leading-none transition-colors duration-75 mt-0.5"
+            class="text-[9px] leading-none transition-colors duration-75 mt-auto"
             :class="[
               isDiscreteMode ? '' : 'font-mono',
               tick.key === modelValue ? 'text-primary-400 font-semibold' : 'text-ui-text-muted',
