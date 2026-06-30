@@ -8,11 +8,17 @@ import MarkerColorFilter from '~/components/project/MarkerColorFilter.vue';
 
 type ExportFormat =
   | 'ms-or-hms-left'
+  | 'markdown-bracket-left'
   | 'timecode-bracket-left'
   | 'timecode-bracket-right'
   | 'hms-left'
   | 'hms-dash-left'
-  | 'hms-right';
+  | 'hms-right'
+  | 'audacity'
+  | 'csv'
+  | 'tsv'
+  | 'json'
+  | 'webvtt';
 
 export interface MarkerExportModalProps {
   markers: TimelineMarker[];
@@ -59,7 +65,7 @@ function formatTimeForExport(us: number): string {
   if (isTimecode) {
     return formatTimecode(us, props.fps);
   }
-  if (exportFormat.value === 'ms-or-hms-left') {
+  if (exportFormat.value === 'ms-or-hms-left' || exportFormat.value === 'markdown-bracket-left') {
     return formatMsOrHms(us);
   }
   return formatHms(us);
@@ -71,6 +77,8 @@ function formatMarkerLine(marker: TimelineMarker): string {
   switch (exportFormat.value) {
     case 'ms-or-hms-left':
       return `${timeValue} ${text}`;
+    case 'markdown-bracket-left':
+      return `- [${timeValue}] ${text}`;
     case 'timecode-bracket-left':
       return `[${timeValue}] ${text}`;
     case 'timecode-bracket-right':
@@ -81,7 +89,20 @@ function formatMarkerLine(marker: TimelineMarker): string {
       return `${timeValue} - ${text}`;
     case 'hms-right':
       return `${text} ${timeValue}`;
+    default:
+      return '';
   }
+}
+
+function formatVttTime(us: number): string {
+  const totalMs = Math.floor(us / 1000);
+  const ms = totalMs % 1000;
+  const totalSeconds = Math.floor(totalMs / 1000);
+  const ss = totalSeconds % 60;
+  const mm = Math.floor(totalSeconds / 60) % 60;
+  const hh = Math.floor(totalSeconds / 3600);
+  const pad = (n: number, size = 2) => String(n).padStart(size, '0');
+  return `${pad(hh)}:${pad(mm)}:${pad(ss)}.${pad(ms, 3)}`;
 }
 
 const filteredMarkers = computed(() => {
@@ -93,7 +114,68 @@ const filteredMarkers = computed(() => {
     .sort((a, b) => a.timeUs - b.timeUs);
 });
 
-const exportText = computed(() => filteredMarkers.value.map(formatMarkerLine).join('\n'));
+const exportText = computed(() => {
+  const markers = filteredMarkers.value;
+  if (markers.length === 0) return '';
+
+  if (exportFormat.value === 'json') {
+    return JSON.stringify(
+      markers.map((m) => ({
+        id: m.id,
+        timeUs: m.timeUs,
+        timecode: formatTimecode(m.timeUs, props.fps),
+        text: m.text,
+        color: m.color || DEFAULT_MARKER_COLOR,
+      })),
+      null,
+      2,
+    );
+  }
+
+  if (exportFormat.value === 'audacity') {
+    return markers
+      .map((m) => {
+        const startSec = (m.timeUs / 1_000_000).toFixed(6);
+        const endUs = m.durationUs ? m.timeUs + m.durationUs : m.timeUs;
+        const endSec = (endUs / 1_000_000).toFixed(6);
+        return `${startSec}\t${endSec}\t${m.text || ''}`;
+      })
+      .join('\n');
+  }
+
+  if (exportFormat.value === 'csv' || exportFormat.value === 'tsv') {
+    const delimiter = exportFormat.value === 'tsv' ? '\t' : ',';
+    const header = ['Name', 'Timecode', 'Description', 'Color'].join(delimiter);
+    const rows = markers.map((m) => {
+      const name = (m.text || '').replace(/"/g, '""');
+      const timecode = formatTimecode(m.timeUs, props.fps);
+      const color = m.color || DEFAULT_MARKER_COLOR;
+      return `"${name}"${delimiter}"${timecode}"${delimiter}""${delimiter}"${color}"`;
+    });
+    return [header, ...rows].join('\n');
+  }
+
+  if (exportFormat.value === 'webvtt') {
+    const lines = ['WEBVTT', ''];
+    for (let i = 0; i < markers.length; i++) {
+      const marker = markers[i];
+      const nextMarker = markers[i + 1];
+      const startUs = marker.timeUs;
+      let endUs = startUs + 5_000_000;
+      if (marker.durationUs && marker.durationUs > 0) {
+        endUs = startUs + marker.durationUs;
+      } else if (nextMarker) {
+        endUs = nextMarker.timeUs;
+      }
+      lines.push(`${formatVttTime(startUs)} --> ${formatVttTime(endUs)}`);
+      lines.push(marker.text || '');
+      lines.push('');
+    }
+    return lines.join('\n');
+  }
+
+  return markers.map(formatMarkerLine).join('\n');
+});
 
 async function handleCopy() {
   if (!exportText.value) {
@@ -112,6 +194,7 @@ async function handleCopy() {
 
 const exportFormatItems = computed(() => [
   { value: 'ms-or-hms-left' as ExportFormat, label: t('fastcat.marker.exportFormats.msOrHmsLeft') },
+  { value: 'markdown-bracket-left' as ExportFormat, label: t('fastcat.marker.exportFormats.markdownBracketLeft') },
   { value: 'hms-left' as ExportFormat, label: t('fastcat.marker.exportFormats.hmsLeft') },
   { value: 'hms-dash-left' as ExportFormat, label: t('fastcat.marker.exportFormats.hmsDashLeft') },
   { value: 'hms-right' as ExportFormat, label: t('fastcat.marker.exportFormats.hmsRight') },
@@ -123,6 +206,11 @@ const exportFormatItems = computed(() => [
     value: 'timecode-bracket-right' as ExportFormat,
     label: t('fastcat.marker.exportFormats.timecodeBracketRight'),
   },
+  { value: 'audacity' as ExportFormat, label: t('fastcat.marker.exportFormats.audacity') },
+  { value: 'csv' as ExportFormat, label: t('fastcat.marker.exportFormats.csv') },
+  { value: 'tsv' as ExportFormat, label: t('fastcat.marker.exportFormats.tsv') },
+  { value: 'json' as ExportFormat, label: t('fastcat.marker.exportFormats.json') },
+  { value: 'webvtt' as ExportFormat, label: t('fastcat.marker.exportFormats.webvtt') },
 ]);
 </script>
 

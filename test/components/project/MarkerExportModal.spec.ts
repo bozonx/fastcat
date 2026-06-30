@@ -146,6 +146,37 @@ describe('MarkerExportModal.vue', () => {
     await component.vm.$nextTick();
 
     expect(textarea.element.value).toContain('Intro [00:00:01:00]');
+
+    vm.exportFormat = 'markdown-bracket-left';
+    await component.vm.$nextTick();
+
+    expect(textarea.element.value).toContain('- [00:01] Intro');
+
+    vm.exportFormat = 'audacity';
+    await component.vm.$nextTick();
+
+    expect(textarea.element.value).toContain('1.000000\t1.000000\tIntro');
+
+    vm.exportFormat = 'csv';
+    await component.vm.$nextTick();
+
+    expect(textarea.element.value).toContain('"Intro","00:00:01:00","","#d0021b"');
+
+    vm.exportFormat = 'tsv';
+    await component.vm.$nextTick();
+
+    expect(textarea.element.value).toContain('"Intro"\t"00:00:01:00"\t""\t"#d0021b"');
+
+    vm.exportFormat = 'json';
+    await component.vm.$nextTick();
+
+    expect(textarea.element.value).toContain('"text": "Intro"');
+
+    vm.exportFormat = 'webvtt';
+    await component.vm.$nextTick();
+
+    expect(textarea.element.value).toContain('WEBVTT');
+    expect(textarea.element.value).toContain('00:00:01.000 --> 00:00:06.000');
   });
 
   it('toggles all colors with select all button', async () => {

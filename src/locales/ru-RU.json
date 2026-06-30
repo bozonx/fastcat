@@ -538,11 +538,17 @@
       "exportTitle": "Экспорт маркеров",
       "exportFormats": {
         "msOrHmsLeft": "00:00 Название",
+        "markdownBracketLeft": "- [00:00] Название",
         "timecodeBracketLeft": "[00:00:00:00] Название",
         "timecodeBracketRight": "Название [00:00:00:00]",
         "hmsLeft": "00:00:00 Название",
         "hmsDashLeft": "00:00:00 - Название",
-        "hmsRight": "Название 00:00:00"
+        "hmsRight": "Название 00:00:00",
+        "audacity": "Audacity Labels",
+        "csv": "CSV (Reaper, Premiere, DaVinci)",
+        "tsv": "TSV (Reaper, Premiere, DaVinci)",
+        "json": "JSON",
+        "webvtt": "WebVTT Chapters"
       },
       "selectAll": "Выбрать все"
     },
