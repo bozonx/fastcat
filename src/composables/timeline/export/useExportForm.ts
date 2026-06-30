@@ -661,6 +661,7 @@ export function useExportForm() {
   }
 
   function getPhaseLabel() {
+    if (exportPhase.value === 'encoding-audio') return t('videoEditor.export.phaseEncodingAudio');
     if (exportPhase.value === 'encoding') {
       return exportType.value === 'audio'
         ? t('videoEditor.export.phaseEncodingAudio')

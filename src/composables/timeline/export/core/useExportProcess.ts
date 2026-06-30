@@ -239,7 +239,15 @@ export function useExportProcess(
         // container is still being finalized (encoder flush + mp4 faststart remux),
         // which is slow for large files. Cap progress at 0.99 during encoding so the
         // bar doesn't sit stuck at 100%, then switch to 'finalizing' after ffmpeg exits.
-        const onNativeProgress = (progress: number) => {
+        // Native runs the offline audio mix to completion first, then encodes video,
+        // reporting the sub-stage so the (single, monotonic) bar can be relabelled
+        // "Encoding audio…" → "Encoding video…" as it crosses the phase boundary.
+        const onNativeProgress = (progress: number, phase?: 'audio' | 'video') => {
+          if (phase === 'audio') {
+            exportPhase.value = 'encoding-audio';
+          } else if (phase === 'video') {
+            exportPhase.value = 'encoding';
+          }
           onProgress(Math.min(progress, 0.99));
         };
         await nativeExportTimeline({

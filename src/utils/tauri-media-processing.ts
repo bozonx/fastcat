@@ -223,15 +223,15 @@ export async function nativeExportTimeline(params: {
   scene: unknown;
   targetPath: string;
   options: NativeTimelineExportOptions;
-  onProgress?: (progress: number) => void;
+  onProgress?: (progress: number, phase?: 'audio' | 'video') => void;
   onWarning?: (message: string) => void;
 }): Promise<void> {
   const unlistenProgress = params.onProgress
-    ? await listen<{ taskId: string; progress: number }>(
+    ? await listen<{ taskId: string; progress: number; phase?: 'audio' | 'video' }>(
         'native-timeline-export:progress',
         (event) => {
           if (event.payload.taskId !== params.taskId) return;
-          params.onProgress?.(event.payload.progress);
+          params.onProgress?.(event.payload.progress, event.payload.phase);
         },
       )
     : null;

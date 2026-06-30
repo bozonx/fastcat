@@ -9,7 +9,7 @@ use crate::media::processing::{
     generate_proxy, probe_media, probe_media_validated, NativeConvertOptions, NativeMediaMetadata,
     NativeMediaTasks, NativeProxyOptions,
 };
-use crate::media::timeline_export::{export_timeline, NativeExportOptions};
+use crate::media::timeline_export::{export_timeline, ExportProgressPhase, NativeExportOptions};
 use crate::media::timeline_render::{
     render_timeline_frame_to_file, render_timeline_frame_to_webp, TimelineFrameRequest,
 };
@@ -139,7 +139,7 @@ impl NativeMediaService {
         scene: MonitorScene,
         options: NativeExportOptions,
         target_path: &std::path::Path,
-        progress: &(dyn Fn(f64) + Send + Sync),
+        progress: &(dyn Fn(f64, ExportProgressPhase) + Send + Sync),
         warning: &(dyn Fn(String) + Send + Sync),
     ) -> anyhow::Result<()> {
         export_timeline(
@@ -208,6 +208,7 @@ pub async fn native_media_generate_proxy(
                     NativeMediaProgress {
                         task_id: &task_id,
                         progress,
+                        phase: None,
                     },
                 );
             }),
@@ -257,6 +258,7 @@ pub async fn native_media_convert(
                     NativeMediaProgress {
                         task_id: &task_id_clone,
                         progress,
+                        phase: None,
                     },
                 );
             }),
@@ -300,6 +302,10 @@ pub fn native_media_cancel(task_id: String, service: State<'_, NativeMediaServic
 struct NativeMediaProgress<'a> {
     task_id: &'a str,
     progress: f64,
+    /// Sub-stage this update belongs to, when the producer distinguishes phases
+    /// (`"audio"`/`"video"` for timeline export). `None` for single-phase tasks.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    phase: Option<&'static str>,
 }
 
 #[derive(Clone, Serialize)]
@@ -331,12 +337,13 @@ pub async fn native_timeline_export(
             scene,
             options,
             &target_path,
-            &|progress| {
+            &|progress, phase| {
                 let _ = app.emit(
                     "native-timeline-export:progress",
                     NativeMediaProgress {
                         task_id: &task_id,
                         progress,
+                        phase: Some(phase.as_str()),
                     },
                 );
             },

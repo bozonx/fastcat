@@ -41,6 +41,25 @@ mod tests;
 pub use audio::temp_audio_path;
 pub use options::NativeExportOptions;
 
+/// Which sub-stage of the export a progress update belongs to. The export runs the
+/// offline audio mix to completion first, then encodes video, so the frontend can
+/// relabel the (single, monotonic) progress bar as the native side crosses phases.
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum ExportProgressPhase {
+    Audio,
+    Video,
+}
+
+impl ExportProgressPhase {
+    /// Stable wire token emitted to the frontend alongside the progress fraction.
+    pub fn as_str(self) -> &'static str {
+        match self {
+            ExportProgressPhase::Audio => "audio",
+            ExportProgressPhase::Video => "video",
+        }
+    }
+}
+
 use direct::plan_direct;
 use ffmpeg_args_builder::{
     build_direct_ffmpeg_args, build_ffmpeg_args, export_uses_alpha, is_gpu_render_error,
@@ -379,7 +398,7 @@ pub fn export_timeline(
     scene: MonitorScene,
     options: NativeExportOptions,
     target_path: &Path,
-    on_progress: &(dyn Fn(f64) + Send + Sync),
+    on_progress: &(dyn Fn(f64, ExportProgressPhase) + Send + Sync),
     on_warning: &(dyn Fn(String) + Send + Sync),
 ) -> Result<()> {
     let width = even(options.width.max(2));
@@ -431,7 +450,10 @@ pub fn export_timeline(
     };
     // Remaps the ffmpeg-encode fraction into the trailing slice after the pre-render.
     let report_video_progress = |frac: f64| {
-        on_progress(audio_progress_share + (1.0 - audio_progress_share) * frac.clamp(0.0, 1.0));
+        on_progress(
+            audio_progress_share + (1.0 - audio_progress_share) * frac.clamp(0.0, 1.0),
+            ExportProgressPhase::Video,
+        );
     };
 
     // Resolve the hardware mode once (auto → vaapi/none, alpha forces software) so
@@ -482,7 +504,7 @@ pub fn export_timeline(
                 let last = last_reported_pct.load(std::sync::atomic::Ordering::Relaxed);
                 if pct != last || progress == 0.0 || progress == 1.0 {
                     last_reported_pct.store(pct, std::sync::atomic::Ordering::Relaxed);
-                    on_progress(progress);
+                    on_progress(progress, ExportProgressPhase::Audio);
                 }
             }),
         })

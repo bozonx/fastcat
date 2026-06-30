@@ -10,11 +10,11 @@ use std::path::Path;
 
 use app_lib::compositor::Compositor;
 use app_lib::media::tasks::NativeMediaTasks;
-use app_lib::media::timeline_export::{export_timeline, NativeExportOptions};
+use app_lib::media::timeline_export::{export_timeline, ExportProgressPhase, NativeExportOptions};
 use app_lib::monitor::scene::MonitorScene;
 use serde_json::json;
 
-fn noop_progress(_p: f64) {}
+fn noop_progress(_p: f64, _phase: ExportProgressPhase) {}
 fn noop_warning(_w: String) {}
 
 fn audio_layer(rel: &str) -> serde_json::Value {
