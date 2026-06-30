@@ -11,7 +11,6 @@ import { useMonitorGrid } from '~/composables/monitor/useMonitorGrid';
 import { useMonitorRuntime } from '~/composables/monitor/useMonitorRuntime';
 import { useMonitorFullscreenViewport } from '~/composables/monitor/useMonitorFullscreenViewport';
 import { useThrottleFn } from '@vueuse/core';
-import type { MonitorSyncMode } from '~/composables/monitor/useMonitorPlayback';
 import MonitorAudioControl from './MonitorAudioControl.vue';
 import MonitorViewport from './MonitorViewport.vue';
 import MonitorOverlayContent from './MonitorOverlayContent.vue';
@@ -249,6 +248,7 @@ const {
 } = useMonitorContainerControls({
   t,
   projectStore,
+  workspaceStore,
   timelineStore,
   selectionStore,
   viewportRef,
@@ -278,69 +278,11 @@ const monitorZoomLabel = computed(() => {
   return `x${zoom.toFixed(2)}`;
 });
 
-const monitorSyncOptions: Array<{
-  value: MonitorSyncMode;
-  icon: string;
-  labelKey: string;
-  titleKey: string;
-}> = [
-  {
-    value: 'smooth',
-    icon: 'i-lucide-waves',
-    labelKey: 'fastcat.monitor.syncSmooth',
-    titleKey: 'fastcat.monitor.syncSmoothTitle',
-  },
-  {
-    value: 'balanced',
-    icon: 'i-lucide-gauge',
-    labelKey: 'fastcat.monitor.syncBalanced',
-    titleKey: 'fastcat.monitor.syncBalancedTitle',
-  },
-  {
-    value: 'strict',
-    icon: 'i-lucide-crosshair',
-    labelKey: 'fastcat.monitor.syncStrict',
-    titleKey: 'fastcat.monitor.syncStrictTitle',
-  },
-];
-
-const currentMonitorSyncMode = computed<MonitorSyncMode>(
-  () => workspaceStore.userSettings?.optimization?.nativeMonitorSyncMode ?? 'balanced',
-);
-
-const selectedMonitorSyncOption = computed(
-  () =>
-    monitorSyncOptions.find((option) => option.value === currentMonitorSyncMode.value) ??
-    monitorSyncOptions[1]!,
-);
-
-const selectedMonitorSyncTitle = computed(() => t(selectedMonitorSyncOption.value.titleKey));
-
-const monitorSyncMenuItems = computed(() => [
-  monitorSyncOptions.map((option) => ({
-    label: t(option.labelKey),
-    icon: option.icon,
-    title: t(option.titleKey),
-    type: 'checkbox' as const,
-    checked: option.value === currentMonitorSyncMode.value,
-    onSelect: () => {
-      if (workspaceStore.userSettings?.optimization) {
-        workspaceStore.userSettings.optimization.nativeMonitorSyncMode = option.value;
-      }
-    },
-  })),
-]);
-
-const isMonitorSyncMenuOpen = ref(false);
 const isMonitorMoreMenuOpen = ref(false);
 const isMonitorContextMenuOpen = ref(false);
 
 function setMonitorContextMenuOpen(isOpen: boolean) {
   isMonitorContextMenuOpen.value = isOpen;
-}
-
-function setMonitorSyncMenuOpen(isOpen: boolean) {
-  isMonitorSyncMenuOpen.value = isOpen;
 }
 
 function setMonitorMoreMenuOpen(isOpen: boolean) {
@@ -350,13 +292,11 @@ function setMonitorMoreMenuOpen(isOpen: boolean) {
 function closeMonitorMenus() {
   if (
     !isMonitorContextMenuOpen.value &&
-    !isMonitorSyncMenuOpen.value &&
     !isMonitorMoreMenuOpen.value
   ) {
     return;
   }
   isMonitorContextMenuOpen.value = false;
-  isMonitorSyncMenuOpen.value = false;
   isMonitorMoreMenuOpen.value = false;
 }
 
@@ -364,7 +304,6 @@ function onMonitorKeyDown(event: KeyboardEvent) {
   if (event.key === 'Escape') {
     if (
       isMonitorContextMenuOpen.value ||
-      isMonitorSyncMenuOpen.value ||
       isMonitorMoreMenuOpen.value
     ) {
       closeMonitorMenus();
@@ -401,7 +340,6 @@ function showControlsTemporary() {
   if (effectiveFullscreen.value) {
     idleTimer = setTimeout(() => {
       if (
-        isMonitorSyncMenuOpen.value ||
         isMonitorMoreMenuOpen.value ||
         isMonitorContextMenuOpen.value
       ) {
@@ -740,29 +678,6 @@ watch(viewportRef, (vp) => {
                 no-toggle
                 @click="toggleProxyUsage"
               />
-            </UiTooltip>
-
-            <UiTooltip :text="selectedMonitorSyncTitle">
-              <UDropdownMenu
-                :open="isMonitorSyncMenuOpen"
-                :items="monitorSyncMenuItems"
-                :portal="monitorMenuPortal"
-                :ui="{ content: 'min-w-44 z-[60]' }"
-                :content="dropdownNoReturnFocus"
-                @update:open="setMonitorSyncMenuOpen"
-              >
-                <UiActionButton
-                  v-if="projectStore.activeMonitor"
-                  size="xs"
-                  color="neutral"
-                  variant="ghost"
-                  :icon="selectedMonitorSyncOption.icon"
-                  :aria-label="t('fastcat.monitor.syncMode')"
-                  class="px-1.5"
-                >
-                  <UIcon name="i-lucide-chevron-down" class="size-3 text-ui-text-muted" />
-                </UiActionButton>
-              </UDropdownMenu>
             </UiTooltip>
 
             <UiTooltip

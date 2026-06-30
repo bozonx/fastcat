@@ -4,6 +4,8 @@ import { useMonitorSettings } from '~/composables/monitor/useMonitorSettings';
 import type { useProjectStore } from '~/stores/project.store';
 import type { useTimelineStore } from '~/stores/timeline.store';
 import type { useSelectionStore } from '~/stores/selection.store';
+import type { useWorkspaceStore } from '~/stores/workspace.store';
+import type { MonitorSyncMode } from '~/composables/monitor/useMonitorPlayback';
 import { isTauriRuntime } from '~/utils/runtime';
 
 interface PlaybackSpeedOption {
@@ -30,6 +32,7 @@ interface MonitorViewportPublicApi {
 interface UseMonitorContainerControlsOptions {
   t: TranslateFn;
   projectStore: ReturnType<typeof useProjectStore>;
+  workspaceStore: ReturnType<typeof useWorkspaceStore>;
   timelineStore: ReturnType<typeof useTimelineStore>;
   selectionStore: ReturnType<typeof useSelectionStore>;
   viewportRef: Ref<MonitorViewportPublicApi | null>;
@@ -55,6 +58,43 @@ function formatSpeedLabel(speed: number): string {
 
 export function useMonitorContainerControls(options: UseMonitorContainerControlsOptions) {
   const { showTimecode, showTransparencyGrid, showMarkerTexts } = useMonitorSettings();
+
+  const monitorSyncOptions: Array<{
+    value: MonitorSyncMode;
+    icon: string;
+    labelKey: string;
+    titleKey: string;
+  }> = [
+    {
+      value: 'smooth',
+      icon: 'i-lucide-waves',
+      labelKey: 'fastcat.monitor.syncSmooth',
+      titleKey: 'fastcat.monitor.syncSmoothTitle',
+    },
+    {
+      value: 'balanced',
+      icon: 'i-lucide-gauge',
+      labelKey: 'fastcat.monitor.syncBalanced',
+      titleKey: 'fastcat.monitor.syncBalancedTitle',
+    },
+    {
+      value: 'strict',
+      icon: 'i-lucide-crosshair',
+      labelKey: 'fastcat.monitor.syncStrict',
+      titleKey: 'fastcat.monitor.syncStrictTitle',
+    },
+  ];
+
+  const currentMonitorSyncMode = computed<MonitorSyncMode>(
+    () => options.workspaceStore.userSettings?.optimization?.nativeMonitorSyncMode ?? 'balanced',
+  );
+
+  const selectedMonitorSyncOption = computed(
+    () =>
+      monitorSyncOptions.find((option) => option.value === currentMonitorSyncMode.value) ??
+      monitorSyncOptions[1]!,
+  );
+
   const positiveSpeedValues = [0.5, 0.75, 1, 1.25, 1.5, 1.75, 2, 3, 5];
 
   const playbackSpeedOptions: PlaybackSpeedOption[] = positiveSpeedValues.map((v) => ({
@@ -323,6 +363,25 @@ export function useMonitorContainerControls(options: UseMonitorContainerControls
                 })),
               ],
             },
+            {
+              label: `${options.t('fastcat.monitor.syncMode')} (${options.t(
+                selectedMonitorSyncOption.value.labelKey,
+              )})`,
+              icon: selectedMonitorSyncOption.value.icon,
+              children: monitorSyncOptions.map((option) => ({
+                label: options.t(option.labelKey),
+                icon: option.icon,
+                title: options.t(option.titleKey),
+                type: 'checkbox' as const,
+                checked: option.value === currentMonitorSyncMode.value,
+                onSelect: () => {
+                  if (options.workspaceStore.userSettings?.optimization) {
+                    options.workspaceStore.userSettings.optimization.nativeMonitorSyncMode =
+                      option.value;
+                  }
+                },
+              })),
+            },
           ],
         ]),
     [
@@ -428,32 +487,53 @@ export function useMonitorContainerControls(options: UseMonitorContainerControls
       : [
           [
             {
-              label: options.t('fastcat.monitor.toolbarTop'),
-              icon: 'i-lucide-panel-top',
-              type: 'checkbox' as const,
-              checked: toolbarPosition.value === 'top',
-              onSelect: () => setToolbarPosition('top'),
-            },
-            {
-              label: options.t('fastcat.monitor.toolbarRight'),
-              icon: 'i-lucide-panel-right',
-              type: 'checkbox' as const,
-              checked: toolbarPosition.value === 'right',
-              onSelect: () => setToolbarPosition('right'),
-            },
-            {
-              label: options.t('fastcat.monitor.toolbarBottom'),
-              icon: 'i-lucide-panel-bottom',
-              type: 'checkbox' as const,
-              checked: toolbarPosition.value === 'bottom',
-              onSelect: () => setToolbarPosition('bottom'),
-            },
-            {
-              label: options.t('fastcat.monitor.toolbarLeft'),
-              icon: 'i-lucide-panel-left',
-              type: 'checkbox' as const,
-              checked: toolbarPosition.value === 'left',
-              onSelect: () => setToolbarPosition('left'),
+              label: `${options.t('fastcat.monitor.toolbarPosition')} (${
+                toolbarPosition.value === 'top'
+                  ? options.t('fastcat.monitor.toolbarTop')
+                  : toolbarPosition.value === 'right'
+                    ? options.t('fastcat.monitor.toolbarRight')
+                    : toolbarPosition.value === 'bottom'
+                      ? options.t('fastcat.monitor.toolbarBottom')
+                      : options.t('fastcat.monitor.toolbarLeft')
+              })`,
+              icon:
+                toolbarPosition.value === 'top'
+                  ? 'i-lucide-panel-top'
+                  : toolbarPosition.value === 'right'
+                    ? 'i-lucide-panel-right'
+                    : toolbarPosition.value === 'bottom'
+                      ? 'i-lucide-panel-bottom'
+                      : 'i-lucide-panel-left',
+              children: [
+                {
+                  label: options.t('fastcat.monitor.toolbarTop'),
+                  icon: 'i-lucide-panel-top',
+                  type: 'checkbox' as const,
+                  checked: toolbarPosition.value === 'top',
+                  onSelect: () => setToolbarPosition('top'),
+                },
+                {
+                  label: options.t('fastcat.monitor.toolbarRight'),
+                  icon: 'i-lucide-panel-right',
+                  type: 'checkbox' as const,
+                  checked: toolbarPosition.value === 'right',
+                  onSelect: () => setToolbarPosition('right'),
+                },
+                {
+                  label: options.t('fastcat.monitor.toolbarBottom'),
+                  icon: 'i-lucide-panel-bottom',
+                  type: 'checkbox' as const,
+                  checked: toolbarPosition.value === 'bottom',
+                  onSelect: () => setToolbarPosition('bottom'),
+                },
+                {
+                  label: options.t('fastcat.monitor.toolbarLeft'),
+                  icon: 'i-lucide-panel-left',
+                  type: 'checkbox' as const,
+                  checked: toolbarPosition.value === 'left',
+                  onSelect: () => setToolbarPosition('left'),
+                },
+              ],
             },
           ],
         ]),
@@ -471,25 +551,34 @@ export function useMonitorContainerControls(options: UseMonitorContainerControls
     })),
     [
       {
-        label: options.t('fastcat.monitor.previewBlurQuality') + ':',
-        disabled: true,
-      },
-      ...(['auto', 'low', 'medium', 'high'] as const).map((q) => {
-        const labelKey =
-          q === 'auto'
+        label: `${options.t('fastcat.monitor.previewBlurQuality')} (${options.t(
+          (options.projectStore.activeMonitor?.previewBlurQuality ?? 'auto') === 'auto'
             ? 'fastcat.timeline.transition.blurQualityAuto'
-            : `fastcat.timeline.transition.blurQuality${q.charAt(0).toUpperCase() + q.slice(1)}`;
-        return {
-          label: options.t(labelKey),
-          type: 'checkbox' as const,
-          checked: (options.projectStore.activeMonitor?.previewBlurQuality ?? 'auto') === q,
-          onSelect: () => {
-            if (options.projectStore.activeMonitor) {
-              options.projectStore.activeMonitor.previewBlurQuality = q;
-            }
-          },
-        };
-      }),
+            : `fastcat.timeline.transition.blurQuality${
+                (options.projectStore.activeMonitor?.previewBlurQuality ?? 'auto')
+                  .charAt(0)
+                  .toUpperCase() +
+                (options.projectStore.activeMonitor?.previewBlurQuality ?? 'auto').slice(1)
+              }`,
+        )})`,
+        icon: 'i-heroicons-sparkles',
+        children: (['auto', 'low', 'medium', 'high'] as const).map((q) => {
+          const labelKey =
+            q === 'auto'
+              ? 'fastcat.timeline.transition.blurQualityAuto'
+              : `fastcat.timeline.transition.blurQuality${q.charAt(0).toUpperCase() + q.slice(1)}`;
+          return {
+            label: options.t(labelKey),
+            type: 'checkbox' as const,
+            checked: (options.projectStore.activeMonitor?.previewBlurQuality ?? 'auto') === q,
+            onSelect: () => {
+              if (options.projectStore.activeMonitor) {
+                options.projectStore.activeMonitor.previewBlurQuality = q;
+              }
+            },
+          };
+        }),
+      },
     ],
   ]);
 

@@ -284,56 +284,6 @@ describe('MonitorContainer', () => {
     expect(moreButton.exists()).toBe(true);
   });
 
-  it('renders monitor sync dropdown with item titles', async () => {
-    const dropdownMenuStub = {
-      name: 'UDropdownMenu',
-      props: ['items', 'portal'],
-      template: '<div data-dropdown-menu><slot /></div>',
-    };
-    const workspaceStore = useWorkspaceStore(pinia);
-    workspaceStore.userSettings = JSON.parse(JSON.stringify(DEFAULT_USER_SETTINGS));
-
-    wrapper = mount(MonitorContainer, {
-      global: {
-        plugins: [pinia],
-        stubs: {
-          MonitorViewport: true,
-          MonitorAudioControl: true,
-          UiTooltip: { template: '<div><slot /></div>' },
-          UButton: {
-            props: ['title', 'ariaLabel'],
-            template:
-              '<button class="u-button-stub" :title="title" :aria-label="ariaLabel"><slot /></button>',
-          },
-          UiActionButton: true,
-          UiToggleButton: true,
-          UDropdownMenu: dropdownMenuStub,
-          UContextMenu: { template: '<div><slot /></div>' },
-          UiContextMenuPortal: true,
-          UIcon: true,
-        },
-      },
-    });
-
-    await wrapper.vm.$nextTick();
-
-    const syncDropdown = wrapper.findAllComponents(dropdownMenuStub).find((component) => {
-      const items = component.props('items') as Array<Array<{ label: string }>>;
-      return items?.[0]?.some((item) => item.label === 'fastcat.monitor.syncSmooth');
-    });
-
-    expect(syncDropdown).toBeTruthy();
-
-    const items = syncDropdown!.props('items') as Array<
-      Array<{ label: string; title: string; onSelect: () => void }>
-    >;
-    const strictItem = items[0].find((item) => item.label === 'fastcat.monitor.syncStrict');
-
-    expect(strictItem?.title).toBe('fastcat.monitor.syncStrictTitle');
-
-    expect(strictItem?.onSelect).toEqual(expect.any(Function));
-  });
-
   it('closes monitor dropdowns on viewport pointer down', async () => {
     const dropdownMenuStub = {
       name: 'UDropdownMenu',
@@ -375,29 +325,26 @@ describe('MonitorContainer', () => {
 
     await wrapper.vm.$nextTick();
 
-    const syncDropdown = wrapper.findAllComponents(dropdownMenuStub).find((component) => {
-      const items = component.props('items') as Array<Array<{ label: string }>>;
-      return items?.[0]?.some((item) => item.label === 'fastcat.monitor.syncSmooth');
-    });
+    const moreDropdown = wrapper.findComponent(dropdownMenuStub);
 
-    expect(syncDropdown).toBeTruthy();
+    expect(moreDropdown.exists()).toBe(true);
 
-    syncDropdown!.vm.$emit('update:open', true);
+    moreDropdown.vm.$emit('update:open', true);
     await wrapper.vm.$nextTick();
 
-    expect(syncDropdown!.props('open')).toBe(true);
+    expect(moreDropdown.props('open')).toBe(true);
 
     await wrapper.find('.viewport-stub').trigger('pointerdown');
 
-    expect(syncDropdown!.props('open')).toBe(false);
+    expect(moreDropdown.props('open')).toBe(false);
 
-    syncDropdown!.vm.$emit('update:open', true);
+    moreDropdown.vm.$emit('update:open', true);
     await wrapper.vm.$nextTick();
 
     window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
     await wrapper.vm.$nextTick();
 
-    expect(syncDropdown!.props('open')).toBe(false);
+    expect(moreDropdown.props('open')).toBe(false);
 
     const contextMenu = wrapper.findComponent(contextMenuStub);
 

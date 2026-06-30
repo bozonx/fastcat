@@ -585,6 +585,7 @@
       "toolbarLeft": "Toolbar Left",
       "toolbarRight": "Toolbar Right",
       "toolbarTop": "Toolbar Top",
+      "toolbarPosition": "Toolbar Position",
       "useProxy": "Use proxy",
       "volumeDown": "Volume down",
       "volumeUp": "Volume up"

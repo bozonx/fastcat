@@ -85,12 +85,14 @@ const statusText = computed(() => {
   return props.mode === 'sound' ? 'Sound view' : 'Preview';
 });
 
+const workspaceStore = useWorkspaceStore();
 const { showGrid, toggleGrid, getGridLines } = useMonitorGrid({ projectStore });
 
 const { contextMenuItems, onPlaybackSpeedChange, selectedPlaybackSpeedOption, speedButtonLabel } =
   useMonitorContainerControls({
     t,
     projectStore,
+    workspaceStore,
     timelineStore,
     selectionStore,
     viewportRef,
@@ -357,7 +359,6 @@ const isReadonly = computed(
   () => projectStore.currentView === 'sound' || projectStore.currentView === 'export',
 );
 
-const workspaceStore = useWorkspaceStore();
 const isInteractiveEditEnabled = computed(
   () => workspaceStore.inDevelopmentFeaturesEnabled === true,
 );

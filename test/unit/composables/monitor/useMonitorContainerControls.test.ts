@@ -15,6 +15,14 @@ const mockActiveMonitor = {
   useProxy: false,
 };
 
+const mockWorkspaceStore = {
+  userSettings: {
+    optimization: {
+      nativeMonitorSyncMode: 'balanced' as 'balanced' | 'smooth' | 'strict',
+    },
+  },
+};
+
 vi.mock('~/composables/monitor/native-monitor-ipc', () => ({
   nativeMonitorIpc: {
     openNativeWindow: () => openNativeWindowMock(),
@@ -35,6 +43,7 @@ function createControls(options: { isMobile?: boolean } = {}) {
     projectStore: {
       activeMonitor: mockActiveMonitor,
     } as never,
+    workspaceStore: mockWorkspaceStore as never,
     timelineStore: {
       playbackSpeed: 1,
       markers: [],
@@ -68,12 +77,29 @@ function createControls(options: { isMobile?: boolean } = {}) {
   });
 }
 
-function flattenMenuItems(
-  groups: unknown[][],
-): Array<{ label?: string; type?: string; onSelect?: () => void }> {
-  return groups.flatMap(
-    (group) => group as Array<{ label?: string; type?: string; onSelect?: () => void }>,
-  );
+interface MenuItem {
+  label?: string;
+  type?: string;
+  onSelect?: () => void;
+  children?: MenuItem[];
+}
+
+function flattenMenuItems(groups: unknown[][]): MenuItem[] {
+  const result: MenuItem[] = [];
+  function traverse(item: MenuItem) {
+    result.push(item);
+    if (item.children) {
+      for (const child of item.children) {
+        traverse(child);
+      }
+    }
+  }
+  for (const group of groups) {
+    for (const item of group as MenuItem[]) {
+      traverse(item);
+    }
+  }
+  return result;
 }
 
 describe('useMonitorContainerControls', () => {
@@ -130,7 +156,7 @@ describe('useMonitorContainerControls', () => {
     highQuality?.onSelect?.();
 
     expect(mockActiveMonitor.previewBlurQuality).toBe('high');
-    expect(items.some((entry) => entry.label === 'fastcat.monitor.previewBlurQuality:')).toBe(true);
+    expect(items.some((entry) => entry.label?.includes('fastcat.monitor.previewBlurQuality'))).toBe(true);
   });
 
   it('hides addMarkerAtPlayhead option in context menu if isMobile is true', () => {
@@ -159,5 +185,25 @@ describe('useMonitorContainerControls', () => {
     const controls = createControls({ isMobile: false });
     const items = flattenMenuItems(controls.contextMenuItems.value);
     expect(items.some((entry) => entry.label === 'fastcat.monitor.playbackSpeed')).toBe(true);
+  });
+
+  it('includes toolbar position sub-menu and updates state', () => {
+    mockActiveMonitor.toolbarPosition = 'bottom';
+    const controls = createControls({ isMobile: false });
+    const items = flattenMenuItems(controls.contextMenuItems.value);
+    const topItem = items.find((entry) => entry.label === 'fastcat.monitor.toolbarTop');
+    expect(topItem).toBeTruthy();
+    topItem?.onSelect?.();
+    expect(mockActiveMonitor.toolbarPosition).toBe('top');
+  });
+
+  it('includes sync mode sub-menu and updates state', () => {
+    mockWorkspaceStore.userSettings.optimization.nativeMonitorSyncMode = 'balanced';
+    const controls = createControls({ isMobile: false });
+    const items = flattenMenuItems(controls.contextMenuItems.value);
+    const smoothItem = items.find((entry) => entry.label === 'fastcat.monitor.syncSmooth');
+    expect(smoothItem).toBeTruthy();
+    smoothItem?.onSelect?.();
+    expect(mockWorkspaceStore.userSettings.optimization.nativeMonitorSyncMode).toBe('smooth');
   });
 });
