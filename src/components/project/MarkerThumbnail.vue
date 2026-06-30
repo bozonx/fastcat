@@ -80,12 +80,12 @@ watch(
 
 <template>
   <div
-    class="relative flex aspect-video w-20 shrink-0 items-center justify-center overflow-hidden rounded bg-black/20 ring-1 ring-inset ring-white/5"
+    class="relative flex aspect-video w-16 shrink-0 items-center justify-center overflow-hidden rounded bg-black ring-1 ring-inset ring-white/5"
   >
     <img
       v-if="thumbnailUrl"
       :src="thumbnailUrl!"
-      class="h-full w-full object-cover"
+      class="h-full w-full object-contain"
       alt="Marker Preview"
     />
     <div v-else-if="isLoading" class="flex h-full w-full items-center justify-center">

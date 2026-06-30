@@ -617,6 +617,13 @@ fn plan_direct_rejects_non_trivial_scenes() {
         .push(crate::compositor::effects::EffectSpec::Brightness { value: 1.0 });
     assert!(!call(&one_clip_scene(l)));
 
+    // Master effects apply after final compositing, which the direct path skips.
+    let mut scene = one_clip_scene(video_layer());
+    scene
+        .master_effects
+        .push(crate::compositor::effects::EffectSpec::Brightness { value: 1.0 });
+    assert!(!call(&scene));
+
     // An explicit transform (scale/crop/reposition) can't be reproduced by a plain resize.
     let mut l = video_layer();
     l.transform = Some(crate::monitor::scene::SceneLayerTransform {
@@ -650,6 +657,20 @@ fn plan_direct_rejects_non_trivial_scenes() {
             opacity: 0.5,
             blend_mode: crate::compositor::scene::BlendMode::Normal,
             effects: Vec::new(),
+        });
+    assert!(!call(&scene));
+
+    // Track effects require rendering the whole track before final compositing.
+    let mut scene = one_clip_scene(video_layer());
+    scene
+        .video_tracks
+        .push(crate::monitor::scene::SceneVideoTrack {
+            id: "track-1".into(),
+            z: 0,
+            layer_ids: vec!["clip".into()],
+            opacity: 1.0,
+            blend_mode: crate::compositor::scene::BlendMode::Normal,
+            effects: vec![crate::compositor::effects::EffectSpec::Brightness { value: 1.0 }],
         });
     assert!(!call(&scene));
 

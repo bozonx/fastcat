@@ -44,7 +44,11 @@ const dropdownItems = computed(() =>
       full-width
       @update:model-value="(v) => emit('update:modelValue', v)"
     />
-    <UDropdownMenu :items="dropdownItems" :disabled="disabled" :ui="{ content: 'min-w-20' }">
+    <UDropdownMenu
+      :items="dropdownItems"
+      :disabled="disabled"
+      :ui="{ content: 'min-w-20 z-[calc(var(--z-fixed)+20)]' }"
+    >
       <UButton
         size="sm"
         variant="ghost"

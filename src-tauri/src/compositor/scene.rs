@@ -189,7 +189,8 @@ impl Scene {
                 out.pop_layer();
             }
             // TODO: layer.mask — kurbo::BezPath from layer.mask.path, push_layer as clip.
-            // TODO: shape/text layer effects need offscreen subscene rendering before Vello compose.
+            // Shape/text layer effects are materialized by rasterizing vectors to textures
+            // before this Vello compose path.
         }
 
         out
