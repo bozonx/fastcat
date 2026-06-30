@@ -564,6 +564,7 @@
       "playbackThrottledDetail": "Скорость воспроизведения снижена для сохранения стабильности",
       "previewError": "Ошибка предпросмотра",
       "previewBlurQuality": "Качество эффектов предпросмотра",
+      "previewResolution": "Разрешение предпросмотра",
       "previewWithEffects": "Предпросмотр с эффектами",
       "previewWithoutEffects": "Предпросмотр без эффектов",
       "resetZoom": "Сбросить зум (100%)",

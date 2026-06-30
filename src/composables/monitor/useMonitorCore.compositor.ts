@@ -18,13 +18,17 @@ export interface EnsureMonitorCompositorReadyOptions {
   forceRecreate?: boolean;
 }
 
+export interface MonitorRenderScheduleOptions {
+  prewarm?: boolean;
+}
+
 export function createMonitorCompositorRuntime(options: CreateMonitorCompositorRuntimeOptions) {
   let canvasEl: HTMLCanvasElement | null = null;
   let compositorReady = false;
   let compositorWidth = 0;
   let compositorHeight = 0;
   let renderLoopInFlight = false;
-  let latestRenderTimeUs: number | null = null;
+  let latestRenderRequest: { timeUs: number; prewarm: boolean } | null = null;
   let lastPrewarmTimeUs = -Infinity;
 
   const VIDEO_PREWARM_INTERVAL_US = 250_000;
@@ -38,7 +42,7 @@ export function createMonitorCompositorRuntime(options: CreateMonitorCompositorR
   }
 
   function clearPendingRender() {
-    latestRenderTimeUs = null;
+    latestRenderRequest = null;
   }
 
   async function ensureReady(ensureOptions?: EnsureMonitorCompositorReadyOptions) {
@@ -103,25 +107,32 @@ export function createMonitorCompositorRuntime(options: CreateMonitorCompositorR
     compositorHeight = targetHeight;
   }
 
-  function scheduleRender(timeUs: number) {
+  function scheduleRender(timeUs: number, renderOptions?: MonitorRenderScheduleOptions) {
     if (options.isUnmounted()) return;
     if (!options.client) return; // native monitor handles preview
-    latestRenderTimeUs = normalizeTimeUs(timeUs);
+    latestRenderRequest = {
+      timeUs: normalizeTimeUs(timeUs),
+      prewarm: renderOptions?.prewarm === true,
+    };
     if (renderLoopInFlight) return;
 
     renderLoopInFlight = true;
     const run = async () => {
       try {
-        while (latestRenderTimeUs !== null) {
+        while (latestRenderRequest !== null) {
           if (options.isUnmounted()) {
-            latestRenderTimeUs = null;
+            latestRenderRequest = null;
             break;
           }
           if (!options.client) break;
-          const nextTimeUs = latestRenderTimeUs;
-          latestRenderTimeUs = null;
+          const nextRequest = latestRenderRequest;
+          latestRenderRequest = null;
+          const nextTimeUs = nextRequest.timeUs;
           await options.client.renderFrame(nextTimeUs, options.getPreviewRenderOptions());
-          if (nextTimeUs - lastPrewarmTimeUs >= VIDEO_PREWARM_INTERVAL_US) {
+          if (
+            nextRequest.prewarm &&
+            nextTimeUs - lastPrewarmTimeUs >= VIDEO_PREWARM_INTERVAL_US
+          ) {
             lastPrewarmTimeUs = nextTimeUs;
             void options.client.prewarmVideoFrames?.(nextTimeUs).catch((err) => {
               log.warn('[Monitor] Video prewarm failed', err);
@@ -132,8 +143,9 @@ export function createMonitorCompositorRuntime(options: CreateMonitorCompositorR
         log.error('[Monitor] Render failed', err);
       } finally {
         renderLoopInFlight = false;
-        if (latestRenderTimeUs !== null) {
-          scheduleRender(latestRenderTimeUs);
+        if (latestRenderRequest !== null) {
+          const nextRequest = latestRenderRequest;
+          scheduleRender(nextRequest.timeUs, { prewarm: nextRequest.prewarm });
         }
       }
     };

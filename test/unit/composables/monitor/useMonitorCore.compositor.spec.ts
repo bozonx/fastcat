@@ -161,15 +161,28 @@ describe('createMonitorCompositorRuntime', () => {
     } as unknown as import('~/utils/video-editor/worker-rpc').VideoCoreWorkerAPI;
     const runtime = createMonitorCompositorRuntime(makeOptions(mockClient));
 
-    runtime.scheduleRender(0);
+    runtime.scheduleRender(0, { prewarm: true });
     await vi.waitFor(() => expect(mockClient.renderFrame).toHaveBeenCalledTimes(1));
-    runtime.scheduleRender(100_000);
+    runtime.scheduleRender(100_000, { prewarm: true });
     await vi.waitFor(() => expect(mockClient.renderFrame).toHaveBeenCalledTimes(2));
-    runtime.scheduleRender(300_000);
+    runtime.scheduleRender(300_000, { prewarm: true });
     await vi.waitFor(() => expect(mockClient.renderFrame).toHaveBeenCalledTimes(3));
 
     expect(mockClient.prewarmVideoFrames).toHaveBeenCalledTimes(2);
     expect(mockClient.prewarmVideoFrames).toHaveBeenNthCalledWith(1, 0);
     expect(mockClient.prewarmVideoFrames).toHaveBeenNthCalledWith(2, 300_000);
+  });
+
+  it('does not prewarm video frames for passive renders', async () => {
+    const mockClient = {
+      renderFrame: vi.fn().mockResolvedValue({}),
+      prewarmVideoFrames: vi.fn().mockResolvedValue(undefined),
+    } as unknown as import('~/utils/video-editor/worker-rpc').VideoCoreWorkerAPI;
+    const runtime = createMonitorCompositorRuntime(makeOptions(mockClient));
+
+    runtime.scheduleRender(1_000_000);
+    await vi.waitFor(() => expect(mockClient.renderFrame).toHaveBeenCalledTimes(1));
+
+    expect(mockClient.prewarmVideoFrames).not.toHaveBeenCalled();
   });
 });

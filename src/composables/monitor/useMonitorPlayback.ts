@@ -5,6 +5,7 @@ import { formatTimecode, normalizeTimeUs, sanitizeFps } from '~/utils/time';
 import { isTauriRuntime } from '~/utils/runtime';
 
 import type { IAudioEngine } from '~/utils/video-editor/AudioEngine';
+import type { MonitorRenderScheduleOptions } from './useMonitorCore.compositor';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 const log = createDevLogger('useMonitorPlayback');
@@ -217,7 +218,7 @@ export interface UseMonitorPlaybackOptions {
   getFps: () => number;
   clampToTimeline: (timeUs: number) => number;
   updateStoreTime: (timeUs: number) => void;
-  scheduleRender: (timeUs: number) => void;
+  scheduleRender: (timeUs: number, options?: MonitorRenderScheduleOptions) => void;
   audioEngine: IAudioEngine;
   isMobile: { value: boolean };
 }
@@ -389,7 +390,7 @@ export function useMonitorPlayback(options: UseMonitorPlaybackOptions) {
       playbackLoopState.renderAccumulatorMs = renderBudget.accumulatorMs;
       // Only schedule render if document is visible to save resources in background (Desktop)
       if (!document.hidden) {
-        scheduleRender(newTimeUs);
+        scheduleRender(newTimeUs, { prewarm: true });
       }
     }
 
