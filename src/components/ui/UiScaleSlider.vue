@@ -47,13 +47,25 @@ const ticks = computed<Tick[]>(() => {
   if (isDiscreteMode.value) {
     const opts = props.options!;
     const count = opts.length;
-    return opts.map((opt, i) => ({
-      key: opt.value,
-      label: opt.label,
-      percent: count <= 1 ? 0 : (i / (count - 1)) * 100,
-      isActive: i <= currentIndex.value,
-      isEdge: i === 0 || i === count - 1,
-    }));
+    const val = Number(modelValue.value);
+    const optNums = opts.map((o) => Number(o.value));
+    const useNumericComparison = !isNaN(val) && optNums.every((n) => !isNaN(n));
+
+    return opts.map((opt, i) => {
+      let isActive = false;
+      if (useNumericComparison) {
+        isActive = optNums[i] <= val;
+      } else {
+        isActive = i <= currentIndex.value;
+      }
+      return {
+        key: opt.value,
+        label: opt.label,
+        percent: count <= 1 ? 0 : (i / (count - 1)) * 100,
+        isActive,
+        isEdge: i === 0 || i === count - 1,
+      };
+    });
   }
   const result: Tick[] = [];
   for (let i = props.min; i <= props.max; i++) {
@@ -70,8 +82,40 @@ const ticks = computed<Tick[]>(() => {
 
 const thumbPercent = computed(() => {
   if (isDiscreteMode.value) {
-    const count = props.options!.length;
+    const opts = props.options!;
+    const count = opts.length;
     if (count <= 1) return 0;
+
+    // Try exact match first
+    const idx = opts.findIndex((o) => o.value === modelValue.value);
+    if (idx >= 0) {
+      return (idx / (count - 1)) * 100;
+    }
+
+    // Interpolate if numeric values
+    const val = Number(modelValue.value);
+    if (!isNaN(val)) {
+      const optNums = opts.map((o) => Number(o.value));
+      const allValid = optNums.every((n) => !isNaN(n));
+      if (allValid) {
+        const minOpt = optNums[0];
+        const maxOpt = optNums[count - 1];
+        if (val <= minOpt) return 0;
+        if (val >= maxOpt) return 100;
+
+        for (let i = 0; i < count - 1; i++) {
+          const low = optNums[i];
+          const high = optNums[i + 1];
+          if (val >= low && val <= high) {
+            const pLow = (i / (count - 1)) * 100;
+            const pHigh = ((i + 1) / (count - 1)) * 100;
+            const t = (val - low) / (high - low);
+            return pLow + t * (pHigh - pLow);
+          }
+        }
+      }
+    }
+
     return (currentIndex.value / (count - 1)) * 100;
   }
   const range = props.max - props.min;
@@ -80,14 +124,17 @@ const thumbPercent = computed(() => {
 });
 
 const thumbLabel = computed(() => {
-  if (isDiscreteMode.value) {
-    return props.options?.[currentIndex.value]?.label ?? '';
-  }
-  const val = Number(modelValue.value);
-  if (isNaN(val) || val < props.min || val > props.max) {
+  if (modelValue.value === undefined || modelValue.value === null || modelValue.value === '') {
     return '-';
   }
-  return String(val);
+  if (isDiscreteMode.value) {
+    const idx = props.options?.findIndex((o) => o.value === modelValue.value) ?? -1;
+    if (idx >= 0) {
+      return props.options?.[idx]?.label ?? '';
+    }
+    return String(modelValue.value);
+  }
+  return String(modelValue.value);
 });
 
 function valueFromPointer(event: PointerEvent): number | string {
