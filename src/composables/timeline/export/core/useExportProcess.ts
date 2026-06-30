@@ -85,6 +85,7 @@ export function buildNativeExportOptions(
     exportAlpha: options.exportAlpha,
     fastStart: options.fastStart,
     videoMaxBitrateBps: options.maxBitrateBps || null,
+    videoMinBitrateBps: options.minBitrateBps || null,
   };
 }
 

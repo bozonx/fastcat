@@ -200,6 +200,33 @@ describe('VideoEncodingForm.vue', () => {
     // Verify it resets to null
     expect(component.vm.maxBitrateMbps).toBeNull();
   });
+
+  it('handles specifyMinBitrate checkbox toggle correctly', async () => {
+    const component = await mountWithNuxt(TestHostWithAdvanced);
+    await nextTick();
+
+    // Find the checkbox for specifying min bitrate
+    const checkboxes = component.findAllComponents({ name: 'UCheckbox' });
+    const specifyCheckbox = checkboxes.find(
+      (c) => c.props('label') === 'videoEditor.export.specifyMinBitrate',
+    );
+    expect(specifyCheckbox).toBeDefined();
+    expect(specifyCheckbox!.props('modelValue')).toBe(false);
+
+    // Turn specifyMinBitrate ON
+    await specifyCheckbox!.setValue(true);
+    await nextTick();
+
+    // Verify it calculates the default value (0.5 * bitrateMbps = 0.5 * 8 = 4)
+    expect(component.vm.minBitrateMbps).toBe(4);
+
+    // Turn specifyMinBitrate OFF
+    await specifyCheckbox!.setValue(false);
+    await nextTick();
+
+    // Verify it resets to null
+    expect(component.vm.minBitrateMbps).toBeNull();
+  });
 });
 
 // Test host component to emulate parent v-models with advanced settings
@@ -216,6 +243,7 @@ const TestHostWithAdvanced = {
       v-model:preset="preset"
       v-model:enable-advanced-settings="enableAdvancedSettings"
       v-model:max-bitrate-mbps="maxBitrateMbps"
+      v-model:min-bitrate-mbps="minBitrateMbps"
       :show-presets="true"
     />
   `,
@@ -229,6 +257,7 @@ const TestHostWithAdvanced = {
     const preset = ref('custom');
     const enableAdvancedSettings = ref(true);
     const maxBitrateMbps = ref<number | null>(null);
+    const minBitrateMbps = ref<number | null>(null);
 
     return {
       outputFormat,
@@ -240,6 +269,7 @@ const TestHostWithAdvanced = {
       preset,
       enableAdvancedSettings,
       maxBitrateMbps,
+      minBitrateMbps,
     };
   },
 };

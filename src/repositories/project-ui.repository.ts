@@ -99,6 +99,7 @@ const ProjectUiExportSettingsSchema = z
     bitrateMode: z.enum(['constant', 'variable']).catch('variable'),
     enableAdvancedSettings: z.coerce.boolean().catch(false),
     maxBitrateMbps: z.coerce.number().nullable().catch(null),
+    minBitrateMbps: z.coerce.number().nullable().catch(null),
     keyframeIntervalSec: z.coerce.number().catch(2),
     exportAlpha: z.coerce.boolean().catch(false),
     fastStart: z.coerce.boolean().catch(true),

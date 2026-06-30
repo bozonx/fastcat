@@ -215,6 +215,7 @@ export interface NativeTimelineExportOptions {
   exportAlpha?: boolean;
   fastStart?: boolean;
   videoMaxBitrateBps?: number | null;
+  videoMinBitrateBps?: number | null;
 }
 
 export async function nativeExportTimeline(params: {

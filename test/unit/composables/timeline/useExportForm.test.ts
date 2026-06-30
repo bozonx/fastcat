@@ -193,6 +193,7 @@ vi.mock('~/composables/timeline/export', () => ({
     bitrateMode: ref<'constant' | 'variable'>('variable'),
     enableAdvancedSettings: ref(false),
     maxBitrateMbps: ref<number | null>(null),
+    minBitrateMbps: ref<number | null>(null),
     keyframeIntervalSec: ref(2),
     exportAlpha: ref(false),
     fastStart: ref(true),
@@ -776,6 +777,7 @@ describe('useExportForm', () => {
     expect(exportTimelineToFileMock.mock.calls[0]?.[0]).toMatchObject({
       bitrateMode: 'variable',
       maxBitrateBps: null,
+      minBitrateBps: null,
       keyframeIntervalSec: 2,
       fastStart: false,
     });
@@ -788,6 +790,7 @@ describe('useExportForm', () => {
     form.enableAdvancedSettings.value = true;
     form.bitrateMode.value = 'variable';
     form.maxBitrateMbps.value = 12;
+    form.minBitrateMbps.value = 3;
     form.keyframeIntervalSec.value = 5;
     form.fastStart.value = true;
 
@@ -797,6 +800,7 @@ describe('useExportForm', () => {
     expect(exportTimelineToFileMock.mock.calls[0]?.[0]).toMatchObject({
       bitrateMode: 'variable',
       maxBitrateBps: 12_000_000,
+      minBitrateBps: 3_000_000,
       keyframeIntervalSec: 5,
       fastStart: true,
     });

@@ -72,6 +72,7 @@ export function useExportForm() {
     bitrateMode,
     enableAdvancedSettings,
     maxBitrateMbps,
+    minBitrateMbps,
     keyframeIntervalSec,
     exportAlpha,
     fastStart,
@@ -174,6 +175,7 @@ export function useExportForm() {
       bitrateMode: bitrateMode.value,
       enableAdvancedSettings: enableAdvancedSettings.value,
       maxBitrateMbps: maxBitrateMbps.value,
+      minBitrateMbps: minBitrateMbps.value,
       keyframeIntervalSec: keyframeIntervalSec.value,
       exportAlpha: exportAlpha.value,
       fastStart: fastStart.value,
@@ -204,6 +206,7 @@ export function useExportForm() {
       audioChannels.value !== 2 ||
       enableAdvancedSettings.value !== false ||
       maxBitrateMbps.value !== null ||
+      minBitrateMbps.value !== null ||
       bitrateMode.value !== encDefaults.bitrateMode ||
       keyframeIntervalSec.value !== encDefaults.keyframeIntervalSec ||
       exportAlpha.value !== encDefaults.exportAlpha ||
@@ -321,6 +324,7 @@ export function useExportForm() {
         bitrateMode.value = saved.bitrateMode ?? 'variable';
         enableAdvancedSettings.value = saved.enableAdvancedSettings ?? false;
         maxBitrateMbps.value = saved.maxBitrateMbps ?? null;
+        minBitrateMbps.value = saved.minBitrateMbps ?? null;
         keyframeIntervalSec.value = saved.keyframeIntervalSec ?? 2;
         exportAlpha.value = saved.exportAlpha ?? false;
         fastStart.value = saved.fastStart ?? true;
@@ -349,6 +353,7 @@ export function useExportForm() {
         bitrateMode.value = encDefaults.bitrateMode;
         enableAdvancedSettings.value = false;
         maxBitrateMbps.value = null;
+        minBitrateMbps.value = null;
         keyframeIntervalSec.value = encDefaults.keyframeIntervalSec;
         exportAlpha.value = encDefaults.exportAlpha;
         fastStart.value = encDefaults.fastStart;
@@ -487,6 +492,10 @@ export function useExportForm() {
             maxBitrateBps:
               enableAdvancedSettings.value && maxBitrateMbps.value
                 ? Math.round(maxBitrateMbps.value * 1_000_000)
+                : null,
+            minBitrateBps:
+              enableAdvancedSettings.value && minBitrateMbps.value
+                ? Math.round(minBitrateMbps.value * 1_000_000)
                 : null,
             keyframeIntervalSec: enableAdvancedSettings.value ? keyframeIntervalSec.value : 2,
             exportAlpha: effectiveExportAlpha,
@@ -705,6 +714,9 @@ export function useExportForm() {
       case 'maxBitrateMbps':
         maxBitrateMbps.value = null;
         break;
+      case 'minBitrateMbps':
+        minBitrateMbps.value = null;
+        break;
       case 'keyframeIntervalSec':
         if (encDefaults) keyframeIntervalSec.value = encDefaults.keyframeIntervalSec;
         break;
@@ -778,6 +790,8 @@ export function useExportForm() {
         return enableAdvancedSettings.value !== false;
       case 'maxBitrateMbps':
         return maxBitrateMbps.value !== null;
+      case 'minBitrateMbps':
+        return minBitrateMbps.value !== null;
       case 'keyframeIntervalSec':
         return keyframeIntervalSec.value !== encDefaults?.keyframeIntervalSec;
       case 'exportAlpha':
@@ -823,6 +837,7 @@ export function useExportForm() {
       bitrateMode,
       enableAdvancedSettings,
       maxBitrateMbps,
+      minBitrateMbps,
       keyframeIntervalSec,
       exportAlpha,
       fastStart,
@@ -855,6 +870,7 @@ export function useExportForm() {
         bitrateMode: bitrateMode.value,
         enableAdvancedSettings: enableAdvancedSettings.value,
         maxBitrateMbps: maxBitrateMbps.value,
+        minBitrateMbps: minBitrateMbps.value,
         keyframeIntervalSec: keyframeIntervalSec.value,
         exportAlpha: exportAlpha.value,
         fastStart: fastStart.value,
@@ -903,6 +919,7 @@ export function useExportForm() {
     bitrateMode,
     enableAdvancedSettings,
     maxBitrateMbps,
+    minBitrateMbps,
     keyframeIntervalSec,
     exportAlpha,
     fastStart,

@@ -28,6 +28,7 @@ export function useExportConfig() {
   const bitrateMode = ref<'constant' | 'variable'>('variable');
   const enableAdvancedSettings = ref<boolean>(false);
   const maxBitrateMbps = ref<number | null>(null);
+  const minBitrateMbps = ref<number | null>(null);
   const keyframeIntervalSec = ref<number>(2);
   const exportAlpha = ref<boolean>(false);
   const fastStart = ref<boolean>(true);
@@ -152,6 +153,7 @@ export function useExportConfig() {
     bitrateMode,
     enableAdvancedSettings,
     maxBitrateMbps,
+    minBitrateMbps,
     keyframeIntervalSec,
     exportAlpha,
     fastStart,

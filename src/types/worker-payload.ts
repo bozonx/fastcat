@@ -20,6 +20,7 @@ export const ExportOptionsSchema = z.object({
   bitrate: z.number().finite().min(1),
   bitrateMode: z.enum(['constant', 'variable']).optional(),
   maxBitrateBps: z.number().finite().nullable().optional(),
+  minBitrateBps: z.number().finite().nullable().optional(),
   keyframeIntervalSec: z.number().finite().positive().max(1_000).optional(),
   exportAlpha: z.boolean().optional(),
   fastStart: z.boolean().optional(),

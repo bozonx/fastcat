@@ -128,6 +128,7 @@ export interface FastCatProjectSettings {
     bitrateMode: 'constant' | 'variable';
     enableAdvancedSettings: boolean;
     maxBitrateMbps: number | null;
+    minBitrateMbps: number | null;
     keyframeIntervalSec: number;
     exportAlpha: boolean;
     fastStart: boolean;

@@ -71,6 +71,7 @@ const preset = defineModel<'optimal' | 'social' | 'high' | 'lossless' | 'custom'
 const bitrateMode = defineModel<'constant' | 'variable'>('bitrateMode', { default: 'variable' });
 const enableAdvancedSettings = defineModel<boolean>('enableAdvancedSettings', { default: false });
 const maxBitrateMbps = defineModel<number | null>('maxBitrateMbps', { default: null });
+const minBitrateMbps = defineModel<number | null>('minBitrateMbps', { default: null });
 const keyframeIntervalSec = defineModel<number>('keyframeIntervalSec', { default: 2 });
 const exportAlpha = defineModel<boolean>('exportAlpha', { default: false });
 const fastStart = defineModel<boolean>('fastStart', { default: true });
@@ -230,9 +231,33 @@ const specifyMaxBitrate = computed({
   },
 });
 
+const minBitrate = computed({
+  get: () =>
+    minBitrateMbps.value !== null
+      ? minBitrateMbps.value
+      : Math.round(bitrateMbps.value * 0.5 * 10) / 10,
+  set: (val) => {
+    minBitrateMbps.value = val;
+  },
+});
+
+const specifyMinBitrate = computed({
+  get: () => minBitrateMbps.value !== null,
+  set: (val) => {
+    if (val) {
+      minBitrateMbps.value = Math.round(bitrateMbps.value * 0.5 * 10) / 10;
+    } else {
+      minBitrateMbps.value = null;
+    }
+  },
+});
+
 watch(bitrateMbps, (newVal) => {
   if (maxBitrateMbps.value !== null && maxBitrateMbps.value < newVal) {
     maxBitrateMbps.value = newVal;
+  }
+  if (minBitrateMbps.value !== null && minBitrateMbps.value > newVal) {
+    minBitrateMbps.value = newVal;
   }
 });
 
@@ -252,6 +277,7 @@ watch(
     bitrateMode,
     enableAdvancedSettings,
     maxBitrateMbps,
+    minBitrateMbps,
     keyframeIntervalSec,
     exportAlpha,
     fastStart,
@@ -314,7 +340,7 @@ watch(
           <UiWheelNumberInput
             v-model="bitrateMbps"
             :min="1"
-            :max="20"
+            :max="999"
             :step="0.1"
             :wheel-step-multiplier="10"
             :disabled="props.disabled"
@@ -380,6 +406,36 @@ watch(
                 v-model="maxBitrate"
                 :min="bitrateMbps"
                 :max="bitrateMbps * 4"
+                :step="0.1"
+                :wheel-step-multiplier="10"
+                :disabled="props.disabled"
+                class="w-24!"
+              />
+              <span class="text-xs text-ui-text-muted">Mbps</span>
+            </div>
+          </UiFormField>
+
+          <UCheckbox
+            v-model="specifyMinBitrate"
+            :label="t('videoEditor.export.specifyMinBitrate')"
+            :disabled="props.disabled"
+            :ui="{ label: 'text-sm text-ui-text-muted' }"
+            class="cursor-pointer"
+          />
+          <UiFormField v-if="specifyMinBitrate">
+            <template #label>
+              <div class="flex items-center gap-1">
+                {{ t('videoEditor.export.minBitrate') }}
+                <UiTooltip :text="t('videoEditor.export.minBitrateHelp')">
+                  <UIcon name="i-heroicons-information-circle" class="h-4 w-4 text-ui-text-muted" />
+                </UiTooltip>
+              </div>
+            </template>
+            <div class="flex items-center gap-2">
+              <UiWheelNumberInput
+                v-model="minBitrate"
+                :min="0.1"
+                :max="bitrateMbps"
                 :step="0.1"
                 :wheel-step-multiplier="10"
                 :disabled="props.disabled"
@@ -460,7 +516,7 @@ watch(
           <UiWheelNumberInput
             v-model="audioBitrateKbps"
             :min="96"
-            :max="320"
+            :max="512"
             :step="16"
             :wheel-step-multiplier="2"
             :disabled="props.disabled"

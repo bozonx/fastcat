@@ -2,6 +2,8 @@
 import { computed } from 'vue';
 import UiSliderInput from '~/components/ui/UiSliderInput.vue';
 import UiSelect from '~/components/ui/UiSelect.vue';
+import UiScaleSlider from '~/components/ui/UiScaleSlider.vue';
+import UiWheelNumberInput from '~/components/ui/UiWheelNumberInput.vue';
 import UiButtonGroup from '~/components/ui/UiButtonGroup.vue';
 import { useAudioCodecOptions } from '~/composables/timeline/export/core/useAudioCodecOptions';
 
@@ -35,6 +37,15 @@ const audioReverse = defineModel<boolean>('audioReverse', { default: false });
 const audioCodec = defineModel<'aac' | 'opus' | 'flac' | 'pcm' | 'mp3' | undefined>('audioCodec');
 
 const { t } = useI18n();
+
+const audioBitrateOptions = [
+  { label: '96', value: '96' },
+  { label: '128', value: '128' },
+  { label: '160', value: '160' },
+  { label: '192', value: '192' },
+  { label: '256', value: '256' },
+  { label: '320', value: '320' },
+];
 
 const { audioCodecOptions } = useAudioCodecOptions({
   format: () => props.outputFormat,
@@ -151,17 +162,25 @@ function resetSampleRate() {
         <label class="text-xs text-ui-text-muted font-medium">
           {{ t('videoEditor.export.audioBitrate') }}
         </label>
-        <UiSliderInput
-          v-model="audioBitrateKbps"
-          :min="32"
-          :max="512"
-          :step="16"
-          :decimals="0"
-          unit=" Kbps"
-          :show-input="true"
-          :disabled="props.disabled"
-          input-class="w-20!"
-        />
+        <div class="flex items-center gap-4 w-full">
+          <UiScaleSlider
+            :model-value="String(audioBitrateKbps)"
+            :options="audioBitrateOptions"
+            :disabled="props.disabled"
+            with-input
+            @update:model-value="audioBitrateKbps = Number($event)"
+          />
+          <UiWheelNumberInput
+            v-model="audioBitrateKbps"
+            :min="96"
+            :max="512"
+            :step="16"
+            :wheel-step-multiplier="2"
+            :disabled="props.disabled"
+            class="w-24!"
+          />
+          <span class="text-xs text-ui-text-muted whitespace-nowrap">Kbps</span>
+        </div>
       </div>
 
       <!-- Sample Rate Select -->
