@@ -99,7 +99,7 @@ describe('useFileContextMenu', () => {
           generatingProxy: false,
         }),
         isFilesPage: true,
-        experimentalFeatures: true,
+        inDevelopmentFeaturesEnabled: true,
       },
       vi.fn(),
     );
@@ -130,7 +130,7 @@ describe('useFileContextMenu', () => {
           generatingProxy: false,
         }),
         isFilesPage: true,
-        experimentalFeatures: false,
+        inDevelopmentFeaturesEnabled: false,
       },
       vi.fn(),
     );

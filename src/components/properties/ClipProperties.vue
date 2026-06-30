@@ -212,7 +212,7 @@ const { handleDeleteClip, otherActionsList, commonActionsList } = useClipPropert
   focusStore,
   fileManager,
   setActiveTab,
-  experimentalFeatures: computed(() => workspaceStore.inDevelopmentFeaturesEnabled),
+  inDevelopmentFeaturesEnabled: computed(() => workspaceStore.inDevelopmentFeaturesEnabled),
 });
 
 const mediaMeta = computed(() => {

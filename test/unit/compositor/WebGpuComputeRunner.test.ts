@@ -222,22 +222,42 @@ describe('WebGpuComputeRunner', () => {
       gpu: { requestAdapter: vi.fn().mockResolvedValue(mockAdapter) },
     });
     vi.stubGlobal('createImageBitmap', vi.fn().mockResolvedValue(mockBitmap));
-    vi.stubGlobal('GPUShaderStage', { COMPUTE: 4 });
+
+    // Use real WebGPU globals if the environment provides them; fall back to
+    // the spec-defined bit values so the test works in Node without a GPU.
+    const realGPUShaderStage = (globalThis as Record<string, unknown>).GPUShaderStage;
+    vi.stubGlobal(
+      'GPUShaderStage',
+      realGPUShaderStage ?? { COMPUTE: 0x04 },
+    );
+
+    const realGPUTextureUsage = (globalThis as Record<string, unknown>).GPUTextureUsage;
+    vi.stubGlobal(
+      'GPUTextureUsage',
+      realGPUTextureUsage ?? {
+        TEXTURE_BINDING: 0x04,
+        STORAGE_BINDING: 0x08,
+        COPY_SRC: 0x10,
+        COPY_DST: 0x20,
+        RENDER_ATTACHMENT: 0x40,
+      },
+    );
+
+    const realGPUBufferUsage = (globalThis as Record<string, unknown>).GPUBufferUsage;
+    vi.stubGlobal(
+      'GPUBufferUsage',
+      realGPUBufferUsage ?? {
+        COPY_DST: 0x08,
+        MAP_READ: 0x01,
+        UNIFORM: 0x40,
+        COPY_SRC: 0x04,
+      },
+    );
+
+    const realGPUMapMode = (globalThis as Record<string, unknown>).GPUMapMode;
+    vi.stubGlobal('GPUMapMode', realGPUMapMode ?? { READ: 0x01 });
+
     vi.stubGlobal('VideoFrame', class VideoFrame {});
-    vi.stubGlobal('GPUTextureUsage', {
-      TEXTURE_BINDING: 4,
-      STORAGE_BINDING: 8,
-      COPY_SRC: 16,
-      COPY_DST: 32,
-      RENDER_ATTACHMENT: 64,
-    });
-    vi.stubGlobal('GPUBufferUsage', {
-      COPY_DST: 8,
-      MAP_READ: 1,
-      UNIFORM: 64,
-      COPY_SRC: 4,
-    });
-    vi.stubGlobal('GPUMapMode', { READ: 1 });
     vi.stubGlobal(
       'OffscreenCanvas',
       class OffscreenCanvas {

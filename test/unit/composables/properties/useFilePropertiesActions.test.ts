@@ -57,7 +57,7 @@ function createOptions() {
     isPersonalLibrary: ref(false),
     instanceId: computed(() => undefined),
     isExternal: ref(false),
-    experimentalFeatures: ref(false),
+    inDevelopmentFeaturesEnabled: ref(false),
     premiumFeatures: ref(false),
   };
 }
@@ -133,7 +133,7 @@ describe('useFilePropertiesActions', () => {
 
     expect(convertAction()?.hidden).toBe(true);
 
-    options.experimentalFeatures.value = true;
+    options.inDevelopmentFeaturesEnabled.value = true;
     expect(convertAction()?.hidden).toBe(true);
 
     options.premiumFeatures.value = true;

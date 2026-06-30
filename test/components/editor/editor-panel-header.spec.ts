@@ -41,7 +41,7 @@ describe('EditorPanelHeader', () => {
 
   it('emits dragStart when drag starts', async () => {
     const component = await mountSuspended(EditorPanelHeader, {
-      props: { title: 'Test', icon: 'i-heroicons-folder', experimentalFeatures: true },
+      props: { title: 'Test', icon: 'i-heroicons-folder', inDevelopmentFeaturesEnabled: true },
     });
 
     const header = component.find('.flex.justify-between');
@@ -59,9 +59,9 @@ describe('EditorPanelHeader', () => {
     expect(header.classes()).toContain('absolute');
   });
 
-  it('applies draggable cursor class when experimentalFeatures is true', async () => {
+  it('applies draggable cursor class when inDevelopmentFeaturesEnabled is true', async () => {
     const component = await mountSuspended(EditorPanelHeader, {
-      props: { title: 'Test', icon: 'i-heroicons-folder', experimentalFeatures: true },
+      props: { title: 'Test', icon: 'i-heroicons-folder', inDevelopmentFeaturesEnabled: true },
     });
 
     const header = component.find('.flex.justify-between');

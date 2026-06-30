@@ -409,10 +409,6 @@
               "smoothness": "Smoothness"
             }
           },
-          "hue": {
-            "description": "Rotate color hues",
-            "name": "Hue Rotation"
-          },
           "levels": {
             "description": "Adjust input and output color levels",
             "name": "Levels",

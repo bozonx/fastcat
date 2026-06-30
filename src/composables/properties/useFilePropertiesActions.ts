@@ -72,7 +72,7 @@ interface UseFilePropertiesActionsOptions {
   instanceId?: Ref<string | undefined>;
   isExternal?: Ref<boolean | undefined>;
   isMediaFullyUnsupported?: Ref<boolean>;
-  experimentalFeatures?: Ref<boolean>;
+  inDevelopmentFeaturesEnabled?: Ref<boolean>;
   premiumFeatures?: Ref<boolean>;
 }
 
@@ -266,7 +266,7 @@ export function useFilePropertiesActions(options: UseFilePropertiesActionsOption
       icon: 'i-heroicons-arrow-path',
       hidden:
         !options.canConvertFile.value ||
-        !options.experimentalFeatures?.value ||
+        !options.inDevelopmentFeaturesEnabled?.value ||
         !options.premiumFeatures?.value,
       onClick: options.onConvert,
     },
@@ -277,7 +277,7 @@ export function useFilePropertiesActions(options: UseFilePropertiesActionsOption
       hidden:
         (!options.isVideoFile.value && !options.isAudioFile.value) ||
         options.isMediaFullyUnsupported?.value ||
-        !options.experimentalFeatures?.value,
+        !options.inDevelopmentFeaturesEnabled?.value,
       disabled: !options.canTranscribeMedia.value,
       onClick: options.openTranscriptionModal,
     },
@@ -288,7 +288,7 @@ export function useFilePropertiesActions(options: UseFilePropertiesActionsOption
       hidden:
         !options.canOpenAsPanel.value ||
         options.isExternal?.value ||
-        !options.experimentalFeatures?.value,
+        !options.inDevelopmentFeaturesEnabled?.value,
       onClick: options.openAsPanelCut,
     },
     {
@@ -298,7 +298,7 @@ export function useFilePropertiesActions(options: UseFilePropertiesActionsOption
       hidden:
         !options.canOpenAsPanel.value ||
         options.isExternal?.value ||
-        !options.experimentalFeatures?.value,
+        !options.inDevelopmentFeaturesEnabled?.value,
       onClick: options.openAsPanelSound,
     },
     {
@@ -308,7 +308,7 @@ export function useFilePropertiesActions(options: UseFilePropertiesActionsOption
       hidden:
         !options.canOpenAsProjectTab.value ||
         options.isExternal?.value ||
-        !options.experimentalFeatures?.value,
+        !options.inDevelopmentFeaturesEnabled?.value,
       onClick: options.openAsProjectTab,
     },
     {
@@ -359,7 +359,7 @@ export function useFilePropertiesActions(options: UseFilePropertiesActionsOption
       hidden:
         !options.isVideoFile.value ||
         (options.isVideoWithAudio && !options.isVideoWithAudio.value) ||
-        !options.experimentalFeatures?.value,
+        !options.inDevelopmentFeaturesEnabled?.value,
       onClick: options.extractAudio,
     },
   ]);

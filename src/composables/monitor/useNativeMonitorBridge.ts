@@ -293,13 +293,13 @@ export function useNativeMonitorBridge(): void {
 
   watch(
     () => ({
-      experimentalFeatures: workspaceStore.inDevelopmentFeaturesEnabled,
+      inDevelopmentFeaturesEnabled: workspaceStore.inDevelopmentFeaturesEnabled,
       bufferSize: workspaceStore.userSettings.audioEngine.bufferSize,
       backend: workspaceStore.userSettings.audioEngine.backend,
     }),
-    ({ experimentalFeatures, bufferSize, backend }) => {
+    ({ inDevelopmentFeaturesEnabled, bufferSize, backend }) => {
       if (isNativeMonitorDisabled()) return;
-      const settings: MonitorAudioSettingsInput = experimentalFeatures
+      const settings: MonitorAudioSettingsInput = inDevelopmentFeaturesEnabled
         ? { bufferSize: bufferSize as 'default' | number, backend: backend as 'default' | string }
         : { bufferSize: 'default', backend: 'default' };
       void nativeMonitorIpc

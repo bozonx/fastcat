@@ -10,14 +10,14 @@ const globalOptions = {
   },
 };
 
-function setExperimentalFeatures(enabled: boolean) {
+function setInDevelopmentFeaturesEnabled(enabled: boolean) {
   const workspaceStore = useWorkspaceStore();
   workspaceStore.inDevelopmentFeaturesEnabled = enabled;
 }
 
 describe('MobileFilesView', () => {
   beforeEach(() => {
-    setExperimentalFeatures(false);
+    setInDevelopmentFeaturesEnabled(false);
   });
 
   it('shows the assets tab by default', async () => {
@@ -35,14 +35,14 @@ describe('MobileFilesView', () => {
   });
 
   it('renders both tab switchers when experimental features are enabled', async () => {
-    setExperimentalFeatures(true);
+    setInDevelopmentFeaturesEnabled(true);
     const wrapper = await mountSuspended(MobileFilesView, { global: globalOptions });
 
     expect(wrapper.findAll('button')).toHaveLength(2);
   });
 
   it('marks the active tab via aria-pressed when experimental features are enabled', async () => {
-    setExperimentalFeatures(true);
+    setInDevelopmentFeaturesEnabled(true);
     const wrapper = await mountSuspended(MobileFilesView, { global: globalOptions });
     const [assetsTab, filesTab] = wrapper.findAll('button');
 
@@ -51,7 +51,7 @@ describe('MobileFilesView', () => {
   });
 
   it('switches to the files browser when the files tab is tapped', async () => {
-    setExperimentalFeatures(true);
+    setInDevelopmentFeaturesEnabled(true);
     const wrapper = await mountSuspended(MobileFilesView, { global: globalOptions });
 
     await wrapper.findAll('button')[1]!.trigger('click');
@@ -61,7 +61,7 @@ describe('MobileFilesView', () => {
   });
 
   it('switches back to assets after navigating to files', async () => {
-    setExperimentalFeatures(true);
+    setInDevelopmentFeaturesEnabled(true);
     const wrapper = await mountSuspended(MobileFilesView, { global: globalOptions });
 
     await wrapper.findAll('button')[1]!.trigger('click');
@@ -72,13 +72,13 @@ describe('MobileFilesView', () => {
   });
 
   it('hides the files tab and resets to assets when experimental features are disabled while files is active', async () => {
-    setExperimentalFeatures(true);
+    setInDevelopmentFeaturesEnabled(true);
     const wrapper = await mountSuspended(MobileFilesView, { global: globalOptions });
 
     await wrapper.findAll('button')[1]!.trigger('click');
     expect(wrapper.find('.file-browser').exists()).toBe(true);
 
-    setExperimentalFeatures(false);
+    setInDevelopmentFeaturesEnabled(false);
     await wrapper.vm.$nextTick();
 
     expect(wrapper.findAll('button')).toHaveLength(0);

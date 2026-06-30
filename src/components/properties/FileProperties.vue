@@ -461,7 +461,7 @@ const {
   instanceId: computed(() => props.instanceId),
   isExternal: isExternalContext,
   isMediaFullyUnsupported,
-  experimentalFeatures: computed(() => workspaceStore.inDevelopmentFeaturesEnabled),
+  inDevelopmentFeaturesEnabled: computed(() => workspaceStore.inDevelopmentFeaturesEnabled),
   premiumFeatures: computed(() => workspaceStore.premiumFeaturesEnabled),
 });
 

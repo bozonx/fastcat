@@ -127,15 +127,15 @@ watch(
 // Forward native audio engine settings to the Rust backend.
 watch(
   () => ({
-    experimentalFeatures: workspaceStore.inDevelopmentFeaturesEnabled,
+    inDevelopmentFeaturesEnabled: workspaceStore.inDevelopmentFeaturesEnabled,
     bufferSize: workspaceStore.userSettings.audioEngine.bufferSize,
     backend: workspaceStore.userSettings.audioEngine.backend,
   }),
-  async ({ experimentalFeatures, bufferSize, backend }) => {
+  async ({ inDevelopmentFeaturesEnabled, bufferSize, backend }) => {
     if (!isTauri.value) return;
     try {
       const settings: import('~/composables/monitor/native-monitor-ipc').MonitorAudioSettingsInput =
-        experimentalFeatures
+        inDevelopmentFeaturesEnabled
           ? { bufferSize: bufferSize as 'default' | number, backend: backend as 'default' | string }
           : { bufferSize: 'default', backend: 'default' };
       await nativeMonitorIpc.setAudioSettings(settings);

@@ -1037,40 +1037,6 @@ export const videoEffectManifests: VideoEffectManifest[] = [
     ],
   },
   {
-    type: 'hue',
-    name: 'Hue Rotation',
-    nameKey: 'fastcat.effects.video.tauri.hue.name',
-    description: 'Rotate color hues',
-    descriptionKey: 'fastcat.effects.video.tauri.hue.description',
-    icon: 'i-heroicons-arrow-path',
-    target: 'video',
-    renderer: 'wgsl-compute',
-    hidden: true,
-    defaultValues: {
-      degrees: 0,
-    },
-    paramRanges: {
-      degrees: VIDEO_EFFECT_PARAM_RANGES.hueDegrees,
-    },
-    controls: [
-      {
-        kind: 'slider',
-        key: 'degrees',
-        labelKey: 'fastcat.effects.video.tauri.params.angle',
-        min: VIDEO_EFFECT_PARAM_RANGES.hueDegrees.uiMin,
-        max: VIDEO_EFFECT_PARAM_RANGES.hueDegrees.uiMax,
-        step: 1,
-        defaultValue: 0,
-        format: degrees,
-      },
-    ],
-    toEffectSpecs: (values) => [
-      spec('hue', {
-        degrees: clampRange(clampFinite(values.degrees, 0), VIDEO_EFFECT_PARAM_RANGES.hueDegrees),
-      }),
-    ],
-  },
-  {
     type: 'levels',
     name: 'Levels',
     nameKey: 'fastcat.effects.video.tauri.levels.name',

@@ -38,7 +38,7 @@ const props = defineProps<{
   entity?: SelectedEntity | null;
   useExternalFocus?: boolean;
   focusId?: string;
-  experimentalFeatures?: boolean;
+  inDevelopmentFeaturesEnabled?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -399,9 +399,9 @@ const headerTitle = computed(() => {
     <div
       data-panel-drag-handle
       class="flex items-center justify-between px-2 py-1.5 border-b border-ui-border shrink-0 select-none"
-      :class="props.experimentalFeatures ? 'cursor-grab active:cursor-grabbing' : ''"
-      :draggable="props.experimentalFeatures"
-      @dragstart="props.experimentalFeatures ? onPanelDragStart : undefined"
+      :class="props.inDevelopmentFeaturesEnabled ? 'cursor-grab active:cursor-grabbing' : ''"
+      :draggable="props.inDevelopmentFeaturesEnabled"
+      @dragstart="props.inDevelopmentFeaturesEnabled ? onPanelDragStart : undefined"
     >
       <span
         class="ml-2 text-xs text-ui-text-muted font-mono truncate min-w-0 flex-1"

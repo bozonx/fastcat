@@ -9,19 +9,19 @@ type FilesTab = 'assets' | 'files';
 const { t } = useI18n();
 const workspaceStore = useWorkspaceStore();
 
-const experimentalFeatures = computed(() => workspaceStore.inDevelopmentFeaturesEnabled);
+const inDevelopmentFeaturesEnabled = computed(() => workspaceStore.inDevelopmentFeaturesEnabled);
 
 const activeTab = ref<FilesTab>('assets');
 
 const tabs = computed<Array<{ id: FilesTab; labelKey: string; icon: string }>>(() => {
   const list = [{ id: 'assets' as FilesTab, labelKey: 'common.assets', icon: 'lucide:layers' }];
-  if (experimentalFeatures.value) {
+  if (inDevelopmentFeaturesEnabled.value) {
     list.push({ id: 'files', labelKey: 'common.files', icon: 'lucide:folder-open' });
   }
   return list;
 });
 
-watch(experimentalFeatures, (enabled) => {
+watch(inDevelopmentFeaturesEnabled, (enabled) => {
   if (!enabled && activeTab.value === 'files') {
     activeTab.value = 'assets';
   }

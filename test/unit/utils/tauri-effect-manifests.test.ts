@@ -41,8 +41,7 @@ describe('unified video effect manifests', () => {
       'chroma-key',
     ]);
     expect(types).not.toContain('hue');
-    expect(getVideoEffectManifest('hue')).toBeDefined();
-    expect(getVideoEffectManifest('hue')?.hidden).toBe(true);
+    expect(getVideoEffectManifest('hue')).toBeUndefined();
     expect(types).not.toContain('ascii');
     expect(types).not.toContain('crt');
     expect(getVideoEffectManifest('blur')?.renderer).toBe('wgsl-compute');
