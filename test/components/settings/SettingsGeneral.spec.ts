@@ -28,6 +28,7 @@ describe('SettingsGeneral', () => {
     mockWorkspaceStore.userSettings.ui.interfaceScale = 20;
     mockWorkspaceStore.userSettings.history.maxEntries = 999;
     mockWorkspaceStore.userSettings.history.maxMemoryMb = 999;
+    mockWorkspaceStore.userSettings.backup.enabled = false;
     mockWorkspaceStore.userSettings.backup.count = 99;
     mockWorkspaceStore.userSettings.autosave.intervalMinutes = 60;
 
@@ -70,6 +71,7 @@ describe('SettingsGeneral', () => {
     expect(mockWorkspaceStore.userSettings.history.maxMemoryMb).toBe(
       DEFAULT_USER_SETTINGS.history.maxMemoryMb,
     );
+    expect(mockWorkspaceStore.userSettings.backup.enabled).toBe(DEFAULT_USER_SETTINGS.backup.enabled);
     expect(mockWorkspaceStore.userSettings.backup.count).toBe(DEFAULT_USER_SETTINGS.backup.count);
     expect(mockWorkspaceStore.userSettings.autosave.intervalMinutes).toBe(
       DEFAULT_USER_SETTINGS.autosave.intervalMinutes,

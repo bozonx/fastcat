@@ -125,6 +125,13 @@ describe('usePointerDnd engine', () => {
     currentHit = null;
     captureEl.setPointerCapture.mockClear();
     captureEl.releasePointerCapture.mockClear();
+    // The engine captures on the stable document root (not the pressed element),
+    // so capture survives source re-renders. jsdom lacks these methods — stub them.
+    (document.documentElement as unknown as { setPointerCapture: unknown }).setPointerCapture =
+      vi.fn();
+    (
+      document.documentElement as unknown as { releasePointerCapture: unknown }
+    ).releasePointerCapture = vi.fn();
     // Run scheduled rAF callbacks synchronously for deterministic dispatch.
     vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) => {
       cb(0);
@@ -166,14 +173,14 @@ describe('usePointerDnd engine', () => {
     expect(onStart).toHaveBeenCalledTimes(1);
     expect(onEnter).toHaveBeenCalledTimes(1);
     expect(onOver).toHaveBeenCalled();
-    expect(captureEl.setPointerCapture).toHaveBeenCalledWith(1);
+    expect(document.documentElement.setPointerCapture).toHaveBeenCalledWith(1);
 
     // Release over the zone → drop + full reset.
     dispatch('pointerup', 22, 0);
     expect(onDrop).toHaveBeenCalledTimes(1);
     expect(onEnd).toHaveBeenCalledWith({ dropped: true, cancelled: false });
     expect(isDndActive()).toBe(false);
-    expect(captureEl.releasePointerCapture).toHaveBeenCalledWith(1);
+    expect(document.documentElement.releasePointerCapture).toHaveBeenCalledWith(1);
   });
 
   it('treats a release before threshold as a click (no drag, no drop)', () => {

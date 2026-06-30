@@ -1,5 +1,5 @@
 import { createDevLogger } from '~/utils/dev-logger';
-import { ref, onMounted, onUnmounted, getCurrentInstance } from 'vue';
+import { ref } from 'vue';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useUiStore } from '~/stores/ui.store';
 import { isLayer1Active } from '~/utils/hotkeys/layerUtils';
@@ -132,35 +132,14 @@ export function useFileDrop(options: UseFileDropOptions) {
     );
   }
 
-  function syncDragOperationFromKeyboard(event: KeyboardEvent) {
-    if (!uiStore.isFileManagerDragging) return;
-    if (appClipboard.currentDragOperation === 'cancel') return;
-
-    const targetInstanceId = appClipboard.dragTargetFileManagerInstanceId;
-    if (!targetInstanceId) return;
-
-    const operation = resolveFileManagerDragOperation({
-      dragSourceFileManagerInstanceId: appClipboard.dragSourceFileManagerInstanceId,
-      isLayer1Active: isLayer1Active(event, workspaceStore.userSettings),
-      isSameFileSystem: isSameFileSystemDrag(),
-      targetFileManagerInstanceId: targetInstanceId,
-    });
-
-    appClipboard.setCurrentDragOperation(operation);
-    syncFileManagerDragCursor({ isDragging: true, operation });
-  }
-
-  if (getCurrentInstance()) {
-    onMounted(() => {
-      window.addEventListener('keydown', syncDragOperationFromKeyboard, { capture: true });
-      window.addEventListener('keyup', syncDragOperationFromKeyboard, { capture: true });
-    });
-
-    onUnmounted(() => {
-      window.removeEventListener('keydown', syncDragOperationFromKeyboard, { capture: true });
-      window.removeEventListener('keyup', syncDragOperationFromKeyboard, { capture: true });
-    });
-  }
+  // NOTE: internal file-manager drags now run on the pointer-DnD engine, which
+  // re-evaluates the copy/move modifier itself and drives the engine ghost.
+  // The old window keydown/keyup → `syncFileManagerDragCursor` handler used to
+  // fire for ANY active drag (gated only by `isFileManagerDragging`), so during
+  // a pointer drag it would light up the legacy `dragCursor` overlay and never
+  // reset it (the pointer path never calls `resetFileManagerDragCursor`) —
+  // leaving a stuck "+" cursor + frozen badge. It has been removed; the legacy
+  // overlay is only used by the OS-`Files` HTML5 root handlers below.
 
   function onRootDragEnter(e: DragEvent) {
     if (!isRelevantDrag(e)) return;

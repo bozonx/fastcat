@@ -50,7 +50,7 @@ export interface TimelineBackupDeps {
     createFallbackTimelineDoc: () => TimelineDocument;
   };
   workspaceStore: {
-    userSettings: { backup?: { count: number } };
+    userSettings: { backup?: { enabled: boolean; count: number } };
   };
   toast: AppNotificationService;
   t: I18nService['t'];
@@ -115,7 +115,7 @@ export function createTimelineBackupModule(deps: TimelineBackupDeps): TimelineBa
   async function handleBackup(serialized: string, options?: { force?: boolean }) {
     if (!deps.currentTimelinePath.value) return;
     const backupSettings = deps.workspaceStore.userSettings.backup;
-    if (!options?.force && (!backupSettings || backupSettings.count <= 0)) return;
+    if (!options?.force && (!backupSettings || backupSettings.enabled === false || backupSettings.count <= 0)) return;
     const rotationCount = backupSettings?.count ?? 5;
 
     try {

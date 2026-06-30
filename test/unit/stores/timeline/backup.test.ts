@@ -136,6 +136,19 @@ describe('createTimelineBackupModule', () => {
       expect(projectStore.writeTextByPath).not.toHaveBeenCalled();
     });
 
+    it('does nothing when backup.enabled is false', async () => {
+      const projectStore = makeProjectStoreMock();
+      const deps = createMockDeps({
+        projectStore,
+        workspaceStore: { userSettings: { backup: { enabled: false, count: 5 } } },
+      });
+      const backup = createTimelineBackupModule(deps);
+
+      await backup.handleBackup('<serialized>');
+
+      expect(projectStore.writeTextByPath).not.toHaveBeenCalled();
+    });
+
     it('does nothing when there is no open timeline path', async () => {
       const projectStore = makeProjectStoreMock();
       const deps = createMockDeps({ currentTimelinePath: ref(null), projectStore });

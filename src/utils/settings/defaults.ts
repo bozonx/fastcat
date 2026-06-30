@@ -202,7 +202,8 @@ export interface FastCatUserSettings {
     maxMemoryMb: number;
   };
   backup: {
-    /** How many backup versions of explicit saves to keep (rotation). 0 disables backups. */
+    enabled: boolean;
+    /** How many backup versions of explicit saves to keep (rotation). */
     count: number;
   };
   autosave: {
@@ -371,6 +372,7 @@ export const DEFAULT_USER_SETTINGS: FastCatUserSettings = {
     maxMemoryMb: 512,
   },
   backup: {
+    enabled: true,
     count: 5,
   },
   autosave: {

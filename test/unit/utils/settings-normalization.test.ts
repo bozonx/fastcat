@@ -310,4 +310,25 @@ describe('settings normalization', () => {
     });
     expect(normalizedFallback.ui.defaultAudioWaveformMode).toBe('half');
   });
+
+  it('normalizes backup settings', () => {
+    // Default values
+    const def = normalizeUserSettings({});
+    expect(def.backup.enabled).toBe(true);
+    expect(def.backup.count).toBe(5);
+
+    // Explicit valid configuration
+    const valid = normalizeUserSettings({ backup: { enabled: false, count: 3 } });
+    expect(valid.backup.enabled).toBe(false);
+    expect(valid.backup.count).toBe(3);
+
+    // Legacy migration (count = 0 means disabled)
+    const legacy = normalizeUserSettings({ backup: { count: 0 } });
+    expect(legacy.backup.enabled).toBe(false);
+    expect(legacy.backup.count).toBe(5); // Reset to default count
+
+    // Invalid counts (should fallback to default count 5)
+    const invalid = normalizeUserSettings({ backup: { count: -10 } });
+    expect(invalid.backup.count).toBe(5);
+  });
 });

@@ -223,14 +223,24 @@ const stopFramesQualityOptions = [
           />
         </UiFormField>
 
+        <UiFormField>
+          <label class="flex items-center gap-2 cursor-pointer">
+            <UCheckbox v-model="workspaceStore.userSettings.backup.enabled" />
+            <span class="text-ui-text">
+              {{ t('videoEditor.settings.useBackups') }}
+            </span>
+          </label>
+        </UiFormField>
+
         <UiFormField
+          v-if="workspaceStore.userSettings.backup.enabled"
           :label="t('videoEditor.settings.backupCount')"
           :help="t('videoEditor.settings.backupCountHelp')"
         >
           <div class="flex items-center gap-4">
             <UiScaleSlider
               :model-value="workspaceStore.userSettings.backup.count"
-              :min="0"
+              :min="1"
               :max="5"
               with-input
               :default-value="5"
@@ -238,7 +248,7 @@ const stopFramesQualityOptions = [
             />
             <UiWheelNumberInput
               v-model="workspaceStore.userSettings.backup.count"
-              :min="0"
+              :min="1"
               :max="50"
               :step="1"
               :wheel-step-multiplier="5"

@@ -411,27 +411,33 @@ export function normalizeHistorySettings(raw: unknown): FastCatUserSettings['his
 
 export function normalizeBackupSettings(raw: unknown): FastCatUserSettings['backup'] {
   const input = ((raw as Record<string, unknown>)?.['backup'] ?? {}) as Record<string, unknown>;
-  // Migrate the legacy `enabled` field: if explicitly false, set count to 0.
-  // Also migrate the legacy `intervalMinutes` field (where <= 0 meant disabled).
-  const legacyInterval = input['intervalMinutes'];
-  const legacyEnabled = input['enabled'];
+
   let migratedCount = input['count'];
-  if (legacyEnabled === false) {
-    migratedCount = 0;
-  } else if (
-    legacyEnabled === undefined &&
-    legacyInterval !== undefined &&
-    Number(legacyInterval) <= 0
-  ) {
-    migratedCount = 0;
+  let migratedEnabled = input['enabled'];
+
+  // Migrate legacy configuration where count was 0 (disabled backups)
+  if (migratedCount !== undefined && Number(migratedCount) === 0) {
+    migratedEnabled = false;
+    migratedCount = DEFAULT_USER_SETTINGS.backup.count;
   }
+
+  // Also support legacy enabled === false if count was not set
+  if (migratedEnabled === false && migratedCount === undefined) {
+    migratedCount = DEFAULT_USER_SETTINGS.backup.count;
+  }
+
+  const finalEnabled = migratedEnabled !== undefined ? Boolean(migratedEnabled) : DEFAULT_USER_SETTINGS.backup.enabled;
 
   return z
     .object({
-      count: z.coerce.number().min(0).max(50).catch(DEFAULT_USER_SETTINGS.backup.count),
+      enabled: z.boolean().catch(DEFAULT_USER_SETTINGS.backup.enabled),
+      count: z.coerce.number().min(1).max(50).catch(DEFAULT_USER_SETTINGS.backup.count),
     })
     .catch(DEFAULT_USER_SETTINGS.backup)
-    .parse({ count: migratedCount });
+    .parse({
+      enabled: finalEnabled,
+      count: migratedCount,
+    });
 }
 
 export function normalizeAutosaveSettings(raw: unknown): FastCatUserSettings['autosave'] {
