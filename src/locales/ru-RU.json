@@ -537,6 +537,7 @@
       "exportAsText": "Экспорт как текст",
       "exportTitle": "Экспорт маркеров",
       "exportFormats": {
+        "msOrHmsLeft": "00:00 Название",
         "timecodeBracketLeft": "[00:00:00:00] Название",
         "timecodeBracketRight": "Название [00:00:00:00]",
         "hmsLeft": "00:00:00 Название",

@@ -70,6 +70,31 @@ export function formatHms(us: number): string {
 }
 
 /**
+ * Formats microseconds to MM:SS or HH:MM:SS string if >= 1 hour.
+ *
+ * @param us - Time in microseconds
+ * @returns Formatted time string
+ */
+export function formatMsOrHms(us: number): string {
+  const isNegative = us < 0;
+  const absUs = Math.abs(us);
+  const totalSeconds = Math.floor(absUs / 1_000_000);
+  const ss = totalSeconds % 60;
+  const mm = Math.floor(totalSeconds / 60) % 60;
+  const hh = Math.floor(totalSeconds / 3600);
+
+  const pad = (n: number) => String(n).padStart(2, '0');
+  let formatted = '';
+  if (hh > 0) {
+    formatted = `${pad(hh)}:${pad(mm)}:${pad(ss)}`;
+  } else {
+    formatted = `${pad(mm)}:${pad(ss)}`;
+  }
+
+  return isNegative ? `-${formatted}` : formatted;
+}
+
+/**
  * Formats a duration given in seconds to a compact M:SS or H:MM:SS string.
  */
 export function formatDurationSeconds(totalSeconds: number | undefined | null): string {

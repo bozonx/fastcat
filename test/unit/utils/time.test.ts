@@ -4,6 +4,7 @@ import {
   clampTimeUs,
   formatDurationSeconds,
   formatHms,
+  formatMsOrHms,
   formatTime,
   formatTimecode,
   normalizeTimeUs,
@@ -160,6 +161,28 @@ describe('formatHms', () => {
   it('formats negative time', () => {
     expect(formatHms(-1_000_000)).toBe('-00:00:01');
     expect(formatHms(-3661_000_000)).toBe('-01:01:01');
+  });
+});
+
+describe('formatMsOrHms', () => {
+  it('formats zero time', () => {
+    expect(formatMsOrHms(0)).toBe('00:00');
+  });
+
+  it('formats positive time under 1 hour', () => {
+    expect(formatMsOrHms(1_000_000)).toBe('00:01');
+    expect(formatMsOrHms(65_000_000)).toBe('01:05');
+    expect(formatMsOrHms(3599_000_000)).toBe('59:59');
+  });
+
+  it('formats positive time over or equal to 1 hour', () => {
+    expect(formatMsOrHms(3600_000_000)).toBe('01:00:00');
+    expect(formatMsOrHms(3661_000_000)).toBe('01:01:01');
+  });
+
+  it('formats negative time', () => {
+    expect(formatMsOrHms(-1_000_000)).toBe('-00:01');
+    expect(formatMsOrHms(-3661_000_000)).toBe('-01:01:01');
   });
 });
 

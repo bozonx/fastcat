@@ -13,6 +13,7 @@ describe('MarkerExportModal.vue', () => {
         markers: [
           { id: '1', timeUs: 1_000_000, text: 'Intro', color: '#d0021b' },
           { id: '2', timeUs: 5_000_000, text: 'Main', color: '#4a90e2' },
+          { id: '3', timeUs: 3661_000_000, text: 'Over Hour', color: '#d0021b' },
         ],
         fps: 30,
         open: true,
@@ -22,8 +23,9 @@ describe('MarkerExportModal.vue', () => {
     const textarea = component.find('textarea');
     expect(textarea.exists()).toBe(true);
     const text = textarea.element.value;
-    expect(text).toContain('00:00:01 Intro');
-    expect(text).toContain('00:00:05 Main');
+    expect(text).toContain('00:01 Intro');
+    expect(text).toContain('00:05 Main');
+    expect(text).toContain('01:01:01 Over Hour');
   });
 
   it('initializes selected colors from filterColors prop when provided', async () => {
@@ -112,14 +114,19 @@ describe('MarkerExportModal.vue', () => {
 
     const textarea = component.find('textarea');
 
-    // Default: hms-left
-    expect(textarea.element.value).toContain('00:00:01 Intro');
+    // Default: ms-or-hms-left
+    expect(textarea.element.value).toContain('00:01 Intro');
 
     // Change format via model directly (simulating UiSelect change)
     await component.setProps({ open: true });
     await component.vm.$nextTick();
 
     const vm = component.vm as any;
+    vm.exportFormat = 'hms-left';
+    await component.vm.$nextTick();
+
+    expect(textarea.element.value).toContain('00:00:01 Intro');
+
     vm.exportFormat = 'timecode-bracket-left';
     await component.vm.$nextTick();
 

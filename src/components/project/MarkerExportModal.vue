@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
 import type { TimelineMarker } from '~/timeline/types';
-import { formatTimecode, formatHms } from '~/utils/time';
+import { formatTimecode, formatHms, formatMsOrHms } from '~/utils/time';
 import UiModal from '~/components/ui/UiModal.vue';
 import UiSelect from '~/components/ui/UiSelect.vue';
 import MarkerColorFilter from '~/components/project/MarkerColorFilter.vue';
 
 type ExportFormat =
+  | 'ms-or-hms-left'
   | 'timecode-bracket-left'
   | 'timecode-bracket-right'
   | 'hms-left'
@@ -26,7 +27,7 @@ const { t } = useI18n();
 
 const DEFAULT_MARKER_COLOR = '#eab308';
 
-const exportFormat = ref<ExportFormat>('hms-left');
+const exportFormat = ref<ExportFormat>('ms-or-hms-left');
 const copied = ref(false);
 
 const availableColors = computed(() => {
@@ -47,7 +48,7 @@ watch(
         ? new Set(props.filterColors)
         : new Set(availableColors.value);
       copied.value = false;
-      exportFormat.value = 'hms-left';
+      exportFormat.value = 'ms-or-hms-left';
     }
   },
   { immediate: true },
@@ -58,6 +59,9 @@ function formatTimeForExport(us: number): string {
   if (isTimecode) {
     return formatTimecode(us, props.fps);
   }
+  if (exportFormat.value === 'ms-or-hms-left') {
+    return formatMsOrHms(us);
+  }
   return formatHms(us);
 }
 
@@ -65,6 +69,8 @@ function formatMarkerLine(marker: TimelineMarker): string {
   const timeValue = formatTimeForExport(marker.timeUs);
   const text = marker.text || '';
   switch (exportFormat.value) {
+    case 'ms-or-hms-left':
+      return `${timeValue} ${text}`;
     case 'timecode-bracket-left':
       return `[${timeValue}] ${text}`;
     case 'timecode-bracket-right':
@@ -105,6 +111,7 @@ async function handleCopy() {
 }
 
 const exportFormatItems = computed(() => [
+  { value: 'ms-or-hms-left' as ExportFormat, label: t('fastcat.marker.exportFormats.msOrHmsLeft') },
   { value: 'hms-left' as ExportFormat, label: t('fastcat.marker.exportFormats.hmsLeft') },
   { value: 'hms-dash-left' as ExportFormat, label: t('fastcat.marker.exportFormats.hmsDashLeft') },
   { value: 'hms-right' as ExportFormat, label: t('fastcat.marker.exportFormats.hmsRight') },
