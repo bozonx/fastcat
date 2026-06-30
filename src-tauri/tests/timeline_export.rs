@@ -1078,9 +1078,13 @@ fn alpha_webm_export_preserves_alpha() {
 
     assert!(target.exists());
     let pix_fmt = common::ffprobe_entry(Path::new(&target), "stream=pix_fmt", Some("v:0"));
+    // ffmpeg 8.x stores VP9 alpha as BlockAdditional data with alpha_mode=1
+    // metadata instead of reporting yuva420p as pix_fmt.
+    let alpha_mode =
+        common::ffprobe_entry(Path::new(&target), "stream_tags=alpha_mode", Some("v:0"));
     assert!(
-        pix_fmt.contains("yuva"),
-        "expected yuva pix_fmt for alpha export, got '{pix_fmt}'"
+        pix_fmt.contains("yuva") || alpha_mode == "1",
+        "expected yuva pix_fmt or alpha_mode=1 for alpha export, got pix_fmt='{pix_fmt}' alpha_mode='{alpha_mode}'"
     );
 }
 

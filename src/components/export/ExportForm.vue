@@ -16,7 +16,7 @@ import UiButtonGroup from '~/components/ui/UiButtonGroup.vue';
 
 import { BASE_VIDEO_CODEC_OPTIONS, VIDEO_FORMAT_OPTIONS } from '~/utils/webcodecs';
 import { formatFps, middleEllipsis, formatRenderDuration } from '~/utils/format';
-import { useExportForm } from '~/composables/timeline/export/useExportForm';
+import { useExportForm, type ExportRangeOption } from '~/composables/timeline/export/useExportForm';
 
 const props = defineProps<{
   disableFocusFrame?: boolean;
@@ -120,9 +120,9 @@ const exportProgressPercent = computed(() =>
   Math.max(0, Math.min(100, Math.round(exportProgress.value * 100))),
 );
 
-function getOptionDuration(option: any) {
+function getOptionDuration(option: ExportRangeOption) {
   if (option.id === 'timeline') {
-    return (timelineStore.durationUs || 0) / 1000;
+    return (timelineStore.duration || 0) / 1000;
   }
   if (option.range) {
     return (option.range.endUs - option.range.startUs) / 1000;
@@ -130,7 +130,7 @@ function getOptionDuration(option: any) {
   return 0;
 }
 
-function getOptionIcon(option: any) {
+function getOptionIcon(option: ExportRangeOption) {
   if (option.id === 'timeline') {
     return 'i-heroicons-clock';
   }
@@ -140,7 +140,7 @@ function getOptionIcon(option: any) {
   return 'i-heroicons-flag';
 }
 
-function getOptionClasses(option: any) {
+function getOptionClasses(option: ExportRangeOption) {
   const isSelected = selectedExportRangeId.value === option.id;
   if (!isSelected) {
     return 'border-ui-border bg-transparent hover:bg-white/5';
@@ -157,7 +157,7 @@ function getOptionClasses(option: any) {
   return 'border-solid';
 }
 
-function getOptionStyles(option: any) {
+function getOptionStyles(option: ExportRangeOption) {
   const isSelected = selectedExportRangeId.value === option.id;
   if (isSelected && option.id.startsWith('marker:') && option.color) {
     return {
@@ -168,7 +168,7 @@ function getOptionStyles(option: any) {
   return {};
 }
 
-function getRadioCircleClasses(option: any) {
+function getRadioCircleClasses(option: ExportRangeOption) {
   const isSelected = selectedExportRangeId.value === option.id;
   if (!isSelected) {
     return 'border-ui-border-muted';
@@ -185,7 +185,7 @@ function getRadioCircleClasses(option: any) {
   return '';
 }
 
-function getRadioCircleStyles(option: any) {
+function getRadioCircleStyles(option: ExportRangeOption) {
   const isSelected = selectedExportRangeId.value === option.id;
   if (isSelected && option.id.startsWith('marker:') && option.color) {
     return {
@@ -195,7 +195,7 @@ function getRadioCircleStyles(option: any) {
   return {};
 }
 
-function getRadioDotClasses(option: any) {
+function getRadioDotClasses(option: ExportRangeOption) {
   if (option.id === 'timeline') {
     return 'bg-violet-400';
   }
@@ -208,7 +208,7 @@ function getRadioDotClasses(option: any) {
   return '';
 }
 
-function getRadioDotStyles(option: any) {
+function getRadioDotStyles(option: ExportRangeOption) {
   if (option.id.startsWith('marker:') && option.color) {
     return {
       backgroundColor: option.color,
@@ -217,7 +217,7 @@ function getRadioDotStyles(option: any) {
   return {};
 }
 
-function getIconClasses(option: any) {
+function getIconClasses(option: ExportRangeOption) {
   const isSelected = selectedExportRangeId.value === option.id;
   if (!isSelected) {
     return 'text-ui-text-muted';
@@ -234,7 +234,7 @@ function getIconClasses(option: any) {
   return '';
 }
 
-function getIconStyles(option: any) {
+function getIconStyles(option: ExportRangeOption) {
   if (option.id.startsWith('marker:')) {
     return {
       color: option.color || '#eab308',
@@ -311,10 +311,7 @@ const filenamePlaceholder = computed(() =>
       <UiButtonGroup v-model="exportType" :options="tabOptions" class="mb-6 shrink-0" fluid />
 
       <div class="flex flex-col gap-6 max-w-2xl flex-1 shrink-0">
-        <div
-          v-if="hasSelectableExportRanges"
-          class="flex flex-col gap-2"
-        >
+        <div v-if="hasSelectableExportRanges" class="flex flex-col gap-2">
           <div class="text-sm font-medium text-ui-text">
             {{ t('videoEditor.export.rangeSourceTitle') }}
           </div>

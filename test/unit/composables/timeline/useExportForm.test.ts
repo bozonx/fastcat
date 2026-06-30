@@ -270,6 +270,11 @@ describe('useExportForm', () => {
     mockAudioCodec.value = 'aac';
     mockOutputFormat.value = 'mp4';
     mockAudioSampleRate.value = 48000;
+    // Flush watchers triggered by mock value resets so stale watchers
+    // from previous useExportForm() calls don't overwrite exportSettings
+    // during the next initializeExportForm call
+    await nextTick();
+    await new Promise((resolve) => setTimeout(resolve, 0));
     vi.mocked(copyFile).mockClear();
     projectStoreMock.projectSettings.exportSettings = undefined as any;
     ensureExportDirMock.mockReset();

@@ -332,7 +332,10 @@ impl VideoDecoderCache {
             natural_size,
         };
         self.svgs.insert(key.clone(), raster.clone());
-        self.track_raster_insert(RasterKey::Svg(key.0, key.1), raster_estimated_bytes(&raster));
+        self.track_raster_insert(
+            RasterKey::Svg(key.0, key.1),
+            raster_estimated_bytes(&raster),
+        );
         Ok(raster)
     }
 
@@ -849,7 +852,10 @@ mod tests {
         assert_one_to_one(&pts, 25.0, 1, "pre-cut");
         assert_one_to_one(&after_cut, 25.0, 1, "post-cut");
         pts.extend(after_cut);
-        assert!(pts.windows(2).all(|w| w[1] >= w[0] - 1e-9), "PTS must not regress");
+        assert!(
+            pts.windows(2).all(|w| w[1] >= w[0] - 1e-9),
+            "PTS must not regress"
+        );
     }
 
     #[test]
@@ -863,7 +869,11 @@ mod tests {
         let rewound: Vec<f64> = (0..30)
             .map(|i| cd.frame_at(2.0 + (i as f64 + 0.5) / 25.0).unwrap().pts_sec)
             .collect();
-        assert!(rewound[0] < 3.0, "backward seek should land near 2s, got {}", rewound[0]);
+        assert!(
+            rewound[0] < 3.0,
+            "backward seek should land near 2s, got {}",
+            rewound[0]
+        );
         assert_one_to_one(&rewound, 25.0, 1, "after rewind");
     }
 
@@ -944,7 +954,10 @@ mod tests {
                 "upsample should never advance more than one source frame, got {delta}"
             );
         }
-        assert!(up.windows(2).any(|w| (w[1] - w[0]).abs() < 1e-9), "expected some holds");
+        assert!(
+            up.windows(2).any(|w| (w[1] - w[0]).abs() < 1e-9),
+            "expected some holds"
+        );
 
         // 50fps source at 25fps export: every other source frame is dropped, evenly.
         let down = emit_pts(cached(GridDecoder::new(50.0, 0.0, 400)), 25.0, 0.0, 100);
@@ -1018,13 +1031,19 @@ mod tests {
         let old_path = PathBuf::from("/old.png");
         let old = make(big as u64 * 4);
         cache.images.insert(old_path.clone(), old.clone());
-        cache.track_raster_insert(RasterKey::Image(old_path.clone()), raster_estimated_bytes(&old));
+        cache.track_raster_insert(
+            RasterKey::Image(old_path.clone()),
+            raster_estimated_bytes(&old),
+        );
         assert_eq!(cache.images.len(), 1);
 
         let new_path = PathBuf::from("/new.png");
         let new = make(big as u64 * 4);
         cache.images.insert(new_path.clone(), new.clone());
-        cache.track_raster_insert(RasterKey::Image(new_path.clone()), raster_estimated_bytes(&new));
+        cache.track_raster_insert(
+            RasterKey::Image(new_path.clone()),
+            raster_estimated_bytes(&new),
+        );
 
         // The older, less-recently-used entry is dropped; the new one survives.
         assert!(!cache.images.contains_key(&old_path));

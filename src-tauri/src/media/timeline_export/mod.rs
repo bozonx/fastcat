@@ -169,7 +169,10 @@ impl ExportMemoryTrace {
         if !export_memory_trace_enabled() {
             return;
         }
-        if frame != 1 && frame != frame_count && frame % EXPORT_MEMORY_SAMPLE_INTERVAL_FRAMES != 0 {
+        if frame != 1
+            && frame != frame_count
+            && !frame.is_multiple_of(EXPORT_MEMORY_SAMPLE_INTERVAL_FRAMES)
+        {
             return;
         }
         let Some(snapshot) = process_memory_snapshot() else {
@@ -230,7 +233,7 @@ impl ExportStageTrace {
         self.count += 1;
         self.total_main_ms += main_ms;
         self.total_wait_ms += wait_ms;
-        if self.count % EXPORT_TRACE_INTERVAL_FRAMES != 0 {
+        if !self.count.is_multiple_of(EXPORT_TRACE_INTERVAL_FRAMES) {
             return;
         }
 
@@ -912,9 +915,11 @@ pub fn export_timeline(
             loop {
                 let mut guard = child.lock();
                 if let Some(status) = guard.try_wait().context("failed to poll ffmpeg export")? {
-                    let stderr_text =
-                        String::from_utf8_lossy(&finish_stderr_drain(stderr_handle, &stderr_shared_buf))
-                            .to_string();
+                    let stderr_text = String::from_utf8_lossy(&finish_stderr_drain(
+                        stderr_handle,
+                        &stderr_shared_buf,
+                    ))
+                    .to_string();
                     drop(guard);
                     let cancelled = tasks.was_cancelled(task_id);
                     tasks.remove(task_id);
