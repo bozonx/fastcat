@@ -187,7 +187,9 @@ describe('usePointerDnd engine', () => {
 
     expect(isDndActive()).toBe(false);
     expect(onDrop).not.toHaveBeenCalled();
-    // onEnd only fires for a committed drag.
+    // onEnd only fires for a committed drag — a non-committed teardown must NOT
+    // clear source state (Tauri relies on it persisting through a native-drag
+    // takeover; see usePointerDnd teardown).
     expect(onEnd).not.toHaveBeenCalled();
   });
 

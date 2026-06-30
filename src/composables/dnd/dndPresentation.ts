@@ -23,7 +23,9 @@ export function getDndBadge(operation: DndOperation): DndBadge {
     case 'cancel':
       return { glyph: '✕', color: 'red', label: 'Not allowed', visible: true };
     case 'timeline-add':
-      return { glyph: '+', color: 'green', label: 'Add to timeline', visible: true };
+      // No text label — the "+" glyph + the dragged item's name already make it
+      // obvious it'll be added to the timeline.
+      return { glyph: '+', color: 'green', label: '', visible: true };
     case 'open-panel':
       return { glyph: '▦', color: 'blue', label: 'Add as panel', visible: true };
     case 'open-tab':

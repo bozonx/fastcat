@@ -41,6 +41,27 @@ import {
   touchMovedIntoScroll,
   TOUCH_LONG_PRESS_MS,
 } from './dndGesture';
+import { createDevLogger } from '~/utils/dev-logger';
+
+const log = createDevLogger('pointerDnd');
+
+// Opt-in tracing for hard-to-reproduce drag glitches. Enable in the console with
+// `localStorage.fastcatDndDebug = '1'` (and reload), then reproduce the gesture;
+// the log shows arm/commit, every zone change, and any frame where no drop zone
+// resolved while dragging — the usual culprit for "no highlight / no mode".
+function dndDebugEnabled(): boolean {
+  try {
+    return typeof localStorage !== 'undefined' && localStorage.getItem('fastcatDndDebug') === '1';
+  } catch {
+    return false;
+  }
+}
+function dndDebug(...args: unknown[]): void {
+  // Use `warn` (not `debug`) so the trace is visible in production Tauri builds
+  // too — it's already opt-in behind the localStorage flag, so it stays quiet
+  // unless explicitly enabled.
+  if (dndDebugEnabled()) log.warn(...args);
+}
 
 export interface ArmPointerDndOptions {
   payload: DndPayload;
@@ -139,6 +160,12 @@ function dispatchMove() {
   const nextZoneId = resolveAcceptingZoneId(targetEl, drag.payload);
 
   if (nextZoneId !== drag.currentZoneId) {
+    dndDebug('zone change', {
+      from: drag.currentZoneId,
+      to: nextZoneId,
+      target: (targetEl as HTMLElement | null)?.tagName,
+      source: drag.payload.source,
+    });
     if (drag.currentZoneId) {
       getDndZone(drag.currentZoneId)?.onLeave?.(buildContext(drag.currentZoneId, targetEl));
     }
@@ -147,6 +174,14 @@ function dispatchMove() {
     if (nextZoneId) {
       getDndZone(nextZoneId)?.onEnter?.(buildContext(nextZoneId, targetEl));
     } else {
+      // No drop zone under the pointer while dragging — this is what "no
+      // highlight / no copy-move mode" looks like. Trace what the hit-test saw.
+      dndDebug('no zone under pointer', {
+        target: (targetEl as HTMLElement | null)?.tagName,
+        targetCls: (targetEl as HTMLElement | null)?.className,
+        x: clientX,
+        y: clientY,
+      });
       setDndOperation('none');
     }
   }
@@ -172,6 +207,7 @@ function commitDrag() {
   if (!drag || drag.committed) return;
   drag.committed = true;
   clearLongPress(drag);
+  dndDebug('commit', { source: drag.payload.source, pointerType: drag.pointerType });
 
   try {
     drag.captureEl?.setPointerCapture?.(drag.pointerId);
@@ -196,6 +232,8 @@ function teardown(info: { dropped: boolean; cancelled: boolean }) {
   if (!drag) return;
   activeDrag = null;
 
+  dndDebug('teardown', { committed: drag.committed, ...info });
+
   clearLongPress(drag);
   if (drag.rafId !== 0) cancelAnimationFrame(drag.rafId);
 
@@ -215,6 +253,13 @@ function teardown(info: { dropped: boolean; cancelled: boolean }) {
   // lingers even if the source callback throws.
   endDndState();
 
+  // Only run source cleanup for a gesture that actually became a drag. A
+  // non-committed teardown happens on a plain click OR — crucially in the Tauri
+  // shell — when WebKitGTK promotes the press into a native OS drag (firing
+  // `pointercancel` before our threshold). In that case the file-manager drag
+  // state (`isFileManagerDragging` / `draggedFile`) must PERSIST so the native
+  // `onDragDropEvent` recognises it as an internal drag and suppresses the OS
+  // drop overlay. The source clears its own state when that native flow ends.
   if (drag.committed) {
     drag.onEnd?.(info);
   }
