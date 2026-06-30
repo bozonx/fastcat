@@ -2,9 +2,21 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { mountWithNuxt } from '../../utils/mount';
 import MarkerExportModal from '~/components/project/MarkerExportModal.vue';
 
+const mockListEntryNames = vi.fn().mockResolvedValue([]);
+const mockWriteTextByPath = vi.fn().mockResolvedValue(undefined);
+
+vi.mock('~/stores/project.store', () => ({
+  useProjectStore: () => ({
+    listEntryNames: mockListEntryNames,
+    writeTextByPath: mockWriteTextByPath,
+  }),
+}));
+
 describe('MarkerExportModal.vue', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockListEntryNames.mockResolvedValue([]);
+    mockWriteTextByPath.mockResolvedValue(undefined);
   });
 
   it('renders export text for markers in default format', async () => {
@@ -221,5 +233,69 @@ describe('MarkerExportModal.vue', () => {
 
     const textarea = component.find('textarea');
     expect(textarea.element.value).toContain('No Color');
+  });
+
+  it('writes export content to _documents/markers.txt via export button', async () => {
+    const component = await mountWithNuxt(MarkerExportModal, {
+      props: {
+        markers: [{ id: '1', timeUs: 1_000_000, text: 'Intro', color: '#d0021b' }],
+        fps: 30,
+        open: true,
+      },
+    });
+
+    const vm = component.vm as any;
+    await vm.handleExportToFile();
+    await component.vm.$nextTick();
+
+    expect(mockListEntryNames).toHaveBeenCalledWith('_documents');
+    expect(mockWriteTextByPath).toHaveBeenCalledWith(
+      '_documents/markers.txt',
+      expect.any(String),
+    );
+    expect(mockWriteTextByPath.mock.calls[0]![1]).toContain('Intro');
+  });
+
+  it('uses csv extension when csv format is selected', async () => {
+    const component = await mountWithNuxt(MarkerExportModal, {
+      props: {
+        markers: [{ id: '1', timeUs: 1_000_000, text: 'Intro', color: '#d0021b' }],
+        fps: 30,
+        open: true,
+      },
+    });
+
+    const vm = component.vm as any;
+    vm.exportFormat = 'csv';
+    await component.vm.$nextTick();
+
+    await vm.handleExportToFile();
+    await component.vm.$nextTick();
+
+    expect(mockWriteTextByPath).toHaveBeenCalledWith(
+      '_documents/markers.csv',
+      expect.any(String),
+    );
+  });
+
+  it('increments filename when markers.txt already exists', async () => {
+    mockListEntryNames.mockResolvedValue(['markers.txt']);
+
+    const component = await mountWithNuxt(MarkerExportModal, {
+      props: {
+        markers: [{ id: '1', timeUs: 1_000_000, text: 'Intro', color: '#d0021b' }],
+        fps: 30,
+        open: true,
+      },
+    });
+
+    const vm = component.vm as any;
+    await vm.handleExportToFile();
+    await component.vm.$nextTick();
+
+    expect(mockWriteTextByPath).toHaveBeenCalledWith(
+      '_documents/markers_001.txt',
+      expect.any(String),
+    );
   });
 });

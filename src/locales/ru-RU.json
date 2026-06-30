@@ -546,7 +546,11 @@
         "json": "JSON",
         "webvtt": "WebVTT Chapters"
       },
-      "selectAll": "Выбрать все"
+      "selectAll": "Выбрать все",
+      "exportToFile": "Экспортировать",
+      "exportFileDone": "Сохранено",
+      "exportFileSuccess": "Файл сохранён: {file}",
+      "exportFileError": "Ошибка при сохранении файла"
     },
     "monitor": {
       "audioMute": "Выключить звук",

@@ -546,7 +546,11 @@
         "json": "JSON",
         "webvtt": "WebVTT Chapters"
       },
-      "selectAll": "Select All"
+      "selectAll": "Select All",
+      "exportToFile": "Export",
+      "exportFileDone": "Saved",
+      "exportFileSuccess": "File saved: {file}",
+      "exportFileError": "Failed to save file"
     },
     "monitor": {
       "audioMute": "Mute",

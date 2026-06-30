@@ -2,6 +2,9 @@
 import { computed, ref, watch } from 'vue';
 import type { TimelineMarker } from '~/timeline/types';
 import { formatTimecode, formatHms, formatMsOrHms } from '~/utils/time';
+import { DOCUMENTS_DIR_NAME } from '~/utils/constants';
+import { resolveNextAvailableFilename } from '~/composables/timeline/export/filenameUtils';
+import { useProjectStore } from '~/stores/project.store';
 import UiModal from '~/components/ui/UiModal.vue';
 import UiSelect from '~/components/ui/UiSelect.vue';
 import MarkerColorFilter from '~/components/project/MarkerColorFilter.vue';
@@ -30,11 +33,30 @@ const props = defineProps<MarkerExportModalProps>();
 const isOpen = defineModel<boolean>('open', { default: false });
 
 const { t } = useI18n();
+const toast = useToast();
+const projectStore = useProjectStore();
 
 const DEFAULT_MARKER_COLOR = '#eab308';
 
 const exportFormat = ref<ExportFormat>('ms-or-hms-left');
 const copied = ref(false);
+const exported = ref(false);
+const isExporting = ref(false);
+
+const FORMAT_EXTENSIONS: Record<ExportFormat, string> = {
+  'ms-or-hms-left': 'txt',
+  'markdown-bracket-left': 'txt',
+  'timecode-bracket-left': 'txt',
+  'timecode-bracket-right': 'txt',
+  'hms-left': 'txt',
+  'hms-dash-left': 'txt',
+  'hms-right': 'txt',
+  audacity: 'txt',
+  csv: 'csv',
+  tsv: 'tsv',
+  json: 'json',
+  webvtt: 'vtt',
+};
 
 const availableColors = computed(() => {
   const colors = new Set<string>();
@@ -192,6 +214,39 @@ async function handleCopy() {
   }
 }
 
+async function handleExportToFile() {
+  if (!exportText.value || isExporting.value) {
+    return;
+  }
+  isExporting.value = true;
+  try {
+    const ext = FORMAT_EXTENSIONS[exportFormat.value] ?? 'txt';
+    const existingNames = await projectStore.listEntryNames(DOCUMENTS_DIR_NAME);
+    const fileName = resolveNextAvailableFilename(
+      new Set(existingNames),
+      'markers',
+      ext,
+    );
+    const filePath = `${DOCUMENTS_DIR_NAME}/${fileName}`;
+    await projectStore.writeTextByPath(filePath, exportText.value);
+    exported.value = true;
+    setTimeout(() => {
+      exported.value = false;
+    }, 2000);
+    toast.add({
+      title: t('fastcat.marker.exportFileSuccess', { file: fileName }),
+      color: 'success',
+    });
+  } catch (e) {
+    toast.add({
+      title: t('fastcat.marker.exportFileError'),
+      color: 'error',
+    });
+  } finally {
+    isExporting.value = false;
+  }
+}
+
 const exportFormatItems = computed(() => [
   { value: 'ms-or-hms-left' as ExportFormat, label: t('fastcat.marker.exportFormats.msOrHmsLeft') },
   {
@@ -259,6 +314,16 @@ const exportFormatItems = computed(() => [
           @click="handleCopy"
         >
           {{ copied ? t('common.copiedToClipboard') : t('common.copy') }}
+        </UButton>
+        <UButton
+          size="sm"
+          variant="soft"
+          color="neutral"
+          :icon="exported ? 'i-heroicons-check' : 'i-heroicons-arrow-down-tray'"
+          :loading="isExporting"
+          @click="handleExportToFile"
+        >
+          {{ exported ? t('fastcat.marker.exportFileDone') : t('fastcat.marker.exportToFile') }}
         </UButton>
         <UButton size="sm" variant="ghost" @click="isOpen = false">
           {{ t('common.close') }}
