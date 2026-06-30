@@ -56,6 +56,9 @@ describe('media-types', () => {
     expect(isOpenableProjectTextFilename('notes.md')).toBe(true);
     expect(isOpenableProjectTextFilename('scene.json')).toBe(true);
     expect(isOpenableProjectTextFilename('config.yaml')).toBe(true);
+    expect(isOpenableProjectTextFilename('subs.vtt')).toBe(true);
+    expect(isOpenableProjectTextFilename('data.tsv')).toBe(true);
+    expect(isOpenableProjectTextFilename('data.csv')).toBe(true);
   });
 
   it('keeps binary files non-openable as text', () => {
@@ -74,6 +77,9 @@ describe('media-types', () => {
       'video/x-matroska',
     );
     expect(getMimeTypeFromFilename('audio.wav?v=2')).toBe('audio/wav');
+    expect(getMimeTypeFromFilename('subs.vtt')).toBe('text/vtt');
+    expect(getMimeTypeFromFilename('data.tsv')).toBe('text/tab-separated-values');
+    expect(getMimeTypeFromFilename('data.csv')).toBe('text/csv');
     expect(getMimeTypeFromFilename('unknown.xyz')).toBe('application/octet-stream');
   });
 

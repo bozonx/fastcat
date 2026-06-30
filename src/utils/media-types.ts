@@ -25,7 +25,7 @@ export const IMAGE_EXTENSIONS = [
   'tiff',
   'tif',
 ];
-export const TEXT_EXTENSIONS = ['txt', 'md', 'json', 'yaml', 'yml'];
+export const TEXT_EXTENSIONS = ['txt', 'md', 'json', 'yaml', 'yml', 'vtt', 'tsv', 'csv'];
 export const TIMELINE_EXTENSIONS = ['otio'];
 
 export const EXTENSION_MIME_MAPPING: Record<string, string> = {
@@ -62,6 +62,9 @@ export const EXTENSION_MIME_MAPPING: Record<string, string> = {
   json: 'application/json',
   yaml: 'application/x-yaml',
   yml: 'application/x-yaml',
+  vtt: 'text/vtt',
+  tsv: 'text/tab-separated-values',
+  csv: 'text/csv',
   otio: 'application/json',
 };
 
