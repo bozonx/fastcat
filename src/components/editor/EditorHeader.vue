@@ -3,7 +3,6 @@ import { useProjectStore } from '~/stores/project.store';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useHotkeyLabel } from '~/composables/useHotkeyLabel';
-import { dropdownNoReturnFocus } from '~/composables/useDropdownMenuFocus';
 import TimelineTabs from '~/components/timeline/TimelineTabs.vue';
 import BackgroundTasksButton from '~/components/file-manager/BackgroundTasksButton.vue';
 import UiTooltip from '~/components/ui/UiTooltip.vue';
@@ -14,29 +13,12 @@ const timelineStore = useTimelineStore();
 const workspaceStore = useWorkspaceStore();
 const { getHotkeyTitle } = useHotkeyLabel();
 
-const emit = defineEmits(['open-project-settings', 'open-editor-settings', 'open-export-modal']);
-
-const menuItems = computed(() => {
-  const items = [
-    {
-      label: t('videoEditor.projectSettings.title'),
-      icon: 'ix:project-configuration',
-      onSelect: () => emit('open-project-settings'),
-    },
-    {
-      label: t('videoEditor.settings.workspaceSection'),
-      icon: 'i-heroicons-cog-6-tooth',
-      onSelect: () => emit('open-editor-settings'),
-    },
-  ];
-
-  return [items];
-});
+defineEmits(['open-project-settings', 'open-editor-settings', 'open-export-modal']);
 </script>
 
 <template>
   <div
-    class="flex items-center justify-between px-4 h-10 bg-ui-bg-elevated border-b border-ui-border"
+    class="flex items-center justify-between px-2 h-10 bg-ui-bg-elevated border-b border-ui-border"
   >
     <div class="flex items-center gap-2 h-full flex-1 min-w-0">
       <UiActionButton
@@ -58,7 +40,9 @@ const menuItems = computed(() => {
 
       <!-- Project Actions Toolbar -->
       <div class="flex items-center gap-1 shrink-0">
-        <UiTooltip :text="t('videoEditor.projectSettings.title')">
+        <UiTooltip
+          :text="getHotkeyTitle(t('videoEditor.projectSettings.title'), 'general.projectSettings')"
+        >
           <UiActionButton
             size="sm"
             variant="ghost"
@@ -82,6 +66,20 @@ const menuItems = computed(() => {
                 : '',
             ]"
             @click="timelineStore.saveTimeline()"
+          />
+        </UiTooltip>
+
+        <BackgroundTasksButton v-if="workspaceStore.inDevelopmentFeaturesEnabled" size="sm" />
+
+        <UiTooltip
+          :text="getHotkeyTitle(t('videoEditor.settings.workspaceSection'), 'general.appSettings')"
+        >
+          <UiActionButton
+            size="sm"
+            variant="ghost"
+            color="neutral"
+            icon="i-heroicons-cog-6-tooth"
+            @click="$emit('open-editor-settings')"
           />
         </UiTooltip>
       </div>
@@ -179,23 +177,6 @@ const menuItems = computed(() => {
           </button>
         </UiTooltip>
       </div>
-
-      <BackgroundTasksButton v-if="workspaceStore.inDevelopmentFeaturesEnabled" size="sm" />
-
-      <UDropdownMenu
-        :items="menuItems"
-        mode="hover"
-        :ui="{ content: 'w-56' }"
-        :content="dropdownNoReturnFocus"
-      >
-        <UiActionButton
-          size="sm"
-          variant="ghost"
-          color="neutral"
-          icon="i-heroicons-ellipsis-vertical-16-solid"
-          square
-        />
-      </UDropdownMenu>
     </div>
   </div>
 </template>

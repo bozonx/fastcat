@@ -330,16 +330,7 @@ export function armPointerDnd(e: PointerEvent, options: ArmPointerDndOptions): v
     ...options,
     pointerId: e.pointerId,
     pointerType,
-    // Capture on a STABLE element (the document root), not the pressed element.
-    // Drag sources like the folder tree / file list re-render during a drag
-    // (navigation, copy results), which removes the pressed row from the DOM. If
-    // we'd captured on that row, its removal could swallow the terminal
-    // pointerup/pointercancel — leaving the drag (and its ghost) stuck. The
-    // document element is never removed, so capture (and thus teardown) survives.
-    captureEl:
-      typeof document !== 'undefined'
-        ? document.documentElement
-        : ((e.currentTarget as Element | null) ?? null),
+    captureEl: (e.currentTarget as Element | null) ?? null,
     startX: e.clientX,
     startY: e.clientY,
     committed: false,

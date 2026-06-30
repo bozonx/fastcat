@@ -47,10 +47,6 @@ vi.mock('~/composables/useHotkeyLabel', () => ({
   }),
 }));
 
-vi.mock('~/composables/useDropdownMenuFocus', () => ({
-  dropdownNoReturnFocus: {},
-}));
-
 // Mock components to simplify mounting
 vi.mock('~/components/timeline/TimelineTabs.vue', () => ({
   default: { name: 'TimelineTabs', template: '<div class="timeline-tabs-mock"></div>' },
@@ -107,5 +103,31 @@ describe('EditorHeader', () => {
     const saveBtn = wrapper.find('[icon="i-heroicons-arrow-path"]');
     expect(saveBtn.exists()).toBe(true);
     expect(saveBtn.classes()).toContain('animate-spin');
+  });
+
+  it('renders app settings button and emits open-editor-settings when clicked', async () => {
+    const wrapper = await mountSuspended(EditorHeader);
+
+    const settingsBtn = wrapper.find('[icon="i-heroicons-cog-6-tooth"]');
+    expect(settingsBtn.exists()).toBe(true);
+
+    await settingsBtn.trigger('click');
+    expect(wrapper.emitted('open-editor-settings')).toBeTruthy();
+  });
+
+  it('renders BackgroundTasksButton when inDevelopmentFeaturesEnabled is true', async () => {
+    mockWorkspaceStore.inDevelopmentFeaturesEnabled = true;
+    const wrapper = await mountSuspended(EditorHeader);
+
+    const bgTasks = wrapper.findComponent({ name: 'BackgroundTasksButton' });
+    expect(bgTasks.exists()).toBe(true);
+  });
+
+  it('does not render BackgroundTasksButton when inDevelopmentFeaturesEnabled is false', async () => {
+    mockWorkspaceStore.inDevelopmentFeaturesEnabled = false;
+    const wrapper = await mountSuspended(EditorHeader);
+
+    const bgTasks = wrapper.findComponent({ name: 'BackgroundTasksButton' });
+    expect(bgTasks.exists()).toBe(false);
   });
 });
