@@ -146,6 +146,15 @@ const mainActions = computed<
         />
       </div>
 
+      <div v-if="!isMobile" class="flex flex-col gap-2 mt-2 pb-2">
+        <span class="text-xs text-ui-text-muted">{{ t('common.color') }}</span>
+        <UiColorPicker
+          :model-value="marker.color ?? '#eab308'"
+          mode="marker"
+          @update:model-value="handleUpdateColor"
+        />
+      </div>
+
       <div class="flex flex-col gap-0.5 mt-2">
         <span class="text-xs text-ui-text-muted">{{
           isZone ? t('common.start') : t('common.position')
@@ -158,15 +167,6 @@ const mainActions = computed<
         <UiTimecode
           :model-value="marker.timeUs + (marker.durationUs || 0)"
           @update:model-value="handleUpdateEndTime"
-        />
-      </div>
-
-      <div v-if="!isMobile" class="flex flex-col gap-2 mt-4 pb-2">
-        <span class="text-xs text-ui-text-muted">{{ t('common.color') }}</span>
-        <UiColorPicker
-          :model-value="marker.color ?? '#eab308'"
-          mode="marker"
-          @update:model-value="handleUpdateColor"
         />
       </div>
     </PropertySection>
