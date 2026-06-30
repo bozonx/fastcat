@@ -1,17 +1,9 @@
 <script setup lang="ts">
 import { createDevLogger } from '~/utils/dev-logger';
 
-import { ref, inject, onMounted, onUnmounted } from 'vue';
+import { ref, inject } from 'vue';
 import type { ComputedRef } from 'vue';
-import {
-  useDraggedFile,
-  INTERNAL_DRAG_TYPE,
-  FILE_MANAGER_COPY_DRAG_TYPE,
-  FILE_MANAGER_ITEMS_DRAG_TYPE,
-  FILE_MANAGER_MOVE_DRAG_TYPE,
-  REMOTE_FILE_DRAG_TYPE,
-} from '~/composables/useDraggedFile';
-import type { DraggedFileData } from '~/composables/useDraggedFile';
+import { useDraggedFile } from '~/composables/useDraggedFile';
 import type { FsEntry } from '~/types/fs';
 import type { getBdPayload } from '~/types/bloggerdog';
 import { useUiStore } from '~/stores/ui.store';
@@ -33,23 +25,22 @@ import {
 } from '~/utils/media-types';
 import type { FileCompatibilityStatus } from '~/composables/file-manager/useFileManagerCompatibility';
 import { useFileContextMenu } from '~/composables/file-manager/useFileContextMenu';
-import { isRemoteFsEntry, type RemoteFsEntry } from '~/utils/remote-vfs';
+import type { RemoteFsEntry } from '~/utils/remote-vfs';
 import type { IFileSystemAdapter } from '~/file-manager/core/vfs/types';
 import { isWorkspaceCommonPath, WORKSPACE_COMMON_PATH_PREFIX } from '~/utils/workspace-common';
 import { isGeneratingProxyInDirectory, folderHasVideos } from '~/utils/fs';
 import {
-  getDropTargetEntryPath,
-  isFileManagerDropCancellationTarget,
+  getDropTargetEntryPathFromEl,
   isCrossFileManagerDrag,
   isCancellationZone,
   resolveFileManagerDragOperation,
   resolveFileManagerDropOperation,
   shouldCancelFileManagerDrop,
 } from '~/composables/file-manager/dragOperation';
-import {
-  resetFileManagerDragCursor,
-  syncFileManagerDragCursor,
-} from '~/composables/file-manager/dragCursor';
+import { armPointerDnd } from '~/composables/dnd/usePointerDnd';
+import { useDndDropZone } from '~/composables/dnd/useDndDropZone';
+import type { DndDragContext, DndPayload, DndPointer } from '~/composables/dnd/dndTypes';
+import type { FileManagerDndPayloadData } from '~/composables/file-manager/useFileBrowserDragAndDrop';
 import { crossVfsCopy, crossVfsMove } from '~/file-manager/core/vfs/crossVfs';
 const log = createDevLogger('FileManagerTree');
 
@@ -292,53 +283,60 @@ function onCaretClick(e: MouseEvent, entry: FsEntry) {
   emit('toggle', entry);
 }
 
-function onDragStart(e: DragEvent, entry: FsEntry) {
+function isLayer1FromPointer(p: DndPointer): boolean {
+  return isLayer1Active(
+    {
+      shiftKey: p.shiftKey,
+      ctrlKey: p.ctrlKey,
+      altKey: p.altKey,
+      metaKey: p.metaKey,
+    } as unknown as MouseEvent,
+    workspaceStore.userSettings,
+  );
+}
+
+function isSameFileSystemDrag(): boolean | null {
+  return appClipboard.dragSourceVfs && props.vfs ? appClipboard.dragSourceVfs === props.vfs : null;
+}
+
+// --- source: arm a pointer drag from a tree row ----------------------------
+function onTreePointerDown(e: PointerEvent, entry: FsEntry) {
   if (!entry.path) return;
 
-  const entriesToMove: FsEntry[] = [entry];
+  const operation: 'copy' | 'move' = isLayer1Active(e, workspaceStore.userSettings)
+    ? 'copy'
+    : 'move';
+  const movePayload = [{ name: entry.name, kind: entry.kind, path: entry.path }];
 
-  if (e.dataTransfer) {
-    e.dataTransfer.effectAllowed = 'copyMove';
-  }
-
-  const operation = isLayer1Active(e, workspaceStore.userSettings) ? 'copy' : 'move';
   dragOperation.value = operation;
   uiStore.isFileManagerDragging = true;
   appClipboard.setDragSourceFileManagerInstanceId(props.instanceId ?? null);
   appClipboard.setDragSourceVfs(props.vfs ?? null);
   appClipboard.setCurrentDragOperation(operation);
   appClipboard.setDragTargetFileManagerInstanceId(props.instanceId ?? null);
-  syncFileManagerDragCursor({ isDragging: true, operation });
-  const movePayload = entriesToMove.map((e) => ({ name: e.name, kind: e.kind, path: e.path }));
   appClipboard.setDraggedItems(movePayload);
-  const serializedPayload = JSON.stringify(movePayload);
-  e.dataTransfer?.setData(FILE_MANAGER_ITEMS_DRAG_TYPE, serializedPayload);
-  e.dataTransfer?.setData(
-    operation === 'copy' ? FILE_MANAGER_COPY_DRAG_TYPE : FILE_MANAGER_MOVE_DRAG_TYPE,
-    serializedPayload,
-  );
 
-  // Mark this as an internal drag so the global drop overlay is not shown
-  e.dataTransfer?.setData(INTERNAL_DRAG_TYPE, '1');
+  if (entry.kind === 'file') {
+    const isTimeline = entry.name.toLowerCase().endsWith('.otio');
+    setDraggedFile({
+      name: entry.name,
+      kind: isTimeline ? 'timeline' : 'file',
+      path: entry.path,
+      operation,
+      items: movePayload,
+      isExternal: props.isExternal,
+    });
+  }
 
-  if (entry.kind !== 'file') return;
-
-  const isTimeline = entry.name.toLowerCase().endsWith('.otio');
-  const kind: DraggedFileData['kind'] = isTimeline ? 'timeline' : 'file';
-  const data: DraggedFileData = {
-    name: entry.name,
-    kind,
-    path: entry.path,
-    operation,
-    count: entriesToMove.length > 1 ? entriesToMove.length : undefined,
-    items: movePayload,
-    isExternal: props.isExternal,
+  const payload: DndPayload<FileManagerDndPayloadData> = {
+    source: 'file-manager',
+    data: { items: movePayload, sourceInstanceId: props.instanceId ?? null, primaryEntry: entry },
+    preview: { label: entry.name, count: 1 },
   };
-  setDraggedFile(data);
-  e.dataTransfer?.setData('application/json', JSON.stringify(data));
+  armPointerDnd(e, { payload, onEnd: () => clearTreeDragState() });
 }
 
-function onDragEnd() {
+function clearTreeDragState() {
   clearDraggedFile();
   isDragOver.value = null;
   dragOperation.value = null;
@@ -348,278 +346,161 @@ function onDragEnd() {
   appClipboard.setDragTargetFileManagerInstanceId(null);
   appClipboard.setDragSourceVfs(null);
   appClipboard.clearDraggedItems();
-  resetFileManagerDragCursor();
 }
 
-function isSameFileSystemDrag(): boolean | null {
-  return appClipboard.dragSourceVfs && props.vfs ? appClipboard.dragSourceVfs === props.vfs : null;
-}
-
-function resolveDragOperation(e: DragEvent): 'copy' | 'move' {
-  return resolveFileManagerDragOperation({
-    dragSourceFileManagerInstanceId: appClipboard.dragSourceFileManagerInstanceId,
-    isLayer1Active: isLayer1Active(e, workspaceStore.userSettings),
-    isSameFileSystem: isSameFileSystemDrag(),
-    targetFileManagerInstanceId: props.instanceId ?? null,
-  });
-}
-
-function resolveDropOperation(
-  e: DragEvent,
-  fallbackRawOperation: 'copy' | 'move' | null,
-): 'copy' | 'move' {
-  return resolveFileManagerDropOperation({
-    dragSourceFileManagerInstanceId: appClipboard.dragSourceFileManagerInstanceId,
-    isLayer1Active: isLayer1Active(e, workspaceStore.userSettings),
-    isSameFileSystem: isSameFileSystemDrag(),
-    targetFileManagerInstanceId: props.instanceId ?? null,
-    currentDragOperation: appClipboard.currentDragOperation,
-    fallbackRawOperation,
-  });
-}
-
-function syncDragOperationFromKeyboard(event: KeyboardEvent) {
-  if (!uiStore.isFileManagerDragging) return;
-  if (appClipboard.currentDragOperation === 'cancel') return;
-  if (appClipboard.dragTargetFileManagerInstanceId !== (props.instanceId ?? null)) return;
-
-  const operation = resolveFileManagerDragOperation({
-    dragSourceFileManagerInstanceId: appClipboard.dragSourceFileManagerInstanceId,
-    isLayer1Active: isLayer1Active(event, workspaceStore.userSettings),
-    isSameFileSystem: isSameFileSystemDrag(),
-    targetFileManagerInstanceId: props.instanceId ?? null,
-  });
-
-  dragOperation.value = operation;
-  appClipboard.setCurrentDragOperation(operation);
-  syncFileManagerDragCursor({ isDragging: true, operation });
-}
-
-onMounted(() => {
-  window.addEventListener('keydown', syncDragOperationFromKeyboard, { capture: true });
-  window.addEventListener('keyup', syncDragOperationFromKeyboard, { capture: true });
-});
-
-onUnmounted(() => {
-  window.removeEventListener('keydown', syncDragOperationFromKeyboard, { capture: true });
-  window.removeEventListener('keyup', syncDragOperationFromKeyboard, { capture: true });
-});
-
-function onDragOverDir(e: DragEvent, entry: FsEntry) {
-  const isCancel = isCancellationZone({
-    items: appClipboard.draggedItems,
-    targetEntryPath: entry.path,
-    targetDirPath: entry.path,
-  });
-
-  if (entry.kind !== 'directory' && !isCancel) return;
-
-  const types = e.dataTransfer?.types;
-  if (!types) return;
-  const dragTypes = Array.from(types);
-
-  if (
-    dragTypes.includes(FILE_MANAGER_ITEMS_DRAG_TYPE) ||
-    dragTypes.includes(FILE_MANAGER_MOVE_DRAG_TYPE) ||
-    dragTypes.includes(FILE_MANAGER_COPY_DRAG_TYPE)
-  ) {
-    // Basic restriction: internal dragging of files within Bloggerdog is not supported.
-    const isSourceBd = appClipboard.dragSourceVfs?.id === 'bloggerdog';
-    const isTargetBd = props.vfs?.id === 'bloggerdog';
-    if (isSourceBd && isTargetBd) {
-      const draggedItems = appClipboard.draggedItems;
-      const hasFiles = draggedItems.some((item) => item.kind === 'file');
-      if (hasFiles) {
-        return;
-      }
+// --- drop zone (root instance only; covers nested levels via hit-test) -----
+function findEntryInTree(entries: FsEntry[], path: string): FsEntry | null {
+  for (const e of entries) {
+    if (e.path === path) return e;
+    if (e.kind === 'directory' && e.children?.length) {
+      const found = findEntryInTree(e.children, path);
+      if (found) return found;
     }
-
-    isDragOver.value = entry.path || null;
-    if (isCancel) {
-      dragOperation.value = 'cancel';
-      appClipboard.setCurrentDragOperation('cancel');
-      appClipboard.setDragTargetFileManagerInstanceId(props.instanceId ?? null);
-      e.dataTransfer.dropEffect = 'none';
-      syncFileManagerDragCursor({ isDragging: true, operation: 'cancel' });
-      return;
-    }
-    dragOperation.value = resolveDragOperation(e);
-    appClipboard.setCurrentDragOperation(dragOperation.value);
-    appClipboard.setDragTargetFileManagerInstanceId(props.instanceId ?? null);
-    e.dataTransfer.dropEffect = dragOperation.value === 'copy' ? 'copy' : 'move';
-    syncFileManagerDragCursor({ isDragging: true, operation: dragOperation.value });
-    return;
   }
-
-  if (dragTypes.includes(REMOTE_FILE_DRAG_TYPE)) {
-    isDragOver.value = entry.path || null;
-    e.dataTransfer.dropEffect = 'copy';
-    syncFileManagerDragCursor({ isDragging: true, operation: 'copy' });
-    return;
-  }
-
-  // External files import
-  if (dragTypes.includes('Files')) {
-    isDragOver.value = entry.path || null;
-    e.dataTransfer.dropEffect = 'copy';
-    syncFileManagerDragCursor({ isDragging: true, operation: 'copy' });
-  }
+  return null;
 }
 
-function onDragLeaveDir(e: DragEvent, entry: FsEntry) {
-  if (entry.kind !== 'directory') return;
-  if (isDragOver.value !== entry.path) return;
+function resolveTreeDropDir(targetEl: Element | null): FsEntry | null {
+  const path = getDropTargetEntryPathFromEl(targetEl);
+  const entry = path ? findEntryInTree(props.entries, path) : null;
+  return entry?.kind === 'directory' ? entry : null;
+}
 
-  const currentTarget = e.currentTarget as HTMLElement | null;
-  const relatedTarget = e.relatedTarget as Node | null;
-  if (!currentTarget?.contains(relatedTarget)) {
+function isBloggerDogInternalFileDrag(items: Array<{ kind?: unknown }>): boolean {
+  return (
+    props.vfs?.id === 'bloggerdog' &&
+    appClipboard.dragSourceVfs?.id === 'bloggerdog' &&
+    items.some((i) => i.kind === 'file')
+  );
+}
+
+function onTreeZoneOver(ctx: DndDragContext) {
+  const data = ctx.payload.data as FileManagerDndPayloadData;
+  const dir = resolveTreeDropDir(ctx.targetEl);
+  if (!dir) {
     isDragOver.value = null;
     dragOperation.value = null;
-    appClipboard.setCurrentDragOperation(null);
-    appClipboard.setDragTargetFileManagerInstanceId(null);
-    resetFileManagerDragCursor();
-  }
-}
-
-async function onDropDir(e: DragEvent, entry: FsEntry) {
-  if (entry.kind !== 'directory') return;
-
-  e.stopPropagation();
-
-  if (
-    isFileManagerDropCancellationTarget({
-      event: e,
-      targetEntryPath: getDropTargetEntryPath(e) ?? entry.path,
-      targetDirPath: entry.path,
-    })
-  ) {
-    onDragEnd();
+    ctx.setOperation('none');
     return;
   }
+  if (isBloggerDogInternalFileDrag(data.items)) {
+    isDragOver.value = null;
+    dragOperation.value = 'cancel';
+    ctx.setOperation('cancel');
+    return;
+  }
+  isDragOver.value = dir.path ?? null;
+  appClipboard.setDragTargetFileManagerInstanceId(props.instanceId ?? null);
+  if (
+    isCancellationZone({ items: data.items, targetEntryPath: dir.path, targetDirPath: dir.path })
+  ) {
+    dragOperation.value = 'cancel';
+    appClipboard.setCurrentDragOperation('cancel');
+    ctx.setOperation('cancel');
+    return;
+  }
+  const op = resolveFileManagerDragOperation({
+    dragSourceFileManagerInstanceId: appClipboard.dragSourceFileManagerInstanceId,
+    isLayer1Active: isLayer1FromPointer(ctx.pointer),
+    isSameFileSystem: isSameFileSystemDrag(),
+    targetFileManagerInstanceId: props.instanceId ?? null,
+  });
+  dragOperation.value = op;
+  appClipboard.setCurrentDragOperation(op);
+  ctx.setOperation(op);
+}
 
-  const operation = dragOperation.value;
+function onTreeZoneLeave() {
+  isDragOver.value = null;
+  dragOperation.value = null;
+  appClipboard.setDragTargetFileManagerInstanceId(null);
+}
+
+async function onTreeZoneDrop(ctx: DndDragContext) {
+  const data = ctx.payload.data as FileManagerDndPayloadData;
+  const items = data.items;
+  const dir = resolveTreeDropDir(ctx.targetEl);
+
   isDragOver.value = null;
   dragOperation.value = null;
   appClipboard.setCurrentDragOperation(null);
   appClipboard.setDragTargetFileManagerInstanceId(null);
-  resetFileManagerDragCursor();
 
-  const itemsRaw = e.dataTransfer?.getData(FILE_MANAGER_ITEMS_DRAG_TYPE);
-  const copyRaw = e.dataTransfer?.getData(FILE_MANAGER_COPY_DRAG_TYPE);
-  const moveRaw = e.dataTransfer?.getData(FILE_MANAGER_MOVE_DRAG_TYPE);
-  const internalRaw = itemsRaw || copyRaw || moveRaw;
-  if (internalRaw) {
-    const isCrossManagerDrag = isCrossFileManagerDrag({
+  if (!dir || items.length === 0) return;
+  if (shouldCancelFileManagerDrop({ items, targetEntryPath: dir.path })) return;
+  if (isCancellationZone({ items, targetEntryPath: dir.path, targetDirPath: dir.path })) return;
+  if (isBloggerDogInternalFileDrag(items)) return;
+
+  const isCrossManagerDrag = isCrossFileManagerDrag({
+    dragSourceFileManagerInstanceId: appClipboard.dragSourceFileManagerInstanceId,
+    targetFileManagerInstanceId: props.instanceId ?? null,
+  });
+  const shouldCopy =
+    resolveFileManagerDropOperation({
       dragSourceFileManagerInstanceId: appClipboard.dragSourceFileManagerInstanceId,
+      isLayer1Active: isLayer1FromPointer(ctx.pointer),
+      isSameFileSystem: isSameFileSystemDrag(),
       targetFileManagerInstanceId: props.instanceId ?? null,
-    });
-    const fallbackOp = operation === 'cancel' ? null : operation;
-    const shouldCopy =
-      resolveDropOperation(e, fallbackOp ?? (copyRaw ? 'copy' : moveRaw ? 'move' : null)) ===
-      'copy';
-    let parsed: unknown;
+      currentDragOperation: appClipboard.currentDragOperation,
+      fallbackRawOperation: null,
+    }) === 'copy';
+
+  if (isCrossManagerDrag && appClipboard.dragSourceVfs && props.vfs) {
     try {
-      parsed = JSON.parse(internalRaw);
-    } catch {
-      return;
-    }
-
-    const itemsToMove = Array.isArray(parsed) ? parsed : [parsed];
-    if (
-      shouldCancelFileManagerDrop({
-        items: itemsToMove,
-        targetEntryPath: getDropTargetEntryPath(e) ?? entry.path,
-      })
-    ) {
-      return;
-    }
-
-    if (isCrossManagerDrag && appClipboard.dragSourceVfs && props.vfs) {
-      try {
-        for (const item of itemsToMove) {
-          const sourcePath = typeof item?.path === 'string' ? item.path : '';
-          if (!sourcePath || sourcePath === entry.path) continue;
-
-          const sourceKind = item?.kind === 'directory' ? 'directory' : 'file';
-          if (shouldCopy) {
-            await crossVfsCopy({
-              sourceVfs: appClipboard.dragSourceVfs,
-              targetVfs: props.vfs,
-              sourcePath,
-              sourceKind,
-              targetDirPath: entry.path,
-            });
-          } else {
-            await crossVfsMove({
-              sourceVfs: appClipboard.dragSourceVfs,
-              targetVfs: props.vfs,
-              sourcePath,
-              sourceKind,
-              targetDirPath: entry.path,
-            });
-          }
-        }
-        uiStore.notifyFileManagerUpdate();
-      } catch (err) {
-        log.error('Cross-VFS operation failed:', err);
-      }
-    } else {
-      for (const item of itemsToMove) {
+      for (const item of items) {
         const sourcePath = typeof item?.path === 'string' ? item.path : '';
-        if (!sourcePath || sourcePath === entry.path) continue;
-
+        if (!sourcePath || sourcePath === dir.path) continue;
+        const sourceKind = item?.kind === 'directory' ? 'directory' : 'file';
         if (shouldCopy) {
-          emit('requestCopy', {
+          await crossVfsCopy({
+            sourceVfs: appClipboard.dragSourceVfs,
+            targetVfs: props.vfs,
             sourcePath,
-            targetDirPath: entry.path,
+            sourceKind,
+            targetDirPath: dir.path,
           });
         } else {
-          emit('requestMove', {
+          await crossVfsMove({
+            sourceVfs: appClipboard.dragSourceVfs,
+            targetVfs: props.vfs,
             sourcePath,
-            targetDirPath: entry.path,
+            sourceKind,
+            targetDirPath: dir.path,
           });
         }
       }
+      uiStore.notifyFileManagerUpdate();
+    } catch (err) {
+      log.error('Cross-VFS operation failed:', err);
     }
-    return;
-  }
-
-  const remoteRaw = e.dataTransfer?.getData(REMOTE_FILE_DRAG_TYPE);
-  if (remoteRaw) {
-    let parsed: unknown;
-    try {
-      parsed = JSON.parse(remoteRaw);
-    } catch {
-      return;
+  } else {
+    for (const item of items) {
+      const sourcePath = typeof item?.path === 'string' ? item.path : '';
+      if (!sourcePath || sourcePath === dir.path) continue;
+      if (shouldCopy) {
+        emit('requestCopy', { sourcePath, targetDirPath: dir.path });
+      } else {
+        emit('requestMove', { sourcePath, targetDirPath: dir.path });
+      }
     }
-
-    if (!parsed || typeof parsed !== 'object') return;
-
-    const remoteEntry = parsed as RemoteFsEntry;
-    if (!isRemoteFsEntry(remoteEntry) || remoteEntry.kind !== 'file') return;
-
-    emit('requestDownload', {
-      entry: remoteEntry,
-      targetDirPath: entry.path,
-    });
-    return;
   }
-
-  const droppedFiles = e.dataTransfer?.files ? Array.from(e.dataTransfer.files) : [];
-  const files =
-    droppedFiles.length > 0
-      ? droppedFiles
-      : Array.from(e.dataTransfer?.items ?? [])
-          .map((item) => item.getAsFile())
-          .filter((file): file is File => file instanceof File);
-
-  if (files.length === 0) return;
-
-  emit('requestUpload', {
-    files,
-    targetDirPath: entry.path,
-  });
 }
+
+// Only the root tree registers a drop zone; it covers all nested levels via the
+// engine's hit-test (`data-entry-path` rows).
+const treeDndZoneAttrs =
+  props.depth === 0
+    ? useDndDropZone(
+        {
+          canAccept: (payload: DndPayload) => payload.source === 'file-manager',
+          onEnter: onTreeZoneOver,
+          onOver: onTreeZoneOver,
+          onLeave: onTreeZoneLeave,
+          onDrop: onTreeZoneDrop,
+        },
+        'file-tree',
+      ).zoneAttrs
+    : ({} as Record<string, string>);
 
 function getBdType(entry: FsEntry): string | undefined {
   return (entry.adapterPayload as ReturnType<typeof getBdPayload>)?.type;
@@ -691,7 +572,7 @@ const { getContextMenuItems } = useFileContextMenu(
 </script>
 
 <template>
-  <ul class="select-none min-w-full w-max">
+  <ul class="select-none min-w-full w-max" v-bind="treeDndZoneAttrs">
     <template v-for="entry in entries" :key="entry.path || entry.name">
       <li v-if="!foldersOnly || entry.kind === 'directory'">
         <!-- Row -->
@@ -711,11 +592,7 @@ const { getContextMenuItems } = useFileContextMenu(
             @dblclick="onRenameClick(entry)"
             @keydown-enter="onEntryEnter($event, entry)"
             @keydown-space="onEntryEnter($event, entry)"
-            @dragstart="onDragStart($event, entry)"
-            @dragend="onDragEnd()"
-            @dragover="onDragOverDir($event, entry)"
-            @dragleave="onDragLeaveDir($event, entry)"
-            @drop="onDropDir($event, entry)"
+            @entry-pointer-down="onTreePointerDown($event, entry)"
             @caret-click="onCaretClick($event, entry)"
             @commit-rename="(name) => emit('commitRename', entry, name)"
             @stop-rename="emit('stopRename')"

@@ -4,6 +4,8 @@ import { reactive } from 'vue';
 import FileManagerTree from '~/components/file-manager/FileManagerTree.vue';
 import type { FsEntry } from '~/types/fs';
 import type { RemoteFsEntry } from '~/utils/remote-vfs';
+import { getDndZone, clearDndZones, DND_ZONE_ATTR } from '~/composables/dnd/dndRegistry';
+import type { DndDragContext } from '~/composables/dnd/dndTypes';
 
 const {
   INTERNAL_DRAG_TYPE,
@@ -154,6 +156,41 @@ function mountTree(entries: FsEntry[], instanceId = 'main') {
   });
 }
 
+/** Resolve the pointer-DnD drop zone the root tree registered on mount. */
+function getTreeZone(wrapper: ReturnType<typeof mountTree>) {
+  const zoneId = wrapper.find('ul').attributes(DND_ZONE_ATTR);
+  expect(zoneId).toBeTruthy();
+  const zone = getDndZone(zoneId!);
+  expect(zone).toBeTruthy();
+  return zone!;
+}
+
+/** Build a drag context targeting a given entry row, as the engine would. */
+function dropCtx(
+  wrapper: ReturnType<typeof mountTree>,
+  targetPath: string,
+  items: any[],
+  modifiers: Partial<DndDragContext['pointer']> = {},
+): DndDragContext {
+  const targetEl = wrapper.find(`[data-entry-path="${targetPath}"]`).element;
+  return {
+    payload: { source: 'file-manager', data: { items, sourceInstanceId: null } },
+    pointer: {
+      clientX: 0,
+      clientY: 0,
+      pointerType: 'mouse',
+      altKey: false,
+      ctrlKey: false,
+      metaKey: false,
+      shiftKey: false,
+      ...modifiers,
+    },
+    zoneId: 'tree',
+    targetEl,
+    setOperation: vi.fn(),
+  };
+}
+
 describe('FileManagerTree', () => {
   beforeEach(() => {
     selectionStoreMock.selectedEntity = null;
@@ -167,6 +204,7 @@ describe('FileManagerTree', () => {
     mockState.setDragTargetFileManagerInstanceId.mockClear();
     mockState.setDragSourceVfs.mockClear();
     uiStoreMock.isFileManagerDragging = false;
+    clearDndZones();
   });
 
   it('renders root entries', () => {
@@ -220,41 +258,26 @@ describe('FileManagerTree', () => {
   it('emits requestMove on internal move drop', async () => {
     const dir: FsEntry = { name: '_video', kind: 'directory', path: '_video', expanded: false };
     const wrapper = mountTree([dir]);
-    const dropzone = wrapper.findAll('div').find((w) => w.attributes('role') === 'treeitem');
-    const mockEvent = {
-      dataTransfer: {
-        types: [FILE_MANAGER_MOVE_DRAG_TYPE],
-        getData: vi.fn((type) => {
-          if (type === FILE_MANAGER_MOVE_DRAG_TYPE) return JSON.stringify({ path: '_audio/a.mp4' });
-          return '';
-        }),
-      },
-      preventDefault: vi.fn(),
-      stopPropagation: vi.fn(),
-    } as unknown as DragEvent;
-    await dropzone?.trigger('drop', mockEvent);
+    const items = [{ name: 'a.mp4', kind: 'file', path: '_audio/a.mp4' }];
+    mockState.draggedItems = items;
+
+    await getTreeZone(wrapper).onDrop!(dropCtx(wrapper, '_video', items));
+
     expect(wrapper.emitted('requestMove')?.[0]?.[0]).toEqual({
       sourcePath: '_audio/a.mp4',
       targetDirPath: '_video',
     });
   });
 
-  it('emits requestCopy on internal copy drop', async () => {
+  it('emits requestCopy on internal copy drop (layer-1 held)', async () => {
     const dir: FsEntry = { name: '_video', kind: 'directory', path: '_video', expanded: false };
     const wrapper = mountTree([dir]);
-    const dropzone = wrapper.findAll('div').find((w) => w.attributes('role') === 'treeitem');
-    const mockEvent = {
-      dataTransfer: {
-        types: [FILE_MANAGER_COPY_DRAG_TYPE],
-        getData: vi.fn((type) => {
-          if (type === FILE_MANAGER_COPY_DRAG_TYPE) return JSON.stringify({ path: '_audio/a.mp4' });
-          return '';
-        }),
-      },
-      preventDefault: vi.fn(),
-      stopPropagation: vi.fn(),
-    } as unknown as DragEvent;
-    await dropzone?.trigger('drop', mockEvent);
+    const items = [{ name: 'a.mp4', kind: 'file', path: '_audio/a.mp4' }];
+    mockState.draggedItems = items;
+
+    // layer1 (Shift) → copy.
+    await getTreeZone(wrapper).onDrop!(dropCtx(wrapper, '_video', items, { shiftKey: true }));
+
     expect(wrapper.emitted('requestCopy')?.[0]?.[0]).toEqual({
       sourcePath: '_audio/a.mp4',
       targetDirPath: '_video',
@@ -265,21 +288,11 @@ describe('FileManagerTree', () => {
     mockState.dragSourceFileManagerInstanceId = 'main';
     const dir: FsEntry = { name: '_video', kind: 'directory', path: '_video', expanded: false };
     const wrapper = mountTree([dir], 'main');
-    const dropzone = wrapper.findAll('div').find((w) => w.attributes('role') === 'treeitem');
-    const mockEvent = {
-      shiftKey: true,
-      dataTransfer: {
-        types: [FILE_MANAGER_COPY_DRAG_TYPE],
-        getData: vi.fn((type) => {
-          if (type === FILE_MANAGER_COPY_DRAG_TYPE)
-            return JSON.stringify({ path: '_video', kind: 'directory' });
-          return '';
-        }),
-      },
-      preventDefault: vi.fn(),
-      stopPropagation: vi.fn(),
-    } as unknown as DragEvent;
-    await dropzone?.trigger('drop', mockEvent);
+    const items = [{ name: '_video', kind: 'directory', path: '_video' }];
+    mockState.draggedItems = items;
+
+    await getTreeZone(wrapper).onDrop!(dropCtx(wrapper, '_video', items, { shiftKey: true }));
+
     expect(wrapper.emitted('requestMove')).toBeFalsy();
     expect(wrapper.emitted('requestCopy')).toBeFalsy();
   });
@@ -288,26 +301,14 @@ describe('FileManagerTree', () => {
     mockState.dragSourceFileManagerInstanceId = 'main';
     const dir: FsEntry = { name: '_video', kind: 'directory', path: '_video', expanded: false };
     const wrapper = mountTree([dir], 'main');
-    const dropzone = wrapper.findAll('div').find((w) => w.attributes('role') === 'treeitem');
 
-    const draggedItem = { name: '_video', kind: 'directory', path: '_video' };
-    mockState.draggedItems = [draggedItem];
+    const items = [{ name: '_video', kind: 'directory', path: '_video' }];
+    mockState.draggedItems = items;
 
-    const dataTransfer = {
-      types: [FILE_MANAGER_COPY_DRAG_TYPE],
-      dropEffect: 'copy',
-      getData: vi.fn((type) => {
-        if (type === FILE_MANAGER_COPY_DRAG_TYPE) return JSON.stringify(draggedItem);
-        return '';
-      }),
-    };
-
-    await dropzone?.trigger('dragover', {
-      dataTransfer,
-      preventDefault: vi.fn(),
-    } as unknown as DragEvent);
+    const ctx = dropCtx(wrapper, '_video', items);
+    getTreeZone(wrapper).onOver!(ctx);
 
     expect(mockState.setCurrentDragOperation).toHaveBeenCalledWith('cancel');
-    expect(dataTransfer.dropEffect).toBe('none');
+    expect(ctx.setOperation).toHaveBeenCalledWith('cancel');
   });
 });

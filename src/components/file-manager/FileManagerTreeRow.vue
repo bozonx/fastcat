@@ -34,11 +34,7 @@ const emit = defineEmits<{
   (e: 'dblclick'): void;
   (e: 'keydown-enter', event: KeyboardEvent): void;
   (e: 'keydown-space', event: KeyboardEvent): void;
-  (e: 'dragstart', event: DragEvent): void;
-  (e: 'dragend'): void;
-  (e: 'dragover', event: DragEvent): void;
-  (e: 'dragleave', event: DragEvent): void;
-  (e: 'drop', event: DragEvent): void;
+  (e: 'entry-pointer-down', event: PointerEvent): void;
   (e: 'caret-click', event: MouseEvent): void;
   (e: 'commit-rename', name: string): void;
   (e: 'stop-rename'): void;
@@ -66,18 +62,13 @@ const emit = defineEmits<{
       isCut ? 'opacity-40' : '',
       isCopy ? 'outline-1 outline-primary-400/50 -outline-offset-1 bg-primary-500/5' : '',
     ]"
-    :draggable="true"
     :aria-selected="selected"
     :aria-expanded="entry.kind === 'directory' ? entry.expanded : undefined"
     :aria-level="depth + 1"
     role="treeitem"
     tabindex="0"
     @keydown.enter.prevent.stop="emit('keydown-enter', $event)"
-    @dragstart="emit('dragstart', $event)"
-    @dragend="emit('dragend')"
-    @dragover.prevent="emit('dragover', $event)"
-    @dragleave.prevent="emit('dragleave', $event)"
-    @drop.prevent="emit('drop', $event)"
+    @pointerdown="emit('entry-pointer-down', $event)"
     @click="emit('click', $event)"
     @focus="emit('focus', $event)"
     @dblclick.stop="emit('dblclick')"

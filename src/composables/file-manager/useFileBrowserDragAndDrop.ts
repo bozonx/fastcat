@@ -64,6 +64,9 @@ interface DraggedItem {
 export interface FileManagerDndPayloadData {
   items: DraggedItem[];
   sourceInstanceId: string | null;
+  /** Full primary dragged entry — lets remote-aware drop targets (e.g. the tree's
+   *  download-to-local) reconstruct the source without a dataTransfer channel. */
+  primaryEntry?: FsEntry;
 }
 
 /** Resolved drop target derived from the hit element under the pointer. */
@@ -210,7 +213,11 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
 
     const payload: DndPayload<FileManagerDndPayloadData> = {
       source: 'file-manager',
-      data: { items: movePayload, sourceInstanceId: options.fileManagerInstanceId ?? null },
+      data: {
+        items: movePayload,
+        sourceInstanceId: options.fileManagerInstanceId ?? null,
+        primaryEntry: entry,
+      },
       preview: { label: entry.name, count: entriesToMove.length },
     };
 
