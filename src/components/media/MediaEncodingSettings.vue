@@ -339,7 +339,7 @@ watch(
           />
           <UiWheelNumberInput
             v-model="bitrateMbps"
-            :min="1"
+            :min="0.2"
             :max="999"
             :step="0.1"
             :wheel-step-multiplier="10"
@@ -515,7 +515,7 @@ watch(
           />
           <UiWheelNumberInput
             v-model="audioBitrateKbps"
-            :min="96"
+            :min="32"
             :max="512"
             :step="16"
             :wheel-step-multiplier="2"
