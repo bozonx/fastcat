@@ -129,10 +129,7 @@ export function createMonitorCompositorRuntime(options: CreateMonitorCompositorR
           latestRenderRequest = null;
           const nextTimeUs = nextRequest.timeUs;
           await options.client.renderFrame(nextTimeUs, options.getPreviewRenderOptions());
-          if (
-            nextRequest.prewarm &&
-            nextTimeUs - lastPrewarmTimeUs >= VIDEO_PREWARM_INTERVAL_US
-          ) {
+          if (nextRequest.prewarm && nextTimeUs - lastPrewarmTimeUs >= VIDEO_PREWARM_INTERVAL_US) {
             lastPrewarmTimeUs = nextTimeUs;
             void options.client.prewarmVideoFrames?.(nextTimeUs).catch((err) => {
               log.warn('[Monitor] Video prewarm failed', err);

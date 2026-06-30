@@ -290,10 +290,7 @@ function setMonitorMoreMenuOpen(isOpen: boolean) {
 }
 
 function closeMonitorMenus() {
-  if (
-    !isMonitorContextMenuOpen.value &&
-    !isMonitorMoreMenuOpen.value
-  ) {
+  if (!isMonitorContextMenuOpen.value && !isMonitorMoreMenuOpen.value) {
     return;
   }
   isMonitorContextMenuOpen.value = false;
@@ -302,10 +299,7 @@ function closeMonitorMenus() {
 
 function onMonitorKeyDown(event: KeyboardEvent) {
   if (event.key === 'Escape') {
-    if (
-      isMonitorContextMenuOpen.value ||
-      isMonitorMoreMenuOpen.value
-    ) {
+    if (isMonitorContextMenuOpen.value || isMonitorMoreMenuOpen.value) {
       closeMonitorMenus();
       event.stopPropagation();
       return;
@@ -339,10 +333,7 @@ function showControlsTemporary() {
   clearIdleTimeout();
   if (effectiveFullscreen.value) {
     idleTimer = setTimeout(() => {
-      if (
-        isMonitorMoreMenuOpen.value ||
-        isMonitorContextMenuOpen.value
-      ) {
+      if (isMonitorMoreMenuOpen.value || isMonitorContextMenuOpen.value) {
         showControlsTemporary();
       } else {
         blurActiveElementInControls();

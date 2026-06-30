@@ -59,9 +59,7 @@ describe('ProjectMarkers.vue', () => {
   });
 
   it('sets playhead and requests scroll to playhead on marker click', async () => {
-    mockTimelineStore.markers = [
-      { id: '1', timeUs: 1_000_000, text: 'First' },
-    ];
+    mockTimelineStore.markers = [{ id: '1', timeUs: 1_000_000, text: 'First' }];
 
     const component = await mountWithNuxt(ProjectMarkers);
     const row = component.find('tbody tr');

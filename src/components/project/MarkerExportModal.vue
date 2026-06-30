@@ -194,7 +194,10 @@ async function handleCopy() {
 
 const exportFormatItems = computed(() => [
   { value: 'ms-or-hms-left' as ExportFormat, label: t('fastcat.marker.exportFormats.msOrHmsLeft') },
-  { value: 'markdown-bracket-left' as ExportFormat, label: t('fastcat.marker.exportFormats.markdownBracketLeft') },
+  {
+    value: 'markdown-bracket-left' as ExportFormat,
+    label: t('fastcat.marker.exportFormats.markdownBracketLeft'),
+  },
   { value: 'hms-left' as ExportFormat, label: t('fastcat.marker.exportFormats.hmsLeft') },
   { value: 'hms-dash-left' as ExportFormat, label: t('fastcat.marker.exportFormats.hmsDashLeft') },
   { value: 'hms-right' as ExportFormat, label: t('fastcat.marker.exportFormats.hmsRight') },

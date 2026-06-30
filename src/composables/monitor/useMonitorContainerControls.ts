@@ -514,9 +514,8 @@ export function useMonitorContainerControls(options: UseMonitorContainerControls
         label: `${options.t('fastcat.monitor.previewResolution')} (${
           previewResolutions.value.find(
             (res) =>
-              Math.abs(
-                (options.projectStore.activeMonitor?.previewResolution ?? 0) - res.value,
-              ) < 0.001,
+              Math.abs((options.projectStore.activeMonitor?.previewResolution ?? 0) - res.value) <
+              0.001,
           )?.label ?? 'Auto'
         })`,
         icon: 'i-lucide-monitor',
@@ -524,9 +523,8 @@ export function useMonitorContainerControls(options: UseMonitorContainerControls
           label: res.label,
           type: 'checkbox' as const,
           checked:
-            Math.abs(
-              (options.projectStore.activeMonitor?.previewResolution ?? 0) - res.value,
-            ) < 0.001,
+            Math.abs((options.projectStore.activeMonitor?.previewResolution ?? 0) - res.value) <
+            0.001,
           onSelect: () => {
             if (options.projectStore.activeMonitor) {
               options.projectStore.activeMonitor.previewResolution = res.value;
