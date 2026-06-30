@@ -48,17 +48,42 @@ const menuItems = computed(() => {
         to="/"
       />
 
-      <div
-        class="flex items-center gap-2 px-2 py-1 rounded-md hover:bg-ui-bg-accent cursor-pointer transition-colors shrink-0"
+      <span
+        class="text-ui-text font-bold text-sm truncate max-w-[200px] cursor-pointer hover:text-white transition-colors shrink-0"
+        :title="projectStore.currentProjectName ?? ''"
         @click="$emit('open-project-settings')"
       >
-        <span
-          class="text-ui-text font-bold text-sm truncate max-w-[200px]"
-          :title="projectStore.currentProjectName ?? ''"
-        >
-          {{ projectStore.currentProjectName }}
-        </span>
-        <UIcon name="ix:project-configuration" class="w-4 h-4 text-ui-text-muted" />
+        {{ projectStore.currentProjectName }}
+      </span>
+
+      <!-- Project Actions Toolbar -->
+      <div class="flex items-center gap-1 shrink-0">
+        <UiTooltip :text="t('videoEditor.projectSettings.title')">
+          <UiActionButton
+            size="sm"
+            variant="ghost"
+            color="neutral"
+            icon="ix:project-configuration"
+            @click="$emit('open-project-settings')"
+          />
+        </UiTooltip>
+
+        <UiTooltip :text="getHotkeyTitle(t('common.save'), 'general.save')">
+          <UiActionButton
+            size="sm"
+            variant="ghost"
+            color="neutral"
+            :icon="timelineStore.isSavingTimeline ? 'i-heroicons-arrow-path' : 'i-lucide-save'"
+            :disabled="timelineStore.isSavingTimeline || !timelineStore.timelineDoc"
+            :class="[
+              timelineStore.isSavingTimeline ? 'animate-spin' : '',
+              !timelineStore.isSavingTimeline && timelineStore.isTimelineDirty
+                ? 'text-selection-accent-500 hover:text-selection-accent-400'
+                : '',
+            ]"
+            @click="timelineStore.saveTimeline()"
+          />
+        </UiTooltip>
       </div>
 
       <!-- Timeline Tabs -->
@@ -84,25 +109,6 @@ const menuItems = computed(() => {
           icon="i-heroicons-arrow-uturn-right"
           :disabled="!timelineStore.historyStore.canRedo('timeline')"
           @click="timelineStore.redoTimeline()"
-        />
-      </UiTooltip>
-
-      <div class="w-px h-4 bg-ui-border mx-1" />
-
-      <UiTooltip :text="getHotkeyTitle(t('common.save'), 'general.save')">
-        <UiActionButton
-          size="sm"
-          variant="ghost"
-          color="neutral"
-          :icon="timelineStore.isSavingTimeline ? 'i-heroicons-arrow-path' : 'i-lucide-save'"
-          :disabled="timelineStore.isSavingTimeline || !timelineStore.timelineDoc"
-          :class="[
-            timelineStore.isSavingTimeline ? 'animate-spin' : '',
-            !timelineStore.isSavingTimeline && timelineStore.isTimelineDirty
-              ? 'text-selection-accent-500 hover:text-selection-accent-400'
-              : '',
-          ]"
-          @click="timelineStore.saveTimeline()"
         />
       </UiTooltip>
 
