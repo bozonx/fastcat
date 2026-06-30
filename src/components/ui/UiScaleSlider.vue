@@ -22,6 +22,7 @@ const props = withDefaults(defineProps<UiScaleSliderProps>(), {
 const modelValue = defineModel<number | string>({ required: true });
 
 const trackRef = ref<HTMLElement | null>(null);
+const innerTrackRef = ref<HTMLElement | null>(null);
 const isDragging = ref(false);
 
 const isDiscreteMode = computed(() => !!props.options);
@@ -86,8 +87,8 @@ const thumbLabel = computed(() => {
 });
 
 function valueFromPointer(event: PointerEvent): number | string {
-  if (!trackRef.value) return modelValue.value;
-  const rect = trackRef.value.getBoundingClientRect();
+  if (!innerTrackRef.value) return modelValue.value;
+  const rect = innerTrackRef.value.getBoundingClientRect();
   const ratio = clamp((event.clientX - rect.left) / rect.width, 0, 1);
   if (isDiscreteMode.value) {
     const count = props.options!.length;
@@ -124,7 +125,7 @@ function onPointerUp(event: PointerEvent) {
     <!-- Track area — captures all pointer events -->
     <div
       ref="trackRef"
-      class="relative h-10 flex items-center cursor-pointer"
+      class="relative h-10 flex items-center cursor-pointer px-4"
       role="slider"
       :aria-valuenow="isDiscreteMode ? currentIndex + 1 : clampedValue"
       :aria-valuemin="isDiscreteMode ? 1 : min"
@@ -135,65 +136,68 @@ function onPointerUp(event: PointerEvent) {
       @pointerup="onPointerUp"
       @pointercancel="isDragging = false"
     >
-      <!-- Track line -->
-      <div class="absolute inset-x-0 top-1/2 -translate-y-1/2 h-0.5 rounded-full bg-ui-border" />
+      <!-- Inner track wrapper to prevent clipping of the thumb and ticks at the edges -->
+      <div ref="innerTrackRef" class="relative w-full h-full flex items-center">
+        <!-- Track line -->
+        <div class="absolute inset-x-0 top-1/2 -translate-y-1/2 h-0.5 rounded-full bg-ui-border" />
 
-      <!-- Filled range -->
-      <div
-        class="absolute left-0 top-1/2 -translate-y-1/2 h-0.5 rounded-full bg-primary-500 pointer-events-none transition-[width] duration-75"
-        :style="{ width: `${thumbPercent}%` }"
-      />
-
-      <!-- Tick marks -->
-      <div
-        v-for="tick in ticks"
-        :key="tick.key"
-        class="absolute flex flex-col items-center gap-0.5 -translate-x-1/2"
-        :style="{ left: `${tick.percent}%` }"
-      >
-        <!-- Tick line -->
+        <!-- Filled range -->
         <div
-          class="w-px transition-colors duration-75"
-          :class="[tick.isActive ? 'bg-primary-500' : 'bg-ui-border', tick.isEdge ? 'h-3' : 'h-2']"
+          class="absolute left-0 top-1/2 -translate-y-1/2 h-0.5 rounded-full bg-primary-500 pointer-events-none transition-[width] duration-75"
+          :style="{ width: `${thumbPercent}%` }"
         />
-        <!-- Tick label -->
-        <span
-          class="text-[9px] leading-none transition-colors duration-75 mt-0.5"
-          :class="[
-            isDiscreteMode ? '' : 'font-mono',
-            tick.key === modelValue ? 'text-primary-400 font-semibold' : 'text-ui-text-muted',
-          ]"
-        >
-          {{ tick.label }}
-        </span>
-      </div>
 
-      <!-- Thumb — pill body with downward-pointing triangle -->
-      <div
-        class="absolute -translate-x-1/2 pointer-events-none"
-        :class="isDragging ? 'transition-none' : 'transition-[left] duration-75'"
-        :style="{ left: `${thumbPercent}%` }"
-      >
-        <div class="flex flex-col items-center" style="margin-top: -26px">
-          <!-- Rounded pill body showing current value -->
+        <!-- Tick marks -->
+        <div
+          v-for="tick in ticks"
+          :key="tick.key"
+          class="absolute flex flex-col items-center gap-0.5 -translate-x-1/2"
+          :style="{ left: `${tick.percent}%` }"
+        >
+          <!-- Tick line -->
           <div
-            class="h-4 rounded bg-primary-500 shadow-md flex items-center justify-center transition-transform duration-75 px-1"
-            :class="[isDragging ? 'scale-110' : '', isDiscreteMode ? 'min-w-[3rem]' : 'w-6']"
-          >
-            <span class="text-[9px] font-bold text-white leading-none whitespace-nowrap">
-              {{ thumbLabel }}
-            </span>
-          </div>
-          <!-- Downward-pointing triangle (sharp end pointing at the value) -->
-          <div
-            class="w-0 h-0 transition-transform duration-75"
-            :class="isDragging ? 'scale-110' : ''"
-            style="
-              border-left: 5px solid transparent;
-              border-right: 5px solid transparent;
-              border-top: 6px solid var(--color-primary-500);
-            "
+            class="w-px transition-colors duration-75"
+            :class="[tick.isActive ? 'bg-primary-500' : 'bg-ui-border', tick.isEdge ? 'h-3' : 'h-2']"
           />
+          <!-- Tick label -->
+          <span
+            class="text-[9px] leading-none transition-colors duration-75 mt-0.5"
+            :class="[
+              isDiscreteMode ? '' : 'font-mono',
+              tick.key === modelValue ? 'text-primary-400 font-semibold' : 'text-ui-text-muted',
+            ]"
+          >
+            {{ tick.label }}
+          </span>
+        </div>
+
+        <!-- Thumb — pill body with downward-pointing triangle -->
+        <div
+          class="absolute -translate-x-1/2 pointer-events-none"
+          :class="isDragging ? 'transition-none' : 'transition-[left] duration-75'"
+          :style="{ left: `${thumbPercent}%` }"
+        >
+          <div class="flex flex-col items-center" style="margin-top: -26px">
+            <!-- Rounded pill body showing current value -->
+            <div
+              class="h-4 rounded bg-primary-500 shadow-md flex items-center justify-center transition-transform duration-75 px-1"
+              :class="[isDragging ? 'scale-110' : '', isDiscreteMode ? 'min-w-[3rem]' : 'w-6']"
+            >
+              <span class="text-[9px] font-bold text-white leading-none whitespace-nowrap">
+                {{ thumbLabel }}
+              </span>
+            </div>
+            <!-- Downward-pointing triangle (sharp end pointing at the value) -->
+            <div
+              class="w-0 h-0 transition-transform duration-75"
+              :class="isDragging ? 'scale-110' : ''"
+              style="
+                border-left: 5px solid transparent;
+                border-right: 5px solid transparent;
+                border-top: 6px solid var(--color-primary-500);
+              "
+            />
+          </div>
         </div>
       </div>
     </div>
