@@ -527,6 +527,48 @@ describe('AudioMixer.writeMixedToSource', () => {
     expect(mixedData[0]).toBeCloseTo(1.0);
   });
 
+  it('reports progress after each emitted output chunk', async () => {
+    const sampleRate = 100;
+    const numberOfChannels = 1;
+    const durationS = 2;
+    const onProgress = vi.fn();
+    const audioSource = { add: vi.fn().mockResolvedValue(undefined) };
+
+    const prepared: PreparedClip[] = [
+      {
+        clipStartS: 0,
+        offsetS: 0,
+        playDurationS: 2,
+        input: new mockMediabunny.Input() as any,
+        sink: new mockMediabunny.AudioSampleSink() as any,
+        sourcePath: 'test1.mp3',
+        speed: 1,
+        audioGain: 1,
+        audioBalance: 0,
+        audioFadeInS: 0,
+        audioFadeOutS: 0,
+        audioFadeInCurve: 'linear',
+        audioFadeOutCurve: 'linear',
+        audioEffects: [],
+      },
+    ];
+
+    await AudioMixer.writeMixedToSource({
+      prepared,
+      durationS,
+      audioSource,
+      chunkDurationS: 1,
+      sampleRate,
+      numberOfChannels,
+      reportExportWarning: vi.fn(),
+      AudioSample: mockMediabunny.AudioSample as any,
+      onProgress,
+    });
+
+    expect(onProgress).toHaveBeenNthCalledWith(1, 0.5);
+    expect(onProgress).toHaveBeenLastCalledWith(1);
+  });
+
   it('applies audioGain correctly', async () => {
     const sampleRate = 48000;
     const numberOfChannels = 1;

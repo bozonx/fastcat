@@ -116,17 +116,132 @@ const encodingSummary = computed(() => {
   return `${t('common.video')}: ${format} ${vCodec} ${vBitrate}`;
 });
 
-const exportRangeRadioItems = computed(() =>
-  exportRangeOptions.value.map((option) => ({
-    value: option.id,
-    label: option.label,
-    description: option.description,
-    class:
-      selectedExportRangeId.value === option.id
-        ? 'bg-violet-500/10 border-violet-400/30'
-        : 'hover:bg-white/5',
-  })),
+const exportProgressPercent = computed(() =>
+  Math.max(0, Math.min(100, Math.round(exportProgress.value * 100))),
 );
+
+function getOptionDuration(option: any) {
+  if (option.id === 'timeline') {
+    return (timelineStore.durationUs || 0) / 1000;
+  }
+  if (option.range) {
+    return (option.range.endUs - option.range.startUs) / 1000;
+  }
+  return 0;
+}
+
+function getOptionIcon(option: any) {
+  if (option.id === 'timeline') {
+    return 'i-heroicons-clock';
+  }
+  if (option.id === 'selection') {
+    return 'i-heroicons-arrows-right-left';
+  }
+  return 'i-heroicons-flag';
+}
+
+function getOptionClasses(option: any) {
+  const isSelected = selectedExportRangeId.value === option.id;
+  if (!isSelected) {
+    return 'border-ui-border bg-transparent hover:bg-white/5';
+  }
+  if (option.id === 'timeline') {
+    return 'border-violet-500/40 bg-violet-500/10';
+  }
+  if (option.id === 'selection') {
+    return 'border-blue-500/40 bg-blue-500/10';
+  }
+  if (!option.color) {
+    return 'border-yellow-500/40 bg-yellow-500/10';
+  }
+  return 'border-solid';
+}
+
+function getOptionStyles(option: any) {
+  const isSelected = selectedExportRangeId.value === option.id;
+  if (isSelected && option.id.startsWith('marker:') && option.color) {
+    return {
+      borderColor: `${option.color}60`,
+      backgroundColor: `${option.color}15`,
+    };
+  }
+  return {};
+}
+
+function getRadioCircleClasses(option: any) {
+  const isSelected = selectedExportRangeId.value === option.id;
+  if (!isSelected) {
+    return 'border-ui-border-muted';
+  }
+  if (option.id === 'timeline') {
+    return 'border-violet-400';
+  }
+  if (option.id === 'selection') {
+    return 'border-blue-400';
+  }
+  if (!option.color) {
+    return 'border-yellow-400';
+  }
+  return '';
+}
+
+function getRadioCircleStyles(option: any) {
+  const isSelected = selectedExportRangeId.value === option.id;
+  if (isSelected && option.id.startsWith('marker:') && option.color) {
+    return {
+      borderColor: option.color,
+    };
+  }
+  return {};
+}
+
+function getRadioDotClasses(option: any) {
+  if (option.id === 'timeline') {
+    return 'bg-violet-400';
+  }
+  if (option.id === 'selection') {
+    return 'bg-blue-400';
+  }
+  if (!option.color) {
+    return 'bg-yellow-400';
+  }
+  return '';
+}
+
+function getRadioDotStyles(option: any) {
+  if (option.id.startsWith('marker:') && option.color) {
+    return {
+      backgroundColor: option.color,
+    };
+  }
+  return {};
+}
+
+function getIconClasses(option: any) {
+  const isSelected = selectedExportRangeId.value === option.id;
+  if (!isSelected) {
+    return 'text-ui-text-muted';
+  }
+  if (option.id === 'timeline') {
+    return 'text-violet-400';
+  }
+  if (option.id === 'selection') {
+    return 'text-blue-400';
+  }
+  if (!option.color) {
+    return 'text-yellow-400';
+  }
+  return '';
+}
+
+function getIconStyles(option: any) {
+  if (option.id.startsWith('marker:')) {
+    return {
+      color: option.color || '#eab308',
+    };
+  }
+  return {};
+}
 
 function focusExportForm() {
   if (props.disableFocusFrame) return;
@@ -198,36 +313,69 @@ const filenamePlaceholder = computed(() =>
       <div class="flex flex-col gap-6 max-w-2xl flex-1 shrink-0">
         <div
           v-if="hasSelectableExportRanges"
-          class="rounded-lg border border-violet-400/40 bg-violet-500/10 px-4 py-4"
+          class="flex flex-col gap-2"
         >
-          <div class="flex items-start gap-2 mb-3">
-            <UIcon
-              name="i-heroicons-exclamation-triangle-solid"
-              class="h-5 w-5 shrink-0 text-yellow-400 mt-0.5"
-            />
-            <div class="min-w-0">
-              <div class="font-medium text-ui-text">
-                {{ t('videoEditor.export.rangeSourceTitle') }}
-              </div>
-              <div class="text-sm text-ui-text-muted">
-                {{ t('videoEditor.export.rangeSourceHelp') }}
-              </div>
-            </div>
+          <div class="text-sm font-medium text-ui-text">
+            {{ t('videoEditor.export.rangeSourceTitle') }}
           </div>
 
-          <URadioGroup
-            v-model="selectedExportRangeId"
-            :items="exportRangeRadioItems"
-            :disabled="isExporting"
-            indicator="hidden"
-            :ui="{
-              fieldset: 'flex flex-col gap-2',
-              item: 'flex items-start gap-3 rounded-md border border-transparent px-3 py-2 transition-colors cursor-pointer',
-              wrapper: 'min-w-0',
-              label: 'font-medium text-ui-text',
-              description: 'text-sm text-ui-text-muted truncate',
-            }"
-          />
+          <div class="max-h-48 overflow-y-auto custom-scrollbar pr-1 flex flex-col gap-2 min-w-0">
+            <button
+              v-for="option in exportRangeOptions"
+              :key="option.id"
+              type="button"
+              :disabled="isExporting"
+              class="flex items-center justify-between gap-3 rounded-md border text-left px-3 py-2 transition-all cursor-pointer min-w-0 w-full"
+              :class="getOptionClasses(option)"
+              :style="getOptionStyles(option)"
+              @click="selectedExportRangeId = option.id"
+            >
+              <div class="flex items-start gap-2.5 min-w-0 flex-1">
+                <!-- Custom Radio Indicator -->
+                <div class="flex items-center justify-center shrink-0 mt-1 relative">
+                  <div
+                    class="h-4 w-4 rounded-full border flex items-center justify-center transition-colors"
+                    :class="getRadioCircleClasses(option)"
+                    :style="getRadioCircleStyles(option)"
+                  >
+                    <div
+                      v-if="selectedExportRangeId === option.id"
+                      class="h-2 w-2 rounded-full"
+                      :class="getRadioDotClasses(option)"
+                      :style="getRadioDotStyles(option)"
+                    />
+                  </div>
+                </div>
+
+                <!-- Range Type Icon -->
+                <UIcon
+                  :name="getOptionIcon(option)"
+                  class="h-5 w-5 shrink-0 mt-0.5"
+                  :class="getIconClasses(option)"
+                  :style="getIconStyles(option)"
+                />
+
+                <!-- Labels -->
+                <div class="min-w-0 flex-1 flex flex-col">
+                  <span class="font-medium text-sm text-ui-text truncate">
+                    {{ option.label }}
+                  </span>
+                  <span
+                    v-if="option.description"
+                    class="text-xs text-ui-text-muted truncate mt-0.5"
+                    :title="option.description"
+                  >
+                    {{ option.description }}
+                  </span>
+                </div>
+              </div>
+
+              <!-- Duration Badge -->
+              <span class="shrink-0 text-xs font-mono text-ui-text-muted">
+                {{ formatRenderDuration(getOptionDuration(option)) }}
+              </span>
+            </button>
+          </div>
         </div>
 
         <div class="flex flex-col gap-1.5">
@@ -509,9 +657,20 @@ const filenamePlaceholder = computed(() =>
         <div v-if="isExporting" class="flex flex-col gap-2">
           <div class="flex justify-between text-sm text-ui-text-muted">
             <span class="font-medium">{{ getPhaseLabel() }}</span>
-            <span class="font-mono">{{ Math.round(exportProgress * 100) }}%</span>
+            <span class="font-mono">{{ exportProgressPercent }}%</span>
           </div>
-          <UProgress :value="exportProgress * 100" />
+          <div
+            class="h-2 w-full overflow-hidden rounded-full bg-ui-bg-muted"
+            role="progressbar"
+            :aria-valuenow="exportProgressPercent"
+            aria-valuemin="0"
+            aria-valuemax="100"
+          >
+            <div
+              class="h-full rounded-full bg-amber-400 transition-[width] duration-200 ease-out"
+              :style="{ width: `${exportProgressPercent}%` }"
+            />
+          </div>
           <p class="text-sm text-ui-text-muted text-center mt-1">
             {{ t('videoEditor.export.doNotClose') }}
           </p>

@@ -154,6 +154,7 @@ export interface AudioMixerWriteParams {
     timestamp: number;
   }) => unknown;
   masterAudioEffects?: import('../../utils/audio/apply-audio-effects-offline').AudioEffectData[];
+  onProgress?: (progress: number) => void;
 }
 
 interface ProcessedClipChunk {
@@ -975,6 +976,7 @@ export class AudioMixer {
       checkCancel,
       AudioSample,
       masterAudioEffects,
+      onProgress,
     } = params;
 
     function ensureNotCancelled() {
@@ -1151,6 +1153,8 @@ export class AudioMixer {
         } else {
           await emitInterleavedChunk(mixedInterleaved, framesInChunk, chunkStartFrame);
         }
+
+        onProgress?.((chunkIndex + 1) / totalChunks);
       }
 
       if (masterStreamer) {
@@ -1158,6 +1162,8 @@ export class AudioMixer {
           await emitInterleavedChunk(emitted.interleaved, emitted.frames, emitted.startFrame);
         }
       }
+
+      onProgress?.(1);
 
       if (clippedFrames > 0) {
         await reportExportWarning(

@@ -60,7 +60,7 @@ export async function buildMixedAudioTrack(
 
   const chunkDurationS = 1;
 
-  async function writeMixedToSource() {
+  async function writeMixedToSource(onProgress?: (progress: number) => void) {
     const { AudioSample } = await import('mediabunny');
     await AudioMixer.writeMixedToSource({
       prepared,
@@ -73,6 +73,7 @@ export async function buildMixedAudioTrack(
       checkCancel,
       AudioSample,
       masterAudioEffects,
+      onProgress,
     });
   }
 

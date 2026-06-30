@@ -6,6 +6,7 @@ import {
   selectOutputFormat,
   isPassthroughCompatibleClip,
   createCoalescedExportProgressReporter,
+  createExportWriterProgressAggregator,
   isVideoEncoderConfigSupported,
   waitForVideoBackpressure,
 } from '~/workers/core/export';
@@ -382,6 +383,46 @@ describe('createCoalescedExportProgressReporter', () => {
 
     expect(onExportProgress).toHaveBeenCalledTimes(2);
     expect(onExportProgress).toHaveBeenLastCalledWith(50, 'task-2');
+  });
+});
+
+describe('createExportWriterProgressAggregator', () => {
+  it('combines audio and video writer progress before finalization', () => {
+    const progressReporter = {
+      report: vi.fn(),
+      flush: vi.fn().mockResolvedValue(undefined),
+    };
+    const aggregator = createExportWriterProgressAggregator({
+      progressReporter,
+      taskId: 'task-3',
+      writerIds: ['video', 'audio'],
+    });
+
+    aggregator.report('video', 1);
+    aggregator.report('audio', 0.5);
+    aggregator.report('audio', 1);
+
+    expect(progressReporter.report).toHaveBeenNthCalledWith(1, 49, 'task-3');
+    expect(progressReporter.report).toHaveBeenNthCalledWith(2, 74, 'task-3');
+    expect(progressReporter.report).toHaveBeenNthCalledWith(3, 98, 'task-3');
+  });
+
+  it('ignores regressions and unknown writers', () => {
+    const progressReporter = {
+      report: vi.fn(),
+      flush: vi.fn().mockResolvedValue(undefined),
+    };
+    const aggregator = createExportWriterProgressAggregator({
+      progressReporter,
+      writerIds: ['audio'],
+    });
+
+    aggregator.report('audio', 0.5);
+    aggregator.report('audio', 0.25);
+    aggregator.report('video', 1);
+
+    expect(progressReporter.report).toHaveBeenCalledTimes(1);
+    expect(progressReporter.report).toHaveBeenCalledWith(49, undefined);
   });
 });
 
