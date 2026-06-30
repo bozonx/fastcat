@@ -178,13 +178,13 @@ describe('useMonitorContainerControls', () => {
   it('hides playbackSpeed selection option in context menu if isMobile is true', () => {
     const controls = createControls({ isMobile: true });
     const items = flattenMenuItems(controls.contextMenuItems.value);
-    expect(items.some((entry) => entry.label === 'fastcat.monitor.playbackSpeed')).toBe(false);
+    expect(items.some((entry) => entry.label?.includes('fastcat.monitor.playbackSpeed'))).toBe(false);
   });
 
   it('shows playbackSpeed selection option in context menu if isMobile is false or undefined', () => {
     const controls = createControls({ isMobile: false });
     const items = flattenMenuItems(controls.contextMenuItems.value);
-    expect(items.some((entry) => entry.label === 'fastcat.monitor.playbackSpeed')).toBe(true);
+    expect(items.some((entry) => entry.label?.includes('fastcat.monitor.playbackSpeed'))).toBe(true);
   });
 
   it('includes toolbar position sub-menu and updates state', () => {

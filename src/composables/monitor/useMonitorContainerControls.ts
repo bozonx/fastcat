@@ -443,7 +443,7 @@ export function useMonitorContainerControls(options: UseMonitorContainerControls
         ? []
         : [
             {
-              label: options.t('fastcat.monitor.playbackSpeed'),
+              label: `${options.t('fastcat.monitor.playbackSpeed')} (${speedButtonLabel.value})`,
               icon: 'i-heroicons-forward',
               children: [
                 ...negativeSpeedOptions.map((opt) => ({

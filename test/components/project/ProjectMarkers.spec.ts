@@ -8,6 +8,7 @@ const mockTimelineStore = reactive({
   markers: [] as any[],
   timelineFormat: { fps: 30 },
   setCurrentTimeUs: vi.fn(),
+  requestScrollToPlayhead: vi.fn(),
 });
 
 const mockSelectionStore = {
@@ -55,6 +56,21 @@ describe('ProjectMarkers.vue', () => {
     expect(rows.length).toBe(2);
     expect(rows[0]?.text()).toContain('First');
     expect(rows[1]?.text()).toContain('Second');
+  });
+
+  it('sets playhead and requests scroll to playhead on marker click', async () => {
+    mockTimelineStore.markers = [
+      { id: '1', timeUs: 1_000_000, text: 'First' },
+    ];
+
+    const component = await mountWithNuxt(ProjectMarkers);
+    const row = component.find('tbody tr');
+    expect(row.exists()).toBe(true);
+
+    await row.trigger('click');
+
+    expect(mockTimelineStore.setCurrentTimeUs).toHaveBeenCalledWith(1_000_000);
+    expect(mockTimelineStore.requestScrollToPlayhead).toHaveBeenCalled();
   });
 
   it('filters markers by selected colors', async () => {

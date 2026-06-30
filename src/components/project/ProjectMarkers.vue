@@ -83,6 +83,7 @@ function openExportModal() {
 
 function handleMarkerClick(marker: { id: string; timeUs: number }, event: MouseEvent) {
   timelineStore.setCurrentTimeUs(marker.timeUs);
+  timelineStore.requestScrollToPlayhead?.();
 
   if (event.shiftKey) {
     const currentIds =
