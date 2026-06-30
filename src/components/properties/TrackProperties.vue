@@ -2,12 +2,7 @@
 import { computed, ref, toRef } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
-import {
-  BLEND_MODE_OPTIONS as RAW_BLEND_MODE_OPTIONS,
-  isTimelineBlendMode,
-} from '~/utils/constants';
 import type {
-  TimelineBlendMode,
   TimelineTrack,
   VideoClipEffect,
   AudioClipEffect,
@@ -16,7 +11,6 @@ import ClipEffectsEditor from '~/components/effects/ClipEffectsEditor.vue';
 import PropertySection from '~/components/properties/PropertySection.vue';
 import PropertyActionsBlock from '~/components/properties/PropertyActionsBlock.vue';
 import UiSliderInput from '~/components/ui/UiSliderInput.vue';
-import UiSelect from '~/components/ui/UiSelect.vue';
 import UiConfirmModal from '~/components/ui/UiConfirmModal.vue';
 import UiRenameModal from '~/components/ui/UiRenameModal.vue';
 import PropertyRow from '~/components/properties/PropertyRow.vue';
@@ -43,35 +37,6 @@ function handleRenameTrack(name: string) {
 }
 
 const canDeleteWithoutConfirm = computed(() => (props.track.items?.length ?? 0) === 0);
-
-const blendModeOptions = computed<Array<{ value: TimelineBlendMode; label: string }>>(() =>
-  RAW_BLEND_MODE_OPTIONS.map((opt) => ({
-    value: opt.value as TimelineBlendMode,
-    label: t(opt.labelKey),
-  })),
-);
-
-const trackOpacity = computed({
-  get: () => {
-    const v =
-      typeof props.track?.opacity === 'number' && Number.isFinite(props.track.opacity)
-        ? props.track.opacity
-        : 1;
-    return Math.max(0, Math.min(1, v));
-  },
-  set: (val: number) => {
-    const v = Math.max(0, Math.min(1, Number(val)));
-    timelineStore.updateTrackProperties(props.track.id, { opacity: v });
-  },
-});
-
-const trackBlendMode = computed({
-  get: () => props.track?.blendMode ?? 'normal',
-  set: (val: TimelineBlendMode | string) => {
-    const safe = isTimelineBlendMode(val) ? val : 'normal';
-    timelineStore.updateTrackProperties(props.track.id, { blendMode: safe });
-  },
-});
 
 const trackAudioGain = computed({
   get: () => {
@@ -248,39 +213,6 @@ const clipCount = computed(
         mode="track"
         @update:model-value="(v) => (trackColor = Array.isArray(v) ? (v[0] ?? trackColor) : v)"
       />
-    </PropertySection>
-
-    <PropertySection v-if="track.kind === 'video'" :title="t('common.properties')">
-      <div class="flex flex-col w-full gap-4 py-1">
-        <div class="flex flex-col gap-1">
-          <span class="text-xs text-ui-text-muted font-medium">{{
-            t('fastcat.track.blendMode')
-          }}</span>
-          <UiSelect
-            :model-value="trackBlendMode"
-            :items="blendModeOptions"
-            value-key="value"
-            label-key="label"
-            size="sm"
-            :searchable="false"
-            @update:model-value="
-              (v: unknown) =>
-                (trackBlendMode =
-                  (v as { value: TimelineBlendMode })?.value ?? (v as TimelineBlendMode))
-            "
-          />
-        </div>
-
-        <UiSliderInput
-          v-model="trackOpacity"
-          :label="t('fastcat.track.opacity')"
-          unit="%"
-          :min="0"
-          :max="1"
-          :step="0.01"
-          :default-value="1"
-        />
-      </div>
     </PropertySection>
 
     <PropertySection
