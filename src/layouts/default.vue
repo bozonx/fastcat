@@ -24,6 +24,7 @@ import ProjectSettingsModal from '~/components/project-settings/ProjectSettingsM
 import FileConversionModal from '~/components/file-manager/FileConversionModal.vue';
 import BatchFileConversionModal from '~/components/file-manager/BatchFileConversionModal.vue';
 import GlobalDropOverlay from '~/components/file-manager/GlobalDropOverlay.vue';
+import DndGhostLayer from '~/components/dnd/DndGhostLayer.vue';
 import FileManagerRemoteTransferProgressModal from '~/components/file-manager/RemoteTransferProgressModal.vue';
 import { useFileManager } from '~/composables/file-manager/useFileManager';
 
@@ -240,6 +241,9 @@ useEventListener(document, 'visibilitychange', () => {
         @drop-to-auto="onOverlayAutoSort"
         @drop-to-folder="onOverlayFolderDrop"
       />
+
+      <!-- Pointer-DnD ghost (internal drags: file-manager, timeline, panels, effects) -->
+      <DndGhostLayer />
     </div>
   </div>
 </template>
