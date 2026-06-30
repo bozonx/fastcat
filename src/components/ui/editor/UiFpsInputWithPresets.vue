@@ -39,6 +39,7 @@ const dropdownItems = computed(() =>
       :min="1"
       :max="240"
       :step="0.001"
+      :wheel-step="1"
       :disabled="disabled"
       class="flex-1"
       full-width

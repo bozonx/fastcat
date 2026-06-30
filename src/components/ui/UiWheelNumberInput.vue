@@ -8,6 +8,8 @@ interface UiWheelNumberInputProps {
   min?: number;
   max?: number;
   step?: number;
+  /** Override the wheel scroll step (defaults to `step`). */
+  wheelStep?: number;
   wheelStepMultiplier?: number;
   size?: '2xs' | 'xs' | 'sm' | 'md' | 'lg' | 'xl';
   disabled?: boolean;
@@ -20,6 +22,7 @@ const props = withDefaults(defineProps<UiWheelNumberInputProps>(), {
   min: undefined,
   max: undefined,
   step: 1,
+  wheelStep: undefined,
   wheelStepMultiplier: 1,
   size: 'sm',
   disabled: false,
@@ -90,7 +93,7 @@ function flushDebounced() {
 const { wrapperRef } = useWheelControl(
   {
     disabled: () => props.disabled,
-    step: () => props.step,
+    step: () => props.wheelStep ?? props.step,
     wheelStepMultiplier: () => props.wheelStepMultiplier,
     focusOnly: () => true,
   },

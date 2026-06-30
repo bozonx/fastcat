@@ -530,7 +530,7 @@
       "text": "Текст",
       "title": "Маркер",
       "zoneMarker": "Маркер-зона",
-      "exportAsText": "Экспорт как текст",
+      "exportAsText": "Экспорт",
       "exportTitle": "Экспорт маркеров",
       "exportFormats": {
         "msOrHmsLeft": "00:00 Название",

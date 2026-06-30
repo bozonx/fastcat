@@ -530,7 +530,7 @@
       "text": "Text",
       "title": "Marker",
       "zoneMarker": "Zone Marker",
-      "exportAsText": "Export as Text",
+      "exportAsText": "Export",
       "exportTitle": "Export Markers",
       "exportFormats": {
         "msOrHmsLeft": "00:00 Title",
