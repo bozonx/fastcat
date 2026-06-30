@@ -3,6 +3,15 @@ import { mountSuspended } from '@nuxt/test-utils/runtime';
 import { reactive } from 'vue';
 import TimelineToolbar from '~/components/timeline/TimelineToolbar.vue';
 
+const armPointerDndMock = vi.fn();
+const setDraggedFileMock = vi.fn();
+vi.mock('~/composables/dnd/usePointerDnd', () => ({
+  armPointerDnd: (...args: unknown[]) => armPointerDndMock(...args),
+}));
+vi.mock('~/composables/useDraggedFile', () => ({
+  useDraggedFile: () => ({ setDraggedFile: setDraggedFileMock, clearDraggedFile: vi.fn() }),
+}));
+
 const mockTimelineStore = reactive({
   isTrimModeActive: false,
   isAnyTrackSoloed: false,
@@ -92,26 +101,22 @@ describe('TimelineToolbar', () => {
     expect(mockTimelineStore.unsoloAllTracks).toHaveBeenCalled();
   });
 
-  it('emits dragVirtualStart when dragging virtual clips', async () => {
+  it('arms a pointer drag for virtual clips with a timeline-toolbar payload', async () => {
     const component = await mountSuspended(TimelineToolbar);
 
-    const adjustBtn = component.findAll('[draggable="true"]').at(0);
-    expect(adjustBtn).toBeDefined();
+    const adjustItem = component.find('[data-toolbar-drag="adjustment"]');
+    expect(adjustItem.exists()).toBe(true);
 
-    const dataTransfer = {
-      setData: vi.fn(),
-      effectAllowed: 'uninitialized',
-      buttons: 0,
-    };
+    await adjustItem.trigger('pointerdown', { button: 0 });
 
-    await adjustBtn!.trigger('dragstart', { dataTransfer });
-
-    expect(component.emitted('dragVirtualStart')).toBeTruthy();
-    expect(component.emitted('dragVirtualStart')![0][1]).toBe('adjustment');
-    expect(dataTransfer.setData).toHaveBeenCalledWith(
-      'application/fastcat-virtual-clip',
-      'adjustment',
+    // Sets the preview descriptor and arms the engine with a toolbar payload.
+    expect(setDraggedFileMock).toHaveBeenCalledWith(
+      expect.objectContaining({ kind: 'adjustment', path: '' }),
     );
+    expect(armPointerDndMock).toHaveBeenCalledTimes(1);
+    const [, armOptions] = armPointerDndMock.mock.calls[0] as [PointerEvent, { payload: any }];
+    expect(armOptions.payload.source).toBe('timeline-toolbar');
+    expect(armOptions.payload.data.kind).toBe('adjustment');
   });
 
   it('disables ripple trim items when no clip is selected', async () => {

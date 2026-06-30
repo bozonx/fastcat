@@ -57,7 +57,7 @@ const timelineSettingsStore = useTimelineSettingsStore();
 const projectStore = useProjectStore();
 const selectionStore = useSelectionStore();
 const uiStore = useUiStore();
-const { draggedFile, setDraggedFile, clearDraggedFile } = useDraggedFile();
+const { draggedFile } = useDraggedFile();
 
 const { speedModal, openSpeedModal, saveSpeedModal, speedModalTargetHasAudio } =
   useTimelineSpeedModal(() => tracks.value);
@@ -630,8 +630,19 @@ function onTimelineDndLeave() {
 
 async function onTimelineDndDrop(ctx: DndDragContext) {
   if (timelineStore.previewMode) return;
-  const payload = draggedFile.value;
-  if (!payload || payload.isExternal) return;
+
+  // file-manager carries its descriptor in `draggedFile`; toolbar/library
+  // sources carry the full virtual-clip/library descriptor in the payload.
+  let payload: unknown;
+  if (ctx.payload.source === 'file-manager') {
+    const df = draggedFile.value;
+    if (!df || df.isExternal) return;
+    payload = df;
+  } else {
+    payload = ctx.payload.data;
+  }
+  if (!payload) return;
+
   const pseudo = isLayer1FromModifiers(ctx.pointer) || timelineSettingsStore.isPseudoOverlapEnabled;
   await dropInternalPayloadAtPoint({
     clientX: ctx.pointer.clientX,
@@ -673,21 +684,6 @@ const { zoneAttrs: timelineDndZoneAttrs } = useDndDropZone(
   },
   'timeline',
 );
-
-function onDragVirtualStart(event: DragEvent, type: 'adjustment' | 'background' | 'text') {
-  setDraggedFile({
-    kind: type,
-    name: t(
-      `fastcat.timeline.${type}ClipDefaultName`,
-      type.charAt(0).toUpperCase() + type.slice(1),
-    ),
-    path: '',
-  });
-}
-
-function onDragVirtualEnd() {
-  clearDraggedFile();
-}
 
 const isCreateVersionModalOpen = ref(false);
 const proposedVersionName = ref('');
@@ -774,10 +770,7 @@ async function handleConfirmCreateVersion(newName: string) {
     />
 
     <!-- Row 1: Toolbar -->
-    <TimelineToolbar
-      @drag-virtual-start="onDragVirtualStart"
-      @drag-virtual-end="onDragVirtualEnd"
-    />
+    <TimelineToolbar />
 
     <!-- Backup Preview Banner -->
     <div

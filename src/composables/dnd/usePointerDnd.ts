@@ -44,6 +44,12 @@ import {
 
 export interface ArmPointerDndOptions {
   payload: DndPayload;
+  /**
+   * Allow the secondary (right) mouse button to start the drag. Off by default
+   * (right-click on file rows must open the context menu). Used by the timeline
+   * toolbar's right-drag-to-open-preset gesture.
+   */
+  acceptSecondaryButton?: boolean;
   /** Called once when the drag actually commits (past the gesture gate). */
   onStart?: () => void;
   /**
@@ -312,7 +318,8 @@ function onWindowBlur() {
  */
 export function armPointerDnd(e: PointerEvent, options: ArmPointerDndOptions): void {
   const pointerType = normalizePointerType(e.pointerType);
-  if (!isPrimaryPointer(pointerType, e.button)) return;
+  const secondaryOk = options.acceptSecondaryButton === true && e.button === 2;
+  if (!secondaryOk && !isPrimaryPointer(pointerType, e.button)) return;
 
   // Cancel any stale drag (e.g. a previous gesture that never released).
   if (activeDrag) teardown({ dropped: false, cancelled: true });

@@ -28,8 +28,11 @@ import { useHotkeyLabel } from '~/composables/useHotkeyLabel';
 
 import { useTimelineEmptyAreaContextMenu } from '~/composables/timeline/useTimelineEmptyAreaContextMenu';
 import type { HotkeyCommandId } from '~/utils/hotkeys/defaultHotkeys';
+import { useDraggedFile } from '~/composables/useDraggedFile';
+import { armPointerDnd } from '~/composables/dnd/usePointerDnd';
 
 const { t } = useI18n();
+const { setDraggedFile, clearDraggedFile } = useDraggedFile();
 const { getHotkeyTitle, getHotkeyLabel } = useHotkeyLabel();
 const timelineStore = useTimelineStore();
 const settingsStore = useTimelineSettingsStore();
@@ -48,11 +51,6 @@ const layer1Label = computed(() => {
 });
 const { isSnapSettingsModalOpen } = storeToRefs(settingsStore);
 const { showPresetModal } = useTimelineTextPreset();
-
-const emit = defineEmits<{
-  (e: 'dragVirtualStart', event: DragEvent, type: 'adjustment' | 'background' | 'text'): void;
-  (e: 'dragVirtualEnd'): void;
-}>();
 
 const trimMenuItems = computed(() => {
   const isNoClipSelected = timelineStore.getHotkeyTargetClip() === null;
@@ -280,41 +278,32 @@ const textContextMenuItems = computed(() => [
   ],
 ]);
 
-function onDragStart(event: DragEvent, type: 'adjustment' | 'background' | 'text') {
-  if (event.dataTransfer) {
-    event.dataTransfer.effectAllowed = 'copy';
+function onToolbarPointerDown(e: PointerEvent, type: 'adjustment' | 'background' | 'text') {
+  const isRightClick = e.button === 2;
 
-    const isRightClick = (event.buttons & 2) !== 0;
-
-    let presetParams = undefined;
-    if (type === 'text') {
-      const presetId = presetsStore.defaultTextPresetId;
-      presetParams =
-        standardTextPresets.value[presetId] ||
-        presetsStore.customPresets.find((p) => p.id === presetId)?.params;
-    }
-
-    // Create a payload compatible with handleLibraryDrop
-    const payload = {
-      kind: type,
-      name: t(
-        `fastcat.timeline.${type}ClipDefaultName`,
-        type.charAt(0).toUpperCase() + type.slice(1),
-      ),
-      path: '',
-      presetParams,
-      isRightClick,
-    };
-
-    const json = JSON.stringify(payload);
-    event.dataTransfer.setData('application/json', json);
-    event.dataTransfer.setData('application/fastcat-virtual-clip', type);
+  let presetParams = undefined;
+  if (type === 'text') {
+    const presetId = presetsStore.defaultTextPresetId;
+    presetParams =
+      standardTextPresets.value[presetId] ||
+      presetsStore.customPresets.find((p) => p.id === presetId)?.params;
   }
-  emit('dragVirtualStart', event, type);
-}
 
-function onDragEnd() {
-  emit('dragVirtualEnd');
+  const name = t(
+    `fastcat.timeline.${type}ClipDefaultName`,
+    type.charAt(0).toUpperCase() + type.slice(1),
+  );
+
+  // Full descriptor for `handleLibraryDrop` (carried in the pointer payload).
+  const libraryPayload = { kind: type, name, path: '', presetParams, isRightClick };
+  // Lightweight descriptor for the drag-preview ghost on the timeline.
+  setDraggedFile({ kind: type, name, path: '' });
+
+  armPointerDnd(e, {
+    payload: { source: 'timeline-toolbar', data: libraryPayload, preview: { label: name } },
+    acceptSecondaryButton: true,
+    onEnd: () => clearDraggedFile(),
+  });
 }
 
 const { emptyAreaContextMenuItems: toolbarEmptyAreaContextMenuItems } =
@@ -469,7 +458,11 @@ function onToolbarContextMenu(e: MouseEvent) {
             )
           "
         >
-          <div draggable="true" @dragstart="onDragStart($event, 'adjustment')" @dragend="onDragEnd">
+          <div
+            data-toolbar-drag="adjustment"
+            @pointerdown="onToolbarPointerDown($event, 'adjustment')"
+            @contextmenu.prevent
+          >
             <UiActionButton
               size="xs"
               variant="ghost"
@@ -494,7 +487,11 @@ function onToolbarContextMenu(e: MouseEvent) {
             )
           "
         >
-          <div draggable="true" @dragstart="onDragStart($event, 'background')" @dragend="onDragEnd">
+          <div
+            data-toolbar-drag="background"
+            @pointerdown="onToolbarPointerDown($event, 'background')"
+            @contextmenu.prevent
+          >
             <UiActionButton
               size="xs"
               variant="ghost"
@@ -520,7 +517,11 @@ function onToolbarContextMenu(e: MouseEvent) {
           "
         >
           <UContextMenu :items="textContextMenuItems">
-            <div draggable="true" @dragstart="onDragStart($event, 'text')" @dragend="onDragEnd">
+            <div
+              data-toolbar-drag="text"
+              @pointerdown="onToolbarPointerDown($event, 'text')"
+              @contextmenu.prevent
+            >
               <UiActionButton
                 size="xs"
                 variant="ghost"
