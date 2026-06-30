@@ -5,6 +5,8 @@ import { formatTimecode, formatHms, formatMsOrHms } from '~/utils/time';
 import { DOCUMENTS_DIR_NAME } from '~/utils/constants';
 import { resolveNextAvailableFilename } from '~/composables/timeline/export/filenameUtils';
 import { useProjectStore } from '~/stores/project.store';
+import { useProjectTabsStore } from '~/stores/project-tabs.store';
+import { useFileManagerStore } from '~/stores/file-manager.store';
 import UiModal from '~/components/ui/UiModal.vue';
 import UiSelect from '~/components/ui/UiSelect.vue';
 import MarkerColorFilter from '~/components/project/MarkerColorFilter.vue';
@@ -35,6 +37,8 @@ const isOpen = defineModel<boolean>('open', { default: false });
 const { t } = useI18n();
 const toast = useToast();
 const projectStore = useProjectStore();
+const projectTabsStore = useProjectTabsStore();
+const fileManagerStore = useFileManagerStore();
 
 const DEFAULT_MARKER_COLOR = '#eab308';
 
@@ -237,6 +241,9 @@ async function handleExportToFile() {
       title: t('fastcat.marker.exportFileSuccess', { file: fileName }),
       color: 'success',
     });
+    isOpen.value = false;
+    projectTabsStore.setActiveTab('files');
+    fileManagerStore.openFolderByPath(DOCUMENTS_DIR_NAME);
   } catch (e) {
     toast.add({
       title: t('fastcat.marker.exportFileError'),

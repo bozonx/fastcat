@@ -4,11 +4,25 @@ import MarkerExportModal from '~/components/project/MarkerExportModal.vue';
 
 const mockListEntryNames = vi.fn().mockResolvedValue([]);
 const mockWriteTextByPath = vi.fn().mockResolvedValue(undefined);
+const mockSetActiveTab = vi.fn();
+const mockOpenFolderByPath = vi.fn();
 
 vi.mock('~/stores/project.store', () => ({
   useProjectStore: () => ({
     listEntryNames: mockListEntryNames,
     writeTextByPath: mockWriteTextByPath,
+  }),
+}));
+
+vi.mock('~/stores/project-tabs.store', () => ({
+  useProjectTabsStore: () => ({
+    setActiveTab: mockSetActiveTab,
+  }),
+}));
+
+vi.mock('~/stores/file-manager.store', () => ({
+  useFileManagerStore: () => ({
+    openFolderByPath: mockOpenFolderByPath,
   }),
 }));
 
@@ -254,6 +268,8 @@ describe('MarkerExportModal.vue', () => {
       expect.any(String),
     );
     expect(mockWriteTextByPath.mock.calls[0]![1]).toContain('Intro');
+    expect(mockSetActiveTab).toHaveBeenCalledWith('files');
+    expect(mockOpenFolderByPath).toHaveBeenCalledWith('_documents');
   });
 
   it('uses csv extension when csv format is selected', async () => {
