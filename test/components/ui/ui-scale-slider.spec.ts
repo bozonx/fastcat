@@ -130,4 +130,24 @@ describe('UiScaleSlider', () => {
       expect(thumb.attributes('style')).toContain('left: 75%');
     });
   });
+
+  describe('default value reset', () => {
+    it('resets to default value on double click of the handle', async () => {
+      const component = await mountSuspended(UiScaleSlider, {
+        props: {
+          modelValue: 18,
+          min: 10,
+          max: 20,
+          defaultValue: 14,
+        },
+      });
+
+      const thumb = component.find('.pointer-events-auto');
+      await thumb.trigger('dblclick');
+
+      const emitted = component.emitted('update:modelValue');
+      expect(emitted).toBeTruthy();
+      expect(emitted![0][0]).toBe(14);
+    });
+  });
 });

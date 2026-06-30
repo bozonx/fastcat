@@ -12,6 +12,7 @@ interface UiScaleSliderProps {
   max?: number;
   options?: ScaleSliderOption[];
   withInput?: boolean;
+  defaultValue?: number | string;
 }
 
 const props = withDefaults(defineProps<UiScaleSliderProps>(), {
@@ -19,6 +20,7 @@ const props = withDefaults(defineProps<UiScaleSliderProps>(), {
   max: 20,
   options: undefined,
   withInput: false,
+  defaultValue: undefined,
 });
 
 const modelValue = defineModel<number | string>({ required: true });
@@ -171,6 +173,12 @@ function onPointerUp(event: PointerEvent) {
   modelValue.value = valueFromPointer(event);
   (event.currentTarget as HTMLElement).releasePointerCapture(event.pointerId);
 }
+
+function resetToDefault() {
+  if (props.defaultValue !== undefined) {
+    modelValue.value = props.defaultValue;
+  }
+}
 </script>
 
 <template>
@@ -229,6 +237,7 @@ function onPointerUp(event: PointerEvent) {
           class="absolute -translate-x-1/2 cursor-pointer pointer-events-auto"
           :class="isDragging ? 'transition-none' : 'transition-[left] duration-75'"
           :style="{ left: `${thumbPercent}%` }"
+          @dblclick="resetToDefault"
         >
           <div class="flex flex-col items-center" style="margin-top: -26px">
             <!-- Rounded pill body showing current value or drag handle bars -->

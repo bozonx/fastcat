@@ -80,38 +80,35 @@ const metadataTags = defineModel<string>('metadataTags', { default: '' });
 const metadataDescription = defineModel<string>('metadataDescription', { default: '' });
 
 const videoBitrateOptions = [
-  { label: '0.5', value: '0.5' },
   { label: '1', value: '1' },
   { label: '2', value: '2' },
   { label: '3', value: '3' },
   { label: '4', value: '4' },
   { label: '5', value: '5' },
+  { label: '6', value: '6' },
+  { label: '7', value: '7' },
   { label: '8', value: '8' },
+  { label: '9', value: '9' },
   { label: '10', value: '10' },
+  { label: '11', value: '11' },
   { label: '12', value: '12' },
+  { label: '13', value: '13' },
+  { label: '14', value: '14' },
   { label: '15', value: '15' },
+  { label: '16', value: '16' },
+  { label: '17', value: '17' },
+  { label: '18', value: '18' },
+  { label: '19', value: '19' },
   { label: '20', value: '20' },
-  { label: '25', value: '25' },
-  { label: '30', value: '30' },
-  { label: '40', value: '40' },
-  { label: '50', value: '50' },
-  { label: '60', value: '60' },
-  { label: '80', value: '80' },
-  { label: '100', value: '100' },
 ];
 
 const audioBitrateOptions = [
-  { label: '32', value: '32' },
-  { label: '64', value: '64' },
   { label: '96', value: '96' },
   { label: '128', value: '128' },
   { label: '160', value: '160' },
   { label: '192', value: '192' },
   { label: '256', value: '256' },
   { label: '320', value: '320' },
-  { label: '384', value: '384' },
-  { label: '448', value: '448' },
-  { label: '512', value: '512' },
 ];
 
 const { t } = useI18n();
@@ -316,8 +313,8 @@ watch(
           />
           <UiWheelNumberInput
             v-model="bitrateMbps"
-            :min="0.2"
-            :max="100"
+            :min="1"
+            :max="20"
             :step="0.1"
             :wheel-step-multiplier="10"
             :disabled="props.disabled"
@@ -462,8 +459,8 @@ watch(
           />
           <UiWheelNumberInput
             v-model="audioBitrateKbps"
-            :min="32"
-            :max="512"
+            :min="96"
+            :max="320"
             :step="16"
             :wheel-step-multiplier="2"
             :disabled="props.disabled"

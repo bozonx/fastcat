@@ -37,6 +37,20 @@ function resetGeneralDefaults() {
 
   isResetConfirmOpen.value = false;
 }
+
+const stopFramesQualityOptions = [
+  { label: '50%', value: '50' },
+  { label: '55%', value: '55' },
+  { label: '60%', value: '60' },
+  { label: '65%', value: '65' },
+  { label: '70%', value: '70' },
+  { label: '75%', value: '75' },
+  { label: '80%', value: '80' },
+  { label: '85%', value: '85' },
+  { label: '90%', value: '90' },
+  { label: '95%', value: '95' },
+  { label: '100%', value: '100' },
+];
 </script>
 
 <template>
@@ -84,7 +98,12 @@ function resetGeneralDefaults() {
       v-if="workspaceStore.inDevelopmentFeaturesEnabled"
       :label="t('videoEditor.settings.uiInterfaceScale')"
     >
-      <UiScaleSlider v-model="workspaceStore.userSettings.ui.interfaceScale" :min="10" :max="20" />
+      <UiScaleSlider
+        v-model="workspaceStore.userSettings.ui.interfaceScale"
+        :min="10"
+        :max="20"
+        :default-value="14"
+      />
     </UiFormField>
 
     <UiFormField>
@@ -129,22 +148,24 @@ function resetGeneralDefaults() {
     </UiFormField>
 
     <UiFormField :label="t('videoEditor.settings.stopFramesQuality')">
-      <UiScaleSlider
-        :model-value="String(workspaceStore.userSettings.stopFrames.qualityPercent)"
-        :options="[
-          { label: '10%', value: '10' },
-          { label: '20%', value: '20' },
-          { label: '30%', value: '30' },
-          { label: '40%', value: '40' },
-          { label: '50%', value: '50' },
-          { label: '60%', value: '60' },
-          { label: '70%', value: '70' },
-          { label: '80%', value: '80' },
-          { label: '90%', value: '90' },
-          { label: '100%', value: '100' },
-        ]"
-        @update:model-value="workspaceStore.userSettings.stopFrames.qualityPercent = Number($event)"
-      />
+      <div class="flex items-center gap-4 w-full">
+        <UiScaleSlider
+          :model-value="String(workspaceStore.userSettings.stopFrames.qualityPercent)"
+          :options="stopFramesQualityOptions"
+          with-input
+          :default-value="85"
+          @update:model-value="workspaceStore.userSettings.stopFrames.qualityPercent = Number($event)"
+        />
+        <UiWheelNumberInput
+          v-model="workspaceStore.userSettings.stopFrames.qualityPercent"
+          :min="20"
+          :max="100"
+          :step="1"
+          :wheel-step-multiplier="5"
+          class="w-24!"
+        />
+        <span class="text-xs text-ui-text-muted whitespace-nowrap">%</span>
+      </div>
     </UiFormField>
 
     <label class="flex items-center gap-3 cursor-pointer px-1">
@@ -212,6 +233,7 @@ function resetGeneralDefaults() {
               :min="0"
               :max="5"
               with-input
+              :default-value="5"
               @update:model-value="workspaceStore.userSettings.backup.count = $event as number"
             />
             <UiWheelNumberInput
