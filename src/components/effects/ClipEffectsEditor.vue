@@ -10,6 +10,8 @@ import EffectSettingsModal from '~/components/effects/EffectSettingsModal.vue';
 import { getVideoEffectManifest, getAudioEffectManifest } from '~/effects';
 import { usePresetsStore } from '~/stores/presets.store';
 import { genUuid } from '~/utils/ids';
+import { useDndDropZone } from '~/composables/dnd/useDndDropZone';
+import type { DndDragContext, DndPayload } from '~/composables/dnd/dndTypes';
 import type { VideoClipEffect, AudioClipEffect } from '~/timeline/types';
 
 interface Props {
@@ -81,21 +83,17 @@ const activeSettingsManifest = computed(() => {
   return isAudio.value ? getAudioEffectManifest(type) : getVideoEffectManifest(type);
 });
 
-function onDragOver(e: DragEvent) {
-  if (e.dataTransfer?.types.includes('fastcat-effect')) {
-    e.preventDefault();
-    e.stopPropagation();
-    e.dataTransfer.dropEffect = 'copy';
-  }
-}
-
-function onDrop(e: DragEvent) {
-  const effectType = e.dataTransfer?.getData('fastcat-effect');
-  if (!effectType) return;
-  e.preventDefault();
-  e.stopPropagation();
-  handleAddEffect(effectType);
-}
+const { zoneAttrs: dropZoneAttrs } = useDndDropZone(
+  {
+    canAccept: (payload: DndPayload) => payload.source === 'effect',
+    onOver: (ctx: DndDragContext) => ctx.setOperation('effect'),
+    onDrop: (ctx: DndDragContext) => {
+      const type = (ctx.payload.data as { type?: string })?.type;
+      if (type) handleAddEffect(type);
+    },
+  },
+  'clip-effects',
+);
 
 function setEffects(next: Array<VideoClipEffect | AudioClipEffect>) {
   emit('update:effects', next);
@@ -199,8 +197,7 @@ function resolveEffectName(manifest: EffectItem['manifest'], type: string) {
     :title="safeTitle"
     class="mt-2"
     :has-toggle="props.hasToggle"
-    @dragover="onDragOver"
-    @drop="onDrop"
+    v-bind="dropZoneAttrs"
   >
     <template #header-actions>
       <UButton

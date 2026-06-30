@@ -431,7 +431,7 @@ function onClipDblClick() {
   }
 }
 
-const { isDraggingOver, handleDragLeave, handleDrop } = useClipDrop({
+const { isDraggingOver, dropZoneAttrs } = useClipDrop({
   track: computed(() => props.track),
   clipItem,
   canEditClipContent: computed(() => props.canEditClipContent),
@@ -754,7 +754,7 @@ function handleTransitionCreate(
       :data-clip-id="item.kind === 'clip' ? item.id : undefined"
       :data-gap-id="item.kind === 'gap' ? item.id : undefined"
       class="absolute top-0.5 bottom-0.5 rounded flex flex-col text-xs text-(--clip-text) select-none transition-shadow group/clip"
-      v-bind="attrs"
+      v-bind="{ ...attrs, ...dropZoneAttrs }"
       :style="{
         left: `${clipLeftPx}px`,
         width: `${clipWidthPx}px`,
@@ -792,8 +792,6 @@ function handleTransitionCreate(
       @click.stop="onClipClick"
       @dblclick="onClipDblClick"
       @contextmenu="onContextMenu"
-      @dragleave="handleDragLeave"
-      @drop="handleDrop"
       @pointerenter="isHovered = true"
       @pointerleave="isHovered = false"
     >

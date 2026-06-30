@@ -67,26 +67,26 @@ describe('EffectCard', () => {
     expect(card.classes()).toContain('cursor-grab');
   });
 
-  it('emits dragstart when drag starts and isDraggable', async () => {
+  it('emits pointer-down when pressed and isDraggable', async () => {
     const component = await mountSuspended(EffectCard, {
       props: { manifest: sampleManifest, isDraggable: true },
     });
 
     const card = component.find('.flex.items-start');
-    await card.trigger('dragstart');
+    await card.trigger('pointerdown');
 
-    expect(component.emitted('dragstart')).toBeTruthy();
+    expect(component.emitted('pointer-down')).toBeTruthy();
   });
 
-  it('does not emit dragstart when not draggable', async () => {
+  it('does not emit pointer-down when not draggable', async () => {
     const component = await mountSuspended(EffectCard, {
       props: { manifest: sampleManifest, isDraggable: false },
     });
 
     const card = component.find('.flex.items-start');
-    await card.trigger('dragstart');
+    await card.trigger('pointerdown');
 
-    expect(component.emitted('dragstart')).toBeFalsy();
+    expect(component.emitted('pointer-down')).toBeFalsy();
   });
 
   it('shows action button when showAction is true', async () => {

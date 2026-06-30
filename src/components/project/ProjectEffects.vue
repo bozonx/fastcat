@@ -15,6 +15,7 @@ import { useWorkspaceStore } from '~/stores/workspace.store';
 
 import CollapsibleEffectGroup from '~/components/effects/CollapsibleEffectGroup.vue';
 import EffectCard from '~/components/effects/EffectCard.vue';
+import { armPointerDnd } from '~/composables/dnd/usePointerDnd';
 
 defineProps<{
   compact?: boolean;
@@ -91,10 +92,10 @@ const customTransitions = computed(() => {
   return presetManifests;
 });
 
-function handleDragStart(event: DragEvent, type: string, category: 'effect' | 'transition') {
-  if (!event.dataTransfer) return;
-  event.dataTransfer.setData(`fastcat-${category}`, type);
-  event.dataTransfer.effectAllowed = 'copy';
+function handlePointerDown(event: PointerEvent, type: string, category: 'effect' | 'transition') {
+  armPointerDnd(event, {
+    payload: { source: category, data: { type }, preview: { label: type } },
+  });
 }
 
 function selectEffect(type: string) {
@@ -171,13 +172,13 @@ function updateCustomTransitionsOrder(newCustomTransitions: TransitionManifest[]
               v-for="effect in standardEffects"
               :key="effect.type"
               :manifest="effect"
-              :is-draggable="true"
               :is-selected="
                 selectionStore.selectedEntity?.source === 'project' &&
                 selectionStore.selectedEntity.kind === 'effect' &&
                 selectionStore.selectedEntity.effectType === effect.type
               "
-              @dragstart="handleDragStart($event, effect.type, 'effect')"
+              :is-draggable="true"
+              @pointer-down="handlePointerDown($event, effect.type, 'effect')"
               @click="selectEffect(effect.type)"
             />
             <UiEmptyState v-if="standardEffects.length === 0" :message="t('common.noData')" />
@@ -207,7 +208,6 @@ function updateCustomTransitionsOrder(newCustomTransitions: TransitionManifest[]
               </div>
               <EffectCard
                 :manifest="effect"
-                :is-draggable="true"
                 class="external-drag"
                 :is-selected="
                   selectionStore.selectedEntity?.source === 'project' &&
@@ -215,7 +215,8 @@ function updateCustomTransitionsOrder(newCustomTransitions: TransitionManifest[]
                   selectionStore.selectedEntity.effectType === effect.type
                 "
                 :show-action="true"
-                @dragstart="handleDragStart($event, effect.type, 'effect')"
+                :is-draggable="true"
+                @pointer-down="handlePointerDown($event, effect.type, 'effect')"
                 @click="selectEffect(effect.type)"
                 @action="presetsStore.removePreset(effect.type)"
               />
@@ -247,8 +248,7 @@ function updateCustomTransitionsOrder(newCustomTransitions: TransitionManifest[]
                   ? 'border-primary bg-primary/10'
                   : 'border-ui-border bg-ui-bg-muted hover:bg-ui-bg-elevated'
               "
-              draggable="true"
-              @dragstart="handleDragStart($event, transition.type, 'transition')"
+              @pointer-down="handlePointerDown($event, transition.type, 'transition')"
               @click="selectTransition(transition.type)"
             >
               <UIcon :name="transition.icon" class="w-8 h-8 text-primary shrink-0" />
@@ -295,8 +295,7 @@ function updateCustomTransitionsOrder(newCustomTransitions: TransitionManifest[]
               </div>
               <div
                 class="external-drag flex items-center gap-3 flex-1 min-w-0"
-                draggable="true"
-                @dragstart="handleDragStart($event, transition.type, 'transition')"
+                @pointer-down="handlePointerDown($event, transition.type, 'transition')"
               >
                 <UIcon :name="transition.icon" class="w-8 h-8 text-primary shrink-0" />
                 <div class="flex-1 min-w-0 flex items-center justify-between">
@@ -336,13 +335,13 @@ function updateCustomTransitionsOrder(newCustomTransitions: TransitionManifest[]
                   v-for="effect in basicAudioEffects"
                   :key="effect.type"
                   :manifest="effect"
-                  :is-draggable="true"
                   :is-selected="
                     selectionStore.selectedEntity?.source === 'project' &&
                     selectionStore.selectedEntity.kind === 'effect' &&
                     selectionStore.selectedEntity.effectType === effect.type
                   "
-                  @dragstart="handleDragStart($event, effect.type, 'effect')"
+                  :is-draggable="true"
+                  @pointer-down="handlePointerDown($event, effect.type, 'effect')"
                   @click="selectEffect(effect.type)"
                 />
               </div>
@@ -357,13 +356,13 @@ function updateCustomTransitionsOrder(newCustomTransitions: TransitionManifest[]
                   v-for="effect in nonBasicAudioEffects"
                   :key="effect.type"
                   :manifest="effect"
-                  :is-draggable="true"
                   :is-selected="
                     selectionStore.selectedEntity?.source === 'project' &&
                     selectionStore.selectedEntity.kind === 'effect' &&
                     selectionStore.selectedEntity.effectType === effect.type
                   "
-                  @dragstart="handleDragStart($event, effect.type, 'effect')"
+                  :is-draggable="true"
+                  @pointer-down="handlePointerDown($event, effect.type, 'effect')"
                   @click="selectEffect(effect.type)"
                 />
               </div>
@@ -396,7 +395,6 @@ function updateCustomTransitionsOrder(newCustomTransitions: TransitionManifest[]
               </div>
               <EffectCard
                 :manifest="effect"
-                :is-draggable="true"
                 class="external-drag"
                 :is-selected="
                   selectionStore.selectedEntity?.source === 'project' &&
@@ -404,7 +402,8 @@ function updateCustomTransitionsOrder(newCustomTransitions: TransitionManifest[]
                   selectionStore.selectedEntity.effectType === effect.type
                 "
                 :show-action="true"
-                @dragstart="handleDragStart($event, effect.type, 'effect')"
+                :is-draggable="true"
+                @pointer-down="handlePointerDown($event, effect.type, 'effect')"
                 @click="selectEffect(effect.type)"
                 @action="presetsStore.removePreset(effect.type)"
               />

@@ -7,6 +7,8 @@ import {
   DEFAULT_TRANSITION_CURVE,
   normalizeTransitionParams,
 } from '~/transitions';
+import { useDndDropZone } from '~/composables/dnd/useDndDropZone';
+import type { DndDragContext, DndPayload } from '~/composables/dnd/dndTypes';
 
 interface UseClipDropOptions {
   track: Ref<TimelineTrack>;
@@ -29,52 +31,43 @@ interface UseClipDropOptions {
 
 export function useClipDrop(options: UseClipDropOptions) {
   const isDraggingOver = ref(false);
-  let dragDepth = 0;
 
-  function hasSupportedDrop(e: DragEvent): boolean {
+  function canAccept(payload: DndPayload): boolean {
     return (
-      Boolean(e.dataTransfer?.types.includes('fastcat-effect')) ||
-      Boolean(e.dataTransfer?.types.includes('fastcat-transition'))
+      options.canEditClipContent.value &&
+      Boolean(options.clipItem.value) &&
+      (payload.source === 'effect' || payload.source === 'transition')
     );
   }
 
-  function handleDragEnter(e: DragEvent) {
-    if (options.canEditClipContent.value && hasSupportedDrop(e)) {
-      dragDepth += 1;
-      isDraggingOver.value = true;
-    }
+  function onOver(ctx: DndDragContext) {
+    isDraggingOver.value = true;
+    ctx.setOperation(ctx.payload.source === 'transition' ? 'transition' : 'effect');
   }
 
-  function handleDragOver(e: DragEvent) {
-    if (options.canEditClipContent.value && hasSupportedDrop(e)) {
-      e.preventDefault();
-    }
-  }
-
-  function handleDragLeave(e: DragEvent) {
-    if (!hasSupportedDrop(e)) return;
-
-    dragDepth = Math.max(0, dragDepth - 1);
-    if (dragDepth === 0) {
-      isDraggingOver.value = false;
-    }
-  }
-
-  function handleDrop(e: DragEvent) {
+  function onLeave() {
     isDraggingOver.value = false;
-    dragDepth = 0;
+  }
+
+  function onDrop(ctx: DndDragContext) {
+    isDraggingOver.value = false;
     const clip = options.clipItem.value;
     if (!options.canEditClipContent.value || !clip) return;
 
-    const effectType = e.dataTransfer?.getData('fastcat-effect');
-    const transitionType = e.dataTransfer?.getData('fastcat-transition');
+    const type = (ctx.payload.data as { type?: string })?.type;
+    if (!type) return;
 
-    if (effectType) {
-      _handleEffectDrop(clip, effectType);
-    } else if (transitionType) {
-      _handleTransitionDrop(e, clip, transitionType);
+    if (ctx.payload.source === 'effect') {
+      _handleEffectDrop(clip, type);
+    } else if (ctx.payload.source === 'transition') {
+      _handleTransitionDrop(ctx, clip, type);
     }
   }
+
+  const { zoneAttrs: dropZoneAttrs } = useDndDropZone(
+    { canAccept, onEnter: onOver, onOver, onLeave, onDrop },
+    'clip',
+  );
 
   function _handleEffectDrop(clip: TimelineClipItem, effectType: string) {
     const audioManifest = getAudioEffectManifest(effectType);
@@ -117,12 +110,22 @@ export function useClipDrop(options: UseClipDropOptions) {
     setTimeout(() => options.triggerScrollToEffects(), 50);
   }
 
-  function _handleTransitionDrop(e: DragEvent, clip: TimelineClipItem, transitionType: string) {
+  function _handleTransitionDrop(
+    ctx: DndDragContext,
+    clip: TimelineClipItem,
+    transitionType: string,
+  ) {
     const manifest = getTransitionManifest(transitionType);
     if (!manifest) return;
 
-    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-    const edge: 'in' | 'out' = e.clientX - rect.left <= rect.width / 2 ? 'in' : 'out';
+    // Resolve the clip box from the element under the pointer; the edge (in/out)
+    // is decided by which half of the clip the pointer is over.
+    const clipEl =
+      (ctx.targetEl as HTMLElement | null)?.closest('[data-clip-id]') ??
+      (ctx.targetEl as HTMLElement | null);
+    const rect = clipEl?.getBoundingClientRect();
+    const edge: 'in' | 'out' =
+      rect && ctx.pointer.clientX - rect.left <= rect.width / 2 ? 'in' : 'out';
 
     const defaultUs = Math.max(
       0,
@@ -148,9 +151,6 @@ export function useClipDrop(options: UseClipDropOptions) {
 
   return {
     isDraggingOver,
-    handleDragEnter,
-    handleDragLeave,
-    handleDragOver,
-    handleDrop,
+    dropZoneAttrs,
   };
 }

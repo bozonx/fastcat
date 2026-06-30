@@ -15,12 +15,12 @@ const { t } = useI18n();
 const emit = defineEmits<{
   click: [];
   action: [];
-  dragstart: [event: DragEvent];
+  'pointer-down': [event: PointerEvent];
 }>();
 
-function onDragStart(e: DragEvent) {
+function onPointerDown(e: PointerEvent) {
   if (props.isDraggable) {
-    emit('dragstart', e);
+    emit('pointer-down', e);
   }
 }
 </script>
@@ -34,8 +34,7 @@ function onDragStart(e: DragEvent) {
         : 'border-ui-border bg-ui-bg-muted hover:bg-ui-bg-elevated',
       isDraggable ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer',
     ]"
-    :draggable="isDraggable"
-    @dragstart="onDragStart"
+    @pointerdown="onPointerDown"
     @click="emit('click')"
   >
     <UIcon :name="manifest.icon" class="w-8 h-8 text-primary shrink-0" />

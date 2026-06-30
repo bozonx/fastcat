@@ -7,6 +7,10 @@ import { useWorkspaceStore } from '~/stores/workspace.store';
 import type { ShapeType, HudType } from '~/timeline/types';
 import { getCustomPresetsByCategory } from '~/utils/presets';
 import CollapsibleEffectGroup from '~/components/effects/CollapsibleEffectGroup.vue';
+import { armPointerDnd } from '~/composables/dnd/usePointerDnd';
+import { useDraggedFile } from '~/composables/useDraggedFile';
+
+const { setDraggedFile, clearDraggedFile } = useDraggedFile();
 
 defineProps<{
   compact?: boolean;
@@ -88,26 +92,19 @@ const customShapes = computed(() =>
 
 const customHuds = computed(() => getCustomPresetsByCategory(presetsStore.customPresets, 'hud'));
 
-function handleDragStart(
-  event: DragEvent,
+function handlePointerDown(
+  event: PointerEvent,
   type: string,
   category: 'shape' | 'hud' | 'text',
   presetParams?: Record<string, unknown>,
 ) {
-  if (!event.dataTransfer) return;
-
-  event.dataTransfer.setData(
-    'application/json',
-    JSON.stringify({
-      kind: category,
-      name: type,
-      path: '',
-      type: type,
-      presetParams,
-    }),
-  );
-
-  event.dataTransfer.effectAllowed = 'copy';
+  const libraryPayload = { kind: category, name: type, path: '', type, presetParams };
+  // Lightweight descriptor for the timeline drag-preview ghost.
+  setDraggedFile({ kind: category, name: type, path: '' });
+  armPointerDnd(event, {
+    payload: { source: 'library', data: libraryPayload, preview: { label: type } },
+    onEnd: () => clearDraggedFile(),
+  });
 }
 
 function updateCustomTextsOrder(newCustomTexts: CustomPreset[]) {
@@ -210,8 +207,7 @@ function isSelected(kind: 'text' | 'shape' | 'hud', id: string) {
                   ? 'border-primary bg-primary/10'
                   : 'border-ui-border bg-ui-bg-muted hover:bg-ui-bg-elevated'
               "
-              draggable="true"
-              @dragstart="handleDragStart($event, text.type, 'text', text.params)"
+              @pointerdown="handlePointerDown($event, text.type, 'text', text.params)"
               @click="selectItem('text', text.type, text.params)"
             >
               <UIcon :name="text.icon" class="w-8 h-8 text-primary shrink-0" />
@@ -268,8 +264,7 @@ function isSelected(kind: 'text' | 'shape' | 'hud', id: string) {
               </div>
               <div
                 class="external-drag flex items-center gap-3 flex-1 min-w-0"
-                draggable="true"
-                @dragstart="handleDragStart($event, text.id, 'text', text.params)"
+                @pointerdown="handlePointerDown($event, text.id, 'text', text.params)"
               >
                 <UIcon
                   :name="
@@ -331,8 +326,7 @@ function isSelected(kind: 'text' | 'shape' | 'hud', id: string) {
                   ? 'border-primary bg-primary/10'
                   : 'border-ui-border bg-ui-bg-muted hover:bg-ui-bg-elevated'
               "
-              draggable="true"
-              @dragstart="handleDragStart($event, shape.type, 'shape')"
+              @pointerdown="handlePointerDown($event, shape.type, 'shape')"
               @click="selectItem('shape', shape.type)"
             >
               <UIcon :name="shape.icon" class="w-8 h-8 text-primary shrink-0" />
@@ -377,8 +371,7 @@ function isSelected(kind: 'text' | 'shape' | 'hud', id: string) {
               </div>
               <div
                 class="external-drag flex items-center gap-3 flex-1 min-w-0"
-                draggable="true"
-                @dragstart="handleDragStart($event, shape.id, 'shape', shape.params)"
+                @pointerdown="handlePointerDown($event, shape.id, 'shape', shape.params)"
               >
                 <UIcon
                   :name="
@@ -425,8 +418,7 @@ function isSelected(kind: 'text' | 'shape' | 'hud', id: string) {
                   ? 'border-primary bg-primary/10'
                   : 'border-ui-border bg-ui-bg-muted hover:bg-ui-bg-elevated'
               "
-              draggable="true"
-              @dragstart="handleDragStart($event, hud.type, 'hud')"
+              @pointerdown="handlePointerDown($event, hud.type, 'hud')"
               @click="selectItem('hud', hud.type)"
             >
               <UIcon :name="hud.icon" class="w-8 h-8 text-primary shrink-0" />
@@ -471,8 +463,7 @@ function isSelected(kind: 'text' | 'shape' | 'hud', id: string) {
               </div>
               <div
                 class="external-drag flex items-center gap-3 flex-1 min-w-0"
-                draggable="true"
-                @dragstart="handleDragStart($event, hud.id, 'hud', hud.params)"
+                @pointerdown="handlePointerDown($event, hud.id, 'hud', hud.params)"
               >
                 <UIcon
                   :name="
