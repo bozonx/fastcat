@@ -59,7 +59,7 @@ const emit = defineEmits<{
 
 function getMarkerButtonClass(marker: MarkerPoint) {
   if (props.isMarkerSelected(marker.id)) {
-    return marker.color ? 'ring-2 ring-white/80' : 'bg-primary-400 ring-2 ring-white/80';
+    return marker.color ? '' : 'bg-primary-400';
   }
 
   return marker.color ? '' : 'bg-primary-500';
@@ -141,7 +141,7 @@ function getMarkerButtonClass(marker: MarkerPoint) {
           <UiTooltip :text="truncateTooltip(point.text)" :disabled="!point.text">
             <button
               type="button"
-              class="-translate-x-1/2 relative z-30"
+              class="-translate-x-1/2 relative z-30 outline-none"
               :class="getMarkerButtonClass(point)"
               :style="point.color ? { color: point.color } : {}"
               :aria-label="point.isZone ? zoneMarkerStartLabel : markerLabel"
@@ -179,7 +179,7 @@ function getMarkerButtonClass(marker: MarkerPoint) {
           <UiTooltip :text="truncateTooltip(point.text)" :disabled="!point.text">
             <button
               type="button"
-              class="translate-x-1/2 relative z-30"
+              class="translate-x-1/2 relative z-30 outline-none"
               :class="getMarkerButtonClass(point)"
               :style="point.color ? { color: point.color } : {}"
               :aria-label="zoneMarkerEndLabel"

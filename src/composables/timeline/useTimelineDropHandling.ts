@@ -20,7 +20,7 @@ import { useAppClipboard } from '~/composables/useAppClipboard';
 import { crossVfsCopy } from '~/file-manager/core/vfs/crossVfs';
 import { LARGE_UPLOAD_BACKGROUND_THRESHOLD_BYTES } from '~/file-manager/application/fileManagerCommands';
 import { parseTimelineFromOtio } from '~/timeline/otio-serializer';
-import { resolveNonOverlappingStartUs, sanitizeFps } from '~/timeline/commands/utils';
+import { assertNoOverlap, quantizeTimeUsToFrames, sanitizeFps } from '~/timeline/commands/utils';
 import { secondsToUs } from '~/utils/time';
 import { syncFileManagerDragCursor } from '~/composables/file-manager/dragCursor';
 import { withFileIoSlot } from '~/utils/io/io-governor';
@@ -39,6 +39,7 @@ interface DragPreview {
   label: string;
   durationUs: number;
   kind: 'timeline-clip' | 'file';
+  invalid?: boolean;
 }
 
 interface TimelineDropItem {
@@ -214,21 +215,6 @@ export function useTimelineDropHandling(options: UseTimelineDropHandlingOptions)
     return getCompatibleTrackId(inputTrackId, 'video');
   }
 
-  function resolveInsertStartUs(params: {
-    trackId: string;
-    startUs: number;
-    durationUs: number;
-    pseudo: boolean;
-  }) {
-    const { trackId, pseudo } = params;
-    const track = getTrackById(trackId);
-    if (!track) return params.startUs;
-    if (pseudo) return params.startUs;
-
-    const fps = sanitizeFps(timelineStore.timelineDoc?.timebase.fps);
-    return resolveNonOverlappingStartUs(track, params.startUs, params.durationUs, fps);
-  }
-
   function resolveDropStartUs(params: {
     trackId: string;
     startUs: number;
@@ -266,9 +252,40 @@ export function useTimelineDropHandling(options: UseTimelineDropHandlingOptions)
       frameOffsetUs: 0,
     });
 
-    return resolveInsertStartUs({
-      ...params,
-      startUs: snappedStartUs,
+    return snappedStartUs;
+  }
+
+  function isDropPlacementInvalid(params: {
+    trackId: string;
+    startUs: number;
+    durationUs: number;
+    pseudo: boolean;
+  }) {
+    if (params.pseudo) return false;
+
+    const track = getTrackById(params.trackId);
+    if (!track) return false;
+
+    const fps = sanitizeFps(timelineStore.timelineDoc?.timebase.fps);
+    const startUs = quantizeTimeUsToFrames(params.startUs, fps, 'round');
+    const durationUs = quantizeTimeUsToFrames(params.durationUs, fps, 'round');
+
+    try {
+      assertNoOverlap(track, '', startUs, durationUs);
+      return false;
+    } catch (err) {
+      if (err instanceof Error && err.message === 'Item overlaps with another item') {
+        return true;
+      }
+      throw err;
+    }
+  }
+
+  function reportInvalidDropPlacement() {
+    toast.add({
+      color: 'error',
+      title: t('fastcat.timeline.cannotInsertPlayheadOnClip'),
+      icon: 'i-heroicons-x-circle',
     });
   }
 
@@ -654,6 +671,12 @@ export function useTimelineDropHandling(options: UseTimelineDropHandlingOptions)
         payload.count && payload.count > 1 ? `${payload.name} +${payload.count - 1}` : payload.name,
       durationUs,
       kind: payload.kind === 'timeline' ? ('timeline-clip' as const) : ('file' as const),
+      invalid: isDropPlacementInvalid({
+        trackId: targetTrackId,
+        startUs,
+        durationUs,
+        pseudo,
+      }),
     };
 
     dragPreview.value = preview;
@@ -776,6 +799,12 @@ export function useTimelineDropHandling(options: UseTimelineDropHandlingOptions)
             durationUs,
             kind: 'file',
           };
+          dragPreview.value.invalid = isDropPlacementInvalid({
+            trackId,
+            startUs: dragPreview.value.startUs,
+            durationUs,
+            pseudo: false,
+          });
         }
         return;
       } else if (files.length > 0) {
@@ -817,6 +846,12 @@ export function useTimelineDropHandling(options: UseTimelineDropHandlingOptions)
             durationUs,
             kind: 'file',
           };
+          dragPreview.value.invalid = isDropPlacementInvalid({
+            trackId,
+            startUs: dragPreview.value.startUs,
+            durationUs,
+            pseudo: false,
+          });
         }
       } else {
         if (e.dataTransfer) e.dataTransfer.dropEffect = 'none';
@@ -877,6 +912,12 @@ export function useTimelineDropHandling(options: UseTimelineDropHandlingOptions)
         title: t('common.warning'),
         description: t('fastcat.timeline.noSupportedFiles'),
       });
+      return;
+    }
+
+    if (dragPreview.value?.trackId === trackId && dragPreview.value.invalid) {
+      reportInvalidDropPlacement();
+      clearDragPreview();
       return;
     }
 
@@ -985,9 +1026,39 @@ export function useTimelineDropHandling(options: UseTimelineDropHandlingOptions)
           continue;
         }
 
+        const durationUs = await getPreviewDurationUsAsync({
+          kind: item.kind ?? 'file',
+          path: item.path,
+        });
+        const targetTrackId = resolveDropTrackId({
+          inputTrackId: trackId,
+          payloadKind: item.kind ?? 'file',
+          path: item.path,
+        });
+        const placementStartUs = targetTrackId
+          ? resolveDropStartUs({
+              trackId: targetTrackId,
+              startUs: currentStartUs,
+              durationUs,
+              pseudo,
+            })
+          : currentStartUs;
+        if (
+          targetTrackId &&
+          isDropPlacementInvalid({
+            trackId: targetTrackId,
+            startUs: placementStartUs,
+            durationUs,
+            pseudo,
+          })
+        ) {
+          reportInvalidDropPlacement();
+          break;
+        }
+
         const result = await strategy.execute(item, {
           baseTrackId: trackId,
-          currentStartUs,
+          currentStartUs: placementStartUs,
           pseudo,
         });
 

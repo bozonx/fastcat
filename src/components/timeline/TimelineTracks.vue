@@ -62,6 +62,7 @@ const props = defineProps<{
     label: string;
     durationUs: number;
     kind: 'timeline-clip' | 'file';
+    invalid?: boolean;
   } | null;
   movePreview?: { itemId: string; trackId: string; startUs: number; isCollision?: boolean }[];
   slipPreview?: { itemId: string; trackId: string; deltaUs: number; timecode: string } | null;
@@ -478,7 +479,9 @@ watch(
           timelineStore.isAnyTrackSoloed,
           trackViewModel.clipRenderMemo,
           movePreviewMemoByTrack[trackViewModel.track.id] ?? null,
-          dragPreview?.trackId === trackViewModel.track.id ? dragPreview.startUs : null,
+          dragPreview?.trackId === trackViewModel.track.id
+            ? `${dragPreview.startUs}:${dragPreview.invalid ? 'invalid' : 'valid'}`
+            : null,
           draggingItemTrackId === trackViewModel.track.id ? draggingItemId : null,
           movePreviewSourceTracks.has(trackViewModel.track.id)
             ? (movePreviewMemoByTrack[trackViewModel.track.id] ?? null)
@@ -521,9 +524,11 @@ watch(
           v-if="dragPreview && dragPreview.trackId === trackViewModel.track.id"
           class="absolute top-0.5 bottom-0.5 rounded px-2 flex items-center text-xs text-(--clip-text) z-30 pointer-events-none opacity-80"
           :class="
-            dragPreview.kind === 'file'
-              ? 'bg-primary-600 border border-primary-400'
-              : 'bg-ui-bg-accent border border-ui-border'
+            dragPreview.invalid
+              ? 'bg-red-600/80 border-2 border-red-500 text-white'
+              : dragPreview.kind === 'file'
+                ? 'bg-primary-600 border border-primary-400'
+                : 'bg-ui-bg-accent border border-ui-border'
           "
           :style="{
             left: `${timeUsToPx(dragPreview.startUs, timelineStore.timelineZoom)}px`,

@@ -198,7 +198,7 @@ describe('useTimelineDropHandling', () => {
     };
   });
 
-  it('builds drag preview on dragover and shifts insert position in normal mode to avoid overlap', async () => {
+  it('builds an invalid drag preview at the hovered position when it overlaps in normal mode', async () => {
     const scrollEl = ref({
       scrollLeft: 0,
       getBoundingClientRect: () => ({ left: 0 }),
@@ -228,8 +228,9 @@ describe('useTimelineDropHandling', () => {
 
     expect(api.dragPreview.value).not.toBeNull();
     expect(api.dragPreview.value?.trackId).toBe('v1');
-    expect(api.dragPreview.value?.startUs).toBe(2_000_000);
+    expect(api.dragPreview.value?.startUs).toBe(500_000);
     expect(api.dragPreview.value?.durationUs).toBe(1_500_000);
+    expect(api.dragPreview.value?.invalid).toBe(true);
   });
 
   it('keeps overlap allowed while still snapping in pseudo overlay mode', async () => {
@@ -262,6 +263,32 @@ describe('useTimelineDropHandling', () => {
 
     expect(api.dragPreview.value).not.toBeNull();
     expect(api.dragPreview.value?.startUs).toBe(500_000);
+    expect(api.dragPreview.value?.invalid).toBe(false);
+  });
+
+  it('does not add a library clip when dropped on an invalid overlapping placement', async () => {
+    const scrollEl = ref({
+      scrollLeft: 0,
+      getBoundingClientRect: () => ({ left: 0 }),
+    } as unknown as HTMLElement);
+    const timelineStore = useTimelineStore() as any;
+    timelineStore.addClipToTimelineFromPath = vi.fn().mockResolvedValue({
+      durationUs: 1_500_000,
+      itemId: 'clip-2',
+    });
+    const api = useTimelineDropHandling({ scrollEl });
+
+    await api.handleLibraryDrop(
+      JSON.stringify({
+        name: 'new.mp4',
+        kind: 'file',
+        path: '_video/new.mp4',
+      }),
+      'v1',
+      200_000,
+    );
+
+    expect(timelineStore.addClipToTimelineFromPath).not.toHaveBeenCalled();
   });
 
   it('snaps file-manager drag preview to enabled timeline targets', async () => {
@@ -293,6 +320,7 @@ describe('useTimelineDropHandling', () => {
     );
 
     expect(api.dragPreview.value?.startUs).toBe(2_000_000);
+    expect(api.dragPreview.value?.invalid).toBe(false);
   });
 
   it('uses transformed track coordinates for DnD preview without double-counting scrollLeft', async () => {
@@ -329,6 +357,7 @@ describe('useTimelineDropHandling', () => {
     );
 
     expect(api.dragPreview.value?.startUs).toBe(2_000_000);
+    expect(api.dragPreview.value?.invalid).toBe(false);
   });
 
   it('imports external workspace file to project before creating clip on timeline', async () => {
@@ -360,7 +389,7 @@ describe('useTimelineDropHandling', () => {
         isExternal: true,
       }),
       'v1',
-      0,
+      2_000_000,
     );
 
     expect(crossVfsCopyMock).toHaveBeenCalledWith(
@@ -432,7 +461,11 @@ describe('useTimelineDropHandling', () => {
       path: '_images/image.png',
     });
 
-    await api.handleFileDrop([new File(['image'], 'image.png', { type: 'image/png' })], 'v1', 0);
+    await api.handleFileDrop(
+      [new File(['image'], 'image.png', { type: 'image/png' })],
+      'v1',
+      2_000_000,
+    );
 
     expect(handleFilesMock).not.toHaveBeenCalled();
     expect(timelineStore.addClipToTimelineFromPath).toHaveBeenCalledWith(
@@ -499,7 +532,8 @@ describe('useTimelineDropHandling', () => {
       expect.objectContaining({ name: 'nested.otio' }),
     );
     expect(api.dragPreview.value?.durationUs).toBe(4_000_000);
-    expect(api.dragPreview.value?.startUs).toBe(2_000_000);
+    expect(api.dragPreview.value?.startUs).toBe(1_000_000);
+    expect(api.dragPreview.value?.invalid).toBe(true);
   });
 
   it('applies the same snap target when committing a raw audio file drop', async () => {

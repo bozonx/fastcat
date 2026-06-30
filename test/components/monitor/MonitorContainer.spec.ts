@@ -697,4 +697,65 @@ describe('MonitorContainer', () => {
     });
     expect(timelineStore.requestScrollToPlayhead).toHaveBeenCalled();
   });
+
+  it('shows, updates, and hides hover timecode tooltip on pointer events', async () => {
+    wrapper = mount(MonitorContainer, {
+      global: {
+        plugins: [pinia],
+        stubs: {
+          MonitorViewport: true,
+          MonitorAudioControl: true,
+          UiTooltip: { template: '<div><slot /></div>' },
+          UButton: true,
+          UiActionButton: true,
+          UiToggleButton: true,
+          UDropdownMenu: true,
+          UContextMenu: { template: '<div><slot /></div>' },
+          UiContextMenuPortal: true,
+          UIcon: true,
+        },
+      },
+    });
+
+    await wrapper.vm.$nextTick();
+
+    const seekbar = wrapper.find('[data-testid="monitor-seekbar"]');
+    expect(seekbar.exists()).toBe(true);
+
+    // Mock getBoundingClientRect
+    seekbar.element.getBoundingClientRect = vi.fn(() => ({
+      left: 10,
+      width: 100,
+      top: 0,
+      right: 110,
+      bottom: 10,
+      height: 10,
+      x: 10,
+      y: 0,
+      toJSON: () => {},
+    }));
+
+    // Initially tooltip shouldn't exist
+    expect(wrapper.find('[data-testid="monitor-seekbar-tooltip"]').exists()).toBe(false);
+
+    // Pointerenter triggers hover state
+    await seekbar.trigger('pointerenter');
+    await wrapper.vm.$nextTick();
+
+    // Trigger pointermove at 50% width (ClientX = 60)
+    await seekbar.trigger('pointermove', {
+      clientX: 60,
+    });
+    await wrapper.vm.$nextTick();
+
+    const tooltip = wrapper.find('[data-testid="monitor-seekbar-tooltip"]');
+    expect(tooltip.exists()).toBe(true);
+    // At 50% of 1,000,000 Us (500,000 Us) at 30 FPS, frame is 15 -> "00:00:00:15"
+    expect(tooltip.text()).toContain('00:00:00:15');
+
+    // Pointerleave hides the tooltip
+    await seekbar.trigger('pointerleave');
+    await wrapper.vm.$nextTick();
+    expect(wrapper.find('[data-testid="monitor-seekbar-tooltip"]').exists()).toBe(false);
+  });
 });

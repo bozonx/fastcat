@@ -21,6 +21,7 @@ import { useProjectActions } from '~/composables/editor/useProjectActions';
 import { useHotkeyLabel } from '~/composables/useHotkeyLabel';
 import { dropdownNoReturnFocus } from '~/composables/useDropdownMenuFocus';
 import { isTauriRuntime } from '~/utils/runtime';
+import { formatTimecode } from '~/utils/time';
 
 const { t } = useI18n();
 const toast = useToast();
@@ -75,6 +76,13 @@ const {
 
 const seekbarRef = ref<HTMLElement | null>(null);
 const isDraggingSeekbar = ref(false);
+const isHoveringSeekbar = ref(false);
+const hoverPercent = ref(0);
+const hoverTimecode = ref('');
+
+const showTooltip = computed(
+  () => (isHoveringSeekbar.value || isDraggingSeekbar.value) && safeDurationUs.value > 0,
+);
 
 const throttledScrollToPlayhead = useThrottleFn(() => {
   timelineStore.requestScrollToPlayhead?.();
@@ -84,6 +92,19 @@ const progressPercent = computed(() => {
   if (safeDurationUs.value <= 0) return 0;
   return (uiCurrentTimeUs.value / safeDurationUs.value) * 100;
 });
+
+function updateHoverState(event: PointerEvent) {
+  if (!seekbarRef.value || safeDurationUs.value <= 0) return;
+  const rect = seekbarRef.value.getBoundingClientRect();
+  const x = event.clientX - rect.left;
+  const width = rect.width;
+  const pct = Math.max(0, Math.min(1, x / width));
+  hoverPercent.value = pct * 100;
+
+  const targetTimeUs = Math.round(pct * safeDurationUs.value);
+  const fps = timelineStore.timelineFormat?.fps ?? timelineStore.fps;
+  hoverTimecode.value = formatTimecode(targetTimeUs, fps);
+}
 
 function handleSeekEvent(event: PointerEvent) {
   if (!seekbarRef.value || safeDurationUs.value <= 0) return;
@@ -100,14 +121,17 @@ function onSeekbarPointerDown(event: PointerEvent) {
   if (event.button !== 0) return;
   isDraggingSeekbar.value = true;
   handleSeekEvent(event);
+  updateHoverState(event);
   seekbarRef.value?.setPointerCapture(event.pointerId);
   event.stopPropagation();
   resetIdleTimeout();
 }
 
 function onSeekbarPointerMove(event: PointerEvent) {
-  if (!isDraggingSeekbar.value) return;
-  handleSeekEvent(event);
+  updateHoverState(event);
+  if (isDraggingSeekbar.value) {
+    handleSeekEvent(event);
+  }
   event.stopPropagation();
   resetIdleTimeout();
 }
@@ -115,6 +139,7 @@ function onSeekbarPointerMove(event: PointerEvent) {
 function onSeekbarPointerUp(event: PointerEvent) {
   if (!isDraggingSeekbar.value) return;
   isDraggingSeekbar.value = false;
+  isHoveringSeekbar.value = false;
   seekbarRef.value?.releasePointerCapture(event.pointerId);
   event.stopPropagation();
   resetIdleTimeout();
@@ -576,6 +601,8 @@ watch(viewportRef, (vp) => {
                 ref="seekbarRef"
                 data-testid="monitor-seekbar"
                 class="relative h-4 flex items-center cursor-pointer group"
+                @pointerenter="isHoveringSeekbar = true"
+                @pointerleave="isHoveringSeekbar = false"
               >
                 <!-- Background Track -->
                 <div
@@ -598,6 +625,25 @@ watch(viewportRef, (vp) => {
                   ]"
                   :style="{ left: `${progressPercent}%` }"
                 ></div>
+
+                <!-- Hover Timecode Tooltip -->
+                <Transition
+                  enter-active-class="transition duration-150 ease-out"
+                  enter-from-class="opacity-0 scale-95"
+                  enter-to-class="opacity-100 scale-100"
+                  leave-active-class="transition duration-150 ease-in"
+                  leave-from-class="opacity-100 scale-100"
+                  leave-to-class="opacity-0 scale-95"
+                >
+                  <div
+                    v-if="showTooltip"
+                    data-testid="monitor-seekbar-tooltip"
+                    class="absolute bottom-full mb-2.5 -translate-x-1/2 pointer-events-none z-50 bg-ui-bg-elevated/95 dark:bg-black/90 backdrop-blur-md border border-ui-border rounded px-2 py-0.5 text-3xs font-mono tabular-nums text-ui-text shadow-xl"
+                    :style="{ left: `${hoverPercent}%` }"
+                  >
+                    {{ hoverTimecode }}
+                  </div>
+                </Transition>
               </div>
             </div>
           </div>

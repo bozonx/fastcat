@@ -238,4 +238,58 @@ describe('ClipAudioFades', () => {
       expect(isHidden(el)).toBe(true);
     });
   });
+
+  describe('volume indicator label and positioning', () => {
+    it('renders label with 100% even if gain is 1.0 (100%) and selected', async () => {
+      const component = await mountSuspended(ClipAudioFades, {
+        props: {
+          ...defaultProps,
+          clip: { ...baseItem, audioGain: 1.0 },
+          isSelected: true,
+        },
+      });
+
+      const control = component.get('[data-testid="clip-volume-control"]');
+      const label = control.find('.text-2xs');
+      expect(label.exists()).toBe(true);
+      expect(label.text()).toContain('100%');
+    });
+
+    it('positions label in the center when center is within viewport', async () => {
+      const component = await mountSuspended(ClipAudioFades, {
+        props: {
+          ...defaultProps,
+          clipWidthPx: 400,
+          scrollLeft: 0,
+          viewportWidth: 1000,
+          item: { ...baseItem, timelineRange: { startUs: 100_000, durationUs: 4_000_000 } },
+          clip: { ...baseItem, timelineRange: { startUs: 100_000, durationUs: 4_000_000 } },
+        },
+      });
+
+      const control = component.get('[data-testid="clip-volume-control"]');
+      const label = control.find('.text-2xs');
+      expect(label.exists()).toBe(true);
+      expect(label.attributes('style')).toContain('left: 200px');
+    });
+
+    it('shifts label to stay visible when center is outside viewport (center to the left)', async () => {
+      const component = await mountSuspended(ClipAudioFades, {
+        props: {
+          ...defaultProps,
+          clipWidthPx: 400,
+          scrollLeft: 250,
+          viewportWidth: 500,
+          zoom: 50,
+          item: { ...baseItem, timelineRange: { startUs: 0, durationUs: 4_000_000 } },
+          clip: { ...baseItem, timelineRange: { startUs: 0, durationUs: 4_000_000 } },
+        },
+      });
+
+      const control = component.get('[data-testid="clip-volume-control"]');
+      const label = control.find('.text-2xs');
+      expect(label.exists()).toBe(true);
+      expect(label.attributes('style')).toContain('left: 274px');
+    });
+  });
 });

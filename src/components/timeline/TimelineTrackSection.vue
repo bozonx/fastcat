@@ -25,6 +25,7 @@ const props = defineProps<{
     label: string;
     durationUs: number;
     kind: 'timeline-clip' | 'file';
+    invalid?: boolean;
   } | null;
   movePreview?: { itemId: string; trackId: string; startUs: number; isCollision?: boolean }[];
   slipPreview?: { itemId: string; trackId: string; deltaUs: number; timecode: string } | null;

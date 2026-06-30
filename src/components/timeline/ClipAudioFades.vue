@@ -131,10 +131,6 @@ const isIndicatorVisible = computed(() => {
   if (props.trackHeight < 35) return false;
   if (props.clipWidthPx < 45) return false;
 
-  // Hide if volume is 100% and not muted
-  const roundedVolume = Math.round((props.clip.audioGain ?? 1) * 100);
-  if (roundedVolume === 100 && !props.clip.audioMuted) return false;
-
   return true;
 });
 
