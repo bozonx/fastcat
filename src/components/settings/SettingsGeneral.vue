@@ -211,6 +211,7 @@ function resetGeneralDefaults() {
               :model-value="workspaceStore.userSettings.backup.count"
               :min="0"
               :max="5"
+              with-input
               @update:model-value="workspaceStore.userSettings.backup.count = $event as number"
             />
             <UiWheelNumberInput

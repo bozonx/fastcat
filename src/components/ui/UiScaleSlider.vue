@@ -11,12 +11,14 @@ interface UiScaleSliderProps {
   min?: number;
   max?: number;
   options?: ScaleSliderOption[];
+  withInput?: boolean;
 }
 
 const props = withDefaults(defineProps<UiScaleSliderProps>(), {
   min: 10,
   max: 20,
   options: undefined,
+  withInput: false,
 });
 
 const modelValue = defineModel<number | string>({ required: true });
@@ -229,12 +231,16 @@ function onPointerUp(event: PointerEvent) {
           :style="{ left: `${thumbPercent}%` }"
         >
           <div class="flex flex-col items-center" style="margin-top: -26px">
-            <!-- Rounded pill body showing current value -->
+            <!-- Rounded pill body showing current value or drag handle bars -->
             <div
               class="h-4 rounded bg-primary-500 shadow-md flex items-center justify-center transition-transform duration-75 px-1"
-              :class="[isDragging ? 'scale-110' : '', isDiscreteMode ? 'min-w-[3rem]' : 'w-6']"
+              :class="[isDragging ? 'scale-110' : '', withInput ? 'w-6' : (isDiscreteMode ? 'min-w-[3rem]' : 'w-6')]"
             >
-              <span class="text-[9px] font-bold text-white leading-none whitespace-nowrap">
+              <div v-if="withInput" class="flex flex-col gap-0.5 pointer-events-none">
+                <div class="w-2.5 h-[1.5px] bg-white/70 rounded-full" />
+                <div class="w-2.5 h-[1.5px] bg-white/70 rounded-full" />
+              </div>
+              <span v-else class="text-[9px] font-bold text-white leading-none whitespace-nowrap">
                 {{ thumbLabel }}
               </span>
             </div>

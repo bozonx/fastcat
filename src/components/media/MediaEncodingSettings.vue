@@ -311,6 +311,7 @@ watch(
             :model-value="String(bitrateMbps)"
             :options="videoBitrateOptions"
             :disabled="props.disabled"
+            with-input
             @update:model-value="bitrateMbps = Number($event)"
           />
           <UiWheelNumberInput
@@ -456,6 +457,7 @@ watch(
             :model-value="String(audioBitrateKbps)"
             :options="audioBitrateOptions"
             :disabled="props.disabled"
+            with-input
             @update:model-value="audioBitrateKbps = Number($event)"
           />
           <UiWheelNumberInput
