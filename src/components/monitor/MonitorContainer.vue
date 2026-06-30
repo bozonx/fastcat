@@ -590,7 +590,9 @@ watch(viewportRef, (vp) => {
                         ? 'bottom-6'
                         : 'bottom-20',
                     ]
-                  : 'bottom-0 px-0 pb-0',
+                  : toolbarPosition === 'bottom'
+                    ? 'bottom-[-8px] px-0 pb-0'
+                    : 'bottom-2 px-3 pb-0',
               ]"
               @pointerdown="onSeekbarPointerDown"
               @pointermove="onSeekbarPointerMove"

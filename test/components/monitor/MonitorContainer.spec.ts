@@ -9,6 +9,8 @@ import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useProjectStore } from '~/stores/project.store';
 import { useTimelineStore } from '~/stores/timeline.store';
 
+const mockToolbarPositionRef = ref('bottom');
+
 // Mock all the monitor-related composables used in MonitorContainer
 vi.mock('~/composables/monitor/useMonitorRuntime', () => ({
   useMonitorRuntime: () => ({
@@ -53,7 +55,7 @@ vi.mock('~/composables/monitor/useMonitorContainerControls', () => ({
     togglePreviewEffects: vi.fn(),
     toggleProxyUsage: vi.fn(),
     toggleTransparencyGrid: vi.fn(),
-    toolbarPosition: ref('bottom'),
+    toolbarPosition: mockToolbarPositionRef,
   }),
 }));
 
@@ -757,5 +759,43 @@ describe('MonitorContainer', () => {
     await seekbar.trigger('pointerleave');
     await wrapper.vm.$nextTick();
     expect(wrapper.find('[data-testid="monitor-seekbar-tooltip"]').exists()).toBe(false);
+  });
+
+  it('applies correct seekbar positioning classes based on toolbarPosition', async () => {
+    mockToolbarPositionRef.value = 'bottom';
+
+    wrapper = mount(MonitorContainer, {
+      global: {
+        plugins: [pinia],
+        stubs: {
+          MonitorViewport: true,
+          MonitorAudioControl: true,
+          UiTooltip: { template: '<div><slot /></div>' },
+          UButton: true,
+          UiActionButton: true,
+          UiToggleButton: true,
+          UDropdownMenu: true,
+          UContextMenu: { template: '<div><slot /></div>' },
+          UiContextMenuPortal: true,
+          UIcon: true,
+        },
+      },
+    });
+
+    await wrapper.vm.$nextTick();
+
+    const seekbar = wrapper.find('[data-testid="monitor-seekbar"]');
+    const seekbarWrapper = seekbar.element.parentElement;
+    expect(seekbarWrapper).toBeDefined();
+
+    // Default 'bottom' position: seekbar is pressed tight
+    expect(seekbarWrapper?.className).toContain('bottom-[-8px]');
+    expect(seekbarWrapper?.className).toContain('px-0');
+
+    // Change to 'top' and verify it has spacing/offset
+    mockToolbarPositionRef.value = 'top';
+    await wrapper.vm.$nextTick();
+    expect(seekbarWrapper?.className).toContain('bottom-2');
+    expect(seekbarWrapper?.className).toContain('px-3');
   });
 });
