@@ -83,7 +83,11 @@ const thumbLabel = computed(() => {
   if (isDiscreteMode.value) {
     return props.options?.[currentIndex.value]?.label ?? '';
   }
-  return String(clampedValue.value);
+  const val = Number(modelValue.value);
+  if (isNaN(val) || val < props.min || val > props.max) {
+    return '-';
+  }
+  return String(val);
 });
 
 function valueFromPointer(event: PointerEvent): number | string {
@@ -125,7 +129,7 @@ function onPointerUp(event: PointerEvent) {
     <!-- Track area — captures all pointer events -->
     <div
       ref="trackRef"
-      class="relative h-10 flex items-center cursor-pointer px-4"
+      class="relative h-10 flex items-center px-4"
       role="slider"
       :aria-valuenow="isDiscreteMode ? currentIndex + 1 : clampedValue"
       :aria-valuemin="isDiscreteMode ? 1 : min"
@@ -173,7 +177,7 @@ function onPointerUp(event: PointerEvent) {
 
         <!-- Thumb — pill body with downward-pointing triangle -->
         <div
-          class="absolute -translate-x-1/2 pointer-events-none"
+          class="absolute -translate-x-1/2 cursor-pointer pointer-events-auto"
           :class="isDragging ? 'transition-none' : 'transition-[left] duration-75'"
           :style="{ left: `${thumbPercent}%` }"
         >

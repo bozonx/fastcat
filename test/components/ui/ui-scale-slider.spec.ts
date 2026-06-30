@@ -14,7 +14,7 @@ describe('UiScaleSlider', () => {
       });
 
       expect(component.exists()).toBe(true);
-      const ticks = component.findAll('[role="slider"] > div[class*="absolute flex flex-col"]');
+      const ticks = component.findAll('[role="slider"] div[class*="absolute flex flex-col"]');
       expect(ticks.length).toBe(11);
     });
 
@@ -28,6 +28,18 @@ describe('UiScaleSlider', () => {
       });
 
       expect(component.text()).toContain('15');
+    });
+
+    it('shows a dash in the thumb when value is outside range', async () => {
+      const component = await mountSuspended(UiScaleSlider, {
+        props: {
+          modelValue: 25,
+          min: 10,
+          max: 20,
+        },
+      });
+
+      expect(component.text()).toContain('-');
     });
   });
 

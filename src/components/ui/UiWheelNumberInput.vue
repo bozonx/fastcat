@@ -161,7 +161,7 @@ onBeforeUnmount(() => {
       :disabled="disabled"
       class="w-full"
       :ui="{
-        base: 'font-mono transition-colors cursor-ns-resize',
+        base: 'font-mono transition-colors focus:cursor-ns-resize',
       }"
     >
       <template v-for="(_, name) in $slots" #[name]="slotProps">
