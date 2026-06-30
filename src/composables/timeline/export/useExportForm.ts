@@ -28,6 +28,7 @@ export interface ExportRangeOption {
   label: string;
   description?: string;
   range?: TimelineSelectionRange;
+  color?: string;
 }
 
 export function useExportForm() {
@@ -141,6 +142,7 @@ export function useExportForm() {
             Math.round(marker.timeUs + (marker.durationUs ?? 0)),
           ),
         },
+        color: marker.color || undefined,
       });
     });
 

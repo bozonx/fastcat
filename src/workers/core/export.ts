@@ -259,6 +259,12 @@ export interface ExportProgressReporter {
   flush: () => Promise<void>;
 }
 
+type ExportWriterId = 'audio' | 'video';
+
+interface ExportWriterProgressAggregator {
+  report: (writerId: ExportWriterId, progress: number) => void;
+}
+
 export function createCoalescedExportProgressReporter(
   hostClient: ExportProgressHost | null,
 ): ExportProgressReporter {
@@ -291,6 +297,35 @@ export function createCoalescedExportProgressReporter(
       while (inFlight) {
         await inFlight;
       }
+    },
+  };
+}
+
+export function createExportWriterProgressAggregator(params: {
+  progressReporter: ExportProgressReporter;
+  taskId?: string;
+  writerIds: ExportWriterId[];
+}): ExportWriterProgressAggregator {
+  const writerIds = [...new Set(params.writerIds)];
+  const writerProgress = new Map<ExportWriterId, number>(
+    writerIds.map((writerId) => [writerId, 0]),
+  );
+  let lastReportedProgress = 0;
+
+  return {
+    report(writerId, progress) {
+      if (!writerProgress.has(writerId)) return;
+      const clampedProgress = Number.isFinite(progress) ? Math.max(0, Math.min(1, progress)) : 0;
+      writerProgress.set(writerId, clampedProgress);
+
+      const totalProgress = [...writerProgress.values()].reduce((acc, value) => acc + value, 0);
+      const nextProgress = Math.min(
+        98,
+        Math.floor((totalProgress / Math.max(1, writerProgress.size)) * 99),
+      );
+      if (nextProgress <= lastReportedProgress) return;
+      lastReportedProgress = nextProgress;
+      params.progressReporter.report(nextProgress, params.taskId);
     },
   };
 }
@@ -620,6 +655,7 @@ export async function runExport(
       ranges: { timelineStartS: number; sourceStartS: number; sourceEndS: number };
       input: unknown;
     } | null;
+    onProgress?: (progress: number) => void;
   }) {
     const audioPacketState = params.audioPacketState;
     if (!audioPacketState) return;
@@ -654,7 +690,14 @@ export async function runExport(
         } else {
           await audioPacketState.audioSource.add(adjustedPacket);
         }
+        const sourceDuration = Math.max(0, ranges.sourceEndS - ranges.sourceStartS);
+        if (sourceDuration > 0) {
+          const packetProgress = (packetEnd - ranges.sourceStartS) / sourceDuration;
+          params.onProgress?.(packetProgress);
+        }
       }
+
+      params.onProgress?.(1);
 
       if (isFirstPacket) {
         await reportExportWarning(
@@ -674,8 +717,7 @@ export async function runExport(
     fps: number;
     videoSource: { add: (timestampS: number, durationS: number) => Promise<void> };
     compositor: VideoCompositor;
-    progressReporter: ExportProgressReporter;
-    taskId?: string;
+    writerProgress: ExportWriterProgressAggregator;
   }) {
     const fps = Math.max(1, Number(params.fps) || 30);
     const totalFrames = computeExportTotalFrames({ durationUs: params.durationUs, fps });
@@ -726,13 +768,13 @@ export async function runExport(
       await params.videoSource.add(frame.timestampS, frame.durationS);
       encodeSubmitMsTotal += nowMsFn() - encodeSubmitStartMs;
 
-      const progress = Math.min(99, Math.round(((frameNum + 1) / totalFrames) * 99));
+      const progress = (frameNum + 1) / totalFrames;
       const nowProgressMs = nowMsFn();
       const shouldReport =
         frameNum + 1 === totalFrames || nowProgressMs - lastProgressAtMs >= progressIntervalMs;
       if (shouldReport) {
         lastProgressAtMs = nowProgressMs;
-        params.progressReporter.report(progress, params.taskId);
+        params.writerProgress.report('video', progress);
       }
 
       const nowMs = nowMsFn();
@@ -843,12 +885,14 @@ export async function runExport(
     // needs.
     async function setupAudioTracks(output: { addAudioTrack: (source: unknown) => void }): Promise<{
       audioSource: unknown;
-      writeMixedAudioToSource: (() => Promise<void>) | null;
+      writeMixedAudioToSource: ((onProgress?: (progress: number) => void) => Promise<void>) | null;
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       audioPacketState: any;
     }> {
       let audioSource: unknown = null;
-      let writeMixedAudioToSource: (() => Promise<void>) | null = null;
+      let writeMixedAudioToSource:
+        | ((onProgress?: (progress: number) => void) => Promise<void>)
+        | null = null;
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       let audioPacketState: any = null;
 
@@ -956,6 +1000,14 @@ export async function runExport(
       const { audioSource, writeMixedAudioToSource, audioPacketState } = await setupAudioTracks(
         output as unknown as { addAudioTrack: (source: unknown) => void },
       );
+      const writerIds: ExportWriterId[] = [];
+      if (videoSource && localCompositor) writerIds.push('video');
+      if ((audioSource && writeMixedAudioToSource) || audioPacketState) writerIds.push('audio');
+      const writerProgress = createExportWriterProgressAggregator({
+        progressReporter,
+        taskId,
+        writerIds,
+      });
 
       let finalized = false;
       try {
@@ -965,9 +1017,15 @@ export async function runExport(
         let audioWriter: (() => Promise<void>) | null = null;
 
         if (audioSource && writeMixedAudioToSource) {
-          audioWriter = writeMixedAudioToSource;
+          audioWriter = async () => {
+            await writeMixedAudioToSource((progress) => writerProgress.report('audio', progress));
+          };
         } else if (audioPacketState) {
-          audioWriter = () => writeOpusPassthroughIfNeeded({ audioPacketState });
+          audioWriter = () =>
+            writeOpusPassthroughIfNeeded({
+              audioPacketState,
+              onProgress: (progress) => writerProgress.report('audio', progress),
+            });
         }
 
         const videoWriter =
@@ -978,8 +1036,7 @@ export async function runExport(
                   fps: options.fps,
                   videoSource,
                   compositor: localCompositor,
-                  progressReporter,
-                  taskId,
+                  writerProgress,
                 })
             : null;
 

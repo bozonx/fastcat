@@ -323,6 +323,37 @@ describe('useExportForm', () => {
     ]);
   });
 
+  it('передает цвета маркеров в опции экспорта', async () => {
+    markersMock.value = [
+      { id: 'zone-1', timeUs: 1_000_000, durationUs: 3_000_000, text: 'Intro', color: '#ff0000' },
+      { id: 'zone-2', timeUs: 5_000_000, durationUs: 2_000_000, text: 'Outro' },
+    ];
+
+    const form = useExportForm();
+    await form.initializeExportForm();
+
+    expect(form.exportRangeOptions.value).toEqual([
+      {
+        id: 'timeline',
+        label: 'videoEditor.export.wholeTimeline',
+      },
+      {
+        id: 'marker:zone-1',
+        label: 'videoEditor.export.zoneMarker',
+        description: 'Intro',
+        range: { startUs: 1_000_000, endUs: 4_000_000 },
+        color: '#ff0000',
+      },
+      {
+        id: 'marker:zone-2',
+        label: 'videoEditor.export.zoneMarker',
+        description: 'Outro',
+        range: { startUs: 5_000_000, endUs: 7_000_000 },
+        color: undefined,
+      },
+    ]);
+  });
+
   it('выбирает область выделения по умолчанию, если на таймлайне ничего не выбрано', async () => {
     selectionRangeMock.value = { startUs: 2_000_000, endUs: 6_000_000 };
 
