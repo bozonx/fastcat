@@ -128,10 +128,15 @@ const volumeY = computed(() => {
 });
 
 const isIndicatorVisible = computed(() => {
-  if (props.trackHeight < 35) return false;
-  if (props.clipWidthPx < 45) return false;
-
+  if (props.clipWidthPx < 48) return false;
   return true;
+});
+
+const isLabelAbove = computed(() => {
+  const lineYPx = (volumeY.value / 100) * props.trackHeight;
+  const spaceAbove = lineYPx;
+  const spaceBelow = props.trackHeight - lineYPx;
+  return spaceAbove >= spaceBelow;
 });
 
 const volumeIcon = computed(() => {
@@ -275,6 +280,7 @@ const volumeIndicatorPosition = computed(() => {
 
     <!-- Volume Control Line -->
     <div
+      v-if="trackHeight >= 35"
       data-testid="clip-volume-control"
       class="absolute left-0 right-0 z-45 h-3 -mt-1.5 flex flex-col justify-center transition-opacity touch-none"
       :class="[
@@ -307,7 +313,7 @@ const volumeIndicatorPosition = computed(() => {
       <div
         v-if="isIndicatorVisible"
         class="absolute -translate-x-1/2 text-2xs font-mono text-yellow-400 leading-none py-0.5 bg-black/60 px-1.5 rounded pointer-events-none select-none transition-opacity opacity-100 flex items-center gap-1"
-        :class="[(clip.audioGain ?? 1) > 1 ? 'top-full mt-0.5' : 'bottom-full mb-0.5']"
+        :class="[isLabelAbove ? 'bottom-full mb-0.5' : 'top-full mt-0.5']"
         :style="volumeIndicatorPosition"
       >
         <UIcon :name="volumeIcon" class="w-3 h-3 shrink-0" />

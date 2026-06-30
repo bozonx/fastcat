@@ -291,5 +291,63 @@ describe('ClipAudioFades', () => {
       expect(label.exists()).toBe(true);
       expect(label.attributes('style')).toContain('left: 274px');
     });
+
+    it('hides the entire volume control when track height is less than 35px', async () => {
+      const component = await mountSuspended(ClipAudioFades, {
+        props: {
+          ...defaultProps,
+          trackHeight: 30, // less than 35px
+        },
+      });
+
+      const control = component.find('[data-testid="clip-volume-control"]');
+      expect(control.exists()).toBe(false);
+    });
+
+    it('hides the label when clipWidthPx is less than 48px', async () => {
+      const component = await mountSuspended(ClipAudioFades, {
+        props: {
+          ...defaultProps,
+          clipWidthPx: 40, // less than 48px
+          trackHeight: 50,
+        },
+      });
+
+      const control = component.get('[data-testid="clip-volume-control"]');
+      const label = control.find('.text-2xs');
+      expect(label.exists()).toBe(false);
+    });
+
+    it('positions label above the line when there is more space above', async () => {
+      const component = await mountSuspended(ClipAudioFades, {
+        props: {
+          ...defaultProps,
+          clip: { ...baseItem, audioGain: 0.1 }, // very low volume, line will be near the bottom
+          trackHeight: 100,
+        },
+      });
+
+      const control = component.get('[data-testid="clip-volume-control"]');
+      const label = control.find('.text-2xs');
+      expect(label.exists()).toBe(true);
+      expect(label.classes()).toContain('bottom-full');
+      expect(label.classes()).not.toContain('top-full');
+    });
+
+    it('positions label below the line when there is more space below', async () => {
+      const component = await mountSuspended(ClipAudioFades, {
+        props: {
+          ...defaultProps,
+          clip: { ...baseItem, audioGain: 1.0 }, // volumeY = 33.3%, line is near the top
+          trackHeight: 100,
+        },
+      });
+
+      const control = component.get('[data-testid="clip-volume-control"]');
+      const label = control.find('.text-2xs');
+      expect(label.exists()).toBe(true);
+      expect(label.classes()).toContain('top-full');
+      expect(label.classes()).not.toContain('bottom-full');
+    });
   });
 });
