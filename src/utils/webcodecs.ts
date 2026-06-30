@@ -25,10 +25,10 @@ export const VIDEO_FORMAT_OPTIONS = [
 ] as const;
 
 export const AUDIO_EXPORT_CODEC_OPTIONS: readonly AudioCodecOption[] = [
-  { value: 'aac', label: 'AAC' },
   { value: 'opus', label: 'Opus' },
   { value: 'flac', label: 'FLAC' },
   { value: 'pcm', label: 'WAV' },
+  { value: 'aac', label: 'AAC' },
   { value: 'mp3', label: 'MP3' },
 ] as const;
 
