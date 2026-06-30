@@ -3,6 +3,7 @@ import { computed, watch, ref } from 'vue';
 import { useAudioCodecOptions } from '~/composables/timeline/export/core/useAudioCodecOptions';
 import UiWheelNumberInput from '~/components/ui/UiWheelNumberInput.vue';
 import UiSliderInput from '~/components/ui/UiSliderInput.vue';
+import UiScaleSlider from '~/components/ui/UiScaleSlider.vue';
 import UiSelect from '~/components/ui/UiSelect.vue';
 import UiTextarea from '~/components/ui/UiTextarea.vue';
 import UiFormField from '~/components/ui/UiFormField.vue';
@@ -77,6 +78,41 @@ const metadataTitle = defineModel<string>('metadataTitle', { default: '' });
 const metadataAuthor = defineModel<string>('metadataAuthor', { default: '' });
 const metadataTags = defineModel<string>('metadataTags', { default: '' });
 const metadataDescription = defineModel<string>('metadataDescription', { default: '' });
+
+const videoBitrateOptions = [
+  { label: '0.5', value: '0.5' },
+  { label: '1', value: '1' },
+  { label: '2', value: '2' },
+  { label: '3', value: '3' },
+  { label: '4', value: '4' },
+  { label: '5', value: '5' },
+  { label: '8', value: '8' },
+  { label: '10', value: '10' },
+  { label: '12', value: '12' },
+  { label: '15', value: '15' },
+  { label: '20', value: '20' },
+  { label: '25', value: '25' },
+  { label: '30', value: '30' },
+  { label: '40', value: '40' },
+  { label: '50', value: '50' },
+  { label: '60', value: '60' },
+  { label: '80', value: '80' },
+  { label: '100', value: '100' },
+];
+
+const audioBitrateOptions = [
+  { label: '32', value: '32' },
+  { label: '64', value: '64' },
+  { label: '96', value: '96' },
+  { label: '128', value: '128' },
+  { label: '160', value: '160' },
+  { label: '192', value: '192' },
+  { label: '256', value: '256' },
+  { label: '320', value: '320' },
+  { label: '384', value: '384' },
+  { label: '448', value: '448' },
+  { label: '512', value: '512' },
+];
 
 const { t } = useI18n();
 
@@ -270,17 +306,24 @@ watch(
             </UiTooltip>
           </div>
         </template>
-        <UiSliderInput
-          v-model="bitrateMbps"
-          :min="0.2"
-          :max="100"
-          :step="0.1"
-          :decimals="1"
-          unit=" Mbps"
-          :show-input="true"
-          :disabled="props.disabled"
-          input-class="w-20!"
-        />
+        <div class="flex items-center gap-4 w-full">
+          <UiScaleSlider
+            :model-value="String(bitrateMbps)"
+            :options="videoBitrateOptions"
+            :disabled="props.disabled"
+            @update:model-value="bitrateMbps = Number($event)"
+          />
+          <UiWheelNumberInput
+            v-model="bitrateMbps"
+            :min="0.2"
+            :max="100"
+            :step="0.1"
+            :wheel-step-multiplier="10"
+            :disabled="props.disabled"
+            class="w-24!"
+          />
+          <span class="text-xs text-ui-text-muted whitespace-nowrap">Mbps</span>
+        </div>
       </UiFormField>
     </div>
 
@@ -334,17 +377,18 @@ watch(
                 </UiTooltip>
               </div>
             </template>
-            <UiSliderInput
-              v-model="maxBitrate"
-              :min="bitrateMbps"
-              :max="bitrateMbps * 4"
-              :step="0.1"
-              :decimals="1"
-              unit=" Mbps"
-              :show-input="true"
-              :disabled="props.disabled"
-              input-class="w-20!"
-            />
+            <div class="flex items-center gap-2">
+              <UiWheelNumberInput
+                v-model="maxBitrate"
+                :min="bitrateMbps"
+                :max="bitrateMbps * 4"
+                :step="0.1"
+                :wheel-step-multiplier="10"
+                :disabled="props.disabled"
+                class="w-24!"
+              />
+              <span class="text-xs text-ui-text-muted">Mbps</span>
+            </div>
           </UiFormField>
         </template>
 
@@ -407,17 +451,24 @@ watch(
         :label="t('videoEditor.export.audioBitrate')"
         :help="t('videoEditor.export.audioBitrateHelp')"
       >
-        <UiSliderInput
-          v-model="audioBitrateKbps"
-          :min="32"
-          :max="512"
-          :step="16"
-          :decimals="0"
-          unit=" Kbps"
-          :show-input="true"
-          :disabled="props.disabled"
-          input-class="w-20!"
-        />
+        <div class="flex items-center gap-4 w-full">
+          <UiScaleSlider
+            :model-value="String(audioBitrateKbps)"
+            :options="audioBitrateOptions"
+            :disabled="props.disabled"
+            @update:model-value="audioBitrateKbps = Number($event)"
+          />
+          <UiWheelNumberInput
+            v-model="audioBitrateKbps"
+            :min="32"
+            :max="512"
+            :step="16"
+            :wheel-step-multiplier="2"
+            :disabled="props.disabled"
+            class="w-24!"
+          />
+          <span class="text-xs text-ui-text-muted whitespace-nowrap">Kbps</span>
+        </div>
       </UiFormField>
     </div>
 

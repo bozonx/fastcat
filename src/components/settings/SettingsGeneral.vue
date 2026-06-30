@@ -129,12 +129,21 @@ function resetGeneralDefaults() {
     </UiFormField>
 
     <UiFormField :label="t('videoEditor.settings.stopFramesQuality')">
-      <UiWheelNumberInput
-        v-model="workspaceStore.userSettings.stopFrames.qualityPercent"
-        :min="1"
-        :max="100"
-        :step="1"
-        :wheel-step-multiplier="10"
+      <UiScaleSlider
+        :model-value="String(workspaceStore.userSettings.stopFrames.qualityPercent)"
+        :options="[
+          { label: '10%', value: '10' },
+          { label: '20%', value: '20' },
+          { label: '30%', value: '30' },
+          { label: '40%', value: '40' },
+          { label: '50%', value: '50' },
+          { label: '60%', value: '60' },
+          { label: '70%', value: '70' },
+          { label: '80%', value: '80' },
+          { label: '90%', value: '90' },
+          { label: '100%', value: '100' },
+        ]"
+        @update:model-value="workspaceStore.userSettings.stopFrames.qualityPercent = Number($event)"
       />
     </UiFormField>
 
