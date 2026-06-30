@@ -544,6 +544,7 @@ function onMonitorButtonPointerUp() {
             :class="[showSideControls ? 'flex-col' : '']"
           >
             <UButton
+              v-if="workspaceStore.inDevelopmentFeaturesEnabled"
               size="xs"
               variant="ghost"
               color="neutral"

@@ -613,33 +613,35 @@ watch(viewportRef, (vp) => {
             @mousemove="keepControlsVisible"
           >
             <!-- Left cluster: utility buttons -->
-            <template v-if="effectiveFullscreen">
-              <UiTooltip
-                :text="getHotkeyTitle(t('fastcat.monitor.exitFullscreen'), 'general.fullscreen')"
-              >
-                <UiActionButton
-                  size="sm"
-                  color="neutral"
-                  variant="ghost"
-                  icon="lucide:minimize"
-                  :aria-label="t('fastcat.monitor.exitFullscreen')"
-                  @click="exitBrowserFullscreen()"
-                />
-              </UiTooltip>
-            </template>
-            <template v-else>
-              <UiTooltip
-                :text="getHotkeyTitle(t('fastcat.monitor.fullscreen'), 'general.fullscreen')"
-              >
-                <UiActionButton
-                  size="xs"
-                  color="neutral"
-                  variant="ghost"
-                  icon="lucide:maximize"
-                  :aria-label="t('fastcat.monitor.fullscreen')"
-                  @click="enterBrowserFullscreen()"
-                />
-              </UiTooltip>
+            <template v-if="workspaceStore.inDevelopmentFeaturesEnabled">
+              <template v-if="effectiveFullscreen">
+                <UiTooltip
+                  :text="getHotkeyTitle(t('fastcat.monitor.exitFullscreen'), 'general.fullscreen')"
+                >
+                  <UiActionButton
+                    size="sm"
+                    color="neutral"
+                    variant="ghost"
+                    icon="lucide:minimize"
+                    :aria-label="t('fastcat.monitor.exitFullscreen')"
+                    @click="exitBrowserFullscreen()"
+                  />
+                </UiTooltip>
+              </template>
+              <template v-else>
+                <UiTooltip
+                  :text="getHotkeyTitle(t('fastcat.monitor.fullscreen'), 'general.fullscreen')"
+                >
+                  <UiActionButton
+                    size="xs"
+                    color="neutral"
+                    variant="ghost"
+                    icon="lucide:maximize"
+                    :aria-label="t('fastcat.monitor.fullscreen')"
+                    @click="enterBrowserFullscreen()"
+                  />
+                </UiTooltip>
+              </template>
             </template>
 
             <UiTooltip :text="getHotkeyTitle(t('fastcat.monitor.resetZoom'), 'general.zoomReset')">
