@@ -1180,7 +1180,10 @@ mod tests {
         let state = engine.shared.0.lock();
         assert_eq!(state.origin_pts_sec, 12.0);
         assert_eq!(state.producer_pts_sec, 12.0);
-        assert!(state.pending_ring_clear);
+        // pending_ring_clear is not asserted here because the producer thread
+        // consumes it asynchronously (see producer.rs), making it racy to check
+        // from the test thread. The seek_serial increment above already proves
+        // a full retarget occurred rather than an early-return reuse.
     }
 
     #[test]

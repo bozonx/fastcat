@@ -6,7 +6,7 @@ import { mountSuspended } from '@nuxt/test-utils/runtime';
 import SettingsAudio from '~/components/settings/SettingsAudio.vue';
 
 // Mock workspace store
-const mockWorkspaceStore = {
+const mockWorkspaceStore = reactive({
   userSettings: reactive({
     locale: 'en-US',
     openLastProjectOnStart: false,
@@ -147,7 +147,7 @@ const mockWorkspaceStore = {
     },
   }),
   inDevelopmentFeaturesEnabled: false,
-};
+});
 
 vi.mock('~/stores/workspace.store', () => ({
   useWorkspaceStore: () => mockWorkspaceStore,

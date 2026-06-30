@@ -551,6 +551,7 @@ pub fn export_timeline(
         };
         let ffmpeg_cmd = opts.hw.ffmpeg_cmd();
         verify_ffmpeg_binary(ffmpeg_cmd).context("ffmpeg binary check failed")?;
+        eprintln!("[native-export] ffmpeg args: {} {:?}", ffmpeg_cmd, args);
         log_export_memory_checkpoint("ffmpeg-spawn");
         let mut child = Command::new(ffmpeg_cmd)
             .args(&args)
@@ -637,6 +638,9 @@ pub fn export_timeline(
         };
 
         let io_result = (|| -> Result<()> {
+            if tasks.was_cancelled(task_id) {
+                return Err(anyhow!("cancelled"));
+            }
             let render_result = if let Some(plan) = direct {
                 // Direct transcode: ffmpeg owns decode/scale/encode. We only relay its
                 // `-progress` stdout to the UI and the stall watchdog until it finishes.

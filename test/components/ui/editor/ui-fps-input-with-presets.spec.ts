@@ -2,21 +2,12 @@ import { describe, it, expect, vi } from 'vitest';
 import { mountSuspended } from '@nuxt/test-utils/runtime';
 import UiFpsInputWithPresets from '~/components/ui/editor/UiFpsInputWithPresets.vue';
 import UiWheelNumberInput from '~/components/ui/UiWheelNumberInput.vue';
-import UiSelect from '~/components/ui/UiSelect.vue';
 
-vi.mock('~/components/ui/UiSelect.vue', () => ({
-  default: {
-    name: 'UiSelect',
-    props: ['modelValue', 'items', 'disabled', 'valueKey', 'labelKey', 'searchInput'],
-    template: `
-      <select :value="modelValue" @change="$emit('update:modelValue', Number($event.target.value)); $emit('update:model-value', Number($event.target.value))">
-        <option v-for="item in items" :key="item[valueKey]" :value="item[valueKey]">
-          {{ item[labelKey] }}
-        </option>
-      </select>
-    `,
-  },
-}));
+const dropdownStub = {
+  name: 'UDropdownMenu',
+  props: ['items', 'disabled', 'ui'],
+  template: '<div class="mock-dropdown" :data-disabled="disabled"><slot /></div>',
+};
 
 describe('UiFpsInputWithPresets', () => {
   it('renders correctly', async () => {
@@ -68,42 +59,52 @@ describe('UiFpsInputWithPresets', () => {
         modelValue: 24,
         disabled: true,
       },
+      global: {
+        stubs: { UDropdownMenu: dropdownStub },
+      },
     });
 
     // Check UiWheelNumberInput
     const wheelInput = component.findComponent(UiWheelNumberInput);
     expect(wheelInput.props('disabled')).toBe(true);
 
-    // Check UiSelect
-    const select = component.findComponent(UiSelect);
-    expect(select.exists()).toBe(true);
-    expect(select.props('disabled')).toBe(true);
+    // Check UDropdownMenu is disabled
+    const dropdown = component.findComponent({ name: 'UDropdownMenu' });
+    expect(dropdown.exists()).toBe(true);
+    expect(dropdown.props('disabled')).toBe(true);
   });
 
-  it('renders UiSelect with fps presets and current value', async () => {
+  it('renders UDropdownMenu with fps presets', async () => {
     const component = await mountSuspended(UiFpsInputWithPresets, {
       props: {
         modelValue: 30,
       },
+      global: {
+        stubs: { UDropdownMenu: dropdownStub },
+      },
     });
 
-    const select = component.findComponent(UiSelect);
-    expect(select.exists()).toBe(true);
-    expect(select.props('modelValue')).toBe(30);
-    expect(select.props('items')).toHaveLength(8);
-    expect(select.props('valueKey')).toBe('value');
-    expect(select.props('labelKey')).toBe('label');
+    const dropdown = component.findComponent({ name: 'UDropdownMenu' });
+    expect(dropdown.exists()).toBe(true);
+    expect(dropdown.props('items')).toHaveLength(8);
+    expect(dropdown.props('items')[0].label).toBe('23.976');
+    expect(dropdown.props('items')[7].label).toBe('60');
   });
 
-  it('emits update:modelValue when UiSelect emits an update', async () => {
+  it('emits update:modelValue when dropdown preset is selected', async () => {
     const component = await mountSuspended(UiFpsInputWithPresets, {
       props: {
         modelValue: 30,
       },
+      global: {
+        stubs: { UDropdownMenu: dropdownStub },
+      },
     });
 
-    const select = component.findComponent(UiSelect);
-    await select.vm.$emit('update:modelValue', 60);
+    const dropdown = component.findComponent({ name: 'UDropdownMenu' });
+    const items = dropdown.props('items');
+    // Select the last preset (60 fps)
+    items[7].onSelect();
 
     expect(component.emitted('update:modelValue')).toBeTruthy();
     expect(component.emitted('update:modelValue')?.[0]).toEqual([60]);

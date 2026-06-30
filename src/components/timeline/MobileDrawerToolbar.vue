@@ -76,7 +76,7 @@ onUnmounted(() => {
     :class="
       isVertical
         ? 'h-full min-h-0 w-full mobile-drawer-toolbar--vertical flex-col'
-        : 'flex-row items-center w-full h-14'
+        : 'flex-row items-center w-full h-14 mobile-drawer-toolbar--horizontal'
     "
   >
     <!-- Scrollable content container -->

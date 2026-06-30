@@ -120,15 +120,15 @@ describe('useMobileTimelineSelection', () => {
     const tracks = ref(createTracks());
     const isClipPropertiesDrawerOpen = ref(false);
     const isMultiSelectionDrawerOpen = ref(false);
+    const isMultiSelectionMode = ref(false);
 
-    const { toggleMobileClipSelection, selectedClips, isMultiSelectionMode } =
-      useMobileTimelineSelection(
-        tracks,
-        isClipPropertiesDrawerOpen,
-        isMultiSelectionDrawerOpen,
-        ref(false),
-        () => {},
-      );
+    const { toggleMobileClipSelection, selectedClips } = useMobileTimelineSelection(
+      tracks,
+      isClipPropertiesDrawerOpen,
+      isMultiSelectionDrawerOpen,
+      isMultiSelectionMode,
+      () => {},
+    );
 
     toggleMobileClipSelection('clip-a');
     await nextTick();
