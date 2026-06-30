@@ -798,4 +798,53 @@ describe('MonitorContainer', () => {
     expect(seekbarWrapper?.className).toContain('bottom-2');
     expect(seekbarWrapper?.className).toContain('px-3');
   });
+
+  it('applies correct seekbar thumb color classes on hover and drag', async () => {
+    wrapper = mount(MonitorContainer, {
+      global: {
+        plugins: [pinia],
+        stubs: {
+          MonitorViewport: true,
+          MonitorAudioControl: true,
+          UiTooltip: { template: '<div><slot /></div>' },
+          UButton: true,
+          UiActionButton: true,
+          UiToggleButton: true,
+          UDropdownMenu: true,
+          UContextMenu: { template: '<div><slot /></div>' },
+          UiContextMenuPortal: true,
+          UIcon: true,
+        },
+      },
+    });
+
+    await wrapper.vm.$nextTick();
+
+    const seekbar = wrapper.find('[data-testid="monitor-seekbar"]');
+    const thumb = seekbar.find('.shadow-md');
+    expect(thumb.exists()).toBe(true);
+
+    // Default state: has bg-ui-text and hover:bg-selection-accent-500
+    expect(thumb.classes()).toContain('bg-ui-text');
+    expect(thumb.classes()).toContain('hover:bg-selection-accent-500');
+
+    // Dragging state
+    seekbar.element.getBoundingClientRect = vi.fn(() => ({
+      left: 10,
+      width: 100,
+      top: 0,
+      right: 110,
+      bottom: 10,
+      height: 10,
+      x: 10,
+      y: 0,
+      toJSON: () => {},
+    }));
+    await seekbar.trigger('pointerdown', { button: 0, clientX: 60 });
+    await wrapper.vm.$nextTick();
+
+    // Dragging: has bg-selection-accent-500, but not bg-ui-text
+    expect(thumb.classes()).toContain('bg-selection-accent-500');
+    expect(thumb.classes()).not.toContain('bg-ui-text');
+  });
 });

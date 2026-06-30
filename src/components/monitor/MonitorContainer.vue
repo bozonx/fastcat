@@ -619,11 +619,11 @@ watch(viewportRef, (vp) => {
                 ></div>
                 <!-- Thumb/Marker -->
                 <div
-                  class="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-3 h-3 bg-ui-text rounded-full shadow-md transition-all duration-150 pointer-events-none"
+                  class="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-3 h-3 rounded-full shadow-md transition-all duration-150 pointer-events-auto"
                   :class="[
                     isDraggingSeekbar
-                      ? 'opacity-100 scale-100'
-                      : 'opacity-0 scale-75 group-hover:opacity-100 group-hover:scale-100',
+                      ? 'bg-selection-accent-500 opacity-100 scale-100'
+                      : 'bg-ui-text opacity-0 scale-75 group-hover:opacity-100 group-hover:scale-100 hover:bg-selection-accent-500',
                   ]"
                   :style="{ left: `${progressPercent}%` }"
                 ></div>
