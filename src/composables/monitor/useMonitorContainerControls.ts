@@ -340,50 +340,6 @@ export function useMonitorContainerControls(options: UseMonitorContainerControls
   }
 
   const contextMenuItems = computed(() => [
-    ...(options.isMobile
-      ? []
-      : [
-          [
-            {
-              label: options.t('fastcat.monitor.playbackSpeed'),
-              icon: 'i-heroicons-forward',
-              children: [
-                ...negativeSpeedOptions.map((opt) => ({
-                  label: opt.label,
-                  type: 'checkbox' as const,
-                  checked: options.timelineStore.playbackSpeed === opt.value,
-                  onSelect: () => options.timelineStore.setPlaybackSpeed(opt.value),
-                })),
-                { label: '', type: 'separator' as const },
-                ...playbackSpeedOptions.map((opt) => ({
-                  label: opt.label,
-                  type: 'checkbox' as const,
-                  checked: options.timelineStore.playbackSpeed === opt.value,
-                  onSelect: () => options.timelineStore.setPlaybackSpeed(opt.value),
-                })),
-              ],
-            },
-            {
-              label: `${options.t('fastcat.monitor.syncMode')} (${options.t(
-                selectedMonitorSyncOption.value.labelKey,
-              )})`,
-              icon: selectedMonitorSyncOption.value.icon,
-              children: monitorSyncOptions.map((option) => ({
-                label: options.t(option.labelKey),
-                icon: option.icon,
-                title: options.t(option.titleKey),
-                type: 'checkbox' as const,
-                checked: option.value === currentMonitorSyncMode.value,
-                onSelect: () => {
-                  if (options.workspaceStore.userSettings?.optimization) {
-                    options.workspaceStore.userSettings.optimization.nativeMonitorSyncMode =
-                      option.value;
-                  }
-                },
-              })),
-            },
-          ],
-        ]),
     [
       ...(options.isMobile
         ? []
@@ -482,10 +438,105 @@ export function useMonitorContainerControls(options: UseMonitorContainerControls
           ]
         : []),
     ],
-    ...(options.isMobile
-      ? []
-      : [
-          [
+    [
+      ...(options.isMobile
+        ? []
+        : [
+            {
+              label: options.t('fastcat.monitor.playbackSpeed'),
+              icon: 'i-heroicons-forward',
+              children: [
+                ...negativeSpeedOptions.map((opt) => ({
+                  label: opt.label,
+                  type: 'checkbox' as const,
+                  checked: options.timelineStore.playbackSpeed === opt.value,
+                  onSelect: () => options.timelineStore.setPlaybackSpeed(opt.value),
+                })),
+                { label: '', type: 'separator' as const },
+                ...playbackSpeedOptions.map((opt) => ({
+                  label: opt.label,
+                  type: 'checkbox' as const,
+                  checked: options.timelineStore.playbackSpeed === opt.value,
+                  onSelect: () => options.timelineStore.setPlaybackSpeed(opt.value),
+                })),
+              ],
+            },
+            {
+              label: `${options.t('fastcat.monitor.syncMode')} (${options.t(
+                selectedMonitorSyncOption.value.labelKey,
+              )})`,
+              icon: selectedMonitorSyncOption.value.icon,
+              children: monitorSyncOptions.map((option) => ({
+                label: options.t(option.labelKey),
+                icon: option.icon,
+                title: options.t(option.titleKey),
+                type: 'checkbox' as const,
+                checked: option.value === currentMonitorSyncMode.value,
+                onSelect: () => {
+                  if (options.workspaceStore.userSettings?.optimization) {
+                    options.workspaceStore.userSettings.optimization.nativeMonitorSyncMode =
+                      option.value;
+                  }
+                },
+              })),
+            },
+          ]),
+      {
+        label: `${options.t('fastcat.monitor.previewBlurQuality')} (${options.t(
+          (options.projectStore.activeMonitor?.previewBlurQuality ?? 'auto') === 'auto'
+            ? 'fastcat.timeline.transition.blurQualityAuto'
+            : `fastcat.timeline.transition.blurQuality${
+                (options.projectStore.activeMonitor?.previewBlurQuality ?? 'auto')
+                  .charAt(0)
+                  .toUpperCase() +
+                (options.projectStore.activeMonitor?.previewBlurQuality ?? 'auto').slice(1)
+              }`,
+        )})`,
+        icon: 'i-heroicons-sparkles',
+        children: (['auto', 'low', 'medium', 'high'] as const).map((q) => {
+          const labelKey =
+            q === 'auto'
+              ? 'fastcat.timeline.transition.blurQualityAuto'
+              : `fastcat.timeline.transition.blurQuality${q.charAt(0).toUpperCase() + q.slice(1)}`;
+          return {
+            label: options.t(labelKey),
+            type: 'checkbox' as const,
+            checked: (options.projectStore.activeMonitor?.previewBlurQuality ?? 'auto') === q,
+            onSelect: () => {
+              if (options.projectStore.activeMonitor) {
+                options.projectStore.activeMonitor.previewBlurQuality = q;
+              }
+            },
+          };
+        }),
+      },
+      {
+        label: `${options.t('fastcat.monitor.previewResolution')} (${
+          previewResolutions.value.find(
+            (res) =>
+              Math.abs(
+                (options.projectStore.activeMonitor?.previewResolution ?? 0) - res.value,
+              ) < 0.001,
+          )?.label ?? 'Auto'
+        })`,
+        icon: 'i-lucide-monitor',
+        children: previewResolutions.value.map((res) => ({
+          label: res.label,
+          type: 'checkbox' as const,
+          checked:
+            Math.abs(
+              (options.projectStore.activeMonitor?.previewResolution ?? 0) - res.value,
+            ) < 0.001,
+          onSelect: () => {
+            if (options.projectStore.activeMonitor) {
+              options.projectStore.activeMonitor.previewResolution = res.value;
+            }
+          },
+        })),
+      },
+      ...(options.isMobile
+        ? []
+        : [
             {
               label: `${options.t('fastcat.monitor.toolbarPosition')} (${
                 toolbarPosition.value === 'top'
@@ -535,50 +586,7 @@ export function useMonitorContainerControls(options: UseMonitorContainerControls
                 },
               ],
             },
-          ],
-        ]),
-    previewResolutions.value.map((res) => ({
-      label: res.label,
-      icon: 'i-lucide-monitor',
-      type: 'checkbox' as const,
-      checked:
-        Math.abs((options.projectStore.activeMonitor?.previewResolution ?? 0) - res.value) < 0.001,
-      onSelect: () => {
-        if (options.projectStore.activeMonitor) {
-          options.projectStore.activeMonitor.previewResolution = res.value;
-        }
-      },
-    })),
-    [
-      {
-        label: `${options.t('fastcat.monitor.previewBlurQuality')} (${options.t(
-          (options.projectStore.activeMonitor?.previewBlurQuality ?? 'auto') === 'auto'
-            ? 'fastcat.timeline.transition.blurQualityAuto'
-            : `fastcat.timeline.transition.blurQuality${
-                (options.projectStore.activeMonitor?.previewBlurQuality ?? 'auto')
-                  .charAt(0)
-                  .toUpperCase() +
-                (options.projectStore.activeMonitor?.previewBlurQuality ?? 'auto').slice(1)
-              }`,
-        )})`,
-        icon: 'i-heroicons-sparkles',
-        children: (['auto', 'low', 'medium', 'high'] as const).map((q) => {
-          const labelKey =
-            q === 'auto'
-              ? 'fastcat.timeline.transition.blurQualityAuto'
-              : `fastcat.timeline.transition.blurQuality${q.charAt(0).toUpperCase() + q.slice(1)}`;
-          return {
-            label: options.t(labelKey),
-            type: 'checkbox' as const,
-            checked: (options.projectStore.activeMonitor?.previewBlurQuality ?? 'auto') === q,
-            onSelect: () => {
-              if (options.projectStore.activeMonitor) {
-                options.projectStore.activeMonitor.previewBlurQuality = q;
-              }
-            },
-          };
-        }),
-      },
+          ]),
     ],
   ]);
 

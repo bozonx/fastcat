@@ -206,4 +206,14 @@ describe('useMonitorContainerControls', () => {
     smoothItem?.onSelect?.();
     expect(mockWorkspaceStore.userSettings.optimization.nativeMonitorSyncMode).toBe('smooth');
   });
+
+  it('includes preview resolution sub-menu and updates state', () => {
+    mockActiveMonitor.previewResolution = 1;
+    const controls = createControls({ isMobile: false });
+    const items = flattenMenuItems(controls.contextMenuItems.value);
+    const halfOption = items.find((entry) => entry.label === '1/2 (540p)');
+    expect(halfOption).toBeTruthy();
+    halfOption?.onSelect?.();
+    expect(mockActiveMonitor.previewResolution).toBe(0.5);
+  });
 });
