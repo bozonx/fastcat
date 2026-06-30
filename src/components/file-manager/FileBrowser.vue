@@ -220,12 +220,10 @@ fileManagerStore.setSelectionContext({
 const {
   dragOverEntryPath,
   currentDragOperation,
-  onEntryDragStart: onEntryDragStartBase,
-  onEntryDragEnd: onEntryDragEndBase,
-  onEntryDragEnter: onEntryDragEnterBase,
-  onEntryDragOver: onEntryDragOverBase,
-  onEntryDragLeave: onEntryDragLeaveBase,
-  onEntryDrop: onEntryDropBase,
+  startEntryDrag,
+  handleInternalDragOver,
+  handleInternalDragLeave,
+  handleInternalDrop,
   onRootDragEnter: onRootDragEnterBase,
   onRootDragOver: onRootDragOverBase,
   onRootDragLeave: onRootDragLeaveBase,
@@ -304,12 +302,10 @@ const remote = useFileBrowserRemote({
       selectionStore.clearSelection();
     }
   },
-  onEntryDragStart: onEntryDragStartBase,
-  onEntryDragEnd: onEntryDragEndBase,
-  onEntryDragEnter: onEntryDragEnterBase,
-  onEntryDragOver: onEntryDragOverBase,
-  onEntryDragLeave: onEntryDragLeaveBase,
-  onEntryDrop: onEntryDropBase,
+  startEntryDrag,
+  handleInternalDragOver,
+  handleInternalDragLeave,
+  handleInternalDrop,
   onRootDragEnter: onRootDragEnterBase,
   onRootDragOver: onRootDragOverBase,
   onRootDragLeave: onRootDragLeaveBase,
@@ -332,12 +328,8 @@ const {
   remoteError,
   remoteHasMore,
   isLoadingMore,
-  onBrowserEntryDragStart,
-  onBrowserEntryDragEnd,
-  onBrowserEntryDragEnter,
-  onBrowserEntryDragOver,
-  onBrowserEntryDragLeave,
-  onBrowserEntryDrop,
+  startBrowserEntryDrag,
+  dndZoneAttrs,
   onBrowserRootDragEnter,
   onBrowserRootDragOver,
   onBrowserRootDragLeave,
@@ -345,28 +337,8 @@ const {
   createAdapter,
 } = remote;
 
-function onEntryDragStart(e: DragEvent, entry: FsEntry) {
-  return onBrowserEntryDragStart(e, entry);
-}
-
-function onEntryDragEnd() {
-  return onBrowserEntryDragEnd();
-}
-
-function onEntryDragEnter(e: DragEvent, entry: FsEntry) {
-  return onBrowserEntryDragEnter(e, entry);
-}
-
-function onEntryDragOver(e: DragEvent, entry: FsEntry) {
-  return onBrowserEntryDragOver(e, entry);
-}
-
-function onEntryDragLeave(e: DragEvent, entry: FsEntry) {
-  return onBrowserEntryDragLeave(e, entry);
-}
-
-function onEntryDrop(e: DragEvent, entry: FsEntry) {
-  return onBrowserEntryDrop(e, entry);
+function onEntryPointerDown(e: PointerEvent, entry: FsEntry) {
+  return startBrowserEntryDrag(e, entry);
 }
 
 function onRootDragEnter(e: DragEvent) {
@@ -888,6 +860,7 @@ async function onDirectoryUploadChange(e: Event) {
       'panel-focus-frame--active':
         !safeHideFocusFrame && focusStore.isPanelFocused(`dynamic:file-manager:${instanceId}`),
     }"
+    v-bind="dndZoneAttrs"
     @pointerdown.capture="focusBrowserPanel"
   >
     <FileBrowserToolbar
@@ -976,12 +949,7 @@ async function onDirectoryUploadChange(e: Event) {
       @marquee-pointer-move="onMarqueePointerMove"
       @marquee-pointer-up="onMarqueePointerUp"
       @retry-remote-load="loadFolderContent"
-      @entry-drag-start="onEntryDragStart"
-      @entry-drag-end="onEntryDragEnd"
-      @entry-drag-enter="onEntryDragEnter"
-      @entry-drag-over="onEntryDragOver"
-      @entry-drag-leave="onEntryDragLeave"
-      @entry-drop="onEntryDrop"
+      @entry-pointer-down="onEntryPointerDown"
       @entry-click="handleEntryClick"
       @entry-double-click="handleEntryDoubleClick"
       @entry-enter="handleEntryEnter"

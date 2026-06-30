@@ -22,12 +22,9 @@ export interface FileBrowserViewEmits {
   (e: 'rootDragEnter', event: DragEvent): void;
   (e: 'rootDragLeave', event: DragEvent): void;
   (e: 'rootDrop', event: DragEvent): void;
-  (e: 'entryDragStart', event: DragEvent, entry: FsEntry): void;
-  (e: 'entryDragEnd'): void;
-  (e: 'entryDragEnter', event: DragEvent, entry: FsEntry): void;
-  (e: 'entryDragOver', event: DragEvent, entry: FsEntry): void;
-  (e: 'entryDragLeave', event: DragEvent, entry: FsEntry): void;
-  (e: 'entryDrop', event: DragEvent, entry: FsEntry): void;
+  // Internal drags use the pointer-DnD engine: a row only needs to arm a drag on
+  // pointerdown; enter/over/leave/drop are resolved centrally by hit-test.
+  (e: 'entryPointerDown', event: PointerEvent, entry: FsEntry): void;
   (e: 'entryClick', event: MouseEvent, entry: FsEntry): void;
   (e: 'entryDoubleClick', entry: FsEntry): void;
   (e: 'entryEnter', entry: FsEntry): void;

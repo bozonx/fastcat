@@ -58,12 +58,7 @@ const emit = defineEmits([
   'marqueePointerMove',
   'marqueePointerUp',
   'retryRemoteLoad',
-  'entryDragStart',
-  'entryDragEnd',
-  'entryDragEnter',
-  'entryDragOver',
-  'entryDragLeave',
-  'entryDrop',
+  'entryPointerDown',
   'entryClick',
   'entryDoubleClick',
   'entryEnter',
@@ -74,24 +69,8 @@ const emit = defineEmits([
   'resizeStart',
 ]);
 
-function emitEntryDragStart(event: DragEvent, entry: FsEntry) {
-  emit('entryDragStart', event, entry);
-}
-
-function emitEntryDragEnter(event: DragEvent, entry: FsEntry) {
-  emit('entryDragEnter', event, entry);
-}
-
-function emitEntryDragOver(event: DragEvent, entry: FsEntry) {
-  emit('entryDragOver', event, entry);
-}
-
-function emitEntryDragLeave(event: DragEvent, entry: FsEntry) {
-  emit('entryDragLeave', event, entry);
-}
-
-function emitEntryDrop(event: DragEvent, entry: FsEntry) {
-  emit('entryDrop', event, entry);
+function emitEntryPointerDown(event: PointerEvent, entry: FsEntry) {
+  emit('entryPointerDown', event, entry);
 }
 
 function emitEntryClick(event: MouseEvent, entry: FsEntry) {
@@ -201,12 +180,7 @@ function emitResizeStart(event: MouseEvent, column: string) {
           :instance-id="props.instanceId"
           :selected-entry-paths="props.selectedEntryPaths"
           :hide-usage-indicators="props.hideUsageIndicators"
-          @entry-drag-start="emitEntryDragStart"
-          @entry-drag-end="emit('entryDragEnd')"
-          @entry-drag-enter="emitEntryDragEnter"
-          @entry-drag-over="emitEntryDragOver"
-          @entry-drag-leave="emitEntryDragLeave"
-          @entry-drop="emitEntryDrop"
+          @entry-pointer-down="emitEntryPointerDown"
           @entry-click="emitEntryClick"
           @entry-double-click="emitEntryDoubleClick"
           @entry-enter="emitEntryEnter"
@@ -231,12 +205,7 @@ function emitResizeStart(event: MouseEvent, column: string) {
           :instance-id="props.instanceId"
           :selected-entry-paths="props.selectedEntryPaths"
           :hide-usage-indicators="props.hideUsageIndicators"
-          @entry-drag-start="emitEntryDragStart"
-          @entry-drag-end="emit('entryDragEnd')"
-          @entry-drag-enter="emitEntryDragEnter"
-          @entry-drag-over="emitEntryDragOver"
-          @entry-drag-leave="emitEntryDragLeave"
-          @entry-drop="emitEntryDrop"
+          @entry-pointer-down="emitEntryPointerDown"
           @entry-click="emitEntryClick"
           @entry-double-click="emitEntryDoubleClick"
           @entry-enter="emitEntryEnter"

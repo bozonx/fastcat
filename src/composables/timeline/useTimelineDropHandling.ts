@@ -1033,6 +1033,7 @@ export function useTimelineDropHandling(options: UseTimelineDropHandlingOptions)
     dragPreview,
     clearDragPreview,
     getDropPosition,
+    buildDragPreview,
     onTrackDragOver,
     onTrackDragLeave,
     handleFileDrop,

@@ -22,6 +22,8 @@ import {
   pxToTimeUs,
 } from '~/utils/timeline/geometry';
 import { isLayer1Pressed } from '~/utils/hotkeys/layerUtils';
+import { useDndDropZone } from '~/composables/dnd/useDndDropZone';
+import type { DndDragContext } from '~/composables/dnd/dndTypes';
 import { TIMELINE_TRACK_LABELS_WIDTH as TRACK_LABELS_WIDTH } from '~/utils/constants';
 
 import TimelineTrackSection from '~/components/timeline/TimelineTrackSection.vue';
@@ -216,6 +218,7 @@ const {
 const {
   dragPreview,
   clearDragPreview,
+  buildDragPreview,
   handleFileDrop,
   handleLibraryDrop,
   getDropPosition,
@@ -540,25 +543,136 @@ async function onDrop(e: DragEvent, trackId: string) {
   clearDragPreview();
 }
 
-async function onTauriInternalFileDrop(event: Event) {
-  const detail = (event as CustomEvent<TauriInternalFileDropDetail>).detail;
-  if (!detail) return;
+/**
+ * Drops an in-memory payload onto the track under a screen point. Shared by the
+ * Tauri OS-internal-drop bridge and the pointer-DnD drop zone (file-manager →
+ * timeline). Resolves the track via hit-test, computes the start position, and
+ * delegates to `handleLibraryDrop`.
+ */
+async function dropInternalPayloadAtPoint(params: {
+  clientX: number;
+  clientY: number;
+  payload: unknown;
+  options?: { pseudo?: boolean; clientX?: number; clientY?: number; showPresets?: boolean };
+}) {
+  const { clientX, clientY, payload } = params;
+  if (!payload) return;
 
-  const target = document.elementFromPoint(detail.clientX, detail.clientY) as HTMLElement | null;
+  const target = document.elementFromPoint(clientX, clientY) as HTMLElement | null;
   if (!target || !containerRef.value?.contains(target)) return;
 
   const trackEl = target.closest('[data-track-id]') as HTMLElement | null;
   const trackId = trackEl?.dataset.trackId;
   if (!trackEl || !trackId) return;
 
-  const rect = trackEl.getBoundingClientRect();
-  const startUs = pxToTimeUs(detail.clientX - rect.left, timelineStore.timelineZoom);
-  const payload = detail.payload ?? draggedFile.value;
-  if (!payload) return;
+  const startUs =
+    dragPreview.value?.trackId === trackId
+      ? dragPreview.value.startUs
+      : pxToTimeUs(clientX - trackEl.getBoundingClientRect().left, timelineStore.timelineZoom);
 
-  await handleLibraryDrop(JSON.stringify(payload), trackId, startUs);
+  await handleLibraryDrop(JSON.stringify(payload), trackId, startUs, params.options);
   clearDragPreview();
 }
+
+async function onTauriInternalFileDrop(event: Event) {
+  const detail = (event as CustomEvent<TauriInternalFileDropDetail>).detail;
+  if (!detail) return;
+  await dropInternalPayloadAtPoint({
+    clientX: detail.clientX,
+    clientY: detail.clientY,
+    payload: detail.payload ?? draggedFile.value,
+  });
+}
+
+// --- pointer-DnD: file-manager (and other internal sources) → timeline -------
+// A synthetic event-like lets us reuse the existing (DragEvent-shaped)
+// `buildDragPreview`/`getDropPosition` without an HTML5 drag.
+function syntheticDragEvent(pointer: DndDragContext['pointer'], trackEl: HTMLElement) {
+  return {
+    clientX: pointer.clientX,
+    clientY: pointer.clientY,
+    currentTarget: trackEl,
+    dataTransfer: { types: [] as string[] },
+    shiftKey: pointer.shiftKey,
+    ctrlKey: pointer.ctrlKey,
+    altKey: pointer.altKey,
+    metaKey: pointer.metaKey,
+    preventDefault: () => {},
+  } as unknown as DragEvent;
+}
+
+function trackElUnderPointer(clientX: number, clientY: number): HTMLElement | null {
+  const target = document.elementFromPoint(clientX, clientY) as HTMLElement | null;
+  if (!target || !containerRef.value?.contains(target)) return null;
+  return target.closest('[data-track-id]') as HTMLElement | null;
+}
+
+function onTimelineDndOver(ctx: DndDragContext) {
+  if (timelineStore.previewMode) {
+    ctx.setOperation('cancel');
+    clearDragPreview();
+    return;
+  }
+  const trackEl = trackElUnderPointer(ctx.pointer.clientX, ctx.pointer.clientY);
+  const trackId = trackEl?.dataset.trackId;
+  if (!trackEl || !trackId) {
+    clearDragPreview();
+    ctx.setOperation('none');
+    return;
+  }
+  ctx.setOperation('timeline-add');
+  void buildDragPreview(syntheticDragEvent(ctx.pointer, trackEl), trackId);
+}
+
+function onTimelineDndLeave() {
+  clearDragPreview();
+}
+
+async function onTimelineDndDrop(ctx: DndDragContext) {
+  if (timelineStore.previewMode) return;
+  const payload = draggedFile.value;
+  if (!payload || payload.isExternal) return;
+  const pseudo = isLayer1FromModifiers(ctx.pointer) || timelineSettingsStore.isPseudoOverlapEnabled;
+  await dropInternalPayloadAtPoint({
+    clientX: ctx.pointer.clientX,
+    clientY: ctx.pointer.clientY,
+    payload,
+    options: {
+      pseudo,
+      clientX: ctx.pointer.clientX,
+      clientY: ctx.pointer.clientY,
+      showPresets: isLayer1FromModifiers(ctx.pointer),
+    },
+  });
+}
+
+function isLayer1FromModifiers(p: DndDragContext['pointer']): boolean {
+  return isLayer1Pressed(
+    {
+      shiftKey: p.shiftKey,
+      ctrlKey: p.ctrlKey,
+      altKey: p.altKey,
+      metaKey: p.metaKey,
+    } as unknown as DragEvent,
+    workspaceStore.userSettings,
+  );
+}
+
+const { zoneAttrs: timelineDndZoneAttrs } = useDndDropZone(
+  {
+    // Internal sources that can be placed on the timeline. OS files keep the
+    // HTML5 / Tauri path.
+    canAccept: (payload) =>
+      payload.source === 'file-manager' ||
+      payload.source === 'library' ||
+      payload.source === 'timeline-toolbar',
+    onEnter: onTimelineDndOver,
+    onOver: onTimelineDndOver,
+    onLeave: onTimelineDndLeave,
+    onDrop: onTimelineDndDrop,
+  },
+  'timeline',
+);
 
 function onDragVirtualStart(event: DragEvent, type: 'adjustment' | 'background' | 'text') {
   setDraggedFile({
@@ -614,6 +728,7 @@ async function handleConfirmCreateVersion(newName: string) {
 <template>
   <div
     ref="containerRef"
+    v-bind="timelineDndZoneAttrs"
     data-testid="timeline-container"
     class="panel-focus-frame relative flex flex-col h-full bg-ui-bg border-t border-ui-border"
     :class="{ 'panel-focus-frame--active': focusStore.isPanelFocused('timeline') }"

@@ -100,6 +100,11 @@ vi.mock('~/file-manager/core/vfs/crossVfs', () => ({
   crossVfsMove: vi.fn(),
 }));
 
+const armPointerDndMock = vi.fn();
+vi.mock('~/composables/dnd/usePointerDnd', () => ({
+  armPointerDnd: (...args: unknown[]) => armPointerDndMock(...args),
+}));
+
 vi.stubGlobal('useI18n', () => ({ t: (key: string) => key }));
 vi.stubGlobal('useToast', () => ({ add: vi.fn() }));
 
@@ -117,6 +122,7 @@ describe('useFileBrowserDragAndDrop', () => {
     appClipboardMock.setCurrentDragOperation.mockClear();
     setDraggedFileMock.mockClear();
     clearDraggedFileMock.mockClear();
+    armPointerDndMock.mockClear();
   });
 
   it('starts folder drag with active file-manager drag state and source target instance', () => {
@@ -148,16 +154,16 @@ describe('useFileBrowserDragAndDrop', () => {
       path: '_video',
     };
 
-    const dataTransfer = {
-      effectAllowed: 'uninitialized',
-      setData: vi.fn(),
-    };
-
-    api!.onEntryDragStart(
+    api!.startEntryDrag(
       {
-        dataTransfer,
         shiftKey: false,
-      } as unknown as DragEvent,
+        button: 0,
+        pointerType: 'mouse',
+        pointerId: 1,
+        clientX: 0,
+        clientY: 0,
+        currentTarget: { setPointerCapture: vi.fn(), releasePointerCapture: vi.fn() },
+      } as unknown as PointerEvent,
       entry,
     );
 
@@ -165,10 +171,18 @@ describe('useFileBrowserDragAndDrop', () => {
     expect(appClipboardMock.setDragSourceFileManagerInstanceId).toHaveBeenCalledWith('main');
     expect(appClipboardMock.setDragTargetFileManagerInstanceId).toHaveBeenCalledWith('main');
     expect(appClipboardMock.setCurrentDragOperation).toHaveBeenCalledWith('move');
-    expect(dataTransfer.setData).toHaveBeenCalledWith(
-      'application/fastcat-file-manager-items',
-      JSON.stringify([{ name: '_video', kind: 'directory', path: '_video' }]),
-    );
+    // Payload is now carried in-memory (no dataTransfer for internal drags).
+    expect(appClipboardMock.setDraggedItems).toHaveBeenCalledWith([
+      { name: '_video', kind: 'directory', path: '_video' },
+    ]);
+    // The pointer engine is armed with a file-manager payload + preview.
+    expect(armPointerDndMock).toHaveBeenCalledTimes(1);
+    const [, armOptions] = armPointerDndMock.mock.calls[0] as [PointerEvent, { payload: any }];
+    expect(armOptions.payload.source).toBe('file-manager');
+    expect(armOptions.payload.data.items).toEqual([
+      { name: '_video', kind: 'directory', path: '_video' },
+    ]);
+    // Directories don't feed the timeline-drop payload.
     expect(setDraggedFileMock).not.toHaveBeenCalled();
   });
 });

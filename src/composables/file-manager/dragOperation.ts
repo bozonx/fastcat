@@ -174,6 +174,25 @@ export function getDropTargetEntryPath(event: DragEvent): string | null {
   return null;
 }
 
+/**
+ * Element-based equivalent of {@link getDropTargetEntryPath}. The pointer-DnD
+ * engine hit-tests `elementFromPoint` and hands us the topmost element, so we
+ * walk up to the nearest `[data-entry-path]` rather than reading a DragEvent's
+ * composed path. Kept structural (only `getAttribute`/`parentElement`) so it is
+ * unit-testable without a real DOM.
+ */
+export function getDropTargetEntryPathFromEl(
+  el: { getAttribute?(name: string): string | null; parentElement?: unknown } | null,
+): string | null {
+  let node = el;
+  while (node) {
+    const path = node.getAttribute?.('data-entry-path') ?? null;
+    if (typeof path === 'string' && path.length > 0) return path;
+    node = (node.parentElement ?? null) as typeof node;
+  }
+  return null;
+}
+
 export function getDraggedFileManagerItems(event: DragEvent): FileManagerDraggedItem[] {
   const itemsRaw = event.dataTransfer?.getData(FILE_MANAGER_ITEMS_DRAG_TYPE);
   const copyRaw = event.dataTransfer?.getData(FILE_MANAGER_COPY_DRAG_TYPE);

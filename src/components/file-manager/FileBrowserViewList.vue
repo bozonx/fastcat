@@ -231,14 +231,10 @@ function isEntrySelected(entry: FsEntry): boolean {
                   dragOverEntryPath === (entry.path ?? null) &&
                   props.currentDragOperation === 'copy',
               }"
-              :draggable="!isCheckingCompatibility(entry)"
               tabindex="0"
-              @dragstart="emit('entryDragStart', $event, entry)"
-              @dragend="emit('entryDragEnd')"
-              @dragenter.prevent.stop="emit('entryDragEnter', $event, entry)"
-              @dragover.prevent.stop="emit('entryDragOver', $event, entry)"
-              @dragleave.stop="emit('entryDragLeave', $event, entry)"
-              @drop.prevent.stop="emit('entryDrop', $event, entry)"
+              @pointerdown="
+                !isCheckingCompatibility(entry) && emit('entryPointerDown', $event, entry)
+              "
               @click="emit('entryClick', $event, entry)"
               @dblclick="emit('entryDoubleClick', entry)"
               @keydown.enter.prevent.stop="emit('entryEnter', entry)"
