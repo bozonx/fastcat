@@ -26,7 +26,7 @@ const { t } = useI18n();
 
 const DEFAULT_MARKER_COLOR = '#eab308';
 
-const exportFormat = ref<ExportFormat>('timecode-bracket-left');
+const exportFormat = ref<ExportFormat>('hms-left');
 const copied = ref(false);
 
 const availableColors = computed(() => {
@@ -47,7 +47,7 @@ watch(
         ? new Set(props.filterColors)
         : new Set(availableColors.value);
       copied.value = false;
-      exportFormat.value = 'timecode-bracket-left';
+      exportFormat.value = 'hms-left';
     }
   },
   { immediate: true },
@@ -105,6 +105,9 @@ async function handleCopy() {
 }
 
 const exportFormatItems = computed(() => [
+  { value: 'hms-left' as ExportFormat, label: t('fastcat.marker.exportFormats.hmsLeft') },
+  { value: 'hms-dash-left' as ExportFormat, label: t('fastcat.marker.exportFormats.hmsDashLeft') },
+  { value: 'hms-right' as ExportFormat, label: t('fastcat.marker.exportFormats.hmsRight') },
   {
     value: 'timecode-bracket-left' as ExportFormat,
     label: t('fastcat.marker.exportFormats.timecodeBracketLeft'),
@@ -113,9 +116,6 @@ const exportFormatItems = computed(() => [
     value: 'timecode-bracket-right' as ExportFormat,
     label: t('fastcat.marker.exportFormats.timecodeBracketRight'),
   },
-  { value: 'hms-left' as ExportFormat, label: t('fastcat.marker.exportFormats.hmsLeft') },
-  { value: 'hms-dash-left' as ExportFormat, label: t('fastcat.marker.exportFormats.hmsDashLeft') },
-  { value: 'hms-right' as ExportFormat, label: t('fastcat.marker.exportFormats.hmsRight') },
 ]);
 </script>
 

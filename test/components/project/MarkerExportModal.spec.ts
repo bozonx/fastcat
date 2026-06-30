@@ -22,8 +22,8 @@ describe('MarkerExportModal.vue', () => {
     const textarea = component.find('textarea');
     expect(textarea.exists()).toBe(true);
     const text = textarea.element.value;
-    expect(text).toContain('[00:00:01:00] Intro');
-    expect(text).toContain('[00:00:05:00] Main');
+    expect(text).toContain('00:00:01 Intro');
+    expect(text).toContain('00:00:05 Main');
   });
 
   it('initializes selected colors from filterColors prop when provided', async () => {
@@ -112,18 +112,18 @@ describe('MarkerExportModal.vue', () => {
 
     const textarea = component.find('textarea');
 
-    // Default: timecode-bracket-left
-    expect(textarea.element.value).toContain('[00:00:01:00] Intro');
+    // Default: hms-left
+    expect(textarea.element.value).toContain('00:00:01 Intro');
 
     // Change format via model directly (simulating UiSelect change)
     await component.setProps({ open: true });
     await component.vm.$nextTick();
 
     const vm = component.vm as any;
-    vm.exportFormat = 'hms-left';
+    vm.exportFormat = 'timecode-bracket-left';
     await component.vm.$nextTick();
 
-    expect(textarea.element.value).toContain('00:00:01 Intro');
+    expect(textarea.element.value).toContain('[00:00:01:00] Intro');
 
     vm.exportFormat = 'hms-dash-left';
     await component.vm.$nextTick();
