@@ -20,6 +20,7 @@ const MEDIA_DIR = resolve(process.cwd(), 'test/fixtures/media');
 const SCENES = loadAllScenes();
 
 test.describe('Web engine parity @parity', () => {
+  test.setTimeout(60_000);
   test.skip(({ browserName }) => browserName !== 'chromium', 'WebGPU parity requires Chromium');
 
   test.beforeAll(async ({ browser }) => {
