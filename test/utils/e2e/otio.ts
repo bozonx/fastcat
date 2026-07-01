@@ -33,6 +33,7 @@ export interface TimelineItemView {
 }
 
 export interface TimelineTrackView {
+  id: string;
   name: string;
   kind: 'Video' | 'Audio';
   items: TimelineItemView[];
@@ -66,6 +67,7 @@ interface RawTrack {
   OTIO_SCHEMA?: string;
   name?: string;
   kind?: string;
+  metadata?: { fastcat?: { id?: string } };
   children?: RawChild[];
 }
 interface RawTimeline {
@@ -116,6 +118,7 @@ function parseTrack(raw: RawTrack): TimelineTrackView {
 
   const kind = raw.kind === 'Audio' ? 'Audio' : 'Video';
   return {
+    id: raw.metadata?.fastcat?.id ?? '',
     name: raw.name ?? '',
     kind,
     items,

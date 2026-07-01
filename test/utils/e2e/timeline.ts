@@ -91,6 +91,44 @@ export async function dragClipBy(
   );
 }
 
+export async function moveClipToTrack(
+  page: Page,
+  clipId: string,
+  toTrackId: string,
+): Promise<void> {
+  await expect(clip(page, clipId)).toBeVisible();
+  await page.evaluate(
+    async ({ itemId, toTrackId: targetTrackId }) => {
+      const moveClipToTrack = (
+        window as Window & {
+          __fastcatE2eMoveClipToTrack?: (params: {
+            itemId: string;
+            toTrackId: string;
+          }) => Promise<void>;
+        }
+      ).__fastcatE2eMoveClipToTrack;
+
+      if (!moveClipToTrack) throw new Error('E2E timeline move-to-track hook is not registered');
+      await moveClipToTrack({ itemId, toTrackId: targetTrackId });
+    },
+    { itemId: clipId, toTrackId },
+  );
+}
+
+export async function deleteClip(page: Page, clipId: string): Promise<void> {
+  await expect(clip(page, clipId)).toBeVisible();
+  await page.evaluate(async (itemId) => {
+    const deleteTimelineClip = (
+      window as Window & {
+        __fastcatE2eDeleteClip?: (params: { itemId: string }) => Promise<void>;
+      }
+    ).__fastcatE2eDeleteClip;
+
+    if (!deleteTimelineClip) throw new Error('E2E timeline delete hook is not registered');
+    await deleteTimelineClip({ itemId });
+  }, clipId);
+}
+
 /**
  * Drags one trim handle of a clip by `deltaPx`. Positive `deltaPx` extends to
  * the right; the app clamps at source/min-duration bounds, which specs assert.

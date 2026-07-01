@@ -402,6 +402,8 @@ onBeforeUnmount(() => {
     const e2eWindow = window as Window & FastcatE2eTimelineWindow;
     delete e2eWindow.__fastcatE2eAddFileToTrack;
     delete e2eWindow.__fastcatE2eMoveClipBy;
+    delete e2eWindow.__fastcatE2eMoveClipToTrack;
+    delete e2eWindow.__fastcatE2eDeleteClip;
     delete e2eWindow.__fastcatE2eTrimClipEdge;
     delete e2eWindow.__fastcatE2eAdvancePlayheadBy;
   }
@@ -431,6 +433,27 @@ onMounted(() => {
       if (!clip) throw new Error(`Timeline clip not found: ${itemId}`);
       clip.timelineRange.startUs = Math.max(0, Math.round(clip.timelineRange.startUs + deltaUs));
       await saveE2eTimelineMutation();
+    };
+
+    e2eWindow.__fastcatE2eMoveClipToTrack = async ({ itemId, toTrackId }) => {
+      const fromTrack = findE2eClipTrack(itemId);
+      if (!fromTrack) throw new Error(`Timeline clip track not found: ${itemId}`);
+      const clip = findE2eClip(itemId);
+      if (!clip) throw new Error(`Timeline clip not found: ${itemId}`);
+      await timelineStore.moveItemToTrack({
+        fromTrackId: fromTrack.id,
+        toTrackId,
+        itemId,
+        startUs: clip.timelineRange.startUs,
+      });
+      await timelineStore.saveTimeline();
+    };
+
+    e2eWindow.__fastcatE2eDeleteClip = async ({ itemId }) => {
+      const track = findE2eClipTrack(itemId);
+      if (!track) throw new Error(`Timeline clip track not found: ${itemId}`);
+      timelineStore.applyTimeline({ type: 'delete_items', trackId: track.id, itemIds: [itemId] });
+      await timelineStore.saveTimeline();
     };
 
     e2eWindow.__fastcatE2eTrimClipEdge = async ({ itemId, edge, deltaUs }) => {
@@ -640,6 +663,8 @@ type FastcatE2eAddFileToTrack = (params: {
   trackId: string;
 }) => Promise<void>;
 type FastcatE2eMoveClipBy = (params: { itemId: string; deltaUs: number }) => Promise<void>;
+type FastcatE2eMoveClipToTrack = (params: { itemId: string; toTrackId: string }) => Promise<void>;
+type FastcatE2eDeleteClip = (params: { itemId: string }) => Promise<void>;
 type FastcatE2eTrimClipEdge = (params: {
   itemId: string;
   edge: 'start' | 'end';
@@ -650,6 +675,8 @@ type FastcatE2eAdvancePlayheadBy = (params: { deltaUs: number }) => Promise<void
 interface FastcatE2eTimelineWindow {
   __fastcatE2eAddFileToTrack?: FastcatE2eAddFileToTrack;
   __fastcatE2eMoveClipBy?: FastcatE2eMoveClipBy;
+  __fastcatE2eMoveClipToTrack?: FastcatE2eMoveClipToTrack;
+  __fastcatE2eDeleteClip?: FastcatE2eDeleteClip;
   __fastcatE2eTrimClipEdge?: FastcatE2eTrimClipEdge;
   __fastcatE2eAdvancePlayheadBy?: FastcatE2eAdvancePlayheadBy;
 }
@@ -662,6 +689,17 @@ function findE2eClip(itemId: string) {
     for (const item of track.items) {
       if (item.kind === 'clip' && item.id === itemId) return item;
     }
+  }
+
+  return null;
+}
+
+function findE2eClipTrack(itemId: string) {
+  const doc = timelineStore.timelineDoc;
+  if (!doc) return null;
+
+  for (const track of doc.tracks) {
+    if (track.items.some((item) => item.kind === 'clip' && item.id === itemId)) return track;
   }
 
   return null;

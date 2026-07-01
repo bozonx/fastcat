@@ -14,7 +14,7 @@ export type MonitorSyncMode = 'smooth' | 'balanced' | 'strict';
 
 interface MonitorPlaybackLoopState {
   lastFrameTimeMs: number;
-  renderAccumulatorMs: number;
+  lastRenderedFrameIndex: number;
   storeSyncAccumulatorMs: number;
   audioLevelsAccumulatorMs: number;
 }
@@ -25,7 +25,7 @@ interface MonitorScrubPreviewState {
 
 function resetMonitorPlaybackLoopState(state: MonitorPlaybackLoopState) {
   state.lastFrameTimeMs = 0;
-  state.renderAccumulatorMs = 0;
+  state.lastRenderedFrameIndex = -1;
   state.storeSyncAccumulatorMs = 0;
   state.audioLevelsAccumulatorMs = 0;
 }
@@ -38,33 +38,24 @@ function advanceMonitorPlaybackLoop(params: {
   const deltaMs = Number.isFinite(deltaMsRaw) && deltaMsRaw > 0 ? deltaMsRaw : 0;
 
   params.state.lastFrameTimeMs = params.timestamp;
-  params.state.renderAccumulatorMs += deltaMs;
   params.state.storeSyncAccumulatorMs += deltaMs;
   params.state.audioLevelsAccumulatorMs += deltaMs;
 }
 
-export function consumeMonitorRenderAccumulator(params: {
-  accumulatorMs: number;
-  frameIntervalMs: number;
-  syncMode: MonitorSyncMode;
-}): { shouldRender: boolean; accumulatorMs: number } {
-  if (params.accumulatorMs < params.frameIntervalMs) {
-    return { shouldRender: false, accumulatorMs: params.accumulatorMs };
-  }
-
-  const remainingMs = params.accumulatorMs - params.frameIntervalMs;
-  if (params.syncMode === 'smooth') {
-    return { shouldRender: true, accumulatorMs: 0 };
-  }
-
-  if (params.syncMode === 'balanced') {
-    return {
-      shouldRender: true,
-      accumulatorMs: Math.min(remainingMs, params.frameIntervalMs),
-    };
-  }
-
-  return { shouldRender: true, accumulatorMs: remainingMs };
+// Map a timeline time to the composition source-frame index displayed at it.
+// Playback presents at the composition frame rate, so rendering exactly once per
+// change of this index keeps the on-screen cadence phase-locked to the audio
+// master clock and drift-free. This replaces the old accumulator gate (fire when
+// >= one frame interval accumulated): that gate was sampled on the 60Hz rAF grid,
+// so its firing beat against the frame interval and — because 'balanced'/'smooth'
+// clamped/reset the carryover — its phase drifted frame to frame, which is exactly
+// the judder we saw versus the native monitor. Mirrors the worker-side
+// `computeFrameIndex` floor+epsilon so the main thread and the compositor agree on
+// where a frame boundary falls.
+export function computeMonitorFrameIndex(params: { timeUs: number; fps: number }): number {
+  const fps = Number.isFinite(params.fps) && params.fps > 0 ? params.fps : 30;
+  const timeS = Number.isFinite(params.timeUs) ? Math.max(0, params.timeUs / 1_000_000) : 0;
+  return Math.max(0, Math.floor(timeS * fps + 1e-6));
 }
 
 function canPlayMonitorScrubPreview(params: {
@@ -263,7 +254,7 @@ export function useMonitorPlayback(options: UseMonitorPlaybackOptions) {
   let playbackLoopId = 0;
   const playbackLoopState = {
     lastFrameTimeMs: 0,
-    renderAccumulatorMs: 0,
+    lastRenderedFrameIndex: -1,
     storeSyncAccumulatorMs: 0,
     audioLevelsAccumulatorMs: 0,
   };
@@ -376,22 +367,18 @@ export function useMonitorPlayback(options: UseMonitorPlaybackOptions) {
       updateAudioLevels();
     }
 
+    // Render exactly once per composition-frame boundary, phase-locked to the audio
+    // master clock. Gating on the frame index (rather than an accumulated time
+    // budget) keeps the on-screen cadence drift-free and removes the beat against
+    // the 60Hz rAF grid that made web playback judder. When a render overruns real
+    // time the target index simply jumps past the last presented one, so slow
+    // frames are dropped to stay in sync instead of piling up. Only schedule while
+    // the document is visible to save resources in the background (Desktop).
     const fps = sanitizeFps(getFps());
-    const frameIntervalMs = 1000 / fps;
-    const renderBudget = consumeMonitorRenderAccumulator({
-      accumulatorMs: playbackLoopState.renderAccumulatorMs,
-      frameIntervalMs,
-      syncMode: isMobile.value
-        ? 'balanced'
-        : (workspaceStore.userSettings?.optimization?.nativeMonitorSyncMode ?? 'balanced'),
-    });
-
-    if (renderBudget.shouldRender) {
-      playbackLoopState.renderAccumulatorMs = renderBudget.accumulatorMs;
-      // Only schedule render if document is visible to save resources in background (Desktop)
-      if (!document.hidden) {
-        scheduleRender(newTimeUs, { prewarm: true });
-      }
+    const targetFrameIndex = computeMonitorFrameIndex({ timeUs: newTimeUs, fps });
+    if (targetFrameIndex !== playbackLoopState.lastRenderedFrameIndex && !document.hidden) {
+      playbackLoopState.lastRenderedFrameIndex = targetFrameIndex;
+      scheduleRender(newTimeUs, { prewarm: true });
     }
 
     if (isPlaying.value) {

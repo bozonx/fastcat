@@ -157,7 +157,7 @@ const sortedProjects = computed(() => {
 </script>
 
 <template>
-  <div class="flex h-screen bg-ui-bg overflow-hidden">
+  <div class="flex h-screen bg-ui-bg overflow-hidden relative">
     <!-- Sidebar -->
     <div
       class="w-80 border-r border-ui-border bg-ui-bg-elevated/50 flex flex-col shrink-0 backdrop-blur-md"
@@ -598,6 +598,17 @@ const sortedProjects = computed(() => {
   </UiModal>
 
   <EditorSettingsModal v-model:open="isSettingsOpen" />
+
+  <!-- Loading Overlay -->
+  <div
+    v-if="workspaceStore.isLoading"
+    class="absolute inset-0 z-[100] flex items-center justify-center bg-ui-bg/60 backdrop-blur-sm transition-all duration-300"
+  >
+    <div class="flex flex-col items-center gap-3 p-6 bg-ui-bg-elevated border border-ui-border rounded-2xl shadow-2xl">
+      <div class="animate-spin rounded-full h-10 w-10 border-b-2 border-primary-500"></div>
+      <span class="text-sm font-medium text-ui-text-muted">{{ t('common.loading') }}</span>
+    </div>
+  </div>
 </template>
 
 <style scoped>

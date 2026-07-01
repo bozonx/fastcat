@@ -523,11 +523,11 @@ const addTrackActions = computed(() => [
     </template>
 
     <PropertySection v-if="!finalIsReadOnly" :title="t('videoEditor.timeline.format')">
-      <div class="flex items-center gap-3 mb-4">
-        <UCheckbox v-model="followProjectSettings" />
-        <span class="text-ui-text text-sm">{{
-          t('videoEditor.timeline.followProjectSettings')
-        }}</span>
+      <div class="mb-4">
+        <UCheckbox
+          v-model="followProjectSettings"
+          :label="t('videoEditor.timeline.followProjectSettings')"
+        />
       </div>
       <MediaResolutionSettings
         v-model:width="timelineWidth"

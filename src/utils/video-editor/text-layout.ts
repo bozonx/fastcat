@@ -423,7 +423,9 @@ export function computeTextLayoutMetrics(input: {
   const frameWidthPx = frameContentWidthPx + paddingPx.left + paddingPx.right;
   const autoFrameHeightPx = textBlockHeightPx + paddingPx.top + paddingPx.bottom;
   const frameHeightPx =
-    explicitHeightPx !== undefined ? Math.max(explicitHeightPx, 1) : autoFrameHeightPx;
+    explicitHeightPx !== undefined
+      ? Math.max(explicitHeightPx, autoFrameHeightPx, 1)
+      : autoFrameHeightPx;
   const frameLeftPx = (safeCanvasWidth - frameWidthPx) / 2;
   const frameTopPx = (safeCanvasHeight - frameHeightPx) / 2;
 

@@ -107,12 +107,10 @@ const stopFramesQualityOptions = [
     </UiFormField>
 
     <UiFormField>
-      <label class="flex items-center gap-2 cursor-pointer">
-        <UCheckbox v-model="workspaceStore.userSettings.openLastProjectOnStart" />
-        <span class="text-ui-text">
-          {{ t('videoEditor.settings.openLastProjectOnStart') }}
-        </span>
-      </label>
+      <UCheckbox
+        v-model="workspaceStore.userSettings.openLastProjectOnStart"
+        :label="t('videoEditor.settings.openLastProjectOnStart')"
+      />
     </UiFormField>
 
     <UiFormField :label="t('videoEditor.settings.defaultTransitionDuration')">
@@ -170,12 +168,11 @@ const stopFramesQualityOptions = [
       </div>
     </UiFormField>
 
-    <label class="flex items-center gap-3 cursor-pointer px-1">
-      <UCheckbox v-model="workspaceStore.userSettings.deleteWithoutConfirmation" />
-      <span class="text-ui-text">
-        {{ t('videoEditor.settings.deleteWithoutConfirmation') }}
-      </span>
-    </label>
+    <UCheckbox
+      v-model="workspaceStore.userSettings.deleteWithoutConfirmation"
+      :label="t('videoEditor.settings.deleteWithoutConfirmation')"
+      class="px-1"
+    />
 
     <UiAccordion :title="t('videoEditor.settings.advancedSection')">
       <div class="flex flex-col gap-6 pt-2">
@@ -227,12 +224,10 @@ const stopFramesQualityOptions = [
 
         <template v-if="workspaceStore.inDevelopmentFeaturesEnabled">
           <UiFormField>
-            <label class="flex items-center gap-2 cursor-pointer">
-              <UCheckbox v-model="workspaceStore.userSettings.backup.enabled" />
-              <span class="text-ui-text">
-                {{ t('videoEditor.settings.useBackups') }}
-              </span>
-            </label>
+            <UCheckbox
+              v-model="workspaceStore.userSettings.backup.enabled"
+              :label="t('videoEditor.settings.useBackups')"
+            />
           </UiFormField>
 
           <UiFormField

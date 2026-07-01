@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, inject, onMounted, onUnmounted, computed } from 'vue';
+import { ref, inject, onMounted, onUnmounted, computed, nextTick } from 'vue';
 import { useRuntimeConfig } from 'nuxt/app';
 import { useProjectStore } from '~/stores/project.store';
 import { useTimelineStore } from '~/stores/timeline.store';
@@ -425,20 +425,47 @@ useFileManagerPanelPendingActions({
 });
 
 type FastcatE2eCreateRootFolder = (params: { name: string }) => Promise<void>;
+type FastcatE2eRenameEntry = (params: { path: string; newName: string }) => Promise<void>;
+type FastcatE2eMoveEntry = (params: { sourcePath: string; targetDirPath: string }) => Promise<void>;
+type FastcatE2eSetFileViewMode = (params: { mode: 'grid' | 'list' }) => Promise<void>;
 
 interface FastcatE2eFileManagerWindow {
   __fastcatE2eCreateRootFolder?: FastcatE2eCreateRootFolder;
+  __fastcatE2eRenameEntry?: FastcatE2eRenameEntry;
+  __fastcatE2eMoveEntry?: FastcatE2eMoveEntry;
+  __fastcatE2eSetFileViewMode?: FastcatE2eSetFileViewMode;
 }
 
 function registerE2eFileManagerHooks() {
   if (!runtimeConfig.public.e2eTest || props.hideActions) return;
 
-  (window as Window & FastcatE2eFileManagerWindow).__fastcatE2eCreateRootFolder = async ({
-    name,
-  }) => {
+  const e2eWindow = window as Window & FastcatE2eFileManagerWindow;
+
+  e2eWindow.__fastcatE2eCreateRootFolder = async ({ name }) => {
     await createFolder(name, '');
     await loadProjectDirectory({ fullRefresh: true });
     uiStore.notifyFileManagerUpdate();
+  };
+
+  e2eWindow.__fastcatE2eRenameEntry = async ({ path, newName }) => {
+    const target = await findEntryByPath(path);
+    if (!target) throw new Error(`File-manager entry not found: ${path}`);
+    await renameEntry(target, newName);
+    await loadProjectDirectory({ fullRefresh: true });
+    uiStore.notifyFileManagerUpdate();
+  };
+
+  e2eWindow.__fastcatE2eMoveEntry = async ({ sourcePath, targetDirPath }) => {
+    const source = await findEntryByPath(sourcePath);
+    if (!source) throw new Error(`File-manager entry not found: ${sourcePath}`);
+    await moveEntry({ source, targetDirPath });
+    await loadProjectDirectory({ fullRefresh: true });
+    uiStore.notifyFileManagerUpdate();
+  };
+
+  e2eWindow.__fastcatE2eSetFileViewMode = async ({ mode }) => {
+    fileManagerStore.setViewMode(mode);
+    await nextTick();
   };
 }
 
@@ -449,7 +476,11 @@ onMounted(registerE2eFileManagerHooks);
 onUnmounted(() => {
   clipboardStore.unregisterFileManagerVfs(instanceId);
   if (runtimeConfig.public.e2eTest) {
-    delete (window as Window & FastcatE2eFileManagerWindow).__fastcatE2eCreateRootFolder;
+    const e2eWindow = window as Window & FastcatE2eFileManagerWindow;
+    delete e2eWindow.__fastcatE2eCreateRootFolder;
+    delete e2eWindow.__fastcatE2eRenameEntry;
+    delete e2eWindow.__fastcatE2eMoveEntry;
+    delete e2eWindow.__fastcatE2eSetFileViewMode;
   }
 });
 

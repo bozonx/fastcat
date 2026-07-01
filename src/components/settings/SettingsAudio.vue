@@ -183,12 +183,10 @@ const webAudioCodecs = computed(() => {
       </UButton>
     </div>
 
-    <label class="flex items-center gap-3 cursor-pointer">
-      <UCheckbox v-model="workspaceStore.userSettings.projectDefaults.audioScrubbingEnabled" />
-      <span class="text-sm text-ui-text">
-        {{ t('videoEditor.settings.audioScrubbingHint') }}
-      </span>
-    </label>
+    <UCheckbox
+      v-model="workspaceStore.userSettings.projectDefaults.audioScrubbingEnabled"
+      :label="t('videoEditor.settings.audioScrubbingHint')"
+    />
 
     <UiFormField
       :label="t('videoEditor.settings.defaultAudioFadeCurveTitle')"

@@ -252,6 +252,7 @@ button:not(:disabled),
 [role='checkbox']:not([aria-disabled='true']),
 [role='radio']:not([aria-disabled='true']),
 [role='switch']:not([aria-disabled='true']),
+label[for],
 label:has(> input[type='checkbox']:not(:disabled)),
 label:has(> input[type='radio']:not(:disabled)),
 summary:not(:disabled) {

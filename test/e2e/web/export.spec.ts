@@ -4,7 +4,7 @@ import { seedProjectMedia } from '../../utils/e2e/file-manager';
 import { addFileToTrack, trackIds } from '../../utils/e2e/timeline';
 import { waitForTimelineDoc } from '../../utils/e2e/otio';
 import { openExport, startExport, waitForExportSuccess } from '../../utils/e2e/transport';
-import { listOpfsDirectory } from '../../utils/e2e/virtual-fs';
+import { listOpfsDirectory, readFileFromOpfs } from '../../utils/e2e/virtual-fs';
 
 /**
  * Base web export of a short timeline. Premium presets, native/hardware export,
@@ -40,6 +40,13 @@ test.describe('Web export', () => {
     await waitForExportSuccess(page, { timeout: 90_000 });
 
     const outputs = await listOpfsDirectory(page, `${e2eProject.path}/_export`);
-    expect(outputs.length).toBeGreaterThan(0);
+    const exportedFiles = outputs.filter((entry) => entry.kind === 'file');
+    expect(exportedFiles.length).toBeGreaterThan(0);
+
+    const exportedFile = exportedFiles[0]!;
+    expect(exportedFile.name).toMatch(/\.(mp4|webm|mkv)$/i);
+
+    const bytes = await readFileFromOpfs(page, `${e2eProject.path}/_export/${exportedFile.name}`);
+    expect(bytes.byteLength).toBeGreaterThan(0);
   });
 });

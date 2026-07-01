@@ -130,6 +130,29 @@ describe('TextRenderer.draw', () => {
     expect(clip.canvas).not.toBeNull();
   });
 
+  it('grows the text canvas for multiline content without reducing font size', () => {
+    const renderer = new TextRenderer({ designWidth: 1920, designHeight: 1080 });
+    const clip = makeClip({
+      text: 'Test',
+      style: {
+        ...makeClip().style,
+        fontSize: 64,
+        lineHeight: 1.2,
+        padding: 0,
+      } as any,
+    });
+
+    renderer.draw(clip, 1920, 1080);
+    const singleLineHeight = clip.canvas!.height;
+    const singleLineFont = clip.ctx!.font;
+
+    clip.text = 'Test\nTest\nTest\nTest\nTest';
+    renderer.draw(clip, 1920, 1080);
+
+    expect(clip.canvas!.height).toBeGreaterThan(singleLineHeight);
+    expect(clip.ctx!.font).toBe(singleLineFont);
+  });
+
   it('renders with letterSpacing > 0', () => {
     const renderer = new TextRenderer({ designWidth: 1920, designHeight: 1080 });
     const clip = makeClip({

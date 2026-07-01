@@ -276,4 +276,38 @@ describe('LayoutApplier', () => {
     expect(sprite.x).toBeCloseTo(1920 / 2); // Centered because of align and center anchor
     expect(sprite.y).toBeCloseTo(1080 / 2);
   });
+
+  it('applies transform scale magnitude to text clips', () => {
+    const sprite = createMockSprite();
+    const mockCtx = {
+      font: '',
+      measureText: (text: string) => ({ width: text.length * 10 }),
+    };
+
+    const clip = {
+      itemId: 'clip-text-scaled',
+      layer: 1,
+      startUs: 0,
+      endUs: 1_000_000,
+      durationUs: 1_000_000,
+      sprite,
+      clipKind: 'text' as const,
+      clipType: 'text' as const,
+      text: 'Sample Text',
+      ctx: mockCtx as any,
+      transform: { scale: { x: 2, y: 0.5 } },
+      style: {
+        fontSize: 40,
+        lineHeight: 1.5,
+        align: 'center' as const,
+        verticalAlign: 'middle' as const,
+        padding: 10,
+      },
+    };
+
+    applier.applyTextLayout(clip as any);
+
+    expect(sprite.scale.x).toBeCloseTo(2);
+    expect(sprite.scale.y).toBeCloseTo(0.5);
+  });
 });

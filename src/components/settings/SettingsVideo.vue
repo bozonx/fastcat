@@ -368,20 +368,13 @@ const tauriVideoCodecs = computed(() => {
             />
           </UiFormField>
 
-          <label
+          <UCheckbox
             v-if="workspaceStore.inDevelopmentFeaturesEnabled"
-            class="flex items-start gap-3 cursor-pointer px-1"
-          >
-            <UCheckbox v-model="workspaceStore.userSettings.optimization.enableHardwareEncoding" />
-            <div class="flex flex-col gap-0.5">
-              <span class="text-ui-text">
-                {{ t('videoEditor.settings.video.enableHardwareEncoding') }}
-              </span>
-              <span class="text-xs text-ui-text-muted">
-                {{ t('videoEditor.settings.video.enableHardwareEncodingHelp') }}
-              </span>
-            </div>
-          </label>
+            v-model="workspaceStore.userSettings.optimization.enableHardwareEncoding"
+            :label="t('videoEditor.settings.video.enableHardwareEncoding')"
+            :description="t('videoEditor.settings.video.enableHardwareEncodingHelp')"
+            class="px-1"
+          />
 
           <UiFormField
             :label="t('videoEditor.settings.video.ffmpegPath')"

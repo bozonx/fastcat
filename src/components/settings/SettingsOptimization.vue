@@ -99,21 +99,15 @@ function resetDefaults() {
       </UiFormField>
     </div>
 
-    <label
-      class="flex items-center gap-3 cursor-pointer"
+    <UCheckbox
+      v-model="workspaceStore.userSettings.optimization.proxyCopyOpusAudio"
+      :label="t('videoEditor.settings.proxyCopyOpusAudio')"
       :title="t('videoEditor.settings.proxyCopyOpusAudioHelp')"
-    >
-      <UCheckbox v-model="workspaceStore.userSettings.optimization.proxyCopyOpusAudio" />
-      <span class="text-sm text-ui-text">
-        {{ t('videoEditor.settings.proxyCopyOpusAudio') }}
-      </span>
-    </label>
+    />
 
-    <label class="flex items-center gap-3 cursor-pointer">
-      <UCheckbox v-model="workspaceStore.userSettings.optimization.autoCreateProxies" />
-      <span class="text-sm text-ui-text">
-        {{ t('videoEditor.settings.autoCreateProxies') }}
-      </span>
-    </label>
+    <UCheckbox
+      v-model="workspaceStore.userSettings.optimization.autoCreateProxies"
+      :label="t('videoEditor.settings.autoCreateProxies')"
+    />
   </div>
 </template>

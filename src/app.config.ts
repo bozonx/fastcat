@@ -92,7 +92,8 @@ export default defineAppConfig({
     },
     checkbox: {
       slots: {
-        base: 'rounded-sm border border-ui-border overflow-hidden focus-visible:outline-2 focus-visible:outline-offset-2',
+        base: 'rounded-sm border border-ui-border overflow-hidden focus-visible:outline-2 focus-visible:outline-offset-2 cursor-pointer',
+        label: 'cursor-pointer select-none',
       },
     },
     modal: {

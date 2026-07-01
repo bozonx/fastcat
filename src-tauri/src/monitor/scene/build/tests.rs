@@ -707,6 +707,57 @@ mod tests {
     }
 
     #[test]
+    fn explicit_text_height_is_minimum_when_content_needs_more_space() {
+        let short = text_layer_with_style(json!({
+            "fontSize": 40.0,
+            "height": 200.0,
+            "padding": 10.0,
+        }));
+        assert_eq!(short.frame_height, 200.0);
+
+        let sl = SceneLayer {
+            id: "text-multiline".into(),
+            kind: LayerKind::Text,
+            path: "".into(),
+            timeline_start_sec: 0.0,
+            timeline_end_sec: 10.0,
+            source_start_sec: 0.0,
+            source_range_duration_sec: 10.0,
+            source_duration_sec: None,
+            speed: 1.0,
+            freeze_frame_source_sec: None,
+            source_orientation: None,
+            z: 1,
+            opacity: 1.0,
+            blend_mode: BlendMode::Normal,
+            background_color: None,
+            text: Some("one\ntwo\nthree\nfour\nfive".into()),
+            style: Some(json!({
+                "fontSize": 40.0,
+                "height": 80.0,
+                "padding": 10.0,
+                "verticalAlign": "middle"
+            })),
+            shape_type: None,
+            fill_color: None,
+            stroke_color: None,
+            stroke_width: None,
+            shape_config: None,
+            transform: None,
+            transition_in: None,
+            transition_out: None,
+            effects: Vec::new(),
+        };
+
+        let multiline = build_text_layer(&sl, (1920, 1080));
+        assert!(multiline.frame_height > 80.0);
+        assert_eq!(
+            multiline.frame_height,
+            multiline.text_block_height + multiline.padding_top + multiline.padding_bottom
+        );
+    }
+
+    #[test]
     fn test_build_text_layer_scales_style_to_scene_resolution() {
         let sl = SceneLayer {
             id: "text-layer-720p".into(),

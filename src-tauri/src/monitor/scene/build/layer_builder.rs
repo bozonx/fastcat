@@ -308,7 +308,10 @@ pub fn build_text_layer(sl: &SceneLayer, scene_size: (u32, u32)) -> TextLayer {
     let frame_content_width_px = content_width_px.unwrap_or(text_block_width_px);
     let frame_width_px = frame_content_width_px + padding_left + padding_right;
     let auto_frame_height_px = text_block_height_px + padding_top + padding_bottom;
-    let frame_height_px = explicit_height_px.unwrap_or(auto_frame_height_px).max(1.0);
+    let frame_height_px = explicit_height_px
+        .map(|height| height.max(auto_frame_height_px))
+        .unwrap_or(auto_frame_height_px)
+        .max(1.0);
 
     // Shadows bounding box adjustment.
     // The blur radius maps to a Gaussian with σ ≈ blur/2; its visible tail reaches

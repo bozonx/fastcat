@@ -437,7 +437,6 @@ const filenamePlaceholder = computed(() =>
             :disabled="isExporting"
             :label="t('videoEditor.export.matchTimeline')"
             :ui="{ label: 'text-sm text-ui-text' }"
-            class="cursor-pointer"
           />
 
           <MediaResolutionSettings
@@ -513,7 +512,6 @@ const filenamePlaceholder = computed(() =>
             :disabled="isExporting"
             :label="t('videoEditor.export.includeMetadata')"
             :ui="{ label: 'text-sm text-ui-text' }"
-            class="cursor-pointer"
           />
 
           <div v-if="includeMetadata" class="space-y-4 pt-2">

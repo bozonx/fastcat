@@ -4,7 +4,7 @@ import { ref, nextTick, defineComponent, h, reactive } from 'vue';
 import { mount } from '@vue/test-utils';
 import { createTestingPinia } from '@pinia/testing';
 import {
-  consumeMonitorRenderAccumulator,
+  computeMonitorFrameIndex,
   useMonitorPlayback,
 } from '~/composables/monitor/useMonitorPlayback';
 import { useTimelineStore } from '~/stores/timeline.store';
@@ -38,30 +38,22 @@ describe('useMonitorPlayback', () => {
     });
   });
 
-  it('applies monitor sync mode render accumulator policies', () => {
-    expect(
-      consumeMonitorRenderAccumulator({
-        accumulatorMs: 70,
-        frameIntervalMs: 30,
-        syncMode: 'smooth',
-      }),
-    ).toEqual({ shouldRender: true, accumulatorMs: 0 });
+  it('maps timeline time to a drift-free composition frame index', () => {
+    // Advances exactly once per frame interval, phase-locked to the clock: at 25fps
+    // the index only ticks when the audio time crosses a 40ms boundary.
+    expect(computeMonitorFrameIndex({ timeUs: 0, fps: 25 })).toBe(0);
+    expect(computeMonitorFrameIndex({ timeUs: 39_000, fps: 25 })).toBe(0);
+    expect(computeMonitorFrameIndex({ timeUs: 40_000, fps: 25 })).toBe(1);
+    expect(computeMonitorFrameIndex({ timeUs: 79_999, fps: 25 })).toBe(1);
+    expect(computeMonitorFrameIndex({ timeUs: 80_000, fps: 25 })).toBe(2);
 
-    expect(
-      consumeMonitorRenderAccumulator({
-        accumulatorMs: 70,
-        frameIntervalMs: 30,
-        syncMode: 'balanced',
-      }),
-    ).toEqual({ shouldRender: true, accumulatorMs: 30 });
+    // A time landing exactly on a boundary must not float just under it (epsilon).
+    expect(computeMonitorFrameIndex({ timeUs: 1_000_000, fps: 30 })).toBe(30);
 
-    expect(
-      consumeMonitorRenderAccumulator({
-        accumulatorMs: 70,
-        frameIntervalMs: 30,
-        syncMode: 'strict',
-      }),
-    ).toEqual({ shouldRender: true, accumulatorMs: 40 });
+    // Invalid inputs clamp to a safe frame 0 rather than NaN.
+    expect(computeMonitorFrameIndex({ timeUs: -100, fps: 30 })).toBe(0);
+    expect(computeMonitorFrameIndex({ timeUs: 100_000, fps: 0 })).toBe(3);
+    expect(computeMonitorFrameIndex({ timeUs: Number.NaN, fps: 30 })).toBe(0);
   });
 
   function createAudioEngineMock() {

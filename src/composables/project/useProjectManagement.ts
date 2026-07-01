@@ -129,6 +129,8 @@ export function useProjectManagement(options: { isMobile?: boolean } = {}) {
     const name = projectCreationSettings.value.name.trim();
     if (!isCreateNameValid.value) return;
 
+    isCreateModalOpen.value = false;
+
     const parentPath =
       workspaceStore.workspaceProviderId === 'tauri'
         ? projectCreationSettings.value.location
@@ -155,6 +157,7 @@ export function useProjectManagement(options: { isMobile?: boolean } = {}) {
     await projectStore.createProject(name, options);
 
     if (workspaceStore.error) {
+      isCreateModalOpen.value = true;
       return;
     }
 
@@ -167,6 +170,7 @@ export function useProjectManagement(options: { isMobile?: boolean } = {}) {
   }
 
   function startCreateProject() {
+    workspaceStore.error = null;
     projectCreationSettings.value = createProjectCreationState(workspaceStore);
     isCreateModalOpen.value = true;
   }
@@ -189,20 +193,32 @@ export function useProjectManagement(options: { isMobile?: boolean } = {}) {
     if (!oldName || !isRenameNameValid.value) {
       return;
     }
+    const newName = renameValue.value.trim();
+    isRenameModalOpen.value = false;
     try {
       await workspaceStore.renameProject({
         oldName: oldName.projectName,
-        newName: renameValue.value.trim(),
+        newName,
         projectId: oldName.projectId,
         projectPath: oldName.projectPath,
       });
+      if (workspaceStore.error) {
+        renameTargetProject.value = oldName;
+        renameValue.value = newName;
+        isRenameModalOpen.value = true;
+        return;
+      }
       closeRenameModal();
     } catch (e) {
       log.error('Failed to rename project', e);
+      renameTargetProject.value = oldName;
+      renameValue.value = newName;
+      isRenameModalOpen.value = true;
     }
   }
 
   function startRename(project: ProjectActionTarget | string) {
+    workspaceStore.error = null;
     renameTargetProject.value =
       typeof project === 'string' ? { projectName: project } : { ...project };
     renameValue.value = renameTargetProject.value.projectName;
@@ -281,6 +297,7 @@ export function useProjectManagement(options: { isMobile?: boolean } = {}) {
   }
 
   function startDuplicate(project: ProjectActionTarget | string) {
+    workspaceStore.error = null;
     duplicateTargetProject.value =
       typeof project === 'string' ? { projectName: project } : { ...project };
     duplicateValue.value = duplicateTargetProject.value.projectName;
@@ -296,10 +313,12 @@ export function useProjectManagement(options: { isMobile?: boolean } = {}) {
     if (!target || !isDuplicateNameValid.value) {
       return;
     }
+    const targetName = duplicateValue.value.trim();
+    isDuplicateModalOpen.value = false;
     try {
       await workspaceStore.duplicateProject({
         sourceName: target.projectName,
-        targetName: duplicateValue.value.trim(),
+        targetName,
         sourceProjectId: target.projectId,
         sourceProjectPath: target.projectPath,
         targetParentPath:
@@ -307,9 +326,18 @@ export function useProjectManagement(options: { isMobile?: boolean } = {}) {
             ? duplicateLocation.value || undefined
             : undefined,
       });
+      if (workspaceStore.error) {
+        duplicateTargetProject.value = target;
+        duplicateValue.value = targetName;
+        isDuplicateModalOpen.value = true;
+        return;
+      }
       closeDuplicateModal();
     } catch (e) {
       log.error('Failed to duplicate project', e);
+      duplicateTargetProject.value = target;
+      duplicateValue.value = targetName;
+      isDuplicateModalOpen.value = true;
     }
   }
 

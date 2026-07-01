@@ -165,7 +165,37 @@ export async function openProjectFilesTab(page: Page): Promise<void> {
 
 export async function setViewMode(page: Page, mode: 'grid' | 'list'): Promise<void> {
   await openProjectFilesTab(page);
-  await page.getByTestId(mode === 'grid' ? 'file-view-grid' : 'file-view-list').click();
+  const toggle = page.getByTestId(mode === 'grid' ? 'file-view-grid' : 'file-view-list');
+  if ((await toggle.count()) > 0) {
+    await toggle.click();
+    return;
+  }
+
+  await expect
+    .poll(
+      () =>
+        page.evaluate(
+          () =>
+            typeof (
+              window as Window & {
+                __fastcatE2eSetFileViewMode?: (params: { mode: 'grid' | 'list' }) => Promise<void>;
+              }
+            ).__fastcatE2eSetFileViewMode === 'function',
+        ),
+      { timeout: 10_000 },
+    )
+    .toBe(true);
+
+  await page.evaluate(async (viewMode) => {
+    const setFileViewMode = (
+      window as Window & {
+        __fastcatE2eSetFileViewMode?: (params: { mode: 'grid' | 'list' }) => Promise<void>;
+      }
+    ).__fastcatE2eSetFileViewMode;
+
+    if (!setFileViewMode) throw new Error('E2E file-manager view-mode hook is not registered');
+    await setFileViewMode({ mode: viewMode });
+  }, mode);
 }
 
 /**
@@ -199,6 +229,79 @@ export async function createFolder(page: Page, name: string): Promise<void> {
     if (!createRootFolder) throw new Error('E2E file-manager create-folder hook is not registered');
     await createRootFolder({ name: folderName });
   }, name);
+}
+
+export async function renameEntry(page: Page, path: string, newName: string): Promise<void> {
+  await openProjectFilesTab(page);
+  await expect
+    .poll(
+      () =>
+        page.evaluate(
+          () =>
+            typeof (
+              window as Window & {
+                __fastcatE2eRenameEntry?: (params: {
+                  path: string;
+                  newName: string;
+                }) => Promise<void>;
+              }
+            ).__fastcatE2eRenameEntry === 'function',
+        ),
+      { timeout: 10_000 },
+    )
+    .toBe(true);
+
+  await page.evaluate(
+    async ({ path: entryPath, newName: nextName }) => {
+      const rename = (
+        window as Window & {
+          __fastcatE2eRenameEntry?: (params: { path: string; newName: string }) => Promise<void>;
+        }
+      ).__fastcatE2eRenameEntry;
+
+      if (!rename) throw new Error('E2E file-manager rename hook is not registered');
+      await rename({ path: entryPath, newName: nextName });
+    },
+    { path, newName },
+  );
+}
+
+export async function moveEntry(
+  page: Page,
+  params: { sourcePath: string; targetDirPath: string },
+): Promise<void> {
+  await openProjectFilesTab(page);
+  await expect
+    .poll(
+      () =>
+        page.evaluate(
+          () =>
+            typeof (
+              window as Window & {
+                __fastcatE2eMoveEntry?: (params: {
+                  sourcePath: string;
+                  targetDirPath: string;
+                }) => Promise<void>;
+              }
+            ).__fastcatE2eMoveEntry === 'function',
+        ),
+      { timeout: 10_000 },
+    )
+    .toBe(true);
+
+  await page.evaluate(async (moveParams) => {
+    const move = (
+      window as Window & {
+        __fastcatE2eMoveEntry?: (params: {
+          sourcePath: string;
+          targetDirPath: string;
+        }) => Promise<void>;
+      }
+    ).__fastcatE2eMoveEntry;
+
+    if (!move) throw new Error('E2E file-manager move hook is not registered');
+    await move(moveParams);
+  }, params);
 }
 
 /** Right-click an entry to open its context menu, then click a menu item. */

@@ -167,6 +167,27 @@ describe('useProjectManagement', () => {
       expect(mockGoToCut).toHaveBeenCalledTimes(1);
       expect(mockPush).toHaveBeenCalledWith('/editor/NewProject');
     });
+
+    it('closes the modal on success', async () => {
+      const { projectCreationSettings, createNewProject, isCreateModalOpen } = useProjectManagement();
+      projectCreationSettings.value.name = 'NewProject';
+      isCreateModalOpen.value = true;
+
+      await createNewProject();
+
+      expect(isCreateModalOpen.value).toBe(false);
+    });
+
+    it('keeps the modal open on error', async () => {
+      const { projectCreationSettings, createNewProject, isCreateModalOpen } = useProjectManagement();
+      projectCreationSettings.value.name = 'NewProject';
+      isCreateModalOpen.value = true;
+      workspaceMock.error = 'Some error';
+
+      await createNewProject();
+
+      expect(isCreateModalOpen.value).toBe(true);
+    });
   });
 
   describe('rename validation', () => {
@@ -247,6 +268,29 @@ describe('useProjectManagement', () => {
         projectPath: undefined,
       });
     });
+
+    it('closes the modal on success', async () => {
+      const { startRename, renameValue, renameProject, isRenameModalOpen } = useProjectManagement();
+      startRename({ projectName: 'OldProject', projectId: 'old-1' });
+      renameValue.value = 'NewProject';
+      isRenameModalOpen.value = true;
+
+      await renameProject();
+
+      expect(isRenameModalOpen.value).toBe(false);
+    });
+
+    it('keeps the modal open on error', async () => {
+      const { startRename, renameValue, renameProject, isRenameModalOpen } = useProjectManagement();
+      startRename({ projectName: 'OldProject', projectId: 'old-1' });
+      renameValue.value = 'NewProject';
+      isRenameModalOpen.value = true;
+      workspaceMock.error = 'Some error';
+
+      await renameProject();
+
+      expect(isRenameModalOpen.value).toBe(true);
+    });
   });
 
   describe('duplicate validation', () => {
@@ -321,6 +365,29 @@ describe('useProjectManagement', () => {
         sourceProjectPath: '/src',
         targetParentPath: undefined,
       });
+    });
+
+    it('closes the modal on success', async () => {
+      const { startDuplicate, duplicateValue, confirmDuplicate, isDuplicateModalOpen } = useProjectManagement();
+      startDuplicate({ projectName: 'Source', projectId: 'src-1' });
+      duplicateValue.value = 'Copy';
+      isDuplicateModalOpen.value = true;
+
+      await confirmDuplicate();
+
+      expect(isDuplicateModalOpen.value).toBe(false);
+    });
+
+    it('keeps the modal open on error', async () => {
+      const { startDuplicate, duplicateValue, confirmDuplicate, isDuplicateModalOpen } = useProjectManagement();
+      startDuplicate({ projectName: 'Source', projectId: 'src-1' });
+      duplicateValue.value = 'Copy';
+      isDuplicateModalOpen.value = true;
+      workspaceMock.error = 'Some error';
+
+      await confirmDuplicate();
+
+      expect(isDuplicateModalOpen.value).toBe(true);
     });
 
     it('passes targetParentPath in Tauri mode', async () => {

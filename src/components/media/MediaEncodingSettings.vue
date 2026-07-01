@@ -356,7 +356,6 @@ watch(
       :label="t('videoEditor.export.exportAlpha')"
       :disabled="props.disabled"
       :ui="{ label: 'text-sm text-ui-text-muted' }"
-      class="cursor-pointer"
     />
 
     <UCheckbox
@@ -364,7 +363,7 @@ watch(
       :label="t('videoEditor.export.advancedSettings')"
       :disabled="props.disabled"
       :ui="{ label: 'text-sm text-ui-text' }"
-      class="cursor-pointer my-1"
+      class="my-1"
     />
 
     <template v-if="enableAdvancedSettings">
@@ -389,7 +388,6 @@ watch(
             :label="t('videoEditor.export.specifyMaxBitrate')"
             :disabled="props.disabled"
             :ui="{ label: 'text-sm text-ui-text-muted' }"
-            class="cursor-pointer"
           />
           <UiFormField v-if="specifyMaxBitrate">
             <template #label>
@@ -419,7 +417,6 @@ watch(
             :label="t('videoEditor.export.specifyMinBitrate')"
             :disabled="props.disabled"
             :ui="{ label: 'text-sm text-ui-text-muted' }"
-            class="cursor-pointer"
           />
           <UiFormField v-if="specifyMinBitrate">
             <template #label>
@@ -462,7 +459,6 @@ watch(
           :label="t('videoEditor.export.fastStart')"
           :disabled="props.disabled"
           :ui="{ label: 'text-sm text-ui-text-muted' }"
-          class="cursor-pointer"
         />
       </div>
     </template>

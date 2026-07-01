@@ -258,6 +258,27 @@ describe('text-layout', () => {
     expect(metrics.textBlockTopPx).toBe(572);
   });
 
+  it('treats manual height as a minimum when multiline text needs more space', () => {
+    const metrics = computeTextLayoutMetrics({
+      text: 'one\ntwo\nthree',
+      style: {
+        fontSize: 40,
+        height: 80,
+        padding: 10,
+        verticalAlign: 'middle',
+        align: 'left',
+      },
+      canvasWidth: 1920,
+      canvasHeight: 1080,
+      measureText: (text) => text.length * 10,
+    });
+
+    expect(metrics.textBlockHeightPx).toBe(144);
+    expect(metrics.frameHeight).toBe(164);
+    expect(metrics.backgroundHeight).toBe(164);
+    expect(metrics.textBlockTopPx).toBe(metrics.backgroundY + 10);
+  });
+
   it('returns frame dimensions matching the auto-sized text block plus padding', () => {
     const metrics = computeTextLayoutMetrics({
       text: 'hello world',

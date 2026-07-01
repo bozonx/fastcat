@@ -217,7 +217,6 @@ function resetSampleRate() {
         :label="t('videoEditor.audio.reverse')"
         :disabled="props.disabled"
         :ui="{ label: 'text-xs text-ui-text-muted font-medium' }"
-        class="cursor-pointer"
       />
     </div>
   </div>
