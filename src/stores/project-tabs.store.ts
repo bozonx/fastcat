@@ -237,6 +237,13 @@ export const useProjectTabsStore = defineStore('projectTabs', () => {
   function initDefaultTab() {
     if (activeTab.value || tabs.value.length === 0) return;
 
+    // Default to the 'files' tab when no active tab was restored from saved state
+    const filesTab = tabs.value.find((tab) => tab.id === 'files');
+    if (filesTab) {
+      activeTabId.value = 'files';
+      return;
+    }
+
     const firstTab = tabs.value[0];
     if (firstTab) {
       activeTabId.value = firstTab.id;

@@ -144,6 +144,25 @@ describe('ProjectTabsStore', () => {
     expect(store.activeTabId).toBe('cut');
   });
 
+  it('initDefaultTab defaults to files tab when no active tab is restored', () => {
+    const store = useProjectTabsStore();
+    store.registerProjectTab({ id: 'effects', label: 'Effects', component: {} as any });
+    store.registerProjectTab({ id: 'files', label: 'Files', component: {} as any });
+
+    store.initDefaultTab();
+    expect(store.activeTabId).toBe('files');
+  });
+
+  it('initDefaultTab preserves persisted activeTabId', () => {
+    const store = useProjectTabsStore();
+    store.setTabsState({ activeTabId: 'effects' });
+    store.registerProjectTab({ id: 'files', label: 'Files', component: {} as any });
+    store.registerProjectTab({ id: 'effects', label: 'Effects', component: {} as any });
+
+    store.initDefaultTab();
+    expect(store.activeTabId).toBe('effects');
+  });
+
   it('setActiveTab only works for existing tabs', () => {
     const store = useProjectTabsStore();
     store.registerProjectTab({ id: 'cut', label: 'Cut', component: {} as any });
