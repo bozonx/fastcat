@@ -53,34 +53,14 @@ export async function withWorkerFileIoSlot<T>(task: () => Promise<T>): Promise<T
 }
 
 /**
- * Run a long-running streaming I/O task (e.g. `createWritable()` that stays
- * open for minutes during export). Streaming slots are counted separately from
- * interactive ones so a handful of long-lived writables can't starve fast
- * metadata reads.
- */
-export async function withWorkerStreamingFileIoSlot<T>(task: () => Promise<T>): Promise<T> {
-  const release = watchStreaming(await (await getBudget()).acquire('streaming'));
-  try {
-    return await task();
-  } finally {
-    release();
-  }
-}
-
-/**
- * Acquire a streaming slot manually for long-lived writables. Caller **must**
- * invoke the returned release function after `close()`/`abort()`.
+ * Acquire a streaming slot manually for long-lived writables (e.g. an export
+ * `createWritable()` open for minutes). Caller **must** invoke the returned
+ * release function after `close()`/`abort()`. Streaming slots are counted
+ * separately from interactive ones so a handful of long-lived writables can't
+ * starve fast metadata reads.
  */
 export async function acquireStreamingWorkerFileIoSlot(): Promise<() => void> {
   return watchStreaming(await (await getBudget()).acquire('streaming'));
-}
-
-/**
- * Acquire a streaming slot manually.
- * @deprecated Prefer {@link acquireStreamingWorkerFileIoSlot} explicitly.
- */
-export async function acquireWorkerFileIoSlot(): Promise<() => void> {
-  return acquireStreamingWorkerFileIoSlot();
 }
 
 export function withWorkerFileIoSlotForHandle<T>(
@@ -91,23 +71,6 @@ export function withWorkerFileIoSlotForHandle<T>(
     return task();
   }
   return withWorkerFileIoSlot(task);
-}
-
-/**
- * @deprecated Prefer {@link withWorkerFileIoSlot}; kept for compat.
- */
-export function withWorkerFileWriteSlot<T>(task: () => Promise<T>): Promise<T> {
-  return withWorkerFileIoSlot(task);
-}
-
-/**
- * @deprecated Prefer {@link withWorkerFileIoSlotForHandle}; kept for compat.
- */
-export function withWorkerFileWriteSlotForHandle<T>(
-  handle: unknown,
-  task: () => Promise<T>,
-): Promise<T> {
-  return withWorkerFileIoSlotForHandle(handle, task);
 }
 
 export { isTransientIoError };
@@ -137,41 +100,6 @@ export async function runResilientWorkerFileIo<T>(
   for (let attempt = 0; attempt < attempts; attempt += 1) {
     try {
       return await withWorkerFileIoSlotForHandle(handle, task);
-    } catch (error) {
-      lastError = error;
-      if (attempt === attempts - 1 || !isTransientIoError(error)) {
-        throw error;
-      }
-      await delay(baseDelayMs * 2 ** attempt);
-    }
-  }
-  throw lastError;
-}
-
-/**
- * Run a resilient streaming write operation in a worker (long-lived
- * `createWritable()` calls, large copies). Uses the streaming pool so the
- * open writable is counted against the shared budget while it lives.
- */
-export async function runResilientWorkerFileWrite<T>(
-  handle: unknown,
-  task: () => Promise<T>,
-  options?: { attempts?: number; baseDelayMs?: number },
-): Promise<T> {
-  const attempts = Math.max(1, Math.round(options?.attempts ?? 4));
-  const baseDelayMs = Math.max(1, Math.round(options?.baseDelayMs ?? 150));
-
-  const isOpfs = isNativeOpfsHandle(handle);
-  let lastError: unknown;
-  for (let attempt = 0; attempt < attempts; attempt += 1) {
-    try {
-      if (!isOpfs) return await task();
-      const release = watchStreaming(await (await getBudget()).acquire('streaming'));
-      try {
-        return await task();
-      } finally {
-        release();
-      }
     } catch (error) {
       lastError = error;
       if (attempt === attempts - 1 || !isTransientIoError(error)) {

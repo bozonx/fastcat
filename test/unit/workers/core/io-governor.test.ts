@@ -1,11 +1,10 @@
 /** @vitest-environment node */
 import { describe, it, expect, vi, beforeAll, afterAll } from 'vitest';
 import {
-  withWorkerFileWriteSlot,
-  withWorkerFileWriteSlotForHandle,
+  withWorkerFileIoSlot,
+  withWorkerFileIoSlotForHandle,
   isTransientIoError,
   runResilientWorkerFileIo,
-  runResilientWorkerFileWrite,
 } from '~/workers/core/io-governor';
 import { FILE_IO_LIMITS } from '~/utils/constants';
 
@@ -35,9 +34,9 @@ function deferred<T = void>() {
 
 const flush = () => new Promise((r) => setTimeout(r, 0));
 
-describe('withWorkerFileWriteSlot', () => {
+describe('withWorkerFileIoSlot', () => {
   it('returns the task result', async () => {
-    await expect(withWorkerFileWriteSlot(async () => 42)).resolves.toBe(42);
+    await expect(withWorkerFileIoSlot(async () => 42)).resolves.toBe(42);
   });
 
   it('never runs more than the local worker fallback cap concurrently', async () => {
@@ -47,7 +46,7 @@ describe('withWorkerFileWriteSlot', () => {
 
     const gates = Array.from({ length: 5 }, () => deferred());
     const tasks = gates.map((gate, index) =>
-      withWorkerFileWriteSlot(async () => {
+      withWorkerFileIoSlot(async () => {
         inFlight += 1;
         peak = Math.max(peak, inFlight);
         await gate.promise;
@@ -71,21 +70,21 @@ describe('withWorkerFileWriteSlot', () => {
 
   it('propagates task errors and keeps the queue usable afterwards', async () => {
     await expect(
-      withWorkerFileWriteSlot(async () => {
+      withWorkerFileIoSlot(async () => {
         throw new Error('boom');
       }),
     ).rejects.toThrow('boom');
 
-    await expect(withWorkerFileWriteSlot(async () => 'ok')).resolves.toBe('ok');
+    await expect(withWorkerFileIoSlot(async () => 'ok')).resolves.toBe('ok');
   });
 });
 
-describe('withWorkerFileWriteSlotForHandle', () => {
+describe('withWorkerFileIoSlotForHandle', () => {
   it('bypasses the queue for non-OPFS handles (Tauri serialised handles)', async () => {
     const tauriHandle = { createWritable: vi.fn() };
     const task = vi.fn().mockResolvedValue('done');
 
-    const result = await withWorkerFileWriteSlotForHandle(tauriHandle, task);
+    const result = await withWorkerFileIoSlotForHandle(tauriHandle, task);
 
     expect(result).toBe('done');
     expect(task).toHaveBeenCalledTimes(1);
@@ -95,7 +94,7 @@ describe('withWorkerFileWriteSlotForHandle', () => {
     const plainHandle = {};
     const task = vi.fn().mockResolvedValue('done');
 
-    const result = await withWorkerFileWriteSlotForHandle(plainHandle, task);
+    const result = await withWorkerFileIoSlotForHandle(plainHandle, task);
 
     expect(result).toBe('done');
     expect(task).toHaveBeenCalledTimes(1);
@@ -112,8 +111,8 @@ describe('withWorkerFileWriteSlotForHandle', () => {
       return 'queued';
     });
 
-    const p1 = withWorkerFileWriteSlotForHandle(mockHandle, task);
-    const p2 = withWorkerFileWriteSlotForHandle(mockHandle, task);
+    const p1 = withWorkerFileIoSlotForHandle(mockHandle, task);
+    const p2 = withWorkerFileIoSlotForHandle(mockHandle, task);
 
     await flush();
     expect(inFlight).toBeLessThanOrEqual(FILE_IO_LIMITS.MAX_CONCURRENT_FILE_IO_LOCAL_WORKER);
@@ -224,16 +223,5 @@ describe('runResilientWorkerFileIo', () => {
     ).rejects.toThrow('Fatal filesystem error');
 
     expect(calls).toBe(1);
-  });
-});
-
-describe('runResilientWorkerFileWrite', () => {
-  it('delegates to runResilientWorkerFileIo and returns success', async () => {
-    const mockHandle = Object.create(FileSystemFileHandle.prototype);
-    const result = await runResilientWorkerFileWrite(mockHandle, async () => 'written', {
-      attempts: 2,
-      baseDelayMs: 1,
-    });
-    expect(result).toBe('written');
   });
 });

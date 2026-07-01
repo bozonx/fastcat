@@ -1,4 +1,4 @@
-import { test, expect } from '../fixtures/workspace';
+import { test, expect, waitForEditorReady } from '../fixtures/workspace';
 import type { Page } from '@playwright/test';
 import type { E2eProject } from '../fixtures/workspace';
 import { MEDIA_FIXTURES } from '../../fixtures/media';
@@ -12,12 +12,7 @@ import { readTimelineDoc, waitForTimelineDoc } from '../../utils/e2e/otio';
  */
 test.describe('Web timeline move', () => {
   async function projectWithOneVideoClip(page: Page, project: E2eProject) {
-    const { uiPath } = await seedProjectMedia(
-      page,
-      project,
-      MEDIA_FIXTURES.video.h264Mp4,
-      'video',
-    );
+    const { uiPath } = await seedProjectMedia(page, project, MEDIA_FIXTURES.video.h264Mp4, 'video');
     const videoTrackId = (await trackIds(page))[0];
     await addFileToTrack(page, uiPath, videoTrackId);
     await waitForTimelineDoc(page, project, (d) => d.allClips.length === 1);
@@ -48,7 +43,7 @@ test.describe('Web timeline move', () => {
     ).allClips[0].timelineStartUs;
 
     await page.goto(`/editor/${e2eProject.encodedName}`);
-    await expect(page.getByTestId('timeline-container')).toBeVisible();
+    await waitForEditorReady(page);
 
     const reloaded = (await readTimelineDoc(page, e2eProject)).allClips[0].timelineStartUs;
     expect(reloaded).toBe(moved);

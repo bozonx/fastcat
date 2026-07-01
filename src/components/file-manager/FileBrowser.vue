@@ -510,6 +510,7 @@ const { canUseFile, isDirectoryGeneratingProxy, getContextMenuItems, emptySpaceC
     instanceId,
     isExternal: isExternal.value,
     inDevelopmentFeaturesEnabled: workspaceStore.inDevelopmentFeaturesEnabled,
+    premiumFeaturesEnabled: workspaceStore.premiumFeaturesEnabled,
   });
 
 // --- Marquee selection ---

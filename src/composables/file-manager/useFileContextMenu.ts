@@ -59,6 +59,7 @@ interface ContextMenuDeps {
   isExternal?: boolean;
   canUseFile?: (entry: FsEntry) => boolean;
   inDevelopmentFeaturesEnabled?: boolean;
+  premiumFeaturesEnabled?: boolean;
 }
 
 export interface ContextMenuItem {
@@ -255,7 +256,12 @@ export function useFileContextMenu(
           ]);
         }
 
-        if (deps.isVideo(entry) && (!deps.hasAudioTrack || deps.hasAudioTrack(entry))) {
+        if (
+          deps.isVideo(entry) &&
+          (!deps.hasAudioTrack || deps.hasAudioTrack(entry)) &&
+          deps.inDevelopmentFeaturesEnabled &&
+          deps.premiumFeaturesEnabled
+        ) {
           items.push([
             {
               label: t('videoEditor.fileManager.actions.extractAudio'),
@@ -338,7 +344,9 @@ export function useFileContextMenu(
     if (
       !isComputer &&
       hasVideo &&
-      (!deps.hasAudioTrack || selectedEntries.some((e) => deps.hasAudioTrack?.(e)))
+      (!deps.hasAudioTrack || selectedEntries.some((e) => deps.hasAudioTrack?.(e))) &&
+      deps.inDevelopmentFeaturesEnabled &&
+      deps.premiumFeaturesEnabled
     ) {
       items.push([
         {
@@ -552,7 +560,12 @@ export function useFileContextMenu(
       }
     }
 
-    if (deps.isVideo(entry) && (!deps.hasAudioTrack || deps.hasAudioTrack(entry))) {
+    if (
+      deps.isVideo(entry) &&
+      (!deps.hasAudioTrack || deps.hasAudioTrack(entry)) &&
+      deps.inDevelopmentFeaturesEnabled &&
+      deps.premiumFeaturesEnabled
+    ) {
       items.push([
         {
           label: t('videoEditor.fileManager.actions.extractAudio'),

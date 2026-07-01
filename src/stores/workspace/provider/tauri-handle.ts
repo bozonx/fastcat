@@ -9,7 +9,7 @@ import {
   exists,
   rename,
 } from '@tauri-apps/plugin-fs';
-import { acquireStreamingFileIoSlot, withFileWriteSlot } from '~/utils/io/io-governor';
+import { acquireStreamingFileIoSlot, withFileIoSlot } from '~/utils/io/io-governor';
 import { withTauriReadHandle } from '~/stores/workspace/provider/tauri-read-handle-pool';
 import { randomToken } from '~/utils/ids';
 import { openReadFileStream, openWriteFileStream } from 'tauri-plugin-fs-stream-api';
@@ -386,10 +386,10 @@ export class TauriFileHandle {
             await ensureBufferMode();
             if (buffer.length > 0 || fileSize === 0) {
               const finalData = buffer.subarray(0, fileSize);
-              await withFileWriteSlot(() => writeFile(tempPath, finalData));
+              await withFileIoSlot(() => writeFile(tempPath, finalData));
             }
           }
-          await withFileWriteSlot(() => rename(tempPath, this.path));
+          await withFileIoSlot(() => rename(tempPath, this.path));
         } catch (error) {
           releaseStreamSlot?.();
           releaseStreamSlot = null;

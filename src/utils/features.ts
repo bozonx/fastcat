@@ -1,4 +1,4 @@
-export type FastCatFeatureId = 'conversion' | 'hud';
+export type FastCatFeatureId = 'conversion' | 'hud' | 'audioExtraction';
 
 export interface FastCatFeatureDefinition {
   inDevelopment: boolean;
@@ -16,6 +16,10 @@ export const FASTCAT_FEATURES: Record<FastCatFeatureId, FastCatFeatureDefinition
   },
   hud: {
     inDevelopment: false,
+    premium: true,
+  },
+  audioExtraction: {
+    inDevelopment: true,
     premium: true,
   },
 };

@@ -7,6 +7,7 @@ import { useProxyStore } from '~/stores/proxy.store';
 import { useProjectStore } from '~/stores/project.store';
 import { useFileManager } from '~/composables/file-manager/useFileManager';
 import { useAppClipboard } from '~/composables/useAppClipboard';
+import { useWorkspaceStore } from '~/stores/workspace.store';
 import type { FsEntry } from '~/types/fs';
 import { getMediaTypeFromFilename } from '~/utils/media-types';
 import { formatBytes } from '~/utils/format';
@@ -30,6 +31,7 @@ const proxyStore = useProxyStore();
 const projectStore = useProjectStore();
 const fileManager = useFileManager();
 const clipboardStore = useAppClipboard();
+const workspaceStore = useWorkspaceStore();
 const selectionStore = useSelectionStore();
 
 const totalSize = ref(0);
@@ -310,7 +312,11 @@ function onCut() {
             id: 'batchExtractAudio',
             label: t('videoEditor.fileManager.actions.batchExtractAudio'),
             icon: 'i-heroicons-musical-note',
-            hidden: props.isExternal || (!hasVideo && !hasAudio),
+            hidden:
+              props.isExternal ||
+              (!hasVideo && !hasAudio) ||
+              !workspaceStore.inDevelopmentFeaturesEnabled ||
+              !workspaceStore.premiumFeaturesEnabled,
             onClick: handleBatchExtractAudio,
           },
           {

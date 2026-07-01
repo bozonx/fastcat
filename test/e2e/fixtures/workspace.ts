@@ -76,7 +76,9 @@ async function mockWorkspacePicker(page: Page, workspaceName: string): Promise<v
 
 export async function selectE2eWorkspace(page: Page, workspace: E2eWorkspace): Promise<void> {
   await page.goto('/', { waitUntil: 'domcontentloaded' });
-  await page.getByRole('button', { name: 'Select Workspace Folder' }).click({ timeout: 15_000 });
+  const selectWorkspaceButton = page.getByRole('button', { name: 'Select Workspace Folder' });
+  await expect(selectWorkspaceButton).toBeVisible({ timeout: 30_000 });
+  await selectWorkspaceButton.click();
   await expect(page.getByText(workspace.name)).toBeVisible();
 }
 

@@ -72,7 +72,7 @@ vi.mock('~/utils/media-task-queue', () => ({
 }));
 
 vi.mock('~/utils/io/io-governor', () => ({
-  withFileWriteSlot: vi.fn((fn: () => Promise<void>) => fn()),
+  withFileIoSlot: vi.fn((fn: () => Promise<void>) => fn()),
 }));
 
 vi.mock('~/composables/useVfs', () => ({

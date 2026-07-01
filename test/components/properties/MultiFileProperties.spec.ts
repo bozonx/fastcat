@@ -31,12 +31,20 @@ vi.mock('~/composables/file-manager/useBatchAudioExtraction', () => ({
   })),
 }));
 
+import { useWorkspaceStore } from '~/stores/workspace.store';
+
 describe('MultiFileProperties.vue', () => {
   const mockEntries = [
     { kind: 'file', name: 'video1.mp4', path: '/p/v1.mp4' },
     { kind: 'file', name: 'image1.jpg', path: '/p/i1.jpg' },
     { kind: 'directory', name: 'folder1', path: '/p/f1' },
   ];
+
+  beforeEach(() => {
+    const ws = useWorkspaceStore();
+    ws.inDevelopmentFeaturesEnabled = true;
+    ws.premiumFeaturesEnabled = true;
+  });
 
   it('renders summary for multiple items', async () => {
     const component = await mountWithNuxt(MultiFileProperties, {

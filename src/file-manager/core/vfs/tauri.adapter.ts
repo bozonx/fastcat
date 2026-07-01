@@ -37,7 +37,7 @@ import { openReadFileStream, openWriteFileStream } from 'tauri-plugin-fs-stream-
 import { LazyTauriFile, isMediaFile } from '~/stores/workspace/provider/tauri-handle';
 
 import { normalizeFsPath } from '~/file-manager/core/path';
-import { acquireStreamingFileIoSlot, withFileWriteSlot } from '~/utils/io/io-governor';
+import { acquireStreamingFileIoSlot, withFileIoSlot } from '~/utils/io/io-governor';
 import { isTauriRuntime } from '~/utils/runtime';
 import { randomToken } from '~/utils/ids';
 import { joinTauriFsPath } from '~/utils/path';
@@ -336,15 +336,15 @@ export class TauriFileSystemAdapter implements IFileSystemAdapter {
 
     const bytes = await this.toBytes(data);
     try {
-      await withFileWriteSlot(() => writeFile(tempArgs.tauriPath, bytes, tempArgs.options));
-      await withFileWriteSlot(() =>
+      await withFileIoSlot(() => writeFile(tempArgs.tauriPath, bytes, tempArgs.options));
+      await withFileIoSlot(() =>
         rename(tempArgs.tauriPath, finalArgs.tauriPath, {
           oldPathBaseDir: tempArgs.options.baseDir,
           newPathBaseDir: finalArgs.options.baseDir,
         }),
       );
     } catch (e) {
-      await withFileWriteSlot(() => remove(tempArgs.tauriPath, tempArgs.options)).catch(() => {});
+      await withFileIoSlot(() => remove(tempArgs.tauriPath, tempArgs.options)).catch(() => {});
       throw wrapPlatformError(e, path);
     }
   }
@@ -372,7 +372,7 @@ export class TauriFileSystemAdapter implements IFileSystemAdapter {
     const source = await this.getTauriFsArgs(sourcePath);
     const target = await this.getTauriFsArgs(targetPath);
     try {
-      await withFileWriteSlot(() =>
+      await withFileIoSlot(() =>
         rename(source.tauriPath, target.tauriPath, {
           oldPathBaseDir: source.options.baseDir,
           newPathBaseDir: target.options.baseDir,
@@ -407,7 +407,7 @@ export class TauriFileSystemAdapter implements IFileSystemAdapter {
     const source = await this.getTauriFsArgs(sourcePath);
     const target = await this.getTauriFsArgs(targetPath);
     try {
-      await withFileWriteSlot(() =>
+      await withFileIoSlot(() =>
         copyFile(source.tauriPath, target.tauriPath, {
           fromPathBaseDir: source.options.baseDir,
           toPathBaseDir: target.options.baseDir,
@@ -546,7 +546,7 @@ export class TauriFileSystemAdapter implements IFileSystemAdapter {
         async close() {
           try {
             await writer.close();
-            await withFileWriteSlot(() =>
+            await withFileIoSlot(() =>
               rename(temp.tauriPath, final.tauriPath, {
                 oldPathBaseDir: temp.options.baseDir,
                 newPathBaseDir: final.options.baseDir,

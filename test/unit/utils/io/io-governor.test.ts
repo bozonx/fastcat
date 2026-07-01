@@ -1,8 +1,7 @@
 // @vitest-environment node
 import { describe, it, expect, beforeEach } from 'vitest';
 import {
-  withFileWriteSlot,
-  getFileWriteQueueStats,
+  withFileIoSlot,
   isTransientWriteError,
   runResilientFileWrite,
 } from '~/utils/io/io-governor';
@@ -23,9 +22,9 @@ function deferred() {
 
 const flush = () => new Promise((r) => setTimeout(r, 0));
 
-describe('io-governor withFileWriteSlot', () => {
+describe('io-governor withFileIoSlot', () => {
   it('returns the task result', async () => {
-    await expect(withFileWriteSlot(async () => 42)).resolves.toBe(42);
+    await expect(withFileIoSlot(async () => 42)).resolves.toBe(42);
   });
 
   it('never runs more than MAX_CONCURRENT_FILE_IO tasks at once', async () => {
@@ -35,7 +34,7 @@ describe('io-governor withFileWriteSlot', () => {
 
     const gates = Array.from({ length: cap + 3 }, () => deferred());
     const tasks = gates.map((gate, index) =>
-      withFileWriteSlot(async () => {
+      withFileIoSlot(async () => {
         inFlight += 1;
         peak = Math.max(peak, inFlight);
         await gate.promise;
@@ -58,13 +57,12 @@ describe('io-governor withFileWriteSlot', () => {
 
   it('propagates task errors and keeps the queue usable afterwards', async () => {
     await expect(
-      withFileWriteSlot(async () => {
+      withFileIoSlot(async () => {
         throw new Error('boom');
       }),
     ).rejects.toThrow('boom');
 
-    await expect(withFileWriteSlot(async () => 'ok')).resolves.toBe('ok');
-    expect(getFileWriteQueueStats()).toEqual({ size: 0, pending: 0 });
+    await expect(withFileIoSlot(async () => 'ok')).resolves.toBe('ok');
   });
 });
 

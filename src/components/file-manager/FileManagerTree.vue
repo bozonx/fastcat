@@ -554,6 +554,8 @@ const { getContextMenuItems } = useFileContextMenu(
     isFilesPage: props.isFilesPage,
     instanceId: props.instanceId,
     isExternal: props.isExternal,
+    inDevelopmentFeaturesEnabled: workspaceStore.inDevelopmentFeaturesEnabled,
+    premiumFeaturesEnabled: workspaceStore.premiumFeaturesEnabled,
     isBloggerDogProject,
     isBloggerDogGroup,
     isBloggerDogContentItem,

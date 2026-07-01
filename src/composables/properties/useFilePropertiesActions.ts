@@ -359,7 +359,8 @@ export function useFilePropertiesActions(options: UseFilePropertiesActionsOption
       hidden:
         !options.isVideoFile.value ||
         (options.isVideoWithAudio && !options.isVideoWithAudio.value) ||
-        !options.inDevelopmentFeaturesEnabled?.value,
+        !options.inDevelopmentFeaturesEnabled?.value ||
+        !options.premiumFeatures?.value,
       onClick: options.extractAudio,
     },
   ]);

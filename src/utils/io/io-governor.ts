@@ -32,8 +32,6 @@ export { isTransientIoError, isTransientWriteError };
 /** Re-export the runtime detector so existing call sites keep working. */
 export const isTauriRuntime = isTauriRuntimeImpl;
 
-let inFlightCount = 0;
-
 /**
  * Run a short interactive I/O task under the shared budget. Use for
  * `getFile()` calls and small `createWritable()`+write+close sequences.
@@ -43,11 +41,9 @@ export async function withFileIoSlot<T>(task: () => Promise<T>): Promise<T> {
     label: 'interactive',
     warnMs: FILE_IO_LIMITS.SLOT_HOLD_WARN_MS_INTERACTIVE,
   });
-  inFlightCount += 1;
   try {
     return await task();
   } finally {
-    inFlightCount -= 1;
     release();
   }
 }
@@ -62,39 +58,6 @@ export async function acquireStreamingFileIoSlot(): Promise<() => void> {
     label: 'streaming',
     warnMs: FILE_IO_LIMITS.SLOT_HOLD_WARN_MS_STREAMING,
   });
-}
-
-/**
- * Acquire a slot manually. Kept for compatibility with existing call sites
- * (e.g. tauri-handle.ts) — forwards to {@link acquireStreamingFileIoSlot}.
- * @deprecated Prefer {@link acquireStreamingFileIoSlot} explicitly.
- */
-export async function acquireFileIoSlot(): Promise<() => void> {
-  return acquireStreamingFileIoSlot();
-}
-
-/**
- * Run a write task under the interactive budget.
- * @deprecated Prefer {@link withFileIoSlot} for new callers; this alias is kept
- *   for existing write-only consumers and is identical in behaviour.
- */
-export function withFileWriteSlot<T>(task: () => Promise<T>): Promise<T> {
-  return withFileIoSlot(task);
-}
-
-/**
- * Inspect the current budget. Intended for diagnostics only — the real depth
- * lives in the shared atomic semaphore, so this only reports what is currently
- * known by the local snapshot.
- */
-export function getFileWriteQueueStats(): {
-  size: number;
-  pending: number;
-} {
-  return {
-    size: 0,
-    pending: inFlightCount,
-  };
 }
 
 const delay = (ms: number) =>

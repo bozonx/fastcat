@@ -14,6 +14,7 @@ describe('features', () => {
     expect(isPremiumFeaturesEnabled(config)).toBe(false);
     expect(isFastCatFeatureEnabled('conversion', config)).toBe(false);
     expect(isFastCatFeatureEnabled('hud', config)).toBe(false);
+    expect(isFastCatFeatureEnabled('audioExtraction', config)).toBe(false);
   });
 
   it('parses explicit truthy env values', () => {
@@ -49,6 +50,35 @@ describe('features', () => {
       isFastCatFeatureEnabled('hud', {
         public: {
           inDevelopmentFeaturesEnabled: false,
+          premiumFeaturesEnabled: true,
+        },
+      }),
+    ).toBe(true);
+  });
+
+  it('requires both development and premium flags for audioExtraction', () => {
+    expect(
+      isFastCatFeatureEnabled('audioExtraction', {
+        public: {
+          inDevelopmentFeaturesEnabled: true,
+          premiumFeaturesEnabled: false,
+        },
+      }),
+    ).toBe(false);
+
+    expect(
+      isFastCatFeatureEnabled('audioExtraction', {
+        public: {
+          inDevelopmentFeaturesEnabled: false,
+          premiumFeaturesEnabled: true,
+        },
+      }),
+    ).toBe(false);
+
+    expect(
+      isFastCatFeatureEnabled('audioExtraction', {
+        public: {
+          inDevelopmentFeaturesEnabled: true,
           premiumFeaturesEnabled: true,
         },
       }),

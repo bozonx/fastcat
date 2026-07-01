@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test';
-import { test, expect } from '../fixtures/workspace';
+import { test, expect, waitForEditorReady } from '../fixtures/workspace';
 import type { E2eProject } from '../fixtures/workspace';
 import { MEDIA_FIXTURES } from '../../fixtures/media';
 import { seedProjectMedia } from '../../utils/e2e/file-manager';
@@ -13,12 +13,7 @@ import { readTimelineDoc, waitForTimelineDoc } from '../../utils/e2e/otio';
  */
 test.describe('Web timeline trim', () => {
   async function projectWithOneClip(page: Page, project: E2eProject) {
-    const { uiPath } = await seedProjectMedia(
-      page,
-      project,
-      MEDIA_FIXTURES.video.h264Mp4,
-      'video',
-    );
+    const { uiPath } = await seedProjectMedia(page, project, MEDIA_FIXTURES.video.h264Mp4, 'video');
     const videoTrackId = (await trackIds(page))[0];
     await addFileToTrack(page, uiPath, videoTrackId);
     await waitForTimelineDoc(page, project, (d) => d.allClips.length === 1);
@@ -75,7 +70,7 @@ test.describe('Web timeline trim', () => {
     ).allClips[0].timelineDurationUs;
 
     await page.goto(`/editor/${e2eProject.encodedName}`);
-    await expect(page.getByTestId('timeline-container')).toBeVisible();
+    await waitForEditorReady(page);
 
     const reloaded = (await readTimelineDoc(page, e2eProject)).allClips[0].timelineDurationUs;
     expect(reloaded).toBe(trimmed);

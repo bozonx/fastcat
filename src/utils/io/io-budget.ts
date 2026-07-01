@@ -173,6 +173,18 @@ class SharedBudget implements IoBudget {
     };
   }
 
+  /**
+   * Acquire a slot, awaiting (never thread-blocking — via `Atomics.waitAsync`)
+   * until one is free.
+   *
+   * Fairness note: this is intentionally NOT strictly FIFO across realms.
+   * `Atomics.notify` wakes waiters in FIFO order, but a brand-new `acquire()`
+   * in any realm can win the `tryAcquire` race against a just-woken waiter
+   * (classic "barging"). We accept this: a true cross-process ticket lock over
+   * the SAB is far more complex and error-prone for a load-bearing primitive,
+   * and liveness is already guaranteed — an unlucky waiter re-checks at worst
+   * every `WAIT_TIMEOUT_MS`, and the pool of contending I/O sites is small.
+   */
   async acquire(pool: BudgetPool): Promise<() => void> {
     const idx = slotForPool(pool);
     while (true) {
