@@ -12,9 +12,7 @@ function readBooleanEnv(value: unknown): boolean {
   return normalized === '1' || normalized === 'true' || normalized === 'yes' || normalized === 'on';
 }
 
-function installE2eIsolationHeaders(server: ViteDevServer | PreviewServer): void {
-  if (process.env.E2E_TEST !== '1') return;
-
+function installIsolationHeaders(server: ViteDevServer | PreviewServer): void {
   server.middlewares.use((_req, res, next) => {
     res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
     res.setHeader('Cross-Origin-Embedder-Policy', 'require-corp');
@@ -163,12 +161,12 @@ export default defineNuxtConfig({
     },
     plugins: [
       {
-        name: 'fastcat:e2e-headers',
+        name: 'fastcat:isolation-headers',
         configureServer(server) {
-          installE2eIsolationHeaders(server);
+          installIsolationHeaders(server);
         },
         configurePreviewServer(server) {
-          installE2eIsolationHeaders(server);
+          installIsolationHeaders(server);
         },
       },
     ],

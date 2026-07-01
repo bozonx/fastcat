@@ -48,38 +48,18 @@ function createProjectName(testTitle: string): string {
   return `E2E Project ${safeTitle} ${random}`;
 }
 
-async function mockWorkspacePicker(page: Page, workspaceName: string): Promise<void> {
+async function configureWebWorkspaceSandbox(page: Page, workspaceName: string): Promise<void> {
   await page.addInitScript((name) => {
-    Object.defineProperty(window, 'showDirectoryPicker', {
-      configurable: true,
-      value: async () => {
-        const root = await navigator.storage.getDirectory();
-        const handle = await root.getDirectoryHandle(name, { create: true });
-        const permission = async () => 'granted' as PermissionState;
-
-        Object.defineProperties(handle, {
-          queryPermission: {
-            configurable: true,
-            value: permission,
-          },
-          requestPermission: {
-            configurable: true,
-            value: permission,
-          },
-        });
-
-        return handle;
-      },
-    });
+    window.localStorage.clear();
+    window.sessionStorage.clear();
+    window.localStorage.setItem('fastcat_web_workspace_name', name);
   }, workspaceName);
 }
 
 export async function selectE2eWorkspace(page: Page, workspace: E2eWorkspace): Promise<void> {
   await page.goto('/', { waitUntil: 'domcontentloaded' });
-  const selectWorkspaceButton = page.getByRole('button', { name: 'Select Workspace Folder' });
-  await expect(selectWorkspaceButton).toBeVisible({ timeout: 30_000 });
-  await selectWorkspaceButton.click();
-  await expect(page.getByText(workspace.name)).toBeVisible();
+  await expect(page.getByText(workspace.name)).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByRole('button', { name: 'New Project' })).toBeVisible({ timeout: 30_000 });
 }
 
 export async function createE2eProject(
@@ -131,7 +111,7 @@ export async function waitForEditorReady(page: Page): Promise<void> {
 export const test = base.extend<WorkspaceFixtures>({
   e2eWorkspace: async ({ page }, use, testInfo) => {
     const name = createWorkspaceName(testInfo.title, testInfo.workerIndex, testInfo.retry);
-    await mockWorkspacePicker(page, name);
+    await configureWebWorkspaceSandbox(page, name);
 
     await use({ name });
 

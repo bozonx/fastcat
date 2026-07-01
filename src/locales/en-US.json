@@ -1151,9 +1151,55 @@
         "name": "Zoom"
       }
     },
+    "browserCompatibility": {
+      "checks": {
+        "createImageBitmap": {
+          "description": "FastCat uses bitmap decoding for thumbnails, preview frames, and imported still images.",
+          "label": "Image bitmap decoding"
+        },
+        "indexedDb": {
+          "description": "IndexedDB is required to persist workspace metadata between sessions.",
+          "label": "IndexedDB storage"
+        },
+        "offscreenCanvas": {
+          "description": "OffscreenCanvas is required for worker-based preview and export rendering.",
+          "label": "OffscreenCanvas rendering"
+        },
+        "opfs": {
+          "description": "The web version stores projects and uploaded media in the browser sandbox.",
+          "label": "Origin Private File System"
+        },
+        "sharedArrayBuffer": {
+          "description": "SharedArrayBuffer and cross-origin isolation are required for coordinated media I/O.",
+          "label": "SharedArrayBuffer isolation"
+        },
+        "webCodecsAudio": {
+          "description": "Audio WebCodecs improve audio export and transcoding support.",
+          "label": "Audio WebCodecs"
+        },
+        "webCodecsVideo": {
+          "description": "Video WebCodecs are required for browser video decoding and export.",
+          "label": "Video WebCodecs"
+        },
+        "webGpu": {
+          "description": "WebGPU accelerates shader effects, transitions, and local speech models.",
+          "label": "WebGPU acceleration"
+        },
+        "worker": {
+          "description": "Workers keep decoding, rendering, and serialization work off the main UI thread.",
+          "label": "Web Workers"
+        }
+      },
+      "description": "This browser is missing APIs required by the web editor. Project files are not opened so the workspace cannot be corrupted by a partial runtime.",
+      "limitedTitle": "Limited features",
+      "recommendation": "Open FastCat in the latest Chrome or Edge. Firefox and Safari can work only when these APIs are available and cross-origin isolation is enabled.",
+      "title": "Browser is not supported"
+    },
     "welcome": {
       "initializingTauriWorkspace": "Initializing the default desktop workspace.",
-      "openWorkspace": "Select Workspace Folder",
+      "openSandbox": "Open Browser Workspace",
+      "openWebWorkspace": "FastCat stores web projects in a private browser workspace.",
+      "openWorkspace": "Open Browser Workspace",
       "selectWebWorkspace": "Select Web Workspace"
     }
   },

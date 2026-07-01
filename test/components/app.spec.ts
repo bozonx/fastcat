@@ -121,6 +121,15 @@ vi.mock('~/utils/video-editor/load-fonts', () => ({
   loadFonts: vi.fn(),
 }));
 
+vi.mock('~/utils/browser-compatibility', () => ({
+  evaluateBrowserCompatibility: vi.fn(() => ({
+    checks: [],
+    criticalFailures: [],
+    warnings: [],
+    isSupported: true,
+  })),
+}));
+
 vi.mock('~/components/file-manager/BackgroundTaskToasts.vue', () => ({
   default: { name: 'BackgroundTaskToasts', template: '<div data-testid="bg-task-toasts" />' },
 }));

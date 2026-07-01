@@ -1151,9 +1151,55 @@
         "name": "Zoom"
       }
     },
+    "browserCompatibility": {
+      "checks": {
+        "createImageBitmap": {
+          "description": "FastCat использует bitmap-декодирование для миниатюр, кадров предпросмотра и импортированных изображений.",
+          "label": "Декодирование изображений"
+        },
+        "indexedDb": {
+          "description": "IndexedDB нужен для сохранения метаданных рабочей области между сессиями.",
+          "label": "Хранилище IndexedDB"
+        },
+        "offscreenCanvas": {
+          "description": "OffscreenCanvas нужен для рендера предпросмотра и экспорта в worker-потоках.",
+          "label": "Рендеринг OffscreenCanvas"
+        },
+        "opfs": {
+          "description": "Веб-версия хранит проекты и загруженные медиа во внутренней песочнице браузера.",
+          "label": "Origin Private File System"
+        },
+        "sharedArrayBuffer": {
+          "description": "SharedArrayBuffer и cross-origin isolation нужны для координации медийного I/O.",
+          "label": "Изоляция SharedArrayBuffer"
+        },
+        "webCodecsAudio": {
+          "description": "Audio WebCodecs улучшают поддержку аудиоэкспорта и транскодирования.",
+          "label": "Audio WebCodecs"
+        },
+        "webCodecsVideo": {
+          "description": "Video WebCodecs нужны для браузерного декодирования видео и экспорта.",
+          "label": "Video WebCodecs"
+        },
+        "webGpu": {
+          "description": "WebGPU ускоряет shader-эффекты, переходы и локальные модели распознавания речи.",
+          "label": "Ускорение WebGPU"
+        },
+        "worker": {
+          "description": "Workers выносят декодирование, рендеринг и сериализацию из основного UI-потока.",
+          "label": "Web Workers"
+        }
+      },
+      "description": "В этом браузере нет API, которые нужны веб-редактору. Проекты не открываются, чтобы частичная среда выполнения не повредила рабочую область.",
+      "limitedTitle": "Ограниченные функции",
+      "recommendation": "Откройте FastCat в последней версии Chrome или Edge. Firefox и Safari смогут работать только при наличии этих API и включённой cross-origin isolation.",
+      "title": "Браузер не поддерживается"
+    },
     "welcome": {
       "initializingTauriWorkspace": "Инициализация стандартной рабочей области desktop-версии.",
-      "openWorkspace": "Выбрать папку рабочей области",
+      "openSandbox": "Открыть рабочую область браузера",
+      "openWebWorkspace": "FastCat хранит веб-проекты в приватной рабочей области браузера.",
+      "openWorkspace": "Открыть рабочую область браузера",
       "selectWebWorkspace": "Выбрать Web Workspace"
     }
   },

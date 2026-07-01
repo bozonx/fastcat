@@ -30,7 +30,7 @@ const isTauriWorkspace = computed(() => workspaceStore.workspaceProviderId === '
         {{
           isTauriWorkspace
             ? t('fastcat.welcome.initializingTauriWorkspace')
-            : t('fastcat.welcome.selectWebWorkspace')
+            : t('fastcat.welcome.openWebWorkspace')
         }}
       </p>
 
@@ -46,9 +46,9 @@ const isTauriWorkspace = computed(() => workspaceStore.workspaceProviderId === '
         size="lg"
         variant="solid"
         color="primary"
-        icon="i-heroicons-folder-open"
+        icon="i-heroicons-circle-stack"
         class="w-full justify-center transition-all hover:scale-[1.02]"
-        :label="t('fastcat.welcome.openWorkspace')"
+        :label="t('fastcat.welcome.openSandbox')"
         :loading="workspaceStore.isLoading"
         :disabled="workspaceStore.isLoading"
         @click="workspaceStore.openWorkspace"

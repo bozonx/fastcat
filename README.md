@@ -54,6 +54,20 @@ Web Audio API, and measures RMS/peak levels before and after the master gain
 node. It intentionally validates numeric signal flow instead of depending on
 physical speaker output.
 
+## Web Browser Workspace
+
+The hosted web build does not request access to a user-selected local folder.
+It opens an internal OPFS sandbox (`navigator.storage.getDirectory()`) and
+stores uploaded media, projects, settings, temporary files, and exports there.
+This keeps the web build available in browsers that do not implement the File
+System Access picker APIs, including Firefox and Safari.
+
+At startup the app checks the browser APIs required by the web editor before
+opening a workspace: OPFS, IndexedDB, Web Workers, OffscreenCanvas,
+`createImageBitmap`, video WebCodecs, and `SharedArrayBuffer` under
+cross-origin isolation. Missing WebGPU or audio WebCodecs are treated as limited
+feature warnings instead of blocking the basic editor shell.
+
 ## Setup
 
 ```bash

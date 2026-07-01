@@ -14,6 +14,12 @@ import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useUiStore } from '~/stores/ui.store';
 import { useDismissMenusOnEscape } from '~/composables/useDismissMenusOnEscape';
 import { loadFonts } from '~/utils/video-editor/load-fonts';
+import BrowserCompatibilityScreen from '~/components/startup/BrowserCompatibilityScreen.vue';
+import {
+  evaluateBrowserCompatibility,
+  type BrowserCompatibilityReport,
+} from '~/utils/browser-compatibility';
+import { isTauriRuntime } from '~/utils/runtime';
 const uiStore = useUiStore();
 const { t } = useI18n();
 const { isMobileLayout } = useMobileLayout();
@@ -22,6 +28,16 @@ const colorMode = useColorMode();
 const presetsStore = usePresetsStore();
 const runtimeConfig = useRuntimeConfig();
 const workspaceStore = useWorkspaceStore();
+const browserCompatibilityReport = shallowRef<BrowserCompatibilityReport | null>(null);
+if (typeof window !== 'undefined' && !isTauriRuntime()) {
+  browserCompatibilityReport.value = evaluateBrowserCompatibility();
+}
+const isBrowserCompatibilityBlocked = computed(
+  () =>
+    !isTauriRuntime() &&
+    !!browserCompatibilityReport.value &&
+    !browserCompatibilityReport.value.isSupported,
+);
 useDismissMenusOnEscape();
 
 function preventContextMenu(e: MouseEvent) {
@@ -72,21 +88,27 @@ if (colorMode.preference === 'system') {
 
 <template>
   <UApp>
-    <NuxtLayout>
-      <NuxtPage />
-    </NuxtLayout>
-    <BackgroundTaskToasts />
-    <RecoveryDialog />
-    <CloseConfirmDialog />
-    <!-- <RemoteFileExchangeModal /> -->
-    <DesktopMediaReplaceModal v-if="!isMobileLayout" />
-    <MobileMediaPickerDrawer
-      v-if="isMobileLayout"
-      :is-open="uiStore.isMediaReplaceModalOpen"
-      :is-replace-mode="true"
-      @close="uiStore.isMediaReplaceModalOpen = false"
+    <BrowserCompatibilityScreen
+      v-if="isBrowserCompatibilityBlocked && browserCompatibilityReport"
+      :report="browserCompatibilityReport"
     />
-    <MobileForegroundTaskOverlay />
+    <template v-else>
+      <NuxtLayout>
+        <NuxtPage />
+      </NuxtLayout>
+      <BackgroundTaskToasts />
+      <RecoveryDialog />
+      <CloseConfirmDialog />
+      <!-- <RemoteFileExchangeModal /> -->
+      <DesktopMediaReplaceModal v-if="!isMobileLayout" />
+      <MobileMediaPickerDrawer
+        v-if="isMobileLayout"
+        :is-open="uiStore.isMediaReplaceModalOpen"
+        :is-replace-mode="true"
+        @close="uiStore.isMediaReplaceModalOpen = false"
+      />
+      <MobileForegroundTaskOverlay />
+    </template>
 
     <!-- Foreground Audio Extraction Modal -->
     <UiModal

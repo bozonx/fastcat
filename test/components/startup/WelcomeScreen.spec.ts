@@ -34,7 +34,7 @@ describe('WelcomeScreen', () => {
   it('shows web workspace message by default', async () => {
     const component = await mountSuspended(WelcomeScreen);
 
-    expect(component.text()).toContain('fastcat.welcome.selectWebWorkspace');
+    expect(component.text()).toContain('fastcat.welcome.openWebWorkspace');
   });
 
   it('shows tauri initialization message and no selection button when provider is tauri', async () => {
@@ -43,14 +43,14 @@ describe('WelcomeScreen', () => {
     const component = await mountSuspended(WelcomeScreen);
 
     expect(component.text()).toContain('fastcat.welcome.initializingTauriWorkspace');
-    expect(component.text()).not.toContain('fastcat.welcome.openWorkspace');
+    expect(component.text()).not.toContain('fastcat.welcome.openSandbox');
     expect(component.find('button').exists()).toBe(false);
   });
 
   it('shows open workspace button when API is supported', async () => {
     const component = await mountSuspended(WelcomeScreen);
 
-    expect(component.text()).toContain('fastcat.welcome.openWorkspace');
+    expect(component.text()).toContain('fastcat.welcome.openSandbox');
   });
 
   it('shows unsupported message when API is not supported', async () => {
