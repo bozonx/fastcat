@@ -317,7 +317,7 @@ The project uses a structured testing approach:
 - **All Integration Tests**: Run both web and native integration tests via `pnpm test:integration`.
 - **Parity Helpers** (`test/parity-helpers/`): Shared fixtures and harness utilities used by the cross-engine parity tests. Run together with web integration tests via `pnpm test:integration:web`.
 - **E2E Tests** (`test/e2e/`): Full application flows in the browser. Run via `pnpm test:e2e`.
-- **Cross-Engine Parity Tests** (`test/e2e/parity/` + `test/integration/engine-parity/` + `test/parity-helpers/` + `src-tauri/tests/engine_parity.rs`): Verify the web (PixiJS/WebGPU) and native (Vello/wgpu) video engines produce visually identical output for the same scenes. Integration tests validate golden registry integrity, scene coverage, and cross-engine hash parity. Run via `pnpm test:parity`.
+- **Cross-Engine Parity Tests** (`test/parity/` + `test/integration/engine-parity/` + `test/parity-helpers/` + `src-tauri/tests/engine_parity.rs`): Verify the web (PixiJS/WebGPU) and native (Vello/wgpu) video engines produce visually identical output for the same scenes. Integration tests validate golden registry integrity, scene coverage, and cross-engine hash parity. Run via `pnpm test:parity`.
 
 For desktop-web Playwright scenarios, keep project creation as a dedicated UI flow
 (`test/e2e/web/project-creation.spec.ts`). Scenario tests that need an open

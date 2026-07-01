@@ -8,7 +8,8 @@ const webServerCommand = process.env.CI
   : `E2E_TEST=1 pnpm dev --port ${e2ePort}`;
 
 export default defineConfig({
-  testDir: './test/e2e',
+  testDir: './test',
+  testMatch: ['e2e/**/*.spec.ts', 'parity/**/*.spec.ts'],
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,

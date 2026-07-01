@@ -1,4 +1,4 @@
-# Web e2e tests (`test/e2e/web`)
+# Web e2e tests (`test/e2e/web`, `test/e2e/smoke`)
 
 End-to-end coverage of the **desktop web** editor for **base functionality only**
 — nothing behind premium or in-development feature flags. These are true e2e
@@ -7,12 +7,15 @@ and verify the **persisted OTIO document** the user would reopen, not Vue store
 internals. If a check can be made without the browser, it belongs in a unit test
 (`*.test.ts`), not here.
 
+Cross-engine rendering parity tests live in `test/parity/` because they test the
+video engine output, not user workflows.
+
 ## What is e2e here vs. what is not
 
 | Concern | Where it lives |
 | --- | --- |
 | DSP math, pan-law, fades, geometry | unit / parity fixtures (`shared/parity`, `*.parity.test.ts`) |
-| Codec/container ingest matrix | `web/media-format-import.spec.ts` (probe route, `@parity`) |
+| Codec/container ingest matrix | `web/media-format-import.spec.ts` (probe route) |
 | Audio graph numbers (RMS/peak) | `web/audio-playback.spec.ts` (probe route) |
 | I/O budget / OPFS decode lifecycle | `web/opfs-io-budget.spec.ts` |
 | **User workflows through the real UI** | the specs described below |
@@ -24,6 +27,11 @@ test/e2e/
   README.md                 ← this file
   fixtures/
     workspace.ts            ← `test`/`expect` fixtures: e2eWorkspace, e2eProject
+  smoke/
+    loading.spec.ts         ← page loads, title, uncaught errors
+    desktop.spec.ts         ← mocked Tauri desktop environment
+    webgpu.spec.ts          ← WebGPU availability
+    workspace.spec.ts       ← OPFS workspace creation
   web/
     editor-smoke-workflow.spec.ts   ← the single long happy-path
     project-creation.spec.ts        ← create project → FS + timeline doc
