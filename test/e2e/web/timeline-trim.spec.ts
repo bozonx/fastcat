@@ -61,6 +61,17 @@ test.describe('Web timeline trim', () => {
     expect(doc.allClips[0].timelineDurationUs).toBeGreaterThan(0);
   });
 
+  test('cannot trim the start before the source in-point', async ({ page, e2eProject }) => {
+    const clipId = await projectWithOneClip(page, e2eProject);
+    const before = (await readTimelineDoc(page, e2eProject)).allClips[0];
+
+    await trimClipEdge(page, clipId, 'start', -500);
+
+    const doc = await waitForTimelineDoc(page, e2eProject, (d) => d.allClips.length === 1);
+    expect(doc.allClips[0].sourceStartUs).toBe(before.sourceStartUs);
+    expect(doc.allClips[0].timelineDurationUs).toBe(before.timelineDurationUs);
+  });
+
   test('trimmed clip persists across reload', async ({ page, e2eProject }) => {
     const clipId = await projectWithOneClip(page, e2eProject);
     const before = (await readTimelineDoc(page, e2eProject)).allClips[0].timelineDurationUs;

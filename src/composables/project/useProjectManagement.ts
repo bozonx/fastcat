@@ -56,6 +56,7 @@ export function useProjectManagement(options: { isMobile?: boolean } = {}) {
   const renameValue = ref('');
 
   const isCreateModalOpen = ref(false);
+  const isTransitioning = ref(false);
   const projectCreationSettings = ref(createProjectCreationState(workspaceStore));
 
   const isRenameModalOpen = ref(false);
@@ -130,6 +131,7 @@ export function useProjectManagement(options: { isMobile?: boolean } = {}) {
     if (!isCreateNameValid.value) return;
 
     isCreateModalOpen.value = false;
+    isTransitioning.value = true;
 
     const parentPath =
       workspaceStore.workspaceProviderId === 'tauri'
@@ -154,18 +156,24 @@ export function useProjectManagement(options: { isMobile?: boolean } = {}) {
         }
       : { parentPath };
 
-    await projectStore.createProject(name, options);
+    try {
+      await projectStore.createProject(name, options);
 
-    if (workspaceStore.error) {
+      if (workspaceStore.error) {
+        isTransitioning.value = false;
+        isCreateModalOpen.value = true;
+        return;
+      }
+
+      if (workspaceStore.workspaceProviderId === 'tauri' && options.parentPath) {
+        const { join } = await import('@tauri-apps/api/path');
+        handleOpenProject(await join(options.parentPath, name));
+      } else {
+        handleOpenProject(name);
+      }
+    } catch (e) {
+      isTransitioning.value = false;
       isCreateModalOpen.value = true;
-      return;
-    }
-
-    if (workspaceStore.workspaceProviderId === 'tauri' && options.parentPath) {
-      const { join } = await import('@tauri-apps/api/path');
-      handleOpenProject(await join(options.parentPath, name));
-    } else {
-      handleOpenProject(name);
     }
   }
 
@@ -176,6 +184,7 @@ export function useProjectManagement(options: { isMobile?: boolean } = {}) {
   }
 
   function handleOpenProject(project: string) {
+    isTransitioning.value = true;
     if (options.isMobile) {
       const lastTab = readLocalStorageString('fastcat:mobile:last-tab', 'edit');
       const view = lastTab && ['files', 'edit'].includes(lastTab) ? lastTab : 'edit';
@@ -391,6 +400,7 @@ export function useProjectManagement(options: { isMobile?: boolean } = {}) {
     searchQuery,
     renameValue,
     isCreateModalOpen,
+    isTransitioning,
     projectCreationSettings,
     filteredProjects,
     isRenameModalOpen,

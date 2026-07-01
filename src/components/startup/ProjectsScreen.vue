@@ -24,6 +24,7 @@ const {
   searchQuery,
   renameValue,
   isCreateModalOpen,
+  isTransitioning,
   projectCreationSettings,
   filteredProjects,
   isRenameModalOpen,
@@ -601,7 +602,7 @@ const sortedProjects = computed(() => {
 
   <!-- Loading Overlay -->
   <div
-    v-if="workspaceStore.isLoading"
+    v-if="workspaceStore.isLoading || isTransitioning"
     class="absolute inset-0 z-[100] flex items-center justify-center bg-ui-bg/60 backdrop-blur-sm transition-all duration-300"
   >
     <div class="flex flex-col items-center gap-3 p-6 bg-ui-bg-elevated border border-ui-border rounded-2xl shadow-2xl">

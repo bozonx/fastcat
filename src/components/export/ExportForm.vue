@@ -615,6 +615,7 @@ const filenamePlaceholder = computed(() =>
 
         <div
           v-if="exportError"
+          data-testid="export-error"
           class="p-3 text-sm text-error-400 bg-error-400/10 rounded-md border border-error-400/20"
         >
           <div>{{ exportError }}</div>

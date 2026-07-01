@@ -385,39 +385,7 @@ export class ClipResourceManager {
 
     try {
       const frame = sampleObj2.toVideoFrame() as VideoFrame;
-      const width = Math.max(
-        1,
-        Math.round(
-          Number(
-            (frame as { codedWidth?: unknown }).codedWidth ??
-              (frame as { displayWidth?: unknown }).displayWidth,
-          ) || 1,
-        ),
-      );
-      const height = Math.max(
-        1,
-        Math.round(
-          Number(
-            (frame as { codedHeight?: unknown }).codedHeight ??
-              (frame as { displayHeight?: unknown }).displayHeight,
-          ) || 1,
-        ),
-      );
-      const sizeBytes = estimateVideoFrameSizeBytes(frame, width, height);
-
-      this.context.videoFrameCache.set({
-        key: cacheKey,
-        clipId: clip.itemId,
-        frameIndex,
-        timelineTimeUs: Math.max(
-          0,
-          Math.round(Number(timelineTimeUs) || Number(clip.startUs) || 0),
-        ),
-        frame,
-        sizeBytes,
-        width,
-        height,
-      });
+      this.storeDecodedFrame({ clip, frameIndex, cacheKey, timelineTimeUs, frame });
 
       return {
         toVideoFrame: () => {
@@ -435,6 +403,119 @@ export class ClipResourceManager {
         } catch {
           // ignore
         }
+      }
+    }
+  }
+
+  // Sizes a decoded VideoFrame and inserts it into the frame cache under the given
+  // key. Shared by the on-demand fetch path and the sequential decode-ahead warm so
+  // both produce byte-identical cache entries.
+  private storeDecodedFrame(params: {
+    clip: CompositorClip;
+    frameIndex: number;
+    cacheKey: string;
+    timelineTimeUs: number | undefined;
+    frame: VideoFrame;
+  }): void {
+    const { clip, frame } = params;
+    const width = Math.max(
+      1,
+      Math.round(
+        Number(
+          (frame as { codedWidth?: unknown }).codedWidth ??
+            (frame as { displayWidth?: unknown }).displayWidth,
+        ) || 1,
+      ),
+    );
+    const height = Math.max(
+      1,
+      Math.round(
+        Number(
+          (frame as { codedHeight?: unknown }).codedHeight ??
+            (frame as { displayHeight?: unknown }).displayHeight,
+        ) || 1,
+      ),
+    );
+    const sizeBytes = estimateVideoFrameSizeBytes(frame, width, height);
+
+    this.context.videoFrameCache.set({
+      key: params.cacheKey,
+      clipId: clip.itemId,
+      frameIndex: params.frameIndex,
+      timelineTimeUs: Math.max(
+        0,
+        Math.round(Number(params.timelineTimeUs) || Number(clip.startUs) || 0),
+      ),
+      frame,
+      sizeBytes,
+      width,
+      height,
+    });
+  }
+
+  // Decode-ahead a window of a clip's upcoming frames into the cache using the
+  // sequential sink pipeline (`samplesAtTimestamps` — decodes each packet at most
+  // once for monotonic timestamps), so the render path serves them as cache hits
+  // instead of paying a from-keyframe `getSample` decode per displayed frame. Only
+  // frames not already cached are requested. The caller must run this inside the
+  // compositor's exclusive op so the sequential read never overlaps a render's read
+  // of the same sink.
+  public async warmClipFrameWindow(params: {
+    clip: CompositorClip;
+    frames: Array<{ sourceTimeS: number; timelineTimeUs: number }>;
+  }): Promise<void> {
+    const { clip } = params;
+    const sink = clip.sink as unknown as {
+      samplesAtTimestamps?: (
+        timestamps: number[],
+      ) => AsyncGenerator<{ toVideoFrame?: () => VideoFrame; close?: () => void } | null>;
+    } | null;
+    if (!sink || typeof sink.samplesAtTimestamps !== 'function') return;
+
+    // Pair each requested source time with the cache slot it fills, dropping frames
+    // that are already cached so a warm pass never redecodes a hot frame. Timestamps
+    // stay in ascending order (frames were built forward), keeping the decoder's
+    // optimized monotonic path.
+    const plan = params.frames
+      .map((f) => {
+        const frameIndex = computeFrameIndex(clip, f.sourceTimeS);
+        return {
+          sourceTimeS: f.sourceTimeS,
+          timelineTimeUs: f.timelineTimeUs,
+          frameIndex,
+          cacheKey: buildVideoFrameCacheKey(clip, frameIndex),
+        };
+      })
+      .filter((p) => !this.context.videoFrameCache.get(p.cacheKey));
+    if (plan.length === 0) return;
+
+    let index = 0;
+    for await (const sample of sink.samplesAtTimestamps(plan.map((p) => p.sourceTimeS))) {
+      const target = plan[index];
+      index += 1;
+      if (!target) {
+        sample?.close?.();
+        continue;
+      }
+      if (!sample || typeof sample.toVideoFrame !== 'function') {
+        continue;
+      }
+      try {
+        // Re-check the cache: a duplicate source frame (sample-and-hold at the clip
+        // frame rate) can map two plan entries to one key, and the render path may
+        // have filled the slot between planning and here.
+        if (!this.context.videoFrameCache.get(target.cacheKey)) {
+          const frame = sample.toVideoFrame() as VideoFrame;
+          this.storeDecodedFrame({
+            clip,
+            frameIndex: target.frameIndex,
+            cacheKey: target.cacheKey,
+            timelineTimeUs: target.timelineTimeUs,
+            frame,
+          });
+        }
+      } finally {
+        sample.close?.();
       }
     }
   }

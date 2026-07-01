@@ -304,6 +304,35 @@ export async function moveEntry(
   }, params);
 }
 
+export async function deleteEntry(page: Page, path: string): Promise<void> {
+  await openProjectFilesTab(page);
+  await expect
+    .poll(
+      () =>
+        page.evaluate(
+          () =>
+            typeof (
+              window as Window & {
+                __fastcatE2eDeleteEntry?: (params: { path: string }) => Promise<void>;
+              }
+            ).__fastcatE2eDeleteEntry === 'function',
+        ),
+      { timeout: 10_000 },
+    )
+    .toBe(true);
+
+  await page.evaluate(async (entryPath) => {
+    const deleteFileEntry = (
+      window as Window & {
+        __fastcatE2eDeleteEntry?: (params: { path: string }) => Promise<void>;
+      }
+    ).__fastcatE2eDeleteEntry;
+
+    if (!deleteFileEntry) throw new Error('E2E file-manager delete hook is not registered');
+    await deleteFileEntry({ path: entryPath });
+  }, path);
+}
+
 /** Right-click an entry to open its context menu, then click a menu item. */
 export async function contextAction(
   page: Page,

@@ -735,6 +735,67 @@ export class VideoCompositor {
     );
   }
 
+  // Build the decode-ahead plan for the currently-playing video clips: the source
+  // times (and their timeline slots) of the next frames the render path will ask
+  // for. Reverse and freeze-frame clips are skipped — the sequential forward
+  // decoder does not model them. Runs inside the exclusive prewarm op, so the
+  // sequential sink read it feeds can never race the render path's own sink reads.
+  private buildActiveClipWarmPlans(timeUs: number): Array<{
+    clip: CompositorClip;
+    frames: Array<{ sourceTimeS: number; timelineTimeUs: number }>;
+  }> {
+    const nowUs = Math.max(0, Math.round(timeUs));
+    const maxFrames = Math.max(0, Math.round(VIDEO_CORE_LIMITS.MAX_ACTIVE_PREWARM_FRAMES));
+    if (maxFrames === 0) return [];
+
+    const plans: Array<{
+      clip: CompositorClip;
+      frames: Array<{ sourceTimeS: number; timelineTimeUs: number }>;
+    }> = [];
+
+    for (const clip of this.clips) {
+      if (
+        clip.clipKind !== 'video' ||
+        !clip.sink ||
+        typeof clip.freezeFrameSourceUs === 'number' ||
+        clip.startUs > nowUs ||
+        clip.endUs <= nowUs
+      ) {
+        continue;
+      }
+
+      const speed = normalizeClipSpeed(clip.speed);
+      if (speed < 0) continue; // sequential decode-ahead is forward-only
+
+      const frameRate =
+        typeof clip.frameRate === 'number' && Number.isFinite(clip.frameRate) && clip.frameRate > 0
+          ? clip.frameRate
+          : 30;
+      const frameIntervalUs = 1_000_000 / frameRate;
+      const localNowUs = nowUs - clip.startUs;
+
+      const frames: Array<{ sourceTimeS: number; timelineTimeUs: number }> = [];
+      for (let k = 1; k <= maxFrames; k += 1) {
+        const localUs = localNowUs + k * frameIntervalUs;
+        const timelineUs = clip.startUs + localUs;
+        if (timelineUs >= clip.endUs) break;
+
+        const sourceUs = resolveClipSourceTimeUs({
+          localTimeUs: localUs,
+          sourceStartUs: clip.sourceStartUs,
+          sourceRangeDurationUs: clip.sourceRangeDurationUs,
+          speed,
+          frameRate: clip.frameRate,
+        });
+        frames.push({ sourceTimeS: sourceUs / 1_000_000, timelineTimeUs: Math.round(timelineUs) });
+      }
+
+      if (frames.length > 0) plans.push({ clip, frames });
+    }
+
+    return plans;
+  }
+
   private async prewarmVideoFramesLocked(timeUs: number, lookaheadUs: number): Promise<void> {
     const startUs = Math.max(0, Math.round(timeUs));
     this.videoFrameCache.setPriorityTimeUs(startUs);
@@ -750,8 +811,16 @@ export class VideoCompositor {
       .sort((a, b) => a.startUs - b.startUs)
       .slice(0, Math.max(1, Math.round(VIDEO_CORE_LIMITS.MAX_PREWARM_CLIPS)));
 
-    await Promise.all(
-      upcoming.map(async (clip) => {
+    // Decode-ahead of the clips already under the playhead. Uses the sequential
+    // sink pipeline (decodes each packet at most once) so the render path reads
+    // warm frames from the cache instead of paying a from-keyframe `getSample`
+    // decode per displayed frame — the fix for playback running at a fraction of
+    // real-time fps. Kept in this exclusive op so the sequential read can never
+    // collide with the render path's own read of the same sink.
+    const activeWarmPlans = this.buildActiveClipWarmPlans(startUs);
+
+    await Promise.all([
+      ...upcoming.map(async (clip) => {
         const sampleTimeUs =
           typeof clip.freezeFrameSourceUs === 'number'
             ? Math.max(0, clip.freezeFrameSourceUs)
@@ -769,7 +838,10 @@ export class VideoCompositor {
           timelineTimeUs: clip.startUs,
         });
       }),
-    );
+      ...activeWarmPlans.map((plan) =>
+        this.clipResourceManager.warmClipFrameWindow(plan).catch(() => undefined),
+      ),
+    ]);
   }
 
   private updateTimelineLayoutLocked(timelineClips: ReadonlyArray<WorkerVideoPayloadItem>): number {

@@ -118,6 +118,18 @@ export const VIDEO_CORE_LIMITS = {
    * is fully covered instead of leaving the 5th+ cut cold (cut stutter).
    */
   MAX_PREWARM_CLIPS: 8,
+  /**
+   * How many frames of the *currently playing* clip a prewarm tick decodes ahead
+   * of the playhead into the frame cache. Unlike upcoming-clip warming, this runs
+   * OFF the exclusive op queue (it only reads the sink and fills the cache), so it
+   * overlaps renders and uses the spare sample-request slots to keep the next
+   * frames hot. Without it every played frame is an on-demand decode inside the
+   * render path, which caps smooth-playback fps as soon as steady-state decode
+   * approaches the frame interval (the "plays at half fps" symptom). Sized to just
+   * cover one prewarm interval (250 ms ≈ 6–8 frames at 25–30 fps) so it stays a
+   * step ahead without pinning a large VideoFrame backlog in the cache.
+   */
+  MAX_ACTIVE_PREWARM_FRAMES: 8,
   MAX_WORKER_RPC_PENDING_CALLS: 500,
   /** Max gap (µs) between adjacent clips to still apply blend shadow during transitions */
   BLEND_SHADOW_GAP_THRESHOLD_US: 200_000,

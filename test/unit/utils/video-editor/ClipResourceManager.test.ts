@@ -91,6 +91,102 @@ describe('resolveMonitorSampleFallbackTimeS', () => {
   });
 });
 
+describe('ClipResourceManager.warmClipFrameWindow', () => {
+  function createCacheMock(preCached: string[] = []) {
+    const store = new Map<string, unknown>();
+    for (const key of preCached) store.set(key, { frame: {} });
+    return {
+      store,
+      get: vi.fn((key: string) => store.get(key) ?? null),
+      set: vi.fn((entry: { key: string }) => store.set(entry.key, entry)),
+    };
+  }
+
+  function createSinkMock() {
+    const calls: number[][] = [];
+    const closed: number[] = [];
+    return {
+      calls,
+      closed,
+      samplesAtTimestamps: vi.fn(async function* (timestamps: number[]) {
+        calls.push(timestamps);
+        for (let i = 0; i < timestamps.length; i += 1) {
+          yield {
+            toVideoFrame: () => ({ codedWidth: 128, codedHeight: 72, closed: false }),
+            close: () => closed.push(i),
+          };
+        }
+      }),
+    };
+  }
+
+  function createVideoClip(sink: unknown): CompositorClip {
+    return {
+      itemId: 'clip-1',
+      clipKind: 'video',
+      frameRate: 25,
+      firstTimestampS: 0,
+      startUs: 0,
+      sink,
+    } as unknown as CompositorClip;
+  }
+
+  it('decode-ahead uses the sequential pipeline and caches by frame index', async () => {
+    const videoFrameCache = createCacheMock();
+    const sink = createSinkMock();
+    const manager = createManager({ videoFrameCache: videoFrameCache as any });
+
+    await manager.warmClipFrameWindow({
+      clip: createVideoClip(sink),
+      frames: [
+        { sourceTimeS: 0.04, timelineTimeUs: 40_000 },
+        { sourceTimeS: 0.08, timelineTimeUs: 80_000 },
+      ],
+    });
+
+    // One monotonic batch, not per-frame getSample calls.
+    expect(sink.samplesAtTimestamps).toHaveBeenCalledTimes(1);
+    expect(sink.calls[0]).toEqual([0.04, 0.08]);
+    // frameIndex = floor(t * 25): 0.04 -> 1, 0.08 -> 2.
+    expect(videoFrameCache.set).toHaveBeenCalledTimes(2);
+    expect(videoFrameCache.store.has('clip-1:1')).toBe(true);
+    expect(videoFrameCache.store.has('clip-1:2')).toBe(true);
+    // Every decoded sample is released.
+    expect(sink.closed).toHaveLength(2);
+  });
+
+  it('skips frames already resident in the cache', async () => {
+    const videoFrameCache = createCacheMock(['clip-1:1']);
+    const sink = createSinkMock();
+    const manager = createManager({ videoFrameCache: videoFrameCache as any });
+
+    await manager.warmClipFrameWindow({
+      clip: createVideoClip(sink),
+      frames: [
+        { sourceTimeS: 0.04, timelineTimeUs: 40_000 },
+        { sourceTimeS: 0.08, timelineTimeUs: 80_000 },
+      ],
+    });
+
+    // Only the uncached frame is requested from the decoder.
+    expect(sink.calls[0]).toEqual([0.08]);
+    expect(videoFrameCache.set).toHaveBeenCalledTimes(1);
+    expect(videoFrameCache.store.has('clip-1:2')).toBe(true);
+  });
+
+  it('is a no-op when the sink lacks the sequential API', async () => {
+    const videoFrameCache = createCacheMock();
+    const manager = createManager({ videoFrameCache: videoFrameCache as any });
+
+    await manager.warmClipFrameWindow({
+      clip: createVideoClip({ getSample: vi.fn() }),
+      frames: [{ sourceTimeS: 0.04, timelineTimeUs: 40_000 }],
+    });
+
+    expect(videoFrameCache.set).not.toHaveBeenCalled();
+  });
+});
+
 describe('ClipResourceManager.applyEffectsToNonVideoClip', () => {
   it('returns early when previewEffectsEnabled is false', async () => {
     const manager = new ClipResourceManager({

@@ -427,12 +427,14 @@ useFileManagerPanelPendingActions({
 type FastcatE2eCreateRootFolder = (params: { name: string }) => Promise<void>;
 type FastcatE2eRenameEntry = (params: { path: string; newName: string }) => Promise<void>;
 type FastcatE2eMoveEntry = (params: { sourcePath: string; targetDirPath: string }) => Promise<void>;
+type FastcatE2eDeleteEntry = (params: { path: string }) => Promise<void>;
 type FastcatE2eSetFileViewMode = (params: { mode: 'grid' | 'list' }) => Promise<void>;
 
 interface FastcatE2eFileManagerWindow {
   __fastcatE2eCreateRootFolder?: FastcatE2eCreateRootFolder;
   __fastcatE2eRenameEntry?: FastcatE2eRenameEntry;
   __fastcatE2eMoveEntry?: FastcatE2eMoveEntry;
+  __fastcatE2eDeleteEntry?: FastcatE2eDeleteEntry;
   __fastcatE2eSetFileViewMode?: FastcatE2eSetFileViewMode;
 }
 
@@ -463,6 +465,14 @@ function registerE2eFileManagerHooks() {
     uiStore.notifyFileManagerUpdate();
   };
 
+  e2eWindow.__fastcatE2eDeleteEntry = async ({ path }) => {
+    const target = await findEntryByPath(path);
+    if (!target) throw new Error(`File-manager entry not found: ${path}`);
+    await deleteEntry(target);
+    await loadProjectDirectory({ fullRefresh: true });
+    uiStore.notifyFileManagerUpdate();
+  };
+
   e2eWindow.__fastcatE2eSetFileViewMode = async ({ mode }) => {
     fileManagerStore.setViewMode(mode);
     await nextTick();
@@ -480,6 +490,7 @@ onUnmounted(() => {
     delete e2eWindow.__fastcatE2eCreateRootFolder;
     delete e2eWindow.__fastcatE2eRenameEntry;
     delete e2eWindow.__fastcatE2eMoveEntry;
+    delete e2eWindow.__fastcatE2eDeleteEntry;
     delete e2eWindow.__fastcatE2eSetFileViewMode;
   }
 });

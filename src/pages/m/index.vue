@@ -42,6 +42,7 @@ const {
   searchQuery,
   renameValue,
   isCreateModalOpen,
+  isTransitioning,
   projectCreationSettings,
   filteredProjects,
   isRenameModalOpen,
@@ -187,7 +188,7 @@ const sortedProjects = computed(() => {
     />
     <!-- Если идет инициализация или загрузка данных воркспейса -->
     <div
-      v-if="workspaceStore.isInitializing || workspaceStore.isLoading"
+      v-if="workspaceStore.isInitializing || workspaceStore.isLoading || isTransitioning"
       class="flex h-full w-full items-center justify-center bg-ui-bg"
     >
       <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-500"></div>

@@ -57,6 +57,26 @@ test.describe('Web timeline add clip', () => {
     expect(doc.allClips[0].timelineDurationUs).toBeGreaterThan(0);
   });
 
+  test('rejects adding audio media to a video track', async ({ page, e2eProject }) => {
+    const { uiPath } = await seedProjectMedia(page, e2eProject, MEDIA_FIXTURES.audio.wav, 'audio');
+    const videoTrackId = (await trackIds(page))[0];
+
+    await expect(addFileToTrack(page, uiPath, videoTrackId)).rejects.toThrow();
+
+    const doc = await readTimelineDoc(page, e2eProject);
+    expect(doc.allClips).toHaveLength(0);
+  });
+
+  test('rejects adding image media to an audio track', async ({ page, e2eProject }) => {
+    const { uiPath } = await seedProjectMedia(page, e2eProject, MEDIA_FIXTURES.image.jpg, 'image');
+    const audioTrackId = (await trackIds(page)).at(-1)!;
+
+    await expect(addFileToTrack(page, uiPath, audioTrackId)).rejects.toThrow();
+
+    const doc = await readTimelineDoc(page, e2eProject);
+    expect(doc.allClips).toHaveLength(0);
+  });
+
   test('added clip survives a reload', async ({ page, e2eProject }) => {
     const { uiPath } = await seedProjectMedia(
       page,

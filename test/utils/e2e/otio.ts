@@ -20,6 +20,7 @@ import type { E2eProject } from '../../e2e/fixtures/workspace';
 export type OtioItemType = 'clip' | 'gap' | 'transition';
 
 export interface TimelineItemView {
+  id: string;
   type: OtioItemType;
   name: string;
   /** In/out point into the source media (microseconds). */
@@ -60,6 +61,7 @@ interface RawRange {
 interface RawChild {
   OTIO_SCHEMA?: string;
   name?: string;
+  metadata?: { fastcat?: { id?: string } };
   source_range?: RawRange;
   media_reference?: { OTIO_SCHEMA?: string; target_url?: string };
 }
@@ -101,6 +103,7 @@ function parseTrack(raw: RawTrack): TimelineTrackView {
     const timelineDurationUs = type === 'transition' ? 0 : durationUs;
 
     items.push({
+      id: child.metadata?.fastcat?.id ?? '',
       type,
       name: child.name ?? '',
       sourceStartUs,

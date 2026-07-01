@@ -1,4 +1,6 @@
+import type { Page } from '@playwright/test';
 import { test, expect } from '../fixtures/workspace';
+import type { E2eProject } from '../fixtures/workspace';
 import { MEDIA_FIXTURES } from '../../fixtures/media';
 import { seedProjectMedia } from '../../utils/e2e/file-manager';
 import { addFileToTrack, trackIds } from '../../utils/e2e/timeline';
@@ -15,7 +17,7 @@ import { probeAudioFile, waitForAudioProbe } from '../../utils/e2e/audio';
 test.describe('Web export', () => {
   test.slow(); // real encode of a short clip
 
-  test.beforeEach(async ({ page, e2eProject }) => {
+  async function addShortVideoClip(page: Page, e2eProject: E2eProject) {
     const { uiPath } = await seedProjectMedia(
       page,
       e2eProject,
@@ -25,9 +27,9 @@ test.describe('Web export', () => {
     const videoTrackId = (await trackIds(page))[0];
     await addFileToTrack(page, uiPath, videoTrackId);
     await waitForTimelineDoc(page, e2eProject, (d) => d.allClips.length === 1);
-  });
+  }
 
-  test('opens the export panel and shows the start control', async ({ page }) => {
+  test('opens the export panel and shows the start control', async ({ page, e2eProject: _ }) => {
     await openExport(page);
     await expect(page.getByTestId('export-start')).toBeEnabled();
   });
@@ -36,6 +38,7 @@ test.describe('Web export', () => {
     page,
     e2eProject,
   }) => {
+    await addShortVideoClip(page, e2eProject);
     await openExport(page);
     await startExport(page);
     await waitForExportSuccess(page, { timeout: 90_000 });
@@ -62,5 +65,14 @@ test.describe('Web export', () => {
     expect(decoded.channels).toBeGreaterThan(0);
     expect(decoded.rms).toBeGreaterThan(0.005);
     expect(decoded.peak).toBeGreaterThan(0.02);
+  });
+
+  test('does not write an output for an empty timeline', async ({ page, e2eProject }) => {
+    await openExport(page);
+    await startExport(page);
+
+    await expect(page.getByTestId('export-error')).toBeVisible({ timeout: 30_000 });
+    const outputs = await listOpfsDirectory(page, `${e2eProject.path}/_export`);
+    expect(outputs.filter((entry) => entry.kind === 'file')).toHaveLength(0);
   });
 });
