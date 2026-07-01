@@ -2,9 +2,12 @@
 import { computed } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useSelectionStore } from '~/stores/selection.store';
-import type { TimelineTrack } from '~/timeline/types';
+import type { TimelineTrack, TimelineGapItem, TimelineTrackItem } from '~/timeline/types';
 import TrackProperties from '~/components/properties/TrackProperties.vue';
 import PropertySection from '~/components/properties/PropertySection.vue';
+import PropertyRow from '~/components/properties/PropertyRow.vue';
+import PropertyActionsBlock from '~/components/properties/PropertyActionsBlock.vue';
+import { formatTimecode } from '~/utils/time';
 
 const props = defineProps<{
   trackId: string;
@@ -23,6 +26,28 @@ const track = computed<TimelineTrack | null>(
     ) ?? null,
 );
 
+const gap = computed<TimelineGapItem | null>(
+  () =>
+    (track.value?.items as TimelineTrackItem[] | undefined)?.find(
+      (item) => item.id === props.itemId && item.kind === 'gap',
+    ) as TimelineGapItem | null ?? null,
+);
+
+const fps = computed(() => timelineStore.timelineFormat.fps || 30);
+const gapDuration = computed(() => gap.value?.timelineRange.durationUs ?? 0);
+const formattedGapDuration = computed(() => formatTimecode(gapDuration.value, fps.value));
+
+const gapActions = computed(() => [
+  {
+    id: 'delete-gap',
+    label: t('fastcat.timeline.deleteGap'),
+    icon: 'i-heroicons-trash',
+    color: 'neutral' as const,
+    variant: 'soft' as const,
+    onClick: deleteGap,
+  },
+]);
+
 function deleteGap() {
   timelineStore.applyTimeline({
     type: 'delete_items',
@@ -36,22 +61,16 @@ function deleteGap() {
 
 <template>
   <div class="w-full flex flex-col gap-2 text-ui-text">
-    <!-- Gap actions panel -->
-    <PropertySection v-if="!hideActions" :title="t('fastcat.timeline.gap')">
-      <div class="px-3 pb-3">
-        <p class="text-xs text-ui-text-muted mb-3">
-          {{ t('fastcat.timeline.gapDescription') }}
-        </p>
-        <UButton
-          color="error"
-          variant="soft"
-          size="xs"
-          icon="i-heroicons-trash"
-          class="w-full justify-center"
-          @click="deleteGap"
-        >
-          {{ t('fastcat.timeline.deleteGap') }}
-        </UButton>
+    <!-- Gap properties panel -->
+    <PropertySection :title="t('fastcat.timeline.gap')">
+      <div class="px-2 py-1 text-xs text-ui-text-muted mb-2">
+        {{ t('fastcat.timeline.gapDescription') }}
+      </div>
+      <PropertyRow :label="t('common.duration')" :value="formattedGapDuration" />
+      <div v-if="!hideActions" class="mt-2 pt-2 border-t border-ui-border">
+        <PropertyActionsBlock
+          :additional-actions="gapActions"
+        />
       </div>
     </PropertySection>
 
@@ -59,3 +78,4 @@ function deleteGap() {
     <TrackProperties v-if="track" :track="track" :hide-actions="hideActions" />
   </div>
 </template>
+
