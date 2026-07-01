@@ -373,11 +373,16 @@ the GPU-fragile ones stay out of the merge gate. Two things used to both be call
 
 `test/integration/golden-registry/` holds CPU vitest checks that validate the
 golden registry integrity and scene coverage (no GPU), and runs with the web
-integration tier.
+integration tier. `test:integration:native` is a curated fast **subset** of
+`test:native` (the latter runs the whole Rust suite: native unit + integration +
+logic parity, with the GPU golden test skipping gracefully).
 
-Run everything locally (static checks + all tiers incl. e2e and golden) with
-`pnpm check`; use `pnpm check:fast` for the quick static + unit + web-integration
-loop.
+Handy aggregates:
+
+- `pnpm test` — all Vitest tiers in one pass (unit + components + integration + golden-helpers); no browser, no cargo.
+- `pnpm check:fast` — quick loop: static checks + unit + web integration.
+- `pnpm check` — everything locally: static checks + all tiers incl. e2e and golden.
+- `bash scripts/ci.sh <tier>` — the exact per-job command CI runs (`static`, `unit`, `integration-web`, `rust`, `e2e-smoke`, `e2e`, `golden-web`, `golden-native`).
 
 For desktop-web Playwright scenarios, keep project creation as a dedicated UI flow
 (`test/e2e/web/project-creation.spec.ts`). Scenario tests that need an open

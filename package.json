@@ -27,6 +27,7 @@
     "fmt": "cargo fmt --manifest-path src-tauri/Cargo.toml",
     "i18n:check": "node scripts/check-i18n-locales.mjs",
     "typecheck": "nuxi typecheck",
+    "test": "vitest run",
     "test:unit": "vitest run test/unit test/components",
     "test:unit:coverage": "vitest run --coverage test/unit test/components",
     "test:watch": "vitest",

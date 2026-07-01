@@ -18,10 +18,23 @@ The project uses a custom `src/` directory. Besides the standard Nuxt folders (`
 - `src/utils/io/` — shared I/O budget and governor (`io-budget.ts`, `io-governor.ts`, `governed-blob.ts`). Main thread and workers coordinate OPFS access through a `SharedArrayBuffer` semaphore to avoid Chromium datapipe exhaustion.
 
 ## Testing Structure (`test/`)
-- `test/unit/` — Unit tests for internal logic, stores, and utils.
-- `test/components/` — Tests for Vue components.
-- `test/integration/` — Integration tests for cross-module interactions.
-- `test/e2e/` — E2E tests (Playwright).
+Tests are organised into explicit **tiers** (one CI job each). Two things used to
+both be called "parity" — keep them distinct:
+- **parity** = pure cross-language _logic_ math (`shared/parity/*.json`, CPU) — lives in the unit/rust tiers, not a tier of its own.
+- **golden** = cross-engine _rendered-frame_ comparison (`shared/golden/frames.json`, GPU) — its own tier, kept out of the merge gate.
+
+| Tier | Directory | Command |
+| --- | --- | --- |
+| Unit | `test/unit/` (incl. `*.parity.test.ts`), `test/components/` | `pnpm test:unit` |
+| Integration (web) | `test/integration/` (incl. `golden-registry/`), `test/golden-helpers/` | `pnpm test:integration:web` |
+| Native (Rust) | `src-tauri/tests/`, Rust `#[test]`s (incl. logic parity) | `pnpm test:native` |
+| E2E — smoke | `test/e2e/smoke/` | `pnpm test:e2e:smoke` |
+| E2E — full | `test/e2e/web/` | `pnpm test:e2e` |
+| Golden (rendered) | `test/golden/`, `src-tauri/tests/engine_parity.rs` | `pnpm test:golden` |
+
+- `test:integration:native` is a curated fast **subset** of `test:native` (the latter runs the whole Rust suite incl. logic parity + golden, skipping GPU gracefully).
+- `pnpm test` runs all Vitest tiers (unit + components + integration + golden-helpers) in one pass; `pnpm check` runs everything incl. e2e/golden; `pnpm check:fast` is the quick static + unit + web-integration loop.
+- CI tiers are dispatched by `scripts/ci.sh <tier>` (blocking gate in `.github/workflows/ci.yml`; nightly non-blocking golden in `golden.yml`).
 - `test/fixtures/` — Static assets and mock data for tests.
 - `test/vitest.setup.ts` — Global configuration and mocks for Vitest.
 
