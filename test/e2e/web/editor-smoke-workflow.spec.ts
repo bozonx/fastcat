@@ -1,4 +1,4 @@
-import { test, expect } from '../fixtures/workspace';
+import { test, expect, waitForEditorReady } from '../fixtures/workspace';
 import { MEDIA_FIXTURES } from '../../fixtures/media';
 import { seedProjectMedia } from '../../utils/e2e/file-manager';
 import {
@@ -55,7 +55,7 @@ test.describe('Web editor smoke workflow', () => {
 
     // Reload and confirm the edited clip persisted with its edited timing.
     await page.goto(`/editor/${e2eProject.encodedName}`);
-    await expect(page.getByTestId('timeline-container')).toBeVisible();
+    await waitForEditorReady(page);
     await expect.poll(async () => (await clipIds(page)).length).toBe(1);
 
     const reloaded = await waitForTimelineDoc(page, e2eProject, (d) => d.allClips.length === 1);

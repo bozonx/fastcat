@@ -1,4 +1,4 @@
-import { test, expect } from '../fixtures/workspace';
+import { test, expect, waitForEditorReady } from '../fixtures/workspace';
 import { MEDIA_FIXTURES } from '../../fixtures/media';
 import { seedProjectMedia } from '../../utils/e2e/file-manager';
 import { addFileToTrack, clipIds, trackIds } from '../../utils/e2e/timeline';
@@ -40,7 +40,7 @@ test.describe('Web editor playback', () => {
 
   test('timeline still plays after a reload', async ({ page, e2eProject }) => {
     await page.goto(`/editor/${e2eProject.encodedName}`);
-    await expect(page.getByTestId('timeline-container')).toBeVisible();
+    await waitForEditorReady(page);
     await expect.poll(async () => (await clipIds(page)).length).toBe(1);
     await expectPlayheadAdvances(page, { forMs: 700 });
   });
