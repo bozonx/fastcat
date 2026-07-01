@@ -323,6 +323,10 @@ For desktop-web Playwright scenarios, keep project creation as a dedicated UI fl
 (`test/e2e/web/project-creation.spec.ts`). Scenario tests that need an open
 project should use `e2eProject` from `test/e2e/fixtures/workspace.ts` so they
 start from a prepared OPFS workspace instead of repeating the full creation path.
+Base desktop-web coverage is split into focused specs for file manager, media
+import, timeline add/trim/move, playback, export, and one connected editor smoke
+workflow. These specs should cover only functionality available with premium and
+in-development feature flags disabled.
 
 Before running E2E tests for the first time, install the Playwright browser:
 
