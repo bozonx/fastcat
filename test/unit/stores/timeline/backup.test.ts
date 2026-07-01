@@ -46,7 +46,7 @@ function createMockDeps(overrides: Partial<TimelineBackupDeps> = {}): TimelineBa
     isMobile: ref(false),
     isDirty: ref(false),
     projectStore: makeProjectStoreMock(),
-    workspaceStore: { userSettings: { backup: { count: 5 } } },
+    workspaceStore: { userSettings: { backup: { count: 5 } }, inDevelopmentFeaturesEnabled: true },
     toast: { add: vi.fn() },
     t: ((key: string) => key) as TimelineBackupDeps['t'],
     loadTimeline: vi.fn().mockResolvedValue(undefined),
@@ -127,7 +127,7 @@ describe('createTimelineBackupModule', () => {
       const projectStore = makeProjectStoreMock();
       const deps = createMockDeps({
         projectStore,
-        workspaceStore: { userSettings: { backup: { count: 0 } } },
+        workspaceStore: { userSettings: { backup: { count: 0 } }, inDevelopmentFeaturesEnabled: true },
       });
       const backup = createTimelineBackupModule(deps);
 
@@ -140,7 +140,7 @@ describe('createTimelineBackupModule', () => {
       const projectStore = makeProjectStoreMock();
       const deps = createMockDeps({
         projectStore,
-        workspaceStore: { userSettings: { backup: { enabled: false, count: 5 } } },
+        workspaceStore: { userSettings: { backup: { enabled: false, count: 5 } }, inDevelopmentFeaturesEnabled: true },
       });
       const backup = createTimelineBackupModule(deps);
 
@@ -152,6 +152,22 @@ describe('createTimelineBackupModule', () => {
     it('does nothing when there is no open timeline path', async () => {
       const projectStore = makeProjectStoreMock();
       const deps = createMockDeps({ currentTimelinePath: ref(null), projectStore });
+      const backup = createTimelineBackupModule(deps);
+
+      await backup.handleBackup('<serialized>');
+
+      expect(projectStore.writeTextByPath).not.toHaveBeenCalled();
+    });
+
+    it('does nothing when inDevelopmentFeaturesEnabled is false', async () => {
+      const projectStore = makeProjectStoreMock();
+      const deps = createMockDeps({
+        projectStore,
+        workspaceStore: {
+          userSettings: { backup: { enabled: true, count: 5 } },
+          inDevelopmentFeaturesEnabled: false,
+        },
+      });
       const backup = createTimelineBackupModule(deps);
 
       await backup.handleBackup('<serialized>');
@@ -203,7 +219,7 @@ describe('createTimelineBackupModule', () => {
         projectStore,
         readTimelineFile,
         deleteTimelineAutosaveFile,
-        workspaceStore: { userSettings: { backup: { count: 0 } } },
+        workspaceStore: { userSettings: { backup: { count: 0 } }, inDevelopmentFeaturesEnabled: true },
       });
       const backup = createTimelineBackupModule(deps);
 

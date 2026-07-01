@@ -1,5 +1,5 @@
 import { test as base, expect, type Page } from '@playwright/test';
-import { removeOpfsEntry } from '../../utils/e2e/virtual-fs';
+import { opfsEntryExists, removeOpfsEntry } from '../../utils/e2e/virtual-fs';
 
 export const E2E_PROJECT_DIRS = [
   { name: '_video', kind: 'directory' },
@@ -106,14 +106,24 @@ export async function createE2eProject(
   }
 
   await expect(page).toHaveURL(editorUrlPattern);
-  await expect(page.getByTestId('timeline-container')).toBeVisible();
 
-  return {
+  const project = {
     name: projectName,
     encodedName,
     path: `${workspace.name}/projects/${projectName}`,
     timelinePath: `${workspace.name}/projects/${projectName}/_timelines/${projectName}_001.otio`,
   };
+  await expect
+    .poll(() => opfsEntryExists(page, project.timelinePath), { timeout: 20_000 })
+    .toBe(true);
+  await waitForEditorReady(page);
+
+  return project;
+}
+
+export async function waitForEditorReady(page: Page): Promise<void> {
+  await expect(page.getByRole('heading', { name: 'Loading...' })).toBeHidden({ timeout: 30_000 });
+  await expect(page.getByTestId('timeline-container')).toBeVisible({ timeout: 30_000 });
 }
 
 export const test = base.extend<WorkspaceFixtures>({

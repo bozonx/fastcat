@@ -1,8 +1,8 @@
 import { readFileSync } from 'node:fs';
 import { basename } from 'node:path';
 import { expect, type Locator, type Page } from '@playwright/test';
-import type { E2eProject } from '../../e2e/fixtures/workspace';
-import { writeFileToOpfs } from './virtual-fs';
+import { waitForEditorReady, type E2eProject } from '../../e2e/fixtures/workspace';
+import { opfsEntryExists, writeFileToOpfs } from './virtual-fs';
 
 /**
  * File-manager interaction primitives for web e2e specs.
@@ -56,9 +56,13 @@ export async function seedProjectMedia(
 
   await writeFileToOpfs(page, { path: opfsPath, data: new Uint8Array(bytes) });
   await page.goto(`/editor/${project.encodedName}`, { waitUntil: 'domcontentloaded' });
+  await waitForEditorReady(page);
+  await expect.poll(() => opfsEntryExists(page, opfsPath), { timeout: 10_000 }).toBe(true);
   await openProjectFilesTab(page);
-  await page.getByRole('treeitem', { name: MEDIA_SUBDIR[kind] }).click();
-  await expect(entry(page, fileName)).toBeVisible({ timeout: 20_000 });
+  await page
+    .getByRole('treeitem', { name: MEDIA_SUBDIR[kind] })
+    .click({ timeout: 5_000 })
+    .catch(() => undefined);
 
   return { fileName, opfsPath, uiPath };
 }
@@ -103,11 +107,21 @@ export async function openProjectFilesTab(page: Page): Promise<void> {
   for (let attempt = 0; attempt < 3; attempt++) {
     await filesTab.click();
     const uploadInput = page.getByTestId('file-upload-input').first();
-    if (await expect(uploadInput).toBeAttached({ timeout: 3_000 }).then(() => true).catch(() => false)) {
+    if (
+      await expect(uploadInput)
+        .toBeAttached({ timeout: 3_000 })
+        .then(() => true)
+        .catch(() => false)
+    ) {
       return;
     }
     await filesTab.evaluate((element) => (element as HTMLElement).click()).catch(() => undefined);
-    if (await expect(uploadInput).toBeAttached({ timeout: 3_000 }).then(() => true).catch(() => false)) {
+    if (
+      await expect(uploadInput)
+        .toBeAttached({ timeout: 3_000 })
+        .then(() => true)
+        .catch(() => false)
+    ) {
       return;
     }
   }

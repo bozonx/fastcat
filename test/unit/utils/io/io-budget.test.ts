@@ -190,7 +190,7 @@ describe('io-budget shared budget', () => {
     const sab = createSharedBudgetBuffer({ isTauri: false });
     const budget = createSharedBudget(sab);
     const snapshot = budget.getSnapshot();
-    expect(snapshot.interactiveAvailable).toBe(FILE_IO_LIMITS.MAX_CONCURRENT_FILE_IO);
+    expect(snapshot.interactiveAvailable).toBe(FILE_IO_LIMITS.MAX_CONCURRENT_FILE_IO_SHARED);
     expect(snapshot.streamingAvailable).toBe(FILE_IO_LIMITS.MAX_CONCURRENT_FILE_IO_STREAMING);
   });
 
@@ -200,10 +200,12 @@ describe('io-budget shared budget', () => {
 
     const release = await budget.acquire('interactive');
     expect(budget.getSnapshot().interactiveAvailable).toBe(
-      FILE_IO_LIMITS.MAX_CONCURRENT_FILE_IO - 1,
+      FILE_IO_LIMITS.MAX_CONCURRENT_FILE_IO_SHARED - 1,
     );
 
     release();
-    expect(budget.getSnapshot().interactiveAvailable).toBe(FILE_IO_LIMITS.MAX_CONCURRENT_FILE_IO);
+    expect(budget.getSnapshot().interactiveAvailable).toBe(
+      FILE_IO_LIMITS.MAX_CONCURRENT_FILE_IO_SHARED,
+    );
   });
 });

@@ -22,6 +22,20 @@ export const FILE_IO_LIMITS = {
    */
   MAX_CONCURRENT_FILE_IO: 2,
   /**
+   * Interactive cap for the **shared (cross-origin isolated) budget** — a single
+   * coordinated counter for the WHOLE renderer, held in the `SharedArrayBuffer`
+   * (see io-budget.ts `resolveBudgetCapacity`). Because it is one atomic
+   * semaphore across every realm, there is no uncoordinated-sum overshoot, so it
+   * can safely run higher than the per-realm {@link MAX_CONCURRENT_FILE_IO}
+   * local cap: 4 matches the historically-safe renderer datapipe pool size and
+   * the compositor's {@link VIDEO_CORE_LIMITS.MAX_CONCURRENT_VIDEO_SAMPLE_REQUESTS}
+   * so preview/export decode reads aren't throttled below what they request.
+   *
+   * Only used on the isolated (prod web) path; the local fallback keeps the
+   * smaller split caps so its uncoordinated sum stays within the same ceiling.
+   */
+  MAX_CONCURRENT_FILE_IO_SHARED: 4,
+  /**
    * Max concurrent streaming OPFS file operations (large writes/copies) in the
    * browser, ensuring interactive operations are never fully starved.
    */

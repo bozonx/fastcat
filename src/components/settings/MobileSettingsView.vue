@@ -8,6 +8,7 @@ import StorageSettings from '~/components/project-settings/StorageSettings.vue';
 import ProjectBackups from '~/components/project/ProjectBackups.vue';
 import SettingsSnap from './SettingsSnap.vue';
 import { useProjectStore } from '~/stores/project.store';
+import { useWorkspaceStore } from '~/stores/workspace.store';
 
 const props = defineProps<{
   hideTitle?: boolean;
@@ -15,6 +16,7 @@ const props = defineProps<{
 
 const { t } = useI18n();
 const projectStore = useProjectStore();
+const workspaceStore = useWorkspaceStore();
 const activeTab = ref(projectStore.currentProjectName ? 'project' : 'app');
 
 const tabOptions = computed(() => {
@@ -22,7 +24,9 @@ const tabOptions = computed(() => {
   if (projectStore.currentProjectName) {
     options.push({ value: 'project', label: t('videoEditor.settings.project') });
     options.push({ value: 'snap', label: t('videoEditor.settings.snappingTitle') });
-    options.push({ value: 'backups', label: t('videoEditor.settings.backups') });
+    if (workspaceStore.inDevelopmentFeaturesEnabled) {
+      options.push({ value: 'backups', label: t('videoEditor.settings.backups') });
+    }
   }
   options.push({ value: 'app', label: t('videoEditor.settings.app') });
   return options;
@@ -71,7 +75,7 @@ const tabOptions = computed(() => {
 
     <!-- Backups -->
     <div
-      v-else-if="activeTab === 'backups'"
+      v-else-if="activeTab === 'backups' && workspaceStore.inDevelopmentFeaturesEnabled"
       class="flex-1 overflow-y-auto bg-ui-bg animate-in fade-in duration-200"
     >
       <ProjectBackups class="h-full" />

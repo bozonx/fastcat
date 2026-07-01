@@ -85,12 +85,14 @@ onMounted(() => {
     component: markRaw(ProjectMarkers),
   });
 
-  registerProjectTab({
-    id: 'backups',
-    label: t('videoEditor.timeline.backups.tabLabel'),
-    icon: 'i-heroicons-archive-box',
-    component: markRaw(ProjectBackups),
-  });
+  if (workspaceStore.inDevelopmentFeaturesEnabled) {
+    registerProjectTab({
+      id: 'backups',
+      label: t('videoEditor.timeline.backups.tabLabel'),
+      icon: 'i-heroicons-archive-box',
+      component: markRaw(ProjectBackups),
+    });
+  }
 
   initDefaultTab();
 });

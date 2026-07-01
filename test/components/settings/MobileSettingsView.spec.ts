@@ -12,6 +12,14 @@ vi.mock('~/stores/project.store', () => ({
   useProjectStore: () => mockProjectStore,
 }));
 
+const mockWorkspaceStore = reactive({
+  inDevelopmentFeaturesEnabled: true,
+});
+
+vi.mock('~/stores/workspace.store', () => ({
+  useWorkspaceStore: () => mockWorkspaceStore,
+}));
+
 const globalOptions = {
   stubs: {
     UTabs: {
@@ -53,6 +61,15 @@ describe('MobileSettingsView', () => {
     expect(values).toContain('snap');
     expect(values).toContain('backups');
     expect(values).toContain('app');
+  });
+
+  it('hides backups tab when inDevelopmentFeaturesEnabled is false', async () => {
+    mockProjectStore.currentProjectName = 'Project A';
+    mockWorkspaceStore.inDevelopmentFeaturesEnabled = false;
+    const wrapper = await mountSuspended(MobileSettingsView, { global: globalOptions });
+    const values = wrapper.findAll('.tab').map((t) => t.attributes('data-value'));
+    expect(values).not.toContain('backups');
+    mockWorkspaceStore.inDevelopmentFeaturesEnabled = true;
   });
 
   it('shows only the app tab when no project is open', async () => {

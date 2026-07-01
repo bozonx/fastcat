@@ -102,7 +102,7 @@ export function resolveBudgetCapacity(isTauriRuntime: boolean): {
     return { interactive: native, streaming: native };
   }
   return {
-    interactive: Math.max(1, Math.round(FILE_IO_LIMITS.MAX_CONCURRENT_FILE_IO)),
+    interactive: Math.max(1, Math.round(FILE_IO_LIMITS.MAX_CONCURRENT_FILE_IO_SHARED)),
     streaming: Math.max(1, Math.round(FILE_IO_LIMITS.MAX_CONCURRENT_FILE_IO_STREAMING)),
   };
 }

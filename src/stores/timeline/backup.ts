@@ -51,6 +51,7 @@ export interface TimelineBackupDeps {
   };
   workspaceStore: {
     userSettings: { backup?: { enabled: boolean; count: number } };
+    inDevelopmentFeaturesEnabled: boolean;
   };
   toast: AppNotificationService;
   t: I18nService['t'];
@@ -117,7 +118,10 @@ export function createTimelineBackupModule(deps: TimelineBackupDeps): TimelineBa
     const backupSettings = deps.workspaceStore.userSettings.backup;
     if (
       !options?.force &&
-      (!backupSettings || backupSettings.enabled === false || backupSettings.count <= 0)
+      (!deps.workspaceStore.inDevelopmentFeaturesEnabled ||
+        !backupSettings ||
+        backupSettings.enabled === false ||
+        backupSettings.count <= 0)
     )
       return;
     const rotationCount = backupSettings?.count ?? 5;

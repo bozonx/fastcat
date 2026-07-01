@@ -6,6 +6,7 @@ import { DEFAULT_USER_SETTINGS } from '~/utils/settings/defaults';
 
 const mockWorkspaceStore = {
   userSettings: reactive(JSON.parse(JSON.stringify(DEFAULT_USER_SETTINGS))),
+  inDevelopmentFeaturesEnabled: true,
 };
 
 vi.mock('~/stores/workspace.store', () => ({
