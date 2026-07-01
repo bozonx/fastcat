@@ -1,0 +1,16 @@
+# Cloudflare Pages headers (also honoured by Netlify).
+# Enable cross-origin isolation so the app can share a SharedArrayBuffer across
+# worker realms (the coordinated I/O budget, WASM threads, etc.). This requires
+# every cross-origin subresource to carry CORP — the editor's fonts are vendored
+# same-origin under /fonts/ and icons are inlined into the bundle, so there are
+# no cross-origin subresources to break.
+/*
+  Cross-Origin-Opener-Policy: same-origin
+  Cross-Origin-Embedder-Policy: require-corp
+
+# Hashed, immutable build assets — cache aggressively.
+/_nuxt/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/fonts/*
+  Cache-Control: public, max-age=31536000, immutable

@@ -27,6 +27,11 @@ dist
 node_modules
 *.log
 
+# Vendored fonts + manifest (generated from @fontsource on postinstall via
+# scripts/vendor-fonts.mjs; sourced from the pinned lockfile, not committed).
+public/fonts/
+src/utils/video-editor/font-manifest.ts
+
 # Workspace
 .fastcat
 workspace.json

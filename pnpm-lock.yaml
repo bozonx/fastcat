@@ -8,6 +8,45 @@ importers:
 
   .:
     dependencies:
+      '@fontsource/bebas-neue':
+        specifier: ^5.2.7
+        version: 5.2.7
+      '@fontsource/caveat':
+        specifier: ^5.2.8
+        version: 5.2.8
+      '@fontsource/fredoka':
+        specifier: ^5.2.10
+        version: 5.2.10
+      '@fontsource/inter':
+        specifier: ^5.2.8
+        version: 5.2.8
+      '@fontsource/jetbrains-mono':
+        specifier: ^5.2.8
+        version: 5.2.8
+      '@fontsource/lato':
+        specifier: ^5.2.7
+        version: 5.2.7
+      '@fontsource/montserrat':
+        specifier: ^5.2.8
+        version: 5.2.8
+      '@fontsource/noto-sans':
+        specifier: ^5.2.10
+        version: 5.2.10
+      '@fontsource/open-sans':
+        specifier: ^5.2.7
+        version: 5.2.7
+      '@fontsource/oswald':
+        specifier: ^5.2.8
+        version: 5.2.8
+      '@fontsource/playfair-display':
+        specifier: ^5.2.8
+        version: 5.2.8
+      '@fontsource/roboto':
+        specifier: ^5.2.10
+        version: 5.2.10
+      '@fontsource/rubik':
+        specifier: ^5.2.8
+        version: 5.2.8
       '@huggingface/transformers':
         specifier: ^4.2.0
         version: 4.2.0
@@ -932,6 +971,45 @@ packages:
 
   '@floating-ui/vue@1.1.11':
     resolution: {integrity: sha512-HzHKCNVxnGS35r9fCHBc3+uCnjw9IWIlCPL683cGgM9Kgj2BiAl8x1mS7vtvP6F9S/e/q4O6MApwSHj8hNLGfw==}
+
+  '@fontsource/bebas-neue@5.2.7':
+    resolution: {integrity: sha512-DsmBrmq55d9BCU0mt4DT4RZDdH8vhWRKEUOfbuNB1EEjMuwbtFvM8N+3gIlkYSFbsb10P8Q19BV5OdpMu2h0fA==}
+
+  '@fontsource/caveat@5.2.8':
+    resolution: {integrity: sha512-9fUUfFE2IQFKbx+xOcaeQxxmh8iJguEb8z+j1PeueO4UUx+XfT4pRm/B04ZDvFA794/iRxY/IibmP8ZKtIf4rw==}
+
+  '@fontsource/fredoka@5.2.10':
+    resolution: {integrity: sha512-DyzPCmTf0PkBbAu+gNvnPzfD/dYIXlyp+Zcb76jEQyt/vmRKGZgkH8FFF9W2sICDaA5p+GLk1XGFjWh5PPX+lg==}
+
+  '@fontsource/inter@5.2.8':
+    resolution: {integrity: sha512-P6r5WnJoKiNVV+zvW2xM13gNdFhAEpQ9dQJHt3naLvfg+LkF2ldgSLiF4T41lf1SQCM9QmkqPTn4TH568IRagg==}
+
+  '@fontsource/jetbrains-mono@5.2.8':
+    resolution: {integrity: sha512-6w8/SG4kqvIMu7xd7wt6x3idn1Qux3p9N62s6G3rfldOUYHpWcc2FKrqf+Vo44jRvqWj2oAtTHrZXEP23oSKwQ==}
+
+  '@fontsource/lato@5.2.7':
+    resolution: {integrity: sha512-k5mum1ADbDW5cTw1Ett1eQVWeoZ6gq0ct6SFBibEhB4LRxhniChJZTBgd6ph5yBxLkN1fcnsnmicBNA4S/3nbw==}
+
+  '@fontsource/montserrat@5.2.8':
+    resolution: {integrity: sha512-xTjLxSbSfCycDB0pwmNsfNvdfWPaDaRQ2LC6yt/ZI7SdvXG52zHnzNYC/09mzuAuWNJyShkteutfCoDgym56hQ==}
+
+  '@fontsource/noto-sans@5.2.10':
+    resolution: {integrity: sha512-J58RVfS/C0Z2VBF+PoU260Tx8cdRGYuS+e3yQe4hYaIYDl0sEVn5CzlLo5zVRvQD0HaIUTV8AZMfqR7rtdEpqQ==}
+
+  '@fontsource/open-sans@5.2.7':
+    resolution: {integrity: sha512-8yfgDYjE5O0vmTPdrcjV35y4yMnctsokmi9gN49Gcsr0sjzkMkR97AnKDe6OqZh2SFkYlR28fxOvi21bYEgMSw==}
+
+  '@fontsource/oswald@5.2.8':
+    resolution: {integrity: sha512-DFoPK1BqsFIQhVjs2xgO/oL9veF9oUJgFojEWIU+nazUrfqsBDtAMI4n9L9CZFX3kQNDLcCyzKx1xoEDvQT4WQ==}
+
+  '@fontsource/playfair-display@5.2.8':
+    resolution: {integrity: sha512-fUEhib70SszNhQVsGbUMSsWJhr7Je0rdeuZdtGpDNu0GKF1xJM8QhpI/y0pckU25GcChXm9TLOmeZupkvvZo2g==}
+
+  '@fontsource/roboto@5.2.10':
+    resolution: {integrity: sha512-8HlA5FtSfz//oFSr2eL7GFXAiE7eIkcGOtx7tjsLKq+as702x9+GU7K95iDeWFapHC4M2hv9RrpXKRTGGBI8Zg==}
+
+  '@fontsource/rubik@5.2.8':
+    resolution: {integrity: sha512-PIc8QR7FqWPcYhbdRiGff56vQlKqg/ytES1YqecSq1GkgxiH4TBshrFvDEOZ9JonUF9m1qQ+qXxJj7wD5zgXEw==}
 
   '@huggingface/jinja@0.5.9':
     resolution: {integrity: sha512-uWTG+l3VJRsl7EXxYizuL3P+cCPoc3cRqbWWRcQN0FhejRfbdq0RNhCmbY/YDtnTcz9icdLYuLDjsnz4d8JMuw==}
@@ -8529,6 +8607,32 @@ snapshots:
     transitivePeerDependencies:
       - '@vue/composition-api'
       - vue
+
+  '@fontsource/bebas-neue@5.2.7': {}
+
+  '@fontsource/caveat@5.2.8': {}
+
+  '@fontsource/fredoka@5.2.10': {}
+
+  '@fontsource/inter@5.2.8': {}
+
+  '@fontsource/jetbrains-mono@5.2.8': {}
+
+  '@fontsource/lato@5.2.7': {}
+
+  '@fontsource/montserrat@5.2.8': {}
+
+  '@fontsource/noto-sans@5.2.10': {}
+
+  '@fontsource/open-sans@5.2.7': {}
+
+  '@fontsource/oswald@5.2.8': {}
+
+  '@fontsource/playfair-display@5.2.8': {}
+
+  '@fontsource/roboto@5.2.10': {}
+
+  '@fontsource/rubik@5.2.8': {}
 
   '@huggingface/jinja@0.5.9': {}
 
