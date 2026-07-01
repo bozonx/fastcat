@@ -182,7 +182,7 @@ export function useProjectManagement(options: { isMobile?: boolean } = {}) {
     } else {
       projectStore.goToCut();
       const url = `/editor/${encodeURIComponent(project)}`;
-      navigateTo(url);
+      router.push(url);
     }
   }
 

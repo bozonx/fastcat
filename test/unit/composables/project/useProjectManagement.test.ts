@@ -3,7 +3,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { setActivePinia, createPinia } from 'pinia';
 import { reactive, ref, nextTick } from 'vue';
 import { useProjectManagement } from '~/composables/project/useProjectManagement';
-import { navigateTo, useRouter } from '#app/composables/router';
+import { useRouter } from '#app/composables/router';
 
 const mockCreateProject = vi.fn().mockResolvedValue(undefined);
 const mockGoToCut = vi.fn();
@@ -165,7 +165,7 @@ describe('useProjectManagement', () => {
       await createNewProject();
 
       expect(mockGoToCut).toHaveBeenCalledTimes(1);
-      expect(navigateTo).toHaveBeenCalledWith('/editor/NewProject');
+      expect(mockPush).toHaveBeenCalledWith('/editor/NewProject');
     });
   });
 
@@ -394,7 +394,7 @@ describe('useProjectManagement', () => {
       handleOpenProject('MyProject');
 
       expect(mockGoToCut).toHaveBeenCalledTimes(1);
-      expect(navigateTo).toHaveBeenCalledWith('/editor/MyProject');
+      expect(mockPush).toHaveBeenCalledWith('/editor/MyProject');
     });
 
     it('redirects to mobile editor path with default view edit when localStorage is empty', () => {
