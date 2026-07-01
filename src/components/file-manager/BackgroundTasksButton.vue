@@ -36,7 +36,7 @@ const { t } = useI18n();
       :size="size"
       class="relative"
       :title="t('videoEditor.backgroundTasks.title')"
-      @click="modalOpen = true"
+      @click="void (modalOpen = true)"
     >
       <UiProgressSpinner
         v-if="backgroundTasksStore.hasActiveTasks"

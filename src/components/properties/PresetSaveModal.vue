@@ -27,7 +27,7 @@ const { t } = useI18n();
           />
         </UiFormField>
         <div class="flex justify-end gap-2">
-          <UButton variant="ghost" color="neutral" @click="open = false">
+          <UButton variant="ghost" color="neutral" @click="void (open = false)">
             {{ t('common.cancel') }}
           </UButton>
           <UButton color="primary" :disabled="!name.trim()" @click="emit('save')">

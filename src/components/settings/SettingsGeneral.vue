@@ -70,7 +70,7 @@ const stopFramesQualityOptions = [
       <div class="font-semibold text-ui-text">
         {{ t('videoEditor.settings.userGeneral') }}
       </div>
-      <UButton size="xs" color="neutral" variant="ghost" @click="isResetConfirmOpen = true">
+      <UButton size="xs" color="neutral" variant="ghost" @click="void (isResetConfirmOpen = true)">
         {{ t('videoEditor.settings.resetDefaults') }}
       </UButton>
     </div>

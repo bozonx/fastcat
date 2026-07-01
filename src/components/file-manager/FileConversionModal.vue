@@ -276,7 +276,7 @@ const isFormValid = computed(() => {
                 size="sm"
                 class="h-9 w-9 p-0 flex items-center justify-center"
                 :title="t('videoEditor.fileManager.convert.keepAspectRatio')"
-                @click="image.isResolutionLinked = !image.isResolutionLinked"
+                @click="void (image.isResolutionLinked = !image.isResolutionLinked)"
               />
             </div>
 
@@ -298,7 +298,7 @@ const isFormValid = computed(() => {
 
     <template #footer>
       <div class="flex items-center justify-end gap-3 mt-4">
-        <UButton variant="ghost" color="neutral" @click="isOpen = false">
+        <UButton variant="ghost" color="neutral" @click="void (isOpen = false)">
           {{ t('common.cancel') }}
         </UButton>
         <UButton

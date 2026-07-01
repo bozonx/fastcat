@@ -41,7 +41,7 @@
     "test:integration:native": "cargo test --manifest-path src-tauri/Cargo.toml --features test-support --test media_probe --test audio_offline --test audio_engine_realtime --test timeline_export --test engine_parity",
     "test:unit:coverage": "vitest run --coverage test/unit test/components",
     "test:native": "cargo test --manifest-path src-tauri/Cargo.toml --features test-support",
-    "test:parity:web": "playwright test --grep @parity test/e2e/parity",
+    "test:parity:web": "playwright test --grep @parity",
     "test:parity:native": "cargo test --manifest-path src-tauri/Cargo.toml --features test-support --test engine_parity -- --nocapture",
     "test:parity": "pnpm test:parity:web && pnpm test:parity:native",
     "test:parity:gen-golden": "tsx scripts/gen-golden.ts --both",

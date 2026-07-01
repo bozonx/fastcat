@@ -466,7 +466,7 @@ const menuItems = computed<ContextMenuItem[][]>(() => [
           size="xl"
           class="rounded-full shadow-2xl w-14 h-14 flex items-center justify-center bg-ui-action hover:bg-ui-action-hover text-white border-none shadow-ui-action/20"
           :ui="{ icon: 'w-7 h-7' }"
-          @click="isCreateMenuOpen = !isCreateMenuOpen"
+          @click="void (isCreateMenuOpen = !isCreateMenuOpen)"
         />
       </div>
     </Teleport>

@@ -157,13 +157,13 @@ async function resetToDefaults() {
           variant="ghost"
           color="neutral"
           :label="t('videoEditor.projectSettings.resetSettings')"
-          @click="isResetConfirmOpen = true"
+          @click="void (isResetConfirmOpen = true)"
         />
         <UButton
           variant="ghost"
           color="neutral"
           :label="t('common.close')"
-          @click="isOpen = false"
+          @click="void (isOpen = false)"
         />
       </div>
     </template>

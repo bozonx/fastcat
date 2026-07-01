@@ -47,7 +47,7 @@ function handleResetDefaults() {
       <div class="text-sm font-semibold text-ui-text">
         {{ t('videoEditor.settings.userMouse') }}
       </div>
-      <UButton size="xs" color="neutral" variant="ghost" @click="isResetConfirmOpen = true">
+      <UButton size="xs" color="neutral" variant="ghost" @click="void (isResetConfirmOpen = true)">
         {{ t('videoEditor.settings.resetDefaults') }}
       </UButton>
     </div>

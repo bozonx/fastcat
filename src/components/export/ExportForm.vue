@@ -420,7 +420,7 @@ const filenamePlaceholder = computed(() =>
                 size="xs"
                 icon="i-heroicons-x-mark"
                 :disabled="isExporting"
-                @click="customExportPath = null"
+                @click="void (customExportPath = null)"
               />
             </div>
           </template>

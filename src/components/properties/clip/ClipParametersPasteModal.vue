@@ -139,7 +139,7 @@ function handleApply() {
     </div>
 
     <template #footer>
-      <UButton color="neutral" variant="ghost" @click="isOpen = false">
+      <UButton color="neutral" variant="ghost" @click="void (isOpen = false)">
         {{ t('common.cancel') }}
       </UButton>
       <UButton :disabled="!hasSelection" data-primary-focus="true" @click="handleApply">

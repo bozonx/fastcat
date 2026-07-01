@@ -331,7 +331,7 @@ defineExpose({
             variant="ghost"
             size="xs"
             icon="i-heroicons-bookmark"
-            @click="isSaveModalOpen = true"
+            @click="void (isSaveModalOpen = true)"
           />
         </UiTooltip>
         <UiTooltip

@@ -90,7 +90,7 @@ function handleApply() {
             :variant="mode === 'cut' ? 'solid' : 'ghost'"
             size="xs"
             class="px-3"
-            @click="mode = 'cut'"
+            @click="void (mode = 'cut')"
           >
             {{ t('fastcat.timeline.autoMontage.modeCut') }}
           </UButton>
@@ -99,7 +99,7 @@ function handleApply() {
             :variant="mode === 'mark' ? 'solid' : 'ghost'"
             size="xs"
             class="px-3"
-            @click="mode = 'mark'"
+            @click="void (mode = 'mark')"
           >
             {{ t('fastcat.timeline.autoMontage.modeMark') }}
           </UButton>
@@ -109,7 +109,7 @@ function handleApply() {
 
     <template #footer>
       <div class="flex justify-end gap-2 w-full">
-        <UButton color="neutral" variant="ghost" @click="isOpen = false">
+        <UButton color="neutral" variant="ghost" @click="void (isOpen = false)">
           {{ t('common.cancel') }}
         </UButton>
         <UButton color="primary" @click="handleApply">

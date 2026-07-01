@@ -55,7 +55,7 @@ const { t } = useI18n();
           icon="i-heroicons-x-mark-20-solid"
           :padded="false"
           class="text-ui-text-muted hover:text-ui-text transition-colors"
-          @click="modelValue = ''"
+          @click="void (modelValue = '')"
         />
         <UIcon
           name="i-heroicons-magnifying-glass"

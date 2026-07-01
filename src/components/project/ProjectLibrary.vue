@@ -226,7 +226,7 @@ function isSelected(kind: 'text' | 'shape' | 'hud', id: string) {
                 variant="ghost"
                 size="xs"
                 :title="t('fastcat.library.texts.setAsDefault')"
-                @click.stop="presetsStore.defaultTextPresetId = text.type"
+                @click.stop="void (presetsStore.defaultTextPresetId = text.type)"
               />
             </div>
             <UiEmptyState v-if="standardTexts.length === 0" :message="t('common.noData')" />
@@ -288,7 +288,7 @@ function isSelected(kind: 'text' | 'shape' | 'hud', id: string) {
                       variant="ghost"
                       size="xs"
                       :title="t('fastcat.library.texts.setAsDefault')"
-                      @click.stop="presetsStore.defaultTextPresetId = text.id"
+                      @click.stop="void (presetsStore.defaultTextPresetId = text.id)"
                     />
                     <UButton
                       icon="i-heroicons-trash"

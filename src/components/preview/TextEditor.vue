@@ -188,7 +188,7 @@ function focusPanel() {
         size="xs"
         color="neutral"
         class="shadow-lg"
-        @click="isModalOpen = true"
+        @click="void (isModalOpen = true)"
       />
     </div>
 

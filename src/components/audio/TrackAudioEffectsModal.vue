@@ -53,7 +53,7 @@ function handleUpdateEffects(effects: Array<VideoClipEffect | AudioClipEffect>) 
     </div>
     <template #footer>
       <div class="flex justify-end w-full">
-        <UButton color="neutral" variant="ghost" @click="isOpen = false">
+        <UButton color="neutral" variant="ghost" @click="void (isOpen = false)">
           {{ t('common.close') }}
         </UButton>
       </div>

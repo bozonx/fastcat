@@ -58,7 +58,7 @@ const ticks = computed<Tick[]>(() => {
     return opts.map((opt, i) => {
       let isActive = false;
       if (useNumericComparison) {
-        isActive = optNums[i] <= val;
+        isActive = optNums[i]! <= val;
       } else {
         isActive = i <= currentIndex.value;
       }
@@ -102,14 +102,14 @@ const thumbPercent = computed(() => {
       const optNums = opts.map((o) => Number(o.value));
       const allValid = optNums.every((n) => !isNaN(n));
       if (allValid) {
-        const minOpt = optNums[0];
-        const maxOpt = optNums[count - 1];
+        const minOpt = optNums[0]!;
+        const maxOpt = optNums[count - 1]!;
         if (val <= minOpt) return 0;
         if (val >= maxOpt) return 100;
 
         for (let i = 0; i < count - 1; i++) {
-          const low = optNums[i];
-          const high = optNums[i + 1];
+          const low = optNums[i]!;
+          const high = optNums[i + 1]!;
           if (val >= low && val <= high) {
             const pLow = (i / (count - 1)) * 100;
             const pHigh = ((i + 1) / (count - 1)) * 100;

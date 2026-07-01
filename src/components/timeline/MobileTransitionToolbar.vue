@@ -205,7 +205,7 @@ function formatSeconds(value: number): string {
               color="red"
               variant="ghost"
               icon="i-heroicons-trash"
-              @click="clip && toggleTransition(edge)"
+              @click="void (clip && toggleTransition(edge))"
             />
           </div>
 
@@ -214,7 +214,7 @@ function formatSeconds(value: number): string {
             v-if="!(edge === 'in' ? transitionIn : transitionOut)"
             type="button"
             class="flex-1 flex flex-col items-center justify-center gap-1.5 rounded-lg border border-dashed border-ui-border/70 active:bg-blue-500/10 transition-colors text-ui-text-muted"
-            @click="clip && toggleTransition(edge)"
+            @click="void (clip && toggleTransition(edge))"
           >
             <UIcon name="i-heroicons-plus" class="w-6 h-6" />
             <span class="text-[10px] font-semibold uppercase tracking-wide">

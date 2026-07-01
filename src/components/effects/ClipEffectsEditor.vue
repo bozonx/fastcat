@@ -206,7 +206,7 @@ function resolveEffectName(manifest: EffectItem['manifest'], type: string) {
         color="primary"
         icon="i-heroicons-plus"
         :disabled="props.disabled"
-        @click="isEffectModalOpen = true"
+        @click="void (isEffectModalOpen = true)"
       >
         {{ safeAddLabel }}
       </UButton>

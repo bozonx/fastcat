@@ -158,7 +158,7 @@ const handleAfterEnter = () => {
 
     <template #footer>
       <div class="flex justify-end gap-2 w-full">
-        <UButton color="neutral" variant="ghost" @click="isOpen = false">
+        <UButton color="neutral" variant="ghost" @click="void (isOpen = false)">
           {{ t('common.cancel') }}
         </UButton>
         <UButton

@@ -240,7 +240,7 @@ function clearCache() {
         variant="soft"
         icon="i-heroicons-trash"
         :label="t('videoEditor.settings.clearTempWorkspaceAction')"
-        @click="isClearWorkspaceVardataConfirmOpen = true"
+        @click="void (isClearWorkspaceVardataConfirmOpen = true)"
       />
     </div>
 

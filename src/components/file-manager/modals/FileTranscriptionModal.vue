@@ -56,7 +56,7 @@ const emit = defineEmits<{
               icon="i-heroicons-x-mark-20-solid"
               size="2xs"
               :padded="false"
-              @click="transcriptionLanguage = ''"
+              @click="void (transcriptionLanguage = '')"
             />
           </template>
         </UiTextInput>
@@ -73,7 +73,7 @@ const emit = defineEmits<{
           color="neutral"
           variant="ghost"
           :disabled="props.isTranscribing"
-          @click="isOpen = false"
+          @click="void (isOpen = false)"
         >
           {{ t('common.cancel') }}
         </UButton>

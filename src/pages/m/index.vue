@@ -251,7 +251,7 @@ const sortedProjects = computed(() => {
                   color="neutral"
                   icon="i-heroicons-computer-desktop"
                   class="rounded-full w-10 h-10 p-0 flex items-center justify-center bg-white/5 text-ui-text-muted"
-                  @click="router.push('/?mode=desktop')"
+                  @click="void router.push('/?mode=desktop')"
                 />
                 <UButton
                   size="sm"
@@ -259,7 +259,7 @@ const sortedProjects = computed(() => {
                   color="neutral"
                   icon="i-heroicons-cog-6-tooth"
                   class="rounded-full w-10 h-10 p-0 flex items-center justify-center bg-white/5"
-                  @click="isSettingsOpen = true"
+                  @click="void (isSettingsOpen = true)"
                 />
               </div>
             </div>
@@ -537,7 +537,7 @@ const sortedProjects = computed(() => {
               variant="ghost"
               color="neutral"
               :label="t('common.cancel')"
-              @click="isCreateModalOpen = false"
+              @click="void (isCreateModalOpen = false)"
             />
             <UButton
               color="success"
@@ -578,7 +578,7 @@ const sortedProjects = computed(() => {
 
         <template #footer>
           <div class="flex justify-end gap-3 w-full pb-safe">
-            <UButton variant="ghost" color="neutral" @click="isRenameModalOpen = false">
+            <UButton variant="ghost" color="neutral" @click="void (isRenameModalOpen = false)">
               {{ t('common.cancel') }}
             </UButton>
             <UButton color="primary" :disabled="!isRenameNameValid" @click="renameProject">

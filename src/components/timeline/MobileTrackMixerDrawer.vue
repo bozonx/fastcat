@@ -184,7 +184,7 @@ function handleRenameTrack(name: string) {
           variant="ghost"
           color="neutral"
           size="sm"
-          @click="selectedTrackForPropertiesId = null"
+          @click="void (selectedTrackForPropertiesId = null)"
         />
         <span class="font-medium text-sm text-ui-text line-clamp-1">{{
           selectedTrackForProperties.name || selectedTrackForProperties.id

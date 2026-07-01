@@ -264,7 +264,7 @@ defineExpose({ finishCapture, isDuplicateConfirmOpen });
         color="neutral"
         variant="ghost"
         :disabled="isCapturingHotkey"
-        @click="isResetAllHotkeysConfirmOpen = true"
+        @click="void (isResetAllHotkeysConfirmOpen = true)"
       >
         {{ t('videoEditor.settings.hotkeysResetAll') }}
       </UButton>

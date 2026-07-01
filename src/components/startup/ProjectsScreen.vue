@@ -236,7 +236,7 @@ const sortedProjects = computed(() => {
             icon="i-heroicons-cog-6-tooth"
             :label="t('videoEditor.settings.title')"
             class="justify-start px-3"
-            @click="isSettingsOpen = true"
+            @click="void (isSettingsOpen = true)"
           />
           <UButton
             block
@@ -294,7 +294,7 @@ const sortedProjects = computed(() => {
                     color="neutral"
                     :class="{ 'bg-ui-bg-elevated text-primary-400': sortBy === 'date' }"
                     icon="i-heroicons-calendar"
-                    @click="sortBy = 'date'"
+                    @click="void (sortBy = 'date')"
                   />
                 </UiTooltip>
                 <UiTooltip :text="t('fastcat.projects.sortByName')">
@@ -304,7 +304,7 @@ const sortedProjects = computed(() => {
                     color="neutral"
                     :class="{ 'bg-ui-bg-elevated text-primary-400': sortBy === 'name' }"
                     icon="i-heroicons-bars-3-bottom-left"
-                    @click="sortBy = 'name'"
+                    @click="void (sortBy = 'name')"
                   />
                 </UiTooltip>
                 <div class="w-px h-4 bg-ui-border mx-1" />
@@ -318,7 +318,7 @@ const sortedProjects = computed(() => {
                     size="xs"
                     color="neutral"
                     :icon="sortOrder === 'asc' ? 'i-heroicons-arrow-up' : 'i-heroicons-arrow-down'"
-                    @click="sortOrder = sortOrder === 'asc' ? 'desc' : 'asc'"
+                    @click="void (sortOrder = sortOrder === 'asc' ? 'desc' : 'asc')"
                   />
                 </UiTooltip>
               </div>
@@ -451,7 +451,7 @@ const sortedProjects = computed(() => {
           variant="ghost"
           color="neutral"
           :label="t('common.cancel')"
-          @click="isCreateModalOpen = false"
+          @click="void (isCreateModalOpen = false)"
         />
         <UButton
           color="primary"
@@ -517,7 +517,7 @@ const sortedProjects = computed(() => {
           variant="ghost"
           color="neutral"
           :label="t('common.cancel')"
-          @click="isRenameModalOpen = false"
+          @click="void (isRenameModalOpen = false)"
         />
         <UButton
           color="primary"

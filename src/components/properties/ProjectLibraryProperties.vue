@@ -257,7 +257,7 @@ const actions = computed(() => {
         </UiFormField>
       </div>
       <template #footer>
-        <UButton variant="ghost" color="neutral" @click="isSaveModalOpen = false">
+        <UButton variant="ghost" color="neutral" @click="void (isSaveModalOpen = false)">
           {{ t('common.cancel') }}
         </UButton>
         <UButton color="primary" :disabled="!newPresetName.trim()" @click="handleSavePreset">

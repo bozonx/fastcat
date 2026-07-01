@@ -178,7 +178,7 @@ const webAudioCodecs = computed(() => {
       <div class="text-sm font-medium text-ui-text">
         {{ t('videoEditor.settings.userAudio') }}
       </div>
-      <UButton size="xs" color="neutral" variant="ghost" @click="isResetConfirmOpen = true">
+      <UButton size="xs" color="neutral" variant="ghost" @click="void (isResetConfirmOpen = true)">
         {{ t('videoEditor.settings.resetDefaults') }}
       </UButton>
     </div>

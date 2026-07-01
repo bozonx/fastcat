@@ -185,6 +185,7 @@ const exportText = computed(() => {
     const lines = ['WEBVTT', ''];
     for (let i = 0; i < markers.length; i++) {
       const marker = markers[i];
+      if (!marker) continue;
       const nextMarker = markers[i + 1];
       const startUs = marker.timeUs;
       let endUs = startUs + 5_000_000;
@@ -332,7 +333,7 @@ const exportFormatItems = computed(() => [
         >
           {{ exported ? t('fastcat.marker.exportFileDone') : t('fastcat.marker.exportToFile') }}
         </UButton>
-        <UButton size="sm" variant="ghost" @click="isOpen = false">
+        <UButton size="sm" variant="ghost" @click="void (isOpen = false)">
           {{ t('common.close') }}
         </UButton>
       </div>
