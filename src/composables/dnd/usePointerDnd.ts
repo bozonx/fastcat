@@ -42,6 +42,7 @@ import {
   TOUCH_LONG_PRESS_MS,
 } from './dndGesture';
 import { createDevLogger } from '~/utils/dev-logger';
+import { isTauriRuntime } from '~/utils/runtime';
 
 const log = createDevLogger('pointerDnd');
 
@@ -227,7 +228,7 @@ function clearLongPress(drag: ActiveDrag) {
   }
 }
 
-function teardown(info: { dropped: boolean; cancelled: boolean }) {
+function teardown(info: { dropped: boolean; cancelled: boolean; nativeTakeover?: boolean }) {
   const drag = activeDrag;
   if (!drag) return;
   activeDrag = null;
@@ -253,25 +254,38 @@ function teardown(info: { dropped: boolean; cancelled: boolean }) {
   // lingers even if the source callback throws.
   endDndState();
 
-  // Only run source cleanup for a gesture that actually became a drag. A
-  // non-committed teardown happens on a plain click OR — crucially in the Tauri
-  // shell — when WebKitGTK promotes the press into a native OS drag (firing
-  // `pointercancel` before our threshold). In that case the file-manager drag
-  // state (`isFileManagerDragging` / `draggedFile`) must PERSIST so the native
-  // `onDragDropEvent` recognises it as an internal drag and suppresses the OS
-  // drop overlay. The source clears its own state when that native flow ends.
-  if (drag.committed) {
-    drag.onEnd?.(info);
+  // Run the source's cleanup (which clears the eagerly-set drag state:
+  // `isFileManagerDragging` / `draggedFile` / clipboard) for EVERY ended gesture
+  // EXCEPT a Tauri WebKitGTK native-drag takeover.
+  //
+  // Sources set their drag state on `pointerdown` (they must — in the Tauri shell
+  // WebKitGTK can hijack the press into a native OS drag before our movement
+  // threshold, so `onStart` may never fire). When WebKitGTK takes over it fires
+  // `pointercancel` (and/or window `blur`) — sometimes before we commit, sometimes
+  // after. In BOTH cases the internal drag state must PERSIST so the native
+  // `onDragDropEvent` recognises it as an internal drag and suppresses the OS drop
+  // overlay; the source clears its own state when that native flow ends.
+  //
+  // Everywhere else the state must be cleared eagerly: a plain click (pointerup
+  // that never became a drag), Escape, touch-scroll abandonment, and all web
+  // gestures. Previously this ran only for `committed` drags, so a click on a
+  // file row left `isFileManagerDragging` stuck `true` forever — which made the
+  // global drag-over handler bail and the external-file drop overlay never appear
+  // again (and, when a committed drag was promoted to native, wiped the state so
+  // the overlay wrongly appeared over an internal drag).
+  const isTauriNativeTakeover = Boolean(info.nativeTakeover) && isTauriRuntime();
+  if (!isTauriNativeTakeover) {
+    drag.onEnd?.({ dropped: info.dropped, cancelled: info.cancelled });
   }
 }
 
-function abort() {
+function abort(nativeTakeover = false) {
   const drag = activeDrag;
   if (!drag) return;
   if (drag.committed && drag.currentZoneId) {
     getDndZone(drag.currentZoneId)?.onLeave?.(buildContext(drag.currentZoneId, null));
   }
-  teardown({ dropped: false, cancelled: true });
+  teardown({ dropped: false, cancelled: true, nativeTakeover });
 }
 
 function onWindowPointerMove(e: PointerEvent) {
@@ -334,7 +348,10 @@ function onWindowPointerUp(e: PointerEvent) {
 function onWindowPointerCancel(e: PointerEvent) {
   const drag = activeDrag;
   if (!drag || e.pointerId !== drag.pointerId) return;
-  abort();
+  // A `pointercancel` mid-gesture is the WebKitGTK signal that it is promoting the
+  // press into a native OS drag — keep the internal drag state so `onDragDropEvent`
+  // recognises it (Tauri only; harmless flag on web, which never takes over).
+  abort(true);
 }
 
 function onWindowKeyDown(e: KeyboardEvent) {
@@ -353,8 +370,10 @@ function onWindowKeyDown(e: KeyboardEvent) {
 
 function onWindowBlur() {
   // Losing the window mid-drag (alt-tab, OS drag takeover) — abort cleanly so the
-  // cursor never sticks.
-  abort();
+  // cursor never sticks. Treat it as a native takeover: in the Tauri shell blur is
+  // exactly what fires when WebKitGTK grabs the drag, so the internal drag state
+  // must persist for `onDragDropEvent`.
+  abort(true);
 }
 
 /**

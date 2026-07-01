@@ -28,6 +28,15 @@ vi.mock('~/utils/browser-api', () => ({
   elementFromPoint: () => currentHit,
 }));
 
+// Toggle the runtime per-test: teardown only PERSISTS internal drag state through
+// a cancel in the Tauri shell (WebKitGTK native-drag takeover); the web always
+// clears eagerly.
+let tauriRuntime = false;
+vi.mock('~/utils/runtime', async (importActual) => {
+  const actual = await importActual<typeof import('~/utils/runtime')>();
+  return { ...actual, isTauriRuntime: () => tauriRuntime };
+});
+
 describe('dndGesture', () => {
   it('uses a larger slop for touch than mouse/pen', () => {
     expect(dragThresholdForPointer('mouse')).toBe(DRAG_THRESHOLD_MOUSE_PX);
@@ -122,6 +131,7 @@ describe('usePointerDnd engine', () => {
   beforeEach(() => {
     clearDndZones();
     resetPointerDndForTest();
+    tauriRuntime = false;
     currentHit = null;
     captureEl.setPointerCapture.mockClear();
     captureEl.releasePointerCapture.mockClear();
@@ -176,7 +186,7 @@ describe('usePointerDnd engine', () => {
     expect(captureEl.releasePointerCapture).toHaveBeenCalledWith(1);
   });
 
-  it('treats a release before threshold as a click (no drag, no drop)', () => {
+  it('treats a release before threshold as a click and clears eagerly-set state', () => {
     const onDrop = vi.fn();
     registerDndZone('zone-1', { onDrop });
     const onEnd = vi.fn();
@@ -187,34 +197,47 @@ describe('usePointerDnd engine', () => {
 
     expect(isDndActive()).toBe(false);
     expect(onDrop).not.toHaveBeenCalled();
-    // onEnd only fires for a committed drag — a non-committed teardown must NOT
-    // clear source state (Tauri relies on it persisting through a native-drag
-    // takeover; see usePointerDnd teardown).
-    expect(onEnd).not.toHaveBeenCalled();
+    // A click never became a drag, but sources set their drag state
+    // (`isFileManagerDragging` / `draggedFile`) eagerly on pointerdown — cleanup
+    // MUST run so a plain click can't leave that state stuck true, which would
+    // otherwise suppress the external-file drop overlay on every later drag.
+    expect(onEnd).toHaveBeenCalledWith({ dropped: false, cancelled: false });
   });
 
-  // ⚠️ REGRESSION GUARD — do not "simplify" teardown to always call onEnd.
-  // In the Tauri (WebKitGTK) shell, pressing a file row is promoted to a NATIVE
-  // OS drag before our movement threshold is crossed; the webview then receives
-  // `pointercancel` while the drag is still NON-committed. The file-manager drag
-  // state (`isFileManagerDragging` / `draggedFile`) is set eagerly on pointerdown
-  // and MUST survive this cancel, so that Tauri's `onDragDropEvent` recognises the
-  // gesture as an internal drag and suppresses the OS drop overlay. If onEnd
-  // (source cleanup) runs here, that state is wiped and the OS overlay wrongly
-  // appears during internal file-manager drags.
-  it('does NOT run source cleanup on a non-committed pointercancel (Tauri native-drag takeover)', () => {
+  // ⚠️ REGRESSION GUARD — do not "simplify" teardown to always/never call onEnd.
+  // In the Tauri (WebKitGTK) shell a press on a file row is promoted to a NATIVE
+  // OS drag; the webview then receives `pointercancel` (and/or `blur`) — sometimes
+  // before we commit, sometimes after. The file-manager drag state
+  // (`isFileManagerDragging` / `draggedFile`) is set eagerly on pointerdown and
+  // MUST survive that cancel so Tauri's `onDragDropEvent` recognises the gesture as
+  // an internal drag and suppresses the OS drop overlay. If cleanup runs here the
+  // state is wiped and the OS overlay wrongly appears during internal drags.
+  it('does NOT run source cleanup on a pointercancel in Tauri (native-drag takeover)', () => {
+    tauriRuntime = true;
     const onEnd = vi.fn();
     registerDndZone('zone-1', {});
 
+    // (a) Cancel BEFORE crossing the drag threshold.
     armPointerDnd(armEvent({ x: 0, y: 0 }), { payload, onEnd });
-    // Cancel before crossing the drag threshold (native OS drag took over).
     dispatch('pointercancel', 2, 0);
+    expect(isDndActive()).toBe(false); // visual state still resets
+    expect(onEnd).not.toHaveBeenCalled();
 
+    // (b) Cancel AFTER we already committed — the case that regressed and made the
+    // upload overlay flash over internal drags.
+    resetPointerDndForTest();
+    onEnd.mockClear();
+    const zoneEl = document.createElement('div');
+    zoneEl.setAttribute(DND_ZONE_ATTR, 'zone-1');
+    currentHit = zoneEl;
+    armPointerDnd(armEvent({ x: 0, y: 0 }), { payload, onEnd });
+    dispatch('pointermove', 20, 0); // commit
+    dispatch('pointercancel', 20, 0);
     expect(isDndActive()).toBe(false);
     expect(onEnd).not.toHaveBeenCalled();
   });
 
-  it('runs source cleanup when an already-committed drag is cancelled', () => {
+  it('runs source cleanup on a pointercancel in the web (no native takeover)', () => {
     const onEnd = vi.fn();
     registerDndZone('zone-1', {});
     const zoneEl = document.createElement('div');
@@ -226,7 +249,7 @@ describe('usePointerDnd engine', () => {
     expect(isDndActive()).toBe(true);
     dispatch('pointercancel', 20, 0);
 
-    // Committed drags DO clean up on cancel (there was no native takeover).
+    // The web never promotes to a native OS drag, so any cancel must clear state.
     expect(onEnd).toHaveBeenCalledWith({ dropped: false, cancelled: true });
     expect(isDndActive()).toBe(false);
   });
