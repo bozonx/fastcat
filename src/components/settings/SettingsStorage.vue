@@ -1,7 +1,9 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, ref, onMounted } from 'vue';
 import { open } from '@tauri-apps/plugin-dialog';
 import { useWorkspaceStore } from '~/stores/workspace.store';
+import { useStoragePersistence } from '~/composables/useStoragePersistence';
+import { formatBytes } from '~/utils/format';
 import UiFormField from '~/components/ui/UiFormField.vue';
 
 import UiConfirmModal from '~/components/ui/UiConfirmModal.vue';
@@ -14,6 +16,33 @@ const isClearWorkspaceVardataConfirmOpen = ref(false);
 
 const isDesktopTauri = computed(() => workspaceStore.workspaceProviderId === 'tauri');
 const isBrowserWorkspaceMode = computed(() => workspaceStore.workspaceProviderId === 'web');
+
+const {
+  isSupported: isStorageApiSupported,
+  isPersisted,
+  usageBytes,
+  quotaBytes,
+  usageRatio,
+  isRequesting: isRequestingPersist,
+  refresh: refreshStorageEstimate,
+  requestPersist,
+} = useStoragePersistence();
+
+const usagePercent = computed(() =>
+  usageRatio.value == null ? null : Math.round(usageRatio.value * 100),
+);
+const usageLabel = computed(() => {
+  if (usageBytes.value == null) return null;
+  const used = formatBytes(usageBytes.value, 1);
+  if (!quotaBytes.value) return used;
+  return `${used} / ${formatBytes(quotaBytes.value, 1)}`;
+});
+
+onMounted(() => {
+  if (isBrowserWorkspaceMode.value && isStorageApiSupported) {
+    void refreshStorageEstimate();
+  }
+});
 const contentRootPath = computed({
   get: () => workspaceStore.appSettings.paths.contentRootPath,
   set: (v: string) => {
@@ -221,6 +250,64 @@ function clearCache() {
       icon="i-heroicons-trash"
       @confirm="confirmClearWorkspaceVardata"
     />
+
+    <!-- Browser sandbox storage: quota usage + eviction protection -->
+    <div
+      v-if="isBrowserWorkspaceMode && isStorageApiSupported"
+      class="flex flex-col gap-4 p-4 rounded-xl border border-ui-border bg-ui-bg-elevated/20"
+    >
+      <div class="flex flex-col gap-1">
+        <div class="text-sm font-medium text-ui-text">
+          {{ t('videoEditor.settings.browserStorage.title') }}
+        </div>
+        <div class="text-xs text-ui-text-muted">
+          {{ t('videoEditor.settings.browserStorage.description') }}
+        </div>
+      </div>
+
+      <div v-if="usageLabel" class="flex flex-col gap-1.5">
+        <div class="flex items-center justify-between text-xs text-ui-text-muted">
+          <span>{{ t('videoEditor.settings.browserStorage.usageLabel') }}</span>
+          <span class="tabular-nums">
+            {{ usageLabel }}
+            <template v-if="usagePercent != null"> ({{ usagePercent }}%)</template>
+          </span>
+        </div>
+        <div v-if="usagePercent != null" class="h-2 w-full rounded-full bg-ui-bg-elevated/60">
+          <div
+            class="h-full rounded-full bg-primary-500 transition-all"
+            :style="{ width: `${usagePercent}%` }"
+          />
+        </div>
+      </div>
+
+      <div class="flex items-center justify-between gap-3">
+        <div class="flex items-center gap-2 min-w-0">
+          <UIcon
+            :name="isPersisted ? 'i-heroicons-lock-closed' : 'i-heroicons-lock-open'"
+            class="w-4 h-4 shrink-0"
+            :class="isPersisted ? 'text-emerald-400' : 'text-amber-400'"
+          />
+          <span class="text-xs text-ui-text-muted">
+            {{
+              isPersisted
+                ? t('videoEditor.settings.browserStorage.persistedOn')
+                : t('videoEditor.settings.browserStorage.persistedOff')
+            }}
+          </span>
+        </div>
+        <UButton
+          v-if="!isPersisted"
+          color="primary"
+          variant="soft"
+          size="sm"
+          icon="i-heroicons-lock-closed"
+          :loading="isRequestingPersist"
+          :label="t('videoEditor.settings.browserStorage.requestPersist')"
+          @click="requestPersist"
+        />
+      </div>
+    </div>
 
     <div
       v-if="isBrowserWorkspaceMode || isDesktopTauri"

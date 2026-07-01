@@ -173,6 +173,7 @@ useEventListener(document, 'visibilitychange', () => {
 <template>
   <div
     class="flex flex-col h-screen w-screen overflow-hidden bg-ui-bg text-ui-text"
+    data-app-root
     @dragover.prevent="onGlobalDragOver"
     @dragleave.prevent="onGlobalDragLeave"
     @drop.prevent="onGlobalDrop"

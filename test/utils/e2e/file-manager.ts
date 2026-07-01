@@ -90,6 +90,40 @@ export async function importViaUpload(page: Page, fixtureAbsPaths: string[]): Pr
   throw new Error('Unable to open the file upload chooser');
 }
 
+/**
+ * Drives the real import pipeline via an OS-style file drag-and-drop onto the
+ * app root. Builds a synthetic `DataTransfer` carrying real `File` objects and
+ * dispatches `dragover`/`drop` on the `[data-app-root]` element that owns the
+ * global drop handler (`useGlobalDragAndDrop`), so the genuine
+ * `onGlobalDrop -> handleFiles` ingest path runs — same as an OS drop.
+ */
+export async function importViaDragDrop(page: Page, fixtureAbsPaths: string[]): Promise<void> {
+  const files = fixtureAbsPaths.map((absPath) => ({
+    name: basename(absPath),
+    base64: readFileSync(absPath).toString('base64'),
+  }));
+
+  await expect(page.locator('[data-app-root]')).toBeAttached({ timeout: 10_000 });
+
+  await page.evaluate(async (payload) => {
+    const root = document.querySelector('[data-app-root]');
+    if (!root) throw new Error('[data-app-root] not found');
+
+    const dataTransfer = new DataTransfer();
+    for (const item of payload) {
+      const binary = atob(item.base64);
+      const bytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+      dataTransfer.items.add(new File([bytes], item.name));
+    }
+
+    root.dispatchEvent(
+      new DragEvent('dragover', { bubbles: true, cancelable: true, dataTransfer }),
+    );
+    root.dispatchEvent(new DragEvent('drop', { bubbles: true, cancelable: true, dataTransfer }));
+  }, files);
+}
+
 /** Locate a file/folder entry by its visible name (matches any `data-entry-path`). */
 export function entry(page: Page, name: string): Locator {
   return page.locator(`[data-entry-path$="/${name}"], [data-entry-path="${name}"]`).first();

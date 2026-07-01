@@ -1198,9 +1198,7 @@
     "welcome": {
       "initializingTauriWorkspace": "Initializing the default desktop workspace.",
       "openSandbox": "Open Browser Workspace",
-      "openWebWorkspace": "FastCat stores web projects in a private browser workspace.",
-      "openWorkspace": "Open Browser Workspace",
-      "selectWebWorkspace": "Select Web Workspace"
+      "openWebWorkspace": "FastCat stores web projects in a private browser workspace."
     }
   },
   "mobileFiles": {
@@ -1784,6 +1782,14 @@
       "backupCountHelp": "The number of project backup versions saved during manual backups. Allows restoring previous versions in case of errors.",
       "bloggerDogConnectAction": "Connect to BloggerDog",
       "bloggerDogIntegrationHint": "Connect via BloggerDog for file API access.",
+      "browserStorage": {
+        "description": "Projects and imported media are stored privately in this browser. Clearing site data or browser eviction under low disk space can remove them.",
+        "persistedOff": "Storage may be evicted under disk pressure",
+        "persistedOn": "Storage is persistent — protected from automatic eviction",
+        "requestPersist": "Make persistent",
+        "title": "Browser storage",
+        "usageLabel": "Used"
+      },
       "clearCacheAction": "Clear cache",
       "clearTempWorkspace": "Clear workspace temporary files",
       "clearTempWorkspaceAction": "Clear",

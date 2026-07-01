@@ -1,0 +1,24 @@
+# Cloudflare Worker that serves the statically generated FastCat SPA
+# (`pnpm generate` -> `.output/public`) and injects the cross-origin isolation
+# headers on every response.
+#
+# Unlike Cloudflare Pages, a Worker does NOT honour the `public/_headers` file,
+# so COOP/COEP (required for SharedArrayBuffer + the coordinated I/O budget) are
+# set programmatically in `worker/index.ts`. The `_headers` file is kept for the
+# Pages/Netlify deploy targets.
+#
+# Deploy:  pnpm deploy:cf         (build + wrangler deploy)
+# Preview: pnpm preview:cf        (local wrangler dev against the built assets)
+
+name = "fastcat"
+main = "worker/index.ts"
+compatibility_date = "2024-11-01"
+
+[assets]
+directory = "./.output/public"
+binding = "ASSETS"
+# SPA: unknown routes fall back to index.html (client-side routing, ssr:false).
+not_found_handling = "single-page-application"
+# Let the Worker run for every request so it can attach isolation headers even
+# when an asset exists (default would short-circuit static hits before the Worker).
+run_worker_first = true

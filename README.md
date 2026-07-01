@@ -68,6 +68,34 @@ opening a workspace: OPFS, IndexedDB, Web Workers, OffscreenCanvas,
 cross-origin isolation. Missing WebGPU or audio WebCodecs are treated as limited
 feature warnings instead of blocking the basic editor shell.
 
+Media is imported into the OPFS sandbox via drag-and-drop from the OS or the
+file-manager upload button (both flow through the same `handleFiles` ingest
+path). The Storage settings panel reports OPFS quota usage and lets the user opt
+into persistent storage (`navigator.storage.persist()`) so the browser does not
+evict the workspace under disk pressure; the app also requests persistence
+automatically when the web workspace opens.
+
+### Deploying the web build
+
+The web build is fully static (`pnpm generate` → `.output/public`) and requires
+`Cross-Origin-Opener-Policy: same-origin` + `Cross-Origin-Embedder-Policy:
+require-corp` on the document so `SharedArrayBuffer` (the I/O budget) is
+available.
+
+- **Cloudflare Pages / Netlify**: headers come from `public/_headers`.
+- **Cloudflare Worker**: `public/_headers` is _not_ honoured, so `worker/index.ts`
+  serves the static assets (via the `ASSETS` binding in `wrangler.toml`) and
+  stamps the isolation + cache headers on every response. It also handles SPA
+  fallback to `index.html`.
+
+```bash
+# Build + deploy to Cloudflare Workers (needs wrangler auth)
+pnpm deploy:cf
+
+# Build + run the Worker locally against the generated assets
+pnpm preview:cf
+```
+
 ## Setup
 
 ```bash

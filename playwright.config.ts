@@ -23,28 +23,46 @@ export default defineConfig({
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',
-
-    launchOptions: {
-      args: [
-        '--enable-features=FileSystemAccessAPI,Vulkan',
-        '--ignore-gpu-blocklist',
-        '--autoplay-policy=no-user-gesture-required',
-        '--disable-background-timer-throttling',
-        '--disable-renderer-backgrounding',
-        // WebGPU: headless Chromium does not expose `navigator.gpu` without
-        // these. On machines without a real GPU (CI/Docker) a Vulkan software
-        // rasteriser is required — see scripts/e2e-docker.sh / docker image.
-        '--enable-unsafe-webgpu',
-        '--enable-unsafe-swiftshader',
-        '--disable-vulkan-surface',
-      ],
-    },
   },
 
   projects: [
     {
       name: 'chromium',
-      use: { ...devices['Desktop Chrome'] },
+      use: {
+        ...devices['Desktop Chrome'],
+        launchOptions: {
+          args: [
+            '--enable-features=FileSystemAccessAPI,Vulkan',
+            '--ignore-gpu-blocklist',
+            '--autoplay-policy=no-user-gesture-required',
+            '--disable-background-timer-throttling',
+            '--disable-renderer-backgrounding',
+            // WebGPU: headless Chromium does not expose `navigator.gpu` without
+            // these. On machines without a real GPU (CI/Docker) a Vulkan software
+            // rasteriser is required — see scripts/e2e-docker.sh / docker image.
+            '--enable-unsafe-webgpu',
+            '--enable-unsafe-swiftshader',
+            '--disable-vulkan-surface',
+          ],
+        },
+      },
+    },
+    // Firefox smoke: verifies the OPFS-sandbox startup path works on a second
+    // engine (cross-origin isolation, workspace bootstrap). Scoped to the
+    // engine-agnostic smoke specs — WebGPU/export/codec breadth stays Chromium-
+    // only where a software GPU rasteriser is available.
+    {
+      name: 'firefox-smoke',
+      testMatch: ['e2e/smoke/loading.spec.ts', 'e2e/smoke/workspace.spec.ts'],
+      use: {
+        ...devices['Desktop Firefox'],
+        launchOptions: {
+          firefoxUserPrefs: {
+            'media.autoplay.default': 0,
+            'dom.workers.modules.enabled': true,
+          },
+        },
+      },
     },
   ],
 
