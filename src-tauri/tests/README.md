@@ -11,7 +11,8 @@ touch the filesystem, and — for the export video case — the GPU compositor.
 ```bash
 # from repo root
 pnpm test:native          # all native tests (unit + integration)
-pnpm test:native:int      # just the integration suites
+pnpm test:integration:native  # just the integration suites
+pnpm test:native:int          # alias for the above
 
 # or directly
 cargo test --manifest-path src-tauri/Cargo.toml --features test-support

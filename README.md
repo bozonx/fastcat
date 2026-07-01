@@ -306,8 +306,10 @@ The project uses a structured testing approach:
 
 - **Unit Tests** (`test/unit/`): Logic and utilities. Run via `pnpm test:unit`.
 - **Component Tests** (`test/components/`): Vue component rendering and behavior. Run via `pnpm test:unit`.
-- **Integration Tests** (`test/integration/`): Complex interactions between modules. Run via `pnpm test:integration`.
-- **Parity Helpers** (`test/parity-helpers/`): Shared fixtures and harness utilities used by the cross-engine parity tests. Run together with integration tests via `pnpm test:integration`.
+- **Integration Tests (Web)** (`test/integration/`): Complex interactions between modules. Run via `pnpm test:integration:web`.
+- **Integration Tests (Native)** (`src-tauri/tests/`): Rust integration suites (media probe, audio engine, timeline export, engine parity). Run via `pnpm test:integration:native`.
+- **All Integration Tests**: Run both web and native integration tests via `pnpm test:integration`.
+- **Parity Helpers** (`test/parity-helpers/`): Shared fixtures and harness utilities used by the cross-engine parity tests. Run together with web integration tests via `pnpm test:integration:web`.
 - **E2E Tests** (`test/e2e/`): Full application flows in the browser. Run via `pnpm test:e2e`.
 - **Cross-Engine Parity Tests** (`test/e2e/parity/` + `test/integration/engine-parity/` + `test/parity-helpers/` + `src-tauri/tests/engine_parity.rs`): Verify the web (PixiJS/WebGPU) and native (Vello/wgpu) video engines produce visually identical output for the same scenes. Integration tests validate golden registry integrity, scene coverage, and cross-engine hash parity. Run via `pnpm test:parity`.
 
