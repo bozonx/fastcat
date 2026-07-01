@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { probeWebGpu } from '../../utils/e2e/webgpu';
 import { writeFileToOpfs } from '../../utils/e2e/virtual-fs';
-import { renderWebFrames, type WebSceneData } from '../../parity-helpers/web-render';
+import { renderWebFrames, type WebSceneData } from '../../golden-helpers/web-render';
 import {
   loadGoldenRegistry,
   findGoldenEntry,
@@ -11,17 +11,24 @@ import {
   compareHash,
   compareColorSig,
   isPendingHash,
-} from '../../parity-helpers/golden-compare';
-import { loadAllScenes } from '../../parity-helpers/scene-loader';
-import { computeFrameHash } from '../../parity-helpers/frame-hash';
+} from '../../golden-helpers/golden-compare';
+import { loadAllScenes } from '../../golden-helpers/scene-loader';
+import { computeFrameHash } from '../../golden-helpers/frame-hash';
 
 const MEDIA_DIR = resolve(process.cwd(), 'test/fixtures/media');
 
 const SCENES = loadAllScenes();
 
-test.describe('Web engine parity @parity', () => {
+// When set (CI golden job), missing WebGPU is a FAILURE, not a silent skip —
+// otherwise the job goes green having asserted nothing (false negative).
+const REQUIRE_WEBGPU = process.env.REQUIRE_WEBGPU === '1';
+
+test.describe('Web engine golden @golden', () => {
   test.setTimeout(60_000);
-  test.skip(({ browserName }) => browserName !== 'chromium', 'WebGPU parity requires Chromium');
+  test.skip(
+    ({ browserName }) => browserName !== 'chromium',
+    'WebGPU golden render requires Chromium',
+  );
 
   test.beforeAll(async ({ browser }) => {
     // Verify WebGPU is available before running the suite.
@@ -29,7 +36,13 @@ test.describe('Web engine parity @parity', () => {
     await page.goto('/');
     const info = await probeWebGpu(page);
     await page.close();
-    test.skip(!info.available, `WebGPU not available: ${info.reason ?? 'unknown'}`);
+    if (!info.available) {
+      const reason = info.reason ?? 'unknown';
+      if (REQUIRE_WEBGPU) {
+        throw new Error(`WebGPU required (REQUIRE_WEBGPU=1) but unavailable: ${reason}`);
+      }
+      test.skip(true, `WebGPU not available: ${reason}`);
+    }
   });
 
   for (const { filename, fixture } of SCENES) {
@@ -44,8 +57,8 @@ test.describe('Web engine parity @parity', () => {
 
       const mediaMapping: Record<string, string> = {};
 
-      // Navigate to the parity page first so OPFS APIs (navigator.storage) are available.
-      await page.goto('/test/parity');
+      // Navigate to the golden render page first so OPFS APIs (navigator.storage) are available.
+      await page.goto('/test/golden');
       await page.waitForLoadState('domcontentloaded');
 
       for (const layer of scene.layers) {
@@ -53,7 +66,7 @@ test.describe('Web engine parity @parity', () => {
         if (!relPath) continue;
 
         // Map relative media path to an OPFS path.
-        const opfsPath = `parity-media/${relPath}`;
+        const opfsPath = `golden-media/${relPath}`;
         mediaMapping[relPath] = opfsPath;
 
         const absPath = resolve(MEDIA_DIR, relPath);

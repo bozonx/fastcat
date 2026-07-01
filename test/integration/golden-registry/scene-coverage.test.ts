@@ -7,7 +7,7 @@ import {
   listSceneFiles,
   collectSceneMediaPaths,
   resolveMediaPath,
-} from '../../parity-helpers/scene-loader';
+} from '../../golden-helpers/scene-loader';
 
 describe('scene coverage integration', () => {
   const scenes = loadAllScenes();

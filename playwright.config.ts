@@ -8,9 +8,31 @@ const webServerCommand = process.env.CI
   ? `E2E_TEST=1 E2E_OUTPUT_DIR=${e2eOutputDir} pnpm build && pnpm exec vite preview --host localhost --port ${e2ePort} --outDir ${e2eOutputDir}/public`
   : `E2E_TEST=1 pnpm dev --port ${e2ePort}`;
 
+// Shared Chromium config for the smoke / e2e / golden tiers.
+const chromiumUse = {
+  ...devices['Desktop Chrome'],
+  launchOptions: {
+    args: [
+      '--enable-features=FileSystemAccessAPI,Vulkan',
+      '--ignore-gpu-blocklist',
+      '--autoplay-policy=no-user-gesture-required',
+      '--disable-background-timer-throttling',
+      '--disable-renderer-backgrounding',
+      // WebGPU: headless Chromium does not expose `navigator.gpu` without
+      // these. On machines without a real GPU (CI/Docker) a Vulkan software
+      // rasteriser is required — see scripts/e2e-docker.sh / docker image.
+      '--enable-unsafe-webgpu',
+      '--enable-unsafe-swiftshader',
+      '--disable-vulkan-surface',
+    ],
+  },
+};
+
 export default defineConfig({
   testDir: './test',
-  testMatch: ['e2e/**/*.spec.ts', 'parity/**/*.spec.ts'],
+  // Projects below own their `testMatch`; nothing runs unless a project claims
+  // it. This keeps the tiers (smoke / e2e / golden) strictly disjoint so a spec
+  // can never be pulled into two runs at once.
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
@@ -26,26 +48,28 @@ export default defineConfig({
   },
 
   projects: [
+    // ── Tier: smoke ── engine-agnostic startup/UI checks. Cheap, deterministic,
+    // no real-GPU pixel assertions → always blocking in CI.
     {
-      name: 'chromium',
-      use: {
-        ...devices['Desktop Chrome'],
-        launchOptions: {
-          args: [
-            '--enable-features=FileSystemAccessAPI,Vulkan',
-            '--ignore-gpu-blocklist',
-            '--autoplay-policy=no-user-gesture-required',
-            '--disable-background-timer-throttling',
-            '--disable-renderer-backgrounding',
-            // WebGPU: headless Chromium does not expose `navigator.gpu` without
-            // these. On machines without a real GPU (CI/Docker) a Vulkan software
-            // rasteriser is required — see scripts/e2e-docker.sh / docker image.
-            '--enable-unsafe-webgpu',
-            '--enable-unsafe-swiftshader',
-            '--disable-vulkan-surface',
-          ],
-        },
-      },
+      name: 'smoke',
+      testMatch: ['e2e/smoke/**/*.spec.ts'],
+      use: chromiumUse,
+    },
+    // ── Tier: e2e ── UI-driven workflows (import/export/timeline). Chromium with
+    // a software GPU rasteriser; behaviour-level, not pixel-exact.
+    {
+      name: 'e2e',
+      testMatch: ['e2e/web/**/*.spec.ts'],
+      use: chromiumUse,
+    },
+    // ── Tier: golden ── cross-engine RENDERED-FRAME comparison (perceptual
+    // hashes vs shared/golden). Depends on a real/consistent GPU: SwiftShader in
+    // CI is correct-but-approximate, so this tier runs in its own job and is not
+    // a merge gate. Set REQUIRE_WEBGPU=1 to fail (not skip) when no adapter.
+    {
+      name: 'golden',
+      testMatch: ['golden/**/*.spec.ts'],
+      use: chromiumUse,
     },
     // Firefox smoke: verifies the OPFS-sandbox startup path works on a second
     // engine (cross-origin isolation, workspace bootstrap). Scoped to the

@@ -17,7 +17,7 @@ const here = path.dirname(fileURLToPath(import.meta.url));
  * Prerequisites (Linux):
  *   - `WebKitWebDriver` on PATH (package `webkit2gtk-driver` / `webkitgtk-6.0`)
  *   - `tauri-driver` installed (`cargo install tauri-driver --locked`)
- *   - the release binary built (run `pnpm tauri:e2e:build` first, or let
+ *   - the release binary built (run `pnpm tauri:build:e2e` first, or let
  *     `onPrepare` build it automatically)
  */
 
@@ -78,7 +78,7 @@ export const config: Options.Testrunner = {
 
   // Build the release binary up front if it is missing. Building the frontend
   // (`pnpm generate`) + cargo is slow, so we skip when the binary already
-  // exists — run `pnpm tauri:e2e:build` to force a rebuild.
+  // exists — run `pnpm tauri:build:e2e` to force a rebuild.
   onPrepare: () => {
     if (existsSync(application)) {
       return;

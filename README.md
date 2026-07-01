@@ -350,16 +350,34 @@ The current behavior is:
 
 ## Testing
 
-The project uses a structured testing approach:
+Tests are organised into explicit **tiers** so each can run in its own CI job and
+the GPU-fragile ones stay out of the merge gate. Two things used to both be called
+"parity" — they are now distinct:
 
-- **Unit Tests** (`test/unit/`): Logic and utilities. Run via `pnpm test:unit`.
-- **Component Tests** (`test/components/`): Vue component rendering and behavior. Run via `pnpm test:unit`.
-- **Integration Tests (Web)** (`test/integration/`): Complex interactions between modules. Run via `pnpm test:integration:web`.
-- **Integration Tests (Native)** (`src-tauri/tests/`): Rust integration suites (media probe, audio engine, timeline export, engine parity). Run via `pnpm test:integration:native`.
-- **All Integration Tests**: Run both web and native integration tests via `pnpm test:integration`.
-- **Parity Helpers** (`test/parity-helpers/`): Shared fixtures and harness utilities used by the cross-engine parity tests. Run together with web integration tests via `pnpm test:integration:web`.
-- **E2E Tests** (`test/e2e/`): Full application flows in the browser. Run via `pnpm test:e2e`.
-- **Cross-Engine Parity Tests** (`test/parity/` + `test/integration/engine-parity/` + `test/parity-helpers/` + `src-tauri/tests/engine_parity.rs`): Verify the web (PixiJS/WebGPU) and native (Vello/wgpu) video engines produce visually identical output for the same scenes. Integration tests validate golden registry integrity, scene coverage, and cross-engine hash parity. Run via `pnpm test:parity`.
+- **parity** = pure cross-language _logic_ math pinned by `shared/parity/*.json`
+  (CPU, deterministic). These live inside the unit/rust tiers, not a tier of
+  their own — see the `*.parity.test.ts` files and the Rust `#[test]`s that read
+  those fixtures.
+- **golden** = cross-engine _rendered-frame_ comparison against
+  `shared/golden/frames.json` (GPU-dependent).
+
+| Tier | Location | Command | CI |
+| --- | --- | --- | --- |
+| Unit | `test/unit/`, `test/components/` (incl. `*.parity.test.ts`) | `pnpm test:unit` | gate |
+| Integration (web) | `test/integration/`, `test/golden-helpers/` | `pnpm test:integration:web` | gate |
+| Integration/unit (native) | `src-tauri/tests/`, Rust `#[test]`s (incl. logic parity) | `pnpm test:native` | gate |
+| E2E — smoke | `test/e2e/smoke/` | `pnpm test:e2e:smoke` | gate |
+| E2E — full | `test/e2e/web/` | `pnpm test:e2e` | gate |
+| Golden (web) | `test/golden/` + `test/golden-helpers/` | `pnpm test:golden:web` | nightly, non-gate |
+| Golden (native) | `src-tauri/tests/engine_parity.rs` | `pnpm test:golden:native` | nightly, non-gate |
+
+`test/integration/golden-registry/` holds CPU vitest checks that validate the
+golden registry integrity and scene coverage (no GPU), and runs with the web
+integration tier.
+
+Run everything locally (static checks + all tiers incl. e2e and golden) with
+`pnpm check`; use `pnpm check:fast` for the quick static + unit + web-integration
+loop.
 
 For desktop-web Playwright scenarios, keep project creation as a dedicated UI flow
 (`test/e2e/web/project-creation.spec.ts`). Scenario tests that need an open
@@ -380,9 +398,9 @@ E2E tests use port `3007` by default. Override it with `E2E_PORT=3010 pnpm test:
 Set `PLAYWRIGHT_REUSE_SERVER=1` only when you intentionally want to run against an existing local server.
 In CI, Playwright runs against `pnpm build` + `vite preview` over `.output/public`.
 
-### Cross-Engine Parity Tests
+### Golden (rendered-frame) tests
 
-Parity tests verify that the web video engine (PixiJS + WebGPU + Web Workers) and the native Tauri engine (Vello + wgpu + FFmpeg) produce visually identical frames for the same scene definitions.
+Golden tests verify that the web video engine (PixiJS + WebGPU + Web Workers) and the native Tauri engine (Vello + wgpu + FFmpeg) render visually identical frames for the same scene definitions.
 
 **Shared fixtures:**
 
@@ -392,32 +410,36 @@ Parity tests verify that the web video engine (PixiJS + WebGPU + Web Workers) an
 **Commands:**
 
 ```bash
-# Run web parity tests (Playwright + WebGPU + real workers)
-pnpm test:parity:web
+# Run web golden tests (Playwright + WebGPU + real workers)
+pnpm test:golden:web
 
-# Run native parity tests (cargo + real ffmpeg + GPU compositor)
-pnpm test:parity:native
+# Run native golden tests (cargo + real ffmpeg + GPU compositor)
+pnpm test:golden:native
 
 # Run both
-pnpm test:parity
+pnpm test:golden
 
 # Generate/update golden hashes from the web engine
-pnpm test:parity:gen-golden
+pnpm test:golden:gen
 
 # Generate golden hashes for both engines (web + native via cargo)
-pnpm test:parity:gen-golden -- --both
+pnpm test:golden:gen -- --both
 
 # Import native golden hashes from the last cargo run
-pnpm test:parity:import-native
+pnpm test:golden:import-native
 ```
 
 **Workflow:**
 
-1. Run `pnpm test:parity:gen-golden` to produce web golden hashes
-2. Run `pnpm test:parity:import-native` to run the native parity suite and import the printed `GOLDEN[native]` lines into `shared/golden/frames.json`
-3. Run `pnpm test:parity` to verify both engines match their golden hashes and each other
+1. Run `pnpm test:golden:gen` to produce web golden hashes
+2. Run `pnpm test:golden:import-native` to run the native suite and import the printed `GOLDEN[native]` lines into `shared/golden/frames.json`
+3. Run `pnpm test:golden` to verify both engines match their golden hashes and each other
 
-Tests skip gracefully when WebGPU, ffmpeg, or a wgpu adapter is unavailable.
+By default these tests **skip gracefully** when WebGPU, ffmpeg, or a wgpu adapter
+is unavailable (so `pnpm check` stays green on GPU-less machines). In CI they run
+with `REQUIRE_WEBGPU=1` / `REQUIRE_TEST_DEPS=1`, which turns a missing adapter
+into a hard failure — a green golden job must have actually rendered something.
+See `.github/workflows/golden.yml` (nightly, non-blocking) and `scripts/ci.sh`.
 
 ### Export Testing
 

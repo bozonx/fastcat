@@ -8,13 +8,13 @@ import {
   findGoldenSample,
   PENDING_HASH,
   isPendingHash,
-} from '../../parity-helpers/golden-compare';
-import { loadAllScenes, collectSceneMediaPaths } from '../../parity-helpers/scene-loader';
+} from '../../golden-helpers/golden-compare';
+import { loadAllScenes, collectSceneMediaPaths } from '../../golden-helpers/scene-loader';
 import {
   hammingDistance,
   colorSignatureDistance,
   DEFAULT_COLOR_TOLERANCE,
-} from '../../parity-helpers/frame-hash';
+} from '../../golden-helpers/frame-hash';
 
 const MEDIA_DIR = resolve(process.cwd(), 'test/fixtures/media');
 
@@ -270,7 +270,7 @@ describe('golden-registry integration', () => {
       // never generated. Fail loudly instead of silently skipping it forever.
       expect(
         unexpected,
-        `Un-generated golden hash(es) found. Run \`pnpm test:parity:gen-golden\` ` +
+        `Un-generated golden hash(es) found. Run \`pnpm test:golden:gen\` ` +
           `to generate them, or add to KNOWN_PENDING_GOLDENS if intentionally pending:\n` +
           unexpected.map((p) => `    - ${p}`).join('\n'),
       ).toEqual([]);

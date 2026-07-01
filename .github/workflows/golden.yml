@@ -1,0 +1,53 @@
+name: Golden (rendered-frame parity)
+
+# Cross-engine RENDERED-FRAME comparison: the web (PixiJS/WebGPU) and native
+# (Vello/wgpu) engines render shared/scenes and their perceptual hashes are
+# compared against shared/golden/frames.json.
+#
+# These are GPU-dependent. On GitHub-hosted runners the only GPU is SwiftShader
+# (software) whose output is correct-but-approximate, so a hash mismatch here is
+# INFORMATIONAL, not a merge blocker — hence `continue-on-error` and a separate
+# workflow from the CI gate. The REQUIRE_* env still forces a hard failure if no
+# adapter is present at all, so a green run has genuinely rendered something.
+#
+# Run on demand or nightly rather than on every push.
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 3 * * *' # nightly 03:00 UTC
+
+jobs:
+  golden-web:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run web golden tier in Docker
+        run: bash scripts/ci.sh golden-web
+      - name: Upload report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: golden-web-report
+          path: playwright-report/
+          retention-days: 7
+
+  golden-native:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - uses: dtolnay/rust-toolchain@1.87.0
+      - name: Install native dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg libavdevice-dev libvulkan1 mesa-vulkan-drivers
+      - run: pnpm install --frozen-lockfile
+      - name: Run native golden tier
+        run: bash scripts/ci.sh golden-native

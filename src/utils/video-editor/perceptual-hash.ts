@@ -1,9 +1,9 @@
 /**
  * Canonical perceptual hashing for cross-engine frame parity.
  *
- * This is the SINGLE source of truth for the hash used by every parity layer:
- *   - the web engine render page (`pages/test/parity.vue`),
- *   - the parity test helpers (`test/parity-helpers/frame-hash.ts`),
+ * This is the SINGLE source of truth for the hash used by every golden layer:
+ *   - the web engine render page (`pages/test/golden.vue`),
+ *   - the golden test helpers (`test/golden-helpers/frame-hash.ts`),
  *   - the golden generator scripts.
  *
  * The native (Rust) engine mirrors this implementation in

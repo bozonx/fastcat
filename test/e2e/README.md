@@ -7,7 +7,7 @@ and verify the **persisted OTIO document** the user would reopen, not Vue store
 internals. If a check can be made without the browser, it belongs in a unit test
 (`*.test.ts`), not here.
 
-Cross-engine rendering parity tests live in `test/parity/` because they test the
+Cross-engine rendering parity tests live in `test/golden/` because they test the
 video engine output, not user workflows.
 
 ## What is e2e here vs. what is not
@@ -88,9 +88,12 @@ no stable hook:
 ## Running
 
 ```
-pnpm exec playwright test --project=chromium test/e2e/web
-# reuse a running dev server:
-PLAYWRIGHT_REUSE_SERVER=1 pnpm exec playwright test test/e2e/web/timeline-trim.spec.ts
+# Full UI e2e (smoke + e2e projects; golden is a separate tier):
+pnpm test:e2e
+# Smoke tier only:
+pnpm test:e2e:smoke
+# A single spec, reusing a running dev server:
+PLAYWRIGHT_REUSE_SERVER=1 pnpm exec playwright test --project=e2e test/e2e/web/timeline-trim.spec.ts
 ```
 
 Chromium only (web decode + WebGPU flags). Export and playback specs are the

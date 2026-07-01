@@ -24,7 +24,7 @@ function createMockPage(currentUrl = 'about:blank'): MockPage {
 }
 
 describe('web-render', () => {
-  it('navigates to /test/parity when not already there', async () => {
+  it('navigates to /test/golden when not already there', async () => {
     const { page, evaluateMock, waitForFunctionMock } = createMockPage('about:blank');
     waitForFunctionMock.mockResolvedValue(undefined);
     evaluateMock.mockResolvedValue([{ hash: 'ffffffffffffffff', width: 320, height: 240 }]);
@@ -38,12 +38,12 @@ describe('web-render', () => {
       {},
     );
 
-    expect(page.goto).toHaveBeenCalledWith('/test/parity');
+    expect(page.goto).toHaveBeenCalledWith('/test/golden');
   });
 
-  it('skips navigation when already on /test/parity', async () => {
+  it('skips navigation when already on /test/golden', async () => {
     const { page, evaluateMock, waitForFunctionMock } = createMockPage(
-      'http://localhost:3007/test/parity',
+      'http://localhost:3007/test/golden',
     );
     waitForFunctionMock.mockResolvedValue(undefined);
     evaluateMock.mockResolvedValue([{ hash: 'ffffffffffffffff', width: 320, height: 240 }]);

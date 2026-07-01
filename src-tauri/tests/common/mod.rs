@@ -70,10 +70,21 @@ pub fn ffprobe_entry(path: &Path, entry: &str, select: Option<&str>) -> String {
 /// precondition isn't met. Rust has no built-in test skip, so we print and
 /// return — the test still counts as passed, which keeps CI green on hosts that
 /// lack ffmpeg or a GPU.
+///
+/// Set `REQUIRE_TEST_DEPS=1` to turn a would-be skip into a hard failure. The
+/// CI golden/integration jobs set this so a missing GPU or ffmpeg fails loudly
+/// instead of passing green having asserted nothing (false negative).
 #[macro_export]
 macro_rules! skip_unless {
     ($cond:expr, $reason:expr) => {
         if !($cond) {
+            if std::env::var("REQUIRE_TEST_DEPS").as_deref() == Ok("1") {
+                panic!(
+                    "REQUIRE_TEST_DEPS=1 but precondition unmet in {}: {}",
+                    module_path!(),
+                    $reason
+                );
+            }
             eprintln!("SKIP {}: {}", module_path!(), $reason);
             return;
         }

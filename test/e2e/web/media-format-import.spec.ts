@@ -68,7 +68,7 @@ const FIXTURES: Array<{ rel: string; type: 'video' | 'audio' | 'image'; web: Web
 
 const basename = (rel: string): string => rel.split('/').pop()!;
 
-test.describe('Web media format import @parity', () => {
+test.describe('Web media format import', () => {
   test.skip(({ browserName }) => browserName !== 'chromium', 'Web decode requires Chromium');
 
   test('probes every advertised import format', async ({ page }) => {

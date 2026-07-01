@@ -6,7 +6,7 @@
  * shared/golden/frames.json.
  *
  * Usage:
- *   pnpm test:parity:import-native
+ *   pnpm test:golden:import-native
  *
  * The test skips gracefully if ffmpeg, ffprobe, or a wgpu adapter are missing;
  * in that case no GOLDEN lines are emitted and this script warns accordingly.
@@ -16,7 +16,7 @@ import {
   loadGoldenRegistry,
   saveGoldenRegistry,
   upsertGoldenSample,
-} from '../test/parity-helpers/golden-compare';
+} from '../test/golden-helpers/golden-compare';
 
 const GOLDEN_RE =
   /^GOLDEN\[native\]\s+(\S+)\s+t=([\d.]+)\s+hash=([0-9a-f]{16})(?:\s+colorSig=([0-9a-f]{24}))?\s+tolerance=(\d+)/i;

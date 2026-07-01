@@ -5,13 +5,13 @@
  * captures the perceptual hash of each sample frame, and upserts it into
  * shared/golden/frames.json under the "web" engine.
  *
- * For the native engine, this script can also invoke pnpm test:parity:import-native
+ * For the native engine, this script can also invoke pnpm test:golden:import-native
  * which runs the Rust engine_parity tests and imports the printed GOLDEN[native]
  * lines automatically.
  *
  * Usage:
- *   pnpm test:parity:gen-golden           # web only (via Playwright)
- *   pnpm test:parity:gen-golden -- --both # web + native (requires cargo)
+ *   pnpm test:golden:gen           # web only (via Playwright)
+ *   pnpm test:golden:gen -- --both # web + native (requires cargo)
  */
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -20,8 +20,8 @@ import {
   upsertGoldenSample,
   loadGoldenRegistry,
   saveGoldenRegistry,
-} from '../test/parity-helpers/golden-compare';
-import { loadAllScenes } from '../test/parity-helpers/scene-loader';
+} from '../test/golden-helpers/golden-compare';
+import { loadAllScenes } from '../test/golden-helpers/scene-loader';
 
 const E2E_PORT = Number(process.env.E2E_PORT ?? 3007);
 const BASE_URL = process.env.E2E_BASE_URL ?? `http://localhost:${E2E_PORT}`;
@@ -101,8 +101,8 @@ async function ensureDevServer(): Promise<ChildProcess | null> {
 
 async function genWebGolden(): Promise<void> {
   const { chromium } = await import('@playwright/test');
-  const { renderWebFrames } = await import('../test/parity-helpers/web-render');
-  type WebSceneData = import('../test/parity-helpers/web-render').WebSceneData;
+  const { renderWebFrames } = await import('../test/golden-helpers/web-render');
+  type WebSceneData = import('../test/golden-helpers/web-render').WebSceneData;
   const { writeFileToOpfs } = await import('../test/utils/e2e/virtual-fs');
 
   const serverProc = await ensureDevServer();
@@ -120,7 +120,7 @@ async function genWebGolden(): Promise<void> {
     });
 
     const page = await browser.newPage();
-    await page.goto(`${BASE_URL}/test/parity`);
+    await page.goto(`${BASE_URL}/test/golden`);
 
     const registry = loadGoldenRegistry();
 
@@ -191,7 +191,7 @@ async function genWebGolden(): Promise<void> {
 function runImportNative(): Promise<boolean> {
   return new Promise((resolve, reject) => {
     console.log('\nImporting native golden hashes...\n');
-    const proc = spawn('pnpm', ['test:parity:import-native'], {
+    const proc = spawn('pnpm', ['test:golden:import-native'], {
       cwd: process.cwd(),
       stdio: 'inherit',
     });

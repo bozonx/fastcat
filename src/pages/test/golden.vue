@@ -224,7 +224,7 @@ async function renderFrames(req: ParityRenderRequest): Promise<ParityFrameResult
 }
 
 onMounted(() => {
-  (window as unknown as { __parityEngine: { renderFrames: typeof renderFrames } }).__parityEngine =
+  (window as unknown as { __goldenEngine: { renderFrames: typeof renderFrames } }).__goldenEngine =
     {
       renderFrames,
     };
@@ -235,7 +235,7 @@ onMounted(() => {
   <div class="flex h-screen items-center justify-center bg-neutral-900 text-neutral-100">
     <div class="text-center">
       <h1 class="text-xl font-bold">Parity Engine Test Page</h1>
-      <p class="mt-2 text-sm text-neutral-400">window.__parityEngine is ready</p>
+      <p class="mt-2 text-sm text-neutral-400">window.__goldenEngine is ready</p>
     </div>
   </div>
 </template>
