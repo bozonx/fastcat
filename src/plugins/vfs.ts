@@ -58,8 +58,7 @@ function createNuxtVfsProgressReporter(nuxtApp: unknown): VfsProgressReporter {
         ?.t;
       const title =
         input.operation === 'copy' && input.fileName && typeof translate === 'function'
-          ? translate('videoEditor.backgroundTasks.copyTitle', { fileName: input.fileName }) ||
-            input.title
+          ? translate('videoEditor.backgroundTasks.copyTitle', { fileName: input.fileName })
           : input.title;
 
       const taskId = tasksStore.addTask({
@@ -334,10 +333,10 @@ function buildVfsRoutes(args: {
 }
 
 export default defineNuxtPlugin(async (nuxtApp) => {
-  const translate = (key: string, def?: string) => {
+  const translate = (key: string) => {
     const i18n = (nuxtApp as { $i18n?: { t: (k: string) => string } }).$i18n;
-    if (!i18n) return def ?? key;
-    return i18n.t(key) || def || key;
+    if (!i18n) return key;
+    return i18n.t(key);
   };
 
   const workspaceStore = useWorkspaceStore();

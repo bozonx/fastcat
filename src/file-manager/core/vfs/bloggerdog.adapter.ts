@@ -91,7 +91,7 @@ export class BloggerDogVfsAdapter implements IFileSystemAdapter {
 
   constructor(
     private getConfig: () => RemoteVfsClientConfig | null,
-    private t?: (key: string, def?: string) => string,
+    private t: (key: string) => string = (key) => key,
   ) {}
 
   async init(): Promise<void> {
@@ -594,15 +594,15 @@ export class BloggerDogVfsAdapter implements IFileSystemAdapter {
       return [
         this.createVirtualRootEntry(
           'virtual-all',
-          this.t ? this.t('fastcat.bloggerDog.allContent') : 'Все элементы',
+          this.t('fastcat.bloggerDog.allContent'),
         ),
         this.createVirtualRootEntry(
           'projects',
-          this.t ? this.t('fastcat.bloggerDog.projectLibraries') : 'Проекты',
+          this.t('fastcat.bloggerDog.projectLibraries'),
         ),
         this.createVirtualRootEntry(
           'personal',
-          this.t ? this.t('fastcat.bloggerDog.personalLibrary') : 'Личная библиотека',
+          this.t('fastcat.bloggerDog.personalLibrary'),
         ),
       ];
     }
