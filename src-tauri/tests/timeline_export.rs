@@ -7,6 +7,7 @@ mod common;
 
 use std::fs;
 use std::path::Path;
+use std::process::Command;
 
 use app_lib::compositor::Compositor;
 use app_lib::media::tasks::NativeMediaTasks;
@@ -36,31 +37,86 @@ fn rms(samples: &[f32]) -> f32 {
     (sum / samples.len() as f64).sqrt() as f32
 }
 
-fn read_wav_pcm_s16le_mono(path: &Path) -> Vec<f32> {
+struct WavPcm {
+    sample_rate: u32,
+    channels: u16,
+    samples: Vec<f32>,
+}
+
+fn read_wav_pcm_s16le(path: &Path) -> WavPcm {
     let bytes = fs::read(path).expect("wav file should be readable");
     assert!(bytes.starts_with(b"RIFF"), "expected RIFF WAV");
     assert_eq!(&bytes[8..12], b"WAVE", "expected WAVE file");
 
     let mut offset = 12;
+    let mut sample_rate = 0;
+    let mut channels = 0;
+    let mut samples = None;
     while offset + 8 <= bytes.len() {
         let id = &bytes[offset..offset + 4];
         let size = u32::from_le_bytes(bytes[offset + 4..offset + 8].try_into().unwrap()) as usize;
         let data_start = offset + 8;
         let data_end = data_start + size;
         assert!(data_end <= bytes.len(), "invalid wav chunk size");
+        if id == b"fmt " {
+            assert!(size >= 16, "invalid wav fmt chunk");
+            let format = u16::from_le_bytes(bytes[data_start..data_start + 2].try_into().unwrap());
+            channels =
+                u16::from_le_bytes(bytes[data_start + 2..data_start + 4].try_into().unwrap());
+            sample_rate =
+                u32::from_le_bytes(bytes[data_start + 4..data_start + 8].try_into().unwrap());
+            assert_eq!(format, 1, "expected PCM WAV format");
+        }
         if id == b"data" {
-            return bytes[data_start..data_end]
-                .chunks_exact(2)
-                .map(|chunk| {
-                    let sample = i16::from_le_bytes(chunk.try_into().unwrap());
-                    sample as f32 / i16::MAX as f32
-                })
-                .collect();
+            samples = Some(
+                bytes[data_start..data_end]
+                    .chunks_exact(2)
+                    .map(|chunk| {
+                        let sample = i16::from_le_bytes(chunk.try_into().unwrap());
+                        sample as f32 / i16::MAX as f32
+                    })
+                    .collect(),
+            );
         }
         offset = data_end + (size % 2);
     }
 
-    panic!("WAV data chunk not found");
+    WavPcm {
+        sample_rate,
+        channels,
+        samples: samples.expect("WAV data chunk not found"),
+    }
+}
+
+fn read_wav_pcm_s16le_mono(path: &Path) -> Vec<f32> {
+    let wav = read_wav_pcm_s16le(path);
+    assert_eq!(wav.channels, 1, "expected mono WAV");
+    wav.samples
+}
+
+fn zero_crossings(samples: &[f32]) -> usize {
+    samples
+        .windows(2)
+        .filter(|w| (w[0] <= 0.0) != (w[1] <= 0.0))
+        .count()
+}
+
+fn generate_sine_wav(path: &Path, sample_rate: u32, frequency: u32, duration_sec: f64) {
+    let status = Command::new("ffmpeg")
+        .args(["-hide_banner", "-loglevel", "error", "-y"])
+        .args([
+            "-f",
+            "lavfi",
+            "-i",
+            &format!(
+                "sine=frequency={frequency}:sample_rate={sample_rate}:duration={duration_sec}"
+            ),
+        ])
+        .args(["-ac", "1", "-c:a", "pcm_s16le"])
+        .arg(path)
+        .status()
+        .expect("ffmpeg should run");
+    assert!(status.success(), "ffmpeg sine fixture generation failed");
 }
 
 #[test]
@@ -197,6 +253,404 @@ fn audio_only_export_writes_crossfaded_output_file() {
     assert!(
         (tail_rms / full_rms - 1.0).abs() < 0.2,
         "incoming clip should return to full level after export crossfade, tail={tail_rms:.6}, full={full_rms:.6}"
+    );
+}
+
+#[test]
+fn audio_only_wav_export_preserves_requested_sample_rate_and_sample_count() {
+    skip_unless!(
+        common::has_ffmpeg() && common::has_ffprobe(),
+        "ffmpeg/ffprobe not installed"
+    );
+    skip_unless!(
+        common::has_ffmpeg_encoder("pcm_s16le"),
+        "ffmpeg pcm_s16le encoder not installed"
+    );
+
+    let scene: MonitorScene = serde_json::from_value(json!({
+        "layers": [],
+        "audio_layers": [audio_layer("audio/audio-sine.wav")],
+    }))
+    .unwrap();
+
+    let options: NativeExportOptions = serde_json::from_value(json!({
+        "width": 320, "height": 240, "fps": 30.0,
+        "startSec": 0.0, "endSec": 1.0,
+        "videoCodec": "", "videoBitrateBps": 0, "format": "wav",
+        "audioEnabled": true, "audioCodec": "pcm", "audioBitrateBps": null,
+        "audioChannels": 1, "audioSampleRate": 44_100,
+        "videoEnabled": false,
+        "ffmpegPath": "ffmpeg", "ffprobePath": "ffprobe",
+    }))
+    .unwrap();
+
+    let tmp = tempfile::tempdir().unwrap();
+    let target = tmp.path().join("out_44100.wav");
+    let tasks = NativeMediaTasks::default();
+
+    export_timeline(
+        &tasks,
+        "export-audio-44100",
+        scene,
+        options,
+        &target,
+        &noop_progress,
+        &noop_warning,
+    )
+    .expect("audio WAV export should succeed");
+
+    let ffprobe_rate: u32 = common::ffprobe_entry(&target, "stream=sample_rate", Some("a:0"))
+        .parse()
+        .unwrap_or(0);
+    let wav = read_wav_pcm_s16le(&target);
+
+    assert_eq!(ffprobe_rate, 44_100);
+    assert_eq!(wav.sample_rate, 44_100);
+    assert_eq!(wav.channels, 1);
+    assert!(
+        (wav.samples.len() as i64 - 44_100).abs() <= 8,
+        "expected ~44100 samples, got {}",
+        wav.samples.len()
+    );
+}
+
+#[test]
+fn audio_only_wav_export_resamples_source_without_duration_or_pitch_drift() {
+    skip_unless!(
+        common::has_ffmpeg() && common::has_ffprobe(),
+        "ffmpeg/ffprobe not installed"
+    );
+    skip_unless!(
+        common::has_ffmpeg_encoder("pcm_s16le"),
+        "ffmpeg pcm_s16le encoder not installed"
+    );
+
+    let tmp = tempfile::tempdir().unwrap();
+    let source = tmp.path().join("source_44100.wav");
+    generate_sine_wav(&source, 44_100, 440, 1.0);
+
+    let scene: MonitorScene = serde_json::from_value(json!({
+        "layers": [],
+        "audio_layers": [{
+            "id": "source-44100",
+            "path": source.to_string_lossy(),
+            "timeline_start_sec": 0.0,
+            "timeline_end_sec": 1.0,
+            "source_start_sec": 0.0
+        }],
+    }))
+    .unwrap();
+
+    let options: NativeExportOptions = serde_json::from_value(json!({
+        "width": 320, "height": 240, "fps": 30.0,
+        "startSec": 0.0, "endSec": 1.0,
+        "videoCodec": "", "videoBitrateBps": 0, "format": "wav",
+        "audioEnabled": true, "audioCodec": "pcm", "audioBitrateBps": null,
+        "audioChannels": 1, "audioSampleRate": 48_000,
+        "videoEnabled": false,
+        "ffmpegPath": "ffmpeg", "ffprobePath": "ffprobe",
+    }))
+    .unwrap();
+
+    let target = tmp.path().join("out_resampled_48000.wav");
+    let tasks = NativeMediaTasks::default();
+
+    export_timeline(
+        &tasks,
+        "export-audio-resample-44100-to-48000",
+        scene,
+        options,
+        &target,
+        &noop_progress,
+        &noop_warning,
+    )
+    .expect("resampled audio WAV export should succeed");
+
+    let wav = read_wav_pcm_s16le(&target);
+    assert_eq!(wav.sample_rate, 48_000);
+    assert_eq!(wav.channels, 1);
+    assert!(
+        (wav.samples.len() as i64 - 48_000).abs() <= 8,
+        "expected ~48000 samples after resampling, got {}",
+        wav.samples.len()
+    );
+
+    let zc = zero_crossings(&wav.samples);
+    assert!(
+        (800..=960).contains(&zc),
+        "expected ~880 zero crossings for 440 Hz after resampling, got {zc}"
+    );
+    assert!(rms(&wav.samples) > 0.02);
+}
+
+#[test]
+fn audio_only_wav_export_applies_clip_track_and_master_gain() {
+    skip_unless!(
+        common::has_ffmpeg() && common::has_ffprobe(),
+        "ffmpeg/ffprobe not installed"
+    );
+    skip_unless!(
+        common::has_ffmpeg_encoder("pcm_s16le"),
+        "ffmpeg pcm_s16le encoder not installed"
+    );
+
+    fn export_gain_case(tmp: &Path, name: &str, scene_value: serde_json::Value) -> f32 {
+        let scene: MonitorScene = serde_json::from_value(scene_value).unwrap();
+        let options: NativeExportOptions = serde_json::from_value(json!({
+            "width": 320, "height": 240, "fps": 30.0,
+            "startSec": 0.0, "endSec": 1.0,
+            "videoCodec": "", "videoBitrateBps": 0, "format": "wav",
+            "audioEnabled": true, "audioCodec": "pcm", "audioBitrateBps": null,
+            "audioChannels": 1, "audioSampleRate": 48_000,
+            "videoEnabled": false,
+            "ffmpegPath": "ffmpeg", "ffprobePath": "ffprobe",
+        }))
+        .unwrap();
+        let target = tmp.join(format!("{name}.wav"));
+        let tasks = NativeMediaTasks::default();
+
+        export_timeline(
+            &tasks,
+            name,
+            scene,
+            options,
+            &target,
+            &noop_progress,
+            &noop_warning,
+        )
+        .expect("gain export should succeed");
+
+        let wav = read_wav_pcm_s16le(&target);
+        rms(&wav.samples[4_800..43_200])
+    }
+
+    let tmp = tempfile::tempdir().unwrap();
+    let fixture = common::fixture("audio/audio-sine.wav");
+    let fixture_path = fixture.to_string_lossy();
+    let layer = |id: &str, gain: f64, track_id: Option<&str>| {
+        json!({
+            "id": id,
+            "path": fixture_path,
+            "track_id": track_id,
+            "timeline_start_sec": 0.0,
+            "timeline_end_sec": 1.0,
+            "source_start_sec": 0.0,
+            "audio_gain": gain
+        })
+    };
+
+    let baseline = export_gain_case(
+        tmp.path(),
+        "gain-baseline",
+        json!({
+            "layers": [],
+            "audio_layers": [layer("baseline", 1.0, None)],
+            "audio_master_gain": 1.0
+        }),
+    );
+    let clip_half = export_gain_case(
+        tmp.path(),
+        "gain-clip-half",
+        json!({
+            "layers": [],
+            "audio_layers": [layer("clip-half", 0.5, None)],
+            "audio_master_gain": 1.0
+        }),
+    );
+    let track_half = export_gain_case(
+        tmp.path(),
+        "gain-track-half",
+        json!({
+            "layers": [],
+            "audio_layers": [layer("track-half", 1.0, Some("track-a"))],
+            "audio_tracks": [{
+                "id": "track-a",
+                "audio_gain": 0.5,
+                "audio_balance": 0.0,
+                "audio_muted": false,
+                "audio_solo": false
+            }],
+            "audio_master_gain": 1.0
+        }),
+    );
+    let master_half = export_gain_case(
+        tmp.path(),
+        "gain-master-half",
+        json!({
+            "layers": [],
+            "audio_layers": [layer("master-half", 1.0, None)],
+            "audio_master_gain": 0.5
+        }),
+    );
+
+    for (label, value) in [
+        ("clip gain", clip_half),
+        ("track gain", track_half),
+        ("master gain", master_half),
+    ] {
+        let ratio = value / baseline;
+        assert!(
+            (ratio - 0.5).abs() < 0.05,
+            "{label} should halve exported RMS, ratio={ratio:.4}"
+        );
+    }
+}
+
+#[test]
+fn audio_only_wav_export_applies_fade_shape_to_output_pcm() {
+    skip_unless!(
+        common::has_ffmpeg() && common::has_ffprobe(),
+        "ffmpeg/ffprobe not installed"
+    );
+    skip_unless!(
+        common::has_ffmpeg_encoder("pcm_s16le"),
+        "ffmpeg pcm_s16le encoder not installed"
+    );
+
+    let fixture = common::fixture("audio/audio-sine.wav");
+    let fixture_path = fixture.to_string_lossy();
+    let scene: MonitorScene = serde_json::from_value(json!({
+        "layers": [],
+        "audio_layers": [{
+            "id": "faded",
+            "path": fixture_path,
+            "timeline_start_sec": 0.0,
+            "timeline_end_sec": 1.0,
+            "source_start_sec": 0.0,
+            "audio_fade_in_sec": 0.25,
+            "audio_fade_out_sec": 0.25,
+            "audio_fade_in_curve": "linear",
+            "audio_fade_out_curve": "linear"
+        }],
+    }))
+    .unwrap();
+    let options: NativeExportOptions = serde_json::from_value(json!({
+        "width": 320, "height": 240, "fps": 30.0,
+        "startSec": 0.0, "endSec": 1.0,
+        "videoCodec": "", "videoBitrateBps": 0, "format": "wav",
+        "audioEnabled": true, "audioCodec": "pcm", "audioBitrateBps": null,
+        "audioChannels": 1, "audioSampleRate": 48_000,
+        "videoEnabled": false,
+        "ffmpegPath": "ffmpeg", "ffprobePath": "ffprobe",
+    }))
+    .unwrap();
+
+    let tmp = tempfile::tempdir().unwrap();
+    let target = tmp.path().join("out_faded.wav");
+    let tasks = NativeMediaTasks::default();
+
+    export_timeline(
+        &tasks,
+        "export-audio-faded",
+        scene,
+        options,
+        &target,
+        &noop_progress,
+        &noop_warning,
+    )
+    .expect("faded audio WAV export should succeed");
+
+    let wav = read_wav_pcm_s16le(&target);
+    let window = 4_800;
+    let head_rms = rms(&wav.samples[..window]);
+    let middle_rms = rms(&wav.samples[21_600..21_600 + window]);
+    let tail_rms = rms(&wav.samples[wav.samples.len() - window..]);
+
+    assert!(
+        head_rms < middle_rms * 0.35,
+        "fade-in head should be quieter than middle: head={head_rms:.6}, middle={middle_rms:.6}"
+    );
+    assert!(
+        tail_rms < middle_rms * 0.35,
+        "fade-out tail should be quieter than middle: tail={tail_rms:.6}, middle={middle_rms:.6}"
+    );
+    assert!(middle_rms > 0.02);
+}
+
+#[test]
+fn audio_only_wav_export_crossfade_moves_from_outgoing_to_incoming_tone() {
+    skip_unless!(
+        common::has_ffmpeg() && common::has_ffprobe(),
+        "ffmpeg/ffprobe not installed"
+    );
+    skip_unless!(
+        common::has_ffmpeg_encoder("pcm_s16le"),
+        "ffmpeg pcm_s16le encoder not installed"
+    );
+
+    let tmp = tempfile::tempdir().unwrap();
+    let outgoing_source = tmp.path().join("outgoing_440.wav");
+    let incoming_source = tmp.path().join("incoming_880.wav");
+    generate_sine_wav(&outgoing_source, 48_000, 440, 1.0);
+    generate_sine_wav(&incoming_source, 48_000, 880, 1.0);
+
+    let scene: MonitorScene = serde_json::from_value(json!({
+        "layers": [],
+        "audio_layers": [
+            {
+                "id": "outgoing-440",
+                "path": outgoing_source.to_string_lossy(),
+                "timeline_start_sec": 0.0,
+                "timeline_end_sec": 1.0,
+                "source_start_sec": 0.0,
+                "audio_fade_out_sec": 0.5,
+                "audio_fade_out_curve": "linear"
+            },
+            {
+                "id": "incoming-880",
+                "path": incoming_source.to_string_lossy(),
+                "timeline_start_sec": 0.5,
+                "timeline_end_sec": 1.5,
+                "source_start_sec": 0.0,
+                "audio_fade_in_sec": 0.5,
+                "audio_fade_in_curve": "linear"
+            }
+        ],
+    }))
+    .unwrap();
+    let options: NativeExportOptions = serde_json::from_value(json!({
+        "width": 320, "height": 240, "fps": 30.0,
+        "startSec": 0.0, "endSec": 1.5,
+        "videoCodec": "", "videoBitrateBps": 0, "format": "wav",
+        "audioEnabled": true, "audioCodec": "pcm", "audioBitrateBps": null,
+        "audioChannels": 1, "audioSampleRate": 48_000,
+        "videoEnabled": false,
+        "ffmpegPath": "ffmpeg", "ffprobePath": "ffprobe",
+    }))
+    .unwrap();
+
+    let target = tmp.path().join("out_crossfade_tones.wav");
+    let tasks = NativeMediaTasks::default();
+
+    export_timeline(
+        &tasks,
+        "export-audio-crossfade-tones",
+        scene,
+        options,
+        &target,
+        &noop_progress,
+        &noop_warning,
+    )
+    .expect("crossfaded tone export should succeed");
+
+    let wav = read_wav_pcm_s16le(&target);
+    let early = &wav.samples[9_600..19_200];
+    let overlap = &wav.samples[33_600..43_200];
+    let tail = &wav.samples[60_000..69_600];
+
+    let early_zc = zero_crossings(early);
+    let tail_zc = zero_crossings(tail);
+    assert!(
+        (160..=210).contains(&early_zc),
+        "early window should be dominated by 440 Hz, zc={early_zc}"
+    );
+    assert!(
+        (330..=390).contains(&tail_zc),
+        "tail window should be dominated by 880 Hz, zc={tail_zc}"
+    );
+    assert!(
+        rms(overlap) > rms(early) * 0.45,
+        "crossfade overlap should retain audible energy"
     );
 }
 

@@ -5,6 +5,7 @@ import { addFileToTrack, trackIds } from '../../utils/e2e/timeline';
 import { waitForTimelineDoc } from '../../utils/e2e/otio';
 import { openExport, startExport, waitForExportSuccess } from '../../utils/e2e/transport';
 import { listOpfsDirectory, readFileFromOpfs } from '../../utils/e2e/virtual-fs';
+import { probeAudioFile, waitForAudioProbe } from '../../utils/e2e/audio';
 
 /**
  * Base web export of a short timeline. Premium presets, native/hardware export,
@@ -46,7 +47,20 @@ test.describe('Web export', () => {
     const exportedFile = exportedFiles[0]!;
     expect(exportedFile.name).toMatch(/\.(mp4|webm|mkv)$/i);
 
-    const bytes = await readFileFromOpfs(page, `${e2eProject.path}/_export/${exportedFile.name}`);
+    const exportedPath = `${e2eProject.path}/_export/${exportedFile.name}`;
+    const bytes = await readFileFromOpfs(page, exportedPath);
     expect(bytes.byteLength).toBeGreaterThan(0);
+
+    await page.goto('/test/audio-probe');
+    await waitForAudioProbe(page);
+
+    const decoded = await probeAudioFile(page, exportedPath);
+    expect(decoded.ok, decoded.error).toBe(true);
+    expect(decoded.durationSec).toBeGreaterThan(0.8);
+    expect(decoded.durationSec).toBeLessThan(1.4);
+    expect(decoded.sampleRate).toBeGreaterThan(0);
+    expect(decoded.channels).toBeGreaterThan(0);
+    expect(decoded.rms).toBeGreaterThan(0.005);
+    expect(decoded.peak).toBeGreaterThan(0.02);
   });
 });
