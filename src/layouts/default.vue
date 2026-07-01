@@ -34,6 +34,7 @@ const projectStore = useProjectStore();
 const timelineStore = useTimelineStore();
 const uiStore = useUiStore();
 const route = useRoute();
+const toast = useToast();
 
 const {
   onGlobalDragOver,
@@ -150,6 +151,14 @@ function onOverlayFolderDrop(files: File[], targetDirPath: string) {
   handleFolderFileDrop(files, targetDirPath);
 }
 
+function onOverlayDropOutside() {
+  uiStore.isGlobalDragging = false;
+  toast.add({
+    color: 'neutral',
+    title: t('videoEditor.fileManager.dropOverlay.cancelled'),
+  });
+}
+
 useHead({
   title: t('navigation.fastcat'),
 });
@@ -241,6 +250,7 @@ useEventListener(document, 'visibilitychange', () => {
         :root-entries="fileManager.rootEntries.value"
         @drop-to-auto="onOverlayAutoSort"
         @drop-to-folder="onOverlayFolderDrop"
+        @drop-outside="onOverlayDropOutside"
       />
 
       <!-- Pointer-DnD ghost (internal drags: file-manager, timeline, panels, effects) -->

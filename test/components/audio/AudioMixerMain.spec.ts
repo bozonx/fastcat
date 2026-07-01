@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { mountSuspended } from '@nuxt/test-utils/runtime';
-import { reactive } from 'vue';
+import { reactive, computed } from 'vue';
 import AudioMixerMain from '~/components/audio/AudioMixerMain.vue';
 
 // Mock subcomponents
@@ -29,6 +29,12 @@ const mockTimelineStore = reactive({
 
 vi.mock('~/stores/timeline.store', () => ({ useTimelineStore: () => mockTimelineStore }));
 
+const mockWorkspaceStore = reactive({
+  inDevelopmentFeaturesEnabled: computed(() => true),
+});
+
+vi.mock('~/stores/workspace.store', () => ({ useWorkspaceStore: () => mockWorkspaceStore }));
+
 describe('AudioMixerMain', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -54,5 +60,15 @@ describe('AudioMixerMain', () => {
 
     await muteBtn?.trigger('click');
     expect(mockTimelineStore.audioMuted).toBe(false);
+  });
+
+  it('hides the effects block when in-development features are disabled', async () => {
+    mockWorkspaceStore.inDevelopmentFeaturesEnabled = computed(() => false);
+
+    const component = await mountSuspended(AudioMixerMain);
+
+    const buttons = component.findAll('button');
+    const effectBtn = buttons.find((b) => b.text().toLowerCase().includes('effect'));
+    expect(effectBtn).toBeUndefined();
   });
 });

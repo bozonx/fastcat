@@ -74,7 +74,7 @@ vi.mock('~/components/properties/clip/ClipParametersPasteModal.vue', () => ({
   default: { name: 'ClipParametersPasteModal', template: '<div></div>' },
 }));
 vi.mock('~/components/effects/ClipEffectsEditor.vue', () => ({
-  default: { name: 'ClipEffectsEditor', template: '<div></div>' },
+  default: { name: 'ClipEffectsEditor', props: ['target'], template: '<div></div>' },
 }));
 
 const mockTimelineStore = reactive({
@@ -233,6 +233,7 @@ vi.mock('~/composables/editor/useClipParametersClipboard', () => ({
 describe('ClipProperties.vue', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockWorkspaceStore.inDevelopmentFeaturesEnabled = false;
     mockTimelineStore.updateClipProperties = vi.fn();
     mockTimelineStore.updateClipTransition = vi.fn();
     mockTimelineStore.applyTimeline = vi.fn();
@@ -523,5 +524,32 @@ describe('ClipProperties.vue', () => {
     // Info section (duration) should be rendered
     const infoSection = wrapper.findComponent({ name: 'ClipInfoSection' });
     expect(infoSection.exists()).toBe(true);
+  });
+
+  it('hides audio effects editor when in-development features are disabled', async () => {
+    const clip = createClip();
+    const wrapper = await mountComponent({ clip });
+
+    await wrapper.find('[data-tab="audio"]').trigger('click');
+    await nextTick();
+
+    const audioEffectsEditor = wrapper
+      .findAllComponents({ name: 'ClipEffectsEditor' })
+      .find((c) => c.props('target') === 'audio');
+    expect(audioEffectsEditor).toBeUndefined();
+  });
+
+  it('shows audio effects editor when in-development features are enabled', async () => {
+    mockWorkspaceStore.inDevelopmentFeaturesEnabled = true;
+    const clip = createClip();
+    const wrapper = await mountComponent({ clip });
+
+    await wrapper.find('[data-tab="audio"]').trigger('click');
+    await nextTick();
+
+    const audioEffectsEditor = wrapper
+      .findAllComponents({ name: 'ClipEffectsEditor' })
+      .find((c) => c.props('target') === 'audio');
+    expect(audioEffectsEditor).toBeDefined();
   });
 });

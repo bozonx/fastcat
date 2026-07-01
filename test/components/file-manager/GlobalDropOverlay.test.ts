@@ -144,4 +144,51 @@ describe('GlobalDropOverlay', () => {
     expect(wrapper.vm.isDropOverAuto).toBe(false);
     expect(wrapper.vm.dropOverFolderPath).toBeNull();
   });
+
+  it('handles dragover on backdrop', async () => {
+    const wrapper = mount(GlobalDropOverlay, {
+      props: {
+        rootEntries: rootEntries as any,
+      },
+      global: {
+        stubs: {
+          UIcon: true,
+          GlobalDropOverlayTree: true,
+        },
+      },
+    });
+
+    const event = {
+      dataTransfer: {
+        types: ['Files'],
+        dropEffect: '',
+      },
+    } as any;
+
+    await wrapper.trigger('dragover', event);
+    expect(event.dataTransfer.dropEffect).toBe('none');
+  });
+
+  it('emits drop-outside on backdrop drop', async () => {
+    const wrapper = mount(GlobalDropOverlay, {
+      props: {
+        rootEntries: rootEntries as any,
+      },
+      global: {
+        stubs: {
+          UIcon: true,
+          GlobalDropOverlayTree: true,
+        },
+      },
+    });
+
+    const event = {
+      dataTransfer: {
+        types: ['Files'],
+      },
+    } as any;
+
+    await wrapper.trigger('drop', event);
+    expect(wrapper.emitted('drop-outside')).toBeTruthy();
+  });
 });

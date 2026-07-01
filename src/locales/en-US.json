@@ -1400,7 +1400,8 @@
         "autoTitle": "Auto-sort upload",
         "autoVideo": "Video → _video",
         "folderDescription": "Drop files on a specific folder to upload there",
-        "folderTitle": "Upload to folder"
+        "folderTitle": "Upload to folder",
+        "cancelled": "Upload cancelled. Drop files on the auto-sort area or a specific folder."
       },
       "empty": "No files in this project",
       "errors": {

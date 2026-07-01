@@ -362,6 +362,8 @@ const sortedProjects = computed(() => {
     v-model:open="isCreateModalOpen"
     :title="t('fastcat.projects.newProject')"
     :ui="{ content: 'sm:max-w-lg max-h-[90vh]', body: 'overflow-y-auto' }"
+    :prevent-close="workspaceStore.isLoading"
+    :close-button="!workspaceStore.isLoading"
   >
     <div class="space-y-6">
       <UiFormField
@@ -371,6 +373,7 @@ const sortedProjects = computed(() => {
         <UiTextInput
           v-model="projectCreationSettings.name"
           :placeholder="t('fastcat.projects.projectNamePlaceholder')"
+          :disabled="workspaceStore.isLoading"
           full-width
           autofocus
           @keyup.enter="createNewProject"
@@ -385,6 +388,7 @@ const sortedProjects = computed(() => {
           <UiTextInput
             v-model="projectCreationSettings.location"
             readonly
+            :disabled="workspaceStore.isLoading"
             full-width
             class="flex-1"
           />
@@ -392,15 +396,17 @@ const sortedProjects = computed(() => {
             color="neutral"
             variant="subtle"
             icon="i-heroicons-folder-open"
+            :disabled="workspaceStore.isLoading"
             @click="selectProjectLocation"
           />
         </div>
       </UiFormField>
 
-      <div class="flex items-center gap-3">
-        <UCheckbox v-model="projectCreationSettings.specifyProjectSettings" />
-        <span class="text-ui-text text-sm">{{ t('fastcat.projects.specifyProjectSettings') }}</span>
-      </div>
+      <UCheckbox
+        v-model="projectCreationSettings.specifyProjectSettings"
+        :label="t('fastcat.projects.specifyProjectSettings')"
+        :disabled="workspaceStore.isLoading"
+      />
 
       <div
         v-if="!projectCreationSettings.specifyProjectSettings"
@@ -420,6 +426,7 @@ const sortedProjects = computed(() => {
           v-model:aspect-ratio="projectCreationSettings.aspectRatio"
           v-model:is-custom-resolution="projectCreationSettings.isCustomResolution"
           v-model:sample-rate="projectCreationSettings.sampleRate"
+          :disabled="workspaceStore.isLoading"
         />
       </div>
     </div>
@@ -429,6 +436,7 @@ const sortedProjects = computed(() => {
         <UButton
           variant="ghost"
           color="neutral"
+          :disabled="workspaceStore.isLoading"
           :label="t('common.cancel')"
           @click="void (isCreateModalOpen = false)"
         />

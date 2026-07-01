@@ -2,6 +2,7 @@
 import { computed, ref, watch } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useMediaStore } from '~/stores/media.store';
+import { useWorkspaceStore } from '~/stores/workspace.store';
 import type { AudioClipEffect, TimelineTrack } from '~/timeline/types';
 import TrackProperties from '~/components/properties/TrackProperties.vue';
 import { linearToDb, dbToLinear, trackHasAudio } from '~/utils/audio';
@@ -24,6 +25,9 @@ const { t } = useI18n();
 
 const timelineStore = useTimelineStore();
 const mediaStore = useMediaStore();
+const workspaceStore = useWorkspaceStore();
+
+const isAudioEffectsEnabled = computed(() => workspaceStore.inDevelopmentFeaturesEnabled);
 
 const isOpenLocal = useMobileDrawerOpen(props, emit);
 
@@ -282,29 +286,31 @@ function handleRenameTrack(name: string) {
               {{ track.name || track.id }}
             </span>
 
-            <div class="w-full px-1.5 mb-1.5 shrink-0">
-              <div v-if="getAudioEffectsCount(track) === 0" class="flex justify-center">
-                <UButton
-                  size="xs"
-                  variant="ghost"
-                  color="neutral"
-                  icon="i-heroicons-plus-circle"
-                  class="w-full h-6 text-3xs px-1 py-0 justify-center whitespace-nowrap overflow-hidden hover:bg-primary-500/10 hover:text-primary-400 border border-transparent hover:border-primary-500/30"
-                  @click="openSelectEffectForTrack(track.id)"
+            <template v-if="isAudioEffectsEnabled">
+              <div class="w-full px-1.5 mb-1.5 shrink-0">
+                <div v-if="getAudioEffectsCount(track) === 0" class="flex justify-center">
+                  <UButton
+                    size="xs"
+                    variant="ghost"
+                    color="neutral"
+                    icon="i-heroicons-plus-circle"
+                    class="w-full h-6 text-3xs px-1 py-0 justify-center whitespace-nowrap overflow-hidden hover:bg-primary-500/10 hover:text-primary-400 border border-transparent hover:border-primary-500/30"
+                    @click="openSelectEffectForTrack(track.id)"
+                  >
+                    {{ $t('fastcat.effects.addEffect') }}
+                  </UButton>
+                </div>
+                <div
+                  v-else
+                  class="w-full h-6 bg-primary-500/10 hover:bg-primary-500/20 text-primary-400 border border-primary-500/30 rounded flex items-center justify-center cursor-pointer transition-colors"
+                  @click="openEffectsEditorForTrack(track.id)"
                 >
-                  {{ $t('fastcat.effects.addEffect') }}
-                </UButton>
+                  <span class="text-3xs font-bold uppercase truncate px-1">
+                    {{ $t('fastcat.effects.effectsCount', { count: getAudioEffectsCount(track) }) }}
+                  </span>
+                </div>
               </div>
-              <div
-                v-else
-                class="w-full h-6 bg-primary-500/10 hover:bg-primary-500/20 text-primary-400 border border-primary-500/30 rounded flex items-center justify-center cursor-pointer transition-colors"
-                @click="openEffectsEditorForTrack(track.id)"
-              >
-                <span class="text-3xs font-bold uppercase truncate px-1">
-                  {{ $t('fastcat.effects.effectsCount', { count: getAudioEffectsCount(track) }) }}
-                </span>
-              </div>
-            </div>
+            </template>
           </div>
 
           <!-- Middle: Vertical Volume Slider -->
@@ -361,17 +367,19 @@ function handleRenameTrack(name: string) {
       </div>
     </div>
 
-    <SelectEffectModal
-      v-model:open="isSelectEffectModalOpen"
-      target="audio"
-      @select="handleSelectEffect"
-    />
+    <template v-if="isAudioEffectsEnabled">
+      <SelectEffectModal
+        v-model:open="isSelectEffectModalOpen"
+        target="audio"
+        @select="handleSelectEffect"
+      />
 
-    <TrackAudioEffectsModal
-      v-if="selectedTrackForEffects"
-      v-model:open="isEffectsModalOpen"
-      :track-id="selectedTrackForEffects.id"
-    />
+      <TrackAudioEffectsModal
+        v-if="selectedTrackForEffects"
+        v-model:open="isEffectsModalOpen"
+        :track-id="selectedTrackForEffects.id"
+      />
+    </template>
 
     <UiRenameModal
       :open="isRenameModalOpen"

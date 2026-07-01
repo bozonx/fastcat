@@ -4,14 +4,22 @@ import { mount, flushPromises } from '@vue/test-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { useGlobalDragAndDrop } from '~/composables/editor/useGlobalDragAndDrop';
 
-const { draggedFileRef, handleFilesMock, onDragDropEventMock, uiStoreMock } = vi.hoisted(() => ({
-  draggedFileRef: { value: null as unknown },
-  handleFilesMock: vi.fn(),
-  onDragDropEventMock: vi.fn(),
-  uiStoreMock: {
-    isFileManagerDragging: false,
-    isGlobalDragging: false,
-  },
+const { draggedFileRef, handleFilesMock, onDragDropEventMock, uiStoreMock, toastAddMock } =
+  vi.hoisted(() => ({
+    draggedFileRef: { value: null as unknown },
+    handleFilesMock: vi.fn(),
+    onDragDropEventMock: vi.fn(),
+    uiStoreMock: {
+      isFileManagerDragging: false,
+      isGlobalDragging: false,
+    },
+    toastAddMock: vi.fn(),
+  }));
+
+vi.mock('#ui/composables/useToast', () => ({
+  useToast: () => ({
+    add: toastAddMock,
+  }),
 }));
 
 vi.mock('~/utils/runtime', () => ({
@@ -84,6 +92,10 @@ vi.mock('@tauri-apps/plugin-fs', () => ({
   stat: vi.fn(),
 }));
 
+vi.stubGlobal('useToast', () => ({
+  add: toastAddMock,
+}));
+
 vi.stubGlobal('useI18n', () => ({
   t: (key: string) => key,
 }));
@@ -96,6 +108,7 @@ describe('useGlobalDragAndDrop', () => {
     handleFilesMock.mockReset();
     onDragDropEventMock.mockReset();
     onDragDropEventMock.mockResolvedValue(vi.fn());
+    toastAddMock.mockReset();
   });
 
   it('ignores Tauri native drop that belongs to an internal file-manager drag', async () => {
@@ -273,6 +286,104 @@ describe('useGlobalDragAndDrop', () => {
       await flushPromises();
 
       expect(handleFilesMock).toHaveBeenCalledWith(expect.any(Array), undefined);
+    } finally {
+      document.elementFromPoint = originalElementFromPoint;
+      wrapper.unmount();
+    }
+  });
+
+  it('cancels drop and shows toast when dropped outside zones in Tauri', async () => {
+    const component = defineComponent({
+      setup() {
+        useGlobalDragAndDrop();
+        return () => null;
+      },
+    });
+
+    const wrapper = mount(component);
+    await flushPromises();
+
+    const callback = onDragDropEventMock.mock.calls[0]?.[0];
+    expect(callback).toBeTypeOf('function');
+
+    // Simulate overlay is visible
+    uiStoreMock.isGlobalDragging = true;
+
+    // elementFromPoint returns something not matching auto zone or folder
+    const mockPointEl = {
+      closest: vi.fn().mockReturnValue(null),
+    } as unknown as Element;
+
+    const originalElementFromPoint = document.elementFromPoint;
+    document.elementFromPoint = vi.fn().mockReturnValue(mockPointEl);
+
+    try {
+      await callback({
+        payload: {
+          type: 'drop',
+          paths: ['/tmp/video.mp4'],
+          position: { x: 200, y: 300 },
+        },
+      });
+      await flushPromises();
+
+      // Should cancel: no file handling, toast shown, overlay hidden
+      expect(handleFilesMock).not.toHaveBeenCalled();
+      expect(toastAddMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          color: 'neutral',
+          title: 'videoEditor.fileManager.dropOverlay.cancelled',
+        }),
+      );
+      expect(uiStoreMock.isGlobalDragging).toBe(false);
+    } finally {
+      document.elementFromPoint = originalElementFromPoint;
+      wrapper.unmount();
+    }
+  });
+
+  it('allows drop and auto-sorts when dropped on auto zone in Tauri', async () => {
+    const component = defineComponent({
+      setup() {
+        useGlobalDragAndDrop();
+        return () => null;
+      },
+    });
+
+    const wrapper = mount(component);
+    await flushPromises();
+
+    const callback = onDragDropEventMock.mock.calls[0]?.[0];
+    expect(callback).toBeTypeOf('function');
+
+    // Simulate overlay is visible
+    uiStoreMock.isGlobalDragging = true;
+
+    // elementFromPoint returns auto zone element
+    const mockAutoZoneEl = {
+      closest: vi.fn().mockImplementation((sel) => {
+        if (sel === '.global-drop-overlay-auto-zone') return {};
+        return null;
+      }),
+    } as unknown as Element;
+
+    const originalElementFromPoint = document.elementFromPoint;
+    document.elementFromPoint = vi.fn().mockReturnValue(mockAutoZoneEl);
+
+    try {
+      await callback({
+        payload: {
+          type: 'drop',
+          paths: ['/tmp/video.mp4'],
+          position: { x: 200, y: 300 },
+        },
+      });
+      await flushPromises();
+
+      // Should succeed: file handling called, no toast
+      expect(handleFilesMock).toHaveBeenCalledWith(expect.any(Array), undefined);
+      expect(toastAddMock).not.toHaveBeenCalled();
+      expect(uiStoreMock.isGlobalDragging).toBe(false);
     } finally {
       document.elementFromPoint = originalElementFromPoint;
       wrapper.unmount();

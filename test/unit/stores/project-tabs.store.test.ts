@@ -211,6 +211,15 @@ describe('ProjectTabsStore', () => {
     expect(store.activeTabId).toBe('file-tab-1');
   });
 
+  it('setTabsState with activeTabId null defaults to files if registered', () => {
+    const store = useProjectTabsStore();
+    store.registerProjectTab({ id: 'effects', label: 'Effects', component: {} as any });
+    store.registerProjectTab({ id: 'files', label: 'Files', component: {} as any });
+
+    store.setTabsState({ activeTabId: null });
+    expect(store.activeTabId).toBe('files');
+  });
+
   it('activeTab returns the current active tab object', () => {
     const store = useProjectTabsStore();
     store.registerProjectTab({ id: 'cut', label: 'Cut', component: {} as any });

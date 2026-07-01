@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref, computed, watch } from 'vue';
 import { VueDraggable } from 'vue-draggable-plus';
 import {
   getAllVideoEffectManifests,
@@ -27,6 +27,14 @@ const presetsStore = usePresetsStore();
 const workspaceStore = useWorkspaceStore();
 
 const activeTab = ref<'video' | 'transitions' | 'audio'>('video');
+
+const isAudioEffectsEnabled = computed(() => workspaceStore.inDevelopmentFeaturesEnabled);
+
+watch(isAudioEffectsEnabled, (enabled) => {
+  if (!enabled && activeTab.value === 'audio') {
+    activeTab.value = 'video';
+  }
+});
 
 const videoEffects = computed(() =>
   getAllVideoEffectManifests().filter(
@@ -146,6 +154,7 @@ function updateCustomTransitionsOrder(newCustomTransitions: TransitionManifest[]
         {{ t('fastcat.effects.tabs.transitions') }}
       </button>
       <button
+        v-if="isAudioEffectsEnabled"
         class="group relative flex items-center gap-1.5 px-2 py-1 rounded cursor-pointer transition-colors duration-150 shrink-0 text-2xs font-semibold tracking-wide uppercase"
         :class="
           activeTab === 'audio'
@@ -321,100 +330,105 @@ function updateCustomTransitionsOrder(newCustomTransitions: TransitionManifest[]
         </CollapsibleEffectGroup>
       </div>
 
-      <!-- Audio Effects -->
-      <div v-show="activeTab === 'audio'" class="flex flex-col gap-4 pb-4">
-        <!-- Standard Audio Effects -->
-        <CollapsibleEffectGroup
-          v-model:is-collapsed="presetsStore.audioStandardCollapsed"
-          :title="t('fastcat.effects.groups.standard')"
-        >
-          <div class="flex flex-col gap-4">
-            <div v-if="hasAudioEffects(basicAudioEffects)">
-              <div class="grid grid-cols-1 gap-2">
-                <EffectCard
-                  v-for="effect in basicAudioEffects"
-                  :key="effect.type"
-                  :manifest="effect"
-                  :is-selected="
-                    selectionStore.selectedEntity?.source === 'project' &&
-                    selectionStore.selectedEntity.kind === 'effect' &&
-                    selectionStore.selectedEntity.effectType === effect.type
-                  "
-                  :is-draggable="true"
-                  @pointer-down="handlePointerDown($event, effect.type, 'effect')"
-                  @click="selectEffect(effect.type)"
-                />
-              </div>
-            </div>
-
-            <div v-if="hasAudioEffects(nonBasicAudioEffects)">
-              <h4 class="text-xs uppercase tracking-wide text-ui-text-muted mb-2">
-                {{ t('fastcat.effects.groups.artistic') }}
-              </h4>
-              <div class="grid grid-cols-1 gap-2">
-                <EffectCard
-                  v-for="effect in nonBasicAudioEffects"
-                  :key="effect.type"
-                  :manifest="effect"
-                  :is-selected="
-                    selectionStore.selectedEntity?.source === 'project' &&
-                    selectionStore.selectedEntity.kind === 'effect' &&
-                    selectionStore.selectedEntity.effectType === effect.type
-                  "
-                  :is-draggable="true"
-                  @pointer-down="handlePointerDown($event, effect.type, 'effect')"
-                  @click="selectEffect(effect.type)"
-                />
-              </div>
-            </div>
-
-            <UiEmptyState v-if="standardAudioEffects.length === 0" :message="t('common.noData')" />
-          </div>
-        </CollapsibleEffectGroup>
-
-        <!-- Custom Audio Effects -->
-        <CollapsibleEffectGroup
-          v-model:is-collapsed="presetsStore.audioCustomCollapsed"
-          :title="t('fastcat.effects.groups.custom')"
-        >
-          <VueDraggable
-            :model-value="customAudioEffects"
-            class="flex flex-col gap-2"
-            :animation="150"
-            ghost-class="opacity-50"
-            handle=".drag-handle"
-            filter=".external-drag"
-            :prevent-on-filter="false"
-            @update:model-value="updateCustomEffectsOrder"
+      <template v-if="isAudioEffectsEnabled">
+        <!-- Audio Effects -->
+        <div v-show="activeTab === 'audio'" class="flex flex-col gap-4 pb-4">
+          <!-- Standard Audio Effects -->
+          <CollapsibleEffectGroup
+            v-model:is-collapsed="presetsStore.audioStandardCollapsed"
+            :title="t('fastcat.effects.groups.standard')"
           >
-            <div v-for="effect in customAudioEffects" :key="effect.type" class="relative group">
-              <div
-                class="absolute left-1 top-1/2 -translate-y-1/2 z-10 cursor-grab hover:text-ui-text text-ui-text-muted drag-handle opacity-0 group-hover:opacity-100 transition-opacity"
-              >
-                <UIcon name="i-heroicons-bars-2" class="w-4 h-4" />
+            <div class="flex flex-col gap-4">
+              <div v-if="hasAudioEffects(basicAudioEffects)">
+                <div class="grid grid-cols-1 gap-2">
+                  <EffectCard
+                    v-for="effect in basicAudioEffects"
+                    :key="effect.type"
+                    :manifest="effect"
+                    :is-selected="
+                      selectionStore.selectedEntity?.source === 'project' &&
+                      selectionStore.selectedEntity.kind === 'effect' &&
+                      selectionStore.selectedEntity.effectType === effect.type
+                    "
+                    :is-draggable="true"
+                    @pointer-down="handlePointerDown($event, effect.type, 'effect')"
+                    @click="selectEffect(effect.type)"
+                  />
+                </div>
               </div>
-              <EffectCard
-                :manifest="effect"
-                class="external-drag"
-                :is-selected="
-                  selectionStore.selectedEntity?.source === 'project' &&
-                  selectionStore.selectedEntity.kind === 'effect' &&
-                  selectionStore.selectedEntity.effectType === effect.type
-                "
-                :show-action="true"
-                :is-draggable="true"
-                @pointer-down="handlePointerDown($event, effect.type, 'effect')"
-                @click="selectEffect(effect.type)"
-                @action="presetsStore.removePreset(effect.type)"
+
+              <div v-if="hasAudioEffects(nonBasicAudioEffects)">
+                <h4 class="text-xs uppercase tracking-wide text-ui-text-muted mb-2">
+                  {{ t('fastcat.effects.groups.artistic') }}
+                </h4>
+                <div class="grid grid-cols-1 gap-2">
+                  <EffectCard
+                    v-for="effect in nonBasicAudioEffects"
+                    :key="effect.type"
+                    :manifest="effect"
+                    :is-selected="
+                      selectionStore.selectedEntity?.source === 'project' &&
+                      selectionStore.selectedEntity.kind === 'effect' &&
+                      selectionStore.selectedEntity.effectType === effect.type
+                    "
+                    :is-draggable="true"
+                    @pointer-down="handlePointerDown($event, effect.type, 'effect')"
+                    @click="selectEffect(effect.type)"
+                  />
+                </div>
+              </div>
+
+              <UiEmptyState
+                v-if="standardAudioEffects.length === 0"
+                :message="t('common.noData')"
               />
             </div>
-          </VueDraggable>
-          <UiEmptyState
-            v-if="customAudioEffects.length === 0"
-            :message="t('fastcat.effects.noCustomPresets')"
-          />
-        </CollapsibleEffectGroup>
-      </div>
+          </CollapsibleEffectGroup>
+
+          <!-- Custom Audio Effects -->
+          <CollapsibleEffectGroup
+            v-model:is-collapsed="presetsStore.audioCustomCollapsed"
+            :title="t('fastcat.effects.groups.custom')"
+          >
+            <VueDraggable
+              :model-value="customAudioEffects"
+              class="flex flex-col gap-2"
+              :animation="150"
+              ghost-class="opacity-50"
+              handle=".drag-handle"
+              filter=".external-drag"
+              :prevent-on-filter="false"
+              @update:model-value="updateCustomEffectsOrder"
+            >
+              <div v-for="effect in customAudioEffects" :key="effect.type" class="relative group">
+                <div
+                  class="absolute left-1 top-1/2 -translate-y-1/2 z-10 cursor-grab hover:text-ui-text text-ui-text-muted drag-handle opacity-0 group-hover:opacity-100 transition-opacity"
+                >
+                  <UIcon name="i-heroicons-bars-2" class="w-4 h-4" />
+                </div>
+                <EffectCard
+                  :manifest="effect"
+                  class="external-drag"
+                  :is-selected="
+                    selectionStore.selectedEntity?.source === 'project' &&
+                    selectionStore.selectedEntity.kind === 'effect' &&
+                    selectionStore.selectedEntity.effectType === effect.type
+                  "
+                  :show-action="true"
+                  :is-draggable="true"
+                  @pointer-down="handlePointerDown($event, effect.type, 'effect')"
+                  @click="selectEffect(effect.type)"
+                  @action="presetsStore.removePreset(effect.type)"
+                />
+              </div>
+            </VueDraggable>
+            <UiEmptyState
+              v-if="customAudioEffects.length === 0"
+              :message="t('fastcat.effects.noCustomPresets')"
+            />
+          </CollapsibleEffectGroup>
+        </div>
+      </template>
     </div>
   </div>
 </template>

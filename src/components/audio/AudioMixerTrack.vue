@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
+import { useWorkspaceStore } from '~/stores/workspace.store';
 import type { AudioClipEffect, TimelineTrack } from '~/timeline/types';
 import UiWheelSlider from '~/components/ui/UiWheelSlider.vue';
 import DbSlider from './DbSlider.vue';
@@ -16,7 +17,10 @@ const props = defineProps<{
 }>();
 
 const timelineStore = useTimelineStore();
+const workspaceStore = useWorkspaceStore();
 const { t } = useI18n();
+
+const isAudioEffectsEnabled = computed(() => workspaceStore.inDevelopmentFeaturesEnabled);
 
 const trackName = computed(() => props.track.name || props.track.id);
 const isMuted = computed(() => Boolean(props.track.audioMuted));
@@ -105,30 +109,32 @@ const {
       />
     </div>
 
-    <!-- Effects -->
-    <div class="w-full px-1.5 mb-1.5 shrink-0">
-      <div v-if="audioEffectsCount === 0" class="flex justify-center">
-        <UButton
-          size="xs"
-          variant="ghost"
-          color="neutral"
-          icon="i-heroicons-plus-circle"
-          class="w-full h-6 text-3xs px-1 py-0 justify-center whitespace-nowrap overflow-hidden hover:bg-primary-500/10 hover:text-primary-400 border border-transparent hover:border-primary-500/30"
-          @click="openSelectEffect"
+    <template v-if="isAudioEffectsEnabled">
+      <!-- Effects -->
+      <div class="w-full px-1.5 mb-1.5 shrink-0">
+        <div v-if="audioEffectsCount === 0" class="flex justify-center">
+          <UButton
+            size="xs"
+            variant="ghost"
+            color="neutral"
+            icon="i-heroicons-plus-circle"
+            class="w-full h-6 text-3xs px-1 py-0 justify-center whitespace-nowrap overflow-hidden hover:bg-primary-500/10 hover:text-primary-400 border border-transparent hover:border-primary-500/30"
+            @click="openSelectEffect"
+          >
+            {{ t('fastcat.effects.addEffect') }}
+          </UButton>
+        </div>
+        <div
+          v-else
+          class="w-full h-6 bg-primary-500/10 hover:bg-primary-500/20 text-primary-400 border border-primary-500/30 rounded flex items-center justify-center cursor-pointer transition-colors"
+          @click="openEffectsEditor"
         >
-          {{ t('fastcat.effects.addEffect') }}
-        </UButton>
+          <span class="text-3xs font-bold uppercase truncate px-1">
+            {{ t('fastcat.effects.effectsCount', { count: audioEffectsCount }) }}
+          </span>
+        </div>
       </div>
-      <div
-        v-else
-        class="w-full h-6 bg-primary-500/10 hover:bg-primary-500/20 text-primary-400 border border-primary-500/30 rounded flex items-center justify-center cursor-pointer transition-colors"
-        @click="openEffectsEditor"
-      >
-        <span class="text-3xs font-bold uppercase truncate px-1">
-          {{ t('fastcat.effects.effectsCount', { count: audioEffectsCount }) }}
-        </span>
-      </div>
-    </div>
+    </template>
 
     <!-- Volume Slider (Vertical) -->
     <div class="flex-1 w-full flex justify-center relative my-2 min-h-25">
@@ -198,13 +204,15 @@ const {
     </div>
 
     <!-- Modals -->
-    <SelectEffectModal
-      v-model:open="isSelectEffectModalOpen"
-      target="audio"
-      @select="handleSelectEffect"
-    />
+    <template v-if="isAudioEffectsEnabled">
+      <SelectEffectModal
+        v-model:open="isSelectEffectModalOpen"
+        target="audio"
+        @select="handleSelectEffect"
+      />
 
-    <TrackAudioEffectsModal v-model:open="isEffectsModalOpen" :track-id="track.id" />
+      <TrackAudioEffectsModal v-model:open="isEffectsModalOpen" :track-id="track.id" />
+    </template>
 
     <UiRenameModal
       :open="isRenameModalOpen"

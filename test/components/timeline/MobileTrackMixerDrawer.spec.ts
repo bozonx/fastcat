@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { reactive } from 'vue';
+import { reactive, computed } from 'vue';
 import { mountSuspended } from '@nuxt/test-utils/runtime';
 import MobileTrackMixerDrawer from '~/components/timeline/MobileTrackMixerDrawer.vue';
 
@@ -45,6 +45,12 @@ vi.mock('~/stores/timeline.store', () => ({
 vi.mock('~/stores/media.store', () => ({
   useMediaStore: () => mockMediaStore,
 }));
+
+const mockWorkspaceStore = reactive({
+  inDevelopmentFeaturesEnabled: computed(() => true),
+});
+
+vi.mock('~/stores/workspace.store', () => ({ useWorkspaceStore: () => mockWorkspaceStore }));
 
 const globalOptions = {
   stubs: {
@@ -138,5 +144,20 @@ describe('MobileTrackMixerDrawer', () => {
     // Skip the master slider (first), use the first track slider
     await sliders[1]!.setValue(-6);
     expect(updateTrackPropertiesMock).toHaveBeenCalled();
+  });
+
+  it('hides the track effects button when in-development features are disabled', async () => {
+    mockWorkspaceStore.inDevelopmentFeaturesEnabled = computed(() => false);
+
+    const wrapper = await mountSuspended(MobileTrackMixerDrawer, {
+      props: { isOpen: true },
+      global: globalOptions,
+    });
+
+    const effectButtons = wrapper.findAll('.u-button').filter((btn) => {
+      const icon = btn.attributes('data-icon');
+      return icon === 'i-heroicons-plus-circle';
+    });
+    expect(effectButtons.length).toBe(0);
   });
 });

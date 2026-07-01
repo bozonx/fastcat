@@ -487,7 +487,12 @@ const sortedProjects = computed(() => {
       </div>
 
       <!-- Create Project Modal (iOS Style Sheet) -->
-      <UiMobileDrawer v-model:open="isCreateModalOpen" :title="t('fastcat.projects.newProject')">
+      <UiMobileDrawer
+        v-model:open="isCreateModalOpen"
+        :title="t('fastcat.projects.newProject')"
+        :dismissible="!workspaceStore.isLoading"
+        :show-close="!workspaceStore.isLoading"
+      >
         <div class="space-y-6 px-6 pt-2 pb-6">
           <UiFormField
             :label="t('fastcat.projects.projectNamePlaceholder')"
@@ -497,6 +502,7 @@ const sortedProjects = computed(() => {
               v-model="projectCreationSettings.name"
               :placeholder="t('fastcat.projects.projectNamePlaceholder')"
               variant="none"
+              :disabled="workspaceStore.isLoading"
               full-width
               :ui="{
                 base: 'h-16 text-xl font-bold px-6 bg-ui-bg-elevated/50 border border-white/5 rounded-3xl focus:ring-2 focus:ring-primary-500 transition-all placeholder:text-ui-text-muted',
@@ -506,12 +512,11 @@ const sortedProjects = computed(() => {
             />
           </UiFormField>
 
-          <div class="flex items-center gap-3">
-            <UCheckbox v-model="projectCreationSettings.specifyProjectSettings" />
-            <span class="text-ui-text text-sm">{{
-              t('fastcat.projects.specifyProjectSettings')
-            }}</span>
-          </div>
+          <UCheckbox
+            v-model="projectCreationSettings.specifyProjectSettings"
+            :label="t('fastcat.projects.specifyProjectSettings')"
+            :disabled="workspaceStore.isLoading"
+          />
 
           <UiAlert v-if="!projectCreationSettings.specifyProjectSettings">
             {{ t('fastcat.projects.autoDetectHint') }}
@@ -527,6 +532,7 @@ const sortedProjects = computed(() => {
               v-model:aspect-ratio="projectCreationSettings.aspectRatio"
               v-model:is-custom-resolution="projectCreationSettings.isCustomResolution"
               v-model:sample-rate="projectCreationSettings.sampleRate"
+              :disabled="workspaceStore.isLoading"
             />
           </div>
         </div>
@@ -536,6 +542,7 @@ const sortedProjects = computed(() => {
             <UButton
               variant="ghost"
               color="neutral"
+              :disabled="workspaceStore.isLoading"
               :label="t('common.cancel')"
               @click="void (isCreateModalOpen = false)"
             />

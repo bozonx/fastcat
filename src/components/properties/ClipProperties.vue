@@ -61,6 +61,7 @@ const fileManager = useFileManager();
 const uiStore = useUiStore();
 const workspaceStore = useWorkspaceStore();
 const isHudFeatureEnabled = computed(() => workspaceStore.isFeatureEnabled('hud'));
+const isAudioEffectsFeatureEnabled = computed(() => workspaceStore.inDevelopmentFeaturesEnabled);
 const focusStore = useFocusStore();
 const fileManagerStore = inject('fileManagerStore', useFileManagerStore()) as ReturnType<
   typeof useFileManagerStore
@@ -662,7 +663,7 @@ defineExpose({
       />
 
       <ClipEffectsEditor
-        v-if="canEditAudioEffects"
+        v-if="isAudioEffectsFeatureEnabled && canEditAudioEffects"
         v-model:enabled="isAudioEffectsEnabled"
         target="audio"
         :effects="clipAudioEffects"

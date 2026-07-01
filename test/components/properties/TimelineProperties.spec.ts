@@ -39,11 +39,8 @@ vi.mock('~/components/properties/PropertyActionsBlock.vue', () => ({
     template: '<div data-testid="actions-block"></div>',
   },
 }));
-vi.mock('~/components/effects/EffectsEditor.vue', () => ({
-  default: { name: 'EffectsEditor', template: '<div></div>' },
-}));
-vi.mock('~/components/effects/AudioEffectsEditor.vue', () => ({
-  default: { name: 'AudioEffectsEditor', template: '<div></div>' },
+vi.mock('~/components/effects/ClipEffectsEditor.vue', () => ({
+  default: { name: 'ClipEffectsEditor', props: ['target'], template: '<div></div>' },
 }));
 vi.mock('~/components/properties/file/FileGeneralInfoSection.vue', () => ({
   default: { name: 'FileGeneralInfoSection', template: '<div></div>' },
@@ -129,6 +126,13 @@ vi.mock('~/stores/timeline-media-usage.store', () => ({
   useTimelineMediaUsageStore: () => ({}),
 }));
 
+const mockWorkspaceStore = reactive({
+  inDevelopmentFeaturesEnabled: computed(() => true),
+  userSettings: { presets: {} },
+});
+
+vi.mock('~/stores/workspace.store', () => ({ useWorkspaceStore: () => mockWorkspaceStore }));
+
 vi.mock('~/composables/file-manager/useFileManager', () => ({
   useFileManager: () => mockFileManager,
 }));
@@ -174,6 +178,7 @@ vi.mock('~/stores/project-tabs.store', () => ({
 describe('TimelineProperties', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockWorkspaceStore.inDevelopmentFeaturesEnabled = computed(() => true);
     mockProjectStore.currentTimelinePath = 'timelines/main.otio';
     mockProjectStore.isReadOnly = false;
     mockTimelineStore.previewMode = false;
@@ -276,5 +281,19 @@ describe('TimelineProperties', () => {
     expect(mockFocusStore.setActiveTimelinePath).toHaveBeenCalledWith(
       'timelines/inactive_copy.otio',
     );
+  });
+
+  it('hides the master audio effects editor when in-development features are disabled', async () => {
+    mockWorkspaceStore.inDevelopmentFeaturesEnabled = computed(() => false);
+    mockTimelineStore.timelineDoc.metadata.fastcat.masterEffects = [
+      { target: 'audio', type: 'test' } as any,
+    ];
+
+    const wrapper = await mountSuspended(TimelineProperties);
+
+    const audioEffectsEditor = wrapper
+      .findAllComponents({ name: 'ClipEffectsEditor' })
+      .find((c) => c.props('target') === 'audio');
+    expect(audioEffectsEditor).toBeUndefined();
   });
 });

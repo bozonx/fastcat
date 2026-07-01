@@ -125,6 +125,7 @@ export function useProjectManagement(options: { isMobile?: boolean } = {}) {
   const isDuplicateNameValid = computed(() => !duplicateError.value);
 
   async function createNewProject() {
+    if (workspaceStore.isLoading) return;
     const name = projectCreationSettings.value.name.trim();
     if (!isCreateNameValid.value) return;
 
@@ -163,9 +164,6 @@ export function useProjectManagement(options: { isMobile?: boolean } = {}) {
     } else {
       handleOpenProject(name);
     }
-
-    isCreateModalOpen.value = false;
-    projectCreationSettings.value = createProjectCreationState(workspaceStore);
   }
 
   function startCreateProject() {

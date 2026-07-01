@@ -61,6 +61,8 @@ export const useProjectTabsStore = defineStore('projectTabs', () => {
     if (params.tabOrder) tabOrder.value = params.tabOrder;
     if (params.hiddenStaticTabs) hiddenStaticTabs.value = params.hiddenStaticTabs;
     if (params.activeTabId !== undefined) activeTabId.value = params.activeTabId;
+
+    initDefaultTab();
   }
 
   function registerProjectTab(tab: ProjectTab) {

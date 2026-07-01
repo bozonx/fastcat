@@ -31,6 +31,7 @@ export function useGlobalDragAndDrop() {
   const fm = useFileManager();
   const { t } = useI18n();
   const { draggedFile } = useDraggedFile();
+  const toast = useToast();
 
   const { hotkeyLookup, defaultHotkeyLookup } = useEffectiveHotkeys();
   const {
@@ -244,6 +245,7 @@ export function useGlobalDragAndDrop() {
             isTauriNativeInternalDrag = false;
             tauriNativeInternalDragPayload = null;
           } else if (event.payload.type === 'drop') {
+            const wasOverlayVisible = uiStore.isGlobalDragging;
             hideGlobalDragOverlay();
 
             if (hasActiveInternalDrag || isTauriNativeInternalDrag) {
@@ -258,17 +260,29 @@ export function useGlobalDragAndDrop() {
 
             // Detect target folder from drop position before DOM is updated
             let targetDirPath: string | undefined;
+            let isAutoZone = false;
             try {
               if (event.payload.position) {
                 const scale = getDevicePixelRatio();
                 const x = event.payload.position.x / scale;
                 const y = event.payload.position.y / scale;
                 const el = elementFromPoint(x, y);
-                const folderEl = el?.closest('[data-folder-path]');
-                targetDirPath = folderEl?.getAttribute('data-folder-path') || undefined;
+                if (el) {
+                  const folderEl = el.closest('[data-folder-path]');
+                  targetDirPath = folderEl?.getAttribute('data-folder-path') || undefined;
+                  isAutoZone = !!el.closest('.global-drop-overlay-auto-zone');
+                }
               }
             } catch (e) {
               log.warn('Failed to detect drop target folder from position', e);
+            }
+
+            if (wasOverlayVisible && !isAutoZone && !targetDirPath) {
+              toast.add({
+                color: 'neutral',
+                title: t('videoEditor.fileManager.dropOverlay.cancelled'),
+              });
+              return;
             }
 
             isDropInProgress.value = true;

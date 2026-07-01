@@ -15,6 +15,7 @@ const workspaceStore = useWorkspaceStore();
 const emit = defineEmits<{
   (e: 'drop-to-auto', files: File[]): void;
   (e: 'drop-to-folder', files: File[], targetDirPath: string): void;
+  (e: 'drop-outside'): void;
 }>();
 
 const { t } = useI18n();
@@ -148,6 +149,21 @@ onUnmounted(() => {
   window.removeEventListener('fastcat:tauri-drag-leave', onTauriDragLeave);
 });
 
+function onBackdropDragOver(e: DragEvent) {
+  if (hasInternalFileManagerDragType(e.dataTransfer?.types)) return;
+  if (!e.dataTransfer?.types.includes('Files')) return;
+  e.preventDefault();
+  e.stopPropagation();
+  e.dataTransfer.dropEffect = 'none';
+}
+
+function onBackdropDrop(e: DragEvent) {
+  if (hasInternalFileManagerDragType(e.dataTransfer?.types)) return;
+  e.preventDefault();
+  e.stopPropagation();
+  emit('drop-outside');
+}
+
 // Folder icon by name convention
 function getFolderIcon(name: string): string {
   const lower = name.toLowerCase();
@@ -164,6 +180,8 @@ function getFolderIcon(name: string): string {
 <template>
   <div
     class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm transition-opacity pointer-events-auto"
+    @dragover="onBackdropDragOver"
+    @drop="onBackdropDrop"
   >
     <div
       class="flex w-full max-w-4xl mx-4 gap-0 rounded-2xl overflow-hidden border border-ui-border/60 shadow-2xl bg-ui-bg-elevated/95 backdrop-blur-md max-h-[80vh]"

@@ -4,6 +4,7 @@ import { useTimelineStore } from '~/stores/timeline.store';
 import { useUiStore } from '~/stores/ui.store';
 import { useMediaStore } from '~/stores/media.store';
 import { useProxyStore } from '~/stores/proxy.store';
+import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useFileManager } from '~/composables/file-manager/useFileManager';
 import { useEntryPreview } from '~/composables/file-manager/useEntryPreview';
 import { revealFileManagerEntry } from '~/composables/file-manager/revealFileManagerEntry';
@@ -57,6 +58,7 @@ const projectStore = useProjectStore();
 const uiStore = useUiStore();
 const mediaStore = useMediaStore();
 const proxyStore = useProxyStore();
+const workspaceStore = useWorkspaceStore();
 const fileManager = useFileManager();
 const selectionStore = useSelectionStore();
 const { setActiveTab } = useProjectTabsStore();
@@ -357,6 +359,8 @@ const masterAudioEffects = computed(() =>
   ),
 );
 
+const isAudioEffectsEnabled = computed(() => workspaceStore.inDevelopmentFeaturesEnabled);
+
 function updateFormat(patch: TimelineFormatInput) {
   void timelineStore.updateTimelineFormat({
     ...timelineStore.timelineFormat,
@@ -573,7 +577,7 @@ const addTrackActions = computed(() => [
     </div>
 
     <ClipEffectsEditor
-      v-if="!finalIsReadOnly"
+      v-if="isAudioEffectsEnabled && !finalIsReadOnly"
       target="audio"
       :effects="masterAudioEffects"
       @update:effects="handleUpdateMasterAudioEffects"

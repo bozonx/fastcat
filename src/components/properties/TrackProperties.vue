@@ -74,6 +74,8 @@ const trackAudioEffects = computed(() =>
   ),
 );
 
+const isAudioEffectsEnabled = computed(() => workspaceStore.inDevelopmentFeaturesEnabled);
+
 function handleUpdateTrackEffects(effects: Array<VideoClipEffect | AudioClipEffect>) {
   const audioEffects = (props.track.effects ?? []).filter(
     (e): e is AudioClipEffect => e?.target === 'audio',
@@ -249,7 +251,7 @@ const clipCount = computed(
     />
 
     <ClipEffectsEditor
-      v-if="track.kind === 'audio' || track.kind === 'video'"
+      v-if="isAudioEffectsEnabled && (track.kind === 'audio' || track.kind === 'video')"
       target="audio"
       :effects="trackAudioEffects"
       @update:effects="handleUpdateTrackAudioEffects"

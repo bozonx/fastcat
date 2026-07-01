@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { mountSuspended } from '@nuxt/test-utils/runtime';
-import { reactive } from 'vue';
+import { reactive, computed } from 'vue';
 import AudioMixerTrack from '~/components/audio/AudioMixerTrack.vue';
 import { linearToDb, dbToLinear } from '~/utils/audio';
 
@@ -44,6 +44,12 @@ const mockTimelineStore = reactive({
 });
 
 vi.mock('~/stores/timeline.store', () => ({ useTimelineStore: () => mockTimelineStore }));
+
+const mockWorkspaceStore = reactive({
+  inDevelopmentFeaturesEnabled: computed(() => true),
+});
+
+vi.mock('~/stores/workspace.store', () => ({ useWorkspaceStore: () => mockWorkspaceStore }));
 
 describe('AudioMixerTrack', () => {
   beforeEach(() => {
@@ -170,5 +176,17 @@ describe('AudioMixerTrack', () => {
     await modal.vm.$emit('rename', 'New Audio Name');
 
     expect(mockTimelineStore.renameTrack).toHaveBeenCalledWith('track-1', 'New Audio Name');
+  });
+
+  it('hides the effects block when in-development features are disabled', async () => {
+    mockWorkspaceStore.inDevelopmentFeaturesEnabled = computed(() => false);
+
+    const component = await mountSuspended(AudioMixerTrack, {
+      props: { track: baseTrack },
+    });
+
+    const buttons = component.findAll('button');
+    const effectBtn = buttons.find((b) => b.text().toLowerCase().includes('effect'));
+    expect(effectBtn).toBeUndefined();
   });
 });
