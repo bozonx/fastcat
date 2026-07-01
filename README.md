@@ -368,8 +368,8 @@ the GPU-fragile ones stay out of the merge gate. Two things used to both be call
 | Integration/unit (native) | `src-tauri/tests/`, Rust `#[test]`s (incl. logic parity) | `pnpm test:native` | gate |
 | E2E — smoke | `test/e2e/smoke/` | `pnpm test:e2e:smoke` | gate |
 | E2E — full | `test/e2e/web/` | `pnpm test:e2e` | gate |
-| Golden (web) | `test/golden/` + `test/golden-helpers/` | `pnpm test:golden:web` | nightly, non-gate |
-| Golden (native) | `src-tauri/tests/engine_parity.rs` | `pnpm test:golden:native` | nightly, non-gate |
+| Golden (web) | `test/golden/` + `test/golden-helpers/` | `pnpm test:golden:web` | manual (GPU) |
+| Golden (native) | `src-tauri/tests/engine_parity.rs` | `pnpm test:golden:native` | manual (GPU) |
 
 `test/integration/golden-registry/` holds CPU vitest checks that validate the
 golden registry integrity and scene coverage (no GPU), and runs with the web
@@ -444,7 +444,7 @@ By default these tests **skip gracefully** when WebGPU, ffmpeg, or a wgpu adapte
 is unavailable (so `pnpm check` stays green on GPU-less machines). In CI they run
 with `REQUIRE_WEBGPU=1` / `REQUIRE_TEST_DEPS=1`, which turns a missing adapter
 into a hard failure — a green golden job must have actually rendered something.
-See `.github/workflows/golden.yml` (nightly, non-blocking) and `scripts/ci.sh`.
+Run them manually via `bash scripts/ci.sh golden-web` / `golden-native` when GPU is available.
 
 ### Export Testing
 

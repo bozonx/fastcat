@@ -18,10 +18,10 @@ set -euo pipefail
 #   golden-native   native rendered-frame golden      (host, GPU, non-gate)
 #
 # The golden tiers compare real GPU output against shared/golden and are GPU-
-# fragile under SwiftShader, so they are wired as non-blocking jobs. They set
+# fragile under SwiftShader, so they are not wired into CI. They set
 # REQUIRE_WEBGPU / REQUIRE_TEST_DEPS so a *missing* adapter fails loudly (a
 # green run must have actually rendered), while a genuine pixel mismatch is the
-# expected, reported outcome.
+# expected, reported outcome. Run them manually when GPU is available.
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT_DIR"

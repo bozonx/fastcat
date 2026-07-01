@@ -2,7 +2,8 @@ name: CI
 
 # Blocking merge gate. Every job is CPU-only (or SwiftShader-tolerant) so it is
 # deterministic on GitHub-hosted runners. GPU-fragile rendered-frame comparisons
-# live in golden.yml and are intentionally NOT part of this gate.
+# (golden tiers) are intentionally NOT part of this gate — run them manually via
+# `bash scripts/ci.sh golden-web` / `golden-native` when needed.
 
 on:
   push:

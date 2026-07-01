@@ -34,7 +34,7 @@ both be called "parity" — keep them distinct:
 
 - `test:integration:native` is a curated fast **subset** of `test:native` (the latter runs the whole Rust suite incl. logic parity + golden, skipping GPU gracefully).
 - `pnpm test` runs all Vitest tiers (unit + components + integration + golden-helpers) in one pass; `pnpm check` runs everything incl. e2e/golden; `pnpm check:fast` is the quick static + unit + web-integration loop.
-- CI tiers are dispatched by `scripts/ci.sh <tier>` (blocking gate in `.github/workflows/ci.yml`; nightly non-blocking golden in `golden.yml`).
+- CI tiers are dispatched by `scripts/ci.sh <tier>` (blocking gate in `.github/workflows/ci.yml`; golden tiers are GPU-dependent and run manually, not in CI).
 - `test/fixtures/` — Static assets and mock data for tests.
 - `test/vitest.setup.ts` — Global configuration and mocks for Vitest.
 
