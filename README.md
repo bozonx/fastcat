@@ -319,6 +319,11 @@ The project uses a structured testing approach:
 - **E2E Tests** (`test/e2e/`): Full application flows in the browser. Run via `pnpm test:e2e`.
 - **Cross-Engine Parity Tests** (`test/e2e/parity/` + `test/integration/engine-parity/` + `test/parity-helpers/` + `src-tauri/tests/engine_parity.rs`): Verify the web (PixiJS/WebGPU) and native (Vello/wgpu) video engines produce visually identical output for the same scenes. Integration tests validate golden registry integrity, scene coverage, and cross-engine hash parity. Run via `pnpm test:parity`.
 
+For desktop-web Playwright scenarios, keep project creation as a dedicated UI flow
+(`test/e2e/web/project-creation.spec.ts`). Scenario tests that need an open
+project should use `e2eProject` from `test/e2e/fixtures/workspace.ts` so they
+start from a prepared OPFS workspace instead of repeating the full creation path.
+
 Before running E2E tests for the first time, install the Playwright browser:
 
 ```bash

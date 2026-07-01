@@ -1,4 +1,10 @@
-import { test, expect } from '../fixtures/workspace';
+import {
+  E2E_PROJECT_DIRS,
+  createE2eProject,
+  expect,
+  selectE2eWorkspace,
+  test,
+} from '../fixtures/workspace';
 import {
   listOpfsDirectory,
   opfsEntryExists,
@@ -11,44 +17,19 @@ test.describe('Web project creation', () => {
     e2eWorkspace,
   }) => {
     const projectName = `Project ${Date.now().toString(36)}`;
-    const encodedProjectName = encodeURIComponent(projectName);
-    const projectPath = `${e2eWorkspace.name}/projects/${projectName}`;
-    const timelinePath = `${projectPath}/_timelines/${projectName}_001.otio`;
+    await selectE2eWorkspace(page, e2eWorkspace);
+    const project = await createE2eProject(page, e2eWorkspace, projectName);
 
-    await page.goto('/');
-    await page.getByRole('button', { name: 'Select Workspace Folder' }).click();
+    await expect.poll(() => opfsEntryExists(page, project.path), { timeout: 10_000 }).toBe(true);
 
-    await expect(page.getByText(e2eWorkspace.name)).toBeVisible();
+    const entries = await listOpfsDirectory(page, project.path);
+    expect(entries).toEqual(expect.arrayContaining([...E2E_PROJECT_DIRS]));
 
-    await page.getByRole('button', { name: 'New Project' }).click();
-    await page.getByPlaceholder('Project name').fill(projectName);
-    await page.getByRole('button', { name: 'Create' }).click();
+    await expect
+      .poll(() => opfsEntryExists(page, project.timelinePath), { timeout: 10_000 })
+      .toBe(true);
 
-    await expect(page).toHaveURL(new RegExp(`/editor/${encodedProjectName}`));
-
-    // Verify timeline is visible in the UI
-    await expect(page.getByTestId('timeline-container')).toBeVisible();
-
-    // Verify project directory exists in OPFS
-    await expect.poll(() => opfsEntryExists(page, projectPath), { timeout: 10_000 }).toBe(true);
-
-    // Verify standard project sub-directories were created
-    const entries = await listOpfsDirectory(page, projectPath);
-    expect(entries).toEqual(
-      expect.arrayContaining([
-        { name: '_video', kind: 'directory' },
-        { name: '_audio', kind: 'directory' },
-        { name: '_images', kind: 'directory' },
-        { name: '_timelines', kind: 'directory' },
-        { name: '_export', kind: 'directory' },
-        { name: '.fastcat', kind: 'directory' },
-      ]),
-    );
-
-    // Verify timeline file was created and contains valid OTIO data
-    await expect.poll(() => opfsEntryExists(page, timelinePath), { timeout: 10_000 }).toBe(true);
-
-    const timeline = JSON.parse(await readTextFileFromOpfs(page, timelinePath)) as {
+    const timeline = JSON.parse(await readTextFileFromOpfs(page, project.timelinePath)) as {
       OTIO_SCHEMA?: string;
       name?: string;
     };
