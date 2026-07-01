@@ -19,7 +19,6 @@ import { dropdownNoReturnFocus } from '~/composables/useDropdownMenuFocus';
 const { t, locale: _locale } = useI18n();
 const workspaceStore = useWorkspaceStore();
 const isSettingsOpen = ref(false);
-const canChangeWorkspace = computed(() => workspaceStore.workspaceProviderId !== 'tauri');
 
 const {
   searchQuery,
@@ -208,27 +207,7 @@ const sortedProjects = computed(() => {
 
       <!-- Bottom Actions -->
       <div class="mt-auto p-4 border-t border-ui-border space-y-4">
-        <!-- Workspace Info -->
-        <div v-if="workspaceStore.workspaceProviderId !== 'tauri'" class="space-y-2">
-          <span class="text-[10px] font-bold text-ui-text-muted uppercase tracking-wider block">
-            {{ t('fastcat.projects.workspaceTitle') }}
-          </span>
-          <p class="text-xs font-medium text-ui-text truncate">
-            {{ workspaceStore.workspaceHandle?.name }}
-          </p>
-        </div>
-
         <div class="space-y-1">
-          <UButton
-            v-if="canChangeWorkspace"
-            block
-            variant="ghost"
-            color="primary"
-            icon="i-heroicons-folder-open"
-            :label="t('fastcat.projects.changeWorkspace')"
-            class="justify-start px-3"
-            @click="workspaceStore.resetWorkspace"
-          />
           <UButton
             block
             variant="ghost"

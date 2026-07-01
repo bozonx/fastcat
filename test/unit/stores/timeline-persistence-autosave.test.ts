@@ -50,6 +50,7 @@ vi.mock('~/stores/project.store', () => ({
 
 const mockWorkspaceStore = reactive({
   userSettings: JSON.parse(JSON.stringify(DEFAULT_USER_SETTINGS)),
+  inDevelopmentFeaturesEnabled: true,
   workspaceState: {
     fileBrowser: {
       instances: {},
@@ -227,7 +228,7 @@ describe('Timeline Persistence and AutoSave', () => {
 
   it('triggers backup after a successful save', async () => {
     // Enable backup in user settings
-    (mockWorkspaceStore.userSettings as any).backup = { count: 5 };
+    (mockWorkspaceStore.userSettings as any).backup = { enabled: true, count: 5 };
 
     const timelineStore = useTimelineStore();
     timelineStore.timelineDoc = {
@@ -407,7 +408,7 @@ describe('Timeline Persistence and AutoSave', () => {
     });
 
     it('does not create backup on explicit save on mobile', async () => {
-      (mockWorkspaceStore.userSettings as any).backup = { count: 5 };
+      (mockWorkspaceStore.userSettings as any).backup = { enabled: true, count: 5 };
 
       const timelineStore = useTimelineStore();
       timelineStore.timelineDoc = {

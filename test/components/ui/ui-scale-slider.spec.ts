@@ -126,7 +126,7 @@ describe('UiScaleSlider', () => {
       expect(component.text()).toContain('3');
       // Options: 0.5 (0%), 1.0 (50%), 5.0 (100%).
       // 3.0 is exactly halfway between 1.0 (50%) and 5.0 (100%) -> 75%
-      const thumb = component.find('.pointer-events-auto');
+      const thumb = component.find('.absolute.pointer-events-none[style*="left:"]');
       expect(thumb.attributes('style')).toContain('left: 75%');
     });
   });

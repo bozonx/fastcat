@@ -616,7 +616,6 @@
     },
     "projects": {
       "autoDetectHint": "Разрешение и частота кадров проекта будут автоматически определены из первого видео, добавленного на таймлайн.",
-      "changeWorkspace": "Сменить рабочую область",
       "newProject": "Новый проект",
       "noProjectsFound": "Проекты не найдены",
       "projectNamePlaceholder": "Название проекта",
@@ -626,7 +625,6 @@
       "sortByName": "По имени",
       "switchToMobile": "Мобильная версия",
       "title": "Проекты",
-      "workspaceTitle": "Рабочая область",
       "localWorkspaceName": "Локальный диск",
       "projectLocation": "Папка проекта",
       "openProjectDisk": "Открыть проект с диска",

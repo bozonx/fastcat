@@ -1,8 +1,9 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { reactive } from 'vue';
 import { mountWithNuxt } from '../../utils/mount';
 import ProjectMarkers from '~/components/project/ProjectMarkers.vue';
 import MarkerExportModal from '~/components/project/MarkerExportModal.vue';
-import { reactive } from 'vue';
+import { useWorkspaceStore } from '~/stores/workspace.store';
 
 const mockTimelineStore = reactive({
   markers: [] as any[],
@@ -31,12 +32,21 @@ vi.mock('~/components/project/MarkerThumbnail.vue', () => ({
 }));
 
 describe('ProjectMarkers.vue', () => {
+  const workspaceStore = useWorkspaceStore();
+  let premiumFeaturesEnabledOriginal: boolean;
+
   beforeEach(() => {
     vi.clearAllMocks();
+    premiumFeaturesEnabledOriginal = workspaceStore.premiumFeaturesEnabled ?? false;
+    workspaceStore.premiumFeaturesEnabled = true;
     mockTimelineStore.markers = [];
     mockTimelineStore.timelineFormat = { fps: 30 };
     mockSelectionStore.selectedEntity = null;
     mockSelectionStore.isMarkerSelected.mockReturnValue(false);
+  });
+
+  afterEach(() => {
+    workspaceStore.premiumFeaturesEnabled = premiumFeaturesEnabledOriginal;
   });
 
   it('renders empty state when no markers', async () => {

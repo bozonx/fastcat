@@ -120,6 +120,20 @@ export function createWorkspaceInitModule(deps: WorkspaceInitDeps): WorkspaceIni
   }
 
   async function init() {
+    // Clean up legacy storage if any
+    if (typeof window !== 'undefined') {
+      try {
+        if (window.localStorage) {
+          window.localStorage.removeItem('fastcat_web_workspace_name');
+        }
+        if (window.indexedDB) {
+          window.indexedDB.deleteDatabase('FastCat');
+        }
+      } catch (e) {
+        log.warn('Failed to clean up legacy storage:', e);
+      }
+    }
+
     if (deps.isEphemeral.value) {
       deps.isInitializing.value = false;
       return;

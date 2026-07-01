@@ -616,7 +616,6 @@
     },
     "projects": {
       "autoDetectHint": "Project resolution and framerate will be automatically detected from the first video added to the timeline.",
-      "changeWorkspace": "Change Workspace",
       "newProject": "New Project",
       "noProjectsFound": "No projects found",
       "projectNamePlaceholder": "Project name",
@@ -626,7 +625,6 @@
       "sortByName": "By name",
       "switchToMobile": "Mobile version",
       "title": "Projects",
-      "workspaceTitle": "Workspace",
       "localWorkspaceName": "Local Disk",
       "projectLocation": "Project Location",
       "openProjectDisk": "Open Project from Disk",

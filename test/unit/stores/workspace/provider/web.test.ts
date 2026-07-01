@@ -57,24 +57,19 @@ describe('WebWorkspaceProvider', () => {
     expect(result).toBe(handle);
   });
 
-  it('uses the configured OPFS sandbox name from localStorage', async () => {
-    const handle = { name: 'e2e-workspace', kind: 'directory' };
+  it('uses the default OPFS sandbox name', async () => {
+    const handle = { name: 'fastcat-workspace', kind: 'directory' };
     const getDirectoryHandle = vi.fn().mockResolvedValue(handle);
     const getDirectory = vi.fn().mockResolvedValue({ getDirectoryHandle });
 
     vi.stubGlobal('navigator', {
       storage: { getDirectory },
     });
-    vi.stubGlobal('window', {
-      localStorage: {
-        getItem: vi.fn().mockReturnValue('e2e-workspace'),
-      },
-    });
 
     const provider = new WebWorkspaceProvider(makeStorage() as any);
     await provider.restoreWorkspace();
 
-    expect(getDirectoryHandle).toHaveBeenCalledWith('e2e-workspace', { create: true });
+    expect(getDirectoryHandle).toHaveBeenCalledWith('fastcat-workspace', { create: true });
   });
 
   it('saveWorkspace calls storage.set', async () => {
