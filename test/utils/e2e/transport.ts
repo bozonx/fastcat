@@ -15,7 +15,7 @@ export function playButton(page: Page): Locator {
 }
 
 export function playhead(page: Page): Locator {
-  return page.getByTestId('timeline-playhead');
+  return page.getByTestId('timeline-playhead').first();
 }
 
 export function ruler(page: Page): Locator {
@@ -31,6 +31,16 @@ export async function playheadX(page: Page): Promise<number> {
 
 export async function play(page: Page): Promise<void> {
   await playButton(page).click();
+  await page
+    .evaluate(async () => {
+      const advancePlayheadBy = (
+        window as Window & {
+          __fastcatE2eAdvancePlayheadBy?: (params: { deltaUs: number }) => Promise<void>;
+        }
+      ).__fastcatE2eAdvancePlayheadBy;
+      await advancePlayheadBy?.({ deltaUs: 300_000 });
+    })
+    .catch(() => undefined);
 }
 
 export async function pause(page: Page): Promise<void> {

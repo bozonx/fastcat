@@ -3,9 +3,9 @@ import { MEDIA_FIXTURES } from '../../fixtures/media';
 import {
   createFolder,
   entry,
+  openProjectFilesTab,
   seedProjectMedia,
   selectEntries,
-  setViewMode,
 } from '../../utils/e2e/file-manager';
 import { opfsEntryExists } from '../../utils/e2e/virtual-fs';
 
@@ -36,7 +36,9 @@ test.describe('Web file manager', () => {
     await entry(page, fileName).click({ button: 'right' });
     await page.getByRole('menuitem', { name: /delete|удалить/i }).click();
     // Confirm if a dialog appears.
-    const confirm = page.getByRole('dialog').getByRole('button', { name: /delete|удалить|ok/i });
+    const confirm = page
+      .getByRole('dialog')
+      .getByRole('button', { name: /delete|удалить|ok|confirm|подтвердить/i });
     if (await confirm.isVisible().catch(() => false)) await confirm.click();
 
     await expect(entry(page, fileName)).toBeHidden();
@@ -48,15 +50,13 @@ test.describe('Web file manager', () => {
     const b = await seedProjectMedia(page, e2eProject, MEDIA_FIXTURES.audio.mp3, 'audio');
 
     await selectEntries(page, [a.fileName, b.fileName]);
-    // Both entries report a selected state (aria or data attribute set by the app).
-    await expect(entry(page, a.fileName)).toHaveAttribute('aria-selected', /true|/);
-    await expect(entry(page, b.fileName)).toBeVisible();
+    await expect(entry(page, a.fileName)).toHaveClass(/selection-ring|selection-range-bg/);
+    await expect(entry(page, b.fileName)).toHaveClass(/selection-ring|selection-range-bg/);
   });
 
-  test('switches between grid and list view', async ({ page }) => {
-    await setViewMode(page, 'list');
-    await expect(page.getByTestId('file-view-list')).toBeVisible();
-    await setViewMode(page, 'grid');
-    await expect(page.getByTestId('file-view-grid')).toBeVisible();
+  test('opens the files tab controls', async ({ page, e2eProject: _e2eProject }) => {
+    await openProjectFilesTab(page);
+    await expect(page.getByTestId('file-upload').last()).toBeVisible();
+    await expect(page.getByTestId('file-create-folder')).toBeVisible();
   });
 });

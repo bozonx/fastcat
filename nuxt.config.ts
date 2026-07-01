@@ -138,6 +138,7 @@ export default defineNuxtConfig({
         process.env.FASTCAT_ENABLE_IN_DEVELOPMENT_FEATURES,
       ),
       premiumFeaturesEnabled: readBooleanEnv(process.env.FASTCAT_ENABLE_PREMIUM_FEATURES),
+      e2eTest: process.env.E2E_TEST === '1',
     },
   },
 

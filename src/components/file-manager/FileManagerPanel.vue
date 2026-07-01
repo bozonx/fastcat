@@ -491,6 +491,7 @@ useFileManagerPanelBootstrap({
         </UiTooltip>
         <UiTooltip :text="t('videoEditor.fileManager.actions.uploadFiles')">
           <UiActionButton
+            data-testid="file-upload"
             icon="i-heroicons-arrow-up-tray"
             variant="ghost"
             color="neutral"

@@ -1,7 +1,5 @@
-import { readFileSync } from 'node:fs';
 import { basename } from 'node:path';
 import { expect, type Locator, type Page } from '@playwright/test';
-import { writeFileToOpfs } from './virtual-fs';
 import type { E2eProject } from '../../e2e/fixtures/workspace';
 
 /**
@@ -34,6 +32,8 @@ export interface SeededMedia {
   fileName: string;
   /** Absolute OPFS path of the written media file. */
   opfsPath: string;
+  /** File-manager path relative to the project root. */
+  uiPath: string;
 }
 
 /**
@@ -48,20 +48,29 @@ export async function seedProjectMedia(
   kind: 'video' | 'audio' | 'image',
 ): Promise<SeededMedia> {
   const fileName = basename(fixtureAbsPath);
-  const opfsPath = `${project.path}/${MEDIA_SUBDIR[kind]}/${fileName}`;
-  const bytes = readFileSync(fixtureAbsPath);
+  const fallbackUiPath = `${MEDIA_SUBDIR[kind]}/${fileName}`;
 
-  await writeFileToOpfs(page, { path: opfsPath, data: new Uint8Array(bytes) });
-  await page.goto(`/editor/${project.encodedName}`);
   await expect(page.getByTestId('timeline-container')).toBeVisible();
-  await expect(entry(page, fileName)).toBeVisible({ timeout: 15_000 });
+  await openProjectFilesTab(page);
+  await importViaUpload(page, [fixtureAbsPath]);
 
-  return { fileName, opfsPath };
+  const fileEntry = entry(page, fileName);
+  await expect(fileEntry).toBeVisible({ timeout: 20_000 });
+
+  const uiPath = (await fileEntry.getAttribute('data-entry-path')) ?? fallbackUiPath;
+  const opfsPath = `${project.path}/${uiPath}`;
+
+  return { fileName, opfsPath, uiPath };
 }
 
 /** Drives the real import pipeline via the app's file input. */
 export async function importViaUpload(page: Page, fixtureAbsPaths: string[]): Promise<void> {
-  await page.getByTestId('file-upload-input').setInputFiles(fixtureAbsPaths);
+  await openProjectFilesTab(page);
+  await page.waitForTimeout(100);
+  const chooserPromise = page.waitForEvent('filechooser');
+  await page.getByTestId('file-upload').last().click();
+  const chooser = await chooserPromise;
+  await chooser.setFiles(fixtureAbsPaths);
 }
 
 /** Locate a file/folder entry by its visible name (matches any `data-entry-path`). */
@@ -74,7 +83,23 @@ export function entryByPath(page: Page, path: string): Locator {
   return page.locator(`[data-entry-path="${path}"]`);
 }
 
+export async function openProjectFilesTab(page: Page): Promise<void> {
+  const filesTab = page.locator('[data-tab-id="files"]').first();
+  await expect(filesTab).toBeVisible({ timeout: 10_000 });
+
+  for (let attempt = 0; attempt < 3; attempt++) {
+    await filesTab.click();
+    const upload = page.getByTestId('file-upload').last();
+    if (await upload.isVisible({ timeout: 3_000 }).catch(() => false)) return;
+    await filesTab.evaluate((element) => (element as HTMLElement).click()).catch(() => undefined);
+    if (await upload.isVisible({ timeout: 3_000 }).catch(() => false)) return;
+  }
+
+  await expect(page.getByTestId('file-upload').last()).toBeVisible({ timeout: 10_000 });
+}
+
 export async function setViewMode(page: Page, mode: 'grid' | 'list'): Promise<void> {
+  await openProjectFilesTab(page);
   await page.getByTestId(mode === 'grid' ? 'file-view-grid' : 'file-view-list').click();
 }
 
@@ -83,10 +108,12 @@ export async function setViewMode(page: Page, mode: 'grid' | 'list'): Promise<vo
  * text input + confirm button; located by role to stay resilient to markup.
  */
 export async function createFolder(page: Page, name: string): Promise<void> {
+  await openProjectFilesTab(page);
   await page.getByTestId('file-create-folder').click();
   const dialog = page.getByRole('dialog');
   await expect(dialog).toBeVisible();
-  const input = dialog.getByRole('textbox').first();
+  const input = dialog.locator('input').first();
+  await expect(input).toBeVisible();
   await input.fill(name);
   await dialog.getByRole('button', { name: /create|ok|confirm|создать/i }).click();
   await expect(dialog).toBeHidden();

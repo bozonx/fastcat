@@ -13,7 +13,7 @@ test.describe('Web timeline add clip', () => {
     page,
     e2eProject,
   }) => {
-    const { fileName } = await seedProjectMedia(
+    const { fileName, uiPath } = await seedProjectMedia(
       page,
       e2eProject,
       MEDIA_FIXTURES.video.h264Mp4,
@@ -21,7 +21,7 @@ test.describe('Web timeline add clip', () => {
     );
 
     const videoTrackId = (await trackIds(page))[0];
-    await addFileToTrack(page, `${e2eProject.path}/_video/${fileName}`, videoTrackId);
+    await addFileToTrack(page, uiPath, videoTrackId);
 
     // UI: a clip is now rendered.
     await expect.poll(async () => (await clipIds(page)).length).toBeGreaterThan(0);
@@ -34,7 +34,7 @@ test.describe('Web timeline add clip', () => {
   });
 
   test('adds an audio file to an audio track', async ({ page, e2eProject }) => {
-    const { fileName } = await seedProjectMedia(
+    const { uiPath } = await seedProjectMedia(
       page,
       e2eProject,
       MEDIA_FIXTURES.audio.wav,
@@ -45,7 +45,7 @@ test.describe('Web timeline add clip', () => {
     const audioTrackName = doc0.audioTracks[0]?.name;
     const audioTrackId = (await trackIds(page)).at(-1)!; // audio lanes render below video
 
-    await addFileToTrack(page, `${e2eProject.path}/_audio/${fileName}`, audioTrackId);
+    await addFileToTrack(page, uiPath, audioTrackId);
 
     const doc = await waitForTimelineDoc(page, e2eProject, (d) => d.allClips.length === 1);
     expect(doc.audioTracks.some((t) => t.clips.length === 1)).toBe(true);
@@ -53,7 +53,7 @@ test.describe('Web timeline add clip', () => {
   });
 
   test('adds an image as a still clip with a non-zero duration', async ({ page, e2eProject }) => {
-    const { fileName } = await seedProjectMedia(
+    const { uiPath } = await seedProjectMedia(
       page,
       e2eProject,
       MEDIA_FIXTURES.image.jpg,
@@ -61,21 +61,21 @@ test.describe('Web timeline add clip', () => {
     );
 
     const videoTrackId = (await trackIds(page))[0];
-    await addFileToTrack(page, `${e2eProject.path}/_images/${fileName}`, videoTrackId);
+    await addFileToTrack(page, uiPath, videoTrackId);
 
     const doc = await waitForTimelineDoc(page, e2eProject, (d) => d.allClips.length === 1);
     expect(doc.allClips[0].timelineDurationUs).toBeGreaterThan(0);
   });
 
   test('added clip survives a reload', async ({ page, e2eProject }) => {
-    const { fileName } = await seedProjectMedia(
+    const { uiPath } = await seedProjectMedia(
       page,
       e2eProject,
       MEDIA_FIXTURES.video.h264Mp4,
       'video',
     );
     const videoTrackId = (await trackIds(page))[0];
-    await addFileToTrack(page, `${e2eProject.path}/_video/${fileName}`, videoTrackId);
+    await addFileToTrack(page, uiPath, videoTrackId);
     await waitForTimelineDoc(page, e2eProject, (d) => d.allClips.length === 1);
 
     await page.goto(`/editor/${e2eProject.encodedName}`);

@@ -15,14 +15,14 @@ test.describe('Web export', () => {
   test.slow(); // real encode of a short clip
 
   test.beforeEach(async ({ page, e2eProject }) => {
-    const { fileName } = await seedProjectMedia(
+    const { uiPath } = await seedProjectMedia(
       page,
       e2eProject,
       MEDIA_FIXTURES.video.h264Mp4,
       'video',
     );
     const videoTrackId = (await trackIds(page))[0];
-    await addFileToTrack(page, `${e2eProject.path}/_video/${fileName}`, videoTrackId);
+    await addFileToTrack(page, uiPath, videoTrackId);
     await waitForTimelineDoc(page, e2eProject, (d) => d.allClips.length === 1);
   });
 

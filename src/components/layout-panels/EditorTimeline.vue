@@ -57,6 +57,7 @@ const timelineSettingsStore = useTimelineSettingsStore();
 const projectStore = useProjectStore();
 const selectionStore = useSelectionStore();
 const uiStore = useUiStore();
+const runtimeConfig = useRuntimeConfig();
 const { draggedFile } = useDraggedFile();
 
 const { speedModal, openSpeedModal, saveSpeedModal, speedModalTargetHasAudio } =
@@ -397,6 +398,13 @@ onBeforeUnmount(() => {
   window.removeEventListener('drop', onWindowDragTerminated, true);
   window.removeEventListener('dragend', onWindowDragTerminated, true);
   window.removeEventListener('dragleave', onWindowDragLeave, true);
+  if (runtimeConfig.public.e2eTest) {
+    const e2eWindow = window as Window & FastcatE2eTimelineWindow;
+    delete e2eWindow.__fastcatE2eAddFileToTrack;
+    delete e2eWindow.__fastcatE2eMoveClipBy;
+    delete e2eWindow.__fastcatE2eTrimClipEdge;
+    delete e2eWindow.__fastcatE2eAdvancePlayheadBy;
+  }
 });
 
 onMounted(() => {
@@ -404,6 +412,58 @@ onMounted(() => {
   window.addEventListener('drop', onWindowDragTerminated, true);
   window.addEventListener('dragend', onWindowDragTerminated, true);
   window.addEventListener('dragleave', onWindowDragLeave, true);
+  if (runtimeConfig.public.e2eTest) {
+    const e2eWindow = window as Window & FastcatE2eTimelineWindow;
+
+    e2eWindow.__fastcatE2eAddFileToTrack = async ({ name, path, trackId }) => {
+      await timelineStore.addClipToTimelineFromPath({
+        trackId,
+        name,
+        path,
+        startUs: 0,
+        pseudo: false,
+      });
+      await timelineStore.saveTimeline();
+    };
+
+    e2eWindow.__fastcatE2eMoveClipBy = async ({ itemId, deltaUs }) => {
+      const clip = findE2eClip(itemId);
+      if (!clip) throw new Error(`Timeline clip not found: ${itemId}`);
+      clip.timelineRange.startUs = Math.max(0, Math.round(clip.timelineRange.startUs + deltaUs));
+      await saveE2eTimelineMutation();
+    };
+
+    e2eWindow.__fastcatE2eTrimClipEdge = async ({ itemId, edge, deltaUs }) => {
+      const clip = findE2eClip(itemId);
+      if (!clip) throw new Error(`Timeline clip not found: ${itemId}`);
+
+      const minDurationUs = 100_000;
+      if (edge === 'end') {
+        const nextDurationUs = Math.max(
+          minDurationUs,
+          Math.round(clip.timelineRange.durationUs + deltaUs),
+        );
+        clip.timelineRange.durationUs = nextDurationUs;
+        clip.sourceRange.durationUs = nextDurationUs;
+        await saveE2eTimelineMutation();
+        return;
+      }
+
+      const trimUs = Math.min(
+        Math.max(0, Math.round(deltaUs)),
+        Math.max(0, clip.timelineRange.durationUs - minDurationUs),
+      );
+      clip.timelineRange.startUs += trimUs;
+      clip.timelineRange.durationUs -= trimUs;
+      clip.sourceRange.startUs += trimUs;
+      clip.sourceRange.durationUs -= trimUs;
+      await saveE2eTimelineMutation();
+    };
+
+    e2eWindow.__fastcatE2eAdvancePlayheadBy = async ({ deltaUs }) => {
+      timelineStore.setCurrentTimeUs(timelineStore.currentTime + deltaUs);
+    };
+  }
 });
 
 function onTrackAreaAuxClick(e: MouseEvent) {
@@ -572,6 +632,43 @@ async function dropInternalPayloadAtPoint(params: {
 
   await handleLibraryDrop(JSON.stringify(payload), trackId, startUs, params.options);
   clearDragPreview();
+}
+
+type FastcatE2eAddFileToTrack = (params: {
+  name: string;
+  path: string;
+  trackId: string;
+}) => Promise<void>;
+type FastcatE2eMoveClipBy = (params: { itemId: string; deltaUs: number }) => Promise<void>;
+type FastcatE2eTrimClipEdge = (params: {
+  itemId: string;
+  edge: 'start' | 'end';
+  deltaUs: number;
+}) => Promise<void>;
+type FastcatE2eAdvancePlayheadBy = (params: { deltaUs: number }) => Promise<void>;
+
+interface FastcatE2eTimelineWindow {
+  __fastcatE2eAddFileToTrack?: FastcatE2eAddFileToTrack;
+  __fastcatE2eMoveClipBy?: FastcatE2eMoveClipBy;
+  __fastcatE2eTrimClipEdge?: FastcatE2eTrimClipEdge;
+  __fastcatE2eAdvancePlayheadBy?: FastcatE2eAdvancePlayheadBy;
+}
+
+function findE2eClip(itemId: string) {
+  const doc = timelineStore.timelineDoc;
+  if (!doc) return null;
+
+  for (const track of doc.tracks) {
+    for (const item of track.items) {
+      if (item.kind === 'clip' && item.id === itemId) return item;
+    }
+  }
+
+  return null;
+}
+
+async function saveE2eTimelineMutation() {
+  await timelineStore.saveTimeline();
 }
 
 async function onTauriInternalFileDrop(event: Event) {

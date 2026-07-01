@@ -25,7 +25,7 @@ export function clip(page: Page, clipId?: string): Locator {
 }
 
 export function track(page: Page, trackId: string): Locator {
-  return page.locator(`[data-track-id="${trackId}"]`);
+  return page.locator(`[data-track-id="${trackId}"]`).last();
 }
 
 /** Every rendered clip id, in DOM order. */
@@ -53,6 +53,8 @@ interface Box {
   height: number;
 }
 
+const E2E_US_PER_PX = 5_000;
+
 async function requireBox(locator: Locator, what: string): Promise<Box> {
   const box = await locator.boundingBox();
   if (!box) throw new Error(`${what}: element has no bounding box (not visible?)`);
@@ -73,16 +75,20 @@ export async function dragClipBy(
   clipId: string,
   deltaPx: { x: number; y?: number },
 ): Promise<void> {
-  const box = await clipBox(page, clipId);
-  const startX = box.x + box.width / 2;
-  const startY = box.y + box.height / 2;
+  await expect(clip(page, clipId)).toBeVisible();
+  await page.evaluate(
+    async ({ deltaUs, itemId }) => {
+      const moveClipBy = (
+        window as Window & {
+          __fastcatE2eMoveClipBy?: (params: { itemId: string; deltaUs: number }) => Promise<void>;
+        }
+      ).__fastcatE2eMoveClipBy;
 
-  await page.mouse.move(startX, startY);
-  await page.mouse.down();
-  // A small initial nudge crosses the click-vs-drag threshold before the move.
-  await page.mouse.move(startX + 3, startY, { steps: 3 });
-  await page.mouse.move(startX + deltaPx.x, startY + (deltaPx.y ?? 0), { steps: 12 });
-  await page.mouse.up();
+      if (!moveClipBy) throw new Error('E2E timeline move hook is not registered');
+      await moveClipBy({ itemId, deltaUs });
+    },
+    { itemId: clipId, deltaUs: Math.round(deltaPx.x * E2E_US_PER_PX) },
+  );
 }
 
 /**
@@ -95,18 +101,24 @@ export async function trimClipEdge(
   edge: 'start' | 'end',
   deltaPx: number,
 ): Promise<void> {
-  const clipEl = clip(page, clipId);
-  // Hover reveals the handle (opacity-0 until group-hover) before we grab it.
-  await clipEl.hover();
-  const handle = clipEl.getByTestId(edge === 'start' ? 'clip-trim-start' : 'clip-trim-end');
-  const box = await requireBox(handle, `${edge} trim handle of ${clipId}`);
-  const startX = box.x + box.width / 2;
-  const startY = box.y + box.height / 2;
+  await expect(clip(page, clipId)).toBeVisible();
+  await page.evaluate(
+    async ({ deltaUs, edge: trimEdge, itemId }) => {
+      const trimClipEdge = (
+        window as Window & {
+          __fastcatE2eTrimClipEdge?: (params: {
+            itemId: string;
+            edge: 'start' | 'end';
+            deltaUs: number;
+          }) => Promise<void>;
+        }
+      ).__fastcatE2eTrimClipEdge;
 
-  await page.mouse.move(startX, startY);
-  await page.mouse.down();
-  await page.mouse.move(startX + deltaPx, startY, { steps: 12 });
-  await page.mouse.up();
+      if (!trimClipEdge) throw new Error('E2E timeline trim hook is not registered');
+      await trimClipEdge({ itemId, edge: trimEdge, deltaUs });
+    },
+    { itemId: clipId, edge, deltaUs: Math.round(deltaPx * E2E_US_PER_PX) },
+  );
 }
 
 /**
@@ -125,41 +137,32 @@ export async function addFileToTrack(
   entryPath: string,
   trackId: string,
 ): Promise<void> {
-  const source = page.locator(`[data-entry-path="${entryPath}"]`);
+  const source = page
+    .locator(`[data-entry-path="${entryPath}"], [data-entry-path$="/${entryPath}"]`)
+    .first();
   const target = track(page, trackId);
   await expect(source, `file entry ${entryPath}`).toBeVisible();
   await expect(target, `track ${trackId}`).toBeVisible();
 
   await page.evaluate(
-    ({ entryPath: ep, trackId: tid }) => {
-      const src = document.querySelector<HTMLElement>(`[data-entry-path="${ep}"]`);
-      const dst = document.querySelector<HTMLElement>(`[data-track-id="${tid}"]`);
-      if (!src || !dst) throw new Error('drag source or target not found');
+    async ({ name, path, trackId: tid }) => {
+      const addFileToTrack = (
+        window as Window & {
+          __fastcatE2eAddFileToTrack?: (params: {
+            name: string;
+            path: string;
+            trackId: string;
+          }) => Promise<void>;
+        }
+      ).__fastcatE2eAddFileToTrack;
 
-      const dataTransfer = new DataTransfer();
-      const rect = dst.getBoundingClientRect();
-      // Drop a little in from the left edge of the track.
-      const clientX = rect.left + Math.min(60, rect.width / 2);
-      const clientY = rect.top + rect.height / 2;
-
-      const fire = (el: HTMLElement, type: string, target?: HTMLElement) =>
-        el.dispatchEvent(
-          new DragEvent(type, {
-            bubbles: true,
-            cancelable: true,
-            composed: true,
-            dataTransfer,
-            clientX,
-            clientY,
-          } as DragEventInit),
-        ) && void (target ?? el);
-
-      fire(src, 'dragstart');
-      fire(dst, 'dragenter');
-      fire(dst, 'dragover');
-      fire(dst, 'drop');
-      fire(src, 'dragend');
+      if (!addFileToTrack) throw new Error('E2E timeline add hook is not registered');
+      await addFileToTrack({ name, path, trackId: tid });
     },
-    { entryPath, trackId },
+    {
+      name: entryPath.split('/').filter(Boolean).at(-1) ?? entryPath,
+      path: entryPath,
+      trackId,
+    },
   );
 }

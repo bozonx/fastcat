@@ -13,14 +13,14 @@ import { readTimelineDoc, waitForTimelineDoc } from '../../utils/e2e/otio';
  */
 test.describe('Web timeline trim', () => {
   async function projectWithOneClip(page: Page, project: E2eProject) {
-    const { fileName } = await seedProjectMedia(
+    const { uiPath } = await seedProjectMedia(
       page,
       project,
       MEDIA_FIXTURES.video.h264Mp4,
       'video',
     );
     const videoTrackId = (await trackIds(page))[0];
-    await addFileToTrack(page, `${project.path}/_video/${fileName}`, videoTrackId);
+    await addFileToTrack(page, uiPath, videoTrackId);
     await waitForTimelineDoc(page, project, (d) => d.allClips.length === 1);
     return (await clipIds(page))[0];
   }

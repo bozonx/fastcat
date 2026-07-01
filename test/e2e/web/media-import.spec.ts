@@ -1,6 +1,7 @@
 import { test, expect } from '../fixtures/workspace';
 import { MEDIA_FIXTURES } from '../../fixtures/media';
 import { entry, importViaUpload } from '../../utils/e2e/file-manager';
+import { opfsEntryExists } from '../../utils/e2e/virtual-fs';
 
 /**
  * The real web import pipeline through the app's file input. Codec/container
@@ -15,15 +16,17 @@ test.describe('Web media import', () => {
     // Survives a reload → it was really copied into the project, not just shown.
     await page.goto(`/editor/${e2eProject.encodedName}`);
     await expect(page.getByTestId('timeline-container')).toBeVisible();
-    await expect(entry(page, 'video-h264-aac.mp4')).toBeVisible({ timeout: 20_000 });
+    await expect
+      .poll(() => opfsEntryExists(page, `${e2eProject.path}/_video/video-h264-aac.mp4`))
+      .toBe(true);
   });
 
-  test('imports a supported audio file', async ({ page }) => {
+  test('imports a supported audio file', async ({ page, e2eProject: _e2eProject }) => {
     await importViaUpload(page, [MEDIA_FIXTURES.audio.wav]);
     await expect(entry(page, 'audio-sine.wav')).toBeVisible({ timeout: 20_000 });
   });
 
-  test('imports a supported image file', async ({ page }) => {
+  test('imports a supported image file', async ({ page, e2eProject: _e2eProject }) => {
     await importViaUpload(page, [MEDIA_FIXTURES.image.jpg]);
     await expect(entry(page, 'image.jpg')).toBeVisible({ timeout: 20_000 });
   });

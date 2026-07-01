@@ -241,6 +241,7 @@ const toolbarMenuItems = computed(() => {
         :content="dropdownNoReturnFocus"
       >
         <UiActionButton
+          data-testid="file-toolbar-menu"
           icon="i-heroicons-ellipsis-vertical-16-solid"
           variant="ghost"
           color="neutral"

@@ -157,13 +157,11 @@ export function useProjectManagement(options: { isMobile?: boolean } = {}) {
       return;
     }
 
-    if (workspaceStore.userSettings.openLastProjectOnStart) {
-      if (workspaceStore.workspaceProviderId === 'tauri' && options.parentPath) {
-        const { join } = await import('@tauri-apps/api/path');
-        handleOpenProject(await join(options.parentPath, name));
-      } else {
-        handleOpenProject(name);
-      }
+    if (workspaceStore.workspaceProviderId === 'tauri' && options.parentPath) {
+      const { join } = await import('@tauri-apps/api/path');
+      handleOpenProject(await join(options.parentPath, name));
+    } else {
+      handleOpenProject(name);
     }
 
     isCreateModalOpen.value = false;

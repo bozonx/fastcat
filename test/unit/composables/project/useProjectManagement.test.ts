@@ -157,6 +157,16 @@ describe('useProjectManagement', () => {
       expect(mockCreateProject).toHaveBeenCalledTimes(1);
       expect(mockCreateProject).toHaveBeenCalledWith('NewProject', { parentPath: undefined });
     });
+
+    it('opens the newly created project even when startup auto-open is disabled', async () => {
+      const { projectCreationSettings, createNewProject } = useProjectManagement();
+      projectCreationSettings.value.name = 'NewProject';
+
+      await createNewProject();
+
+      expect(mockGoToCut).toHaveBeenCalledTimes(1);
+      expect(navigateTo).toHaveBeenCalledWith('/editor/NewProject');
+    });
   });
 
   describe('rename validation', () => {

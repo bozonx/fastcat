@@ -235,11 +235,11 @@ export const useProjectTabsStore = defineStore('projectTabs', () => {
   }
 
   function initDefaultTab() {
-    if (!activeTabId.value && tabs.value.length > 0) {
-      const firstTab = tabs.value[0];
-      if (firstTab) {
-        activeTabId.value = firstTab.id;
-      }
+    if (activeTab.value || tabs.value.length === 0) return;
+
+    const firstTab = tabs.value[0];
+    if (firstTab) {
+      activeTabId.value = firstTab.id;
     }
   }
 

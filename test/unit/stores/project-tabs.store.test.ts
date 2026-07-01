@@ -135,6 +135,15 @@ describe('ProjectTabsStore', () => {
     expect(store.activeTabId).toBe('cut');
   });
 
+  it('initializes default active tab when persisted active tab is missing', () => {
+    const store = useProjectTabsStore();
+    store.setTabsState({ activeTabId: 'file-tab-missing' });
+    store.registerProjectTab({ id: 'cut', label: 'Cut', component: {} as any });
+
+    store.initDefaultTab();
+    expect(store.activeTabId).toBe('cut');
+  });
+
   it('setActiveTab only works for existing tabs', () => {
     const store = useProjectTabsStore();
     store.registerProjectTab({ id: 'cut', label: 'Cut', component: {} as any });
