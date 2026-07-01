@@ -3,6 +3,8 @@ import { mountWithNuxt } from '../../utils/mount';
 import MultiFileProperties from '~/components/properties/MultiFileProperties.vue';
 import { ref } from 'vue';
 
+import { useWorkspaceStore } from '~/stores/workspace.store';
+
 vi.mock('~/composables/file-manager/useFileManager', () => ({
   useFileManager: vi.fn(() => ({
     vfs: {
@@ -30,8 +32,6 @@ vi.mock('~/composables/file-manager/useBatchAudioExtraction', () => ({
     batchExtractAudio: vi.fn(),
   })),
 }));
-
-import { useWorkspaceStore } from '~/stores/workspace.store';
 
 describe('MultiFileProperties.vue', () => {
   const mockEntries = [

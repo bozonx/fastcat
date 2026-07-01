@@ -127,7 +127,10 @@ describe('createTimelineBackupModule', () => {
       const projectStore = makeProjectStoreMock();
       const deps = createMockDeps({
         projectStore,
-        workspaceStore: { userSettings: { backup: { count: 0 } }, inDevelopmentFeaturesEnabled: true },
+        workspaceStore: {
+          userSettings: { backup: { count: 0 } },
+          inDevelopmentFeaturesEnabled: true,
+        },
       });
       const backup = createTimelineBackupModule(deps);
 
@@ -140,7 +143,10 @@ describe('createTimelineBackupModule', () => {
       const projectStore = makeProjectStoreMock();
       const deps = createMockDeps({
         projectStore,
-        workspaceStore: { userSettings: { backup: { enabled: false, count: 5 } }, inDevelopmentFeaturesEnabled: true },
+        workspaceStore: {
+          userSettings: { backup: { enabled: false, count: 5 } },
+          inDevelopmentFeaturesEnabled: true,
+        },
       });
       const backup = createTimelineBackupModule(deps);
 
@@ -219,7 +225,10 @@ describe('createTimelineBackupModule', () => {
         projectStore,
         readTimelineFile,
         deleteTimelineAutosaveFile,
-        workspaceStore: { userSettings: { backup: { count: 0 } }, inDevelopmentFeaturesEnabled: true },
+        workspaceStore: {
+          userSettings: { backup: { count: 0 } },
+          inDevelopmentFeaturesEnabled: true,
+        },
       });
       const backup = createTimelineBackupModule(deps);
 

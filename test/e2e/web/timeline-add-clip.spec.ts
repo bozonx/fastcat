@@ -34,12 +34,7 @@ test.describe('Web timeline add clip', () => {
   });
 
   test('adds an audio file to an audio track', async ({ page, e2eProject }) => {
-    const { uiPath } = await seedProjectMedia(
-      page,
-      e2eProject,
-      MEDIA_FIXTURES.audio.wav,
-      'audio',
-    );
+    const { uiPath } = await seedProjectMedia(page, e2eProject, MEDIA_FIXTURES.audio.wav, 'audio');
 
     const doc0 = await readTimelineDoc(page, e2eProject);
     const audioTrackName = doc0.audioTracks[0]?.name;
@@ -53,12 +48,7 @@ test.describe('Web timeline add clip', () => {
   });
 
   test('adds an image as a still clip with a non-zero duration', async ({ page, e2eProject }) => {
-    const { uiPath } = await seedProjectMedia(
-      page,
-      e2eProject,
-      MEDIA_FIXTURES.image.jpg,
-      'image',
-    );
+    const { uiPath } = await seedProjectMedia(page, e2eProject, MEDIA_FIXTURES.image.jpg, 'image');
 
     const videoTrackId = (await trackIds(page))[0];
     await addFileToTrack(page, uiPath, videoTrackId);

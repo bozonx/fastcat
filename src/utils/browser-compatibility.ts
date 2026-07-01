@@ -106,7 +106,9 @@ export function evaluateBrowserCompatibility(): BrowserCompatibilityReport {
     },
   ];
 
-  const criticalFailures = checks.filter((check) => check.severity === 'critical' && !check.supported);
+  const criticalFailures = checks.filter(
+    (check) => check.severity === 'critical' && !check.supported,
+  );
   const warnings = checks.filter((check) => check.severity === 'warning' && !check.supported);
 
   return {
