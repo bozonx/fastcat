@@ -226,10 +226,7 @@ describe('WebGpuComputeRunner', () => {
     // Use real WebGPU globals if the environment provides them; fall back to
     // the spec-defined bit values so the test works in Node without a GPU.
     const realGPUShaderStage = (globalThis as Record<string, unknown>).GPUShaderStage;
-    vi.stubGlobal(
-      'GPUShaderStage',
-      realGPUShaderStage ?? { COMPUTE: 0x04 },
-    );
+    vi.stubGlobal('GPUShaderStage', realGPUShaderStage ?? { COMPUTE: 0x04 });
 
     const realGPUTextureUsage = (globalThis as Record<string, unknown>).GPUTextureUsage;
     vi.stubGlobal(

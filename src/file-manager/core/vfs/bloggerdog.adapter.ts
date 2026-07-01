@@ -592,18 +592,9 @@ export class BloggerDogVfsAdapter implements IFileSystemAdapter {
 
     if (normalizedPath === '/') {
       return [
-        this.createVirtualRootEntry(
-          'virtual-all',
-          this.t('fastcat.bloggerDog.allContent'),
-        ),
-        this.createVirtualRootEntry(
-          'projects',
-          this.t('fastcat.bloggerDog.projectLibraries'),
-        ),
-        this.createVirtualRootEntry(
-          'personal',
-          this.t('fastcat.bloggerDog.personalLibrary'),
-        ),
+        this.createVirtualRootEntry('virtual-all', this.t('fastcat.bloggerDog.allContent')),
+        this.createVirtualRootEntry('projects', this.t('fastcat.bloggerDog.projectLibraries')),
+        this.createVirtualRootEntry('personal', this.t('fastcat.bloggerDog.personalLibrary')),
       ];
     }
 

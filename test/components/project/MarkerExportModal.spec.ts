@@ -263,10 +263,7 @@ describe('MarkerExportModal.vue', () => {
     await component.vm.$nextTick();
 
     expect(mockListEntryNames).toHaveBeenCalledWith('_documents');
-    expect(mockWriteTextByPath).toHaveBeenCalledWith(
-      '_documents/markers.txt',
-      expect.any(String),
-    );
+    expect(mockWriteTextByPath).toHaveBeenCalledWith('_documents/markers.txt', expect.any(String));
     expect(mockWriteTextByPath.mock.calls[0]![1]).toContain('Intro');
     expect(mockSetActiveTab).toHaveBeenCalledWith('files');
     expect(mockOpenFolderByPath).toHaveBeenCalledWith('_documents');
@@ -288,10 +285,7 @@ describe('MarkerExportModal.vue', () => {
     await vm.handleExportToFile();
     await component.vm.$nextTick();
 
-    expect(mockWriteTextByPath).toHaveBeenCalledWith(
-      '_documents/markers.csv',
-      expect.any(String),
-    );
+    expect(mockWriteTextByPath).toHaveBeenCalledWith('_documents/markers.csv', expect.any(String));
   });
 
   it('increments filename when markers.txt already exists', async () => {

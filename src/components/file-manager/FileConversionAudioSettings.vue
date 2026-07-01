@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import UiSliderInput from '~/components/ui/UiSliderInput.vue';
 import UiSelect from '~/components/ui/UiSelect.vue';
 import UiScaleSlider from '~/components/ui/UiScaleSlider.vue';
 import UiWheelNumberInput from '~/components/ui/UiWheelNumberInput.vue';

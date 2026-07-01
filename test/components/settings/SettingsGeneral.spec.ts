@@ -71,7 +71,9 @@ describe('SettingsGeneral', () => {
     expect(mockWorkspaceStore.userSettings.history.maxMemoryMb).toBe(
       DEFAULT_USER_SETTINGS.history.maxMemoryMb,
     );
-    expect(mockWorkspaceStore.userSettings.backup.enabled).toBe(DEFAULT_USER_SETTINGS.backup.enabled);
+    expect(mockWorkspaceStore.userSettings.backup.enabled).toBe(
+      DEFAULT_USER_SETTINGS.backup.enabled,
+    );
     expect(mockWorkspaceStore.userSettings.backup.count).toBe(DEFAULT_USER_SETTINGS.backup.count);
     expect(mockWorkspaceStore.userSettings.autosave.intervalMinutes).toBe(
       DEFAULT_USER_SETTINGS.autosave.intervalMinutes,

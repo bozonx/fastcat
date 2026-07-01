@@ -227,11 +227,7 @@ async function handleExportToFile() {
   try {
     const ext = FORMAT_EXTENSIONS[exportFormat.value] ?? 'txt';
     const existingNames = await projectStore.listEntryNames(DOCUMENTS_DIR_NAME);
-    const fileName = resolveNextAvailableFilename(
-      new Set(existingNames),
-      'markers',
-      ext,
-    );
+    const fileName = resolveNextAvailableFilename(new Set(existingNames), 'markers', ext);
     const filePath = `${DOCUMENTS_DIR_NAME}/${fileName}`;
     await projectStore.writeTextByPath(filePath, exportText.value);
     exported.value = true;
@@ -245,7 +241,7 @@ async function handleExportToFile() {
     isOpen.value = false;
     projectTabsStore.setActiveTab('files');
     fileManagerStore.openFolderByPath(DOCUMENTS_DIR_NAME);
-  } catch (e) {
+  } catch {
     toast.add({
       title: t('fastcat.marker.exportFileError'),
       color: 'error',

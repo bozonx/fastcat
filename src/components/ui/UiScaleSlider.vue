@@ -218,7 +218,10 @@ function resetToDefault() {
           <!-- Tick line -->
           <div
             class="w-px transition-colors duration-75"
-            :class="[tick.isActive ? 'bg-primary-500' : 'bg-ui-border', tick.isEdge ? 'h-3' : 'h-2']"
+            :class="[
+              tick.isActive ? 'bg-primary-500' : 'bg-ui-border',
+              tick.isEdge ? 'h-3' : 'h-2',
+            ]"
           />
           <!-- Tick label -->
           <span
@@ -244,7 +247,7 @@ function resetToDefault() {
               class="h-4 rounded bg-primary-500 shadow-md flex items-center justify-center transition-transform duration-75 px-1 pointer-events-auto"
               :class="[
                 isDragging ? 'scale-110 cursor-grabbing' : 'cursor-grab',
-                withInput ? 'w-6' : (isDiscreteMode ? 'min-w-[3rem]' : 'w-6'),
+                withInput ? 'w-6' : isDiscreteMode ? 'min-w-[3rem]' : 'w-6',
               ]"
               @dblclick="resetToDefault"
             >

@@ -2,11 +2,7 @@
 import { computed, ref, toRef } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
-import type {
-  TimelineTrack,
-  VideoClipEffect,
-  AudioClipEffect,
-} from '~/timeline/types';
+import type { TimelineTrack, VideoClipEffect, AudioClipEffect } from '~/timeline/types';
 import ClipEffectsEditor from '~/components/effects/ClipEffectsEditor.vue';
 import PropertySection from '~/components/properties/PropertySection.vue';
 import PropertyActionsBlock from '~/components/properties/PropertyActionsBlock.vue';

@@ -115,7 +115,11 @@ export function createTimelineBackupModule(deps: TimelineBackupDeps): TimelineBa
   async function handleBackup(serialized: string, options?: { force?: boolean }) {
     if (!deps.currentTimelinePath.value) return;
     const backupSettings = deps.workspaceStore.userSettings.backup;
-    if (!options?.force && (!backupSettings || backupSettings.enabled === false || backupSettings.count <= 0)) return;
+    if (
+      !options?.force &&
+      (!backupSettings || backupSettings.enabled === false || backupSettings.count <= 0)
+    )
+      return;
     const rotationCount = backupSettings?.count ?? 5;
 
     try {

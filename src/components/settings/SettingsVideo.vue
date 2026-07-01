@@ -242,7 +242,12 @@ const tauriVideoCodecs = computed(() => {
         {{ t('videoEditor.settings.video.performance') }}
       </div>
       <div class="flex items-center gap-2">
-        <UButton size="xs" color="neutral" variant="ghost" @click="void (isResetConfirmOpen = true)">
+        <UButton
+          size="xs"
+          color="neutral"
+          variant="ghost"
+          @click="void (isResetConfirmOpen = true)"
+        >
           {{ t('videoEditor.settings.resetDefaults') }}
         </UButton>
       </div>

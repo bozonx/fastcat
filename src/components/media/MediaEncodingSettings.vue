@@ -2,7 +2,6 @@
 import { computed, watch, ref } from 'vue';
 import { useAudioCodecOptions } from '~/composables/timeline/export/core/useAudioCodecOptions';
 import UiWheelNumberInput from '~/components/ui/UiWheelNumberInput.vue';
-import UiSliderInput from '~/components/ui/UiSliderInput.vue';
 import UiScaleSlider from '~/components/ui/UiScaleSlider.vue';
 import UiSelect from '~/components/ui/UiSelect.vue';
 import UiTextarea from '~/components/ui/UiTextarea.vue';

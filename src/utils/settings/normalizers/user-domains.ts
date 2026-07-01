@@ -426,7 +426,8 @@ export function normalizeBackupSettings(raw: unknown): FastCatUserSettings['back
     migratedCount = DEFAULT_USER_SETTINGS.backup.count;
   }
 
-  const finalEnabled = migratedEnabled !== undefined ? Boolean(migratedEnabled) : DEFAULT_USER_SETTINGS.backup.enabled;
+  const finalEnabled =
+    migratedEnabled !== undefined ? Boolean(migratedEnabled) : DEFAULT_USER_SETTINGS.backup.enabled;
 
   return z
     .object({

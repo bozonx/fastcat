@@ -115,7 +115,11 @@ if (colorMode.preference === 'system') {
 
       <template v-if="uiStore.extractingAudioError" #footer>
         <div class="flex justify-end w-full">
-          <UButton color="neutral" variant="solid" @click="void (uiStore.isExtractingAudio = false)">
+          <UButton
+            color="neutral"
+            variant="solid"
+            @click="void (uiStore.isExtractingAudio = false)"
+          >
             {{ t('common.close') }}
           </UButton>
         </div>

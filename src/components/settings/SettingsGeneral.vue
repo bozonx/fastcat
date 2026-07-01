@@ -154,7 +154,9 @@ const stopFramesQualityOptions = [
           :options="stopFramesQualityOptions"
           with-input
           :default-value="85"
-          @update:model-value="workspaceStore.userSettings.stopFrames.qualityPercent = Number($event)"
+          @update:model-value="
+            workspaceStore.userSettings.stopFrames.qualityPercent = Number($event)
+          "
         />
         <UiWheelNumberInput
           v-model="workspaceStore.userSettings.stopFrames.qualityPercent"
