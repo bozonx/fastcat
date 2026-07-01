@@ -189,6 +189,12 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
       path: it.path,
     }));
 
+    // IMPORTANT: set drag state eagerly here (on pointerdown), NOT in the engine's
+    // onStart/commit callback. In the Tauri shell WebKitGTK can promote the press
+    // to a native OS drag before our movement threshold, so `onStart` may never
+    // fire; `isFileManagerDragging` / `draggedFile` must already be set by then so
+    // Tauri's `onDragDropEvent` treats it as an internal drag and hides the OS drop
+    // overlay. Cleared in `clearDragState` (the engine's onEnd, committed drags only).
     appClipboard.setDragSourceFileManagerInstanceId(options.fileManagerInstanceId ?? null);
     appClipboard.setDragSourceVfs(options.vfs);
     appClipboard.setDragTargetFileManagerInstanceId(options.fileManagerInstanceId ?? null);

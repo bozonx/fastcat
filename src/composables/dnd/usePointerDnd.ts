@@ -375,6 +375,12 @@ export function armPointerDnd(e: PointerEvent, options: ArmPointerDndOptions): v
     ...options,
     pointerId: e.pointerId,
     pointerType,
+    // Capture on the pressed element (captured synchronously here — `currentTarget`
+    // is nulled once the handler returns). Do NOT switch this to
+    // `document.documentElement`: capturing the document root made drop-zone
+    // highlighting flake intermittently in the Tauri shell. Row removal during a
+    // drag does not lose the terminal event anyway — the window-level listeners
+    // (added below) still receive pointerup/cancel regardless of the capture target.
     captureEl: (e.currentTarget as Element | null) ?? null,
     startX: e.clientX,
     startY: e.clientY,

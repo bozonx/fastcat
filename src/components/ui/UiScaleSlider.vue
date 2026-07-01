@@ -186,7 +186,7 @@ function resetToDefault() {
     <!-- Track area — captures all pointer events -->
     <div
       ref="trackRef"
-      class="relative h-10 flex items-center px-4 cursor-default"
+      class="relative h-10 flex items-center px-4"
       role="slider"
       :aria-valuenow="isDiscreteMode ? currentIndex + 1 : clampedValue"
       :aria-valuemin="isDiscreteMode ? 1 : min"
@@ -234,16 +234,19 @@ function resetToDefault() {
 
         <!-- Thumb — pill body with downward-pointing triangle -->
         <div
-          class="absolute -translate-x-1/2 cursor-pointer pointer-events-auto"
+          class="absolute -translate-x-1/2 pointer-events-none"
           :class="isDragging ? 'transition-none' : 'transition-[left] duration-75'"
           :style="{ left: `${thumbPercent}%` }"
-          @dblclick="resetToDefault"
         >
           <div class="flex flex-col items-center" style="margin-top: -26px">
             <!-- Rounded pill body showing current value or drag handle bars -->
             <div
-              class="h-4 rounded bg-primary-500 shadow-md flex items-center justify-center transition-transform duration-75 px-1"
-              :class="[isDragging ? 'scale-110' : '', withInput ? 'w-6' : (isDiscreteMode ? 'min-w-[3rem]' : 'w-6')]"
+              class="h-4 rounded bg-primary-500 shadow-md flex items-center justify-center transition-transform duration-75 px-1 pointer-events-auto"
+              :class="[
+                isDragging ? 'scale-110 cursor-grabbing' : 'cursor-grab',
+                withInput ? 'w-6' : (isDiscreteMode ? 'min-w-[3rem]' : 'w-6'),
+              ]"
+              @dblclick="resetToDefault"
             >
               <div v-if="withInput" class="flex flex-col gap-0.5 pointer-events-none">
                 <div class="w-2.5 h-[1.5px] bg-white/70 rounded-full" />

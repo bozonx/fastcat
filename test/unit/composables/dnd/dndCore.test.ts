@@ -193,6 +193,44 @@ describe('usePointerDnd engine', () => {
     expect(onEnd).not.toHaveBeenCalled();
   });
 
+  // ⚠️ REGRESSION GUARD — do not "simplify" teardown to always call onEnd.
+  // In the Tauri (WebKitGTK) shell, pressing a file row is promoted to a NATIVE
+  // OS drag before our movement threshold is crossed; the webview then receives
+  // `pointercancel` while the drag is still NON-committed. The file-manager drag
+  // state (`isFileManagerDragging` / `draggedFile`) is set eagerly on pointerdown
+  // and MUST survive this cancel, so that Tauri's `onDragDropEvent` recognises the
+  // gesture as an internal drag and suppresses the OS drop overlay. If onEnd
+  // (source cleanup) runs here, that state is wiped and the OS overlay wrongly
+  // appears during internal file-manager drags.
+  it('does NOT run source cleanup on a non-committed pointercancel (Tauri native-drag takeover)', () => {
+    const onEnd = vi.fn();
+    registerDndZone('zone-1', {});
+
+    armPointerDnd(armEvent({ x: 0, y: 0 }), { payload, onEnd });
+    // Cancel before crossing the drag threshold (native OS drag took over).
+    dispatch('pointercancel', 2, 0);
+
+    expect(isDndActive()).toBe(false);
+    expect(onEnd).not.toHaveBeenCalled();
+  });
+
+  it('runs source cleanup when an already-committed drag is cancelled', () => {
+    const onEnd = vi.fn();
+    registerDndZone('zone-1', {});
+    const zoneEl = document.createElement('div');
+    zoneEl.setAttribute(DND_ZONE_ATTR, 'zone-1');
+    currentHit = zoneEl;
+
+    armPointerDnd(armEvent({ x: 0, y: 0 }), { payload, onEnd });
+    dispatch('pointermove', 20, 0); // commit
+    expect(isDndActive()).toBe(true);
+    dispatch('pointercancel', 20, 0);
+
+    // Committed drags DO clean up on cancel (there was no native takeover).
+    expect(onEnd).toHaveBeenCalledWith({ dropped: false, cancelled: true });
+    expect(isDndActive()).toBe(false);
+  });
+
   it('Escape aborts the drag without dropping and resets', () => {
     const onDrop = vi.fn();
     const onLeave = vi.fn();
