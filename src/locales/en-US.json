@@ -34,7 +34,7 @@
     "duration": "Duration",
     "edit": "Edit",
     "empty": "Folder is empty",
-    "end": "End Time",
+    "end": "End",
     "error": "Error",
     "export": "Export",
     "file": "File",
@@ -78,7 +78,7 @@
     "saveError": "Failed to save",
     "saveSuccess": "Saved successfully",
     "dontSave": "Don't Save",
-    "scroll_for_more": "Scroll for more",
+    "scrollForMore": "Scroll for more",
     "search": "Search",
     "selectAll": "Select all",
     "selectItems": "Select items",
@@ -449,8 +449,8 @@
           "description": "Film grain effect",
           "name": "Noise",
           "params": {
-            "noise": "Intensity",
-            "seed": "Grain",
+            "intensity": "Intensity",
+            "grain": "Grain",
             "noiseType": "Noise Type",
             "scale": "Scale"
           },
@@ -473,10 +473,10 @@
     },
     "fileManager": {
       "remote": {
-        "configure_action": "Configure Integration",
-        "load_error_title": "Connection Error",
-        "not_configured_desc": "Integrate with BloggerDog to manage your remote content.",
-        "not_configured_title": "BloggerDog not configured"
+        "configureAction": "Configure Integration",
+        "loadErrorTitle": "Connection Error",
+        "notConfiguredDesc": "Integrate with BloggerDog to manage your remote content.",
+        "notConfiguredTitle": "BloggerDog not configured"
       },
       "tabs": {
         "bloggerdog": "BloggerDog",
@@ -872,8 +872,8 @@
       "renameTrack": "Rename track",
       "resetFreezeFrame": "Reset freeze frame",
       "returnAudio": "Return audio to video clip",
-      "deleteLift": "Delete",
-      "extractRange": "Delete range",
+      "deleteLift": "Lift",
+      "extractRange": "Extract range",
       "manualTrim": "Manual Trim",
       "rippleDelete": "Ripple delete",
       "rippleDeleteDescription": "This action will delete the clip and shift all following content. This action cannot be undone.",
@@ -1011,7 +1011,7 @@
         "paramContentMode": "Content mode",
         "paramDepthDirection": "Depth Direction",
         "paramDirection": "Direction",
-        "paramEdgeOverflow": "Scale",
+        "paramEdgeOverflow": "Edge Overflow",
         "paramFadeColor": "Fade color",
         "paramFollowScale": "Zoom content",
         "paramFromRotation": "Rotation (from clip, deg)",

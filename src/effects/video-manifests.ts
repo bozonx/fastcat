@@ -925,7 +925,7 @@ export const videoEffectManifests: VideoEffectManifest[] = [
       {
         kind: 'slider',
         key: 'amount',
-        labelKey: 'fastcat.effects.video.noise.params.noise',
+        labelKey: 'fastcat.effects.video.noise.params.intensity',
         min: VIDEO_EFFECT_PARAM_RANGES.unit.uiMin,
         max: VIDEO_EFFECT_PARAM_RANGES.unit.uiMax,
         step: 0.01,
@@ -935,7 +935,7 @@ export const videoEffectManifests: VideoEffectManifest[] = [
       {
         kind: 'number',
         key: 'seed',
-        labelKey: 'fastcat.effects.video.noise.params.seed',
+        labelKey: 'fastcat.effects.video.noise.params.grain',
         min: 0,
         max: 65535,
         step: 1,

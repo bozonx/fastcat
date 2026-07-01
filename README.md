@@ -48,6 +48,12 @@ Workers receive the budget buffer via an `io-init` postMessage immediately after
 
 The browser-level contract is covered by `test/e2e/web/opfs-io-budget.spec.ts`, which runs real OPFS writes from the main thread and dedicated workers against the same shared semaphore. Tauri command names are guarded by `test/integration/ipc-contracts.test.ts`, which compares static frontend `invoke(...)` calls with the Rust `generate_handler!` registration.
 
+Browser audio e2e uses `src/pages/test/audio-probe.vue` and `test/e2e/web/audio-playback.spec.ts`.
+The probe reads synthetic audio fixtures from OPFS, decodes them with the real
+Web Audio API, and measures RMS/peak levels before and after the master gain
+node. It intentionally validates numeric signal flow instead of depending on
+physical speaker output.
+
 ## Setup
 
 ```bash

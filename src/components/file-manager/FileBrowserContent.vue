@@ -138,7 +138,7 @@ function emitResizeStart(event: MouseEvent, column: string) {
           </div>
           <div class="space-y-2 max-w-[320px]">
             <h3 class="text-xl font-semibold text-ui-text">
-              {{ t('fastcat.fileManager.remote.load_error_title') }}
+              {{ t('fastcat.fileManager.remote.loadErrorTitle') }}
             </h3>
             <p class="text-sm text-ui-text-dim leading-relaxed">
               {{ props.remoteError }}
@@ -226,7 +226,7 @@ function emitResizeStart(event: MouseEvent, column: string) {
             class="w-8 h-8 animate-spin text-primary-500/50"
           />
           <div v-else class="text-ui-text-dim/30 text-xs font-medium uppercase tracking-widest">
-            {{ t('common.scroll_for_more') }}
+            {{ t('common.scrollForMore') }}
           </div>
         </div>
 

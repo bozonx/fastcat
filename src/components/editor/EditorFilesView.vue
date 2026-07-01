@@ -205,10 +205,10 @@ function onBrowserResized(event: { panes: Array<{ size: number }> }) {
               </div>
               <div class="space-y-1">
                 <h3 class="font-medium text-ui-text">
-                  {{ t('fastcat.fileManager.remote.not_configured_title') }}
+                  {{ t('fastcat.fileManager.remote.notConfiguredTitle') }}
                 </h3>
                 <p class="text-sm text-ui-text-dim">
-                  {{ t('fastcat.fileManager.remote.not_configured_desc') }}
+                  {{ t('fastcat.fileManager.remote.notConfiguredDesc') }}
                 </p>
               </div>
               <UButton
@@ -217,7 +217,7 @@ function onBrowserResized(event: { panes: Array<{ size: number }> }) {
                 icon="i-heroicons-cog-6-tooth"
                 @click="openIntegrationsSettings"
               >
-                {{ t('fastcat.fileManager.remote.configure_action') }}
+                {{ t('fastcat.fileManager.remote.configureAction') }}
               </UButton>
             </div>
             <FileBrowser
