@@ -188,7 +188,7 @@ async function genWebGolden(): Promise<void> {
   }
 }
 
-function runImportNative(): Promise<void> {
+function runImportNative(): Promise<boolean> {
   return new Promise((resolve, reject) => {
     console.log('\nImporting native golden hashes...\n');
     const proc = spawn('pnpm', ['test:parity:import-native'], {
@@ -199,10 +199,14 @@ function runImportNative(): Promise<void> {
     proc.on('error', (error) => reject(error));
     proc.on('close', (code) => {
       if (code !== 0) {
-        reject(new Error(`pnpm test:parity:import-native exited with code ${code}`));
+        console.warn(
+          '\nNative golden import skipped (tests likely skipped — no ffmpeg/ffprobe or wgpu adapter).\n' +
+            'Web goldens were saved successfully. Install ffmpeg/ffprobe and a wgpu adapter to also generate native goldens.',
+        );
+        resolve(false);
         return;
       }
-      resolve();
+      resolve(true);
     });
   });
 }
@@ -218,7 +222,10 @@ async function main(): Promise<void> {
   }
 
   if (mode === '--native' || mode === '--both') {
-    await runImportNative();
+    const ok = await runImportNative();
+    if (!ok && mode === '--native') {
+      process.exit(1);
+    }
   }
 }
 

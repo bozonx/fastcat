@@ -186,7 +186,7 @@ function resetToDefault() {
     <!-- Track area — captures all pointer events -->
     <div
       ref="trackRef"
-      class="relative h-10 flex items-center px-4"
+      class="relative h-10 flex items-center px-4 slider-cursor-self"
       role="slider"
       :aria-valuenow="isDiscreteMode ? currentIndex + 1 : clampedValue"
       :aria-valuemin="isDiscreteMode ? 1 : min"

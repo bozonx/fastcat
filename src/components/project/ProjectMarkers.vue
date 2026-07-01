@@ -2,6 +2,7 @@
 import { computed, ref, watch } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useSelectionStore } from '~/stores/selection.store';
+import { useWorkspaceStore } from '~/stores/workspace.store';
 import { formatTimecode } from '~/utils/time';
 import MarkerThumbnail from '~/components/project/MarkerThumbnail.vue';
 import MarkerExportModal from '~/components/project/MarkerExportModal.vue';
@@ -18,6 +19,7 @@ const emit = defineEmits<{
 
 const timelineStore = useTimelineStore();
 const selectionStore = useSelectionStore();
+const workspaceStore = useWorkspaceStore();
 
 const fps = computed(() => timelineStore.timelineFormat.fps || 30);
 
@@ -122,6 +124,7 @@ function isMarkerSelected(markerId: string): boolean {
       />
       <div class="flex-1"></div>
       <UButton
+        v-if="workspaceStore.premiumFeaturesEnabled"
         size="xs"
         variant="soft"
         color="neutral"

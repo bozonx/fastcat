@@ -167,6 +167,10 @@ describe('useFileBrowserDragAndDrop', () => {
       entry,
     );
 
+    // REGRESSION GUARD: drag state must be set SYNCHRONOUSLY in startEntryDrag
+    // (on pointerdown), not deferred to the engine's onStart/commit callback —
+    // armPointerDnd is mocked here so onStart never runs, yet the state is already
+    // set. Tauri's native-drag takeover can fire before commit and relies on this.
     expect(uiStoreMock.isFileManagerDragging).toBe(true);
     expect(appClipboardMock.setDragSourceFileManagerInstanceId).toHaveBeenCalledWith('main');
     expect(appClipboardMock.setDragTargetFileManagerInstanceId).toHaveBeenCalledWith('main');

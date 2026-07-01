@@ -76,14 +76,14 @@ onMounted(() => {
       icon: 'i-heroicons-rectangle-group',
       component: markRaw(ProjectLibrary),
     });
-
-    registerProjectTab({
-      id: 'markers',
-      label: t('videoEditor.fileManager.tabs.markers'),
-      icon: 'i-heroicons-tag',
-      component: markRaw(ProjectMarkers),
-    });
   }
+
+  registerProjectTab({
+    id: 'markers',
+    label: t('videoEditor.fileManager.tabs.markers'),
+    icon: 'i-heroicons-tag',
+    component: markRaw(ProjectMarkers),
+  });
 
   registerProjectTab({
     id: 'backups',
