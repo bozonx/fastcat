@@ -274,6 +274,7 @@ function isEntrySelected(entry: FsEntry): boolean {
                     "
                     :alt="entry.name"
                     class="w-4 h-4 object-contain rounded-sm"
+                    draggable="false"
                     @error="handleImageError(entry)"
                   />
                   <UIcon

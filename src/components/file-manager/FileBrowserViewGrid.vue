@@ -135,6 +135,7 @@ function isEntrySelected(entry: FsEntry): boolean {
             :src="entry.objectUrl || getBdThumbnail(entry)"
             :alt="entry.name"
             class="max-w-full max-h-full object-contain"
+            draggable="false"
             @error="handleImageError(entry)"
           />
           <img
@@ -144,6 +145,7 @@ function isEntrySelected(entry: FsEntry): boolean {
             :src="videoThumbnails[entry.path]"
             :alt="entry.name"
             class="max-w-full max-h-full object-contain"
+            draggable="false"
             @error="handleImageError(entry)"
           />
           <div

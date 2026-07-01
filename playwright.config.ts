@@ -94,7 +94,7 @@ export default defineConfig({
     command: webServerCommand,
     url: baseURL,
     timeout: 120_000,
-    reuseExistingServer: process.env.PLAYWRIGHT_REUSE_SERVER === '1',
+    reuseExistingServer: !process.env.CI,
     env: {
       E2E_TEST: '1',
       E2E_PORT: String(e2ePort),

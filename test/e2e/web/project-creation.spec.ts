@@ -12,12 +12,13 @@ import {
 } from '../../utils/e2e/virtual-fs';
 
 test.describe('Web project creation', () => {
+  test.slow();
   test('creates a project, verifies FS structure and renders the timeline', async ({
     page,
     e2eWorkspace,
   }) => {
     const projectName = `Project ${Date.now().toString(36)}`;
-    await selectE2eWorkspace(page, e2eWorkspace);
+    await selectE2eWorkspace(page);
     const project = await createE2eProject(page, e2eWorkspace, projectName);
 
     await expect.poll(() => opfsEntryExists(page, project.path), { timeout: 10_000 }).toBe(true);

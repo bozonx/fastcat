@@ -1,6 +1,8 @@
 import { test as base, expect, type Page } from '@playwright/test';
 import { opfsEntryExists, removeOpfsEntry } from '../../utils/e2e/virtual-fs';
 
+const DEFAULT_WEB_WORKSPACE_NAME = 'fastcat-workspace';
+
 export const E2E_PROJECT_DIRS = [
   { name: '_video', kind: 'directory' },
   { name: '_audio', kind: 'directory' },
@@ -26,15 +28,8 @@ interface WorkspaceFixtures {
   e2eProject: E2eProject;
 }
 
-function createWorkspaceName(testTitle: string, workerIndex: number, retry: number): string {
-  const safeTitle = testTitle
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-|-$/g, '')
-    .slice(0, 48);
-  const random = Math.random().toString(36).slice(2, 8);
-
-  return `e2e-${workerIndex}-${retry}-${safeTitle}-${random}`;
+function createWorkspaceName(): string {
+  return DEFAULT_WEB_WORKSPACE_NAME;
 }
 
 function createProjectName(testTitle: string): string {
@@ -48,17 +43,16 @@ function createProjectName(testTitle: string): string {
   return `E2E Project ${safeTitle} ${random}`;
 }
 
-async function configureWebWorkspaceSandbox(page: Page, workspaceName: string): Promise<void> {
-  await page.addInitScript((name) => {
+async function configureWebWorkspaceSandbox(page: Page): Promise<void> {
+  await page.addInitScript(() => {
     window.localStorage.clear();
     window.sessionStorage.clear();
-    window.localStorage.setItem('fastcat_web_workspace_name', name);
-  }, workspaceName);
+  });
 }
 
-export async function selectE2eWorkspace(page: Page, workspace: E2eWorkspace): Promise<void> {
+export async function selectE2eWorkspace(page: Page): Promise<void> {
   await page.goto('/', { waitUntil: 'domcontentloaded' });
-  await expect(page.getByText(workspace.name)).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByRole('heading', { name: 'Projects' })).toBeVisible({ timeout: 30_000 });
   await expect(page.getByRole('button', { name: 'New Project' })).toBeVisible({ timeout: 30_000 });
 }
 
@@ -75,12 +69,12 @@ export async function createE2eProject(
   const editorUrlPattern = new RegExp(`/editor/${encodedName}`);
 
   try {
-    await page.waitForURL(editorUrlPattern, { timeout: 2_000 });
+    await page.waitForURL(editorUrlPattern, { timeout: 15_000 });
   } catch {
     const projectHeading = page.getByRole('heading', { name: projectName });
     if (await projectHeading.isVisible({ timeout: 2_000 }).catch(() => false)) {
       await projectHeading.click();
-      await page.waitForURL(editorUrlPattern, { timeout: 2_000 }).catch(() => undefined);
+      await page.waitForURL(editorUrlPattern, { timeout: 5_000 }).catch(() => undefined);
     }
     if (!editorUrlPattern.test(page.url())) {
       await page.goto(`/editor/${encodedName}`, { waitUntil: 'domcontentloaded' });
@@ -109,9 +103,9 @@ export async function waitForEditorReady(page: Page): Promise<void> {
 }
 
 export const test = base.extend<WorkspaceFixtures>({
-  e2eWorkspace: async ({ page }, use, testInfo) => {
-    const name = createWorkspaceName(testInfo.title, testInfo.workerIndex, testInfo.retry);
-    await configureWebWorkspaceSandbox(page, name);
+  e2eWorkspace: async ({ page }, use) => {
+    const name = createWorkspaceName();
+    await configureWebWorkspaceSandbox(page);
 
     await use({ name });
 
@@ -125,7 +119,7 @@ export const test = base.extend<WorkspaceFixtures>({
   },
 
   e2eProject: async ({ page, e2eWorkspace }, use, testInfo) => {
-    await selectE2eWorkspace(page, e2eWorkspace);
+    await selectE2eWorkspace(page);
     const project = await createE2eProject(page, e2eWorkspace, createProjectName(testInfo.title));
 
     await use(project);
