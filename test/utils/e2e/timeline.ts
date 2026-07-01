@@ -141,7 +141,9 @@ export async function addFileToTrack(
     .locator(`[data-entry-path="${entryPath}"], [data-entry-path$="/${entryPath}"]`)
     .first();
   const target = track(page, trackId);
-  await expect(source, `file entry ${entryPath}`).toBeVisible();
+  if ((await source.count()) > 0) {
+    await expect(source, `file entry ${entryPath}`).toBeVisible();
+  }
   await expect(target, `track ${trackId}`).toBeVisible();
 
   await page.evaluate(

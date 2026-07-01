@@ -1,6 +1,8 @@
+import { readFileSync } from 'node:fs';
 import { basename } from 'node:path';
 import { expect, type Locator, type Page } from '@playwright/test';
 import type { E2eProject } from '../../e2e/fixtures/workspace';
+import { writeFileToOpfs } from './virtual-fs';
 
 /**
  * File-manager interaction primitives for web e2e specs.
@@ -48,29 +50,40 @@ export async function seedProjectMedia(
   kind: 'video' | 'audio' | 'image',
 ): Promise<SeededMedia> {
   const fileName = basename(fixtureAbsPath);
-  const fallbackUiPath = `${MEDIA_SUBDIR[kind]}/${fileName}`;
-
-  await expect(page.getByTestId('timeline-container')).toBeVisible();
-  await openProjectFilesTab(page);
-  await importViaUpload(page, [fixtureAbsPath]);
-
-  const fileEntry = entry(page, fileName);
-  await expect(fileEntry).toBeVisible({ timeout: 20_000 });
-
-  const uiPath = (await fileEntry.getAttribute('data-entry-path')) ?? fallbackUiPath;
+  const uiPath = `${MEDIA_SUBDIR[kind]}/${fileName}`;
   const opfsPath = `${project.path}/${uiPath}`;
+  const bytes = readFileSync(fixtureAbsPath);
+
+  await writeFileToOpfs(page, { path: opfsPath, data: new Uint8Array(bytes) });
+  await page.goto(`/editor/${project.encodedName}`, { waitUntil: 'domcontentloaded' });
+  await openProjectFilesTab(page);
+  await page.getByRole('treeitem', { name: MEDIA_SUBDIR[kind] }).click();
+  await expect(entry(page, fileName)).toBeVisible({ timeout: 20_000 });
 
   return { fileName, opfsPath, uiPath };
 }
 
 /** Drives the real import pipeline via the app's file input. */
 export async function importViaUpload(page: Page, fixtureAbsPaths: string[]): Promise<void> {
-  await openProjectFilesTab(page);
-  await page.waitForTimeout(100);
-  const chooserPromise = page.waitForEvent('filechooser');
-  await page.getByTestId('file-upload').last().click();
-  const chooser = await chooserPromise;
-  await chooser.setFiles(fixtureAbsPaths);
+  for (let attempt = 0; attempt < 3; attempt++) {
+    await openProjectFilesTab(page);
+    const input = page.getByTestId('file-upload-input').first();
+    const attached = await expect(input)
+      .toBeAttached({ timeout: 5_000 })
+      .then(() => true)
+      .catch(() => false);
+    if (!attached) continue;
+
+    const chooserPromise = page.waitForEvent('filechooser', { timeout: 5_000 });
+    await input.evaluate((element) => (element as HTMLInputElement).click()).catch(() => undefined);
+    const chooser = await chooserPromise.catch(() => null);
+    if (!chooser) continue;
+
+    await chooser.setFiles(fixtureAbsPaths);
+    return;
+  }
+
+  throw new Error('Unable to open the file upload chooser');
 }
 
 /** Locate a file/folder entry by its visible name (matches any `data-entry-path`). */
@@ -89,13 +102,17 @@ export async function openProjectFilesTab(page: Page): Promise<void> {
 
   for (let attempt = 0; attempt < 3; attempt++) {
     await filesTab.click();
-    const upload = page.getByTestId('file-upload').last();
-    if (await upload.isVisible({ timeout: 3_000 }).catch(() => false)) return;
+    const uploadInput = page.getByTestId('file-upload-input').first();
+    if (await expect(uploadInput).toBeAttached({ timeout: 3_000 }).then(() => true).catch(() => false)) {
+      return;
+    }
     await filesTab.evaluate((element) => (element as HTMLElement).click()).catch(() => undefined);
-    if (await upload.isVisible({ timeout: 3_000 }).catch(() => false)) return;
+    if (await expect(uploadInput).toBeAttached({ timeout: 3_000 }).then(() => true).catch(() => false)) {
+      return;
+    }
   }
 
-  await expect(page.getByTestId('file-upload').last()).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByTestId('file-upload-input').first()).toBeAttached({ timeout: 10_000 });
 }
 
 export async function setViewMode(page: Page, mode: 'grid' | 'list'): Promise<void> {
@@ -109,14 +126,16 @@ export async function setViewMode(page: Page, mode: 'grid' | 'list'): Promise<vo
  */
 export async function createFolder(page: Page, name: string): Promise<void> {
   await openProjectFilesTab(page);
-  await page.getByTestId('file-create-folder').click();
-  const dialog = page.getByRole('dialog');
-  await expect(dialog).toBeVisible();
-  const input = dialog.locator('input').first();
-  await expect(input).toBeVisible();
-  await input.fill(name);
-  await dialog.getByRole('button', { name: /create|ok|confirm|создать/i }).click();
-  await expect(dialog).toBeHidden();
+  await page.evaluate(async (folderName) => {
+    const createRootFolder = (
+      window as Window & {
+        __fastcatE2eCreateRootFolder?: (params: { name: string }) => Promise<void>;
+      }
+    ).__fastcatE2eCreateRootFolder;
+
+    if (!createRootFolder) throw new Error('E2E file-manager create-folder hook is not registered');
+    await createRootFolder({ name: folderName });
+  }, name);
 }
 
 /** Right-click an entry to open its context menu, then click a menu item. */

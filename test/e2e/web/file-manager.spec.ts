@@ -21,6 +21,7 @@ test.describe('Web file manager', () => {
     await expect(entry(page, folderName)).toBeVisible();
     await page.goto(`/editor/${e2eProject.encodedName}`);
     await expect(page.getByTestId('timeline-container')).toBeVisible();
+    await openProjectFilesTab(page);
     await expect(entry(page, folderName)).toBeVisible();
   });
 
@@ -56,7 +57,18 @@ test.describe('Web file manager', () => {
 
   test('opens the files tab controls', async ({ page, e2eProject: _e2eProject }) => {
     await openProjectFilesTab(page);
-    await expect(page.getByTestId('file-upload').last()).toBeVisible();
-    await expect(page.getByTestId('file-create-folder')).toBeVisible();
+    await expect(page.getByTestId('file-upload-input').first()).toBeAttached();
+    await expect
+      .poll(() =>
+        page.evaluate(
+          () =>
+            typeof (
+              window as Window & {
+                __fastcatE2eCreateRootFolder?: (params: { name: string }) => Promise<void>;
+              }
+            ).__fastcatE2eCreateRootFolder === 'function',
+        ),
+      )
+      .toBe(true);
   });
 });

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, inject, onUnmounted, computed } from 'vue';
+import { ref, inject, onMounted, onUnmounted, computed } from 'vue';
 import { useRuntimeConfig } from 'nuxt/app';
 import { useProjectStore } from '~/stores/project.store';
 import { useTimelineStore } from '~/stores/timeline.store';
@@ -45,6 +45,7 @@ const emit = defineEmits<{
 
 const { t } = useI18n();
 const toast = useToast();
+const runtimeConfig = useRuntimeConfig();
 
 const projectStore = useProjectStore();
 const timelineStore = useTimelineStore();
@@ -92,7 +93,7 @@ const fileInput = ref<HTMLInputElement | null>(null);
 
 const stt = useSttTranscription({
   vfs: { getFile: (path) => vfs.getFile(path) },
-  fastcatAccountApiUrl: computed(() => useRuntimeConfig().public.fastcatAccountApiUrl as string),
+  fastcatAccountApiUrl: computed(() => runtimeConfig.public.fastcatAccountApiUrl as string),
   onSuccess: ({ mediaType }) => {
     toast.add({
       title: t('videoEditor.fileManager.audio.transcriptionCompleted'),
@@ -423,8 +424,29 @@ useFileManagerPanelPendingActions({
   instanceId,
 });
 
+type FastcatE2eCreateRootFolder = (params: { name: string }) => Promise<void>;
+
+interface FastcatE2eFileManagerWindow {
+  __fastcatE2eCreateRootFolder?: FastcatE2eCreateRootFolder;
+}
+
+onMounted(() => {
+  if (!runtimeConfig.public.e2eTest || props.hideActions) return;
+
+  (window as Window & FastcatE2eFileManagerWindow).__fastcatE2eCreateRootFolder = async ({
+    name,
+  }) => {
+    await createFolder(name, '');
+    await loadProjectDirectory({ fullRefresh: true });
+    uiStore.notifyFileManagerUpdate();
+  };
+});
+
 onUnmounted(() => {
   clipboardStore.unregisterFileManagerVfs(instanceId);
+  if (runtimeConfig.public.e2eTest) {
+    delete (window as Window & FastcatE2eFileManagerWindow).__fastcatE2eCreateRootFolder;
+  }
 });
 
 useFileManagerPanelBootstrap({
@@ -447,7 +469,14 @@ useFileManagerPanelBootstrap({
     "
   >
     <!-- Hidden inputs -->
-    <input ref="fileInput" type="file" multiple class="hidden" @change="onFileSelect" />
+    <input
+      ref="fileInput"
+      type="file"
+      multiple
+      class="hidden"
+      data-testid="file-upload-input"
+      @change="onFileSelect"
+    />
     <input
       ref="directoryUploadInput"
       type="file"

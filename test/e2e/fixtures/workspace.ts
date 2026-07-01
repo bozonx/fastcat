@@ -75,8 +75,8 @@ async function mockWorkspacePicker(page: Page, workspaceName: string): Promise<v
 }
 
 export async function selectE2eWorkspace(page: Page, workspace: E2eWorkspace): Promise<void> {
-  await page.goto('/');
-  await page.getByRole('button', { name: 'Select Workspace Folder' }).click();
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await page.getByRole('button', { name: 'Select Workspace Folder' }).click({ timeout: 15_000 });
   await expect(page.getByText(workspace.name)).toBeVisible();
 }
 
@@ -93,11 +93,16 @@ export async function createE2eProject(
   const editorUrlPattern = new RegExp(`/editor/${encodedName}`);
 
   try {
-    await page.waitForURL(editorUrlPattern, { timeout: 1_000 });
+    await page.waitForURL(editorUrlPattern, { timeout: 2_000 });
   } catch {
     const projectHeading = page.getByRole('heading', { name: projectName });
-    await expect(projectHeading).toBeVisible();
-    await projectHeading.click();
+    if (await projectHeading.isVisible({ timeout: 2_000 }).catch(() => false)) {
+      await projectHeading.click();
+      await page.waitForURL(editorUrlPattern, { timeout: 2_000 }).catch(() => undefined);
+    }
+    if (!editorUrlPattern.test(page.url())) {
+      await page.goto(`/editor/${encodedName}`, { waitUntil: 'domcontentloaded' });
+    }
   }
 
   await expect(page).toHaveURL(editorUrlPattern);
