@@ -167,6 +167,7 @@ const toolbarMenuItems = computed(() => {
     <div v-if="!isRemotePanel && !hideViewSwitcher" class="flex items-center gap-1">
       <UiTooltip :text="t('videoEditor.fileManager.gridViewTooltip')">
         <UiToggleButton
+          data-testid="file-view-grid"
           :model-value="fileManagerStore.viewMode === 'grid'"
           icon="i-heroicons-squares-2x2"
           inactive-color="neutral"
@@ -178,6 +179,7 @@ const toolbarMenuItems = computed(() => {
       </UiTooltip>
       <UiTooltip :text="t('videoEditor.fileManager.listViewTooltip')">
         <UiToggleButton
+          data-testid="file-view-list"
           :model-value="fileManagerStore.viewMode === 'list'"
           icon="i-heroicons-list-bullet"
           inactive-color="neutral"
@@ -198,6 +200,7 @@ const toolbarMenuItems = computed(() => {
         "
       >
         <UiActionButton
+          data-testid="file-create-folder"
           icon="i-heroicons-folder-plus"
           variant="ghost"
           color="neutral"

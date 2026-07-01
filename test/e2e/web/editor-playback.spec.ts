@@ -1,20 +1,47 @@
-/*
- * Basic desktop-web editor playback coverage plan.
- *
- * Scope:
- * - Start from `e2eProject`.
- * - Prepare a short timeline with one supported media fixture.
- * - Verify editor playback controls and playhead movement. Numeric audio graph
- *   validation stays in `audio-playback.spec.ts`.
- *
- * Scenarios to implement:
- * - Press play and verify the playhead advances.
- * - Press pause and verify the playhead stops.
- * - Seek via the monitor or timeline ruler and verify the displayed timecode.
- * - Toggle mute or volume in base UI if available without feature flags.
- * - Reload and verify the timeline can still play.
- *
- * Do not cover here:
- * - WebGPU visual parity, native monitor behavior, or audio DSP details.
- * - In-development monitor overlay transforms or draggable panels.
+import { test, expect } from '../fixtures/workspace';
+import { MEDIA_FIXTURES } from '../../fixtures/media';
+import { seedProjectMedia } from '../../utils/e2e/file-manager';
+import { addFileToTrack, clipIds, trackIds } from '../../utils/e2e/timeline';
+import { waitForTimelineDoc } from '../../utils/e2e/otio';
+import { expectPlayheadAdvances, playheadX, seekRulerFraction } from '../../utils/e2e/transport';
+
+/**
+ * Editor transport + playhead. Numeric audio-graph validation stays in
+ * audio-playback; visual parity + native monitor are out of scope.
  */
+test.describe('Web editor playback', () => {
+  test.beforeEach(async ({ page, e2eProject }) => {
+    const { fileName } = await seedProjectMedia(
+      page,
+      e2eProject,
+      MEDIA_FIXTURES.video.h264Mp4,
+      'video',
+    );
+    const videoTrackId = (await trackIds(page))[0];
+    await addFileToTrack(page, `${e2eProject.path}/_video/${fileName}`, videoTrackId);
+    await waitForTimelineDoc(page, e2eProject, (d) => d.allClips.length === 1);
+    await expect.poll(async () => (await clipIds(page)).length).toBe(1);
+  });
+
+  test('play advances the playhead and pause stops it', async ({ page }) => {
+    await expectPlayheadAdvances(page, { forMs: 700 });
+
+    // After pause the playhead should hold position.
+    const settled = await playheadX(page);
+    await page.waitForTimeout(300);
+    expect(Math.abs((await playheadX(page)) - settled)).toBeLessThan(2);
+  });
+
+  test('seeking on the ruler moves the playhead', async ({ page }) => {
+    const start = await playheadX(page);
+    await seekRulerFraction(page, 0.5);
+    await expect.poll(async () => (await playheadX(page)) - start).toBeGreaterThan(5);
+  });
+
+  test('timeline still plays after a reload', async ({ page, e2eProject }) => {
+    await page.goto(`/editor/${e2eProject.encodedName}`);
+    await expect(page.getByTestId('timeline-container')).toBeVisible();
+    await expect.poll(async () => (await clipIds(page)).length).toBe(1);
+    await expectPlayheadAdvances(page, { forMs: 700 });
+  });
+});

@@ -165,6 +165,7 @@ defineEmits(['open-project-settings', 'open-editor-settings', 'open-export-modal
           :text="getHotkeyTitle(t('videoEditor.export.title'), 'general.switchViewExport')"
         >
           <button
+            data-testid="nav-export"
             class="px-4 h-full flex items-center text-xs font-bold uppercase tracking-wider transition-colors relative"
             :class="
               projectStore.currentView === 'export'

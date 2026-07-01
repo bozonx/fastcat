@@ -1,20 +1,83 @@
-/*
- * Basic desktop-web timeline trim coverage plan.
- *
- * Scope:
- * - Start from `e2eProject`.
- * - Prepare a timeline that already contains one media clip.
- * - Keep each test focused on one trim operation and verify the saved timeline
- *   state after the operation.
- *
- * Scenarios to implement:
- * - Trim the clip end and verify its duration decreases.
- * - Trim the clip start and verify source offset plus duration are updated.
- * - Attempt to trim beyond the minimum duration and verify the UI clamps it.
- * - Reload the editor and verify the trimmed clip persists.
- *
- * Do not cover here:
- * - Split, ripple edit, transitions, captions, or advanced actions hidden by
- *   feature flags.
- * - Playback quality; use editor-playback tests for playback.
+import type { Page } from '@playwright/test';
+import { test, expect } from '../fixtures/workspace';
+import type { E2eProject } from '../fixtures/workspace';
+import { MEDIA_FIXTURES } from '../../fixtures/media';
+import { seedProjectMedia } from '../../utils/e2e/file-manager';
+import { addFileToTrack, clipIds, trackIds, trimClipEdge } from '../../utils/e2e/timeline';
+import { readTimelineDoc, waitForTimelineDoc } from '../../utils/e2e/otio';
+
+/**
+ * Trimming a single clip via its edge handles. Each test does one trim and
+ * verifies the persisted source/timeline range. Split/ripple/transitions are
+ * out of scope (feature-flagged or separate specs).
  */
+test.describe('Web timeline trim', () => {
+  async function projectWithOneClip(page: Page, project: E2eProject) {
+    const { fileName } = await seedProjectMedia(
+      page,
+      project,
+      MEDIA_FIXTURES.video.h264Mp4,
+      'video',
+    );
+    const videoTrackId = (await trackIds(page))[0];
+    await addFileToTrack(page, `${project.path}/_video/${fileName}`, videoTrackId);
+    await waitForTimelineDoc(page, project, (d) => d.allClips.length === 1);
+    return (await clipIds(page))[0];
+  }
+
+  test('trimming the end shortens the clip duration', async ({ page, e2eProject }) => {
+    const clipId = await projectWithOneClip(page, e2eProject);
+    const before = (await readTimelineDoc(page, e2eProject)).allClips[0].timelineDurationUs;
+
+    await trimClipEdge(page, clipId, 'end', -40);
+
+    const doc = await waitForTimelineDoc(
+      page,
+      e2eProject,
+      (d) => d.allClips[0].timelineDurationUs < before,
+    );
+    expect(doc.allClips[0].timelineDurationUs).toBeLessThan(before);
+  });
+
+  test('trimming the start updates source offset and duration', async ({ page, e2eProject }) => {
+    const clipId = await projectWithOneClip(page, e2eProject);
+    const c0 = (await readTimelineDoc(page, e2eProject)).allClips[0];
+
+    await trimClipEdge(page, clipId, 'start', 40);
+
+    const doc = await waitForTimelineDoc(
+      page,
+      e2eProject,
+      (d) => d.allClips[0].timelineDurationUs < c0.timelineDurationUs,
+    );
+    const c1 = doc.allClips[0];
+    expect(c1.timelineDurationUs).toBeLessThan(c0.timelineDurationUs);
+    // Trimming in from the head advances the source in-point.
+    expect(c1.sourceStartUs).toBeGreaterThanOrEqual(c0.sourceStartUs);
+  });
+
+  test('cannot trim below the minimum duration', async ({ page, e2eProject }) => {
+    const clipId = await projectWithOneClip(page, e2eProject);
+
+    // Drag the end handle far past the clip's own start.
+    await trimClipEdge(page, clipId, 'end', -5000);
+
+    const doc = await waitForTimelineDoc(page, e2eProject, (d) => d.allClips.length === 1);
+    expect(doc.allClips[0].timelineDurationUs).toBeGreaterThan(0);
+  });
+
+  test('trimmed clip persists across reload', async ({ page, e2eProject }) => {
+    const clipId = await projectWithOneClip(page, e2eProject);
+    const before = (await readTimelineDoc(page, e2eProject)).allClips[0].timelineDurationUs;
+    await trimClipEdge(page, clipId, 'end', -40);
+    const trimmed = (
+      await waitForTimelineDoc(page, e2eProject, (d) => d.allClips[0].timelineDurationUs < before)
+    ).allClips[0].timelineDurationUs;
+
+    await page.goto(`/editor/${e2eProject.encodedName}`);
+    await expect(page.getByTestId('timeline-container')).toBeVisible();
+
+    const reloaded = (await readTimelineDoc(page, e2eProject)).allClips[0].timelineDurationUs;
+    expect(reloaded).toBe(trimmed);
+  });
+});

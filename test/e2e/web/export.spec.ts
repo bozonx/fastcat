@@ -1,21 +1,45 @@
-/*
- * Basic desktop-web export coverage plan.
- *
- * Scope:
- * - Start from `e2eProject`.
- * - Prepare a small timeline with supported media and base settings.
- * - Use the shortest reliable export preset or test-only export path available
- *   in the UI.
- *
- * Scenarios to implement:
- * - Open the export panel for a prepared timeline.
- * - Change a base export setting and verify it is reflected in the form state.
- * - Run a short export and verify an output file appears in the project export
- *   directory.
- * - Verify export progress reaches a completed state without uncaught errors.
- *
- * Do not cover here:
- * - Premium presets, hardware/native export, conversion-only paths, or advanced
- *   codec compatibility matrices.
- * - Pixel parity; use parity tests for frame correctness.
+import { test, expect } from '../fixtures/workspace';
+import { MEDIA_FIXTURES } from '../../fixtures/media';
+import { seedProjectMedia } from '../../utils/e2e/file-manager';
+import { addFileToTrack, trackIds } from '../../utils/e2e/timeline';
+import { waitForTimelineDoc } from '../../utils/e2e/otio';
+import { openExport, startExport, waitForExportSuccess } from '../../utils/e2e/transport';
+import { listOpfsDirectory } from '../../utils/e2e/virtual-fs';
+
+/**
+ * Base web export of a short timeline. Premium presets, native/hardware export,
+ * conversion-only paths and pixel parity are out of scope (parity specs cover
+ * frame correctness).
  */
+test.describe('Web export', () => {
+  test.slow(); // real encode of a short clip
+
+  test.beforeEach(async ({ page, e2eProject }) => {
+    const { fileName } = await seedProjectMedia(
+      page,
+      e2eProject,
+      MEDIA_FIXTURES.video.h264Mp4,
+      'video',
+    );
+    const videoTrackId = (await trackIds(page))[0];
+    await addFileToTrack(page, `${e2eProject.path}/_video/${fileName}`, videoTrackId);
+    await waitForTimelineDoc(page, e2eProject, (d) => d.allClips.length === 1);
+  });
+
+  test('opens the export panel and shows the start control', async ({ page }) => {
+    await openExport(page);
+    await expect(page.getByTestId('export-start')).toBeEnabled();
+  });
+
+  test('runs a short export to completion and writes an output file', async ({
+    page,
+    e2eProject,
+  }) => {
+    await openExport(page);
+    await startExport(page);
+    await waitForExportSuccess(page, { timeout: 90_000 });
+
+    const outputs = await listOpfsDirectory(page, `${e2eProject.path}/_export`);
+    expect(outputs.length).toBeGreaterThan(0);
+  });
+});

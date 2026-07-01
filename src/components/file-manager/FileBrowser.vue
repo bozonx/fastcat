@@ -963,6 +963,7 @@ async function onDirectoryUploadChange(e: Event) {
     <!-- Hidden input for directory upload -->
     <input
       ref="directoryUploadInput"
+      data-testid="file-upload-input"
       type="file"
       multiple
       class="hidden"

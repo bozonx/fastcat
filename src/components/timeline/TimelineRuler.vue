@@ -412,6 +412,7 @@ function onMobilePointerUp() {
   >
     <div
       ref="containerRef"
+      data-testid="timeline-ruler"
       class="relative w-full h-full overflow-hidden cursor-pointer"
       :class="isMobile ? '' : 'touch-none'"
       @contextmenu="onRulerContextMenu"

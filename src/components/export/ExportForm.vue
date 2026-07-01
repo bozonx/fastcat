@@ -605,6 +605,7 @@ const filenamePlaceholder = computed(() =>
 
         <div
           v-if="lastExportStatus === 'success' && exportDurationMs !== null"
+          data-testid="export-success"
           class="p-3 text-sm text-success-400 bg-success-400/10 rounded-md border border-success-400/20"
         >
           {{
@@ -651,7 +652,7 @@ const filenamePlaceholder = computed(() =>
       class="mt-auto pt-4 md:pt-6 border-t border-ui-border p-4 md:p-6 bg-ui-bg-elevated shrink-0"
     >
       <div class="flex flex-col gap-3 w-full">
-        <div v-if="isExporting" class="flex flex-col gap-2">
+        <div v-if="isExporting" data-testid="export-progress" class="flex flex-col gap-2">
           <div class="flex justify-between text-sm text-ui-text-muted">
             <span class="font-medium">{{ getPhaseLabel() }}</span>
             <span class="font-mono">{{ exportProgressPercent }}%</span>
@@ -690,6 +691,7 @@ const filenamePlaceholder = computed(() =>
             @click="cancelExport"
           />
           <UButton
+            data-testid="export-start"
             color="primary"
             variant="solid"
             :label="

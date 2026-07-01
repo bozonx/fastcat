@@ -88,6 +88,7 @@ const currentFrameHighlightStyle = computed(() => {
     />
     <!-- Playhead line: 1px, pixel-aligned -->
     <div
+      data-testid="timeline-playhead"
       class="absolute inset-y-0 w-px"
       :style="{
         transform: playheadTransform,
