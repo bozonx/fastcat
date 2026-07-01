@@ -126,6 +126,21 @@ export async function setViewMode(page: Page, mode: 'grid' | 'list'): Promise<vo
  */
 export async function createFolder(page: Page, name: string): Promise<void> {
   await openProjectFilesTab(page);
+  await expect
+    .poll(
+      () =>
+        page.evaluate(
+          () =>
+            typeof (
+              window as Window & {
+                __fastcatE2eCreateRootFolder?: (params: { name: string }) => Promise<void>;
+              }
+            ).__fastcatE2eCreateRootFolder === 'function',
+        ),
+      { timeout: 10_000 },
+    )
+    .toBe(true);
+
   await page.evaluate(async (folderName) => {
     const createRootFolder = (
       window as Window & {

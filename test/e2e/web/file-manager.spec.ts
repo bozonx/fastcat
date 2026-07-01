@@ -22,7 +22,7 @@ test.describe('Web file manager', () => {
     await page.goto(`/editor/${e2eProject.encodedName}`);
     await expect(page.getByTestId('timeline-container')).toBeVisible();
     await openProjectFilesTab(page);
-    await expect(entry(page, folderName)).toBeVisible();
+    await expect.poll(() => opfsEntryExists(page, `${e2eProject.path}/${folderName}`)).toBe(true);
   });
 
   test('deletes a file from the project and OPFS', async ({ page, e2eProject }) => {

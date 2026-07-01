@@ -430,7 +430,7 @@ interface FastcatE2eFileManagerWindow {
   __fastcatE2eCreateRootFolder?: FastcatE2eCreateRootFolder;
 }
 
-onMounted(() => {
+function registerE2eFileManagerHooks() {
   if (!runtimeConfig.public.e2eTest || props.hideActions) return;
 
   (window as Window & FastcatE2eFileManagerWindow).__fastcatE2eCreateRootFolder = async ({
@@ -440,7 +440,11 @@ onMounted(() => {
     await loadProjectDirectory({ fullRefresh: true });
     uiStore.notifyFileManagerUpdate();
   };
-});
+}
+
+registerE2eFileManagerHooks();
+
+onMounted(registerE2eFileManagerHooks);
 
 onUnmounted(() => {
   clipboardStore.unregisterFileManagerVfs(instanceId);
