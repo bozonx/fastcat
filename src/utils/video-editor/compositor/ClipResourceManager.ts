@@ -89,7 +89,14 @@ export class ClipResourceManager {
     if (!previewEffectsEnabled) return;
     const hasEffects = (clip.effects?.length ?? 0) > 0;
     const runner = this.context.computeRunner;
-    if (!hasEffects || !runner?.isReady()) return;
+    if (!hasEffects || !runner?.isReady()) {
+      // Clear stale stored dimensions so applyClipLayoutForCurrentSource
+      // uses imageSource directly when effects are off/unavailable.
+      clip.effectSourceW = undefined;
+      clip.effectSourceH = undefined;
+      clip.effectIgnoreTransform = undefined;
+      return;
+    }
 
     const effectSpecs = buildEffectSpecs(clip.effects);
     if (!effectSpecs || effectSpecs.length === 0) return;
@@ -102,6 +109,13 @@ export class ClipResourceManager {
 
     const sourceBitmap = await this.getNonVideoClipBitmap(clip);
     if (!sourceBitmap) return;
+
+    // The unpadded source dimensions drive the layout for regular effects: the
+    // blur "bleed" path pads the processed bitmap, so laying it out with the
+    // padded size would shrink the visible content. `applySpriteLayout`
+    // re-derives the padding from the texture-vs-frame size difference.
+    const sourceW = sourceBitmap.width;
+    const sourceH = sourceBitmap.height;
 
     // Follow the video-path pattern: save the previous processed frame for
     // disposal after the new one is committed, preventing GPU texture leaks.
@@ -158,7 +172,25 @@ export class ClipResourceManager {
         clip.imageSource.update();
         clip.lastVideoFrame = processed;
         clip.nonVideoEffectCacheKey = cacheKey;
-        this.context.getLayoutApplier().applySpriteLayout(processedW, processedH, clip);
+        if (blurFillIndex >= 0) {
+          // Blur-fill fills the whole project frame; lay it out 1:1 ignoring the
+          // clip transform, mirroring the native `Transform::center_fit` reset.
+          clip.effectSourceW = this.context.width;
+          clip.effectSourceH = this.context.height;
+          clip.effectIgnoreTransform = true;
+          this.context
+            .getLayoutApplier()
+            .applySpriteLayout(this.context.width, this.context.height, clip, {
+              ignoreClipTransform: true,
+            });
+        } else {
+          // Use the original (unpadded) source size so any blur "bleed" padding
+          // baked into `processed` is treated as padding, not content.
+          clip.effectSourceW = sourceW;
+          clip.effectSourceH = sourceH;
+          clip.effectIgnoreTransform = false;
+          this.context.getLayoutApplier().applySpriteLayout(sourceW, sourceH, clip);
+        }
 
         // The new processed bitmap is now committed as the texture resource,
         // so the old one is safe to dispose.
@@ -712,7 +744,15 @@ export class ClipResourceManager {
                     (clip.imageSource as { resource?: unknown }).resource = processed;
                     clip.imageSource.update();
                     clip.lastVideoFrame = processed;
-                    this.context.getLayoutApplier().applySpriteLayout(projectW, projectH, clip);
+                    // Blur-fill fills the whole project frame; lay it out 1:1
+                    // ignoring the clip transform, mirroring the native
+                    // `Transform::center_fit` reset so both backends match.
+                    clip.effectSourceW = projectW;
+                    clip.effectSourceH = projectH;
+                    clip.effectIgnoreTransform = true;
+                    this.context
+                      .getLayoutApplier()
+                      .applySpriteLayout(projectW, projectH, clip, { ignoreClipTransform: true });
                     return;
                   }
                   // blur-fill failed: render the still-valid intermediate (the
@@ -731,6 +771,9 @@ export class ClipResourceManager {
                     (clip.imageSource as { resource?: unknown }).resource = intermediate as unknown;
                     clip.imageSource.update();
                     clip.lastVideoFrame = intermediate;
+                    clip.effectSourceW = frameW;
+                    clip.effectSourceH = frameH;
+                    clip.effectIgnoreTransform = false;
                     this.context.getLayoutApplier().applySpriteLayout(frameW, frameH, clip);
                     return;
                   }
@@ -759,6 +802,9 @@ export class ClipResourceManager {
                     (clip.imageSource as { resource?: unknown }).resource = processed;
                     clip.imageSource.update();
                     clip.lastVideoFrame = processed;
+                    clip.effectSourceW = frameW;
+                    clip.effectSourceH = frameH;
+                    clip.effectIgnoreTransform = false;
                     this.context.getLayoutApplier().applySpriteLayout(frameW, frameH, clip);
                     return;
                   }
@@ -776,6 +822,11 @@ export class ClipResourceManager {
           clip.imageSource.update();
           clip.lastVideoFrame = frame;
 
+          // No effects applied — clear any stale stored dimensions so
+          // applyClipLayoutForCurrentSource uses imageSource directly.
+          clip.effectSourceW = undefined;
+          clip.effectSourceH = undefined;
+          clip.effectIgnoreTransform = undefined;
           this.context.getLayoutApplier().applySpriteLayout(frameW, frameH, clip);
 
           return;

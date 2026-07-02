@@ -100,14 +100,33 @@ export class LayoutApplier {
       return;
     }
 
-    const frameW = Math.max(1, Math.round(clip.imageSource?.width ?? 1));
-    const frameH = Math.max(1, Math.round(clip.imageSource?.height ?? 1));
-    this.applySpriteLayout(frameW, frameH, clip);
+    // When WebGPU effects have padded the imageSource (blur bleed) or reframed
+    // it (blur-fill), the imageSource dimensions no longer represent the content
+    // size. Use the stored original dimensions so the layout doesn't shrink the
+    // content to fit the padded texture.
+    const frameW = clip.effectSourceW ?? Math.max(1, Math.round(clip.imageSource?.width ?? 1));
+    const frameH = clip.effectSourceH ?? Math.max(1, Math.round(clip.imageSource?.height ?? 1));
+    const options = clip.effectIgnoreTransform ? { ignoreClipTransform: true } : {};
+    this.applySpriteLayout(frameW, frameH, clip, options);
   }
 
-  public applySpriteLayout(frameW: number, frameH: number, clip: CompositorClip) {
-    const sourceRotation =
-      clip.sourceOrientation && clip.sourceOrientation !== 'auto'
+  public applySpriteLayout(
+    frameW: number,
+    frameH: number,
+    clip: CompositorClip,
+    options: { ignoreClipTransform?: boolean } = {},
+  ) {
+    // Blur-fill reframes the layer to fill the whole project frame, so the
+    // native backend resets the layer transform (`Transform::center_fit`) and
+    // maps the frame-sized result 1:1 onto the frame — ignoring the clip's
+    // position/scale/crop and source orientation. Mirror that here so both
+    // backends render blur-fill identically.
+    const ignoreClipTransform = options.ignoreClipTransform === true;
+    const clipTransform =
+      !ignoreClipTransform && clip.transformActive !== false ? clip.transform : undefined;
+    const sourceRotation = ignoreClipTransform
+      ? 0
+      : clip.sourceOrientation && clip.sourceOrientation !== 'auto'
         ? Number(clip.sourceOrientation)
         : (clip.sourceRotation ?? 0);
 
@@ -118,10 +137,8 @@ export class LayoutApplier {
       canvasHeight: this.context.height,
       fitRotationDeg: sourceRotation,
       transform: {
-        ...((clip.transformActive !== false ? clip.transform : undefined) ?? {}),
-        rotationDeg:
-          ((clip.transformActive !== false ? clip.transform : undefined)?.rotationDeg ?? 0) +
-          sourceRotation,
+        ...(clipTransform ?? {}),
+        rotationDeg: (clipTransform?.rotationDeg ?? 0) + sourceRotation,
       },
     });
 
@@ -155,6 +172,7 @@ export class LayoutApplier {
       paddingY,
       frameW,
       frameH,
+      disableCrop: ignoreClipTransform,
     });
   }
 
@@ -215,6 +233,7 @@ export class LayoutApplier {
     paddingY?: number;
     frameW?: number;
     frameH?: number;
+    disableCrop?: boolean;
   }) {
     const sprite = input.clip.sprite;
     if (!sprite) return;
@@ -255,7 +274,10 @@ export class LayoutApplier {
     sprite.x = input.baseX + input.anchorOffsetX + input.stagePosX;
     sprite.y = input.baseY + input.anchorOffsetY + input.stagePosY;
 
-    const crop = input.clip.transformActive !== false ? input.clip.transform?.crop : undefined;
+    const crop =
+      !input.disableCrop && input.clip.transformActive !== false
+        ? input.clip.transform?.crop
+        : undefined;
     if (crop && (crop.top || crop.bottom || crop.left || crop.right)) {
       if (!input.clip.cropMask) {
         input.clip.cropMask = new Graphics();

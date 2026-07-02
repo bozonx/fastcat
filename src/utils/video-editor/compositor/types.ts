@@ -106,6 +106,16 @@ export interface BaseCompositorClip {
   hudDirty?: boolean;
   /** Cache key for non-video WebGPU effect processing — skips reprocessing when unchanged. */
   nonVideoEffectCacheKey?: string;
+  /**
+   * Original unpadded source dimensions, stored when WebGPU effects pad the
+   * imageSource (blur bleed). `applyClipLayoutForCurrentSource` reads these
+   * instead of the (now larger) `imageSource.width/height` so the content
+   * isn't shrunk to fit the padded texture.
+   */
+  effectSourceW?: number;
+  effectSourceH?: number;
+  /** Whether the effect layout should ignore the clip transform (blur-fill). */
+  effectIgnoreTransform?: boolean;
   hudMediaStates?: {
     background?: HudMediaState;
     content?: HudMediaState;

@@ -31,7 +31,11 @@ export const VIDEO_EFFECT_PARAM_RANGES = {
   },
   blurRadius: {
     uiMin: 0,
-    uiMax: 100,
+    // Raised from 100 so the slider can reach a genuinely strong blur — the old
+    // cap left directional blur types (notably radial/zoom blur, which only
+    // spreads along the radius and stays sharp at the centre) looking too soft
+    // at the maximum. animationMax/renderMax stay well above it.
+    uiMax: 200,
     animationMin: 0,
     animationMax: 512,
     renderMin: 0,

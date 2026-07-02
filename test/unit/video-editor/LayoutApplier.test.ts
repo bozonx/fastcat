@@ -237,6 +237,50 @@ describe('LayoutApplier', () => {
     expect(sprite.rotation).toBeCloseTo(0);
   });
 
+  it('ignores clip transform and source rotation for blur-fill (native parity)', () => {
+    const sprite = createMockSprite();
+    const clip = {
+      itemId: 'clip-blur-fill',
+      layer: 1,
+      startUs: 0,
+      endUs: 1_000_000,
+      durationUs: 1_000_000,
+      sourceStartUs: 0,
+      sourceRangeDurationUs: 1_000_000,
+      sourceDurationUs: 1_000_000,
+      sprite,
+      clipKind: 'video' as const,
+      clipType: 'media' as const,
+      sourceKind: 'videoFrame' as const,
+      imageSource: {
+        width: 1920,
+        height: 1080,
+        resize: () => {},
+        update: () => {},
+        resource: null,
+      } as any,
+      lastVideoFrame: null,
+      canvas: null,
+      ctx: null,
+      bitmap: null,
+      // All of these must be ignored when the layer fills the frame.
+      sourceRotation: 90,
+      transform: { rotationDeg: 45, scale: { x: 2, y: 3 }, position: { x: 200, y: 100 } },
+    };
+
+    applier.applySpriteLayout(1920, 1080, clip as any, { ignoreClipTransform: true });
+
+    // Frame-sized result maps 1:1 onto the frame: no swap, no scale, no rotation.
+    expect(sprite.width).toBeCloseTo(1920);
+    expect(sprite.height).toBeCloseTo(1080);
+    expect(sprite.scale.x).toBeCloseTo(1);
+    expect(sprite.scale.y).toBeCloseTo(1);
+    expect(sprite.rotation).toBeCloseTo(0);
+    // Centered on the canvas (centre anchor), unaffected by transform.position.
+    expect(sprite.x).toBeCloseTo(960);
+    expect(sprite.y).toBeCloseTo(540);
+  });
+
   it('applies text layout correctly to text clips', () => {
     const sprite = createMockSprite();
     const mockCtx = {
