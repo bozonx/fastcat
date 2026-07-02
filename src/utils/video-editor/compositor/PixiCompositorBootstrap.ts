@@ -17,6 +17,11 @@ export interface PixiCompositorBootstrapResult {
   canvas: OffscreenCanvas | HTMLCanvasElement;
 }
 
+function isTransparentBackground(color: string): boolean {
+  const value = color.trim().toLowerCase();
+  return value === 'transparent' || value === '#0000' || value === '#00000000';
+}
+
 export function createCompositorCanvas(params: {
   width: number;
   height: number;
@@ -56,6 +61,7 @@ export async function createPixiCompositorApplication(
         height: options.height,
         canvas: canvas as ICanvas,
         backgroundColor: options.bgColor,
+        backgroundAlpha: isTransparentBackground(options.bgColor) ? 0 : 1,
         preference: rendererPreference,
         clearBeforeRender: true,
       });

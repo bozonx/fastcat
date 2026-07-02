@@ -1161,8 +1161,9 @@ mod tests {
     fn build_passes_gaussian_blur_bleed_flags_premultiplied_passes() {
         // With bleed on, both passes run in premultiplied-alpha space: the
         // horizontal (mode 4) pass sets p6=1, and the final vertical (mode 14)
-        // pass sets p2=1 (which also un-premultiplies). Routing is otherwise the
-        // plain ping-pong — premultiplied blur only reads its own input.
+        // pass sets p2=1 (which un-premultiplies AND clamps alpha to the pre-blur
+        // image). The final pass reads the ORIGINAL frame (`Input`) as secondary,
+        // so `dst` must alias neither the H intermediate (`src`) nor `Input`.
         let bleed = build_passes(
             &[EffectSpec::GaussianBlur {
                 radius: 10.0,
@@ -1178,10 +1179,12 @@ mod tests {
         assert_eq!(bleed[0].uniform.p6, 1.0);
         assert_eq!(bleed[1].uniform.mode, 14);
         assert_eq!(bleed[1].uniform.p2, 1.0);
-        assert_eq!(bleed[1].secondary, bleed[1].src);
+        assert_eq!(bleed[1].secondary, super::passes::Buf::Input);
         assert_ne!(bleed[1].dst, bleed[1].src);
+        assert_ne!(bleed[1].dst, bleed[1].secondary);
 
-        // Without bleed neither premultiply flag is set.
+        // Without bleed neither premultiply flag is set and the final pass
+        // ping-pongs off its own intermediate.
         let plain = build_passes(
             &[EffectSpec::GaussianBlur {
                 radius: 10.0,
@@ -1194,6 +1197,7 @@ mod tests {
         );
         assert_eq!(plain[0].uniform.p6, 0.0);
         assert_eq!(plain[1].uniform.p2, 0.0);
+        assert_eq!(plain[1].secondary, plain[1].src);
     }
 
     #[test]

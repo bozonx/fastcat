@@ -131,7 +131,7 @@ export async function moveClipToTrack(
 
 export async function deleteClip(page: Page, clipId: string): Promise<void> {
   await selectClip(page, clipId);
-  await page.keyboard.press('Delete');
+  await deleteSelectedItems(page);
 }
 
 /**

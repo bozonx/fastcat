@@ -23,7 +23,8 @@
 //   4  gaussian blur horizontal (p0=radius px; p1: 0=gaussian, 1=box, 2=radial;
 //      radial: p2..p5=content rect UV; p6>=0.5 "blur past edges" bleed →
 //      premultiplied-alpha blur (H stays premultiplied for the V pass; radial
-//      is single-pass so it also un-premultiplies))
+//      is single-pass so it also un-premultiplies AND clamps output alpha to
+//      the pre-blur `secondary` image so opaque areas keep full coverage))
 //   5  sharpen (p0=amount, p1=step px)
 //   6  pixelate (p0=size, p1=mix)
 //   8  vignette (p0=strength, p1=radius, p2=softness, p3=mix)
@@ -32,7 +33,8 @@
 //   11 hue rotation (p0=degrees)    12 levels (p0..p4, p5=mix)
 //   13 chroma key (p0..p2=key rgb, p3=threshold, p4=smoothness)
 //   14 gaussian blur vertical (p0=radius px; p2>=0.5 bleed → premultiplied-alpha
-//      blur, un-premultiplies the result back to straight alpha)
+//      blur, un-premultiplies + clamps output alpha to the pre-blur `secondary`
+//      image (keeps opaque coverage, halo bleeds outward))
 //   15 bloom bright-pass extract (p0=threshold, p1=knee)
 //   18 bloom compose (input=running image, secondary=blurred mask, p1=strength)
 //   19 mix with secondary (p0=mix) — blends input_tex over secondary_tex
@@ -414,13 +416,20 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
             color = vec4<f32>(mix(gray, color.rgb, effect.p0), color.a);
         }
         case 4u: {
-            // p6 >= 0.5 → "blur past edges" bleed: premultiplied-alpha blur so
-            // the content edge feathers softly outward without darkening. The
-            // horizontal pass keeps its output premultiplied for the V pass.
+            // p6 >= 0.5 → "blur past edges" bleed: premultiplied-alpha blur so the
+            // colour never darkens against the transparent padding. The content's
+            // original coverage is preserved (alpha never drops below the pre-blur
+            // `secondary`), so opaque areas stay opaque (no dark inner border on a
+            // full-frame clip) while the blur only *adds* a soft halo OUTWARD.
             let bleed = effect.p6 >= 0.5;
             if (effect.p1 >= 1.5) {
+                // Radial is single-pass, so it also un-premultiplies + clamps here.
                 color = radial_blur(uv, effect.p0, bleed);
+                if (bleed) {
+                    color.a = max(color.a, load_secondary(coord).a);
+                }
             } else if (effect.p1 >= 0.5) {
+                // Horizontal pass: premultiply, keep premultiplied for the V pass.
                 if (bleed) {
                     color = box_blur_pm(uv, effect.p0, vec2<f32>(1.0, 0.0), false, false);
                 } else {
@@ -519,19 +528,23 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
         }
         case 14u: {
             // p2 >= 0.5 → bleed final (vertical) pass: input is the premultiplied
-            // horizontal result; un-premultiply back to straight alpha on output.
+            // horizontal result; un-premultiply back to straight alpha, then clamp
+            // alpha to the pre-blur `secondary` so opaque areas keep full coverage
+            // (no dark inner border) while the halo still bleeds outward.
             let bleed = effect.p2 >= 0.5;
             if (effect.p1 >= 1.5) {
                 color = load_px(coord);
             } else if (effect.p1 >= 0.5) {
                 if (bleed) {
                     color = box_blur_pm(uv, effect.p0, vec2<f32>(0.0, 1.0), true, true);
+                    color.a = max(color.a, load_secondary(coord).a);
                 } else {
                     color = box_blur(uv, effect.p0, vec2<f32>(0.0, 1.0));
                 }
             } else {
                 if (bleed) {
                     color = gaussian_blur_pm(uv, effect.p0, vec2<f32>(0.0, 1.0), true, true);
+                    color.a = max(color.a, load_secondary(coord).a);
                 } else {
                     color = gaussian_blur(uv, effect.p0, vec2<f32>(0.0, 1.0));
                 }
