@@ -118,9 +118,9 @@ export interface ClipAnchor {
 }
 
 export interface ClipScale {
-  /** Scale factor for X axis. Negative values flip the clip horizontally. */
+  /** Scale factor for X axis. Must be positive (reflection uses flipHorizontal). */
   x: number;
-  /** Scale factor for Y axis. Negative values flip the clip vertically. */
+  /** Scale factor for Y axis. Must be positive (reflection uses flipVertical). */
   y: number;
   /** UI-only flag to lock proportions when resizing */
   linked?: boolean;
@@ -152,6 +152,8 @@ export interface ClipTransform {
   position?: ClipPosition;
   anchor?: ClipAnchor;
   crop?: ClipCrop;
+  flipHorizontal?: boolean;
+  flipVertical?: boolean;
 }
 
 export type ClipSourceOrientation = 'auto' | '0' | '90' | '180' | '270';

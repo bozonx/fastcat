@@ -506,14 +506,14 @@ describe('scene coverage integration', () => {
   });
 
   describe('transform flip coverage', () => {
-    it('transform-flip scene uses negative scale_x for horizontal flip', () => {
+    it('transform-flip scene uses flip_horizontal for horizontal flip', () => {
       const scene = scenes.find((s) => s.filename === 'transform-flip.json');
       expect(scene).toBeDefined();
       const img = (scene!.fixture.scene.layers as Array<Record<string, unknown>>).find(
         (l) => l.kind === 'image',
       );
       const transform = img!.transform as Record<string, unknown>;
-      expect(transform.scale_x).toBe(-1);
+      expect(transform.flip_horizontal).toBe(true);
     });
   });
 });

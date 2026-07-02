@@ -18,6 +18,8 @@ impl From<&SceneLayerTransform> for Transform {
             crop_bottom: t.crop_bottom,
             crop_left: t.crop_left,
             crop_right: t.crop_right,
+            flip_horizontal: t.flip_horizontal,
+            flip_vertical: t.flip_vertical,
         }
     }
 }
@@ -281,6 +283,8 @@ mod tests {
             crop_bottom: bottom,
             crop_left: left,
             crop_right: right,
+            flip_horizontal: false,
+            flip_vertical: false,
         }
     }
 }

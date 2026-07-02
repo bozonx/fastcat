@@ -21,4 +21,4 @@ anchor_x: number,
 /**
  * Vertical anchor point in fractions of the layer's natural height. 0.5 = center.
  */
-anchor_y: number, crop_top: number, crop_bottom: number, crop_left: number, crop_right: number, };
+anchor_y: number, crop_top: number, crop_bottom: number, crop_left: number, crop_right: number, flip_horizontal: boolean, flip_vertical: boolean, };

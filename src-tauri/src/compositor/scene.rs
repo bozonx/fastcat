@@ -439,6 +439,8 @@ pub struct Transform {
     pub crop_bottom: f64,
     pub crop_left: f64,
     pub crop_right: f64,
+    pub flip_horizontal: bool,
+    pub flip_vertical: bool,
 }
 
 impl Transform {
@@ -455,6 +457,8 @@ impl Transform {
             crop_bottom: 0.0,
             crop_left: 0.0,
             crop_right: 0.0,
+            flip_horizontal: false,
+            flip_vertical: false,
         }
     }
 
@@ -475,6 +479,8 @@ impl Transform {
             crop_bottom: 0.0,
             crop_left: 0.0,
             crop_right: 0.0,
+            flip_horizontal: false,
+            flip_vertical: false,
         }
     }
 
@@ -486,6 +492,9 @@ impl Transform {
     pub fn to_affine_with_padding(self, natural: (u32, u32), padding: (f64, f64)) -> Affine {
         let nw = natural.0 as f64 - 2.0 * padding.0;
         let nh = natural.1 as f64 - 2.0 * padding.1;
+        let flip_scale_x = if self.flip_horizontal { -1.0 } else { 1.0 };
+        let flip_scale_y = if self.flip_vertical { -1.0 } else { 1.0 };
+
         Affine::translate((self.x, self.y))
             * Affine::rotate(self.rotation_deg.to_radians())
             * Affine::scale_non_uniform(self.scale_x, self.scale_y)
@@ -493,6 +502,9 @@ impl Transform {
                 -self.anchor_x * nw - padding.0,
                 -self.anchor_y * nh - padding.1,
             ))
+            * Affine::translate((nw / 2.0 + padding.0, nh / 2.0 + padding.1))
+            * Affine::scale_non_uniform(flip_scale_x, flip_scale_y)
+            * Affine::translate((-nw / 2.0 - padding.0, -nh / 2.0 - padding.1))
     }
 
     /// Visible crop rectangle in the layer's natural (local) space, from the four
@@ -1791,6 +1803,8 @@ mod tests {
             crop_bottom: 0.0,
             crop_left: 0.0,
             crop_right: 0.0,
+            flip_horizontal: false,
+            flip_vertical: false,
         };
         let a = t.to_affine((0, 0)); // natural size unused when anchor=0
         let (px, py) = affine_apply(a, (1.0, 0.0));

@@ -20,7 +20,9 @@
 // Mode codes (set by the pass builder; see Rust `build_passes`/`effect_to_pass`):
 //   0  custom WGSL (plugins; replaced by a custom pipeline, this is a no-op here)
 //   1  brightness (p0)              2  contrast (p0)            3  saturation (p0)
-//   4  gaussian blur horizontal (p0=radius px)
+//   4  gaussian blur horizontal (p0=radius px; p1: 0=gaussian, 1=box, 2=radial;
+//      radial: p2..p5=content rect UV, p6>=0.5 bleed → preserve content alpha
+//      against secondary (pre-blur image))
 //   5  sharpen (p0=amount, p1=step px)
 //   6  pixelate (p0=size, p1=mix)
 //   8  vignette (p0=strength, p1=radius, p2=softness, p3=mix)
@@ -28,7 +30,8 @@
 //   10 chromatic aberration (p0=amount px, p1=angle_deg, p2=mix)
 //   11 hue rotation (p0=degrees)    12 levels (p0..p4, p5=mix)
 //   13 chroma key (p0..p2=key rgb, p3=threshold, p4=smoothness)
-//   14 gaussian blur vertical (p0=radius px)
+//   14 gaussian blur vertical (p0=radius px; p2>=0.5 bleed → preserve content
+//      alpha against secondary (pre-blur image))
 //   15 bloom bright-pass extract (p0=threshold, p1=knee)
 //   18 bloom compose (input=running image, secondary=blurred mask, p1=strength)
 //   19 mix with secondary (p0=mix) — blends input_tex over secondary_tex
@@ -283,6 +286,23 @@ fn box_blur(uv: vec2<f32>, radius: f32, dir: vec2<f32>) -> vec4<f32> {
     return sum / max(weight_sum, 0.0001);
 }
 
+// Blur-bleed edge fix ("blur past edges"). Blurring into the transparent
+// padding also fades the content's own edge alpha *inward*, so the frame
+// visually shrinks as the blur strength grows. Instead, keep the source
+// pixel's coverage: the output alpha never drops below the original
+// (pre-blur) alpha, and the premultiplied color is renormalized to the new
+// alpha so edges keep full brightness. Pixels outside the original content
+// (original alpha 0) keep the blurred halo untouched — the blur only ever
+// bleeds *outward*.
+fn preserve_content_alpha(blurred: vec4<f32>, original_alpha: f32) -> vec4<f32> {
+    let a_out = max(blurred.a, original_alpha);
+    if (blurred.a > 0.0001) {
+        let scale = a_out / blurred.a;
+        return vec4<f32>(min(blurred.rgb * scale, vec3<f32>(1.0)), a_out);
+    }
+    return vec4<f32>(blurred.rgb, a_out);
+}
+
 // Radial blur centered around the content rect. For padded blur-bleed passes,
 // p2/p3 hold the content offset in texture UV and p4/p5 hold its UV size.
 fn radial_blur(uv: vec2<f32>, radius: f32) -> vec4<f32> {
@@ -339,6 +359,10 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
         case 4u: {
             if (effect.p1 >= 1.5) {
                 color = radial_blur(uv, effect.p0);
+                // p6 >= 0.5: bleed pass — secondary holds the pre-blur image.
+                if (effect.p6 >= 0.5) {
+                    color = preserve_content_alpha(color, load_secondary(coord).a);
+                }
             } else if (effect.p1 >= 0.5) {
                 color = box_blur(uv, effect.p0, vec2<f32>(1.0, 0.0));
             } else {
@@ -435,6 +459,11 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
                 color = box_blur(uv, effect.p0, vec2<f32>(0.0, 1.0));
             } else {
                 color = gaussian_blur(uv, effect.p0, vec2<f32>(0.0, 1.0));
+            }
+            // p2 >= 0.5: final pass of a bleed blur — secondary holds the
+            // pre-blur image (not the horizontal intermediate).
+            if (effect.p2 >= 0.5) {
+                color = preserve_content_alpha(color, load_secondary(coord).a);
             }
         }
         case 15u: {

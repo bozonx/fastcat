@@ -1158,6 +1158,79 @@ mod tests {
     }
 
     #[test]
+    fn build_passes_gaussian_blur_bleed_preserves_content_alpha() {
+        // With bleed on, the vertical (final) pass must read the pre-blur image
+        // as `secondary` and flag alpha preservation (p2 = 1) so the blur only
+        // spreads outward instead of fading the content's own edges inward.
+        let bleed = build_passes(
+            &[EffectSpec::GaussianBlur {
+                radius: 10.0,
+                bleed: true,
+                blur_type: "gaussian".to_string(),
+                mix: 1.0,
+            }],
+            1920,
+            1080,
+        );
+        assert_eq!(bleed.len(), 2);
+        // Horizontal pass is unchanged (no preservation flag).
+        assert_eq!(bleed[0].uniform.mode, 4);
+        assert_eq!(bleed[0].uniform.p2, 0.0);
+        // Vertical pass preserves alpha against the original Input frame.
+        assert_eq!(bleed[1].uniform.mode, 14);
+        assert_eq!(bleed[1].uniform.p2, 1.0);
+        assert_eq!(bleed[1].secondary, super::passes::Buf::Input);
+        // dst must alias neither the horizontal intermediate nor the Input it
+        // samples, so the pass reads a stable pre-blur image.
+        assert_ne!(bleed[1].dst, bleed[1].src);
+        assert_ne!(bleed[1].dst, bleed[1].secondary);
+
+        // Without bleed the final pass ping-pongs off its own intermediate.
+        let plain = build_passes(
+            &[EffectSpec::GaussianBlur {
+                radius: 10.0,
+                bleed: false,
+                blur_type: "gaussian".to_string(),
+                mix: 1.0,
+            }],
+            1920,
+            1080,
+        );
+        assert_eq!(plain[1].uniform.p2, 0.0);
+        assert_eq!(plain[1].secondary, plain[1].src);
+    }
+
+    #[test]
+    fn build_passes_radial_blur_bleed_sets_preserve_flag() {
+        let bleed = build_passes(
+            &[EffectSpec::GaussianBlur {
+                radius: 50.0,
+                bleed: true,
+                blur_type: "radial".to_string(),
+                mix: 1.0,
+            }],
+            1920,
+            1080,
+        );
+        assert_eq!(bleed.len(), 1);
+        assert_eq!(bleed[0].uniform.mode, 4);
+        assert_eq!(bleed[0].uniform.p1, 2.0); // radial
+        assert_eq!(bleed[0].uniform.p6, 1.0); // preserve content alpha
+
+        let plain = build_passes(
+            &[EffectSpec::GaussianBlur {
+                radius: 50.0,
+                bleed: false,
+                blur_type: "radial".to_string(),
+                mix: 1.0,
+            }],
+            1920,
+            1080,
+        );
+        assert_eq!(plain[0].uniform.p6, 0.0);
+    }
+
+    #[test]
     fn build_passes_uses_effect_quality_tap_budget() {
         let effects = [EffectSpec::GaussianBlur {
             radius: 100.0,

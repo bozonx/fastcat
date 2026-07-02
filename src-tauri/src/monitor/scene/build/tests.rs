@@ -920,6 +920,8 @@ mod tests {
                 crop_bottom: 0.0,
                 crop_left: 0.0,
                 crop_right: 0.0,
+                flip_horizontal: false,
+                flip_vertical: false,
             }),
             transition_in: None,
             transition_out: None,
@@ -951,6 +953,8 @@ mod tests {
             crop_bottom: 2.0,
             crop_left: 3.0,
             crop_right: 4.0,
+            flip_horizontal: false,
+            flip_vertical: false,
         };
         let t: Transform = Transform::from(&slt);
         assert_eq!(t.x, 10.0);

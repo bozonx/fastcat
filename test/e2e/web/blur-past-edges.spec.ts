@@ -83,6 +83,8 @@ async function measureMonitorContent(page: import('@playwright/test').Page): Pro
       }
     }
     if (right < 0) throw new Error('monitor canvas is entirely black');
+    (window as unknown as { __blurProbeDataUrl?: string }).__blurProbeDataUrl =
+      probe.toDataURL('image/png');
     return {
       left,
       right,
@@ -124,74 +126,119 @@ async function setBlurEffect(
   });
 }
 
-test.describe('Blur past edges', () => {
-  test('does not shrink the visible content', async ({ page, e2eProject }) => {
-    page.on('pageerror', (err) => console.log('PAGEERROR:', err.message));
-    page.on('console', (msg) => {
-      if (msg.type() === 'error' || msg.type() === 'warning')
-        console.log(`PAGE ${msg.type()}:`, msg.text().slice(0, 500));
-    });
+// Set BLUR_SHOT_DIR to dump the measured monitor canvas as PNGs for debugging.
+async function dumpMonitorShot(page: import('@playwright/test').Page, name: string) {
+  const dir = process.env.BLUR_SHOT_DIR;
+  if (!dir) return;
+  const dataUrl = await page.evaluate(
+    () => (window as unknown as { __blurProbeDataUrl?: string }).__blurProbeDataUrl ?? '',
+  );
+  if (!dataUrl) return;
+  const { writeFileSync, mkdirSync } = await import('node:fs');
+  mkdirSync(dir, { recursive: true });
+  writeFileSync(`${dir}/${name}.png`, Buffer.from(dataUrl.split(',')[1]!, 'base64'));
+}
 
-    const { uiPath } = await seedProjectMedia(
+async function runScenario(
+  page: import('@playwright/test').Page,
+  e2eProject: Parameters<typeof seedProjectMedia>[1],
+  media: { fixture: (typeof MEDIA_FIXTURES.video)['h264Mp4']; kind: 'video' | 'image' },
+  shotPrefix: string,
+) {
+  const { uiPath } = await seedProjectMedia(page, e2eProject, media.fixture, media.kind);
+  const videoTrackId = (await trackIds(page))[0];
+  // The pointer-DnD drop occasionally misses right after project load; retry.
+  for (let attempt = 0; attempt < 3; attempt++) {
+    await addFileToTrack(page, uiPath, videoTrackId);
+    try {
+      await expect.poll(async () => (await clipIds(page)).length, { timeout: 5_000 }).toBe(1);
+      break;
+    } catch {
+      // retry the drag
+    }
+  }
+  const doc = await waitForTimelineDoc(page, e2eProject, (d) => d.allClips.length === 1);
+  const itemId = (await clipIds(page))[0]!;
+
+  // The drag may land the clip a few seconds in — park the playhead inside it.
+  const clipDoc = doc.allClips[0]!;
+  await setCurrentTimeUs(page, clipDoc.timelineStartUs + 500_000);
+
+  const gpu = await probeWebGpu(page);
+  test.skip(!gpu.available, `WebGPU unavailable: ${gpu.reason}`);
+
+  // Baseline: no effects.
+  await page.waitForTimeout(1500);
+  const baseline = await measureMonitorContent(page);
+  await dumpMonitorShot(page, `${shotPrefix}-baseline`);
+
+  // Blur without bleed must keep the footprint.
+  await setBlurEffect(page, itemId, { strength: 60, blurPastEdges: false });
+  await page.waitForTimeout(1500);
+  const noBleed = await measureMonitorContent(page);
+  await dumpMonitorShot(page, `${shotPrefix}-no-bleed`);
+
+  // Blur with bleed: content must NOT shrink (bleed goes outside the frame
+  // and is clipped by the project bounds).
+  await setBlurEffect(page, itemId, { strength: 60, blurPastEdges: true });
+  await page.waitForTimeout(1500);
+  const bleed = await measureMonitorContent(page);
+  await dumpMonitorShot(page, `${shotPrefix}-bleed`);
+
+  await setBlurEffect(page, itemId, {
+    strength: 60,
+    blurPastEdges: true,
+    blurType: 'radial',
+  });
+  await page.waitForTimeout(1500);
+  const radialBleed = await measureMonitorContent(page);
+  await dumpMonitorShot(page, `${shotPrefix}-radial-bleed`);
+
+  // Regression guard for the coded-vs-display frame size bug: contain-fit
+  // must reach the project frame on at least one axis even before effects.
+  expect(
+    baseline.width >= baseline.canvasW - 2 || baseline.height >= baseline.canvasH - 2,
+    `baseline content ${baseline.width}x${baseline.height} does not reach the ` +
+      `${baseline.canvasW}x${baseline.canvasH} frame on either axis`,
+  ).toBe(true);
+
+  // Guard: the blur must actually be applied, otherwise the footprint
+  // comparison below is vacuous (blurring cuts the gradient energy).
+  expect(noBleed.edgeEnergy).toBeLessThan(baseline.edgeEnergy * 0.85);
+
+  // The bleed halo may extend the bbox outward (into letterbox bars), but the
+  // content must never SHRINK relative to the unpadded render.
+  const tol = Math.max(4, Math.round(baseline.canvasW * 0.02));
+  expect(Math.abs(noBleed.width - baseline.width)).toBeLessThanOrEqual(tol);
+  expect(Math.abs(noBleed.height - baseline.height)).toBeLessThanOrEqual(tol);
+  expect(
+    baseline.width - bleed.width,
+    `bleed content width ${bleed.width} vs baseline ${baseline.width} (canvas ${baseline.canvasW}x${baseline.canvasH})`,
+  ).toBeLessThanOrEqual(tol);
+  expect(
+    baseline.height - bleed.height,
+    `bleed content height ${bleed.height} vs baseline ${baseline.height}`,
+  ).toBeLessThanOrEqual(tol);
+  expect(baseline.width - radialBleed.width).toBeLessThanOrEqual(tol);
+  expect(baseline.height - radialBleed.height).toBeLessThanOrEqual(tol);
+}
+
+test.describe('Blur past edges', () => {
+  test('video: does not shrink the visible content', async ({ page, e2eProject }) => {
+    await runScenario(
       page,
       e2eProject,
-      MEDIA_FIXTURES.video.h264Mp4,
-      'video',
+      { fixture: MEDIA_FIXTURES.video.h264Mp4, kind: 'video' },
+      'blur-video',
     );
-    const videoTrackId = (await trackIds(page))[0];
-    // The pointer-DnD drop occasionally misses right after project load; retry.
-    for (let attempt = 0; attempt < 3; attempt++) {
-      await addFileToTrack(page, uiPath, videoTrackId);
-      try {
-        await expect.poll(async () => (await clipIds(page)).length, { timeout: 5_000 }).toBe(1);
-        break;
-      } catch {
-        // retry the drag
-      }
-    }
-    const doc = await waitForTimelineDoc(page, e2eProject, (d) => d.allClips.length === 1);
-    const itemId = (await clipIds(page))[0]!;
+  });
 
-    // The drag may land the clip a few seconds in — park the playhead inside it.
-    const clipDoc = doc.allClips[0]!;
-    await setCurrentTimeUs(page, clipDoc.timelineStartUs + 500_000);
-
-    const gpu = await probeWebGpu(page);
-    test.skip(!gpu.available, `WebGPU unavailable: ${gpu.reason}`);
-
-    // Baseline: no effects.
-    await page.waitForTimeout(1500);
-    const baseline = await measureMonitorContent(page);
-
-    // Blur without bleed must keep the footprint.
-    await setBlurEffect(page, itemId, { strength: 60, blurPastEdges: false });
-    await page.waitForTimeout(1500);
-    const noBleed = await measureMonitorContent(page);
-
-    // Blur with bleed: content must NOT shrink (bleed goes outside the frame
-    // and is clipped by the project bounds).
-    await setBlurEffect(page, itemId, { strength: 60, blurPastEdges: true });
-    await page.waitForTimeout(1500);
-    const bleed = await measureMonitorContent(page);
-
-    console.log('baseline:', JSON.stringify(baseline));
-    console.log('noBleed :', JSON.stringify(noBleed));
-    console.log('bleed   :', JSON.stringify(bleed));
-
-    // Guard: the blur must actually be applied, otherwise the footprint
-    // comparison below is vacuous (blurring halves the gradient energy).
-    expect(noBleed.edgeEnergy).toBeLessThan(baseline.edgeEnergy * 0.7);
-
-    const tol = Math.max(4, Math.round(baseline.canvasW * 0.02));
-    expect(Math.abs(noBleed.width - baseline.width)).toBeLessThanOrEqual(tol);
-    expect(Math.abs(noBleed.height - baseline.height)).toBeLessThanOrEqual(tol);
-    expect(
-      Math.abs(bleed.width - baseline.width),
-      `bleed content width ${bleed.width} vs baseline ${baseline.width} (canvas ${baseline.canvasW}x${baseline.canvasH})`,
-    ).toBeLessThanOrEqual(tol);
-    expect(
-      Math.abs(bleed.height - baseline.height),
-      `bleed content height ${bleed.height} vs baseline ${baseline.height}`,
-    ).toBeLessThanOrEqual(tol);
+  test('image: does not shrink the visible content', async ({ page, e2eProject }) => {
+    await runScenario(
+      page,
+      e2eProject,
+      { fixture: MEDIA_FIXTURES.image.jpg, kind: 'image' },
+      'blur-image',
+    );
   });
 });

@@ -42,6 +42,8 @@ export class LayoutApplier {
       rotationDeg: layout.rotationDeg,
       stagePosX: layout.stagePositionX,
       stagePosY: layout.stagePositionY,
+      flipHorizontal: layout.flipHorizontal,
+      flipVertical: layout.flipVertical,
     });
   }
 
@@ -171,6 +173,8 @@ export class LayoutApplier {
       frameW,
       frameH,
       disableCrop: ignoreClipTransform,
+      flipHorizontal: layout.flipHorizontal,
+      flipVertical: layout.flipVertical,
     });
   }
 
@@ -185,6 +189,8 @@ export class LayoutApplier {
     const scaleX = typeof transform?.scale?.x === 'number' ? transform.scale.x : 1;
     const scaleY = typeof transform?.scale?.y === 'number' ? transform.scale.y : 1;
     const rotationDeg = typeof transform?.rotationDeg === 'number' ? transform.rotationDeg : 0;
+    const flipHorizontal = Boolean(transform?.flipHorizontal);
+    const flipVertical = Boolean(transform?.flipVertical);
 
     const { x: stagePosX, y: stagePosY } = scaleDesignPositionToScene(
       transform?.position,
@@ -210,6 +216,8 @@ export class LayoutApplier {
       rotationDeg,
       stagePosX,
       stagePosY,
+      flipHorizontal,
+      flipVertical,
     });
   }
 
@@ -232,6 +240,8 @@ export class LayoutApplier {
     frameW?: number;
     frameH?: number;
     disableCrop?: boolean;
+    flipHorizontal?: boolean;
+    flipVertical?: boolean;
   }) {
     const sprite = input.clip.sprite;
     if (!sprite) return;
@@ -259,9 +269,15 @@ export class LayoutApplier {
     const targetDisplayH = paddedH * fitScaleY;
     const textureSize = this.getSpriteTextureSize(sprite);
 
+    const flipHorizontal = Boolean(input.flipHorizontal);
+    const flipVertical = Boolean(input.flipVertical);
+
+    const finalScaleX = flipHorizontal ? -input.scaleX : input.scaleX;
+    const finalScaleY = flipVertical ? -input.scaleY : input.scaleY;
+
     if (sprite.scale && textureSize) {
-      sprite.scale.x = (targetDisplayW / textureSize.width) * input.scaleX;
-      sprite.scale.y = (targetDisplayH / textureSize.height) * input.scaleY;
+      sprite.scale.x = (targetDisplayW / textureSize.width) * finalScaleX;
+      sprite.scale.y = (targetDisplayH / textureSize.height) * finalScaleY;
     } else {
       if (sprite.scale) {
         sprite.scale.x = Math.abs(sprite.scale.x);
@@ -272,14 +288,19 @@ export class LayoutApplier {
       sprite.height = targetDisplayH;
 
       if (sprite.scale) {
-        sprite.scale.x *= input.scaleX;
-        sprite.scale.y *= input.scaleY;
+        sprite.scale.x *= finalScaleX;
+        sprite.scale.y *= finalScaleY;
       }
     }
 
     sprite.rotation = (input.rotationDeg * Math.PI) / 180;
-    sprite.x = input.baseX + input.anchorOffsetX + input.stagePosX;
-    sprite.y = input.baseY + input.anchorOffsetY + input.stagePosY;
+
+    // Compensation for flipping around the geometric center instead of the anchor point
+    const flipOffsetX = flipHorizontal ? 2 * (0.5 - anchorX) * targetDisplayW * input.scaleX : 0;
+    const flipOffsetY = flipVertical ? 2 * (0.5 - anchorY) * targetDisplayH * input.scaleY : 0;
+
+    sprite.x = input.baseX + input.anchorOffsetX + input.stagePosX + flipOffsetX;
+    sprite.y = input.baseY + input.anchorOffsetY + input.stagePosY + flipOffsetY;
 
     const crop =
       !input.disableCrop && input.clip.transformActive !== false
@@ -315,6 +336,8 @@ export class LayoutApplier {
         sprite.rotation,
         sprite.x,
         sprite.y,
+        flipHorizontal ? '1' : '0',
+        flipVertical ? '1' : '0',
       ].join('|');
 
       if (input.clip.cropMaskKey !== cropKey) {
@@ -332,6 +355,8 @@ export class LayoutApplier {
           rotationRad: sprite.rotation,
           spritePosX: sprite.x,
           spritePosY: sprite.y,
+          flipHorizontal,
+          flipVertical,
         });
 
         // Reset mask transform — polygon is already in world/parent coordinates

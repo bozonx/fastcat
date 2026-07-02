@@ -90,6 +90,10 @@ pub struct SceneLayerTransform {
     pub crop_left: f64,
     #[serde(default)]
     pub crop_right: f64,
+    #[serde(default)]
+    pub flip_horizontal: bool,
+    #[serde(default)]
+    pub flip_vertical: bool,
 }
 
 fn one() -> f64 {

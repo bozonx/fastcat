@@ -638,6 +638,8 @@ fn plan_direct_rejects_non_trivial_scenes() {
         crop_bottom: 0.0,
         crop_left: 0.0,
         crop_right: 0.0,
+        flip_horizontal: false,
+        flip_vertical: false,
     });
     assert!(!call(&one_clip_scene(l)));
 

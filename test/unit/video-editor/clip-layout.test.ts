@@ -131,7 +131,7 @@ describe('computeCropMaskPolygon', () => {
   it('applies horizontal flip — crop left stays at original-left side of texture', () => {
     const { points } = computeCropMaskPolygon({
       ...base,
-      scaleX: -1,
+      flipHorizontal: true,
       crop: { left: 10 },
     });
     // With flip, left-edge in display space maps to the right side in world space.

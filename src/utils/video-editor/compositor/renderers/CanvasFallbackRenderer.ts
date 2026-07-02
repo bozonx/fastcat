@@ -61,13 +61,15 @@ export class CanvasFallbackRenderer {
         displayHeight?: number;
         height?: number;
       };
+      // Display size, not coded size — coded includes codec alignment padding
+      // that is never shown (see the videoFrame path in ClipResourceManager).
       const frameW = Math.max(
         1,
-        Math.round(Number(src.codedWidth ?? src.displayWidth ?? src.width ?? 1)),
+        Math.round(Number(src.displayWidth ?? src.codedWidth ?? src.width ?? 1)),
       );
       const frameH = Math.max(
         1,
-        Math.round(Number(src.codedHeight ?? src.displayHeight ?? src.height ?? 1)),
+        Math.round(Number(src.displayHeight ?? src.codedHeight ?? src.height ?? 1)),
       );
 
       if (canvas.width !== frameW || canvas.height !== frameH) {

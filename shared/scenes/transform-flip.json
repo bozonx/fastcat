@@ -35,11 +35,12 @@
         "transform": {
           "x": 160,
           "y": 120,
-          "scale_x": -1,
+          "scale_x": 1,
           "scale_y": 1,
           "rotation_deg": 0,
           "anchor_x": 0.5,
-          "anchor_y": 0.5
+          "anchor_y": 0.5,
+          "flip_horizontal": true
         }
       }
     ],

@@ -30,6 +30,8 @@ export interface ClipBoxLayout {
   scaleX: number;
   scaleY: number;
   rotationDeg: number;
+  flipHorizontal: boolean;
+  flipVertical: boolean;
 }
 
 function clampFinite(value: unknown, fallback: number): number {
@@ -151,6 +153,8 @@ export function computeCropMaskPolygon(params: {
   /** World-space position of the anchor point (sprite.x, sprite.y) */
   spritePosX: number;
   spritePosY: number;
+  flipHorizontal?: boolean;
+  flipVertical?: boolean;
 }): CropMaskPolygon {
   const {
     crop,
@@ -163,6 +167,8 @@ export function computeCropMaskPolygon(params: {
     rotationRad: rot,
     spritePosX,
     spritePosY,
+    flipHorizontal = false,
+    flipVertical = false,
   } = params;
 
   // Visible inset rect in local space (shared with the native engine).
@@ -177,13 +183,17 @@ export function computeCropMaskPolygon(params: {
   const sinR = Math.sin(rot);
 
   const toWorldX = (px: number, py: number) => {
-    const dx = (px - ax * targetW) * sx;
-    const dy = (py - ay * targetH) * sy;
+    const flippedX = flipHorizontal ? (targetW - px) : px;
+    const flippedY = flipVertical ? (targetH - py) : py;
+    const dx = (flippedX - ax * targetW) * sx;
+    const dy = (flippedY - ay * targetH) * sy;
     return spritePosX + dx * cosR - dy * sinR;
   };
   const toWorldY = (px: number, py: number) => {
-    const dx = (px - ax * targetW) * sx;
-    const dy = (py - ay * targetH) * sy;
+    const flippedX = flipHorizontal ? (targetW - px) : px;
+    const flippedY = flipVertical ? (targetH - py) : py;
+    const dx = (flippedX - ax * targetW) * sx;
+    const dy = (flippedY - ay * targetH) * sy;
     return spritePosY + dx * sinR + dy * cosR;
   };
 
@@ -275,6 +285,8 @@ export function computeClipBoxLayout(input: ClipBoxLayoutInput): ClipBoxLayout {
   const rotationDeg = clampFinite(transform?.rotationDeg, 0);
   const positionX = clampFinite(transform?.position?.x, 0);
   const positionY = clampFinite(transform?.position?.y, 0);
+  const flipHorizontal = Boolean(transform?.flipHorizontal);
+  const flipVertical = Boolean(transform?.flipVertical);
 
   const normalizedAnchor = resolveNormalizedAnchor(transform?.anchor);
   const anchorOffsetX = normalizedAnchor.x * targetWidth;
@@ -301,5 +313,7 @@ export function computeClipBoxLayout(input: ClipBoxLayoutInput): ClipBoxLayout {
     scaleX,
     scaleY,
     rotationDeg,
+    flipHorizontal,
+    flipVertical,
   };
 }

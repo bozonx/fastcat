@@ -252,8 +252,8 @@ function buildNativeTransform(
   return {
     x: sceneWidth / 2 + pos.x,
     y: sceneHeight / 2 + pos.y,
-    scale_x: clampFinite(transform.scale?.x, 1),
-    scale_y: clampFinite(transform.scale?.y, 1),
+    scale_x: Math.abs(clampFinite(transform.scale?.x, 1)),
+    scale_y: Math.abs(clampFinite(transform.scale?.y, 1)),
     rotation_deg: clampFinite(transform.rotationDeg, 0),
     anchor_x: anchor.x,
     anchor_y: anchor.y,
@@ -261,6 +261,8 @@ function buildNativeTransform(
     crop_bottom: transform.crop?.bottom ?? 0,
     crop_left: transform.crop?.left ?? 0,
     crop_right: transform.crop?.right ?? 0,
+    flip_horizontal: Boolean(transform.flipHorizontal),
+    flip_vertical: Boolean(transform.flipVertical),
   };
 }
 
@@ -284,8 +286,8 @@ function buildNativeTextTransform(params: {
     // size. The front-end sends center-of-scene + design-position only.
     x: sceneWidth / 2 + pos.x,
     y: sceneHeight / 2 + pos.y,
-    scale_x: clampFinite(transform.scale?.x, 1),
-    scale_y: clampFinite(transform.scale?.y, 1),
+    scale_x: Math.abs(clampFinite(transform.scale?.x, 1)),
+    scale_y: Math.abs(clampFinite(transform.scale?.y, 1)),
     rotation_deg: clampFinite(transform.rotationDeg, 0),
     anchor_x: anchor.x,
     anchor_y: anchor.y,
@@ -293,6 +295,8 @@ function buildNativeTextTransform(params: {
     crop_bottom: transform.crop?.bottom ?? 0,
     crop_left: transform.crop?.left ?? 0,
     crop_right: transform.crop?.right ?? 0,
+    flip_horizontal: Boolean(transform.flipHorizontal),
+    flip_vertical: Boolean(transform.flipVertical),
   };
 }
 
@@ -323,8 +327,8 @@ function buildNativeShapeTransform(params: {
     // Position scales per-axis (design-space), matching media and the web compositor.
     x: sceneWidth / 2 + pos.x + (anchor.x - 0.5) * targetW,
     y: sceneHeight / 2 + pos.y + (anchor.y - 0.5) * targetH,
-    scale_x: clampFinite(transform.scale?.x, 1),
-    scale_y: clampFinite(transform.scale?.y, 1),
+    scale_x: Math.abs(clampFinite(transform.scale?.x, 1)),
+    scale_y: Math.abs(clampFinite(transform.scale?.y, 1)),
     rotation_deg: clampFinite(transform.rotationDeg, 0),
     anchor_x: anchor.x,
     anchor_y: anchor.y,
@@ -332,6 +336,8 @@ function buildNativeShapeTransform(params: {
     crop_bottom: transform.crop?.bottom ?? 0,
     crop_left: transform.crop?.left ?? 0,
     crop_right: transform.crop?.right ?? 0,
+    flip_horizontal: Boolean(transform.flipHorizontal),
+    flip_vertical: Boolean(transform.flipVertical),
   };
 }
 

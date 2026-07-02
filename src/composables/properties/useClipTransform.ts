@@ -20,9 +20,22 @@ function clampNumber(value: unknown, min: number, max: number): number {
 function getSafeTransform(clip: TimelineClipItem): ClipTransform {
   const tr = ((clip as { transform?: ClipTransform }).transform ?? {}) as ClipTransform;
   const scaleRaw = (tr.scale ?? {}) as Record<string, unknown>;
-  const scaleX = typeof scaleRaw.x === 'number' && Number.isFinite(scaleRaw.x) ? scaleRaw.x : 1;
-  const scaleY = typeof scaleRaw.y === 'number' && Number.isFinite(scaleRaw.y) ? scaleRaw.y : 1;
+  let scaleX = typeof scaleRaw.x === 'number' && Number.isFinite(scaleRaw.x) ? scaleRaw.x : 1;
+  let scaleY = typeof scaleRaw.y === 'number' && Number.isFinite(scaleRaw.y) ? scaleRaw.y : 1;
   const linked = scaleRaw.linked !== undefined ? Boolean(scaleRaw.linked) : true;
+
+  let flipHorizontal = tr.flipHorizontal !== undefined ? Boolean(tr.flipHorizontal) : false;
+  let flipVertical = tr.flipVertical !== undefined ? Boolean(tr.flipVertical) : false;
+
+  // Migration for old projects using negative scale values for flip
+  if (scaleX < 0) {
+    scaleX = Math.abs(scaleX);
+    flipHorizontal = !flipHorizontal;
+  }
+  if (scaleY < 0) {
+    scaleY = Math.abs(scaleY);
+    flipVertical = !flipVertical;
+  }
 
   const positionRaw = (tr.position ?? {}) as Record<string, unknown>;
   const posX =
@@ -59,8 +72,8 @@ function getSafeTransform(clip: TimelineClipItem): ClipTransform {
 
   return {
     scale: {
-      x: scaleX === 0 ? 0.001 : clampNumber(scaleX, -1000, 1000),
-      y: scaleY === 0 ? 0.001 : clampNumber(scaleY, -1000, 1000),
+      x: scaleX === 0 ? 0.001 : clampNumber(scaleX, 0.001, 1000),
+      y: scaleY === 0 ? 0.001 : clampNumber(scaleY, 0.001, 1000),
       linked,
     },
     position: {
@@ -78,6 +91,8 @@ function getSafeTransform(clip: TimelineClipItem): ClipTransform {
       left: clampNumber(cropLeft, 0, 100),
       right: clampNumber(cropRight, 0, 100),
     },
+    flipHorizontal,
+    flipVertical,
   };
 }
 
@@ -134,6 +149,8 @@ export function useClipTransform(options: UseClipTransformOptions) {
         ...(current.crop ?? { top: 0, bottom: 0, left: 0, right: 0 }),
         ...(patch.crop ?? {}),
       },
+      flipHorizontal: patch.flipHorizontal !== undefined ? patch.flipHorizontal : current.flipHorizontal,
+      flipVertical: patch.flipVertical !== undefined ? patch.flipVertical : current.flipVertical,
     };
 
     options.updateTransform(next);
@@ -163,7 +180,7 @@ export function useClipTransform(options: UseClipTransformOptions) {
       const current = getSafeTransform(options.clip.value);
       const linked = Boolean(current.scale?.linked);
       let x = val / 100;
-      x = x === 0 ? 0.001 : clampNumber(x, -1000, 1000);
+      x = x === 0 ? 0.001 : clampNumber(x, 0.001, 1000);
       const y = linked ? Math.sign(current.scale?.y ?? 1) * Math.abs(x) : (current.scale?.y ?? 1);
       updateSelectedClipTransform({ scale: { x, y, linked } });
     },
@@ -178,7 +195,7 @@ export function useClipTransform(options: UseClipTransformOptions) {
       const current = getSafeTransform(options.clip.value);
       const linked = Boolean(current.scale?.linked);
       let y = val / 100;
-      y = y === 0 ? 0.001 : clampNumber(y, -1000, 1000);
+      y = y === 0 ? 0.001 : clampNumber(y, 0.001, 1000);
       const x = linked ? Math.sign(current.scale?.x ?? 1) * Math.abs(y) : (current.scale?.x ?? 1);
       updateSelectedClipTransform({ scale: { x, y, linked } });
     },
@@ -323,16 +340,12 @@ export function useClipTransform(options: UseClipTransformOptions) {
 
   function toggleFlipHorizontal() {
     const current = getSafeTransform(options.clip.value);
-    const x = -(current.scale?.x ?? 1);
-    const y = current.scale?.y ?? 1;
-    updateSelectedClipTransform({ scale: { x, y, linked: false } });
+    updateSelectedClipTransform({ flipHorizontal: !current.flipHorizontal });
   }
 
   function toggleFlipVertical() {
     const current = getSafeTransform(options.clip.value);
-    const x = current.scale?.x ?? 1;
-    const y = -(current.scale?.y ?? 1);
-    updateSelectedClipTransform({ scale: { x, y, linked: false } });
+    updateSelectedClipTransform({ flipVertical: !current.flipVertical });
   }
 
   function resetScale() {
@@ -362,6 +375,8 @@ export function useClipTransform(options: UseClipTransformOptions) {
       rotationDeg: 0,
       anchor: { preset: 'center' },
       crop: { top: 0, bottom: 0, left: 0, right: 0 },
+      flipHorizontal: false,
+      flipVertical: false,
     });
   }
 

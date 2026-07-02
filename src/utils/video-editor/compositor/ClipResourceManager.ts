@@ -654,12 +654,16 @@ export class ClipResourceManager {
         const frame = sampleObj.toVideoFrame() as VideoFrame;
 
         try {
+          // Display size, not coded size: codedWidth/Height include codec
+          // alignment padding rows that are never shown. Sizing the layout from
+          // the coded size skews the aspect ratio and breaks the blur-bleed
+          // padding derivation (texture uploads use the display size).
           const frameW = Math.max(
             1,
             Math.round(
               Number(
-                (frame as { codedWidth?: unknown }).codedWidth ??
-                  (frame as { displayWidth?: unknown }).displayWidth ??
+                (frame as { displayWidth?: unknown }).displayWidth ??
+                  (frame as { codedWidth?: unknown }).codedWidth ??
                   1,
               ),
             ),
@@ -668,8 +672,8 @@ export class ClipResourceManager {
             1,
             Math.round(
               Number(
-                (frame as { codedHeight?: unknown }).codedHeight ??
-                  (frame as { displayHeight?: unknown }).displayHeight ??
+                (frame as { displayHeight?: unknown }).displayHeight ??
+                  (frame as { codedHeight?: unknown }).codedHeight ??
                   1,
               ),
             ),
