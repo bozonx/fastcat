@@ -146,10 +146,12 @@ const handleAfterEnter = () => {
           />
         </div>
 
-        <div class="flex items-end">
-          <UCheckbox
+        <div class="flex items-center justify-between gap-3">
+          <span class="text-sm text-ui-text">
+            {{ t('fastcat.captions.splitOnPunctuation') }}
+          </span>
+          <USwitch
             :model-value="settings.splitOnPunctuation"
-            :label="t('fastcat.captions.splitOnPunctuation')"
             @update:model-value="(value) => (settings.splitOnPunctuation = Boolean(value))"
           />
         </div>

@@ -53,6 +53,7 @@ export async function renderStopFrameWebp(params: {
   timelineDoc: TimelineDocument;
   timeUs: number;
   quality: number;
+  isTransparent?: boolean;
 }): Promise<Blob | null> {
   const processor = useMediaProcessor();
   const projectStore = useProjectStore();
@@ -67,6 +68,7 @@ export async function renderStopFrameWebp(params: {
     height: format.height,
     quality: params.quality,
     isExport: true,
+    isTransparent: params.isTransparent,
   });
 }
 

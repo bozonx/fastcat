@@ -403,13 +403,18 @@ impl ThumbnailRenderer {
     fn render_request_pixels(&self, req: &TimelineFrameRequest) -> Result<Vec<u8>> {
         let mut cache =
             VideoDecoderCache::new_with_hw_decode(req.hw_mode, req.vaapi_device.clone());
-        let compositor_scene = build_export_scene(
+        let mut compositor_scene = build_export_scene(
             &req.scene,
             req.time_sec,
             (req.width.max(1), req.height.max(1)),
             &mut cache,
             None,
         )?;
+        compositor_scene.background = if req.is_transparent.unwrap_or(false) {
+            Color::TRANSPARENT
+        } else {
+            Color::BLACK
+        };
         self.render(&compositor_scene, req.width, req.height)
     }
 
@@ -446,6 +451,7 @@ pub struct TimelineFrameRequest {
     pub quality: f32,
     pub hw_mode: HwAccelMode,
     pub vaapi_device: Option<String>,
+    pub is_transparent: Option<bool>,
 }
 
 static GLOBAL_RENDERER: std::sync::LazyLock<ThumbnailRenderer> =

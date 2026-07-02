@@ -43,6 +43,8 @@ const {
   transformCropBottom,
   transformCropLeft,
   transformCropRight,
+  transformFlipHorizontal,
+  transformFlipVertical,
   toggleFlipHorizontal,
   toggleFlipVertical,
   resetScale,
@@ -213,8 +215,8 @@ function handleResetAll() {
           <UiActionButton
             icon="i-heroicons-arrows-right-left"
             size="xs"
-            color="neutral"
-            variant="ghost"
+            :color="transformFlipHorizontal ? 'primary' : 'neutral'"
+            :variant="transformFlipHorizontal ? 'soft' : 'ghost'"
             class="text-ui-text-muted hover:text-ui-text"
             :title="t('fastcat.clip.transform.flipHorizontal')"
             :disabled="!isEnabled"
@@ -223,8 +225,8 @@ function handleResetAll() {
           <UiActionButton
             icon="i-heroicons-arrows-up-down"
             size="xs"
-            color="neutral"
-            variant="ghost"
+            :color="transformFlipVertical ? 'primary' : 'neutral'"
+            :variant="transformFlipVertical ? 'soft' : 'ghost'"
             class="text-ui-text-muted hover:text-ui-text"
             :title="t('fastcat.clip.transform.flipVertical')"
             :disabled="!isEnabled"

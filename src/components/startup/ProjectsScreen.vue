@@ -403,11 +403,15 @@ const sortedProjects = computed(() => {
         </div>
       </UiFormField>
 
-      <UCheckbox
-        v-model="projectCreationSettings.specifyProjectSettings"
-        :label="t('fastcat.projects.specifyProjectSettings')"
-        :disabled="workspaceStore.isLoading"
-      />
+      <div class="flex items-center justify-between gap-3">
+        <span class="text-sm text-ui-text">
+          {{ t('fastcat.projects.specifyProjectSettings') }}
+        </span>
+        <USwitch
+          v-model="projectCreationSettings.specifyProjectSettings"
+          :disabled="workspaceStore.isLoading"
+        />
+      </div>
 
       <div
         v-if="!projectCreationSettings.specifyProjectSettings"

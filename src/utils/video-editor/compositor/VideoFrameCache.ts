@@ -141,21 +141,41 @@ export class VideoFrameCache {
   }
 
   private evictIfNeeded() {
-    while (
+    if (
       this.videoFrameCacheSizeBytes > this.maxVideoFrameCacheBytes &&
       this.videoFrameCache.size > 0
     ) {
-      const eviction = this.findEvictionCandidate();
-      if (!eviction) break;
-      this.videoFrameCache.delete(eviction.key);
-      this.videoFrameCacheSizeBytes -= eviction.entry.sizeBytes;
-      // Skip close() for already-closed frames (they don't hold GPU memory).
-      const closed = !!(eviction.entry.frame as { closed?: boolean }).closed;
-      if (!closed) {
-        try {
-          eviction.entry.frame.close();
-        } catch {
-          // ignore
+      // Rank every entry once and evict down the list until under the limit.
+      // The ordering reproduces what repeated `chooseEvictionVictimTime` picks
+      // (farthest from priority first; ties toward the larger time; among equal
+      // times the earliest-inserted entry) without re-scanning the whole map per
+      // evicted frame — the old loop was O(n²) when the limit shrank sharply.
+      const priority = this.priorityTimeUs;
+      const ranked = Array.from(this.videoFrameCache.entries(), ([key, entry], index) => ({
+        key,
+        entry,
+        index,
+        time: Math.max(0, Math.round(Number(entry.timelineTimeUs) || 0)),
+      }));
+      ranked.sort(
+        (a, b) =>
+          Math.abs(b.time - priority) - Math.abs(a.time - priority) ||
+          b.time - a.time ||
+          a.index - b.index,
+      );
+
+      for (const victim of ranked) {
+        if (this.videoFrameCacheSizeBytes <= this.maxVideoFrameCacheBytes) break;
+        this.videoFrameCache.delete(victim.key);
+        this.videoFrameCacheSizeBytes -= victim.entry.sizeBytes;
+        // Skip close() for already-closed frames (they don't hold GPU memory).
+        const closed = !!(victim.entry.frame as { closed?: boolean }).closed;
+        if (!closed) {
+          try {
+            victim.entry.frame.close();
+          } catch {
+            // ignore
+          }
         }
       }
     }
@@ -163,25 +183,6 @@ export class VideoFrameCache {
     if (this.videoFrameCacheSizeBytes < 0) {
       this.videoFrameCacheSizeBytes = 0;
     }
-  }
-
-  private findEvictionCandidate(): { key: string; entry: CachedVideoFrameEntry } | null {
-    const victimTimeUs = chooseEvictionVictimTime(
-      Array.from(this.videoFrameCache.values(), (entry) => entry.timelineTimeUs),
-      this.priorityTimeUs,
-    );
-    if (victimTimeUs === null) {
-      return null;
-    }
-    // Pick the first entry that sits at the victim time (matches the previous
-    // strict-`>` tie-break, which kept the earliest-inserted entry among equals).
-    for (const [key, entry] of this.videoFrameCache.entries()) {
-      const entryTimeUs = Math.max(0, Math.round(Number(entry.timelineTimeUs) || 0));
-      if (entryTimeUs === victimTimeUs) {
-        return { key, entry };
-      }
-    }
-    return null;
   }
 }
 

@@ -401,13 +401,21 @@ const api: Omit<VideoCoreWorkerAPI, 'initCompositor'> & {
     height: number,
     timelineClips: import('../composables/timeline/export/types').WorkerVideoPayloadItem[],
     quality: number,
+    isTransparent = false,
   ) {
     await loadFonts();
     const localCompositor = new VideoCompositor();
     try {
-      await localCompositor.init(width, height, '#000', true, undefined, {
-        rendererPreference: pixiRendererPreference,
-      });
+      await localCompositor.init(
+        width,
+        height,
+        isTransparent ? 'transparent' : '#000',
+        true,
+        undefined,
+        {
+          rendererPreference: pixiRendererPreference,
+        },
+      );
     } catch (initErr) {
       log.warn('[Worker] extractFrameToBlob: compositor init failed', initErr);
       await localCompositor.destroy().catch(() => {});
@@ -612,7 +620,11 @@ const api: Omit<VideoCoreWorkerAPI, 'initCompositor'> & {
       if (createdHere && state) {
         disposeFrameExtractorState(state);
       }
-      if (taskId && options.keepAlive === false) {
+      if (taskId && (options.keepAlive === false || activeCancels.get(taskId) === true)) {
+        // Also consume a cancellation that landed during this batch: for a
+        // keepAlive extractor the flag used to outlive the cancelled batch, so
+        // any later batch reusing the same taskId aborted instantly before
+        // doing any work.
         disposeFrameExtractor(taskId);
         activeCancels.delete(taskId);
       }

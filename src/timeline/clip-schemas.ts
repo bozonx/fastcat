@@ -104,6 +104,8 @@ export const ClipTransformSchema: z.ZodType<ClipTransform> = z
     position: ClipPositionSchema.optional(),
     anchor: ClipAnchorSchema.optional(),
     crop: ClipCropSchema.optional(),
+    flipHorizontal: z.boolean().optional(),
+    flipVertical: z.boolean().optional(),
   })
   .passthrough() as unknown as z.ZodType<ClipTransform>;
 

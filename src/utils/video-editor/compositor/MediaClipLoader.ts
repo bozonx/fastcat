@@ -113,12 +113,23 @@ export class MediaClipLoader {
       const sourceRotation = Number((track as { rotation?: unknown }).rotation);
       const mediaDurationUs = Math.max(0, Math.round((await track.computeDuration()) * 1_000_000));
       const maxSourceTailUs = Math.max(0, mediaDurationUs - sourceStartUs);
+      // `sourceDurationUs` is the FULL duration of the source media, in the
+      // absolute source-time domain. Consumers rely on that: transition handle
+      // math computes `sourceDurationUs - sourceStartUs - sourceRangeDurationUs`
+      // (TransitionRenderer / FrameSampleOrchestrator) and uses the value as an
+      // absolute PTS cap, and the reuse/layout-update paths store the payload's
+      // full-duration value unchanged. Clamping by the tail here subtracted
+      // sourceStartUs a second time, so freshly loaded clips trimmed at their
+      // start lost exactly that much transition handle (frozen/backward-jumping
+      // transition frames) until the first layout update overwrote the value.
       const sourceDurationUs =
         requestedSourceDurationUs > 0
-          ? Math.min(requestedSourceDurationUs, maxSourceTailUs)
-          : maxSourceTailUs;
+          ? Math.min(requestedSourceDurationUs, mediaDurationUs)
+          : mediaDurationUs;
+      // The timeline-duration fallback, by contrast, is the playable remainder
+      // from the trim-in point — the tail, not the full duration.
       const durationUs =
-        requestedTimelineDurationUs > 0 ? requestedTimelineDurationUs : sourceDurationUs;
+        requestedTimelineDurationUs > 0 ? requestedTimelineDurationUs : maxSourceTailUs;
       const endUs = startUs + durationUs;
 
       return {

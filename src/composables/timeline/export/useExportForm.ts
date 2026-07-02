@@ -15,7 +15,7 @@ import {
   normalizeExportFilename,
 } from '~/composables/timeline/export';
 import { createTimelineFormatFromProjectDefaults } from '~/timeline/format';
-import { copyFile } from '@tauri-apps/plugin-fs';
+import { copyFile, rename } from '@tauri-apps/plugin-fs';
 import { withFileIoSlot } from '~/utils/io/io-governor';
 import { isTauriRuntime } from '~/utils/runtime';
 import { randomToken } from '~/utils/ids';
@@ -525,32 +525,59 @@ export function useExportForm() {
           }
         }
 
-        const fileHandle = await exportDir.getFileHandle(finalFilename, { create: true });
-        const tempNativePath = getNativeFileHandlePath(tempFileHandle);
-        const finalNativePath = getNativeFileHandlePath(fileHandle);
+        let fileHandle: FileSystemFileHandle | null = null;
+
         if (isTauri) {
+          fileHandle = await exportDir.getFileHandle(finalFilename, { create: true });
+          const tempNativePath = getNativeFileHandlePath(tempFileHandle);
+          const finalNativePath = getNativeFileHandlePath(fileHandle);
           if (!tempNativePath || !finalNativePath) {
             throw new Error('Native export file path is not available for finalizing');
           }
-          await copyFile(tempNativePath, finalNativePath);
+          try {
+            await rename(tempNativePath, finalNativePath);
+          } catch (renameErr) {
+            log.warn('Native rename failed, falling back to copyFile', renameErr);
+            await copyFile(tempNativePath, finalNativePath);
+          }
         } else {
-          await withFileIoSlot(async () => {
-            const tempFile = await tempFileHandle.getFile();
-            const writable = await fileHandle.createWritable({ keepExistingData: false });
+          let movedWeb = false;
+          const moveableHandle = tempFileHandle as FileSystemFileHandle & {
+            move?: (name: string) => Promise<void>;
+          };
+          if (typeof moveableHandle.move === 'function') {
             try {
-              await writable.write(tempFile);
-              await writable.close();
-            } catch (e) {
-              await writable.abort();
-              throw e;
+              await moveableHandle.move(finalFilename);
+              movedWeb = true;
+              fileHandle = tempFileHandle;
+            } catch (moveErr) {
+              log.warn('FileSystemFileHandle.move failed, falling back to copy', moveErr);
             }
-          });
+          }
+
+          if (!movedWeb) {
+            fileHandle = await exportDir.getFileHandle(finalFilename, { create: true });
+            await withFileIoSlot(async () => {
+              const tempFile = await tempFileHandle.getFile();
+              const writable = await fileHandle!.createWritable({ keepExistingData: false });
+              try {
+                await writable.write(tempFile);
+                await writable.close();
+              } catch (e) {
+                await writable.abort();
+                throw e;
+              }
+            });
+          }
         }
 
-        if (isTauri && customExportPath.value) {
+        if (isTauri && customExportPath.value && fileHandle) {
           const tauriFilePath = getNativeFileHandlePath(fileHandle);
           if (tauriFilePath) {
-            const [{ join }, { exists }] = await Promise.all([
+            const [
+              { join },
+              { exists, rename: tauriRename, copyFile: tauriCopyFile, remove: tauriRemove },
+            ] = await Promise.all([
               import('@tauri-apps/api/path'),
               import('@tauri-apps/plugin-fs'),
             ]);
@@ -558,7 +585,13 @@ export function useExportForm() {
             if (await exists(destPath)) {
               throw new Error(t('videoEditor.export.filenameAlreadyExists'));
             }
-            await copyFile(tauriFilePath, destPath);
+            try {
+              await tauriRename(tauriFilePath, destPath);
+            } catch (renameErr) {
+              log.warn('Custom export path rename failed, falling back to copyFile', renameErr);
+              await tauriCopyFile(tauriFilePath, destPath);
+              await tauriRemove(tauriFilePath).catch(() => undefined);
+            }
           }
         }
 
@@ -591,14 +624,16 @@ export function useExportForm() {
         if (onSuccess) {
           const file = isTauri
             ? new File([], outputFilename.value)
-            : await withFileIoSlot(() => fileHandle.getFile());
+            : await withFileIoSlot(() => fileHandle!.getFile());
           await onSuccess(file);
         }
       } finally {
         try {
           await exportDir.removeEntry(tempFilename);
-        } catch (e) {
-          log.warn('Failed to clean up temporary export file', e);
+        } catch (e: unknown) {
+          if (e instanceof Error && e.name !== 'NotFoundError') {
+            log.warn('Failed to clean up temporary export file', e);
+          }
         }
         if (!exportSuccess) {
           await validateFilename();

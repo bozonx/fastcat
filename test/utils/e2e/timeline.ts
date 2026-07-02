@@ -183,6 +183,17 @@ export async function addFileToTrack(
     await expect(source, `file entry ${entryPath}`).toBeVisible();
   }
   await expect(target, `track ${trackId}`).toBeVisible();
+
+  // Wait for the file entry's compatibility check to finish — the pointerdown
+  // handler is gated by isCheckingCompatibility and silently swallows the
+  // event while metadata is still loading (spinner visible inside the entry).
+  const compatSpinner = source.locator('.animate-spin');
+  if ((await compatSpinner.count()) > 0) {
+    await expect(compatSpinner, `compatibility check for ${entryPath}`).toBeHidden({
+      timeout: 15_000,
+    });
+  }
+
   await fitTimelineZoom(page);
 
   const sourceBox = await requireBox(source, `file entry ${entryPath}`);

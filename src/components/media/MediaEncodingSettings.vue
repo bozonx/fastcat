@@ -358,13 +358,12 @@ watch(
       :ui="{ label: 'text-sm text-ui-text-muted' }"
     />
 
-    <UCheckbox
-      v-model="enableAdvancedSettings"
-      :label="t('videoEditor.export.advancedSettings')"
-      :disabled="props.disabled"
-      :ui="{ label: 'text-sm text-ui-text' }"
-      class="my-1"
-    />
+    <div class="my-1 flex items-center justify-between gap-3">
+      <span class="text-sm text-ui-text">
+        {{ t('videoEditor.export.advancedSettings') }}
+      </span>
+      <USwitch v-model="enableAdvancedSettings" :disabled="props.disabled" />
+    </div>
 
     <template v-if="enableAdvancedSettings">
       <div class="flex flex-col gap-4 pl-4 border-l border-ui-border">
@@ -453,13 +452,15 @@ watch(
           />
         </UiFormField>
 
-        <UCheckbox
+        <div
           v-if="outputFormat === 'mp4'"
-          v-model="fastStart"
-          :label="t('videoEditor.export.fastStart')"
-          :disabled="props.disabled"
-          :ui="{ label: 'text-sm text-ui-text-muted' }"
-        />
+          class="flex items-center justify-between gap-3"
+        >
+          <span class="text-sm text-ui-text-muted">
+            {{ t('videoEditor.export.fastStart') }}
+          </span>
+          <USwitch v-model="fastStart" :disabled="props.disabled" />
+        </div>
       </div>
     </template>
 

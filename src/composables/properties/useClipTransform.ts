@@ -380,6 +380,16 @@ export function useClipTransform(options: UseClipTransformOptions) {
     });
   }
 
+  const transformFlipHorizontal = computed({
+    get: () => Boolean(getSafeTransform(options.clip.value).flipHorizontal),
+    set: (val: boolean) => updateSelectedClipTransform({ flipHorizontal: Boolean(val) }),
+  });
+
+  const transformFlipVertical = computed({
+    get: () => Boolean(getSafeTransform(options.clip.value).flipVertical),
+    set: (val: boolean) => updateSelectedClipTransform({ flipVertical: Boolean(val) }),
+  });
+
   return {
     anchorPresetOptions,
     canEditTransform,
@@ -398,6 +408,8 @@ export function useClipTransform(options: UseClipTransformOptions) {
     transformCropBottom,
     transformCropLeft,
     transformCropRight,
+    transformFlipHorizontal,
+    transformFlipVertical,
     resetScale,
     resetPosition,
     resetRotation,

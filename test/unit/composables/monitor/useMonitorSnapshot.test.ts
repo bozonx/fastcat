@@ -94,6 +94,7 @@ describe('useMonitorSnapshot', () => {
       timelineDoc,
       timeUs: 1000000,
       quality: 0.9,
+      isTransparent: false,
     });
     expect(write).toHaveBeenCalledWith(expect.any(Blob));
     expect(close).toHaveBeenCalled();

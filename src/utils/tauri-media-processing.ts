@@ -264,6 +264,7 @@ export async function nativeRenderTimelineFrameWebp(params: {
   width: number;
   height: number;
   quality: number;
+  isTransparent?: boolean;
 }): Promise<Blob> {
   const bytes = await invoke<NativeBytePayload>('native_timeline_render_frame_webp', {
     scene: params.scene,
@@ -271,6 +272,7 @@ export async function nativeRenderTimelineFrameWebp(params: {
     width: params.width,
     height: params.height,
     quality: params.quality,
+    isTransparent: params.isTransparent,
   });
   return new Blob([toBlobPart(bytes)], { type: 'image/webp' });
 }

@@ -195,6 +195,7 @@ export interface VideoCoreWorkerAPI {
     height: number,
     timelineClips: WorkerVideoPayloadItem[],
     quality: number,
+    isTransparent?: boolean,
   ): Promise<Blob | null>;
 
   extractAudio(sourcePath: string, targetPath: string, taskId?: string): Promise<void>;

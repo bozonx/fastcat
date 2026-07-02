@@ -369,6 +369,7 @@ pub async fn native_timeline_render_frame_to_file(
     height: u32,
     target_path: String,
     quality: f32,
+    is_transparent: Option<bool>,
     hw_settings: State<'_, parking_lot::RwLock<crate::FfmpegHwSettings>>,
 ) -> Result<(), String> {
     let target_path = PathBuf::from(target_path);
@@ -383,6 +384,7 @@ pub async fn native_timeline_render_frame_to_file(
                 quality,
                 hw_mode: hw.hardware_acceleration_mode,
                 vaapi_device: Some(hw.vaapi_device),
+                is_transparent,
             },
             &target_path,
         )
@@ -397,6 +399,7 @@ pub async fn native_timeline_render_frame_webp(
     width: u32,
     height: u32,
     quality: f32,
+    is_transparent: Option<bool>,
     hw_settings: State<'_, parking_lot::RwLock<crate::FfmpegHwSettings>>,
 ) -> Result<Vec<u8>, String> {
     let hw = hw_settings.read().clone();
@@ -409,6 +412,7 @@ pub async fn native_timeline_render_frame_webp(
             quality,
             hw_mode: hw.hardware_acceleration_mode,
             vaapi_device: Some(hw.vaapi_device),
+            is_transparent,
         })
     })
     .await

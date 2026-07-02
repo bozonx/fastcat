@@ -31,7 +31,7 @@ describe('FileConversionAudioSettings', () => {
         stubs: {
           UiButtonGroup: true,
           UiWheelNumberInput: true,
-          UCheckbox: true,
+          USwitch: true,
         },
       },
     });
@@ -60,7 +60,7 @@ describe('FileConversionAudioSettings', () => {
         stubs: {
           UiButtonGroup: true,
           UiWheelNumberInput: true,
-          UCheckbox: true,
+          USwitch: true,
         },
       },
     });

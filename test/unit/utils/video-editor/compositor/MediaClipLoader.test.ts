@@ -41,7 +41,7 @@ describe('MediaClipLoader', () => {
     loader = new MediaClipLoader();
   });
 
-  it('computes sourceDurationUs as min(requested, maxTail)', async () => {
+  it('computes sourceDurationUs as min(requested, full media duration)', async () => {
     const track = makeTrack({ computeDuration: async () => 10 });
     const mediabunny = makeMediabunny(track);
 
@@ -57,12 +57,38 @@ describe('MediaClipLoader', () => {
 
     expect(result).not.toBeNull();
     // mediaDurationUs = 10 * 1_000_000 = 10_000_000
-    // maxSourceTailUs = 10_000_000 - 2_000_000 = 8_000_000
-    // sourceDurationUs = min(5_000_000, 8_000_000) = 5_000_000
+    // sourceDurationUs = min(5_000_000, 10_000_000) = 5_000_000
     expect(result!.sourceDurationUs).toBe(5_000_000);
   });
 
-  it('uses maxTail when requestedSourceDurationUs is 0', async () => {
+  it('keeps the FULL media duration for a clip trimmed at its start', async () => {
+    // Regression: sourceDurationUs is an ABSOLUTE source-domain value — the full
+    // media duration. Transition handle math downstream computes
+    // `sourceDurationUs - sourceStartUs - sourceRangeDurationUs`, and the
+    // reuse/layout-update paths store the payload's full-duration value as-is.
+    // The loader used to clamp by the tail (media - sourceStart), double-counting
+    // sourceStartUs: a 60s file trimmed to start at 10s reported 50s, so a
+    // transition's trailing handle came out 10s short (frozen shadow frames).
+    const track = makeTrack({ computeDuration: async () => 10 });
+    const mediabunny = makeMediabunny(track);
+
+    const result = await loader.loadVideoRuntime({
+      mediabunny,
+      file: new File([], 'test.mp4'),
+      sourceStartUs: 2_000_000,
+      requestedTimelineDurationUs: 4_000_000,
+      requestedSourceDurationUs: 10_000_000,
+      requestedSourceRangeDurationUs: 4_000_000,
+      startUs: 0,
+    });
+
+    expect(result).not.toBeNull();
+    expect(result!.sourceDurationUs).toBe(10_000_000);
+    // Trailing handle available past the source range: 10 - 2 - 4 = 4s.
+    expect(result!.sourceDurationUs - 2_000_000 - result!.sourceRangeDurationUs).toBe(4_000_000);
+  });
+
+  it('uses the full media duration when requestedSourceDurationUs is 0', async () => {
     const track = makeTrack({ computeDuration: async () => 8 });
     const mediabunny = makeMediabunny(track);
 
@@ -77,8 +103,10 @@ describe('MediaClipLoader', () => {
     });
 
     expect(result).not.toBeNull();
-    // mediaDurationUs = 8_000_000, maxTail = 5_000_000
-    expect(result!.sourceDurationUs).toBe(5_000_000);
+    // mediaDurationUs = 8_000_000 (absolute, NOT reduced by sourceStartUs)
+    expect(result!.sourceDurationUs).toBe(8_000_000);
+    // The timeline-duration fallback, by contrast, is the playable tail.
+    expect(result!.durationUs).toBe(5_000_000);
   });
 
   it('uses requestedTimelineDurationUs when > 0, else sourceDurationUs', async () => {
@@ -100,7 +128,7 @@ describe('MediaClipLoader', () => {
     expect(result!.endUs).toBe(4_000_000);
   });
 
-  it('falls back to sourceDurationUs for durationUs when timelineDuration is 0', async () => {
+  it('falls back to the playable source tail for durationUs when timelineDuration is 0', async () => {
     const track = makeTrack({ computeDuration: async () => 6 });
     const mediabunny = makeMediabunny(track);
 
@@ -242,7 +270,7 @@ describe('MediaClipLoader', () => {
     expect(result!.frameRate).toBe(24);
   });
 
-  it('clamps maxSourceTailUs to 0 when sourceStartUs exceeds mediaDuration', async () => {
+  it('clamps the timeline-duration fallback to 0 when sourceStartUs exceeds mediaDuration', async () => {
     const track = makeTrack({ computeDuration: async () => 5 });
     const mediabunny = makeMediabunny(track);
 
@@ -257,8 +285,9 @@ describe('MediaClipLoader', () => {
     });
 
     expect(result).not.toBeNull();
-    // mediaDurationUs = 5_000_000, maxSourceTailUs = max(0, 5_000_000 - 6_000_000) = 0
-    expect(result!.sourceDurationUs).toBe(0);
+    // sourceDurationUs stays the absolute media duration...
+    expect(result!.sourceDurationUs).toBe(5_000_000);
+    // ...while the playable tail past the trim-in point is empty.
     expect(result!.durationUs).toBe(0);
   });
 });

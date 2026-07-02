@@ -33,6 +33,8 @@ export interface ExtractTimelineFrameBlobOptions {
   quality?: number;
   /** Native-only: build the scene at export (ultra) quality so stills match export output. */
   isExport?: boolean;
+  /** Whether to render background as transparent (true) or opaque black (false). */
+  isTransparent?: boolean;
 }
 
 export interface IMediaProcessor {

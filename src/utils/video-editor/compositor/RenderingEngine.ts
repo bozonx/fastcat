@@ -176,7 +176,21 @@ export class RenderingEngine {
     } finally {
       const clipsToClean = new Set([...processingClips, ...updatedClips]);
       for (const clip of clipsToClean) {
-        if (clip.lastVideoFrame) {
+        // Non-video clips (image/text/shape/solid) commit their WebGPU effect
+        // output as `lastVideoFrame` and must keep it across frames: it is both
+        // the sprite's current texture resource and the validity token of
+        // `nonVideoEffectCacheKey` (ClipResourceManager.applyEffectsToNonVideoClip
+        // early-exits only while it is set). Disposing it here made that cache
+        // miss on every frame, re-running the full rasterize + compute pipeline
+        // for static clips during playback. Only per-frame decoded video frames
+        // are released after the present; the non-video output is disposed by
+        // the next effect commit or by destroyClip.
+        const holdsCommittedEffectOutput =
+          clip.clipKind === 'image' ||
+          clip.clipKind === 'text' ||
+          clip.clipKind === 'shape' ||
+          clip.clipKind === 'solid';
+        if (!holdsCommittedEffectOutput && clip.lastVideoFrame) {
           safeDispose(clip.lastVideoFrame);
           clip.lastVideoFrame = null;
         }

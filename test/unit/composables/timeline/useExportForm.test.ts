@@ -2,15 +2,17 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { nextTick, ref, computed } from 'vue';
 import { useToast } from '#ui/composables/useToast';
-import { copyFile } from '@tauri-apps/plugin-fs';
+import { copyFile, rename } from '@tauri-apps/plugin-fs';
 import { useExportForm } from '~/composables/timeline/export/useExportForm';
 
-const { copyFileMock } = vi.hoisted(() => ({
+const { copyFileMock, renameMock } = vi.hoisted(() => ({
   copyFileMock: vi.fn().mockResolvedValue(undefined),
+  renameMock: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock('@tauri-apps/plugin-fs', () => ({
   copyFile: copyFileMock,
+  rename: renameMock,
 }));
 
 const selectionRangeMock = ref<{ startUs: number; endUs: number } | null>(null);
@@ -260,6 +262,8 @@ describe('useExportForm', () => {
       settingsSource: 'manual',
     };
     updateTimelineFormatMock.mockReset();
+    copyFileMock.mockReset();
+    renameMock.mockReset();
     selectionRangeMock.value = null;
     markersMock.value = [];
     selectedEntityMock.value = null;
@@ -535,7 +539,7 @@ describe('useExportForm', () => {
     expect(form.exportDurationMs.value).toBeGreaterThanOrEqual(0);
   });
 
-  it('в Tauri финализирует экспорт native copy без загрузки файла в JS', async () => {
+  it('в Tauri финализирует экспорт через native rename с фолбэком на copyFile', async () => {
     (globalThis as { __TAURI_INTERNALS__?: unknown }).__TAURI_INTERNALS__ = {};
     const tempGetFileMock = vi.fn(async () => {
       throw new Error('temp getFile should not be called');
@@ -568,6 +572,7 @@ describe('useExportForm', () => {
       getFileHandle: getFileHandleMock,
       removeEntry: vi.fn(async () => undefined),
     } as any);
+    vi.mocked(rename).mockResolvedValue(undefined);
     vi.mocked(copyFile).mockResolvedValue(undefined);
     const onSuccess = vi.fn();
 
@@ -575,15 +580,78 @@ describe('useExportForm', () => {
     await form.initializeExportForm();
     await form.handleStartExport(onSuccess);
 
-    expect(copyFile).toHaveBeenCalledTimes(1);
-    const [fromPath, toPath] = vi.mocked(copyFile).mock.calls[0]!;
+    expect(rename).toHaveBeenCalledTimes(1);
+    const [fromPath, toPath] = vi.mocked(rename).mock.calls[0]!;
     expect(String(fromPath)).toContain('.tmp-');
     expect(toPath).toBe('/project/_export/timeline.mp4');
+    expect(copyFile).not.toHaveBeenCalled();
     expect(tempGetFileMock).not.toHaveBeenCalled();
     expect(finalGetFileMock).not.toHaveBeenCalled();
     expect(finalCreateWritableMock).not.toHaveBeenCalled();
     expect(onSuccess).toHaveBeenCalledWith(expect.any(File));
     expect(onSuccess.mock.calls[0]?.[0].size).toBe(0);
+  });
+
+  it('в Tauri откатывается на copyFile, если rename возвращает ошибку', async () => {
+    (globalThis as { __TAURI_INTERNALS__?: unknown }).__TAURI_INTERNALS__ = {};
+    const getFileHandleMock = vi.fn(async (name: string, options?: { create?: boolean }) => {
+      if (!options?.create) {
+        const error = new Error('Not found');
+        (error as Error & { name: string }).name = 'NotFoundError';
+        throw error;
+      }
+      return {
+        path: `/project/_export/${name}`,
+        getFile: vi.fn(),
+        createWritable: vi.fn(),
+      };
+    });
+    ensureExportDirMock.mockResolvedValue({
+      getFileHandle: getFileHandleMock,
+      removeEntry: vi.fn(async () => undefined),
+    } as any);
+    vi.mocked(rename).mockRejectedValueOnce(new Error('EXDEV: cross-device link not permitted'));
+    vi.mocked(copyFile).mockResolvedValue(undefined);
+
+    const form = useExportForm();
+    await form.initializeExportForm();
+    await form.handleStartExport();
+
+    expect(rename).toHaveBeenCalledTimes(1);
+    expect(copyFile).toHaveBeenCalledTimes(1);
+  });
+
+  it('в веб-версии использует move() у FileSystemFileHandle если метод доступен', async () => {
+    delete (globalThis as { __TAURI_INTERNALS__?: unknown }).__TAURI_INTERNALS__;
+    const moveMock = vi.fn(async () => undefined);
+    const tempFileHandleObj = {
+      getFile: vi.fn(async () => new File(['data'], 'temp.mp4')),
+      move: moveMock,
+    };
+    const getFileHandleMock = vi.fn(async (name: string, options?: { create?: boolean }) => {
+      if (!options?.create) {
+        const error = new Error('Not found');
+        (error as Error & { name: string }).name = 'NotFoundError';
+        throw error;
+      }
+      if (name.includes('.tmp-')) {
+        return tempFileHandleObj;
+      }
+      return {
+        getFile: vi.fn(async () => new File(['data'], name)),
+        createWritable: vi.fn(),
+      };
+    });
+    ensureExportDirMock.mockResolvedValue({
+      getFileHandle: getFileHandleMock,
+      removeEntry: vi.fn(async () => undefined),
+    } as any);
+
+    const form = useExportForm();
+    await form.initializeExportForm();
+    await form.handleStartExport();
+
+    expect(moveMock).toHaveBeenCalledWith('timeline.mp4');
   });
 
   it('показывает тост успеха с длительностью экспорта', async () => {
