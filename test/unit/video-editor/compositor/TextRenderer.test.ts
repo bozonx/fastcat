@@ -23,13 +23,37 @@ class FakeCtx {
   textAlign = '';
   lineWidth = 0;
   letterSpacing = '0px';
-  // Records each text draw with the composite op in effect, for regression asserts.
-  strokeCalls: { op: string; lineWidth: number }[] = [];
-  fillCalls: { op: string }[] = [];
+  // Records each text draw with the state in effect, for regression asserts.
+  strokeCalls: { op: string; lineWidth: number; shadowOffsetX: number }[] = [];
+  fillCalls: { op: string; shadowOffsetX: number }[] = [];
+  private stateStack: Record<string, unknown>[] = [];
+  private static readonly SAVED_PROPS = [
+    'font',
+    'fillStyle',
+    'strokeStyle',
+    'globalAlpha',
+    'globalCompositeOperation',
+    'shadowColor',
+    'shadowBlur',
+    'shadowOffsetX',
+    'shadowOffsetY',
+    'textBaseline',
+    'textAlign',
+    'lineWidth',
+    'letterSpacing',
+  ];
   constructor(public canvas: FakeCanvas) {}
   clearRect() {}
-  save() {}
-  restore() {}
+  save() {
+    const snap: Record<string, unknown> = {};
+    for (const p of FakeCtx.SAVED_PROPS) snap[p] = (this as Record<string, unknown>)[p];
+    this.stateStack.push(snap);
+  }
+  restore() {
+    const snap = this.stateStack.pop();
+    if (!snap) return;
+    for (const p of FakeCtx.SAVED_PROPS) (this as Record<string, unknown>)[p] = snap[p];
+  }
   beginPath() {}
   closePath() {}
   moveTo() {}
@@ -38,10 +62,17 @@ class FakeCtx {
   fill() {}
   stroke() {}
   fillText() {
-    this.fillCalls.push({ op: this.globalCompositeOperation });
+    this.fillCalls.push({
+      op: this.globalCompositeOperation,
+      shadowOffsetX: this.shadowOffsetX,
+    });
   }
   strokeText() {
-    this.strokeCalls.push({ op: this.globalCompositeOperation, lineWidth: this.lineWidth });
+    this.strokeCalls.push({
+      op: this.globalCompositeOperation,
+      lineWidth: this.lineWidth,
+      shadowOffsetX: this.shadowOffsetX,
+    });
   }
   measureText(t: string) {
     const m = /(\d+(?:\.\d+)?)px/.exec(this.font);
@@ -138,7 +169,7 @@ describe('TextRenderer + LayoutApplier integration', () => {
     expect(sprite.scale.y).toBeCloseTo(1, 3);
   });
 
-  it('dilates the shadow with spread and never cuts the spread stroke back out', () => {
+  it('renders the spread shadow off-canvas so no hard outline is painted on top', () => {
     const renderer = new TextRenderer({ designWidth: W, designHeight: H });
     const clip = createTextClip('Text');
     (clip as unknown as { style: Record<string, unknown> }).style = {
@@ -156,17 +187,23 @@ describe('TextRenderer + LayoutApplier integration', () => {
     renderer.draw(clip, W, H);
     const ctx = clip.ctx as unknown as FakeCtx;
 
-    // Spread must dilate the shadow: a stroke pass runs while compositing normally.
-    const dilationStrokes = ctx.strokeCalls.filter(
-      (c) => c.op === 'source-over' && c.lineWidth > 0,
-    );
-    expect(dilationStrokes.length).toBeGreaterThan(0);
+    // Spread must dilate the shadow: a stroke pass runs with a positive lineWidth.
+    const spreadStroke = ctx.strokeCalls.find((c) => c.lineWidth > 0);
+    expect(spreadStroke).toBeDefined();
 
-    // Regression guard: the destination-out "cut" pass must remove only the glyph
-    // FILL (interior). Stroking in destination-out would cancel the dilation above
-    // and collapse the shadow into a thin outline detached from the text.
-    const cutStrokes = ctx.strokeCalls.filter((c) => c.op === 'destination-out');
-    expect(cutStrokes).toEqual([]);
-    expect(ctx.fillCalls.some((c) => c.op === 'destination-out')).toBe(true);
+    // The shadow (fill + spread stroke) must be emitted off-canvas — a large
+    // shadowOffset brings only the blurred/dilated shadow into place. Painting on
+    // canvas (small offset) would leave the solid glyph/stroke shape visible as a
+    // hard black outline around the text.
+    const canvasSpan = ctx.canvas.width + ctx.canvas.height;
+    expect(spreadStroke!.shadowOffsetX).toBeGreaterThan(canvasSpan);
+
+    // The main white text is drawn on top with NO shadow (offset 0).
+    const mainText = ctx.fillCalls.find((c) => c.shadowOffsetX === 0);
+    expect(mainText).toBeDefined();
+
+    // No composite trickery is needed anymore; nothing is cut back out.
+    expect(ctx.strokeCalls.every((c) => c.op === 'source-over')).toBe(true);
+    expect(ctx.fillCalls.every((c) => c.op === 'source-over')).toBe(true);
   });
 });

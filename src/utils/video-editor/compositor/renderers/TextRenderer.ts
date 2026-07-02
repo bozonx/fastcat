@@ -185,34 +185,33 @@ export class TextRenderer {
 
     if (normalizedStyle.textShadowEnabled) {
       const textShadowSpreadPx = Math.round(normalizedStyle.textShadowSpread * renderScale);
+      // Pure drop-shadow trick: draw the glyphs FAR off-canvas and use a large
+      // shadowOffset to bring only their blurred (and spread-dilated) shadow into
+      // place. Drawing on-canvas would also paint the solid glyph shape in
+      // shadowColor — the fill shows through anti-aliased edges and, for the
+      // spread stroke, leaves a hard outline ("обводка") around the text. Off-canvas
+      // rendering emits ONLY the shadow, matching the native compositor.
+      const off = ctx.canvas.width + ctx.canvas.height + 1000;
       ctx.save();
       ctx.font = font;
-      ctx.fillStyle = normalizedStyle.textShadowColor;
+      ctx.fillStyle = '#000';
+      ctx.strokeStyle = '#000';
       ctx.globalAlpha = normalizedStyle.textShadowAlpha;
       ctx.shadowColor = this.toCanvasShadowColor(normalizedStyle.textShadowColor, 1);
       ctx.shadowBlur = normalizedStyle.textShadowBlur * renderScale;
-      ctx.shadowOffsetX = normalizedStyle.textShadowOffsetX * renderScale;
-      ctx.shadowOffsetY = normalizedStyle.textShadowOffsetY * renderScale;
+      ctx.shadowOffsetX = normalizedStyle.textShadowOffsetX * renderScale + off;
+      ctx.shadowOffsetY = normalizedStyle.textShadowOffsetY * renderScale + off;
       ctx.textBaseline = 'middle';
       ctx.textAlign = normalizedStyle.align;
-      this.drawTextLines({
-        ctx,
-        lines,
-        localTextStartX,
-        localTextTopPx,
-        lineHeightPx,
-        letterSpacingPx,
-        align: normalizedStyle.align,
-        renderScale,
-      });
+      // The spread stroke widens the silhouette (drawn first, so the fill overlaps
+      // its inner half and no seam remains between stroke and fill).
       if (textShadowSpreadPx > 0) {
         ctx.lineWidth = textShadowSpreadPx;
-        ctx.strokeStyle = normalizedStyle.textShadowColor;
         this.drawTextLines({
           ctx,
           lines,
-          localTextStartX,
-          localTextTopPx,
+          localTextStartX: localTextStartX - off,
+          localTextTopPx: localTextTopPx - off,
           lineHeightPx,
           letterSpacingPx,
           align: normalizedStyle.align,
@@ -220,18 +219,11 @@ export class TextRenderer {
           mode: 'stroke',
         });
       }
-      // Cut only the glyph FILL (interior) out of the shadow so the main text
-      // sits cleanly on top. Do NOT cut the spread stroke back out — that would
-      // cancel the dilation added above and collapse the shadow into a thin
-      // offset-only outline that appears detached from the text.
-      ctx.globalCompositeOperation = 'destination-out';
-      ctx.shadowColor = 'transparent';
-      ctx.globalAlpha = 1;
       this.drawTextLines({
         ctx,
         lines,
-        localTextStartX,
-        localTextTopPx,
+        localTextStartX: localTextStartX - off,
+        localTextTopPx: localTextTopPx - off,
         lineHeightPx,
         letterSpacingPx,
         align: normalizedStyle.align,

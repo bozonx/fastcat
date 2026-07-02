@@ -187,7 +187,8 @@ const isEnabled = computed(() => workspaceStore.inDevelopmentFeaturesEnabled ===
           :y="item.textBoxY"
           :width="item.textBoxW"
           :height="item.textBoxH"
-          fill="rgba(255,255,255,0.03)"
+          fill="transparent"
+          pointer-events="all"
           class="cursor-pointer"
           @pointerdown.stop="selectClip(item.clip)"
         />
@@ -198,7 +199,8 @@ const isEnabled = computed(() => workspaceStore.inDevelopmentFeaturesEnabled ===
           y="0"
           :width="item.targetW"
           :height="item.targetH"
-          fill="rgba(255,255,255,0.03)"
+          fill="transparent"
+          pointer-events="all"
           class="cursor-pointer"
           @pointerdown.stop="selectClip(item.clip)"
         />
