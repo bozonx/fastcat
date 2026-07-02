@@ -21,6 +21,8 @@ const ProjectMonitorSchema = z.object({
   previewEffectsEnabled: z.coerce.boolean().catch(true),
   showGrid: z.coerce.boolean().catch(false),
   showTimecode: z.coerce.boolean().catch(true),
+  showTransparencyGrid: z.coerce.boolean().catch(false),
+  showMarkerTexts: z.coerce.boolean().catch(true),
   toolbarPosition: z.enum(['top', 'bottom', 'left', 'right']).catch('bottom'),
   // `ultra` retired as a selectable tier — migrate persisted 'ultra' to 'high'.
   previewBlurQuality: z

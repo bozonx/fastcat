@@ -102,6 +102,16 @@ function isEntrySelected(entry: FsEntry): boolean {
           class="relative mb-2 w-full aspect-square flex items-center justify-center bg-ui-bg rounded overflow-hidden"
           :class="{
             'bg-ui-bg!': entry.path && entry.path === projectStore.currentTimelinePath,
+            'thumbnail-checkerboard-bg':
+              ((entry.kind === 'file' || getBdType(entry) === 'content-item') &&
+                Boolean(entry.objectUrl)) ||
+              Boolean(getBdThumbnail(entry)) ||
+              Boolean(
+                entry.kind === 'file' &&
+                  videoThumbnails &&
+                  entry.path &&
+                  videoThumbnails[entry.path],
+              ),
           }"
         >
           <div
@@ -134,7 +144,7 @@ function isEntrySelected(entry: FsEntry): boolean {
             "
             :src="entry.objectUrl || getBdThumbnail(entry)"
             :alt="entry.name"
-            class="max-w-full max-h-full object-contain checkerboard-bg"
+            class="max-w-full max-h-full object-contain"
             draggable="false"
             @error="handleImageError(entry)"
           />
@@ -144,7 +154,7 @@ function isEntrySelected(entry: FsEntry): boolean {
             "
             :src="videoThumbnails[entry.path]"
             :alt="entry.name"
-            class="max-w-full max-h-full object-contain checkerboard-bg"
+            class="max-w-full max-h-full object-contain"
             draggable="false"
             @error="handleImageError(entry)"
           />

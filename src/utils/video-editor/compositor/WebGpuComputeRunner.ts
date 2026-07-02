@@ -105,14 +105,13 @@ function pushBlur(
 ): Buf {
   if (radius <= 0) return cur;
   // "Blur past edges" (bleed): run the blur in premultiplied-alpha space so the
-  // colour never darkens against the transparent padding, and clamp the output
-  // alpha to the pre-blur image (`cur`) so opaque areas keep full coverage (no
-  // dark inner border) while the halo still bleeds OUTWARD. Flagged per pass —
-  // mode 4 (H / radial) via p6, final pass (mode 14 V / radial) via p2/p6; the
-  // final pass reads `cur` as `secondary` for the original alpha. See `effect.wgsl`.
+  // content edge feathers softly OUTWARD with its real colour (transparent
+  // padding contributes (0,0,0,0) → only the alpha composite darkens over black,
+  // never the colour). Flagged per pass — mode 4 (H / radial) via p6, final V
+  // (mode 14) via p2 (which also un-premultiplies). Routing is the plain
+  // ping-pong (premult blur only reads its own input). See `effect.wgsl`.
   const bleedFlag = bleed ? 1.0 : 0.0;
   if (blurType === 'radial') {
-    // Single pass — final: sample origin `cur`, clamp against `cur`'s alpha.
     const t1 = pickScratch([cur]);
     const rect = contentRect ?? { offsetX: 0, offsetY: 0, width, height };
     passes.push({
@@ -147,10 +146,7 @@ function pushBlur(
       secondary: cur,
       dst: t1,
     });
-    // Final (vertical) pass. For bleed it reads the ORIGINAL pre-blur image
-    // (`cur`) as secondary to clamp alpha, so `dst` must alias neither the H
-    // intermediate (`t1`) nor `cur`.
-    const t2 = bleed ? pickScratch([t1, cur]) : pickScratch([t1]);
+    const t2 = pickScratch([t1]);
     passes.push({
       uniform: {
         ...uniform(14, width, height),
@@ -160,7 +156,7 @@ function pushBlur(
         p7: tapBudget,
       },
       src: t1,
-      secondary: bleed ? cur : t1,
+      secondary: t1,
       dst: t2,
     });
     return t2;

@@ -39,7 +39,7 @@ describe('createPixiCompositorApplication', () => {
 
     expect(initMock).toHaveBeenCalledWith(
       expect.objectContaining({
-        backgroundColor: 'transparent',
+        backgroundColor: '#000000',
         backgroundAlpha: 0,
       }),
     );

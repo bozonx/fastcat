@@ -27,7 +27,6 @@ interface ContentBox {
   canvasW: number;
   canvasH: number;
   edgeEnergy: number;
-  edgeRingMean: number;
 }
 
 async function measureMonitorContent(page: import('@playwright/test').Page): Promise<ContentBox> {
@@ -69,16 +68,10 @@ async function measureMonitorContent(page: import('@playwright/test').Page): Pro
     let bottom = -1;
     // Horizontal gradient energy — drops sharply when the image is blurred.
     let edgeEnergy = 0;
-    // Mean brightness of a thin ring just inside the canvas border. A dark-vignette
-    // "blur past edges" bug crushes this toward black; a healthy fill keeps it lit.
-    const ringMargin = Math.max(2, Math.round(Math.min(w, h) * 0.06));
-    let ringSum = 0;
-    let ringCount = 0;
     for (let y = 0; y < h; y++) {
       for (let x = 0; x < w; x++) {
         const i = (y * w + x) * 4;
-        const bright = data[i]! + data[i + 1]! + data[i + 2]!;
-        if (bright > threshold) {
+        if (data[i]! + data[i + 1]! + data[i + 2]! > threshold) {
           if (x < left) left = x;
           if (x > right) right = x;
           if (y < top) top = y;
@@ -86,10 +79,6 @@ async function measureMonitorContent(page: import('@playwright/test').Page): Pro
         }
         if (x + 1 < w) {
           edgeEnergy += Math.abs(data[i]! - data[i + 4]!);
-        }
-        if (x < ringMargin || x >= w - ringMargin || y < ringMargin || y >= h - ringMargin) {
-          ringSum += bright;
-          ringCount += 1;
         }
       }
     }
@@ -106,7 +95,6 @@ async function measureMonitorContent(page: import('@playwright/test').Page): Pro
       canvasW: w,
       canvasH: h,
       edgeEnergy,
-      edgeRingMean: ringCount > 0 ? ringSum / ringCount : 0,
     };
   });
 }
@@ -247,15 +235,6 @@ async function runScenario(
   ).toBeLessThanOrEqual(tol);
   expect(baseline.width - radialBleed.width).toBeLessThanOrEqual(tol);
   expect(baseline.height - radialBleed.height).toBeLessThanOrEqual(tol);
-
-  // No dark inner border on a full-frame clip: the bleed must keep opaque areas
-  // opaque, so the edge ring stays about as bright as the plain (non-bleed) blur.
-  // The old feather-to-transparent bug crushed this ring toward black.
-  expect(
-    bleed.edgeRingMean,
-    `full-frame bleed edge ring ${bleed.edgeRingMean.toFixed(0)} vs no-bleed ${noBleed.edgeRingMean.toFixed(0)}`,
-  ).toBeGreaterThan(noBleed.edgeRingMean * 0.6);
-  expect(radialBleed.edgeRingMean).toBeGreaterThan(noBleed.edgeRingMean * 0.6);
 
   // Scaled-down clip: now there is background around the content, so the blur's
   // outward bleed is visible instead of being clipped by the frame. With "blur

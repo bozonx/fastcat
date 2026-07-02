@@ -22,6 +22,10 @@ function isTransparentBackground(color: string): boolean {
   return value === 'transparent' || value === '#0000' || value === '#00000000';
 }
 
+function getPixiBackgroundColor(color: string): string {
+  return isTransparentBackground(color) ? '#000000' : color;
+}
+
 export function createCompositorCanvas(params: {
   width: number;
   height: number;
@@ -60,7 +64,7 @@ export async function createPixiCompositorApplication(
         width: options.width,
         height: options.height,
         canvas: canvas as ICanvas,
-        backgroundColor: options.bgColor,
+        backgroundColor: getPixiBackgroundColor(options.bgColor),
         backgroundAlpha: isTransparentBackground(options.bgColor) ? 0 : 1,
         preference: rendererPreference,
         clearBeforeRender: true,

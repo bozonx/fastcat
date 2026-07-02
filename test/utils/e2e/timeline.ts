@@ -86,7 +86,13 @@ export async function dragClipBy(
 ): Promise<void> {
   const target = clip(page, clipId);
   await expect(target).toBeVisible();
-  await fitTimelineZoom(page);
+  // Zoom in to make the clip larger for easier dragging.
+  await timelineContainer(page).click();
+  for (let i = 0; i < 5; i++) {
+    await page.keyboard.press('=');
+  }
+  await page.waitForTimeout(150);
+  await expect(target).toBeVisible({ timeout: 5_000 });
 
   const box = await requireBox(target, `clip ${clipId}`);
   const startX = box.x + box.width / 2;
@@ -112,7 +118,13 @@ export async function moveClipToTrack(
   const target = track(page, toTrackId);
   await expect(source).toBeVisible();
   await expect(target).toBeVisible();
-  await fitTimelineZoom(page);
+  // Zoom in to make the clip larger for easier dragging.
+  await timelineContainer(page).click();
+  for (let i = 0; i < 5; i++) {
+    await page.keyboard.press('=');
+  }
+  await page.waitForTimeout(150);
+  await expect(source).toBeVisible({ timeout: 5_000 });
 
   const sourceBox = await requireBox(source, `clip ${clipId}`);
   const targetBox = await requireBox(target, `track ${toTrackId}`);
@@ -146,7 +158,15 @@ export async function trimClipEdge(
 ): Promise<void> {
   const handle = clip(page, clipId).locator(`[data-testid="clip-trim-${edge}"]`);
   await expect(handle).toBeVisible();
-  await fitTimelineZoom(page);
+  // Zoom in to make the clip larger so trim handles are easier to grab.
+  // Avoid fitTimelineZoom (Shift+0) — it resets scroll and can cause the clip
+  // to be virtualized out of the visible range.
+  await timelineContainer(page).click();
+  for (let i = 0; i < 5; i++) {
+    await page.keyboard.press('=');
+  }
+  await page.waitForTimeout(150);
+  await expect(handle).toBeVisible({ timeout: 5_000 });
 
   const box = await requireBox(handle, `trim handle ${edge} for clip ${clipId}`);
   const startX = box.x + box.width / 2;
@@ -297,4 +317,13 @@ export async function updateClipProperties(
     },
     { itemId: params.itemId, properties: params.properties },
   );
+}
+
+export async function saveTimeline(page: Page): Promise<void> {
+  await page.evaluate(async () => {
+    const save = (window as Window & { __fastcatE2eSaveTimeline?: () => Promise<void> })
+      .__fastcatE2eSaveTimeline;
+    if (!save) throw new Error('E2E timeline save hook is not registered');
+    await save();
+  });
 }

@@ -130,11 +130,11 @@ fn push_blur(
         return cur;
     }
     // "Blur past edges" (bleed): run the blur in premultiplied-alpha space so the
-    // colour never darkens against the transparent padding, and clamp the output
-    // alpha to the pre-blur image (`cur`) so opaque areas keep full coverage (no
-    // dark inner border) while the halo still bleeds OUTWARD. Flagged per pass —
-    // mode 4 (H / radial) via p6, final pass (mode 14 V / radial) via p2/p6; the
-    // final pass reads `cur` as `secondary` for the original alpha. Mirror of web.
+    // content edge feathers softly OUTWARD with its real colour (transparent
+    // padding contributes (0,0,0,0) → only the alpha composite darkens over black,
+    // never the colour). Flagged per pass — mode 4 (H / radial) via p6, final V
+    // (mode 14) via p2 (which also un-premultiplies). Routing is the plain
+    // ping-pong (premult blur only reads its own input). Mirror of the web builder.
     let bleed_flag = if bleed { 1.0 } else { 0.0 };
     if blur_type == "radial" {
         let t1 = pick_scratch(&[cur]);
@@ -186,14 +186,7 @@ fn push_blur(
             secondary: cur,
             dst: t1,
         });
-        // Final (vertical) pass. For bleed it reads the ORIGINAL pre-blur image
-        // (`cur`) as secondary to clamp alpha, so `dst` must alias neither the H
-        // intermediate (`t1`) nor `cur`.
-        let t2 = if bleed {
-            pick_scratch(&[t1, cur])
-        } else {
-            pick_scratch(&[t1])
-        };
+        let t2 = pick_scratch(&[t1]);
         passes.push(EffectPass {
             uniform: EffectUniform {
                 mode: 14,
@@ -208,7 +201,7 @@ fn push_blur(
             },
             custom_source: None,
             src: t1,
-            secondary: if bleed { cur } else { t1 },
+            secondary: t1,
             dst: t2,
         });
         t2

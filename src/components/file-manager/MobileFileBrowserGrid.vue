@@ -83,6 +83,7 @@ const {
           <!-- Thumbnail / Icon Area -->
           <div
             class="relative flex-1 w-full bg-ui-bg flex items-center justify-center overflow-hidden"
+            :class="{ 'thumbnail-checkerboard-bg': Boolean(thumbnailsByPath[entry.path]) }"
           >
             <template v-if="isCheckingCompatibility(entry)">
               <div
@@ -112,7 +113,7 @@ const {
             <template v-else-if="thumbnailsByPath[entry.path]">
               <img
                 :src="thumbnailsByPath[entry.path]!"
-                class="w-full h-full object-contain transition-transform duration-300 checkerboard-bg"
+                class="w-full h-full object-contain transition-transform duration-300"
                 :class="{ 'scale-110 blur-[1px] opacity-70': isSelected(entry) && isSelectionMode }"
                 loading="lazy"
                 @error="handleImageError(entry)"
