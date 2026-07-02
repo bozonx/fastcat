@@ -29,6 +29,12 @@ vi.mock('~/stores/ui.store', () => ({
   useUiStore: () => mockUiStore,
 }));
 
+vi.mock('~/composables/file-manager/useFileManager', () => ({
+  useFileManager: () => ({
+    reloadDirectory: vi.fn().mockResolvedValue(undefined),
+  }),
+}));
+
 vi.mock('~/timeline/timeline-thumbnail', () => ({
   renderStopFrameWebp: renderStopFrameWebpMock,
   renderTimelineThumbnail: renderTimelineThumbnailMock,
@@ -41,6 +47,7 @@ describe('useMonitorSnapshot', () => {
     currentFileName: 'test-video',
     projectSettings: {
       project: { width: 1920, height: 1080, fps: 30 },
+      monitor: { showTransparencyGrid: false },
     },
     getFileHandleByPath: vi.fn(),
     getFileByPath: vi.fn(),
@@ -57,6 +64,7 @@ describe('useMonitorSnapshot', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    mockProjectStore.projectSettings.monitor.showTransparencyGrid = false;
     renderStopFrameWebpMock.mockResolvedValue(new Blob(['test'], { type: 'image/webp' }));
   });
 
@@ -103,6 +111,36 @@ describe('useMonitorSnapshot', () => {
       expect.objectContaining({
         title: 'Snapshot created',
         color: 'success',
+      }),
+    );
+  });
+
+  it('creates a transparent stop frame when transparent monitor background is enabled', async () => {
+    mockProjectStore.projectSettings.monitor.showTransparencyGrid = true;
+    const timelineDoc = { id: 'test', name: 'test', tracks: [] };
+    const { createStopFrameSnapshot } = useMonitorSnapshot({
+      projectStore: mockProjectStore as any,
+      timelineStore: { timelineDoc } as any,
+      workspaceStore: mockWorkspaceStore as any,
+      isLoading: ref(false),
+      loadError: ref(null),
+      uiCurrentTimeUs: ref(1000000),
+    });
+
+    mockProjectStore.getProjectFileHandleByRelativePath
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce({
+        createWritable: vi.fn().mockResolvedValue({
+          write: vi.fn().mockResolvedValue(undefined),
+          close: vi.fn().mockResolvedValue(undefined),
+        }),
+      });
+
+    await createStopFrameSnapshot();
+
+    expect(renderStopFrameWebpMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        isTransparent: true,
       }),
     );
   });

@@ -103,7 +103,10 @@ export function useMonitorSnapshot(input: {
       const timelineDoc = input.timelineStore.timelineDoc;
       if (!timelineDoc) return;
       const { renderStopFrameWebp } = await import('~/timeline/timeline-thumbnail');
-      const isTransparent = input.projectStore.activeMonitor?.showTransparencyGrid ?? false;
+      const isTransparent =
+        input.projectStore.projectSettings?.monitor?.showTransparencyGrid ??
+        input.projectStore.activeMonitor?.showTransparencyGrid ??
+        false;
       const blob = await renderStopFrameWebp({
         timelineDoc,
         timeUs,

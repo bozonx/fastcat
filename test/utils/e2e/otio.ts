@@ -218,6 +218,10 @@ export async function readTimelineDoc(page: Page, project: E2eProject): Promise<
  * Polls the persisted timeline until `predicate` holds — use after a UI edit to
  * wait for the app's debounced autosave to flush, so assertions read a settled
  * document rather than racing the save.
+ *
+ * Checks the *latest* timeline state (the file that would actually be restored
+ * on reload — autosave if newer, otherwise the main file) rather than any
+ * candidate, so the predicate must hold for the state the user would see.
  */
 export async function waitForTimelineDoc(
   page: Page,
@@ -232,11 +236,9 @@ export async function waitForTimelineDoc(
 
   while (Date.now() < deadline) {
     try {
-      const docs = await readTimelineDocCandidates(page, project);
-      for (const doc of docs) {
-        last = doc;
-        if (predicate(doc)) return doc;
-      }
+      const doc = await readTimelineDoc(page, project);
+      last = doc;
+      if (predicate(doc)) return doc;
     } catch (error) {
       lastError = error;
     }

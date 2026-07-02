@@ -1,33 +1,37 @@
 import { computed } from 'vue';
 import { useProjectSettingsStore } from '~/stores/project-settings.store';
+import type { ProjectMonitorSettings } from '~/utils/project-settings';
 
 export function useMonitorSettings() {
   const projectSettingsStore = useProjectSettingsStore();
 
+  function setMonitorSetting<K extends keyof ProjectMonitorSettings>(
+    key: K,
+    value: ProjectMonitorSettings[K],
+  ) {
+    projectSettingsStore.projectSettings.monitor[key] = value;
+    projectSettingsStore.markProjectSettingsAsDirty();
+    void projectSettingsStore.requestProjectSettingsSave();
+  }
+
   const showTimecode = computed({
-    get: () => projectSettingsStore.activeMonitor?.showTimecode ?? true,
+    get: () => projectSettingsStore.projectSettings.monitor.showTimecode ?? true,
     set: (val) => {
-      if (projectSettingsStore.activeMonitor) {
-        projectSettingsStore.activeMonitor.showTimecode = val;
-      }
+      setMonitorSetting('showTimecode', val);
     },
   });
 
   const showTransparencyGrid = computed({
-    get: () => projectSettingsStore.activeMonitor?.showTransparencyGrid ?? false,
+    get: () => projectSettingsStore.projectSettings.monitor.showTransparencyGrid ?? false,
     set: (val) => {
-      if (projectSettingsStore.activeMonitor) {
-        projectSettingsStore.activeMonitor.showTransparencyGrid = val;
-      }
+      setMonitorSetting('showTransparencyGrid', val);
     },
   });
 
   const showMarkerTexts = computed({
-    get: () => projectSettingsStore.activeMonitor?.showMarkerTexts ?? true,
+    get: () => projectSettingsStore.projectSettings.monitor.showMarkerTexts ?? true,
     set: (val) => {
-      if (projectSettingsStore.activeMonitor) {
-        projectSettingsStore.activeMonitor.showMarkerTexts = val;
-      }
+      setMonitorSetting('showMarkerTexts', val);
     },
   });
 

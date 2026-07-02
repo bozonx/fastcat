@@ -2,7 +2,9 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { useMonitorSettings } from '~/composables/monitor/useMonitorSettings';
 import { ref } from 'vue';
 
-const mockActiveMonitor = ref({
+const requestProjectSettingsSaveMock = vi.fn();
+const markProjectSettingsAsDirtyMock = vi.fn();
+const mockMonitorSettings = ref({
   showTimecode: true,
   showTransparencyGrid: false,
   showMarkerTexts: true,
@@ -10,13 +12,18 @@ const mockActiveMonitor = ref({
 
 vi.mock('~/stores/project-settings.store', () => ({
   useProjectSettingsStore: () => ({
-    activeMonitor: mockActiveMonitor.value,
+    projectSettings: {
+      monitor: mockMonitorSettings.value,
+    },
+    markProjectSettingsAsDirty: markProjectSettingsAsDirtyMock,
+    requestProjectSettingsSave: requestProjectSettingsSaveMock,
   }),
 }));
 
 describe('useMonitorSettings', () => {
   beforeEach(() => {
-    mockActiveMonitor.value = {
+    vi.clearAllMocks();
+    mockMonitorSettings.value = {
       showTimecode: true,
       showTransparencyGrid: false,
       showMarkerTexts: true,
@@ -41,19 +48,14 @@ describe('useMonitorSettings', () => {
   it('toggles showTransparencyGrid', () => {
     const { showTransparencyGrid } = useMonitorSettings();
     showTransparencyGrid.value = true;
-    expect(mockActiveMonitor.value.showTransparencyGrid).toBe(true);
+    expect(mockMonitorSettings.value.showTransparencyGrid).toBe(true);
+    expect(markProjectSettingsAsDirtyMock).toHaveBeenCalledTimes(1);
+    expect(requestProjectSettingsSaveMock).toHaveBeenCalledTimes(1);
   });
 
   it('toggles showMarkerTexts', () => {
     const { showMarkerTexts } = useMonitorSettings();
     showMarkerTexts.value = false;
-    expect(mockActiveMonitor.value.showMarkerTexts).toBe(false);
-  });
-
-  it('falls back to defaults when activeMonitor is null', () => {
-    mockActiveMonitor.value = null as any;
-    const { showTransparencyGrid, showMarkerTexts } = useMonitorSettings();
-    expect(showTransparencyGrid.value).toBe(false);
-    expect(showMarkerTexts.value).toBe(true);
+    expect(mockMonitorSettings.value.showMarkerTexts).toBe(false);
   });
 });
