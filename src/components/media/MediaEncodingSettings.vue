@@ -452,10 +452,7 @@ watch(
           />
         </UiFormField>
 
-        <div
-          v-if="outputFormat === 'mp4'"
-          class="flex items-center justify-between gap-3"
-        >
+        <div v-if="outputFormat === 'mp4'" class="flex items-center justify-between gap-3">
           <span class="text-sm text-ui-text-muted">
             {{ t('videoEditor.export.fastStart') }}
           </span>

@@ -39,7 +39,7 @@ test.describe('Web editor smoke workflow', () => {
     await expectPlayheadAdvances(page, { forMs: 500 });
 
     // Trim one edge shorter.
-    await trimClipEdge(page, clipId, 'end', -40);
+    await trimClipEdge(page, clipId, 'end', -5);
     await saveTimeline(page);
     await waitForTimelineDoc(
       page,

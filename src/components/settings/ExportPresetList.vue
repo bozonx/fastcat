@@ -70,7 +70,10 @@ function createPreset() {
       </UButton>
     </div>
 
-    <div v-if="presetItems.length > 0" class="flex flex-col gap-1">
+    <div
+      v-if="presetItems.length > 0"
+      class="max-h-64 overflow-y-auto custom-scrollbar pr-1 flex flex-col gap-1"
+    >
       <button
         v-for="item in presetItems"
         :key="item.preset.id"

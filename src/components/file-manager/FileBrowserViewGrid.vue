@@ -108,9 +108,9 @@ function isEntrySelected(entry: FsEntry): boolean {
               Boolean(getBdThumbnail(entry)) ||
               Boolean(
                 entry.kind === 'file' &&
-                  videoThumbnails &&
-                  entry.path &&
-                  videoThumbnails[entry.path],
+                videoThumbnails &&
+                entry.path &&
+                videoThumbnails[entry.path],
               ),
           }"
         >

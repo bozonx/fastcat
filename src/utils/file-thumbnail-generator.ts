@@ -21,7 +21,7 @@ import { toError } from '~/utils/errors';
 import { normalizeMediaCachePath } from '~/utils/path';
 const log = createDevLogger('file-thumbnail-generator');
 const FILE_THUMBNAIL_HASH_VERSION = 3;
-const TRANSPARENCY_CHECKER_TILE_SIZE = 8;
+const TRANSPARENCY_CHECKER_TILE_SIZE = 16;
 
 export interface FileThumbnailTask extends BaseThumbnailTask {
   onComplete?: (url: string) => void;

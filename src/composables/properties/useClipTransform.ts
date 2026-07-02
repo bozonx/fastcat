@@ -149,7 +149,8 @@ export function useClipTransform(options: UseClipTransformOptions) {
         ...(current.crop ?? { top: 0, bottom: 0, left: 0, right: 0 }),
         ...(patch.crop ?? {}),
       },
-      flipHorizontal: patch.flipHorizontal !== undefined ? patch.flipHorizontal : current.flipHorizontal,
+      flipHorizontal:
+        patch.flipHorizontal !== undefined ? patch.flipHorizontal : current.flipHorizontal,
       flipVertical: patch.flipVertical !== undefined ? patch.flipVertical : current.flipVertical,
     };
 

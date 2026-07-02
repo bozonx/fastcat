@@ -408,6 +408,7 @@ onBeforeUnmount(() => {
     delete e2eWindow.__fastcatE2eSetCurrentTimeUs;
     delete e2eWindow.__fastcatE2eGetSelectedItemIds;
     delete e2eWindow.__fastcatE2eSaveTimeline;
+    delete e2eWindow.__fastcatE2eSetTimelineZoom;
   }
 });
 
@@ -473,6 +474,10 @@ onMounted(() => {
 
     e2eWindow.__fastcatE2eSaveTimeline = async () => {
       await timelineStore.saveTimeline();
+    };
+
+    e2eWindow.__fastcatE2eSetTimelineZoom = async ({ zoom }) => {
+      timelineStore.setTimelineZoomExact(zoom);
     };
   }
 });
@@ -665,6 +670,7 @@ interface FastcatE2eTimelineWindow {
   __fastcatE2eSetCurrentTimeUs?: FastcatE2eSetCurrentTimeUs;
   __fastcatE2eGetSelectedItemIds?: FastcatE2eGetSelectedItemIds;
   __fastcatE2eSaveTimeline?: () => Promise<void>;
+  __fastcatE2eSetTimelineZoom?: (params: { zoom: number }) => Promise<void>;
 }
 
 function findE2eClipTrack(itemId: string) {

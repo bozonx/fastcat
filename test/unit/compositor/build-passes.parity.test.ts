@@ -3,7 +3,10 @@ import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { buildPasses } from '~/utils/video-editor/compositor/WebGpuComputeRunner';
-import type { ComputePass, EffectUniform } from '~/utils/video-editor/compositor/WebGpuComputeRunner';
+import type {
+  ComputePass,
+  EffectUniform,
+} from '~/utils/video-editor/compositor/WebGpuComputeRunner';
 import type { VideoEffectSpec } from '~/types/generated/native-monitor/VideoEffectSpec';
 import type { PreviewEffectQuality } from '~/utils/preview-effect-quality';
 

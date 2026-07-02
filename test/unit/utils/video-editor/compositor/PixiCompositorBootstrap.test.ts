@@ -24,9 +24,8 @@ describe('createPixiCompositorApplication', () => {
   });
 
   it('initializes transparent compositors with alpha clear enabled', async () => {
-    const { createPixiCompositorApplication } = await import(
-      '~/utils/video-editor/compositor/PixiCompositorBootstrap'
-    );
+    const { createPixiCompositorApplication } =
+      await import('~/utils/video-editor/compositor/PixiCompositorBootstrap');
 
     await createPixiCompositorApplication({
       width: 100,
@@ -46,9 +45,8 @@ describe('createPixiCompositorApplication', () => {
   });
 
   it('initializes opaque compositors with opaque clear enabled', async () => {
-    const { createPixiCompositorApplication } = await import(
-      '~/utils/video-editor/compositor/PixiCompositorBootstrap'
-    );
+    const { createPixiCompositorApplication } =
+      await import('~/utils/video-editor/compositor/PixiCompositorBootstrap');
 
     await createPixiCompositorApplication({
       width: 100,

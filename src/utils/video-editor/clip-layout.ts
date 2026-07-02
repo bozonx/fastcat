@@ -183,15 +183,15 @@ export function computeCropMaskPolygon(params: {
   const sinR = Math.sin(rot);
 
   const toWorldX = (px: number, py: number) => {
-    const flippedX = flipHorizontal ? (targetW - px) : px;
-    const flippedY = flipVertical ? (targetH - py) : py;
+    const flippedX = flipHorizontal ? targetW - px : px;
+    const flippedY = flipVertical ? targetH - py : py;
     const dx = (flippedX - ax * targetW) * sx;
     const dy = (flippedY - ay * targetH) * sy;
     return spritePosX + dx * cosR - dy * sinR;
   };
   const toWorldY = (px: number, py: number) => {
-    const flippedX = flipHorizontal ? (targetW - px) : px;
-    const flippedY = flipVertical ? (targetH - py) : py;
+    const flippedX = flipHorizontal ? targetW - px : px;
+    const flippedY = flipVertical ? targetH - py : py;
     const dx = (flippedX - ax * targetW) * sx;
     const dy = (flippedY - ay * targetH) * sy;
     return spritePosY + dx * sinR + dy * cosR;
