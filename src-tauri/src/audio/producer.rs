@@ -532,14 +532,30 @@ fn service_scrub_preview(
             }
 
             let frames = (samples.len() / output_channels.max(1)) as u64;
-            if frames > 0 && !shared.0.lock().playing {
-                // Publish the snippet and start the output clock. Tiny prebuffer
-                // is irrelevant here: the whole snippet is queued atomically.
-                ring.clear();
-                ring.push_slice(&samples);
-                clock.reset_frames();
-                clock.playing.store(true, Ordering::Release);
-                *scrub_end_frame = Some(frames);
+            if frames > 0 {
+                // Hold the state lock across the check AND the publish. A separate
+                // check-then-act (lock, read `playing`, unlock, then write the ring
+                // + arm the clock) raced real playback: if `play()` ran on another
+                // thread in the gap, it would set `state.playing = true` and disarm
+                // the clock for its own prebuffer, and then this stale scrub publish
+                // would land on top — clearing the ring, dumping scrub-preview audio
+                // into it, and re-arming the clock immediately with far less than a
+                // full prebuffer queued. Real playback then never gets its
+                // `START_PREBUFFER_CHUNKS` warm-up (the clock is already armed), and
+                // the first seconds either play the stale scrub snippet or underrun.
+                // Ring/clock writes need no lock themselves (single-writer producer,
+                // lock-free clock), so holding it here only serializes against other
+                // callers of `play`/`seek`/etc., not against the realtime callback.
+                let state = shared.0.lock();
+                if !state.playing {
+                    // Publish the snippet and start the output clock. Tiny prebuffer
+                    // is irrelevant here: the whole snippet is queued atomically.
+                    ring.clear();
+                    ring.push_slice(&samples);
+                    clock.reset_frames();
+                    clock.playing.store(true, Ordering::Release);
+                    *scrub_end_frame = Some(frames);
+                }
             }
             return;
         }

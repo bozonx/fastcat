@@ -149,6 +149,53 @@ pub(crate) fn spawn_ffmpeg_f32le(params: FfmpegDecodeParams<'_>) -> Result<Ffmpe
     })
 }
 
+/// Probes a file's audio sample rate/channel count via `ffprobe`, independent of
+/// symphonia. Used as the ffmpeg-decode fallback's own probe: the caller of this
+/// fallback (e.g. peak extraction) only reaches it after symphonia's *own* probe
+/// already failed, so re-using `open_symphonia_audio` there just fails identically
+/// and defeats the fallback entirely for a container/codec ffmpeg can read but
+/// symphonia's prober cannot (ffmpeg supports a much wider format surface).
+/// Falls back to (48 kHz, stereo) only if ffprobe ran but printed nothing decodable
+/// for the field (e.g. a source with no explicit channel layout tag).
+pub(crate) fn probe_audio_format_ffprobe(path: &Path) -> Result<(u32, usize)> {
+    let output = Command::new("ffprobe")
+        .args([
+            "-v",
+            "error",
+            "-select_streams",
+            "a:0",
+            "-show_entries",
+            "stream=sample_rate,channels",
+            "-of",
+            "csv=p=0",
+        ])
+        .arg(path)
+        .output()
+        .with_context(|| format!("failed to run ffprobe for audio probe: {}", path.display()))?;
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        return Err(anyhow!(
+            "ffprobe audio probe failed with status {}: {}",
+            output.status,
+            stderr.trim()
+        ));
+    }
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let first_line = stdout.lines().next().unwrap_or_default();
+    let mut fields = first_line.split(',');
+    let sample_rate = fields
+        .next()
+        .and_then(|s| s.trim().parse::<u32>().ok())
+        .filter(|rate| *rate > 0)
+        .unwrap_or(48_000);
+    let channels = fields
+        .next()
+        .and_then(|s| s.trim().parse::<usize>().ok())
+        .filter(|ch| *ch > 0)
+        .unwrap_or(2);
+    Ok((sample_rate, channels))
+}
+
 pub(crate) fn decode_range_ffmpeg(
     path: &Path,
     start_sec: f64,

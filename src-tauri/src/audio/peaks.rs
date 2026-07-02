@@ -3,7 +3,9 @@ use std::io::Read;
 use std::path::Path;
 use symphonia::core::audio::SampleBuffer;
 
-use crate::audio::ffmpeg_decode::{spawn_ffmpeg_f32le, FfmpegDecodeParams};
+use crate::audio::ffmpeg_decode::{
+    probe_audio_format_ffprobe, spawn_ffmpeg_f32le, FfmpegDecodeParams,
+};
 use crate::audio::shared::{make_symphonia_decoder, open_symphonia_audio, SymphoniaAudioInfo};
 
 const MAX_PEAK_LENGTH: usize = 500_000;
@@ -230,13 +232,17 @@ fn extract_peaks_ffmpeg(
     max_length: usize,
     target_buckets: usize,
 ) -> Result<Vec<Vec<f32>>> {
-    let info = open_symphonia_audio(path, "ffmpeg peak fallback", 48_000)?;
-    let channels = info.channels.max(1);
+    // Probe via ffprobe, NOT `open_symphonia_audio`. This fallback only runs after
+    // symphonia's own probe already failed in `extract_peaks_symphonia`, so
+    // re-probing with symphonia here just fails the same way and defeats the
+    // fallback for any container/codec ffmpeg supports but symphonia's prober
+    // does not (a real gap: ffmpeg covers a much wider format surface).
+    let (sample_rate, channels) = probe_audio_format_ffprobe(path)?;
     let mut reader = spawn_ffmpeg_f32le(FfmpegDecodeParams {
         path,
         start_sec: 0.0,
         duration_sec: None,
-        target_sample_rate: info.sample_rate.max(1),
+        target_sample_rate: sample_rate,
         output_channels: channels,
     })?;
     let mut accumulator = PeakAccumulator::new(channels, target_buckets);

@@ -1106,6 +1106,39 @@ mod tests {
     }
 
     #[test]
+    fn build_passes_radial_blur_uses_unpadded_content_rect() {
+        let passes = build_passes_with_options(
+            &[EffectSpec::GaussianBlur {
+                radius: 200.0,
+                bleed: true,
+                blur_type: "radial".to_string(),
+                mix: 1.0,
+            }],
+            2720,
+            1880,
+            EffectQuality::Ultra,
+            BuildPassOptions {
+                spatial_scale_height: Some(1080),
+                content_rect: Some(BlurContentRect {
+                    offset_x: 400,
+                    offset_y: 400,
+                    width: 1920,
+                    height: 1080,
+                }),
+            },
+        );
+
+        assert_eq!(passes.len(), 1);
+        assert_eq!(passes[0].uniform.mode, 4);
+        assert_eq!(passes[0].uniform.p0, 200.0);
+        assert_eq!(passes[0].uniform.p1, 2.0);
+        assert!((passes[0].uniform.p2 - 400.0f32 / 2720.0f32).abs() < 1e-6);
+        assert!((passes[0].uniform.p3 - 400.0f32 / 1880.0f32).abs() < 1e-6);
+        assert!((passes[0].uniform.p4 - 1920.0f32 / 2720.0f32).abs() < 1e-6);
+        assert!((passes[0].uniform.p5 - 1080.0f32 / 1880.0f32).abs() < 1e-6);
+    }
+
+    #[test]
     fn build_passes_uses_effect_quality_tap_budget() {
         let effects = [EffectSpec::GaussianBlur {
             radius: 100.0,
@@ -1493,6 +1526,7 @@ mod tests {
     }
 
     #[derive(serde::Deserialize)]
+    #[serde(rename_all = "camelCase")]
     struct ParityPass {
         uniform: ParityUniform,
         custom_source: Option<String>,
@@ -1549,8 +1583,7 @@ mod tests {
     fn build_passes_match_shared_parity_fixture() {
         let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
             .join("../shared/parity/build-passes.cases.json");
-        let raw = std::fs::read_to_string(&path)
-            .expect("build-passes.cases.json must exist");
+        let raw = std::fs::read_to_string(&path).expect("build-passes.cases.json must exist");
         let fixture: ParityFixture =
             serde_json::from_str(&raw).expect("build-passes.cases.json must be valid");
 
@@ -1559,10 +1592,11 @@ mod tests {
                 .effects
                 .iter()
                 .map(|v| serde_json::from_value(v.clone()))
+                .collect::<Result<_, _>>()
                 .expect("failed to deserialize effect");
 
             let quality = quality_from_str(&case.quality);
-            let passes = build_passes(&effects, case.width, case.height, quality);
+            let passes = super::build_passes(&effects, case.width, case.height, quality);
 
             assert_eq!(
                 passes.len(),
@@ -1594,7 +1628,9 @@ mod tests {
                 // custom_source
                 match (&actual.custom_source, &expected.custom_source) {
                     (None, None) => {}
-                    (Some(a), Some(b)) => assert_eq!(a, b, "{}: pass[{i}].custom_source", case.name),
+                    (Some(a), Some(b)) => {
+                        assert_eq!(a, b, "{}: pass[{i}].custom_source", case.name)
+                    }
                     (a, b) => panic!(
                         "{}: pass[{i}].custom_source mismatch: actual={a:?} expected={b:?}",
                         case.name

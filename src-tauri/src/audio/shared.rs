@@ -251,6 +251,37 @@ impl AudioWindow {
     }
 }
 
+/// Records that a layer's source has no audio at/after `start_frame`, so later
+/// requests in that range can skip re-probing the file. See
+/// [`AudioShared::silent_tails`].
+pub(crate) struct SilentTail {
+    /// Source path this boundary was observed on. A window fill that raced a
+    /// path change (proxy swap / media replace) must not be trusted for the new
+    /// path, so this is checked before the frame comparison.
+    pub(crate) path: String,
+    pub(crate) sample_rate: u32,
+    pub(crate) channels: usize,
+    pub(crate) start_frame: usize,
+}
+
+impl SilentTail {
+    /// True when a request for `[start_frame, start_frame + frames)` at
+    /// `sample_rate`/`channels` on `path` is fully covered by this known-silent
+    /// tail.
+    pub(crate) fn covers(
+        &self,
+        path: &str,
+        start_frame: usize,
+        sample_rate: u32,
+        channels: usize,
+    ) -> bool {
+        self.path == path
+            && self.sample_rate == sample_rate
+            && self.channels == channels
+            && start_frame >= self.start_frame
+    }
+}
+
 pub(crate) struct AudioShared {
     pub(crate) scene: Vec<SceneAudioLayer>,
     pub(crate) tracks: Vec<SceneAudioTrack>,
@@ -277,6 +308,15 @@ pub(crate) struct AudioShared {
     /// by `memcpy` out of the covering window; a background thread refills it ahead
     /// of the playhead. Bounded to `WINDOW_SEC` per layer — never the whole file.
     pub(crate) layer_windows: HashMap<String, AudioWindow>,
+    /// Per-layer boundary past which a background window fill returned nothing
+    /// (the source audio ends before the requested position — a video-only tail,
+    /// or an audio track shorter than the clip's declared source range). Once set,
+    /// a later request at/after this frame skips both the fill spawn and the
+    /// inline stream fallback and serves silence directly. Without this, a
+    /// playhead sitting past a track's audio end re-spawned a background fill
+    /// thread (which opens/probes/seeks the file) on every single 50ms chunk,
+    /// forever, because an empty fill result is never cached as a window.
+    pub(crate) silent_tails: HashMap<String, SilentTail>,
     /// Layer ids with a background window fill in flight, mapped to the TARGET-frame
     /// start that fill will cover. Dedupes refill spawns for the same start and lets
     /// the worker discard its result if a newer seek has superseded it.
@@ -343,6 +383,7 @@ impl Default for AudioShared {
                 crate::audio::plugins::PluginHost::new(),
             )),
             layer_windows: HashMap::new(),
+            silent_tails: HashMap::new(),
             window_fill_in_flight: HashMap::new(),
             active_window_fill_count: 0,
             decoders: HashMap::new(),

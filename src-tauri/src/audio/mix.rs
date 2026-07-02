@@ -142,10 +142,20 @@ pub fn render_scene_to_wav(params: WavRenderParams<'_>) -> anyhow::Result<()> {
             .map(|l| l.id.as_str())
             .collect();
         let mut state = shared.0.lock();
-        if state.decoders.len() > keep.len()
-            || state.layer_windows.len() > keep.len()
-            || !state.window_fill_in_flight.is_empty()
-        {
+        // A length comparison (`len() > keep.len()`) is not a valid "is there
+        // anything stale" check: early in a long render `keep` is large (most
+        // clips are still ahead), so the map can accumulate up to ~keep.len()
+        // stale entries — for Opus sources each is a live ffmpeg child process
+        // blocked on a full stdout pipe — before the length check ever trips.
+        // Check membership instead so a single past-cutoff layer is pruned the
+        // chunk after it ends, not only once the map outgrows the keep set.
+        let has_stale = state.decoders.keys().any(|id| !keep.contains(id.as_str()))
+            || state
+                .layer_windows
+                .keys()
+                .any(|id| !keep.contains(id.as_str()))
+            || !state.window_fill_in_flight.is_empty();
+        if has_stale {
             state.decoders.retain(|id, _| keep.contains(id.as_str()));
             state
                 .layer_windows

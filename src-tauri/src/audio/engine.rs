@@ -264,6 +264,9 @@ impl NativeAudioEngine {
             .layer_windows
             .retain(|layer_id, _| scene_clone.iter().any(|l| l.id == *layer_id));
         state
+            .silent_tails
+            .retain(|layer_id, _| scene_clone.iter().any(|l| l.id == *layer_id));
+        state
             .window_fill_in_flight
             .retain(|layer_id, _| scene_clone.iter().any(|l| l.id == *layer_id));
         state
@@ -513,7 +516,16 @@ impl NativeAudioEngine {
         // snapped back. The guard is now only a backstop for non-explicit echoes.
         if !explicit && playing && state.playing {
             let current = audible_pts_sec(&state, &self.clock, self.sample_rate);
-            if (pts - current).abs() < SEEK_IGNORE_SEC {
+            // At varispeed (`global_speed` != 1) every device-time chunk in the ring
+            // covers `speed×` as much TIMELINE time (see `mix_duration` in
+            // `producer_loop`), so the buffered prebuffer this guard must cover scales
+            // with speed too. At speed >= ~1.25 the un-scaled 1.0s window is smaller
+            // than the buffered 0.8s-of-device-time * speed span, so an echo seek
+            // inside that (larger) window would fall through as "real", flushing the
+            // ring and re-priming mid-playback — the crackle + sped-up repeat this
+            // guard exists to prevent. Speeds <= 1 keep the base window unchanged.
+            let seek_ignore_sec = SEEK_IGNORE_SEC * state.global_speed.max(1.0);
+            if (pts - current).abs() < seek_ignore_sec {
                 return;
             }
         }

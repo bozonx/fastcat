@@ -37,6 +37,15 @@ pub(crate) struct SymphoniaDecoder {
     last_decode_end_sec: f64,
     resample_remainder: Vec<Vec<f32>>,
     resample_output_remainder: Vec<f32>,
+    /// Set once a seek has landed past end-of-stream. While true, a sequential
+    /// continuation (matching `last_decode_end_sec` within tolerance) skips both
+    /// the real `format.seek()` call AND the packet-decode loop and returns
+    /// silence directly — the seek would just fail past-end again, and skipping
+    /// straight to `next_packet()` without seeking would decode stale audio left
+    /// over from wherever the reader was actually positioned before the failed
+    /// seek. Cleared by any request that is NOT a sequential continuation (a
+    /// rewind/jump), which re-attempts a real seek.
+    past_end: bool,
 }
 
 /// Fallback streaming decoder backed by one long-lived ffmpeg process.
@@ -46,6 +55,11 @@ pub(crate) struct FfmpegStreamSource {
     channels: usize,
     next_source_sec: f64,
     reader: Option<crate::audio::ffmpeg_decode::FfmpegPcmReader>,
+    /// True once the running stream has hit EOF and `next_source_sec` therefore
+    /// marks a known-silent tail. Lets a sequential chunk request past that point
+    /// serve silence directly instead of respawning ffmpeg (which would just spawn,
+    /// probe and immediately hit EOF again) every single chunk.
+    exhausted: bool,
 }
 
 /// Stateful per-layer streaming decoder selected once when its source is opened.
@@ -476,6 +490,7 @@ fn open_layer_decoder(path: &str, req: &StreamChunkRequest) -> Result<LayerDecod
                 last_decode_end_sec: 0.0,
                 resample_remainder: vec![Vec::new(); channels],
                 resample_output_remainder: Vec::new(),
+                past_end: false,
             }))
         }
         Err(_) => {
@@ -516,6 +531,24 @@ struct ChunkDecodeCtx {
     current_ratio: f64,
     /// Whether the resampler is engaged (rate/speed differ from passthrough).
     resampling_active: bool,
+    /// Leading interleaved silence to prepend this chunk (target-rate samples).
+    /// Set only right after a seek whose accurate landing overshot the requested
+    /// position (there is genuinely no source audio in that gap) — mirrors the
+    /// front-pad the ranged window decoder (`decode_range_symphonia`) already
+    /// applies for the same case, so a position served from a window vs. streamed
+    /// inline never disagrees on where the audio starts.
+    front_pad_samples: usize,
+}
+
+/// Result of [`SymphoniaDecoder::seek_and_reprime`] on a successful (or
+/// not-needed) seek.
+struct SeekOutcome {
+    /// Leading SOURCE frames to discard so decoding starts exactly at the
+    /// requested position (the seek landed slightly before it).
+    discard_source_frames: usize,
+    /// Leading TARGET-rate samples of silence to prepend (the seek overshot the
+    /// requested position instead).
+    front_pad_target_frames: usize,
 }
 
 impl SymphoniaDecoder {
@@ -537,11 +570,10 @@ impl SymphoniaDecoder {
 
         // Phase 1: reseek on a discontinuity and re-prime the resampler.
         // `None` means the seek landed past end-of-stream → emit silence.
-        let discard_frames_remaining =
-            match self.seek_and_reprime(req, current_ratio, source_advance_sec)? {
-                Some(discard) => discard,
-                None => return Ok(vec![0.0f32; target_samples]),
-            };
+        let seek_outcome = match self.seek_and_reprime(req, current_ratio, source_advance_sec)? {
+            Some(outcome) => outcome,
+            None => return Ok(vec![0.0f32; target_samples]),
+        };
 
         // Phase 2: (re)build the resampler for this chunk's ratio if needed.
         let resampling_active =
@@ -564,9 +596,10 @@ impl SymphoniaDecoder {
             speed,
             current_ratio,
             resampling_active,
+            front_pad_samples: seek_outcome.front_pad_target_frames * output_channels,
         };
         let (mut combined, total_collected, hit_eof) =
-            self.fill_chunk_output(&ctx, discard_frames_remaining)?;
+            self.fill_chunk_output(&ctx, seek_outcome.discard_source_frames)?;
 
         if total_collected == 0 && combined.is_empty() {
             self.last_decode_end_sec = source_start_sec;
@@ -601,22 +634,34 @@ impl SymphoniaDecoder {
 
     /// Phase 1: seeks to `req.source_start_sec` when the request isn't a sequential
     /// continuation and re-primes the resampler/remainder state.
-    /// Returns the number of leading source frames to discard so decoding starts exactly
-    /// at the requested position, or `None` if the seek landed past end-of-stream (the
+    /// Returns the [`SeekOutcome`] describing how to align decoding to the exact
+    /// requested position, or `None` if the seek landed past end-of-stream (the
     /// caller emits a silent chunk).
     fn seek_and_reprime(
         &mut self,
         req: &StreamChunkRequest,
         current_ratio: f64,
         source_advance_sec: f64,
-    ) -> Result<Option<usize>> {
+    ) -> Result<Option<SeekOutcome>> {
         let source_start_sec = req.source_start_sec;
         let seek_tolerance_sec =
             (source_advance_sec.abs() * SEEK_TOLERANCE_CHUNK_FRACTION).max(SEEK_TOLERANCE_MIN_SEC);
         let needs_seek = source_start_sec < self.last_decode_end_sec - seek_tolerance_sec
             || source_start_sec > self.last_decode_end_sec + seek_tolerance_sec;
         if !needs_seek {
-            return Ok(Some(0));
+            if self.past_end {
+                // A sequential continuation of a span already confirmed to be past
+                // end-of-stream: stay silent WITHOUT decoding. A real seek attempt
+                // there failed without necessarily moving the reader, so its
+                // position is unknown — falling through to `next_packet()` could
+                // splice in stale audio from wherever it was left instead of the
+                // silence this span actually is.
+                return Ok(None);
+            }
+            return Ok(Some(SeekOutcome {
+                discard_source_frames: 0,
+                front_pad_target_frames: 0,
+            }));
         }
 
         let seeked_to = match self.format.seek(
@@ -631,11 +676,19 @@ impl SymphoniaDecoder {
         ) {
             Ok(seeked_to) => seeked_to,
             Err(error) if is_audio_seek_past_end(&error) => {
-                self.last_decode_end_sec = source_start_sec;
+                // Advance the cursor past the WHOLE requested span (not just to its
+                // start) so a later sequential chunk's `source_start_sec` still
+                // falls inside the tolerance window above and takes the cheap
+                // `past_end` branch instead of re-issuing a real `format.seek()`
+                // past end-of-stream on every single chunk (every 50ms during
+                // realtime playback).
+                self.last_decode_end_sec = source_start_sec + source_advance_sec;
+                self.past_end = true;
                 return Ok(None);
             }
             Err(error) => return Err(error).context("failed to seek in format reader"),
         };
+        self.past_end = false;
 
         self.decoder.reset();
         if self.resampler.is_some() && (self.last_resample_ratio - current_ratio).abs() <= 1e-6 {
@@ -655,13 +708,30 @@ impl SymphoniaDecoder {
             let t = self.time_base.calc_time(seeked_to.actual_ts);
             t.seconds as f64 + t.frac
         };
-        let discard_frames = if actual_sec <= source_start_sec {
+        // Mirrors `seek_window_start`'s handling of the same accurate-seek result:
+        // the demuxer either landed at/before the requested time (discard the
+        // leading source frames so decoding starts exactly on it) or — rare,
+        // container-dependent — overshot it, meaning there is genuinely no source
+        // audio between `source_start_sec` and the landing point. Previously the
+        // overshoot case was silently ignored (`0` discard, no pad), which shifted
+        // the streamed chunk's content `actual_sec - source_start_sec` earlier than
+        // the equivalent position served from the ranged window decoder — the same
+        // source position could sound different depending on which path served it.
+        let (discard_source_frames, front_pad_target_frames) = if actual_sec <= source_start_sec {
             let discard_sec = source_start_sec - actual_sec;
-            (discard_sec * self.source_rate as f64).floor() as usize
+            ((discard_sec * self.source_rate as f64).floor() as usize, 0)
+        } else if actual_sec - source_start_sec > SEEK_TOLERANCE_MIN_SEC {
+            (
+                0,
+                ((actual_sec - source_start_sec) * req.target_sample_rate as f64).round() as usize,
+            )
         } else {
-            0
+            (0, 0)
         };
-        Ok(Some(discard_frames))
+        Ok(Some(SeekOutcome {
+            discard_source_frames,
+            front_pad_target_frames,
+        }))
     }
 
     /// Phase 2: drops a resampler whose ratio no longer matches and builds a fresh one
@@ -701,11 +771,21 @@ impl SymphoniaDecoder {
             speed,
             current_ratio,
             resampling_active,
+            front_pad_samples,
         } = *ctx;
 
         // Output already buffered from previous chunks' resampler surplus. The decode
         // loop tops this up to a full chunk; the surplus is carried to the next chunk.
         let mut combined = std::mem::take(&mut self.resample_output_remainder);
+        // Leading silence for a seek that overshot the requested position (see
+        // `SeekOutcome::front_pad_target_frames`). Only ever set on the first call
+        // after a fresh seek, when `combined` (the carried resampler surplus) is
+        // empty, so this is always the true start of the chunk's output.
+        if front_pad_samples > 0 {
+            let mut padded = vec![0.0f32; front_pad_samples];
+            padded.append(&mut combined);
+            combined = padded;
+        }
 
         // Decode source in blocks and resample until we have a full chunk of OUTPUT
         // (or hit end-of-stream). This is the core invariant that prevents periodic
@@ -962,6 +1042,7 @@ impl FfmpegStreamSource {
             channels: 0,
             next_source_sec: 0.0,
             reader: None,
+            exhausted: false,
         }
     }
 
@@ -1001,9 +1082,21 @@ impl FfmpegStreamSource {
             .max(SEEK_TOLERANCE_MIN_SEC);
         let format_changed =
             self.sample_rate != target_sample_rate || self.channels != output_channels;
-        let needs_seek = format_changed
-            || self.reader.is_none()
-            || (source_start_sec - self.next_source_sec).abs() > seek_tolerance_sec;
+        let is_sequential = !format_changed
+            && (source_start_sec - self.next_source_sec).abs() <= seek_tolerance_sec;
+
+        // The stream already ran to EOF and this request sequentially continues from
+        // there: the tail is known silent, so serve it directly without respawning
+        // ffmpeg. Without this, every chunk past a source shorter than its timeline
+        // placement (e.g. audio track shorter than the video, or Opus source with no
+        // audio at all) spawned + immediately killed a fresh ffmpeg child — on the
+        // realtime producer thread, every 50ms.
+        if self.exhausted && is_sequential {
+            self.next_source_sec += timeline_duration_sec;
+            return Ok(vec![0.0f32; target_samples]);
+        }
+
+        let needs_seek = format_changed || self.reader.is_none() || !is_sequential;
 
         if needs_seek {
             // Drop any prior stream (kills its child) before spawning a fresh one with
@@ -1020,6 +1113,7 @@ impl FfmpegStreamSource {
             self.channels = output_channels;
             self.next_source_sec = source_start_sec.max(0.0);
             self.reader = Some(reader);
+            self.exhausted = false;
         }
 
         let (mut samples, hit_eof) = match self.reader.as_mut() {
@@ -1034,8 +1128,10 @@ impl FfmpegStreamSource {
         let produced_frames = samples.len() / output_channels;
         self.next_source_sec += produced_frames as f64 / target_sample_rate as f64;
         if hit_eof {
-            // Stream ended; release the child now (its bytes are fully drained).
+            // Stream ended; release the child now (its bytes are fully drained) and
+            // remember the position so later sequential chunks skip the respawn above.
             self.reader = None;
+            self.exhausted = true;
         }
 
         if samples.len() < target_samples {
@@ -1249,6 +1345,23 @@ pub(crate) fn decode_audio_chunk(params: DecodeAudioChunkParams<'_>) -> Result<V
     let start_frame = (source_start_sec * sample_rate as f64).round() as usize;
     let frames_to_read = (timeline_duration_sec * sample_rate as f64).round() as usize;
     let samples_to_read = frames_to_read * output_channels;
+
+    // A prior fill already proved there is no audio at/after this position (e.g.
+    // the playhead sits past a track's audio end while the clip's video runs
+    // longer). Serve silence directly: no fill spawn, no file re-probe. Without
+    // this a playhead parked past the audio's end re-spawned a background fill
+    // thread — opening, probing and seeking the file — on every single 50ms
+    // chunk for as long as it stayed there.
+    let known_silent = {
+        let state = shared.0.lock();
+        state
+            .silent_tails
+            .get(layer_id)
+            .is_some_and(|tail| tail.covers(path, start_frame, sample_rate, output_channels))
+    };
+    if known_silent {
+        return Ok(vec![0.0f32; samples_to_read]);
+    }
 
     // Look for a window covering this chunk. On a hit, copy out of it (window-
     // relative) — the realtime fast path is a lock + Arc clone + memcpy.

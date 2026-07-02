@@ -5,7 +5,7 @@ use parking_lot::{Condvar, Mutex};
 use super::{
     decode_range_symphonia, is_no_audio_track_error, path_known_silent, remember_silent_path,
 };
-use crate::audio::shared::{AudioShared, AudioWindow, WINDOW_SEC};
+use crate::audio::shared::{AudioShared, AudioWindow, SilentTail, WINDOW_SEC};
 
 /// Maximum number of concurrent bounded background decodes.
 pub(super) const WINDOW_FILL_MAX_CONCURRENCY: usize = 2;
@@ -128,11 +128,41 @@ fn window_fill(
                 return;
             }
             if state.window_fill_in_flight.get(&layer_id) == Some(&target_start_frame) {
-                state.layer_windows.insert(layer_id, window);
+                state.layer_windows.insert(layer_id.clone(), window);
+                // A real window landed for this layer: any earlier "known silent
+                // past here" boundary was wrong (e.g. a media replace lengthened
+                // the track) and must not keep shadowing genuine audio.
+                state.silent_tails.remove(&layer_id);
                 shared.1.notify_all();
             }
         }
-        Ok(_) => {}
+        Ok(_) => {
+            // The source has no audio at/after `target_start_frame`. Cache this so
+            // later requests in that range skip the fill spawn + file re-probe
+            // entirely instead of repeating this exact decode (and the wasted
+            // thread spawn around it) on every subsequent chunk forever.
+            let mut state = shared.0.lock();
+            if !state.scene.is_empty() && !state.scene.iter().any(|l| l.id == layer_id) {
+                return;
+            }
+            if state.window_fill_in_flight.get(&layer_id) == Some(&target_start_frame) {
+                let start_frame = state
+                    .silent_tails
+                    .get(&layer_id)
+                    .filter(|tail| tail.path == path)
+                    .map(|tail| tail.start_frame.min(target_start_frame))
+                    .unwrap_or(target_start_frame);
+                state.silent_tails.insert(
+                    layer_id,
+                    SilentTail {
+                        path: path.clone(),
+                        sample_rate,
+                        channels: output_channels,
+                        start_frame,
+                    },
+                );
+            }
+        }
         Err(error) if is_no_audio_track_error(&error) => remember_silent_path(&path),
         Err(error) => log::warn!("[audio] audio window fill failed for {path}: {error:?}"),
     }

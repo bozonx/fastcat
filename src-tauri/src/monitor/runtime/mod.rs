@@ -1303,7 +1303,12 @@ mod tests {
 
         let l = video_layer_span("a", 10.0, 12.0);
         // Inside the clip.
-        assert!(layer_near_playhead(&l, 11.0, VIDEO_PREWARM_LOOKAHEAD_SEC, false));
+        assert!(layer_near_playhead(
+            &l,
+            11.0,
+            VIDEO_PREWARM_LOOKAHEAD_SEC,
+            false
+        ));
         // Just past the end, within the behind grace → still kept.
         assert!(layer_near_playhead(
             &l,
@@ -1346,7 +1351,12 @@ mod tests {
 
         let l = video_layer_span("a", 10.0, 12.0);
         // Inside the clip.
-        assert!(layer_near_playhead(&l, 11.0, VIDEO_PREWARM_LOOKAHEAD_SEC, true));
+        assert!(layer_near_playhead(
+            &l,
+            11.0,
+            VIDEO_PREWARM_LOOKAHEAD_SEC,
+            true
+        ));
         // Just past the start (backing toward it), within the small grace → kept.
         assert!(layer_near_playhead(
             &l,
