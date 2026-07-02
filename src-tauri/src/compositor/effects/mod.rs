@@ -1158,10 +1158,11 @@ mod tests {
     }
 
     #[test]
-    fn build_passes_gaussian_blur_bleed_preserves_content_alpha() {
-        // With bleed on, the vertical (final) pass must read the pre-blur image
-        // as `secondary` and flag alpha preservation (p2 = 1) so the blur only
-        // spreads outward instead of fading the content's own edges inward.
+    fn build_passes_gaussian_blur_bleed_flags_premultiplied_passes() {
+        // With bleed on, both passes run in premultiplied-alpha space: the
+        // horizontal (mode 4) pass sets p6=1, and the final vertical (mode 14)
+        // pass sets p2=1 (which also un-premultiplies). Routing is otherwise the
+        // plain ping-pong — premultiplied blur only reads its own input.
         let bleed = build_passes(
             &[EffectSpec::GaussianBlur {
                 radius: 10.0,
@@ -1173,19 +1174,14 @@ mod tests {
             1080,
         );
         assert_eq!(bleed.len(), 2);
-        // Horizontal pass is unchanged (no preservation flag).
         assert_eq!(bleed[0].uniform.mode, 4);
-        assert_eq!(bleed[0].uniform.p2, 0.0);
-        // Vertical pass preserves alpha against the original Input frame.
+        assert_eq!(bleed[0].uniform.p6, 1.0);
         assert_eq!(bleed[1].uniform.mode, 14);
         assert_eq!(bleed[1].uniform.p2, 1.0);
-        assert_eq!(bleed[1].secondary, super::passes::Buf::Input);
-        // dst must alias neither the horizontal intermediate nor the Input it
-        // samples, so the pass reads a stable pre-blur image.
+        assert_eq!(bleed[1].secondary, bleed[1].src);
         assert_ne!(bleed[1].dst, bleed[1].src);
-        assert_ne!(bleed[1].dst, bleed[1].secondary);
 
-        // Without bleed the final pass ping-pongs off its own intermediate.
+        // Without bleed neither premultiply flag is set.
         let plain = build_passes(
             &[EffectSpec::GaussianBlur {
                 radius: 10.0,
@@ -1196,12 +1192,12 @@ mod tests {
             1920,
             1080,
         );
+        assert_eq!(plain[0].uniform.p6, 0.0);
         assert_eq!(plain[1].uniform.p2, 0.0);
-        assert_eq!(plain[1].secondary, plain[1].src);
     }
 
     #[test]
-    fn build_passes_radial_blur_bleed_sets_preserve_flag() {
+    fn build_passes_radial_blur_bleed_sets_premultiply_flag() {
         let bleed = build_passes(
             &[EffectSpec::GaussianBlur {
                 radius: 50.0,
@@ -1215,7 +1211,7 @@ mod tests {
         assert_eq!(bleed.len(), 1);
         assert_eq!(bleed[0].uniform.mode, 4);
         assert_eq!(bleed[0].uniform.p1, 2.0); // radial
-        assert_eq!(bleed[0].uniform.p6, 1.0); // preserve content alpha
+        assert_eq!(bleed[0].uniform.p6, 1.0); // premultiplied blur
 
         let plain = build_passes(
             &[EffectSpec::GaussianBlur {

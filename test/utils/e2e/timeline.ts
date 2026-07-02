@@ -130,7 +130,6 @@ export async function moveClipToTrack(
 }
 
 export async function deleteClip(page: Page, clipId: string): Promise<void> {
-  await fitTimelineZoom(page);
   await selectClip(page, clipId);
   await page.keyboard.press('Delete');
 }

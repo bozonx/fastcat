@@ -104,10 +104,11 @@ function pushBlur(
   bleed = false,
 ): Buf {
   if (radius <= 0) return cur;
-  // "Blur past edges": the final pass reads the pre-blur image (`cur`) as
-  // secondary and preserves the content's own alpha, so the blur only bleeds
-  // outward instead of also fading the content edges inward (which visually
-  // shrank the frame with the blur strength).
+  // "Blur past edges" (bleed): run the blur in premultiplied-alpha space so the
+  // content edge feathers softly OUTWARD without darkening/shrinking. Flagged
+  // per pass — mode 4 (H / radial) via p6, mode 14 (final V) via p2 (which also
+  // un-premultiplies back to straight alpha). See `effect.wgsl`.
+  const bleedFlag = bleed ? 1.0 : 0.0;
   if (blurType === 'radial') {
     const t1 = pickScratch([cur]);
     const rect = contentRect ?? { offsetX: 0, offsetY: 0, width, height };
@@ -120,7 +121,7 @@ function pushBlur(
         p3: rect.offsetY / height,
         p4: rect.width / width,
         p5: rect.height / height,
-        p6: bleed ? 1.0 : 0.0,
+        p6: bleedFlag,
         p7: tapBudget,
       },
       src: cur,
@@ -132,24 +133,28 @@ function pushBlur(
     const blurTypeVal = blurType === 'box' ? 1.0 : 0.0;
     const t1 = pickScratch([cur]);
     passes.push({
-      uniform: { ...uniform(4, width, height), p0: radius, p1: blurTypeVal, p7: tapBudget },
+      uniform: {
+        ...uniform(4, width, height),
+        p0: radius,
+        p1: blurTypeVal,
+        p6: bleedFlag,
+        p7: tapBudget,
+      },
       src: cur,
       secondary: cur,
       dst: t1,
     });
-    // The bleed pass samples `cur` (secondary) while writing `dst`, so the
-    // destination must alias neither the intermediate nor the original.
-    const t2 = bleed ? pickScratch([t1, cur]) : pickScratch([t1]);
+    const t2 = pickScratch([t1]);
     passes.push({
       uniform: {
         ...uniform(14, width, height),
         p0: radius,
         p1: blurTypeVal,
-        p2: bleed ? 1.0 : 0.0,
+        p2: bleedFlag,
         p7: tapBudget,
       },
       src: t1,
-      secondary: bleed ? cur : t1,
+      secondary: t1,
       dst: t2,
     });
     return t2;

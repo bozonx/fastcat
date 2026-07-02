@@ -56,7 +56,7 @@ vi.mock('~/components/properties/clip/ClipOpacitySection.vue', () => ({
 vi.mock('~/components/properties/clip/ClipTransformSection.vue', () => ({
   default: {
     name: 'ClipTransformSection',
-    emits: ['update:enabled', 'toggle-reversed'],
+    emits: ['update:enabled', 'update-transform', 'toggle-reversed'],
     template: '<div></div>',
   },
 }));
@@ -322,6 +322,30 @@ describe('ClipProperties.vue', () => {
 
     expect(mockTimelineStore.updateClipProperties).toHaveBeenCalledWith('track-1', 'clip-1', {
       speed: -1,
+    });
+  });
+
+  it('enables transform group when transform section updates transform', async () => {
+    const clip = createClip({ transformActive: false });
+    const wrapper = await mountComponent({ clip });
+
+    await wrapper.find('[data-tab="video"]').trigger('click');
+    await nextTick();
+
+    const transformSection = wrapper.findComponent({ name: 'ClipTransformSection' });
+    expect(transformSection.exists()).toBe(true);
+
+    const transform = {
+      scale: { x: 1, y: 1, linked: true },
+      flipHorizontal: true,
+      flipVertical: false,
+    };
+    transformSection.vm.$emit('update-transform', transform);
+    await nextTick();
+
+    expect(mockTimelineStore.updateClipProperties).toHaveBeenCalledWith('track-1', 'clip-1', {
+      transform,
+      transformActive: true,
     });
   });
 

@@ -147,7 +147,7 @@ describe('createMonitorCompositorRuntime', () => {
       expect.anything(),
       1920,
       1080,
-      '#000',
+      'transparent',
       'webgl',
       3840,
       2160,

@@ -129,10 +129,11 @@ fn push_blur(
     if radius <= 0.0 {
         return cur;
     }
-    // "Blur past edges": the final pass reads the pre-blur image (`cur`) as
-    // secondary and preserves the content's own alpha, so the blur only bleeds
-    // outward instead of also fading the content edges inward (which visually
-    // shrank the frame with the blur strength). Mirror of the web pass builder.
+    // "Blur past edges" (bleed): run the blur in premultiplied-alpha space so the
+    // content edge feathers softly OUTWARD without darkening/shrinking. Flagged
+    // per pass — mode 4 (H / radial) via p6, mode 14 (final V) via p2 (which also
+    // un-premultiplies back to straight alpha). Mirror of the web pass builder.
+    let bleed_flag = if bleed { 1.0 } else { 0.0 };
     if blur_type == "radial" {
         let t1 = pick_scratch(&[cur]);
         let rect = content_rect.unwrap_or(BlurContentRect {
@@ -153,7 +154,7 @@ fn push_blur(
                 p3: rect.offset_y as f32 / height as f32,
                 p4: rect.width as f32 / width as f32,
                 p5: rect.height as f32 / height as f32,
-                p6: if bleed { 1.0 } else { 0.0 },
+                p6: bleed_flag,
                 p7: tap_budget,
                 ..Default::default()
             },
@@ -174,6 +175,7 @@ fn push_blur(
                 seed: 0,
                 p0: radius,
                 p1: type_val,
+                p6: bleed_flag,
                 p7: tap_budget,
                 ..Default::default()
             },
@@ -182,13 +184,7 @@ fn push_blur(
             secondary: cur,
             dst: t1,
         });
-        // The bleed pass samples `cur` (secondary) while writing `dst`, so the
-        // destination must alias neither the intermediate nor the original.
-        let t2 = if bleed {
-            pick_scratch(&[t1, cur])
-        } else {
-            pick_scratch(&[t1])
-        };
+        let t2 = pick_scratch(&[t1]);
         passes.push(EffectPass {
             uniform: EffectUniform {
                 mode: 14,
@@ -197,13 +193,13 @@ fn push_blur(
                 seed: 0,
                 p0: radius,
                 p1: type_val,
-                p2: if bleed { 1.0 } else { 0.0 },
+                p2: bleed_flag,
                 p7: tap_budget,
                 ..Default::default()
             },
             custom_source: None,
             src: t1,
-            secondary: if bleed { cur } else { t1 },
+            secondary: t1,
             dst: t2,
         });
         t2

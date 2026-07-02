@@ -116,7 +116,7 @@ export function createMonitorCompositorRuntime(options: CreateMonitorCompositorR
       offscreen,
       targetWidth,
       targetHeight,
-      '#000',
+      'transparent',
       options.getPreviewRenderOptions().pixiRenderer,
       options.designWidth.value,
       options.designHeight.value,

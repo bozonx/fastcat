@@ -126,6 +126,20 @@ async function setBlurEffect(
   });
 }
 
+async function setClipScale(
+  page: import('@playwright/test').Page,
+  itemId: string,
+  scale: number,
+): Promise<void> {
+  await updateClipProperties(page, {
+    itemId,
+    properties: {
+      transformActive: true,
+      transform: { scale: { x: scale, y: scale, linked: true } },
+    },
+  });
+}
+
 // Set BLUR_SHOT_DIR to dump the measured monitor canvas as PNGs for debugging.
 async function dumpMonitorShot(page: import('@playwright/test').Page, name: string) {
   const dir = process.env.BLUR_SHOT_DIR;
@@ -221,6 +235,32 @@ async function runScenario(
   ).toBeLessThanOrEqual(tol);
   expect(baseline.width - radialBleed.width).toBeLessThanOrEqual(tol);
   expect(baseline.height - radialBleed.height).toBeLessThanOrEqual(tol);
+
+  // Scaled-down clip: now there is background around the content, so the blur's
+  // outward bleed is visible instead of being clipped by the frame. With "blur
+  // past edges" ON the edge must feather OUTWARD — the content bbox must grow
+  // beyond the plain (clamped-at-edge) blur, not stay a hard rectangle.
+  await setClipScale(page, itemId, 0.5);
+  await setBlurEffect(page, itemId, { strength: 60, blurPastEdges: false });
+  await page.waitForTimeout(1500);
+  const scaledNoBleed = await measureMonitorContent(page);
+  await dumpMonitorShot(page, `${shotPrefix}-scaled-no-bleed`);
+
+  await setBlurEffect(page, itemId, { strength: 60, blurPastEdges: true });
+  await page.waitForTimeout(1500);
+  const scaledBleed = await measureMonitorContent(page);
+  await dumpMonitorShot(page, `${shotPrefix}-scaled-bleed`);
+
+  // The bleed halo extends past the rectangle on both axes (a hard edge would
+  // leave the bbox unchanged). Require a clear outward growth beyond noise.
+  expect(
+    scaledBleed.width - scaledNoBleed.width,
+    `scaled bleed width ${scaledBleed.width} should exceed no-bleed ${scaledNoBleed.width}`,
+  ).toBeGreaterThan(tol);
+  expect(
+    scaledBleed.height - scaledNoBleed.height,
+    `scaled bleed height ${scaledBleed.height} should exceed no-bleed ${scaledNoBleed.height}`,
+  ).toBeGreaterThan(tol);
 }
 
 test.describe('Blur past edges', () => {

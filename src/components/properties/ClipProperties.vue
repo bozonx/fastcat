@@ -18,6 +18,7 @@ import {
 } from '~/utils/constants';
 import type {
   AudioClipEffect,
+  ClipTransform,
   TimelineBlendMode,
   TimelineClipItem,
   TimelineTrack,
@@ -275,6 +276,13 @@ function handleUpdateOpacity(val: number) {
 function handleUpdateBlendMode(val: TimelineBlendMode | string) {
   const safe = isTimelineBlendMode(val) ? val : 'normal';
   timelineStore.updateClipProperties(props.clip.trackId, props.clip.id, { blendMode: safe });
+}
+
+function handleUpdateTransform(next: ClipTransform) {
+  timelineStore.updateClipProperties(props.clip.trackId, props.clip.id, {
+    transform: next,
+    transformActive: true,
+  });
 }
 
 function handleUpdateMask(mask: unknown) {
@@ -589,9 +597,7 @@ defineExpose({
         :can-edit-reversed="canEditReversed"
         :is-reversed="isReversed"
         :media-meta="mediaMeta"
-        @update-transform="
-          (next) => timelineStore.updateClipProperties(clip.trackId, clip.id, { transform: next })
-        "
+        @update-transform="handleUpdateTransform"
         @update-source-orientation="
           (sourceOrientation) =>
             timelineStore.updateClipProperties(clip.trackId, clip.id, {

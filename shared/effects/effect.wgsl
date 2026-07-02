@@ -21,8 +21,9 @@
 //   0  custom WGSL (plugins; replaced by a custom pipeline, this is a no-op here)
 //   1  brightness (p0)              2  contrast (p0)            3  saturation (p0)
 //   4  gaussian blur horizontal (p0=radius px; p1: 0=gaussian, 1=box, 2=radial;
-//      radial: p2..p5=content rect UV, p6>=0.5 bleed → preserve content alpha
-//      against secondary (pre-blur image))
+//      radial: p2..p5=content rect UV; p6>=0.5 "blur past edges" bleed →
+//      premultiplied-alpha blur (H stays premultiplied for the V pass; radial
+//      is single-pass so it also un-premultiplies))
 //   5  sharpen (p0=amount, p1=step px)
 //   6  pixelate (p0=size, p1=mix)
 //   8  vignette (p0=strength, p1=radius, p2=softness, p3=mix)
@@ -30,8 +31,8 @@
 //   10 chromatic aberration (p0=amount px, p1=angle_deg, p2=mix)
 //   11 hue rotation (p0=degrees)    12 levels (p0..p4, p5=mix)
 //   13 chroma key (p0..p2=key rgb, p3=threshold, p4=smoothness)
-//   14 gaussian blur vertical (p0=radius px; p2>=0.5 bleed → preserve content
-//      alpha against secondary (pre-blur image))
+//   14 gaussian blur vertical (p0=radius px; p2>=0.5 bleed → premultiplied-alpha
+//      blur, un-premultiplies the result back to straight alpha)
 //   15 bloom bright-pass extract (p0=threshold, p1=knee)
 //   18 bloom compose (input=running image, secondary=blurred mask, p1=strength)
 //   19 mix with secondary (p0=mix) — blends input_tex over secondary_tex
@@ -286,26 +287,81 @@ fn box_blur(uv: vec2<f32>, radius: f32, dir: vec2<f32>) -> vec4<f32> {
     return sum / max(weight_sum, 0.0001);
 }
 
-// Blur-bleed edge fix ("blur past edges"). Blurring into the transparent
-// padding also fades the content's own edge alpha *inward*, so the frame
-// visually shrinks as the blur strength grows. Instead, keep the source
-// pixel's coverage: the output alpha never drops below the original
-// (pre-blur) alpha, and the premultiplied color is renormalized to the new
-// alpha so edges keep full brightness. Pixels outside the original content
-// (original alpha 0) keep the blurred halo untouched — the blur only ever
-// bleeds *outward*.
-fn preserve_content_alpha(blurred: vec4<f32>, original_alpha: f32) -> vec4<f32> {
-    let a_out = max(blurred.a, original_alpha);
-    if (blurred.a > 0.0001) {
-        let scale = a_out / blurred.a;
-        return vec4<f32>(min(blurred.rgb * scale, vec3<f32>(1.0)), a_out);
+// ── "Blur past edges" (bleed) — premultiplied-alpha blur ─────────────────────
+// A straight rgba blur near the transparent padding averages the content with
+// transparent-black texels, which darkens the edge AND drops its alpha inward —
+// the frame appears to shrink behind a dark ring. Doing the blur in
+// PREMULTIPLIED space fixes both: transparent taps contribute (0,0,0,0), so the
+// content edge feathers softly OUTWARD with its real colour and no darkening.
+//
+// The separable gaussian/box blur runs as two passes sharing one intermediate,
+// so it premultiplies on the horizontal pass (`premul_in`, straight→premul),
+// keeps the intermediate premultiplied, then un-premultiplies on the vertical
+// pass (`unpremul_out`). Radial is single-pass, so it does both at once.
+fn to_premul(c: vec4<f32>) -> vec4<f32> {
+    return vec4<f32>(c.rgb * c.a, c.a);
+}
+fn from_premul(c: vec4<f32>) -> vec4<f32> {
+    if (c.a > 0.0001) {
+        return vec4<f32>(c.rgb / c.a, c.a);
     }
-    return vec4<f32>(blurred.rgb, a_out);
+    return vec4<f32>(0.0, 0.0, 0.0, 0.0);
+}
+
+// Premultiplied separable gaussian. `input_premul`: the source is already
+// premultiplied (later passes); `unpremul_out`: convert back to straight alpha
+// (final pass, for display/compose).
+fn gaussian_blur_pm(uv: vec2<f32>, radius: f32, dir: vec2<f32>, input_premul: bool, unpremul_out: bool) -> vec4<f32> {
+    let safe_radius = max(radius, 0.0);
+    if (safe_radius < 0.5) {
+        let s = sample_uv(uv);
+        let p = select(to_premul(s), s, input_premul);
+        return select(p, from_premul(p), unpremul_out);
+    }
+    let taps = i32(clamp(ceil(safe_radius), 1.0, f32(blur_tap_budget())));
+    let step = safe_radius / f32(taps);
+    let sigma = max(safe_radius * 0.5, 1.0);
+    let double_sigma_sq = 2.0 * sigma * sigma;
+    let texel = texel_size();
+    var sum = vec4<f32>(0.0);
+    var weight_sum = 0.0;
+    for (var i = -taps; i <= taps; i = i + 1) {
+        let dist = f32(i) * step;
+        let w = exp(-(dist * dist) / double_sigma_sq);
+        let s = sample_uv(uv + dir * dist * texel);
+        sum += select(to_premul(s), s, input_premul) * w;
+        weight_sum += w;
+    }
+    let avg = sum / max(weight_sum, 0.0001);
+    return select(avg, from_premul(avg), unpremul_out);
+}
+
+fn box_blur_pm(uv: vec2<f32>, radius: f32, dir: vec2<f32>, input_premul: bool, unpremul_out: bool) -> vec4<f32> {
+    let safe_radius = max(radius, 0.0);
+    if (safe_radius < 0.5) {
+        let s = sample_uv(uv);
+        let p = select(to_premul(s), s, input_premul);
+        return select(p, from_premul(p), unpremul_out);
+    }
+    let taps = i32(clamp(ceil(safe_radius), 1.0, f32(blur_tap_budget())));
+    let step = safe_radius / f32(taps);
+    let texel = texel_size();
+    var sum = vec4<f32>(0.0);
+    var weight_sum = 0.0;
+    for (var i = -taps; i <= taps; i = i + 1) {
+        let s = sample_uv(uv + dir * f32(i) * step * texel);
+        sum += select(to_premul(s), s, input_premul);
+        weight_sum += 1.0;
+    }
+    let avg = sum / max(weight_sum, 0.0001);
+    return select(avg, from_premul(avg), unpremul_out);
 }
 
 // Radial blur centered around the content rect. For padded blur-bleed passes,
 // p2/p3 hold the content offset in texture UV and p4/p5 hold its UV size.
-fn radial_blur(uv: vec2<f32>, radius: f32) -> vec4<f32> {
+// `premul`: run in premultiplied space (single-pass, so premultiply on sample
+// and un-premultiply on output) for the "blur past edges" bleed.
+fn radial_blur(uv: vec2<f32>, radius: f32, premul: bool) -> vec4<f32> {
     let content_origin = vec2<f32>(effect.p2, effect.p3);
     let content_size = vec2<f32>(
         select(1.0, effect.p4, effect.p4 > 0.0),
@@ -326,11 +382,12 @@ fn radial_blur(uv: vec2<f32>, radius: f32) -> vec4<f32> {
     var weight_sum = 0.0;
     for (var i = -taps; i <= taps; i = i + 1) {
         let dist_val = f32(i) * step;
-        let sample_pos = uv + norm_dir * dist_val * texel;
-        sum += sample_uv(sample_pos);
+        let s = sample_uv(uv + norm_dir * dist_val * texel);
+        sum += select(s, to_premul(s), premul);
         weight_sum += 1.0;
     }
-    return sum / max(weight_sum, 0.0001);
+    let avg = sum / max(weight_sum, 0.0001);
+    return select(avg, from_premul(avg), premul);
 }
 
 @compute @workgroup_size(8, 8, 1)
@@ -357,16 +414,24 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
             color = vec4<f32>(mix(gray, color.rgb, effect.p0), color.a);
         }
         case 4u: {
+            // p6 >= 0.5 → "blur past edges" bleed: premultiplied-alpha blur so
+            // the content edge feathers softly outward without darkening. The
+            // horizontal pass keeps its output premultiplied for the V pass.
+            let bleed = effect.p6 >= 0.5;
             if (effect.p1 >= 1.5) {
-                color = radial_blur(uv, effect.p0);
-                // p6 >= 0.5: bleed pass — secondary holds the pre-blur image.
-                if (effect.p6 >= 0.5) {
-                    color = preserve_content_alpha(color, load_secondary(coord).a);
-                }
+                color = radial_blur(uv, effect.p0, bleed);
             } else if (effect.p1 >= 0.5) {
-                color = box_blur(uv, effect.p0, vec2<f32>(1.0, 0.0));
+                if (bleed) {
+                    color = box_blur_pm(uv, effect.p0, vec2<f32>(1.0, 0.0), false, false);
+                } else {
+                    color = box_blur(uv, effect.p0, vec2<f32>(1.0, 0.0));
+                }
             } else {
-                color = gaussian_blur(uv, effect.p0, vec2<f32>(1.0, 0.0));
+                if (bleed) {
+                    color = gaussian_blur_pm(uv, effect.p0, vec2<f32>(1.0, 0.0), false, false);
+                } else {
+                    color = gaussian_blur(uv, effect.p0, vec2<f32>(1.0, 0.0));
+                }
             }
         }
         case 5u: {
@@ -453,17 +518,23 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
             color = vec4<f32>(color.rgb, color.a * smoothstep(threshold, threshold + smoothness, diff));
         }
         case 14u: {
+            // p2 >= 0.5 → bleed final (vertical) pass: input is the premultiplied
+            // horizontal result; un-premultiply back to straight alpha on output.
+            let bleed = effect.p2 >= 0.5;
             if (effect.p1 >= 1.5) {
                 color = load_px(coord);
             } else if (effect.p1 >= 0.5) {
-                color = box_blur(uv, effect.p0, vec2<f32>(0.0, 1.0));
+                if (bleed) {
+                    color = box_blur_pm(uv, effect.p0, vec2<f32>(0.0, 1.0), true, true);
+                } else {
+                    color = box_blur(uv, effect.p0, vec2<f32>(0.0, 1.0));
+                }
             } else {
-                color = gaussian_blur(uv, effect.p0, vec2<f32>(0.0, 1.0));
-            }
-            // p2 >= 0.5: final pass of a bleed blur — secondary holds the
-            // pre-blur image (not the horizontal intermediate).
-            if (effect.p2 >= 0.5) {
-                color = preserve_content_alpha(color, load_secondary(coord).a);
+                if (bleed) {
+                    color = gaussian_blur_pm(uv, effect.p0, vec2<f32>(0.0, 1.0), true, true);
+                } else {
+                    color = gaussian_blur(uv, effect.p0, vec2<f32>(0.0, 1.0));
+                }
             }
         }
         case 15u: {

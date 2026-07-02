@@ -483,7 +483,7 @@ describe('useMonitorCore', () => {
       expect.anything(),
       640,
       360,
-      '#000',
+      'transparent',
       'webgl',
       1920,
       1080,

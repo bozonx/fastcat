@@ -103,13 +103,31 @@ export function sanitizeTransform(raw: unknown): ClipTransform | undefined {
         }
       : undefined;
 
-  if (!scale && rotationDeg === undefined && !position && !anchor && !crop) return undefined;
+  const hasFlipHorizontal = Object.prototype.hasOwnProperty.call(rawRecord, 'flipHorizontal');
+  const hasFlipVertical = Object.prototype.hasOwnProperty.call(rawRecord, 'flipVertical');
+  const flipHorizontal = hasFlipHorizontal ? Boolean(rawRecord['flipHorizontal']) : undefined;
+  const flipVertical = hasFlipVertical ? Boolean(rawRecord['flipVertical']) : undefined;
+
+  if (
+    !scale &&
+    rotationDeg === undefined &&
+    !position &&
+    !anchor &&
+    !crop &&
+    !hasFlipHorizontal &&
+    !hasFlipVertical
+  ) {
+    return undefined;
+  }
+
   return {
     scale,
     rotationDeg,
     position,
     anchor,
     crop,
+    flipHorizontal,
+    flipVertical,
   };
 }
 
