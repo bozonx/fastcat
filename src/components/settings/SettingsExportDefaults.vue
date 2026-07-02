@@ -1,14 +1,16 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import VideoEncodingForm from '~/components/media/VideoEncodingForm.vue';
 import UiTextInput from '~/components/ui/UiTextInput.vue';
 import UiFormField from '~/components/ui/UiFormField.vue';
 import UiConfirmModal from '~/components/ui/UiConfirmModal.vue';
 import ExportPresetList from '~/components/settings/ExportPresetList.vue';
+import UiFormSectionHeader from '~/components/ui/UiFormSectionHeader.vue';
 
 import {
   createExportPresetId,
+  isBuiltInExportPreset,
   resolveExportPreset,
   type ExportSettingsPreset,
 } from '~/utils/settings';
@@ -23,8 +25,37 @@ const workspaceStore = useWorkspaceStore();
 const selectedPreset = computed(() =>
   resolveExportPreset(workspaceStore.userSettings.exportPresets),
 );
+const isBuiltIn = computed(() => isBuiltInExportPreset(selectedPreset.value));
 
 const presetsModel = computed(() => workspaceStore.userSettings.exportPresets);
+
+const draftPreset = ref<ExportSettingsPreset>({ ...selectedPreset.value });
+
+watch(
+  () => selectedPreset.value,
+  (newPreset) => {
+    draftPreset.value = { ...newPreset };
+  },
+  { deep: true, immediate: true },
+);
+
+const isDirty = computed(() => {
+  const orig = selectedPreset.value;
+  const draft = draftPreset.value;
+  return (
+    orig.name !== draft.name ||
+    orig.format !== draft.format ||
+    orig.videoCodec !== draft.videoCodec ||
+    orig.bitrateMbps !== draft.bitrateMbps ||
+    orig.excludeAudio !== draft.excludeAudio ||
+    orig.audioCodec !== draft.audioCodec ||
+    orig.audioBitrateKbps !== draft.audioBitrateKbps ||
+    orig.bitrateMode !== draft.bitrateMode ||
+    orig.keyframeIntervalSec !== draft.keyframeIntervalSec ||
+    orig.exportAlpha !== draft.exportAlpha ||
+    orig.fastStart !== draft.fastStart
+  );
+});
 
 const isDeleteModalOpen = ref(false);
 const presetIdToDelete = ref<string | null>(null);
@@ -64,6 +95,32 @@ function duplicatePreset(id: string) {
   if (!preset) return;
 
   addPreset(preset, `${preset.name} ${t('common.copy')}`);
+}
+
+function saveChanges() {
+  if (isBuiltIn.value) {
+    saveAsNewPreset();
+    return;
+  }
+
+  const items = workspaceStore.userSettings.exportPresets.items;
+  const index = items.findIndex((p) => p.id === draftPreset.value.id);
+  if (index !== -1) {
+    items[index] = { ...draftPreset.value };
+  }
+}
+
+function revertChanges() {
+  draftPreset.value = { ...selectedPreset.value };
+}
+
+function saveAsNewPreset() {
+  const baseName =
+    isDirty.value && !isBuiltIn.value
+      ? draftPreset.value.name
+      : `${selectedPreset.value.name} ${t('common.copy')}`;
+
+  addPreset(draftPreset.value, baseName);
 }
 
 function requestDeletePreset(id: string) {
@@ -112,23 +169,41 @@ const deleteModalDescription = computed(() => {
     />
 
     <div class="flex flex-col gap-6">
-      <UiFormSectionHeader :title="t('videoEditor.settings.presetEditorTitle')" />
+      <div class="flex items-center justify-between gap-3">
+        <UiFormSectionHeader :title="t('videoEditor.settings.presetEditorTitle')" />
+        <div class="flex items-center gap-2">
+          <UBadge v-if="isBuiltIn" size="xs" color="neutral" variant="subtle">
+            {{ t('videoEditor.settings.presetBuiltIn') }}
+          </UBadge>
+          <UBadge v-if="isDirty" size="xs" color="warning" variant="subtle">
+            {{ t('videoEditor.settings.presetModified') }}
+          </UBadge>
+        </div>
+      </div>
+
+      <div
+        v-if="isBuiltIn"
+        class="flex items-center gap-2.5 rounded-lg border border-ui-border bg-ui-bg-elevated/60 px-3 py-2.5 text-xs text-ui-text-muted"
+      >
+        <UIcon name="i-heroicons-information-circle" class="size-4 shrink-0 text-amber-400" />
+        <span>{{ t('videoEditor.settings.presetBuiltInNotice') }}</span>
+      </div>
 
       <UiFormField :label="t('common.name')">
-        <UiTextInput v-model="selectedPreset.name" full-width />
+        <UiTextInput v-model="draftPreset.name" :disabled="isBuiltIn" full-width />
       </UiFormField>
 
       <VideoEncodingForm
-        v-model:output-format="selectedPreset.format"
-        v-model:video-codec="selectedPreset.videoCodec"
-        v-model:bitrate-mbps="selectedPreset.bitrateMbps"
-        v-model:exclude-audio="selectedPreset.excludeAudio"
-        v-model:audio-codec="selectedPreset.audioCodec"
-        v-model:audio-bitrate-kbps="selectedPreset.audioBitrateKbps"
-        v-model:bitrate-mode="selectedPreset.bitrateMode"
-        v-model:keyframe-interval-sec="selectedPreset.keyframeIntervalSec"
-        v-model:export-alpha="selectedPreset.exportAlpha"
-        v-model:fast-start="selectedPreset.fastStart"
+        v-model:output-format="draftPreset.format"
+        v-model:video-codec="draftPreset.videoCodec"
+        v-model:bitrate-mbps="draftPreset.bitrateMbps"
+        v-model:exclude-audio="draftPreset.excludeAudio"
+        v-model:audio-codec="draftPreset.audioCodec"
+        v-model:audio-bitrate-kbps="draftPreset.audioBitrateKbps"
+        v-model:bitrate-mode="draftPreset.bitrateMode"
+        v-model:keyframe-interval-sec="draftPreset.keyframeIntervalSec"
+        v-model:export-alpha="draftPreset.exportAlpha"
+        v-model:fast-start="draftPreset.fastStart"
         :show-audio-advanced="true"
         :show-presets="false"
         :hide-audio-sample-rate="true"
@@ -136,6 +211,39 @@ const deleteModalDescription = computed(() => {
         :show-metadata="false"
         :has-audio="true"
       />
+
+      <div class="flex items-center justify-end gap-2 pt-4 border-t border-ui-border/50">
+        <UButton
+          v-if="isDirty"
+          size="xs"
+          color="neutral"
+          variant="ghost"
+          icon="i-heroicons-arrow-path"
+          @click="revertChanges"
+        >
+          {{ t('videoEditor.settings.presetRevert') }}
+        </UButton>
+        <UButton
+          v-if="!isBuiltIn"
+          size="xs"
+          color="primary"
+          variant="solid"
+          icon="i-heroicons-check"
+          :disabled="!isDirty"
+          @click="saveChanges"
+        >
+          {{ t('videoEditor.settings.presetSaveChanges') }}
+        </UButton>
+        <UButton
+          size="xs"
+          :color="isBuiltIn ? 'primary' : 'neutral'"
+          :variant="isBuiltIn ? 'solid' : 'outline'"
+          icon="i-heroicons-document-duplicate"
+          @click="saveAsNewPreset"
+        >
+          {{ t('videoEditor.settings.presetSaveAsNew') }}
+        </UButton>
+      </div>
     </div>
 
     <UiConfirmModal

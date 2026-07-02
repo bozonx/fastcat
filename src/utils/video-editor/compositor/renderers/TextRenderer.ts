@@ -220,6 +220,10 @@ export class TextRenderer {
           mode: 'stroke',
         });
       }
+      // Cut only the glyph FILL (interior) out of the shadow so the main text
+      // sits cleanly on top. Do NOT cut the spread stroke back out — that would
+      // cancel the dilation added above and collapse the shadow into a thin
+      // offset-only outline that appears detached from the text.
       ctx.globalCompositeOperation = 'destination-out';
       ctx.shadowColor = 'transparent';
       ctx.globalAlpha = 1;
@@ -233,20 +237,6 @@ export class TextRenderer {
         align: normalizedStyle.align,
         renderScale,
       });
-      if (textShadowSpreadPx > 0) {
-        ctx.lineWidth = textShadowSpreadPx;
-        this.drawTextLines({
-          ctx,
-          lines,
-          localTextStartX,
-          localTextTopPx,
-          lineHeightPx,
-          letterSpacingPx,
-          align: normalizedStyle.align,
-          renderScale,
-          mode: 'stroke',
-        });
-      }
       ctx.restore();
     }
 

@@ -201,4 +201,58 @@ describe('SettingsExportDefaults.vue', () => {
     const trashButton = buttons.find((b) => b.attributes('title')?.includes('common.delete'));
     expect(trashButton).toBeUndefined();
   });
+
+  it('protects built-in presets and disables direct name editing', async () => {
+    mockWorkspaceStore.userSettings.exportPresets.selectedPresetId = 'optimal';
+
+    const wrapper = await mountWithNuxt(SettingsExportDefaults, {
+      props: { isActive: true },
+    });
+
+    // Check that built-in notice is displayed
+    expect(wrapper.text()).includes('videoEditor.settings.presetBuiltInNotice');
+
+    // Name input should be disabled for built-in preset
+    const nameInput = wrapper.find('input[type="text"]');
+    expect(nameInput.attributes('disabled')).toBeDefined();
+  });
+
+  it('allows saving changes for custom presets and reverting modifications', async () => {
+    const customPreset: ExportSettingsPreset = {
+      id: 'export-custom-1',
+      name: 'Custom Preset 1',
+      format: 'mp4',
+      videoCodec: 'avc1.640032',
+      bitrateMbps: 10,
+      excludeAudio: false,
+      audioCodec: 'aac',
+      audioBitrateKbps: 128,
+      bitrateMode: 'variable',
+      keyframeIntervalSec: 2,
+      exportAlpha: false,
+      fastStart: true,
+    };
+    mockWorkspaceStore.userSettings.exportPresets.items.push(customPreset);
+    mockWorkspaceStore.userSettings.exportPresets.selectedPresetId = customPreset.id;
+
+    const wrapper = await mountWithNuxt(SettingsExportDefaults, {
+      props: { isActive: true },
+    });
+
+    // Edit name
+    const nameInput = wrapper.find('input[type="text"]');
+    await nameInput.setValue('Updated Custom Preset');
+
+    // Revert button should now exist
+    const revertBtn = wrapper
+      .findAll('button')
+      .find((b) => b.text().includes('videoEditor.settings.presetRevert'));
+    expect(revertBtn?.exists()).toBe(true);
+
+    // Revert changes
+    await revertBtn?.trigger('click');
+    await nextTick();
+
+    expect((nameInput.element as HTMLInputElement).value).toBe('Custom Preset 1');
+  });
 });

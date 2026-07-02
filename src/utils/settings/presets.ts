@@ -241,6 +241,12 @@ export function resolveLastUsedProjectPreset(
   );
 }
 
+export function getBuiltInExportPreset(id: string): ExportSettingsPreset | null {
+  const fallback = createDefaultExportPresets();
+  const found = fallback.items.find((p) => p.id === id);
+  return found ? { ...found } : null;
+}
+
 export function resolveExportPreset(
   settings?: Partial<UserExportPresetsSettings> | null,
 ): ExportSettingsPreset {
@@ -251,7 +257,16 @@ export function resolveExportPreset(
       ? settings.selectedPresetId
       : fallback.selectedPresetId;
 
-  return items.find((preset) => preset.id === selectedPresetId) ?? items[0] ?? fallback.items[0]!;
+  const found = items.find((preset) => preset.id === selectedPresetId);
+  if (found) {
+    if (isBuiltInExportPreset(found)) {
+      const builtin = getBuiltInExportPreset(found.id);
+      if (builtin) return builtin;
+    }
+    return found;
+  }
+
+  return items[0] ?? fallback.items[0]!;
 }
 
 export function createProjectPresetId(): string {
