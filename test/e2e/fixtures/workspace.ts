@@ -99,6 +99,14 @@ export async function createE2eProject(
 
 export async function waitForEditorReady(page: Page): Promise<void> {
   await expect(page.getByRole('heading', { name: 'Loading...' })).toBeHidden({ timeout: 30_000 });
+  const restoreAutosave = page.getByRole('button', { name: /Restore Work/i });
+  if (await restoreAutosave.isVisible({ timeout: 1_000 }).catch(() => false)) {
+    await restoreAutosave.click();
+    await expect(restoreAutosave).toBeHidden({ timeout: 10_000 });
+    await expect(page.getByRole('heading', { name: 'Loading...' })).toBeHidden({
+      timeout: 30_000,
+    });
+  }
   await expect(page.getByTestId('timeline-container')).toBeVisible({ timeout: 30_000 });
 }
 

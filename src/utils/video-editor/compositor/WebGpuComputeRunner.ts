@@ -63,6 +63,18 @@ export interface ApplyEffectsOptions {
   enablePadding?: boolean;
 }
 
+interface BlurContentRect {
+  offsetX: number;
+  offsetY: number;
+  width: number;
+  height: number;
+}
+
+interface BuildPassOptions {
+  spatialScaleHeight?: number;
+  contentRect?: BlurContentRect;
+}
+
 function spatialScale(height: number): number {
   return Math.max(0.1, Math.min(8.0, height / 1080.0));
 }
@@ -88,12 +100,23 @@ function pushBlur(
   width: number,
   height: number,
   tapBudget: number,
+  contentRect?: BlurContentRect,
 ): Buf {
   if (radius <= 0) return cur;
   if (blurType === 'radial') {
     const t1 = pickScratch([cur]);
+    const rect = contentRect ?? { offsetX: 0, offsetY: 0, width, height };
     passes.push({
-      uniform: { ...uniform(4, width, height), p0: radius, p1: 2.0, p7: tapBudget },
+      uniform: {
+        ...uniform(4, width, height),
+        p0: radius,
+        p1: 2.0,
+        p2: rect.offsetX / width,
+        p3: rect.offsetY / height,
+        p4: rect.width / width,
+        p5: rect.height / height,
+        p7: tapBudget,
+      },
       src: cur,
       secondary: cur,
       dst: t1,
@@ -276,8 +299,9 @@ export function buildPasses(
   width: number,
   height: number,
   quality: PreviewEffectQuality = 'ultra',
+  options: BuildPassOptions = {},
 ): ComputePass[] {
-  const scale = spatialScale(height);
+  const scale = spatialScale(options.spatialScaleHeight ?? height);
   const tapBudget = previewEffectQualityTapBudget(quality);
   const passes: ComputePass[] = [];
   // Buffer currently holding the running image; effects chain off it.
@@ -295,6 +319,7 @@ export function buildPasses(
           width,
           height,
           tapBudget,
+          options.contentRect,
         );
         if ((effect.mix ?? 1) < 1.0) {
           cur = pushMix(passes, cur, base, effect.mix ?? 1, width, height);
@@ -311,6 +336,7 @@ export function buildPasses(
           width,
           height,
           tapBudget,
+          options.contentRect,
         );
         if ((effect.mix ?? 1) < 1.0) {
           cur = pushMix(passes, cur, base, effect.mix ?? 1, width, height);
@@ -1058,7 +1084,12 @@ export class WebGpuComputeRunner {
     const w = origW + 2 * padding;
     const h = origH + 2 * padding;
 
-    const passes = buildPasses(effects, w, h, this.previewEffectQuality);
+    const passes = buildPasses(effects, w, h, this.previewEffectQuality, {
+      spatialScaleHeight: origH,
+      ...(padding > 0
+        ? { contentRect: { offsetX: padding, offsetY: padding, width: origW, height: origH } }
+        : {}),
+    });
     if (passes.length === 0) return null;
 
     return this.runComputeChain({

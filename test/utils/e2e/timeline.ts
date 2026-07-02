@@ -118,7 +118,7 @@ export async function moveClipToTrack(
   const targetBox = await requireBox(target, `track ${toTrackId}`);
   const startX = sourceBox.x + sourceBox.width / 2;
   const startY = sourceBox.y + sourceBox.height / 2;
-  const endX = targetBox.x + targetBox.width / 2;
+  const endX = targetBox.x + Math.min(40, Math.max(8, targetBox.width / 10));
   const endY = targetBox.y + targetBox.height / 2;
 
   await page.mouse.move(startX, startY);

@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test';
-import { opfsEntryExists, readTextFileFromOpfs } from './virtual-fs';
+import { getOpfsFileMetadata, opfsEntryExists, readTextFileFromOpfs } from './virtual-fs';
 import type { E2eProject } from '../../e2e/fixtures/workspace';
 
 /**
@@ -170,9 +170,32 @@ export function parseTimelineDoc(json: string): TimelineDocView {
   };
 }
 
-/** Reads and parses the project's persisted timeline from OPFS. */
+function autosavePathFor(project: E2eProject): string {
+  const projectRoot = `${project.path}/`;
+  const timelinePath = project.timelinePath.startsWith(projectRoot)
+    ? project.timelinePath.slice(projectRoot.length)
+    : project.timelinePath;
+
+  return `${project.path}/.fastcat/autosave/${timelinePath}`;
+}
+
+async function readLatestTimelineText(page: Page, project: E2eProject): Promise<string> {
+  const autosavePath = autosavePathFor(project);
+  const [mainMeta, autosaveMeta] = await Promise.all([
+    getOpfsFileMetadata(page, project.timelinePath),
+    getOpfsFileMetadata(page, autosavePath),
+  ]);
+
+  if (autosaveMeta && (!mainMeta || autosaveMeta.lastModified >= mainMeta.lastModified)) {
+    return await readTextFileFromOpfs(page, autosavePath);
+  }
+
+  return await readTextFileFromOpfs(page, project.timelinePath);
+}
+
+/** Reads and parses the project's latest persisted timeline state from OPFS. */
 export async function readTimelineDoc(page: Page, project: E2eProject): Promise<TimelineDocView> {
-  const json = await readTextFileFromOpfs(page, project.timelinePath);
+  const json = await readLatestTimelineText(page, project);
   return parseTimelineDoc(json);
 }
 
@@ -194,7 +217,10 @@ export async function waitForTimelineDoc(
 
   while (Date.now() < deadline) {
     try {
-      if (await opfsEntryExists(page, project.timelinePath)) {
+      if (
+        (await opfsEntryExists(page, project.timelinePath)) ||
+        (await opfsEntryExists(page, autosavePathFor(project)))
+      ) {
         last = await readTimelineDoc(page, project);
         if (predicate(last)) return last;
       }

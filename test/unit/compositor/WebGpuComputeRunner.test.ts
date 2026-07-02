@@ -98,6 +98,34 @@ describe('buildPasses', () => {
     expect(passes540[0]!.uniform.p0).toBeCloseTo(passes1080[0]!.uniform.p0 * 0.5, 5);
   });
 
+  it('keeps blur radius scaled by source height when the effect output is padded', () => {
+    const effects: VideoEffectSpec[] = [
+      { type: 'gaussian-blur', radius: 200.0, bleed: true, blur_type: 'gaussian', mix: 1 },
+    ];
+    const passes = buildPasses(effects, 2720, 1880, 'ultra', { spatialScaleHeight: 1080 });
+
+    expect(passes[0]!.uniform.p0).toBeCloseTo(200.0, 5);
+    expect(passes[1]!.uniform.p0).toBeCloseTo(200.0, 5);
+  });
+
+  it('normalizes radial blur against the unpadded content rect', () => {
+    const effects: VideoEffectSpec[] = [
+      { type: 'gaussian-blur', radius: 200.0, bleed: true, blur_type: 'radial', mix: 1 },
+    ];
+    const passes = buildPasses(effects, 2720, 1880, 'ultra', {
+      spatialScaleHeight: 1080,
+      contentRect: { offsetX: 400, offsetY: 400, width: 1920, height: 1080 },
+    });
+
+    expect(passes).toHaveLength(1);
+    expect(passes[0]!.uniform.p0).toBeCloseTo(200.0, 5);
+    expect(passes[0]!.uniform.p1).toBe(2);
+    expect(passes[0]!.uniform.p2).toBeCloseTo(400 / 2720, 5);
+    expect(passes[0]!.uniform.p3).toBeCloseTo(400 / 1880, 5);
+    expect(passes[0]!.uniform.p4).toBeCloseTo(1920 / 2720, 5);
+    expect(passes[0]!.uniform.p5).toBeCloseTo(1080 / 1880, 5);
+  });
+
   it('returns empty for disabled effects', () => {
     expect(buildPasses([], 1920, 1080)).toEqual([]);
   });

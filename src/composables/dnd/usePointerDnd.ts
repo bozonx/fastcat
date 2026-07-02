@@ -385,6 +385,10 @@ export function armPointerDnd(e: PointerEvent, options: ArmPointerDndOptions): v
   const secondaryOk = options.acceptSecondaryButton === true && e.button === 2;
   if (!secondaryOk && !isPrimaryPointer(pointerType, e.button)) return;
 
+  if (pointerType !== 'touch') {
+    e.preventDefault();
+  }
+
   // Cancel any stale drag (e.g. a previous gesture that never released).
   if (activeDrag) teardown({ dropped: false, cancelled: true });
 

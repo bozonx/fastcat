@@ -14,6 +14,11 @@ export interface OpfsEntryInfo {
   kind: FileSystemHandleKind;
 }
 
+export interface OpfsFileMetadata {
+  lastModified: number;
+  size: number;
+}
+
 /**
  * Removes a single root entry from OPFS.
  */
@@ -181,6 +186,30 @@ export async function readFileFromOpfs(page: Page, path: string): Promise<Uint8A
 export async function readTextFileFromOpfs(page: Page, path: string): Promise<string> {
   const bytes = await readFileFromOpfs(page, path);
   return new TextDecoder().decode(bytes);
+}
+
+export async function getOpfsFileMetadata(
+  page: Page,
+  path: string,
+): Promise<OpfsFileMetadata | null> {
+  return await page.evaluate(async (filePath) => {
+    const root = await navigator.storage.getDirectory();
+    const parts = filePath.split('/').filter(Boolean);
+    let dir = root;
+
+    try {
+      for (let i = 0; i < parts.length - 1; i++) {
+        dir = await dir.getDirectoryHandle(parts[i]);
+      }
+
+      const fileHandle = await dir.getFileHandle(parts[parts.length - 1]);
+      const file = await fileHandle.getFile();
+      return { lastModified: file.lastModified, size: file.size };
+    } catch (error) {
+      if (error instanceof DOMException && error.name === 'NotFoundError') return null;
+      throw error;
+    }
+  }, path);
 }
 
 /**

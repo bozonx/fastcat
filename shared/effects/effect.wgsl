@@ -283,10 +283,16 @@ fn box_blur(uv: vec2<f32>, radius: f32, dir: vec2<f32>) -> vec4<f32> {
     return sum / max(weight_sum, 0.0001);
 }
 
-// Radial blur centered around (0.5, 0.5) with sharpness at the center.
+// Radial blur centered around the content rect. For padded blur-bleed passes,
+// p2/p3 hold the content offset in texture UV and p4/p5 hold its UV size.
 fn radial_blur(uv: vec2<f32>, radius: f32) -> vec4<f32> {
-    let center = vec2<f32>(0.5, 0.5);
-    let dir = uv - center;
+    let content_origin = vec2<f32>(effect.p2, effect.p3);
+    let content_size = vec2<f32>(
+        select(1.0, effect.p4, effect.p4 > 0.0),
+        select(1.0, effect.p5, effect.p5 > 0.0)
+    );
+    let content_uv = (uv - content_origin) / max(content_size, vec2<f32>(0.0001));
+    let dir = content_uv - vec2<f32>(0.5, 0.5);
     let dist = length(dir);
     let safe_radius = max(radius * dist, 0.0);
     if (safe_radius < 0.5) {

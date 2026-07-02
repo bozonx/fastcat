@@ -53,6 +53,20 @@ pub(super) struct EffectPass {
     pub(super) dst: Buf,
 }
 
+#[derive(Clone, Copy)]
+pub(super) struct BlurContentRect {
+    pub(super) offset_x: u32,
+    pub(super) offset_y: u32,
+    pub(super) width: u32,
+    pub(super) height: u32,
+}
+
+#[derive(Clone, Copy, Default)]
+pub(super) struct BuildPassOptions {
+    pub(super) spatial_scale_height: Option<u32>,
+    pub(super) content_rect: Option<BlurContentRect>,
+}
+
 /// Padding (in target px) the frame must be grown by so blur can bleed past the
 /// original rectangle. Only `GaussianBlur` effects that opted into `bleed`
 /// contribute — everything else (opaque-video blur, bloom, internal pixel blur)
@@ -108,12 +122,19 @@ fn push_blur(
     width: u32,
     height: u32,
     tap_budget: f32,
+    content_rect: Option<BlurContentRect>,
 ) -> Buf {
     if radius <= 0.0 {
         return cur;
     }
     if blur_type == "radial" {
         let t1 = pick_scratch(&[cur]);
+        let rect = content_rect.unwrap_or(BlurContentRect {
+            offset_x: 0,
+            offset_y: 0,
+            width,
+            height,
+        });
         passes.push(EffectPass {
             uniform: EffectUniform {
                 mode: 4,
@@ -122,6 +143,10 @@ fn push_blur(
                 seed: 0,
                 p0: radius,
                 p1: 2.0, // 2.0 = Radial
+                p2: rect.offset_x as f32 / width as f32,
+                p3: rect.offset_y as f32 / height as f32,
+                p4: rect.width as f32 / width as f32,
+                p5: rect.height as f32 / height as f32,
                 p7: tap_budget,
                 ..Default::default()
             },
@@ -413,13 +438,24 @@ pub(super) fn build_blur_fill_passes(
     passes
 }
 
+#[cfg(test)]
 pub(super) fn build_passes(
     effects: &[EffectSpec],
     width: u32,
     height: u32,
     quality: EffectQuality,
 ) -> Vec<EffectPass> {
-    let scale = spatial_scale(height);
+    build_passes_with_options(effects, width, height, quality, BuildPassOptions::default())
+}
+
+pub(super) fn build_passes_with_options(
+    effects: &[EffectSpec],
+    width: u32,
+    height: u32,
+    quality: EffectQuality,
+    options: BuildPassOptions,
+) -> Vec<EffectPass> {
+    let scale = spatial_scale(options.spatial_scale_height.unwrap_or(height));
     let mut passes: Vec<EffectPass> = Vec::new();
     // The buffer currently holding the running image; effects chain off it.
     let mut cur = Buf::Input;
@@ -441,6 +477,7 @@ pub(super) fn build_passes(
                     width,
                     height,
                     quality.tap_budget(),
+                    options.content_rect,
                 );
                 if *mix < 1.0 {
                     cur = push_mix(&mut passes, cur, base, *mix, width, height);
@@ -459,6 +496,7 @@ pub(super) fn build_passes(
                     width,
                     height,
                     quality.tap_budget(),
+                    options.content_rect,
                 );
                 if *mix < 1.0 {
                     cur = push_mix(&mut passes, cur, base, *mix, width, height);

@@ -16,7 +16,8 @@ use super::gpu_utils::{create_rgba8_texture, image_pixels_rgba8};
 
 mod passes;
 use passes::{
-    build_blur_fill_passes, build_passes, calculate_padding, spatial_scale, Buf, EffectUniform,
+    build_blur_fill_passes, build_passes_with_options, calculate_padding, spatial_scale,
+    BlurContentRect, Buf, BuildPassOptions, EffectUniform,
 };
 
 #[derive(Debug, Clone, Copy, Default, Serialize, Deserialize, ts_rs::TS)]
@@ -594,7 +595,25 @@ impl EffectPipeline {
         let width = orig_width + 2 * padding;
         let height = orig_height + 2 * padding;
 
-        let passes = build_passes(effects, width, height, quality);
+        let passes = build_passes_with_options(
+            effects,
+            width,
+            height,
+            quality,
+            BuildPassOptions {
+                spatial_scale_height: Some(orig_height),
+                content_rect: if padding > 0 {
+                    Some(BlurContentRect {
+                        offset_x: padding,
+                        offset_y: padding,
+                        width: orig_width,
+                        height: orig_height,
+                    })
+                } else {
+                    None
+                },
+            },
+        );
         if passes.is_empty() {
             let tex = source_to_owned_texture(device, queue, source, orig_width, orig_height)?;
             return Ok((tex, 0));
@@ -1051,7 +1070,7 @@ mod tests {
     use vello::peniko::{Blob, ImageAlphaType, ImageFormat};
 
     fn build_passes(effects: &[EffectSpec], width: u32, height: u32) -> Vec<EffectPass> {
-        super::build_passes(effects, width, height, EffectQuality::Ultra)
+        super::passes::build_passes(effects, width, height, EffectQuality::Ultra)
     }
 
     #[test]
@@ -1146,8 +1165,8 @@ mod tests {
             blur_type: "gaussian".to_string(),
             mix: 1.0,
         }];
-        let low = super::build_passes(&effects, 1920, 1080, EffectQuality::Low);
-        let high = super::build_passes(&effects, 1920, 1080, EffectQuality::High);
+        let low = super::passes::build_passes(&effects, 1920, 1080, EffectQuality::Low);
+        let high = super::passes::build_passes(&effects, 1920, 1080, EffectQuality::High);
 
         assert_eq!(low[0].uniform.p7, 8.0);
         assert_eq!(low[1].uniform.p7, 8.0);
@@ -1596,7 +1615,7 @@ mod tests {
                 .expect("failed to deserialize effect");
 
             let quality = quality_from_str(&case.quality);
-            let passes = super::build_passes(&effects, case.width, case.height, quality);
+            let passes = super::passes::build_passes(&effects, case.width, case.height, quality);
 
             assert_eq!(
                 passes.len(),

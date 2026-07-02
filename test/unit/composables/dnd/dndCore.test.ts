@@ -186,6 +186,24 @@ describe('usePointerDnd engine', () => {
     expect(captureEl.releasePointerCapture).toHaveBeenCalledWith(1);
   });
 
+  it('prevents browser-native mouse drag takeover while preserving touch defaults', () => {
+    const mouseDown = armEvent({ x: 0, y: 0 }, 'mouse');
+    armPointerDnd(mouseDown, { payload });
+    expect(mouseDown.preventDefault).toHaveBeenCalledTimes(1);
+
+    resetPointerDndForTest();
+
+    const penDown = armEvent({ x: 0, y: 0 }, 'pen');
+    armPointerDnd(penDown, { payload });
+    expect(penDown.preventDefault).toHaveBeenCalledTimes(1);
+
+    resetPointerDndForTest();
+
+    const touchDown = armEvent({ x: 0, y: 0 }, 'touch');
+    armPointerDnd(touchDown, { payload });
+    expect(touchDown.preventDefault).not.toHaveBeenCalled();
+  });
+
   it('treats a release before threshold as a click and clears eagerly-set state', () => {
     const onDrop = vi.fn();
     registerDndZone('zone-1', { onDrop });

@@ -61,7 +61,7 @@ test.describe('Web timeline add clip', () => {
     const { uiPath } = await seedProjectMedia(page, e2eProject, MEDIA_FIXTURES.audio.wav, 'audio');
     const videoTrackId = (await trackIds(page))[0];
 
-    await expect(addFileToTrack(page, uiPath, videoTrackId)).rejects.toThrow();
+    await addFileToTrack(page, uiPath, videoTrackId);
 
     const doc = await readTimelineDoc(page, e2eProject);
     expect(doc.allClips).toHaveLength(0);
@@ -71,7 +71,7 @@ test.describe('Web timeline add clip', () => {
     const { uiPath } = await seedProjectMedia(page, e2eProject, MEDIA_FIXTURES.image.jpg, 'image');
     const audioTrackId = (await trackIds(page)).at(-1)!;
 
-    await expect(addFileToTrack(page, uiPath, audioTrackId)).rejects.toThrow();
+    await addFileToTrack(page, uiPath, audioTrackId);
 
     const doc = await readTimelineDoc(page, e2eProject);
     expect(doc.allClips).toHaveLength(0);

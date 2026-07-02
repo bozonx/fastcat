@@ -599,7 +599,7 @@ export function createTimelinePersistenceModule(
           ? ((await withFileIoSlot(() => deps.readTimelineText(mainPath))) ?? '')
           : '';
         let shouldOfferAutosave =
-          !!autosaveMeta && (!mainMeta || autosaveMeta.lastModified > mainMeta.lastModified);
+          !!autosaveMeta && (!mainMeta || autosaveMeta.lastModified >= mainMeta.lastModified);
 
         // Suppress spurious recovery: a best-effort sidecar delete that failed
         // after a clean save (or an autosave that wrote byte-identical content) can

@@ -971,7 +971,7 @@ export const useTimelineStore = defineStore('timeline', () => {
       projectStore.getFileMetadata(autosavePath),
     ]);
     if (!autosaveMeta) return false;
-    if (mainMeta && autosaveMeta.lastModified <= mainMeta.lastModified) return false;
+    if (mainMeta && autosaveMeta.lastModified < mainMeta.lastModified) return false;
     if (mainMeta && mainMeta.size === autosaveMeta.size) {
       const [mainText, autoText] = await Promise.all([
         projectStore.readTextByPath(path),
