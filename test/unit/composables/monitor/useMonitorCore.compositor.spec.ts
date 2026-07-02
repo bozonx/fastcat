@@ -154,23 +154,34 @@ describe('createMonitorCompositorRuntime', () => {
     );
   });
 
-  it('throttles video prewarm while rendering playback frames', async () => {
+  it('throttles video prewarm by wall clock, surviving backward seeks', async () => {
     const mockClient = {
       renderFrame: vi.fn().mockResolvedValue({}),
       prewarmVideoFrames: vi.fn().mockResolvedValue(undefined),
     } as unknown as import('~/utils/video-editor/worker-rpc').VideoCoreWorkerAPI;
     const runtime = createMonitorCompositorRuntime(makeOptions(mockClient));
 
-    runtime.scheduleRender(0, { prewarm: true });
-    await vi.waitFor(() => expect(mockClient.renderFrame).toHaveBeenCalledTimes(1));
-    runtime.scheduleRender(100_000, { prewarm: true });
-    await vi.waitFor(() => expect(mockClient.renderFrame).toHaveBeenCalledTimes(2));
-    runtime.scheduleRender(300_000, { prewarm: true });
-    await vi.waitFor(() => expect(mockClient.renderFrame).toHaveBeenCalledTimes(3));
+    let nowMs = 10_000;
+    const nowSpy = vi.spyOn(performance, 'now').mockImplementation(() => nowMs);
+    try {
+      runtime.scheduleRender(600_000, { prewarm: true });
+      await vi.waitFor(() => expect(mockClient.renderFrame).toHaveBeenCalledTimes(1));
+      // Within the throttle window: suppressed regardless of timeline distance.
+      nowMs += 100;
+      runtime.scheduleRender(700_000, { prewarm: true });
+      await vi.waitFor(() => expect(mockClient.renderFrame).toHaveBeenCalledTimes(2));
+      // Past the throttle window AND a backward timeline seek: must still fire —
+      // a timeline-time gate would go silent here (delta negative after the seek).
+      nowMs += 300;
+      runtime.scheduleRender(0, { prewarm: true });
+      await vi.waitFor(() => expect(mockClient.renderFrame).toHaveBeenCalledTimes(3));
 
-    expect(mockClient.prewarmVideoFrames).toHaveBeenCalledTimes(2);
-    expect(mockClient.prewarmVideoFrames).toHaveBeenNthCalledWith(1, 0);
-    expect(mockClient.prewarmVideoFrames).toHaveBeenNthCalledWith(2, 300_000);
+      expect(mockClient.prewarmVideoFrames).toHaveBeenCalledTimes(2);
+      expect(mockClient.prewarmVideoFrames).toHaveBeenNthCalledWith(1, 600_000);
+      expect(mockClient.prewarmVideoFrames).toHaveBeenNthCalledWith(2, 0);
+    } finally {
+      nowSpy.mockRestore();
+    }
   });
 
   it('does not prewarm video frames for passive renders', async () => {

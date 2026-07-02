@@ -430,6 +430,8 @@ export function useMonitorPlayback(options: UseMonitorPlaybackOptions) {
       }
 
       if (playing) {
+        // The playback loop prewarms on its own cadence.
+        cancelPausedPrewarm();
         if (safeDurationUs.value > 0 && localCurrentTimeUs >= safeDurationUs.value) {
           localCurrentTimeUs = 0;
           uiCurrentTimeUs.value = 0;
@@ -611,6 +613,7 @@ export function useMonitorPlayback(options: UseMonitorPlaybackOptions) {
     scrubPreviewRequestId += 1;
     audioEngine.stopScrubPreview();
     cancelAnimationFrame(playbackLoopId);
+    cancelPausedPrewarm();
     timecodeEl = null;
 
     if (visibilityHandler) {
