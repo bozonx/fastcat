@@ -400,14 +400,7 @@ onBeforeUnmount(() => {
   window.removeEventListener('dragleave', onWindowDragLeave, true);
   if (runtimeConfig.public.e2eTest) {
     const e2eWindow = window as Window & FastcatE2eTimelineWindow;
-    delete e2eWindow.__fastcatE2eAddFileToTrack;
-    delete e2eWindow.__fastcatE2eMoveClipBy;
-    delete e2eWindow.__fastcatE2eMoveClipToTrack;
-    delete e2eWindow.__fastcatE2eDeleteClip;
-    delete e2eWindow.__fastcatE2eTrimClipEdge;
     delete e2eWindow.__fastcatE2eAdvancePlayheadBy;
-    delete e2eWindow.__fastcatE2eUndoTimeline;
-    delete e2eWindow.__fastcatE2eRedoTimeline;
     delete e2eWindow.__fastcatE2eSplitClipAtPlayhead;
     delete e2eWindow.__fastcatE2eSelectTimelineItems;
     delete e2eWindow.__fastcatE2eDeleteSelectedItems;
@@ -425,84 +418,8 @@ onMounted(() => {
   if (runtimeConfig.public.e2eTest) {
     const e2eWindow = window as Window & FastcatE2eTimelineWindow;
 
-    e2eWindow.__fastcatE2eAddFileToTrack = async ({ name, path, trackId }) => {
-      await timelineStore.addClipToTimelineFromPath({
-        trackId,
-        name,
-        path,
-        startUs: 0,
-        pseudo: false,
-      });
-      await timelineStore.saveTimeline();
-    };
-
-    e2eWindow.__fastcatE2eMoveClipBy = async ({ itemId, deltaUs }) => {
-      const clip = findE2eClip(itemId);
-      if (!clip) throw new Error(`Timeline clip not found: ${itemId}`);
-      clip.timelineRange.startUs = Math.max(0, Math.round(clip.timelineRange.startUs + deltaUs));
-      await saveE2eTimelineMutation();
-    };
-
-    e2eWindow.__fastcatE2eMoveClipToTrack = async ({ itemId, toTrackId }) => {
-      const fromTrack = findE2eClipTrack(itemId);
-      if (!fromTrack) throw new Error(`Timeline clip track not found: ${itemId}`);
-      const clip = findE2eClip(itemId);
-      if (!clip) throw new Error(`Timeline clip not found: ${itemId}`);
-      await timelineStore.moveItemToTrack({
-        fromTrackId: fromTrack.id,
-        toTrackId,
-        itemId,
-        startUs: clip.timelineRange.startUs,
-      });
-      await timelineStore.saveTimeline();
-    };
-
-    e2eWindow.__fastcatE2eDeleteClip = async ({ itemId }) => {
-      const track = findE2eClipTrack(itemId);
-      if (!track) throw new Error(`Timeline clip track not found: ${itemId}`);
-      timelineStore.applyTimeline({ type: 'delete_items', trackId: track.id, itemIds: [itemId] });
-      await timelineStore.saveTimeline();
-    };
-
-    e2eWindow.__fastcatE2eTrimClipEdge = async ({ itemId, edge, deltaUs }) => {
-      const clip = findE2eClip(itemId);
-      if (!clip) throw new Error(`Timeline clip not found: ${itemId}`);
-
-      const minDurationUs = 100_000;
-      if (edge === 'end') {
-        const nextDurationUs = Math.max(
-          minDurationUs,
-          Math.round(clip.timelineRange.durationUs + deltaUs),
-        );
-        clip.timelineRange.durationUs = nextDurationUs;
-        clip.sourceRange.durationUs = nextDurationUs;
-        await saveE2eTimelineMutation();
-        return;
-      }
-
-      const trimUs = Math.min(
-        Math.max(0, Math.round(deltaUs)),
-        Math.max(0, clip.timelineRange.durationUs - minDurationUs),
-      );
-      clip.timelineRange.startUs += trimUs;
-      clip.timelineRange.durationUs -= trimUs;
-      clip.sourceRange.startUs += trimUs;
-      clip.sourceRange.durationUs -= trimUs;
-      await saveE2eTimelineMutation();
-    };
-
     e2eWindow.__fastcatE2eAdvancePlayheadBy = async ({ deltaUs }) => {
       timelineStore.setCurrentTimeUs(timelineStore.currentTime + deltaUs);
-    };
-
-    e2eWindow.__fastcatE2eUndoTimeline = async () => {
-      timelineStore.undoTimeline();
-      await timelineStore.saveTimeline();
-    };
-
-    e2eWindow.__fastcatE2eRedoTimeline = async () => {
-      timelineStore.redoTimeline();
-      await timelineStore.saveTimeline();
     };
 
     e2eWindow.__fastcatE2eSplitClipAtPlayhead = async () => {
@@ -723,22 +640,7 @@ async function dropInternalPayloadAtPoint(params: {
   clearDragPreview();
 }
 
-type FastcatE2eAddFileToTrack = (params: {
-  name: string;
-  path: string;
-  trackId: string;
-}) => Promise<void>;
-type FastcatE2eMoveClipBy = (params: { itemId: string; deltaUs: number }) => Promise<void>;
-type FastcatE2eMoveClipToTrack = (params: { itemId: string; toTrackId: string }) => Promise<void>;
-type FastcatE2eDeleteClip = (params: { itemId: string }) => Promise<void>;
-type FastcatE2eTrimClipEdge = (params: {
-  itemId: string;
-  edge: 'start' | 'end';
-  deltaUs: number;
-}) => Promise<void>;
 type FastcatE2eAdvancePlayheadBy = (params: { deltaUs: number }) => Promise<void>;
-type FastcatE2eUndoTimeline = () => Promise<void>;
-type FastcatE2eRedoTimeline = () => Promise<void>;
 type FastcatE2eSplitClipAtPlayhead = () => Promise<void>;
 type FastcatE2eSelectTimelineItems = (params: { itemIds: string[] }) => Promise<void>;
 type FastcatE2eDeleteSelectedItems = () => Promise<void>;
@@ -750,33 +652,13 @@ type FastcatE2eSetCurrentTimeUs = (params: { us: number }) => Promise<void>;
 type FastcatE2eGetSelectedItemIds = () => Promise<string[]>;
 
 interface FastcatE2eTimelineWindow {
-  __fastcatE2eAddFileToTrack?: FastcatE2eAddFileToTrack;
-  __fastcatE2eMoveClipBy?: FastcatE2eMoveClipBy;
-  __fastcatE2eMoveClipToTrack?: FastcatE2eMoveClipToTrack;
-  __fastcatE2eDeleteClip?: FastcatE2eDeleteClip;
-  __fastcatE2eTrimClipEdge?: FastcatE2eTrimClipEdge;
   __fastcatE2eAdvancePlayheadBy?: FastcatE2eAdvancePlayheadBy;
-  __fastcatE2eUndoTimeline?: FastcatE2eUndoTimeline;
-  __fastcatE2eRedoTimeline?: FastcatE2eRedoTimeline;
   __fastcatE2eSplitClipAtPlayhead?: FastcatE2eSplitClipAtPlayhead;
   __fastcatE2eSelectTimelineItems?: FastcatE2eSelectTimelineItems;
   __fastcatE2eDeleteSelectedItems?: FastcatE2eDeleteSelectedItems;
   __fastcatE2eUpdateClipProperties?: FastcatE2eUpdateClipProperties;
   __fastcatE2eSetCurrentTimeUs?: FastcatE2eSetCurrentTimeUs;
   __fastcatE2eGetSelectedItemIds?: FastcatE2eGetSelectedItemIds;
-}
-
-function findE2eClip(itemId: string) {
-  const doc = timelineStore.timelineDoc;
-  if (!doc) return null;
-
-  for (const track of doc.tracks) {
-    for (const item of track.items) {
-      if (item.kind === 'clip' && item.id === itemId) return item;
-    }
-  }
-
-  return null;
 }
 
 function findE2eClipTrack(itemId: string) {
@@ -788,10 +670,6 @@ function findE2eClipTrack(itemId: string) {
   }
 
   return null;
-}
-
-async function saveE2eTimelineMutation() {
-  await timelineStore.saveTimeline();
 }
 
 async function onTauriInternalFileDrop(event: Event) {

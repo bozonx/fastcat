@@ -348,3 +348,38 @@ export async function selectEntries(page: Page, names: string[]): Promise<void> 
     await entry(page, names[i]).click(i === 0 ? {} : { modifiers: ['Control'] });
   }
 }
+
+export async function openFileManagerToolbarMenu(page: Page): Promise<void> {
+  await openProjectFilesTab(page);
+  await page.getByTestId('file-toolbar-menu').click();
+  await expect(page.getByRole('menuitem', { name: 'Select all' })).toBeVisible();
+}
+
+export async function selectAllEntries(page: Page): Promise<void> {
+  await openFileManagerToolbarMenu(page);
+  await page.getByRole('menuitem', { name: 'Select all' }).click();
+}
+
+export async function invertSelection(page: Page): Promise<void> {
+  await openFileManagerToolbarMenu(page);
+  await page.getByRole('menuitem', { name: 'Invert selection' }).click();
+}
+
+export async function selectUnusedEntries(page: Page): Promise<void> {
+  await openFileManagerToolbarMenu(page);
+  await page.getByRole('menuitem', { name: 'Select unused' }).click();
+}
+
+export async function createFolderInCurrentDirectory(page: Page, name: string): Promise<string> {
+  await openProjectFilesTab(page);
+  await page.getByTestId('file-create-folder').click();
+  await page.getByRole('textbox').fill(name);
+  await page.getByRole('button', { name: 'Confirm' }).click();
+
+  const folder = page.locator(`[data-entry-path$="/${name}"], [data-entry-path="${name}"]`).last();
+  await expect(folder).toBeVisible();
+
+  const path = await folder.getAttribute('data-entry-path');
+  if (!path) throw new Error(`Created folder has no path: ${name}`);
+  return path;
+}

@@ -169,7 +169,8 @@ describe('useProjectManagement', () => {
     });
 
     it('closes the modal on success', async () => {
-      const { projectCreationSettings, createNewProject, isCreateModalOpen } = useProjectManagement();
+      const { projectCreationSettings, createNewProject, isCreateModalOpen } =
+        useProjectManagement();
       projectCreationSettings.value.name = 'NewProject';
       isCreateModalOpen.value = true;
 
@@ -179,7 +180,8 @@ describe('useProjectManagement', () => {
     });
 
     it('keeps the modal open on error', async () => {
-      const { projectCreationSettings, createNewProject, isCreateModalOpen } = useProjectManagement();
+      const { projectCreationSettings, createNewProject, isCreateModalOpen } =
+        useProjectManagement();
       projectCreationSettings.value.name = 'NewProject';
       isCreateModalOpen.value = true;
       workspaceMock.error = 'Some error';
@@ -368,7 +370,8 @@ describe('useProjectManagement', () => {
     });
 
     it('closes the modal on success', async () => {
-      const { startDuplicate, duplicateValue, confirmDuplicate, isDuplicateModalOpen } = useProjectManagement();
+      const { startDuplicate, duplicateValue, confirmDuplicate, isDuplicateModalOpen } =
+        useProjectManagement();
       startDuplicate({ projectName: 'Source', projectId: 'src-1' });
       duplicateValue.value = 'Copy';
       isDuplicateModalOpen.value = true;
@@ -379,7 +382,8 @@ describe('useProjectManagement', () => {
     });
 
     it('keeps the modal open on error', async () => {
-      const { startDuplicate, duplicateValue, confirmDuplicate, isDuplicateModalOpen } = useProjectManagement();
+      const { startDuplicate, duplicateValue, confirmDuplicate, isDuplicateModalOpen } =
+        useProjectManagement();
       startDuplicate({ projectName: 'Source', projectId: 'src-1' });
       duplicateValue.value = 'Copy';
       isDuplicateModalOpen.value = true;

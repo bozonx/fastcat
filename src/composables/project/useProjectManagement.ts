@@ -171,7 +171,7 @@ export function useProjectManagement(options: { isMobile?: boolean } = {}) {
       } else {
         handleOpenProject(name);
       }
-    } catch (e) {
+    } catch {
       isTransitioning.value = false;
       isCreateModalOpen.value = true;
     }

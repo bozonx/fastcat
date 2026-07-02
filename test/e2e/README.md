@@ -41,6 +41,7 @@ test/e2e/
     timeline-move.spec.ts           ← reposition on/between tracks
     editor-playback.spec.ts         ← transport + playhead
     file-manager.spec.ts            ← folders, rename, move, delete, view, select
+    file-manager-bulk.spec.ts       ← bulk select, delete, copy, cut, paste
     export.spec.ts                  ← short export → output/success
 test/utils/e2e/
     otio.ts            ← read + parse persisted timeline from OPFS (assertion backbone)

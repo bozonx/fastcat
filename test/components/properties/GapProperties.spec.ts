@@ -30,7 +30,8 @@ vi.mock('~/components/properties/PropertyActionsBlock.vue', () => ({
   default: {
     name: 'PropertyActionsBlock',
     props: ['additionalActions'],
-    template: '<button data-testid="delete-gap" @click="additionalActions[0].onClick()">delete</button>',
+    template:
+      '<button data-testid="delete-gap" @click="additionalActions[0].onClick()">delete</button>',
   },
 }));
 

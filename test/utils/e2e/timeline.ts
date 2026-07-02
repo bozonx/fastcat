@@ -53,12 +53,21 @@ interface Box {
   height: number;
 }
 
-const E2E_US_PER_PX = 5_000;
-
 async function requireBox(locator: Locator, what: string): Promise<Box> {
   const box = await locator.boundingBox();
   if (!box) throw new Error(`${what}: element has no bounding box (not visible?)`);
   return box;
+}
+
+/**
+ * Fits the timeline zoom so the clip(s) are wide enough for reliable pointer
+ * gestures. This is a real user action (the "zoom to fit" hotkey), not a
+ * hidden hook; it is only used as a setup step before the actual interaction.
+ */
+async function fitTimelineZoom(page: Page): Promise<void> {
+  await timelineContainer(page).click();
+  await page.keyboard.press('Shift+0');
+  await page.waitForTimeout(150);
 }
 
 export async function clipBox(page: Page, clipId: string): Promise<Box> {
@@ -75,20 +84,23 @@ export async function dragClipBy(
   clipId: string,
   deltaPx: { x: number; y?: number },
 ): Promise<void> {
-  await expect(clip(page, clipId)).toBeVisible();
-  await page.evaluate(
-    async ({ deltaUs, itemId }) => {
-      const moveClipBy = (
-        window as Window & {
-          __fastcatE2eMoveClipBy?: (params: { itemId: string; deltaUs: number }) => Promise<void>;
-        }
-      ).__fastcatE2eMoveClipBy;
+  const target = clip(page, clipId);
+  await expect(target).toBeVisible();
+  await fitTimelineZoom(page);
 
-      if (!moveClipBy) throw new Error('E2E timeline move hook is not registered');
-      await moveClipBy({ itemId, deltaUs });
-    },
-    { itemId: clipId, deltaUs: Math.round(deltaPx.x * E2E_US_PER_PX) },
-  );
+  const box = await requireBox(target, `clip ${clipId}`);
+  const startX = box.x + box.width / 2;
+  const startY = box.y + box.height / 2;
+  const endX = startX + deltaPx.x;
+  const endY = startY + (deltaPx.y ?? 0);
+
+  await page.mouse.move(startX, startY);
+  await page.mouse.down();
+  // Move past the click-or-drag threshold so the app commits to a drag.
+  const thresholdX = startX + Math.sign(deltaPx.x || 1) * 10;
+  await page.mouse.move(thresholdX, startY, { steps: 2 });
+  await page.mouse.move(endX, endY, { steps: 10 });
+  await page.mouse.up();
 }
 
 export async function moveClipToTrack(
@@ -96,37 +108,31 @@ export async function moveClipToTrack(
   clipId: string,
   toTrackId: string,
 ): Promise<void> {
-  await expect(clip(page, clipId)).toBeVisible();
-  await page.evaluate(
-    async ({ itemId, toTrackId: targetTrackId }) => {
-      const moveClipToTrack = (
-        window as Window & {
-          __fastcatE2eMoveClipToTrack?: (params: {
-            itemId: string;
-            toTrackId: string;
-          }) => Promise<void>;
-        }
-      ).__fastcatE2eMoveClipToTrack;
+  const source = clip(page, clipId);
+  const target = track(page, toTrackId);
+  await expect(source).toBeVisible();
+  await expect(target).toBeVisible();
+  await fitTimelineZoom(page);
 
-      if (!moveClipToTrack) throw new Error('E2E timeline move-to-track hook is not registered');
-      await moveClipToTrack({ itemId, toTrackId: targetTrackId });
-    },
-    { itemId: clipId, toTrackId },
-  );
+  const sourceBox = await requireBox(source, `clip ${clipId}`);
+  const targetBox = await requireBox(target, `track ${toTrackId}`);
+  const startX = sourceBox.x + sourceBox.width / 2;
+  const startY = sourceBox.y + sourceBox.height / 2;
+  const endX = targetBox.x + targetBox.width / 2;
+  const endY = targetBox.y + targetBox.height / 2;
+
+  await page.mouse.move(startX, startY);
+  await page.mouse.down();
+  // Move past the click-or-drag threshold so the app commits to a drag.
+  await page.mouse.move(startX + 10, startY, { steps: 2 });
+  await page.mouse.move(endX, endY, { steps: 10 });
+  await page.mouse.up();
 }
 
 export async function deleteClip(page: Page, clipId: string): Promise<void> {
-  await expect(clip(page, clipId)).toBeVisible();
-  await page.evaluate(async (itemId) => {
-    const deleteTimelineClip = (
-      window as Window & {
-        __fastcatE2eDeleteClip?: (params: { itemId: string }) => Promise<void>;
-      }
-    ).__fastcatE2eDeleteClip;
-
-    if (!deleteTimelineClip) throw new Error('E2E timeline delete hook is not registered');
-    await deleteTimelineClip({ itemId });
-  }, clipId);
+  await fitTimelineZoom(page);
+  await selectClip(page, clipId);
+  await page.keyboard.press('Delete');
 }
 
 /**
@@ -139,36 +145,30 @@ export async function trimClipEdge(
   edge: 'start' | 'end',
   deltaPx: number,
 ): Promise<void> {
-  await expect(clip(page, clipId)).toBeVisible();
-  await page.evaluate(
-    async ({ deltaUs, edge: trimEdge, itemId }) => {
-      const trimClipEdge = (
-        window as Window & {
-          __fastcatE2eTrimClipEdge?: (params: {
-            itemId: string;
-            edge: 'start' | 'end';
-            deltaUs: number;
-          }) => Promise<void>;
-        }
-      ).__fastcatE2eTrimClipEdge;
+  const handle = clip(page, clipId).locator(`[data-testid="clip-trim-${edge}"]`);
+  await expect(handle).toBeVisible();
+  await fitTimelineZoom(page);
 
-      if (!trimClipEdge) throw new Error('E2E timeline trim hook is not registered');
-      await trimClipEdge({ itemId, edge: trimEdge, deltaUs });
-    },
-    { itemId: clipId, edge, deltaUs: Math.round(deltaPx * E2E_US_PER_PX) },
-  );
+  const box = await requireBox(handle, `trim handle ${edge} for clip ${clipId}`);
+  const startX = box.x + box.width / 2;
+  const startY = box.y + box.height / 2;
+  const endX = startX + deltaPx;
+  const endY = startY;
+
+  await page.mouse.move(startX, startY);
+  await page.mouse.down();
+  await page.mouse.move(endX, endY, { steps: 10 });
+  await page.mouse.up();
 }
 
 /**
  * Adds a media file from the file manager onto a timeline track.
  *
- * fastcat's drag payload lives in a module-level ref that the file browser sets
- * in its own `dragstart` handler — it is *not* carried solely on
- * `dataTransfer`. Simulating a bare mouse drag therefore does not register the
- * drop. Instead we fire the app's real HTML5 drag sequence
- * (dragstart → dragover → drop) with a shared DataTransfer, so the app's own
- * handlers run exactly as they do for a user. This is the robust,
- * non-flaky way to exercise DnD in Playwright.
+ * This drives the app's real pointer-based drag-and-drop engine:
+ *   1. pointerdown on the file entry sets the module-level dragged-file ref
+ *   2. moving past the gesture threshold commits the internal drag
+ *   3. pointerup over the track lane triggers the timeline drop zone
+ * The file payload is carried exactly as it would be for a user drag.
  */
 export async function addFileToTrack(
   page: Page,
@@ -183,46 +183,31 @@ export async function addFileToTrack(
     await expect(source, `file entry ${entryPath}`).toBeVisible();
   }
   await expect(target, `track ${trackId}`).toBeVisible();
+  await fitTimelineZoom(page);
 
-  await page.evaluate(
-    async ({ name, path, trackId: tid }) => {
-      const addFileToTrack = (
-        window as Window & {
-          __fastcatE2eAddFileToTrack?: (params: {
-            name: string;
-            path: string;
-            trackId: string;
-          }) => Promise<void>;
-        }
-      ).__fastcatE2eAddFileToTrack;
+  const sourceBox = await requireBox(source, `file entry ${entryPath}`);
+  const targetBox = await requireBox(target, `track ${trackId}`);
+  const startX = sourceBox.x + sourceBox.width / 2;
+  const startY = sourceBox.y + sourceBox.height / 2;
+  const endX = targetBox.x + targetBox.width / 2;
+  const endY = targetBox.y + targetBox.height / 2;
 
-      if (!addFileToTrack) throw new Error('E2E timeline add hook is not registered');
-      await addFileToTrack({ name, path, trackId: tid });
-    },
-    {
-      name: entryPath.split('/').filter(Boolean).at(-1) ?? entryPath,
-      path: entryPath,
-      trackId,
-    },
-  );
+  await page.mouse.move(startX, startY);
+  await page.mouse.down();
+  // Move past the pointer-DnD threshold so the file manager commits the drag.
+  await page.mouse.move(startX + 10, startY + 10, { steps: 2 });
+  await page.mouse.move(endX, endY, { steps: 10 });
+  await page.mouse.up();
 }
 
 export async function undoTimeline(page: Page): Promise<void> {
-  await page.evaluate(async () => {
-    const undo = (window as Window & { __fastcatE2eUndoTimeline?: () => Promise<void> })
-      .__fastcatE2eUndoTimeline;
-    if (!undo) throw new Error('E2E timeline undo hook is not registered');
-    await undo();
-  });
+  await timelineContainer(page).click();
+  await page.keyboard.press('Control+z');
 }
 
 export async function redoTimeline(page: Page): Promise<void> {
-  await page.evaluate(async () => {
-    const redo = (window as Window & { __fastcatE2eRedoTimeline?: () => Promise<void> })
-      .__fastcatE2eRedoTimeline;
-    if (!redo) throw new Error('E2E timeline redo hook is not registered');
-    await redo();
-  });
+  await timelineContainer(page).click();
+  await page.keyboard.press('Control+y');
 }
 
 export async function setCurrentTimeUs(page: Page, us: number): Promise<void> {

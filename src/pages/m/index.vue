@@ -649,11 +649,7 @@ const sortedProjects = computed(() => {
             <UButton variant="ghost" color="neutral" @click="closeDuplicateModal">
               {{ t('common.cancel') }}
             </UButton>
-            <UButton
-              color="primary"
-              :disabled="!isDuplicateNameValid"
-              @click="confirmDuplicate"
-            >
+            <UButton color="primary" :disabled="!isDuplicateNameValid" @click="confirmDuplicate">
               {{ t('common.duplicate') }}
             </UButton>
           </div>

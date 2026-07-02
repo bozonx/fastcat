@@ -28,9 +28,9 @@ const track = computed<TimelineTrack | null>(
 
 const gap = computed<TimelineGapItem | null>(
   () =>
-    (track.value?.items as TimelineTrackItem[] | undefined)?.find(
+    ((track.value?.items as TimelineTrackItem[] | undefined)?.find(
       (item) => item.id === props.itemId && item.kind === 'gap',
-    ) as TimelineGapItem | null ?? null,
+    ) as TimelineGapItem | null) ?? null,
 );
 
 const fps = computed(() => timelineStore.timelineFormat.fps || 30);
@@ -68,9 +68,7 @@ function deleteGap() {
       </div>
       <PropertyRow :label="t('common.duration')" :value="formattedGapDuration" />
       <div v-if="!hideActions" class="mt-2 pt-2 border-t border-ui-border">
-        <PropertyActionsBlock
-          :additional-actions="gapActions"
-        />
+        <PropertyActionsBlock :additional-actions="gapActions" />
       </div>
     </PropertySection>
 
@@ -78,4 +76,3 @@ function deleteGap() {
     <TrackProperties v-if="track" :track="track" :hide-actions="hideActions" />
   </div>
 </template>
-
