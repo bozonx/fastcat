@@ -20,7 +20,8 @@ import { isNotFoundError } from '~/utils/error-helpers';
 import { toError } from '~/utils/errors';
 import { normalizeMediaCachePath } from '~/utils/path';
 const log = createDevLogger('file-thumbnail-generator');
-const FILE_THUMBNAIL_HASH_VERSION = 2;
+const FILE_THUMBNAIL_HASH_VERSION = 3;
+const TRANSPARENCY_CHECKER_TILE_SIZE = 8;
 
 export interface FileThumbnailTask extends BaseThumbnailTask {
   onComplete?: (url: string) => void;
@@ -56,7 +57,49 @@ function getThumbnailFileVfsPath(input: {
   return `${getThumbnailDirVfsPath(input)}/${input.fileName}`;
 }
 
-async function resizeImage(file: File, maxWidth: number, maxHeight: number): Promise<Blob> {
+export function imageDataHasTransparentPixels(imageData: ImageData): boolean {
+  const data = imageData.data;
+  for (let i = 3; i < data.length; i += 4) {
+    if ((data[i] ?? 255) < 255) return true;
+  }
+  return false;
+}
+
+function paintTransparencyCheckerboard(
+  ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D,
+  width: number,
+  height: number,
+): void {
+  ctx.fillStyle = '#343a40';
+  ctx.fillRect(0, 0, width, height);
+
+  for (let y = 0; y < height; y += TRANSPARENCY_CHECKER_TILE_SIZE) {
+    for (let x = 0; x < width; x += TRANSPARENCY_CHECKER_TILE_SIZE) {
+      const isLight =
+        (Math.floor(x / TRANSPARENCY_CHECKER_TILE_SIZE) +
+          Math.floor(y / TRANSPARENCY_CHECKER_TILE_SIZE)) %
+          2 ===
+        0;
+      ctx.fillStyle = isLight ? '#565d66' : '#343a40';
+      ctx.fillRect(x, y, TRANSPARENCY_CHECKER_TILE_SIZE, TRANSPARENCY_CHECKER_TILE_SIZE);
+    }
+  }
+}
+
+function paintCheckerboardBehindTransparentImage(
+  ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D,
+  width: number,
+  height: number,
+): boolean {
+  const imageData = ctx.getImageData(0, 0, width, height);
+  if (!imageDataHasTransparentPixels(imageData)) return false;
+
+  ctx.clearRect(0, 0, width, height);
+  paintTransparencyCheckerboard(ctx, width, height);
+  return true;
+}
+
+export async function resizeImage(file: File, maxWidth: number, maxHeight: number): Promise<Blob> {
   const imageBitmap = await createImageBitmap(file);
   try {
     let width = imageBitmap.width;
@@ -87,6 +130,9 @@ async function resizeImage(file: File, maxWidth: number, maxHeight: number): Pro
       | null;
     if (!ctx) throw new Error('Failed to get 2d context for image resize');
     ctx.drawImage(imageBitmap, 0, 0, width, height);
+    if (paintCheckerboardBehindTransparentImage(ctx, width, height)) {
+      ctx.drawImage(imageBitmap, 0, 0, width, height);
+    }
 
     let blob: Blob | null = null;
     if (canvas instanceof OffscreenCanvas) {

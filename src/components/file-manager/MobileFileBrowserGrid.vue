@@ -112,7 +112,7 @@ const {
             <template v-else-if="thumbnailsByPath[entry.path]">
               <img
                 :src="thumbnailsByPath[entry.path]!"
-                class="w-full h-full object-contain transition-transform duration-300"
+                class="w-full h-full object-contain transition-transform duration-300 checkerboard-bg"
                 :class="{ 'scale-110 blur-[1px] opacity-70': isSelected(entry) && isSelectionMode }"
                 loading="lazy"
                 @error="handleImageError(entry)"

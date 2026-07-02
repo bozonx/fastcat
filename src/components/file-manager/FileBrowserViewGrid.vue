@@ -134,7 +134,7 @@ function isEntrySelected(entry: FsEntry): boolean {
             "
             :src="entry.objectUrl || getBdThumbnail(entry)"
             :alt="entry.name"
-            class="max-w-full max-h-full object-contain"
+            class="max-w-full max-h-full object-contain checkerboard-bg"
             draggable="false"
             @error="handleImageError(entry)"
           />
@@ -144,7 +144,7 @@ function isEntrySelected(entry: FsEntry): boolean {
             "
             :src="videoThumbnails[entry.path]"
             :alt="entry.name"
-            class="max-w-full max-h-full object-contain"
+            class="max-w-full max-h-full object-contain checkerboard-bg"
             draggable="false"
             @error="handleImageError(entry)"
           />

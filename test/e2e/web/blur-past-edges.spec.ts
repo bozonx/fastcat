@@ -248,6 +248,15 @@ async function runScenario(
   expect(baseline.width - radialBleed.width).toBeLessThanOrEqual(tol);
   expect(baseline.height - radialBleed.height).toBeLessThanOrEqual(tol);
 
+  // No dark inner border on a full-frame clip: the bleed must keep opaque areas
+  // opaque, so the edge ring stays about as bright as the plain (non-bleed) blur.
+  // The old feather-to-transparent bug crushed this ring toward black.
+  expect(
+    bleed.edgeRingMean,
+    `full-frame bleed edge ring ${bleed.edgeRingMean.toFixed(0)} vs no-bleed ${noBleed.edgeRingMean.toFixed(0)}`,
+  ).toBeGreaterThan(noBleed.edgeRingMean * 0.6);
+  expect(radialBleed.edgeRingMean).toBeGreaterThan(noBleed.edgeRingMean * 0.6);
+
   // Scaled-down clip: now there is background around the content, so the blur's
   // outward bleed is visible instead of being clipped by the frame. With "blur
   // past edges" ON the edge must feather OUTWARD — the content bbox must grow
