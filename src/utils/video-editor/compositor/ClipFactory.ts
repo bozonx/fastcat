@@ -283,8 +283,10 @@ export class ClipFactory {
       const canvasSource = new CanvasSource({
         resource: clip.canvas as unknown as HTMLCanvasElement,
       });
-      // Replace instead of mutating sprite.texture.source (which would mutate Texture.EMPTY)
-      const texture = new Texture({ source: canvasSource });
+      // Replace instead of mutating sprite.texture.source (which would mutate Texture.EMPTY).
+      // `dynamic`: the HUD canvas is resized on redraw; a non-dynamic Sprite would
+      // keep the stale quad size and squash the content.
+      const texture = new Texture({ source: canvasSource, dynamic: true });
       sprite.texture = texture;
     }
 
@@ -299,7 +301,9 @@ export class ClipFactory {
       imageSource: ImageSource;
     },
   ): CompositorClip {
-    const texture = new Texture({ source: params.imageSource });
+    // `dynamic`: the imageSource is resized at runtime (frame-size changes,
+    // effect padding); the Sprite must re-read the texture size on update.
+    const texture = new Texture({ source: params.imageSource, dynamic: true });
     const sprite = new Sprite(texture);
     sprite.width = 1;
     sprite.height = 1;
@@ -353,7 +357,9 @@ export class ClipFactory {
       sourceRotation?: number;
     },
   ): CompositorClip {
-    const texture = new Texture({ source: params.imageSource });
+    // `dynamic`: the imageSource is resized at runtime (frame-size changes,
+    // effect padding); the Sprite must re-read the texture size on update.
+    const texture = new Texture({ source: params.imageSource, dynamic: true });
     const sprite = new Sprite(texture);
     sprite.width = 1;
     sprite.height = 1;

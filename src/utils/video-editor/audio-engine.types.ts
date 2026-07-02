@@ -11,7 +11,6 @@ export interface ClipPlaybackWindow {
   effectiveSourceEndS: number;
   clipDurationS: number;
   clipSpeed: number;
-  reversed: boolean;
   fadeInS: number;
   fadeOutS: number;
   fadeInCurve: AudioFadeCurve;

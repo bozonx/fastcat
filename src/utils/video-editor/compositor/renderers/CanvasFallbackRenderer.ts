@@ -29,8 +29,11 @@ export class CanvasFallbackRenderer {
     const canvasSource = new CanvasSource({ resource: clipCanvas as import('pixi.js').ICanvas });
     const sprite = clip.sprite as import('pixi.js').Sprite;
 
-    // Create a new unique Texture instead of mutating a shared Texture.EMPTY
-    const texture = new Texture({ source: canvasSource });
+    // Create a new unique Texture instead of mutating a shared Texture.EMPTY.
+    // `dynamic`: the canvas is resized per drawn sample; without it the Sprite
+    // keeps the stale quad size after a resize (it only listens to texture
+    // updates when `dynamic` is true) and the content renders squashed.
+    const texture = new Texture({ source: canvasSource, dynamic: true });
     sprite.texture = texture;
 
     clip.sourceKind = 'canvas';

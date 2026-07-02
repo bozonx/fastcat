@@ -180,7 +180,6 @@ function adjacentTransitionDurationUs(
 export function toNativeSceneAudioLayer(params: ToNativeSceneAudioLayerParams): SceneAudioLayer {
   const descriptor = params.descriptor;
   const signedSpeed = clampFinite(descriptor.speed, 1) || 1;
-  const reversed = signedSpeed < 0;
   const absSpeed = Math.max(0.01, Math.min(100, Math.abs(signedSpeed)));
 
   const startUs = Math.max(0, descriptor.startUs);
@@ -234,8 +233,10 @@ export function toNativeSceneAudioLayer(params: ToNativeSceneAudioLayerParams): 
   let layerSourceRangeUs = sourceRangeDurationUs;
 
   if (inDurUs > 0 || outDurUs > 0) {
-    // Mirrors the worker AudioMixer handle extension (incl. reverse and material
-    // clamping) so the native monitor + export agree with the web paths.
+    // Mirrors the worker AudioMixer handle extension (incl. material clamping)
+    // so the native monitor + export agree with the web paths. Reversed clips
+    // are muted before reaching the mixer (see `mix_layer_into` in mix.rs), so
+    // this only needs to handle forward playback.
     let playDurationUs = Math.min(
       sourceRangeDurationUs / absSpeed,
       durationUs || sourceRangeDurationUs / absSpeed,
@@ -245,19 +246,12 @@ export function toNativeSceneAudioLayer(params: ToNativeSceneAudioLayerParams): 
 
     if (outDurUs > 0) {
       playDurationUs += outDurUs;
-      if (reversed) {
-        // Reverse: the timeline tail maps to the start of the source, so the
-        // source-start moves earlier instead of reading a trailing handle.
-        effectiveOffsetUs = Math.max(0, effectiveOffsetUs - outDurUs * absSpeed);
-      }
     }
 
     if (inDurUs > 0) {
       playDurationUs += inDurUs;
       effectiveStartUs = Math.max(0, startUs - inDurUs);
-      if (!reversed) {
-        effectiveOffsetUs = Math.max(0, effectiveOffsetUs - inDurUs * absSpeed);
-      }
+      effectiveOffsetUs = Math.max(0, effectiveOffsetUs - inDurUs * absSpeed);
     }
 
     const offsetUs = Math.max(0, effectiveOffsetUs);

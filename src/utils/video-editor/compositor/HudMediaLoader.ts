@@ -34,7 +34,7 @@ export class HudMediaLoader {
       clipKind: 'image',
       sourceKind: 'bitmap',
       imageSource,
-      sprite: new Sprite(new Texture({ source: imageSource })),
+      sprite: new Sprite(new Texture({ source: imageSource, dynamic: true })),
       lastVideoFrame: null,
       bitmap: loaded.bitmap,
     };

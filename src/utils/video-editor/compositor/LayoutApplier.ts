@@ -358,9 +358,8 @@ export class LayoutApplier {
   private getSpriteTextureSize(
     sprite: CompositorClip['sprite'],
   ): { width: number; height: number } | null {
-    const texture = (
-      sprite as { texture?: { orig?: { width?: number; height?: number } } } | null
-    )?.texture;
+    const texture = (sprite as { texture?: { orig?: { width?: number; height?: number } } } | null)
+      ?.texture;
     const width = Number(texture?.orig?.width);
     const height = Number(texture?.orig?.height);
     if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) {

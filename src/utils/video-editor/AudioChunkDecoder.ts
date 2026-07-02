@@ -63,6 +63,11 @@ export class AudioChunkDecoder {
   private chunkRetryCounts = new Map<string, number>();
   private chunkLruKeys = new Map<string, true>();
   private fileBlobCache = new Map<string, File>();
+  // Tracks which FileSystemFileHandle instance backs each source key's cached
+  // chunks/blob. Reimport, proxy regeneration, and VFS write-back all hand out
+  // a fresh handle for the same path, so a handle-identity change is a cheap,
+  // reliable (no I/O) signal that the decoded audio is stale.
+  private sourceFileHandles = new Map<string, FileSystemFileHandle>();
   private readonly decodeClient = new DecodeWorkerClient();
 
   constructor(options: AudioChunkDecoderOptions) {
@@ -119,6 +124,7 @@ export class AudioChunkDecoder {
     const prefetchClip = async (clip: AudioEngineClip) => {
       const sourceKey = clip.sourcePath;
       if (!sourceKey) return;
+      this.invalidateIfSourceHandleChanged(sourceKey, clip.fileHandle);
 
       const startOffsetS = clip.sourceStartUs / 1_000_000;
       const sourceEndS = startOffsetS + clip.sourceRangeDurationUs / 1_000_000;
@@ -181,6 +187,11 @@ export class AudioChunkDecoder {
         this.fileBlobCache.delete(key);
       }
     }
+    for (const key of this.sourceFileHandles.keys()) {
+      if (!activeSourcePaths.has(key)) {
+        this.sourceFileHandles.delete(key);
+      }
+    }
     for (const key of this.chunkRetryCounts.keys()) {
       const sourceKey = this.getSourceKeyFromChunkKey(key);
       if (!activeSourcePaths.has(sourceKey)) {
@@ -191,6 +202,7 @@ export class AudioChunkDecoder {
 
   async ensureDecoded(params: EnsureAudioChunkDecodedParams): Promise<AudioChunk | null> {
     const { sourceKey, fileHandle, chunkIndex } = params;
+    this.invalidateIfSourceHandleChanged(sourceKey, fileHandle);
     const chunkKey = this.getChunkKey(sourceKey, chunkIndex);
 
     if (this.failedChunkKeys.has(chunkKey)) {
@@ -327,6 +339,7 @@ export class AudioChunkDecoder {
     this.chunkRetryCounts.clear();
     this.chunkLruKeys.clear();
     this.fileBlobCache.clear();
+    this.sourceFileHandles.clear();
   }
 
   destroy() {
@@ -342,6 +355,31 @@ export class AudioChunkDecoder {
 
   private getSourceKeyFromChunkKey(chunkKey: string): string {
     return chunkKey.slice(0, chunkKey.lastIndexOf('\x00'));
+  }
+
+  private invalidateIfSourceHandleChanged(sourceKey: string, fileHandle: FileSystemFileHandle) {
+    const previousHandle = this.sourceFileHandles.get(sourceKey);
+    if (previousHandle === fileHandle) return;
+    this.sourceFileHandles.set(sourceKey, fileHandle);
+    if (previousHandle === undefined) return; // First time seeing this source — nothing to invalidate.
+
+    this.chunkCache.delete(sourceKey);
+    this.fileBlobCache.delete(sourceKey);
+    for (const chunkKey of this.chunkLruKeys.keys()) {
+      if (chunkKey.startsWith(`${sourceKey}\x00`)) {
+        this.chunkLruKeys.delete(chunkKey);
+      }
+    }
+    for (const chunkKey of [...this.failedChunkKeys]) {
+      if (this.getSourceKeyFromChunkKey(chunkKey) === sourceKey) {
+        this.failedChunkKeys.delete(chunkKey);
+      }
+    }
+    for (const chunkKey of [...this.chunkRetryCounts.keys()]) {
+      if (this.getSourceKeyFromChunkKey(chunkKey) === sourceKey) {
+        this.chunkRetryCounts.delete(chunkKey);
+      }
+    }
   }
 
   private getPersistentCache(): { vfs: IFileSystemAdapter | null; cacheVfsPath: string | null } {

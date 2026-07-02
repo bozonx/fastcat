@@ -1,5 +1,6 @@
 import type { IFileSystemAdapter } from '~/file-manager/core/vfs/types';
 import { normalizeMediaCachePath } from '~/utils/path';
+import { SEAM_CROSSFADE_S } from '~/utils/audio/crossfade';
 
 // v2: chunks are decoded with a trailing seam-crossfade overlap (durationS can
 // exceed chunkSizeS). Bumping invalidates v1 chunks that lack the overlap tail.
@@ -33,6 +34,7 @@ export interface PersistedAudioChunk {
 
 interface CacheHeader extends AudioChunkFileCacheMetadata {
   version: number;
+  seamCrossfadeS: number;
 }
 
 function hashString(input: string): string {
@@ -80,6 +82,10 @@ function isMetadataMatch(params: {
   const { header, expected } = params;
   return (
     header.version === AUDIO_CHUNK_CACHE_VERSION &&
+    // Baked directly into the header (rather than relying on a manual version
+    // bump) so tuning the seam overlap length invalidates old entries whose
+    // trailing crossfade tail no longer matches what a fresh decode produces.
+    header.seamCrossfadeS === SEAM_CROSSFADE_S &&
     header.sourceKey === expected.sourceKey &&
     header.chunkIndex === expected.chunkIndex &&
     header.chunkSizeS === expected.chunkSizeS &&
@@ -97,6 +103,7 @@ function serializeAudioBuffer(params: {
 }): ArrayBuffer {
   const header: CacheHeader = {
     version: AUDIO_CHUNK_CACHE_VERSION,
+    seamCrossfadeS: SEAM_CROSSFADE_S,
     ...params.metadata,
   };
   const headerBytes = new TextEncoder().encode(JSON.stringify(header));

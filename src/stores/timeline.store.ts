@@ -68,6 +68,7 @@ export const useTimelineStore = defineStore('timeline', () => {
   const selectionStore = useSelectionStore();
   const uiStore = useUiStore();
   const focusStore = useFocusStore();
+  const runtimeConfig = useRuntimeConfig();
   const nuxtApp = useNuxtApp();
   const toast = nuxtApp.$notificationService as AppNotificationService;
   const { t } = nuxtApp.$i18nService as I18nService;
@@ -467,6 +468,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     // recovery prompt intentionally. Normal desktop and mobile loads both show
     // the dialog so the user can choose saved vs autosaved content.
     shouldRestoreAutosaveSilently: () => {
+      if (runtimeConfig.public.e2eTest) return true;
       if (skipRecoveryDialog.value) return true;
       return false;
     },

@@ -789,6 +789,12 @@ fn mix_layer_into(
     if crate::audio::decode::path_known_silent(&layer.path) {
         return Ok(false);
     }
+    // Reversed (negative-speed) clips are intentionally muted: they are not
+    // played in the monitor and must not be exported either, matching the web
+    // engine and export mixer. Skip before any decode.
+    if layer.speed < 0.0 {
+        return Ok(false);
+    }
     let Some(segment) =
         compute_layer_segment(layer, chunk_start_sec, chunk_end_sec, frames, sample_rate)
     else {
@@ -1647,6 +1653,38 @@ mod tests {
     // ------------------------------------------------------------------
     // Mix / Integration
     // ------------------------------------------------------------------
+
+    #[test]
+    fn mix_layer_into_skips_reversed_layers_before_decode() {
+        let mut reversed = layer();
+        reversed.path = "/nonexistent/reversed.wav".into();
+        reversed.speed = -1.0;
+
+        let mut buffer = vec![0.0f32; 4 * 2];
+        let shared = Arc::new((Mutex::new(AudioShared::default()), Condvar::new()));
+        let target = AudioRenderTarget::monitor(48000, 2);
+
+        // A missing path would normally propagate a decode error — the fact this
+        // returns `Ok(false)` instead of `Err` proves the layer never reached decode.
+        let contributed = mix_layer_into(
+            MixLayerParams {
+                buffer: &mut buffer,
+                layer: &reversed,
+                chunk_start_sec: 0.0,
+                chunk_end_sec: 4.0 / 48000.0,
+                frames: 4,
+                sample_rate: 48000,
+                output_channels: 2,
+                target,
+                shared: &shared,
+            },
+            DecodeErrorPolicy::Propagate,
+        )
+        .expect("reversed layer must not attempt to decode");
+
+        assert!(!contributed, "reversed layer must not contribute audio");
+        assert!(buffer.iter().all(|&s| s == 0.0));
+    }
 
     #[test]
     fn mix_chunk_with_solo_mutes_others() {

@@ -38,8 +38,12 @@ export class TextRenderer {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const canvasSource = new CanvasSource({ resource: canvas as any });
 
-    // Create a new unique Texture for this text clip sprite instead of mutating Texture.EMPTY
-    const texture = new Texture({ source: canvasSource });
+    // Create a new unique Texture for this text clip sprite instead of mutating Texture.EMPTY.
+    // `dynamic` is required: the canvas source is resized on every text/style change,
+    // and a non-dynamic Sprite never re-reads the texture size after construction
+    // (Pixi only subscribes to texture updates when `texture.dynamic` is true),
+    // which leaves the quad at the old size and squashes the redrawn text.
+    const texture = new Texture({ source: canvasSource, dynamic: true });
     clip.sprite!.texture = texture;
     clip.sourceKind = 'canvas';
     return true;

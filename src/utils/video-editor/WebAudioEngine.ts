@@ -694,6 +694,7 @@ export class WebAudioEngine implements IAudioEngine {
     const windowEndS = timeS + LOOKAHEAD_S;
 
     const activeClips = this.currentClips.filter((clip) => {
+      if (isReversedClip(clip)) return false; // Reverse audio muted in preview — never decode it.
       const startS = clip.startUs / 1_000_000;
       const endS = startS + clip.durationUs / 1_000_000;
       return endS > timeS && startS <= windowEndS;
@@ -712,20 +713,9 @@ export class WebAudioEngine implements IAudioEngine {
           ? Math.min(10, Math.abs(clip.speed))
           : 1;
       const sourceStartS = clip.sourceStartUs / 1_000_000;
-      const reversed = isReversedClip(clip);
 
-      let sourceTimeS: number;
-      let sourceEndS: number;
-
-      if (reversed) {
-        const clipDurationS = clip.durationUs / 1_000_000;
-        const sourceTimeRaw = sourceStartS + clipDurationS * clipSpeed - clipLocalS * clipSpeed;
-        sourceTimeS = Math.max(0, sourceTimeRaw - LOOKAHEAD_S * clipSpeed);
-        sourceEndS = Math.max(0, sourceTimeRaw);
-      } else {
-        sourceTimeS = sourceStartS + clipLocalS * clipSpeed;
-        sourceEndS = sourceTimeS + LOOKAHEAD_S * clipSpeed;
-      }
+      const sourceTimeS = sourceStartS + clipLocalS * clipSpeed;
+      const sourceEndS = sourceTimeS + LOOKAHEAD_S * clipSpeed;
 
       const startChunkIndex = this.chunkDecoder.getChunkIndex(sourceTimeS);
       const endChunkIndex = this.chunkDecoder.getChunkIndex(Math.max(sourceTimeS, sourceEndS));
@@ -891,20 +881,28 @@ export class WebAudioEngine implements IAudioEngine {
     } catch {
       /* no-op */
     }
-    if (this.masterEffectGraph) {
-      void this.masterEffectGraph.destroy();
-      this.masterEffectGraph = null;
-    }
+    // Take the old graph off the instance now (so a concurrent call can't also
+    // try to destroy it), but await its destroy() before wiring up the new
+    // graph's output — otherwise, if a future effect's destroyNode() ever does
+    // real async work, its output could still be connected to masterGain when
+    // the new graph's output also connects, doubling the signal.
+    const oldGraph = this.masterEffectGraph;
+    this.masterEffectGraph = null;
 
     this.currentMasterAudioEffects = effects.slice();
 
     if (effects.length === 0) {
       this.masterEffectInput.connect(this.masterGain);
+      if (oldGraph) void oldGraph.destroy();
       return;
     }
 
     void (async () => {
+      if (oldGraph) {
+        await oldGraph.destroy();
+      }
       if (!this.ctx || !this.masterEffectInput || !this.masterGain) return;
+      if (generation !== this.masterEffectGeneration) return;
       try {
         const { outputNode, destroy } = await buildAudioEffectGraph({
           audioContext: this.ctx,

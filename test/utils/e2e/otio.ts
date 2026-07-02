@@ -193,6 +193,21 @@ async function readLatestTimelineText(page: Page, project: E2eProject): Promise<
   return await readTextFileFromOpfs(page, project.timelinePath);
 }
 
+async function readTimelineDocCandidates(
+  page: Page,
+  project: E2eProject,
+): Promise<TimelineDocView[]> {
+  const paths = [project.timelinePath, autosavePathFor(project)];
+  const docs: TimelineDocView[] = [];
+
+  for (const path of paths) {
+    if (!(await opfsEntryExists(page, path))) continue;
+    docs.push(parseTimelineDoc(await readTextFileFromOpfs(page, path)));
+  }
+
+  return docs;
+}
+
 /** Reads and parses the project's latest persisted timeline state from OPFS. */
 export async function readTimelineDoc(page: Page, project: E2eProject): Promise<TimelineDocView> {
   const json = await readLatestTimelineText(page, project);
@@ -217,12 +232,10 @@ export async function waitForTimelineDoc(
 
   while (Date.now() < deadline) {
     try {
-      if (
-        (await opfsEntryExists(page, project.timelinePath)) ||
-        (await opfsEntryExists(page, autosavePathFor(project)))
-      ) {
-        last = await readTimelineDoc(page, project);
-        if (predicate(last)) return last;
+      const docs = await readTimelineDocCandidates(page, project);
+      for (const doc of docs) {
+        last = doc;
+        if (predicate(doc)) return doc;
       }
     } catch (error) {
       lastError = error;
