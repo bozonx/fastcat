@@ -20,6 +20,55 @@ pub struct MediaInfo {
     pub is_hdr: bool,
 }
 
+impl MediaInfo {
+    /// FPS used for every frame-timing computation (seek tolerance, preroll frame
+    /// counts, warm-up thresholds): a source with missing/zero/non-finite metadata
+    /// fps (some streamed/WebM sources) falls back to 30. Single source of truth so
+    /// callers never disagree on the fallback (previously some used `.max(1.0)`,
+    /// others `> 0.0 → 30.0`, producing inconsistent thresholds across the same
+    /// decoder).
+    pub fn effective_fps(&self) -> f64 {
+        if self.fps.is_finite() && self.fps > 0.0 {
+            self.fps
+        } else {
+            30.0
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn info_with_fps(fps: f64) -> MediaInfo {
+        MediaInfo {
+            duration_sec: 1.0,
+            width: 2,
+            height: 2,
+            rotation: 0,
+            fps,
+            codec: "mock".into(),
+            has_audio: false,
+            start_time_sec: 0.0,
+            is_hdr: false,
+        }
+    }
+
+    #[test]
+    fn effective_fps_passes_through_valid_fps() {
+        assert_eq!(info_with_fps(24.0).effective_fps(), 24.0);
+        assert_eq!(info_with_fps(59.94).effective_fps(), 59.94);
+    }
+
+    #[test]
+    fn effective_fps_falls_back_to_30_on_invalid() {
+        assert_eq!(info_with_fps(0.0).effective_fps(), 30.0);
+        assert_eq!(info_with_fps(-5.0).effective_fps(), 30.0);
+        assert_eq!(info_with_fps(f64::NAN).effective_fps(), 30.0);
+        assert_eq!(info_with_fps(f64::INFINITY).effective_fps(), 30.0);
+    }
+}
+
 #[derive(Debug)]
 pub enum TextureSource {
     Owned(wgpu::Texture),

@@ -28,9 +28,14 @@ export function createMonitorCompositorRuntime(options: CreateMonitorCompositorR
   let compositorWidth = 0;
   let compositorHeight = 0;
   let latestRenderRequest: { timeUs: number; prewarm: boolean } | null = null;
-  let lastPrewarmTimeUs = -Infinity;
+  // Prewarm cadence is gated by WALL CLOCK, not timeline time. A timeline-time
+  // gate ("fire when playhead moved ≥250ms past the last prewarm position") goes
+  // permanently silent after a backward seek: the delta turns negative and stays
+  // negative until the playhead re-passes the old mark — measured in-app as
+  // `prewarm runs=0` for entire sessions, i.e. every played frame decoding cold.
+  let lastPrewarmAtMs = -Infinity;
 
-  const VIDEO_PREWARM_INTERVAL_US = 250_000;
+  const VIDEO_PREWARM_INTERVAL_MS = 250;
 
   // Dev-only rolling stats for the main-thread side of the render pipe: how many
   // renders were requested vs actually round-tripped to the worker, and what the
@@ -173,8 +178,8 @@ export function createMonitorCompositorRuntime(options: CreateMonitorCompositorR
         pumpRenderQueue();
       });
 
-    if (nextRequest.prewarm && nextTimeUs - lastPrewarmTimeUs >= VIDEO_PREWARM_INTERVAL_US) {
-      lastPrewarmTimeUs = nextTimeUs;
+    if (nextRequest.prewarm && performance.now() - lastPrewarmAtMs >= VIDEO_PREWARM_INTERVAL_MS) {
+      lastPrewarmAtMs = performance.now();
       void options.client.prewarmVideoFrames?.(nextTimeUs).catch((err) => {
         log.warn('[Monitor] Video prewarm failed', err);
       });

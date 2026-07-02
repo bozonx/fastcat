@@ -13,10 +13,11 @@ import { waitForTimelineDoc } from '../../utils/e2e/otio';
 
 /**
  * Timeline multi-select and bulk delete. Selection is exercised through real
- * Ctrl+click UI interactions; deletion uses the same command path as the app.
+ * Shift+click UI interactions (the default layer 1 modifier); deletion uses
+ * the same command path as the app.
  */
 test.describe('Web timeline multi-select', () => {
-  test('ctrl-click selects two clips and bulk delete removes them', async ({
+  test('shift-click selects two clips and bulk delete removes them', async ({
     page,
     e2eProject,
   }) => {
@@ -36,9 +37,9 @@ test.describe('Web timeline multi-select', () => {
     const [clipA, clipB] = ids;
 
     await selectClip(page, clipA);
-    await page.keyboard.down('Control');
+    await page.keyboard.down('Shift');
     await selectClip(page, clipB);
-    await page.keyboard.up('Control');
+    await page.keyboard.up('Shift');
 
     const selected = await getSelectedItemIds(page);
     expect(selected).toContain(clipA);

@@ -303,6 +303,32 @@ export function useMonitorPlayback(options: UseMonitorPlaybackOptions) {
     updateTimecodeUi(localCurrentTimeUs);
   }
 
+  // After a paused seek settles, fire one prewarm-flagged render so the
+  // decode-ahead stream re-anchors at the new position and pressing play starts
+  // from warm frames instead of a cold-decode stutter. Debounced so an active
+  // scrub doesn't queue 16-frame decode bursts ahead of its own renders (the
+  // prewarm op shares the compositor's exclusive queue); mirrors the native
+  // monitor's idle-settle pattern. The re-render itself is free — the worker
+  // early-exits on an unchanged time.
+  const PAUSED_PREWARM_SETTLE_MS = 300;
+  let pausedPrewarmTimer: ReturnType<typeof setTimeout> | null = null;
+
+  function cancelPausedPrewarm() {
+    if (pausedPrewarmTimer !== null) {
+      clearTimeout(pausedPrewarmTimer);
+      pausedPrewarmTimer = null;
+    }
+  }
+
+  function schedulePausedPrewarm(timeUs: number) {
+    cancelPausedPrewarm();
+    pausedPrewarmTimer = setTimeout(() => {
+      pausedPrewarmTimer = null;
+      if (isUnmounted || isPlaying.value) return;
+      scheduleRender(timeUs, { prewarm: true });
+    }, PAUSED_PREWARM_SETTLE_MS);
+  }
+
   function canPlayScrubPreview(fromUs: number, toUs: number) {
     return canPlayMonitorScrubPreview({
       fromUs,
@@ -499,6 +525,7 @@ export function useMonitorPlayback(options: UseMonitorPlaybackOptions) {
         }
 
         scheduleRender(normalizedTimeUs);
+        schedulePausedPrewarm(normalizedTimeUs);
       } else if (isNativeMonitor) {
         // Native monitor is the master clock: `currentTime` advances from
         // `monitor:time` (the bridge). Mirror it into the timecode/UI without

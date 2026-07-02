@@ -48,6 +48,9 @@ pub struct FfmpegNextDecoder {
     /// less than target until the requested position is reached. `None` = no active seek.
     pub(crate) seek_target: Option<f64>,
     hwaccel: Option<HwAccelContext>,
+    /// Last computed frame PTS (0-based seconds). Used as the base for the
+    /// no-PTS fallback in `frame_pts_sec` — see its doc comment.
+    last_pts_sec: f64,
 }
 
 impl FfmpegNextDecoder {
@@ -157,27 +160,40 @@ impl FfmpegNextDecoder {
             eof_sent: false,
             seek_target: None,
             hwaccel,
+            last_pts_sec: 0.0,
         })
     }
 
     /// FPS used to compute the frame-accurate seek tolerance; guarded against zero/invalid values.
     pub(crate) fn effective_fps(&self) -> f64 {
-        if self.info.fps.is_finite() && self.info.fps > 0.0 {
-            self.info.fps
-        } else {
-            30.0
-        }
+        self.info.effective_fps()
     }
 
     /// PTS of the decoded frame in 0-based (timeline-relative) seconds. The
     /// container's stream start time is subtracted so a file that begins at a
     /// non-zero PTS still reports its first frame at ~0s.
-    fn frame_pts_sec(&self, decoded: &ffmpeg::util::frame::Video) -> f64 {
-        decoded
+    ///
+    /// A frame with no PTS at all (rare malformed/streamed source) would otherwise
+    /// report a bogus `0.0` regardless of decode position — after a seek to `t > 0`
+    /// this makes the frame permanently look "before the seek target" (dropped
+    /// forever in the skip path, or cached under key 0 as a false floor-frame in the
+    /// keep-preseek path). Fall back to one frame past the last known PTS instead, so
+    /// the decoder's forward-progress accounting stays monotonic.
+    fn frame_pts_sec(&mut self, decoded: &ffmpeg::util::frame::Video) -> f64 {
+        let pts_sec = decoded
             .timestamp()
             .or_else(|| decoded.pts())
             .map(|pts| pts as f64 * rational_as_f64(self.stream_time_base) - self.start_time_sec)
-            .unwrap_or(0.0)
+            .unwrap_or_else(|| {
+                let fallback = self.last_pts_sec + 1.0 / self.effective_fps();
+                log::warn!(
+                    "[native-media] decoded frame with no PTS for {}, using fallback {fallback:.6}s",
+                    self.path.display()
+                );
+                fallback
+            });
+        self.last_pts_sec = pts_sec;
+        pts_sec
     }
 
     fn decode_frame(&mut self, decoded: &mut ffmpeg::util::frame::Video) -> Result<VideoFrame> {

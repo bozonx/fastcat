@@ -102,10 +102,48 @@ pub(super) fn is_refreshable_display_runtime(kind: LayerKind) -> bool {
     has_loaded_runtime(kind)
 }
 
-pub(super) fn layer_near_playhead(layer: &SceneLayer, t: f64, prewarm_lookahead_sec: f64) -> bool {
-    let keep_ahead = RUNTIME_KEEP_AHEAD_SEC.max(prewarm_lookahead_sec + 1.0);
-    layer.timeline_start_sec < t + keep_ahead
-        && layer.timeline_end_sec > t - RUNTIME_KEEP_BEHIND_SEC
+/// Keep window around the playhead for runtime eviction. `reverse` swaps which side
+/// gets the bigger (prewarm-lookahead-sized) margin: during reverse playback the
+/// clip about to be entered lies *earlier* on the timeline, so the generous margin
+/// must extend backward from `t`, not forward — otherwise a reverse-playing clip's
+/// upcoming neighbour is evicted right before the playhead reaches it (cold-start
+/// stutter at every cut), while the already-passed forward margin sits unused.
+pub(super) fn layer_near_playhead(
+    layer: &SceneLayer,
+    t: f64,
+    prewarm_lookahead_sec: f64,
+    reverse: bool,
+) -> bool {
+    let keep_margin = RUNTIME_KEEP_AHEAD_SEC.max(prewarm_lookahead_sec + 1.0);
+    if reverse {
+        layer.timeline_start_sec < t + RUNTIME_KEEP_BEHIND_SEC
+            && layer.timeline_end_sec > t - keep_margin
+    } else {
+        layer.timeline_start_sec < t + keep_margin
+            && layer.timeline_end_sec > t - RUNTIME_KEEP_BEHIND_SEC
+    }
+}
+
+/// Whether `layer` should be proactively opened/prewarmed because the playhead
+/// will reach it within `lookahead_sec`, given the transport direction. Checks
+/// interval OVERLAP between the layer's timeline span and the probe window
+/// `[t, t+lookahead]` (forward) or `[t-lookahead, t]` (reverse) — not just whether
+/// the single point `t ± lookahead` lands inside the layer. A point check misses
+/// short clips: at high transport speed the probe point can step clear over a clip
+/// shorter than one prewarm step without ever landing inside it, so it never gets
+/// prewarmed and starts cold at the cut.
+pub(super) fn layer_in_prewarm_window(
+    layer: &SceneLayer,
+    t: f64,
+    lookahead_sec: f64,
+    reverse: bool,
+) -> bool {
+    let (lo, hi) = if reverse {
+        (t - lookahead_sec, t)
+    } else {
+        (t, t + lookahead_sec)
+    };
+    layer.timeline_start_sec < hi && layer.timeline_end_sec > lo
 }
 
 pub(super) fn sanitize_transport_speed(speed: f64) -> f64 {
@@ -197,6 +235,37 @@ pub(super) fn approx_eq_opt_scale(a: Option<f32>, b: Option<f32>) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn prewarm_window_forward_checks_interval_not_point() {
+        // A clip that starts and ends strictly BETWEEN t and t+lookahead: the old
+        // point check `layer.covers(t + lookahead)` misses it entirely (neither
+        // endpoint of the probe lands inside the clip), so a short clip at high
+        // transport speed would never get prewarmed. The interval-overlap check
+        // must catch it.
+        let short_future = test_video_layer("short", 1.0, 1.2);
+        assert!(layer_in_prewarm_window(&short_future, 0.0, 2.0, false));
+        // Outside the window entirely → not prewarmed.
+        assert!(!layer_in_prewarm_window(&short_future, 0.0, 0.5, false));
+    }
+
+    #[test]
+    fn prewarm_window_reverse_probes_backward() {
+        // Reverse: the clip the playhead is backing toward lies BEFORE t, so the
+        // probe window must extend backward, not forward.
+        let past_clip = test_video_layer("past", 8.0, 8.5);
+        assert!(layer_in_prewarm_window(&past_clip, 9.0, 2.0, true));
+        // The same clip is irrelevant to a forward-playing probe from the same t.
+        assert!(!layer_in_prewarm_window(&past_clip, 9.0, 2.0, false));
+    }
+
+    #[test]
+    fn prewarm_window_excludes_clip_already_behind_reverse_direction() {
+        // A clip that lies AHEAD in timeline (i.e. behind the reverse-playing
+        // direction) must not be considered "coming up" for a reverse probe.
+        let ahead_clip = test_video_layer("ahead", 10.0, 12.0);
+        assert!(!layer_in_prewarm_window(&ahead_clip, 9.0, 2.0, true));
+    }
 
     #[test]
     fn sanitize_preview_fps_clamps_and_defaults() {

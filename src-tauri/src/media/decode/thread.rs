@@ -479,7 +479,7 @@ fn run_decoder_loop(args: DecoderLoopArgs) {
         texture_pool,
     } = args;
     // PTS tolerance for "reached the seek target", matching the decoder's own intra-GOP skip.
-    let seek_tolerance_sec = 0.5 / decoder.info().fps.max(1.0);
+    let seek_tolerance_sec = 0.5 / decoder.info().effective_fps();
     let mut prefer_yuv = device.is_some() && queue.is_some();
     let mut yuv_pipeline: Option<YuvToRgbaPipeline> = None;
     let mut yuv_upload_failures: u32 = 0;

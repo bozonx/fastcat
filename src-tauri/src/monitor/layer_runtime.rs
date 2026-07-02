@@ -326,11 +326,7 @@ impl VideoLayerRt {
     /// floored at `MIN_PREROLL_FRAMES` and capped at the cache capacity (extra frames
     /// would only be evicted). A disabled cache still warms `MIN_PREROLL_FRAMES`.
     pub fn warm_ahead_frame_count(&self) -> u32 {
-        let fps = if self.pump.info.fps > 0.0 {
-            self.pump.info.fps
-        } else {
-            30.0
-        };
+        let fps = self.pump.info.effective_fps();
         let by_lookahead = (WARM_AHEAD_LOOKAHEAD_SEC * fps).ceil() as u32 + 1;
         let cap = self.cache.capacity().max(MIN_PREROLL_FRAMES as usize) as u32;
         by_lookahead.clamp(MIN_PREROLL_FRAMES, cap)
@@ -346,7 +342,7 @@ impl VideoLayerRt {
     /// source (limited to 2 preroll frames) never has to wait for the full
     /// 0.2 s of frames that the budget cannot hold anyway.
     pub fn expected_preroll_duration(&self) -> f64 {
-        let fps = self.pump.info.fps.max(1.0);
+        let fps = self.pump.info.effective_fps();
         let frames = self.preroll_frame_count(PREROLL_LOOKAHEAD_SEC);
         // Subtract half a frame as a PTS tolerance so the readiness check
         // triggers as soon as the last requested frame is actually decoded,
@@ -355,13 +351,11 @@ impl VideoLayerRt {
     }
 
     /// Bounded number of warm-up frames: `ceil(lookahead * fps) + 1`, clamped by the
-    /// per-layer byte budget and the absolute frame cap. Always ≥ `MIN_PREROLL_FRAMES`.
+    /// per-layer byte budget, the frame-cache capacity (extra frames would just be
+    /// evicted before Play reads them), and the absolute frame cap. Always ≥
+    /// `MIN_PREROLL_FRAMES`.
     pub fn preroll_frame_count(&self, lookahead_sec: f64) -> u32 {
-        let fps = if self.pump.info.fps > 0.0 {
-            self.pump.info.fps
-        } else {
-            30.0
-        };
+        let fps = self.pump.info.effective_fps();
         let by_lookahead = (lookahead_sec.max(0.0) * fps).ceil() as u32 + 1;
         let frame_bytes = (self.media_size.0 as usize)
             .saturating_mul(self.media_size.1 as usize)
@@ -372,8 +366,10 @@ impl VideoLayerRt {
         // keyframe and Play doesn't start with a freeze on the first GOP decode.
         let by_memory =
             (PREROLL_BUDGET_BYTES / frame_bytes).max(MIN_PREROLL_FRAMES as usize) as u32;
+        let by_cache_capacity = self.cache.capacity().max(MIN_PREROLL_FRAMES as usize) as u32;
         by_lookahead
             .min(by_memory)
+            .min(by_cache_capacity)
             .clamp(MIN_PREROLL_FRAMES, MAX_PREROLL_FRAMES)
     }
 

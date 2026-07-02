@@ -115,15 +115,20 @@ impl PlaybackClock {
     /// backward. So the clock free-runs on the wall-clock (smooth, monotonic) and is
     /// hard-pulled to audio only on significant drift (outside the jitter window) —
     /// e.g. after an underrun/seek.
+    ///
+    /// No-op while paused: the audio engine only ever reports a PTS while playing
+    /// (`NativeAudioEngine::current_pts` returns `None` otherwise), so a paused call
+    /// here would be a stale/racing value. `pts_origin` while paused is authoritative
+    /// only from `seek`/`pause` — silently overwriting it here would clobber a user
+    /// seek performed while paused.
     pub fn sync_to_audio_pts(&mut self, audio_pts: f64) {
-        if let Some(origin) = self.wall_origin {
-            let elapsed = Instant::now().duration_since(origin).as_secs_f64();
-            let wall_pts = self.pts_origin + elapsed * self.speed;
-            if (wall_pts - audio_pts).abs() > Self::RESYNC_THRESHOLD_SEC {
-                self.pts_origin = audio_pts - elapsed * self.speed;
-            }
-        } else {
-            self.pts_origin = audio_pts.max(0.0);
+        let Some(origin) = self.wall_origin else {
+            return;
+        };
+        let elapsed = Instant::now().duration_since(origin).as_secs_f64();
+        let wall_pts = self.pts_origin + elapsed * self.speed;
+        if (wall_pts - audio_pts).abs() > Self::RESYNC_THRESHOLD_SEC {
+            self.pts_origin = audio_pts - elapsed * self.speed;
         }
     }
 }
@@ -219,6 +224,20 @@ mod tests {
         // seek() after pause must not restart the clock.
         assert!(!c.is_playing());
         assert_eq!(c.current_pts(), 7.0);
+    }
+
+    #[test]
+    fn sync_to_audio_pts_is_noop_while_paused() {
+        // Regression: a stale/racing audio_pts callback arriving while the clock is
+        // paused must never move `pts_origin` — otherwise it silently clobbers a user
+        // seek performed while paused.
+        let mut c = PlaybackClock::new();
+        c.seek(42.0);
+        c.pause();
+        c.sync_to_audio_pts(0.0);
+        assert_eq!(c.current_pts(), 42.0);
+        c.sync_to_audio_pts(100.0);
+        assert_eq!(c.current_pts(), 42.0);
     }
 
     #[test]

@@ -34,8 +34,9 @@ mod policy;
 use policy::{
     active_layer_indices, allows_stale_video_fallback, approx_eq_opt_scale,
     frame_cache_budget_bytes, has_loaded_runtime, is_refreshable_display_runtime,
-    layer_near_playhead, max_concurrent_video_layers_within, sanitize_transport_speed,
-    scaled_prewarm_lookahead_sec, svg_target_long_edge, transition_from_ids, video_sync_lag_sec,
+    layer_in_prewarm_window, layer_near_playhead, max_concurrent_video_layers_within,
+    sanitize_transport_speed, scaled_prewarm_lookahead_sec, svg_target_long_edge,
+    transition_from_ids, video_sync_lag_sec,
 };
 
 pub use policy::sanitize_preview_fps;
@@ -70,13 +71,23 @@ impl VideoRuntimeKey {
         Self {
             kind: layer.kind,
             path: layer.path.clone(),
-            source_start_bits: layer.source_start_sec.to_bits(),
-            source_range_duration_bits: layer.source_range_duration_sec.to_bits(),
-            speed_bits: layer.speed.to_bits(),
-            freeze_frame_source_bits: layer.freeze_frame_source_sec.map(f64::to_bits),
+            source_start_bits: normalized_f64_bits(layer.source_start_sec),
+            source_range_duration_bits: normalized_f64_bits(layer.source_range_duration_sec),
+            speed_bits: normalized_f64_bits(layer.speed),
+            freeze_frame_source_bits: layer.freeze_frame_source_sec.map(normalized_f64_bits),
             source_orientation: layer.source_orientation.clone(),
         }
     }
+}
+
+/// Bit-pattern of `v` normalized so `-0.0` and `0.0` compare equal. `f64::to_bits`
+/// distinguishes them, so without this a decode key comparison built from raw bits
+/// would see `-0.0` (e.g. a `source_start_sec` produced by a `0.0 * -1.0` somewhere
+/// upstream) and `0.0` as different sources and needlessly respawn the decoder.
+/// IEEE 754 addition of `-0.0 + 0.0` always yields `+0.0` (round-to-nearest), which
+/// is why this normalizes without a manual branch.
+fn normalized_f64_bits(v: f64) -> u64 {
+    (v + 0.0).to_bits()
 }
 
 // ---------------------------------------------------------------------------
@@ -95,8 +106,11 @@ pub struct LayerRuntimeManager {
     /// AV-sync policy for the preview.
     pub preview_sync_mode: PreviewSyncMode,
     pub preview_effect_quality: crate::compositor::effects::EffectQuality,
-    /// Global transport speed. Used to keep future-layer warmup measured in wall time:
-    /// at 4x a 1.5s timeline window leaves only 375ms to open/decode the next clip.
+    /// Global transport speed, SIGNED (negative = reverse). Magnitude keeps
+    /// future-layer warmup measured in wall time: at 4x a 1.5s timeline window
+    /// leaves only 375ms to open/decode the next clip. Sign decides which direction
+    /// `tick`/`evict_distant_runtimes` prewarm/keep-alive — on reverse the "future"
+    /// clip lies *earlier* on the timeline.
     playback_speed: f64,
     frame_cache_mode: NativeFrameCacheMode,
     frame_cache_custom_mb: u32,
@@ -182,7 +196,13 @@ impl LayerRuntimeManager {
     }
 
     pub fn set_playback_speed(&mut self, speed: f64) {
-        self.playback_speed = sanitize_transport_speed(speed).abs();
+        self.playback_speed = sanitize_transport_speed(speed);
+    }
+
+    /// True when the transport plays backward — the "future" clip that needs
+    /// prewarming/keep-alive lies *earlier* on the timeline than the playhead.
+    fn is_reverse(&self) -> bool {
+        self.playback_speed < 0.0
     }
 
     pub fn update_hw_settings(&mut self, hw_settings: crate::FfmpegHwSettings) -> bool {
@@ -811,11 +831,13 @@ impl LayerRuntimeManager {
         // Active layers are kept as indices into `scene`, not String id clones — otherwise
         // every frame (30–60 fps) would allocate strings for all visible layers.
         let active = active_layer_indices(&scene, t);
+        let reverse = self.is_reverse();
         for (i, layer) in scene.iter().enumerate() {
             if active.contains(&i) {
                 self.ensure_runtime_for(layer, device.clone(), queue.clone());
-            } else if layer.covers(t + self.prewarm_lookahead_sec()) {
-                // Proactively warm the decoder of a future layer
+            } else if layer_in_prewarm_window(layer, t, self.prewarm_lookahead_sec(), reverse) {
+                // Proactively warm the decoder of a future layer (the clip the
+                // playhead is about to reach, forward OR reverse).
                 self.ensure_runtime_for(layer, device.clone(), queue.clone());
             }
         }
@@ -929,9 +951,12 @@ impl LayerRuntimeManager {
         }
         // Ids of layers we keep: active ones (covers t / warming / transition-from)
         // OR close to the playhead within the keep window.
+        let reverse = self.is_reverse();
         let mut keep: HashSet<&str> = HashSet::new();
         for (i, layer) in scene.iter().enumerate() {
-            if active.contains(&i) || layer_near_playhead(layer, t, self.prewarm_lookahead_sec()) {
+            if active.contains(&i)
+                || layer_near_playhead(layer, t, self.prewarm_lookahead_sec(), reverse)
+            {
                 keep.insert(layer.id.as_str());
             }
         }
@@ -991,7 +1016,7 @@ impl LayerRuntimeManager {
                 // Paused + cache hit → show the frame without a blocking wait on decode
                 // (instant scrub from cache).
                 if !playing && rt.has_cached_near(clip_local, 1) {
-                    let lead = Some(1.0 / rt.pump.info.fps.max(1.0));
+                    let lead = Some(1.0 / rt.pump.info.effective_fps());
                     rt.update_display(clip_local, None, lead);
                     // Still warm ahead of the playhead for the subsequent Play. But the
                     // decoder may sit elsewhere (after a previous playback/scrub): warming
@@ -1034,7 +1059,7 @@ impl LayerRuntimeManager {
                 let lead = if playing {
                     None
                 } else {
-                    Some(1.0 / rt.pump.info.fps.max(1.0))
+                    Some(1.0 / rt.pump.info.effective_fps())
                 };
                 let shown = rt.update_display(
                     clip_local,
@@ -1098,7 +1123,7 @@ impl LayerRuntimeManager {
                     // ~(MIN_PREROLL_FRAMES - 0.5) / fps so the check passes as soon as
                     // those frames are in the cache.
                     let lookahead = rt.expected_preroll_duration();
-                    let fps = rt.pump.info.fps.max(1.0);
+                    let fps = rt.pump.info.effective_fps();
                     let half_frame = 0.5 / fps;
                     let video_duration = rt.pump.info.duration_sec;
                     // Clamp target to just before EOF so a playhead near the end of the
@@ -1154,6 +1179,7 @@ impl LayerRuntimeManager {
         // and shown at their tail position — otherwise scrubbing into a transition
         // shows the outgoing side missing or stale.
         let from_ids = transition_from_ids(&scene, t);
+        let reverse = self.is_reverse();
         for layer in scene.iter() {
             let is_covering = layer.covers(t);
             let is_from = !is_covering && from_ids.contains(&layer.id);
@@ -1163,7 +1189,8 @@ impl LayerRuntimeManager {
                 // pressed while the playhead sits/scrubs near a seam found the next clip
                 // unopened — it started "cold" and stuttered. While paused there is no
                 // active decode, so this creates no contention for CPU/permits.
-                if layer.kind == LayerKind::Video && layer.covers(t + self.prewarm_lookahead_sec())
+                if layer.kind == LayerKind::Video
+                    && layer_in_prewarm_window(layer, t, self.prewarm_lookahead_sec(), reverse)
                 {
                     self.ensure_runtime_for(layer, device.clone(), queue.clone());
                 }
@@ -1203,7 +1230,7 @@ impl LayerRuntimeManager {
                     }
                     rt.request_prebuffer();
                 }
-                let lead = Some(1.0 / rt.pump.info.fps.max(1.0));
+                let lead = Some(1.0 / rt.pump.info.effective_fps());
                 rt.update_display(clip_local, None, lead);
             }
         }
@@ -1264,6 +1291,7 @@ mod tests {
     use super::sanitize_preview_fps;
     use super::svg_target_long_edge;
     use super::video_sync_lag_sec;
+    use super::VideoRuntimeKey;
     use super::{BALANCED_VIDEO_SYNC_LAG_SEC, STRICT_VIDEO_SYNC_LAG_SEC};
     use crate::monitor::scene::build::layer_with_auto_source_rotation;
     use crate::monitor::scene::{LayerKind, PreviewSyncMode, SceneLayer};
@@ -1275,33 +1303,79 @@ mod tests {
 
         let l = video_layer_span("a", 10.0, 12.0);
         // Inside the clip.
-        assert!(layer_near_playhead(&l, 11.0, VIDEO_PREWARM_LOOKAHEAD_SEC));
+        assert!(layer_near_playhead(&l, 11.0, VIDEO_PREWARM_LOOKAHEAD_SEC, false));
         // Just past the end, within the behind grace → still kept.
         assert!(layer_near_playhead(
             &l,
             12.0 + RUNTIME_KEEP_BEHIND_SEC - 0.1,
-            VIDEO_PREWARM_LOOKAHEAD_SEC
+            VIDEO_PREWARM_LOOKAHEAD_SEC,
+            false
         ));
         // Far past the end → evicted.
         assert!(!layer_near_playhead(
             &l,
             12.0 + RUNTIME_KEEP_BEHIND_SEC + 0.1,
-            VIDEO_PREWARM_LOOKAHEAD_SEC
+            VIDEO_PREWARM_LOOKAHEAD_SEC,
+            false
         ));
         // Just before the start, within the ahead (prewarm) window → kept.
         assert!(layer_near_playhead(
             &l,
             10.0 - RUNTIME_KEEP_AHEAD_SEC + 0.1,
-            VIDEO_PREWARM_LOOKAHEAD_SEC
+            VIDEO_PREWARM_LOOKAHEAD_SEC,
+            false
         ));
         // Far before the start → not yet kept.
         assert!(!layer_near_playhead(
             &l,
             10.0 - RUNTIME_KEEP_AHEAD_SEC - 0.1,
-            VIDEO_PREWARM_LOOKAHEAD_SEC
+            VIDEO_PREWARM_LOOKAHEAD_SEC,
+            false
         ));
         // (`RUNTIME_KEEP_AHEAD_SEC >= VIDEO_PREWARM_LOOKAHEAD_SEC` is now enforced at
         // compile time next to the constants in `policy.rs`.)
+    }
+
+    // Reverse mirrors the forward case: the generous (prewarm-sized) margin swaps to
+    // the FRONT of the clip (the side the playhead is backing toward), and the small
+    // fixed grace swaps to the tail — the opposite of forward playback.
+    #[test]
+    fn layer_near_playhead_reverse_swaps_margins() {
+        use super::layer_near_playhead;
+        use super::{RUNTIME_KEEP_AHEAD_SEC, RUNTIME_KEEP_BEHIND_SEC, VIDEO_PREWARM_LOOKAHEAD_SEC};
+
+        let l = video_layer_span("a", 10.0, 12.0);
+        // Inside the clip.
+        assert!(layer_near_playhead(&l, 11.0, VIDEO_PREWARM_LOOKAHEAD_SEC, true));
+        // Just past the start (backing toward it), within the small grace → kept.
+        assert!(layer_near_playhead(
+            &l,
+            10.0 - RUNTIME_KEEP_BEHIND_SEC + 0.1,
+            VIDEO_PREWARM_LOOKAHEAD_SEC,
+            true
+        ));
+        // Far before the start → evicted.
+        assert!(!layer_near_playhead(
+            &l,
+            10.0 - RUNTIME_KEEP_BEHIND_SEC - 0.1,
+            VIDEO_PREWARM_LOOKAHEAD_SEC,
+            true
+        ));
+        // Just past the end, within the generous margin (the clip is ahead of the
+        // reverse-playing playhead) → kept.
+        assert!(layer_near_playhead(
+            &l,
+            12.0 + RUNTIME_KEEP_AHEAD_SEC - 0.1,
+            VIDEO_PREWARM_LOOKAHEAD_SEC,
+            true
+        ));
+        // Far past the end → not yet kept.
+        assert!(!layer_near_playhead(
+            &l,
+            12.0 + RUNTIME_KEEP_AHEAD_SEC + 0.1,
+            VIDEO_PREWARM_LOOKAHEAD_SEC,
+            true
+        ));
     }
 
     #[test]
@@ -1516,12 +1590,14 @@ mod tests {
         assert!(!layer_near_playhead(
             &layer,
             0.0,
-            VIDEO_PREWARM_LOOKAHEAD_SEC
+            VIDEO_PREWARM_LOOKAHEAD_SEC,
+            false
         ));
         assert!(layer_near_playhead(
             &layer,
             0.0,
-            VIDEO_PREWARM_LOOKAHEAD_SEC * 4.0
+            VIDEO_PREWARM_LOOKAHEAD_SEC * 4.0,
+            false
         ));
     }
 
@@ -1592,5 +1668,29 @@ mod tests {
             transition_out: None,
             effects: Vec::new(),
         }
+    }
+
+    // Regression: `-0.0` and `0.0` must decode-key equal, otherwise a layer whose
+    // `source_start_sec`/`speed`/etc. round-trips through `-0.0` (e.g. `0.0 * -1.0`
+    // somewhere upstream) would look "changed" every `apply_scene` and needlessly
+    // drop + reopen its decoder.
+    #[test]
+    fn video_runtime_key_treats_negative_zero_as_zero() {
+        let base = SceneLayer {
+            source_start_sec: 0.0,
+            source_range_duration_sec: 0.0,
+            freeze_frame_source_sec: Some(0.0),
+            ..test_video_layer(None)
+        };
+        let neg_zero = SceneLayer {
+            source_start_sec: -0.0,
+            source_range_duration_sec: -0.0,
+            freeze_frame_source_sec: Some(-0.0),
+            ..test_video_layer(None)
+        };
+        assert_eq!(
+            VideoRuntimeKey::from_layer(&base),
+            VideoRuntimeKey::from_layer(&neg_zero),
+        );
     }
 }
