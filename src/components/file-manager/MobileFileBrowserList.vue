@@ -90,7 +90,6 @@ const {
           <!-- Thumbnail / Icon Area -->
           <div
             class="relative w-12 h-12 rounded-xl bg-ui-bg flex items-center justify-center overflow-hidden shrink-0"
-            :class="{ 'thumbnail-checkerboard-bg': Boolean(thumbnailsByPath[entry.path]) }"
           >
             <template v-if="isCheckingCompatibility(entry)">
               <UIcon

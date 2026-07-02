@@ -273,7 +273,7 @@ function isEntrySelected(entry: FsEntry): boolean {
                       getBdThumbnail(entry)
                     "
                     :alt="entry.name"
-                    class="w-4 h-4 object-contain rounded-sm thumbnail-checkerboard-bg"
+                    class="w-4 h-4 object-contain rounded-sm"
                     draggable="false"
                     @error="handleImageError(entry)"
                   />

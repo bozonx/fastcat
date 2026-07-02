@@ -83,7 +83,6 @@ const {
           <!-- Thumbnail / Icon Area -->
           <div
             class="relative flex-1 w-full bg-ui-bg flex items-center justify-center overflow-hidden"
-            :class="{ 'thumbnail-checkerboard-bg': Boolean(thumbnailsByPath[entry.path]) }"
           >
             <template v-if="isCheckingCompatibility(entry)">
               <div

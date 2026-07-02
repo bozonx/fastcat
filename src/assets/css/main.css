@@ -468,21 +468,6 @@ select {
   background-repeat: repeat;
 }
 
-.thumbnail-checkerboard-bg {
-  background-color: #2f3338;
-  background-image:
-    linear-gradient(45deg, #4d535b 25%, transparent 25%),
-    linear-gradient(-45deg, #4d535b 25%, transparent 25%),
-    linear-gradient(45deg, transparent 75%, #4d535b 75%),
-    linear-gradient(-45deg, transparent 75%, #4d535b 75%);
-  background-size: 12px 12px;
-  background-position:
-    0 0,
-    0 6px,
-    6px -6px,
-    -6px 0;
-  background-repeat: repeat;
-}
 
 /* ==========================================================================
    Mobile Layout Form Overrides (.is-mobile-layout)
