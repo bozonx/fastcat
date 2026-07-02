@@ -5,7 +5,6 @@ import {
   addFileToTrack,
   clipIds,
   dragClipBy,
-  saveTimeline,
   trackIds,
   trimClipEdge,
 } from '../../utils/e2e/timeline';
@@ -38,18 +37,16 @@ test.describe('Web editor smoke workflow', () => {
     // Play briefly, then it auto-pauses inside the helper.
     await expectPlayheadAdvances(page, { forMs: 500 });
 
-    // Trim one edge shorter.
-    await trimClipEdge(page, clipId, 'end', -5);
-    await saveTimeline(page);
+    // Trim one edge shorter (in microseconds).
+    await trimClipEdge(page, clipId, 'end', -200_000);
     await waitForTimelineDoc(
       page,
       e2eProject,
       (d) => d.allClips[0].timelineDurationUs < baseDuration,
     );
 
-    // Move it later on the same track.
-    await dragClipBy(page, clipId, { x: 100 });
-    await saveTimeline(page);
+    // Move it later on the same track (in microseconds).
+    await dragClipBy(page, clipId, { x: 1_000_000 });
     const edited = await waitForTimelineDoc(
       page,
       e2eProject,

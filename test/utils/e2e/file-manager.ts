@@ -163,6 +163,18 @@ export async function openProjectFilesTab(page: Page): Promise<void> {
   await expect(page.getByTestId('file-upload-input').first()).toBeAttached({ timeout: 10_000 });
 }
 
+/**
+ * Navigates the file manager sidebar to the folder with the given name,
+ * so that its file entries become visible in the main panel.
+ */
+export async function navigateToFolder(page: Page, folderName: string): Promise<void> {
+  await openProjectFilesTab(page);
+  await page
+    .getByRole('treeitem', { name: folderName })
+    .click({ timeout: 5_000 })
+    .catch(() => undefined);
+}
+
 export async function setViewMode(page: Page, mode: 'grid' | 'list'): Promise<void> {
   await openProjectFilesTab(page);
   const toggle = page.getByTestId(mode === 'grid' ? 'file-view-grid' : 'file-view-list');

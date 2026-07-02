@@ -1,6 +1,6 @@
 import { test, expect, waitForEditorReady } from '../fixtures/workspace';
 import { MEDIA_FIXTURES } from '../../fixtures/media';
-import { seedProjectMedia } from '../../utils/e2e/file-manager';
+import { seedProjectMedia, navigateToFolder } from '../../utils/e2e/file-manager';
 import {
   addFileToTrack,
   clipIds,
@@ -22,8 +22,14 @@ test.describe('Web timeline reload persistence', () => {
     const image = await seedProjectMedia(page, e2eProject, MEDIA_FIXTURES.image.jpg, 'image');
 
     const trackIdsList = await trackIds(page);
+    await navigateToFolder(page, '_video');
+    await expect(page.locator(`[data-entry-path="${video.uiPath}"]`)).toBeVisible({ timeout: 5_000 });
     await addFileToTrack(page, video.uiPath, trackIdsList[0]);
+    await navigateToFolder(page, '_images');
+    await expect(page.locator(`[data-entry-path="${image.uiPath}"]`)).toBeVisible({ timeout: 5_000 });
     await addFileToTrack(page, image.uiPath, trackIdsList[1]);
+    await navigateToFolder(page, '_audio');
+    await expect(page.locator(`[data-entry-path="${audio.uiPath}"]`)).toBeVisible({ timeout: 5_000 });
     await addFileToTrack(page, audio.uiPath, trackIdsList.at(-1)!);
     await waitForTimelineDoc(page, e2eProject, (d) => d.allClips.length === 3);
 
@@ -31,8 +37,8 @@ test.describe('Web timeline reload persistence', () => {
     expect(ids.length).toBe(3);
 
     // Trim the first clip (video) and move the second (image) later.
-    await trimClipEdge(page, ids[0], 'end', -40);
-    await dragClipBy(page, ids[1], { x: 80 });
+    await trimClipEdge(page, ids[0], 'end', -400_000);
+    await dragClipBy(page, ids[1], { x: 800_000 });
 
     const edited = await waitForTimelineDoc(page, e2eProject, (d) => d.allClips.length === 3);
     const editedVideoDuration = edited.allClips[0].timelineDurationUs;

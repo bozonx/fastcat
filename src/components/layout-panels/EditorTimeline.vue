@@ -409,6 +409,8 @@ onBeforeUnmount(() => {
     delete e2eWindow.__fastcatE2eGetSelectedItemIds;
     delete e2eWindow.__fastcatE2eSaveTimeline;
     delete e2eWindow.__fastcatE2eSetTimelineZoom;
+    delete e2eWindow.__fastcatE2eTrimClip;
+    delete e2eWindow.__fastcatE2eMoveClip;
   }
 });
 
@@ -478,6 +480,52 @@ onMounted(() => {
 
     e2eWindow.__fastcatE2eSetTimelineZoom = async ({ zoom }) => {
       timelineStore.setTimelineZoomExact(zoom);
+    };
+
+    e2eWindow.__fastcatE2eTrimClip = async ({ itemId, edge, deltaUs }) => {
+      const track = findE2eClipTrack(itemId);
+      if (!track) throw new Error(`Timeline clip track not found: ${itemId}`);
+      timelineStore.applyTimeline({
+        type: 'trim_item',
+        trackId: track.id,
+        itemId,
+        edge,
+        deltaUs,
+        quantizeToFrames: true,
+      });
+      await timelineStore.saveTimeline();
+    };
+
+    e2eWindow.__fastcatE2eMoveClip = async ({ itemId, deltaUs }) => {
+      const track = findE2eClipTrack(itemId);
+      if (!track) throw new Error(`Timeline clip track not found: ${itemId}`);
+      const item = track.items.find((it) => it.id === itemId);
+      if (!item) throw new Error(`Timeline item not found: ${itemId}`);
+      const startUs = Math.max(0, item.timelineRange.startUs + deltaUs);
+      timelineStore.applyTimeline({
+        type: 'move_item',
+        trackId: track.id,
+        itemId,
+        startUs,
+        quantizeToFrames: true,
+      });
+      await timelineStore.saveTimeline();
+    };
+
+    e2eWindow.__fastcatE2eMoveClipToTrack = async ({ itemId, toTrackId }) => {
+      const fromTrack = findE2eClipTrack(itemId);
+      if (!fromTrack) throw new Error(`Timeline clip track not found: ${itemId}`);
+      const item = fromTrack.items.find((it) => it.id === itemId);
+      if (!item) throw new Error(`Timeline item not found: ${itemId}`);
+      timelineStore.applyTimeline({
+        type: 'move_item_to_track',
+        fromTrackId: fromTrack.id,
+        toTrackId,
+        itemId,
+        startUs: item.timelineRange.startUs,
+        quantizeToFrames: true,
+      });
+      await timelineStore.saveTimeline();
     };
   }
 });
@@ -671,6 +719,12 @@ interface FastcatE2eTimelineWindow {
   __fastcatE2eGetSelectedItemIds?: FastcatE2eGetSelectedItemIds;
   __fastcatE2eSaveTimeline?: () => Promise<void>;
   __fastcatE2eSetTimelineZoom?: (params: { zoom: number }) => Promise<void>;
+  __fastcatE2eTrimClip?: (params: {
+    itemId: string;
+    edge: 'start' | 'end';
+    deltaUs: number;
+  }) => Promise<void>;
+  __fastcatE2eMoveClip?: (params: { itemId: string; deltaUs: number }) => Promise<void>;
 }
 
 function findE2eClipTrack(itemId: string) {

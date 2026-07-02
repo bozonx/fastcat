@@ -11,12 +11,14 @@ interface Props {
   blendMode?: TimelineBlendMode;
   blendModeOptions?: Array<{ value: TimelineBlendMode; label: string }>;
   showBlendMode?: boolean;
+  defaultAlpha?: number;
 }
 
 const props = withDefaults(defineProps<Props>(), {
   blendMode: 'normal',
   blendModeOptions: () => [],
   showBlendMode: true,
+  defaultAlpha: 1,
 });
 
 const emit = defineEmits<{
@@ -30,6 +32,10 @@ const { t } = useI18n();
 const alphaPercent = computed({
   get: () => Math.round(Math.max(0, Math.min(1, props.alpha)) * 100),
   set: (v: number) => emit('update:alpha', Math.max(0, Math.min(100, Number(v))) / 100),
+});
+
+const defaultAlphaPercent = computed(() => {
+  return Math.round(Math.max(0, Math.min(1, props.defaultAlpha)) * 100);
 });
 
 const colorText = ref(props.color);
@@ -101,6 +107,7 @@ function commitColorText() {
         :step="1"
         unit="%"
         :decimals="0"
+        :default-value="defaultAlphaPercent"
       />
       <div class="flex flex-col gap-0.5">
         <span class="text-xs text-ui-text-muted">{{ t('fastcat.textClip.webColor') }}</span>

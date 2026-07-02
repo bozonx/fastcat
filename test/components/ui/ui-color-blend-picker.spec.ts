@@ -16,10 +16,20 @@ const stubs = {
       '<select @change="$emit(\'update:modelValue\', $event.target.value)"><option value="normal">Normal</option></select>',
   },
   UiSliderInput: {
-    props: ['modelValue', 'label', 'min', 'max', 'step', 'unit', 'decimals'],
+    props: [
+      'modelValue',
+      'label',
+      'min',
+      'max',
+      'step',
+      'unit',
+      'decimals',
+      'defaultValue',
+      'showInput',
+    ],
     emits: ['update:modelValue'],
     template:
-      '<input type="range" :value="modelValue" @input="$emit(\'update:modelValue\', Number($event.target.value))" />',
+      '<input type="range" :value="modelValue" :data-default-value="defaultValue" @input="$emit(\'update:modelValue\', Number($event.target.value))" />',
   },
   UiTextInput: {
     props: ['modelValue', 'placeholder', 'size', 'fullWidth', 'mono'],
@@ -62,6 +72,16 @@ describe('UiColorBlendPicker', () => {
     await slider.setValue(80);
 
     expect(component.emitted('update:alpha')).toBeTruthy();
+  });
+
+  it('passes defaultValue percent to UiSliderInput', async () => {
+    const component = await mountSuspended(UiColorBlendPicker, {
+      props: { color: '#ff0000', alpha: 0.5, defaultAlpha: 1 },
+      global: { stubs },
+    });
+
+    const slider = component.find('input[type="range"]');
+    expect(slider.attributes('data-default-value')).toBe('100');
   });
 
   it('hides blend mode section when showBlendMode is false', async () => {

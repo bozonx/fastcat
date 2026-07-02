@@ -24,7 +24,7 @@ test.describe('Web timeline trim', () => {
     const clipId = await projectWithOneClip(page, e2eProject);
     const before = (await readTimelineDoc(page, e2eProject)).allClips[0].timelineDurationUs;
 
-    await trimClipEdge(page, clipId, 'end', -40);
+    await trimClipEdge(page, clipId, 'end', -400_000);
 
     const doc = await waitForTimelineDoc(
       page,
@@ -38,7 +38,7 @@ test.describe('Web timeline trim', () => {
     const clipId = await projectWithOneClip(page, e2eProject);
     const c0 = (await readTimelineDoc(page, e2eProject)).allClips[0];
 
-    await trimClipEdge(page, clipId, 'start', 40);
+    await trimClipEdge(page, clipId, 'start', 400_000);
 
     const doc = await waitForTimelineDoc(
       page,
@@ -55,7 +55,7 @@ test.describe('Web timeline trim', () => {
     const clipId = await projectWithOneClip(page, e2eProject);
 
     // Drag the end handle far past the clip's own start.
-    await trimClipEdge(page, clipId, 'end', -5000);
+    await trimClipEdge(page, clipId, 'end', -50_000_000);
 
     const doc = await waitForTimelineDoc(page, e2eProject, (d) => d.allClips.length === 1);
     expect(doc.allClips[0].timelineDurationUs).toBeGreaterThan(0);
@@ -65,7 +65,7 @@ test.describe('Web timeline trim', () => {
     const clipId = await projectWithOneClip(page, e2eProject);
     const before = (await readTimelineDoc(page, e2eProject)).allClips[0];
 
-    await trimClipEdge(page, clipId, 'start', -500);
+    await trimClipEdge(page, clipId, 'start', -50_000_000);
 
     const doc = await waitForTimelineDoc(page, e2eProject, (d) => d.allClips.length === 1);
     expect(doc.allClips[0].sourceStartUs).toBe(before.sourceStartUs);
@@ -75,7 +75,7 @@ test.describe('Web timeline trim', () => {
   test('trimmed clip persists across reload', async ({ page, e2eProject }) => {
     const clipId = await projectWithOneClip(page, e2eProject);
     const before = (await readTimelineDoc(page, e2eProject)).allClips[0].timelineDurationUs;
-    await trimClipEdge(page, clipId, 'end', -40);
+    await trimClipEdge(page, clipId, 'end', -400_000);
     const trimmed = (
       await waitForTimelineDoc(page, e2eProject, (d) => d.allClips[0].timelineDurationUs < before)
     ).allClips[0].timelineDurationUs;

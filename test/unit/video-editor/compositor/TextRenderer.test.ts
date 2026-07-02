@@ -23,6 +23,9 @@ class FakeCtx {
   textAlign = '';
   lineWidth = 0;
   letterSpacing = '0px';
+  // Records each text draw with the composite op in effect, for regression asserts.
+  strokeCalls: { op: string; lineWidth: number }[] = [];
+  fillCalls: { op: string }[] = [];
   constructor(public canvas: FakeCanvas) {}
   clearRect() {}
   save() {}
@@ -34,8 +37,12 @@ class FakeCtx {
   quadraticCurveTo() {}
   fill() {}
   stroke() {}
-  fillText() {}
-  strokeText() {}
+  fillText() {
+    this.fillCalls.push({ op: this.globalCompositeOperation });
+  }
+  strokeText() {
+    this.strokeCalls.push({ op: this.globalCompositeOperation, lineWidth: this.lineWidth });
+  }
   measureText(t: string) {
     const m = /(\d+(?:\.\d+)?)px/.exec(this.font);
     const size = m ? Number(m[1]) : 16;
@@ -129,5 +136,37 @@ describe('TextRenderer + LayoutApplier integration', () => {
     expect(sprite.texture.orig.height).toBeGreaterThan(singleLineHeight * 3);
     expect(sprite.scale.x).toBeCloseTo(1, 3);
     expect(sprite.scale.y).toBeCloseTo(1, 3);
+  });
+
+  it('dilates the shadow with spread and never cuts the spread stroke back out', () => {
+    const renderer = new TextRenderer({ designWidth: W, designHeight: H });
+    const clip = createTextClip('Text');
+    (clip as unknown as { style: Record<string, unknown> }).style = {
+      fontSize: 64,
+      lineHeight: 1.2,
+      textShadowEnabled: true,
+      textShadowColor: '#000000',
+      textShadowAlpha: 1,
+      textShadowBlur: 10,
+      textShadowSpread: 14,
+      textShadowOffsetX: 0,
+      textShadowOffsetY: 4,
+    };
+
+    renderer.draw(clip, W, H);
+    const ctx = clip.ctx as unknown as FakeCtx;
+
+    // Spread must dilate the shadow: a stroke pass runs while compositing normally.
+    const dilationStrokes = ctx.strokeCalls.filter(
+      (c) => c.op === 'source-over' && c.lineWidth > 0,
+    );
+    expect(dilationStrokes.length).toBeGreaterThan(0);
+
+    // Regression guard: the destination-out "cut" pass must remove only the glyph
+    // FILL (interior). Stroking in destination-out would cancel the dilation above
+    // and collapse the shadow into a thin outline detached from the text.
+    const cutStrokes = ctx.strokeCalls.filter((c) => c.op === 'destination-out');
+    expect(cutStrokes).toEqual([]);
+    expect(ctx.fillCalls.some((c) => c.op === 'destination-out')).toBe(true);
   });
 });

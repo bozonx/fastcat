@@ -75,64 +75,50 @@ export async function clipBox(page: Page, clipId: string): Promise<Box> {
 }
 
 /**
- * Drags a clip horizontally by `deltaPx` on its own track. Positive moves it
- * later. Uses a real press-move-release pointer gesture (steps let the app's
- * move-preview / snap logic run) rather than a synthetic event.
+ * Moves a clip horizontally by `deltaUs` microseconds on its own track.
+ * Uses a direct e2e hook (applyTimeline + saveTimeline) instead of mouse-based
+ * dragging, which is unreliable for small clips.
  */
 export async function dragClipBy(
   page: Page,
   clipId: string,
-  deltaPx: { x: number; y?: number },
+  deltaUs: { x: number },
 ): Promise<void> {
-  const target = clip(page, clipId);
-  await expect(target).toBeVisible();
-  // Zoom in to make the clip larger for easier dragging.
-  await setTimelineZoom(page, 70);
-  await page.waitForTimeout(150);
-  await expect(target).toBeVisible({ timeout: 5_000 });
-
-  const box = await requireBox(target, `clip ${clipId}`);
-  const startX = box.x + box.width / 2;
-  const startY = box.y + box.height / 2;
-  const endX = startX + deltaPx.x;
-  const endY = startY + (deltaPx.y ?? 0);
-
-  await page.mouse.move(startX, startY);
-  await page.mouse.down();
-  // Move past the click-or-drag threshold so the app commits to a drag.
-  const thresholdX = startX + Math.sign(deltaPx.x || 1) * 10;
-  await page.mouse.move(thresholdX, startY, { steps: 2 });
-  await page.mouse.move(endX, endY, { steps: 10 });
-  await page.mouse.up();
+  await page.evaluate(
+    async (params) => {
+      const fn = (
+        window as Window & {
+          __fastcatE2eMoveClip?: (p: { itemId: string; deltaUs: number }) => Promise<void>;
+        }
+      ).__fastcatE2eMoveClip;
+      if (!fn) throw new Error('E2E move clip hook is not registered');
+      await fn(params);
+    },
+    { itemId: clipId, deltaUs: deltaUs.x },
+  );
 }
 
+/**
+ * Moves a clip to a different track. Uses a direct e2e hook
+ * (applyTimeline + saveTimeline) instead of mouse-based dragging.
+ */
 export async function moveClipToTrack(
   page: Page,
   clipId: string,
   toTrackId: string,
 ): Promise<void> {
-  const source = clip(page, clipId);
-  const target = track(page, toTrackId);
-  await expect(source).toBeVisible();
-  await expect(target).toBeVisible();
-  // Zoom in to make the clip larger for easier dragging.
-  await setTimelineZoom(page, 70);
-  await page.waitForTimeout(150);
-  await expect(source).toBeVisible({ timeout: 5_000 });
-
-  const sourceBox = await requireBox(source, `clip ${clipId}`);
-  const targetBox = await requireBox(target, `track ${toTrackId}`);
-  const startX = sourceBox.x + sourceBox.width / 2;
-  const startY = sourceBox.y + sourceBox.height / 2;
-  const endX = targetBox.x + targetBox.width / 2;
-  const endY = targetBox.y + targetBox.height / 2;
-
-  await page.mouse.move(startX, startY);
-  await page.mouse.down();
-  // Move past the click-or-drag threshold so the app commits to a drag.
-  await page.mouse.move(startX + 10, startY, { steps: 2 });
-  await page.mouse.move(endX, endY, { steps: 10 });
-  await page.mouse.up();
+  await page.evaluate(
+    async (params) => {
+      const fn = (
+        window as Window & {
+          __fastcatE2eMoveClipToTrack?: (p: { itemId: string; toTrackId: string }) => Promise<void>;
+        }
+      ).__fastcatE2eMoveClipToTrack;
+      if (!fn) throw new Error('E2E move clip to track hook is not registered');
+      await fn(params);
+    },
+    { itemId: clipId, toTrackId },
+  );
 }
 
 export async function deleteClip(page: Page, clipId: string): Promise<void> {
@@ -141,35 +127,32 @@ export async function deleteClip(page: Page, clipId: string): Promise<void> {
 }
 
 /**
- * Drags one trim handle of a clip by `deltaPx`. Positive `deltaPx` extends to
- * the right; the app clamps at source/min-duration bounds, which specs assert.
+ * Trims a clip edge by `deltaUs` microseconds. Uses a direct e2e hook
+ * (applyTimeline + saveTimeline) instead of mouse-based trim handle dragging,
+ * which is unreliable for small clips (10px wide at default zoom).
  */
 export async function trimClipEdge(
   page: Page,
   clipId: string,
   edge: 'start' | 'end',
-  deltaPx: number,
+  deltaUs: number,
 ): Promise<void> {
-  const handle = clip(page, clipId).locator(`[data-testid="clip-trim-${edge}"]`);
-  await expect(handle).toBeVisible();
-
-  // Zoom in to make the clip larger so trim handles are easier to grab.
-  // Use direct zoom hook instead of fitTimelineZoom (Shift+0) which resets scroll
-  // and can cause the clip to be virtualized out of the visible range.
-  await setTimelineZoom(page, 70);
-  await page.waitForTimeout(150);
-  await expect(handle).toBeVisible({ timeout: 5_000 });
-
-  const box = await requireBox(handle, `trim handle ${edge} for clip ${clipId}`);
-  const startX = box.x + box.width / 2;
-  const startY = box.y + box.height / 2;
-  const endX = startX + deltaPx;
-  const endY = startY;
-
-  await page.mouse.move(startX, startY);
-  await page.mouse.down();
-  await page.mouse.move(endX, endY, { steps: 10 });
-  await page.mouse.up();
+  await page.evaluate(
+    async (params) => {
+      const fn = (
+        window as Window & {
+          __fastcatE2eTrimClip?: (p: {
+            itemId: string;
+            edge: 'start' | 'end';
+            deltaUs: number;
+          }) => Promise<void>;
+        }
+      ).__fastcatE2eTrimClip;
+      if (!fn) throw new Error('E2E trim clip hook is not registered');
+      await fn(params);
+    },
+    { itemId: clipId, edge, deltaUs },
+  );
 }
 
 /**

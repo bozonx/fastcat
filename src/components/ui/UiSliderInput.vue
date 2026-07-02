@@ -32,7 +32,7 @@ const props = withDefaults(
     sliderClass: '',
     wheelWithoutFocus: false,
     disabled: false,
-    showInput: false,
+    showInput: true,
   },
 );
 
@@ -65,7 +65,7 @@ function onInputUpdate(value: unknown) {
       >
         {{ label }}
       </span>
-      <span class="text-2xs text-ui-text-muted font-mono leading-none">
+      <span v-if="!showInput" class="text-2xs text-ui-text-muted font-mono leading-none">
         {{ displayValueInLabel }}
       </span>
     </div>

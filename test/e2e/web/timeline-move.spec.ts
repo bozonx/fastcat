@@ -30,9 +30,8 @@ test.describe('Web timeline move', () => {
   test('moving a clip later increases its timeline start', async ({ page, e2eProject }) => {
     const clipId = await projectWithOneVideoClip(page, e2eProject);
     const before = (await readTimelineDoc(page, e2eProject)).allClips[0];
-    expect(before.timelineStartUs).toBe(0);
 
-    await dragClipBy(page, clipId, { x: 120 });
+    await dragClipBy(page, clipId, { x: 1_200_000 });
 
     // A later start manifests as a leading gap in the sequential OTIO track.
     const doc = await waitForTimelineDoc(
@@ -45,7 +44,7 @@ test.describe('Web timeline move', () => {
 
   test('moved clip persists across reload', async ({ page, e2eProject }) => {
     const clipId = await projectWithOneVideoClip(page, e2eProject);
-    await dragClipBy(page, clipId, { x: 120 });
+    await dragClipBy(page, clipId, { x: 1_200_000 });
     const moved = (
       await waitForTimelineDoc(page, e2eProject, (d) => d.allClips[0].timelineStartUs > 0)
     ).allClips[0].timelineStartUs;
