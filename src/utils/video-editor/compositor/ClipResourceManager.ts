@@ -16,6 +16,7 @@ import {
 import type { CanvasFallbackRenderer } from './renderers/CanvasFallbackRenderer';
 import type { WebGpuComputeRunner } from './WebGpuComputeRunner';
 import { buildEffectSpecs } from '~/effects';
+import { compositorPerfStats } from './CompositorPerfStats';
 const log = createDevLogger('ClipResourceManager');
 
 function fastHash(input: unknown): string {
@@ -41,8 +42,22 @@ export interface ClipResourceManagerContext {
   getApp?: () => Application;
 }
 
+interface ClipWarmStream {
+  iterator: AsyncGenerator<{
+    timestamp: number;
+    toVideoFrame?: () => VideoFrame;
+    close?: () => void;
+  } | null>;
+  /** Source PTS (s) of the last consumed sample — the stream's warm frontier. */
+  lastTimeS: number;
+  /** Playhead source time (s) of the previous warm tick — for seek detection. */
+  lastNowS: number;
+  done: boolean;
+}
+
 export class ClipResourceManager {
   private readonly inFlightSamples = new Map<string, Promise<unknown | null>>();
+  private readonly clipWarmStreams = new Map<string, ClipWarmStream>();
 
   constructor(private readonly context: ClipResourceManagerContext) {}
 
@@ -296,6 +311,7 @@ export class ClipResourceManager {
 
     const cached = this.context.videoFrameCache.get(cacheKey);
     if (cached) {
+      compositorPerfStats.onCacheHit();
       return {
         toVideoFrame: () => {
           if ((cached.frame as { closed?: boolean }).closed) {
@@ -311,6 +327,7 @@ export class ClipResourceManager {
       return inFlight;
     }
 
+    const decodeStartMs = performance.now();
     const promise = this.fetchVideoSampleForClip(
       clip,
       sampleTimeS,
@@ -326,6 +343,7 @@ export class ClipResourceManager {
       return await promise;
     } finally {
       this.inFlightSamples.delete(cacheKey);
+      compositorPerfStats.onDecode(performance.now() - decodeStartMs);
     }
   }
 
@@ -453,69 +471,132 @@ export class ClipResourceManager {
     });
   }
 
-  // Decode-ahead a window of a clip's upcoming frames into the cache using the
-  // sequential sink pipeline (`samplesAtTimestamps` — decodes each packet at most
-  // once for monotonic timestamps), so the render path serves them as cache hits
-  // instead of paying a from-keyframe `getSample` decode per displayed frame. Only
-  // frames not already cached are requested. The caller must run this inside the
-  // compositor's exclusive op so the sequential read never overlaps a render's read
-  // of the same sink.
+  // Decode-ahead of the currently-playing clips via a PERSISTENT sequential
+  // iterator (`sink.samples(start, end)` — mediabunny's "decode each packet at
+  // most once" pipeline). The iterator lives across prewarm ticks in
+  // `clipWarmStreams`, so each tick only decodes the handful of NEW frames that
+  // entered the look-ahead window — this is what makes decode-ahead cheap. A
+  // fresh-per-tick batch (`samplesAtTimestamps`) was measured re-seeking from the
+  // previous keyframe on every tick, which on long-GOP sources made the warm pass
+  // itself hold the exclusive op queue for ~1.3s/3s and starve renders. The caller
+  // must run this inside the compositor's exclusive op so the sequential read
+  // never overlaps a render's read of the same sink.
   public async warmClipFrameWindow(params: {
     clip: CompositorClip;
-    frames: Array<{ sourceTimeS: number; timelineTimeUs: number }>;
+    nowSourceTimeS: number;
+    aheadSourceTimeS: number;
+    timelineNowUs: number;
+    speed: number;
   }): Promise<void> {
     const { clip } = params;
     const sink = clip.sink as unknown as {
-      samplesAtTimestamps?: (
-        timestamps: number[],
-      ) => AsyncGenerator<{ toVideoFrame?: () => VideoFrame; close?: () => void } | null>;
+      samples?: (
+        startTimestamp?: number,
+        endTimestamp?: number,
+      ) => AsyncGenerator<{
+        timestamp: number;
+        toVideoFrame?: () => VideoFrame;
+        close?: () => void;
+      } | null>;
     } | null;
-    if (!sink || typeof sink.samplesAtTimestamps !== 'function') return;
+    if (!sink || typeof sink.samples !== 'function') return;
 
-    // Pair each requested source time with the cache slot it fills, dropping frames
-    // that are already cached so a warm pass never redecodes a hot frame. Timestamps
-    // stay in ascending order (frames were built forward), keeping the decoder's
-    // optimized monotonic path.
-    const plan = params.frames
-      .map((f) => {
-        const frameIndex = computeFrameIndex(clip, f.sourceTimeS);
-        return {
-          sourceTimeS: f.sourceTimeS,
-          timelineTimeUs: f.timelineTimeUs,
-          frameIndex,
-          cacheKey: buildVideoFrameCacheKey(clip, frameIndex),
-        };
-      })
-      .filter((p) => !this.context.videoFrameCache.get(p.cacheKey));
-    if (plan.length === 0) return;
+    const warmStartMs = performance.now();
+    let stream = this.clipWarmStreams.get(clip.itemId);
 
-    let index = 0;
-    for await (const sample of sink.samplesAtTimestamps(plan.map((p) => p.sourceTimeS))) {
-      const target = plan[index];
-      index += 1;
-      if (!target) {
-        sample?.close?.();
-        continue;
+    // Reopen when the playhead left the stream's coverage: moved backward since
+    // the previous tick (the forward-only iterator can't rewind — compare against
+    // the previous PLAYHEAD position, not the warm frontier, which is legitimately
+    // ahead of the playhead during normal playback) or jumped forward past the
+    // frontier (pulling the iterator across a large gap would decode every
+    // in-between frame).
+    const STALE_BACK_S = 0.05;
+    const STALE_FORWARD_GAP_S = 1.0;
+    if (
+      stream &&
+      (params.nowSourceTimeS < stream.lastNowS - STALE_BACK_S ||
+        params.nowSourceTimeS > stream.lastTimeS + STALE_FORWARD_GAP_S)
+    ) {
+      this.disposeWarmStream(clip.itemId);
+      stream = undefined;
+    }
+
+    if (!stream) {
+      const rangeEndS =
+        clip.sourceRangeDurationUs > 0
+          ? (clip.sourceStartUs + clip.sourceRangeDurationUs) / 1_000_000
+          : undefined;
+      stream = {
+        iterator: sink.samples(params.nowSourceTimeS, rangeEndS),
+        lastTimeS: params.nowSourceTimeS,
+        lastNowS: params.nowSourceTimeS,
+        done: false,
+      };
+      this.clipWarmStreams.set(clip.itemId, stream);
+    }
+    stream.lastNowS = params.nowSourceTimeS;
+
+    let framesStored = 0;
+    while (!stream.done && stream.lastTimeS < params.aheadSourceTimeS) {
+      const { value: sample, done } = await stream.iterator.next();
+      if (done || !sample) {
+        stream.done = true;
+        break;
       }
-      if (!sample || typeof sample.toVideoFrame !== 'function') {
-        continue;
+
+      const sampleTimeS = Number(sample.timestamp);
+      if (Number.isFinite(sampleTimeS)) {
+        stream.lastTimeS = Math.max(stream.lastTimeS, sampleTimeS);
       }
+
       try {
-        // Re-check the cache: a duplicate source frame (sample-and-hold at the clip
-        // frame rate) can map two plan entries to one key, and the render path may
-        // have filled the slot between planning and here.
-        if (!this.context.videoFrameCache.get(target.cacheKey)) {
-          const frame = sample.toVideoFrame() as VideoFrame;
-          this.storeDecodedFrame({
-            clip,
-            frameIndex: target.frameIndex,
-            cacheKey: target.cacheKey,
-            timelineTimeUs: target.timelineTimeUs,
-            frame,
-          });
-        }
+        if (typeof sample.toVideoFrame !== 'function') continue;
+        // Key by the sample's own PTS — the exact index the render path computes
+        // for any playback time that sample-and-holds this frame.
+        const frameIndex = computeFrameIndex(clip, sampleTimeS);
+        const cacheKey = buildVideoFrameCacheKey(clip, frameIndex);
+        if (this.context.videoFrameCache.get(cacheKey)) continue;
+
+        // Timeline slot of this source frame (for scrub-locality eviction).
+        const speed = params.speed > 0 ? params.speed : 1;
+        const timelineTimeUs =
+          params.timelineNowUs +
+          Math.max(
+            0,
+            Math.round((sampleTimeS * 1_000_000 - params.nowSourceTimeS * 1_000_000) / speed),
+          );
+
+        this.storeDecodedFrame({
+          clip,
+          frameIndex,
+          cacheKey,
+          timelineTimeUs,
+          frame: sample.toVideoFrame() as VideoFrame,
+        });
+        framesStored += 1;
       } finally {
         sample.close?.();
+      }
+    }
+
+    compositorPerfStats.onPrewarm(framesStored, performance.now() - warmStartMs);
+  }
+
+  // Release a clip's persistent decode-ahead iterator (and its decoder resources).
+  public disposeWarmStream(clipId: string): void {
+    const stream = this.clipWarmStreams.get(clipId);
+    if (!stream) return;
+    this.clipWarmStreams.delete(clipId);
+    void stream.iterator.return?.(undefined)?.catch?.(() => undefined);
+  }
+
+  // Drop decode-ahead iterators for every clip NOT in the given active set —
+  // called from the prewarm tick so streams never outlive their clip's time under
+  // the playhead.
+  public pruneWarmStreams(activeClipIds: ReadonlySet<string>): void {
+    for (const clipId of [...this.clipWarmStreams.keys()]) {
+      if (!activeClipIds.has(clipId)) {
+        this.disposeWarmStream(clipId);
       }
     }
   }
@@ -716,6 +797,7 @@ export class ClipResourceManager {
   }
 
   public destroyClip(clip: CompositorClip, deps: { transitionManager: TransitionManager }) {
+    this.disposeWarmStream(clip.itemId);
     // Primary samples are keyed `${itemId}:idx`; HUD/mask mock clips use the
     // suffixed ids `${itemId}_bg:`, `_ct:`, `_fr:` and `_mask:`. Drop in-flight
     // tracking for all of them so a destroyed clip leaves nothing behind.

@@ -102,20 +102,44 @@ describe('ClipResourceManager.warmClipFrameWindow', () => {
     };
   }
 
+  // A sequential sink yielding 25fps frames from the requested start time. Tracks
+  // opened iterators and whether they were finalized via return().
   function createSinkMock() {
-    const calls: number[][] = [];
-    const closed: number[] = [];
+    const opens: Array<{ startS: number | undefined; endS: number | undefined }> = [];
+    const finalized: number[] = [];
     return {
-      calls,
-      closed,
-      samplesAtTimestamps: vi.fn(async function* (timestamps: number[]) {
-        calls.push(timestamps);
-        for (let i = 0; i < timestamps.length; i += 1) {
-          yield {
-            toVideoFrame: () => ({ codedWidth: 128, codedHeight: 72, closed: false }),
-            close: () => closed.push(i),
-          };
-        }
+      opens,
+      finalized,
+      samples: vi.fn((startS?: number, endS?: number) => {
+        const openIndex = opens.length;
+        opens.push({ startS, endS });
+        let t = Math.ceil((startS ?? 0) * 25 - 1e-6) / 25;
+        const iterator: AsyncGenerator<unknown> = {
+          async next() {
+            if (endS !== undefined && t >= endS) return { value: undefined, done: true };
+            const timestamp = t;
+            t += 1 / 25;
+            return {
+              value: {
+                timestamp,
+                toVideoFrame: () => ({ codedWidth: 128, codedHeight: 72, closed: false }),
+                close: () => undefined,
+              },
+              done: false,
+            };
+          },
+          async return() {
+            finalized.push(openIndex);
+            return { value: undefined, done: true };
+          },
+          async throw() {
+            return { value: undefined, done: true };
+          },
+          [Symbol.asyncIterator]() {
+            return this;
+          },
+        } as AsyncGenerator<unknown>;
+        return iterator;
       }),
     };
   }
@@ -127,51 +151,109 @@ describe('ClipResourceManager.warmClipFrameWindow', () => {
       frameRate: 25,
       firstTimestampS: 0,
       startUs: 0,
+      sourceStartUs: 0,
+      sourceRangeDurationUs: 10_000_000,
       sink,
     } as unknown as CompositorClip;
   }
 
-  it('decode-ahead uses the sequential pipeline and caches by frame index', async () => {
+  it('warms the look-ahead window through a sequential iterator, keyed by PTS frame index', async () => {
     const videoFrameCache = createCacheMock();
     const sink = createSinkMock();
     const manager = createManager({ videoFrameCache: videoFrameCache as any });
 
     await manager.warmClipFrameWindow({
       clip: createVideoClip(sink),
-      frames: [
-        { sourceTimeS: 0.04, timelineTimeUs: 40_000 },
-        { sourceTimeS: 0.08, timelineTimeUs: 80_000 },
-      ],
+      nowSourceTimeS: 0,
+      aheadSourceTimeS: 0.12,
+      timelineNowUs: 0,
+      speed: 1,
     });
 
-    // One monotonic batch, not per-frame getSample calls.
-    expect(sink.samplesAtTimestamps).toHaveBeenCalledTimes(1);
-    expect(sink.calls[0]).toEqual([0.04, 0.08]);
-    // frameIndex = floor(t * 25): 0.04 -> 1, 0.08 -> 2.
-    expect(videoFrameCache.set).toHaveBeenCalledTimes(2);
+    // One sequential stream, opened once at the playhead source time.
+    expect(sink.samples).toHaveBeenCalledTimes(1);
+    expect(sink.opens[0]).toEqual({ startS: 0, endS: 10 });
+    // Frames at t=0, 0.04, 0.08, 0.12 → indices 0..3 (the pull stops once the
+    // frontier reaches aheadSourceTimeS).
+    expect(videoFrameCache.store.has('clip-1:0')).toBe(true);
     expect(videoFrameCache.store.has('clip-1:1')).toBe(true);
     expect(videoFrameCache.store.has('clip-1:2')).toBe(true);
-    // Every decoded sample is released.
-    expect(sink.closed).toHaveLength(2);
   });
 
-  it('skips frames already resident in the cache', async () => {
-    const videoFrameCache = createCacheMock(['clip-1:1']);
+  it('reuses the same iterator across ticks, decoding only new frames', async () => {
+    const videoFrameCache = createCacheMock();
     const sink = createSinkMock();
     const manager = createManager({ videoFrameCache: videoFrameCache as any });
+    const clip = createVideoClip(sink);
 
     await manager.warmClipFrameWindow({
-      clip: createVideoClip(sink),
-      frames: [
-        { sourceTimeS: 0.04, timelineTimeUs: 40_000 },
-        { sourceTimeS: 0.08, timelineTimeUs: 80_000 },
-      ],
+      clip,
+      nowSourceTimeS: 0,
+      aheadSourceTimeS: 0.12,
+      timelineNowUs: 0,
+      speed: 1,
+    });
+    const storedAfterFirst = videoFrameCache.set.mock.calls.length;
+
+    // Playhead advanced 0.08s; the same stream is pulled forward, no reopen.
+    await manager.warmClipFrameWindow({
+      clip,
+      nowSourceTimeS: 0.08,
+      aheadSourceTimeS: 0.2,
+      timelineNowUs: 80_000,
+      speed: 1,
     });
 
-    // Only the uncached frame is requested from the decoder.
-    expect(sink.calls[0]).toEqual([0.08]);
-    expect(videoFrameCache.set).toHaveBeenCalledTimes(1);
-    expect(videoFrameCache.store.has('clip-1:2')).toBe(true);
+    expect(sink.samples).toHaveBeenCalledTimes(1);
+    // Only the newly-entered frames were decoded and stored.
+    expect(videoFrameCache.set.mock.calls.length).toBeGreaterThan(storedAfterFirst);
+    expect(videoFrameCache.store.has('clip-1:4')).toBe(true);
+  });
+
+  it('reopens the stream after a backward seek', async () => {
+    const videoFrameCache = createCacheMock();
+    const sink = createSinkMock();
+    const manager = createManager({ videoFrameCache: videoFrameCache as any });
+    const clip = createVideoClip(sink);
+
+    await manager.warmClipFrameWindow({
+      clip,
+      nowSourceTimeS: 1.0,
+      aheadSourceTimeS: 1.12,
+      timelineNowUs: 1_000_000,
+      speed: 1,
+    });
+
+    await manager.warmClipFrameWindow({
+      clip,
+      nowSourceTimeS: 0.2,
+      aheadSourceTimeS: 0.32,
+      timelineNowUs: 200_000,
+      speed: 1,
+    });
+
+    expect(sink.samples).toHaveBeenCalledTimes(2);
+    // The stale forward iterator was finalized when replaced.
+    expect(sink.finalized).toContain(0);
+    expect(sink.opens[1]?.startS).toBeCloseTo(0.2);
+  });
+
+  it('disposeWarmStream finalizes the iterator; pruneWarmStreams drops inactive clips', async () => {
+    const videoFrameCache = createCacheMock();
+    const sink = createSinkMock();
+    const manager = createManager({ videoFrameCache: videoFrameCache as any });
+    const clip = createVideoClip(sink);
+
+    await manager.warmClipFrameWindow({
+      clip,
+      nowSourceTimeS: 0,
+      aheadSourceTimeS: 0.08,
+      timelineNowUs: 0,
+      speed: 1,
+    });
+
+    manager.pruneWarmStreams(new Set(['other-clip']));
+    expect(sink.finalized).toContain(0);
   });
 
   it('is a no-op when the sink lacks the sequential API', async () => {
@@ -180,7 +262,10 @@ describe('ClipResourceManager.warmClipFrameWindow', () => {
 
     await manager.warmClipFrameWindow({
       clip: createVideoClip({ getSample: vi.fn() }),
-      frames: [{ sourceTimeS: 0.04, timelineTimeUs: 40_000 }],
+      nowSourceTimeS: 0,
+      aheadSourceTimeS: 0.12,
+      timelineNowUs: 0,
+      speed: 1,
     });
 
     expect(videoFrameCache.set).not.toHaveBeenCalled();

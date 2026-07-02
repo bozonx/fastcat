@@ -31,6 +31,14 @@ export interface TimelineItemView {
   timelineDurationUs: number;
   /** Media URL for clips (undefined for gaps / missing references). */
   targetUrl?: string;
+  /** Audio properties persisted on the clip, when present. */
+  audioGain?: number;
+  audioBalance?: number;
+  audioFadeInUs?: number;
+  audioFadeOutUs?: number;
+  audioFadeInCurve?: string;
+  audioFadeOutCurve?: string;
+  audioMuted?: boolean;
 }
 
 export interface TimelineTrackView {
@@ -61,7 +69,20 @@ interface RawRange {
 interface RawChild {
   OTIO_SCHEMA?: string;
   name?: string;
-  metadata?: { fastcat?: { id?: string } };
+  metadata?: {
+    fastcat?: {
+      id?: string;
+      audio?: {
+        gain?: number;
+        balance?: number;
+        fadeInUs?: number;
+        fadeOutUs?: number;
+        fadeInCurve?: string;
+        fadeOutCurve?: string;
+        muted?: boolean;
+      };
+    };
+  };
   source_range?: RawRange;
   media_reference?: { OTIO_SCHEMA?: string; target_url?: string };
 }
@@ -102,6 +123,7 @@ function parseTrack(raw: RawTrack): TimelineTrackView {
     // specs don't create them, but we stay correct if one slips in.
     const timelineDurationUs = type === 'transition' ? 0 : durationUs;
 
+    const fastcatAudio = child.metadata?.fastcat?.audio;
     items.push({
       id: child.metadata?.fastcat?.id ?? '',
       type,
@@ -114,6 +136,13 @@ function parseTrack(raw: RawTrack): TimelineTrackView {
         child.media_reference?.OTIO_SCHEMA?.startsWith('ExternalReference') === true
           ? child.media_reference?.target_url
           : undefined,
+      audioGain: fastcatAudio?.gain,
+      audioBalance: fastcatAudio?.balance,
+      audioFadeInUs: fastcatAudio?.fadeInUs,
+      audioFadeOutUs: fastcatAudio?.fadeOutUs,
+      audioFadeInCurve: fastcatAudio?.fadeInCurve,
+      audioFadeOutCurve: fastcatAudio?.fadeOutCurve,
+      audioMuted: fastcatAudio?.muted,
     });
 
     cursorUs += timelineDurationUs;

@@ -444,7 +444,6 @@ const sortedProjects = computed(() => {
         <UButton
           color="primary"
           :disabled="!isCreateNameValid"
-          :loading="workspaceStore.isLoading"
           :label="t('common.create')"
           @click="createNewProject"
         />
@@ -590,7 +589,6 @@ const sortedProjects = computed(() => {
         <UButton
           color="primary"
           :disabled="!isDuplicateNameValid"
-          :loading="workspaceStore.isLoading"
           :label="t('common.duplicate')"
           @click="confirmDuplicate"
         />

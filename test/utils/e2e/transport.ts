@@ -94,3 +94,51 @@ export async function waitForExportSuccess(
   // Progress should show while running; success replaces it when done.
   await expect(page.getByTestId('export-success')).toBeVisible({ timeout });
 }
+
+export function monitorSeekbar(page: Page): Locator {
+  return page.getByTestId('monitor-seekbar');
+}
+
+export async function seekMonitorToFraction(page: Page, fraction: number): Promise<void> {
+  const box = await monitorSeekbar(page).boundingBox();
+  if (!box) throw new Error('monitor seekbar has no bounding box');
+  await page.mouse.click(box.x + box.width * fraction, box.y + box.height / 2);
+}
+
+export async function getMonitorAudioState(
+  page: Page,
+): Promise<{ volume: number; muted: boolean }> {
+  return page.evaluate(async () => {
+    const getState = (
+      window as Window & {
+        __fastcatE2eMonitorGetAudioState?: () => Promise<{ volume: number; muted: boolean }>;
+      }
+    ).__fastcatE2eMonitorGetAudioState;
+    if (!getState) throw new Error('E2E monitor audio state hook is not registered');
+    return getState();
+  });
+}
+
+export async function toggleMonitorMute(page: Page): Promise<void> {
+  await page.evaluate(async () => {
+    const toggle = (window as Window & { __fastcatE2eMonitorToggleMute?: () => Promise<void> })
+      .__fastcatE2eMonitorToggleMute;
+    if (!toggle) throw new Error('E2E monitor toggle-mute hook is not registered');
+    await toggle();
+  });
+}
+
+export async function setMonitorVolume(page: Page, volume: number): Promise<void> {
+  await page.evaluate(
+    async ({ volume: v }) => {
+      const setVolume = (
+        window as Window & {
+          __fastcatE2eMonitorSetVolume?: (params: { volume: number }) => Promise<void>;
+        }
+      ).__fastcatE2eMonitorSetVolume;
+      if (!setVolume) throw new Error('E2E monitor set-volume hook is not registered');
+      await setVolume({ volume: v });
+    },
+    { volume: Math.max(0, Math.min(2, volume)) },
+  );
+}

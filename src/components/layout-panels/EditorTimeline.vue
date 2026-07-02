@@ -406,6 +406,14 @@ onBeforeUnmount(() => {
     delete e2eWindow.__fastcatE2eDeleteClip;
     delete e2eWindow.__fastcatE2eTrimClipEdge;
     delete e2eWindow.__fastcatE2eAdvancePlayheadBy;
+    delete e2eWindow.__fastcatE2eUndoTimeline;
+    delete e2eWindow.__fastcatE2eRedoTimeline;
+    delete e2eWindow.__fastcatE2eSplitClipAtPlayhead;
+    delete e2eWindow.__fastcatE2eSelectTimelineItems;
+    delete e2eWindow.__fastcatE2eDeleteSelectedItems;
+    delete e2eWindow.__fastcatE2eUpdateClipProperties;
+    delete e2eWindow.__fastcatE2eSetCurrentTimeUs;
+    delete e2eWindow.__fastcatE2eGetSelectedItemIds;
   }
 });
 
@@ -486,6 +494,64 @@ onMounted(() => {
     e2eWindow.__fastcatE2eAdvancePlayheadBy = async ({ deltaUs }) => {
       timelineStore.setCurrentTimeUs(timelineStore.currentTime + deltaUs);
     };
+
+    e2eWindow.__fastcatE2eUndoTimeline = async () => {
+      timelineStore.undoTimeline();
+      await timelineStore.saveTimeline();
+    };
+
+    e2eWindow.__fastcatE2eRedoTimeline = async () => {
+      timelineStore.redoTimeline();
+      await timelineStore.saveTimeline();
+    };
+
+    e2eWindow.__fastcatE2eSplitClipAtPlayhead = async () => {
+      await timelineStore.splitClipAtPlayhead();
+      await timelineStore.saveTimeline();
+    };
+
+    e2eWindow.__fastcatE2eSelectTimelineItems = async ({ itemIds }) => {
+      timelineStore.selectTimelineItems(itemIds);
+    };
+
+    e2eWindow.__fastcatE2eDeleteSelectedItems = async () => {
+      const doc = timelineStore.timelineDoc;
+      if (!doc) return;
+      const ids = timelineStore.selectedItemIds;
+      if (ids.length === 0) return;
+
+      const byTrack = new Map<string, string[]>();
+      for (const track of doc.tracks) {
+        for (const item of track.items) {
+          if (item.kind === 'clip' && ids.includes(item.id)) {
+            byTrack.set(track.id, [...(byTrack.get(track.id) ?? []), item.id]);
+          }
+        }
+      }
+
+      for (const [trackId, itemIds] of byTrack) {
+        timelineStore.applyTimeline({ type: 'delete_items', trackId, itemIds });
+      }
+      await timelineStore.saveTimeline();
+    };
+
+    e2eWindow.__fastcatE2eUpdateClipProperties = async ({ itemId, properties }) => {
+      const track = findE2eClipTrack(itemId);
+      if (!track) throw new Error(`Timeline clip track not found: ${itemId}`);
+      timelineStore.applyTimeline({
+        type: 'update_clip_properties',
+        trackId: track.id,
+        itemId,
+        properties,
+      });
+      await timelineStore.saveTimeline();
+    };
+
+    e2eWindow.__fastcatE2eSetCurrentTimeUs = async ({ us }) => {
+      timelineStore.setCurrentTimeUs(Math.max(0, Math.round(us)));
+    };
+
+    e2eWindow.__fastcatE2eGetSelectedItemIds = async () => [...timelineStore.selectedItemIds];
   }
 });
 
@@ -671,6 +737,17 @@ type FastcatE2eTrimClipEdge = (params: {
   deltaUs: number;
 }) => Promise<void>;
 type FastcatE2eAdvancePlayheadBy = (params: { deltaUs: number }) => Promise<void>;
+type FastcatE2eUndoTimeline = () => Promise<void>;
+type FastcatE2eRedoTimeline = () => Promise<void>;
+type FastcatE2eSplitClipAtPlayhead = () => Promise<void>;
+type FastcatE2eSelectTimelineItems = (params: { itemIds: string[] }) => Promise<void>;
+type FastcatE2eDeleteSelectedItems = () => Promise<void>;
+type FastcatE2eUpdateClipProperties = (params: {
+  itemId: string;
+  properties: Record<string, unknown>;
+}) => Promise<void>;
+type FastcatE2eSetCurrentTimeUs = (params: { us: number }) => Promise<void>;
+type FastcatE2eGetSelectedItemIds = () => Promise<string[]>;
 
 interface FastcatE2eTimelineWindow {
   __fastcatE2eAddFileToTrack?: FastcatE2eAddFileToTrack;
@@ -679,6 +756,14 @@ interface FastcatE2eTimelineWindow {
   __fastcatE2eDeleteClip?: FastcatE2eDeleteClip;
   __fastcatE2eTrimClipEdge?: FastcatE2eTrimClipEdge;
   __fastcatE2eAdvancePlayheadBy?: FastcatE2eAdvancePlayheadBy;
+  __fastcatE2eUndoTimeline?: FastcatE2eUndoTimeline;
+  __fastcatE2eRedoTimeline?: FastcatE2eRedoTimeline;
+  __fastcatE2eSplitClipAtPlayhead?: FastcatE2eSplitClipAtPlayhead;
+  __fastcatE2eSelectTimelineItems?: FastcatE2eSelectTimelineItems;
+  __fastcatE2eDeleteSelectedItems?: FastcatE2eDeleteSelectedItems;
+  __fastcatE2eUpdateClipProperties?: FastcatE2eUpdateClipProperties;
+  __fastcatE2eSetCurrentTimeUs?: FastcatE2eSetCurrentTimeUs;
+  __fastcatE2eGetSelectedItemIds?: FastcatE2eGetSelectedItemIds;
 }
 
 function findE2eClip(itemId: string) {

@@ -206,3 +206,100 @@ export async function addFileToTrack(
     },
   );
 }
+
+export async function undoTimeline(page: Page): Promise<void> {
+  await page.evaluate(async () => {
+    const undo = (window as Window & { __fastcatE2eUndoTimeline?: () => Promise<void> })
+      .__fastcatE2eUndoTimeline;
+    if (!undo) throw new Error('E2E timeline undo hook is not registered');
+    await undo();
+  });
+}
+
+export async function redoTimeline(page: Page): Promise<void> {
+  await page.evaluate(async () => {
+    const redo = (window as Window & { __fastcatE2eRedoTimeline?: () => Promise<void> })
+      .__fastcatE2eRedoTimeline;
+    if (!redo) throw new Error('E2E timeline redo hook is not registered');
+    await redo();
+  });
+}
+
+export async function setCurrentTimeUs(page: Page, us: number): Promise<void> {
+  await page.evaluate(
+    async ({ us: targetUs }) => {
+      const setTime = (
+        window as Window & {
+          __fastcatE2eSetCurrentTimeUs?: (params: { us: number }) => Promise<void>;
+        }
+      ).__fastcatE2eSetCurrentTimeUs;
+      if (!setTime) throw new Error('E2E timeline set-current-time hook is not registered');
+      await setTime({ us: targetUs });
+    },
+    { us: Math.max(0, Math.round(us)) },
+  );
+}
+
+export async function splitClipAtPlayhead(page: Page): Promise<void> {
+  await page.evaluate(async () => {
+    const split = (window as Window & { __fastcatE2eSplitClipAtPlayhead?: () => Promise<void> })
+      .__fastcatE2eSplitClipAtPlayhead;
+    if (!split) throw new Error('E2E timeline split hook is not registered');
+    await split();
+  });
+}
+
+export async function selectTimelineClipsById(page: Page, itemIds: string[]): Promise<void> {
+  await page.evaluate(
+    async ({ itemIds: ids }) => {
+      const select = (
+        window as Window & {
+          __fastcatE2eSelectTimelineItems?: (params: { itemIds: string[] }) => Promise<void>;
+        }
+      ).__fastcatE2eSelectTimelineItems;
+      if (!select) throw new Error('E2E timeline select hook is not registered');
+      await select({ itemIds: ids });
+    },
+    { itemIds: itemIds },
+  );
+}
+
+export async function getSelectedItemIds(page: Page): Promise<string[]> {
+  return page.evaluate(async () => {
+    const getSelected = (
+      window as Window & { __fastcatE2eGetSelectedItemIds?: () => Promise<string[]> }
+    ).__fastcatE2eGetSelectedItemIds;
+    if (!getSelected) throw new Error('E2E timeline get-selected hook is not registered');
+    return getSelected();
+  });
+}
+
+export async function deleteSelectedItems(page: Page): Promise<void> {
+  await page.evaluate(async () => {
+    const del = (window as Window & { __fastcatE2eDeleteSelectedItems?: () => Promise<void> })
+      .__fastcatE2eDeleteSelectedItems;
+    if (!del) throw new Error('E2E timeline delete-selected hook is not registered');
+    await del();
+  });
+}
+
+export async function updateClipProperties(
+  page: Page,
+  params: { itemId: string; properties: Record<string, unknown> },
+): Promise<void> {
+  await page.evaluate(
+    async ({ itemId, properties }) => {
+      const update = (
+        window as Window & {
+          __fastcatE2eUpdateClipProperties?: (params: {
+            itemId: string;
+            properties: Record<string, unknown>;
+          }) => Promise<void>;
+        }
+      ).__fastcatE2eUpdateClipProperties;
+      if (!update) throw new Error('E2E timeline update-clip-properties hook is not registered');
+      await update({ itemId, properties });
+    },
+    { itemId: params.itemId, properties: params.properties },
+  );
+}

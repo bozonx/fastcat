@@ -6,6 +6,7 @@ import { useFocusStore } from '~/stores/focus.store';
 import { useProjectStore } from '~/stores/project.store';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
+import { useUiStore } from '~/stores/ui.store';
 import { useMonitorContainerControls } from '~/composables/monitor/useMonitorContainerControls';
 import { useMonitorGrid } from '~/composables/monitor/useMonitorGrid';
 import { useMonitorRuntime } from '~/composables/monitor/useMonitorRuntime';
@@ -28,6 +29,8 @@ const focusStore = useFocusStore();
 const projectStore = useProjectStore();
 const timelineStore = useTimelineStore();
 const workspaceStore = useWorkspaceStore();
+const uiStore = useUiStore();
+const runtimeConfig = useRuntimeConfig();
 const fileManager = useFileManager();
 const { loadTimeline } = useProjectActions();
 const { getHotkeyTitle } = useHotkeyLabel();
@@ -417,11 +420,30 @@ onMounted(() => {
   if (effectiveFullscreen.value) {
     showControlsTemporary();
   }
+  if (runtimeConfig.public.e2eTest) {
+    const e2eWindow = window as Window & FastcatE2eMonitorWindow;
+    e2eWindow.__fastcatE2eMonitorGetAudioState = async () => ({
+      volume: uiStore.monitorVolume,
+      muted: uiStore.monitorMuted,
+    });
+    e2eWindow.__fastcatE2eMonitorToggleMute = async () => {
+      uiStore.monitorMuted = !uiStore.monitorMuted;
+    };
+    e2eWindow.__fastcatE2eMonitorSetVolume = async ({ volume }: { volume: number }) => {
+      uiStore.monitorVolume = Math.max(0, Math.min(2, volume));
+    };
+  }
 });
 
 onUnmounted(() => {
   window.removeEventListener('keydown', onMonitorKeyDown, { capture: true });
   clearIdleTimeout();
+  if (runtimeConfig.public.e2eTest) {
+    const e2eWindow = window as Window & FastcatE2eMonitorWindow;
+    delete e2eWindow.__fastcatE2eMonitorGetAudioState;
+    delete e2eWindow.__fastcatE2eMonitorToggleMute;
+    delete e2eWindow.__fastcatE2eMonitorSetVolume;
+  }
 });
 
 watch(viewportRef, (vp) => {
@@ -799,3 +821,19 @@ watch(viewportRef, (vp) => {
     </Teleport>
   </div>
 </template>
+
+<script lang="ts">
+type FastcatE2eMonitorAudioState = {
+  volume: number;
+  muted: boolean;
+};
+type FastcatE2eMonitorGetAudioState = () => Promise<FastcatE2eMonitorAudioState>;
+type FastcatE2eMonitorToggleMute = () => Promise<void>;
+type FastcatE2eMonitorSetVolume = (params: { volume: number }) => Promise<void>;
+
+interface FastcatE2eMonitorWindow {
+  __fastcatE2eMonitorGetAudioState?: FastcatE2eMonitorGetAudioState;
+  __fastcatE2eMonitorToggleMute?: FastcatE2eMonitorToggleMute;
+  __fastcatE2eMonitorSetVolume?: FastcatE2eMonitorSetVolume;
+}
+</script>
