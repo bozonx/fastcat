@@ -8,7 +8,9 @@ import {
   drawRotatedThumbnailFrame,
   serializeWorkerError,
   disposeFrameExtractorState,
+  runRenderRetryLoop,
   type FrameExtractorState,
+  type RenderRetryLoopDriver,
 } from '~/workers/video-core-helpers';
 
 describe('normalizeRotation', () => {
@@ -445,5 +447,191 @@ describe('disposeFrameExtractorState', () => {
     };
     expect(() => disposeFrameExtractorState(state)).not.toThrow();
     expect(state.input).toBeNull();
+  });
+});
+
+describe('runRenderRetryLoop', () => {
+  // Backs the driver with a one-slot mailbox, mirroring the worker's real
+  // `latestRenderTimeUs`/`latestPreviewOptions` module state: a concurrent
+  // renderFrame RPC call would overwrite this mailbox at any await point, which
+  // tests below simulate by queuing from inside a render/delay callback.
+  function createMailboxDriver(overrides: Partial<RenderRetryLoopDriver> = {}) {
+    let queuedTimeUs: number | null = null;
+    let queuedOptions: unknown;
+
+    const driver: RenderRetryLoopDriver = {
+      takeQueued: () => {
+        if (queuedTimeUs === null) return null;
+        const timeUs = queuedTimeUs;
+        const options = queuedOptions;
+        queuedTimeUs = null;
+        queuedOptions = undefined;
+        return { timeUs, options };
+      },
+      hasQueued: () => queuedTimeUs !== null,
+      queueRetry: (timeUs) => {
+        queuedTimeUs = timeUs;
+      },
+      render: vi.fn(async () => 'presented'),
+      delay: vi.fn(async () => {}),
+      ...overrides,
+    };
+
+    return {
+      driver,
+      queue: (timeUs: number, options?: unknown) => {
+        queuedTimeUs = timeUs;
+        queuedOptions = options;
+      },
+    };
+  }
+
+  function renderedTimes(driver: RenderRetryLoopDriver): unknown[] {
+    return vi.mocked(driver.render).mock.calls.map(([timeUs]) => timeUs);
+  }
+
+  it('returns immediately when nothing is queued', async () => {
+    const { driver } = createMailboxDriver();
+
+    await runRenderRetryLoop(driver);
+
+    expect(driver.render).not.toHaveBeenCalled();
+  });
+
+  it('renders the queued request and exits once nothing more is queued', async () => {
+    const { driver, queue } = createMailboxDriver();
+    queue(100, { previewEffectsEnabled: true });
+
+    const result = await runRenderRetryLoop(driver);
+
+    expect(result).toBeNull();
+    expect(driver.render).toHaveBeenCalledTimes(1);
+    expect(driver.render).toHaveBeenCalledWith(100, { previewEffectsEnabled: true });
+  });
+
+  it('retries a non-presenting render up to maxRetries, then gives up', async () => {
+    const { driver, queue } = createMailboxDriver({ render: vi.fn(async () => null) });
+    queue(200);
+
+    await runRenderRetryLoop(driver, { maxRetries: 3, retryDelayMs: 5 });
+
+    // 1 initial attempt + 3 retries, all at the same queued time.
+    expect(renderedTimes(driver)).toEqual([200, 200, 200, 200]);
+    expect(driver.delay).toHaveBeenCalledTimes(3);
+    expect(driver.delay).toHaveBeenCalledWith(5);
+  });
+
+  it('succeeds on a later retry once the render starts presenting', async () => {
+    let attempt = 0;
+    const { driver, queue } = createMailboxDriver({
+      render: vi.fn(async () => {
+        attempt += 1;
+        return attempt >= 3 ? 'presented' : null;
+      }),
+    });
+    queue(50);
+
+    await runRenderRetryLoop(driver, { maxRetries: 5, retryDelayMs: 1 });
+
+    expect(renderedTimes(driver)).toEqual([50, 50, 50]);
+  });
+
+  it('a request queued while rendering supersedes the retry, spending no retry budget', async () => {
+    const { driver, queue } = createMailboxDriver({
+      render: vi.fn(async (timeUs: number) => {
+        if (timeUs === 100) {
+          // Simulate a concurrent renderFrame RPC call landing mid-render.
+          queue(200);
+          return null;
+        }
+        return 'presented';
+      }),
+    });
+    queue(100);
+
+    await runRenderRetryLoop(driver, { maxRetries: 1, retryDelayMs: 1 });
+
+    expect(renderedTimes(driver)).toEqual([100, 200]);
+    expect(driver.delay).not.toHaveBeenCalled();
+  });
+
+  it('a request queued during the retry backoff supersedes the stale retry', async () => {
+    let delayCalls = 0;
+    const { driver, queue } = createMailboxDriver({
+      render: vi.fn(async () => null),
+      delay: vi.fn(async () => {
+        delayCalls += 1;
+        if (delayCalls === 1) {
+          // Simulate a concurrent renderFrame RPC call landing during the backoff.
+          queue(999);
+        }
+      }),
+    });
+    queue(100);
+
+    await runRenderRetryLoop(driver, { maxRetries: 2, retryDelayMs: 1 });
+
+    // The stale request (100) is dropped in favor of the superseding one (999);
+    // 100 never gets its retry back, only 999 does.
+    expect(renderedTimes(driver)).toEqual([100, 999, 999]);
+  });
+
+  it('breaks immediately on AbortError without retrying', async () => {
+    const abortErr = new Error('aborted');
+    abortErr.name = 'AbortError';
+    const { driver, queue } = createMailboxDriver({
+      render: vi.fn(async () => {
+        throw abortErr;
+      }),
+    });
+    queue(100);
+
+    await runRenderRetryLoop(driver, { maxRetries: 3, retryDelayMs: 1 });
+
+    expect(driver.render).toHaveBeenCalledTimes(1);
+    expect(driver.delay).not.toHaveBeenCalled();
+  });
+
+  it('reports non-Abort render errors via onError and still retries', async () => {
+    const onError = vi.fn();
+    let attempt = 0;
+    const { driver, queue } = createMailboxDriver({
+      render: vi.fn(async () => {
+        attempt += 1;
+        if (attempt === 1) throw new Error('transient decode failure');
+        return 'presented';
+      }),
+      onError,
+    });
+    queue(100);
+
+    await runRenderRetryLoop(driver, { maxRetries: 3, retryDelayMs: 1 });
+
+    expect(onError).toHaveBeenCalledTimes(1);
+    expect(onError).toHaveBeenCalledWith(100, expect.any(Error));
+    expect(driver.render).toHaveBeenCalledTimes(2);
+  });
+
+  it('stops retrying once isActive() reports the render target is gone', async () => {
+    const { driver, queue } = createMailboxDriver({
+      render: vi.fn(async () => null),
+      isActive: () => false,
+    });
+    queue(100);
+
+    await runRenderRetryLoop(driver, { maxRetries: 3, retryDelayMs: 1 });
+
+    expect(driver.render).toHaveBeenCalledTimes(1);
+    expect(driver.delay).not.toHaveBeenCalled();
+  });
+
+  it('defaults to RENDER_RETRY_LIMITS when no limits are passed', async () => {
+    const { driver, queue } = createMailboxDriver({ render: vi.fn(async () => null) });
+    queue(100);
+
+    await runRenderRetryLoop(driver);
+
+    // 1 initial attempt + RENDER_RETRY_LIMITS.MAX_RENDER_RETRIES (3) retries.
+    expect(driver.render).toHaveBeenCalledTimes(4);
   });
 });

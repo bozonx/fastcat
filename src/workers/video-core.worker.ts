@@ -28,7 +28,9 @@ import {
   drawRotatedThumbnailFrame,
   serializeWorkerError,
   disposeFrameExtractorState,
+  runRenderRetryLoop,
   type FrameExtractorState,
+  type RenderRetryLoopDriver,
 } from './video-core-helpers';
 import { extractMetadata, runExport, extractAudioStream } from './core/export';
 import { runTranscode } from './core/transcode';
@@ -248,51 +250,32 @@ const api: Omit<VideoCoreWorkerAPI, 'initCompositor'> & {
     if (renderInFlight) return null;
 
     renderInFlight = true;
-    // A render can advance internal state (active-clip tracking) yet never reach the canvas
-    // — compositor disposed, no renderer, or a lost GL context — and the canvas is rendered
-    // to directly (transferControlToOffscreen), so a non-presenting frame leaves the monitor
-    // frozen on the previous one with no follow-up to recover. This is most visible with
-    // text/shape/HUD clips, which have no per-frame redraw to self-heal. Retry the same time
-    // a few times with a short backoff so transient failures recover; a newer seek supersedes.
-    const MAX_RENDER_RETRIES = 3;
-    const RENDER_RETRY_DELAY_MS = 50;
-    let renderRetries = 0;
-    try {
-      while (latestRenderTimeUs !== null) {
-        // Explicit type: the retry below re-arms `latestRenderTimeUs = next`, and without an
-        // annotation that self-reference makes TS infer `next` as `any` (TS7022).
-        const next: number = latestRenderTimeUs;
-        const opt = latestPreviewOptions;
+    // The retry loop itself is a pure function (video-core-helpers.ts) so it can
+    // be unit-tested without a Pixi/worker context; this driver wires it to the
+    // module-level `latest*` mailbox, which a concurrent renderFrame RPC call
+    // mutates at any await point to supersede the in-flight request.
+    const driver: RenderRetryLoopDriver = {
+      takeQueued: () => {
+        if (latestRenderTimeUs === null) return null;
+        const timeUs = latestRenderTimeUs;
+        const options = latestPreviewOptions;
         latestRenderTimeUs = null;
         latestPreviewOptions = undefined;
-        let presented = false;
-        try {
-          // A non-null result means the frame reached the canvas (a fresh render or the
-          // cached early-exit); null means it never presented.
-          presented = (await compositor.renderFrame(next, opt)) != null;
-        } catch (err) {
-          if (err instanceof Error && err.name === 'AbortError') break;
-          log.error('[Worker] renderFrame error at time', next, err);
-        }
+        return { timeUs, options };
+      },
+      hasQueued: () => latestRenderTimeUs !== null,
+      queueRetry: (timeUs) => {
+        latestRenderTimeUs = timeUs;
+      },
+      render: (timeUs, options) =>
+        compositor!.renderFrame(timeUs, options as PreviewRenderOptions | undefined),
+      delay: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
+      isActive: () => compositor !== null,
+      onError: (timeUs, err) => log.error('[Worker] renderFrame error at time', timeUs, err),
+    };
 
-        // Presented, or a newer seek arrived while we rendered — either way the screen ends
-        // up correct, so drop the retry budget and let the loop continue.
-        if (presented || latestRenderTimeUs !== null) {
-          renderRetries = 0;
-          continue;
-        }
-
-        // Frame never presented and nothing newer is queued: retry the same time after a
-        // short backoff instead of leaving the monitor frozen.
-        if (renderRetries < MAX_RENDER_RETRIES && compositor) {
-          renderRetries += 1;
-          await new Promise((resolve) => setTimeout(resolve, RENDER_RETRY_DELAY_MS));
-          if (latestRenderTimeUs === null) latestRenderTimeUs = next;
-        } else {
-          renderRetries = 0;
-        }
-      }
-      return null;
+    try {
+      return await runRenderRetryLoop(driver);
     } finally {
       renderInFlight = false;
       latestRenderTimeUs = null;
