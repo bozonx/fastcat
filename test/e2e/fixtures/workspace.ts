@@ -71,14 +71,10 @@ export async function createE2eProject(
   try {
     await page.waitForURL(editorUrlPattern, { timeout: 15_000 });
   } catch {
-    const projectHeading = page.getByRole('heading', { name: projectName });
-    if (await projectHeading.isVisible({ timeout: 2_000 }).catch(() => false)) {
-      await projectHeading.click();
-      await page.waitForURL(editorUrlPattern, { timeout: 5_000 }).catch(() => undefined);
-    }
-    if (!editorUrlPattern.test(page.url())) {
-      await page.goto(`/editor/${encodedName}`, { waitUntil: 'domcontentloaded' });
-    }
+    // The project was created but navigation didn't happen automatically.
+    // Go directly to the editor URL instead of trying to click the project
+    // heading — a loading overlay (isTransitioning) may intercept pointer events.
+    await page.goto(`/editor/${encodedName}`, { waitUntil: 'domcontentloaded' });
   }
 
   await expect(page).toHaveURL(editorUrlPattern);

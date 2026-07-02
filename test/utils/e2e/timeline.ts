@@ -86,6 +86,10 @@ export async function dragClipBy(
 ): Promise<void> {
   const target = clip(page, clipId);
   await expect(target).toBeVisible();
+  // Zoom in to make the clip larger for easier dragging.
+  await setTimelineZoom(page, 70);
+  await page.waitForTimeout(150);
+  await expect(target).toBeVisible({ timeout: 5_000 });
 
   const box = await requireBox(target, `clip ${clipId}`);
   const startX = box.x + box.width / 2;
@@ -111,6 +115,10 @@ export async function moveClipToTrack(
   const target = track(page, toTrackId);
   await expect(source).toBeVisible();
   await expect(target).toBeVisible();
+  // Zoom in to make the clip larger for easier dragging.
+  await setTimelineZoom(page, 70);
+  await page.waitForTimeout(150);
+  await expect(source).toBeVisible({ timeout: 5_000 });
 
   const sourceBox = await requireBox(source, `clip ${clipId}`);
   const targetBox = await requireBox(target, `track ${toTrackId}`);
@@ -145,9 +153,12 @@ export async function trimClipEdge(
   const handle = clip(page, clipId).locator(`[data-testid="clip-trim-${edge}"]`);
   await expect(handle).toBeVisible();
 
-  // Click the clip body first to ensure it's selected and the timeline has focus.
-  await clip(page, clipId).click();
-  await expect(handle).toBeVisible();
+  // Zoom in to make the clip larger so trim handles are easier to grab.
+  // Use direct zoom hook instead of fitTimelineZoom (Shift+0) which resets scroll
+  // and can cause the clip to be virtualized out of the visible range.
+  await setTimelineZoom(page, 70);
+  await page.waitForTimeout(150);
+  await expect(handle).toBeVisible({ timeout: 5_000 });
 
   const box = await requireBox(handle, `trim handle ${edge} for clip ${clipId}`);
   const startX = box.x + box.width / 2;
