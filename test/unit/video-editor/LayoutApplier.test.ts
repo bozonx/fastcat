@@ -354,4 +354,80 @@ describe('LayoutApplier', () => {
     expect(sprite.scale.x).toBeCloseTo(2);
     expect(sprite.scale.y).toBeCloseTo(0.5);
   });
+
+  it('resets stale text sprite scale from the resized texture size', () => {
+    const sprite = createMockSprite();
+    sprite.scale.x = 0.25;
+    sprite.scale.y = 0.25;
+    sprite.texture = { orig: { width: 40, height: 240 }, source: {} };
+    const mockCtx = {
+      font: '',
+      measureText: (text: string) => ({ width: text.length * 10 }),
+    };
+
+    const clip = {
+      itemId: 'clip-text-live-resize',
+      layer: 1,
+      startUs: 0,
+      endUs: 1_000_000,
+      durationUs: 1_000_000,
+      sprite,
+      clipKind: 'text' as const,
+      clipType: 'text' as const,
+      text: 'Test\nTest\nTest\nTest\nTest',
+      ctx: mockCtx as any,
+      style: {
+        fontSize: 40,
+        lineHeight: 1.2,
+        align: 'left' as const,
+        verticalAlign: 'top' as const,
+        padding: 0,
+      },
+    };
+
+    applier.applyTextLayout(clip as any);
+
+    expect(sprite.scale.x).toBeCloseTo(1);
+    expect(sprite.scale.y).toBeCloseTo(1);
+  });
+
+  it('uses resized imageSource dimensions to compensate blur bleed padding', () => {
+    const sprite = createMockSprite();
+    sprite.texture = {
+      orig: { width: 1920, height: 1080 },
+      source: { width: 1920, height: 1080 },
+    };
+    const clip = {
+      itemId: 'clip-blur-bleed',
+      layer: 1,
+      startUs: 0,
+      endUs: 1_000_000,
+      durationUs: 1_000_000,
+      sourceStartUs: 0,
+      sourceRangeDurationUs: 1_000_000,
+      sourceDurationUs: 1_000_000,
+      sprite,
+      clipKind: 'video' as const,
+      clipType: 'media' as const,
+      sourceKind: 'videoFrame' as const,
+      imageSource: {
+        width: 2460,
+        height: 1620,
+        resize: () => {},
+        update: () => {},
+        resource: null,
+      } as any,
+      lastVideoFrame: null,
+      canvas: null,
+      ctx: null,
+      bitmap: null,
+      effectSourceW: 1920,
+      effectSourceH: 1080,
+    };
+
+    applier.applyClipLayoutForCurrentSource(clip as any);
+
+    expect(sprite.scale.x).toBeCloseTo(2460 / 1920);
+    expect(sprite.scale.y).toBeCloseTo(1620 / 1080);
+  });
 });

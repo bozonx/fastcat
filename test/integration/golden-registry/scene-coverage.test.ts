@@ -203,6 +203,39 @@ describe('scene coverage integration', () => {
       expect(effects[0].radius).toBe(12);
     });
 
+    it('effect-blur-mix scene has a gaussian-blur with mix < 1.0', () => {
+      const scene = scenes.find((s) => s.filename === 'effect-blur-mix.json');
+      expect(scene).toBeDefined();
+      const layers = scene!.fixture.scene.layers as Array<Record<string, unknown>>;
+      const img = layers.find((l) => l.kind === 'image');
+      const effects = img!.effects as Array<Record<string, unknown>>;
+      expect(effects).toHaveLength(1);
+      expect(effects[0].type).toBe('gaussian-blur');
+      expect(effects[0].mix).toBeLessThan(1.0);
+    });
+
+    it('effect-chain-blur-brightness has blur before brightness', () => {
+      const scene = scenes.find((s) => s.filename === 'effect-chain-blur-brightness.json');
+      expect(scene).toBeDefined();
+      const layers = scene!.fixture.scene.layers as Array<Record<string, unknown>>;
+      const img = layers.find((l) => l.kind === 'image');
+      const effects = img!.effects as Array<Record<string, unknown>>;
+      expect(effects).toHaveLength(2);
+      expect(effects[0].type).toBe('gaussian-blur');
+      expect(effects[1].type).toBe('brightness');
+    });
+
+    it('effect-chain-brightness-blur has brightness before blur', () => {
+      const scene = scenes.find((s) => s.filename === 'effect-chain-brightness-blur.json');
+      expect(scene).toBeDefined();
+      const layers = scene!.fixture.scene.layers as Array<Record<string, unknown>>;
+      const img = layers.find((l) => l.kind === 'image');
+      const effects = img!.effects as Array<Record<string, unknown>>;
+      expect(effects).toHaveLength(2);
+      expect(effects[0].type).toBe('brightness');
+      expect(effects[1].type).toBe('gaussian-blur');
+    });
+
     it('effect-color-adjustment scene has brightness, contrast, and saturation effects', () => {
       const scene = scenes.find((s) => s.filename === 'effect-color-adjustment.json');
       expect(scene).toBeDefined();

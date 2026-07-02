@@ -94,7 +94,6 @@ export class TimelineClipLayoutUpdater {
     clip.sourceOrientation = n['sourceOrientation'] as CompositorClip['sourceOrientation'];
     clip.mask = n['mask'] as CompositorClip['mask'];
     clip.maskActive = n['maskActive'] as boolean | undefined;
-    applyClipLayoutForCurrentSource(clip);
 
     const prevTransitionInType = clip.transitionIn?.type ?? null;
     const nextTransitionIn = n['transitionIn'] as { type?: string } | undefined;
@@ -112,7 +111,7 @@ export class TimelineClipLayoutUpdater {
 
       clip.textDirty = clip.text !== nextText || styleChanged || clip.textDirty === true;
       clip.text = nextText;
-      clip.style = nextStyle;
+      clip.style = nextStyle ? cloneValue(nextStyle) : undefined;
     }
 
     if (clip.clipKind === 'shape') {
@@ -173,6 +172,8 @@ export class TimelineClipLayoutUpdater {
         clip.sprite.tint = parseHexColor(clip.backgroundColor);
       }
     }
+
+    applyClipLayoutForCurrentSource(clip);
 
     if (!clip.effectFilters) {
       clip.effectFilters = new Map();

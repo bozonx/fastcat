@@ -1,0 +1,320 @@
+{
+  "_comment": [
+    "Cross-engine parity contract: build_passes must produce identical pass schedules.",
+    "  - web:    buildPasses() in src/utils/video-editor/compositor/WebGpuComputeRunner.ts",
+    "  - native: build_passes() in src-tauri/src/compositor/effects/passes.rs",
+    "Each case provides input effects + dimensions + quality, and the expected output passes.",
+    "Buf values: 'input', 'ping', 'pong', 'aux', 'owned'.",
+    "Float fields use 5 decimal places of precision; tests compare with toBeCloseTo(5).",
+    "The last pass dst is always 'owned' (the final output buffer).",
+    "Quality 'ultra' → tap_budget=48, 'high' → 32, 'medium' → 16, 'low' → 8."
+  ],
+  "cases": [
+    {
+      "name": "empty effects produces no passes",
+      "effects": [],
+      "width": 1920,
+      "height": 1080,
+      "quality": "ultra",
+      "passes": []
+    },
+    {
+      "name": "gaussian-blur splits to H+V at 1080p",
+      "effects": [{ "type": "gaussian-blur", "radius": 10, "bleed": false, "blur_type": "gaussian", "mix": 1 }],
+      "width": 1920,
+      "height": 1080,
+      "quality": "ultra",
+      "passes": [
+        { "uniform": { "mode": 4, "width": 1920, "height": 1080, "seed": 0, "p0": 10, "p1": 0, "p2": 0, "p3": 0, "p4": 0, "p5": 0, "p6": 0, "p7": 48 }, "customSource": null, "src": "input", "secondary": "input", "dst": "ping" },
+        { "uniform": { "mode": 14, "width": 1920, "height": 1080, "seed": 0, "p0": 10, "p1": 0, "p2": 0, "p3": 0, "p4": 0, "p5": 0, "p6": 0, "p7": 48 }, "customSource": null, "src": "ping", "secondary": "ping", "dst": "owned" }
+      ]
+    },
+    {
+      "name": "gaussian-blur scales radius by frame height at 540p",
+      "effects": [{ "type": "gaussian-blur", "radius": 10, "bleed": false, "blur_type": "gaussian", "mix": 1 }],
+      "width": 1920,
+      "height": 540,
+      "quality": "ultra",
+      "passes": [
+        { "uniform": { "mode": 4, "width": 1920, "height": 540, "seed": 0, "p0": 5, "p1": 0, "p2": 0, "p3": 0, "p4": 0, "p5": 0, "p6": 0, "p7": 48 }, "customSource": null, "src": "input", "secondary": "input", "dst": "ping" },
+        { "uniform": { "mode": 14, "width": 1920, "height": 540, "seed": 0, "p0": 5, "p1": 0, "p2": 0, "p3": 0, "p4": 0, "p5": 0, "p6": 0, "p7": 48 }, "customSource": null, "src": "ping", "secondary": "ping", "dst": "owned" }
+      ]
+    },
+    {
+      "name": "box-blur uses type_val=1",
+      "effects": [{ "type": "gaussian-blur", "radius": 20, "bleed": false, "blur_type": "box", "mix": 1 }],
+      "width": 1920,
+      "height": 1080,
+      "quality": "ultra",
+      "passes": [
+        { "uniform": { "mode": 4, "width": 1920, "height": 1080, "seed": 0, "p0": 20, "p1": 1, "p2": 0, "p3": 0, "p4": 0, "p5": 0, "p6": 0, "p7": 48 }, "customSource": null, "src": "input", "secondary": "input", "dst": "ping" },
+        { "uniform": { "mode": 14, "width": 1920, "height": 1080, "seed": 0, "p0": 20, "p1": 1, "p2": 0, "p3": 0, "p4": 0, "p5": 0, "p6": 0, "p7": 48 }, "customSource": null, "src": "ping", "secondary": "ping", "dst": "owned" }
+      ]
+    },
+    {
+      "name": "radial-blur is single-pass (no V split)",
+      "effects": [{ "type": "gaussian-blur", "radius": 15, "bleed": false, "blur_type": "radial", "mix": 1 }],
+      "width": 1920,
+      "height": 1080,
+      "quality": "ultra",
+      "passes": [
+        { "uniform": { "mode": 4, "width": 1920, "height": 1080, "seed": 0, "p0": 15, "p1": 2, "p2": 0, "p3": 0, "p4": 0, "p5": 0, "p6": 0, "p7": 48 }, "customSource": null, "src": "input", "secondary": "input", "dst": "owned" }
+      ]
+    },
+    {
+      "name": "gaussian-blur with mix<1 appends mix pass",
+      "effects": [{ "type": "gaussian-blur", "radius": 10, "bleed": false, "blur_type": "gaussian", "mix": 0.5 }],
+      "width": 1920,
+      "height": 1080,
+      "quality": "ultra",
+      "passes": [
+        { "uniform": { "mode": 4, "width": 1920, "height": 1080, "seed": 0, "p0": 10, "p1": 0, "p2": 0, "p3": 0, "p4": 0, "p5": 0, "p6": 0, "p7": 48 }, "customSource": null, "src": "input", "secondary": "input", "dst": "ping" },
+        { "uniform": { "mode": 14, "width": 1920, "height": 1080, "seed": 0, "p0": 10, "p1": 0, "p2": 0, "p3": 0, "p4": 0, "p5": 0, "p6": 0, "p7": 48 }, "customSource": null, "src": "ping", "secondary": "ping", "dst": "pong" },
+        { "uniform": { "mode": 19, "width": 1920, "height": 1080, "seed": 0, "p0": 0.5, "p1": 0, "p2": 0, "p3": 0, "p4": 0, "p5": 0, "p6": 0, "p7": 0 }, "customSource": null, "src": "pong", "secondary": "input", "dst": "owned" }
+      ]
+    },
+    {
+      "name": "gaussian-blur clamps radius to MAX_BLUR_RADIUS",
+      "effects": [{ "type": "gaussian-blur", "radius": 2000, "bleed": false, "blur_type": "gaussian", "mix": 1 }],
+      "width": 1920,
+      "height": 1080,
+      "quality": "ultra",
+      "passes": [
+        { "uniform": { "mode": 4, "width": 1920, "height": 1080, "seed": 0, "p0": 1024, "p1": 0, "p2": 0, "p3": 0, "p4": 0, "p5": 0, "p6": 0, "p7": 48 }, "customSource": null, "src": "input", "secondary": "input", "dst": "ping" },
+        { "uniform": { "mode": 14, "width": 1920, "height": 1080, "seed": 0, "p0": 1024, "p1": 0, "p2": 0, "p3": 0, "p4": 0, "p5": 0, "p6": 0, "p7": 48 }, "customSource": null, "src": "ping", "secondary": "ping", "dst": "owned" }
+      ]
+    },
+    {
+      "name": "gaussian-blur-pixels keeps raw radius (no height scale)",
+      "effects": [{ "type": "gaussian-blur-pixels", "radius": 10, "mix": 1 }],
+      "width": 1920,
+      "height": 540,
+      "quality": "ultra",
+      "passes": [
+        { "uniform": { "mode": 4, "width": 1920, "height": 540, "seed": 0, "p0": 10, "p1": 0, "p2": 0, "p3": 0, "p4": 0, "p5": 0, "p6": 0, "p7": 48 }, "customSource": null, "src": "input", "secondary": "input", "dst": "ping" },
+        { "uniform": { "mode": 14, "width": 1920, "height": 540, "seed": 0, "p0": 10, "p1": 0, "p2": 0, "p3": 0, "p4": 0, "p5": 0, "p6": 0, "p7": 48 }, "customSource": null, "src": "ping", "secondary": "ping", "dst": "owned" }
+      ]
+    },
+    {
+      "name": "bloom produces extract+blur_h+blur_v+compose (4 passes)",
+      "effects": [{ "type": "bloom", "threshold": 0.75, "strength": 0.6, "radius": 12, "knee": 0.5, "mix": 1 }],
+      "width": 1920,
+      "height": 1080,
+      "quality": "ultra",
+      "passes": [
+        { "uniform": { "mode": 15, "width": 1920, "height": 1080, "seed": 0, "p0": 0.75, "p1": 0.5, "p2": 0, "p3": 0, "p4": 0, "p5": 0, "p6": 0, "p7": 0 }, "customSource": null, "src": "input", "secondary": "input", "dst": "ping" },
+        { "uniform": { "mode": 4, "width": 1920, "height": 1080, "seed": 0, "p0": 12, "p1": 0, "p2": 0, "p3": 0, "p4": 0, "p5": 0, "p6": 0, "p7": 48 }, "customSource": null, "src": "ping", "secondary": "ping", "dst": "pong" },
+        { "uniform": { "mode": 14, "width": 1920, "height": 1080, "seed": 0, "p0": 12, "p1": 0, "p2": 0, "p3": 0, "p4": 0, "p5": 0, "p6": 0, "p7": 48 }, "customSource": null, "src": "pong", "secondary": "pong", "dst": "ping" },
+        { "uniform": { "mode": 18, "width": 1920, "height": 1080, "seed": 0, "p0": 0, "p1": 0.6, "p2": 0, "p3": 0, "p4": 0, "p5": 0, "p6": 0, "p7": 0 }, "customSource": null, "src": "input", "secondary": "ping", "dst": "owned" }
+      ]
+    },
+    {
+      "name": "bloom with mix<1 appends mix pass",
+      "effects": [{ "type": "bloom", "threshold": 0.5, "strength": 1, "radius": 10, "knee": 0.5, "mix": 0.25 }],
+      "width": 1920,
+      "height": 1080,
+      "quality": "ultra",
+      "passes": [
+        { "uniform": { "mode": 15, "width": 1920, "height": 1080, "seed": 0, "p0": 0.5, "p1": 0.5, "p2": 0, "p3": 0, "p4": 0, "p5": 0, "p6": 0, "p7": 0 }, "customSource": null, "src": "input", "secondary": "input", "dst": "ping" },
+        { "uniform": { "mode": 4, "width": 1920, "height": 1080, "seed": 0, "p0": 10, "p1": 0, "p2": 0, "p3": 0, "p4": 0, "p5": 0, "p6": 0, "p7": 48 }, "customSource": null, "src": "ping", "secondary": "ping", "dst": "pong" },
+        { "uniform": { "mode": 14, "width": 1920, "height": 1080, "seed": 0, "p0": 10, "p1": 0, "p2": 0, "p3": 0, "p4": 0, "p5": 0, "p6": 0, "p7": 48 }, "customSource": null, "src": "pong", "secondary": "pong", "dst": "ping" },
+        { "uniform": { "mode": 18, "width": 1920, "height": 1080, "seed": 0, "p0": 0, "p1": 1, "p2": 0, "p3": 0, "p4": 0, "p5": 0, "p6": 0, "p7": 0 }, "customSource": null, "src": "input", "secondary": "ping", "dst": "pong" },
+        { "uniform": { "mode": 19, "width": 1920, "height": 1080, "seed": 0, "p0": 0.25, "p1": 0, "p2": 0, "p3": 0, "p4": 0, "p5": 0, "p6": 0, "p7": 0 }, "customSource": null, "src": "pong", "secondary": "input", "dst": "owned" }
+      ]
+    },
+    {
+      "name": "brightness single-pass mode=1",
+      "effects": [{ "type": "brightness", "value": 1.5 }],
+      "width": 1920,
+      "height": 1080,
+      "quality": "ultra",
+      "passes": [
+        { "uniform": { "mode": 1, "width": 1920, "height": 1080, "seed": 0, "p0": 1.5, "p1": 0, "p2": 0, "p3": 0, "p4": 0, "p5": 0, "p6": 0, "p7": 0 }, "customSource": null, "src": "input", "secondary": "input", "dst": "owned" }
+      ]
+    },
+    {
+      "name": "contrast single-pass mode=2",
+      "effects": [{ "type": "contrast", "value": 0.8 }],
+      "width": 1920,
+      "height": 1080,
+      "quality": "ultra",
+      "passes": [
+        { "uniform": { "mode": 2, "width": 1920, "height": 1080, "seed": 0, "p0": 0.8, "p1": 0, "p2": 0, "p3": 0, "p4": 0, "p5": 0, "p6": 0, "p7": 0 }, "customSource": null, "src": "input", "secondary": "input", "dst": "owned" }
+      ]
+    },
+    {
+      "name": "saturation single-pass mode=3",
+      "effects": [{ "type": "saturation", "value": 1.2 }],
+      "width": 1920,
+      "height": 1080,
+      "quality": "ultra",
+      "passes": [
+        { "uniform": { "mode": 3, "width": 1920, "height": 1080, "seed": 0, "p0": 1.2, "p1": 0, "p2": 0, "p3": 0, "p4": 0, "p5": 0, "p6": 0, "p7": 0 }, "customSource": null, "src": "input", "secondary": "input", "dst": "owned" }
+      ]
+    },
+    {
+      "name": "sharpen carries mix in p2",
+      "effects": [{ "type": "sharpen", "amount": 2, "mix": 0.75 }],
+      "width": 1920,
+      "height": 1080,
+      "quality": "ultra",
+      "passes": [
+        { "uniform": { "mode": 5, "width": 1920, "height": 1080, "seed": 0, "p0": 2, "p1": 1, "p2": 0.75, "p3": 0, "p4": 0, "p5": 0, "p6": 0, "p7": 0 }, "customSource": null, "src": "input", "secondary": "input", "dst": "owned" }
+      ]
+    },
+    {
+      "name": "pixelate carries size and mix",
+      "effects": [{ "type": "pixelate", "size": 12, "mix": 0.5 }],
+      "width": 1920,
+      "height": 1080,
+      "quality": "ultra",
+      "passes": [
+        { "uniform": { "mode": 6, "width": 1920, "height": 1080, "seed": 0, "p0": 12, "p1": 0.5, "p2": 0, "p3": 0, "p4": 0, "p5": 0, "p6": 0, "p7": 0 }, "customSource": null, "src": "input", "secondary": "input", "dst": "owned" }
+      ]
+    },
+    {
+      "name": "vignette carries strength, radius, softness, mix",
+      "effects": [{ "type": "vignette", "strength": 0.6, "radius": 0.75, "softness": 0.5, "mix": 1 }],
+      "width": 1920,
+      "height": 1080,
+      "quality": "ultra",
+      "passes": [
+        { "uniform": { "mode": 8, "width": 1920, "height": 1080, "seed": 0, "p0": 0.6, "p1": 0.75, "p2": 0.5, "p3": 1, "p4": 0, "p5": 0, "p6": 0, "p7": 0 }, "customSource": null, "src": "input", "secondary": "input", "dst": "owned" }
+      ]
+    },
+    {
+      "name": "noise white with seed",
+      "effects": [{ "type": "noise", "amount": 0.3, "seed": 42, "noise_type": "white", "scale": 10, "mix": 1 }],
+      "width": 1920,
+      "height": 1080,
+      "quality": "ultra",
+      "passes": [
+        { "uniform": { "mode": 9, "width": 1920, "height": 1080, "seed": 42, "p0": 0.3, "p1": 0, "p2": 10, "p3": 1, "p4": 0, "p5": 0, "p6": 0, "p7": 0 }, "customSource": null, "src": "input", "secondary": "input", "dst": "owned" }
+      ]
+    },
+    {
+      "name": "noise perlin uses type_val=1",
+      "effects": [{ "type": "noise", "amount": 0.5, "seed": 7, "noise_type": "perlin", "scale": 25, "mix": 0.5 }],
+      "width": 1920,
+      "height": 1080,
+      "quality": "ultra",
+      "passes": [
+        { "uniform": { "mode": 9, "width": 1920, "height": 1080, "seed": 7, "p0": 0.5, "p1": 1, "p2": 25, "p3": 0.5, "p4": 0, "p5": 0, "p6": 0, "p7": 0 }, "customSource": null, "src": "input", "secondary": "input", "dst": "owned" }
+      ]
+    },
+    {
+      "name": "chromatic-aberration scales amount by height",
+      "effects": [{ "type": "chromatic-aberration", "amount": 10, "angle_deg": 45, "mix": 1 }],
+      "width": 1920,
+      "height": 1080,
+      "quality": "ultra",
+      "passes": [
+        { "uniform": { "mode": 10, "width": 1920, "height": 1080, "seed": 0, "p0": 10, "p1": 45, "p2": 1, "p3": 0, "p4": 0, "p5": 0, "p6": 0, "p7": 0 }, "customSource": null, "src": "input", "secondary": "input", "dst": "owned" }
+      ]
+    },
+    {
+      "name": "hue single-pass mode=11",
+      "effects": [{ "type": "hue", "degrees": 90 }],
+      "width": 1920,
+      "height": 1080,
+      "quality": "ultra",
+      "passes": [
+        { "uniform": { "mode": 11, "width": 1920, "height": 1080, "seed": 0, "p0": 90, "p1": 0, "p2": 0, "p3": 0, "p4": 0, "p5": 0, "p6": 0, "p7": 0 }, "customSource": null, "src": "input", "secondary": "input", "dst": "owned" }
+      ]
+    },
+    {
+      "name": "levels carries all 6 params + mix in p6",
+      "effects": [{ "type": "levels", "in_black": 0.1, "in_white": 0.8, "gamma": 1.6, "out_black": 0.1, "out_white": 0.9, "mix": 0.5 }],
+      "width": 1920,
+      "height": 1080,
+      "quality": "ultra",
+      "passes": [
+        { "uniform": { "mode": 12, "width": 1920, "height": 1080, "seed": 0, "p0": 0.1, "p1": 0.8, "p2": 1.6, "p3": 0.1, "p4": 0.9, "p5": 0.5, "p6": 0, "p7": 0 }, "customSource": null, "src": "input", "secondary": "input", "dst": "owned" }
+      ]
+    },
+    {
+      "name": "chroma-key carries key_rgba, threshold, smoothness",
+      "effects": [{ "type": "chroma-key", "key_rgba": [0, 255, 0, 255], "threshold": 0.2, "smoothness": 0.1 }],
+      "width": 1920,
+      "height": 1080,
+      "quality": "ultra",
+      "passes": [
+        { "uniform": { "mode": 13, "width": 1920, "height": 1080, "seed": 0, "p0": 0, "p1": 1, "p2": 0, "p3": 0.2, "p4": 0.1, "p5": 0, "p6": 0, "p7": 0 }, "customSource": null, "src": "input", "secondary": "input", "dst": "owned" }
+      ]
+    },
+    {
+      "name": "color-tone overlay with preserve_luminance and range",
+      "effects": [{ "type": "color-tone", "color_rgba": [255, 136, 0, 255], "amount": 0.6, "blend_mode": "overlay", "preserve_luminance": true, "range": "highlights" }],
+      "width": 1920,
+      "height": 1080,
+      "quality": "ultra",
+      "passes": [
+        { "uniform": { "mode": 23, "width": 1920, "height": 1080, "seed": 0, "p0": 1, "p1": 0.53333, "p2": 0, "p3": 0.6, "p4": 3, "p5": 1, "p6": 3, "p7": 0 }, "customSource": null, "src": "input", "secondary": "input", "dst": "owned" }
+      ]
+    },
+    {
+      "name": "custom-wgsl carries source and params",
+      "effects": [{ "type": "custom-wgsl", "source": "fn main() {}", "params": { "p0": 1, "p2": 3.5 } }],
+      "width": 1920,
+      "height": 1080,
+      "quality": "ultra",
+      "passes": [
+        { "uniform": { "mode": 0, "width": 1920, "height": 1080, "seed": 0, "p0": 1, "p1": 0, "p2": 3.5, "p3": 0, "p4": 0, "p5": 0, "p6": 0, "p7": 0 }, "customSource": "fn main() {}", "src": "input", "secondary": "input", "dst": "owned" }
+      ]
+    },
+    {
+      "name": "chain: brightness then blur",
+      "effects": [
+        { "type": "brightness", "value": 1.5 },
+        { "type": "gaussian-blur", "radius": 10, "bleed": false, "blur_type": "gaussian", "mix": 1 }
+      ],
+      "width": 1920,
+      "height": 1080,
+      "quality": "ultra",
+      "passes": [
+        { "uniform": { "mode": 1, "width": 1920, "height": 1080, "seed": 0, "p0": 1.5, "p1": 0, "p2": 0, "p3": 0, "p4": 0, "p5": 0, "p6": 0, "p7": 0 }, "customSource": null, "src": "input", "secondary": "input", "dst": "ping" },
+        { "uniform": { "mode": 4, "width": 1920, "height": 1080, "seed": 0, "p0": 10, "p1": 0, "p2": 0, "p3": 0, "p4": 0, "p5": 0, "p6": 0, "p7": 48 }, "customSource": null, "src": "ping", "secondary": "ping", "dst": "pong" },
+        { "uniform": { "mode": 14, "width": 1920, "height": 1080, "seed": 0, "p0": 10, "p1": 0, "p2": 0, "p3": 0, "p4": 0, "p5": 0, "p6": 0, "p7": 48 }, "customSource": null, "src": "pong", "secondary": "pong", "dst": "owned" }
+      ]
+    },
+    {
+      "name": "chain: blur then brightness (different pass order)",
+      "effects": [
+        { "type": "gaussian-blur", "radius": 10, "bleed": false, "blur_type": "gaussian", "mix": 1 },
+        { "type": "brightness", "value": 1.5 }
+      ],
+      "width": 1920,
+      "height": 1080,
+      "quality": "ultra",
+      "passes": [
+        { "uniform": { "mode": 4, "width": 1920, "height": 1080, "seed": 0, "p0": 10, "p1": 0, "p2": 0, "p3": 0, "p4": 0, "p5": 0, "p6": 0, "p7": 48 }, "customSource": null, "src": "input", "secondary": "input", "dst": "ping" },
+        { "uniform": { "mode": 14, "width": 1920, "height": 1080, "seed": 0, "p0": 10, "p1": 0, "p2": 0, "p3": 0, "p4": 0, "p5": 0, "p6": 0, "p7": 48 }, "customSource": null, "src": "ping", "secondary": "ping", "dst": "pong" },
+        { "uniform": { "mode": 1, "width": 1920, "height": 1080, "seed": 0, "p0": 1.5, "p1": 0, "p2": 0, "p3": 0, "p4": 0, "p5": 0, "p6": 0, "p7": 0 }, "customSource": null, "src": "pong", "secondary": "pong", "dst": "owned" }
+      ]
+    },
+    {
+      "name": "quality=low uses tap_budget=8",
+      "effects": [{ "type": "gaussian-blur", "radius": 100, "bleed": false, "blur_type": "gaussian", "mix": 1 }],
+      "width": 1920,
+      "height": 1080,
+      "quality": "low",
+      "passes": [
+        { "uniform": { "mode": 4, "width": 1920, "height": 1080, "seed": 0, "p0": 100, "p1": 0, "p2": 0, "p3": 0, "p4": 0, "p5": 0, "p6": 0, "p7": 8 }, "customSource": null, "src": "input", "secondary": "input", "dst": "ping" },
+        { "uniform": { "mode": 14, "width": 1920, "height": 1080, "seed": 0, "p0": 100, "p1": 0, "p2": 0, "p3": 0, "p4": 0, "p5": 0, "p6": 0, "p7": 8 }, "customSource": null, "src": "ping", "secondary": "ping", "dst": "owned" }
+      ]
+    },
+    {
+      "name": "quality=high uses tap_budget=32 for bloom",
+      "effects": [{ "type": "bloom", "threshold": 0.75, "strength": 1, "radius": 100, "knee": 0.5, "mix": 1 }],
+      "width": 1920,
+      "height": 1080,
+      "quality": "high",
+      "passes": [
+        { "uniform": { "mode": 15, "width": 1920, "height": 1080, "seed": 0, "p0": 0.75, "p1": 0.5, "p2": 0, "p3": 0, "p4": 0, "p5": 0, "p6": 0, "p7": 0 }, "customSource": null, "src": "input", "secondary": "input", "dst": "ping" },
+        { "uniform": { "mode": 4, "width": 1920, "height": 1080, "seed": 0, "p0": 100, "p1": 0, "p2": 0, "p3": 0, "p4": 0, "p5": 0, "p6": 0, "p7": 32 }, "customSource": null, "src": "ping", "secondary": "ping", "dst": "pong" },
+        { "uniform": { "mode": 14, "width": 1920, "height": 1080, "seed": 0, "p0": 100, "p1": 0, "p2": 0, "p3": 0, "p4": 0, "p5": 0, "p6": 0, "p7": 32 }, "customSource": null, "src": "pong", "secondary": "pong", "dst": "ping" },
+        { "uniform": { "mode": 18, "width": 1920, "height": 1080, "seed": 0, "p0": 0, "p1": 1, "p2": 0, "p3": 0, "p4": 0, "p5": 0, "p6": 0, "p7": 0 }, "customSource": null, "src": "input", "secondary": "ping", "dst": "owned" }
+      ]
+    }
+  ]
+}

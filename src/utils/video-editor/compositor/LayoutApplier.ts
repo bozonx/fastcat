@@ -142,15 +142,13 @@ export class LayoutApplier {
       },
     });
 
-    // The blur "bleed" path pads the effect output around the frame, so the
-    // sprite texture can be larger than frameW×frameH; derive that padding from
-    // the actual texture source size. `texture.source` isn't on Pixi's narrowed
-    // sprite type here, so read it through a loose cast.
-    const textureSource = (
-      clip.sprite as { texture?: { source?: { width?: number; height?: number } } } | undefined
-    )?.texture?.source;
-    const textureW = textureSource?.width ?? frameW;
-    const textureH = textureSource?.height ?? frameH;
+    // The blur "bleed" path pads the effect output around the frame. The
+    // ImageSource is resized before Pixi's texture internals necessarily expose
+    // that new size, so derive padding from the source object we control.
+    const imageSourceW = Number(clip.imageSource?.width);
+    const imageSourceH = Number(clip.imageSource?.height);
+    const textureW = Number.isFinite(imageSourceW) && imageSourceW > 0 ? imageSourceW : frameW;
+    const textureH = Number.isFinite(imageSourceH) && imageSourceH > 0 ? imageSourceH : frameH;
     const paddingX = Math.max(0, Math.round((textureW - frameW) / 2));
     const paddingY = Math.max(0, Math.round((textureH - frameH) / 2));
 
@@ -257,17 +255,26 @@ export class LayoutApplier {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (sprite as any).anchor?.set?.(anchorX, anchorY);
 
-    if (sprite.scale) {
-      sprite.scale.x = Math.abs(sprite.scale.x);
-      sprite.scale.y = Math.abs(sprite.scale.y);
-    }
+    const targetDisplayW = paddedW * fitScaleX;
+    const targetDisplayH = paddedH * fitScaleY;
+    const textureSize = this.getSpriteTextureSize(sprite);
 
-    sprite.width = paddedW * fitScaleX;
-    sprite.height = paddedH * fitScaleY;
+    if (sprite.scale && textureSize) {
+      sprite.scale.x = (targetDisplayW / textureSize.width) * input.scaleX;
+      sprite.scale.y = (targetDisplayH / textureSize.height) * input.scaleY;
+    } else {
+      if (sprite.scale) {
+        sprite.scale.x = Math.abs(sprite.scale.x);
+        sprite.scale.y = Math.abs(sprite.scale.y);
+      }
 
-    if (sprite.scale) {
-      sprite.scale.x *= input.scaleX;
-      sprite.scale.y *= input.scaleY;
+      sprite.width = targetDisplayW;
+      sprite.height = targetDisplayH;
+
+      if (sprite.scale) {
+        sprite.scale.x *= input.scaleX;
+        sprite.scale.y *= input.scaleY;
+      }
     }
 
     sprite.rotation = (input.rotationDeg * Math.PI) / 180;
@@ -346,5 +353,19 @@ export class LayoutApplier {
       input.clip.cropMaskKey = undefined;
       sprite.mask = null;
     }
+  }
+
+  private getSpriteTextureSize(
+    sprite: CompositorClip['sprite'],
+  ): { width: number; height: number } | null {
+    const texture = (
+      sprite as { texture?: { orig?: { width?: number; height?: number } } } | null
+    )?.texture;
+    const width = Number(texture?.orig?.width);
+    const height = Number(texture?.orig?.height);
+    if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) {
+      return null;
+    }
+    return { width, height };
   }
 }

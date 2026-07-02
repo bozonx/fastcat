@@ -1,7 +1,16 @@
 {
   "_comment": [
     "Cross-engine parity scene: blur-fill effect applied to a single image clip.",
-    "The output fills the frame with a blurred, scaled background plus a sharp foreground."
+    "The output fills the frame with a blurred, scaled background plus a sharp foreground.",
+    "NOTE: The current golden hash (ff7f3f0f07030000) is identical to plain blur and other",
+    "effect scenes because the test fixture image (image/image.jpg) is a smooth vertical",
+    "gradient (R=254, G: 0->234, B=0) at 320x240. On such a gradient:",
+    "  1. Blur barely changes block averages (no high-frequency detail to blur).",
+    "  2. The image and frame share the same 4:3 aspect ratio, so cover-fit and contain-fit",
+    "     produce identical layouts — the blurred background is fully occluded by the foreground.",
+    "  3. The dim/tint (0.7/0.2) is too subtle for the color signature to distinguish.",
+    "To make this scene effective, either use a frame with a different aspect ratio (e.g. 16:9)",
+    "or replace the fixture image with one that has high-frequency detail."
   ],
   "scene": {
     "width": 320,

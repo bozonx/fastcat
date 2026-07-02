@@ -1470,4 +1470,153 @@ mod tests {
         // Very large height would produce a huge scale; clamp to 8.0.
         assert!((passes::spatial_scale(100_000) - 8.0).abs() < 1e-6);
     }
+
+    // ------------------------------------------------------------------
+    // Cross-engine parity: build_passes must produce the same pass schedule
+    // as the web `buildPasses` (TS). Driven by `shared/parity/build-passes.cases.json`.
+    // ------------------------------------------------------------------
+
+    #[derive(serde::Deserialize)]
+    struct ParityUniform {
+        mode: u32,
+        width: u32,
+        height: u32,
+        seed: u32,
+        p0: f64,
+        p1: f64,
+        p2: f64,
+        p3: f64,
+        p4: f64,
+        p5: f64,
+        p6: f64,
+        p7: f64,
+    }
+
+    #[derive(serde::Deserialize)]
+    struct ParityPass {
+        uniform: ParityUniform,
+        custom_source: Option<String>,
+        src: String,
+        secondary: String,
+        dst: String,
+    }
+
+    #[derive(serde::Deserialize)]
+    struct ParityCase {
+        name: String,
+        effects: Vec<serde_json::Value>,
+        width: u32,
+        height: u32,
+        quality: String,
+        passes: Vec<ParityPass>,
+    }
+
+    #[derive(serde::Deserialize)]
+    struct ParityFixture {
+        cases: Vec<ParityCase>,
+    }
+
+    fn buf_from_str(s: &str) -> Buf {
+        match s {
+            "input" => Buf::Input,
+            "ping" => Buf::Ping,
+            "pong" => Buf::Pong,
+            "aux" => Buf::Aux,
+            "owned" => Buf::Owned,
+            _ => panic!("unknown buffer name: {s}"),
+        }
+    }
+
+    fn quality_from_str(s: &str) -> EffectQuality {
+        match s {
+            "low" => EffectQuality::Low,
+            "medium" => EffectQuality::Medium,
+            "high" => EffectQuality::High,
+            "ultra" => EffectQuality::Ultra,
+            _ => panic!("unknown quality: {s}"),
+        }
+    }
+
+    fn approx_eq(a: f32, b: f64, label: &str) {
+        let diff = (a as f64 - b).abs();
+        assert!(
+            diff < 1e-4,
+            "{label}: expected {b} but got {a} (diff={diff})"
+        );
+    }
+
+    #[test]
+    fn build_passes_match_shared_parity_fixture() {
+        let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../shared/parity/build-passes.cases.json");
+        let raw = std::fs::read_to_string(&path)
+            .expect("build-passes.cases.json must exist");
+        let fixture: ParityFixture =
+            serde_json::from_str(&raw).expect("build-passes.cases.json must be valid");
+
+        for case in &fixture.cases {
+            let effects: Vec<EffectSpec> = case
+                .effects
+                .iter()
+                .map(|v| serde_json::from_value(v.clone()))
+                .expect("failed to deserialize effect");
+
+            let quality = quality_from_str(&case.quality);
+            let passes = build_passes(&effects, case.width, case.height, quality);
+
+            assert_eq!(
+                passes.len(),
+                case.passes.len(),
+                "{}: pass count mismatch",
+                case.name
+            );
+
+            for (i, (actual, expected)) in passes.iter().zip(case.passes.iter()).enumerate() {
+                assert_eq!(
+                    actual.src,
+                    buf_from_str(&expected.src),
+                    "{}: pass[{i}].src",
+                    case.name
+                );
+                assert_eq!(
+                    actual.secondary,
+                    buf_from_str(&expected.secondary),
+                    "{}: pass[{i}].secondary",
+                    case.name
+                );
+                assert_eq!(
+                    actual.dst,
+                    buf_from_str(&expected.dst),
+                    "{}: pass[{i}].dst",
+                    case.name
+                );
+
+                // custom_source
+                match (&actual.custom_source, &expected.custom_source) {
+                    (None, None) => {}
+                    (Some(a), Some(b)) => assert_eq!(a, b, "{}: pass[{i}].custom_source", case.name),
+                    (a, b) => panic!(
+                        "{}: pass[{i}].custom_source mismatch: actual={a:?} expected={b:?}",
+                        case.name
+                    ),
+                }
+
+                // Uniform fields
+                let u = &actual.uniform;
+                let e = &expected.uniform;
+                assert_eq!(u.mode, e.mode, "{}: pass[{i}].mode", case.name);
+                assert_eq!(u.width, e.width, "{}: pass[{i}].width", case.name);
+                assert_eq!(u.height, e.height, "{}: pass[{i}].height", case.name);
+                assert_eq!(u.seed, e.seed, "{}: pass[{i}].seed", case.name);
+                approx_eq(u.p0, e.p0, &format!("{}: pass[{i}].p0", case.name));
+                approx_eq(u.p1, e.p1, &format!("{}: pass[{i}].p1", case.name));
+                approx_eq(u.p2, e.p2, &format!("{}: pass[{i}].p2", case.name));
+                approx_eq(u.p3, e.p3, &format!("{}: pass[{i}].p3", case.name));
+                approx_eq(u.p4, e.p4, &format!("{}: pass[{i}].p4", case.name));
+                approx_eq(u.p5, e.p5, &format!("{}: pass[{i}].p5", case.name));
+                approx_eq(u.p6, e.p6, &format!("{}: pass[{i}].p6", case.name));
+                approx_eq(u.p7, e.p7, &format!("{}: pass[{i}].p7", case.name));
+            }
+        }
+    }
 }

@@ -282,7 +282,7 @@ export class TimelineClipLoader {
       reusable.textDirty =
         reusable.text !== nextText || !areTextClipStylesEqual(reusable.style, nextStyle);
       reusable.text = nextText;
-      reusable.style = nextStyle;
+      reusable.style = nextStyle ? cloneValue(nextStyle) : undefined;
     }
 
     const reusableTrack = getTrackRuntimeForClip(reusable);

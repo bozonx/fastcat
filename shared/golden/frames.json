@@ -49,6 +49,28 @@
       ]
     },
     {
+      "scene": "effect-chain-blur-brightness.json",
+      "engine": "web",
+      "samples": [
+        {
+          "timeSec": 0.5,
+          "hash": "pending",
+          "tolerance": 12
+        }
+      ]
+    },
+    {
+      "scene": "effect-chain-brightness-blur.json",
+      "engine": "web",
+      "samples": [
+        {
+          "timeSec": 0.5,
+          "hash": "pending",
+          "tolerance": 12
+        }
+      ]
+    },
+    {
       "scene": "effect-blur.json",
       "engine": "web",
       "samples": [
@@ -57,6 +79,17 @@
           "hash": "ff7f3f0f07030000",
           "tolerance": 12,
           "colorSig": "fe8400fee800fe0a00fe5b00"
+        }
+      ]
+    },
+    {
+      "scene": "effect-blur-mix.json",
+      "engine": "web",
+      "samples": [
+        {
+          "timeSec": 0.5,
+          "hash": "pending",
+          "tolerance": 12
         }
       ]
     },
@@ -517,6 +550,28 @@
       ]
     },
     {
+      "scene": "effect-chain-blur-brightness.json",
+      "engine": "native",
+      "samples": [
+        {
+          "timeSec": 0.5,
+          "hash": "pending",
+          "tolerance": 12
+        }
+      ]
+    },
+    {
+      "scene": "effect-chain-brightness-blur.json",
+      "engine": "native",
+      "samples": [
+        {
+          "timeSec": 0.5,
+          "hash": "pending",
+          "tolerance": 12
+        }
+      ]
+    },
+    {
       "scene": "effect-blur.json",
       "engine": "native",
       "samples": [
@@ -525,6 +580,17 @@
           "hash": "ff7f3f0f07030000",
           "tolerance": 12,
           "colorSig": "fe8400fee800fe0a00fe5b00"
+        }
+      ]
+    },
+    {
+      "scene": "effect-blur-mix.json",
+      "engine": "native",
+      "samples": [
+        {
+          "timeSec": 0.5,
+          "hash": "pending",
+          "tolerance": 12
         }
       ]
     },

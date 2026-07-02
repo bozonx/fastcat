@@ -268,6 +268,64 @@ describe('TimelineClipLayoutUpdater', () => {
     expect(clearTransition).not.toHaveBeenCalled();
   });
 
+  it('applies text layout after updating text and style', () => {
+    const clip = makeClip({
+      clipType: 'text',
+      clipKind: 'text',
+      text: 'Old',
+      style: { fontSize: 40, lineHeight: 1 },
+    });
+    const { updater, clearTransition, toVideoEffects } = makeUpdater();
+    const applyLayout = vi.fn((current: CompositorClip) => {
+      expect(current.text).toBe('New\nNew');
+      expect(current.style?.lineHeight).toBe(2);
+    });
+
+    updater.update({
+      clip,
+      next: makePayload({ text: 'New\nNew', style: { fontSize: 40, lineHeight: 2 } }),
+      toVideoEffects,
+      applyClipLayoutForCurrentSource: applyLayout,
+      clearClipTransitionFilter: clearTransition,
+    });
+
+    expect(applyLayout).toHaveBeenCalledTimes(1);
+    expect(clip.textDirty).toBe(true);
+  });
+
+  it('keeps a text style snapshot so live payload mutations remain detectable', () => {
+    const sourceStyle = { fontSize: 40, lineHeight: 1 };
+    const clip = makeClip({
+      clipType: 'text',
+      clipKind: 'text',
+      text: 'Text',
+      style: { fontSize: 40, lineHeight: 1 },
+      textDirty: false,
+    });
+    const { updater, applyLayout, clearTransition, toVideoEffects } = makeUpdater();
+
+    updater.update({
+      clip,
+      next: makePayload({ text: 'Text', style: sourceStyle }),
+      toVideoEffects,
+      applyClipLayoutForCurrentSource: applyLayout,
+      clearClipTransitionFilter: clearTransition,
+    });
+    clip.textDirty = false;
+    sourceStyle.lineHeight = 2;
+
+    updater.update({
+      clip,
+      next: makePayload({ text: 'Text', style: sourceStyle }),
+      toVideoEffects,
+      applyClipLayoutForCurrentSource: applyLayout,
+      clearClipTransitionFilter: clearTransition,
+    });
+
+    expect(clip.textDirty).toBe(true);
+    expect(clip.style).not.toBe(sourceStyle);
+  });
+
   it('initializes effectFilters map if missing', () => {
     const clip = makeClip();
     clip.effectFilters = undefined;
