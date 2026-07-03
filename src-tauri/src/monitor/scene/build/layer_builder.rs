@@ -380,9 +380,15 @@ pub fn build_text_layer(sl: &SceneLayer, scene_size: (u32, u32)) -> TextLayer {
     let background_height = frame_height_px + border_outset * 2.0 + shadow_top + shadow_bottom;
 
     let (natural_width, natural_height) = if is_snap_active {
-        (background_width.round() as u32, background_height.round() as u32)
+        (
+            background_width.round() as u32,
+            background_height.round() as u32,
+        )
     } else {
-        (background_width.ceil() as u32, background_height.ceil() as u32)
+        (
+            background_width.ceil() as u32,
+            background_height.ceil() as u32,
+        )
     };
 
     TextLayer {

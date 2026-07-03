@@ -47,6 +47,10 @@ pub(crate) struct GpuCtx<'a> {
     pub queue: &'a wgpu::Queue,
 }
 
+fn device_supports_pipeline_cache(features: wgpu::Features) -> bool {
+    features.contains(wgpu::Features::PIPELINE_CACHE)
+}
+
 pub struct Compositor {
     devices: DeviceContext,
     effect_pipelines: HashMap<usize, EffectPipeline>,
@@ -1245,31 +1249,33 @@ impl Compositor {
             return Ok(());
         }
         let device_handle = &self.devices.render_cx.devices[dev_id];
+        let device = &device_handle.device;
 
-        // Get or create a PipelineCache for this device
-        let pipeline_cache = self
-            .devices
-            .pipeline_caches
-            .entry(dev_id)
-            .or_insert_with(|| {
-                // SAFETY: create_pipeline_cache is safe when data is None and fallback is true.
-                unsafe {
-                    device_handle
-                        .device
-                        .create_pipeline_cache(&wgpu::PipelineCacheDescriptor {
-                            label: Some("vello-pipeline-cache"),
-                            data: None,
-                            fallback: true,
-                        })
-                }
-            })
-            .clone();
+        let pipeline_cache = if device_supports_pipeline_cache(device.features()) {
+            Some(
+                self.devices
+                    .pipeline_caches
+                    .entry(dev_id)
+                    .or_insert_with(|| {
+                        // SAFETY: create_pipeline_cache is safe when data is None and fallback is true.
+                        unsafe {
+                            device.create_pipeline_cache(&wgpu::PipelineCacheDescriptor {
+                                label: Some("vello-pipeline-cache"),
+                                data: None,
+                                fallback: true,
+                            })
+                        }
+                    })
+                    .clone(),
+            )
+        } else {
+            None
+        };
 
         // Prefer the full AA set (Area + MSAA8 + MSAA16) so we can pick crisp MSAA for
         // still frames / export and cheap Area for realtime playback (see aa_config_for).
         // Compiling MSAA pipelines is heavier and unsupported on some drivers, so fall back
         // to Area-only on failure and remember that this device can't do MSAA.
-        let device = &device_handle.device;
         let make_renderer = |support: AaSupport| {
             Renderer::new(
                 device,
@@ -1277,7 +1283,7 @@ impl Compositor {
                     use_cpu: false,
                     antialiasing_support: support,
                     num_init_threads: NonZeroUsize::new(1),
-                    pipeline_cache: Some(pipeline_cache.clone()),
+                    pipeline_cache: pipeline_cache.clone(),
                 },
             )
         };
@@ -1656,5 +1662,17 @@ mod tests {
         let (kx, ky) = Compositor::vector_effect_render_scale(&layer);
         assert!(kx.is_finite() && kx >= 1.0);
         assert!(ky.is_finite() && ky >= 1.0);
+    }
+
+    #[test]
+    fn device_supports_pipeline_cache_detects_enabled_feature() {
+        assert!(device_supports_pipeline_cache(
+            wgpu::Features::PIPELINE_CACHE
+        ));
+    }
+
+    #[test]
+    fn device_supports_pipeline_cache_rejects_missing_feature() {
+        assert!(!device_supports_pipeline_cache(wgpu::Features::empty()));
     }
 }

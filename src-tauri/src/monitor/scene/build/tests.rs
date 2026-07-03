@@ -1121,13 +1121,41 @@ mod tests {
         // rounded natural size — i.e. every contributing measurement is itself an
         // integer, not just their unrounded sum.
         let border_outset = layer.border_width + layer.border_offset;
-        assert_eq!(border_outset.fract(), 0.0, "border_outset must be a whole pixel");
-        assert_eq!(layer.frame_width.fract(), 0.0, "frame_width must be a whole pixel");
-        assert_eq!(layer.frame_height.fract(), 0.0, "frame_height must be a whole pixel");
-        assert_eq!(layer.shadow_left.fract(), 0.0, "shadow_left must be a whole pixel");
-        assert_eq!(layer.shadow_right.fract(), 0.0, "shadow_right must be a whole pixel");
-        assert_eq!(layer.padding_left.fract(), 0.0, "padding_left must be a whole pixel");
-        assert_eq!(layer.padding_top.fract(), 0.0, "padding_top must be a whole pixel");
+        assert_eq!(
+            border_outset.fract(),
+            0.0,
+            "border_outset must be a whole pixel"
+        );
+        assert_eq!(
+            layer.frame_width.fract(),
+            0.0,
+            "frame_width must be a whole pixel"
+        );
+        assert_eq!(
+            layer.frame_height.fract(),
+            0.0,
+            "frame_height must be a whole pixel"
+        );
+        assert_eq!(
+            layer.shadow_left.fract(),
+            0.0,
+            "shadow_left must be a whole pixel"
+        );
+        assert_eq!(
+            layer.shadow_right.fract(),
+            0.0,
+            "shadow_right must be a whole pixel"
+        );
+        assert_eq!(
+            layer.padding_left.fract(),
+            0.0,
+            "padding_left must be a whole pixel"
+        );
+        assert_eq!(
+            layer.padding_top.fract(),
+            0.0,
+            "padding_top must be a whole pixel"
+        );
 
         let reconstructed_width =
             layer.frame_width + border_outset * 2.0 + layer.shadow_left + layer.shadow_right;

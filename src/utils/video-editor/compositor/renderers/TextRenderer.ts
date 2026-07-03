@@ -358,6 +358,9 @@ export class TextRenderer {
 
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i] ?? '';
+      // The snapped block origin is not enough: `middle` baseline adds
+      // `lineHeight / 2`, which can put the real fillText/strokeText baseline
+      // back on a fractional pixel and soften glyphs in web snapshots.
       const lineX = snapToPixelGrid ? Math.round(localTextStartX) : localTextStartX;
       const rawLineY = localTextTopPx + i * lineHeightPx + lineHeightPx / 2;
       const lineY = snapToPixelGrid ? Math.round(rawLineY) : rawLineY;

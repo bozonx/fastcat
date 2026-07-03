@@ -24,9 +24,15 @@ class FakeCtx {
   lineWidth = 0;
   letterSpacing = '0px';
   // Records each text draw with the state in effect, for regression asserts.
-  strokeCalls: { op: string; lineWidth: number; shadowOffsetX: number; x: number; y: number }[] =
-    [];
-  fillCalls: { op: string; shadowOffsetX: number; x: number; y: number }[] = [];
+  strokeCalls: {
+    text: string;
+    op: string;
+    lineWidth: number;
+    shadowOffsetX: number;
+    x: number;
+    y: number;
+  }[] = [];
+  fillCalls: { text: string; op: string; shadowOffsetX: number; x: number; y: number }[] = [];
   private stateStack: Record<string, unknown>[] = [];
   private static readonly SAVED_PROPS = [
     'font',
@@ -62,16 +68,18 @@ class FakeCtx {
   quadraticCurveTo() {}
   fill() {}
   stroke() {}
-  fillText(_text: string, x: number, y: number) {
+  fillText(text: string, x: number, y: number) {
     this.fillCalls.push({
+      text,
       op: this.globalCompositeOperation,
       shadowOffsetX: this.shadowOffsetX,
       x,
       y,
     });
   }
-  strokeText(_text: string, x: number, y: number) {
+  strokeText(text: string, x: number, y: number) {
     this.strokeCalls.push({
+      text,
       op: this.globalCompositeOperation,
       lineWidth: this.lineWidth,
       shadowOffsetX: this.shadowOffsetX,
@@ -131,6 +139,11 @@ function createTextClip(text: string): CompositorClip {
     text,
     style: { fontSize: 64, lineHeight: 1.2 },
   } as unknown as CompositorClip;
+}
+
+function expectIntegerTextCoords(call: { x: number; y: number }) {
+  expect(call.x).toBe(Math.round(call.x));
+  expect(call.y).toBe(Math.round(call.y));
 }
 
 describe('TextRenderer + LayoutApplier integration', () => {
@@ -228,8 +241,59 @@ describe('TextRenderer + LayoutApplier integration', () => {
     const mainText = ctx.fillCalls.find((c) => c.shadowOffsetX === 0);
 
     expect(mainText).toBeDefined();
-    expect(mainText!.x).toBe(Math.round(mainText!.x));
-    expect(mainText!.y).toBe(Math.round(mainText!.y));
+    expectIntegerTextCoords(mainText!);
+  });
+
+  it('snaps shadow spread text draw coordinates when pixel-grid snapping is enabled', () => {
+    const renderer = new TextRenderer({ designWidth: W, designHeight: H });
+    const clip = createTextClip('Text');
+    clip.snapToPixelGrid = true;
+    (clip as unknown as { style: Record<string, unknown> }).style = {
+      fontSize: 31,
+      lineHeight: 1.3,
+      padding: 7,
+      align: 'center',
+      textShadowEnabled: true,
+      textShadowColor: '#000000',
+      textShadowAlpha: 1,
+      textShadowBlur: 6,
+      textShadowSpread: 5,
+      textShadowOffsetX: 1,
+      textShadowOffsetY: 1,
+    };
+
+    renderer.draw(clip, W, H);
+    const ctx = clip.ctx as unknown as FakeCtx;
+    const spreadStroke = ctx.strokeCalls.find((c) => c.lineWidth > 0);
+    const shadowFill = ctx.fillCalls.find((c) => c.shadowOffsetX > ctx.canvas.width);
+    const mainText = ctx.fillCalls.find((c) => c.shadowOffsetX === 0);
+
+    expect(spreadStroke).toBeDefined();
+    expect(shadowFill).toBeDefined();
+    expect(mainText).toBeDefined();
+    expectIntegerTextCoords(spreadStroke!);
+    expectIntegerTextCoords(shadowFill!);
+    expectIntegerTextCoords(mainText!);
+  });
+
+  it('snaps native letterSpacing text draw coordinates when pixel-grid snapping is enabled', () => {
+    const renderer = new TextRenderer({ designWidth: W, designHeight: H });
+    const clip = createTextClip('Text');
+    clip.snapToPixelGrid = true;
+    (clip as unknown as { style: Record<string, unknown> }).style = {
+      fontSize: 31,
+      lineHeight: 1.3,
+      padding: 7,
+      align: 'center',
+      letterSpacing: 3,
+    };
+
+    renderer.draw(clip, W, H);
+    const ctx = clip.ctx as unknown as FakeCtx;
+    const mainText = ctx.fillCalls.find((c) => c.text === 'Text' && c.shadowOffsetX === 0);
+
+    expect(mainText).toBeDefined();
+    expectIntegerTextCoords(mainText!);
   });
 
   it('keeps fractional text draw coordinates when pixel-grid snapping is disabled', () => {
