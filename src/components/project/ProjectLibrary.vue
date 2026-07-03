@@ -7,6 +7,7 @@ import { useWorkspaceStore } from '~/stores/workspace.store';
 import type { ShapeType, HudType } from '~/timeline/types';
 import { getCustomPresetsByCategory } from '~/utils/presets';
 import CollapsibleEffectGroup from '~/components/effects/CollapsibleEffectGroup.vue';
+import EffectCard from '~/components/effects/EffectCard.vue';
 import PresetSaveModal from '~/components/properties/PresetSaveModal.vue';
 import { armPointerDnd } from '~/composables/dnd/usePointerDnd';
 import { useDraggedFile } from '~/composables/useDraggedFile';
@@ -217,37 +218,19 @@ function isSelected(kind: 'text' | 'shape' | 'hud', id: string) {
           :title="t('fastcat.effects.groups.standard')"
         >
           <div class="grid grid-cols-1 gap-2">
-            <div
+            <EffectCard
               v-for="text in standardTexts"
               :key="text.type"
-              class="flex items-center gap-3 p-3 rounded-lg border cursor-pointer active:cursor-grabbing transition-colors"
-              :class="
-                isSelected('text', text.type)
-                  ? 'border-primary bg-primary/10'
-                  : 'border-ui-border bg-ui-bg-muted hover:bg-ui-bg-elevated'
-              "
-              @pointerdown="handlePointerDown($event, text.type, 'text', text.params)"
+              :title="t(`fastcat.library.texts.${text.type}`, text.name)"
+              :icon="text.icon"
+              :is-selected="isSelected('text', text.type)"
+              :is-draggable="true"
+              :show-default-star="true"
+              :is-default="presetsStore.defaultTextPresetId === text.type"
+              @pointer-down="handlePointerDown($event, text.type, 'text', text.params)"
               @click="selectItem('text', text.type, text.params)"
-            >
-              <UIcon :name="text.icon" class="w-8 h-8 text-primary shrink-0" />
-              <div class="flex-1 min-w-0">
-                <h4 class="text-sm font-medium text-ui-text">
-                  {{ t(`fastcat.library.texts.${text.type}`, text.name) }}
-                </h4>
-              </div>
-              <UButton
-                :icon="
-                  presetsStore.defaultTextPresetId === text.type
-                    ? 'i-heroicons-star-solid'
-                    : 'i-heroicons-star'
-                "
-                :color="presetsStore.defaultTextPresetId === text.type ? 'yellow' : 'neutral'"
-                variant="ghost"
-                size="xs"
-                :title="t('fastcat.library.texts.setAsDefault')"
-                @click.stop="void (presetsStore.defaultTextPresetId = text.type)"
-              />
-            </div>
+              @toggle-default="presetsStore.defaultTextPresetId = text.type"
+            />
             <UiEmptyState v-if="standardTexts.length === 0" :message="t('common.noData')" />
           </div>
         </CollapsibleEffectGroup>
@@ -267,67 +250,28 @@ function isSelected(kind: 'text' | 'shape' | 'hud', id: string) {
             :prevent-on-filter="false"
             @update:model-value="updateCustomTextsOrder"
           >
-            <div
+            <EffectCard
               v-for="text in customTexts"
               :key="text.id"
-              class="flex items-center gap-3 p-3 rounded-lg border cursor-pointer active:cursor-grabbing transition-colors group"
-              :class="
-                isSelected('text', text.id)
-                  ? 'border-primary bg-primary/10'
-                  : 'border-ui-border bg-ui-bg-muted hover:bg-ui-bg-elevated'
+              class="external-drag"
+              :title="text.name"
+              :icon="
+                standardTexts.find((s) => s.type === text.baseType)?.icon ||
+                'i-heroicons-document-text'
               "
+              :is-selected="isSelected('text', text.id)"
+              :is-draggable="true"
+              :show-drag-handle="true"
+              :show-default-star="true"
+              :is-default="presetsStore.defaultTextPresetId === text.id"
+              :show-rename="true"
+              :show-action="true"
+              @pointer-down="handlePointerDown($event, text.id, 'text', text.params)"
               @click="selectItem('text', text.id, text.params)"
-            >
-              <div class="cursor-grab hover:text-ui-text text-ui-text-muted drag-handle">
-                <UIcon name="i-heroicons-bars-2" class="w-5 h-5" />
-              </div>
-              <div
-                class="external-drag flex items-center gap-3 flex-1 min-w-0"
-                @pointerdown="handlePointerDown($event, text.id, 'text', text.params)"
-              >
-                <UIcon
-                  :name="
-                    standardTexts.find((s) => s.type === text.baseType)?.icon ||
-                    'i-heroicons-document-text'
-                  "
-                  class="w-8 h-8 text-primary shrink-0"
-                />
-                <div class="flex-1 min-w-0 flex items-center justify-between">
-                  <h4 class="text-sm font-medium text-ui-text truncate">{{ text.name }}</h4>
-                  <div
-                    class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                  >
-                    <UButton
-                      :icon="
-                        presetsStore.defaultTextPresetId === text.id
-                          ? 'i-heroicons-star-solid'
-                          : 'i-heroicons-star'
-                      "
-                      :color="presetsStore.defaultTextPresetId === text.id ? 'yellow' : 'neutral'"
-                      variant="ghost"
-                      size="xs"
-                      :title="t('fastcat.library.texts.setAsDefault')"
-                      @click.stop="void (presetsStore.defaultTextPresetId = text.id)"
-                    />
-                    <UButton
-                      icon="i-heroicons-pencil-square"
-                      color="neutral"
-                      variant="ghost"
-                      size="xs"
-                      :title="t('common.rename')"
-                      @click.stop="openRenameModal(text)"
-                    />
-                    <UButton
-                      icon="i-heroicons-trash"
-                      color="red"
-                      variant="ghost"
-                      size="xs"
-                      @click.stop="presetsStore.removePreset(text.id)"
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
+              @toggle-default="presetsStore.defaultTextPresetId = text.id"
+              @rename="openRenameModal(text)"
+              @action="presetsStore.removePreset(text.id)"
+            />
           </VueDraggable>
           <UiEmptyState
             v-if="customTexts.length === 0"
@@ -344,25 +288,16 @@ function isSelected(kind: 'text' | 'shape' | 'hud', id: string) {
           :title="t('fastcat.effects.groups.standard')"
         >
           <div class="grid grid-cols-1 gap-2">
-            <div
+            <EffectCard
               v-for="shape in standardShapes"
               :key="shape.type"
-              class="flex items-center gap-3 p-3 rounded-lg border cursor-pointer active:cursor-grabbing transition-colors"
-              :class="
-                isSelected('shape', shape.type)
-                  ? 'border-primary bg-primary/10'
-                  : 'border-ui-border bg-ui-bg-muted hover:bg-ui-bg-elevated'
-              "
-              @pointerdown="handlePointerDown($event, shape.type, 'shape')"
+              :title="t(`fastcat.library.shapes.${shape.type}`, shape.name)"
+              :icon="shape.icon"
+              :is-selected="isSelected('shape', shape.type)"
+              :is-draggable="true"
+              @pointer-down="handlePointerDown($event, shape.type, 'shape')"
               @click="selectItem('shape', shape.type)"
-            >
-              <UIcon :name="shape.icon" class="w-8 h-8 text-primary shrink-0" />
-              <div class="flex-1 min-w-0">
-                <h4 class="text-sm font-medium text-ui-text">
-                  {{ t(`fastcat.library.shapes.${shape.type}`, shape.name) }}
-                </h4>
-              </div>
-            </div>
+            />
             <UiEmptyState v-if="standardShapes.length === 0" :message="t('common.noData')" />
           </div>
         </CollapsibleEffectGroup>
@@ -382,55 +317,24 @@ function isSelected(kind: 'text' | 'shape' | 'hud', id: string) {
             :prevent-on-filter="false"
             @update:model-value="updateCustomShapesOrder"
           >
-            <div
+            <EffectCard
               v-for="shape in customShapes"
               :key="shape.id"
-              class="flex items-center gap-3 p-3 rounded-lg border cursor-pointer active:cursor-grabbing transition-colors group"
-              :class="
-                isSelected('shape', shape.id)
-                  ? 'border-primary bg-primary/10'
-                  : 'border-ui-border bg-ui-bg-muted hover:bg-ui-bg-elevated'
+              class="external-drag"
+              :title="shape.name"
+              :icon="
+                standardShapes.find((s) => s.type === shape.baseType)?.icon || 'i-heroicons-stop'
               "
+              :is-selected="isSelected('shape', shape.id)"
+              :is-draggable="true"
+              :show-drag-handle="true"
+              :show-rename="true"
+              :show-action="true"
+              @pointer-down="handlePointerDown($event, shape.id, 'shape', shape.params)"
               @click="selectItem('shape', shape.id, shape.params)"
-            >
-              <div class="cursor-grab hover:text-ui-text text-ui-text-muted drag-handle">
-                <UIcon name="i-heroicons-bars-2" class="w-5 h-5" />
-              </div>
-              <div
-                class="external-drag flex items-center gap-3 flex-1 min-w-0"
-                @pointerdown="handlePointerDown($event, shape.id, 'shape', shape.params)"
-              >
-                <UIcon
-                  :name="
-                    standardShapes.find((s) => s.type === shape.baseType)?.icon ||
-                    'i-heroicons-stop'
-                  "
-                  class="w-8 h-8 text-primary shrink-0"
-                />
-                <div class="flex-1 min-w-0 flex items-center justify-between">
-                  <h4 class="text-sm font-medium text-ui-text truncate">{{ shape.name }}</h4>
-                  <div
-                    class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                  >
-                    <UButton
-                      icon="i-heroicons-pencil-square"
-                      color="neutral"
-                      variant="ghost"
-                      size="xs"
-                      :title="t('common.rename')"
-                      @click.stop="openRenameModal(shape)"
-                    />
-                    <UButton
-                      icon="i-heroicons-trash"
-                      color="red"
-                      variant="ghost"
-                      size="xs"
-                      @click.stop="presetsStore.removePreset(shape.id)"
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
+              @rename="openRenameModal(shape)"
+              @action="presetsStore.removePreset(shape.id)"
+            />
           </VueDraggable>
           <UiEmptyState
             v-if="customShapes.length === 0"
@@ -447,25 +351,16 @@ function isSelected(kind: 'text' | 'shape' | 'hud', id: string) {
           :title="t('fastcat.effects.groups.standard')"
         >
           <div class="grid grid-cols-1 gap-2">
-            <div
+            <EffectCard
               v-for="hud in standardHuds"
               :key="hud.type"
-              class="flex items-center gap-3 p-3 rounded-lg border cursor-pointer active:cursor-grabbing transition-colors"
-              :class="
-                isSelected('hud', hud.type)
-                  ? 'border-primary bg-primary/10'
-                  : 'border-ui-border bg-ui-bg-muted hover:bg-ui-bg-elevated'
-              "
-              @pointerdown="handlePointerDown($event, hud.type, 'hud')"
+              :title="t(`fastcat.library.huds.${hud.type}`, hud.name)"
+              :icon="hud.icon"
+              :is-selected="isSelected('hud', hud.type)"
+              :is-draggable="true"
+              @pointer-down="handlePointerDown($event, hud.type, 'hud')"
               @click="selectItem('hud', hud.type)"
-            >
-              <UIcon :name="hud.icon" class="w-8 h-8 text-primary shrink-0" />
-              <div class="flex-1 min-w-0">
-                <h4 class="text-sm font-medium text-ui-text">
-                  {{ t(`fastcat.library.huds.${hud.type}`, hud.name) }}
-                </h4>
-              </div>
-            </div>
+            />
             <UiEmptyState v-if="standardHuds.length === 0" :message="t('common.noData')" />
           </div>
         </CollapsibleEffectGroup>
@@ -485,54 +380,22 @@ function isSelected(kind: 'text' | 'shape' | 'hud', id: string) {
             :prevent-on-filter="false"
             @update:model-value="updateCustomHudsOrder"
           >
-            <div
+            <EffectCard
               v-for="hud in customHuds"
               :key="hud.id"
-              class="flex items-center gap-3 p-3 rounded-lg border cursor-pointer active:cursor-grabbing transition-colors group"
-              :class="
-                isSelected('hud', hud.id)
-                  ? 'border-primary bg-primary/10'
-                  : 'border-ui-border bg-ui-bg-muted hover:bg-ui-bg-elevated'
-              "
+              class="external-drag"
+              :title="hud.name"
+              :icon="standardHuds.find((h) => h.type === hud.baseType)?.icon || 'i-heroicons-photo'"
+              :is-selected="isSelected('hud', hud.id)"
+              :is-draggable="true"
+              :show-drag-handle="true"
+              :show-rename="true"
+              :show-action="true"
+              @pointer-down="handlePointerDown($event, hud.id, 'hud', hud.params)"
               @click="selectItem('hud', hud.id, hud.params)"
-            >
-              <div class="cursor-grab hover:text-ui-text text-ui-text-muted drag-handle">
-                <UIcon name="i-heroicons-bars-2" class="w-5 h-5" />
-              </div>
-              <div
-                class="external-drag flex items-center gap-3 flex-1 min-w-0"
-                @pointerdown="handlePointerDown($event, hud.id, 'hud', hud.params)"
-              >
-                <UIcon
-                  :name="
-                    standardHuds.find((h) => h.type === hud.baseType)?.icon || 'i-heroicons-photo'
-                  "
-                  class="w-8 h-8 text-primary shrink-0"
-                />
-                <div class="flex-1 min-w-0 flex items-center justify-between">
-                  <h4 class="text-sm font-medium text-ui-text truncate">{{ hud.name }}</h4>
-                  <div
-                    class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                  >
-                    <UButton
-                      icon="i-heroicons-pencil-square"
-                      color="neutral"
-                      variant="ghost"
-                      size="xs"
-                      :title="t('common.rename')"
-                      @click.stop="openRenameModal(hud)"
-                    />
-                    <UButton
-                      icon="i-heroicons-trash"
-                      color="red"
-                      variant="ghost"
-                      size="xs"
-                      @click.stop="presetsStore.removePreset(hud.id)"
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
+              @rename="openRenameModal(hud)"
+              @action="presetsStore.removePreset(hud.id)"
+            />
           </VueDraggable>
           <UiEmptyState
             v-if="customHuds.length === 0"

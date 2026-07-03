@@ -47,4 +47,28 @@ describe('EffectCard', () => {
     expect(wrapper.find('p').exists()).toBe(true);
     expect(wrapper.find('p').text()).toBe('Simulates room acoustic');
   });
+
+  it('renders custom title, icon, drag handle, and default star', async () => {
+    const wrapper = await mountSuspended(EffectCard, {
+      props: {
+        title: 'Custom Preset',
+        icon: 'i-heroicons-star',
+        showDragHandle: true,
+        showDefaultStar: true,
+        isDefault: true,
+        showRename: true,
+        showAction: true,
+      },
+      global: {
+        stubs: {
+          UIcon: { template: '<span class="u-icon"></span>' },
+          UButton: { template: '<button class="u-button"><slot /></button>' },
+        },
+      },
+    });
+
+    expect(wrapper.find('h4').text()).toBe('Custom Preset');
+    expect(wrapper.find('.drag-handle').exists()).toBe(true);
+    expect(wrapper.findAll('button').length).toBe(3);
+  });
 });

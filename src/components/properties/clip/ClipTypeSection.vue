@@ -28,7 +28,6 @@ const emit = defineEmits<{
   (e: 'updateHudControl', key: string, value: unknown): void;
 }>();
 
-const { t } = useI18n();
 const presetsStore = usePresetsStore();
 
 const isSaveModalOpen = ref(false);

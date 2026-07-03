@@ -188,7 +188,7 @@ const actions = computed(() => {
 
 <template>
   <div class="w-full flex flex-col gap-4 text-ui-text text-sm">
-    <div class="flex items-center gap-2 px-1">
+    <div class="flex items-center gap-2">
       <UIcon
         :name="
           itemKind === 'text'
@@ -199,14 +199,14 @@ const actions = computed(() => {
         "
         class="w-6 h-6 text-primary"
       />
-      <span class="font-medium text-base uppercase tracking-tight">
+      <span class="font-medium text-base">
         {{
           isCustom ? presetsStore.customPresets.find((p) => p.id === props.itemId)?.name : itemId
         }}
       </span>
     </div>
 
-    <div class="flex flex-col gap-2">
+    <div class="space-y-3 bg-ui-bg border border-ui-border rounded p-3">
       <ClipTextProperties
         v-if="itemKind === 'text'"
         :clip="mockClip as import('~/timeline/types').TimelineTextClipItem"
@@ -239,9 +239,7 @@ const actions = computed(() => {
       />
     </div>
 
-    <div class="pt-2 border-t border-ui-border">
-      <PropertyActionList :actions="actions" :vertical="false" size="sm" />
-    </div>
+    <PropertyActionList :actions="actions" :vertical="false" size="sm" />
 
     <PresetSaveModal
       v-model:open="isSaveModalOpen"

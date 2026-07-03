@@ -15,6 +15,7 @@ import { useWorkspaceStore } from '~/stores/workspace.store';
 
 import CollapsibleEffectGroup from '~/components/effects/CollapsibleEffectGroup.vue';
 import EffectCard from '~/components/effects/EffectCard.vue';
+import PresetSaveModal from '~/components/properties/PresetSaveModal.vue';
 import { armPointerDnd } from '~/composables/dnd/usePointerDnd';
 
 defineProps<{
@@ -25,6 +26,24 @@ const { t } = useI18n();
 const selectionStore = useSelectionStore();
 const presetsStore = usePresetsStore();
 const workspaceStore = useWorkspaceStore();
+
+const isRenameModalOpen = ref(false);
+const renamingPresetId = ref<string | null>(null);
+const renamingPresetName = ref('');
+
+function openRenameModal(item: { type: string; name?: string }) {
+  renamingPresetId.value = item.type;
+  renamingPresetName.value = item.name || '';
+  isRenameModalOpen.value = true;
+}
+
+function confirmRenamePreset() {
+  if (renamingPresetId.value && renamingPresetName.value.trim()) {
+    presetsStore.renamePreset(renamingPresetId.value, renamingPresetName.value.trim());
+  }
+  isRenameModalOpen.value = false;
+  renamingPresetId.value = null;
+}
 
 const activeTab = ref<'video' | 'transitions' | 'audio'>('video');
 
@@ -209,27 +228,25 @@ function updateCustomTransitionsOrder(newCustomTransitions: TransitionManifest[]
             :prevent-on-filter="false"
             @update:model-value="updateCustomEffectsOrder"
           >
-            <div v-for="effect in customEffects" :key="effect.type" class="relative group">
-              <div
-                class="absolute left-1 top-1/2 -translate-y-1/2 z-10 cursor-grab hover:text-ui-text text-ui-text-muted drag-handle opacity-0 group-hover:opacity-100 transition-opacity"
-              >
-                <UIcon name="i-heroicons-bars-2" class="w-4 h-4" />
-              </div>
-              <EffectCard
-                :manifest="effect"
-                class="external-drag"
-                :is-selected="
-                  selectionStore.selectedEntity?.source === 'project' &&
-                  selectionStore.selectedEntity.kind === 'effect' &&
-                  selectionStore.selectedEntity.effectType === effect.type
-                "
-                :show-action="true"
-                :is-draggable="true"
-                @pointer-down="handlePointerDown($event, effect.type, 'effect')"
-                @click="selectEffect(effect.type)"
-                @action="presetsStore.removePreset(effect.type)"
-              />
-            </div>
+            <EffectCard
+              v-for="effect in customEffects"
+              :key="effect.type"
+              :manifest="effect"
+              class="external-drag"
+              :is-selected="
+                selectionStore.selectedEntity?.source === 'project' &&
+                selectionStore.selectedEntity.kind === 'effect' &&
+                selectionStore.selectedEntity.effectType === effect.type
+              "
+              :show-drag-handle="true"
+              :show-action="true"
+              :show-rename="true"
+              :is-draggable="true"
+              @pointer-down="handlePointerDown($event, effect.type, 'effect')"
+              @click="selectEffect(effect.type)"
+              @rename="openRenameModal(effect)"
+              @action="presetsStore.removePreset(effect.type)"
+            />
           </VueDraggable>
           <UiEmptyState
             v-if="customEffects.length === 0"
@@ -246,27 +263,20 @@ function updateCustomTransitionsOrder(newCustomTransitions: TransitionManifest[]
           :title="t('fastcat.effects.groups.standard')"
         >
           <div class="grid grid-cols-1 gap-2">
-            <div
+            <EffectCard
               v-for="transition in standardTransitions"
               :key="transition.type"
-              class="flex items-center gap-3 p-3 rounded-lg border cursor-grab active:cursor-grabbing transition-colors"
-              :class="
+              :title="transition.nameKey ? t(transition.nameKey) : transition.name"
+              :icon="transition.icon"
+              :is-selected="
                 selectionStore.selectedEntity?.source === 'project' &&
                 selectionStore.selectedEntity.kind === 'transition' &&
                 selectionStore.selectedEntity.transitionType === transition.type
-                  ? 'border-primary bg-primary/10'
-                  : 'border-ui-border bg-ui-bg-muted hover:bg-ui-bg-elevated'
               "
+              :is-draggable="true"
               @pointer-down="handlePointerDown($event, transition.type, 'transition')"
               @click="selectTransition(transition.type)"
-            >
-              <UIcon :name="transition.icon" class="w-8 h-8 text-primary shrink-0" />
-              <div class="flex-1 min-w-0">
-                <h4 class="text-sm font-medium text-ui-text">
-                  {{ transition.nameKey ? t(transition.nameKey) : transition.name }}
-                </h4>
-              </div>
-            </div>
+            />
             <UiEmptyState v-if="standardTransitions.length === 0" :message="t('common.noData')" />
           </div>
         </CollapsibleEffectGroup>
@@ -286,42 +296,26 @@ function updateCustomTransitionsOrder(newCustomTransitions: TransitionManifest[]
             :prevent-on-filter="false"
             @update:model-value="updateCustomTransitionsOrder"
           >
-            <div
+            <EffectCard
               v-for="transition in customTransitions"
               :key="transition.type"
-              class="flex items-center gap-3 p-3 rounded-lg border cursor-grab active:cursor-grabbing transition-colors group"
-              :class="
+              class="external-drag"
+              :title="transition.nameKey ? t(transition.nameKey) : transition.name"
+              :icon="transition.icon"
+              :is-selected="
                 selectionStore.selectedEntity?.source === 'project' &&
                 selectionStore.selectedEntity.kind === 'transition' &&
                 selectionStore.selectedEntity.transitionType === transition.type
-                  ? 'border-primary bg-primary/10'
-                  : 'border-ui-border bg-ui-bg-muted hover:bg-ui-bg-elevated'
               "
+              :is-draggable="true"
+              :show-drag-handle="true"
+              :show-rename="true"
+              :show-action="true"
+              @pointer-down="handlePointerDown($event, transition.type, 'transition')"
               @click="selectTransition(transition.type)"
-            >
-              <div class="cursor-grab hover:text-ui-text text-ui-text-muted drag-handle">
-                <UIcon name="i-heroicons-bars-2" class="w-5 h-5" />
-              </div>
-              <div
-                class="external-drag flex items-center gap-3 flex-1 min-w-0"
-                @pointer-down="handlePointerDown($event, transition.type, 'transition')"
-              >
-                <UIcon :name="transition.icon" class="w-8 h-8 text-primary shrink-0" />
-                <div class="flex-1 min-w-0 flex items-center justify-between">
-                  <h4 class="text-sm font-medium text-ui-text truncate">
-                    {{ transition.nameKey ? t(transition.nameKey) : transition.name }}
-                  </h4>
-                  <UButton
-                    icon="i-heroicons-trash"
-                    color="red"
-                    variant="ghost"
-                    size="xs"
-                    class="opacity-0 group-hover:opacity-100"
-                    @click.stop="presetsStore.removePreset(transition.type)"
-                  />
-                </div>
-              </div>
-            </div>
+              @rename="openRenameModal(transition)"
+              @action="presetsStore.removePreset(transition.type)"
+            />
           </VueDraggable>
           <UiEmptyState
             v-if="customTransitions.length === 0"
@@ -400,27 +394,25 @@ function updateCustomTransitionsOrder(newCustomTransitions: TransitionManifest[]
               :prevent-on-filter="false"
               @update:model-value="updateCustomEffectsOrder"
             >
-              <div v-for="effect in customAudioEffects" :key="effect.type" class="relative group">
-                <div
-                  class="absolute left-1 top-1/2 -translate-y-1/2 z-10 cursor-grab hover:text-ui-text text-ui-text-muted drag-handle opacity-0 group-hover:opacity-100 transition-opacity"
-                >
-                  <UIcon name="i-heroicons-bars-2" class="w-4 h-4" />
-                </div>
-                <EffectCard
-                  :manifest="effect"
-                  class="external-drag"
-                  :is-selected="
-                    selectionStore.selectedEntity?.source === 'project' &&
-                    selectionStore.selectedEntity.kind === 'effect' &&
-                    selectionStore.selectedEntity.effectType === effect.type
-                  "
-                  :show-action="true"
-                  :is-draggable="true"
-                  @pointer-down="handlePointerDown($event, effect.type, 'effect')"
-                  @click="selectEffect(effect.type)"
-                  @action="presetsStore.removePreset(effect.type)"
-                />
-              </div>
+              <EffectCard
+                v-for="effect in customAudioEffects"
+                :key="effect.type"
+                :manifest="effect"
+                class="external-drag"
+                :is-selected="
+                  selectionStore.selectedEntity?.source === 'project' &&
+                  selectionStore.selectedEntity.kind === 'effect' &&
+                  selectionStore.selectedEntity.effectType === effect.type
+                "
+                :show-drag-handle="true"
+                :show-action="true"
+                :show-rename="true"
+                :is-draggable="true"
+                @pointer-down="handlePointerDown($event, effect.type, 'effect')"
+                @click="selectEffect(effect.type)"
+                @rename="openRenameModal(effect)"
+                @action="presetsStore.removePreset(effect.type)"
+              />
             </VueDraggable>
             <UiEmptyState
               v-if="customAudioEffects.length === 0"
@@ -430,5 +422,11 @@ function updateCustomTransitionsOrder(newCustomTransitions: TransitionManifest[]
         </div>
       </template>
     </div>
+
+    <PresetSaveModal
+      v-model:open="isRenameModalOpen"
+      v-model:name="renamingPresetName"
+      @save="confirmRenamePreset"
+    />
   </div>
 </template>

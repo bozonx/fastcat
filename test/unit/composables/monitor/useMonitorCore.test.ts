@@ -839,4 +839,116 @@ describe('useMonitorCore', () => {
 
     wrapper.unmount();
   });
+
+  it('debounces the ultra-quality upgrade after interactive layout edits while paused', async () => {
+    const timelineStore = reactive({
+      duration: 0,
+      currentTime: 1250,
+      isPlaying: false,
+      masterGain: 1,
+      audioMuted: false,
+      setCurrentTimeUs: vi.fn(),
+      timelineDoc: null,
+    });
+
+    const projectStore = reactive({
+      projectSettings: {
+        export: { width: 1920, height: 1080 },
+      },
+      activeMonitor: createMonitorSettings({ previewBlurQuality: 'low' }),
+      getFileHandleByPath: vi.fn(async () => ({}) as FileSystemFileHandle),
+    });
+
+    const proxyStore = {
+      getProxyFileHandle: vi.fn(async () => null),
+      getProxyFile: vi.fn(async () => null),
+      existingProxies: ref(new Set()),
+    };
+
+    const containerEl = ref<HTMLDivElement | null>(document.createElement('div'));
+    const viewportEl = ref<HTMLDivElement | null>(document.createElement('div'));
+
+    const clipLayoutSig = ref(1);
+    const activeLayoutSig = ref(1);
+
+    const TestComp = defineComponent({
+      setup() {
+        useMonitorCore({
+          projectStore,
+          timelineStore,
+          proxyStore,
+          monitorTimeline: {
+            videoItems: ref([]),
+            workerTimelineClips: ref([]),
+            workerAudioClips: ref([]),
+            workerTimelinePayload: ref([]),
+            safeDurationUs: ref(2_000_000),
+            clipSourceSignature: ref(1),
+            clipLayoutSignature: clipLayoutSig,
+            clipContentSignature: ref(1),
+            activeLayoutSignature: activeLayoutSig,
+            audioClipSourceSignature: ref(1),
+            audioClipLayoutSignature: ref(1),
+          },
+          monitorDisplay: {
+            containerEl,
+            viewportEl,
+            renderWidth: ref(640),
+            renderHeight: ref(360),
+            exportWidth: ref(1920),
+            exportHeight: ref(1080),
+            updateCanvasDisplaySize: vi.fn(),
+          },
+        });
+        return () => h('div');
+      },
+    });
+
+    const wrapper = mount(TestComp);
+
+    // Wait for the initial build.
+    await vi.advanceTimersByTimeAsync(200);
+    await nextTick();
+    mockClient.renderFrame.mockClear();
+
+    // First interactive edit (e.g. an effect/transform param drag): bump both
+    // signatures so the layout watcher schedules a render, as a real clip-property
+    // edit would while paused.
+    clipLayoutSig.value = 2;
+    activeLayoutSig.value = 2;
+    await nextTick();
+    await vi.advanceTimersByTimeAsync(200); // clipLayoutDebounceMs
+
+    expect(mockClient.renderFrame).toHaveBeenLastCalledWith(
+      1250,
+      expect.objectContaining({ previewEffectQuality: 'low' }),
+    );
+
+    // A second edit lands before the settle window elapses: it should still
+    // render at the cheap tier, not the expensive ultra tier.
+    await vi.advanceTimersByTimeAsync(200);
+    clipLayoutSig.value = 3;
+    activeLayoutSig.value = 3;
+    await nextTick();
+    await vi.advanceTimersByTimeAsync(200); // clipLayoutDebounceMs
+
+    expect(mockClient.renderFrame).toHaveBeenLastCalledWith(
+      1250,
+      expect.objectContaining({ previewEffectQuality: 'low' }),
+    );
+    mockClient.renderFrame.mockClear();
+
+    // Still short of the 500ms settle window since the last edit: no upgrade yet.
+    await vi.advanceTimersByTimeAsync(300);
+    expect(mockClient.renderFrame).not.toHaveBeenCalled();
+
+    // Once idle for the full settle window, the frame re-renders at ultra.
+    await vi.advanceTimersByTimeAsync(300);
+    expect(mockClient.renderFrame).toHaveBeenLastCalledWith(
+      1250,
+      expect.objectContaining({ previewEffectQuality: 'ultra' }),
+    );
+
+    wrapper.unmount();
+  });
 });
