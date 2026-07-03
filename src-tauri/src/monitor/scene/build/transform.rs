@@ -136,6 +136,18 @@ pub fn text_anchor_offset(
     }
 }
 
+/// Rust port of the web `isTransformSnapSafe` (src/utils/pixel-grid-snap.ts).
+/// Snapping only preserves visual intent when the layer isn't rotated or
+/// scaled away from 1:1 — otherwise rounding position/size would jitter the
+/// rotated/scaled result. `None` transform (center-fit default) is safe.
+pub fn is_transform_snap_safe(t: Option<&SceneLayerTransform>) -> bool {
+    let Some(t) = t else { return true };
+    let rot_norm = (t.rotation_deg % 360.0).abs();
+    let rotation_ok = rot_norm < 1e-4 || (rot_norm - 360.0).abs() < 1e-4;
+    let scale_ok = (t.scale_x - 1.0).abs() < 1e-4 && (t.scale_y - 1.0).abs() < 1e-4;
+    rotation_ok && scale_ok
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -194,6 +206,38 @@ mod tests {
         assert_eq!(crop.bottom, 0.2);
         assert_eq!(crop.left, 0.3);
         assert_eq!(crop.right, 0.4);
+    }
+
+    #[test]
+    fn is_transform_snap_safe_none_is_safe() {
+        assert!(is_transform_snap_safe(None));
+    }
+
+    #[test]
+    fn is_transform_snap_safe_identity_is_safe() {
+        let transform = test_transform(0.0, 0.0, 0.0, 0.0);
+        assert!(is_transform_snap_safe(Some(&transform)));
+    }
+
+    #[test]
+    fn is_transform_snap_safe_rejects_rotation() {
+        let mut transform = test_transform(0.0, 0.0, 0.0, 0.0);
+        transform.rotation_deg = 45.0;
+        assert!(!is_transform_snap_safe(Some(&transform)));
+    }
+
+    #[test]
+    fn is_transform_snap_safe_accepts_near_360_rotation() {
+        let mut transform = test_transform(0.0, 0.0, 0.0, 0.0);
+        transform.rotation_deg = 359.99995;
+        assert!(is_transform_snap_safe(Some(&transform)));
+    }
+
+    #[test]
+    fn is_transform_snap_safe_rejects_scale() {
+        let mut transform = test_transform(0.0, 0.0, 0.0, 0.0);
+        transform.scale_x = 1.5;
+        assert!(!is_transform_snap_safe(Some(&transform)));
     }
 
     #[test]

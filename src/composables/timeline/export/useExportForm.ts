@@ -417,6 +417,7 @@ export function useExportForm() {
       isExporting.value = true;
       const finalFilename = normalizeExportFilename(outputFilename.value);
       outputFilename.value = finalFilename;
+      console.log('[export form debug] starting export', finalFilename, 'duration', duration.value);
 
       try {
         await exportDir.getFileHandle(finalFilename);

@@ -1123,6 +1123,7 @@ mod tests {
             stroke_color: None,
             stroke_width: None,
             shape_config: None,
+            snap_to_pixel_grid: false,
             transform: None,
             transition_in: None,
             transition_out: None,
@@ -1151,6 +1152,7 @@ mod tests {
             stroke_color: None,
             stroke_width: None,
             shape_config: None,
+            snap_to_pixel_grid: false,
             transform: None,
             transition_in: Some(crate::monitor::scene::SceneTransition {
                 transition_type: "dissolve".into(),
@@ -1220,6 +1222,7 @@ mod tests {
             stroke_color: None,
             stroke_width: None,
             shape_config: None,
+            snap_to_pixel_grid: false,
             transform: None,
             transition_in: None,
             transition_out: None,

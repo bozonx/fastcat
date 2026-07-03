@@ -58,7 +58,7 @@ export class LayoutApplier {
       this.context.width / TRANSFORM_DESIGN_BASE.width,
       this.context.height / TRANSFORM_DESIGN_BASE.height,
     );
-    const isSnapActive = clip.snapToPixelGrid && isTransformSnapSafe(clip.transform);
+    const isSnapActive = Boolean(clip.snapToPixelGrid) && isTransformSnapSafe(clip.transform);
     let strokeWidth = (clip.strokeWidth ?? 0) * renderScale;
     if (isSnapActive) {
       strokeWidth = Math.round(strokeWidth);
@@ -76,7 +76,7 @@ export class LayoutApplier {
       targetH = snapped.height;
     }
 
-    this.applyScreenSpaceLayout(clip, baseX, baseY, targetW, targetH);
+    this.applyScreenSpaceLayout(clip, baseX, baseY, targetW, targetH, isSnapActive);
   }
 
   public applyTextLayout(clip: CompositorClip) {
@@ -99,7 +99,8 @@ export class LayoutApplier {
     let baseX = layout.backgroundX;
     let baseY = layout.backgroundY;
 
-    if (clip.snapToPixelGrid && isTransformSnapSafe(clip.transform)) {
+    const isSnapActive = Boolean(clip.snapToPixelGrid) && isTransformSnapSafe(clip.transform);
+    if (isSnapActive) {
       const snapped = snapRectToPixelGrid({ x: baseX, y: baseY, width: w, height: h });
       baseX = snapped.x;
       baseY = snapped.y;
@@ -107,7 +108,7 @@ export class LayoutApplier {
       h = snapped.height;
     }
 
-    this.applyScreenSpaceLayout(clip, baseX, baseY, w, h);
+    this.applyScreenSpaceLayout(clip, baseX, baseY, w, h, isSnapActive);
   }
 
   public applyClipLayoutForCurrentSource(clip: CompositorClip) {
@@ -206,6 +207,7 @@ export class LayoutApplier {
     baseY: number,
     targetW: number,
     targetH: number,
+    isSnapActive: boolean,
   ) {
     const transform = clip.transformActive !== false ? clip.transform : undefined;
     const scaleX = typeof transform?.scale?.x === 'number' ? transform.scale.x : 1;
@@ -240,6 +242,7 @@ export class LayoutApplier {
       stagePosY,
       flipHorizontal,
       flipVertical,
+      isSnapActive,
     });
   }
 
@@ -264,6 +267,7 @@ export class LayoutApplier {
     disableCrop?: boolean;
     flipHorizontal?: boolean;
     flipVertical?: boolean;
+    isSnapActive?: boolean;
   }) {
     const sprite = input.clip.sprite;
     if (!sprite) return;
@@ -323,6 +327,11 @@ export class LayoutApplier {
 
     sprite.x = input.baseX + input.anchorOffsetX + input.stagePosX + flipOffsetX;
     sprite.y = input.baseY + input.anchorOffsetY + input.stagePosY + flipOffsetY;
+
+    if (input.isSnapActive) {
+      sprite.x = Math.round(sprite.x);
+      sprite.y = Math.round(sprite.y);
+    }
 
     const crop =
       !input.disableCrop && input.clip.transformActive !== false

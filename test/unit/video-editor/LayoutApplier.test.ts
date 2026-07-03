@@ -430,4 +430,138 @@ describe('LayoutApplier', () => {
     expect(sprite.scale.x).toBeCloseTo(2460 / 1920);
     expect(sprite.scale.y).toBeCloseTo(1620 / 1080);
   });
+
+  it('rounds final sprite position for a repositioned snapped text clip', () => {
+    const sprite = createMockSprite();
+    const mockCtx = {
+      font: '',
+      measureText: (text: string) => ({ width: text.length * 10 }),
+    };
+
+    const clip = {
+      itemId: 'clip-text-snap-position',
+      layer: 1,
+      startUs: 0,
+      endUs: 1_000_000,
+      durationUs: 1_000_000,
+      sprite,
+      clipKind: 'text' as const,
+      clipType: 'text' as const,
+      text: 'Sample Text',
+      ctx: mockCtx as any,
+      snapToPixelGrid: true,
+      transform: { position: { x: 13.4, y: -7.6 } },
+      style: {
+        fontSize: 40,
+        lineHeight: 1.5,
+        align: 'center' as const,
+        verticalAlign: 'middle' as const,
+        padding: 10,
+      },
+    };
+
+    applier.applyTextLayout(clip as any);
+
+    expect(Number.isInteger(sprite.x)).toBe(true);
+    expect(Number.isInteger(sprite.y)).toBe(true);
+  });
+
+  it('rounds final sprite position for a repositioned snapped shape clip', () => {
+    const sprite = createMockSprite();
+    const clip = {
+      itemId: 'clip-shape-snap-position',
+      layer: 1,
+      startUs: 0,
+      endUs: 1_000_000,
+      durationUs: 1_000_000,
+      sprite,
+      clipKind: 'shape' as const,
+      clipType: 'shape' as const,
+      strokeWidth: 3,
+      snapToPixelGrid: true,
+      transform: { position: { x: 13.4, y: -7.6 } },
+    };
+
+    applier.applyShapeLayout(clip as any);
+
+    expect(Number.isInteger(sprite.x)).toBe(true);
+    expect(Number.isInteger(sprite.y)).toBe(true);
+  });
+
+  it('leaves sprite position fractional when snapToPixelGrid is false', () => {
+    const sprite = createMockSprite();
+    const clip = {
+      itemId: 'clip-shape-no-snap',
+      layer: 1,
+      startUs: 0,
+      endUs: 1_000_000,
+      durationUs: 1_000_000,
+      sprite,
+      clipKind: 'shape' as const,
+      clipType: 'shape' as const,
+      strokeWidth: 3,
+      snapToPixelGrid: false,
+      transform: { position: { x: 13.4, y: -7.6 } },
+    };
+
+    applier.applyShapeLayout(clip as any);
+
+    expect(Number.isInteger(sprite.x)).toBe(false);
+  });
+
+  it('leaves sprite position fractional when snapToPixelGrid is true but the clip is rotated', () => {
+    const sprite = createMockSprite();
+    const clip = {
+      itemId: 'clip-shape-snap-rotated',
+      layer: 1,
+      startUs: 0,
+      endUs: 1_000_000,
+      durationUs: 1_000_000,
+      sprite,
+      clipKind: 'shape' as const,
+      clipType: 'shape' as const,
+      strokeWidth: 3,
+      snapToPixelGrid: true,
+      transform: { position: { x: 13.4, y: -7.6 }, rotationDeg: 45 },
+    };
+
+    applier.applyShapeLayout(clip as any);
+
+    expect(Number.isInteger(sprite.x)).toBe(false);
+  });
+
+  it('does not snap video/media clips even when snapToPixelGrid is set', () => {
+    const sprite = createMockSprite();
+    const clip = {
+      itemId: 'clip-video-snap-ignored',
+      layer: 1,
+      startUs: 0,
+      endUs: 1_000_000,
+      durationUs: 1_000_000,
+      sourceStartUs: 0,
+      sourceRangeDurationUs: 1_000_000,
+      sourceDurationUs: 1_000_000,
+      sprite,
+      clipKind: 'video' as const,
+      clipType: 'media' as const,
+      sourceKind: 'videoFrame' as const,
+      imageSource: {
+        width: 1920,
+        height: 1080,
+        resize: () => {},
+        update: () => {},
+        resource: null,
+      } as any,
+      lastVideoFrame: null,
+      canvas: null,
+      ctx: null,
+      bitmap: null,
+      snapToPixelGrid: true,
+      transform: { position: { x: 13.4, y: -7.6 } },
+    };
+
+    applier.applySpriteLayout(1920, 1080, clip as any);
+
+    expect(Number.isInteger(sprite.x)).toBe(false);
+  });
 });

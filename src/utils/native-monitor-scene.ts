@@ -516,6 +516,8 @@ function buildBaseLayer(params: {
     transform: buildNativeTransform(clip.transform, sceneWidth, sceneHeight),
     transition_in,
     transition_out,
+    // Only text/shape layers snap; other kinds override this below.
+    snap_to_pixel_grid: false,
   };
 }
 
@@ -749,6 +751,7 @@ export async function buildNativeMonitorScene(
         kind: 'text',
         text: clip.text ?? '',
         style: clip.style,
+        snap_to_pixel_grid: Boolean(clip.snapToPixelGrid),
       });
       continue;
     }
@@ -769,6 +772,7 @@ export async function buildNativeMonitorScene(
         stroke_color: clip.strokeColor ?? '#000000',
         stroke_width: clip.strokeWidth ?? 0,
         shape_config: clip.shapeConfig,
+        snap_to_pixel_grid: Boolean(clip.snapToPixelGrid),
       });
     }
   }

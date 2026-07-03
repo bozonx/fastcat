@@ -202,6 +202,7 @@ export function useExportProcess(
           : audioClips;
       }
 
+      console.log('[export debug] doc tracks', doc?.tracks.length, 'doc duration', timelineStore.duration, 'video clips', croppedVideoClips.length, 'audio clips', croppedAudioClips.length);
       if (!croppedVideoClips.length && !croppedAudioClips.length)
         throw new Error('Timeline is empty');
 

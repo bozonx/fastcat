@@ -170,6 +170,12 @@ pub struct SceneLayer {
     #[serde(default)]
     #[ts(optional, type = "import('~/timeline/types').ShapeConfig")]
     pub shape_config: Option<Value>,
+    /// Mirrors the web `clip.snapToPixelGrid`: when true (and the transform is
+    /// axis-aligned/unscaled), text and shape layers round their box size and
+    /// final position to integer scene pixels for crisp edges. Ignored for
+    /// video/image/svg/background/adjustment kinds.
+    #[serde(default)]
+    pub snap_to_pixel_grid: bool,
     /// Explicit layer transform in scene-space.
     /// `None` → letterbox center-fit (the default, backward-compatible with older versions).
     #[serde(default)]
@@ -569,6 +575,7 @@ mod tests {
             stroke_color: None,
             stroke_width: None,
             shape_config: None,
+            snap_to_pixel_grid: false,
             transform: None,
             transition_in: None,
             transition_out: None,

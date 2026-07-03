@@ -1673,6 +1673,7 @@ mod tests {
             stroke_color: None,
             stroke_width: None,
             shape_config: None,
+            snap_to_pixel_grid: false,
             transform: None,
             transition_in: None,
             transition_out: None,

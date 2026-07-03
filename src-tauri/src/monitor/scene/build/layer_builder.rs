@@ -17,8 +17,8 @@ use crate::media::ffmpeg::utils::is_quarter_turn;
 
 use super::ipc_parsers::*;
 use super::transform::{
-    local_crop_from_display_transform, oriented_fit_scale, source_orientation_deg,
-    text_anchor_offset,
+    is_transform_snap_safe, local_crop_from_display_transform, oriented_fit_scale,
+    source_orientation_deg, text_anchor_offset,
 };
 use super::transition::{apply_transition_curve, compute_transition_opacity};
 use crate::monitor::scene::{LayerKind, SceneLayer};
@@ -55,10 +55,21 @@ pub fn build_virtual_kind(sl: &SceneLayer, scene_size: (u32, u32)) -> Option<Com
             // the scene resolution (uniform, matching the shape body which is a fixed
             // fraction of the frame). Mirrors the web `ShapeRenderer`/`LayoutApplier`.
             let render_scale = (scene_w as f64 / 1920.0).min(scene_h as f64 / 1080.0);
-            let stroke_width = sl.stroke_width.unwrap_or(0.0).max(0.0) * render_scale;
-            let size = (scene_w.min(scene_h) as f64 * 0.8 + stroke_width * 2.0)
-                .ceil()
-                .max(1.0) as u32;
+            let is_snap_active =
+                sl.snap_to_pixel_grid && is_transform_snap_safe(sl.transform.as_ref());
+            let mut stroke_width = sl.stroke_width.unwrap_or(0.0).max(0.0) * render_scale;
+            if is_snap_active {
+                stroke_width = stroke_width.round();
+            }
+            let size = if is_snap_active {
+                (scene_w.min(scene_h) as f64 * 0.8 + stroke_width * 2.0)
+                    .round()
+                    .max(1.0) as u32
+            } else {
+                (scene_w.min(scene_h) as f64 * 0.8 + stroke_width * 2.0)
+                    .ceil()
+                    .max(1.0) as u32
+            };
             let shape_type = sl.shape_type.clone().unwrap_or_else(|| "square".into());
             let config = sl.shape_config.clone().unwrap_or(serde_json::Value::Null);
             Some(CompLayerKind::Shape(ShapeLayer {
@@ -149,6 +160,17 @@ pub fn build_text_layer(sl: &SceneLayer, scene_size: (u32, u32)) -> TextLayer {
     // `buildNativeTextTransform` render-scale so glyph size and position agree.
     let render_scale = (scene_size.0 as f64 / 1920.0).min(scene_size.1 as f64 / 1080.0);
 
+    // Computed early: every downstream measurement that contributes to the
+    // frame/border/background box position (padding, border outset, shadow
+    // reservation, frame size) must be rounded to whole scene pixels so their
+    // sums land on integer coordinates too — rounding only the outer
+    // `natural_width`/`natural_height` (below) is not enough, because
+    // `scene::draw_text` derives `frame_x`/`frame_y`/the border and background
+    // rects directly from these unrounded fields, reintroducing sub-pixel
+    // edges even when the layer's final position is snapped.
+    let is_snap_active = sl.snap_to_pixel_grid && is_transform_snap_safe(sl.transform.as_ref());
+    let snap_round = |v: f32| if is_snap_active { v.round() } else { v };
+
     // Core parameters
     let text = sl.text.clone().unwrap_or_default();
     let font_family_raw = string_value(&style, "fontFamily", "sans-serif");
@@ -172,10 +194,10 @@ pub fn build_text_layer(sl: &SceneLayer, scene_size: (u32, u32)) -> TextLayer {
 
     // Padding
     let padding = parse_padding(&style);
-    let padding_top = (padding.top * render_scale) as f32;
-    let padding_right = (padding.right * render_scale) as f32;
-    let padding_bottom = (padding.bottom * render_scale) as f32;
-    let padding_left = (padding.left * render_scale) as f32;
+    let padding_top = snap_round((padding.top * render_scale) as f32);
+    let padding_right = snap_round((padding.right * render_scale) as f32);
+    let padding_bottom = snap_round((padding.bottom * render_scale) as f32);
+    let padding_left = snap_round((padding.left * render_scale) as f32);
 
     // Explicit sizing
     let explicit_width_px = number_opt(&style, "width").map(|w| (w * render_scale).max(1.0) as f32);
@@ -185,13 +207,13 @@ pub fn build_text_layer(sl: &SceneLayer, scene_size: (u32, u32)) -> TextLayer {
     // Border
     let border_enabled = bool_value(&style, "borderEnabled", false);
     let border_width = if border_enabled {
-        (number(&style, "borderWidth", 0.0).max(0.0) * render_scale) as f32
+        snap_round((number(&style, "borderWidth", 0.0).max(0.0) * render_scale) as f32)
     } else {
         0.0
     };
     // Creative gap between the background box and the border (design space → device).
     let border_offset = if border_enabled {
-        (number(&style, "borderOffset", 0.0).max(0.0) * render_scale) as f32
+        snap_round((number(&style, "borderOffset", 0.0).max(0.0) * render_scale) as f32)
     } else {
         0.0
     };
@@ -312,40 +334,56 @@ pub fn build_text_layer(sl: &SceneLayer, scene_size: (u32, u32)) -> TextLayer {
 
     // Frame size
     let frame_content_width_px = content_width_px.unwrap_or(text_block_width_px);
-    let frame_width_px = frame_content_width_px + padding_left + padding_right;
+    let frame_width_px = snap_round(frame_content_width_px + padding_left + padding_right);
     let auto_frame_height_px = text_block_height_px + padding_top + padding_bottom;
-    let frame_height_px = explicit_height_px
-        .map(|height| height.max(auto_frame_height_px))
-        .unwrap_or(auto_frame_height_px)
-        .max(1.0);
+    let frame_height_px = snap_round(
+        explicit_height_px
+            .map(|height| height.max(auto_frame_height_px))
+            .unwrap_or(auto_frame_height_px)
+            .max(1.0),
+    );
 
     // Shadows bounding box adjustment.
     // The blur radius maps to a Gaussian with σ ≈ blur/2; its visible tail reaches
     // ~3σ = 1.5·blur. We reserve that much room in the layer's natural size so the
     // blurred shadow is not clipped when the layer is composited inside a clip group
-    // (opacity < 1 / non-normal blend / crop all push a natural-bounds clip).
+    // (opacity < 1 / non-normal blend / crop all push a natural-bounds clip). Rounded
+    // (only the reservation, not the shadow's own blur/spread/offset) so it doesn't
+    // reintroduce the sub-pixel `frame_x`/`frame_y` offset this whole block exists
+    // to eliminate — the shadow itself stays blurred regardless of a <1px shift.
     let bg_shadow_extent = bg_shadow_blur * SHADOW_BLUR_EXTENT_FACTOR + bg_shadow_spread;
     let text_shadow_extent = text_shadow_blur * SHADOW_BLUR_EXTENT_FACTOR + text_shadow_spread;
-    let shadow_left = (bg_shadow_extent - bg_shadow_offset_x)
-        .max(text_shadow_extent - text_shadow_offset_x)
-        .max(0.0);
-    let shadow_right = (bg_shadow_extent + bg_shadow_offset_x)
-        .max(text_shadow_extent + text_shadow_offset_x)
-        .max(0.0);
-    let shadow_top = (bg_shadow_extent - bg_shadow_offset_y)
-        .max(text_shadow_extent - text_shadow_offset_y)
-        .max(0.0);
-    let shadow_bottom = (bg_shadow_extent + bg_shadow_offset_y)
-        .max(text_shadow_extent + text_shadow_offset_y)
-        .max(0.0);
+    let shadow_left = snap_round(
+        (bg_shadow_extent - bg_shadow_offset_x)
+            .max(text_shadow_extent - text_shadow_offset_x)
+            .max(0.0),
+    );
+    let shadow_right = snap_round(
+        (bg_shadow_extent + bg_shadow_offset_x)
+            .max(text_shadow_extent + text_shadow_offset_x)
+            .max(0.0),
+    );
+    let shadow_top = snap_round(
+        (bg_shadow_extent - bg_shadow_offset_y)
+            .max(text_shadow_extent - text_shadow_offset_y)
+            .max(0.0),
+    );
+    let shadow_bottom = snap_round(
+        (bg_shadow_extent + bg_shadow_offset_y)
+            .max(text_shadow_extent + text_shadow_offset_y)
+            .max(0.0),
+    );
 
     // Border reaches `border_width + border_offset` outward from the frame on each side.
     let border_outset = border_width + border_offset;
     let background_width = frame_width_px + border_outset * 2.0 + shadow_left + shadow_right;
     let background_height = frame_height_px + border_outset * 2.0 + shadow_top + shadow_bottom;
 
-    let natural_width = background_width.ceil() as u32;
-    let natural_height = background_height.ceil() as u32;
+    let (natural_width, natural_height) = if is_snap_active {
+        (background_width.round() as u32, background_height.round() as u32)
+    } else {
+        (background_width.ceil() as u32, background_height.ceil() as u32)
+    };
 
     TextLayer {
         text,
@@ -485,6 +523,15 @@ pub fn finalize_layer(
             }
         }
     };
+
+    let mut transform = transform;
+    if matches!(sl.kind, LayerKind::Text | LayerKind::Shape)
+        && sl.snap_to_pixel_grid
+        && is_transform_snap_safe(sl.transform.as_ref())
+    {
+        transform.x = transform.x.round();
+        transform.y = transform.y.round();
+    }
 
     let base_opacity = sl.opacity.clamp(0.0, 1.0) as f32;
     let local_t = time_sec - sl.timeline_start_sec;

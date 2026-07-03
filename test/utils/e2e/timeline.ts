@@ -313,6 +313,38 @@ export async function setTimelineZoom(page: Page, zoom: number): Promise<void> {
   }, zoom);
 }
 
+export async function getTimelineDocInfo(page: Page): Promise<{
+  duration: number;
+  trackCount: number;
+  tracks: Array<{
+    id: string;
+    kind: string;
+    videoHidden?: boolean;
+    clipCount: number;
+    clipTypes: Array<string | undefined>;
+  }>;
+}> {
+  return page.evaluate(() => {
+    const getInfo = (
+      window as Window & {
+        __fastcatE2eGetTimelineDocInfo?: () => {
+          duration: number;
+          trackCount: number;
+          tracks: Array<{
+            id: string;
+            kind: string;
+            videoHidden?: boolean;
+            clipCount: number;
+            clipTypes: Array<string | undefined>;
+          }>;
+        };
+      }
+    ).__fastcatE2eGetTimelineDocInfo;
+    if (!getInfo) throw new Error('E2E get timeline doc info hook is not registered');
+    return getInfo();
+  });
+}
+
 export async function addTextClipAtPlayhead(
   page: Page,
   params: {

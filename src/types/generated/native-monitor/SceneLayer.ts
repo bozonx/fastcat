@@ -57,6 +57,13 @@ opacity: number,
  */
 blend_mode: BlendMode, background_color?: string, text?: string, style?: import('~/timeline/types').TextClipStyle, shape_type?: string, fill_color?: string, stroke_color?: string, stroke_width?: number, shape_config?: import('~/timeline/types').ShapeConfig, 
 /**
+ * Mirrors the web `clip.snapToPixelGrid`: when true (and the transform is
+ * axis-aligned/unscaled), text and shape layers round their box size and
+ * final position to integer scene pixels for crisp edges. Ignored for
+ * video/image/svg/background/adjustment kinds.
+ */
+snap_to_pixel_grid: boolean, 
+/**
  * Explicit layer transform in scene-space.
  * `None` → letterbox center-fit (the default, backward-compatible with older versions).
  */

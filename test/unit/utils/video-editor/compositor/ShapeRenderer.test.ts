@@ -218,3 +218,89 @@ describe('ShapeRenderer.draw', () => {
     expect(g.stroke).toHaveBeenCalled();
   });
 });
+
+describe('ShapeRenderer.draw pixel-grid snapping', () => {
+  // canvasWidth/Height chosen so the unsnapped `size` (min * 0.8 = 865.6) is
+  // fractional but rounds to an EVEN integer (866), keeping `cy`/`cx` whole and
+  // isolating the assertions below to the `half` derivation fix.
+  const canvasWidth = 2000;
+  const canvasHeight = 1082;
+
+  it('derives an integer circle radius from the snapped bounding box', () => {
+    const renderer = new ShapeRenderer();
+    const g = createMockGraphics();
+    renderer.draw({
+      graphics: g as any,
+      type: 'circle',
+      fill: '#00ff00',
+      stroke: '#000000',
+      strokeWidth: 0,
+      config: {},
+      canvasWidth,
+      canvasHeight,
+      snapToPixelGrid: true,
+    });
+    const [, , rx, ry] = g.ellipse.mock.calls[0] as number[];
+    expect(Number.isInteger(rx)).toBe(true);
+    expect(Number.isInteger(ry)).toBe(true);
+  });
+
+  it('leaves circle radius fractional when snapToPixelGrid is false', () => {
+    const renderer = new ShapeRenderer();
+    const g = createMockGraphics();
+    renderer.draw({
+      graphics: g as any,
+      type: 'circle',
+      fill: '#00ff00',
+      stroke: '#000000',
+      strokeWidth: 0,
+      config: {},
+      canvasWidth,
+      canvasHeight,
+      snapToPixelGrid: false,
+    });
+    const [, , rx] = g.ellipse.mock.calls[0] as number[];
+    expect(Number.isInteger(rx)).toBe(false);
+  });
+
+  it('leaves circle radius fractional when the transform is rotated', () => {
+    const renderer = new ShapeRenderer();
+    const g = createMockGraphics();
+    renderer.draw({
+      graphics: g as any,
+      type: 'circle',
+      fill: '#00ff00',
+      stroke: '#000000',
+      strokeWidth: 0,
+      config: {},
+      canvasWidth,
+      canvasHeight,
+      snapToPixelGrid: true,
+      transform: { rotationDeg: 45 },
+    });
+    const [, , rx] = g.ellipse.mock.calls[0] as number[];
+    expect(Number.isInteger(rx)).toBe(false);
+  });
+
+  it('derives an integer triangle apex offset from the snapped bounding box', () => {
+    const renderer = new ShapeRenderer();
+    const g = createMockGraphics();
+    renderer.draw({
+      graphics: g as any,
+      type: 'triangle',
+      fill: '#0000ff',
+      stroke: '#000000',
+      strokeWidth: 0,
+      config: { baseLength: 100, vertexOffset: 50 },
+      canvasWidth,
+      canvasHeight,
+      snapToPixelGrid: true,
+    });
+    // Triangle top/bottom Y are `cy -/+ half` — both integer once `half` is
+    // snapped, given the canvas size above keeps `cy` a whole number too.
+    const [, topY] = g.moveTo.mock.calls[0] as number[];
+    const [, bottomY] = g.lineTo.mock.calls[0] as number[];
+    expect(Number.isInteger(topY)).toBe(true);
+    expect(Number.isInteger(bottomY)).toBe(true);
+  });
+});

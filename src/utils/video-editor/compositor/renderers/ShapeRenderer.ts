@@ -1,7 +1,7 @@
 import type { ShapeConfig, ShapeType, ClipTransform } from '~/timeline/types';
 import { parseHexColor } from '../../utils';
 import { TRANSFORM_DESIGN_BASE } from '../../clip-layout';
-import { isTransformSnapSafe, snapRectToPixelGrid, snapStrokeToPixelGrid } from '../../../pixel-grid-snap';
+import { isTransformSnapSafe, snapRectToPixelGrid } from '../../../pixel-grid-snap';
 import type { Graphics } from 'pixi.js';
 
 /**
@@ -74,7 +74,10 @@ export class ShapeRenderer {
     }
     const cx = totalW / 2;
     const cy = totalH / 2;
-    const half = size / 2;
+    let half = size / 2;
+    if (isSnapActive) {
+      half = Math.round((Math.min(totalW, totalH) - scaledStroke * 2) / 2);
+    }
 
     const drawPolygon = (points: Array<{ x: number; y: number }>) => {
       const [first, ...rest] = points;

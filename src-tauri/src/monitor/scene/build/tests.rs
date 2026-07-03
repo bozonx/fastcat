@@ -596,6 +596,7 @@ mod tests {
             stroke_color: None,
             stroke_width: None,
             shape_config: None,
+            snap_to_pixel_grid: false,
             transform: None,
             transition_in: None,
             transition_out: None,
@@ -650,6 +651,7 @@ mod tests {
             stroke_color: None,
             stroke_width: None,
             shape_config: None,
+            snap_to_pixel_grid: false,
             transform: None,
             transition_in: None,
             transition_out: None,
@@ -750,6 +752,7 @@ mod tests {
             stroke_color: None,
             stroke_width: None,
             shape_config: None,
+            snap_to_pixel_grid: false,
             transform: None,
             transition_in: None,
             transition_out: None,
@@ -830,6 +833,7 @@ mod tests {
             stroke_color: None,
             stroke_width: None,
             shape_config: None,
+            snap_to_pixel_grid: false,
             transform: None,
             transition_in: None,
             transition_out: None,
@@ -951,6 +955,7 @@ mod tests {
             stroke_color: None,
             stroke_width: None,
             shape_config: None,
+            snap_to_pixel_grid: false,
             transform: Some(SceneLayerTransform {
                 x: 100.0,
                 y: 200.0,
@@ -980,6 +985,161 @@ mod tests {
             out.transform.x != 100.0,
             "center anchor with asymmetric shadow must bake a non-zero offset"
         );
+    }
+
+    fn snap_test_layer(kind: &str, snap_to_pixel_grid: bool, x: f64, y: f64) -> SceneLayer {
+        serde_json::from_value(json!({
+            "id": "snap-test",
+            "kind": kind,
+            "timeline_start_sec": 0.0,
+            "timeline_end_sec": 1.0,
+            "source_start_sec": 0.0,
+            "z": 0,
+            "opacity": 1.0,
+            "text": "Hi",
+            "shape_type": "circle",
+            "snap_to_pixel_grid": snap_to_pixel_grid,
+            "transform": {
+                "x": x,
+                "y": y
+            }
+        }))
+        .unwrap()
+    }
+
+    #[test]
+    fn finalize_layer_rounds_final_position_for_snapped_text() {
+        let layer = snap_test_layer("text", true, 13.4, -7.6);
+        let kind = build_virtual_kind(&layer, (1920, 1080)).unwrap();
+        let out = finalize_layer(&layer, kind, (1920, 1080), 0.0);
+        assert_eq!(out.transform.x.fract(), 0.0);
+        assert_eq!(out.transform.y.fract(), 0.0);
+    }
+
+    #[test]
+    fn finalize_layer_rounds_final_position_for_snapped_shape() {
+        let layer = snap_test_layer("shape", true, 13.4, -7.6);
+        let kind = build_virtual_kind(&layer, (1920, 1080)).unwrap();
+        let out = finalize_layer(&layer, kind, (1920, 1080), 0.0);
+        assert_eq!(out.transform.x.fract(), 0.0);
+        assert_eq!(out.transform.y.fract(), 0.0);
+    }
+
+    #[test]
+    fn finalize_layer_leaves_position_fractional_when_snap_disabled() {
+        let layer = snap_test_layer("shape", false, 13.4, -7.6);
+        let kind = build_virtual_kind(&layer, (1920, 1080)).unwrap();
+        let out = finalize_layer(&layer, kind, (1920, 1080), 0.0);
+        assert!(out.transform.x.fract() != 0.0);
+        assert!(out.transform.y.fract() != 0.0);
+    }
+
+    #[test]
+    fn finalize_layer_leaves_position_fractional_when_rotated() {
+        let mut layer = snap_test_layer("shape", true, 13.4, -7.6);
+        if let Some(t) = layer.transform.as_mut() {
+            t.rotation_deg = 45.0;
+        }
+        let kind = build_virtual_kind(&layer, (1920, 1080)).unwrap();
+        let out = finalize_layer(&layer, kind, (1920, 1080), 0.0);
+        assert!(out.transform.x.fract() != 0.0);
+        assert!(out.transform.y.fract() != 0.0);
+    }
+
+    #[test]
+    fn build_virtual_kind_shape_snaps_stroke_width_and_size_by_rounding_not_ceiling() {
+        // No stroke: raw size = min(103, 2000) * 0.8 = 82.4, whose fractional part
+        // is < 0.5 — round() and ceil() diverge (82 vs 83), proving snap uses round.
+        let layer_snap = snap_test_layer("shape", true, 0.0, 0.0);
+        let layer_no_snap = snap_test_layer("shape", false, 0.0, 0.0);
+        let scene_size = (103u32, 2000u32);
+
+        let snapped = build_virtual_kind(&layer_snap, scene_size).unwrap();
+        let unsnapped = build_virtual_kind(&layer_no_snap, scene_size).unwrap();
+
+        assert_eq!(snapped.natural_size().0, 82);
+        assert_eq!(unsnapped.natural_size().0, 83);
+    }
+
+    #[test]
+    fn build_text_layer_snap_keeps_frame_and_border_geometry_pixel_aligned() {
+        // Regression: rounding only the outer `natural_width`/`natural_height` left
+        // `frame_x`/`frame_width`/`border_outset`/padding fractional, so `draw_text`
+        // (scene.rs) still drew the background/border rects at sub-pixel local
+        // coordinates even though the layer's own final position was snapped —
+        // visible as a blurred border edge and slightly soft text. An asymmetric
+        // shadow offset (X but not Y) is exactly what used to desync the frame
+        // width/height from the rounded natural size.
+        let style = json!({
+            "fontSize": 37.0,
+            "padding": { "top": 6.3, "right": 6.3, "bottom": 6.3, "left": 6.3 },
+            "borderEnabled": true,
+            "borderWidth": 1.0,
+            "backgroundEnabled": true,
+            "backgroundShadowEnabled": true,
+            "backgroundShadowBlur": 4.0,
+            "backgroundShadowOffsetX": 3.0,
+            "backgroundShadowOffsetY": 0.0,
+        });
+        let sl: SceneLayer = serde_json::from_value(json!({
+            "id": "snap-frame-test",
+            "kind": "text",
+            "timeline_start_sec": 0.0,
+            "timeline_end_sec": 1.0,
+            "source_start_sec": 0.0,
+            "z": 0,
+            "opacity": 1.0,
+            "text": "Text",
+            "style": style,
+            "snap_to_pixel_grid": true
+        }))
+        .unwrap();
+
+        let layer = build_text_layer(&sl, (1920, 1080));
+
+        // frame_x/frame_y (recomputed the same way `scene::draw_text` does) plus the
+        // frame size plus the mirrored border outset must land exactly on the
+        // rounded natural size — i.e. every contributing measurement is itself an
+        // integer, not just their unrounded sum.
+        let border_outset = layer.border_width + layer.border_offset;
+        assert_eq!(border_outset.fract(), 0.0, "border_outset must be a whole pixel");
+        assert_eq!(layer.frame_width.fract(), 0.0, "frame_width must be a whole pixel");
+        assert_eq!(layer.frame_height.fract(), 0.0, "frame_height must be a whole pixel");
+        assert_eq!(layer.shadow_left.fract(), 0.0, "shadow_left must be a whole pixel");
+        assert_eq!(layer.shadow_right.fract(), 0.0, "shadow_right must be a whole pixel");
+        assert_eq!(layer.padding_left.fract(), 0.0, "padding_left must be a whole pixel");
+        assert_eq!(layer.padding_top.fract(), 0.0, "padding_top must be a whole pixel");
+
+        let reconstructed_width =
+            layer.frame_width + border_outset * 2.0 + layer.shadow_left + layer.shadow_right;
+        assert_eq!(reconstructed_width, layer.natural_size.0 as f32);
+    }
+
+    #[test]
+    fn build_text_layer_no_snap_leaves_frame_geometry_fractional() {
+        let style = json!({
+            "fontSize": 37.0,
+            "padding": { "top": 6.3, "right": 6.3, "bottom": 6.3, "left": 6.3 },
+            "borderEnabled": true,
+            "borderWidth": 1.0,
+            "backgroundEnabled": true,
+        });
+        let sl: SceneLayer = serde_json::from_value(json!({
+            "id": "no-snap-frame-test",
+            "kind": "text",
+            "timeline_start_sec": 0.0,
+            "timeline_end_sec": 1.0,
+            "source_start_sec": 0.0,
+            "z": 0,
+            "opacity": 1.0,
+            "text": "Text",
+            "style": style,
+            "snap_to_pixel_grid": false
+        }))
+        .unwrap();
+
+        let layer = build_text_layer(&sl, (1920, 1080));
+        assert!(layer.padding_left.fract() != 0.0);
     }
 
     #[test]
