@@ -32,6 +32,10 @@ const log = createDevLogger('useFileBrowserDragAndDrop');
 
 interface UseFileBrowserDragAndDropOptions {
   findEntryByPath: (path: string) => FsEntry | null;
+  /** Fallback lookup for entries visible in the content view (grid/list) but
+   *  absent from the tree (`rootEntries`) — e.g. a subfolder whose parent is
+   *  not expanded in the tree panel. */
+  findFolderEntry?: (path: string) => FsEntry | null;
   resolveEntryByPath: (path: string) => Promise<FsEntry | null>;
   handleFiles: (
     files: File[] | FileList,
@@ -258,7 +262,11 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
 
   function resolveDropTarget(targetEl: Element | null): ResolvedDropTarget {
     const hoveredEntryPath = getDropTargetEntryPathFromEl(targetEl);
-    const hoveredEntry = hoveredEntryPath ? options.findEntryByPath(hoveredEntryPath) : null;
+    const hoveredEntry = hoveredEntryPath
+      ? (options.findEntryByPath(hoveredEntryPath) ??
+          options.findFolderEntry?.(hoveredEntryPath) ??
+          null)
+      : null;
     const isDir = hoveredEntry?.kind === 'directory';
     const targetDirPath = isDir
       ? (hoveredEntry?.path ?? '')

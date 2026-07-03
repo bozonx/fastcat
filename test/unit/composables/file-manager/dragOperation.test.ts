@@ -6,6 +6,7 @@ import {
   getDraggedFileManagerItems,
   isFileManagerDropCancellationTarget,
   isCrossFileManagerDrag,
+  isCancellationZone,
   resolveFileManagerDragOperation,
 } from '~/composables/file-manager/dragOperation';
 
@@ -170,5 +171,57 @@ describe('dragOperation', () => {
         },
       } as unknown as DragEvent),
     ).toEqual([{ path: '_video/clip.mp4', kind: 'file', name: 'clip.mp4' }]);
+  });
+
+  describe('isCancellationZone', () => {
+    it('cancels when dragging a file into its own parent directory', () => {
+      expect(
+        isCancellationZone({
+          items: [{ path: '_video/clip.mp4', kind: 'file' }],
+          targetEntryPath: null,
+          targetDirPath: '_video',
+        }),
+      ).toBe(true);
+    });
+
+    it('cancels when dragging a file onto itself', () => {
+      expect(
+        isCancellationZone({
+          items: [{ path: '_video/clip.mp4', kind: 'file' }],
+          targetEntryPath: '_video/clip.mp4',
+          targetDirPath: '_video',
+        }),
+      ).toBe(true);
+    });
+
+    it('does NOT cancel when dragging a file onto a subfolder of the current directory', () => {
+      expect(
+        isCancellationZone({
+          items: [{ path: '_video/clip.mp4', kind: 'file' }],
+          targetEntryPath: '_video/subfolder',
+          targetDirPath: '_video/subfolder',
+        }),
+      ).toBe(false);
+    });
+
+    it('does NOT cancel when dragging a file onto a different directory', () => {
+      expect(
+        isCancellationZone({
+          items: [{ path: '_video/clip.mp4', kind: 'file' }],
+          targetEntryPath: '_audio',
+          targetDirPath: '_audio',
+        }),
+      ).toBe(false);
+    });
+
+    it('does NOT cancel when items list is empty', () => {
+      expect(
+        isCancellationZone({
+          items: [],
+          targetEntryPath: '_video',
+          targetDirPath: '_video',
+        }),
+      ).toBe(false);
+    });
   });
 });

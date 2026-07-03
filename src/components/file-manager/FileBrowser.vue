@@ -230,6 +230,7 @@ const {
   onRootDrop: onRootDropBase,
 } = useFileBrowserDragAndDrop({
   findEntryByPath,
+  findFolderEntry: (path: string) => folderEntries.value.find((e) => e.path === path) ?? null,
   resolveEntryByPath,
   handleFiles,
   moveEntry: handleCrossVfsMoveEntry,
