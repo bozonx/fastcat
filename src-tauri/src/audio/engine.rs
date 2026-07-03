@@ -1388,8 +1388,10 @@ mod tests {
 
         // Scene update with only /tmp/silent.mp4 present → other-silent is evicted.
         let l = layer("l1", "/tmp/silent.mp4", 0.0, 10.0, 1.0);
-        let active_paths: std::collections::HashSet<&str> =
-            std::slice::from_ref(&l).iter().map(|l| l.path.as_str()).collect();
+        let active_paths: std::collections::HashSet<&str> = std::slice::from_ref(&l)
+            .iter()
+            .map(|l| l.path.as_str())
+            .collect();
         evict_stale_silent_paths(&mut state, &active_paths);
         assert!(
             path_known_silent(&state, "/tmp/silent.mp4"),
@@ -1403,7 +1405,9 @@ mod tests {
 
     #[test]
     fn set_scene_with_empty_scene_clears_all_silent_paths() {
-        use crate::audio::decode::{evict_stale_silent_paths, path_known_silent, remember_silent_path};
+        use crate::audio::decode::{
+            evict_stale_silent_paths, path_known_silent, remember_silent_path,
+        };
 
         let mut state = crate::audio::shared::AudioShared::default();
         remember_silent_path(&mut state, "/tmp/a.mp4");

@@ -101,7 +101,9 @@ pub(crate) fn evict_stale_silent_paths(
     state: &mut AudioShared,
     active_paths: &std::collections::HashSet<&str>,
 ) {
-    state.no_audio_paths.retain(|p| active_paths.contains(p.as_str()));
+    state
+        .no_audio_paths
+        .retain(|p| active_paths.contains(p.as_str()));
 }
 
 /// True when any cause in `error`'s chain is the no-audio-track condition.

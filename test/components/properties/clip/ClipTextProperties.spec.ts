@@ -88,11 +88,13 @@ function stubs() {
   };
 }
 
-async function mountComponent(options: {
-  clip?: ReturnType<typeof createClip>;
-  presets?: Array<{ label: string; value: string }>;
-  hidePresets?: boolean;
-} = {}) {
+async function mountComponent(
+  options: {
+    clip?: ReturnType<typeof createClip>;
+    presets?: Array<{ label: string; value: string }>;
+    hidePresets?: boolean;
+  } = {},
+) {
   return mountSuspended(ClipTextProperties, {
     props: {
       clip: options.clip ?? createClip(),

@@ -679,7 +679,9 @@ const fontWeightOptions = ['100', '200', '300', '400', '500', '600', '700', '800
             :step="1"
             :decimals="0"
             :default-value="0"
-            @update:model-value="(v: number) => emit('updateTextStyle', { borderOffset: Number(v) })"
+            @update:model-value="
+              (v: number) => emit('updateTextStyle', { borderOffset: Number(v) })
+            "
           />
         </PropertyField>
       </div>
@@ -688,9 +690,14 @@ const fontWeightOptions = ['100', '200', '300', '400', '500', '600', '700', '800
     <PropertySection :title="t('fastcat.shapeClip.geometry')">
       <div class="flex items-center justify-between py-1">
         <div class="flex items-center gap-1.5">
-          <span class="text-xs text-ui-text font-medium">{{ t('fastcat.textClip.snapToPixelGrid') }}</span>
+          <span class="text-xs text-ui-text font-medium">{{
+            t('fastcat.textClip.snapToPixelGrid')
+          }}</span>
           <UTooltip :text="t('fastcat.textClip.snapToPixelGridTooltip')">
-            <UIcon name="i-heroicons-information-circle" class="w-3.5 h-3.5 text-ui-text-muted cursor-help" />
+            <UIcon
+              name="i-heroicons-information-circle"
+              class="w-3.5 h-3.5 text-ui-text-muted cursor-help"
+            />
           </UTooltip>
         </div>
         <USwitch v-model="snapToPixelGrid" size="sm" />

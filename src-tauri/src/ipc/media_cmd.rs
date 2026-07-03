@@ -362,6 +362,7 @@ pub async fn native_timeline_export(
 }
 
 #[tauri::command]
+#[allow(clippy::too_many_arguments)]
 pub async fn native_timeline_render_frame_to_file(
     scene: MonitorScene,
     time_sec: f64,

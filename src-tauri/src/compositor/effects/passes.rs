@@ -158,7 +158,6 @@ fn push_blur(
                 p5: rect.height as f32 / height as f32,
                 p6: bleed_flag,
                 p7: tap_budget,
-                ..Default::default()
             },
             custom_source: None,
             src: cur,

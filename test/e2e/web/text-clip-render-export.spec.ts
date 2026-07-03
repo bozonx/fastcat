@@ -12,12 +12,6 @@ test.describe('Web text clip render/export', () => {
     e2eProject,
   }) => {
     const [videoTrackId] = await trackIds(page);
-    const logs: string[] = [];
-    page.on('console', (msg) => {
-      const text = msg.text();
-      if (text.includes('[E2E addTextClip]') || text.includes('[persistence saveTimeline]')) logs.push(text);
-    });
-
     const [clipId] = await addTextClipAtPlayhead(page, {
       trackId: videoTrackId,
       durationUs: 1_000_000,
@@ -47,33 +41,10 @@ test.describe('Web text clip render/export', () => {
       doc.allClips.some((clip) => clip.id === clipId),
     );
 
-    await page.getByRole('button', { name: 'Cut' }).click();
+    await page.getByRole('button', { name: 'Cut', exact: true }).click();
     await expect(page.getByRole('button', { name: 'Fullscreen' })).toBeVisible({
       timeout: 20_000,
     });
-
-    console.log('ADD_TEXT_CLIP_LOGS', logs.join('\n'));
-
-    const info = await page.evaluate(() => {
-      const getInfo = (
-        window as Window & {
-          __fastcatE2eGetTimelineDocInfo?: () => {
-            duration: number;
-            trackCount: number;
-            tracks: Array<{
-              id: string;
-              kind: string;
-              videoHidden?: boolean;
-              clipCount: number;
-              clipTypes: Array<string | undefined>;
-            }>;
-          };
-        }
-      ).__fastcatE2eGetTimelineDocInfo;
-      if (!getInfo) throw new Error('E2E get timeline doc info hook is not registered');
-      return getInfo();
-    });
-    console.log('TIMELINE_DOC_INFO', JSON.stringify(info));
 
     await openExport(page);
     await startExport(page);
