@@ -4,7 +4,6 @@ import { computed, shallowRef, toRaw, triggerRef } from 'vue';
 
 import { useWorkspaceStore } from './workspace.store';
 import { genUuid } from '~/utils/ids';
-import { cloneValue } from '~/utils/clone';
 import { isTauriRuntime } from '~/utils/runtime';
 const log = createDevLogger('history.store');
 
@@ -27,16 +26,19 @@ export interface HistoryEntry<T = unknown> {
   labelKey: string;
   scope: string; // e.g. 'timeline', 'fileManager'
   commandType: string;
-  /** Snapshot of the document BEFORE the command was applied.
-   *  For snapshot-based scopes: the document state.
-   *  For command-based scopes: { undo: Command, redo: Command }
-   */
+  /** State of the document BEFORE the command was applied.
+   *  For snapshot-based scopes (e.g. `timeline`): the document **serialized to a
+   *    JSON string**. A flat string is several times cheaper to retain than the
+   *    equivalent live object graph (no per-object V8 overhead) and is collected
+   *    trivially by GC — the whole reason history stores strings, not clones.
+   *  For command-based scopes (e.g. `fileManager`): the `{ undo, redo }` command
+   *    object, kept live (it is small and consumed as an object). */
   snapshot: T;
   timestamp: number;
-  /** Estimated retained size of `snapshot` in bytes. Used to bound total
-   *  history memory independently of the entry count (snapshot scopes such as
-   *  `timeline` deep-clone the whole document, so a few large entries can dwarf
-   *  hundreds of small ones). */
+  /** Retained size of `snapshot` in bytes, used to bound total history memory
+   *  independently of the entry count. For serialized snapshots this is exact
+   *  (`length * 2`, UTF-16); snapshot scopes clone the whole document, so a few
+   *  large entries can dwarf hundreds of small ones. */
   bytes: number;
 }
 
@@ -44,41 +46,24 @@ function generateHistoryEntryId(): string {
   return genUuid();
 }
 
-/** Rough in-memory size of a (already plain) snapshot. Walks the structure once
- *  — same order of cost as the deep-clone we just did — so it is cheap relative
- *  to the work history already performs per push. Strings count 2 bytes/char
- *  (UTF-16), numbers 8, with a small per-container/key overhead. The absolute
- *  figure does not need to be exact: it only has to be proportional so the
- *  memory budget trims fairly. */
-function estimateSnapshotBytes(value: unknown, depth = 0): number {
-  if (value == null) return 4;
-  const t = typeof value;
-  if (t === 'string') return (value as string).length * 2 + 8;
-  if (t === 'number') return 8;
-  if (t === 'boolean') return 4;
-  if (t !== 'object') return 8;
-  if (depth > 64) return 0; // guard against cycles / pathological nesting
-  if (Array.isArray(value)) {
-    let total = 16;
-    for (let i = 0; i < value.length; i += 1) total += estimateSnapshotBytes(value[i], depth + 1);
-    return total;
-  }
-  let total = 16;
-  for (const key in value as Record<string, unknown>) {
-    if (Object.prototype.hasOwnProperty.call(value, key)) {
-      total +=
-        key.length * 2 + estimateSnapshotBytes((value as Record<string, unknown>)[key], depth + 1);
-    }
-  }
-  return total;
+/** Serialize a snapshot-scope document for storage. toRaw strips the top-level
+ *  reactive proxy (nested values serialize fine through their handlers for the
+ *  plain-data shapes history stores, e.g. TimelineDocument — the same data that
+ *  is already persisted to disk as JSON). */
+function serializeSnapshot<T>(snapshot: T): string {
+  return JSON.stringify(toRaw(snapshot as object));
 }
 
-/** Deep plain copy for history snapshots. toRaw strips the top-level proxy
- *  (nested reactive proxies are walked via their handlers and clone fine for
- *  plain-data shapes like TimelineDocument); cloneValue then does the
- *  structuredClone-first / JSON-fallback copy shared across the app. */
-function cloneHistorySnapshot<T>(snapshot: T): T {
-  return cloneValue(toRaw(snapshot as object)) as T;
+/** Reconstruct a live document from a stored snapshot string. Each call returns
+ *  a fresh object graph, so the restored document is fully decoupled from both
+ *  the retained history entry and any other restore. */
+function deserializeSnapshot<T>(serialized: string): T {
+  return JSON.parse(serialized) as T;
+}
+
+/** Exact retained size of a serialized snapshot (UTF-16 = 2 bytes/char). */
+function byteSize(serialized: string): number {
+  return serialized.length * 2;
 }
 
 export const useHistoryStore = defineStore('history', () => {
@@ -150,15 +135,18 @@ export const useHistoryStore = defineStore('history', () => {
    * Should be called BEFORE mutating the document.
    */
   function push<T>(scope: string, commandType: string, snapshot: T, labelKey: string) {
-    const storedSnapshot = isCommandScope(scope) ? snapshot : cloneHistorySnapshot(snapshot);
-    const entry: HistoryEntry<T> = {
+    const isCmd = isCommandScope(scope);
+    // Snapshot scopes are serialized to a JSON string for cheap retention;
+    // command scopes keep their small `{ undo, redo }` object live.
+    const storedSnapshot = isCmd ? snapshot : serializeSnapshot(snapshot);
+    const entry: HistoryEntry<unknown> = {
       id: generateHistoryEntryId(),
       labelKey,
       scope,
       commandType,
       snapshot: storedSnapshot,
       timestamp: Date.now(),
-      bytes: estimateSnapshotBytes(storedSnapshot),
+      bytes: isCmd ? byteSize(JSON.stringify(snapshot)) : byteSize(storedSnapshot as string),
     };
 
     past.value.push(entry);
@@ -170,7 +158,7 @@ export const useHistoryStore = defineStore('history', () => {
     enforceLimitsAndNotify();
   }
 
-  /** Sum of estimated snapshot bytes retained across past + future. */
+  /** Sum of retained snapshot bytes across past + future. */
   function currentMemoryBytes(): number {
     let bytes = 0;
     for (const e of past.value) bytes += e.bytes;
@@ -233,17 +221,19 @@ export const useHistoryStore = defineStore('history', () => {
     // For snapshot-based scopes, save currentDoc for redo
     if (isCommandScope(scope)) {
       future.value.unshift(entry);
-    } else {
-      const redoSnapshot = cloneHistorySnapshot(currentDoc);
-      future.value.unshift({
-        ...entry,
-        snapshot: redoSnapshot,
-        bytes: estimateSnapshotBytes(redoSnapshot),
-      });
+      enforceLimitsAndNotify();
+      return entry.snapshot as T;
     }
 
+    const redoSnapshot = serializeSnapshot(currentDoc);
+    future.value.unshift({
+      ...entry,
+      snapshot: redoSnapshot,
+      bytes: byteSize(redoSnapshot),
+    });
+
     enforceLimitsAndNotify();
-    return entry.snapshot as T;
+    return deserializeSnapshot<T>(entry.snapshot as string);
   }
 
   /**
@@ -264,17 +254,19 @@ export const useHistoryStore = defineStore('history', () => {
     // For snapshot-based scopes, save currentDoc for undo
     if (isCommandScope(scope)) {
       past.value.push(entry);
-    } else {
-      const undoSnapshot = cloneHistorySnapshot(currentDoc);
-      past.value.push({
-        ...entry,
-        snapshot: undoSnapshot,
-        bytes: estimateSnapshotBytes(undoSnapshot),
-      });
+      enforceLimitsAndNotify();
+      return entry.snapshot as T;
     }
 
+    const undoSnapshot = serializeSnapshot(currentDoc);
+    past.value.push({
+      ...entry,
+      snapshot: undoSnapshot,
+      bytes: byteSize(undoSnapshot),
+    });
+
     enforceLimitsAndNotify();
-    return entry.snapshot as T;
+    return deserializeSnapshot<T>(entry.snapshot as string);
   }
 
   function undoGlobal(): HistoryEntry<unknown> | null {

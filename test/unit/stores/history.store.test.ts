@@ -56,27 +56,57 @@ describe('HistoryStore', () => {
     expect(store.past).toHaveLength(1);
     expect(store.past[0]?.commandType).toBe('add_clip_to_track');
     expect(store.past[0]?.labelKey).toBe('Add clip');
-    expect(store.past[0]?.snapshot).toStrictEqual(doc);
+    // Snapshot scopes are stored as a serialized JSON string, not a live object.
+    expect(typeof store.past[0]?.snapshot).toBe('string');
+    expect(JSON.parse(store.past[0]?.snapshot as string)).toStrictEqual(doc);
     expect(store.canUndo('timeline')).toBe(true);
     expect(store.canRedo('timeline')).toBe(false);
   });
 
-  it('clones snapshot-based entries with structuredClone', () => {
+  it('decouples snapshot-based entries from later source mutation', () => {
     const store = useHistoryStore();
     const doc = makeDoc('doc-1');
-    const structuredCloneSpy = vi.spyOn(globalThis, 'structuredClone');
-    const jsonStringifySpy = vi.spyOn(JSON, 'stringify');
 
     store.push('timeline', 'add_clip_to_track', doc, 'Add clip');
     doc.name = 'mutated';
 
-    expect(structuredCloneSpy).toHaveBeenCalled();
-    expect(jsonStringifySpy).not.toHaveBeenCalled();
-    expect(store.past[0]?.snapshot).not.toBe(doc);
-    expect((store.past[0]?.snapshot as TimelineDocument).name).toBe('doc-1');
+    // Undo returns the state captured at push time, isolated from the mutation.
+    const restored = store.undo('timeline', doc) as TimelineDocument;
+    expect(restored).not.toBe(doc);
+    expect(restored.name).toBe('doc-1');
+  });
 
-    structuredCloneSpy.mockRestore();
-    jsonStringifySpy.mockRestore();
+  it('round-trips a nested document through serialize/restore without loss', () => {
+    // Guards the JSON-string storage against fidelity loss on a realistic
+    // (nested tracks/clips/effects) TimelineDocument shape — the one risk of
+    // storing snapshots as JSON instead of structured clones.
+    const store = useHistoryStore();
+    const doc = {
+      OTIO_SCHEMA: 'Timeline.1',
+      id: 'proj',
+      name: 'Project',
+      timebase: { fps: 30 },
+      tracks: [
+        {
+          id: 'track-1',
+          kind: 'video',
+          clips: [
+            {
+              id: 'clip-1',
+              sourceStartUs: 0,
+              durationUs: 5_000_000,
+              transform: { x: 0.5, y: -1.25, scale: 2 },
+              effects: [{ type: 'blur', radius: 3, enabled: true }],
+              keyframes: [{ tUs: 0, value: 0 }, { tUs: 1000, value: 1 }],
+            },
+          ],
+        },
+      ],
+    } as unknown as TimelineDocument;
+
+    store.push('timeline', 'edit', doc, 'Edit');
+    const restored = store.undo('timeline', doc) as TimelineDocument;
+    expect(restored).toStrictEqual(doc);
   });
 
   it('push clears future (branching)', () => {
@@ -221,7 +251,9 @@ describe('HistoryStore', () => {
       expect(store.past.length).toBeGreaterThanOrEqual(1);
       expect(store.past.length).toBeLessThan(5);
       // The most recent edit must survive so at least one undo step remains.
-      expect((store.past[store.past.length - 1]?.snapshot as TimelineDocument).id).toBe('doc-9');
+      expect(
+        (JSON.parse(store.past[store.past.length - 1]?.snapshot as string) as TimelineDocument).id,
+      ).toBe('doc-9');
     });
 
     it('keeps at least the most recent entry even when one snapshot exceeds the budget', () => {
@@ -232,7 +264,7 @@ describe('HistoryStore', () => {
       store.push('timeline', 'remove_item', makeBigDoc('b', PAYLOAD_CHARS), 'b');
 
       expect(store.past).toHaveLength(1);
-      expect((store.past[0]?.snapshot as TimelineDocument).id).toBe('b');
+      expect((JSON.parse(store.past[0]?.snapshot as string) as TimelineDocument).id).toBe('b');
       expect(store.canUndo('timeline')).toBe(true);
     });
 
@@ -349,8 +381,8 @@ describe('HistoryStore', () => {
 
       store.undo('timeline', doc2);
 
-      // For snapshot-based scopes, currentDoc should be saved for redo
-      expect(store.future[0]?.snapshot).toStrictEqual(doc2);
+      // For snapshot-based scopes, currentDoc should be saved (serialized) for redo
+      expect(JSON.parse(store.future[0]?.snapshot as string)).toStrictEqual(doc2);
     });
   });
 });
