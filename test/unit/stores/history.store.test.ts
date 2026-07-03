@@ -2,14 +2,14 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { setActivePinia, createPinia } from 'pinia';
 
+import { useHistoryStore } from '~/stores/history.store';
+import { useWorkspaceStore } from '~/stores/workspace.store';
+import type { TimelineDocument } from '~/timeline/types';
+
 // Force the desktop path so `maxEntries` is driven by user settings (the web
 // build pins it internally). The snapshot-memory budget is exercised directly
 // via `store.memoryBudgetMb` below, independently of the platform.
 vi.mock('~/utils/runtime', () => ({ isTauriRuntime: () => true }));
-
-import { useHistoryStore } from '~/stores/history.store';
-import { useWorkspaceStore } from '~/stores/workspace.store';
-import type { TimelineDocument } from '~/timeline/types';
 
 function makeDoc(id: string): TimelineDocument {
   return {
@@ -97,7 +97,10 @@ describe('HistoryStore', () => {
               durationUs: 5_000_000,
               transform: { x: 0.5, y: -1.25, scale: 2 },
               effects: [{ type: 'blur', radius: 3, enabled: true }],
-              keyframes: [{ tUs: 0, value: 0 }, { tUs: 1000, value: 1 }],
+              keyframes: [
+                { tUs: 0, value: 0 },
+                { tUs: 1000, value: 1 },
+              ],
             },
           ],
         },

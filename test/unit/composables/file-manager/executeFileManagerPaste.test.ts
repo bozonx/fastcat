@@ -124,14 +124,20 @@ describe('executeFileManagerPaste', () => {
       clearClipboardPayload,
     });
 
-    expect(moveEntry).toHaveBeenCalledWith({
-      source: {
-        kind: 'file',
-        name: 'source.mp4',
-        path: 'clips/source.mp4',
+    expect(moveEntry).toHaveBeenCalledWith(
+      {
+        source: {
+          kind: 'file',
+          name: 'source.mp4',
+          path: 'clips/source.mp4',
+        },
+        targetDirPath: 'assets',
       },
-      targetDirPath: 'assets',
-    });
+      {
+        skipReload: true,
+        skipNotify: true,
+      },
+    );
     expect(clearClipboardPayload).toHaveBeenCalledTimes(1);
     expect(crossVfsMove).not.toHaveBeenCalled();
   });

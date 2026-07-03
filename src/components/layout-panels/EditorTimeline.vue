@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch, nextTick, onMounted, onBeforeUnmount } from 'vue';
 import { storeToRefs } from 'pinia';
+import { createDevLogger } from '~/utils/dev-logger';
 
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
@@ -47,6 +48,8 @@ import { useTimelineEmptyAreaContextMenu } from '~/composables/timeline/useTimel
 import { useTimelineClipActions } from '~/composables/timeline/useTimelineClipActions';
 import { useTimelineSpeedModal } from '~/composables/timeline/useTimelineSpeedModal';
 import TextPresetSelectionModal from '~/components/timeline/TextPresetSelectionModal.vue';
+
+const log = createDevLogger('EditorTimeline');
 
 const { t } = useI18n();
 const toast = useToast();
@@ -413,6 +416,7 @@ onBeforeUnmount(() => {
     delete e2eWindow.__fastcatE2eTrimClip;
     delete e2eWindow.__fastcatE2eMoveClip;
     delete e2eWindow.__fastcatE2eAddTextClip;
+    delete e2eWindow.__fastcatE2eAddProjectFileToTrack;
     delete e2eWindow.__fastcatE2eGetTimelineDocInfo;
   }
 });
@@ -424,6 +428,12 @@ onMounted(() => {
   window.addEventListener('dragleave', onWindowDragLeave, true);
   if (runtimeConfig.public.e2eTest) {
     const e2eWindow = window as Window & FastcatE2eTimelineWindow;
+    const persistE2eTimelineEdit = async () => {
+      // E2E hooks are a testing bridge, not production UI flows. Persist edits
+      // through the canonical save path so specs assert against a settled OTIO
+      // file instead of the crash-recovery sidecar timing.
+      await timelineStore.saveTimeline();
+    };
 
     e2eWindow.__fastcatE2eAdvancePlayheadBy = async ({ deltaUs }) => {
       timelineStore.setCurrentTimeUs(timelineStore.currentTime + deltaUs);
@@ -431,7 +441,7 @@ onMounted(() => {
 
     e2eWindow.__fastcatE2eSplitClipAtPlayhead = async () => {
       await timelineStore.splitClipAtPlayhead();
-      await timelineStore.saveTimeline();
+      await persistE2eTimelineEdit();
     };
 
     e2eWindow.__fastcatE2eSelectTimelineItems = async ({ itemIds }) => {
@@ -456,7 +466,7 @@ onMounted(() => {
       for (const [trackId, itemIds] of byTrack) {
         timelineStore.applyTimeline({ type: 'delete_items', trackId, itemIds });
       }
-      await timelineStore.saveTimeline();
+      await persistE2eTimelineEdit();
     };
 
     e2eWindow.__fastcatE2eUpdateClipProperties = async ({ itemId, properties }) => {
@@ -468,7 +478,7 @@ onMounted(() => {
         itemId,
         properties,
       });
-      await timelineStore.saveTimeline();
+      await persistE2eTimelineEdit();
     };
 
     e2eWindow.__fastcatE2eSetCurrentTimeUs = async ({ us }) => {
@@ -487,22 +497,19 @@ onMounted(() => {
 
     e2eWindow.__fastcatE2eAddTextClip = async ({ text, style, durationUs, trackId }) => {
       const itemIds = timelineStore.addTextClipAtPlayhead({ text, style, durationUs, trackId });
-      console.log(
-        '[E2E addTextClip] after add',
-        timelineStore.timelineDoc?.tracks?.length,
-        'duration',
-        timelineStore.duration,
-        'itemIds',
-        itemIds,
-      );
-      await timelineStore.saveTimeline();
-      console.log(
-        '[E2E addTextClip] after save',
-        timelineStore.timelineDoc?.tracks?.length,
-        'duration',
-        timelineStore.duration,
-      );
+      await persistE2eTimelineEdit();
       return itemIds;
+    };
+
+    e2eWindow.__fastcatE2eAddProjectFileToTrack = async ({ path, trackId }) => {
+      const name = path.split('/').pop() ?? path;
+      await timelineStore.addClipToTimelineFromPath({
+        path,
+        trackId,
+        name,
+        startUs: 0,
+      });
+      await persistE2eTimelineEdit();
     };
 
     e2eWindow.__fastcatE2eGetTimelineDocInfo = () => {
@@ -533,7 +540,7 @@ onMounted(() => {
         deltaUs,
         quantizeToFrames: true,
       });
-      await timelineStore.saveTimeline();
+      await persistE2eTimelineEdit();
     };
 
     e2eWindow.__fastcatE2eMoveClip = async ({ itemId, deltaUs }) => {
@@ -549,7 +556,7 @@ onMounted(() => {
         startUs,
         quantizeToFrames: true,
       });
-      await timelineStore.saveTimeline();
+      await persistE2eTimelineEdit();
     };
 
     e2eWindow.__fastcatE2eMoveClipToTrack = async ({ itemId, toTrackId }) => {
@@ -565,7 +572,7 @@ onMounted(() => {
         startUs: item.timelineRange.startUs,
         quantizeToFrames: true,
       });
-      await timelineStore.saveTimeline();
+      await persistE2eTimelineEdit();
     };
   }
 });
@@ -778,6 +785,10 @@ interface FastcatE2eTimelineWindow {
   __fastcatE2eSaveTimeline?: () => Promise<void>;
   __fastcatE2eSetTimelineZoom?: (params: { zoom: number }) => Promise<void>;
   __fastcatE2eAddTextClip?: FastcatE2eAddTextClip;
+  __fastcatE2eAddProjectFileToTrack?: (params: {
+    path: string;
+    trackId: string;
+  }) => Promise<void>;
   __fastcatE2eGetTimelineDocInfo?: FastcatE2eGetTimelineDocInfo;
   __fastcatE2eTrimClip?: (params: {
     itemId: string;

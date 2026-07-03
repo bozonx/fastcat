@@ -264,8 +264,8 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
     const hoveredEntryPath = getDropTargetEntryPathFromEl(targetEl);
     const hoveredEntry = hoveredEntryPath
       ? (options.findEntryByPath(hoveredEntryPath) ??
-          options.findFolderEntry?.(hoveredEntryPath) ??
-          null)
+        options.findFolderEntry?.(hoveredEntryPath) ??
+        null)
       : null;
     const isDir = hoveredEntry?.kind === 'directory';
     const targetDirPath = isDir

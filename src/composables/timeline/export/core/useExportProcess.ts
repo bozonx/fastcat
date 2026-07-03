@@ -202,7 +202,7 @@ export function useExportProcess(
           : audioClips;
       }
 
-      console.log(
+      log.debug(
         '[export debug] doc tracks',
         doc?.tracks.length,
         'doc duration',

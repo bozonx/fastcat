@@ -63,6 +63,7 @@ export interface TimelinePersistenceDeps {
   parseTimelineFromOtio: (
     text: string,
     options: { id: string; name: string; format: TimelineFormatInput },
+    parseOptions?: { logWarnings?: boolean },
   ) => TimelineDocument;
   serializeTimelineToOtio: (doc: TimelineDocument) => string;
   selectTimelineDurationUs: (doc: TimelineDocument) => number;
@@ -387,6 +388,24 @@ export function createTimelinePersistenceModule(
     return serialized;
   }
 
+  function restoreSavedTimelineSnapshot(serialized: string, fallbackDoc: TimelineDocument) {
+    const parsed = deps.parseTimelineFromOtio(
+      serialized,
+      {
+        id: fallbackDoc.id,
+        name: fallbackDoc.name,
+        format: fallbackDoc.metadata?.fastcat?.format ?? { fps: fallbackDoc.timebase.fps },
+      },
+      { logWarnings: false },
+    );
+    deps.timelineDoc.value = parsed;
+    deps.duration.value = deps.selectTimelineDurationUs(parsed);
+    deps.currentTime.value = Math.min(
+      Math.max(0, Math.round(deps.currentTime.value)),
+      Math.max(0, Math.round(deps.duration.value)),
+    );
+  }
+
   // Crash-recovery autosave has two paths. Discrete edits (trim commit, paste,
   // context-menu ops, hotkeys, etc.) request an *immediate* sidecar write via
   // `requestTimelineSave({ immediate: true })`. Continuous gestures (e.g. clip
@@ -429,7 +448,6 @@ export function createTimelinePersistenceModule(
   }
 
   async function flushTimelineAutosave() {
-    console.log('[flushTimelineAutosave debug] called');
     clearAutosaveTimer();
     await autoSave.requestSave({ immediate: true });
   }
@@ -437,15 +455,6 @@ export function createTimelinePersistenceModule(
   const autoSave = createAutoSave({
     debounceMs: deps.autosaveDebounceMs?.() ?? 500,
     doSave: async () => {
-      console.log(
-        '[autoSave.doSave debug] called',
-        'dirty',
-        isDirty(),
-        'doc clip count',
-        deps.timelineDoc.value?.tracks
-          .map((t) => t.items.filter((it) => it.kind === 'clip').length)
-          .reduce((a, b) => a + b, 0) ?? 0,
-      );
       const doc = deps.timelineDoc.value;
       if (!doc || !isDirty()) return false;
       if (deps.isReadOnly?.value) return false;
@@ -453,6 +462,7 @@ export function createTimelinePersistenceModule(
       const currentProjectId = deps.currentProjectName.value;
       const currentTimelinePath = deps.currentTimelinePath.value;
       const generation = autosaveGeneration;
+      const revisionToSave = currentRevision;
 
       if (!currentProjectId || !currentTimelinePath) return false;
 
@@ -474,6 +484,14 @@ export function createTimelinePersistenceModule(
         await writeSerializedToPath(targetPath, serialized);
         if (generation !== autosaveGeneration || !isDirty()) {
           return false;
+        }
+
+        if (
+          currentProjectId === deps.currentProjectName.value &&
+          currentTimelinePath === deps.currentTimelinePath.value &&
+          currentRevision === revisionToSave
+        ) {
+          restoreSavedTimelineSnapshot(serialized, doc);
         }
 
         // On mobile the autosave IS the canonical save, so advance the main saved
@@ -541,15 +559,6 @@ export function createTimelinePersistenceModule(
   }
 
   async function loadTimeline() {
-    console.log(
-      '[loadTimeline debug] called',
-      deps.currentProjectName.value,
-      deps.currentTimelinePath.value,
-      'current doc clip count',
-      deps.timelineDoc.value?.tracks
-        .map((t) => t.items.filter((it) => it.kind === 'clip').length)
-        .reduce((a, b) => a + b, 0) ?? 0,
-    );
     if (!deps.currentProjectName.value || !deps.currentTimelinePath.value) return;
 
     if (deps.exitPreview) {
@@ -760,20 +769,6 @@ export function createTimelinePersistenceModule(
     autosaveGeneration += 1;
     deps.isSavingTimeline.value = true;
     deps.timelineSaveError.value = null;
-    const logTrackSummary = (label: string) => {
-      const d = deps.timelineDoc.value;
-      console.log(
-        label,
-        JSON.stringify(
-          (d?.tracks ?? []).map((t) => ({
-            id: t.id,
-            clipCount: t.items.filter((it) => it.kind === 'clip').length,
-          })),
-        ),
-      );
-    };
-    logTrackSummary('[saveTimeline debug] start');
-
     try {
       if (
         currentProjectId !== deps.currentProjectName.value ||
@@ -784,9 +779,15 @@ export function createTimelinePersistenceModule(
 
       const timelinePath = currentTimelinePath;
       const serialized = await serializeValidatedTimeline(doc);
-      logTrackSummary('[saveTimeline debug] serialized');
       await writeSerializedToPath(timelinePath, serialized);
-      logTrackSummary('[saveTimeline debug] after write');
+
+      if (
+        currentProjectId === deps.currentProjectName.value &&
+        currentTimelinePath === deps.currentTimelinePath.value &&
+        currentRevision === revisionToSave
+      ) {
+        restoreSavedTimelineSnapshot(serialized, doc);
+      }
 
       if (
         currentProjectId === deps.currentProjectName.value &&
@@ -810,9 +811,7 @@ export function createTimelinePersistenceModule(
           clearAutosaveTimer();
           autoSave.markCleanForCurrentRevision();
           try {
-            logTrackSummary('[saveTimeline debug] before deleteAutosaveFile');
             await deps.deleteAutosaveFile?.(currentTimelinePath);
-            logTrackSummary('[saveTimeline debug] after deleteAutosaveFile');
           } catch (e) {
             log.warn('Failed to remove autosave sidecar after save', e);
           }
@@ -821,9 +820,7 @@ export function createTimelinePersistenceModule(
         }
       }
 
-      logTrackSummary('[saveTimeline debug] before onSaveSuccess');
       deps.onSaveSuccess?.(serialized);
-      logTrackSummary('[saveTimeline debug] after onSaveSuccess');
     } catch (e: unknown) {
       deps.timelineSaveError.value =
         e instanceof Error ? e.message : 'Failed to save timeline file';
@@ -831,7 +828,6 @@ export function createTimelinePersistenceModule(
       deps.onSaveError?.(e);
       throw e;
     } finally {
-      logTrackSummary('[saveTimeline debug] finally');
       if (
         currentProjectId === deps.currentProjectName.value &&
         currentTimelinePath === deps.currentTimelinePath.value

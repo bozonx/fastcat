@@ -828,6 +828,8 @@
       "hideWaveform": "Hide waveform",
       "hud": "HUD",
       "importFilesCount": "Import {count} files",
+      "keyframesLane": "Animation keyframes",
+      "keyframesTitle": "Animation keyframes",
       "lock": "Lock",
       "lockClip": "Lock clip in place",
       "lockClips": "Lock clips",

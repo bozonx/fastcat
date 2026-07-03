@@ -12,6 +12,20 @@ import {
 import type { TimelineDocument, TimelineTrack } from '~/timeline/types';
 import type { NativeMonitorScene } from '~/utils/native-monitor-scene';
 
+vi.mock('@tauri-apps/plugin-fs', () => ({
+  BaseDirectory: { AppData: 'AppData' },
+  mkdir: vi.fn().mockResolvedValue(undefined),
+}));
+vi.mock('@tauri-apps/api/path', () => ({
+  join: vi.fn(async (...segments: string[]) => segments.filter(Boolean).join('/')),
+  appConfigDir: vi.fn(async () => '/config'),
+  appDataDir: vi.fn(async () => '/data'),
+  appCacheDir: vi.fn(async () => '/cache'),
+  documentDir: vi.fn(async () => '/documents'),
+  tempDir: vi.fn(async () => '/tmp'),
+  resolve: vi.fn(async (...segments: string[]) => segments.filter(Boolean).join('/')),
+}));
+
 // Mock stores
 const mockWorkspaceStore = reactive({
   userSettings: {
@@ -27,6 +41,13 @@ const mockWorkspaceStore = reactive({
     },
   },
   inDevelopmentFeaturesEnabled: false,
+  resolvedStorageTopology: {
+    commonRoot: '/',
+    projectsRoot: '/',
+    proxiesRoot: 'proxies',
+    tempRoot: 'temp',
+    ephemeralTmpRoot: 'temp',
+  },
 });
 
 const mockTimelineStore = reactive({
@@ -44,6 +65,7 @@ const mockProjectStore = reactive({
   currentProjectName: null,
   currentTimelinePath: null,
   activeMonitor: null,
+  getProjectDirHandle: vi.fn().mockResolvedValue(null),
 });
 
 const mockProxyStore = reactive({

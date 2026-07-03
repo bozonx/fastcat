@@ -364,22 +364,35 @@ describe('useExportForm', () => {
     ]);
   });
 
-  it('выбирает область выделения по умолчанию, если на таймлайне ничего не выбрано', async () => {
+  it('не выбирает область выделения по умолчанию, если она не активна', async () => {
     selectionRangeMock.value = { startUs: 2_000_000, endUs: 6_000_000 };
 
     const form = useExportForm();
     await form.initializeExportForm();
 
-    expect(form.selectedExportRangeId.value).toBe('selection');
+    expect(form.selectedExportRangeId.value).toBe('timeline');
   });
 
-  it('выбирает область выделения по умолчанию, даже если на таймлайне выбран клип', async () => {
+  it('не выбирает область выделения по умолчанию, если на таймлайне выбран клип', async () => {
     selectionRangeMock.value = { startUs: 2_000_000, endUs: 6_000_000 };
     selectedEntityMock.value = {
       source: 'timeline',
       kind: 'clip',
       trackId: 'v1',
       itemId: 'clip-1',
+    };
+
+    const form = useExportForm();
+    await form.initializeExportForm();
+
+    expect(form.selectedExportRangeId.value).toBe('timeline');
+  });
+
+  it('выбирает область выделения по умолчанию только когда она активна', async () => {
+    selectionRangeMock.value = { startUs: 2_000_000, endUs: 6_000_000 };
+    selectedEntityMock.value = {
+      source: 'timeline',
+      kind: 'selection-range',
     };
 
     const form = useExportForm();
@@ -416,7 +429,7 @@ describe('useExportForm', () => {
     const form = useExportForm();
     await form.initializeExportForm();
 
-    expect(form.selectedExportRangeId.value).toBe('selection');
+    expect(form.selectedExportRangeId.value).toBe('timeline');
 
     selectedEntityMock.value = {
       source: 'timeline',

@@ -265,7 +265,7 @@ export function createTimelineDispatcherModule(
     deps.markTimelineAsDirty();
     deps.pruneSelection?.(snapshot);
     deps.clearSelectionRange?.();
-    void deps.requestTimelineSave();
+    void deps.requestTimelineSave({ immediate: true });
   }
 
   function undoTimeline() {

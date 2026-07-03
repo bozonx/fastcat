@@ -289,7 +289,11 @@ export function useExportForm() {
       }
     }
 
-    if (selectionRange.value) {
+    if (
+      selectionRange.value &&
+      selectedEntity?.source === 'timeline' &&
+      selectedEntity.kind === 'selection-range'
+    ) {
       return 'selection';
     }
 
@@ -417,7 +421,7 @@ export function useExportForm() {
       isExporting.value = true;
       const finalFilename = normalizeExportFilename(outputFilename.value);
       outputFilename.value = finalFilename;
-      console.log('[export form debug] starting export', finalFilename, 'duration', duration.value);
+      log.debug('starting export', finalFilename);
 
       try {
         await exportDir.getFileHandle(finalFilename);

@@ -81,50 +81,59 @@ function onPointerDown(e: PointerEvent) {
   >
     <UIcon :name="cardIcon" class="w-8 h-8 text-primary shrink-0" />
 
-    <div class="flex-1 min-w-0">
-      <div class="flex items-center justify-between gap-2">
-        <h4 class="text-sm font-medium text-ui-text truncate">
-          {{ cardTitle }}
-        </h4>
-        <div
-          v-if="showDefaultStar || showRename || showAction"
-          class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
-        >
-          <UButton
-            v-if="showDefaultStar"
-            :icon="isDefault ? 'i-heroicons-star-solid' : 'i-heroicons-star'"
-            :color="isDefault ? 'yellow' : 'neutral'"
-            variant="ghost"
-            size="xs"
-            :title="t('fastcat.library.texts.setAsDefault')"
-            @click.stop="emit('toggle-default')"
-          />
-          <UButton
-            v-if="showRename"
-            icon="i-heroicons-pencil-square"
-            color="neutral"
-            variant="ghost"
-            size="xs"
-            :title="t('common.rename')"
-            @click.stop="emit('rename')"
-          />
-          <UButton
-            v-if="showAction"
-            :icon="actionIcon || 'i-heroicons-trash'"
-            :color="actionColor || 'red'"
-            variant="ghost"
-            size="xs"
-            @click.stop="emit('action')"
-          />
-        </div>
-      </div>
-      <p
-        v-if="(manifest?.target === 'audio' || description) && cardDescription"
-        class="text-xs text-ui-text-muted mt-1 line-clamp-2"
-        :title="cardDescription"
+    <div class="flex-1 min-w-0 flex items-start gap-2">
+      <div
+        v-if="showDragHandle"
+        class="drag-handle w-4 h-4 text-ui-text-muted hover:text-ui-text cursor-grab active:cursor-grabbing shrink-0 mt-0.5"
       >
-        {{ cardDescription }}
-      </p>
+        <UIcon name="i-heroicons-bars-3" class="w-4 h-4" />
+      </div>
+
+      <div class="flex-1 min-w-0">
+        <div class="flex items-center justify-between gap-2">
+          <h4 class="text-sm font-medium text-ui-text truncate">
+            {{ cardTitle }}
+          </h4>
+          <div
+            v-if="showDefaultStar || showRename || showAction"
+            class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+          >
+            <UButton
+              v-if="showDefaultStar"
+              :icon="isDefault ? 'i-heroicons-star-solid' : 'i-heroicons-star'"
+              :color="isDefault ? 'yellow' : 'neutral'"
+              variant="ghost"
+              size="xs"
+              :title="t('fastcat.library.texts.setAsDefault')"
+              @click.stop="emit('toggle-default')"
+            />
+            <UButton
+              v-if="showRename"
+              icon="i-heroicons-pencil-square"
+              color="neutral"
+              variant="ghost"
+              size="xs"
+              :title="t('common.rename')"
+              @click.stop="emit('rename')"
+            />
+            <UButton
+              v-if="showAction"
+              :icon="actionIcon || 'i-heroicons-trash'"
+              :color="actionColor || 'red'"
+              variant="ghost"
+              size="xs"
+              @click.stop="emit('action')"
+            />
+          </div>
+        </div>
+        <p
+          v-if="(manifest?.target === 'audio' || description) && cardDescription"
+          class="text-xs text-ui-text-muted mt-1 line-clamp-2"
+          :title="cardDescription"
+        >
+          {{ cardDescription }}
+        </p>
+      </div>
     </div>
 
     <div

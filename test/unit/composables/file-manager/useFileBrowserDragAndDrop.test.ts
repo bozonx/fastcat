@@ -249,10 +249,13 @@ describe('useFileBrowserDragAndDrop', () => {
       setOperation: vi.fn(),
     } as any);
 
-    expect(moveEntry).toHaveBeenCalledWith({
-      source: expect.objectContaining({ path: '_audio/a.mp4' }),
-      targetDirPath: '_video',
-    });
+    expect(moveEntry).toHaveBeenCalledWith(
+      {
+        source: expect.objectContaining({ path: '_audio/a.mp4' }),
+        targetDirPath: '_video',
+      },
+      { skipReload: true, skipNotify: true },
+    );
     expect(notifyFileManagerUpdate).toHaveBeenCalled();
     expect(loadFolderContent).toHaveBeenCalled();
     expect(fileManagerStoreMock.openFolder).toHaveBeenCalledWith(

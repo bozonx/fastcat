@@ -105,7 +105,7 @@ function emitResizeStart(event: MouseEvent, column: string) {
 <template>
   <div
     :ref="props.setRootContainerRef"
-    class="flex-1 overflow-auto p-4 content-scrollbar relative"
+    class="flex-1 overflow-auto p-4 content-scrollbar relative outline-none"
     tabindex="0"
     @scroll.passive="emit('scroll', $event)"
     @dragenter.prevent="emit('rootDragEnter', $event)"

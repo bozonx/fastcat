@@ -109,10 +109,16 @@ describe('useFileDrop', () => {
 
     await onRootDrop(event);
 
-    expect(moveEntry).toHaveBeenCalledWith({
-      source,
-      targetDirPath: '',
-    });
+    expect(moveEntry).toHaveBeenCalledWith(
+      {
+        source,
+        targetDirPath: '',
+      },
+      {
+        skipReload: true,
+        skipNotify: true,
+      },
+    );
     expect(copyEntry).not.toHaveBeenCalled();
     expect(handleFiles).not.toHaveBeenCalled();
   });
@@ -155,10 +161,16 @@ describe('useFileDrop', () => {
       '_video/sub',
     );
 
-    expect(moveEntry).toHaveBeenCalledWith({
-      source,
-      targetDirPath: '_video/sub',
-    });
+    expect(moveEntry).toHaveBeenCalledWith(
+      {
+        source,
+        targetDirPath: '_video/sub',
+      },
+      {
+        skipReload: true,
+        skipNotify: true,
+      },
+    );
     expect(copyEntry).not.toHaveBeenCalled();
   });
 
@@ -365,10 +377,16 @@ describe('useFileDrop', () => {
       },
     } as unknown as DragEvent);
 
-    expect(moveEntry).toHaveBeenCalledWith({
-      source,
-      targetDirPath: '',
-    });
+    expect(moveEntry).toHaveBeenCalledWith(
+      {
+        source,
+        targetDirPath: '',
+      },
+      {
+        skipReload: true,
+        skipNotify: true,
+      },
+    );
     expect(handleFiles).not.toHaveBeenCalled();
   });
 

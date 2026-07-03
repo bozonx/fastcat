@@ -86,20 +86,6 @@ export function useFileDrop(options: UseFileDropOptions) {
     });
   }
 
-  function resolveDropOperation(
-    e: DragEvent,
-    fallbackRawOperation: 'copy' | 'move' | null,
-  ): 'copy' | 'move' {
-    return resolveFileManagerDropOperation({
-      dragSourceFileManagerInstanceId: appClipboard.dragSourceFileManagerInstanceId,
-      isLayer1Active: isCopyModifierActive(e),
-      isSameFileSystem: isSameFileSystemDrag(),
-      targetFileManagerInstanceId: options.targetFileManagerInstanceId ?? null,
-      currentDragOperation: appClipboard.currentDragOperation,
-      fallbackRawOperation,
-    });
-  }
-
   function isRelevantDrag(e: DragEvent): boolean {
     const types = e.dataTransfer?.types;
     if (!types) return false;
@@ -213,6 +199,9 @@ export function useFileDrop(options: UseFileDropOptions) {
 
   async function onRootDrop(e: DragEvent, targetDirPath?: string) {
     e.stopPropagation();
+    const dragSourceFileManagerInstanceId = appClipboard.dragSourceFileManagerInstanceId;
+    const dragSourceVfs = appClipboard.dragSourceVfs;
+    const currentDragOperation = appClipboard.currentDragOperation;
     rootDragEnterCount = 0;
     isRootDropOver.value = false;
     appClipboard.setCurrentDragOperation(null);
@@ -235,11 +224,18 @@ export function useFileDrop(options: UseFileDropOptions) {
     if (!internalRaw) return;
 
     const isCrossManagerDrag = isCrossFileManagerDrag({
-      dragSourceFileManagerInstanceId: appClipboard.dragSourceFileManagerInstanceId,
+      dragSourceFileManagerInstanceId,
       targetFileManagerInstanceId: options.targetFileManagerInstanceId ?? null,
     });
     const shouldCopy =
-      resolveDropOperation(e, copyRaw ? 'copy' : moveRaw ? 'move' : null) === 'copy';
+      resolveFileManagerDropOperation({
+        dragSourceFileManagerInstanceId,
+        isLayer1Active: isCopyModifierActive(e),
+        isSameFileSystem: dragSourceVfs && options.vfs ? dragSourceVfs === options.vfs : null,
+        targetFileManagerInstanceId: options.targetFileManagerInstanceId ?? null,
+        currentDragOperation,
+        fallbackRawOperation: copyRaw ? 'copy' : moveRaw ? 'move' : null,
+      }) === 'copy';
 
     let parsed: unknown = null;
     try {
@@ -262,7 +258,7 @@ export function useFileDrop(options: UseFileDropOptions) {
       return;
     }
 
-    if (isCrossManagerDrag && appClipboard.dragSourceVfs) {
+    if (isCrossManagerDrag && dragSourceVfs) {
       try {
         for (const item of itemsToMove) {
           const sourcePath = typeof item?.path === 'string' ? item.path : '';
@@ -271,7 +267,7 @@ export function useFileDrop(options: UseFileDropOptions) {
           const sourceKind = item?.kind === 'directory' ? 'directory' : 'file';
           if (shouldCopy) {
             await crossVfsCopy({
-              sourceVfs: appClipboard.dragSourceVfs,
+              sourceVfs: dragSourceVfs,
               targetVfs: options.vfs,
               sourcePath,
               sourceKind,
@@ -279,7 +275,7 @@ export function useFileDrop(options: UseFileDropOptions) {
             });
           } else {
             await crossVfsMove({
-              sourceVfs: appClipboard.dragSourceVfs,
+              sourceVfs: dragSourceVfs,
               targetVfs: options.vfs,
               sourcePath,
               sourceKind,

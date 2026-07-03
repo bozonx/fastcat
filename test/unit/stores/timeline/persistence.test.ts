@@ -261,6 +261,36 @@ describe('TimelinePersistenceModule', () => {
     expect(onSaveBlockedReadOnly).toHaveBeenCalled();
   });
 
+  it('saveTimeline normalizes the in-memory doc from the saved OTIO when no newer edits land', async () => {
+    const savedDoc = {
+      ...fallbackDoc,
+      tracks: [{ id: 'v1', kind: 'video', name: 'Video 1', items: [{ kind: 'clip', id: 'c1' }] }],
+    };
+    const normalizedDoc = {
+      ...savedDoc,
+      tracks: [{ id: 'v1', kind: 'video', name: 'Video 1', items: [] }],
+      normalized: true,
+    };
+    const deps = createMockDeps({
+      timelineDoc: ref(savedDoc),
+    });
+    parseTimelineFromOtio.mockReturnValue(normalizedDoc);
+    selectTimelineDurationUs.mockReturnValue(1_000_000);
+
+    const mod = createTimelinePersistenceModule(deps);
+    mod.markDirty();
+    deps.currentTime.value = 2_000_000;
+
+    await mod.saveTimeline();
+
+    expect(parseTimelineFromOtio).toHaveBeenCalledWith(expect.any(String), expect.any(Object), {
+      logWarnings: false,
+    });
+    expect(deps.timelineDoc.value).toEqual(normalizedDoc);
+    expect(deps.duration.value).toBe(1_000_000);
+    expect(deps.currentTime.value).toBe(1_000_000);
+  });
+
   it('requestTimelineSave({ immediate: true }) flushes autosave immediately', async () => {
     const deps = createMockDeps({ timelineDoc: ref({ ...fallbackDoc }) });
     const mod = createTimelinePersistenceModule(deps);
@@ -270,6 +300,43 @@ describe('TimelinePersistenceModule', () => {
       '.fastcat/autosave/timeline.otio',
       expect.any(String),
     );
+  });
+
+  it('requestTimelineSave({ immediate: true }) restores the live doc from the autosaved snapshot', async () => {
+    const savedDoc = {
+      ...fallbackDoc,
+      tracks: [{ id: 'v1', kind: 'video', name: 'Video 1', items: [{ kind: 'clip', id: 'c1' }] }],
+    };
+    const normalizedDoc = {
+      ...savedDoc,
+      tracks: [{ id: 'v1', kind: 'video', name: 'Video 1', items: [] }],
+      normalized: true,
+    };
+    const timelineDoc = ref(savedDoc);
+    const deps = createMockDeps({
+      timelineDoc,
+      writeTimelineText: vi.fn(async () => {
+        timelineDoc.value = {
+          ...savedDoc,
+          tracks: [{ id: 'v1', kind: 'video', name: 'Video 1', items: [] }],
+        };
+      }),
+    });
+    parseTimelineFromOtio.mockReturnValue(normalizedDoc);
+    selectTimelineDurationUs.mockReturnValue(1_000_000);
+
+    const mod = createTimelinePersistenceModule(deps);
+    mod.markDirty();
+    deps.currentTime.value = 2_000_000;
+
+    await mod.requestTimelineSave({ immediate: true });
+
+    expect(parseTimelineFromOtio).toHaveBeenCalledWith(expect.any(String), expect.any(Object), {
+      logWarnings: false,
+    });
+    expect(deps.timelineDoc.value).toEqual(normalizedDoc);
+    expect(deps.duration.value).toBe(1_000_000);
+    expect(deps.currentTime.value).toBe(1_000_000);
   });
 
   it('loadTimeline calls exitPreview at the beginning', async () => {

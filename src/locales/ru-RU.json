@@ -828,6 +828,8 @@
       "hideWaveform": "Скрыть вейвформу",
       "hud": "HUD",
       "importFilesCount": "Импорт {count} файлов",
+      "keyframesLane": "Ключи анимации",
+      "keyframesTitle": "Ключи анимации",
       "lock": "Заблокировать",
       "lockClip": "Заблокировать клип",
       "lockClips": "Заблокировать клипы",

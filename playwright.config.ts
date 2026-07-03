@@ -38,7 +38,7 @@ export default defineConfig({
   retries: process.env.CI ? 2 : 0,
   timeout: 60_000,
   workers: process.env.CI ? 1 : e2eWorkers,
-  reporter: process.env.CI ? [['github'], ['html', { open: 'never' }]] : [['list'], ['html']],
+  reporter: process.env.CI ? [['github'], ['html', { open: 'never' }]] : [['list'], ['html', { open: 'never' }]],
 
   use: {
     baseURL,
@@ -98,6 +98,7 @@ export default defineConfig({
     env: {
       E2E_TEST: '1',
       E2E_PORT: String(e2ePort),
+      NUXT_IGNORE_LOCK: '1',
     },
   },
 });

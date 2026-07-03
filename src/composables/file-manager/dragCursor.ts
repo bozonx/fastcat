@@ -28,7 +28,9 @@ function translateDragOperation(operation: FileManagerDragCursorOperation | null
 
   try {
     const nuxtApp = _useNuxtApp();
-    const i18nService = nuxtApp.$i18nService as { t?: (translationKey: string) => string } | undefined;
+    const i18nService = nuxtApp.$i18nService as
+      | { t?: (translationKey: string) => string }
+      | undefined;
     return i18nService?.t?.(key) ?? key;
   } catch {
     return key;

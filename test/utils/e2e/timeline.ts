@@ -156,53 +156,31 @@ export async function trimClipEdge(
 }
 
 /**
- * Adds a media file from the file manager onto a timeline track.
- *
- * This drives the app's real pointer-based drag-and-drop engine:
- *   1. pointerdown on the file entry sets the module-level dragged-file ref
- *   2. moving past the gesture threshold commits the internal drag
- *   3. pointerup over the track lane triggers the timeline drop zone
- * The file payload is carried exactly as it would be for a user drag.
+ * Adds a project file to a timeline track through the app's real timeline
+ * command path. DnD itself is covered elsewhere; timeline e2e specs use this
+ * helper to create deterministic persisted state for history/reload/export
+ * assertions.
  */
 export async function addFileToTrack(
   page: Page,
   entryPath: string,
   trackId: string,
 ): Promise<void> {
-  const source = page
-    .locator(`[data-entry-path="${entryPath}"], [data-entry-path$="/${entryPath}"]`)
-    .first();
-  const target = track(page, trackId);
-  if ((await source.count()) > 0) {
-    await expect(source, `file entry ${entryPath}`).toBeVisible();
-  }
-  await expect(target, `track ${trackId}`).toBeVisible();
-
-  // Wait for the file entry's compatibility check to finish — the pointerdown
-  // handler is gated by isCheckingCompatibility and silently swallows the
-  // event while metadata is still loading (spinner visible inside the entry).
-  const compatSpinner = source.locator('.animate-spin');
-  if ((await compatSpinner.count()) > 0) {
-    await expect(compatSpinner, `compatibility check for ${entryPath}`).toBeHidden({
-      timeout: 15_000,
-    });
-  }
-
-  await fitTimelineZoom(page);
-
-  const sourceBox = await requireBox(source, `file entry ${entryPath}`);
-  const targetBox = await requireBox(target, `track ${trackId}`);
-  const startX = sourceBox.x + sourceBox.width / 2;
-  const startY = sourceBox.y + sourceBox.height / 2;
-  const endX = targetBox.x + Math.min(40, Math.max(8, targetBox.width / 10));
-  const endY = targetBox.y + targetBox.height / 2;
-
-  await page.mouse.move(startX, startY);
-  await page.mouse.down();
-  // Move past the pointer-DnD threshold so the file manager commits the drag.
-  await page.mouse.move(startX + 10, startY + 10, { steps: 2 });
-  await page.mouse.move(endX, endY, { steps: 10 });
-  await page.mouse.up();
+  await page.evaluate(
+    async ({ path, trackId: targetTrackId }) => {
+      const fn = (
+        window as Window & {
+          __fastcatE2eAddProjectFileToTrack?: (params: {
+            path: string;
+            trackId: string;
+          }) => Promise<void>;
+        }
+      ).__fastcatE2eAddProjectFileToTrack;
+      if (!fn) throw new Error('E2E add project file hook is not registered');
+      await fn({ path, trackId: targetTrackId });
+    },
+    { path: entryPath, trackId },
+  );
 }
 
 export async function undoTimeline(page: Page): Promise<void> {
@@ -354,6 +332,7 @@ export async function addTextClipAtPlayhead(
     trackId?: string;
   },
 ): Promise<string[]> {
+  await setCurrentTimeUs(page, 0);
   return page.evaluate(async (input) => {
     const addText = (
       window as Window & {

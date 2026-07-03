@@ -106,6 +106,7 @@ describe('TimelineDispatcherModule', () => {
     mod.applyRestoredSnapshot(snap as any);
     expect(deps.timelineDoc.value).toEqual(snap);
     expect(deps.markTimelineAsDirty).toHaveBeenCalled();
+    expect(deps.requestTimelineSave).toHaveBeenCalledWith({ immediate: true });
   });
 
   it('applyRestoredSnapshot clears selection range', () => {
