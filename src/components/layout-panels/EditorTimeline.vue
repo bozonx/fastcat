@@ -785,10 +785,7 @@ interface FastcatE2eTimelineWindow {
   __fastcatE2eSaveTimeline?: () => Promise<void>;
   __fastcatE2eSetTimelineZoom?: (params: { zoom: number }) => Promise<void>;
   __fastcatE2eAddTextClip?: FastcatE2eAddTextClip;
-  __fastcatE2eAddProjectFileToTrack?: (params: {
-    path: string;
-    trackId: string;
-  }) => Promise<void>;
+  __fastcatE2eAddProjectFileToTrack?: (params: { path: string; trackId: string }) => Promise<void>;
   __fastcatE2eGetTimelineDocInfo?: FastcatE2eGetTimelineDocInfo;
   __fastcatE2eTrimClip?: (params: {
     itemId: string;

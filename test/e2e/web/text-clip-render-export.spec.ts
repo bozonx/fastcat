@@ -1,9 +1,5 @@
 import { test, expect } from '../fixtures/workspace';
-import {
-  addTextClipAtPlayhead,
-  addFileToTrack,
-  trackIds,
-} from '../../utils/e2e/timeline';
+import { addTextClipAtPlayhead, addFileToTrack, trackIds } from '../../utils/e2e/timeline';
 import { waitForTimelineDoc } from '../../utils/e2e/otio';
 import { MEDIA_FIXTURES } from '../../fixtures/media';
 import { seedProjectMedia } from '../../utils/e2e/file-manager';
