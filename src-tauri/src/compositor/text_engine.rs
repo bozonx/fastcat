@@ -237,6 +237,7 @@ mod tests {
             text_block_height: 40.0,
             natural_size: (100, 40),
             render_mode: TextRenderMode::Full,
+            snap_text_origin: false,
         }
     }
 

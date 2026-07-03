@@ -18,6 +18,10 @@ test.describe('Web text clip render/export', () => {
     page,
     e2eProject,
   }) => {
+    page.on('console', (msg) => {
+      const text = msg.text();
+      if (text.includes('[E2E addTextClip]')) console.log(text);
+    });
     const [videoTrackId] = await trackIds(page);
     const [clipId] = await addTextClipAtPlayhead(page, {
       trackId: videoTrackId,

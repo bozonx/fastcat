@@ -436,6 +436,7 @@ pub fn build_text_layer(sl: &SceneLayer, scene_size: (u32, u32)) -> TextLayer {
 
         natural_size: (natural_width, natural_height),
         render_mode: TextRenderMode::Full,
+        snap_text_origin: is_snap_active,
     }
 }
 

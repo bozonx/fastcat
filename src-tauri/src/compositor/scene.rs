@@ -377,6 +377,11 @@ pub struct TextLayer {
 
     pub natural_size: (u32, u32),
     pub render_mode: TextRenderMode,
+    /// When true (snap-to-pixel-grid, axis-aligned transform), the text block
+    /// origin (line start x / block top y) is rounded to whole layer-local
+    /// pixels before glyph placement, mirroring the web compositor's
+    /// `snapTextOriginToPixelGrid`. Per-glyph advances/kerning stay fractional.
+    pub snap_text_origin: bool,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -934,16 +939,29 @@ fn draw_text_border(
 /// has an explicit height to align within.
 fn text_block_top(spec: &TextLayer, frame_y: f32) -> f32 {
     let content_top_px = frame_y + spec.padding_top;
-    if spec.explicit_height.is_none() {
-        return content_top_px;
-    }
-    let content_height_px = (spec.frame_height - spec.padding_top - spec.padding_bottom).max(1.0);
-    match spec.vertical_align {
-        TextVerticalAlign::Top => content_top_px,
-        TextVerticalAlign::Middle => {
-            content_top_px + (content_height_px - spec.text_block_height) * 0.5
+    let top = if spec.explicit_height.is_none() {
+        content_top_px
+    } else {
+        let content_height_px =
+            (spec.frame_height - spec.padding_top - spec.padding_bottom).max(1.0);
+        match spec.vertical_align {
+            TextVerticalAlign::Top => content_top_px,
+            TextVerticalAlign::Middle => {
+                content_top_px + (content_height_px - spec.text_block_height) * 0.5
+            }
+            TextVerticalAlign::Bottom => {
+                content_top_px + content_height_px - spec.text_block_height
+            }
         }
-        TextVerticalAlign::Bottom => content_top_px + content_height_px - spec.text_block_height,
+    };
+    // The parley-measured text_block_height is fractional, so middle/bottom
+    // alignment (and the auto-height path, whose padding sum met a fractional
+    // block height) put the block top on a sub-pixel offset — visible as soft
+    // glyph edges when the rest of the box is pixel-snapped.
+    if spec.snap_text_origin {
+        top.round()
+    } else {
+        top
     }
 }
 
@@ -970,7 +988,7 @@ fn compute_line_infos(layout: &parley::Layout<[u8; 4]>) -> Vec<LineDrawInfo> {
 /// Horizontal start offset of a line, honoring `align` within the padded frame.
 fn line_x_offset(spec: &TextLayer, frame_x: f32, line_width: f32) -> f32 {
     let base = frame_x + spec.padding_left;
-    match spec.align {
+    let x = match spec.align {
         TextAlign::Left => base,
         TextAlign::Center => {
             let content = (spec.frame_width - spec.padding_left - spec.padding_right).max(0.0);
@@ -980,6 +998,15 @@ fn line_x_offset(spec: &TextLayer, frame_x: f32, line_width: f32) -> f32 {
             let content = (spec.frame_width - spec.padding_left - spec.padding_right).max(0.0);
             base + content - line_width
         }
+    };
+    // Parley line widths are fractional, so centered/right-aligned lines start
+    // on sub-pixel x offsets; round the line ORIGIN only (per-glyph kerning
+    // inside the line stays fractional), mirroring the web
+    // `snapTextOriginToPixelGrid`.
+    if spec.snap_text_origin {
+        x.round()
+    } else {
+        x
     }
 }
 
@@ -1369,6 +1396,7 @@ mod tests {
             text_block_height: 40.0,
             natural_size: (100, 40),
             render_mode: TextRenderMode::Full,
+            snap_text_origin: false,
         }
     }
 
@@ -1386,6 +1414,24 @@ mod tests {
         let spec = text_layer_with_shadow_border(4.0, 6.0);
 
         assert_eq!(text_background_shadow_outset(&spec), 10.0);
+    }
+
+    #[test]
+    fn snapped_text_origin_rounds_centered_line_start_and_block_top() {
+        // Fractional parley line width + centered align → fractional origin,
+        // which snap_text_origin must round (web parity: snapTextOriginToPixelGrid).
+        let mut spec = text_layer_with_shadow_border(0.0, 0.0);
+        spec.align = TextAlign::Center;
+        spec.explicit_height = Some(40.0);
+        spec.text_block_height = 23.7;
+
+        spec.snap_text_origin = false;
+        assert!(line_x_offset(&spec, 5.0, 30.5).fract() != 0.0);
+        assert!(text_block_top(&spec, 5.0).fract() != 0.0);
+
+        spec.snap_text_origin = true;
+        assert_eq!(line_x_offset(&spec, 5.0, 30.5).fract(), 0.0);
+        assert_eq!(text_block_top(&spec, 5.0).fract(), 0.0);
     }
 
     #[test]
