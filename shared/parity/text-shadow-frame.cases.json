@@ -18,7 +18,8 @@
     "no-op and cannot diverge from native's un-rounded f32 arithmetic.",
     "",
     "frameX/frameY = the offset of the frame's top-left inside the padded",
-    "background box, i.e. `borderWidth + shadowLeft` / `borderWidth + shadowTop`."
+    "background box, i.e. `borderWidth + borderOffset + shadowLeft` /",
+    "`borderWidth + borderOffset + shadowTop`."
   ],
   "cases": [
     {
@@ -121,6 +122,41 @@
         "backgroundHeight": 230,
         "frameX": 12,
         "frameY": 15
+      }
+    },
+    {
+      "name": "full_style_with_border_offset_and_dual_shadows",
+      "text": "Hi",
+      "style": {
+        "width": 300,
+        "height": 200,
+        "fontSize": 24,
+        "padding": 0,
+        "borderEnabled": true,
+        "borderWidth": 4,
+        "borderOffset": 3,
+        "backgroundShadowEnabled": true,
+        "backgroundShadowBlur": 10,
+        "backgroundShadowSpread": 4,
+        "backgroundShadowOffsetX": -5,
+        "backgroundShadowOffsetY": 7,
+        "textShadowEnabled": true,
+        "textShadowBlur": 6,
+        "textShadowSpread": 2,
+        "textShadowOffsetX": 3,
+        "textShadowOffsetY": -4
+      },
+      "expected": {
+        "frameWidth": 300,
+        "frameHeight": 200,
+        "shadowLeft": 24,
+        "shadowTop": 15,
+        "shadowRight": 14,
+        "shadowBottom": 26,
+        "backgroundWidth": 352,
+        "backgroundHeight": 255,
+        "frameX": 31,
+        "frameY": 22
       }
     }
   ]

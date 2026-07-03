@@ -10,6 +10,7 @@
 //!    builds (see [`set_dev_temp_root`]).
 
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::OnceLock;
 
 use parking_lot::RwLock;
@@ -22,6 +23,11 @@ pub const TEMP_PREFIX: &str = "fastcat-";
 fn base_override() -> &'static RwLock<Option<PathBuf>> {
     static BASE: OnceLock<RwLock<Option<PathBuf>>> = OnceLock::new();
     BASE.get_or_init(|| RwLock::new(None))
+}
+
+fn temp_sequence() -> &'static AtomicU64 {
+    static SEQ: AtomicU64 = AtomicU64::new(0);
+    &SEQ
 }
 
 /// Directory FastCat writes ephemeral artifacts to. Defaults to the OS temp dir;
@@ -49,15 +55,19 @@ pub fn set_dev_temp_root(dev_root: &Path) {
     sweep_orphans();
 }
 
-/// Build a unique ephemeral path: `<temp>/fastcat-<label>-<pid>-<nanos>.<ext>`.
-/// The embedded pid lets [`sweep_orphans`] skip files this process still owns.
+/// Build a unique ephemeral path:
+/// `<temp>/fastcat-<label>-<pid>-<nanos>-<seq>.<ext>`.
+/// The embedded pid lets [`sweep_orphans`] skip files this process still owns,
+/// while the per-process monotonic sequence guarantees uniqueness even when the
+/// system clock resolution is coarser than the call rate.
 pub fn temp_path(label: &str, ext: &str) -> PathBuf {
     let nanos = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .map(|d| d.as_nanos())
         .unwrap_or(0);
+    let seq = temp_sequence().fetch_add(1, Ordering::Relaxed);
     fastcat_temp_dir().join(format!(
-        "{TEMP_PREFIX}{label}-{}-{nanos}.{ext}",
+        "{TEMP_PREFIX}{label}-{}-{nanos}-{seq}.{ext}",
         std::process::id()
     ))
 }
@@ -136,6 +146,13 @@ mod tests {
             let _guard = TempFile::new(path.clone());
         }
         assert!(!path.exists());
+    }
+
+    #[test]
+    fn temp_path_is_unique_within_process() {
+        let a = temp_path("temp-uniq-test", "tmp");
+        let b = temp_path("temp-uniq-test", "tmp");
+        assert_ne!(a, b);
     }
 
     #[test]

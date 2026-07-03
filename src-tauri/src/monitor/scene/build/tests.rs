@@ -1293,14 +1293,11 @@ mod tests {
                 "shadowBottom",
             );
 
-            let background_width = layer.frame_width
-                + layer.border_width * 2.0
-                + layer.shadow_left
-                + layer.shadow_right;
-            let background_height = layer.frame_height
-                + layer.border_width * 2.0
-                + layer.shadow_top
-                + layer.shadow_bottom;
+            let border_outset = layer.border_width + layer.border_offset;
+            let background_width =
+                layer.frame_width + border_outset * 2.0 + layer.shadow_left + layer.shadow_right;
+            let background_height =
+                layer.frame_height + border_outset * 2.0 + layer.shadow_top + layer.shadow_bottom;
             approx(
                 background_width,
                 exp["backgroundWidth"].as_f64().unwrap(),
@@ -1312,8 +1309,8 @@ mod tests {
                 "backgroundHeight",
             );
 
-            let frame_x = layer.border_width + layer.shadow_left;
-            let frame_y = layer.border_width + layer.shadow_top;
+            let frame_x = border_outset + layer.shadow_left;
+            let frame_y = border_outset + layer.shadow_top;
             approx(frame_x, exp["frameX"].as_f64().unwrap(), "frameX");
             approx(frame_y, exp["frameY"].as_f64().unwrap(), "frameY");
         }

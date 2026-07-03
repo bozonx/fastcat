@@ -297,6 +297,133 @@ describe('buildNativeMonitorScene', () => {
     ]);
   });
 
+  it('preserves full text clip styling and snap flag in native scene layers', async () => {
+    const textStyle = {
+      width: 420,
+      height: 180,
+      fontFamily: 'Inter',
+      fontSize: 72,
+      fontWeight: '800',
+      color: '#ffffff',
+      align: 'center',
+      verticalAlign: 'middle',
+      lineHeight: 1.2,
+      letterSpacing: 6,
+      backgroundEnabled: true,
+      backgroundColor: '#1d4ed8',
+      backgroundRadius: 18,
+      backgroundShadowEnabled: true,
+      backgroundShadowColor: '#000000',
+      backgroundShadowAlpha: 0.7,
+      backgroundShadowBlur: 14,
+      backgroundShadowSpread: 3,
+      backgroundShadowOffsetX: -2,
+      backgroundShadowOffsetY: 6,
+      borderEnabled: true,
+      borderColor: '#facc15',
+      borderAlpha: 0.9,
+      borderWidth: 8,
+      borderOffset: 4,
+      textShadowEnabled: true,
+      textShadowColor: '#111827',
+      textShadowAlpha: 0.8,
+      textShadowBlur: 10,
+      textShadowSpread: 2,
+      textShadowOffsetX: 5,
+      textShadowOffsetY: -3,
+      padding: { top: 24, right: 36, bottom: 28, left: 32 },
+      paddingLinked: false,
+    };
+
+    const timelineDoc = {
+      version: 1,
+      timebase: { fps: 30 },
+      tracks: [
+        {
+          id: 'text-track',
+          kind: 'video',
+          videoHidden: false,
+          items: [
+            {
+              id: 'text-clip-1',
+              kind: 'clip',
+              clipType: 'text',
+              trackId: 'text-track',
+              text: 'Styled text',
+              style: textStyle,
+              snapToPixelGrid: true,
+              timelineRange: { startUs: 0, durationUs: 1_000_000 },
+              sourceRange: { startUs: 0, durationUs: 1_000_000 },
+              transform: {
+                position: { x: 960, y: 540 },
+                scale: { x: 1, y: 1 },
+                rotationDeg: 0,
+                anchor: { x: 0.5, y: 0.5 },
+              },
+            },
+          ],
+        },
+      ],
+    };
+    const projectStore = {
+      projectSettings: {
+        project: {
+          width: 1920,
+          height: 1080,
+          fps: 30,
+          audioDeclickDurationUs: 0,
+        },
+      },
+      getProjectDirHandle: vi.fn(async () => ({ path: '/workspace/project' })),
+      getFileByPath: vi.fn(),
+    };
+    const workspaceStore = {
+      userSettings: {
+        projectDefaults: {
+          defaultAudioFadeCurve: 'linear',
+        },
+        optimization: {
+          nativeMonitorSyncMode: 'balanced',
+        },
+      },
+      activeMonitor: {
+        useProxy: false,
+      },
+      lastProjectPath: null,
+      recentProjects: [],
+    };
+
+    const scene = await buildNativeMonitorScene({
+      timelineDoc: timelineDoc as never,
+      projectStore: projectStore as never,
+      workspaceStore: workspaceStore as never,
+    });
+
+    expect(scene.layers).toHaveLength(1);
+    expect(scene.layers[0]).toMatchObject({
+      id: 'text-clip-1',
+      kind: 'text',
+      text: 'Styled text',
+      style: textStyle,
+      snap_to_pixel_grid: true,
+      transform: expect.objectContaining({
+        x: 1920,
+        y: 1080,
+        scale_x: 1,
+        scale_y: 1,
+        rotation_deg: 0,
+        anchor_x: 0.5,
+        anchor_y: 0.5,
+      }),
+    });
+    expect(scene.video_tracks).toEqual([
+      expect.objectContaining({
+        id: 'text-track',
+        layer_ids: ['text-clip-1'],
+      }),
+    ]);
+  });
+
   it('uses original project media paths even when monitor proxy preview is enabled', async () => {
     const timelineDoc = {
       version: 1,
