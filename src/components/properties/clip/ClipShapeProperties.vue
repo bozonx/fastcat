@@ -324,7 +324,7 @@ const snapToPixelGrid = computed({
             <UIcon name="i-heroicons-information-circle" class="w-3.5 h-3.5 text-ui-text-muted cursor-help" />
           </UTooltip>
         </div>
-        <UToggle v-model="snapToPixelGrid" size="sm" />
+        <USwitch v-model="snapToPixelGrid" size="sm" />
       </div>
     </div>
   </PropertySection>

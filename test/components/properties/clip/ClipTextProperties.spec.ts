@@ -149,6 +149,18 @@ describe('ClipTextProperties.vue', () => {
     expect(lastPayload[0]).toEqual({ width: mockAutoSize.width });
   });
 
+  it('emits updateSnapToPixelGrid when the snap toggle is clicked', async () => {
+    const wrapper = await mountComponent();
+
+    const switches = wrapper.findAll('.u-switch');
+    const snapSwitch = switches[switches.length - 1];
+    expect(snapSwitch).toBeTruthy();
+    await snapSwitch.trigger('click');
+
+    expect(wrapper.emitted('updateSnapToPixelGrid')).toBeTruthy();
+    expect(wrapper.emitted('updateSnapToPixelGrid')?.at(-1)?.[0]).toBe(false);
+  });
+
   it('emits paddingLinked=false when the padding link toggle is clicked', async () => {
     const wrapper = await mountComponent({
       clip: createClip({

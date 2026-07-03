@@ -12,6 +12,12 @@ test.describe('Web text clip render/export', () => {
     e2eProject,
   }) => {
     const [videoTrackId] = await trackIds(page);
+    const logs: string[] = [];
+    page.on('console', (msg) => {
+      const text = msg.text();
+      if (text.includes('[E2E addTextClip]') || text.includes('[persistence saveTimeline]')) logs.push(text);
+    });
+
     const [clipId] = await addTextClipAtPlayhead(page, {
       trackId: videoTrackId,
       durationUs: 1_000_000,
@@ -45,6 +51,8 @@ test.describe('Web text clip render/export', () => {
     await expect(page.getByRole('button', { name: 'Fullscreen' })).toBeVisible({
       timeout: 20_000,
     });
+
+    console.log('ADD_TEXT_CLIP_LOGS', logs.join('\n'));
 
     const info = await page.evaluate(() => {
       const getInfo = (

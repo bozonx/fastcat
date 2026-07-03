@@ -727,6 +727,7 @@ export function createTimelinePersistenceModule(
 
   async function saveTimeline() {
     const doc = deps.timelineDoc.value;
+    console.log('[persistence saveTimeline] start doc clip count', doc?.tracks.reduce((n, t) => n + t.items.length, 0));
     if (!doc) return;
     if (deps.isReadOnly?.value) {
       deps.onSaveBlockedReadOnly?.();
@@ -752,7 +753,9 @@ export function createTimelinePersistenceModule(
 
       const timelinePath = currentTimelinePath;
       const serialized = await serializeValidatedTimeline(doc);
+      console.log('[persistence saveTimeline] after serialize doc clip count', deps.timelineDoc.value?.tracks.reduce((n, t) => n + t.items.length, 0));
       await writeSerializedToPath(timelinePath, serialized);
+      console.log('[persistence saveTimeline] after write doc clip count', deps.timelineDoc.value?.tracks.reduce((n, t) => n + t.items.length, 0));
 
       if (
         currentProjectId === deps.currentProjectName.value &&
