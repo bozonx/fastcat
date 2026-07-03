@@ -267,6 +267,9 @@ export class TimelineClipLoader {
     reusable.effects = toVideoEffects(clipData.effects);
     reusable.transform = clipData.transform as import('~/timeline/types').ClipTransform | undefined;
     reusable.transformActive = clipData.transformActive as boolean | undefined;
+    reusable.animations = clipData.animations as
+      | import('~/timeline/types').ClipAnimations
+      | undefined;
     reusable.transitionIn = clipData.transitionIn as
       | import('~/timeline/types').ClipTransition
       | undefined;

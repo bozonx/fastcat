@@ -44,6 +44,69 @@ mod tests {
     }
 
     #[test]
+    fn finalize_layer_applies_keyframe_animation() {
+        // Background layer with opacity 0→1 and rotation 0°→90° over the first
+        // second; sampling at t=0.5s must yield the interpolated midpoints.
+        let layer: SceneLayer = serde_json::from_value(json!({
+            "id": "anim",
+            "kind": "background",
+            "timeline_start_sec": 0.0,
+            "timeline_end_sec": 2.0,
+            "source_start_sec": 0.0,
+            "z": 1,
+            "opacity": 1.0,
+            "background_color": "#123456",
+            "animations": {
+                "opacity": { "keyframes": [
+                    { "tUs": 0, "value": 0.0, "easing": "linear" },
+                    { "tUs": 1000000, "value": 1.0, "easing": "linear" }
+                ] },
+                "transform.rotationDeg": { "keyframes": [
+                    { "tUs": 0, "value": 0.0, "easing": "linear" },
+                    { "tUs": 1000000, "value": 90.0, "easing": "linear" }
+                ] }
+            }
+        }))
+        .unwrap();
+
+        let scene_size = (1920u32, 1080u32);
+        let kind = build_virtual_kind(&layer, scene_size).unwrap();
+        let out = finalize_layer(&layer, kind, scene_size, 0.5);
+
+        assert!(
+            (out.opacity - 0.5).abs() < 1e-5,
+            "opacity should interpolate to 0.5, got {}",
+            out.opacity
+        );
+        assert!(
+            (out.transform.rotation_deg - 45.0).abs() < 1e-5,
+            "rotation should interpolate to 45deg, got {}",
+            out.transform.rotation_deg
+        );
+    }
+
+    #[test]
+    fn finalize_layer_without_animation_keeps_static_values() {
+        let layer: SceneLayer = serde_json::from_value(json!({
+            "id": "static",
+            "kind": "background",
+            "timeline_start_sec": 0.0,
+            "timeline_end_sec": 2.0,
+            "source_start_sec": 0.0,
+            "z": 1,
+            "opacity": 0.75,
+            "background_color": "#000000"
+        }))
+        .unwrap();
+
+        let scene_size = (1920u32, 1080u32);
+        let kind = build_virtual_kind(&layer, scene_size).unwrap();
+        let out = finalize_layer(&layer, kind, scene_size, 0.5);
+        assert!((out.opacity - 0.75).abs() < 1e-5);
+        assert!((out.transform.rotation_deg - 0.0).abs() < 1e-5);
+    }
+
+    #[test]
     fn maps_full_blend_mode_set() {
         assert_eq!(parse_blend_mode("multiply"), BlendMode::Multiply);
         assert_eq!(parse_blend_mode("overlay"), BlendMode::Overlay);
@@ -598,6 +661,7 @@ mod tests {
             shape_config: None,
             snap_to_pixel_grid: false,
             transform: None,
+            animations: None,
             transition_in: None,
             transition_out: None,
             effects: Vec::new(),
@@ -653,6 +717,7 @@ mod tests {
             shape_config: None,
             snap_to_pixel_grid: false,
             transform: None,
+            animations: None,
             transition_in: None,
             transition_out: None,
             effects: Vec::new(),
@@ -754,6 +819,7 @@ mod tests {
             shape_config: None,
             snap_to_pixel_grid: false,
             transform: None,
+            animations: None,
             transition_in: None,
             transition_out: None,
             effects: Vec::new(),
@@ -835,6 +901,7 @@ mod tests {
             shape_config: None,
             snap_to_pixel_grid: false,
             transform: None,
+            animations: None,
             transition_in: None,
             transition_out: None,
             effects: Vec::new(),
@@ -971,6 +1038,7 @@ mod tests {
                 flip_horizontal: false,
                 flip_vertical: false,
             }),
+            animations: None,
             transition_in: None,
             transition_out: None,
             effects: Vec::new(),

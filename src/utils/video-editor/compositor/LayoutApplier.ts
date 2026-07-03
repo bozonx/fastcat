@@ -10,6 +10,7 @@ import type { CompositorClip } from './types';
 import { Graphics } from 'pixi.js';
 
 import { isTransformSnapSafe, snapRectToPixelGrid } from '../../pixel-grid-snap';
+import { effectiveClipTransform } from './AnimationOverlay';
 
 export interface LayoutApplierContext {
   width: number;
@@ -27,7 +28,7 @@ export class LayoutApplier {
       frameHeight: this.context.height,
       canvasWidth: this.context.width,
       canvasHeight: this.context.height,
-      transform: clip.transformActive !== false ? clip.transform : undefined,
+      transform: effectiveClipTransform(clip),
     });
 
     this.applyTransformLayout({
@@ -58,7 +59,8 @@ export class LayoutApplier {
       this.context.width / TRANSFORM_DESIGN_BASE.width,
       this.context.height / TRANSFORM_DESIGN_BASE.height,
     );
-    const isSnapActive = Boolean(clip.snapToPixelGrid) && isTransformSnapSafe(clip.transform);
+    const isSnapActive =
+      Boolean(clip.snapToPixelGrid) && isTransformSnapSafe(effectiveClipTransform(clip));
     let strokeWidth = (clip.strokeWidth ?? 0) * renderScale;
     if (isSnapActive) {
       strokeWidth = Math.round(strokeWidth);
@@ -99,7 +101,8 @@ export class LayoutApplier {
     let baseX = layout.backgroundX;
     let baseY = layout.backgroundY;
 
-    const isSnapActive = Boolean(clip.snapToPixelGrid) && isTransformSnapSafe(clip.transform);
+    const isSnapActive =
+      Boolean(clip.snapToPixelGrid) && isTransformSnapSafe(effectiveClipTransform(clip));
     if (isSnapActive) {
       const snapped = snapRectToPixelGrid({ x: baseX, y: baseY, width: w, height: h });
       baseX = snapped.x;
@@ -147,8 +150,7 @@ export class LayoutApplier {
     // position/scale/crop and source orientation. Mirror that here so both
     // backends render blur-fill identically.
     const ignoreClipTransform = options.ignoreClipTransform === true;
-    const clipTransform =
-      !ignoreClipTransform && clip.transformActive !== false ? clip.transform : undefined;
+    const clipTransform = ignoreClipTransform ? undefined : effectiveClipTransform(clip);
     const sourceRotation = ignoreClipTransform
       ? 0
       : clip.sourceOrientation && clip.sourceOrientation !== 'auto'
@@ -209,7 +211,7 @@ export class LayoutApplier {
     targetH: number,
     isSnapActive: boolean,
   ) {
-    const transform = clip.transformActive !== false ? clip.transform : undefined;
+    const transform = effectiveClipTransform(clip);
     const scaleX = typeof transform?.scale?.x === 'number' ? transform.scale.x : 1;
     const scaleY = typeof transform?.scale?.y === 'number' ? transform.scale.y : 1;
     const rotationDeg = typeof transform?.rotationDeg === 'number' ? transform.rotationDeg : 0;
@@ -351,10 +353,7 @@ export class LayoutApplier {
       sprite.y += Math.round(originY) - originY;
     }
 
-    const crop =
-      !input.disableCrop && input.clip.transformActive !== false
-        ? input.clip.transform?.crop
-        : undefined;
+    const crop = !input.disableCrop ? effectiveClipTransform(input.clip)?.crop : undefined;
     if (crop && (crop.top || crop.bottom || crop.left || crop.right)) {
       if (!input.clip.cropMask) {
         input.clip.cropMask = new Graphics();

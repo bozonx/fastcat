@@ -750,6 +750,9 @@ function buildBaseWorkerClip(params: {
     effects: params.combinedEffects.length > 0 ? params.combinedEffects : undefined,
     mask: item.maskActive !== false ? clonePlain(item.mask) : undefined,
     transform: item.transformActive !== false ? clonePlain(item.transform) : undefined,
+    // Keyframe tracks always pass through: animating a param implies intent, so
+    // they apply regardless of the static transform/opacity `*Active` toggles.
+    animations: clonePlain(item.animations),
     sourceOrientation: item.transformActive !== false ? item.sourceOrientation : undefined,
     transitionIn: clonePlain(item.transitionIn),
     transitionOut: clonePlain(item.transitionOut),

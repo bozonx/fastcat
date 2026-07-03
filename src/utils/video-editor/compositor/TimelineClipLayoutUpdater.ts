@@ -91,6 +91,7 @@ export class TimelineClipLayoutUpdater {
     clip.effects = toVideoEffects(n['effects']);
     clip.transform = n['transform'] as CompositorClip['transform'];
     clip.transformActive = n['transformActive'] as boolean | undefined;
+    clip.animations = n['animations'] as CompositorClip['animations'];
     clip.sourceOrientation = n['sourceOrientation'] as CompositorClip['sourceOrientation'];
     clip.mask = n['mask'] as CompositorClip['mask'];
     clip.maskActive = n['maskActive'] as boolean | undefined;

@@ -181,6 +181,12 @@ pub struct SceneLayer {
     #[serde(default)]
     #[ts(optional)]
     pub transform: Option<SceneLayerTransform>,
+    /// Keyframe animation tracks (transform/opacity), timeline-local µs. Sampled
+    /// per frame in `finalize_layer` to drive an animated transform/opacity.
+    /// Mirrors the web `clip.animations`.
+    #[serde(default)]
+    #[ts(optional, type = "import('~/timeline/types').ClipAnimations")]
+    pub animations: Option<Value>,
     #[serde(default)]
     #[ts(optional)]
     pub transition_in: Option<SceneTransition>,
@@ -577,6 +583,7 @@ mod tests {
             shape_config: None,
             snap_to_pixel_grid: false,
             transform: None,
+            animations: None,
             transition_in: None,
             transition_out: None,
             effects: Vec::new(),

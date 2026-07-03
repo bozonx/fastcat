@@ -140,7 +140,14 @@ export class TransitionManager {
     timeUs: number,
     previewEffectsEnabled: boolean,
   ): number {
-    const baseOpacity = clip.opacityActive !== false ? (clip.opacity ?? 1) : 1;
+    // A keyframed opacity replaces the static value as the pre-transition base;
+    // transition fades still multiply on top.
+    const baseOpacity =
+      clip.animatedOpacity !== undefined
+        ? clip.animatedOpacity
+        : clip.opacityActive !== false
+          ? (clip.opacity ?? 1)
+          : 1;
     const localTimeUs = timeUs - clip.startUs;
 
     const inDurUs = clip.transitionIn?.durationUs ?? 0;

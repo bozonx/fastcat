@@ -225,6 +225,7 @@ mod tests {
             shape_config: None,
             snap_to_pixel_grid: false,
             transform: None,
+            animations: None,
             transition_in: None,
             transition_out: None,
             effects: Vec::new(),

@@ -1125,6 +1125,7 @@ mod tests {
             shape_config: None,
             snap_to_pixel_grid: false,
             transform: None,
+            animations: None,
             transition_in: None,
             transition_out: None,
             effects: Vec::new(),
@@ -1154,6 +1155,7 @@ mod tests {
             shape_config: None,
             snap_to_pixel_grid: false,
             transform: None,
+            animations: None,
             transition_in: Some(crate::monitor::scene::SceneTransition {
                 transition_type: "dissolve".into(),
                 duration_sec: 1.0,
@@ -1224,6 +1226,7 @@ mod tests {
             shape_config: None,
             snap_to_pixel_grid: false,
             transform: None,
+            animations: None,
             transition_in: None,
             transition_out: None,
             effects: Vec::new(),

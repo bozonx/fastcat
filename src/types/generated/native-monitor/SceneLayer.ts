@@ -67,4 +67,10 @@ snap_to_pixel_grid: boolean,
  * Explicit layer transform in scene-space.
  * `None` → letterbox center-fit (the default, backward-compatible with older versions).
  */
-transform?: SceneLayerTransform, transition_in?: SceneTransition, transition_out?: SceneTransition, effects: import('~/effects').VideoEffectSpec[], };
+transform?: SceneLayerTransform, 
+/**
+ * Keyframe animation tracks (transform/opacity), timeline-local µs. Sampled
+ * per frame in `finalize_layer` to drive an animated transform/opacity.
+ * Mirrors the web `clip.animations`.
+ */
+animations?: import('~/timeline/types').ClipAnimations, transition_in?: SceneTransition, transition_out?: SceneTransition, effects: import('~/effects').VideoEffectSpec[], };

@@ -19,6 +19,12 @@ export interface FrameSampleOrchestratorParams {
   width: number;
   height: number;
   activeClipProcessor: TimelineActiveClipProcessor;
+  /**
+   * Recompute keyframe overlays for the active clips and re-apply layout for the
+   * kinds that don't re-layout per sample. Runs before any per-clip processing so
+   * opacity/transform reads see this frame's animated values.
+   */
+  resolveClipOverlays?: (activeClips: CompositorClip[], timeUs: number) => void;
   syncTransitionFilter: (clip: CompositorClip, timeUs: number) => void;
   computeTransitionOpacity: (clip: CompositorClip, timeUs: number) => number;
   applyClipEffects: (clip: CompositorClip) => void;
@@ -48,6 +54,8 @@ export class FrameSampleOrchestrator {
   public async process(
     params: FrameSampleOrchestratorParams,
   ): Promise<FrameSampleOrchestratorResult> {
+    params.resolveClipOverlays?.(params.activeClips, params.timeUs);
+
     const { sampleRequests } = params.activeClipProcessor.process({
       activeClips: params.activeClips,
       timeUs: params.timeUs,

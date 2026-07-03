@@ -11,6 +11,7 @@ import type { Input, VideoSampleSink } from 'mediabunny';
 import type {
   TextClipStyle,
   ClipTransform,
+  ClipAnimations,
   ClipSourceOrientation,
   ClipTransition,
   TimelineBlendMode,
@@ -72,6 +73,17 @@ export interface BaseCompositorClip {
   effects?: VideoClipEffect[];
   transform?: ClipTransform;
   transformActive?: boolean;
+  /** Keyframe tracks (transform/opacity), copied from the timeline clip. */
+  animations?: ClipAnimations;
+  /**
+   * Per-frame animation overlay, recomputed each frame by the animation step.
+   * `animatedTransform` (when set) fully replaces `transform` for layout —
+   * animated params merged onto the clip's static transform. `animatedOpacity`
+   * (when set) replaces the clip's base opacity before transition fades apply.
+   * Both `undefined` when the clip has no keyframes.
+   */
+  animatedTransform?: ClipTransform;
+  animatedOpacity?: number;
   sourceOrientation?: ClipSourceOrientation;
   effectFilters?: Map<string, Filter>;
   transitionIn?: ClipTransition;

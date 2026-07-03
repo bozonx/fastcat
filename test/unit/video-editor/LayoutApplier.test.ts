@@ -644,4 +644,63 @@ describe('LayoutApplier', () => {
     // fractional (proves the scoping to text/shape only).
     expect(Number.isInteger(sprite.x)).toBe(false);
   });
+
+  it('applies the animation overlay transform, overriding the static one', () => {
+    const sprite = createMockSprite();
+    const clip = {
+      itemId: 'clip-anim',
+      layer: 1,
+      startUs: 0,
+      durationUs: 1_000_000,
+      sourceStartUs: 0,
+      sourceRangeDurationUs: 1_000_000,
+      sprite,
+      clipKind: 'video' as const,
+      clipType: 'media' as const,
+      imageSource: { width: 1920, height: 1080 } as any,
+      lastVideoFrame: null,
+      canvas: null,
+      ctx: null,
+      bitmap: null,
+      // Static transform says no rotation…
+      transform: { rotationDeg: 0, scale: { x: 1, y: 1 } },
+      // …but the per-frame overlay rotates 45°: the overlay must win.
+      animatedTransform: { rotationDeg: 45, scale: { x: 1, y: 1 } },
+    };
+
+    applier.applySpriteLayout(1920, 1080, clip as any);
+
+    expect(sprite.rotation).toBeCloseTo((45 * Math.PI) / 180, 6);
+  });
+
+  it('honors transformActive=false only when there is no overlay', () => {
+    const staticOnly = createMockSprite();
+    applier.applySpriteLayout(1920, 1080, {
+      itemId: 'c1',
+      startUs: 0,
+      durationUs: 1,
+      sprite: staticOnly,
+      clipKind: 'video' as const,
+      imageSource: { width: 1920, height: 1080 } as any,
+      transformActive: false,
+      transform: { rotationDeg: 30, scale: { x: 1, y: 1 } },
+    } as any);
+    // transformActive=false + no overlay -> static transform ignored.
+    expect(staticOnly.rotation).toBeCloseTo(0, 6);
+
+    const withOverlay = createMockSprite();
+    applier.applySpriteLayout(1920, 1080, {
+      itemId: 'c2',
+      startUs: 0,
+      durationUs: 1,
+      sprite: withOverlay,
+      clipKind: 'video' as const,
+      imageSource: { width: 1920, height: 1080 } as any,
+      transformActive: false,
+      transform: { rotationDeg: 30, scale: { x: 1, y: 1 } },
+      animatedTransform: { rotationDeg: 60, scale: { x: 1, y: 1 } },
+    } as any);
+    // Overlay applies even with transformActive=false.
+    expect(withOverlay.rotation).toBeCloseTo((60 * Math.PI) / 180, 6);
+  });
 });

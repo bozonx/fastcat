@@ -478,7 +478,15 @@ pub fn finalize_layer(
         sl.kind,
         LayerKind::Video | LayerKind::Image | LayerKind::Svg
     );
-    let transform = match &sl.transform {
+
+    // Keyframe animation (v1: transform + opacity). Sampled at the layer's
+    // timeline-local time; the resulting overrides fully replace the static
+    // transform/opacity for this frame (the web overlay does the same).
+    let local_t = time_sec - sl.timeline_start_sec;
+    let anim = super::animation::resolve_animation_override(sl, local_t * 1_000_000.0, scene_size);
+    let effective_transform = anim.transform.as_ref().or(sl.transform.as_ref());
+
+    let transform = match effective_transform {
         Some(t) => {
             let fit = if is_raster_layer {
                 oriented_fit_scale(media_size, scene_size, source_rotation)
@@ -534,7 +542,7 @@ pub fn finalize_layer(
     let mut transform = transform;
     if matches!(sl.kind, LayerKind::Text | LayerKind::Shape)
         && sl.snap_to_pixel_grid
-        && is_transform_snap_safe(sl.transform.as_ref())
+        && is_transform_snap_safe(effective_transform)
     {
         // Round the layer's LOCAL-space ORIGIN (where local (0,0) lands in scene
         // pixels), NOT the anchor position. `to_affine` maps local (0,0) to
@@ -555,8 +563,11 @@ pub fn finalize_layer(
         transform.y += origin_y.round() - origin_y;
     }
 
-    let base_opacity = sl.opacity.clamp(0.0, 1.0) as f32;
-    let local_t = time_sec - sl.timeline_start_sec;
+    // A keyframed opacity replaces the static value as the pre-transition base;
+    // transition fades still multiply on top (mirrors the web path).
+    let base_opacity = anim
+        .opacity
+        .unwrap_or_else(|| sl.opacity.clamp(0.0, 1.0) as f32);
     let opacity = compute_transition_opacity(sl, local_t, base_opacity);
 
     // A transition source can be an adjacent layer, the lower-layer composite,

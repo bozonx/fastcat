@@ -8,6 +8,7 @@ import type { ClipResourceManager } from './ClipResourceManager';
 import type { EffectManager } from './EffectManager';
 import type { FrameSampleOrchestrator } from './FrameSampleOrchestrator';
 import type { LayoutApplier } from './LayoutApplier';
+import { resolveClipAnimationOverlay } from './AnimationOverlay';
 import { createDevLogger } from '~/utils/dev-logger';
 import type { RenderingEngineContext } from './RenderingEngine';
 import type { ResourceManager } from './ResourceManager';
@@ -124,6 +125,17 @@ export class CompositorRenderContextBuilder {
           width: state.width,
           height: state.height,
           activeClipProcessor: params.timelineActiveClipProcessor,
+          resolveClipOverlays: (activeClips, clipTimeUs) => {
+            for (const clip of activeClips) {
+              resolveClipAnimationOverlay(clip, clipTimeUs);
+              // Video clips re-apply layout when their next sample lands; other
+              // kinds are laid out once, so re-run layout each frame when they
+              // carry an animated transform.
+              if (clip.animatedTransform && clip.clipKind !== 'video') {
+                params.layoutApplier.applyClipLayoutForCurrentSource(clip);
+              }
+            }
+          },
           syncTransitionFilter: (clip, clipTimeUs) =>
             params.transitionManager.syncTransitionFilter(
               clip,

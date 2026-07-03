@@ -514,6 +514,7 @@ function buildBaseLayer(params: {
     blend_mode: mapTimelineBlendModeToNative(clip.blendMode),
     effects: buildEffectSpecs(clip.effects) ?? [],
     transform: buildNativeTransform(clip.transform, sceneWidth, sceneHeight),
+    animations: clip.animations,
     transition_in,
     transition_out,
     // Only text/shape layers snap; other kinds override this below.

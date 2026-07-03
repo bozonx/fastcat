@@ -11,6 +11,7 @@
 //! only the "virtual" layers (`Background | Shape | Text`) and finalizes any
 //! `CompLayerKind` into a `Layer` (transform + opacity + blend).
 
+pub mod animation;
 pub mod compositor_scene;
 pub mod ipc_parsers;
 pub mod layer_builder;
