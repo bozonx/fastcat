@@ -5,13 +5,14 @@ import { useVfs } from '~/composables/useVfs';
 import { createPresetRepository } from '~/repositories/preset.repository';
 import { getVideoEffectManifest, getAudioEffectManifest, registerEffect } from '~/effects';
 import { getTransitionManifest, registerTransition } from '~/transitions';
-import { cloneValue } from '~/utils/clone';
+import { createDevLogger } from '~/utils/dev-logger';
 import {
   createDefaultExportPresets,
-  isBuiltInExportPreset,
   type CustomPreset,
   type ExportSettingsPreset,
 } from '~/utils/settings/presets';
+
+const log = createDevLogger('presets.store');
 
 export type { CustomPreset } from '~/utils/settings/presets';
 
@@ -46,7 +47,7 @@ export const usePresetsStore = defineStore('presets', () => {
       customPresets.value = loadedCustom;
       customPresets.value.forEach((preset) => registerPresetManifest(preset));
     } catch (err) {
-      console.warn('Failed to load custom presets from disk:', err);
+      log.warn('Failed to load custom presets from disk:', err);
     }
 
     // 2. Load custom export presets from individual files and merge with built-in defaults
@@ -65,7 +66,7 @@ export const usePresetsStore = defineStore('presets', () => {
         workspaceStore.userSettings.exportPresets.items = mergedExportItems;
       }
     } catch (err) {
-      console.warn('Failed to load custom export presets from disk:', err);
+      log.warn('Failed to load custom export presets from disk:', err);
     }
 
     // 3. Sync UI collapsed state and default text preset ID from user settings

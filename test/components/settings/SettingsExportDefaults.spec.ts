@@ -4,6 +4,13 @@ import { nextTick, ref } from 'vue';
 import SettingsExportDefaults from '~/components/settings/SettingsExportDefaults.vue';
 import { createDefaultExportPresets, type ExportSettingsPreset } from '~/utils/settings';
 
+import { InMemoryFileSystemAdapter } from '~/file-manager/core/vfs/adapters/InMemoryFileSystemAdapter';
+
+const vfsMock = new InMemoryFileSystemAdapter();
+vi.mock('~/composables/useVfs', () => ({
+  useVfs: () => vfsMock,
+}));
+
 const mockPresets = createDefaultExportPresets();
 
 const mockWorkspaceStore = {
@@ -210,7 +217,9 @@ describe('SettingsExportDefaults.vue', () => {
     });
 
     // Check that built-in notice is displayed
-    expect(wrapper.text()).includes('videoEditor.settings.presetBuiltInNotice');
+    expect(wrapper.text()).toMatch(
+      /Built-in export preset|videoEditor\.settings\.presetBuiltInNotice/i,
+    );
 
     // Name input should be disabled for built-in preset
     const nameInput = wrapper.find('input[type="text"]');

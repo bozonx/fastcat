@@ -206,8 +206,9 @@ export function createWorkspaceSettingsModule(params: {
         try {
           const vfs = useVfs();
           const presetRepo = createPresetRepository({ vfs });
-          const { migratedCustom, migratedExport } =
-            await presetRepo.migrateLegacyPresets(userSettings.value);
+          const { migratedCustom, migratedExport } = await presetRepo.migrateLegacyPresets(
+            userSettings.value,
+          );
 
           if (migratedCustom.length > 0 || migratedExport.length > 0) {
             if (userSettings.value.presets) {

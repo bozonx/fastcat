@@ -23,13 +23,19 @@ test.describe('Web timeline reload persistence', () => {
 
     const trackIdsList = await trackIds(page);
     await navigateToFolder(page, '_video');
-    await expect(page.locator(`[data-entry-path="${video.uiPath}"]`)).toBeVisible({ timeout: 5_000 });
+    await expect(page.locator(`[data-entry-path="${video.uiPath}"]`)).toBeVisible({
+      timeout: 5_000,
+    });
     await addFileToTrack(page, video.uiPath, trackIdsList[0]);
     await navigateToFolder(page, '_images');
-    await expect(page.locator(`[data-entry-path="${image.uiPath}"]`)).toBeVisible({ timeout: 5_000 });
+    await expect(page.locator(`[data-entry-path="${image.uiPath}"]`)).toBeVisible({
+      timeout: 5_000,
+    });
     await addFileToTrack(page, image.uiPath, trackIdsList[1]);
     await navigateToFolder(page, '_audio');
-    await expect(page.locator(`[data-entry-path="${audio.uiPath}"]`)).toBeVisible({ timeout: 5_000 });
+    await expect(page.locator(`[data-entry-path="${audio.uiPath}"]`)).toBeVisible({
+      timeout: 5_000,
+    });
     await addFileToTrack(page, audio.uiPath, trackIdsList.at(-1)!);
     await waitForTimelineDoc(page, e2eProject, (d) => d.allClips.length === 3);
 

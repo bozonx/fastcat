@@ -725,6 +725,7 @@ interface FastcatE2eTimelineWindow {
     deltaUs: number;
   }) => Promise<void>;
   __fastcatE2eMoveClip?: (params: { itemId: string; deltaUs: number }) => Promise<void>;
+  __fastcatE2eMoveClipToTrack?: (params: { itemId: string; toTrackId: string }) => Promise<void>;
 }
 
 function findE2eClipTrack(itemId: string) {

@@ -24,9 +24,7 @@ export interface PresetRepository {
   }>;
 }
 
-export function createPresetRepository(input: {
-  vfs: IFileSystemAdapter;
-}): PresetRepository {
+export function createPresetRepository(input: { vfs: IFileSystemAdapter }): PresetRepository {
   const store = createAppFsJsonStore(input.vfs);
 
   function getPresetRootDir(): string {
@@ -125,9 +123,7 @@ export function createPresetRepository(input: {
       }
     },
 
-    async migrateLegacyPresets(
-      userSettings: FastCatUserSettings,
-    ): Promise<{
+    async migrateLegacyPresets(userSettings: FastCatUserSettings): Promise<{
       migratedCustom: CustomPreset[];
       migratedExport: ExportSettingsPreset[];
     }> {

@@ -16,7 +16,7 @@ import {
   type ExportSettingsPreset,
 } from '~/utils/settings';
 
-const props = defineProps<{
+defineProps<{
   isActive: boolean;
 }>();
 
@@ -77,26 +77,26 @@ function createUniquePresetName(baseName: string): string {
   return `${baseName} ${index}`;
 }
 
-async function addPreset(basePreset: ExportSettingsPreset, namePrefix: string) {
+function addPreset(basePreset: ExportSettingsPreset, namePrefix: string) {
   const preset = {
     ...basePreset,
     id: createExportPresetId(),
     name: createUniquePresetName(namePrefix),
   };
 
-  await presetsStore.saveExportPreset(preset);
   workspaceStore.userSettings.exportPresets.selectedPresetId = preset.id;
+  void presetsStore.saveExportPreset(preset);
 }
 
 function createPreset() {
-  void addPreset(selectedPreset.value, t('common.newPreset'));
+  addPreset(selectedPreset.value, t('common.newPreset'));
 }
 
 function duplicatePreset(id: string) {
   const preset = workspaceStore.userSettings.exportPresets.items.find((p) => p.id === id);
   if (!preset) return;
 
-  void addPreset(preset, `${preset.name} ${t('common.copy')}`);
+  addPreset(preset, `${preset.name} ${t('common.copy')}`);
 }
 
 function saveChanges() {
@@ -118,7 +118,7 @@ function saveAsNewPreset() {
       ? draftPreset.value.name
       : `${selectedPreset.value.name} ${t('common.copy')}`;
 
-  void addPreset(draftPreset.value, baseName);
+  addPreset(draftPreset.value, baseName);
 }
 
 function requestDeletePreset(id: string) {
@@ -158,7 +158,7 @@ const deleteModalDescription = computed(() => {
 <template>
   <div class="flex flex-col gap-6">
     <ExportPresetList
-      :items="presetsModel.items"
+      :presets="presetsModel.items"
       :selected-id="presetsModel.selectedPresetId"
       @select="selectPreset"
       @create="createPreset"
@@ -178,39 +178,22 @@ const deleteModalDescription = computed(() => {
           "
         />
         <div class="flex items-center gap-2">
-          <UButton
-            v-if="isDirty"
-            size="sm"
-            color="gray"
-            variant="ghost"
-            @click="revertChanges"
-          >
-            {{ t('common.reset') }}
+          <UButton v-if="isDirty" size="sm" color="gray" variant="ghost" @click="revertChanges">
+            {{ t('videoEditor.settings.presetRevert') }}
           </UButton>
-          <UButton
-            v-if="isDirty || isBuiltIn"
-            size="sm"
-            color="primary"
-            @click="saveChanges"
-          >
-            {{ isBuiltIn ? t('common.saveAsCopy') : t('common.save') }}
+          <UButton v-if="isDirty || isBuiltIn" size="sm" color="primary" @click="saveChanges">
+            {{ isBuiltIn ? t('videoEditor.settings.presetSaveAsNew') : t('common.save') }}
           </UButton>
         </div>
       </div>
 
       <div class="space-y-4">
-        <UiFormField
-          :label="t('videoEditor.export.presetName')"
-          :disabled="isBuiltIn"
-        >
-          <UiTextInput
-            v-model="draftPreset.name"
-            :disabled="isBuiltIn"
-          />
+        <UiFormField :label="t('videoEditor.export.presetName')" :disabled="isBuiltIn">
+          <UiTextInput v-model="draftPreset.name" :disabled="isBuiltIn" />
         </UiFormField>
 
         <VideoEncodingForm
-          v-model:format="draftPreset.format"
+          v-model:output-format="draftPreset.format"
           v-model:video-codec="draftPreset.videoCodec"
           v-model:bitrate-mbps="draftPreset.bitrateMbps"
           v-model:exclude-audio="draftPreset.excludeAudio"
