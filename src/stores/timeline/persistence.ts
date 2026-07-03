@@ -429,6 +429,7 @@ export function createTimelinePersistenceModule(
   }
 
   async function flushTimelineAutosave() {
+    console.log('[flushTimelineAutosave debug] called');
     clearAutosaveTimer();
     await autoSave.requestSave({ immediate: true });
   }
@@ -436,6 +437,15 @@ export function createTimelinePersistenceModule(
   const autoSave = createAutoSave({
     debounceMs: deps.autosaveDebounceMs?.() ?? 500,
     doSave: async () => {
+      console.log(
+        '[autoSave.doSave debug] called',
+        'dirty',
+        isDirty(),
+        'doc clip count',
+        deps.timelineDoc.value?.tracks
+          .map((t) => t.items.filter((it) => it.kind === 'clip').length)
+          .reduce((a, b) => a + b, 0) ?? 0,
+      );
       const doc = deps.timelineDoc.value;
       if (!doc || !isDirty()) return false;
       if (deps.isReadOnly?.value) return false;
@@ -531,6 +541,15 @@ export function createTimelinePersistenceModule(
   }
 
   async function loadTimeline() {
+    console.log(
+      '[loadTimeline debug] called',
+      deps.currentProjectName.value,
+      deps.currentTimelinePath.value,
+      'current doc clip count',
+      deps.timelineDoc.value?.tracks
+        .map((t) => t.items.filter((it) => it.kind === 'clip').length)
+        .reduce((a, b) => a + b, 0) ?? 0,
+    );
     if (!deps.currentProjectName.value || !deps.currentTimelinePath.value) return;
 
     if (deps.exitPreview) {
@@ -741,6 +760,13 @@ export function createTimelinePersistenceModule(
     autosaveGeneration += 1;
     deps.isSavingTimeline.value = true;
     deps.timelineSaveError.value = null;
+    console.log(
+      '[saveTimeline debug] start',
+      doc.tracks.map((t) => ({
+        id: t.id,
+        clipCount: t.items.filter((it) => it.kind === 'clip').length,
+      })),
+    );
 
     try {
       if (
@@ -752,7 +778,22 @@ export function createTimelinePersistenceModule(
 
       const timelinePath = currentTimelinePath;
       const serialized = await serializeValidatedTimeline(doc);
+      console.log(
+        '[saveTimeline debug] serialized',
+        serialized.length,
+        'doc clip count',
+        doc.tracks
+          .map((t) => t.items.filter((it) => it.kind === 'clip').length)
+          .reduce((a, b) => a + b, 0),
+      );
       await writeSerializedToPath(timelinePath, serialized);
+      console.log(
+        '[saveTimeline debug] after write',
+        deps.timelineDoc.value?.tracks.map((t) => ({
+          id: t.id,
+          clipCount: t.items.filter((it) => it.kind === 'clip').length,
+        })) ?? null,
+      );
 
       if (
         currentProjectId === deps.currentProjectName.value &&
@@ -776,7 +817,9 @@ export function createTimelinePersistenceModule(
           clearAutosaveTimer();
           autoSave.markCleanForCurrentRevision();
           try {
+            console.log('[saveTimeline debug] before deleteAutosaveFile', deps.timelineDoc.value?.tracks.map((t) => ({ id: t.id, clipCount: t.items.filter((it) => it.kind === 'clip').length })) ?? null);
             await deps.deleteAutosaveFile?.(currentTimelinePath);
+            console.log('[saveTimeline debug] after deleteAutosaveFile', deps.timelineDoc.value?.tracks.map((t) => ({ id: t.id, clipCount: t.items.filter((it) => it.kind === 'clip').length })) ?? null);
           } catch (e) {
             log.warn('Failed to remove autosave sidecar after save', e);
           }
@@ -785,7 +828,9 @@ export function createTimelinePersistenceModule(
         }
       }
 
+      console.log('[saveTimeline debug] before onSaveSuccess', deps.timelineDoc.value?.tracks.map((t) => ({ id: t.id, clipCount: t.items.filter((it) => it.kind === 'clip').length })) ?? null);
       deps.onSaveSuccess?.(serialized);
+      console.log('[saveTimeline debug] after onSaveSuccess', deps.timelineDoc.value?.tracks.map((t) => ({ id: t.id, clipCount: t.items.filter((it) => it.kind === 'clip').length })) ?? null);
     } catch (e: unknown) {
       deps.timelineSaveError.value =
         e instanceof Error ? e.message : 'Failed to save timeline file';
@@ -793,6 +838,7 @@ export function createTimelinePersistenceModule(
       deps.onSaveError?.(e);
       throw e;
     } finally {
+      console.log('[saveTimeline debug] finally', deps.timelineDoc.value?.tracks.map((t) => ({ id: t.id, clipCount: t.items.filter((it) => it.kind === 'clip').length })) ?? null);
       if (
         currentProjectId === deps.currentProjectName.value &&
         currentTimelinePath === deps.currentTimelinePath.value

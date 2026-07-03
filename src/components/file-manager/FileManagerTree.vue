@@ -484,6 +484,22 @@ async function onTreeZoneDrop(ctx: DndDragContext) {
       }
     }
   }
+
+  // Open the target folder so the moved items are visible.
+  if (dir.path) {
+    const selected = selectionStore.selectedEntity;
+    const currentSelectedPath =
+      selected && selected.source === 'fileManager' && selected.kind !== 'multiple'
+        ? selected.path
+        : null;
+    if (dir.path !== currentSelectedPath) {
+      uiStore.setFileTreePathExpanded(dir.path, true);
+      if (!dir.expanded) {
+        emit('toggle', dir);
+      }
+      emit('select', dir);
+    }
+  }
 }
 
 // Only the root tree registers a drop zone; it covers all nested levels via the

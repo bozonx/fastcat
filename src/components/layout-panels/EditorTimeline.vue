@@ -487,9 +487,21 @@ onMounted(() => {
 
     e2eWindow.__fastcatE2eAddTextClip = async ({ text, style, durationUs, trackId }) => {
       const itemIds = timelineStore.addTextClipAtPlayhead({ text, style, durationUs, trackId });
-      console.log('[E2E addTextClip] after add', timelineStore.timelineDoc?.tracks?.length, 'duration', timelineStore.duration, 'itemIds', itemIds);
+      console.log(
+        '[E2E addTextClip] after add',
+        timelineStore.timelineDoc?.tracks?.length,
+        'duration',
+        timelineStore.duration,
+        'itemIds',
+        itemIds,
+      );
       await timelineStore.saveTimeline();
-      console.log('[E2E addTextClip] after save', timelineStore.timelineDoc?.tracks?.length, 'duration', timelineStore.duration);
+      console.log(
+        '[E2E addTextClip] after save',
+        timelineStore.timelineDoc?.tracks?.length,
+        'duration',
+        timelineStore.duration,
+      );
       return itemIds;
     };
 

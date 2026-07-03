@@ -347,6 +347,7 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
               : null,
       }) === 'copy';
 
+    let operationSucceeded = true;
     try {
       for (const item of itemsToMove) {
         const sourcePath = typeof item?.path === 'string' ? item.path : '';
@@ -382,6 +383,7 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
         }
       }
     } catch (err) {
+      operationSucceeded = false;
       log.error('D&D operation failed:', err);
       toast.add({
         color: 'error',
@@ -396,6 +398,21 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
 
     options.notifyFileManagerUpdate();
     await options.loadFolderContent();
+
+    if (
+      operationSucceeded &&
+      targetDirPath &&
+      targetDirPath !== fileManagerStore.selectedFolder?.path
+    ) {
+      const targetFolder =
+        options.findEntryByPath(targetDirPath) ??
+        ({
+          kind: 'directory',
+          name: targetDirPath.split('/').pop() || targetDirPath,
+          path: targetDirPath,
+        } as FsEntry);
+      fileManagerStore.openFolder(targetFolder);
+    }
   }
 
   // OS file drops (real `Files` from the OS) stay on the HTML5 root path.

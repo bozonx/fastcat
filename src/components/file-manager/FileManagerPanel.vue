@@ -22,6 +22,7 @@ import { useSttTranscription } from '~/composables/file-manager/useSttTranscript
 import { useFileManagerPanelActions } from '~/composables/file-manager/useFileManagerPanelActions';
 import { useAppClipboard } from '~/composables/useAppClipboard';
 import { useFileManagerStore } from '~/stores/file-manager.store';
+import { useSelectionStore } from '~/stores/selection.store';
 import UiTooltip from '~/components/ui/UiTooltip.vue';
 import { useHotkeyLabel } from '~/composables/useHotkeyLabel';
 
@@ -64,6 +65,7 @@ const { openConversionModal } = useFileConversionStoreActions(conversionStore, f
 const { extractAudio } = useAudioExtraction();
 const { addFileTab, setActiveTab } = useProjectTabsStore();
 const clipboardStore = useAppClipboard();
+const selectionStore = useSelectionStore();
 
 const { getHotkeyTitle } = useHotkeyLabel();
 
@@ -244,6 +246,7 @@ async function onCreateTimeline() {
   if (!createdPath) return;
 
   await projectStore.openTimelineFile(createdPath);
+  focusStore.setActiveTimelinePath(createdPath);
   await timelineStore.loadTimeline();
   void timelineStore.loadTimelineMetadata();
 
@@ -254,6 +257,12 @@ async function onCreateTimeline() {
   }
   await loadProjectDirectory({ fullRefresh: true });
   uiStore.notifyFileManagerUpdate();
+
+  const createdEntry = findEntryByPath(createdPath);
+  if (createdEntry) {
+    await nextTick();
+    selectionStore.selectFsEntryWithUiUpdate(createdEntry, instanceId);
+  }
   uiStore.triggerScrollToFileTreeEntry(createdPath);
 }
 

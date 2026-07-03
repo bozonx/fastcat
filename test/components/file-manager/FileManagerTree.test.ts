@@ -47,6 +47,7 @@ const selectionStoreMock = {
 
 const uiStoreMock = reactive({
   isFileManagerDragging: false,
+  setFileTreePathExpanded: vi.fn(),
 });
 
 const workspaceStoreMock = {
@@ -282,6 +283,19 @@ describe('FileManagerTree', () => {
       sourcePath: '_audio/a.mp4',
       targetDirPath: '_video',
     });
+  });
+
+  it('opens the target folder after an internal move drop', async () => {
+    const dir: FsEntry = { name: '_video', kind: 'directory', path: '_video', expanded: false };
+    const wrapper = mountTree([dir]);
+    const items = [{ name: 'a.mp4', kind: 'file', path: '_audio/a.mp4' }];
+    mockState.draggedItems = items;
+
+    await getTreeZone(wrapper).onDrop!(dropCtx(wrapper, '_video', items));
+
+    expect(uiStoreMock.setFileTreePathExpanded).toHaveBeenCalledWith('_video', true);
+    expect(wrapper.emitted('toggle')?.[0]?.[0]).toMatchObject({ path: '_video' });
+    expect(wrapper.emitted('select')?.[0]?.[0]).toMatchObject({ path: '_video' });
   });
 
   it('cancels tree drop when item is returned onto its own container', async () => {

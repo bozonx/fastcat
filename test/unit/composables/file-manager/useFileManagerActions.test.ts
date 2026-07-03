@@ -19,6 +19,10 @@ const tauriFsMock = vi.hoisted(() => ({
   readFile: vi.fn(),
 }));
 
+const createMarkdownCommandMock = vi.hoisted(() =>
+  vi.fn().mockResolvedValue('_documents/document 01.md'),
+);
+
 interface SelectedFsEntryInfo {
   kind: FsEntry['kind'];
   name: string;
@@ -128,6 +132,9 @@ vi.mock('~/stores/project-tabs.store', () => ({ useProjectTabsStore: () => proje
 vi.mock('~/composables/useAppClipboard', () => ({ useAppClipboard: () => clipboardStore }));
 vi.mock('@tauri-apps/plugin-dialog', () => tauriDialogMock);
 vi.mock('@tauri-apps/plugin-fs', () => tauriFsMock);
+vi.mock('~/file-manager/application/fileManagerCommands', () => ({
+  createMarkdownCommand: createMarkdownCommandMock,
+}));
 
 vi.stubGlobal('useI18n', () => ({ t: (_key: string, fallback?: string) => fallback ?? _key }));
 vi.stubGlobal('useToast', () => ({ add: vi.fn() }));
@@ -156,6 +163,8 @@ describe('useFileManagerActions', () => {
     tauriDialogMock.open.mockReset();
     tauriFsMock.stat.mockReset();
     tauriFsMock.readFile.mockReset();
+    createMarkdownCommandMock.mockReset();
+    createMarkdownCommandMock.mockResolvedValue('_documents/document 01.md');
     Reflect.deleteProperty(globalThis as Record<string, unknown>, '__TAURI_INTERNALS__');
   });
 
@@ -371,6 +380,48 @@ describe('useFileManagerActions', () => {
       type: 'video/mp4',
     });
     expect(notifyFileManagerUpdate).toHaveBeenCalledOnce();
+  });
+
+  it('creates a markdown document, refreshes the tree, and selects it', async () => {
+    const loadProjectDirectory = vi.fn().mockResolvedValue(undefined);
+    const createDirectory = vi.fn().mockResolvedValue(undefined);
+    const findEntryByPath = vi.fn((path: string) => {
+      if (path === '_documents') {
+        return { kind: 'directory', name: '_documents', path: '_documents' };
+      }
+      return {
+        kind: 'file',
+        name: 'document 01.md',
+        path: '_documents/document 01.md',
+        parentPath: '_documents',
+      };
+    });
+    const api = createComposable({
+      loadProjectDirectory,
+      vfs: {
+        listEntryNames: vi.fn().mockResolvedValue([]),
+        createDirectory,
+        readFile: vi.fn().mockResolvedValue(new Uint8Array()),
+        writeFile: vi.fn().mockResolvedValue(undefined),
+      } as unknown as IFileSystemAdapter,
+      findEntryByPath,
+    });
+
+    await api.onFileAction('createMarkdown', {
+      kind: 'directory',
+      name: 'Documents',
+      path: '_documents',
+    });
+
+    expect(createDirectory).toHaveBeenCalledWith('_documents');
+    expect(loadProjectDirectory).toHaveBeenCalledWith({ fullRefresh: true });
+    expect(fileManagerStore.openFolder).toHaveBeenCalledWith(
+      expect.objectContaining({ path: '_documents' }),
+    );
+    expect(selectionStore.selectFsEntryWithUiUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({ path: '_documents/document 01.md' }),
+    );
+    expect(uiStore.triggerScrollToFileTreeEntry).toHaveBeenCalledWith('_documents/document 01.md');
   });
 
   it('creates an OTIO version and opens the newly created timeline', async () => {

@@ -1,5 +1,5 @@
 import { createDevLogger } from '~/utils/dev-logger';
-import { ref, computed, inject } from 'vue';
+import { ref, computed, inject, nextTick } from 'vue';
 import { useUiStore } from '~/stores/ui.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useSelectionStore } from '~/stores/selection.store';
@@ -283,22 +283,19 @@ export function useFileManagerActions(actions: FileManagerActions) {
     });
 
     await actions.reloadDirectory(dirPath);
+    await actions.loadProjectDirectory({ fullRefresh: true });
     actions.notifyFileManagerUpdate?.();
 
     const newEntry = actions.findEntryByPath(fullPath);
     if (newEntry) {
-      // Expand and open documents folder
       const dirEntry = actions.findEntryByPath(dirPath);
       if (dirEntry) {
         fileManagerStore.openFolder(dirEntry);
       }
 
-      // Wait for DOM to render the new entry before scrolling
-      const SCROLL_TO_FILE_DELAY_MS = 50;
-      setTimeout(() => {
-        selectionStore.selectFsEntryWithUiUpdate(newEntry);
-        uiStore.triggerScrollToFileTreeEntry(newEntry.path);
-      }, SCROLL_TO_FILE_DELAY_MS);
+      await nextTick();
+      selectionStore.selectFsEntryWithUiUpdate(newEntry);
+      uiStore.triggerScrollToFileTreeEntry(newEntry.path);
     }
   }
 

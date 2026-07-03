@@ -30,8 +30,11 @@ const appClipboardMock = {
   setCurrentDragOperation: vi.fn((value: 'copy' | 'move' | 'cancel' | null) => {
     appClipboardMock.currentDragOperation = value;
   }),
-  setDraggedItems: vi.fn(),
+  setDraggedItems: vi.fn((items: unknown[]) => {
+    appClipboardMock.draggedItems = items;
+  }),
   clearDraggedItems: vi.fn(),
+  draggedItems: [] as unknown[],
 };
 
 const setDraggedFileMock = vi.fn();
@@ -59,10 +62,13 @@ vi.mock('~/stores/workspace.store', () => ({
   }),
 }));
 
+const fileManagerStoreMock = {
+  selectedFolder: null as { path: string } | null,
+  openFolder: vi.fn(),
+};
+
 vi.mock('~/stores/file-manager.store', () => ({
-  useFileManagerStore: () => ({
-    selectedFolder: null,
-  }),
+  useFileManagerStore: () => fileManagerStoreMock,
 }));
 
 vi.mock('~/stores/selection.store', () => ({
@@ -116,6 +122,7 @@ describe('useFileBrowserDragAndDrop', () => {
     appClipboardMock.dragTargetFileManagerInstanceId = null;
     appClipboardMock.dragSourceVfs = null;
     appClipboardMock.currentDragOperation = null;
+    appClipboardMock.draggedItems = [];
     appClipboardMock.setDragSourceFileManagerInstanceId.mockClear();
     appClipboardMock.setDragTargetFileManagerInstanceId.mockClear();
     appClipboardMock.setDragSourceVfs.mockClear();
@@ -123,6 +130,8 @@ describe('useFileBrowserDragAndDrop', () => {
     setDraggedFileMock.mockClear();
     clearDraggedFileMock.mockClear();
     armPointerDndMock.mockClear();
+    fileManagerStoreMock.selectedFolder = null;
+    fileManagerStoreMock.openFolder.mockClear();
   });
 
   it('starts folder drag with active file-manager drag state and source target instance', () => {
@@ -188,5 +197,64 @@ describe('useFileBrowserDragAndDrop', () => {
     ]);
     // Directories don't feed the timeline-drop payload.
     expect(setDraggedFileMock).not.toHaveBeenCalled();
+  });
+
+  it('navigates into the target folder after a successful internal drop', async () => {
+    let api: ReturnType<typeof useFileBrowserDragAndDrop> | null = null;
+
+    const moveEntry = vi.fn().mockResolvedValue(undefined);
+    const loadFolderContent = vi.fn().mockResolvedValue(undefined);
+    const notifyFileManagerUpdate = vi.fn();
+    const findEntryByPath = vi.fn((path: string) => {
+      if (path === '_video') {
+        return { kind: 'directory', name: '_video', path: '_video' } as FsEntry;
+      }
+      return null;
+    });
+
+    mount(
+      defineComponent({
+        setup() {
+          api = useFileBrowserDragAndDrop({
+            findEntryByPath,
+            resolveEntryByPath: async (path: string) =>
+              path === '_audio/a.mp4'
+                ? ({ kind: 'file', name: 'a.mp4', path: '_audio/a.mp4' } as FsEntry)
+                : null,
+            handleFiles: async () => {},
+            moveEntry,
+            copyEntry: async () => {},
+            loadFolderContent,
+            notifyFileManagerUpdate,
+            fileManagerInstanceId: 'main',
+            vfs: {} as any,
+          });
+
+          return () => null;
+        },
+      }),
+    );
+
+    const items = [{ name: 'a.mp4', kind: 'file', path: '_audio/a.mp4' }];
+    appClipboardMock.setDraggedItems(items);
+    appClipboardMock.currentDragOperation = 'move';
+    appClipboardMock.dragSourceFileManagerInstanceId = 'main';
+
+    await api!.handleInternalDrop({
+      payload: { source: 'file-manager', data: { items, sourceInstanceId: 'main' } },
+      pointer: { shiftKey: false, ctrlKey: false, altKey: false, metaKey: false },
+      targetEl: { getAttribute: (name: string) => (name === 'data-entry-path' ? '_video' : null) },
+      setOperation: vi.fn(),
+    } as any);
+
+    expect(moveEntry).toHaveBeenCalledWith({
+      source: expect.objectContaining({ path: '_audio/a.mp4' }),
+      targetDirPath: '_video',
+    });
+    expect(notifyFileManagerUpdate).toHaveBeenCalled();
+    expect(loadFolderContent).toHaveBeenCalled();
+    expect(fileManagerStoreMock.openFolder).toHaveBeenCalledWith(
+      expect.objectContaining({ path: '_video' }),
+    );
   });
 });

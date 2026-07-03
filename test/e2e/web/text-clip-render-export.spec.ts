@@ -14,13 +14,17 @@ import { listOpfsDirectory, readFileFromOpfs } from '../../utils/e2e/virtual-fs'
 test.describe('Web text clip render/export', () => {
   test.slow();
 
-  test('renders a styled text clip in the monitor and exports it', async ({
-    page,
-    e2eProject,
-  }) => {
+  test('renders a styled text clip in the monitor and exports it', async ({ page, e2eProject }) => {
     page.on('console', (msg) => {
       const text = msg.text();
-      if (text.includes('[E2E addTextClip]')) console.log(text);
+      if (
+        text.includes('[E2E addTextClip]') ||
+        text.includes('[saveTimeline debug]') ||
+        text.includes('[autoSave.doSave debug]') ||
+        text.includes('[flushTimelineAutosave debug]') ||
+        text.includes('[loadTimeline debug]')
+      )
+        console.log(text);
     });
     const [videoTrackId] = await trackIds(page);
     const [clipId] = await addTextClipAtPlayhead(page, {
@@ -60,13 +64,22 @@ test.describe('Web text clip render/export', () => {
     });
 
     console.log('DOC_INFO_BEFORE_OPEN_EXPORT', JSON.stringify(await getTimelineDocInfo(page)));
-    console.log('PERSISTED_BEFORE_OPEN_EXPORT', JSON.stringify(await readTimelineDoc(page, e2eProject)));
+    console.log(
+      'PERSISTED_BEFORE_OPEN_EXPORT',
+      JSON.stringify(await readTimelineDoc(page, e2eProject)),
+    );
     await openExport(page);
     console.log('DOC_INFO_AFTER_OPEN_EXPORT', JSON.stringify(await getTimelineDocInfo(page)));
-    console.log('PERSISTED_AFTER_OPEN_EXPORT', JSON.stringify(await readTimelineDoc(page, e2eProject)));
+    console.log(
+      'PERSISTED_AFTER_OPEN_EXPORT',
+      JSON.stringify(await readTimelineDoc(page, e2eProject)),
+    );
     await startExport(page);
     console.log('DOC_INFO_AFTER_START_EXPORT', JSON.stringify(await getTimelineDocInfo(page)));
-    console.log('PERSISTED_AFTER_START_EXPORT', JSON.stringify(await readTimelineDoc(page, e2eProject)));
+    console.log(
+      'PERSISTED_AFTER_START_EXPORT',
+      JSON.stringify(await readTimelineDoc(page, e2eProject)),
+    );
     await waitForExportSuccess(page, { timeout: 90_000 });
 
     const outputs = await listOpfsDirectory(page, `${e2eProject.path}/_export`);

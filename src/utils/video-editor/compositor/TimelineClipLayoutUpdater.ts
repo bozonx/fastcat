@@ -114,7 +114,8 @@ export class TimelineClipLayoutUpdater {
       const nextStyle = n['style'] as TextClipStyle | undefined;
       const styleChanged = !areTextClipStylesEqual(clip.style, nextStyle);
 
-      clip.textDirty = clip.text !== nextText || styleChanged || snapChanged || clip.textDirty === true;
+      clip.textDirty =
+        clip.text !== nextText || styleChanged || snapChanged || clip.textDirty === true;
       clip.text = nextText;
       clip.style = nextStyle ? cloneValue(nextStyle) : undefined;
     }

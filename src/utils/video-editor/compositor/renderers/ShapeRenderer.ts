@@ -55,7 +55,18 @@ export class ShapeRenderer {
   }
 
   public draw(params: ShapeDrawParams): void {
-    const { graphics, type, fill, stroke, strokeWidth, config, canvasWidth, canvasHeight, snapToPixelGrid, transform } = params;
+    const {
+      graphics,
+      type,
+      fill,
+      stroke,
+      strokeWidth,
+      config,
+      canvasWidth,
+      canvasHeight,
+      snapToPixelGrid,
+      transform,
+    } = params;
 
     graphics.clear();
 

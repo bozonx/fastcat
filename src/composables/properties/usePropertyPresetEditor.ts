@@ -116,9 +116,7 @@ export function usePropertyPresetEditor<M extends PresetManifestLike>(
 
     list.push({
       id: 'save-as-preset',
-      label: isCustom
-        ? t('fastcat.effects.saveAsNew')
-        : t('fastcat.effects.saveAsPreset'),
+      label: isCustom ? t('fastcat.effects.saveAsNew') : t('fastcat.effects.saveAsPreset'),
       icon: 'i-heroicons-bookmark',
       color: isCustom ? 'neutral' : 'primary',
       variant: isCustom ? 'soft' : 'solid',
