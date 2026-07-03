@@ -969,4 +969,69 @@ mod tests {
         assert_eq!(t.crop_left, 3.0);
         assert_eq!(t.crop_right, 4.0);
     }
+
+    /// Cross-engine parity contract. This test and the TS test
+    /// `test/unit/utils/video-editor/text-shadow-frame.parity.test.ts` read the
+    /// SAME fixture, so the native `build_text_layer` and the web
+    /// `computeTextLayoutMetrics` shadow/border bounding-box math can never
+    /// drift apart. See the fixture's `_comment` for why frame size is pinned
+    /// (explicit width/height dominate the text-measured auto size).
+    #[test]
+    fn text_shadow_frame_matches_shared_parity_fixture() {
+        const FIXTURE: &str =
+            include_str!("../../../../../shared/parity/text-shadow-frame.cases.json");
+        let parsed: serde_json::Value =
+            serde_json::from_str(FIXTURE).expect("valid parity fixture json");
+        let cases = parsed["cases"].as_array().expect("cases array");
+        assert!(!cases.is_empty(), "fixture has cases");
+
+        for c in cases {
+            let name = c["name"].as_str().unwrap_or("?");
+            let text = c["text"].as_str().unwrap_or("").to_string();
+            let style = c["style"].clone();
+
+            let sl: SceneLayer = serde_json::from_value(json!({
+                "id": "text-parity",
+                "kind": "text",
+                "timeline_start_sec": 0.0,
+                "timeline_end_sec": 10.0,
+                "source_start_sec": 0.0,
+                "z": 1,
+                "opacity": 1.0,
+                "text": text,
+                "style": style,
+            }))
+            .unwrap();
+
+            let layer = build_text_layer(&sl, (1920, 1080));
+            let exp = &c["expected"];
+            let approx = |a: f32, b: f64, field: &str| {
+                assert!(
+                    ((a as f64) - b).abs() < 1e-6,
+                    "case `{name}` {field}: got {a}, expected {b}"
+                );
+            };
+
+            approx(layer.frame_width, exp["frameWidth"].as_f64().unwrap(), "frameWidth");
+            approx(layer.frame_height, exp["frameHeight"].as_f64().unwrap(), "frameHeight");
+            approx(layer.shadow_left, exp["shadowLeft"].as_f64().unwrap(), "shadowLeft");
+            approx(layer.shadow_top, exp["shadowTop"].as_f64().unwrap(), "shadowTop");
+            approx(layer.shadow_right, exp["shadowRight"].as_f64().unwrap(), "shadowRight");
+            approx(layer.shadow_bottom, exp["shadowBottom"].as_f64().unwrap(), "shadowBottom");
+
+            let background_width = layer.frame_width + layer.border_width * 2.0
+                + layer.shadow_left
+                + layer.shadow_right;
+            let background_height = layer.frame_height + layer.border_width * 2.0
+                + layer.shadow_top
+                + layer.shadow_bottom;
+            approx(background_width, exp["backgroundWidth"].as_f64().unwrap(), "backgroundWidth");
+            approx(background_height, exp["backgroundHeight"].as_f64().unwrap(), "backgroundHeight");
+
+            let frame_x = layer.border_width + layer.shadow_left;
+            let frame_y = layer.border_width + layer.shadow_top;
+            approx(frame_x, exp["frameX"].as_f64().unwrap(), "frameX");
+            approx(frame_y, exp["frameY"].as_f64().unwrap(), "frameY");
+        }
+    }
 }

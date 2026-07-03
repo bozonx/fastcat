@@ -525,6 +525,7 @@ if (typeof globalThis.OffscreenCanvas === 'undefined') {
         moveTo: noop,
         lineTo: noop,
         arc: noop,
+        arcTo: noop,
         ellipse: noop,
         rect: noop,
         roundRect: noop,

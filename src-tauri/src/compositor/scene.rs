@@ -860,17 +860,20 @@ fn draw_text_background(
     if !(spec.background_enabled && spec.background_color.to_rgba8().a > 0) {
         return;
     }
-    // When a border is present, extend the background out to the border's centerline
-    // so it underlaps the inner half of the (concentric) stroke. Both the background
-    // fill edge and the stroke's inner edge are anti-aliased; if they merely abut,
-    // the two fading AA fringes don't sum to full coverage and a ~1px seam of the
-    // scene behind shows through at the corners. Underlapping fills that seam with
-    // background color, which the opaque inner half of the stroke then covers.
+    // When a border is present, extend the background out by a hairline so it
+    // underlaps the inner edge of the (concentric) border stroke. Both the background
+    // fill edge and the stroke's inner edge are anti-aliased; if they merely abut, the
+    // two fading AA fringes don't sum to full coverage and a ~1px seam of the scene
+    // behind shows through at the corners. A ~1px underlap (device space — the seam is
+    // a fixed-size raster artifact, independent of resolution) fills that seam, which
+    // the opaque border covers. Kept to 1px (not border_width/2) so a *translucent*
+    // border only reveals a negligible 1px band of background rather than its whole
+    // inner half. Capped at border_width so the background never pokes past the stroke.
     let underlap = if spec.border_enabled
         && spec.border_width > 0.0
         && spec.border_color.to_rgba8().a > 0
     {
-        (spec.border_width / 2.0) as f64
+        (1.0_f32).min(spec.border_width) as f64
     } else {
         0.0
     };

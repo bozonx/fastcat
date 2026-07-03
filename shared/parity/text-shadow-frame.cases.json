@@ -1,0 +1,127 @@
+{
+  "_comment": [
+    "Cross-engine parity contract for the text-clip shadow/border bounding-box math.",
+    "Single source of truth shared by BOTH engines:",
+    "  - web:    computeTextLayoutMetrics() in src/utils/video-editor/text-layout.ts",
+    "  - native: build_text_layer() in src-tauri/src/monitor/scene/build/layer_builder.rs",
+    "Each engine has a test that reads this file and asserts it reproduces every case.",
+    "",
+    "Every case sets an explicit width/height large enough to dominate the",
+    "text-measured auto frame size, so `frameWidth`/`frameHeight` are pinned",
+    "independent of font-metric differences (browser Canvas2D vs. parley). This",
+    "isolates the part of the layout math that IS expected to match exactly:",
+    "the border/shadow bounding-box arithmetic (shadow extent = blur*1.5 + spread,",
+    "offset by shadowOffsetX/Y, plus the border ring on all sides).",
+    "",
+    "All shadow/border magnitudes here are whole pixels at renderScale=1 (scene",
+    "size == design base 1920x1080) so web's per-component `Math.round()` is a",
+    "no-op and cannot diverge from native's un-rounded f32 arithmetic.",
+    "",
+    "frameX/frameY = the offset of the frame's top-left inside the padded",
+    "background box, i.e. `borderWidth + shadowLeft` / `borderWidth + shadowTop`."
+  ],
+  "cases": [
+    {
+      "name": "no_shadow_no_border",
+      "text": "Hi",
+      "style": {
+        "width": 300,
+        "height": 200,
+        "fontSize": 24,
+        "padding": 0
+      },
+      "expected": {
+        "frameWidth": 300,
+        "frameHeight": 200,
+        "shadowLeft": 0,
+        "shadowTop": 0,
+        "shadowRight": 0,
+        "shadowBottom": 0,
+        "backgroundWidth": 300,
+        "backgroundHeight": 200,
+        "frameX": 0,
+        "frameY": 0
+      }
+    },
+    {
+      "name": "border_only",
+      "text": "Hi",
+      "style": {
+        "width": 300,
+        "height": 200,
+        "fontSize": 24,
+        "padding": 0,
+        "borderEnabled": true,
+        "borderWidth": 6
+      },
+      "expected": {
+        "frameWidth": 300,
+        "frameHeight": 200,
+        "shadowLeft": 0,
+        "shadowTop": 0,
+        "shadowRight": 0,
+        "shadowBottom": 0,
+        "backgroundWidth": 312,
+        "backgroundHeight": 212,
+        "frameX": 6,
+        "frameY": 6
+      }
+    },
+    {
+      "name": "background_shadow_only_asymmetric_offset",
+      "text": "Hi",
+      "style": {
+        "width": 300,
+        "height": 200,
+        "fontSize": 24,
+        "padding": 0,
+        "backgroundShadowEnabled": true,
+        "backgroundShadowBlur": 10,
+        "backgroundShadowSpread": 4,
+        "backgroundShadowOffsetX": 6,
+        "backgroundShadowOffsetY": -8
+      },
+      "expected": {
+        "frameWidth": 300,
+        "frameHeight": 200,
+        "shadowLeft": 13,
+        "shadowTop": 27,
+        "shadowRight": 25,
+        "shadowBottom": 11,
+        "backgroundWidth": 338,
+        "backgroundHeight": 238,
+        "frameX": 13,
+        "frameY": 27
+      }
+    },
+    {
+      "name": "text_shadow_and_border",
+      "text": "Hi",
+      "style": {
+        "width": 300,
+        "height": 200,
+        "fontSize": 24,
+        "padding": 0,
+        "borderEnabled": true,
+        "borderWidth": 4,
+        "textShadowEnabled": true,
+        "textShadowBlur": 6,
+        "textShadowSpread": 2,
+        "textShadowOffsetX": 3,
+        "textShadowOffsetY": 0
+      },
+      "expected": {
+        "frameWidth": 300,
+        "frameHeight": 200,
+        "shadowLeft": 8,
+        "shadowTop": 11,
+        "shadowRight": 14,
+        "shadowBottom": 11,
+        "backgroundWidth": 330,
+        "backgroundHeight": 230,
+        "frameX": 12,
+        "frameY": 15
+      }
+    }
+  ]
+}

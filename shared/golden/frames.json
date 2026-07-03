@@ -6,9 +6,9 @@
       "samples": [
         {
           "timeSec": 0.5,
-          "hash": "ffff3f1f0f030100",
+          "hash": "00003c3c1c0c0000",
           "tolerance": 32,
-          "colorSig": "ffb600fffc00ff1000ff8600"
+          "colorSig": "685526686726682a26684826"
         }
       ]
     },
@@ -18,9 +18,9 @@
       "samples": [
         {
           "timeSec": 0.5,
-          "hash": "ffff3f1f07030100",
+          "hash": "00003c3c3c0c0000",
           "tolerance": 26,
-          "colorSig": "fe8e00feed00fe0e00fe6600"
+          "colorSig": "53423a535039532f39533d39"
         }
       ]
     },
@@ -54,8 +54,9 @@
       "samples": [
         {
           "timeSec": 0.5,
-          "hash": "pending",
-          "tolerance": 12
+          "hash": "ffff7f3f0f070300",
+          "tolerance": 12,
+          "colorSig": "ffd100ffff00ff1500ffa100"
         }
       ]
     },
@@ -65,8 +66,9 @@
       "samples": [
         {
           "timeSec": 0.5,
-          "hash": "pending",
-          "tolerance": 12
+          "hash": "ffff7f3f0f070300",
+          "tolerance": 12,
+          "colorSig": "ffd100ffff00ff1500ffa100"
         }
       ]
     },
@@ -88,8 +90,9 @@
       "samples": [
         {
           "timeSec": 0.5,
-          "hash": "pending",
-          "tolerance": 12
+          "hash": "ff7f3f0f07030000",
+          "tolerance": 12,
+          "colorSig": "fe8400fee800fe0a00fe5b00"
         }
       ]
     },
@@ -231,9 +234,9 @@
       "samples": [
         {
           "timeSec": 0.5,
-          "hash": "ffff3f1f0f030100",
+          "hash": "003c3c3c3c200000",
           "tolerance": 28,
-          "colorSig": "e98316ead91dfd0d00fb6300"
+          "colorSig": "623f1946473a4a211e3c2e22"
         }
       ]
     },
@@ -267,27 +270,27 @@
       "samples": [
         {
           "timeSec": 0,
-          "hash": "1333333232373333",
+          "hash": "1333333333333333",
           "tolerance": 12,
-          "colorSig": "8987075158ea9e93024c5be4"
+          "colorSig": "949208575ffba99f025261f5"
         },
         {
           "timeSec": 0.25,
-          "hash": "1773333332323333",
+          "hash": "1373333333333333",
           "tolerance": 12,
-          "colorSig": "8b8b084d5deba290065156e1"
+          "colorSig": "95960a5264fbae9c06575cf1"
         },
         {
           "timeSec": 0.5,
-          "hash": "1733733333323233",
+          "hash": "1333f33333333333",
           "tolerance": 12,
-          "colorSig": "8a8d094f5be99b900d5058e0"
+          "colorSig": "94970b5561faa79b0f555ef0"
         },
         {
           "timeSec": 0.75,
-          "hash": "1733337333333233",
+          "hash": "133333f333333333",
           "tolerance": 12,
-          "colorSig": "938e034f5ae9978f105158de"
+          "colorSig": "9d98045561faa29a12575eee"
         },
         {
           "timeSec": 1,
@@ -315,9 +318,9 @@
       "samples": [
         {
           "timeSec": 0.5,
-          "hash": "0000000f0f0f1f1f",
+          "hash": "0000001c1c1c0800",
           "tolerance": 42,
-          "colorSig": "2a2b3a2f403e353441b7ca7e"
+          "colorSig": "2b2b3a2c313c312f3f494b48"
         }
       ]
     },
@@ -339,9 +342,9 @@
       "samples": [
         {
           "timeSec": 0.5,
-          "hash": "0c0c1c1c3c3c3c3c",
+          "hash": "00001c1c1c1c0000",
           "tolerance": 18,
-          "colorSig": "8f06008f4a008f33008f8200"
+          "colorSig": "240100241300240d00242100"
         }
       ]
     },
@@ -351,9 +354,9 @@
       "samples": [
         {
           "timeSec": 0.25,
-          "hash": "1733733333323233",
+          "hash": "1333f33333333333",
           "tolerance": 12,
-          "colorSig": "8a8d094f5be99b900d5058e0"
+          "colorSig": "94970a5562fba79b0e555ff0"
         }
       ]
     },
@@ -363,9 +366,9 @@
       "samples": [
         {
           "timeSec": 0.25,
-          "hash": "1733337333333233",
+          "hash": "1333337333333333",
           "tolerance": 12,
-          "colorSig": "938e034f5ae9978f105158de"
+          "colorSig": "9d99045561fba09a12575fef"
         }
       ]
     },
@@ -375,9 +378,9 @@
       "samples": [
         {
           "timeSec": 0.5,
-          "hash": "0000007c7c000000",
+          "hash": "0000001818000000",
           "tolerance": 18,
-          "colorSig": "2525382323361f1f331e1e32"
+          "colorSig": "1a1a2e1a1a2e1a1a2e1a1a2e"
         }
       ]
     },
@@ -387,9 +390,9 @@
       "samples": [
         {
           "timeSec": 0.5,
-          "hash": "7c3f3f1f0f070602",
+          "hash": "00303c3e3c3c0400",
           "tolerance": 28,
-          "colorSig": "ed5900d9c600d90900ed7700"
+          "colorSig": "451c003b36003b0200452000"
         }
       ]
     },
@@ -399,9 +402,9 @@
       "samples": [
         {
           "timeSec": 0.5,
-          "hash": "fffefcf0e0c00000",
+          "hash": "ff7f3f0f07030000",
           "tolerance": 12,
-          "colorSig": "fee800fe8400fe5b00fe0a00"
+          "colorSig": "fe8400fee800fe0a00fe5b00"
         }
       ]
     },
@@ -495,9 +498,9 @@
       "samples": [
         {
           "timeSec": 0.5,
-          "hash": "1733733333323233",
+          "hash": "1333f33333333333",
           "tolerance": 12,
-          "colorSig": "8a8d094f5be99b900d5058e0"
+          "colorSig": "94970a5562fba79b0e555ff0"
         }
       ]
     },
@@ -555,8 +558,9 @@
       "samples": [
         {
           "timeSec": 0.5,
-          "hash": "pending",
-          "tolerance": 12
+          "hash": "ffff7f3f0f070300",
+          "tolerance": 12,
+          "colorSig": "ffd100ffff00ff1500ffa100"
         }
       ]
     },
@@ -566,8 +570,9 @@
       "samples": [
         {
           "timeSec": 0.5,
-          "hash": "pending",
-          "tolerance": 12
+          "hash": "ffff7f3f0f070300",
+          "tolerance": 12,
+          "colorSig": "ffd100ffff00ff1500ffa100"
         }
       ]
     },
@@ -589,8 +594,9 @@
       "samples": [
         {
           "timeSec": 0.5,
-          "hash": "pending",
-          "tolerance": 12
+          "hash": "ff7f3f0f07030000",
+          "tolerance": 12,
+          "colorSig": "fe8400fee800fe0a00fe5b00"
         }
       ]
     },
@@ -999,6 +1005,78 @@
           "hash": "3333737333717333",
           "tolerance": 12,
           "colorSig": "93a0095558faa6a20d5555f0"
+        }
+      ]
+    },
+    {
+      "scene": "text-background-border.json",
+      "engine": "native",
+      "samples": [
+        {
+          "timeSec": 0.5,
+          "hash": "0000001818000000",
+          "tolerance": 16,
+          "colorSig": "1c1b2f1c1b2f1c1b2f1c1b2f"
+        }
+      ]
+    },
+    {
+      "scene": "text-background-shadow.json",
+      "engine": "native",
+      "samples": [
+        {
+          "timeSec": 0.5,
+          "hash": "0000001818000000",
+          "tolerance": 20,
+          "colorSig": "1a1b2f1a1b2f1a1b2f1a1b2f"
+        }
+      ]
+    },
+    {
+      "scene": "text-shadow.json",
+      "engine": "native",
+      "samples": [
+        {
+          "timeSec": 0.5,
+          "hash": "0000001818000000",
+          "tolerance": 20,
+          "colorSig": "1a1a2e1a1a2e1a1a2e1a1a2e"
+        }
+      ]
+    },
+    {
+      "scene": "text-background-border.json",
+      "engine": "web",
+      "samples": [
+        {
+          "timeSec": 0.5,
+          "hash": "0000001818000000",
+          "tolerance": 16,
+          "colorSig": "1c1b2f1c1b2f1c1b2f1c1b2f"
+        }
+      ]
+    },
+    {
+      "scene": "text-background-shadow.json",
+      "engine": "web",
+      "samples": [
+        {
+          "timeSec": 0.5,
+          "hash": "0000001818000000",
+          "tolerance": 20,
+          "colorSig": "1a1b2f1a1b2f1a1b2f1a1b2f"
+        }
+      ]
+    },
+    {
+      "scene": "text-shadow.json",
+      "engine": "web",
+      "samples": [
+        {
+          "timeSec": 0.5,
+          "hash": "0000001818000000",
+          "tolerance": 20,
+          "colorSig": "1a1a2e1a1a2e1a1a2e1a1a2e"
         }
       ]
     }

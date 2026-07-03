@@ -145,13 +145,15 @@ export class TextRenderer {
       ctx.save();
       ctx.globalAlpha = normalizedStyle.backgroundAlpha;
       ctx.fillStyle = normalizedStyle.backgroundColor;
-      // When a border is present, extend the background out to the border's
-      // centerline so it underlaps the inner half of the (concentric) stroke.
-      // Otherwise the two abutting anti-aliased edges (background fill + stroke
-      // inner edge) leave a ~1px seam of the scene behind showing through at the
-      // corners; the opaque inner half of the stroke covers this underlap.
+      // When a border is present, extend the background out by a hairline so it
+      // underlaps the inner edge of the (concentric) stroke. Otherwise the two
+      // abutting anti-aliased edges (background fill + stroke inner edge) leave a
+      // ~1px seam of the scene behind showing through at the corners; the opaque
+      // border covers this underlap. Kept to 1px (device space — a fixed-size raster
+      // artifact) rather than borderWidthPx/2 so a *translucent* border only reveals a
+      // negligible 1px band of background, not its whole inner half.
       const bgUnderlap =
-        normalizedStyle.borderEnabled && borderWidthPx > 0 ? borderWidthPx / 2 : 0;
+        normalizedStyle.borderEnabled && borderWidthPx > 0 ? Math.min(1, borderWidthPx) : 0;
       this.drawRoundedRect(
         ctx,
         frameX - bgUnderlap,
