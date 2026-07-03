@@ -53,6 +53,8 @@ interface Props {
   instanceId?: string;
   isExternal?: boolean;
   vfs?: IFileSystemAdapter;
+  activeDragOverPath?: string | null;
+  activeDragOperation?: 'copy' | 'move' | 'cancel' | null;
 }
 
 interface TreeContext {
@@ -152,6 +154,8 @@ const appClipboard = useAppClipboard();
 
 const isDragOver = ref<string | null>(null);
 const dragOperation = ref<'copy' | 'move' | 'cancel' | null>(null);
+const effectiveDragOverPath = computed(() => props.activeDragOverPath ?? isDragOver.value);
+const effectiveDragOperation = computed(() => props.activeDragOperation ?? dragOperation.value);
 
 function isDotEntry(entry: FsEntry): boolean {
   return entry.name.startsWith('.');
@@ -598,8 +602,8 @@ const { getContextMenuItems } = useFileContextMenu(
           <FileManagerTreeRow
             :entry="entry"
             :depth="depth"
-            :is-drag-over="isDragOver === entry.path"
-            :drag-operation="dragOperation"
+            :is-drag-over="effectiveDragOverPath === entry.path"
+            :drag-operation="effectiveDragOperation"
             :editing-entry-path="editingEntryPath"
             :existing-names="(entries || []).map((e) => e.name)"
             :file-icon="ctx.getFileIcon(entry)"
@@ -628,6 +632,8 @@ const { getContextMenuItems } = useFileContextMenu(
             :is-files-page="isFilesPage"
             :is-external="isExternal"
             :vfs="vfs"
+            :active-drag-over-path="effectiveDragOverPath"
+            :active-drag-operation="effectiveDragOperation"
             @commit-rename="(entry, name) => emit('commitRename', entry, name)"
             @stop-rename="emit('stopRename')"
             @toggle="emit('toggle', $event)"

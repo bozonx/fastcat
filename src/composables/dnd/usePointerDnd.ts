@@ -242,6 +242,7 @@ function teardown(info: { dropped: boolean; cancelled: boolean; nativeTakeover?:
   window.removeEventListener('pointerup', onWindowPointerUp, true);
   window.removeEventListener('pointercancel', onWindowPointerCancel, true);
   window.removeEventListener('keydown', onWindowKeyDown, true);
+  window.removeEventListener('keyup', onWindowKeyUp, true);
   window.removeEventListener('blur', onWindowBlur, true);
 
   try {
@@ -361,6 +362,14 @@ function onWindowKeyDown(e: KeyboardEvent) {
     return;
   }
   // Re-evaluate operation when a modifier changes mid-drag (copy vs move).
+  updateModifiersFromKeyboardEvent(e);
+}
+
+function onWindowKeyUp(e: KeyboardEvent) {
+  updateModifiersFromKeyboardEvent(e);
+}
+
+function updateModifiersFromKeyboardEvent(e: KeyboardEvent) {
   const drag = activeDrag;
   if (!drag || !drag.committed) return;
   drag.lastPointer = { ...drag.lastPointer, ...readModifiers(e) };
@@ -418,6 +427,7 @@ export function armPointerDnd(e: PointerEvent, options: ArmPointerDndOptions): v
   window.addEventListener('pointerup', onWindowPointerUp, true);
   window.addEventListener('pointercancel', onWindowPointerCancel, true);
   window.addEventListener('keydown', onWindowKeyDown, true);
+  window.addEventListener('keyup', onWindowKeyUp, true);
   window.addEventListener('blur', onWindowBlur, true);
 
   // Touch: promote a stationary press to a drag after the long-press delay.

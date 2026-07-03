@@ -1334,6 +1334,8 @@
         "createProxyForAll": "Create proxy for all videos",
         "createTimeline": "Create Timeline",
         "deleteProxy": "Delete proxy",
+        "downloadFile": "Download",
+        "downloadFileFailed": "Failed to download file",
         "downloadFiles": "Download files",
         "extractAudio": "Extract Audio",
         "hideHiddenFiles": "Hide hidden files",

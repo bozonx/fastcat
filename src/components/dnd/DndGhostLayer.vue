@@ -16,15 +16,39 @@ const { active, pointer, operation, payload } = useDndState();
 
 const badge = computed(() => getDndBadge(operation.value));
 
-const transform = computed(() => {
+const position = computed(() => {
   const p = pointer.value;
-  if (!p) return 'translate(-9999px, -9999px)';
+  if (!p) return { left: '-9999px', top: '-9999px' };
   // Offset down-right of the pointer so the badge never sits under the cursor.
-  return `translate(${p.clientX + 14}px, ${p.clientY + 12}px)`;
+  return { left: `${Math.round(p.clientX) + 14}px`, top: `${Math.round(p.clientY) + 12}px` };
 });
 
 const previewLabel = computed(() => payload.value?.preview?.label ?? '');
 const previewCount = computed(() => payload.value?.preview?.count ?? 0);
+const actionLabel = computed(() => badge.value.label);
+const iconName = computed(() => {
+  switch (operation.value) {
+    case 'copy':
+      return 'lucide:copy-plus';
+    case 'move':
+      return 'lucide:move-right';
+    case 'cancel':
+      return 'lucide:ban';
+    case 'open-panel':
+      return 'lucide:panel-right-open';
+    case 'open-tab':
+      return 'lucide:panel-top-open';
+    case 'timeline-add':
+      return 'lucide:plus';
+    case 'effect':
+      return 'lucide:sparkles';
+    case 'transition':
+      return 'lucide:between-horizontal-start';
+    case 'none':
+    default:
+      return 'lucide:mouse-pointer-2';
+  }
+});
 
 const badgeColorClass = computed(() => {
   switch (badge.value.color) {
@@ -60,12 +84,17 @@ onBeforeUnmount(() => {
 
 <template>
   <Teleport to="body">
-    <div v-if="active" class="fastcat-dnd-ghost" :style="{ transform }" aria-hidden="true">
-      <span class="fastcat-dnd-badge" :class="badgeColorClass">{{ badge.glyph }}</span>
+    <div v-if="active" class="fastcat-dnd-ghost" :style="position" aria-hidden="true">
+      <span class="fastcat-dnd-badge" :class="badgeColorClass">
+        <UIcon :name="iconName" class="fastcat-dnd-badge__icon" />
+      </span>
+      <span v-if="actionLabel" class="fastcat-dnd-ghost__action">{{ actionLabel }}</span>
       <span v-if="previewLabel" class="fastcat-dnd-ghost__label">
         {{ previewLabel }}<template v-if="previewCount > 1"> +{{ previewCount - 1 }}</template>
       </span>
-      <span v-else-if="badge.label" class="fastcat-dnd-ghost__label">{{ badge.label }}</span>
+      <span v-else-if="!actionLabel && badge.label" class="fastcat-dnd-ghost__label">
+        {{ badge.label }}
+      </span>
     </div>
   </Teleport>
 </template>
@@ -91,12 +120,19 @@ onBeforeUnmount(() => {
   line-height: 1;
   white-space: nowrap;
   max-width: 320px;
-  will-change: transform;
+  will-change: left, top;
+  transform: translateZ(0);
+  -webkit-font-smoothing: antialiased;
 }
 
 .fastcat-dnd-ghost__label {
   overflow: hidden;
   text-overflow: ellipsis;
+  color: rgba(255, 255, 255, 0.78);
+}
+
+.fastcat-dnd-ghost__action {
+  color: #fff;
 }
 
 .fastcat-dnd-badge {
@@ -107,8 +143,11 @@ onBeforeUnmount(() => {
   height: 16px;
   border-radius: 999px;
   color: #111418;
-  font-size: 11px;
-  font-weight: 700;
+}
+
+.fastcat-dnd-badge__icon {
+  width: 11px;
+  height: 11px;
 }
 
 .fastcat-dnd-badge--green {

@@ -1334,6 +1334,8 @@
         "createProxyForAll": "Создать прокси для всех видео",
         "createTimeline": "Создать таймлайн",
         "deleteProxy": "Удалить прокси",
+        "downloadFile": "Скачать",
+        "downloadFileFailed": "Не удалось скачать файл",
         "downloadFiles": "Скачать файлы",
         "extractAudio": "Извлечь аудио",
         "hideHiddenFiles": "Скрыть скрытые файлы",

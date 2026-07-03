@@ -49,6 +49,7 @@ interface UseFilePropertiesActionsOptions {
   stopProxyGenerationForSelectedFolder: () => void | Promise<void>;
   onRename: () => void;
   onDelete: () => void;
+  onDownload: () => void | Promise<void>;
   onConvert: () => void;
   openTranscriptionModal: () => void;
   openAsPanelCut: () => void;
@@ -258,6 +259,13 @@ export function useFilePropertiesActions(options: UseFilePropertiesActionsOption
   ]);
 
   const fileSecondaryActions = computed<SecondaryEntryAction[]>(() => [
+    {
+      id: 'download',
+      label: options.t('videoEditor.fileManager.actions.downloadFile'),
+      icon: 'i-heroicons-arrow-down-tray',
+      hidden: options.isExternal?.value,
+      onClick: options.onDownload,
+    },
     {
       id: 'convertFile',
       label: options.isAudioFile.value

@@ -27,12 +27,22 @@ function getCursorStyle(operation: FileManagerDragCursorOperation | null): strin
 }
 
 function getOverlayMarkup(operation: FileManagerDragCursorOperation | null) {
-  if (operation === 'copy') return '+';
-  if (operation === 'cancel') return 'x';
-  if (operation === 'open-panel') return '[]';
-  if (operation === 'open-tab') return '+';
-  if (operation === 'timeline-add') return '+';
-  return '^';
+  if (operation === 'copy') {
+    return '<svg width="12" height="12" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 8h10v10H8z" fill="none" stroke="currentColor" stroke-width="2"/><path d="M6 16H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" fill="none" stroke="currentColor" stroke-width="2"/><path d="M13 10v6M10 13h6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>';
+  }
+  if (operation === 'cancel') {
+    return '<svg width="12" height="12" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="2"/><path d="m8 8 8 8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>';
+  }
+  if (operation === 'open-panel') {
+    return '<svg width="12" height="12" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v14H4zM15 5v14" fill="none" stroke="currentColor" stroke-width="2"/></svg>';
+  }
+  if (operation === 'open-tab') {
+    return '<svg width="12" height="12" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v14H4zM8 9h8" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 6v6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>';
+  }
+  if (operation === 'timeline-add') {
+    return '<svg width="12" height="12" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 17h16M12 10v4M10 12h4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>';
+  }
+  return '<svg width="12" height="12" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h12M13 8l4 4-4 4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 }
 
 function ensureDragOverlay() {
@@ -59,6 +69,8 @@ function ensureDragOverlay() {
   overlay.style.fontSize = '12px';
   overlay.style.fontWeight = '600';
   overlay.style.lineHeight = '1';
+  overlay.style.whiteSpace = 'nowrap';
+  overlay.style.setProperty('-webkit-font-smoothing', 'antialiased');
 
   dragOverlayIcon = document.createElement('span');
   dragOverlayIcon.style.display = 'inline-flex';
@@ -69,8 +81,7 @@ function ensureDragOverlay() {
   dragOverlayIcon.style.borderRadius = '999px';
   dragOverlayIcon.style.background = '#f59e0b';
   dragOverlayIcon.style.color = '#111418';
-  dragOverlayIcon.style.fontSize = '12px';
-  dragOverlayIcon.style.fontWeight = '700';
+  dragOverlayIcon.style.lineHeight = '1';
 
   dragOverlayLabel = document.createElement('span');
   dragOverlayLabel.textContent = 'Move';
@@ -86,7 +97,7 @@ function updateDragOverlayOperation(operation: FileManagerDragCursorOperation | 
   const overlay = ensureDragOverlay();
   if (!overlay || !dragOverlayIcon || !dragOverlayLabel) return;
 
-  dragOverlayIcon.textContent = getOverlayMarkup(operation);
+  dragOverlayIcon.innerHTML = getOverlayMarkup(operation);
   dragOverlayIcon.style.background =
     operation === 'copy' ||
     operation === 'open-panel' ||
@@ -114,7 +125,8 @@ function updateDragOverlayPosition(x: number, y: number) {
   const overlay = ensureDragOverlay();
   if (!overlay) return;
 
-  overlay.style.transform = `translate(${x + 14}px, ${y + 10}px)`;
+  overlay.style.left = `${Math.round(x) + 14}px`;
+  overlay.style.top = `${Math.round(y) + 10}px`;
 }
 
 function onGlobalDragOver(event: DragEvent) {

@@ -50,6 +50,7 @@ import { useFilePropertiesClipboard } from '~/composables/properties/useFileProp
 import { useBloggerDogEntryInfo } from '~/composables/properties/useBloggerDogEntryInfo';
 import { useFilePropertiesProxy } from '~/composables/properties/useFilePropertiesProxy';
 import { useFilePropertiesActionGroups } from '~/composables/properties/useFilePropertiesActionGroups';
+import { triggerBrowserFileDownload } from '~/utils/browser-download';
 import type { FsEntry } from '~/types/fs';
 
 const log = createDevLogger('FileProperties');
@@ -282,6 +283,30 @@ async function copyToClipboard(text: string) {
   }
 }
 
+async function downloadSelectedFile() {
+  const entry = props.selectedFsEntry;
+  if (!entry || entry.kind !== 'file' || !entry.path) return;
+
+  try {
+    const file = await effectiveVfs.value.getFile(entry.path);
+    if (!file) {
+      toast.add({
+        title: t('videoEditor.fileManager.actions.downloadFileFailed'),
+        color: 'error',
+      });
+      return;
+    }
+
+    triggerBrowserFileDownload(file, entry.name);
+  } catch (e) {
+    log.error('Failed to download file', e);
+    toast.add({
+      title: t('videoEditor.fileManager.actions.downloadFileFailed'),
+      color: 'error',
+    });
+  }
+}
+
 // Media type / codec support derivations (preview, unsupported banners, convert).
 const {
   isVideoFile,
@@ -418,6 +443,7 @@ const {
     isRenameModalOpen.value = true;
   },
   onDelete,
+  onDownload: downloadSelectedFile,
   onConvert: () => emit('convert', props.selectedFsEntry),
   openTranscriptionModal,
   openAsPanelCut: () => openAsTextPanel('cut'),

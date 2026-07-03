@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { mount } from '@vue/test-utils';
-import { reactive } from 'vue';
+import { nextTick, reactive } from 'vue';
 import FileManagerTree from '~/components/file-manager/FileManagerTree.vue';
 import type { FsEntry } from '~/types/fs';
 import type { RemoteFsEntry } from '~/utils/remote-vfs';
@@ -324,5 +324,34 @@ describe('FileManagerTree', () => {
 
     expect(mockState.setCurrentDragOperation).toHaveBeenCalledWith('cancel');
     expect(ctx.setOperation).toHaveBeenCalledWith('cancel');
+  });
+
+  it('highlights nested folders while the root drop zone owns the drag state', async () => {
+    const entries: FsEntry[] = [
+      {
+        name: '_video',
+        kind: 'directory',
+        path: '_video',
+        expanded: true,
+        children: [
+          {
+            name: 'nested',
+            kind: 'directory',
+            path: '_video/nested',
+            expanded: false,
+          },
+        ],
+      },
+    ];
+    const wrapper = mountTree(entries, 'main');
+    const items = [{ name: 'a.mp4', kind: 'file', path: '_audio/a.mp4' }];
+    mockState.draggedItems = items;
+
+    getTreeZone(wrapper).onOver!(dropCtx(wrapper, '_video/nested', items));
+    await nextTick();
+
+    const row = wrapper.find('[data-entry-path="_video/nested"]');
+    expect(row.classes()).toContain('bg-primary-500/20');
+    expect(row.classes()).toContain('outline-primary-500');
   });
 });

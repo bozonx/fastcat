@@ -128,6 +128,16 @@ describe('usePointerDnd engine', () => {
     return e;
   }
 
+  function dispatchKey(type: 'keydown' | 'keyup', key: string, modifiers: { shiftKey: boolean }) {
+    const e = new Event(type);
+    Object.defineProperty(e, 'key', { value: key, configurable: true });
+    Object.defineProperty(e, 'shiftKey', { value: modifiers.shiftKey, configurable: true });
+    Object.defineProperty(e, 'altKey', { value: false, configurable: true });
+    Object.defineProperty(e, 'ctrlKey', { value: false, configurable: true });
+    Object.defineProperty(e, 'metaKey', { value: false, configurable: true });
+    window.dispatchEvent(e);
+  }
+
   beforeEach(() => {
     clearDndZones();
     resetPointerDndForTest();
@@ -138,7 +148,7 @@ describe('usePointerDnd engine', () => {
     // Run scheduled rAF callbacks synchronously for deterministic dispatch.
     vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) => {
       cb(0);
-      return 1;
+      return 0;
     });
     vi.stubGlobal('cancelAnimationFrame', () => {});
   });
@@ -292,6 +302,24 @@ describe('usePointerDnd engine', () => {
     expect(onDrop).not.toHaveBeenCalled();
     expect(onEnd).toHaveBeenCalledWith({ dropped: false, cancelled: true });
     expect(isDndActive()).toBe(false);
+  });
+
+  it('re-evaluates the active zone on keyup without requiring pointer movement', () => {
+    const onOver = vi.fn((ctx) => ctx.setOperation(ctx.pointer.shiftKey ? 'copy' : 'move'));
+    registerDndZone('zone-1', { onOver });
+
+    const zoneEl = document.createElement('div');
+    zoneEl.setAttribute(DND_ZONE_ATTR, 'zone-1');
+    currentHit = zoneEl;
+
+    armPointerDnd(armEvent({ x: 0, y: 0 }), { payload });
+    dispatch('pointermove', 20, 0);
+
+    dispatchKey('keydown', 'Shift', { shiftKey: true });
+    dispatchKey('keyup', 'Shift', { shiftKey: false });
+
+    expect(onOver.mock.calls.at(-2)?.[0].pointer.shiftKey).toBe(true);
+    expect(onOver.mock.calls.at(-1)?.[0].pointer.shiftKey).toBe(false);
   });
 
   it('skips zones whose canAccept rejects the payload', () => {
