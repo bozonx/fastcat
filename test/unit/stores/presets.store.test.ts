@@ -88,7 +88,13 @@ describe('PresetsStore', () => {
     expect(store.customPresets).toHaveLength(1);
     expect(store.customPresets[0].category).toBe('effect');
     expect(store.customPresets[0].effectTarget).toBe('video');
-    expect(vi.mocked(registerEffect)).toHaveBeenCalled();
+    expect(vi.mocked(registerEffect)).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: 'Strong Blur',
+        nameKey: undefined,
+        isCustom: true,
+      }),
+    );
     expect(workspaceMock.batchUpdateUserSettings).toHaveBeenCalled();
   });
 
