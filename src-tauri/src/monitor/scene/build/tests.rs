@@ -1055,21 +1055,55 @@ mod tests {
                 );
             };
 
-            approx(layer.frame_width, exp["frameWidth"].as_f64().unwrap(), "frameWidth");
-            approx(layer.frame_height, exp["frameHeight"].as_f64().unwrap(), "frameHeight");
-            approx(layer.shadow_left, exp["shadowLeft"].as_f64().unwrap(), "shadowLeft");
-            approx(layer.shadow_top, exp["shadowTop"].as_f64().unwrap(), "shadowTop");
-            approx(layer.shadow_right, exp["shadowRight"].as_f64().unwrap(), "shadowRight");
-            approx(layer.shadow_bottom, exp["shadowBottom"].as_f64().unwrap(), "shadowBottom");
+            approx(
+                layer.frame_width,
+                exp["frameWidth"].as_f64().unwrap(),
+                "frameWidth",
+            );
+            approx(
+                layer.frame_height,
+                exp["frameHeight"].as_f64().unwrap(),
+                "frameHeight",
+            );
+            approx(
+                layer.shadow_left,
+                exp["shadowLeft"].as_f64().unwrap(),
+                "shadowLeft",
+            );
+            approx(
+                layer.shadow_top,
+                exp["shadowTop"].as_f64().unwrap(),
+                "shadowTop",
+            );
+            approx(
+                layer.shadow_right,
+                exp["shadowRight"].as_f64().unwrap(),
+                "shadowRight",
+            );
+            approx(
+                layer.shadow_bottom,
+                exp["shadowBottom"].as_f64().unwrap(),
+                "shadowBottom",
+            );
 
-            let background_width = layer.frame_width + layer.border_width * 2.0
+            let background_width = layer.frame_width
+                + layer.border_width * 2.0
                 + layer.shadow_left
                 + layer.shadow_right;
-            let background_height = layer.frame_height + layer.border_width * 2.0
+            let background_height = layer.frame_height
+                + layer.border_width * 2.0
                 + layer.shadow_top
                 + layer.shadow_bottom;
-            approx(background_width, exp["backgroundWidth"].as_f64().unwrap(), "backgroundWidth");
-            approx(background_height, exp["backgroundHeight"].as_f64().unwrap(), "backgroundHeight");
+            approx(
+                background_width,
+                exp["backgroundWidth"].as_f64().unwrap(),
+                "backgroundWidth",
+            );
+            approx(
+                background_height,
+                exp["backgroundHeight"].as_f64().unwrap(),
+                "backgroundHeight",
+            );
 
             let frame_x = layer.border_width + layer.shadow_left;
             let frame_y = layer.border_width + layer.shadow_top;

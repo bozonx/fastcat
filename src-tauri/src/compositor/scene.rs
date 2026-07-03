@@ -876,14 +876,12 @@ fn draw_text_background(
     // the opaque border covers. Kept to 1px (not border_width/2) so a *translucent*
     // border only reveals a negligible 1px band of background rather than its whole
     // inner half. Capped at border_width so the background never pokes past the stroke.
-    let underlap = if spec.border_enabled
-        && spec.border_width > 0.0
-        && spec.border_color.to_rgba8().a > 0
-    {
-        (1.0_f32).min(spec.border_width) as f64
-    } else {
-        0.0
-    };
+    let underlap =
+        if spec.border_enabled && spec.border_width > 0.0 && spec.border_color.to_rgba8().a > 0 {
+            (1.0_f32).min(spec.border_width) as f64
+        } else {
+            0.0
+        };
     let rect = RoundedRect::new(
         frame_x as f64 - underlap,
         frame_y as f64 - underlap,

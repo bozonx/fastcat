@@ -1079,6 +1079,78 @@
           "colorSig": "1a1a2e1a1a2e1a1a2e1a1a2e"
         }
       ]
+    },
+    {
+      "scene": "text-letter-spacing.json",
+      "engine": "web",
+      "samples": [
+        {
+          "timeSec": 0.5,
+          "hash": "0000001818000000",
+          "tolerance": 22,
+          "colorSig": "101a29101a29121927121927"
+        }
+      ]
+    },
+    {
+      "scene": "text-rtl.json",
+      "engine": "web",
+      "samples": [
+        {
+          "timeSec": 0.5,
+          "hash": "0000001818000000",
+          "tolerance": 28,
+          "colorSig": "17213f17213f17213f17213f"
+        }
+      ]
+    },
+    {
+      "scene": "text-wrap-multiline.json",
+      "engine": "web",
+      "samples": [
+        {
+          "timeSec": 0.5,
+          "hash": "0000001818000000",
+          "tolerance": 24,
+          "colorSig": "121a2a12192a121a2a11192a"
+        }
+      ]
+    },
+    {
+      "scene": "text-letter-spacing.json",
+      "engine": "native",
+      "samples": [
+        {
+          "timeSec": 0.5,
+          "hash": "0000181800180000",
+          "tolerance": 22,
+          "colorSig": "101a29101a29121927121927"
+        }
+      ]
+    },
+    {
+      "scene": "text-rtl.json",
+      "engine": "native",
+      "samples": [
+        {
+          "timeSec": 0.5,
+          "hash": "0000001818000000",
+          "tolerance": 28,
+          "colorSig": "17213f17213f17213f17213f"
+        }
+      ]
+    },
+    {
+      "scene": "text-wrap-multiline.json",
+      "engine": "native",
+      "samples": [
+        {
+          "timeSec": 0.5,
+          "hash": "0000001818000000",
+          "tolerance": 24,
+          "colorSig": "121a2b12192a121a2a11192a"
+        }
+      ]
     }
   ]
 }
