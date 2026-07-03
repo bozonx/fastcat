@@ -1007,43 +1007,62 @@ mod tests {
         .unwrap()
     }
 
+    /// Device-space origin of the layer's local (0,0) under the snap-safe affine:
+    /// `to_affine` places it at `transform.x - anchor_x * natural_width`. This is
+    /// the quantity that must land on a whole pixel for the (locally-integer)
+    /// background/border rects and text origin to rasterize crisply at 1:1.
+    fn local_origin(out: &crate::compositor::scene::Layer, natural: (u32, u32)) -> (f64, f64) {
+        (
+            out.transform.x - out.transform.anchor_x * natural.0 as f64,
+            out.transform.y - out.transform.anchor_y * natural.1 as f64,
+        )
+    }
+
     #[test]
-    fn finalize_layer_rounds_final_position_for_snapped_text() {
+    fn finalize_layer_rounds_local_origin_for_snapped_text() {
         let layer = snap_test_layer("text", true, 13.4, -7.6);
         let kind = build_virtual_kind(&layer, (1920, 1080)).unwrap();
+        let natural = kind.natural_size();
         let out = finalize_layer(&layer, kind, (1920, 1080), 0.0);
-        assert_eq!(out.transform.x.fract(), 0.0);
-        assert_eq!(out.transform.y.fract(), 0.0);
+        let (ox, oy) = local_origin(&out, natural);
+        assert_eq!(ox.fract(), 0.0);
+        assert_eq!(oy.fract(), 0.0);
     }
 
     #[test]
-    fn finalize_layer_rounds_final_position_for_snapped_shape() {
+    fn finalize_layer_rounds_local_origin_for_snapped_shape() {
         let layer = snap_test_layer("shape", true, 13.4, -7.6);
         let kind = build_virtual_kind(&layer, (1920, 1080)).unwrap();
+        let natural = kind.natural_size();
         let out = finalize_layer(&layer, kind, (1920, 1080), 0.0);
-        assert_eq!(out.transform.x.fract(), 0.0);
-        assert_eq!(out.transform.y.fract(), 0.0);
+        let (ox, oy) = local_origin(&out, natural);
+        assert_eq!(ox.fract(), 0.0);
+        assert_eq!(oy.fract(), 0.0);
     }
 
     #[test]
-    fn finalize_layer_leaves_position_fractional_when_snap_disabled() {
+    fn finalize_layer_leaves_origin_fractional_when_snap_disabled() {
         let layer = snap_test_layer("shape", false, 13.4, -7.6);
         let kind = build_virtual_kind(&layer, (1920, 1080)).unwrap();
+        let natural = kind.natural_size();
         let out = finalize_layer(&layer, kind, (1920, 1080), 0.0);
-        assert!(out.transform.x.fract() != 0.0);
-        assert!(out.transform.y.fract() != 0.0);
+        let (ox, oy) = local_origin(&out, natural);
+        assert!(ox.fract() != 0.0);
+        assert!(oy.fract() != 0.0);
     }
 
     #[test]
-    fn finalize_layer_leaves_position_fractional_when_rotated() {
+    fn finalize_layer_leaves_origin_fractional_when_rotated() {
         let mut layer = snap_test_layer("shape", true, 13.4, -7.6);
         if let Some(t) = layer.transform.as_mut() {
             t.rotation_deg = 45.0;
         }
         let kind = build_virtual_kind(&layer, (1920, 1080)).unwrap();
+        let natural = kind.natural_size();
         let out = finalize_layer(&layer, kind, (1920, 1080), 0.0);
-        assert!(out.transform.x.fract() != 0.0);
-        assert!(out.transform.y.fract() != 0.0);
+        let (ox, oy) = local_origin(&out, natural);
+        assert!(ox.fract() != 0.0);
+        assert!(oy.fract() != 0.0);
     }
 
     #[test]

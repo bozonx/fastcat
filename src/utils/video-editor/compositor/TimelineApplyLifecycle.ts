@@ -48,7 +48,12 @@ export class TimelineApplyLifecycle {
       clips: nextClips,
       clipById: nextClipById,
       maxDurationUs,
-      lastRenderedTimeUs: 0,
+      // Force the next renderFrame to run a full pass instead of early-exiting.
+      // A freshly loaded timeline (e.g. a newly created empty one) requests its
+      // first render at timeUs 0 with no dirty clips; if we reset to 0 here, the
+      // RenderingEngine early-exit (timeUs === lastRenderedTimeUs) keeps the stale
+      // canvas, leaving the previous timeline's frame on screen. NaN never matches.
+      lastRenderedTimeUs: Number.NaN,
       stageSortDirty: true,
       activeSortDirty: true,
     };

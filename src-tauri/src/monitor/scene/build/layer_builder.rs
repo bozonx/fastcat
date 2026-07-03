@@ -530,8 +530,23 @@ pub fn finalize_layer(
         && sl.snap_to_pixel_grid
         && is_transform_snap_safe(sl.transform.as_ref())
     {
-        transform.x = transform.x.round();
-        transform.y = transform.y.round();
+        // Round the layer's LOCAL-space ORIGIN (where local (0,0) lands in scene
+        // pixels), NOT the anchor position. `to_affine` maps local (0,0) to
+        // `transform.x - anchor_x * natural_width` (no rotation/scale in the
+        // snap-safe case). With an odd natural width and a centered (0.5) anchor,
+        // `anchor_x * natural_width` is a half-integer, so rounding `transform.x`
+        // directly leaves that origin on a half-pixel — every local-integer
+        // coordinate (the snapped background/border rect corners and the rounded
+        // text origin) then rasterizes half a device pixel off-grid, which is the
+        // residual soft border/text edge seen in stop-frame snapshots and export.
+        // Rounding the origin lands all of them on whole device pixels whenever the
+        // scene renders 1:1 (export + monitor snapshot; `fit_into` is identity).
+        let nw = media_size.0 as f64;
+        let nh = media_size.1 as f64;
+        let origin_x = transform.x - transform.anchor_x * nw;
+        let origin_y = transform.y - transform.anchor_y * nh;
+        transform.x += origin_x.round() - origin_x;
+        transform.y += origin_y.round() - origin_y;
     }
 
     let base_opacity = sl.opacity.clamp(0.0, 1.0) as f32;

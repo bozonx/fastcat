@@ -173,7 +173,7 @@ describe('TimelineApplyLifecycle', () => {
     expect(result.clips.map((c) => c.itemId)).toEqual(['b', 'a', 'c']);
   });
 
-  it('sets lastRenderedTimeUs to 0', () => {
+  it('sets lastRenderedTimeUs to NaN to force a full render of the loaded timeline', () => {
     const result = lifecycle.apply({
       previousClipById: new Map(),
       replacedClipIds: new Set(),
@@ -183,6 +183,8 @@ describe('TimelineApplyLifecycle', () => {
       destroyClip: vi.fn(),
     });
 
-    expect(result.lastRenderedTimeUs).toBe(0);
+    // NaN never equals the incoming timeUs, so the RenderingEngine early-exit is
+    // defeated and the previous timeline's stale frame cannot linger at timeUs 0.
+    expect(result.lastRenderedTimeUs).toBeNaN();
   });
 });
