@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
   resolveNativeMonitorCanvasSize,
+  resolvePlaybackMaxRenderDim,
   useMonitorMode,
   useNativeMonitorCanvas,
 } from '~/composables/monitor/useNativeMonitorMode';
@@ -70,6 +71,35 @@ describe('resolveNativeMonitorCanvasSize', () => {
         dpr: 2,
       }),
     ).toEqual({ width: 1, height: 1 });
+  });
+});
+
+describe('resolvePlaybackMaxRenderDim', () => {
+  it('falls back to the cheap Auto default when no preview resolution is pinned', () => {
+    expect(resolvePlaybackMaxRenderDim({ displayLongEdgePx: 3840, previewResolution: 0 })).toBe(
+      960,
+    );
+  });
+
+  it('respects the user-pinned preview resolution as a fraction of displayed pixels', () => {
+    // 1/1 → full displayed long edge (crisp playback, the whole point of the setting).
+    expect(resolvePlaybackMaxRenderDim({ displayLongEdgePx: 1600, previewResolution: 1 })).toBe(
+      1600,
+    );
+    // 1/2 → half.
+    expect(resolvePlaybackMaxRenderDim({ displayLongEdgePx: 1600, previewResolution: 0.5 })).toBe(
+      800,
+    );
+  });
+
+  it('never exceeds the ceiling (no point rendering beyond a sane maximum)', () => {
+    expect(resolvePlaybackMaxRenderDim({ displayLongEdgePx: 8000, previewResolution: 1 })).toBe(
+      3840,
+    );
+  });
+
+  it('never collapses below 1px for a pinned scale on a tiny panel', () => {
+    expect(resolvePlaybackMaxRenderDim({ displayLongEdgePx: 1, previewResolution: 0.125 })).toBe(1);
   });
 });
 

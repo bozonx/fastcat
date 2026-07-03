@@ -8,14 +8,17 @@ import {
   isNativeMonitorDisabled,
   markNativeMonitorInitFailure,
 } from '~/composables/monitor/native-monitor-availability';
+import { useProjectStore } from '~/stores/project.store';
 
 const log = createDevLogger('useNativeMonitorMode');
 
 export type MonitorMode = 'embedded' | 'canvas';
 
-// Максимальный размер render target'а в canvas-режиме во время воспроизведения/интерактива.
-// Дальше — CSS-stretch браузером. Это решающий фактор производительности: GPU→CPU readback
-// + IPC масштабируются как O(w*h). Кэп ~960px даёт ~2-3 МБ/кадр вместо 8+ МБ для FullHD.
+// Дефолтный потолок readback в canvas-режиме во время воспроизведения/интерактива в режиме
+// «Auto» (previewResolution = 0). Дальше — CSS-stretch браузером. Это решающий фактор
+// производительности: GPU→CPU readback + IPC масштабируются как O(w*h). ~960px даёт
+// ~2-3 МБ/кадр вместо 8+ МБ для FullHD. Когда пользователь явно выбрал разрешение превью
+// (previewResolution > 0), потолок берётся из него — см. resolvePlaybackMaxRenderDim.
 const MAX_RENDER_DIM = 960;
 
 // Кэп для «устоявшегося» стоп-кадра (пауза без активного скрабинга/правок): readback тут
@@ -34,6 +37,29 @@ export const stillFrameFullRes = ref(false);
  * используем canvas stream; отдельное native-окно открывается явной командой.
  */
 const mode = ref<MonitorMode>('canvas');
+
+/**
+ * Потолок длинной стороны readback-таргета для НЕ-устоявшегося кадра (воспроизведение или
+ * интерактивный скрабинг). Уважает явный выбор пользователя в меню «Разрешение превью»
+ * (`previewResolution` — доля отображаемых пикселей: 1 = полное, 0.5 = половина и т.д.),
+ * иначе (Auto = 0) держит дешёвый дефолт MAX_RENDER_DIM. Сверху всё равно ограничено
+ * реальными отображаемыми пикселями и MAX_STILL_RENDER_DIM — рендерить больше, чем видно
+ * на экране, смысла нет. Устоявшийся стоп-кадр этот путь минует (полное разрешение).
+ */
+export function resolvePlaybackMaxRenderDim(params: {
+  displayLongEdgePx: number;
+  previewResolution: number;
+  autoDefault?: number;
+  ceiling?: number;
+}): number {
+  const ceiling = params.ceiling ?? MAX_STILL_RENDER_DIM;
+  const scale = params.previewResolution;
+  if (scale > 0) {
+    const target = Math.round(params.displayLongEdgePx * scale);
+    return Math.max(1, Math.min(ceiling, target));
+  }
+  return Math.min(ceiling, params.autoDefault ?? MAX_RENDER_DIM);
+}
 
 export function resolveNativeMonitorCanvasSize(params: {
   layoutWidth: number;
@@ -75,6 +101,8 @@ export function useMonitorMode() {
 export function useNativeMonitorCanvas(canvasRef: Ref<HTMLCanvasElement | null>): void {
   if (!isTauriRuntime()) return;
 
+  const projectStore = useProjectStore();
+
   let unsubChannel: (() => void) | null = null;
   let disposed = false;
   // Кешируем 2D-контекст: getContext на каждый кадр стрима — лишняя работа.
@@ -104,11 +132,23 @@ export function useNativeMonitorCanvas(canvasRef: Ref<HTMLCanvasElement | null>)
     if (!el) return;
     const layoutWidth = el.offsetWidth || el.clientWidth || el.getBoundingClientRect().width;
     const layoutHeight = el.offsetHeight || el.clientHeight || el.getBoundingClientRect().height;
+    const dpr = window.devicePixelRatio || 1;
+    // Устоявшийся стоп-кадр → полное разрешение экрана; иначе (воспроизведение/скрабинг) —
+    // потолок из выбранного пользователем «Разрешения превью» (Auto → дешёвый дефолт).
+    const maxRenderDim = stillFrameFullRes.value
+      ? MAX_STILL_RENDER_DIM
+      : resolvePlaybackMaxRenderDim({
+          displayLongEdgePx: Math.max(
+            Math.round(layoutWidth * dpr),
+            Math.round(layoutHeight * dpr),
+          ),
+          previewResolution: projectStore.activeMonitor?.previewResolution ?? 0,
+        });
     const { width: w, height: h } = resolveNativeMonitorCanvasSize({
       layoutWidth,
       layoutHeight,
-      dpr: window.devicePixelRatio || 1,
-      maxRenderDim: stillFrameFullRes.value ? MAX_STILL_RENDER_DIM : MAX_RENDER_DIM,
+      dpr,
+      maxRenderDim,
     });
     if (el.width !== w || el.height !== h) {
       el.width = w;
@@ -211,9 +251,10 @@ export function useNativeMonitorCanvas(canvasRef: Ref<HTMLCanvasElement | null>)
     ro.observe(el);
   }
 
-  // Переход «устоявшаяся пауза ↔ интерактив» меняет кэп разрешения → пересобираем размер
-  // readback-таргета. На паузе SetCanvasSize на нативной стороне сам перерисует кадр.
-  watch(stillFrameFullRes, () => {
+  // Переход «устоявшаяся пауза ↔ интерактив» и смена выбранного «Разрешения превью» меняют
+  // потолок readback → пересобираем размер таргета. На паузе SetCanvasSize на нативной
+  // стороне сам перерисует кадр.
+  watch([stillFrameFullRes, () => projectStore.activeMonitor?.previewResolution], () => {
     if (mode.value === 'canvas') syncCanvasSize();
   });
 

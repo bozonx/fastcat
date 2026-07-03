@@ -58,7 +58,7 @@
       "height": 1080,
       "quality": "ultra",
       "passes": [
-        { "uniform": { "mode": 4, "width": 1920, "height": 1080, "seed": 0, "p0": 15, "p1": 2, "p2": 0, "p3": 0, "p4": 0, "p5": 0, "p6": 0, "p7": 48 }, "customSource": null, "src": "input", "secondary": "input", "dst": "owned" }
+        { "uniform": { "mode": 4, "width": 1920, "height": 1080, "seed": 0, "p0": 15, "p1": 2, "p2": 0, "p3": 0, "p4": 1, "p5": 1, "p6": 0, "p7": 48 }, "customSource": null, "src": "input", "secondary": "input", "dst": "owned" }
       ]
     },
     {

@@ -225,6 +225,17 @@ export const usePresetsStore = defineStore('presets', () => {
     await repo.saveCustomPreset(preset);
   }
 
+  async function renamePreset(id: string, name: string) {
+    const preset = customPresets.value.find((p) => p.id === id);
+    if (!preset || !name.trim()) return;
+
+    preset.name = name.trim();
+    registerPresetManifest(preset);
+
+    const repo = getPresetRepo();
+    await repo.saveCustomPreset(preset);
+  }
+
   async function updatePresetsOrder(
     category: 'effect' | 'transition' | 'shape' | 'hud' | 'text',
     newOrderIds: string[],
@@ -298,6 +309,7 @@ export const usePresetsStore = defineStore('presets', () => {
     load,
     saveAsPreset,
     updatePreset,
+    renamePreset,
     updatePresetsOrder,
     removePreset,
     saveExportPreset,

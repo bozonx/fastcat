@@ -7,6 +7,7 @@ import { useWorkspaceStore } from '~/stores/workspace.store';
 import type { ShapeType, HudType } from '~/timeline/types';
 import { getCustomPresetsByCategory } from '~/utils/presets';
 import CollapsibleEffectGroup from '~/components/effects/CollapsibleEffectGroup.vue';
+import PresetSaveModal from '~/components/properties/PresetSaveModal.vue';
 import { armPointerDnd } from '~/composables/dnd/usePointerDnd';
 import { useDraggedFile } from '~/composables/useDraggedFile';
 
@@ -21,6 +22,24 @@ const selectionStore = useSelectionStore();
 const presetsStore = usePresetsStore();
 const workspaceStore = useWorkspaceStore();
 const isHudFeatureEnabled = computed(() => workspaceStore.isFeatureEnabled('hud'));
+
+const isRenameModalOpen = ref(false);
+const renamingPresetId = ref<string | null>(null);
+const renamingPresetName = ref('');
+
+function openRenameModal(preset: { id: string; name: string }) {
+  renamingPresetId.value = preset.id;
+  renamingPresetName.value = preset.name;
+  isRenameModalOpen.value = true;
+}
+
+function confirmRenamePreset() {
+  if (renamingPresetId.value && renamingPresetName.value.trim()) {
+    presetsStore.renamePreset(renamingPresetId.value, renamingPresetName.value.trim());
+  }
+  isRenameModalOpen.value = false;
+  renamingPresetId.value = null;
+}
 
 const uiStore = useUiStore();
 const activeTab = computed({
@@ -291,6 +310,14 @@ function isSelected(kind: 'text' | 'shape' | 'hud', id: string) {
                       @click.stop="void (presetsStore.defaultTextPresetId = text.id)"
                     />
                     <UButton
+                      icon="i-heroicons-pencil-square"
+                      color="neutral"
+                      variant="ghost"
+                      size="xs"
+                      :title="t('common.rename')"
+                      @click.stop="openRenameModal(text)"
+                    />
+                    <UButton
                       icon="i-heroicons-trash"
                       color="red"
                       variant="ghost"
@@ -382,14 +409,25 @@ function isSelected(kind: 'text' | 'shape' | 'hud', id: string) {
                 />
                 <div class="flex-1 min-w-0 flex items-center justify-between">
                   <h4 class="text-sm font-medium text-ui-text truncate">{{ shape.name }}</h4>
-                  <UButton
-                    icon="i-heroicons-trash"
-                    color="red"
-                    variant="ghost"
-                    size="xs"
-                    class="opacity-0 group-hover:opacity-100"
-                    @click.stop="presetsStore.removePreset(shape.id)"
-                  />
+                  <div
+                    class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                  >
+                    <UButton
+                      icon="i-heroicons-pencil-square"
+                      color="neutral"
+                      variant="ghost"
+                      size="xs"
+                      :title="t('common.rename')"
+                      @click.stop="openRenameModal(shape)"
+                    />
+                    <UButton
+                      icon="i-heroicons-trash"
+                      color="red"
+                      variant="ghost"
+                      size="xs"
+                      @click.stop="presetsStore.removePreset(shape.id)"
+                    />
+                  </div>
                 </div>
               </div>
             </div>
@@ -473,14 +511,25 @@ function isSelected(kind: 'text' | 'shape' | 'hud', id: string) {
                 />
                 <div class="flex-1 min-w-0 flex items-center justify-between">
                   <h4 class="text-sm font-medium text-ui-text truncate">{{ hud.name }}</h4>
-                  <UButton
-                    icon="i-heroicons-trash"
-                    color="red"
-                    variant="ghost"
-                    size="xs"
-                    class="opacity-0 group-hover:opacity-100"
-                    @click.stop="presetsStore.removePreset(hud.id)"
-                  />
+                  <div
+                    class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                  >
+                    <UButton
+                      icon="i-heroicons-pencil-square"
+                      color="neutral"
+                      variant="ghost"
+                      size="xs"
+                      :title="t('common.rename')"
+                      @click.stop="openRenameModal(hud)"
+                    />
+                    <UButton
+                      icon="i-heroicons-trash"
+                      color="red"
+                      variant="ghost"
+                      size="xs"
+                      @click.stop="presetsStore.removePreset(hud.id)"
+                    />
+                  </div>
                 </div>
               </div>
             </div>
@@ -492,5 +541,11 @@ function isSelected(kind: 'text' | 'shape' | 'hud', id: string) {
         </CollapsibleEffectGroup>
       </div>
     </div>
+
+    <PresetSaveModal
+      v-model:open="isRenameModalOpen"
+      v-model:name="renamingPresetName"
+      @save="confirmRenamePreset"
+    />
   </div>
 </template>

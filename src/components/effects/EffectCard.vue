@@ -54,7 +54,7 @@ function onPointerDown(e: PointerEvent) {
         />
       </div>
       <p
-        v-if="manifest.descriptionKey || manifest.description"
+        v-if="manifest.target === 'audio' && (manifest.descriptionKey || manifest.description)"
         class="text-xs text-ui-text-muted mt-1 line-clamp-2"
         :title="manifest.descriptionKey ? t(manifest.descriptionKey) : manifest.description"
       >

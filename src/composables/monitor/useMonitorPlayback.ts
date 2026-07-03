@@ -210,6 +210,13 @@ export interface UseMonitorPlaybackOptions {
   clampToTimeline: (timeUs: number) => number;
   updateStoreTime: (timeUs: number) => void;
   scheduleRender: (timeUs: number, options?: MonitorRenderScheduleOptions) => void;
+  /**
+   * Opens the preview-quality settle window (see `useMonitorCore.ts`): marks the paused
+   * frame as interactive so it renders at the user-selected quality instead of jumping
+   * straight to `ultra`, then upgrades to `ultra` once idle settles. Optional so callers
+   * without this concept (tests, alternate hosts) don't have to stub it.
+   */
+  beginInteractiveWindow?: () => boolean;
   audioEngine: IAudioEngine;
   isMobile: { value: boolean };
 }
@@ -226,6 +233,7 @@ export function useMonitorPlayback(options: UseMonitorPlaybackOptions) {
     clampToTimeline,
     updateStoreTime,
     scheduleRender,
+    beginInteractiveWindow,
     audioEngine,
     isMobile,
   } = options;
@@ -465,6 +473,10 @@ export function useMonitorPlayback(options: UseMonitorPlaybackOptions) {
             }
           });
       } else {
+        // Stopping playback is an interactive moment: show the frame at the user-selected
+        // quality first, upgrade to ultra once the settle window elapses (see
+        // useMonitorCore.ts's beginInteractiveWindow).
+        beginInteractiveWindow?.();
         audioEngine.stopScrubPreview();
         audioEngine.stop();
         cancelAnimationFrame(playbackLoopId);
@@ -526,6 +538,9 @@ export function useMonitorPlayback(options: UseMonitorPlaybackOptions) {
           audioEngine.stopScrubPreview();
         }
 
+        // Scrubbing is interactive: render at the user-selected quality now, upgrade to
+        // ultra once the settle window elapses (see useMonitorCore.ts's beginInteractiveWindow).
+        beginInteractiveWindow?.();
         scheduleRender(normalizedTimeUs);
         schedulePausedPrewarm(normalizedTimeUs);
       } else if (isNativeMonitor) {

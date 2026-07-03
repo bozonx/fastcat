@@ -90,6 +90,7 @@ export function useMonitorRuntime() {
     audioEngine,
     useProxyInMonitor,
     setCurrentTimeProvider,
+    beginInteractiveWindow,
   } = useMonitorCore({
     projectStore,
     timelineStore,
@@ -143,6 +144,7 @@ export function useMonitorRuntime() {
     clampToTimeline,
     updateStoreTime,
     scheduleRender,
+    beginInteractiveWindow,
     audioEngine,
     isMobile,
   });

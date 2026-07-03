@@ -1,6 +1,6 @@
 import { createDevLogger } from '~/utils/dev-logger';
 import { useResizeObserver } from '@vueuse/core';
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useProjectStore } from '~/stores/project.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { isTauriRuntime } from '~/utils/runtime';
@@ -73,6 +73,12 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
 
   const BUILD_DEBOUNCE_MS = 120;
   const LAYOUT_DEBOUNCE_MS = 50;
+  // Mirrors the native monitor's idle-settle window (useNativeMonitorBridge.ts): after any
+  // interactive edit while paused (scrub, effect/transform param drag, stopping playback) the
+  // frame first renders at the user-selected motion quality, then upgrades to `ultra` once
+  // ULTRA_SETTLE_DELAY_MS passes without another interaction — so a fast scrub/edit series
+  // doesn't trigger a full-quality render on every intermediate step.
+  const ULTRA_SETTLE_DELAY_MS = 500;
 
   let buildRequestId = 0;
   let lastBuiltSourceSignature = 0;
@@ -86,6 +92,31 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
   const audioHandleCache = new Map<string, FileSystemFileHandle>();
   let resizeScheduled = false;
   let workerTimelineOperation: Promise<void> = Promise.resolve();
+  let idleSettled = true;
+  let ultraSettleTimer: ReturnType<typeof setTimeout> | null = null;
+
+  function cancelUltraSettle() {
+    if (ultraSettleTimer !== null) {
+      clearTimeout(ultraSettleTimer);
+      ultraSettleTimer = null;
+    }
+  }
+
+  // Opens the interactive window: subsequent renders use the user-selected quality until
+  // ULTRA_SETTLE_DELAY_MS passes without another call, at which point the frame is
+  // re-rendered once at `ultra`. Returns true if the flag just flipped settled -> interactive
+  // (i.e. the caller should kick a render right away at the lower quality).
+  function beginInteractiveWindow(): boolean {
+    const wasSettled = idleSettled;
+    idleSettled = false;
+    cancelUltraSettle();
+    ultraSettleTimer = setTimeout(() => {
+      ultraSettleTimer = null;
+      idleSettled = true;
+      scheduleRender(getRenderTimeForLayoutUpdate());
+    }, ULTRA_SETTLE_DELAY_MS);
+    return wasSettled;
+  }
 
   const audioEngine = createAudioEngine({
     getVfs: () => useVfs(),
@@ -155,6 +186,7 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
       previewEffectQuality: resolvePreviewEffectQuality({
         setting: projectStore.activeMonitor?.previewBlurQuality ?? 'auto',
         isPlaying: timelineStore.isPlaying,
+        idleSettled,
         isMobile: options.isMobile?.value,
         // Feed the *full* scene size, never the already-scaled render size: the tier is the
         // single dial that derives both the effect budget and (in auto mode) the render scale,
@@ -232,6 +264,9 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
       lastActiveLayoutSignature = currentActiveLayoutSignature;
 
       if (shouldScheduleRender) {
+        // A layout change while paused is a clip/effect/transform param edit — interactive,
+        // so render at the user-selected quality first and let the settle timer upgrade it.
+        if (!timelineStore.isPlaying) beginInteractiveWindow();
         scheduleRender(getRenderTimeForLayoutUpdate());
       }
     } catch (error) {
@@ -460,6 +495,15 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
     }
   }
 
+  // Resuming playback makes the pending settle-timer moot (motion already renders at the
+  // user-selected quality) — cancel it so it doesn't fire a stray render mid-playback.
+  watch(
+    () => timelineStore.isPlaying,
+    (playing) => {
+      if (playing) cancelUltraSettle();
+    },
+  );
+
   registerMonitorCoreWatchers({
     clipSourceSignature,
     audioClipSourceSignature,
@@ -533,6 +577,7 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
   });
 
   onBeforeUnmount(async () => {
+    cancelUltraSettle();
     await disposeMonitorCoreRuntime({
       setUnmounted: (value) => {
         isUnmounted = value;
@@ -551,6 +596,7 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
 
   return {
     audioEngine,
+    beginInteractiveWindow,
     clampToTimeline,
     isLoading,
     loadError,

@@ -294,6 +294,21 @@ vi.mock('nuxt/app', () => ({
   })),
 }));
 
+// Auto-imports from Nuxt resolve to '#app/nuxt', not 'nuxt/app'.
+// Without this mock, useRuntimeConfig() reaches the real Nuxt module
+// and throws "[nuxt] instance unavailable" in tests without a Nuxt instance.
+vi.mock('#app/nuxt', () => ({
+  useNuxtApp: createNuxtMock,
+  tryUseNuxtApp: createNuxtMock,
+  defineNuxtPlugin: vi.fn((plugin) => plugin),
+  definePayloadPlugin: vi.fn(),
+  useRuntimeConfig: vi.fn(() => ({
+    public: {},
+    app: { baseURL: '/' },
+  })),
+  defineAppConfig: vi.fn(),
+}));
+
 vi.mock('@nuxtjs/device', () => ({
   useDevice: vi.fn(() => ({
     isMobile: false,

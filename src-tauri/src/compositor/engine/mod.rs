@@ -105,6 +105,7 @@ impl Compositor {
         surface: &mut RenderSurface<'static>,
         scene: &VelloScene,
         base_color: Color,
+        aa: AaConfig,
     ) -> Result<()> {
         let width = surface.config.width;
         let height = surface.config.height;
@@ -141,7 +142,7 @@ impl Compositor {
                     base_color,
                     width,
                     height,
-                    antialiasing_method: AaConfig::Area,
+                    antialiasing_method: aa,
                 },
             )
             .map_err(|e| anyhow!("vello render: {e:?}"))?;
@@ -181,8 +182,9 @@ impl Compositor {
         let mut images = std::mem::take(&mut self.scratch_images);
         let (vello, prepare_timing) =
             self.prepare_vello_scene(dev_id, scene, viewport_w, viewport_h, &mut images)?;
+        let aa = self.aa_config_for(dev_id, scene.effect_quality);
         let render_started = Instant::now();
-        let result = self.render_to_surface(surface, &vello, scene.background);
+        let result = self.render_to_surface(surface, &vello, scene.background, aa);
         let render_ms = elapsed_ms(render_started);
         self.unregister_images(dev_id, &mut images);
         self.scratch_images = images;
@@ -210,9 +212,10 @@ impl Compositor {
         let mut images = std::mem::take(&mut self.scratch_images);
         let (vello, prepare_timing) =
             self.prepare_vello_scene(dev_id, scene, viewport_w, viewport_h, &mut images)?;
+        let aa = self.aa_config_for(dev_id, scene.effect_quality);
         let render_started = Instant::now();
         let result =
-            self.render_to_pixels(dev_id, &vello, viewport_w, viewport_h, scene.background);
+            self.render_to_pixels(dev_id, &vello, viewport_w, viewport_h, scene.background, aa);
         let render_ms = elapsed_ms(render_started);
         self.unregister_images(dev_id, &mut images);
         self.scratch_images = images;
@@ -908,7 +911,8 @@ impl Compositor {
             effect_quality: scene.effect_quality,
         };
         let vello = isolated.to_vello(width, height, |_| None);
-        self.render_to_owned_texture(dev_id, &vello, width, height, Color::TRANSPARENT)
+        let aa = self.aa_config_for(dev_id, scene.effect_quality);
+        self.render_to_owned_texture(dev_id, &vello, width, height, Color::TRANSPARENT, aa)
     }
 
     /// Supersampling factor for rasterizing a vector layer for effects:
@@ -1069,6 +1073,7 @@ impl Compositor {
         width: u32,
         height: u32,
         base_color: Color,
+        aa: AaConfig,
     ) -> Result<Vec<u8>> {
         let device_handle = &self.devices.render_cx.devices[dev_id];
         let device = &device_handle.device;
@@ -1116,7 +1121,7 @@ impl Compositor {
                     base_color,
                     width,
                     height,
-                    antialiasing_method: AaConfig::Area,
+                    antialiasing_method: aa,
                 },
             )
             .map_err(|e| anyhow!("vello render: {e:?}"))?;
@@ -1176,6 +1181,7 @@ impl Compositor {
         width: u32,
         height: u32,
         base_color: Color,
+        aa: AaConfig,
     ) -> Result<wgpu::Texture> {
         let device_handle = &self.devices.render_cx.devices[dev_id];
         let device = &device_handle.device;
@@ -1205,7 +1211,7 @@ impl Compositor {
                     base_color,
                     width,
                     height,
-                    antialiasing_method: AaConfig::Area,
+                    antialiasing_method: aa,
                 },
             )
             .map_err(|e| anyhow!("vello render: {e:?}"))?;
@@ -1228,7 +1234,8 @@ impl Compositor {
             height,
             &mut registered_images,
         )?;
-        let result = self.render_to_owned_texture(dev_id, &vello, width, height, base_color);
+        let aa = self.aa_config_for(dev_id, scene.effect_quality);
+        let result = self.render_to_owned_texture(dev_id, &vello, width, height, base_color, aa);
         self.unregister_images(dev_id, &mut registered_images);
         result
     }
@@ -1258,19 +1265,65 @@ impl Compositor {
             })
             .clone();
 
-        let renderer = Renderer::new(
-            &device_handle.device,
-            RendererOptions {
-                use_cpu: false,
-                antialiasing_support: AaSupport::area_only(),
-                num_init_threads: NonZeroUsize::new(1),
-                pipeline_cache: Some(pipeline_cache),
-            },
-        )
-        .map_err(|e| anyhow!("vello renderer: {e:?}"))
-        .context("Compositor::ensure_renderer")?;
+        // Prefer the full AA set (Area + MSAA8 + MSAA16) so we can pick crisp MSAA for
+        // still frames / export and cheap Area for realtime playback (see aa_config_for).
+        // Compiling MSAA pipelines is heavier and unsupported on some drivers, so fall back
+        // to Area-only on failure and remember that this device can't do MSAA.
+        let device = &device_handle.device;
+        let make_renderer = |support: AaSupport| {
+            Renderer::new(
+                device,
+                RendererOptions {
+                    use_cpu: false,
+                    antialiasing_support: support,
+                    num_init_threads: NonZeroUsize::new(1),
+                    pipeline_cache: Some(pipeline_cache.clone()),
+                },
+            )
+        };
+        let (renderer, msaa_supported) = match make_renderer(AaSupport::all()) {
+            Ok(renderer) => (renderer, true),
+            Err(e) => {
+                log::warn!(
+                    "[compositor] MSAA renderer unavailable on device {dev_id} ({e:?}); \
+                     falling back to Area-only antialiasing"
+                );
+                let renderer = make_renderer(AaSupport::area_only())
+                    .map_err(|e| anyhow!("vello renderer: {e:?}"))
+                    .context("Compositor::ensure_renderer")?;
+                (renderer, false)
+            }
+        };
         self.devices.renderers.insert(dev_id, renderer);
+        self.devices.msaa_supported.insert(dev_id, msaa_supported);
         Ok(())
+    }
+
+    /// Antialiasing mode for a render pass on `dev_id`: crisp MSAA where quality matters
+    /// (Ultra = export & settled still frames → MSAA16; High → MSAA8) and cheap analytic
+    /// Area AA for realtime playback (Low/Medium). Never drops below Area — un-antialiased
+    /// vector edges look broken and Area is essentially free. Falls back to Area when the
+    /// device has no MSAA pipelines.
+    fn aa_config_for(
+        &self,
+        dev_id: usize,
+        quality: crate::compositor::effects::EffectQuality,
+    ) -> AaConfig {
+        use crate::compositor::effects::EffectQuality;
+        let msaa = self
+            .devices
+            .msaa_supported
+            .get(&dev_id)
+            .copied()
+            .unwrap_or(false);
+        if !msaa {
+            return AaConfig::Area;
+        }
+        match quality {
+            EffectQuality::Ultra => AaConfig::Msaa16,
+            EffectQuality::High => AaConfig::Msaa8,
+            EffectQuality::Low | EffectQuality::Medium => AaConfig::Area,
+        }
     }
 }
 
@@ -1337,6 +1390,7 @@ impl Compositor {
         session: &mut PipelinedReadback,
         scene: &VelloScene,
         base_color: Color,
+        aa: AaConfig,
     ) -> Result<Option<Vec<u8>>> {
         let slot_idx = session.next_slot % session.slots.len();
         session.next_slot += 1;
@@ -1366,7 +1420,7 @@ impl Compositor {
                     base_color,
                     width: session.width,
                     height: session.height,
-                    antialiasing_method: AaConfig::Area,
+                    antialiasing_method: aa,
                 },
             )
             .map_err(|e| anyhow!("vello render: {e:?}"))?;
@@ -1435,8 +1489,9 @@ impl Compositor {
             session.height,
             &mut registered_images,
         )?;
+        let aa = self.aa_config_for(dev_id, scene.effect_quality);
         let render_started = Instant::now();
-        let result = self.render_to_pixels_pipelined(session, &vello, scene.background);
+        let result = self.render_to_pixels_pipelined(session, &vello, scene.background, aa);
         let render_ms = elapsed_ms(render_started);
         self.unregister_images(dev_id, &mut registered_images);
         self.render_telemetry.record(

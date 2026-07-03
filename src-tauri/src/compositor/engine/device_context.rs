@@ -9,6 +9,10 @@ pub(super) struct DeviceContext {
     pub(super) renderers: HashMap<usize, Renderer>,
     pub(super) offscreen: HashMap<usize, OffscreenTarget>,
     pub(super) pipeline_caches: HashMap<usize, wgpu::PipelineCache>,
+    /// Whether the renderer for a device was created with MSAA pipelines. When the
+    /// GPU/driver rejects the full AA support set we fall back to Area-only and record
+    /// `false` here so the per-frame AA selection never asks for an unsupported mode.
+    pub(super) msaa_supported: HashMap<usize, bool>,
 }
 
 impl DeviceContext {
@@ -18,6 +22,7 @@ impl DeviceContext {
             renderers: HashMap::new(),
             offscreen: HashMap::new(),
             pipeline_caches: HashMap::new(),
+            msaa_supported: HashMap::new(),
         }
     }
 }

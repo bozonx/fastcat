@@ -47,12 +47,14 @@ pub(super) fn prepare_vello_scene(
     let vello = if effective_scene.master_effects.is_empty() {
         vello
     } else {
+        let aa = compositor.aa_config_for(dev_id, effective_scene.effect_quality);
         let texture = compositor.render_to_owned_texture(
             dev_id,
             &vello,
             viewport_w,
             viewport_h,
             effective_scene.background,
+            aa,
         )?;
         let (processed, _) = compositor.apply_effects_to_texture(
             dev_id,
