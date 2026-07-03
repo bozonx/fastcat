@@ -19,6 +19,9 @@ const props = defineProps<{
   trackHeight: number;
   scrollLeft?: number;
   viewportWidth?: number;
+  /** Vertical insets (px) so fades/handles stay within the content band, below the header. */
+  topInsetPx?: number;
+  bottomInsetPx?: number;
 }>();
 
 const emit = defineEmits<{
@@ -190,8 +193,12 @@ const volumeIndicatorPosition = computed(() => {
 <template>
   <div
     v-if="!shouldCollapseFades()"
-    class="absolute inset-0 pointer-events-none"
-    style="z-index: calc(var(--z-clip-trim) + 10)"
+    class="absolute left-0 right-0 pointer-events-none"
+    :style="{
+      zIndex: 'calc(var(--z-clip-trim) + 10)',
+      top: `${topInsetPx ?? 0}px`,
+      bottom: `${bottomInsetPx ?? 0}px`,
+    }"
   >
     <!-- Fade Paths -->
     <div class="absolute inset-0 rounded overflow-hidden">

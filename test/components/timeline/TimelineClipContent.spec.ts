@@ -47,6 +47,7 @@ const defaultProps = {
   clipItem: defaultClipItem,
   effectiveClipItem: defaultClipItem,
   effectiveTimelineStartUs: 0,
+  isHeaderOnly: false,
   clipWidthPx: 200,
   zoom: 1,
   scrollLeft: 0,
@@ -87,6 +88,19 @@ describe('TimelineClipContent', () => {
 
     // Toggle off
     await keyframesBtn.trigger('click');
+    expect(wrapper.text()).not.toContain('keyframesLane');
+  });
+
+  it('collapses to header-only: hides content band, keyframes button and lane', async () => {
+    const wrapper = await mountSuspended(TimelineClipContent, {
+      props: { ...defaultProps, isHeaderOnly: true, keyframesExpanded: true } as any,
+    });
+
+    // Header + name still present
+    expect(wrapper.find('span.truncate').text()).toBe('Sample Clip Video.mp4');
+    // No content band (thumbnails) and no keyframes toggle/lane in header-only mode
+    expect(wrapper.find('.clip-thumbnails').exists()).toBe(false);
+    expect(wrapper.find('button[title]').exists()).toBe(false);
     expect(wrapper.text()).not.toContain('keyframesLane');
   });
 });

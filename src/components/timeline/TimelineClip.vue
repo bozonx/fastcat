@@ -104,6 +104,38 @@ interface TrimOverlayView {
 
 const props = defineProps<Props>();
 
+// --- Clip vertical layout bands ---------------------------------------------
+// The header sits at the top; the keyframes lane (placeholder) sits at the
+// bottom when expanded. Trim handles and audio fades are constrained to the
+// content band between them so they never sit under the header controls
+// (e.g. the keyframes toggle) or the keyframes lane.
+const CLIP_HEADER_HEIGHT_PX = 20; // h-5
+const CLIP_KEYFRAMES_HEIGHT_PX = 20; // h-5
+const CLIP_MIN_CONTENT_BAND_PX = 16; // below this we collapse to header-only
+
+// Persisted per instance only; virtualization remount resets it (placeholder feature).
+const isKeyframesExpanded = ref(false);
+
+// Too short to fit the header AND a usable content band: show only the header.
+const isClipHeaderOnly = computed(
+  () => props.trackHeight < CLIP_HEADER_HEIGHT_PX + CLIP_MIN_CONTENT_BAND_PX,
+);
+
+const isKeyframesLaneVisible = computed(
+  () => isKeyframesExpanded.value && !isClipHeaderOnly.value,
+);
+
+// Vertical inset (px) for trim handles + fades. In header-only mode the header
+// fills the clip, so we don't inset (handles cover the full box) and rely on the
+// keyframes button being hidden + its z-index to avoid conflicts.
+const clipContentInset = computed(() => {
+  if (isClipHeaderOnly.value) return { top: 0, bottom: 0 };
+  return {
+    top: CLIP_HEADER_HEIGHT_PX,
+    bottom: isKeyframesLaneVisible.value ? CLIP_KEYFRAMES_HEIGHT_PX : 0,
+  };
+});
+
 const emit = defineEmits<{
   (e: 'selectItem', event: PointerEvent, itemId: string): void;
   (e: 'startMoveItem', event: PointerEvent, payload: TimelineMoveItemPayload): void;
@@ -871,6 +903,8 @@ function handleTransitionCreate(
           :is-selected="isSelected"
           :scroll-left="scrollLeft"
           :viewport-width="viewportWidth"
+          :top-inset-px="clipContentInset.top"
+          :bottom-inset-px="clipContentInset.bottom"
           @start-resize-fade="
             (e, payload) =>
               emit('startResizeFade', e, {
@@ -906,8 +940,10 @@ function handleTransitionCreate(
           :media-metadata="timelineContext.mediaMetadata.value"
           :slip-overlay="slipOverlay"
           :trim-overlay="trimOverlay"
+          :is-header-only="isClipHeaderOnly"
           :transition-in-overlay-guide-style="transitionInOverlayGuideStyle"
           :transition-out-overlay-guide-style="transitionOutOverlayGuideStyle"
+          v-model:keyframes-expanded="isKeyframesExpanded"
         />
 
         <!-- Trim Handles -->
@@ -915,6 +951,8 @@ function handleTransitionCreate(
           v-if="clipItem && canEditClipContent && !clipItem.locked && !track.locked && !isMobile"
           :is-transition-create-handle-active="isTransitionCreateHandleActive"
           :clip-width-px="clipWidthPx"
+          :top-inset-px="clipContentInset.top"
+          :bottom-inset-px="clipContentInset.bottom"
           @trim-start="onTrimHandlePointerDown($event, 'start')"
           @trim-end="onTrimHandlePointerDown($event, 'end')"
         />

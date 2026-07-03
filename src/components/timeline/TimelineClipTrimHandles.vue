@@ -4,6 +4,9 @@ import { computed } from 'vue';
 const props = defineProps<{
   isTransitionCreateHandleActive: boolean;
   clipWidthPx: number;
+  /** Vertical insets (px) so handles cover only the content band, not the header/keyframes lane. */
+  topInsetPx?: number;
+  bottomInsetPx?: number;
 }>();
 
 const emit = defineEmits<{
@@ -21,8 +24,13 @@ const handleWidth = computed(() => {
 <template>
   <div
     data-testid="clip-trim-start"
-    class="absolute left-0 top-0 bottom-0 cursor-ew-resize bg-white/0 transition-colors group/trim flex items-center justify-start pl-0.5 touch-none"
-    :style="{ zIndex: 'var(--z-clip-trim)', width: `${handleWidth}px` }"
+    class="absolute left-0 cursor-ew-resize bg-white/0 transition-colors group/trim flex items-center justify-start pl-0.5 touch-none"
+    :style="{
+      zIndex: 'var(--z-clip-trim)',
+      width: `${handleWidth}px`,
+      top: `${topInsetPx ?? 0}px`,
+      bottom: `${bottomInsetPx ?? 0}px`,
+    }"
     :class="isTransitionCreateHandleActive ? '' : 'hover:bg-white/15'"
     @pointerdown="(event) => emit('trimStart', event)"
   >
@@ -32,8 +40,13 @@ const handleWidth = computed(() => {
   </div>
   <div
     data-testid="clip-trim-end"
-    class="absolute right-0 top-0 bottom-0 cursor-ew-resize bg-white/0 transition-colors group/trim flex items-center justify-end pr-0.5 touch-none"
-    :style="{ zIndex: 'var(--z-clip-trim)', width: `${handleWidth}px` }"
+    class="absolute right-0 cursor-ew-resize bg-white/0 transition-colors group/trim flex items-center justify-end pr-0.5 touch-none"
+    :style="{
+      zIndex: 'var(--z-clip-trim)',
+      width: `${handleWidth}px`,
+      top: `${topInsetPx ?? 0}px`,
+      bottom: `${bottomInsetPx ?? 0}px`,
+    }"
     :class="isTransitionCreateHandleActive ? '' : 'hover:bg-white/15'"
     @pointerdown="(event) => emit('trimEnd', event)"
   >
