@@ -329,8 +329,26 @@ export class LayoutApplier {
     sprite.y = input.baseY + input.anchorOffsetY + input.stagePosY + flipOffsetY;
 
     if (input.isSnapActive) {
-      sprite.x = Math.round(sprite.x);
-      sprite.y = Math.round(sprite.y);
+      // Snap the sprite's LOCAL ORIGIN (its on-screen top-left) to the pixel grid,
+      // NOT its anchor position. Pixi pins the anchor point (`anchorX * displayW`
+      // into the sprite) to `sprite.x`, so the on-screen top-left is
+      // `sprite.x - anchorX * displayW`. With a centered anchor (0.5) and an ODD
+      // display width, rounding `sprite.x` directly would leave that top-left on a
+      // half pixel — and the text canvas bitmap (whose border + glyphs are already
+      // rasterized crisply at integer LOCAL coords in TextRenderer, with the 0.5px
+      // stroke centerline) then gets RESAMPLED into soft edges. Rounding the origin
+      // and re-deriving `sprite.x` keeps the bitmap 1:1 on the device grid.
+      //
+      // This is the web mirror of the native compositor's `finalize_layer` origin
+      // rounding (src-tauri/src/monitor/scene/build/layer_builder.rs). Do NOT change
+      // this back to `Math.round(sprite.x)` — that reintroduces the odd-width blur.
+      // Exact only when the Pixi backing resolution equals the project resolution
+      // (export + a 1/1 monitor); a scaled/CSS-stretched preview cannot align to
+      // physical pixels regardless of this rounding.
+      const originX = sprite.x - anchorX * targetDisplayW;
+      const originY = sprite.y - anchorY * targetDisplayH;
+      sprite.x += Math.round(originX) - originX;
+      sprite.y += Math.round(originY) - originY;
     }
 
     const crop =

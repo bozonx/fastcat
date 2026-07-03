@@ -11,12 +11,36 @@ function createMockSprite() {
     y: 0,
     rotation: 0,
     scale: { x: 1, y: 1 },
-    anchor: { set: () => {} },
+    // Capture the applied anchor so tests can reconstruct the on-screen origin
+    // (top-left) = sprite.x - anchor.x * displayWidth, which is the quantity
+    // pixel-grid snapping must land on an integer (not sprite.x itself).
+    anchor: {
+      x: 0,
+      y: 0,
+      set(x: number, y: number) {
+        this.x = x;
+        this.y = y;
+      },
+    },
     alpha: 1,
     parent: null,
     mask: null,
     texture: { source: {} },
   } as any;
+}
+
+/**
+ * On-screen top-left ("origin") of a laid-out sprite. In the non-texture mock path
+ * `sprite.width`/`sprite.height` hold the display size and `sprite.scale` is 1 for
+ * snap-safe transforms, so the origin is `sprite.pos - anchor * displaySize`. This
+ * is what must be integer-aligned for the (already crisp) text canvas bitmap to
+ * render 1:1 without resampling.
+ */
+function spriteOrigin(sprite: any): { x: number; y: number } {
+  return {
+    x: sprite.x - sprite.anchor.x * sprite.width,
+    y: sprite.y - sprite.anchor.y * sprite.height,
+  };
 }
 
 describe('LayoutApplier', () => {
@@ -431,7 +455,12 @@ describe('LayoutApplier', () => {
     expect(sprite.scale.y).toBeCloseTo(1620 / 1080);
   });
 
-  it('rounds final sprite position for a repositioned snapped text clip', () => {
+  // The snapping contract locks the on-screen ORIGIN (top-left) to whole pixels,
+  // NOT sprite.x (the anchor position). With a centered anchor and an odd display
+  // width, sprite.x is deliberately a half-integer while the origin is an integer —
+  // that is exactly what keeps the text canvas bitmap from being resampled. Assert
+  // on `spriteOrigin`, never on `sprite.x` directly, or these lock the wrong thing.
+  it('lands the on-screen origin on the pixel grid for a repositioned snapped text clip', () => {
     const sprite = createMockSprite();
     const mockCtx = {
       font: '',
@@ -462,11 +491,12 @@ describe('LayoutApplier', () => {
 
     applier.applyTextLayout(clip as any);
 
-    expect(Number.isInteger(sprite.x)).toBe(true);
-    expect(Number.isInteger(sprite.y)).toBe(true);
+    const origin = spriteOrigin(sprite);
+    expect(Number.isInteger(origin.x)).toBe(true);
+    expect(Number.isInteger(origin.y)).toBe(true);
   });
 
-  it('rounds final sprite position for a repositioned snapped shape clip', () => {
+  it('lands the on-screen origin on the pixel grid for a repositioned snapped shape clip', () => {
     const sprite = createMockSprite();
     const clip = {
       itemId: 'clip-shape-snap-position',
@@ -484,11 +514,59 @@ describe('LayoutApplier', () => {
 
     applier.applyShapeLayout(clip as any);
 
-    expect(Number.isInteger(sprite.x)).toBe(true);
-    expect(Number.isInteger(sprite.y)).toBe(true);
+    const origin = spriteOrigin(sprite);
+    expect(Number.isInteger(origin.x)).toBe(true);
+    expect(Number.isInteger(origin.y)).toBe(true);
   });
 
-  it('leaves sprite position fractional when snapToPixelGrid is false', () => {
+  it('rounds the ORIGIN not sprite.x: an odd-width centered text clip keeps a half-integer sprite.x but an integer origin', () => {
+    // The regression this whole feature exists to prevent. With an odd display
+    // width and a centered (0.5) anchor, the OLD code (`Math.round(sprite.x)`)
+    // produced an integer sprite.x but a HALF-INTEGER origin → the crisp text
+    // bitmap got resampled = soft edges. The fix rounds the origin instead, which
+    // forces sprite.x to a half-integer while the origin lands on a whole pixel.
+    const sprite = createMockSprite();
+    const mockCtx = {
+      font: '',
+      measureText: (text: string) => ({ width: text.length * 10 }),
+    };
+
+    const clip = {
+      itemId: 'clip-text-odd-width',
+      layer: 1,
+      startUs: 0,
+      endUs: 1_000_000,
+      durationUs: 1_000_000,
+      sprite,
+      clipKind: 'text' as const,
+      clipType: 'text' as const,
+      text: 'Odd',
+      ctx: mockCtx as any,
+      snapToPixelGrid: true,
+      transform: { position: { x: 4.3, y: -2.1 } },
+      // Explicit odd width (design space, renderScale = 1 at 1920x1080), no padding
+      // or border so the background box width is exactly 101 → odd.
+      style: {
+        fontSize: 40,
+        lineHeight: 1.5,
+        align: 'left' as const,
+        verticalAlign: 'top' as const,
+        padding: 0,
+        borderEnabled: false,
+        width: 101,
+      },
+    };
+
+    applier.applyTextLayout(clip as any);
+
+    expect(sprite.width % 2).toBe(1); // display width is odd (sanity)
+    const origin = spriteOrigin(sprite);
+    expect(Number.isInteger(origin.x)).toBe(true);
+    // The tell-tale: sprite.x is a half-integer, proving we rounded the origin.
+    expect(Number.isInteger(sprite.x)).toBe(false);
+  });
+
+  it('leaves the on-screen origin fractional when snapToPixelGrid is false', () => {
     const sprite = createMockSprite();
     const clip = {
       itemId: 'clip-shape-no-snap',
@@ -506,10 +584,10 @@ describe('LayoutApplier', () => {
 
     applier.applyShapeLayout(clip as any);
 
-    expect(Number.isInteger(sprite.x)).toBe(false);
+    expect(Number.isInteger(spriteOrigin(sprite).x)).toBe(false);
   });
 
-  it('leaves sprite position fractional when snapToPixelGrid is true but the clip is rotated', () => {
+  it('leaves the on-screen origin fractional when snapToPixelGrid is true but the clip is rotated', () => {
     const sprite = createMockSprite();
     const clip = {
       itemId: 'clip-shape-snap-rotated',
@@ -527,7 +605,7 @@ describe('LayoutApplier', () => {
 
     applier.applyShapeLayout(clip as any);
 
-    expect(Number.isInteger(sprite.x)).toBe(false);
+    expect(Number.isInteger(spriteOrigin(sprite).x)).toBe(false);
   });
 
   it('does not snap video/media clips even when snapToPixelGrid is set', () => {
@@ -562,6 +640,8 @@ describe('LayoutApplier', () => {
 
     applier.applySpriteLayout(1920, 1080, clip as any);
 
+    // Media clips never snap regardless of the flag; the anchor position stays
+    // fractional (proves the scoping to text/shape only).
     expect(Number.isInteger(sprite.x)).toBe(false);
   });
 });

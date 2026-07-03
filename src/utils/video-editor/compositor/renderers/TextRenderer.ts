@@ -79,6 +79,15 @@ export class TextRenderer {
       },
     });
 
+    // Pixel-grid snapping is a TWO-PART contract, both halves are required:
+    //   1) HERE — the background box (bgW/bgH), frame rect and text origin are
+    //      rounded to integer LOCAL canvas coords, and the border stroke keeps its
+    //      0.5px inset so a 1px line fills exactly one canvas column (crisp bitmap).
+    //   2) LayoutApplier.applyTransformLayout — the resulting canvas bitmap must be
+    //      PLACED at an integer device origin, else Pixi resamples this crisp bitmap
+    //      into soft edges. It rounds the sprite ORIGIN (not the anchor position).
+    // Changing only one half silently reintroduces blur. Mirrors the native split
+    // between build_text_layer (geometry) and finalize_layer (placement).
     const isSnapActive = clip.snapToPixelGrid && isTransformSnapSafe(clip.transform);
 
     const { renderScale, fontSizePx, lineHeightPx, letterSpacingPx, lines } = layout;
