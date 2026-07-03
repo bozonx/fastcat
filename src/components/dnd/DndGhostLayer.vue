@@ -13,8 +13,9 @@ import { useDndState } from '~/composables/dnd/dndState';
 import { getDndBadge } from '~/composables/dnd/dndPresentation';
 
 const { active, pointer, operation, payload } = useDndState();
+const { t } = useI18n();
 
-const badge = computed(() => getDndBadge(operation.value));
+const badge = computed(() => getDndBadge(operation.value, t));
 
 const position = computed(() => {
   const p = pointer.value;

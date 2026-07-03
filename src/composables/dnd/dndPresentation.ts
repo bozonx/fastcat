@@ -5,6 +5,8 @@
  */
 import type { DndOperation } from './dndTypes';
 
+type DndTranslate = (key: string) => string;
+
 export interface DndBadge {
   glyph: string;
   /** Tailwind-ish accent colour token for the badge background. */
@@ -14,26 +16,50 @@ export interface DndBadge {
   visible: boolean;
 }
 
-export function getDndBadge(operation: DndOperation): DndBadge {
+export function getDndLabelKey(operation: DndOperation): string {
   switch (operation) {
     case 'copy':
-      return { glyph: '+', color: 'green', label: 'Copy', visible: true };
+      return 'videoEditor.fileManager.drag.copy';
     case 'move':
-      return { glyph: '↘', color: 'amber', label: 'Move', visible: true };
+      return 'videoEditor.fileManager.drag.move';
     case 'cancel':
-      return { glyph: '✕', color: 'red', label: 'Not allowed', visible: true };
+      return 'videoEditor.fileManager.drag.notAllowed';
+    case 'timeline-add':
+      return 'videoEditor.fileManager.drag.addToTimeline';
+    case 'open-panel':
+      return 'videoEditor.fileManager.drag.addAsPanel';
+    case 'open-tab':
+      return 'videoEditor.fileManager.drag.addAsTab';
+    case 'effect':
+      return 'videoEditor.fileManager.drag.applyEffect';
+    case 'transition':
+      return 'videoEditor.fileManager.drag.addTransition';
+    case 'none':
+    default:
+      return '';
+  }
+}
+
+export function getDndBadge(operation: DndOperation, t: DndTranslate): DndBadge {
+  switch (operation) {
+    case 'copy':
+      return { glyph: '+', color: 'green', label: t(getDndLabelKey(operation)), visible: true };
+    case 'move':
+      return { glyph: '↘', color: 'amber', label: t(getDndLabelKey(operation)), visible: true };
+    case 'cancel':
+      return { glyph: '✕', color: 'red', label: t(getDndLabelKey(operation)), visible: true };
     case 'timeline-add':
       // No text label — the "+" glyph + the dragged item's name already make it
       // obvious it'll be added to the timeline.
       return { glyph: '+', color: 'green', label: '', visible: true };
     case 'open-panel':
-      return { glyph: '▦', color: 'blue', label: 'Add as panel', visible: true };
+      return { glyph: '▦', color: 'blue', label: t(getDndLabelKey(operation)), visible: true };
     case 'open-tab':
-      return { glyph: '+', color: 'blue', label: 'Add as tab', visible: true };
+      return { glyph: '+', color: 'blue', label: t(getDndLabelKey(operation)), visible: true };
     case 'effect':
-      return { glyph: '✦', color: 'green', label: 'Apply effect', visible: true };
+      return { glyph: '✦', color: 'green', label: t(getDndLabelKey(operation)), visible: true };
     case 'transition':
-      return { glyph: '⇄', color: 'green', label: 'Add transition', visible: true };
+      return { glyph: '⇄', color: 'green', label: t(getDndLabelKey(operation)), visible: true };
     case 'none':
     default:
       // Active drag but not over a valid target: neutral "carrying" ghost.

@@ -58,6 +58,12 @@ export class TimelineClipAssetLoader {
       transitionIn: clipData.transitionIn,
       transitionOut: clipData.transitionOut,
       mask: clipData.mask,
+      // Pixel-grid snapping flag for text/shape clips. This loader is the ONLY
+      // bridge from the worker payload into ClipFactory for virtual clips, so
+      // dropping this field here silently disables snapping across the whole web
+      // engine (preview, snapshot AND export) even though TextRenderer /
+      // ShapeRenderer / LayoutApplier all support it downstream.
+      snapToPixelGrid: clipData.snapToPixelGrid,
     };
 
     switch (descriptor.clipType) {

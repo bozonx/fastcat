@@ -276,6 +276,7 @@ export class TextRenderer {
           letterSpacingPx,
           align: normalizedStyle.align,
           renderScale,
+          snapToPixelGrid: isSnapActive,
           mode: 'stroke',
         });
       }
@@ -288,6 +289,7 @@ export class TextRenderer {
         letterSpacingPx,
         align: normalizedStyle.align,
         renderScale,
+        snapToPixelGrid: isSnapActive,
       });
       ctx.restore();
     }
@@ -305,6 +307,7 @@ export class TextRenderer {
       letterSpacingPx,
       align: normalizedStyle.align,
       renderScale,
+      snapToPixelGrid: isSnapActive,
     });
     ctx.globalAlpha = 1;
     ctx.globalCompositeOperation = 'source-over';
@@ -337,6 +340,7 @@ export class TextRenderer {
     letterSpacingPx: number;
     align: 'left' | 'center' | 'right';
     renderScale: number;
+    snapToPixelGrid?: boolean;
     mode?: 'fill' | 'stroke';
   }): void {
     const {
@@ -348,28 +352,32 @@ export class TextRenderer {
       letterSpacingPx,
       align,
       renderScale,
+      snapToPixelGrid = false,
       mode = 'fill',
     } = params;
 
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i] ?? '';
-      const lineY = localTextTopPx + i * lineHeightPx + lineHeightPx / 2;
+      const lineX = snapToPixelGrid ? Math.round(localTextStartX) : localTextStartX;
+      const rawLineY = localTextTopPx + i * lineHeightPx + lineHeightPx / 2;
+      const lineY = snapToPixelGrid ? Math.round(rawLineY) : rawLineY;
 
       if (letterSpacingPx === 0) {
         if (mode === 'stroke') {
-          ctx.strokeText(line, localTextStartX, lineY);
+          ctx.strokeText(line, lineX, lineY);
         } else {
-          ctx.fillText(line, localTextStartX, lineY);
+          ctx.fillText(line, lineX, lineY);
         }
       } else {
         this.drawLineWithLetterSpacing({
           ctx,
           line,
-          startX: localTextStartX,
+          startX: lineX,
           y: lineY,
           align,
           letterSpacingPx,
           renderScale,
+          snapToPixelGrid,
           mode,
         });
       }
@@ -384,9 +392,18 @@ export class TextRenderer {
     align: 'left' | 'center' | 'right';
     letterSpacingPx: number;
     renderScale: number;
+    snapToPixelGrid?: boolean;
     mode?: 'fill' | 'stroke';
   }): void {
-    const { ctx, line, startX, y, letterSpacingPx, mode = 'fill' } = params;
+    const {
+      ctx,
+      line,
+      startX,
+      y,
+      letterSpacingPx,
+      snapToPixelGrid = false,
+      mode = 'fill',
+    } = params;
 
     // Prefer native letterSpacing when available (handles RTL, emoji, ligatures, perf)
     const ctxWithSpacing = ctx as unknown as CanvasRenderingContext2D & { letterSpacing?: string };
@@ -431,10 +448,11 @@ export class TextRenderer {
     }
 
     for (let i = 0; i < graphemes.length; i++) {
+      const drawX = snapToPixelGrid ? Math.round(x) : x;
       if (mode === 'stroke') {
-        ctx.strokeText(graphemes[i] ?? '', x, y);
+        ctx.strokeText(graphemes[i] ?? '', drawX, y);
       } else {
-        ctx.fillText(graphemes[i] ?? '', x, y);
+        ctx.fillText(graphemes[i] ?? '', drawX, y);
       }
       x += (charWidths[i] ?? 0) + letterSpacingPx;
     }

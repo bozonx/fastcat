@@ -1,3 +1,6 @@
+import { useNuxtApp } from 'nuxt/app';
+import { getDndLabelKey } from '~/composables/dnd/dndPresentation';
+
 const FILE_MANAGER_DRAGGING_CLASS = 'fastcat-file-manager-dragging';
 const FILE_MANAGER_DRAG_COPY_CLASS = 'fastcat-file-manager-drag-copy';
 const FILE_MANAGER_DRAG_MOVE_CLASS = 'fastcat-file-manager-drag-move';
@@ -15,6 +18,22 @@ let dragOverlay: HTMLDivElement | null = null;
 let dragOverlayIcon: HTMLSpanElement | null = null;
 let dragOverlayLabel: HTMLSpanElement | null = null;
 let overlayListenersRegistered = false;
+
+function translateDragOperation(operation: FileManagerDragCursorOperation | null): string {
+  const key = getDndLabelKey(operation ?? 'none');
+  if (!key) return '';
+
+  const _useNuxtApp =
+    (globalThis as unknown as { useNuxtApp?: typeof useNuxtApp }).useNuxtApp || useNuxtApp;
+
+  try {
+    const nuxtApp = _useNuxtApp();
+    const i18nService = nuxtApp.$i18nService as { t?: (translationKey: string) => string } | undefined;
+    return i18nService?.t?.(key) ?? key;
+  } catch {
+    return key;
+  }
+}
 
 function getCursorStyle(operation: FileManagerDragCursorOperation | null): string {
   if (operation === 'copy') return 'copy';
@@ -84,7 +103,7 @@ function ensureDragOverlay() {
   dragOverlayIcon.style.lineHeight = '1';
 
   dragOverlayLabel = document.createElement('span');
-  dragOverlayLabel.textContent = 'Move';
+  dragOverlayLabel.textContent = '';
 
   overlay.append(dragOverlayIcon, dragOverlayLabel);
   document.body.appendChild(overlay);
@@ -107,18 +126,7 @@ function updateDragOverlayOperation(operation: FileManagerDragCursorOperation | 
       : operation === 'cancel'
         ? '#ef4444'
         : '#f59e0b';
-  dragOverlayLabel.textContent =
-    operation === 'copy'
-      ? 'Copy'
-      : operation === 'cancel'
-        ? 'Not allowed'
-        : operation === 'open-panel'
-          ? 'Add as panel'
-          : operation === 'open-tab'
-            ? 'Add as tab'
-            : operation === 'timeline-add'
-              ? 'Add to timeline'
-              : 'Move';
+  dragOverlayLabel.textContent = translateDragOperation(operation);
 }
 
 function updateDragOverlayPosition(x: number, y: number) {

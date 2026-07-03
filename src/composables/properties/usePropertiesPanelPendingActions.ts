@@ -113,10 +113,18 @@ export function usePropertiesPanelPendingActions() {
     if (deleteTargets.value.length === 0) return;
 
     const pathsToDelete = new Set(deleteTargets.value.map((t) => t.path).filter(Boolean));
+    const parentPathsToReload = new Set<string>();
 
     for (const target of deleteTargets.value) {
-      await fileManager.deleteEntry(target);
+      const parentPath = target.parentPath ?? target.path.split('/').slice(0, -1).join('/');
+      parentPathsToReload.add(parentPath);
+      await fileManager.deleteEntry(target, {
+        skipReload: true,
+        skipNotify: true,
+      });
     }
+
+    await Promise.all([...parentPathsToReload].map((path) => fileManager.reloadDirectory(path)));
 
     if (uiStore.selectedFsEntry?.path && pathsToDelete.has(uiStore.selectedFsEntry.path)) {
       uiStore.selectedFsEntry = null;

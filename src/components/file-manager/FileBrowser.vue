@@ -235,6 +235,7 @@ const {
   moveEntry: handleCrossVfsMoveEntry,
   copyEntry: handleCrossVfsCopyEntry,
   loadFolderContent: () => _loadFolderContent(),
+  reloadDirectory,
   notifyFileManagerUpdate: () => {
     skipNextUpdateReload.value = true;
     uiStore.notifyFileManagerUpdate();

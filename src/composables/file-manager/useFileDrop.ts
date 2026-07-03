@@ -46,8 +46,16 @@ export interface UseFileDropOptions {
       }) => void;
     },
   ) => Promise<unknown>;
-  moveEntry: (params: { source: FsEntry; targetDirPath: string }) => Promise<unknown>;
-  copyEntry: (params: { source: FsEntry; targetDirPath: string }) => Promise<unknown>;
+  moveEntry: (
+    params: { source: FsEntry; targetDirPath: string },
+    options?: { skipReload?: boolean; skipNotify?: boolean; skipIntegrityCheck?: boolean },
+  ) => Promise<unknown>;
+  copyEntry: (
+    params: { source: FsEntry; targetDirPath: string },
+    options?: { skipReload?: boolean; skipNotify?: boolean; skipIntegrityCheck?: boolean },
+  ) => Promise<unknown>;
+  reloadDirectory?: (path: string) => Promise<void>;
+  notifyFileManagerUpdate?: () => void;
   targetFileManagerInstanceId?: string | null;
   vfs: IFileSystemAdapter;
 }
@@ -284,25 +292,54 @@ export function useFileDrop(options: UseFileDropOptions) {
         log.error('Cross-VFS operation failed:', err);
       }
     } else {
+      const sourceParentPathsToReload = new Set<string>();
       for (const item of itemsToMove) {
         const sourcePath = typeof item?.path === 'string' ? item.path : '';
         if (!sourcePath) continue;
 
         const source = await options.resolveEntryByPath(sourcePath);
         if (!source) continue;
+        if (!shouldCopy) {
+          sourceParentPathsToReload.add(
+            source.parentPath ?? sourcePath.split('/').slice(0, -1).join('/'),
+          );
+        }
 
         if (shouldCopy) {
-          await options.copyEntry({
-            source,
-            targetDirPath: targetDirPath ?? '',
-          });
+          await options.copyEntry(
+            {
+              source,
+              targetDirPath: targetDirPath ?? '',
+            },
+            {
+              skipReload: true,
+              skipNotify: true,
+            },
+          );
         } else {
-          await options.moveEntry({
-            source,
-            targetDirPath: targetDirPath ?? '',
-          });
+          await options.moveEntry(
+            {
+              source,
+              targetDirPath: targetDirPath ?? '',
+            },
+            {
+              skipReload: true,
+              skipNotify: true,
+            },
+          );
         }
       }
+
+      const directoriesToReload = new Set<string>([targetDirPath ?? '']);
+      for (const path of sourceParentPathsToReload) {
+        directoriesToReload.add(path);
+      }
+      await Promise.all(
+        [...directoriesToReload].map(async (path) => {
+          await options.reloadDirectory?.(path);
+        }),
+      );
+      options.notifyFileManagerUpdate?.();
     }
   }
 

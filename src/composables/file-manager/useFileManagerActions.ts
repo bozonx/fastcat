@@ -42,7 +42,10 @@ export type { FileAction } from '~/types/file-manager';
 interface FileManagerActions {
   createFolder: (name: string, parentPath?: string) => Promise<void>;
   renameEntry: (target: FsEntry, newName: string) => Promise<void>;
-  deleteEntry: (target: FsEntry) => Promise<void>;
+  deleteEntry: (
+    target: FsEntry,
+    options?: { skipReload?: boolean; skipNotify?: boolean; skipIntegrityCheck?: boolean },
+  ) => Promise<void>;
   loadProjectDirectory: (params?: { fullRefresh?: boolean }) => Promise<void>;
   handleFiles: (
     files: File[] | FileList,
@@ -70,8 +73,14 @@ interface FileManagerActions {
   onAfterRename?: () => void;
   onAfterDelete?: () => void;
   onFileSelect?: (entry: FsEntry) => void;
-  copyEntry?: (params: { source: FsEntry; targetDirPath: string }) => Promise<unknown>;
-  moveEntry?: (params: { source: FsEntry; targetDirPath: string }) => Promise<unknown>;
+  moveEntry?: (
+    params: { source: FsEntry; targetDirPath: string },
+    options?: { skipReload?: boolean; skipNotify?: boolean; skipIntegrityCheck?: boolean },
+  ) => Promise<unknown>;
+  copyEntry?: (
+    params: { source: FsEntry; targetDirPath: string },
+    options?: { skipReload?: boolean; skipNotify?: boolean; skipIntegrityCheck?: boolean },
+  ) => Promise<unknown>;
   instanceId?: string;
 }
 
@@ -322,9 +331,17 @@ export function useFileManagerActions(actions: FileManagerActions) {
     deleteTargets.value = [];
 
     try {
+      const parentPathsToReload = new Set<string>();
       for (const target of targetsToDelete) {
-        await actions.deleteEntry(target);
+        const parentPath = target.parentPath ?? getParentPath(target.path);
+        parentPathsToReload.add(parentPath);
+        await actions.deleteEntry(target, {
+          skipReload: true,
+          skipNotify: true,
+        });
       }
+
+      await Promise.all([...parentPathsToReload].map((path) => actions.reloadDirectory(path)));
 
       if (uiStore.selectedFsEntry?.path && pathsToDelete.has(uiStore.selectedFsEntry.path)) {
         const currentFolder = fileManagerStore.selectedFolder;

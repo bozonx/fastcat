@@ -228,14 +228,39 @@ describe('useFileManagerActions', () => {
 
     expect(api.isDeleteConfirmModalOpen.value).toBe(false);
     expect(api.deleteTargets.value).toEqual([]);
-    expect(deleteEntry).toHaveBeenCalledWith({
-      kind: 'file',
-      name: 'clip.mp4',
-      path: 'clip.mp4',
-    });
+    expect(deleteEntry).toHaveBeenCalledWith(
+      {
+        kind: 'file',
+        name: 'clip.mp4',
+        path: 'clip.mp4',
+      },
+      {
+        skipReload: true,
+        skipNotify: true,
+      },
+    );
 
     resolveDelete?.();
     await pendingDelete;
+  });
+
+  it('reloads affected directories once after bulk delete', async () => {
+    const deleteEntry = vi.fn().mockResolvedValue(undefined);
+    const reloadDirectory = vi.fn().mockResolvedValue(undefined);
+    const api = createComposable({ deleteEntry, reloadDirectory });
+
+    api.deleteTargets.value = [
+      { kind: 'file', name: 'a.mp4', path: 'video/a.mp4', parentPath: 'video' },
+      { kind: 'file', name: 'b.mp4', path: 'video/b.mp4', parentPath: 'video' },
+      { kind: 'file', name: 'c.wav', path: 'audio/c.wav', parentPath: 'audio' },
+    ];
+
+    await api.handleDeleteConfirm();
+
+    expect(deleteEntry).toHaveBeenCalledTimes(3);
+    expect(reloadDirectory).toHaveBeenCalledTimes(2);
+    expect(reloadDirectory).toHaveBeenCalledWith('video');
+    expect(reloadDirectory).toHaveBeenCalledWith('audio');
   });
 
   it('does not put BloggerDog content items into clipboard', () => {

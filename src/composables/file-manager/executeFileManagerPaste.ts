@@ -10,14 +10,20 @@ interface ExecuteFileManagerPasteOptions {
   targetVfs: IFileSystemAdapter;
   getSourceVfs: (instanceId?: string | null) => IFileSystemAdapter | null;
   findEntryByPath: (path: string) => FsEntry | null;
-  copyEntry: (params: {
-    source: FsEntry;
-    targetDirPath: string;
-  }) => Promise<string | null | unknown>;
-  moveEntry: (params: {
-    source: FsEntry;
-    targetDirPath: string;
-  }) => Promise<string | null | unknown>;
+  copyEntry: (
+    params: {
+      source: FsEntry;
+      targetDirPath: string;
+    },
+    options?: { skipReload?: boolean; skipNotify?: boolean; skipIntegrityCheck?: boolean },
+  ) => Promise<string | null | unknown>;
+  moveEntry: (
+    params: {
+      source: FsEntry;
+      targetDirPath: string;
+    },
+    options?: { skipReload?: boolean; skipNotify?: boolean; skipIntegrityCheck?: boolean },
+  ) => Promise<string | null | unknown>;
   reloadDirectory: (path: string) => Promise<void>;
   notifyFileManagerUpdate?: () => void;
   setFileTreePathExpanded?: (path: string, expanded: boolean) => void;
@@ -62,6 +68,7 @@ export async function executeFileManagerPaste(options: ExecuteFileManagerPasteOp
   const sourceVfs = options.getSourceVfs(options.payload.sourceInstanceId);
   const shouldUseCrossVfs = Boolean(sourceVfs && sourceVfs !== options.targetVfs);
   const pastedPaths: string[] = [];
+  const sourceParentPathsToReload = new Set<string>();
 
   for (const item of options.payload.items) {
     const fallbackPath = targetDirPath ? `${targetDirPath}/${item.name}` : item.name;
@@ -89,10 +96,21 @@ export async function executeFileManagerPaste(options: ExecuteFileManagerPasteOp
     }
 
     const sourceEntry = options.findEntryByPath(item.path) ?? buildSyntheticEntry(item);
+    if (options.payload.operation === 'cut') {
+      sourceParentPathsToReload.add(
+        sourceEntry.parentPath ?? item.path.split('/').slice(0, -1).join('/'),
+      );
+    }
     const resultPath =
       options.payload.operation === 'copy'
-        ? await options.copyEntry({ source: sourceEntry, targetDirPath })
-        : await options.moveEntry({ source: sourceEntry, targetDirPath });
+        ? await options.copyEntry(
+            { source: sourceEntry, targetDirPath },
+            { skipReload: true, skipNotify: true },
+          )
+        : await options.moveEntry(
+            { source: sourceEntry, targetDirPath },
+            { skipReload: true, skipNotify: true },
+          );
 
     pastedPaths.push(normalizePastedPath(resultPath, fallbackPath));
   }
@@ -101,7 +119,11 @@ export async function executeFileManagerPaste(options: ExecuteFileManagerPasteOp
     options.clearClipboardPayload?.();
   }
 
-  await options.reloadDirectory(targetDirPath);
+  const directoriesToReload = new Set<string>([targetDirPath]);
+  for (const path of sourceParentPathsToReload) {
+    directoriesToReload.add(path);
+  }
+  await Promise.all([...directoriesToReload].map((path) => options.reloadDirectory(path)));
   options.notifyFileManagerUpdate?.();
 
   await nextTick();

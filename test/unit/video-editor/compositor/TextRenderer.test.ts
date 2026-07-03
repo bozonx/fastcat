@@ -24,8 +24,9 @@ class FakeCtx {
   lineWidth = 0;
   letterSpacing = '0px';
   // Records each text draw with the state in effect, for regression asserts.
-  strokeCalls: { op: string; lineWidth: number; shadowOffsetX: number }[] = [];
-  fillCalls: { op: string; shadowOffsetX: number }[] = [];
+  strokeCalls: { op: string; lineWidth: number; shadowOffsetX: number; x: number; y: number }[] =
+    [];
+  fillCalls: { op: string; shadowOffsetX: number; x: number; y: number }[] = [];
   private stateStack: Record<string, unknown>[] = [];
   private static readonly SAVED_PROPS = [
     'font',
@@ -61,17 +62,21 @@ class FakeCtx {
   quadraticCurveTo() {}
   fill() {}
   stroke() {}
-  fillText() {
+  fillText(_text: string, x: number, y: number) {
     this.fillCalls.push({
       op: this.globalCompositeOperation,
       shadowOffsetX: this.shadowOffsetX,
+      x,
+      y,
     });
   }
-  strokeText() {
+  strokeText(_text: string, x: number, y: number) {
     this.strokeCalls.push({
       op: this.globalCompositeOperation,
       lineWidth: this.lineWidth,
       shadowOffsetX: this.shadowOffsetX,
+      x,
+      y,
     });
   }
   measureText(t: string) {
@@ -205,5 +210,44 @@ describe('TextRenderer + LayoutApplier integration', () => {
     // No composite trickery is needed anymore; nothing is cut back out.
     expect(ctx.strokeCalls.every((c) => c.op === 'source-over')).toBe(true);
     expect(ctx.fillCalls.every((c) => c.op === 'source-over')).toBe(true);
+  });
+
+  it('snaps actual text draw coordinates when pixel-grid snapping is enabled', () => {
+    const renderer = new TextRenderer({ designWidth: W, designHeight: H });
+    const clip = createTextClip('Text');
+    clip.snapToPixelGrid = true;
+    (clip as unknown as { style: Record<string, unknown> }).style = {
+      fontSize: 31,
+      lineHeight: 1.3,
+      padding: 7,
+      align: 'center',
+    };
+
+    renderer.draw(clip, W, H);
+    const ctx = clip.ctx as unknown as FakeCtx;
+    const mainText = ctx.fillCalls.find((c) => c.shadowOffsetX === 0);
+
+    expect(mainText).toBeDefined();
+    expect(mainText!.x).toBe(Math.round(mainText!.x));
+    expect(mainText!.y).toBe(Math.round(mainText!.y));
+  });
+
+  it('keeps fractional text draw coordinates when pixel-grid snapping is disabled', () => {
+    const renderer = new TextRenderer({ designWidth: W, designHeight: H });
+    const clip = createTextClip('Text');
+    clip.snapToPixelGrid = false;
+    (clip as unknown as { style: Record<string, unknown> }).style = {
+      fontSize: 31,
+      lineHeight: 1.3,
+      padding: 7,
+      align: 'center',
+    };
+
+    renderer.draw(clip, W, H);
+    const ctx = clip.ctx as unknown as FakeCtx;
+    const mainText = ctx.fillCalls.find((c) => c.shadowOffsetX === 0);
+
+    expect(mainText).toBeDefined();
+    expect(mainText!.y).not.toBe(Math.round(mainText!.y));
   });
 });

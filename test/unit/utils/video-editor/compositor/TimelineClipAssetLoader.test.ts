@@ -52,7 +52,7 @@ describe('TimelineClipAssetLoader.build', () => {
   it('builds a text clip with text content', () => {
     const ctx = makeContext();
     const loader = new TimelineClipAssetLoader(ctx as any);
-    const clip = loader.build({
+    loader.build({
       clipData: { text: 'Hello World', style: { fontFamily: 'Arial' } },
       descriptor: {
         clipType: 'text',
@@ -70,10 +70,67 @@ describe('TimelineClipAssetLoader.build', () => {
     );
   });
 
+  it('forwards snapToPixelGrid to text clips', () => {
+    const ctx = makeContext();
+    const loader = new TimelineClipAssetLoader(ctx as any);
+
+    loader.build({
+      clipData: {
+        text: 'Snap on',
+        style: { fontFamily: 'Arial' },
+        snapToPixelGrid: true,
+      },
+      descriptor: {
+        clipType: 'text',
+        itemId: 'text1',
+        trackId: 't1',
+        layer: 0,
+        startUs: 0,
+        endUs: 1_000_000,
+        requestedTimelineDurationUs: 1_000_000,
+      },
+      toVideoEffects,
+    });
+
+    expect(ctx.clipFactory.createTextClip).toHaveBeenCalledWith(
+      expect.objectContaining({ snapToPixelGrid: true }),
+    );
+  });
+
+  it.each([false, undefined])(
+    'preserves %s snapToPixelGrid values for text clips',
+    (snapToPixelGrid) => {
+      const ctx = makeContext();
+      const loader = new TimelineClipAssetLoader(ctx as any);
+
+      loader.build({
+        clipData: {
+          text: 'Snap variant',
+          style: { fontFamily: 'Arial' },
+          snapToPixelGrid,
+        },
+        descriptor: {
+          clipType: 'text',
+          itemId: 'text1',
+          trackId: 't1',
+          layer: 0,
+          startUs: 0,
+          endUs: 1_000_000,
+          requestedTimelineDurationUs: 1_000_000,
+        },
+        toVideoEffects,
+      });
+
+      expect(ctx.clipFactory.createTextClip).toHaveBeenCalledWith(
+        expect.objectContaining({ snapToPixelGrid }),
+      );
+    },
+  );
+
   it('builds a shape clip with shape properties', () => {
     const ctx = makeContext();
     const loader = new TimelineClipAssetLoader(ctx as any);
-    const clip = loader.build({
+    loader.build({
       clipData: {
         shapeType: 'circle',
         fillColor: '#ff0000',
@@ -101,10 +158,71 @@ describe('TimelineClipAssetLoader.build', () => {
     );
   });
 
+  it('forwards snapToPixelGrid to shape clips', () => {
+    const ctx = makeContext();
+    const loader = new TimelineClipAssetLoader(ctx as any);
+
+    loader.build({
+      clipData: {
+        shapeType: 'circle',
+        fillColor: '#ff0000',
+        strokeColor: '#000000',
+        strokeWidth: 2,
+        snapToPixelGrid: true,
+      },
+      descriptor: {
+        clipType: 'shape',
+        itemId: 'shape1',
+        trackId: 't1',
+        layer: 0,
+        startUs: 0,
+        endUs: 1_000_000,
+        requestedTimelineDurationUs: 1_000_000,
+      },
+      toVideoEffects,
+    });
+
+    expect(ctx.clipFactory.createShapeClip).toHaveBeenCalledWith(
+      expect.objectContaining({ snapToPixelGrid: true }),
+    );
+  });
+
+  it.each([false, undefined])(
+    'preserves %s snapToPixelGrid values for shape clips',
+    (snapToPixelGrid) => {
+      const ctx = makeContext();
+      const loader = new TimelineClipAssetLoader(ctx as any);
+
+      loader.build({
+        clipData: {
+          shapeType: 'circle',
+          fillColor: '#ff0000',
+          strokeColor: '#000000',
+          strokeWidth: 2,
+          snapToPixelGrid,
+        },
+        descriptor: {
+          clipType: 'shape',
+          itemId: 'shape1',
+          trackId: 't1',
+          layer: 0,
+          startUs: 0,
+          endUs: 1_000_000,
+          requestedTimelineDurationUs: 1_000_000,
+        },
+        toVideoEffects,
+      });
+
+      expect(ctx.clipFactory.createShapeClip).toHaveBeenCalledWith(
+        expect.objectContaining({ snapToPixelGrid }),
+      );
+    },
+  );
+
   it('builds an adjustment clip', () => {
     const ctx = makeContext();
     const loader = new TimelineClipAssetLoader(ctx as any);
-    const clip = loader.build({
+    loader.build({
       clipData: {},
       descriptor: {
         clipType: 'adjustment',
@@ -123,7 +241,7 @@ describe('TimelineClipAssetLoader.build', () => {
   it('builds a hud clip with hudType', () => {
     const ctx = makeContext();
     const loader = new TimelineClipAssetLoader(ctx as any);
-    const clip = loader.build({
+    loader.build({
       clipData: { hudType: 'media_frame', background: {}, content: {}, frame: {} },
       descriptor: {
         clipType: 'hud',

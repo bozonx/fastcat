@@ -35,9 +35,16 @@ const props = defineProps<{
   getFileIcon: (entry: FsEntry) => string;
   findEntryByPath: (path: string) => FsEntry | null;
   resolveEntryByPath?: (path: string) => Promise<FsEntry | null>;
+  reloadDirectory: (path: string) => Promise<void>;
   mediaCache: Pick<ProxyThumbnailService, 'hasProxy'>;
-  moveEntry: (params: { source: FsEntry; targetDirPath: string }) => Promise<unknown>;
-  copyEntry: (params: { source: FsEntry; targetDirPath: string }) => Promise<unknown>;
+  moveEntry: (
+    params: { source: FsEntry; targetDirPath: string },
+    options?: { skipReload?: boolean; skipNotify?: boolean; skipIntegrityCheck?: boolean },
+  ) => Promise<unknown>;
+  copyEntry: (
+    params: { source: FsEntry; targetDirPath: string },
+    options?: { skipReload?: boolean; skipNotify?: boolean; skipIntegrityCheck?: boolean },
+  ) => Promise<unknown>;
   handleFiles: (
     files: FileList | File[],
     options?: {
@@ -371,6 +378,8 @@ const { isRelevantDrag, onRootDragOver, onRootDrop } = useFileDrop({
   handleFiles: props.handleFiles,
   moveEntry: props.moveEntry,
   copyEntry: props.copyEntry,
+  reloadDirectory: props.reloadDirectory,
+  notifyFileManagerUpdate: () => uiStore.notifyFileManagerUpdate(),
   targetFileManagerInstanceId: props.instanceId ?? null,
   vfs: props.vfs ?? useVfs(),
 });

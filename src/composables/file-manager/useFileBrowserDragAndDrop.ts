@@ -45,9 +45,16 @@ interface UseFileBrowserDragAndDropOptions {
       }) => void;
     },
   ) => Promise<unknown>;
-  moveEntry: (params: { source: FsEntry; targetDirPath: string }) => Promise<unknown>;
-  copyEntry: (params: { source: FsEntry; targetDirPath: string }) => Promise<unknown>;
+  moveEntry: (
+    params: { source: FsEntry; targetDirPath: string },
+    options?: { skipReload?: boolean; skipNotify?: boolean; skipIntegrityCheck?: boolean },
+  ) => Promise<unknown>;
+  copyEntry: (
+    params: { source: FsEntry; targetDirPath: string },
+    options?: { skipReload?: boolean; skipNotify?: boolean; skipIntegrityCheck?: boolean },
+  ) => Promise<unknown>;
   loadFolderContent: () => Promise<void>;
+  reloadDirectory: (path: string) => Promise<void>;
   notifyFileManagerUpdate: () => void;
   fileManagerInstanceId?: string | null;
   isExternal?: boolean;
@@ -106,6 +113,8 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
     handleFiles: options.handleFiles,
     moveEntry: options.moveEntry,
     copyEntry: options.copyEntry,
+    reloadDirectory: options.reloadDirectory,
+    notifyFileManagerUpdate: options.notifyFileManagerUpdate,
     targetFileManagerInstanceId: options.fileManagerInstanceId ?? null,
     vfs: options.vfs,
   });
@@ -348,6 +357,7 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
       }) === 'copy';
 
     let operationSucceeded = true;
+    const sourceParentPathsToReload = new Set<string>();
     try {
       for (const item of itemsToMove) {
         const sourcePath = typeof item?.path === 'string' ? item.path : '';
@@ -375,10 +385,21 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
         } else {
           const source = await options.resolveEntryByPath(sourcePath);
           if (!source) continue;
+          if (!shouldCopy) {
+            sourceParentPathsToReload.add(
+              source.parentPath ?? sourcePath.split('/').slice(0, -1).join('/'),
+            );
+          }
           if (shouldCopy) {
-            await options.copyEntry({ source, targetDirPath });
+            await options.copyEntry(
+              { source, targetDirPath },
+              { skipReload: true, skipNotify: true },
+            );
           } else {
-            await options.moveEntry({ source, targetDirPath });
+            await options.moveEntry(
+              { source, targetDirPath },
+              { skipReload: true, skipNotify: true },
+            );
           }
         }
       }
@@ -396,6 +417,11 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
       });
     }
 
+    await Promise.all(
+      [...new Set([targetDirPath, ...sourceParentPathsToReload])].map((path) =>
+        options.reloadDirectory(path),
+      ),
+    );
     options.notifyFileManagerUpdate();
     await options.loadFolderContent();
 

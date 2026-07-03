@@ -73,7 +73,18 @@ export function createFileManagerCrud(ctx: FileManagerContext) {
     }
   }
 
-  async function deleteEntry(target: FsEntry) {
+  async function reloadDirectories(paths: Iterable<string>) {
+    const uniquePaths = [...new Set(Array.from(paths))];
+    await Promise.all(uniquePaths.map((path) => reloadDirectory(path)));
+  }
+
+  interface CrudMutationOptions {
+    skipReload?: boolean;
+    skipNotify?: boolean;
+    skipIntegrityCheck?: boolean;
+  }
+
+  async function deleteEntry(target: FsEntry, options: CrudMutationOptions = {}) {
     const deleted = await runWithUiFeedback({
       action: async () => {
         const deletedFilePaths = await deleteEntryCommand(target, {
@@ -127,15 +138,19 @@ export function createFileManagerCrud(ctx: FileManagerContext) {
         }
 
         const parentPath = getParentPath(target.path);
-        await reloadDirectory(parentPath);
-        await triggerMediaIntegrityCheck();
+        if (!options.skipReload) {
+          await reloadDirectory(parentPath);
+        }
+        if (!options.skipIntegrityCheck) {
+          await triggerMediaIntegrityCheck();
+        }
         return true;
       },
       defaultErrorMessage: 'Failed to delete',
       toastTitle: 'Delete error',
       toastDescription: () => 'Failed to delete',
     });
-    if (deleted) {
+    if (deleted && !options.skipNotify) {
       notifyFileManagerUpdate();
     }
   }
@@ -184,7 +199,10 @@ export function createFileManagerCrud(ctx: FileManagerContext) {
     }
   }
 
-  async function moveEntry(params: { source: FsEntry; targetDirPath: string }) {
+  async function moveEntry(
+    params: { source: FsEntry; targetDirPath: string },
+    options: CrudMutationOptions = {},
+  ) {
     const projectName = deps.getProjectName();
     if (!projectName) return;
 
@@ -244,9 +262,12 @@ export function createFileManagerCrud(ctx: FileManagerContext) {
           deps.setFileTreePathExpanded(targetDirPath, true);
         }
 
-        await reloadDirectory(sourceParentPath);
-        await reloadDirectory(targetDirPath);
-        await triggerMediaIntegrityCheck();
+        if (!options.skipReload) {
+          await reloadDirectories([sourceParentPath, targetDirPath]);
+        }
+        if (!options.skipIntegrityCheck) {
+          await triggerMediaIntegrityCheck();
+        }
 
         return newPath;
       },
@@ -254,17 +275,20 @@ export function createFileManagerCrud(ctx: FileManagerContext) {
       toastTitle: 'Move error',
       toastDescription: () => 'Failed to move',
     });
-    if (newPath) {
+    if (newPath && !options.skipNotify) {
       notifyFileManagerUpdate();
     }
     return newPath;
   }
 
-  async function copyEntry(params: {
-    source: FsEntry;
-    targetDirPath: string;
-    abortSignal?: AbortSignal;
-  }) {
+  async function copyEntry(
+    params: {
+      source: FsEntry;
+      targetDirPath: string;
+      abortSignal?: AbortSignal;
+    },
+    options: CrudMutationOptions = {},
+  ) {
     const projectName = deps.getProjectName();
     if (!projectName) return null;
 
@@ -293,12 +317,17 @@ export function createFileManagerCrud(ctx: FileManagerContext) {
           deps.setFileTreePathExpanded(targetDirPath, true);
         }
 
-        await reloadDirectory(targetDirPath);
         const sourceParentPath = getParentPath(sourcePath);
-        if (sourceParentPath && sourceParentPath !== targetDirPath) {
-          await reloadDirectory(sourceParentPath);
+        if (!options.skipReload) {
+          await reloadDirectories(
+            sourceParentPath && sourceParentPath !== targetDirPath
+              ? [targetDirPath, sourceParentPath]
+              : [targetDirPath],
+          );
         }
-        await triggerMediaIntegrityCheck();
+        if (!options.skipIntegrityCheck) {
+          await triggerMediaIntegrityCheck();
+        }
 
         return newPath;
       },
@@ -307,7 +336,7 @@ export function createFileManagerCrud(ctx: FileManagerContext) {
       toastDescription: () => 'Failed to copy',
       ignoreError: (e: unknown) => e instanceof Error && e.name === 'AbortError',
     });
-    if (newPath) {
+    if (newPath && !options.skipNotify) {
       notifyFileManagerUpdate();
     }
     return newPath;

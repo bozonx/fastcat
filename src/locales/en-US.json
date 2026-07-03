@@ -1412,6 +1412,16 @@
         "folderTitle": "Upload to folder",
         "cancelled": "Upload cancelled. Drop files on the auto-sort area or a specific folder."
       },
+      "drag": {
+        "addAsPanel": "Add as panel",
+        "addAsTab": "Add as tab",
+        "addToTimeline": "Add to timeline",
+        "addTransition": "Add transition",
+        "applyEffect": "Apply effect",
+        "copy": "Copy",
+        "move": "Move",
+        "notAllowed": "Not allowed"
+      },
       "empty": "No files in this project",
       "errors": {
         "crossVfsFailedTitle": "Failed to move files between file systems",

@@ -607,6 +607,7 @@ useFileManagerPanelBootstrap({
       :get-file-icon="getFileIcon"
       :find-entry-by-path="findEntryByPath"
       :resolve-entry-by-path="resolveEntryByPath"
+      :reload-directory="reloadDirectory"
       :media-cache="fileManager.mediaCache"
       :move-entry="moveEntry"
       :copy-entry="copyEntry"
