@@ -53,7 +53,21 @@ export interface NormalizedTextStyle {
   borderColor: string;
   borderAlpha: number;
   borderWidth: number;
+  borderOffset: number;
   padding: NormalizedTextPadding;
+}
+
+/**
+ * Device-space distance the border extends outward from the background box:
+ * the border's own width plus the creative gap (`borderOffset`). Both renderers
+ * and the layout reserve this much room outside the frame so the border and gap
+ * are not clipped. Returns 0 when the border is disabled.
+ */
+export function getTextBorderOutsetPx(style: NormalizedTextStyle, renderScale: number): number {
+  if (!style.borderEnabled || style.borderWidth <= 0) return 0;
+  const borderWidthPx = Math.round(style.borderWidth * renderScale);
+  const borderOffsetPx = Math.round(style.borderOffset * renderScale);
+  return Math.max(0, borderWidthPx + Math.max(0, borderOffsetPx));
 }
 
 export function mapBlendModeToComposite(mode: unknown): string {
@@ -96,11 +110,10 @@ export function getTextBackgroundShadowOutsetPx(
   style: NormalizedTextStyle,
   renderScale: number,
 ): number {
-  const borderWidthPx =
-    style.borderEnabled && style.borderWidth > 0 ? Math.round(style.borderWidth * renderScale) : 0;
+  const borderOutsetPx = getTextBorderOutsetPx(style, renderScale);
   const shadowSpreadPx = Math.round(style.backgroundShadowSpread * renderScale);
 
-  return Math.max(0, borderWidthPx + shadowSpreadPx);
+  return Math.max(0, borderOutsetPx + shadowSpreadPx);
 }
 
 function clampFinite(value: unknown, fallback: number, min?: number, max?: number): number {
@@ -284,6 +297,7 @@ export function normalizeTextClipStyle(style?: TextClipStyle): NormalizedTextSty
         : '#ffffff',
     borderAlpha: clampFinite(style?.borderAlpha, 1, 0, 1),
     borderWidth: clampFinite(style?.borderWidth, 0, 0, 10_000),
+    borderOffset: clampFinite(style?.borderOffset, 0, 0, 10_000),
     padding,
   };
 }
@@ -328,19 +342,23 @@ export function computeTextLayoutMetrics(input: {
       ? Math.max(1, explicitWidthPx - paddingPx.left - paddingPx.right)
       : undefined;
   const font = `${normalizedStyle.fontWeight} ${fontSizePx}px ${normalizedStyle.fontFamily}`;
-  // Letter spacing must use its signed value so the measured width matches what
-  // TextRenderer.drawLineWithLetterSpacing actually paints (it advances by
-  // `charWidth + letterSpacingPx`, where the spacing can be negative). Clamping
-  // the spacing to >= 0 here over-measured tight (negative-spacing) text, which
-  // made the background/border box wider than the glyphs and shifted wrapping.
-  const measureLine = (text: string) =>
-    input.measureText(text, font) + (Array.from(text).length - 1) * letterSpacingPx;
-
-  // Initialize a segmenter for word/grapheme boundaries, falling back to simple split if unsupported
-  const segmenter =
+  const wordSegmenter =
     typeof Intl !== 'undefined' && Intl.Segmenter
       ? new Intl.Segmenter(undefined, { granularity: 'word' })
       : null;
+  const graphemeSegmenter =
+    typeof Intl !== 'undefined' && Intl.Segmenter
+      ? new Intl.Segmenter(undefined, { granularity: 'grapheme' })
+      : null;
+  const splitGraphemes = (text: string) =>
+    graphemeSegmenter
+      ? Array.from(graphemeSegmenter.segment(text), (segment) => segment.segment)
+      : Array.from(text);
+
+  const measureLine = (text: string) => {
+    const graphemeCount = splitGraphemes(text).length;
+    return input.measureText(text, font) + Math.max(0, graphemeCount - 1) * letterSpacingPx;
+  };
 
   const wrapLine = (line: string): string[] => {
     if (contentWidthPx === undefined) return [line];
@@ -348,8 +366,8 @@ export function computeTextLayoutMetrics(input: {
     if (normalizedLine.length === 0) return [''];
 
     const words: string[] = [];
-    if (segmenter) {
-      const segments = segmenter.segment(normalizedLine);
+    if (wordSegmenter) {
+      const segments = wordSegmenter.segment(normalizedLine);
       let currentWord = '';
       for (const segment of segments) {
         if (segment.isWordLike) {
@@ -383,7 +401,7 @@ export function computeTextLayoutMetrics(input: {
 
       // Force-break the word if it is wider than the line by itself
       if (contentWidthPx > 0 && measureLine(word) > contentWidthPx) {
-        const graphemes = Array.from(word);
+        const graphemes = splitGraphemes(word);
         for (const g of graphemes) {
           const test = currentLine.length > 0 ? `${currentLine}${g}` : g;
           if (measureLine(test) <= contentWidthPx || currentLine.length === 0) {
@@ -446,10 +464,9 @@ export function computeTextLayoutMetrics(input: {
     textBlockTopPx = contentTopPx + (contentHeightPx - textBlockHeightPx) / 2;
   }
 
-  const borderWidthPx =
-    normalizedStyle.borderEnabled && normalizedStyle.borderWidth > 0
-      ? Math.round(normalizedStyle.borderWidth * renderScale)
-      : 0;
+  // Room reserved outside the frame for the border: its width plus the creative
+  // gap (`borderOffset`), so a pushed-out border isn't clipped at the texture edge.
+  const borderOutsetPx = getTextBorderOutsetPx(normalizedStyle, renderScale);
   const baseBackgroundX = frameLeftPx;
   const baseBackgroundY = frameTopPx;
   const backgroundShadowBlurExtentPx = normalizedStyle.backgroundShadowEnabled
@@ -496,10 +513,10 @@ export function computeTextLayoutMetrics(input: {
     backgroundShadowBlurExtentPx + backgroundShadowSpreadPx + backgroundShadowOffsetYPx,
     textShadowBlurExtentPx + textShadowSpreadPx + textShadowOffsetYPx,
   );
-  const backgroundX = baseBackgroundX - borderWidthPx - shadowLeft;
-  const backgroundY = baseBackgroundY - borderWidthPx - shadowTop;
-  const backgroundWidth = frameWidthPx + borderWidthPx * 2 + shadowLeft + shadowRight;
-  const backgroundHeight = frameHeightPx + borderWidthPx * 2 + shadowTop + shadowBottom;
+  const backgroundX = baseBackgroundX - borderOutsetPx - shadowLeft;
+  const backgroundY = baseBackgroundY - borderOutsetPx - shadowTop;
+  const backgroundWidth = frameWidthPx + borderOutsetPx * 2 + shadowLeft + shadowRight;
+  const backgroundHeight = frameHeightPx + borderOutsetPx * 2 + shadowTop + shadowBottom;
   const textStartX =
     normalizedStyle.align === 'left'
       ? contentLeftPx

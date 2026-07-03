@@ -706,6 +706,7 @@
       "borderBlock": "Бордер",
       "borderColor": "Цвет бордера",
       "borderWidthPx": "Толщина бордера (px)",
+      "borderOffsetPx": "Отступ бордера (px)",
       "colorPicker": "Цвет и оттенок",
       "content": "Содержимое",
       "fontFamily": "Шрифт",

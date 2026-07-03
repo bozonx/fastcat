@@ -217,6 +217,7 @@ mod tests {
             border_enabled: false,
             border_color: vello::peniko::Color::TRANSPARENT,
             border_width: 0.0,
+            border_offset: 0.0,
             text_shadow_enabled: false,
             text_shadow_color: vello::peniko::Color::TRANSPARENT,
             text_shadow_blur: 0.0,

@@ -234,6 +234,11 @@ export function sanitizeTextStyle(raw: unknown): Record<string, unknown> | undef
     typeof borderWidthRaw === 'number' && Number.isFinite(borderWidthRaw)
       ? Math.max(0, Math.min(10_000, borderWidthRaw))
       : undefined;
+  const borderOffsetRaw = rawRecord.borderOffset;
+  const borderOffset =
+    typeof borderOffsetRaw === 'number' && Number.isFinite(borderOffsetRaw)
+      ? Math.max(0, Math.min(10_000, borderOffsetRaw))
+      : undefined;
   const paddingLinked =
     typeof rawRecord.paddingLinked === 'boolean' ? rawRecord.paddingLinked : undefined;
 
@@ -324,6 +329,7 @@ export function sanitizeTextStyle(raw: unknown): Record<string, unknown> | undef
     ...(borderColor !== undefined && borderColor.length > 0 ? { borderColor } : {}),
     ...(borderAlpha !== undefined ? { borderAlpha } : {}),
     ...(borderWidth !== undefined ? { borderWidth } : {}),
+    ...(borderOffset !== undefined ? { borderOffset } : {}),
     ...(paddingLinked !== undefined ? { paddingLinked } : {}),
     ...(padding !== undefined ? { padding } : {}),
   };

@@ -99,6 +99,11 @@ export class TextRenderer {
       normalizedStyle.borderEnabled && normalizedStyle.borderWidth > 0
         ? Math.round(normalizedStyle.borderWidth * renderScale)
         : 0;
+    // Creative gap that pushes the border outward from the background box. At 0 the
+    // border hugs the background (paired with the 1px underlap below that hides the
+    // AA seam); larger values reveal the scene between background and border.
+    const borderOffsetPx =
+      borderWidthPx > 0 ? Math.max(0, Math.round(normalizedStyle.borderOffset * renderScale)) : 0;
     const frameX = layout.frameX;
     const frameY = layout.frameY;
     const frameW = Math.max(1, layout.frameWidth);
@@ -172,13 +177,17 @@ export class TextRenderer {
       ctx.strokeStyle = normalizedStyle.borderColor;
       ctx.lineWidth = borderWidthPx;
       const inset = borderWidthPx / 2;
+      // The stroke centerline sits `borderOffsetPx` further out than the background
+      // edge (plus its own half-width), so the border ring grows outward and the gap
+      // opens between it and the background.
+      const off = inset + borderOffsetPx;
       this.drawRoundedRect(
         ctx,
-        frameX - inset,
-        frameY - inset,
-        Math.max(1, frameW + borderWidthPx),
-        Math.max(1, frameH + borderWidthPx),
-        Math.max(0, normalizedStyle.backgroundRadius * renderScale + inset),
+        frameX - off,
+        frameY - off,
+        Math.max(1, frameW + off * 2),
+        Math.max(1, frameH + off * 2),
+        Math.max(0, normalizedStyle.backgroundRadius * renderScale + off),
       );
       ctx.stroke();
       ctx.restore();

@@ -11,6 +11,7 @@ import { useUiStore } from '~/stores/ui.store';
 import { useDraggedFile } from '~/composables/useDraggedFile';
 
 import type {
+  TextClipStyle,
   TimelineClipActionPayload,
   TimelineOpenSpeedModalPayload,
   TimelineTrack,
@@ -411,6 +412,7 @@ onBeforeUnmount(() => {
     delete e2eWindow.__fastcatE2eSetTimelineZoom;
     delete e2eWindow.__fastcatE2eTrimClip;
     delete e2eWindow.__fastcatE2eMoveClip;
+    delete e2eWindow.__fastcatE2eAddTextClip;
   }
 });
 
@@ -480,6 +482,12 @@ onMounted(() => {
 
     e2eWindow.__fastcatE2eSetTimelineZoom = async ({ zoom }) => {
       timelineStore.setTimelineZoomExact(zoom);
+    };
+
+    e2eWindow.__fastcatE2eAddTextClip = async ({ text, style, durationUs, trackId }) => {
+      const itemIds = timelineStore.addTextClipAtPlayhead({ text, style, durationUs, trackId });
+      await timelineStore.saveTimeline();
+      return itemIds;
     };
 
     e2eWindow.__fastcatE2eTrimClip = async ({ itemId, edge, deltaUs }) => {
@@ -708,6 +716,12 @@ type FastcatE2eUpdateClipProperties = (params: {
 }) => Promise<void>;
 type FastcatE2eSetCurrentTimeUs = (params: { us: number }) => Promise<void>;
 type FastcatE2eGetSelectedItemIds = () => Promise<string[]>;
+type FastcatE2eAddTextClip = (params: {
+  text?: string;
+  style?: TextClipStyle;
+  durationUs?: number;
+  trackId?: string;
+}) => Promise<string[]>;
 
 interface FastcatE2eTimelineWindow {
   __fastcatE2eAdvancePlayheadBy?: FastcatE2eAdvancePlayheadBy;
@@ -719,6 +733,7 @@ interface FastcatE2eTimelineWindow {
   __fastcatE2eGetSelectedItemIds?: FastcatE2eGetSelectedItemIds;
   __fastcatE2eSaveTimeline?: () => Promise<void>;
   __fastcatE2eSetTimelineZoom?: (params: { zoom: number }) => Promise<void>;
+  __fastcatE2eAddTextClip?: FastcatE2eAddTextClip;
   __fastcatE2eTrimClip?: (params: {
     itemId: string;
     edge: 'start' | 'end';

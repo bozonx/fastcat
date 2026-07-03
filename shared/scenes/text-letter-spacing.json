@@ -1,0 +1,114 @@
+{
+  "_comment": [
+    "Cross-engine parity scene: text letterSpacing in both positive and negative",
+    "directions. Exercises the text layout branch where spacing changes line",
+    "metrics independently of Canvas/parley raw glyph measurement."
+  ],
+  "scene": {
+    "layers": [
+      {
+        "id": "bg-text-spacing",
+        "kind": "background",
+        "path": "",
+        "timeline_start_sec": 0.0,
+        "timeline_end_sec": 1.0,
+        "source_start_sec": 0.0,
+        "source_range_duration_sec": 0.0,
+        "speed": 1.0,
+        "z": 0,
+        "opacity": 1.0,
+        "blend_mode": "normal",
+        "background_color": "#101827",
+        "effects": []
+      },
+      {
+        "id": "text-spacing-positive",
+        "kind": "text",
+        "path": "",
+        "timeline_start_sec": 0.0,
+        "timeline_end_sec": 1.0,
+        "source_start_sec": 0.0,
+        "source_range_duration_sec": 0.0,
+        "speed": 1.0,
+        "z": 1,
+        "opacity": 1.0,
+        "blend_mode": "normal",
+        "text": "WIDE",
+        "style": {
+          "width": 300,
+          "fontSize": 42,
+          "fontWeight": "800",
+          "color": "#ffffff",
+          "align": "center",
+          "lineHeight": 1.2,
+          "letterSpacing": 8,
+          "backgroundEnabled": true,
+          "backgroundColor": "#0f766e",
+          "padding": { "top": 12, "right": 18, "bottom": 12, "left": 18 }
+        },
+        "transform": {
+          "x": 160,
+          "y": 86,
+          "scale_x": 1,
+          "scale_y": 1,
+          "rotation_deg": 0,
+          "anchor_x": 0.5,
+          "anchor_y": 0.5
+        },
+        "effects": []
+      },
+      {
+        "id": "text-spacing-negative",
+        "kind": "text",
+        "path": "",
+        "timeline_start_sec": 0.0,
+        "timeline_end_sec": 1.0,
+        "source_start_sec": 0.0,
+        "source_range_duration_sec": 0.0,
+        "speed": 1.0,
+        "z": 2,
+        "opacity": 1.0,
+        "blend_mode": "normal",
+        "text": "TIGHT",
+        "style": {
+          "width": 300,
+          "fontSize": 42,
+          "fontWeight": "800",
+          "color": "#ffffff",
+          "align": "center",
+          "lineHeight": 1.2,
+          "letterSpacing": -4,
+          "backgroundEnabled": true,
+          "backgroundColor": "#7c2d12",
+          "padding": { "top": 12, "right": 18, "bottom": 12, "left": 18 }
+        },
+        "transform": {
+          "x": 160,
+          "y": 158,
+          "scale_x": 1,
+          "scale_y": 1,
+          "rotation_deg": 0,
+          "anchor_x": 0.5,
+          "anchor_y": 0.5
+        },
+        "effects": []
+      }
+    ],
+    "video_tracks": [],
+    "audio_layers": [],
+    "audio_tracks": [],
+    "audio_master_gain": 1.0,
+    "audio_master_muted": false,
+    "width": 320,
+    "height": 240,
+    "preview_fps": 30.0,
+    "preview_sync_mode": "balanced",
+    "preview_effect_quality": "high",
+    "frame_cache_mode": "auto",
+    "frame_cache_custom_mb": 0,
+    "master_effects": [],
+    "audio_master_effects": []
+  },
+  "tolerance": 22,
+  "sample_times_sec": [0.5]
+}

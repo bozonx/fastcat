@@ -137,6 +137,7 @@ describe('timeline frame media processors', () => {
       2160,
       [{ id: 'clip-1' }],
       0.95,
+      undefined,
     );
   });
 

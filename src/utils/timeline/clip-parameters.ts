@@ -126,7 +126,7 @@ export const TEXT_SUB_PROP_KEYS: Record<string, string[]> = {
     'backgroundShadowOffsetX',
     'backgroundShadowOffsetY',
   ],
-  'text:border': ['borderEnabled', 'borderColor', 'borderAlpha', 'borderWidth'],
+  'text:border': ['borderEnabled', 'borderColor', 'borderAlpha', 'borderWidth', 'borderOffset'],
 };
 
 const GROUP_LABEL_KEYS: Record<ClipParameterGroup, string> = {

@@ -706,6 +706,7 @@
       "borderBlock": "Border",
       "borderColor": "Border color",
       "borderWidthPx": "Border width (px)",
+      "borderOffsetPx": "Border offset (px)",
       "colorPicker": "Color and hue",
       "content": "Content",
       "fontFamily": "Font family",

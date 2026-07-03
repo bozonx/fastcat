@@ -4,6 +4,7 @@ import type { TimelineTextClipItem } from '~/timeline/types';
 import PropertySection from '~/components/properties/PropertySection.vue';
 import PropertyField from '~/components/properties/PropertyField.vue';
 import UiWheelNumberInput from '~/components/ui/UiWheelNumberInput.vue';
+import UiSliderInput from '~/components/ui/UiSliderInput.vue';
 import UiSelect from '~/components/ui/UiSelect.vue';
 import UiTextarea from '~/components/ui/UiTextarea.vue';
 import UiColorBlendPicker from '~/components/ui/UiColorBlendPicker.vue';
@@ -662,6 +663,17 @@ const fontWeightOptions = ['100', '200', '300', '400', '500', '600', '700', '800
             :min="0"
             full-width
             @update:model-value="(v: any) => emit('updateTextStyle', { borderWidth: Number(v) })"
+          />
+        </PropertyField>
+        <PropertyField :label="t('fastcat.textClip.borderOffsetPx')">
+          <UiSliderInput
+            :model-value="Number(clip.style?.borderOffset ?? 0)"
+            :min="0"
+            :max="50"
+            :step="1"
+            :decimals="0"
+            :default-value="0"
+            @update:model-value="(v: number) => emit('updateTextStyle', { borderOffset: Number(v) })"
           />
         </PropertyField>
       </div>

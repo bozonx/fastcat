@@ -306,6 +306,7 @@ export function areTextClipStylesEqual(a?: TextClipStyle, b?: TextClipStyle): bo
     a.borderColor === b.borderColor &&
     a.borderAlpha === b.borderAlpha &&
     a.borderWidth === b.borderWidth &&
+    a.borderOffset === b.borderOffset &&
     a.paddingLinked === b.paddingLinked &&
     arePaddingValuesEqual(a.padding, b.padding)
   );

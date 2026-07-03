@@ -181,6 +181,48 @@ describe('text-layout', () => {
     expect(metrics.maxLineWidthPx).toBe(55);
   });
 
+  it('applies fallback letter spacing by grapheme clusters for emoji text', () => {
+    const familyEmoji = '👨‍👩‍👧‍👦';
+    const metrics = computeTextLayoutMetrics({
+      text: familyEmoji,
+      style: {
+        fontSize: 40,
+        letterSpacing: 5,
+        padding: 0,
+        align: 'left',
+        verticalAlign: 'top',
+      },
+      canvasWidth: 1920,
+      canvasHeight: 1080,
+      measureText: () => 40,
+    });
+
+    expect(metrics.maxLineWidthPx).toBe(40);
+    expect(metrics.lines).toEqual([familyEmoji]);
+  });
+
+  it('force-wraps RTL and emoji text without splitting grapheme clusters', () => {
+    const familyEmoji = '👨‍👩‍👧‍👦';
+    const metrics = computeTextLayoutMetrics({
+      text: `שלום${familyEmoji}עולם`,
+      style: {
+        width: 70,
+        fontSize: 40,
+        letterSpacing: 2,
+        padding: 0,
+        align: 'right',
+        verticalAlign: 'top',
+      },
+      canvasWidth: 1920,
+      canvasHeight: 1080,
+      measureText: (text) => text.length * 10,
+    });
+
+    expect(metrics.lines.length).toBeGreaterThan(1);
+    expect(metrics.lines.join('')).toBe(`שלום${familyEmoji}עולם`);
+    expect(metrics.lines).toContain(familyEmoji);
+  });
+
   it('subtracts negative letter spacing so the box matches the painted glyphs', () => {
     const metrics = computeTextLayoutMetrics({
       text: 'abcd',

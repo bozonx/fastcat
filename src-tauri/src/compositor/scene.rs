@@ -347,6 +347,10 @@ pub struct TextLayer {
     pub border_enabled: bool,
     pub border_color: Color,
     pub border_width: f32,
+    /// Creative gap (device px) that pushes the border outward from the background
+    /// box. 0 keeps the border hugging the background; larger values reveal the
+    /// scene between them. Authored in design space and scaled by the layout.
+    pub border_offset: f32,
 
     // Text Shadow
     pub text_shadow_enabled: bool,
@@ -725,8 +729,11 @@ struct LineDrawInfo {
 }
 
 fn draw_text(scene: &mut VelloScene, spec: &TextLayer, xform: Affine) {
-    let frame_x = spec.border_width + spec.shadow_left;
-    let frame_y = spec.border_width + spec.shadow_top;
+    // Reserve room outside the frame for the border's width plus its creative gap
+    // (`border_offset`), matching the layer-builder's natural-size reservation.
+    let border_outset = spec.border_width + spec.border_offset;
+    let frame_x = border_outset + spec.shadow_left;
+    let frame_y = border_outset + spec.shadow_top;
 
     if matches!(
         spec.render_mode,
@@ -904,13 +911,15 @@ fn draw_text_border(
     if !(spec.border_enabled && spec.border_width > 0.0 && spec.border_color.to_rgba8().a > 0) {
         return;
     }
-    let inset = spec.border_width / 2.0;
+    // The stroke centerline sits `border_offset` further out than the background
+    // edge (plus its own half-width), opening the gap between border and background.
+    let off = (spec.border_width / 2.0 + spec.border_offset) as f64;
     let border_rect = RoundedRect::new(
-        (frame_x - inset) as f64,
-        (frame_y - inset) as f64,
-        (frame_x + spec.frame_width + inset) as f64,
-        (frame_y + spec.frame_height + inset) as f64,
-        (spec.background_radius + inset as f64).max(0.0),
+        frame_x as f64 - off,
+        frame_y as f64 - off,
+        (frame_x + spec.frame_width) as f64 + off,
+        (frame_y + spec.frame_height) as f64 + off,
+        (spec.background_radius + off).max(0.0),
     )
     .to_path(0.1);
 
@@ -1342,6 +1351,7 @@ mod tests {
             border_enabled: border_width > 0.0,
             border_color: Color::WHITE,
             border_width,
+            border_offset: 0.0,
             text_shadow_enabled: false,
             text_shadow_color: Color::TRANSPARENT,
             text_shadow_blur: 0.0,

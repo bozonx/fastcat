@@ -118,8 +118,10 @@ pub fn text_anchor_offset(
 ) -> (f64, f64) {
     match kind {
         CompLayerKind::Text(spec) => {
-            let inner_w = spec.frame_width as f64 + spec.border_width as f64 * 2.0;
-            let inner_h = spec.frame_height as f64 + spec.border_width as f64 * 2.0;
+            // The visible box spans the frame plus the border and its creative gap.
+            let border_outset = (spec.border_width + spec.border_offset) as f64;
+            let inner_w = spec.frame_width as f64 + border_outset * 2.0;
+            let inner_h = spec.frame_height as f64 + border_outset * 2.0;
             let dx =
                 (anchor_x - 0.5) * inner_w + 0.5 * ((spec.shadow_right - spec.shadow_left) as f64);
             let dy =

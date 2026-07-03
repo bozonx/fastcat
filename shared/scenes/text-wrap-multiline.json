@@ -1,0 +1,71 @@
+{
+  "_comment": [
+    "Cross-engine parity scene: multiline text with explicit width and forced wrapping.",
+    "Checks that Canvas measureText wrapping and parley break_all_lines agree on",
+    "the block height closely enough for a stable frame."
+  ],
+  "scene": {
+    "layers": [
+      {
+        "id": "bg-text-wrap",
+        "kind": "background",
+        "path": "",
+        "timeline_start_sec": 0.0,
+        "timeline_end_sec": 1.0,
+        "source_start_sec": 0.0,
+        "source_range_duration_sec": 0.0,
+        "speed": 1.0,
+        "z": 0,
+        "opacity": 1.0,
+        "blend_mode": "normal",
+        "background_color": "#111827",
+        "effects": []
+      },
+      {
+        "id": "text-wrap-1",
+        "kind": "text",
+        "path": "",
+        "timeline_start_sec": 0.0,
+        "timeline_end_sec": 1.0,
+        "source_start_sec": 0.0,
+        "source_range_duration_sec": 0.0,
+        "speed": 1.0,
+        "z": 1,
+        "opacity": 1.0,
+        "blend_mode": "normal",
+        "text": "Short line\nA much longer line wraps twice",
+        "style": {
+          "width": 220,
+          "fontSize": 34,
+          "fontWeight": "700",
+          "color": "#ffffff",
+          "align": "left",
+          "verticalAlign": "top",
+          "lineHeight": 1.18,
+          "letterSpacing": 0,
+          "backgroundEnabled": true,
+          "backgroundColor": "#1d4ed8",
+          "backgroundRadius": 8,
+          "padding": { "top": 14, "right": 18, "bottom": 14, "left": 18 }
+        },
+        "effects": []
+      }
+    ],
+    "video_tracks": [],
+    "audio_layers": [],
+    "audio_tracks": [],
+    "audio_master_gain": 1.0,
+    "audio_master_muted": false,
+    "width": 320,
+    "height": 240,
+    "preview_fps": 30.0,
+    "preview_sync_mode": "balanced",
+    "preview_effect_quality": "high",
+    "frame_cache_mode": "auto",
+    "frame_cache_custom_mb": 0,
+    "master_effects": [],
+    "audio_master_effects": []
+  },
+  "tolerance": 24,
+  "sample_times_sec": [0.5]
+}

@@ -620,6 +620,13 @@ mod tests {
     }
 
     fn text_layer_with_style(style: serde_json::Value) -> crate::compositor::scene::TextLayer {
+        text_layer_with_text_and_style("Test", style)
+    }
+
+    fn text_layer_with_text_and_style(
+        text: &str,
+        style: serde_json::Value,
+    ) -> crate::compositor::scene::TextLayer {
         let sl = SceneLayer {
             id: "text-bg".into(),
             kind: LayerKind::Text,
@@ -636,7 +643,7 @@ mod tests {
             opacity: 1.0,
             blend_mode: BlendMode::Normal,
             background_color: None,
-            text: Some("Test".into()),
+            text: Some(text.into()),
             style: Some(style),
             shape_type: None,
             fill_color: None,
@@ -754,6 +761,42 @@ mod tests {
         assert_eq!(
             multiline.frame_height,
             multiline.text_block_height + multiline.padding_top + multiline.padding_bottom
+        );
+    }
+
+    #[test]
+    fn explicit_text_width_wraps_multiline_content_through_parley() {
+        let unwrapped = text_layer_with_text_and_style(
+            "short\nthis is a much longer wrapped line",
+            json!({
+                "fontSize": 48.0,
+                "lineHeight": 1.2,
+                "padding": 0.0
+            }),
+        );
+        let wrapped = text_layer_with_text_and_style(
+            "short\nthis is a much longer wrapped line",
+            json!({
+                "width": 260.0,
+                "fontSize": 48.0,
+                "lineHeight": 1.2,
+                "padding": 0.0,
+                "align": "left"
+            }),
+        );
+
+        assert_eq!(wrapped.max_width, Some(260.0));
+        assert_eq!(wrapped.frame_width, 260.0);
+        assert!(
+            wrapped.text_block_height > unwrapped.text_block_height,
+            "expected parley break_all_lines to add visual lines: wrapped={} unwrapped={}",
+            wrapped.text_block_height,
+            unwrapped.text_block_height
+        );
+        assert!(
+            wrapped.text_block_height >= 48.0 * 1.2 * 3.0,
+            "expected at least three laid-out lines, got height {}",
+            wrapped.text_block_height
         );
     }
 

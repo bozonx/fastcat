@@ -312,3 +312,28 @@ export async function setTimelineZoom(page: Page, zoom: number): Promise<void> {
     await set({ zoom: z });
   }, zoom);
 }
+
+export async function addTextClipAtPlayhead(
+  page: Page,
+  params: {
+    text?: string;
+    style?: Record<string, unknown>;
+    durationUs?: number;
+    trackId?: string;
+  },
+): Promise<string[]> {
+  return page.evaluate(async (input) => {
+    const addText = (
+      window as Window & {
+        __fastcatE2eAddTextClip?: (params: {
+          text?: string;
+          style?: Record<string, unknown>;
+          durationUs?: number;
+          trackId?: string;
+        }) => Promise<string[]>;
+      }
+    ).__fastcatE2eAddTextClip;
+    if (!addText) throw new Error('E2E timeline add-text hook is not registered');
+    return addText(input);
+  }, params);
+}

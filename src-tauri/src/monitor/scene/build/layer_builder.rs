@@ -189,6 +189,12 @@ pub fn build_text_layer(sl: &SceneLayer, scene_size: (u32, u32)) -> TextLayer {
     } else {
         0.0
     };
+    // Creative gap between the background box and the border (design space → device).
+    let border_offset = if border_enabled {
+        (number(&style, "borderOffset", 0.0).max(0.0) * render_scale) as f32
+    } else {
+        0.0
+    };
     let border_color = parse_color(
         string_value(&style, "borderColor", "#ffffff").as_str(),
         number(&style, "borderAlpha", 1.0).clamp(0.0, 1.0),
@@ -333,8 +339,10 @@ pub fn build_text_layer(sl: &SceneLayer, scene_size: (u32, u32)) -> TextLayer {
         .max(text_shadow_extent + text_shadow_offset_y)
         .max(0.0);
 
-    let background_width = frame_width_px + border_width * 2.0 + shadow_left + shadow_right;
-    let background_height = frame_height_px + border_width * 2.0 + shadow_top + shadow_bottom;
+    // Border reaches `border_width + border_offset` outward from the frame on each side.
+    let border_outset = border_width + border_offset;
+    let background_width = frame_width_px + border_outset * 2.0 + shadow_left + shadow_right;
+    let background_height = frame_height_px + border_outset * 2.0 + shadow_top + shadow_bottom;
 
     let natural_width = background_width.ceil() as u32;
     let natural_height = background_height.ceil() as u32;
@@ -366,6 +374,7 @@ pub fn build_text_layer(sl: &SceneLayer, scene_size: (u32, u32)) -> TextLayer {
         border_enabled,
         border_color,
         border_width,
+        border_offset,
 
         text_shadow_enabled,
         text_shadow_color,

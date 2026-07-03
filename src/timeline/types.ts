@@ -94,6 +94,12 @@ export interface TextClipStyle {
   borderColor?: string;
   borderAlpha?: number;
   borderWidth?: number;
+  /**
+   * Creative gap between the background box and the border, in design-space px.
+   * 0 keeps the border hugging the background (a 1px overlap that hides the AA
+   * seam); larger values push the border outward, revealing the scene in between.
+   */
+  borderOffset?: number;
   paddingLinked?: boolean;
   padding?:
     | number

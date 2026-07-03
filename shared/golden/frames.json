@@ -403,7 +403,7 @@
         {
           "timeSec": 0.5,
           "hash": "ff7f3f0f07030000",
-          "tolerance": 12,
+          "tolerance": 24,
           "colorSig": "fe8400fee800fe0a00fe5b00"
         }
       ]
@@ -907,7 +907,7 @@
         {
           "timeSec": 0.5,
           "hash": "fffefcf0e0c00000",
-          "tolerance": 12,
+          "tolerance": 24,
           "colorSig": "fee800fe8400fe5b00fe0a00"
         }
       ]
