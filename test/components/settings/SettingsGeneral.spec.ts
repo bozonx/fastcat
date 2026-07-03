@@ -28,7 +28,6 @@ describe('SettingsGeneral', () => {
     mockWorkspaceStore.userSettings.timeline.defaultStaticClipDurationUs = 1_000_000;
     mockWorkspaceStore.userSettings.ui.interfaceScale = 20;
     mockWorkspaceStore.userSettings.history.maxEntries = 999;
-    mockWorkspaceStore.userSettings.history.maxMemoryMb = 999;
     mockWorkspaceStore.userSettings.backup.enabled = false;
     mockWorkspaceStore.userSettings.backup.count = 99;
     mockWorkspaceStore.userSettings.autosave.intervalMinutes = 60;
@@ -68,9 +67,6 @@ describe('SettingsGeneral', () => {
     );
     expect(mockWorkspaceStore.userSettings.history.maxEntries).toBe(
       DEFAULT_USER_SETTINGS.history.maxEntries,
-    );
-    expect(mockWorkspaceStore.userSettings.history.maxMemoryMb).toBe(
-      DEFAULT_USER_SETTINGS.history.maxMemoryMb,
     );
     expect(mockWorkspaceStore.userSettings.backup.enabled).toBe(
       DEFAULT_USER_SETTINGS.backup.enabled,

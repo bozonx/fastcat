@@ -125,7 +125,6 @@ const mockWorkspaceStore = vi.hoisted(() => {
       },
       history: {
         maxEntries: 100,
-        maxMemoryMb: 512,
       },
       projectDefaults: {
         audioScrubbingEnabled: true,

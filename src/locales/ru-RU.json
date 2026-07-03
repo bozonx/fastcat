@@ -1832,7 +1832,6 @@
       "fastcatAccountConnectAction": "Подключить аккаунт Fastcat",
       "fastcatAccountIntegrationHint": "Подключитесь к вашему аккаунту Fastcat для доступа к облачным сервисам и STT.",
       "historyMaxEntries": "Лимит истории отмены",
-      "historyMaxMemory": "Лимит памяти истории отмены (МБ)",
       "hotkeysCaptureHint": "Ожидание комбинации клавиш (Esc для отмены)",
       "hotkeysCapturing": "Запись...",
       "hotkeysConflict": "Конфликт горячих клавиш",

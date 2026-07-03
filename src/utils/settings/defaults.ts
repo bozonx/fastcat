@@ -196,10 +196,10 @@ export interface FastCatUserSettings {
     defaultAudioWaveformMode: 'half' | 'full' | 'none';
   };
   history: {
+    /** Number of undo steps kept (desktop only; the web build pins this
+     *  internally). Total retained snapshot memory is additionally bounded by a
+     *  non-configurable internal budget — see `history.store.ts`. */
     maxEntries: number;
-    /** Upper bound on total retained undo/redo snapshot memory, in megabytes.
-     *  Trims oldest entries beyond this regardless of `maxEntries`. */
-    maxMemoryMb: number;
   };
   backup: {
     enabled: boolean;
@@ -368,8 +368,7 @@ export const DEFAULT_USER_SETTINGS: FastCatUserSettings = {
     defaultAudioWaveformMode: 'half',
   },
   history: {
-    maxEntries: 100,
-    maxMemoryMb: 512,
+    maxEntries: 20,
   },
   backup: {
     enabled: true,

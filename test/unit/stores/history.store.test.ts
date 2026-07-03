@@ -1,6 +1,12 @@
 /** @vitest-environment node */
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { setActivePinia, createPinia } from 'pinia';
+
+// Force the desktop path so `maxEntries` is driven by user settings (the web
+// build pins it internally). The snapshot-memory budget is exercised directly
+// via `store.memoryBudgetMb` below, independently of the platform.
+vi.mock('~/utils/runtime', () => ({ isTauriRuntime: () => true }));
+
 import { useHistoryStore } from '~/stores/history.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import type { TimelineDocument } from '~/timeline/types';
@@ -149,6 +155,8 @@ describe('HistoryStore', () => {
   });
 
   it('limits history to maxEntries total (past + future)', () => {
+    const workspace = useWorkspaceStore();
+    workspace.userSettings.history.maxEntries = 100;
     const store = useHistoryStore();
     const doc = makeDoc('doc');
 
@@ -200,17 +208,16 @@ describe('HistoryStore', () => {
     const PAYLOAD_CHARS = 50_000;
 
     it('trims oldest entries once the byte budget is exceeded', () => {
-      const workspace = useWorkspaceStore();
-      // ~0.25 MB budget: holds roughly two ~100 KB snapshots.
-      workspace.userSettings.history.maxMemoryMb = 0.25;
       const store = useHistoryStore();
+      // ~0.25 MB budget: holds roughly two ~100 KB snapshots.
+      store.memoryBudgetMb = 0.25;
 
       for (let i = 0; i < 10; i++) {
         store.push('timeline', 'remove_item', makeBigDoc(`doc-${i}`, PAYLOAD_CHARS), `Edit ${i}`);
       }
 
-      // Far fewer than the 10 pushed (entry-count cap is 100, so memory is the
-      // binding constraint here) but never fully emptied.
+      // Far fewer than the 10 pushed (the default entry-count cap is not the
+      // binding constraint here, memory is) but never fully emptied.
       expect(store.past.length).toBeGreaterThanOrEqual(1);
       expect(store.past.length).toBeLessThan(5);
       // The most recent edit must survive so at least one undo step remains.
@@ -218,9 +225,8 @@ describe('HistoryStore', () => {
     });
 
     it('keeps at least the most recent entry even when one snapshot exceeds the budget', () => {
-      const workspace = useWorkspaceStore();
-      workspace.userSettings.history.maxMemoryMb = 0.01; // smaller than a single snapshot
       const store = useHistoryStore();
+      store.memoryBudgetMb = 0.01; // smaller than a single snapshot
 
       store.push('timeline', 'remove_item', makeBigDoc('a', PAYLOAD_CHARS), 'a');
       store.push('timeline', 'remove_item', makeBigDoc('b', PAYLOAD_CHARS), 'b');
@@ -231,6 +237,8 @@ describe('HistoryStore', () => {
     });
 
     it('does not trim small snapshots under the default budget', () => {
+      const workspace = useWorkspaceStore();
+      workspace.userSettings.history.maxEntries = 100; // keep memory the only cap
       const store = useHistoryStore();
       for (let i = 0; i < 50; i++) {
         store.push('timeline', 'remove_item', makeDoc(`doc-${i}`), `Edit ${i}`);

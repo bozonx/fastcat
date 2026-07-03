@@ -5,7 +5,22 @@ import { computed, shallowRef, toRaw, triggerRef } from 'vue';
 import { useWorkspaceStore } from './workspace.store';
 import { genUuid } from '~/utils/ids';
 import { cloneValue } from '~/utils/clone';
+import { isTauriRuntime } from '~/utils/runtime';
 const log = createDevLogger('history.store');
+
+/** Fixed undo depth on the web build. The web runs inside a browser tab whose
+ *  heap shares a much tighter budget (wasm + SharedArrayBuffer) than the native
+ *  shell, so the entry count is hardcoded here rather than user-configurable. */
+const WEB_MAX_ENTRIES = 10;
+
+/** Internal safety net bounding total retained undo/redo snapshot memory. This
+ *  is NOT user-facing: each snapshot is a full deep clone of the document, so
+ *  its cost scales with project size, not edit size — a handful of very large
+ *  snapshots on a heavy project can dwarf the entry-count cap. The budget trims
+ *  oldest entries beyond this regardless of the entry count. Web is tighter than
+ *  desktop for the same reason its entry count is (browser-tab memory). */
+const WEB_MEMORY_BUDGET_MB = 256;
+const DESKTOP_MEMORY_BUDGET_MB = 512;
 
 export interface HistoryEntry<T = unknown> {
   id: string;
@@ -68,10 +83,17 @@ function cloneHistorySnapshot<T>(snapshot: T): T {
 
 export const useHistoryStore = defineStore('history', () => {
   const workspaceStore = useWorkspaceStore();
-  const maxEntries = computed(() => workspaceStore.userSettings.history.maxEntries);
-  const maxMemoryBytes = computed(
-    () => Math.max(0, workspaceStore.userSettings.history.maxMemoryMb) * 1024 * 1024,
+  // Desktop exposes the undo depth as a setting; web pins it to keep tab memory
+  // predictable. The memory budget is an internal safety net on both.
+  const maxEntries = computed(() =>
+    isTauriRuntime() ? workspaceStore.userSettings.history.maxEntries : WEB_MAX_ENTRIES,
   );
+  // Internal, non-user-facing budget. A ref (not a bare constant) so tests can
+  // shrink it to exercise the trimming path without allocating hundreds of MB.
+  const memoryBudgetMb = shallowRef(
+    isTauriRuntime() ? DESKTOP_MEMORY_BUDGET_MB : WEB_MEMORY_BUDGET_MB,
+  );
+  const maxMemoryBytes = computed(() => Math.max(0, memoryBudgetMb.value) * 1024 * 1024);
 
   // `shallowRef`, not `ref`: history entries hold a deep-cloned whole-document
   // snapshot (the `timeline` scope clones the entire TimelineDocument). With a
@@ -159,7 +181,7 @@ export const useHistoryStore = defineStore('history', () => {
   /**
    * Bounds history by two independent caps:
    *  - entry count (`maxEntries`) — trims oldest past entries first;
-   *  - retained memory (`maxMemoryMb`) — trims oldest past entries, then the
+   *  - retained memory (`memoryBudgetMb`) — trims oldest past entries, then the
    *    furthest redo entries, until under budget. Always keeps at least the
    *    most recent past entry so a single undo step survives even when one
    *    snapshot alone exceeds the budget.
@@ -363,6 +385,9 @@ export const useHistoryStore = defineStore('history', () => {
   return {
     past,
     future,
+    /** Internal snapshot-memory budget (MB). Not user-facing; exposed only so
+     *  tests can shrink it to drive the trimming path. */
+    memoryBudgetMb,
     canUndo,
     canRedo,
     lastEntry,

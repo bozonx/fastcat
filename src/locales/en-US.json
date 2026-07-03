@@ -1832,7 +1832,6 @@
       "fastcatAccountConnectAction": "Connect Fastcat Account",
       "fastcatAccountIntegrationHint": "Connect to your Fastcat account to access cloud services and STT.",
       "historyMaxEntries": "Undo history limit",
-      "historyMaxMemory": "Undo history memory limit (MB)",
       "hotkeysCaptureHint": "Waiting for key combination (Esc to cancel)",
       "hotkeysCapturing": "Capturing...",
       "hotkeysConflict": "Hotkey conflict",

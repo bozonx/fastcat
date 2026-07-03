@@ -7,9 +7,14 @@ import UiWheelNumberInput from '~/components/ui/UiWheelNumberInput.vue';
 import UiConfirmModal from '~/components/ui/UiConfirmModal.vue';
 import UiSelect from '~/components/ui/UiSelect.vue';
 import UiAccordion from '~/components/ui/UiAccordion.vue';
+import { isTauriRuntime } from '~/utils/runtime';
 
 const { t } = useI18n();
 const workspaceStore = useWorkspaceStore();
+
+// Undo depth is only user-configurable on desktop; the web build pins it and the
+// snapshot memory budget is an internal cap on both (see history.store.ts).
+const isDesktop = isTauriRuntime();
 
 const isResetConfirmOpen = ref(false);
 
@@ -31,7 +36,6 @@ function resetGeneralDefaults() {
   workspaceStore.userSettings.deleteWithoutConfirmation =
     DEFAULT_USER_SETTINGS.deleteWithoutConfirmation;
   workspaceStore.userSettings.history.maxEntries = DEFAULT_USER_SETTINGS.history.maxEntries;
-  workspaceStore.userSettings.history.maxMemoryMb = DEFAULT_USER_SETTINGS.history.maxMemoryMb;
   workspaceStore.userSettings.backup = { ...DEFAULT_USER_SETTINGS.backup };
   workspaceStore.userSettings.autosave = { ...DEFAULT_USER_SETTINGS.autosave };
 
@@ -192,23 +196,13 @@ const stopFramesQualityOptions = [
           />
         </UiFormField>
 
-        <UiFormField :label="t('videoEditor.settings.historyMaxEntries')">
+        <UiFormField v-if="isDesktop" :label="t('videoEditor.settings.historyMaxEntries')">
           <UiWheelNumberInput
             v-model="workspaceStore.userSettings.history.maxEntries"
             :min="1"
             :max="1000"
             :step="1"
             :wheel-step-multiplier="10"
-          />
-        </UiFormField>
-
-        <UiFormField :label="t('videoEditor.settings.historyMaxMemory')">
-          <UiWheelNumberInput
-            v-model="workspaceStore.userSettings.history.maxMemoryMb"
-            :min="16"
-            :max="8192"
-            :step="16"
-            :wheel-step-multiplier="8"
           />
         </UiFormField>
 
