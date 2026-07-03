@@ -16,25 +16,23 @@ const { t } = useI18n();
 
 <template>
   <UiModal v-model:open="open" :title="t('fastcat.effects.savePresetTitle')">
-    <template #body>
-      <div class="flex flex-col gap-4">
-        <UiFormField :label="t('common.name')">
-          <UiTextInput
-            v-model="name"
-            :placeholder="t('fastcat.effects.presetNamePlaceholder')"
-            autofocus
-            @keyup.enter="emit('save')"
-          />
-        </UiFormField>
-        <div class="flex justify-end gap-2">
-          <UButton variant="ghost" color="neutral" @click="void (open = false)">
-            {{ t('common.cancel') }}
-          </UButton>
-          <UButton color="primary" :disabled="!name.trim()" @click="emit('save')">
-            {{ t('common.save') }}
-          </UButton>
-        </div>
-      </div>
+    <div class="flex flex-col gap-4">
+      <UiFormField :label="t('common.name')">
+        <UiTextInput
+          v-model="name"
+          :placeholder="t('fastcat.effects.presetNamePlaceholder')"
+          autofocus
+          @keyup.enter="emit('save')"
+        />
+      </UiFormField>
+    </div>
+    <template #footer>
+      <UButton variant="ghost" color="neutral" @click="void (open = false)">
+        {{ t('common.cancel') }}
+      </UButton>
+      <UButton color="primary" :disabled="!name.trim()" @click="emit('save')">
+        {{ t('common.save') }}
+      </UButton>
     </template>
   </UiModal>
 </template>

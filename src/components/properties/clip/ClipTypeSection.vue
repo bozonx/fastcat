@@ -6,9 +6,7 @@ import { usePresetsStore } from '~/stores/presets.store';
 import ClipTextProperties from './ClipTextProperties.vue';
 import ClipShapeProperties from './ClipShapeProperties.vue';
 import ClipHudProperties from './ClipHudProperties.vue';
-import UiModal from '~/components/ui/UiModal.vue';
-import UiTextInput from '~/components/ui/UiTextInput.vue';
-import UiFormField from '~/components/ui/UiFormField.vue';
+import PresetSaveModal from '~/components/properties/PresetSaveModal.vue';
 
 const props = defineProps<{
   clip: TimelineClipItem;
@@ -163,24 +161,9 @@ function confirmSavePreset() {
     @save-preset="handleSavePreset"
   />
 
-  <UiModal v-model:open="isSaveModalOpen" :title="t('fastcat.effects.savePresetTitle')">
-    <div class="flex flex-col gap-4">
-      <UiFormField :label="t('common.name')">
-        <UiTextInput
-          v-model="newPresetName"
-          :placeholder="t('fastcat.effects.presetNamePlaceholder')"
-          autofocus
-          @keyup.enter="confirmSavePreset"
-        />
-      </UiFormField>
-    </div>
-    <template #footer>
-      <UButton variant="ghost" color="neutral" @click="void (isSaveModalOpen = false)">
-        {{ t('common.cancel') }}
-      </UButton>
-      <UButton color="primary" :disabled="!newPresetName.trim()" @click="confirmSavePreset">
-        {{ t('common.save') }}
-      </UButton>
-    </template>
-  </UiModal>
+  <PresetSaveModal
+    v-model:open="isSaveModalOpen"
+    v-model:name="newPresetName"
+    @save="confirmSavePreset"
+  />
 </template>

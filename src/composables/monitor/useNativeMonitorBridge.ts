@@ -22,6 +22,7 @@ import {
   markNativeMonitorInitFailure,
   resetNativeMonitorAvailability,
 } from '~/composables/monitor/native-monitor-availability';
+import { stillFrameFullRes } from '~/composables/monitor/useNativeMonitorMode';
 
 const log = createDevLogger('useNativeMonitorBridge');
 
@@ -183,6 +184,15 @@ export function useNativeMonitorBridge(): void {
     }
   }
 
+  // Полное разрешение readback имеет смысл только на устоявшемся стоп-кадре: на паузе и без
+  // активного интерактива. В остальных состояниях держим 960-кэп (см. useNativeMonitorMode).
+  function updateStillFrameFullRes(): void {
+    stillFrameFullRes.value = !timelineStore.isPlaying && idleSettled;
+  }
+  // Начальное состояние: свежезагруженный проект на паузе уже «устоявшийся» (idleSettled=true),
+  // поэтому первый статичный кадр должен строиться в полном разрешении — как и ultra-качество.
+  updateStillFrameFullRes();
+
   // Открывает интерактивное окно: кадр считается «не устоявшимся» (рендерится в выбранном
   // качестве), а через ULTRA_SETTLE_DELAY_MS бездействия сцена пересобирается в ultra.
   // Возвращает true, если флаг только что сменился с settled → interactive (вызывающему стоит
@@ -190,10 +200,12 @@ export function useNativeMonitorBridge(): void {
   function beginInteractiveWindow(): boolean {
     const wasSettled = idleSettled;
     idleSettled = false;
+    updateStillFrameFullRes();
     cancelUltraSettle();
     ultraSettleTimer = setTimeout(() => {
       ultraSettleTimer = null;
       idleSettled = true;
+      updateStillFrameFullRes();
       void syncScene();
     }, ULTRA_SETTLE_DELAY_MS);
     return wasSettled;
@@ -392,8 +404,9 @@ export function useNativeMonitorBridge(): void {
         // until it confirms by emitting the first `monitor:time` (see flag docs).
         awaitingFirstNativeTime = true;
         // Во время воспроизведения качество и так пользовательское — отложенный ultra-кадр
-        // не нужен (и шумел бы лишним IPC).
+        // не нужен (и шумел бы лишним IPC). Разрешение тоже возвращаем к 960-кэпу.
         cancelUltraSettle();
+        updateStillFrameFullRes();
       } else {
         awaitingFirstNativeTime = false;
         // Остановка — тоже интерактив: показываем кадр в выбранном качестве, ultra по дебаунсу.

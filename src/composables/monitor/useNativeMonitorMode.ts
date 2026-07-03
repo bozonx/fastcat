@@ -13,10 +13,21 @@ const log = createDevLogger('useNativeMonitorMode');
 
 export type MonitorMode = 'embedded' | 'canvas';
 
-// Максимальный размер render target'а в canvas-режиме. Дальше — CSS-stretch браузером.
-// Это решающий фактор производительности: GPU→CPU readback + IPC масштабируются как
-// O(w*h). Кэп ~960px даёт ~2-3 МБ/кадр вместо 8+ МБ для FullHD.
+// Максимальный размер render target'а в canvas-режиме во время воспроизведения/интерактива.
+// Дальше — CSS-stretch браузером. Это решающий фактор производительности: GPU→CPU readback
+// + IPC масштабируются как O(w*h). Кэп ~960px даёт ~2-3 МБ/кадр вместо 8+ МБ для FullHD.
 const MAX_RENDER_DIM = 960;
+
+// Кэп для «устоявшегося» стоп-кадра (пауза без активного скрабинга/правок): readback тут
+// единичный, поэтому рендерим в реальном разрешении экрана (layout*dpr, без CSS-апскейла),
+// чтобы края текста/бордера/шейпов были чёткими — как в export-качестве по ultra-дебаунсу.
+// Ограничиваем сверху, чтобы не гонять readback 8K на огромных панелях без нужды.
+const MAX_STILL_RENDER_DIM = 3840;
+
+// true → still-frame рендерится без 960-кэпа (в полном разрешении). Флаг выставляет мост
+// (useNativeMonitorBridge) синхронно с тем же ultra-дебаунсом, что поднимает качество
+// эффектов на устоявшейся паузе; сбрасывается на время воспроизведения и интерактива.
+export const stillFrameFullRes = ref(false);
 
 /**
  * Глобальный (на модуль) реактивный режим монитора. В Tauri-панели по умолчанию
@@ -97,6 +108,7 @@ export function useNativeMonitorCanvas(canvasRef: Ref<HTMLCanvasElement | null>)
       layoutWidth,
       layoutHeight,
       dpr: window.devicePixelRatio || 1,
+      maxRenderDim: stillFrameFullRes.value ? MAX_STILL_RENDER_DIM : MAX_RENDER_DIM,
     });
     if (el.width !== w || el.height !== h) {
       el.width = w;
@@ -198,6 +210,12 @@ export function useNativeMonitorCanvas(canvasRef: Ref<HTMLCanvasElement | null>)
     });
     ro.observe(el);
   }
+
+  // Переход «устоявшаяся пауза ↔ интерактив» меняет кэп разрешения → пересобираем размер
+  // readback-таргета. На паузе SetCanvasSize на нативной стороне сам перерисует кадр.
+  watch(stillFrameFullRes, () => {
+    if (mode.value === 'canvas') syncCanvasSize();
+  });
 
   // Реактивно подстраиваем canvas size при resize.
   onMounted(() => {

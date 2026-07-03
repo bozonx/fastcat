@@ -67,11 +67,11 @@ describe('PresetsStore', () => {
   });
 
   it('load restores presets from user settings and files', async () => {
-    workspaceMock.userSettings.presets.defaultTextPresetId = 'p1';
-    workspaceMock.userSettings.presets.collapsed = { effectsStandardCollapsed: true };
-
     const store = usePresetsStore();
     await store.saveAsPreset('effect', 'blur', 'My Blur', { strength: 1 });
+
+    workspaceMock.userSettings.presets.defaultTextPresetId = 'p1';
+    workspaceMock.userSettings.presets.collapsed = { effectsStandardCollapsed: true };
 
     await store.load();
 
