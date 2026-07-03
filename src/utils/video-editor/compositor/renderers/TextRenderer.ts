@@ -145,13 +145,20 @@ export class TextRenderer {
       ctx.save();
       ctx.globalAlpha = normalizedStyle.backgroundAlpha;
       ctx.fillStyle = normalizedStyle.backgroundColor;
+      // When a border is present, extend the background out to the border's
+      // centerline so it underlaps the inner half of the (concentric) stroke.
+      // Otherwise the two abutting anti-aliased edges (background fill + stroke
+      // inner edge) leave a ~1px seam of the scene behind showing through at the
+      // corners; the opaque inner half of the stroke covers this underlap.
+      const bgUnderlap =
+        normalizedStyle.borderEnabled && borderWidthPx > 0 ? borderWidthPx / 2 : 0;
       this.drawRoundedRect(
         ctx,
-        frameX,
-        frameY,
-        frameW,
-        frameH,
-        normalizedStyle.backgroundRadius * renderScale,
+        frameX - bgUnderlap,
+        frameY - bgUnderlap,
+        frameW + bgUnderlap * 2,
+        frameH + bgUnderlap * 2,
+        normalizedStyle.backgroundRadius * renderScale + bgUnderlap,
       );
       ctx.fill();
       ctx.restore();
@@ -390,16 +397,18 @@ export class TextRenderer {
   ): void {
     const safeRadius = Math.min(Math.max(0, radius), width / 2, height / 2);
 
+    // Use true circular arcs (arcTo) rather than a quadratic-Bézier approximation.
+    // Concentric rounded rects (e.g. the background fill and the stroked border drawn
+    // at an offset radius) only stay perfectly nested if their corners are real
+    // circles — a quadratic curve offset does not match another quadratic at a larger
+    // radius, which left a visible gap between the background and border corners.
+    // This mirrors the native (vello) compositor, which uses true arcs.
     ctx.beginPath();
     ctx.moveTo(x + safeRadius, y);
-    ctx.lineTo(x + width - safeRadius, y);
-    ctx.quadraticCurveTo(x + width, y, x + width, y + safeRadius);
-    ctx.lineTo(x + width, y + height - safeRadius);
-    ctx.quadraticCurveTo(x + width, y + height, x + width - safeRadius, y + height);
-    ctx.lineTo(x + safeRadius, y + height);
-    ctx.quadraticCurveTo(x, y + height, x, y + height - safeRadius);
-    ctx.lineTo(x, y + safeRadius);
-    ctx.quadraticCurveTo(x, y, x + safeRadius, y);
+    ctx.arcTo(x + width, y, x + width, y + height, safeRadius);
+    ctx.arcTo(x + width, y + height, x, y + height, safeRadius);
+    ctx.arcTo(x, y + height, x, y, safeRadius);
+    ctx.arcTo(x, y, x + width, y, safeRadius);
     ctx.closePath();
   }
 

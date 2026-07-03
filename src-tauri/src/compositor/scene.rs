@@ -860,12 +860,26 @@ fn draw_text_background(
     if !(spec.background_enabled && spec.background_color.to_rgba8().a > 0) {
         return;
     }
+    // When a border is present, extend the background out to the border's centerline
+    // so it underlaps the inner half of the (concentric) stroke. Both the background
+    // fill edge and the stroke's inner edge are anti-aliased; if they merely abut,
+    // the two fading AA fringes don't sum to full coverage and a ~1px seam of the
+    // scene behind shows through at the corners. Underlapping fills that seam with
+    // background color, which the opaque inner half of the stroke then covers.
+    let underlap = if spec.border_enabled
+        && spec.border_width > 0.0
+        && spec.border_color.to_rgba8().a > 0
+    {
+        (spec.border_width / 2.0) as f64
+    } else {
+        0.0
+    };
     let rect = RoundedRect::new(
-        frame_x as f64,
-        frame_y as f64,
-        (frame_x + spec.frame_width) as f64,
-        (frame_y + spec.frame_height) as f64,
-        spec.background_radius,
+        frame_x as f64 - underlap,
+        frame_y as f64 - underlap,
+        (frame_x + spec.frame_width) as f64 + underlap,
+        (frame_y + spec.frame_height) as f64 + underlap,
+        spec.background_radius + underlap,
     )
     .to_path(0.1);
     scene.fill(

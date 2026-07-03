@@ -9,6 +9,7 @@ const sampleManifest = {
   description: 'Applies a blur effect',
   descriptionKey: 'effects.blur.description',
   icon: 'i-heroicons-sparkles',
+  target: 'audio',
   params: {},
 } as any;
 
@@ -43,7 +44,7 @@ describe('EffectCard', () => {
       props: { manifest: sampleManifest },
     });
 
-    const card = component.find('.flex.items-start');
+    const card = component.find('.effect-card');
     await card.trigger('click');
 
     expect(component.emitted('click')).toBeTruthy();
@@ -54,7 +55,7 @@ describe('EffectCard', () => {
       props: { manifest: sampleManifest, isSelected: true },
     });
 
-    const card = component.find('.flex.items-start');
+    const card = component.find('.effect-card');
     expect(card.classes()).toContain('border-primary');
   });
 
@@ -63,7 +64,7 @@ describe('EffectCard', () => {
       props: { manifest: sampleManifest, isDraggable: true },
     });
 
-    const card = component.find('.flex.items-start');
+    const card = component.find('.effect-card');
     expect(card.classes()).toContain('cursor-grab');
   });
 
@@ -72,7 +73,7 @@ describe('EffectCard', () => {
       props: { manifest: sampleManifest, isDraggable: true },
     });
 
-    const card = component.find('.flex.items-start');
+    const card = component.find('.effect-card');
     await card.trigger('pointerdown');
 
     expect(component.emitted('pointer-down')).toBeTruthy();
@@ -83,7 +84,7 @@ describe('EffectCard', () => {
       props: { manifest: sampleManifest, isDraggable: false },
     });
 
-    const card = component.find('.flex.items-start');
+    const card = component.find('.effect-card');
     await card.trigger('pointerdown');
 
     expect(component.emitted('pointer-down')).toBeFalsy();

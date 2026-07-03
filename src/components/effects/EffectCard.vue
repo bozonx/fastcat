@@ -69,7 +69,7 @@ function onPointerDown(e: PointerEvent) {
 
 <template>
   <div
-    class="flex items-center gap-3 p-3 rounded-lg border transition-colors group relative select-none"
+    class="effect-card flex items-center gap-3 p-3 rounded-lg border transition-colors group relative select-none"
     :class="[
       isSelected
         ? 'border-primary bg-primary/10'

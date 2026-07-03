@@ -39,6 +39,7 @@ describe('UiSliderInput', () => {
         max: 100,
         formattedValue: 'Half',
         label: 'Progress',
+        showInput: false,
       },
     });
 
@@ -55,6 +56,7 @@ describe('UiSliderInput', () => {
         unit: 'px',
         label: 'Size',
         decimals: 0,
+        showInput: false,
       },
     });
 
@@ -89,6 +91,7 @@ describe('UiSliderInput', () => {
         max: 10,
         decimals: 3,
         label: 'Pi',
+        showInput: false,
       },
     });
 
@@ -118,6 +121,7 @@ describe('UiSliderInput', () => {
         min: 0,
         max: 100,
         label: 'Invalid',
+        showInput: false,
       },
     });
 
