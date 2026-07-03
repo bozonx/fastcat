@@ -5,7 +5,7 @@ import {
   getTimelineDocInfo,
   trackIds,
 } from '../../utils/e2e/timeline';
-import { waitForTimelineDoc } from '../../utils/e2e/otio';
+import { readTimelineDoc, waitForTimelineDoc } from '../../utils/e2e/otio';
 import { MEDIA_FIXTURES } from '../../fixtures/media';
 import { seedProjectMedia } from '../../utils/e2e/file-manager';
 import { openExport, startExport, waitForExportSuccess } from '../../utils/e2e/transport';
@@ -43,20 +43,26 @@ test.describe('Web text clip render/export', () => {
       },
     });
     expect(clipId).toBeTruthy();
+    console.log('DOC_INFO_AFTER_ADD_TEXT', JSON.stringify(await getTimelineDocInfo(page)));
 
     await waitForTimelineDoc(page, e2eProject, (doc) =>
       doc.allClips.some((clip) => clip.id === clipId),
     );
+    console.log('DOC_INFO_AFTER_WAIT', JSON.stringify(await getTimelineDocInfo(page)));
 
     await page.getByRole('button', { name: 'Cut', exact: true }).click();
     await expect(page.getByRole('button', { name: 'Fullscreen' })).toBeVisible({
       timeout: 20_000,
     });
 
+    console.log('DOC_INFO_BEFORE_OPEN_EXPORT', JSON.stringify(await getTimelineDocInfo(page)));
+    console.log('PERSISTED_BEFORE_OPEN_EXPORT', JSON.stringify(await readTimelineDoc(page, e2eProject)));
     await openExport(page);
     console.log('DOC_INFO_AFTER_OPEN_EXPORT', JSON.stringify(await getTimelineDocInfo(page)));
+    console.log('PERSISTED_AFTER_OPEN_EXPORT', JSON.stringify(await readTimelineDoc(page, e2eProject)));
     await startExport(page);
     console.log('DOC_INFO_AFTER_START_EXPORT', JSON.stringify(await getTimelineDocInfo(page)));
+    console.log('PERSISTED_AFTER_START_EXPORT', JSON.stringify(await readTimelineDoc(page, e2eProject)));
     await waitForExportSuccess(page, { timeout: 90_000 });
 
     const outputs = await listOpfsDirectory(page, `${e2eProject.path}/_export`);
