@@ -326,6 +326,35 @@ describe('FileManagerTree', () => {
     expect(ctx.setOperation).toHaveBeenCalledWith('cancel');
   });
 
+  it('emits requestMove to project root when dropped on the empty space below the tree', async () => {
+    const dir: FsEntry = { name: '_video', kind: 'directory', path: '_video', expanded: false };
+    const wrapper = mountTree([dir]);
+    const items = [{ name: 'a.mp4', kind: 'file', path: '_video/a.mp4' }];
+    mockState.draggedItems = items;
+
+    const targetEl = wrapper.find('ul > li:last-child > div').element;
+    await getTreeZone(wrapper).onDrop!({
+      payload: { source: 'file-manager', data: { items, sourceInstanceId: null } },
+      pointer: {
+        clientX: 0,
+        clientY: 0,
+        pointerType: 'mouse',
+        altKey: false,
+        ctrlKey: false,
+        metaKey: false,
+        shiftKey: false,
+      },
+      zoneId: 'tree',
+      targetEl,
+      setOperation: vi.fn(),
+    });
+
+    expect(wrapper.emitted('requestMove')?.[0]?.[0]).toEqual({
+      sourcePath: '_video/a.mp4',
+      targetDirPath: '',
+    });
+  });
+
   it('highlights nested folders while the root drop zone owns the drag state', async () => {
     const entries: FsEntry[] = [
       {

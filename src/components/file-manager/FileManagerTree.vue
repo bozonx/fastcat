@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { createDevLogger } from '~/utils/dev-logger';
 
-import { ref, inject } from 'vue';
+import { ref, computed, inject } from 'vue';
 import type { ComputedRef } from 'vue';
 import { useDraggedFile } from '~/composables/useDraggedFile';
 import type { FsEntry } from '~/types/fs';
@@ -9,6 +9,8 @@ import type { getBdPayload } from '~/types/bloggerdog';
 import { useUiStore } from '~/stores/ui.store';
 import { useSelectionStore } from '~/stores/selection.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
+import { useProjectStore } from '~/stores/project.store';
+import { FILE_MANAGER_ROOT_SPACER_HEIGHT } from '~/utils/constants';
 import { isLayer1Active } from '~/utils/hotkeys/layerUtils';
 import {
   useClipboardPaths,
@@ -55,6 +57,9 @@ interface Props {
   vfs?: IFileSystemAdapter;
   activeDragOverPath?: string | null;
   activeDragOperation?: 'copy' | 'move' | 'cancel' | null;
+  /** Only meaningful at depth 0: renders a trailing drop area below the last
+   *  row so dragging a file onto the empty space resolves to the root folder. */
+  rootSelectionEntry?: FsEntry | null;
 }
 
 interface TreeContext {
@@ -151,11 +156,26 @@ const selectionStore = useSelectionStore();
 const workspaceStore = useWorkspaceStore();
 const uiStore = useUiStore();
 const appClipboard = useAppClipboard();
+const projectStore = useProjectStore();
 
 const isDragOver = ref<string | null>(null);
 const dragOperation = ref<'copy' | 'move' | 'cancel' | null>(null);
 const effectiveDragOverPath = computed(() => props.activeDragOverPath ?? isDragOver.value);
 const effectiveDragOperation = computed(() => props.activeDragOperation ?? dragOperation.value);
+
+const rootEntry = computed<FsEntry>(
+  () =>
+    props.rootSelectionEntry ??
+    ({
+      kind: 'directory',
+      name: projectStore.currentProjectName || '/',
+      path: '',
+    } as FsEntry),
+);
+
+function selectRoot() {
+  emit('select', rootEntry.value);
+}
 
 function isDotEntry(entry: FsEntry): boolean {
   return entry.name.startsWith('.');
@@ -366,7 +386,8 @@ function findEntryInTree(entries: FsEntry[], path: string): FsEntry | null {
 
 function resolveTreeDropDir(targetEl: Element | null): FsEntry | null {
   const path = getDropTargetEntryPathFromEl(targetEl);
-  const entry = path ? findEntryInTree(props.entries, path) : null;
+  if (!path) return rootEntry.value;
+  const entry = findEntryInTree(props.entries, path);
   return entry?.kind === 'directory' ? entry : null;
 }
 
@@ -648,5 +669,12 @@ const { getContextMenuItems } = useFileContextMenu(
         </template>
       </li>
     </template>
+    <li v-if="depth === 0">
+      <div
+        class="relative"
+        :style="{ height: FILE_MANAGER_ROOT_SPACER_HEIGHT }"
+        @pointerdown.self="selectRoot"
+      />
+    </li>
   </ul>
 </template>

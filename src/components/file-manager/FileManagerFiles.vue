@@ -551,6 +551,7 @@ async function onEntrySelect(entry: FsEntry) {
           :is-external="isExternal"
           :is-files-page="isFilesPage"
           :vfs="vfs"
+          :root-selection-entry="rootSelectionEntry"
           @commit-rename="(entry, name) => emit('commitRename', entry, name)"
           @stop-rename="emit('stopRename')"
           @toggle="emit('toggle', $event)"
@@ -563,7 +564,12 @@ async function onEntrySelect(entry: FsEntry) {
           @request-download="onRequestDownload"
         />
 
-        <div class="relative" :style="rootSpacerStyle" @pointerdown.self="selectProjectRoot" />
+        <div
+          v-if="rootEntries.length === 0"
+          class="relative"
+          :style="rootSpacerStyle"
+          @pointerdown.self="selectProjectRoot"
+        />
       </div>
     </UContextMenu>
   </div>
