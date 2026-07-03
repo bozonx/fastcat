@@ -491,6 +491,85 @@ describe('useMonitorCore', () => {
     wrapper.unmount();
   });
 
+  it('clears the compositor for an empty timeline that still has default tracks', async () => {
+    // Regression: creating/opening a fresh timeline yields a doc with default
+    // empty tracks but zero clips. The old guard used `tracks.length > 0` as a
+    // proxy for "content arrived", so it bailed WITHOUT clearing the compositor
+    // — leaving the previous timeline's frame (and clips) on screen.
+    const timelineStore = reactive({
+      duration: 0,
+      currentTime: 0,
+      isPlaying: false,
+      masterGain: 1,
+      audioMuted: false,
+      setCurrentTimeUs: vi.fn(),
+      // Default fresh-timeline shape: tracks exist, but every track is empty.
+      timelineDoc: {
+        tracks: [
+          { id: 'v1', kind: 'video', items: [] },
+          { id: 'a1', kind: 'audio', items: [] },
+        ],
+      } as any,
+    });
+
+    const projectStore = reactive({
+      projectSettings: { export: { width: 1920, height: 1080 } },
+      activeMonitor: createMonitorSettings(),
+      getFileHandleByPath: vi.fn(async () => ({}) as FileSystemFileHandle),
+    });
+
+    const containerEl = ref<HTMLDivElement | null>(document.createElement('div'));
+    const viewportEl = ref<HTMLDivElement | null>(document.createElement('div'));
+
+    const TestComp = defineComponent({
+      setup() {
+        useMonitorCore({
+          projectStore,
+          timelineStore,
+          proxyStore: {
+            getProxyFileHandle: vi.fn(),
+            getProxyFile: vi.fn(),
+            existingProxies: ref(new Set()),
+          } as any,
+          monitorTimeline: {
+            videoItems: ref([]),
+            workerTimelineClips: ref([]),
+            workerAudioClips: ref([]),
+            workerTimelinePayload: ref([]),
+            safeDurationUs: ref(0),
+            clipSourceSignature: ref(1),
+            clipLayoutSignature: ref(1),
+            clipContentSignature: ref(1),
+            activeLayoutSignature: ref(1),
+            audioClipSourceSignature: ref(1),
+            audioClipLayoutSignature: ref(1),
+          },
+          monitorDisplay: {
+            containerEl,
+            viewportEl,
+            renderWidth: ref(640),
+            renderHeight: ref(360),
+            exportWidth: ref(1920),
+            exportHeight: ref(1080),
+            updateCanvasDisplaySize: vi.fn(),
+          },
+        });
+        return () => h('div');
+      },
+    });
+
+    const wrapper = mount(TestComp);
+    await vi.advanceTimersByTimeAsync(200);
+    await nextTick();
+
+    // The compositor must be cleared (not left holding the previous timeline)
+    // and a render scheduled so the stale frame is repainted away immediately.
+    expect(mockClient.clearClips).toHaveBeenCalled();
+    expect(mockClient.renderFrame).toHaveBeenCalled();
+
+    wrapper.unmount();
+  });
+
   it('passes preview effects flag to renderFrame and re-renders when it changes', async () => {
     const timelineStore = reactive({
       duration: 0,

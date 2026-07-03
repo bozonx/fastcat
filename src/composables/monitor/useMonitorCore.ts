@@ -35,6 +35,15 @@ import {
 import { registerMonitorCoreWatchers } from './useMonitorCore.wiring';
 const log = createDevLogger('useMonitorCore');
 
+// True only when the live document actually carries clip/gap items on some
+// track. A freshly created (or emptied) timeline still ships its default empty
+// tracks, so `tracks.length` is a misleading proxy for "has content".
+function docHasClipItems(
+  doc: { tracks?: Array<{ items?: unknown[] }> } | null | undefined,
+): boolean {
+  return (doc?.tracks ?? []).some((track) => (track?.items?.length ?? 0) > 0);
+}
+
 export function useMonitorCore(options: UseMonitorCoreOptions) {
   const { t } = useI18n();
   const toast = useToast();
@@ -374,8 +383,13 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
         // the clipSourceSignature watcher — skip all state mutations here
         // to avoid clearing the compositor and resetting the playhead with
         // stale (pre-load) data.
-        const hasTimelineContent = (timelineStore.timelineDoc?.tracks?.length ?? 0) > 0;
-        if (hasTimelineContent) {
+        //
+        // "Content" means actual clip items, NOT merely that tracks exist: a
+        // freshly created (or genuinely emptied) timeline still carries its
+        // default empty tracks, so a track-count check would misfire and skip
+        // clearing the compositor — leaving the *previous* timeline's clips on
+        // screen (they'd even re-render as the playhead moves).
+        if (docHasClipItems(timelineStore.timelineDoc)) {
           isLoading.value = false;
           return;
         }
@@ -399,13 +413,17 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
         // content meanwhile, a follow-up build is already queued by the
         // clipSourceSignature watcher; bail instead of mutating store state from
         // the stale "empty" snapshot this build started with.
-        const hasContentAfterInit = (timelineStore.timelineDoc?.tracks?.length ?? 0) > 0;
+        const hasContentAfterInit = docHasClipItems(timelineStore.timelineDoc);
         if (timelineStore.timelineDoc !== null && !hasContentAfterInit) {
           timelineStore.duration = 0;
           // Never reset the playhead here: it is editor/user state, not derived
           // from the clip set. Forcing it to 0 would clobber a restored or
           // user-set position (and the save watcher would then persist that 0).
         }
+        // Force a render of the now-empty stage so the compositor visibly clears
+        // the previous timeline's last frame instead of leaving it on the canvas
+        // until the next unrelated render request.
+        scheduleRender(getRenderTimeForLayoutUpdate());
         isLoading.value = false;
         return;
       }
