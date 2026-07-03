@@ -388,22 +388,35 @@ export function createTimelinePersistenceModule(
     return serialized;
   }
 
+  function getRestoreFallbackFormat(doc: TimelineDocument): TimelineFormatInput {
+    return doc.metadata?.fastcat?.format ?? { fps: doc.timebase?.fps ?? 25 };
+  }
+
   function restoreSavedTimelineSnapshot(serialized: string, fallbackDoc: TimelineDocument) {
-    const parsed = deps.parseTimelineFromOtio(
-      serialized,
-      {
-        id: fallbackDoc.id,
-        name: fallbackDoc.name,
-        format: fallbackDoc.metadata?.fastcat?.format ?? { fps: fallbackDoc.timebase.fps },
-      },
-      { logWarnings: false },
-    );
-    deps.timelineDoc.value = parsed;
-    deps.duration.value = deps.selectTimelineDurationUs(parsed);
-    deps.currentTime.value = Math.min(
-      Math.max(0, Math.round(deps.currentTime.value)),
-      Math.max(0, Math.round(deps.duration.value)),
-    );
+    try {
+      const parsed = deps.parseTimelineFromOtio(
+        serialized,
+        {
+          id: fallbackDoc.id,
+          name: fallbackDoc.name,
+          format: getRestoreFallbackFormat(fallbackDoc),
+        },
+        { logWarnings: false },
+      );
+
+      if (!parsed || !Array.isArray(parsed.tracks)) {
+        throw new Error('Parsed timeline snapshot is invalid');
+      }
+
+      deps.timelineDoc.value = parsed;
+      deps.duration.value = deps.selectTimelineDurationUs(parsed);
+      deps.currentTime.value = Math.min(
+        Math.max(0, Math.round(deps.currentTime.value)),
+        Math.max(0, Math.round(deps.duration.value)),
+      );
+    } catch (e) {
+      log.warn('Failed to restore saved timeline snapshot after write', e);
+    }
   }
 
   // Crash-recovery autosave has two paths. Discrete edits (trim commit, paste,
@@ -701,7 +714,7 @@ export function createTimelinePersistenceModule(
       const parsed = deps.parseTimelineFromOtio(text, {
         id: fallback.id,
         name: fallback.name,
-        format: fallback.metadata?.fastcat?.format ?? { fps: fallback.timebase.fps },
+        format: getRestoreFallbackFormat(fallback),
       });
       if (requestId !== loadTimelineRequestId) return;
       deps.timelineDoc.value = parsed;

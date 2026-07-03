@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch, nextTick, onMounted, onBeforeUnmount } from 'vue';
 import { storeToRefs } from 'pinia';
-import { createDevLogger } from '~/utils/dev-logger';
 
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
@@ -48,8 +47,6 @@ import { useTimelineEmptyAreaContextMenu } from '~/composables/timeline/useTimel
 import { useTimelineClipActions } from '~/composables/timeline/useTimelineClipActions';
 import { useTimelineSpeedModal } from '~/composables/timeline/useTimelineSpeedModal';
 import TextPresetSelectionModal from '~/components/timeline/TextPresetSelectionModal.vue';
-
-const log = createDevLogger('EditorTimeline');
 
 const { t } = useI18n();
 const toast = useToast();

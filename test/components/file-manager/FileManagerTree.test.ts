@@ -353,6 +353,9 @@ describe('FileManagerTree', () => {
       sourcePath: '_video/a.mp4',
       targetDirPath: '',
     });
+    // Root should open/select after the drop, same as dropping onto a real folder.
+    expect(wrapper.emitted('select')?.[0]?.[0]).toMatchObject({ path: '' });
+    expect(wrapper.emitted('toggle')).toBeFalsy();
   });
 
   it('highlights nested folders while the root drop zone owns the drag state', async () => {

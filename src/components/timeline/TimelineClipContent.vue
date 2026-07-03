@@ -22,9 +22,7 @@ const KEYFRAME_DIAMOND_PATH = 'M12 2L2 12l10 10 10-10L12 2z';
 
 // The keyframes lane can only be shown when there is a content band below the
 // header to attach it to.
-const isKeyframesLaneVisible = computed(
-  () => isKeyframesExpanded.value && !props.isHeaderOnly,
-);
+const isKeyframesLaneVisible = computed(() => isKeyframesExpanded.value && !props.isHeaderOnly);
 
 interface ClipPreviewOverlay {
   rangeStyle: Record<string, string>;

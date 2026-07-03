@@ -510,20 +510,20 @@ async function onTreeZoneDrop(ctx: DndDragContext) {
     }
   }
 
-  // Open the target folder so the moved items are visible.
-  if (dir.path) {
-    const selected = selectionStore.selectedEntity;
-    const currentSelectedPath =
-      selected && selected.source === 'fileManager' && selected.kind !== 'multiple'
-        ? selected.path
-        : null;
-    if (dir.path !== currentSelectedPath) {
+  // Open the target folder (including root) so the moved items are visible.
+  const selected = selectionStore.selectedEntity;
+  const currentSelectedPath =
+    selected && selected.source === 'fileManager' && selected.kind !== 'multiple'
+      ? selected.path
+      : null;
+  if (dir.path !== currentSelectedPath) {
+    if (dir.path) {
       uiStore.setFileTreePathExpanded(dir.path, true);
       if (!dir.expanded) {
         emit('toggle', dir);
       }
-      emit('select', dir);
     }
+    emit('select', dir);
   }
 }
 
@@ -615,7 +615,11 @@ const { getContextMenuItems } = useFileContextMenu(
 </script>
 
 <template>
-  <ul class="select-none min-w-full w-max" v-bind="treeDndZoneAttrs">
+  <ul
+    class="select-none min-w-full w-max"
+    :class="depth === 0 ? 'flex-1 flex flex-col' : ''"
+    v-bind="treeDndZoneAttrs"
+  >
     <template v-for="entry in entries" :key="entry.path || entry.name">
       <li v-if="!foldersOnly || entry.kind === 'directory'">
         <!-- Row -->
@@ -669,10 +673,10 @@ const { getContextMenuItems } = useFileContextMenu(
         </template>
       </li>
     </template>
-    <li v-if="depth === 0">
+    <li v-if="depth === 0" class="flex-1">
       <div
-        class="relative"
-        :style="{ height: FILE_MANAGER_ROOT_SPACER_HEIGHT }"
+        class="relative h-full"
+        :style="{ minHeight: FILE_MANAGER_ROOT_SPACER_HEIGHT }"
         @pointerdown.self="selectRoot"
       />
     </li>

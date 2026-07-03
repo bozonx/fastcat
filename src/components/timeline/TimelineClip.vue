@@ -121,9 +121,7 @@ const isClipHeaderOnly = computed(
   () => props.trackHeight < CLIP_HEADER_HEIGHT_PX + CLIP_MIN_CONTENT_BAND_PX,
 );
 
-const isKeyframesLaneVisible = computed(
-  () => isKeyframesExpanded.value && !isClipHeaderOnly.value,
-);
+const isKeyframesLaneVisible = computed(() => isKeyframesExpanded.value && !isClipHeaderOnly.value);
 
 // Vertical inset (px) for trim handles + fades. In header-only mode the header
 // fills the clip, so we don't inset (handles cover the full box) and rely on the
@@ -928,6 +926,7 @@ function handleTransitionCreate(
         />
 
         <TimelineClipContent
+          v-model:keyframes-expanded="isKeyframesExpanded"
           :item="item"
           :track="track"
           :clip-item="clipItem"
@@ -943,7 +942,6 @@ function handleTransitionCreate(
           :is-header-only="isClipHeaderOnly"
           :transition-in-overlay-guide-style="transitionInOverlayGuideStyle"
           :transition-out-overlay-guide-style="transitionOutOverlayGuideStyle"
-          v-model:keyframes-expanded="isKeyframesExpanded"
         />
 
         <!-- Trim Handles -->

@@ -164,6 +164,7 @@ describe('TimelineStore', () => {
 
   beforeEach(() => {
     setActivePinia(createPinia());
+    vi.mocked(parseTimelineFromOtio).mockReset();
     projectStoreMock.getFileByPath.mockImplementation(
       async () =>
         ({
