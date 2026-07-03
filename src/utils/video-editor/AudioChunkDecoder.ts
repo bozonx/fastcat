@@ -466,6 +466,10 @@ export class AudioChunkDecoder {
     const message = (err as Error)?.message || '';
     const isTransient = name === 'NotReadableError' || /network error/i.test(message);
 
+    if (message === DECODE_CANCELLED_MESSAGE) {
+      return;
+    }
+
     if (name === 'NoAudioTrackError' || name === 'UnsupportedFormatError') {
       this.failedChunkKeys.add(chunkKey);
     } else if (isTransient) {

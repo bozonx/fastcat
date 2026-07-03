@@ -3,12 +3,11 @@ import { computed } from 'vue';
 import { useSelectionStore } from '~/stores/selection.store';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useMediaStore } from '~/stores/media.store';
-import { useProjectStore } from '~/stores/project.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useMonitorTimeline } from '~/composables/monitor/useMonitorTimeline';
 import type { ClipSourceOrientation, ClipTransform, TextClipStyle } from '~/timeline/types';
 import type { WorkerTimelineClip } from '~/composables/monitor/types';
-import { computeClipBoxLayout } from '~/utils/video-editor/clip-layout';
+import { computeClipBoxLayout, TRANSFORM_DESIGN_BASE } from '~/utils/video-editor/clip-layout';
 import { computeTextLayoutMetrics } from '~/utils/video-editor/text-layout';
 
 const props = defineProps<{
@@ -19,7 +18,6 @@ const props = defineProps<{
 const selectionStore = useSelectionStore();
 const timelineStore = useTimelineStore();
 const mediaStore = useMediaStore();
-const projectStore = useProjectStore();
 const workspaceStore = useWorkspaceStore();
 const { rawWorkerTimelineClips } = useMonitorTimeline();
 
@@ -86,9 +84,11 @@ function getIntrinsicDimensions(clip: WorkerTimelineClip): { w: number; h: numbe
 const measureContext =
   typeof document !== 'undefined' ? document.createElement('canvas').getContext('2d') : null;
 
+// Text font size is authored in the fixed 1920x1080 design space (matches the
+// native compositor and web text positioning); it is NOT the project resolution.
 const designSize = computed(() => ({
-  width: timelineStore.timelineFormat?.width ?? projectStore.projectSettings.project.width,
-  height: timelineStore.timelineFormat?.height ?? projectStore.projectSettings.project.height,
+  width: TRANSFORM_DESIGN_BASE.width,
+  height: TRANSFORM_DESIGN_BASE.height,
 }));
 
 interface BboxItem {

@@ -13,6 +13,10 @@ import {
   normalizeUserSettings,
 } from '~/utils/settings';
 import type { WorkspaceSettingsRepository } from '~/repositories/workspace-settings.repository';
+import { useVfs } from '~/composables/useVfs';
+import { createPresetRepository } from '~/repositories/preset.repository';
+import { isBuiltInExportPreset } from '~/utils/settings/presets';
+
 const log = createDevLogger('workspaceSettings');
 
 export interface WorkspaceSettingsModule {
@@ -197,6 +201,28 @@ export function createWorkspaceSettingsModule(params: {
     try {
       const raw = await params.settingsRepo.value.loadUserSettings();
       userSettings.value = normalizeUserSettings(raw);
+
+      if (typeof window !== 'undefined') {
+        try {
+          const vfs = useVfs();
+          const presetRepo = createPresetRepository({ vfs });
+          const { migratedCustom, migratedExport } =
+            await presetRepo.migrateLegacyPresets(userSettings.value);
+
+          if (migratedCustom.length > 0 || migratedExport.length > 0) {
+            if (userSettings.value.presets) {
+              userSettings.value.presets.custom = [];
+            }
+            if (userSettings.value.exportPresets?.items) {
+              userSettings.value.exportPresets.items =
+                userSettings.value.exportPresets.items.filter(isBuiltInExportPreset);
+            }
+            await saveUserSettingsToDisk();
+          }
+        } catch (err) {
+          log.warn('Failed to migrate legacy presets:', err);
+        }
+      }
     } catch {
       userSettings.value = normalizeUserSettings(null);
     } finally {

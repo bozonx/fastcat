@@ -1,6 +1,7 @@
 /** @vitest-environment node */
 import { describe, expect, it, vi } from 'vitest';
 import { AudioChunkDecoder } from '~/utils/video-editor/AudioChunkDecoder';
+import { DECODE_CANCELLED_MESSAGE } from '~/utils/video-editor/decode-worker-client';
 
 function createDecoder(): AudioChunkDecoder {
   return new AudioChunkDecoder({
@@ -80,6 +81,47 @@ describe('AudioChunkDecoder chunk key separator', () => {
     const extractedSourceKey = getSourceKeyFromChunkKey(chunkKey);
 
     expect(extractedSourceKey).toBe(sourceKey);
+    decoder.destroy();
+  });
+});
+
+describe('AudioChunkDecoder.handleDecodeError', () => {
+  it('silently swallows DECODE_CANCELLED_MESSAGE without logging or marking as failed', () => {
+    const decoder = createDecoder();
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const handleDecodeError = (decoder as any).handleDecodeError.bind(decoder);
+
+    handleDecodeError({
+      err: new Error(DECODE_CANCELLED_MESSAGE),
+      chunkKey: 'source\x000',
+      sourceKey: 'source',
+    });
+
+    expect(warnSpy).not.toHaveBeenCalled();
+    const failedChunkKeys = (decoder as any).failedChunkKeys as Set<string>;
+    expect(failedChunkKeys.has('source\x000')).toBe(false);
+    warnSpy.mockRestore();
+    decoder.destroy();
+  });
+
+  it('silently marks NoAudioTrackError as failed without logging', () => {
+    const decoder = createDecoder();
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const handleDecodeError = (decoder as any).handleDecodeError.bind(decoder);
+
+    const err = new Error('No audio track');
+    err.name = 'NoAudioTrackError';
+
+    handleDecodeError({
+      err,
+      chunkKey: 'video.mp4\x000',
+      sourceKey: 'video.mp4',
+    });
+
+    expect(warnSpy).not.toHaveBeenCalled();
+    const failedChunkKeys = (decoder as any).failedChunkKeys as Set<string>;
+    expect(failedChunkKeys.has('video.mp4\x000')).toBe(true);
+    warnSpy.mockRestore();
     decoder.destroy();
   });
 });

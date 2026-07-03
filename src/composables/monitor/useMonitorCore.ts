@@ -11,6 +11,7 @@ import {
 } from '~/utils/video-editor/worker-client';
 
 import { createAudioEngine } from '~/utils/video-editor/AudioEngine';
+import { TRANSFORM_DESIGN_BASE } from '~/utils/video-editor/clip-layout';
 import { clampTimeUs } from '~/utils/time';
 import { useVfs } from '~/composables/useVfs';
 import { toProjectTempVfsPath } from '~/utils/storage-topology';
@@ -103,8 +104,14 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
     containerEl,
     renderWidth,
     renderHeight,
-    designWidth: exportWidth,
-    designHeight: exportHeight,
+    // Text font size is authored in the fixed 1920x1080 design space
+    // (TRANSFORM_DESIGN_BASE), the same base the native compositor uses for
+    // glyph render-scale (layer_builder.rs) and the same base web already uses
+    // for text positions. Passing the project/export resolution here would size
+    // glyphs off the project pixels instead, making web text 1920/projectWidth
+    // times larger than native (e.g. 1.5x on a 1280-wide project).
+    designWidth: { value: TRANSFORM_DESIGN_BASE.width },
+    designHeight: { value: TRANSFORM_DESIGN_BASE.height },
     isUnmounted: () => isUnmounted,
     getPreviewRenderOptions,
   });

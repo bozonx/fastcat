@@ -47,6 +47,7 @@ import { PixiCompositorLifecycle } from './compositor/PixiCompositorLifecycle';
 import { WebGpuComputeRunner } from './compositor/WebGpuComputeRunner';
 import { buildEffectSpecs } from '~/effects';
 import { normalizeClipSpeed, resolveClipSourceTimeUs } from './source-time';
+import { TRANSFORM_DESIGN_BASE } from './clip-layout';
 import type { PreviewEffectQuality } from '~/utils/preview-effect-quality';
 const log = createDevLogger('VideoCompositor');
 
@@ -557,14 +558,21 @@ export class VideoCompositor {
 
     this.width = width;
     this.height = height;
+    // Text font size / letter-spacing / padding are authored in the fixed
+    // 1920x1080 design space (TRANSFORM_DESIGN_BASE), the same convention as clip
+    // transforms and the native compositor's glyph render-scale
+    // (src-tauri/.../layer_builder.rs). Defaulting to the render `width` here
+    // sized glyphs off the project pixels instead, making web text
+    // 1920/projectWidth times larger than native on non-1080p projects (e.g. 1.5x
+    // on a 1280-wide project). Callers may still override for special cases.
     this.designWidth =
       typeof options.designWidth === 'number' && Number.isFinite(options.designWidth)
         ? Math.max(1, options.designWidth)
-        : width;
+        : TRANSFORM_DESIGN_BASE.width;
     this.designHeight =
       typeof options.designHeight === 'number' && Number.isFinite(options.designHeight)
         ? Math.max(1, options.designHeight)
-        : height;
+        : TRANSFORM_DESIGN_BASE.height;
     this.contextLost = false;
     this.resetRuntimeDependencies();
 

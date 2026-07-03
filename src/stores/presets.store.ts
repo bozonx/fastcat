@@ -1,19 +1,23 @@
 import { defineStore } from 'pinia';
 import { ref, watch } from 'vue';
 import { useWorkspaceStore } from './workspace.store';
+import { useVfs } from '~/composables/useVfs';
+import { createPresetRepository } from '~/repositories/preset.repository';
 import { getVideoEffectManifest, getAudioEffectManifest, registerEffect } from '~/effects';
 import { getTransitionManifest, registerTransition } from '~/transitions';
 import { cloneValue } from '~/utils/clone';
-import type { CustomPreset } from '~/utils/settings/presets';
+import {
+  createDefaultExportPresets,
+  isBuiltInExportPreset,
+  type CustomPreset,
+  type ExportSettingsPreset,
+} from '~/utils/settings/presets';
 
-// Canonical definition lives in `~/utils/settings/presets`; re-exported here so
-// existing `~/stores/presets.store` import sites keep working.
 export type { CustomPreset } from '~/utils/settings/presets';
 
 export const usePresetsStore = defineStore('presets', () => {
   const workspaceStore = useWorkspaceStore();
   const customPresets = ref<CustomPreset[]>([]);
-
   const defaultTextPresetId = ref<string>('');
 
   const effectsStandardCollapsed = ref(false);
@@ -29,46 +33,70 @@ export const usePresetsStore = defineStore('presets', () => {
   const textsStandardCollapsed = ref(false);
   const textsCustomCollapsed = ref(false);
 
-  function load() {
-    // Check user settings (primary source of truth)
-    const presets = workspaceStore.userSettings.presets;
-    if (!presets) return;
-
-    const userCustom = presets.custom;
-    const userDefaultText = presets.defaultTextPresetId;
-
-    if (userCustom.length > 0) {
-      customPresets.value = [...userCustom];
-    }
-
-    if (userDefaultText) {
-      defaultTextPresetId.value = userDefaultText;
-    }
-
-    const state = presets.collapsed;
-    if (state && Object.keys(state).length > 0) {
-      effectsStandardCollapsed.value = !!state.effectsStandardCollapsed;
-      effectsCustomCollapsed.value = !!state.effectsCustomCollapsed;
-      transitionsStandardCollapsed.value = !!state.transitionsStandardCollapsed;
-      transitionsCustomCollapsed.value = !!state.transitionsCustomCollapsed;
-      audioStandardCollapsed.value = !!state.audioStandardCollapsed;
-      audioCustomCollapsed.value = !!state.audioCustomCollapsed;
-      shapesStandardCollapsed.value = !!state.shapesStandardCollapsed;
-      shapesCustomCollapsed.value = !!state.shapesCustomCollapsed;
-      hudsStandardCollapsed.value = !!state.hudsStandardCollapsed;
-      hudsCustomCollapsed.value = !!state.hudsCustomCollapsed;
-      textsStandardCollapsed.value = !!state.textsStandardCollapsed;
-      textsCustomCollapsed.value = !!state.textsCustomCollapsed;
-    }
-
-    // Register custom presets
-    customPresets.value.forEach((preset) => registerPresetManifest(preset));
+  function getPresetRepo() {
+    return createPresetRepository({ vfs: useVfs() });
   }
 
-  // Save to user settings
-  function savePresets() {
+  async function load() {
+    const repo = getPresetRepo();
+
+    // 1. Load custom clip presets from individual files
+    try {
+      const loadedCustom = await repo.loadCustomPresets();
+      customPresets.value = loadedCustom;
+      customPresets.value.forEach((preset) => registerPresetManifest(preset));
+    } catch (err) {
+      console.warn('Failed to load custom presets from disk:', err);
+    }
+
+    // 2. Load custom export presets from individual files and merge with built-in defaults
+    try {
+      const loadedExport = await repo.loadExportPresets();
+      const defaultExport = createDefaultExportPresets();
+      const mergedExportItems = [...defaultExport.items];
+
+      for (const customExport of loadedExport) {
+        if (!mergedExportItems.some((item) => item.id === customExport.id)) {
+          mergedExportItems.push(customExport);
+        }
+      }
+
+      if (workspaceStore.userSettings.exportPresets) {
+        workspaceStore.userSettings.exportPresets.items = mergedExportItems;
+      }
+    } catch (err) {
+      console.warn('Failed to load custom export presets from disk:', err);
+    }
+
+    // 3. Sync UI collapsed state and default text preset ID from user settings
+    const presets = workspaceStore.userSettings.presets;
+    if (presets) {
+      if (presets.defaultTextPresetId) {
+        defaultTextPresetId.value = presets.defaultTextPresetId;
+      }
+
+      const state = presets.collapsed;
+      if (state && Object.keys(state).length > 0) {
+        effectsStandardCollapsed.value = !!state.effectsStandardCollapsed;
+        effectsCustomCollapsed.value = !!state.effectsCustomCollapsed;
+        transitionsStandardCollapsed.value = !!state.transitionsStandardCollapsed;
+        transitionsCustomCollapsed.value = !!state.transitionsCustomCollapsed;
+        audioStandardCollapsed.value = !!state.audioStandardCollapsed;
+        audioCustomCollapsed.value = !!state.audioCustomCollapsed;
+        shapesStandardCollapsed.value = !!state.shapesStandardCollapsed;
+        shapesCustomCollapsed.value = !!state.shapesCustomCollapsed;
+        hudsStandardCollapsed.value = !!state.hudsStandardCollapsed;
+        hudsCustomCollapsed.value = !!state.hudsCustomCollapsed;
+        textsStandardCollapsed.value = !!state.textsStandardCollapsed;
+        textsCustomCollapsed.value = !!state.textsCustomCollapsed;
+      }
+    }
+  }
+
+  // Save UI collapsed state to user settings
+  function saveUiState() {
     void workspaceStore.batchUpdateUserSettings((draft) => {
-      draft.presets.custom = cloneValue(customPresets.value);
+      draft.presets.custom = []; // Keep legacy field empty to avoid bloating user.settings.json
       draft.presets.defaultTextPresetId = defaultTextPresetId.value;
       draft.presets.collapsed = {
         effectsStandardCollapsed: effectsStandardCollapsed.value,
@@ -88,7 +116,7 @@ export const usePresetsStore = defineStore('presets', () => {
   }
 
   watch(defaultTextPresetId, () => {
-    savePresets();
+    saveUiState();
   });
 
   watch(
@@ -107,49 +135,8 @@ export const usePresetsStore = defineStore('presets', () => {
       textsCustomCollapsed,
     ],
     () => {
-      savePresets();
+      saveUiState();
     },
-  );
-
-  // Sync from user settings when they load or change externally
-  watch(
-    () => workspaceStore.userSettings.presets,
-    (presets) => {
-      if (!presets) return;
-
-      const {
-        custom: newPresets,
-        defaultTextPresetId: newDefaultText,
-        collapsed: newCollapsed,
-      } = presets;
-
-      if (newPresets && newPresets.length > 0) {
-        if (JSON.stringify(newPresets) !== JSON.stringify(customPresets.value)) {
-          customPresets.value = [...newPresets];
-          customPresets.value.forEach((preset) => registerPresetManifest(preset));
-        }
-      }
-
-      if (newDefaultText !== undefined && newDefaultText !== defaultTextPresetId.value) {
-        defaultTextPresetId.value = newDefaultText;
-      }
-
-      if (newCollapsed) {
-        effectsStandardCollapsed.value = !!newCollapsed.effectsStandardCollapsed;
-        effectsCustomCollapsed.value = !!newCollapsed.effectsCustomCollapsed;
-        transitionsStandardCollapsed.value = !!newCollapsed.transitionsStandardCollapsed;
-        transitionsCustomCollapsed.value = !!newCollapsed.transitionsCustomCollapsed;
-        audioStandardCollapsed.value = !!newCollapsed.audioStandardCollapsed;
-        audioCustomCollapsed.value = !!newCollapsed.audioCustomCollapsed;
-        shapesStandardCollapsed.value = !!newCollapsed.shapesStandardCollapsed;
-        shapesCustomCollapsed.value = !!newCollapsed.shapesCustomCollapsed;
-        hudsStandardCollapsed.value = !!newCollapsed.hudsStandardCollapsed;
-        hudsCustomCollapsed.value = !!newCollapsed.hudsCustomCollapsed;
-        textsStandardCollapsed.value = !!newCollapsed.textsStandardCollapsed;
-        textsCustomCollapsed.value = !!newCollapsed.textsCustomCollapsed;
-      }
-    },
-    { deep: true },
   );
 
   function registerPresetManifest(preset: CustomPreset) {
@@ -198,7 +185,7 @@ export const usePresetsStore = defineStore('presets', () => {
     }
   }
 
-  function saveAsPreset(
+  async function saveAsPreset(
     category: 'effect' | 'transition' | 'shape' | 'hud' | 'text',
     baseType: string,
     name: string,
@@ -217,19 +204,24 @@ export const usePresetsStore = defineStore('presets', () => {
 
     customPresets.value.push(newPreset);
     registerPresetManifest(newPreset);
-    savePresets();
+
+    const repo = getPresetRepo();
+    await repo.saveCustomPreset(newPreset);
+    saveUiState();
   }
 
-  function updatePreset(id: string, params: Record<string, unknown>) {
+  async function updatePreset(id: string, params: Record<string, unknown>) {
     const preset = customPresets.value.find((p) => p.id === id);
     if (!preset) return;
 
     preset.params = { ...params };
     registerPresetManifest(preset);
-    savePresets();
+
+    const repo = getPresetRepo();
+    await repo.saveCustomPreset(preset);
   }
 
-  function updatePresetsOrder(
+  async function updatePresetsOrder(
     category: 'effect' | 'transition' | 'shape' | 'hud' | 'text',
     newOrderIds: string[],
   ) {
@@ -246,14 +238,42 @@ export const usePresetsStore = defineStore('presets', () => {
     });
 
     customPresets.value = [...otherPresets, ...reordered];
-    savePresets();
+
+    const repo = getPresetRepo();
+    for (const preset of reordered) {
+      await repo.saveCustomPreset(preset);
+    }
   }
 
-  function removePreset(id: string) {
+  async function removePreset(id: string) {
+    const target = customPresets.value.find((p) => p.id === id);
     customPresets.value = customPresets.value.filter((p) => p.id !== id);
-    savePresets();
-    // We don't unregister them dynamically here, they will just disappear after reload,
-    // or we can just ignore it for the current session since it won't be shown anyway
+
+    if (target) {
+      const repo = getPresetRepo();
+      await repo.deleteCustomPreset(id, target.category);
+    }
+  }
+
+  async function saveExportPreset(preset: ExportSettingsPreset) {
+    const repo = getPresetRepo();
+    await repo.saveExportPreset(preset);
+
+    const items = workspaceStore.userSettings.exportPresets.items;
+    const existingIndex = items.findIndex((p) => p.id === preset.id);
+    if (existingIndex >= 0) {
+      items[existingIndex] = preset;
+    } else {
+      items.push(preset);
+    }
+  }
+
+  async function removeExportPreset(id: string) {
+    const repo = getPresetRepo();
+    await repo.deleteExportPreset(id);
+
+    workspaceStore.userSettings.exportPresets.items =
+      workspaceStore.userSettings.exportPresets.items.filter((p) => p.id !== id);
   }
 
   return {
@@ -276,5 +296,7 @@ export const usePresetsStore = defineStore('presets', () => {
     updatePreset,
     updatePresetsOrder,
     removePreset,
+    saveExportPreset,
+    removeExportPreset,
   };
 });

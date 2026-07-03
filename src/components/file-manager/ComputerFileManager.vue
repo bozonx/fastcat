@@ -86,6 +86,7 @@ const fileManager = createFileManager({
   } as any,
   historyStore: {
     push: () => {},
+    registerCommandScope: () => {},
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } as any,
   shouldRecordFileManagerHistory: () => false,
