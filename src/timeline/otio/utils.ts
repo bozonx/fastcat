@@ -4,10 +4,13 @@ import type {
   TimelineRange,
   TrackKind,
   ClipTransform,
+  ClipAnimations,
   TimelineBlendMode,
   ClipAnchorPreset,
+  KeyframeTrack,
 } from '../types';
 import type { OtioRationalTime, OtioTimeRange, OtioColor } from './types';
+import { ANIMATABLE_PARAM_PATHS, normalizeKeyframeTrack } from '../animation/evaluate';
 const log = createDevLogger('utils');
 
 export const TIME_RATE_US = 1_000_000;
@@ -110,6 +113,27 @@ export function coerceName(raw: unknown, fallback: string): string {
 export function clampNumber(value: unknown, min: number, max: number): number {
   const n = typeof value === 'number' && Number.isFinite(value) ? value : 0;
   return Math.max(min, Math.min(max, n));
+}
+
+/**
+ * Coerce a persisted `animations` bag: keep only the known param paths and
+ * normalize each track (sort/dedup by time) so evaluators can trust the shape
+ * even for hand-edited or legacy documents. Returns `undefined` when empty.
+ */
+export function coerceAnimations(raw: unknown): ClipAnimations | undefined {
+  if (!raw || typeof raw !== 'object') return undefined;
+  const rawObj = raw as Record<string, unknown>;
+  const out: ClipAnimations = {};
+  let count = 0;
+  for (const path of ANIMATABLE_PARAM_PATHS) {
+    const track = rawObj[path];
+    if (!track || typeof track !== 'object') continue;
+    const keyframes = (track as Record<string, unknown>).keyframes;
+    if (!Array.isArray(keyframes) || keyframes.length === 0) continue;
+    out[path] = normalizeKeyframeTrack({ keyframes } as KeyframeTrack);
+    count++;
+  }
+  return count > 0 ? out : undefined;
 }
 
 export function coerceTransform(raw: unknown): ClipTransform | undefined {

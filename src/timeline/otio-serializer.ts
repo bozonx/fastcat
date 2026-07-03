@@ -314,6 +314,7 @@ function serializeTrackItems(
             linkedGroupId: item.linkedGroupId,
           },
           transform: item.transform,
+          animations: item.animations,
           mask: item.mask,
           transitions: {
             in: item.transitionIn,

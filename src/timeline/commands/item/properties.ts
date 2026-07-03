@@ -24,6 +24,7 @@ import {
   sanitizeBlendMode,
   sanitizeSourceOrientation,
   sanitizeTransform,
+  sanitizeAnimations,
   sanitizeTextStyle,
   clampAudioFadeUs,
 } from './clip-property-sanitizers';
@@ -143,6 +144,11 @@ export function updateClipProperties(
     } else {
       nextProps.transform = safe;
     }
+  }
+
+  if ('animations' in nextProps) {
+    // `null`/empty clears all keyframes; otherwise normalize the tracks.
+    nextProps['animations'] = sanitizeAnimations(nextProps['animations']) ?? undefined;
   }
 
   if ('opacity' in nextProps) {

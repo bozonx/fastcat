@@ -4,6 +4,7 @@ import type {
   ClipTransition,
   ClipMask,
   ClipEffect,
+  ClipAnimations,
   TextClipStyle,
   ShapeConfig,
   HudMediaParams,
@@ -108,6 +109,32 @@ export const ClipTransformSchema: z.ZodType<ClipTransform> = z
     flipVertical: z.boolean().optional(),
   })
   .passthrough() as unknown as z.ZodType<ClipTransform>;
+
+/**
+ * Keyframe animation tracks (v1: transform + opacity). Times are source-relative
+ * microseconds. We validate the known param paths and drop unknown ones so a
+ * malformed/forward-compatible track can't smuggle in an un-evaluatable path.
+ */
+const KeyframeSchema = z.object({
+  tUs: z.number().finite().nonnegative(),
+  value: z.number().finite(),
+  easing: z.enum(['linear', 'ease', 'hold']),
+});
+
+const KeyframeTrackSchema = z.object({
+  keyframes: z.array(KeyframeSchema),
+});
+
+export const ClipAnimationsSchema: z.ZodType<ClipAnimations> = z
+  .object({
+    opacity: KeyframeTrackSchema.optional(),
+    'transform.position.x': KeyframeTrackSchema.optional(),
+    'transform.position.y': KeyframeTrackSchema.optional(),
+    'transform.scale.x': KeyframeTrackSchema.optional(),
+    'transform.scale.y': KeyframeTrackSchema.optional(),
+    'transform.rotationDeg': KeyframeTrackSchema.optional(),
+  })
+  .strip() as unknown as z.ZodType<ClipAnimations>;
 
 export const ClipTransitionSchema: z.ZodType<ClipTransition> = z
   .object({

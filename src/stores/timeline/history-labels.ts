@@ -54,6 +54,7 @@ const UPDATE_CLIP_PROPERTIES_LABEL_MAP: Record<string, string> = {
   linkedGroupId: 'videoEditor.fileManager.history.entries.updateClipGroup',
 
   transform: 'videoEditor.fileManager.history.entries.updateClipTransform',
+  animations: 'videoEditor.fileManager.history.entries.updateClipAnimation',
 };
 
 export function getUpdateClipPropertiesLabelKey(properties: Record<string, unknown>): string {

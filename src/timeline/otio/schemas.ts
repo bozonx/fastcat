@@ -43,6 +43,25 @@ export const ClipTransformSchema = z.object({
 
 export const ClipSourceOrientationSchema = z.enum(['auto', '0', '90', '180', '270']);
 
+const KeyframeSchema = z.object({
+  tUs: z.number().catch(0),
+  value: z.number().catch(0),
+  easing: z.enum(['linear', 'ease', 'hold']).catch('linear'),
+});
+
+const KeyframeTrackSchema = z.object({
+  keyframes: z.array(KeyframeSchema).catch([]),
+});
+
+export const ClipAnimationsSchema = z.object({
+  opacity: KeyframeTrackSchema.optional(),
+  'transform.position.x': KeyframeTrackSchema.optional(),
+  'transform.position.y': KeyframeTrackSchema.optional(),
+  'transform.scale.x': KeyframeTrackSchema.optional(),
+  'transform.scale.y': KeyframeTrackSchema.optional(),
+  'transform.rotationDeg': KeyframeTrackSchema.optional(),
+});
+
 export const ClipMaskSchema = z.object({
   source: z.object({ path: z.string() }).optional(),
   mode: z.enum(['alpha', 'luma']).optional(),
@@ -330,6 +349,7 @@ export const TimelineClipFastCatMetaSchema = z
       })
       .optional(),
     transform: ClipTransformSchema.optional(),
+    animations: ClipAnimationsSchema.optional(),
     mask: ClipMaskSchema.optional(),
     transitions: z
       .object({

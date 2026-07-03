@@ -8,6 +8,7 @@ import {
   coerceName,
   fromRationalTimeUs,
   coerceTransform,
+  coerceAnimations,
   coerceBlendMode,
   type OtioValidationReport,
 } from './utils';
@@ -262,6 +263,7 @@ export function parseClipItem(input: {
     sourceOrientation: fastcatMeta.visual?.sourceOrientation,
     snapToPixelGrid: fastcatMeta.visual?.snapToPixelGrid,
     transform: coerceTransform(fastcatMeta.transform),
+    animations: coerceAnimations(fastcatMeta.animations),
     transformActive: fastcatMeta.flags?.transformActive,
     mask: fastcatMeta.mask as import('~/timeline/types').ClipMask | undefined,
     maskActive: fastcatMeta.flags?.maskActive,

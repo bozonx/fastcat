@@ -3,8 +3,11 @@ import type {
   ClipTransform,
   ClipAnchorPreset,
   ClipSourceOrientation,
+  ClipAnimations,
+  KeyframeTrack,
 } from '../../types';
 import { isTimelineBlendMode } from '~/utils/constants';
+import { ANIMATABLE_PARAM_PATHS, normalizeKeyframeTrack } from '../../animation/evaluate';
 
 // Pure value sanitizers for `updateClipProperties`. They never read clip/doc
 // state — each takes a raw (untrusted) value and returns a normalized one or
@@ -129,6 +132,29 @@ export function sanitizeTransform(raw: unknown): ClipTransform | undefined {
     flipHorizontal,
     flipVertical,
   };
+}
+
+/**
+ * Sanitizes a clip's `animations` bag: keeps only the known param paths, drops
+ * empty tracks, and normalizes each surviving track (sort/dedup/clamp times).
+ * Returns `undefined` when nothing valid remains so the property is cleared.
+ */
+export function sanitizeAnimations(raw: unknown): ClipAnimations | undefined {
+  if (!raw || typeof raw !== 'object') return undefined;
+  const rawRecord = raw as Record<string, unknown>;
+  const out: ClipAnimations = {};
+  let count = 0;
+  for (const path of ANIMATABLE_PARAM_PATHS) {
+    const track = rawRecord[path];
+    if (!track || typeof track !== 'object') continue;
+    const keyframes = (track as Record<string, unknown>).keyframes;
+    if (!Array.isArray(keyframes) || keyframes.length === 0) continue;
+    const normalized = normalizeKeyframeTrack({ keyframes } as KeyframeTrack);
+    if (normalized.keyframes.length === 0) continue;
+    out[path] = normalized;
+    count++;
+  }
+  return count > 0 ? out : undefined;
 }
 
 // Sanitizes a text clip's `style` object. Returns the cleaned style, or

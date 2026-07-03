@@ -164,6 +164,60 @@ export interface ClipTransform {
 
 export type ClipSourceOrientation = 'auto' | '0' | '90' | '180' | '270';
 
+/**
+ * Keyframe animation (v1: transform + opacity).
+ *
+ * Keyframe times are **source-relative**: `tUs` is measured in microseconds
+ * from the clip's own start, so moving/rippling a clip on the timeline keeps
+ * its animation intact and trimming a clip simply hides the keyframes that fall
+ * outside the visible source range. The mapping from the timeline playhead to
+ * this local time (including clip speed) lives in the render/payload layer.
+ */
+export type KeyframeEasing =
+  /** Constant-rate interpolation to the next keyframe. */
+  | 'linear'
+  /** Smooth ease-in-out (smoothstep) to the next keyframe. */
+  | 'ease'
+  /** Hold this value until the next keyframe, then jump. */
+  | 'hold';
+
+export interface Keyframe {
+  /** Microseconds from the clip's start (source-relative, always >= 0). */
+  tUs: number;
+  /** The animated parameter's value at `tUs`. */
+  value: number;
+  /**
+   * Interpolation from THIS keyframe to the next one. Ignored on the last
+   * keyframe of a track (nothing follows it).
+   */
+  easing: KeyframeEasing;
+}
+
+export interface KeyframeTrack {
+  /**
+   * Keyframes sorted ascending by `tUs` with unique times. This invariant is
+   * enforced by the schema (`ClipAnimationsSchema`) and the command layer
+   * (`normalizeKeyframeTrack`); evaluators rely on it.
+   */
+  keyframes: Keyframe[];
+}
+
+/**
+ * The closed set of clip parameters that can be keyframed in v1. A closed union
+ * (rather than an open string) keeps validation and render-side application
+ * type-safe. Effect parameters will extend this in a later iteration.
+ */
+export type AnimatableParamPath =
+  | 'opacity'
+  | 'transform.position.x'
+  | 'transform.position.y'
+  | 'transform.scale.x'
+  | 'transform.scale.y'
+  | 'transform.rotationDeg';
+
+/** Per-clip keyframe tracks, keyed by the animated parameter path. */
+export type ClipAnimations = Partial<Record<AnimatableParamPath, KeyframeTrack>>;
+
 export interface ClipTransition {
   type: string;
   durationUs: number;
@@ -241,6 +295,8 @@ interface TimelineClipBase {
   transitionOut?: ClipTransition;
   transform?: ClipTransform;
   transformActive?: boolean;
+  /** Keyframe animation tracks for transform/opacity. See {@link ClipAnimations}. */
+  animations?: ClipAnimations;
   sourceOrientation?: ClipSourceOrientation;
 
   speedActive?: boolean;

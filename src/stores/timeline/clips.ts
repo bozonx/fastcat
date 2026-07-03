@@ -85,6 +85,7 @@ export interface TimelineClipsModule {
         | 'speedActive'
         | 'transform'
         | 'transformActive'
+        | 'animations'
         | 'audioGain'
         | 'audioBalance'
         | 'audioFadeInUs'
@@ -277,6 +278,7 @@ export function createTimelineClipsModule(deps: TimelineClipsDeps): TimelineClip
         | 'speedActive'
         | 'transform'
         | 'transformActive'
+        | 'animations'
         | 'audioGain'
         | 'audioBalance'
         | 'audioFadeInUs'
@@ -705,6 +707,7 @@ export function createTimelineClipsModule(deps: TimelineClipsDeps): TimelineClip
           speedActive: clip.speedActive,
           transform: cloneValue(clip.transform),
           transformActive: clip.transformActive,
+          animations: cloneValue(clip.animations),
           audioGain: clip.audioGain,
           audioBalance: clip.audioBalance,
           audioFadeInUs: clip.audioFadeInUs,

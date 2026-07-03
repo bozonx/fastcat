@@ -1516,6 +1516,7 @@
           "updateClipSourceRange": "Update clip source range",
           "updateClipSpeed": "Update clip speed",
           "updateClipTransform": "Update clip transform",
+          "updateClipAnimation": "Update clip animation",
           "updateFreezeFrame": "Update freeze frame"
         }
       },
