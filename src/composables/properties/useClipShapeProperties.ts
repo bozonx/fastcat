@@ -47,11 +47,19 @@ export function useClipShapeProperties(options: UseClipShapePropertiesOptions) {
     });
   }
 
+  function handleUpdateSnapToPixelGrid(val: boolean) {
+    if (clip.value.clipType !== 'shape') return;
+    timelineStore.updateClipProperties(clip.value.trackId, clip.value.id, {
+      snapToPixelGrid: val,
+    });
+  }
+
   return {
     handleUpdateShapeType,
     handleUpdateFillColor,
     handleUpdateStrokeColor,
     handleUpdateStrokeWidth,
     handleUpdateShapeConfig,
+    handleUpdateSnapToPixelGrid,
   };
 }

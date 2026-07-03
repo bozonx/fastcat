@@ -28,8 +28,16 @@ export function useClipTextProperties(options: UseClipTextPropertiesOptions) {
     });
   }
 
+  function handleUpdateSnapToPixelGrid(val: boolean) {
+    if (clip.value.clipType !== 'text') return;
+    timelineStore.updateClipProperties(clip.value.trackId, clip.value.id, {
+      snapToPixelGrid: val,
+    });
+  }
+
   return {
     handleUpdateText,
     handleUpdateTextStyle,
+    handleUpdateSnapToPixelGrid,
   };
 }

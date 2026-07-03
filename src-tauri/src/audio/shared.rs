@@ -346,6 +346,12 @@ pub(crate) struct AudioShared {
     pub(crate) scrub_cancel: bool,
     pub(crate) track_levels: HashMap<String, (f64, f64)>,
     pub(crate) diagnostics: AudioDiagnostics,
+    /// Paths proven to carry no audio track. Once seen we cache it and serve
+    /// silence for that path without re-opening it, bounding the otherwise-
+    /// unbounded per-chunk re-probe of video-only sources. Paths no longer
+    /// referenced by any active scene layer are evicted on scene update so an
+    /// in-place file replace (same path, now with audio) is not silently ignored.
+    pub(crate) no_audio_paths: std::collections::HashSet<String>,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -393,6 +399,7 @@ impl Default for AudioShared {
             scrub_cancel: false,
             track_levels: HashMap::new(),
             diagnostics: AudioDiagnostics::default(),
+            no_audio_paths: std::collections::HashSet::new(),
         }
     }
 }

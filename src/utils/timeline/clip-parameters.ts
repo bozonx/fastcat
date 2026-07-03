@@ -216,7 +216,7 @@ export function createClipParametersSnapshot(input: {
   const background = pickDefined(source, ['backgroundColor']);
   if (background) groups.background = background;
 
-  const text = pickDefined(source, ['text', 'style']);
+  const text = pickDefined(source, ['text', 'style', 'snapToPixelGrid']);
   if (text) groups.text = text;
 
   const shape = pickDefined(source, [
@@ -225,6 +225,7 @@ export function createClipParametersSnapshot(input: {
     'strokeColor',
     'strokeWidth',
     'shapeConfig',
+    'snapToPixelGrid',
   ]);
   if (shape) groups.shape = shape;
 

@@ -157,6 +157,8 @@ export class CompositorRenderContextBuilder {
               config: clip.shapeConfig ?? {},
               canvasWidth: size.width,
               canvasHeight: size.height,
+              snapToPixelGrid: clip.snapToPixelGrid,
+              transform: clip.transform,
             });
           },
           drawTextClip: (clip, size) => {

@@ -77,6 +77,7 @@
     "save": "Сохранить",
     "saveError": "Ошибка сохранения",
     "saveSuccess": "Успешно сохранено",
+    "saved": "Сохранено",
     "dontSave": "Не сохранять",
     "scrollForMore": "Листайте для загрузки",
     "search": "Поиск",
@@ -311,7 +312,7 @@
       "noSettings": "Нет доступных настроек",
       "presetNamePlaceholder": "Мой пресет",
       "presetsTitle": "Пресеты",
-      "saveAsNew": "Сохранить как новый",
+      "saveAsNew": "Сохранить как",
       "saveAsPreset": "Сохранить как пресет",
       "savePresetTitle": "Сохранение пресета",
       "settings": "Настройки эффектов",
@@ -677,6 +678,8 @@
       "strokeColor": "Цвет контура",
       "strokeWidth": "Толщина контура",
       "type": "Тип",
+      "snapToPixelGrid": "Привязка к пиксельной сетке",
+      "snapToPixelGridTooltip": "Выравнивает заливку, рамку и начало текста по пиксельной сетке вывода, если возможно.",
       "types": {
         "bang": "Вспышка",
         "circle": "Круг",
@@ -730,7 +733,9 @@
       "verticalAlign": "Вертикальное выравнивание",
       "verticalPaddingPx": "Вертикальные отступы (px)",
       "webColor": "Web цвет",
-      "widthPx": "Ширина блока (px)"
+      "widthPx": "Ширина блока (px)",
+      "snapToPixelGrid": "Привязка к пиксельной сетке",
+      "snapToPixelGridTooltip": "Выравнивает заливку, рамку и начало текста по пиксельной сетке вывода, если возможно."
     },
     "timeline": {
       "addAdjustment": "Добавить корректирующий слой",
@@ -1979,7 +1984,7 @@
       "presetRevert": "Сбросить изменения",
       "presetBuiltInNotice": "Встроенный пресет экспорта (только для чтения)",
       "presetCustomNotice": "Пользовательский пресет экспорта",
-      "presetSaveAsNew": "Сохранить как новый",
+      "presetSaveAsNew": "Сохранить как",
       "presetDeleteTitle": "Удалить пресет",
       "presetDeleteDescription": "Вы уверены, что хотите удалить пресет «{name}»? Это действие нельзя отменить.",
       "noPresets": "Нет настроенных пресетов",

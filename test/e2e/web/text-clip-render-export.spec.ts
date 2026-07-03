@@ -46,6 +46,27 @@ test.describe('Web text clip render/export', () => {
       timeout: 20_000,
     });
 
+    const info = await page.evaluate(() => {
+      const getInfo = (
+        window as Window & {
+          __fastcatE2eGetTimelineDocInfo?: () => {
+            duration: number;
+            trackCount: number;
+            tracks: Array<{
+              id: string;
+              kind: string;
+              videoHidden?: boolean;
+              clipCount: number;
+              clipTypes: Array<string | undefined>;
+            }>;
+          };
+        }
+      ).__fastcatE2eGetTimelineDocInfo;
+      if (!getInfo) throw new Error('E2E get timeline doc info hook is not registered');
+      return getInfo();
+    });
+    console.log('TIMELINE_DOC_INFO', JSON.stringify(info));
+
     await openExport(page);
     await startExport(page);
     await waitForExportSuccess(page, { timeout: 90_000 });

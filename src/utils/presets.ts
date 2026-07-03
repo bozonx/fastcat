@@ -10,5 +10,6 @@ export function getCustomPresetsByCategory(
   return presets
     .filter((preset) => preset.category === category)
     .slice()
-    .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+    .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+    .map((preset) => ({ ...preset }));
 }

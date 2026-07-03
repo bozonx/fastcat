@@ -25,6 +25,7 @@ const emit = defineEmits<{
   (e: 'updateStrokeColor', val: string): void;
   (e: 'updateStrokeWidth', val: number): void;
   (e: 'updateShapeConfig', patch: Record<string, unknown>): void;
+  (e: 'updateSnapToPixelGrid', val: boolean): void;
   (e: 'updateHudControl', key: string, value: unknown): void;
 }>();
 
@@ -132,6 +133,7 @@ function confirmSavePreset() {
     :presets="textPresets"
     @update-text="emit('updateText', $event)"
     @update-text-style="emit('updateTextStyle', $event)"
+    @update-snap-to-pixel-grid="emit('updateSnapToPixelGrid', $event)"
     @load-preset="handleLoadTextPreset"
     @save-preset="handleSavePreset"
   />
@@ -145,6 +147,7 @@ function confirmSavePreset() {
     @update-stroke-color="emit('updateStrokeColor', $event)"
     @update-stroke-width="emit('updateStrokeWidth', $event)"
     @update-shape-config="emit('updateShapeConfig', $event)"
+    @update-snap-to-pixel-grid="emit('updateSnapToPixelGrid', $event)"
     @load-preset="handleLoadShapePreset"
     @save-preset="handleSavePreset"
   />

@@ -299,6 +299,7 @@ function serializeTrackItems(
             blendMode: item.blendMode,
             isImage: item.isImage,
             sourceOrientation: item.sourceOrientation,
+            snapToPixelGrid: item.snapToPixelGrid,
           },
           flags: {
             locked: item.locked ? true : undefined,

@@ -413,6 +413,7 @@ onBeforeUnmount(() => {
     delete e2eWindow.__fastcatE2eTrimClip;
     delete e2eWindow.__fastcatE2eMoveClip;
     delete e2eWindow.__fastcatE2eAddTextClip;
+    delete e2eWindow.__fastcatE2eGetTimelineDocInfo;
   }
 });
 
@@ -488,6 +489,23 @@ onMounted(() => {
       const itemIds = timelineStore.addTextClipAtPlayhead({ text, style, durationUs, trackId });
       await timelineStore.saveTimeline();
       return itemIds;
+    };
+
+    e2eWindow.__fastcatE2eGetTimelineDocInfo = () => {
+      const doc = timelineStore.timelineDoc;
+      return {
+        duration: timelineStore.duration,
+        trackCount: doc?.tracks?.length ?? 0,
+        tracks: (doc?.tracks ?? []).map((t) => ({
+          id: t.id,
+          kind: t.kind,
+          videoHidden: t.videoHidden,
+          clipCount: t.items.filter((it) => it.kind === 'clip').length,
+          clipTypes: t.items
+            .filter((it) => it.kind === 'clip')
+            .map((it) => (it as { clipType?: string }).clipType),
+        })),
+      };
     };
 
     e2eWindow.__fastcatE2eTrimClip = async ({ itemId, edge, deltaUs }) => {
@@ -723,6 +741,18 @@ type FastcatE2eAddTextClip = (params: {
   trackId?: string;
 }) => Promise<string[]>;
 
+type FastcatE2eGetTimelineDocInfo = () => {
+  duration: number;
+  trackCount: number;
+  tracks: Array<{
+    id: string;
+    kind: string;
+    videoHidden?: boolean;
+    clipCount: number;
+    clipTypes: Array<string | undefined>;
+  }>;
+};
+
 interface FastcatE2eTimelineWindow {
   __fastcatE2eAdvancePlayheadBy?: FastcatE2eAdvancePlayheadBy;
   __fastcatE2eSplitClipAtPlayhead?: FastcatE2eSplitClipAtPlayhead;
@@ -734,6 +764,7 @@ interface FastcatE2eTimelineWindow {
   __fastcatE2eSaveTimeline?: () => Promise<void>;
   __fastcatE2eSetTimelineZoom?: (params: { zoom: number }) => Promise<void>;
   __fastcatE2eAddTextClip?: FastcatE2eAddTextClip;
+  __fastcatE2eGetTimelineDocInfo?: FastcatE2eGetTimelineDocInfo;
   __fastcatE2eTrimClip?: (params: {
     itemId: string;
     edge: 'start' | 'end';

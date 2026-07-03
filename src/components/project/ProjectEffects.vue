@@ -71,7 +71,11 @@ const customAudioEffects = computed(() => {
     .filter((preset) => preset.category === 'effect')
     .slice()
     .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
-    .map((preset) => getEffectManifest(preset.id))
+    .map((preset) => {
+      const manifest = getEffectManifest(preset.id);
+      if (!manifest) return null;
+      return { ...manifest, name: preset.name };
+    })
     .filter((manifest): manifest is NonNullable<ReturnType<typeof getEffectManifest>> =>
       Boolean(manifest),
     );
@@ -97,7 +101,11 @@ const customEffects = computed(() => {
     .filter((preset) => preset.category === 'effect')
     .slice()
     .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
-    .map((preset) => getEffectManifest(preset.id))
+    .map((preset) => {
+      const manifest = getEffectManifest(preset.id);
+      if (!manifest) return null;
+      return { ...manifest, name: preset.name };
+    })
     .filter((manifest): manifest is NonNullable<ReturnType<typeof getEffectManifest>> =>
       Boolean(manifest),
     );
@@ -111,7 +119,11 @@ const customTransitions = computed(() => {
     .filter((preset) => preset.category === 'transition')
     .slice()
     .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
-    .map((preset) => getTransitionManifest(preset.id))
+    .map((preset) => {
+      const manifest = getTransitionManifest(preset.id);
+      if (!manifest) return null;
+      return { ...manifest, name: preset.name };
+    })
     .filter((manifest): manifest is NonNullable<ReturnType<typeof getTransitionManifest>> =>
       Boolean(manifest),
     );
@@ -223,8 +235,7 @@ function updateCustomTransitionsOrder(newCustomTransitions: TransitionManifest[]
             class="flex flex-col gap-2"
             :animation="150"
             ghost-class="opacity-50"
-            handle=".drag-handle"
-            filter=".external-drag"
+            filter="button"
             :prevent-on-filter="false"
             @update:model-value="updateCustomEffectsOrder"
           >
@@ -232,13 +243,11 @@ function updateCustomTransitionsOrder(newCustomTransitions: TransitionManifest[]
               v-for="effect in customEffects"
               :key="effect.type"
               :manifest="effect"
-              class="external-drag"
               :is-selected="
                 selectionStore.selectedEntity?.source === 'project' &&
                 selectionStore.selectedEntity.kind === 'effect' &&
                 selectionStore.selectedEntity.effectType === effect.type
               "
-              :show-drag-handle="true"
               :show-action="true"
               :show-rename="true"
               :is-draggable="true"
@@ -291,15 +300,13 @@ function updateCustomTransitionsOrder(newCustomTransitions: TransitionManifest[]
             class="flex flex-col gap-2"
             :animation="150"
             ghost-class="opacity-50"
-            handle=".drag-handle"
-            filter=".external-drag"
+            filter="button"
             :prevent-on-filter="false"
             @update:model-value="updateCustomTransitionsOrder"
           >
             <EffectCard
               v-for="transition in customTransitions"
               :key="transition.type"
-              class="external-drag"
               :title="transition.nameKey ? t(transition.nameKey) : transition.name"
               :icon="transition.icon"
               :is-selected="
@@ -308,7 +315,6 @@ function updateCustomTransitionsOrder(newCustomTransitions: TransitionManifest[]
                 selectionStore.selectedEntity.transitionType === transition.type
               "
               :is-draggable="true"
-              :show-drag-handle="true"
               :show-rename="true"
               :show-action="true"
               @pointer-down="handlePointerDown($event, transition.type, 'transition')"
@@ -389,8 +395,7 @@ function updateCustomTransitionsOrder(newCustomTransitions: TransitionManifest[]
               class="flex flex-col gap-2"
               :animation="150"
               ghost-class="opacity-50"
-              handle=".drag-handle"
-              filter=".external-drag"
+              filter="button"
               :prevent-on-filter="false"
               @update:model-value="updateCustomEffectsOrder"
             >
@@ -398,13 +403,11 @@ function updateCustomTransitionsOrder(newCustomTransitions: TransitionManifest[]
                 v-for="effect in customAudioEffects"
                 :key="effect.type"
                 :manifest="effect"
-                class="external-drag"
                 :is-selected="
                   selectionStore.selectedEntity?.source === 'project' &&
                   selectionStore.selectedEntity.kind === 'effect' &&
                   selectionStore.selectedEntity.effectType === effect.type
                 "
-                :show-drag-handle="true"
                 :show-action="true"
                 :show-rename="true"
                 :is-draggable="true"

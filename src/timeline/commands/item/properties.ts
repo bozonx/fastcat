@@ -102,6 +102,17 @@ export function updateClipProperties(
     }
   }
 
+  if ('snapToPixelGrid' in nextProps) {
+    if (item.clipType !== 'text' && item.clipType !== 'shape') {
+      delete nextProps['snapToPixelGrid'];
+    } else {
+      nextProps['snapToPixelGrid'] =
+        typeof nextProps['snapToPixelGrid'] === 'boolean'
+          ? nextProps['snapToPixelGrid']
+          : undefined;
+    }
+  }
+
   if ('text' in nextProps) {
     if (item.clipType !== 'text') {
       delete nextProps['text'];

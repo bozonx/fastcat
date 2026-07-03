@@ -246,6 +246,7 @@ interface TimelineClipBase {
   speedActive?: boolean;
   audioFadesActive?: boolean;
   layer?: number;
+  snapToPixelGrid?: boolean;
 
   // Optional fields from sub-types to avoid pervasive `as any` casts
   backgroundColor?: string;
@@ -287,6 +288,7 @@ export interface TimelineTextClipItem extends TimelineClipBase {
   clipType: 'text';
   text: string;
   style?: TextClipStyle;
+  snapToPixelGrid?: boolean;
 }
 
 export type ShapeType =
@@ -328,6 +330,7 @@ export interface TimelineShapeClipItem extends TimelineClipBase {
   strokeColor?: string;
   strokeWidth?: number;
   shapeConfig?: ShapeConfig;
+  snapToPixelGrid?: boolean;
 }
 
 export type HudType = 'media_frame';

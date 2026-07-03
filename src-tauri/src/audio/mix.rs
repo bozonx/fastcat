@@ -726,7 +726,10 @@ fn decode_and_prepare_layer(
             // chunks short-circuit above) and skip — in preview AND export, so the
             // two stay in agreement and a video-only layer never fails an export.
             if crate::audio::decode::is_no_audio_track_error(&error) {
-                crate::audio::decode::remember_silent_path(&layer.path);
+                {
+                    let mut state = shared.0.lock();
+                    crate::audio::decode::remember_silent_path(&mut state, &layer.path);
+                }
                 return Ok(None);
             }
             if decode_error_policy == DecodeErrorPolicy::Propagate {
@@ -786,8 +789,11 @@ fn mix_layer_into(
     // A path proven to have no audio track (e.g. a video-only source) contributes
     // silence in both preview and export. Skip it before any decode so we don't
     // re-probe the file — and re-log — for every 50 ms chunk.
-    if crate::audio::decode::path_known_silent(&layer.path) {
-        return Ok(false);
+    {
+        let state = shared.0.lock();
+        if crate::audio::decode::path_known_silent(&state, &layer.path) {
+            return Ok(false);
+        }
     }
     // Reversed (negative-speed) clips are intentionally muted: they are not
     // played in the monitor and must not be exported either, matching the web

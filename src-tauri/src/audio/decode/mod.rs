@@ -81,22 +81,14 @@ const SEEK_TOLERANCE_MIN_SEC: f64 = 0.001;
 /// re-probing the file (and stop spamming a warning) every 50 ms chunk.
 pub(crate) const NO_AUDIO_TRACK_MSG: &str = "no active audio track found";
 
-/// Paths proven to carry no audio track. Once seen we cache it and serve silence
-/// for that path without re-opening it, bounding the otherwise-unbounded per-chunk
-/// re-probe of video-only sources. Paths no longer referenced by any active scene
-/// layer are evicted on scene update so an in-place file replace (same path, now
-/// with audio) is not silently ignored.
-static NO_AUDIO_PATHS: std::sync::LazyLock<Mutex<std::collections::HashSet<String>>> =
-    std::sync::LazyLock::new(|| Mutex::new(std::collections::HashSet::new()));
-
 /// True when `path` is already known to have no audio track.
-pub(crate) fn path_known_silent(path: &str) -> bool {
-    NO_AUDIO_PATHS.lock().contains(path)
+pub(crate) fn path_known_silent(state: &AudioShared, path: &str) -> bool {
+    state.no_audio_paths.contains(path)
 }
 
 /// Record that `path` has no audio track so future chunks skip the decode.
-pub(crate) fn remember_silent_path(path: &str) {
-    let newly_inserted = NO_AUDIO_PATHS.lock().insert(path.to_string());
+pub(crate) fn remember_silent_path(state: &mut AudioShared, path: &str) {
+    let newly_inserted = state.no_audio_paths.insert(path.to_string());
     if newly_inserted {
         log::info!("[audio] no audio track in {path}; treating layer as silent");
     }
@@ -105,15 +97,11 @@ pub(crate) fn remember_silent_path(path: &str) {
 /// Evicts silent-path cache entries for paths no longer present in `active_paths`.
 /// Called on scene update so an in-place file replace (same path, now with audio)
 /// is re-probed instead of silently served as silence.
-pub(crate) fn evict_stale_silent_paths(active_paths: &std::collections::HashSet<&str>) {
-    let mut cache = NO_AUDIO_PATHS.lock();
-    cache.retain(|p| active_paths.contains(p.as_str()));
-}
-
-/// Returns a snapshot of all cached silent paths (for diagnostics / tests).
-#[cfg(test)]
-pub(crate) fn cached_silent_paths() -> Vec<String> {
-    NO_AUDIO_PATHS.lock().iter().cloned().collect()
+pub(crate) fn evict_stale_silent_paths(
+    state: &mut AudioShared,
+    active_paths: &std::collections::HashSet<&str>,
+) {
+    state.no_audio_paths.retain(|p| active_paths.contains(p.as_str()));
 }
 
 /// True when any cause in `error`'s chain is the no-audio-track condition.
@@ -121,11 +109,6 @@ pub(crate) fn is_no_audio_track_error(error: &anyhow::Error) -> bool {
     error
         .chain()
         .any(|cause| cause.to_string().contains(NO_AUDIO_TRACK_MSG))
-}
-
-#[cfg(test)]
-pub(crate) fn reset_silent_paths_for_test() {
-    NO_AUDIO_PATHS.lock().clear();
 }
 
 #[allow(dead_code)]
@@ -1491,7 +1474,6 @@ mod tests {
 
     #[test]
     fn no_audio_track_error_is_detected_through_context_chain() {
-        reset_silent_paths_for_test();
         let base = anyhow!(NO_AUDIO_TRACK_MSG);
         let wrapped = base.context("decode audio layer clip_v2_x__audio");
         assert!(
@@ -1505,14 +1487,14 @@ mod tests {
 
     #[test]
     fn silent_path_cache_records_once_and_short_circuits() {
-        reset_silent_paths_for_test();
+        let mut state = AudioShared::default();
         let path = "/tmp/fastcat-video-only-source.mp4";
-        assert!(!path_known_silent(path));
-        remember_silent_path(path);
-        assert!(path_known_silent(path));
+        assert!(!path_known_silent(&state, path));
+        remember_silent_path(&mut state, path);
+        assert!(path_known_silent(&state, path));
         // Idempotent: remembering again is a no-op (the info log fires only once).
-        remember_silent_path(path);
-        assert!(path_known_silent(path));
+        remember_silent_path(&mut state, path);
+        assert!(path_known_silent(&state, path));
     }
 
     fn write_temp_f32_wav(

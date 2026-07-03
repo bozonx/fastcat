@@ -754,6 +754,7 @@ function buildBaseWorkerClip(params: {
     transitionIn: clonePlain(item.transitionIn),
     transitionOut: clonePlain(item.transitionOut),
     sourceDurationUs: typeof item.sourceDurationUs === 'number' ? item.sourceDurationUs : undefined,
+    snapToPixelGrid: item.snapToPixelGrid,
     timelineRange: {
       startUs: item.timelineRange.startUs,
       durationUs: item.timelineRange.durationUs,

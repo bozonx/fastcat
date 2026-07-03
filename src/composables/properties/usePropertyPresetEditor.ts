@@ -1,10 +1,12 @@
 import { ref, watch, computed, type ComputedRef } from 'vue';
 import { usePresetsStore } from '~/stores/presets.store';
+import { useSelectionStore } from '~/stores/selection.store';
 import type { PropertyAction } from '~/components/properties/PropertyActionList.vue';
 
 /** Minimal manifest shape the preset editor needs from effects/transitions. */
 export interface PresetManifestLike {
   type: string;
+  name?: string;
   baseType?: string;
   isCustom?: boolean;
 }
@@ -30,15 +32,26 @@ export function usePropertyPresetEditor<M extends PresetManifestLike>(
 ) {
   const { t } = useI18n();
   const presetsStore = usePresetsStore();
+  const selectionStore = useSelectionStore();
 
   const params = ref<Record<string, unknown>>({});
   const isSaveModalOpen = ref(false);
+  const isRenameModalOpen = ref(false);
   const newPresetName = ref('');
+  const renamingPresetName = ref('');
+
+  const isRecentlySaved = ref(false);
+  let savedTimeout: number | null = null;
 
   watch(
     opts.source,
     (type) => {
       params.value = opts.manifest.value ? opts.initParams(type) : {};
+      isRecentlySaved.value = false;
+      if (savedTimeout) {
+        window.clearTimeout(savedTimeout);
+        savedTimeout = null;
+      }
     },
     { immediate: true },
   );
@@ -48,6 +61,7 @@ export function usePropertyPresetEditor<M extends PresetManifestLike>(
       ...params.value,
       [key]: value,
     };
+    isRecentlySaved.value = false;
   }
 
   function handleSavePreset() {
@@ -64,35 +78,91 @@ export function usePropertyPresetEditor<M extends PresetManifestLike>(
     const manifest = opts.manifest.value;
     if (!manifest || !manifest.isCustom) return;
     presetsStore.updatePreset(manifest.type, params.value);
+
+    isRecentlySaved.value = true;
+    if (savedTimeout) window.clearTimeout(savedTimeout);
+    savedTimeout = window.setTimeout(() => {
+      isRecentlySaved.value = false;
+    }, 1500);
+  }
+
+  function handleRenamePreset() {
+    const manifest = opts.manifest.value;
+    if (!manifest || !manifest.isCustom || !renamingPresetName.value.trim()) return;
+    presetsStore.renamePreset(manifest.type, renamingPresetName.value.trim());
+    isRenameModalOpen.value = false;
+  }
+
+  function handleDeletePreset() {
+    const manifest = opts.manifest.value;
+    if (!manifest || !manifest.isCustom) return;
+    presetsStore.removePreset(manifest.type);
+    selectionStore.clearSelection();
   }
 
   const actions = computed<PropertyAction[]>(() => {
     const list: PropertyAction[] = [];
-    if (opts.manifest.value?.isCustom) {
+    const isCustom = Boolean(opts.manifest.value?.isCustom);
+
+    if (isCustom) {
       list.push({
         id: 'update-preset',
-        label: t('common.save'),
-        icon: 'i-heroicons-check',
+        label: isRecentlySaved.value ? t('common.saved') : t('common.save'),
+        icon: isRecentlySaved.value ? 'i-heroicons-check-circle' : 'i-heroicons-check',
+        color: isRecentlySaved.value ? 'success' : 'primary',
         onClick: handleUpdatePreset,
       });
     }
+
     list.push({
       id: 'save-as-preset',
-      label: opts.manifest.value?.isCustom
+      label: isCustom
         ? t('fastcat.effects.saveAsNew')
         : t('fastcat.effects.saveAsPreset'),
       icon: 'i-heroicons-bookmark',
-      onClick: () => (isSaveModalOpen.value = true),
+      color: isCustom ? 'neutral' : 'primary',
+      variant: isCustom ? 'soft' : 'solid',
+      onClick: () => {
+        newPresetName.value = '';
+        isSaveModalOpen.value = true;
+      },
     });
+
+    if (isCustom) {
+      list.push({
+        id: 'rename-preset',
+        icon: 'i-heroicons-pencil-square',
+        color: 'neutral',
+        variant: 'ghost',
+        title: t('common.rename'),
+        onClick: () => {
+          renamingPresetName.value = opts.manifest.value?.name || '';
+          isRenameModalOpen.value = true;
+        },
+      });
+
+      list.push({
+        id: 'delete-preset',
+        icon: 'i-heroicons-trash',
+        color: 'danger',
+        variant: 'ghost',
+        title: t('common.delete'),
+        onClick: handleDeletePreset,
+      });
+    }
+
     return list;
   });
 
   return {
     params,
     isSaveModalOpen,
+    isRenameModalOpen,
     newPresetName,
+    renamingPresetName,
     handleUpdateParam,
     handleSavePreset,
+    handleRenamePreset,
     actions,
   };
 }

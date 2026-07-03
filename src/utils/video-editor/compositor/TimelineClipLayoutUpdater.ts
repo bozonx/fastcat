@@ -104,12 +104,17 @@ export class TimelineClipLayoutUpdater {
       clearClipTransitionFilter(clip);
     }
 
+    const nextSnapToPixelGrid =
+      typeof n['snapToPixelGrid'] === 'boolean' ? (n['snapToPixelGrid'] as boolean) : undefined;
+    const snapChanged = clip.snapToPixelGrid !== nextSnapToPixelGrid;
+    clip.snapToPixelGrid = nextSnapToPixelGrid;
+
     if (clip.clipKind === 'text') {
       const nextText = String(n['text'] ?? '');
       const nextStyle = n['style'] as TextClipStyle | undefined;
       const styleChanged = !areTextClipStylesEqual(clip.style, nextStyle);
 
-      clip.textDirty = clip.text !== nextText || styleChanged || clip.textDirty === true;
+      clip.textDirty = clip.text !== nextText || styleChanged || snapChanged || clip.textDirty === true;
       clip.text = nextText;
       clip.style = nextStyle ? cloneValue(nextStyle) : undefined;
     }
@@ -126,6 +131,7 @@ export class TimelineClipLayoutUpdater {
         clip.fillColor !== nextFill ||
         clip.strokeColor !== nextStroke ||
         clip.strokeWidth !== nextStrokeWidth ||
+        snapChanged ||
         !areShapeConfigsEqual(
           clip.shapeConfig as unknown as Record<string, unknown>,
           nextConfig as unknown as Record<string, unknown>,

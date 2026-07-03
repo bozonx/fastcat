@@ -9,6 +9,8 @@ import { computeTextLayoutMetrics } from '../text-layout';
 import type { CompositorClip } from './types';
 import { Graphics } from 'pixi.js';
 
+import { isTransformSnapSafe, snapRectToPixelGrid } from '../../pixel-grid-snap';
+
 export interface LayoutApplierContext {
   width: number;
   height: number;
@@ -56,11 +58,23 @@ export class LayoutApplier {
       this.context.width / TRANSFORM_DESIGN_BASE.width,
       this.context.height / TRANSFORM_DESIGN_BASE.height,
     );
-    const strokeWidth = (clip.strokeWidth ?? 0) * renderScale;
-    const targetW = Math.max(1, Math.ceil(size + strokeWidth * 2));
-    const targetH = Math.max(1, Math.ceil(size + strokeWidth * 2));
-    const baseX = (this.context.width - targetW) / 2;
-    const baseY = (this.context.height - targetH) / 2;
+    const isSnapActive = clip.snapToPixelGrid && isTransformSnapSafe(clip.transform);
+    let strokeWidth = (clip.strokeWidth ?? 0) * renderScale;
+    if (isSnapActive) {
+      strokeWidth = Math.round(strokeWidth);
+    }
+    let targetW = Math.max(1, Math.ceil(size + strokeWidth * 2));
+    let targetH = Math.max(1, Math.ceil(size + strokeWidth * 2));
+    let baseX = (this.context.width - targetW) / 2;
+    let baseY = (this.context.height - targetH) / 2;
+
+    if (isSnapActive) {
+      const snapped = snapRectToPixelGrid({ x: baseX, y: baseY, width: targetW, height: targetH });
+      baseX = snapped.x;
+      baseY = snapped.y;
+      targetW = snapped.width;
+      targetH = snapped.height;
+    }
 
     this.applyScreenSpaceLayout(clip, baseX, baseY, targetW, targetH);
   }
@@ -80,10 +94,18 @@ export class LayoutApplier {
       },
     });
 
-    const w = Math.max(1, Math.ceil(layout.backgroundWidth));
-    const h = Math.max(1, Math.ceil(layout.backgroundHeight));
-    const baseX = layout.backgroundX;
-    const baseY = layout.backgroundY;
+    let w = Math.max(1, Math.ceil(layout.backgroundWidth));
+    let h = Math.max(1, Math.ceil(layout.backgroundHeight));
+    let baseX = layout.backgroundX;
+    let baseY = layout.backgroundY;
+
+    if (clip.snapToPixelGrid && isTransformSnapSafe(clip.transform)) {
+      const snapped = snapRectToPixelGrid({ x: baseX, y: baseY, width: w, height: h });
+      baseX = snapped.x;
+      baseY = snapped.y;
+      w = snapped.width;
+      h = snapped.height;
+    }
 
     this.applyScreenSpaceLayout(clip, baseX, baseY, w, h);
   }

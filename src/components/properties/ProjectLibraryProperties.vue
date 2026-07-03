@@ -10,6 +10,9 @@ import ClipShapeProperties from './clip/ClipShapeProperties.vue';
 import ClipHudProperties from './clip/ClipHudProperties.vue';
 import type { ShapeType, HudType } from '~/timeline/types';
 
+import { useSelectionStore } from '~/stores/selection.store';
+import type { PropertyAction } from '~/components/properties/PropertyActionList.vue';
+
 const props = defineProps<{
   itemKind: 'text' | 'shape' | 'hud';
   itemId: string;
@@ -18,10 +21,16 @@ const props = defineProps<{
 
 const { t } = useI18n();
 const presetsStore = usePresetsStore();
+const selectionStore = useSelectionStore();
 
 const params = ref<Record<string, unknown>>({});
 const isSaveModalOpen = ref(false);
+const isRenameModalOpen = ref(false);
 const newPresetName = ref('');
+const renamingPresetName = ref('');
+
+const isRecentlySaved = ref(false);
+let savedTimeout: number | null = null;
 
 const isCustom = computed(() => props.itemId.startsWith('custom_'));
 
@@ -106,28 +115,38 @@ watch(
     } else {
       params.value = {};
     }
+    isRecentlySaved.value = false;
+    if (savedTimeout) {
+      window.clearTimeout(savedTimeout);
+      savedTimeout = null;
+    }
   },
   { immediate: true },
 );
 
 function handleUpdateText(val: string) {
   params.value.text = val;
+  isRecentlySaved.value = false;
 }
 
 function handleUpdateTextStyle(patch: Record<string, unknown>) {
   params.value.style = { ...(params.value.style || {}), ...patch };
+  isRecentlySaved.value = false;
 }
 
 function handleUpdateShapeType(val: ShapeType) {
   params.value.shapeType = val;
+  isRecentlySaved.value = false;
 }
 
 function handleUpdateShapeParam(key: string, val: unknown) {
   params.value[key] = val;
+  isRecentlySaved.value = false;
 }
 
 function handleUpdateShapeConfig(patch: Record<string, unknown>) {
   params.value.shapeConfig = { ...(params.value.shapeConfig || {}), ...patch };
+  isRecentlySaved.value = false;
 }
 
 function handleUpdateHudControl(key: string, value: unknown) {
@@ -146,6 +165,7 @@ function handleUpdateHudControl(key: string, value: unknown) {
   if (lastKey !== undefined) {
     target[lastKey] = value;
   }
+  isRecentlySaved.value = false;
 }
 
 function handleSavePreset() {
@@ -164,15 +184,34 @@ function handleSavePreset() {
 function handleUpdatePreset() {
   if (!isCustom.value) return;
   presetsStore.updatePreset(props.itemId, params.value);
+
+  isRecentlySaved.value = true;
+  if (savedTimeout) window.clearTimeout(savedTimeout);
+  savedTimeout = window.setTimeout(() => {
+    isRecentlySaved.value = false;
+  }, 1500);
 }
 
-const actions = computed(() => {
-  const list: { id: string; label: string; icon: string; onClick: () => void }[] = [];
+function handleRenamePreset() {
+  if (!isCustom.value || !renamingPresetName.value.trim()) return;
+  presetsStore.renamePreset(props.itemId, renamingPresetName.value.trim());
+  isRenameModalOpen.value = false;
+}
+
+function handleDeletePreset() {
+  if (!isCustom.value) return;
+  presetsStore.removePreset(props.itemId);
+  selectionStore.clearSelection();
+}
+
+const actions = computed<PropertyAction[]>(() => {
+  const list: PropertyAction[] = [];
   if (isCustom.value) {
     list.push({
       id: 'update-preset',
-      label: t('common.save'),
-      icon: 'i-heroicons-check',
+      label: isRecentlySaved.value ? t('common.saved') : t('common.save'),
+      icon: isRecentlySaved.value ? 'i-heroicons-check-circle' : 'i-heroicons-check',
+      color: isRecentlySaved.value ? 'success' : 'primary',
       onClick: handleUpdatePreset,
     });
   }
@@ -180,8 +219,35 @@ const actions = computed(() => {
     id: 'save-as-preset',
     label: isCustom.value ? t('fastcat.effects.saveAsNew') : t('fastcat.effects.saveAsPreset'),
     icon: 'i-heroicons-bookmark',
-    onClick: () => (isSaveModalOpen.value = true),
+    color: isCustom.value ? 'neutral' : 'primary',
+    variant: isCustom.value ? 'soft' : 'solid',
+    onClick: () => {
+      newPresetName.value = '';
+      isSaveModalOpen.value = true;
+    },
   });
+  if (isCustom.value) {
+    list.push({
+      id: 'rename-preset',
+      icon: 'i-heroicons-pencil-square',
+      color: 'neutral',
+      variant: 'ghost',
+      title: t('common.rename'),
+      onClick: () => {
+        const customItem = presetsStore.customPresets.find((p) => p.id === props.itemId);
+        renamingPresetName.value = customItem?.name || '';
+        isRenameModalOpen.value = true;
+      },
+    });
+    list.push({
+      id: 'delete-preset',
+      icon: 'i-heroicons-trash',
+      color: 'danger',
+      variant: 'ghost',
+      title: t('common.delete'),
+      onClick: handleDeletePreset,
+    });
+  }
   return list;
 });
 </script>
@@ -245,6 +311,12 @@ const actions = computed(() => {
       v-model:open="isSaveModalOpen"
       v-model:name="newPresetName"
       @save="handleSavePreset"
+    />
+    <PresetSaveModal
+      v-model:open="isRenameModalOpen"
+      v-model:name="renamingPresetName"
+      :title="t('common.rename')"
+      @save="handleRenamePreset"
     />
   </div>
 </template>

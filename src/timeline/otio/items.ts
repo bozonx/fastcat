@@ -260,6 +260,7 @@ export function parseClipItem(input: {
     isImage: fastcatMeta.visual?.isImage,
     showThumbnails: fastcatMeta.visual?.showThumbnails,
     sourceOrientation: fastcatMeta.visual?.sourceOrientation,
+    snapToPixelGrid: fastcatMeta.visual?.snapToPixelGrid,
     transform: coerceTransform(fastcatMeta.transform),
     transformActive: fastcatMeta.flags?.transformActive,
     mask: fastcatMeta.mask as import('~/timeline/types').ClipMask | undefined,

@@ -23,10 +23,16 @@ const props = defineProps<{
 const emit = defineEmits<{
   (e: 'updateText' | 'loadPreset', val: string): void;
   (e: 'updateTextStyle', patch: Record<string, unknown>): void;
+  (e: 'updateSnapToPixelGrid', val: boolean): void;
   (e: 'savePreset'): void;
 }>();
 
 const { t } = useI18n();
+
+const snapToPixelGrid = computed({
+  get: () => Boolean(props.clip.snapToPixelGrid ?? true),
+  set: (value: boolean) => emit('updateSnapToPixelGrid', value),
+});
 
 function getPaddingAxis(axis: 'x' | 'y') {
   const padding = props.clip.style?.padding;
@@ -676,6 +682,18 @@ const fontWeightOptions = ['100', '200', '300', '400', '500', '600', '700', '800
             @update:model-value="(v: number) => emit('updateTextStyle', { borderOffset: Number(v) })"
           />
         </PropertyField>
+      </div>
+    </PropertySection>
+
+    <PropertySection :title="t('fastcat.shapeClip.geometry')">
+      <div class="flex items-center justify-between py-1">
+        <div class="flex items-center gap-1.5">
+          <span class="text-xs text-ui-text font-medium">{{ t('fastcat.textClip.snapToPixelGrid') }}</span>
+          <UTooltip :text="t('fastcat.textClip.snapToPixelGridTooltip')">
+            <UIcon name="i-heroicons-information-circle" class="w-3.5 h-3.5 text-ui-text-muted cursor-help" />
+          </UTooltip>
+        </div>
+        <UToggle v-model="snapToPixelGrid" size="sm" />
       </div>
     </PropertySection>
   </div>

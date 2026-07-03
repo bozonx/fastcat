@@ -3,6 +3,12 @@ import type { CompositorClip } from '../types';
 import { computeTextLayoutMetrics, getTextBackgroundShadowOutsetPx } from '../../text-layout';
 import { TRANSFORM_DESIGN_BASE } from '../../clip-layout';
 
+import {
+  isTransformSnapSafe,
+  snapRectToPixelGrid,
+  snapTextOriginToPixelGrid,
+} from '../../../pixel-grid-snap';
+
 export class TextRenderer {
   constructor(
     private readonly context: {
@@ -73,11 +79,17 @@ export class TextRenderer {
       },
     });
 
+    const isSnapActive = clip.snapToPixelGrid && isTransformSnapSafe(clip.transform);
+
     const { renderScale, fontSizePx, lineHeightPx, letterSpacingPx, lines } = layout;
     const { style: normalizedStyle } = layout;
 
-    const bgW = Math.max(1, Math.ceil(layout.backgroundWidth));
-    const bgH = Math.max(1, Math.ceil(layout.backgroundHeight));
+    let bgW = Math.max(1, Math.ceil(layout.backgroundWidth));
+    let bgH = Math.max(1, Math.ceil(layout.backgroundHeight));
+    if (isSnapActive) {
+      bgW = Math.round(layout.backgroundWidth);
+      bgH = Math.round(layout.backgroundHeight);
+    }
 
     const canvas = clip.canvas!;
     if (canvas.width !== bgW || canvas.height !== bgH) {
@@ -104,10 +116,23 @@ export class TextRenderer {
     // AA seam); larger values reveal the scene between background and border.
     const borderOffsetPx =
       borderWidthPx > 0 ? Math.max(0, Math.round(normalizedStyle.borderOffset * renderScale)) : 0;
-    const frameX = layout.frameX;
-    const frameY = layout.frameY;
-    const frameW = Math.max(1, layout.frameWidth);
-    const frameH = Math.max(1, layout.frameHeight);
+    let frameX = layout.frameX;
+    let frameY = layout.frameY;
+    let frameW = Math.max(1, layout.frameWidth);
+    let frameH = Math.max(1, layout.frameHeight);
+
+    if (isSnapActive) {
+      const snappedFrame = snapRectToPixelGrid({
+        x: frameX,
+        y: frameY,
+        width: frameW,
+        height: frameH,
+      });
+      frameX = snappedFrame.x;
+      frameY = snappedFrame.y;
+      frameW = snappedFrame.width;
+      frameH = snappedFrame.height;
+    }
 
     if (normalizedStyle.backgroundEnabled && normalizedStyle.backgroundShadowEnabled) {
       const bgShadowOutsetPx = getTextBackgroundShadowOutsetPx(normalizedStyle, renderScale);
@@ -198,8 +223,16 @@ export class TextRenderer {
     ctx.font = font;
 
     // textStartX is relative to the compositor canvas; convert to local canvas coords
-    const localTextStartX = layout.textStartX - layout.backgroundX;
-    const localTextTopPx = layout.textBlockTopPx - layout.backgroundY;
+    let localTextStartX = layout.textStartX - layout.backgroundX;
+    let localTextTopPx = layout.textBlockTopPx - layout.backgroundY;
+    if (isSnapActive) {
+      const snappedOrigin = snapTextOriginToPixelGrid({
+        x: localTextStartX,
+        y: localTextTopPx,
+      });
+      localTextStartX = snappedOrigin.x;
+      localTextTopPx = snappedOrigin.y;
+    }
 
     if (normalizedStyle.textShadowEnabled) {
       const textShadowSpreadPx = Math.round(normalizedStyle.textShadowSpread * renderScale);

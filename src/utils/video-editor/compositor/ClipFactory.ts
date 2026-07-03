@@ -21,6 +21,7 @@ export interface CreateClipBaseParams {
   transitionIn?: CompositorClip['transitionIn'];
   transitionOut?: CompositorClip['transitionOut'];
   mask?: CompositorClip['mask'];
+  snapToPixelGrid?: boolean;
 }
 
 export interface ClipFactoryContext {
@@ -122,6 +123,7 @@ export class ClipFactory {
       transitionIn: params.transitionIn,
       transitionOut: params.transitionOut,
       mask: params.mask,
+      snapToPixelGrid: params.snapToPixelGrid,
       transitionFilter: null,
       transitionFilterType: null,
       textDirty: true,
@@ -174,6 +176,7 @@ export class ClipFactory {
       transitionIn: params.transitionIn,
       transitionOut: params.transitionOut,
       mask: params.mask,
+      snapToPixelGrid: params.snapToPixelGrid,
       transitionFilter: null,
       transitionFilterType: null,
       shapeDirty: true,

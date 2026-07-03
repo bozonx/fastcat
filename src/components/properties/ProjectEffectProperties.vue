@@ -15,19 +15,38 @@ const props = defineProps<{
 const { t } = useI18n();
 const presetsStore = usePresetsStore();
 
-const manifest = computed(() => getEffectManifest(props.effectType));
+const manifest = computed(() => {
+  const base = getEffectManifest(props.effectType);
+  if (!base) return undefined;
+  if (base.isCustom) {
+    const custom = presetsStore.customPresets.find((p) => p.id === props.effectType);
+    if (custom) {
+      return { ...base, name: custom.name };
+    }
+  }
+  return base;
+});
 
-const { params, isSaveModalOpen, newPresetName, handleUpdateParam, handleSavePreset, actions } =
-  usePropertyPresetEditor({
-    manifest,
-    source: () => props.effectType,
-    initParams: (type) => cloneValue(getEffectManifest(type)?.defaultValues || {}),
-    saveAsPreset: (man, name, savedParams) => {
-      const baseType = man.baseType || man.type;
-      const target = man.target ?? 'video';
-      presetsStore.saveAsPreset('effect', baseType, name, savedParams, target);
-    },
-  });
+const {
+  params,
+  isSaveModalOpen,
+  isRenameModalOpen,
+  newPresetName,
+  renamingPresetName,
+  handleUpdateParam,
+  handleSavePreset,
+  handleRenamePreset,
+  actions,
+} = usePropertyPresetEditor({
+  manifest,
+  source: () => props.effectType,
+  initParams: (type) => cloneValue(getEffectManifest(type)?.defaultValues || {}),
+  saveAsPreset: (man, name, savedParams) => {
+    const baseType = man.baseType || man.type;
+    const target = man.target ?? 'video';
+    presetsStore.saveAsPreset('effect', baseType, name, savedParams, target);
+  },
+});
 </script>
 
 <template>
@@ -57,6 +76,12 @@ const { params, isSaveModalOpen, newPresetName, handleUpdateParam, handleSavePre
       v-model:open="isSaveModalOpen"
       v-model:name="newPresetName"
       @save="handleSavePreset"
+    />
+    <PresetSaveModal
+      v-model:open="isRenameModalOpen"
+      v-model:name="renamingPresetName"
+      :title="t('common.rename')"
+      @save="handleRenamePreset"
     />
   </div>
   <UiEmptyState v-else :message="t('common.notFound')" wrapper-class="p-4 text-sm not-italic" />

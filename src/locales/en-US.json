@@ -77,6 +77,7 @@
     "save": "Save",
     "saveError": "Failed to save",
     "saveSuccess": "Saved successfully",
+    "saved": "Saved",
     "dontSave": "Don't Save",
     "scrollForMore": "Scroll for more",
     "search": "Search",
@@ -311,7 +312,7 @@
       "noSettings": "No settings available",
       "presetNamePlaceholder": "My Custom Preset",
       "presetsTitle": "Presets",
-      "saveAsNew": "Save as new",
+      "saveAsNew": "Save as",
       "saveAsPreset": "Save as preset",
       "savePresetTitle": "Save Preset",
       "settings": "Effects settings",
@@ -677,6 +678,8 @@
       "strokeColor": "Stroke Color",
       "strokeWidth": "Stroke Width",
       "type": "Type",
+      "snapToPixelGrid": "Snap to pixel grid",
+      "snapToPixelGridTooltip": "Aligns fill, border and text origin to output pixels when possible.",
       "types": {
         "bang": "Bang",
         "circle": "Circle",
@@ -730,7 +733,9 @@
       "verticalAlign": "Vertical align",
       "verticalPaddingPx": "Vertical padding (px)",
       "webColor": "Web color",
-      "widthPx": "Width (px)"
+      "widthPx": "Width (px)",
+      "snapToPixelGrid": "Snap to pixel grid",
+      "snapToPixelGridTooltip": "Aligns fill, border and text origin to output pixels when possible."
     },
     "timeline": {
       "addAdjustment": "Add adjustment clip",
@@ -1979,7 +1984,7 @@
       "presetRevert": "Revert changes",
       "presetBuiltInNotice": "Built-in export preset (read-only)",
       "presetCustomNotice": "Custom export preset",
-      "presetSaveAsNew": "Save as new",
+      "presetSaveAsNew": "Save as",
       "presetDeleteTitle": "Delete preset",
       "presetDeleteDescription": "Are you sure you want to delete the preset \"{name}\"? This action cannot be undone.",
       "noPresets": "No presets configured",

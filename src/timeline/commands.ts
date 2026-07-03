@@ -83,6 +83,7 @@ export interface AddVirtualClipToTrackCommand {
   content?: HudMediaParams;
   audioFadeInCurve?: AudioFadeCurve;
   audioFadeOutCurve?: AudioFadeCurve;
+  snapToPixelGrid?: boolean;
 }
 
 export interface RemoveItemCommand {
@@ -225,6 +226,7 @@ export interface UpdateClipPropertiesCommand {
       | 'blendModeActive'
       | 'mask'
       | 'maskActive'
+      | 'snapToPixelGrid'
     >
   > & {
     linkedGroupId?: string;
@@ -240,6 +242,7 @@ export interface UpdateClipPropertiesCommand {
     background?: HudMediaParams;
     content?: HudMediaParams;
     frame?: HudMediaParams;
+    snapToPixelGrid?: boolean;
   };
 }
 

@@ -11,11 +11,15 @@ const name = defineModel<string>('name', { default: '' });
 
 const emit = defineEmits<{ (e: 'save'): void }>();
 
+defineProps<{
+  title?: string;
+}>();
+
 const { t } = useI18n();
 </script>
 
 <template>
-  <UiModal v-model:open="open" :title="t('fastcat.effects.savePresetTitle')">
+  <UiModal v-model:open="open" :title="title || t('fastcat.effects.savePresetTitle')">
     <div class="flex flex-col gap-4">
       <UiFormField :label="t('common.name')">
         <UiTextInput

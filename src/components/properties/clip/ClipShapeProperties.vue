@@ -17,11 +17,17 @@ const emit = defineEmits<{
   (e: 'updateStrokeColor', val: string): void;
   (e: 'updateStrokeWidth', val: number): void;
   (e: 'updateShapeConfig', patch: Record<string, unknown>): void;
+  (e: 'updateSnapToPixelGrid', val: boolean): void;
   (e: 'loadPreset', val: string): void;
   (e: 'savePreset'): void;
 }>();
 
 const { t } = useI18n();
+
+const snapToPixelGrid = computed({
+  get: () => Boolean(props.clip.snapToPixelGrid ?? true),
+  set: (value: boolean) => emit('updateSnapToPixelGrid', value),
+});
 </script>
 
 <template>
@@ -310,6 +316,16 @@ const { t } = useI18n();
           />
         </PropertyField>
       </template>
+
+      <div class="flex items-center justify-between py-1 pt-2 border-t border-ui-border">
+        <div class="flex items-center gap-1.5">
+          <span class="text-xs text-ui-text font-medium">{{ t('fastcat.shapeClip.snapToPixelGrid') }}</span>
+          <UTooltip :text="t('fastcat.shapeClip.snapToPixelGridTooltip')">
+            <UIcon name="i-heroicons-information-circle" class="w-3.5 h-3.5 text-ui-text-muted cursor-help" />
+          </UTooltip>
+        </div>
+        <UToggle v-model="snapToPixelGrid" size="sm" />
+      </div>
     </div>
   </PropertySection>
 </template>

@@ -220,6 +220,7 @@ export const usePresetsStore = defineStore('presets', () => {
 
     preset.params = { ...params };
     registerPresetManifest(preset);
+    customPresets.value = [...customPresets.value];
 
     const repo = getPresetRepo();
     await repo.saveCustomPreset(preset);
@@ -231,6 +232,7 @@ export const usePresetsStore = defineStore('presets', () => {
 
     preset.name = name.trim();
     registerPresetManifest(preset);
+    customPresets.value = [...customPresets.value];
 
     const repo = getPresetRepo();
     await repo.saveCustomPreset(preset);

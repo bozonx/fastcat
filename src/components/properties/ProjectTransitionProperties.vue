@@ -14,18 +14,37 @@ const props = defineProps<{
 const { t } = useI18n();
 const presetsStore = usePresetsStore();
 
-const manifest = computed(() => getTransitionManifest(props.transitionType));
+const manifest = computed(() => {
+  const base = getTransitionManifest(props.transitionType);
+  if (!base) return undefined;
+  if (base.isCustom) {
+    const custom = presetsStore.customPresets.find((p) => p.id === props.transitionType);
+    if (custom) {
+      return { ...base, name: custom.name };
+    }
+  }
+  return base;
+});
 
-const { params, isSaveModalOpen, newPresetName, handleUpdateParam, handleSavePreset, actions } =
-  usePropertyPresetEditor({
-    manifest,
-    source: () => props.transitionType,
-    initParams: (type) => normalizeTransitionParams(type) as Record<string, unknown>,
-    saveAsPreset: (man, name, savedParams) => {
-      const baseType = man.baseType || man.type;
-      presetsStore.saveAsPreset('transition', baseType, name, savedParams);
-    },
-  });
+const {
+  params,
+  isSaveModalOpen,
+  isRenameModalOpen,
+  newPresetName,
+  renamingPresetName,
+  handleUpdateParam,
+  handleSavePreset,
+  handleRenamePreset,
+  actions,
+} = usePropertyPresetEditor({
+  manifest,
+  source: () => props.transitionType,
+  initParams: (type) => normalizeTransitionParams(type) as Record<string, unknown>,
+  saveAsPreset: (man, name, savedParams) => {
+    const baseType = man.baseType || man.type;
+    presetsStore.saveAsPreset('transition', baseType, name, savedParams);
+  },
+});
 </script>
 
 <template>
@@ -55,6 +74,12 @@ const { params, isSaveModalOpen, newPresetName, handleUpdateParam, handleSavePre
       v-model:open="isSaveModalOpen"
       v-model:name="newPresetName"
       @save="handleSavePreset"
+    />
+    <PresetSaveModal
+      v-model:open="isRenameModalOpen"
+      v-model:name="renamingPresetName"
+      :title="t('common.rename')"
+      @save="handleRenamePreset"
     />
   </div>
   <UiEmptyState v-else :message="t('common.notFound')" wrapper-class="p-4 text-sm not-italic" />

@@ -58,7 +58,7 @@ const cardDescription = computed(() => {
 
 function onPointerDown(e: PointerEvent) {
   const target = e.target as HTMLElement | null;
-  if (target?.closest('.drag-handle') || target?.closest('button')) {
+  if (target?.closest('button')) {
     return;
   }
   if (props.isDraggable) {
@@ -79,13 +79,6 @@ function onPointerDown(e: PointerEvent) {
     @pointerdown="onPointerDown"
     @click="emit('click')"
   >
-    <div
-      v-if="showDragHandle"
-      class="cursor-grab hover:text-ui-text text-ui-text-muted drag-handle shrink-0"
-    >
-      <UIcon name="i-heroicons-bars-2" class="w-5 h-5" />
-    </div>
-
     <UIcon :name="cardIcon" class="w-8 h-8 text-primary shrink-0" />
 
     <div class="flex-1 min-w-0">

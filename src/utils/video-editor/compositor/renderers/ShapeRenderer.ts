@@ -1,6 +1,7 @@
-import type { ShapeConfig, ShapeType } from '~/timeline/types';
+import type { ShapeConfig, ShapeType, ClipTransform } from '~/timeline/types';
 import { parseHexColor } from '../../utils';
 import { TRANSFORM_DESIGN_BASE } from '../../clip-layout';
+import { isTransformSnapSafe, snapRectToPixelGrid, snapStrokeToPixelGrid } from '../../../pixel-grid-snap';
 import type { Graphics } from 'pixi.js';
 
 /**
@@ -26,6 +27,8 @@ export interface ShapeDrawParams {
   config: ShapeConfig;
   canvasWidth: number;
   canvasHeight: number;
+  snapToPixelGrid?: boolean;
+  transform?: ClipTransform;
 }
 
 export interface ShapeLayoutResult {
@@ -52,14 +55,23 @@ export class ShapeRenderer {
   }
 
   public draw(params: ShapeDrawParams): void {
-    const { graphics, type, fill, stroke, strokeWidth, config, canvasWidth, canvasHeight } = params;
+    const { graphics, type, fill, stroke, strokeWidth, config, canvasWidth, canvasHeight, snapToPixelGrid, transform } = params;
 
     graphics.clear();
 
-    const scaledStroke = scaleStroke(strokeWidth, canvasWidth, canvasHeight);
+    const isSnapActive = snapToPixelGrid && isTransformSnapSafe(transform);
+
+    let scaledStroke = scaleStroke(strokeWidth, canvasWidth, canvasHeight);
+    if (isSnapActive) {
+      scaledStroke = Math.round(scaledStroke);
+    }
     const size = Math.min(canvasWidth, canvasHeight) * 0.8;
-    const totalW = Math.max(1, Math.ceil(size + scaledStroke * 2));
-    const totalH = Math.max(1, Math.ceil(size + scaledStroke * 2));
+    let totalW = Math.max(1, Math.ceil(size + scaledStroke * 2));
+    let totalH = Math.max(1, Math.ceil(size + scaledStroke * 2));
+    if (isSnapActive) {
+      totalW = Math.round(size + scaledStroke * 2);
+      totalH = Math.round(size + scaledStroke * 2);
+    }
     const cx = totalW / 2;
     const cy = totalH / 2;
     const half = size / 2;
@@ -75,11 +87,18 @@ export class ShapeRenderer {
     };
 
     if (type === 'square') {
-      const w = ((config.width ?? 100) / 100) * size;
-      const h = ((config.height ?? 100) / 100) * size;
+      let w = ((config.width ?? 100) / 100) * size;
+      let h = ((config.height ?? 100) / 100) * size;
       const r = ((config.cornerRadius ?? 0) / 100) * (Math.min(w, h) / 2);
-      const x = cx - w / 2;
-      const y = cy - h / 2;
+      let x = cx - w / 2;
+      let y = cy - h / 2;
+      if (isSnapActive) {
+        const snappedSq = snapRectToPixelGrid({ x, y, width: w, height: h });
+        x = snappedSq.x;
+        y = snappedSq.y;
+        w = snappedSq.width;
+        h = snappedSq.height;
+      }
       if (r > 0) {
         graphics.roundRect(x, y, w, h, r);
       } else {

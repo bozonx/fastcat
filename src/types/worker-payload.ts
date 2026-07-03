@@ -161,6 +161,7 @@ const WorkerTimelineClipSchema = z.object({
   transitionIn: ClipTransitionSchema.optional(),
   transitionOut: ClipTransitionSchema.optional(),
   sourceDurationUs: z.number().optional(),
+  snapToPixelGrid: z.boolean().optional(),
 
   timelineRange: TimelineRangeSchema,
   sourceRange: TimelineRangeSchema,

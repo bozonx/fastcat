@@ -101,6 +101,7 @@ export interface BaseCompositorClip {
   background?: HudMediaParams;
   content?: HudMediaParams;
   frame?: HudMediaParams;
+  snapToPixelGrid?: boolean;
   textDirty?: boolean;
   shapeDirty?: boolean;
   hudDirty?: boolean;

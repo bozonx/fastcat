@@ -308,6 +308,7 @@ export const TimelineClipFastCatMetaSchema = z
         showThumbnails: z.boolean().optional(),
         isImage: z.boolean().optional(),
         sourceOrientation: ClipSourceOrientationSchema.optional(),
+        snapToPixelGrid: z.boolean().optional(),
       })
       .optional(),
     flags: z

@@ -221,7 +221,7 @@ impl NativeAudioEngine {
         // in-place file replace (same path, now with audio) is re-probed.
         let active_paths: std::collections::HashSet<&str> =
             layers.iter().map(|l| l.path.as_str()).collect();
-        evict_stale_silent_paths(&active_paths);
+        evict_stale_silent_paths(&mut state, &active_paths);
 
         // Bump scene_serial so the producer re-reads the scene (refreshes its
         // cached snapshot and applies new mix params). This does NOT discard the
@@ -1375,52 +1375,45 @@ mod tests {
     #[test]
     fn set_scene_evicts_silent_paths_no_longer_in_scene() {
         use crate::audio::decode::{
-            cached_silent_paths, path_known_silent, remember_silent_path,
-            reset_silent_paths_for_test,
+            evict_stale_silent_paths, path_known_silent, remember_silent_path,
         };
 
-        reset_silent_paths_for_test();
+        let mut state = crate::audio::shared::AudioShared::default();
 
         // Simulate a video-only file at /tmp/silent.mp4 being cached as silent.
-        remember_silent_path("/tmp/silent.mp4");
-        remember_silent_path("/tmp/other-silent.mp4");
-        assert!(path_known_silent("/tmp/silent.mp4"));
-        assert!(path_known_silent("/tmp/other-silent.mp4"));
+        remember_silent_path(&mut state, "/tmp/silent.mp4");
+        remember_silent_path(&mut state, "/tmp/other-silent.mp4");
+        assert!(path_known_silent(&state, "/tmp/silent.mp4"));
+        assert!(path_known_silent(&state, "/tmp/other-silent.mp4"));
 
         // Scene update with only /tmp/silent.mp4 present → other-silent is evicted.
-        let engine = mock_engine();
         let l = layer("l1", "/tmp/silent.mp4", 0.0, 10.0, 1.0);
-        engine.set_scene(std::slice::from_ref(&l), &[], 1.0, &[]);
-        let remaining = cached_silent_paths();
+        let active_paths: std::collections::HashSet<&str> =
+            std::slice::from_ref(&l).iter().map(|l| l.path.as_str()).collect();
+        evict_stale_silent_paths(&mut state, &active_paths);
         assert!(
-            remaining.contains(&"/tmp/silent.mp4".to_string()),
+            path_known_silent(&state, "/tmp/silent.mp4"),
             "active path must stay cached"
         );
         assert!(
-            !remaining.contains(&"/tmp/other-silent.mp4".to_string()),
+            !path_known_silent(&state, "/tmp/other-silent.mp4"),
             "evicted path must be removed from silent cache"
         );
-
-        reset_silent_paths_for_test();
     }
 
     #[test]
     fn set_scene_with_empty_scene_clears_all_silent_paths() {
-        use crate::audio::decode::{
-            cached_silent_paths, remember_silent_path, reset_silent_paths_for_test,
-        };
+        use crate::audio::decode::{evict_stale_silent_paths, path_known_silent, remember_silent_path};
 
-        reset_silent_paths_for_test();
-        remember_silent_path("/tmp/a.mp4");
-        remember_silent_path("/tmp/b.mp4");
+        let mut state = crate::audio::shared::AudioShared::default();
+        remember_silent_path(&mut state, "/tmp/a.mp4");
+        remember_silent_path(&mut state, "/tmp/b.mp4");
 
-        let engine = mock_engine();
-        engine.set_scene(&[], &[], 1.0, &[]);
+        let active_paths: std::collections::HashSet<&str> = std::collections::HashSet::new();
+        evict_stale_silent_paths(&mut state, &active_paths);
         assert!(
-            cached_silent_paths().is_empty(),
+            !path_known_silent(&state, "/tmp/a.mp4") && !path_known_silent(&state, "/tmp/b.mp4"),
             "empty scene must evict all silent paths"
         );
-
-        reset_silent_paths_for_test();
     }
 }

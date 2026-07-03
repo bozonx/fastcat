@@ -104,6 +104,7 @@ export interface TimelineClipsModule {
         | 'mask'
         | 'maskActive'
         | 'sourceOrientation'
+        | 'snapToPixelGrid'
       >
     > & {
       backgroundColor?: string;

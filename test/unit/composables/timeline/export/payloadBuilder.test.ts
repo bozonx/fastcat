@@ -64,6 +64,52 @@ describe('buildWorkerVideoTracks', () => {
 });
 
 describe('buildVideoWorkerPayloadFromTracks', () => {
+  it('produces a video clip for a text-only timeline', async () => {
+    const result = await buildVideoWorkerPayloadFromTracks({
+      tracks: [
+        track({
+          id: 'v1',
+          items: [
+            {
+              id: 'text-1',
+              kind: 'clip',
+              clipType: 'text',
+              trackId: 'v1',
+              text: 'Hello',
+              style: { width: 720, fontSize: 96, color: '#ffffff' },
+              timelineRange: { startUs: 0, durationUs: 1_000_000 },
+              sourceRange: { startUs: 0, durationUs: 1_000_000 },
+            },
+          ],
+        }),
+      ],
+      projectStore: {
+        projectSettings: {
+          project: {
+            width: 1920,
+            height: 1080,
+            fps: 30,
+            audioDeclickDurationUs: 0,
+          },
+        },
+      } as never,
+      workspaceStore: {
+        userSettings: {
+          projectDefaults: {
+            defaultAudioFadeCurve: 'linear',
+          },
+        },
+      } as never,
+    });
+
+    expect(result.clips).toHaveLength(1);
+    expect(result.clips[0]).toMatchObject({
+      id: 'text-1',
+      clipType: 'text',
+      text: 'Hello',
+    });
+  });
+
   it('keeps track opacity and blend separate from clip properties', async () => {
     const result = await buildVideoWorkerPayloadFromTracks({
       tracks: [

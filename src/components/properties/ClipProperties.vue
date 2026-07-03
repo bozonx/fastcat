@@ -331,6 +331,12 @@ const {
   timelineStore,
 });
 
+function handleUpdateSnapToPixelGrid(val: boolean) {
+  timelineStore.updateClipProperties(props.clip.trackId, props.clip.id, {
+    snapToPixelGrid: val,
+  });
+}
+
 const { hudManifest, hudControlValues, handleUpdateHudControl } = useClipHudProperties({
   clip: clipRef,
   timelineStore,
@@ -548,6 +554,7 @@ defineExpose({
         @update-stroke-color="handleUpdateStrokeColor"
         @update-stroke-width="handleUpdateStrokeWidth"
         @update-shape-config="handleUpdateShapeConfig"
+        @update-snap-to-pixel-grid="handleUpdateSnapToPixelGrid"
         @update-hud-control="handleUpdateHudControl"
       />
 
@@ -569,6 +576,7 @@ defineExpose({
         @update-stroke-color="handleUpdateStrokeColor"
         @update-stroke-width="handleUpdateStrokeWidth"
         @update-shape-config="handleUpdateShapeConfig"
+        @update-snap-to-pixel-grid="handleUpdateSnapToPixelGrid"
         @update-hud-control="handleUpdateHudControl"
       />
     </div>

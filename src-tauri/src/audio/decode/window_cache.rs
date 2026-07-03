@@ -106,8 +106,11 @@ fn window_fill(
         start_frame: target_start_frame,
     };
 
-    if path_known_silent(&path) {
-        return;
+    {
+        let state = shared.0.lock();
+        if path_known_silent(&state, &path) {
+            return;
+        }
     }
 
     let start_sec = target_start_frame as f64 / sample_rate.max(1) as f64;
@@ -163,7 +166,10 @@ fn window_fill(
                 );
             }
         }
-        Err(error) if is_no_audio_track_error(&error) => remember_silent_path(&path),
+        Err(error) if is_no_audio_track_error(&error) => {
+            let mut state = shared.0.lock();
+            remember_silent_path(&mut state, &path);
+        }
         Err(error) => log::warn!("[audio] audio window fill failed for {path}: {error:?}"),
     }
 }

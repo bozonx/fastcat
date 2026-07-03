@@ -137,14 +137,16 @@ describe('PresetsStore', () => {
     expect(store.customPresets.map((p) => p.id)).toEqual([p2.id, p1.id]);
   });
 
-  it('renamePreset renames preset and persists', async () => {
+  it('renamePreset renames preset, updates array reference and persists', async () => {
     const store = usePresetsStore();
     await store.saveAsPreset('effect', 'blur', 'Old Name', {});
     const id = store.customPresets[0].id;
+    const oldArray = store.customPresets;
 
     await store.renamePreset(id, 'New Name');
 
     expect(store.customPresets[0].name).toBe('New Name');
+    expect(store.customPresets).not.toBe(oldArray);
   });
 
   it('removePreset deletes a preset and persists', async () => {
