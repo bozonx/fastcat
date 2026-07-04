@@ -46,7 +46,8 @@ describe('MobileMonitorAudioControl', () => {
         },
         UButton: {
           props: ['label', 'icon', 'color'],
-          template: '<button class="button-stub" :class="[icon, color]">{{ label }}<slot /></button>',
+          template:
+            '<button class="button-stub" :class="[icon, color]">{{ label }}<slot /></button>',
         },
         UIcon: true,
       },
@@ -107,4 +108,3 @@ describe('MobileMonitorAudioControl', () => {
     expect(uiStore.monitorMuted).toBe(false);
   });
 });
-

@@ -44,4 +44,3 @@ describe('Native Monitor Smoke (P2)', () => {
     expect(closeResult).toBeNull();
   });
 });
-

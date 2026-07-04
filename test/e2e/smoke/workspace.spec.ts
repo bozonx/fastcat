@@ -38,10 +38,7 @@ test.describe('Smoke: Workspace Initialization', () => {
   test('Cross-Origin Isolation and SharedArrayBuffer are enabled', async ({ page }) => {
     await page.goto('/');
     const isIsolated = await page.evaluate(() => {
-      return (
-        globalThis.crossOriginIsolated === true &&
-        typeof SharedArrayBuffer === 'function'
-      );
+      return globalThis.crossOriginIsolated === true && typeof SharedArrayBuffer === 'function';
     });
 
     expect(isIsolated).toBe(true);

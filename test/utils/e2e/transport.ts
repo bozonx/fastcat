@@ -146,3 +146,16 @@ export async function setMonitorVolume(page: Page, volume: number): Promise<void
     { volume: Math.max(0, Math.min(2, volume)) },
   );
 }
+
+export function monitorPreviewEffectsButton(page: Page): Locator {
+  return page.getByTestId('monitor-preview-effects');
+}
+
+export async function toggleMonitorPreviewEffects(page: Page): Promise<void> {
+  await monitorPreviewEffectsButton(page).click();
+}
+
+export async function openMonitorMoreMenu(page: Page): Promise<void> {
+  const moreBtn = page.locator('button[title="More"]').first();
+  await moreBtn.click();
+}
