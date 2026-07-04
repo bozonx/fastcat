@@ -21,7 +21,7 @@ describe('EditorDynamicPanelsView', () => {
     columns: [
       {
         id: 'col-1',
-        panels: [{ id: 'panel-1', type: 'files', title: 'Files' }],
+        panels: [{ id: 'panel-1', type: 'fileManager', title: 'Files' }],
       },
       {
         id: 'col-2',
@@ -38,6 +38,7 @@ describe('EditorDynamicPanelsView', () => {
     getFocusId: vi.fn().mockReturnValue('files'),
     leftPanelType: 'files' as const,
     rightPanelType: 'monitor' as const,
+    panelDndZoneAttrs: { 'data-dnd-zone-id': 'dynamic-panel-test' },
   };
 
   it('renders columns and panels correctly', async () => {
@@ -92,11 +93,25 @@ describe('EditorDynamicPanelsView', () => {
     expect(component.emitted('focus')).toBeTruthy();
     expect(component.emitted('focus')![0]).toEqual(['panel-1']);
 
-    await firstFrame.trigger('dragover');
-    expect(component.emitted('dragOver')).toBeTruthy();
-    expect(component.emitted('dragOver')![0]).toEqual([expect.any(Event), 'panel-1', 'cut']);
+    expect(firstFrame.attributes('data-dnd-zone-id')).toBe('dynamic-panel-test');
+    expect(firstFrame.attributes('data-panel-view')).toBe('cut');
+  });
 
-    await firstFrame.trigger('drop');
-    expect(component.emitted('drop')).toBeTruthy();
+  it('emits panelPointerDown when a panel drag handle receives pointerdown', async () => {
+    const component = await mountSuspended(EditorDynamicPanelsView, {
+      props: defaultProps,
+      global: {
+        stubs: {
+          EditorDynamicPanelContent: {
+            template: '<div data-panel-drag-handle>Content</div>',
+            props: ['panel', 'view', 'focusPanelId'],
+          },
+        },
+      },
+    });
+
+    await component.find('[data-panel-drag-handle]').trigger('pointerdown');
+    expect(component.emitted('panelPointerDown')).toBeTruthy();
+    expect(component.emitted('panelPointerDown')![0]?.[1]).toBe('panel-1');
   });
 });

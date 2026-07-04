@@ -25,48 +25,6 @@ async function centerOf(locator: Locator, name: string): Promise<Point> {
   };
 }
 
-async function timelineClipDragPoint(locator: Locator, name: string): Promise<Point> {
-  const box = await locator.boundingBox();
-  if (!box) throw new Error(`${name} has no bounding box`);
-  return {
-    x: box.x + Math.max(2, Math.min(box.width - 2, box.width * 0.35)),
-    y: box.y + Math.max(2, box.height - 6),
-  };
-}
-
-async function dispatchPointerEvent(
-  page: Page,
-  target: Locator | 'window',
-  type: 'pointerdown' | 'pointermove' | 'pointerup',
-  point: Point,
-  options: { pointerId: number; buttons: number; button?: number },
-): Promise<void> {
-  const init = {
-    bubbles: true,
-    cancelable: true,
-    composed: true,
-    pointerId: options.pointerId,
-    pointerType: 'mouse',
-    isPrimary: true,
-    button: options.button ?? 0,
-    buttons: options.buttons,
-    clientX: point.x,
-    clientY: point.y,
-  };
-
-  if (target === 'window') {
-    await page.evaluate(
-      ({ eventType, eventInit }) => {
-        window.dispatchEvent(new PointerEvent(eventType, eventInit));
-      },
-      { eventType: type, eventInit: init },
-    );
-    return;
-  }
-
-  await target.dispatchEvent(type, init);
-}
-
 async function pointInTrack(page: Page, trackId: string, offsetX = 80): Promise<Point> {
   const box = await track(page, trackId).boundingBox();
   if (!box) throw new Error(`track ${trackId} has no bounding box`);
@@ -257,16 +215,11 @@ test.describe('Web pointer DnD', () => {
     await expect.poll(() => opfsEntryExists(page, movedOpfsPath)).toBe(true);
   });
 
-  test.fixme('moves an existing timeline clip position with a real pointer drag', async ({
+  test('moves an existing timeline clip position with a real pointer drag', async ({
     page,
     e2eProject,
   }) => {
-    const { uiPath } = await seedProjectMedia(
-      page,
-      e2eProject,
-      MEDIA_FIXTURES.video.h264Mp4,
-      'video',
-    );
+    const { uiPath } = await seedProjectMedia(page, e2eProject, MEDIA_FIXTURES.image.jpg, 'image');
     const videoTrackId = (await trackIds(page))[0]!;
     await dragEntryToTrack(page, uiPath, videoTrackId);
     await expect.poll(async () => (await clipIds(page)).length).toBe(1);
@@ -280,45 +233,12 @@ test.describe('Web pointer DnD', () => {
     const beforeClip = before.allClips.find((c) => c.id === clipId);
     expect(beforeClip).toBeTruthy();
 
-    const start = await timelineClipDragPoint(currentClip, `clip ${clipId}`);
-    const pointerId = 41;
-    await dispatchPointerEvent(page, currentClip, 'pointerdown', start, {
-      pointerId,
-      button: 0,
-      buttons: 1,
-    });
-    await dispatchPointerEvent(
-      page,
-      'window',
-      'pointermove',
-      { x: start.x + 12, y: start.y + 1 },
-      {
-        pointerId,
-        buttons: 1,
-      },
-    );
-    await page.waitForTimeout(50);
-    await dispatchPointerEvent(
-      page,
-      'window',
-      'pointermove',
-      { x: start.x + 180, y: start.y + 1 },
-      {
-        pointerId,
-        buttons: 1,
-      },
-    );
-    await page.waitForTimeout(50);
-    await dispatchPointerEvent(
-      page,
-      'window',
-      'pointerup',
-      { x: start.x + 180, y: start.y + 1 },
-      {
-        pointerId,
-        buttons: 0,
-      },
-    );
+    const start = await centerOf(currentClip, `clip ${clipId}`);
+    await page.mouse.move(start.x, start.y);
+    await page.mouse.down();
+    await page.mouse.move(start.x + 12, start.y + 1);
+    await page.mouse.move(start.x + 180, start.y + 1, { steps: 12 });
+    await page.mouse.up();
 
     const moved = await waitForTimelineDoc(
       page,

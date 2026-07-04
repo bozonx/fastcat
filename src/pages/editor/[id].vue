@@ -163,14 +163,10 @@ const {
   focusDynamicPanel,
   closePanelAndRestoreTab,
   movePanelToView,
-  onDragEnd,
-  onDragLeave,
-  onDragOver,
-  onDragStart,
-  onDrop,
   onVerticalSplitResize,
   resetVerticalSizes,
   onPanelPointerDown,
+  panelDndZoneAttrs,
 } = useEditorDynamicPanels({
   currentProjectId,
 });
@@ -280,13 +276,9 @@ function onMainSplitResize(event: { panes: { size: number }[] }) {
             "
             :is-focused="isDynamicPanelFocused"
             :get-focus-id="getDynamicPanelFocusId"
+            :panel-dnd-zone-attrs="panelDndZoneAttrs"
             @top-resize="onTopSplitResize"
             @vertical-resize="(event, colId, view) => onVerticalSplitResize({ event, colId, view })"
-            @drag-start="onDragStart"
-            @drag-over="onDragOver"
-            @drag-leave="onDragLeave"
-            @drop="(event, targetPanelId, view) => onDrop({ event, targetPanelId, view })"
-            @drag-end="onDragEnd"
             @focus="focusDynamicPanel"
             @close="(panel, view) => closePanelAndRestoreTab(panel, { view })"
             @move-to-view="movePanelToView"
@@ -309,14 +301,10 @@ function onMainSplitResize(event: { panes: { size: number }[] }) {
             "
             :is-focused="isDynamicPanelFocused"
             :get-focus-id="getDynamicPanelFocusId"
+            :panel-dnd-zone-attrs="panelDndZoneAttrs"
             @resized="onSoundResize"
             @top-resize="onSoundTopSplitResize"
             @vertical-resize="(event, colId, view) => onVerticalSplitResize({ event, colId, view })"
-            @drag-start="onDragStart"
-            @drag-over="onDragOver"
-            @drag-leave="onDragLeave"
-            @drop="(event, targetPanelId, view) => onDrop({ event, targetPanelId, view })"
-            @drag-end="onDragEnd"
             @focus="focusDynamicPanel"
             @close="(panel, view) => closePanelAndRestoreTab(panel, { view })"
             @move-to-view="movePanelToView"

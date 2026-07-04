@@ -21,6 +21,7 @@ interface Props {
   ) => number | undefined;
   isFocused: (panelId: string) => boolean;
   getFocusId: (panelId: string) => PanelFocusId;
+  panelDndZoneAttrs: Record<string, string>;
 }
 
 defineProps<Props>();
@@ -44,6 +45,7 @@ provide('fileManagerStore', useFileManagerStore());
     :get-vertical-size="getVerticalSize"
     :is-focused="isFocused"
     :get-focus-id="getFocusId"
+    :panel-dnd-zone-attrs="panelDndZoneAttrs"
     v-on="listeners"
   />
 </template>

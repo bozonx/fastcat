@@ -28,15 +28,10 @@ const props = defineProps<Props>();
 const { t } = useI18n();
 
 const emit = defineEmits<{
-  dragStart: [event: DragEvent, panelId: string];
   close: [panel: DynamicPanel, view: 'cut' | 'sound'];
   focus: [panelId: string];
   moveToView: [panel: DynamicPanel, view: 'cut' | 'sound'];
 }>();
-
-function onDragStart(event: DragEvent) {
-  emit('dragStart', event, props.panel.id);
-}
 
 function onClose() {
   emit('close', props.panel, props.view);
@@ -120,7 +115,6 @@ const detachedStaticPanelContextMenuItems = computed(() => {
     :use-external-focus="true"
     panel-drag-cursor-class=""
     :in-development-features-enabled="inDevelopmentFeaturesEnabled"
-    @panel-drag-start="onDragStart"
   />
   <PropertiesPanel
     v-else-if="panel.type === 'properties'"
@@ -128,7 +122,6 @@ const detachedStaticPanelContextMenuItems = computed(() => {
     :focus-id="focusPanelId"
     :use-external-focus="true"
     :in-development-features-enabled="inDevelopmentFeaturesEnabled"
-    @panel-drag-start="onDragStart"
   />
   <div
     v-else-if="panel.type === 'media'"
@@ -140,7 +133,6 @@ const detachedStaticPanelContextMenuItems = computed(() => {
       :is-absolute="true"
       :context-menu-items="customPanelContextMenuItems"
       :in-development-features-enabled="inDevelopmentFeaturesEnabled"
-      @drag-start="onDragStart"
       @close="onClose"
     />
     <div class="flex-1 overflow-hidden min-h-0 relative" @pointerdown.capture="onFocus">
@@ -161,7 +153,6 @@ const detachedStaticPanelContextMenuItems = computed(() => {
       :is-absolute="true"
       :context-menu-items="customPanelContextMenuItems"
       :in-development-features-enabled="inDevelopmentFeaturesEnabled"
-      @drag-start="onDragStart"
       @close="onClose"
     />
     <div class="flex-1 overflow-hidden min-h-0 relative" @pointerdown.capture="onFocus">
@@ -182,7 +173,6 @@ const detachedStaticPanelContextMenuItems = computed(() => {
       icon="i-heroicons-clock"
       :context-menu-items="detachedStaticPanelContextMenuItems"
       :in-development-features-enabled="inDevelopmentFeaturesEnabled"
-      @drag-start="onDragStart"
       @close="onClose"
     />
     <div class="flex-1 overflow-hidden min-h-0">
@@ -198,7 +188,6 @@ const detachedStaticPanelContextMenuItems = computed(() => {
       icon="i-heroicons-sparkles"
       :context-menu-items="detachedStaticPanelContextMenuItems"
       :in-development-features-enabled="inDevelopmentFeaturesEnabled"
-      @drag-start="onDragStart"
       @close="onClose"
     />
     <div class="flex-1 overflow-hidden min-h-0">
@@ -214,7 +203,6 @@ const detachedStaticPanelContextMenuItems = computed(() => {
       icon="i-heroicons-rectangle-group"
       :context-menu-items="detachedStaticPanelContextMenuItems"
       :in-development-features-enabled="inDevelopmentFeaturesEnabled"
-      @drag-start="onDragStart"
       @close="onClose"
     />
     <div class="flex-1 overflow-hidden min-h-0">
@@ -230,7 +218,6 @@ const detachedStaticPanelContextMenuItems = computed(() => {
       icon="i-heroicons-tag"
       :context-menu-items="detachedStaticPanelContextMenuItems"
       :in-development-features-enabled="inDevelopmentFeaturesEnabled"
-      @drag-start="onDragStart"
       @close="onClose"
     />
     <div class="flex-1 overflow-hidden min-h-0">
@@ -246,7 +233,6 @@ const detachedStaticPanelContextMenuItems = computed(() => {
       icon="i-heroicons-archive-box"
       :context-menu-items="detachedStaticPanelContextMenuItems"
       :in-development-features-enabled="inDevelopmentFeaturesEnabled"
-      @drag-start="onDragStart"
       @close="onClose"
     />
     <div class="flex-1 overflow-hidden min-h-0">

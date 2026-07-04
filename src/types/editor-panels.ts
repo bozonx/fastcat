@@ -41,11 +41,6 @@ export interface EditorPanelEvents {
     colId: string,
     view: 'cut' | 'sound',
   ];
-  dragStart: [event: DragEvent, panelId: string];
-  dragOver: [event: DragEvent, panelId: string, view: 'cut' | 'sound'];
-  dragLeave: [event: DragEvent, panelId: string];
-  drop: [event: DragEvent, panelId: string, view: 'cut' | 'sound'];
-  dragEnd: [];
   focus: [panelId: string];
   close: [panel: DynamicPanel, view: 'cut' | 'sound'];
   moveToView: [panel: DynamicPanel, view: 'cut' | 'sound'];

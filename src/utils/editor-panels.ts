@@ -23,21 +23,6 @@ export function createEditorPanelEventListeners(
     ) => {
       emit('verticalResize', event, colId, view);
     },
-    dragStart: (event: DragEvent, panelId: string) => {
-      emit('dragStart', event, panelId);
-    },
-    dragOver: (event: DragEvent, panelId: string, view: 'cut' | 'sound') => {
-      emit('dragOver', event, panelId, view);
-    },
-    dragLeave: (event: DragEvent, panelId: string) => {
-      emit('dragLeave', event, panelId);
-    },
-    drop: (event: DragEvent, panelId: string, view: 'cut' | 'sound') => {
-      emit('drop', event, panelId, view);
-    },
-    dragEnd: () => {
-      emit('dragEnd');
-    },
     focus: (panelId: string) => {
       emit('focus', panelId);
     },

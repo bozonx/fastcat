@@ -35,10 +35,6 @@ const props = withDefaults(
 // remounted (keyed by id) when it changes, so a plain value is sufficient.
 provide('fileManagerPanelInstanceId', props.fileManagerInstanceId);
 
-const emit = defineEmits<{
-  (e: 'tab-drag-start', event: DragEvent, tabId: string): void;
-}>();
-
 const tabsStore = useProjectTabsStore();
 const { initDefaultTab, registerProjectTab } = tabsStore;
 const { activateProjectFocus, activeFileTab, activeStaticComponent } = useProjectTabs({
@@ -106,7 +102,7 @@ onMounted(() => {
     }"
     @pointerdown.capture="!props.useExternalFocus && activateProjectFocus()"
   >
-    <ProjectTabBar @tab-drag-start="(event, tabId) => emit('tab-drag-start', event, tabId)" />
+    <ProjectTabBar />
 
     <div
       class="flex flex-col flex-1 min-h-0 overflow-hidden"

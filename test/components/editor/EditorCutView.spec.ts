@@ -20,6 +20,7 @@ describe('EditorCutView', () => {
         getVerticalSize,
         isFocused,
         getFocusId,
+        panelDndZoneAttrs: { 'data-dnd-zone-id': 'dynamic-panel-test' },
       },
       global: {
         stubs: {
@@ -36,6 +37,7 @@ describe('EditorCutView', () => {
               'getVerticalSize',
               'isFocused',
               'getFocusId',
+              'panelDndZoneAttrs',
               'leftPanelType',
               'rightPanelType',
             ],

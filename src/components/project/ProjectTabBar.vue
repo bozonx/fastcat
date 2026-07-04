@@ -2,9 +2,6 @@
 import { VueDraggable } from 'vue-draggable-plus';
 import { isFileTab, type AnyProjectTab } from '~/stores/project-tabs.store';
 import { useProjectTabs } from '~/composables/project/useProjectTabs';
-const emit = defineEmits<{
-  (e: 'tab-drag-start', event: DragEvent, tabId: string): void;
-}>();
 
 const {
   activateProjectTab,
@@ -13,16 +10,11 @@ const {
   getStaticTabContextMenuItems,
   isDropTarget,
   onTabAuxClick,
-  onTabDragStart,
   onTabMouseDown,
-  onTabBarDragLeave,
-  onTabBarDragOver,
-  onTabBarDrop,
+  onTabPointerDown,
   tabBarDndZoneAttrs,
   tabsStore,
-} = useProjectTabs({
-  onStaticTabDragStart: (event, tabId) => emit('tab-drag-start', event, tabId),
-});
+} = useProjectTabs();
 
 const { t } = useI18n();
 
@@ -48,9 +40,6 @@ function isDraggable(tab: AnyProjectTab): boolean {
     v-bind="tabBarDndZoneAttrs"
     class="flex items-center border-b border-ui-border shrink-0 select-none transition-colors duration-150 min-h-[36px]"
     :class="isDropTarget ? 'bg-primary-500/10 border-primary-500/50' : ''"
-    @dragover="onTabBarDragOver"
-    @dragleave="onTabBarDragLeave"
-    @drop="onTabBarDrop"
   >
     <div
       ref="tabContainerRef"
@@ -82,10 +71,9 @@ function isDraggable(tab: AnyProjectTab): boolean {
                 : 'text-ui-text-muted hover:text-ui-text hover:bg-ui-bg-accent/40'
             "
             :title="tabLabel(tab)"
-            :draggable="isDraggable(tab)"
             @mousedown="onTabMouseDown($event, tab)"
             @auxclick="onTabAuxClick($event, tab)"
-            @dragstart="isDraggable(tab) ? onTabDragStart($event, tab) : undefined"
+            @pointerdown="isDraggable(tab) ? onTabPointerDown($event, tab) : undefined"
             @click="activateProjectTab(tab.id)"
           >
             <UIcon

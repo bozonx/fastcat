@@ -31,7 +31,8 @@ export type DndSourceKind =
   | 'effect'
   | 'transition'
   | 'library'
-  | 'panel';
+  | 'panel'
+  | 'project-tab';
 
 export type DndPointerType = 'mouse' | 'touch' | 'pen' | '';
 

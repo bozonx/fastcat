@@ -39,17 +39,6 @@ describe('EditorPanelHeader', () => {
     expect(component.emitted('close')).toBeTruthy();
   });
 
-  it('emits dragStart when drag starts', async () => {
-    const component = await mountSuspended(EditorPanelHeader, {
-      props: { title: 'Test', icon: 'i-heroicons-folder', inDevelopmentFeaturesEnabled: true },
-    });
-
-    const header = component.find('.flex.justify-between');
-    await header.trigger('dragstart');
-
-    expect(component.emitted('dragStart')).toBeTruthy();
-  });
-
   it('applies absolute positioning when isAbsolute is true', async () => {
     const component = await mountSuspended(EditorPanelHeader, {
       props: { title: 'Test', icon: 'i-heroicons-folder', isAbsolute: true },

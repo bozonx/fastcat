@@ -24,6 +24,7 @@ interface Props {
   getFocusId: (panelId: string) => PanelFocusId;
   leftPanelType: 'files' | 'settings' | 'export';
   rightPanelType: 'monitor' | 'properties';
+  panelDndZoneAttrs: Record<string, string>;
 }
 
 const props = defineProps<Props>();
@@ -108,13 +109,10 @@ const splitterMenuItems = computed(() => [
                   dragOverPanelId === panel.id && dropPosition === 'bottom',
                 'panel-focus-frame--active': isFocused(panel.id),
               }"
+              v-bind="panelDndZoneAttrs"
               :data-panel-id="panel.id"
+              :data-panel-view="view"
               @click.stop="emit('focus', panel.id)"
-              @dragenter.prevent
-              @dragover.prevent="(event) => emit('dragOver', event, panel.id, view)"
-              @dragleave="(event) => emit('dragLeave', event, panel.id)"
-              @drop.prevent="(event) => emit('drop', event, panel.id, view)"
-              @dragend="emit('dragEnd')"
               @pointerdown.capture="
                 (event) => {
                   const target = event.target as HTMLElement;
@@ -128,7 +126,6 @@ const splitterMenuItems = computed(() => [
                 :panel="panel"
                 :view="view"
                 :focus-panel-id="getFocusId(panel.id)"
-                @drag-start="(event, panelId) => emit('dragStart', event, panelId)"
                 @focus="(panelId) => emit('focus', panelId)"
                 @close="(targetPanel, targetView) => emit('close', targetPanel, targetView)"
                 @move-to-view="

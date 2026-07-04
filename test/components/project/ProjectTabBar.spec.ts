@@ -220,7 +220,7 @@ describe('ProjectTabBar.vue', () => {
     expect(restoredTabs[1].attributes('data-tab-id')).toBe('history');
   });
 
-  it('sets draggable false on files tab but true on other tabs by default', async () => {
+  it('does not expose native draggable attributes for internal tab drags', async () => {
     const component = await mountWithNuxt(ProjectTabBar, {
       initialState: {
         projectTabs: {
@@ -250,8 +250,8 @@ describe('ProjectTabBar.vue', () => {
     await component.vm.$nextTick();
 
     const tabs = component.findAll('[data-tab-id]');
-    expect(tabs[0].attributes('draggable')).toBe('false');
-    expect(tabs[1].attributes('draggable')).toBe('true');
+    expect(tabs[0].attributes('draggable')).toBeUndefined();
+    expect(tabs[1].attributes('draggable')).toBeUndefined();
   });
 
   it('opens file-manager pointer-DnD payloads as file tabs', async () => {
@@ -310,5 +310,65 @@ describe('ProjectTabBar.vue', () => {
       }),
     ]);
     expect(store.activeTabId).toBe(store.fileTabs[0]?.id);
+  });
+
+  it('opens project-tab pointer-DnD payloads as file tabs', async () => {
+    const component = await mountWithNuxt(ProjectTabBar, {
+      initialState: {
+        projectTabs: {
+          activeTabId: 'files',
+          fileTabs: [],
+          staticTabsOrder: ['files'],
+          tabOrder: [],
+          hiddenStaticTabs: [],
+        },
+      },
+    });
+
+    const store = useProjectTabsStore();
+    store.registerProjectTab({
+      id: 'files',
+      label: 'Files',
+      icon: 'i-heroicons-folder',
+      component: markRaw(MockComponent),
+    });
+
+    await component.vm.$nextTick();
+
+    const zoneId = component.find(`[${DND_ZONE_ATTR}]`).attributes(DND_ZONE_ATTR);
+    const handlers = getDndZone(zoneId);
+    expect(handlers).not.toBeNull();
+
+    await handlers!.onDrop?.({
+      payload: {
+        source: 'project-tab',
+        data: {
+          kind: 'file-tab',
+          tabId: 'file-tab-1',
+          filePath: '_video/clip.mp4',
+          fileName: 'clip.mp4',
+          mediaType: 'video',
+        },
+      },
+      pointer: {
+        clientX: 0,
+        clientY: 0,
+        pointerType: 'mouse',
+        altKey: false,
+        ctrlKey: false,
+        metaKey: false,
+        shiftKey: false,
+      },
+      zoneId,
+      targetEl: null,
+      setOperation: vi.fn(),
+    });
+
+    expect(store.fileTabs).toEqual([
+      expect.objectContaining({
+        fileName: 'clip.mp4',
+        filePath: '_video/clip.mp4',
+      }),
+    ]);
   });
 });

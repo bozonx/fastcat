@@ -168,14 +168,6 @@ const props = withDefaults(
   },
 );
 
-const emit = defineEmits<{
-  panelDragStart: [e: DragEvent];
-}>();
-
-function onPanelDragStart(e: DragEvent) {
-  emit('panelDragStart', e);
-}
-
 const effectiveFullscreen = computed(() => props.isFullscreen || isBrowserFullscreen.value);
 const shouldTeleport = computed(() => isTauriRuntime() && effectiveFullscreen.value);
 const monitorMenuPortal = computed(() =>
@@ -629,8 +621,6 @@ watch(viewportRef, (vp) => {
               !effectiveFullscreen && toolbarPosition === 'left' ? 'border-r' : '',
               toolbarPosition === 'left' || toolbarPosition === 'right' ? 'flex-col' : '',
             ]"
-            :draggable="!effectiveFullscreen && props.inDevelopmentFeaturesEnabled"
-            @dragstart="props.inDevelopmentFeaturesEnabled ? onPanelDragStart : undefined"
             @mouseenter="keepControlsVisible"
             @mousemove="keepControlsVisible"
           >

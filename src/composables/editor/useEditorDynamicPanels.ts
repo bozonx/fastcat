@@ -1,4 +1,3 @@
-import { createDevLogger } from '~/utils/dev-logger';
 import { computed, ref, watch, type Ref } from 'vue';
 import { useProjectTabsStore } from '~/stores/project-tabs.store';
 import { useFocusStore } from '~/stores/focus.store';
@@ -6,18 +5,15 @@ import { useProjectStore } from '~/stores/project.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { readLocalStorageJson, getPlatformSuffix } from '~/stores/ui/uiLocalStorage';
 import type { DynamicPanel } from '~/stores/editor-view.store';
+import type { FsEntry } from '~/types/fs';
 import { genUuid } from '~/utils/ids';
-import { useTauriPanelPointerDrag } from '~/composables/editor/useTauriPanelPointerDrag';
-const log = createDevLogger('useEditorDynamicPanels');
+import { getMediaTypeFromFilename, isOpenableProjectFileName } from '~/utils/media-types';
+import { useDndDropZone } from '~/composables/dnd/useDndDropZone';
+import { armPointerDnd } from '~/composables/dnd/usePointerDnd';
+import type { DndDragContext, DndPayload } from '~/composables/dnd/dndTypes';
 
 interface UseEditorDynamicPanelsOptions {
   currentProjectId: Ref<string | null>;
-}
-
-interface PanelDropInput {
-  event: DragEvent;
-  targetPanelId: string;
-  view?: 'cut' | 'sound';
 }
 
 interface VerticalSplitResizeInput {
@@ -38,6 +34,34 @@ interface ClosePanelOptions {
   view?: 'cut' | 'sound';
 }
 
+type PanelDropPosition = 'left' | 'right' | 'top' | 'bottom';
+type EditorViewKind = 'cut' | 'sound';
+
+interface PanelDndData {
+  panelId: string;
+  panelType: DynamicPanel['type'];
+  filePath?: string;
+  fileName?: string;
+  mediaType?: DynamicPanel['mediaType'];
+  title?: string;
+}
+
+interface ProjectFileTabDndData {
+  kind: 'file-tab';
+  tabId: string;
+  filePath: string;
+  fileName: string;
+  mediaType?: DynamicPanel['mediaType'] | string;
+}
+
+interface ProjectStaticTabDndData {
+  kind: 'static-tab';
+  tabId: string;
+  label: string;
+}
+
+type ProjectTabDndData = ProjectFileTabDndData | ProjectStaticTabDndData;
+
 const panelTypeToTabId: Record<string, string> = {
   history: 'history',
   effects: 'effects',
@@ -46,6 +70,31 @@ const panelTypeToTabId: Record<string, string> = {
   markers: 'markers',
   backups: 'backups',
 };
+
+function getPanelDropPosition(
+  rect: DOMRect,
+  clientX: number,
+  clientY: number,
+): PanelDropPosition | null {
+  const distLeft = clientX - rect.left;
+  const distRight = rect.right - clientX;
+  const distTop = clientY - rect.top;
+  const distBottom = rect.bottom - clientY;
+  const minDist = Math.min(distLeft, distRight, distTop, distBottom);
+  const threshold = Math.min(rect.width * 0.15, rect.height * 0.15, 60);
+
+  if (minDist > threshold) return null;
+  if (minDist === distLeft) return 'left';
+  if (minDist === distRight) return 'right';
+  if (minDist === distTop) return 'top';
+  return 'bottom';
+}
+
+function normalizeMediaType(value: unknown): DynamicPanel['mediaType'] {
+  return value === 'video' || value === 'audio' || value === 'image' || value === 'unknown'
+    ? value
+    : 'unknown';
+}
 
 export function useEditorDynamicPanels(options: UseEditorDynamicPanelsOptions) {
   const projectStore = useProjectStore();
@@ -162,82 +211,6 @@ export function useEditorDynamicPanels(options: UseEditorDynamicPanelsOptions) {
     dropPosition.value = null;
   }
 
-  function onDragStart(event: DragEvent, panelId: string) {
-    if (!workspaceStore.inDevelopmentFeaturesEnabled) return;
-    if (event.dataTransfer) {
-      event.dataTransfer.effectAllowed = 'move';
-      event.dataTransfer.setData('text/plain', panelId);
-
-      const panel = [...projectStore.cutPanels, ...projectStore.soundPanels]
-        .flatMap((column) => column.panels)
-        .find((item) => item.id === panelId);
-
-      if (panel && (panel.type === 'media' || panel.type === 'text') && panel.filePath) {
-        const fileName = panel.title ?? panel.filePath.split('/').pop() ?? panel.filePath;
-        event.dataTransfer.setData(
-          'panel-drag',
-          JSON.stringify({ panelId, filePath: panel.filePath, fileName }),
-        );
-      }
-    }
-
-    draggingPanelId.value = panelId;
-  }
-
-  function onDragOver(event: DragEvent, panelId: string) {
-    if (!workspaceStore.inDevelopmentFeaturesEnabled) return;
-    event.preventDefault();
-
-    const isDraggingPanel = Boolean(draggingPanelId.value);
-    const isDraggingTab =
-      event.dataTransfer?.types.includes('static-tab-drag') ||
-      event.dataTransfer?.types.includes('file-tab-drag');
-
-    if (!isDraggingPanel && !isDraggingTab) {
-      return;
-    }
-
-    if (draggingPanelId.value === panelId) {
-      dragOverPanelId.value = null;
-      dropPosition.value = null;
-      return;
-    }
-
-    dragOverPanelId.value = panelId;
-
-    const target = event.currentTarget as HTMLElement;
-    const rect = target.getBoundingClientRect();
-    const x = event.clientX - rect.left;
-    const y = event.clientY - rect.top;
-
-    const distLeft = x;
-    const distRight = rect.width - x;
-    const distTop = y;
-    const distBottom = rect.height - y;
-    const minDist = Math.min(distLeft, distRight, distTop, distBottom);
-
-    const threshold = Math.min(rect.width * 0.15, rect.height * 0.15, 60);
-
-    if (minDist > threshold) {
-      dropPosition.value = null;
-    } else {
-      if (minDist === distLeft) dropPosition.value = 'left';
-      else if (minDist === distRight) dropPosition.value = 'right';
-      else if (minDist === distTop) dropPosition.value = 'top';
-      else dropPosition.value = 'bottom';
-    }
-  }
-
-  function onDragLeave(event: DragEvent, panelId: string) {
-    const target = event.currentTarget as HTMLElement;
-    const relatedTarget = event.relatedTarget as Node | null;
-
-    if (!target.contains(relatedTarget) && dragOverPanelId.value === panelId) {
-      dragOverPanelId.value = null;
-      dropPosition.value = null;
-    }
-  }
-
   function closePanelAndRestoreTab(panel: DynamicPanel, options?: ClosePanelOptions) {
     const tabId = panelTypeToTabId[panel.type];
     if (tabId) {
@@ -268,92 +241,217 @@ export function useEditorDynamicPanels(options: UseEditorDynamicPanelsOptions) {
     focusDynamicPanel(panel.id);
   }
 
-  function onDrop(input: PanelDropInput) {
-    if (!workspaceStore.inDevelopmentFeaturesEnabled) return;
-    const { event, targetPanelId, view = 'cut' } = input;
-    event.preventDefault();
+  function getPanelDropTarget(ctx: DndDragContext): {
+    panelId: string;
+    view: EditorViewKind;
+    panelEl: HTMLElement;
+    position: PanelDropPosition | null;
+  } | null {
+    const panelEl = ctx.targetEl?.closest?.('[data-panel-id]') as HTMLElement | null;
+    const panelId = panelEl?.dataset.panelId ?? '';
+    const view = panelEl?.dataset.panelView;
+    if (!panelEl || !panelId || (view !== 'cut' && view !== 'sound')) return null;
 
-    const staticTabRaw = event.dataTransfer?.getData('static-tab-drag');
-    if (staticTabRaw && dropPosition.value) {
-      try {
-        const payload = JSON.parse(staticTabRaw) as { tabId: string; label: string };
-        const panelTypeMap: Record<string, DynamicPanel['type']> = {
-          files: 'fileManager',
-          history: 'history',
-          effects: 'effects',
-          library: 'library',
-          markers: 'markers',
-          backups: 'backups',
-        };
-        const panelType = panelTypeMap[payload.tabId] ?? 'fileManager';
+    return {
+      panelId,
+      view,
+      panelEl,
+      position: getPanelDropPosition(
+        panelEl.getBoundingClientRect(),
+        ctx.pointer.clientX,
+        ctx.pointer.clientY,
+      ),
+    };
+  }
 
-        projectStore.insertPanelAt(
-          {
-            id: `static-${payload.tabId}-${genUuid()}`,
-            type: panelType,
-            title: payload.label,
-          },
-          targetPanelId,
-          dropPosition.value,
-          view,
-        );
-        const tabsStore = useProjectTabsStore();
-        tabsStore.hideStaticTab(payload.tabId);
-      } catch (err) {
-        log.warn('Failed to parse static-tab-drag payload', err);
-      }
+  function getFileManagerItems(payload: DndPayload): FsEntry[] {
+    if (payload.source !== 'file-manager') return [];
+    const data = payload.data as { items?: FsEntry[]; primaryEntry?: FsEntry };
+    const items = data.items ?? (data.primaryEntry ? [data.primaryEntry] : []);
+    return items.filter(
+      (item) =>
+        item.kind === 'file' &&
+        typeof item.name === 'string' &&
+        isOpenableProjectFileName(item.name),
+    );
+  }
 
+  function getProjectTabPayload(payload: DndPayload): ProjectTabDndData | null {
+    if (payload.source !== 'project-tab') return null;
+    const data = payload.data as Partial<ProjectTabDndData>;
+    if (data.kind === 'static-tab' && typeof data.tabId === 'string') {
+      return data as ProjectStaticTabDndData;
+    }
+    if (
+      data.kind === 'file-tab' &&
+      typeof data.filePath === 'string' &&
+      typeof data.fileName === 'string'
+    ) {
+      return data as ProjectFileTabDndData;
+    }
+    return null;
+  }
+
+  function getPanelPayload(payload: DndPayload): PanelDndData | null {
+    if (payload.source !== 'panel') return null;
+    const data = payload.data as PanelDndData;
+    return typeof data.panelId === 'string' ? data : null;
+  }
+
+  function canAcceptPanelDrop(payload: DndPayload): boolean {
+    if (!workspaceStore.inDevelopmentFeaturesEnabled) return false;
+    if (getPanelPayload(payload)) return true;
+    if (getProjectTabPayload(payload)) return true;
+    return getFileManagerItems(payload).length > 0;
+  }
+
+  function onPanelDndOver(ctx: DndDragContext) {
+    const target = getPanelDropTarget(ctx);
+    const panelPayload = getPanelPayload(ctx.payload);
+
+    if (!target || (panelPayload && panelPayload.panelId === target.panelId)) {
+      dragOverPanelId.value = null;
+      dropPosition.value = null;
+      ctx.setOperation('cancel');
+      return;
+    }
+
+    dragOverPanelId.value = target.panelId;
+    dropPosition.value = target.position;
+
+    if (!target.position) {
+      ctx.setOperation('cancel');
+      return;
+    }
+
+    ctx.setOperation(panelPayload ? 'move' : 'open-panel');
+  }
+
+  function onPanelDndLeave() {
+    dragOverPanelId.value = null;
+    dropPosition.value = null;
+  }
+
+  function insertStaticTabPanel(
+    payload: ProjectStaticTabDndData,
+    target: { panelId: string; position: PanelDropPosition; view: EditorViewKind },
+  ) {
+    const panelTypeMap: Record<string, DynamicPanel['type']> = {
+      files: 'fileManager',
+      history: 'history',
+      effects: 'effects',
+      library: 'library',
+      markers: 'markers',
+      backups: 'backups',
+    };
+    const panelType = panelTypeMap[payload.tabId] ?? 'fileManager';
+
+    projectStore.insertPanelAt(
+      {
+        id: `static-${payload.tabId}-${genUuid()}`,
+        type: panelType,
+        title: payload.label,
+      },
+      target.panelId,
+      target.position,
+      target.view,
+    );
+    useProjectTabsStore().hideStaticTab(payload.tabId);
+  }
+
+  function insertProjectFilePanel(
+    payload: ProjectFileTabDndData,
+    target: { panelId: string; position: PanelDropPosition; view: EditorViewKind },
+  ) {
+    projectStore.insertPanelAt(
+      {
+        id: `file-panel-${genUuid()}`,
+        type: 'media',
+        filePath: payload.filePath,
+        mediaType: normalizeMediaType(payload.mediaType),
+        title: payload.fileName,
+      },
+      target.panelId,
+      target.position,
+      target.view,
+    );
+  }
+
+  function openFileManagerItemAsPanel(
+    item: FsEntry,
+    target: { panelId: string; position: PanelDropPosition; view: EditorViewKind },
+  ) {
+    const type = getMediaTypeFromFilename(item.name);
+    if (type === 'text') {
+      projectStore.addTextPanel(
+        item.path || '',
+        item.name,
+        target.panelId,
+        target.position,
+        target.view,
+      );
+    } else if (type === 'video' || type === 'audio' || type === 'image') {
+      projectStore.addMediaPanel(
+        item,
+        type,
+        item.name,
+        target.panelId,
+        target.position,
+        target.view,
+      );
+    }
+  }
+
+  async function onPanelDndDrop(ctx: DndDragContext) {
+    const target = getPanelDropTarget(ctx);
+    if (!target?.position) {
       resetDragState();
       return;
     }
 
-    const fileTabRaw = event.dataTransfer?.getData('file-tab-drag');
-    if (fileTabRaw && dropPosition.value) {
-      try {
-        const payload = JSON.parse(fileTabRaw) as {
-          tabId: string;
-          filePath: string;
-          fileName: string;
-          mediaType: string;
-        };
-        const mediaType = (payload.mediaType || 'unknown') as
-          | 'video'
-          | 'audio'
-          | 'image'
-          | 'unknown';
+    const dropTarget = {
+      panelId: target.panelId,
+      position: target.position,
+      view: target.view,
+    };
 
-        projectStore.insertPanelAt(
-          {
-            id: `file-panel-${genUuid()}`,
-            type: 'media',
-            filePath: payload.filePath,
-            mediaType,
-            title: payload.fileName,
-          },
-          targetPanelId,
-          dropPosition.value,
-          view,
-        );
-      } catch (err) {
-        log.warn('Failed to parse file-tab-drag payload', err);
-      }
-
+    const projectTabPayload = getProjectTabPayload(ctx.payload);
+    if (projectTabPayload?.kind === 'static-tab') {
+      insertStaticTabPanel(projectTabPayload, dropTarget);
       resetDragState();
       return;
     }
 
-    if (!draggingPanelId.value || !dropPosition.value) {
+    if (projectTabPayload?.kind === 'file-tab') {
+      insertProjectFilePanel(projectTabPayload, dropTarget);
       resetDragState();
       return;
     }
 
-    projectStore.movePanel(draggingPanelId.value, targetPanelId, dropPosition.value, view);
+    const panelPayload = getPanelPayload(ctx.payload);
+    if (panelPayload && panelPayload.panelId !== target.panelId) {
+      projectStore.movePanel(panelPayload.panelId, target.panelId, target.position, target.view);
+      resetDragState();
+      return;
+    }
+
+    for (const item of getFileManagerItems(ctx.payload)) {
+      openFileManagerItemAsPanel(item, dropTarget);
+    }
+
     resetDragState();
   }
 
-  function onDragEnd() {
-    resetDragState();
-  }
+  const { zoneAttrs: panelDndZoneAttrs } = useDndDropZone(
+    {
+      canAccept: canAcceptPanelDrop,
+      onEnter: onPanelDndOver,
+      onOver: onPanelDndOver,
+      onLeave: onPanelDndLeave,
+      onDrop: onPanelDndDrop,
+    },
+    'dynamic-panel',
+  );
 
   function onVerticalSplitResize(input: VerticalSplitResizeInput) {
     const { event, colId, view = 'cut' } = input;
@@ -404,29 +502,34 @@ export function useEditorDynamicPanels(options: UseEditorDynamicPanelsOptions) {
     }
   }
 
-  const { startDrag: startTauriPanelDrag } = useTauriPanelPointerDrag({
-    onDragStart: (panelId) => {
-      draggingPanelId.value = panelId;
-    },
-    onDragOver: (panelId, position) => {
-      dragOverPanelId.value = panelId;
-      dropPosition.value = position;
-    },
-    onDrop: (targetPanelId, position) => {
-      const view = getPanelView(targetPanelId);
-      if (view && draggingPanelId.value) {
-        projectStore.movePanel(draggingPanelId.value, targetPanelId, position, view);
-      }
-      resetDragState();
-    },
-    onDragEnd: () => {
-      resetDragState();
-    },
-  });
-
   function onPanelPointerDown(event: PointerEvent, panelId: string) {
     if (!workspaceStore.inDevelopmentFeaturesEnabled) return;
-    startTauriPanelDrag(event, panelId);
+    const panel = getPanelById(panelId);
+    if (!panel) return;
+
+    const fileName =
+      panel.filePath && (panel.title ?? panel.filePath.split('/').pop() ?? panel.filePath);
+
+    armPointerDnd(event, {
+      payload: {
+        source: 'panel',
+        data: {
+          panelId,
+          panelType: panel.type,
+          filePath: panel.filePath,
+          fileName: fileName || undefined,
+          mediaType: panel.mediaType,
+          title: panel.title,
+        } satisfies PanelDndData,
+        preview: { label: panel.title ?? fileName ?? panel.type },
+      },
+      onStart: () => {
+        draggingPanelId.value = panelId;
+      },
+      onEnd: () => {
+        resetDragState();
+      },
+    });
   }
 
   return {
@@ -440,14 +543,10 @@ export function useEditorDynamicPanels(options: UseEditorDynamicPanelsOptions) {
     focusDynamicPanel,
     closePanelAndRestoreTab,
     movePanelToView,
-    onDragEnd,
-    onDragLeave,
-    onDragOver,
-    onDragStart,
-    onDrop,
     onVerticalSplitResize,
     resetVerticalSizes,
     onPanelPointerDown,
+    panelDndZoneAttrs,
     cutPanelsLayoutKey,
     soundPanelsLayoutKey,
   };

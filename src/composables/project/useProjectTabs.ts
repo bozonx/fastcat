@@ -1,6 +1,7 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { querySelector } from '~/utils/browser-api';
 import { useDndDropZone } from '~/composables/dnd/useDndDropZone';
+import { armPointerDnd } from '~/composables/dnd/usePointerDnd';
 import type { DndDragContext, DndPayload } from '~/composables/dnd/dndTypes';
 import { useFocusStore } from '~/stores/focus.store';
 import { useProjectStore } from '~/stores/project.store';
@@ -27,7 +28,6 @@ const TAB_ID_TO_PANEL_TYPE: Record<
 
 interface UseProjectTabsOptions {
   enableUiEffects?: boolean;
-  onStaticTabDragStart?: (event: DragEvent, tabId: string) => void;
 }
 
 interface JsonFilePayload {
@@ -36,19 +36,35 @@ interface JsonFilePayload {
   kind?: string;
 }
 
-interface FileTabDragPayload {
+interface FileTabDndData {
+  kind: 'file-tab';
+  tabId: string;
   filePath: string;
   fileName: string;
+  mediaType?: string | null;
 }
 
-interface PanelDragPayload {
+interface StaticTabDndData {
+  kind: 'static-tab';
+  tabId: string;
+  label: string;
+}
+
+interface PanelDndData {
   panelId: string;
   filePath?: string;
   fileName?: string;
 }
 
+interface PanelFileDndData extends PanelDndData {
+  filePath: string;
+  fileName: string;
+}
+
+type ProjectTabDndData = FileTabDndData | StaticTabDndData;
+
 export function useProjectTabs(options: UseProjectTabsOptions = {}) {
-  const { enableUiEffects = true, onStaticTabDragStart: handleStaticTabDragStart } = options;
+  const { enableUiEffects = true } = options;
 
   const { t } = useI18n();
   const focusStore = useFocusStore();
@@ -154,29 +170,34 @@ export function useProjectTabs(options: UseProjectTabsOptions = {}) {
     }
   }
 
-  function onTabDragStart(event: DragEvent, tab: AnyProjectTab) {
-    if (!event.dataTransfer) return;
-
+  function getProjectTabPayload(tab: AnyProjectTab): DndPayload<ProjectTabDndData> | null {
     if (isFileTab(tab)) {
-      event.dataTransfer.effectAllowed = 'move';
-      event.dataTransfer.setData(
-        'file-tab-drag',
-        JSON.stringify({
+      return {
+        source: 'project-tab',
+        data: {
+          kind: 'file-tab',
           tabId: tab.id,
           filePath: tab.filePath,
           fileName: tab.fileName,
           mediaType: tab.mediaType,
-        }),
-      );
-    } else {
-      if (tab.id === 'files') return;
-      event.dataTransfer.effectAllowed = 'move';
-      event.dataTransfer.setData(
-        'static-tab-drag',
-        JSON.stringify({ tabId: tab.id, label: (tab as ProjectTab).label }),
-      );
-      handleStaticTabDragStart?.(event, tab.id);
+        },
+        preview: { label: tab.fileName },
+      };
     }
+
+    if (tab.id === 'files') return null;
+    return {
+      source: 'project-tab',
+      data: { kind: 'static-tab', tabId: tab.id, label: (tab as ProjectTab).label },
+      preview: { label: (tab as ProjectTab).label },
+    };
+  }
+
+  function onTabPointerDown(event: PointerEvent, tab: AnyProjectTab) {
+    const payload = getProjectTabPayload(tab);
+    if (!payload) return;
+
+    armPointerDnd(event, { payload });
   }
 
   async function openDroppedFile(params: { filePath: string; fileName: string }) {
@@ -198,9 +219,34 @@ export function useProjectTabs(options: UseProjectTabsOptions = {}) {
     );
   }
 
+  function getProjectTabFilePayload(payload: DndPayload): FileTabDndData | null {
+    if (payload.source !== 'project-tab') return null;
+    const data = payload.data as Partial<ProjectTabDndData>;
+    if (
+      data.kind === 'file-tab' &&
+      typeof data.filePath === 'string' &&
+      typeof data.fileName === 'string'
+    ) {
+      return data as FileTabDndData;
+    }
+    return null;
+  }
+
+  function getPanelFilePayload(payload: DndPayload): PanelFileDndData | null {
+    if (payload.source !== 'panel') return null;
+    const data = payload.data as PanelDndData;
+    if (typeof data.filePath === 'string' && typeof data.fileName === 'string') {
+      return data as PanelFileDndData;
+    }
+    return null;
+  }
+
   const { zoneAttrs: tabBarDndZoneAttrs } = useDndDropZone(
     {
-      canAccept: (payload) => getOpenableFileManagerItems(payload).length > 0,
+      canAccept: (payload) =>
+        getOpenableFileManagerItems(payload).length > 0 ||
+        getProjectTabFilePayload(payload) !== null ||
+        getPanelFilePayload(payload) !== null,
       onEnter: onTabBarDndOver,
       onOver: onTabBarDndOver,
       onLeave: onTabBarDndLeave,
@@ -220,21 +266,19 @@ export function useProjectTabs(options: UseProjectTabsOptions = {}) {
 
   async function onTabBarDndDrop(ctx: DndDragContext) {
     isDropTarget.value = false;
-    const items = getOpenableFileManagerItems(ctx.payload);
-    for (const item of items) {
+    for (const item of getOpenableFileManagerItems(ctx.payload)) {
       await openDroppedFile({ filePath: item.path!, fileName: item.name! });
     }
-  }
 
-  function onTabBarDragOver(event: DragEvent) {
-    const types = event.dataTransfer?.types ?? [];
-    if (
-      types.includes('panel-drag') ||
-      types.includes('file-tab-drag') ||
-      types.includes('static-tab-drag')
-    ) {
-      event.preventDefault();
-      isDropTarget.value = true;
+    const fileTab = getProjectTabFilePayload(ctx.payload);
+    if (fileTab) {
+      await openDroppedFile({ filePath: fileTab.filePath, fileName: fileTab.fileName });
+    }
+
+    const panel = getPanelFilePayload(ctx.payload);
+    if (panel && isOpenableProjectFileName(panel.fileName)) {
+      await openDroppedFile({ filePath: panel.filePath, fileName: panel.fileName });
+      projectStore.removePanel(panel.panelId);
     }
   }
 
@@ -248,46 +292,6 @@ export function useProjectTabs(options: UseProjectTabsOptions = {}) {
 
     event.preventDefault();
     container.scrollLeft += horizontalDelta;
-  }
-
-  function onTabBarDragLeave(event: DragEvent) {
-    const currentTarget = event.currentTarget as HTMLElement | null;
-    const related = event.relatedTarget as Node | null;
-    if (!currentTarget?.contains(related)) {
-      isDropTarget.value = false;
-    }
-  }
-
-  async function onTabBarDrop(event: DragEvent) {
-    isDropTarget.value = false;
-    event.preventDefault();
-    event.stopPropagation();
-
-    const fileTabRaw = event.dataTransfer?.getData('file-tab-drag');
-    if (fileTabRaw) {
-      try {
-        const payload = JSON.parse(fileTabRaw) as FileTabDragPayload;
-        if (payload.filePath && payload.fileName) {
-          await openDroppedFile({ filePath: payload.filePath, fileName: payload.fileName });
-        }
-      } catch {
-        /* no-op */
-      }
-      return;
-    }
-
-    const panelPayloadRaw = event.dataTransfer?.getData('panel-drag');
-    if (panelPayloadRaw) {
-      try {
-        const payload = JSON.parse(panelPayloadRaw) as PanelDragPayload;
-        if (payload.filePath && payload.fileName && isOpenableProjectFileName(payload.fileName)) {
-          await openDroppedFile({ filePath: payload.filePath, fileName: payload.fileName });
-          projectStore.removePanel(payload.panelId);
-        }
-      } catch {
-        /* no-op */
-      }
-    }
   }
 
   if (enableUiEffects) {
@@ -395,11 +399,8 @@ export function useProjectTabs(options: UseProjectTabsOptions = {}) {
     getStaticTabContextMenuItems,
     isDropTarget,
     onTabAuxClick,
-    onTabDragStart,
     onTabMouseDown,
-    onTabBarDragLeave,
-    onTabBarDragOver,
-    onTabBarDrop,
+    onTabPointerDown,
     projectTabContextMenuItems,
     staticTabs,
     tabBarRef,

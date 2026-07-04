@@ -42,13 +42,8 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
-  panelDragStart: [e: DragEvent];
   clearSelection: [];
 }>();
-
-function onPanelDragStart(e: DragEvent) {
-  emit('panelDragStart', e);
-}
 
 const { t } = useI18n();
 const timelineStore = useTimelineStore();
@@ -400,8 +395,6 @@ const headerTitle = computed(() => {
       data-panel-drag-handle
       class="flex items-center justify-between px-2 py-1.5 border-b border-ui-border shrink-0 select-none"
       :class="props.inDevelopmentFeaturesEnabled ? 'cursor-grab active:cursor-grabbing' : ''"
-      :draggable="props.inDevelopmentFeaturesEnabled"
-      @dragstart="props.inDevelopmentFeaturesEnabled ? onPanelDragStart : undefined"
     >
       <span
         class="ml-2 text-xs text-ui-text-muted font-mono truncate min-w-0 flex-1"

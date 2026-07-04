@@ -2,6 +2,9 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { ref } from 'vue';
 import { useEditorDynamicPanels } from '~/composables/editor/useEditorDynamicPanels';
+import { DND_ZONE_ATTR, getDndZone } from '~/composables/dnd/dndRegistry';
+import { armPointerDnd } from '~/composables/dnd/usePointerDnd';
+import type { DndDragContext, DndPayload } from '~/composables/dnd/dndTypes';
 
 const mockProjectStore = {
   cutPanels: [{ id: 'col1', panels: [{ id: 'panel1', type: 'media', filePath: '/test.mp4' }] }],
@@ -77,6 +80,11 @@ vi.mock('~/stores/ui/uiLocalStorage', () => ({
 
 vi.mock('~/utils/media-types', () => ({
   isOpenableProjectFileName: vi.fn().mockReturnValue(true),
+  getMediaTypeFromFilename: vi.fn().mockReturnValue('video'),
+}));
+
+vi.mock('~/composables/dnd/usePointerDnd', () => ({
+  armPointerDnd: vi.fn(),
 }));
 
 describe('useEditorDynamicPanels', () => {
@@ -91,24 +99,47 @@ describe('useEditorDynamicPanels', () => {
     ];
   });
 
-  const createDragEvent = (overrides = {}): DragEvent =>
+  const createTargetEl = (panelId = 'panel2', panelView = 'cut') =>
     ({
-      preventDefault: vi.fn(),
-      dataTransfer: {
-        effectAllowed: 'uninitialized',
-        setData: vi.fn(),
-        getData: vi.fn(),
-        types: [],
+      closest: vi.fn(() => ({
+        dataset: { panelId, panelView },
+        getBoundingClientRect: () => ({
+          left: 0,
+          top: 0,
+          right: 100,
+          bottom: 100,
+          width: 100,
+          height: 100,
+        }),
+      })),
+    }) as unknown as Element;
+
+  const createDndContext = (payload: DndPayload, overrides: Partial<DndDragContext> = {}) =>
+    ({
+      payload,
+      pointer: {
+        clientX: 10,
+        clientY: 50,
+        pointerType: 'mouse',
+        altKey: false,
+        ctrlKey: false,
+        metaKey: false,
+        shiftKey: false,
       },
-      currentTarget: {
-        getBoundingClientRect: () => ({ left: 0, top: 0, width: 100, height: 100 }),
-        contains: vi.fn().mockReturnValue(false),
-      },
-      relatedTarget: null,
-      clientX: 10,
-      clientY: 10,
+      zoneId: 'zone',
+      targetEl: createTargetEl(),
+      setOperation: vi.fn(),
       ...overrides,
-    }) as unknown as DragEvent;
+    }) satisfies DndDragContext;
+
+  function getPanelHandlers() {
+    const projectId = ref('test-proj');
+    const result = useEditorDynamicPanels({ currentProjectId: projectId });
+    const zoneId = result.panelDndZoneAttrs[DND_ZONE_ATTR]!;
+    const handlers = getDndZone(zoneId);
+    expect(handlers).not.toBeNull();
+    return { ...result, handlers: handlers! };
+  }
 
   it('computes layout keys correctly', () => {
     const projectId = ref('test-proj');
@@ -185,105 +216,171 @@ describe('useEditorDynamicPanels', () => {
   });
 
   describe('Drag and Drop', () => {
-    it('handles drag start for valid media panel', () => {
+    it('arms pointer DnD for a valid media panel', () => {
       const projectId = ref('test-proj');
-      const { onDragStart, draggingPanelId } = useEditorDynamicPanels({
+      const { onPanelPointerDown } = useEditorDynamicPanels({
         currentProjectId: projectId,
       });
 
-      const event = createDragEvent();
-      onDragStart(event, 'panel1');
+      const event = { button: 0 } as PointerEvent;
+      onPanelPointerDown(event, 'panel1');
 
-      expect(draggingPanelId.value).toBe('panel1');
-      expect(event.dataTransfer?.setData).toHaveBeenCalledWith(
-        'panel-drag',
-        JSON.stringify({ panelId: 'panel1', filePath: '/test.mp4', fileName: 'test.mp4' }),
+      expect(armPointerDnd).toHaveBeenCalledWith(
+        event,
+        expect.objectContaining({
+          payload: expect.objectContaining({
+            source: 'panel',
+            data: expect.objectContaining({
+              panelId: 'panel1',
+              panelType: 'media',
+              filePath: '/test.mp4',
+              fileName: 'test.mp4',
+            }),
+          }),
+        }),
       );
     });
 
-    it('handles drag over to set dropPosition', () => {
-      const projectId = ref('test-proj');
-      const { onDragStart, onDragOver, dragOverPanelId, dropPosition } = useEditorDynamicPanels({
-        currentProjectId: projectId,
+    it('handles pointer DnD over to set dropPosition', () => {
+      const { handlers, dragOverPanelId, dropPosition } = getPanelHandlers();
+
+      const ctx = createDndContext({
+        source: 'panel',
+        data: { panelId: 'panel1', panelType: 'media' },
       });
+      handlers.onOver?.(ctx);
 
-      const startEvent = createDragEvent();
-      onDragStart(startEvent, 'panel1'); // set dragging state
-
-      const overEvent = createDragEvent({
-        dataTransfer: { types: ['panel-drag'] },
-        clientX: 10,
-        clientY: 50, // closer to left (10) than top/bottom
-      });
-
-      onDragOver(overEvent, 'panel2');
-
-      expect(overEvent.preventDefault).toHaveBeenCalled();
       expect(dragOverPanelId.value).toBe('panel2');
-      // depending on bounding box (100x100) and threshold (30):
-      // left = 10, right = 90, top = 50, bottom = 50. Min is left (10).
       expect(dropPosition.value).toBe('left');
+      expect(ctx.setOperation).toHaveBeenCalledWith('move');
     });
 
     it('resets drag state on end and leave', () => {
-      const projectId = ref('test-proj');
-      const { onDragStart, onDragOver, onDragLeave, onDragEnd, draggingPanelId, dropPosition } =
-        useEditorDynamicPanels({ currentProjectId: projectId });
+      const { handlers, dragOverPanelId, dropPosition } = getPanelHandlers();
 
-      onDragStart(createDragEvent(), 'panel1');
-      onDragOver(createDragEvent({ clientX: 10, clientY: 50 }), 'panel2');
-      expect(draggingPanelId.value).toBe('panel1');
+      handlers.onOver?.(
+        createDndContext({
+          source: 'panel',
+          data: { panelId: 'panel1', panelType: 'media' },
+        }),
+      );
+      expect(dragOverPanelId.value).toBe('panel2');
 
-      onDragLeave(createDragEvent(), 'panel2');
+      handlers.onLeave?.(
+        createDndContext({
+          source: 'panel',
+          data: { panelId: 'panel1', panelType: 'media' },
+        }),
+      );
       expect(dropPosition.value).toBeNull();
-
-      onDragEnd();
-      expect(draggingPanelId.value).toBeNull();
     });
 
-    it('ignores drag start when experimentalFeatures is off', () => {
+    it('ignores pointer DnD start when experimentalFeatures is off', () => {
       mockWorkspaceStore.userSettings.experimentalFeatures = false;
       mockWorkspaceStore.inDevelopmentFeaturesEnabled = false;
       const projectId = ref('test-proj');
-      const { onDragStart, draggingPanelId } = useEditorDynamicPanels({
+      const { onPanelPointerDown, draggingPanelId } = useEditorDynamicPanels({
         currentProjectId: projectId,
       });
 
-      const event = createDragEvent();
-      onDragStart(event, 'panel1');
+      onPanelPointerDown({ button: 0 } as PointerEvent, 'panel1');
 
       expect(draggingPanelId.value).toBeNull();
-      expect(event.dataTransfer?.setData).not.toHaveBeenCalled();
+      expect(armPointerDnd).not.toHaveBeenCalled();
     });
 
-    it('ignores drag over when experimentalFeatures is off', () => {
+    it('rejects panel drop zones when experimentalFeatures is off', () => {
       mockWorkspaceStore.userSettings.experimentalFeatures = false;
       mockWorkspaceStore.inDevelopmentFeaturesEnabled = false;
-      const projectId = ref('test-proj');
-      const { onDragOver, dragOverPanelId, dropPosition } = useEditorDynamicPanels({
-        currentProjectId: projectId,
-      });
+      const { handlers } = getPanelHandlers();
 
-      const event = createDragEvent({ dataTransfer: { types: ['panel-drag'] } });
-      onDragOver(event, 'panel2');
-
-      expect(dragOverPanelId.value).toBeNull();
-      expect(dropPosition.value).toBeNull();
-      expect(event.preventDefault).not.toHaveBeenCalled();
+      expect(
+        handlers.canAccept?.({
+          source: 'panel',
+          data: { panelId: 'panel1', panelType: 'media' },
+        }),
+      ).toBe(false);
     });
 
-    it('ignores drop when experimentalFeatures is off', () => {
-      mockWorkspaceStore.userSettings.experimentalFeatures = false;
-      mockWorkspaceStore.inDevelopmentFeaturesEnabled = false;
-      const projectId = ref('test-proj');
-      const { onDrop } = useEditorDynamicPanels({ currentProjectId: projectId });
+    it('opens static project tabs as panels on drop', async () => {
+      const { handlers } = getPanelHandlers();
 
-      const event = createDragEvent({ dataTransfer: { getData: vi.fn(() => '') } });
-      onDrop({ event, targetPanelId: 'panel2' });
+      await handlers.onDrop?.(
+        createDndContext({
+          source: 'project-tab',
+          data: { kind: 'static-tab', tabId: 'history', label: 'History' },
+        }),
+      );
 
-      expect(event.preventDefault).not.toHaveBeenCalled();
-      expect(mockProjectStore.insertPanelAt).not.toHaveBeenCalled();
-      expect(mockProjectStore.movePanel).not.toHaveBeenCalled();
+      expect(mockProjectStore.insertPanelAt).toHaveBeenCalledWith(
+        expect.objectContaining({ type: 'history', title: 'History' }),
+        'panel2',
+        'left',
+        'cut',
+      );
+      expect(mockTabsStore.hideStaticTab).toHaveBeenCalledWith('history');
+    });
+
+    it('opens file project tabs as media panels on drop', async () => {
+      const { handlers } = getPanelHandlers();
+
+      await handlers.onDrop?.(
+        createDndContext({
+          source: 'project-tab',
+          data: {
+            kind: 'file-tab',
+            tabId: 'file-tab-1',
+            filePath: '/clip.mp4',
+            fileName: 'clip.mp4',
+            mediaType: 'video',
+          },
+        }),
+      );
+
+      expect(mockProjectStore.insertPanelAt).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'media',
+          filePath: '/clip.mp4',
+          mediaType: 'video',
+          title: 'clip.mp4',
+        }),
+        'panel2',
+        'left',
+        'cut',
+      );
+    });
+
+    it('moves panels on panel payload drop', async () => {
+      const { handlers } = getPanelHandlers();
+
+      await handlers.onDrop?.(
+        createDndContext({
+          source: 'panel',
+          data: { panelId: 'panel1', panelType: 'media' },
+        }),
+      );
+
+      expect(mockProjectStore.movePanel).toHaveBeenCalledWith('panel1', 'panel2', 'left', 'cut');
+    });
+
+    it('opens file-manager payloads as panels on drop', async () => {
+      const { handlers } = getPanelHandlers();
+
+      await handlers.onDrop?.(
+        createDndContext({
+          source: 'file-manager',
+          data: { items: [{ kind: 'file', name: 'clip.mp4', path: '/clip.mp4' }] },
+        }),
+      );
+
+      expect(mockProjectStore.addMediaPanel).toHaveBeenCalledWith(
+        expect.objectContaining({ name: 'clip.mp4', path: '/clip.mp4' }),
+        'video',
+        'clip.mp4',
+        'panel2',
+        'left',
+        'cut',
+      );
     });
   });
 

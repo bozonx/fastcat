@@ -24,7 +24,6 @@ withDefaults(defineProps<Props>(), {
 });
 
 const emit = defineEmits<{
-  dragStart: [event: DragEvent];
   close: [];
 }>();
 
@@ -32,11 +31,6 @@ const isMenuOpen = ref(false);
 
 function onContextMenu(event: MouseEvent) {
   event.stopPropagation();
-}
-
-function onDragStart(event: DragEvent) {
-  isMenuOpen.value = false;
-  emit('dragStart', event);
 }
 
 function isMiddleClick(event: MouseEvent) {
@@ -65,8 +59,6 @@ function onAuxClick(event: MouseEvent) {
         isAbsolute ? 'absolute top-0 left-0 right-0 z-20' : '',
         inDevelopmentFeaturesEnabled ? draggableCursorClass : '',
       ]"
-      :draggable="inDevelopmentFeaturesEnabled"
-      @dragstart="onDragStart"
       @dblclick="emit('close')"
       @contextmenu="onContextMenu"
       @mousedown="onMouseDown"

@@ -24,6 +24,7 @@ interface Props {
   ) => number | undefined;
   isFocused: (panelId: string) => boolean;
   getFocusId: (panelId: string) => PanelFocusId;
+  panelDndZoneAttrs: Record<string, string>;
 }
 
 interface SoundViewEvents extends EditorPanelEvents {
@@ -59,6 +60,7 @@ provide('fileManagerStore', useFileManagerStore());
         :get-vertical-size="getVerticalSize"
         :is-focused="isFocused"
         :get-focus-id="getFocusId"
+        :panel-dnd-zone-attrs="panelDndZoneAttrs"
         v-on="panelListeners"
       />
     </Pane>
