@@ -122,7 +122,7 @@ export function checkFileTimelineCompatibility(
   mediaStore: {
     metadataLoadFailed: Record<string, boolean>;
     mediaMetadata: Record<string, any>;
-  }
+  },
 ): { compatible: boolean; reasonKey: string | null } {
   if (entry.kind === 'directory') {
     return {
@@ -132,7 +132,12 @@ export function checkFileTimelineCompatibility(
   }
 
   const mediaType = getMediaTypeFromFilename(entry.name);
-  if (mediaType !== 'video' && mediaType !== 'audio' && mediaType !== 'image' && mediaType !== 'text') {
+  if (
+    mediaType !== 'video' &&
+    mediaType !== 'audio' &&
+    mediaType !== 'image' &&
+    mediaType !== 'text'
+  ) {
     return {
       compatible: false,
       reasonKey: 'videoEditor.fileManager.compatibility.formatUnsupported',
@@ -142,7 +147,7 @@ export function checkFileTimelineCompatibility(
   if (entry.path) {
     const isRemote = entry.path.startsWith('/remote') || (entry as any).source === 'remote';
     const isExternal = entry.path.startsWith('/') || /^[A-Za-z]:[\\/]/.test(entry.path);
-    const cacheKey = (isRemote || isExternal) ? `external:${entry.path}` : entry.path;
+    const cacheKey = isRemote || isExternal ? `external:${entry.path}` : entry.path;
 
     if (mediaStore?.metadataLoadFailed?.[cacheKey]) {
       return {

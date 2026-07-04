@@ -147,19 +147,30 @@ describe('checkFileTimelineCompatibility', () => {
   };
 
   it('rejects directories', () => {
-    const res = checkFileTimelineCompatibility({ kind: 'directory', name: 'Folder', path: 'Folder' }, mediaStore);
+    const res = checkFileTimelineCompatibility(
+      { kind: 'directory', name: 'Folder', path: 'Folder' },
+      mediaStore,
+    );
     expect(res.compatible).toBe(false);
-    expect(res.reasonKey).toBe('videoEditor.fileManager.compatibility.folderUnsupportedForTimeline');
+    expect(res.reasonKey).toBe(
+      'videoEditor.fileManager.compatibility.folderUnsupportedForTimeline',
+    );
   });
 
   it('rejects unknown format files', () => {
-    const res = checkFileTimelineCompatibility({ kind: 'file', name: 'archive.zip', path: 'archive.zip' }, mediaStore);
+    const res = checkFileTimelineCompatibility(
+      { kind: 'file', name: 'archive.zip', path: 'archive.zip' },
+      mediaStore,
+    );
     expect(res.compatible).toBe(false);
     expect(res.reasonKey).toBe('videoEditor.fileManager.compatibility.formatUnsupported');
   });
 
   it('accepts compatible video files', () => {
-    const res = checkFileTimelineCompatibility({ kind: 'file', name: 'video.mp4', path: 'video.mp4' }, mediaStore);
+    const res = checkFileTimelineCompatibility(
+      { kind: 'file', name: 'video.mp4', path: 'video.mp4' },
+      mediaStore,
+    );
     expect(res.compatible).toBe(true);
   });
 
@@ -168,7 +179,10 @@ describe('checkFileTimelineCompatibility', () => {
       metadataLoadFailed: { 'video.mp4': true },
       mediaMetadata: {},
     };
-    const res = checkFileTimelineCompatibility({ kind: 'file', name: 'video.mp4', path: 'video.mp4' }, customStore);
+    const res = checkFileTimelineCompatibility(
+      { kind: 'file', name: 'video.mp4', path: 'video.mp4' },
+      customStore,
+    );
     expect(res.compatible).toBe(false);
     expect(res.reasonKey).toBe('videoEditor.fileManager.compatibility.corrupt');
   });
@@ -177,10 +191,13 @@ describe('checkFileTimelineCompatibility', () => {
     const customStore = {
       metadataLoadFailed: {},
       mediaMetadata: {
-        'video.mp4': { video: { canDecode: false } }
+        'video.mp4': { video: { canDecode: false } },
       },
     };
-    const res = checkFileTimelineCompatibility({ kind: 'file', name: 'video.mp4', path: 'video.mp4' }, customStore);
+    const res = checkFileTimelineCompatibility(
+      { kind: 'file', name: 'video.mp4', path: 'video.mp4' },
+      customStore,
+    );
     expect(res.compatible).toBe(false);
     expect(res.reasonKey).toBe('videoEditor.fileManager.compatibility.videoCodecUnsupported');
   });
