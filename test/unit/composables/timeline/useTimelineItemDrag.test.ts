@@ -62,6 +62,7 @@ const workspaceStoreMock = {
     hotkeys: {
       layer1: 'Shift',
       layer2: 'Control',
+      bindings: {},
     },
     mouse: {
       timeline: {
@@ -917,5 +918,54 @@ describe('useTimelineItemDrag', () => {
       }),
       expect.objectContaining({ saveMode: 'none', skipHistory: true }),
     );
+  });
+
+  it('cancels drag session gracefully when Escape key is pressed during drag', () => {
+    const scrollEl = ref({ scrollLeft: 0 } as HTMLElement);
+    const tracks = computed(() => timelineStoreMock.timelineDoc.tracks);
+    const { startMoveItem, movePreview } = useTimelineItemDrag(scrollEl, tracks);
+
+    const pointerTarget = {
+      setPointerCapture: vi.fn(),
+      releasePointerCapture: vi.fn(),
+    };
+
+    startMoveItem(
+      {
+        button: 0,
+        buttons: 1,
+        clientX: 100,
+        clientY: 20,
+        pointerId: 10,
+        currentTarget: pointerTarget,
+        preventDefault: vi.fn(),
+        stopPropagation: vi.fn(),
+      } as unknown as PointerEvent,
+      {
+        trackId: 'track-1',
+        itemId: 'clip-1',
+        startUs: 0,
+      },
+    );
+
+    const handlers = bindSessionMock.mock.calls[0]?.[0];
+    handlers.onPointerMove({
+      buttons: 1,
+      button: 0,
+      clientX: 200,
+      clientY: 20,
+    } as PointerEvent);
+
+    expect(movePreview.value).not.toBeNull();
+
+    if (handlers.onKeyDown) {
+      handlers.onKeyDown({
+        key: 'Escape',
+        code: 'Escape',
+        preventDefault: vi.fn(),
+      } as unknown as KeyboardEvent);
+    }
+
+    expect(clearSessionMock).toHaveBeenCalled();
   });
 });
