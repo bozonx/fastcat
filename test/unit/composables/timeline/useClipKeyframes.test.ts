@@ -18,7 +18,7 @@ function makeClip(overrides: Partial<TimelineClipItem> = {}): TimelineClipItem {
 }
 
 describe('useClipKeyframes', () => {
-  it('converts the absolute playhead to clip-local time', () => {
+  it('converts the absolute playhead to source-relative animation time', () => {
     const clip = ref(makeClip());
     const playheadUs = ref(1_500_000);
     const updateAnimations = vi.fn();
@@ -26,12 +26,38 @@ describe('useClipKeyframes', () => {
     expect(localPlayheadUs.value).toBe(500_000);
   });
 
-  it('clamps clip-local time to 0 when the playhead is before the clip', () => {
+  it('clamps animation time to the source range start when the playhead is before the clip', () => {
     const clip = ref(makeClip());
     const playheadUs = ref(0);
     const updateAnimations = vi.fn();
     const { localPlayheadUs } = useClipKeyframes({ clip, playheadUs, updateAnimations });
     expect(localPlayheadUs.value).toBe(0);
+  });
+
+  it('uses trim and speed when resolving animation time', () => {
+    const clip = ref(
+      makeClip({
+        sourceRange: { startUs: 10_000, durationUs: 2_000 },
+        speed: 2,
+      }),
+    );
+    const playheadUs = ref(1_000_500);
+    const updateAnimations = vi.fn();
+    const { localPlayheadUs } = useClipKeyframes({ clip, playheadUs, updateAnimations });
+    expect(localPlayheadUs.value).toBe(11_000);
+  });
+
+  it('uses reverse speed when resolving animation time', () => {
+    const clip = ref(
+      makeClip({
+        sourceRange: { startUs: 10_000, durationUs: 2_000 },
+        speed: -1,
+      }),
+    );
+    const playheadUs = ref(1_001_000);
+    const updateAnimations = vi.fn();
+    const { localPlayheadUs } = useClipKeyframes({ clip, playheadUs, updateAnimations });
+    expect(localPlayheadUs.value).toBe(11_000);
   });
 
   it('toggleAnimated turning ON seeds each path with the static value at the playhead', () => {

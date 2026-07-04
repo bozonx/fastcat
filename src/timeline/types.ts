@@ -168,10 +168,10 @@ export type ClipSourceOrientation = 'auto' | '0' | '90' | '180' | '270';
  * Keyframe animation (v1: transform + opacity).
  *
  * Keyframe times are **source-relative**: `tUs` is measured in microseconds
- * from the clip's own start, so moving/rippling a clip on the timeline keeps
- * its animation intact and trimming a clip simply hides the keyframes that fall
- * outside the visible source range. The mapping from the timeline playhead to
- * this local time (including clip speed) lives in the render/payload layer.
+ * from the source media/timeline start. Moving/rippling a clip keeps its
+ * animation intact, while trim and speed change which part of the source-time
+ * animation is sampled. The mapping from the timeline playhead to source time
+ * lives in the render/editor bridge.
  */
 export type KeyframeEasing =
   /** Constant-rate interpolation to the next keyframe. */
@@ -182,7 +182,7 @@ export type KeyframeEasing =
   | 'hold';
 
 export interface Keyframe {
-  /** Microseconds from the clip's start (source-relative, always >= 0). */
+  /** Microseconds from the source media/timeline start (always >= 0). */
   tUs: number;
   /** The animated parameter's value at `tUs`. */
   value: number;

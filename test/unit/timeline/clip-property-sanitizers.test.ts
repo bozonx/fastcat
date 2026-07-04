@@ -4,6 +4,7 @@ import {
   clampNumber,
   sanitizeBlendMode,
   sanitizeSourceOrientation,
+  sanitizeAnimations,
   clampAudioFadeUs,
   sanitizeTransform,
   sanitizeTextStyle,
@@ -38,6 +39,26 @@ describe('sanitizeSourceOrientation', () => {
     }
     expect(sanitizeSourceOrientation('45')).toBeUndefined();
     expect(sanitizeSourceOrientation(90)).toBeUndefined();
+  });
+});
+
+describe('sanitizeAnimations', () => {
+  it('normalizes invalid easing to linear before crossing renderer boundaries', () => {
+    const result = sanitizeAnimations({
+      opacity: {
+        keyframes: [{ tUs: 10, value: 0.5, easing: 'snappy' }],
+      },
+    });
+    expect(result?.opacity?.keyframes).toEqual([{ tUs: 10, value: 0.5, easing: 'linear' }]);
+  });
+
+  it('drops unknown animation paths', () => {
+    const result = sanitizeAnimations({
+      'effect.blur.radius': {
+        keyframes: [{ tUs: 10, value: 0.5, easing: 'linear' }],
+      },
+    });
+    expect(result).toBeUndefined();
   });
 });
 

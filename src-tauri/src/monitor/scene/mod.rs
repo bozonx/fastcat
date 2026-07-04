@@ -181,9 +181,9 @@ pub struct SceneLayer {
     #[serde(default)]
     #[ts(optional)]
     pub transform: Option<SceneLayerTransform>,
-    /// Keyframe animation tracks (transform/opacity), timeline-local µs. Sampled
-    /// per frame in `finalize_layer` to drive an animated transform/opacity.
-    /// Mirrors the web `clip.animations`.
+    /// Keyframe animation tracks (transform/opacity), source-relative µs.
+    /// Sampled per frame in `finalize_layer` to drive an animated
+    /// transform/opacity. Mirrors the web `clip.animations`.
     #[serde(default)]
     #[ts(optional, type = "import('~/timeline/types').ClipAnimations")]
     pub animations: Option<Value>,

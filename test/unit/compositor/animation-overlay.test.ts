@@ -38,19 +38,41 @@ describe('resolveClipAnimationOverlay', () => {
     expect(c.animatedTransform).toBeUndefined();
   });
 
-  it('uses timeline-local time (subtracts clip.startUs)', () => {
+  it('uses source-relative time from clip trim and speed', () => {
     const c = clip({
       startUs: 2000,
+      sourceStartUs: 10_000,
+      sourceRangeDurationUs: 2_000,
+      speed: 2,
       animations: anims({
         opacity: {
           keyframes: [
-            { tUs: 0, value: 0, easing: 'linear' },
-            { tUs: 1000, value: 1, easing: 'linear' },
+            { tUs: 10_000, value: 0, easing: 'linear' },
+            { tUs: 12_000, value: 1, easing: 'linear' },
           ],
         },
       }),
     });
-    resolveClipAnimationOverlay(c, 2500); // local 500
+    resolveClipAnimationOverlay(c, 2500); // source time 11_000
+    expect(c.animatedOpacity).toBeCloseTo(0.5, 6);
+  });
+
+  it('samples reverse clips from the end of the source range', () => {
+    const c = clip({
+      startUs: 2000,
+      sourceStartUs: 10_000,
+      sourceRangeDurationUs: 2_000,
+      speed: -1,
+      animations: anims({
+        opacity: {
+          keyframes: [
+            { tUs: 10_000, value: 0, easing: 'linear' },
+            { tUs: 12_000, value: 1, easing: 'linear' },
+          ],
+        },
+      }),
+    });
+    resolveClipAnimationOverlay(c, 3000); // reverse source time 11_000
     expect(c.animatedOpacity).toBeCloseTo(0.5, 6);
   });
 

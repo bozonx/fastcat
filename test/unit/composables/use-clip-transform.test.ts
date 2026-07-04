@@ -1,5 +1,5 @@
 /** @vitest-environment node */
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { ref } from 'vue';
 import { useClipTransform } from '~/composables/properties/useClipTransform';
 import type { ClipTransform, TimelineClipItem, TrackKind } from '~/timeline/types';
@@ -99,5 +99,24 @@ describe('useClipTransform', () => {
     const next: ClipTransform = updated;
     expect(next.anchor?.x).toBeLessThanOrEqual(10);
     expect(next.anchor?.y).toBeGreaterThanOrEqual(-10);
+  });
+
+  it('routes reset actions through animated keyframe params', () => {
+    const updateTransform = vi.fn();
+    const onAnimatedParamEdit = vi.fn();
+    const clip = ref(makeClip({ transform: { rotationDeg: 45 } }));
+
+    const api = useClipTransform({
+      clip,
+      trackKind: ref<TrackKind>('video'),
+      updateTransform,
+      isParamAnimated: (path) => path === 'transform.rotationDeg',
+      onAnimatedParamEdit,
+    });
+
+    api.resetRotation();
+
+    expect(onAnimatedParamEdit).toHaveBeenCalledWith('transform.rotationDeg', 0);
+    expect(updateTransform).not.toHaveBeenCalled();
   });
 });

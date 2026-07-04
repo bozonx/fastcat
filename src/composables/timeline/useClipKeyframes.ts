@@ -1,12 +1,22 @@
 import { computed, type Ref } from 'vue';
-import type { AnimatableParamPath, ClipAnimations, TimelineClipItem } from '~/timeline/types';
-import { evalTrackAt, hasKeyframes } from '~/timeline/animation/evaluate';
+import type {
+  AnimatableParamPath,
+  ClipAnimations,
+  KeyframeEasing,
+  TimelineClipItem,
+} from '~/timeline/types';
+import {
+  evalTrackAt,
+  hasKeyframes,
+  resolveClipAnimationTimeUs,
+} from '~/timeline/animation/evaluate';
 import {
   clearParamAnimation,
   collectKeyframeTimes,
   getStaticParamValue,
   moveKeyframeMoment,
   removeKeyframeMoment,
+  setKeyframeMomentEasing,
   upsertKeyframe,
 } from '~/timeline/animation/ops';
 
@@ -24,9 +34,16 @@ export interface UseClipKeyframesOptions {
  * `updateAnimations` (the caller wires this to `updateClipProperties`).
  */
 export function useClipKeyframes(options: UseClipKeyframesOptions) {
-  const localPlayheadUs = computed(() =>
-    Math.max(0, Math.round(options.playheadUs.value - options.clip.value.timelineRange.startUs)),
-  );
+  const localPlayheadUs = computed(() => {
+    const clip = options.clip.value;
+    return resolveClipAnimationTimeUs({
+      timelineTimeUs: options.playheadUs.value,
+      timelineStartUs: clip.timelineRange.startUs,
+      sourceStartUs: clip.sourceRange.startUs,
+      sourceRangeDurationUs: clip.sourceRange.durationUs,
+      speed: clip.speed,
+    });
+  });
 
   function isAnimated(path: AnimatableParamPath): boolean {
     return hasKeyframes(options.clip.value.animations?.[path]);
@@ -90,6 +107,10 @@ export function useClipKeyframes(options: UseClipKeyframesOptions) {
     options.updateAnimations(removeKeyframeMoment(options.clip.value.animations, tUs));
   }
 
+  function setKeyframeMomentEasingAt(tUs: number, easing: KeyframeEasing) {
+    options.updateAnimations(setKeyframeMomentEasing(options.clip.value.animations, tUs, easing));
+  }
+
   return {
     localPlayheadUs,
     isAnimated,
@@ -99,5 +120,6 @@ export function useClipKeyframes(options: UseClipKeyframesOptions) {
     keyframeTimes,
     moveKeyframeMomentAt,
     deleteKeyframeMomentAt,
+    setKeyframeMomentEasingAt,
   };
 }

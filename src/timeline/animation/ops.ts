@@ -154,3 +154,19 @@ export function removeKeyframeMoment(
   }
   return next;
 }
+
+/** Update easing on every param's keyframe at `tUs` without changing values. */
+export function setKeyframeMomentEasing(
+  animations: ClipAnimations | undefined,
+  tUs: number,
+  easing: KeyframeEasing,
+): ClipAnimations | undefined {
+  let next = animations;
+  for (const path of ANIMATABLE_PARAM_PATHS) {
+    const track = next?.[path];
+    const kf = track?.keyframes.find((keyframe) => Math.round(keyframe.tUs) === Math.round(tUs));
+    if (!kf) continue;
+    next = upsertKeyframe(next, path, tUs, kf.value, easing);
+  }
+  return next;
+}

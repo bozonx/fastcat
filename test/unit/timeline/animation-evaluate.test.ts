@@ -7,6 +7,7 @@ import {
   hasAnyAnimation,
   hasKeyframes,
   normalizeKeyframeTrack,
+  resolveClipAnimationTimeUs,
   sampleClipAnimations,
 } from '~/timeline/animation/evaluate';
 import type { KeyframeTrack } from '~/timeline/types';
@@ -29,6 +30,39 @@ describe('normalizeKeyframeTrack', () => {
   it('rounds fractional times and defaults easing to linear', () => {
     const t = normalizeKeyframeTrack({ keyframes: [{ tUs: 10.6, value: 1 } as never] });
     expect(t.keyframes[0]).toEqual({ tUs: 11, value: 1, easing: 'linear' });
+  });
+
+  it('normalizes invalid easing to linear', () => {
+    const t = normalizeKeyframeTrack({
+      keyframes: [{ tUs: 10, value: 1, easing: 'snappy' } as never],
+    });
+    expect(t.keyframes[0]).toEqual({ tUs: 10, value: 1, easing: 'linear' });
+  });
+});
+
+describe('resolveClipAnimationTimeUs', () => {
+  it('maps timeline time through trim and forward speed', () => {
+    expect(
+      resolveClipAnimationTimeUs({
+        timelineTimeUs: 1_500,
+        timelineStartUs: 1_000,
+        sourceStartUs: 10_000,
+        sourceRangeDurationUs: 2_000,
+        speed: 2,
+      }),
+    ).toBe(11_000);
+  });
+
+  it('maps reverse clips from the end of the source range', () => {
+    expect(
+      resolveClipAnimationTimeUs({
+        timelineTimeUs: 1_500,
+        timelineStartUs: 1_000,
+        sourceStartUs: 10_000,
+        sourceRangeDurationUs: 2_000,
+        speed: -1,
+      }),
+    ).toBe(11_500);
   });
 });
 

@@ -27,6 +27,16 @@ export const ANIMATABLE_PARAM_PATHS: readonly AnimatableParamPath[] = [
   'transform.rotationDeg',
 ] as const;
 
+export const KEYFRAME_EASINGS: readonly KeyframeEasing[] = ['linear', 'ease', 'hold'] as const;
+
+export interface ResolveClipAnimationTimeUsParams {
+  timelineTimeUs: number;
+  timelineStartUs: number;
+  sourceStartUs?: number;
+  sourceRangeDurationUs?: number;
+  speed?: number;
+}
+
 /**
  * Per-path hard clamp applied to every interpolated value before it reaches the
  * renderer. Mirrors the static-value expectations of each field: opacity is a
@@ -67,6 +77,45 @@ function applyEasing(easing: KeyframeEasing, frac: number): number {
   }
 }
 
+export function isKeyframeEasing(value: unknown): value is KeyframeEasing {
+  return value === 'linear' || value === 'ease' || value === 'hold';
+}
+
+function normalizeAnimationSpeed(speed: unknown): number {
+  return typeof speed === 'number' && Number.isFinite(speed) && speed !== 0
+    ? Math.max(-10, Math.min(10, speed))
+    : 1;
+}
+
+/**
+ * Convert an absolute timeline time to the source-relative time used by
+ * keyframes. Unlike video sampling, this intentionally has no end-frame guard:
+ * animation curves are not constrained by decoder readability.
+ */
+export function resolveClipAnimationTimeUs(params: ResolveClipAnimationTimeUsParams): number {
+  const timelineTimeUs = Math.round(clampFinite(params.timelineTimeUs, 0));
+  const timelineStartUs = Math.round(clampFinite(params.timelineStartUs, 0));
+  const localTimelineUs = Math.max(0, timelineTimeUs - timelineStartUs);
+  const sourceStartUs = Math.max(0, Math.round(clampFinite(params.sourceStartUs, 0)));
+  const sourceRangeDurationUs = Math.max(
+    0,
+    Math.round(clampFinite(params.sourceRangeDurationUs, 0)),
+  );
+  const speed = normalizeAnimationSpeed(params.speed);
+  const sourceDeltaUs = Math.round(localTimelineUs * Math.abs(speed));
+
+  if (sourceRangeDurationUs <= 0) {
+    return sourceStartUs + sourceDeltaUs;
+  }
+
+  const sourceOffsetUs =
+    speed < 0
+      ? Math.max(0, sourceRangeDurationUs - sourceDeltaUs)
+      : Math.min(sourceRangeDurationUs, sourceDeltaUs);
+
+  return sourceStartUs + sourceOffsetUs;
+}
+
 /**
  * Return a keyframe track with its keyframes sorted ascending by `tUs`, times
  * clamped to `>= 0`, and duplicate times collapsed (last write wins). This is
@@ -80,7 +129,7 @@ export function normalizeKeyframeTrack(track: KeyframeTrack): KeyframeTrack {
     byTime.set(tUs, {
       tUs,
       value: clampFinite(kf.value, 0),
-      easing: kf.easing ?? 'linear',
+      easing: isKeyframeEasing(kf.easing) ? kf.easing : 'linear',
     });
   }
   const keyframes = Array.from(byTime.values()).sort((a, b) => a.tUs - b.tUs);

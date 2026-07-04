@@ -8,6 +8,7 @@ import {
   moveKeyframeMoment,
   removeKeyframe,
   removeKeyframeMoment,
+  setKeyframeMomentEasing,
   upsertKeyframe,
 } from '~/timeline/animation/ops';
 import type { ClipAnimations } from '~/timeline/types';
@@ -146,5 +147,16 @@ describe('keyframe "moment" ops (unified lane)', () => {
     let anims: ClipAnimations | undefined = upsertKeyframe(undefined, 'opacity', 100, 0.5);
     anims = upsertKeyframe(anims, 'transform.rotationDeg', 100, 45);
     expect(removeKeyframeMoment(anims, 100)).toBeUndefined();
+  });
+
+  it('setKeyframeMomentEasing updates every param keyframe at that time only', () => {
+    const changed = setKeyframeMomentEasing(twoParamAnimations(), 100, 'ease');
+    expect(changed?.opacity?.keyframes).toEqual([
+      { tUs: 100, value: 0.5, easing: 'ease' },
+      { tUs: 500, value: 1, easing: 'linear' },
+    ]);
+    expect(changed?.['transform.rotationDeg']?.keyframes).toEqual([
+      { tUs: 100, value: 45, easing: 'ease' },
+    ]);
   });
 });

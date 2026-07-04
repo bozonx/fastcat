@@ -1,16 +1,19 @@
 import type { ClipTransform } from '~/timeline/types';
-import { hasAnyAnimation, sampleClipAnimations } from '~/timeline/animation/evaluate';
+import {
+  hasAnyAnimation,
+  resolveClipAnimationTimeUs,
+  sampleClipAnimations,
+} from '~/timeline/animation/evaluate';
 import type { CompositorClip } from './types';
 
 /**
  * Per-frame keyframe overlay for the web compositor.
  *
- * Keyframe times are timeline-local: `clipLocalUs = timeUs − clip.startUs`
- * (the clip's left edge on the timeline), matching how transitions measure
- * their windows. Evaluated values are written to the clip's `animatedTransform`
- * / `animatedOpacity` overlay fields, which `LayoutApplier` and
- * `computeTransitionOpacity` prefer over the static values. Both are cleared
- * when the clip has no keyframes so a stale overlay never lingers.
+ * Keyframe times are source-relative. The timeline playhead is mapped through
+ * the clip's trim/speed before sampling; evaluated values are written to the
+ * clip's `animatedTransform` / `animatedOpacity` overlay fields, which
+ * `LayoutApplier` and `computeTransitionOpacity` prefer over static values.
+ * Both are cleared when the clip has no keyframes so stale overlay never lingers.
  */
 
 /** The clip transform to use for layout, honoring the animation overlay. */
@@ -71,8 +74,14 @@ export function resolveClipAnimationOverlay(clip: CompositorClip, timeUs: number
     return;
   }
 
-  const localUs = timeUs - clip.startUs;
-  const sampled = sampleClipAnimations(clip.animations, localUs);
+  const animationTimeUs = resolveClipAnimationTimeUs({
+    timelineTimeUs: timeUs,
+    timelineStartUs: clip.startUs,
+    sourceStartUs: clip.sourceStartUs,
+    sourceRangeDurationUs: clip.sourceRangeDurationUs,
+    speed: clip.speed,
+  });
+  const sampled = sampleClipAnimations(clip.animations, animationTimeUs);
 
   clip.animatedOpacity = sampled.opacity;
 

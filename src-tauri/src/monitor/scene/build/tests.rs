@@ -86,6 +86,40 @@ mod tests {
     }
 
     #[test]
+    fn finalize_layer_samples_animation_from_trimmed_source_time() {
+        let layer: SceneLayer = serde_json::from_value(json!({
+            "id": "anim-trimmed",
+            "kind": "background",
+            "timeline_start_sec": 10.0,
+            "timeline_end_sec": 12.0,
+            "source_start_sec": 5.0,
+            "source_range_duration_sec": 4.0,
+            "speed": 2.0,
+            "z": 1,
+            "opacity": 1.0,
+            "background_color": "#123456",
+            "animations": {
+                "opacity": { "keyframes": [
+                    { "tUs": 5000000, "value": 0.0, "easing": "linear" },
+                    { "tUs": 9000000, "value": 1.0, "easing": "linear" }
+                ] },
+                "transform.rotationDeg": { "keyframes": [
+                    { "tUs": 5000000, "value": 0.0, "easing": "linear" },
+                    { "tUs": 9000000, "value": 180.0, "easing": "linear" }
+                ] }
+            }
+        }))
+        .unwrap();
+
+        let scene_size = (1920u32, 1080u32);
+        let kind = build_virtual_kind(&layer, scene_size).unwrap();
+        let out = finalize_layer(&layer, kind, scene_size, 11.0);
+
+        assert!((out.opacity - 0.5).abs() < 1e-5);
+        assert!((out.transform.rotation_deg - 90.0).abs() < 1e-5);
+    }
+
+    #[test]
     fn finalize_layer_without_animation_keeps_static_values() {
         let layer: SceneLayer = serde_json::from_value(json!({
             "id": "static",

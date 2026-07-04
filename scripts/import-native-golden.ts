@@ -7,6 +7,7 @@
  *
  * Usage:
  *   pnpm test:golden:import-native
+ *   pnpm test:golden:import-native -- --scene scene.json
  *
  * The test skips gracefully if ffmpeg, ffprobe, or a wgpu adapter are missing;
  * in that case no GOLDEN lines are emitted and this script warns accordingly.
@@ -20,6 +21,35 @@ import {
 
 const GOLDEN_RE =
   /^GOLDEN\[native\]\s+(\S+)\s+t=([\d.]+)\s+hash=([0-9a-f]{16})(?:\s+colorSig=([0-9a-f]{24}))?\s+tolerance=(\d+)/i;
+
+interface ImportOptions {
+  scene?: string;
+}
+
+function parseArgs(args: string[]): ImportOptions {
+  let scene: string | undefined;
+
+  for (let i = 0; i < args.length; i++) {
+    const arg = args[i];
+
+    if (arg === '--') continue;
+
+    if (arg === '--scene') {
+      scene = args[i + 1];
+      i++;
+      continue;
+    }
+
+    if (arg?.startsWith('--scene=')) {
+      scene = arg.slice('--scene='.length);
+      continue;
+    }
+
+    throw new Error(`Unknown argument: ${arg}`);
+  }
+
+  return { scene };
+}
 
 function runNativeParity(): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -70,7 +100,11 @@ function runNativeParity(): Promise<string> {
 }
 
 async function main(): Promise<void> {
-  console.log('Running native parity tests to collect golden hashes...\n');
+  const { scene } = parseArgs(process.argv.slice(2));
+
+  console.log(
+    `Running native parity tests to collect golden hashes${scene ? ` for ${scene}` : ''}...\n`,
+  );
 
   const output = await runNativeParity();
 
@@ -82,6 +116,8 @@ async function main(): Promise<void> {
     if (!match) continue;
 
     const [, filename, timeStr, hash, colorSig, toleranceStr] = match;
+    if (scene && filename !== scene) continue;
+
     const timeSec = Number(timeStr);
     const tolerance = Number(toleranceStr);
 

@@ -10,8 +10,9 @@
  * lines automatically.
  *
  * Usage:
- *   pnpm test:golden:gen           # web only (via Playwright)
- *   pnpm test:golden:gen -- --both # web + native (requires cargo)
+ *   pnpm test:golden:gen                              # web only (via Playwright)
+ *   pnpm test:golden:gen -- --both                    # web + native (requires cargo)
+ *   pnpm test:golden:gen -- --both --scene scene.json # one scene only
  */
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -28,6 +29,42 @@ const E2E_PORT = Number(process.env.E2E_PORT ?? 37107);
 const BASE_URL = process.env.E2E_BASE_URL ?? `http://${E2E_HOST}:${E2E_PORT}`;
 
 const MEDIA_DIR = resolve(process.cwd(), 'test/fixtures/media');
+
+interface GenerateOptions {
+  mode: '--web' | '--native' | '--both';
+  scene?: string;
+}
+
+function parseArgs(args: string[]): GenerateOptions {
+  let mode: GenerateOptions['mode'] = '--web';
+  let scene: string | undefined;
+
+  for (let i = 0; i < args.length; i++) {
+    const arg = args[i];
+
+    if (arg === '--') continue;
+
+    if (arg === '--web' || arg === '--native' || arg === '--both') {
+      mode = arg;
+      continue;
+    }
+
+    if (arg === '--scene') {
+      scene = args[i + 1];
+      i++;
+      continue;
+    }
+
+    if (arg?.startsWith('--scene=')) {
+      scene = arg.slice('--scene='.length);
+      continue;
+    }
+
+    throw new Error(`Unknown argument: ${arg}`);
+  }
+
+  return { mode, scene };
+}
 
 /**
  * Poll a URL until it responds or timeout is reached.
@@ -82,16 +119,14 @@ async function ensurePreviewServer(): Promise<ChildProcess | null> {
 
   console.log(`  Starting preview server on ${E2E_HOST}:${E2E_PORT}...`);
   const proc = spawn(
-    'pnpm',
+    'node',
     [
-      'exec',
-      'vite',
-      'preview',
+      'scripts/static-preview-server.mjs',
       '--host',
       E2E_HOST,
       '--port',
       String(E2E_PORT),
-      '--outDir',
+      '--root',
       '.output/public',
     ],
     {
@@ -119,7 +154,22 @@ async function ensurePreviewServer(): Promise<ChildProcess | null> {
   return proc;
 }
 
-async function genWebGolden(): Promise<void> {
+function filterScenes(
+  scenes: ReturnType<typeof loadAllScenes>,
+  sceneFilter: string | undefined,
+): ReturnType<typeof loadAllScenes> {
+  if (!sceneFilter) return scenes;
+
+  const filtered = scenes.filter(({ filename }) => filename === sceneFilter);
+
+  if (filtered.length === 0) {
+    throw new Error(`Scene not found in shared/scenes/: ${sceneFilter}`);
+  }
+
+  return filtered;
+}
+
+async function genWebGolden(sceneFilter: string | undefined): Promise<void> {
   const { chromium } = await import('@playwright/test');
   const { renderWebFrames } = await import('../test/golden-helpers/web-render');
   type WebSceneData = import('../test/golden-helpers/web-render').WebSceneData;
@@ -144,7 +194,7 @@ async function genWebGolden(): Promise<void> {
 
     const registry = loadGoldenRegistry();
 
-    const scenes = loadAllScenes();
+    const scenes = filterScenes(loadAllScenes(), sceneFilter);
 
     for (const { filename, fixture: sceneData } of scenes) {
       const tolerance = sceneData.tolerance;
@@ -208,10 +258,14 @@ async function genWebGolden(): Promise<void> {
   }
 }
 
-function runImportNative(): Promise<boolean> {
+function runImportNative(sceneFilter: string | undefined): Promise<boolean> {
   return new Promise((resolve, reject) => {
     console.log('\nImporting native golden hashes...\n');
-    const proc = spawn('pnpm', ['test:golden:import-native'], {
+    const args = ['test:golden:import-native'];
+    if (sceneFilter) {
+      args.push('--', '--scene', sceneFilter);
+    }
+    const proc = spawn('pnpm', args, {
       cwd: process.cwd(),
       stdio: 'inherit',
     });
@@ -232,17 +286,16 @@ function runImportNative(): Promise<boolean> {
 }
 
 async function main(): Promise<void> {
-  const args = process.argv.slice(2);
-  const mode = args[0] ?? '--web';
+  const { mode, scene } = parseArgs(process.argv.slice(2));
 
-  console.log(`Generating golden hashes (${mode})...\n`);
+  console.log(`Generating golden hashes (${mode}${scene ? `, scene=${scene}` : ''})...\n`);
 
   if (mode === '--web' || mode === '--both') {
-    await genWebGolden();
+    await genWebGolden(scene);
   }
 
   if (mode === '--native' || mode === '--both') {
-    const ok = await runImportNative();
+    const ok = await runImportNative(scene);
     if (!ok && mode === '--native') {
       process.exit(1);
     }

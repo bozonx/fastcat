@@ -1151,6 +1151,30 @@
           "colorSig": "121a2b12192a121a2a11192a"
         }
       ]
+    },
+    {
+      "scene": "keyframe-animation.json",
+      "engine": "web",
+      "samples": [
+        {
+          "timeSec": 0.5,
+          "hash": "00003c3c3c3c0000",
+          "tolerance": 28,
+          "colorSig": "40270d403c0d400f0d401f0d"
+        }
+      ]
+    },
+    {
+      "scene": "keyframe-animation.json",
+      "engine": "native",
+      "samples": [
+        {
+          "timeSec": 0.5,
+          "hash": "0010183c3c1c0800",
+          "tolerance": 28,
+          "colorSig": "35160d26220e26110e35290d"
+        }
+      ]
     }
   ]
 }

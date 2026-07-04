@@ -832,7 +832,7 @@
       "hideWaveform": "Hide waveform",
       "hud": "HUD",
       "importFilesCount": "Import {count} files",
-      "keyframesDiamondHint": "drag to move, double-click to delete",
+      "keyframesDiamondHint": "drag to move, double-click to delete, right-click to change easing",
       "keyframesLane": "Animation keyframes",
       "keyframesLaneEmptyHint": "No animated parameters — use the stopwatch in Properties",
       "keyframesTitle": "Animation keyframes",

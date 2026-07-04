@@ -382,14 +382,23 @@ export function useClipTransform(options: UseClipTransformOptions) {
   }
 
   function resetScale() {
-    updateSelectedClipTransform({ scale: { x: 1, y: 1, linked: true } });
+    const xAnimated = tryRecordAnimatedEdit('transform.scale.x', 1);
+    const yAnimated = tryRecordAnimatedEdit('transform.scale.y', 1);
+    if (!xAnimated || !yAnimated) {
+      updateSelectedClipTransform({ scale: { x: 1, y: 1, linked: true } });
+    }
   }
 
   function resetPosition() {
-    updateSelectedClipTransform({ position: { x: 0, y: 0 } });
+    const xAnimated = tryRecordAnimatedEdit('transform.position.x', 0);
+    const yAnimated = tryRecordAnimatedEdit('transform.position.y', 0);
+    if (!xAnimated || !yAnimated) {
+      updateSelectedClipTransform({ position: { x: 0, y: 0 } });
+    }
   }
 
   function resetRotation() {
+    if (tryRecordAnimatedEdit('transform.rotationDeg', 0)) return;
     updateSelectedClipTransform({ rotationDeg: 0 });
   }
 
@@ -402,6 +411,11 @@ export function useClipTransform(options: UseClipTransformOptions) {
   }
 
   function resetAll() {
+    tryRecordAnimatedEdit('transform.scale.x', 1);
+    tryRecordAnimatedEdit('transform.scale.y', 1);
+    tryRecordAnimatedEdit('transform.position.x', 0);
+    tryRecordAnimatedEdit('transform.position.y', 0);
+    tryRecordAnimatedEdit('transform.rotationDeg', 0);
     options.updateTransform({
       scale: { x: 1, y: 1, linked: true },
       position: { x: 0, y: 0 },

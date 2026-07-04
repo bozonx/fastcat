@@ -480,10 +480,11 @@ pub fn finalize_layer(
     );
 
     // Keyframe animation (v1: transform + opacity). Sampled at the layer's
-    // timeline-local time; the resulting overrides fully replace the static
+    // source-relative time; the resulting overrides fully replace the static
     // transform/opacity for this frame (the web overlay does the same).
     let local_t = time_sec - sl.timeline_start_sec;
-    let anim = super::animation::resolve_animation_override(sl, local_t * 1_000_000.0, scene_size);
+    let animation_t_us = super::animation::resolve_layer_animation_time_us(sl, time_sec);
+    let anim = super::animation::resolve_animation_override(sl, animation_t_us, scene_size);
     let effective_transform = anim.transform.as_ref().or(sl.transform.as_ref());
 
     let transform = match effective_transform {

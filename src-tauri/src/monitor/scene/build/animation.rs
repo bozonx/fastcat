@@ -5,11 +5,12 @@
 //! MUST match the TS core exactly — it is pinned by the shared parity fixture
 //! (`shared/parity/keyframe-interp.cases.json`). Keep it pure.
 //!
-//! Keyframe times are timeline-local microseconds (`clipLocalUs = playhead −
-//! clip start`). Animated values are in the same design-space units as the web
-//! `ClipTransform` (position in 1920×1080 design px, scale as a factor, rotation
-//! in degrees); this module converts position to scene-space the same way the
-//! TS DTO builder (`buildNativeTransform`) does.
+//! Keyframe times are source-relative microseconds. The timeline playhead is
+//! mapped through layer trim/speed before sampling, without the decode end-frame
+//! guard used for video reads. Animated values are in the same design-space
+//! units as the web `ClipTransform` (position in 1920×1080 design px, scale as
+//! a factor, rotation in degrees); this module converts position to scene-space
+//! the same way the TS DTO builder (`buildNativeTransform`) does.
 
 use serde::Deserialize;
 use serde_json::Value;
@@ -142,12 +143,43 @@ fn identity_transform(scene_w: f64, scene_h: f64) -> SceneLayerTransform {
     }
 }
 
-/// Sample a layer's animation tracks at `local_t_us` (timeline-local µs) and
-/// produce the effective transform + opacity overrides. Position keyframes are
-/// converted design-space → scene-space identically to the TS DTO builder.
+fn normalize_animation_speed(speed: f64) -> f64 {
+    if speed.is_finite() && speed != 0.0 {
+        speed.clamp(-10.0, 10.0)
+    } else {
+        1.0
+    }
+}
+
+/// Convert timeline seconds to the source-relative microseconds used by
+/// keyframes. Mirrors `resolveClipAnimationTimeUs` in the TS evaluator.
+pub fn resolve_layer_animation_time_us(sl: &SceneLayer, time_sec: f64) -> f64 {
+    let local_t_sec = (time_sec - sl.timeline_start_sec).max(0.0);
+    let speed = normalize_animation_speed(sl.speed);
+    let abs_speed = speed.abs();
+    let source_range_sec =
+        if sl.source_range_duration_sec.is_finite() && sl.source_range_duration_sec > 0.0 {
+            sl.source_range_duration_sec
+        } else {
+            (sl.timeline_end_sec - sl.timeline_start_sec).max(0.0) * abs_speed
+        };
+    let source_delta_sec = local_t_sec * abs_speed;
+    let source_offset_sec = if source_range_sec <= 0.0 {
+        source_delta_sec
+    } else if speed < 0.0 {
+        (source_range_sec - source_delta_sec).clamp(0.0, source_range_sec)
+    } else {
+        source_delta_sec.clamp(0.0, source_range_sec)
+    };
+    ((sl.source_start_sec.max(0.0) + source_offset_sec) * 1_000_000.0).round()
+}
+
+/// Sample a layer's animation tracks at `animation_t_us` (source-relative µs)
+/// and produce the effective transform + opacity overrides. Position keyframes
+/// are converted design-space → scene-space identically to the TS DTO builder.
 pub fn resolve_animation_override(
     sl: &SceneLayer,
-    local_t_us: f64,
+    animation_t_us: f64,
     scene_size: (u32, u32),
 ) -> AnimationOverride {
     let Some(anims) = sl.animations.as_ref().and_then(ClipAnimations::from_value) else {
@@ -155,14 +187,14 @@ pub fn resolve_animation_override(
     };
 
     let opacity = anims
-        .eval("opacity", local_t_us)
+        .eval("opacity", animation_t_us)
         .map(|v| v.clamp(0.0, 1.0) as f32);
 
-    let px = anims.eval("transform.position.x", local_t_us);
-    let py = anims.eval("transform.position.y", local_t_us);
-    let sx = anims.eval("transform.scale.x", local_t_us);
-    let sy = anims.eval("transform.scale.y", local_t_us);
-    let rot = anims.eval("transform.rotationDeg", local_t_us);
+    let px = anims.eval("transform.position.x", animation_t_us);
+    let py = anims.eval("transform.position.y", animation_t_us);
+    let sx = anims.eval("transform.scale.x", animation_t_us);
+    let sy = anims.eval("transform.scale.y", animation_t_us);
+    let rot = anims.eval("transform.rotationDeg", animation_t_us);
 
     let has_transform =
         px.is_some() || py.is_some() || sx.is_some() || sy.is_some() || rot.is_some();
