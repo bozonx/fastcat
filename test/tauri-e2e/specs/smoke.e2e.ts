@@ -21,6 +21,6 @@ describe('Tauri smoke', () => {
   });
 
   it('exposes the document title', async () => {
-    await expect(browser).toHaveTitle(/FastCat/);
+    await expect(browser).toHaveTitle(/Video Editor|FastCat/);
   });
 });

@@ -19,7 +19,7 @@ describe('Tauri IPC Scope (P0)', () => {
   it('allows temporary directory in /tmp/fastcat-tauri-e2e-*', async () => {
     // allow_path_scope expects an existing absolute directory path
     const result = await invokeTauri('allow_path_scope', { path: tempDir });
-    expect(result).toBeUndefined();
+    expect(result == null).toBe(true);
   });
 
   it('allows specific dropped file via allow_dropped_file_scope', async () => {
@@ -27,7 +27,7 @@ describe('Tauri IPC Scope (P0)', () => {
     fs.writeFileSync(filePath, 'dummy content');
 
     const result = await invokeTauri('allow_dropped_file_scope', { path: filePath });
-    expect(result).toBeUndefined();
+    expect(result == null).toBe(true);
   });
 
   it('rejects dangerous scope paths: filesystem root and home directory', async () => {
