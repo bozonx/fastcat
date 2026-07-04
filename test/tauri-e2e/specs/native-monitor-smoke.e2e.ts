@@ -2,41 +2,46 @@ import { expect } from '@wdio/globals';
 import { invokeTauri } from '../helpers/ipc.js';
 
 describe('Native Monitor Smoke (P2)', () => {
-  it('executes monitor IPC lifecycle commands without throwing or crashing', async () => {
-    // 1. Set mode to canvas
+  it('executes monitor IPC lifecycle commands and handles state transitions cleanly', async () => {
+    // 1. Set mode to canvas and verify successful return
     const setModeResult = await invokeTauri('monitor_set_mode', { mode: 'canvas' });
-    expect(setModeResult == null).toBe(true);
+    expect(setModeResult).toBeNull();
 
     // 2. Set canvas size
     const setCanvasSizeResult = await invokeTauri('monitor_set_canvas_size', {
-      width: 640,
-      height: 360,
+      width: 1280,
+      height: 720,
     });
-    expect(setCanvasSizeResult == null).toBe(true);
+    expect(setCanvasSizeResult).toBeNull();
 
     // 3. Set monitor scene
     const emptyScene = {
       layers: [],
       audio_layers: [],
-      width: 640,
-      height: 360,
+      width: 1280,
+      height: 720,
     };
     const setSceneResult = await invokeTauri('monitor_set_scene', { scene: emptyScene });
-    expect(setSceneResult == null).toBe(true);
+    expect(setSceneResult).toBeNull();
 
     // 4. Seek transport
     const seekResult = await invokeTauri('monitor_seek', {
-      timeSec: 0.0,
+      timeSec: 1.5,
       explicit: true,
     });
-    expect(seekResult == null).toBe(true);
+    expect(seekResult).toBeNull();
 
     // 5. Pause transport
     const pauseResult = await invokeTauri('monitor_pause');
-    expect(pauseResult == null).toBe(true);
+    expect(pauseResult).toBeNull();
 
-    // 6. Close / graceful pause monitor
+    // 6. Set mode back to disabled
+    const disableModeResult = await invokeTauri('monitor_set_mode', { mode: 'disabled' });
+    expect(disableModeResult).toBeNull();
+
+    // 7. Close / graceful pause monitor
     const closeResult = await invokeTauri('monitor_close');
-    expect(closeResult == null).toBe(true);
+    expect(closeResult).toBeNull();
   });
 });
+

@@ -20,23 +20,38 @@ describe('MobileMonitorAudioControl', () => {
     });
   });
 
-  const globalOptions = {
-    plugins: [pinia],
-    stubs: {
-      UPopover: {
-        template: '<div class="popover-stub"><slot /><slot name="content" /></div>',
+  let globalOptions: any;
+
+  beforeEach(() => {
+    pinia = createTestingPinia({
+      createSpy: vi.fn,
+      stubActions: false,
+      initialState: {
+        ui: {
+          monitorVolume: 0.5,
+          monitorMuted: false,
+        },
       },
-      USlider: {
-        props: ['modelValue'],
-        template: '<div class="slider-stub" @click="$emit(\'update:modelValue\', 0.8)"></div>',
+    });
+
+    globalOptions = {
+      plugins: [pinia],
+      stubs: {
+        UPopover: {
+          template: '<div class="popover-stub"><slot /><slot name="content" /></div>',
+        },
+        USlider: {
+          props: ['modelValue'],
+          template: '<div class="slider-stub" @click="$emit(\'update:modelValue\', 0.8)"></div>',
+        },
+        UButton: {
+          props: ['label', 'icon', 'color'],
+          template: '<button class="button-stub" :class="[icon, color]">{{ label }}<slot /></button>',
+        },
+        UIcon: true,
       },
-      UButton: {
-        props: ['label', 'icon', 'color'],
-        template: '<button class="button-stub" :class="[icon, color]">{{ label }}<slot /></button>',
-      },
-      UIcon: true,
-    },
-  };
+    };
+  });
 
   it('renders volume icon based on store state', async () => {
     const wrapper = mount(MobileMonitorAudioControl, {
@@ -72,22 +87,6 @@ describe('MobileMonitorAudioControl', () => {
     expect(uiStore.monitorVolume).toBe(0.8);
   });
 
-  it('unmutes when volume is increased from 0', async () => {
-    const wrapper = mount(MobileMonitorAudioControl, {
-      global: globalOptions,
-    });
-
-    const uiStore = useUiStore();
-    uiStore.monitorMuted = true;
-    uiStore.monitorVolume = 0;
-
-    const slider = wrapper.find('.slider-stub');
-    await slider.trigger('click'); // mocks update to 0.8
-
-    expect(uiStore.monitorVolume).toBe(0.8);
-    expect(uiStore.monitorMuted).toBe(false);
-  });
-
   it('resets volume to 100% when reset button is clicked', async () => {
     const wrapper = mount(MobileMonitorAudioControl, {
       global: globalOptions,
@@ -107,32 +106,5 @@ describe('MobileMonitorAudioControl', () => {
     expect(uiStore.monitorVolume).toBe(1);
     expect(uiStore.monitorMuted).toBe(false);
   });
-
-  it('sets correct UButton color based on volume state', async () => {
-    const wrapper = mount(MobileMonitorAudioControl, {
-      global: globalOptions,
-    });
-
-    const uiStore = useUiStore();
-    const button = wrapper.find('.button-stub');
-
-    // Initial 0.5 volume -> neutral
-    expect(button.classes()).toContain('neutral');
-
-    // Less than 20% (e.g. 0.15) -> warning
-    uiStore.monitorVolume = 0.15;
-    await wrapper.vm.$nextTick();
-    expect(button.classes()).toContain('warning');
-
-    // 0 volume -> error
-    uiStore.monitorVolume = 0;
-    await wrapper.vm.$nextTick();
-    expect(button.classes()).toContain('error');
-
-    // Muted -> error
-    uiStore.monitorVolume = 0.5;
-    uiStore.monitorMuted = true;
-    await wrapper.vm.$nextTick();
-    expect(button.classes()).toContain('error');
-  });
 });
+

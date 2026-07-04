@@ -69,8 +69,8 @@ snap_to_pixel_grid: boolean,
  */
 transform?: SceneLayerTransform, 
 /**
- * Keyframe animation tracks (transform/opacity), source-relative µs. Sampled
- * per frame in `finalize_layer` to drive an animated transform/opacity.
- * Mirrors the web `clip.animations`.
+ * Keyframe animation tracks (transform/opacity), source-relative µs.
+ * Sampled per frame in `finalize_layer` to drive an animated
+ * transform/opacity. Mirrors the web `clip.animations`.
  */
 animations?: import('~/timeline/types').ClipAnimations, transition_in?: SceneTransition, transition_out?: SceneTransition, effects: import('~/effects').VideoEffectSpec[], };
