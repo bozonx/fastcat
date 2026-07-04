@@ -121,6 +121,7 @@ export function checkFileTimelineCompatibility(
   entry: { kind?: string; name: string; path?: string },
   mediaStore: {
     metadataLoadFailed: Record<string, boolean>;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     mediaMetadata: Record<string, any>;
   },
 ): { compatible: boolean; reasonKey: string | null } {
@@ -145,6 +146,7 @@ export function checkFileTimelineCompatibility(
   }
 
   if (entry.path) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const isRemote = entry.path.startsWith('/remote') || (entry as any).source === 'remote';
     const isExternal = entry.path.startsWith('/') || /^[A-Za-z]:[\\/]/.test(entry.path);
     const cacheKey = isRemote || isExternal ? `external:${entry.path}` : entry.path;

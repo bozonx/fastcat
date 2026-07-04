@@ -22,13 +22,33 @@ Chromium Playwright suite.
 | --- | --- | --- |
 | App boots in the native webview and exposes Tauri internals | Yes | `test/tauri-e2e/specs/smoke.e2e.ts` |
 | JS-to-Rust command wiring, payload shape, and command errors | Yes | Tauri e2e + matching unit/contract tests |
-| Real filesystem permissions, app data paths, asset protocol URLs | Yes | Tauri e2e for the full path, unit tests for path helpers |
-| Native file dialogs or OS-backed file picking flows | Yes, sparingly | Component/unit tests for dialog call wrappers |
-| Native monitor/render/export pipeline through Rust | Yes, smoke-level | `test:golden` for frame parity, Rust tests for engine details |
-| WebKitGTK-only regressions in app startup, CSP, workers, media, canvas | Yes, smoke-level | Playwright web e2e for product workflow depth |
+| Real filesystem permissions, app data paths, asset protocol URLs | Yes | `test/tauri-e2e/specs/ipc-scope.e2e.ts` |
+| Native runtime capabilities and web fallback check | Yes | `test/tauri-e2e/specs/native-runtime-capabilities.e2e.ts` |
+| FFmpeg probe metadata via IPC | Yes | `test/tauri-e2e/specs/native-media-metadata.e2e.ts` |
+| Native fontdb family discovery | Yes | `test/tauri-e2e/specs/native-fonts.e2e.ts` |
+| FFmpeg diagnostics and HW settings updates | Yes | `test/tauri-e2e/specs/native-ffmpeg-diagnostics.e2e.ts` |
+| WebP video frame extraction via IPC | Yes | `test/tauri-e2e/specs/native-frame-render.e2e.ts` |
+| Minimal timeline export smoke | Yes | `test/tauri-e2e/specs/native-export-smoke.e2e.ts` |
+| Native monitor IPC lifecycle smoke | Yes | `test/tauri-e2e/specs/native-monitor-smoke.e2e.ts` |
 | Timeline editing, selection, undo/redo, project workflow logic | No | `test/e2e/web` and unit tests |
 | Pure math, serialization, media graph, transition logic | No | unit/parity/golden tiers |
 | Browser-only OPFS workflows with mocked Tauri APIs | No | `test/e2e/web` |
+
+## Suite Organization
+
+- **P0 Tier**:
+  - `smoke.e2e.ts`: App startup, WebKitGTK mount, document title, and `__TAURI_INTERNALS__` presence.
+  - `ipc-scope.e2e.ts`: Real Tauri filesystem policy (`allow_path_scope`, `allow_dropped_file_scope`, root/home/sensitive path rejection, relative path rejection).
+  - `native-runtime-capabilities.e2e.ts`: Desktop runtime detection (`isTauriRuntime()`) and web-fallback element verification.
+- **P1 Tier**:
+  - `native-media-metadata.e2e.ts`: IPC `native_media_metadata` probe on a real fixture file inside an allowed temp directory.
+  - `native-fonts.e2e.ts`: System fonts enumeration via `native_system_fonts`.
+  - `native-ffmpeg-diagnostics.e2e.ts`: IPC diagnostics retrieval and hardware acceleration settings updates.
+- **P2 Tier**:
+  - `native-frame-render.e2e.ts`: WebP video frame extraction (`native_video_frame_webp`), magic header validation (`RIFF...WEBP`), and invalid path error handling.
+  - `native-export-smoke.e2e.ts`: Minimal 0.5s native export (`native_timeline_export`), verifying output file existence and duration probing.
+  - `native-monitor-smoke.e2e.ts`: Monitor IPC lifecycle (`monitor_set_mode`, `monitor_set_canvas_size`, `monitor_set_scene`, `monitor_seek`, `monitor_pause`, `monitor_close`).
+
 
 Good Tauri e2e scenarios:
 
