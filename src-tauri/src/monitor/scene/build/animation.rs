@@ -205,14 +205,51 @@ mod tests {
         KeyframeTrack {
             keyframes: kfs
                 .iter()
-                .map(|&(t_us, value, easing)| Keyframe { t_us, value, easing })
+                .map(|&(t_us, value, easing)| Keyframe {
+                    t_us,
+                    value,
+                    easing,
+                })
                 .collect(),
+        }
+    }
+
+    /// Cross-engine parity contract — pairs with the TS test
+    /// `keyframe-interp.parity.test.ts`. Both must evaluate every case in
+    /// `shared/parity/keyframe-interp.cases.json` identically.
+    #[test]
+    fn eval_track_at_matches_shared_parity_fixture() {
+        const FIXTURE: &str =
+            include_str!("../../../../../shared/parity/keyframe-interp.cases.json");
+        let parsed: serde_json::Value = serde_json::from_str(FIXTURE).expect("valid fixture json");
+        let cases = parsed["cases"].as_array().expect("cases array");
+        assert!(!cases.is_empty());
+        for c in cases {
+            let name = c["name"].as_str().unwrap_or("<unnamed>");
+            let keyframes: Vec<Keyframe> =
+                serde_json::from_value(c["keyframes"].clone()).expect("valid keyframes");
+            let track = KeyframeTrack { keyframes };
+            let query_t_us = c["queryTUs"].as_f64().unwrap();
+            let got = eval_track_at(&track, query_t_us);
+            match c["expected"].as_f64() {
+                Some(want) => {
+                    let got =
+                        got.unwrap_or_else(|| panic!("{name}: expected Some({want}), got None"));
+                    assert!((got - want).abs() < 1e-9, "{name}: got {got}, want {want}");
+                }
+                None => {
+                    assert!(got.is_none(), "{name}: expected None, got {got:?}");
+                }
+            }
         }
     }
 
     #[test]
     fn empty_track_is_none() {
-        assert_eq!(eval_track_at(&KeyframeTrack { keyframes: vec![] }, 0.0), None);
+        assert_eq!(
+            eval_track_at(&KeyframeTrack { keyframes: vec![] }, 0.0),
+            None
+        );
     }
 
     #[test]
