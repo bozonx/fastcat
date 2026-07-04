@@ -851,7 +851,7 @@ function onTimelineDndOver(ctx: DndDragContext) {
   const trackId = trackEl?.dataset.trackId;
   if (!trackEl || !trackId) {
     clearDragPreview();
-    ctx.setOperation('none');
+    ctx.setOperation('cancel');
     return;
   }
   ctx.setOperation('timeline-add');
@@ -862,6 +862,16 @@ function onTimelineDndOver(ctx: DndDragContext) {
     trackRectLeft: trackEl.getBoundingClientRect().left,
     pointer: ctx.pointer,
   });
+}
+
+function onNonTrackDragOver(e: DragEvent) {
+  const types = e.dataTransfer?.types;
+  if (types && Array.from(types).includes('Files')) {
+    e.preventDefault();
+    if (e.dataTransfer) {
+      e.dataTransfer.dropEffect = 'none';
+    }
+  }
 }
 
 function onTimelineDndLeave() {
@@ -1018,7 +1028,9 @@ async function handleConfirmCreateVersion(newName: string) {
     />
 
     <!-- Row 1: Toolbar -->
-    <TimelineToolbar />
+    <div class="shrink-0" @dragover="onNonTrackDragOver">
+      <TimelineToolbar />
+    </div>
 
     <!-- Backup Preview Banner -->
     <div
@@ -1072,6 +1084,7 @@ async function handleConfirmCreateVersion(newName: string) {
       @pointermove="onTimelinePointerMove"
       @pointerup="onTimelinePointerUp"
       @pointercancel="onTimelinePointerUp"
+      @dragover="onNonTrackDragOver"
     >
       <UContextMenu :items="emptyAreaContextMenuItems">
         <div

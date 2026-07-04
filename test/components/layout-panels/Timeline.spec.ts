@@ -165,11 +165,25 @@ describe('Timeline Component', () => {
   });
 
   it('updates current time via timecode', async () => {
-    const timelineStore = useTimelineStore();
     const component = await mountSuspended(Timeline);
+    const timelineStore = useTimelineStore();
+    timelineStore.setCurrentTimeUs = vi.fn();
     const timecode = component.findComponent(UiTimecode);
 
     await timecode.vm.$emit('update:modelValue', 20_000_000);
     expect(timelineStore.setCurrentTimeUs).toHaveBeenCalledWith(20_000_000);
+  });
+
+  it('sets dropEffect to none when dragging OS files over timeline toolbar or ruler', async () => {
+    const component = await mountSuspended(Timeline);
+    const toolbarWrapper = component.find('.shrink-0');
+
+    const dataTransfer = {
+      types: ['Files'],
+      dropEffect: 'copy',
+    };
+
+    await toolbarWrapper.trigger('dragover', { dataTransfer });
+    expect(dataTransfer.dropEffect).toBe('none');
   });
 });
