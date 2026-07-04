@@ -1,4 +1,10 @@
 <script setup lang="ts">
+defineOptions({
+  inheritAttrs: false,
+});
+
+const attrs = useAttrs();
+
 type ButtonColor = 'primary' | 'secondary' | 'neutral' | 'error' | 'warning' | 'success' | 'info';
 type ButtonSize = 'xs' | 'sm' | 'md' | 'lg' | 'xl';
 type ButtonVariant = 'solid' | 'outline' | 'soft' | 'ghost' | 'subtle' | 'link';
@@ -87,6 +93,7 @@ const computedStyle = computed(() => {
 
 <template>
   <UButton
+    v-bind="attrs"
     :size="size"
     :variant="computedVariant"
     :color="computedColor"
@@ -95,6 +102,7 @@ const computedStyle = computed(() => {
     :disabled="disabled"
     :title="title"
     :style="computedStyle"
+    :aria-pressed="modelValue"
     class="transition-all duration-200"
     :class="[
       square

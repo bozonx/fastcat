@@ -45,6 +45,7 @@ test/e2e/
     workspace.spec.ts       ← OPFS workspace creation
   web/
     editor-smoke-workflow.spec.ts   ← the single long happy-path
+    clip-effects-workflow.spec.ts   ← add/edit/reload clip video effects
     project-creation.spec.ts        ← create project → FS + timeline doc
     media-import.spec.ts            ← real import pipeline (file input)
     timeline-add-clip.spec.ts       ← file manager → track
@@ -98,6 +99,11 @@ no stable hook:
 | `nav-export` | editor header export-view tab |
 | `export-start` | export start button |
 | `export-progress` / `export-success` | export status regions |
+| `clip-effects-video` / `clip-effects-video-add` | video effect editor and add button |
+| `select-effect-<type>` | effect picker card |
+| `clip-effect-<type>` | applied clip effect block |
+| `clip-effect-<type>-param-<key>` | applied effect parameter control |
+| `monitor-preview-effects` | monitor preview-effects toggle |
 
 ## Running
 

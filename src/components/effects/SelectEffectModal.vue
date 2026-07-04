@@ -101,6 +101,7 @@ function handleSelect(type: string) {
             v-for="effect in groupedEffects.basic"
             :key="effect.type"
             :manifest="effect"
+            :data-testid="`select-effect-${effect.type}`"
             @click="handleSelect(effect.type)"
           />
         </div>
@@ -117,6 +118,7 @@ function handleSelect(type: string) {
             v-for="effect in groupedEffects.nonBasic"
             :key="effect.type"
             :manifest="effect"
+            :data-testid="`select-effect-${effect.type}`"
             @click="handleSelect(effect.type)"
           />
         </div>
@@ -133,6 +135,7 @@ function handleSelect(type: string) {
             v-for="effect in groupedEffects.custom"
             :key="effect.type"
             :manifest="effect"
+            :data-testid="`select-effect-${effect.type}`"
             @click="handleSelect(effect.type)"
           />
         </div>

@@ -24,12 +24,14 @@ const props = withDefaults(
     asContents?: boolean;
     forceFullWidth?: boolean;
     disabled?: boolean;
+    testIdPrefix?: string;
   }>(),
   {
     asContents: false,
     forceFullWidth: false,
     disabled: false,
     size: 'sm',
+    testIdPrefix: undefined,
   },
 );
 
@@ -355,6 +357,8 @@ function handleArrayItemUpdate(
         v-if="entry.kind === 'row'"
         class="grid gap-2"
         :class="entry.control.columns === 1 ? 'grid-cols-1' : 'grid-cols-2'"
+        :data-testid="props.testIdPrefix ? `${props.testIdPrefix}-param-${entry.key}` : undefined"
+        :data-param-key="entry.key"
       >
         <ParamsRenderer
           :controls="entry.control.controls ?? []"
@@ -362,6 +366,7 @@ function handleArrayItemUpdate(
           :size="size"
           as-contents
           :force-full-width="Boolean(entry.control.columns && entry.control.columns > 1)"
+          :test-id-prefix="props.testIdPrefix"
           @update:value="(key, value) => updateValue(key, value)"
         />
       </div>
@@ -378,6 +383,8 @@ function handleArrayItemUpdate(
         :step="entry.control.step ?? 1"
         :default-value="entry.control.defaultValue"
         :disabled="entry.disabled"
+        :data-testid="props.testIdPrefix ? `${props.testIdPrefix}-param-${entry.key}` : undefined"
+        :data-param-key="entry.key"
         show-input
         @update:model-value="(value: number) => updateValue(entry.control.key, value)"
       />
@@ -385,6 +392,8 @@ function handleArrayItemUpdate(
       <div
         v-else-if="entry.kind === 'knob'"
         class="flex flex-col items-center justify-center gap-1.5 py-1"
+        :data-testid="props.testIdPrefix ? `${props.testIdPrefix}-param-${entry.key}` : undefined"
+        :data-param-key="entry.key"
       >
         <UiKnob
           :model-value="entry.numberValue"
@@ -405,7 +414,13 @@ function handleArrayItemUpdate(
       </div>
 
       <div v-else-if="entry.kind === 'number'" class="flex flex-col gap-0.5">
-        <span class="text-xs text-ui-text-muted">{{ entry.label }}</span>
+        <span
+          class="text-xs text-ui-text-muted"
+          :data-testid="props.testIdPrefix ? `${props.testIdPrefix}-param-${entry.key}` : undefined"
+          :data-param-key="entry.key"
+        >
+          {{ entry.label }}
+        </span>
         <UiWheelNumberInput
           :model-value="entry.numberValue"
           :size="size"
@@ -511,6 +526,8 @@ function handleArrayItemUpdate(
       <div
         v-else-if="entry.kind === 'toggle' || entry.kind === 'boolean'"
         class="flex items-center justify-between gap-3"
+        :data-testid="props.testIdPrefix ? `${props.testIdPrefix}-param-${entry.key}` : undefined"
+        :data-param-key="entry.key"
       >
         <span class="text-xs text-ui-text-muted">{{ entry.label }}</span>
         <USwitch
@@ -522,7 +539,13 @@ function handleArrayItemUpdate(
       </div>
 
       <div v-else-if="entry.kind === 'select'" class="flex flex-col gap-0.5">
-        <span class="text-xs text-ui-text-muted">{{ entry.label }}</span>
+        <span
+          class="text-xs text-ui-text-muted"
+          :data-testid="props.testIdPrefix ? `${props.testIdPrefix}-param-${entry.key}` : undefined"
+          :data-param-key="entry.key"
+        >
+          {{ entry.label }}
+        </span>
         <UiSelect
           :model-value="entry.value as string"
           :items="entry.selectItems"
@@ -537,7 +560,13 @@ function handleArrayItemUpdate(
       </div>
 
       <div v-else-if="entry.kind === 'button-group'" class="flex flex-col gap-1">
-        <span class="text-xs text-ui-text-muted">{{ entry.label }}</span>
+        <span
+          class="text-xs text-ui-text-muted"
+          :data-testid="props.testIdPrefix ? `${props.testIdPrefix}-param-${entry.key}` : undefined"
+          :data-param-key="entry.key"
+        >
+          {{ entry.label }}
+        </span>
         <UiButtonGroup
           :model-value="entry.value"
           :options="entry.selectItems"
@@ -551,7 +580,13 @@ function handleArrayItemUpdate(
       </div>
 
       <div v-else-if="entry.kind === 'color'" class="flex flex-col gap-0.5">
-        <span class="text-xs text-ui-text-muted">{{ entry.label }}</span>
+        <span
+          class="text-xs text-ui-text-muted"
+          :data-testid="props.testIdPrefix ? `${props.testIdPrefix}-param-${entry.key}` : undefined"
+          :data-param-key="entry.key"
+        >
+          {{ entry.label }}
+        </span>
         <UColorPicker
           :model-value="entry.stringValue"
           format="hex"
@@ -564,7 +599,13 @@ function handleArrayItemUpdate(
       </div>
 
       <div v-else-if="entry.kind === 'text'" class="flex flex-col gap-0.5">
-        <span class="text-xs text-ui-text-muted">{{ entry.label }}</span>
+        <span
+          class="text-xs text-ui-text-muted"
+          :data-testid="props.testIdPrefix ? `${props.testIdPrefix}-param-${entry.key}` : undefined"
+          :data-param-key="entry.key"
+        >
+          {{ entry.label }}
+        </span>
         <UiTextarea
           v-if="entry.control.multiline"
           :model-value="entry.stringValue"
@@ -590,7 +631,13 @@ function handleArrayItemUpdate(
       </div>
 
       <div v-else-if="entry.kind === 'file'" class="flex flex-col gap-1">
-        <span class="text-xs text-ui-text-muted">{{ entry.label }}</span>
+        <span
+          class="text-xs text-ui-text-muted"
+          :data-testid="props.testIdPrefix ? `${props.testIdPrefix}-param-${entry.key}` : undefined"
+          :data-param-key="entry.key"
+        >
+          {{ entry.label }}
+        </span>
         <div
           class="flex items-center gap-2 p-2 rounded border border-dashed transition-colors"
           :class="

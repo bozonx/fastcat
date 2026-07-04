@@ -703,6 +703,7 @@ watch(viewportRef, (vp) => {
                 :active-bg="'color-mix(in srgb, var(--selection-accent-500) 12%, transparent)'"
                 :active-text="'var(--selection-accent-400)'"
                 no-toggle
+                data-testid="monitor-preview-effects"
                 @click="togglePreviewEffects"
               />
             </UiTooltip>

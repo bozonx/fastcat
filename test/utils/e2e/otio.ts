@@ -39,6 +39,16 @@ export interface TimelineItemView {
   audioFadeInCurve?: string;
   audioFadeOutCurve?: string;
   audioMuted?: boolean;
+  /** Clip effects persisted as OTIO Effect metadata. */
+  effects: TimelineEffectView[];
+}
+
+export interface TimelineEffectView {
+  id: string;
+  type: string;
+  enabled: boolean;
+  target?: string;
+  params: Record<string, unknown>;
 }
 
 export interface TimelineTrackView {
@@ -85,6 +95,23 @@ interface RawChild {
   };
   source_range?: RawRange;
   media_reference?: { OTIO_SCHEMA?: string; target_url?: string };
+  effects?: RawEffect[];
+}
+interface RawEffect {
+  OTIO_SCHEMA?: string;
+  name?: string;
+  effect_name?: string;
+  enabled?: boolean;
+  metadata?: {
+    fastcat?: {
+      effect?: {
+        id?: string;
+        type?: string;
+        target?: string;
+        params?: Record<string, unknown>;
+      };
+    };
+  };
 }
 interface RawTrack {
   OTIO_SCHEMA?: string;
@@ -108,6 +135,28 @@ function classify(schema: string | undefined): OtioItemType {
   if (schema?.startsWith('Gap')) return 'gap';
   if (schema?.startsWith('Transition')) return 'transition';
   return 'clip';
+}
+
+function parseEffects(raw: RawEffect[] | undefined): TimelineEffectView[] {
+  return (raw ?? [])
+    .filter((effect) => effect.OTIO_SCHEMA === 'Effect.1')
+    .map((effect) => {
+      const metadata = effect.metadata?.fastcat?.effect;
+      const type =
+        metadata?.type ??
+        (typeof effect.effect_name === 'string'
+          ? effect.effect_name.replace(/^fastcat:/, '')
+          : (effect.name ?? ''));
+
+      return {
+        id: metadata?.id ?? effect.name ?? '',
+        type,
+        enabled: effect.enabled !== false,
+        target: metadata?.target,
+        params: metadata?.params ?? {},
+      };
+    })
+    .filter((effect) => effect.id.length > 0 && effect.type.length > 0);
 }
 
 function parseTrack(raw: RawTrack): TimelineTrackView {
@@ -143,6 +192,7 @@ function parseTrack(raw: RawTrack): TimelineTrackView {
       audioFadeInCurve: fastcatAudio?.fadeInCurve,
       audioFadeOutCurve: fastcatAudio?.fadeOutCurve,
       audioMuted: fastcatAudio?.muted,
+      effects: parseEffects(child.effects),
     });
 
     cursorUs += timelineDurationUs;

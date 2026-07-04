@@ -197,6 +197,7 @@ function resolveEffectName(manifest: EffectItem['manifest'], type: string) {
     :title="safeTitle"
     class="mt-2"
     :has-toggle="props.hasToggle"
+    :data-testid="`clip-effects-${props.target}`"
     v-bind="dropZoneAttrs"
   >
     <template #header-actions>
@@ -206,6 +207,7 @@ function resolveEffectName(manifest: EffectItem['manifest'], type: string) {
         color="primary"
         icon="i-heroicons-plus"
         :disabled="props.disabled"
+        :data-testid="`clip-effects-${props.target}-add`"
         @click="void (isEffectModalOpen = true)"
       >
         {{ safeAddLabel }}
@@ -233,6 +235,7 @@ function resolveEffectName(manifest: EffectItem['manifest'], type: string) {
           :key="String(effect.id)"
           class="bg-ui-bg border border-ui-border rounded px-2 py-2"
           :class="{ 'opacity-50 pointer-events-none': props.disabled }"
+          :data-testid="`clip-effect-${String(effect.type)}`"
         >
           <div class="flex items-center w-full gap-2 mb-1">
             <UIcon
@@ -276,6 +279,7 @@ function resolveEffectName(manifest: EffectItem['manifest'], type: string) {
               :controls="manifest.controls"
               :values="effect"
               :disabled="props.disabled || !effect.enabled"
+              :test-id-prefix="`clip-effect-${String(effect.type)}`"
               @update:value="
                 (key: string, value: unknown) =>
                   handleUpdateEffectValue(String(effect.id), key, value)
