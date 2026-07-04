@@ -2,410 +2,57 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 import { useFileDrop } from '~/composables/file-manager/useFileDrop';
-import type { FsEntry } from '~/types/fs';
 
-const { crossVfsCopyMock, crossVfsMoveMock } = vi.hoisted(() => ({
-  crossVfsCopyMock: vi.fn(),
-  crossVfsMoveMock: vi.fn(),
+const { syncFileManagerDragCursorMock, resetFileManagerDragCursorMock } = vi.hoisted(() => ({
+  syncFileManagerDragCursorMock: vi.fn(),
+  resetFileManagerDragCursorMock: vi.fn(),
 }));
 
-const workspaceStoreMock = {
-  userSettings: {
-    hotkeys: {
-      layer1: 'Shift',
-    },
-  },
-  workspaceState: {
-    fileBrowser: {
-      instances: {},
-    },
-  },
-};
-
-const uiStoreMock = {
-  isFileManagerDragging: false,
-  notifyFileManagerUpdate: vi.fn(),
-};
-
-let dragSourceFileManagerInstanceIdMock: string | null = null;
-let dragSourceVfsMock: any = null;
-let currentDragOperationMock: 'copy' | 'move' | null = null;
-const setCurrentDragOperationMock = vi.fn();
-const setDragTargetFileManagerInstanceIdMock = vi.fn();
-
-vi.mock('~/stores/workspace.store', () => ({
-  useWorkspaceStore: () => workspaceStoreMock,
-}));
-
-vi.mock('~/stores/ui.store', () => ({
-  useUiStore: () => uiStoreMock,
-}));
-
-vi.mock('~/composables/useAppClipboard', () => ({
-  useAppClipboard: () => ({
-    get dragSourceFileManagerInstanceId() {
-      return dragSourceFileManagerInstanceIdMock;
-    },
-    get dragSourceVfs() {
-      return dragSourceVfsMock;
-    },
-    get currentDragOperation() {
-      return currentDragOperationMock;
-    },
-    setCurrentDragOperation: setCurrentDragOperationMock,
-    setDragTargetFileManagerInstanceId: setDragTargetFileManagerInstanceIdMock,
-  }),
-}));
-
-vi.mock('~/file-manager/core/vfs/crossVfs', () => ({
-  crossVfsCopy: crossVfsCopyMock,
-  crossVfsMove: crossVfsMoveMock,
+vi.mock('~/composables/file-manager/dragCursor', () => ({
+  syncFileManagerDragCursor: syncFileManagerDragCursorMock,
+  resetFileManagerDragCursor: resetFileManagerDragCursorMock,
 }));
 
 describe('useFileDrop', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    dragSourceFileManagerInstanceIdMock = null;
-    dragSourceVfsMock = null;
-    currentDragOperationMock = null;
-    setDragTargetFileManagerInstanceIdMock.mockReset();
-    uiStoreMock.notifyFileManagerUpdate.mockReset();
   });
 
-  it('moves to root on internal drop within the same file manager by default', async () => {
-    const source: FsEntry = {
-      name: 'clip.mp4',
-      kind: 'file',
-      path: '_video/clip.mp4',
-    };
-    dragSourceFileManagerInstanceIdMock = 'main';
-    const resolveEntryByPath = vi.fn(async () => source);
-    const handleFiles = vi.fn();
-    const moveEntry = vi.fn();
-    const copyEntry = vi.fn();
-
-    const { onRootDrop } = useFileDrop({
-      resolveEntryByPath,
+  function createApi(handleFiles = vi.fn()) {
+    return useFileDrop({
+      resolveEntryByPath: vi.fn(),
       handleFiles,
-      moveEntry,
-      copyEntry,
-      targetFileManagerInstanceId: 'main',
-    });
-
-    const event = {
-      stopPropagation: vi.fn(),
-      shiftKey: false,
-      dataTransfer: {
-        files: [],
-        types: ['application/fastcat-file-manager-move'],
-        getData: vi.fn((type: string) => {
-          if (type === 'application/fastcat-file-manager-move') {
-            return JSON.stringify([{ path: '_video/clip.mp4' }]);
-          }
-          return '';
-        }),
-      },
-    } as unknown as DragEvent;
-
-    await onRootDrop(event);
-
-    expect(moveEntry).toHaveBeenCalledWith(
-      {
-        source,
-        targetDirPath: '',
-      },
-      {
-        skipReload: true,
-        skipNotify: true,
-      },
-    );
-    expect(copyEntry).not.toHaveBeenCalled();
-    expect(handleFiles).not.toHaveBeenCalled();
-  });
-
-  it('uses current modifier state on drop within the same file manager', async () => {
-    const source: FsEntry = {
-      name: 'clip.mp4',
-      kind: 'file',
-      path: '_video/clip.mp4',
-    };
-    dragSourceFileManagerInstanceIdMock = 'main';
-    currentDragOperationMock = 'move';
-
-    const moveEntry = vi.fn();
-    const copyEntry = vi.fn();
-
-    const { onRootDrop } = useFileDrop({
-      resolveEntryByPath: vi.fn(async () => source),
-      handleFiles: vi.fn(),
-      moveEntry,
-      copyEntry,
-      targetFileManagerInstanceId: 'main',
-      vfs: {} as any,
-    });
-
-    await onRootDrop(
-      {
-        stopPropagation: vi.fn(),
-        shiftKey: false,
-        dataTransfer: {
-          files: [],
-          types: ['application/fastcat-file-manager-copy'],
-          getData: vi.fn((type: string) =>
-            type === 'application/fastcat-file-manager-copy'
-              ? JSON.stringify([{ path: '_video/clip.mp4' }])
-              : '',
-          ),
-        },
-      } as unknown as DragEvent,
-      '_video/sub',
-    );
-
-    expect(moveEntry).toHaveBeenCalledWith(
-      {
-        source,
-        targetDirPath: '_video/sub',
-      },
-      {
-        skipReload: true,
-        skipNotify: true,
-      },
-    );
-    expect(copyEntry).not.toHaveBeenCalled();
-  });
-
-  it('keeps targetDirPath for cross-file-manager drops', async () => {
-    dragSourceFileManagerInstanceIdMock = 'sidebar';
-    dragSourceVfsMock = { id: 'source' };
-    currentDragOperationMock = 'copy';
-
-    const { onRootDrop } = useFileDrop({
-      resolveEntryByPath: vi.fn(),
-      handleFiles: vi.fn(),
       moveEntry: vi.fn(),
       copyEntry: vi.fn(),
       targetFileManagerInstanceId: 'main',
-      vfs: { id: 'target' } as any,
+      vfs: { id: 'project' } as any,
     });
+  }
 
-    await onRootDrop(
-      {
-        stopPropagation: vi.fn(),
-        shiftKey: false,
-        dataTransfer: {
-          files: [],
-          types: ['application/fastcat-file-manager-move'],
-          getData: vi.fn((type: string) =>
-            type === 'application/fastcat-file-manager-move'
-              ? JSON.stringify([{ path: 'workspace/clip.mp4', kind: 'file' }])
-              : '',
-          ),
-        },
-      } as unknown as DragEvent,
-      '_video/sub',
-    );
+  it('treats only OS Files drags as relevant', () => {
+    const { isRelevantDrag } = createApi();
 
-    expect(crossVfsCopyMock).toHaveBeenCalledWith(
-      expect.objectContaining({
-        sourcePath: 'workspace/clip.mp4',
-        targetDirPath: '_video/sub',
-      }),
-    );
-    expect(crossVfsMoveMock).not.toHaveBeenCalled();
+    expect(
+      isRelevantDrag({
+        dataTransfer: { types: ['Files'] },
+      } as unknown as DragEvent),
+    ).toBe(true);
+
+    expect(
+      isRelevantDrag({
+        dataTransfer: { types: ['application/fastcat-file-manager-move'] },
+      } as unknown as DragEvent),
+    ).toBe(false);
   });
 
-  it('reads the drag source at drop time for cross-file-manager root drops', async () => {
-    const { onRootDrop } = useFileDrop({
-      resolveEntryByPath: vi.fn(),
-      handleFiles: vi.fn(),
-      moveEntry: vi.fn(),
-      copyEntry: vi.fn(),
-      targetFileManagerInstanceId: 'main',
-      vfs: { id: 'target' } as any,
-    });
-
-    dragSourceFileManagerInstanceIdMock = 'computer';
-    dragSourceVfsMock = { id: 'computer-vfs' };
-    currentDragOperationMock = 'copy';
-
-    await onRootDrop(
-      {
-        stopPropagation: vi.fn(),
-        shiftKey: false,
-        dataTransfer: {
-          files: [],
-          types: ['application/fastcat-file-manager-copy'],
-          getData: vi.fn((type: string) =>
-            type === 'application/fastcat-file-manager-copy'
-              ? JSON.stringify([{ path: 'workspace/clip.mp4', kind: 'file' }])
-              : '',
-          ),
-        },
-      } as unknown as DragEvent,
-      '_video',
-    );
-
-    expect(crossVfsCopyMock).toHaveBeenCalledWith(
-      expect.objectContaining({
-        sourceVfs: { id: 'computer-vfs' },
-        targetVfs: { id: 'target' },
-        sourcePath: 'workspace/clip.mp4',
-        targetDirPath: '_video',
-      }),
-    );
-  });
-
-  it('allows copying BloggerDog virtual txt file into project file manager', async () => {
-    dragSourceFileManagerInstanceIdMock = 'sidebar';
-    dragSourceVfsMock = { id: 'bloggerdog' };
-    currentDragOperationMock = 'copy';
-
-    const { onRootDrop } = useFileDrop({
-      resolveEntryByPath: vi.fn(),
-      handleFiles: vi.fn(),
-      moveEntry: vi.fn(),
-      copyEntry: vi.fn(),
-      targetFileManagerInstanceId: 'main',
-      vfs: { id: 'target' } as any,
-    });
-
-    await onRootDrop(
-      {
-        stopPropagation: vi.fn(),
-        shiftKey: false,
-        dataTransfer: {
-          files: [],
-          types: ['application/fastcat-file-manager-copy'],
-          getData: vi.fn((type: string) =>
-            type === 'application/fastcat-file-manager-copy'
-              ? JSON.stringify([
-                  { path: '/personal/item-1/Item.txt', kind: 'file', name: 'Item.txt' },
-                ])
-              : '',
-          ),
-        },
-      } as unknown as DragEvent,
-      'documents',
-    );
-
-    expect(crossVfsCopyMock).toHaveBeenCalledWith(
-      expect.objectContaining({
-        sourceVfs: { id: 'bloggerdog' },
-        sourcePath: '/personal/item-1/Item.txt',
-        targetDirPath: 'documents',
-      }),
-    );
-  });
-
-  it('cancels drop when item is returned onto its own container', async () => {
-    const source: FsEntry = {
-      name: 'clip.mp4',
-      kind: 'file',
-      path: '_video/clip.mp4',
-    };
-    dragSourceFileManagerInstanceIdMock = 'main';
-
-    const moveEntry = vi.fn();
-    const copyEntry = vi.fn();
-
-    const { onRootDrop } = useFileDrop({
-      resolveEntryByPath: vi.fn(async () => source),
-      handleFiles: vi.fn(),
-      moveEntry,
-      copyEntry,
-      targetFileManagerInstanceId: 'main',
-      vfs: {} as any,
-    });
-
-    await onRootDrop(
-      {
-        stopPropagation: vi.fn(),
-        shiftKey: true,
-        dataTransfer: {
-          files: [],
-          types: ['application/fastcat-file-manager-copy'],
-          getData: vi.fn((type: string) =>
-            type === 'application/fastcat-file-manager-copy'
-              ? JSON.stringify([{ path: '_video/clip.mp4' }])
-              : '',
-          ),
-        },
-        target: {
-          closest: () => ({
-            dataset: { entryPath: '_video/clip.mp4' },
-          }),
-        },
-      } as unknown as DragEvent,
-      '_video',
-    );
-
-    expect(moveEntry).not.toHaveBeenCalled();
-    expect(copyEntry).not.toHaveBeenCalled();
-  });
-
-  it('prioritizes internal file-manager payload over native Files on drop', async () => {
-    const source: FsEntry = {
-      name: 'clip.mp4',
-      kind: 'file',
-      path: '_video/clip.mp4',
-    };
-    dragSourceFileManagerInstanceIdMock = 'main';
-
-    const handleFiles = vi.fn();
-    const moveEntry = vi.fn();
-
-    const { onRootDrop } = useFileDrop({
-      resolveEntryByPath: vi.fn(async () => source),
-      handleFiles,
-      moveEntry,
-      copyEntry: vi.fn(),
-      targetFileManagerInstanceId: 'main',
-      vfs: {} as any,
-    });
-
-    await onRootDrop({
-      stopPropagation: vi.fn(),
-      shiftKey: false,
-      dataTransfer: {
-        files: [{ name: 'clip.mp4' }],
-        types: ['Files', 'application/fastcat-file-manager-move'],
-        getData: vi.fn((type: string) =>
-          type === 'application/fastcat-file-manager-move'
-            ? JSON.stringify([{ path: '_video/clip.mp4' }])
-            : '',
-        ),
-      },
-    } as unknown as DragEvent);
-
-    expect(moveEntry).toHaveBeenCalledWith(
-      {
-        source,
-        targetDirPath: '',
-      },
-      {
-        skipReload: true,
-        skipNotify: true,
-      },
-    );
-    expect(handleFiles).not.toHaveBeenCalled();
-  });
-
-  it('calls preventDefault on root dragover for relevant internal drags', () => {
-    const { onRootDragOver } = useFileDrop({
-      resolveEntryByPath: vi.fn(),
-      handleFiles: vi.fn(),
-      moveEntry: vi.fn(),
-      copyEntry: vi.fn(),
-      targetFileManagerInstanceId: 'main',
-      vfs: {} as any,
-    });
-
+  it('sets copy feedback on OS file dragover', () => {
+    const { onRootDragOver } = createApi();
     const event = {
       preventDefault: vi.fn(),
       stopPropagation: vi.fn(),
       dataTransfer: {
-        types: ['application/fastcat-file-manager-move'],
-        getData: vi.fn(),
+        types: ['Files'],
+        dropEffect: 'none',
       },
     } as unknown as DragEvent;
 
@@ -413,23 +60,21 @@ describe('useFileDrop', () => {
 
     expect(event.preventDefault).toHaveBeenCalled();
     expect(event.stopPropagation).toHaveBeenCalled();
+    expect(event.dataTransfer!.dropEffect).toBe('copy');
+    expect(syncFileManagerDragCursorMock).toHaveBeenCalledWith({
+      isDragging: true,
+      operation: 'copy',
+    });
   });
 
-  it('does not call preventDefault on root dragover for irrelevant drags', () => {
-    const { onRootDragOver } = useFileDrop({
-      resolveEntryByPath: vi.fn(),
-      handleFiles: vi.fn(),
-      moveEntry: vi.fn(),
-      copyEntry: vi.fn(),
-      targetFileManagerInstanceId: 'main',
-      vfs: {} as any,
-    });
-
+  it('ignores internal pointer-DnD MIME types on dragover', () => {
+    const { onRootDragOver } = createApi();
     const event = {
       preventDefault: vi.fn(),
       stopPropagation: vi.fn(),
       dataTransfer: {
-        types: ['text/plain'],
+        types: ['application/fastcat-file-manager-items'],
+        dropEffect: 'none',
       },
     } as unknown as DragEvent;
 
@@ -437,36 +82,42 @@ describe('useFileDrop', () => {
 
     expect(event.preventDefault).not.toHaveBeenCalled();
     expect(event.stopPropagation).not.toHaveBeenCalled();
+    expect(syncFileManagerDragCursorMock).not.toHaveBeenCalled();
   });
 
-  it('handles DOMStringList-like types (ArrayLike without includes)', () => {
-    const { onRootDragOver } = useFileDrop({
-      resolveEntryByPath: vi.fn(),
-      handleFiles: vi.fn(),
-      moveEntry: vi.fn(),
-      copyEntry: vi.fn(),
-      targetFileManagerInstanceId: 'main',
-      vfs: {} as any,
-    });
-
-    const domStringListLike = {
-      length: 1,
-      0: 'application/fastcat-file-manager-move',
-      item: (i: number) => (i === 0 ? 'application/fastcat-file-manager-move' : null),
-    };
-
+  it('imports OS files into the target directory on drop', async () => {
+    const handleFiles = vi.fn().mockResolvedValue(undefined);
+    const { onRootDrop } = createApi(handleFiles);
+    const file = { name: 'clip.mp4' } as File;
     const event = {
-      preventDefault: vi.fn(),
       stopPropagation: vi.fn(),
       dataTransfer: {
-        types: domStringListLike,
-        getData: vi.fn(),
+        files: [file],
+        types: ['Files'],
       },
     } as unknown as DragEvent;
 
-    onRootDragOver(event);
+    await onRootDrop(event, '_video');
 
-    expect(event.preventDefault).toHaveBeenCalled();
     expect(event.stopPropagation).toHaveBeenCalled();
+    expect(resetFileManagerDragCursorMock).toHaveBeenCalled();
+    expect(handleFiles).toHaveBeenCalledWith([file], { targetDirPath: '_video' });
+  });
+
+  it('does not import internal payloads even when legacy MIME types are present', async () => {
+    const handleFiles = vi.fn();
+    const { onRootDrop } = createApi(handleFiles);
+
+    await onRootDrop({
+      stopPropagation: vi.fn(),
+      dataTransfer: {
+        files: [],
+        types: ['application/fastcat-file-manager-move'],
+        getData: vi.fn(() => JSON.stringify([{ path: '_video/clip.mp4' }])),
+      },
+    } as unknown as DragEvent);
+
+    expect(handleFiles).not.toHaveBeenCalled();
+    expect(resetFileManagerDragCursorMock).toHaveBeenCalled();
   });
 });

@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createPinia, setActivePinia } from 'pinia';
 import { ref } from 'vue';
 import { useTimelineDropHandling } from '~/composables/timeline/useTimelineDropHandling';
-import { FILE_MANAGER_ITEMS_DRAG_TYPE, useDraggedFile } from '~/composables/useDraggedFile';
+import { useDraggedFile } from '~/composables/useDraggedFile';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useMediaStore } from '~/stores/media.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
@@ -203,28 +203,24 @@ describe('useTimelineDropHandling', () => {
       scrollLeft: 0,
       getBoundingClientRect: () => ({ left: 0 }),
     } as unknown as HTMLElement);
-    const { setDraggedFile } = useDraggedFile();
     const api = useTimelineDropHandling({ scrollEl });
 
-    setDraggedFile({
-      name: 'new.mp4',
-      kind: 'file',
-      path: '_video/new.mp4',
-    });
-
-    await api.onTrackDragOver(
-      {
-        clientX: 10,
+    await api.buildPointerDragPreview({
+      payload: {
+        name: 'new.mp4',
+        kind: 'file',
+        path: '_video/new.mp4',
+      },
+      trackId: 'v1',
+      clientX: 10,
+      trackRectLeft: 0,
+      pointer: {
         shiftKey: false,
         ctrlKey: false,
         altKey: false,
         metaKey: false,
-        dataTransfer: {
-          types: ['application/json'],
-        },
-      } as unknown as DragEvent,
-      'v1',
-    );
+      },
+    });
 
     expect(api.dragPreview.value).not.toBeNull();
     expect(api.dragPreview.value?.trackId).toBe('v1');
@@ -238,28 +234,24 @@ describe('useTimelineDropHandling', () => {
       scrollLeft: 0,
       getBoundingClientRect: () => ({ left: 0 }),
     } as unknown as HTMLElement);
-    const { setDraggedFile } = useDraggedFile();
     const api = useTimelineDropHandling({ scrollEl });
 
-    setDraggedFile({
-      name: 'new.mp4',
-      kind: 'file',
-      path: '_video/new.mp4',
-    });
-
-    await api.onTrackDragOver(
-      {
-        clientX: 10,
+    await api.buildPointerDragPreview({
+      payload: {
+        name: 'new.mp4',
+        kind: 'file',
+        path: '_video/new.mp4',
+      },
+      trackId: 'v1',
+      clientX: 10,
+      trackRectLeft: 0,
+      pointer: {
         shiftKey: true,
         ctrlKey: false,
         altKey: false,
         metaKey: false,
-        dataTransfer: {
-          types: ['application/json'],
-        },
-      } as unknown as DragEvent,
-      'v1',
-    );
+      },
+    });
 
     expect(api.dragPreview.value).not.toBeNull();
     expect(api.dragPreview.value?.startUs).toBe(500_000);
@@ -296,28 +288,24 @@ describe('useTimelineDropHandling', () => {
       scrollLeft: 0,
       getBoundingClientRect: () => ({ left: 0 }),
     } as unknown as HTMLElement);
-    const { setDraggedFile } = useDraggedFile();
     const api = useTimelineDropHandling({ scrollEl });
 
-    setDraggedFile({
-      name: 'new.mp4',
-      kind: 'file',
-      path: '_video/new.mp4',
-    });
-
-    await api.onTrackDragOver(
-      {
-        clientX: 24,
+    await api.buildPointerDragPreview({
+      payload: {
+        name: 'new.mp4',
+        kind: 'file',
+        path: '_video/new.mp4',
+      },
+      trackId: 'v1',
+      clientX: 24,
+      trackRectLeft: 0,
+      pointer: {
         shiftKey: false,
         ctrlKey: false,
         altKey: false,
         metaKey: false,
-        dataTransfer: {
-          types: ['application/json'],
-        },
-      } as unknown as DragEvent,
-      'v1',
-    );
+      },
+    });
 
     expect(api.dragPreview.value?.startUs).toBe(2_000_000);
     expect(api.dragPreview.value?.invalid).toBe(false);
@@ -332,29 +320,24 @@ describe('useTimelineDropHandling', () => {
       scrollLeft: 120,
       getBoundingClientRect: () => ({ left: 0 }),
     } as unknown as HTMLElement);
-    const { setDraggedFile } = useDraggedFile();
     const api = useTimelineDropHandling({ scrollEl });
 
-    setDraggedFile({
-      name: 'new.mp4',
-      kind: 'file',
-      path: '_video/new.mp4',
-    });
-
-    await api.onTrackDragOver(
-      {
-        clientX: -96,
-        currentTarget: trackEl,
+    await api.buildPointerDragPreview({
+      payload: {
+        name: 'new.mp4',
+        kind: 'file',
+        path: '_video/new.mp4',
+      },
+      trackId: 'v1',
+      clientX: -96,
+      trackRectLeft: trackEl.getBoundingClientRect().left,
+      pointer: {
         shiftKey: false,
         ctrlKey: false,
         altKey: false,
         metaKey: false,
-        dataTransfer: {
-          types: ['application/json'],
-        },
-      } as unknown as DragEvent,
-      'v1',
-    );
+      },
+    });
 
     expect(api.dragPreview.value?.startUs).toBe(2_000_000);
     expect(api.dragPreview.value?.invalid).toBe(false);
@@ -365,7 +348,6 @@ describe('useTimelineDropHandling', () => {
       scrollLeft: 0,
       getBoundingClientRect: () => ({ left: 0 }),
     } as unknown as HTMLElement);
-    const { setDraggedFile } = useDraggedFile();
     const timelineStore = useTimelineStore() as any;
     timelineStore.addClipToTimelineFromPath = vi.fn().mockResolvedValue({
       durationUs: 1_500_000,
@@ -373,13 +355,6 @@ describe('useTimelineDropHandling', () => {
     });
 
     const api = useTimelineDropHandling({ scrollEl });
-
-    setDraggedFile({
-      name: 'workspace.mp4',
-      kind: 'file',
-      path: '/workspace/workspace.mp4',
-      isExternal: true,
-    });
 
     await api.handleLibraryDrop(
       JSON.stringify({
@@ -405,19 +380,12 @@ describe('useTimelineDropHandling', () => {
     );
   });
 
-  it('prioritizes internal file-manager drag over Tauri Files payload on dragover', async () => {
+  it('builds an OS-file drag preview from DragEvent files only', async () => {
     const scrollEl = ref({
       scrollLeft: 0,
       getBoundingClientRect: () => ({ left: 0 }),
     } as unknown as HTMLElement);
-    const { setDraggedFile } = useDraggedFile();
     const api = useTimelineDropHandling({ scrollEl });
-
-    setDraggedFile({
-      name: 'image.png',
-      kind: 'file',
-      path: '_images/image.png',
-    });
 
     const preventDefault = vi.fn();
     await api.onTrackDragOver(
@@ -429,7 +397,7 @@ describe('useTimelineDropHandling', () => {
         metaKey: false,
         preventDefault,
         dataTransfer: {
-          types: ['Files', FILE_MANAGER_ITEMS_DRAG_TYPE, 'application/json'],
+          types: ['Files'],
           files: [new File(['image'], 'image.png', { type: 'image/png' })],
           dropEffect: 'none',
         },
@@ -442,24 +410,18 @@ describe('useTimelineDropHandling', () => {
     expect(api.dragPreview.value?.trackId).toBe('v1');
   });
 
-  it('does not upload when drop falls back to Files during active internal drag', async () => {
+  it('imports OS files through the file manager before placing them on the timeline', async () => {
     const scrollEl = ref({
       scrollLeft: 0,
       getBoundingClientRect: () => ({ left: 0 }),
     } as unknown as HTMLElement);
-    const { setDraggedFile } = useDraggedFile();
     const timelineStore = useTimelineStore() as any;
     timelineStore.addClipToTimelineFromPath = vi.fn().mockResolvedValue({
       durationUs: 5_000_000,
       itemId: 'clip-image',
     });
+    handleFilesMock.mockResolvedValue([{ targetPath: '_images/image.png', fileName: 'image.png' }]);
     const api = useTimelineDropHandling({ scrollEl });
-
-    setDraggedFile({
-      name: 'image.png',
-      kind: 'file',
-      path: '_images/image.png',
-    });
 
     await api.handleFileDrop(
       [new File(['image'], 'image.png', { type: 'image/png' })],
@@ -467,7 +429,10 @@ describe('useTimelineDropHandling', () => {
       2_000_000,
     );
 
-    expect(handleFilesMock).not.toHaveBeenCalled();
+    expect(handleFilesMock).toHaveBeenCalledWith(
+      expect.arrayContaining([expect.objectContaining({ name: 'image.png' })]),
+      expect.objectContaining({ selectInFileManager: false }),
+    );
     expect(timelineStore.addClipToTimelineFromPath).toHaveBeenCalledWith(
       expect.objectContaining({
         path: '_images/image.png',
@@ -480,7 +445,6 @@ describe('useTimelineDropHandling', () => {
       scrollLeft: 0,
       getBoundingClientRect: () => ({ left: 0 }),
     } as unknown as HTMLElement);
-    const { setDraggedFile } = useDraggedFile();
     const api = useTimelineDropHandling({ scrollEl });
 
     vfsGetFileMock.mockResolvedValue({
@@ -507,25 +471,22 @@ describe('useTimelineDropHandling', () => {
       ],
     });
 
-    setDraggedFile({
-      name: 'nested.otio',
-      kind: 'timeline',
-      path: 'timelines/nested.otio',
-    });
-
-    await api.onTrackDragOver(
-      {
-        clientX: 10,
+    await api.buildPointerDragPreview({
+      payload: {
+        name: 'nested.otio',
+        kind: 'timeline',
+        path: 'timelines/nested.otio',
+      },
+      trackId: 'v1',
+      clientX: 10,
+      trackRectLeft: 0,
+      pointer: {
         shiftKey: false,
         ctrlKey: false,
         altKey: false,
         metaKey: false,
-        dataTransfer: {
-          types: ['application/json'],
-        },
-      } as unknown as DragEvent,
-      'v1',
-    );
+      },
+    });
 
     expect(parseTimelineFromOtioMock).toHaveBeenCalledWith(
       'otio text',
@@ -563,6 +524,40 @@ describe('useTimelineDropHandling', () => {
         trackId: 'a1',
         path: '_audio/new.mp3',
         startUs: 2_000_000,
+      }),
+    );
+  });
+
+  it('builds pointer-DnD preview from explicit payload without global draggedFile state', async () => {
+    const scrollEl = ref({
+      scrollLeft: 0,
+      getBoundingClientRect: () => ({ left: 0 }),
+    } as unknown as HTMLElement);
+    const api = useTimelineDropHandling({ scrollEl });
+
+    await api.buildPointerDragPreview({
+      payload: {
+        kind: 'adjustment',
+        name: 'Adjustment',
+        path: '',
+      },
+      trackId: 'v1',
+      clientX: 60,
+      trackRectLeft: 10,
+      pointer: {
+        shiftKey: false,
+        ctrlKey: false,
+        altKey: false,
+        metaKey: false,
+      },
+    });
+
+    expect(api.dragPreview.value).toEqual(
+      expect.objectContaining({
+        trackId: 'v1',
+        label: 'Adjustment',
+        durationUs: 5_000_000,
+        startUs: 5_000_000,
       }),
     );
   });

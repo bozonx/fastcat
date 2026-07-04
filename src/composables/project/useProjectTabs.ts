@@ -1,17 +1,7 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { querySelector } from '~/utils/browser-api';
-import {
-  FILE_MANAGER_ITEMS_DRAG_TYPE,
-  FILE_MANAGER_MOVE_DRAG_TYPE,
-} from '~/composables/useDraggedFile';
-import {
-  getDraggedFileManagerItems,
-  hasFileManagerItemsDragType,
-} from '~/composables/file-manager/dragOperation';
-import {
-  resetFileManagerDragCursor,
-  syncFileManagerDragCursor,
-} from '~/composables/file-manager/dragCursor';
+import { useDndDropZone } from '~/composables/dnd/useDndDropZone';
+import type { DndDragContext, DndPayload } from '~/composables/dnd/dndTypes';
 import { useFocusStore } from '~/stores/focus.store';
 import { useProjectStore } from '~/stores/project.store';
 import {
@@ -194,20 +184,56 @@ export function useProjectTabs(options: UseProjectTabsOptions = {}) {
     setActiveTab(tabId);
   }
 
+  function getOpenableFileManagerItems(payload: DndPayload): JsonFilePayload[] {
+    if (payload.source !== 'file-manager') return [];
+
+    const data = payload.data as { items?: JsonFilePayload[]; primaryEntry?: JsonFilePayload };
+    const items = data.items ?? (data.primaryEntry ? [data.primaryEntry] : []);
+    return items.filter(
+      (item) =>
+        item.kind === 'file' &&
+        typeof item.path === 'string' &&
+        typeof item.name === 'string' &&
+        isOpenableProjectFileName(item.name),
+    );
+  }
+
+  const { zoneAttrs: tabBarDndZoneAttrs } = useDndDropZone(
+    {
+      canAccept: (payload) => getOpenableFileManagerItems(payload).length > 0,
+      onEnter: onTabBarDndOver,
+      onOver: onTabBarDndOver,
+      onLeave: onTabBarDndLeave,
+      onDrop: onTabBarDndDrop,
+    },
+    'project-tabs',
+  );
+
+  function onTabBarDndOver(ctx: DndDragContext) {
+    isDropTarget.value = true;
+    ctx.setOperation('open-tab');
+  }
+
+  function onTabBarDndLeave() {
+    isDropTarget.value = false;
+  }
+
+  async function onTabBarDndDrop(ctx: DndDragContext) {
+    isDropTarget.value = false;
+    const items = getOpenableFileManagerItems(ctx.payload);
+    for (const item of items) {
+      await openDroppedFile({ filePath: item.path!, fileName: item.name! });
+    }
+  }
+
   function onTabBarDragOver(event: DragEvent) {
     const types = event.dataTransfer?.types ?? [];
     if (
-      hasFileManagerItemsDragType(types) ||
-      types.includes('application/json') ||
       types.includes('panel-drag') ||
       types.includes('file-tab-drag') ||
       types.includes('static-tab-drag')
     ) {
       event.preventDefault();
-      if (hasFileManagerItemsDragType(types) || types.includes('application/json')) {
-        event.dataTransfer!.dropEffect = 'copy';
-        syncFileManagerDragCursor({ isDragging: true, operation: 'open-tab' });
-      }
       isDropTarget.value = true;
     }
   }
@@ -229,7 +255,6 @@ export function useProjectTabs(options: UseProjectTabsOptions = {}) {
     const related = event.relatedTarget as Node | null;
     if (!currentTarget?.contains(related)) {
       isDropTarget.value = false;
-      resetFileManagerDragCursor();
     }
   }
 
@@ -237,60 +262,6 @@ export function useProjectTabs(options: UseProjectTabsOptions = {}) {
     isDropTarget.value = false;
     event.preventDefault();
     event.stopPropagation();
-    resetFileManagerDragCursor();
-
-    const fileManagerItems = getDraggedFileManagerItems(event);
-    if (fileManagerItems.length > 0) {
-      for (const payload of fileManagerItems) {
-        if (
-          payload.kind === 'file' &&
-          typeof payload.path === 'string' &&
-          typeof payload.name === 'string' &&
-          isOpenableProjectFileName(payload.name)
-        ) {
-          await openDroppedFile({ filePath: payload.path, fileName: payload.name });
-        }
-      }
-      return;
-    }
-
-    const movePayloadRaw =
-      event.dataTransfer?.getData(FILE_MANAGER_ITEMS_DRAG_TYPE) ||
-      event.dataTransfer?.getData(FILE_MANAGER_MOVE_DRAG_TYPE) ||
-      event.dataTransfer?.getData('application/fastcat-file-manager-move');
-
-    if (movePayloadRaw) {
-      try {
-        const parsed = JSON.parse(movePayloadRaw);
-        const items = Array.isArray(parsed) ? parsed : [parsed];
-        for (const payload of items) {
-          if (payload.kind === 'file' && payload.path && isOpenableProjectFileName(payload.name)) {
-            await openDroppedFile({ filePath: payload.path, fileName: payload.name });
-          }
-        }
-      } catch {
-        /* no-op */
-      }
-      return;
-    }
-
-    const jsonPayloadRaw = event.dataTransfer?.getData('application/json');
-    if (jsonPayloadRaw) {
-      try {
-        const payload = JSON.parse(jsonPayloadRaw) as JsonFilePayload;
-        if (
-          payload.kind === 'file' &&
-          payload.path &&
-          payload.name &&
-          isOpenableProjectFileName(payload.name)
-        ) {
-          await openDroppedFile({ filePath: payload.path, fileName: payload.name });
-          return;
-        }
-      } catch {
-        /* no-op */
-      }
-    }
 
     const fileTabRaw = event.dataTransfer?.getData('file-tab-drag');
     if (fileTabRaw) {
@@ -432,6 +403,7 @@ export function useProjectTabs(options: UseProjectTabsOptions = {}) {
     projectTabContextMenuItems,
     staticTabs,
     tabBarRef,
+    tabBarDndZoneAttrs,
     tabContainerRef,
     tabsStore,
   };

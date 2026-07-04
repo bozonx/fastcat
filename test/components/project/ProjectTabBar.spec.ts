@@ -3,6 +3,7 @@ import { mountWithNuxt } from '../../utils/mount';
 import { useProjectTabsStore } from '~/stores/project-tabs.store';
 import ProjectTabBar from '~/components/project/ProjectTabBar.vue';
 import { markRaw, defineComponent } from 'vue';
+import { DND_ZONE_ATTR, getDndZone } from '~/composables/dnd/dndRegistry';
 
 const MockComponent = defineComponent({
   template: '<div>Mock Component</div>',
@@ -251,5 +252,63 @@ describe('ProjectTabBar.vue', () => {
     const tabs = component.findAll('[data-tab-id]');
     expect(tabs[0].attributes('draggable')).toBe('false');
     expect(tabs[1].attributes('draggable')).toBe('true');
+  });
+
+  it('opens file-manager pointer-DnD payloads as file tabs', async () => {
+    const component = await mountWithNuxt(ProjectTabBar, {
+      initialState: {
+        projectTabs: {
+          activeTabId: 'files',
+          fileTabs: [],
+          staticTabsOrder: ['files'],
+          tabOrder: [],
+          hiddenStaticTabs: [],
+        },
+      },
+    });
+
+    const store = useProjectTabsStore();
+    store.registerProjectTab({
+      id: 'files',
+      label: 'Files',
+      icon: 'i-heroicons-folder',
+      component: markRaw(MockComponent),
+    });
+
+    await component.vm.$nextTick();
+
+    const zoneId = component.find(`[${DND_ZONE_ATTR}]`).attributes(DND_ZONE_ATTR);
+    const handlers = getDndZone(zoneId);
+    expect(handlers).not.toBeNull();
+
+    const setOperation = vi.fn();
+    await handlers!.onDrop?.({
+      payload: {
+        source: 'file-manager',
+        data: {
+          items: [{ kind: 'file', name: 'clip.mp4', path: '_video/clip.mp4' }],
+        },
+      },
+      pointer: {
+        clientX: 0,
+        clientY: 0,
+        pointerType: 'mouse',
+        altKey: false,
+        ctrlKey: false,
+        metaKey: false,
+        shiftKey: false,
+      },
+      zoneId,
+      targetEl: null,
+      setOperation,
+    });
+
+    expect(store.fileTabs).toEqual([
+      expect.objectContaining({
+        fileName: 'clip.mp4',
+        filePath: '_video/clip.mp4',
+      }),
+    ]);
+    expect(store.activeTabId).toBe(store.fileTabs[0]?.id);
   });
 });

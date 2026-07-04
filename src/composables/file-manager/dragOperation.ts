@@ -1,10 +1,3 @@
-import {
-  INTERNAL_DRAG_TYPE,
-  FILE_MANAGER_COPY_DRAG_TYPE,
-  FILE_MANAGER_ITEMS_DRAG_TYPE,
-  FILE_MANAGER_MOVE_DRAG_TYPE,
-} from '~/composables/useDraggedFile';
-
 export interface ResolveFileManagerDragOperationParams {
   dragSourceFileManagerInstanceId?: string | null;
   isLayer1Active: boolean;
@@ -72,33 +65,6 @@ export function resolveFileManagerDropOperation(
   return params.isLayer1Active ? 'copy' : 'move';
 }
 
-export function hasInternalFileManagerDragType(
-  types: ArrayLike<string> | readonly string[] | null | undefined,
-): boolean {
-  if (!types) return false;
-
-  const dragTypes = Array.from(types);
-  return (
-    dragTypes.includes(INTERNAL_DRAG_TYPE) ||
-    dragTypes.includes(FILE_MANAGER_ITEMS_DRAG_TYPE) ||
-    dragTypes.includes(FILE_MANAGER_COPY_DRAG_TYPE) ||
-    dragTypes.includes(FILE_MANAGER_MOVE_DRAG_TYPE)
-  );
-}
-
-export function hasFileManagerItemsDragType(
-  types: ArrayLike<string> | readonly string[] | null | undefined,
-): boolean {
-  if (!types) return false;
-
-  const dragTypes = Array.from(types);
-  return (
-    dragTypes.includes(FILE_MANAGER_ITEMS_DRAG_TYPE) ||
-    dragTypes.includes(FILE_MANAGER_COPY_DRAG_TYPE) ||
-    dragTypes.includes(FILE_MANAGER_MOVE_DRAG_TYPE)
-  );
-}
-
 export function shouldCancelFileManagerDrop(params: {
   items: Array<{ path?: unknown }>;
   targetEntryPath?: string | null;
@@ -134,52 +100,11 @@ export function shouldCancelFileManagerDropToDirectory(params: {
   });
 }
 
-export function getDropTargetEntryPath(event: DragEvent): string | null {
-  const hasHTMLElement = typeof HTMLElement !== 'undefined';
-  const readDatasetPath = (value: unknown): string | null => {
-    if (!value || typeof value !== 'object') return null;
-    const dataset = (value as { dataset?: { entryPath?: unknown } }).dataset;
-    return typeof dataset?.entryPath === 'string' && dataset.entryPath.length > 0
-      ? dataset.entryPath
-      : null;
-  };
-  const path = typeof event.composedPath === 'function' ? event.composedPath() : [];
-  for (const node of path) {
-    if (hasHTMLElement && node instanceof HTMLElement) {
-      const entryPath = readDatasetPath(node);
-      if (entryPath) return entryPath;
-    } else {
-      const entryPath = readDatasetPath(node);
-      if (entryPath) return entryPath;
-    }
-  }
-
-  const target = event.target as
-    | (EventTarget & { closest?: (selector: string) => unknown; dataset?: { entryPath?: unknown } })
-    | null;
-
-  const directEntryPath = readDatasetPath(target);
-  if (directEntryPath) {
-    return directEntryPath;
-  }
-
-  if (target && typeof target.closest === 'function') {
-    const container = target.closest('[data-entry-path]');
-    const entryPath = readDatasetPath(container);
-    if (entryPath) {
-      return entryPath;
-    }
-  }
-
-  return null;
-}
-
 /**
- * Element-based equivalent of {@link getDropTargetEntryPath}. The pointer-DnD
- * engine hit-tests `elementFromPoint` and hands us the topmost element, so we
- * walk up to the nearest `[data-entry-path]` rather than reading a DragEvent's
- * composed path. Kept structural (only `getAttribute`/`parentElement`) so it is
- * unit-testable without a real DOM.
+ * The pointer-DnD engine hit-tests `elementFromPoint` and hands us the topmost
+ * element, so we walk up to the nearest `[data-entry-path]`. Kept structural
+ * (only `getAttribute`/`parentElement`) so it is unit-testable without a real
+ * DOM.
  */
 export function getDropTargetEntryPathFromEl(
   el: { getAttribute?(name: string): string | null; parentElement?: unknown } | null,
@@ -193,47 +118,6 @@ export function getDropTargetEntryPathFromEl(
   return null;
 }
 
-export function getDraggedFileManagerItems(event: DragEvent): FileManagerDraggedItem[] {
-  const itemsRaw = event.dataTransfer?.getData(FILE_MANAGER_ITEMS_DRAG_TYPE);
-  const copyRaw = event.dataTransfer?.getData(FILE_MANAGER_COPY_DRAG_TYPE);
-  const moveRaw = event.dataTransfer?.getData(FILE_MANAGER_MOVE_DRAG_TYPE);
-  const internalRaw = itemsRaw || copyRaw || moveRaw;
-  if (!internalRaw) return [];
-
-  try {
-    const parsed: unknown = JSON.parse(internalRaw);
-    return Array.isArray(parsed)
-      ? (parsed as FileManagerDraggedItem[])
-      : [parsed as FileManagerDraggedItem];
-  } catch {
-    return [];
-  }
-}
-
-export function isFileManagerDropCancellationTarget(params: {
-  event: DragEvent;
-  targetEntryPath?: string | null;
-  targetDirPath?: string | null;
-}): boolean {
-  const items = getDraggedFileManagerItems(params.event);
-
-  return (
-    shouldCancelFileManagerDrop({
-      items,
-      targetEntryPath: params.targetEntryPath,
-    }) ||
-    shouldCancelFileManagerDropToDirectory({
-      items,
-      targetDirPath: params.targetDirPath,
-    })
-  );
-}
-
-/**
- * Checks if target is cancellation zone using in-memory items.
- * Unlike isFileManagerDropCancellationTarget, this works during dragover
- * events where getData() returns empty string per HTML5 spec.
- */
 export function isCancellationZone(params: {
   items: FileManagerDraggedItem[];
   targetEntryPath?: string | null;

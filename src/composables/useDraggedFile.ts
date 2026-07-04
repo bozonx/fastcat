@@ -12,16 +12,6 @@ export interface DraggedFileData {
 
 const draggedFile = ref<DraggedFileData | null>(null);
 
-export const INTERNAL_DRAG_TYPE = 'application/fastcat-internal-file';
-
-export const FILE_MANAGER_MOVE_DRAG_TYPE = 'application/fastcat-file-manager-move';
-
-export const FILE_MANAGER_COPY_DRAG_TYPE = 'application/fastcat-file-manager-copy';
-
-export const FILE_MANAGER_ITEMS_DRAG_TYPE = 'application/fastcat-file-manager-items';
-
-export const REMOTE_FILE_DRAG_TYPE = 'application/fastcat-remote-file';
-
 export function useDraggedFile(options: { enableUiEffects?: boolean } = {}) {
   const { enableUiEffects = true } = options;
 

@@ -18,6 +18,7 @@ const {
   onTabBarDragLeave,
   onTabBarDragOver,
   onTabBarDrop,
+  tabBarDndZoneAttrs,
   tabsStore,
 } = useProjectTabs({
   onStaticTabDragStart: (event, tabId) => emit('tab-drag-start', event, tabId),
@@ -44,6 +45,7 @@ function isDraggable(tab: AnyProjectTab): boolean {
 <template>
   <div
     ref="tabBarRef"
+    v-bind="tabBarDndZoneAttrs"
     class="flex items-center border-b border-ui-border shrink-0 select-none transition-colors duration-150 min-h-[36px]"
     :class="isDropTarget ? 'bg-primary-500/10 border-primary-500/50' : ''"
     @dragover="onTabBarDragOver"

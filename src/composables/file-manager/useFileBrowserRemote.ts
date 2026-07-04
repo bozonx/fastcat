@@ -15,24 +15,18 @@ import {
 import type { RemoteVfsEntry, RemoteVfsFileEntry } from '~/types/remote-vfs';
 import type { FsEntry } from '~/types/fs';
 import type { BloggerDogEntryPayload, BdEntryType } from '~/types/bloggerdog';
-import {
-  useDraggedFile,
-  FILE_MANAGER_COPY_DRAG_TYPE,
-  FILE_MANAGER_MOVE_DRAG_TYPE,
-  type DraggedFileData,
-} from '~/composables/useDraggedFile';
+import { useDraggedFile, type DraggedFileData } from '~/composables/useDraggedFile';
 import { useVfs } from '~/composables/useVfs';
 import { useAppClipboard } from '~/composables/useAppClipboard';
-import { isLayer1Active } from '~/utils/hotkeys/layerUtils';
 import {
   getDropTargetEntryPathFromEl,
-  resolveFileManagerDragOperation,
   resolveFileManagerDropOperation,
 } from '~/composables/file-manager/dragOperation';
 import { crossVfsCopy, crossVfsMove } from '~/file-manager/core/vfs/crossVfs';
 import type { IFileSystemAdapter } from '~/file-manager/core/vfs/types';
 import { useDndDropZone } from '~/composables/dnd/useDndDropZone';
 import type { DndDragContext, DndPayload, DndPointer } from '~/composables/dnd/dndTypes';
+import { isLayer1Active } from '~/utils/hotkeys/layerUtils';
 
 function getBdType(entry: FsEntry): string | undefined {
   return (entry.adapterPayload as BloggerDogEntryPayload | undefined)?.type;
@@ -370,79 +364,6 @@ export function useFileBrowserRemote({
     return type === 'media' || type === 'collection' || type === 'content-item';
   }
 
-  function resolveRemoteDropOperation(event: DragEvent): 'copy' | 'move' {
-    return resolveFileManagerDropOperation({
-      dragSourceFileManagerInstanceId: appClipboard.dragSourceFileManagerInstanceId,
-      isLayer1Active: isLayer1Active(event, workspaceStore.userSettings),
-      targetFileManagerInstanceId: fileManagerInstanceId ?? null,
-      currentDragOperation: appClipboard.currentDragOperation,
-      fallbackRawOperation: event.dataTransfer?.types.includes(FILE_MANAGER_MOVE_DRAG_TYPE)
-        ? 'move'
-        : event.dataTransfer?.types.includes(FILE_MANAGER_COPY_DRAG_TYPE)
-          ? 'copy'
-          : null,
-    });
-  }
-
-  async function handleProjectToRemoteDrop(params: { event: DragEvent; targetEntry: FsEntry }) {
-    const copyRaw = params.event.dataTransfer?.getData(FILE_MANAGER_COPY_DRAG_TYPE);
-    const moveRaw = params.event.dataTransfer?.getData(FILE_MANAGER_MOVE_DRAG_TYPE);
-    const internalRaw = copyRaw || moveRaw;
-    if (!internalRaw) return false;
-
-    let parsed: unknown = null;
-    try {
-      parsed = JSON.parse(internalRaw);
-    } catch {
-      return false;
-    }
-
-    const items = Array.isArray(parsed) ? parsed : [parsed];
-    if (
-      items.length === 0 ||
-      items.some(
-        (item) =>
-          !item ||
-          typeof item !== 'object' ||
-          item.kind !== 'file' ||
-          typeof item.path !== 'string' ||
-          item.path.length === 0,
-      )
-    ) {
-      throw new Error(t('fastcat.bloggerDog.dragDrop.onlyFilesToItem'));
-    }
-
-    const sourceVfs =
-      appClipboard.dragSourceVfs ??
-      appClipboard.getFileManagerVfs(appClipboard.dragSourceFileManagerInstanceId) ??
-      rootVfs;
-    const operation = resolveRemoteDropOperation(params.event);
-
-    for (const item of items as Array<{ path: string }>) {
-      if (operation === 'copy') {
-        await crossVfsCopy({
-          sourceVfs,
-          targetVfs: vfs,
-          sourcePath: item.path,
-          sourceKind: 'file',
-          targetDirPath: params.targetEntry.path,
-        });
-      } else {
-        await crossVfsMove({
-          sourceVfs,
-          targetVfs: vfs,
-          sourcePath: item.path,
-          sourceKind: 'file',
-          targetDirPath: params.targetEntry.path,
-        });
-      }
-    }
-
-    uiStore.notifyFileManagerUpdate();
-    await loadFolderContent();
-    return true;
-  }
-
   function isLayer1FromPointer(p: DndPointer): boolean {
     return isLayer1Active(
       {
@@ -611,25 +532,13 @@ export function useFileBrowserRemote({
   function onBrowserRootDragOver(e: DragEvent) {
     if (!isRemoteMode.value) return onRootDragOver?.(e);
 
-    if (remoteCurrentFolder.value && isBloggerDogContentItemEntry(remoteCurrentFolder.value)) {
+    if (
+      remoteCurrentFolder.value &&
+      isBloggerDogContentItemEntry(remoteCurrentFolder.value) &&
+      e.dataTransfer?.types.includes('Files')
+    ) {
       e.preventDefault();
-      if (
-        e.dataTransfer?.types.includes(FILE_MANAGER_COPY_DRAG_TYPE) ||
-        e.dataTransfer?.types.includes(FILE_MANAGER_MOVE_DRAG_TYPE)
-      ) {
-        appClipboard.setDragTargetFileManagerInstanceId(fileManagerInstanceId ?? null);
-        appClipboard.setCurrentDragOperation(
-          resolveFileManagerDragOperation({
-            dragSourceFileManagerInstanceId: appClipboard.dragSourceFileManagerInstanceId,
-            isLayer1Active: isLayer1Active(e, workspaceStore.userSettings),
-            targetFileManagerInstanceId: fileManagerInstanceId ?? null,
-          }),
-        );
-      }
-      e.dataTransfer!.dropEffect =
-        e.dataTransfer?.types.includes('Files') || resolveRemoteDropOperation(e) === 'copy'
-          ? 'copy'
-          : 'move';
+      e.dataTransfer!.dropEffect = 'copy';
     }
   }
   function onBrowserRootDragLeave(e: DragEvent) {
@@ -646,14 +555,6 @@ export function useFileBrowserRemote({
     e.stopPropagation();
 
     try {
-      const handledInternalDrop = await handleProjectToRemoteDrop({
-        event: e,
-        targetEntry: target,
-      });
-      if (handledInternalDrop) {
-        return;
-      }
-
       const files = e.dataTransfer?.files;
       if (!files || files.length === 0) return;
 

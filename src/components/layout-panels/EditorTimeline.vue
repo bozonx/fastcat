@@ -73,6 +73,11 @@ interface TauriInternalFileDropDetail {
   payload?: unknown;
 }
 
+interface FileManagerTimelineDndData {
+  items?: Array<{ name: string; path?: string; kind?: string; isExternal?: boolean }>;
+  primaryEntry?: { source?: string; path?: string };
+}
+
 const { currentProjectId, currentView } = storeToRefs(projectStore);
 const { trackHeights } = storeToRefs(timelineStore);
 
@@ -223,7 +228,7 @@ const {
 const {
   dragPreview,
   clearDragPreview,
-  buildDragPreview,
+  buildPointerDragPreview,
   handleFileDrop,
   handleLibraryDrop,
   getDropPosition,
@@ -680,30 +685,6 @@ async function onDrop(e: DragEvent, trackId: string) {
     dragPreview.value?.trackId === trackId ? dragPreview.value.startUs : getDropPosition(e);
   if (startUs === null) return;
 
-  const pseudo =
-    isLayer1Pressed(e as DragEvent, workspaceStore.userSettings) ||
-    timelineSettingsStore.isPseudoOverlapEnabled;
-
-  const libraryItemData =
-    e.dataTransfer?.getData('fastcat-item') || e.dataTransfer?.getData('application/json');
-  if (libraryItemData) {
-    try {
-      const parsed = JSON.parse(libraryItemData);
-      if (parsed.kind || (Array.isArray(parsed) && parsed.length > 0 && parsed[0].kind)) {
-        const showPresets = isLayer1Pressed(e as DragEvent, workspaceStore.userSettings);
-        await handleLibraryDrop(libraryItemData, trackId, startUs, {
-          pseudo,
-          clientX: e.clientX,
-          clientY: e.clientY,
-          showPresets,
-        });
-        return;
-      }
-    } catch {
-      // ignore
-    }
-  }
-
   const files = e.dataTransfer?.files ? Array.from(e.dataTransfer.files) : [];
   if (files.length > 0) await handleFileDrop(files, trackId, startUs);
   clearDragPreview();
@@ -811,26 +792,42 @@ async function onTauriInternalFileDrop(event: Event) {
 }
 
 // --- pointer-DnD: file-manager (and other internal sources) → timeline -------
-// A synthetic event-like lets us reuse the existing (DragEvent-shaped)
-// `buildDragPreview`/`getDropPosition` without an HTML5 drag.
-function syntheticDragEvent(pointer: DndDragContext['pointer'], trackEl: HTMLElement) {
-  return {
-    clientX: pointer.clientX,
-    clientY: pointer.clientY,
-    currentTarget: trackEl,
-    dataTransfer: { types: [] as string[] },
-    shiftKey: pointer.shiftKey,
-    ctrlKey: pointer.ctrlKey,
-    altKey: pointer.altKey,
-    metaKey: pointer.metaKey,
-    preventDefault: () => {},
-  } as unknown as DragEvent;
-}
-
 function trackElUnderPointer(clientX: number, clientY: number): HTMLElement | null {
   const target = document.elementFromPoint(clientX, clientY) as HTMLElement | null;
   if (!target || !containerRef.value?.contains(target)) return null;
   return target.closest('[data-track-id]') as HTMLElement | null;
+}
+
+function fileManagerPayloadToTimelinePayload(ctx: DndDragContext): unknown {
+  const data = ctx.payload.data as FileManagerTimelineDndData | null | undefined;
+  const items = data?.items ?? [];
+  if (items.length === 0) return null;
+
+  const isExternal =
+    data?.primaryEntry?.source === 'remote' ||
+    data?.primaryEntry?.path?.startsWith('/remote') === true ||
+    items.some((item) => item.isExternal === true || item.path?.startsWith('/remote'));
+
+  const timelineItems = items.map((item) => {
+    const name = item.name ?? '';
+    return {
+      name,
+      path: item.path ?? '',
+      kind: name.toLowerCase().endsWith('.otio') ? 'timeline' : 'file',
+      isExternal,
+    };
+  });
+
+  return timelineItems.length === 1
+    ? { ...timelineItems[0], isExternal }
+    : { isExternal, items: timelineItems };
+}
+
+function resolveTimelineDndPayload(ctx: DndDragContext): unknown {
+  if (ctx.payload.source === 'file-manager') {
+    return fileManagerPayloadToTimelinePayload(ctx);
+  }
+  return ctx.payload.data;
 }
 
 function onTimelineDndOver(ctx: DndDragContext) {
@@ -840,8 +837,10 @@ function onTimelineDndOver(ctx: DndDragContext) {
     return;
   }
   if (ctx.payload.source === 'file-manager') {
-    const items = (ctx.payload.data as any)?.items || [];
-    const hasIncompatible = items.some((item: any) => !checkFileTimelineCompatibility(item, mediaStore).compatible);
+    const items = (ctx.payload.data as FileManagerTimelineDndData | null | undefined)?.items ?? [];
+    const hasIncompatible = items.some(
+      (item) => !checkFileTimelineCompatibility(item, mediaStore).compatible,
+    );
     if (hasIncompatible) {
       ctx.setOperation('cancel');
       clearDragPreview();
@@ -856,7 +855,13 @@ function onTimelineDndOver(ctx: DndDragContext) {
     return;
   }
   ctx.setOperation('timeline-add');
-  void buildDragPreview(syntheticDragEvent(ctx.pointer, trackEl), trackId);
+  void buildPointerDragPreview({
+    payload: resolveTimelineDndPayload(ctx),
+    trackId,
+    clientX: ctx.pointer.clientX,
+    trackRectLeft: trackEl.getBoundingClientRect().left,
+    pointer: ctx.pointer,
+  });
 }
 
 function onTimelineDndLeave() {
@@ -867,7 +872,7 @@ async function onTimelineDndDrop(ctx: DndDragContext) {
   if (timelineStore.previewMode) return;
 
   if (ctx.payload.source === 'file-manager') {
-    const items = (ctx.payload.data as any)?.items || [];
+    const items = (ctx.payload.data as FileManagerTimelineDndData | null | undefined)?.items ?? [];
     for (const item of items) {
       const compat = checkFileTimelineCompatibility(item, mediaStore);
       if (!compat.compatible) {
@@ -883,16 +888,7 @@ async function onTimelineDndDrop(ctx: DndDragContext) {
     }
   }
 
-  // file-manager carries its descriptor in `draggedFile`; toolbar/library
-  // sources carry the full virtual-clip/library descriptor in the payload.
-  let payload: unknown;
-  if (ctx.payload.source === 'file-manager') {
-    const df = draggedFile.value;
-    if (!df || df.isExternal) return;
-    payload = df;
-  } else {
-    payload = ctx.payload.data;
-  }
+  const payload = resolveTimelineDndPayload(ctx);
   if (!payload) return;
 
   const pseudo = isLayer1FromModifiers(ctx.pointer) || timelineSettingsStore.isPseudoOverlapEnabled;

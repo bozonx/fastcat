@@ -55,10 +55,6 @@ vi.mock('~/composables/file-manager/useFileManager', () => ({
 }));
 
 vi.mock('~/composables/useDraggedFile', () => ({
-  INTERNAL_DRAG_TYPE: 'application/fastcat-internal-file',
-  FILE_MANAGER_MOVE_DRAG_TYPE: 'application/fastcat-file-manager-move',
-  FILE_MANAGER_COPY_DRAG_TYPE: 'application/fastcat-file-manager-copy',
-  FILE_MANAGER_ITEMS_DRAG_TYPE: 'application/fastcat-file-manager-items',
   useDraggedFile: () => ({
     draggedFile: draggedFileRef,
   }),

@@ -1,19 +1,12 @@
 import { createDevLogger } from '~/utils/dev-logger';
 import { computed, ref, watch, type Ref } from 'vue';
-import { useFileManager } from '~/composables/file-manager/useFileManager';
 import { useProjectTabsStore } from '~/stores/project-tabs.store';
 import { useFocusStore } from '~/stores/focus.store';
 import { useProjectStore } from '~/stores/project.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { readLocalStorageJson, getPlatformSuffix } from '~/stores/ui/uiLocalStorage';
 import type { DynamicPanel } from '~/stores/editor-view.store';
-import { isOpenableProjectFileName } from '~/utils/media-types';
 import { genUuid } from '~/utils/ids';
-import {
-  getDraggedFileManagerItems,
-  hasFileManagerItemsDragType,
-} from '~/composables/file-manager/dragOperation';
-import { syncFileManagerDragCursor } from '~/composables/file-manager/dragCursor';
 import { useTauriPanelPointerDrag } from '~/composables/editor/useTauriPanelPointerDrag';
 const log = createDevLogger('useEditorDynamicPanels');
 
@@ -54,23 +47,11 @@ const panelTypeToTabId: Record<string, string> = {
   backups: 'backups',
 };
 
-function resolveMediaTypeByExtension(ext: string): 'video' | 'audio' | 'image' | 'unknown' {
-  if (['mp4', 'mov', 'avi', 'mkv', 'webm'].includes(ext)) return 'video';
-  if (['mp3', 'wav', 'aac', 'flac', 'ogg'].includes(ext)) return 'audio';
-  if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'avif'].includes(ext)) return 'image';
-  return 'unknown';
-}
-
-function isTextExtension(ext: string) {
-  return ['txt', 'md', 'json', 'yaml', 'yml'].includes(ext);
-}
-
 export function useEditorDynamicPanels(options: UseEditorDynamicPanelsOptions) {
   const projectStore = useProjectStore();
   const focusStore = useFocusStore();
   const workspaceStore = useWorkspaceStore();
   const { currentProjectId } = options;
-  const { findEntryByPath } = useFileManager();
 
   const draggingPanelId = ref<string | null>(null);
   const dragOverPanelId = ref<string | null>(null);
@@ -207,22 +188,13 @@ export function useEditorDynamicPanels(options: UseEditorDynamicPanelsOptions) {
     if (!workspaceStore.inDevelopmentFeaturesEnabled) return;
     event.preventDefault();
 
-    const isDraggingFile =
-      hasFileManagerItemsDragType(event.dataTransfer?.types) ||
-      event.dataTransfer?.types.includes('application/json') ||
-      event.dataTransfer?.types.includes('application/fastcat-file-manager-move');
     const isDraggingPanel = Boolean(draggingPanelId.value);
     const isDraggingTab =
       event.dataTransfer?.types.includes('static-tab-drag') ||
       event.dataTransfer?.types.includes('file-tab-drag');
 
-    if (!isDraggingFile && !isDraggingPanel && !isDraggingTab) {
+    if (!isDraggingPanel && !isDraggingTab) {
       return;
-    }
-
-    if (isDraggingFile && event.dataTransfer) {
-      event.dataTransfer.dropEffect = 'copy';
-      syncFileManagerDragCursor({ isDragging: true, operation: 'open-panel' });
     }
 
     if (draggingPanelId.value === panelId) {
@@ -300,7 +272,6 @@ export function useEditorDynamicPanels(options: UseEditorDynamicPanelsOptions) {
     if (!workspaceStore.inDevelopmentFeaturesEnabled) return;
     const { event, targetPanelId, view = 'cut' } = input;
     event.preventDefault();
-    const targetPanel = getPanelById(targetPanelId);
 
     const staticTabRaw = event.dataTransfer?.getData('static-tab-drag');
     if (staticTabRaw && dropPosition.value) {
@@ -369,65 +340,6 @@ export function useEditorDynamicPanels(options: UseEditorDynamicPanelsOptions) {
 
       resetDragState();
       return;
-    }
-
-    const fileManagerItems = getDraggedFileManagerItems(event);
-    const fileDragData =
-      fileManagerItems.length > 0
-        ? JSON.stringify(fileManagerItems[0])
-        : event.dataTransfer?.getData('application/json') ||
-          event.dataTransfer?.getData('application/fastcat-file-manager-move');
-
-    if (fileDragData) {
-      try {
-        const payload = JSON.parse(fileDragData);
-        if (payload.kind === 'file' && dropPosition.value) {
-          if (targetPanel?.filePath && targetPanel.filePath === payload.path) {
-            resetDragState();
-            return;
-          }
-
-          const panelPosition = dropPosition.value;
-          if (!isOpenableProjectFileName(String(payload.name ?? ''))) {
-            resetDragState();
-            return;
-          }
-
-          findEntryByPath(payload.path);
-
-          const ext = payload.name?.split('.').pop()?.toLowerCase() ?? '';
-          const mediaType = resolveMediaTypeByExtension(ext);
-
-          if (isTextExtension(ext)) {
-            projectStore.addTextPanel(
-              payload.path,
-              payload.name,
-              targetPanelId,
-              panelPosition,
-              view,
-            );
-          } else {
-            projectStore.addMediaPanel(
-              {
-                kind: 'file',
-                path: payload.path,
-                name: payload.name,
-                parentPath: payload.path.split('/').slice(0, -1).join('/') || undefined,
-              },
-              mediaType,
-              payload.name,
-              targetPanelId,
-              panelPosition,
-              view,
-            );
-          }
-
-          resetDragState();
-          return;
-        }
-      } catch (err) {
-        log.warn('Failed to parse file drag payload', err);
-      }
     }
 
     if (!draggingPanelId.value || !dropPosition.value) {

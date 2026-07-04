@@ -7,20 +7,6 @@ import type { RemoteFsEntry } from '~/utils/remote-vfs';
 import { getDndZone, clearDndZones, DND_ZONE_ATTR } from '~/composables/dnd/dndRegistry';
 import type { DndDragContext } from '~/composables/dnd/dndTypes';
 
-const {
-  INTERNAL_DRAG_TYPE,
-  REMOTE_FILE_DRAG_TYPE,
-  FILE_MANAGER_ITEMS_DRAG_TYPE,
-  FILE_MANAGER_COPY_DRAG_TYPE,
-  FILE_MANAGER_MOVE_DRAG_TYPE,
-} = vi.hoisted(() => ({
-  INTERNAL_DRAG_TYPE: 'application/fastcat-internal-file',
-  REMOTE_FILE_DRAG_TYPE: 'application/fastcat-remote-file',
-  FILE_MANAGER_ITEMS_DRAG_TYPE: 'application/fastcat-file-manager-items',
-  FILE_MANAGER_COPY_DRAG_TYPE: 'application/fastcat-file-manager-copy',
-  FILE_MANAGER_MOVE_DRAG_TYPE: 'application/fastcat-file-manager-move',
-}));
-
 const mockState = vi.hoisted(() => ({
   dragSourceFileManagerInstanceId: null as string | null,
   currentDragOperation: null as 'copy' | 'move' | 'cancel' | null,
@@ -135,11 +121,6 @@ vi.mock('~/composables/useAppClipboard', () => ({
 }));
 
 vi.mock('~/composables/useDraggedFile', () => ({
-  INTERNAL_DRAG_TYPE,
-  REMOTE_FILE_DRAG_TYPE,
-  FILE_MANAGER_ITEMS_DRAG_TYPE,
-  FILE_MANAGER_COPY_DRAG_TYPE,
-  FILE_MANAGER_MOVE_DRAG_TYPE,
   useDraggedFile: () => ({
     draggedFile: null,
     setDraggedFile: vi.fn(),

@@ -345,21 +345,24 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
     }
     if (isBloggerDogInternalFileDrag(itemsToMove)) return;
 
+    const dragSourceVfs = appClipboard.dragSourceVfs;
+    const dragSourceFileManagerInstanceId = appClipboard.dragSourceFileManagerInstanceId;
+    const currentDragOperation = appClipboard.currentDragOperation;
     const isCrossManagerDrag = isCrossFileManagerDrag({
-      dragSourceFileManagerInstanceId: appClipboard.dragSourceFileManagerInstanceId,
+      dragSourceFileManagerInstanceId,
       targetFileManagerInstanceId: options.fileManagerInstanceId ?? null,
     });
     const shouldCopy =
       resolveFileManagerDropOperation({
-        dragSourceFileManagerInstanceId: appClipboard.dragSourceFileManagerInstanceId,
+        dragSourceFileManagerInstanceId,
         isLayer1Active: isLayer1FromPointer(ctx.pointer),
-        isSameFileSystem: isSameFileSystemDrag(),
+        isSameFileSystem: dragSourceVfs && options.vfs ? dragSourceVfs === options.vfs : null,
         targetFileManagerInstanceId: options.fileManagerInstanceId ?? null,
-        currentDragOperation: appClipboard.currentDragOperation,
+        currentDragOperation,
         fallbackRawOperation:
-          appClipboard.currentDragOperation === 'copy'
+          currentDragOperation === 'copy'
             ? 'copy'
-            : appClipboard.currentDragOperation === 'move'
+            : currentDragOperation === 'move'
               ? 'move'
               : null,
       }) === 'copy';
@@ -371,11 +374,11 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
         const sourcePath = typeof item?.path === 'string' ? item.path : '';
         if (!sourcePath || sourcePath === targetDirPath) continue;
 
-        if (isCrossManagerDrag && appClipboard.dragSourceVfs) {
+        if (isCrossManagerDrag && dragSourceVfs) {
           const sourceKind = item?.kind === 'directory' ? 'directory' : 'file';
           if (shouldCopy) {
             await crossVfsCopy({
-              sourceVfs: appClipboard.dragSourceVfs,
+              sourceVfs: dragSourceVfs,
               targetVfs: options.vfs,
               sourcePath,
               sourceKind,
@@ -383,7 +386,7 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
             });
           } else {
             await crossVfsMove({
-              sourceVfs: appClipboard.dragSourceVfs,
+              sourceVfs: dragSourceVfs,
               targetVfs: options.vfs,
               sourcePath,
               sourceKind,

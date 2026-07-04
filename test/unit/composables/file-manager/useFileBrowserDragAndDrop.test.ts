@@ -3,6 +3,7 @@ import { mount } from '@vue/test-utils';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 
 import { useFileBrowserDragAndDrop } from '~/composables/file-manager/useFileBrowserDragAndDrop';
+import { crossVfsCopy } from '~/file-manager/core/vfs/crossVfs';
 import type { FsEntry } from '~/types/fs';
 
 const uiStoreMock = {
@@ -80,10 +81,6 @@ vi.mock('~/composables/useAppClipboard', () => ({
 }));
 
 vi.mock('~/composables/useDraggedFile', () => ({
-  INTERNAL_DRAG_TYPE: 'application/fastcat-internal-file',
-  FILE_MANAGER_ITEMS_DRAG_TYPE: 'application/fastcat-file-manager-items',
-  FILE_MANAGER_COPY_DRAG_TYPE: 'application/fastcat-file-manager-copy',
-  FILE_MANAGER_MOVE_DRAG_TYPE: 'application/fastcat-file-manager-move',
   useDraggedFile: () => ({
     setDraggedFile: setDraggedFileMock,
     clearDraggedFile: clearDraggedFileMock,
@@ -130,6 +127,7 @@ describe('useFileBrowserDragAndDrop', () => {
     setDraggedFileMock.mockClear();
     clearDraggedFileMock.mockClear();
     armPointerDndMock.mockClear();
+    vi.mocked(crossVfsCopy).mockReset();
     fileManagerStoreMock.selectedFolder = null;
     fileManagerStoreMock.openFolder.mockClear();
   });
@@ -261,5 +259,66 @@ describe('useFileBrowserDragAndDrop', () => {
     expect(fileManagerStoreMock.openFolder).toHaveBeenCalledWith(
       expect.objectContaining({ path: '_video' }),
     );
+  });
+
+  it('keeps cross-VFS source snapshot while pointer cleanup clears clipboard mid-drop', async () => {
+    let api: ReturnType<typeof useFileBrowserDragAndDrop> | null = null;
+    const sourceVfs = { id: 'source-vfs' };
+    const targetVfs = { id: 'target-vfs' };
+    const reloadDirectory = vi.fn().mockResolvedValue(undefined);
+
+    vi.mocked(crossVfsCopy).mockImplementation(async () => {
+      appClipboardMock.dragSourceVfs = null;
+      appClipboardMock.dragSourceFileManagerInstanceId = null;
+      appClipboardMock.currentDragOperation = null;
+      return 'copied';
+    });
+
+    mount(
+      defineComponent({
+        setup() {
+          api = useFileBrowserDragAndDrop({
+            findEntryByPath: () => null,
+            resolveEntryByPath: vi.fn(),
+            handleFiles: async () => {},
+            moveEntry: vi.fn(),
+            copyEntry: vi.fn(),
+            loadFolderContent: vi.fn(),
+            reloadDirectory,
+            notifyFileManagerUpdate: vi.fn(),
+            fileManagerInstanceId: 'target',
+            vfs: targetVfs as any,
+          });
+
+          return () => null;
+        },
+      }),
+    );
+
+    const items = [
+      { name: 'a.mp4', kind: 'file', path: '/source/a.mp4' },
+      { name: 'b.mp4', kind: 'file', path: '/source/b.mp4' },
+    ];
+    appClipboardMock.dragSourceFileManagerInstanceId = 'source';
+    appClipboardMock.dragSourceVfs = sourceVfs;
+    appClipboardMock.currentDragOperation = 'copy';
+
+    await api!.handleInternalDrop({
+      payload: { source: 'file-manager', data: { items, sourceInstanceId: 'source' } },
+      pointer: { shiftKey: false, ctrlKey: false, altKey: false, metaKey: false },
+      targetEl: null,
+      setOperation: vi.fn(),
+    } as any);
+
+    expect(crossVfsCopy).toHaveBeenCalledTimes(2);
+    expect(crossVfsCopy).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        sourceVfs,
+        targetVfs,
+        sourcePath: '/source/b.mp4',
+      }),
+    );
+    expect(reloadDirectory).toHaveBeenCalledWith('');
   });
 });

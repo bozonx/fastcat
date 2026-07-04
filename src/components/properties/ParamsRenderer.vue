@@ -114,29 +114,12 @@ function getDisplayFileValue(control: FileParamControl | RenderableParamControl)
 
 function handleFileDrop(event: DragEvent, control: RenderableParamControl) {
   dragOverKey.value = null;
-  const raw = event.dataTransfer?.getData('application/json');
-  if (!raw) {
-    const files = event.dataTransfer?.files;
-    if (files && files.length > 0) {
-      const file = files[0] as File & { path?: string };
-      if (file && file.path) {
-        updateValue(control.key, file.path);
-      }
-    }
-    return;
-  }
+  const files = event.dataTransfer?.files;
+  if (!files || files.length === 0) return;
 
-  try {
-    const item = JSON.parse(raw);
-    if (item && typeof item.path === 'string' && item.path) {
-      updateValue(control.key, item.path);
-      if (control.kindKey) {
-        const sourceKind = item.kind === 'timeline' ? 'timeline' : 'media';
-        updateValue(control.kindKey, sourceKind);
-      }
-    }
-  } catch {
-    return;
+  const file = files[0] as File & { path?: string };
+  if (file?.path) {
+    updateValue(control.key, file.path);
   }
 }
 function buildScaleXYState(control: ScaleXYParamControl) {

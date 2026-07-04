@@ -3,6 +3,8 @@ import { mountWithNuxt } from '../../utils/mount';
 import { reactive, computed } from 'vue';
 import ProjectEffects from '~/components/project/ProjectEffects.vue';
 
+const armPointerDndMock = vi.fn();
+
 const mockSelectionStore = reactive({
   selectedEntity: null,
   selectProjectEffect: vi.fn(),
@@ -30,13 +32,27 @@ vi.mock('~/stores/presets.store', () => ({ usePresetsStore: () => mockPresetsSto
 vi.mock('~/stores/workspace.store', () => ({ useWorkspaceStore: () => mockWorkspaceStore }));
 
 vi.mock('~/effects', () => ({
-  getAllVideoEffectManifests: vi.fn(() => []),
+  getAllVideoEffectManifests: vi.fn(() => [
+    {
+      type: 'blur',
+      name: 'Blur',
+      icon: 'i-heroicons-sparkles',
+      target: 'video',
+      defaultValues: {},
+    },
+  ]),
   getAllAudioEffectManifests: vi.fn(() => []),
   getEffectManifest: vi.fn(() => null),
 }));
 
 vi.mock('~/transitions', () => ({
-  getAllTransitionManifests: vi.fn(() => []),
+  getAllTransitionManifests: vi.fn(() => [
+    {
+      type: 'fade',
+      name: 'Fade',
+      icon: 'i-heroicons-arrows-right-left',
+    },
+  ]),
   getTransitionManifest: vi.fn(() => null),
 }));
 
@@ -52,11 +68,15 @@ vi.mock('~/components/effects/CollapsibleEffectGroup.vue', () => ({
 }));
 
 vi.mock('~/components/effects/EffectCard.vue', () => ({
-  default: { name: 'EffectCard', template: '<div class="effect-card" />' },
+  default: {
+    name: 'EffectCard',
+    emits: ['pointer-down', 'click'],
+    template: '<div class="effect-card" @pointerdown="$emit(\'pointer-down\', $event)" />',
+  },
 }));
 
 vi.mock('~/composables/dnd/usePointerDnd', () => ({
-  armPointerDnd: vi.fn(),
+  armPointerDnd: (...args: unknown[]) => armPointerDndMock(...args),
 }));
 
 describe('ProjectEffects', () => {
@@ -81,5 +101,17 @@ describe('ProjectEffects', () => {
     const tabs = component.findAll('button');
     const audioTab = tabs.find((tab) => tab.text().toLowerCase().includes('audio'));
     expect(audioTab).toBeDefined();
+  });
+
+  it('arms pointer-DnD for video effects', async () => {
+    const component = await mountWithNuxt(ProjectEffects);
+    const firstCard = component.find('.effect-card');
+
+    await firstCard.trigger('pointerdown', { button: 0 });
+
+    expect(armPointerDndMock).toHaveBeenCalledTimes(1);
+    const [, options] = armPointerDndMock.mock.calls[0] as [PointerEvent, { payload: any }];
+    expect(options.payload.source).toBe('effect');
+    expect(options.payload.data.type).toBe('blur');
   });
 });

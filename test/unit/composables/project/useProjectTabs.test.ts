@@ -4,6 +4,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { useProjectTabs } from '~/composables/project/useProjectTabs';
 import { isFileTab, type AnyProjectTab, useProjectTabsStore } from '~/stores/project-tabs.store';
 import { defineComponent } from 'vue';
+import { clearDndZones, DND_ZONE_ATTR, getDndZone } from '~/composables/dnd/dndRegistry';
 
 const DummyComponent = defineComponent({ template: '<div>Dummy</div>' });
 
@@ -42,6 +43,7 @@ describe('useProjectTabs', () => {
       }
     });
     localStorage.clear();
+    clearDndZones();
   });
 
   it('registers and retrieves static tabs', () => {
@@ -74,18 +76,32 @@ describe('useProjectTabs', () => {
     expect(tabsStore.tabs.length).toBe(0);
   });
 
-  it('opens file-manager neutral drag payload as a file tab', async () => {
-    const { onTabBarDrop, tabsStore } = useProjectTabs({ enableUiEffects: false });
-    const payload = [{ kind: 'file', path: '_video/clip.mp4', name: 'clip.mp4' }];
+  it('opens file-manager Pointer-DnD payload as a file tab', async () => {
+    const { tabBarDndZoneAttrs, tabsStore } = useProjectTabs({ enableUiEffects: false });
+    const zoneId = tabBarDndZoneAttrs[DND_ZONE_ATTR];
+    const handlers = getDndZone(zoneId);
+    expect(handlers).toBeTruthy();
 
-    await onTabBarDrop({
-      preventDefault: vi.fn(),
-      stopPropagation: vi.fn(),
-      dataTransfer: {
-        getData: (type: string) =>
-          type === 'application/fastcat-file-manager-items' ? JSON.stringify(payload) : '',
+    await handlers?.onDrop?.({
+      payload: {
+        source: 'file-manager',
+        data: {
+          items: [{ kind: 'file', path: '_video/clip.mp4', name: 'clip.mp4' }],
+        },
       },
-    } as unknown as DragEvent);
+      pointer: {
+        clientX: 0,
+        clientY: 0,
+        pointerType: 'mouse',
+        altKey: false,
+        ctrlKey: false,
+        metaKey: false,
+        shiftKey: false,
+      },
+      zoneId,
+      targetEl: null,
+      setOperation: vi.fn(),
+    });
 
     expect(tabsStore.tabs).toHaveLength(1);
     const tab = tabsStore.tabs[0];

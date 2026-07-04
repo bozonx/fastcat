@@ -5,14 +5,12 @@ import { useMediaStore } from '~/stores/media.store';
 import { useTimelineSettingsStore } from '~/stores/timeline-settings.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useFileManager } from '~/composables/file-manager/useFileManager';
-import { useDraggedFile } from '~/composables/useDraggedFile';
 import { computeSnappedStartUs, pxToTimeUs } from '~/utils/timeline/geometry';
 import { getMediaTypeFromFilename } from '~/utils/media-types';
 import { useTimelineMediaUsageStore } from '~/stores/timeline-media-usage.store';
 import { getWorkspacePathFileName } from '~/utils/workspace-common';
 import { isLayer1Pressed } from '~/utils/hotkeys/layerUtils';
 import type { HudType, ShapeType } from '~/timeline/types';
-import { useThrottleFn } from '@vueuse/core';
 import { selectTimelineDurationUs } from '~/timeline/selectors';
 import { useUiStore } from '~/stores/ui.store';
 import { useTimelineTextPreset } from './useTimelineTextPreset';
@@ -22,10 +20,8 @@ import { LARGE_UPLOAD_BACKGROUND_THRESHOLD_BYTES } from '~/file-manager/applicat
 import { parseTimelineFromOtio } from '~/timeline/otio-serializer';
 import { assertNoOverlap, quantizeTimeUsToFrames, sanitizeFps } from '~/timeline/commands/utils';
 import { secondsToUs } from '~/utils/time';
-import { syncFileManagerDragCursor } from '~/composables/file-manager/dragCursor';
 import { withFileIoSlot } from '~/utils/io/io-governor';
 import { useUploadProgress } from '~/composables/useUploadProgress';
-import { hasInternalFileManagerDragType } from '~/composables/file-manager/dragOperation';
 import { computeSnapTargetsUs } from './timeline-drag-domain';
 const log = createDevLogger('useTimelineDropHandling');
 
@@ -49,6 +45,7 @@ interface TimelineDropItem {
   type?: string;
   presetParams?: Record<string, unknown>;
   isRightClick?: boolean;
+  isExternal?: boolean;
 }
 
 interface TimelineDropContext {
@@ -77,7 +74,6 @@ export function useTimelineDropHandling(options: UseTimelineDropHandlingOptions)
   const workspaceStore = useWorkspaceStore();
   const fileManager = useFileManager();
   const timelineMediaUsageStore = useTimelineMediaUsageStore();
-  const draggedFile = useDraggedFile();
   const appClipboard = useAppClipboard();
   const uiStore = useUiStore();
   const toast = useToast();
@@ -85,13 +81,6 @@ export function useTimelineDropHandling(options: UseTimelineDropHandlingOptions)
   const { showPresetModal } = useTimelineTextPreset();
 
   const dragPreview = ref<DragPreview | null>(null);
-
-  // Monotonic token bumped on every clear. The drag preview build is throttled
-  // and async (it awaits clip metadata), so a build that started before a drop /
-  // drag-end / drag-leave could otherwise resolve afterwards and re-set the
-  // ghost, leaving a phantom clip on the timeline. Each build captures the token
-  // at start and bails if it changed.
-  let previewBuildToken = 0;
 
   const {
     isActive: isImporting,
@@ -105,7 +94,6 @@ export function useTimelineDropHandling(options: UseTimelineDropHandlingOptions)
   } = useUploadProgress();
 
   function clearDragPreview() {
-    previewBuildToken++;
     dragPreview.value = null;
   }
 
@@ -603,86 +591,6 @@ export function useTimelineDropHandling(options: UseTimelineDropHandlingOptions)
     return dropStrategies.find((strategy) => strategy.canHandle(item)) ?? null;
   }
 
-  const buildDragPreview = useThrottleFn(async (e: DragEvent, trackId: string) => {
-    const buildToken = previewBuildToken;
-    const payload = draggedFile.draggedFile.value;
-    if (!payload || payload.isExternal) {
-      clearDragPreview();
-      return null;
-    }
-
-    const targetTrackId = resolveDropTrackId({
-      inputTrackId: trackId,
-      payloadKind: payload.kind,
-      path: payload.path,
-    });
-
-    if (!targetTrackId) {
-      clearDragPreview();
-      return null;
-    }
-
-    const dropPositionUs = getDropPosition(e);
-    if (dropPositionUs === null) {
-      clearDragPreview();
-      return null;
-    }
-
-    const durationUs = await getPreviewDurationUsAsync({
-      kind: payload.kind,
-      path: payload.path,
-    });
-
-    // After awaiting metadata fetch, the user may have dropped, cancelled the
-    // drag, or replaced the payload. Re-validate everything we relied on. If a
-    // drop / drag-end / drag-leave cleared the preview while we awaited, the
-    // token changed — bail without resurrecting the ghost.
-    if (buildToken !== previewBuildToken) {
-      return null;
-    }
-    const currentPayload = draggedFile.draggedFile.value;
-    if (
-      !currentPayload ||
-      currentPayload.path !== payload.path ||
-      currentPayload.kind !== payload.kind
-    ) {
-      clearDragPreview();
-      return null;
-    }
-    if (!getTrackById(targetTrackId)) {
-      clearDragPreview();
-      return null;
-    }
-
-    const pseudo =
-      isLayer1Pressed(e, workspaceStore.userSettings) ||
-      timelineSettingsStore.isPseudoOverlapEnabled;
-    const startUs = resolveDropStartUs({
-      trackId: targetTrackId,
-      startUs: dropPositionUs,
-      durationUs,
-      pseudo,
-    });
-
-    const preview = {
-      trackId: targetTrackId,
-      startUs,
-      label:
-        payload.count && payload.count > 1 ? `${payload.name} +${payload.count - 1}` : payload.name,
-      durationUs,
-      kind: payload.kind === 'timeline' ? ('timeline-clip' as const) : ('file' as const),
-      invalid: isDropPlacementInvalid({
-        trackId: targetTrackId,
-        startUs,
-        durationUs,
-        pseudo,
-      }),
-    };
-
-    dragPreview.value = preview;
-    return preview;
-  }, 16);
-
   function isSupportedExternalFile(file: File): boolean {
     const type = getMediaTypeFromFilename(file.name);
     return type === 'video' || type === 'audio' || type === 'image';
@@ -754,29 +662,13 @@ export function useTimelineDropHandling(options: UseTimelineDropHandlingOptions)
       return;
     }
 
-    const payload = draggedFile.draggedFile.value;
-    const hasInternalDrag = hasInternalFileManagerDragType(types);
-
-    if (payload && !payload.isExternal) {
-      e.preventDefault?.();
-      if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy';
-      syncFileManagerDragCursor({ isDragging: true, operation: 'timeline-add' });
-      await buildDragPreview(e, trackId);
-      return;
-    }
-
-    if (hasInternalDrag) {
-      clearDragPreview();
-      return;
-    }
-
-    // Handle OS files
+    // Only OS file drags remain on HTML5 DragEvent. Internal application drags
+    // use the pointer-DnD zone on EditorTimeline.
     if (types.includes('Files')) {
       const files = Array.from(e.dataTransfer?.files || []);
       if (files.length > 0 && files.every(isSupportedExternalFile)) {
         e.preventDefault();
         if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy';
-        syncFileManagerDragCursor({ isDragging: true, operation: 'timeline-add' });
 
         // We can't show a full preview for OS files easily because we don't have metadata yet,
         // but we can show a ghost box with a generic label.
@@ -814,53 +706,7 @@ export function useTimelineDropHandling(options: UseTimelineDropHandlingOptions)
       }
     }
 
-    if (!types.includes('application/json') && !types.includes('fastcat-item')) {
-      clearDragPreview();
-      return;
-    }
-
-    if (payload?.isExternal) {
-      const payloadType = getMediaTypeFromFilename(payload.name || payload.path || '');
-      const canImportToTimeline =
-        payload.path &&
-        payloadType !== 'timeline' &&
-        isSupportedLibraryItem({ ...payload, kind: 'file' });
-
-      if (canImportToTimeline) {
-        e.preventDefault();
-        if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy';
-        syncFileManagerDragCursor({ isDragging: true, operation: 'timeline-add' });
-
-        const dropPositionUs = getDropPosition(e);
-        if (dropPositionUs !== null) {
-          const durationUs = workspaceStore.userSettings.timeline.defaultStaticClipDurationUs;
-          dragPreview.value = {
-            trackId,
-            startUs: resolveDropStartUs({
-              trackId,
-              startUs: dropPositionUs,
-              durationUs,
-              pseudo: false,
-            }),
-            label: payload.name,
-            durationUs,
-            kind: 'file',
-          };
-          dragPreview.value.invalid = isDropPlacementInvalid({
-            trackId,
-            startUs: dragPreview.value.startUs,
-            durationUs,
-            pseudo: false,
-          });
-        }
-      } else {
-        if (e.dataTransfer) e.dataTransfer.dropEffect = 'none';
-        clearDragPreview();
-      }
-      return;
-    }
-
-    await buildDragPreview(e, trackId);
+    clearDragPreview();
   }
 
   function onTrackDragLeave(e: DragEvent, trackId: string) {
@@ -897,12 +743,6 @@ export function useTimelineDropHandling(options: UseTimelineDropHandlingOptions)
   }
 
   async function handleFileDrop(files: File[], trackId: string, startUs: number) {
-    const payload = draggedFile.draggedFile.value;
-    if (payload?.path) {
-      await handleLibraryDrop(JSON.stringify(payload), trackId, startUs);
-      return;
-    }
-
     if (files.length === 0) return;
 
     const supportedFiles = files.filter(isSupportedExternalFile);
@@ -1100,11 +940,74 @@ export function useTimelineDropHandling(options: UseTimelineDropHandlingOptions)
     }
   }
 
+  async function buildPointerDragPreview(params: {
+    payload: unknown;
+    trackId: string;
+    clientX: number;
+    trackRectLeft: number;
+    pointer: Pick<DragEvent, 'shiftKey' | 'ctrlKey' | 'altKey' | 'metaKey'>;
+  }) {
+    const items = normalizeDropItems(params.payload);
+    const firstItem = items[0];
+    if (!firstItem || !isSupportedLibraryItem(firstItem)) {
+      clearDragPreview();
+      return null;
+    }
+
+    const targetTrackId = resolveDropTrackId({
+      inputTrackId: params.trackId,
+      payloadKind: firstItem.kind ?? 'file',
+      path: firstItem.path,
+    });
+    if (!targetTrackId) {
+      clearDragPreview();
+      return null;
+    }
+
+    const durationUs = await getPreviewDurationUsAsync({
+      kind: firstItem.kind ?? 'file',
+      path: firstItem.path,
+    });
+    const rawStartUs = pxToTimeUs(
+      params.clientX - params.trackRectLeft,
+      timelineStore.timelineZoom,
+    );
+    const pseudo =
+      isLayer1Pressed(params.pointer as DragEvent, workspaceStore.userSettings) ||
+      timelineSettingsStore.isPseudoOverlapEnabled;
+    const startUs = resolveDropStartUs({
+      trackId: targetTrackId,
+      startUs: rawStartUs,
+      durationUs,
+      pseudo,
+    });
+    const label =
+      items.length > 1
+        ? `${firstItem.name || firstItem.kind || 'Item'} +${items.length - 1}`
+        : firstItem.name || firstItem.kind || 'Item';
+
+    const preview = {
+      trackId: targetTrackId,
+      startUs,
+      label,
+      durationUs,
+      kind: firstItem.kind === 'timeline' ? ('timeline-clip' as const) : ('file' as const),
+      invalid: isDropPlacementInvalid({
+        trackId: targetTrackId,
+        startUs,
+        durationUs,
+        pseudo,
+      }),
+    };
+    dragPreview.value = preview;
+    return preview;
+  }
+
   return {
     dragPreview,
     clearDragPreview,
     getDropPosition,
-    buildDragPreview,
+    buildPointerDragPreview,
     onTrackDragOver,
     onTrackDragLeave,
     handleFileDrop,

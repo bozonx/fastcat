@@ -252,4 +252,61 @@ describe('ParamsRenderer', () => {
     expect(component.text()).toContain('/tmp/video.mp4');
     expect(component.find('button').exists()).toBe(true);
   });
+
+  it('updates file controls from OS file drops with a native path', async () => {
+    const component = await mountWithNuxt(ParamsRenderer, {
+      props: {
+        controls: [
+          {
+            kind: 'file',
+            key: 'mediaPath',
+            label: 'Media',
+            emptyLabel: 'Drop media here',
+          },
+        ],
+        values: {
+          mediaPath: '',
+        },
+      },
+    });
+    const file = new File(['video'], 'video.mp4', { type: 'video/mp4' }) as File & {
+      path?: string;
+    };
+    file.path = '/tmp/video.mp4';
+
+    await component.find('[class*="border-dashed"]').trigger('drop', {
+      dataTransfer: {
+        files: [file],
+      },
+    });
+
+    expect(component.emitted('update:value')).toContainEqual(['mediaPath', '/tmp/video.mp4']);
+  });
+
+  it('ignores legacy JSON file payload drops', async () => {
+    const component = await mountWithNuxt(ParamsRenderer, {
+      props: {
+        controls: [
+          {
+            kind: 'file',
+            key: 'mediaPath',
+            label: 'Media',
+            emptyLabel: 'Drop media here',
+          },
+        ],
+        values: {
+          mediaPath: '',
+        },
+      },
+    });
+
+    await component.find('[class*="border-dashed"]').trigger('drop', {
+      dataTransfer: {
+        getData: () => JSON.stringify({ path: '_video/clip.mp4', kind: 'file' }),
+        files: [],
+      },
+    });
+
+    expect(component.emitted('update:value')).toBeUndefined();
+  });
 });

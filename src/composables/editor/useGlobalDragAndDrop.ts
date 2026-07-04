@@ -4,7 +4,6 @@ import { useUiStore } from '~/stores/ui.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useProjectStore } from '~/stores/project.store';
 import { useFileManager } from '~/composables/file-manager/useFileManager';
-import { hasInternalFileManagerDragType } from '~/composables/file-manager/dragOperation';
 import { useEffectiveHotkeys } from '~/composables/editor/hotkeys/useEffectiveHotkeys';
 import { isCommandMatched } from '~/utils/hotkeys/runtime';
 import { LARGE_UPLOAD_BACKGROUND_THRESHOLD_BYTES } from '~/file-manager/application/fileManagerCommands';
@@ -132,8 +131,6 @@ export function useGlobalDragAndDrop() {
     if (!types) return;
 
     const typesArr = Array.from(types);
-    if (hasInternalFileManagerDragType(typesArr)) return;
-
     if (typesArr.includes('Files')) {
       e.preventDefault();
       showGlobalDragOverlay();
@@ -165,7 +162,7 @@ export function useGlobalDragAndDrop() {
     // The overlay handles drops via its own events, so the global drop
     // is only for fallback when overlay is not shown
     if (isDropInProgress.value) return;
-    if (uiStore.isFileManagerDragging || hasInternalFileManagerDragType(e.dataTransfer?.types)) {
+    if (uiStore.isFileManagerDragging) {
       hideGlobalDragOverlay();
       return;
     }
