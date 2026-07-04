@@ -3,6 +3,8 @@ import { describe, it, expect, vi, type Mock } from 'vitest';
 import { renderWebFrames, type WebFrameResult } from './web-render';
 import type { Page } from '@playwright/test';
 
+const defaultGoldenUrl = 'http://127.0.0.1:37107/test/golden';
+
 interface MockPage {
   page: Page;
   evaluateMock: Mock;
@@ -42,9 +44,7 @@ describe('web-render', () => {
   });
 
   it('skips navigation when already on /test/golden', async () => {
-    const { page, evaluateMock, waitForFunctionMock } = createMockPage(
-      'http://localhost:3007/test/golden',
-    );
+    const { page, evaluateMock, waitForFunctionMock } = createMockPage(defaultGoldenUrl);
     waitForFunctionMock.mockResolvedValue(undefined);
     evaluateMock.mockResolvedValue([{ hash: 'ffffffffffffffff', width: 320, height: 240 }]);
 

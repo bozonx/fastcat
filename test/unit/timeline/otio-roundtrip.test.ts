@@ -58,9 +58,7 @@ describe('timeline OTIO roundtrip', () => {
       sourceDurationUs: 1_000_000,
     }).next;
 
-    const clipId = added.tracks
-      .flatMap((t) => t.items)
-      .find((it) => it.kind === 'clip')!.id;
+    const clipId = added.tracks.flatMap((t) => t.items).find((it) => it.kind === 'clip')!.id;
 
     const doc = applyTimelineCommand(added, {
       type: 'update_clip_properties',

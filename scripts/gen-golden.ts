@@ -15,7 +15,7 @@
  */
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { spawn, type ChildProcess } from 'node:child_process';
+import { spawn, spawnSync, type ChildProcess } from 'node:child_process';
 import {
   upsertGoldenSample,
   loadGoldenRegistry,
@@ -23,32 +23,27 @@ import {
 } from '../test/golden-helpers/golden-compare';
 import { loadAllScenes } from '../test/golden-helpers/scene-loader';
 
-const E2E_PORT = Number(process.env.E2E_PORT ?? 3007);
-const BASE_URL = process.env.E2E_BASE_URL ?? `http://localhost:${E2E_PORT}`;
+const E2E_HOST = process.env.E2E_HOST ?? '127.0.0.1';
+const E2E_PORT = Number(process.env.E2E_PORT ?? 37107);
+const BASE_URL = process.env.E2E_BASE_URL ?? `http://${E2E_HOST}:${E2E_PORT}`;
 
 const MEDIA_DIR = resolve(process.cwd(), 'test/fixtures/media');
 
 /**
  * Poll a URL until it responds or timeout is reached.
  * Uses AbortController to avoid hanging on slow SSR compilation.
- * Tries both localhost and 127.0.0.1 in case of IPv6/IPv4 mismatch.
  */
 async function waitForServer(url: string, timeoutMs = 120_000): Promise<void> {
-  // Also try 127.0.0.1 in case localhost resolves to IPv6 only.
-  const altUrl = url.replace('localhost', '127.0.0.1');
-  const urls = [url, altUrl];
   const start = Date.now();
   while (Date.now() - start < timeoutMs) {
-    for (const u of urls) {
-      try {
-        const ctrl = new AbortController();
-        const timer = setTimeout(() => ctrl.abort(), 5000);
-        const res = await fetch(u, { signal: ctrl.signal });
-        clearTimeout(timer);
-        if (res.ok || res.status > 0) return;
-      } catch {
-        // server not ready yet or fetch failed
-      }
+    try {
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), 5000);
+      const res = await fetch(url, { signal: ctrl.signal });
+      clearTimeout(timer);
+      if (res.ok || res.status > 0) return;
+    } catch {
+      // server not ready yet or fetch failed
     }
     await new Promise((r) => setTimeout(r, 1000));
   }
@@ -56,10 +51,10 @@ async function waitForServer(url: string, timeoutMs = 120_000): Promise<void> {
 }
 
 /**
- * Start a Nuxt dev server if no server is already running at BASE_URL.
+ * Start a preview server if no server is already running at BASE_URL.
  * Returns the child process so the caller can kill it on exit.
  */
-async function ensureDevServer(): Promise<ChildProcess | null> {
+async function ensurePreviewServer(): Promise<ChildProcess | null> {
   // Check if a server is already running.
   try {
     const ctrl = new AbortController();
@@ -74,12 +69,37 @@ async function ensureDevServer(): Promise<ChildProcess | null> {
     // no server running — start one
   }
 
-  console.log(`  Starting dev server on port ${E2E_PORT}...`);
-  const proc = spawn('pnpm', ['dev', '--port', String(E2E_PORT)], {
+  console.log('  Building preview bundle...');
+  const build = spawnSync('pnpm', ['build'], {
     cwd: process.cwd(),
-    stdio: 'pipe',
-    env: { ...process.env, E2E_TEST: '1' },
+    stdio: 'inherit',
+    env: { ...process.env, E2E_HOST, E2E_PORT: String(E2E_PORT), E2E_TEST: '1' },
   });
+
+  if (build.status !== 0) {
+    throw new Error(`Build failed with exit code ${build.status ?? 'unknown'}`);
+  }
+
+  console.log(`  Starting preview server on ${E2E_HOST}:${E2E_PORT}...`);
+  const proc = spawn(
+    'pnpm',
+    [
+      'exec',
+      'vite',
+      'preview',
+      '--host',
+      E2E_HOST,
+      '--port',
+      String(E2E_PORT),
+      '--outDir',
+      '.output/public',
+    ],
+    {
+      cwd: process.cwd(),
+      stdio: 'pipe',
+      env: { ...process.env, E2E_HOST, E2E_PORT: String(E2E_PORT), E2E_TEST: '1' },
+    },
+  );
 
   proc.stdout?.on('data', (data: Buffer) => {
     const line = data.toString().trim();
@@ -105,7 +125,7 @@ async function genWebGolden(): Promise<void> {
   type WebSceneData = import('../test/golden-helpers/web-render').WebSceneData;
   const { writeFileToOpfs } = await import('../test/utils/e2e/virtual-fs');
 
-  const serverProc = await ensureDevServer();
+  const serverProc = await ensurePreviewServer();
 
   try {
     const browser = await chromium.launch({
@@ -182,7 +202,7 @@ async function genWebGolden(): Promise<void> {
     console.log('\nWeb golden hashes saved to shared/golden/frames.json');
   } finally {
     if (serverProc) {
-      console.log('  Stopping dev server...');
+      console.log('  Stopping preview server...');
       serverProc.kill('SIGTERM');
     }
   }

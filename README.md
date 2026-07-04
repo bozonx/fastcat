@@ -399,9 +399,13 @@ Before running E2E tests for the first time, install the Playwright browser:
 pnpm test:e2e:install
 ```
 
-E2E tests use port `3007` by default. Override it with `E2E_PORT=3010 pnpm test:e2e`.
+E2E tests use `127.0.0.1:37107` by default. Override it with
+`E2E_HOST=127.0.0.1 E2E_PORT=3010 pnpm test:e2e`.
 Set `PLAYWRIGHT_REUSE_SERVER=1` only when you intentionally want to run against an existing local server.
-In CI, Playwright runs against `pnpm build` + `vite preview` over `.output/public`.
+`test:e2e`, `test:e2e:smoke`, and `test:golden:web` build the app first, then
+run Playwright through `scripts/run-playwright-with-preview.mjs`, which starts
+`scripts/static-preview-server.mjs` over `.output/public` with the required
+cross-origin isolation headers and shuts it down after the run.
 
 ### Golden (rendered-frame) tests
 

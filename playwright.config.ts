@@ -1,12 +1,12 @@
 import { defineConfig, devices } from '@playwright/test';
 
-const e2ePort = Number(process.env.E2E_PORT ?? 3007);
+const e2eHost = process.env.E2E_HOST ?? '127.0.0.1';
+const e2ePort = Number(process.env.E2E_PORT ?? 37107);
 const e2eWorkers = Number(process.env.E2E_WORKERS ?? 1);
-const baseURL = process.env.E2E_BASE_URL ?? `http://localhost:${e2ePort}`;
+const baseURL = process.env.E2E_BASE_URL ?? `http://${e2eHost}:${e2ePort}`;
 const e2eOutputDir = process.env.E2E_OUTPUT_DIR ?? '.output';
-const webServerCommand = process.env.CI
-  ? `E2E_TEST=1 E2E_OUTPUT_DIR=${e2eOutputDir} pnpm build && pnpm exec vite preview --host localhost --port ${e2ePort} --outDir ${e2eOutputDir}/public`
-  : `E2E_TEST=1 pnpm dev --port ${e2ePort}`;
+const webServerCommand = `node scripts/static-preview-server.mjs --host ${e2eHost} --port ${e2ePort} --root ${e2eOutputDir}/public`;
+const shouldUseWebServer = process.env.PLAYWRIGHT_SKIP_WEBSERVER !== '1';
 
 // Shared Chromium config for the smoke / e2e / golden tiers.
 const chromiumUse = {
@@ -92,15 +92,18 @@ export default defineConfig({
     },
   ],
 
-  webServer: {
-    command: webServerCommand,
-    url: baseURL,
-    timeout: 120_000,
-    reuseExistingServer: !process.env.CI,
-    env: {
-      E2E_TEST: '1',
-      E2E_PORT: String(e2ePort),
-      NUXT_IGNORE_LOCK: '1',
-    },
-  },
+  webServer: shouldUseWebServer
+    ? {
+        command: webServerCommand,
+        url: baseURL,
+        timeout: 120_000,
+        reuseExistingServer: !process.env.CI,
+        env: {
+          E2E_TEST: '1',
+          E2E_HOST: e2eHost,
+          E2E_PORT: String(e2ePort),
+          NUXT_IGNORE_LOCK: '1',
+        },
+      }
+    : undefined,
 });
