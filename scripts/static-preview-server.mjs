@@ -75,10 +75,39 @@ const server = createServer(async (req, res) => {
       return;
     }
 
+    const contentType = MIME_TYPES[extname(filePath)] ?? 'application/octet-stream';
+    res.setHeader('Content-Type', contentType);
+    // Advertise byte-range support so the browser can seek within media the way
+    // it does against the real prod server (video seek relies on Range/206).
+    res.setHeader('Accept-Ranges', 'bytes');
+
+    const range = req.headers.range;
+    if (range) {
+      const match = /^bytes=(\d*)-(\d*)$/.exec(range.trim());
+      if (match && (match[1] !== '' || match[2] !== '')) {
+        const size = info.size;
+        let start = match[1] === '' ? size - Number(match[2]) : Number(match[1]);
+        let end = match[2] === '' || match[1] === '' ? size - 1 : Number(match[2]);
+        start = Math.max(0, start);
+        end = Math.min(size - 1, end);
+
+        if (start > end || Number.isNaN(start) || Number.isNaN(end)) {
+          res.statusCode = 416;
+          res.setHeader('Content-Range', `bytes */${size}`);
+          res.end();
+          return;
+        }
+
+        res.statusCode = 206;
+        res.setHeader('Content-Range', `bytes ${start}-${end}/${size}`);
+        res.setHeader('Content-Length', String(end - start + 1));
+        createReadStream(filePath, { start, end }).pipe(res);
+        return;
+      }
+    }
+
     res.statusCode = 200;
     res.setHeader('Content-Length', String(info.size));
-    res.setHeader('Content-Type', MIME_TYPES[extname(filePath)] ?? 'application/octet-stream');
-
     createReadStream(filePath).pipe(res);
   } catch {
     res.statusCode = 404;

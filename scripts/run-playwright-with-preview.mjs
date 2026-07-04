@@ -1,8 +1,18 @@
 import { spawn, spawnSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
+import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { createServer } from 'node:net';
+import { join } from 'node:path';
 
 const e2eHost = process.env.E2E_HOST ?? '127.0.0.1';
 const playwrightArgs = process.argv.slice(2);
+
+// Inputs whose contents decide whether the prebuilt bundle is still valid.
+// Kept coarse on purpose: a superset is safe (rebuilds when it didn't strictly
+// need to); a subset would serve a stale bundle.
+const BUILD_INPUT_DIRS = ['src', 'shared', 'public'];
+const BUILD_INPUT_FILES = ['package.json', 'pnpm-lock.yaml', 'nuxt.config.ts', 'tsconfig.json'];
+const BUILD_MANIFEST = '.output/.e2e-build-hash';
 
 async function findAvailablePort(startPort) {
   let port = startPort;
@@ -53,7 +63,70 @@ async function waitForServer(url, timeoutMs = 120_000) {
   throw new Error(`Server at ${url} did not start within ${timeoutMs}ms`);
 }
 
+function hashBuildInputs() {
+  const hash = createHash('sha256');
+  const root = process.cwd();
+
+  const walk = (path) => {
+    let stats;
+    try {
+      stats = statSync(path);
+    } catch {
+      return;
+    }
+    if (stats.isDirectory()) {
+      // node_modules and build output must never feed the input hash.
+      const base = path.split('/').pop();
+      if (base === 'node_modules' || base === '.output' || base === '.nuxt') return;
+      for (const entry of readdirSync(path).sort()) {
+        walk(join(path, entry));
+      }
+    } else if (stats.isFile()) {
+      hash.update(path);
+      hash.update(String(stats.size));
+      hash.update(String(Math.floor(stats.mtimeMs)));
+    }
+  };
+
+  for (const dir of BUILD_INPUT_DIRS) walk(join(root, dir));
+  for (const file of BUILD_INPUT_FILES) {
+    const full = join(root, file);
+    if (existsSync(full)) hash.update(readFileSync(full));
+  }
+  return hash.digest('hex');
+}
+
+function bundleIndexMtime() {
+  try {
+    return String(Math.floor(statSync(join(process.cwd(), '.output/public/index.html')).mtimeMs));
+  } catch {
+    return '';
+  }
+}
+
 function runBuild(e2ePort) {
+  const wantHash = hashBuildInputs();
+  const indexMtime = bundleIndexMtime();
+  // The manifest pins both the input hash AND the mtime of the bundle we
+  // produced, so an external `pnpm build` (non-E2E, no test hooks) that clobbers
+  // .output/public invalidates the cache even when inputs are unchanged.
+  const wantManifest = `${wantHash}:${indexMtime}`;
+  const forceBuild = process.env.E2E_FORCE_BUILD === '1';
+
+  if (!forceBuild && indexMtime) {
+    let prevManifest = '';
+    try {
+      prevManifest = readFileSync(join(process.cwd(), BUILD_MANIFEST), 'utf8').trim();
+    } catch {
+      // No manifest → fall through to a rebuild.
+    }
+    if (prevManifest === wantManifest) {
+      console.log('E2E build inputs unchanged — reusing existing .output/public bundle.');
+      console.log('(set E2E_FORCE_BUILD=1 to force a rebuild)');
+      return;
+    }
+  }
+
   const build = spawnSync('pnpm', ['build'], {
     cwd: process.cwd(),
     stdio: 'inherit',
@@ -67,6 +140,12 @@ function runBuild(e2ePort) {
 
   if (build.status !== 0) {
     process.exit(build.status ?? 1);
+  }
+
+  try {
+    writeFileSync(join(process.cwd(), BUILD_MANIFEST), `${wantHash}:${bundleIndexMtime()}`);
+  } catch {
+    // Non-fatal: a missing manifest just forces a rebuild next time.
   }
 }
 
